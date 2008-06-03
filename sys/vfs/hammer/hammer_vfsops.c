@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.37 2008/06/02 20:19:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.38 2008/06/03 18:47:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -175,8 +175,10 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 
 	if ((error = copyin(data, &info, sizeof(info))) != 0)
 		return (error);
-	if (info.nvolumes <= 0 || info.nvolumes >= 32768)
-		return (EINVAL);
+	if ((mp->mnt_flag & MNT_UPDATE) == 0) {
+		if (info.nvolumes <= 0 || info.nvolumes >= 32768)
+			return (EINVAL);
+	}
 
 	/*
 	 * Interal mount data structure
@@ -234,8 +236,10 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 			hammer_init_holes(hmp, &hmp->holes[i]);
 		}
 	}
-	hmp->hflags = info.hflags;
+	hmp->hflags &= ~HMNT_USERFLAGS;
+	hmp->hflags |= info.hflags & HMNT_USERFLAGS;
 	if (info.asof) {
+		kprintf("ASOF\n");
 		mp->mnt_flag |= MNT_RDONLY;
 		hmp->asof = info.asof;
 	} else {
@@ -243,17 +247,37 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	}
 
 	/*
-	 * Re-open read-write if originally read-only, or vise-versa XXX
+	 * Re-open read-write if originally read-only, or vise-versa.
 	 */
 	if (mp->mnt_flag & MNT_UPDATE) {
-		if (hmp->ronly == 0 && (mp->mnt_flag & MNT_RDONLY)) {
-			kprintf("HAMMER read-write -> read-only XXX\n");
-			hmp->ronly = 1;
-		} else if (hmp->ronly && (mp->mnt_flag & MNT_RDONLY) == 0) {
-			kprintf("HAMMER read-only -> read-write XXX\n");
+		error = 0;
+		if (hmp->ronly && (mp->mnt_kern_flag & MNTK_WANTRDWR)) {
+			kprintf("HAMMER read-only -> read-write\n");
 			hmp->ronly = 0;
+			RB_SCAN(hammer_vol_rb_tree, &hmp->rb_vols_root, NULL,
+				hammer_adjust_volume_mode, NULL);
+			rootvol = hammer_get_root_volume(hmp, &error);
+			if (rootvol) {
+				hammer_recover_flush_buffers(hmp, rootvol);
+				hammer_rel_volume(rootvol, 0);
+			}
+			RB_SCAN(hammer_ino_rb_tree, &hmp->rb_inos_root, NULL,
+				hammer_reload_inode, NULL);
+			/* kernel clears MNT_RDONLY */
+		} else if (hmp->ronly == 0 && (mp->mnt_flag & MNT_RDONLY)) {
+			kprintf("HAMMER read-write -> read-only\n");
+			hmp->ronly = 1;	/* messy */
+			RB_SCAN(hammer_ino_rb_tree, &hmp->rb_inos_root, NULL,
+				hammer_reload_inode, NULL);
+			hmp->ronly = 0;
+			hammer_flusher_sync(hmp);
+			hammer_flusher_sync(hmp);
+			hammer_flusher_sync(hmp);
+			hmp->ronly = 1;
+			RB_SCAN(hammer_vol_rb_tree, &hmp->rb_vols_root, NULL,
+				hammer_adjust_volume_mode, NULL);
 		}
-		return(0);
+		return(error);
 	}
 
 	RB_INIT(&hmp->rb_vols_root);
@@ -333,7 +357,11 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * call hammer_undo_lookup() so we have to pre-cache the blockmap,
 	 * and then re-copy it again after recovery is complete.
 	 *
-	 * The recover code will load hmp->flusher_undo_start.
+	 * The recovery code will load hmp->flusher_undo_start.
+	 *
+	 * If this is a read-only mount the UNDO information is retained
+	 * in memory in the form of dirty buffer cache buffers, and not
+	 * written back to the media.
 	 */
 	bcopy(rootvol->ondisk->vol0_blockmap, hmp->blockmap,
 	      sizeof(hmp->blockmap));
@@ -586,10 +614,6 @@ hammer_vfs_statvfs(struct mount *mp, struct statvfs *sbp, struct ucred *cred)
 	if (error)
 		return(error);
 	ondisk = volume->ondisk;
-
-	kprintf("rsvi %d rsvd %d rsvdb %d rsvrecs %d\n",
-		hmp->rsv_inodes, hmp->rsv_databufs,
-		hmp->rsv_databytes, hmp->rsv_recs);
 
 	/*
 	 * Basic stats

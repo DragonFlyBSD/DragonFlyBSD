@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_mount.h,v 1.4 2008/02/05 20:52:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_mount.h,v 1.5 2008/06/03 18:47:25 dillon Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -57,4 +57,6 @@ struct hammer_mount_info {
 
 #define HMNT_NOHISTORY	0x00000001
 #define HMNT_EXPORTREQ	0x00000002
+
+#define HMNT_USERFLAGS	(HMNT_NOHISTORY)
 

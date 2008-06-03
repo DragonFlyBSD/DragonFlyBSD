@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.48 2008/06/01 21:05:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.49 2008/06/03 18:47:25 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -264,6 +264,29 @@ late_failure:
 		hammer_free_volume(volume);
 	}
 	return (error);
+}
+
+/*
+ * This is called for each volume when updating the mount point from
+ * read-write to read-only or vise-versa.
+ */
+int
+hammer_adjust_volume_mode(hammer_volume_t volume, void *data __unused)
+{
+	if (volume->devvp) {
+		vn_lock(volume->devvp, LK_EXCLUSIVE | LK_RETRY);
+		if (volume->io.hmp->ronly) {
+			/* do not call vinvalbuf */
+			VOP_OPEN(volume->devvp, FREAD, FSCRED, NULL);
+			VOP_CLOSE(volume->devvp, FREAD|FWRITE);
+		} else {
+			/* do not call vinvalbuf */
+			VOP_OPEN(volume->devvp, FREAD|FWRITE, FSCRED, NULL);
+			VOP_CLOSE(volume->devvp, FREAD);
+		}
+		vn_unlock(volume->devvp);
+	}
+	return(0);
 }
 
 /*

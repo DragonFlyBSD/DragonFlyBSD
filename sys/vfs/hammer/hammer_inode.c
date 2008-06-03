@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.63 2008/06/02 20:19:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.64 2008/06/03 18:47:25 dillon Exp $
  */
 
 #include "hammer.h"
@@ -712,6 +712,24 @@ hammer_unload_inode(struct hammer_inode *ip)
 	--hammer_count_inodes;
 	kfree(ip, M_HAMMER);
 
+	return(0);
+}
+
+/*
+ * Called on mount -u when switching from RW to RO or vise-versa.  Adjust
+ * the read-only flag for cached inodes.
+ *
+ * This routine is called from a RB_SCAN().
+ */
+int
+hammer_reload_inode(hammer_inode_t ip, void *arg __unused)
+{
+	hammer_mount_t hmp = ip->hmp;
+
+	if (hmp->ronly || hmp->asof != HAMMER_MAX_TID)
+		ip->flags |= HAMMER_INODE_RO;
+	else
+		ip->flags &= ~HAMMER_INODE_RO;
 	return(0);
 }
 

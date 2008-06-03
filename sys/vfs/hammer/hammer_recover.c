@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.18 2008/05/18 01:48:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.19 2008/06/03 18:47:25 dillon Exp $
  */
 
 #include "hammer.h"
@@ -43,8 +43,8 @@ static void hammer_recover_copy_undo(hammer_off_t undo_offset,
 #if 0
 static void hammer_recover_debug_dump(int w, char *buf, int bytes);
 #endif
-static int hammer_recover_undo(hammer_mount_t hmp, hammer_fifo_undo_t undo,
-			int bytes);
+static int hammer_recover_undo(hammer_mount_t hmp, hammer_volume_t root_volume,
+			hammer_fifo_undo_t undo, int bytes);
 
 /*
  * Recover a filesystem on mount
@@ -84,10 +84,11 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 			(rootmap->next_offset & HAMMER_OFF_LONG_MASK);
 	}
 	kprintf("HAMMER(%s) Start Recovery %016llx - %016llx "
-		"(%lld bytes of UNDO)\n",
+		"(%lld bytes of UNDO)%s\n",
 		root_volume->ondisk->vol_name,
 		rootmap->first_offset, rootmap->next_offset,
-		bytes);
+		bytes,
+		(hmp->ronly ? " (RO)" : "(RW)"));
 	if (bytes > (rootmap->alloc_offset & HAMMER_OFF_LONG_MASK)) {
 		kprintf("Undo size is absurd, unable to mount\n");
 		return(EIO);
@@ -142,7 +143,7 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 		}
 		undo = (void *)((char *)tail + sizeof(*tail) - tail->tail_size);
 
-		error = hammer_recover_undo(hmp, undo,
+		error = hammer_recover_undo(hmp, root_volume, undo,
 				HAMMER_BUFSIZE -
 				(int)((char *)undo - (char *)buffer->ondisk));
 		if (error) {
@@ -161,6 +162,16 @@ done:
 	hmp->flusher_undo_start = rootmap->next_offset;
 	if (buffer)
 		hammer_rel_buffer(buffer, 0);
+
+	/*
+	 * Flush out the root volume header after all other flushes have
+	 * completed.
+	 */
+	if (hmp->ronly == 0 && error == 0 && root_volume->io.recovered) {
+		hammer_recover_flush_buffers(hmp, root_volume);
+	}
+	kprintf("HAMMER(%s) End Recovery\n",
+		root_volume->ondisk->vol_name);
 	return (error);
 }
 
@@ -204,7 +215,8 @@ hammer_check_tail_signature(hammer_fifo_tail_t tail, hammer_off_t end_off)
 }
 
 static int
-hammer_recover_undo(hammer_mount_t hmp, hammer_fifo_undo_t undo, int bytes)
+hammer_recover_undo(hammer_mount_t hmp, hammer_volume_t root_volume,
+		    hammer_fifo_undo_t undo, int bytes)
 {
 	hammer_fifo_tail_t tail;
 	hammer_volume_t volume;
@@ -313,8 +325,17 @@ hammer_recover_undo(hammer_mount_t hmp, hammer_fifo_undo_t undo, int bytes)
 					 (char *)volume->ondisk + offset,
 					 undo->undo_data_bytes);
 		hammer_modify_volume_done(volume);
-		hammer_io_flush(&volume->io);
-		hammer_rel_volume(volume, 0);
+
+		/*
+		 * Multiple modifications may be made to the same buffer,
+		 * improve performance by delaying the flush.  This also
+		 * covers the read-only case by preventing the kernel from
+		 * flushing the buffer.
+		 */
+		if (volume->io.recovered == 0)
+			volume->io.recovered = 1;
+		else
+			hammer_rel_volume(volume, 0);
 		break;
 	case HAMMER_ZONE_RAW_BUFFER_INDEX:
 		buf_offset = undo->undo_offset & ~HAMMER_BUFMASK64;
@@ -331,8 +352,17 @@ hammer_recover_undo(hammer_mount_t hmp, hammer_fifo_undo_t undo, int bytes)
 					 (char *)buffer->ondisk + offset,
 					 undo->undo_data_bytes);
 		hammer_modify_buffer_done(buffer);
-		hammer_io_flush(&buffer->io);
-		hammer_rel_buffer(buffer, 0);
+
+		/*
+		 * Multiple modifications may be made to the same buffer,
+		 * improve performance by delaying the flush.  This also
+		 * covers the read-only case by preventing the kernel from
+		 * flushing the buffer.
+		 */
+		if (buffer->io.recovered == 0)
+			buffer->io.recovered = 1;
+		else
+			hammer_rel_buffer(buffer, 0);
 		break;
 	default:
 		kprintf("HAMMER: Corrupt UNDO record\n");
@@ -373,3 +403,55 @@ hammer_recover_debug_dump(int w, char *buf, int bytes)
 }
 
 #endif
+
+/*
+ * Flush unwritten buffers from undo recovery operations on a read-only mount
+ * when the mount is updated to read-write.
+ */
+static int hammer_recover_flush_volume_callback(hammer_volume_t, void *);
+static int hammer_recover_flush_buffer_callback(hammer_buffer_t, void *);
+
+void
+hammer_recover_flush_buffers(hammer_mount_t hmp, hammer_volume_t root_volume)
+{
+	RB_SCAN(hammer_vol_rb_tree, &hmp->rb_vols_root, NULL,
+		hammer_recover_flush_volume_callback, root_volume);
+	if (root_volume->io.recovered) {
+		crit_enter();
+		while (hmp->io_running_count)
+			tsleep(&hmp->io_running_count, 0, "hmrflx", 0);
+		crit_exit();
+		root_volume->io.recovered = 0;
+		hammer_io_flush(&root_volume->io);
+		hammer_rel_volume(root_volume, 0);
+	}
+}
+
+static
+int
+hammer_recover_flush_volume_callback(hammer_volume_t volume, void *data)
+{
+	hammer_volume_t root_volume = data;
+
+	RB_SCAN(hammer_buf_rb_tree, &volume->rb_bufs_root, NULL,
+		hammer_recover_flush_buffer_callback, NULL);
+	if (volume->io.recovered && volume != root_volume) {
+		volume->io.recovered = 0;
+		hammer_io_flush(&volume->io);
+		hammer_rel_volume(volume, 0);
+	}
+	return(0);
+}
+
+static
+int
+hammer_recover_flush_buffer_callback(hammer_buffer_t buffer, void *data)
+{
+	if (buffer->io.recovered) {
+		buffer->io.recovered = 0;
+		hammer_io_flush(&buffer->io);
+		hammer_rel_buffer(buffer, 0);
+	}
+	return(0);
+}
+

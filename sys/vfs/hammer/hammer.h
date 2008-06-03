@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.72 2008/06/02 20:19:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.73 2008/06/03 18:47:25 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -389,6 +389,7 @@ struct hammer_io {
 	u_int		waiting : 1;	/* someone is waiting on us */
 	u_int		validated : 1;	/* ondisk has been validated */
 	u_int		waitdep : 1;	/* flush waits for dependancies */
+	u_int		recovered : 1;	/* has recovery ref */
 };
 
 typedef struct hammer_io *hammer_io_t;
@@ -633,6 +634,8 @@ void	hammer_put_inode(struct hammer_inode *ip);
 void	hammer_put_inode_ref(struct hammer_inode *ip);
 
 int	hammer_unload_volume(hammer_volume_t volume, void *data __unused);
+int	hammer_adjust_volume_mode(hammer_volume_t volume, void *data __unused);
+
 int	hammer_unload_buffer(hammer_buffer_t buffer, void *data __unused);
 int	hammer_install_volume(hammer_mount_t hmp, const char *volname);
 
@@ -821,6 +824,8 @@ int  hammer_create_inode(struct hammer_transaction *trans, struct vattr *vap,
 			struct ucred *cred, struct hammer_inode *dip,
 			struct hammer_inode **ipp);
 void hammer_rel_inode(hammer_inode_t ip, int flush);
+int hammer_reload_inode(hammer_inode_t ip, void *arg __unused);
+
 int hammer_sync_inode(hammer_inode_t ip);
 void hammer_test_inode(hammer_inode_t ip);
 void hammer_inode_unloadable_check(hammer_inode_t ip, int getvp);
@@ -878,6 +883,8 @@ void hammer_flusher_sync(hammer_mount_t hmp);
 void hammer_flusher_async(hammer_mount_t hmp);
 
 int hammer_recover(hammer_mount_t hmp, hammer_volume_t rootvol);
+void hammer_recover_flush_buffers(hammer_mount_t hmp,
+			hammer_volume_t root_volume);
 
 void hammer_crc_set_blockmap(hammer_blockmap_t blockmap);
 void hammer_crc_set_volume(hammer_volume_ondisk_t ondisk);
