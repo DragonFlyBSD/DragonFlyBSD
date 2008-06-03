@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.27 2008/06/01 20:59:29 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.28 2008/06/03 06:20:30 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -169,8 +169,17 @@ main(int ac, char **av)
 	 */
 	vol = get_volume(RootVolNo);
 	vol0_zone_limit = vol->ondisk->vol0_zone_limit;
+	printf("Initializing B-Tree blockmap\n");
 	presize_blockmap(&vol->ondisk->vol0_blockmap[HAMMER_ZONE_BTREE_INDEX],
 			 HAMMER_ZONE_BTREE, vol0_zone_limit);
+	printf("Initializing Large-Data blockmap\n");
+	presize_blockmap(&vol->ondisk->vol0_blockmap[HAMMER_ZONE_LARGE_DATA_INDEX],
+			 HAMMER_ZONE_LARGE_DATA, vol0_zone_limit);
+	printf("Initializing Small-Data blockmap\n");
+	presize_blockmap(&vol->ondisk->vol0_blockmap[HAMMER_ZONE_SMALL_DATA_INDEX],
+			 HAMMER_ZONE_BTREE, vol0_zone_limit);
+	vol->ondisk->vol0_stat_bigblocks = vol->ondisk->vol0_stat_freebigblocks;
+	vol->cache.modified = 1;
 
 	printf("---------------------------------------------\n");
 	printf("%d volume%s total size %s\n",
@@ -180,6 +189,8 @@ main(int ac, char **av)
 	printf("undo-buffer-size:    %s\n", sizetostr(UndoBufferSize));
 
 	printf("zone-limit:	     %s\n", sizetostr(vol0_zone_limit));
+	printf("total-pre-allocated: %s\n",
+		sizetostr(vol->vol_free_off & HAMMER_OFF_SHORT_MASK));
 	printf("\n");
 
 	flush_all_volumes();
@@ -437,7 +448,6 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 
 		freeblks = initialize_freemap(vol);
 		ondisk->vol0_stat_freebigblocks = freeblks;
-		ondisk->vol0_stat_bigblocks = freeblks;
 
 		format_blockmap(
 			&ondisk->vol0_blockmap[HAMMER_ZONE_BTREE_INDEX],
