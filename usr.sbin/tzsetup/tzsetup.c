@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/tzsetup/tzsetup.c,v 1.16.2.2 2002/03/06 06:17:41 obrien Exp $
- * $DragonFly: src/usr.sbin/tzsetup/tzsetup.c,v 1.6 2006/01/12 13:43:11 corecode Exp $
+ * $DragonFly: src/usr.sbin/tzsetup/tzsetup.c,v 1.6.8.1 2008/06/03 09:41:55 swildner Exp $
  */
 
 /*
@@ -104,9 +104,8 @@ continent_country_menu(dialogMenuItem *continent)
 	int menulen;
 
 	/* Short cut -- if there's only one country, don't post a menu. */
-	if (contp->nitems == 1) {
-		return set_zone_menu(&contp->menu[0]);
-	}
+	if (contp->nitems == 1)
+		return (contp->menu[0].fire(&contp->menu[0]));
 
 	/* It's amazing how much good grammar really matters... */
 	if (!isocean)
