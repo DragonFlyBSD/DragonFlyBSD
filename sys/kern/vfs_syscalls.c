@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.130 2008/06/02 20:06:36 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.131 2008/06/03 16:16:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -2263,8 +2263,9 @@ kern_lseek(int fd, off_t offset, int whence, off_t *res)
 		    (vp->v_type == VREG || vp->v_type == VDIR ||
 		     vp->v_type == VCHR || vp->v_type == VBLK)) {
 			error = EINVAL;
+		} else {
+			fp->f_offset = new_offset;
 		}
-		fp->f_offset = new_offset;
 	}
 	*res = fp->f_offset;
 done:
