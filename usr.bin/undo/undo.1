@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/usr.bin/undo/undo.1,v 1.1 2008/06/01 02:03:10 dillon Exp $
+.\" $DragonFly: src/usr.bin/undo/undo.1,v 1.2 2008/06/03 12:40:09 swildner Exp $
 .Dd May 31, 2008
 .Dt UNDO 1
 .Os
@@ -105,16 +105,11 @@ the second
 is used instead of the current version of the file.
 .El
 .Sh EXAMPLES
-.Pp
 .Li "undo -d mytextfile"
 .Pp
-.Li "undo -o mytextfile.old mytextfile
+.Li "undo -o mytextfile.old mytextfile"
 .Sh DIAGNOSTICS
 Exit status is 0 on success and 1 on error.
-.Sh BUGS
-HAMMER only synchronizes information to disk every 30 seconds or so and
-a quick file create / delete is done entirely in system memory and cannot
-be undone.  This can be worked around by running 'hammer synctid <filesystem>'.
 .Sh SEE ALSO
 .Xr hammer 8
 .Sh HISTORY
@@ -124,3 +119,7 @@ utility first appeared in
 .Dx 1.13 .
 .Sh AUTHORS
 .An Matthew Dillon Aq dillon@backplane.com
+.Sh BUGS
+HAMMER only synchronizes information to disk every 30 seconds or so and
+a quick file create / delete is done entirely in system memory and cannot
+be undone.  This can be worked around by running 'hammer synctid <filesystem>'.
