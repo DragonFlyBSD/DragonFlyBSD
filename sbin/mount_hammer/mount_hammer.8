@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/mount_hammer/mount_hammer.8,v 1.5 2008/04/23 21:59:22 thomas Exp $
+.\" $DragonFly: src/sbin/mount_hammer/mount_hammer.8,v 1.6 2008/06/03 18:43:34 dillon Exp $
 .Dd October 10, 2007
 .Dt MOUNT_HAMMER 8
 .Os
@@ -42,6 +42,10 @@
 .Op Fl o Ar mount-options
 .Op Fl T Ar time
 .Ar special ...
+.Ar mount-point
+.Nm
+.Op Fl u
+.Op Fl o Ar mount-options
 .Ar mount-point
 .Sh DESCRIPTION
 The
@@ -81,8 +85,14 @@ specifies an exact as-of timestamp in local (not UTC) time.
 Set the TZ environment variable prior to running
 .Nm
 if you wish to specify the time by some other means.
+.It Fl u
+Update the mount point.  This is typically used to upgrade a mount to
+read-write or downgrade it to read-only.
 .El
-.\".Sh NOTES
+.Sh NOTES
+Note that issuing a read-only mount which requires UNDOs to be run will
+still run the UNDOs, but will not flush the buffer cache buffers until/if
+the mount is updated to read-write.
 .Sh EXAMPLES
 .Bd -literal -offset indent
 mount_hammer -o ro,noatime /dev/ad0s1d /dev/ad1s1d /mnt

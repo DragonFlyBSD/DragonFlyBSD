@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/mount_hammer/mount_hammer.c,v 1.3 2007/12/12 23:47:57 dillon Exp $
+ * $DragonFly: src/sbin/mount_hammer/mount_hammer.c,v 1.4 2008/06/03 18:43:34 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -56,12 +56,18 @@
 
 #include "mntopts.h"
 
+typedef const char **ary_ptr_t;
+
 static void hammer_parsetime(u_int64_t *tidp, const char *timestr);
+static void extract_volumes(ary_ptr_t *aryp, int *countp, char **av, int ac);
+
+#define MOPT_UPDATE         { "update",     0, MNT_UPDATE, 0 }
 
 #define MOPT_HAMMEROPTS		\
 	{ "history", 1, HMNT_NOHISTORY, 1 }
 
-static struct mntopt mopts[] = { MOPT_STDOPTS, MOPT_HAMMEROPTS, MOPT_NULL };
+static struct mntopt mopts[] = { MOPT_STDOPTS, MOPT_HAMMEROPTS,
+				 MOPT_UPDATE, MOPT_NULL };
 
 static void usage(void);
 
@@ -70,9 +76,10 @@ main(int ac, char **av)
 {
 	struct hammer_mount_info info;
 	struct vfsconf vfc;
-	int mount_flags;
+	int mount_flags = 0;
 	int error;
 	int ch;
+	int init_flags = 0;
 	char *mountpt;
 
 	bzero(&info, sizeof(info));
@@ -80,13 +87,16 @@ main(int ac, char **av)
 	mount_flags = 0;
 	info.hflags = 0;
 
-	while ((ch = getopt(ac, av, "o:T:")) != -1) {
+	while ((ch = getopt(ac, av, "o:T:u")) != -1) {
 		switch(ch) {
 		case 'T':
 			hammer_parsetime(&info.asof, optarg);
 			break;
 		case 'o':
 			getmntopts(optarg, mopts, &mount_flags, &info.hflags);
+			break;
+		case 'u':
+			init_flags |= MNT_UPDATE;
 			break;
 		default:
 			usage();
@@ -95,6 +105,21 @@ main(int ac, char **av)
 	}
 	ac -= optind;
 	av += optind;
+	mount_flags |= init_flags;
+
+	/*
+	 * Only the mount point need be specified in update mode.
+	 */
+	if (init_flags & MNT_UPDATE) {
+		if (ac != 1) {
+			usage();
+			/* not reached */
+		}
+		mountpt = av[0];
+		if (mount(vfc.vfc_name, mountpt, mount_flags, &info))
+			err(1, NULL);
+		exit(0);
+	}
 
 	if (ac < 2) {
 		usage();
@@ -104,8 +129,7 @@ main(int ac, char **av)
 	/*
 	 * Mount arguments: vol [vol...] mountpt
 	 */
-	info.volumes = (const char **)av;
-	info.nvolumes = ac - 1;
+	extract_volumes(&info.volumes, &info.nvolumes, av, ac - 1);
 	mountpt = av[ac - 1];
 
 	/*
@@ -193,12 +217,53 @@ hammer_parsetime(u_int64_t *tidp, const char *timestr)
 		(seconds - (int)seconds) * 1000000000;
 }
 
+/*
+ * Extract a volume list
+ */
+static void
+extract_volumes(ary_ptr_t *aryp, int *countp, char **av, int ac)
+{
+	int idx = 0;
+	int arymax = 32;
+	const char **ary = malloc(sizeof(char *) * 32);
+	char *ptr;
+	char *next;
+
+	while (ac) {
+		if (idx == arymax) {
+			arymax += 32;
+			ary = realloc(ary, sizeof(char *) * arymax);
+		}
+		if (strchr(*av, ':') == NULL) {
+			ary[idx++] = *av;
+		} else {
+			next = strdup(*av);
+			while ((ptr = next) != NULL) {
+				if (idx == arymax) {
+					arymax += 32;
+					ary = realloc(ary, sizeof(char *) *
+						      arymax);
+				}
+				if ((next = strchr(ptr, ':')) != NULL)
+					*next++ = 0;
+				ary[idx++] = ptr;
+			}
+		}
+		--ac;
+		++av;
+		
+	}
+	*aryp = ary;
+	*countp = idx;
+}
+
 static
 void
 usage(void)
 {
 	fprintf(stderr, "mount_hammer [-T time] [-o options] "
 			"volume [volume...] mount_pt");
+	fprintf(stderr, "mount_hammer -u [-o options] mount_pt");
 	fprintf(stderr, "    time: +n[s/m/h/D/M/Y]\n"
 			"    time: yyyymmdd[:hhmmss]\n");
 	exit(1);
