@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/spinlock2.h,v 1.11 2006/06/01 19:02:39 dillon Exp $
+ * $DragonFly: src/sys/sys/spinlock2.h,v 1.12 2008/06/04 04:34:54 nth Exp $
  */
 
 #ifndef _SYS_SPINLOCK2_H_
@@ -67,7 +67,8 @@
 
 #ifdef SMP
 
-extern int spin_trylock_wr_contested(struct spinlock *mtx, int value);
+extern int spin_trylock_wr_contested(globaldata_t gd, struct spinlock *mtx,
+    int value);
 extern void spin_lock_wr_contested(struct spinlock *mtx, int value);
 extern void spin_lock_rd_contested(struct spinlock *mtx);
 
@@ -88,7 +89,7 @@ spin_trylock_wr(struct spinlock *mtx)
 
 	++gd->gd_spinlocks_wr;
 	if ((value = atomic_swap_int(&mtx->lock, SPINLOCK_EXCLUSIVE)) != 0)
-		return (spin_trylock_wr_contested(mtx, value));
+		return (spin_trylock_wr_contested(gd, mtx, value));
 	return (TRUE);
 }
 

@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.14 2008/05/24 12:52:49 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.15 2008/06/04 04:34:54 nth Exp $
  */
 
 #include <sys/param.h>
@@ -125,7 +125,7 @@ exponential_init(struct exponential_backoff *bo, struct spinlock *mtx)
  * we couldn't clear (and also clear our exclusive bit).
  */
 int
-spin_trylock_wr_contested(struct spinlock *mtx, int value)
+spin_trylock_wr_contested(globaldata_t gd, struct spinlock *mtx, int value)
 {
 	int bit;
 
@@ -133,14 +133,16 @@ spin_trylock_wr_contested(struct spinlock *mtx, int value)
 	if ((value & SPINLOCK_EXCLUSIVE) == 0) {
 		while (value) {
 			bit = bsfl(value);
-			if (globaldata_find(bit)->gd_spinlock_rd != mtx) {
+			if (globaldata_find(bit)->gd_spinlock_rd == mtx) {
 				atomic_swap_int(&mtx->lock, value);
+				--gd->gd_spinlocks_wr;
 				return (FALSE);
 			}
 			value &= ~(1 << bit);
 		}
 		return (TRUE);
 	}
+	--gd->gd_spinlocks_wr;
 	return (FALSE);
 }
 
