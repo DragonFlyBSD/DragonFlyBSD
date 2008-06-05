@@ -1,3 +1,5 @@
+/* $DragonFly: src/gnu/usr.bin/grep/getopt1.c,v 1.2 2008/06/05 18:01:49 swildner Exp $ */
+
 /* getopt_long and getopt_long_only entry points for GNU getopt.
    Copyright (C) 1987,88,89,90,91,92,93,94,96,97,98
      Free Software Foundation, Inc.
@@ -57,10 +59,6 @@
    to get __GNU_LIBRARY__ defined.  */
 #ifdef __GNU_LIBRARY__
 #include <stdlib.h>
-#endif
-
-#ifndef	NULL
-#define NULL 0
 #endif
 
 int

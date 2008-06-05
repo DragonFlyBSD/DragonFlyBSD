@@ -1,3 +1,5 @@
+/* $DragonFly: src/gnu/usr.bin/sort/getopt1.c,v 1.2 2008/06/05 18:01:49 swildner Exp $ */
+
 /* getopt_long and getopt_long_only entry points for GNU getopt.
    Copyright (C) 1987, 88, 89, 90, 91, 92, 1993, 1994
 	Free Software Foundation, Inc.
@@ -49,10 +51,6 @@
 #include <stdlib.h>
 #else
 char *getenv ();
-#endif
-
-#ifndef	NULL
-#define NULL 0
 #endif
 
 int

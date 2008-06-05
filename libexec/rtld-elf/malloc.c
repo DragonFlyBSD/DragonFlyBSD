@@ -32,7 +32,7 @@
  *
  * @(#)malloc.c	5.11 (Berkeley) 2/23/91
  * $FreeBSD: src/libexec/rtld-elf/malloc.c,v 1.3.2.3 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/malloc.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/malloc.c,v 1.3 2008/06/05 18:01:49 swildner Exp $
  */
 
 /*
@@ -65,8 +65,6 @@
 #ifndef BSD		/* Need do better than this */
 #define NEED_DEV_ZERO	1
 #endif
-
-#define	NULL 0
 
 static void morecore();
 static int findbucket();

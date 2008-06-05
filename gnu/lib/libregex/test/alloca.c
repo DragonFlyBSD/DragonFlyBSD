@@ -30,6 +30,8 @@
  * @(#)alloca.c	1.1
  */
 
+/* $DragonFly: src/gnu/lib/libregex/test/alloca.c,v 1.3 2008/06/05 18:01:49 swildner Exp $ */
+
 #ifdef emacs
 #include "config.h"
 #ifdef static
@@ -52,8 +54,6 @@ typedef void	*pointer;		/* generic pointer type */
 #else
 typedef char	*pointer;		/* generic pointer type */
 #endif
-
-#define	NULL	0			/* null pointer constant */
 
 extern void	free();
 extern pointer	xmalloc();

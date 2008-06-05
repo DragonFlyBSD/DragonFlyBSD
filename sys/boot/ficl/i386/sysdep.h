@@ -48,7 +48,7 @@
 
 /*
  * $FreeBSD: src/sys/boot/ficl/i386/sysdep.h,v 1.8 2002/05/16 21:21:52 trhodes Exp $
- * $DragonFly: src/sys/boot/ficl/i386/sysdep.h,v 1.3 2003/11/10 06:08:33 dillon Exp $
+ * $DragonFly: src/sys/boot/ficl/i386/sysdep.h,v 1.4 2008/06/05 18:01:49 swildner Exp $
  */
 
 #if !defined (__SYSDEP_H__)
@@ -93,10 +93,6 @@
 
 #if !defined UNS8
 #define UNS8 unsigned char
-#endif
-
-#if !defined NULL
-#define NULL ((void *)0)
 #endif
 
 /*

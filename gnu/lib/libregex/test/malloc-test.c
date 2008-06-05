@@ -1,4 +1,4 @@
-
+/* $DragonFly: src/gnu/lib/libregex/test/malloc-test.c,v 1.2 2008/06/05 18:01:49 swildner Exp $ */
 
 typedef struct {
    unsigned *bits;
@@ -6,7 +6,6 @@ typedef struct {
 } bits_list_type;
 
 #define BYTEWIDTH  8
-#define NULL 0
 
 #define BITS_BLOCK_SIZE (sizeof (unsigned) * BYTEWIDTH)
 #define BITS_BLOCK(position) ((position) / BITS_BLOCK_SIZE)

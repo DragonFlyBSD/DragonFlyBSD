@@ -1,9 +1,7 @@
+/* $DragonFly: src/gnu/lib/libregex/test/xmalloc.c,v 1.2 2008/06/05 18:01:49 swildner Exp $ */
+
 #include <stdio.h>
 extern char *malloc ();
-
-#ifndef NULL
-#define NULL 0
-#endif
 
 void *
 xmalloc (size)

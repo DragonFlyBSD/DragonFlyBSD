@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/zalloc_defs.h,v 1.6 1999/08/28 00:05:35 peter Exp $
- * $DragonFly: src/lib/libstand/zalloc_defs.h,v 1.3 2005/03/13 15:10:03 swildner Exp $
+ * $DragonFly: src/lib/libstand/zalloc_defs.h,v 1.4 2008/06/05 18:01:49 swildner Exp $
  */
 
 /*
@@ -51,10 +51,6 @@ typedef int saddr_t;		/* signed int same size as pointer	*/
 
 #define Prototype extern
 #define Library extern
-
-#ifndef NULL
-#define NULL	((void *)0)
-#endif
 
 /*
  * block extension for sbrk()

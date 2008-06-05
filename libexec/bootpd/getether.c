@@ -8,7 +8,7 @@
  * please let me know.  <gwr@mc.com>
  *
  * $FreeBSD: src/libexec/bootpd/getether.c,v 1.9.2.3 2003/02/15 05:36:01 kris Exp $
- * $DragonFly: src/libexec/bootpd/getether.c,v 1.3 2004/02/13 03:49:47 dillon Exp $
+ * $DragonFly: src/libexec/bootpd/getether.c,v 1.4 2008/06/05 18:01:49 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -181,9 +181,6 @@ getether(ifname, eap)
 #include <sys/dlpi.h>
 #include <stropts.h>
 #include <string.h>
-#ifndef NULL
-#define NULL 0
-#endif
 
 int
 getether(ifname, eap)

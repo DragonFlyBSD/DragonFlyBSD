@@ -1,14 +1,10 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.mon.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.mon.c,v 1.5 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.mon.c,v 1.5 2006/08/21 19:45:32 pavalos Exp $ */
+/* $DragonFly: src/games/hack/hack.mon.c,v 1.6 2008/06/05 18:01:49 swildner Exp $ */
 
 #include "hack.h"
 #include "hack.mfndpos.h"
-
-#ifndef NULL
-#define	NULL	(char *) 0
-#endif
 
 int warnlevel;		/* used by movemon and dochugw */
 long lastwarntime;

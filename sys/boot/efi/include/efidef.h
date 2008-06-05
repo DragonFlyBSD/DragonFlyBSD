@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/boot/efi/include/efidef.h,v 1.2 2002/05/19 03:17:20 marcel Exp $
- * $DragonFly: src/sys/boot/efi/include/efidef.h,v 1.1 2003/11/10 06:08:32 dillon Exp $
+ * $DragonFly: src/sys/boot/efi/include/efidef.h,v 1.2 2008/06/05 18:01:49 swildner Exp $
  */
 #ifndef _EFI_DEF_H
 #define _EFI_DEF_H
@@ -31,10 +31,6 @@ typedef UINT8           BOOLEAN;
 #ifndef TRUE
     #define TRUE    ((BOOLEAN) 1)
     #define FALSE   ((BOOLEAN) 0)
-#endif
-
-#ifndef NULL
-    #define NULL    ((VOID *) 0)
 #endif
 
 typedef UINTN           EFI_STATUS;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/stand.h,v 1.18.2.8 2002/06/17 11:22:39 sobomax Exp $
- * $DragonFly: src/lib/libstand/stand.h,v 1.9 2007/06/18 05:13:37 dillon Exp $
+ * $DragonFly: src/lib/libstand/stand.h,v 1.10 2008/06/05 18:01:49 swildner Exp $
  * From	$NetBSD: stand.h,v 1.22 1997/06/26 19:17:40 drochner Exp $	
  */
 
@@ -74,10 +74,6 @@
 
 #define CHK(fmt, args...)	printf("%s(%d): " fmt "\n", __func__, __LINE__ , ##args)
 #define PCHK(fmt, args...)	{printf("%s(%d): " fmt "\n", __func__, __LINE__ , ##args); getchar();}
-
-#ifndef NULL
-#define	NULL	0
-#endif
 
 /* Avoid unwanted userlandish components */
 #define _KERNEL

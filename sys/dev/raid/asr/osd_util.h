@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/osd_util.h,v 1.1.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/osd_util.h,v 1.5 2004/02/12 00:00:19 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/osd_util.h,v 1.6 2008/06/05 18:01:49 swildner Exp $ */
 /*
  * Copyright (c) 1996-1999 Distributed Processing Technology Corporation
  * All rights reserved.
@@ -200,10 +200,6 @@
 	 uSHORT       u16[2];
 	 uLONG        u32;
    } access_U;
-#endif
-
-#if !defined (NULL)
-   #define      NULL    0
 #endif
 
 

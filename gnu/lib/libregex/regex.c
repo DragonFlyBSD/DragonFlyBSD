@@ -20,6 +20,9 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 /* AIX requires this to be the first thing in the file. */
+
+/* $DragonFly: src/gnu/lib/libregex/regex.c,v 1.2 2008/06/05 18:01:49 swildner Exp $ */
+
 #if defined (_AIX) && !defined (REGEX_MALLOC)
   #pragma alloca
 #endif
@@ -167,10 +170,6 @@ init_syntax_once ()
 #define ISSPACE(c) (isascii (c) && isspace (c))
 #define ISUPPER(c) (isascii (c) && isupper (c))
 #define ISXDIGIT(c) (isascii (c) && isxdigit (c))
-
-#ifndef NULL
-#define NULL 0
-#endif
 
 /* We remove any previous definition of `SIGN_EXTEND_CHAR',
    since ours (we hope) works properly with all combinations of

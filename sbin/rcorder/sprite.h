@@ -37,7 +37,7 @@
  *
  *	from: @(#)sprite.h	8.1 (Berkeley) 6/6/93
  *	$NetBSD: sprite.h,v 1.1 1999/11/23 05:28:22 mrg Exp $
- *	$DragonFly: src/sbin/rcorder/sprite.h,v 1.1 2003/07/24 06:35:38 dillon Exp $
+ *	$DragonFly: src/sbin/rcorder/sprite.h,v 1.2 2008/06/05 18:01:49 swildner Exp $
  */
 
 /*
@@ -90,9 +90,6 @@ typedef int  ReturnStatus;
 
 #define NIL 		~0
 #define USER_NIL 	0
-#ifndef NULL
-#define NULL	 	0
-#endif /* NULL */
 
 /*
  * An address is just a pointer in C.  It is defined as a character pointer

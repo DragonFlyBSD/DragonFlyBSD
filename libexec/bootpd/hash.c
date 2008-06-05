@@ -20,7 +20,7 @@ ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
 SOFTWARE.
 
  $FreeBSD: src/libexec/bootpd/hash.c,v 1.5 1999/08/28 00:09:18 peter Exp $
- $DragonFly: src/libexec/bootpd/hash.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ $DragonFly: src/libexec/bootpd/hash.c,v 1.3 2008/06/05 18:01:49 swildner Exp $
 
 ************************************************************************/
 
@@ -51,9 +51,6 @@ SOFTWARE.
 
 #define TRUE		1
 #define FALSE		0
-#ifndef	NULL
-#define NULL		0
-#endif
 
 /*
  * This can be changed to make internal routines visible to debuggers, etc.
