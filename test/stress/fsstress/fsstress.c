@@ -30,7 +30,7 @@
  * http://oss.sgi.com/projects/GenInfo/SGIGPLNoticeExplan/
  */
 /*
- * $DragonFly: src/test/stress/fsstress/fsstress.c,v 1.1 2004/05/07 17:51:02 dillon Exp $
+ * $DragonFly: src/test/stress/fsstress/fsstress.c,v 1.2 2008/06/05 18:06:33 swildner Exp $
  */
 
 #include "global.h"
@@ -400,7 +400,7 @@ int main(int argc, char **argv)
 	dcache_init();
 	setlinebuf(stdout);
 	if (!seed) {
-		gettimeofday(&t, (void *)NULL);
+		gettimeofday(&t, NULL);
 		seed = (int)t.tv_sec ^ (int)t.tv_usec;
 		printf("seed = %ld\n", seed);
 	}

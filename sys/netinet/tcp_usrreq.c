@@ -65,7 +65,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.47 2008/02/10 11:14:25 sephe Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.48 2008/06/05 18:06:32 swildner Exp $
  */
 
 #include "opt_ipsec.h"
@@ -1083,7 +1083,7 @@ tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 		inp->in6p_laddr = *addr6;
 	inp->in6p_faddr = sin6->sin6_addr;
 	inp->inp_fport = sin6->sin6_port;
-	if ((sin6->sin6_flowinfo & IPV6_FLOWINFO_MASK) != NULL)
+	if ((sin6->sin6_flowinfo & IPV6_FLOWINFO_MASK) != 0)
 		inp->in6p_flowinfo = sin6->sin6_flowinfo;
 	in_pcbinsconnhash(inp);
 
@@ -1265,7 +1265,7 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 	int error;
 	int cpu;
 #ifdef INET6
-	int isipv6 = INP_CHECK_SOCKAF(so, AF_INET6) != NULL;
+	int isipv6 = INP_CHECK_SOCKAF(so, AF_INET6) != 0;
 #endif
 
 	if (so->so_snd.ssb_hiwat == 0 || so->so_rcv.ssb_hiwat == 0) {

@@ -33,7 +33,7 @@
  *      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * [original code from minix codebase]
- * $DragonFly: src/bin/mined/mined1.c,v 1.8 2005/11/06 11:44:02 swildner Exp $*
+ * $DragonFly: src/bin/mined/mined1.c,v 1.9 2008/06/05 18:06:30 swildner Exp $*
  */
 /*
  * Part one of the mined editor.
@@ -643,10 +643,10 @@ bottom_line(FLAG revfl, const char *s1, const char *s2, char *inbuf,
 
   *p++ = ' ';
   if (s1 != NIL_PTR)
-	while ((*p = *s1++) != NULL)
+	while ((*p = *s1++) != 0)
 		p++;
   if (s2 != NIL_PTR)
-	while ((*p = *s2++) != NULL)
+	while ((*p = *s2++) != 0)
 		p++;
   *p++ = ' ';
   *p++ = 0;
@@ -868,7 +868,7 @@ length_of(char *string)
 void
 copy_string(char *to, const char *from)
 {
-  while ((*to++ = *from++) != NULL)
+  while ((*to++ = *from++) != 0)
   	;
 }
 
@@ -1851,7 +1851,7 @@ build_string(char *buf, const char *fmt, ...)
   		default :
   			scanp = "";
   		}
-  		while ((*buf++ = *scanp++) != NULL)
+  		while ((*buf++ = *scanp++) != 0)
   			;
   		buf--;
   	}

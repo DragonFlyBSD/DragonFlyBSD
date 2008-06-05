@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mkstr.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mkstr/mkstr.c,v 1.4.2.1 2002/11/16 01:07:42 tjr Exp $
- * $DragonFly: src/usr.bin/mkstr/mkstr.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/mkstr/mkstr.c,v 1.3 2008/06/05 18:06:33 swildner Exp $
  */
 
 #include <err.h>
@@ -236,7 +236,7 @@ copystr(void)
 	}
 out:
 	*cp = 0;
-	printf("%d", hashit(buf, 1, NULL));
+	printf("%d", hashit(buf, 1, 0));
 }
 
 int

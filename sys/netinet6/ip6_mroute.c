@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_mroute.c,v 1.2.2.9 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.16 2008/05/14 11:59:24 sephe Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.17 2008/06/05 18:06:32 swildner Exp $	*/
 /*	$KAME: ip6_mroute.c,v 1.58 2001/12/18 02:36:31 itojun Exp $	*/
 
 /*
@@ -1753,7 +1753,7 @@ pim6_input(struct mbuf **mp, int *offp, int proto)
 #endif
 
  		rc = if_simloop(mif6table[reg_mif_num].m6_ifp, m,
-				dst.sin6_family, NULL);
+				dst.sin6_family, 0);
 	
 		/* prepare the register head to send to the mrouting daemon */
 		m = mcp;

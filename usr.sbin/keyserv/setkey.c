@@ -28,7 +28,7 @@
  *
  * @(#)setkey.c	1.11	94/04/25 SMI
  * $FreeBSD: src/usr.sbin/keyserv/setkey.c,v 1.3 1999/08/28 01:16:41 peter Exp $
- * $DragonFly: src/usr.sbin/keyserv/setkey.c,v 1.9 2005/07/17 19:16:35 joerg Exp $
+ * $DragonFly: src/usr.sbin/keyserv/setkey.c,v 1.10 2008/06/05 18:06:33 swildner Exp $
  */
 
 /*
@@ -83,7 +83,7 @@ void
 setmodulus(char *modx)
 {
 	modulus = NULL;
-	if (BN_hex2bn(&modulus, modx) == NULL)
+	if (BN_hex2bn(&modulus, modx) == 0)
 		errx(1, "could not convert modulus to BIGNUM: %s",
 		     ERR_error_string(ERR_get_error(), 0));
 }
@@ -183,12 +183,12 @@ pk_crypt(uid_t uid, char *remote_name, netobj *remote_key, des_block *key,
 		if ((ctx = BN_CTX_new()) == NULL)
 			return (KEY_SYSTEMERR);
 		public = NULL;
-		if (BN_hex2bn(&public, xpublic) == NULL) {
+		if (BN_hex2bn(&public, xpublic) == 0) {
 			BN_CTX_free(ctx);
 			return (KEY_SYSTEMERR);
 		}
 		secret = NULL;
-		if (BN_hex2bn(&secret, xsecret) == NULL) {
+		if (BN_hex2bn(&secret, xsecret) == 0) {
 			BN_free(public);
 			BN_CTX_free(ctx);
 			return (KEY_SYSTEMERR);
@@ -244,12 +244,12 @@ pk_get_conv_key(uid_t uid, keybuf xpublic, cryptkeyres *result)
 		if ((ctx = BN_CTX_new()) == NULL)
 			return (KEY_SYSTEMERR);
 		public = NULL;
-		if (BN_hex2bn(&public, xpublic) == NULL) {
+		if (BN_hex2bn(&public, xpublic) == 0) {
 			BN_CTX_free(ctx);
 			return (KEY_SYSTEMERR);
 		}
 		secret = NULL;
-		if (BN_hex2bn(&secret, xsecret) == NULL) {
+		if (BN_hex2bn(&secret, xsecret) == 0) {
 			BN_free(public);
 			BN_CTX_free(ctx);
 			return (KEY_SYSTEMERR);

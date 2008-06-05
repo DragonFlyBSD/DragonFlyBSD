@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libkvm/kvm_proc.c,v 1.25.2.3 2002/08/24 07:27:46 kris Exp $
- * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.17 2007/08/15 19:37:52 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.18 2008/06/05 18:06:30 swildner Exp $
  *
  * @(#)kvm_proc.c	8.3 (Berkeley) 9/23/93
  */
@@ -785,7 +785,7 @@ kvm_doargv(kvm_t *kd, const struct kinfo_proc *kp, int nchr,
 	static u_long ps_strings;
 	size_t len;
 
-	if (ps_strings == NULL) {
+	if (ps_strings == 0) {
 		len = sizeof(ps_strings);
 		if (sysctlbyname("kern.ps_strings", &ps_strings, &len, NULL,
 		    0) == -1)

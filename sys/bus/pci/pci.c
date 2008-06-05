@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.51 2008/01/06 16:55:49 swildner Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.52 2008/06/05 18:06:31 swildner Exp $
  *
  */
 
@@ -1886,7 +1886,7 @@ pci_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
 		 * The generic accessor doesn't deal with failure, so
 		 * we set the return value, then return an error.
 		 */
-		*result = NULL;
+		*result = 0;
 		return (EINVAL);
 	case PCI_IVAR_PCIXCAP_PTR:
 		*result = cfg->pcixcap_ptr;

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.33 2008/01/06 16:55:52 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.34 2008/06/05 18:06:32 swildner Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -1295,10 +1295,10 @@ ip6_ctloutput(struct socket *so, struct sockopt *sopt)
 				struct mbuf *m;
 
 				error = soopt_getm(sopt, &m); /* XXX */
-				if (error != NULL)
+				if (error != 0)
 					break;
 				error = soopt_mcopyin(sopt, m); /* XXX */
-				if (error != NULL)
+				if (error != 0)
 					break;
 				error = ip6_pcbopts(&in6p->in6p_outputopts,
 						    m, so, sopt);
@@ -1645,10 +1645,10 @@ do { \
 				struct mbuf **mp = &m;
 
 				error = soopt_getm(sopt, &m); /* XXX */
-				if (error != NULL)
+				if (error != 0)
 					break;
 				error = soopt_mcopyin(sopt, m); /* XXX */
-				if (error != NULL)
+				if (error != 0)
 					break;
 				if (m) {
 					req = mtod(m, caddr_t);
@@ -2466,7 +2466,7 @@ ip6_mloopback(struct ifnet *ifp, struct mbuf *m, struct sockaddr_in6 *dst)
 	in6_clearscope(&ip6->ip6_src);
 	in6_clearscope(&ip6->ip6_dst);
 
-	if_simloop(ifp, copym, dst->sin6_family, NULL);
+	if_simloop(ifp, copym, dst->sin6_family, 0);
 }
 
 /*

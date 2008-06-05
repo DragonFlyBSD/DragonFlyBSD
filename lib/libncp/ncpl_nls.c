@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libncp/ncpl_nls.c,v 1.2.2.1 2002/04/30 08:18:24 bp Exp $
- * $DragonFly: src/lib/libncp/ncpl_nls.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
+ * $DragonFly: src/lib/libncp/ncpl_nls.c,v 1.3 2008/06/05 18:06:30 swildner Exp $
  */
 
 /*
@@ -228,7 +228,7 @@ static struct ncp_nlsdesc ncp_nlslist[] = {
 	{NCP_NLS_SE, NCP_NLS_SE_NAME, 
 	    {def2lower, def2upper, se_nw2unix, se_unix2nw, 0}
 	},
-	{NULL, 0}
+	{0, NULL}
 };
 
 struct ncp_nlstables ncp_nls;

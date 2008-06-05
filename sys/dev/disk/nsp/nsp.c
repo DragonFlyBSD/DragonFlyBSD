@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/nsp/nsp.c,v 1.1.2.6 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/nsp/nsp.c,v 1.12 2007/01/06 08:28:54 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/nsp/nsp.c,v 1.13 2008/06/05 18:06:31 swildner Exp $	*/
 /*	$NecBSD: nsp.c,v 1.21.12.6 2001/06/29 06:27:52 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -665,7 +665,7 @@ nsp_setup_fifo(struct nsp_softc *sc, int on, int direction, int datalen)
 	/* determine a transfer type */
 	if (datalen < DEV_BSIZE || (datalen & 3) != 0)
 	{
-		if (sc->sc_memh != NULL &&
+		if (sc->sc_memh != 0 &&
 		    (nsp_io_control & NSP_USE_MEMIO) != 0)
 			xfermode = XFERMR_XEN | XFERMR_MEM8;
 		else
@@ -673,7 +673,7 @@ nsp_setup_fifo(struct nsp_softc *sc, int on, int direction, int datalen)
 	}
 	else
 	{
-		if (sc->sc_memh != NULL &&
+		if (sc->sc_memh != 0 &&
 		    (nsp_io_control & NSP_USE_MEMIO) != 0)
 			xfermode = XFERMR_XEN | XFERMR_MEM32;
 		else

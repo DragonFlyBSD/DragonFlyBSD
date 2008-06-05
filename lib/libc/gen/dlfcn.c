@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/dlfcn.c,v 1.6.2.1 2003/02/20 20:42:45 kan Exp $
- * $DragonFly: src/lib/libc/gen/dlfcn.c,v 1.4 2005/04/27 11:57:57 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/dlfcn.c,v 1.5 2008/06/05 18:06:30 swildner Exp $
  */
 
 #include <dlfcn.h>
@@ -94,5 +94,5 @@ int
 dlinfo(void *handle __unused, int request __unused, void *p __unused)
 {
 	_rtld_error(sorry);
-	return NULL;
+	return 0;
 }

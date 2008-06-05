@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/gnu/usr.bin/gdb/kgdb/trgt_i386.c,v 1.5 2005/09/11 05:36:30 marcel Exp $
- * $DragonFly: src/gnu/usr.bin/gdb/kgdb/trgt_i386.c,v 1.5 2008/01/14 21:36:38 corecode Exp $
+ * $DragonFly: src/gnu/usr.bin/gdb/kgdb/trgt_i386.c,v 1.6 2008/06/05 18:06:30 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -61,9 +61,9 @@ kgdb_trgt_fetch_registers(struct regcache *regcache, int regno)
 	}
 
 	/*
-	 * kt->pcb == NULL is a marker for "non-dumping kernel thread".
+	 * kt->pcb == 0 is a marker for "non-dumping kernel thread".
 	 */
-	if (kt->pcb == NULL) {
+	if (kt->pcb == 0) {
 		uintptr_t regs[5];
 		uintptr_t addr;
 		uintptr_t sp;
@@ -236,7 +236,7 @@ kgdb_trgt_trapframe_sniffer(const struct frame_unwind *self,
 	pname = NULL;
 	find_pc_partial_function(pc, &pname, NULL, NULL);
 	if (pname == NULL)
-		return (NULL);
+		return (0);
 	if (strcmp(pname, "calltrap") == 0 ||
 	    strcmp(pname, "dblfault_handler") == 0 ||
 	    (pname[0] == 'X' && pname[1] != '_'))

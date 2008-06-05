@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.36 2008/05/14 11:59:24 sephe Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.37 2008/06/05 18:06:32 swildner Exp $
  */
 
 #include "opt_atalk.h"
@@ -138,7 +138,7 @@ tunopen(struct dev_open_args *ap)
 	struct tun_softc *tp;
 	int	error;
 
-	if ((error = suser_cred(ap->a_cred, 0)) != NULL)
+	if ((error = suser_cred(ap->a_cred, 0)) != 0)
 		return (error);
 
 	tp = dev->si_drv1;

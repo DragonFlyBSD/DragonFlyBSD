@@ -65,7 +65,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.65 2007/08/12 01:46:26 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.66 2008/06/05 18:06:32 swildner Exp $
  */
 
 #include "opt_param.h"
@@ -1695,7 +1695,7 @@ m_defrag_nofree(struct mbuf *m0, int how)
 		goto nospace;
 	m_final->m_len = 0;	/* in case m0->m_pkthdr.len is zero */
 
-	if (m_dup_pkthdr(m_final, m0, how) == NULL)
+	if (m_dup_pkthdr(m_final, m0, how) == 0)
 		goto nospace;
 
 	m_new = m_final;

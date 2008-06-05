@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.35 2008/05/18 20:30:23 pavalos Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.36 2008/06/05 18:06:31 swildner Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -1539,7 +1539,7 @@ ASR_queue(
           I2O_SGL_FLAGS_SIMPLE_ADDRESS_ELEMENT | (Flags));         \
         I2O_SGE_SIMPLE_ELEMENT_setPhysicalAddress(                 \
           &(((PI2O_SG_ELEMENT)(SGL))->u.Simple[Index]),            \
-          (Buffer == NULL) ? NULL : KVTOPHYS(Buffer))
+          (Buffer == NULL) ? 0 : KVTOPHYS(Buffer))
 
 /*
  *      Retrieve Parameter Group.
@@ -1611,7 +1611,7 @@ ASR_getParams(
          && (Buffer_Ptr->Header.ResultCount)) {
                 return ((void *)(Buffer_Ptr->Info));
         }
-        return ((void *)NULL);
+        return (NULL);
 } /* ASR_getParams */
 
 /*
@@ -2403,7 +2403,7 @@ asr_pci_map_mem (
                 return (0);
         }
         sc->ha_Base = (void *)rman_get_start(sc->ha_mem_res);
-        if (sc->ha_Base == (void *)NULL) {
+        if (sc->ha_Base == NULL) {
                 return (0);
         }
         sc->ha_Virt = (i2oRegs_t *) rman_get_virtual(sc->ha_mem_res);
@@ -2425,7 +2425,7 @@ asr_pci_map_mem (
                 if (sc->ha_mes_res == (struct resource *)NULL) {
                         return (0);
                 }
-                if ((void *)rman_get_start(sc->ha_mes_res) == (void *)NULL) {
+                if ((void *)rman_get_start(sc->ha_mes_res) == NULL) {
                         return (0);
                 }
                 sc->ha_Fvirt = (U8 *) rman_get_virtual(sc->ha_mes_res);

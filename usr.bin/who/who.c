@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/who/who.c,v 1.9.2.4 2002/12/21 00:44:58 tjr Exp $
- * $DragonFly: src/usr.bin/who/who.c,v 1.6 2005/02/15 14:15:16 liamfoy Exp $
+ * $DragonFly: src/usr.bin/who/who.c,v 1.7 2008/06/05 18:06:33 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -179,10 +179,10 @@ row(struct utmp *ut)
 {
 	char buf[80], tty[sizeof(_PATH_DEV) + UT_LINESIZE];
 	struct stat sb;
-	time_t idle = NULL;
+	time_t idle = 0;
 	static int d_first = -1;
 	struct tm *tm;
-	char state = NULL;
+	char state = '?';
 
 	if (d_first < 0)
 		d_first = (*nl_langinfo(D_MD_ORDER) == 'd');
@@ -190,8 +190,6 @@ row(struct utmp *ut)
 	if (Tflag || uflag) {
 		snprintf(tty, sizeof(tty), "%s%.*s", _PATH_DEV,
 			UT_LINESIZE, ut->ut_line);
-		state = '?';
-		idle = 0;
 		if (stat(tty, &sb) == 0) {
 			state = sb.st_mode & (S_IWOTH|S_IWGRP) ?
 			    '+' : '-';

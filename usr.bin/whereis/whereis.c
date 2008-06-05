@@ -22,7 +22,7 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  * $FreeBSD: src/usr.bin/whereis/whereis.c,v 1.12 2002/08/22 01:50:51 johan Exp $
- * $DragonFly: src/usr.bin/whereis/whereis.c,v 1.5 2006/07/01 19:34:43 swildner Exp $
+ * $DragonFly: src/usr.bin/whereis/whereis.c,v 1.6 2008/06/05 18:06:33 swildner Exp $
  */
 
 /*
@@ -267,12 +267,11 @@ defaults(void)
 	/* -b defaults to default path + /usr/libexec +
 	 * /usr/games + user's path */
 	if (!bindirs) {
-		if (sysctlbyname("user.cs_path", (void *)NULL, &s,
-				 (void *)NULL, 0) == -1)
+		if (sysctlbyname("user.cs_path", NULL, &s, NULL, 0) == -1)
 			err(EX_OSERR, "sysctlbyname(\"user.cs_path\")");
 		if ((b = malloc(s + 1)) == NULL)
 			abort();
-		if (sysctlbyname("user.cs_path", b, &s, (void *)NULL, 0) == -1)
+		if (sysctlbyname("user.cs_path", b, &s, NULL, 0) == -1)
 			err(EX_OSERR, "sysctlbyname(\"user.cs_path\")");
 		nele = 0;
 		decolonify(b, &bindirs, &nele);

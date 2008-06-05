@@ -29,7 +29,7 @@
  *
  * @(#)generic.c 1.2 91/03/11 Copyr 1986 Sun Micro
  * $FreeBSD: src/usr.bin/newkey/generic.c,v 1.3.2.1 2001/07/04 22:32:20 kris Exp $
- * $DragonFly: src/usr.bin/newkey/generic.c,v 1.7 2005/01/11 13:08:35 joerg Exp $
+ * $DragonFly: src/usr.bin/newkey/generic.c,v 1.8 2008/06/05 18:06:33 swildner Exp $
  */
 
 /*
@@ -106,7 +106,7 @@ genkeys(char *public, char *secret, char *pass)
 	base = itobn(BASE);
 	root = itobn(PROOT);
 	modulus = NULL;
-	if (BN_hex2bn(&modulus, HEXMODULUS) == NULL)
+	if (BN_hex2bn(&modulus, HEXMODULUS) == 0)
 		errx(1, "could not convert modulus to BIGNUM: %s",
 		     ERR_error_string(ERR_get_error(), 0));
 

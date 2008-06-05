@@ -32,7 +32,7 @@
  *
  * @(#)restore.c	8.3 (Berkeley) 9/13/94
  * $FreeBSD: src/sbin/restore/restore.c,v 1.7.2.1 2002/03/01 21:32:28 iedowse Exp $
- * $DragonFly: src/sbin/restore/restore.c,v 1.8 2005/11/06 12:49:25 swildner Exp $
+ * $DragonFly: src/sbin/restore/restore.c,v 1.9 2008/06/05 18:06:31 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -454,7 +454,7 @@ nodeupdates(char *name, ufs1_ino_t ino, int type)
 	 * for it, we discard the name knowing that it will be on the
 	 * next incremental tape.
 	 */
-	case NULL:
+	case 0:
 		fprintf(stderr, "%s: (inode %d) not found on tape\n",
 			name, ino);
 		break;

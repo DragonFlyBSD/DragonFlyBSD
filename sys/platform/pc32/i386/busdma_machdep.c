@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.16.2.2 2003/01/23 00:55:27 scottl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.22 2008/01/05 14:02:41 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.23 2008/06/05 18:06:32 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -840,7 +840,7 @@ alloc_bounce_pages(bus_dma_tag_t dmat, u_int numpages)
 							 dmat->lowaddr,
 							 PAGE_SIZE,
 							 0);
-		if (bpage->vaddr == NULL) {
+		if (bpage->vaddr == 0) {
 			kfree(bpage, M_DEVBUF);
 			break;
 		}

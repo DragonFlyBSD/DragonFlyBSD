@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.48 2008/05/10 01:25:55 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.49 2008/06/05 18:06:32 swildner Exp $
  */
 
 /*
@@ -683,7 +683,7 @@ pipe_build_write_buffer(struct pipe *wpipe, struct uio *uio)
 	switch(wpipe->pipe_feature) {
 	case PIPE_KMEM:
 	case PIPE_SFBUF2:
-		if (wpipe->pipe_kva == NULL) {
+		if (wpipe->pipe_kva == 0) {
 			wpipe->pipe_kva = 
 			    kmem_alloc_nofault(&kernel_map, XIO_INTERNAL_SIZE);
 			wpipe->pipe_kvamask = 0;
@@ -741,7 +741,7 @@ pipe_clone_write_buffer(struct pipe *wpipe)
 	if (wpipe->pipe_kva) {
 		pmap_qremove(wpipe->pipe_kva, XIO_INTERNAL_PAGES);
 		kmem_free(&kernel_map, wpipe->pipe_kva, XIO_INTERNAL_SIZE);
-		wpipe->pipe_kva = NULL;
+		wpipe->pipe_kva = 0;
 	}
 }
 
@@ -812,7 +812,7 @@ retry:
 			if (wpipe->pipe_kva) {
 				pmap_qremove(wpipe->pipe_kva, XIO_INTERNAL_PAGES);
 				kmem_free(&kernel_map, wpipe->pipe_kva, XIO_INTERNAL_SIZE);
-				wpipe->pipe_kva = NULL;
+				wpipe->pipe_kva = 0;
 			}
 			pipeunlock(wpipe);
 			pipeselwakeup(wpipe);
@@ -1423,7 +1423,7 @@ pipeclose(struct pipe *cpipe)
 	if (cpipe->pipe_kva) {
 		pmap_qremove(cpipe->pipe_kva, XIO_INTERNAL_PAGES);
 		kmem_free(&kernel_map, cpipe->pipe_kva, XIO_INTERNAL_SIZE);
-		cpipe->pipe_kva = NULL;
+		cpipe->pipe_kva = 0;
 	}
 
 	/*

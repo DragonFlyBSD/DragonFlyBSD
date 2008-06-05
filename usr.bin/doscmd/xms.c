@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/doscmd/xms.c,v 1.6.2.1 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/xms.c,v 1.3 2003/10/04 20:36:43 hmp Exp $
+ * $DragonFly: src/usr.bin/doscmd/xms.c,v 1.4 2008/06/05 18:06:33 swildner Exp $
  */
 
 /*
@@ -788,7 +788,7 @@ xms_entry(regcontext_t *REGS)
 
 	    if (eptr->dst_handle != 0) {
 		dstptr = xms_hand[dstidx].addr;
-		if (dstptr == NULL || dstptr == XMS_NULL_ALLOC) {
+		if (dstptr == 0 || dstptr == XMS_NULL_ALLOC) {
 		    R_AX = 0x0;
 		    R_BL = XMS_INVALID_DESTINATION_HANDLE;
 		    debug(D_XMS, " Invalid dest handle\n");

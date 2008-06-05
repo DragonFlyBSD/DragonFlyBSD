@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.160 2004/06/14 03:52:19 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.33 2007/11/25 00:13:28 swildner Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.34 2008/06/05 18:06:31 swildner Exp $
  */
 
 #include "opt_acpi.h"
@@ -344,7 +344,7 @@ acpi_map_rsdt_header(void)
     ACPI_PHYSICAL_ADDRESS rsdp_addr, addr;
     ACPI_TABLE_RSDP *rsdp;
 
-    if ((rsdp_addr = AcpiOsGetRootPointer()) == NULL)
+    if ((rsdp_addr = AcpiOsGetRootPointer()) == 0)
 	return(NULL);
     if ((rsdp = AcpiOsMapMemory(rsdp_addr, sizeof(*rsdp))) == NULL)
 	return(NULL);

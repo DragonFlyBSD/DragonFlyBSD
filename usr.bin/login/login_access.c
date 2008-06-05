@@ -6,7 +6,7 @@
   *
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   *
-  * $DragonFly: src/usr.bin/login/login_access.c,v 1.3 2004/06/19 17:28:28 cpressey Exp $
+  * $DragonFly: src/usr.bin/login/login_access.c,v 1.4 2008/06/05 18:06:33 swildner Exp $
   */
 
 #ifdef LOGIN_ACCESS
@@ -118,7 +118,7 @@ static int list_match(char *list, char *item, int (*match_fn)())
     for (tok = strtok(list, sep); tok != 0; tok = strtok((char *) 0, sep)) {
 	if (strcasecmp(tok, "EXCEPT") == 0)	/* EXCEPT: give up */
 	    break;
-	if ((match = (*match_fn)(tok, item)) != NULL)	/* YES */
+	if ((match = (*match_fn)(tok, item)) != 0)	/* YES */
 	    break;
     }
     /* Process exceptions to matches. */

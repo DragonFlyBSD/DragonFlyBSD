@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdSchedule.c,v 1.28 2004/05/06 02:18:58 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdSchedule.c,v 1.9 2007/05/24 05:51:28 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdSchedule.c,v 1.10 2008/06/05 18:06:31 swildner Exp $
  */
 
 /*
@@ -96,7 +96,7 @@ acpi_task_thread(void *arg)
     struct acpi_task *at;
 
     for (;;) {
-	at = (void *)lwkt_waitport(&curthread->td_msgport, NULL);
+	at = (void *)lwkt_waitport(&curthread->td_msgport, 0);
 	func = (ACPI_OSD_EXEC_CALLBACK)at->at_function;
 	func((void *)at->at_context);
 	lwkt_replymsg(&at->at_msg, 0);

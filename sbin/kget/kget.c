@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/kget/kget.c,v 1.4.2.2 2001/08/01 08:19:51 obrien Exp $
- * $DragonFly: src/sbin/kget/kget.c,v 1.5 2005/01/15 08:36:25 cpressey Exp $
+ * $DragonFly: src/sbin/kget/kget.c,v 1.6 2008/06/05 18:06:30 swildner Exp $
  */
 
 #include <stdio.h>
@@ -64,7 +64,7 @@ main(int argc, char *argv[])
 
 	/* Print the changes made to ISA devices */
 	/* get the buffer size */
-	i=sysctlbyname(mib1,NULL,&len,NULL,NULL);
+	i=sysctlbyname(mib1,NULL,&len,NULL,0);
 	if(i) {
 		perror("buffer sizing");
 		exit(-1);
@@ -74,7 +74,7 @@ main(int argc, char *argv[])
 		perror("malloc");
 		exit(-1);
 	}
-	i=sysctlbyname(mib1,buf,&len,NULL,NULL);
+	i=sysctlbyname(mib1,buf,&len,NULL,0);
 	if(i) {
 		perror("retrieving data");
 		exit(-1);

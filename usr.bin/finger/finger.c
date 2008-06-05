@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)finger.c	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/finger/finger.c,v 1.15.2.9 2002/07/29 18:52:52 ume Exp $
- * $DragonFly: src/usr.bin/finger/finger.c,v 1.5 2004/09/03 19:13:23 dillon Exp $
+ * $DragonFly: src/usr.bin/finger/finger.c,v 1.6 2008/06/05 18:06:33 swildner Exp $
  */
 
 /*
@@ -312,7 +312,7 @@ userlist(int argc, char **argv)
 		    continue;
 		*conf_realname = '\0';               /* Replace : with NUL */
 		for (p = argv; *p; ++p) {
-		    if (strcmp(*p, conf_alias) == NULL) {
+		    if (strcmp(*p, conf_alias) == 0) {
 			if ((*p = strdup(conf_realname+1)) == NULL) {
 			    err(1, NULL);
 			}

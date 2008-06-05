@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_buffer.c,v 1.5 2000/01/15 21:01:04 mks Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_buffer.c,v 1.5 2008/03/01 22:03:13 swildner Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_buffer.c,v 1.6 2008/06/05 18:06:31 swildner Exp $
  */
 
 /*
@@ -377,7 +377,7 @@ fore_buf_supply_1s(Fore_unit *fup)
 			KB_DATASTART(m, cp, caddr_t);
 			bhp->bh_dma = bdp->bsd_buffer = (H_dma) DMA_GET_ADDR(
 				cp, BUF1_SM_SIZE, BUF_DATA_ALIGN, 0);
-			if (bdp->bsd_buffer == NULL) {
+			if (bdp->bsd_buffer == 0) {
 				/*
 				 * Unable to assign dma address - free up
 				 * this descriptor's buffer
@@ -518,7 +518,7 @@ fore_buf_supply_1l(Fore_unit *fup)
 			KB_DATASTART(m, cp, caddr_t);
 			bhp->bh_dma = bdp->bsd_buffer = (H_dma) DMA_GET_ADDR(
 				cp, BUF1_LG_SIZE, BUF_DATA_ALIGN, 0);
-			if (bdp->bsd_buffer == NULL) {
+			if (bdp->bsd_buffer == 0) {
 				/*
 				 * Unable to assign dma address - free up
 				 * this descriptor's buffer

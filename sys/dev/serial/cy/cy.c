@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.27 2007/04/12 18:35:08 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.28 2008/06/05 18:06:31 swildner Exp $
  */
 
 #include "opt_compat.h"
@@ -2500,7 +2500,7 @@ siosettimeout(void)
 	} else {
 		/* Flush error messages, if any. */
 		sio_timeouts_until_log = 1;
-		comwakeup((void *)NULL);
+		comwakeup(NULL);
 		callout_stop(&sio_timeout_handle);
 	}
 }

@@ -34,7 +34,7 @@
  *
  * $Id: commands.c,v 1.14 2000/11/14 20:01:23 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/commands.c,v 1.31.2.6 2003/06/06 05:13:29 grog Exp $
- * $DragonFly: src/sbin/vinum/commands.c,v 1.9 2007/07/29 23:27:34 dillon Exp $
+ * $DragonFly: src/sbin/vinum/commands.c,v 1.10 2008/06/05 18:06:31 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -349,7 +349,7 @@ void
 initplex(int plexno, char *name)
 {
     int sdno;
-    int plexfh = NULL;					    /* file handle for plex */
+    int plexfh = 0;					    /* file handle for plex */
     pid_t pid;
     char filename[MAXPATHLEN];				    /* create a file name here */
 

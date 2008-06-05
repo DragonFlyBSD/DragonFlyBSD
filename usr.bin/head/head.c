@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1987, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)head.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/head/head.c,v 1.10.2.1 2002/02/16 12:29:04 dwmalone Exp $
- * $DragonFly: src/usr.bin/head/head.c,v 1.5 2005/03/12 11:10:02 liamfoy Exp $
+ * $DragonFly: src/usr.bin/head/head.c,v 1.6 2008/06/05 18:06:33 swildner Exp $
  */
 
 #include <ctype.h>
@@ -67,12 +67,12 @@ main(int argc, char **argv)
 		switch(ch) {
 		case 'c':
 			bytecnt = strtol(optarg, &ep, 10);
-			if (*ep != NULL || bytecnt <= 0)
+			if (*ep != 0 || bytecnt <= 0)
 				errx(1, "illegal byte count -- %s", optarg);
 			break;
 		case 'n':
 			linecnt = strtol(optarg, &ep, 10);
-			if (*ep != NULL || linecnt <= 0)
+			if (*ep != 0 || linecnt <= 0)
 				errx(1, "illegal line count -- %s", optarg);
 			break;
 		default:

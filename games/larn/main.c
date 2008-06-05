@@ -1,6 +1,6 @@
 /*	main.c		*/
 /* $FreeBSD: src/games/larn/main.c,v 1.9 1999/11/30 03:48:59 billf Exp $ */
-/* $DragonFly: src/games/larn/main.c,v 1.4 2006/08/26 17:05:05 pavalos Exp $ */
+/* $DragonFly: src/games/larn/main.c,v 1.5 2008/06/05 18:06:30 swildner Exp $ */
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "header.h"
@@ -475,7 +475,7 @@ static void
 show1(int idx, const char *str2[])
 	{
 	lprintf("\n%c)   %s",idx+'a',objectname[(int)iven[idx]]);
-	if(str2 != NULL && str2[ivenarg[idx]][0] != NULL)
+	if(str2 != NULL && str2[ivenarg[idx]][0] != 0)
 		lprintf(" of%s", str2[ivenarg[idx]]);
 	}
 

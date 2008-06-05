@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/setkey/token.l,v 1.2.2.3 2001/07/03 11:02:17 ume Exp $	*/
-/*	$DragonFly: src/usr.sbin/setkey/token.l,v 1.3 2003/11/03 19:31:43 eirikn Exp $	*/
+/*	$DragonFly: src/usr.sbin/setkey/token.l,v 1.4 2008/06/05 18:06:33 swildner Exp $	*/
 /*	$KAME: token.l,v 1.21 2001/05/18 05:35:01 sakane Exp $	*/
 
 /*
@@ -60,7 +60,7 @@
 #define CMDARG \
 { \
 	char *__buf__ = strdup(yytext), *__p__; \
-	for (__p__ = __buf__; *__p__ != NULL; __p__++) \
+	for (__p__ = __buf__; *__p__ != 0; __p__++) \
 		if (*__p__ == '\n' || *__p__ == '\t') \
 			*__p__ = ' '; \
 	strcat(cmdarg, __buf__); \
@@ -143,7 +143,7 @@ spdflush	{ PREPROC; return(SPDFLUSH); }
 		/* count up for nl */
 		    {
 			char *p;
-			for (p = yytext; *p != NULL; p++)
+			for (p = yytext; *p != 0; p++)
 				if (*p == '\n')
 					lineno++;
 		    }
@@ -241,7 +241,7 @@ any		{ PREPROC; return(ANY); }
 			char *p = yytext;
 			PREPROC;
 			while (*++p != ']') ;
-			*p = NULL;
+			*p = 0;
 			yytext++;
 			yylval.num = atoi(yytext);
 			return(PORT);
@@ -270,7 +270,7 @@ any		{ PREPROC; return(ANY); }
 			char *p = yytext;
 			PREPROC;
 			while (*++p != '"') ;
-			*p = NULL;
+			*p = 0;
 			yytext++;
 			yylval.val.len = yyleng - 2;
 			yylval.val.buf = strdup(yytext);

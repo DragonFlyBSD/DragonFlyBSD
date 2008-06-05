@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/ifstat.c,v 1.1 2003/01/04 22:07:24 phk Exp $
- * $DragonFly: src/usr.bin/systat/ifstat.c,v 1.3 2007/11/25 01:28:23 swildner Exp $
+ * $DragonFly: src/usr.bin/systat/ifstat.c,v 1.4 2008/06/05 18:06:33 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -381,7 +381,7 @@ getifnum(void)
 		       5,
 		       (void *)&data,
 		       (size_t *)&datalen,
-		       (void *)NULL,
+		       NULL,
 		       (size_t)0);
 	if (error)
 		IFSTAT_ERR(1, "sysctl error");
@@ -407,7 +407,7 @@ getifmibdata(int row, struct ifmibdata *data)
 		       6,
 		       (void *)data,
 		       (size_t *)&datalen,
-		       (void *)NULL,
+		       NULL,
 		       (size_t)0);
 	if (error != 0 && errno != ENOENT)
 		IFSTAT_ERR(2, "sysctl error getting interface data");

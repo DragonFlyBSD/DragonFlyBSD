@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/burncd/burncd.c,v 1.10.2.6 2002/11/20 00:26:18 njl Exp $
- * $DragonFly: src/usr.sbin/burncd/burncd.c,v 1.3 2006/02/02 17:00:29 eirikn Exp $
+ * $DragonFly: src/usr.sbin/burncd/burncd.c,v 1.4 2008/06/05 18:06:33 swildner Exp $
  */
 
 #include <unistd.h>
@@ -243,7 +243,7 @@ main(int argc, char **argv)
 				if (*file_buf == '#' || *file_buf == '\n')
 					continue;
 				if ((eol = strchr(file_buf, '\n')))
-					*eol = NULL;
+					*eol = 0;
 				add_track(file_buf, block_size, block_type, nogap);
 			}
 			if (feof(fp))

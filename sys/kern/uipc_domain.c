@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_domain.c	8.2 (Berkeley) 10/18/93
  * $FreeBSD: src/sys/kern/uipc_domain.c,v 1.22.2.1 2001/07/03 11:01:37 ume Exp $
- * $DragonFly: src/sys/kern/uipc_domain.c,v 1.10 2008/05/27 01:10:39 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_domain.c,v 1.11 2008/06/05 18:06:32 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -198,7 +198,7 @@ kpfctlinput(int cmd, struct sockaddr *sa)
 	SLIST_FOREACH(dp, &domains, dom_next)
 		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
 			if (pr->pr_ctlinput)
-				(*pr->pr_ctlinput)(cmd, sa, (void *)NULL);
+				(*pr->pr_ctlinput)(cmd, sa, NULL);
 }
 
 void

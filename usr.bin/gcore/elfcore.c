@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/gcore/elfcore.c,v 1.5.2.3 2001/07/11 23:59:11 obrien Exp $
- * $DragonFly: src/usr.bin/gcore/elfcore.c,v 1.4 2004/08/09 14:53:38 eirikn Exp $
+ * $DragonFly: src/usr.bin/gcore/elfcore.c,v 1.5 2008/06/05 18:06:33 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -108,7 +108,7 @@ elf_coredump(int fd, pid_t pid)
 	 * size is calculated.
 	 */
 	hdrsize = 0;
-	elf_puthdr(map, (void *)NULL, &hdrsize,
+	elf_puthdr(map, NULL, &hdrsize,
 	    (const prstatus_t *)NULL, (const prfpregset_t *)NULL,
 	    (const prpsinfo_t *)NULL, seginfo.count);
 

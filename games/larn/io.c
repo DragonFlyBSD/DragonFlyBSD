@@ -1,6 +1,6 @@
 /* io.c			 Larn is copyrighted 1986 by Noah Morgan.
  * $FreeBSD: src/games/larn/io.c,v 1.7 1999/11/16 02:57:22 billf Exp $
- * $DragonFly: src/games/larn/io.c,v 1.6 2006/08/26 17:05:05 pavalos Exp $
+ * $DragonFly: src/games/larn/io.c,v 1.7 2008/06/05 18:06:30 swildner Exp $
  *
  *	Below are the functions in this file:
  *
@@ -403,11 +403,11 @@ lgetw(void)
 	char *lgp,cc;
 	int n=LINBUFSIZE,quote=0;
 	lgp = lgetwbuf;
-	do cc=lgetc();  while ((cc <= 32) && (cc > NULL));  /* eat whitespace */
+	do cc=lgetc();  while ((cc <= 32) && (cc > 0));  /* eat whitespace */
 	for ( ; ; --n,cc=lgetc())
 		{
-		if ((cc==NULL) && (lgp==lgetwbuf))  return(NULL);	/* EOF */
-		if ((n<=1) || ((cc<=32) && (quote==0))) { *lgp=NULL; return(lgetwbuf); }
+		if ((cc==0) && (lgp==lgetwbuf))  return(NULL);	/* EOF */
+		if ((n<=1) || ((cc<=32) && (quote==0))) { *lgp=0; return(lgetwbuf); }
 		if (cc != '"') *lgp++ = cc;   else quote ^= 1;
 		}
 	}
@@ -424,10 +424,10 @@ lgetl(void)
 	char *str=lgetwbuf;
 	for ( ; ; --i)
 		{
-		if ((*str++ = ch = lgetc()) == NULL)
+		if ((*str++ = ch = lgetc()) == 0)
 			{
 			if (str == lgetwbuf+1)  return(NULL); /* EOF */
-		ot:	*str = NULL;	return(lgetwbuf);	/* line ended by EOF */
+		ot:	*str = 0;	return(lgetwbuf);	/* line ended by EOF */
 			}
 		if ((ch=='\n') || (i<=1))  goto ot; /* line ended by \n */
 		}

@@ -18,7 +18,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: ports/devel/gdb6/files/freebsd-uthread.c,v 1.2 2004/06/20 18:45:36 obrien Exp $ */
-/* $DragonFly: src/gnu/usr.bin/gdb/libgdb/freebsd-uthread.c,v 1.3 2006/10/23 09:14:55 corecode Exp $ */
+/* $DragonFly: src/gnu/usr.bin/gdb/libgdb/freebsd-uthread.c,v 1.4 2008/06/05 18:06:30 swildner Exp $ */
 
 /* This module implements a sort of half target that sits between the
    machine-independent parts of GDB and the ptrace interface (infptrace.c) to
@@ -281,7 +281,7 @@ find_pthread_addr (ptid_t ptid)
       ptr = read_pthread_next(ptr);
     }
 
-  return NULL;
+  return 0;
 }
 
 static struct cached_pthread *

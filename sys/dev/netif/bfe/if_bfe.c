@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.33 2008/05/14 11:59:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.34 2008/06/05 18:06:31 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1494,7 +1494,7 @@ bfe_tick(void *xsc)
 	bfe_stats_update(sc);
 	callout_reset(&sc->bfe_stat_timer, hz, bfe_tick, sc);
 
-	if (sc->bfe_link == NULL) {
+	if (sc->bfe_link == 0) {
 		mii_tick(mii);
 		if (!sc->bfe_link && mii->mii_media_status & IFM_ACTIVE &&
 		    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE)  {

@@ -1,5 +1,5 @@
 /*	$KAME: sctp_indata.c,v 1.35 2004/08/17 04:06:17 itojun Exp $	*/
-/*	$DragonFly: src/sys/netinet/sctp_indata.c,v 1.7 2007/04/22 01:13:14 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/sctp_indata.c,v 1.8 2008/06/05 18:06:32 swildner Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -4683,7 +4683,7 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 					 */
 					asoc->fragmented_delivery_inprogress = 0;
 					sctp_ulp_notify(SCTP_NOTIFY_PARTIAL_DELVIERY_INDICATION,
-					    stcb, SCTP_PARTIAL_DELIVERY_ABORTED, (void *)NULL);
+					    stcb, SCTP_PARTIAL_DELIVERY_ABORTED, NULL);
 
 				}
 				break;
@@ -4698,7 +4698,7 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 		 * flag.
 		 */
 		sctp_ulp_notify(SCTP_NOTIFY_PARTIAL_DELVIERY_INDICATION,
-		    stcb, SCTP_PARTIAL_DELIVERY_ABORTED, (void *)NULL);
+		    stcb, SCTP_PARTIAL_DELIVERY_ABORTED, NULL);
 		asoc->fragmented_delivery_inprogress = 0;
 	}
 	/*************************************************************/

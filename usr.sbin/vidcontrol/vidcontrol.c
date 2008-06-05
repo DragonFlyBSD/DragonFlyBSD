@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.32.2.7 2002/09/15 22:31:50 dd Exp $
- * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.12 2007/08/19 11:39:11 swildner Exp $
+ * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.13 2008/06/05 18:06:33 swildner Exp $
  */
 
 #include <machine/console.h>
@@ -320,7 +320,7 @@ print_scrnmap(void)
 		if (i > 0 && i % 16 == 0)
 			fprintf(stdout, "\n");
 
-		if (hex != NULL)
+		if (hex != 0)
 			fprintf(stdout, " %02x", map[i]);
 		else
 			fprintf(stdout, " %03d", map[i]);
@@ -554,7 +554,7 @@ video_mode(int argc, char **argv, int *mode_index)
 		     { "VESA_132x50",	M_VESA_C132x50 },
 		     { "VESA_132x60",	M_VESA_C132x60 },
 		     { "VESA_800x600",	M_VESA_800x600 },
-		     { NULL, NULL },
+		     { NULL, 0 },
 	};
 
 	int new_mode_num = 0;

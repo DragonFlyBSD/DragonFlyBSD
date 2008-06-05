@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/istallion.c,v 1.36.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.21 2006/12/22 23:26:25 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.22 2008/06/05 18:06:32 swildner Exp $
  */
 
 /*****************************************************************************/
@@ -2094,10 +2094,10 @@ static __inline int stli_hostcmd(stlibrd_t *brdp, stliport_t *portp)
 		if ((cp->cmd == 0) && (rc != 0)) {
 			if (rc > 0)
 				rc--;
-			if (portp->argp != (void *) NULL) {
+			if (portp->argp != NULL) {
 				bcopy(&(cp->args[0]), portp->argp,
 					portp->argsize);
-				portp->argp = (void *) NULL;
+				portp->argp = NULL;
 			}
 			cp->status = 0;
 			portp->rc = rc;

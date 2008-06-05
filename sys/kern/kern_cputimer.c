@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_cputimer.c,v 1.4 2005/06/09 19:14:12 eirikn Exp $
+ * $DragonFly: src/sys/kern/kern_cputimer.c,v 1.5 2008/06/05 18:06:32 swildner Exp $
  */
 /*
  * Generic cputimer - access to a reliable, free-running counter.
@@ -266,12 +266,12 @@ SYSCTL_DECL(_kern_cputimer);
 SYSCTL_NODE(_kern, OID_AUTO, cputimer, CTLFLAG_RW, NULL, "cputimer");
 
 SYSCTL_PROC(_kern_cputimer, OID_AUTO, select, CTLTYPE_STRING|CTLFLAG_RD,
-	    NULL, NULL, sysctl_cputimer_reglist, "A", "");
+	    NULL, 0, sysctl_cputimer_reglist, "A", "");
 SYSCTL_PROC(_kern_cputimer, OID_AUTO, name, CTLTYPE_STRING|CTLFLAG_RD,
-	    NULL, NULL, sysctl_cputimer_name, "A", "");
+	    NULL, 0, sysctl_cputimer_name, "A", "");
 SYSCTL_PROC(_kern_cputimer, OID_AUTO, clock, CTLTYPE_UINT|CTLFLAG_RD,
-	    NULL, NULL, sysctl_cputimer_clock, "IU", "");
+	    NULL, 0, sysctl_cputimer_clock, "IU", "");
 SYSCTL_PROC(_kern_cputimer, OID_AUTO, freq, CTLTYPE_INT|CTLFLAG_RD,
-	    NULL, NULL, sysctl_cputimer_freq, "I", "");
+	    NULL, 0, sysctl_cputimer_freq, "I", "");
 
 

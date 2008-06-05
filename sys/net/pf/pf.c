@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf.c,v 1.19 2004/09/11 11:18:25 mlaier Exp $	*/
 /*	$OpenBSD: pf.c,v 1.433.2.2 2004/07/17 03:22:34 brad Exp $ */
 /* add	$OpenBSD: pf.c,v 1.448 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf.c,v 1.19 2008/05/14 11:59:23 sephe Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf.c,v 1.20 2008/06/05 18:06:32 swildner Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -1395,8 +1395,7 @@ pf_send_tcp(const struct pf_rule *r, sa_family_t af,
 		h->ip_off = path_mtu_discovery ? IP_DF : 0;
 		h->ip_ttl = ttl ? ttl : ip_defttl;
 		h->ip_sum = 0;
-		ip_output(m, (void *)NULL, (void *)NULL, 0, (void *)NULL,
-		    (void *)NULL);
+		ip_output(m, NULL, NULL, 0, NULL, NULL);
 		break;
 #endif /* INET */
 #ifdef INET6

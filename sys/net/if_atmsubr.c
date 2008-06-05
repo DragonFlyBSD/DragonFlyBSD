@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_atmsubr.c,v 1.10.2.1 2001/03/06 00:29:26 obrien Exp $
- * $DragonFly: src/sys/net/if_atmsubr.c,v 1.19 2008/05/14 11:59:23 sephe Exp $
+ * $DragonFly: src/sys/net/if_atmsubr.c,v 1.20 2008/06/05 18:06:32 swildner Exp $
  */
 
 /*
@@ -133,7 +133,7 @@ atm_output(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 		if (rt->rt_flags & RTF_GATEWAY) {
 			if (rt->rt_gwroute == NULL)
 				goto lookup;
-			if (((rt = rt->rt_gwroute)->rt_flags & RTF_UP) == NULL) {
+			if (((rt = rt->rt_gwroute)->rt_flags & RTF_UP) == 0) {
 				rtfree(rt); rt = rt0;
 			lookup: rt->rt_gwroute = RTALLOC1(rt->rt_gateway, 0);
 				if ((rt = rt->rt_gwroute) == NULL)

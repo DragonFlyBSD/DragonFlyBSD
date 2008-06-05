@@ -85,7 +85,7 @@
  *   ACPI objects: _PCT is MSR location, _PSS is freq/voltage, _PPC is caps.
  *
  * $NetBSD: est.c,v 1.25 2006/06/18 16:39:56 nonaka Exp $
- * $DragonFly: src/sys/platform/pc32/i386/est.c,v 1.10 2008/04/02 21:25:30 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/est.c,v 1.11 2008/06/05 18:06:32 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -721,13 +721,13 @@ est_init(void)
 	if (oid == NULL)
 		return(EOPNOTSUPP);
 	leaf = SYSCTL_ADD_PROC(&machdep_est_ctx, SYSCTL_CHILDREN(oid),
-	    OID_AUTO, "target", CTLTYPE_INT | CTLFLAG_RW, NULL, NULL,
+	    OID_AUTO, "target", CTLTYPE_INT | CTLFLAG_RW, NULL, 0,
 	    est_sysctl_helper, "I",
 	    "Target CPU frequency for Enhanced SpeedStep");
 	if (leaf == NULL)
 		return(EOPNOTSUPP);
 	leaf = SYSCTL_ADD_PROC(&machdep_est_ctx, SYSCTL_CHILDREN(oid),
-	    OID_AUTO, "current", CTLTYPE_INT | CTLFLAG_RD, NULL, NULL,
+	    OID_AUTO, "current", CTLTYPE_INT | CTLFLAG_RD, NULL, 0,
 	    est_sysctl_helper, "I",
 	    "Current CPU frequency for Enhanced SpeedStep");
 	if (leaf == NULL)

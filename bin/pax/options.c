@@ -36,7 +36,7 @@
  *
  * @(#)options.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/options.c,v 1.13.2.3 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/options.c,v 1.8 2006/09/27 21:58:08 pavalos Exp $
+ * $DragonFly: src/bin/pax/options.c,v 1.9 2008/06/05 18:06:30 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -1245,7 +1245,7 @@ cpio_options(int argc, char **argv)
 			 */
 			maxflt = 0;
 			while ((str = getline(stdin)) != NULL) {
-				ftree_add(str, NULL);
+				ftree_add(str, 0);
 			}
 			if (getline_error) {
 				paxwarn(1, "Problem while reading stdin");

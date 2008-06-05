@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)number.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/games/number/number.c,v 1.12 1999/12/12 03:22:35 billf Exp $
- * $DragonFly: src/games/number/number.c,v 1.4 2005/04/25 16:10:24 liamfoy Exp $
+ * $DragonFly: src/games/number/number.c,v 1.5 2008/06/05 18:06:30 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -121,7 +121,7 @@ convert(char *line)
 	int flen, len, rval;
 	char *p, *fraction;
 
-	flen = NULL;
+	flen = 0;
 	fraction = NULL;
 	for (p = line; *p != '\0' && *p != '\n'; ++p) {
 		if (isblank(*p)) {

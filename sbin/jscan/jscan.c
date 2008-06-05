@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/jscan/jscan.c,v 1.12 2007/08/09 21:53:02 swildner Exp $
+ * $DragonFly: src/sbin/jscan/jscan.c,v 1.13 2008/06/05 18:06:30 swildner Exp $
  */
 
 #include "jscan.h"
@@ -226,7 +226,7 @@ main(int ac, char **av)
 	jf = jopen_fd(input_fd);
     } else if (stat(av[optind], &st) == 0 && S_ISREG(st.st_mode)) {
 	input_prefix = av[optind];
-	if ((input_fd = open(av[optind], O_RDONLY)) != NULL) {
+	if ((input_fd = open(av[optind], O_RDONLY)) != 0) {
 	    jf = jopen_fd(input_fd);
 	} else {
 	    jf = NULL;

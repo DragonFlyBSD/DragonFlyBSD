@@ -32,7 +32,7 @@
  *
  * @(#)comp.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/comp.c,v 1.5 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/comp.c,v 1.3 2006/08/27 17:17:23 pavalos Exp $
+ * $DragonFly: src/games/mille/comp.c,v 1.4 2008/06/05 18:06:30 swildner Exp $
  */
 
 # include	"mille.h"
@@ -73,7 +73,7 @@ calcmove(void)
 		switch (card) {
 		  case C_STOP:	case C_CRASH:
 		  case C_FLAT:	case C_EMPTY:
-			if ((playit[i] = canplay(pp, op, card)) != NULL)
+			if ((playit[i] = canplay(pp, op, card)) != 0)
 				canstop = TRUE;
 			goto norm;
 		  case C_LIMIT:

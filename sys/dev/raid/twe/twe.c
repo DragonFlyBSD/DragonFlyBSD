@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twe.c,v 1.1.2.10 2004/06/11 18:57:31 vkashyap Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.19 2008/01/06 16:55:51 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.20 2008/06/05 18:06:31 swildner Exp $
  */
 
 /*
@@ -868,7 +868,7 @@ twe_init_connection(struct twe_softc *sc, int mode)
 
     /* get a command */
     if (twe_get_request(sc, &tr))
-	return(NULL);
+	return(0);
 
     /* build the command */
     cmd = &tr->tr_command;

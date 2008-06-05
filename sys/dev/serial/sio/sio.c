@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.42 2007/10/23 03:04:49 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.43 2008/06/05 18:06:32 swildner Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -2637,7 +2637,7 @@ siosettimeout(void)
 	} else {
 		/* Flush error messages, if any. */
 		sio_timeouts_until_log = 1;
-		comwakeup((void *)NULL);
+		comwakeup(NULL);
 		callout_stop(&sio_timeout_handle);
 	}
 }

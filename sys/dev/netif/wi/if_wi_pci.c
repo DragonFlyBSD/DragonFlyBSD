@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi_pci.c,v 1.22 2004/03/17 17:50:48 njl Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi_pci.c,v 1.9 2006/10/25 20:56:00 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi_pci.c,v 1.10 2008/06/05 18:06:31 swildner Exp $
  */
 
 /*
@@ -126,7 +126,7 @@ wi_pci_probe(device_t dev)
 
 	vendor = pci_get_vendor(dev);
 	device = pci_get_device(dev);
-	for (p = wi_pci_cards; p->vendor != NULL; p++) {
+	for (p = wi_pci_cards; p->vendor != 0; p++) {
 		if (vendor == p->vendor && device == p->device) {
 			sc = device_get_softc(dev);
 			sc->wi_bus_type = p->bus_type;

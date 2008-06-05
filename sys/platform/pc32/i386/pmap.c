@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.85 2008/05/11 17:20:53 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.86 2008/06/05 18:06:32 swildner Exp $
  */
 
 /*
@@ -2392,7 +2392,7 @@ pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
 		if (addr < starta || addr >= entry->end)
 			continue;
 
-		if ((*pmap_pde(pmap, addr)) == NULL) 
+		if ((*pmap_pde(pmap, addr)) == 0)
 			continue;
 
 		pte = (unsigned *) vtopte(addr);
