@@ -64,7 +64,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.33 2007/12/05 20:46:34 swildner Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.34 2008/06/05 15:29:47 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -862,6 +862,7 @@ makeroute:
 			gotoerr(ENOBUFS);
 		bzero(rt, sizeof(struct rtentry));
 		rt->rt_flags = RTF_UP | rtinfo->rti_flags;
+		rt->rt_cpuid = mycpuid;
 		error = rt_setgate(rt, dst, rtinfo->rti_info[RTAX_GATEWAY]);
 		if (error != 0) {
 			Free(rt);

@@ -64,7 +64,7 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.21 2007/03/04 18:51:59 swildner Exp $
+ * $DragonFly: src/sys/net/route.h,v 1.22 2008/06/05 15:29:47 sephe Exp $
  */
 
 #ifndef _NET_ROUTE_H_
@@ -160,7 +160,7 @@ struct rtentry {
 			      struct rtentry *);
 					/* output routine for this (rt,if) */
 	struct	rtentry *rt_parent;	/* cloning parent of this route */
-	void	*rt_filler2;		/* more filler */
+	int	rt_cpuid;		/* owner cpu */
 };
 
 /*
