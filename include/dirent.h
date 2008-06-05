@@ -32,7 +32,7 @@
  *
  *	@(#)dirent.h	8.2 (Berkeley) 7/28/94
  * $FreeBSD: src/include/dirent.h,v 1.7 1999/12/29 05:01:20 peter Exp $
- * $DragonFly: src/include/dirent.h,v 1.9 2008/05/03 22:07:36 dillon Exp $
+ * $DragonFly: src/include/dirent.h,v 1.10 2008/06/05 17:53:10 swildner Exp $
  */
 
 #ifndef _DIRENT_H_
@@ -74,9 +74,7 @@ typedef struct _dirdesc {
 #define __DTF_READALL	0x0008	/* everything has been read */
 #define __DTF_SKIPME	0x0010	/* next entry to read not current entry */
 
-#ifndef NULL
-#define	NULL	0
-#endif
+#include <sys/_null.h>
 
 #endif /* _POSIX_SOURCE */
 

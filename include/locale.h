@@ -1,5 +1,5 @@
 /*	$NetBSD: src/include/locale.h,v 1.13 2003/08/07 09:44:10 agc Exp $	*/
-/*	$DragonFly: src/include/locale.h,v 1.4 2007/09/20 07:40:51 hasso Exp $ */
+/*	$DragonFly: src/include/locale.h,v 1.5 2008/06/05 17:53:10 swildner Exp $ */
 
 /*
  * Copyright (c) 1991, 1993
@@ -62,9 +62,7 @@ struct lconv {
 	char	int_n_sign_posn;
 };
 
-#ifndef NULL
-#define	NULL	0
-#endif
+#include <sys/_null.h>
 
 #define	LC_ALL		0
 #define	LC_COLLATE	1

@@ -32,7 +32,7 @@
  *
  *	@(#)stdlib.h	8.5 (Berkeley) 5/19/95
  * $FreeBSD: src/include/stdlib.h,v 1.16.2.5 2002/12/13 01:34:00 tjr Exp $
- * $DragonFly: src/include/stdlib.h,v 1.21 2008/01/25 23:32:41 swildner Exp $
+ * $DragonFly: src/include/stdlib.h,v 1.22 2008/06/05 17:53:10 swildner Exp $
  */
 
 #ifndef _STDLIB_H_
@@ -74,9 +74,7 @@ typedef struct {
 } lldiv_t;
 #endif
 
-#ifndef NULL
-#define	NULL	0
-#endif
+#include <sys/_null.h>
 
 #define	EXIT_FAILURE	1
 #define	EXIT_SUCCESS	0

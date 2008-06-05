@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)time.h	8.3 (Berkeley) 1/21/94
- * $DragonFly: src/include/time.h,v 1.6 2008/04/09 07:05:54 hasso Exp $
+ * $DragonFly: src/include/time.h,v 1.7 2008/06/05 17:53:10 swildner Exp $
  */
 
 #ifndef _TIME_H_
@@ -61,9 +61,7 @@
 /* Frequency of the clock ticks reported by clock().  */
 #define	CLOCKS_PER_SEC	_BSD_CLOCKS_PER_SEC_
 
-#ifndef	NULL
-#define	NULL	0
-#endif
+#include <sys/_null.h>
 
 #ifndef _CLOCK_T_DECLARED
 #define _CLOCK_T_DECLARED

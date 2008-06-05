@@ -1,5 +1,5 @@
 /*	$NetBSD: src/include/wchar.h,v 1.20 2004/05/08 21:57:05 kleink Exp $	*/
-/*	$DragonFly: src/include/wchar.h,v 1.11 2008/03/10 12:01:50 hasso Exp $ */
+/*	$DragonFly: src/include/wchar.h,v 1.12 2008/06/05 17:53:10 swildner Exp $ */
 
 /*-
  * Copyright (c)1999 Citrus Project,
@@ -71,10 +71,7 @@
 #include <machine/limits.h>
 
 #include <stdio.h> /* for FILE* */
-
-#ifndef	NULL
-#define	NULL	0
-#endif
+#include <sys/_null.h>
 
 #ifndef _WCHAR_T_DECLARED
 #define	_WCHAR_T_DECLARED

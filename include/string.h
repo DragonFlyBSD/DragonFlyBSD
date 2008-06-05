@@ -32,7 +32,7 @@
  *
  *	@(#)string.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/string.h,v 1.6.2.3 2001/12/25 00:36:57 ache Exp $
- * $DragonFly: src/include/string.h,v 1.8 2006/12/05 23:14:51 dillon Exp $
+ * $DragonFly: src/include/string.h,v 1.9 2008/06/05 17:53:10 swildner Exp $
  */
 
 #ifndef _STRING_H_
@@ -51,10 +51,7 @@
 typedef __size_t        size_t;		/* open group */
 #endif
 
-#ifndef	NULL
-#define	NULL	0
-#endif
-
+#include <sys/_null.h>
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS

@@ -33,7 +33,7 @@
  *	@(#)stddef.h	8.1 (Berkeley) 6/2/93
  *
  * $FreeBSD: src/include/stddef.h,v 1.2.8.4 2002/08/07 15:49:32 imp Exp $
- * $DragonFly: src/include/stddef.h,v 1.4 2003/11/15 19:28:42 asmodai Exp $
+ * $DragonFly: src/include/stddef.h,v 1.5 2008/06/05 17:53:10 swildner Exp $
  */
 
 #ifndef _STDDEF_H_
@@ -67,9 +67,7 @@ typedef __wchar_t	wchar_t;	/* open group */
 #endif
 #endif
 
-#ifndef	NULL
-#define	NULL	0
-#endif
+#include <sys/_null.h>
 
 #define	offsetof(type, member)	__offsetof(type, member)
 

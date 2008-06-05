@@ -35,7 +35,7 @@
  *
  *	@(#)stdio.h	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/include/stdio.h,v 1.24.2.5 2002/11/09 08:07:20 imp Exp $
- * $DragonFly: src/include/stdio.h,v 1.13 2008/04/15 01:16:12 dillon Exp $
+ * $DragonFly: src/include/stdio.h,v 1.14 2008/06/05 17:53:10 swildner Exp $
  */
 
 #ifndef	_STDIO_H_
@@ -54,9 +54,7 @@
 typedef __size_t	size_t;
 #endif
 
-#ifndef NULL
-#define	NULL	0
-#endif
+#include <sys/_null.h>
 
 typedef	__off_t	fpos_t;
 

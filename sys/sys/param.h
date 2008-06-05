@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.48 2008/05/19 10:19:49 corecode Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.49 2008/06/05 17:53:10 swildner Exp $
  */
 
 #ifndef _SYS_PARAM_H_
@@ -72,9 +72,7 @@
 #define __FreeBSD_version 480101
 #endif
 
-#ifndef NULL
-#define NULL	0
-#endif
+#include <sys/_null.h>
 
 #ifndef LOCORE
 #include <sys/types.h>

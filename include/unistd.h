@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.12 (Berkeley) 4/27/95
  * $FreeBSD: src/include/unistd.h,v 1.35.2.10 2002/04/15 12:52:28 nectar Exp $
- * $DragonFly: src/include/unistd.h,v 1.23 2008/05/19 10:21:31 corecode Exp $
+ * $DragonFly: src/include/unistd.h,v 1.24 2008/06/05 17:53:10 swildner Exp $
  */
 
 #ifndef _UNISTD_H_
@@ -41,14 +41,11 @@
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <sys/unistd.h>
+#include <sys/_null.h>
 
 #define	STDIN_FILENO	0	/* standard input file descriptor */
 #define	STDOUT_FILENO	1	/* standard output file descriptor */
 #define	STDERR_FILENO	2	/* standard error file descriptor */
-
-#ifndef NULL
-#define	NULL		0	/* null pointer constant */
-#endif
 
 #ifndef _POSIX_SOURCE
 #define	F_ULOCK		0	/* unlock locked section */
