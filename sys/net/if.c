@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.70 2008/06/01 08:09:14 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.71 2008/06/06 12:35:27 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -2249,14 +2249,19 @@ ifa_iflink_dispatch(struct netmsg *nmsg)
 	struct ifaddr_container *ifac;
 
 	crit_enter();
+
 	ifac = &ifa->ifa_containers[cpu];
+	KKASSERT(ifac->ifa_magic == IFA_CONTAINER_MAGIC);
+	KKASSERT(ifac->ifa_refcnt > 0);
 	KASSERT((ifac->ifa_listmask & IFA_LIST_IFADDRHEAD) == 0,
 		("ifaddr is on if_addrheads\n"));
+
 	ifac->ifa_listmask |= IFA_LIST_IFADDRHEAD;
 	if (msg->tail)
 		TAILQ_INSERT_TAIL(&ifp->if_addrheads[cpu], ifac, ifa_link);
 	else
 		TAILQ_INSERT_HEAD(&ifp->if_addrheads[cpu], ifac, ifa_link);
+
 	crit_exit();
 
 	ifa_forwardmsg(&nmsg->nm_lmsg, cpu + 1);
@@ -2286,11 +2291,16 @@ ifa_ifunlink_dispatch(struct netmsg *nmsg)
 	struct ifaddr_container *ifac;
 
 	crit_enter();
+
 	ifac = &ifa->ifa_containers[cpu];
+	KKASSERT(ifac->ifa_magic == IFA_CONTAINER_MAGIC);
+	KKASSERT(ifac->ifa_refcnt > 0);
 	KASSERT(ifac->ifa_listmask & IFA_LIST_IFADDRHEAD,
 		("ifaddr is not on if_addrhead\n"));
+
 	TAILQ_REMOVE(&ifp->if_addrheads[cpu], ifac, ifa_link);
 	ifac->ifa_listmask &= ~IFA_LIST_IFADDRHEAD;
+
 	crit_exit();
 
 	ifa_forwardmsg(&nmsg->nm_lmsg, cpu + 1);
