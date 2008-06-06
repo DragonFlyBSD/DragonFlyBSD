@@ -39,7 +39,7 @@
  *
  * @(#)vnconfig.c	8.1 (Berkeley) 12/15/93
  * $FreeBSD: src/usr.sbin/vnconfig/vnconfig.c,v 1.13.2.7 2003/06/02 09:10:27 maxim Exp $
- * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.13 2008/01/30 11:46:33 cat Exp $
+ * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.14 2008/06/06 13:19:25 swildner Exp $
  */
 
 #include <ctype.h>
@@ -282,7 +282,7 @@ getinfo( const char *vname )
 	}
 	else {
 		tmp = (char *) vname;
-		while (*tmp != NULL) {
+		while (*tmp != 0) {
 			if(isdigit(*tmp)){
 				i = atoi(tmp);
 				printlim = i + 1;

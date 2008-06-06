@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.16 2008/05/10 17:24:12 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/systimer.c,v 1.17 2008/06/06 13:19:25 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -101,7 +101,7 @@ cpu_initclocks(void *arg __unused)
 	kprintf("initclocks\n");
 	len = sizeof(vkernel_cputimer.freq);
 	if (sysctlbyname("kern.cputimer.freq", &vkernel_cputimer.freq, &len,
-		         NULL, NULL) < 0) {
+		         NULL, 0) < 0) {
 		panic("cpu_initclocks: can't get kern.cputimer.freq!");
 	}
 	len = sizeof(cputimer_mib)/sizeof(cputimer_mib[0]);
@@ -136,7 +136,7 @@ vkernel_timer_get_timecount(void)
 
 	len = sizeof(counter);
 	if (sysctl(cputimer_mib, cputimer_miblen, &counter, &len,
-		   NULL, NULL) < 0) {
+		   NULL, 0) < 0) {
 		panic("vkernel_timer_get_timecount: sysctl failed!");
 	}
 	return(counter);

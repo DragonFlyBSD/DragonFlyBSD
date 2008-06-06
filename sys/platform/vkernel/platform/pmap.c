@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.29 2008/05/09 07:24:47 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.30 2008/06/06 13:19:25 swildner Exp $
  */
 /*
  * NOTE: PMAP_INVAL_ADD: In pc32 this function is called prior to adjusting
@@ -2154,7 +2154,7 @@ pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
 		/*
 		 * Make sure the page table page already exists
 		 */
-		if ((*pmap_pde(pmap, addr)) == NULL) 
+		if ((*pmap_pde(pmap, addr)) == 0)
 			continue;
 
 		/*

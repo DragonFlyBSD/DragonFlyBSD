@@ -37,7 +37,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.28 2008/05/19 10:29:58 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/cpu_regs.c,v 1.29 2008/06/06 13:19:25 swildner Exp $
  */
 
 #include "use_ether.h"
@@ -154,7 +154,7 @@ sysctl_hw_usermem(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_hw, HW_USERMEM, usermem, CTLTYPE_INT|CTLFLAG_RD,
 	0, 0, sysctl_hw_usermem, "IU", "");
 
-SYSCTL_ULONG(_hw, OID_AUTO, availpages, CTLFLAG_RD, &Maxmem, NULL, "");
+SYSCTL_ULONG(_hw, OID_AUTO, availpages, CTLFLAG_RD, &Maxmem, 0, "");
 
 #if 0
 
