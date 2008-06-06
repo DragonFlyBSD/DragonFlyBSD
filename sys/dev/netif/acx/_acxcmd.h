@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/_acxcmd.h,v 1.1 2006/04/01 02:55:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/_acxcmd.h,v 1.2 2008/06/06 10:47:14 sephe Exp $
  */
 
 #ifndef _X_ACXCMD_H
@@ -52,6 +52,7 @@
 #define ACXCMD_TMPLT_NULL_DATA	0x15
 #define ACXCMD_TMPLT_PROBE_REQ	0x16
 #define ACXCMD_INIT_RADIO	0x18
+#define ACXCMD_CALIBRATE	0x19	/* acx111 */
 
 #if 0
 /*

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.14 2008/06/01 04:01:24 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.15 2008/06/06 10:47:14 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -112,6 +112,19 @@ struct acx111_bss_join {
 	uint16_t	basic_rates;
 	uint8_t		dtim_intvl;
 } __packed;
+
+struct acx111_calib {
+	uint32_t	calib;		/* ACX111_CALIB_ */
+	uint32_t	interval;	/* TU */
+} __packed;
+
+#define ACX111_CALIB_AUTO		0x80000000
+#define ACX111_CALIB_DC			0x00000001
+#define ACX111_CALIB_AFE_DC		0x00000002
+#define ACX111_CALIB_TX_MISMATCH	0x00000004
+#define ACX111_CALIB_TX_EQUAL		0x00000008
+
+#define ACX111_FW_CALIB_INTVL		IEEE80211_MS_TO_TU(60000) /* 60sec */
 
 struct acx111_conf_mem {
 	struct acx_conf	confcom;
@@ -298,6 +311,7 @@ static void	acx111_init_fw_txring(struct acx_softc *, uint32_t);
 static int	acx111_write_config(struct acx_softc *, struct acx_config *);
 
 static void	acx111_set_bss_join_param(struct acx_softc *, void *, int);
+static int	acx111_calibrate(struct acx_softc *);
 
 static void	*acx111_ratectl_attach(struct ieee80211com *, u_int);
 
@@ -356,6 +370,7 @@ acx111_set_param(device_t dev)
 	sc->chip_gpio_pled = ACX111_GPIO_POWER_LED;
 	sc->chip_ee_eaddr_ofs = ACX111_EE_EADDR_OFS;
 	sc->chip_rssi_corr = ACX111_RSSI_CORR;
+	sc->chip_calibrate = acx111_calibrate;
 
 	sc->chip_phymode = IEEE80211_MODE_11G;
 	sc->chip_chan_flags = IEEE80211_CHAN_CCK |
@@ -746,4 +761,20 @@ acx111_tx_complete_amrr(struct acx_softc *sc, struct acx_txbuf *tx_buf,
 {
 	_acx111_tx_complete(sc, tx_buf, frame_len, is_fail,
 			    acx111_amrr_tries);
+}
+
+static int
+acx111_calibrate(struct acx_softc *sc)
+{
+	struct acx111_calib calib;
+
+	calib.calib = htole32(ACX111_CALIB_AUTO |
+			      ACX111_CALIB_DC |
+			      ACX111_CALIB_AFE_DC |
+			      ACX111_CALIB_TX_MISMATCH |
+			      ACX111_CALIB_TX_EQUAL);
+	calib.interval = htole32(ACX111_FW_CALIB_INTVL);
+
+	return acx_exec_command(sc, ACXCMD_CALIBRATE, &calib, sizeof(calib),
+				NULL, 0);
 }

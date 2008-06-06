@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.12 2008/02/06 08:21:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.13 2008/06/06 10:47:14 sephe Exp $
  */
 
 #ifndef _IF_ACXVAR_H
@@ -459,6 +459,7 @@ struct acx_softc {
 	 */
 	int			sc_msdu_lifetime;
 	int			sc_scan_dwell;	/* unit: millisecond */
+	int			sc_calib_intvl;	/* unit: minute */
 
 	int			(*sc_newstate)
 				(struct ieee80211com *,
@@ -490,6 +491,10 @@ struct acx_softc {
 
 	void			(*chip_proc_wep_rxbuf)
 				(struct acx_softc *, struct mbuf *, int *);
+
+	struct callout		sc_calibrate_timer;
+	int			(*chip_calibrate)
+				(struct acx_softc *);
 };
 
 #define ACX_FLAG_FW_LOADED	0x1

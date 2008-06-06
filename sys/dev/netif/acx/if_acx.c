@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.28 2008/05/31 13:12:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.29 2008/06/06 10:47:14 sephe Exp $
  */
 
 /*
@@ -134,6 +134,7 @@ static int	acx_read_config(struct acx_softc *, struct acx_config *);
 static int	acx_write_config(struct acx_softc *, struct acx_config *);
 static int	acx_rx_config(struct acx_softc *, int);
 static int	acx_set_crypt_keys(struct acx_softc *);
+static void	acx_calibrate(void *);
 
 static int	acx_dma_alloc(struct acx_softc *);
 static void	acx_dma_free(struct acx_softc *);
@@ -319,8 +320,11 @@ acx_attach(device_t dev)
 		goto fail;
 	}
 
-	/* Initilize channel scanning timer */
+	/* Initialize channel scanning timer */
 	callout_init(&sc->sc_scan_timer);
+
+	/* Initialize calibration timer */
+	callout_init(&sc->sc_calibrate_timer);
 
 	/* Allocate busdma stuffs */
 	error = acx_dma_alloc(sc);
@@ -380,6 +384,7 @@ acx_attach(device_t dev)
 	sc->sc_long_retry_limit = 4;
 	sc->sc_msdu_lifetime = 4096;
 	sc->sc_scan_dwell = 200;	/* 200 milliseconds */
+	sc->sc_calib_intvl = 3 * 60;	/* 3 minutes */
 
 	sysctl_ctx_init(&sc->sc_sysctl_ctx);
 	sc->sc_sysctl_tree = SYSCTL_ADD_NODE(&sc->sc_sysctl_ctx,
@@ -406,6 +411,10 @@ acx_attach(device_t dev)
 		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
 		       "scan_dwell", CTLFLAG_RW,
 		       &sc->sc_scan_dwell, 0, "Scan channel dwell time (ms)");
+	SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+		       "calib_intvl", CTLFLAG_RW,
+		       &sc->sc_calib_intvl, 0, "Calibration interval (second)");
 
 	/*
 	 * Nodes for firmware operation
@@ -1964,6 +1973,7 @@ acx_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 
 	ieee80211_ratectl_newstate(ic, nstate);
 	callout_stop(&sc->sc_scan_timer);
+	callout_stop(&sc->sc_calibrate_timer);
 
 	switch (nstate) {
 	case IEEE80211_S_SCAN:
@@ -2020,6 +2030,21 @@ acx_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 		}
 	}
 
+	if (nstate == IEEE80211_S_RUN) {
+		int interval = sc->sc_calib_intvl;
+
+		if (sc->chip_calibrate != NULL) {
+			error = sc->chip_calibrate(sc);
+			if (error) {
+				/*
+				 * Restart calibration some time later
+				 */
+				interval = 10;
+			}
+			callout_reset(&sc->sc_calibrate_timer,
+			      	      hz * interval, acx_calibrate, sc);
+		}
+	}
 	error = 0;
 back:
 	if (error) {
@@ -2749,4 +2774,20 @@ acx_set_chan(struct acx_softc *sc, struct ieee80211_channel *c)
 	sc->sc_tx_th.wt_chan_flags = sc->sc_rx_th.wr_chan_flags =
 		htole16(flags);
 	return 0;
+}
+
+static void
+acx_calibrate(void *xsc)
+{
+	struct acx_softc *sc = xsc;
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+	if (sc->chip_calibrate != NULL &&
+	    sc->sc_ic.ic_state == IEEE80211_S_RUN) {
+		sc->chip_calibrate(sc);
+		callout_reset(&sc->sc_calibrate_timer, hz * sc->sc_calib_intvl,
+			      acx_calibrate, sc);
+	}
+	lwkt_serialize_exit(ifp->if_serializer);
 }
