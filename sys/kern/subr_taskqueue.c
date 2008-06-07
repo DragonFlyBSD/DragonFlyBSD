@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	 $FreeBSD: src/sys/kern/subr_taskqueue.c,v 1.1.2.3 2003/09/10 00:40:39 ken Exp $
- *	$DragonFly: src/sys/kern/subr_taskqueue.c,v 1.12 2007/02/24 04:36:21 corecode Exp $
+ *	$DragonFly: src/sys/kern/subr_taskqueue.c,v 1.13 2008/06/07 11:44:04 mneumann Exp $
  */
 
 #include <sys/param.h>
@@ -60,7 +60,7 @@ taskqueue_create(const char *name, int mflags,
 
 	queue = kmalloc(sizeof(struct taskqueue), M_TASKQUEUE, mflags);
 	if (!queue)
-		return 0;
+		return NULL;
 	STAILQ_INIT(&queue->tq_queue);
 	queue->tq_name = name;
 	queue->tq_enqueue = enqueue;
@@ -107,7 +107,7 @@ taskqueue_find(const char *name)
 		}
 	}
 	crit_exit();
-	return 0;
+	return NULL;
 }
 
 /*

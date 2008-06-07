@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_module.c,v 1.21 1999/11/08 06:53:30 peter Exp $
- * $DragonFly: src/sys/kern/kern_module.c,v 1.15 2008/01/06 16:55:51 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_module.c,v 1.16 2008/06/07 11:44:04 mneumann Exp $
  */
 
 #include <sys/param.h>
@@ -194,7 +194,7 @@ module_lookupbyname(const char* name)
 	    return mod;
     }
 
-    return 0;
+    return NULL;
 }
 
 module_t
@@ -207,7 +207,7 @@ module_lookupbyid(int modid)
 	    return mod;
     }
 
-    return 0;
+    return NULL;
 }
 
 int
