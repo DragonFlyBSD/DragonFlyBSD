@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.34 2008/06/01 21:05:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.35 2008/06/07 07:41:51 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -253,6 +253,8 @@ struct hammer_blockmap_layer1 {
 	hammer_crc_t	layer1_crc;	/* MUST BE LAST FIELD OF STRUCTURE*/
 };
 
+typedef struct hammer_blockmap_layer1 *hammer_blockmap_layer1_t;
+
 #define HAMMER_LAYER1_CRCSIZE	\
 	offsetof(struct hammer_blockmap_layer1, layer1_crc)
 
@@ -264,6 +266,8 @@ struct hammer_blockmap_layer2 {
 	u_int32_t	bytes_free;	/* bytes free within this bigblock */
 	hammer_crc_t	entry_crc;
 };
+
+typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
 
 #define HAMMER_LAYER2_CRCSIZE	\
 	offsetof(struct hammer_blockmap_layer2, entry_crc)

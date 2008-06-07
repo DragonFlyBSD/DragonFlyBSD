@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.12 2008/06/02 20:19:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.13 2008/06/07 07:41:51 dillon Exp $
  */
 
 /*
@@ -46,6 +46,9 @@
 
 #include "hammer.h"
 
+/*
+ * Backend big-block allocation
+ */
 hammer_off_t
 hammer_freemap_alloc(hammer_transaction_t trans, hammer_off_t owner,
 		     int *errorp)
@@ -141,6 +144,9 @@ done:
 	return(result_offset);
 }
 
+/*
+ * Backend big-block free
+ */
 void
 hammer_freemap_free(hammer_transaction_t trans, hammer_off_t phys_offset, 
 		    hammer_off_t owner, int *errorp)

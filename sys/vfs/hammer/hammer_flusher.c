@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.18 2008/06/02 20:19:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.19 2008/06/07 07:41:51 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -57,10 +57,8 @@ hammer_flusher_sync(hammer_mount_t hmp)
 
 	if (hmp->flusher_td) {
 		seq = hmp->flusher_next;
-		if (hmp->flusher_signal == 0) {
-			hmp->flusher_signal = HAMMER_FLUSHER_IMMEDIATE;
+		if (hmp->flusher_signal++ == 0)
 			wakeup(&hmp->flusher_signal);
-		}
 		while ((int)(seq - hmp->flusher_done) > 0)
 			tsleep(&hmp->flusher_done, 0, "hmrfls", 0);
 	}
@@ -92,7 +90,7 @@ hammer_flusher_destroy(hammer_mount_t hmp)
 	if (hmp->flusher_td) {
 		hmp->flusher_exiting = 1;
 		while (hmp->flusher_td) {
-			hmp->flusher_signal = HAMMER_FLUSHER_IMMEDIATE;
+			hmp->flusher_signal = 16;
 			wakeup(&hmp->flusher_signal);
 			tsleep(&hmp->flusher_exiting, 0, "hmrwex", 0);
 		}
@@ -109,7 +107,6 @@ hammer_flusher_thread(void *arg)
 			tsleep(&hmp->flusher_lock, 0, "hmrhld", 0);
 		hmp->flusher_act = hmp->flusher_next;
 		++hmp->flusher_next;
-		hkprintf("F");
 		hammer_flusher_clean_loose_ios(hmp);
 		hammer_flusher_flush(hmp);
 		hammer_flusher_clean_loose_ios(hmp);
@@ -122,23 +119,14 @@ hammer_flusher_thread(void *arg)
 		 */
 		if (hmp->flusher_exiting && TAILQ_EMPTY(&hmp->flush_list))
 			break;
-		hkprintf("E");
 
 		/*
 		 * This is a hack until we can dispose of frontend buffer
 		 * cache buffers on the frontend.
 		 */
-		if (hmp->flusher_signal &&
-		    hmp->flusher_signal < HAMMER_FLUSHER_IMMEDIATE) {
-			--hmp->flusher_signal;
-			tsleep(&hmp->flusher_signal, 0, "hmrqwk", hz / 10);
-		} else {
-			while (hmp->flusher_signal == 0 &&
-			       TAILQ_EMPTY(&hmp->flush_list)) {
-				tsleep(&hmp->flusher_signal, 0, "hmrwwa", 0);
-			}
-			hmp->flusher_signal = 0;
-		}
+		while (hmp->flusher_signal == 0)
+			tsleep(&hmp->flusher_signal, 0, "hmrwwa", 0);
+		hmp->flusher_signal = 0;
 	}
 	hmp->flusher_td = NULL;
 	wakeup(&hmp->flusher_exiting);
@@ -198,7 +186,8 @@ hammer_flusher_flush(hammer_mount_t hmp)
 		hammer_flush_inode_done(ip);
 
 		/*
-		 * XXX this breaks atomicy
+		 * XXX this breaks atomicy between directory entries and
+		 * inodes.
 		 */
 		if (hammer_must_finalize_undo(hmp)) {
 			kprintf("HAMMER: Warning: UNDO area too small!");
@@ -253,8 +242,23 @@ hammer_flusher_finalize(hammer_transaction_t trans)
 	int count;
 	int i;
 
+	/*
+	 * Flush data buffers.  This can occur asynchronously and at any
+	 * time.
+	 */
+	count = 0;
+	while ((io = TAILQ_FIRST(&hmp->data_list)) != NULL) {
+		KKASSERT(io->modify_refs == 0);
+		hammer_ref(&io->lock);
+		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
+		hammer_io_flush(io);
+		hammer_rel_buffer((hammer_buffer_t)io, 0);
+		++count;
+	}
+	if (count)
+		hkprintf("Y%d", count);
+
 	hammer_sync_lock_ex(trans);
-	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 
 	/*
 	 * Sync the blockmap to the root volume ondisk buffer and generate
@@ -266,6 +270,7 @@ hammer_flusher_finalize(hammer_transaction_t trans)
 	 * No UNDOs can be created after this point until we finish the
 	 * flush.
 	 */
+	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 	if (root_volume->io.modified &&
 	    bcmp(hmp->blockmap, root_volume->ondisk->vol0_blockmap, bmsize)) {
 		hammer_modify_volume(trans, root_volume,
@@ -294,21 +299,6 @@ hammer_flusher_finalize(hammer_transaction_t trans)
 	}
 	if (count)
 		hkprintf("X%d", count);
-
-	/*
-	 * Flush data bufs
-	 */
-	count = 0;
-	while ((io = TAILQ_FIRST(&hmp->data_list)) != NULL) {
-		KKASSERT(io->modify_refs == 0);
-		hammer_ref(&io->lock);
-		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
-		hammer_io_flush(io);
-		hammer_rel_buffer((hammer_buffer_t)io, 0);
-		++count;
-	}
-	if (count)
-		hkprintf("Y%d", count);
 
 	/*
 	 * Wait for I/O to complete

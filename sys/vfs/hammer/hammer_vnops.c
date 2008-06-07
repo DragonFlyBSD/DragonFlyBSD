@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.58 2008/06/02 20:19:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.59 2008/06/07 07:41:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -153,7 +153,6 @@ static int hammer_dounlink(hammer_transaction_t trans, struct nchandle *nch,
 			   struct vnode *dvp, struct ucred *cred, int flags);
 static int hammer_vop_strategy_read(struct vop_strategy_args *ap);
 static int hammer_vop_strategy_write(struct vop_strategy_args *ap);
-static void hammer_cleanup_write_io(hammer_inode_t ip);
 
 #if 0
 static
@@ -237,7 +236,7 @@ hammer_vop_read(struct vop_read_args *ap)
 	if ((ip->flags & HAMMER_INODE_RO) == 0 &&
 	    (ip->hmp->mp->mnt_flag & MNT_NOATIME) == 0) {
 		ip->ino_leaf.atime = trans.time;
-		hammer_modify_inode(&trans, ip, HAMMER_INODE_ITIMES);
+		hammer_modify_inode(ip, HAMMER_INODE_ITIMES);
 	}
 	hammer_done_transaction(&trans);
 	return (error);
@@ -253,7 +252,8 @@ hammer_vop_write(struct vop_write_args *ap)
 	struct hammer_transaction trans;
 	struct hammer_inode *ip;
 	struct uio *uio;
-	off_t offset;
+	int rel_offset;
+	off_t base_offset;
 	struct buf *bp;
 	int error;
 	int n;
@@ -299,17 +299,29 @@ hammer_vop_write(struct vop_write_args *ap)
 			break;
 
 		/*
-		 * Do not allow huge writes to deadlock the buffer cache
+		 * Do not allow HAMMER to blow out the buffer cache.
+		 *
+		 * Do not allow HAMMER to blow out system memory by
+		 * accumulating too many records.   Records are decoupled
+		 * from the buffer cache.
+		 *
+		 * Always check at the beginning so separate writes are
+		 * not able to bypass this code.
 		 */
-		if ((++count & 15) == 0) {
+		if ((count++ & 15) == 0) {
 			vn_unlock(ap->a_vp);
 			if ((ap->a_ioflag & IO_NOBWILL) == 0)
 				bwillwrite();
+			if (ip->rsv_recs > hammer_limit_irecs) {
+				hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+				hammer_wait_inode(ip);
+			}
 			vn_lock(ap->a_vp, LK_EXCLUSIVE|LK_RETRY);
 		}
 
-		offset = uio->uio_offset & HAMMER_BUFMASK;
-		n = HAMMER_BUFSIZE - offset;
+		rel_offset = (int)(uio->uio_offset & HAMMER_BUFMASK);
+		base_offset = uio->uio_offset & ~HAMMER_BUFMASK64;
+		n = HAMMER_BUFSIZE - rel_offset;
 		if (n > uio->uio_resid)
 			n = uio->uio_resid;
 		if (uio->uio_offset + n > ip->ino_data.size) {
@@ -325,30 +337,29 @@ hammer_vop_write(struct vop_write_args *ap)
 			 *
 			 * This case is used by vop_stdputpages().
 			 */
-			bp = getblk(ap->a_vp, uio->uio_offset - offset,
+			bp = getblk(ap->a_vp, base_offset,
 				    HAMMER_BUFSIZE, GETBLK_BHEAVY, 0);
 			if ((bp->b_flags & B_CACHE) == 0) {
 				bqrelse(bp);
-				error = bread(ap->a_vp,
-					      uio->uio_offset - offset,
+				error = bread(ap->a_vp, base_offset,
 					      HAMMER_BUFSIZE, &bp);
 			}
-		} else if (offset == 0 && uio->uio_resid >= HAMMER_BUFSIZE) {
+		} else if (rel_offset == 0 && uio->uio_resid >= HAMMER_BUFSIZE) {
 			/*
 			 * Even though we are entirely overwriting the buffer
 			 * we may still have to zero it out to avoid a 
 			 * mmap/write visibility issue.
 			 */
-			bp = getblk(ap->a_vp, uio->uio_offset - offset,
+			bp = getblk(ap->a_vp, base_offset,
 				    HAMMER_BUFSIZE, GETBLK_BHEAVY, 0);
 			if ((bp->b_flags & B_CACHE) == 0)
 				vfs_bio_clrbuf(bp);
-		} else if (uio->uio_offset - offset >= ip->ino_data.size) {
+		} else if (base_offset >= ip->ino_data.size) {
 			/*
 			 * If the base offset of the buffer is beyond the
 			 * file EOF, we don't have to issue a read.
 			 */
-			bp = getblk(ap->a_vp, uio->uio_offset - offset,
+			bp = getblk(ap->a_vp, base_offset,
 				    HAMMER_BUFSIZE, GETBLK_BHEAVY, 0);
 			vfs_bio_clrbuf(bp);
 		} else {
@@ -356,13 +367,15 @@ hammer_vop_write(struct vop_write_args *ap)
 			 * Partial overwrite, read in any missing bits then
 			 * replace the portion being written.
 			 */
-			error = bread(ap->a_vp, uio->uio_offset - offset,
+			error = bread(ap->a_vp, base_offset,
 				      HAMMER_BUFSIZE, &bp);
 			if (error == 0)
 				bheavy(bp);
 		}
-		if (error == 0)
-			error = uiomove((char *)bp->b_data + offset, n, uio);
+		if (error == 0) {
+			error = uiomove((char *)bp->b_data + rel_offset,
+					n, uio);
+		}
 
 		/*
 		 * If we screwed up we have to undo any VM size changes we
@@ -387,24 +400,23 @@ hammer_vop_write(struct vop_write_args *ap)
 		ip->ino_data.mtime = trans.time;
 		flags |= HAMMER_INODE_ITIMES | HAMMER_INODE_BUFS;
 		flags |= HAMMER_INODE_DDIRTY;	/* XXX mtime */
-		hammer_modify_inode(&trans, ip, flags);
+		hammer_modify_inode(ip, flags);
 
 		if ((bp->b_flags & B_DIRTY) == 0) {
 			++ip->rsv_databufs;
 			++ip->hmp->rsv_databufs;
 		}
 
+		/*
+		 * Final buffer disposition.
+		 */
 		if (ap->a_ioflag & IO_SYNC) {
 			bwrite(bp);
 		} else if (ap->a_ioflag & IO_DIRECT) {
 			bawrite(bp);
-#if 0
+#if 1
 		} else if ((ap->a_ioflag >> 16) == IO_SEQMAX &&
 			   (uio->uio_offset & HAMMER_BUFMASK) == 0) {
-			/*
-			 * XXX HAMMER can only fsync the whole inode,
-			 * doing it on every buffer would be a bad idea.
-			 */
 			/*
 			 * If seqcount indicates sequential operation and
 			 * we just finished filling a buffer, push it out
@@ -412,7 +424,8 @@ hammer_vop_write(struct vop_write_args *ap)
 			 * too full, which would trigger non-optimal
 			 * flushes.
 			 */
-			bdwrite(bp);
+			bp->b_flags |= B_NOCACHE;
+			bawrite(bp);
 #endif
 		} else {
 			bdwrite(bp);
@@ -1281,7 +1294,7 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 		error = hammer_ip_add_directory(&trans, tdip, tncp, ip);
 		if (error == 0) {
 			ip->ino_data.parent_obj_id = tdip->obj_id;
-			hammer_modify_inode(&trans, ip, HAMMER_INODE_DDIRTY);
+			hammer_modify_inode(ip, HAMMER_INODE_DDIRTY);
 		}
 	}
 	if (error)
@@ -1495,6 +1508,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			 * the inode is synchronized.
 			 */
 			if (truncating) {
+				hammer_ip_frontend_trunc(ip, vap->va_size);
 				if ((ip->flags & HAMMER_INODE_TRUNCATED) == 0) {
 					ip->flags |= HAMMER_INODE_TRUNCATED;
 					ip->trunc_off = vap->va_size;
@@ -1512,15 +1526,18 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 				struct buf *bp;
 				int offset;
 
+				aligned_size -= HAMMER_BUFSIZE;
+
 				offset = vap->va_size & HAMMER_BUFMASK;
-				error = bread(ap->a_vp,
-					      aligned_size - HAMMER_BUFSIZE,
+				error = bread(ap->a_vp, aligned_size,
 					      HAMMER_BUFSIZE, &bp);
+				hammer_ip_frontend_trunc(ip, aligned_size);
 				if (error == 0) {
 					bzero(bp->b_data + offset,
 					      HAMMER_BUFSIZE - offset);
 					bdwrite(bp);
 				} else {
+					kprintf("ERROR %d\n", error);
 					brelse(bp);
 				}
 			}
@@ -1532,6 +1549,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			} else if (ip->trunc_off > vap->va_size) {
 				ip->trunc_off = vap->va_size;
 			}
+			hammer_ip_frontend_trunc(ip, vap->va_size);
 			ip->ino_data.size = vap->va_size;
 			modflags |= HAMMER_INODE_DDIRTY;
 			break;
@@ -1566,7 +1584,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 	}
 done:
 	if (error == 0)
-		hammer_modify_inode(&trans, ip, modflags);
+		hammer_modify_inode(ip, modflags);
 	hammer_done_transaction(&trans);
 	return (error);
 }
@@ -1640,7 +1658,7 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 		 */
 		if (error == 0) {
 			nip->ino_data.size = bytes;
-			hammer_modify_inode(&trans, nip, HAMMER_INODE_DDIRTY);
+			hammer_modify_inode(nip, HAMMER_INODE_DDIRTY);
 		}
 	}
 	if (error == 0)
@@ -1793,7 +1811,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	ip = ap->a_vp->v_data;
 
 	hammer_simple_transaction(&trans, ip->hmp);
-	hammer_init_cursor(&trans, &cursor, &ip->cache[0], ip);
+	hammer_init_cursor(&trans, &cursor, &ip->cache[1], ip);
 
 	/*
 	 * Key range (begin and end inclusive) to scan.  Note that the key's
@@ -1834,11 +1852,11 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	boff = 0;
 
 	while (error == 0) {
-		error = hammer_ip_resolve_data(&cursor);
-		if (error)
-			break;
+		/*
+		 * Get the base file offset of the record.  The key for
+		 * data records is (base + bytes) rather then (base).
+		 */
 		base = &cursor.leaf->base;
-
 		rec_offset = base->key - cursor.leaf->data_len;
 
 		/*
@@ -1875,29 +1893,70 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		}
 
 		/*
-		 * If we cached a truncation point on our front-end the
-		 * on-disk version may still have physical records beyond
-		 * that point.  Truncate visibility.
+		 * Deal with cached truncations.  This cool bit of code
+		 * allows truncate()/ftruncate() to avoid having to sync
+		 * the file.
+		 *
+		 * If the frontend is truncated then all backend records are
+		 * subject to the frontend's truncation.
+		 *
+		 * If the backend is truncated then backend records on-disk
+		 * (but not in-memory) are subject to the backend's
+		 * truncation.  In-memory records owned by the backend
+		 * represent data written after the truncation point on the
+		 * backend and must not be truncated.
+		 *
+		 * Truncate operations deal with frontend buffer cache
+		 * buffers and frontend-owned in-memory records synchronously.
 		 */
-		if (ip->trunc_off <= rec_offset)
-			n = 0;
-		else if (ip->trunc_off < rec_offset + n)
-			n = (int)(ip->trunc_off - rec_offset);
+		if (ip->flags & HAMMER_INODE_TRUNCATED) {
+			if (hammer_cursor_ondisk(&cursor) ||
+			    cursor.iprec->flush_state == HAMMER_FST_FLUSH) {
+				if (ip->trunc_off <= rec_offset)
+					n = 0;
+				else if (ip->trunc_off < rec_offset + n)
+					n = (int)(ip->trunc_off - rec_offset);
+			}
+		}
+		if (ip->sync_flags & HAMMER_INODE_TRUNCATED) {
+			if (hammer_cursor_ondisk(&cursor)) {
+				if (ip->sync_trunc_off <= rec_offset)
+					n = 0;
+				else if (ip->sync_trunc_off < rec_offset + n)
+					n = (int)(ip->sync_trunc_off - rec_offset);
+			}
+		}
 
 		/*
-		 * Copy
+		 * Try to issue a direct read into our bio if possible,
+		 * otherwise resolve the element data into a hammer_buffer
+		 * and copy.
+		 *
+		 * WARNING: If we hit the else clause.
 		 */
-		if (n) {
-			bcopy((char *)cursor.data + roff,
-			      (char *)bp->b_data + boff, n);
-			boff += n;
+		if (roff == 0 && n == bp->b_bufsize &&
+		    (rec_offset & HAMMER_BUFMASK) == 0) {
+			error = hammer_io_direct_read(trans.hmp, cursor.leaf,
+						      bio);
+			goto done;
+		} else if (n) {
+			error = hammer_ip_resolve_data(&cursor);
+			if (error == 0) {
+				bcopy((char *)cursor.data + roff,
+				      (char *)bp->b_data + boff, n);
+			}
 		}
+		if (error)
+			break;
+
+		/*
+		 * Iterate until we have filled the request.
+		 */
+		boff += n;
 		if (boff == bp->b_bufsize)
 			break;
 		error = hammer_ip_next(&cursor);
 	}
-	hammer_done_cursor(&cursor);
-	hammer_done_transaction(&trans);
 
 	/*
 	 * There may have been a gap after the last record
@@ -1914,6 +1973,12 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	if (error)
 		bp->b_flags |= B_ERROR;
 	biodone(ap->a_bio);
+
+done:
+	if (cursor.node)
+		hammer_cache_node(cursor.node, &ip->cache[1]);
+	hammer_done_cursor(&cursor);
+	hammer_done_transaction(&trans);
 	return(error);
 }
 
@@ -1929,9 +1994,11 @@ static
 int
 hammer_vop_strategy_write(struct vop_strategy_args *ap)
 {
+	hammer_record_t record;
 	hammer_inode_t ip;
 	struct bio *bio;
 	struct buf *bp;
+	int force_alt = 0;
 
 	bio = ap->a_bio;
 	bp = bio->bio_buf;
@@ -1959,119 +2026,55 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	}
 
 	/*
+	 * Attempt to reserve space and issue a direct-write from the
+	 * front-end.  If we can't we will queue the BIO to the flusher.
+	 *
+	 * If we can the I/O can be issued and an in-memory record will
+	 * be installed to reference the stroage until the flusher can get to
+	 * it.
+	 *
+	 * Since we own the high level bio the front-end will not try to
+	 * do a read until the write completes.
+	 */
+	if ((bp->b_bufsize & HAMMER_BUFMASK) == 0 && 
+	    bio->bio_offset + bp->b_bufsize <= ip->ino_data.size) {
+		record = hammer_ip_add_bulk(ip, bio->bio_offset, bp->b_data,
+					    bp->b_bufsize, &force_alt);
+		if (record) {
+			hammer_io_direct_write(ip->hmp, &record->leaf, bio);
+			hammer_rel_mem_record(record);
+			if (ip->rsv_recs > hammer_limit_irecs / 2)
+				hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+			else
+				hammer_flush_inode(ip, 0);
+			return(0);
+		}
+	}
+
+	/*
+	 * Queue the bio to the flusher and let it deal with it.
+	 *
 	 * If the inode is being flushed we cannot re-queue buffers
 	 * it may have already flushed, or it could result in duplicate
 	 * records in the database.
 	 */
 	BUF_KERNPROC(bp);
-	if (ip->flags & HAMMER_INODE_WRITE_ALT)
+	if (ip->flush_state == HAMMER_FST_FLUSH || force_alt)
 		TAILQ_INSERT_TAIL(&ip->bio_alt_list, bio, bio_act);
 	else
 		TAILQ_INSERT_TAIL(&ip->bio_list, bio, bio_act);
 	++hammer_bio_count;
-	hammer_modify_inode(NULL, ip, HAMMER_INODE_BUFS);
-
+	hammer_modify_inode(ip, HAMMER_INODE_BUFS);
 	hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-#if 0
-	/*
-	 * XXX 
-	 *
-	 * If the write was not part of an integrated flush operation then
-	 * signal a flush.
-	 */
-	if (ip->flush_state != HAMMER_FST_FLUSH ||
-	    (ip->flags & HAMMER_INODE_WRITE_ALT)) {
-		hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-	}
-#endif
+
 	return(0);
 }
 
 /*
- * Backend code which actually performs the write to the media.  This
- * routine is typically called from the flusher.  The bio will be disposed
- * of (biodone'd) by this routine.
- *
- * Iterate the related records and mark for deletion.  If existing edge
- * records (left and right side) overlap our write they have to be marked
- * deleted and new records created, usually referencing a portion of the
- * original data.  Then add a record to represent the buffer.
+ * Clean-up after disposing of a dirty frontend buffer's data.
+ * This is somewhat heuristical so try to be robust.
  */
-int
-hammer_dowrite(hammer_cursor_t cursor, hammer_inode_t ip, struct bio *bio)
-{
-	struct buf *bp = bio->bio_buf;
-	int error;
-
-	KKASSERT(ip->flush_state == HAMMER_FST_FLUSH);
-
-	/*
-	 * If the inode is going or gone, just throw away any frontend
-	 * buffers.
-	 */
-	if (ip->flags & HAMMER_INODE_DELETED) {
-		bp->b_resid = 0;
-		biodone(bio);
-		--hammer_bio_count;
-		hammer_cleanup_write_io(ip);
-		return(0);
-	}
-
-	/*
-	 * Delete any records overlapping our range.  This function will
-	 * (eventually) properly truncate partial overlaps.
-	 */
-	if (ip->sync_ino_data.obj_type == HAMMER_OBJTYPE_DBFILE) {
-		error = hammer_ip_delete_range(cursor, ip, bio->bio_offset,
-					       bio->bio_offset);
-	} else {
-		error = hammer_ip_delete_range(cursor, ip, bio->bio_offset,
-					       bio->bio_offset +
-						bp->b_bufsize - 1);
-	}
-
-	/*
-	 * Add a single record to cover the write.  We can write a record
-	 * with only the actual file data - for example, a small 200 byte
-	 * file does not have to write out a 16K record.
-	 *
-	 * While the data size does not have to be aligned, we still do it
-	 * to reduce fragmentation in a future allocation model.
-	 */
-	if (error == 0) {
-		int limit_size;
-
-		if (ip->sync_ino_data.size - bio->bio_offset > 
-		    bp->b_bufsize) {
-			    limit_size = bp->b_bufsize;
-		} else {
-			limit_size = (int)(ip->sync_ino_data.size -
-					   bio->bio_offset);
-			KKASSERT(limit_size >= 0);
-			limit_size = (limit_size + 63) & ~63;
-		}
-		if (limit_size) {
-			error = hammer_ip_sync_data(cursor, ip, bio->bio_offset,
-						    bp->b_data, limit_size);
-		}
-	}
-	if (error)
-		Debugger("hammer_dowrite: error");
-
-	if (error) {
-		bp->b_resid = bp->b_bufsize;
-		bp->b_error = error;
-		bp->b_flags |= B_ERROR;
-	} else {
-		bp->b_resid = 0;
-	}
-	biodone(bio);
-	--hammer_bio_count;
-	hammer_cleanup_write_io(ip);
-	return(error);
-}
-
-static void
+void
 hammer_cleanup_write_io(hammer_inode_t ip)
 {
 	if (ip->rsv_databufs) {

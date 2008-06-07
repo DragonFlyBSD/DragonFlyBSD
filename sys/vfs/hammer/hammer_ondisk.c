@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.49 2008/06/03 18:47:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.50 2008/06/07 07:41:51 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -883,6 +883,29 @@ hammer_bnew(hammer_mount_t hmp, hammer_off_t buf_offset, int *errorp,
 		return(NULL);
 	else
 		return((char *)buffer->ondisk + xoff);
+}
+
+/*
+ * Invalidate HAMMER_BUFSIZE bytes at zone2_offset.  This is used to
+ * make sure that we do not have the related buffer cache buffer at
+ * the device layer because it is going to be aliased in a high level
+ * vnode layer.
+ */
+void
+hammer_binval(hammer_mount_t hmp, hammer_off_t zone2_offset)
+{
+	hammer_volume_t volume;
+	int vol_no;
+	int error;
+
+	KKASSERT((zone2_offset & HAMMER_OFF_ZONE_MASK) ==
+		 HAMMER_ZONE_RAW_BUFFER);
+	vol_no = HAMMER_VOL_DECODE(zone2_offset);
+	volume = hammer_get_volume(hmp, vol_no, &error);
+	if (volume) {
+		hammer_io_inval(volume, zone2_offset);
+		hammer_rel_volume(volume, 0);
+	}
 }
 
 /************************************************************************

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.33 2008/05/18 21:47:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.34 2008/06/07 07:41:51 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -242,6 +242,25 @@ hammer_io_new(struct vnode *devvp, struct hammer_io *io)
 	hammer_io_modify(io, 0);
 	vfs_bio_clrbuf(bp);
 	return(0);
+}
+
+/*
+ * Remove potential device level aliases against buffers managed by high level
+ * vnodes.
+ */
+void
+hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
+{
+	hammer_off_t phys_offset;
+	struct buf *bp;
+
+	phys_offset = volume->ondisk->vol_buf_beg +
+		      (zone2_offset & HAMMER_OFF_SHORT_MASK);
+	if (findblk(volume->devvp, phys_offset)) {
+		bp = getblk(volume->devvp, phys_offset, HAMMER_BUFSIZE, 0, 0);
+		bp->b_flags |= B_INVAL;
+		brelse(bp);
+	}
 }
 
 /*
@@ -573,7 +592,6 @@ hammer_io_clear_modify(struct hammer_io *io)
 			io->released = 1;
 		}
 		if (io->modified == 0) {
-			hkprintf("hammer_io_clear_modify: cleared %p\n", io);
 			bundirty(bp);
 			bqrelse(bp);
 		} else {
@@ -732,7 +750,6 @@ hammer_io_checkwrite(struct buf *bp)
 	    io->type == HAMMER_STRUCTURE_META_BUFFER) {
 		if (!panicstr)
 			panic("hammer_io_checkwrite: illegal buffer");
-		hkprintf("x");
 		bp->b_flags |= B_LOCKED;
 		return(1);
 	}
@@ -783,4 +800,105 @@ struct bio_ops hammer_bioops = {
 	.io_checkread	= hammer_io_checkread,
 	.io_checkwrite	= hammer_io_checkwrite,
 };
+
+/************************************************************************
+ *				DIRECT IO OPS 				*
+ ************************************************************************
+ *
+ * These functions operate directly on the buffer cache buffer associated
+ * with a front-end vnode rather then a back-end device vnode.
+ */
+
+/*
+ * Read a buffer associated with a front-end vnode directly from the
+ * disk media.  The bio may be issued asynchronously.
+ *
+ */
+int
+hammer_io_direct_read(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
+		      struct bio *bio)
+{
+	hammer_off_t zone2_offset;
+	hammer_volume_t volume;
+	struct buf *bp;
+	struct bio *nbio;
+	int vol_no;
+	int error;
+
+	KKASSERT(leaf->data_offset >= HAMMER_ZONE_BTREE);
+	zone2_offset = hammer_blockmap_lookup(hmp, leaf->data_offset, &error);
+	if (error == 0) {
+		vol_no = HAMMER_VOL_DECODE(zone2_offset);
+		volume = hammer_get_volume(hmp, vol_no, &error);
+		if (error == 0 && zone2_offset >= volume->maxbuf_off)
+			error = EIO;
+		if (error == 0) {
+			nbio = push_bio(bio);
+			nbio->bio_offset = volume->ondisk->vol_buf_beg +
+				       (zone2_offset & HAMMER_OFF_SHORT_MASK);
+#if 0
+			kprintf("direct_read  %016llx %016llx %016llx\n",
+				bio->bio_offset, nbio->bio_offset, leaf->data_offset);
+#endif
+			vn_strategy(volume->devvp, nbio);
+		}
+		hammer_rel_volume(volume, 0);
+	}
+	if (error) {
+		bp = bio->bio_buf;
+		bp->b_error = error;
+		bp->b_flags |= B_ERROR;
+		biodone(bio);
+	}
+	return(error);
+}
+
+/*
+ * Write a buffer associated with a front-end vnode directly to the
+ * disk media.  The bio may be issued asynchronously.
+ */
+int
+hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
+		       struct bio *bio)
+{
+	hammer_off_t zone2_offset;
+	hammer_volume_t volume;
+	struct buf *bp;
+	struct bio *nbio;
+	int vol_no;
+	int error;
+
+	KKASSERT(leaf->data_offset >= HAMMER_ZONE_BTREE);
+	zone2_offset = hammer_blockmap_lookup(hmp, leaf->data_offset, &error);
+	KKASSERT(bio->bio_buf->b_cmd == BUF_CMD_WRITE);
+
+	if (error == 0) {
+		vol_no = HAMMER_VOL_DECODE(zone2_offset);
+		volume = hammer_get_volume(hmp, vol_no, &error);
+
+		if (error == 0 && zone2_offset >= volume->maxbuf_off)
+			error = EIO;
+		if (error == 0) {
+			nbio = push_bio(bio);
+			nbio->bio_offset = volume->ondisk->vol_buf_beg +
+				       (zone2_offset & HAMMER_OFF_SHORT_MASK);
+#if 0
+			kprintf("direct_write %016llx %016llx %016llx\n",
+				bio->bio_offset, nbio->bio_offset,
+				leaf->data_offset);
+#endif
+			vn_strategy(volume->devvp, nbio);
+		}
+		hammer_rel_volume(volume, 0);
+	}
+	if (error) {
+		bp = bio->bio_buf;
+		bp->b_resid = 0;
+		bp->b_error = EIO;
+		bp->b_flags |= B_ERROR;
+		biodone(bio);
+	}
+	return(error);
+}
+
 

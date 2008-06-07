@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.19 2008/05/18 01:48:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.20 2008/06/07 07:41:51 dillon Exp $
  */
 
 /*
@@ -137,4 +137,13 @@ typedef struct hammer_cursor *hammer_cursor_t;
  * Flags we can clear when reusing a cursor (we can clear all of them)
  */
 #define HAMMER_CURSOR_INITMASK		(~0)
+
+/*
+ * NOTE: iprec can be NULL, but the address-of does not indirect through
+ * it so we are ok.
+ */
+#define hammer_cursor_inmem(cursor)		\
+			((cursor)->leaf == &(cursor)->iprec->leaf)
+#define hammer_cursor_ondisk(cursor)		\
+			((cursor)->leaf != &(cursor)->iprec->leaf)
 

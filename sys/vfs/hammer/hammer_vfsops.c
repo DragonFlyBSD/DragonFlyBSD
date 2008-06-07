@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.38 2008/06/03 18:47:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.39 2008/06/07 07:41:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -63,7 +63,11 @@ int hammer_count_volumes;
 int hammer_count_buffers;
 int hammer_count_nodes;
 int hammer_count_dirtybufs;		/* global */
+int hammer_stats_btree_iterations;
+int hammer_stats_record_iterations;
 int hammer_limit_dirtybufs = 100;	/* per-mount */
+int hammer_limit_irecs = 8192;		/* per-inode */
+int hammer_limit_recs = 16384;		/* as a whole */
 int hammer_bio_count;
 int64_t hammer_contention_count;
 int64_t hammer_zone_limit;
@@ -90,6 +94,10 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_recover_faults, CTLFLAG_RW,
 
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_dirtybufs, CTLFLAG_RW,
 	   &hammer_limit_dirtybufs, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_irecs, CTLFLAG_RW,
+	   &hammer_limit_irecs, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_recs, CTLFLAG_RW,
+	   &hammer_limit_recs, 0, "");
 
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_inodes, CTLFLAG_RD,
 	   &hammer_count_inodes, 0, "");

@@ -31,14 +31,19 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.60 2008/06/02 20:19:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.61 2008/06/07 07:41:51 dillon Exp $
  */
 
 #include "hammer.h"
 
-static int hammer_mem_add(hammer_transaction_t trans, hammer_record_t record);
+static int hammer_mem_add(hammer_record_t record);
 static int hammer_mem_lookup(hammer_cursor_t cursor);
 static int hammer_mem_first(hammer_cursor_t cursor);
+
+struct rec_trunc_info {
+	u_int16_t	rec_type;
+	int64_t		trunc_off;
+};
 
 /*
  * Red-black tree support.
@@ -148,6 +153,47 @@ hammer_rec_find_cmp(hammer_record_t rec, void *data)
 		return(-1);
 	if (r < -1)
 		return(1);
+	return(0);
+}
+
+/*
+ * Locate blocks within the truncation range.  Partial blocks do not count.
+ */
+static
+int
+hammer_rec_trunc_cmp(hammer_record_t rec, void *data)
+{
+	struct rec_trunc_info *info = data;
+
+	if (rec->leaf.base.rec_type < info->rec_type)
+		return(-1);
+	if (rec->leaf.base.rec_type > info->rec_type)
+		return(1);
+
+	switch(rec->leaf.base.rec_type) {
+	case HAMMER_RECTYPE_DB:
+		/*
+		 * DB record key is not beyond the truncation point, retain.
+		 */
+		if (rec->leaf.base.key < info->trunc_off)
+			return(-1);
+		break;
+	case HAMMER_RECTYPE_DATA:
+		/*
+		 * DATA record offset start is not beyond the truncation point,
+		 * retain.
+		 */
+		if (rec->leaf.base.key - rec->leaf.data_len < info->trunc_off)
+			return(-1);
+		break;
+	default:
+		panic("hammer_rec_trunc_cmp: unexpected record type");
+	}
+
+	/*
+	 * The record start is >= the truncation point, return match,
+	 * the record should be destroyed.
+	 */
 	return(0);
 }
 
@@ -267,7 +313,9 @@ hammer_rel_mem_record(struct hammer_record *record)
 				RB_REMOVE(hammer_rec_rb_tree,
 					  &record->ip->rec_tree,
 					  record);
+				KKASSERT(ip->rsv_recs > 0);
 				--ip->hmp->rsv_recs;
+				--ip->rsv_recs;
 				ip->hmp->rsv_databytes -= record->leaf.data_len;
 				record->flags &= ~HAMMER_RECF_ONRBTREE;
 				if (RB_EMPTY(&record->ip->rec_tree)) {
@@ -282,6 +330,8 @@ hammer_rel_mem_record(struct hammer_record *record)
 			}
 			record->data = NULL;
 			--hammer_count_records;
+			if (record->type == HAMMER_MEM_RECORD_DATA)
+				hammer_cleanup_write_io(record->ip);
 			kfree(record, M_HAMMER);
 			return;
 		}
@@ -302,10 +352,6 @@ hammer_ip_iterate_mem_good(hammer_cursor_t cursor, hammer_record_t record)
 	if (cursor->flags & HAMMER_CURSOR_BACKEND) {
 		if (record->flags & HAMMER_RECF_DELETED_BE)
 			return(0);
-#if 0
-		if ((record->flags & HAMMER_RECF_INTERLOCK_BE) == 0)
-			return(0);
-#endif
 	} else {
 		if (record->flags & HAMMER_RECF_DELETED_FE)
 			return(0);
@@ -488,7 +534,7 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 	bcopy(ncp->nc_name, record->data->entry.name, bytes);
 
 	++ip->ino_data.nlinks;
-	hammer_modify_inode(trans, ip, HAMMER_INODE_DDIRTY);
+	hammer_modify_inode(ip, HAMMER_INODE_DDIRTY);
 
 	/*
 	 * The target inode and the directory entry are bound together.
@@ -505,9 +551,7 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 		hammer_ref(&ip->lock);
 		ip->flush_state = HAMMER_FST_SETUP;
 	}
-
-	/* NOTE: copies record->data */
-	error = hammer_mem_add(trans, record);
+	error = hammer_mem_add(record);
 	return(error);
 }
 
@@ -529,7 +573,7 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 	hammer_record_t record;
 	int error;
 
-	if (cursor->leaf == &cursor->iprec->leaf) {
+	if (hammer_cursor_inmem(cursor)) {
 		/*
 		 * In-memory (unsynchronized) records can simply be freed.
 		 * Even though the HAMMER_RECF_DELETED_FE flag is ignored
@@ -576,7 +620,7 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 			ip->flush_state = HAMMER_FST_SETUP;
 		}
 
-		error = hammer_mem_add(trans, record);
+		error = hammer_mem_add(record);
 	}
 
 	/*
@@ -594,7 +638,7 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 	 */
 	if (error == 0) {
 		--ip->ino_data.nlinks;
-		hammer_modify_inode(trans, ip, HAMMER_INODE_DDIRTY);
+		hammer_modify_inode(ip, HAMMER_INODE_DDIRTY);
 		if (ip->ino_data.nlinks == 0 &&
 		    (ip->vp == NULL || (ip->vp->v_flag & VINACTIVE))) {
 			hammer_done_cursor(cursor);
@@ -629,11 +673,162 @@ hammer_ip_add_record(struct hammer_transaction *trans, hammer_record_t record)
 	KKASSERT(record->leaf.base.localization != 0);
 	record->leaf.base.obj_id = ip->obj_id;
 	record->leaf.base.obj_type = ip->ino_leaf.base.obj_type;
-	error = hammer_mem_add(trans, record);
+	error = hammer_mem_add(record);
 	return(error);
 }
 
 /*
+ * Locate a bulk record in-memory.  Bulk records allow disk space to be
+ * reserved so the front-end can flush large data writes without having
+ * to queue the BIO to the flusher.  Only the related record gets queued
+ * to the flusher.
+ */
+static hammer_record_t
+hammer_ip_get_bulk(hammer_inode_t ip, off_t file_offset, int bytes)
+{
+	hammer_record_t record;
+	struct hammer_base_elm elm;
+
+	bzero(&elm, sizeof(elm));
+	elm.obj_id = ip->obj_id;
+	elm.key = file_offset + bytes;
+	elm.create_tid = 0;
+	elm.delete_tid = 0;
+	elm.rec_type = HAMMER_RECTYPE_DATA;
+	elm.obj_type = 0;			/* unused */
+	elm.btype = HAMMER_BTREE_TYPE_RECORD;	/* unused */
+	elm.localization = HAMMER_LOCALIZE_MISC;
+
+	record = hammer_rec_rb_tree_RB_LOOKUP_INFO(&ip->rec_tree, &elm);
+	if (record)
+		hammer_ref(&record->lock);
+	return(record);
+}
+
+/*
+ * Reserve blockmap space placemarked with an in-memory record.  
+ *
+ * This routine is called by the front-end in order to be able to directly
+ * flush a buffer cache buffer.
+ */
+hammer_record_t
+hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset,
+		   void *data, int bytes, int *force_altp)
+{
+	hammer_record_t record;
+	hammer_record_t conflict;
+	int error;
+
+	/*
+	 * If the record already exists just return it.  If it exists but
+	 * is being flushed we can't reuse the conflict record and we can't
+	 * create a new one (unlike directories data records have no iterator
+	 * so we would be creating a duplicate).  In that case return NULL
+	 * to force the front-end to queue the buffer.
+	 *
+	 * This is kinda messy.  We can't have an in-memory record AND its
+	 * buffer cache buffer queued to the same flush cycle at the same
+	 * time as that would result in a [delete-]create-delete-create
+	 * sequence with the same transaction id.  Set *force_altp to 1
+	 * to deal with the situation.
+	 */
+	*force_altp = 0;
+	conflict = hammer_ip_get_bulk(ip, file_offset, bytes);
+	if (conflict) {
+		/*
+		 * We can't reuse the record if it is owned by the backend
+		 * or has been deleted.
+		 */
+		if (conflict->flush_state == HAMMER_FST_FLUSH) {
+			hammer_rel_mem_record(conflict);
+			*force_altp = 1;
+			kprintf("a");
+			return(NULL);
+		}
+		if (conflict->flags & HAMMER_RECF_DELETED_FE) {
+			hammer_rel_mem_record(conflict);
+			*force_altp = 1;
+			kprintf("b");
+			return(NULL);
+		}
+		KKASSERT(conflict->leaf.data_len == bytes);
+		conflict->leaf.data_crc = crc32(data, bytes);
+
+		/* reusing conflict, remove extra rsv stats */
+		hammer_cleanup_write_io(ip);
+		return(conflict);
+	}
+
+	/*
+	 * Otherwise create it.  This is called with the related BIO locked
+	 * so there should be no possible conflict.
+	 */
+	record = hammer_alloc_mem_record(ip, 0);
+	record->leaf.data_offset = hammer_blockmap_reserve(ip->hmp, HAMMER_ZONE_LARGE_DATA_INDEX, bytes, &error);
+	if (record->leaf.data_offset == 0) {
+		hammer_rel_mem_record(record);
+		return(NULL);
+	}
+	record->type = HAMMER_MEM_RECORD_DATA;
+	record->leaf.base.rec_type = HAMMER_RECTYPE_DATA;
+	record->leaf.base.obj_type = ip->ino_leaf.base.obj_type;
+	record->leaf.base.obj_id = ip->obj_id;
+	record->leaf.base.key = file_offset + bytes;
+	record->leaf.base.localization = HAMMER_LOCALIZE_MISC;
+	record->leaf.data_len = bytes;
+	record->leaf.data_crc = crc32(data, bytes);
+
+	hammer_ref(&record->lock);	/* mem_add eats a reference */
+	error = hammer_mem_add(record);
+	KKASSERT(error == 0);
+	return (record);
+}
+
+/*
+ * Frontend truncation code.  Scan in-memory records only.  On-disk records
+ * and records in a flushing state are handled by the backend.  The vnops
+ * setattr code will handle the block containing the truncation point.
+ *
+ * Partial blocks are not deleted.
+ */
+static int
+hammer_rec_trunc_callback(hammer_record_t record, void *data __unused)
+{
+	if (record->flags & HAMMER_RECF_DELETED_FE)
+		return(0);
+	if (record->flush_state == HAMMER_FST_FLUSH)
+		return(0);
+	KKASSERT((record->flags & HAMMER_RECF_INTERLOCK_BE) == 0);
+	hammer_ref(&record->lock);
+	record->flags |= HAMMER_RECF_DELETED_FE;
+	hammer_rel_mem_record(record);
+	return(0);
+}
+
+int
+hammer_ip_frontend_trunc(struct hammer_inode *ip, off_t file_size)
+{
+	struct rec_trunc_info info;
+
+	switch(ip->ino_data.obj_type) {
+	case HAMMER_OBJTYPE_REGFILE:
+		info.rec_type = HAMMER_RECTYPE_DATA;
+		break;
+	case HAMMER_OBJTYPE_DBFILE:
+		info.rec_type = HAMMER_RECTYPE_DB;
+		break;
+	default:
+		return(EINVAL);
+	}
+	info.trunc_off = file_size;
+	hammer_rec_rb_tree_RB_SCAN(&ip->rec_tree, hammer_rec_trunc_cmp,
+				   hammer_rec_trunc_callback, &file_size);
+	return(0);
+}
+
+/*
+ * Backend code
+ *
  * Sync data from a buffer cache buffer (typically) to the filesystem.  This
  * is called via the strategy called from a cached data source.  This code
  * is responsible for actually writing a data record out to the disk.
@@ -653,15 +848,23 @@ hammer_ip_sync_data(hammer_cursor_t cursor, hammer_inode_t ip,
 	hammer_off_t data_offset;
 	void *bdata;
 	int error;
+	int aligned_bytes;
 
 	KKASSERT((offset & HAMMER_BUFMASK) == 0);
 	KKASSERT(trans->type == HAMMER_TRANS_FLS);
 	KKASSERT(bytes != 0);
+
+	/*
+	 * We don't have to do this but it's probably a good idea to
+	 * align data allocations to 64-byte boundaries for future
+	 * expansion.
+	 */
+	aligned_bytes = (bytes + 63) & ~63;
 retry:
 	hammer_normalize_cursor(cursor);
 	cursor->key_beg.localization = HAMMER_LOCALIZE_MISC;
 	cursor->key_beg.obj_id = ip->obj_id;
-	cursor->key_beg.key = offset + bytes;
+	cursor->key_beg.key = offset + aligned_bytes;
 	cursor->key_beg.create_tid = trans->tid;
 	cursor->key_beg.delete_tid = 0;
 	cursor->key_beg.rec_type = HAMMER_RECTYPE_DATA;
@@ -677,7 +880,7 @@ retry:
 	if (error == 0) {
 		kprintf("hammer_ip_sync_data: duplicate data at "
 			"(%lld,%d) tid %016llx\n",
-			offset, bytes, trans->tid);
+			offset, aligned_bytes, trans->tid);
 		hammer_print_btree_elm(&cursor->node->ondisk->
 					elms[cursor->index],
 				       HAMMER_BTREE_TYPE_LEAF, cursor->index);
@@ -690,7 +893,7 @@ retry:
 	/*
 	 * Allocate our data.  The data buffer is not marked modified (yet)
 	 */
-	bdata = hammer_alloc_data(trans, bytes, &data_offset,
+	bdata = hammer_alloc_data(trans, aligned_bytes, &data_offset,
 				  &cursor->data_buffer, &error);
 
 	if (bdata == NULL)
@@ -706,17 +909,24 @@ retry:
 	elm.base.btype = HAMMER_BTREE_TYPE_RECORD;
 	elm.base.localization = HAMMER_LOCALIZE_MISC;
 	elm.base.obj_id = ip->obj_id;
-	elm.base.key = offset + bytes;
+	elm.base.key = offset + aligned_bytes;
 	elm.base.create_tid = trans->tid;
 	elm.base.delete_tid = 0;
 	elm.base.rec_type = HAMMER_RECTYPE_DATA;
 	elm.atime = 0;
 	elm.data_offset = data_offset;
-	elm.data_len = bytes;
-	elm.data_crc = crc32(data, bytes);
+	elm.data_len = aligned_bytes;
+	elm.data_crc = crc32(data, aligned_bytes);
 
+	/*
+	 * Copy the data to the allocated buffer.  Since we are aligning
+	 * the record size as specified in elm.data_len, make sure to zero
+	 * out any extranious bytes.
+	 */
 	hammer_modify_buffer(trans, cursor->data_buffer, NULL, 0);
 	bcopy(data, bdata, bytes);
+	if (aligned_bytes > bytes)
+		bzero((char *)bdata + bytes, aligned_bytes - bytes);
 	hammer_modify_buffer_done(cursor->data_buffer);
 
 	/*
@@ -730,7 +940,7 @@ retry:
 	if (error == 0)
 		goto done;
 
-	hammer_blockmap_free(trans, data_offset, bytes);
+	hammer_blockmap_free(trans, data_offset, aligned_bytes);
 done:
 	if (error == EDEADLK) {
 		hammer_done_cursor(cursor);
@@ -741,42 +951,75 @@ done:
 	return(error);
 }
 
-#if 0
 /*
- * Sync an in-memory record to the disk.  This is called by the backend.
- * This code is responsible for actually writing a record out to the disk.
+ * Backend code which actually performs the write to the media.  This
+ * routine is typically called from the flusher.  The bio will be disposed
+ * of (biodone'd) by this routine.
  *
- * This routine can only be called by the backend and the record
- * must have been interlocked with BE.  It will remain interlocked on
- * return.  If no error occurs the record will be marked deleted but
- * the caller is responsible for its final disposition.
- *
- * Multiple calls may be aggregated with the same cursor using
- * hammer_ip_sync_record_cursor().  The caller must handle EDEADLK
- * in that case.
+ * Iterate the related records and mark for deletion.  If existing edge
+ * records (left and right side) overlap our write they have to be marked
+ * deleted and new records created, usually referencing a portion of the
+ * original data.  Then add a record to represent the buffer.
  */
 int
-hammer_ip_sync_record(hammer_transaction_t trans, hammer_record_t record)
+hammer_dowrite(hammer_cursor_t cursor, hammer_inode_t ip,
+	       off_t file_offset, void *data, int bytes)
 {
-	struct hammer_cursor cursor;
 	int error;
 
-	do {
-		error = hammer_init_cursor(trans, &cursor,
-					   &record->ip->cache[0], record->ip);
-		if (error) {
-			KKASSERT(0);
-			hammer_done_cursor(&cursor);
-			return(error);
+	KKASSERT(ip->flush_state == HAMMER_FST_FLUSH);
+
+	/*
+	 * If the inode is going or gone, just throw away any frontend
+	 * buffers.
+	 */
+	if (ip->flags & HAMMER_INODE_DELETED)
+		return(0);
+
+	/*
+	 * Delete any records overlapping our range.  This function will
+	 * (eventually) properly truncate partial overlaps.
+	 */
+	if (ip->sync_ino_data.obj_type == HAMMER_OBJTYPE_DBFILE) {
+		error = hammer_ip_delete_range(cursor, ip, file_offset,
+					       file_offset, 0);
+	} else {
+		error = hammer_ip_delete_range(cursor, ip, file_offset,
+					       file_offset + bytes - 1, 0);
+	}
+
+	/*
+	 * Add a single record to cover the write.  We can write a record
+	 * with only the actual file data - for example, a small 200 byte
+	 * file does not have to write out a 16K record.
+	 *
+	 * While the data size does not have to be aligned, we still do it
+	 * to reduce fragmentation in a future allocation model.
+	 */
+	if (error == 0) {
+		int limit_size;
+
+		if (ip->sync_ino_data.size - file_offset > bytes) {
+			    limit_size = bytes;
+		} else {
+			limit_size = (int)(ip->sync_ino_data.size -
+					   file_offset);
+			KKASSERT(limit_size >= 0);
 		}
-		error = hammer_ip_sync_record_cursor(&cursor, record);
-		hammer_done_cursor(&cursor);
-	} while (error == EDEADLK);
-	return (error);
+		if (limit_size) {
+			error = hammer_ip_sync_data(cursor, ip, file_offset,
+						    data, limit_size);
+		}
+	}
+	if (error)
+		Debugger("hammer_dowrite: error");
+	return(error);
 }
 
-#endif
 
+/*
+ * Backend code.  Sync a record to the media.
+ */
 int
 hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 {
@@ -788,6 +1031,34 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	KKASSERT(record->flags & HAMMER_RECF_INTERLOCK_BE);
 	KKASSERT(record->leaf.base.localization != 0);
 
+	/*
+	 * If this is a bulk-data record placemarker there may be an existing
+	 * record on-disk, indicating a data overwrite.  If there is the
+	 * on-disk record must be deleted before we can insert our new record.
+	 *
+	 * We've synthesized this record and do not know what the create_tid
+	 * on-disk is, nor how much data it represents.
+	 *
+	 * Keep in mind that (key) for data records is (base_offset + len),
+	 * not (base_offset).  Also, we only want to get rid of on-disk
+	 * records since we are trying to sync our in-memory record, call
+	 * hammer_ip_delete_range() with truncating set to 1 to make sure
+	 * it skips in-memory records.
+	 *
+	 * It is ok for the lookup to return ENOENT.
+	 */
+	if (record->type == HAMMER_MEM_RECORD_DATA) {
+		error = hammer_ip_delete_range(
+				cursor, record->ip,
+				record->leaf.base.key - record->leaf.data_len,
+				record->leaf.base.key - 1, 1);
+		if (error && error != ENOENT)
+			goto done;
+	}
+
+	/*
+	 * Setup the cursor.
+	 */
 	hammer_normalize_cursor(cursor);
 	cursor->key_beg = record->leaf.base;
 	cursor->flags &= ~HAMMER_CURSOR_INITMASK;
@@ -801,7 +1072,8 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	record->ip->flags |= HAMMER_INODE_DONDISK;
 
 	/*
-	 * If we are deleting an exact match must be found on-disk.
+	 * If we are deleting a directory entry an exact match must be
+	 * found on-disk.
 	 */
 	if (record->type == HAMMER_MEM_RECORD_DEL) {
 		error = hammer_btree_lookup(cursor);
@@ -845,6 +1117,14 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 		record->leaf.base.key |= trans->hmp->namekey_iterator;
 		cursor->key_beg.key = record->leaf.base.key;
 	}
+#if 0
+	if (record->type == HAMMER_MEM_RECORD_DATA)
+		kprintf("sync_record  %016llx ---------------- %016llx %d\n",
+			record->leaf.base.key - record->leaf.data_len,
+			record->leaf.data_offset, error);
+#endif
+			
+
 	if (error != ENOENT)
 		goto done;
 
@@ -855,7 +1135,20 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	 *
 	 * Support zero-fill records (data == NULL and data_len != 0)
 	 */
-	if (record->data && record->leaf.data_len) {
+	if (record->type == HAMMER_MEM_RECORD_DATA) {
+		/*
+		 * The data portion of a bulk-data record has already been
+		 * committed to disk, we need only adjust the layer2
+		 * statistics in the same transaction as our B-Tree insert.
+		 */
+		KKASSERT(record->leaf.data_offset != 0);
+		hammer_blockmap_free(trans, record->leaf.data_offset,
+				     -record->leaf.data_len);
+		error = 0;
+	} else if (record->data && record->leaf.data_len) {
+		/*
+		 * Wholely cached record, with data.  Allocate the data.
+		 */
 		bdata = hammer_alloc_data(trans, record->leaf.data_len,
 					  &record->leaf.data_offset,
 					  &cursor->data_buffer, &error);
@@ -867,25 +1160,23 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 		bcopy(record->data, bdata, record->leaf.data_len);
 		hammer_modify_buffer_done(cursor->data_buffer);
 	} else {
-		/* record->leaf.data_len can be non-zero for future zero-fill */
+		/*
+		 * Wholely cached record, without data.
+		 */
 		record->leaf.data_offset = 0;
 		record->leaf.data_crc = 0;
 	}
 
 	error = hammer_btree_insert(cursor, &record->leaf);
-	if (hammer_debug_inode)
-		kprintf("BTREE INSERT error %d @ %016llx:%d\n", error, cursor->node->node_offset, cursor->index);
+	if (hammer_debug_inode && error)
+		kprintf("BTREE INSERT error %d @ %016llx:%d key %016llx\n", error, cursor->node->node_offset, cursor->index, record->leaf.base.key);
 
 	/*
-	 * This occurs when the frontend creates a record and queues it to
-	 * the backend, then tries to delete the record.  The backend must
-	 * still sync the record to the media as if it were not deleted,
-	 * but must interlock with the frontend to ensure that the 
-	 * synchronized record is not visible to the frontend, which means
-	 * converting it from an ADD record to a DEL record.
-	 *
-	 * The DEL record then masks the record synced to disk until another
-	 * round can delete it for real.
+	 * Our record is on-disk, normally mark the in-memory version as
+	 * deleted.  If the record represented a directory deletion but
+	 * we had to sync a valid directory entry to disk we must convert
+	 * the record to a covering delete so the frontend does not have
+	 * visibility on the synced entry.
 	 */
 	if (error == 0) {
 		if (record->flags & HAMMER_RECF_CONVERT_DELETE) {
@@ -924,8 +1215,10 @@ done:
  */
 static
 int
-hammer_mem_add(struct hammer_transaction *trans, hammer_record_t record)
+hammer_mem_add(hammer_record_t record)
 {
+	hammer_mount_t hmp = record->ip->hmp;
+
 	/*
 	 * Make a private copy of record->data
 	 */
@@ -942,15 +1235,16 @@ hammer_mem_add(struct hammer_transaction *trans, hammer_record_t record)
 			hammer_rel_mem_record(record);
 			return (EEXIST);
 		}
-		if (++trans->hmp->namekey_iterator == 0)
-			++trans->hmp->namekey_iterator;
+		if (++hmp->namekey_iterator == 0)
+			++hmp->namekey_iterator;
 		record->leaf.base.key &= ~(0xFFFFFFFFLL);
-		record->leaf.base.key |= trans->hmp->namekey_iterator;
+		record->leaf.base.key |= hmp->namekey_iterator;
 	}
-	++trans->hmp->rsv_recs;
+	++hmp->rsv_recs;
+	++record->ip->rsv_recs;
 	record->ip->hmp->rsv_databytes += record->leaf.data_len;
 	record->flags |= HAMMER_RECF_ONRBTREE;
-	hammer_modify_inode(trans, record->ip, HAMMER_INODE_XDIRTY);
+	hammer_modify_inode(record->ip, HAMMER_INODE_XDIRTY);
 	hammer_rel_mem_record(record);
 	return(0);
 }
@@ -1178,6 +1472,16 @@ next_memory:
 		 */
 		elm = &cursor->node->ondisk->elms[cursor->index];
 		r = hammer_btree_cmp(&elm->base, &cursor->iprec->leaf.base);
+
+		/*
+		 * Special case.  If the entries only differ by their
+		 * create_tid, assume they are equal and fall through.
+		 *
+		 * This case can occur for memory-data records because
+		 * their initial create_tid is 0 (infinity).
+		 */
+		if (r == -1)
+			r = 0;
 		if (r < 0) {
 			error = hammer_btree_extract(cursor,
 						     HAMMER_CURSOR_GET_LEAF);
@@ -1186,10 +1490,18 @@ next_memory:
 		}
 
 		/*
-		 * If the entries match exactly the memory entry typically
-		 * specifies an on-disk deletion and we eat both entries.
+		 * If the entries match exactly the memory entry is either
+		 * an on-disk directory entry deletion or a bulk data
+		 * overwrite.  If it is a directory entry deletion we eat
+		 * both entries.
 		 *
-		 * If the in-memory record is not an on-disk deletion we
+		 * For the bulk-data overwrite case it is possible to have
+		 * visibility into both, which simply means the syncer
+		 * hasn't gotten around to doing the delete+insert sequence
+		 * on the B-Tree.  Use the memory entry and throw away the
+		 * on-disk entry.
+		 *
+		 * If the in-memory record is not either of these we
 		 * probably caught the syncer while it was syncing it to
 		 * the media.  Since we hold a shared lock on the cursor,
 		 * the in-memory record had better be marked deleted at
@@ -1202,6 +1514,11 @@ next_memory:
 					cursor->flags |= HAMMER_CURSOR_ATEMEM;
 					goto next_btree;
 				}
+			} else if (cursor->iprec->type == HAMMER_MEM_RECORD_DATA) {
+				if ((cursor->flags & HAMMER_CURSOR_DELETE_VISIBILITY) == 0) {
+					cursor->flags |= HAMMER_CURSOR_ATEDISK;
+				}
+				/* fall through to memory entry */
 			} else {
 				panic("hammer_ip_next: duplicate mem/b-tree entry");
 				cursor->flags |= HAMMER_CURSOR_ATEMEM;
@@ -1254,11 +1571,30 @@ next_memory:
 int
 hammer_ip_resolve_data(hammer_cursor_t cursor)
 {
+	hammer_record_t record;
 	int error;
 
-	if (cursor->iprec && cursor->leaf == &cursor->iprec->leaf) {
-		cursor->data = cursor->iprec->data;
+	if (hammer_cursor_inmem(cursor)) {
+		/*
+		 * The data associated with an in-memory record is usually
+		 * kmalloced, but reserve-ahead data records will have an
+		 * on-disk reference.
+		 *
+		 * NOTE: Reserve-ahead data records must be handled in the
+		 * context of the related high level buffer cache buffer
+		 * to interlock against async writes.
+		 */
+		record = cursor->iprec;
+		cursor->data = record->data;
 		error = 0;
+		if (cursor->data == NULL) {
+			KKASSERT(record->leaf.base.rec_type ==
+				 HAMMER_RECTYPE_DATA);
+			cursor->data = hammer_bread(cursor->trans->hmp,
+						    record->leaf.data_offset,
+						    &error,
+						    &cursor->data_buffer);
+		}
 	} else {
 		cursor->leaf = &cursor->node->ondisk->elms[cursor->index].leaf;
 		error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_DATA);
@@ -1267,10 +1603,16 @@ hammer_ip_resolve_data(hammer_cursor_t cursor)
 }
 
 /*
- * Delete all records within the specified range for inode ip.
+ * Backend truncation / record replacement - delete records in range.
+ *
+ * Delete all records within the specified range for inode ip.  In-memory
+ * records still associated with the frontend are ignored.
  *
  * NOTE: An unaligned range will cause new records to be added to cover
  * the edge cases. (XXX not implemented yet).
+ *
+ * NOTE: Replacement via reservations (see hammer_ip_sync_record_cursor())
+ * also do not deal with unaligned ranges.
  *
  * NOTE: ran_end is inclusive (e.g. 0,1023 instead of 0,1024).
  *
@@ -1279,7 +1621,7 @@ hammer_ip_resolve_data(hammer_cursor_t cursor)
  */
 int
 hammer_ip_delete_range(hammer_cursor_t cursor, hammer_inode_t ip,
-		       int64_t ran_beg, int64_t ran_end)
+		       int64_t ran_beg, int64_t ran_end, int truncating)
 {
 	hammer_transaction_t trans = cursor->trans;
 	hammer_btree_leaf_elm_t leaf;
@@ -1341,19 +1683,10 @@ retry:
 
 		/*
 		 * There may be overlap cases for regular file data.  Also
-		 * remember the key for a regular file record is the offset
-		 * of the last byte of the record (base + len - 1), NOT the
-		 * base offset.
+		 * remember the key for a regular file record is (base + len),
+		 * NOT (base).
 		 */
-#if 0
-		kprintf("delete_range rec_type %02x\n", leaf->base.rec_type);
-#endif
 		if (leaf->base.rec_type == HAMMER_RECTYPE_DATA) {
-#if 0
-			kprintf("delete_range loop key %016llx,%d\n",
-				leaf->base.key - leaf->data_len,
-				leaf->data_len);
-#endif
 			off = leaf->base.key - leaf->data_len;
 			/*
 			 * Check the left edge case.  We currently do not
@@ -1385,13 +1718,17 @@ retry:
 		}
 
 		/*
-		 * Mark the record and B-Tree entry as deleted.  This will
-		 * also physically delete the B-Tree entry, record, and
+		 * Delete the record.  When truncating we do not delete
+		 * in-memory (data) records because they represent data
+		 * written after the truncation.
+		 *
+		 * This will also physically destroy the B-Tree entry and
 		 * data if the retention policy dictates.  The function
 		 * will set HAMMER_CURSOR_DELBTREE which hammer_ip_next()
 		 * uses to perform a fixup.
 		 */
-		error = hammer_ip_delete_record(cursor, ip, trans->tid);
+		if (truncating == 0 || hammer_cursor_ondisk(cursor))
+			error = hammer_ip_delete_record(cursor, ip, trans->tid);
 		if (error)
 			break;
 		error = hammer_ip_next(cursor);
@@ -1408,6 +1745,8 @@ retry:
 }
 
 /*
+ * Backend truncation - delete all records.
+ *
  * Delete all user records associated with an inode except the inode record
  * itself.  Directory entries are not deleted (they must be properly disposed
  * of or nlinks would get upset).
@@ -1507,7 +1846,7 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 	 * individually synchronized.  Thus there should be no confusion with
 	 * the interlock.
 	 */
-	if (cursor->leaf == &cursor->iprec->leaf) {
+	if (hammer_cursor_inmem(cursor)) {
 		KKASSERT((cursor->iprec->flags & HAMMER_RECF_INTERLOCK_BE) ==0);
 		cursor->iprec->flags |= HAMMER_RECF_DELETED_FE;
 		cursor->iprec->flags |= HAMMER_RECF_DELETED_BE;

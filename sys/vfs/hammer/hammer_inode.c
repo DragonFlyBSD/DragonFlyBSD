@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.64 2008/06/03 18:47:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.65 2008/06/07 07:41:51 dillon Exp $
  */
 
 #include "hammer.h"
@@ -744,7 +744,7 @@ hammer_reload_inode(hammer_inode_t ip, void *arg __unused)
  * HAMMER_INODE_ITIMES: mtime/atime has been updated
  */
 void
-hammer_modify_inode(hammer_transaction_t trans, hammer_inode_t ip, int flags)
+hammer_modify_inode(hammer_inode_t ip, int flags)
 {
 	KKASSERT ((ip->flags & HAMMER_INODE_RO) == 0 ||
 		  (flags & (HAMMER_INODE_DDIRTY |
@@ -1041,7 +1041,8 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 	ip->sync_trunc_off = ip->trunc_off;
 	ip->sync_ino_leaf = ip->ino_leaf;
 	ip->sync_ino_data = ip->ino_data;
-	ip->flags &= ~HAMMER_INODE_MODMASK | HAMMER_INODE_TRUNCATED;
+	ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
+	ip->flags &= ~HAMMER_INODE_MODMASK;
 
 	/*
 	 * The flusher list inherits our inode and reference.
@@ -1194,11 +1195,6 @@ hammer_flush_inode_done(hammer_inode_t ip)
 	KKASSERT(ip->flush_state == HAMMER_FST_FLUSH);
 
 	/*
-	 * Allow BIOs to queue to the inode's primary bioq again.
-	 */
-	ip->flags &= ~HAMMER_INODE_WRITE_ALT;
-
-	/*
 	 * Merge left-over flags back into the frontend and fix the state.
 	 */
 	ip->flags |= ip->sync_flags;
@@ -1315,9 +1311,10 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 	/*
 	 * Skip records that do not belong to the current flush.
 	 */
+	++hammer_stats_record_iterations;
 	if (record->flush_state != HAMMER_FST_FLUSH)
 		return(0);
-	KKASSERT((record->flags & HAMMER_RECF_DELETED_BE) == 0);
+
 #if 1
 	if (record->flush_group != record->ip->flush_group) {
 		kprintf("sync_record %p ip %p bad flush group %d %d\n", record, record->ip, record->flush_group ,record->ip->flush_group);
@@ -1339,6 +1336,14 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 	record->flags |= HAMMER_RECF_INTERLOCK_BE;
 
 	/*
+	 * The backend may have already disposed of the record.
+	 */
+	if (record->flags & HAMMER_RECF_DELETED_BE) {
+		error = 0;
+		goto done;
+	}
+
+	/*
 	 * If the whole inode is being deleting all on-disk records will
 	 * be deleted very soon, we can't sync any new records to disk
 	 * because they will be deleted in the same transaction they were
@@ -1349,6 +1354,13 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 	 */
 	if (record->ip->sync_flags & HAMMER_INODE_DELETING) {
 		switch(record->type) {
+		case HAMMER_MEM_RECORD_DATA:
+			/*
+			 * We don't have to do anything, if the record was
+			 * committed the space will have been accounted for
+			 * in the blockmap.
+			 */
+			/* fall through */
 		case HAMMER_MEM_RECORD_GENERAL:
 			record->flags |= HAMMER_RECF_DELETED_FE;
 			record->flags |= HAMMER_RECF_DELETED_BE;
@@ -1426,6 +1438,7 @@ hammer_sync_inode(hammer_inode_t ip)
 {
 	struct hammer_transaction trans;
 	struct hammer_cursor cursor;
+	struct buf *bp;
 	struct bio *bio;
 	hammer_record_t depend;
 	hammer_record_t next;
@@ -1500,6 +1513,12 @@ hammer_sync_inode(hammer_inode_t ip)
 		ip->sync_flags |= HAMMER_INODE_DDIRTY;
 	}
 
+#if 0
+	/*
+	 * XXX DISABLED FOR NOW.  With the new reservation support
+	 * we cannot resync pending data without confusing the hell
+	 * out of the in-memory record tree.
+	 */
 	/*
 	 * Queue up as many dirty buffers as we can then set a flag to
 	 * cause any further BIOs to go to the alternative queue.
@@ -1527,6 +1546,7 @@ hammer_sync_inode(hammer_inode_t ip)
 		ip->sync_ino_data.size = ip->ino_data.size;
 		ip->sync_flags |= HAMMER_INODE_DDIRTY;
 	}
+#endif
 
 	/*
 	 * If there is a trunction queued destroy any data past the (aligned)
@@ -1554,19 +1574,21 @@ hammer_sync_inode(hammer_inode_t ip)
 		 * Delete any whole blocks on-media.  The front-end has
 		 * already cleaned out any partial block and made it
 		 * pending.  The front-end may have updated trunc_off
-		 * while we were blocked so do not just unconditionally
-		 * set it to the maximum offset.
+		 * while we were blocked so we only use sync_trunc_off.
 		 */
 		error = hammer_ip_delete_range(&cursor, ip,
 						aligned_trunc_off,
-						0x7FFFFFFFFFFFFFFFLL);
+						0x7FFFFFFFFFFFFFFFLL, 1);
 		if (error)
 			Debugger("hammer_ip_delete_range errored");
+
+		/*
+		 * Clear the truncation flag on the backend after we have
+		 * complete the deletions.  Backend data is now good again
+		 * (including new records we are about to sync, below).
+		 */
 		ip->sync_flags &= ~HAMMER_INODE_TRUNCATED;
-		if (ip->trunc_off >= trunc_off) {
-			ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
-			ip->flags &= ~HAMMER_INODE_TRUNCATED;
-		}
+		ip->sync_trunc_off = 0x7FFFFFFFFFFFFFFFLL;
 	} else {
 		error = 0;
 	}
@@ -1580,8 +1602,13 @@ hammer_sync_inode(hammer_inode_t ip)
 	 * if records remain.
 	 */
 	if (error == 0) {
+		int base_btree_iterations = hammer_stats_btree_iterations;
+		int base_record_iterations = hammer_stats_record_iterations;
 		tmp_error = RB_SCAN(hammer_rec_rb_tree, &ip->rec_tree, NULL,
 				    hammer_sync_record_callback, &cursor);
+#if 0
+		kprintf("(%d,%d)", hammer_stats_record_iterations - base_record_iterations, hammer_stats_btree_iterations - base_btree_iterations);
+#endif
 		if (tmp_error < 0)
 			tmp_error = -error;
 		if (tmp_error)
@@ -1600,7 +1627,6 @@ hammer_sync_inode(hammer_inode_t ip)
 	    (ip->flags & HAMMER_INODE_DELETED) == 0) {
 		int count1 = 0;
 
-		hkprintf("Y");
 		ip->flags |= HAMMER_INODE_DELETED;
 		error = hammer_ip_delete_range_all(&cursor, ip, &count1);
 		if (error == 0) {
@@ -1638,9 +1664,20 @@ hammer_sync_inode(hammer_inode_t ip)
 	 */
 	while ((bio = TAILQ_FIRST(&ip->bio_list)) != NULL) {
 		TAILQ_REMOVE(&ip->bio_list, bio, bio_act);
-		tmp_error = hammer_dowrite(&cursor, ip, bio);
-		if (tmp_error)
+		bp = bio->bio_buf;
+		tmp_error = hammer_dowrite(&cursor, ip, bio->bio_offset,
+					   bp->b_data, bp->b_bufsize);
+		if (tmp_error) {
+			bp->b_resid = bio->bio_buf->b_bufsize;
+			bp->b_error = error;
+			bp->b_flags |= B_ERROR;
 			error = tmp_error;
+		} else {
+			bp->b_resid = 0;
+		}
+		biodone(bio);
+		--hammer_bio_count;
+		hammer_cleanup_write_io(ip);
 	}
 	ip->sync_flags &= ~HAMMER_INODE_BUFS;
 

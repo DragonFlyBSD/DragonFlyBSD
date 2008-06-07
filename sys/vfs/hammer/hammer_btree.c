@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.49 2008/05/18 01:48:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.50 2008/06/07 07:41:51 dillon Exp $
  */
 
 /*
@@ -146,6 +146,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 		 * XXX we can lose the node lock temporarily, this could mess
 		 * up our scan.
 		 */
+		++hammer_stats_btree_iterations;
 		if (cursor->index == node->count) {
 			if (hammer_debug_btree) {
 				kprintf("BRACKETU %016llx[%d] -> %016llx[%d] (td=%p)\n",
@@ -935,6 +936,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 		 * down a branch to the left of the one containing the
 		 * desired key.  This requires numerous special cases.
 		 */
+		++hammer_stats_btree_iterations;
 		if (hammer_debug_btree) {
 			kprintf("SEARCH-I %016llx count=%d\n",
 				cursor->node->node_offset,
@@ -1129,6 +1131,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 	 * the array (index == node->count).  It is also possible that the
 	 * leaf might be empty.
 	 */
+	++hammer_stats_btree_iterations;
 	KKASSERT (node->type == HAMMER_BTREE_TYPE_LEAF);
 	KKASSERT(node->count <= HAMMER_BTREE_LEAF_ELMS);
 	if (hammer_debug_btree) {
@@ -1761,9 +1764,6 @@ hammer_btree_correct_rhb(hammer_cursor_t cursor, hammer_tid_t tid)
 	error = 0;
 	while (error == 0 && (rhb = TAILQ_FIRST(&rhb_list)) != NULL) {
 		error = hammer_cursor_seek(cursor, rhb->node, rhb->index);
-		hkprintf("CORRECT RHB %016llx index %d type=%c\n",
-			rhb->node->node_offset,
-			rhb->index, cursor->node->ondisk->type);
 		if (error)
 			break;
 		TAILQ_REMOVE(&rhb_list, rhb, entry);
@@ -1881,8 +1881,6 @@ hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid)
 
 		elm = &cursor->node->ondisk->elms[cursor->index].base;
 		if (cursor->node->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL) {
-			hkprintf("hammer_btree_correct_lhb-I @%016llx[%d]\n",
-				cursor->node->node_offset, cursor->index);
 			hammer_modify_node(cursor->trans, cursor->node,
 					   &elm->create_tid,
 					   sizeof(elm->create_tid));
