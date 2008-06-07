@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/mpapic.h,v 1.14.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/platform/pc32/apic/mpapic.h,v 1.11 2006/11/07 06:43:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/mpapic.h,v 1.12 2008/06/07 11:37:23 mneumann Exp $
  */
 
 #ifndef _MACHINE_MPAPIC_H_
@@ -54,7 +54,7 @@ enum busTypes {
 
 
 /*
- * the physical/logical APIC ID management macors
+ * the physical/logical APIC ID management macros
  */
 #define CPU_TO_ID(CPU)	(cpu_num_to_apic_id[CPU])
 #define ID_TO_CPU(ID)	(apic_id_to_logical[ID])

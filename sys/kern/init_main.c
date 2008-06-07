@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.86 2008/05/26 17:11:09 nth Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.87 2008/06/07 11:37:23 mneumann Exp $
  */
 
 #include "opt_init_path.h"
@@ -100,7 +100,7 @@ SYSCTL_INT(_debug, OID_AUTO, boothowto, CTLFLAG_RD, &boothowto, 0, "");
 
 /*
  * This ensures that there is at least one entry so that the sysinit_set
- * symbol is not undefined.  A sybsystem ID of SI_SPECIAL_DUMMY is never
+ * symbol is not undefined.  A subsystem ID of SI_SPECIAL_DUMMY is never
  * executed.
  */
 SYSINIT(placeholder, SI_SPECIAL_DUMMY, SI_ORDER_ANY, NULL, NULL)

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.52 2007/06/29 23:40:00 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.53 2008/06/07 11:37:23 mneumann Exp $
  */
 
 #include <sys/param.h>
@@ -197,7 +197,7 @@ elf_remove_brand_entry(Elf_Brandinfo *entry)
 /*
  * Check if an elf brand is being used anywhere in the system.
  *
- * Used by the linux emulatino module unloader.  This isn't safe from
+ * Used by the linux emulation module unloader.  This isn't safe from
  * races.
  */
 struct elf_brand_inuse_info {

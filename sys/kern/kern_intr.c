@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.53 2008/05/14 11:59:23 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.54 2008/06/07 11:37:23 mneumann Exp $
  *
  */
 
@@ -551,7 +551,7 @@ ithread_livelock_wakeup(systimer_t st)
 }
 
 /*
- * This function is called drectly from the ICU or APIC vector code assembly
+ * This function is called directly from the ICU or APIC vector code assembly
  * to process an interrupt.  The critical section and interrupt deferral
  * checks have already been done but the function is entered WITHOUT
  * a critical section held.  The BGL may or may not be held.
