@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.54 2008/06/07 06:34:57 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.55 2008/06/07 07:22:22 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -447,13 +447,22 @@ EVENTHANDLER_DECLARE(ifnet_attach_event, ifnet_attach_event_handler_t);
 typedef void (*ifnet_detach_event_handler_t)(void *, struct ifnet *);
 EVENTHANDLER_DECLARE(ifnet_detach_event, ifnet_detach_event_handler_t);
 
+#ifdef INVARIANTS
+#define ASSERT_IFAC_VALID(ifac)	do { \
+	KKASSERT((ifac)->ifa_magic == IFA_CONTAINER_MAGIC); \
+	KKASSERT((ifac)->ifa_refcnt > 0); \
+} while (0)
+#else
+#define ASSERT_IFAC_VALID(ifac)	((void)0)
+#endif
+
 static __inline void
 _IFAREF(struct ifaddr *_ifa, int _cpu_id)
 {
 	struct ifaddr_container *_ifac = &_ifa->ifa_containers[_cpu_id];
 
 	crit_enter();
-	KKASSERT(_ifac->ifa_magic == IFA_CONTAINER_MAGIC);
+	ASSERT_IFAC_VALID(_ifac);
 	++_ifac->ifa_refcnt;
 	crit_exit();
 }
@@ -477,8 +486,7 @@ _IFAFREE(struct ifaddr *_ifa, int _cpu_id)
 	struct ifaddr_container *_ifac = &_ifa->ifa_containers[_cpu_id];
 
 	crit_enter();
-	KKASSERT(_ifac->ifa_magic == IFA_CONTAINER_MAGIC);
-	KKASSERT(_ifac->ifa_refcnt > 0);
+	ASSERT_IFAC_VALID(_ifac);
 	if (--_ifac->ifa_refcnt == 0)
 		ifac_free(_ifac, _cpu_id);
 	crit_exit();
@@ -497,15 +505,6 @@ ifa_portfn(int cpu)
 {
 	return ifnet_portfn(cpu);
 }
-
-#ifdef INVARIANTS
-#define ASSERT_IFAC_VALID(ifac)	do { \
-	KKASSERT((ifac)->ifa_magic == IFA_CONTAINER_MAGIC); \
-	KKASSERT((ifac)->ifa_refcnt > 0); \
-} while (0)
-#else
-#define ASSERT_IFAC_VALID(ifac)	((void)0)
-#endif
 
 extern	struct ifnethead ifnet;
 extern struct	ifnet	**ifindex2ifnet;
