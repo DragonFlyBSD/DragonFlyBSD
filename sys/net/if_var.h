@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.52 2008/06/01 08:09:14 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.53 2008/06/07 04:59:01 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -88,6 +88,7 @@ struct	lwkt_serialize;
 struct	ifaddr_container;
 struct	ifaddr;
 struct	lwkt_port;
+struct	lwkt_msg;
 struct	netmsg;
 
 #include <sys/queue.h>		/* get TAILQ macros */
@@ -549,6 +550,8 @@ void	*ifa_create(int, int);
 void	ifa_destroy(struct ifaddr *);
 void	ifa_iflink(struct ifaddr *, struct ifnet *, int);
 void	ifa_ifunlink(struct ifaddr *, struct ifnet *);
+void	ifa_domsg(struct lwkt_msg *);
+void	ifa_forwardmsg(struct lwkt_msg *, int);
 
 struct	ifmultiaddr *ifmaof_ifpforaddr(struct sockaddr *, struct ifnet *);
 int	if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen);

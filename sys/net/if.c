@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.71 2008/06/06 12:35:27 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.72 2008/06/07 04:59:01 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -2151,6 +2151,21 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 	return 0;
 }
 
+void
+ifa_forwardmsg(struct lwkt_msg *lmsg, int next_cpu)
+{
+	if (next_cpu < ncpus)
+		lwkt_forwardmsg(ifa_portfn(next_cpu), lmsg);
+	else
+		lwkt_replymsg(lmsg, 0);
+}
+
+void
+ifa_domsg(struct lwkt_msg *lmsg)
+{
+	lwkt_domsg(ifa_portfn(0), lmsg, 0);
+}
+
 void *
 ifa_create(int size, int flags)
 {
@@ -2227,16 +2242,7 @@ ifac_free(struct ifaddr_container *ifac, int cpu_id)
 	msg = &nmsg.nm_lmsg;
 	msg->u.ms_resultp = &arg;
 
-	lwkt_domsg(ifa_portfn(0), msg, 0);
-}
-
-static __inline void
-ifa_forwardmsg(struct lwkt_msg *lmsg, int next_cpu)
-{
-	if (next_cpu < ncpus)
-		lwkt_forwardmsg(ifa_portfn(next_cpu), lmsg);
-	else
-		lwkt_replymsg(lmsg, 0);
+	ifa_domsg(msg);
 }
 
 static void
@@ -2278,7 +2284,7 @@ ifa_iflink(struct ifaddr *ifa, struct ifnet *ifp, int tail)
 	msg.ifp = ifp;
 	msg.tail = tail;
 
-	lwkt_domsg(ifa_portfn(0), &msg.netmsg.nm_lmsg, 0);
+	ifa_domsg(&msg.netmsg.nm_lmsg);
 }
 
 static void
@@ -2316,7 +2322,7 @@ ifa_ifunlink(struct ifaddr *ifa, struct ifnet *ifp)
 	msg.ifa = ifa;
 	msg.ifp = ifp;
 
-	lwkt_domsg(ifa_portfn(0), &msg.netmsg.nm_lmsg, 0);
+	ifa_domsg(&msg.netmsg.nm_lmsg);
 }
 
 static void
@@ -2337,7 +2343,7 @@ ifa_destroy(struct ifaddr *ifa)
 		    ifa_destroy_dispatch);
 	msg.ifa = ifa;
 
-	lwkt_domsg(ifa_portfn(0), &msg.netmsg.nm_lmsg, 0);
+	ifa_domsg(&msg.netmsg.nm_lmsg);
 }
 
 struct lwkt_port *
