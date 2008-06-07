@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.133 2008/06/07 12:15:33 mneumann Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.134 2008/06/07 12:30:26 mneumann Exp $
  */
 
 #include "use_apm.h"
@@ -1437,8 +1437,6 @@ getmemsize(int first)
 	} *smap;
 	quad_t dcons_addr, dcons_size;
 
-	hasbrokenint12 = 0;
-	TUNABLE_INT_FETCH("hw.hasbrokenint12", &hasbrokenint12);
 	bzero(&vmf, sizeof(struct vm86frame));
 	bzero(physmap, sizeof(physmap));
 	basemem = 0;
@@ -1448,6 +1446,8 @@ getmemsize(int first)
 	 * kernel panic immediately. In this case, we need to scan SMAP
 	 * with INT 15:E820 first, then determine base memory size.
 	 */
+	hasbrokenint12 = 0;
+	TUNABLE_INT_FETCH("hw.hasbrokenint12", &hasbrokenint12);
 	if (hasbrokenint12) {
 		goto int15e820;
 	}
