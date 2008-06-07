@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.53 2008/06/07 04:59:01 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.54 2008/06/07 06:34:57 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -497,6 +497,15 @@ ifa_portfn(int cpu)
 {
 	return ifnet_portfn(cpu);
 }
+
+#ifdef INVARIANTS
+#define ASSERT_IFAC_VALID(ifac)	do { \
+	KKASSERT((ifac)->ifa_magic == IFA_CONTAINER_MAGIC); \
+	KKASSERT((ifac)->ifa_refcnt > 0); \
+} while (0)
+#else
+#define ASSERT_IFAC_VALID(ifac)	((void)0)
+#endif
 
 extern	struct ifnethead ifnet;
 extern struct	ifnet	**ifindex2ifnet;

@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.72 2008/06/07 04:59:01 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.73 2008/06/07 06:34:57 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -2257,8 +2257,7 @@ ifa_iflink_dispatch(struct netmsg *nmsg)
 	crit_enter();
 
 	ifac = &ifa->ifa_containers[cpu];
-	KKASSERT(ifac->ifa_magic == IFA_CONTAINER_MAGIC);
-	KKASSERT(ifac->ifa_refcnt > 0);
+	ASSERT_IFAC_VALID(ifac);
 	KASSERT((ifac->ifa_listmask & IFA_LIST_IFADDRHEAD) == 0,
 		("ifaddr is on if_addrheads\n"));
 
@@ -2299,8 +2298,7 @@ ifa_ifunlink_dispatch(struct netmsg *nmsg)
 	crit_enter();
 
 	ifac = &ifa->ifa_containers[cpu];
-	KKASSERT(ifac->ifa_magic == IFA_CONTAINER_MAGIC);
-	KKASSERT(ifac->ifa_refcnt > 0);
+	ASSERT_IFAC_VALID(ifac);
 	KASSERT(ifac->ifa_listmask & IFA_LIST_IFADDRHEAD,
 		("ifaddr is not on if_addrhead\n"));
 
