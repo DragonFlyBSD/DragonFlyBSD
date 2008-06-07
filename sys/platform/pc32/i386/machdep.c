@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.132 2008/06/07 12:03:52 mneumann Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.133 2008/06/07 12:15:33 mneumann Exp $
  */
 
 #include "use_apm.h"
@@ -119,18 +119,18 @@
 
 #define PHYSMAP_ENTRIES		10
 
-extern void init386 (int first);
-extern void dblfault_handler (void);
+extern void init386(int first);
+extern void dblfault_handler(void);
 
 extern void printcpuinfo(void);	/* XXX header file */
 extern void finishidentcpu(void);
 extern void panicifcpuunsupported(void);
 extern void initializecpu(void);
 
-static void cpu_startup (void *);
+static void cpu_startup(void *);
 #ifndef CPU_DISABLE_SSE
-static void set_fpregs_xmm (struct save87 *, struct savexmm *);
-static void fill_fpregs_xmm (struct savexmm *, struct save87 *);
+static void set_fpregs_xmm(struct save87 *, struct savexmm *);
+static void fill_fpregs_xmm(struct savexmm *, struct save87 *);
 #endif /* CPU_DISABLE_SSE */
 #ifdef DIRECTIO
 extern void ffs_rawread_setup(void);
@@ -820,7 +820,7 @@ sendupcall(struct vmupcall *vu, int morepending)
  * and the function pointer in %eax.  
  */
 int
-fetchupcall (struct vmupcall *vu, int morepending, void *rsp)
+fetchupcall(struct vmupcall *vu, int morepending, void *rsp)
 {
 	struct upc_frame upc_frame;
 	struct lwp *lp = curthread->td_lwp;
