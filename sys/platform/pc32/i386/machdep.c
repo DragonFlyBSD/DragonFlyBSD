@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.131 2008/04/21 15:47:55 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.132 2008/06/07 12:03:52 mneumann Exp $
  */
 
 #include "use_apm.h"
@@ -1651,7 +1651,7 @@ physmap_done:
 
 #ifdef SMP
 	/* make hole for AP bootstrap code YYY */
-	physmap[1] = mp_bootaddress(physmap[1] / 1024);
+	physmap[1] = mp_bootaddress(physmap[1]);
 
 	/* look for the MP hardware - needed for apic addresses */
 	mp_probe();
