@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.35 2008/05/26 13:29:33 sephe Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.36 2008/06/08 03:58:03 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -268,7 +268,6 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct in_ifaddr *ia = 0, *iap;
 	struct in_addr dst;
-	struct in_ifaddr *oia;
 	struct in_aliasreq *ifra = (struct in_aliasreq *)data;
 	struct sockaddr_in oldaddr;
 	int hostIsNew, iaIsNew, maskIsNew;
@@ -310,11 +309,12 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 		if (ifp == NULL)
 			return (EADDRNOTAVAIL);
 		if (ifra->ifra_addr.sin_family == AF_INET) {
-			for (oia = ia; ia; ia = TAILQ_NEXT(ia, ia_link)) {
+			while (ia != NULL) {
 				if (ia->ia_ifp == ifp  &&
 				    ia->ia_addr.sin_addr.s_addr ==
 				    ifra->ifra_addr.sin_addr.s_addr)
 					break;
+				ia = TAILQ_NEXT(ia, ia_link);
 			}
 			if ((ifp->if_flags & IFF_POINTOPOINT) &&
 			    cmd == SIOCAIFADDR &&
