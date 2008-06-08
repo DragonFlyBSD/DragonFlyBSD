@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.61 2008/06/07 07:41:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.62 2008/06/08 18:16:26 dillon Exp $
  */
 
 #include "hammer.h"
@@ -39,6 +39,8 @@
 static int hammer_mem_add(hammer_record_t record);
 static int hammer_mem_lookup(hammer_cursor_t cursor);
 static int hammer_mem_first(hammer_cursor_t cursor);
+static int hammer_rec_trunc_callback(hammer_record_t record,
+				void *data __unused);
 
 struct rec_trunc_info {
 	u_int16_t	rec_type;
@@ -46,7 +48,7 @@ struct rec_trunc_info {
 };
 
 /*
- * Red-black tree support.
+ * Red-black tree support.  Comparison code for insertion.
  */
 static int
 hammer_rec_rb_compare(hammer_record_t rec1, hammer_record_t rec2)
@@ -85,29 +87,74 @@ hammer_rec_rb_compare(hammer_record_t rec1, hammer_record_t rec2)
         return(0);
 }
 
+/*
+ * Basic record comparison code similar to hammer_btree_cmp().
+ */
 static int
-hammer_rec_compare(hammer_base_elm_t info, hammer_record_t rec)
+hammer_rec_cmp(hammer_base_elm_t elm, hammer_record_t rec)
 {
-	if (info->rec_type < rec->leaf.base.rec_type)
+	if (elm->rec_type < rec->leaf.base.rec_type)
 		return(-3);
-	if (info->rec_type > rec->leaf.base.rec_type)
+	if (elm->rec_type > rec->leaf.base.rec_type)
 		return(3);
 
-        if (info->key < rec->leaf.base.key)
+        if (elm->key < rec->leaf.base.key)
                 return(-2);
-        if (info->key > rec->leaf.base.key)
+        if (elm->key > rec->leaf.base.key)
                 return(2);
 
-	if (info->create_tid == 0) {
+	if (elm->create_tid == 0) {
 		if (rec->leaf.base.create_tid == 0)
 			return(0);
 		return(1);
 	}
 	if (rec->leaf.base.create_tid == 0)
 		return(-1);
-	if (info->create_tid < rec->leaf.base.create_tid)
+	if (elm->create_tid < rec->leaf.base.create_tid)
 		return(-1);
-	if (info->create_tid > rec->leaf.base.create_tid)
+	if (elm->create_tid > rec->leaf.base.create_tid)
+		return(1);
+        return(0);
+}
+
+/*
+ * Special LOOKUP_INFO to locate an overlapping record.  This used by
+ * the reservation code to implement small-block records (whos keys will
+ * be different depending on data_len, when representing the same base
+ * offset).
+ *
+ * NOTE: The base file offset of a data record is (key - data_len), not (key).
+ */
+static int
+hammer_rec_overlap_compare(hammer_btree_leaf_elm_t leaf, hammer_record_t rec)
+{
+	if (leaf->base.rec_type < rec->leaf.base.rec_type)
+		return(-3);
+	if (leaf->base.rec_type > rec->leaf.base.rec_type)
+		return(3);
+
+	if (leaf->base.rec_type == HAMMER_RECTYPE_DATA) {
+		if (leaf->base.key <= rec->leaf.base.key - rec->leaf.data_len)
+			return(-2);
+		if (leaf->base.key - leaf->data_len >= rec->leaf.base.key)
+			return(2);
+	} else {
+		if (leaf->base.key < rec->leaf.base.key)
+			return(-2);
+		if (leaf->base.key > rec->leaf.base.key)
+			return(2);
+	}
+
+	if (leaf->base.create_tid == 0) {
+		if (rec->leaf.base.create_tid == 0)
+			return(0);
+		return(1);
+	}
+	if (rec->leaf.base.create_tid == 0)
+		return(-1);
+	if (leaf->base.create_tid < rec->leaf.base.create_tid)
+		return(-1);
+	if (leaf->base.create_tid > rec->leaf.base.create_tid)
 		return(1);
         return(0);
 }
@@ -117,7 +164,7 @@ hammer_rec_compare(hammer_base_elm_t info, hammer_record_t rec)
  * is reversed so the comparison result has to be negated.  key_beg and
  * key_end are both range-inclusive.
  *
- * The creation timestamp can cause hammer_rec_compare() to return -1 or +1.
+ * The creation timestamp can cause hammer_rec_cmp() to return -1 or +1.
  * These do not stop the scan.
  *
  * Localized deletions are not cached in-memory.
@@ -129,10 +176,10 @@ hammer_rec_scan_cmp(hammer_record_t rec, void *data)
 	hammer_cursor_t cursor = data;
 	int r;
 
-	r = hammer_rec_compare(&cursor->key_beg, rec);
+	r = hammer_rec_cmp(&cursor->key_beg, rec);
 	if (r > 1)
 		return(-1);
-	r = hammer_rec_compare(&cursor->key_end, rec);
+	r = hammer_rec_cmp(&cursor->key_end, rec);
 	if (r < -1)
 		return(1);
 	return(0);
@@ -148,7 +195,7 @@ hammer_rec_find_cmp(hammer_record_t rec, void *data)
 	hammer_cursor_t cursor = data;
 	int r;
 
-	r = hammer_rec_compare(&cursor->key_beg, rec);
+	r = hammer_rec_cmp(&cursor->key_beg, rec);
 	if (r > 1)
 		return(-1);
 	if (r < -1)
@@ -199,7 +246,7 @@ hammer_rec_trunc_cmp(hammer_record_t rec, void *data)
 
 RB_GENERATE(hammer_rec_rb_tree, hammer_record, rb_node, hammer_rec_rb_compare);
 RB_GENERATE_XLOOKUP(hammer_rec_rb_tree, INFO, hammer_record, rb_node,
-		    hammer_rec_compare, hammer_base_elm_t);
+		    hammer_rec_overlap_compare, hammer_btree_leaf_elm_t);
 
 /*
  * Allocate a record for the caller to finish filling in.  The record is
@@ -297,11 +344,26 @@ hammer_rel_mem_record(struct hammer_record *record)
 
 	hammer_unref(&record->lock);
 
-	if (record->flags & HAMMER_RECF_DELETED_FE) {
-		if (record->lock.refs == 0) {
+	if (record->lock.refs == 0) {
+		/*
+		 * Upon release of the last reference wakeup any waiters.
+		 * The record structure may get destroyed so callers will
+		 * loop up and do a relookup.
+		 */
+		ip = record->ip;
+		if (record->flags & HAMMER_RECF_WANTIDLE) {
+			record->flags &= ~HAMMER_RECF_WANTIDLE;
+			++ip->idle_wakeup;
+			wakeup(&ip->idle_wakeup);
+		}
+
+		/*
+		 * Upon release of the last reference a record marked deleted
+		 * is destroyed.
+		 */
+		if (record->flags & HAMMER_RECF_DELETED_FE) {
 			KKASSERT(record->flush_state != HAMMER_FST_FLUSH);
 
-			ip = record->ip;
 			if ((target_ip = record->target_ip) != NULL) {
 				TAILQ_REMOVE(&target_ip->target_list,
 					     record, target_entry);
@@ -320,6 +382,7 @@ hammer_rel_mem_record(struct hammer_record *record)
 				record->flags &= ~HAMMER_RECF_ONRBTREE;
 				if (RB_EMPTY(&record->ip->rec_tree)) {
 					record->ip->flags &= ~HAMMER_INODE_XDIRTY;
+					record->ip->sync_flags &= ~HAMMER_INODE_XDIRTY;
 					hammer_test_inode(record->ip);
 				}
 			}
@@ -328,12 +391,14 @@ hammer_rel_mem_record(struct hammer_record *record)
 				kfree(record->data, M_HAMMER);
 				record->flags &= ~HAMMER_RECF_ALLOCDATA;
 			}
+			if (record->resv) {
+				hammer_blockmap_reserve_complete(ip->hmp,
+								 record->resv);
+				record->resv = NULL;
+			}
 			record->data = NULL;
 			--hammer_count_records;
-			if (record->type == HAMMER_MEM_RECORD_DATA)
-				hammer_cleanup_write_io(record->ip);
 			kfree(record, M_HAMMER);
-			return;
 		}
 	}
 }
@@ -687,19 +752,20 @@ static hammer_record_t
 hammer_ip_get_bulk(hammer_inode_t ip, off_t file_offset, int bytes)
 {
 	hammer_record_t record;
-	struct hammer_base_elm elm;
+	struct hammer_btree_leaf_elm leaf;
 
-	bzero(&elm, sizeof(elm));
-	elm.obj_id = ip->obj_id;
-	elm.key = file_offset + bytes;
-	elm.create_tid = 0;
-	elm.delete_tid = 0;
-	elm.rec_type = HAMMER_RECTYPE_DATA;
-	elm.obj_type = 0;			/* unused */
-	elm.btype = HAMMER_BTREE_TYPE_RECORD;	/* unused */
-	elm.localization = HAMMER_LOCALIZE_MISC;
+	bzero(&leaf, sizeof(leaf));
+	leaf.base.obj_id = ip->obj_id;
+	leaf.base.key = file_offset + bytes;
+	leaf.base.create_tid = 0;
+	leaf.base.delete_tid = 0;
+	leaf.base.rec_type = HAMMER_RECTYPE_DATA;
+	leaf.base.obj_type = 0;			/* unused */
+	leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;	/* unused */
+	leaf.base.localization = HAMMER_LOCALIZE_MISC;
+	leaf.data_len = bytes;
 
-	record = hammer_rec_rb_tree_RB_LOOKUP_INFO(&ip->rec_tree, &elm);
+	record = hammer_rec_rb_tree_RB_LOOKUP_INFO(&ip->rec_tree, &leaf);
 	if (record)
 		hammer_ref(&record->lock);
 	return(record);
@@ -712,60 +778,53 @@ hammer_ip_get_bulk(hammer_inode_t ip, off_t file_offset, int bytes)
  * flush a buffer cache buffer.
  */
 hammer_record_t
-hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset,
-		   void *data, int bytes, int *force_altp)
+hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
+		   int *errorp)
 {
 	hammer_record_t record;
 	hammer_record_t conflict;
-	int error;
+	int zone;
+	int save_wakeup;
 
 	/*
-	 * If the record already exists just return it.  If it exists but
-	 * is being flushed we can't reuse the conflict record and we can't
-	 * create a new one (unlike directories data records have no iterator
-	 * so we would be creating a duplicate).  In that case return NULL
-	 * to force the front-end to queue the buffer.
+	 * Deal with conflicting in-memory records.
 	 *
-	 * This is kinda messy.  We can't have an in-memory record AND its
-	 * buffer cache buffer queued to the same flush cycle at the same
-	 * time as that would result in a [delete-]create-delete-create
-	 * sequence with the same transaction id.  Set *force_altp to 1
-	 * to deal with the situation.
+	 * We must wait for the record to become idle so we can ensure
+	 * its deletion.
 	 */
-	*force_altp = 0;
-	conflict = hammer_ip_get_bulk(ip, file_offset, bytes);
-	if (conflict) {
-		/*
-		 * We can't reuse the record if it is owned by the backend
-		 * or has been deleted.
-		 */
-		if (conflict->flush_state == HAMMER_FST_FLUSH) {
+	while ((conflict = hammer_ip_get_bulk(ip, file_offset, bytes)) !=NULL) {
+		if (conflict->lock.refs != 1) {
+			conflict->flags |= HAMMER_RECF_WANTIDLE;
+			save_wakeup = ip->idle_wakeup;
 			hammer_rel_mem_record(conflict);
-			*force_altp = 1;
-			kprintf("a");
-			return(NULL);
-		}
-		if (conflict->flags & HAMMER_RECF_DELETED_FE) {
+			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+			if (save_wakeup == ip->idle_wakeup)
+				tsleep(&ip->idle_wakeup, 0, "hmrrc3", 0);
+		} else {
+			/* flush state adds a ref, shouldn't be posible */
+			KKASSERT(conflict->flush_state != HAMMER_FST_FLUSH);
+			conflict->flags |= HAMMER_RECF_DELETED_FE;
 			hammer_rel_mem_record(conflict);
-			*force_altp = 1;
-			kprintf("b");
-			return(NULL);
 		}
-		KKASSERT(conflict->leaf.data_len == bytes);
-		conflict->leaf.data_crc = crc32(data, bytes);
-
-		/* reusing conflict, remove extra rsv stats */
-		hammer_cleanup_write_io(ip);
-		return(conflict);
 	}
 
 	/*
-	 * Otherwise create it.  This is called with the related BIO locked
-	 * so there should be no possible conflict.
+	 * Create a record to cover the direct write.  This is called with
+	 * the related BIO locked so there should be no possible conflict.
+	 *
+	 * The backend is responsible for finalizing the space reserved in
+	 * this record.
+	 *
+	 * XXX bytes not aligned, depend on the reservation code to
+	 * align the reservation.
 	 */
 	record = hammer_alloc_mem_record(ip, 0);
-	record->leaf.data_offset = hammer_blockmap_reserve(ip->hmp, HAMMER_ZONE_LARGE_DATA_INDEX, bytes, &error);
-	if (record->leaf.data_offset == 0) {
+	zone = (bytes >= HAMMER_BUFSIZE) ? HAMMER_ZONE_LARGE_DATA_INDEX :
+					   HAMMER_ZONE_SMALL_DATA_INDEX;
+	record->resv = hammer_blockmap_reserve(ip->hmp, zone, bytes,
+					       &record->leaf.data_offset,
+					       errorp);
+	if (record->resv == NULL) {
 		hammer_rel_mem_record(record);
 		return(NULL);
 	}
@@ -779,8 +838,8 @@ hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset,
 	record->leaf.data_crc = crc32(data, bytes);
 
 	hammer_ref(&record->lock);	/* mem_add eats a reference */
-	error = hammer_mem_add(record);
-	KKASSERT(error == 0);
+	*errorp = hammer_mem_add(record);
+
 	return (record);
 }
 
@@ -791,20 +850,6 @@ hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset,
  *
  * Partial blocks are not deleted.
  */
-static int
-hammer_rec_trunc_callback(hammer_record_t record, void *data __unused)
-{
-	if (record->flags & HAMMER_RECF_DELETED_FE)
-		return(0);
-	if (record->flush_state == HAMMER_FST_FLUSH)
-		return(0);
-	KKASSERT((record->flags & HAMMER_RECF_INTERLOCK_BE) == 0);
-	hammer_ref(&record->lock);
-	record->flags |= HAMMER_RECF_DELETED_FE;
-	hammer_rel_mem_record(record);
-	return(0);
-}
-
 int
 hammer_ip_frontend_trunc(struct hammer_inode *ip, off_t file_size)
 {
@@ -822,9 +867,24 @@ hammer_ip_frontend_trunc(struct hammer_inode *ip, off_t file_size)
 	}
 	info.trunc_off = file_size;
 	hammer_rec_rb_tree_RB_SCAN(&ip->rec_tree, hammer_rec_trunc_cmp,
-				   hammer_rec_trunc_callback, &file_size);
+				   hammer_rec_trunc_callback, &info);
 	return(0);
 }
+
+static int
+hammer_rec_trunc_callback(hammer_record_t record, void *data __unused)
+{
+	if (record->flags & HAMMER_RECF_DELETED_FE)
+		return(0);
+	if (record->flush_state == HAMMER_FST_FLUSH)
+		return(0);
+	KKASSERT((record->flags & HAMMER_RECF_INTERLOCK_BE) == 0);
+	hammer_ref(&record->lock);
+	record->flags |= HAMMER_RECF_DELETED_FE;
+	hammer_rel_mem_record(record);
+	return(0);
+}
+
 
 /*
  * Backend code
@@ -859,7 +919,7 @@ hammer_ip_sync_data(hammer_cursor_t cursor, hammer_inode_t ip,
 	 * align data allocations to 64-byte boundaries for future
 	 * expansion.
 	 */
-	aligned_bytes = (bytes + 63) & ~63;
+	aligned_bytes = (bytes + 15) & ~15;
 retry:
 	hammer_normalize_cursor(cursor);
 	cursor->key_beg.localization = HAMMER_LOCALIZE_MISC;
@@ -916,7 +976,6 @@ retry:
 	elm.atime = 0;
 	elm.data_offset = data_offset;
 	elm.data_len = aligned_bytes;
-	elm.data_crc = crc32(data, aligned_bytes);
 
 	/*
 	 * Copy the data to the allocated buffer.  Since we are aligning
@@ -928,6 +987,7 @@ retry:
 	if (aligned_bytes > bytes)
 		bzero((char *)bdata + bytes, aligned_bytes - bytes);
 	hammer_modify_buffer_done(cursor->data_buffer);
+	elm.data_crc = crc32(bdata, aligned_bytes);
 
 	/*
 	 * Data records can wind up on-disk before the inode itself is
@@ -1048,10 +1108,11 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	 * It is ok for the lookup to return ENOENT.
 	 */
 	if (record->type == HAMMER_MEM_RECORD_DATA) {
+		KKASSERT(((record->leaf.base.key - record->leaf.data_len) & HAMMER_BUFMASK) == 0);
 		error = hammer_ip_delete_range(
 				cursor, record->ip,
 				record->leaf.base.key - record->leaf.data_len,
-				record->leaf.base.key - 1, 1);
+				HAMMER_BUFSIZE - 1, 1);
 		if (error && error != ENOENT)
 			goto done;
 	}
@@ -1477,10 +1538,9 @@ next_memory:
 		 * Special case.  If the entries only differ by their
 		 * create_tid, assume they are equal and fall through.
 		 *
-		 * This case can occur for memory-data records because
-		 * their initial create_tid is 0 (infinity).
+		 * This case can occur for memory-data records. XXX
 		 */
-		if (r == -1)
+		if (r == -1 || r == 1)
 			r = 0;
 		if (r < 0) {
 			error = hammer_btree_extract(cursor,

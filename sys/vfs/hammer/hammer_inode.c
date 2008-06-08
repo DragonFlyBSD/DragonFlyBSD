@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.65 2008/06/07 07:41:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.66 2008/06/08 18:16:26 dillon Exp $
  */
 
 #include "hammer.h"
@@ -43,6 +43,10 @@ static int hammer_unload_inode(struct hammer_inode *ip);
 static void hammer_flush_inode_core(hammer_inode_t ip, int flags);
 static int hammer_setup_child_callback(hammer_record_t rec, void *data);
 static int hammer_setup_parent_inodes(hammer_record_t record);
+
+#ifdef DEBUG_TRUNCATE
+extern struct hammer_inode *HammerTruncIp;
+#endif
 
 /*
  * The kernel is not actively referencing this vnode but is still holding
@@ -227,8 +231,6 @@ loop:
 		ip->flags |= HAMMER_INODE_RO;
 	ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
 	RB_INIT(&ip->rec_tree);
-	TAILQ_INIT(&ip->bio_list);
-	TAILQ_INIT(&ip->bio_alt_list);
 	TAILQ_INIT(&ip->target_list);
 
 	/*
@@ -340,8 +342,6 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 
 	ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
 	RB_INIT(&ip->rec_tree);
-	TAILQ_INIT(&ip->bio_list);
-	TAILQ_INIT(&ip->bio_alt_list);
 	TAILQ_INIT(&ip->target_list);
 
 	ip->ino_leaf.atime = trans->time;
@@ -648,7 +648,12 @@ hammer_rel_inode(struct hammer_inode *ip, int flush)
 			KKASSERT(ip->vp == NULL);
 			hammer_inode_unloadable_check(ip, 0);
 			if (ip->flags & HAMMER_INODE_MODMASK) {
-				hammer_flush_inode(ip, 0);
+				if (hmp->rsv_inodes > desiredvnodes) {
+					hammer_flush_inode(ip,
+							   HAMMER_FLUSH_SIGNAL);
+				} else {
+					hammer_flush_inode(ip, 0);
+				}
 			} else if (ip->lock.refs == 1) {
 				hammer_unload_inode(ip);
 				break;
@@ -667,17 +672,6 @@ hammer_rel_inode(struct hammer_inode *ip, int flush)
 				break;
 			}
 		}
-	}
-
-	/*
-	 * XXX bad hack until I add code to track inodes in SETUP.  We
-	 * can queue a lot of inodes to the syncer but if we don't wake
-	 * it up the undo sets will be too large or too many unflushed
-	 * records will build up and blow our malloc limit.
-	 */
-	if (++hmp->reclaim_count > 256) {
-		hmp->reclaim_count = 0;
-		hammer_flusher_async(hmp);
 	}
 }
 
@@ -700,8 +694,6 @@ hammer_unload_inode(struct hammer_inode *ip)
 
 	KKASSERT(RB_EMPTY(&ip->rec_tree));
 	KKASSERT(TAILQ_EMPTY(&ip->target_list));
-	KKASSERT(TAILQ_EMPTY(&ip->bio_list));
-	KKASSERT(TAILQ_EMPTY(&ip->bio_alt_list));
 
 	RB_REMOVE(hammer_ino_rb_tree, &ip->hmp->rb_inos_root, ip);
 
@@ -1043,6 +1035,10 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 	ip->sync_ino_data = ip->ino_data;
 	ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
 	ip->flags &= ~HAMMER_INODE_MODMASK;
+#ifdef DEBUG_TRUNCATE
+	if ((ip->sync_flags & HAMMER_INODE_TRUNCATED) && ip == HammerTruncIp)
+		kprintf("truncateS %016llx\n", ip->sync_trunc_off);
+#endif
 
 	/*
 	 * The flusher list inherits our inode and reference.
@@ -1051,8 +1047,9 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 	if (--ip->hmp->flusher_lock == 0)
 		wakeup(&ip->hmp->flusher_lock);
 
-	if (flags & HAMMER_FLUSH_SIGNAL)
+	if (flags & HAMMER_FLUSH_SIGNAL) {
 		hammer_flusher_async(ip->hmp);
+	}
 }
 
 /*
@@ -1174,8 +1171,12 @@ void
 hammer_wait_inode(hammer_inode_t ip)
 {
 	while (ip->flush_state != HAMMER_FST_IDLE) {
-		ip->flags |= HAMMER_INODE_FLUSHW;
-		tsleep(&ip->flags, 0, "hmrwin", 0);
+		if (ip->flush_state == HAMMER_FST_SETUP) {
+			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+		} else {
+			ip->flags |= HAMMER_INODE_FLUSHW;
+			tsleep(&ip->flags, 0, "hmrwin", 0);
+		}
 	}
 }
 
@@ -1189,7 +1190,6 @@ hammer_wait_inode(hammer_inode_t ip)
 void
 hammer_flush_inode_done(hammer_inode_t ip)
 {
-	struct bio *bio;
 	int dorel = 0;
 
 	KKASSERT(ip->flush_state == HAMMER_FST_FLUSH);
@@ -1207,19 +1207,10 @@ hammer_flush_inode_done(hammer_inode_t ip)
 		ip->flags |= HAMMER_INODE_DDIRTY;
 
 	/*
-	 * Reflush any BIOs that wound up in the alt list.  Our inode will
-	 * also wind up at the end of the flusher's list.
-	 */
-	while ((bio = TAILQ_FIRST(&ip->bio_alt_list)) != NULL) {
-		TAILQ_REMOVE(&ip->bio_alt_list, bio, bio_act);
-		TAILQ_INSERT_TAIL(&ip->bio_list, bio, bio_act);
-	}
-	/*
 	 * Fix up the dirty buffer status.  IO completions will also
 	 * try to clean up rsv_databufs.
 	 */
-	if (TAILQ_FIRST(&ip->bio_list) ||
-	    (ip->vp && RB_ROOT(&ip->vp->v_rbdirty_tree))) {
+	if (ip->vp && RB_ROOT(&ip->vp->v_rbdirty_tree)) {
 		ip->flags |= HAMMER_INODE_BUFS;
 	} else {
 		ip->hmp->rsv_databufs -= ip->rsv_databufs;
@@ -1230,8 +1221,10 @@ hammer_flush_inode_done(hammer_inode_t ip)
 	 * Re-set the XDIRTY flag if some of the inode's in-memory records
 	 * could not be flushed.
 	 */
-	if (RB_ROOT(&ip->rec_tree))
-		ip->flags |= HAMMER_INODE_XDIRTY;
+	KKASSERT((RB_EMPTY(&ip->rec_tree) &&
+		  (ip->flags & HAMMER_INODE_XDIRTY) == 0) ||
+		 (!RB_EMPTY(&ip->rec_tree) &&
+		  (ip->flags & HAMMER_INODE_XDIRTY) != 0));
 
 	/*
 	 * Do not lose track of inodes which no longer have vnode
@@ -1438,8 +1431,6 @@ hammer_sync_inode(hammer_inode_t ip)
 {
 	struct hammer_transaction trans;
 	struct hammer_cursor cursor;
-	struct buf *bp;
-	struct bio *bio;
 	hammer_record_t depend;
 	hammer_record_t next;
 	int error, tmp_error;
@@ -1602,19 +1593,12 @@ hammer_sync_inode(hammer_inode_t ip)
 	 * if records remain.
 	 */
 	if (error == 0) {
-		int base_btree_iterations = hammer_stats_btree_iterations;
-		int base_record_iterations = hammer_stats_record_iterations;
 		tmp_error = RB_SCAN(hammer_rec_rb_tree, &ip->rec_tree, NULL,
 				    hammer_sync_record_callback, &cursor);
-#if 0
-		kprintf("(%d,%d)", hammer_stats_record_iterations - base_record_iterations, hammer_stats_btree_iterations - base_btree_iterations);
-#endif
 		if (tmp_error < 0)
 			tmp_error = -error;
 		if (tmp_error)
 			error = tmp_error;
-		if (RB_EMPTY(&ip->rec_tree))
-			ip->sync_flags &= ~HAMMER_INODE_XDIRTY;
 	}
 
 	/*
@@ -1658,27 +1642,6 @@ hammer_sync_inode(hammer_inode_t ip)
 		}
 	}
 
-	/*
-	 * Flush any queued BIOs.  These will just biodone() the IO's if
-	 * the inode has been deleted.
-	 */
-	while ((bio = TAILQ_FIRST(&ip->bio_list)) != NULL) {
-		TAILQ_REMOVE(&ip->bio_list, bio, bio_act);
-		bp = bio->bio_buf;
-		tmp_error = hammer_dowrite(&cursor, ip, bio->bio_offset,
-					   bp->b_data, bp->b_bufsize);
-		if (tmp_error) {
-			bp->b_resid = bio->bio_buf->b_bufsize;
-			bp->b_error = error;
-			bp->b_flags |= B_ERROR;
-			error = tmp_error;
-		} else {
-			bp->b_resid = 0;
-		}
-		biodone(bio);
-		--hammer_bio_count;
-		hammer_cleanup_write_io(ip);
-	}
 	ip->sync_flags &= ~HAMMER_INODE_BUFS;
 
 	if (error)
@@ -1782,7 +1745,6 @@ void
 hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 {
 	struct vnode *vp;
-	struct bio *bio;
 
 	/*
 	 * Set the DELETING flag when the link count drops to 0 and the
@@ -1801,33 +1763,6 @@ hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 		if (getvp) {
 			if (hammer_get_vnode(ip, &vp) != 0)
 				return;
-		}
-
-		/*
-		 * biodone any buffers with pending IO.  These buffers are
-		 * holding a BUF_KERNPROC() exclusive lock and our
-		 * vtruncbuf() call will deadlock if any remain.
-		 *
-		 * (interlocked against hammer_vop_strategy_write via
-		 *  HAMMER_INODE_DELETING|HAMMER_INODE_DELETED).
-		 */
-		while ((bio = TAILQ_FIRST(&ip->bio_list)) != NULL) {
-			TAILQ_REMOVE(&ip->bio_list, bio, bio_act);
-			bio->bio_buf->b_resid = 0;
-			biodone(bio);
-			if (ip->rsv_databufs) {
-				--ip->rsv_databufs;
-				--ip->hmp->rsv_databufs;
-			}
-		}
-		while ((bio = TAILQ_FIRST(&ip->bio_alt_list)) != NULL) {
-			TAILQ_REMOVE(&ip->bio_alt_list, bio, bio_act);
-			bio->bio_buf->b_resid = 0;
-			biodone(bio);
-			if (ip->rsv_databufs) {
-				--ip->rsv_databufs;
-				--ip->hmp->rsv_databufs;
-			}
 		}
 
 		/*

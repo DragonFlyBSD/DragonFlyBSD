@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.13 2008/06/07 07:41:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.14 2008/06/08 18:16:26 dillon Exp $
  */
 
 /*
@@ -162,7 +162,6 @@ hammer_freemap_free(hammer_transaction_t trans, hammer_off_t phys_offset,
 
 	KKASSERT((phys_offset & HAMMER_LARGEBLOCK_MASK64) == 0);
 
-	hammer_uncache_buffer(trans->hmp, phys_offset);
 	*errorp = 0;
 	ondisk = trans->rootvol->ondisk;
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.50 2008/06/07 07:41:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.51 2008/06/08 18:16:26 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -94,9 +94,9 @@ hammer_vol_rb_compare(hammer_volume_t vol1, hammer_volume_t vol2)
 static int
 hammer_buf_rb_compare(hammer_buffer_t buf1, hammer_buffer_t buf2)
 {
-	if (buf1->zone2_offset < buf2->zone2_offset)
+	if (buf1->zoneX_offset < buf2->zoneX_offset)
 		return(-1);
-	if (buf1->zone2_offset > buf2->zone2_offset)
+	if (buf1->zoneX_offset > buf2->zoneX_offset)
 		return(1);
 	return(0);
 }
@@ -122,7 +122,7 @@ RB_GENERATE_XLOOKUP(hammer_ino_rb_tree, INFO, hammer_inode, rb_node,
 RB_GENERATE2(hammer_vol_rb_tree, hammer_volume, rb_node,
 	     hammer_vol_rb_compare, int32_t, vol_no);
 RB_GENERATE2(hammer_buf_rb_tree, hammer_buffer, rb_node,
-	     hammer_buf_rb_compare, hammer_off_t, zone2_offset);
+	     hammer_buf_rb_compare, hammer_off_t, zoneX_offset);
 RB_GENERATE2(hammer_nod_rb_tree, hammer_node, rb_node,
 	     hammer_nod_rb_compare, hammer_off_t, node_offset);
 
@@ -216,7 +216,6 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname)
 	volume->maxbuf_off = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no,
 				    ondisk->vol_buf_end - ondisk->vol_buf_beg);
 	volume->maxraw_off = ondisk->vol_buf_end;
-	RB_INIT(&volume->rb_bufs_root);
 
 	if (RB_EMPTY(&hmp->rb_vols_root)) {
 		hmp->fsid = ondisk->vol_fsid;
@@ -306,12 +305,6 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 		hmp->rootvol = NULL;
 
 	/*
-	 * Unload buffers.
-	 */
-	RB_SCAN(hammer_buf_rb_tree, &volume->rb_bufs_root, NULL,
-			hammer_unload_buffer, NULL);
-
-	/*
 	 * Release our buffer and flush anything left in the buffer cache.
 	 */
 	volume->io.waitdep = 1;
@@ -322,7 +315,6 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 	 * no super-clusters.
 	 */
 	KKASSERT(volume->io.lock.refs == 0);
-	KKASSERT(RB_EMPTY(&volume->rb_bufs_root));
 
 	volume->ondisk = NULL;
 	if (volume->devvp) {
@@ -506,17 +498,43 @@ hammer_get_buffer(hammer_mount_t hmp, hammer_off_t buf_offset,
 {
 	hammer_buffer_t buffer;
 	hammer_volume_t volume;
-	hammer_off_t	zoneX_offset;
+	hammer_off_t	zone2_offset;
 	hammer_io_type_t iotype;
 	int vol_no;
 	int zone;
 
-	zoneX_offset = buf_offset;
-	zone = HAMMER_ZONE_DECODE(buf_offset);
+again:
+	/*
+	 * Shortcut if the buffer is already cached
+	 */
+	buffer = RB_LOOKUP(hammer_buf_rb_tree, &hmp->rb_bufs_root,
+			   buf_offset & ~HAMMER_BUFMASK64);
+	if (buffer) {
+		hammer_ref(&buffer->io.lock);
+		if (buffer->ondisk && buffer->io.loading == 0) {
+			*errorp = 0;
+			return(buffer);
+		}
+
+		/*
+		 * The buffer is no longer loose if it has a ref.  Loose
+		 * buffers will never be in a modified state.  This should
+		 * only occur on the 0->1 transition of refs.
+		 */
+		if (buffer->io.mod_list == &hmp->lose_list) {
+			TAILQ_REMOVE(buffer->io.mod_list, &buffer->io,
+				     mod_entry);
+			buffer->io.mod_list = NULL;
+			KKASSERT(buffer->io.modified == 0);
+		}
+		goto found;
+	}
 
 	/*
 	 * What is the buffer class?
 	 */
+	zone = HAMMER_ZONE_DECODE(buf_offset);
+
 	switch(zone) {
 	case HAMMER_ZONE_LARGE_DATA_INDEX:
 	case HAMMER_ZONE_SMALL_DATA_INDEX:
@@ -534,83 +552,61 @@ hammer_get_buffer(hammer_mount_t hmp, hammer_off_t buf_offset,
 	 * Handle blockmap offset translations
 	 */
 	if (zone >= HAMMER_ZONE_BTREE_INDEX) {
-		buf_offset = hammer_blockmap_lookup(hmp, buf_offset, errorp);
-		KKASSERT(*errorp == 0);
+		zone2_offset = hammer_blockmap_lookup(hmp, buf_offset, errorp);
 	} else if (zone == HAMMER_ZONE_UNDO_INDEX) {
-		buf_offset = hammer_undo_lookup(hmp, buf_offset, errorp);
-		KKASSERT(*errorp == 0);
+		zone2_offset = hammer_undo_lookup(hmp, buf_offset, errorp);
+	} else {
+		KKASSERT(zone == HAMMER_ZONE_RAW_BUFFER_INDEX);
+		zone2_offset = buf_offset;
+		*errorp = 0;
 	}
+	if (*errorp)
+		return(NULL);
 
 	/*
-	 * Locate the buffer given its zone-2 offset.
+	 * Calculate the base zone2-offset and acquire the volume
+	 *
+	 * NOTE: zone2_offset and maxbuf_off are both full zone-2 offset
+	 * specifications.
 	 */
-	buf_offset &= ~HAMMER_BUFMASK64;
-	KKASSERT((buf_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_RAW_BUFFER);
-	vol_no = HAMMER_VOL_DECODE(buf_offset);
+	zone2_offset &= ~HAMMER_BUFMASK64;
+	KKASSERT((zone2_offset & HAMMER_OFF_ZONE_MASK) ==
+		 HAMMER_ZONE_RAW_BUFFER);
+	vol_no = HAMMER_VOL_DECODE(zone2_offset);
 	volume = hammer_get_volume(hmp, vol_no, errorp);
 	if (volume == NULL)
 		return(NULL);
 
-	/*
-	 * NOTE: buf_offset and maxbuf_off are both full zone-2 offset
-	 * specifications.
-	 */
-	KKASSERT(buf_offset < volume->maxbuf_off);
+	KKASSERT(zone2_offset < volume->maxbuf_off);
 
 	/*
-	 * Locate and lock the buffer structure, creating one if necessary.
+	 * Allocate a new buffer structure.  We will check for races later.
 	 */
-again:
-	buffer = RB_LOOKUP(hammer_buf_rb_tree, &volume->rb_bufs_root,
-			   buf_offset);
-	if (buffer == NULL) {
-		++hammer_count_buffers;
-		buffer = kmalloc(sizeof(*buffer), M_HAMMER, M_WAITOK|M_ZERO);
-		buffer->zone2_offset = buf_offset;
-		buffer->volume = volume;
+	++hammer_count_buffers;
+	buffer = kmalloc(sizeof(*buffer), M_HAMMER, M_WAITOK|M_ZERO);
+	buffer->zone2_offset = zone2_offset;
+	buffer->zoneX_offset = buf_offset;
+	buffer->volume = volume;
 
-		hammer_io_init(&buffer->io, hmp, iotype);
-		buffer->io.offset = volume->ondisk->vol_buf_beg +
-				    (buf_offset & HAMMER_OFF_SHORT_MASK);
-		TAILQ_INIT(&buffer->clist);
-		hammer_ref(&buffer->io.lock);
+	hammer_io_init(&buffer->io, hmp, iotype);
+	buffer->io.offset = volume->ondisk->vol_buf_beg +
+			    (zone2_offset & HAMMER_OFF_SHORT_MASK);
+	TAILQ_INIT(&buffer->clist);
+	hammer_ref(&buffer->io.lock);
 
-		/*
-		 * Insert the buffer into the RB tree and handle late
-		 * collisions.
-		 */
-		if (RB_INSERT(hammer_buf_rb_tree, &volume->rb_bufs_root, buffer)) {
-			hammer_unref(&buffer->io.lock);
-			--hammer_count_buffers;
-			kfree(buffer, M_HAMMER);
-			goto again;
-		}
-		hammer_ref(&volume->io.lock);
-	} else {
-		hammer_ref(&buffer->io.lock);
-
-		/*
-		 * The buffer is no longer loose if it has a ref.
-		 */
-		if (buffer->io.mod_list == &hmp->lose_list) {
-			TAILQ_REMOVE(buffer->io.mod_list, &buffer->io,
-				     mod_entry);
-			buffer->io.mod_list = NULL;
-		}
-		if (buffer->io.lock.refs == 1)
-			hammer_io_reinit(&buffer->io, iotype);
-		else
-			KKASSERT(buffer->io.type == iotype);
+	/*
+	 * Insert the buffer into the RB tree and handle late collisions.
+	 */
+	if (RB_INSERT(hammer_buf_rb_tree, &hmp->rb_bufs_root, buffer)) {
+		hammer_unref(&buffer->io.lock);
+		--hammer_count_buffers;
+		kfree(buffer, M_HAMMER);
+		goto again;
 	}
+found:
 
 	/*
-	 * Cache the blockmap translation
-	 */
-	if ((zoneX_offset & HAMMER_OFF_ZONE_MASK) != HAMMER_ZONE_RAW_BUFFER)
-		buffer->zoneX_offset = zoneX_offset;
-
-	/*
-	 * Deal with on-disk info
+	 * Deal with on-disk info and loading races.
 	 */
 	if (buffer->ondisk == NULL || buffer->io.loading) {
 		*errorp = hammer_load_buffer(buffer, isnew);
@@ -621,31 +617,42 @@ again:
 	} else {
 		*errorp = 0;
 	}
-	hammer_rel_volume(volume, 0);
 	return(buffer);
 }
 
 /*
- * Clear the cached zone-X translation for a buffer.
+ * Destroy all buffers covering the specified zoneX offset range.  This
+ * is called when the related blockmap layer2 entry is freed.  The buffers
+ * must not be in use or modified.
  */
 void
-hammer_clrxlate_buffer(hammer_mount_t hmp, hammer_off_t buf_offset)
+hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
+		   hammer_off_t zone2_offset, int bytes)
 {
 	hammer_buffer_t buffer;
 	hammer_volume_t volume;
 	int vol_no;
 	int error;
 
-	buf_offset &= ~HAMMER_BUFMASK64;
-	KKASSERT((buf_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_RAW_BUFFER);
-	vol_no = HAMMER_VOL_DECODE(buf_offset);
+	vol_no = HAMMER_VOL_DECODE(zone2_offset);
 	volume = hammer_get_volume(hmp, vol_no, &error);
-	if (volume == NULL)
-		return;
-	buffer = RB_LOOKUP(hammer_buf_rb_tree, &volume->rb_bufs_root,
-			   buf_offset);
-	if (buffer)
-		buffer->zoneX_offset = 0;
+	KKASSERT(error == 0);
+
+	while (bytes > 0) {
+		buffer = RB_LOOKUP(hammer_buf_rb_tree, &hmp->rb_bufs_root,
+				   base_offset);
+		if (buffer) {
+			KKASSERT(buffer->io.lock.refs == 0);
+			KKASSERT(buffer->io.modified == 0);
+			KKASSERT(buffer->zone2_offset == zone2_offset);
+			KKASSERT(buffer->volume == volume);
+			hammer_unload_buffer(buffer, NULL);
+		}
+		hammer_io_inval(volume, zone2_offset);
+		base_offset += HAMMER_BUFSIZE;
+		zone2_offset += HAMMER_BUFSIZE;
+		bytes -= HAMMER_BUFSIZE;
+	}
 	hammer_rel_volume(volume, 0);
 }
 
@@ -762,9 +769,10 @@ hammer_rel_buffer(hammer_buffer_t buffer, int flush)
 				/*
 				 * Final cleanup
 				 */
-				volume = buffer->volume;
 				RB_REMOVE(hammer_buf_rb_tree,
-					  &volume->rb_bufs_root, buffer);
+					  &buffer->io.hmp->rb_bufs_root,
+					  buffer);
+				volume = buffer->volume;
 				buffer->volume = NULL; /* sanity */
 				hammer_rel_volume(volume, 0);
 				freeme = 1;
@@ -780,31 +788,6 @@ hammer_rel_buffer(hammer_buffer_t buffer, int flush)
 		--hammer_count_buffers;
 		kfree(buffer, M_HAMMER);
 	}
-}
-
-/*
- * Remove the zoneX translation cache for a buffer given its zone-2 offset.
- */
-void
-hammer_uncache_buffer(hammer_mount_t hmp, hammer_off_t buf_offset)
-{
-	hammer_volume_t volume;
-	hammer_buffer_t buffer;
-	int vol_no;
-	int error;
-
-	buf_offset &= ~HAMMER_BUFMASK64;
-	KKASSERT((buf_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_RAW_BUFFER);
-	vol_no = HAMMER_VOL_DECODE(buf_offset);
-	volume = hammer_get_volume(hmp, vol_no, &error);
-	KKASSERT(volume != 0);
-	KKASSERT(buf_offset < volume->maxbuf_off);
-
-	buffer = RB_LOOKUP(hammer_buf_rb_tree, &volume->rb_bufs_root,
-			   buf_offset);
-	if (buffer)
-		buffer->zoneX_offset = 0;
-	hammer_rel_volume(volume, 0);
 }
 
 /*
@@ -883,29 +866,6 @@ hammer_bnew(hammer_mount_t hmp, hammer_off_t buf_offset, int *errorp,
 		return(NULL);
 	else
 		return((char *)buffer->ondisk + xoff);
-}
-
-/*
- * Invalidate HAMMER_BUFSIZE bytes at zone2_offset.  This is used to
- * make sure that we do not have the related buffer cache buffer at
- * the device layer because it is going to be aliased in a high level
- * vnode layer.
- */
-void
-hammer_binval(hammer_mount_t hmp, hammer_off_t zone2_offset)
-{
-	hammer_volume_t volume;
-	int vol_no;
-	int error;
-
-	KKASSERT((zone2_offset & HAMMER_OFF_ZONE_MASK) ==
-		 HAMMER_ZONE_RAW_BUFFER);
-	vol_no = HAMMER_VOL_DECODE(zone2_offset);
-	volume = hammer_get_volume(hmp, vol_no, &error);
-	if (volume) {
-		hammer_io_inval(volume, zone2_offset);
-		hammer_rel_volume(volume, 0);
-	}
 }
 
 /************************************************************************
@@ -1267,126 +1227,6 @@ hammer_alloc_btree(hammer_transaction_t trans, int *errorp)
 		hammer_rel_buffer(buffer, 0);
 	return(node);
 }
-
-#if 0
-
-/*
- * The returned buffers are already appropriately marked as being modified.
- * If the caller marks them again unnecessary undo records may be generated.
- *
- * In-band data is indicated by data_bufferp == NULL.  Pass a data_len of 0
- * for zero-fill (caller modifies data_len afterwords).
- *
- * If the caller is responsible for calling hammer_modify_*() prior to making
- * any additional modifications to either the returned record buffer or the
- * returned data buffer.
- */
-void *
-hammer_alloc_record(hammer_transaction_t trans, 
-		    hammer_off_t *rec_offp, u_int16_t rec_type, 
-		    struct hammer_buffer **rec_bufferp,
-		    int32_t data_len, void **datap,
-		    hammer_off_t *data_offp,
-		    struct hammer_buffer **data_bufferp, int *errorp)
-{
-	hammer_record_ondisk_t rec;
-	hammer_off_t rec_offset;
-	hammer_off_t data_offset;
-	int32_t reclen;
-
-	if (datap)
-		*datap = NULL;
-
-	/*
-	 * Allocate the record
-	 */
-	rec_offset = hammer_blockmap_alloc(trans, HAMMER_ZONE_RECORD_INDEX,
-					   HAMMER_RECORD_SIZE, errorp);
-	if (*errorp)
-		return(NULL);
-	if (data_offp)
-		*data_offp = 0;
-
-	/*
-	 * Allocate data
-	 */
-	if (data_len) {
-		if (data_bufferp == NULL) {
-			switch(rec_type) {
-			case HAMMER_RECTYPE_DATA:
-				reclen = offsetof(struct hammer_data_record,
-						  data[0]);
-				break;
-			case HAMMER_RECTYPE_DIRENTRY:
-				reclen = offsetof(struct hammer_entry_record,
-						  name[0]);
-				break;
-			default:
-				panic("hammer_alloc_record: illegal "
-				      "in-band data");
-				/* NOT REACHED */
-				reclen = 0;
-				break;
-			}
-			KKASSERT(reclen + data_len <= HAMMER_RECORD_SIZE);
-			data_offset = rec_offset + reclen;
-		} else if (data_len < HAMMER_BUFSIZE) {
-			data_offset = hammer_blockmap_alloc(trans,
-						HAMMER_ZONE_SMALL_DATA_INDEX,
-						data_len, errorp);
-			*data_offp = data_offset;
-		} else {
-			data_offset = hammer_blockmap_alloc(trans,
-						HAMMER_ZONE_LARGE_DATA_INDEX,
-						data_len, errorp);
-			*data_offp = data_offset;
-		}
-	} else {
-		data_offset = 0;
-	}
-	if (*errorp) {
-		hammer_blockmap_free(trans, rec_offset, HAMMER_RECORD_SIZE);
-		return(NULL);
-	}
-
-	/*
-	 * Basic return values.
-	 *
-	 * Note that because this is a 'new' buffer, there is no need to
-	 * generate UNDO records for it.
-	 */
-	*rec_offp = rec_offset;
-	rec = hammer_bread(trans->hmp, rec_offset, errorp, rec_bufferp);
-	hammer_modify_buffer(trans, *rec_bufferp, NULL, 0);
-	bzero(rec, sizeof(*rec));
-	KKASSERT(*errorp == 0);
-	rec->base.data_off = data_offset;
-	rec->base.data_len = data_len;
-	hammer_modify_buffer_done(*rec_bufferp);
-
-	if (data_bufferp) {
-		if (data_len) {
-			*datap = hammer_bread(trans->hmp, data_offset, errorp,
-					      data_bufferp);
-			KKASSERT(*errorp == 0);
-		} else {
-			*datap = NULL;
-		}
-	} else if (data_len) {
-		KKASSERT(data_offset + data_len - rec_offset <=
-			 HAMMER_RECORD_SIZE); 
-		if (datap) {
-			*datap = (void *)((char *)rec +
-					  (int32_t)(data_offset - rec_offset));
-		}
-	} else {
-		KKASSERT(datap == NULL);
-	}
-	KKASSERT(*errorp == 0);
-	return(rec);
-}
-
-#endif
 
 /*
  * Allocate data.  If the address of a data buffer is supplied then

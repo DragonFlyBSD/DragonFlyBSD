@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.59 2008/06/07 07:41:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.60 2008/06/08 18:16:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -149,10 +149,16 @@ struct vop_ops hammer_fifo_vops = {
 	.vop_setattr =		hammer_vop_setattr
 };
 
+#ifdef DEBUG_TRUNCATE
+struct hammer_inode *HammerTruncIp;
+#endif
+
 static int hammer_dounlink(hammer_transaction_t trans, struct nchandle *nch,
 			   struct vnode *dvp, struct ucred *cred, int flags);
 static int hammer_vop_strategy_read(struct vop_strategy_args *ap);
 static int hammer_vop_strategy_write(struct vop_strategy_args *ap);
+static void hammer_cleanup_write_io(hammer_inode_t ip);
+static void hammer_update_rsv_databufs(hammer_inode_t ip);
 
 #if 0
 static
@@ -307,16 +313,23 @@ hammer_vop_write(struct vop_write_args *ap)
 		 *
 		 * Always check at the beginning so separate writes are
 		 * not able to bypass this code.
+		 *
+		 * WARNING: Cannot unlock vp when doing a NOCOPY write as
+		 * part of a putpages operation.  Doing so could cause us
+		 * to deadlock against the VM system when we try to re-lock.
 		 */
 		if ((count++ & 15) == 0) {
-			vn_unlock(ap->a_vp);
-			if ((ap->a_ioflag & IO_NOBWILL) == 0)
-				bwillwrite();
+			if (uio->uio_segflg != UIO_NOCOPY) {
+				vn_unlock(ap->a_vp);
+				if ((ap->a_ioflag & IO_NOBWILL) == 0)
+					bwillwrite();
+			}
 			if (ip->rsv_recs > hammer_limit_irecs) {
 				hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
 				hammer_wait_inode(ip);
 			}
-			vn_lock(ap->a_vp, LK_EXCLUSIVE|LK_RETRY);
+			if (uio->uio_segflg != UIO_NOCOPY)
+				vn_lock(ap->a_vp, LK_EXCLUSIVE|LK_RETRY);
 		}
 
 		rel_offset = (int)(uio->uio_offset & HAMMER_BUFMASK);
@@ -402,6 +415,9 @@ hammer_vop_write(struct vop_write_args *ap)
 		flags |= HAMMER_INODE_DDIRTY;	/* XXX mtime */
 		hammer_modify_inode(ip, flags);
 
+		/*
+		 * Try to keep track of cached dirty data.
+		 */
 		if ((bp->b_flags & B_DIRTY) == 0) {
 			++ip->rsv_databufs;
 			++ip->hmp->rsv_databufs;
@@ -424,7 +440,6 @@ hammer_vop_write(struct vop_write_args *ap)
 			 * too full, which would trigger non-optimal
 			 * flushes.
 			 */
-			bp->b_flags |= B_NOCACHE;
 			bawrite(bp);
 #endif
 		} else {
@@ -1509,11 +1524,29 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			 */
 			if (truncating) {
 				hammer_ip_frontend_trunc(ip, vap->va_size);
+				hammer_update_rsv_databufs(ip);
+#ifdef DEBUG_TRUNCATE
+				if (HammerTruncIp == NULL)
+					HammerTruncIp = ip;
+#endif
 				if ((ip->flags & HAMMER_INODE_TRUNCATED) == 0) {
 					ip->flags |= HAMMER_INODE_TRUNCATED;
 					ip->trunc_off = vap->va_size;
+#ifdef DEBUG_TRUNCATE
+					if (ip == HammerTruncIp)
+					kprintf("truncate1 %016llx\n", ip->trunc_off);
+#endif
 				} else if (ip->trunc_off > vap->va_size) {
 					ip->trunc_off = vap->va_size;
+#ifdef DEBUG_TRUNCATE
+					if (ip == HammerTruncIp)
+					kprintf("truncate2 %016llx\n", ip->trunc_off);
+#endif
+				} else {
+#ifdef DEBUG_TRUNCATE
+					if (ip == HammerTruncIp)
+					kprintf("truncate3 %016llx (ignored)\n", vap->va_size);
+#endif
 				}
 			}
 
@@ -1998,7 +2031,8 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	hammer_inode_t ip;
 	struct bio *bio;
 	struct buf *bp;
-	int force_alt = 0;
+	int bytes;
+	int error;
 
 	bio = ap->a_bio;
 	bp = bio->bio_buf;
@@ -2028,59 +2062,77 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	/*
 	 * Attempt to reserve space and issue a direct-write from the
 	 * front-end.  If we can't we will queue the BIO to the flusher.
+	 * The bulk/direct-write code will still bcopy if writing less
+	 * then full-sized blocks (at the end of a file).
 	 *
 	 * If we can the I/O can be issued and an in-memory record will
-	 * be installed to reference the stroage until the flusher can get to
+	 * be installed to reference the storage until the flusher can get to
 	 * it.
 	 *
 	 * Since we own the high level bio the front-end will not try to
-	 * do a read until the write completes.
+	 * do a direct-read until the write completes.
 	 */
-	if ((bp->b_bufsize & HAMMER_BUFMASK) == 0 && 
-	    bio->bio_offset + bp->b_bufsize <= ip->ino_data.size) {
-		record = hammer_ip_add_bulk(ip, bio->bio_offset, bp->b_data,
-					    bp->b_bufsize, &force_alt);
-		if (record) {
-			hammer_io_direct_write(ip->hmp, &record->leaf, bio);
-			hammer_rel_mem_record(record);
-			if (ip->rsv_recs > hammer_limit_irecs / 2)
-				hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-			else
-				hammer_flush_inode(ip, 0);
-			return(0);
-		}
-	}
-
-	/*
-	 * Queue the bio to the flusher and let it deal with it.
-	 *
-	 * If the inode is being flushed we cannot re-queue buffers
-	 * it may have already flushed, or it could result in duplicate
-	 * records in the database.
-	 */
-	BUF_KERNPROC(bp);
-	if (ip->flush_state == HAMMER_FST_FLUSH || force_alt)
-		TAILQ_INSERT_TAIL(&ip->bio_alt_list, bio, bio_act);
+	KKASSERT((bio->bio_offset & HAMMER_BUFMASK) == 0);
+	KKASSERT(bio->bio_offset < ip->ino_data.size);
+	if (bio->bio_offset + bp->b_bufsize <= ip->ino_data.size)
+		bytes = bp->b_bufsize;
 	else
-		TAILQ_INSERT_TAIL(&ip->bio_list, bio, bio_act);
-	++hammer_bio_count;
-	hammer_modify_inode(ip, HAMMER_INODE_BUFS);
-	hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+		bytes = (int)(ip->ino_data.size - bio->bio_offset);
 
-	return(0);
+	record = hammer_ip_add_bulk(ip, bio->bio_offset, bp->b_data,
+				    bytes, &error);
+	if (record) {
+		hammer_io_direct_write(ip->hmp, &record->leaf, bio);
+		hammer_rel_mem_record(record);
+		if (ip->rsv_recs > hammer_limit_irecs / 2)
+			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+		else
+			hammer_flush_inode(ip, 0);
+	} else {
+		bp->b_error = error;
+		bp->b_flags |= B_ERROR;
+		biodone(ap->a_bio);
+	}
+	hammer_cleanup_write_io(ip);
+	return(error);
 }
 
 /*
  * Clean-up after disposing of a dirty frontend buffer's data.
  * This is somewhat heuristical so try to be robust.
  */
-void
+static void
 hammer_cleanup_write_io(hammer_inode_t ip)
 {
 	if (ip->rsv_databufs) {
 		--ip->rsv_databufs;
 		--ip->hmp->rsv_databufs;
 	}
+}
+
+/*
+ * We can lose track of dirty buffer cache buffers if we truncate, this
+ * routine will resynchronize the count.
+ */
+static
+void
+hammer_update_rsv_databufs(hammer_inode_t ip)
+{
+	struct buf *bp;
+	int delta;
+	int n;
+
+	if (ip->vp) {
+		n = 0;
+		RB_FOREACH(bp, buf_rb_tree, &ip->vp->v_rbdirty_tree) {
+			++n;
+		}
+	} else {
+		n = 0;
+	}
+	delta = n - ip->rsv_databufs;
+	ip->rsv_databufs += delta;
+	ip->hmp->rsv_databufs += delta;
 }
 
 /*

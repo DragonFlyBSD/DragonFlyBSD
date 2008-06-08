@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.39 2008/06/07 07:41:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.40 2008/06/08 18:16:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -63,11 +63,12 @@ int hammer_count_volumes;
 int hammer_count_buffers;
 int hammer_count_nodes;
 int hammer_count_dirtybufs;		/* global */
+int hammer_count_reservations;
 int hammer_stats_btree_iterations;
 int hammer_stats_record_iterations;
 int hammer_limit_dirtybufs = 100;	/* per-mount */
-int hammer_limit_irecs = 8192;		/* per-inode */
-int hammer_limit_recs = 16384;		/* as a whole */
+int hammer_limit_irecs;			/* per-inode */
+int hammer_limit_recs;			/* as a whole XXX */
 int hammer_bio_count;
 int64_t hammer_contention_count;
 int64_t hammer_zone_limit;
@@ -113,6 +114,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, count_nodes, CTLFLAG_RD,
 	   &hammer_count_nodes, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_dirtybufs, CTLFLAG_RD,
 	   &hammer_count_dirtybufs, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, count_reservations, CTLFLAG_RD,
+	   &hammer_count_reservations, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, zone_limit, CTLFLAG_RW,
 	   &hammer_zone_limit, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, contention_count, CTLFLAG_RW,
@@ -164,7 +167,10 @@ MODULE_VERSION(hammer, 1);
 static int
 hammer_vfs_init(struct vfsconf *conf)
 {
-	/*hammer_init_alist_config();*/
+	if (hammer_limit_irecs == 0)
+		hammer_limit_irecs = nbuf;
+	if (hammer_limit_recs == 0)		/* XXX TODO */
+		hammer_limit_recs = hammer_limit_irecs * 4;
 	return(0);
 }
 
@@ -292,6 +298,9 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	RB_INIT(&hmp->rb_inos_root);
 	RB_INIT(&hmp->rb_nods_root);
 	RB_INIT(&hmp->rb_undo_root);
+	RB_INIT(&hmp->rb_resv_root);
+	RB_INIT(&hmp->rb_bufs_root);
+
 	hmp->ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
 
 	TAILQ_INIT(&hmp->volu_list);
@@ -513,8 +522,10 @@ hammer_free_hmp(struct mount *mp)
 	 */
 #endif
 	/*
-	 * Unload the volumes
+	 * Unload buffers and then volumes
 	 */
+        RB_SCAN(hammer_buf_rb_tree, &hmp->rb_bufs_root, NULL,
+		hammer_unload_buffer, NULL);
 	RB_SCAN(hammer_vol_rb_tree, &hmp->rb_vols_root, NULL,
 		hammer_unload_volume, NULL);
 

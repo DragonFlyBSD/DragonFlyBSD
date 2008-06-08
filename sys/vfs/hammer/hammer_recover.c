@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.20 2008/06/07 07:41:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.21 2008/06/08 18:16:26 dillon Exp $
  */
 
 #include "hammer.h"
@@ -413,6 +413,8 @@ static int hammer_recover_flush_buffer_callback(hammer_buffer_t, void *);
 void
 hammer_recover_flush_buffers(hammer_mount_t hmp, hammer_volume_t root_volume)
 {
+	RB_SCAN(hammer_buf_rb_tree, &hmp->rb_bufs_root, NULL,
+		hammer_recover_flush_buffer_callback, NULL);
 	RB_SCAN(hammer_vol_rb_tree, &hmp->rb_vols_root, NULL,
 		hammer_recover_flush_volume_callback, root_volume);
 	if (root_volume->io.recovered) {
@@ -432,8 +434,6 @@ hammer_recover_flush_volume_callback(hammer_volume_t volume, void *data)
 {
 	hammer_volume_t root_volume = data;
 
-	RB_SCAN(hammer_buf_rb_tree, &volume->rb_bufs_root, NULL,
-		hammer_recover_flush_buffer_callback, NULL);
 	if (volume->io.recovered && volume != root_volume) {
 		volume->io.recovered = 0;
 		hammer_io_flush(&volume->io);
@@ -449,7 +449,7 @@ hammer_recover_flush_buffer_callback(hammer_buffer_t buffer, void *data)
 	if (buffer->io.recovered) {
 		buffer->io.recovered = 0;
 		hammer_io_flush(&buffer->io);
-		hammer_rel_buffer(buffer, 0);
+		hammer_rel_buffer(buffer, 2);
 	}
 	return(0);
 }

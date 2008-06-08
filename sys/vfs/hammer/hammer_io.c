@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.34 2008/06/07 07:41:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.35 2008/06/08 18:16:26 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -64,45 +64,6 @@ hammer_io_init(hammer_io_t io, hammer_mount_t hmp, enum hammer_io_type type)
 {
 	io->hmp = hmp;
 	io->type = type;
-}
-
-void
-hammer_io_reinit(hammer_io_t io, enum hammer_io_type type)
-{
-	hammer_mount_t hmp = io->hmp;
-
-	if (io->modified) {
-		KKASSERT(io->mod_list != NULL);
-		if (io->mod_list == &hmp->volu_list ||
-		    io->mod_list == &hmp->meta_list) {
-			--hmp->locked_dirty_count;
-			--hammer_count_dirtybufs;
-		}
-		TAILQ_REMOVE(io->mod_list, io, mod_entry);
-		io->mod_list = NULL;
-	}
-	io->type = type;
-	if (io->modified) {
-		switch(io->type) {
-		case HAMMER_STRUCTURE_VOLUME:
-			io->mod_list = &hmp->volu_list;
-			++hmp->locked_dirty_count;
-			++hammer_count_dirtybufs;
-			break;
-		case HAMMER_STRUCTURE_META_BUFFER:
-			io->mod_list = &hmp->meta_list;
-			++hmp->locked_dirty_count;
-			++hammer_count_dirtybufs;
-			break;
-		case HAMMER_STRUCTURE_UNDO_BUFFER:
-			io->mod_list = &hmp->undo_list;
-			break;
-		case HAMMER_STRUCTURE_DATA_BUFFER:
-			io->mod_list = &hmp->data_list;
-			break;
-		}
-		TAILQ_INSERT_TAIL(io->mod_list, io, mod_entry);
-	}
 }
 
 /*
@@ -258,8 +219,12 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 		      (zone2_offset & HAMMER_OFF_SHORT_MASK);
 	if (findblk(volume->devvp, phys_offset)) {
 		bp = getblk(volume->devvp, phys_offset, HAMMER_BUFSIZE, 0, 0);
-		bp->b_flags |= B_INVAL;
-		brelse(bp);
+		if (LIST_FIRST(&bp->b_dep) != NULL) {
+			hammer_io_deallocate(bp);
+		} else {
+			bp->b_flags |= B_INVAL;
+			brelse(bp);
+		}
 	}
 }
 
@@ -812,7 +777,6 @@ struct bio_ops hammer_bioops = {
 /*
  * Read a buffer associated with a front-end vnode directly from the
  * disk media.  The bio may be issued asynchronously.
- *
  */
 int
 hammer_io_direct_read(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
@@ -826,6 +790,7 @@ hammer_io_direct_read(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 	int error;
 
 	KKASSERT(leaf->data_offset >= HAMMER_ZONE_BTREE);
+	KKASSERT((leaf->data_offset & HAMMER_BUFMASK) == 0);
 	zone2_offset = hammer_blockmap_lookup(hmp, leaf->data_offset, &error);
 	if (error == 0) {
 		vol_no = HAMMER_VOL_DECODE(zone2_offset);
@@ -833,13 +798,10 @@ hammer_io_direct_read(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 		if (error == 0 && zone2_offset >= volume->maxbuf_off)
 			error = EIO;
 		if (error == 0) {
+			zone2_offset &= HAMMER_OFF_SHORT_MASK;
 			nbio = push_bio(bio);
 			nbio->bio_offset = volume->ondisk->vol_buf_beg +
-				       (zone2_offset & HAMMER_OFF_SHORT_MASK);
-#if 0
-			kprintf("direct_read  %016llx %016llx %016llx\n",
-				bio->bio_offset, nbio->bio_offset, leaf->data_offset);
-#endif
+					   zone2_offset;
 			vn_strategy(volume->devvp, nbio);
 		}
 		hammer_rel_volume(volume, 0);
@@ -861,35 +823,62 @@ int
 hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 		       struct bio *bio)
 {
+	hammer_off_t buf_offset;
 	hammer_off_t zone2_offset;
 	hammer_volume_t volume;
+	hammer_buffer_t buffer;
 	struct buf *bp;
 	struct bio *nbio;
+	char *ptr;
 	int vol_no;
 	int error;
 
-	KKASSERT(leaf->data_offset >= HAMMER_ZONE_BTREE);
-	zone2_offset = hammer_blockmap_lookup(hmp, leaf->data_offset, &error);
+	buf_offset = leaf->data_offset;
+
+	KKASSERT(buf_offset > HAMMER_ZONE_BTREE);
 	KKASSERT(bio->bio_buf->b_cmd == BUF_CMD_WRITE);
 
-	if (error == 0) {
+	if ((buf_offset & HAMMER_BUFMASK) == 0 &&
+	    leaf->data_len == HAMMER_BUFSIZE) {
+		/*
+		 * We are using the vnode's bio to write directly to the
+		 * media, any hammer_buffer at the same zone-X offset will
+		 * now have stale data.
+		 */
+		zone2_offset = hammer_blockmap_lookup(hmp, buf_offset, &error);
 		vol_no = HAMMER_VOL_DECODE(zone2_offset);
 		volume = hammer_get_volume(hmp, vol_no, &error);
 
 		if (error == 0 && zone2_offset >= volume->maxbuf_off)
 			error = EIO;
 		if (error == 0) {
+			hammer_del_buffers(hmp, buf_offset,
+					   zone2_offset, HAMMER_BUFSIZE);
+			bp = bio->bio_buf;
+			KKASSERT(bp->b_bufsize == HAMMER_BUFSIZE);
+			zone2_offset &= HAMMER_OFF_SHORT_MASK;
+
 			nbio = push_bio(bio);
 			nbio->bio_offset = volume->ondisk->vol_buf_beg +
-				       (zone2_offset & HAMMER_OFF_SHORT_MASK);
-#if 0
-			kprintf("direct_write %016llx %016llx %016llx\n",
-				bio->bio_offset, nbio->bio_offset,
-				leaf->data_offset);
-#endif
+					   zone2_offset;
 			vn_strategy(volume->devvp, nbio);
+			kprintf("x");
 		}
 		hammer_rel_volume(volume, 0);
+	} else {
+		KKASSERT(((buf_offset ^ (buf_offset + leaf->data_len - 1)) & ~HAMMER_BUFMASK64) == 0);
+		buffer = NULL;
+		ptr = hammer_bread(hmp, buf_offset, &error, &buffer);
+		if (error == 0) {
+			kprintf("y");
+			bp = bio->bio_buf;
+			hammer_io_modify(&buffer->io, 1);
+			bcopy(bp->b_data, ptr, leaf->data_len);
+			hammer_io_modify_done(&buffer->io);
+			hammer_rel_buffer(buffer, 0);
+			bp->b_resid = 0;
+			biodone(bio);
+		}
 	}
 	if (error) {
 		bp = bio->bio_buf;
