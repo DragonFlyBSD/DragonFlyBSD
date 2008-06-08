@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.12 2008/02/06 08:21:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx100.c,v 1.13 2008/06/08 10:06:05 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -327,7 +327,10 @@ acx100_set_param(device_t dev)
 	sc->chip_chan_flags = IEEE80211_CHAN_B;
 
 	ic->ic_phytype = IEEE80211_T_DS;
-	ic->ic_sup_rates[IEEE80211_MODE_11B] = acx_rates_11b;
+	if (acx_enable_pbcc)
+		ic->ic_sup_rates[IEEE80211_MODE_11B] = acx_rates_11b_pbcc;
+	else
+		ic->ic_sup_rates[IEEE80211_MODE_11B] = acx_rates_11b;
 
 	IEEE80211_ONOE_PARAM_SETUP(&sc->sc_onoe_param);
 

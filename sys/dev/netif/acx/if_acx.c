@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.29 2008/06/06 10:47:14 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.30 2008/06/08 10:06:05 sephe Exp $
  */
 
 /*
@@ -175,9 +175,16 @@ static int	acx_sysctl_msdu_lifetime(SYSCTL_HANDLER_ARGS);
 static int	acx_sysctl_free_firmware(SYSCTL_HANDLER_ARGS);
 
 const struct ieee80211_rateset	acx_rates_11b =
-	{ 5, { 2, 4, 11, 22, 44 } };
+	{ 4, { 2, 4, 11, 22 } };
 const struct ieee80211_rateset	acx_rates_11g =
+	{ 12, { 2, 4, 11, 22, 12, 18, 24, 36, 48, 72, 96, 108 } };
+const struct ieee80211_rateset	acx_rates_11b_pbcc =
+	{ 5, { 2, 4, 11, 22, 44 } };
+const struct ieee80211_rateset	acx_rates_11g_pbcc =
 	{ 13, { 2, 4, 11, 22, 44, 12, 18, 24, 36, 48, 72, 96, 108 } };
+
+int	acx_enable_pbcc = 1;
+TUNABLE_INT("hw.acx.enable_pbcc", &acx_enable_pbcc);
 
 static const struct acx_device {
 	uint16_t	vid;
@@ -499,7 +506,8 @@ acx_attach(device_t dev)
 		       IEEE80211_C_MONITOR |	/* Monitor mode */
 		       IEEE80211_C_IBSS |	/* IBSS modes */
 		       IEEE80211_C_SHPREAMBLE;	/* Short preamble */
-	ic->ic_caps_ext = IEEE80211_CEXT_PBCC;	/* PBCC modulation */
+	if (acx_enable_pbcc)
+		ic->ic_caps_ext = IEEE80211_CEXT_PBCC;	/* PBCC modulation */
 
 	/* Get station id */
 	for (i = 0; i < IEEE80211_ADDR_LEN; ++i) {

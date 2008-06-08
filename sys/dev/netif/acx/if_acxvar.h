@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.13 2008/06/06 10:47:14 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acxvar.h,v 1.14 2008/06/08 10:06:05 sephe Exp $
  */
 
 #ifndef _IF_ACXVAR_H
@@ -512,7 +512,10 @@ struct acx_softc {
 #define ACX_BASE_RADIO_FW_PATH	"acx/%s/FwRad%02x.bin"
 
 extern const struct ieee80211_rateset	acx_rates_11b;
+extern const struct ieee80211_rateset	acx_rates_11b_pbcc;
 extern const struct ieee80211_rateset	acx_rates_11g;
+extern const struct ieee80211_rateset	acx_rates_11g_pbcc;
+extern int				acx_enable_pbcc;
 
 void	acx100_set_param(device_t);
 void	acx111_set_param(device_t);

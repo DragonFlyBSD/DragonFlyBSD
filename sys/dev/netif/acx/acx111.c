@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.15 2008/06/06 10:47:14 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/acx111.c,v 1.16 2008/06/08 10:06:05 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -380,8 +380,13 @@ acx111_set_param(device_t dev)
 
 	ic->ic_caps = IEEE80211_C_WPA | IEEE80211_C_SHSLOT;
 	ic->ic_phytype = IEEE80211_T_OFDM;
-	ic->ic_sup_rates[IEEE80211_MODE_11B] = acx_rates_11b;
-	ic->ic_sup_rates[IEEE80211_MODE_11G] = acx_rates_11g;
+	if (acx_enable_pbcc) {
+		ic->ic_sup_rates[IEEE80211_MODE_11B] = acx_rates_11b_pbcc;
+		ic->ic_sup_rates[IEEE80211_MODE_11G] = acx_rates_11g_pbcc;
+	} else {
+		ic->ic_sup_rates[IEEE80211_MODE_11B] = acx_rates_11b;
+		ic->ic_sup_rates[IEEE80211_MODE_11G] = acx_rates_11g;
+	}
 
 	IEEE80211_ONOE_PARAM_SETUP(&sc->sc_onoe_param);
 	IEEE80211_AMRR_PARAM_SETUP(&sc->sc_amrr_param);
