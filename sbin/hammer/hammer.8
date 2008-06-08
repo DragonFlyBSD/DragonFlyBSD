@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.18 2008/05/31 18:45:04 dillon Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.19 2008/06/08 20:40:38 swildner Exp $
 .Dd December 31, 2007
 .Dt HAMMER 8
 .Os
@@ -241,7 +241,7 @@ or B-Tree elements and inodes can be reblocked together or by separate
 invocations.
 Generally speaking it is better to reblock them with separate invocations.
 In HAMMER, inodes and data are in separate localization domains and will
-be independantly reblocked.
+be independently reblocked.
 .Pp
 A HAMMER filesystem can be defragmented by specifying a fill percentage
 of 100%.  Since this can potentially rewrite the entire contents of the
