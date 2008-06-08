@@ -32,7 +32,7 @@
  *
  * @(#)data.c	5.3 (Berkeley) 5/13/91
  * $FreeBSD: src/games/larn/data.c,v 1.5 1999/11/30 03:48:59 billf Exp $
- * $DragonFly: src/games/larn/data.c,v 1.4 2006/08/26 17:05:05 pavalos Exp $
+ * $DragonFly: src/games/larn/data.c,v 1.5 2008/06/08 20:40:15 swildner Exp $
  */
 
 /*	data.c		Larn is copyrighted 1986 by Noah Morgan. */
@@ -437,13 +437,13 @@ const char *speldescript[]={
 	"this changes rock to air",
 /* 22 */
 	"dries up water in the immediate vicinity",
-	"you finger will emit a lightning bolt when this spell is cast",
+	"your finger will emit a lightning bolt when this spell is cast",
 	"subtracts hit points from both you and a monster",
 	"this globe helps to protect the player from physical attack",
 	"this creates an avalanche of H2O to flood the immediate chamber",
 	"this is a holy spell and calls upon your god to back you up",
 /* 28 */
-	"terrifies the monster so that hopefully he wont hit the magic user",
+	"terrifies the monster so that hopefully he won't hit the magic user",
 	"the monster is frozen in his tracks if this is successful",
 	"all movement in the caverns ceases for a limited duration",
 	"moves a particular monster around in the dungeon (hopefully away from you)",
