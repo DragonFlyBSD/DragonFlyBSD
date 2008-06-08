@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.36 2008/06/08 03:58:03 sephe Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.37 2008/06/08 08:38:05 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -94,16 +94,23 @@ int
 in_localaddr(struct in_addr in)
 {
 	u_long i = ntohl(in.s_addr);
+	struct in_ifaddr_container *iac;
 	struct in_ifaddr *ia;
 
 	if (subnetsarelocal) {
-		TAILQ_FOREACH(ia, &in_ifaddrhead, ia_link)
+		TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
+			ia = iac->ia;
+
 			if ((i & ia->ia_netmask) == ia->ia_net)
 				return (1);
+		}
 	} else {
-		TAILQ_FOREACH(ia, &in_ifaddrhead, ia_link)
+		TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
+			ia = iac->ia;
+
 			if ((i & ia->ia_subnetmask) == ia->ia_subnet)
 				return (1);
+		}
 	}
 	return (0);
 }
@@ -261,6 +268,101 @@ in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 	}
 }
 
+static void
+in_ialink_dispatch(struct netmsg *nmsg)
+{
+	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
+	struct in_ifaddr *ia = lmsg->u.ms_resultp;
+	struct ifaddr_container *ifac;
+	struct in_ifaddr_container *iac;
+	int cpu = mycpuid;
+
+	crit_enter();
+
+	ifac = &ia->ia_ifa.ifa_containers[cpu];
+	ASSERT_IFAC_VALID(ifac);
+	KASSERT((ifac->ifa_listmask & IFA_LIST_IN_IFADDRHEAD) == 0,
+		("ia is on in_ifaddrheads\n"));
+
+	ifac->ifa_listmask |= IFA_LIST_IN_IFADDRHEAD;
+	iac = &ifac->ifa_proto_u.u_in_ifac;
+	TAILQ_INSERT_TAIL(&in_ifaddrheads[cpu], iac, ia_link);
+
+	crit_exit();
+
+	ifa_forwardmsg(lmsg, cpu + 1);
+}
+
+static void
+in_iaunlink_dispatch(struct netmsg *nmsg)
+{
+	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
+	struct in_ifaddr *ia = lmsg->u.ms_resultp;
+	struct ifaddr_container *ifac;
+	struct in_ifaddr_container *iac;
+	int cpu = mycpuid;
+
+	crit_enter();
+
+	ifac = &ia->ia_ifa.ifa_containers[cpu];
+	ASSERT_IFAC_VALID(ifac);
+	KASSERT(ifac->ifa_listmask & IFA_LIST_IN_IFADDRHEAD,
+		("ia is not on in_ifaddrheads\n"));
+
+	iac = &ifac->ifa_proto_u.u_in_ifac;
+	TAILQ_REMOVE(&in_ifaddrheads[cpu], iac, ia_link);
+	ifac->ifa_listmask &= ~IFA_LIST_IN_IFADDRHEAD;
+
+	crit_exit();
+
+	ifa_forwardmsg(lmsg, cpu + 1);
+}
+
+static void
+in_ialink(struct in_ifaddr *ia)
+{
+	struct netmsg nmsg;
+	struct lwkt_msg *lmsg;
+
+	netmsg_init(&nmsg, &curthread->td_msgport, 0, in_ialink_dispatch);
+	lmsg = &nmsg.nm_lmsg;
+	lmsg->u.ms_resultp = ia;
+
+	ifa_domsg(lmsg);
+}
+
+void
+in_iaunlink(struct in_ifaddr *ia)
+{
+	struct netmsg nmsg;
+	struct lwkt_msg *lmsg;
+
+	netmsg_init(&nmsg, &curthread->td_msgport, 0, in_iaunlink_dispatch);
+	lmsg = &nmsg.nm_lmsg;
+	lmsg->u.ms_resultp = ia;
+
+	ifa_domsg(lmsg);
+}
+
+static __inline struct in_ifaddr *
+in_ianext(struct in_ifaddr *oia)
+{
+	struct ifaddr_container *ifac;
+	struct in_ifaddr_container *iac;
+
+	ifac = &oia->ia_ifa.ifa_containers[mycpuid];
+	ASSERT_IFAC_VALID(ifac);
+	KASSERT(ifac->ifa_listmask & IFA_LIST_IN_IFADDRHEAD,
+		("ia is not on in_ifaddrheads\n"));
+
+	iac = &ifac->ifa_proto_u.u_in_ifac;
+	iac = TAILQ_NEXT(iac, ia_link);
+	if (iac != NULL)
+		return iac->ia;
+	else
+		return NULL;
+}
+
 static int
 in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 		    struct thread *td)
@@ -269,6 +371,7 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 	struct in_ifaddr *ia = 0, *iap;
 	struct in_addr dst;
 	struct in_aliasreq *ifra = (struct in_aliasreq *)data;
+	struct ifaddr_container *ifac;
 	struct sockaddr_in oldaddr;
 	int hostIsNew, iaIsNew, maskIsNew;
 	int error = 0;
@@ -290,8 +393,6 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 				break;
 			}
 		if (ia == NULL) {
-			struct ifaddr_container *ifac;
-
 			TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid],
 				      ifa_link) {
 				iap = ifatoia(ifac->ifa);
@@ -314,7 +415,7 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 				    ia->ia_addr.sin_addr.s_addr ==
 				    ifra->ifra_addr.sin_addr.s_addr)
 					break;
-				ia = TAILQ_NEXT(ia, ia_link);
+				ia = in_ianext(ia);
 			}
 			if ((ifp->if_flags & IFF_POINTOPOINT) &&
 			    cmd == SIOCAIFADDR &&
@@ -340,8 +441,22 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 
 		if (ia == NULL) {
 			struct ifaddr *ifa;
+			int i;
 
 			ia = ifa_create(sizeof(*ia), M_WAITOK);
+			ifa = &ia->ia_ifa;
+
+			/*
+			 * Setup per-CPU information
+			 */
+			for (i = 0; i < ncpus; ++i) {
+				struct in_ifaddr_container *iac;
+
+				ifac = &ifa->ifa_containers[i];
+				iac = &ifac->ifa_proto_u.u_in_ifac;
+				iac->ia = ia;
+				iac->ia_ifac = ifac;
+			}
 
 			/*
 			 * Protect from NETISR_IP traversing address list
@@ -349,8 +464,7 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 			 */
 			crit_enter();
 
-			TAILQ_INSERT_TAIL(&in_ifaddrhead, ia, ia_link);
-			ifa = &ia->ia_ifa;
+			in_ialink(ia);
 			ifa_iflink(ifa, ifp, 1);
 
 			ifa->ifa_addr = (struct sockaddr *)&ia->ia_addr;
@@ -517,13 +631,13 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 	}
 
 	ifa_ifunlink(&ia->ia_ifa, ifp);
+	in_iaunlink(ia);
 
 	/*
 	 * Protect from NETISR_IP traversing address list while we're modifying
 	 * it.
 	 */
 	crit_enter();	/* XXX MP */
-	TAILQ_REMOVE(&in_ifaddrhead, ia, ia_link);
 	if (cmd == SIOCDIFADDR && ia->ia_addr.sin_family == AF_INET) {
 		/* XXX Assume that 'ia' is in hash table */
 		LIST_REMOVE(ia, ia_hash);

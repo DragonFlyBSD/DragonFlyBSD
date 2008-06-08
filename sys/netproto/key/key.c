@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/key.c,v 1.16.2.13 2002/07/24 18:17:40 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/key.c,v 1.20 2007/05/13 18:33:58 swildner Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/key.c,v 1.21 2008/06/08 08:38:05 sephe Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -3714,7 +3714,7 @@ key_ismyaddr(struct sockaddr *sa)
 {
 #ifdef INET
 	struct sockaddr_in *sin;
-	struct in_ifaddr *ia;
+	struct in_ifaddr_container *iac;
 #endif
 
 	/* sanity check */
@@ -3725,7 +3725,9 @@ key_ismyaddr(struct sockaddr *sa)
 #ifdef INET
 	case AF_INET:
 		sin = (struct sockaddr_in *)sa;
-		TAILQ_FOREACH(ia, &in_ifaddrhead, ia_link) {
+		TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
+			struct in_ifaddr *ia = iac->ia;
+
 			if (sin->sin_family == ia->ia_addr.sin_family &&
 			    sin->sin_len == ia->ia_addr.sin_len &&
 			    sin->sin_addr.s_addr == ia->ia_addr.sin_addr.s_addr)

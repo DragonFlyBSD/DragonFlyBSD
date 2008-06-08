@@ -25,7 +25,7 @@
  */
 /*
  * $FreeBSD: src/sys/netinet/ip_carp.c,v 1.48 2007/02/02 09:39:09 glebius Exp $
- * $DragonFly: src/sys/netinet/ip_carp.c,v 1.8 2008/05/28 12:11:13 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_carp.c,v 1.9 2008/06/08 08:38:05 sephe Exp $
  */
 
 #include "opt_carp.h"
@@ -1431,6 +1431,7 @@ carp_set_addr(struct carp_softc *sc, struct sockaddr_in *sin)
 	struct ifnet *ifp;
 	struct carp_if *cif;
 	struct in_ifaddr *ia, *ia_if;
+	struct in_ifaddr_container *iac;
 	struct ip_moptions *imo = &sc->sc_imo;
 	struct in_addr addr;
 	u_long iaddr = htonl(sin->sin_addr.s_addr);
@@ -1451,7 +1452,9 @@ carp_set_addr(struct carp_softc *sc, struct sockaddr_in *sin)
 	}
 	/* we have to do it by hands to check we won't match on us */
 	ia_if = NULL; own = 0;
-	TAILQ_FOREACH(ia, &in_ifaddrhead, ia_link) {
+	TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
+		ia = iac->ia;
+
 		/* and, yeah, we need a multicast-capable iface too */
 		if (ia->ia_ifp != SC2IFP(sc) &&
 		    (ia->ia_ifp->if_flags & IFF_MULTICAST) &&

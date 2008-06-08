@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.42 2008/05/14 11:59:24 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.43 2008/06/08 08:38:05 sephe Exp $
  */
 
 #define _IP_VHL
@@ -272,7 +272,7 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 		 * packets if the interface is specified.
 		 */
 		ifp = imo->imo_multicast_ifp;
-		IFP_TO_IA(ifp, ia);
+		ia = IFP_TO_IA(ifp);
 		isbroadcast = 0;	/* fool gcc */
 	} else {
 		/*
@@ -2111,7 +2111,7 @@ ip_getmoptions(struct sockopt *sopt, struct ip_moptions *imo)
 			/* return the value user has set */
 			addr = imo->imo_multicast_addr;
 		} else {
-			IFP_TO_IA(imo->imo_multicast_ifp, ia);
+			ia = IFP_TO_IA(imo->imo_multicast_ifp);
 			addr.s_addr = (ia == NULL) ? INADDR_ANY
 				: IA_SIN(ia)->sin_addr.s_addr;
 		}

@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.29 2008/05/17 20:33:35 dillon Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.30 2008/06/08 08:38:05 sephe Exp $
  */
 
 #include "opt_inet6.h"
@@ -448,13 +448,16 @@ void
 rip_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 {
 	struct in_ifaddr *ia;
+	struct in_ifaddr_container *iac;
 	struct ifnet *ifp;
 	int err;
 	int flags;
 
 	switch (cmd) {
 	case PRC_IFDOWN:
-		TAILQ_FOREACH(ia, &in_ifaddrhead, ia_link) {
+		TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
+			ia = iac->ia;
+
 			if (ia->ia_ifa.ifa_addr == sa &&
 			    (ia->ia_flags & IFA_ROUTE)) {
 				/*
@@ -474,11 +477,14 @@ rip_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 		break;
 
 	case PRC_IFUP:
-		TAILQ_FOREACH(ia, &in_ifaddrhead, ia_link) {
-			if (ia->ia_ifa.ifa_addr == sa)
+		ia = NULL;
+		TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
+			if (iac->ia->ia_ifa.ifa_addr == sa) {
+				ia = iac->ia;
 				break;
+			}
 		}
-		if (ia == 0 || (ia->ia_flags & IFA_ROUTE))
+		if (ia == NULL || (ia->ia_flags & IFA_ROUTE))
 			return;
 		flags = RTF_UP;
 		ifp = ia->ia_ifa.ifa_ifp;

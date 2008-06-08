@@ -34,7 +34,7 @@
  *	@(#)ipx_ip.c
  *
  * $FreeBSD: src/sys/netipx/ipx_ip.c,v 1.24.2.2 2003/01/23 21:06:48 sam Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.17 2008/05/14 11:59:24 sephe Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.18 2008/06/08 08:38:05 sephe Exp $
  */
 
 /*
@@ -344,14 +344,18 @@ ipxip_route(struct socket *so, struct sockopt *sopt)
 	 */
 	{
 		struct in_ifaddr *ia;
+		struct in_ifaddr_container *iac;
 		struct ifnet *ifp = ro.ro_rt->rt_ifp;
 
-		for (ia = TAILQ_FIRST(&in_ifaddrhead); ia != NULL; 
-		     ia = TAILQ_NEXT(ia, ia_link))
-			if (ia->ia_ifp == ifp)
+		ia = NULL;
+		TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
+			if (iac->ia->ia_ifp == ifp) {
+				ia = iac->ia;
 				break;
-		if (ia == NULL)
-			ia = TAILQ_FIRST(&in_ifaddrhead);
+			}
+		}
+		if (ia == NULL && !TAILQ_EMPTY(&in_ifaddrheads[mycpuid]))
+			ia = TAILQ_FIRST(&in_ifaddrheads[mycpuid])->ia;
 		if (ia == NULL) {
 			RTFREE(ro.ro_rt);
 			return (EADDRNOTAVAIL);

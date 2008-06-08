@@ -36,7 +36,7 @@
  *
  *	@(#)igmp.c	8.1 (Berkeley) 7/19/93
  * $FreeBSD: src/sys/netinet/igmp.c,v 1.29.2.2 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/netinet/igmp.c,v 1.13 2006/12/22 23:57:52 swildner Exp $
+ * $DragonFly: src/sys/netinet/igmp.c,v 1.14 2008/06/08 08:38:05 sephe Exp $
  */
 
 /*
@@ -299,7 +299,7 @@ igmp_input(struct mbuf *m, ...)
 		 * can potentially get looped back if we are a multicast
 		 * router, so discard reports sourced by me.
 		 */
-		IFP_TO_IA(ifp, ia);
+		ia = IFP_TO_IA(ifp);
 		if (ia && ip->ip_src.s_addr == IA_SIN(ia)->sin_addr.s_addr)
 			break;
 

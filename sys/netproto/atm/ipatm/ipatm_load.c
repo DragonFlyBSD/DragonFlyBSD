@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_load.c,v 1.6 2000/01/17 20:49:43 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_load.c,v 1.9 2006/01/14 13:36:39 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_load.c,v 1.10 2008/06/08 08:38:05 sephe Exp $
  */
 
 /*
@@ -414,6 +414,7 @@ ipatm_start(void)
 		for (nip = pip->pif_nif; nip; nip = nip->nif_pnext) {
 			struct ifnet    *ifp = (struct ifnet *)nip;
 			struct in_ifaddr	*ia;
+			struct in_ifaddr_container *iac;
 
 			/*
 			 * Attach interface
@@ -427,11 +428,12 @@ ipatm_start(void)
 			/*
 			 * If IP address has been set, register it
 			 */
-			TAILQ_FOREACH(ia, &in_ifaddrhead, ia_link) {
-				if (ia->ia_ifp == ifp)
+			TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
+				if (iac->ia->ia_ifp == ifp)
 					break;
 			}
-			if (ia) {
+			if (iac) {
+				ia = iac->ia;
 				err = ipatm_nifstat(NCM_SETADDR, nip, (int)ia);
 				if (err) {
 					crit_exit();

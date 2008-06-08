@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/netinet/in_gif.c,v 1.5.2.11 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/in_gif.c,v 1.16 2006/12/22 23:57:52 swildner Exp $
+ * $DragonFly: src/sys/netinet/in_gif.c,v 1.17 2008/06/08 08:38:05 sephe Exp $
  * $KAME: in_gif.c,v 1.54 2001/05/14 14:02:16 itojun Exp $
  */
 /*
@@ -296,7 +296,7 @@ static int
 gif_validate4(const struct ip *ip, struct gif_softc *sc, struct ifnet *ifp)
 {
 	struct sockaddr_in *src, *dst;
-	struct in_ifaddr *ia4;
+	struct in_ifaddr_container *iac;
 
 	src = (struct sockaddr_in *)sc->gif_psrc;
 	dst = (struct sockaddr_in *)sc->gif_pdst;
@@ -314,7 +314,9 @@ gif_validate4(const struct ip *ip, struct gif_softc *sc, struct ifnet *ifp)
 		return 0;
 	}
 	/* reject packets with broadcast on source */
-	TAILQ_FOREACH(ia4, &in_ifaddrhead, ia_link) {
+	TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
+		struct in_ifaddr *ia4 = iac->ia;
+
 		if (!(ia4->ia_ifa.ifa_ifp->if_flags & IFF_BROADCAST))
 			continue;
 		if (ip->ip_src.s_addr == ia4->ia_broadaddr.sin_addr.s_addr)

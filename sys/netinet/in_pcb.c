@@ -65,7 +65,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.45 2008/03/26 14:44:59 sephe Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.46 2008/06/08 08:38:05 sephe Exp $
  */
 
 #include "opt_ipsec.h"
@@ -246,7 +246,7 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 	KKASSERT(p);
 
-	if (TAILQ_EMPTY(&in_ifaddrhead)) /* XXX broken! */
+	if (TAILQ_EMPTY(&in_ifaddrheads[mycpuid])) /* XXX broken! */
 		return (EADDRNOTAVAIL);
 	if (inp->inp_lport != 0 || inp->inp_laddr.s_addr != INADDR_ANY)
 		return (EINVAL);	/* already bound */
@@ -453,8 +453,8 @@ in_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
 		cred = td->td_proc->p_ucred;
 	if (cred && cred->cr_prison)
 		jailed = 1;
-	if (!TAILQ_EMPTY(&in_ifaddrhead)) {
-		ia = TAILQ_FIRST(&in_ifaddrhead);
+	if (!TAILQ_EMPTY(&in_ifaddrheads[mycpuid])) {
+		ia = TAILQ_FIRST(&in_ifaddrheads[mycpuid])->ia;
 		/*
 		 * If the destination address is INADDR_ANY,
 		 * use the primary local address.
@@ -530,8 +530,9 @@ in_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
 			    sintosa(&ia->ia_addr)))
 				ia = NULL;
 			sin->sin_port = fport;
-			if (ia == NULL)
-				ia = TAILQ_FIRST(&in_ifaddrhead);
+			if (ia == NULL &&
+			    !TAILQ_EMPTY(&in_ifaddrheads[mycpuid]))
+				ia = TAILQ_FIRST(&in_ifaddrheads[mycpuid])->ia;
 			if (ia && jailed && !jailed_ip(cred->cr_prison,
 			    sintosa(&ia->ia_addr)))
 				ia = NULL;
@@ -551,10 +552,17 @@ in_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
 
 			imo = inp->inp_moptions;
 			if (imo->imo_multicast_ifp != NULL) {
+				struct in_ifaddr_container *iac;
+
 				ifp = imo->imo_multicast_ifp;
-				TAILQ_FOREACH(ia, &in_ifaddrhead, ia_link)
-					if (ia->ia_ifp == ifp)
+				ia = NULL;
+				TAILQ_FOREACH(iac,
+				&in_ifaddrheads[mycpuid], ia_link) {
+					if (iac->ia->ia_ifp == ifp) {
+						ia = iac->ia;
 						break;
+					}
+				}
 				if (ia == NULL)
 					goto fail;
 			}

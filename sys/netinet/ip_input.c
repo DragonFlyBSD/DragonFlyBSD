@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.79 2008/04/20 13:44:25 swildner Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.80 2008/06/08 08:38:05 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -205,7 +205,7 @@ static int ipprintfs = 0;
 extern	struct domain inetdomain;
 extern	struct protosw inetsw[];
 u_char	ip_protox[IPPROTO_MAX];
-struct	in_ifaddrhead in_ifaddrhead;		/* first inet address */
+struct	in_ifaddrhead in_ifaddrheads[MAXCPU];	/* first inet address */
 struct	in_ifaddrhashhead *in_ifaddrhashtbl;	/* inet addr hash table */
 u_long	in_ifaddrhmask;				/* mask for hash table */
 
@@ -318,7 +318,8 @@ ip_init(void)
 	 */
 	mpipe_init(&ipq_mpipe, M_IPQ, sizeof(struct ipq),
 		    IFQ_MAXLEN, 4000, 0, NULL);
-	TAILQ_INIT(&in_ifaddrhead);
+	for (i = 0; i < ncpus; ++i)
+		TAILQ_INIT(&in_ifaddrheads[i]);
 	in_ifaddrhashtbl = hashinit(INADDR_NHASH, M_IFADDR, &in_ifaddrhmask);
 	pr = pffindproto(PF_INET, IPPROTO_RAW, SOCK_RAW);
 	if (pr == NULL)
@@ -663,7 +664,8 @@ pass:
 	 * we receive might be for us (and let the upper layers deal
 	 * with it).
 	 */
-	if (TAILQ_EMPTY(&in_ifaddrhead) && !(m->m_flags & (M_MCAST | M_BCAST)))
+	if (TAILQ_EMPTY(&in_ifaddrheads[mycpuid]) &&
+	    !(m->m_flags & (M_MCAST | M_BCAST)))
 		goto ours;
 
 	/*

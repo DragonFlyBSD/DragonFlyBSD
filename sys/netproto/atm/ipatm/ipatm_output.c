@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_output.c,v 1.4.2.1 2000/06/02 22:39:08 archie Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_output.c,v 1.7 2006/01/14 13:36:39 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_output.c,v 1.8 2008/06/08 08:38:05 sephe Exp $
  */
 
 /*
@@ -110,7 +110,7 @@ ipatm_ifoutput(struct ifnet *ifp, KBuffer *m, struct sockaddr *dst)
 			ivp->iv_queue = m;
 		}
 	} else {
-		struct in_ifaddr	*ia;
+		struct in_ifaddr_container *iac;
 
 		/*
 		 * No VCC to destination
@@ -119,7 +119,9 @@ ipatm_ifoutput(struct ifnet *ifp, KBuffer *m, struct sockaddr *dst)
 		/*
 		 * Is packet for our interface address?
 		 */
-		TAILQ_FOREACH(ia, &in_ifaddrhead, ia_link) {
+		TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
+			struct in_ifaddr *ia = iac->ia;
+
 			if (ia->ia_ifp != ifp)
 				continue;
 			if (((struct sockaddr_in *)dst)->sin_addr.s_addr == 

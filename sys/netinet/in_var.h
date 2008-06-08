@@ -32,7 +32,7 @@
  *
  *	@(#)in_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in_var.h,v 1.33.2.3 2001/12/14 20:09:34 jlemon Exp $
- * $DragonFly: src/sys/netinet/in_var.h,v 1.11 2006/05/20 02:42:12 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_var.h,v 1.12 2008/06/08 08:38:05 sephe Exp $
  */
 
 #ifndef _NETINET_IN_VAR_H_
@@ -68,7 +68,7 @@ struct in_ifaddr {
 	u_long	ia_subnetmask;		/* mask of subnet part */
 	struct	in_addr ia_netbroadcast; /* to recognize net broadcasts */
 	LIST_ENTRY(in_ifaddr) ia_hash;	/* entry in bucket of inet addresses */
-	TAILQ_ENTRY(in_ifaddr) ia_link;	/* list of internet addresses */
+	void	*ia_pad2[2];
 	struct	sockaddr_in ia_addr;	/* reserve space for interface name */
 	struct	sockaddr_in ia_dstaddr; /* reserve space for broadcast addr */
 #define	ia_broadaddr	ia_dstaddr
@@ -94,6 +94,8 @@ struct	in_aliasreq {
 
 
 #ifdef	_KERNEL
+struct in_ifaddr_container;
+
 extern	struct	in_addr zeroin_addr;
 extern	u_char	inetctlerrmap[];
 
@@ -101,7 +103,7 @@ extern	u_char	inetctlerrmap[];
  * Hash table for IP addresses.
  */
 extern	LIST_HEAD(in_ifaddrhashhead, in_ifaddr) *in_ifaddrhashtbl;
-extern	TAILQ_HEAD(in_ifaddrhead, in_ifaddr) in_ifaddrhead;
+extern	TAILQ_HEAD(in_ifaddrhead, in_ifaddr_container) in_ifaddrheads[];
 extern	u_long in_ifaddrhmask;			/* mask for hash table */
 
 #define INADDR_NHASH_LOG2       9
@@ -131,16 +133,18 @@ extern	u_long in_ifaddrhmask;			/* mask for hash table */
  * Macro for finding the internet address structure (in_ifaddr) corresponding
  * to a given interface (ifnet structure).
  */
-#define IFP_TO_IA(ifp, ia) \
-	/* struct ifnet *ifp; */ \
-	/* struct in_ifaddr *ia; */ \
-{ \
-	for ((ia) = TAILQ_FIRST(&in_ifaddrhead); \
-	    (ia) != NULL && (ia)->ia_ifp != (ifp); \
-	    (ia) = TAILQ_NEXT((ia), ia_link)) \
-		continue; \
+static __inline struct in_ifaddr *
+IFP_TO_IA(const struct ifnet *_ifp)
+{
+	struct in_ifaddr_container *_iac;
+
+	TAILQ_FOREACH(_iac, &in_ifaddrheads[mycpuid], ia_link)
+		if (_iac->ia->ia_ifp == _ifp)
+			return _iac->ia;
+	return NULL;
 }
-#endif
+
+#endif	/* _KERNEL */
 
 /*
  * This information should be part of the ifnet structure but we don't wish
@@ -245,6 +249,7 @@ void	in_rtqdrain (void);
 void	ip_input (struct mbuf *);
 int	in_ifadown (struct ifaddr *ifa, int);
 void	in_ifscrub (struct ifnet *, struct in_ifaddr *);
+void	in_iaunlink (struct in_ifaddr *);
 int	ipflow_fastforward (struct mbuf *, struct lwkt_serialize *);
 void	ipflow_create (const struct route *, struct mbuf *);
 void	ipflow_slowtimo (void);

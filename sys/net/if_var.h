@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.55 2008/06/07 07:22:22 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.56 2008/06/08 08:38:05 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -363,6 +363,17 @@ if_handoff(struct ifqueue *_ifq, struct mbuf *_m, struct ifnet *_ifp,
 
 #endif /* _KERNEL */
 
+struct in_ifaddr;
+
+struct in_ifaddr_container {
+	struct in_ifaddr	*ia;
+	LIST_ENTRY(in_ifaddr_container) ia_hash;
+				/* entry in bucket of inet addresses */
+	TAILQ_ENTRY(in_ifaddr_container) ia_link;
+				/* list of internet addresses */
+	struct ifaddr_container	*ia_ifac; /* parent ifaddr_container */
+};
+
 struct ifaddr_container {
 #define IFA_CONTAINER_MAGIC	0x19810219
 #define IFA_CONTAINER_DEAD	0xc0dedead
@@ -371,9 +382,17 @@ struct ifaddr_container {
 	TAILQ_ENTRY(ifaddr_container)	ifa_link;   /* queue macro glue */
 	u_int			ifa_refcnt; /* references to this structure */
 	uint32_t		ifa_listmask;	/* IFA_LIST_ */
+
+	/*
+	 * Protocol specific states
+	 */
+	union {
+		struct in_ifaddr_container u_in_ifac;
+	} ifa_proto_u;
 };
 
 #define IFA_LIST_IFADDRHEAD	0x1	/* on ifnet.if_addrheads[cpuid] */
+#define IFA_LIST_IN_IFADDRHEAD	0x2	/* on in_ifaddrheads[cpuid] */
 
 /*
  * The ifaddr structure contains information about one address

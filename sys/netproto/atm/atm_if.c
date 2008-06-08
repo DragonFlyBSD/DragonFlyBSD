@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_if.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.17 2008/05/14 11:59:24 sephe Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.18 2008/06/08 08:38:05 sephe Exp $
  */
 
 /*
@@ -360,7 +360,7 @@ atm_physif_ioctl(int code, caddr_t data, caddr_t arg)
 		KM_ZERO((caddr_t)&anr, sizeof(anr));
 		ksnprintf(anr.anp_intf, sizeof(anr.anp_intf),
 		    "%s", ifp->if_xname);
-		IFP_TO_IA(ifp, ia);
+		ia = IFP_TO_IA(ifp);
 		if (ia) {
 			anr.anp_proto_addr = *ia->ia_ifa.ifa_addr;
 		}
@@ -799,7 +799,7 @@ atm_nif_detach(struct atm_nif *nip)
 	 * Free all interface routes and addresses
 	 */
 	while (1) {
-		IFP_TO_IA(ifp, ia);
+		ia = IFP_TO_IA(ifp);
 		if (ia == NULL)
 			break;
 
@@ -809,7 +809,7 @@ atm_nif_detach(struct atm_nif *nip)
 		/* Remove interface address from queues */
 		ifa = &ia->ia_ifa;
 		ifa_ifunlink(ifa, ifp);
-		TAILQ_REMOVE(&in_ifaddrhead, ia, ia_link);
+		in_iaunlink(ia);
 
 		/* Free interface address */
 		ifa_destroy(ifa);

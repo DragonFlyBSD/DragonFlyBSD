@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.22 2008/05/14 11:59:24 sephe Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.23 2008/06/08 08:38:05 sephe Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -424,7 +424,7 @@ stf_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 static int
 stf_checkaddr4(struct stf_softc *sc, struct in_addr *in, struct ifnet *inifp)
 {
-	struct in_ifaddr *ia4;
+	struct in_ifaddr_container *iac;
 
 	/*
 	 * reject packets with the following address:
@@ -440,8 +440,9 @@ stf_checkaddr4(struct stf_softc *sc, struct in_addr *in, struct ifnet *inifp)
 	/*
 	 * reject packets with broadcast
 	 */
-	TAILQ_FOREACH(ia4, &in_ifaddrhead, ia_link)
-	{
+	TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
+		struct in_ifaddr *ia4 = iac->ia;
+
 		if ((ia4->ia_ifa.ifa_ifp->if_flags & IFF_BROADCAST) == 0)
 			continue;
 		if (in->s_addr == ia4->ia_broadaddr.sin_addr.s_addr)
