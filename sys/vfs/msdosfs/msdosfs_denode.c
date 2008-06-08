@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.34 2007/08/08 00:12:51 swildner Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.35 2008/06/08 07:56:06 nth Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -215,12 +215,14 @@ void
 msdosfs_reinsert(struct denode *ip, u_long new_dirclust, u_long new_diroffset)
 {
 	lwkt_tokref ilock;
+	int error;
 
 	lwkt_gettoken(&ilock, &dehash_token);
 	msdosfs_hashrem(ip);
 	ip->de_dirclust = new_dirclust;
 	ip->de_diroffset = new_diroffset;
-	msdosfs_hashins(ip);
+	error = msdosfs_hashins(ip);
+	KASSERT(!error, ("msdosfs_reinsert: insertion failed %d", error));
 	lwkt_reltoken(&ilock);
 }
 
