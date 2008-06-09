@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.37 2008/06/08 08:38:05 sephe Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.38 2008/06/09 04:59:22 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -368,7 +368,7 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 		    struct thread *td)
 {
 	struct ifreq *ifr = (struct ifreq *)data;
-	struct in_ifaddr *ia = 0, *iap;
+	struct in_ifaddr *ia = NULL;
 	struct in_addr dst;
 	struct in_aliasreq *ifra = (struct in_aliasreq *)data;
 	struct ifaddr_container *ifac;
@@ -385,6 +385,8 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 	 * the first one on the interface, if possible
 	 */
 	if (ifp) {
+		struct in_ifaddr *iap;
+
 		dst = ((struct sockaddr_in *)&ifr->ifr_addr)->sin_addr;
 		LIST_FOREACH(iap, INADDR_HASH(dst.s_addr), ia_hash)
 			if (iap->ia_ifp == ifp &&
