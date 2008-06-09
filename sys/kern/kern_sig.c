@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.89 2008/04/21 15:47:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.90 2008/06/09 04:33:08 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1236,9 +1236,10 @@ lwp_signotify(struct lwp *lp)
 			 * schedule the thread on the correct cpu.
 			 */
 #ifdef SMP
-			if (td->td_gd != mycpu)
+			if (td->td_gd != mycpu) {
+				LWPHOLD(lp);
 				lwkt_send_ipiq(td->td_gd, signotify_remote, lp);
-			else
+			} else
 #endif
 			if (td->td_flags & TDF_SINTR)
 				lwkt_schedule(td);
@@ -1266,6 +1267,7 @@ signotify_remote(void *arg)
 		if (td->td_flags & TDF_SINTR)
 			lwkt_schedule(td);
 	}
+	LWPRELE(lp);
 }
 
 #endif
