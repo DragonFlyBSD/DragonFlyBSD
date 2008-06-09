@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.66 2008/06/08 18:16:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.67 2008/06/09 04:19:10 dillon Exp $
  */
 
 #include "hammer.h"
@@ -104,6 +104,11 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 	if ((ip = vp->v_data) != NULL) {
 		vp->v_data = NULL;
 		ip->vp = NULL;
+		if ((ip->flags & HAMMER_INODE_RECLAIM) == 0) {
+			++hammer_count_reclaiming;
+			++ip->hmp->inode_reclaims;
+			ip->flags |= HAMMER_INODE_RECLAIM;
+		}
 		hammer_rel_inode(ip, 1);
 	}
 	return(0);
@@ -119,12 +124,15 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 int
 hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 {
+	hammer_mount_t hmp;
 	struct vnode *vp;
 	int error = 0;
 
+	hmp = ip->hmp;
+
 	for (;;) {
 		if ((vp = ip->vp) == NULL) {
-			error = getnewvnode(VT_HAMMER, ip->hmp->mp, vpp, 0, 0);
+			error = getnewvnode(VT_HAMMER, hmp->mp, vpp, 0, 0);
 			if (error)
 				break;
 			hammer_lock_ex(&ip->lock);
@@ -140,15 +148,23 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			vp->v_type =
 				hammer_get_vnode_type(ip->ino_data.obj_type);
 
+			if (ip->flags & HAMMER_INODE_RECLAIM) {
+				--hammer_count_reclaiming;
+				--hmp->inode_reclaims;
+				ip->flags &= ~HAMMER_INODE_RECLAIM;
+				if (hmp->flags & HAMMER_MOUNT_WAITIMAX)
+					hammer_inode_wakereclaims(hmp);
+			}
+
 			switch(ip->ino_data.obj_type) {
 			case HAMMER_OBJTYPE_CDEV:
 			case HAMMER_OBJTYPE_BDEV:
-				vp->v_ops = &ip->hmp->mp->mnt_vn_spec_ops;
+				vp->v_ops = &hmp->mp->mnt_vn_spec_ops;
 				addaliasu(vp, ip->ino_data.rmajor,
 					  ip->ino_data.rminor);
 				break;
 			case HAMMER_OBJTYPE_FIFO:
-				vp->v_ops = &ip->hmp->mp->mnt_vn_fifo_ops;
+				vp->v_ops = &hmp->mp->mnt_vn_fifo_ops;
 				break;
 			default:
 				break;
@@ -161,7 +177,7 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			 * is in hammer_vop_nlookupdotdot().
 			 */
 			if (ip->obj_id == HAMMER_OBJID_ROOT &&
-			    ip->obj_asof == ip->hmp->asof) {
+			    ip->obj_asof == hmp->asof) {
 				vp->v_flag |= VROOT;
 			}
 
@@ -223,6 +239,7 @@ loop:
 
 	ip = kmalloc(sizeof(*ip), M_HAMMER, M_WAITOK|M_ZERO);
 	++hammer_count_inodes;
+	++hmp->count_inodes;
 	ip->obj_id = obj_id;
 	ip->obj_asof = iinfo.obj_asof;
 	ip->hmp = hmp;
@@ -284,6 +301,7 @@ retry:
 			hammer_uncache_node(&ip->cache[1]);
 			KKASSERT(ip->lock.refs == 1);
 			--hammer_count_inodes;
+			--hmp->count_inodes;
 			kfree(ip, M_HAMMER);
 			hammer_done_cursor(&cursor);
 			goto loop;
@@ -302,12 +320,13 @@ retry:
 		}
 		if (ip->flags & HAMMER_INODE_RSV_INODES) {
 			ip->flags &= ~HAMMER_INODE_RSV_INODES; /* sanity */
-			--ip->hmp->rsv_inodes;
+			--hmp->rsv_inodes;
 		}
-		ip->hmp->rsv_databufs -= ip->rsv_databufs;
+		hmp->rsv_databufs -= ip->rsv_databufs;
 		ip->rsv_databufs = 0;			       /* sanity */
 
 		--hammer_count_inodes;
+		--hmp->count_inodes;
 		kfree(ip, M_HAMMER);
 		ip = NULL;
 	}
@@ -333,6 +352,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	hmp = trans->hmp;
 	ip = kmalloc(sizeof(*ip), M_HAMMER, M_WAITOK|M_ZERO);
 	++hammer_count_inodes;
+	++hmp->count_inodes;
 	ip->obj_id = hammer_alloc_objid(trans, dip);
 	KKASSERT(ip->obj_id != 0);
 	ip->obj_asof = hmp->asof;
@@ -684,6 +704,8 @@ hammer_rel_inode(struct hammer_inode *ip, int flush)
 static int
 hammer_unload_inode(struct hammer_inode *ip)
 {
+	hammer_mount_t hmp = ip->hmp;
+
 	KASSERT(ip->lock.refs == 1,
 		("hammer_unload_inode: %d refs\n", ip->lock.refs));
 	KKASSERT(ip->vp == NULL);
@@ -695,13 +717,22 @@ hammer_unload_inode(struct hammer_inode *ip)
 	KKASSERT(RB_EMPTY(&ip->rec_tree));
 	KKASSERT(TAILQ_EMPTY(&ip->target_list));
 
-	RB_REMOVE(hammer_ino_rb_tree, &ip->hmp->rb_inos_root, ip);
+	RB_REMOVE(hammer_ino_rb_tree, &hmp->rb_inos_root, ip);
 
 	hammer_uncache_node(&ip->cache[0]);
 	hammer_uncache_node(&ip->cache[1]);
 	if (ip->objid_cache)
 		hammer_clear_objid(ip);
 	--hammer_count_inodes;
+	--hmp->count_inodes;
+	if (hmp->flags & HAMMER_MOUNT_WAITIMAX)
+		hammer_inode_wakereclaims(hmp);
+
+	if (ip->flags & HAMMER_INODE_RECLAIM) {
+		--hammer_count_reclaiming;
+		--hmp->inode_reclaims;
+		ip->flags &= ~HAMMER_INODE_RECLAIM;
+	}
 	kfree(ip, M_HAMMER);
 
 	return(0);
@@ -1795,6 +1826,33 @@ hammer_test_inode(hammer_inode_t ip)
 			hammer_flush_inode(ip, 0);
 		}
 		hammer_rel_inode(ip, 0);
+	}
+}
+
+/*
+ * When a HAMMER inode is reclaimed it may have to be queued to the backend
+ * for its final sync to disk.  Programs like blogbench can cause the backlog
+ * to grow indefinitely.  Put a cap on the number of inodes we allow to be
+ * in this state by giving the flusher time to drain.
+ */
+void
+hammer_inode_waitreclaims(hammer_mount_t hmp)
+{
+	while (hmp->inode_reclaims > HAMMER_RECLAIM_MIN &&
+	       hmp->inode_reclaims > hmp->count_inodes / HAMMER_RECLAIM_FACTOR) {
+		hmp->flags |= HAMMER_MOUNT_WAITIMAX;
+		hammer_flusher_async(hmp);
+		tsleep(hmp, 0, "hmimax", hz / 10);
+	}
+}
+
+void
+hammer_inode_wakereclaims(hammer_mount_t hmp)
+{
+	if (hmp->inode_reclaims <= HAMMER_RECLAIM_MIN ||
+	    hmp->inode_reclaims <= hmp->count_inodes / HAMMER_RECLAIM_FACTOR) {
+		hmp->flags &= ~HAMMER_MOUNT_WAITIMAX;
+		wakeup(hmp);
 	}
 }
 

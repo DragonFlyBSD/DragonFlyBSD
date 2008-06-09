@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.62 2008/06/08 18:16:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.63 2008/06/09 04:19:10 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1528,20 +1528,30 @@ next_memory:
 	switch(cursor->flags & (HAMMER_CURSOR_ATEDISK | HAMMER_CURSOR_ATEMEM)) {
 	case 0:
 		/*
-		 * Both entries valid.   Return the btree entry if it is
-		 * in front of the memory entry.
+		 * Both entries valid.   Compare the entries and nominally
+		 * return the first one in the sort order.  Numerous cases
+		 * require special attention, however.
 		 */
 		elm = &cursor->node->ondisk->elms[cursor->index];
 		r = hammer_btree_cmp(&elm->base, &cursor->iprec->leaf.base);
 
 		/*
-		 * Special case.  If the entries only differ by their
-		 * create_tid, assume they are equal and fall through.
-		 *
-		 * This case can occur for memory-data records. XXX
+		 * If the two entries differ only by their key (-2/2) or
+		 * create_tid (-1/1), and are DATA records, we may have a
+		 * nominal match.  We have to calculate the base file
+		 * offset of the data.
 		 */
-		if (r == -1 || r == 1)
-			r = 0;
+		if (r <= 2 && r >= -2 && r != 0 &&
+		    cursor->ip->ino_data.obj_type == HAMMER_OBJTYPE_REGFILE &&
+		    cursor->iprec->type == HAMMER_MEM_RECORD_DATA) {
+			int64_t base1 = elm->leaf.base.key - elm->leaf.data_len;
+			int64_t base2 = cursor->iprec->leaf.base.key -
+					cursor->iprec->leaf.data_len;
+			if (base1 == base2)
+				r = 0;
+			kprintf("G");
+		}
+
 		if (r < 0) {
 			error = hammer_btree_extract(cursor,
 						     HAMMER_CURSOR_GET_LEAF);

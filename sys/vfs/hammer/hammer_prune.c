@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.4 2008/06/01 01:33:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.5 2008/06/09 04:19:10 dillon Exp $
  */
 
 #include "hammer.h"
@@ -122,14 +122,24 @@ retry:
 	 */
 	cursor.flags |= HAMMER_CURSOR_PRUNING;
 
-	hammer_sync_lock_sh(trans);
 	error = hammer_btree_last(&cursor);
+	hammer_sync_lock_sh(trans);
+
 	while (error == 0) {
 		/*
 		 * Yield to more important tasks
 		 */
+		if ((error = hammer_signal_check(trans->hmp)) != 0)
+			break;
 		if (trans->hmp->sync_lock.wanted) {
 			hammer_sync_unlock(trans);
+			tsleep(trans, 0, "hmrslo", hz / 10);
+			hammer_sync_lock_sh(trans);
+		}
+		if (trans->hmp->locked_dirty_count +
+		    trans->hmp->io_running_count > hammer_limit_dirtybufs) {
+			hammer_sync_unlock(trans);
+			hammer_flusher_async(trans->hmp);
 			tsleep(trans, 0, "hmrslo", hz / 10);
 			hammer_sync_lock_sh(trans);
 		}
@@ -204,20 +214,7 @@ retry:
 			}
 		}
 		++prune->stat_scanrecords;
-
-		/*
-		 * Bad hack for now, don't blow out the kernel's buffer
-		 * cache.  NOTE: We still hold locks on the cursor, we
-		 * cannot call the flusher synchronously.
-		 */
-		if (trans->hmp->locked_dirty_count +
-		    trans->hmp->io_running_count > hammer_limit_dirtybufs) {
-			hammer_flusher_async(trans->hmp);
-			tsleep(trans, 0, "hmrslo", hz / 10);
-		}
-		error = hammer_signal_check(trans->hmp);
-		if (error == 0)
-			error = hammer_btree_iterate_reverse(&cursor);
+		error = hammer_btree_iterate_reverse(&cursor);
 	}
 	hammer_sync_unlock(trans);
 	if (error == ENOENT)

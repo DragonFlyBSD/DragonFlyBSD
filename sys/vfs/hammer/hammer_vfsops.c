@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.40 2008/06/08 18:16:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.41 2008/06/09 04:19:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -57,6 +57,7 @@ int hammer_debug_tid;
 int hammer_debug_recover;	/* -1 will disable, +1 will force */
 int hammer_debug_recover_faults;
 int hammer_count_inodes;
+int hammer_count_reclaiming;
 int hammer_count_records;
 int hammer_count_record_datas;
 int hammer_count_volumes;
@@ -66,7 +67,7 @@ int hammer_count_dirtybufs;		/* global */
 int hammer_count_reservations;
 int hammer_stats_btree_iterations;
 int hammer_stats_record_iterations;
-int hammer_limit_dirtybufs = 100;	/* per-mount */
+int hammer_limit_dirtybufs;		/* per-mount */
 int hammer_limit_irecs;			/* per-inode */
 int hammer_limit_recs;			/* as a whole XXX */
 int hammer_bio_count;
@@ -102,6 +103,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_recs, CTLFLAG_RW,
 
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_inodes, CTLFLAG_RD,
 	   &hammer_count_inodes, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, count_reclaiming, CTLFLAG_RD,
+	   &hammer_count_reclaiming, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_records, CTLFLAG_RD,
 	   &hammer_count_records, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_record_datas, CTLFLAG_RD,
@@ -171,6 +174,11 @@ hammer_vfs_init(struct vfsconf *conf)
 		hammer_limit_irecs = nbuf;
 	if (hammer_limit_recs == 0)		/* XXX TODO */
 		hammer_limit_recs = hammer_limit_irecs * 4;
+	if (hammer_limit_dirtybufs == 0) {
+		hammer_limit_dirtybufs = hidirtybuffers / 2;
+		if (hammer_limit_dirtybufs < 100)
+			hammer_limit_dirtybufs = 100;
+	}
 	return(0);
 }
 
@@ -273,6 +281,9 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 			rootvol = hammer_get_root_volume(hmp, &error);
 			if (rootvol) {
 				hammer_recover_flush_buffers(hmp, rootvol);
+				bcopy(rootvol->ondisk->vol0_blockmap,
+				      hmp->blockmap,
+				      sizeof(hmp->blockmap));
 				hammer_rel_volume(rootvol, 0);
 			}
 			RB_SCAN(hammer_ino_rb_tree, &hmp->rb_inos_root, NULL,
@@ -370,11 +381,9 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		goto failed;
 
 	/*
-	 * Perform any necessary UNDO operations.  The recover code does
+	 * Perform any necessary UNDO operations.  The recovery code does
 	 * call hammer_undo_lookup() so we have to pre-cache the blockmap,
 	 * and then re-copy it again after recovery is complete.
-	 *
-	 * The recovery code will load hmp->flusher_undo_start.
 	 *
 	 * If this is a read-only mount the UNDO information is retained
 	 * in memory in the form of dirty buffer cache buffers, and not
@@ -409,7 +418,10 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * the hammer_mount structure so we do not have to generate lots
 	 * of little UNDO structures for them.
 	 *
-	 * Recopy after recovery.
+	 * Recopy after recovery.  This also has the side effect of
+	 * setting our cached undo FIFO's first_offset, which serves to
+	 * placemark the FIFO start for the NEXT flush cycle while the
+	 * on-disk first_offset represents the LAST flush cycle.
 	 */
 	hmp->next_tid = rootvol->ondisk->vol0_next_tid;
 	bcopy(rootvol->ondisk->vol0_blockmap, hmp->blockmap,
@@ -669,7 +681,6 @@ hammer_vfs_sync(struct mount *mp, int waitfor)
 			error = hammer_sync_hmp(hmp, waitfor);
 	} else {
 		error = EIO;
-		hkprintf("S");
 	}
 	return (error);
 }

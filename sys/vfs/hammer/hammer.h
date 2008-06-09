@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.75 2008/06/08 18:16:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.76 2008/06/09 04:19:10 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -249,7 +249,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_DONDISK	0x0800	/* data records may be on disk */
 #define HAMMER_INODE_BUFS	0x1000	/* dirty high level bps present */
 #define HAMMER_INODE_REFLUSH	0x2000	/* pipelined flush during flush */
-#define HAMMER_INODE_UNUSED4000	0x4000
+#define HAMMER_INODE_RECLAIM	0x4000	/* trying to reclaim */
 #define HAMMER_INODE_FLUSHW	0x8000	/* Someone waiting for flush */
 
 #define HAMMER_INODE_TRUNCATED	0x00010000
@@ -268,6 +268,9 @@ typedef struct hammer_inode *hammer_inode_t;
 
 #define HAMMER_FLUSH_SIGNAL	0x0001
 #define HAMMER_FLUSH_RECURSION	0x0002
+
+#define HAMMER_RECLAIM_MIN	100
+#define HAMMER_RECLAIM_FACTOR	4
 
 /*
  * Structure used to represent an unsynchronized record in-memory.  These
@@ -398,6 +401,7 @@ struct hammer_io {
 	u_int		validated : 1;	/* ondisk has been validated */
 	u_int		waitdep : 1;	/* flush waits for dependancies */
 	u_int		recovered : 1;	/* has recovery ref */
+	u_int		waitmod : 1;	/* waiting for modify_refs */
 };
 
 typedef struct hammer_io *hammer_io_t;
@@ -557,6 +561,7 @@ struct hammer_mount {
 	struct hammer_base_elm root_btree_beg;
 	struct hammer_base_elm root_btree_end;
 	char	*zbuf;	/* HAMMER_BUFSIZE bytes worth of all-zeros */
+	int	flags;
 	int	hflags;
 	int	ronly;
 	int	nvolumes;
@@ -571,8 +576,9 @@ struct hammer_mount {
 	int	flusher_next;	/* next flush group */
 	int	flusher_lock;	/* lock sequencing of the next flush */
 	int	flusher_exiting;
+	int	inode_reclaims; /* inodes pending reclaim by flusher */
+	int	count_inodes;	/* total number of inodes */
 	hammer_tid_t flusher_tid; /* last flushed transaction id */
-	hammer_off_t flusher_undo_start; /* UNDO window for flushes */
 	thread_t flusher_td;
 	u_int	check_interrupt;
 	uuid_t	fsid;
@@ -607,6 +613,8 @@ struct hammer_mount {
 
 typedef struct hammer_mount	*hammer_mount_t;
 
+#define HAMMER_MOUNT_WAITIMAX	0x0001
+
 struct hammer_sync_info {
 	int error;
 	int waitfor;
@@ -631,6 +639,7 @@ extern int hammer_debug_tid;
 extern int hammer_debug_recover;
 extern int hammer_debug_recover_faults;
 extern int hammer_count_inodes;
+extern int hammer_count_reclaiming;
 extern int hammer_count_records;
 extern int hammer_count_record_datas;
 extern int hammer_count_volumes;
@@ -655,6 +664,8 @@ struct hammer_inode *hammer_get_inode(hammer_transaction_t trans,
 			int *errorp);
 void	hammer_put_inode(struct hammer_inode *ip);
 void	hammer_put_inode_ref(struct hammer_inode *ip);
+void	hammer_inode_waitreclaims(hammer_mount_t hmp);
+void	hammer_inode_wakereclaims(hammer_mount_t hmp);
 
 int	hammer_unload_volume(hammer_volume_t volume, void *data __unused);
 int	hammer_adjust_volume_mode(hammer_volume_t volume, void *data __unused);
@@ -887,6 +898,8 @@ int hammer_io_direct_read(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 			  struct bio *bio);
 int hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 			  struct bio *bio);
+void hammer_io_write_interlock(hammer_io_t io);
+void hammer_io_done_interlock(hammer_io_t io);
 void hammer_modify_volume(hammer_transaction_t trans, hammer_volume_t volume,
 			void *base, int len);
 void hammer_modify_buffer(hammer_transaction_t trans, hammer_buffer_t buffer,

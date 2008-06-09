@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.35 2008/06/08 18:16:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.36 2008/06/09 04:19:10 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -41,7 +41,7 @@
  * for backing store and we leave them passively associated with their
  * HAMMER structures.
  *
- * If the kernel tries to release a passively associated buf which we cannot
+ * If the kernel tries to destroy a passively associated buf which we cannot
  * yet let go we set B_LOCKED in the buffer and then actively released it
  * later when we can.
  */
@@ -84,7 +84,19 @@ hammer_io_disassociate(hammer_io_structure_t iou, int elseit)
 	KKASSERT(iou->io.modified == 0);
 	buf_dep_init(bp);
 	iou->io.bp = NULL;
-	bp->b_flags &= ~B_LOCKED;
+
+	/*
+	 * If the buffer was locked someone wanted to get rid of it.
+	 */
+	if (bp->b_flags & B_LOCKED) {
+		bp->b_flags &= ~B_LOCKED;
+		bp->b_flags |= B_RELBUF;
+	}
+
+	/*
+	 * elseit is 0 when called from the kernel path, the caller is
+	 * holding the buffer locked and will deal with its final disposition.
+	 */
 	if (elseit) {
 		KKASSERT(iou->io.released == 0);
 		iou->io.released = 1;
@@ -222,7 +234,7 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 		if (LIST_FIRST(&bp->b_dep) != NULL) {
 			hammer_io_deallocate(bp);
 		} else {
-			bp->b_flags |= B_INVAL;
+			bp->b_flags |= B_RELBUF;
 			brelse(bp);
 		}
 	}
@@ -240,6 +252,7 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 void
 hammer_io_release(struct hammer_io *io, int flush)
 {
+	union hammer_io_structure *iou = (void *)io;
 	struct buf *bp;
 
 	if ((bp = io->bp) == NULL)
@@ -316,9 +329,12 @@ hammer_io_release(struct hammer_io *io, int flush)
 		 * structure and use bioops to disconnect it later on
 		 * if the kernel wants to discard the buffer.
 		 */
-		bp->b_flags &= ~B_LOCKED;
-		io->released = 1;
-		bqrelse(bp);
+		if (bp->b_flags & B_LOCKED) {
+			hammer_io_disassociate(iou, 1);
+		} else {
+			io->released = 1;
+			bqrelse(bp);
+		}
 	} else {
 		/*
 		 * A released buffer may have been locked when the kernel
@@ -329,8 +345,12 @@ hammer_io_release(struct hammer_io *io, int flush)
 		crit_enter();
 		if (io->running == 0 && (bp->b_flags & B_LOCKED)) {
 			regetblk(bp);
-			bp->b_flags &= ~B_LOCKED;
-			bqrelse(bp);
+			if (bp->b_flags & B_LOCKED) {
+				io->released = 0;
+				hammer_io_disassociate(iou, 1);
+			} else {
+				bqrelse(bp);
+			}
 		}
 		crit_exit();
 	}
@@ -355,7 +375,7 @@ hammer_io_flush(struct hammer_io *io)
 	}
 
 	KKASSERT(io->bp);
-	KKASSERT(io->modify_refs == 0);
+	KKASSERT(io->modify_refs <= 0);
 
 	/*
 	 * Acquire ownership of the bp, particularly before we clear our
@@ -431,6 +451,14 @@ hammer_io_modify(hammer_io_t io, int count)
 	struct hammer_mount *hmp = io->hmp;
 
 	/*
+	 * io->modify_refs must be >= 0
+	 */
+	while (io->modify_refs < 0) {
+		io->waitmod = 1;
+		tsleep(io, 0, "hmrmod", 0);
+	}
+
+	/*
 	 * Shortcut if nothing to do.
 	 */
 	KKASSERT(io->lock.refs != 0 && io->bp != NULL);
@@ -477,6 +505,31 @@ hammer_io_modify_done(hammer_io_t io)
 {
 	KKASSERT(io->modify_refs > 0);
 	--io->modify_refs;
+	if (io->modify_refs == 0 && io->waitmod) {
+		io->waitmod = 0;
+		wakeup(io);
+	}
+}
+
+void
+hammer_io_write_interlock(hammer_io_t io)
+{
+	while (io->modify_refs != 0) {
+		io->waitmod = 1;
+		tsleep(io, 0, "hmrmod", 0);
+	}
+	io->modify_refs = -1;
+}
+
+void
+hammer_io_done_interlock(hammer_io_t io)
+{
+	KKASSERT(io->modify_refs == -1);
+	io->modify_refs = 0;
+	if (io->waitmod) {
+		io->waitmod = 0;
+		wakeup(io);
+	}
 }
 
 /*
@@ -862,7 +915,6 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 			nbio->bio_offset = volume->ondisk->vol_buf_beg +
 					   zone2_offset;
 			vn_strategy(volume->devvp, nbio);
-			kprintf("x");
 		}
 		hammer_rel_volume(volume, 0);
 	} else {
@@ -870,7 +922,6 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 		buffer = NULL;
 		ptr = hammer_bread(hmp, buf_offset, &error, &buffer);
 		if (error == 0) {
-			kprintf("y");
 			bp = bio->bio_buf;
 			hammer_io_modify(&buffer->io, 1);
 			bcopy(bp->b_data, ptr, leaf->data_len);

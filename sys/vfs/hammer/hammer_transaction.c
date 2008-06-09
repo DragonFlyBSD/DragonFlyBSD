@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.15 2008/05/18 01:48:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.16 2008/06/09 04:19:10 dillon Exp $
  */
 
 #include "hammer.h"
@@ -90,6 +90,8 @@ hammer_start_transaction_fls(struct hammer_transaction *trans,
 	int error;
 
 	KKASSERT(curthread == hmp->flusher_td);
+
+	bzero(trans, sizeof(*trans));
 
 	trans->type = HAMMER_TRANS_FLS;
 	trans->hmp = hmp;

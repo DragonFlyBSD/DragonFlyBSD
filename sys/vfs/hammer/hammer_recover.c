@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.21 2008/06/08 18:16:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.22 2008/06/09 04:19:10 dillon Exp $
  */
 
 #include "hammer.h"
@@ -62,31 +62,32 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 	hammer_off_t bytes;
 	hammer_fifo_tail_t tail;
 	hammer_fifo_undo_t undo;
+	hammer_off_t first_offset;
+	hammer_off_t last_offset;
 	int error;
 
 	/*
 	 * Examine the UNDO FIFO.  If it is empty the filesystem is clean
 	 * and no action need be taken.
-	 *
-	 * NOTE: hmp->blockmap has not been initialized yet so use the
-	 * root volume's ondisk buffer directly.
 	 */
 	rootmap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
-	hmp->flusher_undo_start = rootmap->next_offset;
 
 	if (rootmap->first_offset == rootmap->next_offset)
 		return(0);
 
-	if (rootmap->next_offset >= rootmap->first_offset) {
-		bytes = rootmap->next_offset - rootmap->first_offset;
+	first_offset = rootmap->first_offset;
+	last_offset  = rootmap->next_offset;
+
+	if (last_offset >= first_offset) {
+		bytes = last_offset - first_offset;
 	} else {
-		bytes = rootmap->alloc_offset - rootmap->first_offset +
-			(rootmap->next_offset & HAMMER_OFF_LONG_MASK);
+		bytes = rootmap->alloc_offset - first_offset +
+			(last_offset & HAMMER_OFF_LONG_MASK);
 	}
 	kprintf("HAMMER(%s) Start Recovery %016llx - %016llx "
 		"(%lld bytes of UNDO)%s\n",
 		root_volume->ondisk->vol_name,
-		rootmap->first_offset, rootmap->next_offset,
+		first_offset, last_offset,
 		bytes,
 		(hmp->ronly ? " (RO)" : "(RW)"));
 	if (bytes > (rootmap->alloc_offset & HAMMER_OFF_LONG_MASK)) {
@@ -97,7 +98,7 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 	/*
 	 * Scan the UNDOs backwards.
 	 */
-	scan_offset = rootmap->next_offset;
+	scan_offset = last_offset;
 	buffer = NULL;
 	if (scan_offset > rootmap->alloc_offset) {
 		kprintf("HAMMER(%s) UNDO record at %016llx FIFO overflow\n",
@@ -156,22 +157,31 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 		bytes -= tail->tail_size;
 	}
 done:
-	/*
-	 * Reload flusher_undo_start to kick off the UNDO sequencing.
-	 */
-	hmp->flusher_undo_start = rootmap->next_offset;
 	if (buffer)
 		hammer_rel_buffer(buffer, 0);
 
 	/*
-	 * Flush out the root volume header after all other flushes have
-	 * completed.
+	 * After completely flushing all the recovered buffers the volume
+	 * header will also be flushed.  Force the UNDO FIFO to 0-length.
 	 */
-	if (hmp->ronly == 0 && error == 0 && root_volume->io.recovered) {
-		hammer_recover_flush_buffers(hmp, root_volume);
+	if (root_volume->io.recovered == 0) {
+		hammer_ref_volume(root_volume);
+		root_volume->io.recovered = 1;
 	}
-	kprintf("HAMMER(%s) End Recovery\n",
-		root_volume->ondisk->vol_name);
+	hammer_modify_volume(NULL, root_volume, NULL, 0);
+	rootmap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
+	rootmap->first_offset = last_offset;
+	rootmap->next_offset = last_offset;
+	hammer_modify_volume_done(root_volume);
+
+	/*
+	 * We have collected a large number of dirty buffers during the
+	 * recovery, flush them all out.  The root volume header will
+	 * be flushed out last.
+	 */
+	if (hmp->ronly == 0 && error == 0)
+		hammer_recover_flush_buffers(hmp, root_volume);
+	kprintf("HAMMER(%s) End Recovery\n", root_volume->ondisk->vol_name);
 	return (error);
 }
 
@@ -327,8 +337,9 @@ hammer_recover_undo(hammer_mount_t hmp, hammer_volume_t root_volume,
 		hammer_modify_volume_done(volume);
 
 		/*
-		 * Multiple modifications may be made to the same buffer,
-		 * improve performance by delaying the flush.  This also
+		 * Multiple modifications may be made to the same buffer.
+		 * Also, the volume header cannot be written out until
+		 * everything else has been flushed.  This also
 		 * covers the read-only case by preventing the kernel from
 		 * flushing the buffer.
 		 */
@@ -404,8 +415,14 @@ hammer_recover_debug_dump(int w, char *buf, int bytes)
 #endif
 
 /*
- * Flush unwritten buffers from undo recovery operations on a read-only mount
- * when the mount is updated to read-write.
+ * Flush recovered buffers from recovery operations.  The call to this
+ * routine may be delayed if a read-only mount was made and then later
+ * upgraded to read-write.
+ *
+ * The volume header is always written last.  The UNDO FIFO will be forced
+ * to zero-length by setting next_offset to first_offset.  This leaves the
+ * (now stale) UNDO information used to recover the disk available for
+ * forensic analysis.
  */
 static int hammer_recover_flush_volume_callback(hammer_volume_t, void *);
 static int hammer_recover_flush_buffer_callback(hammer_buffer_t, void *);
@@ -415,8 +432,10 @@ hammer_recover_flush_buffers(hammer_mount_t hmp, hammer_volume_t root_volume)
 {
 	RB_SCAN(hammer_buf_rb_tree, &hmp->rb_bufs_root, NULL,
 		hammer_recover_flush_buffer_callback, NULL);
+
 	RB_SCAN(hammer_vol_rb_tree, &hmp->rb_vols_root, NULL,
 		hammer_recover_flush_volume_callback, root_volume);
+
 	if (root_volume->io.recovered) {
 		crit_enter();
 		while (hmp->io_running_count)
