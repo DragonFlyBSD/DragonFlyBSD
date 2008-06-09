@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.23 2008/06/08 08:38:05 sephe Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.24 2008/06/09 11:24:24 sephe Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -274,12 +274,12 @@ static struct in6_ifaddr *
 stf_getsrcifa6(struct ifnet *ifp)
 {
 	struct ifaddr_container *ifac;
-	struct in_ifaddr *ia4;
 	struct sockaddr_in6 *sin6;
 	struct in_addr in;
 
 	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
 		struct ifaddr *ia = ifac->ifa;
+		struct in_ifaddr_container *iac;
 
 		if (ia->ifa_addr == NULL)
 			continue;
@@ -290,10 +290,11 @@ stf_getsrcifa6(struct ifnet *ifp)
 			continue;
 
 		bcopy(GET_V4(&sin6->sin6_addr), &in, sizeof(in));
-		LIST_FOREACH(ia4, INADDR_HASH(in.s_addr), ia_hash)
-			if (ia4->ia_addr.sin_addr.s_addr == in.s_addr)
+		LIST_FOREACH(iac, INADDR_HASH(in.s_addr), ia_hash) {
+			if (iac->ia->ia_addr.sin_addr.s_addr == in.s_addr)
 				break;
-		if (ia4 == NULL)
+		}
+		if (iac == NULL)
 			continue;
 
 		return (struct in6_ifaddr *)ia;

@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.29 2008/05/27 01:10:42 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.30 2008/06/09 11:24:24 sephe Exp $
  */
 
 #include "opt_ipsec.h"
@@ -612,6 +612,7 @@ icmp_reflect(struct mbuf *m)
 {
 	struct ip *ip = mtod(m, struct ip *);
 	struct in_ifaddr *ia;
+	struct in_ifaddr_container *iac;
 	struct in_addr t;
 	struct mbuf *opts = 0;
 	int optlen = (IP_VHL_HL(ip->ip_vhl) << 2) - sizeof(struct ip);
@@ -634,9 +635,13 @@ icmp_reflect(struct mbuf *m)
 	 * or anonymous), use the address which corresponds
 	 * to the incoming interface.
 	 */
-	LIST_FOREACH(ia, INADDR_HASH(t.s_addr), ia_hash)
-		if (t.s_addr == IA_SIN(ia)->sin_addr.s_addr)
+	ia = NULL;
+	LIST_FOREACH(iac, INADDR_HASH(t.s_addr), ia_hash) {
+		if (t.s_addr == IA_SIN(iac->ia)->sin_addr.s_addr) {
+			ia = iac->ia;
 			goto match;
+		}
+	}
 	if (m->m_pkthdr.rcvif != NULL &&
 	    m->m_pkthdr.rcvif->if_flags & IFF_BROADCAST) {
 		struct ifaddr_container *ifac;

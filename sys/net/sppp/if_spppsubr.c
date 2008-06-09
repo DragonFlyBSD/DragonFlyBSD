@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.34 2008/05/14 11:59:24 sephe Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.35 2008/06/09 11:24:24 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -4955,11 +4955,12 @@ sppp_set_ip_addr(struct sppp *sp, u_long src)
 		    		SPP_ARGS(ifp), error);
 		}
 
+		ia = ifatoia(ifa);
+		in_iahash_remove(ia);
+
 		/* set new address */
 		si->sin_addr.s_addr = htonl(src);
-		ia = ifatoia(ifa);
-		LIST_REMOVE(ia, ia_hash);
-		LIST_INSERT_HEAD(INADDR_HASH(si->sin_addr.s_addr), ia, ia_hash);
+		in_iahash_insert(ia);
 
 		/* add new route */
 		error = rtinit(ifa, (int)RTM_ADD, RTF_HOST);

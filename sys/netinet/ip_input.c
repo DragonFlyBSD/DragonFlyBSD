@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.80 2008/06/08 08:38:05 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.81 2008/06/09 11:24:24 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -206,7 +206,8 @@ extern	struct domain inetdomain;
 extern	struct protosw inetsw[];
 u_char	ip_protox[IPPROTO_MAX];
 struct	in_ifaddrhead in_ifaddrheads[MAXCPU];	/* first inet address */
-struct	in_ifaddrhashhead *in_ifaddrhashtbl;	/* inet addr hash table */
+struct	in_ifaddrhashhead *in_ifaddrhashtbls[MAXCPU];
+						/* inet addr hash table */
 u_long	in_ifaddrhmask;				/* mask for hash table */
 
 struct ip_stats ipstats_percpu[MAXCPU];
@@ -318,9 +319,11 @@ ip_init(void)
 	 */
 	mpipe_init(&ipq_mpipe, M_IPQ, sizeof(struct ipq),
 		    IFQ_MAXLEN, 4000, 0, NULL);
-	for (i = 0; i < ncpus; ++i)
+	for (i = 0; i < ncpus; ++i) {
 		TAILQ_INIT(&in_ifaddrheads[i]);
-	in_ifaddrhashtbl = hashinit(INADDR_NHASH, M_IFADDR, &in_ifaddrhmask);
+		in_ifaddrhashtbls[i] =
+			hashinit(INADDR_NHASH, M_IFADDR, &in_ifaddrhmask);
+	}
 	pr = pffindproto(PF_INET, IPPROTO_RAW, SOCK_RAW);
 	if (pr == NULL)
 		panic("ip_init");
@@ -433,6 +436,7 @@ ip_input(struct mbuf *m)
 	struct ip *ip;
 	struct ipq *fp;
 	struct in_ifaddr *ia = NULL;
+	struct in_ifaddr_container *iac;
 	int i, hlen, checkif;
 	u_short sum;
 	struct in_addr pkt_dst;
@@ -697,7 +701,9 @@ pass:
 	/*
 	 * Check for exact addresses in the hash bucket.
 	 */
-	LIST_FOREACH(ia, INADDR_HASH(pkt_dst.s_addr), ia_hash) {
+	LIST_FOREACH(iac, INADDR_HASH(pkt_dst.s_addr), ia_hash) {
+		ia = iac->ia;
+
 		/*
 		 * If the address matches, verify that the packet
 		 * arrived via the correct interface if checking is
@@ -707,6 +713,8 @@ pass:
 		    (!checkif || ia->ia_ifp == m->m_pkthdr.rcvif))
 			goto ours;
 	}
+	ia = NULL;
+
 	/*
 	 * Check for broadcast addresses.
 	 *

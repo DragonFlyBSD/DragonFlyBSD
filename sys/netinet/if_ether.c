@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.48 2008/05/31 08:29:05 sephe Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.49 2008/06/09 11:24:24 sephe Exp $
  */
 
 /*
@@ -658,6 +658,7 @@ in_arpinput(struct mbuf *m)
 	struct ether_header *eh;
 	struct rtentry *rt;
 	struct ifaddr_container *ifac;
+	struct in_ifaddr_container *iac;
 	struct in_ifaddr *ia;
 	struct sockaddr sa;
 	struct in_addr isaddr, itaddr, myaddr;
@@ -688,7 +689,9 @@ in_arpinput(struct mbuf *m)
 	 * the interface owning the address are on the same bridge.
 	 * (This will change slightly when we have clusters of interfaces).
 	 */
-	LIST_FOREACH(ia, INADDR_HASH(itaddr.s_addr), ia_hash) {
+	LIST_FOREACH(iac, INADDR_HASH(itaddr.s_addr), ia_hash) {
+		ia = iac->ia;
+
 		/* Skip all ia's which don't match */
 		if (itaddr.s_addr != ia->ia_addr.sin_addr.s_addr)
 			continue;
@@ -713,7 +716,9 @@ in_arpinput(struct mbuf *m)
                         goto match;
 #endif
 	}
-	LIST_FOREACH(ia, INADDR_HASH(isaddr.s_addr), ia_hash) {
+	LIST_FOREACH(iac, INADDR_HASH(isaddr.s_addr), ia_hash) {
+		ia = iac->ia;
+
 		/* Skip all ia's which don't match */
 		if (isaddr.s_addr != ia->ia_addr.sin_addr.s_addr)
 			continue;

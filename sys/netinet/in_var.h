@@ -32,7 +32,7 @@
  *
  *	@(#)in_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in_var.h,v 1.33.2.3 2001/12/14 20:09:34 jlemon Exp $
- * $DragonFly: src/sys/netinet/in_var.h,v 1.12 2008/06/08 08:38:05 sephe Exp $
+ * $DragonFly: src/sys/netinet/in_var.h,v 1.13 2008/06/09 11:24:24 sephe Exp $
  */
 
 #ifndef _NETINET_IN_VAR_H_
@@ -67,7 +67,7 @@ struct in_ifaddr {
 	u_long	ia_subnet;		/* subnet number, including net */
 	u_long	ia_subnetmask;		/* mask of subnet part */
 	struct	in_addr ia_netbroadcast; /* to recognize net broadcasts */
-	LIST_ENTRY(in_ifaddr) ia_hash;	/* entry in bucket of inet addresses */
+	void	*ia_pad1[2];
 	void	*ia_pad2[2];
 	struct	sockaddr_in ia_addr;	/* reserve space for interface name */
 	struct	sockaddr_in ia_dstaddr; /* reserve space for broadcast addr */
@@ -102,7 +102,7 @@ extern	u_char	inetctlerrmap[];
 /*
  * Hash table for IP addresses.
  */
-extern	LIST_HEAD(in_ifaddrhashhead, in_ifaddr) *in_ifaddrhashtbl;
+extern	LIST_HEAD(in_ifaddrhashhead, in_ifaddr_container) *in_ifaddrhashtbls[];
 extern	TAILQ_HEAD(in_ifaddrhead, in_ifaddr_container) in_ifaddrheads[];
 extern	u_long in_ifaddrhmask;			/* mask for hash table */
 
@@ -110,27 +110,27 @@ extern	u_long in_ifaddrhmask;			/* mask for hash table */
 #define INADDR_NHASH		(1 << INADDR_NHASH_LOG2)
 #define INADDR_HASHVAL(x)	fnv_32_buf((&(x)), sizeof(x), FNV1_32_INIT)
 #define INADDR_HASH(x) \
-	(&in_ifaddrhashtbl[INADDR_HASHVAL(x) & in_ifaddrhmask])
+	(&in_ifaddrhashtbls[mycpuid][INADDR_HASHVAL(x) & in_ifaddrhmask])
 
 
 /*
- * Macro for finding the interface (ifnet structure) corresponding to one
+ * Function for finding the interface (ifnet structure) corresponding to one
  * of our IP addresses.
  */
-#define INADDR_TO_IFP(addr, ifp) \
-	/* struct in_addr addr; */ \
-	/* struct ifnet *ifp; */ \
-{ \
-	struct in_ifaddr *ia; \
-\
-	LIST_FOREACH(ia, INADDR_HASH((addr).s_addr), ia_hash) \
-		if (IA_SIN(ia)->sin_addr.s_addr == (addr).s_addr) \
-			break; \
-	(ifp) = (ia == NULL) ? NULL : ia->ia_ifp; \
+static __inline struct ifnet *
+INADDR_TO_IFP(const struct in_addr *_addr)
+{
+	struct in_ifaddr_container *_iac;
+
+	LIST_FOREACH(_iac, INADDR_HASH(_addr->s_addr), ia_hash) {
+		if (IA_SIN(_iac->ia)->sin_addr.s_addr == _addr->s_addr)
+			return _iac->ia->ia_ifp;
+	}
+	return NULL;
 }
 
 /*
- * Macro for finding the internet address structure (in_ifaddr) corresponding
+ * Function for finding the internet address structure (in_ifaddr) corresponding
  * to a given interface (ifnet structure).
  */
 static __inline struct in_ifaddr *
@@ -250,6 +250,8 @@ void	ip_input (struct mbuf *);
 int	in_ifadown (struct ifaddr *ifa, int);
 void	in_ifscrub (struct ifnet *, struct in_ifaddr *);
 void	in_iaunlink (struct in_ifaddr *);
+void	in_iahash_insert (struct in_ifaddr *);
+void	in_iahash_remove (struct in_ifaddr *);
 int	ipflow_fastforward (struct mbuf *, struct lwkt_serialize *);
 void	ipflow_create (const struct route *, struct mbuf *);
 void	ipflow_slowtimo (void);

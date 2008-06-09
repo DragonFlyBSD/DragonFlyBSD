@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.41 2008/03/07 11:34:20 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.42 2008/06/09 11:24:24 sephe Exp $
  */
 
 #define        DEB(x)
@@ -1645,7 +1645,7 @@ check_body:
 				if (hlen > 0) {
 					struct ifnet *tif;
 
-					INADDR_TO_IFP(src_ip, tif);
+					tif = INADDR_TO_IFP(&src_ip);
 					match = (tif != NULL);
 				}
 				break;
@@ -1685,7 +1685,7 @@ check_body:
 				if (hlen > 0) {
 					struct ifnet *tif;
 
-					INADDR_TO_IFP(dst_ip, tif);
+					tif = INADDR_TO_IFP(&dst_ip);
 					match = (tif != NULL);
 				}
 				break;

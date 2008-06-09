@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.43 2008/06/08 08:38:05 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.44 2008/06/09 11:24:24 sephe Exp $
  */
 
 #define _IP_VHL
@@ -837,6 +837,7 @@ spd_done:
 				goto done;
 #else
 			struct in_ifaddr *ia;
+			struct in_ifaddr_container *iac;
 
 			/*
 			 * XXX sro_fwd below is static, and a pointer
@@ -867,16 +868,19 @@ spd_done:
 			 * as the packet runs through ip_input() as
 			 * it is done through a ISR.
 			 */
-			LIST_FOREACH(ia, INADDR_HASH(dst->sin_addr.s_addr),
+			ia = NULL;
+			LIST_FOREACH(iac, INADDR_HASH(dst->sin_addr.s_addr),
 				     ia_hash) {
 				/*
 				 * If the addr to forward to is one
 				 * of ours, we pretend to
 				 * be the destination for this packet.
 				 */
-				if (IA_SIN(ia)->sin_addr.s_addr ==
-						 dst->sin_addr.s_addr)
+				if (IA_SIN(iac->ia)->sin_addr.s_addr ==
+				    dst->sin_addr.s_addr) {
+					ia = iac->ia;
 					break;
+				}
 			}
 			if (ia != NULL) {    /* tell ip_input "dont filter" */
 				struct m_hdr tag;
@@ -1786,7 +1790,7 @@ ip_multicast_if(struct in_addr *a, int *ifindexp)
 		if (ifindexp)
 			*ifindexp = ifindex;
 	} else {
-		INADDR_TO_IFP(*a, ifp);
+		ifp = INADDR_TO_IFP(a);
 	}
 	return ifp;
 }
