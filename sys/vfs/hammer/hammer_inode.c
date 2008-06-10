@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.68 2008/06/10 05:06:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.69 2008/06/10 08:51:01 dillon Exp $
  */
 
 #include "hammer.h"
@@ -96,20 +96,28 @@ hammer_vop_inactive(struct vop_inactive_args *ap)
 int
 hammer_vop_reclaim(struct vop_reclaim_args *ap)
 {
+	hammer_mount_t hmp;
 	struct hammer_inode *ip;
 	struct vnode *vp;
 
 	vp = ap->a_vp;
 
 	if ((ip = vp->v_data) != NULL) {
+		hmp = ip->hmp;
 		vp->v_data = NULL;
 		ip->vp = NULL;
 		if ((ip->flags & HAMMER_INODE_RECLAIM) == 0) {
 			++hammer_count_reclaiming;
-			++ip->hmp->inode_reclaims;
+			++hmp->inode_reclaims;
 			ip->flags |= HAMMER_INODE_RECLAIM;
 		}
 		hammer_rel_inode(ip, 1);
+
+		/*
+		 * Do not let too many reclaimed inodes build up.
+		 * 
+		 */
+		hammer_inode_waitreclaims(hmp);
 	}
 	return(0);
 }
@@ -237,14 +245,16 @@ loop:
 		return(ip);
 	}
 
+#if 0
         /*
 	 * Impose a slow-down if HAMMER is heavily backlogged on cleaning
 	 * out reclaimed inodes.
          */
         if (hmp->inode_reclaims > HAMMER_RECLAIM_MIN &&
-	    curthread != hmp->flusher_td) {
+	    trans->type != HAMMER_TRANS_FLS) {
                 hammer_inode_waitreclaims(hmp);
-        }
+	}
+#endif
 
 	/*
 	 * Allocate a new inode structure and deal with races later.
@@ -911,7 +921,7 @@ hammer_setup_parent_inodes(hammer_record_t record)
 	 * allow the operation yet anyway (the second return -1).
 	 */
 	if (record->flush_state == HAMMER_FST_FLUSH) {
-		if (record->flush_group != hmp->flusher_next) {
+		if (record->flush_group != hmp->flusher.next) {
 			ip->flags |= HAMMER_INODE_REFLUSH;
 			return(-1);
 		}
@@ -973,7 +983,7 @@ hammer_setup_parent_inodes(hammer_record_t record)
 		return(-1);
 	} else
 #endif
-	if (ip->flush_group == ip->hmp->flusher_next) {
+	if (ip->flush_group == ip->hmp->flusher.next) {
 		/*
 		 * This is the record we wanted to synchronize.
 		 */
@@ -1015,8 +1025,8 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 	if (ip->flush_state == HAMMER_FST_IDLE)
 		hammer_ref(&ip->lock);
 	ip->flush_state = HAMMER_FST_FLUSH;
-	ip->flush_group = ip->hmp->flusher_next;
-	++ip->hmp->flusher_lock;
+	ip->flush_group = ip->hmp->flusher.next;
+	++ip->hmp->flusher.group_lock;
 
 	/*
 	 * We need to be able to vfsync/truncate from the backend.
@@ -1056,8 +1066,8 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 				ip->flags |= HAMMER_INODE_RESIGNAL;
 				hammer_flusher_async(ip->hmp);
 			}
-			if (--ip->hmp->flusher_lock == 0)
-				wakeup(&ip->hmp->flusher_lock);
+			if (--ip->hmp->flusher.group_lock == 0)
+				wakeup(&ip->hmp->flusher.group_lock);
 			return;
 		}
 	}
@@ -1087,8 +1097,8 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 	 * The flusher list inherits our inode and reference.
 	 */
 	TAILQ_INSERT_TAIL(&ip->hmp->flush_list, ip, flush_entry);
-	if (--ip->hmp->flusher_lock == 0)
-		wakeup(&ip->hmp->flusher_lock);
+	if (--ip->hmp->flusher.group_lock == 0)
+		wakeup(&ip->hmp->flusher.group_lock);
 
 	if (flags & HAMMER_FLUSH_SIGNAL) {
 		hammer_flusher_async(ip->hmp);
@@ -1501,7 +1511,7 @@ hammer_sync_inode(hammer_inode_t ip)
 	while ((depend = next) != NULL) {
 		next = TAILQ_NEXT(depend, target_entry);
 		if (depend->flush_state == HAMMER_FST_FLUSH &&
-		    depend->flush_group == ip->hmp->flusher_act) {
+		    depend->flush_group == ip->hmp->flusher.act) {
 			/*
 			 * If this is an ADD that was deleted by the frontend
 			 * the frontend nlinks count will have already been
@@ -1856,7 +1866,9 @@ hammer_inode_waitreclaims(hammer_mount_t hmp)
 	int maxpt;
 
 	while (hmp->inode_reclaims > HAMMER_RECLAIM_MIN) {
-		count = hmp->count_inodes;
+		count = hmp->count_inodes - hmp->inode_reclaims;
+		if (count < 100)
+			count = 100;
 		minpt = count * HAMMER_RECLAIM_SLOPCT / 100;
 		maxpt = count * HAMMER_RECLAIM_MAXPCT / 100;
 

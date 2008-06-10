@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.22 2008/06/10 05:06:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.23 2008/06/10 08:51:01 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -42,7 +42,8 @@
 
 #include "hammer.h"
 
-static void hammer_flusher_thread(void *arg);
+static void hammer_flusher_master_thread(void *arg);
+static void hammer_flusher_slave_thread(void *arg);
 static void hammer_flusher_clean_loose_ios(hammer_mount_t hmp);
 static void hammer_flusher_flush(hammer_mount_t hmp);
 static void hammer_flusher_flush_inode(hammer_inode_t ip,
@@ -57,82 +58,150 @@ hammer_flusher_sync(hammer_mount_t hmp)
 {
 	int seq;
 
-	if (hmp->flusher_td) {
-		seq = hmp->flusher_next;
-		if (hmp->flusher_signal++ == 0)
-			wakeup(&hmp->flusher_signal);
-		while ((int)(seq - hmp->flusher_done) > 0)
-			tsleep(&hmp->flusher_done, 0, "hmrfls", 0);
+	if (hmp->flusher.td) {
+		seq = hmp->flusher.next;
+		if (hmp->flusher.signal++ == 0)
+			wakeup(&hmp->flusher.signal);
+		while ((int)(seq - hmp->flusher.done) > 0)
+			tsleep(&hmp->flusher.done, 0, "hmrfls", 0);
 	}
 }
 
 void
 hammer_flusher_async(hammer_mount_t hmp)
 {
-	if (hmp->flusher_td) {
-		if (hmp->flusher_signal++ == 0)
-			wakeup(&hmp->flusher_signal);
+	if (hmp->flusher.td) {
+		if (hmp->flusher.signal++ == 0)
+			wakeup(&hmp->flusher.signal);
 	}
 }
 
 void
 hammer_flusher_create(hammer_mount_t hmp)
 {
-	hmp->flusher_signal = 0;
-	hmp->flusher_act = 0;
-	hmp->flusher_done = 0;
-	hmp->flusher_next = 1;
-	lwkt_create(hammer_flusher_thread, hmp, &hmp->flusher_td, NULL,
-		    0, -1, "hammer");
+	hammer_flusher_info_t info;
+	int i;
+
+	hmp->flusher.signal = 0;
+	hmp->flusher.act = 0;
+	hmp->flusher.done = 0;
+	hmp->flusher.next = 1;
+	hmp->flusher.count = 0;
+	hammer_ref(&hmp->flusher.finalize_lock);
+
+	lwkt_create(hammer_flusher_master_thread, hmp,
+		    &hmp->flusher.td, NULL, 0, -1, "hammer-M");
+	for (i = 0; i < HAMMER_MAX_FLUSHERS; ++i) {
+		info = kmalloc(sizeof(*info), M_HAMMER, M_WAITOK|M_ZERO);
+		info->hmp = hmp;
+		TAILQ_INIT(&info->work_list);
+		++hmp->flusher.count;
+		hmp->flusher.info[i] = info;
+		lwkt_create(hammer_flusher_slave_thread, info,
+			    &info->td, NULL, 0, -1, "hammer-S%d", i);
+	}
 }
 
 void
 hammer_flusher_destroy(hammer_mount_t hmp)
 {
-	if (hmp->flusher_td) {
-		hmp->flusher_exiting = 1;
-		while (hmp->flusher_td) {
-			++hmp->flusher_signal;
-			wakeup(&hmp->flusher_signal);
-			tsleep(&hmp->flusher_exiting, 0, "hmrwex", 0);
+	hammer_flusher_info_t info;
+	int i;
+
+	/*
+	 * Kill the master
+	 */
+	hmp->flusher.exiting = 1;
+	while (hmp->flusher.td) {
+		++hmp->flusher.signal;
+		wakeup(&hmp->flusher.signal);
+		tsleep(&hmp->flusher.exiting, 0, "hmrwex", hz);
+	}
+
+	/*
+	 * Kill the slaves
+	 */
+	for (i = 0; i < HAMMER_MAX_FLUSHERS; ++i) {
+		if ((info = hmp->flusher.info[i]) != NULL) {
+			KKASSERT(info->running == 0);
+			info->running = -1;
+			wakeup(&info->running);
+			while (info->td) {
+				tsleep(&info->td, 0, "hmrwwc", 0);
+			}
+			hmp->flusher.info[i] = NULL;
+			kfree(info, M_HAMMER);
+			--hmp->flusher.count;
 		}
 	}
+	KKASSERT(hmp->flusher.count == 0);
 }
 
 static void
-hammer_flusher_thread(void *arg)
+hammer_flusher_master_thread(void *arg)
 {
 	hammer_mount_t hmp = arg;
 
 	for (;;) {
-		while (hmp->flusher_lock)
-			tsleep(&hmp->flusher_lock, 0, "hmrhld", 0);
+		while (hmp->flusher.group_lock)
+			tsleep(&hmp->flusher.group_lock, 0, "hmrhld", 0);
 		kprintf("S");
-		hmp->flusher_act = hmp->flusher_next;
-		++hmp->flusher_next;
+		hmp->flusher.act = hmp->flusher.next;
+		++hmp->flusher.next;
 		hammer_flusher_clean_loose_ios(hmp);
 		hammer_flusher_flush(hmp);
 		hammer_flusher_clean_loose_ios(hmp);
-		hmp->flusher_done = hmp->flusher_act;
-
-		wakeup(&hmp->flusher_done);
+		hmp->flusher.done = hmp->flusher.act;
+		wakeup(&hmp->flusher.done);
 
 		/*
 		 * Wait for activity.
 		 */
-		if (hmp->flusher_exiting && TAILQ_EMPTY(&hmp->flush_list))
+		if (hmp->flusher.exiting && TAILQ_EMPTY(&hmp->flush_list))
 			break;
 
 		/*
 		 * This is a hack until we can dispose of frontend buffer
 		 * cache buffers on the frontend.
 		 */
-		while (hmp->flusher_signal == 0)
-			tsleep(&hmp->flusher_signal, 0, "hmrwwa", 0);
-		hmp->flusher_signal = 0;
+		while (hmp->flusher.signal == 0)
+			tsleep(&hmp->flusher.signal, 0, "hmrwwa", 0);
+		hmp->flusher.signal = 0;
 	}
-	hmp->flusher_td = NULL;
-	wakeup(&hmp->flusher_exiting);
+
+	/*
+	 * And we are done.
+	 */
+	hmp->flusher.td = NULL;
+	wakeup(&hmp->flusher.exiting);
+	lwkt_exit();
+}
+
+static void
+hammer_flusher_slave_thread(void *arg)
+{
+	hammer_flusher_info_t info;
+	hammer_mount_t hmp;
+	hammer_inode_t ip;
+
+	info = arg;
+	hmp = info->hmp;
+
+	for (;;) {
+		while (info->running == 0)
+			tsleep(&info->running, 0, "hmrssw", 0);
+		if (info->running < 0)
+			break;
+		while ((ip = TAILQ_FIRST(&info->work_list)) != NULL) {
+			TAILQ_REMOVE(&info->work_list, ip, flush_entry);
+			hammer_flusher_flush_inode(ip, &hmp->flusher.trans);
+		}
+		info->running = 0;
+		if (--hmp->flusher.running == 0)
+			wakeup(&hmp->flusher.running);
+	}
+	info->td = NULL;
+	wakeup(&info->td);
 	lwkt_exit();
 }
 
@@ -163,22 +232,37 @@ hammer_flusher_clean_loose_ios(hammer_mount_t hmp)
 static void
 hammer_flusher_flush(hammer_mount_t hmp)
 {
-	struct hammer_transaction trans;
+	hammer_flusher_info_t info;
 	hammer_inode_t ip;
 	hammer_reserve_t resv;
+	int i;
 
 	/*
 	 * Flush the inodes
 	 */
-	hammer_start_transaction_fls(&trans, hmp);
+	hammer_start_transaction_fls(&hmp->flusher.trans, hmp);
+	i = 0;
 	while ((ip = TAILQ_FIRST(&hmp->flush_list)) != NULL) {
-		if (ip->flush_group != hmp->flusher_act)
+		if (ip->flush_group != hmp->flusher.act)
 			break;
 		TAILQ_REMOVE(&hmp->flush_list, ip, flush_entry);
-		hammer_flusher_flush_inode(ip, &trans);
+		info = hmp->flusher.info[i];
+		TAILQ_INSERT_TAIL(&info->work_list, ip, flush_entry);
+		if (info->running == 0) {
+			++hmp->flusher.running;
+			info->running = 1;
+			wakeup(&info->running);
+		}
+		/*hammer_flusher_flush_inode(ip, &trans);*/
+		++i;
+		if (i == HAMMER_MAX_FLUSHERS || hmp->flusher.info[i] == NULL)
+			i = 0;
 	}
-	hammer_flusher_finalize(&trans, 1);
-	hmp->flusher_tid = trans.tid;
+	while (hmp->flusher.running)
+		tsleep(&hmp->flusher.running, 0, "hmrfcc", 0);
+
+	hammer_flusher_finalize(&hmp->flusher.trans, 1);
+	hmp->flusher.tid = hmp->flusher.trans.tid;
 
 	/*
 	 * Clean up any freed big-blocks (typically zone-2). 
@@ -187,14 +271,12 @@ hammer_flusher_flush(hammer_mount_t hmp)
 	 * it can no longer be reused.
 	 */
 	while ((resv = TAILQ_FIRST(&hmp->delay_list)) != NULL) {
-		if (resv->flush_group != hmp->flusher_act)
+		if (resv->flush_group != hmp->flusher.act)
 			break;
 		TAILQ_REMOVE(&hmp->delay_list, resv, delay_entry);
 		hammer_blockmap_reserve_complete(hmp, resv);
 	}
-
-
-	hammer_done_transaction(&trans);
+	hammer_done_transaction(&hmp->flusher.trans);
 }
 
 /*
@@ -206,18 +288,29 @@ hammer_flusher_flush_inode(hammer_inode_t ip, hammer_transaction_t trans)
 {
 	hammer_mount_t hmp = ip->hmp;
 
-	/*hammer_lock_ex(&ip->lock);*/
+	hammer_lock_sh(&hmp->flusher.finalize_lock);
 	ip->error = hammer_sync_inode(ip);
 	hammer_flush_inode_done(ip);
-	/*hammer_unlock(&ip->lock);*/
-
+	hammer_unlock(&hmp->flusher.finalize_lock);
+	while (hmp->flusher.finalize_want)
+		tsleep(&hmp->flusher.finalize_want, 0, "hmrsxx", 0);
 	if (hammer_must_finalize_undo(hmp)) {
+		hmp->flusher.finalize_want = 1;
+		hammer_lock_ex(&hmp->flusher.finalize_lock);
 		kprintf("HAMMER: Warning: UNDO area too small!");
 		hammer_flusher_finalize(trans, 1);
+		hammer_unlock(&hmp->flusher.finalize_lock);
+		hmp->flusher.finalize_want = 0;
+		wakeup(&hmp->flusher.finalize_want);
 	} else if (trans->hmp->locked_dirty_count +
 		   trans->hmp->io_running_count > hammer_limit_dirtybufs) {
+		hmp->flusher.finalize_want = 1;
+		hammer_lock_ex(&hmp->flusher.finalize_lock);
 		kprintf("t");
 		hammer_flusher_finalize(trans, 0);
+		hammer_unlock(&hmp->flusher.finalize_lock);
+		hmp->flusher.finalize_want = 0;
+		wakeup(&hmp->flusher.finalize_want);
 	}
 }
 

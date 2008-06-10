@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.19 2008/05/18 01:48:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.20 2008/06/10 08:51:01 dillon Exp $
  */
 
 #include "hammer.h"
@@ -303,22 +303,22 @@ hammer_ioc_synctid(hammer_transaction_t trans, hammer_inode_t ip,
 
 	switch(std->op) {
 	case HAMMER_SYNCTID_NONE:
-		std->tid = hmp->flusher_tid;	/* inaccurate */
+		std->tid = hmp->flusher.tid;	/* inaccurate */
 		break;
 	case HAMMER_SYNCTID_ASYNC:
 		hammer_queue_inodes_flusher(hmp, MNT_NOWAIT);
-		std->tid = hmp->flusher_tid;	/* inaccurate */
+		std->tid = hmp->flusher.tid;	/* inaccurate */
 		hammer_flusher_async(hmp);
 		break;
 	case HAMMER_SYNCTID_SYNC1:
 		hammer_queue_inodes_flusher(hmp, MNT_WAIT);
 		hammer_flusher_sync(hmp);
-		std->tid = hmp->flusher_tid;
+		std->tid = hmp->flusher.tid;
 		break;
 	case HAMMER_SYNCTID_SYNC2:
 		hammer_queue_inodes_flusher(hmp, MNT_WAIT);
 		hammer_flusher_sync(hmp);
-		std->tid = hmp->flusher_tid;
+		std->tid = hmp->flusher.tid;
 		hammer_flusher_sync(hmp);
 		break;
 	default:

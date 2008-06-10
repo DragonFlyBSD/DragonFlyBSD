@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.15 2008/06/10 00:40:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.16 2008/06/10 08:51:01 dillon Exp $
  */
 
 /*
@@ -179,7 +179,7 @@ hammer_freemap_free(hammer_transaction_t trans, hammer_off_t phys_offset,
 	resv = kmalloc(sizeof(*resv), M_HAMMER, M_WAITOK|M_ZERO);
 	resv->refs = 1;
 	resv->zone_offset = phys_offset;
-	resv->flush_group = hmp->flusher_next + 1;
+	resv->flush_group = hmp->flusher.next + 1;
 	RB_INSERT(hammer_res_rb_tree, &hmp->rb_resv_root, resv);
 	TAILQ_INSERT_TAIL(&hmp->delay_list, resv, delay_entry);
 	++hammer_count_reservations;

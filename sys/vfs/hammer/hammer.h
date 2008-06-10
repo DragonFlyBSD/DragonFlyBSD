@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.78 2008/06/10 05:06:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.79 2008/06/10 08:51:01 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -554,7 +554,8 @@ typedef struct hammer_reserve *hammer_reserve_t;
  *
  * This is strictly a heuristic.
  */
-#define HAMMER_MAX_UNDOS	256
+#define HAMMER_MAX_UNDOS	1024
+#define HAMMER_MAX_FLUSHERS	4
 
 struct hammer_undo {
 	RB_ENTRY(hammer_undo)	rb_node;
@@ -564,6 +565,35 @@ struct hammer_undo {
 };
 
 typedef struct hammer_undo *hammer_undo_t;
+
+/*
+ * Support structures for the flusher threads.
+ */
+struct hammer_flusher_info {
+	struct hammer_mount *hmp;
+	TAILQ_HEAD(, hammer_inode) work_list;
+	thread_t	td;
+	int		running;
+};
+
+typedef struct hammer_flusher_info *hammer_flusher_info_t;
+
+struct hammer_flusher {
+	int		signal;		/* flusher thread sequencer */
+	int		act;		/* currently active flush group */
+	int		done;		/* set to act when complete */
+	int		next;		/* next flush group */
+	int		group_lock;	/* lock sequencing of the next flush */
+	int		exiting;	/* request master exit */
+	int		count;		/* number of slave flushers */
+	int		running;	/* number of slave flushers running */
+	thread_t	td;		/* master flusher thread */
+	hammer_tid_t	tid;		/* last flushed transaction id */
+	int		finalize_want;		/* serialize finalization */
+	struct hammer_lock finalize_lock;	/* serialize finalization */
+	struct hammer_transaction trans;	/* shared transaction */
+	struct hammer_flusher_info *info[HAMMER_MAX_FLUSHERS];
+};
 
 /*
  * Internal hammer mount data structure
@@ -590,16 +620,12 @@ struct hammer_mount {
 	int	rsv_databufs;	/* reserved space due to dirty buffers */
 	int	rsv_databytes;	/* reserved space due to record data */
 	int	rsv_recs;	/* reserved space due to dirty records */
-	int	flusher_signal;	/* flusher thread sequencer */
-	int	flusher_act;	/* currently active flush group */
-	int	flusher_done;	/* set to act when complete */
-	int	flusher_next;	/* next flush group */
-	int	flusher_lock;	/* lock sequencing of the next flush */
-	int	flusher_exiting;
+
 	int	inode_reclaims; /* inodes pending reclaim by flusher */
 	int	count_inodes;	/* total number of inodes */
-	hammer_tid_t flusher_tid; /* last flushed transaction id */
-	thread_t flusher_td;
+
+	struct hammer_flusher flusher;
+
 	u_int	check_interrupt;
 	uuid_t	fsid;
 	udev_t	fsid_udev;
