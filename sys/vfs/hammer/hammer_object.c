@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.64 2008/06/10 00:40:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.65 2008/06/10 22:30:21 dillon Exp $
  */
 
 #include "hammer.h"
@@ -298,11 +298,11 @@ hammer_alloc_mem_record(hammer_inode_t ip, int data_len)
 }
 
 void
-hammer_wait_mem_record(hammer_record_t record)
+hammer_wait_mem_record_ident(hammer_record_t record, const char *ident)
 {
 	while (record->flush_state == HAMMER_FST_FLUSH) {
 		record->flags |= HAMMER_RECF_WANTED;
-		tsleep(record, 0, "hmrrc2", 0);
+		tsleep(record, 0, ident, 0);
 	}
 }
 

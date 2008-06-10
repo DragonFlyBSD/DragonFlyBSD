@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.64 2008/06/10 08:06:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.65 2008/06/10 22:30:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -178,8 +178,8 @@ hammer_vop_fsync(struct vop_fsync_args *ap)
 {
 	hammer_inode_t ip = VTOI(ap->a_vp);
 
-	hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
 	vfsync(ap->a_vp, ap->a_waitfor, 1, NULL, NULL);
+	hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
 	if (ap->a_waitfor == MNT_WAIT)
 		hammer_wait_inode(ip);
 	return (ip->error);
@@ -233,11 +233,9 @@ hammer_vop_read(struct vop_read_args *ap)
 		if (n > ip->ino_data.size - uio->uio_offset)
 			n = (int)(ip->ino_data.size - uio->uio_offset);
 		error = uiomove((char *)bp->b_data + offset, n, uio);
-		if (error) {
-			bqrelse(bp);
-			break;
-		}
 		bqrelse(bp);
+		if (error)
+			break;
 	}
 	if ((ip->flags & HAMMER_INODE_RO) == 0 &&
 	    (ip->hmp->mp->mnt_flag & MNT_NOATIME) == 0) {
@@ -287,9 +285,17 @@ hammer_vop_write(struct vop_write_args *ap)
 		uio->uio_offset = ip->ino_data.size;
 
 	/*
-	 * Check for illegal write offsets.  Valid range is 0...2^63-1
+	 * Check for illegal write offsets.  Valid range is 0...2^63-1.
+	 *
+	 * NOTE: the base_off assignment is required to work around what
+	 * I consider to be a GCC-4 optimization bug.
 	 */
-	if (uio->uio_offset < 0 || uio->uio_offset + uio->uio_resid <= 0) {
+	if (uio->uio_offset < 0) {
+		hammer_done_transaction(&trans);
+		return (EFBIG);
+	}
+	base_offset = uio->uio_offset + uio->uio_resid;	/* work around gcc-4 */
+	if (uio->uio_resid > 0 && base_offset <= 0) {
 		hammer_done_transaction(&trans);
 		return (EFBIG);
 	}
@@ -2031,6 +2037,7 @@ int
 hammer_vop_strategy_write(struct vop_strategy_args *ap)
 {
 	hammer_record_t record;
+	hammer_mount_t hmp;
 	hammer_inode_t ip;
 	struct bio *bio;
 	struct buf *bp;
@@ -2040,6 +2047,7 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	bio = ap->a_bio;
 	bp = bio->bio_buf;
 	ip = ap->a_vp->v_data;
+	hmp = ip->hmp;
 
 	if (ip->flags & HAMMER_INODE_RO) {
 		bp->b_error = EROFS;
@@ -2085,12 +2093,14 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	record = hammer_ip_add_bulk(ip, bio->bio_offset, bp->b_data,
 				    bytes, &error);
 	if (record) {
-		hammer_io_direct_write(ip->hmp, &record->leaf, bio);
+		hammer_io_direct_write(hmp, &record->leaf, bio);
 		hammer_rel_mem_record(record);
-		if (ip->rsv_recs > hammer_limit_irecs / 2)
+		if (hmp->rsv_recs > hammer_limit_recs &&
+		    ip->rsv_recs > hammer_limit_irecs / 10) {
 			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-		else
-			hammer_flush_inode(ip, 0);
+		} else if (ip->rsv_recs > hammer_limit_irecs) {
+			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+		}
 	} else {
 		bp->b_error = error;
 		bp->b_flags |= B_ERROR;
@@ -2257,7 +2267,8 @@ retry:
 			if (ip->vp)
 				cache_inval_vp(ip->vp, CINV_DESTROY);
 		}
-		hammer_rel_inode(ip, 0);
+		if (ip)
+			hammer_rel_inode(ip, 0);
 	} else {
 		hammer_done_cursor(&cursor);
 	}

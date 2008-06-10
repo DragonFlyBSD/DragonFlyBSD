@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.50 2008/06/07 07:41:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.51 2008/06/10 22:30:21 dillon Exp $
  */
 
 /*
@@ -83,6 +83,8 @@
 #include <sys/buf2.h>
 
 static int btree_search(hammer_cursor_t cursor, int flags);
+static int hammer_btree_search_node(hammer_base_elm_t elm,
+			hammer_node_ondisk_t node);
 static int btree_split_internal(hammer_cursor_t cursor);
 static int btree_split_leaf(hammer_cursor_t cursor);
 static int btree_remove(hammer_cursor_t cursor);
@@ -942,7 +944,13 @@ btree_search(hammer_cursor_t cursor, int flags)
 				cursor->node->node_offset,
 				node->count);
 		}
-		for (i = 0; i <= node->count; ++i) {
+
+		/*
+		 * Try to shortcut the search before dropping into the
+		 * linear loop.  Locate the first node where r <= 1.
+		 */
+		i = hammer_btree_search_node(&cursor->key_beg, node);
+		while (i <= node->count) {
 			elm = &node->elms[i];
 			r = hammer_btree_cmp(&cursor->key_beg, &elm->base);
 			if (hammer_debug_btree > 2) {
@@ -956,6 +964,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 				cursor->create_check = elm->base.create_tid - 1;
 				cursor->flags |= HAMMER_CURSOR_CREATE_CHECK;
 			}
+			++i;
 		}
 		if (hammer_debug_btree) {
 			kprintf("SEARCH-I preI=%d/%d r=%d\n",
@@ -1140,7 +1149,12 @@ btree_search(hammer_cursor_t cursor, int flags)
 			node->count);
 	}
 
-	for (i = 0; i < node->count; ++i) {
+	/*
+	 * Try to shortcut the search before dropping into the
+	 * linear loop.  Locate the first node where r <= 1.
+	 */
+	i = hammer_btree_search_node(&cursor->key_beg, node);
+	while (i < node->count) {
 		elm = &node->elms[i];
 
 		r = hammer_btree_cmp(&cursor->key_beg, &elm->leaf.base);
@@ -1158,8 +1172,10 @@ btree_search(hammer_cursor_t cursor, int flags)
 
 		if (r < 0)
 			goto failed;
-		if (r > 1)
+		if (r > 1) {
+			++i;
 			continue;
+		}
 
 		/*
 		 * Check our as-of timestamp against the element.
@@ -1167,12 +1183,15 @@ btree_search(hammer_cursor_t cursor, int flags)
 		if (flags & HAMMER_CURSOR_ASOF) {
 			if (hammer_btree_chkts(cursor->asof,
 					       &node->elms[i].base) != 0) {
+				++i;
 				continue;
 			}
 			/* success */
 		} else {
-			if (r > 0)	/* can only be +1 */
+			if (r > 0) {	/* can only be +1 */
+				++i;
 				continue;
+			}
 			/* success */
 		}
 		cursor->index = i;
@@ -1226,6 +1245,36 @@ failed:
 	error = enospc ? ENOSPC : ENOENT;
 done:
 	return(error);
+}
+
+/*
+ * Heuristical search for the first element whos comparison is <= 1.  May
+ * return an index whos compare result is > 1 but may only return an index
+ * whos compare result is <= 1 if it is the first element with that result.
+ */
+static int
+hammer_btree_search_node(hammer_base_elm_t elm, hammer_node_ondisk_t node)
+{
+	int b;
+	int s;
+	int i;
+	int r;
+
+	/*
+	 * Don't bother if the node does not have very many elements
+	 */
+	b = 0;
+	s = node->count;
+	while (s - b > 4) {
+		i = b + (s - b) / 2;
+		r = hammer_btree_cmp(elm, &node->elms[i].leaf.base);
+		if (r <= 1) {
+			s = i;
+		} else {
+			b = i;
+		}
+	}
+	return(b);
 }
 
 

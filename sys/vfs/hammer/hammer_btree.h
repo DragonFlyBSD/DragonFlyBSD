@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.16 2008/05/18 01:48:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.17 2008/06/10 22:30:21 dillon Exp $
  */
 
 /*
@@ -164,14 +164,19 @@ union hammer_btree_elm {
 typedef union hammer_btree_elm *hammer_btree_elm_t;
 
 /*
- * B-Tree node (normal or meta)	(16x64 = 1K structure)
+ * B-Tree node (normal or meta)	(64x64 = 4K structure)
  *
- * Each node contains 15 elements.  The last element for an internal node
+ * Each node contains 63 elements.  The last element for an internal node
  * is the right-boundary so internal nodes have one fewer logical elements
  * then leaf nodes.
  *
  * 'count' always refers to the number of elements and is non-inclusive of
  * the right-hand boundary for an internal node.
+ *
+ * The use of a fairly large radix is designed to reduce the number of
+ * discrete disk accesses required to locate something.  Keep in mind
+ * that nodes are allocated out of 16K hammer buffers so supported values
+ * are (256-1), (128-1), (64-1), (32-1), or (16-1).
  *
  * NOTE: The node head for an internal does not contain the subtype
  * (The B-Tree node type for the nodes referenced by its elements). 
@@ -183,7 +188,7 @@ typedef union hammer_btree_elm *hammer_btree_elm_t;
  * reserved for left/right leaf linkage fields, flags, and other future
  * features.
  */
-#define HAMMER_BTREE_LEAF_ELMS	15
+#define HAMMER_BTREE_LEAF_ELMS	63
 #define HAMMER_BTREE_INT_ELMS	(HAMMER_BTREE_LEAF_ELMS - 1)
 
 /*

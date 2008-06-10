@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.69 2008/06/10 08:51:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.70 2008/06/10 22:30:21 dillon Exp $
  */
 
 #include "hammer.h"
@@ -39,10 +39,11 @@
 #include <sys/buf.h>
 #include <sys/buf2.h>
 
-static int hammer_unload_inode(struct hammer_inode *ip);
-static void hammer_flush_inode_core(hammer_inode_t ip, int flags);
-static int hammer_setup_child_callback(hammer_record_t rec, void *data);
-static int hammer_setup_parent_inodes(hammer_record_t record);
+static int	hammer_unload_inode(struct hammer_inode *ip);
+static void	hammer_flush_inode_core(hammer_inode_t ip, int flags);
+static int	hammer_setup_child_callback(hammer_record_t rec, void *data);
+static int	hammer_setup_parent_inodes(hammer_record_t record);
+static void	hammer_inode_wakereclaims(hammer_mount_t hmp);
 
 #ifdef DEBUG_TRUNCATE
 extern struct hammer_inode *HammerTruncIp;
@@ -110,14 +111,10 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 			++hammer_count_reclaiming;
 			++hmp->inode_reclaims;
 			ip->flags |= HAMMER_INODE_RECLAIM;
+			if (curproc)
+				hammer_inode_waitreclaims(hmp);
 		}
 		hammer_rel_inode(ip, 1);
-
-		/*
-		 * Do not let too many reclaimed inodes build up.
-		 * 
-		 */
-		hammer_inode_waitreclaims(hmp);
 	}
 	return(0);
 }
@@ -244,17 +241,6 @@ loop:
 		*errorp = 0;
 		return(ip);
 	}
-
-#if 0
-        /*
-	 * Impose a slow-down if HAMMER is heavily backlogged on cleaning
-	 * out reclaimed inodes.
-         */
-        if (hmp->inode_reclaims > HAMMER_RECLAIM_MIN &&
-	    trans->type != HAMMER_TRANS_FLS) {
-                hammer_inode_waitreclaims(hmp);
-	}
-#endif
 
 	/*
 	 * Allocate a new inode structure and deal with races later.
@@ -747,13 +733,13 @@ hammer_unload_inode(struct hammer_inode *ip)
 		hammer_clear_objid(ip);
 	--hammer_count_inodes;
 	--hmp->count_inodes;
-	if (hmp->flags & HAMMER_MOUNT_WAITIMAX)
-		hammer_inode_wakereclaims(hmp);
 
 	if (ip->flags & HAMMER_INODE_RECLAIM) {
 		--hammer_count_reclaiming;
 		--hmp->inode_reclaims;
 		ip->flags &= ~HAMMER_INODE_RECLAIM;
+		if (hmp->flags & HAMMER_MOUNT_WAITIMAX)
+			hammer_inode_wakereclaims(hmp);
 	}
 	kfree(ip, M_HAMMER);
 
@@ -1027,6 +1013,8 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 	ip->flush_state = HAMMER_FST_FLUSH;
 	ip->flush_group = ip->hmp->flusher.next;
 	++ip->hmp->flusher.group_lock;
+	++ip->hmp->count_iqueued;
+	++hammer_count_iqueued;
 
 	/*
 	 * We need to be able to vfsync/truncate from the backend.
@@ -1057,6 +1045,10 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 	if (go_count == 0) {
 		if ((ip->flags & HAMMER_INODE_MODMASK_NOXDIRTY) == 0) {
 			ip->flags |= HAMMER_INODE_REFLUSH;
+
+			--ip->hmp->count_iqueued;
+			--hammer_count_iqueued;
+
 			ip->flush_state = HAMMER_FST_SETUP;
 			if (ip->flags & HAMMER_INODE_VHELD) {
 				ip->flags &= ~HAMMER_INODE_VHELD;
@@ -1243,9 +1235,12 @@ hammer_wait_inode(hammer_inode_t ip)
 void
 hammer_flush_inode_done(hammer_inode_t ip)
 {
-	int dorel = 0;
+	hammer_mount_t hmp;
+	int dorel;
 
 	KKASSERT(ip->flush_state == HAMMER_FST_FLUSH);
+
+	hmp = ip->hmp;
 
 	/*
 	 * Merge left-over flags back into the frontend and fix the state.
@@ -1266,7 +1261,7 @@ hammer_flush_inode_done(hammer_inode_t ip)
 	if (ip->vp && RB_ROOT(&ip->vp->v_rbdirty_tree)) {
 		ip->flags |= HAMMER_INODE_BUFS;
 	} else {
-		ip->hmp->rsv_databufs -= ip->rsv_databufs;
+		hmp->rsv_databufs -= ip->rsv_databufs;
 		ip->rsv_databufs = 0;
 	}
 
@@ -1296,7 +1291,11 @@ hammer_flush_inode_done(hammer_inode_t ip)
 		dorel = 1;
 	} else {
 		ip->flush_state = HAMMER_FST_SETUP;
+		dorel = 0;
 	}
+
+	--hmp->count_iqueued;
+	--hammer_count_iqueued;
 
 	/*
 	 * Clean up the vnode ref
@@ -1326,7 +1325,7 @@ hammer_flush_inode_done(hammer_inode_t ip)
 	if ((ip->flags & HAMMER_INODE_MODMASK) == 0 &&
 	    (ip->flags & HAMMER_INODE_RSV_INODES)) {
 		ip->flags &= ~HAMMER_INODE_RSV_INODES;
-		--ip->hmp->rsv_inodes;
+		--hmp->rsv_inodes;
 	}
 
 	/*
@@ -1556,41 +1555,6 @@ hammer_sync_inode(hammer_inode_t ip)
 		ip->sync_ino_data.nlinks = nlinks;
 		ip->sync_flags |= HAMMER_INODE_DDIRTY;
 	}
-
-#if 0
-	/*
-	 * XXX DISABLED FOR NOW.  With the new reservation support
-	 * we cannot resync pending data without confusing the hell
-	 * out of the in-memory record tree.
-	 */
-	/*
-	 * Queue up as many dirty buffers as we can then set a flag to
-	 * cause any further BIOs to go to the alternative queue.
-	 */
-	if (ip->flags & HAMMER_INODE_VHELD)
-		error = vfsync(ip->vp, MNT_NOWAIT, 1, NULL, NULL);
-	ip->flags |= HAMMER_INODE_WRITE_ALT;
-
-	/*
-	 * The buffer cache may contain dirty buffers beyond the inode
-	 * state we copied from the frontend to the backend.  Because
-	 * we are syncing our buffer cache on the backend, resync
-	 * the truncation point and the file size so we don't wipe out
-	 * any data.
-	 *
-	 * Syncing the buffer cache on the frontend has serious problems
-	 * because it prevents us from passively queueing dirty inodes
-	 * to the backend (the BIO's could stall indefinitely).
-	 */
-	if (ip->flags & HAMMER_INODE_TRUNCATED) {
-		ip->sync_trunc_off = ip->trunc_off;
-		ip->sync_flags |= HAMMER_INODE_TRUNCATED;
-	}
-	if (ip->sync_ino_data.size != ip->ino_data.size) {
-		ip->sync_ino_data.size = ip->ino_data.size;
-		ip->sync_flags |= HAMMER_INODE_DDIRTY;
-	}
-#endif
 
 	/*
 	 * If there is a trunction queued destroy any data past the (aligned)
@@ -1852,35 +1816,33 @@ hammer_test_inode(hammer_inode_t ip)
 }
 
 /*
- * When a HAMMER inode is reclaimed it may have to be queued to the backend
- * for its final sync to disk.  Programs like blogbench can cause the backlog
- * to grow indefinitely.  Put a cap on the number of inodes we allow to be
- * in this state by giving the flusher time to drain.
+ * We need to slow down user processes if we get too large a backlog of
+ * inodes in the flusher.  Even though the frontend can theoretically
+ * get way, way ahead of the flusher, if we let it do that the flusher
+ * will have no buffer cache locality of reference and will have to re-read
+ * everything a second time, causing performance to drop precipitously.
+ *
+ * Reclaims are especially senssitive to this effect because the kernel has
+ * already abandoned the related vnode.
  */
+
 void
 hammer_inode_waitreclaims(hammer_mount_t hmp)
 {
-	int count;
 	int delay;
-	int minpt;
-	int maxpt;
 
 	while (hmp->inode_reclaims > HAMMER_RECLAIM_MIN) {
-		count = hmp->count_inodes - hmp->inode_reclaims;
-		if (count < 100)
-			count = 100;
-		minpt = count * HAMMER_RECLAIM_SLOPCT / 100;
-		maxpt = count * HAMMER_RECLAIM_MAXPCT / 100;
-
-		if (hmp->inode_reclaims < minpt)
+		if (hmp->inode_reclaims < HAMMER_RECLAIM_MID) {
+			hammer_flusher_async(hmp);
 			break;
-		if (hmp->inode_reclaims < maxpt) {
-			delay = (hmp->inode_reclaims - minpt) * hz /
-				(maxpt - minpt);
+		}
+		if (hmp->inode_reclaims < HAMMER_RECLAIM_MAX) {
+			delay = (hmp->inode_reclaims - HAMMER_RECLAIM_MID) *
+				hz / (HAMMER_RECLAIM_MAX - HAMMER_RECLAIM_MID);
 			if (delay == 0)
 				delay = 1;
 			hammer_flusher_async(hmp);
-			tsleep(&count, 0, "hmitik", delay);
+			tsleep(&delay, 0, "hmitik", delay);
 			break;
 		}
 		hmp->flags |= HAMMER_MOUNT_WAITIMAX;
@@ -1892,13 +1854,8 @@ hammer_inode_waitreclaims(hammer_mount_t hmp)
 void
 hammer_inode_wakereclaims(hammer_mount_t hmp)
 {
-	int maxpt;
-
-	if ((hmp->flags & HAMMER_MOUNT_WAITIMAX) == 0)
-		return;
-	maxpt = hmp->count_inodes * HAMMER_RECLAIM_MAXPCT / 100;
-	if (hmp->inode_reclaims <= HAMMER_RECLAIM_MIN ||
-	    hmp->inode_reclaims < maxpt) {
+	if ((hmp->flags & HAMMER_MOUNT_WAITIMAX) &&
+	    hmp->inode_reclaims < HAMMER_RECLAIM_MAX) {
 		hmp->flags &= ~HAMMER_MOUNT_WAITIMAX;
 		wakeup(&hmp->inode_reclaims);
 	}

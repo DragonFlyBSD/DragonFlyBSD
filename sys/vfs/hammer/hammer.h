@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.79 2008/06/10 08:51:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.80 2008/06/10 22:30:21 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -270,8 +270,8 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_FLUSH_RECURSION	0x0002
 
 #define HAMMER_RECLAIM_MIN	1000	/* absolute value */
-#define HAMMER_RECLAIM_SLOPCT	20	/* percent of total hammer inodes */
-#define HAMMER_RECLAIM_MAXPCT	50	/* percent of total hammer inodes */
+#define HAMMER_RECLAIM_MID	2000	/* absolute value */
+#define HAMMER_RECLAIM_MAX	3000	/* absolute value */
 
 /*
  * Structure used to represent an unsynchronized record in-memory.  These
@@ -407,6 +407,13 @@ struct hammer_io {
 };
 
 typedef struct hammer_io *hammer_io_t;
+
+#define HAMMER_CLUSTER_SIZE	(64 * 1024)
+#if HAMMER_CLUSTER_SIZE > MAXBSIZE
+#undef  HAMMER_CLUSTER_SIZE
+#define HAMMER_CLUSTER_SIZE	MAXBSIZE
+#endif
+#define HAMMER_CLUSTER_BUFS	(HAMMER_CLUSTER_SIZE / HAMMER_BUFSIZE)
 
 /*
  * In-memory volume representing on-disk buffer
@@ -566,17 +573,7 @@ struct hammer_undo {
 
 typedef struct hammer_undo *hammer_undo_t;
 
-/*
- * Support structures for the flusher threads.
- */
-struct hammer_flusher_info {
-	struct hammer_mount *hmp;
-	TAILQ_HEAD(, hammer_inode) work_list;
-	thread_t	td;
-	int		running;
-};
-
-typedef struct hammer_flusher_info *hammer_flusher_info_t;
+struct hammer_flusher_info;
 
 struct hammer_flusher {
 	int		signal;		/* flusher thread sequencer */
@@ -623,6 +620,7 @@ struct hammer_mount {
 
 	int	inode_reclaims; /* inodes pending reclaim by flusher */
 	int	count_inodes;	/* total number of inodes */
+	int	count_iqueued;	/* inodes queued to flusher */
 
 	struct hammer_flusher flusher;
 
@@ -687,6 +685,7 @@ extern int hammer_debug_recover;
 extern int hammer_debug_recover_faults;
 extern int hammer_debug_write_release;
 extern int hammer_count_inodes;
+extern int hammer_count_iqueued;
 extern int hammer_count_reclaiming;
 extern int hammer_count_records;
 extern int hammer_count_record_datas;
@@ -696,6 +695,7 @@ extern int hammer_count_nodes;
 extern int hammer_count_dirtybufs;
 extern int hammer_count_reservations;
 extern int hammer_limit_dirtybufs;
+extern int hammer_limit_iqueued;
 extern int hammer_limit_irecs;
 extern int hammer_limit_recs;
 extern int hammer_bio_count;
@@ -712,8 +712,6 @@ struct hammer_inode *hammer_get_inode(hammer_transaction_t trans,
 			int *errorp);
 void	hammer_put_inode(struct hammer_inode *ip);
 void	hammer_put_inode_ref(struct hammer_inode *ip);
-void	hammer_inode_waitreclaims(hammer_mount_t hmp);
-void	hammer_inode_wakereclaims(hammer_mount_t hmp);
 
 int	hammer_unload_volume(hammer_volume_t volume, void *data __unused);
 int	hammer_adjust_volume_mode(hammer_volume_t volume, void *data __unused);
@@ -737,7 +735,7 @@ int	hammer_queue_inodes_flusher(hammer_mount_t hmp, int waitfor);
 hammer_record_t
 	hammer_alloc_mem_record(hammer_inode_t ip, int data_len);
 void	hammer_flush_record_done(hammer_record_t record, int error);
-void	hammer_wait_mem_record(hammer_record_t record);
+void	hammer_wait_mem_record_ident(hammer_record_t record, const char *ident);
 void	hammer_rel_mem_record(hammer_record_t record);
 
 int	hammer_cursor_up(hammer_cursor_t cursor);
@@ -747,7 +745,7 @@ int	hammer_cursor_upgrade(hammer_cursor_t cursor);
 void	hammer_cursor_downgrade(hammer_cursor_t cursor);
 int	hammer_cursor_seek(hammer_cursor_t cursor, hammer_node_t node,
 			int index);
-void	hammer_lock_ex(struct hammer_lock *lock);
+void	hammer_lock_ex_ident(struct hammer_lock *lock, const char *ident);
 int	hammer_lock_ex_try(struct hammer_lock *lock);
 void	hammer_lock_sh(struct hammer_lock *lock);
 int	hammer_lock_sh_try(struct hammer_lock *lock);
@@ -902,10 +900,12 @@ int  hammer_create_inode(struct hammer_transaction *trans, struct vattr *vap,
 			struct hammer_inode **ipp);
 void hammer_rel_inode(hammer_inode_t ip, int flush);
 int hammer_reload_inode(hammer_inode_t ip, void *arg __unused);
+int hammer_ino_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2);
 
 int hammer_sync_inode(hammer_inode_t ip);
 void hammer_test_inode(hammer_inode_t ip);
 void hammer_inode_unloadable_check(hammer_inode_t ip, int getvp);
+void hammer_inode_waitreclaims(hammer_mount_t hmp);
 
 int  hammer_ip_add_directory(struct hammer_transaction *trans,
 			hammer_inode_t dip, struct namecache *ncp,
@@ -939,6 +939,7 @@ void hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset);
 void hammer_io_release(struct hammer_io *io, int flush);
 void hammer_io_flush(struct hammer_io *io);
 void hammer_io_waitdep(struct hammer_io *io);
+void hammer_io_wait_all(hammer_mount_t hmp, const char *ident);
 int hammer_io_direct_read(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 			  struct bio *bio);
 int hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
@@ -981,6 +982,18 @@ int hammer_crc_test_btree(hammer_node_ondisk_t ondisk);
 void hkprintf(const char *ctl, ...);
 
 #endif
+
+static __inline void
+hammer_wait_mem_record(hammer_record_t record)
+{
+	hammer_wait_mem_record_ident(record, "hmmwai");
+}
+
+static __inline void
+hammer_lock_ex(struct hammer_lock *lock)
+{
+	hammer_lock_ex_ident(lock, "hmrlck");
+}
 
 static __inline void
 hammer_modify_node_noundo(hammer_transaction_t trans, hammer_node_t node)

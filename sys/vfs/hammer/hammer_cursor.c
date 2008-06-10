@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.26 2008/05/13 20:46:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.27 2008/06/10 22:30:21 dillon Exp $
  */
 
 /*
@@ -203,13 +203,13 @@ hammer_done_cursor(hammer_cursor_t cursor)
 	 * lock/unlock to wait for the deadlock condition to clear.
 	 */
 	if (cursor->deadlk_node) {
-		hammer_lock_ex(&cursor->deadlk_node->lock);
+		hammer_lock_ex_ident(&cursor->deadlk_node->lock, "hmrdlk");
 		hammer_unlock(&cursor->deadlk_node->lock);
 		hammer_rel_node(cursor->deadlk_node);
 		cursor->deadlk_node = NULL;
 	}
 	if (cursor->deadlk_rec) {
-		hammer_wait_mem_record(cursor->deadlk_rec);
+		hammer_wait_mem_record_ident(cursor->deadlk_rec, "hmmdlk");
 		hammer_rel_mem_record(cursor->deadlk_rec);
 		cursor->deadlk_rec = NULL;
 	}

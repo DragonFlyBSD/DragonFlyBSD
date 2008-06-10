@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.43 2008/06/10 05:06:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.44 2008/06/10 22:30:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -58,6 +58,7 @@ int hammer_debug_recover;		/* -1 will disable, +1 will force */
 int hammer_debug_recover_faults;
 int hammer_debug_write_release;		/* if 1 release buffer on strategy */
 int hammer_count_inodes;
+int hammer_count_iqueued;
 int hammer_count_reclaiming;
 int hammer_count_records;
 int hammer_count_record_datas;
@@ -71,6 +72,7 @@ int hammer_stats_record_iterations;
 int hammer_limit_dirtybufs;		/* per-mount */
 int hammer_limit_irecs;			/* per-inode */
 int hammer_limit_recs;			/* as a whole XXX */
+int hammer_limit_iqueued;		/* per-mount */
 int hammer_bio_count;
 int64_t hammer_contention_count;
 int64_t hammer_zone_limit;
@@ -103,9 +105,13 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_irecs, CTLFLAG_RW,
 	   &hammer_limit_irecs, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_recs, CTLFLAG_RW,
 	   &hammer_limit_recs, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_iqueued, CTLFLAG_RW,
+	   &hammer_limit_iqueued, 0, "");
 
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_inodes, CTLFLAG_RD,
 	   &hammer_count_inodes, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, count_iqueued, CTLFLAG_RD,
+	   &hammer_count_iqueued, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_reclaiming, CTLFLAG_RD,
 	   &hammer_count_reclaiming, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_records, CTLFLAG_RD,
@@ -174,14 +180,16 @@ static int
 hammer_vfs_init(struct vfsconf *conf)
 {
 	if (hammer_limit_irecs == 0)
-		hammer_limit_irecs = nbuf;
+		hammer_limit_irecs = nbuf / 10;
 	if (hammer_limit_recs == 0)		/* XXX TODO */
-		hammer_limit_recs = hammer_limit_irecs * 4;
+		hammer_limit_recs = nbuf / 3;
 	if (hammer_limit_dirtybufs == 0) {
 		hammer_limit_dirtybufs = hidirtybuffers / 2;
 		if (hammer_limit_dirtybufs < 100)
 			hammer_limit_dirtybufs = 100;
 	}
+	if (hammer_limit_iqueued == 0)
+		hammer_limit_iqueued = desiredvnodes / 5;
 	return(0);
 }
 

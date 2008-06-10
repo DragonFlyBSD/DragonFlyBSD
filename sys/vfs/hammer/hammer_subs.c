@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.23 2008/06/07 07:41:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.24 2008/06/10 22:30:21 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -41,7 +41,7 @@
 #include <sys/dirent.h>
 
 void
-hammer_lock_ex(struct hammer_lock *lock)
+hammer_lock_ex_ident(struct hammer_lock *lock, const char *ident)
 {
 	thread_t td = curthread;
 
@@ -55,7 +55,7 @@ hammer_lock_ex(struct hammer_lock *lock)
 					lock->locktd);
 			}
 			++hammer_contention_count;
-			tsleep(lock, 0, "hmrlck", 0);
+			tsleep(lock, 0, ident, 0);
 			if (hammer_debug_locks)
 				kprintf("hammer_lock_ex: try again\n");
 		}

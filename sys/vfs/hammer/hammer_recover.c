@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.22 2008/06/09 04:19:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.23 2008/06/10 22:30:21 dillon Exp $
  */
 
 #include "hammer.h"
@@ -430,12 +430,23 @@ static int hammer_recover_flush_buffer_callback(hammer_buffer_t, void *);
 void
 hammer_recover_flush_buffers(hammer_mount_t hmp, hammer_volume_t root_volume)
 {
+        /*
+         * Flush the buffers out asynchronously, wait for all the I/O to
+	 * complete, then do it again to destroy the buffer cache buffer
+	 * so it doesn't alias something later on.
+         */
+	RB_SCAN(hammer_buf_rb_tree, &hmp->rb_bufs_root, NULL,
+		hammer_recover_flush_buffer_callback, NULL);
+	hammer_io_wait_all(hmp, "hmrrcw");
 	RB_SCAN(hammer_buf_rb_tree, &hmp->rb_bufs_root, NULL,
 		hammer_recover_flush_buffer_callback, NULL);
 
 	RB_SCAN(hammer_vol_rb_tree, &hmp->rb_vols_root, NULL,
 		hammer_recover_flush_volume_callback, root_volume);
 
+	/*
+	 * Finaly, deal with the volume header.
+	 */
 	if (root_volume->io.recovered) {
 		crit_enter();
 		while (hmp->io_running_count)
@@ -467,8 +478,13 @@ hammer_recover_flush_buffer_callback(hammer_buffer_t buffer, void *data)
 {
 	if (buffer->io.recovered) {
 		buffer->io.recovered = 0;
+		buffer->io.reclaim = 1;
 		hammer_io_flush(&buffer->io);
-		hammer_rel_buffer(buffer, 2);
+		hammer_rel_buffer(buffer, 0);
+	} else {
+		hammer_ref(&buffer->io.lock);
+		buffer->io.reclaim = 1;
+		hammer_rel_buffer(buffer, 1);
 	}
 	return(0);
 }

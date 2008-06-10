@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.23 2008/06/10 08:51:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.24 2008/06/10 22:30:21 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -51,7 +51,17 @@ static void hammer_flusher_flush_inode(hammer_inode_t ip,
 static int hammer_must_finalize_undo(hammer_mount_t hmp);
 static void hammer_flusher_finalize(hammer_transaction_t trans, int final);
 
-#define HAMMER_FLUSHER_IMMEDIATE	16
+/*
+ * Support structures for the flusher threads.
+ */
+struct hammer_flusher_info {
+	struct hammer_mount *hmp;
+	thread_t	td;
+	int		startit;
+	TAILQ_HEAD(,hammer_inode) work_list;
+};
+
+typedef struct hammer_flusher_info *hammer_flusher_info_t;
 
 void
 hammer_flusher_sync(hammer_mount_t hmp)
@@ -123,9 +133,9 @@ hammer_flusher_destroy(hammer_mount_t hmp)
 	 */
 	for (i = 0; i < HAMMER_MAX_FLUSHERS; ++i) {
 		if ((info = hmp->flusher.info[i]) != NULL) {
-			KKASSERT(info->running == 0);
-			info->running = -1;
-			wakeup(&info->running);
+			KKASSERT(info->startit == 0);
+			info->startit = -1;
+			wakeup(&info->startit);
 			while (info->td) {
 				tsleep(&info->td, 0, "hmrwwc", 0);
 			}
@@ -137,6 +147,10 @@ hammer_flusher_destroy(hammer_mount_t hmp)
 	KKASSERT(hmp->flusher.count == 0);
 }
 
+/*
+ * The master flusher thread manages the flusher sequence id and
+ * synchronization with the slave work threads.
+ */
 static void
 hammer_flusher_master_thread(void *arg)
 {
@@ -177,6 +191,10 @@ hammer_flusher_master_thread(void *arg)
 	lwkt_exit();
 }
 
+/*
+ * The slave flusher thread pulls work off the master flush_list until no
+ * work is left.
+ */
 static void
 hammer_flusher_slave_thread(void *arg)
 {
@@ -188,15 +206,17 @@ hammer_flusher_slave_thread(void *arg)
 	hmp = info->hmp;
 
 	for (;;) {
-		while (info->running == 0)
-			tsleep(&info->running, 0, "hmrssw", 0);
-		if (info->running < 0)
+		while (info->startit == 0)
+			tsleep(&info->startit, 0, "hmrssw", 0);
+		if (info->startit < 0)
 			break;
-		while ((ip = TAILQ_FIRST(&info->work_list)) != NULL) {
-			TAILQ_REMOVE(&info->work_list, ip, flush_entry);
+		info->startit = 0;
+		while ((ip = TAILQ_FIRST(&hmp->flush_list)) != NULL) {
+			if (ip->flush_group != hmp->flusher.act)
+				break;
+			TAILQ_REMOVE(&hmp->flush_list, ip, flush_entry);
 			hammer_flusher_flush_inode(ip, &hmp->flusher.trans);
 		}
-		info->running = 0;
 		if (--hmp->flusher.running == 0)
 			wakeup(&hmp->flusher.running);
 	}
@@ -233,30 +253,30 @@ static void
 hammer_flusher_flush(hammer_mount_t hmp)
 {
 	hammer_flusher_info_t info;
-	hammer_inode_t ip;
 	hammer_reserve_t resv;
 	int i;
+	int n;
+
+	hammer_start_transaction_fls(&hmp->flusher.trans, hmp);
 
 	/*
-	 * Flush the inodes
+	 * Start work threads.
 	 */
-	hammer_start_transaction_fls(&hmp->flusher.trans, hmp);
 	i = 0;
-	while ((ip = TAILQ_FIRST(&hmp->flush_list)) != NULL) {
-		if (ip->flush_group != hmp->flusher.act)
-			break;
-		TAILQ_REMOVE(&hmp->flush_list, ip, flush_entry);
-		info = hmp->flusher.info[i];
-		TAILQ_INSERT_TAIL(&info->work_list, ip, flush_entry);
-		if (info->running == 0) {
-			++hmp->flusher.running;
-			info->running = 1;
-			wakeup(&info->running);
+	n = hmp->count_iqueued / 64;
+	if (TAILQ_FIRST(&hmp->flush_list)) {
+		for (i = 0; i <= hmp->count_iqueued / 64; ++i) {
+			if (i == HAMMER_MAX_FLUSHERS ||
+			    hmp->flusher.info[i] == NULL) {
+				break;
+			}
+			info = hmp->flusher.info[i];
+			if (info->startit == 0) {
+				++hmp->flusher.running;
+				info->startit = 1;
+				wakeup(&info->startit);
+			}
 		}
-		/*hammer_flusher_flush_inode(ip, &trans);*/
-		++i;
-		if (i == HAMMER_MAX_FLUSHERS || hmp->flusher.info[i] == NULL)
-			i = 0;
 	}
 	while (hmp->flusher.running)
 		tsleep(&hmp->flusher.running, 0, "hmrfcc", 0);
@@ -410,10 +430,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	/*
 	 * Wait for I/Os to complete
 	 */
-	crit_enter();
-	while (hmp->io_running_count)
-		tsleep(&hmp->io_running_count, 0, "hmrfl1", 0);
-	crit_exit();
+	hammer_io_wait_all(hmp, "hmrfl1");
 
 	/*
 	 * Update the on-disk volume header with new UNDO FIFO end position
@@ -448,10 +465,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	/*
 	 * Wait for I/Os to complete
 	 */
-	crit_enter();
-	while (hmp->io_running_count)
-		tsleep(&hmp->io_running_count, 0, "hmrfl2", 0);
-	crit_exit();
+	hammer_io_wait_all(hmp, "hmrfl2");
 
 	/*
 	 * Flush meta-data.  The meta-data will be undone if we crash

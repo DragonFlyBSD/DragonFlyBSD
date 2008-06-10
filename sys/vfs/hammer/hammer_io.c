@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.37 2008/06/10 00:40:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.38 2008/06/10 22:30:21 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -82,6 +82,7 @@ hammer_io_disassociate(hammer_io_structure_t iou, int elseit)
 	struct buf *bp = iou->io.bp;
 
 	KKASSERT(iou->io.modified == 0);
+	KKASSERT(LIST_FIRST(&bp->b_dep) == (void *)iou);
 	buf_dep_init(bp);
 	iou->io.bp = NULL;
 
@@ -141,15 +142,34 @@ hammer_io_wait(hammer_io_t io)
 	}
 }
 
+/*
+ * Wait for all hammer_io-initated write I/O's to complete.  This is not
+ * supposed to count direct I/O's but some can leak through (for
+ * non-full-sized direct I/Os).
+ */
+void
+hammer_io_wait_all(hammer_mount_t hmp, const char *ident)
+{
+	crit_enter();
+	while (hmp->io_running_count)
+		tsleep(&hmp->io_running_count, 0, ident, 0);
+	crit_exit();
+}
+
 #define HAMMER_MAXRA	4
 
 /*
  * Load bp for a HAMMER structure.  The io must be exclusively locked by
  * the caller.
  *
- * Generally speaking HAMMER assumes either an optimized layout or that
- * typical access patterns will be close to the original layout when the
- * information was written.  For this reason we try to cluster all reads.
+ * Generally speaking HAMMER assumes that data is laid out fairly linearly
+ * and will cluster reads.  Conversely meta-data buffers (aka B-Tree nodes)
+ * may be dispersed due to the way the B-Tree insertion mechanism works and
+ * we only do single-buffer reads to avoid blowing out the buffer cache.
+ *
+ * Note that clustering occurs at the device layer, not the logical layer.
+ * If the buffers do not apply to the current operation they may apply to
+ * some other.
  */
 int
 hammer_io_read(struct vnode *devvp, struct hammer_io *io, hammer_off_t limit)
@@ -158,16 +178,22 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io, hammer_off_t limit)
 	int   error;
 
 	if ((bp = io->bp) == NULL) {
-#if 1
-		error = cluster_read(devvp, limit, io->offset,
-				     HAMMER_BUFSIZE, MAXBSIZE, 16, &io->bp);
-#else
-		error = bread(devvp, io->offset, HAMMER_BUFSIZE, &io->bp);
-#endif
-
+		switch(io->type) {
+		case HAMMER_STRUCTURE_DATA_BUFFER:
+			error = cluster_read(devvp, limit, io->offset,
+					     HAMMER_BUFSIZE,
+					     HAMMER_CLUSTER_SIZE,
+					     HAMMER_CLUSTER_BUFS, &io->bp);
+			break;
+		default:
+			error = bread(devvp, io->offset, HAMMER_BUFSIZE,
+				      &io->bp);
+			break;
+		}
 		if (error == 0) {
 			bp = io->bp;
 			bp->b_ops = &hammer_bioops;
+			KKASSERT(LIST_FIRST(&bp->b_dep) == NULL);
 			LIST_INSERT_HEAD(&bp->b_dep, &io->worklist, node);
 			BUF_KERNPROC(bp);
 		}
@@ -201,6 +227,7 @@ hammer_io_new(struct vnode *devvp, struct hammer_io *io)
 		io->bp = getblk(devvp, io->offset, HAMMER_BUFSIZE, 0, 0);
 		bp = io->bp;
 		bp->b_ops = &hammer_bioops;
+		KKASSERT(LIST_FIRST(&bp->b_dep) == NULL);
 		LIST_INSERT_HEAD(&bp->b_dep, &io->worklist, node);
 		io->released = 0;
 		KKASSERT(io->running == 0);
@@ -348,13 +375,19 @@ hammer_io_release(struct hammer_io *io, int flush)
 		}
 	} else {
 		/*
-		 * A released buffer may have been locked when the kernel
-		 * tried to deallocate it while HAMMER still had references
-		 * on the hammer_buffer.  We must unlock the buffer or
-		 * it will just rot.
+		 * A released buffer is passively associate with our
+		 * hammer_io structure.  The kernel cannot destroy it
+		 * without making a bioops call.  If the kernel (B_LOCKED)
+		 * or we (reclaim) requested that the buffer be destroyed
+		 * we destroy it, otherwise we do a quick get/release to
+		 * reset its position in the kernel's LRU list.
+		 *
+		 * Leaving the buffer passively associated allows us to
+		 * use the kernel's LRU buffer flushing mechanisms rather
+		 * then rolling our own.
 		 */
 		crit_enter();
-		if (io->running == 0 && (bp->b_flags & B_LOCKED)) {
+		if (io->running == 0) {
 			regetblk(bp);
 			if ((bp->b_flags & B_LOCKED) || io->reclaim) {
 				io->released = 0;

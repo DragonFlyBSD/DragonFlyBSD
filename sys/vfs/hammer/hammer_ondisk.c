@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.52 2008/06/10 00:40:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.53 2008/06/10 22:30:21 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -53,7 +53,7 @@ static int hammer_load_node(hammer_node_t node, int isnew);
 /*
  * Red-Black tree support for various structures
  */
-static int
+int
 hammer_ino_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2)
 {
 	if (ip1->obj_id < ip2->obj_id)
