@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.62 2008/06/10 00:40:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.63 2008/06/10 05:06:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1013,20 +1013,6 @@ hammer_vop_open(struct vop_open_args *ap)
 
 	if ((ap->a_mode & FWRITE) && (ip->flags & HAMMER_INODE_RO))
 		return (EROFS);
-
-	/*
-	 * It is posible for the backend to get behind disposing
-	 * of modified inodes.  Do not let the number increase into
-	 * infinity.
-	 *
-	 * This bit of code can go almost anywhere but it is best
-	 * to put it somewhere where it will not hang-up other
-	 * processes.  The inode create/release paths typicaly hold
-	 * other locks, like directory vnode locks or namecache locks.
-	 */
-	if (ip->hmp->inode_reclaims > HAMMER_RECLAIM_MIN)
-		hammer_inode_waitreclaims(ip->hmp);
-
 	return(vop_stdopen(ap));
 }
 

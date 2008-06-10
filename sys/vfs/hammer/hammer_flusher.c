@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.21 2008/06/10 00:40:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.22 2008/06/10 05:06:20 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -92,7 +92,7 @@ hammer_flusher_destroy(hammer_mount_t hmp)
 	if (hmp->flusher_td) {
 		hmp->flusher_exiting = 1;
 		while (hmp->flusher_td) {
-			hmp->flusher_signal = 16;
+			++hmp->flusher_signal;
 			wakeup(&hmp->flusher_signal);
 			tsleep(&hmp->flusher_exiting, 0, "hmrwex", 0);
 		}
@@ -107,6 +107,7 @@ hammer_flusher_thread(void *arg)
 	for (;;) {
 		while (hmp->flusher_lock)
 			tsleep(&hmp->flusher_lock, 0, "hmrhld", 0);
+		kprintf("S");
 		hmp->flusher_act = hmp->flusher_next;
 		++hmp->flusher_next;
 		hammer_flusher_clean_loose_ios(hmp);
@@ -348,7 +349,6 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	}
 
 	if (root_volume->io.modified) {
-		kprintf("S");
 		hammer_io_flush(&root_volume->io);
 	}
 

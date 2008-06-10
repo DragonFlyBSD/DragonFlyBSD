@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.42 2008/06/10 00:40:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.43 2008/06/10 05:06:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -517,9 +517,13 @@ hammer_free_hmp(struct mount *mp)
 		hmp->rootvp = NULL;
 	}
 #endif
+	kprintf("X1");
 	hammer_flusher_sync(hmp);
+	kprintf("X2");
 	hammer_flusher_sync(hmp);
+	kprintf("X3");
 	hammer_flusher_destroy(hmp);
+	kprintf("X4");
 
 	KKASSERT(RB_EMPTY(&hmp->rb_inos_root));
 
@@ -542,20 +546,28 @@ hammer_free_hmp(struct mount *mp)
 	 */
         RB_SCAN(hammer_buf_rb_tree, &hmp->rb_bufs_root, NULL,
 		hammer_unload_buffer, NULL);
+	kprintf("X5");
 	RB_SCAN(hammer_vol_rb_tree, &hmp->rb_vols_root, NULL,
 		hammer_unload_volume, NULL);
+	kprintf("X6");
 
 	mp->mnt_data = NULL;
 	mp->mnt_flag &= ~MNT_LOCAL;
 	hmp->mp = NULL;
+	kprintf("X7");
 	hammer_destroy_objid_cache(hmp);
+	kprintf("X8");
 	kfree(hmp->zbuf, M_HAMMER);
+	kprintf("X9");
 	lockuninit(&hmp->blockmap_lock);
+	kprintf("X10");
 
 	for (i = 0; i < HAMMER_MAX_ZONES; ++i)
 		hammer_free_holes(hmp, &hmp->holes[i]);
+	kprintf("X11");
 
 	kfree(hmp, M_HAMMER);
+	kprintf("X12");
 }
 
 /*

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.67 2008/06/09 04:19:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.68 2008/06/10 05:06:20 dillon Exp $
  */
 
 #include "hammer.h"
@@ -237,6 +237,18 @@ loop:
 		return(ip);
 	}
 
+        /*
+	 * Impose a slow-down if HAMMER is heavily backlogged on cleaning
+	 * out reclaimed inodes.
+         */
+        if (hmp->inode_reclaims > HAMMER_RECLAIM_MIN &&
+	    curthread != hmp->flusher_td) {
+                hammer_inode_waitreclaims(hmp);
+        }
+
+	/*
+	 * Allocate a new inode structure and deal with races later.
+	 */
 	ip = kmalloc(sizeof(*ip), M_HAMMER, M_WAITOK|M_ZERO);
 	++hammer_count_inodes;
 	++hmp->count_inodes;
@@ -1838,21 +1850,45 @@ hammer_test_inode(hammer_inode_t ip)
 void
 hammer_inode_waitreclaims(hammer_mount_t hmp)
 {
-	while (hmp->inode_reclaims > HAMMER_RECLAIM_MIN &&
-	       hmp->inode_reclaims > hmp->count_inodes / HAMMER_RECLAIM_FACTOR) {
+	int count;
+	int delay;
+	int minpt;
+	int maxpt;
+
+	while (hmp->inode_reclaims > HAMMER_RECLAIM_MIN) {
+		count = hmp->count_inodes;
+		minpt = count * HAMMER_RECLAIM_SLOPCT / 100;
+		maxpt = count * HAMMER_RECLAIM_MAXPCT / 100;
+
+		if (hmp->inode_reclaims < minpt)
+			break;
+		if (hmp->inode_reclaims < maxpt) {
+			delay = (hmp->inode_reclaims - minpt) * hz /
+				(maxpt - minpt);
+			if (delay == 0)
+				delay = 1;
+			hammer_flusher_async(hmp);
+			tsleep(&count, 0, "hmitik", delay);
+			break;
+		}
 		hmp->flags |= HAMMER_MOUNT_WAITIMAX;
 		hammer_flusher_async(hmp);
-		tsleep(hmp, 0, "hmimax", hz / 10);
+		tsleep(&hmp->inode_reclaims, 0, "hmimax", hz / 10);
 	}
 }
 
 void
 hammer_inode_wakereclaims(hammer_mount_t hmp)
 {
+	int maxpt;
+
+	if ((hmp->flags & HAMMER_MOUNT_WAITIMAX) == 0)
+		return;
+	maxpt = hmp->count_inodes * HAMMER_RECLAIM_MAXPCT / 100;
 	if (hmp->inode_reclaims <= HAMMER_RECLAIM_MIN ||
-	    hmp->inode_reclaims <= hmp->count_inodes / HAMMER_RECLAIM_FACTOR) {
+	    hmp->inode_reclaims < maxpt) {
 		hmp->flags &= ~HAMMER_MOUNT_WAITIMAX;
-		wakeup(hmp);
+		wakeup(&hmp->inode_reclaims);
 	}
 }
 

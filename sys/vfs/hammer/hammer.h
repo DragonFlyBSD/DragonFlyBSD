@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.77 2008/06/10 00:40:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.78 2008/06/10 05:06:20 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -269,8 +269,9 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_FLUSH_SIGNAL	0x0001
 #define HAMMER_FLUSH_RECURSION	0x0002
 
-#define HAMMER_RECLAIM_MIN	100
-#define HAMMER_RECLAIM_FACTOR	4
+#define HAMMER_RECLAIM_MIN	1000	/* absolute value */
+#define HAMMER_RECLAIM_SLOPCT	20	/* percent of total hammer inodes */
+#define HAMMER_RECLAIM_MAXPCT	50	/* percent of total hammer inodes */
 
 /*
  * Structure used to represent an unsynchronized record in-memory.  These
