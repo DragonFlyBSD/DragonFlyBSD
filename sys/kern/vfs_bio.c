@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.102 2008/05/09 07:24:45 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.103 2008/06/10 05:02:09 dillon Exp $
  */
 
 /*
@@ -968,19 +968,50 @@ bowrite(struct buf *bp)
 void
 bwillwrite(void)
 {
-	if (runningbufcount + numdirtybuffers >= hidirtybuffers / 2) {
+	int mid1 = hidirtybuffers / 2;
+	int mid2 = mid1 + hidirtybuffers / 4;
+	int delay;
+	int count;
+	int priority = 0;
+
+	count = runningbufcount + numdirtybuffers;
+
+	/*
+	 * Nothing to do if nothing is stressed.
+	 */
+	if (count < mid1)
+		return;
+
+	/*
+	 * Get the buffer daemon heated up
+	 */
+	bd_wakeup(1);
+
+	while (count >= mid2) {
+		/*
+		 * Start slowing down writes, down to 1 per second.
+		 */
+		if (count < hidirtybuffers) {
+			delay = (count - mid2) * hz / (hidirtybuffers - mid2);
+			delay = delay * 10 / (10 + priority);
+			if (delay == 0)
+				delay = 1;
+			tsleep(&count, 0, "flstik", delay);
+			return;
+		}
+
+		/*
+		 * Now we are really in trouble.
+		 */
 		bd_wakeup(1);
-		while (runningbufcount + numdirtybuffers >= hidirtybuffers) {
-			bd_wakeup(1);
-			spin_lock_wr(&needsbuffer_spin);
-			if (runningbufcount + numdirtybuffers >= 
-			    hidirtybuffers) {
-				needsbuffer |= VFS_BIO_NEED_DIRTYFLUSH;
-				msleep(&needsbuffer, &needsbuffer_spin, 0,
-				       "flswai", 0);
-			}
+		spin_lock_wr(&needsbuffer_spin);
+		count = runningbufcount + numdirtybuffers;
+		if (count >= hidirtybuffers) {
+			needsbuffer |= VFS_BIO_NEED_DIRTYFLUSH;
+			msleep(&needsbuffer, &needsbuffer_spin, 0, "flswai", 0);
 			spin_unlock_wr(&needsbuffer_spin);
 		}
+		count = runningbufcount + numdirtybuffers;
 	} 
 #if 0
 	/* FUTURE - maybe */
