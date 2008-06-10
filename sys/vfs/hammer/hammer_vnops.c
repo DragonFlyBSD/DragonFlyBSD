@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.63 2008/06/10 05:06:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.64 2008/06/10 08:06:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -2209,13 +2209,17 @@ retry:
 
 	/*
 	 * If all is ok we have to get the inode so we can adjust nlinks.
+	 * To avoid a deadlock with the flusher we must release the inode
+	 * lock on the directory when acquiring the inode for the entry.
 	 *
 	 * If the target is a directory, it must be empty.
 	 */
 	if (error == 0) {
+		hammer_unlock(&cursor.ip->lock);
 		ip = hammer_get_inode(trans, &dip->cache[1],
 				      cursor.data->entry.obj_id,
 				      dip->hmp->asof, 0, &error);
+		hammer_lock_sh(&cursor.ip->lock);
 		if (error == ENOENT) {
 			kprintf("obj_id %016llx\n", cursor.data->entry.obj_id);
 			Debugger("ENOENT unlinking object that should exist");
@@ -2245,6 +2249,7 @@ retry:
 			error = hammer_ip_del_directory(trans, &cursor,
 							dip, ip);
 		}
+		hammer_done_cursor(&cursor);
 		if (error == 0) {
 			cache_setunresolved(nch);
 			cache_setvp(nch, NULL);
@@ -2253,8 +2258,9 @@ retry:
 				cache_inval_vp(ip->vp, CINV_DESTROY);
 		}
 		hammer_rel_inode(ip, 0);
+	} else {
+		hammer_done_cursor(&cursor);
 	}
-        hammer_done_cursor(&cursor);
 	if (error == EDEADLK)
 		goto retry;
 
