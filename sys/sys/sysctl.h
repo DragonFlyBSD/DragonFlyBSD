@@ -35,7 +35,7 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.26 2008/01/04 12:16:19 matthias Exp $
+ * $DragonFly: src/sys/sys/sysctl.h,v 1.27 2008/06/10 05:20:10 nth Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
@@ -402,7 +402,6 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 	{ "bootfile", CTLTYPE_STRING }, \
 	{ "maxfilesperproc", CTLTYPE_INT }, \
 	{ "maxprocperuid", CTLTYPE_INT }, \
-	{ "maxposixlocksperuid", CTLTYPE_INT }, \
 	{ "dumpdev", CTLTYPE_STRUCT }, /* we lie; don't print as int */ \
 	{ "ipc", CTLTYPE_NODE }, \
 	{ "dummy", CTLTYPE_INT }, \
@@ -410,6 +409,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 	{ "usrstack", CTLTYPE_INT }, \
 	{ "logsigexit", CTLTYPE_INT }, \
 	{ "iov_max", CTLTYPE_INT }, \
+	{ "maxposixlocksperuid", CTLTYPE_INT }, \
 }
 
 /*
