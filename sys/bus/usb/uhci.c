@@ -1,6 +1,6 @@
 /*	$NetBSD: uhci.c,v 1.170 2003/02/19 01:35:04 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhci.c,v 1.162.2.1 2006/03/01 01:59:04 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.26 2008/05/21 19:56:46 mneumann Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.27 2008/06/10 10:08:11 hasso Exp $	*/
 
 /*	Also already incorporated from NetBSD:
  *	$NetBSD: uhci.c,v 1.172 2003/02/23 04:19:26 simonb Exp $
@@ -503,11 +503,11 @@ uhci_init(uhci_softc_t *sc)
 	sc->sc_bus.methods = &uhci_bus_methods;
 	sc->sc_bus.pipe_size = sizeof(struct uhci_pipe);
 
+	UHCICMD(sc, UHCI_CMD_MAXP); /* Assume 64 byte packets at frame end */
+
 	DPRINTFN(1,("uhci_init: enabling\n"));
 	UWRITE2(sc, UHCI_INTR, UHCI_INTR_TOCRCIE | UHCI_INTR_RIE |
 		UHCI_INTR_IOCE | UHCI_INTR_SPIE);	/* enable interrupts */
-
-	UHCICMD(sc, UHCI_CMD_MAXP); /* Assume 64 byte packets at frame end */
 
 	return (uhci_run(sc, 1));		/* and here we go... */
 }
