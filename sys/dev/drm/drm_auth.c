@@ -26,7 +26,7 @@
  *    Rickard E. (Rik) Faith <faith@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  *
- * $DragonFly: src/sys/dev/drm/drm_auth.c,v 1.1 2008/04/05 18:12:29 hasso Exp $
+ * $DragonFly: src/sys/dev/drm/drm_auth.c,v 1.2 2008/06/10 06:35:59 hasso Exp $
  */
 
 /** @file drm_auth.c
@@ -80,7 +80,6 @@ static int drm_add_magic(drm_device_t *dev, drm_file_t *priv, drm_magic_t magic)
 	entry->priv  = priv;
 	entry->next  = NULL;
 
-	DRM_LOCK();
 	if (dev->magiclist[hash].tail) {
 		dev->magiclist[hash].tail->next = entry;
 		dev->magiclist[hash].tail	= entry;
@@ -88,7 +87,6 @@ static int drm_add_magic(drm_device_t *dev, drm_file_t *priv, drm_magic_t magic)
 		dev->magiclist[hash].head	= entry;
 		dev->magiclist[hash].tail	= entry;
 	}
-	DRM_UNLOCK();
 
 	return 0;
 }

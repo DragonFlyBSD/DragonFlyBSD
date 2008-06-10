@@ -29,7 +29,7 @@
  *    Rickard E. (Rik) Faith <faith@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  *
- * $DragonFly: src/sys/dev/drm/drmP.h,v 1.5 2008/04/05 18:12:29 hasso Exp $
+ * $DragonFly: src/sys/dev/drm/drmP.h,v 1.6 2008/06/10 06:35:59 hasso Exp $
  */
 
 #ifndef _DRM_P_H_
@@ -91,7 +91,7 @@ typedef struct drm_file drm_file_t;
 #if defined(__DragonFly__)
 #include <sys/thread2.h>
 #include <sys/device.h>
-#include <sys/lock.h>
+#include <sys/spinlock2.h>
 #include <bus/pci/pcivar.h>
 #include <sys/selinfo.h>
 #elif __FreeBSD_version >= 500000
@@ -221,11 +221,11 @@ MALLOC_DECLARE(M_DRM);
 #elif defined(__DragonFly__)
 #define DRM_CURPROC		curthread
 #define DRM_STRUCTPROC		struct thread
-#define DRM_SPINTYPE		struct lock
-#define DRM_SPININIT(l,name)	lockinit(l, name, 0, LK_CANRECURSE)
-#define DRM_SPINUNINIT(l)	
-#define DRM_SPINLOCK(l)		lockmgr(l, LK_EXCLUSIVE|LK_RETRY)
-#define DRM_SPINUNLOCK(u)	lockmgr(u, LK_RELEASE);
+#define DRM_SPINTYPE		struct spinlock
+#define DRM_SPININIT(l,name)	spin_init(l)
+#define DRM_SPINUNINIT(l)	spin_uninit(l)
+#define DRM_SPINLOCK(l)		spin_lock_wr(l)
+#define DRM_SPINUNLOCK(u)	spin_unlock_wr(u)
 #define DRM_SPINLOCK_IRQSAVE(l, irqflags) do {		\
 	DRM_SPINLOCK(l);					\
 	(void)irqflags;					\
@@ -787,9 +787,9 @@ struct drm_device {
 	struct mtx	  irq_lock;	/* protects irq condition checks */
 	struct mtx	  dev_lock;	/* protects everything else */
 #elif defined(__DragonFly__)
-	struct lock	  dma_lock;	/* protects dev->dma */
+	struct spinlock	  dma_lock;	/* protects dev->dma */
 	struct lwkt_serialize irq_lock;	/* protects irq condition checks */
-	struct lock	  dev_lock;	/* protects everything else */
+	struct spinlock	  dev_lock;	/* protects everything else */
 #endif
 	DRM_SPINTYPE	  drw_lock;
 
