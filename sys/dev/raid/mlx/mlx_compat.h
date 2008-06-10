@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mlx/mlx_compat.h,v 1.1.2.1 2001/06/25 04:37:51 msmith Exp $
- * $DragonFly: src/sys/dev/raid/mlx/mlx_compat.h,v 1.7 2006/04/30 17:22:16 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/mlx/mlx_compat.h,v 1.8 2008/06/10 17:20:52 dillon Exp $
  */
 /*
  * Portability and compatibility interfaces.
@@ -44,7 +44,7 @@ typedef struct bio_queue_head		mlx_bioq;
 typedef struct bio			mlx_bio;
 typedef struct bio_queue_head		mlx_bioq;
 # define MLX_BIO_QINIT(bq)		bioq_init(&bq);
-# define MLX_BIO_QINSERT(bq, bp)	bioq_insert_tail(&bq, bp)
+# define MLX_BIO_QINSERT(bq, bp)	bioqdisksort(&bq, bp)
 # define MLX_BIO_QFIRST(bq)		bioq_first(&bq)
 # define MLX_BIO_QREMOVE(bq, bp)	bioq_remove(&bq, bp)
 # define MLX_BIO_IS_READ(bp)		((bp)->bio_cmd == BIO_READ)

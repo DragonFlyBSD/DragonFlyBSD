@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_compat.h,v 1.1.2.5 2004/04/07 22:18:00 vkashyap Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_compat.h,v 1.16 2006/10/25 20:56:01 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_compat.h,v 1.17 2008/06/10 17:20:52 dillon Exp $
  */
 /*
  * Portability and compatibility interfaces.
@@ -164,7 +164,7 @@ typedef struct bio_queue_head		twe_bioq;
 typedef struct bio			twe_bio;
 typedef struct bio_queue_head		twe_bioq;
 # define TWE_BIO_QINIT(bq)		bioq_init(&bq);
-# define TWE_BIO_QINSERT(bq, bp)	bioq_insert_tail(&bq, bp)
+# define TWE_BIO_QINSERT(bq, bp)	bioqdisksort(&bq, bp)
 # define TWE_BIO_QFIRST(bq)		bioq_first(&bq)
 # define TWE_BIO_QREMOVE(bq, bp)	bioq_remove(&bq, bp)
 # define TWE_BIO_IS_READ(bp)		((bp)->bio_cmd == BIO_READ)

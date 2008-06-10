@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx.c,v 1.14.2.5 2001/09/11 09:49:53 kris Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.24 2006/12/22 23:26:24 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.25 2008/06/10 17:20:52 dillon Exp $
  */
 
 /*
@@ -691,7 +691,7 @@ mlx_submit_bio(struct mlx_softc *sc, struct bio *bio)
     debug_called(1);
 
     crit_enter();
-    bioq_insert_tail(&sc->mlx_bioq, bio);
+    bioqdisksort(&sc->mlx_bioq, bio);
     sc->mlx_waitbufs++;
     crit_exit();
     mlx_startio(sc);

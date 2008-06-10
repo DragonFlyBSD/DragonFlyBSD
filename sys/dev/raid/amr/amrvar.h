@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *      $FreeBSD: src/sys/dev/amr/amrvar.h,v 1.2.2.5 2002/12/20 15:12:04 emoore Exp $
- *      $DragonFly: src/sys/dev/raid/amr/amrvar.h,v 1.10 2007/05/15 22:44:09 dillon Exp $
+ *      $DragonFly: src/sys/dev/raid/amr/amrvar.h,v 1.11 2008/06/10 17:20:49 dillon Exp $
  */
 
 #include <sys/thread2.h>
@@ -276,7 +276,7 @@ static __inline void
 amr_enqueue_bio(struct amr_softc *sc, struct bio *bio)
 {
     crit_enter();
-    bioq_insert_tail(&sc->amr_bioq, bio);
+    bioqdisksort(&sc->amr_bioq, bio);
     crit_exit();
 }
 

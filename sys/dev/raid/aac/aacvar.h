@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacvar.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.21 2008/04/06 19:03:18 pavalos Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.22 2008/06/10 17:20:48 dillon Exp $
  */
 
 #include <sys/buf.h>
@@ -599,7 +599,7 @@ aac_initq_bio(struct aac_softc *sc)
 static __inline void
 aac_enqueue_bio(struct aac_softc *sc, struct bio *bio)
 {
-	bioq_insert_tail(&sc->aac_bioq, bio);
+	bioqdisksort(&sc->aac_bioq, bio);
 	AACQ_ADD(sc, AACQ_BIO);
 }
 

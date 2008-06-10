@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twevar.h,v 1.1.2.8 2004/06/11 18:57:32 vkashyap Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twevar.h,v 1.10 2007/05/15 22:44:11 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twevar.h,v 1.11 2008/06/10 17:20:52 dillon Exp $
  */
 
 #define TWE_DRIVER_VERSION_STRING	"1.40.01.002"
@@ -281,7 +281,8 @@ static __inline void
 twe_enqueue_bio(struct twe_softc *sc, struct bio *bio)
 {
     crit_enter();
-    bioq_insert_tail(&sc->twe_bioq, bio);
+    bioqdisksort(&sc->twe_bioq, bio);
+    /* bioq_insert_tail(&sc->twe_bioq, bio); */
     TWEQ_ADD(sc, TWEQ_BIO);
     crit_exit();
 }

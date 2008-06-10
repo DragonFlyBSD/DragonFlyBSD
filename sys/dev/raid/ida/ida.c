@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida.c,v 1.7.2.3 2001/03/01 01:57:32 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.16 2007/05/15 22:44:10 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.17 2008/06/10 17:20:50 dillon Exp $
  */
 
 /*
@@ -371,7 +371,7 @@ ida_command(struct ida_softc *ida, int command, void *data, int datasize,
 void
 ida_submit_buf(struct ida_softc *ida, struct bio *bio)
 {
-        bioq_insert_tail(&ida->bio_queue, bio);
+        bioqdisksort(&ida->bio_queue, bio);
         ida_construct_qcb(ida);
 	ida_start(ida);
 }
