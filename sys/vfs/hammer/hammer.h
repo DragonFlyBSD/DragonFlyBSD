@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.76 2008/06/09 04:19:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.77 2008/06/10 00:40:31 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -402,6 +402,7 @@ struct hammer_io {
 	u_int		waitdep : 1;	/* flush waits for dependancies */
 	u_int		recovered : 1;	/* has recovery ref */
 	u_int		waitmod : 1;	/* waiting for modify_refs */
+	u_int		reclaim : 1;	/* reclaim requested */
 };
 
 typedef struct hammer_io *hammer_io_t;
@@ -436,6 +437,7 @@ struct hammer_buffer {
 	struct hammer_volume *volume;
 	hammer_off_t zoneX_offset;
 	hammer_off_t zone2_offset;
+	struct hammer_reserve *resv;
 	struct hammer_node_list clist;
 };
 
@@ -497,10 +499,13 @@ union hammer_io_structure {
 typedef union hammer_io_structure *hammer_io_structure_t;
 
 /*
- * Allocation holes are recorded for a short period of time in an attempt
- * to use up the space.
+ * Allocation holes are recorded when an allocation does not fit within a
+ * buffer.  Later allocations which might fit may then be satisfied from
+ * a recorded hole.  The resv reference prevents the big block from being
+ * allocated out of via the normal blockmap mechanism.
+ *
+ * This is strictly a heuristic.
  */
-
 #define HAMMER_MAX_HOLES	8
 
 struct hammer_hole;
@@ -521,10 +526,21 @@ struct hammer_hole {
 
 typedef struct hammer_hole *hammer_hole_t;
 
+/*
+ * The reserve structure prevents the blockmap from allocating
+ * out of a reserved bigblock.  Such reservations are used by
+ * the direct-write mechanism.
+ *
+ * The structure is also used to hold off on reallocations of
+ * big blocks from the freemap until flush dependancies have
+ * been dealt with.
+ */
 struct hammer_reserve {
 	RB_ENTRY(hammer_reserve) rb_node;
-	hammer_off_t	zone_offset;
+	TAILQ_ENTRY(hammer_reserve) delay_entry;
+	int		flush_group;
 	int		refs;
+	hammer_off_t	zone_offset;
 };
 
 typedef struct hammer_reserve *hammer_reserve_t;
@@ -532,7 +548,10 @@ typedef struct hammer_reserve *hammer_reserve_t;
 #include "hammer_cursor.h"
 
 /*
- * Undo history tracking
+ * The undo structure tracks recent undos to avoid laying down duplicate
+ * undos within a flush group, saving us a significant amount of overhead.
+ *
+ * This is strictly a heuristic.
  */
 #define HAMMER_MAX_UNDOS	256
 
@@ -608,6 +627,7 @@ struct hammer_mount {
 	int			undo_alloc;
 	TAILQ_HEAD(, hammer_undo)  undo_lru_list;
 	TAILQ_HEAD(, hammer_inode) flush_list;
+	TAILQ_HEAD(, hammer_reserve) delay_list;
 	TAILQ_HEAD(, hammer_objid_cache) objid_cache_list;
 };
 
@@ -638,6 +658,7 @@ extern int hammer_debug_btree;
 extern int hammer_debug_tid;
 extern int hammer_debug_recover;
 extern int hammer_debug_recover_faults;
+extern int hammer_debug_write_release;
 extern int hammer_count_inodes;
 extern int hammer_count_reclaiming;
 extern int hammer_count_records;
@@ -876,8 +897,6 @@ int  hammer_ip_delete_range_all(hammer_cursor_t cursor, hammer_inode_t ip,
 			int *countp);
 int  hammer_ip_sync_data(hammer_cursor_t cursor, hammer_inode_t ip,
 			int64_t offset, void *data, int bytes);
-int  hammer_dowrite(hammer_cursor_t cursor, hammer_inode_t ip,
-		        off_t file_offset, void *data, int bytes);
 int  hammer_ip_sync_record(hammer_transaction_t trans, hammer_record_t rec);
 int  hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t rec);
 
@@ -892,7 +911,6 @@ int hammer_io_new(struct vnode *devvp, struct hammer_io *io);
 void hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset);
 void hammer_io_release(struct hammer_io *io, int flush);
 void hammer_io_flush(struct hammer_io *io);
-void hammer_io_clear_modify(struct hammer_io *io);
 void hammer_io_waitdep(struct hammer_io *io);
 int hammer_io_direct_read(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 			  struct bio *bio);
@@ -900,6 +918,8 @@ int hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 			  struct bio *bio);
 void hammer_io_write_interlock(hammer_io_t io);
 void hammer_io_done_interlock(hammer_io_t io);
+void hammer_io_clear_modify(struct hammer_io *io);
+void hammer_io_clear_modlist(struct hammer_io *io);
 void hammer_modify_volume(hammer_transaction_t trans, hammer_volume_t volume,
 			void *base, int len);
 void hammer_modify_buffer(hammer_transaction_t trans, hammer_buffer_t buffer,

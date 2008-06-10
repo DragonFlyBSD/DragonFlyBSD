@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.16 2008/06/08 18:16:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.17 2008/06/10 00:40:31 dillon Exp $
  */
 
 /*
@@ -655,6 +655,7 @@ hammer_blockmap_free(hammer_transaction_t trans,
 		KKASSERT(((bmap_off ^ (bmap_off + (bytes - 1))) & 
 			  ~HAMMER_LARGEBLOCK_MASK64) == 0);
 	} else {
+		bytes = -((-bytes + 15) & ~15);
 		KKASSERT(bytes >= -HAMMER_BUFSIZE);
 	}
 	zone = HAMMER_ZONE_DECODE(bmap_off);

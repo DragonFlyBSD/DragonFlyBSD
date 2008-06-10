@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.5 2008/06/09 04:19:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.6 2008/06/10 00:40:31 dillon Exp $
  */
 
 #include "hammer.h"
@@ -122,8 +122,8 @@ retry:
 	 */
 	cursor.flags |= HAMMER_CURSOR_PRUNING;
 
-	error = hammer_btree_last(&cursor);
 	hammer_sync_lock_sh(trans);
+	error = hammer_btree_last(&cursor);
 
 	while (error == 0) {
 		/*

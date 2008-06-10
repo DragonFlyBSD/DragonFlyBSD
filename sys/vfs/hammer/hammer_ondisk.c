@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.51 2008/06/08 18:16:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.52 2008/06/10 00:40:31 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -309,6 +309,7 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 	 */
 	volume->io.waitdep = 1;
 	hammer_io_release(&volume->io, 1);
+	hammer_io_clear_modlist(&volume->io);
 
 	/*
 	 * There should be no references on the volume, no clusters, and
@@ -622,8 +623,11 @@ found:
 
 /*
  * Destroy all buffers covering the specified zoneX offset range.  This
- * is called when the related blockmap layer2 entry is freed.  The buffers
- * must not be in use or modified.
+ * is called when the related blockmap layer2 entry is freed or when
+ * a direct write bypasses our buffer/buffer-cache subsystem.
+ *
+ * The buffers may be referenced by the caller itself.  Setting reclaim
+ * will cause the buffer to be destroyed when it's ref count reaches zero.
  */
 void
 hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
@@ -642,13 +646,15 @@ hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
 		buffer = RB_LOOKUP(hammer_buf_rb_tree, &hmp->rb_bufs_root,
 				   base_offset);
 		if (buffer) {
-			KKASSERT(buffer->io.lock.refs == 0);
-			KKASSERT(buffer->io.modified == 0);
 			KKASSERT(buffer->zone2_offset == zone2_offset);
+			hammer_io_clear_modify(&buffer->io);
+			buffer->io.reclaim = 1;
 			KKASSERT(buffer->volume == volume);
-			hammer_unload_buffer(buffer, NULL);
+			if (buffer->io.lock.refs == 0)
+				hammer_unload_buffer(buffer, NULL);
+		} else {
+			hammer_io_inval(volume, zone2_offset);
 		}
-		hammer_io_inval(volume, zone2_offset);
 		base_offset += HAMMER_BUFSIZE;
 		zone2_offset += HAMMER_BUFSIZE;
 		bytes -= HAMMER_BUFSIZE;
@@ -775,6 +781,7 @@ hammer_rel_buffer(hammer_buffer_t buffer, int flush)
 				volume = buffer->volume;
 				buffer->volume = NULL; /* sanity */
 				hammer_rel_volume(volume, 0);
+				hammer_io_clear_modlist(&buffer->io);
 				freeme = 1;
 			}
 		}
@@ -784,7 +791,6 @@ hammer_rel_buffer(hammer_buffer_t buffer, int flush)
 	hammer_unref(&buffer->io.lock);
 	crit_exit();
 	if (freeme) {
-		KKASSERT(buffer->io.mod_list == NULL);
 		--hammer_count_buffers;
 		kfree(buffer, M_HAMMER);
 	}

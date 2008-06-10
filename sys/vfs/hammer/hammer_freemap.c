@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.14 2008/06/08 18:16:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.15 2008/06/10 00:40:31 dillon Exp $
  */
 
 /*
@@ -46,6 +46,8 @@
 
 #include "hammer.h"
 
+static int hammer_freemap_reserved(hammer_mount_t hmp, hammer_off_t zone2_base);
+
 /*
  * Backend big-block allocation
  */
@@ -53,6 +55,7 @@ hammer_off_t
 hammer_freemap_alloc(hammer_transaction_t trans, hammer_off_t owner,
 		     int *errorp)
 {
+	hammer_mount_t hmp;
 	hammer_volume_ondisk_t ondisk;
 	hammer_off_t layer1_offset;
 	hammer_off_t layer2_offset;
@@ -65,26 +68,27 @@ hammer_freemap_alloc(hammer_transaction_t trans, hammer_off_t owner,
 	int vol_no;
 	int loops = 0;
 
+	hmp = trans->hmp;
 	*errorp = 0;
 	ondisk = trans->rootvol->ondisk;
 
-	hammer_lock_ex(&trans->hmp->free_lock);
+	hammer_lock_ex(&hmp->free_lock);
 
-	blockmap = &trans->hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
+	blockmap = &hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 	result_offset = blockmap->next_offset;
 	vol_no = HAMMER_VOL_DECODE(result_offset);
 	for (;;) { 
 		layer1_offset = blockmap->phys_offset +
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(result_offset);
 
-		layer1 = hammer_bread(trans->hmp, layer1_offset, errorp, &buffer1);
+		layer1 = hammer_bread(hmp, layer1_offset, errorp, &buffer1);
 		if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
 			/*
 			 * End-of-volume, try next volume.
 			 */
 new_volume:
 			++vol_no;
-			if (vol_no >= trans->hmp->nvolumes)
+			if (vol_no >= hmp->nvolumes)
 				vol_no = 0;
 			result_offset = HAMMER_ENCODE_RAW_BUFFER(vol_no, 0);
 			if (vol_no == 0 && ++loops == 2) {
@@ -95,9 +99,11 @@ new_volume:
 		} else {
 			layer2_offset = layer1->phys_offset +
 				HAMMER_BLOCKMAP_LAYER2_OFFSET(result_offset);
-			layer2 = hammer_bread(trans->hmp, layer2_offset, errorp,
+			layer2 = hammer_bread(hmp, layer2_offset, errorp,
 					      &buffer2);
-			if (layer2->u.owner == HAMMER_BLOCKMAP_FREE) {
+
+			if (layer2->u.owner == HAMMER_BLOCKMAP_FREE &&
+			    !hammer_freemap_reserved(hmp, result_offset)) {
 				hammer_modify_buffer(trans, buffer2,
 						     layer2, sizeof(*layer2));
 				layer2->u.owner = owner &
@@ -111,7 +117,7 @@ new_volume:
 						     trans->rootvol,
 						     vol0_stat_freebigblocks);
 				--ondisk->vol0_stat_freebigblocks;
-				trans->hmp->copy_stat_freebigblocks =
+				hmp->copy_stat_freebigblocks =
 					ondisk->vol0_stat_freebigblocks;
 				hammer_modify_volume_done(trans->rootvol);
 				break;
@@ -136,7 +142,7 @@ new_volume:
 	blockmap->next_offset = result_offset + HAMMER_LARGEBLOCK_SIZE;
 	hammer_modify_volume_done(trans->rootvol);
 done:
-	hammer_unlock(&trans->hmp->free_lock);
+	hammer_unlock(&hmp->free_lock);
 	if (buffer1)
 		hammer_rel_buffer(buffer1, 0);
 	if (buffer2)
@@ -151,6 +157,7 @@ void
 hammer_freemap_free(hammer_transaction_t trans, hammer_off_t phys_offset, 
 		    hammer_off_t owner, int *errorp)
 {
+	hammer_mount_t hmp;
 	hammer_volume_ondisk_t ondisk;
 	hammer_off_t layer1_offset;
 	hammer_off_t layer2_offset;
@@ -159,24 +166,39 @@ hammer_freemap_free(hammer_transaction_t trans, hammer_off_t phys_offset,
 	hammer_buffer_t buffer2 = NULL;
 	struct hammer_blockmap_layer1 *layer1;
 	struct hammer_blockmap_layer2 *layer2;
+	hammer_reserve_t resv;
+
+	hmp = trans->hmp;
 
 	KKASSERT((phys_offset & HAMMER_LARGEBLOCK_MASK64) == 0);
+	KKASSERT(hammer_freemap_reserved(hmp, phys_offset) == 0);
+
+	/*
+	 * Create a reservation
+	 */
+	resv = kmalloc(sizeof(*resv), M_HAMMER, M_WAITOK|M_ZERO);
+	resv->refs = 1;
+	resv->zone_offset = phys_offset;
+	resv->flush_group = hmp->flusher_next + 1;
+	RB_INSERT(hammer_res_rb_tree, &hmp->rb_resv_root, resv);
+	TAILQ_INSERT_TAIL(&hmp->delay_list, resv, delay_entry);
+	++hammer_count_reservations;
+
+	hammer_lock_ex(&hmp->free_lock);
 
 	*errorp = 0;
 	ondisk = trans->rootvol->ondisk;
 
-	hammer_lock_ex(&trans->hmp->free_lock);
-
-	blockmap = &trans->hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
+	blockmap = &hmp->blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 	layer1_offset = blockmap->phys_offset +
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
-	layer1 = hammer_bread(trans->hmp, layer1_offset, errorp, &buffer1);
+	layer1 = hammer_bread(hmp, layer1_offset, errorp, &buffer1);
 
 	KKASSERT(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
 
 	layer2_offset = layer1->phys_offset +
 			HAMMER_BLOCKMAP_LAYER2_OFFSET(phys_offset);
-	layer2 = hammer_bread(trans->hmp, layer2_offset, errorp, &buffer2);
+	layer2 = hammer_bread(hmp, layer2_offset, errorp, &buffer2);
 
 	KKASSERT(layer2->u.owner == (owner & ~HAMMER_LARGEBLOCK_MASK64));
 	hammer_modify_buffer(trans, buffer1, layer1, sizeof(*layer1));
@@ -190,14 +212,25 @@ hammer_freemap_free(hammer_transaction_t trans, hammer_off_t phys_offset,
 				   vol0_stat_freebigblocks);
 	++ondisk->vol0_stat_freebigblocks;
 	hammer_modify_volume_done(trans->rootvol);
-	trans->hmp->copy_stat_freebigblocks = ondisk->vol0_stat_freebigblocks;
+	hmp->copy_stat_freebigblocks = ondisk->vol0_stat_freebigblocks;
 
-	hammer_unlock(&trans->hmp->free_lock);
+	hammer_unlock(&hmp->free_lock);
 
 	if (buffer1)
 		hammer_rel_buffer(buffer1, 0);
 	if (buffer2)
 		hammer_rel_buffer(buffer2, 0);
+}
+
+/*
+ * Check whether a free block has been reserved in zone-2.
+ */
+static int
+hammer_freemap_reserved(hammer_mount_t hmp, hammer_off_t zone2_base)
+{
+	if (RB_LOOKUP(hammer_res_rb_tree, &hmp->rb_resv_root, zone2_base))
+		return(1);
+	return(0);
 }
 
 /*

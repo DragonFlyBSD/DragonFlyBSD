@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.63 2008/06/09 04:19:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.64 2008/06/10 00:40:31 dillon Exp $
  */
 
 #include "hammer.h"
@@ -63,6 +63,11 @@ hammer_rec_rb_compare(hammer_record_t rec1, hammer_record_t rec2)
 	if (rec1->leaf.base.key > rec2->leaf.base.key)
 		return(1);
 
+#if 0
+	/*
+	 * XXX create_tid is set during sync, memory records are always
+	 * current.  Do not match against create_tid.
+	 */
 	if (rec1->leaf.base.create_tid == 0) {
 		if (rec2->leaf.base.create_tid == 0)
 			return(0);
@@ -75,6 +80,7 @@ hammer_rec_rb_compare(hammer_record_t rec1, hammer_record_t rec2)
 		return(-1);
 	if (rec1->leaf.base.create_tid > rec2->leaf.base.create_tid)
 		return(1);
+#endif
 
 	/*
 	 * Never match against an item deleted by the front-end.
@@ -103,6 +109,11 @@ hammer_rec_cmp(hammer_base_elm_t elm, hammer_record_t rec)
         if (elm->key > rec->leaf.base.key)
                 return(2);
 
+#if 0
+	/*
+	 * XXX create_tid is set during sync, memory records are always
+	 * current.  Do not match against create_tid.
+	 */
 	if (elm->create_tid == 0) {
 		if (rec->leaf.base.create_tid == 0)
 			return(0);
@@ -113,6 +124,12 @@ hammer_rec_cmp(hammer_base_elm_t elm, hammer_record_t rec)
 	if (elm->create_tid < rec->leaf.base.create_tid)
 		return(-1);
 	if (elm->create_tid > rec->leaf.base.create_tid)
+		return(1);
+#endif
+	/*
+	 * Never match against an item deleted by the front-end.
+	 */
+	if (rec->flags & HAMMER_RECF_DELETED_FE)
 		return(1);
         return(0);
 }
@@ -134,8 +151,10 @@ hammer_rec_overlap_compare(hammer_btree_leaf_elm_t leaf, hammer_record_t rec)
 		return(3);
 
 	if (leaf->base.rec_type == HAMMER_RECTYPE_DATA) {
+		/* leaf_end <= rec_beg */
 		if (leaf->base.key <= rec->leaf.base.key - rec->leaf.data_len)
 			return(-2);
+		/* leaf_beg >= rec_end */
 		if (leaf->base.key - leaf->data_len >= rec->leaf.base.key)
 			return(2);
 	} else {
@@ -145,6 +164,7 @@ hammer_rec_overlap_compare(hammer_btree_leaf_elm_t leaf, hammer_record_t rec)
 			return(2);
 	}
 
+#if 0
 	if (leaf->base.create_tid == 0) {
 		if (rec->leaf.base.create_tid == 0)
 			return(0);
@@ -156,6 +176,12 @@ hammer_rec_overlap_compare(hammer_btree_leaf_elm_t leaf, hammer_record_t rec)
 		return(-1);
 	if (leaf->base.create_tid > rec->leaf.base.create_tid)
 		return(1);
+#endif
+	/*
+	 * Never match against an item deleted by the front-end.
+	 */
+	if (rec->flags & HAMMER_RECF_DELETED_FE)
+		return(1);
         return(0);
 }
 
@@ -163,9 +189,6 @@ hammer_rec_overlap_compare(hammer_btree_leaf_elm_t leaf, hammer_record_t rec)
  * RB_SCAN comparison code for hammer_mem_first().  The argument order
  * is reversed so the comparison result has to be negated.  key_beg and
  * key_end are both range-inclusive.
- *
- * The creation timestamp can cause hammer_rec_cmp() to return -1 or +1.
- * These do not stop the scan.
  *
  * Localized deletions are not cached in-memory.
  */
@@ -825,6 +848,7 @@ hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
 					       &record->leaf.data_offset,
 					       errorp);
 	if (record->resv == NULL) {
+		kprintf("hammer_ip_add_bulk: reservation failed\n");
 		hammer_rel_mem_record(record);
 		return(NULL);
 	}
@@ -839,6 +863,7 @@ hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
 
 	hammer_ref(&record->lock);	/* mem_add eats a reference */
 	*errorp = hammer_mem_add(record);
+	KKASSERT(*errorp == 0);
 
 	return (record);
 }
@@ -1011,6 +1036,8 @@ done:
 	return(error);
 }
 
+#if 0
+
 /*
  * Backend code which actually performs the write to the media.  This
  * routine is typically called from the flusher.  The bio will be disposed
@@ -1076,6 +1103,7 @@ hammer_dowrite(hammer_cursor_t cursor, hammer_inode_t ip,
 	return(error);
 }
 
+#endif
 
 /*
  * Backend code.  Sync a record to the media.
@@ -1084,6 +1112,7 @@ int
 hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 {
 	hammer_transaction_t trans = cursor->trans;
+	int64_t file_offset;
 	void *bdata;
 	int error;
 
@@ -1108,11 +1137,12 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	 * It is ok for the lookup to return ENOENT.
 	 */
 	if (record->type == HAMMER_MEM_RECORD_DATA) {
-		KKASSERT(((record->leaf.base.key - record->leaf.data_len) & HAMMER_BUFMASK) == 0);
+		file_offset = record->leaf.base.key - record->leaf.data_len;
+		KKASSERT((file_offset & HAMMER_BUFMASK) == 0);
 		error = hammer_ip_delete_range(
 				cursor, record->ip,
-				record->leaf.base.key - record->leaf.data_len,
-				HAMMER_BUFSIZE - 1, 1);
+				file_offset, file_offset + HAMMER_BUFSIZE - 1,
+				1);
 		if (error && error != ENOENT)
 			goto done;
 	}
@@ -1547,9 +1577,10 @@ next_memory:
 			int64_t base1 = elm->leaf.base.key - elm->leaf.data_len;
 			int64_t base2 = cursor->iprec->leaf.base.key -
 					cursor->iprec->leaf.data_len;
-			if (base1 == base2)
+			if (base1 == base2) {
+				kprintf("G");
 				r = 0;
-			kprintf("G");
+			}
 		}
 
 		if (r < 0) {
@@ -1909,6 +1940,7 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 	int dodelete;
 
 	KKASSERT(cursor->flags & HAMMER_CURSOR_BACKEND);
+	KKASSERT(tid != 0);
 
 	/*
 	 * In-memory (unsynchronized) records can simply be freed.  This

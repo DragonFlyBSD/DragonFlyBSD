@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.36 2008/06/09 04:19:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.37 2008/06/10 00:40:31 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -88,10 +88,8 @@ hammer_io_disassociate(hammer_io_structure_t iou, int elseit)
 	/*
 	 * If the buffer was locked someone wanted to get rid of it.
 	 */
-	if (bp->b_flags & B_LOCKED) {
+	if (bp->b_flags & B_LOCKED)
 		bp->b_flags &= ~B_LOCKED;
-		bp->b_flags |= B_RELBUF;
-	}
 
 	/*
 	 * elseit is 0 when called from the kernel path, the caller is
@@ -100,10 +98,13 @@ hammer_io_disassociate(hammer_io_structure_t iou, int elseit)
 	if (elseit) {
 		KKASSERT(iou->io.released == 0);
 		iou->io.released = 1;
+		if (iou->io.reclaim)
+			bp->b_flags |= B_NOCACHE|B_RELBUF;
 		bqrelse(bp);
 	} else {
 		KKASSERT(iou->io.released);
 	}
+	iou->io.reclaim = 0;
 
 	switch(iou->io.type) {
 	case HAMMER_STRUCTURE_VOLUME:
@@ -224,6 +225,7 @@ hammer_io_new(struct vnode *devvp, struct hammer_io *io)
 void
 hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 {
+	hammer_io_structure_t iou;
 	hammer_off_t phys_offset;
 	struct buf *bp;
 
@@ -231,10 +233,15 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 		      (zone2_offset & HAMMER_OFF_SHORT_MASK);
 	if (findblk(volume->devvp, phys_offset)) {
 		bp = getblk(volume->devvp, phys_offset, HAMMER_BUFSIZE, 0, 0);
-		if (LIST_FIRST(&bp->b_dep) != NULL) {
+		if ((iou = (void *)LIST_FIRST(&bp->b_dep)) != NULL) {
+			hammer_io_clear_modify(&iou->io);
+			bundirty(bp);
+			iou->io.reclaim = 1;
 			hammer_io_deallocate(bp);
 		} else {
-			bp->b_flags |= B_RELBUF;
+			KKASSERT((bp->b_flags & B_LOCKED) == 0);
+			bundirty(bp);
+			bp->b_flags |= B_NOCACHE|B_RELBUF;
 			brelse(bp);
 		}
 	}
@@ -293,7 +300,7 @@ hammer_io_release(struct hammer_io *io, int flush)
 	 * that our bioops can override kernel decisions with regards to
 	 * the buffer).
 	 */
-	if (flush && io->modified == 0 && io->running == 0) {
+	if ((flush || io->reclaim) && io->modified == 0 && io->running == 0) {
 		/*
 		 * Always disassociate the bp if an explicit flush
 		 * was requested and the IO completed with no error
@@ -332,8 +339,12 @@ hammer_io_release(struct hammer_io *io, int flush)
 		if (bp->b_flags & B_LOCKED) {
 			hammer_io_disassociate(iou, 1);
 		} else {
-			io->released = 1;
-			bqrelse(bp);
+			if (io->reclaim) {
+				hammer_io_disassociate(iou, 1);
+			} else {
+				io->released = 1;
+				bqrelse(bp);
+			}
 		}
 	} else {
 		/*
@@ -345,7 +356,7 @@ hammer_io_release(struct hammer_io *io, int flush)
 		crit_enter();
 		if (io->running == 0 && (bp->b_flags & B_LOCKED)) {
 			regetblk(bp);
-			if (bp->b_flags & B_LOCKED) {
+			if ((bp->b_flags & B_LOCKED) || io->reclaim) {
 				io->released = 0;
 				hammer_io_disassociate(iou, 1);
 			} else {
@@ -409,15 +420,7 @@ hammer_io_flush(struct hammer_io *io)
 	 * Do this before potentially blocking so any attempt to modify the
 	 * ondisk while we are blocked blocks waiting for us.
 	 */
-	KKASSERT(io->mod_list != NULL);
-	if (io->mod_list == &io->hmp->volu_list ||
-	    io->mod_list == &io->hmp->meta_list) {
-		--io->hmp->locked_dirty_count;
-		--hammer_count_dirtybufs;
-	}
-	TAILQ_REMOVE(io->mod_list, io, mod_entry);
-	io->mod_list = NULL;
-	io->modified = 0;
+	hammer_io_clear_modify(io);
 
 	/*
 	 * Transfer ownership to the kernel and initiate I/O.
@@ -589,34 +592,37 @@ hammer_modify_buffer_done(hammer_buffer_t buffer)
 }
 
 /*
- * Mark an entity as not being dirty any more -- this usually occurs when
- * the governing a-list has freed the entire entity.
- *
- * XXX
+ * Mark an entity as not being dirty any more.
  */
 void
 hammer_io_clear_modify(struct hammer_io *io)
 {
-#if 0
-	struct buf *bp;
-
-	io->modified = 0;
-	XXX mod_list/entry
-	if ((bp = io->bp) != NULL) {
-		if (io->released) {
-			regetblk(bp);
-			/* BUF_KERNPROC(io->bp); */
-		} else {
-			io->released = 1;
+	if (io->modified) {
+		KKASSERT(io->mod_list != NULL);
+		if (io->mod_list == &io->hmp->volu_list ||
+		    io->mod_list == &io->hmp->meta_list) {
+			--io->hmp->locked_dirty_count;
+			--hammer_count_dirtybufs;
 		}
-		if (io->modified == 0) {
-			bundirty(bp);
-			bqrelse(bp);
-		} else {
-			bdwrite(bp);
-		}
+		TAILQ_REMOVE(io->mod_list, io, mod_entry);
+		io->mod_list = NULL;
+		io->modified = 0;
 	}
-#endif
+}
+
+/*
+ * Clear the IO's modify list.  Even though the IO is no longer modified
+ * it may still be on the lose_list.  This routine is called just before
+ * the governing hammer_buffer is destroyed.
+ */
+void
+hammer_io_clear_modlist(struct hammer_io *io)
+{
+	if (io->mod_list) {
+		KKASSERT(io->mod_list == &io->hmp->lose_list);
+		TAILQ_REMOVE(io->mod_list, io, mod_entry);
+		io->mod_list = NULL;
+	}
 }
 
 /************************************************************************
@@ -776,17 +782,8 @@ hammer_io_checkwrite(struct buf *bp)
 	 * We can only clear the modified bit if the IO is not currently
 	 * undergoing modification.  Otherwise we may miss changes.
 	 */
-	if (io->modify_refs == 0 && io->modified) {
-		KKASSERT(io->mod_list != NULL);
-		if (io->mod_list == &io->hmp->volu_list ||
-		    io->mod_list == &io->hmp->meta_list) {
-			--io->hmp->locked_dirty_count;
-			--hammer_count_dirtybufs;
-		}
-		TAILQ_REMOVE(io->mod_list, io, mod_entry);
-		io->mod_list = NULL;
-		io->modified = 0;
-	}
+	if (io->modify_refs == 0 && io->modified)
+		hammer_io_clear_modify(io);
 
 	/*
 	 * The kernel is going to start the IO, set io->running.
@@ -860,6 +857,8 @@ hammer_io_direct_read(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 		hammer_rel_volume(volume, 0);
 	}
 	if (error) {
+		kprintf("hammer_direct_read: failed @ %016llx\n",
+			leaf->data_offset);
 		bp = bio->bio_buf;
 		bp->b_error = error;
 		bp->b_flags |= B_ERROR;
@@ -914,6 +913,8 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 			nbio = push_bio(bio);
 			nbio->bio_offset = volume->ondisk->vol_buf_beg +
 					   zone2_offset;
+			if (hammer_debug_write_release & 1)
+				nbio->bio_buf->b_flags |= B_RELBUF|B_NOCACHE;
 			vn_strategy(volume->devvp, nbio);
 		}
 		hammer_rel_volume(volume, 0);
@@ -926,12 +927,14 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 			hammer_io_modify(&buffer->io, 1);
 			bcopy(bp->b_data, ptr, leaf->data_len);
 			hammer_io_modify_done(&buffer->io);
-			hammer_rel_buffer(buffer, 0);
+			hammer_rel_buffer(buffer, (hammer_debug_write_release & 2));
 			bp->b_resid = 0;
 			biodone(bio);
 		}
 	}
 	if (error) {
+		kprintf("hammer_direct_write: failed @ %016llx\n",
+			leaf->data_offset);
 		bp = bio->bio_buf;
 		bp->b_resid = 0;
 		bp->b_error = EIO;

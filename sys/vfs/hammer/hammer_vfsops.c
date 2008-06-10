@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.41 2008/06/09 04:19:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.42 2008/06/10 00:40:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -54,8 +54,9 @@ int hammer_debug_inode;
 int hammer_debug_locks;
 int hammer_debug_btree;
 int hammer_debug_tid;
-int hammer_debug_recover;	/* -1 will disable, +1 will force */
+int hammer_debug_recover;		/* -1 will disable, +1 will force */
 int hammer_debug_recover_faults;
+int hammer_debug_write_release;		/* if 1 release buffer on strategy */
 int hammer_count_inodes;
 int hammer_count_reclaiming;
 int hammer_count_records;
@@ -93,6 +94,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_recover, CTLFLAG_RW,
 	   &hammer_debug_recover, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_recover_faults, CTLFLAG_RW,
 	   &hammer_debug_recover_faults, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_write_release, CTLFLAG_RW,
+	   &hammer_debug_write_release, 0, "");
 
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_dirtybufs, CTLFLAG_RW,
 	   &hammer_limit_dirtybufs, 0, "");
@@ -237,6 +240,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp->free_lock.refs = 1;
 
 		TAILQ_INIT(&hmp->flush_list);
+		TAILQ_INIT(&hmp->delay_list);
 		TAILQ_INIT(&hmp->objid_cache_list);
 		TAILQ_INIT(&hmp->undo_lru_list);
 

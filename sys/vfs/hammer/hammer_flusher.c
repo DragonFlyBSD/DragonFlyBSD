@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.20 2008/06/09 04:19:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.21 2008/06/10 00:40:31 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -157,14 +157,18 @@ hammer_flusher_clean_loose_ios(hammer_mount_t hmp)
 }
 
 /*
- * Flush all inodes in the current flush group
+ * Flush all inodes in the current flush group.
  */
 static void
 hammer_flusher_flush(hammer_mount_t hmp)
 {
 	struct hammer_transaction trans;
 	hammer_inode_t ip;
+	hammer_reserve_t resv;
 
+	/*
+	 * Flush the inodes
+	 */
 	hammer_start_transaction_fls(&trans, hmp);
 	while ((ip = TAILQ_FIRST(&hmp->flush_list)) != NULL) {
 		if (ip->flush_group != hmp->flusher_act)
@@ -174,6 +178,21 @@ hammer_flusher_flush(hammer_mount_t hmp)
 	}
 	hammer_flusher_finalize(&trans, 1);
 	hmp->flusher_tid = trans.tid;
+
+	/*
+	 * Clean up any freed big-blocks (typically zone-2). 
+	 * resv->flush_group is typically set several flush groups ahead
+	 * of the free to ensure that the freed block is not reused until
+	 * it can no longer be reused.
+	 */
+	while ((resv = TAILQ_FIRST(&hmp->delay_list)) != NULL) {
+		if (resv->flush_group != hmp->flusher_act)
+			break;
+		TAILQ_REMOVE(&hmp->delay_list, resv, delay_entry);
+		hammer_blockmap_reserve_complete(hmp, resv);
+	}
+
+
 	hammer_done_transaction(&trans);
 }
 
@@ -186,8 +205,10 @@ hammer_flusher_flush_inode(hammer_inode_t ip, hammer_transaction_t trans)
 {
 	hammer_mount_t hmp = ip->hmp;
 
+	/*hammer_lock_ex(&ip->lock);*/
 	ip->error = hammer_sync_inode(ip);
 	hammer_flush_inode_done(ip);
+	/*hammer_unlock(&ip->lock);*/
 
 	if (hammer_must_finalize_undo(hmp)) {
 		kprintf("HAMMER: Warning: UNDO area too small!");

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.61 2008/06/09 04:19:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.62 2008/06/10 00:40:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1984,7 +1984,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		 *
 		 * WARNING: If we hit the else clause.
 		 */
-		if (roff == 0 && n == bp->b_bufsize &&
+		if (roff == 0 && boff == 0 && n == bp->b_bufsize &&
 		    (rec_offset & HAMMER_BUFMASK) == 0) {
 			error = hammer_io_direct_read(trans.hmp, cursor.leaf,
 						      bio);
