@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.86 2008/05/19 10:28:05 corecode Exp $
+# $DragonFly: src/sys/conf/options,v 1.87 2008/06/11 20:01:31 swildner Exp $
 #
 #        On the handling of kernel options
 #
@@ -13,7 +13,7 @@
 # coverage.
 #
 # All new options shall also be listed in either "conf/options" or
-# "<platform>/conf/options.<platform>".  Options that affect a single
+# "platform/<platform>/conf/options".  Options that affect a single
 # source-file <xxx>.[c|s] should be directed into "opt_<xxx>.h", while
 # options that affect multiple files should either go in
 # "opt_global.h" if this is a kernel-wide option (used just about
