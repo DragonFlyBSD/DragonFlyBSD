@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.27 2008/06/10 22:30:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.28 2008/06/11 22:33:21 dillon Exp $
  */
 
 /*
@@ -206,11 +206,13 @@ hammer_done_cursor(hammer_cursor_t cursor)
 		hammer_lock_ex_ident(&cursor->deadlk_node->lock, "hmrdlk");
 		hammer_unlock(&cursor->deadlk_node->lock);
 		hammer_rel_node(cursor->deadlk_node);
+		tsleep(&cursor->deadlk_node, 0, "hmrdel", 1);
 		cursor->deadlk_node = NULL;
 	}
 	if (cursor->deadlk_rec) {
-		hammer_wait_mem_record_ident(cursor->deadlk_rec, "hmmdlk");
+		hammer_wait_mem_record_ident(cursor->deadlk_rec, "hmmdlr");
 		hammer_rel_mem_record(cursor->deadlk_rec);
+		tsleep(&cursor->deadlk_rec, 0, "hmrdel", 1);
 		cursor->deadlk_rec = NULL;
 	}
 

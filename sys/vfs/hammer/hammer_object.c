@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.65 2008/06/10 22:30:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.66 2008/06/11 22:33:21 dillon Exp $
  */
 
 #include "hammer.h"
@@ -403,6 +403,12 @@ hammer_rel_mem_record(struct hammer_record *record)
 				--ip->rsv_recs;
 				ip->hmp->rsv_databytes -= record->leaf.data_len;
 				record->flags &= ~HAMMER_RECF_ONRBTREE;
+
+				if ((ip->flags & HAMMER_INODE_PARTIALW) &&
+				    ip->rsv_recs <= hammer_limit_irecs) {
+					ip->flags &= ~HAMMER_INODE_PARTIALW;
+					wakeup(&ip->flags);
+				}
 				if (RB_EMPTY(&record->ip->rec_tree)) {
 					record->ip->flags &= ~HAMMER_INODE_XDIRTY;
 					record->ip->sync_flags &= ~HAMMER_INODE_XDIRTY;

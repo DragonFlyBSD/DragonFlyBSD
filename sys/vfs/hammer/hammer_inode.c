@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.70 2008/06/10 22:30:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.71 2008/06/11 22:33:21 dillon Exp $
  */
 
 #include "hammer.h"
@@ -111,8 +111,6 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 			++hammer_count_reclaiming;
 			++hmp->inode_reclaims;
 			ip->flags |= HAMMER_INODE_RECLAIM;
-			if (curproc)
-				hammer_inode_waitreclaims(hmp);
 		}
 		hammer_rel_inode(ip, 1);
 	}
@@ -1221,6 +1219,21 @@ hammer_wait_inode(hammer_inode_t ip)
 		} else {
 			ip->flags |= HAMMER_INODE_FLUSHW;
 			tsleep(&ip->flags, 0, "hmrwin", 0);
+		}
+	}
+}
+
+/*
+ * Wait for records to drain
+ */
+void
+hammer_wait_inode_recs(hammer_inode_t ip)
+{
+	while (ip->rsv_recs > hammer_limit_irecs) {
+		hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+		if (ip->rsv_recs > hammer_limit_irecs) {
+			ip->flags |= HAMMER_INODE_PARTIALW;
+			tsleep(&ip->flags, 0, "hmrwpp", 0);
 		}
 	}
 }

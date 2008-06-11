@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.23 2008/06/10 22:30:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.24 2008/06/11 22:33:21 dillon Exp $
  */
 
 #include "hammer.h"
@@ -482,6 +482,8 @@ hammer_recover_flush_buffer_callback(hammer_buffer_t buffer, void *data)
 		hammer_io_flush(&buffer->io);
 		hammer_rel_buffer(buffer, 0);
 	} else {
+		KKASSERT(buffer->io.lock.refs == 0);
+		++hammer_count_refedbufs;
 		hammer_ref(&buffer->io.lock);
 		buffer->io.reclaim = 1;
 		hammer_rel_buffer(buffer, 1);

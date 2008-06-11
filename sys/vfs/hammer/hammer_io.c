@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.38 2008/06/10 22:30:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.39 2008/06/11 22:33:21 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -89,8 +89,10 @@ hammer_io_disassociate(hammer_io_structure_t iou, int elseit)
 	/*
 	 * If the buffer was locked someone wanted to get rid of it.
 	 */
-	if (bp->b_flags & B_LOCKED)
+	if (bp->b_flags & B_LOCKED) {
+		--hammer_count_io_locked;
 		bp->b_flags &= ~B_LOCKED;
+	}
 
 	/*
 	 * elseit is 0 when called from the kernel path, the caller is
@@ -162,10 +164,9 @@ hammer_io_wait_all(hammer_mount_t hmp, const char *ident)
  * Load bp for a HAMMER structure.  The io must be exclusively locked by
  * the caller.
  *
- * Generally speaking HAMMER assumes that data is laid out fairly linearly
- * and will cluster reads.  Conversely meta-data buffers (aka B-Tree nodes)
- * may be dispersed due to the way the B-Tree insertion mechanism works and
- * we only do single-buffer reads to avoid blowing out the buffer cache.
+ * This routine is mostly used on meta-data and small-data blocks.  Generally
+ * speaking HAMMER assumes some locality of reference and will cluster 
+ * a 64K read.
  *
  * Note that clustering occurs at the device layer, not the logical layer.
  * If the buffers do not apply to the current operation they may apply to
@@ -178,18 +179,12 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io, hammer_off_t limit)
 	int   error;
 
 	if ((bp = io->bp) == NULL) {
-		switch(io->type) {
-		case HAMMER_STRUCTURE_DATA_BUFFER:
-			error = cluster_read(devvp, limit, io->offset,
-					     HAMMER_BUFSIZE,
-					     HAMMER_CLUSTER_SIZE,
-					     HAMMER_CLUSTER_BUFS, &io->bp);
-			break;
-		default:
-			error = bread(devvp, io->offset, HAMMER_BUFSIZE,
-				      &io->bp);
-			break;
-		}
+		++hammer_count_io_running_read;
+		error = cluster_read(devvp, limit, io->offset,
+				     HAMMER_BUFSIZE,
+				     HAMMER_CLUSTER_SIZE,
+				     HAMMER_CLUSTER_BUFS, &io->bp);
+		--hammer_count_io_running_read;
 		if (error == 0) {
 			bp = io->bp;
 			bp->b_ops = &hammer_bioops;
@@ -460,6 +455,7 @@ hammer_io_flush(struct hammer_io *io)
 	 */
 	io->running = 1;
 	++io->hmp->io_running_count;
+	++hammer_count_io_running_write;
 	bawrite(bp);
 }
 
@@ -652,9 +648,11 @@ void
 hammer_io_clear_modlist(struct hammer_io *io)
 {
 	if (io->mod_list) {
+		crit_enter();	/* biodone race against list */
 		KKASSERT(io->mod_list == &io->hmp->lose_list);
 		TAILQ_REMOVE(io->mod_list, io, mod_entry);
 		io->mod_list = NULL;
+		crit_exit();
 	}
 }
 
@@ -687,6 +685,7 @@ hammer_io_complete(struct buf *bp)
 	KKASSERT(iou->io.released == 1);
 
 	if (iou->io.running) {
+		--hammer_count_io_running_write;
 		if (--iou->io.hmp->io_running_count == 0)
 			wakeup(&iou->io.hmp->io_running_count);
 		KKASSERT(iou->io.hmp->io_running_count >= 0);
@@ -708,6 +707,7 @@ hammer_io_complete(struct buf *bp)
 	 */
 	if ((bp->b_flags & B_LOCKED) && iou->io.lock.refs == 0) {
 		KKASSERT(iou->io.modified == 0);
+		--hammer_count_io_locked;
 		bp->b_flags &= ~B_LOCKED;
 		hammer_io_deallocate(bp);
 		/* structure may be dead now */
@@ -739,6 +739,7 @@ hammer_io_deallocate(struct buf *bp)
 		 * case really shouldn't ever occur.
 		 */
 		bp->b_flags |= B_LOCKED;
+		++hammer_count_io_locked;
 	} else {
 		/*
 		 * Disassociate the BP.  If the io has no refs left we
@@ -748,8 +749,10 @@ hammer_io_deallocate(struct buf *bp)
 		if (iou->io.bp == NULL && 
 		    iou->io.type != HAMMER_STRUCTURE_VOLUME) {
 			KKASSERT(iou->io.mod_list == NULL);
+			crit_enter();	/* biodone race against list */
 			iou->io.mod_list = &iou->io.hmp->lose_list;
 			TAILQ_INSERT_TAIL(iou->io.mod_list, &iou->io, mod_entry);
+			crit_exit();
 		}
 	}
 }
@@ -807,7 +810,10 @@ hammer_io_checkwrite(struct buf *bp)
 	    io->type == HAMMER_STRUCTURE_META_BUFFER) {
 		if (!panicstr)
 			panic("hammer_io_checkwrite: illegal buffer");
-		bp->b_flags |= B_LOCKED;
+		if ((bp->b_flags & B_LOCKED) == 0) {
+			bp->b_flags |= B_LOCKED;
+			++hammer_count_io_locked;
+		}
 		return(1);
 	}
 
@@ -824,6 +830,7 @@ hammer_io_checkwrite(struct buf *bp)
 	KKASSERT(io->running == 0);
 	io->running = 1;
 	++io->hmp->io_running_count;
+	++hammer_count_io_running_write;
 	return(0);
 }
 
@@ -860,9 +867,11 @@ struct bio_ops hammer_bioops = {
 /*
  * Read a buffer associated with a front-end vnode directly from the
  * disk media.  The bio may be issued asynchronously.
+ *
+ * This function can takes a zone-2 or zone-X blockmap offset.
  */
 int
-hammer_io_direct_read(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
+hammer_io_direct_read(hammer_mount_t hmp, hammer_off_t data_offset,
 		      struct bio *bio)
 {
 	hammer_off_t zone2_offset;
@@ -872,9 +881,14 @@ hammer_io_direct_read(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 	int vol_no;
 	int error;
 
-	KKASSERT(leaf->data_offset >= HAMMER_ZONE_BTREE);
-	KKASSERT((leaf->data_offset & HAMMER_BUFMASK) == 0);
-	zone2_offset = hammer_blockmap_lookup(hmp, leaf->data_offset, &error);
+	if ((data_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_RAW_BUFFER) {
+		zone2_offset = data_offset;
+		error = 0;
+	} else {
+		KKASSERT(data_offset >= HAMMER_ZONE_BTREE);
+		KKASSERT((data_offset & HAMMER_BUFMASK) == 0);
+		zone2_offset = hammer_blockmap_lookup(hmp, data_offset, &error);
+	}
 	if (error == 0) {
 		vol_no = HAMMER_VOL_DECODE(zone2_offset);
 		volume = hammer_get_volume(hmp, vol_no, &error);
@@ -891,7 +905,7 @@ hammer_io_direct_read(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 	}
 	if (error) {
 		kprintf("hammer_direct_read: failed @ %016llx\n",
-			leaf->data_offset);
+			data_offset);
 		bp = bio->bio_buf;
 		bp->b_error = error;
 		bp->b_flags |= B_ERROR;

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.44 2008/06/10 22:30:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.45 2008/06/11 22:33:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -57,6 +57,7 @@ int hammer_debug_tid;
 int hammer_debug_recover;		/* -1 will disable, +1 will force */
 int hammer_debug_recover_faults;
 int hammer_debug_write_release;		/* if 1 release buffer on strategy */
+int hammer_debug_cluster_enable = 1;	/* enable read clustering by default */
 int hammer_count_inodes;
 int hammer_count_iqueued;
 int hammer_count_reclaiming;
@@ -66,7 +67,11 @@ int hammer_count_volumes;
 int hammer_count_buffers;
 int hammer_count_nodes;
 int hammer_count_dirtybufs;		/* global */
+int hammer_count_refedbufs;		/* global */
 int hammer_count_reservations;
+int hammer_count_io_running_read;
+int hammer_count_io_running_write;
+int hammer_count_io_locked;
 int hammer_stats_btree_iterations;
 int hammer_stats_record_iterations;
 int hammer_limit_dirtybufs;		/* per-mount */
@@ -98,6 +103,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_recover_faults, CTLFLAG_RW,
 	   &hammer_debug_recover_faults, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_write_release, CTLFLAG_RW,
 	   &hammer_debug_write_release, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_cluster_enable, CTLFLAG_RW,
+	   &hammer_debug_cluster_enable, 0, "");
 
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_dirtybufs, CTLFLAG_RW,
 	   &hammer_limit_dirtybufs, 0, "");
@@ -126,8 +133,16 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, count_nodes, CTLFLAG_RD,
 	   &hammer_count_nodes, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_dirtybufs, CTLFLAG_RD,
 	   &hammer_count_dirtybufs, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, count_refedbufs, CTLFLAG_RD,
+	   &hammer_count_refedbufs, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_reservations, CTLFLAG_RD,
 	   &hammer_count_reservations, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, count_io_running_read, CTLFLAG_RD,
+	   &hammer_count_io_running_read, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, count_io_locked, CTLFLAG_RD,
+	   &hammer_count_io_locked, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, count_io_running_write, CTLFLAG_RD,
+	   &hammer_count_io_running_write, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, zone_limit, CTLFLAG_RW,
 	   &hammer_zone_limit, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, contention_count, CTLFLAG_RW,
@@ -180,9 +195,9 @@ static int
 hammer_vfs_init(struct vfsconf *conf)
 {
 	if (hammer_limit_irecs == 0)
-		hammer_limit_irecs = nbuf / 10;
+		hammer_limit_irecs = nbuf * 8;
 	if (hammer_limit_recs == 0)		/* XXX TODO */
-		hammer_limit_recs = nbuf / 3;
+		hammer_limit_recs = nbuf * 25;
 	if (hammer_limit_dirtybufs == 0) {
 		hammer_limit_dirtybufs = hidirtybuffers / 2;
 		if (hammer_limit_dirtybufs < 100)

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.53 2008/06/10 22:30:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.54 2008/06/11 22:33:21 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -511,6 +511,8 @@ again:
 	buffer = RB_LOOKUP(hammer_buf_rb_tree, &hmp->rb_bufs_root,
 			   buf_offset & ~HAMMER_BUFMASK64);
 	if (buffer) {
+		if (buffer->io.lock.refs == 0)
+			++hammer_count_refedbufs;
 		hammer_ref(&buffer->io.lock);
 		if (buffer->ondisk && buffer->io.loading == 0) {
 			*errorp = 0;
@@ -523,8 +525,10 @@ again:
 		 * only occur on the 0->1 transition of refs.
 		 */
 		if (buffer->io.mod_list == &hmp->lose_list) {
+			crit_enter();	/* biodone race against list */
 			TAILQ_REMOVE(buffer->io.mod_list, &buffer->io,
 				     mod_entry);
+			crit_exit();
 			buffer->io.mod_list = NULL;
 			KKASSERT(buffer->io.modified == 0);
 		}
@@ -604,6 +608,7 @@ again:
 		kfree(buffer, M_HAMMER);
 		goto again;
 	}
+	++hammer_count_refedbufs;
 found:
 
 	/*
@@ -676,8 +681,8 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 	hammer_lock_ex(&buffer->io.lock);
 
 	if (hammer_debug_io & 0x0001) {
-		kprintf("load_buffer %016llx %016llx\n",
-			buffer->zoneX_offset, buffer->zone2_offset);
+		kprintf("load_buffer %016llx %016llx isnew=%d\n",
+			buffer->zoneX_offset, buffer->zone2_offset, isnew);
 	}
 
 	if (buffer->ondisk == NULL) {
@@ -705,6 +710,7 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 int
 hammer_unload_buffer(hammer_buffer_t buffer, void *data __unused)
 {
+	++hammer_count_refedbufs;
 	hammer_ref(&buffer->io.lock);
 	hammer_flush_buffer_nodes(buffer);
 	KKASSERT(buffer->io.lock.refs == 1);
@@ -721,14 +727,18 @@ hammer_ref_buffer(hammer_buffer_t buffer)
 {
 	int error;
 
+	if (buffer->io.lock.refs == 0)
+		++hammer_count_refedbufs;
 	hammer_ref(&buffer->io.lock);
 
 	/*
 	 * No longer loose
 	 */
 	if (buffer->io.mod_list == &buffer->io.hmp->lose_list) {
+		crit_enter();	/* biodone race against list */
 		TAILQ_REMOVE(buffer->io.mod_list, &buffer->io, mod_entry);
 		buffer->io.mod_list = NULL;
+		crit_exit();
 	}
 
 	if (buffer->ondisk == NULL || buffer->io.loading) {
@@ -769,6 +779,7 @@ hammer_rel_buffer(hammer_buffer_t buffer, int flush)
 			hammer_io_release(&buffer->io, flush);
 			hammer_flush_buffer_nodes(buffer);
 			KKASSERT(TAILQ_EMPTY(&buffer->clist));
+			--hammer_count_refedbufs;
 
 			if (buffer->io.bp == NULL &&
 			    buffer->io.lock.refs == 1) {

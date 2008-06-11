@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.80 2008/06/10 22:30:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.81 2008/06/11 22:33:21 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -255,6 +255,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_TRUNCATED	0x00010000
 #define HAMMER_INODE_DELETING	0x00020000 /* inode delete request (frontend)*/
 #define HAMMER_INODE_RESIGNAL	0x00040000 /* re-signal on re-flush */
+#define HAMMER_INODE_PARTIALW	0x00080000 /* wait partial record flush */
 
 #define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|			    \
 				 HAMMER_INODE_XDIRTY|HAMMER_INODE_BUFS|	    \
@@ -684,6 +685,7 @@ extern int hammer_debug_tid;
 extern int hammer_debug_recover;
 extern int hammer_debug_recover_faults;
 extern int hammer_debug_write_release;
+extern int hammer_debug_cluster_enable;
 extern int hammer_count_inodes;
 extern int hammer_count_iqueued;
 extern int hammer_count_reclaiming;
@@ -693,7 +695,11 @@ extern int hammer_count_volumes;
 extern int hammer_count_buffers;
 extern int hammer_count_nodes;
 extern int hammer_count_dirtybufs;
+extern int hammer_count_refedbufs;
 extern int hammer_count_reservations;
+extern int hammer_count_io_running_read;
+extern int hammer_count_io_running_write;
+extern int hammer_count_io_locked;
 extern int hammer_limit_dirtybufs;
 extern int hammer_limit_iqueued;
 extern int hammer_limit_irecs;
@@ -894,6 +900,7 @@ void hammer_modify_inode(hammer_inode_t ip, int flags);
 void hammer_flush_inode(hammer_inode_t ip, int flags);
 void hammer_flush_inode_done(hammer_inode_t ip);
 void hammer_wait_inode(hammer_inode_t ip);
+void hammer_wait_inode_recs(hammer_inode_t ip);
 
 int  hammer_create_inode(struct hammer_transaction *trans, struct vattr *vap,
 			struct ucred *cred, struct hammer_inode *dip,
@@ -940,7 +947,7 @@ void hammer_io_release(struct hammer_io *io, int flush);
 void hammer_io_flush(struct hammer_io *io);
 void hammer_io_waitdep(struct hammer_io *io);
 void hammer_io_wait_all(hammer_mount_t hmp, const char *ident);
-int hammer_io_direct_read(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
+int hammer_io_direct_read(hammer_mount_t hmp, hammer_off_t data_offset,
 			  struct bio *bio);
 int hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 			  struct bio *bio);

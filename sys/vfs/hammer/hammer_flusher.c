@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.24 2008/06/10 22:30:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.25 2008/06/11 22:33:21 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -164,7 +164,6 @@ hammer_flusher_master_thread(void *arg)
 		++hmp->flusher.next;
 		hammer_flusher_clean_loose_ios(hmp);
 		hammer_flusher_flush(hmp);
-		hammer_flusher_clean_loose_ios(hmp);
 		hmp->flusher.done = hmp->flusher.act;
 		wakeup(&hmp->flusher.done);
 
@@ -230,20 +229,26 @@ hammer_flusher_clean_loose_ios(hammer_mount_t hmp)
 {
 	hammer_buffer_t buffer;
 	hammer_io_t io;
+	int panic_count = 1000000;
 
 	/*
 	 * loose ends - buffers without bp's aren't tracked by the kernel
 	 * and can build up, so clean them out.  This can occur when an
 	 * IO completes on a buffer with no references left.
 	 */
+	crit_enter();	/* biodone() race */
 	while ((io = TAILQ_FIRST(&hmp->lose_list)) != NULL) {
+		KKASSERT(--panic_count > 0);
 		KKASSERT(io->mod_list == &hmp->lose_list);
 		TAILQ_REMOVE(io->mod_list, io, mod_entry);
 		io->mod_list = NULL;
+		if (io->lock.refs == 0)
+			++hammer_count_refedbufs;
 		hammer_ref(&io->lock);
 		buffer = (void *)io;
 		hammer_rel_buffer(buffer, 0);
 	}
+	crit_exit();
 }
 
 /*
@@ -381,6 +386,8 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 */
 	count = 0;
 	while ((io = TAILQ_FIRST(&hmp->data_list)) != NULL) {
+		if (io->lock.refs == 0)
+			++hammer_count_refedbufs;
 		hammer_ref(&io->lock);
 		hammer_io_write_interlock(io);
 		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
@@ -420,6 +427,8 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	count = 0;
 	while ((io = TAILQ_FIRST(&hmp->undo_list)) != NULL) {
 		KKASSERT(io->modify_refs == 0);
+		if (io->lock.refs == 0)
+			++hammer_count_refedbufs;
 		hammer_ref(&io->lock);
 		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
 		hammer_io_flush(io);
@@ -430,6 +439,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	/*
 	 * Wait for I/Os to complete
 	 */
+	hammer_flusher_clean_loose_ios(hmp);
 	hammer_io_wait_all(hmp, "hmrfl1");
 
 	/*
@@ -465,6 +475,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	/*
 	 * Wait for I/Os to complete
 	 */
+	hammer_flusher_clean_loose_ios(hmp);
 	hammer_io_wait_all(hmp, "hmrfl2");
 
 	/*
@@ -478,6 +489,8 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	count = 0;
 	while ((io = TAILQ_FIRST(&hmp->meta_list)) != NULL) {
 		KKASSERT(io->modify_refs == 0);
+		if (io->lock.refs == 0)
+			++hammer_count_refedbufs;
 		hammer_ref(&io->lock);
 		KKASSERT(io->type != HAMMER_STRUCTURE_VOLUME);
 		hammer_io_flush(io);
