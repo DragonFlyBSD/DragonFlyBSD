@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.36 2008/05/18 05:54:25 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.37 2008/06/12 23:26:37 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -265,7 +265,7 @@ single_block_read:
 		if (seqcount < ntoread)
 			ntoread = seqcount;
 
-		rbp->b_flags |= B_RAM;
+		rbp->b_flags |= B_RAM | B_AGE;
 		if (burstbytes) {
 			rbp = cluster_rbuild(vp, filesize, loffset,
 					     doffset, size, 
@@ -437,6 +437,12 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 			 */
 			if (i == 1 || i == (run - 1))
 				tbp->b_flags |= B_RAM;
+
+			/*
+			 * Depress the priority of buffers not explicitly
+			 * requested.
+			 */
+			tbp->b_flags |= B_AGE;
 
 			/*
 			 * Set the block number if it isn't set, otherwise

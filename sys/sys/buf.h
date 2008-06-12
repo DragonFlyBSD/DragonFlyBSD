@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.46 2008/06/09 16:54:45 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.47 2008/06/12 23:26:36 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -246,13 +246,27 @@ struct buf {
  *			if B_DELWRI is set, no I/O occurs until the caller
  *			acquires the buffer, clears B_LOCKED, then releases
  *			it again.
+ *
+ *	B_AGE		When allocating a new buffer any buffer encountered
+ *			with B_AGE set will be reallocated more quickly then
+ *			buffers encountered without it set.  B_AGE is set
+ *			as part of the loop so idle buffers should eventually
+ *			wind up with B_AGE set.  B_AGE explicitly does NOT
+ *			cause the buffer to be instantly reallocated for
+ *			other purposes.
+ *
+ *			Standard buffer flushing routines leave B_AGE intact
+ *			through the DIRTY queue and into the CLEAN queue.
+ *			Setting B_AGE on a dirty buffer will not cause it
+ *			to be flushed more quickly but will cause it to be
+ *			reallocated more quickly after having been flushed.
  */
 
-#define	B_AGE		0x00000001	/* Move to age queue when I/O done. */
+#define	B_AGE		0x00000001	/* Reuse more quickly */
 #define	B_NEEDCOMMIT	0x00000002	/* Append-write in progress. */
 #define	B_ASYNC		0x00000004	/* Start I/O, do not wait. */
 #define	B_DIRECT	0x00000008	/* direct I/O flag (pls free vmio) */
-#define	B_DEFERRED	0x00000010	/* Skipped over for cleaning */
+#define	B_DEFERRED	0x00000010	/* vfs-controlled deferment */
 #define	B_CACHE		0x00000020	/* Bread found us in the cache. */
 #define	B_HASHED 	0x00000040 	/* Indexed via v_rbhash_tree */
 #define	B_DELWRI	0x00000080	/* Delay I/O until buffer reused. */

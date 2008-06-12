@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.103 2008/06/10 05:02:09 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.104 2008/06/12 23:26:37 dillon Exp $
  */
 
 /*
@@ -122,7 +122,7 @@ int runningbufspace, runningbufcount;
 static int numfreebuffers, lofreebuffers, hifreebuffers;
 static int getnewbufcalls;
 static int getnewbufrestarts;
-
+static int hidirtywait;
 static int needsbuffer;		/* locked by needsbuffer_spin */
 static int bd_request;		/* locked by needsbuffer_spin */
 static int bd_request_hw;	/* locked by needsbuffer_spin */
@@ -208,6 +208,16 @@ numdirtywakeup(void)
 			needsbuffer &= ~VFS_BIO_NEED_DIRTYFLUSH;
 			spin_unlock_wr(&needsbuffer_spin);
 			wakeup(&needsbuffer);
+		}
+
+		/*
+		 * Heuristical wakeup for flstik.  If the I/O is draining
+		 * in large bursts we can allow new dirty buffers to be
+		 * queued immediately.
+		 */
+		if (hidirtywait) {
+			hidirtywait = 0;
+			wakeup(&hidirtybuffers);
 		}
 	}
 }
@@ -996,7 +1006,8 @@ bwillwrite(void)
 			delay = delay * 10 / (10 + priority);
 			if (delay == 0)
 				delay = 1;
-			tsleep(&count, 0, "flstik", delay);
+			++hidirtywait;
+			tsleep(&hidirtybuffers, 0, "flstik", delay);
 			return;
 		}
 
@@ -1338,31 +1349,22 @@ brelse(struct buf *bp)
 		 * Remaining buffers.  These buffers are still associated with
 		 * their vnode.
 		 */
-		switch(bp->b_flags & (B_DELWRI|B_HEAVY|B_AGE)) {
-		case B_DELWRI | B_AGE:
-		    bp->b_qindex = BQUEUE_DIRTY;
-		    TAILQ_INSERT_HEAD(&bufqueues[BQUEUE_DIRTY], bp, b_freelist);
-		    break;
+		switch(bp->b_flags & (B_DELWRI|B_HEAVY)) {
 		case B_DELWRI:
 		    bp->b_qindex = BQUEUE_DIRTY;
 		    TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_DIRTY], bp, b_freelist);
-		    break;
-		case B_DELWRI | B_HEAVY | B_AGE:
-		    bp->b_qindex = BQUEUE_DIRTY_HW;
-		    TAILQ_INSERT_HEAD(&bufqueues[BQUEUE_DIRTY_HW], bp,
-				      b_freelist);
 		    break;
 		case B_DELWRI | B_HEAVY:
 		    bp->b_qindex = BQUEUE_DIRTY_HW;
 		    TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_DIRTY_HW], bp,
 				      b_freelist);
 		    break;
-		case B_HEAVY | B_AGE:
-		case B_AGE:
-		    bp->b_qindex = BQUEUE_CLEAN;
-		    TAILQ_INSERT_HEAD(&bufqueues[BQUEUE_CLEAN], bp, b_freelist);
-		    break;
 		default:
+		    /*
+		     * NOTE: Buffers are always placed at the end of the
+		     * queue.  If B_AGE is not set the buffer will cycle
+		     * through the queue twice.
+		     */
 		    bp->b_qindex = BQUEUE_CLEAN;
 		    TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_CLEAN], bp, b_freelist);
 		    break;
@@ -1394,8 +1396,7 @@ brelse(struct buf *bp)
 	/*
 	 * Clean up temporary flags and unlock the buffer.
 	 */
-	bp->b_flags &= ~(B_ORDERED | B_ASYNC | B_NOCACHE | B_AGE | B_RELBUF |
-			B_DIRECT);
+	bp->b_flags &= ~(B_ORDERED | B_ASYNC | B_NOCACHE | B_RELBUF | B_DIRECT);
 	BUF_UNLOCK(bp);
 	crit_exit();
 }
@@ -1472,7 +1473,7 @@ bqrelse(struct buf *bp)
 	 * Final cleanup and unlock.  Clear bits that are only used while a
 	 * buffer is actively locked.
 	 */
-	bp->b_flags &= ~(B_ORDERED | B_ASYNC | B_NOCACHE | B_AGE | B_RELBUF);
+	bp->b_flags &= ~(B_ORDERED | B_ASYNC | B_NOCACHE | B_RELBUF);
 	BUF_UNLOCK(bp);
 	crit_exit();
 }
@@ -1729,11 +1730,25 @@ restart:
 	while ((bp = nbp) != NULL) {
 		int qindex = nqindex;
 
+		nbp = TAILQ_NEXT(bp, b_freelist);
+
+		/*
+		 * BQUEUE_CLEAN - B_AGE special case.  If not set the bp
+		 * cycles through the queue twice before being selected.
+		 */
+		if (qindex == BQUEUE_CLEAN && 
+		    (bp->b_flags & B_AGE) == 0 && nbp) {
+			bp->b_flags |= B_AGE;
+			TAILQ_REMOVE(&bufqueues[qindex], bp, b_freelist);
+			TAILQ_INSERT_TAIL(&bufqueues[qindex], bp, b_freelist);
+			continue;
+		}
+
 		/*
 		 * Calculate next bp ( we can only use it if we do not block
 		 * or do other fancy things ).
 		 */
-		if ((nbp = TAILQ_NEXT(bp, b_freelist)) == NULL) {
+		if (nbp == NULL) {
 			switch(qindex) {
 			case BQUEUE_EMPTY:
 				nqindex = BQUEUE_EMPTYKVA;
@@ -1850,6 +1865,7 @@ restart:
 		bp->b_xio.xio_npages = 0;
 		bp->b_dirtyoff = bp->b_dirtyend = 0;
 		reinitbufbio(bp);
+		KKASSERT(LIST_FIRST(&bp->b_dep) == NULL);
 		buf_dep_init(bp);
 		if (blkflags & GETBLK_BHEAVY)
 			bp->b_flags |= B_HEAVY;
@@ -2133,6 +2149,10 @@ buf_daemon_hw(void)
  *	Try to flush a buffer in the dirty queue.  We must be careful to
  *	free up B_INVAL buffers instead of write them, which NFS is 
  *	particularly sensitive to.
+ *
+ *	B_RELBUF may only be set by VFSs.  We do set B_AGE to indicate
+ *	that we really want to try to get the buffer out and reuse it
+ *	due to the write load on the machine.
  */
 
 static int
@@ -2146,6 +2166,7 @@ flushbufqueues(bufq_type_t q)
 	while (bp) {
 		KASSERT((bp->b_flags & B_DELWRI),
 			("unexpected clean buffer %p", bp));
+
 		if (bp->b_flags & B_DELWRI) {
 			if (bp->b_flags & B_INVAL) {
 				if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) != 0)
@@ -2177,6 +2198,7 @@ flushbufqueues(bufq_type_t q)
 					bremfree(bp);
 					brelse(bp);
 				} else {
+					bp->b_flags |= B_AGE;
 					vfs_bio_awrite(bp);
 				}
 				++r;
@@ -2437,6 +2459,7 @@ loop:
 		 */
 		KKASSERT(bp->b_flags & B_VMIO);
 		KKASSERT(bp->b_cmd == BUF_CMD_DONE);
+		bp->b_flags &= ~B_AGE;
 
 		/*
 		 * Make sure that B_INVAL buffers do not have a cached
