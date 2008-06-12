@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.15 2008/05/15 03:36:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.16 2008/06/12 00:16:10 dillon Exp $
  */
 
 /*
@@ -86,6 +86,7 @@ int
 hammer_generate_undo(hammer_transaction_t trans, hammer_io_t io,
 		     hammer_off_t zone_off, void *base, int len)
 {
+	hammer_mount_t hmp;
 	hammer_volume_t root_volume;
 	hammer_blockmap_t undomap;
 	hammer_buffer_t buffer = NULL;
@@ -95,19 +96,22 @@ hammer_generate_undo(hammer_transaction_t trans, hammer_io_t io,
 	int error;
 	int bytes;
 
+	hmp = trans->hmp;
+
 	/*
 	 * Enter the offset into our undo history.  If there is an existing
 	 * undo we do not have to generate a new one.
 	 */
-	if (hammer_enter_undo_history(trans->hmp, zone_off, len) == EALREADY)
+	if (hammer_enter_undo_history(hmp, zone_off, len) == EALREADY)
 		return(0);
 
 	root_volume = trans->rootvol;
-	undomap = &trans->hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
+	undomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 
 	/* no undo recursion */
 	hammer_modify_volume(NULL, root_volume, NULL, 0);
 
+	hammer_lock_ex(&hmp->undo_lock);
 again:
 	/*
 	 * Allocate space in the FIFO
@@ -115,7 +119,7 @@ again:
 	bytes = ((len + HAMMER_HEAD_ALIGN_MASK) & ~HAMMER_HEAD_ALIGN_MASK) +
 		sizeof(struct hammer_fifo_undo) +
 		sizeof(struct hammer_fifo_tail);
-	if (hammer_undo_space(trans->hmp) < bytes + HAMMER_BUFSIZE*2)
+	if (hammer_undo_space(hmp) < bytes + HAMMER_BUFSIZE*2)
 		panic("hammer: insufficient undo FIFO space!");
 
 	next_offset = undomap->next_offset;
@@ -129,16 +133,17 @@ again:
 		hkprintf("undo zone's next_offset wrapped\n");
 	}
 
-	undo = hammer_bread(trans->hmp, next_offset, &error, &buffer);
+	/*
+	 * This is a tail-chasing FIFO, when we hit the start of a new
+	 * buffer we don't have to read it in.
+	 */
+	if ((next_offset & HAMMER_BUFMASK) == 0)
+		undo = hammer_bnew(hmp, next_offset, &error, &buffer);
+	else
+		undo = hammer_bread(hmp, next_offset, &error, &buffer);
 	hammer_modify_buffer(NULL, buffer, NULL, 0);
 
-	/*
-	 * We raced another thread, try again.
-	 */
-	if (undomap->next_offset != next_offset) {
-		hammer_modify_buffer_done(buffer);
-		goto again;
-	}
+	KKASSERT(undomap->next_offset == next_offset);
 
 	/*
 	 * The FIFO entry would cross a buffer boundary, PAD to the end
@@ -190,6 +195,8 @@ again:
 
 	hammer_modify_buffer_done(buffer);
 	hammer_modify_volume_done(root_volume);
+
+	hammer_unlock(&hmp->undo_lock);
 
 	if (buffer)
 		hammer_rel_buffer(buffer, 0);

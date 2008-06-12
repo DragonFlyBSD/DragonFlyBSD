@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.17 2008/06/10 00:40:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.18 2008/06/12 00:16:10 dillon Exp $
  */
 
 /*
@@ -151,7 +151,7 @@ hammer_blockmap_alloc(hammer_transaction_t trans, int zone,
 	KKASSERT(HAMMER_ZONE_DECODE(rootmap->alloc_offset) == zone);
 	KKASSERT(HAMMER_ZONE_DECODE(rootmap->next_offset) == zone);
 
-	lockmgr(&hmp->blockmap_lock, LK_EXCLUSIVE|LK_RETRY);
+	hammer_lock_ex(&hmp->blkmap_lock);
 	next_offset = rootmap->next_offset;
 again:
 	/*
@@ -333,7 +333,7 @@ done:
 		    ~HAMMER_LARGEBLOCK_MASK64;
 	}
 	hammer_modify_volume_done(root_volume);
-	lockmgr(&trans->hmp->blockmap_lock, LK_RELEASE);
+	hammer_unlock(&hmp->blkmap_lock);
 
 	/*
 	 * Cleanup
@@ -406,7 +406,7 @@ hammer_blockmap_reserve(hammer_mount_t hmp, int zone, int bytes,
 	bytes = (bytes + 15) & ~15;
 	KKASSERT(bytes > 0 && bytes <= HAMMER_BUFSIZE);
 
-	lockmgr(&hmp->blockmap_lock, LK_EXCLUSIVE|LK_RETRY);
+	hammer_lock_ex(&hmp->blkmap_lock);
 
 	/*
 	 * Starting zoneX offset.  The reservation code always wraps at the
@@ -603,7 +603,7 @@ done:
 	if (buffer3)
 		hammer_rel_buffer(buffer3, 0);
 	hammer_rel_volume(root_volume, 0);
-	lockmgr(&hmp->blockmap_lock, LK_RELEASE);
+	hammer_unlock(&hmp->blkmap_lock);
 	*zone_offp = next_offset;
 
 	return(resv);
@@ -664,7 +664,7 @@ hammer_blockmap_free(hammer_transaction_t trans,
 	if (error)
 		return;
 
-	lockmgr(&hmp->blockmap_lock, LK_EXCLUSIVE|LK_RETRY);
+	hammer_lock_ex(&hmp->blkmap_lock);
 
 	rootmap = &hmp->blockmap[zone];
 	KKASSERT(rootmap->phys_offset != 0);
@@ -783,7 +783,7 @@ hammer_blockmap_free(hammer_transaction_t trans,
 	layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
 	hammer_modify_buffer_done(buffer2);
 done:
-	lockmgr(&hmp->blockmap_lock, LK_RELEASE);
+	hammer_unlock(&hmp->blkmap_lock);
 
 	if (buffer1)
 		hammer_rel_buffer(buffer1, 0);

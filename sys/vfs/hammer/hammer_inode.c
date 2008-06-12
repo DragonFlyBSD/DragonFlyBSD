@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.71 2008/06/11 22:33:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.72 2008/06/12 00:16:10 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1840,9 +1840,19 @@ hammer_test_inode(hammer_inode_t ip)
  */
 
 void
-hammer_inode_waitreclaims(hammer_mount_t hmp)
+hammer_inode_waitreclaims(hammer_inode_t ip)
 {
+	hammer_mount_t hmp = ip->hmp;
 	int delay;
+	int factor;
+
+	if ((ip->flags & HAMMER_INODE_MODMASK) == 0)
+		return;
+	if ((ip->flags & (HAMMER_INODE_MODMASK & ~HAMMER_INODE_MODEASY)) == 0) {
+		factor = 4;
+	} else {
+		factor = 1;
+	}
 
 	while (hmp->inode_reclaims > HAMMER_RECLAIM_MIN) {
 		if (hmp->inode_reclaims < HAMMER_RECLAIM_MID) {
@@ -1852,6 +1862,7 @@ hammer_inode_waitreclaims(hammer_mount_t hmp)
 		if (hmp->inode_reclaims < HAMMER_RECLAIM_MAX) {
 			delay = (hmp->inode_reclaims - HAMMER_RECLAIM_MID) *
 				hz / (HAMMER_RECLAIM_MAX - HAMMER_RECLAIM_MID);
+			delay = delay / factor;
 			if (delay == 0)
 				delay = 1;
 			hammer_flusher_async(hmp);

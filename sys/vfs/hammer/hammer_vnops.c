@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.66 2008/06/11 22:33:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.67 2008/06/12 00:16:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -500,7 +500,7 @@ hammer_vop_close(struct vop_close_args *ap)
 	struct hammer_inode *ip = VTOI(ap->a_vp);
 
 	if (ap->a_vp->v_opencount == 1)
-		hammer_inode_waitreclaims(ip->hmp);
+		hammer_inode_waitreclaims(ip);
 
 	return (vop_stdclose(ap));
 }

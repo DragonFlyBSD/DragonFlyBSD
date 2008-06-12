@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.45 2008/06/11 22:33:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.46 2008/06/12 00:16:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -257,10 +257,11 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp->root_btree_end.delete_tid = 0;   /* special case */
 		hmp->root_btree_end.rec_type = 0xFFFFU;
 		hmp->root_btree_end.obj_type = 0;
-		lockinit(&hmp->blockmap_lock, "blkmap", 0, 0);
 
 		hmp->sync_lock.refs = 1;
 		hmp->free_lock.refs = 1;
+		hmp->undo_lock.refs = 1;
+		hmp->blkmap_lock.refs = 1;
 
 		TAILQ_INIT(&hmp->flush_list);
 		TAILQ_INIT(&hmp->delay_list);
@@ -582,7 +583,6 @@ hammer_free_hmp(struct mount *mp)
 	kprintf("X8");
 	kfree(hmp->zbuf, M_HAMMER);
 	kprintf("X9");
-	lockuninit(&hmp->blockmap_lock);
 	kprintf("X10");
 
 	for (i = 0; i < HAMMER_MAX_ZONES; ++i)

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.81 2008/06/11 22:33:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.82 2008/06/12 00:16:10 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -261,6 +261,7 @@ typedef struct hammer_inode *hammer_inode_t;
 				 HAMMER_INODE_XDIRTY|HAMMER_INODE_BUFS|	    \
 				 HAMMER_INODE_ITIMES|HAMMER_INODE_TRUNCATED|\
 				 HAMMER_INODE_DELETING)
+#define HAMMER_INODE_MODEASY	(HAMMER_INODE_DDIRTY|HAMMER_INODE_ITIMES)
 
 #define HAMMER_INODE_MODMASK_NOXDIRTY \
 				(HAMMER_INODE_MODMASK & ~HAMMER_INODE_XDIRTY)
@@ -270,9 +271,9 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_FLUSH_SIGNAL	0x0001
 #define HAMMER_FLUSH_RECURSION	0x0002
 
-#define HAMMER_RECLAIM_MIN	1000	/* absolute value */
-#define HAMMER_RECLAIM_MID	2000	/* absolute value */
-#define HAMMER_RECLAIM_MAX	3000	/* absolute value */
+#define HAMMER_RECLAIM_MIN	2000	/* absolute value */
+#define HAMMER_RECLAIM_MID	4000	/* absolute value */
+#define HAMMER_RECLAIM_MAX	6000	/* absolute value */
 
 /*
  * Structure used to represent an unsynchronized record in-memory.  These
@@ -646,7 +647,8 @@ struct hammer_mount {
 	struct netexport export;
 	struct hammer_lock sync_lock;
 	struct hammer_lock free_lock;
-	struct lock blockmap_lock;
+	struct hammer_lock undo_lock;
+	struct hammer_lock blkmap_lock;
 	struct hammer_blockmap  blockmap[HAMMER_MAX_ZONES];
 	struct hammer_holes	holes[HAMMER_MAX_ZONES];
 	struct hammer_undo	undos[HAMMER_MAX_UNDOS];
@@ -912,7 +914,7 @@ int hammer_ino_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2);
 int hammer_sync_inode(hammer_inode_t ip);
 void hammer_test_inode(hammer_inode_t ip);
 void hammer_inode_unloadable_check(hammer_inode_t ip, int getvp);
-void hammer_inode_waitreclaims(hammer_mount_t hmp);
+void hammer_inode_waitreclaims(hammer_inode_t ip);
 
 int  hammer_ip_add_directory(struct hammer_transaction *trans,
 			hammer_inode_t dip, struct namecache *ncp,

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.54 2008/06/11 22:33:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.55 2008/06/12 00:16:10 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -681,8 +681,9 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 	hammer_lock_ex(&buffer->io.lock);
 
 	if (hammer_debug_io & 0x0001) {
-		kprintf("load_buffer %016llx %016llx isnew=%d\n",
-			buffer->zoneX_offset, buffer->zone2_offset, isnew);
+		kprintf("load_buffer %016llx %016llx isnew=%d od=%p\n",
+			buffer->zoneX_offset, buffer->zone2_offset, isnew,
+			buffer->ondisk);
 	}
 
 	if (buffer->ondisk == NULL) {
