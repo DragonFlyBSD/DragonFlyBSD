@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.44 2008/05/26 17:11:09 nth Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.45 2008/06/12 23:25:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -647,29 +647,27 @@ sysctl_out_proc(struct proc *p, struct sysctl_req *req, int flags)
 	int skp = 0, had_output = 0;
 	int error;
 
+	bzero(&ki, sizeof(ki));
 	fill_kinfo_proc(p, &ki);
 	if ((flags & KERN_PROC_FLAG_LWP) == 0)
 		skp = 1;
+	error = 0;
 	FOREACH_LWP_IN_PROC(lp, p) {
+		LWPHOLD(lp);
 		fill_kinfo_lwp(lp, &ki.kp_lwp);
-output:
 		had_output = 1;
 		error = SYSCTL_OUT(req, &ki, sizeof(ki));
+		LWPRELE(lp);
 		if (error)
-			return error;
+			break;
 		if (skp)
 			break;
 	}
 	/* We need to output at least the proc, even if there is no lwp. */
-	if (!had_output)
-		goto output;
-#if 0
-	if (!doingzomb && pid && (pfind(pid) != p))
-		return EAGAIN;
-	if (doingzomb && zpfind(pid) != p)
-		return EAGAIN;
-#endif
-	return (0);
+	if (had_output == 0) {
+		error = SYSCTL_OUT(req, &ki, sizeof(ki));
+	}
+	return (error);
 }
 
 static int
