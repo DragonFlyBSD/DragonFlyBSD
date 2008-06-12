@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.67 2008/06/12 00:16:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.68 2008/06/12 01:55:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1868,7 +1868,8 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	 * Checking the high bits should suffice.
 	 */
 	nbio = push_bio(bio);
-	if ((nbio->bio_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_RAW_BUFFER) {
+	if ((nbio->bio_offset & HAMMER_OFF_ZONE_MASK) ==
+	    HAMMER_ZONE_RAW_BUFFER) {
 		error = hammer_io_direct_read(ip->hmp, nbio->bio_offset, bio);
 		return (error);
 	}
@@ -1998,7 +1999,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		 * otherwise resolve the element data into a hammer_buffer
 		 * and copy.
 		 */
-		if (boff == 0 &&
+		if (n && boff == 0 &&
 		    ((cursor.leaf->data_offset + roff) & HAMMER_BUFMASK) == 0) {
 			error = hammer_io_direct_read(
 					trans.hmp,

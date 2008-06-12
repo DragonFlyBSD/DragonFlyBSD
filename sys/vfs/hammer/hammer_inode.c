@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.72 2008/06/12 00:16:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.73 2008/06/12 01:55:58 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1845,11 +1845,12 @@ hammer_inode_waitreclaims(hammer_inode_t ip)
 	hammer_mount_t hmp = ip->hmp;
 	int delay;
 	int factor;
+	int flags = (ip->flags | ip->sync_flags);
 
-	if ((ip->flags & HAMMER_INODE_MODMASK) == 0)
+	if ((flags & HAMMER_INODE_MODMASK) == 0)
 		return;
-	if ((ip->flags & (HAMMER_INODE_MODMASK & ~HAMMER_INODE_MODEASY)) == 0) {
-		factor = 4;
+	if ((flags & (HAMMER_INODE_MODMASK & ~HAMMER_INODE_MODEASY)) == 0) {
+		factor = 2;
 	} else {
 		factor = 1;
 	}
