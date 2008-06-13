@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.73 2008/06/12 01:55:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.74 2008/06/13 00:25:33 dillon Exp $
  */
 
 #include "hammer.h"
@@ -43,7 +43,7 @@ static int	hammer_unload_inode(struct hammer_inode *ip);
 static void	hammer_flush_inode_core(hammer_inode_t ip, int flags);
 static int	hammer_setup_child_callback(hammer_record_t rec, void *data);
 static int	hammer_setup_parent_inodes(hammer_record_t record);
-static void	hammer_inode_wakereclaims(hammer_mount_t hmp);
+static void	hammer_inode_wakereclaims(hammer_inode_t ip);
 
 #ifdef DEBUG_TRUNCATE
 extern struct hammer_inode *HammerTruncIp;
@@ -97,9 +97,11 @@ hammer_vop_inactive(struct vop_inactive_args *ap)
 int
 hammer_vop_reclaim(struct vop_reclaim_args *ap)
 {
-	hammer_mount_t hmp;
+	struct hammer_reclaim reclaim;
 	struct hammer_inode *ip;
+	hammer_mount_t hmp;
 	struct vnode *vp;
+	int delay;
 
 	vp = ap->a_vp;
 
@@ -107,12 +109,56 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 		hmp = ip->hmp;
 		vp->v_data = NULL;
 		ip->vp = NULL;
-		if ((ip->flags & HAMMER_INODE_RECLAIM) == 0) {
+
+		/*
+		 * Setup our reclaim pipeline.  We only let so many detached
+		 * (and dirty) inodes build up before we start blocking.  Do
+		 * not bother tracking the immediate increment/decrement if
+		 * the inode is not actually dirty.
+		 *
+		 * When we block we don't care *which* inode has finished
+		 * reclaiming, as lone as one does.
+		 */
+		if ((ip->flags & HAMMER_INODE_RECLAIM) == 0 &&
+		    ((ip->flags|ip->sync_flags) & HAMMER_INODE_MODMASK)) {
 			++hammer_count_reclaiming;
 			++hmp->inode_reclaims;
 			ip->flags |= HAMMER_INODE_RECLAIM;
+			if (hmp->inode_reclaims > HAMMER_RECLAIM_PIPESIZE) {
+				reclaim.okydoky = 0;
+				TAILQ_INSERT_TAIL(&hmp->reclaim_list,
+						  &reclaim, entry);
+			} else {
+				reclaim.okydoky = 1;
+			}
+		} else {
+			reclaim.okydoky = 1;
 		}
 		hammer_rel_inode(ip, 1);
+
+		/*
+		 * Reclaim pipeline.  We can't let too many reclaimed inodes
+		 * build-up in the flusher or the flusher loses its locality
+		 * of reference, or worse blows out our memory.  Once we have
+		 * exceeded the reclaim pipe size start slowing down.  Our
+		 * imposed delay can be cut short if the flusher catches up
+		 * to us.
+		 */
+		if (reclaim.okydoky == 0) {
+			delay = (hmp->inode_reclaims -
+				 HAMMER_RECLAIM_PIPESIZE) * hz /
+				HAMMER_RECLAIM_PIPESIZE;
+			if (delay <= 0)
+				delay = 1;
+			hammer_flusher_async(hmp);
+			if (reclaim.okydoky == 0) {
+				tsleep(&reclaim, 0, "hmrrcm", delay);
+			}
+			if (reclaim.okydoky == 0) {
+				TAILQ_REMOVE(&hmp->reclaim_list, &reclaim,
+					     entry);
+			}
+		}
 	}
 	return(0);
 }
@@ -151,13 +197,7 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			vp->v_type =
 				hammer_get_vnode_type(ip->ino_data.obj_type);
 
-			if (ip->flags & HAMMER_INODE_RECLAIM) {
-				--hammer_count_reclaiming;
-				--hmp->inode_reclaims;
-				ip->flags &= ~HAMMER_INODE_RECLAIM;
-				if (hmp->flags & HAMMER_MOUNT_WAITIMAX)
-					hammer_inode_wakereclaims(hmp);
-			}
+			hammer_inode_wakereclaims(ip);
 
 			switch(ip->ino_data.obj_type) {
 			case HAMMER_OBJTYPE_CDEV:
@@ -732,13 +772,7 @@ hammer_unload_inode(struct hammer_inode *ip)
 	--hammer_count_inodes;
 	--hmp->count_inodes;
 
-	if (ip->flags & HAMMER_INODE_RECLAIM) {
-		--hammer_count_reclaiming;
-		--hmp->inode_reclaims;
-		ip->flags &= ~HAMMER_INODE_RECLAIM;
-		if (hmp->flags & HAMMER_MOUNT_WAITIMAX)
-			hammer_inode_wakereclaims(hmp);
-	}
+	hammer_inode_wakereclaims(ip);
 	kfree(ip, M_HAMMER);
 
 	return(0);
@@ -789,12 +823,15 @@ hammer_modify_inode(hammer_inode_t ip, int flags)
 
 /*
  * Request that an inode be flushed.  This whole mess cannot block and may
- * recurse.  Once requested HAMMER will attempt to actively flush it until
- * the flush can be done.
+ * recurse (if not synchronous).  Once requested HAMMER will attempt to
+ * actively flush the inode until the flush can be done.
  *
  * The inode may already be flushing, or may be in a setup state.  We can
  * place the inode in a flushing state if it is currently idle and flag it
  * to reflush if it is currently flushing.
+ *
+ * If the HAMMER_FLUSH_SYNCHRONOUS flag is specified we will attempt to
+ * flush the indoe synchronously using the caller's context.
  */
 void
 hammer_flush_inode(hammer_inode_t ip, int flags)
@@ -1114,10 +1151,16 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 	int r;
 
 	/*
-	 * If the record has been deleted by the backend (it's being held
-	 * by the frontend in a race), just ignore it.
+	 * Deleted records are ignored.  Note that the flush detects deleted
+	 * front-end records at multiple points to deal with races.  This is
+	 * just the first line of defense.  The only time DELETED_FE cannot
+	 * be set is when HAMMER_RECF_INTERLOCK_BE is set. 
+	 *
+	 * Don't get confused between record deletion and, say, directory
+	 * entry deletion.  The deletion of a directory entry that is on
+	 * the media has nothing to do with the record deletion flags.
 	 */
-	if (rec->flags & HAMMER_RECF_DELETED_BE)
+	if (rec->flags & (HAMMER_RECF_DELETED_FE|HAMMER_RECF_DELETED_BE))
 		return(0);
 
 	/*
@@ -1441,19 +1484,30 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 	}
 
 	/*
-	 * If DELETED_FE is set we may have already sent dependant pieces
-	 * to the disk and we must flush the record as if it hadn't been
-	 * deleted.  This creates a bit of a mess because we have to
-	 * have ip_sync_record convert the record to MEM_RECORD_DEL before
-	 * it inserts the B-Tree record.  Otherwise the media sync might
-	 * be visible to the frontend.
+	 * If DELETED_FE is set special handling is needed for directory
+	 * entries.  Dependant pieces related to the directory entry may
+	 * have already been synced to disk.  If this occurs we have to
+	 * sync the directory entry and then change the in-memory record
+	 * from an ADD to a DELETE to cover the fact that it's been
+	 * deleted by the frontend.
+	 *
+	 * A directory delete covering record (MEM_RECORD_DEL) can never
+	 * be deleted by the frontend.
+	 *
+	 * Any other record type (aka DATA) can be deleted by the frontend.
+	 * XXX At the moment the flusher must skip it because there may
+	 * be another data record in the flush group for the same block,
+	 * meaning that some frontend data changes can leak into the backend's
+	 * synchronization point.
 	 */
 	if (record->flags & HAMMER_RECF_DELETED_FE) {
 		if (record->type == HAMMER_MEM_RECORD_ADD) {
 			record->flags |= HAMMER_RECF_CONVERT_DELETE;
 		} else {
 			KKASSERT(record->type != HAMMER_MEM_RECORD_DEL);
-			return(0);
+			record->flags |= HAMMER_RECF_DELETED_BE;
+			error = 0;
+			goto done;
 		}
 	}
 
@@ -1829,60 +1883,30 @@ hammer_test_inode(hammer_inode_t ip)
 }
 
 /*
- * We need to slow down user processes if we get too large a backlog of
- * inodes in the flusher.  Even though the frontend can theoretically
- * get way, way ahead of the flusher, if we let it do that the flusher
- * will have no buffer cache locality of reference and will have to re-read
- * everything a second time, causing performance to drop precipitously.
+ * Clear the RECLAIM flag on an inode.  This occurs when the inode is
+ * reassociated with a vp or just before it gets freed.
  *
- * Reclaims are especially senssitive to this effect because the kernel has
- * already abandoned the related vnode.
+ * Wakeup one thread blocked waiting on reclaims to complete.  Note that
+ * the inode the thread is waiting on behalf of is a different inode then
+ * the inode we are called with.  This is to create a pipeline.
  */
-
-void
-hammer_inode_waitreclaims(hammer_inode_t ip)
+static void
+hammer_inode_wakereclaims(hammer_inode_t ip)
 {
+	struct hammer_reclaim *reclaim;
 	hammer_mount_t hmp = ip->hmp;
-	int delay;
-	int factor;
-	int flags = (ip->flags | ip->sync_flags);
 
-	if ((flags & HAMMER_INODE_MODMASK) == 0)
+	if ((ip->flags & HAMMER_INODE_RECLAIM) == 0)
 		return;
-	if ((flags & (HAMMER_INODE_MODMASK & ~HAMMER_INODE_MODEASY)) == 0) {
-		factor = 2;
-	} else {
-		factor = 1;
-	}
 
-	while (hmp->inode_reclaims > HAMMER_RECLAIM_MIN) {
-		if (hmp->inode_reclaims < HAMMER_RECLAIM_MID) {
-			hammer_flusher_async(hmp);
-			break;
-		}
-		if (hmp->inode_reclaims < HAMMER_RECLAIM_MAX) {
-			delay = (hmp->inode_reclaims - HAMMER_RECLAIM_MID) *
-				hz / (HAMMER_RECLAIM_MAX - HAMMER_RECLAIM_MID);
-			delay = delay / factor;
-			if (delay == 0)
-				delay = 1;
-			hammer_flusher_async(hmp);
-			tsleep(&delay, 0, "hmitik", delay);
-			break;
-		}
-		hmp->flags |= HAMMER_MOUNT_WAITIMAX;
-		hammer_flusher_async(hmp);
-		tsleep(&hmp->inode_reclaims, 0, "hmimax", hz / 10);
-	}
-}
+	--hammer_count_reclaiming;
+	--hmp->inode_reclaims;
+	ip->flags &= ~HAMMER_INODE_RECLAIM;
 
-void
-hammer_inode_wakereclaims(hammer_mount_t hmp)
-{
-	if ((hmp->flags & HAMMER_MOUNT_WAITIMAX) &&
-	    hmp->inode_reclaims < HAMMER_RECLAIM_MAX) {
-		hmp->flags &= ~HAMMER_MOUNT_WAITIMAX;
-		wakeup(&hmp->inode_reclaims);
+	if ((reclaim = TAILQ_FIRST(&hmp->reclaim_list)) != NULL) {
+		TAILQ_REMOVE(&hmp->reclaim_list, reclaim, entry);
+		reclaim->okydoky = 1;
+		wakeup(reclaim);
 	}
 }
 

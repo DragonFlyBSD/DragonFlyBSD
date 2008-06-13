@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.39 2008/06/11 22:33:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.40 2008/06/13 00:25:33 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -671,7 +671,7 @@ hammer_io_start(struct buf *bp)
 }
 
 /*
- * Post-IO completion kernel callback
+ * Post-IO completion kernel callback - MAY BE CALLED FROM INTERRUPT!
  *
  * NOTE: HAMMER may modify a buffer after initiating I/O.  The modified bit
  * may also be set if we were marking a cluster header open.  Only remove
@@ -718,7 +718,7 @@ hammer_io_complete(struct buf *bp)
  * Callback from kernel when it wishes to deallocate a passively
  * associated structure.  This mostly occurs with clean buffers
  * but it may be possible for a holding structure to be marked dirty
- * while its buffer is passively associated.
+ * while its buffer is passively associated.  The caller owns the bp.
  *
  * If we cannot disassociate we set B_LOCKED to prevent the buffer
  * from getting reused.
@@ -726,6 +726,8 @@ hammer_io_complete(struct buf *bp)
  * WARNING: Because this can be called directly by getnewbuf we cannot
  * recurse into the tree.  If a bp cannot be immediately disassociated
  * our only recourse is to set B_LOCKED.
+ *
+ * WARNING: This may be called from an interrupt via hammer_io_complete()
  */
 static void
 hammer_io_deallocate(struct buf *bp)
@@ -960,8 +962,6 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 			nbio = push_bio(bio);
 			nbio->bio_offset = volume->ondisk->vol_buf_beg +
 					   zone2_offset;
-			if (hammer_debug_write_release & 1)
-				nbio->bio_buf->b_flags |= B_RELBUF|B_NOCACHE;
 			vn_strategy(volume->devvp, nbio);
 		}
 		hammer_rel_volume(volume, 0);
@@ -971,10 +971,11 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 		ptr = hammer_bread(hmp, buf_offset, &error, &buffer);
 		if (error == 0) {
 			bp = bio->bio_buf;
+			bp->b_flags |= B_AGE;
 			hammer_io_modify(&buffer->io, 1);
 			bcopy(bp->b_data, ptr, leaf->data_len);
 			hammer_io_modify_done(&buffer->io);
-			hammer_rel_buffer(buffer, (hammer_debug_write_release & 2));
+			hammer_rel_buffer(buffer, 0);
 			bp->b_resid = 0;
 			biodone(bio);
 		}

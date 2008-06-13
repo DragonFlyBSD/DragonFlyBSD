@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.25 2008/06/11 22:33:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.26 2008/06/13 00:25:33 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -63,6 +63,10 @@ struct hammer_flusher_info {
 
 typedef struct hammer_flusher_info *hammer_flusher_info_t;
 
+/*
+ * Sync all inodes pending on the flusher.  This routine may have to be
+ * called twice to get them all as some may be queued to a later flush group.
+ */
 void
 hammer_flusher_sync(hammer_mount_t hmp)
 {
@@ -77,6 +81,9 @@ hammer_flusher_sync(hammer_mount_t hmp)
 	}
 }
 
+/*
+ * Sync all inodes pending on the flusher - return immediately.
+ */
 void
 hammer_flusher_async(hammer_mount_t hmp)
 {

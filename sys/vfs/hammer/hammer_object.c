@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.66 2008/06/11 22:33:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.67 2008/06/13 00:25:33 dillon Exp $
  */
 
 #include "hammer.h"
@@ -374,11 +374,6 @@ hammer_rel_mem_record(struct hammer_record *record)
 		 * loop up and do a relookup.
 		 */
 		ip = record->ip;
-		if (record->flags & HAMMER_RECF_WANTIDLE) {
-			record->flags &= ~HAMMER_RECF_WANTIDLE;
-			++ip->idle_wakeup;
-			wakeup(&ip->idle_wakeup);
-		}
 
 		/*
 		 * Upon release of the last reference a record marked deleted
@@ -813,28 +808,26 @@ hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
 	hammer_record_t record;
 	hammer_record_t conflict;
 	int zone;
-	int save_wakeup;
 
 	/*
-	 * Deal with conflicting in-memory records.
+	 * Deal with conflicting in-memory records.  We cannot have multiple
+	 * in-memory records for the same offset without seriously confusing
+	 * the backend, including but not limited to the backend issuing
+	 * delete-create-delete sequences and asserting on the delete_tid
+	 * being the same as the create_tid.
 	 *
-	 * We must wait for the record to become idle so we can ensure
-	 * its deletion.
+	 * If we encounter a record with the backend interlock set we cannot
+	 * immediately delete it without confusing the backend.
 	 */
 	while ((conflict = hammer_ip_get_bulk(ip, file_offset, bytes)) !=NULL) {
-		if (conflict->lock.refs != 1) {
-			conflict->flags |= HAMMER_RECF_WANTIDLE;
-			save_wakeup = ip->idle_wakeup;
+		if (conflict->flags & HAMMER_RECF_INTERLOCK_BE) {
+			conflict->flags |= HAMMER_RECF_WANTED;
+			tsleep(conflict, 0, "hmrrc3", 0);
 			hammer_rel_mem_record(conflict);
-			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-			if (save_wakeup == ip->idle_wakeup)
-				tsleep(&ip->idle_wakeup, 0, "hmrrc3", 0);
-		} else {
-			/* flush state adds a ref, shouldn't be posible */
-			KKASSERT(conflict->flush_state != HAMMER_FST_FLUSH);
-			conflict->flags |= HAMMER_RECF_DELETED_FE;
-			hammer_rel_mem_record(conflict);
+			continue;
 		}
+		conflict->flags |= HAMMER_RECF_DELETED_FE;
+		hammer_rel_mem_record(conflict);
 	}
 
 	/*

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.55 2008/06/12 00:16:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.56 2008/06/13 00:25:33 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -514,13 +514,19 @@ again:
 		if (buffer->io.lock.refs == 0)
 			++hammer_count_refedbufs;
 		hammer_ref(&buffer->io.lock);
+
+		/*
+		 * Onced refed the ondisk field will not be cleared by
+		 * any other action.
+		 */
 		if (buffer->ondisk && buffer->io.loading == 0) {
 			*errorp = 0;
 			return(buffer);
 		}
 
 		/*
-		 * The buffer is no longer loose if it has a ref.  Loose
+		 * The buffer is no longer loose if it has a ref, and
+		 * cannot become loose once it gains a ref.  Loose
 		 * buffers will never be in a modified state.  This should
 		 * only occur on the 0->1 transition of refs.
 		 */

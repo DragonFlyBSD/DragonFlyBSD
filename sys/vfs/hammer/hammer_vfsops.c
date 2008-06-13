@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.46 2008/06/12 00:16:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.47 2008/06/13 00:25:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -56,7 +56,6 @@ int hammer_debug_btree;
 int hammer_debug_tid;
 int hammer_debug_recover;		/* -1 will disable, +1 will force */
 int hammer_debug_recover_faults;
-int hammer_debug_write_release;		/* if 1 release buffer on strategy */
 int hammer_debug_cluster_enable = 1;	/* enable read clustering by default */
 int hammer_count_inodes;
 int hammer_count_iqueued;
@@ -101,8 +100,6 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_recover, CTLFLAG_RW,
 	   &hammer_debug_recover, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_recover_faults, CTLFLAG_RW,
 	   &hammer_debug_recover_faults, 0, "");
-SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_write_release, CTLFLAG_RW,
-	   &hammer_debug_write_release, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_cluster_enable, CTLFLAG_RW,
 	   &hammer_debug_cluster_enable, 0, "");
 
@@ -267,6 +264,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		TAILQ_INIT(&hmp->delay_list);
 		TAILQ_INIT(&hmp->objid_cache_list);
 		TAILQ_INIT(&hmp->undo_lru_list);
+		TAILQ_INIT(&hmp->reclaim_list);
 
 		/*
 		 * Set default zone limits.  This value can be reduced

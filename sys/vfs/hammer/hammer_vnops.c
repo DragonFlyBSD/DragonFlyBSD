@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.68 2008/06/12 01:55:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.69 2008/06/13 00:25:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -230,6 +230,7 @@ hammer_vop_read(struct vop_read_args *ap)
 			brelse(bp);
 			break;
 		}
+
 		/* bp->b_flags |= B_CLUSTEROK; temporarily disabled */
 		n = HAMMER_BUFSIZE - offset;
 		if (n > uio->uio_resid)
@@ -237,6 +238,9 @@ hammer_vop_read(struct vop_read_args *ap)
 		if (n > ip->ino_data.size - uio->uio_offset)
 			n = (int)(ip->ino_data.size - uio->uio_offset);
 		error = uiomove((char *)bp->b_data + offset, n, uio);
+
+		/* data has a lower priority then meta-data */
+		bp->b_flags |= B_AGE;
 		bqrelse(bp);
 		if (error)
 			break;
@@ -497,11 +501,6 @@ static
 int
 hammer_vop_close(struct vop_close_args *ap)
 {
-	struct hammer_inode *ip = VTOI(ap->a_vp);
-
-	if (ap->a_vp->v_opencount == 1)
-		hammer_inode_waitreclaims(ip);
-
 	return (vop_stdclose(ap));
 }
 

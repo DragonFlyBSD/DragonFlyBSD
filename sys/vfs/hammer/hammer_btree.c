@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.51 2008/06/10 22:30:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.52 2008/06/13 00:25:33 dillon Exp $
  */
 
 /*
@@ -660,7 +660,7 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm)
 	int i;
 	int error;
 
-	if ((error = hammer_cursor_upgrade(cursor)) != 0)
+	if ((error = hammer_cursor_upgrade_node(cursor)) != 0)
 		return(error);
 
 	/*
@@ -1316,10 +1316,10 @@ btree_split_internal(hammer_cursor_t cursor)
 	int i;
 	const int esize = sizeof(*elm);
 
-	if ((error = hammer_cursor_upgrade(cursor)) != 0)
-		return(error);
 	error = hammer_btree_lock_children(cursor, &locklist);
 	if (error)
+		goto done;
+	if ((error = hammer_cursor_upgrade(cursor)) != 0)
 		goto done;
 
 	/* 
@@ -2116,6 +2116,27 @@ hammer_btree_lock_children(hammer_cursor_t cursor,
 	node = cursor->node;
 	ondisk = node->ondisk;
 	error = 0;
+
+	/*
+	 * We really do not want to block on I/O with exclusive locks held,
+	 * pre-get the children before trying to lock the mess.
+	 */
+	for (i = 0; i < ondisk->count; ++i) {
+		elm = &ondisk->elms[i];
+		if (elm->base.btype != HAMMER_BTREE_TYPE_LEAF &&
+		    elm->base.btype != HAMMER_BTREE_TYPE_INTERNAL) {
+			continue;
+		}
+		child = hammer_get_node(node->hmp,
+					elm->internal.subtree_offset,
+					0, &error);
+		if (child)
+			hammer_rel_node(child);
+	}
+
+	/*
+	 * Do it for real
+	 */
 	for (i = 0; error == 0 && i < ondisk->count; ++i) {
 		elm = &ondisk->elms[i];
 

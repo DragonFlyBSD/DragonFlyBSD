@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.82 2008/06/12 00:16:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.83 2008/06/13 00:25:33 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -210,7 +210,6 @@ struct hammer_inode {
 	int			cursor_ip_refs;	/* sanity */
 	int			rsv_databufs;
 	int			rsv_recs;
-	int			idle_wakeup;
 	struct vnode		*vp;
 	struct lockf		advlock;
 	struct hammer_lock	lock;		/* sync copy interlock */
@@ -271,9 +270,17 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_FLUSH_SIGNAL	0x0001
 #define HAMMER_FLUSH_RECURSION	0x0002
 
-#define HAMMER_RECLAIM_MIN	2000	/* absolute value */
-#define HAMMER_RECLAIM_MID	4000	/* absolute value */
-#define HAMMER_RECLAIM_MAX	6000	/* absolute value */
+/*
+ * Used by the inode reclaim code to pipeline reclaims and avoid
+ * blowing out kernel memory or letting the flusher get too far
+ * behind.
+ */
+struct hammer_reclaim {
+	TAILQ_ENTRY(hammer_reclaim) entry;
+	int	okydoky;
+};
+
+#define HAMMER_RECLAIM_PIPESIZE	1000
 
 /*
  * Structure used to represent an unsynchronized record in-memory.  These
@@ -328,7 +335,6 @@ typedef struct hammer_record *hammer_record_t;
 #define HAMMER_RECF_UNUSED0010		0x0010
 #define HAMMER_RECF_INTERLOCK_BE	0x0020	/* backend interlock */
 #define HAMMER_RECF_WANTED		0x0040	/* wanted by the frontend */
-#define HAMMER_RECF_WANTIDLE		0x0080	/* wanted when idle */
 #define HAMMER_RECF_CONVERT_DELETE 	0x0100 /* special case */
 
 /*
@@ -657,11 +663,12 @@ struct hammer_mount {
 	TAILQ_HEAD(, hammer_inode) flush_list;
 	TAILQ_HEAD(, hammer_reserve) delay_list;
 	TAILQ_HEAD(, hammer_objid_cache) objid_cache_list;
+	TAILQ_HEAD(, hammer_reclaim) reclaim_list;
 };
 
 typedef struct hammer_mount	*hammer_mount_t;
 
-#define HAMMER_MOUNT_WAITIMAX	0x0001
+#define HAMMER_MOUNT_UNUSED0001	0x0001
 
 struct hammer_sync_info {
 	int error;
@@ -686,7 +693,6 @@ extern int hammer_debug_btree;
 extern int hammer_debug_tid;
 extern int hammer_debug_recover;
 extern int hammer_debug_recover_faults;
-extern int hammer_debug_write_release;
 extern int hammer_debug_cluster_enable;
 extern int hammer_count_inodes;
 extern int hammer_count_iqueued;
@@ -750,6 +756,7 @@ int	hammer_cursor_up(hammer_cursor_t cursor);
 int	hammer_cursor_up_locked(hammer_cursor_t cursor);
 int	hammer_cursor_down(hammer_cursor_t cursor);
 int	hammer_cursor_upgrade(hammer_cursor_t cursor);
+int	hammer_cursor_upgrade_node(hammer_cursor_t cursor);
 void	hammer_cursor_downgrade(hammer_cursor_t cursor);
 int	hammer_cursor_seek(hammer_cursor_t cursor, hammer_node_t node,
 			int index);
@@ -914,7 +921,6 @@ int hammer_ino_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2);
 int hammer_sync_inode(hammer_inode_t ip);
 void hammer_test_inode(hammer_inode_t ip);
 void hammer_inode_unloadable_check(hammer_inode_t ip, int getvp);
-void hammer_inode_waitreclaims(hammer_inode_t ip);
 
 int  hammer_ip_add_directory(struct hammer_transaction *trans,
 			hammer_inode_t dip, struct namecache *ncp,
