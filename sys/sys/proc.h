@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.118 2008/05/18 20:02:02 nth Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.119 2008/06/13 00:25:01 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -71,6 +71,7 @@
 #include <sys/systimer.h>
 #include <sys/usched.h>
 #include <machine/proc.h>		/* Machine-dependent proc substruct. */
+#include <machine/atomic.h>		/* Machine-dependent proc substruct. */
 #include <sys/signalvar.h>
 
 LIST_HEAD(proclist, proc);
@@ -427,8 +428,9 @@ extern void stopevent(struct proc*, unsigned int, unsigned int);
 #define PRELE(p)	(--(p)->p_lock)
 
 /* hold lwp in memory, don't destruct , normally for ptrace/procfs work */
-#define LWPHOLD(lp)	(++(lp)->lwp_lock)
-#define LWPRELE(lp)	(--(lp)->lwp_lock)
+/* atomic ops because they can occur from an IPI */
+#define LWPHOLD(lp)	atomic_add_int(&(lp)->lwp_lock, 1)
+#define LWPRELE(lp)	atomic_add_int(&(lp)->lwp_lock, -1)
 
 #define	PIDHASH(pid)	(&pidhashtbl[(pid) & pidhash])
 extern LIST_HEAD(pidhashhead, proc) *pidhashtbl;
