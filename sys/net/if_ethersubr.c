@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.64 2008/06/14 04:35:32 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.65 2008/06/14 06:34:37 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -607,7 +607,7 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 			/* clear M_PROMISC, in case the packets comes from a vlan */
 			/* m->m_flags &= ~M_PROMISC; */
 			lwkt_serialize_exit(ifp->if_serializer);
-			m = (*bridge_input_p)(ifp, m);
+			m = bridge_input_p(ifp, m);
 			lwkt_serialize_enter(ifp->if_serializer);
 			if (m == NULL)
 				return;
