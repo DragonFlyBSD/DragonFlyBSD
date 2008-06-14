@@ -25,7 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/periodic/security/410.logincheck,v 1.1 2006/08/25 07:34:36 trhodes Exp $
-# $DragonFly: src/etc/periodic/security/410.logincheck,v 1.1 2007/12/29 21:44:44 matthias Exp $
+# $DragonFly: src/etc/periodic/security/410.logincheck,v 1.2 2008/06/14 15:30:19 matthias Exp $
 #
 
 # If there is a global system configuration file, suck it in.
@@ -40,7 +40,7 @@ case "$daily_status_security_logincheck_enable" in
     [Yy][Ee][Ss])
 	echo ""
 	echo 'Checking login.conf permissions:'
-	if [ -G /etc/login.conf -a -O /etc/login.conf ] then
+	if [ -G /etc/login.conf -a -O /etc/login.conf ]; then
 	    n=0
 	else
 	    echo "Bad ownership of /etc/login.conf"
