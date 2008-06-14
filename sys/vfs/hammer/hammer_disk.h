@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.35 2008/06/07 07:41:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.36 2008/06/14 01:42:13 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -132,7 +132,7 @@ typedef u_int32_t hammer_crc_t;
 #define HAMMER_ZONE_RESERVED06		0x6000000000000000ULL
 #define HAMMER_ZONE_RESERVED07		0x7000000000000000ULL
 #define HAMMER_ZONE_BTREE		0x8000000000000000ULL
-#define HAMMER_ZONE_RECORD		0x9000000000000000ULL
+#define HAMMER_ZONE_META		0x9000000000000000ULL
 #define HAMMER_ZONE_LARGE_DATA		0xA000000000000000ULL
 #define HAMMER_ZONE_SMALL_DATA		0xB000000000000000ULL
 #define HAMMER_ZONE_RESERVED0C		0xC000000000000000ULL
@@ -145,7 +145,7 @@ typedef u_int32_t hammer_crc_t;
 #define HAMMER_ZONE_UNDO_INDEX		3
 #define HAMMER_ZONE_FREEMAP_INDEX	4
 #define HAMMER_ZONE_BTREE_INDEX		8
-#define HAMMER_ZONE_RECORD_INDEX	9
+#define HAMMER_ZONE_META_INDEX		9
 #define HAMMER_ZONE_LARGE_DATA_INDEX	10
 #define HAMMER_ZONE_SMALL_DATA_INDEX	11
 
@@ -528,7 +528,7 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 #define HAMMER_RECTYPE_LOWEST		1	/* lowest record type avail */
 #define HAMMER_RECTYPE_INODE		1	/* inode in obj_id space */
 #define HAMMER_RECTYPE_PSEUDO_INODE	2	/* pseudo filesysem */
-#define HAMMER_RECTYPE_CLUSTER		3	/* inter-cluster reference */
+#define HAMMER_RECTYPE_UNUSED03		3	/* inter-cluster reference */
 #define HAMMER_RECTYPE_DATA		0x0010
 #define HAMMER_RECTYPE_DIRENTRY		0x0011
 #define HAMMER_RECTYPE_DB		0x0012

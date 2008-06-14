@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.69 2008/06/13 00:25:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.70 2008/06/14 01:42:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1891,7 +1891,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	cursor.key_beg.obj_type = 0;
 	cursor.key_beg.key = bio->bio_offset + 1;
 	cursor.asof = ip->obj_asof;
-	cursor.flags |= HAMMER_CURSOR_ASOF | HAMMER_CURSOR_DATAEXTOK;
+	cursor.flags |= HAMMER_CURSOR_ASOF;
 
 	cursor.key_end = cursor.key_beg;
 	KKASSERT(ip->ino_data.obj_type == HAMMER_OBJTYPE_REGFILE);
@@ -2122,7 +2122,7 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 	if (cursor.key_beg.key < 0)
 		cursor.key_beg.key = 0;
 	cursor.asof = ip->obj_asof;
-	cursor.flags |= HAMMER_CURSOR_ASOF | HAMMER_CURSOR_DATAEXTOK;
+	cursor.flags |= HAMMER_CURSOR_ASOF;
 
 	cursor.key_end = cursor.key_beg;
 	KKASSERT(ip->ino_data.obj_type == HAMMER_OBJTYPE_REGFILE);

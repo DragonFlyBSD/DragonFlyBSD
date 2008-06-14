@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.17 2008/06/09 04:19:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.18 2008/06/14 01:42:13 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -165,9 +165,9 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 {
 	hammer_off_t tmp_offset;
 	int error;
-	int zone;
 	int bytes;
 	int cur;
+	int iocflags;
 
 	error = 0;
 
@@ -181,17 +181,42 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 	if (elm->leaf.base.btype != HAMMER_BTREE_TYPE_RECORD)
 		return(0);
 	tmp_offset = elm->leaf.data_offset;
-	zone = HAMMER_ZONE_DECODE(tmp_offset);		/* can be 0 */
-	if ((zone == HAMMER_ZONE_SMALL_DATA_INDEX ||
-	     zone == HAMMER_ZONE_LARGE_DATA_INDEX) &&
-	    error == 0 && (reblock->head.flags & (HAMMER_IOC_DO_DATA | HAMMER_IOC_DO_INODES))) {
+	if (tmp_offset == 0)
+		goto skip;
+	if (error)
+		goto skip;
+
+	/*
+	 * NOTE: Localization restrictions may also have been set-up, we can't
+	 * just set the match flags willy-nilly here.
+	 */
+	switch(elm->leaf.base.rec_type) {
+	case HAMMER_RECTYPE_INODE:
+	case HAMMER_RECTYPE_PSEUDO_INODE:
+		iocflags = HAMMER_IOC_DO_INODES;
+		break;
+	case HAMMER_RECTYPE_EXT:
+	case HAMMER_RECTYPE_FIX:
+	case HAMMER_RECTYPE_DIRENTRY:
+		iocflags = HAMMER_IOC_DO_DIRS;
+		break;
+	case HAMMER_RECTYPE_DATA:
+	case HAMMER_RECTYPE_DB:
+		iocflags = HAMMER_IOC_DO_DATA;
+		break;
+	default:
+		iocflags = 0;
+		break;
+	}
+	if (reblock->head.flags & iocflags) {
 		++reblock->data_count;
 		reblock->data_byte_count += elm->leaf.data_len;
 		bytes = hammer_blockmap_getfree(cursor->trans->hmp, tmp_offset,
 						&cur, &error);
 		if (hammer_debug_general & 0x4000)
 			kprintf("D %6d/%d\n", bytes, reblock->free_level);
-		if (error == 0 && cur == 0 && bytes >= reblock->free_level) {
+		if (error == 0 && (cur == 0 || reblock->free_level == 0) &&
+		    bytes >= reblock->free_level) {
 			error = hammer_cursor_upgrade(cursor);
 			if (error == 0) {
 				error = hammer_reblock_data(reblock,
@@ -209,15 +234,15 @@ skip:
 	 * Reblock a B-Tree internal or leaf node.
 	 */
 	tmp_offset = cursor->node->node_offset;
-	zone = HAMMER_ZONE_DECODE(tmp_offset);
-	if (zone == HAMMER_ZONE_BTREE_INDEX && cursor->index == 0 &&
+	if (cursor->index == 0 &&
 	    error == 0 && (reblock->head.flags & HAMMER_IOC_DO_BTREE)) {
 		++reblock->btree_count;
 		bytes = hammer_blockmap_getfree(cursor->trans->hmp, tmp_offset,
 						&cur, &error);
 		if (hammer_debug_general & 0x4000)
 			kprintf("B %6d/%d\n", bytes, reblock->free_level);
-		if (error == 0 && cur == 0 && bytes >= reblock->free_level) {
+		if (error == 0 && (cur == 0 || reblock->free_level == 0) &&
+		    bytes >= reblock->free_level) {
 			error = hammer_cursor_upgrade(cursor);
 			if (error == 0) {
 				if (cursor->parent)
@@ -265,6 +290,7 @@ hammer_reblock_data(struct hammer_ioc_reblock *reblock,
 	if (error)
 		return (error);
 	ndata = hammer_alloc_data(cursor->trans, elm->leaf.data_len,
+				  elm->leaf.base.rec_type,
 				  &ndata_offset, &data_buffer, &error);
 	if (error)
 		goto done;

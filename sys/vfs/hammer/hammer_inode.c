@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.74 2008/06/13 00:25:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.75 2008/06/14 01:42:13 dillon Exp $
  */
 
 #include "hammer.h"
@@ -42,7 +42,8 @@
 static int	hammer_unload_inode(struct hammer_inode *ip);
 static void	hammer_flush_inode_core(hammer_inode_t ip, int flags);
 static int	hammer_setup_child_callback(hammer_record_t rec, void *data);
-static int	hammer_setup_parent_inodes(hammer_record_t record);
+static int	hammer_setup_parent_inodes(hammer_inode_t ip);
+static int	hammer_setup_parent_inodes_helper(hammer_record_t record);
 static void	hammer_inode_wakereclaims(hammer_inode_t ip);
 
 #ifdef DEBUG_TRUNCATE
@@ -836,8 +837,7 @@ hammer_modify_inode(hammer_inode_t ip, int flags)
 void
 hammer_flush_inode(hammer_inode_t ip, int flags)
 {
-	hammer_record_t depend;
-	int r, good;
+	int good;
 
 	/*
 	 * Trivial 'nothing to flush' case.  If the inode is ina SETUP
@@ -873,14 +873,7 @@ hammer_flush_inode(hammer_inode_t ip, int flags)
 		 * can't flush, 0 means there weren't any dependancies, and
 		 * 1 means we have good connectivity.
 		 */
-		good = 0;
-		TAILQ_FOREACH(depend, &ip->target_list, target_entry) {
-			r = hammer_setup_parent_inodes(depend);
-			if (r < 0 && good == 0)
-				good = -1;
-			if (r > 0)
-				good = 1;
-		}
+		good = hammer_setup_parent_inodes(ip);
 
 		/*
 		 * We can continue if good >= 0.  Determine how many records
@@ -912,9 +905,78 @@ hammer_flush_inode(hammer_inode_t ip, int flags)
 }
 
 /*
+ * Scan ip->target_list, which is a list of records owned by PARENTS to our
+ * ip which reference our ip.
+ *
+ * XXX This is a huge mess of recursive code, but not one bit of it blocks
+ *     so for now do not ref/deref the structures.  Note that if we use the
+ *     ref/rel code later, the rel CAN block.
+ */
+static int
+hammer_setup_parent_inodes(hammer_inode_t ip)
+{
+	hammer_record_t depend;
+#if 0
+	hammer_record_t next;
+	hammer_inode_t  pip;
+#endif
+	int good;
+	int r;
+
+	good = 0;
+	TAILQ_FOREACH(depend, &ip->target_list, target_entry) {
+		r = hammer_setup_parent_inodes_helper(depend);
+		KKASSERT(depend->target_ip == ip);
+		if (r < 0 && good == 0)
+			good = -1;
+		if (r > 0)
+			good = 1;
+	}
+	return(good);
+
+#if 0
+retry:
+	good = 0;
+	next = TAILQ_FIRST(&ip->target_list);
+	if (next) {
+		hammer_ref(&next->lock);
+		hammer_ref(&next->ip->lock);
+	}
+	while ((depend = next) != NULL) {
+		if (depend->target_ip == NULL) {
+			pip = depend->ip;
+			hammer_rel_mem_record(depend);
+			hammer_rel_inode(pip, 0);
+			goto retry;
+		}
+		KKASSERT(depend->target_ip == ip);
+		next = TAILQ_NEXT(depend, target_entry);
+		if (next) {
+			hammer_ref(&next->lock);
+			hammer_ref(&next->ip->lock);
+		}
+		r = hammer_setup_parent_inodes_helper(depend);
+		if (r < 0 && good == 0)
+			good = -1;
+		if (r > 0)
+			good = 1;
+		pip = depend->ip;
+		hammer_rel_mem_record(depend);
+		hammer_rel_inode(pip, 0);
+	}
+	return(good);
+#endif
+}
+
+/*
+ * This helper function takes a record representing the dependancy between
+ * the parent inode and child inode.
+ *
+ * record->ip		= parent inode
+ * record->target_ip	= child inode
+ * 
  * We are asked to recurse upwards and convert the record from SETUP
- * to FLUSH if possible.  record->ip is a parent of the caller's inode,
- * and record->target_ip is the caller's inode.
+ * to FLUSH if possible.
  *
  * Return 1 if the record gives us connectivity
  *
@@ -923,15 +985,15 @@ hammer_flush_inode(hammer_inode_t ip, int flags)
  * Return -1 if we can't resolve the dependancy and there is no connectivity.
  */
 static int
-hammer_setup_parent_inodes(hammer_record_t record)
+hammer_setup_parent_inodes_helper(hammer_record_t record)
 {
-	hammer_mount_t hmp = record->ip->hmp;
-	hammer_record_t depend;
-	hammer_inode_t ip;
-	int r, good;
+	hammer_mount_t hmp;
+	hammer_inode_t pip;
+	int good;
 
 	KKASSERT(record->flush_state != HAMMER_FST_IDLE);
-	ip = record->ip;
+	pip = record->ip;
+	hmp = pip->hmp;
 
 	/*
 	 * If the record is already flushing, is it in our flush group?
@@ -943,7 +1005,7 @@ hammer_setup_parent_inodes(hammer_record_t record)
 	 */
 	if (record->flush_state == HAMMER_FST_FLUSH) {
 		if (record->flush_group != hmp->flusher.next) {
-			ip->flags |= HAMMER_INODE_REFLUSH;
+			pip->flags |= HAMMER_INODE_REFLUSH;
 			return(-1);
 		}
 		if (record->type == HAMMER_MEM_RECORD_ADD)
@@ -958,14 +1020,7 @@ hammer_setup_parent_inodes(hammer_record_t record)
 	 */
 	KKASSERT(record->flush_state == HAMMER_FST_SETUP);
 
-	good = 0;
-	TAILQ_FOREACH(depend, &ip->target_list, target_entry) {
-		r = hammer_setup_parent_inodes(depend);
-		if (r < 0 && good == 0)
-			good = -1;
-		if (r > 0)
-			good = 1;
-	}
+	good = hammer_setup_parent_inodes(pip);
 
 	/*
 	 * We can't flush ip because it has no connectivity (XXX also check
@@ -973,7 +1028,7 @@ hammer_setup_parent_inodes(hammer_record_t record)
 	 * recurses back down.
 	 */
 	if (good < 0) {
-		ip->flags |= HAMMER_INODE_REFLUSH;
+		pip->flags |= HAMMER_INODE_REFLUSH;
 		return(good);
 	}
 
@@ -983,9 +1038,9 @@ hammer_setup_parent_inodes(hammer_record_t record)
 	 * may already be flushing.  The record must be in the same flush
 	 * group as the parent.
 	 */
-	if (ip->flush_state != HAMMER_FST_FLUSH)
-		hammer_flush_inode_core(ip, HAMMER_FLUSH_RECURSION);
-	KKASSERT(ip->flush_state == HAMMER_FST_FLUSH);
+	if (pip->flush_state != HAMMER_FST_FLUSH)
+		hammer_flush_inode_core(pip, HAMMER_FLUSH_RECURSION);
+	KKASSERT(pip->flush_state == HAMMER_FST_FLUSH);
 	KKASSERT(record->flush_state == HAMMER_FST_SETUP);
 
 #if 0
@@ -1004,13 +1059,19 @@ hammer_setup_parent_inodes(hammer_record_t record)
 		return(-1);
 	} else
 #endif
-	if (ip->flush_group == ip->hmp->flusher.next) {
+	if (pip->flush_group == pip->hmp->flusher.next) {
 		/*
-		 * This is the record we wanted to synchronize.
+		 * This is the record we wanted to synchronize.  If the
+		 * record went into a flush state while we blocked it 
+		 * had better be in the correct flush group.
 		 */
-		record->flush_state = HAMMER_FST_FLUSH;
-		record->flush_group = ip->flush_group;
-		hammer_ref(&record->lock);
+		if (record->flush_state != HAMMER_FST_FLUSH) {
+			record->flush_state = HAMMER_FST_FLUSH;
+			record->flush_group = pip->flush_group;
+			hammer_ref(&record->lock);
+		} else {
+			KKASSERT(record->flush_group == pip->flush_group);
+		}
 		if (record->type == HAMMER_MEM_RECORD_ADD)
 			return(1);
 
@@ -1024,7 +1085,7 @@ hammer_setup_parent_inodes(hammer_record_t record)
 		 * We couldn't resolve the dependancies, request that the
 		 * inode be flushed when the dependancies can be resolved.
 		 */
-		ip->flags |= HAMMER_INODE_REFLUSH;
+		pip->flags |= HAMMER_INODE_REFLUSH;
 		return(-1);
 	}
 }
@@ -1571,6 +1632,8 @@ hammer_sync_inode(hammer_inode_t ip)
 	 * Records which are in our flush group can be unlinked from our
 	 * inode now, potentially allowing the inode to be physically
 	 * deleted.
+	 *
+	 * This cannot block.
 	 */
 	nlinks = ip->ino_data.nlinks;
 	next = TAILQ_FIRST(&ip->target_list);

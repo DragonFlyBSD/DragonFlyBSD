@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.52 2008/06/13 00:25:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.53 2008/06/14 01:42:13 dillon Exp $
  */
 
 /*
@@ -528,7 +528,7 @@ hammer_btree_lookup(hammer_cursor_t cursor)
 	} else {
 		error = btree_search(cursor, 0);
 	}
-	if (error == 0 && cursor->flags)
+	if (error == 0)
 		error = hammer_btree_extract(cursor, cursor->flags);
 	return(error);
 }
@@ -602,7 +602,6 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	elm = &node->elms[cursor->index];
 	cursor->data = NULL;
 	hmp = cursor->node->hmp;
-	flags |= cursor->flags & HAMMER_CURSOR_DATAEXTOK;
 
 	/*
 	 * There is nothing to extract for an internal element.

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.40 2008/06/13 00:25:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.41 2008/06/14 01:42:13 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -68,7 +68,7 @@ hammer_io_init(hammer_io_t io, hammer_mount_t hmp, enum hammer_io_type type)
 
 /*
  * Helper routine to disassociate a buffer cache buffer from an I/O
- * structure.  Called with the io structure exclusively locked.
+ * structure.
  *
  * The io may have 0 or 1 references depending on who called us.  The
  * caller is responsible for dealing with the refs.
@@ -95,8 +95,8 @@ hammer_io_disassociate(hammer_io_structure_t iou, int elseit)
 	}
 
 	/*
-	 * elseit is 0 when called from the kernel path, the caller is
-	 * holding the buffer locked and will deal with its final disposition.
+	 * elseit is 0 when called from the kernel path when the io
+	 * might have no references.
 	 */
 	if (elseit) {
 		KKASSERT(iou->io.released == 0);
@@ -684,6 +684,9 @@ hammer_io_complete(struct buf *bp)
 
 	KKASSERT(iou->io.released == 1);
 
+	/*
+	 * Deal with people waiting for I/O to drain
+	 */
 	if (iou->io.running) {
 		--hammer_count_io_running_write;
 		if (--iou->io.hmp->io_running_count == 0)
@@ -692,18 +695,14 @@ hammer_io_complete(struct buf *bp)
 		iou->io.running = 0;
 	}
 
-	/*
-	 * If no lock references remain and we can acquire the IO lock and
-	 * someone at some point wanted us to flush (B_LOCKED test), then
-	 * try to dispose of the IO.
-	 */
 	if (iou->io.waiting) {
 		iou->io.waiting = 0;
 		wakeup(iou);
 	}
 
 	/*
-	 * Someone wanted us to flush, try to clean out the buffer. 
+	 * If B_LOCKED is set someone wanted to deallocate the bp at some
+	 * point, do it now if refs has become zero.
 	 */
 	if ((bp->b_flags & B_LOCKED) && iou->io.lock.refs == 0) {
 		KKASSERT(iou->io.modified == 0);

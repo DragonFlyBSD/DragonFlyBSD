@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.56 2008/06/13 00:25:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.57 2008/06/14 01:42:13 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -529,6 +529,8 @@ again:
 		 * cannot become loose once it gains a ref.  Loose
 		 * buffers will never be in a modified state.  This should
 		 * only occur on the 0->1 transition of refs.
+		 *
+		 * lose_list can be modified via a biodone() interrupt.
 		 */
 		if (buffer->io.mod_list == &hmp->lose_list) {
 			crit_enter();	/* biodone race against list */
@@ -549,6 +551,7 @@ again:
 	switch(zone) {
 	case HAMMER_ZONE_LARGE_DATA_INDEX:
 	case HAMMER_ZONE_SMALL_DATA_INDEX:
+	case HAMMER_ZONE_META_INDEX:  /* meta-data isn't a meta-buffer */
 		iotype = HAMMER_STRUCTURE_DATA_BUFFER;
 		break;
 	case HAMMER_ZONE_UNDO_INDEX:
@@ -739,10 +742,14 @@ hammer_ref_buffer(hammer_buffer_t buffer)
 	hammer_ref(&buffer->io.lock);
 
 	/*
+	 * At this point a biodone() will not touch the buffer other then
+	 * incidental bits.  However, lose_list can be modified via
+	 * a biodone() interrupt.
+	 *
 	 * No longer loose
 	 */
 	if (buffer->io.mod_list == &buffer->io.hmp->lose_list) {
-		crit_enter();	/* biodone race against list */
+		crit_enter();
 		TAILQ_REMOVE(buffer->io.mod_list, &buffer->io, mod_entry);
 		buffer->io.mod_list = NULL;
 		crit_exit();
@@ -1264,24 +1271,39 @@ hammer_alloc_btree(hammer_transaction_t trans, int *errorp)
  */
 void *
 hammer_alloc_data(hammer_transaction_t trans, int32_t data_len, 
-		  hammer_off_t *data_offsetp,
+		  u_int16_t rec_type, hammer_off_t *data_offsetp,
 		  struct hammer_buffer **data_bufferp, int *errorp)
 {
 	void *data;
+	int zone;
 
 	/*
 	 * Allocate data
 	 */
 	if (data_len) {
-		if (data_len < HAMMER_BUFSIZE) {
-			*data_offsetp = hammer_blockmap_alloc(trans,
-						HAMMER_ZONE_SMALL_DATA_INDEX,
-						data_len, errorp);
-		} else {
-			*data_offsetp = hammer_blockmap_alloc(trans,
-						HAMMER_ZONE_LARGE_DATA_INDEX,
-						data_len, errorp);
+		switch(rec_type) {
+		case HAMMER_RECTYPE_INODE:
+		case HAMMER_RECTYPE_PSEUDO_INODE:
+		case HAMMER_RECTYPE_DIRENTRY:
+		case HAMMER_RECTYPE_EXT:
+		case HAMMER_RECTYPE_FIX:
+			zone = HAMMER_ZONE_META_INDEX;
+			break;
+		case HAMMER_RECTYPE_DATA:
+		case HAMMER_RECTYPE_DB:
+			if (data_len <= HAMMER_BUFSIZE / 2)
+				zone = HAMMER_ZONE_SMALL_DATA_INDEX;
+			else
+				zone = HAMMER_ZONE_LARGE_DATA_INDEX;
+			break;
+		default:
+			panic("hammer_alloc_data: rec_type %04x unknown",
+			      rec_type);
+			zone = 0;	/* NOT REACHED */
+			break;
 		}
+		*data_offsetp = hammer_blockmap_alloc(trans, zone,
+						      data_len, errorp);
 	} else {
 		*data_offsetp = 0;
 	}

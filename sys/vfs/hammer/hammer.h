@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.83 2008/06/13 00:25:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.84 2008/06/14 01:42:12 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -155,7 +155,7 @@ TAILQ_HEAD(hammer_record_list, hammer_record);
  * directories to retain fairly localized object ids which in turn
  * improves reblocking performance and layout.
  */
-#define OBJID_CACHE_SIZE	128
+#define OBJID_CACHE_SIZE	1024
 #define OBJID_CACHE_BULK	100000
 
 typedef struct hammer_objid_cache {
@@ -865,7 +865,7 @@ void hammer_dup_buffer(struct hammer_buffer **bufferp,
 			struct hammer_buffer *buffer);
 hammer_node_t hammer_alloc_btree(hammer_transaction_t trans, int *errorp);
 void *hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
-			hammer_off_t *data_offsetp,
+			u_int16_t rec_type, hammer_off_t *data_offsetp,
 			struct hammer_buffer **data_bufferp, int *errorp);
 
 int hammer_generate_undo(hammer_transaction_t trans, hammer_io_t io,

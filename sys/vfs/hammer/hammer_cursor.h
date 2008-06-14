@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.20 2008/06/07 07:41:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.21 2008/06/14 01:42:13 dillon Exp $
  */
 
 /*
@@ -126,7 +126,7 @@ typedef struct hammer_cursor *hammer_cursor_t;
 #define HAMMER_CURSOR_DISKEOF		0x0400
 #define HAMMER_CURSOR_MEMEOF		0x0800
 #define HAMMER_CURSOR_DELBTREE		0x1000	/* ip_delete from b-tree */
-#define HAMMER_CURSOR_DATAEXTOK		0x2000	/* allow data extension */
+#define HAMMER_CURSOR_UNUSED2000	0x2000
 #define HAMMER_CURSOR_ASOF		0x4000	/* as-of lookup */
 #define HAMMER_CURSOR_CREATE_CHECK	0x8000	/* as-of lookup */
 

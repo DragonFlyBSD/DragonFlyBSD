@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.10 2008/05/31 18:37:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.11 2008/06/14 01:42:13 dillon Exp $
  */
 /*
  * HAMMER ioctl's.  This file can be #included from userland
@@ -59,10 +59,12 @@ struct hammer_ioc_head {
 #define HAMMER_IOC_DO_BTREE	0x00020000	/* reblocker */
 #define HAMMER_IOC_DO_INODES	0x00040000	/* reblocker */
 #define HAMMER_IOC_DO_DATA	0x00080000	/* reblocker */
+#define HAMMER_IOC_DO_DIRS	0x00100000	/* reblocker */
 
 #define HAMMER_IOC_DO_FLAGS	(HAMMER_IOC_DO_BTREE |	\
 				 HAMMER_IOC_DO_INODES |	\
-				 HAMMER_IOC_DO_DATA)
+				 HAMMER_IOC_DO_DATA |	\
+				 HAMMER_IOC_DO_DIRS)
 
 /*
  * HAMMERIOC_PRUNE

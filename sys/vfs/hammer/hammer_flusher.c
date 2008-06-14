@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.26 2008/06/13 00:25:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.27 2008/06/14 01:42:13 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -247,7 +247,7 @@ hammer_flusher_clean_loose_ios(hammer_mount_t hmp)
 	while ((io = TAILQ_FIRST(&hmp->lose_list)) != NULL) {
 		KKASSERT(--panic_count > 0);
 		KKASSERT(io->mod_list == &hmp->lose_list);
-		TAILQ_REMOVE(io->mod_list, io, mod_entry);
+		TAILQ_REMOVE(&hmp->lose_list, io, mod_entry);
 		io->mod_list = NULL;
 		if (io->lock.refs == 0)
 			++hammer_count_refedbufs;
