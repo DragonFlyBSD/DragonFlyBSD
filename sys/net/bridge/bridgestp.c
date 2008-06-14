@@ -31,7 +31,7 @@
  * $OpenBSD: bridgestp.c,v 1.5 2001/03/22 03:48:29 jason Exp $
  * $NetBSD: bridgestp.c,v 1.5 2003/11/28 08:56:48 keihan Exp $
  * $FreeBSD: src/sys/net/bridgestp.c,v 1.7 2005/10/11 02:58:32 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/bridgestp.c,v 1.4 2007/06/06 13:10:39 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/bridgestp.c,v 1.5 2008/06/14 07:58:46 sephe Exp $
  */
 
 /*
@@ -591,10 +591,8 @@ bstp_acknowledge_topology_change(struct bridge_softc *sc,
 }
 
 struct mbuf *
-bstp_input(struct ifnet *ifp, struct mbuf *m)
+bstp_input(struct bridge_softc *sc, struct bridge_iflist *bif, struct mbuf *m)
 {
-	struct bridge_softc *sc = ifp->if_bridge;
-	struct bridge_iflist *bif = NULL;
 	struct ether_header *eh;
 	struct bstp_tbpdu tpdu;
 	struct bstp_cbpdu cpdu;
@@ -602,16 +600,10 @@ bstp_input(struct ifnet *ifp, struct mbuf *m)
 	struct bstp_tcn_unit tu;
 	uint16_t len;
 
-	eh = mtod(m, struct ether_header *);
-
-	LIST_FOREACH(bif, &sc->sc_iflist, bif_next) {
-		if ((bif->bif_flags & IFBIF_STP) == 0)
-			continue;
-		if (bif->bif_ifp == ifp)
-			break;
-	}
-	if (bif == NULL)
+	if ((bif->bif_flags & IFBIF_STP) == 0)
 		goto out;
+
+	eh = mtod(m, struct ether_header *);
 
 	len = ntohs(eh->ether_type);
 	if (len < sizeof(tpdu))

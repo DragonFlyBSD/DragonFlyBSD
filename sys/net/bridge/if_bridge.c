@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.31 2008/06/14 04:35:32 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.32 2008/06/14 07:58:46 sephe Exp $
  */
 
 /*
@@ -1417,13 +1417,19 @@ bridge_enqueue(struct ifnet *dst_ifp, struct mbuf *m)
 static int
 bridge_output(struct ifnet *ifp, struct mbuf *m)
 {
+	struct bridge_softc *sc = ifp->if_bridge;
 	struct ether_header *eh;
 	struct ifnet *dst_if;
-	struct bridge_softc *sc;
-
-	sc = ifp->if_bridge;
 
 	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
+
+	/*
+	 * Make sure that we are still a member of a bridge interface.
+	 */
+	if (sc == NULL) {
+		m_freem(m);
+		return (0);
+	}
 
 	if (m->m_len < ETHER_HDR_LEN) {
 		m = m_pullup(m, ETHER_HDR_LEN);
@@ -1717,6 +1723,12 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	struct ether_header *eh;
 	struct mbuf *mc, *mc2;
 
+	/*
+	 * Make sure that we are still a member of a bridge interface.
+	 */
+	if (sc == NULL)
+		return m;
+
 	new_ifp = NULL;
 	bifp = sc->sc_ifp;
 
@@ -1773,7 +1785,7 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		/* Tap off 802.1D packets; they do not get forwarded. */
 		if (memcmp(eh->ether_dhost, bstp_etheraddr,
 		    ETHER_ADDR_LEN) == 0) {
-			m = bstp_input(ifp, m);
+			m = bstp_input(sc, bif, m);
 			KASSERT(m == NULL,
 				("attempt to deliver 802.1D packet\n"));
 			goto out;
