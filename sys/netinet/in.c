@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.39 2008/06/09 11:24:24 sephe Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.40 2008/06/14 08:40:16 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -710,12 +710,30 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 		return (error);
 	}
 
+	KKASSERT(cmd == SIOCDIFADDR ||
+		 ((cmd == SIOCAIFADDR || cmd == SIOCSIFADDR) && iaIsNew));
+
 	ifa_ifunlink(&ia->ia_ifa, ifp);
 	in_iaunlink(ia);
 
-	ifac = &ia->ia_ifa.ifa_containers[mycpuid];
-	if (ifac->ifa_listmask & IFA_LIST_IN_IFADDRHASH)
-		in_iahash_remove(ia);
+	if (cmd == SIOCDIFADDR) {
+		ifac = &ia->ia_ifa.ifa_containers[mycpuid];
+		if (ifac->ifa_listmask & IFA_LIST_IN_IFADDRHASH)
+			in_iahash_remove(ia);
+	}
+#ifdef INVARIANTS
+	else {
+		/*
+		 * If cmd is SIOCSIFADDR or SIOCAIFADDR, in_ifinit() has
+		 * already taken care of the deletion from hash table
+		 */
+		ifac = &ia->ia_ifa.ifa_containers[mycpuid];
+		KASSERT((ifac->ifa_listmask & IFA_LIST_IN_IFADDRHASH) == 0,
+			("SIOC%cIFADDR failed on new ia, "
+			 "but the new ia is still in hash table\n",
+			 cmd == SIOCSIFADDR ? 'S' : 'A'));
+	}
+#endif
 
 	ifa_destroy(&ia->ia_ifa);
 
