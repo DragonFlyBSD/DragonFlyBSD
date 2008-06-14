@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.90 2008/05/09 17:52:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.91 2008/06/14 05:34:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -2235,7 +2235,7 @@ nchinit(void)
 	}
 	TAILQ_INIT(&ncneglist);
 	nchashtbl = hashinit(desiredvnodes*2, M_VFSCACHE, &nchash);
-	nclockwarn = 1 * hz;
+	nclockwarn = 5 * hz;
 }
 
 /*
