@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.30 2008/06/14 04:00:51 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.31 2008/06/14 04:35:32 sephe Exp $
  */
 
 /*
@@ -1423,7 +1423,7 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 
 	sc = ifp->if_bridge;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
 
 	if (m->m_len < ETHER_HDR_LEN) {
 		m = m_pullup(m, ETHER_HDR_LEN);
@@ -1431,11 +1431,7 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 			return (0);
 	}
 
-	/*
-	 * Serialize our bridge interface.  We have to get rid of the
-	 * originating interface lock to avoid a deadlock.
-	 */
-	lwkt_serialize_exit(ifp->if_serializer);
+	/* Serialize our bridge interface. */
 	lwkt_serialize_enter(sc->sc_ifp->if_serializer);
 
 	eh = mtod(m, struct ether_header *);
@@ -1501,7 +1497,7 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 		if (used == 0)
 			m_freem(m);
 		lwkt_serialize_exit(sc->sc_ifp->if_serializer);
-		goto done;
+		return (0);
 	}
 
 sendunicast:
@@ -1511,13 +1507,10 @@ sendunicast:
 
 	bridge_span(sc, m);
 	lwkt_serialize_exit(sc->sc_ifp->if_serializer);
-	if ((dst_if->if_flags & IFF_RUNNING) == 0) {
+	if ((dst_if->if_flags & IFF_RUNNING) == 0)
 		m_freem(m);
-	} else {
+	else
 		bridge_enqueue(dst_if, m);
-	}
-done:
-	lwkt_serialize_enter(ifp->if_serializer);
 	return (0);
 }
 
