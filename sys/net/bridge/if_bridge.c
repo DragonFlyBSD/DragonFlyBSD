@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.29 2008/06/13 12:30:19 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.30 2008/06/14 04:00:51 sephe Exp $
  */
 
 /*
@@ -179,8 +179,7 @@
 eventhandler_tag	bridge_detach_cookie = NULL;
 
 extern	struct mbuf *(*bridge_input_p)(struct ifnet *, struct mbuf *);
-extern	int (*bridge_output_p)(struct ifnet *, struct mbuf *,
-		struct sockaddr *, struct rtentry *);
+extern	int (*bridge_output_p)(struct ifnet *, struct mbuf *);
 extern	void (*bridge_dn_p)(struct mbuf *, struct ifnet *);
 
 static int	bridge_rtable_prune_period = BRIDGE_RTABLE_PRUNE_PERIOD;
@@ -195,8 +194,7 @@ static void	bridge_init(void *);
 static void	bridge_stop(struct ifnet *);
 static void	bridge_start(struct ifnet *);
 static struct mbuf *bridge_input(struct ifnet *, struct mbuf *);
-static int	bridge_output(struct ifnet *, struct mbuf *,
-		    struct sockaddr *, struct rtentry *);
+static int	bridge_output(struct ifnet *, struct mbuf *);
 
 static void	bridge_forward(struct bridge_softc *, struct mbuf *m);
 
@@ -1417,8 +1415,7 @@ bridge_enqueue(struct ifnet *dst_ifp, struct mbuf *m)
  *	enqueue or free the mbuf before returning.
  */
 static int
-bridge_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *sa,
-    struct rtentry *rt)
+bridge_output(struct ifnet *ifp, struct mbuf *m)
 {
 	struct ether_header *eh;
 	struct ifnet *dst_if;

@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.62 2008/05/28 12:11:13 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.63 2008/06/14 04:00:51 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -131,8 +131,7 @@ static void ether_demux_chain(struct ifnet *, struct mbuf *,
  * if_bridge support
  */
 struct mbuf *(*bridge_input_p)(struct ifnet *, struct mbuf *);
-int (*bridge_output_p)(struct ifnet *, struct mbuf *,
-		       struct sockaddr *, struct rtentry *);
+int (*bridge_output_p)(struct ifnet *, struct mbuf *);
 void (*bridge_dn_p)(struct mbuf *, struct ifnet *);
 
 static int ether_resolvemulti(struct ifnet *, struct sockaddr **,
@@ -329,7 +328,7 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		KASSERT(bridge_output_p != NULL,
 			("%s: if_bridge not loaded!", __func__));
 		lwkt_serialize_enter(ifp->if_serializer);
-		error = bridge_output_p(ifp, m, NULL, NULL);
+		error = bridge_output_p(ifp, m);
 		lwkt_serialize_exit(ifp->if_serializer);
 		return error;
 	}
