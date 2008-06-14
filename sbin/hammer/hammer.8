@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.19 2008/06/08 20:40:38 swildner Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.20 2008/06/14 01:44:11 dillon Exp $
 .Dd December 31, 2007
 .Dt HAMMER 8
 .Os
@@ -229,25 +229,31 @@ available space.
 .It Ar reblock Ar filesystem Op Ar fill_percentage
 .It Ar reblock-btree Ar filesystem Op Ar fill_percentage
 .It Ar reblock-inodes Ar filesystem Op Ar fill_percentage
+.It Ar reblock-dirs Ar filesystem Op Ar fill_percentage
 .It Ar reblock-data Ar filesystem Op Ar fill_percentage
-Attempt to free space for reuse by reblocking a live HAMMER filesystem.
-Big blocks cannot be reused until they are completely free.  Scan the
-filesystem and move B-Tree elements, inodes, and data from not-quite-full
-big blocks to new big blocks in an attempt to free up the not-quite-full
-big blocks.
+Attempt to defragment and free space for reuse by reblocking a live
+HAMMER filesystem.
+Big blocks cannot be reused by HAMMER until they are completely free.
+This command also has the effect of reordering all elements, effectively
+defragmenting the filesystem.
 .Pp
-If unspecified a fill percentage of 90% is used.  B-Tree elements and data,
-or B-Tree elements and inodes can be reblocked together or by separate
-invocations.
-Generally speaking it is better to reblock them with separate invocations.
-In HAMMER, inodes and data are in separate localization domains and will
-be independently reblocked.
+The default fill percentage is 100% and will cause the filesystem to be
+completely defragmented.  All specified element types will be reallocated
+and rewritten.  If you wish to quickly free up space instead try specifying
+a smaller fill percentage, such as 90% or 80% (the '%' suffix is not needed).
 .Pp
-A HAMMER filesystem can be defragmented by specifying a fill percentage
-of 100%.  Since this can potentially rewrite the entire contents of the
-disk it is best to do it incrementally from a cron job with a timeout
-option set.  The filesystem would thus be defragmented over long period
-of time.
+Since this command may rewrite the entire contents of the disk it is
+best to do it incrementally from a cron job along with the
+.Fl c Ar cyclefile
+and
+.Fl t Ar timeout
+options to limit the run time.
+The filesystem would thus be defragmented over long period of time.
+.Pp
+It is recommended that separate invocations be used for each data type.
+Btree nodes, inodes, and directories are typically the most important
+elements needing defragmentation.  Data can be defragmented over a longer
+period of time.
 .El
 .Sh EXAMPLES
 .Sh DIAGNOSTICS

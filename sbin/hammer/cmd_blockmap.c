@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_blockmap.c,v 1.1 2008/02/23 20:55:21 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_blockmap.c,v 1.2 2008/06/14 01:44:11 dillon Exp $
  */
 
 #include "hammer.h"
@@ -42,7 +42,7 @@ void
 hammer_cmd_blockmap(void)
 {
 	dump_blockmap("btree", HAMMER_ZONE_BTREE_INDEX);
-	dump_blockmap("record", HAMMER_ZONE_RECORD_INDEX);
+	dump_blockmap("meta", HAMMER_ZONE_META_INDEX);
 	dump_blockmap("large-data", HAMMER_ZONE_LARGE_DATA_INDEX);
 	dump_blockmap("small-data", HAMMER_ZONE_SMALL_DATA_INDEX);
 }

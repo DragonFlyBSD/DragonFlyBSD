@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.20 2008/05/31 18:45:04 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.21 2008/06/14 01:44:11 dillon Exp $
  */
 
 #include "hammer.h"
@@ -186,6 +186,8 @@ main(int ac, char **av)
 			hammer_cmd_reblock(av + 1, ac - 1, HAMMER_IOC_DO_BTREE);
 		else if (strcmp(av[0], "reblock-inodes") == 0)
 			hammer_cmd_reblock(av + 1, ac - 1, HAMMER_IOC_DO_INODES);
+		else if (strcmp(av[0], "reblock-dirs") == 0)
+			hammer_cmd_reblock(av + 1, ac - 1, HAMMER_IOC_DO_DIRS);
 		else if (strcmp(av[0], "reblock-data") == 0)
 			hammer_cmd_reblock(av + 1, ac - 1, HAMMER_IOC_DO_DATA);
 		else

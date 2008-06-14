@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_reblock.c,v 1.6 2008/05/18 01:49:41 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_reblock.c,v 1.7 2008/06/14 01:44:11 dillon Exp $
  */
 
 #include "hammer.h"
@@ -64,11 +64,12 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 	 * Restrict the localization domain if asked to do inodes or data,
 	 * but not both.
 	 */
-	switch(flags & (HAMMER_IOC_DO_INODES|HAMMER_IOC_DO_DATA)) {
+	switch(flags & (HAMMER_IOC_DO_INODES|HAMMER_IOC_DO_DATA|HAMMER_IOC_DO_DIRS)) {
 	case HAMMER_IOC_DO_INODES:
 		reblock.beg_localization = HAMMER_LOCALIZE_INODE;
 		reblock.end_localization = HAMMER_LOCALIZE_INODE;
 		break;
+	case HAMMER_IOC_DO_DIRS:
 	case HAMMER_IOC_DO_DATA:
 		reblock.beg_localization = HAMMER_LOCALIZE_MISC;
 		reblock.end_localization = HAMMER_LOCALIZE_MISC;
@@ -79,7 +80,7 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 		reblock_usage(1);
 	filesystem = av[0];
 	if (ac == 1) {
-		perc = 90;
+		perc = 100;
 	} else {
 		perc = strtol(av[1], NULL, 0);
 		if (perc < 0 || perc > 100)
@@ -128,6 +129,7 @@ reblock_usage(int exit_code)
 	fprintf(stderr, "hammer reblock <filesystem> [percentage]\n");
 	fprintf(stderr, "hammer reblock-btree <filesystem> [percentage]\n");
 	fprintf(stderr, "hammer reblock-inodes <filesystem> [percentage]\n");
+	fprintf(stderr, "hammer reblock-dirs <filesystem> [percentage]\n");
 	fprintf(stderr, "hammer reblock-data <filesystem> [percentage]\n");
 	fprintf(stderr, "By default 90%% is used.  Use 100%% to defragment\n");
 	exit(exit_code);

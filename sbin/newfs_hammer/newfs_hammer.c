@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.29 2008/06/08 17:19:09 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.30 2008/06/14 01:44:13 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -172,6 +172,9 @@ main(int ac, char **av)
 	printf("Initializing B-Tree blockmap\n");
 	presize_blockmap(&vol->ondisk->vol0_blockmap[HAMMER_ZONE_BTREE_INDEX],
 			 HAMMER_ZONE_BTREE, vol0_zone_limit);
+	printf("Initializing Meta-data blockmap\n");
+	presize_blockmap(&vol->ondisk->vol0_blockmap[HAMMER_ZONE_META_INDEX],
+			 HAMMER_ZONE_META, vol0_zone_limit);
 	printf("Initializing Large-Data blockmap\n");
 	presize_blockmap(&vol->ondisk->vol0_blockmap[HAMMER_ZONE_LARGE_DATA_INDEX],
 			 HAMMER_ZONE_LARGE_DATA, vol0_zone_limit);
@@ -452,11 +455,9 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 		format_blockmap(
 			&ondisk->vol0_blockmap[HAMMER_ZONE_BTREE_INDEX],
 			HAMMER_ZONE_BTREE);
-#if 0
 		format_blockmap(
-			&ondisk->vol0_blockmap[HAMMER_ZONE_RECORD_INDEX],
-			HAMMER_ZONE_RECORD);
-#endif
+			&ondisk->vol0_blockmap[HAMMER_ZONE_META_INDEX],
+			HAMMER_ZONE_META);
 		format_blockmap(
 			&ondisk->vol0_blockmap[HAMMER_ZONE_LARGE_DATA_INDEX],
 			HAMMER_ZONE_LARGE_DATA);
