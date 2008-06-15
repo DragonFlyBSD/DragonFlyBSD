@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.73 2008/06/07 06:34:57 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.74 2008/06/15 12:15:08 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -1027,6 +1027,7 @@ if_route(struct ifnet *ifp, int flag, int fam)
 {
 	struct ifaddr_container *ifac;
 
+	ifq_purge(&ifp->if_snd);
 	ifp->if_flags |= flag;
 	getmicrotime(&ifp->if_lastchange);
 	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
@@ -1065,7 +1066,6 @@ if_down(struct ifnet *ifp)
 void
 if_up(struct ifnet *ifp)
 {
-
 	if_route(ifp, IFF_UP, AF_UNSPEC);
 }
 
