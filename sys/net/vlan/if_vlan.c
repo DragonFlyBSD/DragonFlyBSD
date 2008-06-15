@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.34 2008/06/15 11:41:40 sephe Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.35 2008/06/15 12:01:32 sephe Exp $
  */
 
 /*
@@ -390,10 +390,14 @@ vlan_start(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if ((ifp->if_flags & IFF_RUNNING) == 0 || ifp_p == NULL)
+	if (ifp_p == NULL) {
+		ifq_purge(&ifp->if_snd);
+		return;
+	}
+
+	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		return;
 
-	ifp->if_flags |= IFF_OACTIVE;
 	for (;;) {
 		struct netmsg_packet *nmp;
 		struct netmsg *nmsg;
@@ -437,7 +441,6 @@ vlan_start(struct ifnet *ifp)
 		lwkt_sendmsg(port, &nmp->nm_netmsg.nm_lmsg);
 		ifp->if_opackets++;
 	}
-	ifp->if_flags &= ~IFF_OACTIVE;
 }
 
 static int
