@@ -27,7 +27,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bcereg.h,v 1.13 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bcereg.h,v 1.2 2008/05/28 10:51:56 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bce/if_bcereg.h,v 1.3 2008/06/15 05:14:41 sephe Exp $
  */
 
 #ifndef	_BCE_H_DEFINED
@@ -4382,7 +4382,13 @@ struct l2_fhdr {
 /* Use the natural page size of the host CPU. */
 /* XXX: This has only been tested on amd64/i386 systems using 4KB pages. */
 #define BCM_PAGE_BITS		PAGE_SHIFT
-#define BCM_PAGE_SIZE		PAGE_SIZE
+#define BCM_PAGE_SIZE		(1 << BCM_PAGE_BITS)
+
+#define BCE_TX_BD_SHIFT		4	/* struct tx_bd */
+#define BCE_TX_BD_PAGE_SHIFT	(BCM_PAGE_BITS - BCE_TX_BD_SHIFT)
+
+#define BCE_RX_BD_SHIFT		4	/* struct rx_bd */
+#define BCE_RX_BD_PAGE_SHIFT	(BCM_PAGE_BITS - BCE_RX_BD_SHIFT)
 
 #define TX_PAGES		2
 #define TOTAL_TX_BD_PER_PAGE	(BCM_PAGE_SIZE / sizeof(struct tx_bd))
@@ -4405,7 +4411,8 @@ struct l2_fhdr {
 
 #define TX_CHAIN_IDX(x)		((x) & MAX_TX_BD)
 
-#define TX_PAGE(x)		(((x) & ~USABLE_TX_BD_PER_PAGE) >> 8)
+#define TX_PAGE(x) \
+	(((x) & ~USABLE_TX_BD_PER_PAGE) >> BCE_TX_BD_PAGE_SHIFT)
 #define TX_IDX(x)		((x) & USABLE_TX_BD_PER_PAGE)
 
 #define NEXT_RX_BD(x) \
@@ -4414,7 +4421,8 @@ struct l2_fhdr {
 
 #define RX_CHAIN_IDX(x)		((x) & MAX_RX_BD)
 
-#define RX_PAGE(x)		(((x) & ~USABLE_RX_BD_PER_PAGE) >> 8)
+#define RX_PAGE(x) \
+	(((x) & ~USABLE_RX_BD_PER_PAGE) >> BCE_RX_BD_PAGE_SHIFT)
 #define RX_IDX(x)		((x) & USABLE_RX_BD_PER_PAGE)
 
 /* Context size. */
