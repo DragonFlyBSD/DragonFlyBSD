@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.33 2008/06/01 08:09:14 sephe Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.34 2008/06/15 11:41:40 sephe Exp $
  */
 
 /*
@@ -808,6 +808,10 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	case SIOCGIFMEDIA:
 		ifp_p = ifv->ifv_p;
 		if (ifp_p != NULL) {
+			/*
+			 * Release vlan interface's serializer to void
+			 * possible dead lock.
+			 */
 			lwkt_serialize_exit(ifp->if_serializer);
 
 			lwkt_serialize_enter(ifp_p->if_serializer);
@@ -815,6 +819,17 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			lwkt_serialize_exit(ifp_p->if_serializer);
 
 			lwkt_serialize_enter(ifp->if_serializer);
+
+			if (ifv->ifv_p == NULL && ifv->ifv_p != ifp_p) {
+				/*
+				 * We are disconnected from the original
+				 * parent interface or the parent interface
+				 * is changed, after vlan interface's
+				 * serializer is released.
+				 */
+				error = EINVAL;
+			}
+
 			/* Limit the result to the parent's current config. */
 			if (error == 0) {
 				struct ifmediareq *ifmr;
@@ -858,7 +873,7 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		}
 		error = copyout(&vlr, ifr->ifr_data, sizeof vlr);
 		break;
-		
+
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP)
 			ifp->if_init(ifp);
