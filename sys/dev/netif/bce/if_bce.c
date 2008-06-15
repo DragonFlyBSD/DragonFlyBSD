@@ -28,7 +28,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bce.c,v 1.31 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.12 2008/05/31 11:18:09 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.13 2008/06/15 02:32:38 sephe Exp $
  */
 
 /*
@@ -312,7 +312,8 @@ static int	bce_nvram_test(struct bce_softc *);
 static int	bce_enable_nvram_write(struct bce_softc *);
 static void	bce_disable_nvram_write(struct bce_softc *);
 static int	bce_nvram_erase_page(struct bce_softc *, uint32_t);
-static int	bce_nvram_write_dword(struct bce_softc *, uint32_t, uint8_t *,					      uint32_t);
+static int	bce_nvram_write_dword(struct bce_softc *, uint32_t, uint8_t *,
+				      uint32_t);
 static int	bce_nvram_write(struct bce_softc *, uint32_t, uint8_t *,
 				int) __unused;
 #endif
