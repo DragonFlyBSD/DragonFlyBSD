@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.52 2008/05/25 09:44:31 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.53 2008/06/15 10:41:00 sephe Exp $
  */
 
 /*
@@ -676,7 +676,7 @@ fxp_attach(device_t dev)
 	 * Let the system queue as many packets as we have available
 	 * TX descriptors.
 	 */
-	ifq_set_maxlen(&ifp->if_snd, FXP_NTXCB - 1);
+	ifq_set_maxlen(&ifp->if_snd, FXP_USABLE_TXCB);
 	ifq_set_ready(&ifp->if_snd);
 
 	error = bus_setup_intr(dev, sc->irq, INTR_NETSAFE,
@@ -1068,7 +1068,7 @@ fxp_start(struct ifnet *ifp)
 	 * NOTE: One TxCB is reserved to guarantee that fxp_mc_setup() can add
 	 *       a NOP command when needed.
 	 */
-	while (!ifq_is_empty(&ifp->if_snd) && sc->tx_queued < FXP_NTXCB - 1) {
+	while (!ifq_is_empty(&ifp->if_snd) && sc->tx_queued < FXP_USABLE_TXCB) {
 		struct mbuf *m, *mb_head;
 		int segment, ntries = 0;
 
@@ -1177,7 +1177,7 @@ tbdinit:
 		BPF_MTAP(ifp, mb_head);
 	}
 
-	if (sc->tx_queued >= FXP_NTXCB - 1)
+	if (sc->tx_queued >= FXP_USABLE_TXCB)
 		ifp->if_flags |= IFF_OACTIVE;
 
 	/*
@@ -1293,9 +1293,7 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 	 */
 	if (statack & (FXP_SCB_STATACK_CXTNO | FXP_SCB_STATACK_CNA)) {
 		struct fxp_cb_tx *txp;
-		int old_queued;
 
-		old_queued = sc->tx_queued;
 		for (txp = sc->cbl_first; sc->tx_queued &&
 		    (txp->cb_status & FXP_CB_STATUS_C) != 0;
 		    txp = txp->next) {
@@ -1309,7 +1307,7 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 		}
 		sc->cbl_first = txp;
 
-		if (old_queued > sc->tx_queued)
+		if (sc->tx_queued < FXP_USABLE_TXCB)
 			ifp->if_flags &= ~IFF_OACTIVE;
 
 		if (sc->tx_queued == 0) {
@@ -1422,7 +1420,6 @@ fxp_tick(void *xsc)
 	struct fxp_stats *sp = sc->fxp_stats;
 	struct fxp_cb_tx *txp;
 	struct mbuf *m;
-	int old_queued;
 
 	lwkt_serialize_enter(sc->arpcom.ac_if.if_serializer);
 
@@ -1459,7 +1456,6 @@ fxp_tick(void *xsc)
 	 * than being defered for a potentially long time. This limits
 	 * the delay to a maximum of one second.
 	 */
-	old_queued = sc->tx_queued;
 	for (txp = sc->cbl_first; sc->tx_queued &&
 	    (txp->cb_status & FXP_CB_STATUS_C) != 0;
 	    txp = txp->next) {
@@ -1473,10 +1469,16 @@ fxp_tick(void *xsc)
 	}
 	sc->cbl_first = txp;
 
-	if (old_queued > sc->tx_queued)
+	if (sc->tx_queued < FXP_USABLE_TXCB)
 		ifp->if_flags &= ~IFF_OACTIVE;
 	if (sc->tx_queued == 0)
 		ifp->if_timer = 0;
+
+ 	/*
+	 * Try to start more packets transmitting.
+	 */
+	if (!ifq_is_empty(&ifp->if_snd))
+		if_devstart(ifp);
 
 	/*
 	 * If we haven't received any packets in FXP_MAC_RX_IDLE seconds,
@@ -1810,7 +1812,6 @@ fxp_init(void *xsc)
 	txp->cb_command = FXP_CB_COMMAND_NOP | FXP_CB_COMMAND_S;
 	sc->cbl_first = sc->cbl_last = txp;
 	sc->tx_queued = 1;
-	/* XXX set if_timer? */
 
 	fxp_scb_wait(sc);
 	fxp_scb_cmd(sc, FXP_SCB_COMMAND_CU_START);

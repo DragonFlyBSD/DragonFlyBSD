@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxpvar.h,v 1.17.2.6 2002/11/13 20:58:31 iedowse Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxpvar.h,v 1.8 2005/05/31 08:27:47 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxpvar.h,v 1.9 2008/06/15 10:41:00 sephe Exp $
  */
 
 /*
@@ -39,6 +39,7 @@
  * This must be a power of two.
  */
 #define FXP_NTXCB       128
+#define FXP_USABLE_TXCB	(FXP_NTXCB - 1)
 
 /*
  * Number of completed TX commands at which point an interrupt
