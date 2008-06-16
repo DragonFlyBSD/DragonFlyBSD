@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_set_format_pax.c,v 1.42 2007/12/30 04:58:22 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_write_set_format_pax.c,v 1.46 2008/03/15 11:04:45 kientzle Exp $");
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -85,8 +85,8 @@ archive_write_set_format_pax_restricted(struct archive *_a)
 	struct archive_write *a = (struct archive_write *)_a;
 	int r;
 	r = archive_write_set_format_pax(&a->archive);
-	a->archive_format = ARCHIVE_FORMAT_TAR_PAX_RESTRICTED;
-	a->archive_format_name = "restricted POSIX pax interchange";
+	a->archive.archive_format = ARCHIVE_FORMAT_TAR_PAX_RESTRICTED;
+	a->archive.archive_format_name = "restricted POSIX pax interchange";
 	return (r);
 }
 
@@ -116,8 +116,8 @@ archive_write_set_format_pax(struct archive *_a)
 	a->format_finish = archive_write_pax_finish;
 	a->format_destroy = archive_write_pax_destroy;
 	a->format_finish_entry = archive_write_pax_finish_entry;
-	a->archive_format = ARCHIVE_FORMAT_TAR_PAX_INTERCHANGE;
-	a->archive_format_name = "POSIX pax interchange";
+	a->archive.archive_format = ARCHIVE_FORMAT_TAR_PAX_INTERCHANGE;
+	a->archive.archive_format_name = "POSIX pax interchange";
 	return (ARCHIVE_OK);
 }
 
@@ -386,7 +386,7 @@ archive_write_pax_header(struct archive_write *a,
 	const char *p;
 	char *t;
 	const wchar_t *wp;
-	const char *suffix_start;
+	const char *suffix;
 	int need_extension, r, ret;
 	struct pax *pax;
 	const char *hdrcharset = NULL;
@@ -496,34 +496,73 @@ archive_write_pax_header(struct archive_write *a,
 	if (hdrcharset != NULL)
 		add_pax_attr(&(pax->pax_header), "hdrcharset", hdrcharset);
 
-	/*
-	 * Determining whether or not the name is too big is ugly
-	 * because of the rules for dividing names between 'name' and
-	 * 'prefix' fields.  Here, I pick out the longest possible
-	 * suffix, then test whether the remaining prefix is too long.
-	 */
-	if (strlen(path) <= 100)    /* Short enough for just 'name' field */
-		suffix_start = path;	/* Record a zero-length prefix */
-	else
-		/* Find the largest suffix that fits in 'name' field. */
-		suffix_start = strchr(path + strlen(path) - 100 - 1, '/');
 
 	/*
 	 * If name is too long, or has non-ASCII characters, add
 	 * 'path' to pax extended attrs.  (Note that an unconvertible
 	 * name must have non-ASCII characters.)
 	 */
-	if (suffix_start == NULL || suffix_start - path > 155
-	    || path_w == NULL || has_non_ASCII(path_w)) {
-		if (path_w == NULL || hdrcharset != NULL)
+	if (path == NULL) {
+		/* We don't have a narrow version, so we have to store
+		 * the wide version. */
+		add_pax_attr_w(&(pax->pax_header), "path", path_w);
+		archive_entry_set_pathname(entry_main, "@WidePath");
+		need_extension = 1;
+	} else if (has_non_ASCII(path_w)) {
+		/* We have non-ASCII characters. */
+		if (path_w == NULL || hdrcharset != NULL) {
 			/* Can't do UTF-8, so store it raw. */
 			add_pax_attr(&(pax->pax_header), "path", path);
-		else
-			add_pax_attr_w(&(pax->pax_header), "path", path_w);
+		} else {
+			/* Store UTF-8 */
+			add_pax_attr_w(&(pax->pax_header),
+			    "path", path_w);
+		}
 		archive_entry_set_pathname(entry_main,
 		    build_ustar_entry_name(ustar_entry_name,
 			path, strlen(path), NULL));
 		need_extension = 1;
+	} else {
+		/* We have an all-ASCII path; we'd like to just store
+		 * it in the ustar header if it will fit.  Yes, this
+		 * duplicates some of the logic in
+		 * write_set_format_ustar.c
+		 */
+		if (strlen(path) <= 100) {
+			/* Fits in the old 100-char tar name field. */
+		} else {
+			/* Find largest suffix that will fit. */
+			/* Note: strlen() > 100, so strlen() - 100 - 1 >= 0 */
+			suffix = strchr(path + strlen(path) - 100 - 1, '/');
+			/* Don't attempt an empty prefix. */
+			if (suffix == path)
+				suffix = strchr(suffix + 1, '/');
+			/* We can put it in the ustar header if it's
+			 * all ASCII and it's either <= 100 characters
+			 * or can be split at a '/' into a prefix <=
+			 * 155 chars and a suffix <= 100 chars.  (Note
+			 * the strchr() above will return NULL exactly
+			 * when the path can't be split.)
+			 */
+			if (suffix == NULL       /* Suffix > 100 chars. */
+			    || suffix[1] == '\0'    /* empty suffix */
+			    || suffix - path > 155)  /* Prefix > 155 chars */
+			{
+				if (path_w == NULL || hdrcharset != NULL) {
+					/* Can't do UTF-8, so store it raw. */
+					add_pax_attr(&(pax->pax_header),
+					    "path", path);
+				} else {
+					/* Store UTF-8 */
+					add_pax_attr_w(&(pax->pax_header),
+					    "path", path_w);
+				}
+				archive_entry_set_pathname(entry_main,
+				    build_ustar_entry_name(ustar_entry_name,
+					path, strlen(path), NULL));
+				need_extension = 1;
+			}
+		}
 	}
 
 	if (linkpath != NULL) {
@@ -701,7 +740,7 @@ archive_write_pax_header(struct archive_write *a,
 	 * already set (we're already generating an extended header, so
 	 * may as well include these).
 	 */
-	if (a->archive_format != ARCHIVE_FORMAT_TAR_PAX_RESTRICTED ||
+	if (a->archive.archive_format != ARCHIVE_FORMAT_TAR_PAX_RESTRICTED ||
 	    need_extension) {
 
 		if (archive_entry_mtime(entry_main) < 0  ||
@@ -764,7 +803,7 @@ archive_write_pax_header(struct archive_write *a,
 	 * Pax-restricted does not store data for hardlinks, in order
 	 * to improve compatibility with ustar.
 	 */
-	if (a->archive_format != ARCHIVE_FORMAT_TAR_PAX_INTERCHANGE &&
+	if (a->archive.archive_format != ARCHIVE_FORMAT_TAR_PAX_INTERCHANGE &&
 	    hardlink != NULL)
 		archive_entry_set_size(entry_main, 0);
 
@@ -1060,7 +1099,13 @@ build_ustar_entry_name(char *dest, const char *src, size_t src_length,
 
 /*
  * The ustar header for the pax extended attributes must have a
- * reasonable name:  SUSv3 suggests 'dirname'/PaxHeader/'filename'
+ * reasonable name:  SUSv3 requires 'dirname'/PaxHeader.'pid'/'filename'
+ * where 'pid' is the PID of the archiving process.  Unfortunately,
+ * that makes testing a pain since the output varies for each run,
+ * so I'm sticking with the simpler 'dirname'/PaxHeader/'filename'
+ * for now.  (Someday, I'll make this settable.  Then I can use the
+ * SUS recommendation as default and test harnesses can override it
+ * to get predictable results.)
  *
  * Joerg Schilling has argued that this is unnecessary because, in
  * practice, if the pax extended attributes get extracted as regular
@@ -1071,19 +1116,14 @@ build_ustar_entry_name(char *dest, const char *src, size_t src_length,
  * recommendation, but I'm not entirely convinced.  I'm also
  * uncomfortable with the fact that "/tmp" is a Unix-ism.
  *
- * GNU tar uses 'dirname'/PaxHeader.<pid>/'filename', where the PID is
- * the PID of the archiving process.  This seems unnecessarily complex
- * to me, as I don't see much value to separating the headers from
- * extracting multiple versions of an archive.
- *
- * The following routine implements the SUSv3 recommendation, and is
- * much simpler because build_ustar_entry_name() above already does
- * most of the work (we just need to give it an extra path element to
- * insert and handle a few pathological cases).
+ * The following routine leverages build_ustar_entry_name() above and
+ * so is simpler than you might think.  It just needs to provide the
+ * additional path element and handle a few pathological cases).
  */
 static char *
 build_pax_attribute_name(char *dest, const char *src)
 {
+	char buff[64];
 	const char *p;
 
 	/* Handle the null filename case. */
@@ -1122,8 +1162,19 @@ build_pax_attribute_name(char *dest, const char *src)
 		return (dest);
 	}
 
+	/*
+	 * TODO: Push this string into the 'pax' structure to avoid
+	 * recomputing it every time.  That will also open the door
+	 * to having clients override it.
+	 */
+#if HAVE_GETPID && 0  /* Disable this for now; see above comment. */
+	sprintf(buff, "PaxHeader.%d", getpid());
+#else
+	/* If the platform can't fetch the pid, don't include it. */
+	strcpy(buff, "PaxHeader");
+#endif
 	/* General case: build a ustar-compatible name adding "/PaxHeader/". */
-	build_ustar_entry_name(dest, src, p - src, "PaxHeader");
+	build_ustar_entry_name(dest, src, p - src, buff);
 
 	return (dest);
 }
@@ -1203,6 +1254,8 @@ archive_write_pax_data(struct archive_write *a, const void *buff, size_t s)
 static int
 has_non_ASCII(const wchar_t *wp)
 {
+	if (wp == NULL)
+		return (1);
 	while (*wp != L'\0' && *wp < 128)
 		wp++;
 	return (*wp != L'\0');

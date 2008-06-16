@@ -22,9 +22,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/lib/libarchive/archive_entry.3,v 1.15 2007/07/15 19:10:34 kientzle Exp $
+.\" $FreeBSD: src/lib/libarchive/archive_entry.3,v 1.17 2008/03/14 23:00:53 kientzle Exp $
 .\"
-.Dd December 15, 2003
+.Dd May 12, 2008
 .Dt archive_entry 3
 .Os
 .Sh NAME
@@ -40,12 +40,16 @@
 .Nm archive_entry_atime_nsec ,
 .Nm archive_entry_clear ,
 .Nm archive_entry_clone ,
+.Nm archive_entry_copy_fflags_text ,
 .Nm archive_entry_copy_fflags_text_w ,
 .Nm archive_entry_copy_gname ,
 .Nm archive_entry_copy_gname_w ,
 .Nm archive_entry_copy_hardlink ,
 .Nm archive_entry_copy_hardlink_w ,
+.Nm archive_entry_copy_link ,
+.Nm archive_entry_copy_link_w ,
 .Nm archive_entry_copy_pathname_w ,
+.Nm archive_entry_copy_sourcepath ,
 .Nm archive_entry_copy_stat ,
 .Nm archive_entry_copy_symlink ,
 .Nm archive_entry_copy_symlink_w ,
@@ -93,6 +97,7 @@
 .Nm archive_entry_set_uid ,
 .Nm archive_entry_set_uname ,
 .Nm archive_entry_size ,
+.Nm archive_entry_sourcepath ,
 .Nm archive_entry_stat ,
 .Nm archive_entry_symlink ,
 .Nm archive_entry_uid ,
@@ -101,17 +106,47 @@
 .Sh SYNOPSIS
 .In archive_entry.h
 .Ft void
-.Fn archive_entry_acl_add_entry "struct archive_entry *" "int type" "int permset" "int tag" "int qual" "const char *name"
+.Fo archive_entry_acl_add_entry
+.Fa "struct archive_entry *"
+.Fa "int type"
+.Fa "int permset"
+.Fa "int tag"
+.Fa "int qual"
+.Fa "const char *name"
+.Fc
 .Ft void
-.Fn archive_entry_acl_add_entry_w "struct archive_entry *" "int type" "int permset" "int tag" "int qual" "const wchar_t *name"
+.Fo archive_entry_acl_add_entry_w
+.Fa "struct archive_entry *"
+.Fa "int type"
+.Fa "int permset"
+.Fa "int tag"
+.Fa "int qual"
+.Fa "const wchar_t *name"
+.Fc
 .Ft void
 .Fn archive_entry_acl_clear "struct archive_entry *"
 .Ft int
 .Fn archive_entry_acl_count "struct archive_entry *" "int type"
 .Ft int
-.Fn archive_entry_acl_next "struct archive_entry *" "int want_type" "int *type" "int *permset" "int *tag" "int *qual" "const char **name"
+.Fo archive_entry_acl_next
+.Fa "struct archive_entry *"
+.Fa "int want_type"
+.Fa "int *type"
+.Fa "int *permset"
+.Fa "int *tag"
+.Fa "int *qual"
+.Fa "const char **name"
+.Fc
 .Ft int
-.Fn archive_entry_acl_next_w "struct archive_entry *" "int want_type" "int *type" "int *permset" "int *tag" "int *qual" "const wchar_t **name"
+.Fo archive_entry_acl_next_w
+.Fa "struct archive_entry *"
+.Fa "int want_type"
+.Fa "int *type"
+.Fa "int *permset"
+.Fa "int *tag"
+.Fa "int *qual"
+.Fa "const wchar_t **name"
+.Fc
 .Ft int
 .Fn archive_entry_acl_reset "struct archive_entry *" "int want_type"
 .Ft const wchar_t *
@@ -124,6 +159,8 @@
 .Fn archive_entry_clear "struct archive_entry *"
 .Ft struct archive_entry *
 .Fn archive_entry_clone "struct archive_entry *"
+.Ft const char * *
+.Fn archive_entry_copy_fflags_text_w "struct archive_entry *" "const char *"
 .Ft const wchar_t *
 .Fn archive_entry_copy_fflags_text_w "struct archive_entry *" "const wchar_t *"
 .Ft void
@@ -134,6 +171,8 @@
 .Fn archive_entry_copy_hardlink "struct archive_entry *" "const char *"
 .Ft void
 .Fn archive_entry_copy_hardlink_w "struct archive_entry *" "const wchar_t *"
+.Ft void
+.Fn archive_entry_copy_sourcepath "struct archive_entry *" "const char *"
 .Ft void
 .Fn archive_entry_copy_pathname_w "struct archive_entry *" "const wchar_t *"
 .Ft void
@@ -155,7 +194,11 @@
 .Ft mode_t
 .Fn archive_entry_filetype "struct archive_entry *"
 .Ft void
-.Fn archive_entry_fflags "struct archive_entry *" "unsigned long *set" "unsigned long *clear"
+.Fo archive_entry_fflags
+.Fa "struct archive_entry *"
+.Fa "unsigned long *set"
+.Fa "unsigned long *clear"
+.Fc
 .Ft const char *
 .Fn archive_entry_fflags_text "struct archive_entry *"
 .Ft void
@@ -195,7 +238,11 @@
 .Ft void
 .Fn archive_entry_set_filetype "struct archive_entry *" "unsigned int"
 .Ft void
-.Fn archive_entry_set_fflags "struct archive_entry *" "unsigned long set" "unsigned long clear"
+.Fo archive_entry_set_fflags
+.Fa "struct archive_entry *"
+.Fa "unsigned long set"
+.Fa "unsigned long clear"
+.Fc
 .Ft void
 .Fn archive_entry_set_gid "struct archive_entry *" "gid_t"
 .Ft void
@@ -230,6 +277,8 @@
 .Fn archive_entry_set_uname "struct archive_entry *" "const char *"
 .Ft int64_t
 .Fn archive_entry_size "struct archive_entry *"
+.Ft const char *
+.Fn archive_entry_sourcepath "struct archive_entry *"
 .Ft const struct stat *
 .Fn archive_entry_stat "struct archive_entry *"
 .Ft const char *
@@ -336,8 +385,10 @@ will be ignored.
 .Pp
 The canonical text format is a comma-separated list of flag names.
 The
+.Fn archive_entry_copy_fflags_text
+and
 .Fn archive_entry_copy_fflags_text_w
-function parses the provided text and sets the internal bitmap values.
+functions parse the provided text and sets the internal bitmap values.
 This is a platform-specific operation; names that are not meaningful
 on the current platform will be ignored.
 The function returns a pointer to the start of the first name that was not
