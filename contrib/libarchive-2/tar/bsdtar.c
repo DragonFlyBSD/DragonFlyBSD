@@ -24,7 +24,7 @@
  */
 
 #include "bsdtar_platform.h"
-__FBSDID("$FreeBSD: src/usr.bin/tar/bsdtar.c,v 1.79 2008/01/22 07:23:44 kientzle Exp $");
+__FBSDID("$FreeBSD: src/usr.bin/tar/bsdtar.c,v 1.90 2008/05/19 18:38:01 cperciva Exp $");
 
 #ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>
@@ -118,7 +118,7 @@ static void		 version(void);
  * non-option.  Otherwise, GNU getopt() permutes the arguments and
  * screws up -C processing.
  */
-static const char *tar_opts = "+Bb:C:cf:HhI:jkLlmnOoPprtT:UuvW:wX:xyZz";
+static const char *tar_opts = "+Bb:C:cf:HhI:jkLlmnOoPprts:ST:UuvW:wX:xyZz";
 
 /*
  * Most of these long options are deliberately not documented.  They
@@ -136,12 +136,13 @@ static const char *tar_opts = "+Bb:C:cf:HhI:jkLlmnOoPprtT:UuvW:wX:xyZz";
 
 /* Fake short equivalents for long options that otherwise lack them. */
 enum {
-	OPTION_CHECK_LINKS=1,
+	OPTION_CHECK_LINKS = 1,
+	OPTION_CHROOT,
 	OPTION_EXCLUDE,
-	OPTION_FAST_READ,
 	OPTION_FORMAT,
 	OPTION_HELP,
 	OPTION_INCLUDE,
+	OPTION_KEEP_NEWER_FILES,
 	OPTION_NEWER_CTIME,
 	OPTION_NEWER_CTIME_THAN,
 	OPTION_NEWER_MTIME,
@@ -150,6 +151,7 @@ enum {
 	OPTION_NO_SAME_OWNER,
 	OPTION_NO_SAME_PERMISSIONS,
 	OPTION_NULL,
+	OPTION_NUMERIC_OWNER,
 	OPTION_ONE_FILE_SYSTEM,
 	OPTION_POSIX,
 	OPTION_STRIP_COMPONENTS,
@@ -171,6 +173,8 @@ static const struct option tar_longopts[] = {
 	{ "bzip2",              no_argument,       NULL, 'j' },
 	{ "cd",                 required_argument, NULL, 'C' },
 	{ "check-links",        no_argument,       NULL, OPTION_CHECK_LINKS },
+	{ "chroot",             no_argument,       NULL, OPTION_CHROOT },
+	{ "compress",           no_argument,       NULL, 'Z' },
 	{ "confirmation",       no_argument,       NULL, 'w' },
 	{ "create",             no_argument,       NULL, 'c' },
 	{ "dereference",	no_argument,	   NULL, 'L' },
@@ -178,7 +182,7 @@ static const struct option tar_longopts[] = {
 	{ "exclude",            required_argument, NULL, OPTION_EXCLUDE },
 	{ "exclude-from",       required_argument, NULL, 'X' },
 	{ "extract",            no_argument,       NULL, 'x' },
-	{ "fast-read",          no_argument,       NULL, OPTION_FAST_READ },
+	{ "fast-read",          no_argument,       NULL, 'q' },
 	{ "file",               required_argument, NULL, 'f' },
 	{ "files-from",         required_argument, NULL, 'T' },
 	{ "format",             required_argument, NULL, OPTION_FORMAT },
@@ -187,6 +191,8 @@ static const struct option tar_longopts[] = {
 	{ "help",               no_argument,       NULL, OPTION_HELP },
 	{ "include",            required_argument, NULL, OPTION_INCLUDE },
 	{ "interactive",        no_argument,       NULL, 'w' },
+	{ "insecure",           no_argument,       NULL, 'P' },
+	{ "keep-newer-files",   no_argument,       NULL, OPTION_KEEP_NEWER_FILES },
 	{ "keep-old-files",     no_argument,       NULL, 'k' },
 	{ "list",               no_argument,       NULL, 't' },
 	{ "modification-time",  no_argument,       NULL, 'm' },
@@ -202,6 +208,7 @@ static const struct option tar_longopts[] = {
 	{ "no-same-owner",	no_argument,	   NULL, OPTION_NO_SAME_OWNER },
 	{ "no-same-permissions",no_argument,	   NULL, OPTION_NO_SAME_PERMISSIONS },
 	{ "null",		no_argument,	   NULL, OPTION_NULL },
+	{ "numeric-owner",	no_argument,	   NULL, OPTION_NUMERIC_OWNER },
 	{ "one-file-system",	no_argument,	   NULL, OPTION_ONE_FILE_SYSTEM },
 	{ "posix",		no_argument,	   NULL, OPTION_POSIX },
 	{ "preserve-permissions", no_argument,     NULL, 'p' },
@@ -210,6 +217,7 @@ static const struct option tar_longopts[] = {
 	{ "strip-components",	required_argument, NULL, OPTION_STRIP_COMPONENTS },
 	{ "to-stdout",          no_argument,       NULL, 'O' },
 	{ "totals",		no_argument,       NULL, OPTION_TOTALS },
+	{ "uncompress",         no_argument,       NULL, 'Z' },
 	{ "unlink",		no_argument,       NULL, 'U' },
 	{ "unlink-first",	no_argument,       NULL, 'U' },
 	{ "update",             no_argument,       NULL, 'u' },
@@ -321,6 +329,9 @@ main(int argc, char **argv)
 		case OPTION_CHECK_LINKS: /* GNU tar */
 			bsdtar->option_warn_links = 1;
 			break;
+		case OPTION_CHROOT: /* NetBSD */
+			bsdtar->option_chroot = 1;
+			break;
 		case OPTION_EXCLUDE: /* GNU tar */
 			if (exclude(bsdtar, optarg))
 				bsdtar_errc(bsdtar, 1, 0,
@@ -333,9 +344,6 @@ main(int argc, char **argv)
 			bsdtar->filename = optarg;
 			if (strcmp(bsdtar->filename, "-") == 0)
 				bsdtar->filename = NULL;
-			break;
-		case OPTION_FAST_READ: /* GNU tar */
-			bsdtar->option_fast_read = 1;
 			break;
 		case 'H': /* BSD convention */
 			bsdtar->symlink_mode = 'H';
@@ -387,6 +395,9 @@ main(int argc, char **argv)
 			break;
 		case 'k': /* GNU tar */
 			bsdtar->extract_flags |= ARCHIVE_EXTRACT_NO_OVERWRITE;
+			break;
+		case OPTION_KEEP_NEWER_FILES: /* GNU tar */
+			bsdtar->extract_flags |= ARCHIVE_EXTRACT_NO_OVERWRITE_NEWER;
 			break;
 		case 'L': /* BSD convention */
 			bsdtar->symlink_mode = 'L';
@@ -451,6 +462,9 @@ main(int argc, char **argv)
 		case OPTION_NULL: /* GNU tar */
 			bsdtar->option_null++;
 			break;
+		case OPTION_NUMERIC_OWNER: /* GNU tar */
+			bsdtar->option_numeric_owner++;
+			break;
 		case 'O': /* GNU tar */
 			bsdtar->option_stdout = 1;
 			break;
@@ -484,8 +498,22 @@ main(int argc, char **argv)
 		case OPTION_POSIX: /* GNU tar */
 			bsdtar->create_format = "pax";
 			break;
+		case 'q': /* FreeBSD GNU tar --fast-read, NetBSD -q */
+			bsdtar->option_fast_read = 1;
+			break;
 		case 'r': /* SUSv2 */
 			set_mode(bsdtar, opt);
+			break;
+		case 'S': /* NetBSD pax-as-tar */
+			bsdtar->extract_flags |= ARCHIVE_EXTRACT_SPARSE;
+			break;
+		case 's': /* NetBSD pax-as-tar */
+#if HAVE_REGEX_H
+			add_substitution(bsdtar, optarg);
+#else
+			bsdtar_warnc(bsdtar, 0, "-s is not supported by this version of bsdtar");
+			usage(bsdtar);
+#endif
 			break;
 		case OPTION_STRIP_COMPONENTS: /* GNU tar 1.15 */
 			bsdtar->strip_components = atoi(optarg);
@@ -625,17 +653,13 @@ main(int argc, char **argv)
 		only_mode(bsdtar, "--check-links", "cr");
 
 	/* Check other parameters only permitted in certain modes. */
-	if (bsdtar->create_compression == 'Z' && bsdtar->mode == 'c') {
-		bsdtar_warnc(bsdtar, 0, ".Z compression not supported");
-		usage(bsdtar);
-	}
 	if (bsdtar->create_compression != '\0') {
 		strcpy(buff, "-?");
 		buff[1] = bsdtar->create_compression;
 		only_mode(bsdtar, buff, "cxt");
 	}
 	if (bsdtar->create_format != NULL)
-		only_mode(bsdtar, "--format", "c");
+		only_mode(bsdtar, "--format", "cru");
 	if (bsdtar->symlink_mode != '\0') {
 		strcpy(buff, "-?");
 		buff[1] = bsdtar->symlink_mode;
@@ -666,6 +690,10 @@ main(int argc, char **argv)
 	}
 
 	cleanup_exclusions(bsdtar);
+#if HAVE_REGEX_H
+	cleanup_substitution(bsdtar);
+#endif
+
 	if (bsdtar->return_value != 0)
 		bsdtar_warnc(bsdtar, 0,
 		    "Error exit delayed from previous errors.");
@@ -718,8 +746,8 @@ rewrite_argv(struct bsdtar *bsdtar, int *argc, char **src_argv,
 	const char *p;
 	char *src, *dest;
 
-	if (src_argv[0] == NULL ||
-	    src_argv[1] == NULL || src_argv[1][0] == '-')
+	if (src_argv[0] == NULL || src_argv[1] == NULL ||
+	    src_argv[1][0] == '-' || src_argv[1][0] == '\0')
 		return (src_argv);
 
 	*argc += strlen(src_argv[1]) - 1;
@@ -785,7 +813,7 @@ version(void)
 	printf("bsdtar %s - %s\n",
 	    BSDTAR_VERSION_STRING,
 	    archive_version());
-	exit(1);
+	exit(0);
 }
 
 static const char *long_help_msg =

@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libarchive/archive_string.h,v 1.9 2007/05/29 01:00:19 kientzle Exp $
+ * $FreeBSD: src/lib/libarchive/archive_string.h,v 1.10 2008/03/14 22:00:09 kientzle Exp $
  *
  */
 
@@ -32,6 +32,9 @@
 #include <stdarg.h>
 #ifdef HAVE_STRING_H
 #include <string.h>
+#endif
+#ifdef HAVE_WCHAR_H
+#include <wchar.h>
 #endif
 
 /*
@@ -60,15 +63,21 @@ struct archive_string *
 __archive_strappend_char(struct archive_string *, char);
 #define	archive_strappend_char __archive_strappend_char
 
-/* Append a char to an archive_string using UTF8. */
-struct archive_string *
-__archive_strappend_char_UTF8(struct archive_string *, int);
-#define	archive_strappend_char_UTF8 __archive_strappend_char_UTF8
-
 /* Append an integer in the specified base (2 <= base <= 16). */
 struct archive_string *
 __archive_strappend_int(struct archive_string *as, int d, int base);
 #define	archive_strappend_int __archive_strappend_int
+
+/* Convert a wide-char string to UTF-8 and append the result. */
+struct archive_string *
+__archive_strappend_w_utf8(struct archive_string *, const wchar_t *);
+#define	archive_strappend_w_utf8	__archive_strappend_w_utf8
+
+/* Convert a wide-char string to current locale and append the result. */
+/* Returns NULL if conversion fails. */
+struct archive_string *
+__archive_strappend_w_mbs(struct archive_string *, const wchar_t *);
+#define	archive_strappend_w_mbs	__archive_strappend_w_mbs
 
 /* Basic append operation. */
 struct archive_string *
@@ -95,7 +104,7 @@ __archive_strncat(struct archive_string *, const char *, size_t);
 
 /* Copy a C string to an archive_string, resizing as necessary. */
 #define	archive_strcpy(as,p) \
-	((as)->length = 0, __archive_string_append((as), (p), strlen(p)))
+	((as)->length = 0, __archive_string_append((as), (p), p == NULL ? 0 : strlen(p)))
 
 /* Copy a C string to an archive_string with limit, resizing as necessary. */
 #define	archive_strncpy(as,p,l) \
@@ -115,5 +124,13 @@ void	__archive_string_free(struct archive_string *);
 void	__archive_string_vsprintf(struct archive_string *, const char *,
 	    va_list);
 #define	archive_string_vsprintf	__archive_string_vsprintf
+
+void	__archive_string_sprintf(struct archive_string *, const char *, ...);
+#define	archive_string_sprintf	__archive_string_sprintf
+
+/* Allocates a fresh buffer and converts as (assumed to be UTF-8) into it.
+ * Returns NULL if conversion failed in any way. */
+wchar_t *__archive_string_utf8_w(struct archive_string *as);
+
 
 #endif
