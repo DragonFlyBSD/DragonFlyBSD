@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.115 2008/06/02 16:54:21 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.116 2008/06/16 02:00:05 dillon Exp $
  */
 
 /*
@@ -1045,8 +1045,12 @@ lwkt_acquire(thread_t td)
 	cpu_lfence();
 	KKASSERT((td->td_flags & TDF_RUNQ) == 0);
 	crit_enter_gd(mygd);
-	while (td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK))
+	while (td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK)) {
+#ifdef SMP
+	    lwkt_process_ipiq();
+#endif
 	    cpu_lfence();
+	}
 	td->td_gd = mygd;
 	TAILQ_INSERT_TAIL(&mygd->gd_tdallq, td, td_allq);
 	td->td_flags &= ~TDF_MIGRATING;
@@ -1222,8 +1226,12 @@ lwkt_setcpu_remote(void *arg)
     thread_t td = arg;
     globaldata_t gd = mycpu;
 
-    while (td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK))
+    while (td->td_flags & (TDF_RUNNING|TDF_PREEMPT_LOCK)) {
+#ifdef SMP
+	lwkt_process_ipiq();
+#endif
 	cpu_lfence();
+    }
     td->td_gd = gd;
     cpu_sfence();
     td->td_flags &= ~TDF_MIGRATING;
