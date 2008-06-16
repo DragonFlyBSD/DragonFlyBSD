@@ -1,4 +1,4 @@
-/* $DragonFly: src/lib/libarchive/config.h,v 1.11 2008/05/17 21:51:47 pavalos Exp $ */
+/* $DragonFly: src/lib/libarchive/config.h,v 1.12 2008/06/16 08:20:23 pavalos Exp $ */
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
@@ -116,6 +116,9 @@
 /* Define to 1 if you have the `fchown' function. */
 #define HAVE_FCHOWN 1
 
+/* Define to 1 if you have the `fcntl' function. */
+#define HAVE_FCNTL 1
+
 /* Define to 1 if you have the <fcntl.h> header file. */
 #define HAVE_FCNTL_H 1
 
@@ -131,6 +134,9 @@
 /* Define to 1 if you have the `fsetxattr' function. */
 /* #undef HAVE_FSETXATTR */
 
+/* Define to 1 if you have the `fstat' function. */
+#define HAVE_FSTAT 1
+
 /* Define to 1 if you have the `ftruncate' function. */
 #define HAVE_FTRUNCATE 1
 
@@ -142,6 +148,9 @@
 
 /* Define to 1 if you have the `getopt_long' function. */
 #define HAVE_GETOPT_LONG 1
+
+/* Define to 1 if you have the `getpid' function. */
+#define HAVE_GETPID 1
 
 /* Define to 1 if you have the `getxattr' function. */
 /* #undef HAVE_GETXATTR */
@@ -240,6 +249,9 @@
 /* Define to 1 if you have the <paths.h> header file. */
 #define HAVE_PATHS_H 1
 
+/* Define to 1 if you have the `pipe' function. */
+#define HAVE_PIPE 1
+
 /* Define to 1 if you have the `poll' function. */
 #define HAVE_POLL 1
 
@@ -248,6 +260,9 @@
 
 /* Define to 1 if you have the <pwd.h> header file. */
 #define HAVE_PWD_H 1
+
+/* Define to 1 if you have the <regex.h> header file. */
+#define HAVE_REGEX_H 1
 
 /* Define to 1 if you have the `select' function. */
 #define HAVE_SELECT 1
@@ -377,6 +392,9 @@
 
 /* Define to 1 if you have the <utime.h> header file. */
 #define HAVE_UTIME_H 1
+
+/* Define to 1 if you have the `vfork' function. */
+#define HAVE_VFORK 1
 
 /* Define to 1 if you have the `vprintf' function. */
 #define HAVE_VPRINTF 1

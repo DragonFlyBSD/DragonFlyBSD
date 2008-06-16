@@ -9,3 +9,5 @@ A list of deleted files is in README.DELETED.
 This source is used in:
 	lib/libarchive
 	usr.bin/tar
+
+Remember to update the version string in tar's Makefile.

@@ -10,8 +10,11 @@ contrib/
 cpio/
 doc/
 examples/
+libarchive/archive_windows.c
+libarchive/archive_windows.h
 libarchive/config_freebsd.h
 libarchive/config_windows.h
 libarchive/test/
 tar/getdate.c
 tar/test/
+windows/

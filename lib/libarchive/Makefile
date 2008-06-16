@@ -1,18 +1,10 @@
 # $FreeBSD: src/lib/libarchive/Makefile,v 1.50 2006/09/05 05:59:45 kientzle Exp $
-# $DragonFly: src/lib/libarchive/Makefile,v 1.19 2008/05/17 21:53:39 pavalos Exp $
+# $DragonFly: src/lib/libarchive/Makefile,v 1.20 2008/06/16 08:20:23 pavalos Exp $
 
 LIB=	archive
 
 CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive-2/libarchive
 .PATH: ${CONTRIBDIR}
-
-VERSION!=	cat ${CONTRIBDIR}/../version
-ARCHIVE_API_MAJOR!=	echo ${VERSION} | sed -e 's/[^0-9]/./g' -e 's/\..*//'
-ARCHIVE_API_MINOR!=	echo ${VERSION} | sed -e 's/[^0-9]/./g' -e 's/[0-9]*\.//' -e 's/\..*//'
-ARCHIVE_API_REV!=	echo ${VERSION} | sed -e 's/[^0-9]/./g' -e 's/.*\.//'
-# Can't use /usr/bin/printf to format the version stamp here, because
-# that's not available during installworld.  Fortunately, awk is.
-ARCHIVE_VERSION_STAMP!= echo ${ARCHIVE_API_MAJOR} ${ARCHIVE_API_MINOR} ${ARCHIVE_API_REV} | awk '{printf("%d%03d%03d",$$1,$$2,$$3)}'
 
 SHLIB_MAJOR=	5
 CFLAGS+=	-DPLATFORM_CONFIG_H=\"config.h\"
@@ -21,9 +13,7 @@ WARNS?=	6
 
 INCS=	archive.h archive_entry.h
 
-# Note: archive.h does need to be listed here, since it's built
-SRCS=	archive.h					\
-	archive_check_magic.c				\
+SRCS=	archive_check_magic.c				\
 	archive_entry.c					\
 	archive_entry_copy_stat.c			\
 	archive_entry_link_resolver.c			\
@@ -62,6 +52,7 @@ SRCS=	archive.h					\
 	archive_write_open_filename.c			\
 	archive_write_open_memory.c			\
 	archive_write_set_compression_bzip2.c		\
+	archive_write_set_compression_compress.c	\
 	archive_write_set_compression_gzip.c		\
 	archive_write_set_compression_none.c		\
 	archive_write_set_compression_program.c		\
@@ -99,12 +90,16 @@ MLINKS+=	archive_entry.3 archive_entry_atime.3
 MLINKS+=	archive_entry.3 archive_entry_atime_nsec.3
 MLINKS+=	archive_entry.3 archive_entry_clear.3
 MLINKS+=	archive_entry.3 archive_entry_clone.3
+MLINKS+=	archive_entry.3 archive_entry_copy_fflags_text.3
 MLINKS+=	archive_entry.3 archive_entry_copy_fflags_text_w.3
 MLINKS+=	archive_entry.3 archive_entry_copy_gname.3
 MLINKS+=	archive_entry.3 archive_entry_copy_gname_w.3
 MLINKS+=	archive_entry.3 archive_entry_copy_hardlink.3
 MLINKS+=	archive_entry.3 archive_entry_copy_hardlink_w.3
+MLINKS+=	archive_entry.3 archive_entry_copy_link.3
+MLINKS+=	archive_entry.3 archive_entry_copy_link_w.3
 MLINKS+=	archive_entry.3 archive_entry_copy_pathname_w.3
+MLINKS+=	archive_entry.3 archive_entry_copy_sourcepath.3
 MLINKS+=	archive_entry.3 archive_entry_copy_stat.3
 MLINKS+=	archive_entry.3 archive_entry_copy_symlink.3
 MLINKS+=	archive_entry.3 archive_entry_copy_symlink_w.3
@@ -152,6 +147,7 @@ MLINKS+=	archive_entry.3 archive_entry_set_symlink.3
 MLINKS+=	archive_entry.3 archive_entry_set_uid.3
 MLINKS+=	archive_entry.3 archive_entry_set_uname.3
 MLINKS+=	archive_entry.3 archive_entry_size.3
+MLINKS+=	archive_entry.3 archive_entry_sourcepath.3
 MLINKS+=	archive_entry.3 archive_entry_stat.3
 MLINKS+=	archive_entry.3 archive_entry_symlink.3
 MLINKS+=	archive_entry.3 archive_entry_uid.3
@@ -163,6 +159,7 @@ MLINKS+=	archive_read.3 archive_read_data_into_buffer.3
 MLINKS+=	archive_read.3 archive_read_data_into_fd.3
 MLINKS+=	archive_read.3 archive_read_data_skip.3
 MLINKS+=	archive_read.3 archive_read_extract.3
+MLINKS+=	archive_read.3 archive_read_extract2.3
 MLINKS+=	archive_read.3 archive_read_extract_set_progress_callback.3
 MLINKS+=	archive_read.3 archive_read_finish.3
 MLINKS+=	archive_read.3 archive_read_new.3
@@ -208,6 +205,7 @@ MLINKS+=	archive_write.3 archive_write_open_memory.3
 MLINKS+=	archive_write.3 archive_write_set_bytes_in_last_block.3
 MLINKS+=	archive_write.3 archive_write_set_bytes_per_block.3
 MLINKS+=	archive_write.3 archive_write_set_compression_bzip2.3
+MLINKS+=	archive_write.3 archive_write_set_compression_compress.3
 MLINKS+=	archive_write.3 archive_write_set_compression_gzip.3
 MLINKS+=	archive_write.3 archive_write_set_compression_none.3
 MLINKS+=	archive_write.3 archive_write_set_compression_program.3
@@ -229,18 +227,5 @@ MLINKS+=	archive_write_disk.3 archive_write_disk_set_skip_file.3
 MLINKS+=	archive_write_disk.3 archive_write_disk_set_standard_lookup.3
 MLINKS+=	archive_write_disk.3 archive_write_disk_set_user_lookup.3
 MLINKS+=	libarchive.3 archive.3
-
-# Build archive.h from archive.h.in
-archive.h:	archive.h.in Makefile
-	cat ${CONTRIBDIR}/archive.h.in |				\
-		sed 's/@ARCHIVE_VERSION@/${VERSION}/g' |		\
-		sed 's/@SHLIB_MAJOR@/${SHLIB_MAJOR}/g' |		\
-		sed 's/@LIBARCHIVE_VERSION_STRING@/${VERSION}/g' |	\
-		sed 's/@LIBARCHIVE_VERSION@/${ARCHIVE_VERSION_STAMP}/g' | \
-		sed 's|@ARCHIVE_H_INCLUDE_INTTYPES_H@|#include <inttypes.h>  /* For int64_t */|g' |			\
-		cat > archive.h
-
-# archive.h needs to be cleaned
-CLEANFILES+=	archive.h
 
 .include <bsd.lib.mk>
