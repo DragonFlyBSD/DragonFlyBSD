@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.32 2008/06/14 07:58:46 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.33 2008/06/16 14:48:01 sephe Exp $
  */
 
 /*
@@ -182,6 +182,8 @@ extern	struct mbuf *(*bridge_input_p)(struct ifnet *, struct mbuf *);
 extern	int (*bridge_output_p)(struct ifnet *, struct mbuf *);
 extern	void (*bridge_dn_p)(struct mbuf *, struct ifnet *);
 
+typedef int	(*bridge_ctl_t)(struct bridge_softc *, void *);
+
 static int	bridge_rtable_prune_period = BRIDGE_RTABLE_PRUNE_PERIOD;
 
 static int	bridge_clone_create(struct if_clone *, int);
@@ -232,6 +234,7 @@ static void	bridge_delete_member(struct bridge_softc *,
 static void	bridge_delete_span(struct bridge_softc *,
 		    struct bridge_iflist *);
 
+static int	bridge_control(struct bridge_softc *, bridge_ctl_t, void *);
 static int	bridge_ioctl_add(struct bridge_softc *, void *);
 static int	bridge_ioctl_del(struct bridge_softc *, void *);
 static int	bridge_ioctl_gifflags(struct bridge_softc *, void *);
@@ -287,9 +290,9 @@ SYSCTL_INT(_net_link_bridge, OID_AUTO, pfil_member, CTLFLAG_RW,
     &pfil_member, 0, "Packet filter on the member interface");
 
 struct bridge_control {
-	int	(*bc_func)(struct bridge_softc *, void *);
-	int	bc_argsize;
-	int	bc_flags;
+	bridge_ctl_t	bc_func;
+	int		bc_argsize;
+	int		bc_flags;
 };
 
 #define	BC_F_COPYIN		0x01	/* copy arguments in */
@@ -588,7 +591,7 @@ bridge_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 				break;
 		}
 
-		error = bc->bc_func(sc, &args);
+		error = bridge_control(sc, bc->bc_func, &args);
 		if (error)
 			break;
 
@@ -2900,4 +2903,49 @@ bridge_handoff_notags(struct ifnet *dst_ifp, struct mbuf *m)
 	}
 
 	lwkt_serialize_exit(dst_ifp->if_serializer);
+}
+
+struct netmsg_brgctl {
+	struct netmsg		bc_nmsg;
+	bridge_ctl_t		bc_func;
+	struct bridge_softc	*bc_sc;
+	void			*bc_arg;
+};
+
+static void
+bridge_control_dispatch(struct netmsg *nmsg)
+{
+	struct netmsg_brgctl *bc_msg = (struct netmsg_brgctl *)nmsg;
+	struct ifnet *bifp = bc_msg->bc_sc->sc_ifp;
+	int error;
+
+	lwkt_serialize_enter(bifp->if_serializer);
+	error = bc_msg->bc_func(bc_msg->bc_sc, bc_msg->bc_arg);
+	lwkt_serialize_exit(bifp->if_serializer);
+
+	lwkt_replymsg(&nmsg->nm_lmsg, error);
+}
+
+static int
+bridge_control(struct bridge_softc *sc, bridge_ctl_t bc_func, void *bc_arg)
+{
+	struct ifnet *bifp = sc->sc_ifp;
+	struct netmsg_brgctl bc_msg;
+	struct netmsg *nmsg;
+	int error;
+
+	ASSERT_SERIALIZED(bifp->if_serializer);
+
+	bzero(&bc_msg, sizeof(bc_msg));
+	nmsg = &bc_msg.bc_nmsg;
+
+	netmsg_init(nmsg, &curthread->td_msgport, 0, bridge_control_dispatch);
+	bc_msg.bc_func = bc_func;
+	bc_msg.bc_sc = sc;
+	bc_msg.bc_arg = bc_arg;
+
+	lwkt_serialize_exit(bifp->if_serializer);
+	error = lwkt_domsg(cpu_portfn(0), &nmsg->nm_lmsg, 0);
+	lwkt_serialize_enter(bifp->if_serializer);
+	return error;
 }
