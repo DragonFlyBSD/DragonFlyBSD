@@ -30,11 +30,12 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.20 2007/12/19 11:00:22 sephe Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.21 2008/06/17 20:50:11 aggelos Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/msgport.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
@@ -380,23 +381,49 @@ so_pru_sopoll(struct socket *so, int events, struct ucred *cred)
 }
 
 int
-so_pr_ctloutput(struct socket *so, struct sockopt *sopt)
+so_pru_ctloutput(struct socket *so, struct sockopt *sopt)
 {
-	return ((*so->so_proto->pr_ctloutput)(so, sopt));
-#ifdef gag	/* does copyin and copyout deep inside stack XXX JH */
-	struct netmsg_pr_ctloutput msg;
+	struct netmsg_pru_ctloutput msg;
 	lwkt_port_t port;
 	int error;
+	void *uval = NULL;
+	int need_copy;
 
-	port = so->so_proto->pr_mport(so, NULL);
+	need_copy = sopt->sopt_td != NULL;
+	if (need_copy) {
+		uval = sopt->sopt_val;
+		/*
+		 * we keep duplicate copies, but for option {s,g}etting
+		 * who cares?
+		 */
+		sopt->sopt_val = kmalloc(sopt->sopt_valsize, M_TEMP, M_WAITOK);
+		error = copyin(uval, sopt->sopt_val, sopt->sopt_valsize);
+		if (error)
+			goto out;
+	}
+	port = so->so_proto->pr_mport(so, NULL, NULL, PRU_CTLOUTPUT);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_ctloutput);
-	msg.nm_prfn = so->so_proto->pr_ctloutput;
+	/* TBD: move pr_ctloutput to pr_usrreqs */
+	msg.nm_prufn = so->so_proto->pr_ctloutput;
 	msg.nm_so = so;
 	msg.nm_sopt = sopt;
 	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
+out:
+	if (need_copy) {
+		if (!error) {
+			error = copyout(sopt->sopt_val, uval,
+					sopt->sopt_valsize);
+		}
+		/*
+		 * watch out: this may not be the same memory we allocated,
+		 * callees "know" we're using M_TEMP so any reallocations
+		 * will happen from there
+		 */
+		kfree(sopt->sopt_val, M_TEMP);
+		sopt->sopt_val = uval;
+	}
 	return (error);
-#endif
 }
 
 /*
@@ -564,11 +591,11 @@ netmsg_pru_sopoll(netmsg_t msg)
 }
 
 void
-netmsg_pr_ctloutput(netmsg_t msg)
+netmsg_pru_ctloutput(netmsg_t msg)
 {
-	struct netmsg_pr_ctloutput *nm = (void *)msg;
+	struct netmsg_pru_ctloutput *nm = (void *)msg;
 
-	lwkt_replymsg(&msg->nm_lmsg, nm->nm_prfn(nm->nm_so, nm->nm_sopt));
+	lwkt_replymsg(&msg->nm_lmsg, nm->nm_prufn(nm->nm_so, nm->nm_sopt));
 }
 
 void

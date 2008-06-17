@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/net/dummynet/ip_dummynet_glue.c,v 1.5 2008/03/20 12:55:32 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet_glue.c,v 1.6 2008/06/17 20:50:11 aggelos Exp $
  */
 
 #include <sys/param.h>
@@ -514,9 +514,9 @@ ip_dn_sockopt_get(struct sockopt *sopt)
 		return error;
 	}
 
-	error = sooptcopyout(sopt, dn_sopt.dn_sopt_arg, dn_sopt.dn_sopt_arglen);
+	soopt_from_kbuf(sopt, dn_sopt.dn_sopt_arg, dn_sopt.dn_sopt_arglen);
 	kfree(dn_sopt.dn_sopt_arg, M_TEMP);
-	return error;
+	return 0;
 }
 
 static int
@@ -527,8 +527,8 @@ ip_dn_sockopt_config(struct sockopt *sopt)
 	struct netmsg smsg;
 	int error;
 
-	error = sooptcopyin(sopt, &tmp_ioc_pipe, sizeof(tmp_ioc_pipe),
-			    sizeof(tmp_ioc_pipe));
+	error = soopt_to_kbuf(sopt, &tmp_ioc_pipe, sizeof tmp_ioc_pipe,
+			      sizeof tmp_ioc_pipe);
 	if (error)
 		return error;
 

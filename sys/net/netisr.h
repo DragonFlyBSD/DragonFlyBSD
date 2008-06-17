@@ -65,7 +65,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.31 2008/05/02 07:40:32 sephe Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.32 2008/06/17 20:50:11 aggelos Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -134,13 +134,6 @@ struct netmsg_packet {
     struct mbuf		*nm_packet;
 };
 
-struct netmsg_pr_ctloutput {
-    struct netmsg	nm_netmsg;
-    int			(*nm_prfn) (struct socket *, struct sockopt *);
-    struct socket	*nm_so;
-    struct sockopt	*nm_sopt;
-};
-
 struct netmsg_pr_timeout {
     struct netmsg	nm_netmsg;
     int			(*nm_prfn) (void);
@@ -190,8 +183,8 @@ void netmsg_pru_shutdown(netmsg_t);
 void netmsg_pru_sockaddr(netmsg_t);
 
 void netmsg_pru_sopoll(netmsg_t);
+void netmsg_pru_ctloutput(netmsg_t);
 
-void netmsg_pr_ctloutput(netmsg_t);
 void netmsg_pr_timeout(netmsg_t);
 
 void netmsg_so_notify(netmsg_t);

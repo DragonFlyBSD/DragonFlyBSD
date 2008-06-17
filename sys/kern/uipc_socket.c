@@ -65,7 +65,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.48 2008/05/27 05:25:34 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.49 2008/06/17 20:50:11 aggelos Exp $
  */
 
 #include "opt_inet.h"
@@ -93,6 +93,7 @@
 #include <sys/uio.h>
 #include <sys/jail.h>
 #include <vm/vm_zone.h>
+#include <vm/pmap.h>
 
 #include <sys/thread2.h>
 #include <sys/socketvar2.h>
@@ -1257,6 +1258,24 @@ sooptcopyin(struct sockopt *sopt, void *buf, size_t len, size_t minlen)
 }
 
 int
+soopt_to_kbuf(struct sockopt *sopt, void *buf, size_t len, size_t minlen)
+{
+	void *td;
+	int err;
+
+	/* XXX: addr_is_kva_p() */
+	KKASSERT(kva_p(sopt->sopt_val));
+	KKASSERT(kva_p(buf));
+
+	td = sopt->sopt_td;
+	sopt->sopt_td = NULL;
+	err = sooptcopyin(sopt, buf, len, minlen);
+	sopt->sopt_td = td;
+	return err;
+}
+
+
+int
 sosetopt(struct socket *so, struct sockopt *sopt)
 {
 	int	error, optval;
@@ -1268,7 +1287,7 @@ sosetopt(struct socket *so, struct sockopt *sopt)
 	sopt->sopt_dir = SOPT_SET;
 	if (sopt->sopt_level != SOL_SOCKET) {
 		if (so->so_proto && so->so_proto->pr_ctloutput) {
-			return (so_pr_ctloutput(so, sopt));
+			return (so_pru_ctloutput(so, sopt));
 		}
 		error = ENOPROTOOPT;
 	} else {
@@ -1395,7 +1414,7 @@ sosetopt(struct socket *so, struct sockopt *sopt)
 			break;
 		}
 		if (error == 0 && so->so_proto && so->so_proto->pr_ctloutput) {
-			(void) so_pr_ctloutput(so, sopt);
+			(void) so_pru_ctloutput(so, sopt);
 		}
 	}
 bad:
@@ -1431,6 +1450,22 @@ sooptcopyout(struct sockopt *sopt, const void *buf, size_t len)
 	return error;
 }
 
+void
+soopt_from_kbuf(struct sockopt *sopt, const void *buf, size_t len)
+{
+	void *td;
+	int err;
+
+	KKASSERT(kva_p(sopt->sopt_val));
+	KKASSERT(kva_p(buf));
+
+	td = sopt->sopt_td;
+	sopt->sopt_td = NULL;
+	err = sooptcopyout(sopt, buf, len);
+	KKASSERT(err == 0);	/* can't fail */
+	sopt->sopt_td = td;
+}
+
 int
 sogetopt(struct socket *so, struct sockopt *sopt)
 {
@@ -1445,7 +1480,7 @@ sogetopt(struct socket *so, struct sockopt *sopt)
 	sopt->sopt_dir = SOPT_GET;
 	if (sopt->sopt_level != SOL_SOCKET) {
 		if (so->so_proto && so->so_proto->pr_ctloutput) {
-			return (so_pr_ctloutput(so, sopt));
+			return (so_pru_ctloutput(so, sopt));
 		} else
 			return (ENOPROTOOPT);
 	} else {
@@ -1589,6 +1624,22 @@ soopt_mcopyin(struct sockopt *sopt, struct mbuf *m)
 	return 0;
 }
 
+void
+soopt_to_mbuf(struct sockopt *sopt, struct mbuf *m)
+{
+	void *td;
+	int err;
+
+	KKASSERT(kva_p(sopt->sopt_val));
+	KKASSERT(kva_p(m));
+
+	td = sopt->sopt_td;
+	sopt->sopt_td = NULL;
+	err = soopt_mcopyin(sopt, m);
+	KKASSERT(err == 0);	/* can't fail */
+	sopt->sopt_td = td;
+}
+
 /* XXX; copyout mbuf chain data into soopt for (__FreeBSD__ < 3) routines. */
 int
 soopt_mcopyout(struct sockopt *sopt, struct mbuf *m)
@@ -1622,6 +1673,22 @@ soopt_mcopyout(struct sockopt *sopt, struct mbuf *m)
 	}
 	sopt->sopt_valsize = valsize;
 	return 0;
+}
+
+int
+soopt_from_mbuf(struct sockopt *sopt, struct mbuf *m)
+{
+	void *td;
+	int err;
+
+	KKASSERT(kva_p(sopt->sopt_val));
+	KKASSERT(kva_p(m));
+
+	td = sopt->sopt_td;
+	sopt->sopt_td = NULL;
+	err = soopt_mcopyout(sopt, m);
+	sopt->sopt_td = td;
+	return err;
 }
 
 void

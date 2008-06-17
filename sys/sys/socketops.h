@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/socketops.h,v 1.11 2007/04/22 01:13:17 dillon Exp $
+ * $DragonFly: src/sys/sys/socketops.h,v 1.12 2008/06/17 20:50:11 aggelos Exp $
  */
 
 #ifndef _SOCKETOPS_H_
@@ -94,7 +94,7 @@ int so_pru_sense (struct socket *so, struct stat *sb);
 int so_pru_shutdown (struct socket *so);
 int so_pru_sockaddr (struct socket *so, struct sockaddr **nam);
 int so_pru_sopoll (struct socket *so, int events, struct ucred *cred);
-int so_pr_ctloutput(struct socket *so, struct sockopt *sopt);
+int so_pru_ctloutput(struct socket *so, struct sockopt *sopt);
 
 #endif	/* _KERNEL */
 #endif	/* _SYS_SOCKETOPS_H_ */

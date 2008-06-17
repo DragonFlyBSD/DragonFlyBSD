@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.44 2008/06/09 11:24:24 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.45 2008/06/17 20:50:11 aggelos Exp $
  */
 
 #define _IP_VHL
@@ -1417,9 +1417,8 @@ ip_ctloutput(struct socket *so, struct sockopt *sopt)
 				break;
 			}
 			m->m_len = sopt->sopt_valsize;
-			error = sooptcopyin(sopt, mtod(m, char *), m->m_len,
-					    m->m_len);
-
+			error = soopt_to_kbuf(sopt, mtod(m, void *), m->m_len,
+					      m->m_len);
 			return (ip_pcbopts(sopt->sopt_name, &inp->inp_options,
 					   m));
 		}
@@ -1433,11 +1432,10 @@ ip_ctloutput(struct socket *so, struct sockopt *sopt)
 		case IP_RECVIF:
 		case IP_RECVTTL:
 		case IP_FAITH:
-			error = sooptcopyin(sopt, &optval, sizeof optval,
-					    sizeof optval);
+			error = soopt_to_kbuf(sopt, &optval, sizeof optval,
+					     sizeof optval);
 			if (error)
 				break;
-
 			switch (sopt->sopt_name) {
 			case IP_TOS:
 				inp->inp_ip_tos = optval;
@@ -1495,7 +1493,7 @@ ip_ctloutput(struct socket *so, struct sockopt *sopt)
 			break;
 
 		case IP_PORTRANGE:
-			error = sooptcopyin(sopt, &optval, sizeof optval,
+			error = soopt_to_kbuf(sopt, &optval, sizeof optval,
 					    sizeof optval);
 			if (error)
 				break;
@@ -1533,8 +1531,7 @@ ip_ctloutput(struct socket *so, struct sockopt *sopt)
 
 			if ((error = soopt_getm(sopt, &m)) != 0) /* XXX */
 				break;
-			if ((error = soopt_mcopyin(sopt, m)) != 0) /* XXX */
-				break;
+			soopt_to_mbuf(sopt, m);
 			priv = (sopt->sopt_td != NULL &&
 				suser(sopt->sopt_td) != 0) ? 0 : 1;
 			req = mtod(m, caddr_t);
@@ -1557,10 +1554,9 @@ ip_ctloutput(struct socket *so, struct sockopt *sopt)
 		case IP_OPTIONS:
 		case IP_RETOPTS:
 			if (inp->inp_options)
-				error = sooptcopyout(sopt,
-						     mtod(inp->inp_options,
-							  char *),
-						     inp->inp_options->m_len);
+				soopt_from_kbuf(sopt, mtod(inp->inp_options,
+							   char *),
+						inp->inp_options->m_len);
 			else
 				sopt->sopt_valsize = 0;
 			break;
@@ -1623,7 +1619,7 @@ ip_ctloutput(struct socket *so, struct sockopt *sopt)
 				optval = OPTBIT(INP_FAITH);
 				break;
 			}
-			error = sooptcopyout(sopt, &optval, sizeof optval);
+			soopt_from_kbuf(sopt, &optval, sizeof optval);
 			break;
 
 		case IP_MULTICAST_IF:
@@ -1648,7 +1644,7 @@ ip_ctloutput(struct socket *so, struct sockopt *sopt)
 			}
 			error = ipsec4_get_policy(so->so_pcb, req, len, &m);
 			if (error == 0)
-				error = soopt_mcopyout(sopt, m); /* XXX */
+				error = soopt_from_mbuf(sopt, m); /* XXX */
 			if (error == 0)
 				m_freem(m);
 			break;
@@ -1824,7 +1820,6 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		imo->imo_multicast_loop = IP_DEFAULT_MULTICAST_LOOP;
 		imo->imo_num_memberships = 0;
 	}
-
 	switch (sopt->sopt_name) {
 	/* store an index number for the vif you wanna use in the send */
 	case IP_MULTICAST_VIF:
@@ -1832,7 +1827,7 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 			error = EOPNOTSUPP;
 			break;
 		}
-		error = sooptcopyin(sopt, &i, sizeof i, sizeof i);
+		error = soopt_to_kbuf(sopt, &i, sizeof i, sizeof i);
 		if (error)
 			break;
 		if (!legal_vif_num(i) && (i != -1)) {
@@ -1846,9 +1841,10 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		/*
 		 * Select the interface for outgoing multicast packets.
 		 */
-		error = sooptcopyin(sopt, &addr, sizeof addr, sizeof addr);
+		error = soopt_to_kbuf(sopt, &addr, sizeof addr, sizeof addr);
 		if (error)
 			break;
+
 		/*
 		 * INADDR_ANY is used to remove a previous selection.
 		 * When no interface is selected, a default one is
@@ -1887,13 +1883,13 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		 */
 		if (sopt->sopt_valsize == 1) {
 			u_char ttl;
-			error = sooptcopyin(sopt, &ttl, 1, 1);
+			error = soopt_to_kbuf(sopt, &ttl, 1, 1);
 			if (error)
 				break;
 			imo->imo_multicast_ttl = ttl;
 		} else {
 			u_int ttl;
-			error = sooptcopyin(sopt, &ttl, sizeof ttl, sizeof ttl);
+			error = soopt_to_kbuf(sopt, &ttl, sizeof ttl, sizeof ttl);
 			if (error)
 				break;
 			if (ttl > 255)
@@ -1913,14 +1909,14 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		if (sopt->sopt_valsize == 1) {
 			u_char loop;
 
-			error = sooptcopyin(sopt, &loop, 1, 1);
+			error = soopt_to_kbuf(sopt, &loop, 1, 1);
 			if (error)
 				break;
 			imo->imo_multicast_loop = !!loop;
 		} else {
 			u_int loop;
 
-			error = sooptcopyin(sopt, &loop, sizeof loop,
+			error = soopt_to_kbuf(sopt, &loop, sizeof loop,
 					    sizeof loop);
 			if (error)
 				break;
@@ -1933,7 +1929,7 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		 * Add a multicast group membership.
 		 * Group must be a valid IP multicast address.
 		 */
-		error = sooptcopyin(sopt, &mreq, sizeof mreq, sizeof mreq);
+		error = soopt_to_kbuf(sopt, &mreq, sizeof mreq, sizeof mreq);
 		if (error)
 			break;
 
@@ -2014,7 +2010,7 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		 * Drop a multicast group membership.
 		 * Group must be a valid IP multicast address.
 		 */
-		error = sooptcopyin(sopt, &mreq, sizeof mreq, sizeof mreq);
+		error = soopt_to_kbuf(sopt, &mreq, sizeof mreq, sizeof mreq);
 		if (error)
 			break;
 
@@ -2105,7 +2101,7 @@ ip_getmoptions(struct sockopt *sopt, struct ip_moptions *imo)
 			optval = imo->imo_multicast_vif;
 		else
 			optval = -1;
-		error = sooptcopyout(sopt, &optval, sizeof optval);
+		soopt_from_kbuf(sopt, &optval, sizeof optval);
 		break;
 
 	case IP_MULTICAST_IF:
@@ -2119,7 +2115,7 @@ ip_getmoptions(struct sockopt *sopt, struct ip_moptions *imo)
 			addr.s_addr = (ia == NULL) ? INADDR_ANY
 				: IA_SIN(ia)->sin_addr.s_addr;
 		}
-		error = sooptcopyout(sopt, &addr, sizeof addr);
+		soopt_from_kbuf(sopt, &addr, sizeof addr);
 		break;
 
 	case IP_MULTICAST_TTL:
@@ -2128,9 +2124,9 @@ ip_getmoptions(struct sockopt *sopt, struct ip_moptions *imo)
 		else
 			optval = coptval = imo->imo_multicast_ttl;
 		if (sopt->sopt_valsize == 1)
-			error = sooptcopyout(sopt, &coptval, 1);
+			soopt_from_kbuf(sopt, &coptval, 1);
 		else
-			error = sooptcopyout(sopt, &optval, sizeof optval);
+			soopt_from_kbuf(sopt, &optval, sizeof optval);
 		break;
 
 	case IP_MULTICAST_LOOP:
@@ -2139,9 +2135,9 @@ ip_getmoptions(struct sockopt *sopt, struct ip_moptions *imo)
 		else
 			optval = coptval = imo->imo_multicast_loop;
 		if (sopt->sopt_valsize == 1)
-			error = sooptcopyout(sopt, &coptval, 1);
+			soopt_from_kbuf(sopt, &coptval, 1);
 		else
-			error = sooptcopyout(sopt, &optval, sizeof optval);
+			soopt_from_kbuf(sopt, &optval, sizeof optval);
 		break;
 
 	default:

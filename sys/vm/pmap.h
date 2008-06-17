@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/pmap.h,v 1.33.2.4 2002/03/06 22:44:24 silby Exp $
- * $DragonFly: src/sys/vm/pmap.h,v 1.27 2007/07/01 01:11:37 dillon Exp $
+ * $DragonFly: src/sys/vm/pmap.h,v 1.28 2008/06/17 20:50:12 aggelos Exp $
  */
 
 /*
@@ -119,6 +119,14 @@ extern vm_offset_t KvaSize;
 extern vm_offset_t virtual_start;
 extern vm_offset_t virtual_end;
 extern vm_paddr_t phys_avail[];	
+
+static inline int
+kva_p(const void *addr)
+{
+	/* XXX: mapped? */
+	return ((unsigned long)KvaStart <= (unsigned long)addr) &&
+		((unsigned long)addr < (unsigned long)KvaEnd);
+}
 
 void		 pmap_change_wiring (pmap_t, vm_offset_t, boolean_t);
 void		 pmap_clear_modify (struct vm_page *m);

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.42 2008/06/09 11:24:24 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.43 2008/06/17 20:50:11 aggelos Exp $
  */
 
 #define        DEB(x)
@@ -2601,17 +2601,20 @@ static int
 ipfw_ctl_add_rule(struct sockopt *sopt)
 {
 	struct ipfw_ioc_rule *ioc_rule;
-	uint32_t rule_buf[IPFW_RULE_SIZE_MAX];
 	size_t size;
 	int error;
-
-	ioc_rule = (struct ipfw_ioc_rule *)rule_buf;
-	error = sooptcopyin(sopt, ioc_rule, sizeof(rule_buf),
-			    sizeof(*ioc_rule));
-	if (error)
-		return error;
-
+	
 	size = sopt->sopt_valsize;
+	if ((size > (sizeof(uint32_t) * IPFW_RULE_SIZE_MAX)) ||
+	    (size < sizeof(*ioc_rule))) {
+		return EINVAL;
+	}
+	if (size != (sizeof(uint32_t) * IPFW_RULE_SIZE_MAX)) {
+		sopt->sopt_val = krealloc(sopt->sopt_val, sizeof(uint32_t) *
+					  IPFW_RULE_SIZE_MAX, M_TEMP, M_WAITOK);
+	}
+	ioc_rule = sopt->sopt_val;
+
 	error = ipfw_ctl_check_rule(ioc_rule, size);
 	if (error)
 		return error;
@@ -2620,9 +2623,10 @@ ipfw_ctl_add_rule(struct sockopt *sopt)
 	if (error)
 		return error;
 
-	if (sopt->sopt_dir == SOPT_GET)
-		error = sooptcopyout(sopt, ioc_rule, IOC_RULESIZE(ioc_rule));
-	return error;
+	if (sopt->sopt_dir == SOPT_GET) {
+		sopt->sopt_valsize = IOC_RULESIZE(ioc_rule);
+	}
+	return 0;
 }
 
 static void *
@@ -2679,9 +2683,8 @@ static int
 ipfw_ctl_get_rules(struct sockopt *sopt)
 {
 	struct ip_fw *rule;
-	void *buf, *bp;
+	void *bp;
 	size_t size;
-	int error;
 
 	/*
 	 * pass up a copy of the current rules. Static rules
@@ -2694,12 +2697,13 @@ ipfw_ctl_get_rules(struct sockopt *sopt)
 	if (ipfw_dyn_v)		/* add size of dyn.rules */
 		size += (dyn_count * sizeof(struct ipfw_ioc_state));
 
-	/*
-	 * XXX todo: if the user passes a short length just to know
-	 * how much room is needed, do not bother filling up the
-	 * buffer, just jump to the sooptcopyout.
-	 */
-	bp = buf = kmalloc(size, M_TEMP, M_WAITOK | M_ZERO);
+	if (sopt->sopt_valsize < size) {
+		/* short length, no need to return incomplete rules */
+		/* XXX: if superuser, no need to zero buffer */
+		bzero(sopt->sopt_val, sopt->sopt_valsize); 
+		return 0;
+	}
+	bp = sopt->sopt_val;
 
 	for (rule = layer3_chain; rule; rule = rule->next)
 		bp = ipfw_copy_rule(rule, bp);
@@ -2720,9 +2724,8 @@ ipfw_ctl_get_rules(struct sockopt *sopt)
 
 	crit_exit();
 
-	error = sooptcopyout(sopt, buf, size);
-	kfree(buf, M_TEMP);
-	return error;
+	sopt->sopt_valsize = size;
+	return 0;
 }
 
 /**
@@ -2732,7 +2735,7 @@ static int
 ipfw_ctl(struct sockopt *sopt)
 {
 	int error, rulenum;
-	uint32_t masks[2];
+	uint32_t *masks;
 	size_t size;
 
 	/*
@@ -2788,18 +2791,14 @@ ipfw_ctl(struct sockopt *sopt)
 		 *	first uint32_t contains sets to be disabled,
 		 *	second uint32_t contains sets to be enabled.
 		 */
-		error = sooptcopyin(sopt, masks,
-			sizeof(masks), sizeof(masks[0]));
-		if (error)
-			break;
-
+		masks = sopt->sopt_val;
 		size = sopt->sopt_valsize;
-		if (size == sizeof(masks[0])) {
+		if (size == sizeof(*masks)) {
 			/*
 			 * Delete or reassign static rule
 			 */
 			error = del_entry(&layer3_chain, masks[0]);
-		} else if (size == sizeof(masks)) {
+		} else if (size == (2 * sizeof(*masks))) {
 			/*
 			 * Set enable/disable
 			 */
@@ -2820,7 +2819,7 @@ ipfw_ctl(struct sockopt *sopt)
 		rulenum=0;
 
 		if (sopt->sopt_val != 0) {
-		    error = sooptcopyin(sopt, &rulenum,
+		    error = soopt_to_kbuf(sopt, &rulenum,
 			    sizeof(int), sizeof(int));
 		    if (error)
 			break;

@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.32 2008/05/27 17:31:12 dillon Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.33 2008/06/17 20:50:11 aggelos Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -380,12 +380,17 @@ int	solisten (struct socket *so, int backlog, struct thread *td);
 struct socket *sonewconn (struct socket *head, int connstatus);
 int	sooptcopyin (struct sockopt *sopt, void *buf, size_t len,
 			 size_t minlen);
+int	soopt_to_kbuf (struct sockopt *sopt, void *buf, size_t len,
+			 size_t minlen);
 int	sooptcopyout (struct sockopt *sopt, const void *buf, size_t len);
+void	soopt_from_kbuf (struct sockopt *sopt, const void *buf, size_t len);
 
 /* XXX; prepare mbuf for (__FreeBSD__ < 3) routines. */
 int	soopt_getm (struct sockopt *sopt, struct mbuf **mp);
 int	soopt_mcopyin (struct sockopt *sopt, struct mbuf *m);
+void	soopt_to_mbuf (struct sockopt *sopt, struct mbuf *m);
 int	soopt_mcopyout (struct sockopt *sopt, struct mbuf *m);
+int	soopt_from_mbuf (struct sockopt *sopt, struct mbuf *m);
 
 int	sopoll (struct socket *so, int events, struct ucred *cred,
 		    struct thread *td);

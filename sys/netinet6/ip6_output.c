@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.34 2008/06/05 18:06:32 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.35 2008/06/17 20:50:11 aggelos Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -1297,9 +1297,7 @@ ip6_ctloutput(struct socket *so, struct sockopt *sopt)
 				error = soopt_getm(sopt, &m); /* XXX */
 				if (error != 0)
 					break;
-				error = soopt_mcopyin(sopt, m); /* XXX */
-				if (error != 0)
-					break;
+				soopt_to_mbuf(sopt, m); /* XXX */
 				error = ip6_pcbopts(&in6p->in6p_outputopts,
 						    m, so, sopt);
 				m_freem(m); /* XXX */
@@ -1328,7 +1326,7 @@ ip6_ctloutput(struct socket *so, struct sockopt *sopt)
 					error = EINVAL;
 					break;
 				}
-				error = sooptcopyin(sopt, &optval,
+				error = soopt_to_kbuf(sopt, &optval,
 					sizeof optval, sizeof optval);
 				if (error)
 					break;
@@ -1394,7 +1392,7 @@ do { \
 					error = EINVAL;
 					break;
 				}
-				error = sooptcopyin(sopt, &optval,
+				error = soopt_to_kbuf(sopt, &optval,
 					sizeof optval, sizeof optval);
 				if (error)
 					break;
@@ -1444,7 +1442,7 @@ do { \
 					break;
 				}
 				m->m_len = sopt->sopt_valsize;
-				error = sooptcopyin(sopt, mtod(m, char *),
+				error = soopt_to_kbuf(sopt, mtod(m, char *),
 						    m->m_len, m->m_len);
 				error =	ip6_setmoptions(sopt->sopt_name,
 							&in6p->in6p_moptions,
@@ -1454,7 +1452,7 @@ do { \
 				break;
 
 			case IPV6_PORTRANGE:
-				error = sooptcopyin(sopt, &optval,
+				error = soopt_to_kbuf(sopt, &optval,
 				    sizeof optval, sizeof optval);
 				if (error)
 					break;
@@ -1490,8 +1488,7 @@ do { \
 
 				if ((error = soopt_getm(sopt, &m)) != 0) /* XXX */
 					break;
-				if ((error = soopt_mcopyin(sopt, m)) != 0) /* XXX */
-					break;
+				soopt_to_mbuf(sopt, m));	/* XXX */
 				if (m) {
 					req = mtod(m, caddr_t);
 					len = m->m_len;
@@ -1517,8 +1514,7 @@ do { \
 				if ((error = soopt_getm(sopt, &m)) != 0)
 					break;
 				/* XXX */
-				if ((error = soopt_mcopyin(sopt, m)) != 0)
-					break;
+				soopt_to_mbuf(sopt, m);
 				error = (*ip6_fw_ctl_ptr)(optname, mp);
 				m = *mp;
 			    }
@@ -1538,7 +1534,7 @@ do { \
 					struct mbuf *m;
 					m = m_copym(in6p->in6p_options,
 					    0, M_COPYALL, MB_WAIT);
-					error = soopt_mcopyout(sopt, m);
+					error = soopt_from_mbuf(sopt, m);
 					if (error == 0)
 						m_freem(m);
 				} else
@@ -1582,7 +1578,7 @@ do { \
 					break;
 				    }
 				}
-				error = sooptcopyout(sopt, &optval,
+				soopt_from_kbuf(sopt, &optval,
 					sizeof optval);
 				break;
 
@@ -1616,7 +1612,7 @@ do { \
 					optval = OPTBIT(IN6P_DSTOPTS|IN6P_RTHDRDSTOPTS);
 					break;
 				}
-				error = sooptcopyout(sopt, &optval,
+				soopt_from_kbuf(sopt, &optval,
 					sizeof optval);
 				break;
 
@@ -1630,7 +1626,7 @@ do { \
 				error = ip6_getmoptions(sopt->sopt_name,
 						in6p->in6p_moptions, &m);
 				if (error == 0)
-					error = sooptcopyout(sopt,
+					soopt_from_kbuf(sopt,
 						mtod(m, char *), m->m_len);
 				m_freem(m);
 			    }
@@ -1647,16 +1643,14 @@ do { \
 				error = soopt_getm(sopt, &m); /* XXX */
 				if (error != 0)
 					break;
-				error = soopt_mcopyin(sopt, m); /* XXX */
-				if (error != 0)
-					break;
+				soopt_to_mbuf(sopt, m); /* XXX */
 				if (m) {
 					req = mtod(m, caddr_t);
 					len = m->m_len;
 				}
 				error = ipsec6_get_policy(in6p, req, len, mp);
 				if (error == 0)
-					error = soopt_mcopyout(sopt, m); /*XXX*/
+					error = soopt_from_mbuf(sopt, m); /*XXX*/
 				if (error == 0 && m != NULL)
 					m_freem(m);
 				break;
@@ -1674,7 +1668,7 @@ do { \
 				}
 				error = (*ip6_fw_ctl_ptr)(optname, mp);
 				if (error == 0)
-					error = soopt_mcopyout(sopt, m); /* XXX */
+					error = soopt_from_mbuf(sopt, m); /* XXX */
 				if (error == 0 && m != NULL)
 					m_freem(m);
 			  }

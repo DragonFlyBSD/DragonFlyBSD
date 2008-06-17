@@ -18,7 +18,7 @@
  * bandwidth metering and signaling
  *
  * $FreeBSD: src/sys/netinet/ip_mroute.c,v 1.56.2.10 2003/08/24 21:37:34 hsu Exp $
- * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.22 2007/04/22 01:13:13 dillon Exp $
+ * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.23 2008/06/17 20:50:11 aggelos Exp $
  */
 
 #include "opt_mrouting.h"
@@ -373,7 +373,7 @@ X_ip_mrouter_set(struct socket *so, struct sockopt *sopt)
     error = 0;
     switch (sopt->sopt_name) {
     case MRT_INIT:
-	error = sooptcopyin(sopt, &optval, sizeof optval, sizeof optval);
+	error = soopt_to_kbuf(sopt, &optval, sizeof optval, sizeof optval);
 	if (error)
 	    break;
 	error = ip_mrouter_init(so, optval);
@@ -384,14 +384,14 @@ X_ip_mrouter_set(struct socket *so, struct sockopt *sopt)
 	break;
 
     case MRT_ADD_VIF:
-	error = sooptcopyin(sopt, &vifc, sizeof vifc, sizeof vifc);
+	error = soopt_to_kbuf(sopt, &vifc, sizeof vifc, sizeof vifc);
 	if (error)
 	    break;
 	error = add_vif(&vifc);
 	break;
 
     case MRT_DEL_VIF:
-	error = sooptcopyin(sopt, &vifi, sizeof vifi, sizeof vifi);
+	error = soopt_to_kbuf(sopt, &vifi, sizeof vifi, sizeof vifi);
 	if (error)
 	    break;
 	error = del_vif(vifi);
@@ -403,11 +403,11 @@ X_ip_mrouter_set(struct socket *so, struct sockopt *sopt)
 	 * select data size depending on API version.
 	 */
 	if (sopt->sopt_name == MRT_ADD_MFC &&
-		mrt_api_config & MRT_API_FLAGS_ALL) {
-	    error = sooptcopyin(sopt, &mfc, sizeof(struct mfcctl2),
+	        mrt_api_config & MRT_API_FLAGS_ALL) {
+	    error = soopt_to_kbuf(sopt, &mfc, sizeof(struct mfcctl2),
 				sizeof(struct mfcctl2));
 	} else {
-	    error = sooptcopyin(sopt, &mfc, sizeof(struct mfcctl),
+	    error = soopt_to_kbuf(sopt, &mfc, sizeof(struct mfcctl),
 				sizeof(struct mfcctl));
 	    bzero((caddr_t)&mfc + sizeof(struct mfcctl),
 			sizeof(mfc) - sizeof(struct mfcctl));
@@ -421,24 +421,23 @@ X_ip_mrouter_set(struct socket *so, struct sockopt *sopt)
 	break;
 
     case MRT_ASSERT:
-	error = sooptcopyin(sopt, &optval, sizeof optval, sizeof optval);
+	error = soopt_to_kbuf(sopt, &optval, sizeof optval, sizeof optval);
 	if (error)
 	    break;
 	set_assert(optval);
 	break;
 
     case MRT_API_CONFIG:
-	error = sooptcopyin(sopt, &i, sizeof i, sizeof i);
+	error = soopt_to_kbuf(sopt, &i, sizeof i, sizeof i);
 	if (!error)
 	    error = set_api_config(&i);
 	if (!error)
-	    error = sooptcopyout(sopt, &i, sizeof i);
+	    soopt_from_kbuf(sopt, &i, sizeof i);
 	break;
 
     case MRT_ADD_BW_UPCALL:
     case MRT_DEL_BW_UPCALL:
-	error = sooptcopyin(sopt, &bw_upcall, sizeof bw_upcall,
-				sizeof bw_upcall);
+	error = soopt_to_kbuf(sopt, &bw_upcall, sizeof bw_upcall, sizeof bw_upcall);
 	if (error)
 	    break;
 	if (sopt->sopt_name == MRT_ADD_BW_UPCALL)
@@ -463,21 +462,22 @@ X_ip_mrouter_get(struct socket *so, struct sockopt *sopt)
     int error;
     static int version = 0x0305; /* !!! why is this here? XXX */
 
+    error = 0;
     switch (sopt->sopt_name) {
     case MRT_VERSION:
-	error = sooptcopyout(sopt, &version, sizeof version);
+	soopt_from_kbuf(sopt, &version, sizeof version);
 	break;
 
     case MRT_ASSERT:
-	error = sooptcopyout(sopt, &pim_assert, sizeof pim_assert);
+	soopt_from_kbuf(sopt, &pim_assert, sizeof pim_assert);
 	break;
 
     case MRT_API_SUPPORT:
-	error = sooptcopyout(sopt, &mrt_api_support, sizeof mrt_api_support);
+	soopt_from_kbuf(sopt, &mrt_api_support, sizeof mrt_api_support);
 	break;
 
     case MRT_API_CONFIG:
-	error = sooptcopyout(sopt, &mrt_api_config, sizeof mrt_api_config);
+	soopt_from_kbuf(sopt, &mrt_api_config, sizeof mrt_api_config);
 	break;
 
     default:
@@ -2028,7 +2028,7 @@ X_ip_rsvp_vif(struct socket *so, struct sockopt *sopt)
     if (so->so_type != SOCK_RAW || so->so_proto->pr_protocol != IPPROTO_RSVP)
 	return EOPNOTSUPP;
 
-    error = sooptcopyin(sopt, &vifi, sizeof vifi, sizeof vifi);
+    error = soopt_to_kbuf(sopt, &vifi, sizeof vifi, sizeof vifi);
     if (error)
 	return error;
 

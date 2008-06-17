@@ -65,7 +65,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.48 2008/06/05 18:06:32 swildner Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.49 2008/06/17 20:50:11 aggelos Exp $
  */
 
 #include "opt_ipsec.h"
@@ -1156,14 +1156,13 @@ tcp_ctloutput(struct socket *so, struct sockopt *sopt)
 
 	switch (sopt->sopt_dir) {
 	case SOPT_SET:
+		error = soopt_to_kbuf(sopt, &optval, sizeof optval,
+				      sizeof optval);
+		if (error)
+			break;
 		switch (sopt->sopt_name) {
 		case TCP_NODELAY:
 		case TCP_NOOPT:
-			error = sooptcopyin(sopt, &optval, sizeof optval,
-					    sizeof optval);
-			if (error)
-				break;
-
 			switch (sopt->sopt_name) {
 			case TCP_NODELAY:
 				opt = TF_NODELAY;
@@ -1183,11 +1182,6 @@ tcp_ctloutput(struct socket *so, struct sockopt *sopt)
 			break;
 
 		case TCP_NOPUSH:
-			error = sooptcopyin(sopt, &optval, sizeof optval,
-					    sizeof optval);
-			if (error)
-				break;
-
 			if (optval)
 				tp->t_flags |= TF_NOPUSH;
 			else {
@@ -1197,11 +1191,6 @@ tcp_ctloutput(struct socket *so, struct sockopt *sopt)
 			break;
 
 		case TCP_MAXSEG:
-			error = sooptcopyin(sopt, &optval, sizeof optval,
-					    sizeof optval);
-			if (error)
-				break;
-
 			if (optval > 0 && optval <= tp->t_maxseg)
 				tp->t_maxseg = optval;
 			else
@@ -1233,7 +1222,7 @@ tcp_ctloutput(struct socket *so, struct sockopt *sopt)
 			break;
 		}
 		if (error == 0)
-			error = sooptcopyout(sopt, &optval, sizeof optval);
+			soopt_from_kbuf(sopt, &optval, sizeof optval);
 		break;
 	}
 	crit_exit();

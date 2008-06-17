@@ -32,7 +32,7 @@
  *
  *	@(#)protosw.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/protosw.h,v 1.28.2.2 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/protosw.h,v 1.21 2008/05/27 01:10:47 dillon Exp $
+ * $DragonFly: src/sys/sys/protosw.h,v 1.22 2008/06/17 20:50:11 aggelos Exp $
  */
 
 #ifndef _SYS_PROTOSW_H_
@@ -167,7 +167,8 @@ struct protosw {
 /* end for protocol's internal use */
 #define PRU_SEND_EOF		23	/* send and close */
 #define	PRU_PRED		24
-#define PRU_NREQ		25
+#define PRU_CTLOUTPUT		25	/* get/set opts */
+#define PRU_NREQ		26
 
 #ifdef PRUREQUESTS
 char *prurequests[] = {
@@ -251,6 +252,7 @@ struct pr_usrreqs {
 				      struct mbuf **controlp, int *flagsp);
 	int	(*pru_sopoll) (struct socket *so, int events,
 				     struct ucred *cred, struct thread *td);
+	int	(*pru_ctloutput) (struct socket *so, struct sockopt *sopt);
 };
 
 typedef int (*pru_abort_fn_t) (struct socket *so);
@@ -290,6 +292,7 @@ typedef int (*pru_soreceive_fn_t) (struct socket *so, struct sockaddr **paddr,
 typedef int (*pru_sopoll_fn_t) (struct socket *so, int events,
 					struct ucred *cred,
 					struct thread *td);
+typedef	int	(*pru_ctloutput_fn_t) (struct socket *so, struct sockopt *sopt);
 
 int	pru_accept_notsupp (struct socket *so, struct sockaddr **nam);
 int	pru_connect_notsupp (struct socket *so, struct sockaddr *nam,
