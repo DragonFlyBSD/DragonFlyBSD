@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.30 2008/06/14 01:44:13 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.31 2008/06/17 04:03:37 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -53,7 +53,6 @@ main(int ac, char **av)
 	int i;
 	const char *label = NULL;
 	struct volume_info *vol;
-	hammer_off_t vol0_zone_limit;
 
 	/*
 	 * Sanity check basic filesystem structures.  No cookies for us
@@ -168,19 +167,6 @@ main(int ac, char **av)
 	 * having to fallback to an extremely inefficient algorithm.
 	 */
 	vol = get_volume(RootVolNo);
-	vol0_zone_limit = vol->ondisk->vol0_zone_limit;
-	printf("Initializing B-Tree blockmap\n");
-	presize_blockmap(&vol->ondisk->vol0_blockmap[HAMMER_ZONE_BTREE_INDEX],
-			 HAMMER_ZONE_BTREE, vol0_zone_limit);
-	printf("Initializing Meta-data blockmap\n");
-	presize_blockmap(&vol->ondisk->vol0_blockmap[HAMMER_ZONE_META_INDEX],
-			 HAMMER_ZONE_META, vol0_zone_limit);
-	printf("Initializing Large-Data blockmap\n");
-	presize_blockmap(&vol->ondisk->vol0_blockmap[HAMMER_ZONE_LARGE_DATA_INDEX],
-			 HAMMER_ZONE_LARGE_DATA, vol0_zone_limit);
-	printf("Initializing Small-Data blockmap\n");
-	presize_blockmap(&vol->ondisk->vol0_blockmap[HAMMER_ZONE_SMALL_DATA_INDEX],
-			 HAMMER_ZONE_SMALL_DATA, vol0_zone_limit);
 	vol->ondisk->vol0_stat_bigblocks = vol->ondisk->vol0_stat_freebigblocks;
 	vol->cache.modified = 1;
 
@@ -190,8 +176,6 @@ main(int ac, char **av)
 	printf("boot-area-size:      %s\n", sizetostr(BootAreaSize));
 	printf("memory-log-size:     %s\n", sizetostr(MemAreaSize));
 	printf("undo-buffer-size:    %s\n", sizetostr(UndoBufferSize));
-
-	printf("zone-limit:	     %s\n", sizetostr(vol0_zone_limit));
 	printf("total-pre-allocated: %s\n",
 		sizetostr(vol->vol_free_off & HAMMER_OFF_SHORT_MASK));
 	printf("\n");
@@ -370,11 +354,12 @@ check_volume(struct volume_info *vol)
 static
 void
 format_volume(struct volume_info *vol, int nvols, const char *label,
-	      off_t total_size)
+	      off_t total_size __unused)
 {
 	struct volume_info *root_vol;
 	struct hammer_volume_ondisk *ondisk;
 	int64_t freeblks;
+	int i;
 
 	/*
 	 * Initialize basic information in the on-disk volume structure.
@@ -419,32 +404,10 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 	 * Format the root volume.
 	 */
 	if (vol->vol_no == RootVolNo) {
-		hammer_off_t zone_limit;
-
 		/*
 		 * Starting TID
 		 */
 		ondisk->vol0_next_tid = createtid();
-
-		/*
-		 * Set the default zone limit to 4x the size of the
-		 * filesystem, allowing the filesystem to survive a
-		 * worse-case of 75% fragmentation per zone.  The limit
-		 * can be expanded at any time if the filesystem is
-		 * made larger.
-		 *
-		 * We do not want to create a huge zone limit for tiny
-		 * filesystems because the blockmap could wind up getting
-		 * fragmented and eating a large chunk of the disk space.
-		 */
-		zone_limit = (hammer_off_t)total_size * 4;
-		zone_limit = (zone_limit + HAMMER_BLOCKMAP_LAYER2_MASK) &
-			     ~HAMMER_BLOCKMAP_LAYER2_MASK;
-		if (zone_limit < (hammer_off_t)total_size ||
-		    zone_limit > HAMMER_ZONE_LIMIT) {
-			zone_limit = HAMMER_ZONE_LIMIT;
-		}
-		ondisk->vol0_zone_limit = zone_limit;
 
 		format_freemap(vol,
 			&ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX]);
@@ -452,19 +415,10 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 		freeblks = initialize_freemap(vol);
 		ondisk->vol0_stat_freebigblocks = freeblks;
 
-		format_blockmap(
-			&ondisk->vol0_blockmap[HAMMER_ZONE_BTREE_INDEX],
-			HAMMER_ZONE_BTREE);
-		format_blockmap(
-			&ondisk->vol0_blockmap[HAMMER_ZONE_META_INDEX],
-			HAMMER_ZONE_META);
-		format_blockmap(
-			&ondisk->vol0_blockmap[HAMMER_ZONE_LARGE_DATA_INDEX],
-			HAMMER_ZONE_LARGE_DATA);
-		format_blockmap(
-			&ondisk->vol0_blockmap[HAMMER_ZONE_SMALL_DATA_INDEX],
-			HAMMER_ZONE_SMALL_DATA);
-
+		for (i = 8; i < HAMMER_MAX_ZONES; ++i) {
+			format_blockmap(&ondisk->vol0_blockmap[i],
+					HAMMER_ZONE_ENCODE(i, 0));
+		}
 		format_undomap(ondisk);
 
 		ondisk->vol0_btree_root = format_root();

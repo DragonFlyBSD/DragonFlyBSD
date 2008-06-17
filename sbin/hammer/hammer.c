@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.21 2008/06/14 01:44:11 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.22 2008/06/17 04:03:38 dillon Exp $
  */
 
 #include "hammer.h"
@@ -172,6 +172,14 @@ main(int ac, char **av)
 	}
 	if (strcmp(av[0], "softprune") == 0) {
 		hammer_cmd_softprune(av + 1, ac - 1);
+		exit(0);
+	}
+	if (strcmp(av[0], "bstats") == 0) {
+		hammer_cmd_bstats(av + 1, ac - 1);
+		exit(0);
+	}
+	if (strcmp(av[0], "iostats") == 0) {
+		hammer_cmd_iostats(av + 1, ac - 1);
 		exit(0);
 	}
 
@@ -327,6 +335,8 @@ usage(int exit_code)
 		"hammer [-t timeout] [-c cyclefile] ....\n"
 		"hammer stamp[64] <time>\n"
 		"hammer softprune <softlink-dir>\n"
+		"hammer bstats <interval>\n"
+		"hammer iostats <interval>\n"
 		"hammer prune <filesystem> [using <configfile>]\n"
 		"hammer prune <filesystem> from <modulo_time> to "
 				"<modulo_time> every <modulo_time>\n"

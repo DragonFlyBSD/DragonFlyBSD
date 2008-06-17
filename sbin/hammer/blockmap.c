@@ -31,18 +31,19 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/blockmap.c,v 1.1 2008/02/23 03:01:06 dillon Exp $
+ * $DragonFly: src/sbin/hammer/blockmap.c,v 1.2 2008/06/17 04:03:38 dillon Exp $
  */
 
 #include "hammer.h"
 
 hammer_off_t
-blockmap_lookup(hammer_off_t bmap_off,
+blockmap_lookup(hammer_off_t zone_offset,
 		struct hammer_blockmap_layer1 *save_layer1,
 		struct hammer_blockmap_layer2 *save_layer2)
 {
 	struct volume_info *root_volume;
-	hammer_blockmap_t rootmap;
+	hammer_blockmap_t blockmap;
+	hammer_blockmap_t freemap;
 	struct hammer_blockmap_layer1 *layer1;
 	struct hammer_blockmap_layer2 *layer2;
 	struct buffer_info *buffer = NULL;
@@ -50,31 +51,44 @@ blockmap_lookup(hammer_off_t bmap_off,
 	hammer_off_t layer2_offset;
 	hammer_off_t result_offset;
 	int zone;
+	int i;
 
-	zone = HAMMER_ZONE_DECODE(bmap_off);
-	assert(zone >= HAMMER_ZONE_BTREE_INDEX && zone < HAMMER_MAX_ZONES);
+	zone = HAMMER_ZONE_DECODE(zone_offset);
+
+	assert(zone > HAMMER_ZONE_RAW_VOLUME_INDEX);
+	assert(zone < HAMMER_MAX_ZONES);
 	assert(RootVolNo >= 0);
 	root_volume = get_volume(RootVolNo);
-	rootmap = &root_volume->ondisk->vol0_blockmap[zone];
-	assert(rootmap->phys_offset != 0);
-	assert(HAMMER_ZONE_DECODE(rootmap->phys_offset) ==
-		 HAMMER_ZONE_RAW_BUFFER_INDEX);
-	assert(HAMMER_ZONE_DECODE(rootmap->alloc_offset) == zone);
+	blockmap = &root_volume->ondisk->vol0_blockmap[zone];
 
-	if (bmap_off >= rootmap->alloc_offset) {
-		panic("hammer_blockmap_lookup: %016llx beyond EOF %016llx",
-		      bmap_off, rootmap->alloc_offset);
-		result_offset = 0;
-		goto done;
+	if (zone == HAMMER_ZONE_RAW_BUFFER_INDEX) {
+		result_offset = zone_offset;
+	} else if (zone == HAMMER_ZONE_UNDO_INDEX) {
+		i = (zone_offset & HAMMER_OFF_SHORT_MASK) /
+		    HAMMER_LARGEBLOCK_SIZE;
+		assert(zone_offset < blockmap->alloc_offset);
+		result_offset = root_volume->ondisk->vol0_undo_array[i] +
+				(zone_offset & HAMMER_LARGEBLOCK_MASK64);
+	} else {
+		result_offset = (zone_offset & ~HAMMER_OFF_ZONE_MASK) |
+				HAMMER_ZONE_RAW_BUFFER;
 	}
 
+	assert(HAMMER_ZONE_DECODE(blockmap->alloc_offset) == zone);
+
+	/*
+	 * Validate that the big-block is assigned to the zone.  Also
+	 * assign save_layer{1,2}.
+	 */
+
+	freemap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 	/*
 	 * Dive layer 1.
 	 */
-	layer1_offset = rootmap->phys_offset +
-			HAMMER_BLOCKMAP_LAYER1_OFFSET(bmap_off);
+	layer1_offset = freemap->phys_offset +
+			HAMMER_BLOCKMAP_LAYER1_OFFSET(zone_offset);
 	layer1 = get_buffer_data(layer1_offset, &buffer, 0);
-	assert(layer1->phys_offset);
+	assert(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
 	if (save_layer1)
 		*save_layer1 = *layer1;
 
@@ -82,16 +96,13 @@ blockmap_lookup(hammer_off_t bmap_off,
 	 * Dive layer 2, each entry represents a large-block.
 	 */
 	layer2_offset = layer1->phys_offset +
-			HAMMER_BLOCKMAP_LAYER2_OFFSET(bmap_off);
+			HAMMER_BLOCKMAP_LAYER2_OFFSET(zone_offset);
 	layer2 = get_buffer_data(layer2_offset, &buffer, 0);
 	if (save_layer2)
 		*save_layer2 = *layer2;
 
-	assert(layer2->u.phys_offset);
+	assert(layer2->zone == zone);
 
-	result_offset = layer2->u.phys_offset +
-			(bmap_off & HAMMER_LARGEBLOCK_MASK64);
-done:
 	if (buffer)
 		rel_buffer(buffer);
 	rel_volume(root_volume);

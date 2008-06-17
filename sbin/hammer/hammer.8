@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.20 2008/06/14 01:44:11 dillon Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.21 2008/06/17 04:03:38 dillon Exp $
 .Dd December 31, 2007
 .Dt HAMMER 8
 .Os
@@ -118,6 +118,12 @@ keyword is specified the filesystem will be soft-synced, meaning that a
 crash might still undo the state of the filesystem as of the transaction
 id returned but any new modifications will occur after the returned
 transaction id as expected.
+.It Ar bstats Op interval
+Output HAMMER B-Tree statistics until interrupted.  The default interval
+is one second.
+.It Ar iostats Op interval
+Output HAMMER I/O statistics until interrupted.  The default interval
+is one second.
 .It Ar date
 Output a date equivalent given a transaction id or time stamp.
 .It Ar history Ar path
