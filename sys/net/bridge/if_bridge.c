@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.33 2008/06/16 14:48:01 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.34 2008/06/17 11:49:11 sephe Exp $
  */
 
 /*
@@ -652,13 +652,14 @@ bridge_mutecaps(struct bridge_iflist *bif, int mute)
 		bif->bif_mutecap = ifr.ifr_reqcap & BRIDGE_IFCAPS_MASK;
 		if (bif->bif_mutecap != 0)
 			ifr.ifr_reqcap &= ~BRIDGE_IFCAPS_MASK;
-	} else
+	} else {
 		/* restore muted capabilities */
 		ifr.ifr_reqcap |= bif->bif_mutecap;
+	}
 
 	if (bif->bif_mutecap != 0) {
 		lwkt_serialize_enter(ifp->if_serializer);
-		error = (*ifp->if_ioctl)(ifp, SIOCSIFCAP, (caddr_t)&ifr, NULL);
+		error = ifp->if_ioctl(ifp, SIOCSIFCAP, (caddr_t)&ifr, NULL);
 		lwkt_serialize_exit(ifp->if_serializer);
 	}
 }
@@ -765,8 +766,11 @@ bridge_ioctl_add(struct bridge_softc *sc, void *arg)
 {
 	struct ifbreq *req = arg;
 	struct bridge_iflist *bif = NULL;
-	struct ifnet *ifs;
+	struct ifnet *ifs, *bifp;
 	int error = 0;
+
+	bifp = sc->sc_ifp;
+	ASSERT_SERIALIZED(bifp->if_serializer);
 
 	ifs = ifunit(req->ifbr_ifsname);
 	if (ifs == NULL)
@@ -779,11 +783,10 @@ bridge_ioctl_add(struct bridge_softc *sc, void *arg)
 
 	/* Allow the first Ethernet member to define the MTU */
 	if (ifs->if_type != IFT_GIF) {
-		if (LIST_EMPTY(&sc->sc_iflist))
-			sc->sc_ifp->if_mtu = ifs->if_mtu;
-		else if (sc->sc_ifp->if_mtu != ifs->if_mtu) {
-			if_printf(sc->sc_ifp, "invalid MTU for %s\n",
-			    ifs->if_xname);
+		if (LIST_EMPTY(&sc->sc_iflist)) {
+			bifp->if_mtu = ifs->if_mtu;
+		} else if (bifp->if_mtu != ifs->if_mtu) {
+			if_printf(bifp, "invalid MTU for %s\n", ifs->if_xname);
 			return (EINVAL);
 		}
 	}
@@ -804,13 +807,23 @@ bridge_ioctl_add(struct bridge_softc *sc, void *arg)
 	case IFT_ETHER:
 	case IFT_L2VLAN:
 		/*
+		 * Release bridge interface's serializer to
+		 * avoid possible dead lock.
+		 */
+		lwkt_serialize_exit(bifp->if_serializer);
+
+		/*
 		 * Place the interface into promiscuous mode.
 		 */
 		error = ifpromisc(ifs, 1);
-		if (error)
+		if (error) {
+			lwkt_serialize_enter(bifp->if_serializer);
 			goto out;
+		}
 
 		bridge_mutecaps(bif, 1);
+
+		lwkt_serialize_enter(bifp->if_serializer);
 		break;
 
 	case IFT_GIF: /* :^) */
@@ -821,15 +834,18 @@ bridge_ioctl_add(struct bridge_softc *sc, void *arg)
 		goto out;
 	}
 
-	ifs->if_bridge = sc;
-
 	LIST_INSERT_HEAD(&sc->sc_iflist, bif, bif_next);
 
-	if (sc->sc_ifp->if_flags & IFF_RUNNING)
+	if (bifp->if_flags & IFF_RUNNING)
 		bstp_initialization(sc);
 	else
 		bstp_stop(sc);
 
+	/*
+	 * Everything has been setup, so let the member interface
+	 * deliver packets to this bridge on its input/output path.
+	 */
+	ifs->if_bridge = sc;
 out:
 	if (error) {
 		if (bif != NULL)
