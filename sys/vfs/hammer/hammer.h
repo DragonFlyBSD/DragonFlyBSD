@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.84 2008/06/14 01:42:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.85 2008/06/17 04:02:38 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -265,7 +265,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_MODMASK_NOXDIRTY \
 				(HAMMER_INODE_MODMASK & ~HAMMER_INODE_XDIRTY)
 
-#define HAMMER_MAX_INODE_CURSORS	4
+#define HAMMER_FLUSH_GROUP_SIZE	64
 
 #define HAMMER_FLUSH_SIGNAL	0x0001
 #define HAMMER_FLUSH_RECURSION	0x0002
@@ -515,34 +515,6 @@ union hammer_io_structure {
 typedef union hammer_io_structure *hammer_io_structure_t;
 
 /*
- * Allocation holes are recorded when an allocation does not fit within a
- * buffer.  Later allocations which might fit may then be satisfied from
- * a recorded hole.  The resv reference prevents the big block from being
- * allocated out of via the normal blockmap mechanism.
- *
- * This is strictly a heuristic.
- */
-#define HAMMER_MAX_HOLES	8
-
-struct hammer_hole;
-
-struct hammer_holes {
-	TAILQ_HEAD(, hammer_hole) list;
-	int	count;
-};
-
-typedef struct hammer_holes *hammer_holes_t;
-
-struct hammer_hole {
-	TAILQ_ENTRY(hammer_hole) entry;
-	struct hammer_reserve *resv;
-	hammer_off_t	zone_offset;
-	int		bytes;
-};
-
-typedef struct hammer_hole *hammer_hole_t;
-
-/*
  * The reserve structure prevents the blockmap from allocating
  * out of a reserved bigblock.  Such reservations are used by
  * the direct-write mechanism.
@@ -555,11 +527,15 @@ struct hammer_reserve {
 	RB_ENTRY(hammer_reserve) rb_node;
 	TAILQ_ENTRY(hammer_reserve) delay_entry;
 	int		flush_group;
+	int		flags;
 	int		refs;
+	int		zone;
 	hammer_off_t	zone_offset;
 };
 
 typedef struct hammer_reserve *hammer_reserve_t;
+
+#define HAMMER_RESF_ONDELAY	0x0001
 
 #include "hammer_cursor.h"
 
@@ -615,7 +591,6 @@ struct hammer_mount {
 	struct hammer_volume *rootvol;
 	struct hammer_base_elm root_btree_beg;
 	struct hammer_base_elm root_btree_end;
-	char	*zbuf;	/* HAMMER_BUFSIZE bytes worth of all-zeros */
 	int	flags;
 	int	hflags;
 	int	ronly;
@@ -649,14 +624,12 @@ struct hammer_mount {
 	int64_t copy_stat_freebigblocks;	/* number of free bigblocks */
 
 	u_int32_t namekey_iterator;
-	hammer_off_t zone_limits[HAMMER_MAX_ZONES];
 	struct netexport export;
 	struct hammer_lock sync_lock;
 	struct hammer_lock free_lock;
 	struct hammer_lock undo_lock;
 	struct hammer_lock blkmap_lock;
 	struct hammer_blockmap  blockmap[HAMMER_MAX_ZONES];
-	struct hammer_holes	holes[HAMMER_MAX_ZONES];
 	struct hammer_undo	undos[HAMMER_MAX_UNDOS];
 	int			undo_alloc;
 	TAILQ_HEAD(, hammer_undo)  undo_lru_list;
@@ -702,6 +675,14 @@ extern int hammer_count_record_datas;
 extern int hammer_count_volumes;
 extern int hammer_count_buffers;
 extern int hammer_count_nodes;
+extern int64_t hammer_stats_btree_lookups;
+extern int64_t hammer_stats_btree_searches;
+extern int64_t hammer_stats_btree_inserts;
+extern int64_t hammer_stats_btree_deletes;
+extern int64_t hammer_stats_btree_elements;
+extern int64_t hammer_stats_btree_splits;
+extern int64_t hammer_stats_btree_iterations;
+extern int64_t hammer_stats_record_iterations;
 extern int hammer_count_dirtybufs;
 extern int hammer_count_refedbufs;
 extern int hammer_count_reservations;
@@ -713,8 +694,8 @@ extern int hammer_limit_iqueued;
 extern int hammer_limit_irecs;
 extern int hammer_limit_recs;
 extern int hammer_bio_count;
-extern int hammer_stats_btree_iterations;
-extern int hammer_stats_record_iterations;
+extern int hammer_verify_zone;
+extern int hammer_write_mode;
 extern int64_t hammer_contention_count;
 
 int	hammer_vop_inactive(struct vop_inactive_args *);
@@ -885,6 +866,9 @@ hammer_reserve_t hammer_blockmap_reserve(hammer_mount_t hmp, int zone,
 			int bytes, hammer_off_t *zone_offp, int *errorp);
 void hammer_blockmap_reserve_complete(hammer_mount_t hmp,
 			hammer_reserve_t resv);
+void hammer_reserve_setdelay(hammer_mount_t hmp, hammer_reserve_t resv,
+                        hammer_off_t zone2_offset);
+void hammer_reserve_clrdelay(hammer_mount_t hmp, hammer_reserve_t resv);
 void hammer_blockmap_free(hammer_transaction_t trans,
 			hammer_off_t bmap_off, int bytes);
 int hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t bmap_off,
@@ -975,8 +959,6 @@ int hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 int hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 			struct hammer_ioc_prune *prune);
 
-void hammer_init_holes(hammer_mount_t hmp, hammer_holes_t holes);
-void hammer_free_holes(hammer_mount_t hmp, hammer_holes_t holes);
 int hammer_signal_check(hammer_mount_t hmp);
 
 void hammer_flusher_create(hammer_mount_t hmp);

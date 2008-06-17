@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.47 2008/06/13 00:25:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.48 2008/06/17 04:02:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -65,19 +65,27 @@ int hammer_count_record_datas;
 int hammer_count_volumes;
 int hammer_count_buffers;
 int hammer_count_nodes;
+int64_t hammer_stats_btree_lookups;
+int64_t hammer_stats_btree_searches;
+int64_t hammer_stats_btree_inserts;
+int64_t hammer_stats_btree_deletes;
+int64_t hammer_stats_btree_elements;
+int64_t hammer_stats_btree_splits;
+int64_t hammer_stats_btree_iterations;
+int64_t hammer_stats_record_iterations;
 int hammer_count_dirtybufs;		/* global */
 int hammer_count_refedbufs;		/* global */
 int hammer_count_reservations;
 int hammer_count_io_running_read;
 int hammer_count_io_running_write;
 int hammer_count_io_locked;
-int hammer_stats_btree_iterations;
-int hammer_stats_record_iterations;
 int hammer_limit_dirtybufs;		/* per-mount */
 int hammer_limit_irecs;			/* per-inode */
 int hammer_limit_recs;			/* as a whole XXX */
 int hammer_limit_iqueued;		/* per-mount */
 int hammer_bio_count;
+int hammer_verify_zone;
+int hammer_write_mode;
 int64_t hammer_contention_count;
 int64_t hammer_zone_limit;
 
@@ -128,6 +136,22 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, count_buffers, CTLFLAG_RD,
 	   &hammer_count_buffers, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_nodes, CTLFLAG_RD,
 	   &hammer_count_nodes, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_btree_searches, CTLFLAG_RD,
+	   &hammer_stats_btree_searches, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_btree_lookups, CTLFLAG_RD,
+	   &hammer_stats_btree_lookups, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_btree_inserts, CTLFLAG_RD,
+	   &hammer_stats_btree_inserts, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_btree_deletes, CTLFLAG_RD,
+	   &hammer_stats_btree_deletes, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_btree_elements, CTLFLAG_RD,
+	   &hammer_stats_btree_elements, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_btree_splits, CTLFLAG_RD,
+	   &hammer_stats_btree_splits, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_btree_iterations, CTLFLAG_RD,
+	   &hammer_stats_btree_iterations, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_record_iterations, CTLFLAG_RD,
+	   &hammer_stats_record_iterations, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_dirtybufs, CTLFLAG_RD,
 	   &hammer_count_dirtybufs, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_refedbufs, CTLFLAG_RD,
@@ -144,6 +168,10 @@ SYSCTL_QUAD(_vfs_hammer, OID_AUTO, zone_limit, CTLFLAG_RW,
 	   &hammer_zone_limit, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, contention_count, CTLFLAG_RW,
 	   &hammer_contention_count, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, verify_zone, CTLFLAG_RW,
+	   &hammer_verify_zone, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, write_mode, CTLFLAG_RW,
+	   &hammer_write_mode, 0, "");
 
 /*
  * VFS ABI
@@ -235,7 +263,6 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp = kmalloc(sizeof(*hmp), M_HAMMER, M_WAITOK | M_ZERO);
 		mp->mnt_data = (qaddr_t)hmp;
 		hmp->mp = mp;
-		hmp->zbuf = kmalloc(HAMMER_BUFSIZE, M_HAMMER, M_WAITOK|M_ZERO);
 		hmp->namekey_iterator = mycpu->gd_time_seconds;
 		/*TAILQ_INIT(&hmp->recycle_list);*/
 
@@ -265,24 +292,6 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		TAILQ_INIT(&hmp->objid_cache_list);
 		TAILQ_INIT(&hmp->undo_lru_list);
 		TAILQ_INIT(&hmp->reclaim_list);
-
-		/*
-		 * Set default zone limits.  This value can be reduced
-		 * further by the zone limit specified in the root volume.
-		 *
-		 * The sysctl can force a small zone limit for debugging
-		 * purposes.
-		 */
-		for (i = 0; i < HAMMER_MAX_ZONES; ++i) {
-			hmp->zone_limits[i] =
-				HAMMER_ZONE_ENCODE(i, HAMMER_ZONE_LIMIT);
-
-			if (hammer_zone_limit) {
-				hmp->zone_limits[i] =
-				    HAMMER_ZONE_ENCODE(i, hammer_zone_limit);
-			}
-			hammer_init_holes(hmp, &hmp->holes[i]);
-		}
 	}
 	hmp->hflags &= ~HMNT_USERFLAGS;
 	hmp->hflags |= info.hflags & HMNT_USERFLAGS;
@@ -454,20 +463,6 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	      sizeof(hmp->blockmap));
 	hmp->copy_stat_freebigblocks = rootvol->ondisk->vol0_stat_freebigblocks;
 
-	/*
-	 * Use the zone limit set by newfs_hammer, or the zone limit set by
-	 * sysctl (for debugging), whichever is smaller.
-	 */
-	if (rootvol->ondisk->vol0_zone_limit) {
-		hammer_off_t vol0_zone_limit;
-
-		vol0_zone_limit = rootvol->ondisk->vol0_zone_limit;
-		for (i = 0; i < HAMMER_MAX_ZONES; ++i) {
-			if (hmp->zone_limits[i] > vol0_zone_limit)
-				hmp->zone_limits[i] = vol0_zone_limit;
-		}
-	}
-
 	hammer_flusher_create(hmp);
 
 	/*
@@ -528,7 +523,6 @@ static void
 hammer_free_hmp(struct mount *mp)
 {
 	struct hammer_mount *hmp = (void *)mp->mnt_data;
-	int i;
 
 #if 0
 	/*
@@ -539,13 +533,9 @@ hammer_free_hmp(struct mount *mp)
 		hmp->rootvp = NULL;
 	}
 #endif
-	kprintf("X1");
 	hammer_flusher_sync(hmp);
-	kprintf("X2");
 	hammer_flusher_sync(hmp);
-	kprintf("X3");
 	hammer_flusher_destroy(hmp);
-	kprintf("X4");
 
 	KKASSERT(RB_EMPTY(&hmp->rb_inos_root));
 
@@ -568,27 +558,14 @@ hammer_free_hmp(struct mount *mp)
 	 */
         RB_SCAN(hammer_buf_rb_tree, &hmp->rb_bufs_root, NULL,
 		hammer_unload_buffer, NULL);
-	kprintf("X5");
 	RB_SCAN(hammer_vol_rb_tree, &hmp->rb_vols_root, NULL,
 		hammer_unload_volume, NULL);
-	kprintf("X6");
 
 	mp->mnt_data = NULL;
 	mp->mnt_flag &= ~MNT_LOCAL;
 	hmp->mp = NULL;
-	kprintf("X7");
 	hammer_destroy_objid_cache(hmp);
-	kprintf("X8");
-	kfree(hmp->zbuf, M_HAMMER);
-	kprintf("X9");
-	kprintf("X10");
-
-	for (i = 0; i < HAMMER_MAX_ZONES; ++i)
-		hammer_free_holes(hmp, &hmp->holes[i]);
-	kprintf("X11");
-
 	kfree(hmp, M_HAMMER);
-	kprintf("X12");
 }
 
 /*

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.75 2008/06/14 01:42:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.76 2008/06/17 04:02:38 dillon Exp $
  */
 
 #include "hammer.h"
@@ -293,7 +293,7 @@ loop:
 	ip->flags = flags & HAMMER_INODE_RO;
 	if (hmp->ronly)
 		ip->flags |= HAMMER_INODE_RO;
-	ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
+	ip->sync_trunc_off = ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
 	RB_INIT(&ip->rec_tree);
 	TAILQ_INIT(&ip->target_list);
 
@@ -331,15 +331,21 @@ retry:
 		hammer_cache_node(cursor.node, &ip->cache[0]);
 		if (cache)
 			hammer_cache_node(cursor.node, cache);
+
+		/*
+		 * The file should not contain any data past the file size
+		 * stored in the inode.  Setting sync_trunc_off to the
+		 * file size instead of max reduces B-Tree lookup overheads
+		 * on append by allowing the flusher to avoid checking for
+		 * record overwrites.
+		 */
+		ip->sync_trunc_off = ip->ino_data.size;
 	}
 
 	/*
-	 * On success load the inode's record and data and insert the
-	 * inode into the B-Tree.  It is possible to race another lookup
-	 * insertion of the same inode so deal with that condition too.
-	 *
-	 * The cursor's locked node interlocks against others creating and
-	 * destroying ip while we were blocked.
+	 * The inode is placed on the red-black tree and will be synced to
+	 * the media when flushed or by the filesystem sync.  If this races
+	 * another instantiation/lookup the insertion will fail.
 	 */
 	if (*errorp == 0) {
 		hammer_ref(&ip->lock);
@@ -1166,12 +1172,17 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 	 * The truncation must be retained in the frontend until after
 	 * we've actually performed the record deletion.
 	 *
+	 * We continue to retain sync_trunc_off even when all truncations
+	 * have been resolved as an optimization to determine if we can
+	 * skip the B-Tree lookup for overwrite deletions.
+	 *
 	 * NOTE: The DELETING flag is a mod flag, but it is also sticky,
 	 * and stays in ip->flags.  Once set, it stays set until the
 	 * inode is destroyed.
 	 */
 	ip->sync_flags = (ip->flags & HAMMER_INODE_MODMASK);
-	ip->sync_trunc_off = ip->trunc_off;
+	if (ip->sync_flags & HAMMER_INODE_TRUNCATED)
+		ip->sync_trunc_off = ip->trunc_off;
 	ip->sync_ino_leaf = ip->ino_leaf;
 	ip->sync_ino_data = ip->ino_data;
 	ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
@@ -1611,6 +1622,7 @@ hammer_sync_inode(hammer_inode_t ip)
 {
 	struct hammer_transaction trans;
 	struct hammer_cursor cursor;
+	hammer_node_t tmp_node;
 	hammer_record_t depend;
 	hammer_record_t next;
 	int error, tmp_error;
@@ -1620,7 +1632,7 @@ hammer_sync_inode(hammer_inode_t ip)
 		return(0);
 
 	hammer_start_transaction_fls(&trans, ip->hmp);
-	error = hammer_init_cursor(&trans, &cursor, &ip->cache[0], ip);
+	error = hammer_init_cursor(&trans, &cursor, &ip->cache[1], ip);
 	if (error)
 		goto done;
 
@@ -1692,9 +1704,7 @@ hammer_sync_inode(hammer_inode_t ip)
 	 * containing the truncation point for us.
 	 *
 	 * We don't flush pending frontend data buffers until after we've
-	 * dealth with the truncation.
-	 *
-	 * Don't bother if the inode is or has been deleted.
+	 * dealt with the truncation.
 	 */
 	if (ip->sync_flags & HAMMER_INODE_TRUNCATED) {
 		/*
@@ -1724,9 +1734,17 @@ hammer_sync_inode(hammer_inode_t ip)
 		 * Clear the truncation flag on the backend after we have
 		 * complete the deletions.  Backend data is now good again
 		 * (including new records we are about to sync, below).
+		 *
+		 * Leave sync_trunc_off intact.  As we write additional
+		 * records the backend will update sync_trunc_off.  This
+		 * tells the backend whether it can skip the overwrite
+		 * test.  This should work properly even when the backend
+		 * writes full blocks where the truncation point straddles
+		 * the block because the comparison is against the base
+		 * offset of the record.
 		 */
 		ip->sync_flags &= ~HAMMER_INODE_TRUNCATED;
-		ip->sync_trunc_off = 0x7FFFFFFFFFFFFFFFLL;
+		/* ip->sync_trunc_off = 0x7FFFFFFFFFFFFFFFLL; */
 	} else {
 		error = 0;
 	}
@@ -1746,6 +1764,19 @@ hammer_sync_inode(hammer_inode_t ip)
 			tmp_error = -error;
 		if (tmp_error)
 			error = tmp_error;
+	}
+	hammer_cache_node(cursor.node, &ip->cache[1]);
+
+	/*
+	 * Re-seek for inode update.
+	 */
+	if (error == 0) {
+		tmp_node = hammer_ref_node_safe(ip->hmp, &ip->cache[0], &error);
+		if (tmp_node) {
+			hammer_cursor_seek(&cursor, tmp_node, 0);
+			hammer_rel_node(tmp_node);
+		}
+		error = 0;
 	}
 
 	/*

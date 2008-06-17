@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.57 2008/06/14 01:42:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.58 2008/06/17 04:02:38 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -791,14 +791,15 @@ hammer_rel_buffer(hammer_buffer_t buffer, int flush)
 		hammer_lock_ex(&buffer->io.lock);
 		if (buffer->io.lock.refs == 1) {
 			hammer_io_release(&buffer->io, flush);
-			hammer_flush_buffer_nodes(buffer);
-			KKASSERT(TAILQ_EMPTY(&buffer->clist));
-			--hammer_count_refedbufs;
 
 			if (buffer->io.bp == NULL &&
 			    buffer->io.lock.refs == 1) {
 				/*
 				 * Final cleanup
+				 *
+				 * NOTE: It is impossible for any associated
+				 * B-Tree nodes to have refs if the buffer
+				 * has no additional refs.
 				 */
 				RB_REMOVE(hammer_buf_rb_tree,
 					  &buffer->io.hmp->rb_bufs_root,
@@ -807,6 +808,10 @@ hammer_rel_buffer(hammer_buffer_t buffer, int flush)
 				buffer->volume = NULL; /* sanity */
 				hammer_rel_volume(volume, 0);
 				hammer_io_clear_modlist(&buffer->io);
+				hammer_flush_buffer_nodes(buffer);
+				KKASSERT(TAILQ_EMPTY(&buffer->clist));
+				if (buffer->io.lock.refs == 1)
+					--hammer_count_refedbufs;
 				freeme = 1;
 			}
 		}
@@ -1170,8 +1175,9 @@ hammer_uncache_node(struct hammer_node **cache)
 		} else {
 			panic("hammer_uncache_node: missing cache linkage");
 		}
-		if (node->cache1 == NULL && node->cache2 == NULL)
+		if (node->cache1 == NULL && node->cache2 == NULL) {
 			hammer_flush_node(node);
+		}
 	}
 }
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.53 2008/06/14 01:42:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.54 2008/06/17 04:02:38 dillon Exp $
  */
 
 /*
@@ -503,6 +503,7 @@ hammer_btree_lookup(hammer_cursor_t cursor)
 {
 	int error;
 
+	++hammer_stats_btree_lookups;
 	if (cursor->flags & HAMMER_CURSOR_ASOF) {
 		KKASSERT((cursor->flags & HAMMER_CURSOR_INSERT) == 0);
 		cursor->key_beg.create_tid = cursor->asof;
@@ -661,6 +662,7 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm)
 
 	if ((error = hammer_cursor_upgrade_node(cursor)) != 0)
 		return(error);
+	++hammer_stats_btree_inserts;
 
 	/*
 	 * Insert the element at the leaf node and update the count in the
@@ -728,6 +730,7 @@ hammer_btree_delete(hammer_cursor_t cursor)
 
 	if ((error = hammer_cursor_upgrade(cursor)) != 0)
 		return(error);
+	++hammer_stats_btree_deletes;
 
 	/*
 	 * Delete the element from the leaf node. 
@@ -831,6 +834,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 	int s;
 
 	flags |= cursor->flags;
+	++hammer_stats_btree_searches;
 
 	if (hammer_debug_btree) {
 		kprintf("SEARCH   %016llx[%d] %016llx %02x key=%016llx cre=%016llx lo=%02x (td = %p)\n",
@@ -870,6 +874,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 		if (r >= 0 && s < 0)
 			break;
 		KKASSERT(cursor->parent);
+		++hammer_stats_btree_iterations;
 		error = hammer_cursor_up(cursor);
 		if (error)
 			goto done;
@@ -911,6 +916,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 		    cursor->parent->ondisk->count != HAMMER_BTREE_INT_ELMS) {
 			break;
 		}
+		++hammer_stats_btree_iterations;
 		error = hammer_cursor_up(cursor);
 		/* node may have become stale */
 		if (error)
@@ -950,6 +956,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 		 */
 		i = hammer_btree_search_node(&cursor->key_beg, node);
 		while (i <= node->count) {
+			++hammer_stats_btree_elements;
 			elm = &node->elms[i];
 			r = hammer_btree_cmp(&cursor->key_beg, &elm->base);
 			if (hammer_debug_btree > 2) {
@@ -1154,6 +1161,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 	 */
 	i = hammer_btree_search_node(&cursor->key_beg, node);
 	while (i < node->count) {
+		++hammer_stats_btree_elements;
 		elm = &node->elms[i];
 
 		r = hammer_btree_cmp(&cursor->key_beg, &elm->leaf.base);
@@ -1266,6 +1274,7 @@ hammer_btree_search_node(hammer_base_elm_t elm, hammer_node_ondisk_t node)
 	s = node->count;
 	while (s - b > 4) {
 		i = b + (s - b) / 2;
+		++hammer_stats_btree_elements;
 		r = hammer_btree_cmp(elm, &node->elms[i].leaf.base);
 		if (r <= 1) {
 			s = i;
@@ -1320,6 +1329,7 @@ btree_split_internal(hammer_cursor_t cursor)
 		goto done;
 	if ((error = hammer_cursor_upgrade(cursor)) != 0)
 		goto done;
+	++hammer_stats_btree_splits;
 
 	/* 
 	 * We are splitting but elms[split] will be promoted to the parent,
@@ -1535,6 +1545,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 
 	if ((error = hammer_cursor_upgrade(cursor)) != 0)
 		return(error);
+	++hammer_stats_btree_splits;
 
 	KKASSERT(hammer_btree_cmp(cursor->left_bound,
 		 &cursor->node->ondisk->elms[0].leaf.base) <= 0);
@@ -2121,6 +2132,7 @@ hammer_btree_lock_children(hammer_cursor_t cursor,
 	 * pre-get the children before trying to lock the mess.
 	 */
 	for (i = 0; i < ondisk->count; ++i) {
+		++hammer_stats_btree_elements;
 		elm = &ondisk->elms[i];
 		if (elm->base.btype != HAMMER_BTREE_TYPE_LEAF &&
 		    elm->base.btype != HAMMER_BTREE_TYPE_INTERNAL) {
@@ -2137,6 +2149,7 @@ hammer_btree_lock_children(hammer_cursor_t cursor,
 	 * Do it for real
 	 */
 	for (i = 0; error == 0 && i < ondisk->count; ++i) {
+		++hammer_stats_btree_elements;
 		elm = &ondisk->elms[i];
 
 		switch(elm->base.btype) {

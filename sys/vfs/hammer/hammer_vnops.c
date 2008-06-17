@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.70 2008/06/14 01:42:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.71 2008/06/17 04:02:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -271,11 +271,13 @@ hammer_vop_write(struct vop_write_args *ap)
 	int n;
 	int flags;
 	int count;
+	int seqcount;
 
 	if (ap->a_vp->v_type != VREG)
 		return (EINVAL);
 	ip = VTOI(ap->a_vp);
 	error = 0;
+	seqcount = ap->a_ioflag >> 16;
 
 	if (ip->flags & HAMMER_INODE_RO)
 		return (EROFS);
@@ -437,12 +439,25 @@ hammer_vop_write(struct vop_write_args *ap)
 
 		/*
 		 * Final buffer disposition.
+		 *
+		 * If write_mode is non-zero we call bawrite()
+		 * unconditionally.  Otherwise we only use bawrite()
+		 * if the writes are clearly sequential.
 		 */
+		bp->b_flags |= B_AGE;
 		if (ap->a_ioflag & IO_SYNC) {
 			bwrite(bp);
 		} else if (ap->a_ioflag & IO_DIRECT) {
 			bawrite(bp);
+		} else if (hammer_write_mode &&
+			   (uio->uio_offset & HAMMER_BUFMASK) == 0) {
 #if 1
+			/* strategy write cannot handled clustered writes */
+			bp->b_flags |= B_CLUSTEROK;
+			cluster_write(bp, ip->ino_data.size, seqcount);
+#else
+#endif
+			bawrite(bp);
 		} else if ((ap->a_ioflag >> 16) == IO_SEQMAX &&
 			   (uio->uio_offset & HAMMER_BUFMASK) == 0) {
 			/*
@@ -453,7 +468,6 @@ hammer_vop_write(struct vop_write_args *ap)
 			 * flushes.
 			 */
 			bawrite(bp);
-#endif
 		} else {
 			bdwrite(bp);
 		}
@@ -2103,6 +2117,9 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 	 * to raw addresses.
 	 */
 	hammer_simple_transaction(&trans, ip->hmp);
+#if 0
+	kprintf("bmap_beg %016llx ip->cache %p\n", ap->a_loffset, ip->cache[1]);
+#endif
 	hammer_init_cursor(&trans, &cursor, &ip->cache[1], ip);
 
 	/*
@@ -2202,8 +2219,12 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 		"", base_disk_offset, last_disk_offset);
 #endif
 
-	if (cursor.node)
+	if (cursor.node) {
 		hammer_cache_node(cursor.node, &ip->cache[1]);
+#if 0
+		kprintf("bmap_end2 %016llx ip->cache %p\n", ap->a_loffset, ip->cache[1]);
+#endif
+	}
 	hammer_done_cursor(&cursor);
 	hammer_done_transaction(&trans);
 

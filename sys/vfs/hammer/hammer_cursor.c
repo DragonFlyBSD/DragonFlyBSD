@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.29 2008/06/13 00:25:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.30 2008/06/17 04:02:38 dillon Exp $
  */
 
 /*
@@ -281,6 +281,10 @@ hammer_cursor_downgrade(hammer_cursor_t cursor)
 
 /*
  * Seek the cursor to the specified node and index.
+ *
+ * The caller must ref the node prior to calling this routine and release
+ * it after it returns.  If the seek succeeds the cursor will gain its own
+ * ref on the node.
  */
 int
 hammer_cursor_seek(hammer_cursor_t cursor, hammer_node_t node, int index)

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.36 2008/06/14 01:42:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.37 2008/06/17 04:02:38 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -112,16 +112,15 @@ typedef u_int32_t hammer_crc_t;
  * hammer_off_t has several different encodings.  Note that not all zones
  * encode a vol_no.
  *
- * zone 0 (z,v,o):	reserved (for sanity)
+ * zone 0:		reserved for sanity
  * zone 1 (z,v,o):	raw volume relative (offset 0 is the volume header)
  * zone 2 (z,v,o):	raw buffer relative (offset 0 is the first buffer)
- * zone 3 (z,o):	undo fifo	- fixed layer2 array in root vol hdr
- * zone 4 (z,v,o):	freemap		- freemap-backed self-mapping special
- *					  cased layering.
- *
- * zone 8 (z,o):	B-Tree		- blkmap-backed
- * zone 9 (z,o):	Record		- blkmap-backed
- * zone 10 (z,o):	Large-data	- blkmap-backed
+ * zone 3 (z,o):	undo fifo	- actually fixed phys array in vol hdr
+ * zone 4 (z,v,o):	freemap		- only real blockmap
+ * zone 8 (z,v,o):	B-Tree		- actually zone-2 address
+ * zone 9 (z,v,o):	Record		- actually zone-2 address
+ * zone 10 (z,v,o):	Large-data	- actually zone-2 address
+ * zone 15:		reserved for sanity
  */
 
 #define HAMMER_ZONE_RAW_VOLUME		0x1000000000000000ULL
@@ -138,7 +137,7 @@ typedef u_int32_t hammer_crc_t;
 #define HAMMER_ZONE_RESERVED0C		0xC000000000000000ULL
 #define HAMMER_ZONE_RESERVED0D		0xD000000000000000ULL
 #define HAMMER_ZONE_RESERVED0E		0xE000000000000000ULL
-#define HAMMER_ZONE_RESERVED0F		0xF000000000000000ULL
+#define HAMMER_ZONE_UNAVAIL		0xF000000000000000ULL
 
 #define HAMMER_ZONE_RAW_VOLUME_INDEX	1
 #define HAMMER_ZONE_RAW_BUFFER_INDEX	2
@@ -148,13 +147,7 @@ typedef u_int32_t hammer_crc_t;
 #define HAMMER_ZONE_META_INDEX		9
 #define HAMMER_ZONE_LARGE_DATA_INDEX	10
 #define HAMMER_ZONE_SMALL_DATA_INDEX	11
-
-/*
- * Per-zone size limitation.  This just makes the iterator easier
- * to deal with by preventing an iterator overflow.
- */
-#define HAMMER_ZONE_LIMIT		\
-	(0x1000000000000000ULL - HAMMER_BLOCKMAP_LAYER2 * 2)
+#define HAMMER_ZONE_UNAVAIL_INDEX	15	/* unavailable */
 
 #define HAMMER_MAX_ZONES		16
 
@@ -211,10 +204,15 @@ typedef u_int32_t hammer_crc_t;
 	((hammer_off_t)HAMMER_BUFFERS_PER_LARGEBLOCK_MASK)
 
 /*
- * Every blockmap has this root structure in the root volume header.
+ * The blockmap is somewhat of a degenerate structure.  HAMMER only actually
+ * uses it in its original incarnation to implement the free-map.
  *
- * NOTE: zone 3 (the undo FIFO) does not use phys_offset.  first and next
- * offsets represent the FIFO.
+ * zone:1	raw volume (no blockmap)
+ * zone:2	raw buffer (no blockmap)
+ * zone:3	undo-map   (direct layer2 array in volume header)
+ * zone:4	free-map   (the only real blockmap)
+ * zone:8-15	zone id used to classify big-block only, address is actually
+ *		a zone-2 address.
  */
 struct hammer_blockmap {
 	hammer_off_t	phys_offset;    /* zone-2 physical offset */
@@ -236,13 +234,15 @@ typedef struct hammer_blockmap *hammer_blockmap_t;
  * 524288 16-byte entries (19 bits), representing 8MB (23 bit) blockmaps.
  * 18+19+23 = 60 bits.  The top four bits are the zone id.
  *
- * Layer 2 encodes the physical bigblock mapping for a blockmap.  The freemap
- * uses this field to encode the virtual blockmap offset that allocated the
- * physical block.
+ * Currently only the freemap utilizes both layers in all their glory.
+ * All primary data/meta-data zones actually encode a zone-2 address
+ * requiring no real blockmap translation.
  *
- * NOTE:  The freemap maps the vol_no in the upper 8 bits of layer1.
+ * The freemap uses the upper 8 bits of layer-1 to identify the volume,
+ * thus any space allocated via the freemap can be directly translated
+ * to a zone:2 (or zone:8-15) address.
  *
- * zone-4 blockmap offset: [z:4][layer1:18][layer2:19][bigblock:23]
+ * zone-X blockmap offset: [z:4][layer1:18][layer2:19][bigblock:23]
  */
 struct hammer_blockmap_layer1 {
 	hammer_off_t	blocks_free;	/* big-blocks free */
@@ -259,10 +259,10 @@ typedef struct hammer_blockmap_layer1 *hammer_blockmap_layer1_t;
 	offsetof(struct hammer_blockmap_layer1, layer1_crc)
 
 struct hammer_blockmap_layer2 {
-	union {
-		hammer_off_t	owner;		/* used by freemap */
-		hammer_off_t	phys_offset;	/* used by blockmap */
-	} u;
+	u_int8_t	zone;		/* typed allocation zone */
+	u_int8_t	unused01;
+	u_int16_t	unused02;
+	u_int32_t	append_off;	/* allocatable space index */
 	u_int32_t	bytes_free;	/* bytes free within this bigblock */
 	hammer_crc_t	entry_crc;
 };
@@ -307,12 +307,12 @@ typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
 
 /*
  * HAMMER UNDO parameters.  The UNDO fifo is mapped directly in the volume
- * header with an array of layer2 structures.  A maximum of (64x8MB) = 512MB
+ * header with an array of layer2 structures.  A maximum of (128x8MB) = 1GB
  * may be reserved.  The size of the undo fifo is usually set a newfs time
  * but can be adjusted if the filesystem is taken offline.
  */
 
-#define HAMMER_UNDO_LAYER2	64	/* max layer2 undo mapping entries */
+#define HAMMER_UNDO_LAYER2	128	/* max layer2 undo mapping entries */
 
 /*
  * All on-disk HAMMER structures which make up elements of the UNDO FIFO
@@ -484,7 +484,7 @@ struct hammer_volume_ondisk {
 	int64_t vol0_stat_records;	/* total records in filesystem */
 	hammer_off_t vol0_btree_root;	/* B-Tree root */
 	hammer_tid_t vol0_next_tid;	/* highest synchronized TID */
-	hammer_off_t vol0_zone_limit;	/* limit the zone size */
+	hammer_off_t vol0_unused03;	/* limit the zone size */
 
 	/*
 	 * Blockmaps for zones.  Not all zones use a blockmap.  Note that
@@ -493,9 +493,9 @@ struct hammer_volume_ondisk {
 	struct hammer_blockmap	vol0_blockmap[HAMMER_MAX_ZONES];
 
 	/*
-	 * Layer-2 array for undo fifo
+	 * Array of zone-2 addresses for undo FIFO.
 	 */
-	struct hammer_blockmap_layer2 vol0_undo_array[HAMMER_UNDO_LAYER2];
+	hammer_off_t		vol0_undo_array[HAMMER_UNDO_LAYER2];
 
 };
 

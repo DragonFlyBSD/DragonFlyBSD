@@ -31,8 +31,11 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.16 2008/06/10 08:51:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_freemap.c,v 1.17 2008/06/17 04:02:38 dillon Exp $
  */
+
+/* REMOVED - bigblock allocations are now handled by the blockmap allocator */
+#if 0
 
 /*
  * HAMMER freemap - bigblock allocator.  The freemap is a 2-layer blockmap
@@ -269,3 +272,4 @@ hammer_checkspace(hammer_mount_t hmp)
 	return (ENOSPC);
 }
 
+#endif

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.68 2008/06/14 01:42:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.69 2008/06/17 04:02:38 dillon Exp $
  */
 
 #include "hammer.h"
@@ -41,6 +41,7 @@ static int hammer_mem_lookup(hammer_cursor_t cursor);
 static int hammer_mem_first(hammer_cursor_t cursor);
 static int hammer_rec_trunc_callback(hammer_record_t record,
 				void *data __unused);
+static int hammer_record_needs_overwrite_delete(hammer_record_t record);
 
 struct rec_trunc_info {
 	u_int16_t	rec_type;
@@ -888,6 +889,35 @@ hammer_rec_trunc_callback(hammer_record_t record, void *data __unused)
 }
 
 /*
+ * Return 1 if the caller must check for and delete existing records
+ * before writing out a new data record.
+ *
+ * Return 0 if the caller can just insert the record into the B-Tree without
+ * checking.
+ */
+static int
+hammer_record_needs_overwrite_delete(hammer_record_t record)
+{
+	hammer_inode_t ip = record->ip;
+	int64_t file_offset;
+	int r;
+
+	if (ip->ino_data.obj_type == HAMMER_OBJTYPE_DBFILE)
+		file_offset = record->leaf.base.key;
+	else
+		file_offset = record->leaf.base.key - record->leaf.data_len;
+	r = (file_offset < ip->sync_trunc_off);
+	if (ip->ino_data.obj_type == HAMMER_OBJTYPE_DBFILE) {
+		if (ip->sync_trunc_off <= record->leaf.base.key)
+			ip->sync_trunc_off = record->leaf.base.key + 1;
+	} else {
+		if (ip->sync_trunc_off < record->leaf.base.key)
+			ip->sync_trunc_off = record->leaf.base.key;
+	}
+	return(r);
+}
+
+/*
  * Backend code.  Sync a record to the media.
  */
 int
@@ -917,8 +947,13 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	 * it skips in-memory records.
 	 *
 	 * It is ok for the lookup to return ENOENT.
+	 *
+	 * NOTE OPTIMIZATION: sync_trunc_off is used to determine if we have
+	 * to call hammer_ip_delete_range() or not.  This also means we must
+	 * update sync_trunc_off() as we write.
 	 */
-	if (record->type == HAMMER_MEM_RECORD_DATA) {
+	if (record->type == HAMMER_MEM_RECORD_DATA &&
+	    hammer_record_needs_overwrite_delete(record)) {
 		file_offset = record->leaf.base.key - record->leaf.data_len;
 		KKASSERT((file_offset & HAMMER_BUFMASK) == 0);
 		error = hammer_ip_delete_range(
@@ -1280,11 +1315,14 @@ next_btree:
 		if ((cursor->flags & HAMMER_CURSOR_DISKEOF) == 0) {
 			error = hammer_btree_iterate(cursor);
 			cursor->flags &= ~HAMMER_CURSOR_DELBTREE;
-			if (error == 0)
+			if (error == 0) {
 				cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
-			else
+				hammer_cache_node(cursor->node,
+						  &cursor->ip->cache[1]);
+			} else {
 				cursor->flags |= HAMMER_CURSOR_DISKEOF |
 						 HAMMER_CURSOR_ATEDISK;
+			}
 		}
 	}
 
@@ -1615,6 +1653,9 @@ retry:
 			break;
 		error = hammer_ip_next(cursor);
 	}
+	if (cursor->node)
+		hammer_cache_node(cursor->node, &ip->cache[1]);
+
 	if (error == EDEADLK) {
 		hammer_done_cursor(cursor);
 		error = hammer_init_cursor(trans, cursor, &ip->cache[0], ip);
@@ -1690,6 +1731,8 @@ retry:
 			break;
 		error = hammer_ip_next(cursor);
 	}
+	if (cursor->node)
+		hammer_cache_node(cursor->node, &ip->cache[1]);
 	if (error == EDEADLK) {
 		hammer_done_cursor(cursor);
 		error = hammer_init_cursor(trans, cursor, &ip->cache[0], ip);

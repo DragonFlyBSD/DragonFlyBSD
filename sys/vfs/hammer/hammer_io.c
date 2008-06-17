@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.41 2008/06/14 01:42:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.42 2008/06/17 04:02:38 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -380,11 +380,15 @@ hammer_io_release(struct hammer_io *io, int flush)
 		 * Leaving the buffer passively associated allows us to
 		 * use the kernel's LRU buffer flushing mechanisms rather
 		 * then rolling our own.
+		 *
+		 * XXX there are two ways of doing this.  We can re-acquire
+		 * and passively release to reset the LRU, or not.
 		 */
 		crit_enter();
 		if (io->running == 0) {
 			regetblk(bp);
 			if ((bp->b_flags & B_LOCKED) || io->reclaim) {
+				/*regetblk(bp);*/
 				io->released = 0;
 				hammer_io_disassociate(iou, 1);
 			} else {

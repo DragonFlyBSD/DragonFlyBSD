@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.27 2008/06/14 01:42:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.28 2008/06/17 04:02:38 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -58,7 +58,7 @@ struct hammer_flusher_info {
 	struct hammer_mount *hmp;
 	thread_t	td;
 	int		startit;
-	TAILQ_HEAD(,hammer_inode) work_list;
+	hammer_inode_t	work_array[HAMMER_FLUSH_GROUP_SIZE];
 };
 
 typedef struct hammer_flusher_info *hammer_flusher_info_t;
@@ -111,7 +111,6 @@ hammer_flusher_create(hammer_mount_t hmp)
 	for (i = 0; i < HAMMER_MAX_FLUSHERS; ++i) {
 		info = kmalloc(sizeof(*info), M_HAMMER, M_WAITOK|M_ZERO);
 		info->hmp = hmp;
-		TAILQ_INIT(&info->work_list);
 		++hmp->flusher.count;
 		hmp->flusher.info[i] = info;
 		lwkt_create(hammer_flusher_slave_thread, info,
@@ -207,6 +206,9 @@ hammer_flusher_slave_thread(void *arg)
 	hammer_flusher_info_t info;
 	hammer_mount_t hmp;
 	hammer_inode_t ip;
+	int c;
+	int i;
+	int n;
 
 	info = arg;
 	hmp = info->hmp;
@@ -217,11 +219,31 @@ hammer_flusher_slave_thread(void *arg)
 		if (info->startit < 0)
 			break;
 		info->startit = 0;
+
+		/*
+		 * Try to pull out around ~64 inodes at a time to flush.
+		 * The idea is to try to avoid deadlocks between the slaves.
+		 */
+		n = c = 0;
 		while ((ip = TAILQ_FIRST(&hmp->flush_list)) != NULL) {
 			if (ip->flush_group != hmp->flusher.act)
 				break;
 			TAILQ_REMOVE(&hmp->flush_list, ip, flush_entry);
-			hammer_flusher_flush_inode(ip, &hmp->flusher.trans);
+			info->work_array[n++] = ip;
+			c += ip->rsv_recs;
+			if (n < HAMMER_FLUSH_GROUP_SIZE &&
+			    c < HAMMER_FLUSH_GROUP_SIZE * 8) {
+				continue;
+			}
+			for (i = 0; i < n; ++i){
+				hammer_flusher_flush_inode(info->work_array[i],
+							&hmp->flusher.trans);
+			}
+			n = c = 0;
+		}
+		for (i = 0; i < n; ++i) {
+			hammer_flusher_flush_inode(info->work_array[i],
+						   &hmp->flusher.trans);
 		}
 		if (--hmp->flusher.running == 0)
 			wakeup(&hmp->flusher.running);
@@ -275,9 +297,9 @@ hammer_flusher_flush(hammer_mount_t hmp)
 	 * Start work threads.
 	 */
 	i = 0;
-	n = hmp->count_iqueued / 64;
+	n = hmp->count_iqueued / HAMMER_FLUSH_GROUP_SIZE;
 	if (TAILQ_FIRST(&hmp->flush_list)) {
-		for (i = 0; i <= hmp->count_iqueued / 64; ++i) {
+		for (i = 0; i <= n; ++i) {
 			if (i == HAMMER_MAX_FLUSHERS ||
 			    hmp->flusher.info[i] == NULL) {
 				break;
@@ -305,8 +327,7 @@ hammer_flusher_flush(hammer_mount_t hmp)
 	while ((resv = TAILQ_FIRST(&hmp->delay_list)) != NULL) {
 		if (resv->flush_group != hmp->flusher.act)
 			break;
-		TAILQ_REMOVE(&hmp->delay_list, resv, delay_entry);
-		hammer_blockmap_reserve_complete(hmp, resv);
+		hammer_reserve_clrdelay(hmp, resv);
 	}
 	hammer_done_transaction(&hmp->flusher.trans);
 }

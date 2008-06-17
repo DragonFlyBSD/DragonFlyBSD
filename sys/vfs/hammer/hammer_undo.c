@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.16 2008/06/12 00:16:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.17 2008/06/17 04:02:38 dillon Exp $
  */
 
 /*
@@ -53,7 +53,6 @@ hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t zone3_off, int *errorp)
 {
 	hammer_volume_t root_volume;
 	hammer_blockmap_t undomap;
-	struct hammer_blockmap_layer2 *layer2;
 	hammer_off_t result_offset;
 	int i;
 
@@ -66,8 +65,7 @@ hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t zone3_off, int *errorp)
 	KKASSERT (zone3_off < undomap->alloc_offset);
 
 	i = (zone3_off & HAMMER_OFF_SHORT_MASK) / HAMMER_LARGEBLOCK_SIZE;
-	layer2 = &root_volume->ondisk->vol0_undo_array[i];
-	result_offset = layer2->u.phys_offset +
+	result_offset = root_volume->ondisk->vol0_undo_array[i] +
 			(zone3_off & HAMMER_LARGEBLOCK_MASK64);
 
 	hammer_rel_volume(root_volume, 0);
