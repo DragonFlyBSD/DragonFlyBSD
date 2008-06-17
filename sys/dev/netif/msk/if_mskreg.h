@@ -94,7 +94,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/msk/if_mskreg.h,v 1.11 2007/12/05 09:41:58 remko Exp $ */
-/* $DragonFly: src/sys/dev/netif/msk/if_mskreg.h,v 1.3 2008/03/22 07:07:34 sephe Exp $ */
+/* $DragonFly: src/sys/dev/netif/msk/if_mskreg.h,v 1.4 2008/06/17 11:00:13 sephe Exp $ */
 
 /*
  * SysKonnect PCI vendor ID
@@ -2159,7 +2159,7 @@ struct msk_stat_desc {
 #define BMU_UDP_CHECK	(0x57<<16)	/* Descr with UDP ext (YUKON only) */
 #define BMU_BBC		0xffff	/* Bit 15.. 0:	Buffer Byte Counter */
 
-#define MSK_TX_RING_CNT		512
+#define MSK_TX_RING_CNT		256
 #define MSK_RX_RING_CNT		256
 #define MSK_JUMBO_RX_RING_CNT	MSK_RX_RING_CNT
 #define	MSK_STAT_RING_CNT	((1 + 3) * (MSK_TX_RING_CNT + MSK_RX_RING_CNT))
