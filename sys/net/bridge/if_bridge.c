@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.34 2008/06/17 11:49:11 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.35 2008/06/17 12:24:30 sephe Exp $
  */
 
 /*
@@ -591,7 +591,10 @@ bridge_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 				break;
 		}
 
+		lwkt_serialize_exit(ifp->if_serializer);
 		error = bridge_control(sc, bc->bc_func, &args);
+		lwkt_serialize_enter(ifp->if_serializer);
+
 		if (error)
 			break;
 
@@ -2945,12 +2948,13 @@ bridge_control_dispatch(struct netmsg *nmsg)
 static int
 bridge_control(struct bridge_softc *sc, bridge_ctl_t bc_func, void *bc_arg)
 {
+#ifdef INVARIANTS
 	struct ifnet *bifp = sc->sc_ifp;
+#endif
 	struct netmsg_brgctl bc_msg;
 	struct netmsg *nmsg;
-	int error;
 
-	ASSERT_SERIALIZED(bifp->if_serializer);
+	ASSERT_NOT_SERIALIZED(bifp->if_serializer);
 
 	bzero(&bc_msg, sizeof(bc_msg));
 	nmsg = &bc_msg.bc_nmsg;
@@ -2960,8 +2964,5 @@ bridge_control(struct bridge_softc *sc, bridge_ctl_t bc_func, void *bc_arg)
 	bc_msg.bc_sc = sc;
 	bc_msg.bc_arg = bc_arg;
 
-	lwkt_serialize_exit(bifp->if_serializer);
-	error = lwkt_domsg(cpu_portfn(0), &nmsg->nm_lmsg, 0);
-	lwkt_serialize_enter(bifp->if_serializer);
-	return error;
+	return lwkt_domsg(cpu_portfn(0), &nmsg->nm_lmsg, 0);
 }
