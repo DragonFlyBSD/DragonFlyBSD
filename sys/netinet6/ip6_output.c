@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.35 2008/06/17 20:50:11 aggelos Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.36 2008/06/18 11:38:37 swildner Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -1488,7 +1488,7 @@ do { \
 
 				if ((error = soopt_getm(sopt, &m)) != 0) /* XXX */
 					break;
-				soopt_to_mbuf(sopt, m));	/* XXX */
+				soopt_to_mbuf(sopt, m);		/* XXX */
 				if (m) {
 					req = mtod(m, caddr_t);
 					len = m->m_len;
