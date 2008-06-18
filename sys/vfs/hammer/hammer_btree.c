@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.54 2008/06/17 04:02:38 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.55 2008/06/18 01:13:30 dillon Exp $
  */
 
 /*
@@ -83,8 +83,6 @@
 #include <sys/buf2.h>
 
 static int btree_search(hammer_cursor_t cursor, int flags);
-static int hammer_btree_search_node(hammer_base_elm_t elm,
-			hammer_node_ondisk_t node);
 static int btree_split_internal(hammer_cursor_t cursor);
 static int btree_split_leaf(hammer_cursor_t cursor);
 static int btree_remove(hammer_cursor_t cursor);
@@ -1259,7 +1257,7 @@ done:
  * return an index whos compare result is > 1 but may only return an index
  * whos compare result is <= 1 if it is the first element with that result.
  */
-static int
+int
 hammer_btree_search_node(hammer_base_elm_t elm, hammer_node_ondisk_t node)
 {
 	int b;
@@ -2406,7 +2404,6 @@ hammer_print_btree_elm(hammer_btree_elm_t elm, u_int8_t type, int i)
 			elm->internal.subtree_offset);
 		break;
 	case HAMMER_BTREE_TYPE_RECORD:
-		kprintf("\tatime 	= %016llx\n", elm->leaf.atime);
 		kprintf("\tdata_offset  = %016llx\n", elm->leaf.data_offset);
 		kprintf("\tdata_len     = %08x\n", elm->leaf.data_len);
 		kprintf("\tdata_crc     = %08x\n", elm->leaf.data_crc);

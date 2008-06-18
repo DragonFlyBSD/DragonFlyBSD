@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.17 2008/06/10 22:30:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.18 2008/06/18 01:13:30 dillon Exp $
  */
 
 /*
@@ -144,7 +144,7 @@ struct hammer_btree_internal_elm {
  */
 struct hammer_btree_leaf_elm {
 	struct hammer_base_elm base;
-	hammer_off_t	atime;		/* access time */
+	hammer_off_t	unused00;		/* access time */
 	hammer_off_t	data_offset;
 	int32_t		data_len;
 	hammer_crc_t	data_crc;

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.30 2008/06/17 04:02:38 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.31 2008/06/18 01:13:30 dillon Exp $
  */
 
 /*
@@ -47,7 +47,7 @@ static int hammer_load_cursor_parent(hammer_cursor_t cursor, int try_exclusive);
  */
 int
 hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
-		   struct hammer_node **cache, hammer_inode_t ip)
+		   hammer_node_cache_t cache, hammer_inode_t ip)
 {
 	hammer_volume_t volume;
 	hammer_node_t node;
@@ -72,7 +72,7 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 	/*
 	 * Step 1 - acquire a locked node from the cache if possible
 	 */
-	if (cache && *cache) {
+	if (cache && cache->node) {
 		node = hammer_ref_node_safe(trans->hmp, cache, &error);
 		if (error == 0) {
 			hammer_lock_sh(&node->lock);
@@ -129,24 +129,6 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 	/* if (error) hammer_done_cursor(cursor); */
 	return(error);
 }
-
-#if 0
-int
-hammer_reinit_cursor(hammer_cursor_t cursor)
-{
-	hammer_transaction_t trans;
-	hammer_inode_t ip;
-	struct hammer_node **cache;
-
-	trans = cursor->trans;
-	ip = cursor->ip;
-	hammer_done_cursor(cursor);
-	cache = ip ? &ip->cache[0] : NULL;
-	error = hammer_init_cursor(trans, cursor, cache, ip);
-	return (error);
-}
-
-#endif
 
 /*
  * Normalize a cursor.  Sometimes cursors can be left in a state
@@ -345,12 +327,24 @@ hammer_load_cursor_parent(hammer_cursor_t cursor, int try_exclusive)
 		}
 		KKASSERT ((parent->flags & HAMMER_NODE_DELETED) == 0);
 		elm = NULL;
-		for (i = 0; i < parent->ondisk->count; ++i) {
+
+		/*
+		 * Locate the parent index to the child node as quickly
+		 * as possible.
+		 */
+		if (node->ondisk->count) {
+			i = hammer_btree_search_node(
+				&node->ondisk->elms[0].base, node->ondisk);
+		} else {
+			i = 0;
+		}
+		while (i < parent->ondisk->count) {
 			elm = &parent->ondisk->elms[i];
 			if (parent->ondisk->elms[i].internal.subtree_offset ==
 			    node->node_offset) {
 				break;
 			}
+			++i;
 		}
 		if (i == parent->ondisk->count) {
 			hammer_unlock(&parent->lock);

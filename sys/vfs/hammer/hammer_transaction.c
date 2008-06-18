@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.17 2008/06/10 08:51:02 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.18 2008/06/18 01:13:30 dillon Exp $
  */
 
 #include "hammer.h"
@@ -120,11 +120,18 @@ hammer_done_transaction(struct hammer_transaction *trans)
 static hammer_tid_t
 hammer_alloc_tid(hammer_transaction_t trans, int count)
 {
+#if 0
 	struct timespec ts;
+#endif
 	hammer_tid_t tid;
 
+#if 0
 	getnanotime(&ts);
+#endif
+	tid = time_second * 1000000000LL;
+#if 0
 	tid = ts.tv_sec * 1000000000LL + ts.tv_nsec;
+#endif
 	if (tid < trans->hmp->next_tid)
 		tid = trans->hmp->next_tid;
 	if (tid >= 0xFFFFFFFFFFFFF000ULL)

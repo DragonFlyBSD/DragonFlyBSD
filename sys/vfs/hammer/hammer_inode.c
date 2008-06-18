@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.76 2008/06/17 04:02:38 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.77 2008/06/18 01:13:30 dillon Exp $
  */
 
 #include "hammer.h"
@@ -259,7 +259,7 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
  * Called from the frontend.
  */
 struct hammer_inode *
-hammer_get_inode(hammer_transaction_t trans, struct hammer_node **cache,
+hammer_get_inode(hammer_transaction_t trans, hammer_inode_t dip,
 		 u_int64_t obj_id, hammer_tid_t asof, int flags, int *errorp)
 {
 	hammer_mount_t hmp = trans->hmp;
@@ -291,6 +291,8 @@ loop:
 	ip->obj_asof = iinfo.obj_asof;
 	ip->hmp = hmp;
 	ip->flags = flags & HAMMER_INODE_RO;
+	ip->cache[0].ip = ip;
+	ip->cache[1].ip = ip;
 	if (hmp->ronly)
 		ip->flags |= HAMMER_INODE_RO;
 	ip->sync_trunc_off = ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
@@ -301,7 +303,7 @@ loop:
 	 * Locate the on-disk inode.
 	 */
 retry:
-	hammer_init_cursor(trans, &cursor, cache, NULL);
+	hammer_init_cursor(trans, &cursor, (dip ? &dip->cache[0] : NULL), NULL);
 	cursor.key_beg.localization = HAMMER_LOCALIZE_INODE;
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.key = 0;
@@ -328,9 +330,17 @@ retry:
 	if (*errorp == 0) {
 		ip->ino_leaf = cursor.node->ondisk->elms[cursor.index].leaf;
 		ip->ino_data = cursor.data->inode;
-		hammer_cache_node(cursor.node, &ip->cache[0]);
-		if (cache)
-			hammer_cache_node(cursor.node, cache);
+
+		/*
+		 * cache[0] tries to cache the location of the object inode.
+		 * The assumption is that it is near the directory inode.
+		 *
+		 * cache[1] tries to cache the location of the object data.
+		 * The assumption is that it is near the directory data.
+		 */
+		hammer_cache_node(&ip->cache[0], cursor.node);
+		if (dip && dip->cache[1].node)
+			hammer_cache_node(&ip->cache[1], dip->cache[1].node);
 
 		/*
 		 * The file should not contain any data past the file size
@@ -412,12 +422,14 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	ip->hmp = hmp;
 	ip->flush_state = HAMMER_FST_IDLE;
 	ip->flags = HAMMER_INODE_DDIRTY | HAMMER_INODE_ITIMES;
+	ip->cache[0].ip = ip;
+	ip->cache[1].ip = ip;
 
 	ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
 	RB_INIT(&ip->rec_tree);
 	TAILQ_INIT(&ip->target_list);
 
-	ip->ino_leaf.atime = trans->time;
+	ip->ino_data.atime = trans->time;
 	ip->ino_data.mtime = trans->time;
 	ip->ino_data.size = 0;
 	ip->ino_data.nlinks = 0;
@@ -541,7 +553,7 @@ retry:
 				ip->flags |= HAMMER_INODE_DELONDISK;
 			}
 			if (cursor->node)
-				hammer_cache_node(cursor->node, &ip->cache[0]);
+				hammer_cache_node(&ip->cache[0], cursor->node);
 		}
 		if (error == EDEADLK) {
 			hammer_done_cursor(cursor);
@@ -665,7 +677,9 @@ retry:
 		cursor->key_beg.obj_type = 0;
 		cursor->asof = ip->obj_asof;
 		cursor->flags &= ~HAMMER_CURSOR_INITMASK;
-		cursor->flags |= HAMMER_CURSOR_GET_LEAF | HAMMER_CURSOR_ASOF;
+		cursor->flags |= HAMMER_CURSOR_ASOF;
+		cursor->flags |= HAMMER_CURSOR_GET_LEAF;
+		cursor->flags |= HAMMER_CURSOR_GET_DATA;
 		cursor->flags |= HAMMER_CURSOR_BACKEND;
 
 		error = hammer_btree_lookup(cursor);
@@ -675,17 +689,28 @@ retry:
 		}
 		if (error == 0) {
 			/*
-			 * Do not generate UNDO records for atime updates.
+			 * atime/mtime updates can be done in place, but
+			 * they are nasty because we also have to update the
+			 * data_crc in the B-Tree leaf, which means we
+			 * ALSO have to generate UNDO records.
 			 */
+			hammer_modify_buffer(trans, cursor->data_buffer,
+				     HAMMER_ITIMES_BASE(&cursor->data->inode),
+				     HAMMER_ITIMES_BYTES);
+			cursor->data->inode.atime = ip->sync_ino_data.atime;
+			cursor->data->inode.mtime = ip->sync_ino_data.mtime;
+			hammer_modify_buffer_done(cursor->data_buffer);
+
 			leaf = cursor->leaf;
-			hammer_modify_node(trans, cursor->node,	
-					   &leaf->atime, sizeof(leaf->atime));
-			leaf->atime = ip->sync_ino_leaf.atime;
+			hammer_modify_node(trans, cursor->node,
+					   &leaf->data_crc,
+					   sizeof(leaf->data_crc));
+			leaf->data_crc = crc32(cursor->data, leaf->data_len);
 			hammer_modify_node_done(cursor->node);
-			/*rec->ino_mtime = ip->sync_ino_rec.ino_mtime;*/
+
 			ip->sync_flags &= ~HAMMER_INODE_ITIMES;
 			/* XXX recalculate crc */
-			hammer_cache_node(cursor->node, &ip->cache[0]);
+			hammer_cache_node(&ip->cache[0], cursor->node);
 		}
 		if (error == EDEADLK) {
 			hammer_done_cursor(cursor);
@@ -1765,7 +1790,7 @@ hammer_sync_inode(hammer_inode_t ip)
 		if (tmp_error)
 			error = tmp_error;
 	}
-	hammer_cache_node(cursor.node, &ip->cache[1]);
+	hammer_cache_node(&ip->cache[1], cursor.node);
 
 	/*
 	 * Re-seek for inode update.

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.85 2008/06/17 04:02:38 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.86 2008/06/18 01:13:30 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -54,6 +54,7 @@
 #include <sys/lockf.h>
 #include <sys/buf.h>
 #include <sys/queue.h>
+#include <sys/ktr.h>
 #include <sys/globaldata.h>
 
 #include <sys/buf2.h>
@@ -66,6 +67,17 @@
 
 MALLOC_DECLARE(M_HAMMER);
 
+/*
+ * Kernel trace
+ */
+#if !defined(KTR_HAMMER)
+#define KTR_HAMMER	KTR_ALL
+#endif
+KTR_INFO_MASTER_EXTERN(hammer);
+
+/*
+ * Misc structures
+ */
 struct hammer_mount;
 
 /*
@@ -166,6 +178,17 @@ typedef struct hammer_objid_cache {
 } *hammer_objid_cache_t;
 
 /*
+ * Associate an inode with a B-Tree node to cache search start positions
+ */
+typedef struct hammer_node_cache {
+	TAILQ_ENTRY(hammer_node_cache) entry;
+	struct hammer_node		*node;
+	struct hammer_inode		*ip;
+} *hammer_node_cache_t;
+
+TAILQ_HEAD(hammer_node_cache_list, hammer_node_cache);
+
+/*
  * Structure used to represent an inode in-memory.
  *
  * The record and data associated with an inode may be out of sync with
@@ -217,7 +240,7 @@ struct hammer_inode {
 	struct hammer_btree_leaf_elm ino_leaf;  /* in-memory cache */
 	struct hammer_inode_data ino_data;	/* in-memory cache */
 	struct hammer_rec_rb_tree rec_tree;	/* in-memory cache */
-	struct hammer_node	*cache[2];	/* search initiate cache */
+	struct hammer_node_cache cache[2];	/* search initiate cache */
 
 	/*
 	 * When a demark is created to synchronize an inode to
@@ -412,6 +435,7 @@ struct hammer_io {
 	u_int		recovered : 1;	/* has recovery ref */
 	u_int		waitmod : 1;	/* waiting for modify_refs */
 	u_int		reclaim : 1;	/* reclaim requested */
+	u_int		gencrc : 1;	/* crc needs to be generated */
 };
 
 typedef struct hammer_io *hammer_io_t;
@@ -480,14 +504,15 @@ struct hammer_node {
 	struct hammer_mount	*hmp;
 	struct hammer_buffer	*buffer;	/* backing buffer */
 	hammer_node_ondisk_t	ondisk;		/* ptr to on-disk structure */
-	struct hammer_node	**cache1;	/* passive cache(s) */
-	struct hammer_node	**cache2;
+	struct hammer_node_cache_list cache_list; /* passive caches */
 	int			flags;
 	int			loading;	/* load interlock */
 };
 
 #define HAMMER_NODE_DELETED	0x0001
 #define HAMMER_NODE_FLUSH	0x0002
+#define HAMMER_NODE_CRCGOOD	0x0004
+#define HAMMER_NODE_NEEDSCRC	0x0008
 
 typedef struct hammer_node	*hammer_node_t;
 
@@ -702,9 +727,8 @@ int	hammer_vop_inactive(struct vop_inactive_args *);
 int	hammer_vop_reclaim(struct vop_reclaim_args *);
 int	hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp);
 struct hammer_inode *hammer_get_inode(hammer_transaction_t trans,
-			struct hammer_node **cache,
-			u_int64_t obj_id, hammer_tid_t asof, int flags,
-			int *errorp);
+			hammer_inode_t dip, u_int64_t obj_id,
+			hammer_tid_t asof, int flags, int *errorp);
 void	hammer_put_inode(struct hammer_inode *ip);
 void	hammer_put_inode_ref(struct hammer_inode *ip);
 
@@ -776,7 +800,7 @@ int64_t hammer_directory_namekey(void *name, int len);
 int	hammer_nohistory(hammer_inode_t ip);
 
 int	hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
-			   struct hammer_node **cache, hammer_inode_t ip);
+			   hammer_node_cache_t cache, hammer_inode_t ip);
 int	hammer_reinit_cursor(hammer_cursor_t cursor);
 void	hammer_normalize_cursor(hammer_cursor_t cursor);
 void	hammer_done_cursor(hammer_cursor_t cursor);
@@ -801,7 +825,7 @@ int	btree_set_parent(hammer_transaction_t trans, hammer_node_t node,
 int	hammer_btree_lock_children(hammer_cursor_t cursor,
                         struct hammer_node_locklist **locklistp);
 void	hammer_btree_unlock_children(struct hammer_node_locklist **locklistp);
-
+int	hammer_btree_search_node(hammer_base_elm_t elm, hammer_node_ondisk_t node);
 
 void	hammer_print_btree_node(hammer_node_ondisk_t ondisk);
 void	hammer_print_btree_elm(hammer_btree_elm_t elm, u_int8_t type, int i);
@@ -833,13 +857,13 @@ hammer_node_t	hammer_get_node(hammer_mount_t hmp, hammer_off_t node_offset,
 			int isnew, int *errorp);
 void		hammer_ref_node(hammer_node_t node);
 hammer_node_t	hammer_ref_node_safe(struct hammer_mount *hmp,
-			struct hammer_node **cache, int *errorp);
+			hammer_node_cache_t cache, int *errorp);
 void		hammer_rel_node(hammer_node_t node);
 void		hammer_delete_node(hammer_transaction_t trans,
 			hammer_node_t node);
-void		hammer_cache_node(hammer_node_t node,
-			struct hammer_node **cache);
-void		hammer_uncache_node(struct hammer_node **cache);
+void		hammer_cache_node(hammer_node_cache_t cache,
+			hammer_node_t node);
+void		hammer_uncache_node(hammer_node_cache_t cache);
 void		hammer_flush_node(hammer_node_t node);
 
 void hammer_dup_buffer(struct hammer_buffer **bufferp,
@@ -992,6 +1016,9 @@ hammer_lock_ex(struct hammer_lock *lock)
 	hammer_lock_ex_ident(lock, "hmrlck");
 }
 
+/*
+ * Indicate that a B-Tree node is being modified.
+ */
 static __inline void
 hammer_modify_node_noundo(hammer_transaction_t trans, hammer_node_t node)
 {
@@ -1020,10 +1047,22 @@ hammer_modify_node(hammer_transaction_t trans, hammer_node_t node,
 	--node->buffer->io.modify_refs;	/* only want one ref */
 }
 
+/*
+ * Indicate that the specified modifications have been completed.
+ *
+ * Do not try to generate the crc here, it's very expensive to do and a
+ * sequence of insertions or deletions can result in many calls to this
+ * function on the same node.
+ */
 static __inline void
 hammer_modify_node_done(hammer_node_t node)
 {
-	node->ondisk->crc = crc32(&node->ondisk->crc + 1, HAMMER_BTREE_CRCSIZE);
+	node->flags |= HAMMER_NODE_CRCGOOD;
+	if ((node->flags & HAMMER_NODE_NEEDSCRC) == 0) {
+		node->flags |= HAMMER_NODE_NEEDSCRC;
+		node->buffer->io.gencrc = 1;
+		hammer_ref_node(node);
+	}
 	hammer_modify_buffer_done(node->buffer);
 }
 

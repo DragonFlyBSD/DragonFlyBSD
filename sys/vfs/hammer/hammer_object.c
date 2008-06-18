@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.69 2008/06/17 04:02:38 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.70 2008/06/18 01:13:30 dillon Exp $
  */
 
 #include "hammer.h"
@@ -776,8 +776,10 @@ hammer_ip_get_bulk(hammer_inode_t ip, off_t file_offset, int bytes)
 /*
  * Reserve blockmap space placemarked with an in-memory record.  
  *
- * This routine is called by the front-end in order to be able to directly
- * flush a buffer cache buffer.
+ * This routine is called by the frontend in order to be able to directly
+ * flush a buffer cache buffer.  The frontend has locked the related buffer
+ * cache buffers and we should be able to manipulate any overlapping
+ * in-memory records.
  */
 hammer_record_t
 hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
@@ -1317,8 +1319,8 @@ next_btree:
 			cursor->flags &= ~HAMMER_CURSOR_DELBTREE;
 			if (error == 0) {
 				cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
-				hammer_cache_node(cursor->node,
-						  &cursor->ip->cache[1]);
+				hammer_cache_node(&cursor->ip->cache[1],
+						  cursor->node);
 			} else {
 				cursor->flags |= HAMMER_CURSOR_DISKEOF |
 						 HAMMER_CURSOR_ATEDISK;
@@ -1654,11 +1656,11 @@ retry:
 		error = hammer_ip_next(cursor);
 	}
 	if (cursor->node)
-		hammer_cache_node(cursor->node, &ip->cache[1]);
+		hammer_cache_node(&ip->cache[1], cursor->node);
 
 	if (error == EDEADLK) {
 		hammer_done_cursor(cursor);
-		error = hammer_init_cursor(trans, cursor, &ip->cache[0], ip);
+		error = hammer_init_cursor(trans, cursor, &ip->cache[1], ip);
 		if (error == 0)
 			goto retry;
 	}
@@ -1732,10 +1734,10 @@ retry:
 		error = hammer_ip_next(cursor);
 	}
 	if (cursor->node)
-		hammer_cache_node(cursor->node, &ip->cache[1]);
+		hammer_cache_node(&ip->cache[1], cursor->node);
 	if (error == EDEADLK) {
 		hammer_done_cursor(cursor);
-		error = hammer_init_cursor(trans, cursor, &ip->cache[0], ip);
+		error = hammer_init_cursor(trans, cursor, &ip->cache[1], ip);
 		if (error == 0)
 			goto retry;
 	}
@@ -1884,7 +1886,7 @@ hammer_ip_check_directory_empty(hammer_transaction_t trans, hammer_inode_t ip)
 	/*
 	 * Check directory empty
 	 */
-	hammer_init_cursor(trans, &cursor, &ip->cache[0], ip);
+	hammer_init_cursor(trans, &cursor, &ip->cache[1], ip);
 
 	cursor.key_beg.localization = HAMMER_LOCALIZE_MISC;
 	cursor.key_beg.obj_id = ip->obj_id;

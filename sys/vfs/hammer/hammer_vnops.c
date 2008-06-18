@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.71 2008/06/17 04:02:38 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.72 2008/06/18 01:13:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -247,7 +247,7 @@ hammer_vop_read(struct vop_read_args *ap)
 	}
 	if ((ip->flags & HAMMER_INODE_RO) == 0 &&
 	    (ip->hmp->mp->mnt_flag & MNT_NOATIME) == 0) {
-		ip->ino_leaf.atime = trans.time;
+		ip->ino_data.atime = trans.time;
 		hammer_modify_inode(ip, HAMMER_INODE_ITIMES);
 	}
 	hammer_done_transaction(&trans);
@@ -452,12 +452,11 @@ hammer_vop_write(struct vop_write_args *ap)
 		} else if (hammer_write_mode &&
 			   (uio->uio_offset & HAMMER_BUFMASK) == 0) {
 #if 1
-			/* strategy write cannot handled clustered writes */
 			bp->b_flags |= B_CLUSTEROK;
 			cluster_write(bp, ip->ino_data.size, seqcount);
 #else
-#endif
 			bawrite(bp);
+#endif
 		} else if ((ap->a_ioflag >> 16) == IO_SEQMAX &&
 			   (uio->uio_offset & HAMMER_BUFMASK) == 0) {
 			/*
@@ -622,11 +621,19 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	vap->va_rmajor = 0;
 	vap->va_rminor = 0;
 	vap->va_size = ip->ino_data.size;
-	if (ip->flags & HAMMER_INODE_RO)
-		hammer_to_timespec(ip->ino_data.mtime, &vap->va_atime);
-	else
-		hammer_to_timespec(ip->ino_leaf.atime, &vap->va_atime);
-	hammer_to_timespec(ip->ino_data.mtime, &vap->va_mtime);
+
+	/*
+	 * We must provide a consistent atime and mtime for snapshots
+	 * so people can do a 'tar cf - ... | md5' on them and get
+	 * consistent results.
+	 */
+	if (ip->flags & HAMMER_INODE_RO) {
+		hammer_to_timespec(ip->ino_data.ctime, &vap->va_atime);
+		hammer_to_timespec(ip->ino_data.ctime, &vap->va_mtime);
+	} else {
+		hammer_to_timespec(ip->ino_data.atime, &vap->va_atime);
+		hammer_to_timespec(ip->ino_data.mtime, &vap->va_mtime);
+	}
 	hammer_to_timespec(ip->ino_data.ctime, &vap->va_ctime);
 	vap->va_flags = ip->ino_data.uflags;
 	vap->va_gen = 1;	/* hammer inums are unique for all time */
@@ -705,7 +712,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	 * dip.
 	 */
 	if (nlen == 0) {
-		ip = hammer_get_inode(&trans, &dip->cache[1], dip->obj_id,
+		ip = hammer_get_inode(&trans, dip, dip->obj_id,
 				      asof, flags, &error);
 		if (error == 0) {
 			error = hammer_get_vnode(ip, &vp);
@@ -730,7 +737,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	 */
 	namekey = hammer_directory_namekey(ncp->nc_name, nlen);
 
-	error = hammer_init_cursor(&trans, &cursor, &dip->cache[0], dip);
+	error = hammer_init_cursor(&trans, &cursor, &dip->cache[1], dip);
 	cursor.key_beg.localization = HAMMER_LOCALIZE_MISC;
         cursor.key_beg.obj_id = dip->obj_id;
 	cursor.key_beg.key = namekey;
@@ -769,8 +776,8 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	}
 	hammer_done_cursor(&cursor);
 	if (error == 0) {
-		ip = hammer_get_inode(&trans, &dip->cache[1],
-				      obj_id, asof, flags, &error);
+		ip = hammer_get_inode(&trans, dip, obj_id,
+				      asof, flags, &error);
 		if (error == 0) {
 			error = hammer_get_vnode(ip, &vp);
 			hammer_rel_inode(ip, 0);
@@ -837,7 +844,7 @@ hammer_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 
 	hammer_simple_transaction(&trans, dip->hmp);
 
-	ip = hammer_get_inode(&trans, &dip->cache[1], parent_obj_id,
+	ip = hammer_get_inode(&trans, dip, parent_obj_id,
 			      asof, dip->flags, &error);
 	if (ip) {
 		error = hammer_get_vnode(ip, ap->a_vpp);
@@ -1137,7 +1144,7 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 	 * Key range (begin and end inclusive) to scan.  Directory keys
 	 * directly translate to a 64 bit 'seek' position.
 	 */
-	hammer_init_cursor(&trans, &cursor, &ip->cache[0], ip);
+	hammer_init_cursor(&trans, &cursor, &ip->cache[1], ip);
 	cursor.key_beg.localization = HAMMER_LOCALIZE_MISC;
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = 0;
@@ -1233,7 +1240,7 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 	 * Long version
 	 */
 	hammer_simple_transaction(&trans, ip->hmp);
-	hammer_init_cursor(&trans, &cursor, &ip->cache[0], ip);
+	hammer_init_cursor(&trans, &cursor, &ip->cache[1], ip);
 
 	/*
 	 * Key range (begin and end inclusive) to scan.  Directory keys
@@ -1355,7 +1362,7 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 	 */
 	namekey = hammer_directory_namekey(fncp->nc_name, fncp->nc_nlen);
 retry:
-	hammer_init_cursor(&trans, &cursor, &fdip->cache[0], fdip);
+	hammer_init_cursor(&trans, &cursor, &fdip->cache[1], fdip);
 	cursor.key_beg.localization = HAMMER_LOCALIZE_MISC;
         cursor.key_beg.obj_id = fdip->obj_id;
 	cursor.key_beg.key = namekey;
@@ -1622,7 +1629,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 		break;
 	}
 	if (vap->va_atime.tv_sec != VNOVAL) {
-		ip->ino_leaf.atime =
+		ip->ino_data.atime =
 			hammer_timespec_to_transid(&vap->va_atime);
 		modflags |= HAMMER_INODE_ITIMES;
 	}
@@ -2056,7 +2063,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 
 done:
 	if (cursor.node)
-		hammer_cache_node(cursor.node, &ip->cache[1]);
+		hammer_cache_node(&ip->cache[1], cursor.node);
 	hammer_done_cursor(&cursor);
 	hammer_done_transaction(&trans);
 	return(error);
@@ -2220,7 +2227,7 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 #endif
 
 	if (cursor.node) {
-		hammer_cache_node(cursor.node, &ip->cache[1]);
+		hammer_cache_node(&ip->cache[1], cursor.node);
 #if 0
 		kprintf("bmap_end2 %016llx ip->cache %p\n", ap->a_loffset, ip->cache[1]);
 #endif
@@ -2255,11 +2262,7 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 
 /*
  * Write to a regular file.   Because this is a strategy call the OS is
- * trying to actually sync data to the media.   HAMMER can only flush
- * the entire inode (so the TID remains properly synchronized).
- *
- * Basically all we do here is place the bio on the inode's flush queue
- * and activate the flusher.
+ * trying to actually get data onto the media.
  */
 static
 int
@@ -2413,7 +2416,7 @@ hammer_dounlink(hammer_transaction_t trans, struct nchandle *nch,
 
 	namekey = hammer_directory_namekey(ncp->nc_name, ncp->nc_nlen);
 retry:
-	hammer_init_cursor(trans, &cursor, &dip->cache[0], dip);
+	hammer_init_cursor(trans, &cursor, &dip->cache[1], dip);
 	cursor.key_beg.localization = HAMMER_LOCALIZE_MISC;
         cursor.key_beg.obj_id = dip->obj_id;
 	cursor.key_beg.key = namekey;
@@ -2460,8 +2463,7 @@ retry:
 	 */
 	if (error == 0) {
 		hammer_unlock(&cursor.ip->lock);
-		ip = hammer_get_inode(trans, &dip->cache[1],
-				      cursor.data->entry.obj_id,
+		ip = hammer_get_inode(trans, dip, cursor.data->entry.obj_id,
 				      dip->hmp->asof, 0, &error);
 		hammer_lock_sh(&cursor.ip->lock);
 		if (error == ENOENT) {

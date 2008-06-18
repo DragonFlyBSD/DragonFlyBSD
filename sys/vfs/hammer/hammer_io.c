@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.42 2008/06/17 04:02:38 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.43 2008/06/18 01:13:30 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -453,6 +453,29 @@ hammer_io_flush(struct hammer_io *io)
 	 * ondisk while we are blocked blocks waiting for us.
 	 */
 	hammer_io_clear_modify(io);
+
+	/*
+	 * We delay generating the CRCs for B-Tree nodes until the very
+	 * last minute.
+	 */
+	if (io->gencrc) {
+		io->gencrc = 0;
+		if (io->type == HAMMER_STRUCTURE_META_BUFFER) {
+			hammer_buffer_t buffer = (void *)io;
+			hammer_node_t node;
+
+restart:
+			TAILQ_FOREACH(node, &buffer->clist, entry) {
+				if ((node->flags & HAMMER_NODE_NEEDSCRC) == 0)
+					continue;
+				node->flags &= ~HAMMER_NODE_NEEDSCRC;
+				KKASSERT(node->ondisk);
+				node->ondisk->crc = crc32(&node->ondisk->crc + 1, HAMMER_BTREE_CRCSIZE);
+				hammer_rel_node(node);
+				goto restart;
+			}
+		}
+	}
 
 	/*
 	 * Transfer ownership to the kernel and initiate I/O.

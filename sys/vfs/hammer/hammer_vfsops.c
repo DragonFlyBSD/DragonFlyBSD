@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.48 2008/06/17 04:02:38 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.49 2008/06/18 01:13:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -172,6 +172,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, verify_zone, CTLFLAG_RW,
 	   &hammer_verify_zone, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, write_mode, CTLFLAG_RW,
 	   &hammer_write_mode, 0, "");
+
+KTR_INFO_MASTER(hammer);
 
 /*
  * VFS ABI
