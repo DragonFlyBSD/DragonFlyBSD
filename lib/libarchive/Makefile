@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libarchive/Makefile,v 1.50 2006/09/05 05:59:45 kientzle Exp $
-# $DragonFly: src/lib/libarchive/Makefile,v 1.20 2008/06/16 08:20:23 pavalos Exp $
+# $DragonFly: src/lib/libarchive/Makefile,v 1.21 2008/06/18 06:28:21 hasso Exp $
 
 LIB=	archive
 
@@ -10,6 +10,9 @@ SHLIB_MAJOR=	5
 CFLAGS+=	-DPLATFORM_CONFIG_H=\"config.h\"
 CFLAGS+=	-I${.OBJDIR} -I${.CURDIR} -I${CONTRIBDIR}
 WARNS?=	6
+
+DPADD=	${LIBBZ2} ${LIBZ}
+LDADD=	-lbz2 -lz
 
 INCS=	archive.h archive_entry.h
 
