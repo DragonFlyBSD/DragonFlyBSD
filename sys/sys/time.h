@@ -32,7 +32,7 @@
  *
  *	@(#)time.h	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/time.h,v 1.42 1999/12/29 04:24:48 peter Exp $
- * $DragonFly: src/sys/sys/time.h,v 1.19 2008/05/30 09:39:46 corecode Exp $
+ * $DragonFly: src/sys/sys/time.h,v 1.20 2008/06/18 09:36:07 hasso Exp $
  */
 
 #ifndef _SYS_TIME_H_
@@ -42,16 +42,8 @@
 #include <sys/types.h>
 #endif
 
+#include <sys/_timeval.h>
 #include <sys/select.h>
-
-/*
- * Structure returned by gettimeofday(2) system call,
- * and used in other calls.
- */
-struct timeval {
-	long	tv_sec;		/* seconds */
-	long	tv_usec;	/* and microseconds */
-};
 
 #ifndef _TIMESPEC_DECLARED
 #define _TIMESPEC_DECLARED
