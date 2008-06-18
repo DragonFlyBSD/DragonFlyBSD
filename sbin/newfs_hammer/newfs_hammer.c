@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.31 2008/06/17 04:03:37 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.32 2008/06/18 01:13:52 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -458,6 +458,7 @@ format_root(void)
 	idata->version = HAMMER_INODE_DATA_VERSION;
 	idata->mode = 0755;
 	idata->mtime = create_tid;
+	idata->atime = create_tid;
 	idata->obj_type = HAMMER_OBJTYPE_DIRECTORY;
 	idata->size = 0;
 	idata->nlinks = 1;
@@ -480,7 +481,7 @@ format_root(void)
 	elm->leaf.base.rec_type = HAMMER_RECTYPE_INODE;
 	elm->leaf.base.obj_type = HAMMER_OBJTYPE_DIRECTORY;
 
-	elm->leaf.atime = create_tid;
+	elm->leaf.unused00 = 0;
 	elm->leaf.data_offset = data_off;
 	elm->leaf.data_len = sizeof(*idata);
 	elm->leaf.data_crc = crc32(idata, sizeof(*idata));
