@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/ondisk.c,v 1.22 2008/06/17 04:03:38 dillon Exp $
+ * $DragonFly: src/sbin/hammer/ondisk.c,v 1.23 2008/06/19 23:30:30 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -690,6 +690,7 @@ again:
 	 * zone.  If the bigblock is owned by another zone skip it.
 	 */
 	if (layer2->zone == 0) {
+		--layer1->blocks_free;
 		layer2->zone = zone;
 		assert(layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE);
 		assert(layer2->append_off == 0);
@@ -704,10 +705,11 @@ again:
 	volume->cache.modified = 1;
 	assert(layer2->append_off ==
 	       (blockmap->next_offset & HAMMER_LARGEBLOCK_MASK));
-	layer2->append_off += bytes;
 	layer2->bytes_free -= bytes;
 	*result_offp = blockmap->next_offset;
 	blockmap->next_offset += bytes;
+	layer2->append_off = (int)blockmap->next_offset &
+			      HAMMER_LARGEBLOCK_MASK;
 
 	layer1->layer1_crc = crc32(layer1, HAMMER_LAYER1_CRCSIZE);
 	layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
