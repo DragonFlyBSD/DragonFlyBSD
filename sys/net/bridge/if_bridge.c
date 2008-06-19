@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.38 2008/06/19 11:56:04 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.39 2008/06/19 14:33:36 sephe Exp $
  */
 
 /*
@@ -712,30 +712,43 @@ bridge_delete_member(struct bridge_softc *sc, struct bridge_iflist *bif,
     int gone)
 {
 	struct ifnet *ifs = bif->bif_ifp;
+	struct ifnet *bifp = sc->sc_ifp;
+
+	ASSERT_SERIALIZED(bifp->if_serializer);
+
+	ifs->if_bridge = NULL;
+#ifdef notyet
+	netmsg_service_sync();
+#endif
 
 	if (!gone) {
 		switch (ifs->if_type) {
 		case IFT_ETHER:
 		case IFT_L2VLAN:
 			/*
+			 * Release bridge interface's serializer to
+			 * avoid possible dead lock.
+			 */
+			lwkt_serialize_exit(bifp->if_serializer);
+
+			/*
 			 * Take the interface out of promiscuous mode.
 			 */
-			(void) ifpromisc(ifs, 0);
+			ifpromisc(ifs, 0);
 			bridge_mutecaps(bif, 0);
+
+			lwkt_serialize_enter(bifp->if_serializer);
 			break;
 
 		case IFT_GIF:
 			break;
 
 		default:
-#ifdef DIAGNOSTIC
 			panic("bridge_delete_member: impossible");
-#endif
 			break;
 		}
 	}
 
-	ifs->if_bridge = NULL;
 	LIST_REMOVE(bif, bif_next);
 
 	bridge_rtdelete(sc, ifs, IFBF_FLUSHALL);
@@ -1301,26 +1314,35 @@ bridge_ifdetach(void *arg __unused, struct ifnet *ifp)
 {
 	struct bridge_softc *sc = ifp->if_bridge;
 	struct bridge_iflist *bif;
+	struct ifnet *bifp;
 
 	/* Check if the interface is a bridge member */
 	if (sc != NULL) {
-		lwkt_serialize_enter(ifp->if_serializer);
+		bifp = sc->sc_ifp;
+
+		lwkt_serialize_enter(bifp->if_serializer);
 
 		bif = bridge_lookup_member_if(sc, ifp);
 		if (bif != NULL)
 			bridge_delete_member(sc, bif, 1);
 
-		lwkt_serialize_exit(ifp->if_serializer);
+		lwkt_serialize_exit(bifp->if_serializer);
 		return;
 	}
 
 	/* Check if the interface is a span port */
 	LIST_FOREACH(sc, &bridge_list, sc_list) {
+		bifp = sc->sc_ifp;
+
+		lwkt_serialize_enter(bifp->if_serializer);
+
 		LIST_FOREACH(bif, &sc->sc_spanlist, bif_next)
 			if (ifp == bif->bif_ifp) {
 				bridge_delete_span(sc, bif);
 				break;
 			}
+
+		lwkt_serialize_exit(bifp->if_serializer);
 	}
 }
 
