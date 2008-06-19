@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.39 2008/06/19 14:33:36 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.40 2008/06/19 15:26:47 sephe Exp $
  */
 
 /*
@@ -481,7 +481,7 @@ bridge_clone_create(struct if_clone *ifc, int unit)
 	ifp->if_baudrate = 0;
 	ifp->if_type = IFT_BRIDGE;
 
-	crit_enter();
+	crit_enter();	/* XXX MP */
 	LIST_INSERT_HEAD(&bridge_list, sc, sc_list);
 	crit_exit();
 
@@ -1303,18 +1303,16 @@ bridge_ioctl_delspan(struct bridge_softc *sc, void *arg)
 	return (0);
 }
 
-/*
- * bridge_ifdetach:
- *
- *	Detach an interface from a bridge.  Called when a member
- *	interface is detaching.
- */
 static void
-bridge_ifdetach(void *arg __unused, struct ifnet *ifp)
+bridge_ifdetach_dispatch(struct netmsg *nmsg)
 {
-	struct bridge_softc *sc = ifp->if_bridge;
+	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
+	struct ifnet *ifp, *bifp;
+	struct bridge_softc *sc;
 	struct bridge_iflist *bif;
-	struct ifnet *bifp;
+
+	ifp = lmsg->u.ms_resultp;
+	sc = ifp->if_bridge;
 
 	/* Check if the interface is a bridge member */
 	if (sc != NULL) {
@@ -1323,12 +1321,17 @@ bridge_ifdetach(void *arg __unused, struct ifnet *ifp)
 		lwkt_serialize_enter(bifp->if_serializer);
 
 		bif = bridge_lookup_member_if(sc, ifp);
-		if (bif != NULL)
+		if (bif != NULL) {
 			bridge_delete_member(sc, bif, 1);
+		} else {
+			/* XXX Why bif will be NULL? */
+		}
 
 		lwkt_serialize_exit(bifp->if_serializer);
-		return;
+		goto reply;
 	}
+
+	crit_enter();	/* XXX MP */
 
 	/* Check if the interface is a span port */
 	LIST_FOREACH(sc, &bridge_list, sc_list) {
@@ -1344,6 +1347,30 @@ bridge_ifdetach(void *arg __unused, struct ifnet *ifp)
 
 		lwkt_serialize_exit(bifp->if_serializer);
 	}
+
+	crit_exit();
+
+reply:
+	lwkt_replymsg(lmsg, 0);
+}
+
+/*
+ * bridge_ifdetach:
+ *
+ *	Detach an interface from a bridge.  Called when a member
+ *	interface is detaching.
+ */
+static void
+bridge_ifdetach(void *arg __unused, struct ifnet *ifp)
+{
+	struct lwkt_msg *lmsg;
+	struct netmsg nmsg;
+
+	netmsg_init(&nmsg, &curthread->td_msgport, 0, bridge_ifdetach_dispatch);
+	lmsg = &nmsg.nm_lmsg;
+	lmsg->u.ms_resultp = ifp;
+
+	lwkt_domsg(cpu_portfn(0), lmsg, 0);
 }
 
 /*
