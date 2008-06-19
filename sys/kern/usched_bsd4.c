@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.23 2008/04/21 15:24:46 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.24 2008/06/19 05:34:23 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -786,10 +786,16 @@ bsd4_resetpriority(struct lwp *lp)
 	 * occurs if the LWP is already on a scheduler queue, which means
 	 * that idle cpu notification has already occured.  At most we
 	 * need only issue a need_user_resched() on the appropriate cpu.
+	 *
+	 * The LWP may be owned by a CPU different from the current one,
+	 * in which case dd->uschedcp may be modified without an MP lock
+	 * or a spinlock held.  The worst that happens is that the code
+	 * below causes a spurious need_user_resched() on the target CPU
+	 * and dd->pri to be wrong for a short period of time, both of
+	 * which are harmless.
 	 */
 	if (reschedcpu >= 0) {
 		dd = &bsd4_pcpu[reschedcpu];
-		KKASSERT(dd->uschedcp != lp);
 		if ((dd->upri & ~PRIMASK) > (lp->lwp_priority & ~PRIMASK)) {
 			dd->upri = lp->lwp_priority;
 #ifdef SMP
