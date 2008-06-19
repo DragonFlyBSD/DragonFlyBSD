@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.37 2008/06/19 11:33:07 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.38 2008/06/19 11:56:04 sephe Exp $
  */
 
 /*
@@ -507,9 +507,8 @@ bridge_clone_destroy(struct ifnet *ifp)
 	while ((bif = LIST_FIRST(&sc->sc_iflist)) != NULL)
 		bridge_delete_member(sc, bif, 0);
 
-	while ((bif = LIST_FIRST(&sc->sc_spanlist)) != NULL) {
+	while ((bif = LIST_FIRST(&sc->sc_spanlist)) != NULL)
 		bridge_delete_span(sc, bif);
-	}
 
 	callout_stop(&sc->sc_brcallout);
 	callout_stop(&sc->sc_bstpcallout);
