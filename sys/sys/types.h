@@ -37,7 +37,7 @@
  *
  *	@(#)types.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/types.h,v 1.40.2.2 2001/04/21 14:53:06 ume Exp $
- * $DragonFly: src/sys/sys/types.h,v 1.22 2008/06/18 09:36:07 hasso Exp $
+ * $DragonFly: src/sys/sys/types.h,v 1.23 2008/06/19 12:23:51 hasso Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -105,7 +105,7 @@ typedef	quad_t		rlim_t;		/* resource limit */
 typedef	__int32_t	segsz_t;	/* segment size */
 typedef	__int32_t	swblk_t;	/* swap offset */
 typedef	__uint32_t	uid_t;		/* user id */
-typedef	__int32_t	suseconds_t;	/* microseconds (signed) */
+typedef	long		suseconds_t;	/* microseconds (signed) */
 typedef	__uint32_t	useconds_t;	/* microseconds (unsigned) */
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
