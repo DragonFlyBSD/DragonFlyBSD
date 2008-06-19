@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.41 2008/05/27 05:25:34 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.42 2008/06/19 00:03:45 aggelos Exp $
  */
 
 #include <sys/param.h>
@@ -468,15 +468,15 @@ int
 uipc_ctloutput(struct socket *so, struct sockopt *sopt)
 {
 	struct unpcb *unp = so->so_pcb;
-	int error;
+	int error = 0;
 
 	switch (sopt->sopt_dir) {
 	case SOPT_GET:
 		switch (sopt->sopt_name) {
 		case LOCAL_PEERCRED:
 			if (unp->unp_flags & UNP_HAVEPC)
-				error = sooptcopyout(sopt, &unp->unp_peercred,
-				    sizeof(unp->unp_peercred));
+				soopt_from_kbuf(sopt, &unp->unp_peercred,
+						sizeof(unp->unp_peercred));
 			else {
 				if (so->so_type == SOCK_STREAM)
 					error = ENOTCONN;
