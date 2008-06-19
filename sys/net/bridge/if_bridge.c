@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.40 2008/06/19 15:26:47 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.41 2008/06/19 15:51:57 sephe Exp $
  */
 
 /*
@@ -488,6 +488,27 @@ bridge_clone_create(struct if_clone *ifc, int unit)
 	return (0);
 }
 
+static void
+bridge_delete_dispatch(struct netmsg *nmsg)
+{
+	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
+	struct bridge_softc *sc = lmsg->u.ms_resultp;
+	struct ifnet *bifp = sc->sc_ifp;
+	struct bridge_iflist *bif;
+
+	lwkt_serialize_enter(bifp->if_serializer);
+
+	while ((bif = LIST_FIRST(&sc->sc_iflist)) != NULL)
+		bridge_delete_member(sc, bif, 0);
+
+	while ((bif = LIST_FIRST(&sc->sc_spanlist)) != NULL)
+		bridge_delete_span(sc, bif);
+
+	lwkt_serialize_exit(bifp->if_serializer);
+
+	lwkt_replymsg(lmsg, 0);
+}
+
 /*
  * bridge_clone_destroy:
  *
@@ -497,25 +518,25 @@ static void
 bridge_clone_destroy(struct ifnet *ifp)
 {
 	struct bridge_softc *sc = ifp->if_softc;
-	struct bridge_iflist *bif;
+	struct lwkt_msg *lmsg;
+	struct netmsg nmsg;
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
 	bridge_stop(ifp);
 	ifp->if_flags &= ~IFF_UP;
 
-	while ((bif = LIST_FIRST(&sc->sc_iflist)) != NULL)
-		bridge_delete_member(sc, bif, 0);
-
-	while ((bif = LIST_FIRST(&sc->sc_spanlist)) != NULL)
-		bridge_delete_span(sc, bif);
-
 	callout_stop(&sc->sc_brcallout);
 	callout_stop(&sc->sc_bstpcallout);
 
 	lwkt_serialize_exit(ifp->if_serializer);
 
-	crit_enter();
+	netmsg_init(&nmsg, &curthread->td_msgport, 0, bridge_delete_dispatch);
+	lmsg = &nmsg.nm_lmsg;
+	lmsg->u.ms_resultp = sc;
+	lwkt_domsg(cpu_portfn(0), lmsg, 0);
+
+	crit_enter();	/* XXX MP */
 	LIST_REMOVE(sc, sc_list);
 	crit_exit();
 
