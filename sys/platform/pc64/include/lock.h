@@ -22,7 +22,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/lock.h,v 1.11.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/platform/pc64/include/lock.h,v 1.2 2007/09/23 04:29:31 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/include/lock.h,v 1.3 2008/06/19 21:32:55 aggelos Exp $
  */
 
 #ifndef _MACHINE_LOCK_H_
@@ -191,6 +191,7 @@ cpu_rel_mplock(void)
 #define get_mplock()
 #define try_mplock()	1
 #define rel_mplock()
+#define MP_LOCK_HELD()	(!0)
 #define ASSERT_MP_LOCK_HELD(td)
 
 #endif	/* SMP */
