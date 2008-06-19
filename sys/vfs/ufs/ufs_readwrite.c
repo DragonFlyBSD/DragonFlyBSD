@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.25 2008/04/22 18:46:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.26 2008/06/19 23:27:39 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -380,7 +380,7 @@ ffs_write(struct vop_write_args *ap)
 		} else if (xfersize + blkoffset == fs->fs_bsize) {
 			if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERW) == 0) {
 				bp->b_flags |= B_CLUSTEROK;
-				cluster_write(bp, (off_t)ip->i_size, seqcount);
+				cluster_write(bp, (off_t)ip->i_size, vp->v_mount->mnt_stat.f_iosize, seqcount);
 			} else {
 				bawrite(bp);
 			}
@@ -489,7 +489,7 @@ ffs_getpages(struct vop_getpages_args *ap)
 	poff = (int)(foff % bsize);
 	reqoffset = foff - poff;
 
-	if (VOP_BMAP(vp, reqoffset, &doffset, &bforwards, &bbackwards) ||
+	if (VOP_BMAP(vp, reqoffset, &doffset, &bforwards, &bbackwards, BUF_CMD_READ) ||
 	    doffset == NOOFFSET
 	) {
 		for (i = 0; i < pcount; i++) {

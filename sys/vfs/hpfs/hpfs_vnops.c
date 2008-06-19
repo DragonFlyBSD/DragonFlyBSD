@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.46 2007/11/20 21:03:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.47 2008/06/19 23:27:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -686,7 +686,7 @@ hpfs_strategy(struct vop_strategy_args *ap)
 	nbio = push_bio(bio);
 	if (nbio->bio_offset == NOOFFSET) {
 		error = VOP_BMAP(vp, bio->bio_offset, &nbio->bio_offset,
-				 NULL, NULL);
+				 NULL, NULL, bp->b_cmd);
 		if (error) {
 			kprintf("hpfs_strategy: VOP_BMAP FAILED %d\n", error);
 			bp->b_error = error;

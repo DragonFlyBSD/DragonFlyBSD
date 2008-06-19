@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.104 2008/06/12 23:26:37 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.105 2008/06/19 23:27:35 dillon Exp $
  */
 
 /*
@@ -819,7 +819,7 @@ bdwrite(struct buf *bp)
 	 */
 	if (bp->b_bio2.bio_offset == NOOFFSET) {
 		VOP_BMAP(bp->b_vp, bp->b_loffset, &bp->b_bio2.bio_offset,
-			 NULL, NULL);
+			 NULL, NULL, BUF_CMD_WRITE);
 	}
 
 	/*
@@ -2415,6 +2415,7 @@ getblk(struct vnode *vp, off_t loffset, int size, int blkflags, int slptimeo)
 {
 	struct buf *bp;
 	int slpflags = (blkflags & GETBLK_PCATCH) ? PCATCH : 0;
+	int error;
 
 	if (size > MAXBSIZE)
 		panic("getblk: size(%d) > MAXBSIZE(%d)", size, MAXBSIZE);
@@ -2434,12 +2435,13 @@ loop:
 			int lkflags = LK_EXCLUSIVE | LK_SLEEPFAIL;
 			if (blkflags & GETBLK_PCATCH)
 				lkflags |= LK_PCATCH;
-			if (BUF_TIMELOCK(bp, lkflags, "getblk", slptimeo) ==
-			    ENOLCK) {
-				goto loop;
+			error = BUF_TIMELOCK(bp, lkflags, "getblk", slptimeo);
+			if (error) {
+				if (error == ENOLCK)
+					goto loop;
+				crit_exit();
+				return (NULL);
 			}
-			crit_exit();
-			return (NULL);
 		}
 
 		/*

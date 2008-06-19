@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.37 2008/06/12 23:26:37 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.38 2008/06/19 23:27:35 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -66,10 +66,10 @@ static MALLOC_DEFINE(M_SEGMENT, "cluster_save", "cluster_save buffer");
 
 static struct cluster_save *
 	cluster_collectbufs (struct vnode *vp, struct buf *last_bp,
-			    int lblocksize);
+			    int blksize);
 static struct buf *
 	cluster_rbuild (struct vnode *vp, off_t filesize, off_t loffset,
-			    off_t doffset, int size, int run, 
+			    off_t doffset, int blksize, int run, 
 			    struct buf *fbp, int doasync);
 static void cluster_callback (struct bio *);
 
@@ -91,7 +91,7 @@ extern int cluster_pbuf_freecnt;
  */
 int
 cluster_read(struct vnode *vp, off_t filesize, off_t loffset, 
-	     int size, int totread, int seqcount, struct buf **bpp)
+	     int blksize, int totread, int seqcount, struct buf **bpp)
 {
 	struct buf *bp, *rbp, *reqbp;
 	off_t origoffset;
@@ -106,8 +106,8 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 	 * Try to limit the amount of read-ahead by a few
 	 * ad-hoc parameters.  This needs work!!!
 	 */
-	racluster = vmaxiosize(vp) / size;
-	maxra = 2 * racluster + (totread / size);
+	racluster = vmaxiosize(vp) / blksize;
+	maxra = 2 * racluster + (totread / blksize);
 	if (maxra > MAXRA)
 		maxra = MAXRA;
 	if (maxra > nbuf/8)
@@ -116,7 +116,7 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 	/*
 	 * get the requested block
 	 */
-	*bpp = reqbp = bp = getblk(vp, loffset, size, 0, 0);
+	*bpp = reqbp = bp = getblk(vp, loffset, blksize, 0, 0);
 	origoffset = loffset;
 
 	/*
@@ -140,7 +140,7 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 			 */
 			crit_enter();
 			for (i = 1; i < maxra; i++) {
-				if (!(tbp = findblk(vp, loffset + i * size))) {
+				if (!(tbp = findblk(vp, loffset + i * blksize))) {
 					break;
 				}
 
@@ -156,7 +156,7 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 			if (i >= maxra) {
 				return 0;
 			}
-			loffset += i * size;
+			loffset += i * blksize;
 		}
 		reqbp = bp = NULL;
 	} else {
@@ -167,26 +167,26 @@ cluster_read(struct vnode *vp, off_t filesize, off_t loffset,
 			("cluster_read: no buffer offset"));
 		if (firstread + totread > filesize)
 			totread = (int)(filesize - firstread);
-		nblks = totread / size;
+		nblks = totread / blksize;
 		if (nblks) {
 			int burstbytes;
 
 			if (nblks > racluster)
 				nblks = racluster;
 
-	    		error = VOP_BMAP(vp, loffset,
-					 &doffset, &burstbytes, NULL);
+	    		error = VOP_BMAP(vp, loffset, &doffset,
+					 &burstbytes, NULL, BUF_CMD_READ);
 			if (error)
 				goto single_block_read;
 			if (doffset == NOOFFSET)
 				goto single_block_read;
-			if (burstbytes < size * 2)
+			if (burstbytes < blksize * 2)
 				goto single_block_read;
-			if (nblks > burstbytes / size)
-				nblks = burstbytes / size;
+			if (nblks > burstbytes / blksize)
+				nblks = burstbytes / blksize;
 
 			bp = cluster_rbuild(vp, filesize, loffset,
-					    doffset, size, nblks, bp, 0);
+					    doffset, blksize, nblks, bp, 0);
 			loffset += bp->b_bufsize;
 		} else {
 single_block_read:
@@ -195,7 +195,7 @@ single_block_read:
 			 * disk if sequential, otherwise just get the block.
 			 */
 			bp->b_flags |= B_RAM;
-			loffset += size;
+			loffset += blksize;
 		}
 	}
 
@@ -218,7 +218,12 @@ single_block_read:
 		if ((bp->b_flags & B_ASYNC) || bp->b_bio1.bio_done != NULL)
 			BUF_KERNPROC(bp);
 		vn_strategy(vp, &bp->b_bio1);
-		error = bp->b_error;
+		if (bp->b_flags & B_ERROR) {
+			if ((error = bp->b_error) == 0)
+				error = EIO;
+		} else {
+			error = 0;
+		}
 	}
 
 	/*
@@ -231,8 +236,8 @@ single_block_read:
 	rbp = NULL;
 	if (!error &&
 	    seqcount &&
-	    loffset < origoffset + seqcount * size &&
-	    loffset + size <= filesize
+	    loffset < origoffset + seqcount * blksize &&
+	    loffset + blksize <= filesize
 	) {
 		int nblksread;
 		int ntoread;
@@ -244,31 +249,31 @@ single_block_read:
 			}
 			BUF_UNLOCK(rbp);
 		}
-		rbp = getblk(vp, loffset, size, 0, 0);
+		rbp = getblk(vp, loffset, blksize, 0, 0);
 		if ((rbp->b_flags & B_CACHE)) {
 			bqrelse(rbp);
 			goto no_read_ahead;
 		}
 
-		error = VOP_BMAP(vp, loffset,
-				 &doffset, &burstbytes, NULL);
+		error = VOP_BMAP(vp, loffset, &doffset,
+				 &burstbytes, NULL, BUF_CMD_READ);
 		if (error || doffset == NOOFFSET) {
 			rbp->b_flags |= B_INVAL;
 			brelse(rbp);
 			rbp = NULL;
 			goto no_read_ahead;
 		}
-		ntoread = burstbytes / size;
-		nblksread = (totread + size - 1) / size;
+		ntoread = burstbytes / blksize;
+		nblksread = (totread + blksize - 1) / blksize;
 		if (seqcount < nblksread)
 			seqcount = nblksread;
 		if (seqcount < ntoread)
 			ntoread = seqcount;
 
-		rbp->b_flags |= B_RAM | B_AGE;
+		rbp->b_flags |= B_RAM/* | B_AGE*/;
 		if (burstbytes) {
 			rbp = cluster_rbuild(vp, filesize, loffset,
-					     doffset, size, 
+					     doffset, blksize, 
 					     ntoread, rbp, 1);
 		} else {
 			rbp->b_bio2.bio_offset = doffset;
@@ -311,7 +316,7 @@ no_read_ahead:
  */
 static struct buf *
 cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset, 
-	off_t doffset, int size, int run, struct buf *fbp, int doasync)
+	off_t doffset, int blksize, int run, struct buf *fbp, int doasync)
 {
 	struct buf *bp, *tbp;
 	off_t boffset;
@@ -319,22 +324,9 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 	int maxiosize = vmaxiosize(vp);
 
 	/*
-	 * This is a filesystem sanity check.  For regular files h
-	 * cluster_write() currently uses f_iosize, make sure cluster_read()
-	 * uses the same block size.
-	 *
-	 * NOTE: The vp can be a block device
-	 */
-	if (vp->v_type == VREG) {
-		KASSERT(size == vp->v_mount->mnt_stat.f_iosize,
-		    ("cluster_rbuild: size %d != filesize %ld\n",
-		    size, vp->v_mount->mnt_stat.f_iosize));
-	}
-
-	/*
 	 * avoid a division
 	 */
-	while (loffset + run * size > filesize) {
+	while (loffset + run * blksize > filesize) {
 		--run;
 	}
 
@@ -363,7 +355,7 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 	bp->b_bio1.bio_caller_info1.cluster_head = NULL;
 	bp->b_bio1.bio_caller_info2.cluster_tail = NULL;
 	bp->b_loffset = loffset;
-	bp->b_bio2.bio_offset = NOOFFSET;
+	bp->b_bio2.bio_offset = doffset;
 	KASSERT(bp->b_loffset != NOOFFSET,
 		("cluster_rbuild: no buffer offset"));
 
@@ -371,10 +363,10 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 	bp->b_bufsize = 0;
 	bp->b_xio.xio_npages = 0;
 
-	for (boffset = doffset, i = 0; i < run; ++i, boffset += size) {
+	for (boffset = doffset, i = 0; i < run; ++i, boffset += blksize) {
 		if (i) {
 			if ((bp->b_xio.xio_npages * PAGE_SIZE) +
-			    round_page(size) > maxiosize) {
+			    round_page(blksize) > maxiosize) {
 				break;
 			}
 
@@ -383,7 +375,7 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 			 * would block in the lock.  The same checks have to
 			 * be made again after we officially get the buffer.
 			 */
-			if ((tbp = findblk(vp, loffset + i * size)) != NULL) {
+			if ((tbp = findblk(vp, loffset + i * blksize)) != NULL) {
 				if (BUF_LOCK(tbp, LK_EXCLUSIVE | LK_NOWAIT))
 					break;
 				BUF_UNLOCK(tbp);
@@ -396,11 +388,11 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 				if (j != tbp->b_xio.xio_npages)
 					break;
 	
-				if (tbp->b_bcount != size)
+				if (tbp->b_bcount != blksize)
 					break;
 			}
 
-			tbp = getblk(vp, loffset + i * size, size, 0, 0);
+			tbp = getblk(vp, loffset + i * blksize, blksize, 0, 0);
 
 			/*
 			 * Stop scanning if the buffer is fuly valid 
@@ -442,7 +434,7 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 			 * Depress the priority of buffers not explicitly
 			 * requested.
 			 */
-			tbp->b_flags |= B_AGE;
+			/* tbp->b_flags |= B_AGE; */
 
 			/*
 			 * Set the block number if it isn't set, otherwise
@@ -488,12 +480,12 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 		 * a non-page-aligned size.  Instead just aggregate using
 		 * 'size'.
 		 */
-		if (tbp->b_bcount != size)
-		    kprintf("warning: tbp->b_bcount wrong %d vs %d\n", tbp->b_bcount, size);
-		if (tbp->b_bufsize != size)
-		    kprintf("warning: tbp->b_bufsize wrong %d vs %d\n", tbp->b_bufsize, size);
-		bp->b_bcount += size;
-		bp->b_bufsize += size;
+		if (tbp->b_bcount != blksize)
+		    kprintf("warning: tbp->b_bcount wrong %d vs %d\n", tbp->b_bcount, blksize);
+		if (tbp->b_bufsize != blksize)
+		    kprintf("warning: tbp->b_bufsize wrong %d vs %d\n", tbp->b_bufsize, blksize);
+		bp->b_bcount += blksize;
+		bp->b_bufsize += blksize;
 	}
 
 	/*
@@ -581,7 +573,7 @@ cluster_callback(struct bio *bio)
  */
 
 static __inline int
-cluster_wbuild_wb(struct vnode *vp, int size, off_t start_loffset, int len)
+cluster_wbuild_wb(struct vnode *vp, int blksize, off_t start_loffset, int len)
 {
 	int r = 0;
 
@@ -592,7 +584,7 @@ cluster_wbuild_wb(struct vnode *vp, int size, off_t start_loffset, int len)
 		start_loffset -= len;
 		/* fall through */
 	case 1:
-		r = cluster_wbuild(vp, size, start_loffset, len);
+		r = cluster_wbuild(vp, blksize, start_loffset, len);
 		/* fall through */
 	default:
 		/* fall through */
@@ -612,22 +604,18 @@ cluster_wbuild_wb(struct vnode *vp, int size, off_t start_loffset, int len)
  *	4.	end of a cluster - asynchronously write cluster
  */
 void
-cluster_write(struct buf *bp, off_t filesize, int seqcount)
+cluster_write(struct buf *bp, off_t filesize, int blksize, int seqcount)
 {
 	struct vnode *vp;
 	off_t loffset;
 	int maxclen, cursize;
-	int lblocksize;
 	int async;
 
 	vp = bp->b_vp;
-	if (vp->v_type == VREG) {
+	if (vp->v_type == VREG)
 		async = vp->v_mount->mnt_flag & MNT_ASYNC;
-		lblocksize = vp->v_mount->mnt_stat.f_iosize;
-	} else {
+	else
 		async = 0;
-		lblocksize = bp->b_bufsize;
-	}
 	loffset = bp->b_loffset;
 	KASSERT(bp->b_loffset != NOOFFSET, 
 		("cluster_write: no buffer offset"));
@@ -636,9 +624,9 @@ cluster_write(struct buf *bp, off_t filesize, int seqcount)
 	if (loffset == 0)
 		vp->v_lasta = vp->v_clen = vp->v_cstart = vp->v_lastw = 0;
 
-	if (vp->v_clen == 0 || loffset != vp->v_lastw + lblocksize ||
+	if (vp->v_clen == 0 || loffset != vp->v_lastw + blksize ||
 	    bp->b_bio2.bio_offset == NOOFFSET ||
-	    (bp->b_bio2.bio_offset != vp->v_lasta + lblocksize)) {
+	    (bp->b_bio2.bio_offset != vp->v_lasta + blksize)) {
 		maxclen = vmaxiosize(vp);
 		if (vp->v_clen != 0) {
 			/*
@@ -657,19 +645,18 @@ cluster_write(struct buf *bp, off_t filesize, int seqcount)
 			 * later on in the buf_daemon or update daemon
 			 * flush.
 			 */
-			cursize = vp->v_lastw - vp->v_cstart + lblocksize;
-			if (bp->b_loffset + lblocksize != filesize ||
-			    loffset != vp->v_lastw + lblocksize || vp->v_clen <= cursize) {
+			cursize = vp->v_lastw - vp->v_cstart + blksize;
+			if (bp->b_loffset + blksize != filesize ||
+			    loffset != vp->v_lastw + blksize || vp->v_clen <= cursize) {
 				if (!async && seqcount > 0) {
-					cluster_wbuild_wb(vp, lblocksize,
+					cluster_wbuild_wb(vp, blksize,
 						vp->v_cstart, cursize);
 				}
 			} else {
 				struct buf **bpp, **endbp;
 				struct cluster_save *buflist;
 
-				buflist = cluster_collectbufs(vp, bp,
-							      lblocksize);
+				buflist = cluster_collectbufs(vp, bp, blksize);
 				endbp = &buflist->bs_children
 				    [buflist->bs_nchildren - 1];
 				if (VOP_REALLOCBLKS(vp, buflist)) {
@@ -687,7 +674,7 @@ cluster_write(struct buf *bp, off_t filesize, int seqcount)
 					kfree(buflist, M_SEGMENT);
 					if (seqcount > 1) {
 						cluster_wbuild_wb(vp, 
-						    lblocksize, vp->v_cstart, 
+						    blksize, vp->v_cstart, 
 						    cursize);
 					}
 				} else {
@@ -710,23 +697,23 @@ cluster_write(struct buf *bp, off_t filesize, int seqcount)
 		 * existing cluster.
 		 */
 		if ((vp->v_type == VREG) &&
-		    bp->b_loffset + lblocksize != filesize &&
+		    bp->b_loffset + blksize != filesize &&
 		    (bp->b_bio2.bio_offset == NOOFFSET) &&
-		    (VOP_BMAP(vp, loffset, &bp->b_bio2.bio_offset, &maxclen, NULL) ||
+		    (VOP_BMAP(vp, loffset, &bp->b_bio2.bio_offset, &maxclen, NULL, BUF_CMD_WRITE) ||
 		     bp->b_bio2.bio_offset == NOOFFSET)) {
 			bawrite(bp);
 			vp->v_clen = 0;
 			vp->v_lasta = bp->b_bio2.bio_offset;
-			vp->v_cstart = loffset + lblocksize;
+			vp->v_cstart = loffset + blksize;
 			vp->v_lastw = loffset;
 			return;
 		}
-		if (maxclen > lblocksize)
-			vp->v_clen = maxclen - lblocksize;
+		if (maxclen > blksize)
+			vp->v_clen = maxclen - blksize;
 		else
 			vp->v_clen = 0;
 		if (!async && vp->v_clen == 0) { /* I/O not contiguous */
-			vp->v_cstart = loffset + lblocksize;
+			vp->v_cstart = loffset + blksize;
 			bawrite(bp);
 		} else {	/* Wait for rest of cluster */
 			vp->v_cstart = loffset;
@@ -740,10 +727,10 @@ cluster_write(struct buf *bp, off_t filesize, int seqcount)
 		 */
 		bdwrite(bp);
 		if (seqcount > 1)
-			cluster_wbuild_wb(vp, lblocksize, vp->v_cstart,
-					  vp->v_clen + lblocksize);
+			cluster_wbuild_wb(vp, blksize, vp->v_cstart,
+					  vp->v_clen + blksize);
 		vp->v_clen = 0;
-		vp->v_cstart = loffset + lblocksize;
+		vp->v_cstart = loffset + blksize;
 	} else if (vm_page_count_severe()) {
 		/*
 		 * We are low on memory, get it going NOW
@@ -767,7 +754,7 @@ cluster_write(struct buf *bp, off_t filesize, int seqcount)
  * the current block (if last_bp == NULL).
  */
 int
-cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
+cluster_wbuild(struct vnode *vp, int blksize, off_t start_loffset, int bytes)
 {
 	struct buf *bp, *tbp;
 	int i, j;
@@ -785,8 +772,8 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 		  ((tbp->b_flags & (B_LOCKED | B_INVAL | B_DELWRI)) != B_DELWRI) ||
 		  (LIST_FIRST(&tbp->b_dep) != NULL && buf_checkwrite(tbp)) ||
 		  BUF_LOCK(tbp, LK_EXCLUSIVE | LK_NOWAIT)) {
-			start_loffset += size;
-			bytes -= size;
+			start_loffset += blksize;
+			bytes -= blksize;
 			crit_exit();
 			continue;
 		}
@@ -804,13 +791,13 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 		 */
 		if (((tbp->b_flags & (B_CLUSTEROK|B_MALLOC)) != B_CLUSTEROK) ||
 		  (tbp->b_bcount != tbp->b_bufsize) ||
-		  (tbp->b_bcount != size) ||
-		  (bytes == size) ||
+		  (tbp->b_bcount != blksize) ||
+		  (bytes == blksize) ||
 		  ((bp = getpbuf(&cluster_pbuf_freecnt)) == NULL)) {
 			totalwritten += tbp->b_bufsize;
 			bawrite(tbp);
-			start_loffset += size;
-			bytes -= size;
+			start_loffset += blksize;
+			bytes -= blksize;
 			continue;
 		}
 
@@ -845,7 +832,7 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 		 * if there are buffers with adjacent data that need to
 		 * be written as well.
 		 */
-		for (i = 0; i < bytes; (i += size), (start_loffset += size)) {
+		for (i = 0; i < bytes; (i += blksize), (start_loffset += blksize)) {
 			if (i != 0) { /* If not the first buffer */
 				crit_enter();
 				/*
@@ -880,7 +867,7 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 				 * would make sense with regard to pages
 				 * and would not be too large
 				 */
-				if ((tbp->b_bcount != size) ||
+				if ((tbp->b_bcount != blksize) ||
 				  ((bp->b_bio2.bio_offset + i) !=
 				    tbp->b_bio2.bio_offset) ||
 				  ((tbp->b_xio.xio_npages + bp->b_xio.xio_npages) >
@@ -931,8 +918,8 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
 					}
 				}
 			}
-			bp->b_bcount += size;
-			bp->b_bufsize += size;
+			bp->b_bcount += blksize;
+			bp->b_bufsize += blksize;
 
 			crit_enter();
 			bundirty(tbp);
@@ -981,30 +968,31 @@ cluster_wbuild(struct vnode *vp, int size, off_t start_loffset, int bytes)
  * Plus add one additional buffer.
  */
 static struct cluster_save *
-cluster_collectbufs(struct vnode *vp, struct buf *last_bp, int lblocksize)
+cluster_collectbufs(struct vnode *vp, struct buf *last_bp, int blksize)
 {
 	struct cluster_save *buflist;
 	struct buf *bp;
 	off_t loffset;
 	int i, len;
 
-	len = (int)(vp->v_lastw - vp->v_cstart + lblocksize) / lblocksize;
+	len = (int)(vp->v_lastw - vp->v_cstart + blksize) / blksize;
 	buflist = kmalloc(sizeof(struct buf *) * (len + 1) + sizeof(*buflist),
 			 M_SEGMENT, M_WAITOK);
 	buflist->bs_nchildren = 0;
 	buflist->bs_children = (struct buf **) (buflist + 1);
-	for (loffset = vp->v_cstart, i = 0; i < len; (loffset += lblocksize), i++) {
+	for (loffset = vp->v_cstart, i = 0; i < len; (loffset += blksize), i++) {
 		(void) bread(vp, loffset, last_bp->b_bcount, &bp);
 		buflist->bs_children[i] = bp;
 		if (bp->b_bio2.bio_offset == NOOFFSET) {
 			VOP_BMAP(bp->b_vp, bp->b_loffset,
-				 &bp->b_bio2.bio_offset, NULL, NULL);
+				 &bp->b_bio2.bio_offset,
+				 NULL, NULL, BUF_CMD_WRITE);
 		}
 	}
 	buflist->bs_children[i] = bp = last_bp;
 	if (bp->b_bio2.bio_offset == NOOFFSET) {
-		VOP_BMAP(bp->b_vp, bp->b_loffset,
-			 &bp->b_bio2.bio_offset, NULL, NULL);
+		VOP_BMAP(bp->b_vp, bp->b_loffset, &bp->b_bio2.bio_offset,
+			 NULL, NULL, BUF_CMD_WRITE);
 	}
 	buflist->bs_nchildren = i + 1;
 	return (buflist);

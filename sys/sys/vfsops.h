@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.31 2008/02/06 00:27:26 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.32 2008/06/19 23:27:36 dillon Exp $
  */
 
 /*
@@ -66,6 +66,9 @@
 
 #ifndef _SYS_ACL_H_
 #include <sys/acl.h>
+#endif
+#ifndef _SYS_BUF_H_
+#include <sys/buf.h>	/* buf_cmd_t */
 #endif
 
 struct syslink_desc;
@@ -291,6 +294,7 @@ struct vop_bmap_args {
 	off_t *a_doffsetp;
 	int *a_runp;
 	int *a_runb;
+	buf_cmd_t a_cmd;	/* BUF_CMD_READ, BUF_CMD_WRITE, etc */
 };
 
 struct vop_strategy_args {
@@ -768,7 +772,7 @@ int vop_readlink(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 int vop_inactive(struct vop_ops *ops, struct vnode *vp);
 int vop_reclaim(struct vop_ops *ops, struct vnode *vp);
 int vop_bmap(struct vop_ops *ops, struct vnode *vp, off_t loffset,
-		off_t *doffsetp, int *runp, int *runb);
+		off_t *doffsetp, int *runp, int *runb, buf_cmd_t cmd);
 int vop_strategy(struct vop_ops *ops, struct vnode *vp, struct bio *bio);
 int vop_print(struct vop_ops *ops, struct vnode *vp);
 int vop_pathconf(struct vop_ops *ops, struct vnode *vp, int name,
@@ -994,8 +998,8 @@ extern struct syslink_desc vop_nrename_desc;
 	vop_inactive(*(vp)->v_ops, vp)
 #define VOP_RECLAIM(vp)					\
 	vop_reclaim(*(vp)->v_ops, vp)
-#define VOP_BMAP(vp, loff, doffp, runp, runb)	\
-	vop_bmap(*(vp)->v_ops, vp, loff, doffp, runp, runb)
+#define VOP_BMAP(vp, loff, doffp, runp, runb, cmd)	\
+	vop_bmap(*(vp)->v_ops, vp, loff, doffp, runp, runb, cmd)
 #define VOP_PRINT(vp)					\
 	vop_print(*(vp)->v_ops, vp)
 #define VOP_PATHCONF(vp, name, retval)			\

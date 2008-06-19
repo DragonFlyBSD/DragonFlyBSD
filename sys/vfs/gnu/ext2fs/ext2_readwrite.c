@@ -38,7 +38,7 @@
  *
  *	@(#)ufs_readwrite.c	8.7 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_readwrite.c,v 1.18.2.2 2000/12/22 18:44:33 dillon Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_readwrite.c,v 1.14 2007/08/21 17:26:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_readwrite.c,v 1.15 2008/06/19 23:27:39 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -269,7 +269,7 @@ ext2_write(struct vop_write_args *ap)
 		} else if (xfersize + blkoffset == fs->s_frag_size) {
 			if ((vp->v_mount->mnt_flag & MNT_NOCLUSTERW) == 0) {
 				bp->b_flags |= B_CLUSTEROK;
-				cluster_write(bp, (off_t)ip->i_size, seqcount);
+				cluster_write(bp, (off_t)ip->i_size, vp->v_mount->mnt_stat.f_iosize, seqcount);
 			} else {
 				bawrite(bp);
 			}

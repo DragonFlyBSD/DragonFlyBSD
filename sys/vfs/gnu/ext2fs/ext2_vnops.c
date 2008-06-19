@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.42 2007/08/28 01:04:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.43 2008/06/19 23:27:39 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1774,7 +1774,7 @@ ext2_strategy(struct vop_strategy_args *ap)
 	nbio = push_bio(bio);
 	if (nbio->bio_offset == NOOFFSET) {
 		error = VOP_BMAP(vp, bio->bio_offset, &nbio->bio_offset,
-				 NULL, NULL);
+				 NULL, NULL, bp->b_cmd);
 		if (error) {
 			bp->b_error = error;
 			bp->b_flags |= B_ERROR;

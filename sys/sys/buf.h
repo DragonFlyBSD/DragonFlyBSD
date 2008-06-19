@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.47 2008/06/12 23:26:36 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.48 2008/06/19 23:27:36 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -86,6 +86,8 @@ RB_PROTOTYPE2(buf_rb_hash, buf, b_rbhash, rb_buf_compare, off_t);
  */   
 LIST_HEAD(workhead, worklist);
 
+#endif
+
 typedef enum buf_cmd {
 	BUF_CMD_DONE = 0,
 	BUF_CMD_READ,
@@ -93,6 +95,8 @@ typedef enum buf_cmd {
 	BUF_CMD_FREEBLKS,
 	BUF_CMD_FORMAT
 } buf_cmd_t;
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 /*
  * The buffer header describes an I/O operation in the kernel.
@@ -399,7 +403,7 @@ void	cluster_append(struct bio *, struct buf *);
 int	cluster_read (struct vnode *, off_t, off_t, int,
 	    int, int, struct buf **);
 int	cluster_wbuild (struct vnode *, int, off_t, int);
-void	cluster_write (struct buf *, off_t, int);
+void	cluster_write (struct buf *, off_t, int, int);
 int	physread (struct dev_read_args *);
 int	physwrite (struct dev_write_args *);
 void	vfs_bio_set_validclean (struct buf *, int base, int size);

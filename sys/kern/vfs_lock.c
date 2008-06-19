@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.28 2007/06/09 19:46:02 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lock.c,v 1.29 2008/06/19 23:27:35 dillon Exp $
  */
 
 /*
@@ -86,9 +86,6 @@ SYSCTL_INT(_debug, OID_AUTO, freevnodes, CTLFLAG_RD,
 static int wantfreevnodes = 25;
 SYSCTL_INT(_debug, OID_AUTO, wantfreevnodes, CTLFLAG_RW,
 		&wantfreevnodes, 0, "");
-static int minvnodes;
-SYSCTL_INT(_kern, OID_AUTO, minvnodes, CTLFLAG_RW,
-		&minvnodes, 0, "Minimum number of vnodes");
 
 /*
  * Called from vfsinit()
@@ -96,8 +93,6 @@ SYSCTL_INT(_kern, OID_AUTO, minvnodes, CTLFLAG_RW,
 void
 vfs_lock_init(void)
 {
-	minvnodes = desiredvnodes / 4;
-
 	TAILQ_INIT(&vnode_free_list);
 }
 
@@ -207,7 +202,7 @@ vdrop(struct vnode *vp)
 	KKASSERT(vp->v_sysref.refcnt != 0 && vp->v_auxrefs > 0);
 	atomic_subtract_int(&vp->v_auxrefs, 1);
 	if ((vp->v_flag & VCACHED) && vshouldfree(vp)) {
-		vp->v_flag |= VAGE;
+		/*vp->v_flag |= VAGE;*/
 		vp->v_flag &= ~VCACHED;
 		__vfree(vp);
 	}
@@ -255,7 +250,7 @@ vnode_terminate(struct vnode *vp)
 		if (vshouldfree(vp))
 			__vfree(vp);
 		else
-			vp->v_flag |= VCACHED;
+			vp->v_flag |= VCACHED;	/* inactive but not yet free */
 		vx_unlock(vp);
 	} else {
 		/*
@@ -437,7 +432,7 @@ void
 vx_put(struct vnode *vp)
 {
 	if ((vp->v_flag & VCACHED) && vshouldfree(vp)) {
-		vp->v_flag |= VAGE;
+		/*vp->v_flag |= VAGE;*/
 		vp->v_flag &= ~VCACHED;
 		__vfree(vp);
 	}
@@ -575,11 +570,16 @@ allocvnode(int lktimeout, int lkflags)
 		vnlru_proc_wait();
 
 	/*
-	 * Attempt to reuse a vnode already on the free list, allocating
-	 * a new vnode if we can't find one or if we have not reached a
-	 * good minimum for good LRU performance.
+	 * Try to build up as many vnodes as we can before reallocating
+	 * from the free list.  A vnode on the free list simply means
+	 * that it is inactive with no resident pages.  It may or may not
+	 * have been reclaimed and could have valuable information associated 
+	 * with it that we shouldn't throw away unless we really need to.
+	 *
+	 * HAMMER NOTE: Re-establishing a vnode is a fairly expensive
+	 * operation for HAMMER but this should benefit UFS as well.
 	 */
-	if (freevnodes >= wantfreevnodes && numvnodes >= minvnodes)
+	if (freevnodes >= wantfreevnodes && numvnodes >= desiredvnodes)
 		vp = allocfreevnode();
 	else
 		vp = NULL;

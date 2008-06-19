@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.38 2008/05/09 17:52:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.39 2008/06/19 23:27:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -627,7 +627,7 @@ vop_reclaim(struct vop_ops *ops, struct vnode *vp)
 
 int
 vop_bmap(struct vop_ops *ops, struct vnode *vp, off_t loffset,
-	off_t *doffsetp, int *runp, int *runb)
+	off_t *doffsetp, int *runp, int *runb, buf_cmd_t cmd)
 {
 	struct vop_bmap_args ap;
 	int error;
@@ -639,6 +639,7 @@ vop_bmap(struct vop_ops *ops, struct vnode *vp, off_t loffset,
 	ap.a_doffsetp = doffsetp;
 	ap.a_runp = runp;
 	ap.a_runb = runb;
+	ap.a_cmd = cmd;
 
 	DO_OPS(ops, error, &ap, vop_bmap);
 	return(error);

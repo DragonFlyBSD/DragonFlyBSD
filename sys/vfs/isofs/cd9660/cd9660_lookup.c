@@ -39,7 +39,7 @@
  *
  *	@(#)cd9660_lookup.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_lookup.c,v 1.23.2.2 2001/11/04 06:19:47 dillon Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.24 2007/08/13 17:31:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.25 2008/06/19 23:27:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -419,7 +419,8 @@ cd9660_blkatoff(struct vnode *vp, off_t offset, char **res, struct buf **bpp)
 	 */
 	if (bp->b_bio2.bio_offset == NOOFFSET) {
 		error = VOP_BMAP(vp, bp->b_bio1.bio_offset,
-			    	 &bp->b_bio2.bio_offset, NULL, NULL);
+			    	 &bp->b_bio2.bio_offset, NULL, NULL,
+				 BUF_CMD_READ);
 		if (error) {
                         bp->b_error = error;
                         bp->b_flags |= B_ERROR;
@@ -464,7 +465,8 @@ cd9660_devblkatoff(struct vnode *vp, off_t offset, char **res, struct buf **bpp)
 	lbn = lblkno(imp, offset);
 	bsize = blksize(imp, ip, lbn);
 
-	error = VOP_BMAP(vp, lblktooff(imp, lbn), &doffset, NULL, NULL);
+	error = VOP_BMAP(vp, lblktooff(imp, lbn), &doffset, NULL, NULL,
+			 BUF_CMD_READ);
 	if (error)
 		return (error);
 
