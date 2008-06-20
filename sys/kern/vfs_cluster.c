@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.38 2008/06/19 23:27:35 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.39 2008/06/20 05:40:04 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -242,6 +242,7 @@ single_block_read:
 		int nblksread;
 		int ntoread;
 		int burstbytes;
+		int tmp_error;
 
 		if ((rbp = findblk(vp, loffset)) != NULL) {
 			if (BUF_LOCK(rbp, LK_EXCLUSIVE | LK_NOWAIT)) {
@@ -255,9 +256,13 @@ single_block_read:
 			goto no_read_ahead;
 		}
 
-		error = VOP_BMAP(vp, loffset, &doffset,
-				 &burstbytes, NULL, BUF_CMD_READ);
-		if (error || doffset == NOOFFSET) {
+		/*
+		 * An error from the read-ahead bmap has nothing to do
+		 * with the caller's original request.
+		 */
+		tmp_error = VOP_BMAP(vp, loffset, &doffset,
+				     &burstbytes, NULL, BUF_CMD_READ);
+		if (tmp_error || doffset == NOOFFSET) {
 			rbp->b_flags |= B_INVAL;
 			brelse(rbp);
 			rbp = NULL;
@@ -267,7 +272,7 @@ single_block_read:
 		nblksread = (totread + blksize - 1) / blksize;
 		if (seqcount < nblksread)
 			seqcount = nblksread;
-		if (seqcount < ntoread)
+		if (ntoread > seqcount)
 			ntoread = seqcount;
 
 		rbp->b_flags |= B_RAM/* | B_AGE*/;
