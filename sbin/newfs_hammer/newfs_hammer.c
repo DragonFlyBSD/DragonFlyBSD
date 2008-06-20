@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.32 2008/06/18 01:13:52 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.33 2008/06/20 21:18:11 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -42,6 +42,7 @@ static void check_volume(struct volume_info *vol);
 static void format_volume(struct volume_info *vol, int nvols,const char *label,
 			off_t total_size);
 static hammer_off_t format_root(void);
+static u_int64_t nowtime(void);
 static void usage(void);
 
 int
@@ -293,6 +294,17 @@ createtid(void)
 	return(lasttid++);
 }
 
+static u_int64_t
+nowtime(void)
+{
+	struct timeval tv;
+	u_int64_t xtime;
+
+	gettimeofday(&tv, NULL);
+	xtime = tv.tv_sec * 1000000LL + tv.tv_usec;
+	return(xtime);
+}
+
 /*
  * Check basic volume characteristics.  HAMMER filesystems use a minimum
  * of a 16KB filesystem buffer size.
@@ -447,18 +459,21 @@ format_root(void)
 	struct hammer_inode_data *idata;
 	struct buffer_info *data_buffer = NULL;
 	hammer_btree_elm_t elm;
+	u_int64_t xtime;
 
 	bnode = alloc_btree_element(&btree_off);
 	idata = alloc_data_element(&data_off, sizeof(*idata), &data_buffer);
 	create_tid = createtid();
+	xtime = nowtime();
 
 	/*
 	 * Populate the inode data and inode record for the root directory.
 	 */
 	idata->version = HAMMER_INODE_DATA_VERSION;
 	idata->mode = 0755;
-	idata->mtime = create_tid;
-	idata->atime = create_tid;
+	idata->ctime = xtime;
+	idata->mtime = xtime;
+	idata->atime = xtime;
 	idata->obj_type = HAMMER_OBJTYPE_DIRECTORY;
 	idata->size = 0;
 	idata->nlinks = 1;
@@ -481,10 +496,9 @@ format_root(void)
 	elm->leaf.base.rec_type = HAMMER_RECTYPE_INODE;
 	elm->leaf.base.obj_type = HAMMER_OBJTYPE_DIRECTORY;
 
-	elm->leaf.unused00 = 0;
 	elm->leaf.data_offset = data_off;
 	elm->leaf.data_len = sizeof(*idata);
-	elm->leaf.data_crc = crc32(idata, sizeof(*idata));
+	elm->leaf.data_crc = crc32(idata, HAMMER_INODE_CRCSIZE);
 
 	bnode->crc = crc32(&bnode->crc + 1, HAMMER_BTREE_CRCSIZE);
 
