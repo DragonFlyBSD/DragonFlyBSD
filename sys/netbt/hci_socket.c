@@ -1,4 +1,4 @@
-/* $DragonFly: src/sys/netbt/hci_socket.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
+/* $DragonFly: src/sys/netbt/hci_socket.c,v 1.3 2008/06/20 20:52:29 aggelos Exp $ */
 /* $OpenBSD: src/sys/netbt/hci_socket.c,v 1.5 2008/02/24 21:34:48 uwe Exp $ */
 /* $NetBSD: hci_socket.c,v 1.14 2008/02/10 17:40:54 plunky Exp $ */
 
@@ -797,12 +797,12 @@ hci_ctloutput (struct socket *so, struct sockopt *sopt)
 	case PRCO_GETOPT:
 		switch (sopt->sopt_name) {
 		case SO_HCI_EVT_FILTER:
-			err = sooptcopyout(sopt, &pcb->hp_efilter,
+			soopt_from_kbuf(sopt, &pcb->hp_efilter,
 			    sizeof(struct hci_filter));
 			break;
 
 		case SO_HCI_PKT_FILTER:
-                        err = sooptcopyout(sopt, &pcb->hp_pfilter,
+                        soopt_from_kbuf(sopt, &pcb->hp_pfilter,
 			    sizeof(struct hci_filter));
 			break;
 
@@ -811,7 +811,7 @@ hci_ctloutput (struct socket *so, struct sockopt *sopt)
 				idir = 1;
 			else
 				idir = 0;
-			err = sooptcopyout(sopt, &idir, sizeof(int));
+			soopt_from_kbuf(sopt, &idir, sizeof(int));
 			break;
 
 		default:
@@ -823,19 +823,19 @@ hci_ctloutput (struct socket *so, struct sockopt *sopt)
 	case PRCO_SETOPT:
 		switch (sopt->sopt_name) {
 		case SO_HCI_EVT_FILTER:	/* set event filter */
-			err = sooptcopyin(sopt, &pcb->hp_efilter,
+			err = soopt_to_kbuf(sopt, &pcb->hp_efilter,
 			    sizeof(struct hci_filter),
 			    sizeof(struct hci_filter)); 
 			break;
 
 		case SO_HCI_PKT_FILTER:	/* set packet filter */
-			err = sooptcopyin(sopt, &pcb->hp_pfilter,
+			err = soopt_to_kbuf(sopt, &pcb->hp_pfilter,
 			    sizeof(struct hci_filter),
 			    sizeof(struct hci_filter)); 
 			break;
 
 		case SO_HCI_DIRECTION:	/* request direction ctl messages */
-			err = sooptcopyin(sopt, &idir, sizeof(int),
+			err = soopt_to_kbuf(sopt, &idir, sizeof(int),
 			    sizeof(int)); 
 			if (err) break;
 			if (idir)

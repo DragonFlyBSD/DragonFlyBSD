@@ -1,4 +1,4 @@
-/* $DragonFly: src/sys/netbt/rfcomm_socket.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
+/* $DragonFly: src/sys/netbt/rfcomm_socket.c,v 1.3 2008/06/20 20:52:29 aggelos Exp $ */
 /* $OpenBSD: src/sys/netbt/rfcomm_socket.c,v 1.2 2008/02/24 21:34:48 uwe Exp $ */
 /* $NetBSD: rfcomm_socket.c,v 1.8 2007/10/15 18:04:34 plunky Exp $ */
 
@@ -114,7 +114,7 @@ rfcomm_ctloutput(struct socket *so, struct sockopt *sopt)
 			m = NULL;
 			err = ENOPROTOOPT;
 		}
-		err = sooptcopyout(sopt, mtod(m, void *), m->m_len);
+		soopt_from_kbuf(sopt, mtod(m, void *), m->m_len);
 		break;
 
 	case PRCO_SETOPT:

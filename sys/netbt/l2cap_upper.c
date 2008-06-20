@@ -1,4 +1,4 @@
-/* $DragonFly: src/sys/netbt/l2cap_upper.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
+/* $DragonFly: src/sys/netbt/l2cap_upper.c,v 1.3 2008/06/20 20:52:29 aggelos Exp $ */
 /* $OpenBSD: l2cap_upper.c,v 1.2 2007/10/01 16:39:30 krw Exp $ */
 /* $NetBSD: l2cap_upper.c,v 1.8 2007/04/29 20:23:36 msaitoh Exp $ */
 
@@ -474,7 +474,7 @@ l2cap_setopt2(struct l2cap_channel *chan, int opt, struct socket *so,
 
 	switch (opt) {
 	case SO_L2CAP_IMTU:	/* set Incoming MTU */
-		err = sooptcopyin(sopt, &mtu, sizeof(uint16_t),
+		err = soopt_to_kbuf(sopt, &mtu, sizeof(uint16_t),
 		    sizeof(uint16_t)); 
 		if (err)
 			break;
@@ -489,7 +489,7 @@ l2cap_setopt2(struct l2cap_channel *chan, int opt, struct socket *so,
 		break;
 
 	case SO_L2CAP_LM:	/* set link mode */
-		err = sooptcopyin(sopt, &mode, sizeof(int), sizeof(int)); 
+		err = soopt_to_kbuf(sopt, &mode, sizeof(int), sizeof(int)); 
 		if (err)
 			break;
 

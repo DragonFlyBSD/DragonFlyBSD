@@ -1,4 +1,4 @@
-/* $DragonFly: src/sys/netbt/l2cap_socket.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
+/* $DragonFly: src/sys/netbt/l2cap_socket.c,v 1.3 2008/06/20 20:52:29 aggelos Exp $ */
 /* $OpenBSD: l2cap_socket.c,v 1.1 2007/06/01 02:46:11 uwe Exp $ */
 /* $NetBSD: l2cap_socket.c,v 1.7 2007/04/21 06:15:23 plunky Exp $ */
 
@@ -121,7 +121,7 @@ l2cap_ctloutput(struct socket *so, struct sockopt *sopt)
 			m = NULL;
 			err = ENOPROTOOPT;
 		}
-		err = sooptcopyout(sopt, mtod(m, void *), m->m_len);
+		soopt_from_kbuf(sopt, mtod(m, void *), m->m_len);
 		break;
 
 	case PRCO_SETOPT:

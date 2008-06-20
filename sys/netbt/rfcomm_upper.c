@@ -1,4 +1,4 @@
-/* $DragonFly: src/sys/netbt/rfcomm_upper.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
+/* $DragonFly: src/sys/netbt/rfcomm_upper.c,v 1.3 2008/06/20 20:52:29 aggelos Exp $ */
 /* $OpenBSD: src/sys/netbt/rfcomm_upper.c,v 1.4 2008/02/24 21:34:48 uwe Exp $ */
 /* $NetBSD: rfcomm_upper.c,v 1.10 2007/11/20 20:25:57 plunky Exp $ */
 
@@ -488,7 +488,7 @@ rfcomm_setopt2(struct rfcomm_dlc *dlc, int opt, struct socket *so,
 
 	switch (opt) {
 	case SO_RFCOMM_MTU:
-		err = sooptcopyin(sopt, &mtu, sizeof(uint16_t),
+		err = soopt_to_kbuf(sopt, &mtu, sizeof(uint16_t),
 		    sizeof(uint16_t)); 
 		if (err) break;
 
@@ -502,7 +502,7 @@ rfcomm_setopt2(struct rfcomm_dlc *dlc, int opt, struct socket *so,
 		break;
 
 	case SO_RFCOMM_LM:
-		err = sooptcopyin(sopt, &mode, sizeof(int), sizeof(int)); 
+		err = soopt_to_kbuf(sopt, &mode, sizeof(int), sizeof(int)); 
 		if (err) break;
 
 		mode &= (RFCOMM_LM_SECURE | RFCOMM_LM_ENCRYPT | RFCOMM_LM_AUTH);
