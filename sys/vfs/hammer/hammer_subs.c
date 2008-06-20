@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.25 2008/06/20 05:38:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.26 2008/06/20 21:24:53 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -304,19 +304,20 @@ hammer_guid_to_uuid(uuid_t *uuid, u_int32_t guid)
 }
 
 void
-hammer_to_timespec(hammer_tid_t tid, struct timespec *ts)
+hammer_time_to_timespec(u_int64_t xtime, struct timespec *ts)
 {
-	ts->tv_sec = tid / 1000000000;
-	ts->tv_nsec = tid % 1000000000;
+	ts->tv_sec = (unsigned long)(xtime / 1000000);
+	ts->tv_nsec = (unsigned int)(xtime % 1000000) * 1000L;
 }
 
-hammer_tid_t
-hammer_timespec_to_transid(struct timespec *ts)
+u_int64_t
+hammer_timespec_to_time(struct timespec *ts)
 {
-	hammer_tid_t tid;
+	u_int64_t xtime;
 
-	tid = ts->tv_nsec + (unsigned long)ts->tv_sec * 1000000000LL;
-	return(tid);
+	xtime = (unsigned)(ts->tv_nsec / 1000) +
+		(unsigned long)ts->tv_sec * 1000000ULL;
+	return(xtime);
 }
 
 
@@ -491,6 +492,54 @@ hammer_crc_test_btree(hammer_node_ondisk_t ondisk)
 
 	crc = crc32(&ondisk->crc + 1, HAMMER_BTREE_CRCSIZE);
 	return (ondisk->crc == crc);
+}
+
+/*
+ * Test or set the leaf->data_crc field.  Deal with any special cases given
+ * a generic B-Tree leaf element and its data.
+ *
+ * NOTE: Inode-data: the atime and mtime fields are not CRCd, allowing them
+ *       to be updated in-place.
+ */
+int
+hammer_crc_test_leaf(void *data, hammer_btree_leaf_elm_t leaf)
+{
+	hammer_crc_t crc;
+
+	if (leaf->data_len == 0) {
+		crc = 0;
+	} else {
+		switch(leaf->base.rec_type) {
+		case HAMMER_RECTYPE_INODE:
+			if (leaf->data_len != sizeof(struct hammer_inode_data))
+				return(0);
+			crc = crc32(data, HAMMER_INODE_CRCSIZE);
+			break;
+		default:
+			crc = crc32(data, leaf->data_len);
+			break;
+		}
+	}
+	return (leaf->data_crc == crc);
+}
+
+void
+hammer_crc_set_leaf(void *data, hammer_btree_leaf_elm_t leaf)
+{
+	if (leaf->data_len == 0) {
+		leaf->data_crc = 0;
+	} else {
+		switch(leaf->base.rec_type) {
+		case HAMMER_RECTYPE_INODE:
+			KKASSERT(leaf->data_len ==
+				  sizeof(struct hammer_inode_data));
+			leaf->data_crc = crc32(data, HAMMER_INODE_CRCSIZE);
+			break;
+		default:
+			leaf->data_crc = crc32(data, leaf->data_len);
+			break;
+		}
+	}
 }
 
 void

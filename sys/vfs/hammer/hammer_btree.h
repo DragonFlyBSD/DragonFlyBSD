@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.19 2008/06/20 05:38:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.20 2008/06/20 21:24:53 dillon Exp $
  */
 
 /*
@@ -114,14 +114,21 @@ typedef struct hammer_base_elm *hammer_base_elm_t;
 /*
  * Localization has sorting priority over the obj_id and is used to
  * localize inodes for very fast directory scans.
+ *
+ * Localization can also be used to create pseudo-filesystems within
+ * a HAMMER filesystem.  Pseudo-filesystems would be suitable
+ * replication targets.
  */
 #define HAMMER_LOCALIZE_RESERVED00	0x00000000
 #define HAMMER_LOCALIZE_INODE		0x00000001
 #define HAMMER_LOCALIZE_MISC		0x00000002
 #define HAMMER_LOCALIZE_RESERVED03	0x00000003
+#define HAMMER_LOCALIZE_MASK		0x0000FFFF
+#define HAMMER_LOCALIZE_PSEUDOFS	0xFFFF0000
 
 #define HAMMER_MIN_LOCALIZATION		0x00000000U
 #define HAMMER_MAX_LOCALIZATION		0xFFFFFFFFU
+#define HAMMER_DEF_LOCALIZATION		0x00000000U
 
 /*
  * Internal element (40 + 24 = 64 bytes).
@@ -131,10 +138,10 @@ typedef struct hammer_base_elm *hammer_base_elm_t;
  */
 struct hammer_btree_internal_elm {
 	struct hammer_base_elm base;
-	hammer_off_t unused00;			/* RESERVED FOR MIRRORING */
-	hammer_off_t subtree_offset;
-	int32_t unused02;
-	int32_t unused03;
+	hammer_off_t	serialno;		/* mirroring support */
+	hammer_off_t	subtree_offset;
+	int32_t		unused02;
+	int32_t		unused03;
 };
 
 /*
@@ -144,7 +151,7 @@ struct hammer_btree_internal_elm {
  */
 struct hammer_btree_leaf_elm {
 	struct hammer_base_elm base;
-	hammer_off_t	unused00;		/* RESERVED FOR MIRRORING */
+	hammer_off_t	serialno;		/* mirroring support */
 	hammer_off_t	data_offset;
 	int32_t		data_len;
 	hammer_crc_t	data_crc;

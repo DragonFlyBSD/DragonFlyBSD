@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.71 2008/06/20 05:38:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.72 2008/06/20 21:24:53 dillon Exp $
  */
 
 #include "hammer.h"
@@ -844,7 +844,7 @@ hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
 	record->leaf.base.key = file_offset + bytes;
 	record->leaf.base.localization = HAMMER_LOCALIZE_MISC;
 	record->leaf.data_len = bytes;
-	record->leaf.data_crc = crc32(data, bytes);
+	hammer_crc_set_leaf(data, &record->leaf);
 	flags = record->flags;
 
 	hammer_ref(&record->lock);	/* mem_add eats a reference */
@@ -1091,8 +1091,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 					  &cursor->data_buffer, &error);
 		if (bdata == NULL)
 			goto done;
-		record->leaf.data_crc = crc32(record->data,
-					      record->leaf.data_len);
+		hammer_crc_set_leaf(record->data, &record->leaf);
 		hammer_modify_buffer(trans, cursor->data_buffer, NULL, 0);
 		bcopy(record->data, bdata, record->leaf.data_len);
 		hammer_modify_buffer_done(cursor->data_buffer);

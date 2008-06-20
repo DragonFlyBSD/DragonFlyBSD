@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.20 2008/06/10 08:51:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.21 2008/06/20 21:24:53 dillon Exp $
  */
 
 #include "hammer.h"
@@ -112,8 +112,10 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 	hist->head.flags &= ~HAMMER_IOC_HISTORY_NEXT_KEY;
 	hist->head.flags &= ~HAMMER_IOC_HISTORY_EOF;
 	hist->head.flags &= ~HAMMER_IOC_HISTORY_UNSYNCED;
-	if ((ip->flags & HAMMER_INODE_MODMASK) & ~HAMMER_INODE_ITIMES)
+	if ((ip->flags & HAMMER_INODE_MODMASK) & 
+	    ~(HAMMER_INODE_ATIME | HAMMER_INODE_MTIME)) {
 		hist->head.flags |= HAMMER_IOC_HISTORY_UNSYNCED;
+	}
 
 	/*
 	 * Setup the cursor.  We can't handle undeletable records

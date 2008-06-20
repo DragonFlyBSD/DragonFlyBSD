@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.60 2008/06/20 05:38:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.61 2008/06/20 21:24:53 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -56,6 +56,10 @@ static int hammer_load_node(hammer_node_t node, int isnew);
 int
 hammer_ino_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2)
 {
+	if (ip1->obj_localization < ip2->obj_localization)
+		return(-1);
+	if (ip1->obj_localization > ip2->obj_localization)
+		return(1);
 	if (ip1->obj_id < ip2->obj_id)
 		return(-1);
 	if (ip1->obj_id > ip2->obj_id)
@@ -70,6 +74,10 @@ hammer_ino_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2)
 static int
 hammer_inode_info_cmp(hammer_inode_info_t info, hammer_inode_t ip)
 {
+	if (info->obj_localization < ip->obj_localization)
+		return(-1);
+	if (info->obj_localization > ip->obj_localization)
+		return(1);
 	if (info->obj_id < ip->obj_id)
 		return(-1);
 	if (info->obj_id > ip->obj_id)
@@ -1314,7 +1322,6 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 	if (data_len) {
 		switch(rec_type) {
 		case HAMMER_RECTYPE_INODE:
-		case HAMMER_RECTYPE_PSEUDO_INODE:
 		case HAMMER_RECTYPE_DIRENTRY:
 		case HAMMER_RECTYPE_EXT:
 		case HAMMER_RECTYPE_FIX:
@@ -1379,21 +1386,32 @@ hammer_queue_inodes_flusher(hammer_mount_t hmp, int waitfor)
 	return(info.error);
 }
 
+/*
+ * Filesystem sync.  If doing a synchronous sync make a second pass on
+ * the vnodes in case any were already flushing during the first pass,
+ * and activate the flusher twice (the second time brings the UNDO FIFO's
+ * start position up to the end position after the first call).
+ */
 int
 hammer_sync_hmp(hammer_mount_t hmp, int waitfor)
 {
 	struct hammer_sync_info info;
 
 	info.error = 0;
-	info.waitfor = waitfor;
-
+	info.waitfor = MNT_NOWAIT;
 	vmntvnodescan(hmp->mp, VMSC_GETVP|VMSC_NOWAIT,
 		      hammer_sync_scan1, hammer_sync_scan2, &info);
-        if (waitfor == MNT_WAIT)
+	if (info.error == 0 && waitfor == MNT_WAIT) {
+		info.waitfor = waitfor;
+		vmntvnodescan(hmp->mp, VMSC_GETVP,
+			      hammer_sync_scan1, hammer_sync_scan2, &info);
+	}
+        if (waitfor == MNT_WAIT) {
                 hammer_flusher_sync(hmp);
-        else
+                hammer_flusher_sync(hmp);
+	} else {
                 hammer_flusher_async(hmp);
-
+	}
 	return(info.error);
 }
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.56 2008/06/20 05:38:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.57 2008/06/20 21:24:53 dillon Exp $
  */
 
 /*
@@ -629,10 +629,8 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	KKASSERT(data_len >= 0 && data_len <= HAMMER_XBUFSIZE);
 	cursor->data = hammer_bread_ext(hmp, data_off, data_len,
 					&error, &cursor->data_buffer);
-	if (data_len && 
-	    crc32(cursor->data, data_len) != elm->leaf.data_crc) {
+	if (hammer_crc_test_leaf(cursor->data, &elm->leaf) == 0)
 		Debugger("CRC FAILED: DATA");
-	}
 	return(error);
 }
 

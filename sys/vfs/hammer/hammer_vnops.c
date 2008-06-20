@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.73 2008/06/20 05:38:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.74 2008/06/20 21:24:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -173,6 +173,10 @@ hammer_vop_vnoperate(struct vop_generic_args *)
 
 /*
  * hammer_vop_fsync { vp, waitfor }
+ *
+ * fsync() an inode to disk and wait for it to be completely committed
+ * such that the information would not be undone if a crash occured after
+ * return.
  */
 static
 int
@@ -276,7 +280,7 @@ hammer_vop_read(struct vop_read_args *ap)
 	if ((ip->flags & HAMMER_INODE_RO) == 0 &&
 	    (ip->hmp->mp->mnt_flag & MNT_NOATIME) == 0) {
 		ip->ino_data.atime = trans.time;
-		hammer_modify_inode(ip, HAMMER_INODE_ITIMES);
+		hammer_modify_inode(ip, HAMMER_INODE_ATIME);
 	}
 	hammer_done_transaction(&trans);
 	return (error);
@@ -506,8 +510,7 @@ hammer_vop_write(struct vop_write_args *ap)
 			flags = 0;
 		}
 		ip->ino_data.mtime = trans.time;
-		flags |= HAMMER_INODE_ITIMES | HAMMER_INODE_BUFS;
-		flags |= HAMMER_INODE_DDIRTY;	/* XXX mtime */
+		flags |= HAMMER_INODE_MTIME | HAMMER_INODE_BUFS;
 		hammer_modify_inode(ip, flags);
 
 		/*
@@ -692,16 +695,6 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	struct hammer_inode *ip = VTOI(ap->a_vp);
 	struct vattr *vap = ap->a_vap;
 
-#if 0
-	if (cache_check_fsmid_vp(ap->a_vp, &ip->fsmid) &&
-	    (vp->v_mount->mnt_flag & MNT_RDONLY) == 0 &&
-	    ip->obj_asof == XXX
-	) {
-		/* LAZYMOD XXX */
-	}
-	hammer_itimes(ap->a_vp);
-#endif
-
 	vap->va_fsid = ip->hmp->fsid_udev;
 	vap->va_fileid = ip->ino_leaf.base.obj_id;
 	vap->va_mode = ip->ino_data.mode;
@@ -718,13 +711,13 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	 * consistent results.
 	 */
 	if (ip->flags & HAMMER_INODE_RO) {
-		hammer_to_timespec(ip->ino_data.ctime, &vap->va_atime);
-		hammer_to_timespec(ip->ino_data.ctime, &vap->va_mtime);
+		hammer_time_to_timespec(ip->ino_data.ctime, &vap->va_atime);
+		hammer_time_to_timespec(ip->ino_data.ctime, &vap->va_mtime);
 	} else {
-		hammer_to_timespec(ip->ino_data.atime, &vap->va_atime);
-		hammer_to_timespec(ip->ino_data.mtime, &vap->va_mtime);
+		hammer_time_to_timespec(ip->ino_data.atime, &vap->va_atime);
+		hammer_time_to_timespec(ip->ino_data.mtime, &vap->va_mtime);
 	}
-	hammer_to_timespec(ip->ino_data.ctime, &vap->va_ctime);
+	hammer_time_to_timespec(ip->ino_data.ctime, &vap->va_ctime);
 	vap->va_flags = ip->ino_data.uflags;
 	vap->va_gen = 1;	/* hammer inums are unique for all time */
 	vap->va_blocksize = HAMMER_BUFSIZE;
@@ -782,6 +775,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	int nlen;
 	int flags;
 	u_int64_t obj_id;
+	u_int32_t localization;
 
 	/*
 	 * Misc initialization, plus handle as-of name extensions.  Look for
@@ -811,7 +805,8 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	 */
 	if (nlen == 0) {
 		ip = hammer_get_inode(&trans, dip, dip->obj_id,
-				      asof, flags, &error);
+				      asof, dip->obj_localization,
+				      flags, &error);
 		if (error == 0) {
 			error = hammer_get_vnode(ip, &vp);
 			hammer_rel_inode(ip, 0);
@@ -857,6 +852,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	 * records for the purposes of the search.
 	 */
 	obj_id = 0;
+	localization = 0;
 
 	if (error == 0) {
 		error = hammer_ip_first(&cursor);
@@ -867,6 +863,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 			if (nlen == cursor.leaf->data_len - HAMMER_ENTRY_NAME_OFF &&
 			    bcmp(ncp->nc_name, cursor.data->entry.name, nlen) == 0) {
 				obj_id = cursor.data->entry.obj_id;
+				localization = cursor.data->entry.localization;
 				break;
 			}
 			error = hammer_ip_next(&cursor);
@@ -875,7 +872,8 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	hammer_done_cursor(&cursor);
 	if (error == 0) {
 		ip = hammer_get_inode(&trans, dip, obj_id,
-				      asof, flags, &error);
+				      asof, localization,
+				      flags, &error);
 		if (error == 0) {
 			error = hammer_get_vnode(ip, &vp);
 			hammer_rel_inode(ip, 0);
@@ -943,7 +941,8 @@ hammer_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 	hammer_simple_transaction(&trans, dip->hmp);
 
 	ip = hammer_get_inode(&trans, dip, parent_obj_id,
-			      asof, dip->flags, &error);
+			      asof, HAMMER_DEF_LOCALIZATION,
+			      dip->flags, &error);
 	if (ip) {
 		error = hammer_get_vnode(ip, ap->a_vpp);
 		hammer_rel_inode(ip, 0);
@@ -1729,14 +1728,13 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 	}
 	if (vap->va_atime.tv_sec != VNOVAL) {
 		ip->ino_data.atime =
-			hammer_timespec_to_transid(&vap->va_atime);
-		modflags |= HAMMER_INODE_ITIMES;
+			hammer_timespec_to_time(&vap->va_atime);
+		modflags |= HAMMER_INODE_ATIME;
 	}
 	if (vap->va_mtime.tv_sec != VNOVAL) {
 		ip->ino_data.mtime =
-			hammer_timespec_to_transid(&vap->va_mtime);
-		modflags |= HAMMER_INODE_ITIMES;
-		modflags |= HAMMER_INODE_DDIRTY;	/* XXX mtime */
+			hammer_timespec_to_time(&vap->va_mtime);
+		modflags |= HAMMER_INODE_MTIME;
 	}
 	if (vap->va_mode != (mode_t)VNOVAL) {
 		mode_t   cur_mode = ip->ino_data.mode;
@@ -2608,7 +2606,9 @@ retry:
 	if (error == 0) {
 		hammer_unlock(&cursor.ip->lock);
 		ip = hammer_get_inode(trans, dip, cursor.data->entry.obj_id,
-				      dip->hmp->asof, 0, &error);
+				      dip->hmp->asof,
+				      cursor.data->entry.localization,
+				      0, &error);
 		hammer_lock_sh(&cursor.ip->lock);
 		if (error == ENOENT) {
 			kprintf("obj_id %016llx\n", cursor.data->entry.obj_id);

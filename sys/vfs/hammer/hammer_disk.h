@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.39 2008/06/20 05:38:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.40 2008/06/20 21:24:53 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -521,21 +521,14 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
  * Record types are fairly straightforward.  The B-Tree includes the record
  * type in its index sort.
  *
- * In particular please note that it is possible to create a pseudo-
- * filesystem within a HAMMER filesystem by creating a special object
- * type within a directory.  Pseudo-filesystems are used as replication
- * targets and even though they are built within a HAMMER filesystem they
- * get their own obj_id space (and thus can serve as a replication target)
- * and look like a mount point to the system.
- *
  * NOTE: hammer_ip_delete_range_all() deletes all record types greater
  * then HAMMER_RECTYPE_INODE.
  */
 #define HAMMER_RECTYPE_UNKNOWN		0
 #define HAMMER_RECTYPE_LOWEST		1	/* lowest record type avail */
 #define HAMMER_RECTYPE_INODE		1	/* inode in obj_id space */
-#define HAMMER_RECTYPE_PSEUDO_INODE	2	/* pseudo filesysem */
-#define HAMMER_RECTYPE_UNUSED03		3	/* inter-cluster reference */
+#define HAMMER_RECTYPE_UNUSED02		2
+#define HAMMER_RECTYPE_UNUSED03		3
 #define HAMMER_RECTYPE_DATA		0x0010
 #define HAMMER_RECTYPE_DIRENTRY		0x0011
 #define HAMMER_RECTYPE_DB		0x0012
@@ -562,11 +555,16 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
  * modifications to the contents of this structure will result in a
  * replacement operation.
  *
- * parent_obj_id is only valid for directories (which cannot be hard-linked),
- * and specifies the parent directory obj_id.  This field will also be set
- * for non-directory inodes as a recovery aid, but can wind up specifying
- * stale information.  However, since object id's are not reused, the worse
- * that happens is that the recovery code is unable to use it.
+ * { parent_obj_id, parent_localization } is only valid for directories
+ * (which cannot be hard-linked), and specifies the parent directory obj_id.
+ * The localzation field is used to cross pseudo-filesystem boundaries.
+ * This field will also be set for non-directory inodes as a recovery aid,
+ * but can wind up holding stale information.  However, since object id's are
+ * not reused, the worse that happens is that the recovery code is unable
+ * to use it.
+ *
+ * NOTE: Future note on directory hardlinks.  We can implement a record type
+ * which allows us to point to multiple parent directories.
  *
  * NOTE: atime is stored in the inode's B-Tree element and not in the inode
  * data.  This allows the atime to be updated without having to lay down a
@@ -585,52 +583,63 @@ struct hammer_inode_data {
 
 	u_int8_t  obj_type;
 	u_int8_t  reserved01;
-	u_int16_t reserved02;
-	u_int32_t reserved03;
+	u_int16_t parent_localization; /* note: upper 16 bits only */
+	u_int32_t reserved03;	/* RESERVED FOR POSSIBLE FUTURE BIRTHTIME */
 	u_int64_t nlinks;	/* hard links */
 	u_int64_t size;		/* filesystem object size */
-	u_int64_t mtime;
-	u_int64_t atime;	/* atime must be just after mtime */
 	union {
 		char	reserved06[24];
 		char	symlink[24];	/* HAMMER_INODE_BASESYMLEN */
 	} ext;
+	u_int64_t mtime;	/* mtime must be second-to-last */
+	u_int64_t atime;	/* atime must be last */
 };
 
+/*
+ * Neither mtime nor atime upates are CRCd by the B-Tree element.
+ * mtime updates have UNDO, atime updates do not.
+ */
 #define HAMMER_ITIMES_BASE(ino_data)	(&(ino_data)->mtime)
 #define HAMMER_ITIMES_BYTES		(sizeof(u_int64_t) * 2)
 
+#define HAMMER_INODE_CRCSIZE	\
+	offsetof(struct hammer_inode_data, mtime)
+
 #define HAMMER_INODE_DATA_VERSION	1
 #define HAMMER_OBJID_ROOT		1
-#define HAMMER_INODE_BASESYMLEN		24
+#define HAMMER_INODE_BASESYMLEN		24	/* see ext.symlink */
 
 /*
- * A directory entry specifies the HAMMER filesystem object id, a copy of
- * the file type, and file name (either embedded or as out-of-band data).
- * If the file name is short enough to fit into den_name[] (including a
- * terminating nul) then it will be embedded in the record, otherwise it
- * is stored out-of-band.  The base record's data reference always points
- * to the nul-terminated filename regardless.
+ * A HAMMER directory entry associates a HAMMER filesystem object with a
+ * namespace.  It is possible to hook into a pseudo-filesystem (with its
+ * own inode numbering space) in the filesystem by setting the high
+ * 16 bits of the localization field.  The low 16 bits must be 0 and
+ * are reserved for future use.
  *
  * Directory entries are indexed with a 128 bit namekey rather then an
- * offset.  A portion of the namekey is an iterator or randomizer to deal
+ * offset.  A portion of the namekey is an iterator/randomizer to deal
  * with collisions.
  *
- * NOTE: base.base.obj_type holds the filesystem object type of obj_id,
- *	 e.g. a den_type equivalent.
+ * NOTE: base.base.obj_type from the related B-Tree leaf entry holds
+ * the filesystem object type of obj_id, e.g. a den_type equivalent.
+ * It is not stored in hammer_entry_data.
  *
  * NOTE: den_name / the filename data reference is NOT terminated with \0.
- *
  */
 struct hammer_entry_data {
 	u_int64_t obj_id;		/* object being referenced */
-	u_int64_t reserved01;
+	u_int32_t localization;		/* identify pseudo-filesystem */
+	u_int32_t reserved02;
 	char	name[16];		/* name (extended) */
 };
 
 #define HAMMER_ENTRY_NAME_OFF	offsetof(struct hammer_entry_data, name[0])
 #define HAMMER_ENTRY_SIZE(nlen)	offsetof(struct hammer_entry_data, name[nlen])
 
+/*
+ * Symlink data which does not fit in the inode is stored in a separte
+ * FIX type record.
+ */
 struct hammer_symlink_data {
 	char	name[16];
 };

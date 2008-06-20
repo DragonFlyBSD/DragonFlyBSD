@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.18 2008/06/18 01:13:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.19 2008/06/20 21:24:53 dillon Exp $
  */
 
 #include "hammer.h"
@@ -46,6 +46,7 @@ void
 hammer_start_transaction(struct hammer_transaction *trans,
 			 struct hammer_mount *hmp)
 {
+	struct timeval tv;
 	int error;
 
 	trans->type = HAMMER_TRANS_STD;
@@ -53,8 +54,11 @@ hammer_start_transaction(struct hammer_transaction *trans,
 	trans->rootvol = hammer_get_root_volume(hmp, &error);
 	KKASSERT(error == 0);
 	trans->tid = 0;
-	trans->time = hammer_alloc_tid(trans, 1);
 	trans->sync_lock_refs = 0;
+
+	getmicrotime(&tv);
+	trans->time = (unsigned long)tv.tv_sec * 1000000ULL +
+		      tv.tv_usec;
 }
 
 /*
@@ -64,6 +68,7 @@ void
 hammer_simple_transaction(struct hammer_transaction *trans,
 			  struct hammer_mount *hmp)
 {
+	struct timeval tv;
 	int error;
 
 	trans->type = HAMMER_TRANS_RO;
@@ -71,8 +76,11 @@ hammer_simple_transaction(struct hammer_transaction *trans,
 	trans->rootvol = hammer_get_root_volume(hmp, &error);
 	KKASSERT(error == 0);
 	trans->tid = 0;
-	trans->time = hammer_alloc_tid(trans, 1);
 	trans->sync_lock_refs = 0;
+
+	getmicrotime(&tv);
+	trans->time = (unsigned long)tv.tv_sec * 1000000ULL +
+		      tv.tv_usec;
 }
 
 /*
@@ -87,6 +95,7 @@ void
 hammer_start_transaction_fls(struct hammer_transaction *trans,
 			     struct hammer_mount *hmp)
 {
+	struct timeval tv;
 	int error;
 
 	bzero(trans, sizeof(*trans));
@@ -96,8 +105,11 @@ hammer_start_transaction_fls(struct hammer_transaction *trans,
 	trans->rootvol = hammer_get_root_volume(hmp, &error);
 	KKASSERT(error == 0);
 	trans->tid = hammer_alloc_tid(trans, 1);
-	trans->time = trans->tid;
 	trans->sync_lock_refs = 1;
+
+	getmicrotime(&tv);
+	trans->time = (unsigned long)tv.tv_sec * 1000000ULL +
+		      tv.tv_usec;
 }
 
 void

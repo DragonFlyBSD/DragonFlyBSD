@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.78 2008/06/20 05:38:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.79 2008/06/20 21:24:53 dillon Exp $
  */
 
 #include "hammer.h"
@@ -180,9 +180,12 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			 * historical, otherwise the VFS cache will get
 			 * confused.  The other half of the special handling
 			 * is in hammer_vop_nlookupdotdot().
+			 *
+			 * Pseudo-filesystem roots also do not count.
 			 */
 			if (ip->obj_id == HAMMER_OBJID_ROOT &&
-			    ip->obj_asof == hmp->asof) {
+			    ip->obj_asof == hmp->asof &&
+			    ip->obj_localization == 0) {
 				vp->v_flag |= VROOT;
 			}
 
@@ -221,7 +224,8 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
  */
 struct hammer_inode *
 hammer_get_inode(hammer_transaction_t trans, hammer_inode_t dip,
-		 u_int64_t obj_id, hammer_tid_t asof, int flags, int *errorp)
+		 u_int64_t obj_id, hammer_tid_t asof, u_int32_t localization,
+		 int flags, int *errorp)
 {
 	hammer_mount_t hmp = trans->hmp;
 	struct hammer_inode_info iinfo;
@@ -234,6 +238,7 @@ hammer_get_inode(hammer_transaction_t trans, hammer_inode_t dip,
 	 */
 	iinfo.obj_id = obj_id;
 	iinfo.obj_asof = asof;
+	iinfo.obj_localization = localization;
 loop:
 	ip = hammer_ino_rb_tree_RB_LOOKUP_INFO(&hmp->rb_inos_root, &iinfo);
 	if (ip) {
@@ -250,6 +255,7 @@ loop:
 	++hmp->count_inodes;
 	ip->obj_id = obj_id;
 	ip->obj_asof = iinfo.obj_asof;
+	ip->obj_localization = localization;
 	ip->hmp = hmp;
 	ip->flags = flags & HAMMER_INODE_RO;
 	ip->cache[0].ip = ip;
@@ -380,9 +386,11 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	ip->obj_id = hammer_alloc_objid(trans, dip);
 	KKASSERT(ip->obj_id != 0);
 	ip->obj_asof = hmp->asof;
+	ip->obj_localization = dip->obj_localization;
 	ip->hmp = hmp;
 	ip->flush_state = HAMMER_FST_IDLE;
-	ip->flags = HAMMER_INODE_DDIRTY | HAMMER_INODE_ITIMES;
+	ip->flags = HAMMER_INODE_DDIRTY |
+		    HAMMER_INODE_ATIME | HAMMER_INODE_MTIME;
 	ip->cache[0].ip = ip;
 	ip->cache[1].ip = ip;
 
@@ -583,7 +591,8 @@ retry:
 			if (hammer_debug_inode)
 				kprintf("CLEANDELOND %p %08x\n", ip, ip->flags);
 			ip->sync_flags &= ~(HAMMER_INODE_DDIRTY |
-					    HAMMER_INODE_ITIMES);
+					    HAMMER_INODE_ATIME |
+					    HAMMER_INODE_MTIME);
 			ip->flags &= ~HAMMER_INODE_DELONDISK;
 
 			/*
@@ -608,52 +617,60 @@ retry:
 	 */
 	if (error == 0 && (ip->flags & HAMMER_INODE_DELETED)) { 
 		ip->sync_flags &= ~(HAMMER_INODE_DDIRTY |
-				    HAMMER_INODE_ITIMES);
+				    HAMMER_INODE_ATIME |
+				    HAMMER_INODE_MTIME);
 	}
 	return(error);
 }
 
 /*
- * Update only the itimes fields.  This is done no-historically.  The
- * record is updated in-place on the disk.
+ * Update only the itimes fields.
+ *
+ * ATIME can be updated without generating any UNDO.  MTIME is updated
+ * with UNDO so it is guaranteed to be synchronized properly in case of
+ * a crash.
+ *
+ * Neither field is included in the B-Tree leaf element's CRC, which is how
+ * we can get away with updating ATIME the way we do.
  */
 static int
 hammer_update_itimes(hammer_cursor_t cursor, hammer_inode_t ip)
 {
 	hammer_transaction_t trans = cursor->trans;
-	struct hammer_btree_leaf_elm *leaf;
 	int error;
 
 retry:
-	error = 0;
-	if ((ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DELONDISK)) ==
+	if ((ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DELONDISK)) !=
 	    HAMMER_INODE_ONDISK) {
-		hammer_normalize_cursor(cursor);
-		cursor->key_beg.localization = HAMMER_LOCALIZE_INODE;
-		cursor->key_beg.obj_id = ip->obj_id;
-		cursor->key_beg.key = 0;
-		cursor->key_beg.create_tid = 0;
-		cursor->key_beg.delete_tid = 0;
-		cursor->key_beg.rec_type = HAMMER_RECTYPE_INODE;
-		cursor->key_beg.obj_type = 0;
-		cursor->asof = ip->obj_asof;
-		cursor->flags &= ~HAMMER_CURSOR_INITMASK;
-		cursor->flags |= HAMMER_CURSOR_ASOF;
-		cursor->flags |= HAMMER_CURSOR_GET_LEAF;
-		cursor->flags |= HAMMER_CURSOR_GET_DATA;
-		cursor->flags |= HAMMER_CURSOR_BACKEND;
+		return(0);
+	}
 
-		error = hammer_btree_lookup(cursor);
-		if (error) {
-			kprintf("error %d\n", error);
-			Debugger("hammer_update_itimes1");
-		}
-		if (error == 0) {
+	hammer_normalize_cursor(cursor);
+	cursor->key_beg.localization = HAMMER_LOCALIZE_INODE;
+	cursor->key_beg.obj_id = ip->obj_id;
+	cursor->key_beg.key = 0;
+	cursor->key_beg.create_tid = 0;
+	cursor->key_beg.delete_tid = 0;
+	cursor->key_beg.rec_type = HAMMER_RECTYPE_INODE;
+	cursor->key_beg.obj_type = 0;
+	cursor->asof = ip->obj_asof;
+	cursor->flags &= ~HAMMER_CURSOR_INITMASK;
+	cursor->flags |= HAMMER_CURSOR_ASOF;
+	cursor->flags |= HAMMER_CURSOR_GET_LEAF;
+	cursor->flags |= HAMMER_CURSOR_GET_DATA;
+	cursor->flags |= HAMMER_CURSOR_BACKEND;
+
+	error = hammer_btree_lookup(cursor);
+	if (error) {
+		kprintf("error %d\n", error);
+		Debugger("hammer_update_itimes1");
+	}
+	if (error == 0) {
+		hammer_cache_node(&ip->cache[0], cursor->node);
+		if (ip->sync_flags & HAMMER_INODE_MTIME) {
 			/*
-			 * atime/mtime updates can be done in place, but
-			 * they are nasty because we also have to update the
-			 * data_crc in the B-Tree leaf, which means we
-			 * ALSO have to generate UNDO records.
+			 * Updating MTIME requires an UNDO.  Just cover
+			 * both atime and mtime.
 			 */
 			hammer_modify_buffer(trans, cursor->data_buffer,
 				     HAMMER_ITIMES_BASE(&cursor->data->inode),
@@ -661,25 +678,24 @@ retry:
 			cursor->data->inode.atime = ip->sync_ino_data.atime;
 			cursor->data->inode.mtime = ip->sync_ino_data.mtime;
 			hammer_modify_buffer_done(cursor->data_buffer);
-
-			leaf = cursor->leaf;
-			hammer_modify_node(trans, cursor->node,
-					   &leaf->data_crc,
-					   sizeof(leaf->data_crc));
-			leaf->data_crc = crc32(cursor->data, leaf->data_len);
-			hammer_modify_node_done(cursor->node);
-
-			ip->sync_flags &= ~HAMMER_INODE_ITIMES;
-			/* XXX recalculate crc */
-			hammer_cache_node(&ip->cache[0], cursor->node);
+		} else if (ip->sync_flags & HAMMER_INODE_ATIME) {
+			/*
+			 * Updating atime only can be done in-place with
+			 * no UNDO.
+			 */
+			hammer_modify_buffer(trans, cursor->data_buffer,
+					     NULL, 0);
+			cursor->data->inode.atime = ip->sync_ino_data.atime;
+			hammer_modify_buffer_done(cursor->data_buffer);
 		}
-		if (error == EDEADLK) {
-			hammer_done_cursor(cursor);
-			error = hammer_init_cursor(trans, cursor,
-						   &ip->cache[0], ip);
-			if (error == 0)
-				goto retry;
-		}
+		ip->sync_flags &= ~(HAMMER_INODE_ATIME | HAMMER_INODE_MTIME);
+	}
+	if (error == EDEADLK) {
+		hammer_done_cursor(cursor);
+		error = hammer_init_cursor(trans, cursor,
+					   &ip->cache[0], ip);
+		if (error == 0)
+			goto retry;
 	}
 	return(error);
 }
@@ -797,15 +813,15 @@ hammer_reload_inode(hammer_inode_t ip, void *arg __unused)
  * HAMMER_INODE_XDIRTY: Dirty in-memory records
  * HAMMER_INODE_BUFS:   Dirty buffer cache buffers
  * HAMMER_INODE_DELETED: Inode record/data must be deleted
- * HAMMER_INODE_ITIMES: mtime/atime has been updated
+ * HAMMER_INODE_ATIME/MTIME: mtime/atime has been updated
  */
 void
 hammer_modify_inode(hammer_inode_t ip, int flags)
 {
 	KKASSERT ((ip->flags & HAMMER_INODE_RO) == 0 ||
-		  (flags & (HAMMER_INODE_DDIRTY |
-			    HAMMER_INODE_XDIRTY | HAMMER_INODE_BUFS |
-			    HAMMER_INODE_DELETED | HAMMER_INODE_ITIMES)) == 0);
+		  (flags & (HAMMER_INODE_DDIRTY | HAMMER_INODE_XDIRTY | 
+			    HAMMER_INODE_BUFS | HAMMER_INODE_DELETED |
+			    HAMMER_INODE_ATIME | HAMMER_INODE_MTIME)) == 0);
 	if ((ip->flags & HAMMER_INODE_RSV_INODES) == 0) {
 		ip->flags |= HAMMER_INODE_RSV_INODES;
 		++ip->hmp->rsv_inodes;
@@ -1309,18 +1325,34 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 }
 
 /*
- * Wait for a previously queued flush to complete
+ * Wait for a previously queued flush to complete.  Not only do we need to
+ * wait for the inode to sync out, we also may have to run the flusher again
+ * to get it past the UNDO position pertaining to the flush so a crash does
+ * not 'undo' our flush.
  */
 void
 hammer_wait_inode(hammer_inode_t ip)
 {
-	while (ip->flush_state != HAMMER_FST_IDLE) {
+	hammer_mount_t hmp = ip->hmp;
+	int sync_group;
+	int waitcount;
+
+	sync_group = ip->flush_group;
+	waitcount = (ip->flags & HAMMER_INODE_REFLUSH) ? 2 : 1;
+
+	while (ip->flush_state != HAMMER_FST_IDLE &&
+	       (ip->flush_group - sync_group) < 2) {
 		if (ip->flush_state == HAMMER_FST_SETUP) {
+			kprintf("X");
 			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
 		} else {
 			ip->flags |= HAMMER_INODE_FLUSHW;
 			tsleep(&ip->flags, 0, "hmrwin", 0);
 		}
+	}
+	while (hmp->flusher.done - sync_group < waitcount) {
+		kprintf("Y");
+		hammer_flusher_sync(hmp);
 	}
 }
 
@@ -1809,8 +1841,8 @@ hammer_sync_inode(hammer_inode_t ip)
 		 *
 		 * Clear flags which may have been set by the frontend.
 		 */
-		ip->sync_flags &= ~(HAMMER_INODE_DDIRTY|
-				    HAMMER_INODE_XDIRTY|HAMMER_INODE_ITIMES|
+		ip->sync_flags &= ~(HAMMER_INODE_DDIRTY | HAMMER_INODE_XDIRTY |
+				    HAMMER_INODE_ATIME | HAMMER_INODE_MTIME |
 				    HAMMER_INODE_DELETING);
 		break;
 	case HAMMER_INODE_DELETED:
@@ -1820,8 +1852,8 @@ hammer_sync_inode(hammer_inode_t ip)
 		 *
 		 * Clear flags which may have been set by the frontend.
 		 */
-		ip->sync_flags &= ~(HAMMER_INODE_DDIRTY|
-				    HAMMER_INODE_XDIRTY|HAMMER_INODE_ITIMES|
+		ip->sync_flags &= ~(HAMMER_INODE_DDIRTY | HAMMER_INODE_XDIRTY |
+				    HAMMER_INODE_ATIME | HAMMER_INODE_MTIME |
 				    HAMMER_INODE_DELETING);
 		while (RB_ROOT(&ip->rec_tree)) {
 			hammer_record_t record = RB_ROOT(&ip->rec_tree);
@@ -1839,11 +1871,10 @@ hammer_sync_inode(hammer_inode_t ip)
 		break;
 	default:
 		/*
-		 * If not on-disk and not deleted, set both dirty flags
-		 * to force an initial record to be written.  Also set
-		 * the create_tid for the inode.
+		 * If not on-disk and not deleted, set DDIRTY to force
+		 * an initial record to be written.
 		 *
-		 * Set create_tid in both the frontend and backend
+		 * Also set the create_tid in both the frontend and backend
 		 * copy of the inode record.
 		 */
 		ip->ino_leaf.base.create_tid = trans.tid;
@@ -1864,11 +1895,11 @@ hammer_sync_inode(hammer_inode_t ip)
 	if (ip->flags & HAMMER_INODE_DELETED) {
 		error = hammer_update_inode(&cursor, ip);
 	} else 
-	if ((ip->sync_flags & (HAMMER_INODE_DDIRTY | HAMMER_INODE_ITIMES)) ==
-	    HAMMER_INODE_ITIMES) {
+	if ((ip->sync_flags & HAMMER_INODE_DDIRTY) == 0 &&
+	    (ip->sync_flags & (HAMMER_INODE_ATIME | HAMMER_INODE_MTIME))) {
 		error = hammer_update_itimes(&cursor, ip);
 	} else
-	if (ip->sync_flags & (HAMMER_INODE_DDIRTY | HAMMER_INODE_ITIMES)) {
+	if (ip->sync_flags & (HAMMER_INODE_DDIRTY | HAMMER_INODE_ATIME | HAMMER_INODE_MTIME)) {
 		error = hammer_update_inode(&cursor, ip);
 	}
 	if (error)
