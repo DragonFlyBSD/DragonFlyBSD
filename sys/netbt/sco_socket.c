@@ -1,4 +1,4 @@
-/* $DragonFly: src/sys/netbt/sco_socket.c,v 1.2 2008/03/18 13:41:42 hasso Exp $ */
+/* $DragonFly: src/sys/netbt/sco_socket.c,v 1.3 2008/06/20 20:58:37 aggelos Exp $ */
 /* $OpenBSD: sco_socket.c,v 1.1 2007/06/01 02:46:12 uwe Exp $ */
 /* $NetBSD: sco_socket.c,v 1.9 2007/04/21 06:15:23 plunky Exp $ */
 
@@ -111,13 +111,13 @@ sco_ctloutput(struct socket *so, struct sockopt *sopt)
 		}
 		/* *opt = m; */
 		/* XXX There are possible memory leaks (Griffin) */
-		err = sooptcopyout(sopt, mtod(m, void *), m->m_len);
+		soopt_from_kbuf(sopt, mtod(m, void *), m->m_len);
 		break;
 
 	case PRCO_SETOPT:
 		m = m_get(M_WAITOK, MT_DATA);
 		KKASSERT(m != NULL);
-		err = sooptcopyin(sopt, mtod(m,void*), m->m_len, m->m_len); 
+		err = soopt_to_kbuf(sopt, mtod(m,void*), m->m_len, m->m_len); 
 
 		if (m->m_len == 0) {
 			m_freem(m);
