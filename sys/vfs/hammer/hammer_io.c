@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.43 2008/06/18 01:13:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.44 2008/06/20 05:38:26 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -180,10 +180,13 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io, hammer_off_t limit)
 
 	if ((bp = io->bp) == NULL) {
 		++hammer_count_io_running_read;
-		error = cluster_read(devvp, limit, io->offset,
-				     HAMMER_BUFSIZE,
+#if 1
+		error = cluster_read(devvp, limit, io->offset, io->bytes,
 				     HAMMER_CLUSTER_SIZE,
 				     HAMMER_CLUSTER_BUFS, &io->bp);
+#else
+		error = bread(devvp, io->offset, io->bytes, &io->bp);
+#endif
 		--hammer_count_io_running_read;
 		if (error == 0) {
 			bp = io->bp;
@@ -219,7 +222,7 @@ hammer_io_new(struct vnode *devvp, struct hammer_io *io)
 	struct buf *bp;
 
 	if ((bp = io->bp) == NULL) {
-		io->bp = getblk(devvp, io->offset, HAMMER_BUFSIZE, 0, 0);
+		io->bp = getblk(devvp, io->offset, io->bytes, 0, 0);
 		bp = io->bp;
 		bp->b_ops = &hammer_bioops;
 		KKASSERT(LIST_FIRST(&bp->b_dep) == NULL);
@@ -253,10 +256,11 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 
 	phys_offset = volume->ondisk->vol_buf_beg +
 		      (zone2_offset & HAMMER_OFF_SHORT_MASK);
-	if (findblk(volume->devvp, phys_offset)) {
-		bp = getblk(volume->devvp, phys_offset, HAMMER_BUFSIZE, 0, 0);
+	crit_enter();
+	if ((bp = findblk(volume->devvp, phys_offset)) != NULL) {
+		bp = getblk(volume->devvp, phys_offset, bp->b_bufsize, 0, 0);
 		if ((iou = (void *)LIST_FIRST(&bp->b_dep)) != NULL) {
-			hammer_io_clear_modify(&iou->io);
+			hammer_io_clear_modify(&iou->io, 1);
 			bundirty(bp);
 			iou->io.reclaim = 1;
 			hammer_io_deallocate(bp);
@@ -267,6 +271,7 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 			brelse(bp);
 		}
 	}
+	crit_exit();
 }
 
 /*
@@ -445,6 +450,8 @@ hammer_io_flush(struct hammer_io *io)
 	 * happen anyway but losing data would be worse.  The modified bit
 	 * will be rechecked after the IO completes.
 	 *
+	 * NOTE: This call also finalizes the buffer's content (inval == 0).
+	 *
 	 * This is only legal when lock.refs == 1 (otherwise we might clear
 	 * the modified bit while there are still users of the cluster
 	 * modifying the data).
@@ -452,30 +459,7 @@ hammer_io_flush(struct hammer_io *io)
 	 * Do this before potentially blocking so any attempt to modify the
 	 * ondisk while we are blocked blocks waiting for us.
 	 */
-	hammer_io_clear_modify(io);
-
-	/*
-	 * We delay generating the CRCs for B-Tree nodes until the very
-	 * last minute.
-	 */
-	if (io->gencrc) {
-		io->gencrc = 0;
-		if (io->type == HAMMER_STRUCTURE_META_BUFFER) {
-			hammer_buffer_t buffer = (void *)io;
-			hammer_node_t node;
-
-restart:
-			TAILQ_FOREACH(node, &buffer->clist, entry) {
-				if ((node->flags & HAMMER_NODE_NEEDSCRC) == 0)
-					continue;
-				node->flags &= ~HAMMER_NODE_NEEDSCRC;
-				KKASSERT(node->ondisk);
-				node->ondisk->crc = crc32(&node->ondisk->crc + 1, HAMMER_BTREE_CRCSIZE);
-				hammer_rel_node(node);
-				goto restart;
-			}
-		}
-	}
+	hammer_io_clear_modify(io, 0);
 
 	/*
 	 * Transfer ownership to the kernel and initiate I/O.
@@ -648,22 +632,63 @@ hammer_modify_buffer_done(hammer_buffer_t buffer)
 }
 
 /*
- * Mark an entity as not being dirty any more.
+ * Mark an entity as not being dirty any more and finalize any
+ * delayed adjustments to the buffer.
+ *
+ * Delayed adjustments are an important performance enhancement, allowing
+ * us to avoid recalculating B-Tree node CRCs over and over again when
+ * making bulk-modifications to the B-Tree.
+ *
+ * If inval is non-zero delayed adjustments are ignored.
  */
 void
-hammer_io_clear_modify(struct hammer_io *io)
+hammer_io_clear_modify(struct hammer_io *io, int inval)
 {
-	if (io->modified) {
-		KKASSERT(io->mod_list != NULL);
-		if (io->mod_list == &io->hmp->volu_list ||
-		    io->mod_list == &io->hmp->meta_list) {
-			--io->hmp->locked_dirty_count;
-			--hammer_count_dirtybufs;
-		}
-		TAILQ_REMOVE(io->mod_list, io, mod_entry);
-		io->mod_list = NULL;
-		io->modified = 0;
+	if (io->modified == 0)
+		return;
+
+	/*
+	 * Take us off the mod-list and clear the modified bit.
+	 */
+	KKASSERT(io->mod_list != NULL);
+	if (io->mod_list == &io->hmp->volu_list ||
+	    io->mod_list == &io->hmp->meta_list) {
+		--io->hmp->locked_dirty_count;
+		--hammer_count_dirtybufs;
 	}
+	TAILQ_REMOVE(io->mod_list, io, mod_entry);
+	io->mod_list = NULL;
+	io->modified = 0;
+
+	/*
+	 * If this bit is not set there are no delayed adjustments.
+	 */
+	if (io->gencrc == 0)
+		return;
+	io->gencrc = 0;
+
+	/*
+	 * Finalize requested CRCs.  The NEEDSCRC flag also holds a reference
+	 * on the node (& underlying buffer).  Release the node after clearing
+	 * the flag.
+	 */
+	if (io->type == HAMMER_STRUCTURE_META_BUFFER) {
+		hammer_buffer_t buffer = (void *)io;
+		hammer_node_t node;
+
+restart:
+		TAILQ_FOREACH(node, &buffer->clist, entry) {
+			if ((node->flags & HAMMER_NODE_NEEDSCRC) == 0)
+				continue;
+			node->flags &= ~HAMMER_NODE_NEEDSCRC;
+			KKASSERT(node->ondisk);
+			if (inval == 0)
+				node->ondisk->crc = crc32(&node->ondisk->crc + 1, HAMMER_BTREE_CRCSIZE);
+			hammer_rel_node(node);
+			goto restart;
+		}
+	}
+
 }
 
 /*
@@ -674,6 +699,7 @@ hammer_io_clear_modify(struct hammer_io *io)
 void
 hammer_io_clear_modlist(struct hammer_io *io)
 {
+	KKASSERT(io->modified == 0);
 	if (io->mod_list) {
 		crit_enter();	/* biodone race against list */
 		KKASSERT(io->mod_list == &io->hmp->lose_list);
@@ -850,7 +876,7 @@ hammer_io_checkwrite(struct buf *bp)
 	 * undergoing modification.  Otherwise we may miss changes.
 	 */
 	if (io->modify_refs == 0 && io->modified)
-		hammer_io_clear_modify(io);
+		hammer_io_clear_modify(io, 0);
 
 	/*
 	 * The kernel is going to start the IO, set io->running.
@@ -899,15 +925,17 @@ struct bio_ops hammer_bioops = {
  * This function can takes a zone-2 or zone-X blockmap offset.
  */
 int
-hammer_io_direct_read(hammer_mount_t hmp, hammer_off_t data_offset,
-		      struct bio *bio)
+hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio)
 {
+	hammer_off_t data_offset;
 	hammer_off_t zone2_offset;
 	hammer_volume_t volume;
 	struct buf *bp;
 	struct bio *nbio;
 	int vol_no;
 	int error;
+
+	data_offset = bio->bio_offset;
 
 	if ((data_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_RAW_BUFFER) {
 		zone2_offset = data_offset;
@@ -924,6 +952,8 @@ hammer_io_direct_read(hammer_mount_t hmp, hammer_off_t data_offset,
 			error = EIO;
 		if (error == 0) {
 			zone2_offset &= HAMMER_OFF_SHORT_MASK;
+
+			/* NOTE: third-level push */
 			nbio = push_bio(bio);
 			nbio->bio_offset = volume->ondisk->vol_buf_beg +
 					   zone2_offset;
@@ -966,7 +996,7 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 	KKASSERT(bio->bio_buf->b_cmd == BUF_CMD_WRITE);
 
 	if ((buf_offset & HAMMER_BUFMASK) == 0 &&
-	    leaf->data_len == HAMMER_BUFSIZE) {
+	    leaf->data_len >= HAMMER_BUFSIZE) {
 		/*
 		 * We are using the vnode's bio to write directly to the
 		 * media, any hammer_buffer at the same zone-X offset will
@@ -979,10 +1009,10 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 		if (error == 0 && zone2_offset >= volume->maxbuf_off)
 			error = EIO;
 		if (error == 0) {
-			hammer_del_buffers(hmp, buf_offset,
-					   zone2_offset, HAMMER_BUFSIZE);
 			bp = bio->bio_buf;
-			KKASSERT(bp->b_bufsize == HAMMER_BUFSIZE);
+			KKASSERT((bp->b_bufsize & HAMMER_BUFMASK) == 0);
+			hammer_del_buffers(hmp, buf_offset,
+					   zone2_offset, bp->b_bufsize);
 			zone2_offset &= HAMMER_OFF_SHORT_MASK;
 
 			nbio = push_bio(bio);
@@ -992,6 +1022,7 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 		}
 		hammer_rel_volume(volume, 0);
 	} else {
+		/* must fit in a standard HAMMER buffer */
 		KKASSERT(((buf_offset ^ (buf_offset + leaf->data_len - 1)) & ~HAMMER_BUFMASK64) == 0);
 		buffer = NULL;
 		ptr = hammer_bread(hmp, buf_offset, &error, &buffer);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.24 2008/06/10 22:30:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.25 2008/06/20 05:38:26 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -49,6 +49,7 @@ hammer_lock_ex_ident(struct hammer_lock *lock, const char *ident)
 	crit_enter();
 	if (lock->locktd != td) {
 		while (lock->locktd != NULL || lock->lockcount) {
+			++lock->exwanted;
 			lock->wanted = 1;
 			if (hammer_debug_locks) {
 				kprintf("hammer_lock_ex: held by %p\n",
@@ -58,6 +59,7 @@ hammer_lock_ex_ident(struct hammer_lock *lock, const char *ident)
 			tsleep(lock, 0, ident, 0);
 			if (hammer_debug_locks)
 				kprintf("hammer_lock_ex: try again\n");
+			--lock->exwanted;
 		}
 		lock->locktd = td;
 	}
@@ -89,12 +91,40 @@ hammer_lock_ex_try(struct hammer_lock *lock)
 	return(0);
 }
 
+/*
+ * Obtain a shared lock
+ */
 void
 hammer_lock_sh(struct hammer_lock *lock)
 {
 	KKASSERT(lock->refs > 0);
 	crit_enter();
 	while (lock->locktd != NULL) {
+		if (lock->locktd == curthread) {
+			Debugger("hammer_lock_sh: lock_sh on exclusive");
+			++lock->lockcount;
+			crit_exit();
+			return;
+		}
+		lock->wanted = 1;
+		tsleep(lock, 0, "hmrlck", 0);
+	}
+	KKASSERT(lock->lockcount <= 0);
+	--lock->lockcount;
+	crit_exit();
+}
+
+/*
+ * Obtain a shared lock at a lower priority then thread waiting for an
+ * exclusive lock.  To avoid a deadlock this may only be done if no other
+ * shared locks are being held by the caller.
+ */
+void
+hammer_lock_sh_lowpri(struct hammer_lock *lock)
+{
+	KKASSERT(lock->refs > 0);
+	crit_enter();
+	while (lock->locktd != NULL || lock->exwanted) {
 		if (lock->locktd == curthread) {
 			Debugger("hammer_lock_sh: lock_sh on exclusive");
 			++lock->lockcount;
@@ -473,5 +503,33 @@ hkprintf(const char *ctl, ...)
 		kvprintf(ctl, va);
 		__va_end(va);
 	}
+}
+
+/*
+ * Return the block size at the specified file offset.
+ */
+int
+hammer_blocksize(int64_t file_offset)
+{
+	if (file_offset < HAMMER_XDEMARC)
+		return(HAMMER_BUFSIZE);
+	else
+		return(HAMMER_XBUFSIZE);
+}
+
+/*
+ * Return the demarkation point between the two offsets where
+ * the block size changes. 
+ */
+int64_t
+hammer_blockdemarc(int64_t file_offset1, int64_t file_offset2)
+{
+	if (file_offset1 < HAMMER_XDEMARC) {
+		if (file_offset2 <= HAMMER_XDEMARC)
+			return(file_offset2);
+		return(HAMMER_XDEMARC);
+	}
+	panic("hammer_blockdemarc: illegal range %lld %lld\n",
+	      file_offset1, file_offset2);
 }
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.38 2008/06/18 01:13:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.39 2008/06/20 05:38:26 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -60,13 +60,17 @@
  * used by volumes, super-clusters, clusters, and basic filesystem buffers
  * use fixed-sized A-lists which are heavily dependant on HAMMER_BUFSIZE.
  *
+ * 64K X-bufs are used for blocks >= a file's 1MB mark.
+ *
  * Per-volume storage limit: 52 bits		4096 TB
  * Per-Zone storage limit: 59 bits		512 KTB (due to blockmap)
  * Per-filesystem storage limit: 60 bits	1 MTB
  */
 #define HAMMER_BUFSIZE		16384
+#define HAMMER_XBUFSIZE		65536
+#define HAMMER_XDEMARC		(1024 * 1024)
 #define HAMMER_BUFMASK		(HAMMER_BUFSIZE - 1)
-#define HAMMER_MAXDATA		(256*1024)
+#define HAMMER_XBUFMASK		(HAMMER_XBUFSIZE - 1)
 #define HAMMER_BUFFER_BITS	14
 
 #if (1 << HAMMER_BUFFER_BITS) != HAMMER_BUFSIZE
@@ -75,6 +79,9 @@
 
 #define HAMMER_BUFSIZE64	((u_int64_t)HAMMER_BUFSIZE)
 #define HAMMER_BUFMASK64	((u_int64_t)HAMMER_BUFMASK)
+
+#define HAMMER_XBUFSIZE64	((u_int64_t)HAMMER_XBUFSIZE)
+#define HAMMER_XBUFMASK64	((u_int64_t)HAMMER_XBUFMASK)
 
 #define HAMMER_OFF_ZONE_MASK	0xF000000000000000ULL /* zone portion */
 #define HAMMER_OFF_VOL_MASK	0x0FF0000000000000ULL /* volume portion */

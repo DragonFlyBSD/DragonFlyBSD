@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.49 2008/06/18 01:13:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.50 2008/06/20 05:38:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -80,7 +80,6 @@ int hammer_count_io_running_read;
 int hammer_count_io_running_write;
 int hammer_count_io_locked;
 int hammer_limit_dirtybufs;		/* per-mount */
-int hammer_limit_irecs;			/* per-inode */
 int hammer_limit_recs;			/* as a whole XXX */
 int hammer_limit_iqueued;		/* per-mount */
 int hammer_bio_count;
@@ -113,8 +112,6 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_cluster_enable, CTLFLAG_RW,
 
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_dirtybufs, CTLFLAG_RW,
 	   &hammer_limit_dirtybufs, 0, "");
-SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_irecs, CTLFLAG_RW,
-	   &hammer_limit_irecs, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_recs, CTLFLAG_RW,
 	   &hammer_limit_recs, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_iqueued, CTLFLAG_RW,
@@ -221,8 +218,6 @@ MODULE_VERSION(hammer, 1);
 static int
 hammer_vfs_init(struct vfsconf *conf)
 {
-	if (hammer_limit_irecs == 0)
-		hammer_limit_irecs = nbuf * 8;
 	if (hammer_limit_recs == 0)		/* XXX TODO */
 		hammer_limit_recs = nbuf * 25;
 	if (hammer_limit_dirtybufs == 0) {

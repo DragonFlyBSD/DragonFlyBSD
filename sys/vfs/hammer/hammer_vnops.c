@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.72 2008/06/18 01:13:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.73 2008/06/20 05:38:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -202,37 +202,65 @@ hammer_vop_read(struct vop_read_args *ap)
 	int error;
 	int n;
 	int seqcount;
+	int ioseqcount;
+	int blksize;
 
 	if (ap->a_vp->v_type != VREG)
 		return (EINVAL);
 	ip = VTOI(ap->a_vp);
 	error = 0;
-	seqcount = ap->a_ioflag >> 16;
+	uio = ap->a_uio;
+
+	/*
+	 * Allow the UIO's size to override the sequential heuristic.
+	 */
+	blksize = hammer_blocksize(uio->uio_offset);
+	seqcount = (uio->uio_resid + (blksize - 1)) / blksize;
+	ioseqcount = ap->a_ioflag >> 16;
+	if (seqcount < ioseqcount)
+		seqcount = ioseqcount;
 
 	hammer_start_transaction(&trans, ip->hmp);
 
 	/*
-	 * Access the data in HAMMER_BUFSIZE blocks via the buffer cache.
+	 * Access the data typically in HAMMER_BUFSIZE blocks via the
+	 * buffer cache, but HAMMER may use a variable block size based
+	 * on the offset.
 	 */
-	uio = ap->a_uio;
 	while (uio->uio_resid > 0 && uio->uio_offset < ip->ino_data.size) {
-		offset = uio->uio_offset & HAMMER_BUFMASK;
+		int64_t base_offset;
+		int64_t file_limit;
+
+		blksize = hammer_blocksize(uio->uio_offset);
+		offset = (int)uio->uio_offset & (blksize - 1);
+		base_offset = uio->uio_offset - offset;
+
 		if (hammer_debug_cluster_enable) {
-			error = cluster_read(ap->a_vp, ip->ino_data.size,
-					     uio->uio_offset - offset,
-					     HAMMER_BUFSIZE,
-					     MAXBSIZE, seqcount, &bp);
+			/*
+			 * Use file_limit to prevent cluster_read() from
+			 * creating buffers of the wrong block size past
+			 * the demarc.
+			 */
+			file_limit = ip->ino_data.size;
+			if (base_offset < HAMMER_XDEMARC &&
+			    file_limit > HAMMER_XDEMARC) {
+				file_limit = HAMMER_XDEMARC;
+			}
+			error = cluster_read(ap->a_vp,
+					     file_limit, base_offset,
+					     blksize, MAXPHYS,
+					     seqcount, &bp);
 		} else {
-			error = bread(ap->a_vp, uio->uio_offset - offset,
-				      HAMMER_BUFSIZE, &bp);
+			error = bread(ap->a_vp, base_offset, blksize, &bp);
 		}
 		if (error) {
+			kprintf("error %d\n", error);
 			brelse(bp);
 			break;
 		}
 
 		/* bp->b_flags |= B_CLUSTEROK; temporarily disabled */
-		n = HAMMER_BUFSIZE - offset;
+		n = blksize - offset;
 		if (n > uio->uio_resid)
 			n = uio->uio_resid;
 		if (n > ip->ino_data.size - uio->uio_offset)
@@ -263,19 +291,22 @@ hammer_vop_write(struct vop_write_args *ap)
 {
 	struct hammer_transaction trans;
 	struct hammer_inode *ip;
+	hammer_mount_t hmp;
 	struct uio *uio;
-	int rel_offset;
+	int offset;
 	off_t base_offset;
 	struct buf *bp;
 	int error;
 	int n;
 	int flags;
 	int count;
+	int delta;
 	int seqcount;
 
 	if (ap->a_vp->v_type != VREG)
 		return (EINVAL);
 	ip = VTOI(ap->a_vp);
+	hmp = ip->hmp;
 	error = 0;
 	seqcount = ap->a_ioflag >> 16;
 
@@ -285,7 +316,7 @@ hammer_vop_write(struct vop_write_args *ap)
 	/*
 	 * Create a transaction to cover the operations we perform.
 	 */
-	hammer_start_transaction(&trans, ip->hmp);
+	hammer_start_transaction(&trans, hmp);
 	uio = ap->a_uio;
 
 	/*
@@ -311,44 +342,96 @@ hammer_vop_write(struct vop_write_args *ap)
 	}
 
 	/*
-	 * Access the data in HAMMER_BUFSIZE blocks via the buffer cache.
+	 * Access the data typically in HAMMER_BUFSIZE blocks via the
+	 * buffer cache, but HAMMER may use a variable block size based
+	 * on the offset.
 	 */
 	count = 0;
 	while (uio->uio_resid > 0) {
 		int fixsize = 0;
+		int blksize;
+		int blkmask;
 
-		if ((error = hammer_checkspace(trans.hmp)) != 0)
+		if ((error = hammer_checkspace(hmp)) != 0)
 			break;
 
 		/*
-		 * Do not allow HAMMER to blow out the buffer cache.
+		 * Do not allow HAMMER to blow out the buffer cache.  Very
+		 * large UIOs can lockout other processes due to bwillwrite()
+		 * mechanics.
 		 *
 		 * Do not allow HAMMER to blow out system memory by
-		 * accumulating too many records.   Records are decoupled
-		 * from the buffer cache.
+		 * accumulating too many records.   Records are so well
+		 * decoupled from the buffer cache that it is possible
+		 * for userland to push data out to the media via
+		 * direct-write, but build up the records queued to the
+		 * backend faster then the backend can flush them out.
+		 * HAMMER has hit its write limit but the frontend has
+		 * no pushback to slow it down.
 		 *
 		 * Always check at the beginning so separate writes are
-		 * not able to bypass this code.
+		 * not able to bypass this code (count++).
 		 *
 		 * WARNING: Cannot unlock vp when doing a NOCOPY write as
 		 * part of a putpages operation.  Doing so could cause us
 		 * to deadlock against the VM system when we try to re-lock.
 		 */
-		if ((count++ & 15) == 0) {
+		if ((count++ & 15) == 0 || count > 64) {
+			/*
+			 * Buffer cache check
+			 */
 			if (uio->uio_segflg != UIO_NOCOPY) {
 				vn_unlock(ap->a_vp);
 				if ((ap->a_ioflag & IO_NOBWILL) == 0)
 					bwillwrite();
 			}
-			if (ip->rsv_recs > hammer_limit_irecs)
-				hammer_wait_inode_recs(ip);
+
+			/*
+			 * Pending record flush check.
+			 */
+			if (hmp->rsv_recs > hammer_limit_recs / 2) {
+				/*
+				 * Get the inode on the flush list
+				 */
+				if (ip->rsv_recs >= 64)
+					hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+				else if (ip->rsv_recs >= 16)
+					hammer_flush_inode(ip, 0);
+
+				/*
+				 * Keep the flusher going if the system keeps
+				 * queueing records.
+				 */
+				delta = hmp->count_newrecords -
+					hmp->last_newrecords;
+				if (delta < 0 || delta > hammer_limit_recs / 2) {
+					hmp->last_newrecords = hmp->count_newrecords;
+					hammer_sync_hmp(hmp, MNT_NOWAIT);
+				}
+
+				/*
+				 * If we have gotten behind start slowing
+				 * down the writers.
+				 */
+				delta = (hmp->rsv_recs - hammer_limit_recs) *
+					hz / hammer_limit_recs;
+				if (delta > 0)
+					tsleep(&trans, 0, "hmrslo", delta);
+			}
+
 			if (uio->uio_segflg != UIO_NOCOPY)
 				vn_lock(ap->a_vp, LK_EXCLUSIVE|LK_RETRY);
 		}
 
-		rel_offset = (int)(uio->uio_offset & HAMMER_BUFMASK);
-		base_offset = uio->uio_offset & ~HAMMER_BUFMASK64;
-		n = HAMMER_BUFSIZE - rel_offset;
+		/*
+		 * Calculate the blocksize at the current offset and figure
+		 * out how much we can actually write.
+		 */
+		blksize = hammer_blocksize(uio->uio_offset);
+		blkmask = blksize - 1;
+		offset = (int)uio->uio_offset & blkmask;
+		base_offset = uio->uio_offset & ~(int64_t)blkmask;
+		n = blksize - offset;
 		if (n > uio->uio_resid)
 			n = uio->uio_resid;
 		if (uio->uio_offset + n > ip->ino_data.size) {
@@ -365,20 +448,19 @@ hammer_vop_write(struct vop_write_args *ap)
 			 * This case is used by vop_stdputpages().
 			 */
 			bp = getblk(ap->a_vp, base_offset,
-				    HAMMER_BUFSIZE, GETBLK_BHEAVY, 0);
+				    blksize, GETBLK_BHEAVY, 0);
 			if ((bp->b_flags & B_CACHE) == 0) {
 				bqrelse(bp);
 				error = bread(ap->a_vp, base_offset,
-					      HAMMER_BUFSIZE, &bp);
+					      blksize, &bp);
 			}
-		} else if (rel_offset == 0 && uio->uio_resid >= HAMMER_BUFSIZE) {
+		} else if (offset == 0 && uio->uio_resid >= blksize) {
 			/*
 			 * Even though we are entirely overwriting the buffer
 			 * we may still have to zero it out to avoid a 
 			 * mmap/write visibility issue.
 			 */
-			bp = getblk(ap->a_vp, base_offset,
-				    HAMMER_BUFSIZE, GETBLK_BHEAVY, 0);
+			bp = getblk(ap->a_vp, base_offset, blksize, GETBLK_BHEAVY, 0);
 			if ((bp->b_flags & B_CACHE) == 0)
 				vfs_bio_clrbuf(bp);
 		} else if (base_offset >= ip->ino_data.size) {
@@ -387,20 +469,19 @@ hammer_vop_write(struct vop_write_args *ap)
 			 * file EOF, we don't have to issue a read.
 			 */
 			bp = getblk(ap->a_vp, base_offset,
-				    HAMMER_BUFSIZE, GETBLK_BHEAVY, 0);
+				    blksize, GETBLK_BHEAVY, 0);
 			vfs_bio_clrbuf(bp);
 		} else {
 			/*
 			 * Partial overwrite, read in any missing bits then
 			 * replace the portion being written.
 			 */
-			error = bread(ap->a_vp, base_offset,
-				      HAMMER_BUFSIZE, &bp);
+			error = bread(ap->a_vp, base_offset, blksize, &bp);
 			if (error == 0)
 				bheavy(bp);
 		}
 		if (error == 0) {
-			error = uiomove((char *)bp->b_data + rel_offset,
+			error = uiomove((char *)bp->b_data + offset,
 					n, uio);
 		}
 
@@ -412,7 +493,7 @@ hammer_vop_write(struct vop_write_args *ap)
 			brelse(bp);
 			if (fixsize) {
 				vtruncbuf(ap->a_vp, ip->ino_data.size,
-					  HAMMER_BUFSIZE);
+					  hammer_blocksize(ip->ino_data.size));
 			}
 			break;
 		}
@@ -434,7 +515,7 @@ hammer_vop_write(struct vop_write_args *ap)
 		 */
 		if ((bp->b_flags & B_DIRTY) == 0) {
 			++ip->rsv_databufs;
-			++ip->hmp->rsv_databufs;
+			++hmp->rsv_databufs;
 		}
 
 		/*
@@ -449,16 +530,20 @@ hammer_vop_write(struct vop_write_args *ap)
 			bwrite(bp);
 		} else if (ap->a_ioflag & IO_DIRECT) {
 			bawrite(bp);
-		} else if (hammer_write_mode &&
-			   (uio->uio_offset & HAMMER_BUFMASK) == 0) {
-#if 1
+		} else {
+			bdwrite(bp);
+		}
+#if 0
+		else if (hammer_write_mode &&
+			   ((int)uio->uio_offset & blkmask) == 0) {
+#if 0
 			bp->b_flags |= B_CLUSTEROK;
-			cluster_write(bp, ip->ino_data.size, seqcount);
+			cluster_write(bp, ip->ino_data.size, XXX seqcount);
 #else
-			bawrite(bp);
+			bdwrite(bp);
 #endif
 		} else if ((ap->a_ioflag >> 16) == IO_SEQMAX &&
-			   (uio->uio_offset & HAMMER_BUFMASK) == 0) {
+			   ((int)uio->uio_offset & blkmask) == 0) {
 			/*
 			 * If seqcount indicates sequential operation and
 			 * we just finished filling a buffer, push it out
@@ -470,6 +555,7 @@ hammer_vop_write(struct vop_write_args *ap)
 		} else {
 			bdwrite(bp);
 		}
+#endif
 	}
 	hammer_done_transaction(&trans);
 	return (error);
@@ -502,7 +588,7 @@ static
 int
 hammer_vop_advlock(struct vop_advlock_args *ap)
 {
-	struct hammer_inode *ip = VTOI(ap->a_vp);
+	hammer_inode_t ip = VTOI(ap->a_vp);
 
 	return (lf_advlock(ap, &ip->advlock, ip->ino_data.size));
 }
@@ -514,6 +600,10 @@ static
 int
 hammer_vop_close(struct vop_close_args *ap)
 {
+	hammer_inode_t ip = VTOI(ap->a_vp);
+
+	if ((ip->flags | ip->sync_flags) & HAMMER_INODE_MODMASK)
+		hammer_inode_waitreclaims(ip->hmp);
 	return (vop_stdclose(ap));
 }
 
@@ -638,10 +728,18 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	vap->va_flags = ip->ino_data.uflags;
 	vap->va_gen = 1;	/* hammer inums are unique for all time */
 	vap->va_blocksize = HAMMER_BUFSIZE;
-	vap->va_bytes = (ip->ino_data.size + 63) & ~63;
+	if (ip->ino_data.size >= HAMMER_XDEMARC) {
+		vap->va_bytes = (ip->ino_data.size + HAMMER_XBUFMASK64) &
+				~HAMMER_XBUFMASK64;
+	} else if (ip->ino_data.size > HAMMER_BUFSIZE / 2) {
+		vap->va_bytes = (ip->ino_data.size + HAMMER_BUFMASK64) &
+				~HAMMER_BUFMASK64;
+	} else {
+		vap->va_bytes = (ip->ino_data.size + 15) & ~15;
+	}
 	vap->va_type = hammer_get_vnode_type(ip->ino_data.obj_type);
 	vap->va_filerev = 0; 	/* XXX */
-	/* mtime uniquely identifies any adjustments made to the file */
+	/* mtime uniquely identifies any adjustments made to the file XXX */
 	vap->va_fsmid = ip->ino_data.mtime;
 	vap->va_uid_uuid = ip->ino_data.uid;
 	vap->va_gid_uuid = ip->ino_data.gid;
@@ -1465,7 +1563,8 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 	int modflags;
 	int error;
 	int truncating;
-	off_t aligned_size;
+	int blksize;
+	int64_t aligned_size;
 	u_int32_t flags;
 
 	vap = ap->a_vap;
@@ -1541,9 +1640,9 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			 * if we do not release the lock.  Probably not a
 			 * big deal here.
 			 */
+			blksize = hammer_blocksize(vap->va_size);
 			if (vap->va_size < ip->ino_data.size) {
-				vtruncbuf(ap->a_vp, vap->va_size,
-					  HAMMER_BUFSIZE);
+				vtruncbuf(ap->a_vp, vap->va_size, blksize);
 				truncating = 1;
 			} else {
 				vnode_pager_setsize(ap->a_vp, vap->va_size);
@@ -1551,8 +1650,6 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			}
 			ip->ino_data.size = vap->va_size;
 			modflags |= HAMMER_INODE_DDIRTY;
-			aligned_size = (vap->va_size + HAMMER_BUFMASK) &
-				       ~HAMMER_BUFMASK64;
 
 			/*
 			 * on-media truncation is cached in the inode until
@@ -1591,19 +1688,21 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			 * the last block on-disk.  We do this in the
 			 * front-end buffer cache.
 			 */
+			aligned_size = (vap->va_size + (blksize - 1)) &
+				       ~(int64_t)(blksize - 1);
 			if (truncating && vap->va_size < aligned_size) {
 				struct buf *bp;
 				int offset;
 
-				aligned_size -= HAMMER_BUFSIZE;
+				aligned_size -= blksize;
 
-				offset = vap->va_size & HAMMER_BUFMASK;
+				offset = (int)vap->va_size & (blksize - 1);
 				error = bread(ap->a_vp, aligned_size,
-					      HAMMER_BUFSIZE, &bp);
+					      blksize, &bp);
 				hammer_ip_frontend_trunc(ip, aligned_size);
 				if (error == 0) {
 					bzero(bp->b_data + offset,
-					      HAMMER_BUFSIZE - offset);
+					      blksize - offset);
 					bdwrite(bp);
 				} else {
 					kprintf("ERROR %d\n", error);
@@ -1855,6 +1954,8 @@ hammer_vop_strategy(struct vop_strategy_args *ap)
  * The support code in hammer_object.c should be used to deal with mixed
  * in-memory and on-disk records.
  *
+ * NOTE: Can be called from the cluster code with an oversized buf.
+ *
  * XXX atime update
  */
 static
@@ -1865,6 +1966,7 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	struct hammer_inode *ip;
 	struct hammer_cursor cursor;
 	hammer_base_elm_t base;
+	hammer_off_t disk_offset;
 	struct bio *bio;
 	struct bio *nbio;
 	struct buf *bp;
@@ -1882,20 +1984,20 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 
 	/*
 	 * The zone-2 disk offset may have been set by the cluster code via
-	 * a BMAP operation.  Take care not to confuse it with the bio_offset
-	 * set by hammer_io_direct_write(), which is a device-relative offset.
+	 * a BMAP operation, or else should be NOOFFSET.
 	 *
-	 * Checking the high bits should suffice.
+	 * Checking the high bits for a match against zone-2 should suffice.
 	 */
 	nbio = push_bio(bio);
 	if ((nbio->bio_offset & HAMMER_OFF_ZONE_MASK) ==
 	    HAMMER_ZONE_RAW_BUFFER) {
-		error = hammer_io_direct_read(ip->hmp, nbio->bio_offset, bio);
+		error = hammer_io_direct_read(ip->hmp, nbio);
 		return (error);
 	}
 
 	/*
-	 * Hard way
+	 * Well, that sucked.  Do it the hard way.  If all the stars are
+	 * aligned we may still be able to issue a direct-read.
 	 */
 	hammer_simple_transaction(&trans, ip->hmp);
 	hammer_init_cursor(&trans, &cursor, &ip->cache[1], ip);
@@ -2018,13 +2120,21 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		 * Try to issue a direct read into our bio if possible,
 		 * otherwise resolve the element data into a hammer_buffer
 		 * and copy.
+		 *
+		 * The buffer on-disk should be zerod past any real
+		 * truncation point, but may not be for any synthesized
+		 * truncation point from above.
 		 */
-		if (n && boff == 0 &&
+		if (boff == 0 && n == bp->b_bufsize &&
 		    ((cursor.leaf->data_offset + roff) & HAMMER_BUFMASK) == 0) {
-			error = hammer_io_direct_read(
-					trans.hmp,
-					cursor.leaf->data_offset + roff,
-					bio);
+			disk_offset = hammer_blockmap_lookup(
+						trans.hmp,
+						cursor.leaf->data_offset + roff,
+						&error);
+			if (error)
+				break;
+			nbio->bio_offset = disk_offset;
+			error = hammer_io_direct_read(trans.hmp, nbio);
 			goto done;
 		} else if (n) {
 			error = hammer_ip_resolve_data(&cursor);
@@ -2102,6 +2212,7 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 	hammer_off_t disk_offset;
 	int	rec_len;
 	int	error;
+	int	blksize;
 
 	ip = ap->a_vp->v_data;
 
@@ -2116,7 +2227,7 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 	 * bmap is typically called with runp/runb both NULL when used
 	 * for writing.  We do not support BMAP for writing atm.
 	 */
-	if (ap->a_runp == NULL && ap->a_runb == NULL)
+	if (ap->a_cmd != BUF_CMD_READ)
 		return(EOPNOTSUPP);
 
 	/*
@@ -2170,13 +2281,22 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 		/*
 		 * Get the base file offset of the record.  The key for
 		 * data records is (base + bytes) rather then (base).
+		 *
+		 * NOTE: rec_offset + rec_len may exceed the end-of-file.
+		 * The extra bytes should be zero on-disk and the BMAP op
+		 * should still be ok.
 		 */
 		base = &cursor.leaf->base;
 		rec_offset = base->key - cursor.leaf->data_len;
 		rec_len    = cursor.leaf->data_len;
 
 		/*
-		 * Incorporate any cached truncation
+		 * Incorporate any cached truncation.
+		 *
+		 * NOTE: Modifications to rec_len based on synthesized
+		 * truncation points remove the guarantee that any extended
+		 * data on disk is zero (since the truncations may not have
+		 * taken place on-media yet).
 		 */
 		if (ip->flags & HAMMER_INODE_TRUNCATED) {
 			if (hammer_cursor_ondisk(&cursor) ||
@@ -2235,27 +2355,53 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 	hammer_done_cursor(&cursor);
 	hammer_done_transaction(&trans);
 
-	if (base_offset == 0 || base_offset > ap->a_loffset ||
-	    last_offset < ap->a_loffset) {
+	/*
+	 * If we couldn't find any records or the records we did find were
+	 * all behind the requested offset, return failure.  A forward
+	 * truncation can leave a hole w/ no on-disk records.
+	 */
+	if (last_offset == 0 || last_offset < ap->a_loffset)
+		return (EOPNOTSUPP);
+
+	/*
+	 * Figure out the block size at the requested offset and adjust
+	 * our limits so the cluster_read() does not create inappropriately
+	 * sized buffer cache buffers.
+	 */
+	blksize = hammer_blocksize(ap->a_loffset);
+	if (hammer_blocksize(base_offset) != blksize) {
+		base_offset = hammer_blockdemarc(base_offset, ap->a_loffset);
+	}
+	if (last_offset != ap->a_loffset &&
+	    hammer_blocksize(last_offset - 1) != blksize) {
+		last_offset = hammer_blockdemarc(ap->a_loffset,
+						 last_offset - 1);
+	}
+
+	/*
+	 * Returning EOPNOTSUPP simply prevents the direct-IO optimization
+	 * from occuring.
+	 */
+	disk_offset = base_disk_offset + (ap->a_loffset - base_offset);
+
+	/*
+	 * If doffsetp is not aligned or the forward run size does
+	 * not cover a whole buffer, disallow the direct I/O.
+	 */
+	if ((disk_offset & HAMMER_BUFMASK) ||
+	    (last_offset - ap->a_loffset) < blksize) {
 		error = EOPNOTSUPP;
 	} else {
-		disk_offset = base_disk_offset + (ap->a_loffset - base_offset);
-
-		/*
-		 * If doffsetp is not aligned or the forward run size does
-		 * not cover a whole buffer, disallow the direct I/O.
-		 */
-		if ((disk_offset & HAMMER_BUFMASK) ||
-		    (last_offset - ap->a_loffset) < HAMMER_BUFSIZE) {
-			error = EOPNOTSUPP;
-		} else {
-			*ap->a_doffsetp = disk_offset;
-			if (ap->a_runb)
-				*ap->a_runb = ap->a_loffset - base_offset;
-			if (ap->a_runp)
-				*ap->a_runp = last_offset - ap->a_loffset;
-			error = 0;
+		*ap->a_doffsetp = disk_offset;
+		if (ap->a_runb) {
+			*ap->a_runb = ap->a_loffset - base_offset;
+			KKASSERT(*ap->a_runb >= 0);
 		}
+		if (ap->a_runp) {
+			*ap->a_runp = last_offset - ap->a_loffset;
+			KKASSERT(*ap->a_runp >= 0);
+		}
+		error = 0;
 	}
 	return(error);
 }
@@ -2280,6 +2426,8 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	bp = bio->bio_buf;
 	ip = ap->a_vp->v_data;
 	hmp = ip->hmp;
+
+	KKASSERT(bp->b_bufsize == hammer_blocksize(bio->bio_offset));
 
 	if (ip->flags & HAMMER_INODE_RO) {
 		bp->b_error = EROFS;
@@ -2322,7 +2470,7 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	KKASSERT((bio->bio_offset & HAMMER_BUFMASK) == 0);
 	KKASSERT(bio->bio_offset < ip->ino_data.size);
 	if (bio->bio_offset || ip->ino_data.size > HAMMER_BUFSIZE / 2)
-		bytes = (bp->b_bufsize + HAMMER_BUFMASK) & ~HAMMER_BUFMASK;
+		bytes = bp->b_bufsize;
 	else
 		bytes = ((int)ip->ino_data.size + 15) & ~15;
 
@@ -2331,12 +2479,8 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	if (record) {
 		hammer_io_direct_write(hmp, &record->leaf, bio);
 		hammer_rel_mem_record(record);
-		if (hmp->rsv_recs > hammer_limit_recs &&
-		    ip->rsv_recs > hammer_limit_irecs / 10) {
-			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-		} else if (ip->rsv_recs > hammer_limit_irecs / 2) {
-			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-		}
+		if (ip->rsv_recs > 1 && hmp->rsv_recs > hammer_limit_recs)
+			hammer_flush_inode(ip, 0);
 	} else {
 		bp->b_bio2.bio_offset = NOOFFSET;
 		bp->b_error = error;

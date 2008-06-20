@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.59 2008/06/18 01:13:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.60 2008/06/20 05:38:26 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -159,6 +159,7 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname)
 	volume->vol_name = kstrdup(volname, M_HAMMER);
 	hammer_io_init(&volume->io, hmp, HAMMER_STRUCTURE_VOLUME);
 	volume->io.offset = 0LL;
+	volume->io.bytes = HAMMER_BUFSIZE;
 
 	/*
 	 * Get the device vnode
@@ -495,7 +496,7 @@ hammer_rel_volume(hammer_volume_t volume, int flush)
  */
 hammer_buffer_t
 hammer_get_buffer(hammer_mount_t hmp, hammer_off_t buf_offset,
-		  int isnew, int *errorp)
+		  int bytes, int isnew, int *errorp)
 {
 	hammer_buffer_t buffer;
 	hammer_volume_t volume;
@@ -551,13 +552,19 @@ again:
 	switch(zone) {
 	case HAMMER_ZONE_LARGE_DATA_INDEX:
 	case HAMMER_ZONE_SMALL_DATA_INDEX:
-	case HAMMER_ZONE_META_INDEX:  /* meta-data isn't a meta-buffer */
 		iotype = HAMMER_STRUCTURE_DATA_BUFFER;
 		break;
 	case HAMMER_ZONE_UNDO_INDEX:
 		iotype = HAMMER_STRUCTURE_UNDO_BUFFER;
 		break;
+	case HAMMER_ZONE_META_INDEX:
 	default:
+		/*
+		 * NOTE: inode data and directory entries are placed in this
+		 * zone.  inode atime/mtime is updated in-place and thus
+		 * buffers containing inodes must be synchronized as
+		 * meta-buffers, same as buffers containing B-Tree info.
+		 */
 		iotype = HAMMER_STRUCTURE_META_BUFFER;
 		break;
 	}
@@ -602,6 +609,7 @@ again:
 	hammer_io_init(&buffer->io, hmp, iotype);
 	buffer->io.offset = volume->ondisk->vol_buf_beg +
 			    (zone2_offset & HAMMER_OFF_SHORT_MASK);
+	buffer->io.bytes = bytes;
 	TAILQ_INIT(&buffer->clist);
 	hammer_ref(&buffer->io.lock);
 
@@ -658,7 +666,7 @@ hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
 				   base_offset);
 		if (buffer) {
 			KKASSERT(buffer->zone2_offset == zone2_offset);
-			hammer_io_clear_modify(&buffer->io);
+			hammer_io_clear_modify(&buffer->io, 1);
 			buffer->io.reclaim = 1;
 			KKASSERT(buffer->volume == volume);
 			if (buffer->io.lock.refs == 0)
@@ -833,9 +841,10 @@ hammer_rel_buffer(hammer_buffer_t buffer, int flush)
  * Any prior buffer in *bufferp will be released and replaced by the
  * requested buffer.
  */
+static __inline
 void *
-hammer_bread(hammer_mount_t hmp, hammer_off_t buf_offset, int *errorp, 
-	     struct hammer_buffer **bufferp)
+_hammer_bread(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
+	     int *errorp, struct hammer_buffer **bufferp)
 {
 	hammer_buffer_t buffer;
 	int32_t xoff = (int32_t)buf_offset & HAMMER_BUFMASK;
@@ -848,7 +857,7 @@ hammer_bread(hammer_mount_t hmp, hammer_off_t buf_offset, int *errorp,
 			       buffer->zoneX_offset != buf_offset)) {
 		if (buffer)
 			hammer_rel_buffer(buffer, 0);
-		buffer = hammer_get_buffer(hmp, buf_offset, 0, errorp);
+		buffer = hammer_get_buffer(hmp, buf_offset, bytes, 0, errorp);
 		*bufferp = buffer;
 	} else {
 		*errorp = 0;
@@ -863,6 +872,21 @@ hammer_bread(hammer_mount_t hmp, hammer_off_t buf_offset, int *errorp,
 		return((char *)buffer->ondisk + xoff);
 }
 
+void *
+hammer_bread(hammer_mount_t hmp, hammer_off_t buf_offset,
+	     int *errorp, struct hammer_buffer **bufferp)
+{
+	return(_hammer_bread(hmp, buf_offset, HAMMER_BUFSIZE, errorp, bufferp));
+}
+
+void *
+hammer_bread_ext(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
+	         int *errorp, struct hammer_buffer **bufferp)
+{
+	bytes = (bytes + HAMMER_BUFMASK) & ~HAMMER_BUFMASK;
+	return(_hammer_bread(hmp, buf_offset, bytes, errorp, bufferp));
+}
+
 /*
  * Access the filesystem buffer containing the specified hammer offset.
  * No disk read operation occurs.  The result buffer may contain garbage.
@@ -873,9 +897,10 @@ hammer_bread(hammer_mount_t hmp, hammer_off_t buf_offset, int *errorp,
  * This function marks the buffer dirty but does not increment its
  * modify_refs count.
  */
+static __inline
 void *
-hammer_bnew(hammer_mount_t hmp, hammer_off_t buf_offset, int *errorp, 
-	     struct hammer_buffer **bufferp)
+_hammer_bnew(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
+	     int *errorp, struct hammer_buffer **bufferp)
 {
 	hammer_buffer_t buffer;
 	int32_t xoff = (int32_t)buf_offset & HAMMER_BUFMASK;
@@ -887,7 +912,7 @@ hammer_bnew(hammer_mount_t hmp, hammer_off_t buf_offset, int *errorp,
 			       buffer->zoneX_offset != buf_offset)) {
 		if (buffer)
 			hammer_rel_buffer(buffer, 0);
-		buffer = hammer_get_buffer(hmp, buf_offset, 1, errorp);
+		buffer = hammer_get_buffer(hmp, buf_offset, bytes, 1, errorp);
 		*bufferp = buffer;
 	} else {
 		*errorp = 0;
@@ -900,6 +925,21 @@ hammer_bnew(hammer_mount_t hmp, hammer_off_t buf_offset, int *errorp,
 		return(NULL);
 	else
 		return((char *)buffer->ondisk + xoff);
+}
+
+void *
+hammer_bnew(hammer_mount_t hmp, hammer_off_t buf_offset,
+	     int *errorp, struct hammer_buffer **bufferp)
+{
+	return(_hammer_bnew(hmp, buf_offset, HAMMER_BUFSIZE, errorp, bufferp));
+}
+
+void *
+hammer_bnew_ext(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
+		int *errorp, struct hammer_buffer **bufferp)
+{
+	bytes = (bytes + HAMMER_BUFMASK) & ~HAMMER_BUFMASK;
+	return(_hammer_bnew(hmp, buf_offset, bytes, errorp, bufferp));
 }
 
 /************************************************************************
@@ -1008,7 +1048,7 @@ hammer_load_node(hammer_node_t node, int isnew)
 		} else {
 			buf_offset = node->node_offset & ~HAMMER_BUFMASK64;
 			buffer = hammer_get_buffer(node->hmp, buf_offset,
-						   0, &error);
+						   HAMMER_BUFSIZE, 0, &error);
 			if (buffer) {
 				KKASSERT(error == 0);
 				TAILQ_INSERT_TAIL(&buffer->clist,
@@ -1282,10 +1322,13 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 			break;
 		case HAMMER_RECTYPE_DATA:
 		case HAMMER_RECTYPE_DB:
-			if (data_len <= HAMMER_BUFSIZE / 2)
+			if (data_len <= HAMMER_BUFSIZE / 2) {
 				zone = HAMMER_ZONE_SMALL_DATA_INDEX;
-			else
+			} else {
+				data_len = (data_len + HAMMER_BUFMASK) &
+					   ~HAMMER_BUFMASK;
 				zone = HAMMER_ZONE_LARGE_DATA_INDEX;
+			}
 			break;
 		default:
 			panic("hammer_alloc_data: rec_type %04x unknown",
@@ -1300,8 +1343,8 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 	}
 	if (*errorp == 0 && data_bufferp) {
 		if (data_len) {
-			data = hammer_bread(trans->hmp, *data_offsetp, errorp,
-					    data_bufferp);
+			data = hammer_bread_ext(trans->hmp, *data_offsetp,
+						data_len, errorp, data_bufferp);
 			KKASSERT(*errorp == 0);
 		} else {
 			data = NULL;

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.70 2008/06/18 01:13:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.71 2008/06/20 05:38:26 dillon Exp $
  */
 
 #include "hammer.h"
@@ -122,6 +122,9 @@ hammer_rec_overlap_compare(hammer_btree_leaf_elm_t leaf, hammer_record_t rec)
 	if (leaf->base.rec_type > rec->leaf.base.rec_type)
 		return(3);
 
+	/*
+	 * Overlap compare
+	 */
 	if (leaf->base.rec_type == HAMMER_RECTYPE_DATA) {
 		/* leaf_end <= rec_beg */
 		if (leaf->base.key <= rec->leaf.base.key - rec->leaf.data_len)
@@ -139,9 +142,17 @@ hammer_rec_overlap_compare(hammer_btree_leaf_elm_t leaf, hammer_record_t rec)
 	/*
 	 * Never match against an item deleted by the front-end.
 	 * leaf is less then rec if rec is marked deleted.
+	 *
+	 * We must still return the proper code for the scan to continue
+	 * along the correct branches.
 	 */
-	if (rec->flags & HAMMER_RECF_DELETED_FE)
+	if (rec->flags & HAMMER_RECF_DELETED_FE) {
+		if (leaf->base.key < rec->leaf.base.key)
+			return(-2);
+		if (leaf->base.key > rec->leaf.base.key)
+			return(2);
 		return(-1);
+	}
         return(0);
 }
 
@@ -368,11 +379,6 @@ hammer_rel_mem_record(struct hammer_record *record)
 				ip->hmp->rsv_databytes -= record->leaf.data_len;
 				record->flags &= ~HAMMER_RECF_ONRBTREE;
 
-				if ((ip->flags & HAMMER_INODE_PARTIALW) &&
-				    ip->rsv_recs <= hammer_limit_irecs) {
-					ip->flags &= ~HAMMER_INODE_PARTIALW;
-					wakeup(&ip->flags);
-				}
 				if (RB_EMPTY(&record->ip->rec_tree)) {
 					record->ip->flags &= ~HAMMER_INODE_XDIRTY;
 					record->ip->sync_flags &= ~HAMMER_INODE_XDIRTY;
@@ -843,7 +849,24 @@ hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
 
 	hammer_ref(&record->lock);	/* mem_add eats a reference */
 	*errorp = hammer_mem_add(record);
+	if (*errorp) {
+		conflict = hammer_ip_get_bulk(ip, file_offset, bytes);
+		kprintf("hammer_ip_add_bulk: error %d conflict %p file_offset %lld bytes %d\n",
+			*errorp, conflict, file_offset, bytes);
+		if (conflict)
+			kprintf("conflict %lld %d\n", conflict->leaf.base.key, conflict->leaf.data_len);
+		if (conflict)
+			hammer_rel_mem_record(conflict);
+	}
 	KKASSERT(*errorp == 0);
+	conflict = hammer_ip_get_bulk(ip, file_offset, bytes);
+	if (conflict != record) {
+		kprintf("conflict mismatch %p %p %08x\n", conflict, record, record->flags);
+		if (conflict)
+		    kprintf("conflict mismatch %lld/%d %lld/%d\n", conflict->leaf.base.key, conflict->leaf.data_len, record->leaf.base.key, record->leaf.data_len);
+	}
+	KKASSERT(conflict == record);
+	hammer_rel_mem_record(conflict);
 
 	return (record);
 }
@@ -927,6 +950,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 {
 	hammer_transaction_t trans = cursor->trans;
 	int64_t file_offset;
+	int bytes;
 	void *bdata;
 	int error;
 
@@ -957,10 +981,12 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	if (record->type == HAMMER_MEM_RECORD_DATA &&
 	    hammer_record_needs_overwrite_delete(record)) {
 		file_offset = record->leaf.base.key - record->leaf.data_len;
+		bytes = (record->leaf.data_len + HAMMER_BUFMASK) & 
+			~HAMMER_BUFMASK;
 		KKASSERT((file_offset & HAMMER_BUFMASK) == 0);
 		error = hammer_ip_delete_range(
 				cursor, record->ip,
-				file_offset, file_offset + HAMMER_BUFSIZE - 1,
+				file_offset, file_offset + bytes - 1,
 				1);
 		if (error && error != ENOENT)
 			goto done;
@@ -1052,8 +1078,8 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 		 * statistics in the same transaction as our B-Tree insert.
 		 */
 		KKASSERT(record->leaf.data_offset != 0);
-		hammer_blockmap_free(trans, record->leaf.data_offset,
-				     -record->leaf.data_len);
+		hammer_blockmap_finalize(trans, record->leaf.data_offset,
+					 record->leaf.data_len);
 		error = 0;
 	} else if (record->data && record->leaf.data_len) {
 		/*
@@ -1151,6 +1177,7 @@ hammer_mem_add(hammer_record_t record)
 		record->leaf.base.key &= ~(0xFFFFFFFFLL);
 		record->leaf.base.key |= hmp->namekey_iterator;
 	}
+	++hmp->count_newrecords;
 	++hmp->rsv_recs;
 	++record->ip->rsv_recs;
 	record->ip->hmp->rsv_databytes += record->leaf.data_len;
@@ -1512,8 +1539,9 @@ hammer_ip_resolve_data(hammer_cursor_t cursor)
 		if (cursor->data == NULL) {
 			KKASSERT(record->leaf.base.rec_type ==
 				 HAMMER_RECTYPE_DATA);
-			cursor->data = hammer_bread(cursor->trans->hmp,
+			cursor->data = hammer_bread_ext(cursor->trans->hmp,
 						    record->leaf.data_offset,
+						    record->leaf.data_len,
 						    &error,
 						    &cursor->data_buffer);
 		}
@@ -1760,6 +1788,8 @@ int
 hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 			hammer_tid_t tid)
 {
+	hammer_off_t zone2_offset;
+	hammer_record_t iprec;
 	hammer_btree_elm_t elm;
 	hammer_mount_t hmp;
 	int error;
@@ -1767,17 +1797,35 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 
 	KKASSERT(cursor->flags & HAMMER_CURSOR_BACKEND);
 	KKASSERT(tid != 0);
+	hmp = cursor->node->hmp;
 
 	/*
 	 * In-memory (unsynchronized) records can simply be freed.  This
 	 * only occurs in range iterations since all other records are
 	 * individually synchronized.  Thus there should be no confusion with
 	 * the interlock.
+	 *
+	 * An in-memory record may be deleted before being committed to disk,
+	 * but could have been accessed in the mean time.  The backing store
+	 * may never been marked allocated and so hammer_blockmap_free() may
+	 * never get called on it.  Because of this we have to make sure that
+	 * we've gotten rid of any related hammer_buffer or buffer cache
+ 	 * buffer.
 	 */
 	if (hammer_cursor_inmem(cursor)) {
-		KKASSERT((cursor->iprec->flags & HAMMER_RECF_INTERLOCK_BE) ==0);
-		cursor->iprec->flags |= HAMMER_RECF_DELETED_FE;
-		cursor->iprec->flags |= HAMMER_RECF_DELETED_BE;
+		iprec = cursor->iprec;
+		KKASSERT((iprec->flags & HAMMER_RECF_INTERLOCK_BE) ==0);
+		iprec->flags |= HAMMER_RECF_DELETED_FE;
+		iprec->flags |= HAMMER_RECF_DELETED_BE;
+
+		if (iprec->leaf.data_offset && iprec->leaf.data_len) {
+			zone2_offset = hammer_blockmap_lookup(hmp, iprec->leaf.data_offset, &error);
+			KKASSERT(error == 0);
+			hammer_del_buffers(hmp,
+					   iprec->leaf.data_offset,
+					   zone2_offset,
+					   iprec->leaf.data_len);
+		}
 		return(0);
 	}
 
@@ -1788,7 +1836,6 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 	 */
 	error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_LEAF);
 	elm = NULL;
-	hmp = cursor->node->hmp;
 
 	/*
 	 * If we were mounted with the nohistory option, we physically

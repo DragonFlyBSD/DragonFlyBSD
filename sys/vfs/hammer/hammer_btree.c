@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.55 2008/06/18 01:13:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.56 2008/06/20 05:38:26 dillon Exp $
  */
 
 /*
@@ -613,25 +613,25 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	 */
 	KKASSERT(node->type == HAMMER_BTREE_TYPE_LEAF);
 	cursor->leaf = &elm->leaf;
+
+	if ((flags & HAMMER_CURSOR_GET_DATA) == 0)
+		return(0);
 	if (elm->leaf.base.btype != HAMMER_BTREE_TYPE_RECORD)
-		flags &= ~HAMMER_CURSOR_GET_DATA;
+		return(0);
 	data_off = elm->leaf.data_offset;
 	data_len = elm->leaf.data_len;
 	if (data_off == 0)
-		flags &= ~HAMMER_CURSOR_GET_DATA;
+		return(0);
 
-	error = 0;
-	if ((flags & HAMMER_CURSOR_GET_DATA)) {
-		/*
-		 * Data and record are in different buffers.
-		 */
-		cursor->data = hammer_bread(hmp, data_off, &error,
-						    &cursor->data_buffer);
-		KKASSERT(data_len >= 0 && data_len <= HAMMER_BUFSIZE);
-		if (data_len && 
-		    crc32(cursor->data, data_len) != elm->leaf.data_crc) {
-			Debugger("CRC FAILED: DATA");
-		}
+	/*
+	 * Load the data
+	 */
+	KKASSERT(data_len >= 0 && data_len <= HAMMER_XBUFSIZE);
+	cursor->data = hammer_bread_ext(hmp, data_off, data_len,
+					&error, &cursor->data_buffer);
+	if (data_len && 
+	    crc32(cursor->data, data_len) != elm->leaf.data_crc) {
+		Debugger("CRC FAILED: DATA");
 	}
 	return(error);
 }

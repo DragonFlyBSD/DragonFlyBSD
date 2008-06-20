@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.24 2008/06/11 22:33:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.25 2008/06/20 05:38:26 dillon Exp $
  */
 
 #include "hammer.h"
@@ -350,7 +350,8 @@ hammer_recover_undo(hammer_mount_t hmp, hammer_volume_t root_volume,
 		break;
 	case HAMMER_ZONE_RAW_BUFFER_INDEX:
 		buf_offset = undo->undo_offset & ~HAMMER_BUFMASK64;
-		buffer = hammer_get_buffer(hmp, buf_offset, 0, &error);
+		buffer = hammer_get_buffer(hmp, buf_offset, HAMMER_BUFSIZE,
+					   0, &error);
 		if (buffer == NULL) {
 			kprintf("HAMMER: UNDO record, "
 				"cannot access buffer %016llx\n",

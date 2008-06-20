@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.86 2008/06/18 01:13:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.87 2008/06/20 05:38:26 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -116,6 +116,7 @@ struct hammer_lock {
 	int	refs;		/* active references delay writes */
 	int	lockcount;	/* lock count for exclusive/shared access */
 	int	wanted;
+	int	exwanted;	/* number of threads waiting for ex lock */
 	struct thread *locktd;
 };
 
@@ -277,7 +278,6 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_TRUNCATED	0x00010000
 #define HAMMER_INODE_DELETING	0x00020000 /* inode delete request (frontend)*/
 #define HAMMER_INODE_RESIGNAL	0x00040000 /* re-signal on re-flush */
-#define HAMMER_INODE_PARTIALW	0x00080000 /* wait partial record flush */
 
 #define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|			    \
 				 HAMMER_INODE_XDIRTY|HAMMER_INODE_BUFS|	    \
@@ -303,7 +303,8 @@ struct hammer_reclaim {
 	int	okydoky;
 };
 
-#define HAMMER_RECLAIM_PIPESIZE	1000
+#define HAMMER_RECLAIM_FLUSH	2000
+#define HAMMER_RECLAIM_WAIT	4000
 
 /*
  * Structure used to represent an unsynchronized record in-memory.  These
@@ -422,7 +423,8 @@ struct hammer_io {
 	TAILQ_ENTRY(hammer_io)	mod_entry; /* list entry if modified */
 	hammer_io_list_t	mod_list;
 	struct buf		*bp;
-	int64_t			offset;
+	int64_t			offset;	   /* zone-2 offset */
+	int			bytes;	   /* buffer cache buffer size */
 	int			loading;   /* loading/unloading interlock */
 	int			modify_refs;
 
@@ -625,6 +627,8 @@ struct hammer_mount {
 	int	rsv_databufs;	/* reserved space due to dirty buffers */
 	int	rsv_databytes;	/* reserved space due to record data */
 	int	rsv_recs;	/* reserved space due to dirty records */
+	int	last_newrecords;
+	int	count_newrecords;
 
 	int	inode_reclaims; /* inodes pending reclaim by flusher */
 	int	count_inodes;	/* total number of inodes */
@@ -716,7 +720,6 @@ extern int hammer_count_io_running_write;
 extern int hammer_count_io_locked;
 extern int hammer_limit_dirtybufs;
 extern int hammer_limit_iqueued;
-extern int hammer_limit_irecs;
 extern int hammer_limit_recs;
 extern int hammer_bio_count;
 extern int hammer_verify_zone;
@@ -731,6 +734,7 @@ struct hammer_inode *hammer_get_inode(hammer_transaction_t trans,
 			hammer_tid_t asof, int flags, int *errorp);
 void	hammer_put_inode(struct hammer_inode *ip);
 void	hammer_put_inode_ref(struct hammer_inode *ip);
+void	hammer_inode_waitreclaims(hammer_mount_t hmp);
 
 int	hammer_unload_volume(hammer_volume_t volume, void *data __unused);
 int	hammer_adjust_volume_mode(hammer_volume_t volume, void *data __unused);
@@ -768,6 +772,7 @@ int	hammer_cursor_seek(hammer_cursor_t cursor, hammer_node_t node,
 void	hammer_lock_ex_ident(struct hammer_lock *lock, const char *ident);
 int	hammer_lock_ex_try(struct hammer_lock *lock);
 void	hammer_lock_sh(struct hammer_lock *lock);
+void	hammer_lock_sh_lowpri(struct hammer_lock *lock);
 int	hammer_lock_sh_try(struct hammer_lock *lock);
 int	hammer_lock_upgrade(struct hammer_lock *lock);
 void	hammer_lock_downgrade(struct hammer_lock *lock);
@@ -834,13 +839,17 @@ void	*hammer_bread(struct hammer_mount *hmp, hammer_off_t off,
 			int *errorp, struct hammer_buffer **bufferp);
 void	*hammer_bnew(struct hammer_mount *hmp, hammer_off_t off,
 			int *errorp, struct hammer_buffer **bufferp);
+void	*hammer_bread_ext(struct hammer_mount *hmp, hammer_off_t off, int bytes,
+			int *errorp, struct hammer_buffer **bufferp);
+void	*hammer_bnew_ext(struct hammer_mount *hmp, hammer_off_t off, int bytes,
+			int *errorp, struct hammer_buffer **bufferp);
 
 hammer_volume_t hammer_get_root_volume(hammer_mount_t hmp, int *errorp);
 
 hammer_volume_t	hammer_get_volume(hammer_mount_t hmp,
 			int32_t vol_no, int *errorp);
-hammer_buffer_t	hammer_get_buffer(hammer_mount_t hmp,
-			hammer_off_t buf_offset, int isnew, int *errorp);
+hammer_buffer_t	hammer_get_buffer(hammer_mount_t hmp, hammer_off_t buf_offset,
+			int bytes, int isnew, int *errorp);
 void		hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
 			hammer_off_t zone2_offset, int bytes);
 
@@ -895,6 +904,8 @@ void hammer_reserve_setdelay(hammer_mount_t hmp, hammer_reserve_t resv,
 void hammer_reserve_clrdelay(hammer_mount_t hmp, hammer_reserve_t resv);
 void hammer_blockmap_free(hammer_transaction_t trans,
 			hammer_off_t bmap_off, int bytes);
+void hammer_blockmap_finalize(hammer_transaction_t trans,
+			hammer_off_t bmap_off, int bytes);
 int hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t bmap_off,
 			int *curp, int *errorp);
 hammer_off_t hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t bmap_off,
@@ -917,7 +928,6 @@ void hammer_modify_inode(hammer_inode_t ip, int flags);
 void hammer_flush_inode(hammer_inode_t ip, int flags);
 void hammer_flush_inode_done(hammer_inode_t ip);
 void hammer_wait_inode(hammer_inode_t ip);
-void hammer_wait_inode_recs(hammer_inode_t ip);
 
 int  hammer_create_inode(struct hammer_transaction *trans, struct vattr *vap,
 			struct ucred *cred, struct hammer_inode *dip,
@@ -963,13 +973,12 @@ void hammer_io_release(struct hammer_io *io, int flush);
 void hammer_io_flush(struct hammer_io *io);
 void hammer_io_waitdep(struct hammer_io *io);
 void hammer_io_wait_all(hammer_mount_t hmp, const char *ident);
-int hammer_io_direct_read(hammer_mount_t hmp, hammer_off_t data_offset,
-			  struct bio *bio);
+int hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio);
 int hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 			  struct bio *bio);
 void hammer_io_write_interlock(hammer_io_t io);
 void hammer_io_done_interlock(hammer_io_t io);
-void hammer_io_clear_modify(struct hammer_io *io);
+void hammer_io_clear_modify(struct hammer_io *io, int inval);
 void hammer_io_clear_modlist(struct hammer_io *io);
 void hammer_modify_volume(hammer_transaction_t trans, hammer_volume_t volume,
 			void *base, int len);
@@ -1001,6 +1010,9 @@ int hammer_crc_test_blockmap(hammer_blockmap_t blockmap);
 int hammer_crc_test_volume(hammer_volume_ondisk_t ondisk);
 int hammer_crc_test_btree(hammer_node_ondisk_t ondisk);
 void hkprintf(const char *ctl, ...);
+
+int hammer_blocksize(int64_t file_offset);
+int64_t hammer_blockdemarc(int64_t file_offset1, int64_t file_offset2);
 
 #endif
 

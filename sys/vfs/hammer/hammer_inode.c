@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.77 2008/06/18 01:13:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.78 2008/06/20 05:38:26 dillon Exp $
  */
 
 #include "hammer.h"
@@ -70,9 +70,12 @@ hammer_vop_inactive(struct vop_inactive_args *ap)
 	}
 
 	/*
-	 * If the inode no longer has visibility in the filesystem and is
-	 * fairly clean, try to recycle it immediately.  This can deadlock
-	 * in vfsync() if we aren't careful.
+	 * If the inode no longer has visibility in the filesystem try to
+	 * recycle it immediately, even if the inode is dirty.  Recycling
+	 * it quickly allows the system to reclaim buffer cache and VM
+	 * resources which can matter a lot in a heavily loaded system.
+	 *
+	 * This can deadlock in vfsync() if we aren't careful.
 	 * 
 	 * Do not queue the inode to the flusher if we still have visibility,
 	 * otherwise namespace calls such as chmod will unnecessarily generate
@@ -82,8 +85,7 @@ hammer_vop_inactive(struct vop_inactive_args *ap)
 	if (ip->ino_data.nlinks == 0) {
 		if (ip->flags & HAMMER_INODE_MODMASK)
 			hammer_flush_inode(ip, 0);
-		else
-			vrecycle(ap->a_vp);
+		vrecycle(ap->a_vp);
 	}
 	return(0);
 }
@@ -98,11 +100,9 @@ hammer_vop_inactive(struct vop_inactive_args *ap)
 int
 hammer_vop_reclaim(struct vop_reclaim_args *ap)
 {
-	struct hammer_reclaim reclaim;
 	struct hammer_inode *ip;
 	hammer_mount_t hmp;
 	struct vnode *vp;
-	int delay;
 
 	vp = ap->a_vp;
 
@@ -111,55 +111,16 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 		vp->v_data = NULL;
 		ip->vp = NULL;
 
-		/*
-		 * Setup our reclaim pipeline.  We only let so many detached
-		 * (and dirty) inodes build up before we start blocking.  Do
-		 * not bother tracking the immediate increment/decrement if
-		 * the inode is not actually dirty.
-		 *
-		 * When we block we don't care *which* inode has finished
-		 * reclaiming, as lone as one does.
-		 */
-		if ((ip->flags & HAMMER_INODE_RECLAIM) == 0 &&
-		    ((ip->flags|ip->sync_flags) & HAMMER_INODE_MODMASK)) {
+		if ((ip->flags & HAMMER_INODE_RECLAIM) == 0) {
 			++hammer_count_reclaiming;
 			++hmp->inode_reclaims;
 			ip->flags |= HAMMER_INODE_RECLAIM;
-			if (hmp->inode_reclaims > HAMMER_RECLAIM_PIPESIZE) {
-				reclaim.okydoky = 0;
-				TAILQ_INSERT_TAIL(&hmp->reclaim_list,
-						  &reclaim, entry);
-			} else {
-				reclaim.okydoky = 1;
+			if (hmp->inode_reclaims > HAMMER_RECLAIM_FLUSH &&
+			    (hmp->inode_reclaims & 255) == 0) {
+				hammer_flusher_async(hmp);
 			}
-		} else {
-			reclaim.okydoky = 1;
 		}
 		hammer_rel_inode(ip, 1);
-
-		/*
-		 * Reclaim pipeline.  We can't let too many reclaimed inodes
-		 * build-up in the flusher or the flusher loses its locality
-		 * of reference, or worse blows out our memory.  Once we have
-		 * exceeded the reclaim pipe size start slowing down.  Our
-		 * imposed delay can be cut short if the flusher catches up
-		 * to us.
-		 */
-		if (reclaim.okydoky == 0) {
-			delay = (hmp->inode_reclaims -
-				 HAMMER_RECLAIM_PIPESIZE) * hz /
-				HAMMER_RECLAIM_PIPESIZE;
-			if (delay <= 0)
-				delay = 1;
-			hammer_flusher_async(hmp);
-			if (reclaim.okydoky == 0) {
-				tsleep(&reclaim, 0, "hmrrcm", delay);
-			}
-			if (reclaim.okydoky == 0) {
-				TAILQ_REMOVE(&hmp->reclaim_list, &reclaim,
-					     entry);
-			}
-		}
 	}
 	return(0);
 }
@@ -1364,21 +1325,6 @@ hammer_wait_inode(hammer_inode_t ip)
 }
 
 /*
- * Wait for records to drain
- */
-void
-hammer_wait_inode_recs(hammer_inode_t ip)
-{
-	while (ip->rsv_recs > hammer_limit_irecs) {
-		hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-		if (ip->rsv_recs > hammer_limit_irecs) {
-			ip->flags |= HAMMER_INODE_PARTIALW;
-			tsleep(&ip->flags, 0, "hmrwpp", 0);
-		}
-	}
-}
-
-/*
  * Called by the backend code when a flush has been completed.
  * The inode has already been removed from the flush list.
  *
@@ -1738,10 +1684,11 @@ hammer_sync_inode(hammer_inode_t ip)
 		 */
 		off_t trunc_off;
 		off_t aligned_trunc_off;
+		int blkmask;
 
 		trunc_off = ip->sync_trunc_off;
-		aligned_trunc_off = (trunc_off + HAMMER_BUFMASK) &
-				    ~HAMMER_BUFMASK64;
+		blkmask = hammer_blocksize(trunc_off) - 1;
+		aligned_trunc_off = (trunc_off + blkmask) & ~(int64_t)blkmask;
 
 		/*
 		 * Delete any whole blocks on-media.  The front-end has
@@ -2026,6 +1973,38 @@ hammer_inode_wakereclaims(hammer_inode_t ip)
 		TAILQ_REMOVE(&hmp->reclaim_list, reclaim, entry);
 		reclaim->okydoky = 1;
 		wakeup(reclaim);
+	}
+}
+
+/*
+ * Setup our reclaim pipeline.  We only let so many detached (and dirty)
+ * inodes build up before we start blocking.
+ *
+ * When we block we don't care *which* inode has finished reclaiming,
+ * as lone as one does.  This is somewhat heuristical... we also put a
+ * cap on how long we are willing to wait.
+ */
+void
+hammer_inode_waitreclaims(hammer_mount_t hmp)
+{
+	struct hammer_reclaim reclaim;
+	int delay;
+
+	if (hmp->inode_reclaims > HAMMER_RECLAIM_WAIT) {
+		reclaim.okydoky = 0;
+		TAILQ_INSERT_TAIL(&hmp->reclaim_list,
+				  &reclaim, entry);
+	} else {
+		reclaim.okydoky = 1;
+	}
+
+	if (reclaim.okydoky == 0) {
+		delay = (hmp->inode_reclaims - HAMMER_RECLAIM_WAIT) * hz /
+			HAMMER_RECLAIM_WAIT;
+		if (delay >= 0)
+			tsleep(&reclaim, 0, "hmrrcm", delay + 1);
+		if (reclaim.okydoky == 0)
+			TAILQ_REMOVE(&hmp->reclaim_list, &reclaim, entry);
 	}
 }
 
