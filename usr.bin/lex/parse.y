@@ -35,7 +35,7 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/parse.y,v 2.28 95/04/21 11:51:51 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/parse.y,v 1.3 1999/10/27 07:56:46 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/parse.y,v 1.3 2005/02/20 17:34:11 asmodai Exp $ */
+/* $DragonFly: src/usr.bin/lex/parse.y,v 1.4 2008/06/21 19:29:21 swildner Exp $ */
 
 
 /* Some versions of bison are broken in that they use alloca() but don't
@@ -767,7 +767,7 @@ string		:  string CHAR
  *                    conditions
  */
 
-void build_eof_action()
+void build_eof_action( void )
 	{
 	register int i;
 	char action_text[MAXLINE];
@@ -802,8 +802,7 @@ void build_eof_action()
 
 /* format_synerr - write out formatted syntax error */
 
-void format_synerr( msg, arg )
-char msg[], arg[];
+void format_synerr( char msg[], char arg[] )
 	{
 	char errmsg[MAXLINE];
 
@@ -814,8 +813,7 @@ char msg[], arg[];
 
 /* synerr - report a syntax error */
 
-void synerr( str )
-char str[];
+void synerr( char str[] )
 	{
 	syntaxerror = true;
 	pinpoint_message( str );
@@ -824,8 +822,7 @@ char str[];
 
 /* format_warn - write out formatted warning */
 
-void format_warn( msg, arg )
-char msg[], arg[];
+void format_warn( char msg[], char arg[] )
 	{
 	char warn_msg[MAXLINE];
 
@@ -836,8 +833,7 @@ char msg[], arg[];
 
 /* warn - report a warning, unless -w was given */
 
-void warn( str )
-char str[];
+void warn( char str[] )
 	{
 	line_warning( str, linenum );
 	}
@@ -846,8 +842,7 @@ char str[];
  *			     pinpointing its location
  */
 
-void format_pinpoint_message( msg, arg )
-char msg[], arg[];
+void format_pinpoint_message( char msg[], char arg[] )
 	{
 	char errmsg[MAXLINE];
 
@@ -858,8 +853,7 @@ char msg[], arg[];
 
 /* pinpoint_message - write out a message, pinpointing its location */
 
-void pinpoint_message( str )
-char str[];
+void pinpoint_message( char str[] )
 	{
 	line_pinpoint( str, linenum );
 	}
@@ -867,9 +861,7 @@ char str[];
 
 /* line_warning - report a warning at a given line, unless -w was given */
 
-void line_warning( str, line )
-char str[];
-int line;
+void line_warning( char str[], int line )
 	{
 	char warning[MAXLINE];
 
@@ -883,9 +875,7 @@ int line;
 
 /* line_pinpoint - write out a message, pinpointing it at the given line */
 
-void line_pinpoint( str, line )
-char str[];
-int line;
+void line_pinpoint( char str[], int line )
 	{
 	fprintf( stderr, "\"%s\", line %d: %s\n", infilename, line, str );
 	}
@@ -895,7 +885,6 @@ int line;
  *	     currently, messages are ignore
  */
 
-void yyerror( msg )
-char msg[];
+void yyerror( char msg[] )
 	{
 	}

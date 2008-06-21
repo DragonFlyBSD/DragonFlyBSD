@@ -29,7 +29,7 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/scan.l,v 2.56 95/04/24 12:17:19 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/scan.l,v 1.5 1999/10/27 07:56:46 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/scan.l,v 1.2 2003/06/17 04:29:28 dillon Exp $ */
+/* $DragonFly: src/usr.bin/lex/scan.l,v 1.3 2008/06/21 19:29:21 swildner Exp $ */
 
 #include "flexdef.h"
 #include "parse.h"
@@ -44,7 +44,7 @@
 #define MARK_END_OF_PROLOG mark_prolog();
 
 #define YY_DECL \
-	int flexscan()
+	int flexscan( void )
 
 #define RETURNCHAR \
 	yylval = (unsigned char) yytext[0]; \
@@ -652,7 +652,7 @@ LEXOPT		[aceknopr]
 %%
 
 
-int yywrap()
+int yywrap( void )
 	{
 	if ( --num_input_files > 0 )
 		{
@@ -667,8 +667,7 @@ int yywrap()
 
 /* set_input_file - open the given file (if NULL, stdin) for scanning */
 
-void set_input_file( file )
-char *file;
+void set_input_file( char *file )
 	{
 	if ( file && strcmp( file, "-" ) )
 		{
@@ -691,21 +690,17 @@ char *file;
 
 /* Wrapper routines for accessing the scanner's malloc routines. */
 
-void *flex_alloc( size )
-size_t size;
+void *flex_alloc( size_t size )
 	{
 	return (void *) malloc( size );
 	}
 
-void *flex_realloc( ptr, size )
-void *ptr;
-size_t size;
+void *flex_realloc( void *ptr, size_t size )
 	{
 	return (void *) realloc( ptr, size );
 	}
 
-void flex_free( ptr )
-void *ptr;
+void flex_free( void *ptr )
 	{
 	if ( ptr )
 		free( ptr );
