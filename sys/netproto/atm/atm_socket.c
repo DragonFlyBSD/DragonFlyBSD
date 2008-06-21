@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_socket.c,v 1.4 1999/08/28 00:48:37 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_socket.c,v 1.11 2008/01/06 16:55:52 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_socket.c,v 1.12 2008/06/21 12:30:19 aggelos Exp $
  */
 
 /*
@@ -689,7 +689,7 @@ atm_sock_setopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 	switch (sopt->sopt_name) {
 
 	case T_ATM_AAL5:
-		err = sooptcopyin(sopt, &p.aal5, sizeof p.aal5, sizeof p.aal5);
+		err = soopt_to_kbuf(sopt, &p.aal5, sizeof p.aal5, sizeof p.aal5);
 		if (err)
 			break;
 		if ((p.aal5.forward_max_SDU_size != T_ATM_ABSENT) &&
@@ -717,7 +717,7 @@ atm_sock_setopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 		break;
 
 	case T_ATM_TRAFFIC:
-		err = sooptcopyin(sopt, &p.trf, sizeof p.trf, sizeof p.trf);
+		err = soopt_to_kbuf(sopt, &p.trf, sizeof p.trf, sizeof p.trf);
 		if (err)
 			break;
 		if ((p.trf.forward.PCR_high_priority != T_ATM_ABSENT) &&
@@ -770,7 +770,7 @@ atm_sock_setopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 		break;
 
 	case T_ATM_BEARER_CAP:
-		err = sooptcopyin(sopt, &p.brr, sizeof p.brr, sizeof p.brr);
+		err = soopt_to_kbuf(sopt, &p.brr, sizeof p.brr, sizeof p.brr);
 		if (err)
 			break;
 		if ((p.brr.bearer_class != T_ATM_CLASS_A) &&
@@ -797,7 +797,7 @@ atm_sock_setopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 		break;
 
 	case T_ATM_BHLI:
-		err = sooptcopyin(sopt, &p.bhl, sizeof p.bhl, sizeof p.bhl);
+		err = soopt_to_kbuf(sopt, &p.bhl, sizeof p.bhl, sizeof p.bhl);
 		if (err)
 			break;
 		if ((p.bhl.ID_type != T_ATM_ABSENT) &&
@@ -815,7 +815,7 @@ atm_sock_setopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 		break;
 
 	case T_ATM_BLLI:
-		err = sooptcopyin(sopt, &p.bll, sizeof p.bll, sizeof p.bll);
+		err = soopt_to_kbuf(sopt, &p.bll, sizeof p.bll, sizeof p.bll);
 		if (err)
 			break;
 		if ((p.bll.layer_2_protocol.ID_type != T_ATM_ABSENT) &&
@@ -863,7 +863,7 @@ atm_sock_setopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 		break;
 
 	case T_ATM_DEST_ADDR:
-		err = sooptcopyin(sopt, &p.addr, sizeof p.addr, sizeof p.addr);
+		err = soopt_to_kbuf(sopt, &p.addr, sizeof p.addr, sizeof p.addr);
 		if (err)
 			break;
 		if ((p.addr.address_format != T_ATM_ENDSYS_ADDR) &&
@@ -877,7 +877,7 @@ atm_sock_setopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 		break;
 
 	case T_ATM_DEST_SUB:
-		err = sooptcopyin(sopt, &p.addr, sizeof p.addr, sizeof p.addr);
+		err = soopt_to_kbuf(sopt, &p.addr, sizeof p.addr, sizeof p.addr);
 		if (err)
 			break;
 		if ((p.addr.address_format != T_ATM_ABSENT) &&
@@ -900,7 +900,7 @@ atm_sock_setopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 		return (EACCES);
 
 	case T_ATM_CAUSE:
-		err = sooptcopyin(sopt, &p.cau, sizeof p.cau, sizeof p.cau);
+		err = soopt_to_kbuf(sopt, &p.cau, sizeof p.cau, sizeof p.cau);
 		if (err)
 			break;
 		if ((p.cau.coding_standard != T_ATM_ABSENT) &&
@@ -926,7 +926,7 @@ atm_sock_setopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 		break;
 
 	case T_ATM_QOS:
-		err = sooptcopyin(sopt, &p.qos, sizeof p.qos, sizeof p.qos);
+		err = soopt_to_kbuf(sopt, &p.qos, sizeof p.qos, sizeof p.qos);
 		if (err)
 			break;
 		if ((p.qos.coding_standard != T_ATM_ABSENT) &&
@@ -955,7 +955,7 @@ atm_sock_setopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 		break;
 
 	case T_ATM_TRANSIT:
-		err = sooptcopyin(sopt, &p.trn, sizeof p.trn, sizeof p.trn);
+		err = soopt_to_kbuf(sopt, &p.trn, sizeof p.trn, sizeof p.trn);
 		if (err)
 			break;
 		if (p.trn.length > T_ATM_MAX_NET_ID)
@@ -976,7 +976,7 @@ atm_sock_setopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 		return (EPROTONOSUPPORT);	/* XXX */
 
 	case T_ATM_NET_INTF:
-		err = sooptcopyin(sopt, &p.nif, sizeof p.nif, sizeof p.nif);
+		err = soopt_to_kbuf(sopt, &p.nif, sizeof p.nif, sizeof p.nif);
 		if (err)
 			break;
 
@@ -986,7 +986,7 @@ atm_sock_setopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 		break;
 
 	case T_ATM_LLC:
-		err = sooptcopyin(sopt, &p.llc, sizeof p.llc, sizeof p.llc);
+		err = soopt_to_kbuf(sopt, &p.llc, sizeof p.llc, sizeof p.llc);
 		if (err)
 			break;
 		if ((p.llc.llc_len < T_ATM_LLC_MIN_LEN) ||
@@ -998,7 +998,7 @@ atm_sock_setopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 		break;
 
 	case T_ATM_APP_NAME:
-		err = sooptcopyin(sopt, &p.appn, sizeof p.appn, sizeof p.appn);
+		err = soopt_to_kbuf(sopt, &p.appn, sizeof p.appn, sizeof p.appn);
 		if (err)
 			break;
 
@@ -1047,8 +1047,9 @@ atm_sock_getopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 	case T_ATM_AAL5:
 		if ((ap->aal.tag == T_ATM_PRESENT) &&
 		    (ap->aal.type == ATM_AAL5)) {
-			return (sooptcopyout(sopt, &ap->aal.v.aal5,
-					sizeof ap->aal.v.aal5));
+			soopt_from_kbuf(sopt, &ap->aal.v.aal5,
+					sizeof ap->aal.v.aal5);
+			return 0;
 		} else {
 			return (ENOENT);
 		}
@@ -1056,8 +1057,9 @@ atm_sock_getopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 
 	case T_ATM_TRAFFIC:
 		if (ap->traffic.tag == T_ATM_PRESENT) {
-			return (sooptcopyout(sopt, &ap->traffic.v,
-					sizeof ap->traffic.v));
+			soopt_from_kbuf(sopt, &ap->traffic.v,
+					sizeof ap->traffic.v);
+			return 0;
 		} else {
 			return (ENOENT);
 		}
@@ -1065,8 +1067,9 @@ atm_sock_getopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 
 	case T_ATM_BEARER_CAP:
 		if (ap->bearer.tag == T_ATM_PRESENT) {
-			return (sooptcopyout(sopt, &ap->bearer.v,
-					sizeof ap->bearer.v));
+			soopt_from_kbuf(sopt, &ap->bearer.v,
+					sizeof ap->bearer.v);
+			return 0;
 		} else {
 			return (ENOENT);
 		}
@@ -1074,8 +1077,9 @@ atm_sock_getopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 
 	case T_ATM_BHLI:
 		if (ap->bhli.tag == T_ATM_PRESENT) {
-			return (sooptcopyout(sopt, &ap->bhli.v,
-					sizeof ap->bhli.v));
+			soopt_from_kbuf(sopt, &ap->bhli.v,
+					sizeof ap->bhli.v);
+			return 0;
 		} else {
 			return (ENOENT);
 		}
@@ -1084,8 +1088,9 @@ atm_sock_getopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 	case T_ATM_BLLI:
 		if ((ap->blli.tag_l2 == T_ATM_PRESENT) ||
 		    (ap->blli.tag_l3 == T_ATM_PRESENT)) {
-			return (sooptcopyout(sopt, &ap->blli.v,
-					sizeof ap->blli.v));
+			soopt_from_kbuf(sopt, &ap->blli.v,
+					sizeof ap->blli.v);
+			return 0;
 		} else {
 			return (ENOENT);
 		}
@@ -1093,8 +1098,9 @@ atm_sock_getopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 
 	case T_ATM_DEST_ADDR:
 		if (ap->called.tag == T_ATM_PRESENT) {
-			return (sooptcopyout(sopt, &ap->called.addr,
-					sizeof ap->called.addr));
+			soopt_from_kbuf(sopt, &ap->called.addr,
+					sizeof ap->called.addr);
+			return 0;
 		} else {
 			return (ENOENT);
 		}
@@ -1102,8 +1108,9 @@ atm_sock_getopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 
 	case T_ATM_DEST_SUB:
 		if (ap->called.tag == T_ATM_PRESENT) {
-			return (sooptcopyout(sopt, &ap->called.subaddr,
-					sizeof ap->called.subaddr));
+			soopt_from_kbuf(sopt, &ap->called.subaddr,
+					sizeof ap->called.subaddr);
+			return 0;
 		} else {
 			return (ENOENT);
 		}
@@ -1111,8 +1118,9 @@ atm_sock_getopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 
 	case T_ATM_ORIG_ADDR:
 		if (ap->calling.tag == T_ATM_PRESENT) {
-			return (sooptcopyout(sopt, &ap->calling.addr,
-					sizeof ap->calling.addr));
+			soopt_from_kbuf(sopt, &ap->calling.addr,
+					sizeof ap->calling.addr);
+			return 0;
 		} else {
 			return (ENOENT);
 		}
@@ -1120,8 +1128,9 @@ atm_sock_getopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 
 	case T_ATM_ORIG_SUB:
 		if (ap->calling.tag == T_ATM_PRESENT) {
-			return (sooptcopyout(sopt, &ap->calling.subaddr,
-					sizeof ap->calling.subaddr));
+			soopt_from_kbuf(sopt, &ap->calling.subaddr,
+					sizeof ap->calling.subaddr);
+			return 0;
 		} else {
 			return (ENOENT);
 		}
@@ -1129,8 +1138,9 @@ atm_sock_getopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 
 	case T_ATM_CALLER_ID:
 		if (ap->calling.tag == T_ATM_PRESENT) {
-			return (sooptcopyout(sopt, &ap->calling.cid,
-					sizeof ap->calling.cid));
+			soopt_from_kbuf(sopt, &ap->calling.cid,
+					sizeof ap->calling.cid);
+			return 0;
 		} else {
 			return (ENOENT);
 		}
@@ -1138,8 +1148,9 @@ atm_sock_getopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 
 	case T_ATM_CAUSE:
 		if (ap->cause.tag == T_ATM_PRESENT) {
-			return (sooptcopyout(sopt, &ap->cause.v,
-					sizeof ap->cause.v));
+			soopt_from_kbuf(sopt, &ap->cause.v,
+					sizeof ap->cause.v);
+			return 0;
 		} else {
 			return (ENOENT);
 		}
@@ -1147,8 +1158,9 @@ atm_sock_getopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 
 	case T_ATM_QOS:
 		if (ap->qos.tag == T_ATM_PRESENT) {
-			return (sooptcopyout(sopt, &ap->qos.v,
-					sizeof ap->qos.v));
+			soopt_from_kbuf(sopt, &ap->qos.v,
+					sizeof ap->qos.v);
+			return 0;
 		} else {
 			return (ENOENT);
 		}
@@ -1156,8 +1168,9 @@ atm_sock_getopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 
 	case T_ATM_TRANSIT:
 		if (ap->transit.tag == T_ATM_PRESENT) {
-			return (sooptcopyout(sopt, &ap->transit.v,
-					sizeof ap->transit.v));
+			soopt_from_kbuf(sopt, &ap->transit.v,
+					sizeof ap->transit.v);
+			return 0;
 		} else {
 			return (ENOENT);
 		}
@@ -1174,8 +1187,9 @@ atm_sock_getopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 			ifp = &ap->nif->nif_if;
 			ksnprintf(netif.net_intf, sizeof(netif.net_intf),
 			    "%s", ifp->if_xname);
-			return (sooptcopyout(sopt, &netif,
-					sizeof netif));
+			soopt_from_kbuf(sopt, &netif,
+					sizeof netif);
+			return 0;
 		} else {
 			return (ENOENT);
 		}
@@ -1183,8 +1197,9 @@ atm_sock_getopt(struct socket *so, struct sockopt *sopt, Atm_pcb *atp)
 
 	case T_ATM_LLC:
 		if (ap->llc.tag == T_ATM_PRESENT) {
-			return (sooptcopyout(sopt, &ap->llc.v,
-					sizeof ap->llc.v));
+			soopt_from_kbuf(sopt, &ap->llc.v,
+					sizeof ap->llc.v);
+			return 0;
 		} else {
 			return (ENOENT);
 		}

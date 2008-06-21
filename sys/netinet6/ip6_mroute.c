@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_mroute.c,v 1.2.2.9 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.17 2008/06/05 18:06:32 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.18 2008/06/21 12:30:19 aggelos Exp $	*/
 /*	$KAME: ip6_mroute.c,v 1.58 2001/12/18 02:36:31 itojun Exp $	*/
 
 /*
@@ -234,8 +234,7 @@ ip6_mrouter_set(struct socket *so, struct sockopt *sopt)
 
 	if ((error = soopt_getm(sopt, &m)) != 0) /* XXX */
 		return (error);
-	if ((error = soopt_mcopyin(sopt, m)) != 0) /* XXX */
-		return (error);
+	soopt_to_mbuf(sopt, m);	/* XXX */
 
 	switch (sopt->sopt_name) {
 	case MRT6_INIT:
@@ -283,7 +282,7 @@ ip6_mrouter_get(struct socket *so, struct sockopt *sopt)
 
 	switch (sopt->sopt_name) {
 		case MRT6_PIM:
-			error = sooptcopyout(sopt, &pim6, sizeof(pim6));
+			soopt_from_kbuf(sopt, &pim6, sizeof(pim6));
 			break;
 	}
 	return (error);

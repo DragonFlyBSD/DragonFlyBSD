@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/icmp6.c,v 1.6.2.13 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.28 2008/05/27 01:10:43 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.29 2008/06/21 12:30:19 aggelos Exp $	*/
 /*	$KAME: icmp6.c,v 1.211 2001/04/04 05:56:20 itojun Exp $	*/
 
 /*
@@ -2670,7 +2670,7 @@ icmp6_ctloutput(struct socket *so, struct sockopt *sopt)
 				error = EINVAL;
 				break;
 			}
-			error = sooptcopyin(sopt, inp->in6p_icmp6filt, optlen,
+			error = soopt_to_kbuf(sopt, inp->in6p_icmp6filt, optlen,
 				optlen);
 			break;
 		    }
@@ -2689,7 +2689,7 @@ icmp6_ctloutput(struct socket *so, struct sockopt *sopt)
 				error = EINVAL;
 				break;
 			}
-			error = sooptcopyout(sopt, inp->in6p_icmp6filt,
+			soopt_from_kbuf(sopt, inp->in6p_icmp6filt,
 				sizeof(struct icmp6_filter));
 			break;
 		    }
