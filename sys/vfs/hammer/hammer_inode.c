@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.79 2008/06/20 21:24:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.80 2008/06/21 01:24:12 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1340,15 +1340,15 @@ hammer_wait_inode(hammer_inode_t ip)
 	sync_group = ip->flush_group;
 	waitcount = (ip->flags & HAMMER_INODE_REFLUSH) ? 2 : 1;
 
-	while (ip->flush_state != HAMMER_FST_IDLE &&
-	       (ip->flush_group - sync_group) < 2) {
-		if (ip->flush_state == HAMMER_FST_SETUP) {
-			kprintf("X");
-			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-		} else {
-			ip->flags |= HAMMER_INODE_FLUSHW;
-			tsleep(&ip->flags, 0, "hmrwin", 0);
-		}
+	if (ip->flush_state == HAMMER_FST_SETUP) {
+		kprintf("X");
+		hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+	}
+	/* XXX can we make this != FST_IDLE ? check SETUP depends */
+	while (ip->flush_state == HAMMER_FST_FLUSH &&
+	       (ip->flush_group - sync_group) < waitcount) {
+		ip->flags |= HAMMER_INODE_FLUSHW;
+		tsleep(&ip->flags, 0, "hmrwin", 0);
 	}
 	while (hmp->flusher.done - sync_group < waitcount) {
 		kprintf("Y");
