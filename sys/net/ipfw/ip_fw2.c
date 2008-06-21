@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.43 2008/06/17 20:50:11 aggelos Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.44 2008/06/21 06:47:29 sephe Exp $
  */
 
 #define        DEB(x)
@@ -1601,6 +1601,10 @@ check_body:
 					uint16_t *p =
 					    ((ipfw_insn_u16 *)cmd)->ports;
 					int i;
+
+					/* Special vlan handling */
+					if (m->m_flags & M_VLANTAG)
+						t = ETHERTYPE_VLAN;
 
 					for (i = cmdlen - 1; !match && i>0;
 					    i--, p += 2)
