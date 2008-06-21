@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.41 2008/06/01 07:43:29 sephe Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.42 2008/06/21 05:55:46 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -282,11 +282,11 @@ netisr_queue(int num, struct mbuf *m)
     lwkt_port_t port;
 
     KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
-	("netisr_queue: bad isr %d", num));
+    	    ("%s: bad isr %d", __func__, num));
 
     ni = &netisrs[num];
     if (ni->ni_handler == NULL) {
-	kprintf("netisr_queue: unregistered isr %d\n", num);
+	kprintf("%s: unregistered isr %d\n", __func__, num);
 	m_freem(m);
 	return (EIO);
     }
@@ -409,11 +409,11 @@ netisr_mport(int num, struct mbuf **m0)
     *m0 = NULL;
 
     KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
-	("netisr_queue: bad isr %d", num));
+    	    ("%s: bad isr %d", __func__, num));
 
     ni = &netisrs[num];
     if (ni->ni_handler == NULL) {
-	kprintf("netisr_queue: unregistered isr %d\n", num);
+	kprintf("%s: unregistered isr %d\n", __func__, num);
 	m_freem(m);
 	return NULL;
     }
