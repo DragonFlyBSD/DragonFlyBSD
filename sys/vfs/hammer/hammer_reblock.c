@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.19 2008/06/20 21:24:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.20 2008/06/21 20:21:58 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -163,6 +163,7 @@ static int
 hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 		      hammer_cursor_t cursor, hammer_btree_elm_t elm)
 {
+	hammer_mount_t hmp;
 	hammer_off_t tmp_offset;
 	int error;
 	int bytes;
@@ -170,6 +171,7 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 	int iocflags;
 
 	error = 0;
+	hmp = cursor->trans->hmp;
 
 	/*
 	 * Reblock data.  Note that data embedded in a record is reblocked
@@ -210,12 +212,12 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 	if (reblock->head.flags & iocflags) {
 		++reblock->data_count;
 		reblock->data_byte_count += elm->leaf.data_len;
-		bytes = hammer_blockmap_getfree(cursor->trans->hmp, tmp_offset,
-						&cur, &error);
+		bytes = hammer_blockmap_getfree(hmp, tmp_offset, &cur, &error);
 		if (hammer_debug_general & 0x4000)
 			kprintf("D %6d/%d\n", bytes, reblock->free_level);
 		if (error == 0 && (cur == 0 || reblock->free_level == 0) &&
 		    bytes >= reblock->free_level) {
+			hammer_io_direct_uncache(hmp, &elm->leaf);
 			error = hammer_cursor_upgrade(cursor);
 			if (error == 0) {
 				error = hammer_reblock_data(reblock,
@@ -236,8 +238,7 @@ skip:
 	if (cursor->index == 0 &&
 	    error == 0 && (reblock->head.flags & HAMMER_IOC_DO_BTREE)) {
 		++reblock->btree_count;
-		bytes = hammer_blockmap_getfree(cursor->trans->hmp, tmp_offset,
-						&cur, &error);
+		bytes = hammer_blockmap_getfree(hmp, tmp_offset, &cur, &error);
 		if (hammer_debug_general & 0x4000)
 			kprintf("B %6d/%d\n", bytes, reblock->free_level);
 		if (error == 0 && (cur == 0 || reblock->free_level == 0) &&

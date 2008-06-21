@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.80 2008/06/21 01:24:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.81 2008/06/21 20:21:58 dillon Exp $
  */
 
 #include "hammer.h"
@@ -49,6 +49,75 @@ static void	hammer_inode_wakereclaims(hammer_inode_t ip);
 #ifdef DEBUG_TRUNCATE
 extern struct hammer_inode *HammerTruncIp;
 #endif
+
+/*
+ * Red-Black tree support for inode structures.
+ *
+ * Insertions
+ */
+int
+hammer_ino_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2)
+{
+	if (ip1->obj_localization < ip2->obj_localization)
+		return(-1);
+	if (ip1->obj_localization > ip2->obj_localization)
+		return(1);
+	if (ip1->obj_id < ip2->obj_id)
+		return(-1);
+	if (ip1->obj_id > ip2->obj_id)
+		return(1);
+	if (ip1->obj_asof < ip2->obj_asof)
+		return(-1);
+	if (ip1->obj_asof > ip2->obj_asof)
+		return(1);
+	return(0);
+}
+
+/*
+ * LOOKUP_INFO
+ */
+static int
+hammer_inode_info_cmp(hammer_inode_info_t info, hammer_inode_t ip)
+{
+	if (info->obj_localization < ip->obj_localization)
+		return(-1);
+	if (info->obj_localization > ip->obj_localization)
+		return(1);
+	if (info->obj_id < ip->obj_id)
+		return(-1);
+	if (info->obj_id > ip->obj_id)
+		return(1);
+	if (info->obj_asof < ip->obj_asof)
+		return(-1);
+	if (info->obj_asof > ip->obj_asof)
+		return(1);
+	return(0);
+}
+
+/*
+ * Used by hammer_scan_inode_snapshots() to locate all of an object's
+ * snapshots.  Note that the asof field is not tested, which we can get
+ * away with because it is the lowest-priority field.
+ */
+static int
+hammer_inode_info_cmp_all_history(hammer_inode_t ip, void *data)
+{
+	hammer_inode_info_t info = data;
+
+	if (ip->obj_localization > info->obj_localization)
+		return(1);
+	if (ip->obj_localization < info->obj_localization)
+		return(-1);
+	if (ip->obj_id > info->obj_id)
+		return(1);
+	if (ip->obj_id < info->obj_id)
+		return(-1);
+	return(0);
+}
+
+RB_GENERATE(hammer_ino_rb_tree, hammer_inode, rb_node, hammer_ino_rb_compare);
+RB_GENERATE_XLOOKUP(hammer_ino_rb_tree, INFO, hammer_inode, rb_node,
+		hammer_inode_info_cmp, hammer_inode_info_t);
 
 /*
  * The kernel is not actively referencing this vnode but is still holding
@@ -210,6 +279,21 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 	}
 	*vpp = vp;
 	return(error);
+}
+
+/*
+ * Locate all copies of the inode for obj_id compatible with the specified
+ * asof, reference, and issue the related call-back.  This routine is used
+ * for direct-io invalidation and does not create any new inodes.
+ */
+void
+hammer_scan_inode_snapshots(hammer_mount_t hmp, hammer_inode_info_t iinfo,
+		            int (*callback)(hammer_inode_t ip, void *data),
+			    void *data)
+{
+	hammer_ino_rb_tree_RB_SCAN(&hmp->rb_inos_root,
+				   hammer_inode_info_cmp_all_history,
+				   callback, iinfo);
 }
 
 /*
@@ -1772,12 +1856,14 @@ hammer_sync_inode(hammer_inode_t ip)
 	hammer_cache_node(&ip->cache[1], cursor.node);
 
 	/*
-	 * Re-seek for inode update.
+	 * Re-seek for inode update, assuming our cache hasn't been ripped
+	 * out from under us.
 	 */
 	if (error == 0) {
 		tmp_node = hammer_ref_node_safe(ip->hmp, &ip->cache[0], &error);
 		if (tmp_node) {
-			hammer_cursor_seek(&cursor, tmp_node, 0);
+			if ((tmp_node->flags & HAMMER_NODE_DELETED) == 0)
+				hammer_cursor_seek(&cursor, tmp_node, 0);
 			hammer_rel_node(tmp_node);
 		}
 		error = 0;

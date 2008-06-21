@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.61 2008/06/20 21:24:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.62 2008/06/21 20:21:58 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -49,45 +49,6 @@ static void hammer_free_volume(hammer_volume_t volume);
 static int hammer_load_volume(hammer_volume_t volume);
 static int hammer_load_buffer(hammer_buffer_t buffer, int isnew);
 static int hammer_load_node(hammer_node_t node, int isnew);
-
-/*
- * Red-Black tree support for various structures
- */
-int
-hammer_ino_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2)
-{
-	if (ip1->obj_localization < ip2->obj_localization)
-		return(-1);
-	if (ip1->obj_localization > ip2->obj_localization)
-		return(1);
-	if (ip1->obj_id < ip2->obj_id)
-		return(-1);
-	if (ip1->obj_id > ip2->obj_id)
-		return(1);
-	if (ip1->obj_asof < ip2->obj_asof)
-		return(-1);
-	if (ip1->obj_asof > ip2->obj_asof)
-		return(1);
-	return(0);
-}
-
-static int
-hammer_inode_info_cmp(hammer_inode_info_t info, hammer_inode_t ip)
-{
-	if (info->obj_localization < ip->obj_localization)
-		return(-1);
-	if (info->obj_localization > ip->obj_localization)
-		return(1);
-	if (info->obj_id < ip->obj_id)
-		return(-1);
-	if (info->obj_id > ip->obj_id)
-		return(1);
-	if (info->obj_asof < ip->obj_asof)
-		return(-1);
-	if (info->obj_asof > ip->obj_asof)
-		return(1);
-	return(0);
-}
 
 static int
 hammer_vol_rb_compare(hammer_volume_t vol1, hammer_volume_t vol2)
@@ -119,14 +80,6 @@ hammer_nod_rb_compare(hammer_node_t node1, hammer_node_t node2)
 	return(0);
 }
 
-/*
- * Note: The lookup function for hammer_ino_rb_tree winds up being named
- * hammer_ino_rb_tree_RB_LOOKUP_INFO(root, info).  The other lookup
- * functions are normal, e.g. hammer_buf_rb_tree_RB_LOOKUP(root, zone2_offset).
- */
-RB_GENERATE(hammer_ino_rb_tree, hammer_inode, rb_node, hammer_ino_rb_compare);
-RB_GENERATE_XLOOKUP(hammer_ino_rb_tree, INFO, hammer_inode, rb_node,
-		hammer_inode_info_cmp, hammer_inode_info_t);
 RB_GENERATE2(hammer_vol_rb_tree, hammer_volume, rb_node,
 	     hammer_vol_rb_compare, int32_t, vol_no);
 RB_GENERATE2(hammer_buf_rb_tree, hammer_buffer, rb_node,

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.88 2008/06/20 21:24:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.89 2008/06/21 20:21:58 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -88,6 +88,9 @@ typedef struct hammer_inode_info {
 	int64_t		obj_id;		/* (key) object identifier */
 	hammer_tid_t	obj_asof;	/* (key) snapshot transid or 0 */
 	u_int32_t	obj_localization; /* (key) pseudo-fs */
+	union {
+		struct hammer_btree_leaf_elm *leaf;
+	} u;
 } *hammer_inode_info_t;
 
 typedef enum hammer_transaction_type {
@@ -737,6 +740,10 @@ struct hammer_inode *hammer_get_inode(hammer_transaction_t trans,
 			hammer_inode_t dip, u_int64_t obj_id,
 			hammer_tid_t asof, u_int32_t localization,
 			int flags, int *errorp);
+void	hammer_scan_inode_snapshots(hammer_mount_t hmp,
+			hammer_inode_info_t iinfo,
+			int (*callback)(hammer_inode_t ip, void *data),
+			void *data);
 void	hammer_put_inode(struct hammer_inode *ip);
 void	hammer_put_inode_ref(struct hammer_inode *ip);
 void	hammer_inode_waitreclaims(hammer_mount_t hmp);
@@ -981,6 +988,7 @@ void hammer_io_wait_all(hammer_mount_t hmp, const char *ident);
 int hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio);
 int hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 			  struct bio *bio);
+void hammer_io_direct_uncache(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf);
 void hammer_io_write_interlock(hammer_io_t io);
 void hammer_io_done_interlock(hammer_io_t io);
 void hammer_io_clear_modify(struct hammer_io *io, int inval);

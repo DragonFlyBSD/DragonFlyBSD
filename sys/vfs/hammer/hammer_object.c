@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.72 2008/06/20 21:24:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.73 2008/06/21 20:21:58 dillon Exp $
  */
 
 #include "hammer.h"
@@ -604,6 +604,7 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 	record->leaf.base.rec_type = HAMMER_RECTYPE_DIRENTRY;
 	record->leaf.base.obj_type = ip->ino_leaf.base.obj_type;
 	record->data->entry.obj_id = ip->obj_id;
+	record->data->entry.localization = ip->obj_localization;
 	bcopy(ncp->nc_name, record->data->entry.name, bytes);
 
 	++ip->ino_data.nlinks;
