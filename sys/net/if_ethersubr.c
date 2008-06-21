@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.66 2008/06/15 11:19:15 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.67 2008/06/21 03:58:09 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -680,14 +680,14 @@ ether_demux_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 
 #ifdef CARP
 	/*
-         * XXX: Okay, we need to call carp_forus() and - if it is for
-         * us jump over code that does the normal check
-         * "ac_enaddr == ether_dhost". The check sequence is a bit
-         * different from OpenBSD, so we jump over as few code as
-         * possible, to catch _all_ sanity checks. This needs
-         * evaluation, to see if the carp ether_dhost values break any
-         * of these checks!
-         */
+	 * XXX: Okay, we need to call carp_forus() and - if it is for
+	 * us jump over code that does the normal check
+	 * "ac_enaddr == ether_dhost". The check sequence is a bit
+	 * different from OpenBSD, so we jump over as few code as
+	 * possible, to catch _all_ sanity checks. This needs
+	 * evaluation, to see if the carp ether_dhost values break any
+	 * of these checks!
+	 */
 	if (ifp->if_carp && carp_forus(ifp->if_carp, eh->ether_dhost))
 		goto post_stats;
 #endif
