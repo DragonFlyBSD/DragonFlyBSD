@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)config.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/usr.sbin/config/config.8,v 1.21.2.7 2003/04/23 07:32:39 brueffer Exp $
-.\" $DragonFly: src/usr.sbin/config/config.8,v 1.6 2008/05/01 20:24:01 swildner Exp $
+.\" $DragonFly: src/usr.sbin/config/config.8,v 1.7 2008/06/21 17:08:20 swildner Exp $
 .\"
 .Dd July 4, 2001
 .Dt CONFIG 8
@@ -194,21 +194,16 @@ Backup copies of the kernel and modules are automatically stripped of
 their debug information by
 .Xr objcopy 1 .
 .Sh FILES
-.Bl -tag -width ".Pa /sys/ Ns Va ARCH Ns Pa /conf/files. Ns Ar SYSTEM_NAME" -compact
+.Bl -tag -width ".It Pa /sys/platform/ Ns Va PLATFORM Ns Pa /conf/Makefile" -compact
 .It Pa /sys/conf/files
 list of common files system is built from
-.It Pa /sys/conf/Makefile. Ns Va ARCH
+.It Pa /sys/platform/ Ns Va PLATFORM Ns Pa /conf/Makefile
 generic makefile for the
-.Va ARCH
-.It Pa /sys/conf/files. Ns Va ARCH
+.Va PLATFORM
+.It Pa /sys/platform/ Ns Va PLATFORM Ns Pa /conf/files
 list of
-.Va ARCH
+.Va PLATFORM
 specific files
-.It Pa /sys/ Ns Va ARCH Ns Pa /conf/files. Ns Ar SYSTEM_NAME
-list of files specific to
-.Ar SYSTEM_NAME
-on
-.Va ARCH
 .It Pa /sys/compile/ Ns Ar SYSTEM_NAME
 default kernel build directory for system
 .Ar SYSTEM_NAME .
