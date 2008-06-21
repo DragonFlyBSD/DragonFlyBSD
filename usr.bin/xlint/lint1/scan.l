@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: scan.l,v 1.8 1995/10/23 13:38:51 jpo Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/scan.l,v 1.8 2006/01/17 23:49:13 dillon Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/scan.l,v 1.9 2008/06/21 20:05:04 swildner Exp $
  */
 
 #include <stdlib.h>
@@ -155,7 +155,7 @@ EX	([eE][+-]?[0-9]+)
 %%
 
 static void
-incline()
+incline(void)
 {
 	curr_pos.p_line++;
 	if (curr_pos.p_file == csrc_pos.p_file)
@@ -163,8 +163,7 @@ incline()
 }
 
 static void
-badchar(c)
-	int	c;
+badchar(int c)
 {
 	/* unknown character \%o */
 	error(250, c);
@@ -254,7 +253,7 @@ symt_t	symtyp;
  * in a extra table for each name we found.
  */
 void
-initscan()
+initscan(void)
 {
 	struct	kwtab *kw;
 	sym_t	*sym;
@@ -298,7 +297,7 @@ initscan()
  * Get a free sbuf structure, if possible from the free list
  */
 static sbuf_t *
-allocsb()
+allocsb(void)
 {
 	sbuf_t	*sb;
 
@@ -315,8 +314,7 @@ allocsb()
  * Put a sbuf structure to the free list
  */
 static void
-freesb(sb)
-	sbuf_t	*sb;
+freesb(sbuf_t *sb)
 {
 	sb->sb_nxt = sbfrlst;
 	sbfrlst = sb;
@@ -327,7 +325,7 @@ freesb(sb)
  * Increment line count(s) if necessary.
  */
 static int
-inpc()
+inpc(void)
 {
 	int	c;
 
@@ -337,8 +335,7 @@ inpc()
 }
 
 static int
-hash(s)
-	const	char *s;
+hash(const char *s)
 {
 	u_int	v;
 	const	u_char *us;
@@ -367,7 +364,7 @@ hash(s)
  * to the symbol table entry.
  */
 static int
-name()
+name(void)
 {
 	char	*s;
 	sbuf_t	*sb;
@@ -405,8 +402,7 @@ name()
 }
 
 static sym_t *
-search(sb)
-	sbuf_t	*sb;
+search(sbuf_t *sb)
 {
 	sym_t	*sym;
 
@@ -421,8 +417,7 @@ search(sb)
 }
 
 static int
-keyw(sym)
-	sym_t	*sym;
+keyw(sym_t *sym)
 {
 	int	t;
 
@@ -441,8 +436,7 @@ keyw(sym)
  * The value is returned in yylval. icon() (and yylex()) returns T_CON.
  */
 static int
-icon(base)
-	int	base;
+icon(int base)
 {
 	int	l_suffix, u_suffix;
 	int	len;
@@ -579,10 +573,7 @@ icon(base)
  * to the width of type t.
  */
 int
-sign(q, t, len)
-	quad_t	q;
-	tspec_t	t;
-	int	len;
+sign(quad_t q, tspec_t t, int len)
 {
 	if (t == PTR || isutyp(t))
 		return (0);
@@ -590,10 +581,7 @@ sign(q, t, len)
 }
 
 int
-msb(q, t, len)
-	quad_t	q;
-	tspec_t	t;
-	int	len;
+msb(quad_t q, tspec_t t, int len)
 {
 	if (len <= 0)
 		len = size(t);
@@ -604,10 +592,7 @@ msb(q, t, len)
  * Extends the sign of q.
  */
 quad_t
-xsign(q, t, len)
-	quad_t	q;
-	tspec_t	t;
-	int	len;
+xsign(quad_t q, tspec_t t, int len)
 {
 	if (len <= 0)
 		len = size(t);
@@ -628,7 +613,7 @@ xsign(q, t, len)
  * long double which are greater then DBL_MAX.
  */
 static int
-fcon()
+fcon(void)
 {
 	const	char *cp;
 	int	len;
@@ -683,9 +668,7 @@ fcon()
 }
 
 static int
-operator(t, o)
-	int	t;
-	op_t	o;
+operator(int t, op_t o)
 {
 	yylval.y_op = o;
 	return (t);
@@ -695,7 +678,7 @@ operator(t, o)
  * Called if lex found a leading \'.
  */
 static int
-ccon()
+ccon(void)
 {
 	int	n, val, c;
 	char	cv;
@@ -737,7 +720,7 @@ ccon()
  * Called if lex found a leading L\'
  */
 static int
-wccon()
+wccon(void)
 {
 	static	char buf[MB_LEN_MAX + 1];
 	int	i, c;
@@ -790,8 +773,7 @@ wccon()
  * -2 if the EOF is reached, and the charachter otherwise.
  */
 static int
-getescc(d)
-	int	d;
+getescc(int d)
 {
 	static	int pbc = -1;
 	int	n, c, v;
@@ -920,7 +902,7 @@ getescc(d)
  *	# lineno "filename"
  */
 static void
-directive()
+directive(void)
 {
 	const	char *cp, *fn;
 	char	c, *eptr;
@@ -992,7 +974,7 @@ directive()
  * parsed and a function which handles this comment is called.
  */
 static void
-comment()
+comment(void)
 {
 	int	c, lc;
 	static struct {
@@ -1097,7 +1079,7 @@ comment()
  * (if, switch, for, while).
  */
 void
-clrwflgs()
+clrwflgs(void)
 {
 	nowarn = 0;
 	quadflg = 0;
@@ -1110,7 +1092,7 @@ clrwflgs()
  * by the parser are responsible for freeing this buffer.
  */
 static int
-string()
+string(void)
 {
 	u_char	*s;
 	int	c;
@@ -1141,7 +1123,7 @@ string()
 }
 
 static int
-wcstrg()
+wcstrg(void)
 {
 	char	*s;
 	int	c, i, n, wi;
@@ -1211,8 +1193,7 @@ wcstrg()
  * XXX calls to getsym() should be delayed until decl1*() is called
  */
 sym_t *
-getsym(sb)
-	sbuf_t	*sb;
+getsym(sbuf_t *sb)
 {
 	dinfo_t	*di;
 	char	*s;
@@ -1283,8 +1264,7 @@ getsym(sb)
  * back to the symbol table.
  */
 void
-rmsym(sym)
-	sym_t	*sym;
+rmsym(sym_t *sym)
 {
 	if ((*sym->s_rlink = sym->s_link) != NULL)
 		sym->s_link->s_rlink = sym->s_rlink;
@@ -1297,8 +1277,7 @@ rmsym(sym)
  * table.
  */
 void
-rmsyms(syms)
-	sym_t	*syms;
+rmsyms(sym_t *syms)
 {
 	sym_t	*sym;
 
@@ -1316,9 +1295,7 @@ rmsyms(syms)
  * Put a symbol into the symbol table
  */
 void
-inssym(bl, sym)
-	int	bl;
-	sym_t	*sym;
+inssym(int bl, sym_t *sym)
 {
 	int	h;
 
@@ -1338,7 +1315,7 @@ inssym(bl, sym)
  * level 0.
  */
 void
-cleanup()
+cleanup(void)
 {
 	sym_t	*sym, *nsym;
 	int	i;
@@ -1361,8 +1338,7 @@ cleanup()
  * Create a new symbol with the name of an existing symbol.
  */
 sym_t *
-pushdown(sym)
-	sym_t	*sym;
+pushdown(sym_t *sym)
 {
 	int	h;
 	sym_t	*nsym;
@@ -1392,9 +1368,7 @@ pushdown(sym)
  * The type of information in yylval is described by tok.
  */
 void
-freeyyv(sp, tok)
-	void	*sp;
-	int	tok;
+freeyyv(void *sp, int tok)
 {
 	if (tok == T_NAME || tok == T_TYPENAME) {
 		sbuf_t *sb = *(sbuf_t **)sp;
