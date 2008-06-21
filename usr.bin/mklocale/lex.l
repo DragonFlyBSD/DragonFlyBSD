@@ -1,5 +1,5 @@
 /*	$NetBSD: src/usr.bin/mklocale/lex.l,v 1.13 2003/10/27 00:12:43 lukem Exp $	*/
-/*	$DragonFly: src/usr.bin/mklocale/lex.l,v 1.6 2005/04/21 16:36:35 joerg Exp $ */
+/*	$DragonFly: src/usr.bin/mklocale/lex.l,v 1.7 2008/06/21 20:01:14 swildner Exp $ */
 
 %{
 /*-
@@ -164,7 +164,7 @@ ENCODING			{ return(ENCODING); }
 
 #if	!defined(yywrap)
 int
-yywrap()
+yywrap(void)
 {
 	return(1);
 }
