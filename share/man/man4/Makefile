@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/18/93
 # $FreeBSD: src/share/man/man4/Makefile,v 1.83.2.66 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/share/man/man4/Makefile,v 1.81 2008/04/23 08:57:10 hasso Exp $
+# $DragonFly: src/share/man/man4/Makefile,v 1.82 2008/06/22 20:34:46 swildner Exp $
 
 MAN=	aac.4 \
 	acpi.4 \
@@ -340,6 +340,8 @@ MLINKS+=scsi.4 CAM.4 \
 	scsi.4 scbus.4 \
 	scsi.4 SCSI.4
 MLINKS+=smp.4 SMP.4
+MLINKS+=snd_sbc.4 snd_sb16.4 \
+	snd_sbc.4 snd_sb8.4
 MLINKS+=splash.4 screensaver.4
 MLINKS+=syscons.4 sc.4
 MLINKS+=vpo.4 imm.4
