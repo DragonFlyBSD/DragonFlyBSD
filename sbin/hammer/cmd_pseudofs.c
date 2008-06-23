@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,50 +31,31 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.h,v 1.16 2008/06/23 07:37:54 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.1 2008/06/23 07:37:54 dillon Exp $
  */
 
-#include <sys/types.h>
-#include <sys/diskslice.h>
-#include <sys/diskmbr.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <sys/mount.h>
+#include "hammer.h"
+#include <sys/sysctl.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <unistd.h>
-#include <string.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <assert.h>
-#include <err.h>
-#include <ctype.h>
-#include <dirent.h>
+void
+hammer_cmd_pseudofs(char **av, int ac)
+{
+	struct hammer_ioc_get_pseudofs pfs;
+	int i;
+	int fd;
 
-#include "hammer_util.h"
-#include <vfs/hammer/hammer_ioctl.h>
-
-extern int RecurseOpt;
-extern int VerboseOpt;
-extern const char *LinkPath;
-extern const char *CyclePath;
-
-void hammer_cmd_show(hammer_tid_t node_offset, int depth,
-		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound);
-void hammer_cmd_prune(char **av, int ac);
-void hammer_cmd_softprune(char **av, int ac);
-void hammer_cmd_bstats(char **av, int ac);
-void hammer_cmd_iostats(char **av, int ac);
-void hammer_cmd_synctid(char **av, int ac);
-void hammer_cmd_history(const char *offset_str, char **av, int ac);
-void hammer_cmd_blockmap(void);
-void hammer_cmd_reblock(char **av, int ac, int flags);
-void hammer_cmd_pseudofs(char **av, int ac);
-
-void hammer_get_cycle(int64_t *obj_idp, uint32_t *localizationp);
-void hammer_set_cycle(int64_t obj_id, uint32_t localization);
-void hammer_reset_cycle(void);
+	for (i = 0; i < ac; ++i) {
+		if (mknod(av[i], S_IFDIR|0777, 0) < 0) {
+			perror("mknod (create pseudofs):");
+			exit(1);
+		}
+		printf("%s\t", av[i]);
+		fd = open(av[i], O_RDONLY);
+		if (fd < 0 || ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
+			printf("Unable to verify pseudofs creation\n");
+		} else {
+			printf("Pseudo-fs #0x%08x\n", pfs.pseudoid);
+		}
+	}
+}
 

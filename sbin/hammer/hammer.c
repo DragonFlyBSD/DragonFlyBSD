@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.22 2008/06/17 04:03:38 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.23 2008/06/23 07:37:54 dillon Exp $
  */
 
 #include "hammer.h"
@@ -164,6 +164,10 @@ main(int ac, char **av)
 		if (key == 0)
 			++key;
 		printf("0x%08x\n", key);
+		exit(0);
+	}
+	if (strcmp(av[0], "pseudofs") == 0) {
+		hammer_cmd_pseudofs(av + 1, ac - 1);
 		exit(0);
 	}
 	if (strcmp(av[0], "prune") == 0) {
@@ -343,6 +347,7 @@ usage(int exit_code)
 		"hammer prune <filesystem> from <modulo_time> everything\n"
 		"hammer prune <filesystem> everything\n"
 		"hammer reblock <filesystem> [compact%%] (default 90%%)\n"
+		"hammer pseudofs <dirpath>\n"
 		"hammer history[@offset[,len]] <file-1>...<file-N>\n"
 		"hammer -f blkdevs [-r] show\n"
 		"hammer -f blkdevs blockmap\n"

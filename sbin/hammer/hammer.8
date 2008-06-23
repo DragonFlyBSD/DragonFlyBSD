@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.21 2008/06/17 04:03:38 dillon Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.22 2008/06/23 07:37:54 dillon Exp $
 .Dd December 31, 2007
 .Dt HAMMER 8
 .Os
@@ -260,6 +260,10 @@ It is recommended that separate invocations be used for each data type.
 Btree nodes, inodes, and directories are typically the most important
 elements needing defragmentation.  Data can be defragmented over a longer
 period of time.
+.It Ar pseudofs Ar dirpath
+Create a pseudo-filesystem inside a HAMMER filesystem.  Up to 65535 such
+filesystems can be created.  Each one uses an independant inode numbering
+space making it suitable for use as a replication source or target.
 .El
 .Sh EXAMPLES
 .Sh DIAGNOSTICS
