@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.67 2008/06/21 03:58:09 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.68 2008/06/23 11:57:19 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -66,6 +66,7 @@
 #include <net/bpf.h>
 #include <net/ethernet.h>
 #include <net/vlan/if_vlan_ether.h>
+#include <net/netmsg2.h>
 
 #if defined(INET) || defined(INET6)
 #include <netinet/in.h>
@@ -1315,3 +1316,496 @@ ether_input_dispatch(struct mbuf_chain *chain)
 }
 
 #endif	/* ETHER_INPUT_CHAIN */
+
+#ifdef ETHER_INPUT2
+
+static void
+ether_demux_oncpu(struct ifnet *ifp, struct mbuf *m)
+{
+	struct ether_header *eh;
+	int isr, redispatch;
+	u_short ether_type;
+	struct ip_fw *rule = NULL;
+	struct m_tag *mtag;
+#ifdef NETATALK
+	struct llc *l;
+#endif
+
+	M_ASSERTPKTHDR(m);
+	KASSERT(m->m_len >= ETHER_HDR_LEN,
+		("ether header is no contiguous!\n"));
+
+	eh = mtod(m, struct ether_header *);
+
+	/* Extract info from dummynet tag */
+	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
+	if (mtag != NULL) {
+		rule = ((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
+		KKASSERT(ifp == NULL);
+		ifp = m->m_pkthdr.rcvif;
+
+		m_tag_delete(m, mtag);
+		mtag = NULL;
+	}
+	if (rule)	/* packet is passing the second time */
+		goto post_stats;
+
+#ifdef CARP
+	/*
+	 * XXX: Okay, we need to call carp_forus() and - if it is for
+	 * us jump over code that does the normal check
+	 * "ac_enaddr == ether_dhost". The check sequence is a bit
+	 * different from OpenBSD, so we jump over as few code as
+	 * possible, to catch _all_ sanity checks. This needs
+	 * evaluation, to see if the carp ether_dhost values break any
+	 * of these checks!
+	 */
+	if (ifp->if_carp && carp_forus(ifp->if_carp, eh->ether_dhost))
+		goto post_stats;
+#endif
+
+	/*
+	 * Discard packet if upper layers shouldn't see it because
+	 * it was unicast to a different Ethernet address.  If the
+	 * driver is working properly, then this situation can only
+	 * happen when the interface is in promiscuous mode.
+	 */
+	if (((ifp->if_flags & (IFF_PROMISC | IFF_PPROMISC)) == IFF_PROMISC) &&
+	    (eh->ether_dhost[0] & 1) == 0 &&
+	    bcmp(eh->ether_dhost, IFP2AC(ifp)->ac_enaddr, ETHER_ADDR_LEN)) {
+		m_freem(m);
+		return;
+	}
+
+post_stats:
+	if (IPFW_LOADED && ether_ipfw != 0) {
+		struct ether_header save_eh = *eh;
+
+		/* XXX old crufty stuff, needs to be removed */
+		m_adj(m, sizeof(struct ether_header));
+
+		if (!ether_ipfw_chk(&m, NULL, &rule, eh)) {
+			m_freem(m);
+			return;
+		}
+
+		ether_restore_header(&m, eh, &save_eh);
+		if (m == NULL)
+			return;
+		eh = mtod(m, struct ether_header *);
+	}
+
+	ether_type = ntohs(eh->ether_type);
+	KKASSERT(ether_type != ETHERTYPE_VLAN);
+
+	if (m->m_flags & M_VLANTAG) {
+#ifdef notyet
+		/* XXX */
+		if (vlan_input_p != NULL) {
+			if (m != NULL)
+				vlan_input_p(m, chain);
+		} else {
+			m->m_pkthdr.rcvif->if_noproto++;
+			m_freem(m);
+		}
+#else
+		m->m_pkthdr.rcvif->if_noproto++;
+		m_freem(m);
+#endif
+		return;
+	}
+
+	m_adj(m, sizeof(struct ether_header));
+	redispatch = 0;
+
+	switch (ether_type) {
+#ifdef INET
+	case ETHERTYPE_IP:
+#ifdef notyet
+		if (ipflow_fastforward(m, ifp->if_serializer))
+			return;
+#endif
+		isr = NETISR_IP;
+		break;
+
+	case ETHERTYPE_ARP:
+		if (ifp->if_flags & IFF_NOARP) {
+			/* Discard packet if ARP is disabled on interface */
+			m_freem(m);
+			return;
+		}
+		isr = NETISR_ARP;
+		break;
+#endif
+
+#ifdef INET6
+	case ETHERTYPE_IPV6:
+		isr = NETISR_IPV6;
+		break;
+#endif
+
+#ifdef IPX
+	case ETHERTYPE_IPX:
+		if (ef_inputp && ef_inputp(ifp, eh, m) == 0)
+			return;
+		isr = NETISR_IPX;
+		break;
+#endif
+
+#ifdef NS
+	case 0x8137: /* Novell Ethernet_II Ethernet TYPE II */
+		isr = NETISR_NS;
+		break;
+
+#endif
+
+#ifdef NETATALK
+	case ETHERTYPE_AT:
+		isr = NETISR_ATALK1;
+		break;
+	case ETHERTYPE_AARP:
+		isr = NETISR_AARP;
+		break;
+#endif
+
+	default:
+		/*
+		 * The accurate msgport is not determined before
+		 * we reach here, so redo the dispatching
+		 */
+		redispatch = 1;
+#ifdef IPX
+		if (ef_inputp && ef_inputp(ifp, eh, m) == 0)
+			return;
+#endif
+#ifdef NS
+		checksum = mtod(m, ushort *);
+		/* Novell 802.3 */
+		if ((ether_type <= ETHERMTU) &&
+		    ((*checksum == 0xffff) || (*checksum == 0xE0E0))) {
+			if (*checksum == 0xE0E0) {
+				m->m_pkthdr.len -= 3;
+				m->m_len -= 3;
+				m->m_data += 3;
+			}
+			isr = NETISR_NS;
+			break;
+		}
+#endif
+#ifdef NETATALK
+		if (ether_type > ETHERMTU)
+			goto dropanyway;
+		l = mtod(m, struct llc *);
+		if (l->llc_dsap == LLC_SNAP_LSAP &&
+		    l->llc_ssap == LLC_SNAP_LSAP &&
+		    l->llc_control == LLC_UI) {
+			if (bcmp(&(l->llc_snap_org_code)[0], at_org_code,
+				 sizeof at_org_code) == 0 &&
+			    ntohs(l->llc_snap_ether_type) == ETHERTYPE_AT) {
+				m_adj(m, sizeof(struct llc));
+				isr = NETISR_ATALK2;
+				break;
+			}
+			if (bcmp(&(l->llc_snap_org_code)[0], aarp_org_code,
+				 sizeof aarp_org_code) == 0 &&
+			    ntohs(l->llc_snap_ether_type) == ETHERTYPE_AARP) {
+				m_adj(m, sizeof(struct llc));
+				isr = NETISR_AARP;
+				break;
+			}
+		}
+dropanyway:
+#endif
+		if (ng_ether_input_orphan_p != NULL)
+			ng_ether_input_orphan_p(ifp, m, eh);
+		else
+			m_freem(m);
+		return;
+	}
+
+	if (!redispatch)
+		netisr_run(isr, m);
+	else
+		netisr_dispatch(isr, m);
+}
+
+static void
+ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
+{
+	/*
+	 * Tap the packet off here for a bridge.  bridge_input()
+	 * will return NULL if it has consumed the packet, otherwise
+	 * it gets processed as normal.  Note that bridge_input()
+	 * will always return the original packet if we need to
+	 * process it locally.
+	 */
+	if (ifp->if_bridge) {
+		KASSERT(bridge_input_p != NULL,
+			("%s: if_bridge not loaded!", __func__));
+
+		if(m->m_flags & M_PROTO1) {
+			m->m_flags &= ~M_PROTO1;
+		} else {
+			/* clear M_PROMISC, in case the packets comes from a vlan */
+			/* m->m_flags &= ~M_PROMISC; */
+			m = bridge_input_p(ifp, m);
+			if (m == NULL)
+				return;
+
+			KASSERT(ifp == m->m_pkthdr.rcvif,
+				("bridge_input_p changed rcvif\n"));
+		}
+	}
+
+	/* Handle ng_ether(4) processing, if any */
+	if (ng_ether_input_p != NULL) {
+		ng_ether_input_p(ifp, &m);
+		if (m == NULL)
+			return;
+	}
+
+	/* Continue with upper layer processing */
+	ether_demux_oncpu(ifp, m);
+}
+
+static void
+ether_input_handler(struct netmsg *nmsg)
+{
+	struct netmsg_packet *nmp = (struct netmsg_packet *)nmsg;
+	struct ifnet *ifp;
+	struct mbuf *m;
+
+	m = nmp->nm_packet;
+	M_ASSERTPKTHDR(m);
+	ifp = m->m_pkthdr.rcvif;
+
+	ether_input_oncpu(ifp, m);
+}
+
+static __inline void
+ether_init_netpacket(int num, struct mbuf *m)
+{
+	struct netmsg_packet *pmsg;
+
+	pmsg = &m->m_hdr.mh_netmsg;
+	netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, 0,
+		    ether_input_handler);
+	pmsg->nm_packet = m;
+	pmsg->nm_netmsg.nm_lmsg.u.ms_result = num;
+}
+
+static __inline struct lwkt_port *
+ether_mport(int num, struct mbuf **m0)
+{
+	struct lwkt_port *port;
+	struct mbuf *m = *m0;
+
+	if (num == NETISR_MAX) {
+		/*
+		 * All packets whose target msgports can't be
+		 * determined here are dispatched to netisr0,
+		 * where further dispatching may happen.
+		 */
+		return cpu_portfn(0);
+	}
+
+	port = netisr_find_port(num, &m);
+	if (port == NULL)
+		return NULL;
+
+	*m0 = m;
+	return port;
+}
+
+void
+ether_input_chain2(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
+{
+	struct ether_header *eh, *save_eh, save_eh0;
+	struct lwkt_port *port;
+	uint16_t ether_type;
+	int isr;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+	M_ASSERTPKTHDR(m);
+
+	/* Discard packet if interface is not up */
+	if (!(ifp->if_flags & IFF_UP)) {
+		m_freem(m);
+		return;
+	}
+
+	if (m->m_len < sizeof(struct ether_header)) {
+		/* XXX error in the caller. */
+		m_freem(m);
+		return;
+	}
+	eh = mtod(m, struct ether_header *);
+
+	m->m_pkthdr.rcvif = ifp;
+
+	if (ETHER_IS_MULTICAST(eh->ether_dhost)) {
+		if (bcmp(ifp->if_broadcastaddr, eh->ether_dhost,
+			 ifp->if_addrlen) == 0)
+			m->m_flags |= M_BCAST;
+		else
+			m->m_flags |= M_MCAST;
+		ifp->if_imcasts++;
+	}
+
+	ETHER_BPF_MTAP(ifp, m);
+
+	ifp->if_ibytes += m->m_pkthdr.len;
+
+	if (ifp->if_flags & IFF_MONITOR) {
+		/*
+		 * Interface marked for monitoring; discard packet.
+		 */
+		 m_freem(m);
+		 return;
+	}
+
+	if (ntohs(eh->ether_type) == ETHERTYPE_VLAN &&
+	    (m->m_flags & M_VLANTAG) == 0) {
+		/*
+		 * Extract vlan tag if hardware does not do it for us
+		 */
+		vlan_ether_decap(&m);
+		if (m == NULL)
+			return;
+		eh = mtod(m, struct ether_header *);
+	}
+	ether_type = ntohs(eh->ether_type);
+
+	if ((m->m_flags & M_VLANTAG) && ether_type == ETHERTYPE_VLAN) {
+		/*
+		 * To prevent possible dangerous recursion,
+		 * we don't do vlan-in-vlan
+		 */
+		ifp->if_noproto++;
+		m_freem(m);
+		return;
+	}
+	KKASSERT(ether_type != ETHERTYPE_VLAN);
+
+	/*
+	 * Map ether type to netisr id.
+	 */
+	switch (ether_type) {
+#ifdef INET
+	case ETHERTYPE_IP:
+		isr = NETISR_IP;
+		break;
+
+	case ETHERTYPE_ARP:
+		isr = NETISR_ARP;
+		break;
+#endif
+
+#ifdef INET6
+	case ETHERTYPE_IPV6:
+		isr = NETISR_IPV6;
+		break;
+#endif
+
+#ifdef IPX
+	case ETHERTYPE_IPX:
+		isr = NETISR_IPX;
+		break;
+#endif
+
+#ifdef NS
+	case 0x8137: /* Novell Ethernet_II Ethernet TYPE II */
+		isr = NETISR_NS;
+		break;
+#endif
+
+#ifdef NETATALK
+	case ETHERTYPE_AT:
+		isr = NETISR_ATALK1;
+		break;
+	case ETHERTYPE_AARP:
+		isr = NETISR_AARP;
+		break;
+#endif
+
+	default:
+		/*
+		 * NETISR_MAX is an invalid value; it is chosen to let
+		 * ether_mport() know that we are not able to decide
+		 * this packet's msgport here.
+		 */
+		isr = NETISR_MAX;
+		break;
+	}
+
+	/*
+	 * If the packet is in contiguous memory, following
+	 * m_adj() could ensure that the hidden ether header
+	 * will not be destroyed, else we will have to save
+	 * the ether header for the later restoration.
+	 */
+	if (m->m_pkthdr.len != m->m_len) {
+		save_eh0 = *eh;
+		save_eh = &save_eh0;
+	} else {
+		save_eh = NULL;
+	}
+
+	/*
+	 * Temporarily remove ether header; ether_mport()
+	 * expects a packet without ether header.
+	 */
+	m_adj(m, sizeof(struct ether_header));
+
+	/*
+	 * Find the packet's target msgport.
+	 */
+	port = ether_mport(isr, &m);
+	if (port == NULL) {
+		KKASSERT(m == NULL);
+		return;
+	}
+
+	/*
+	 * Restore ether header.
+	 */
+	if (save_eh != NULL) {
+		ether_restore_header(&m, eh, save_eh);
+		if (m == NULL)
+			return;
+	} else {
+		m->m_data -= ETHER_HDR_LEN;
+		m->m_len += ETHER_HDR_LEN;
+		m->m_pkthdr.len += ETHER_HDR_LEN;
+	}
+
+	/*
+	 * Initialize mbuf's netmsg packet _after_ possible
+	 * ether header restoration, else the initialized
+	 * netmsg packet may be lost during ether header
+	 * restoration.
+	 */
+	ether_init_netpacket(isr, m);
+
+#ifdef ETHER_INPUT_CHAIN
+	if (chain != NULL) {
+		struct mbuf_chain *c;
+		int cpuid;
+
+		m->m_pkthdr.header = port; /* XXX */
+		cpuid = port->mpu_td->td_gd->gd_cpuid;
+
+		c = &chain[cpuid];
+		if (c->mc_head == NULL) {
+			c->mc_head = c->mc_tail = m;
+		} else {
+			c->mc_tail->m_nextpkt = m;
+			c->mc_tail = m;
+		}
+		m->m_nextpkt = NULL;
+	} else
+#endif	/* ETHER_INPUT_CHAIN */
+		lwkt_sendmsg(port, &m->m_hdr.mh_netmsg.nm_netmsg.nm_lmsg);
+}
+
+#endif	/* ETHER_INPUT2 */
