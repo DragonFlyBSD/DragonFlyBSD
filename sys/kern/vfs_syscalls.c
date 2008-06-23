@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.131 2008/06/03 16:16:40 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.132 2008/06/23 17:21:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1887,6 +1887,10 @@ kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor)
 		break;
 	case S_IFWHT:
 		whiteout = 1;
+		break;
+	case S_IFDIR:
+		/* special directories support for HAMMER */
+		vattr.va_type = VDIR;
 		break;
 	default:
 		error = EINVAL;
