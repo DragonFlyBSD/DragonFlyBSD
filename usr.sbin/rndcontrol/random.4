@@ -37,7 +37,7 @@
 .\" OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/rndcontrol/random.4,v 1.9.2.2 2001/11/24 16:14:18 dd Exp $
-.\" $DragonFly: src/usr.sbin/rndcontrol/random.4,v 1.11 2008/04/19 09:33:32 swildner Exp $
+.\" $DragonFly: src/usr.sbin/rndcontrol/random.4,v 1.12 2008/06/23 06:22:15 swildner Exp $
 .\"
 .Dd October 21, 1995
 .Dt RANDOM 4 i386
@@ -107,33 +107,6 @@ or equal to zero and the
 .Va kern.seedenable
 sysctl is non-zero.  A certain
 degree of entropy is added by RC scripts during the boot sequence.
-.Sh ACKNOWLEDGEMENTS
-The current algorithms are implemented by
-.An Robin Carey
-and were ported to
-.Dx
-by
-.An Matthew Dillon .
-.Pp
-Mark Murray
-wrote the
-.Xr rndcontrol 8
-utility for
-.Fx .
-.Pp
-The
-.Em IBAA
-CSPRNG was developed by
-.An Bob Jenkins
-and is used by
-.Pa /dev/random .
-The
-.Em L15
-CSPRNG (based on ARC4)
-was developed by
-.An Robin Carey
-and is used by
-.Pa /dev/urandom .
 .Sh FILES
 .Bl -tag -width Pa -compact
 .It Pa /dev/random
@@ -153,3 +126,31 @@ The
 .Pa urandom
 files appeared in
 .Fx 2.1.5 .
+.Sh AUTHORS
+.An -nosplit
+The current algorithms are implemented by
+.An Robin Carey
+and were ported to
+.Dx
+by
+.An Matthew Dillon .
+.Pp
+.An Mark Murray
+wrote the
+.Xr rndcontrol 8
+utility for
+.Fx .
+.Pp
+The
+.Em IBAA
+CSPRNG was developed by
+.An Bob Jenkins
+and is used by
+.Pa /dev/random .
+The
+.Em L15
+CSPRNG (based on ARC4)
+was developed by
+.An Robin Carey
+and is used by
+.Pa /dev/urandom .
