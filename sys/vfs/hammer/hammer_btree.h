@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.20 2008/06/20 21:24:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.21 2008/06/23 07:31:14 dillon Exp $
  */
 
 /*
@@ -124,7 +124,8 @@ typedef struct hammer_base_elm *hammer_base_elm_t;
 #define HAMMER_LOCALIZE_MISC		0x00000002
 #define HAMMER_LOCALIZE_RESERVED03	0x00000003
 #define HAMMER_LOCALIZE_MASK		0x0000FFFF
-#define HAMMER_LOCALIZE_PSEUDOFS	0xFFFF0000
+#define HAMMER_LOCALIZE_PSEUDOFS_MASK	0xFFFF0000
+#define HAMMER_LOCALIZE_PSEUDOFS_INC	0x00010000
 
 #define HAMMER_MIN_LOCALIZATION		0x00000000U
 #define HAMMER_MAX_LOCALIZATION		0xFFFFFFFFU
@@ -225,7 +226,7 @@ struct hammer_node_ondisk {
 	hammer_off_t	reserved04;	/* future link_right */
 	hammer_off_t	reserved05;
 	hammer_off_t	reserved06;
-	hammer_off_t	reserved07;
+	hammer_off_t	serialno;	/* mirroring support (aggregator) */
 
 	/*
 	 * Element array.  Internal nodes have one less logical element

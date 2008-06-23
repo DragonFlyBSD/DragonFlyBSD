@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.11 2008/06/14 01:42:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.12 2008/06/23 07:31:14 dillon Exp $
  */
 /*
  * HAMMER ioctl's.  This file can be #included from userland
@@ -197,10 +197,26 @@ struct hammer_ioc_synctid {
 	hammer_tid_t		tid;
 };
 
+/*
+ * HAMMER_IOC_MAKE_PSEUDOFS
+ */
+#define HAMMER_IOC_MAXPSEUDONAME	64
+
+struct hammer_ioc_make_pseudofs {
+	struct hammer_ioc_head	head;
+	char			pseudoname[HAMMER_IOC_MAXPSEUDONAME];
+};
+
+struct hammer_ioc_get_pseudofs {
+	struct hammer_ioc_head	head;
+	u_int32_t		pseudoid;
+};
+
 
 #define HAMMERIOC_PRUNE		_IOWR('h',1,struct hammer_ioc_prune)
 #define HAMMERIOC_GETHISTORY	_IOWR('h',2,struct hammer_ioc_history)
 #define HAMMERIOC_REBLOCK	_IOWR('h',3,struct hammer_ioc_reblock)
 #define HAMMERIOC_SYNCTID	_IOWR('h',4,struct hammer_ioc_synctid)
+#define HAMMERIOC_GET_PSEUDOFS	_IOR('h',6,struct hammer_ioc_get_pseudofs)
 
 #endif

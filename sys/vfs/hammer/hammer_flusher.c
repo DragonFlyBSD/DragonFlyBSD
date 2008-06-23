@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.28 2008/06/17 04:02:38 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.29 2008/06/23 07:31:14 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -165,7 +165,6 @@ hammer_flusher_master_thread(void *arg)
 	for (;;) {
 		while (hmp->flusher.group_lock)
 			tsleep(&hmp->flusher.group_lock, 0, "hmrhld", 0);
-		kprintf("S");
 		hmp->flusher.act = hmp->flusher.next;
 		++hmp->flusher.next;
 		hammer_flusher_clean_loose_ios(hmp);
@@ -350,7 +349,7 @@ hammer_flusher_flush_inode(hammer_inode_t ip, hammer_transaction_t trans)
 	if (hammer_must_finalize_undo(hmp)) {
 		hmp->flusher.finalize_want = 1;
 		hammer_lock_ex(&hmp->flusher.finalize_lock);
-		kprintf("HAMMER: Warning: UNDO area too small!");
+		kprintf("HAMMER: Warning: UNDO area too small!\n");
 		hammer_flusher_finalize(trans, 1);
 		hammer_unlock(&hmp->flusher.finalize_lock);
 		hmp->flusher.finalize_want = 0;
@@ -359,7 +358,6 @@ hammer_flusher_flush_inode(hammer_inode_t ip, hammer_transaction_t trans)
 		   trans->hmp->io_running_count > hammer_limit_dirtybufs) {
 		hmp->flusher.finalize_want = 1;
 		hammer_lock_ex(&hmp->flusher.finalize_lock);
-		kprintf("t");
 		hammer_flusher_finalize(trans, 0);
 		hammer_unlock(&hmp->flusher.finalize_lock);
 		hmp->flusher.finalize_want = 0;

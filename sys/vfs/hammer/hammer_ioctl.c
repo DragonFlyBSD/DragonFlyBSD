@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.21 2008/06/20 21:24:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.22 2008/06/23 07:31:14 dillon Exp $
  */
 
 #include "hammer.h"
@@ -40,6 +40,9 @@ static int hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 				struct hammer_ioc_history *hist);
 static int hammer_ioc_synctid(hammer_transaction_t trans, hammer_inode_t ip,
 				struct hammer_ioc_synctid *std);
+static int hammer_ioc_get_pseudofs(hammer_transaction_t trans,
+				hammer_inode_t ip,
+				struct hammer_ioc_get_pseudofs *pfs);
 
 int
 hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
@@ -70,6 +73,10 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 	case HAMMERIOC_SYNCTID:
 		error = hammer_ioc_synctid(&trans, ip,
 					(struct hammer_ioc_synctid *)data);
+		break;
+	case HAMMERIOC_GET_PSEUDOFS:
+		error = hammer_ioc_get_pseudofs(&trans, ip,
+				    (struct hammer_ioc_get_pseudofs *)data);
 		break;
 	default:
 		error = EOPNOTSUPP;
@@ -151,8 +158,10 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 		 */
 		cursor.key_beg.key = hist->key;
 		cursor.key_end.key = HAMMER_MAX_KEY;
-		cursor.key_beg.localization = HAMMER_LOCALIZE_MISC;
-		cursor.key_end.localization = HAMMER_LOCALIZE_MISC;
+		cursor.key_beg.localization = ip->obj_localization + 
+					      HAMMER_LOCALIZE_MISC;
+		cursor.key_end.localization = ip->obj_localization + 
+					      HAMMER_LOCALIZE_MISC;
 
 		switch(ip->ino_data.obj_type) {
 		case HAMMER_OBJTYPE_REGFILE:
@@ -178,8 +187,10 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 		cursor.key_end.key = 0;
 		cursor.key_beg.rec_type = HAMMER_RECTYPE_INODE;
 		cursor.key_end.rec_type = HAMMER_RECTYPE_INODE;
-		cursor.key_beg.localization = HAMMER_LOCALIZE_INODE;
-		cursor.key_end.localization = HAMMER_LOCALIZE_INODE;
+		cursor.key_beg.localization = ip->obj_localization +
+					      HAMMER_LOCALIZE_INODE;
+		cursor.key_end.localization = ip->obj_localization +
+					      HAMMER_LOCALIZE_INODE;
 	}
 
 	error = hammer_btree_first(&cursor);
@@ -328,5 +339,16 @@ hammer_ioc_synctid(hammer_transaction_t trans, hammer_inode_t ip,
 		break;
 	}
 	return(error);
+}
+
+/*
+ * Return the pseudoid for a pseudo-filesystem.
+ */
+static int
+hammer_ioc_get_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
+			struct hammer_ioc_get_pseudofs *pfs)
+{
+	pfs->pseudoid = ip->obj_localization;
+	return(0);
 }
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.89 2008/06/21 20:21:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.90 2008/06/23 07:31:14 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -813,7 +813,7 @@ void hammer_clear_undo_history(hammer_mount_t hmp);
 enum vtype hammer_get_vnode_type(u_int8_t obj_type);
 int hammer_get_dtype(u_int8_t obj_type);
 u_int8_t hammer_get_obj_type(enum vtype vtype);
-int64_t hammer_directory_namekey(void *name, int len);
+int64_t hammer_directory_namekey(const void *name, int len);
 int	hammer_nohistory(hammer_inode_t ip);
 
 int	hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
@@ -943,7 +943,7 @@ void hammer_wait_inode(hammer_inode_t ip);
 
 int  hammer_create_inode(struct hammer_transaction *trans, struct vattr *vap,
 			struct ucred *cred, struct hammer_inode *dip,
-			struct hammer_inode **ipp);
+			int pseudofs, struct hammer_inode **ipp);
 void hammer_rel_inode(hammer_inode_t ip, int flush);
 int hammer_reload_inode(hammer_inode_t ip, void *arg __unused);
 int hammer_ino_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2);
@@ -953,7 +953,7 @@ void hammer_test_inode(hammer_inode_t ip);
 void hammer_inode_unloadable_check(hammer_inode_t ip, int getvp);
 
 int  hammer_ip_add_directory(struct hammer_transaction *trans,
-			hammer_inode_t dip, struct namecache *ncp,
+			hammer_inode_t dip, const char *name, int bytes,
 			hammer_inode_t nip);
 int  hammer_ip_del_directory(struct hammer_transaction *trans,
 			hammer_cursor_t cursor, hammer_inode_t dip,

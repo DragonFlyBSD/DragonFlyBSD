@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.26 2008/06/20 21:24:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.27 2008/06/23 07:31:14 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -419,7 +419,7 @@ hammer_nohistory(hammer_inode_t ip)
  * artificial directory entries such as "." and "..".
  */
 int64_t
-hammer_directory_namekey(void *name, int len)
+hammer_directory_namekey(const void *name, int len)
 {
 	int64_t key;
 

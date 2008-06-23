@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.73 2008/06/21 20:21:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.74 2008/06/23 07:31:14 dillon Exp $
  */
 
 #include "hammer.h"
@@ -581,31 +581,33 @@ hammer_mem_done(hammer_cursor_t cursor)
  * a unique in-memory record, and may be modified a second time when the
  * record is synchronized to disk.  In particular, the low 32 bits cannot be
  * all 0's when synching to disk, which is not handled here.
+ *
+ * NOTE: bytes does not include any terminating \0 on name, and name might
+ * not be terminated.
  */
 int
 hammer_ip_add_directory(struct hammer_transaction *trans,
-		     struct hammer_inode *dip, struct namecache *ncp,
+		     struct hammer_inode *dip, const char *name, int bytes,
 		     struct hammer_inode *ip)
 {
 	hammer_record_t record;
 	int error;
-	int bytes;
 
-	bytes = ncp->nc_nlen;	/* NOTE: terminating \0 is NOT included */
 	record = hammer_alloc_mem_record(dip, HAMMER_ENTRY_SIZE(bytes));
 	if (++trans->hmp->namekey_iterator == 0)
 		++trans->hmp->namekey_iterator;
 
 	record->type = HAMMER_MEM_RECORD_ADD;
-	record->leaf.base.localization = HAMMER_LOCALIZE_MISC;
+	record->leaf.base.localization = dip->obj_localization +
+					 HAMMER_LOCALIZE_MISC;
 	record->leaf.base.obj_id = dip->obj_id;
-	record->leaf.base.key = hammer_directory_namekey(ncp->nc_name, bytes);
+	record->leaf.base.key = hammer_directory_namekey(name, bytes);
 	record->leaf.base.key += trans->hmp->namekey_iterator;
 	record->leaf.base.rec_type = HAMMER_RECTYPE_DIRENTRY;
 	record->leaf.base.obj_type = ip->ino_leaf.base.obj_type;
 	record->data->entry.obj_id = ip->obj_id;
 	record->data->entry.localization = ip->obj_localization;
-	bcopy(ncp->nc_name, record->data->entry.name, bytes);
+	bcopy(name, record->data->entry.name, bytes);
 
 	++ip->ino_data.nlinks;
 	hammer_modify_inode(ip, HAMMER_INODE_DDIRTY);
@@ -771,7 +773,7 @@ hammer_ip_get_bulk(hammer_inode_t ip, off_t file_offset, int bytes)
 	leaf.base.rec_type = HAMMER_RECTYPE_DATA;
 	leaf.base.obj_type = 0;			/* unused */
 	leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;	/* unused */
-	leaf.base.localization = HAMMER_LOCALIZE_MISC;
+	leaf.base.localization = ip->obj_localization + HAMMER_LOCALIZE_MISC;
 	leaf.data_len = bytes;
 
 	record = hammer_rec_rb_tree_RB_LOOKUP_INFO(&ip->rec_tree, &leaf);
@@ -843,7 +845,8 @@ hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
 	record->leaf.base.obj_type = ip->ino_leaf.base.obj_type;
 	record->leaf.base.obj_id = ip->obj_id;
 	record->leaf.base.key = file_offset + bytes;
-	record->leaf.base.localization = HAMMER_LOCALIZE_MISC;
+	record->leaf.base.localization = ip->obj_localization +
+					 HAMMER_LOCALIZE_MISC;
 	record->leaf.data_len = bytes;
 	hammer_crc_set_leaf(data, &record->leaf);
 	flags = record->flags;
@@ -1585,7 +1588,8 @@ hammer_ip_delete_range(hammer_cursor_t cursor, hammer_inode_t ip,
 	KKASSERT(trans->type == HAMMER_TRANS_FLS);
 retry:
 	hammer_normalize_cursor(cursor);
-	cursor->key_beg.localization = HAMMER_LOCALIZE_MISC;
+	cursor->key_beg.localization = ip->obj_localization +
+				       HAMMER_LOCALIZE_MISC;
 	cursor->key_beg.obj_id = ip->obj_id;
 	cursor->key_beg.create_tid = 0;
 	cursor->key_beg.delete_tid = 0;
@@ -1715,7 +1719,8 @@ hammer_ip_delete_range_all(hammer_cursor_t cursor, hammer_inode_t ip,
 	KKASSERT(trans->type == HAMMER_TRANS_FLS);
 retry:
 	hammer_normalize_cursor(cursor);
-	cursor->key_beg.localization = HAMMER_LOCALIZE_MISC;
+	cursor->key_beg.localization = ip->obj_localization +
+				       HAMMER_LOCALIZE_MISC;
 	cursor->key_beg.obj_id = ip->obj_id;
 	cursor->key_beg.create_tid = 0;
 	cursor->key_beg.delete_tid = 0;
@@ -1935,7 +1940,8 @@ hammer_ip_check_directory_empty(hammer_transaction_t trans, hammer_inode_t ip)
 	 */
 	hammer_init_cursor(trans, &cursor, &ip->cache[1], ip);
 
-	cursor.key_beg.localization = HAMMER_LOCALIZE_MISC;
+	cursor.key_beg.localization = ip->obj_localization +
+				      HAMMER_LOCALIZE_MISC;
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.create_tid = 0;
 	cursor.key_beg.delete_tid = 0;

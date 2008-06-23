@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.81 2008/06/21 20:21:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.82 2008/06/23 07:31:14 dillon Exp $
  */
 
 #include "hammer.h"
@@ -355,7 +355,7 @@ loop:
 	 */
 retry:
 	hammer_init_cursor(trans, &cursor, (dip ? &dip->cache[0] : NULL), NULL);
-	cursor.key_beg.localization = HAMMER_LOCALIZE_INODE;
+	cursor.key_beg.localization = localization + HAMMER_LOCALIZE_INODE;
 	cursor.key_beg.obj_id = ip->obj_id;
 	cursor.key_beg.key = 0;
 	cursor.key_beg.create_tid = 0;
@@ -422,16 +422,6 @@ retry:
 		}
 		ip->flags |= HAMMER_INODE_ONDISK;
 	} else {
-		/*
-		 * Do not panic on read-only accesses which fail, particularly
-		 * historical accesses where the snapshot might not have
-		 * complete connectivity.
-		 */
-		if ((flags & HAMMER_INODE_RO) == 0) {
-			kprintf("hammer_get_inode: failed ip %p obj_id %016llx cursor %p error %d\n",
-				ip, ip->obj_id, &cursor, *errorp);
-			Debugger("x");
-		}
 		if (ip->flags & HAMMER_INODE_RSV_INODES) {
 			ip->flags &= ~HAMMER_INODE_RSV_INODES; /* sanity */
 			--hmp->rsv_inodes;
@@ -457,20 +447,55 @@ retry:
 int
 hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 		    struct ucred *cred, hammer_inode_t dip,
-		    struct hammer_inode **ipp)
+		    int pseudofs, struct hammer_inode **ipp)
 {
 	hammer_mount_t hmp;
 	hammer_inode_t ip;
 	uid_t xuid;
+	u_int32_t localization;
+	int error;
 
 	hmp = trans->hmp;
+
+	/*
+	 * Assign the localization domain.  If if dip is NULL we are creating
+	 * a pseudo-fs and must locate an unused localization domain.
+	 */
+	if (pseudofs) {
+		for (localization = HAMMER_DEF_LOCALIZATION;
+		     localization < HAMMER_LOCALIZE_PSEUDOFS_MASK;
+		     localization += HAMMER_LOCALIZE_PSEUDOFS_INC) {
+			ip = hammer_get_inode(trans, NULL, HAMMER_OBJID_ROOT,
+					      hmp->asof, localization,
+					      0, &error);
+			if (ip == NULL) {
+				if (error != ENOENT)
+					return(error);
+				break;
+			}
+			if (ip)
+				hammer_rel_inode(ip, 0);
+		}
+	} else {
+		localization = dip->obj_localization;
+	}
+
 	ip = kmalloc(sizeof(*ip), M_HAMMER, M_WAITOK|M_ZERO);
 	++hammer_count_inodes;
 	++hmp->count_inodes;
-	ip->obj_id = hammer_alloc_objid(trans, dip);
+
+	/*
+	 * Allocate a new object id.  If creating a new pseudo-fs the
+	 * obj_id is 1.
+	 */
+	if (pseudofs)
+		ip->obj_id = HAMMER_OBJID_ROOT;
+	else
+		ip->obj_id = hammer_alloc_objid(trans, dip);
+	ip->obj_localization = localization;
+
 	KKASSERT(ip->obj_id != 0);
 	ip->obj_asof = hmp->asof;
-	ip->obj_localization = dip->obj_localization;
 	ip->hmp = hmp;
 	ip->flush_state = HAMMER_FST_IDLE;
 	ip->flags = HAMMER_INODE_DDIRTY |
@@ -489,13 +514,15 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 
 	/*
 	 * A nohistory designator on the parent directory is inherited by
-	 * the child.
+	 * the child.  We will do this even for pseudo-fs creation... the
+	 * sysad can turn it off.
 	 */
 	ip->ino_data.uflags = dip->ino_data.uflags &
 			      (SF_NOHISTORY|UF_NOHISTORY|UF_NODUMP);
 
 	ip->ino_leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
-	ip->ino_leaf.base.localization = HAMMER_LOCALIZE_INODE;
+	ip->ino_leaf.base.localization = ip->obj_localization +
+					 HAMMER_LOCALIZE_INODE;
 	ip->ino_leaf.base.obj_id = ip->obj_id;
 	ip->ino_leaf.base.key = 0;
 	ip->ino_leaf.base.create_tid = 0;
@@ -507,7 +534,19 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	ip->ino_data.version = HAMMER_INODE_DATA_VERSION;
 	ip->ino_data.mode = vap->va_mode;
 	ip->ino_data.ctime = trans->time;
-	ip->ino_data.parent_obj_id = (dip) ? dip->ino_leaf.base.obj_id : 0;
+
+	/*
+	 * Setup the ".." pointer.  This only needs to be done for directories
+	 * but we do it for all objects as a recovery aid.
+	 *
+	 * The parent_obj_localization field only applies to pseudo-fs roots.
+	 */
+	ip->ino_data.parent_obj_id = dip->ino_leaf.base.obj_id;
+	if (ip->ino_data.obj_type == HAMMER_OBJTYPE_DIRECTORY &&
+	    ip->obj_id == HAMMER_OBJID_ROOT) {
+		ip->ino_data.ext.obj.parent_obj_localization = 
+						dip->obj_localization;
+	}
 
 	switch(ip->ino_leaf.base.obj_type) {
 	case HAMMER_OBJTYPE_CDEV:
@@ -574,7 +613,8 @@ retry:
 	if ((ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DELONDISK)) ==
 	    HAMMER_INODE_ONDISK) {
 		hammer_normalize_cursor(cursor);
-		cursor->key_beg.localization = HAMMER_LOCALIZE_INODE;
+		cursor->key_beg.localization = ip->obj_localization + 
+					       HAMMER_LOCALIZE_INODE;
 		cursor->key_beg.obj_id = ip->obj_id;
 		cursor->key_beg.key = 0;
 		cursor->key_beg.create_tid = 0;
@@ -730,7 +770,8 @@ retry:
 	}
 
 	hammer_normalize_cursor(cursor);
-	cursor->key_beg.localization = HAMMER_LOCALIZE_INODE;
+	cursor->key_beg.localization = ip->obj_localization + 
+				       HAMMER_LOCALIZE_INODE;
 	cursor->key_beg.obj_id = ip->obj_id;
 	cursor->key_beg.key = 0;
 	cursor->key_beg.create_tid = 0;

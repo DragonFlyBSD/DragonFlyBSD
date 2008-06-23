@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.40 2008/06/20 21:24:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.41 2008/06/23 07:31:14 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -555,13 +555,11 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
  * modifications to the contents of this structure will result in a
  * replacement operation.
  *
- * { parent_obj_id, parent_localization } is only valid for directories
- * (which cannot be hard-linked), and specifies the parent directory obj_id.
- * The localzation field is used to cross pseudo-filesystem boundaries.
- * This field will also be set for non-directory inodes as a recovery aid,
- * but can wind up holding stale information.  However, since object id's are
- * not reused, the worse that happens is that the recovery code is unable
- * to use it.
+ * parent_obj_id is only valid for directories (which cannot be hard-linked),
+ * and specifies the parent directory obj_id.  This field will also be set
+ * for non-directory inodes as a recovery aid, but can wind up holding
+ * stale information.  However, since object id's are not reused, the worse
+ * that happens is that the recovery code is unable to use it.
  *
  * NOTE: Future note on directory hardlinks.  We can implement a record type
  * which allows us to point to multiple parent directories.
@@ -582,13 +580,17 @@ struct hammer_inode_data {
 	uuid_t	  gid;
 
 	u_int8_t  obj_type;
-	u_int8_t  reserved01;
-	u_int16_t parent_localization; /* note: upper 16 bits only */
+	u_int8_t  cap_flags;	/* capability support flags (extension) */
+	u_int16_t reserved02;
 	u_int32_t reserved03;	/* RESERVED FOR POSSIBLE FUTURE BIRTHTIME */
 	u_int64_t nlinks;	/* hard links */
 	u_int64_t size;		/* filesystem object size */
 	union {
-		char	reserved06[24];
+		struct {
+			char	reserved06[16];
+			u_int32_t parent_obj_localization;
+			u_int32_t integrity_crc;
+		} obj;
 		char	symlink[24];	/* HAMMER_INODE_BASESYMLEN */
 	} ext;
 	u_int64_t mtime;	/* mtime must be second-to-last */

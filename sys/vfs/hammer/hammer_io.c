@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.45 2008/06/21 20:21:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.46 2008/06/23 07:31:14 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -1088,7 +1088,7 @@ hammer_io_direct_uncache(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf)
 	iinfo.obj_id = leaf->base.obj_id;
 	iinfo.obj_asof = 0;	/* unused */
 	iinfo.obj_localization = leaf->base.localization &
-				 HAMMER_LOCALIZE_PSEUDOFS;
+				 HAMMER_LOCALIZE_PSEUDOFS_MASK;
 	iinfo.u.leaf = leaf;
 	hammer_scan_inode_snapshots(hmp, &iinfo,
 				    hammer_io_direct_uncache_callback,
