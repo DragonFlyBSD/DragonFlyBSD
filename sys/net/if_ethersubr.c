@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.70 2008/06/23 14:29:56 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.71 2008/06/23 14:40:12 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -1529,7 +1529,7 @@ dropanyway:
 		netisr_dispatch(isr, m);
 }
 
-static void
+void
 ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
 {
 	if ((ifp->if_flags & (IFF_UP | IFF_MONITOR)) != IFF_UP) {
