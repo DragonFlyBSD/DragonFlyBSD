@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.68 2008/06/23 11:57:19 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.69 2008/06/23 14:24:48 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -1532,6 +1532,15 @@ dropanyway:
 static void
 ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
 {
+	if ((ifp->if_flags & (IFF_UP | IFF_MONITOR)) != IFF_UP) {
+		/*
+		 * Receiving interface's flags are changed, when this
+		 * packet is waiting for processing; discard it.
+		 */
+		m_freem(m);
+		return;
+	}
+
 	/*
 	 * Tap the packet off here for a bridge.  bridge_input()
 	 * will return NULL if it has consumed the packet, otherwise
