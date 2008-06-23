@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.41 2008/06/23 07:31:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.42 2008/06/23 21:42:48 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -209,6 +209,12 @@ typedef u_int32_t hammer_crc_t;
 	(HAMMER_BUFFERS_PER_LARGEBLOCK - 1)
 #define HAMMER_BUFFERS_PER_LARGEBLOCK_MASK64		\
 	((hammer_off_t)HAMMER_BUFFERS_PER_LARGEBLOCK_MASK)
+
+/*
+ * Maximum number of mirrors operating in master mode (multi-master
+ * clustering and mirroring).
+ */
+#define HAMMER_MAX_MASTERS		16
 
 /*
  * The blockmap is somewhat of a degenerate structure.  HAMMER only actually

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.90 2008/06/23 07:31:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.91 2008/06/23 21:42:48 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -630,6 +630,7 @@ struct hammer_mount {
 	int	ronly;
 	int	nvolumes;
 	int	volume_iterator;
+	int	masterid;	/* -1 or 0-15 - clustering and mirroring */
 	int	rsv_inodes;	/* reserved space due to dirty inodes */
 	int	rsv_databufs;	/* reserved space due to dirty buffers */
 	int	rsv_databytes;	/* reserved space due to record data */
@@ -801,9 +802,8 @@ u_int32_t hammer_to_unix_xid(uuid_t *uuid);
 void hammer_guid_to_uuid(uuid_t *uuid, u_int32_t guid);
 void	hammer_time_to_timespec(u_int64_t xtime, struct timespec *ts);
 u_int64_t hammer_timespec_to_time(struct timespec *ts);
-hammer_tid_t hammer_now_tid(void);
 hammer_tid_t hammer_str_to_tid(const char *str);
-hammer_tid_t hammer_alloc_objid(hammer_transaction_t trans, hammer_inode_t dip);
+hammer_tid_t hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip);
 void hammer_clear_objid(hammer_inode_t dip);
 void hammer_destroy_objid_cache(hammer_mount_t hmp);
 

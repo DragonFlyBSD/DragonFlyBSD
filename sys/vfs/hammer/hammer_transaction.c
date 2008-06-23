@@ -31,12 +31,12 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.19 2008/06/20 21:24:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.20 2008/06/23 21:42:48 dillon Exp $
  */
 
 #include "hammer.h"
 
-static hammer_tid_t hammer_alloc_tid(hammer_transaction_t trans, int count);
+static hammer_tid_t hammer_alloc_tid(hammer_mount_t hmp, int count);
 
 
 /*
@@ -104,7 +104,7 @@ hammer_start_transaction_fls(struct hammer_transaction *trans,
 	trans->hmp = hmp;
 	trans->rootvol = hammer_get_root_volume(hmp, &error);
 	KKASSERT(error == 0);
-	trans->tid = hammer_alloc_tid(trans, 1);
+	trans->tid = hammer_alloc_tid(hmp, 1);
 	trans->sync_lock_refs = 1;
 
 	getmicrotime(&tv);
@@ -125,34 +125,30 @@ hammer_done_transaction(struct hammer_transaction *trans)
 }
 
 /*
- * Note: Successive transaction ids must be at least 2 apart so the
- * B-Tree code can make a separator that does not match either the
- * left or right hand sides.
+ * Allocate (count) TIDs.  If running in multi-master mode the returned
+ * base will be aligned to a 16-count plus the master id (0-15).  
+ * Multi-master mode allows non-conflicting to run and new objects to be
+ * created on multiple masters in parallel.  The transaction id identifies
+ * the original master.  The object_id is also subject to this rule in
+ * order to allow objects to be created on multiple masters in parallel.
+ *
+ * Directories may pre-allocate a large number of object ids (100,000).
+ *
+ * NOTE: There is no longer a requirement that successive transaction
+ * ids be 2 apart for separator generation.
  */
 static hammer_tid_t
-hammer_alloc_tid(hammer_transaction_t trans, int count)
+hammer_alloc_tid(hammer_mount_t hmp, int count)
 {
-#if 0
-	struct timespec ts;
-#endif
 	hammer_tid_t tid;
+	int multiplier = (hmp->masterid < 0) ? 1 : HAMMER_MAX_MASTERS;
 
-#if 0
-	getnanotime(&ts);
-#endif
-	tid = time_second * 1000000000LL;
-#if 0
-	tid = ts.tv_sec * 1000000000LL + ts.tv_nsec;
-#endif
-	if (tid < trans->hmp->next_tid)
-		tid = trans->hmp->next_tid;
+	tid = (hmp->next_tid + multiplier) & ~(hammer_tid_t)(multiplier - 1);
 	if (tid >= 0xFFFFFFFFFFFFF000ULL)
 		panic("hammer_start_transaction: Ran out of TIDs!");
-	trans->hmp->next_tid = tid + count * 2;
-	if (hammer_debug_tid) {
-		kprintf("alloc_tid %016llx (0x%08x)\n",
-			tid, (int)(tid / 1000000000LL));
-	}
+	hmp->next_tid = tid + count * multiplier;
+	if (hammer_debug_tid)
+		kprintf("alloc_tid %016llx\n", tid);
 	return(tid);
 }
 
@@ -160,43 +156,47 @@ hammer_alloc_tid(hammer_transaction_t trans, int count)
  * Allocate an object id
  */
 hammer_tid_t
-hammer_alloc_objid(hammer_transaction_t trans, hammer_inode_t dip)
+hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip)
 {
 	hammer_objid_cache_t ocp;
 	hammer_tid_t tid;
 
 	while ((ocp = dip->objid_cache) == NULL) {
-		if (trans->hmp->objid_cache_count < OBJID_CACHE_SIZE) {
+		if (hmp->objid_cache_count < OBJID_CACHE_SIZE) {
 			ocp = kmalloc(sizeof(*ocp), M_HAMMER, M_WAITOK|M_ZERO);
-			ocp->next_tid = hammer_alloc_tid(trans,
-							 OBJID_CACHE_BULK);
+			ocp->next_tid = hammer_alloc_tid(hmp, OBJID_CACHE_BULK);
 			ocp->count = OBJID_CACHE_BULK;
-			TAILQ_INSERT_HEAD(&trans->hmp->objid_cache_list, ocp,
-					  entry);
-			++trans->hmp->objid_cache_count;
+			TAILQ_INSERT_HEAD(&hmp->objid_cache_list, ocp, entry);
+			++hmp->objid_cache_count;
 			/* may have blocked, recheck */
 			if (dip->objid_cache == NULL) {
 				dip->objid_cache = ocp;
 				ocp->dip = dip;
 			}
 		} else {
-			ocp = TAILQ_FIRST(&trans->hmp->objid_cache_list);
+			ocp = TAILQ_FIRST(&hmp->objid_cache_list);
 			if (ocp->dip)
 				ocp->dip->objid_cache = NULL;
 			dip->objid_cache = ocp;
 			ocp->dip = dip;
 		}
 	}
-	TAILQ_REMOVE(&trans->hmp->objid_cache_list, ocp, entry);
+	TAILQ_REMOVE(&hmp->objid_cache_list, ocp, entry);
+
+	/*
+	 * The TID is incremented by 1 or by 16 depending what mode the
+	 * mount is operating in.
+	 */
 	tid = ocp->next_tid;
-	ocp->next_tid += 2;
+	ocp->next_tid += (hmp->masterid < 0) ? 1 : HAMMER_MAX_MASTERS;
+
 	if (--ocp->count == 0) {
 		dip->objid_cache = NULL;
-		--trans->hmp->objid_cache_count;
+		--hmp->objid_cache_count;
 		ocp->dip = NULL;
 		kfree(ocp, M_HAMMER);
 	} else {
-		TAILQ_INSERT_TAIL(&trans->hmp->objid_cache_list, ocp, entry);
+		TAILQ_INSERT_TAIL(&hmp->objid_cache_list, ocp, entry);
 	}
 	return(tid);
 }

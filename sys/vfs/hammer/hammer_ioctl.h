@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.12 2008/06/23 07:31:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.13 2008/06/23 21:42:48 dillon Exp $
  */
 /*
  * HAMMER ioctl's.  This file can be #included from userland
@@ -210,6 +210,7 @@ struct hammer_ioc_make_pseudofs {
 struct hammer_ioc_get_pseudofs {
 	struct hammer_ioc_head	head;
 	u_int32_t		pseudoid;
+	int			masterid;
 };
 
 

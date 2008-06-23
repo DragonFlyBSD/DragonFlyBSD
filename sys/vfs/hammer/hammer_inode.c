@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.82 2008/06/23 07:31:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.83 2008/06/23 21:42:48 dillon Exp $
  */
 
 #include "hammer.h"
@@ -491,7 +491,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	if (pseudofs)
 		ip->obj_id = HAMMER_OBJID_ROOT;
 	else
-		ip->obj_id = hammer_alloc_objid(trans, dip);
+		ip->obj_id = hammer_alloc_objid(hmp, dip);
 	ip->obj_localization = localization;
 
 	KKASSERT(ip->obj_id != 0);

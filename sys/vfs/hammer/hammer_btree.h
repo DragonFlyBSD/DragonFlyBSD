@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.21 2008/06/23 07:31:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.22 2008/06/23 21:42:48 dillon Exp $
  */
 
 /*
@@ -139,7 +139,7 @@ typedef struct hammer_base_elm *hammer_base_elm_t;
  */
 struct hammer_btree_internal_elm {
 	struct hammer_base_elm base;
-	hammer_off_t	serialno;		/* mirroring support */
+	hammer_tid_t	mirror_tid;		/* mirroring support */
 	hammer_off_t	subtree_offset;
 	int32_t		unused02;
 	int32_t		unused03;
@@ -152,7 +152,7 @@ struct hammer_btree_internal_elm {
  */
 struct hammer_btree_leaf_elm {
 	struct hammer_base_elm base;
-	hammer_off_t	serialno;		/* mirroring support */
+	hammer_tid_t	unused01;
 	hammer_off_t	data_offset;
 	int32_t		data_len;
 	hammer_crc_t	data_crc;
@@ -226,7 +226,7 @@ struct hammer_node_ondisk {
 	hammer_off_t	reserved04;	/* future link_right */
 	hammer_off_t	reserved05;
 	hammer_off_t	reserved06;
-	hammer_off_t	serialno;	/* mirroring support (aggregator) */
+	hammer_tid_t	mirror_tid;	/* mirroring support (aggregator) */
 
 	/*
 	 * Element array.  Internal nodes have one less logical element
