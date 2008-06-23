@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.23 2008/06/23 07:37:54 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.24 2008/06/23 21:31:56 dillon Exp $
  */
 
 #include "hammer.h"
@@ -171,11 +171,11 @@ main(int ac, char **av)
 		exit(0);
 	}
 	if (strcmp(av[0], "prune") == 0) {
-		hammer_cmd_prune(av + 1, ac - 1);
+		hammer_cmd_softprune(av + 1, ac - 1, 0);
 		exit(0);
 	}
-	if (strcmp(av[0], "softprune") == 0) {
-		hammer_cmd_softprune(av + 1, ac - 1);
+	if (strcmp(av[0], "prune-everything") == 0) {
+		hammer_cmd_softprune(av + 1, ac - 1, 1);
 		exit(0);
 	}
 	if (strcmp(av[0], "bstats") == 0) {
@@ -338,14 +338,10 @@ usage(int exit_code)
 		"hammer [-x] now[64]\n"
 		"hammer [-t timeout] [-c cyclefile] ....\n"
 		"hammer stamp[64] <time>\n"
-		"hammer softprune <softlink-dir>\n"
+		"hammer prune <softlink-dir>\n"
+		"hammer prune-everything <filesystem>\n"
 		"hammer bstats <interval>\n"
 		"hammer iostats <interval>\n"
-		"hammer prune <filesystem> [using <configfile>]\n"
-		"hammer prune <filesystem> from <modulo_time> to "
-				"<modulo_time> every <modulo_time>\n"
-		"hammer prune <filesystem> from <modulo_time> everything\n"
-		"hammer prune <filesystem> everything\n"
 		"hammer reblock <filesystem> [compact%%] (default 90%%)\n"
 		"hammer pseudofs <dirpath>\n"
 		"hammer history[@offset[,len]] <file-1>...<file-N>\n"

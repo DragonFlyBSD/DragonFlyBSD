@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.22 2008/06/23 07:37:54 dillon Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.23 2008/06/23 21:31:55 dillon Exp $
 .Dd December 31, 2007
 .Dt HAMMER 8
 .Os
@@ -144,12 +144,8 @@ output as 0.
 .It Ar namekey32 Ar filename
 Generate the top 32 bits of a HAMMER 64 bit directory hash for the specified
 file name.
-.It Ar softprune Ar softlink-dir
-Prune the filesystem based on previously created snapshot softlinks.  This
-is a more convenient method of pruning then the fixed timestamp ranges used
-in the
-.Ar prune
-command.
+.It Ar prune Ar softlink-dir
+Prune the filesystem based on previously created snapshot softlinks. 
 The target directory is expected to contain softlinks pointing to
 snapshots of the filesystems you wish to retain.  The directory is scanned
 non-recursively and the mount points and transaction ids stored in the
@@ -157,7 +153,7 @@ softlinks are extracted and sorted.
 The filesystem is then explicitly pruned according to what is found.
 Cleaning out portions of the filesystem is as simple as removing a softlink
 and then running the
-.Ar softprune
+.Ar prune
 command.
 .Pp
 As a safety measure pruning only occurs if one or more softlinks are found
@@ -176,59 +172,20 @@ Example, lets say your snapshot directory contains the following links:
 .Pp
 .Li "lrwxr-xr-x  1 root  wheel  29 May 31 17:59 snap3 -> /usr/obj/@@0x10d2cd222adee364"
 .Pp
-If you were to run the softprune command on this directory, then the HAMMER
+If you were to run the prune command on this directory, then the HAMMER
 /usr/obj mount will be pruned to retain the above three snapshots.
 In addition, modifications made to the filesystem older then the oldest
 snapshot will be destroyed and potentially fine-grained modifications made
 to the filesystem more recently then the most recent snapshot will be
 retained.
 .Pp
-If you then delete the snap2 softlink and rerun the softprune command,
+If you then delete the snap2 softlink and rerun the prune command,
 modifications pertaining to that snapshot would be destroyed.
-.It Ar prune Ar filesystem Ar from Ar #{smhdMy} Ar to Ar #{smhdMy} Ar every Ar #{smhdMy}
-.It Ar prune Ar filesystem Ar from Ar #{smhdMy} Ar everything
-.It Ar prune Ar filesystem Ar everything
-.It Ar prune Ar filesystem Op Ar using Ar filename
-Prune the filesystem, removing deleted records to free up physical disk
-space.  Specify a time range between the nearest modulo 0 boundary
-and prune the tree to the specified granularity within that range.
+.It Ar prune-everything Ar filesystem
+This command will remove all historical records from the filesystem.
+This directive is not normally used on a production system.
 .Pp
-The filesystem specification should be the root of any mounted HAMMER
-filesystem.  This command uses a filesystem ioctl to issue the pruning
-operation.  If you specify just the filesystem with no other parameters
-all prune directives matching that filesystem in the /etc/hammer.conf file
-will be used.  If you specify a
-.Ar using
-file then those directives contained in the file matching
-.Ar filesystem
-will be used.  Multiple directives may be specified when extracting from
-a file.  The directives must be in the same format: "prune ....", in
-ascending time order (per filesystem).  Matching prune elements must not
-have overlapping time specifications.
-.Pp
-Both the "from" and the "to" value must be an integral multiple
-of the "every" value, and the "to" value must be an integral multiple
-of the "from" value.  When you have multiple pruning rules you must
-take care to ensure that the range being pruned does not overlap ranges
-pruned later on, when the retained data is older.  If they do the retained
-data can wind up being destroyed.  For example, if you prune your data
-on a 30 minute granularity for the last 24 hours any later pruning must
-use a granularity that is a multiple of 30 minutes.  If you prune your
-data on a 30 minute boundary, then a 1 day boundary in a later pruning (on
-older data), then a pruning beyond that would have to be a multiple of
-1 day.  And so forth.
-.Pp
-The "prune <filesystem> from ... everything" command will remove all
-historical records older then the specified date.  It is a way of saying
-that you do not want to retain any deleted information past a certain point.
-.Pp
-The "prune <filesystem> everything" command will remove all historical records
-from the filesystem.  The long keyword is designed to prevent accidental use.
-This option is not recommended.
-.Pp
-Example: "hammer prune /mnt from 1h to 1d every 30m"
-.Pp
-Note that pruning a filesystem does not necessarily immediately free space,
+Note that pruning a filesystem may not immediately free-up space,
 though typically some space will be freed if a large number of records are
 pruned out.  The filesystem must be reblocked to completely recover all
 available space.

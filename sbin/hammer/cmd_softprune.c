@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_softprune.c,v 1.2 2008/06/01 01:33:58 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_softprune.c,v 1.3 2008/06/23 21:31:55 dillon Exp $
  */
 
 #include "hammer.h"
@@ -48,16 +48,18 @@ static void softprune_usage(int code);
 static void hammer_softprune_scandir(struct softprune **basep,
 			 struct hammer_ioc_prune *template,
 			 const char *dirname);
-static void hammer_softprune_addentry(struct softprune **basep,
+static struct softprune *hammer_softprune_addentry(struct softprune **basep,
 			 struct hammer_ioc_prune *template,
-			 const char *dirpath, char *linkbuf, char *tidptr);
+			 const char *dirpath,
+			 const char *linkbuf, const char *tidptr);
 static void hammer_softprune_finalize(struct softprune *scan);
 
 /*
- * softprune <softlink-dir>
+ * prune <softlink-dir>
+ * prune-everything <filesystem>
  */
 void
-hammer_cmd_softprune(char **av, int ac)
+hammer_cmd_softprune(char **av, int ac, int everything_opt)
 {
 	struct hammer_ioc_prune template;
 	struct softprune *base, *scan;
@@ -91,9 +93,20 @@ hammer_cmd_softprune(char **av, int ac)
 	/*
 	 * Scan the softlink directory.
 	 */
-	hammer_softprune_scandir(&base, &template, *av);
-	++av;
-	--ac;
+	if (everything_opt) {
+		const char *dummylink = "";
+		scan = hammer_softprune_addentry(&base, &template, *av,
+						 dummylink, dummylink);
+		if (scan == NULL)
+			softprune_usage(1);
+		scan->prune.nelms = 0;
+		scan->prune.head.flags |= HAMMER_IOC_PRUNE_ALL;
+
+	} else {
+		hammer_softprune_scandir(&base, &template, *av);
+		++av;
+		--ac;
+	}
 
 	/*
 	 * XXX future (need to store separate cycles for each filesystem)
@@ -113,17 +126,26 @@ hammer_cmd_softprune(char **av, int ac)
 	 */
 	for (scan = base; scan; scan = scan->next) {
 		hammer_softprune_finalize(scan);
-		printf("Prune %s: %d snapshots\n",
-		       scan->filesystem, scan->prune.nelms);
-		if (scan->prune.nelms == 0)
+		if (everything_opt) {
+			printf("Prune %s: EVERYTHING\n",
+			       scan->filesystem);
+		} else {
+			printf("Prune %s: %d snapshots\n",
+			       scan->filesystem, scan->prune.nelms);
+		}
+		if (scan->prune.nelms == 0 &&
+		    (scan->prune.head.flags & HAMMER_IOC_PRUNE_ALL) == 0) {
 			continue;
+		}
 		fd = open(scan->filesystem, O_RDONLY);
 		if (fd < 0) {
 			warn("Unable to open %s", scan->filesystem);
 			rcode = 1;
 			continue;
 		}
-		printf("objspace %016llx %016llx\n", scan->prune.beg_obj_id, scan->prune.end_obj_id);
+		printf("objspace %016llx %016llx\n",
+		       scan->prune.beg_obj_id,
+		       scan->prune.end_obj_id);
 
 		if (ioctl(fd, HAMMERIOC_PRUNE, &scan->prune) < 0) {
 			printf("Prune %s failed: %s\n",
@@ -210,10 +232,12 @@ hammer_softprune_scandir(struct softprune **basep,
  * Add the softlink to the appropriate softprune structure, creating a new
  * if necessary.
  */
-static void
+static
+struct softprune *
 hammer_softprune_addentry(struct softprune **basep,
 			 struct hammer_ioc_prune *template,
-			 const char *dirpath, char *linkbuf, char *tidptr)
+			 const char *dirpath,
+			 const char *linkbuf, const char *tidptr)
 {
 	struct hammer_ioc_prune_elm *elm;
 	struct softprune *scan;
@@ -229,7 +253,7 @@ hammer_softprune_addentry(struct softprune **basep,
 	}
 	if (statfs(fspath, &fs) < 0) {
 		free(fspath);
-		return;
+		return(NULL);
 	}
 
 	/*
@@ -277,6 +301,7 @@ hammer_softprune_addentry(struct softprune **basep,
 	elm->end_tid = 0;
 	elm->mod_tid = 0;
 	++scan->prune.nelms;
+	return(scan);
 }
 
 /*
@@ -360,8 +385,9 @@ static
 void
 softprune_usage(int code)
 {
-	fprintf(stderr, "Badly formed command, use:\n");
-	fprintf(stderr, "hammer softprune directory-containing-softlinks\n");
+	fprintf(stderr, "Badly formed prune command, use:\n");
+	fprintf(stderr, "hammer prune            <dir-holding-softlinks>\n");
+	fprintf(stderr, "hammer prune-everything <filesystem>\n");
 	exit(code);
 }
 

@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/mount_hammer/mount_hammer.8,v 1.6 2008/06/03 18:43:34 dillon Exp $
+.\" $DragonFly: src/sbin/mount_hammer/mount_hammer.8,v 1.7 2008/06/23 21:31:57 dillon Exp $
 .Dd October 10, 2007
 .Dt MOUNT_HAMMER 8
 .Os
@@ -40,7 +40,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl o Ar mount-options
-.Op Fl T Ar time
+.Op Fl T Ar transactionid
 .Ar special ...
 .Ar mount-point
 .Nm
@@ -61,30 +61,24 @@ Supported mount options are:
 .Bl -tag -width indent
 .It Ar ro
 Issue a read-only mount.
+.It Ar nohistory
+Put the entire filesystem in no-history mode.  Change history is not
+retained.
+Use of this option may increase the overhead of doing mirroring.
+This option is generally only used in an emergency.
+.It Ar master=<number>
+The filesystem is mounted in multi-master mode with the specified
+id (0-15).
+The id must uniquely identify the mount relative to other masters
+in the cluster.
 .El
-.It Fl T Ar time
+.It Fl T Ar transactionid
 Mount the filesystem as-of a particular
-.Ar time .
+transaction id.
 The mount will automatically be made read-only.
 The
-.Ar time
-may be specified two ways.
-A single integer followed by
-.Sq s ,
-.Sq m ,
-.Sq h ,
-.Sq D ,
-.Sq M ,
-or
-.Sq Y
-issues a historical mount as-of a number of seconds, minutes, hours, days,
-months, or years ago.
-A time specification of
-.Pf yyyymmdd Oo :hhmmss Oc Ns Op .fractional
-specifies an exact as-of timestamp in local (not UTC) time.
-Set the TZ environment variable prior to running
-.Nm
-if you wish to specify the time by some other means.
+.Ar transactionid
+must be specified as a 64 bit hex value prefixed with "0x".
 .It Fl u
 Update the mount point.  This is typically used to upgrade a mount to
 read-write or downgrade it to read-only.

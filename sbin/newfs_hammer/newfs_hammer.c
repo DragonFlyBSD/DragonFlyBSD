@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.33 2008/06/20 21:18:11 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.34 2008/06/23 21:31:58 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -278,7 +278,11 @@ getsize(const char *str, int64_t minval, int64_t maxval, int powerof2)
 }
 
 /*
- * Generate a transaction id
+ * Generate a transaction id.  Transaction ids are no longer time-based.
+ * Put the nail in the coffin by not making the first one time-based.
+ *
+ * We could start at 1 here but start at 2^32 to reserve a small domain for
+ * possible future use.
  */
 static hammer_tid_t
 createtid(void)
@@ -287,9 +291,7 @@ createtid(void)
 	struct timeval tv;
 
 	if (lasttid == 0) {
-		gettimeofday(&tv, NULL);
-		lasttid = tv.tv_sec * 1000000000LL +
-			  tv.tv_usec * 1000LL;
+		lasttid = 0x0000000100000000ULL;
 	}
 	return(lasttid++);
 }
