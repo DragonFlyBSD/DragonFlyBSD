@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.35 2008/06/15 12:01:32 sephe Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.36 2008/06/24 11:40:56 sephe Exp $
  */
 
 /*
@@ -46,6 +46,7 @@
 #include "use_vlan.h"
 #endif
 #include "opt_inet.h"
+#include "opt_ethernet.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -135,6 +136,9 @@ static void	vlan_start(struct ifnet *);
 static int	vlan_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 
 static int	vlan_input(struct mbuf *m, struct mbuf_chain *);
+#ifdef ETHER_INPUT2
+static void	vlan_input2(struct mbuf *);
+#endif
 
 static void	vlan_clrmulti(struct ifvlan *, struct ifnet *);
 static int	vlan_setmulti(struct ifvlan *, struct ifnet *);
@@ -251,6 +255,11 @@ vlan_modevent(module_t mod, int type, void *data)
 	case MOD_LOAD:
 		LIST_INIT(&ifv_list);
 		vlan_input_p = vlan_input;
+#ifdef ETHER_INPUT2
+		vlan_input2_p = vlan_input2;
+#else
+		vlan_input2_p = NULL;
+#endif
 		vlan_ifdetach_cookie =
 		EVENTHANDLER_REGISTER(ifnet_detach_event,
 				      vlan_ifdetach, NULL,
@@ -261,6 +270,7 @@ vlan_modevent(module_t mod, int type, void *data)
 	case MOD_UNLOAD:
 		if_clone_detach(&vlan_cloner);
 		vlan_input_p = NULL;
+		vlan_input2_p = NULL;
 		EVENTHANDLER_DEREGISTER(ifnet_detach_event,
 					vlan_ifdetach_cookie);
 		while (!LIST_EMPTY(&ifv_list))
@@ -500,6 +510,80 @@ vlan_input(struct mbuf *m, struct mbuf_chain *chain)
 	lwkt_serialize_enter(rcvif->if_serializer);
 	return 0;
 }
+
+#ifdef ETHER_INPUT2
+
+static void
+vlan_input2(struct mbuf *m)
+{
+	struct ifvlan *ifv = NULL;
+	struct ifnet *rcvif, *ifp;
+	struct vlan_trunk *vlantrunks;
+	struct vlan_entry *entry;
+
+	rcvif = m->m_pkthdr.rcvif;
+	KKASSERT(m->m_flags & M_VLANTAG);
+
+	vlantrunks = rcvif->if_vlantrunks;
+	if (vlantrunks == NULL) {
+		rcvif->if_noproto++;
+		m_freem(m);
+		return;
+	}
+
+	crit_enter();	/* XXX Necessary? */
+	LIST_FOREACH(entry, &vlantrunks[mycpuid].vlan_list, ifv_link) {
+		if (entry->ifv->ifv_tag ==
+		    EVL_VLANOFTAG(m->m_pkthdr.ether_vlantag)) {
+			ifv = entry->ifv;
+			break;
+		}
+	}
+	crit_exit();
+
+	/*
+	 * Packet is discarded if:
+	 * - no corresponding vlan(4) interface
+	 * - vlan(4) interface has not been completely set up yet,
+	 *   or is being destroyed (ifv->ifv_p != rcvif)
+	 * - vlan(4) interface is not brought up
+	 */
+	if (ifv == NULL || ifv->ifv_p != rcvif ||
+	    (ifv->ifv_if.if_flags & IFF_UP) == 0) {
+		rcvif->if_noproto++;
+		m_freem(m);
+		return;
+	}
+	ifp = &ifv->ifv_if;
+
+	/*
+	 * Clear M_VLANTAG, before the packet is handed to
+	 * vlan(4) interface
+	 */
+	m->m_flags &= ~M_VLANTAG;
+
+	/* Change receiving interface */
+	m->m_pkthdr.rcvif = ifp;
+
+	/* Update statistics */
+	ifp->if_ipackets++;
+	ifp->if_ibytes += m->m_pkthdr.len;
+	if (m->m_flags & (M_MCAST | M_BCAST))
+		ifp->if_imcasts++;
+
+	BPF_MTAP(ifp, m);
+
+	if (ifp->if_flags & IFF_MONITOR) {
+		/*
+		 * Interface marked for monitoring; discard packet.
+		 */
+		m_freem(m);
+		return;
+	}
+	ether_input_oncpu(ifp, m);
+}
+
+#endif	/* ETHER_INPUT2 */
 
 static void
 vlan_link_dispatch(struct netmsg *nmsg)

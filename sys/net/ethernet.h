@@ -2,7 +2,7 @@
  * Fundamental constants relating to ethernet.
  *
  * $FreeBSD: src/sys/net/ethernet.h,v 1.12.2.8 2002/12/01 14:03:09 sobomax Exp $
- * $DragonFly: src/sys/net/ethernet.h,v 1.18 2008/05/16 13:19:12 sephe Exp $
+ * $DragonFly: src/sys/net/ethernet.h,v 1.19 2008/06/24 11:40:56 sephe Exp $
  *
  */
 
@@ -368,6 +368,7 @@ extern	void (*ng_ether_attach_p)(struct ifnet *ifp);
 extern	void (*ng_ether_detach_p)(struct ifnet *ifp);
 
 extern	int (*vlan_input_p)(struct mbuf *m, struct mbuf_chain *chain);
+extern	void (*vlan_input2_p)(struct mbuf *m);
 
 /*
  * The ETHER_BPF_MTAP macro should be used by drivers which support hardware

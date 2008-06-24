@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.71 2008/06/23 14:40:12 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.72 2008/06/24 11:40:56 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -120,6 +120,7 @@ void	(*ng_ether_attach_p)(struct ifnet *ifp);
 void	(*ng_ether_detach_p)(struct ifnet *ifp);
 
 int	(*vlan_input_p)(struct mbuf *, struct mbuf_chain *);
+void	(*vlan_input2_p)(struct mbuf *);
 
 static int ether_output(struct ifnet *, struct mbuf *, struct sockaddr *,
 			struct rtentry *);
@@ -1399,19 +1400,12 @@ post_stats:
 	KKASSERT(ether_type != ETHERTYPE_VLAN);
 
 	if (m->m_flags & M_VLANTAG) {
-#ifdef notyet
-		/* XXX */
-		if (vlan_input_p != NULL) {
-			if (m != NULL)
-				vlan_input_p(m, chain);
+		if (vlan_input2_p != NULL) {
+			vlan_input2_p(m);
 		} else {
 			m->m_pkthdr.rcvif->if_noproto++;
 			m_freem(m);
 		}
-#else
-		m->m_pkthdr.rcvif->if_noproto++;
-		m_freem(m);
-#endif
 		return;
 	}
 
