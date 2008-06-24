@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.74 2008/06/24 11:17:16 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.75 2008/06/24 13:32:27 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -3002,7 +3002,6 @@ em_rxeof(struct adapter *adapter, int count)
 	int i;
 #ifdef ETHER_INPUT_CHAIN
 	struct mbuf_chain chain[MAXCPU];
-	int j;
 #endif
 
 	/* Pointer to the receive descriptor being examined. */
@@ -3019,8 +3018,7 @@ em_rxeof(struct adapter *adapter, int count)
 		return;
 
 #ifdef ETHER_INPUT_CHAIN
-	for (j = 0; j < ncpus; ++j)
-		chain[j].mc_head = chain[j].mc_tail = NULL;
+	ether_input_chain_init(chain);
 #endif
 
 	while ((current_desc->status & E1000_RXD_STAT_DD) && count != 0) {

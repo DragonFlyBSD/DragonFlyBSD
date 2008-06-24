@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.72 2008/06/24 11:40:56 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.73 2008/06/24 13:32:27 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -1313,6 +1313,19 @@ ether_input_dispatch(struct mbuf_chain *chain)
 	}
 #else
 	ether_input_ipifunc(chain->mc_head);
+#endif
+}
+
+void
+ether_input_chain_init(struct mbuf_chain *chain)
+{
+#ifdef SMP
+	int i;
+
+	for (i = 0; i < ncpus; ++i)
+		chain[i].mc_head = chain[i].mc_tail = NULL;
+#else
+	chain->mc_head = chain->mc_tail = NULL;
 #endif
 }
 
