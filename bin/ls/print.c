@@ -31,7 +31,7 @@
  *
  * @(#)print.c	8.4 (Berkeley) 4/17/94
  * $FreeBSD: src/bin/ls/print.c,v 1.73 2004/06/08 09:27:42 das Exp $
- * $DragonFly: src/bin/ls/print.c,v 1.19 2008/05/04 02:28:28 dillon Exp $
+ * $DragonFly: src/bin/ls/print.c,v 1.20 2008/06/24 21:55:48 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -323,8 +323,10 @@ printaname(const FTSENT *p, u_long inodefield, u_long sizefield)
 
 	sp = p->fts_statp;
 	chcnt = 0;
-	if (f_inode)
-		chcnt += printf("%*lu ", (int)inodefield, (u_long)sp->st_ino);
+	if (f_inode) {
+		chcnt += printf("%*llu ", (int)inodefield,
+				(unsigned long long)sp->st_ino);
+	}
 	if (f_size)
 		chcnt += printf("%*lld ",
 		    (int)sizefield, howmany(sp->st_blocks, blocksize));
