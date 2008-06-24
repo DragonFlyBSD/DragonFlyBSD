@@ -30,8 +30,8 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/mount_hammer/mount_hammer.8,v 1.7 2008/06/23 21:31:57 dillon Exp $
-.Dd October 10, 2007
+.\" $DragonFly: src/sbin/mount_hammer/mount_hammer.8,v 1.8 2008/06/24 03:24:52 thomas Exp $
+.Dd June 24, 2008
 .Dt MOUNT_HAMMER 8
 .Os
 .Sh NAME
@@ -59,6 +59,8 @@ Specify mount options, which are a comma delimited set of options (see
 .Xr mount 8 ) .
 Supported mount options are:
 .Bl -tag -width indent
+.It Ar nohistory
+Do not retain history of file system changes.
 .It Ar ro
 Issue a read-only mount.
 .It Ar nohistory

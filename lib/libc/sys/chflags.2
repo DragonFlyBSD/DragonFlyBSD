@@ -31,9 +31,9 @@
 .\"
 .\"	@(#)chflags.2	8.3 (Berkeley) 5/2/95
 .\" $FreeBSD: src/lib/libc/sys/chflags.2,v 1.11.2.7 2001/12/14 18:34:00 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/chflags.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/chflags.2,v 1.3 2008/06/24 03:24:52 thomas Exp $
 .\"
-.Dd May 2, 1995
+.Dd June 24, 2008
 .Dt CHFLAGS 2
 .Os
 .Sh NAME
@@ -71,6 +71,8 @@ The file may not be changed.
 The file may only be appended to.
 .It UF_NOUNLINK
 The file may not be renamed or deleted.
+.It UF_NOHISTORY
+Do not retain history for file.
 .It UF_OPAQUE
 The directory is opaque when viewed through a union stack.
 .It SF_ARCHIVED
@@ -81,12 +83,15 @@ The file may not be changed.
 The file may only be appended to.
 .It SF_NOUNLINK
 The file may not be renamed or deleted.
+.It SF_NOHISTORY
+Do not retain history for file.
 .El
 .Pp
 The
 .Dq UF_IMMUTABLE ,
 .Dq UF_APPEND ,
 .Dq UF_NOUNLINK ,
+.Dq SF_NOHISTORY ,
 .Dq UF_NODUMP ,
 and
 .Dq UF_OPAQUE
@@ -96,6 +101,7 @@ The
 .Dq SF_IMMUTABLE ,
 .Dq SF_APPEND ,
 .Dq SF_NOUNLINK ,
+.Dq SF_NOHISTORY ,
 and
 .Dq SF_ARCHIVED
 flags may only be set or unset by the super-user.

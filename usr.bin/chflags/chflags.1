@@ -34,9 +34,9 @@
 .\"
 .\"	@(#)chflags.1	8.4 (Berkeley) 5/2/95
 .\" $FreeBSD: src/usr.bin/chflags/chflags.1,v 1.9.2.6 2003/04/08 19:16:16 johan Exp $
-.\" $DragonFly: src/usr.bin/chflags/chflags.1,v 1.3 2006/07/22 18:49:25 swildner Exp $
+.\" $DragonFly: src/usr.bin/chflags/chflags.1,v 1.4 2008/06/24 03:24:52 thomas Exp $
 .\"
-.Dd April 8, 2003
+.Dd June 24, 2008
 .Dt CHFLAGS 1
 .Os
 .Sh NAME
@@ -83,13 +83,17 @@ The flags are specified as an octal number or a comma separated list
 of keywords.
 The following keywords are currently defined:
 .Pp
-.Bl -tag -offset indent -width "opaque" -compact
+.Bl -tag -offset indent -width "nouhistory" -compact
 .It Ar arch
 set the archived flag (super-user only)
 .It Ar opaque
 set the opaque flag (owner or super-user only)
 .It Ar nodump
 set the nodump flag (owner or super-user only)
+.It Ar noshistory
+set the system nohistory flag (super-user only)
+.It Ar nouhistory
+set the user nohistory flag (owner or super-user only)
 .It Ar sappnd
 set the system append-only flag (super-user only)
 .It Ar schg
@@ -107,6 +111,9 @@ set the user undeletable flag (owner or super-user only)
 .Ar sunlink , uunlink
 .Xc
 aliases for the above
+.It Ar nohistory
+alias for
+.Ar nouhistory
 .El
 .Pp
 Putting the letters
