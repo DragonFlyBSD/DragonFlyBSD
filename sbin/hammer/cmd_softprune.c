@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_softprune.c,v 1.3 2008/06/23 21:31:55 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_softprune.c,v 1.4 2008/06/24 17:40:21 dillon Exp $
  */
 
 #include "hammer.h"
@@ -70,18 +70,19 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 	rcode = 0;
 
 	/*
-	 * NOTE: To resitrct to a single file XXX we have to set
+	 * NOTE: To restrict to a single file XXX we have to set
 	 * the localization the same (not yet implemented).  Typically
 	 * two passes would be needed, one using HAMMER_LOCALIZE_MISC
 	 * and one using HAMMER_LOCALIZE_INODE.
 	 */
 
 	bzero(&template, sizeof(template));
-	template.beg_localization = HAMMER_MIN_LOCALIZATION;
-	template.beg_obj_id = HAMMER_MIN_OBJID;
-	template.end_localization = HAMMER_MAX_LOCALIZATION;
-	template.end_obj_id = HAMMER_MAX_OBJID;
-	hammer_get_cycle(&template.end_obj_id, &template.end_localization);
+	template.key_beg.localization = HAMMER_MIN_LOCALIZATION;
+	template.key_beg.obj_id = HAMMER_MIN_OBJID;
+	template.key_end.localization = HAMMER_MAX_LOCALIZATION;
+	template.key_end.obj_id = HAMMER_MAX_OBJID;
+	hammer_get_cycle(&template.key_end.obj_id,
+			 &template.key_end.localization);
 	template.stat_oldest_tid = HAMMER_MAX_TID;
 
 	/*
@@ -144,8 +145,8 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 			continue;
 		}
 		printf("objspace %016llx %016llx\n",
-		       scan->prune.beg_obj_id,
-		       scan->prune.end_obj_id);
+		       scan->prune.key_beg.obj_id,
+		       scan->prune.key_end.obj_id);
 
 		if (ioctl(fd, HAMMERIOC_PRUNE, &scan->prune) < 0) {
 			printf("Prune %s failed: %s\n",
@@ -155,11 +156,12 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 			printf("Prune %s interrupted by timer at "
 			       "%016llx %04x\n",
 			       scan->filesystem,
-			       scan->prune.cur_obj_id,
-			       scan->prune.cur_localization);
+			       scan->prune.key_cur.obj_id,
+			       scan->prune.key_cur.localization);
 			if (CyclePath) {
-				hammer_set_cycle(scan->prune.cur_obj_id,
-						 scan->prune.cur_localization);
+				hammer_set_cycle(
+					scan->prune.key_cur.obj_id,
+					scan->prune.key_cur.localization);
 			}
 			rcode = 0;
 		} else {

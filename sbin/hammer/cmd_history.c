@@ -31,13 +31,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_history.c,v 1.3 2008/06/24 02:42:48 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_history.c,v 1.4 2008/06/24 17:40:21 dillon Exp $
  */
 
 #include "hammer.h"
 
 static void hammer_do_history(const char *path, off_t off, int len);
 static void dumpat(const char *path, off_t off, int len);
+static const char *timestr32(u_int32_t time32);
 
 /*
  * history <file1> ... <fileN>
@@ -101,11 +102,11 @@ hammer_do_history(const char *path, off_t off, int len)
 			char *hist_path = NULL;
 
 			asprintf(&hist_path, "%s@@0x%016llx",
-				 path, hist.tid_ary[i]);
-			if (off < 0) {
-				printf("    %016llx", hist.tid_ary[i]);
-			} else {
-				printf("    %016llx", hist.tid_ary[i]);
+				 path, hist.hist_ary[i].tid);
+			printf("    %016llx %s",
+			       hist.hist_ary[i].tid,
+			        timestr32(hist.hist_ary[i].time32));
+			if (off >= 0) {
 				if (VerboseOpt) {
 					printf(" '");
 					dumpat(hist_path, off, len);
@@ -156,5 +157,20 @@ dumpat(const char *path, off_t off, int len)
 				putc('.', stdout);
 		}
 	}
+}
+
+/*
+ * Return a human-readable timestamp
+ */
+static const char *
+timestr32(u_int32_t time32)
+{
+	static char timebuf[64];
+	time_t t = (time_t)time32;
+	struct tm *tp;
+
+	tp = localtime(&t);
+	strftime(timebuf, sizeof(timebuf), "%d-%b-%Y %H:%M:%S", tp);
+	return(timebuf);
 }
 

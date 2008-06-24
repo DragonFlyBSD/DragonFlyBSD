@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_reblock.c,v 1.7 2008/06/14 01:44:11 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_reblock.c,v 1.8 2008/06/24 17:40:21 dillon Exp $
  */
 
 #include "hammer.h"
@@ -51,12 +51,13 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 
 	bzero(&reblock, sizeof(reblock));
 
-	reblock.beg_localization = HAMMER_MIN_LOCALIZATION;
-	reblock.beg_obj_id = HAMMER_MIN_OBJID;
-	hammer_get_cycle(&reblock.beg_obj_id, &reblock.beg_localization);
+	reblock.key_beg.localization = HAMMER_MIN_LOCALIZATION;
+	reblock.key_beg.obj_id = HAMMER_MIN_OBJID;
+	hammer_get_cycle(&reblock.key_beg.obj_id,
+			 &reblock.key_beg.localization);
 
-	reblock.end_localization = HAMMER_MAX_LOCALIZATION;
-	reblock.end_obj_id = HAMMER_MAX_OBJID;
+	reblock.key_end.localization = HAMMER_MAX_LOCALIZATION;
+	reblock.key_end.obj_id = HAMMER_MAX_OBJID;
 
 	reblock.head.flags = flags & HAMMER_IOC_DO_FLAGS;
 
@@ -66,13 +67,13 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 	 */
 	switch(flags & (HAMMER_IOC_DO_INODES|HAMMER_IOC_DO_DATA|HAMMER_IOC_DO_DIRS)) {
 	case HAMMER_IOC_DO_INODES:
-		reblock.beg_localization = HAMMER_LOCALIZE_INODE;
-		reblock.end_localization = HAMMER_LOCALIZE_INODE;
+		reblock.key_beg.localization = HAMMER_LOCALIZE_INODE;
+		reblock.key_end.localization = HAMMER_LOCALIZE_INODE;
 		break;
 	case HAMMER_IOC_DO_DIRS:
 	case HAMMER_IOC_DO_DATA:
-		reblock.beg_localization = HAMMER_LOCALIZE_MISC;
-		reblock.end_localization = HAMMER_LOCALIZE_MISC;
+		reblock.key_beg.localization = HAMMER_LOCALIZE_MISC;
+		reblock.key_end.localization = HAMMER_LOCALIZE_MISC;
 		break;
 	}
 
@@ -101,10 +102,11 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 	} else if (reblock.head.flags & HAMMER_IOC_HEAD_INTR) {
 		printf("Reblock %s interrupted by timer at %016llx %04x\n",
 			filesystem,
-			reblock.cur_obj_id, reblock.cur_localization);
+			reblock.key_cur.obj_id,
+			reblock.key_cur.localization);
 		if (CyclePath) {
-			hammer_set_cycle(reblock.cur_obj_id,
-					 reblock.cur_localization);
+			hammer_set_cycle(reblock.key_cur.obj_id,
+					 reblock.key_cur.localization);
 		}
 	} else {
 		if (CyclePath)

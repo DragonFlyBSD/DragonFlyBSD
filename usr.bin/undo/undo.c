@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.bin/undo/undo.c,v 1.1 2008/06/01 02:03:10 dillon Exp $
+ * $DragonFly: src/usr.bin/undo/undo.c,v 1.2 2008/06/24 17:40:24 dillon Exp $
  */
 /*
  * UNDO - retrieve an older version of a file.
@@ -57,13 +57,16 @@ static void doiterate(const char *orig_filename, const char *outFileName,
 static void dogenerate(const char *filename, const char *outFileName,
 		   const char *outFilePostfix,
 		   int mult, int idx, enum undo_type type,
-		   hammer_tid_t ts1, hammer_tid_t ts2);
-static hammer_tid_t find_recent(const char *filename);
-static hammer_tid_t output_history(const char *filename, int fd, FILE *fp,
-		   hammer_tid_t **tid_ary, int *tid_num);
+		   struct hammer_ioc_hist_entry ts1,
+		   struct hammer_ioc_hist_entry ts2);
+static struct hammer_ioc_hist_entry
+	    find_recent(const char *filename);
+static struct hammer_ioc_hist_entry
+	    output_history(const char *filename, int fd, FILE *fp,
+		   struct hammer_ioc_hist_entry **hist_ary, int *tid_num);
 static hammer_tid_t parse_delta_time(const char *timeStr);
 static void runcmd(int fd, const char *cmd, ...);
-static char *timestamp(hammer_tid_t tid);
+static char *timestamp(hammer_ioc_hist_entry_t hen);
 static void usage(void);
 
 static int VerboseOpt;
@@ -75,10 +78,13 @@ main(int ac, char **av)
 	const char *outFilePostfix = NULL;
 	enum { CMD_DUMP, CMD_ITERATEALL } cmd;
 	enum undo_type type;
-	hammer_tid_t ts1 = 0;
-	hammer_tid_t ts2 = 0;
+	struct hammer_ioc_hist_entry ts1;
+	struct hammer_ioc_hist_entry ts2;
 	int c;
 	int mult;
+
+	bzero(&ts1, sizeof(ts1));
+	bzero(&ts2, sizeof(ts2));
 
 	cmd = CMD_DUMP;
 	type = TYPE_FILE;
@@ -113,12 +119,12 @@ main(int ac, char **av)
 			outFileName = optarg;
 			break;
 		case 't':
-			if (ts1 && ts2)
+			if (ts1.tid && ts2.tid)
 				usage();
-			else if (ts1 == 0)
-				ts1 = parse_delta_time(optarg);
+			else if (ts1.tid == 0)
+				ts1.tid = parse_delta_time(optarg);
 			else
-				ts2 = parse_delta_time(optarg);
+				ts2.tid = parse_delta_time(optarg);
 			break;
 		default:
 			usage();
@@ -171,8 +177,7 @@ main(int ac, char **av)
 		switch(cmd) {
 		case CMD_DUMP:
 			dogenerate(*av, outFileName, outFilePostfix,
-				   mult, -1, type,
-				   ts1, ts2);
+				   mult, -1, type, ts1, ts2);
 			break;
 		case CMD_ITERATEALL:
 			doiterate(*av, outFileName, outFilePostfix,
@@ -193,19 +198,24 @@ void
 doiterate(const char *orig_filename, const char *outFileName,
 	   const char *outFilePostfix, int mult, enum undo_type type)
 {
-	hammer_tid_t *tid_ary = NULL;
-	hammer_tid_t ts1;
+	hammer_ioc_hist_entry_t tid_ary = NULL;
+	struct hammer_ioc_hist_entry tid_max;
+	struct hammer_ioc_hist_entry ts1;
 	const char *use_filename;
 	char *path = NULL;
 	int tid_num = 0;
 	int i;
 	int fd;
 
+	tid_max.tid = HAMMER_MAX_TID;
+	tid_max.time32 = 0;
+
 	use_filename = orig_filename;
 	if ((fd = open(orig_filename, O_RDONLY)) < 0) {
 		ts1 = find_recent(orig_filename);
-		if (ts1) {
-			asprintf(&path, "%s@@0x%016llx", orig_filename, ts1);
+		if (ts1.tid) {
+			asprintf(&path, "%s@@0x%016llx",
+				 orig_filename, ts1.tid);
 			use_filename = path;
 		}
 	}
@@ -216,14 +226,14 @@ doiterate(const char *orig_filename, const char *outFileName,
 		close(fd);
 
 		for (i = 0; i < tid_num; ++i) {
-			if (i && tid_ary[i] == tid_ary[i-1])
+			if (i && tid_ary[i].tid == tid_ary[i-1].tid)
 				continue;
 
 			if (i == tid_num - 1) {
 				dogenerate(orig_filename,
 					   outFileName, outFilePostfix,
 					   mult, i, type,
-					   tid_ary[i], HAMMER_MAX_TID);
+					   tid_ary[i], tid_max);
 			} else {
 				dogenerate(orig_filename,
 					   outFileName, outFilePostfix,
@@ -249,7 +259,8 @@ void
 dogenerate(const char *filename, const char *outFileName,
 	   const char *outFilePostfix,
 	   int mult, int idx, enum undo_type type,
-	   hammer_tid_t ts1, hammer_tid_t ts2)
+	   struct hammer_ioc_hist_entry ts1,
+	   struct hammer_ioc_hist_entry ts2)
 {
 	struct stat st;
 	const char *elm;
@@ -267,9 +278,9 @@ dogenerate(const char *filename, const char *outFileName,
 	 * Open the input file.  If ts1 is 0 try to locate the most recent
 	 * version of the file prior to the current version.
 	 */
-	if (ts1 == 0)
+	if (ts1.tid == 0)
 		ts1 = find_recent(filename);
-	asprintf(&ipath1, "%s@@0x%016llx", filename, ts1);
+	asprintf(&ipath1, "%s@@0x%016llx", filename, ts1.tid);
 	if (lstat(ipath1, &st) < 0) {
 		if (VerboseOpt) {
 			fprintf(stderr, "Cannot locate src/historical "
@@ -279,14 +290,14 @@ dogenerate(const char *filename, const char *outFileName,
 		goto done;
 	}
 
-	if (ts2 == 0) {
+	if (ts2.tid == 0) {
 		asprintf(&ipath2, "%s", filename);
 	} else {
-		asprintf(&ipath2, "%s@@0x%015llx", filename, ts2);
+		asprintf(&ipath2, "%s@@0x%015llx", filename, ts2.tid);
 	}
 	if (lstat(ipath2, &st) < 0) {
 		if (VerboseOpt) {
-			if (ts2) {
+			if (ts2.tid) {
 				fprintf(stderr, "Cannot locate tgt/historical "
 						"idx=%d %s\n",
 					idx, ipath2);
@@ -341,14 +352,14 @@ dogenerate(const char *filename, const char *outFileName,
 		if (mult && type == TYPE_FILE) {
 			if (idx >= 0) {
 				printf("\n>>> %s %04d 0x%016llx %s\n\n",
-				       filename, idx, ts1, timestamp(ts1));
+				       filename, idx, ts1.tid, timestamp(&ts1));
 			} else {
 				printf("\n>>> %s ---- 0x%016llx %s\n\n",
-				       filename, ts1, timestamp(ts1));
+				       filename, ts1.tid, timestamp(&ts1));
 			}
 		} else if (idx >= 0 && type == TYPE_FILE) {
 			printf("\n>>> %s %04d 0x%016llx %s\n\n", 
-			       filename, idx, ts1, timestamp(ts1));
+			       filename, idx, ts1.tid, timestamp(&ts1));
 		}
 		fp = stdout;
 	}
@@ -362,7 +373,8 @@ dogenerate(const char *filename, const char *outFileName,
 		}
 		break;
 	case TYPE_DIFF:
-		printf("diff -u %s %s\n", ipath1, ipath2);
+		printf("diff -u %s %s (to %s)\n",
+		       ipath1, ipath2, timestamp(&ts2));
 		fflush(stdout);
 		runcmd(fileno(fp), "/usr/bin/diff", "diff", "-u", ipath1, ipath2, NULL);
 		break;
@@ -390,21 +402,22 @@ done:
  *
  * XXX if file cannot be found
  */
-static hammer_tid_t
+static
+struct hammer_ioc_hist_entry
 find_recent(const char *filename)
 {
-	hammer_tid_t *tid_ary = NULL;
+	hammer_ioc_hist_entry_t tid_ary = NULL;
 	int tid_num = 0;
-	hammer_tid_t tid;
+	struct hammer_ioc_hist_entry hen;
 	char *dirname;
 	char *path;
 	int fd;
 	int i;
 
 	if ((fd = open(filename, O_RDONLY)) >= 0) {
-		tid = output_history(NULL, fd, NULL, NULL, NULL);
+		hen = output_history(NULL, fd, NULL, NULL, NULL);
 		close(fd);
-		return(tid);
+		return(hen);
 	}
 
 	/*
@@ -418,16 +431,17 @@ find_recent(const char *filename)
 		dirname = strdup(".");
 	}
 
-	tid = 0;
+	hen.tid = 0;
+	hen.time32 = 0;
 	if ((fd = open(dirname, O_RDONLY)) >= 0) {
 		output_history(NULL, fd, NULL, &tid_ary, &tid_num);
 		close(fd);
 		free(dirname);
 
 		for (i = tid_num - 1; i >= 0; --i) {
-			asprintf(&path, "%s@@0x%016llx", filename, tid_ary[i]);
+			asprintf(&path, "%s@@0x%016llx", filename, tid_ary[i].tid);
 			if ((fd = open(path, O_RDONLY)) >= 0) {
-				tid = output_history(NULL, fd, NULL, NULL, NULL);
+				hen = output_history(NULL, fd, NULL, NULL, NULL);
 				close(fd);
 				free(path);
 				break;
@@ -435,7 +449,7 @@ find_recent(const char *filename)
 			free(path);
 		}
 	}
-	return(tid);
+	return(hen);
 }
 
 /*
@@ -447,20 +461,22 @@ find_recent(const char *filename)
 static int
 tid_cmp(const void *arg1, const void *arg2)
 {
-	const hammer_tid_t *tid1 = arg1;
-	const hammer_tid_t *tid2 = arg2;
+	const struct hammer_ioc_hist_entry *tid1 = arg1;
+	const struct hammer_ioc_hist_entry *tid2 = arg2;
 
-	if (*tid1 < *tid2)
+	if (tid1->tid < tid2->tid)
 		return(-1);
-	if (*tid1 > *tid2)
+	if (tid1->tid > tid2->tid)
 		return(1);
 	return(0);
 }
 
-static hammer_tid_t
+static
+struct hammer_ioc_hist_entry
 output_history(const char *filename, int fd, FILE *fp,
-		hammer_tid_t **tid_aryp, int *tid_nump)
+	       struct hammer_ioc_hist_entry **hist_aryp, int *tid_nump)
 {
+	struct hammer_ioc_hist_entry hen;
 	struct hammer_ioc_history hist;
 	char datestr[64];
 	struct tm *tp;
@@ -468,8 +484,7 @@ output_history(const char *filename, int fd, FILE *fp,
 	int tid_max = 32;
 	int tid_num = 0;
 	int i;
-	hammer_tid_t *tid_ary = malloc(tid_max * sizeof(*tid_ary));
-	hammer_tid_t tid;
+	hammer_ioc_hist_entry_t hist_ary = malloc(tid_max * sizeof(*hist_ary));
 
 	bzero(&hist, sizeof(hist));
 	hist.beg_tid = HAMMER_MIN_TID;
@@ -478,7 +493,8 @@ output_history(const char *filename, int fd, FILE *fp,
 	hist.key = 0;
 	hist.nxt_key = HAMMER_MAX_KEY;
 
-	tid = 0;
+	hen.tid = 0;
+	hen.time32 = 0;
 
 	if (ioctl(fd, HAMMERIOC_GETHISTORY, &hist) < 0) {
 		if (filename)
@@ -490,10 +506,10 @@ output_history(const char *filename, int fd, FILE *fp,
 	for (;;) {
 		if (tid_num + hist.count >= tid_max) {
 			tid_max = (tid_max * 3 / 2) + hist.count;
-			tid_ary = realloc(tid_ary, tid_max * sizeof(*tid_ary));
+			hist_ary = realloc(hist_ary, tid_max * sizeof(*hist_ary));
 		}
 		for (i = 0; i < hist.count; ++i) {
-			tid_ary[tid_num++] = hist.tid_ary[i];
+			hist_ary[tid_num++] = hist.hist_ary[i];
 		}
 		if (hist.head.flags & HAMMER_IOC_HISTORY_EOF)
 			break;
@@ -509,27 +525,27 @@ output_history(const char *filename, int fd, FILE *fp,
 			break;
 		}
 	}
-	qsort(tid_ary, tid_num, sizeof(*tid_ary), tid_cmp);
+	qsort(hist_ary, tid_num, sizeof(*hist_ary), tid_cmp);
 	if (tid_num == 0)
 		goto done;
 	for (i = 0; fp && i < tid_num; ++i) {
-		if (i && tid_ary[i] == tid_ary[i-1])
+		if (i && hist_ary[i].tid == hist_ary[i-1].tid)
 			continue;
-		t = (time_t)(tid_ary[i] / 1000000000);
+		t = (time_t)hist_ary[i].time32;
 		tp = localtime(&t);
-		strftime(datestr, sizeof(datestr), "%d-%m-%Y %H:%M:%S", tp);
-		printf("\t0x%016llx %s\n", tid_ary[i], datestr);
+		strftime(datestr, sizeof(datestr), "%d-%b-%Y %H:%M:%S", tp);
+		printf("\t0x%016llx %s\n", hist_ary[i].tid, datestr);
 	}
 	if (tid_num > 1)
-		tid = tid_ary[tid_num-2];
+		hen = hist_ary[tid_num-2];
 done:
-	if (tid_aryp) {
-		*tid_aryp = tid_ary;
+	if (hist_aryp) {
+		*hist_aryp = hist_ary;
 		*tid_nump = tid_num;
 	} else {
-		free(tid_ary);
+		free(hist_ary);
 	}
-	return(tid);
+	return(hen);
 }
 
 static
@@ -537,31 +553,8 @@ hammer_tid_t
 parse_delta_time(const char *timeStr)
 {
 	hammer_tid_t tid;
-	char *ptr;
 
-	if (timeStr[0] == '0' && (timeStr[1] == 'x' || timeStr[1] == 'X')) {
-		tid = strtoull(timeStr, NULL, 0);
-	} else {
-		tid = strtol(timeStr, &ptr, 0);
-
-		switch(*ptr) {
-		case 'd':
-			tid *= 24;
-			/* fall through */
-		case 'h':
-			tid *= 60;
-			/* fall through */
-		case 'm':
-			tid *= 60;
-			/* fall through */
-		case 's':
-			break;
-		default:
-			usage();
-		}
-		tid = time(NULL) - tid;
-		tid *= 1000000000;
-	}
+	tid = strtoull(timeStr, NULL, 0);
 	return(tid);
 }
 
@@ -607,14 +600,14 @@ runcmd(int fd, const char *cmd, ...)
  * Convert tid to timestamp.
  */
 static char *
-timestamp(hammer_tid_t tid)
+timestamp(hammer_ioc_hist_entry_t hen)
 {
 	static char timebuf[64];
-	time_t t = (time_t)(tid / 1000000000);
+	time_t t = (time_t)hen->time32;
 	struct tm *tp;
 
 	tp = localtime(&t);
-	strftime(timebuf, sizeof(timebuf), "%d-%m-%Y %H:%M:%S", tp);
+	strftime(timebuf, sizeof(timebuf), "%d-%b-%Y %H:%M:%S", tp);
 	return(timebuf);
 }
 

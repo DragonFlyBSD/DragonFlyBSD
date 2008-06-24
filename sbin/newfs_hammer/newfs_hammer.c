@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.34 2008/06/23 21:31:58 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.35 2008/06/24 17:40:22 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -288,11 +288,9 @@ static hammer_tid_t
 createtid(void)
 {
 	static hammer_tid_t lasttid;
-	struct timeval tv;
 
-	if (lasttid == 0) {
+	if (lasttid == 0)
 		lasttid = 0x0000000100000000ULL;
-	}
 	return(lasttid++);
 }
 
@@ -497,6 +495,7 @@ format_root(void)
 	elm->leaf.base.delete_tid = 0;
 	elm->leaf.base.rec_type = HAMMER_RECTYPE_INODE;
 	elm->leaf.base.obj_type = HAMMER_OBJTYPE_DIRECTORY;
+	elm->leaf.create_ts = (u_int32_t)time(NULL);
 
 	elm->leaf.data_offset = data_off;
 	elm->leaf.data_len = sizeof(*idata);
