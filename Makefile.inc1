@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.117 2008/06/18 06:28:21 hasso Exp $
+# $DragonFly: src/Makefile.inc1,v 1.118 2008/06/24 20:22:30 thomas Exp $
 #
 # Build-time options are documented in make.conf(5).
 #
@@ -716,9 +716,6 @@ update:
 .endif
 .if defined(SUPFILE2)
 	@${SUP} ${SUPFLAGS} ${SUPFILE2}
-.endif
-.if defined(PORTSSUPFILE) && !defined(NO_PORTSUPDATE)
-	@${SUP} ${SUPFLAGS} ${PORTSSUPFILE}
 .endif
 .if defined(DOCSUPFILE) && !defined(NO_DOCUPDATE)
 	@${SUP} ${SUPFLAGS} ${DOCSUPFILE}
