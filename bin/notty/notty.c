@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/bin/notty/notty.c,v 1.1 2008/05/27 17:10:49 dillon Exp $
+ * $DragonFly: src/bin/notty/notty.c,v 1.2 2008/06/24 21:13:26 thomas Exp $
  */
 /*
  * NOTTY.C - program to disconnect a program from the tty and close
@@ -101,7 +101,7 @@ main(int ac, char **av)
 static void
 usage(void)
 {
-	fprintf(stderr, "notty [-012] command args...\n");
+	fprintf(stderr, "notty [-012] command args ...\n");
 	exit(1);
 }
 
