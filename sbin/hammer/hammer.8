@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.23 2008/06/23 21:31:55 dillon Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.24 2008/06/24 02:42:48 dillon Exp $
 .Dd December 31, 2007
 .Dt HAMMER 8
 .Os
@@ -80,33 +80,6 @@ Increase verboseness.  May be specified multiple times.
 .Pp
 The commands are as follows:
 .Bl -tag -width indent
-.It Ar now
-Generate a timestamp suitable for use in the @@ filename extension,
-representing right now.
-.It Ar now64
-Generate a full 64 bit timestamp.
-The
-.Ar now
-and
-.Ar now64
-directives do not generate a guaranteed transaction id.
-Please use the
-.Nm Ar synctid
-command to generate a guaranteed transaction id.
-.It Ar stamp
-Generate a timestamp suitable for use in the @@ filename extension.
-This command does not sync() or sleep and care should be taken if
-generating timestamps for data which may not yet be synced to disk.
-A time specification of
-.Pf yyyymmdd Oo :hhmmss Oc Ns Op .fractional
-specifies an exact as-of timestamp in local (not UTC) time.
-Set the TZ environment variable prior to running
-.Nm
-if you wish to specify the time by some other means.
-.It Ar stamp64
-Same as the
-.Ar stamp
-command but generates a 64 bit timestamp.
 .It Ar synctid Ar filesystem Op quick
 Generates a guaranteed, formal 64 bit transaction id representing the
 current state of the specified HAMMER filesystem.  The filesystem will
@@ -124,8 +97,6 @@ is one second.
 .It Ar iostats Op interval
 Output HAMMER I/O statistics until interrupted.  The default interval
 is one second.
-.It Ar date
-Output a date equivalent given a transaction id or time stamp.
 .It Ar history Ar path
 Show the modification history for a HAMMER file's inode and data.
 .It Ar show Op vol_no[:clu_no]

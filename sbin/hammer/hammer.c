@@ -31,14 +31,13 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.24 2008/06/23 21:31:56 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.25 2008/06/24 02:42:48 dillon Exp $
  */
 
 #include "hammer.h"
 #include <signal.h>
 #include <math.h>
 
-static void hammer_parsetime(u_int64_t *tidp, const char *timestr);
 static void hammer_parsedevs(const char *blkdevs);
 static void sigalrm(int signo);
 static void usage(int exit_code);
@@ -52,8 +51,6 @@ const char *LinkPath;
 int
 main(int ac, char **av)
 {
-	struct timeval tv;
-	u_int64_t tid;
 	int ch;
 	int timeout = 0;
 	u_int32_t status;
@@ -102,46 +99,8 @@ main(int ac, char **av)
 		alarm(timeout);
 	}
 
-	if (strcmp(av[0], "now") == 0) {
-		tid = (hammer_tid_t)time(NULL) * 1000000000LLU;
-		printf("0x%08x\n", (int)(tid / 1000000000LL));
-		exit(0);
-	}
-	if (strcmp(av[0], "now64") == 0) {
-		gettimeofday(&tv, NULL);
-		tid = (hammer_tid_t)tv.tv_sec * 1000000000LLU +
-			tv.tv_usec * 1000LLU;
-		printf("0x%016llx\n", tid);
-		exit(0);
-	}
 	if (strcmp(av[0], "synctid") == 0) {
 		hammer_cmd_synctid(av + 1, ac - 1);
-		exit(0);
-	}
-	if (strcmp(av[0], "stamp") == 0) {
-		if (av[1] == NULL)
-			usage(1);
-		hammer_parsetime(&tid, av[1]);
-		printf("0x%08x\n", (int)(tid / 1000000000LL));
-		exit(0);
-	}
-	if (strcmp(av[0], "stamp64") == 0) {
-		if (av[1] == NULL)
-			usage(1);
-		hammer_parsetime(&tid, av[1]);
-		printf("0x%016llx\n", tid);
-		exit(0);
-	}
-	if (strcmp(av[0], "date") == 0) {
-		time_t t;
-
-		if (av[1] == NULL)
-			usage(1);
-		tid = strtoull(av[1], NULL, 16);
-		if (tid >= 0x100000000LLU)
-			tid /= 1000000000LLU;
-		t = (time_t)tid;
-		printf("%s", ctime(&t));
 		exit(0);
 	}
 	if (strcmp(av[0], "namekey") == 0) {
@@ -232,76 +191,6 @@ main(int ac, char **av)
 	return(0);
 }
 
-/*
- * Parse a timestamp for the mount point
- *
- * yyyymmddhhmmss
- * -N[s/h/d/m/y]
- */
-static
-void
-hammer_parsetime(u_int64_t *tidp, const char *timestr)
-{
-	struct timeval tv;
-	struct tm tm;
-	int32_t n;
-	char c;
-
-	gettimeofday(&tv, NULL);
-
-	if (*timestr == 0)
-		usage(1);
-
-	if (isalpha(timestr[strlen(timestr)-1])) {
-		if (sscanf(timestr, "%d%c", &n, &c) != 2)
-			usage(1);
-		switch(c) {
-		case 'Y':
-			n *= 365;
-			goto days;
-		case 'M':
-			n *= 30;
-			/* fall through */
-		case 'D':
-		days:
-			n *= 24;
-			/* fall through */
-		case 'h':
-			n *= 60;
-			/* fall through */
-		case 'm':
-			n *= 60;
-			/* fall through */
-		case 's':
-			tv.tv_sec -= n;
-			break;
-		default:
-			usage(1);
-		}
-	} else {
-		double seconds = 0;
-
-		localtime_r(&tv.tv_sec, &tm);
-		seconds = (double)tm.tm_sec;
-		tm.tm_year += 1900;
-		tm.tm_mon += 1;
-		n = sscanf(timestr, "%4d%2d%2d:%2d%2d%lf",
-			   &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
-			   &tm.tm_hour, &tm.tm_min, &seconds);
-		tm.tm_mon -= 1;
-		tm.tm_year -= 1900;
-		/* if [:hhmmss] is omitted, assume :000000.0 */
-		if (n < 4)
-			tm.tm_hour = tm.tm_min = tm.tm_sec = 0;
-		else
-			tm.tm_sec = (int)seconds;
-		tv.tv_sec = mktime(&tm);
-		tv.tv_usec = (int)((seconds - floor(seconds)) * 1000000.0);
-	}
-	*tidp = (u_int64_t)tv.tv_sec * 1000000000LLU + 
-		tv.tv_usec * 1000LLU;
-}
-
 static
 void
 hammer_parsedevs(const char *blkdevs)
@@ -335,22 +224,18 @@ usage(int exit_code)
 {
 	fprintf(stderr, 
 		"hammer -h\n"
-		"hammer [-x] now[64]\n"
 		"hammer [-t timeout] [-c cyclefile] ....\n"
-		"hammer stamp[64] <time>\n"
 		"hammer prune <softlink-dir>\n"
 		"hammer prune-everything <filesystem>\n"
 		"hammer bstats <interval>\n"
 		"hammer iostats <interval>\n"
-		"hammer reblock <filesystem> [compact%%] (default 90%%)\n"
+		"hammer reblock[-btree/inodes/dirs/data] "
+			"<filesystem> [pack%%]\n"
 		"hammer pseudofs <dirpath>\n"
 		"hammer history[@offset[,len]] <file-1>...<file-N>\n"
 		"hammer -f blkdevs [-r] show\n"
 		"hammer -f blkdevs blockmap\n"
 	);
-	fprintf(stderr, "time: +n[s/m/h/D/M/Y]\n"
-			"time: yyyymmdd[:hhmmss]\n"
-			"modulo_time: n{s,m,h,d,M,y}\n");
 	exit(exit_code);
 }
 

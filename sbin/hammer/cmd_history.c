@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_history.c,v 1.2 2008/05/05 20:34:52 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_history.c,v 1.3 2008/06/24 02:42:48 dillon Exp $
  */
 
 #include "hammer.h"
@@ -98,35 +98,14 @@ hammer_do_history(const char *path, off_t off, int len)
 	printf("%016llx %s {\n", hist.obj_id, status);
 	for (;;) {
 		for (i = 0; i < hist.count; ++i) {
-			struct stat st;
-			struct tm tp;
-			time_t t;
-			char timebuf1[64];
-			char timebuf2[64];
 			char *hist_path = NULL;
-
-			t = (int64_t)hist.tid_ary[i] / 1000000000LL;
-			localtime_r(&t, &tp);
-			strftime(timebuf1, sizeof(timebuf1),
-				 "%e-%b-%Y %H:%M:%S", &tp);
 
 			asprintf(&hist_path, "%s@@0x%016llx",
 				 path, hist.tid_ary[i]);
-			if (off < 0 && stat(hist_path, &st) == 0) {
-				localtime_r(&st.st_mtime, &tp);
-				strftime(timebuf2, sizeof(timebuf2),
-					 "%e-%b-%Y %H:%M:%S %Z", &tp);
-			} else {
-				snprintf(timebuf2, sizeof(timebuf2), "?");
-			}
 			if (off < 0) {
-				printf("    %016llx %s contents-to %s",
-				       hist.tid_ary[i],
-				       timebuf1, timebuf2);
+				printf("    %016llx", hist.tid_ary[i]);
 			} else {
-				printf("    %016llx %s",
-				       hist.tid_ary[i],
-				       timebuf1);
+				printf("    %016llx", hist.tid_ary[i]);
 				if (VerboseOpt) {
 					printf(" '");
 					dumpat(hist_path, off, len);
