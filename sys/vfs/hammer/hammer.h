@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.91 2008/06/23 21:42:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.92 2008/06/24 17:38:17 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -107,6 +107,7 @@ struct hammer_transaction {
 	struct hammer_mount *hmp;
 	hammer_tid_t	tid;
 	u_int64_t	time;
+	u_int32_t	time32;
 	int		sync_lock_refs;
 	struct hammer_volume *rootvol;
 };

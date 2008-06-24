@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.6 2008/06/10 00:40:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.7 2008/06/24 17:38:17 dillon Exp $
  */
 
 #include "hammer.h"
@@ -65,19 +65,24 @@ hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 
 	if (prune->nelms < 0 || prune->nelms > HAMMER_MAX_PRUNE_ELMS)
 		return(EINVAL);
-	if (prune->beg_localization > prune->end_localization)
+	if ((prune->key_beg.localization | prune->key_end.localization) &
+	    HAMMER_LOCALIZE_PSEUDOFS_MASK) {
 		return(EINVAL);
-	if (prune->beg_localization == prune->end_localization) {
-		if (prune->beg_obj_id > prune->end_obj_id)
+	}
+	if (prune->key_beg.localization > prune->key_end.localization)
+		return(EINVAL);
+	if (prune->key_beg.localization == prune->key_end.localization) {
+		if (prune->key_beg.obj_id > prune->key_end.obj_id)
 			return(EINVAL);
 		/* key-space limitations - no check needed */
 	}
 	if ((prune->head.flags & HAMMER_IOC_PRUNE_ALL) && prune->nelms)
 		return(EINVAL);
 
-	prune->cur_localization = prune->end_localization;
-	prune->cur_obj_id = prune->end_obj_id;
-	prune->cur_key = HAMMER_MAX_KEY;
+	prune->key_cur.localization = prune->key_end.localization +
+				      ip->obj_localization;
+	prune->key_cur.obj_id = prune->key_end.obj_id;
+	prune->key_cur.key = HAMMER_MAX_KEY;
 
 	/*
 	 * Copy element array from userland
@@ -98,17 +103,18 @@ retry:
 		hammer_done_cursor(&cursor);
 		goto failed;
 	}
-	cursor.key_beg.localization = prune->beg_localization;
-	cursor.key_beg.obj_id = prune->beg_obj_id;
+	cursor.key_beg.localization = prune->key_beg.localization +
+				      ip->obj_localization;
+	cursor.key_beg.obj_id = prune->key_beg.obj_id;
 	cursor.key_beg.key = HAMMER_MIN_KEY;
 	cursor.key_beg.create_tid = 1;
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.rec_type = HAMMER_MIN_RECTYPE;
 	cursor.key_beg.obj_type = 0;
 
-	cursor.key_end.localization = prune->cur_localization;
-	cursor.key_end.obj_id = prune->cur_obj_id;
-	cursor.key_end.key = prune->cur_key;
+	cursor.key_end.localization = prune->key_cur.localization;
+	cursor.key_end.obj_id = prune->key_cur.obj_id;
+	cursor.key_end.key = prune->key_cur.key;
 	cursor.key_end.create_tid = HAMMER_MAX_TID - 1;
 	cursor.key_end.delete_tid = 0;
 	cursor.key_end.rec_type = HAMMER_MAX_RECTYPE;
@@ -148,9 +154,7 @@ retry:
 		 * Check for work
 		 */
 		elm = &cursor.node->ondisk->elms[cursor.index];
-		prune->cur_localization = elm->base.localization;
-		prune->cur_obj_id = elm->base.obj_id;
-		prune->cur_key = elm->base.key;
+		prune->key_cur = elm->base;
 
 		if (prune->stat_oldest_tid > elm->leaf.base.create_tid)
 			prune->stat_oldest_tid = elm->leaf.base.create_tid;
@@ -227,6 +231,7 @@ retry:
 		error = 0;
 	}
 failed:
+	prune->key_cur.localization &= HAMMER_LOCALIZE_MASK;
 	prune->elms = user_elms;
 	kfree(copy_elms, M_TEMP);
 	return(error);

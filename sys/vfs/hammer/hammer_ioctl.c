@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.22 2008/06/23 07:31:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.23 2008/06/24 17:38:17 dillon Exp $
  */
 
 #include "hammer.h"
@@ -222,6 +222,8 @@ static void
 add_history(hammer_inode_t ip, struct hammer_ioc_history *hist,
 	    hammer_btree_elm_t elm)
 {
+	int i;
+
 	if (elm->base.btype != HAMMER_BTREE_TYPE_RECORD)
 		return;
 	if ((hist->head.flags & HAMMER_IOC_HISTORY_ATKEY) &&
@@ -270,8 +272,9 @@ add_history(hammer_inode_t ip, struct hammer_ioc_history *hist,
 	/*
 	 * Add create_tid if it is in-bounds.
 	 */
-	if ((hist->count == 0 ||
-	     elm->leaf.base.create_tid != hist->tid_ary[hist->count - 1]) &&
+	i = hist->count;
+	if ((i == 0 ||
+	     elm->leaf.base.create_tid != hist->hist_ary[i - 1].tid) &&
 	    elm->leaf.base.create_tid >= hist->beg_tid &&
 	    elm->leaf.base.create_tid < hist->end_tid) {
 		if (hist->count == HAMMER_MAX_HISTORY_ELMS) {
@@ -279,7 +282,9 @@ add_history(hammer_inode_t ip, struct hammer_ioc_history *hist,
 			hist->head.flags |= HAMMER_IOC_HISTORY_NEXT_TID;
 			return;
 		}
-		hist->tid_ary[hist->count++] = elm->leaf.base.create_tid;
+		hist->hist_ary[i].tid = elm->leaf.base.create_tid;
+		hist->hist_ary[i].time32 = elm->leaf.create_ts;
+		++hist->count;
 	}
 
 	/*
@@ -291,15 +296,18 @@ add_history(hammer_inode_t ip, struct hammer_ioc_history *hist,
 	 *	[        ]
 	 *            [     ]
 	 */
+	i = hist->count;
 	if (elm->leaf.base.delete_tid &&
 	    elm->leaf.base.delete_tid >= hist->beg_tid &&
 	    elm->leaf.base.delete_tid < hist->end_tid) {
-		if (hist->count == HAMMER_MAX_HISTORY_ELMS) {
+		if (i == HAMMER_MAX_HISTORY_ELMS) {
 			hist->nxt_tid = elm->leaf.base.delete_tid;
 			hist->head.flags |= HAMMER_IOC_HISTORY_NEXT_TID;
 			return;
 		}
-		hist->tid_ary[hist->count++] = elm->leaf.base.delete_tid;
+		hist->hist_ary[i].tid = elm->leaf.base.delete_tid;
+		hist->hist_ary[i].time32 = elm->leaf.delete_ts;
+		++hist->count;
 	}
 }
 

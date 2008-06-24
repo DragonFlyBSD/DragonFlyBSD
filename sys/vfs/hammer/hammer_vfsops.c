@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.52 2008/06/23 21:42:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.53 2008/06/24 17:38:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -267,7 +267,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp->namekey_iterator = mycpu->gd_time_seconds;
 		/*TAILQ_INIT(&hmp->recycle_list);*/
 
-		hmp->root_btree_beg.localization = HAMMER_MIN_LOCALIZATION;
+		hmp->root_btree_beg.localization = 0x00000000U;
 		hmp->root_btree_beg.obj_id = -0x8000000000000000LL;
 		hmp->root_btree_beg.key = -0x8000000000000000LL;
 		hmp->root_btree_beg.create_tid = 1;
@@ -275,7 +275,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp->root_btree_beg.rec_type = 0;
 		hmp->root_btree_beg.obj_type = 0;
 
-		hmp->root_btree_end.localization = HAMMER_MAX_LOCALIZATION;
+		hmp->root_btree_end.localization = 0xFFFFFFFFU;
 		hmp->root_btree_end.obj_id = 0x7FFFFFFFFFFFFFFFLL;
 		hmp->root_btree_end.key = 0x7FFFFFFFFFFFFFFFLL;
 		hmp->root_btree_end.create_tid = 0xFFFFFFFFFFFFFFFFULL;

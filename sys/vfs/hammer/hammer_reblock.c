@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.20 2008/06/21 20:21:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.21 2008/06/24 17:38:17 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -63,30 +63,35 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 	hammer_btree_elm_t elm;
 	int error;
 
-	if (reblock->beg_obj_id >= reblock->end_obj_id)
+	if ((reblock->key_beg.localization | reblock->key_end.localization) &
+	    HAMMER_LOCALIZE_PSEUDOFS_MASK) {
+		return(EINVAL);
+	}
+	if (reblock->key_beg.obj_id >= reblock->key_end.obj_id)
 		return(EINVAL);
 	if (reblock->free_level < 0)
 		return(EINVAL);
 
-	reblock->cur_obj_id = reblock->beg_obj_id;
-	reblock->cur_localization = reblock->beg_localization;
+	reblock->key_cur = reblock->key_beg;
+	reblock->key_cur.localization += ip->obj_localization;
 
 retry:
 	error = hammer_init_cursor(trans, &cursor, NULL, NULL);
 	if (error) {
 		hammer_done_cursor(&cursor);
-		return(error);
+		goto failed;
 	}
-	cursor.key_beg.localization = reblock->cur_localization;
-	cursor.key_beg.obj_id = reblock->cur_obj_id;
+	cursor.key_beg.localization = reblock->key_cur.localization;
+	cursor.key_beg.obj_id = reblock->key_cur.obj_id;
 	cursor.key_beg.key = HAMMER_MIN_KEY;
 	cursor.key_beg.create_tid = 1;
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.rec_type = HAMMER_MIN_RECTYPE;
 	cursor.key_beg.obj_type = 0;
 
-	cursor.key_end.localization = reblock->end_localization;
-	cursor.key_end.obj_id = reblock->end_obj_id;
+	cursor.key_end.localization = reblock->key_end.localization +
+				      ip->obj_localization;
+	cursor.key_end.obj_id = reblock->key_end.obj_id;
 	cursor.key_end.key = HAMMER_MAX_KEY;
 	cursor.key_end.create_tid = HAMMER_MAX_TID - 1;
 	cursor.key_end.delete_tid = 0;
@@ -110,8 +115,8 @@ retry:
 		 * Internal or Leaf node
 		 */
 		elm = &cursor.node->ondisk->elms[cursor.index];
-		reblock->cur_obj_id = elm->base.obj_id;
-		reblock->cur_localization = elm->base.localization;
+		reblock->key_cur.obj_id = elm->base.obj_id;
+		reblock->key_cur.localization = elm->base.localization;
 
 		/*
 		 * Yield to more important tasks
@@ -150,6 +155,8 @@ retry:
 		reblock->head.flags |= HAMMER_IOC_HEAD_INTR;
 		error = 0;
 	}
+failed:
+	reblock->key_cur.localization &= HAMMER_LOCALIZE_MASK;
 	return(error);
 }
 

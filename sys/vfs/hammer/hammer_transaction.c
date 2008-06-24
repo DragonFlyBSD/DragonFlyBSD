@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.20 2008/06/23 21:42:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.21 2008/06/24 17:38:17 dillon Exp $
  */
 
 #include "hammer.h"
@@ -57,8 +57,8 @@ hammer_start_transaction(struct hammer_transaction *trans,
 	trans->sync_lock_refs = 0;
 
 	getmicrotime(&tv);
-	trans->time = (unsigned long)tv.tv_sec * 1000000ULL +
-		      tv.tv_usec;
+	trans->time = (unsigned long)tv.tv_sec * 1000000ULL + tv.tv_usec;
+	trans->time32 = (u_int32_t)tv.tv_sec;
 }
 
 /*
@@ -79,8 +79,8 @@ hammer_simple_transaction(struct hammer_transaction *trans,
 	trans->sync_lock_refs = 0;
 
 	getmicrotime(&tv);
-	trans->time = (unsigned long)tv.tv_sec * 1000000ULL +
-		      tv.tv_usec;
+	trans->time = (unsigned long)tv.tv_sec * 1000000ULL + tv.tv_usec;
+	trans->time32 = (u_int32_t)tv.tv_sec;
 }
 
 /*
@@ -108,8 +108,8 @@ hammer_start_transaction_fls(struct hammer_transaction *trans,
 	trans->sync_lock_refs = 1;
 
 	getmicrotime(&tv);
-	trans->time = (unsigned long)tv.tv_sec * 1000000ULL +
-		      tv.tv_usec;
+	trans->time = (unsigned long)tv.tv_sec * 1000000ULL + tv.tv_usec;
+	trans->time32 = (u_int32_t)tv.tv_sec;
 }
 
 void

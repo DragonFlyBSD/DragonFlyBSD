@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.22 2008/06/23 21:42:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.23 2008/06/24 17:38:17 dillon Exp $
  */
 
 /*
@@ -128,7 +128,7 @@ typedef struct hammer_base_elm *hammer_base_elm_t;
 #define HAMMER_LOCALIZE_PSEUDOFS_INC	0x00010000
 
 #define HAMMER_MIN_LOCALIZATION		0x00000000U
-#define HAMMER_MAX_LOCALIZATION		0xFFFFFFFFU
+#define HAMMER_MAX_LOCALIZATION		0x0000FFFFU
 #define HAMMER_DEF_LOCALIZATION		0x00000000U
 
 /*
@@ -148,11 +148,14 @@ struct hammer_btree_internal_elm {
 /*
  * Leaf B-Tree element (40 + 24 = 64 bytes).
  *
- * A leaf element.
+ * NOTE: create_ts/delete_ts are not used by any core algorithms, they are
+ *       used only by userland to present nominal real-time date strings
+ *	 to the user.
  */
 struct hammer_btree_leaf_elm {
 	struct hammer_base_elm base;
-	hammer_tid_t	unused01;
+	u_int32_t	create_ts;
+	u_int32_t	delete_ts;
 	hammer_off_t	data_offset;
 	int32_t		data_len;
 	hammer_crc_t	data_crc;

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.74 2008/06/23 07:31:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.75 2008/06/24 17:38:17 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1853,9 +1853,9 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 		if (error == 0) {
 			elm = &cursor->node->ondisk->elms[cursor->index];
 			hammer_modify_node(cursor->trans, cursor->node,
-					   &elm->leaf.base.delete_tid,
-					   sizeof(elm->leaf.base.delete_tid));
+					   elm, sizeof(*elm));
 			elm->leaf.base.delete_tid = tid;
+			elm->leaf.delete_ts = cursor->trans->time32;
 			hammer_modify_node_done(cursor->node);
 
 			/*

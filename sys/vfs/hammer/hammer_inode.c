@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.83 2008/06/23 21:42:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.84 2008/06/24 17:38:17 dillon Exp $
  */
 
 #include "hammer.h"
@@ -677,6 +677,7 @@ retry:
 		record->leaf = ip->sync_ino_leaf;
 		record->leaf.base.create_tid = trans->tid;
 		record->leaf.data_len = sizeof(ip->sync_ino_data);
+		record->leaf.create_ts = trans->time32;
 		record->data = (void *)&ip->sync_ino_data;
 		record->flags |= HAMMER_RECF_INTERLOCK_BE;
 		for (;;) {
@@ -1717,6 +1718,7 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 	 */
 	if (record->type != HAMMER_MEM_RECORD_DEL)
 		record->leaf.base.create_tid = trans->tid;
+		record->leaf.create_ts = trans->time32;
 	for (;;) {
 		error = hammer_ip_sync_record_cursor(cursor, record);
 		if (error != EDEADLK)
@@ -1934,6 +1936,9 @@ hammer_sync_inode(hammer_inode_t ip)
 			 */
 			ip->ino_leaf.base.delete_tid = trans.tid;
 			ip->sync_ino_leaf.base.delete_tid = trans.tid;
+			ip->ino_leaf.delete_ts = trans.time32;
+			ip->sync_ino_leaf.delete_ts = trans.time32;
+
 
 			/*
 			 * Adjust the inode count in the volume header
@@ -2005,7 +2010,9 @@ hammer_sync_inode(hammer_inode_t ip)
 		 * copy of the inode record.
 		 */
 		ip->ino_leaf.base.create_tid = trans.tid;
+		ip->ino_leaf.create_ts = trans.time32;
 		ip->sync_ino_leaf.base.create_tid = trans.tid;
+		ip->sync_ino_leaf.create_ts = trans.time32;
 		ip->sync_flags |= HAMMER_INODE_DDIRTY;
 		break;
 	}

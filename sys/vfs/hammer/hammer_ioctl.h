@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.13 2008/06/23 21:42:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.14 2008/06/24 17:38:17 dillon Exp $
  */
 /*
  * HAMMER ioctl's.  This file can be #included from userland
@@ -84,14 +84,11 @@ struct hammer_ioc_prune {
 	struct hammer_ioc_head head;
 	int		nelms;
 	int		reserved01;
-	u_int32_t	beg_localization;
-	u_int32_t	cur_localization;
-	u_int32_t	end_localization;
-	u_int32_t	reserved03;
-	int64_t		beg_obj_id;
-	int64_t		cur_obj_id;
-	int64_t		cur_key;
-	int64_t		end_obj_id;	 /* (range-exclusive) */
+
+	struct hammer_base_elm key_beg;	/* stop forward scan (reverse scan) */
+	struct hammer_base_elm key_end;	/* start forward scan (reverse scan) */
+	struct hammer_base_elm key_cur;	/* scan interruption point */
+
 	int64_t		stat_scanrecords;/* number of records scanned */
 	int64_t		stat_rawrecords; /* number of raw records pruned */
 	int64_t		stat_dirrecords; /* number of dir records pruned */
@@ -131,6 +128,12 @@ struct hammer_ioc_prune {
 
 #define HAMMER_MAX_HISTORY_ELMS	64
 
+typedef struct hammer_ioc_hist_entry {
+	hammer_tid_t	tid;
+	u_int32_t	time32;
+	u_int32_t	unused;
+} *hammer_ioc_hist_entry_t;
+
 struct hammer_ioc_history {
 	struct hammer_ioc_head head;
 	int64_t		obj_id;
@@ -141,7 +144,7 @@ struct hammer_ioc_history {
 	int64_t		nxt_key;
 	int		count;
 	int		reserve01;
-	hammer_tid_t	tid_ary[HAMMER_MAX_HISTORY_ELMS];
+	struct hammer_ioc_hist_entry hist_ary[HAMMER_MAX_HISTORY_ELMS];
 };
 
 #define HAMMER_IOC_HISTORY_ATKEY	0x0001
@@ -158,14 +161,9 @@ struct hammer_ioc_reblock {
 	int32_t		free_level;		/* 0 for maximum compaction */
 	u_int32_t	reserved01;
 
-	u_int32_t	beg_localization;
-	u_int32_t	cur_localization;
-	u_int32_t	end_localization;
-	u_int32_t	reserved03;
-
-	int64_t		beg_obj_id;
-	int64_t		cur_obj_id;		/* Stopped at (interrupt) */
-	int64_t		end_obj_id;
+	struct hammer_base_elm key_beg;		/* start forward scan */
+	struct hammer_base_elm key_end;		/* stop forward scan */
+	struct hammer_base_elm key_cur;		/* scan interruption point */
 
 	int64_t		btree_count;		/* B-Tree nodes checked */
 	int64_t		record_count;		/* Records checked */
@@ -182,7 +180,7 @@ struct hammer_ioc_reblock {
 };
 
 /*
- * HAMMER_IOC_SYNCTID
+ * HAMMERIOC_SYNCTID
  */
 enum hammer_synctid_op {
 	HAMMER_SYNCTID_NONE,	/* no sync (TID will not be accurate) */
@@ -198,26 +196,49 @@ struct hammer_ioc_synctid {
 };
 
 /*
- * HAMMER_IOC_MAKE_PSEUDOFS
+ * HAMMERIOC_GET_PSEUDOFS
  */
-#define HAMMER_IOC_MAXPSEUDONAME	64
-
-struct hammer_ioc_make_pseudofs {
-	struct hammer_ioc_head	head;
-	char			pseudoname[HAMMER_IOC_MAXPSEUDONAME];
-};
-
 struct hammer_ioc_get_pseudofs {
 	struct hammer_ioc_head	head;
 	u_int32_t		pseudoid;
 	int			masterid;
 };
 
+/*
+ * HAMMERIOC_MIRROR_READ/WRITE
+ */
+struct hammer_ioc_mirror_rw {
+	struct hammer_ioc_head	head;
+	struct hammer_base_elm 	key_beg;	/* start forward scan */
+	struct hammer_base_elm 	key_end;	/* stop forward scan */
+	struct hammer_base_elm	key_cur;	/* interruption point */
+	hammer_tid_t		tid_beg;	/* filter modification range */
+	hammer_tid_t		tid_end;	/* filter modification range */
+	void			*ubuf;		/* user buffer */
+	int			count;		/* current size */
+	int			size;		/* max size */
+};
+
+typedef struct hammer_ioc_mrecord {
+	u_int32_t		signature;	/* signature for byte order */
+	u_int32_t		rec_size;
+	struct hammer_btree_leaf_elm leaf;
+	char			data[8];	/* extended */
+} *hammer_ioc_mrecord_t;
+
+#define HAMMER_IOC_MIRROR_SIGNATURE	0x4dd97272U
+#define HAMMER_IOC_MIRROR_SIGNATURE_REV	0x7272d94dU
+
+/*
+ * Ioctl cmd ids
+ */
 
 #define HAMMERIOC_PRUNE		_IOWR('h',1,struct hammer_ioc_prune)
 #define HAMMERIOC_GETHISTORY	_IOWR('h',2,struct hammer_ioc_history)
 #define HAMMERIOC_REBLOCK	_IOWR('h',3,struct hammer_ioc_reblock)
 #define HAMMERIOC_SYNCTID	_IOWR('h',4,struct hammer_ioc_synctid)
 #define HAMMERIOC_GET_PSEUDOFS	_IOR('h',6,struct hammer_ioc_get_pseudofs)
+#define HAMMERIOC_MIRROR_READ	_IOWR('h',7,struct hammer_ioc_mirror_rw)
+#define HAMMERIOC_MIRROR_WRITE	_IOWR('h',8,struct hammer_ioc_mirror_rw)
 
 #endif
