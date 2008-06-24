@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.73 2008/06/23 11:57:19 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.74 2008/06/24 11:17:16 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -2181,9 +2181,7 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 	 */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
 	ifp->if_capabilities |= IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_MTU;
-#if 0
 	ifp->if_capenable |= IFCAP_VLAN_MTU;
-#endif
 
 	/*
 	 * Specify the media types supported by this adapter and register
