@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.23 2008/06/25 15:50:27 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.24 2008/06/25 16:25:58 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -1352,7 +1352,7 @@ nfe_init(void *xsc)
 		return;
 	}
 
-	NFE_WRITE(sc, NFE_TX_UNK, 0);
+	NFE_WRITE(sc, NFE_TX_POLL, 0);
 	NFE_WRITE(sc, NFE_STATUS, 0);
 
 	sc->rxtxctl = NFE_RXTX_BIT2;
