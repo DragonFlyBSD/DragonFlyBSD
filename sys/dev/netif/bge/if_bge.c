@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.92 2008/05/16 13:19:11 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.93 2008/06/25 13:00:09 sephe Exp $
  *
  */
 
@@ -73,6 +73,8 @@
  */
 
 #include "opt_polling.h"
+#include "opt_ethernet.h"
+
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/endian.h>
@@ -2190,10 +2192,17 @@ bge_rxeof(struct bge_softc *sc)
 {
 	struct ifnet *ifp;
 	int stdcnt = 0, jumbocnt = 0;
+#ifdef ETHER_INPUT_CHAIN
+	struct mbuf_chain chain[MAXCPU];
+#endif
 
 	if (sc->bge_rx_saved_considx ==
 	    sc->bge_ldata.bge_status_block->bge_idx[0].bge_rx_prod_idx)
 		return;
+
+#ifdef ETHER_INPUT_CHAIN
+	ether_input_chain_init(chain);
+#endif
 
 	ifp = &sc->arpcom.ac_if;
 
@@ -2307,8 +2316,20 @@ bge_rxeof(struct bge_softc *sc)
 			m->m_pkthdr.ether_vlantag = vlan_tag;
 			have_tag = vlan_tag = 0;
 		}
+#ifdef ETHER_INPUT_CHAIN
+#ifdef ETHER_INPUT2
+		ether_input_chain2(ifp, m, chain);
+#else
+		ether_input_chain(ifp, m, chain);
+#endif
+#else
 		ifp->if_input(ifp, m);
+#endif
 	}
+
+#ifdef ETHER_INPUT_CHAIN
+	ether_input_dispatch(chain);
+#endif
 
 	if (stdcnt > 0) {
 		bus_dmamap_sync(sc->bge_cdata.bge_rx_std_ring_tag,
