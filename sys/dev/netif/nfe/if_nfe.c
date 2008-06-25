@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.21 2008/06/24 13:55:17 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.22 2008/06/25 14:39:35 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -351,13 +351,16 @@ nfe_probe(device_t dev)
 			case PCI_PRODUCT_NVIDIA_CK804_LAN2:
 			case PCI_PRODUCT_NVIDIA_MCP04_LAN1:
 			case PCI_PRODUCT_NVIDIA_MCP04_LAN2:
+				sc->sc_flags = NFE_JUMBO_SUP |
+					       NFE_40BIT_ADDR |
+					       NFE_HW_CSUM;
+				break;
 			case PCI_PRODUCT_NVIDIA_MCP65_LAN1:
 			case PCI_PRODUCT_NVIDIA_MCP65_LAN2:
 			case PCI_PRODUCT_NVIDIA_MCP65_LAN3:
 			case PCI_PRODUCT_NVIDIA_MCP65_LAN4:
 				sc->sc_flags = NFE_JUMBO_SUP |
-					       NFE_40BIT_ADDR |
-					       NFE_HW_CSUM;
+					       NFE_40BIT_ADDR;
 				break;
 			case PCI_PRODUCT_NVIDIA_MCP55_LAN1:
 			case PCI_PRODUCT_NVIDIA_MCP55_LAN2:
