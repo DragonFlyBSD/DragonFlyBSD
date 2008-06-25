@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfereg.h,v 1.19 2006/05/28 00:20:21 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfereg.h,v 1.5 2007/09/10 14:08:28 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfereg.h,v 1.6 2008/06/25 16:02:35 sephe Exp $	*/
 
 /*
  * Copyright (c) 2005 Jonathan Gray <jsg@openbsd.org>
@@ -55,7 +55,7 @@
 #define NFE_TX_RING_ADDR_LO	0x100
 #define NFE_RX_RING_ADDR_LO	0x104
 #define NFE_RING_SIZE		0x108
-#define NFE_TX_UNK		0x10c
+#define NFE_TX_POLL		0x10c
 #define NFE_LINKSPEED		0x110
 #define NFE_SETUP_R5		0x130
 #define NFE_SETUP_R3		0x13C
