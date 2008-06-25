@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.32 2008/03/23 09:40:07 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.33 2008/06/25 15:33:04 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.31 2008/02/28 18:12:51 swildner Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.33 2008/06/25 15:28:59 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -2303,6 +2303,18 @@
 #define	PCI_PRODUCT_NVIDIA_MCP67_LAN2	0x054d		/* MCP67 Lan */
 #define	PCI_PRODUCT_NVIDIA_MCP67_LAN3	0x054e		/* MCP67 Lan */
 #define	PCI_PRODUCT_NVIDIA_MCP67_LAN4	0x054f		/* MCP67 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP77_LAN1	0x0760		/* MCP77 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP77_LAN2	0x0761		/* MCP77 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP77_LAN3	0x0762		/* MCP77 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP77_LAN4	0x0763		/* MCP77 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP73_LAN1	0x07dc		/* MCP73 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP73_LAN2	0x07dd		/* MCP73 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP73_LAN3	0x07de		/* MCP73 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP73_LAN4	0x07df		/* MCP73 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP79_LAN1	0x0ab0		/* MCP79 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP79_LAN2	0x0ab1		/* MCP79 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP79_LAN3	0x0ab2		/* MCP79 Lan */
+#define	PCI_PRODUCT_NVIDIA_MCP79_LAN4	0x0ab3		/* MCP79 Lan */
 
 /* Nvidia Corporation & SGS-Thomson Microelectronics */
 #define	PCI_PRODUCT_NVIDIA_SGS_RIVA128	0x0018		/* Riva 128 */

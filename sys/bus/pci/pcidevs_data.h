@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.32 2008/03/23 09:40:07 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.33 2008/06/25 15:33:04 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.31 2008/02/28 18:12:51 swildner Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.33 2008/06/25 15:28:59 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -8283,6 +8283,78 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Nvidia Corporation",
 	    "MCP67 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP77_LAN1,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP77 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP77_LAN2,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP77 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP77_LAN3,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP77 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP77_LAN4,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP77 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP73_LAN1,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP73 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP73_LAN2,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP73 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP73_LAN3,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP73 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP73_LAN4,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP73 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP79_LAN1,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP79 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP79_LAN2,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP79 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP79_LAN3,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP79 Lan",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP79_LAN4,
+	    0,
+	    "Nvidia Corporation",
+	    "MCP79 Lan",
 	},
 	{
 	    PCI_VENDOR_NVIDIA_SGS, PCI_PRODUCT_NVIDIA_SGS_RIVA128,
