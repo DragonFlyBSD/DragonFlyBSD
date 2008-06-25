@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.25 2008/06/24 02:42:48 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.26 2008/06/25 13:10:06 mneumann Exp $
  */
 
 #include "hammer.h"
@@ -137,6 +137,10 @@ main(int ac, char **av)
 		hammer_cmd_softprune(av + 1, ac - 1, 1);
 		exit(0);
 	}
+	if (strcmp(av[0], "snapshot") == 0) {
+		hammer_cmd_snapshot(av + 1, ac - 1);
+		exit(0);
+	}
 	if (strcmp(av[0], "bstats") == 0) {
 		hammer_cmd_bstats(av + 1, ac - 1);
 		exit(0);
@@ -227,6 +231,7 @@ usage(int exit_code)
 		"hammer [-t timeout] [-c cyclefile] ....\n"
 		"hammer prune <softlink-dir>\n"
 		"hammer prune-everything <filesystem>\n"
+		"hammer snapshot <softlink-dir> [<filesystem>]\n"
 		"hammer bstats <interval>\n"
 		"hammer iostats <interval>\n"
 		"hammer reblock[-btree/inodes/dirs/data] "

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,51 +31,77 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.h,v 1.18 2008/06/25 13:10:06 mneumann Exp $
+ * $DragonFly: src/sbin/hammer/cmd_snapshot.c,v 1.1 2008/06/25 13:10:06 mneumann Exp $
  */
 
-#include <sys/types.h>
-#include <sys/diskslice.h>
-#include <sys/diskmbr.h>
-#include <sys/stat.h>
-#include <sys/time.h>
+#include "hammer.h"
+#include <sys/param.h>
 #include <sys/mount.h>
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stddef.h>
 #include <unistd.h>
-#include <string.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <assert.h>
-#include <err.h>
-#include <ctype.h>
-#include <dirent.h>
 
-#include "hammer_util.h"
-#include <vfs/hammer/hammer_ioctl.h>
+static void snapshot_usage(int exit_code);
 
-extern int RecurseOpt;
-extern int VerboseOpt;
-extern const char *LinkPath;
-extern const char *CyclePath;
+/*
+ * snapshot <softlink-dir> [<filesystem>]
+ */
+void
+hammer_cmd_snapshot(char **av, int ac)
+{
+	char *softlink_dir;
+	const char *filesystem;
+	struct statfs buf;
+	struct hammer_ioc_synctid synctid;
+	int fd;
+	char *from;
+	char *to;
 
-void hammer_cmd_show(hammer_tid_t node_offset, int depth,
-		hammer_base_elm_t left_bound, hammer_base_elm_t right_bound);
-void hammer_cmd_prune(char **av, int ac);
-void hammer_cmd_softprune(char **av, int ac, int everything_opt);
-void hammer_cmd_bstats(char **av, int ac);
-void hammer_cmd_iostats(char **av, int ac);
-void hammer_cmd_synctid(char **av, int ac);
-void hammer_cmd_history(const char *offset_str, char **av, int ac);
-void hammer_cmd_blockmap(void);
-void hammer_cmd_reblock(char **av, int ac, int flags);
-void hammer_cmd_pseudofs(char **av, int ac);
-void hammer_cmd_snapshot(char **av, int ac);
+	if (ac == 0 || ac > 2)
+		snapshot_usage(1);
 
-void hammer_get_cycle(int64_t *obj_idp, uint32_t *localizationp);
-void hammer_set_cycle(int64_t obj_id, uint32_t localization);
-void hammer_reset_cycle(void);
+	softlink_dir = av[0];
+
+	if (ac > 1) 
+		filesystem = av[1];
+	else if (statfs(softlink_dir, &buf) == 0)
+		filesystem = buf.f_mntonname;
+	else
+		err(2, "Unable to determine filesystem of %s", softlink_dir);
+
+	bzero(&synctid, sizeof(synctid));
+	synctid.op = HAMMER_SYNCTID_SYNC2;
+
+	fd = open(filesystem, O_RDONLY);
+	if (fd < 0)
+		err(2, "Unable to open %s", filesystem);
+	if (ioctl(fd, HAMMERIOC_SYNCTID, &synctid) < 0) {
+		err(2, "Synctid %s failed", filesystem);
+	} else {
+		asprintf(&from, "%s@@0x%016llx", filesystem, synctid.tid); 
+
+		if (from == NULL)
+			err(2, "Couldn't generate string");
+
+		if (softlink_dir[strlen(softlink_dir)-1] == '/')
+			asprintf(&to, "%s0x%016llx", softlink_dir, synctid.tid);
+		else
+			asprintf(&to, "%s/0x%016llx", softlink_dir, synctid.tid);
+		
+		if (to == NULL)
+			err(2, "Couldn't generate string");
+
+		if (symlink(from, to) != 0)
+			err(2, "Unable to symlink %s to %s", from, to);
+
+		printf("%s\n", to);
+	}
+	close(fd);
+}
+
+static
+void
+snapshot_usage(int exit_code)
+{
+	fprintf(stderr, "hammer snapshot <softlink-dir> [<filesystem>]\n");
+	exit(exit_code);
+}
 
