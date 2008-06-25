@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.53 2008/06/15 10:41:00 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.54 2008/06/25 11:56:13 sephe Exp $
  */
 
 /*
@@ -34,6 +34,7 @@
  */
 
 #include "opt_polling.h"
+#include "opt_ethernet.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1267,6 +1268,9 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 	struct mbuf *m;
 	struct fxp_rfa *rfa;
 	int rnr = (statack & FXP_SCB_STATACK_RNR) ? 1 : 0;
+#ifdef ETHER_INPUT_CHAIN
+	struct mbuf_chain chain[MAXCPU];
+#endif
 
 	if (rnr)
 		fxp_rnr++;
@@ -1329,6 +1333,10 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 	if (!rnr && (statack & FXP_SCB_STATACK_FR) == 0)
 		return;
 
+#ifdef ETHER_INPUT_CHAIN
+	ether_input_chain_init(chain);
+#endif
+
 	/*
 	 * Process receiver interrupts. If a no-resource (RNR)
 	 * condition exists, get whatever packets we can and
@@ -1389,9 +1397,22 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 				continue;
 			}
 			m->m_pkthdr.len = m->m_len = total_len;
+#ifdef ETHER_INPUT_CHAIN
+#ifdef ETHER_INPUT2
+			ether_input_chain2(ifp, m, chain);
+#else
+			ether_input_chain(ifp, m, chain);
+#endif
+#else
 			ifp->if_input(ifp, m);
+#endif
 		}
 	}
+
+#ifdef ETHER_INPUT_CHAIN
+	ether_input_dispatch(chain);
+#endif
+
 	if (rnr) {
 		fxp_scb_wait(sc);
 		CSR_WRITE_4(sc, FXP_CSR_SCB_GENERAL,
