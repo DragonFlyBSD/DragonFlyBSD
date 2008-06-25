@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.22 2008/06/25 14:39:35 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.23 2008/06/25 15:50:27 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -278,7 +278,45 @@ static const struct nfe_dev {
 	  "NVIDIA MCP67 Gigabit Ethernet" },
 
 	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP67_LAN4,
-	  "NVIDIA MCP67 Gigabit Ethernet" }
+	  "NVIDIA MCP67 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP73_LAN1,
+	  "NVIDIA MCP73 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP73_LAN2,
+	  "NVIDIA MCP73 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP73_LAN3,
+	  "NVIDIA MCP73 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP73_LAN4,
+	  "NVIDIA MCP73 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP77_LAN1,
+	  "NVIDIA MCP77 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP77_LAN2,
+	  "NVIDIA MCP77 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP77_LAN3,
+	  "NVIDIA MCP77 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP77_LAN4,
+	  "NVIDIA MCP77 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP79_LAN1,
+	  "NVIDIA MCP79 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP79_LAN2,
+	  "NVIDIA MCP79 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP79_LAN3,
+	  "NVIDIA MCP79 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_MCP79_LAN4,
+	  "NVIDIA MCP79 Gigabit Ethernet" },
+
+	{ 0, 0, NULL }
 };
 
 static device_method_t nfe_methods[] = {
@@ -345,6 +383,10 @@ nfe_probe(device_t dev)
 			case PCI_PRODUCT_NVIDIA_MCP67_LAN2:
 			case PCI_PRODUCT_NVIDIA_MCP67_LAN3:
 			case PCI_PRODUCT_NVIDIA_MCP67_LAN4:
+			case PCI_PRODUCT_NVIDIA_MCP73_LAN1:
+			case PCI_PRODUCT_NVIDIA_MCP73_LAN2:
+			case PCI_PRODUCT_NVIDIA_MCP73_LAN3:
+			case PCI_PRODUCT_NVIDIA_MCP73_LAN4:
 				sc->sc_flags = NFE_40BIT_ADDR;
 				break;
 			case PCI_PRODUCT_NVIDIA_CK804_LAN1:
@@ -368,6 +410,17 @@ nfe_probe(device_t dev)
 					       NFE_40BIT_ADDR |
 					       NFE_HW_CSUM |
 					       NFE_HW_VLAN;
+				break;
+			case PCI_PRODUCT_NVIDIA_MCP77_LAN1:
+			case PCI_PRODUCT_NVIDIA_MCP77_LAN2:
+			case PCI_PRODUCT_NVIDIA_MCP77_LAN3:
+			case PCI_PRODUCT_NVIDIA_MCP77_LAN4:
+			case PCI_PRODUCT_NVIDIA_MCP79_LAN1:
+			case PCI_PRODUCT_NVIDIA_MCP79_LAN2:
+			case PCI_PRODUCT_NVIDIA_MCP79_LAN3:
+			case PCI_PRODUCT_NVIDIA_MCP79_LAN4:
+				sc->sc_flags = NFE_40BIT_ADDR |
+					       NFE_HW_CSUM;
 				break;
 			}
 
