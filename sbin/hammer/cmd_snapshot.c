@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_snapshot.c,v 1.1 2008/06/25 13:10:06 mneumann Exp $
+ * $DragonFly: src/sbin/hammer/cmd_snapshot.c,v 1.2 2008/06/25 13:25:06 mneumann Exp $
  */
 
 #include "hammer.h"
@@ -73,27 +73,29 @@ hammer_cmd_snapshot(char **av, int ac)
 	fd = open(filesystem, O_RDONLY);
 	if (fd < 0)
 		err(2, "Unable to open %s", filesystem);
-	if (ioctl(fd, HAMMERIOC_SYNCTID, &synctid) < 0) {
+	if (ioctl(fd, HAMMERIOC_SYNCTID, &synctid) < 0)
 		err(2, "Synctid %s failed", filesystem);
-	} else {
-		asprintf(&from, "%s@@0x%016llx", filesystem, synctid.tid); 
 
-		if (from == NULL)
-			err(2, "Couldn't generate string");
+	asprintf(&from, "%s@@0x%016llx", filesystem, synctid.tid); 
 
-		if (softlink_dir[strlen(softlink_dir)-1] == '/')
-			asprintf(&to, "%s0x%016llx", softlink_dir, synctid.tid);
-		else
-			asprintf(&to, "%s/0x%016llx", softlink_dir, synctid.tid);
-		
-		if (to == NULL)
-			err(2, "Couldn't generate string");
+	if (from == NULL)
+		err(2, "Couldn't generate string");
 
-		if (symlink(from, to) != 0)
-			err(2, "Unable to symlink %s to %s", from, to);
+	if (softlink_dir[strlen(softlink_dir)-1] == '/')
+		asprintf(&to, "%s0x%016llx", softlink_dir, synctid.tid);
+	else
+		asprintf(&to, "%s/0x%016llx", softlink_dir, synctid.tid);
+	
+	if (to == NULL)
+		err(2, "Couldn't generate string");
 
-		printf("%s\n", to);
-	}
+	if (symlink(from, to) != 0)
+		err(2, "Unable to symlink %s to %s", from, to);
+
+	printf("%s\n", to);
+
+	free(from);
+	free(to);
 	close(fd);
 }
 
