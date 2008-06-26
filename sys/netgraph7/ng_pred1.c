@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_pred1.c,v 1.3 2008/01/27 02:04:12 mav Exp $
+ * $DragonFly: src/sys/netgraph7/ng_pred1.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -39,10 +40,10 @@
 #include <sys/errno.h>
 #include <sys/syslog.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_pred1.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_pred1.h"
 
 #include "opt_netgraph.h"
 
@@ -188,7 +189,7 @@ ng_pred1_constructor(node_p node)
 	priv_p priv;
 
 	/* Allocate private structure. */
-	priv = malloc(sizeof(*priv), M_NETGRAPH_PRED1, M_WAITOK | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH_PRED1, M_WAITOK | M_ZERO);
 
 	NG_NODE_SET_PRIVATE(node, priv);
 
@@ -268,7 +269,7 @@ ng_pred1_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		/* Create response. */
 		if (msg->header.cmd != NGM_PRED1_CLR_STATS) {
 			NG_MKRESPONSE(resp, msg,
-			    sizeof(struct ng_pred1_stats), M_NOWAIT);
+			    sizeof(struct ng_pred1_stats), M_WAITOK | M_NULLOK);
 			if (resp == NULL)
 				ERROUT(ENOMEM);
 			bcopy(&priv->stats, resp->data,
@@ -324,7 +325,7 @@ ng_pred1_rcvdata(hook_p hook, item_p item)
 
 				/* Need to send a reset-request. */
 				NG_MKMESSAGE(msg, NGM_PRED1_COOKIE,
-				    NGM_PRED1_RESETREQ, 0, M_NOWAIT);
+				    NGM_PRED1_RESETREQ, 0, M_WAITOK | M_NULLOK);
 				if (msg == NULL)
 					return (error);
 				NG_SEND_MSG_ID(error, node, msg,
@@ -346,7 +347,7 @@ ng_pred1_shutdown(node_p node)
 {
 	const priv_p priv = NG_NODE_PRIVATE(node);
 
-	free(priv, M_NETGRAPH_PRED1);
+	kfree(priv, M_NETGRAPH_PRED1);
 	NG_NODE_SET_PRIVATE(node, NULL);
 	NG_NODE_UNREF(node);		/* Let the node escape. */
 	return (0);

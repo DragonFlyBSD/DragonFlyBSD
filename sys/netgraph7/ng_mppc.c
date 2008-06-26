@@ -39,6 +39,7 @@
  *
  * $Whistle: ng_mppc.c,v 1.4 1999/11/25 00:10:12 archie Exp $
  * $FreeBSD: src/sys/netgraph/ng_mppc.c,v 1.31 2007/05/18 15:28:01 mav Exp $
+ * $DragonFly: src/sys/netgraph7/ng_mppc.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -56,19 +57,19 @@
 #include <sys/errno.h>
 #include <sys/syslog.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_mppc.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_mppc.h"
 
 #include "opt_netgraph.h"
 
-#if !defined(NETGRAPH_MPPC_COMPRESSION) && !defined(NETGRAPH_MPPC_ENCRYPTION)
+#if !defined(NETGRAPH7_MPPC_COMPRESSION) && !defined(NETGRAPH7_MPPC_ENCRYPTION)
 #ifdef KLD_MODULE
-/* XXX NETGRAPH_MPPC_COMPRESSION isn't functional yet */
-#define NETGRAPH_MPPC_ENCRYPTION
+/* XXX NETGRAPH7_MPPC_COMPRESSION isn't functional yet */
+#define NETGRAPH7_MPPC_ENCRYPTION
 #else
 /* This case is indicative of an error in sys/conf files */
-#error Need either NETGRAPH_MPPC_COMPRESSION or NETGRAPH_MPPC_ENCRYPTION
+#error Need either NETGRAPH7_MPPC_COMPRESSION or NETGRAPH7_MPPC_ENCRYPTION
 #endif
 #endif
 
@@ -78,11 +79,11 @@ MALLOC_DEFINE(M_NETGRAPH_MPPC, "netgraph_mppc", "netgraph mppc node ");
 #define M_NETGRAPH_MPPC M_NETGRAPH
 #endif
 
-#ifdef NETGRAPH_MPPC_COMPRESSION
+#ifdef NETGRAPH7_MPPC_COMPRESSION
 /* XXX this file doesn't exist yet, but hopefully someday it will... */
 #include <net/mppc.h>
 #endif
-#ifdef NETGRAPH_MPPC_ENCRYPTION
+#ifdef NETGRAPH7_MPPC_ENCRYPTION
 #include <crypto/rc4/rc4.h>
 #endif
 #include <crypto/sha1.h>
@@ -127,10 +128,10 @@ struct ng_mppc_dir {
 	hook_p			hook;		/* netgraph hook */
 	u_int16_t		cc:12;		/* coherency count */
 	u_char			flushed;	/* clean history (xmit only) */
-#ifdef NETGRAPH_MPPC_COMPRESSION
+#ifdef NETGRAPH7_MPPC_COMPRESSION
 	u_char			*history;	/* compression history */
 #endif
-#ifdef NETGRAPH_MPPC_ENCRYPTION
+#ifdef NETGRAPH7_MPPC_ENCRYPTION
 	u_char			key[MPPE_KEY_LEN];	/* session key */
 	struct rc4_state	rc4;			/* rc4 state */
 #endif
@@ -157,7 +158,7 @@ static int	ng_mppc_compress(node_p node,
 			struct mbuf **datap);
 static int	ng_mppc_decompress(node_p node,
 			struct mbuf **datap);
-#ifdef NETGRAPH_MPPC_ENCRYPTION
+#ifdef NETGRAPH7_MPPC_ENCRYPTION
 static void	ng_mppc_getkey(const u_char *h, u_char *h2, int len);
 static void	ng_mppc_updatekey(u_int32_t bits,
 			u_char *key0, u_char *key, struct rc4_state *rc4);
@@ -177,7 +178,7 @@ static struct ng_type ng_mppc_typestruct = {
 };
 NETGRAPH_INIT(mppc, &ng_mppc_typestruct);
 
-#ifdef NETGRAPH_MPPC_ENCRYPTION
+#ifdef NETGRAPH7_MPPC_ENCRYPTION
 /* Depend on separate rc4 module */
 MODULE_DEPEND(ng_mppc, rc4, 1, 1, 1);
 #endif
@@ -200,7 +201,7 @@ ng_mppc_constructor(node_p node)
 	priv_p priv;
 
 	/* Allocate private structure */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH_MPPC, M_NOWAIT | M_ZERO);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH_MPPC, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
@@ -270,11 +271,11 @@ ng_mppc_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			if (cfg->enable) {
 				if ((cfg->bits & ~MPPC_VALID_BITS) != 0)
 					ERROUT(EINVAL);
-#ifndef NETGRAPH_MPPC_COMPRESSION
+#ifndef NETGRAPH7_MPPC_COMPRESSION
 				if ((cfg->bits & MPPC_BIT) != 0)
 					ERROUT(EPROTONOSUPPORT);
 #endif
-#ifndef NETGRAPH_MPPC_ENCRYPTION
+#ifndef NETGRAPH7_MPPC_ENCRYPTION
 				if ((cfg->bits & MPPE_BITS) != 0)
 					ERROUT(EPROTONOSUPPORT);
 #endif
@@ -288,7 +289,7 @@ ng_mppc_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			/* Configuration is OK, reset to it */
 			d->cfg = *cfg;
 
-#ifdef NETGRAPH_MPPC_COMPRESSION
+#ifdef NETGRAPH7_MPPC_COMPRESSION
 			/* Initialize state buffers for compression */
 			if (d->history != NULL) {
 				FREE(d->history, M_NETGRAPH_MPPC);
@@ -298,7 +299,7 @@ ng_mppc_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				MALLOC(d->history, u_char *,
 				    isComp ? MPPC_SizeOfCompressionHistory() :
 				    MPPC_SizeOfDecompressionHistory(),
-				    M_NETGRAPH_MPPC, M_NOWAIT);
+				    M_NETGRAPH_MPPC, M_WAITOK | M_NULLOK);
 				if (d->history == NULL)
 					ERROUT(ENOMEM);
 				if (isComp)
@@ -310,7 +311,7 @@ ng_mppc_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			}
 #endif
 
-#ifdef NETGRAPH_MPPC_ENCRYPTION
+#ifdef NETGRAPH7_MPPC_ENCRYPTION
 			/* Generate initial session keys for encryption */
 			if ((cfg->bits & MPPE_BITS) != 0) {
 				const int keylen = KEYLEN(cfg->bits);
@@ -391,7 +392,7 @@ ng_mppc_rcvdata(hook_p hook, item_p item)
 
 				/* Need to send a reset-request */
 				NG_MKMESSAGE(msg, NGM_MPPC_COOKIE,
-				    NGM_MPPC_RESETREQ, 0, M_NOWAIT);
+				    NGM_MPPC_RESETREQ, 0, M_WAITOK | M_NULLOK);
 				if (msg == NULL)
 					return (error);
 				NG_SEND_MSG_ID(error, node, msg,
@@ -419,7 +420,7 @@ ng_mppc_shutdown(node_p node)
 	const priv_p priv = NG_NODE_PRIVATE(node);
 
 	/* Take down netgraph node */
-#ifdef NETGRAPH_MPPC_COMPRESSION
+#ifdef NETGRAPH7_MPPC_COMPRESSION
 	if (priv->xmit.history != NULL)
 		FREE(priv->xmit.history, M_NETGRAPH_MPPC);
 	if (priv->recv.history != NULL)
@@ -480,7 +481,7 @@ ng_mppc_compress(node_p node, struct mbuf **datap)
 	}
 
 	/* Compress packet (if compression enabled) */
-#ifdef NETGRAPH_MPPC_COMPRESSION
+#ifdef NETGRAPH7_MPPC_COMPRESSION
 	if ((d->cfg.bits & MPPC_BIT) != 0) {
 		u_short flags = MPPC_MANDATORY_COMPRESS_FLAGS;
 		u_char *inbuf, *outbuf;
@@ -491,7 +492,7 @@ ng_mppc_compress(node_p node, struct mbuf **datap)
 
 		/* Work with contiguous regions of memory. */
 		inlen = m->m_pkthdr.len;
-		inbuf = malloc(inlen, M_NETGRAPH_MPPC, M_NOWAIT);
+		inbuf = kmalloc(inlen, M_NETGRAPH_MPPC, M_WAITOK | M_NULLOK);
 		if (inbuf == NULL) {
 			m_freem(m);
 			return (ENOMEM);
@@ -499,10 +500,10 @@ ng_mppc_compress(node_p node, struct mbuf **datap)
 		m_copydata(m, 0, inlen, (caddr_t)inbuf);
 
 		outlen = MPPC_MAX_BLOWUP(inlen);
-		outbuf = malloc(outlen, M_NETGRAPH_MPPC, M_NOWAIT);
+		outbuf = kmalloc(outlen, M_NETGRAPH_MPPC, M_WAITOK | M_NULLOK);
 		if (outbuf == NULL) {
 			m_freem(m);
-			free(inbuf, M_NETGRAPH_MPPC);
+			kfree(inbuf, M_NETGRAPH_MPPC);
 			return (ENOMEM);
 		}
 
@@ -534,8 +535,8 @@ ng_mppc_compress(node_p node, struct mbuf **datap)
 		d->flushed = (rtn & MPPC_EXPANDED) != 0
 		    || (flags & MPPC_SAVE_HISTORY) == 0;
 
-		free(inbuf, M_NETGRAPH_MPPC);
-		free(outbuf, M_NETGRAPH_MPPC);
+		kfree(inbuf, M_NETGRAPH_MPPC);
+		kfree(outbuf, M_NETGRAPH_MPPC);
 
 		/* Check m_devget() result. */
 		if (m == NULL)
@@ -544,7 +545,7 @@ ng_mppc_compress(node_p node, struct mbuf **datap)
 #endif
 
 	/* Now encrypt packet (if encryption enabled) */
-#ifdef NETGRAPH_MPPC_ENCRYPTION
+#ifdef NETGRAPH7_MPPC_ENCRYPTION
 	if ((d->cfg.bits & MPPE_BITS) != 0) {
 		struct mbuf *m1;
 
@@ -563,7 +564,7 @@ ng_mppc_compress(node_p node, struct mbuf **datap)
 		}
 
 		/* We must own the mbuf chain exclusively to modify it. */
-		m = m_unshare(m, M_DONTWAIT);
+		m = m_unshare(m, MB_DONTWAIT);
 		if (m == NULL)
 			return (ENOMEM);
 
@@ -581,7 +582,7 @@ ng_mppc_compress(node_p node, struct mbuf **datap)
 	MPPC_CCOUNT_INC(d->cc);
 
 	/* Install header */
-	M_PREPEND(m, MPPC_HDRLEN, M_DONTWAIT);
+	M_PREPEND(m, MPPC_HDRLEN, MB_DONTWAIT);
 	if (m != NULL)
 		*(mtod(m, uint16_t *)) = htons(header);
 
@@ -617,11 +618,11 @@ ng_mppc_decompress(node_p node, struct mbuf **datap)
 
 	/* If flushed bit set, we can always handle packet */
 	if ((header & MPPC_FLAG_FLUSHED) != 0) {
-#ifdef NETGRAPH_MPPC_COMPRESSION
+#ifdef NETGRAPH7_MPPC_COMPRESSION
 		if (d->history != NULL)
 			MPPC_InitDecompressionHistory(d->history);
 #endif
-#ifdef NETGRAPH_MPPC_ENCRYPTION
+#ifdef NETGRAPH7_MPPC_ENCRYPTION
 		if ((d->cfg.bits & MPPE_BITS) != 0) {
 			u_int rekey;
 
@@ -662,7 +663,7 @@ ng_mppc_decompress(node_p node, struct mbuf **datap)
 
 	/* Decrypt packet */
 	if ((header & MPPC_FLAG_ENCRYPTED) != 0) {
-#ifdef NETGRAPH_MPPC_ENCRYPTION
+#ifdef NETGRAPH7_MPPC_ENCRYPTION
 		struct mbuf *m1;
 #endif
 
@@ -673,7 +674,7 @@ ng_mppc_decompress(node_p node, struct mbuf **datap)
 			goto failed;
 		}
 
-#ifdef NETGRAPH_MPPC_ENCRYPTION
+#ifdef NETGRAPH7_MPPC_ENCRYPTION
 		/* Update key if it's time (always in stateless mode) */
 		if ((d->cfg.bits & MPPE_STATELESS) != 0
 		    || (d->cc & MPPE_UPDATE_MASK) == MPPE_UPDATE_FLAG) {
@@ -682,7 +683,7 @@ ng_mppc_decompress(node_p node, struct mbuf **datap)
 		}
 
 		/* We must own the mbuf chain exclusively to modify it. */
-		m = m_unshare(m, M_DONTWAIT);
+		m = m_unshare(m, MB_DONTWAIT);
 		if (m == NULL)
 			return (ENOMEM);
 
@@ -717,7 +718,7 @@ failed:
 		return (EINVAL);
 	}
 
-#ifdef NETGRAPH_MPPC_COMPRESSION
+#ifdef NETGRAPH7_MPPC_COMPRESSION
 	/* Decompress packet */
 	if ((header & MPPC_FLAG_COMPRESSED) != 0) {
 		int flags = MPPC_MANDATORY_DECOMPRESS_FLAGS;
@@ -729,7 +730,7 @@ failed:
 
 		/* Copy payload into a contiguous region of memory. */
 		len = m->m_pkthdr.len;
-		buf = malloc(len, M_NETGRAPH_MPPC, M_NOWAIT);
+		buf = kmalloc(len, M_NETGRAPH_MPPC, M_WAITOK | M_NULLOK);
 		if (buf == NULL) {
 			m_freem(m);
 			return (ENOMEM);
@@ -737,11 +738,11 @@ failed:
 		m_copydata(m, 0, len, (caddr_t)buf);
 
 		/* Allocate a buffer for decompressed data */
-		decompbuf = malloc(MPPC_DECOMP_BUFSIZE + MPPC_DECOMP_SAFETY,
-		    M_NETGRAPH_MPPC, M_NOWAIT);
+		decompbuf = kmalloc(MPPC_DECOMP_BUFSIZE + MPPC_DECOMP_SAFETY,
+		    M_NETGRAPH_MPPC, M_WAITOK | M_NULLOK);
 		if (decompbuf == NULL) {
 			m_freem(m);
-			free(buf, M_NETGRAPH_MPPC);
+			kfree(buf, M_NETGRAPH_MPPC);
 			return (ENOMEM);
 		}
 		decomplen = MPPC_DECOMP_BUFSIZE;
@@ -764,18 +765,18 @@ failed:
 		    || (rtn & MPPC_DECOMP_OK) != MPPC_DECOMP_OK) {
 			log(LOG_ERR, "%s: decomp returned 0x%x",
 			    __func__, rtn);
-			free(buf, M_NETGRAPH_MPPC);
-			free(decompbuf, M_NETGRAPH_MPPC);
+			kfree(buf, M_NETGRAPH_MPPC);
+			kfree(decompbuf, M_NETGRAPH_MPPC);
 			goto failed;
 		}
 
 		/* Replace compressed data with decompressed data */
-		free(buf, M_NETGRAPH_MPPC);
+		kfree(buf, M_NETGRAPH_MPPC);
 		len = decomplen - destCnt;
 	
 		m_freem(m);
 		m = m_devget((caddr_t)decompbuf, len, 0, NULL, NULL);
-		free(decompbuf, M_NETGRAPH_MPPC);
+		kfree(decompbuf, M_NETGRAPH_MPPC);
 	}
 #endif
 
@@ -793,18 +794,18 @@ ng_mppc_reset_req(node_p node)
 	const priv_p priv = NG_NODE_PRIVATE(node);
 	struct ng_mppc_dir *const d = &priv->xmit;
 
-#ifdef NETGRAPH_MPPC_COMPRESSION
+#ifdef NETGRAPH7_MPPC_COMPRESSION
 	if (d->history != NULL)
 		MPPC_InitCompressionHistory(d->history);
 #endif
-#ifdef NETGRAPH_MPPC_ENCRYPTION
+#ifdef NETGRAPH7_MPPC_ENCRYPTION
 	if ((d->cfg.bits & MPPE_STATELESS) == 0)
 		rc4_init(&d->rc4, d->key, KEYLEN(d->cfg.bits));
 #endif
 	d->flushed = 1;
 }   
 
-#ifdef NETGRAPH_MPPC_ENCRYPTION
+#ifdef NETGRAPH7_MPPC_ENCRYPTION
 /*
  * Generate a new encryption key
  */

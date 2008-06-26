@@ -38,6 +38,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ksocket.c,v 1.61 2008/03/07 21:12:56 mav Exp $
+ * $DragonFly: src/sys/netgraph7/ng_ksocket.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_ksocket.c,v 1.1 1999/11/16 20:04:40 archie Exp $
  */
 
@@ -60,10 +61,10 @@
 #include <sys/uio.h>
 #include <sys/un.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_ksocket.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_ksocket.h"
 
 #include <netinet/in.h>
 #include <netatalk/at.h>
@@ -524,7 +525,7 @@ ng_ksocket_constructor(node_p node)
 
 	/* Allocate private structure */
 	MALLOC(priv, priv_p, sizeof(*priv),
-	    M_NETGRAPH_KSOCKET, M_NOWAIT | M_ZERO);
+	    M_NETGRAPH_KSOCKET, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
@@ -659,7 +660,7 @@ ng_ksocket_connect(hook_p hook)
 	 * of the hook, those queued operations will fail.
 	 */
 	if (priv->flags & KSF_CLONED) {
-		ng_send_fn(node, NULL, &ng_ksocket_incoming2, so, M_NOWAIT);
+		ng_send_fn(node, NULL, &ng_ksocket_incoming2, so, M_WAITOK | M_NULLOK);
 	}
 
 	return (0);
@@ -801,7 +802,7 @@ ng_ksocket_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			len = (sa == NULL) ? 0 : sa->sa_len;
 
 			/* Send it back in a response */
-			NG_MKRESPONSE(resp, msg, len, M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, len, M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				goto bail;
@@ -829,7 +830,7 @@ ng_ksocket_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 			/* Get response with room for option value */
 			NG_MKRESPONSE(resp, msg, sizeof(*ksopt)
-			    + NG_KSOCKET_MAX_OPTLEN, M_NOWAIT);
+			    + NG_KSOCKET_MAX_OPTLEN, M_WAITOK | M_NULLOK);
 			if (resp == NULL)
 				ERROUT(ENOMEM);
 
@@ -1053,7 +1054,7 @@ ng_ksocket_incoming2(node_p node, hook_p hook, void *arg1, int arg2)
 		}
 		if (!(so->so_state & SS_ISCONNECTING)) {
 			NG_MKMESSAGE(response, NGM_KSOCKET_COOKIE,
-			    NGM_KSOCKET_CONNECT, sizeof(int32_t), M_NOWAIT);
+			    NGM_KSOCKET_CONNECT, sizeof(int32_t), M_WAITOK | M_NULLOK);
 			if (response != NULL) {
 				response->header.flags |= NGF_RESP;
 				response->header.token = priv->response_token;
@@ -1128,7 +1129,7 @@ ng_ksocket_incoming2(node_p node, hook_p hook, void *arg1, int arg2)
 
 			stag = (struct sa_tag *)m_tag_alloc(NGM_KSOCKET_COOKIE,
 			    NG_KSOCKET_TAG_SOCKADDR, sizeof(ng_ID_t) +
-			    sa->sa_len, M_NOWAIT);
+			    sa->sa_len, MB_DONTWAIT);
 			if (stag == NULL) {
 				FREE(sa, M_SONAME);
 				goto sendit;
@@ -1148,7 +1149,7 @@ sendit:		/* Forward data with optional peer sockaddr as packet tag */
 	 * to indicate end-of-file.
 	 */
 	if (so->so_rcv.sb_state & SBS_CANTRCVMORE && !(priv->flags & KSF_EOFSEEN)) {
-		MGETHDR(m, M_NOWAIT, MT_DATA);
+		MGETHDR(m, MB_DONTWAIT, MT_DATA);
 		if (m != NULL) {
 			m->m_len = m->m_pkthdr.len = 0;
 			NG_SEND_DATA_ONLY(error, priv->hook, m);
@@ -1223,7 +1224,7 @@ ng_ksocket_finish_accept(priv_p priv)
 		len += sa->sa_len;
 
 	NG_MKMESSAGE(resp, NGM_KSOCKET_COOKIE, NGM_KSOCKET_ACCEPT, len,
-	    M_NOWAIT);
+	    M_WAITOK | M_NULLOK);
 	if (resp == NULL) {
 		soclose(so);
 		goto out;

@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_tcpmss.h,v 1.1 2005/06/10 08:02:34 glebius Exp $
+ * $DragonFly: src/sys/netgraph7/ng_tcpmss.h,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #ifndef _NETGRAPH_TCPMSS_H_

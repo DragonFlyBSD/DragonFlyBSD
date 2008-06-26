@@ -26,6 +26,7 @@
  * Author: Ruslan Ermilov <ru@FreeBSD.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_vlan.h,v 1.2 2005/10/28 14:41:28 ru Exp $
+ * $DragonFly: src/sys/netgraph7/ng_vlan.h,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #ifndef _NETGRAPH_NG_VLAN_H_

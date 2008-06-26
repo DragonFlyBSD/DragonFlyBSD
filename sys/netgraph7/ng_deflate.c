@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_deflate.c,v 1.3 2007/01/15 05:55:56 glebius Exp $
+ * $DragonFly: src/sys/netgraph7/ng_deflate.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -41,10 +42,10 @@
 
 #include <net/zlib.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_deflate.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_deflate.h"
 
 #include "opt_netgraph.h"
 
@@ -175,7 +176,7 @@ ng_deflate_constructor(node_p node)
 	priv_p priv;
 
 	/* Allocate private structure. */
-	priv = malloc(sizeof(*priv), M_NETGRAPH_DEFLATE, M_WAITOK | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH_DEFLATE, M_WAITOK | M_ZERO);
 
 	NG_NODE_SET_PRIVATE(node, priv);
 
@@ -296,7 +297,7 @@ ng_deflate_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		/* Create response if requested. */
 		if (msg->header.cmd != NGM_DEFLATE_CLR_STATS) {
 			NG_MKRESPONSE(resp, msg,
-			    sizeof(struct ng_deflate_stats), M_NOWAIT);
+			    sizeof(struct ng_deflate_stats), M_WAITOK | M_NULLOK);
 			if (resp == NULL)
 				ERROUT(ENOMEM);
 			bcopy(&priv->stats, resp->data,
@@ -353,7 +354,7 @@ ng_deflate_rcvdata(hook_p hook, item_p item)
 
 				/* Need to send a reset-request. */
 				NG_MKMESSAGE(msg, NGM_DEFLATE_COOKIE,
-				    NGM_DEFLATE_RESETREQ, 0, M_NOWAIT);
+				    NGM_DEFLATE_RESETREQ, 0, M_WAITOK | M_NULLOK);
 				if (msg == NULL)
 					return (error);
 				NG_SEND_MSG_ID(error, node, msg,
@@ -383,7 +384,7 @@ ng_deflate_shutdown(node_p node)
 		inflateEnd(&priv->cx);
 	}
 
-	free(priv, M_NETGRAPH_DEFLATE);
+	kfree(priv, M_NETGRAPH_DEFLATE);
 	NG_NODE_SET_PRIVATE(node, NULL);
 	NG_NODE_UNREF(node);		/* let the node escape */
 	return (0);
@@ -424,14 +425,14 @@ static void *
 z_alloc(void *notused, u_int items, u_int size)
 {
 
-	return (malloc(items * size, M_NETGRAPH_DEFLATE, M_NOWAIT));
+	return (kmalloc(items * size, M_NETGRAPH_DEFLATE, M_WAITOK | M_NULLOK));
 }
 
 static void
 z_free(void *notused, void *ptr)
 {
 
-	free(ptr, M_NETGRAPH_DEFLATE);
+	kfree(ptr, M_NETGRAPH_DEFLATE);
 }
 
 /*

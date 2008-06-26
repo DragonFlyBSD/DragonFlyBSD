@@ -40,6 +40,7 @@
  *	    Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ether.c,v 1.62 2007/03/20 00:36:10 bms Exp $
+ * $DragonFly: src/sys/netgraph7/ng_ether.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -63,10 +64,10 @@
 #include <net/ethernet.h>
 #include <net/if_bridgevar.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_ether.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_ether.h"
 
 #define IFP2NG(ifp)  (IFP2AC((ifp))->ac_netgraph)
 
@@ -291,7 +292,7 @@ ng_ether_attach(struct ifnet *ifp)
 	}
 
 	/* Allocate private data */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL) {
 		log(LOG_ERR, "%s: can't %s for %s\n",
 		    __func__, "allocate memory", ifp->if_xname);
@@ -353,7 +354,7 @@ ng_ether_link_state(struct ifnet *ifp, int state)
 	else
 		return;
 
-	NG_MKMESSAGE(msg, NGM_FLOW_COOKIE, cmd, 0, M_NOWAIT);
+	NG_MKMESSAGE(msg, NGM_FLOW_COOKIE, cmd, 0, M_WAITOK | M_NULLOK);
 	if (msg != NULL)
 		NG_SEND_MSG_HOOK(dummy_error, node, msg, priv->lower, 0);
 }
@@ -425,7 +426,7 @@ ng_ether_rcvmsg(node_p node, item_p item, hook_p lasthook)
 	case NGM_ETHER_COOKIE:
 		switch (msg->header.cmd) {
 		case NGM_ETHER_GET_IFNAME:
-			NG_MKRESPONSE(resp, msg, IFNAMSIZ, M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, IFNAMSIZ, M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -433,7 +434,7 @@ ng_ether_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			strlcpy(resp->data, priv->ifp->if_xname, IFNAMSIZ);
 			break;
 		case NGM_ETHER_GET_IFINDEX:
-			NG_MKRESPONSE(resp, msg, sizeof(u_int32_t), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(u_int32_t), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -441,7 +442,7 @@ ng_ether_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			*((u_int32_t *)resp->data) = priv->ifp->if_index;
 			break;
 		case NGM_ETHER_GET_ENADDR:
-			NG_MKRESPONSE(resp, msg, ETHER_ADDR_LEN, M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, ETHER_ADDR_LEN, M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -460,7 +461,7 @@ ng_ether_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			break;
 		    }
 		case NGM_ETHER_GET_PROMISC:
-			NG_MKRESPONSE(resp, msg, sizeof(u_int32_t), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(u_int32_t), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -484,7 +485,7 @@ ng_ether_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			break;
 		    }
 		case NGM_ETHER_GET_AUTOSRC:
-			NG_MKRESPONSE(resp, msg, sizeof(u_int32_t), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(u_int32_t), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;

@@ -29,6 +29,7 @@
  *
  * $Id: ng_l2cap_ulpi.c,v 1.1 2002/11/24 19:47:06 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/l2cap/ng_l2cap_ulpi.c,v 1.5 2005/01/07 01:45:43 imp Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/l2cap/ng_l2cap_ulpi.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,16 +39,16 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/queue.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/bluetooth/include/ng_hci.h>
-#include <netgraph/bluetooth/include/ng_l2cap.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_var.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_cmds.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_evnt.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_llpi.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_ulpi.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_misc.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "bluetooth/include/ng_hci.h"
+#include "bluetooth/include/ng_l2cap.h"
+#include "bluetooth/l2cap/ng_l2cap_var.h"
+#include "bluetooth/l2cap/ng_l2cap_cmds.h"
+#include "bluetooth/l2cap/ng_l2cap_evnt.h"
+#include "bluetooth/l2cap/ng_l2cap_llpi.h"
+#include "bluetooth/l2cap/ng_l2cap_ulpi.h"
+#include "bluetooth/l2cap/ng_l2cap_misc.h"
 
 /******************************************************************************
  ******************************************************************************
@@ -168,7 +169,7 @@ ng_l2cap_l2ca_con_rsp(ng_l2cap_chan_p ch, u_int32_t token, u_int16_t result,
 
 	/* Create and send L2CA_Connect response message */
 	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, NGM_L2CAP_L2CA_CON,
-		sizeof(*op), M_NOWAIT);
+		sizeof(*op), M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		error = ENOMEM;
 	else {
@@ -325,7 +326,7 @@ ng_l2cap_l2ca_con_rsp_rsp(ng_l2cap_chan_p ch, u_int32_t token, u_int16_t result)
 
 	/* Create and send L2CA_ConnectRsp response message */
 	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, NGM_L2CAP_L2CA_CON_RSP,
-		sizeof(*op), M_NOWAIT);
+		sizeof(*op), M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		error = ENOMEM;
 	else {
@@ -365,7 +366,7 @@ ng_l2cap_l2ca_con_ind(ng_l2cap_chan_p ch)
 
 	/* Create and send L2CA_ConnectInd message */
 	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, NGM_L2CAP_L2CA_CON_IND,
-		sizeof(*ip), M_NOWAIT);
+		sizeof(*ip), M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		error = ENOMEM;
 	else {
@@ -513,7 +514,7 @@ ng_l2cap_l2ca_cfg_rsp(ng_l2cap_chan_p ch, u_int32_t token, u_int16_t result)
 
 	/* Create and send L2CA_Config response message */
 	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, NGM_L2CAP_L2CA_CFG,
-		sizeof(*op), M_NOWAIT);
+		sizeof(*op), M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		error = ENOMEM;
 	else {
@@ -672,7 +673,7 @@ ng_l2cap_l2ca_cfg_rsp_rsp(ng_l2cap_chan_p ch, u_int32_t token, u_int16_t result)
 
 	/* Create and send L2CA_ConfigRsp response message */
 	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, NGM_L2CAP_L2CA_CFG_RSP,
-		sizeof(*op), M_NOWAIT);
+		sizeof(*op), M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		error = ENOMEM;
 	else {
@@ -725,7 +726,7 @@ ng_l2cap_l2ca_cfg_ind(ng_l2cap_chan_p ch)
 
 	/* Create and send L2CA_ConnectInd message */
 	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, NGM_L2CAP_L2CA_CFG_IND,
-			sizeof(*ip), M_NOWAIT);
+			sizeof(*ip), M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		error = ENOMEM;
 	else {
@@ -855,7 +856,7 @@ ng_l2cap_l2ca_write_rsp(ng_l2cap_chan_p ch, u_int32_t token, u_int16_t result,
 
 	/* Create and send L2CA_WriteRsp message */
 	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, NGM_L2CAP_L2CA_WRITE,
-			sizeof(*op), M_NOWAIT);
+			sizeof(*op), M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		error = ENOMEM;
 	else {
@@ -1055,7 +1056,7 @@ ng_l2cap_l2ca_qos_ind(ng_l2cap_chan_p ch)
 
 	/* Create and send L2CA_QoSViolationInd message */
 	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, NGM_L2CAP_L2CA_QOS_IND,
-		sizeof(*ip), M_NOWAIT);
+		sizeof(*ip), M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		error = ENOMEM;
 	else {
@@ -1171,7 +1172,7 @@ ng_l2cap_l2ca_discon_rsp(ng_l2cap_chan_p ch, u_int32_t token, u_int16_t result)
 
 	/* Create and send L2CA_Disconnect response message */
 	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, NGM_L2CAP_L2CA_DISCON,
-		sizeof(*op), M_NOWAIT);
+		sizeof(*op), M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		error = ENOMEM;
 	else {
@@ -1211,7 +1212,7 @@ ng_l2cap_l2ca_discon_ind(ng_l2cap_chan_p ch)
 
 	/* Create and send L2CA_DisconnectInd message */
 	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, NGM_L2CAP_L2CA_DISCON_IND,
-		sizeof(*ip), M_NOWAIT);
+		sizeof(*ip), M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		error = ENOMEM;
 	else {
@@ -1396,7 +1397,7 @@ ng_l2cap_l2ca_ping_rsp(ng_l2cap_con_p con, u_int32_t token, u_int16_t result,
 
 	/* Create and send L2CA_Ping response message */
 	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, NGM_L2CAP_L2CA_PING,
-		sizeof(*op) + size, M_NOWAIT);
+		sizeof(*op) + size, M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		error = ENOMEM;
 	else {
@@ -1517,7 +1518,7 @@ ng_l2cap_l2ca_get_info_rsp(ng_l2cap_con_p con, u_int32_t token,
 
 	/* Create and send L2CA_GetInfo response message */
 	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, NGM_L2CAP_L2CA_GET_INFO,
-		sizeof(*op) + size, M_NOWAIT);
+		sizeof(*op) + size, M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		error = ENOMEM;
 	else {
@@ -1621,7 +1622,7 @@ ng_l2cap_l2ca_enable_clt(ng_l2cap_p l2cap, struct ng_mesg *msg)
  * 	token = msg->header.token;
  * 	NG_FREE_MSG(msg);
  * 	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, NGM_L2CAP_L2CA_ENABLE_CLT,
- * 		sizeof(*op), M_NOWAIT);
+ * 		sizeof(*op), M_WAITOK | M_NULLOK);
  * 	if (msg == NULL)
  * 		error = ENOMEM;
  * 	else {

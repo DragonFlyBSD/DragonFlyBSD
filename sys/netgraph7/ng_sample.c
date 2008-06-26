@@ -38,6 +38,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_sample.c,v 1.30 2005/02/06 19:24:59 glebius Exp $
+ * $DragonFly: src/sys/netgraph7/ng_sample.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_sample.c,v 1.13 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -50,10 +51,10 @@
 #include <sys/errno.h>
 #include <sys/syslog.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_sample.h>
-#include <netgraph/netgraph.h>
+#include "ng_message.h"
+#include "ng_parse.h"
+#include "ng_sample.h"
+#include "netgraph.h"
 
 /* If you do complicated mallocs you may want to do this */
 /* and use it for your mallocs */
@@ -155,7 +156,7 @@ ng_xxx_constructor(node_p node)
 
 	/* Initialize private descriptor */
 	MALLOC(privdata, xxx_p, sizeof(*privdata), M_NETGRAPH,
-		M_NOWAIT | M_ZERO);
+		M_WAITOK | M_NULLOK | M_ZERO);
 	if (privdata == NULL)
 		return (ENOMEM);
 	for (i = 0; i < XXX_NUM_DLCIS; i++) {
@@ -275,7 +276,7 @@ ng_xxx_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		    {
 			struct ngxxxstat *stats;
 
-			NG_MKRESPONSE(resp, msg, sizeof(*stats), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(*stats), M_WAITOK | M_NULLOK);
 			if (!resp) {
 				error = ENOMEM;
 				break;

@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_atmllc.c,v 1.3 2005/01/07 01:45:39 imp Exp $
+ * $DragonFly: src/sys/netgraph7/ng_atmllc.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -34,9 +35,9 @@
 #include <sys/socket.h>
 #include <sys/sockio.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_atmllc.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_atmllc.h"
 
 #include <net/if.h>
 #include <net/ethernet.h>	/* for M_HASFCS and ETHER_HDR_LEN */
@@ -81,7 +82,7 @@ ng_atmllc_constructor(node_p node)
 	struct	ng_atmllc_priv *priv;
 
 	MALLOC(priv, struct ng_atmllc_priv *, sizeof(*priv), M_NETGRAPH,
-	    M_NOWAIT | M_ZERO);
+	    M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL) {
 		return (ENOMEM);
 	}
@@ -206,7 +207,7 @@ ng_atmllc_rcvdata(hook_p hook, item_p item)
 		m_adj(m, sizeof(struct atmllc) + padding);
 	} else if (hook == priv->ether) {
 		/* Add the LLC header */
-		M_PREPEND(m, NG_ATMLLC_HEADER_LEN + 2, M_DONTWAIT);
+		M_PREPEND(m, NG_ATMLLC_HEADER_LEN + 2, MB_DONTWAIT);
 		if (m == NULL) {
 			printf("ng_atmllc: M_PREPEND failed\n");
 			NG_FREE_ITEM(item);
@@ -223,7 +224,7 @@ ng_atmllc_rcvdata(hook_p hook, item_p item)
 		outhook = priv->atm;
 	} else if (hook == priv->fddi) {
 		/* Add the LLC header */
-		M_PREPEND(m, NG_ATMLLC_HEADER_LEN + 3, M_DONTWAIT);
+		M_PREPEND(m, NG_ATMLLC_HEADER_LEN + 3, MB_DONTWAIT);
 		if (m == NULL) {
 			printf("ng_atmllc: M_PREPEND failed\n");
 			NG_FREE_ITEM(item);

@@ -38,6 +38,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_bpf.c,v 1.24 2008/02/04 19:26:53 mav Exp $
+ * $DragonFly: src/sys/netgraph7/ng_bpf.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_bpf.c,v 1.3 1999/12/03 20:30:23 archie Exp $
  */
 
@@ -68,10 +69,10 @@
 #include <net/bpf_jitter.h>
 #endif
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_bpf.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_bpf.h"
 
 #ifdef NG_SEPARATE_MALLOC
 MALLOC_DEFINE(M_NETGRAPH_BPF, "netgraph_bpf", "netgraph bpf node ");
@@ -274,7 +275,7 @@ ng_bpf_newhook(node_p node, hook_p hook, const char *name)
 	int error;
 
 	/* Create hook private structure */
-	MALLOC(hip, hinfo_p, sizeof(*hip), M_NETGRAPH_BPF, M_NOWAIT | M_ZERO);
+	MALLOC(hip, hinfo_p, sizeof(*hip), M_NETGRAPH_BPF, M_WAITOK | M_NULLOK | M_ZERO);
 	if (hip == NULL)
 		return (ENOMEM);
 	hip->hook = hook;
@@ -348,7 +349,7 @@ ng_bpf_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			/* Build response */
 			hp = ((hinfo_p)NG_HOOK_PRIVATE(hook))->prog;
 			NG_MKRESPONSE(resp, msg,
-			    NG_BPF_HOOKPROG_SIZE(hp->bpf_prog_len), M_NOWAIT);
+			    NG_BPF_HOOKPROG_SIZE(hp->bpf_prog_len), M_WAITOK | M_NULLOK);
 			if (resp == NULL)
 				ERROUT(ENOMEM);
 			bcopy(hp, resp->data,
@@ -376,7 +377,7 @@ ng_bpf_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			/* Build response (if desired) */
 			if (msg->header.cmd != NGM_BPF_CLR_STATS) {
 				NG_MKRESPONSE(resp,
-				    msg, sizeof(*stats), M_NOWAIT);
+				    msg, sizeof(*stats), M_WAITOK | M_NULLOK);
 				if (resp == NULL)
 					ERROUT(ENOMEM);
 				bcopy(stats, resp->data, sizeof(*stats));

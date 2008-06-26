@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/atm/ng_sscfu.h,v 1.2 2005/01/07 01:45:40 imp Exp $
+ * $DragonFly: src/sys/netgraph7/atm/ng_sscfu.h,v 1.2 2008/06/26 23:05:37 dillon Exp $
  *
  * Netgraph module for ITU-T Q.2120 UNI SSCF.
  */

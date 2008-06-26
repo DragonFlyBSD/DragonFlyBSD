@@ -27,10 +27,11 @@
  * SUCH DAMAGE.
  *
  * In-kernel UNI stack message functions.
+ *
+ * $FreeBSD: src/sys/netgraph/atm/ngatmbase.c,v 1.3 2005/01/07 01:45:40 imp Exp $
+ * $DragonFly: src/sys/netgraph7/atm/ngatmbase.c,v 1.2 2008/06/26 23:05:37 dillon Exp $
+ * $DragonFly: src/sys/netgraph7/atm/ngatmbase.c,v 1.2 2008/06/26 23:05:37 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/netgraph/atm/ngatmbase.c,v 1.3 2005/01/07 01:45:40 imp Exp $");
 
 #include <sys/param.h>
 #include <sys/module.h>
@@ -42,7 +43,7 @@ __FBSDID("$FreeBSD: src/sys/netgraph/atm/ngatmbase.c,v 1.3 2005/01/07 01:45:40 i
 #include <sys/mbuf.h>
 #include <machine/stdarg.h>
 #include <netnatm/unimsg.h>
-#include <netgraph/atm/ngatmbase.h>
+#include "atm/ngatmbase.h"
 
 #define NGATMBASE_VERSION	1
 
@@ -94,13 +95,13 @@ uni_msg_extend(struct uni_msg *m, size_t s)
 	lead = uni_msg_leading(m);
 	len = uni_msg_len(m);
 	s += lead + len + EXTRA;
-	if ((b = malloc(s, M_UNIMSG, M_NOWAIT)) == NULL) {
+	if ((b = kmalloc(s, M_UNIMSG, MB_DONTWAIT)) == NULL) {
 		uni_msg_destroy(m);
 		return (ENOMEM);
 	}
 
 	bcopy(m->b_rptr, b + lead, len);
-	free(m->b_buf, M_UNIMSG);
+	kfree(m->b_buf, M_UNIMSG);
 
 	m->b_buf = b;
 	m->b_rptr = m->b_buf + lead;
@@ -138,7 +139,7 @@ uni_msg_pack_mbuf(struct uni_msg *msg, void *hdr, size_t hdrlen)
 	struct mbuf *m, *m0, *last;
 	size_t n;
 
-	MGETHDR(m0, M_NOWAIT, MT_DATA);
+	MGETHDR(m0, MB_DONTWAIT, MT_DATA);
 	if (m0 == NULL)
 		return (NULL);
 
@@ -151,7 +152,7 @@ uni_msg_pack_mbuf(struct uni_msg *msg, void *hdr, size_t hdrlen)
 
 	} else {
 		if ((n = uni_msg_len(msg)) > MHLEN) {
-			MCLGET(m0, M_NOWAIT);
+			MCLGET(m0, MB_DONTWAIT);
 			if (!(m0->m_flags & M_EXT))
 				goto drop;
 			if (n > MCLBYTES)
@@ -166,14 +167,14 @@ uni_msg_pack_mbuf(struct uni_msg *msg, void *hdr, size_t hdrlen)
 
 	last = m0;
 	while (msg != NULL && (n = uni_msg_len(msg)) != 0) {
-		MGET(m, M_NOWAIT, MT_DATA);
+		MGET(m, MB_DONTWAIT, MT_DATA);
 		if (m == NULL)
 			goto drop;
 		last->m_next = m;
 		last = m;
 
 		if (n > MLEN) {
-			MCLGET(m, M_NOWAIT);
+			MCLGET(m, MB_DONTWAIT);
 			if (!(m->m_flags & M_EXT))
 				goto drop;
 			if (n > MCLBYTES)
@@ -224,7 +225,7 @@ uni_msg_fini(void)
 	/* free all free message headers */
 	while ((h = LIST_FIRST(&ngatm_freeuni)) != NULL) {
 		LIST_REMOVE(h, link);
-		free(h, M_UNIMSGHDR);
+		kfree(h, M_UNIMSGHDR);
 	}
 
 	/* forget about still used messages */
@@ -249,11 +250,11 @@ _uni_msg_alloc(size_t s, const char *file, int line)
 	mtx_unlock(&ngatm_unilist_mtx);
 
 	if (m == NULL &&
-	    (m = malloc(sizeof(*m), M_UNIMSGHDR, M_NOWAIT)) == NULL)
+	    (m = kmalloc(sizeof(*m), M_UNIMSGHDR, M_WAITOK | M_NULLOK)) == NULL)
 		return (NULL);
 
 	s += EXTRA;
-	if((m->msg.b_buf = malloc(s, M_UNIMSG, M_NOWAIT | M_ZERO)) == NULL) {
+	if((m->msg.b_buf = kmalloc(s, M_UNIMSG, M_WAITOK | M_NULLOK | M_ZERO)) == NULL) {
 		mtx_lock(&ngatm_unilist_mtx);
 		LIST_INSERT_HEAD(&ngatm_freeuni, m, link);
 		mtx_unlock(&ngatm_unilist_mtx);
@@ -302,7 +303,7 @@ _uni_msg_destroy(struct uni_msg *m, const char *file, int line)
 			    "found in %s:%u\n", m, h->file, h->line,
 			    file, line);
 	} else {
-		free(m->b_buf, M_UNIMSG);
+		kfree(m->b_buf, M_UNIMSG);
 
 		LIST_REMOVE(d, link);
 		LIST_INSERT_HEAD(&ngatm_freeuni, d, link);
@@ -339,7 +340,7 @@ uni_msg_fini(void)
 	/* free all free message headers */
 	while ((h = LIST_FIRST(&ngatm_freeuni)) != NULL) {
 		LIST_REMOVE(h, link);
-		free(h, M_UNIMSGHDR);
+		kfree(h, M_UNIMSGHDR);
 	}
 
 	mtx_destroy(&ngatm_unilist_mtx);
@@ -360,14 +361,14 @@ uni_msg_alloc(size_t s)
 	mtx_unlock(&ngatm_unilist_mtx);
 
 	if (a == NULL) {
-		if ((m = malloc(sizeof(*m), M_UNIMSGHDR, M_NOWAIT)) == NULL)
+		if ((m = kmalloc(sizeof(*m), M_UNIMSGHDR, M_WAITOK | M_NULLOK)) == NULL)
 			return (NULL);
 		a = (struct ngatm_msg *)m;
 	} else
 		m = (struct uni_msg *)a;
 
 	s += EXTRA;
-	if((m->b_buf = malloc(s, M_UNIMSG, M_NOWAIT | M_ZERO)) == NULL) {
+	if((m->b_buf = kmalloc(s, M_UNIMSG, M_WAITOK | M_NULLOK | M_ZERO)) == NULL) {
 		mtx_lock(&ngatm_unilist_mtx);
 		LIST_INSERT_HEAD(&ngatm_freeuni, a, link);
 		mtx_unlock(&ngatm_unilist_mtx);
@@ -390,7 +391,7 @@ uni_msg_destroy(struct uni_msg *m)
 
 	a = (struct ngatm_msg *)m;
 
-	free(m->b_buf, M_UNIMSG);
+	kfree(m->b_buf, M_UNIMSG);
 
 	mtx_lock(&ngatm_unilist_mtx);
 	LIST_INSERT_HEAD(&ngatm_freeuni, a, link);

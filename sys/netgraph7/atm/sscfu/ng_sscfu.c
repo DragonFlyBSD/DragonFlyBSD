@@ -27,10 +27,11 @@
  * Author: Hartmut Brandt <harti@freebsd.org>
  *
  * Netgraph module for ITU-T Q.2120 UNI SSCF.
+ *
+ * $FreeBSD: src/sys/netgraph/atm/sscfu/ng_sscfu.c,v 1.4 2005/01/07 01:45:41 imp Exp $
+ * $DragonFly: src/sys/netgraph7/atm/sscfu/ng_sscfu.c,v 1.2 2008/06/26 23:05:39 dillon Exp $
+ * $DragonFly: src/sys/netgraph7/atm/sscfu/ng_sscfu.c,v 1.2 2008/06/26 23:05:39 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/netgraph/atm/sscfu/ng_sscfu.c,v 1.4 2005/01/07 01:45:41 imp Exp $");
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -44,14 +45,14 @@ __FBSDID("$FreeBSD: src/sys/netgraph/atm/sscfu/ng_sscfu.c,v 1.4 2005/01/07 01:45
 #include <sys/sbuf.h>
 #include <machine/stdarg.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
 #include <netnatm/saal/sscopdef.h>
 #include <netnatm/saal/sscfudef.h>
-#include <netgraph/atm/ng_sscop.h>
-#include <netgraph/atm/ng_sscfu.h>
-#include <netgraph/atm/sscfu/ng_sscfu_cust.h>
+#include "atm/ng_sscop.h"
+#include "atm/ng_sscfu.h"
+#include "atm/sscfu/ng_sscfu_cust.h"
 #include <netnatm/saal/sscfu.h>
 
 MALLOC_DEFINE(M_NG_SSCFU, "netgraph_sscfu", "netgraph uni sscf node");
@@ -227,7 +228,7 @@ ng_sscfu_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		switch (msg->header.cmd) {
 
 		  case NGM_TEXT_STATUS:
-			NG_MKRESPONSE(resp, msg, NG_TEXTRESPONSE, M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, NG_TEXTRESPONSE, M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -253,7 +254,7 @@ ng_sscfu_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				error = EINVAL;
 				break;
 			}
-			NG_MKRESPONSE(resp, msg, sizeof(*p), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(*p), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -293,7 +294,7 @@ ng_sscfu_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				error = EINVAL;
 				break;
 			}
-			NG_MKRESPONSE(resp, msg, sizeof(uint32_t), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(uint32_t), M_WAITOK | M_NULLOK);
 			if(resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -308,7 +309,7 @@ ng_sscfu_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				error = EINVAL;
 				break;
 			}
-			NG_MKRESPONSE(resp, msg, sizeof(uint32_t), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(uint32_t), M_WAITOK | M_NULLOK);
 			if(resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -438,13 +439,13 @@ sscfu_send_upper(struct sscfu *sscf, void *p, enum saal_sig sig, struct mbuf *m)
 		return;
 	}
 	if (m == NULL) {
-		MGETHDR(m, M_NOWAIT, MT_DATA);
+		MGETHDR(m, MB_DONTWAIT, MT_DATA);
 		if (m == NULL)
 			return;
 		m->m_len = sizeof(struct sscfu_arg);
 		m->m_pkthdr.len = m->m_len;
 	} else {
-		M_PREPEND(m, sizeof(struct sscfu_arg), M_NOWAIT);
+		M_PREPEND(m, sizeof(struct sscfu_arg), MB_DONTWAIT);
 		if (m == NULL)
 			return;
 	}
@@ -504,13 +505,13 @@ sscfu_send_lower(struct sscfu *sscf, void *p, enum sscop_aasig sig,
 		return;
 	}
 	if (m == NULL) {
-		MGETHDR(m, M_NOWAIT, MT_DATA);
+		MGETHDR(m, MB_DONTWAIT, MT_DATA);
 		if (m == NULL)
 			return;
 		m->m_len = sizeof(struct sscop_arg);
 		m->m_pkthdr.len = m->m_len;
 	} else {
-		M_PREPEND(m, sizeof(struct sscop_arg), M_NOWAIT);
+		M_PREPEND(m, sizeof(struct sscop_arg), MB_DONTWAIT);
 		if (m == NULL)
 			return;
 	}
@@ -538,11 +539,11 @@ ng_sscfu_constructor(node_p node)
 {
 	struct priv *priv;
 
-	if ((priv = malloc(sizeof(*priv), M_NG_SSCFU, M_NOWAIT|M_ZERO)) == NULL)
+	if ((priv = kmalloc(sizeof(*priv), M_NG_SSCFU, M_WAITOK | M_NULLOK | M_ZERO)) == NULL)
 		return (ENOMEM);
 
 	if ((priv->sscf = sscfu_create(node, &sscfu_funcs)) == NULL) {
-		free(priv, M_NG_SSCFU);
+		kfree(priv, M_NG_SSCFU);
 		return (ENOMEM);
 	}
 
@@ -558,7 +559,7 @@ ng_sscfu_shutdown(node_p node)
 
 	sscfu_destroy(priv->sscf);
 
-	free(priv, M_NG_SSCFU);
+	kfree(priv, M_NG_SSCFU);
 	NG_NODE_SET_PRIVATE(node, NULL);
 
 	NG_NODE_UNREF(node);

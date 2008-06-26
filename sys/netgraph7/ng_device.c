@@ -28,6 +28,7 @@
  * netgraph node.
  *
  * $FreeBSD: src/sys/netgraph/ng_device.c,v 1.22 2006/11/02 17:37:21 andre Exp $
+ * $DragonFly: src/sys/netgraph7/ng_device.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  *
  */
 
@@ -56,9 +57,9 @@
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_device.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_device.h"
 
 #define	ERROUT(x) do { error = (x); goto done; } while (0)
 
@@ -163,7 +164,7 @@ ng_device_constructor(node_p node)
 
 	DBG;
 
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_WAITOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
@@ -214,7 +215,7 @@ ng_device_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		case NGM_DEVICE_GET_DEVNAME:
 			/* XXX: Fix when MAX_NGD us bigger */
 			NG_MKRESPONSE(resp, msg,
-			    strlen(NG_DEVICE_DEVNAME) + 4, M_NOWAIT);
+			    strlen(NG_DEVICE_DEVNAME) + 4, M_WAITOK);
 
 			if (resp == NULL)
 				ERROUT(ENOMEM);
@@ -384,7 +385,7 @@ ngdioctl(struct cdev *dev, u_long cmd, caddr_t addr, int flag, struct thread *td
 	DBG;
 
 	NG_MKMESSAGE(msg, NGM_DEVICE_COOKIE, cmd, sizeof(struct ngd_param_s),
-			M_NOWAIT);
+			M_WAITOK);
 	if (msg == NULL) {
 		printf("%s(): msg == NULL\n",__func__);
 		goto nomsg;
@@ -466,7 +467,7 @@ ngdwrite(struct cdev *dev, struct uio *uio, int flag)
 	if (uio->uio_resid < 0 || uio->uio_resid > IP_MAXPACKET)
 		return (EIO);
 
-	if ((m = m_uiotombuf(uio, M_DONTWAIT, 0, 0, M_PKTHDR)) == NULL)
+	if ((m = m_uiotombuf(uio, MB_DONTWAIT, 0, 0, M_PKTHDR)) == NULL)
 		return (ENOBUFS);
 
 	NG_SEND_DATA_ONLY(error, priv->hook, m);

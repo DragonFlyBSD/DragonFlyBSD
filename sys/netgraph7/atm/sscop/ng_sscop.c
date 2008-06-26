@@ -28,11 +28,11 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * Netgraph module for ITU-T Q.2110 SSCOP.
+ *
+ * $FreeBSD: src/sys/netgraph/atm/sscop/ng_sscop.c,v 1.4 2005/08/10 06:25:40 obrien Exp $
+ * $DragonFly: src/sys/netgraph7/atm/sscop/ng_sscop.c,v 1.2 2008/06/26 23:05:39 dillon Exp $
+ * $DragonFly: src/sys/netgraph7/atm/sscop/ng_sscop.c,v 1.2 2008/06/26 23:05:39 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/netgraph/atm/sscop/ng_sscop.c,v 1.4 2005/08/10 06:25:40 obrien Exp $");
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -47,12 +47,12 @@ __FBSDID("$FreeBSD: src/sys/netgraph/atm/sscop/ng_sscop.c,v 1.4 2005/08/10 06:25
 #include <sys/stdint.h>
 #include <machine/stdarg.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
 #include <netnatm/saal/sscopdef.h>
-#include <netgraph/atm/ng_sscop.h>
-#include <netgraph/atm/sscop/ng_sscop_cust.h>
+#include "atm/ng_sscop.h"
+#include "atm/sscop/ng_sscop_cust.h"
 #include <netnatm/saal/sscop.h>
 
 #define DDD printf("%s: %d\n", __func__, __LINE__)
@@ -246,11 +246,11 @@ ng_sscop_constructor(node_p node)
 {
 	struct priv *p;
 
-	if ((p = malloc(sizeof(*p), M_NG_SSCOP, M_NOWAIT | M_ZERO)) == NULL)
+	if ((p = kmalloc(sizeof(*p), M_NG_SSCOP, M_WAITOK | M_NULLOK | M_ZERO)) == NULL)
 		return (ENOMEM);
 
 	if ((p->sscop = sscop_create(node, &sscop_funcs)) == NULL) {
-		free(p, M_NG_SSCOP);
+		kfree(p, M_NG_SSCOP);
 		return (ENOMEM);
 	}
 	NG_NODE_SET_PRIVATE(node, p);
@@ -268,7 +268,7 @@ ng_sscop_shutdown(node_p node)
 
 	sscop_destroy(priv->sscop);
 
-	free(priv, M_NG_SSCOP);
+	kfree(priv, M_NG_SSCOP);
 	NG_NODE_SET_PRIVATE(node, NULL);
 
 	NG_NODE_UNREF(node);
@@ -456,7 +456,7 @@ ng_sscop_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		switch (msg->header.cmd) {
 
 		  case NGM_TEXT_STATUS:
-			NG_MKRESPONSE(resp, msg, NG_TEXTRESPONSE, M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, NG_TEXTRESPONSE, M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -488,7 +488,7 @@ ng_sscop_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		    {
 			struct sscop_param *p;
 
-			NG_MKRESPONSE(resp, msg, sizeof(*p), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(*p), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -512,7 +512,7 @@ ng_sscop_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				break;
 			}
 			arg = (struct ng_sscop_setparam *)msg->data;
-			NG_MKRESPONSE(resp, msg, sizeof(*p), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(*p), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -556,7 +556,7 @@ ng_sscop_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				error = EINVAL;
 				break;
 			}
-			NG_MKRESPONSE(resp, msg, sizeof(u_int32_t), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(u_int32_t), M_WAITOK | M_NULLOK);
 			if(resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -577,7 +577,7 @@ ng_sscop_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				error = EINVAL;
 				break;
 			}
-			NG_MKRESPONSE(resp, msg, sizeof(u_int32_t), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(u_int32_t), M_WAITOK | M_NULLOK);
 			if(resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -762,13 +762,13 @@ sscop_send_upper(struct sscop *sscop, void *p, enum sscop_aasig sig,
 		priv->stats.data_delivered++;
 
 	if (m == NULL) {
-		MGETHDR(m, M_NOWAIT, MT_DATA);
+		MGETHDR(m, MB_DONTWAIT, MT_DATA);
 		if (m == NULL)
 			return;
 		m->m_len = sizeof(struct sscop_arg);
 		m->m_pkthdr.len = m->m_len;
 	} else {
-		M_PREPEND(m, sizeof(struct sscop_arg), M_NOWAIT);
+		M_PREPEND(m, sizeof(struct sscop_arg), MB_DONTWAIT);
 		if (m == NULL)
 			return;
 	}
@@ -820,7 +820,7 @@ sscop_send_manage(struct sscop *sscop, void *p, enum sscop_maasig sig,
 	}
 
 	if (sig == SSCOP_MERROR_indication) {
-		MGETHDR(m, M_NOWAIT, MT_DATA);
+		MGETHDR(m, MB_DONTWAIT, MT_DATA);
 		if (m == NULL)
 			return;
 		m->m_len = sizeof(*e);
@@ -831,7 +831,7 @@ sscop_send_manage(struct sscop *sscop, void *p, enum sscop_maasig sig,
 		e->cnt = cnt;
 		priv->stats.errors++;
 	} else if (m == NULL) {
-		MGETHDR(m, M_NOWAIT, MT_DATA);
+		MGETHDR(m, MB_DONTWAIT, MT_DATA);
 		if (m == NULL)
 			return;
 		m->m_len = sizeof(*a);
@@ -840,7 +840,7 @@ sscop_send_manage(struct sscop *sscop, void *p, enum sscop_maasig sig,
 		a->sig = sig;
 		priv->stats.maa_signals++;
 	} else {
-		M_PREPEND(m, sizeof(*a), M_NOWAIT);
+		M_PREPEND(m, sizeof(*a), MB_DONTWAIT);
 		if (m == NULL)
 			return;
 		a = mtod(m, struct sscop_marg *);

@@ -38,6 +38,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_pptpgre.c,v 1.42 2008/03/26 21:19:03 mav Exp $
+ * $DragonFly: src/sys/netgraph7/ng_pptpgre.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_pptpgre.c,v 1.7 1999/12/08 00:10:06 archie Exp $
  */
 
@@ -68,10 +69,10 @@
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_pptpgre.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_pptpgre.h"
 
 /* GRE packet format, as used by PPTP */
 struct greheader {
@@ -280,7 +281,7 @@ ng_pptpgre_constructor(node_p node)
 	int i;
 
 	/* Allocate private structure */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
@@ -338,7 +339,7 @@ ng_pptpgre_newhook(node_p node, hook_p hook, const char *name)
 		if (hex[i] != '\0')
 			return (EINVAL);
 
-		hpriv = malloc(sizeof(*hpriv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+		hpriv = kmalloc(sizeof(*hpriv), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 		if (hpriv == NULL)
 			return (ENOMEM);
 	
@@ -412,7 +413,7 @@ ng_pptpgre_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				hpriv = &priv->uppersess;
 			} else
 				ERROUT(EINVAL);
-			NG_MKRESPONSE(resp, msg, sizeof(hpriv->conf), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(hpriv->conf), M_WAITOK | M_NULLOK);
 			if (resp == NULL)
 				ERROUT(ENOMEM);
 			bcopy(&hpriv->conf, resp->data, sizeof(hpriv->conf));
@@ -424,7 +425,7 @@ ng_pptpgre_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		    {
 			if (msg->header.cmd != NGM_PPTPGRE_CLR_STATS) {
 				NG_MKRESPONSE(resp, msg,
-				    sizeof(priv->stats), M_NOWAIT);
+				    sizeof(priv->stats), M_WAITOK | M_NULLOK);
 				if (resp == NULL)
 					ERROUT(ENOMEM);
 				bcopy(&priv->stats,
@@ -495,7 +496,7 @@ ng_pptpgre_disconnect(hook_p hook)
 
 		LIST_REMOVE(hpriv, sessions);
 		mtx_destroy(&hpriv->mtx);
-		free(hpriv, M_NETGRAPH);
+		kfree(hpriv, M_NETGRAPH);
 	}
 
 	/* Go away if no longer connected to anything */
@@ -599,7 +600,7 @@ ng_pptpgre_xmit(hpriv_p hpriv, item_p item)
 	/* Prepend GRE header to outgoing frame */
 	grelen = sizeof(*gre) + sizeof(u_int32_t) * (gre->hasSeq + gre->hasAck);
 	if (m == NULL) {
-		MGETHDR(m, M_DONTWAIT, MT_DATA);
+		MGETHDR(m, MB_DONTWAIT, MT_DATA);
 		if (m == NULL) {
 			priv->stats.memoryFailures++;
 			ERROUT(ENOBUFS);
@@ -607,7 +608,7 @@ ng_pptpgre_xmit(hpriv_p hpriv, item_p item)
 		m->m_len = m->m_pkthdr.len = grelen;
 		m->m_pkthdr.rcvif = NULL;
 	} else {
-		M_PREPEND(m, grelen, M_DONTWAIT);
+		M_PREPEND(m, grelen, MB_DONTWAIT);
 		if (m == NULL || (m->m_len < grelen
 		    && (m = m_pullup(m, grelen)) == NULL)) {
 			priv->stats.memoryFailures++;

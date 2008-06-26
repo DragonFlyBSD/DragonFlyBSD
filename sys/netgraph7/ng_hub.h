@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_hub.h,v 1.1 2004/04/17 12:42:16 ru Exp $
+ * $DragonFly: src/sys/netgraph7/ng_hub.h,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #ifndef _NETGRAPH_NG_HUB_H_

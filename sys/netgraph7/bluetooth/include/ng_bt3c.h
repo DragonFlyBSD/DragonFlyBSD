@@ -29,6 +29,7 @@
  *
  * $Id: ng_bt3c.h,v 1.1 2002/11/24 19:47:05 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/include/ng_bt3c.h,v 1.4 2005/01/07 01:45:43 imp Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/include/ng_bt3c.h,v 1.2 2008/06/26 23:05:40 dillon Exp $
  *
  * XXX XXX XX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX 
  *

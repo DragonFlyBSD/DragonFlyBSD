@@ -38,6 +38,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_socket.h,v 1.7 2006/10/17 11:03:55 glebius Exp $
+ * $DragonFly: src/sys/netgraph7/ng_socket.h,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_socket.h,v 1.5 1999/01/20 00:22:14 archie Exp $
  */
 

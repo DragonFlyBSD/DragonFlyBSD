@@ -38,6 +38,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_cisco.c,v 1.29 2007/11/30 23:27:39 julian Exp $
+ * $DragonFly: src/sys/netgraph7/ng_cisco.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_cisco.c,v 1.25 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -60,10 +61,10 @@
 #include <netipx/ipx.h>
 #include <netipx/ipx_if.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_cisco.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_cisco.h"
 
 #define	CISCO_MULTICAST		0x8f	/* Cisco multicast address */
 #define	CISCO_UNICAST		0x0f	/* Cisco unicast address */
@@ -193,7 +194,7 @@ cisco_constructor(node_p node)
 {
 	sc_p sc;
 
-	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (sc == NULL)
 		return (ENOMEM);
 
@@ -264,7 +265,7 @@ cisco_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			char *arg;
 			int pos;
 
-			NG_MKRESPONSE(resp, msg, NG_TEXTRESPONSE, M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, NG_TEXTRESPONSE, M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -289,7 +290,7 @@ cisco_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				struct in_addr *ips;
 
 				NG_MKRESPONSE(resp, msg,
-				    2 * sizeof(*ips), M_NOWAIT);
+				    2 * sizeof(*ips), M_WAITOK | M_NULLOK);
 				if (!resp) {
 					error = ENOMEM;
 					break;
@@ -316,7 +317,7 @@ cisco_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		    {
 			struct ng_cisco_stats *stat;
 
-			NG_MKRESPONSE(resp, msg, sizeof(*stat), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(*stat), M_WAITOK | M_NULLOK);
 			if (!resp) {
 				error = ENOMEM;
 				break;
@@ -362,7 +363,7 @@ cisco_rcvdata(hook_p hook, item_p item)
 	/* OK so it came from a protocol, heading out. Prepend general data
 	   packet header. For now, IP,IPX only  */
 	m = NGI_M(item); /* still associated with item */
-	M_PREPEND(m, CISCO_HEADER_LEN, M_DONTWAIT);
+	M_PREPEND(m, CISCO_HEADER_LEN, MB_DONTWAIT);
 	if (!m) {
 		error = ENOBUFS;
 		goto out;
@@ -525,7 +526,7 @@ cisco_input(sc_p sc, item_p item)
 				if (sc->inet.hook == NULL)
 					goto nomsg;
 				NG_MKMESSAGE(msg, NGM_CISCO_COOKIE,
-				    NGM_CISCO_GET_IPADDR, 0, M_NOWAIT);
+				    NGM_CISCO_GET_IPADDR, 0, M_WAITOK | M_NULLOK);
 				if (msg == NULL)
 					goto nomsg;
 				NG_SEND_MSG_HOOK(dummy_error,
@@ -609,7 +610,7 @@ cisco_send(sc_p sc, int type, long par1, long par2)
 
 	getmicrouptime(&time);
 
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (!m)
 		return (ENOBUFS);
 
@@ -646,7 +647,7 @@ cisco_notify(sc_p sc, uint32_t cmd)
 	if (sc->inet.hook == NULL) /* nothing to notify */
 		return;
                 
-	NG_MKMESSAGE(msg, NGM_FLOW_COOKIE, cmd, 0, M_NOWAIT);
+	NG_MKMESSAGE(msg, NGM_FLOW_COOKIE, cmd, 0, M_WAITOK | M_NULLOK);
 	if (msg != NULL)
 		NG_SEND_MSG_HOOK(dummy_error, sc->node, msg, sc->inet.hook, 0);
 }

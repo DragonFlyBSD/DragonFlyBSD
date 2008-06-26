@@ -38,6 +38,7 @@
  * Author: Julian Elisher <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_echo.c,v 1.13 2005/04/15 10:14:00 glebius Exp $
+ * $DragonFly: src/sys/netgraph7/ng_echo.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_echo.c,v 1.13 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -52,9 +53,9 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_echo.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_echo.h"
 
 /* Netgraph methods */
 static ng_constructor_t	nge_cons;

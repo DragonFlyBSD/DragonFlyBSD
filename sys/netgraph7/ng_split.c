@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_split.c,v 1.7 2005/08/29 13:47:08 glebius Exp $
+ * $DragonFly: src/sys/netgraph7/ng_split.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  *
  */
 
@@ -40,9 +41,9 @@
 #include <sys/socket.h>
 #include <sys/syslog.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_split.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_split.h"
 
 /* Netgraph methods */
 static ng_constructor_t ng_split_constructor;
@@ -85,7 +86,7 @@ ng_split_constructor(node_p node)
 	priv_p		priv;
 
 	/* Allocate node */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_ZERO | M_NOWAIT);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_ZERO | M_WAITOK | M_NULLOK);
 	if (priv == NULL)
 		return (ENOMEM);
 

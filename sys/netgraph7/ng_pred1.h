@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_pred1.h,v 1.1 2006/12/29 09:54:32 glebius Exp $
+ * $DragonFly: src/sys/netgraph7/ng_pred1.h,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #ifndef _NETGRAPH_NG_PRED1_H_

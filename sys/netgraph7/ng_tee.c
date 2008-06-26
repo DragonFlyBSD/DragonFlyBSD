@@ -39,6 +39,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tee.c,v 1.35 2008/02/24 10:13:32 mav Exp $
+ * $DragonFly: src/sys/netgraph7/ng_tee.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_tee.c,v 1.18 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -57,10 +58,10 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_tee.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_tee.h"
 
 /* Per hook info */
 struct hookinfo {
@@ -153,7 +154,7 @@ ng_tee_constructor(node_p node)
 {
 	sc_p privdata;
 
-	MALLOC(privdata, sc_p, sizeof(*privdata), M_NETGRAPH, M_NOWAIT|M_ZERO);
+	MALLOC(privdata, sc_p, sizeof(*privdata), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (privdata == NULL)
 		return (ENOMEM);
 
@@ -226,7 +227,7 @@ ng_tee_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
                         if (msg->header.cmd != NGM_TEE_CLR_STATS) {
                                 NG_MKRESPONSE(resp, msg,
-                                    sizeof(*stats), M_NOWAIT);
+                                    sizeof(*stats), M_WAITOK | M_NULLOK);
 				if (resp == NULL) {
 					error = ENOMEM;
 					goto done;
@@ -307,7 +308,7 @@ ng_tee_rcvdata(hook_p hook, item_p item)
 		struct mbuf *m2;
 
 		/* Copy packet (failure will not stop the original)*/
-		m2 = m_dup(m, M_DONTWAIT);
+		m2 = m_dup(m, MB_DONTWAIT);
 		if (m2) {
 			/* Deliver duplicate */
 			h = hinfo->dup;

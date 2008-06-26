@@ -59,6 +59,7 @@
  * Authors: Archie Cobbs <archie@freebsd.org>, Alexander Motin <mav@alkar.net>
  *
  * $FreeBSD: src/sys/netgraph/ng_ppp.c,v 1.75 2008/02/06 20:37:34 mav Exp $
+ * $DragonFly: src/sys/netgraph7/ng_ppp.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_ppp.c,v 1.24 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -100,11 +101,11 @@
 #include <sys/errno.h>
 #include <sys/ctype.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_ppp.h>
-#include <netgraph/ng_vjc.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_ppp.h"
+#include "ng_vjc.h"
 
 #ifdef NG_SEPARATE_MALLOC
 MALLOC_DEFINE(M_NETGRAPH_PPP, "netgraph_ppp", "netgraph ppp node");
@@ -490,7 +491,7 @@ ng_ppp_constructor(node_p node)
 	int i;
 
 	/* Allocate private structure */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH_PPP, M_NOWAIT | M_ZERO);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH_PPP, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
@@ -614,7 +615,7 @@ ng_ppp_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			struct ng_ppp_node_conf *conf;
 			int i;
 
-			NG_MKRESPONSE(resp, msg, sizeof(*conf), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(*conf), M_WAITOK | M_NULLOK);
 			if (resp == NULL)
 				ERROUT(ENOMEM);
 			conf = (struct ng_ppp_node_conf *)resp->data;
@@ -628,7 +629,7 @@ ng_ppp_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			struct ng_ppp_mp_state *info;
 			int i;
 
-			NG_MKRESPONSE(resp, msg, sizeof(*info), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(*info), M_WAITOK | M_NULLOK);
 			if (resp == NULL)
 				ERROUT(ENOMEM);
 			info = (struct ng_ppp_mp_state *)resp->data;
@@ -664,7 +665,7 @@ ng_ppp_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			if (msg->header.cmd == NGM_PPP_GET_LINK_STATS64 || 
 			    msg->header.cmd == NGM_PPP_GETCLR_LINK_STATS64) {
 				NG_MKRESPONSE(resp, msg,
-				    sizeof(struct ng_ppp_link_stat64), M_NOWAIT);
+				    sizeof(struct ng_ppp_link_stat64), M_WAITOK | M_NULLOK);
 				if (resp == NULL)
 					ERROUT(ENOMEM);
 				bcopy(stats, resp->data, sizeof(*stats));
@@ -674,7 +675,7 @@ ng_ppp_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			    msg->header.cmd == NGM_PPP_GETCLR_LINK_STATS) {
 				struct ng_ppp_link_stat *rs;
 				NG_MKRESPONSE(resp, msg,
-				    sizeof(struct ng_ppp_link_stat), M_NOWAIT);
+				    sizeof(struct ng_ppp_link_stat), M_WAITOK | M_NULLOK);
 				if (resp == NULL)
 					ERROUT(ENOMEM);
 				rs = (struct ng_ppp_link_stat *)resp->data;
@@ -2077,7 +2078,7 @@ deliver:
 			/* Split off next fragment as "m2" */
 			m2 = m;
 			if (!lastFragment) {
-				struct mbuf *n = m_split(m, len, M_DONTWAIT);
+				struct mbuf *n = m_split(m, len, MB_DONTWAIT);
 
 				if (n == NULL) {
 					NG_FREE_M(m);
@@ -2085,7 +2086,7 @@ deliver:
 						NG_FREE_ITEM(item);
 					return (ENOMEM);
 				}
-				m_tag_copy_chain(n, m, M_DONTWAIT);
+				m_tag_copy_chain(n, m, MB_DONTWAIT);
 				m = n;
 			}
 
@@ -2427,7 +2428,7 @@ ng_ppp_cutproto(struct mbuf *m, uint16_t *proto)
 static struct mbuf *
 ng_ppp_prepend(struct mbuf *m, const void *buf, int len)
 {
-	M_PREPEND(m, len, M_DONTWAIT);
+	M_PREPEND(m, len, MB_DONTWAIT);
 	if (m == NULL || (m->m_len < len && (m = m_pullup(m, len)) == NULL))
 		return (NULL);
 	bcopy(buf, mtod(m, uint8_t *), len);

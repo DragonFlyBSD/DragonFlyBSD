@@ -26,6 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_eiface.c,v 1.39 2007/07/26 10:54:33 glebius Exp $
+ * $DragonFly: src/sys/netgraph7/ng_eiface.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,10 +44,10 @@
 #include <net/if_types.h>
 #include <net/netisr.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_eiface.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_eiface.h"
 
 #include <net/bpf.h>
 #include <net/ethernet.h>
@@ -337,13 +338,13 @@ ng_eiface_constructor(node_p node)
 	u_char eaddr[6] = {0,0,0,0,0,0};
 
 	/* Allocate node and interface private structures */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
 	ifp = priv->ifp = if_alloc(IFT_ETHER);
 	if (ifp == NULL) {
-		free(priv, M_NETGRAPH);
+		kfree(priv, M_NETGRAPH);
 		return (ENOSPC);
 	}
 
@@ -431,7 +432,7 @@ ng_eiface_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		    }
 
 		case NGM_EIFACE_GET_IFNAME:
-			NG_MKRESPONSE(resp, msg, IFNAMSIZ, M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, IFNAMSIZ, M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -451,7 +452,7 @@ ng_eiface_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			buflen = 0;
 			TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
 				buflen += SA_SIZE(ifa->ifa_addr);
-			NG_MKRESPONSE(resp, msg, buflen, M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, buflen, M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;

@@ -37,6 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_l2tp.c,v 1.25 2008/03/16 21:33:12 mav Exp $
+ * $DragonFly: src/sys/netgraph7/ng_l2tp.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -56,10 +57,10 @@
 #include <sys/errno.h>
 #include <sys/libkern.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_l2tp.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_l2tp.h"
 
 #ifdef NG_SEPARATE_MALLOC
 MALLOC_DEFINE(M_NETGRAPH_L2TP, "netgraph_l2tp", "netgraph l2tp node");
@@ -364,7 +365,7 @@ ng_l2tp_constructor(node_p node)
 	int	i;
 
 	/* Allocate private structure */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH_L2TP, M_NOWAIT | M_ZERO);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH_L2TP, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 	NG_NODE_SET_PRIVATE(node, priv);
@@ -429,7 +430,7 @@ ng_l2tp_newhook(node_p node, hook_p hook, const char *name)
 
 		/* Create hook private structure */
 		MALLOC(hpriv, hookpriv_p,
-		    sizeof(*hpriv), M_NETGRAPH_L2TP, M_NOWAIT | M_ZERO);
+		    sizeof(*hpriv), M_NETGRAPH_L2TP, M_WAITOK | M_NULLOK | M_ZERO);
 		if (hpriv == NULL)
 			return (ENOMEM);
 		hpriv->conf.session_id = htons(session_id);
@@ -498,7 +499,7 @@ ng_l2tp_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		    {
 			struct ng_l2tp_config *conf;
 
-			NG_MKRESPONSE(resp, msg, sizeof(*conf), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(*conf), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -560,7 +561,7 @@ ng_l2tp_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			}
 
 			/* Send response */
-			NG_MKRESPONSE(resp, msg, sizeof(hpriv->conf), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(hpriv->conf), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -579,7 +580,7 @@ ng_l2tp_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		    {
 			if (msg->header.cmd != NGM_L2TP_CLR_STATS) {
 				NG_MKRESPONSE(resp, msg,
-				    sizeof(priv->stats), M_NOWAIT);
+				    sizeof(priv->stats), M_WAITOK | M_NULLOK);
 				if (resp == NULL) {
 					error = ENOMEM;
 					break;
@@ -615,7 +616,7 @@ ng_l2tp_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 			if (msg->header.cmd != NGM_L2TP_CLR_SESSION_STATS) {
 				NG_MKRESPONSE(resp, msg,
-				    sizeof(hpriv->stats), M_NOWAIT);
+				    sizeof(hpriv->stats), M_WAITOK | M_NULLOK);
 				if (resp == NULL) {
 					error = ENOMEM;
 					break;
@@ -957,7 +958,7 @@ ng_l2tp_rcvdata_lower(hook_p h, item_p item)
 		mtx_unlock(&seq->mtx);
 
 		/* Prepend session ID to packet. */
-		M_PREPEND(m, 2, M_DONTWAIT);
+		M_PREPEND(m, 2, MB_DONTWAIT);
 		if (m == NULL) {
 			seq->inproc = 0;
 			priv->stats.memoryFailures++;
@@ -1093,7 +1094,7 @@ ng_l2tp_rcvdata_ctrl(hook_p hook, item_p item)
 	mtx_unlock(&seq->mtx);
 
 	/* Copy packet */
-	if ((m = L2TP_COPY_MBUF(m, M_DONTWAIT)) == NULL) {
+	if ((m = L2TP_COPY_MBUF(m, MB_DONTWAIT)) == NULL) {
 		priv->stats.memoryFailures++;
 		ERROUT(ENOBUFS);
 	}
@@ -1143,7 +1144,7 @@ ng_l2tp_rcvdata(hook_p hook, item_p item)
 	M_PREPEND(m, 6
 	    + (2 * (hpriv->conf.include_length != 0))
 	    + (4 * (hpriv->conf.enable_dseq != 0)),
-	    M_DONTWAIT);
+	    MB_DONTWAIT);
 	if (m == NULL) {
 		priv->stats.memoryFailures++;
 		NG_FREE_ITEM(item);
@@ -1189,7 +1190,7 @@ ng_l2tp_seq_failure(priv_p priv)
 	struct ng_mesg *msg;
 	int error;
 
-	NG_MKMESSAGE(msg, NGM_L2TP_COOKIE, NGM_L2TP_ACK_FAILURE, 0, M_NOWAIT);
+	NG_MKMESSAGE(msg, NGM_L2TP_COOKIE, NGM_L2TP_ACK_FAILURE, 0, M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		return;
 	NG_SEND_MSG_ID(error, priv->node, msg, priv->ftarget, 0);
@@ -1420,7 +1421,7 @@ ng_l2tp_seq_recv_nr(priv_p priv, u_int16_t nr)
 	 */
 	for (i = 0; i < j; i++) {
 		struct mbuf 	*m;
-		if ((m = L2TP_COPY_MBUF(xwin[i], M_DONTWAIT)) == NULL)
+		if ((m = L2TP_COPY_MBUF(xwin[i], MB_DONTWAIT)) == NULL)
 			priv->stats.memoryFailures++;
 		else
 			ng_l2tp_xmit_ctrl(priv, m, ns);
@@ -1496,7 +1497,7 @@ ng_l2tp_seq_rack_timeout(node_p node, hook_p hook, void *arg1, int arg2)
 	seq->acks = 0;
 
 	/* Retransmit oldest unack'd packet */
-	if ((m = L2TP_COPY_MBUF(seq->xwin[0], M_DONTWAIT)) == NULL)
+	if ((m = L2TP_COPY_MBUF(seq->xwin[0], MB_DONTWAIT)) == NULL)
 		priv->stats.memoryFailures++;
 	else
 		ng_l2tp_xmit_ctrl(priv, m, seq->ns++);
@@ -1534,7 +1535,7 @@ ng_l2tp_xmit_ctrl(priv_p priv, struct mbuf *m, u_int16_t ns)
 	if (m == NULL) {
 
 		/* Create a new mbuf for ZLB packet */
-		MGETHDR(m, M_DONTWAIT, MT_DATA);
+		MGETHDR(m, MB_DONTWAIT, MT_DATA);
 		if (m == NULL) {
 			priv->stats.memoryFailures++;
 			return (ENOBUFS);
@@ -1553,7 +1554,7 @@ ng_l2tp_xmit_ctrl(priv_p priv, struct mbuf *m, u_int16_t ns)
 		m_adj(m, 2);
 
 		/* Make room for L2TP header */
-		M_PREPEND(m, 12, M_DONTWAIT);
+		M_PREPEND(m, 12, MB_DONTWAIT);
 		if (m == NULL) {
 			priv->stats.memoryFailures++;
 			return (ENOBUFS);

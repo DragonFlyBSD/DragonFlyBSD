@@ -38,6 +38,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_async.c,v 1.22 2005/01/07 01:45:39 imp Exp $
+ * $DragonFly: src/sys/netgraph7/ng_async.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_async.c,v 1.17 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -53,10 +54,10 @@
 #include <sys/malloc.h>
 #include <sys/errno.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_async.h>
-#include <netgraph/ng_parse.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_async.h"
+#include "ng_parse.h"
 
 #include <net/ppp_defs.h>
 
@@ -183,7 +184,7 @@ nga_constructor(node_p node)
 {
 	sc_p sc;
 
-	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH_ASYNC, M_NOWAIT | M_ZERO);
+	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH_ASYNC, M_WAITOK | M_NULLOK | M_ZERO);
 	if (sc == NULL)
 		return (ENOMEM);
 	sc->amode = MODE_HUNT;
@@ -191,11 +192,11 @@ nga_constructor(node_p node)
 	sc->cfg.amru = NG_ASYNC_DEFAULT_MRU;
 	sc->cfg.smru = NG_ASYNC_DEFAULT_MRU;
 	MALLOC(sc->abuf, u_char *,
-	    ASYNC_BUF_SIZE(sc->cfg.smru), M_NETGRAPH_ASYNC, M_NOWAIT);
+	    ASYNC_BUF_SIZE(sc->cfg.smru), M_NETGRAPH_ASYNC, M_WAITOK | M_NULLOK);
 	if (sc->abuf == NULL)
 		goto fail;
 	MALLOC(sc->sbuf, u_char *,
-	    SYNC_BUF_SIZE(sc->cfg.amru), M_NETGRAPH_ASYNC, M_NOWAIT);
+	    SYNC_BUF_SIZE(sc->cfg.amru), M_NETGRAPH_ASYNC, M_WAITOK | M_NULLOK);
 	if (sc->sbuf == NULL) {
 		FREE(sc->abuf, M_NETGRAPH_ASYNC);
 fail:
@@ -275,7 +276,7 @@ nga_rcvmsg(node_p node, item_p item, hook_p lasthook)
 	case NGM_ASYNC_COOKIE:
 		switch (msg->header.cmd) {
 		case NGM_ASYNC_CMD_GET_STATS:
-			NG_MKRESPONSE(resp, msg, sizeof(sc->stats), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(sc->stats), M_WAITOK | M_NULLOK);
 			if (resp == NULL)
 				ERROUT(ENOMEM);
 			*((struct ng_async_stat *) resp->data) = sc->stats;
@@ -299,7 +300,7 @@ nga_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			cfg->enabled = !!cfg->enabled;	/* normalize */
 			if (cfg->smru > sc->cfg.smru) {	/* reallocate buffer */
 				MALLOC(buf, u_char *, ASYNC_BUF_SIZE(cfg->smru),
-				    M_NETGRAPH_ASYNC, M_NOWAIT);
+				    M_NETGRAPH_ASYNC, M_WAITOK | M_NULLOK);
 				if (!buf)
 					ERROUT(ENOMEM);
 				FREE(sc->abuf, M_NETGRAPH_ASYNC);
@@ -307,7 +308,7 @@ nga_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			}
 			if (cfg->amru > sc->cfg.amru) {	/* reallocate buffer */
 				MALLOC(buf, u_char *, SYNC_BUF_SIZE(cfg->amru),
-				    M_NETGRAPH_ASYNC, M_NOWAIT);
+				    M_NETGRAPH_ASYNC, M_WAITOK | M_NULLOK);
 				if (!buf)
 					ERROUT(ENOMEM);
 				FREE(sc->sbuf, M_NETGRAPH_ASYNC);
@@ -323,7 +324,7 @@ nga_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			break;
 		    }
 		case NGM_ASYNC_CMD_GET_CONFIG:
-			NG_MKRESPONSE(resp, msg, sizeof(sc->cfg), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(sc->cfg), M_WAITOK | M_NULLOK);
 			if (!resp)
 				ERROUT(ENOMEM);
 			*((struct ng_async_cfg *) resp->data) = sc->cfg;

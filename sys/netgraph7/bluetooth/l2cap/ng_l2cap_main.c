@@ -29,6 +29,7 @@
  *
  * $Id: ng_l2cap_main.c,v 1.2 2003/04/28 21:44:59 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/l2cap/ng_l2cap_main.c,v 1.5 2005/01/07 01:45:43 imp Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/l2cap/ng_l2cap_main.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,19 +38,19 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/queue.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/bluetooth/include/ng_bluetooth.h>
-#include <netgraph/bluetooth/include/ng_hci.h>
-#include <netgraph/bluetooth/include/ng_l2cap.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_var.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_cmds.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_evnt.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_llpi.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_ulpi.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_misc.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_prse.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "bluetooth/include/ng_bluetooth.h"
+#include "bluetooth/include/ng_hci.h"
+#include "bluetooth/include/ng_l2cap.h"
+#include "bluetooth/l2cap/ng_l2cap_var.h"
+#include "bluetooth/l2cap/ng_l2cap_cmds.h"
+#include "bluetooth/l2cap/ng_l2cap_evnt.h"
+#include "bluetooth/l2cap/ng_l2cap_llpi.h"
+#include "bluetooth/l2cap/ng_l2cap_ulpi.h"
+#include "bluetooth/l2cap/ng_l2cap_misc.h"
+#include "bluetooth/l2cap/ng_l2cap_prse.h"
 
 /******************************************************************************
  ******************************************************************************
@@ -114,7 +115,7 @@ ng_l2cap_constructor(node_p node)
 
 	/* Create new L2CAP node */
 	MALLOC(l2cap, ng_l2cap_p, sizeof(*l2cap),
-		M_NETGRAPH_L2CAP, M_NOWAIT|M_ZERO);
+		M_NETGRAPH_L2CAP, M_WAITOK | M_NULLOK | M_ZERO);
 	if (l2cap == NULL)
 		return (ENOMEM);
 
@@ -483,7 +484,7 @@ ng_l2cap_default_rcvmsg(node_p node, item_p item, hook_p lasthook)
 	case NGM_GENERIC_COOKIE:
 		switch (msg->header.cmd) {
 		case NGM_TEXT_STATUS:
-			NG_MKRESPONSE(rsp, msg, NG_TEXTRESPONSE, M_NOWAIT);
+			NG_MKRESPONSE(rsp, msg, NG_TEXTRESPONSE, M_WAITOK | M_NULLOK);
 			if (rsp == NULL)
 				error = ENOMEM;
 			else
@@ -517,7 +518,7 @@ ng_l2cap_default_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		/* Get node flags */
 		case NGM_L2CAP_NODE_GET_FLAGS:
 			NG_MKRESPONSE(rsp, msg, sizeof(ng_l2cap_node_flags_ep),
-				M_NOWAIT);
+				M_WAITOK | M_NULLOK);
 			if (rsp == NULL)
 				error = ENOMEM;
 			else
@@ -528,7 +529,7 @@ ng_l2cap_default_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		/* Get node debug */
 		case NGM_L2CAP_NODE_GET_DEBUG:
 			NG_MKRESPONSE(rsp, msg, sizeof(ng_l2cap_node_debug_ep),
-				M_NOWAIT);
+				M_WAITOK | M_NULLOK);
 			if (rsp == NULL)
 				error = ENOMEM;
 			else
@@ -561,7 +562,7 @@ ng_l2cap_default_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 			/* Prepare response */
 			NG_MKRESPONSE(rsp, msg,
-				sizeof(*e1) + n * sizeof(*e2), M_NOWAIT);
+				sizeof(*e1) + n * sizeof(*e2), M_WAITOK | M_NULLOK);
 			if (rsp == NULL) {
 				error = ENOMEM;
 				break;
@@ -609,7 +610,7 @@ ng_l2cap_default_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			/* Prepare response */
 			NG_MKRESPONSE(rsp, msg,
 				sizeof(ng_l2cap_node_chan_list_ep) +
-				n * sizeof(ng_l2cap_node_chan_ep), M_NOWAIT);
+				n * sizeof(ng_l2cap_node_chan_ep), M_WAITOK | M_NULLOK);
 			if (rsp == NULL) {
 				error = ENOMEM;
 				break;
@@ -641,7 +642,7 @@ ng_l2cap_default_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 		case NGM_L2CAP_NODE_GET_AUTO_DISCON_TIMO:
 			NG_MKRESPONSE(rsp, msg,
-				sizeof(ng_l2cap_node_auto_discon_ep), M_NOWAIT);
+				sizeof(ng_l2cap_node_auto_discon_ep), M_WAITOK | M_NULLOK);
 			if (rsp == NULL)
 				error = ENOMEM;
 			else

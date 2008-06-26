@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_ipfw.c,v 1.9 2006/02/14 15:22:24 ru Exp $
+ * $DragonFly: src/sys/netgraph7/ng_ipfw.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,10 +46,10 @@
 #include <netinet/ip.h>
 #include <netinet/ip_var.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_ipfw.h>
-#include <netgraph/netgraph.h>
+#include "ng_message.h"
+#include "ng_parse.h"
+#include "ng_ipfw.h"
+#include "netgraph.h"
 
 static int		ng_ipfw_mod_event(module_t mod, int event, void *data);
 static ng_constructor_t	ng_ipfw_constructor;
@@ -162,7 +163,7 @@ ng_ipfw_newhook(node_p node, hook_p hook, const char *name)
 		return (EINVAL);
 
 	/* Allocate memory for this hook's private data */
-	MALLOC(hpriv, hpriv_p, sizeof(*hpriv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	MALLOC(hpriv, hpriv_p, sizeof(*hpriv), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (hpriv== NULL)
 		return (ENOMEM);
 
@@ -286,7 +287,7 @@ ng_ipfw_input(struct mbuf **m0, int dir, struct ip_fw_args *fwa, int tee)
 		*m0 = NULL;	/* it belongs now to netgraph */
 
 		if ((ngit = (struct ng_ipfw_tag *)m_tag_alloc(NGM_IPFW_COOKIE,
-		    0, TAGSIZ, M_NOWAIT|M_ZERO)) == NULL) {
+		    0, TAGSIZ, MB_DONTWAIT)) == NULL) {
 			m_freem(m);
 			return (ENOMEM);
 		}
@@ -296,7 +297,7 @@ ng_ipfw_input(struct mbuf **m0, int dir, struct ip_fw_args *fwa, int tee)
 		m_tag_prepend(m, &ngit->mt);
 
 	} else
-		if ((m = m_dup(*m0, M_DONTWAIT)) == NULL)
+		if ((m = m_dup(*m0, MB_DONTWAIT)) == NULL)
 			return (ENOMEM);	/* which is ignored */
 
 	if (m->m_len < sizeof(struct ip) &&

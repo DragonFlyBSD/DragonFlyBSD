@@ -38,6 +38,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_socket.c,v 1.85 2008/03/11 21:58:48 mav Exp $
+ * $DragonFly: src/sys/netgraph7/ng_socket.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_socket.c,v 1.28 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -67,10 +68,10 @@
 #ifdef NOTYET
 #include <sys/vnode.h>
 #endif
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_socketvar.h>
-#include <netgraph/ng_socket.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_socketvar.h"
+#include "ng_socket.h"
 
 #ifdef NG_SEPARATE_MALLOC
 MALLOC_DEFINE(M_NETGRAPH_PATH, "netgraph_path", "netgraph path info ");
@@ -226,7 +227,7 @@ ngc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 	 * the sockaddr header, and make sure it's NUL terminated.
 	 */
 	len = sap->sg_len - 2;
-	path = malloc(len + 1, M_NETGRAPH_PATH, M_WAITOK);
+	path = kmalloc(len + 1, M_NETGRAPH_PATH, M_WAITOK);
 	bcopy(sap->sg_data, path, len);
 	path[len] = '\0';
 
@@ -241,11 +242,11 @@ ngc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 	 * Move the data into a linear buffer as well.
 	 * Messages are not delivered in mbufs.
 	 */
-	msg = malloc(len + 1, M_NETGRAPH_MSG, M_WAITOK);
+	msg = kmalloc(len + 1, M_NETGRAPH_MSG, M_WAITOK);
 	m_copydata(m, 0, len, (char *)msg);
 
 	if (msg->header.version != NG_VERSION) {
-		free(msg, M_NETGRAPH_MSG);
+		kfree(msg, M_NETGRAPH_MSG);
 		error = EINVAL;
 		goto release;
 	}
@@ -270,13 +271,13 @@ ngc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 			    mkp->type);
 			error = kern_kldload(curthread, filename, &fileid);
 			if (error != 0) {
-				free(msg, M_NETGRAPH_MSG);
+				kfree(msg, M_NETGRAPH_MSG);
 				goto release;
 			}
 
 			/* See if type has been loaded successfully. */
 			if ((type = ng_findtype(mkp->type)) == NULL) {
-				free(msg, M_NETGRAPH_MSG);
+				kfree(msg, M_NETGRAPH_MSG);
 				(void)kern_kldunload(curthread, fileid,
 				    LINKER_UNLOAD_NORMAL);
 				error =  ENXIO;
@@ -285,7 +286,7 @@ ngc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 		}
 	}
 
-	item = ng_package_msg(msg, M_WAITOK);
+	item = ng_package_msg(msg, NG_WAITOK);
 	if ((error = ng_address_path((pcbp->sockdata->node), item, path, 0))
 	    != 0) {
 #ifdef TRACE_MESSAGES
@@ -331,7 +332,7 @@ ngc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 
 release:
 	if (path != NULL)
-		free(path, M_NETGRAPH_PATH);
+		kfree(path, M_NETGRAPH_PATH);
 	if (control != NULL)
 		m_freem(control);
 	if (m != NULL)
@@ -490,7 +491,7 @@ ng_getsockaddr(struct socket *so, struct sockaddr **addr)
 		if (NG_NODE_HAS_NAME(node))
 			sg_len += namelen = strlen(NG_NODE_NAME(node));
 
-		sg = malloc(sg_len, M_SONAME, M_WAITOK | M_ZERO);
+		sg = kmalloc(sg_len, M_SONAME, M_WAITOK | M_ZERO);
 
 		if (NG_NODE_HAS_NAME(node))
 			bcopy(NG_NODE_NAME(node), sg->sg_data, namelen);
@@ -521,11 +522,11 @@ ng_attach_cntl(struct socket *so)
 	int error;
 
 	/* Allocate node private info */
-	priv = malloc(sizeof(*priv), M_NETGRAPH_SOCK, M_WAITOK | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH_SOCK, M_WAITOK | M_ZERO);
 
 	/* Setup protocol control block */
 	if ((error = ng_attach_common(so, NG_CONTROL)) != 0) {
-		free(priv, M_NETGRAPH_SOCK);
+		kfree(priv, M_NETGRAPH_SOCK);
 		return (error);
 	}
 	pcbp = sotongpcb(so);
@@ -540,7 +541,7 @@ ng_attach_cntl(struct socket *so)
 
 	/* Make the generic node components */
 	if ((error = ng_make_node_common(&typestruct, &priv->node)) != 0) {
-		free(priv, M_NETGRAPH_SOCK);
+		kfree(priv, M_NETGRAPH_SOCK);
 		ng_detach_common(pcbp, NG_CONTROL);
 		return (error);
 	}
@@ -575,7 +576,7 @@ ng_attach_common(struct socket *so, int type)
 		return (error);
 
 	/* Allocate the pcb. */
-	pcbp = malloc(sizeof(struct ngpcb), M_PCB, M_WAITOK | M_ZERO);
+	pcbp = kmalloc(sizeof(struct ngpcb), M_PCB, M_WAITOK | M_ZERO);
 	pcbp->type = type;
 
 	/* Link the pcb and the socket. */
@@ -615,7 +616,7 @@ ng_detach_common(struct ngpcb *pcbp, int which)
 	}
 
 	pcbp->ng_socket->so_pcb = NULL;
-	free(pcbp, M_PCB);
+	kfree(pcbp, M_PCB);
 }
 
 /*
@@ -630,7 +631,7 @@ ng_socket_free_priv(struct ngsock *priv)
 
 	if (priv->refs == 0) {
 		mtx_destroy(&priv->mtx);
-		free(priv, M_NETGRAPH_SOCK);
+		kfree(priv, M_NETGRAPH_SOCK);
 		return;
 	}
 

@@ -35,6 +35,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.30 2007/05/18 15:05:49 dwmalone Exp $
+ * $DragonFly: src/sys/netgraph7/ng_fec.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 /*-
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -121,10 +122,10 @@
 #include <netinet/ip6.h>
 #endif
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_fec.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_fec.h"
 
 /*
  * We need a way to stash a pointer to our netgraph node in the
@@ -285,7 +286,7 @@ ng_fec_get_unit(int *unit)
 
 		newlen = (2 * ng_fec_units_len) + 4;
 		MALLOC(newarray, int *, newlen * sizeof(*ng_fec_units),
-		    M_NETGRAPH, M_NOWAIT);
+		    M_NETGRAPH, M_WAITOK | M_NULLOK);
 		if (newarray == NULL) {
 			mtx_unlock(&ng_fec_mtx);
 			return (ENOMEM);
@@ -404,7 +405,7 @@ ng_fec_addport(struct ng_fec_private *priv, char *iface)
 
 	/* Allocate new list entry. */
 	MALLOC(new, struct ng_fec_portlist *,
-	    sizeof(struct ng_fec_portlist), M_NETGRAPH, M_NOWAIT);
+	    sizeof(struct ng_fec_portlist), M_NETGRAPH, M_WAITOK | M_NULLOK);
 	if (new == NULL)
 		return(ENOMEM);
 
@@ -546,7 +547,7 @@ ng_fec_ether_cmdmulti(struct ifnet *trifp, struct ng_fec_portlist *p, int set)
 			error = if_addmulti(ifp, (struct sockaddr *)&sdl, &rifma);
 			if (error)
 				return (error);
-			mc = malloc(sizeof(struct ng_fec_mc), M_DEVBUF, M_NOWAIT);
+			mc = kmalloc(sizeof(struct ng_fec_mc), M_DEVBUF, M_WAITOK | M_NULLOK);
 			if (mc == NULL)
 				return (ENOMEM);
 			mc->mc_ifma = rifma;
@@ -556,7 +557,7 @@ ng_fec_ether_cmdmulti(struct ifnet *trifp, struct ng_fec_portlist *p, int set)
 		while ((mc = SLIST_FIRST(&p->fec_mc_head)) != NULL) {
 			SLIST_REMOVE(&p->fec_mc_head, mc, ng_fec_mc, mc_entries);
 			if_delmulti_ifma(mc->mc_ifma);
-			free(mc, M_DEVBUF);
+			kfree(mc, M_DEVBUF);
 		}
 	}
 	return (0);
@@ -1196,7 +1197,7 @@ ng_fec_constructor(node_p node)
 	int error = 0;
 
 	/* Allocate node and interface private structures */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 

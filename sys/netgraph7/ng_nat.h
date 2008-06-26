@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_nat.h,v 1.4 2008/03/04 11:10:54 mav Exp $
+ * $DragonFly: src/sys/netgraph7/ng_nat.h,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #define NG_NAT_NODE_TYPE    "nat"

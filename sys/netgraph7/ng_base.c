@@ -39,6 +39,7 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.159 2008/04/19 05:30:49 mav Exp $
+ * $DragonFly: src/sys/netgraph7/ng_base.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -50,7 +51,7 @@
 #include <sys/systm.h>
 #include <sys/ctype.h>
 #include <sys/errno.h>
-#include <sys/kdb.h>
+/*#include <sys/kdb.h>*/
 #include <sys/kernel.h>
 #include <sys/ktr.h>
 #include <sys/limits.h>
@@ -65,9 +66,9 @@
 
 #include <net/netisr.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
 
 MODULE_VERSION(netgraph, NG_ABI_VERSION);
 
@@ -234,9 +235,9 @@ MALLOC_DEFINE(M_NETGRAPH_MSG, "netgraph_msg", "netgraph name storage");
 /* Should not be visible outside this file */
 
 #define _NG_ALLOC_HOOK(hook) \
-	MALLOC(hook, hook_p, sizeof(*hook), M_NETGRAPH_HOOK, M_NOWAIT | M_ZERO)
+	MALLOC(hook, hook_p, sizeof(*hook), M_NETGRAPH_HOOK, M_WAITOK | M_NULLOK | M_ZERO)
 #define _NG_ALLOC_NODE(node) \
-	MALLOC(node, node_p, sizeof(*node), M_NETGRAPH_NODE, M_NOWAIT | M_ZERO)
+	MALLOC(node, node_p, sizeof(*node), M_NETGRAPH_NODE, M_WAITOK | M_NULLOK | M_ZERO)
 
 #define	NG_QUEUE_LOCK_INIT(n)			\
 	mtx_init(&(n)->q_mtx, "ng_node", NULL, MTX_DEF)
@@ -2499,7 +2500,7 @@ ng_generic_msg(node_p here, item_p item, hook_p lasthook)
 	    {
 		struct nodeinfo *ni;
 
-		NG_MKRESPONSE(resp, msg, sizeof(*ni), M_NOWAIT);
+		NG_MKRESPONSE(resp, msg, sizeof(*ni), M_WAITOK | M_NULLOK);
 		if (resp == NULL) {
 			error = ENOMEM;
 			break;
@@ -2523,7 +2524,7 @@ ng_generic_msg(node_p here, item_p item, hook_p lasthook)
 
 		/* Get response struct */
 		NG_MKRESPONSE(resp, msg, sizeof(*hl)
-		    + (nhooks * sizeof(struct linkinfo)), M_NOWAIT);
+		    + (nhooks * sizeof(struct linkinfo)), M_WAITOK | M_NULLOK);
 		if (resp == NULL) {
 			error = ENOMEM;
 			break;
@@ -2585,7 +2586,7 @@ ng_generic_msg(node_p here, item_p item, hook_p lasthook)
 
 		/* Get response struct */
 		NG_MKRESPONSE(resp, msg, sizeof(*nl)
-		    + (num * sizeof(struct nodeinfo)), M_NOWAIT);
+		    + (num * sizeof(struct nodeinfo)), M_WAITOK | M_NULLOK);
 		if (resp == NULL) {
 			error = ENOMEM;
 			break;
@@ -2636,7 +2637,7 @@ ng_generic_msg(node_p here, item_p item, hook_p lasthook)
 
 		/* Get response struct */
 		NG_MKRESPONSE(resp, msg, sizeof(*tl)
-		    + (num * sizeof(struct typeinfo)), M_NOWAIT);
+		    + (num * sizeof(struct typeinfo)), M_WAITOK | M_NULLOK);
 		if (resp == NULL) {
 			error = ENOMEM;
 			break;
@@ -2680,7 +2681,7 @@ ng_generic_msg(node_p here, item_p item, hook_p lasthook)
 		}
 
 		/* Get a response message with lots of room */
-		NG_MKRESPONSE(resp, msg, sizeof(*ascii) + bufSize, M_NOWAIT);
+		NG_MKRESPONSE(resp, msg, sizeof(*ascii) + bufSize, M_WAITOK | M_NULLOK);
 		if (resp == NULL) {
 			error = ENOMEM;
 			break;
@@ -2756,7 +2757,7 @@ ng_generic_msg(node_p here, item_p item, hook_p lasthook)
 		ascii->data[ascii->header.arglen - 1] = '\0';
 
 		/* Get a response message with lots of room */
-		NG_MKRESPONSE(resp, msg, sizeof(*binary) + bufSize, M_NOWAIT);
+		NG_MKRESPONSE(resp, msg, sizeof(*binary) + bufSize, M_WAITOK | M_NULLOK);
 		if (resp == NULL) {
 			error = ENOMEM;
 			break;

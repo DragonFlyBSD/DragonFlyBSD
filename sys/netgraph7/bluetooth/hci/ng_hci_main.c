@@ -29,6 +29,7 @@
  *
  * $Id: ng_hci_main.c,v 1.2 2003/03/18 00:09:36 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/hci/ng_hci_main.c,v 1.6 2005/01/07 01:45:43 imp Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/hci/ng_hci_main.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,17 +39,17 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/queue.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/bluetooth/include/ng_bluetooth.h>
-#include <netgraph/bluetooth/include/ng_hci.h>
-#include <netgraph/bluetooth/hci/ng_hci_var.h>
-#include <netgraph/bluetooth/hci/ng_hci_prse.h>
-#include <netgraph/bluetooth/hci/ng_hci_cmds.h>
-#include <netgraph/bluetooth/hci/ng_hci_evnt.h>
-#include <netgraph/bluetooth/hci/ng_hci_ulpi.h>
-#include <netgraph/bluetooth/hci/ng_hci_misc.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "bluetooth/include/ng_bluetooth.h"
+#include "bluetooth/include/ng_hci.h"
+#include "bluetooth/hci/ng_hci_var.h"
+#include "bluetooth/hci/ng_hci_prse.h"
+#include "bluetooth/hci/ng_hci_cmds.h"
+#include "bluetooth/hci/ng_hci_evnt.h"
+#include "bluetooth/hci/ng_hci_ulpi.h"
+#include "bluetooth/hci/ng_hci_misc.h"
 
 /******************************************************************************
  ******************************************************************************
@@ -110,7 +111,7 @@ ng_hci_constructor(node_p node)
 	ng_hci_unit_p	unit = NULL;
 
 	MALLOC(unit, ng_hci_unit_p, sizeof(*unit), M_NETGRAPH_HCI,
-		M_NOWAIT | M_ZERO);
+		M_WAITOK | M_NULLOK | M_ZERO);
 	if (unit == NULL)
 		return (ENOMEM);
 
@@ -291,7 +292,7 @@ ng_hci_default_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				acl_total, acl_avail, acl_size,
 				sco_total, sco_avail, sco_size;
 
-			NG_MKRESPONSE(rsp, msg, NG_TEXTRESPONSE, M_NOWAIT);
+			NG_MKRESPONSE(rsp, msg, NG_TEXTRESPONSE, M_WAITOK | M_NULLOK);
 			if (rsp == NULL) {
 				error = ENOMEM;
 				break;
@@ -337,7 +338,7 @@ ng_hci_default_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		switch (msg->header.cmd) {
 		/* Get current node state */
 		case NGM_HCI_NODE_GET_STATE:
-			NG_MKRESPONSE(rsp, msg, sizeof(unit->state), M_NOWAIT);
+			NG_MKRESPONSE(rsp, msg, sizeof(unit->state), M_WAITOK | M_NULLOK);
 			if (rsp == NULL) {
 				error = ENOMEM;
 				break;
@@ -362,7 +363,7 @@ ng_hci_default_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 		/* Get node debug level */
 		case NGM_HCI_NODE_GET_DEBUG:
-			NG_MKRESPONSE(rsp, msg, sizeof(unit->debug), M_NOWAIT);
+			NG_MKRESPONSE(rsp, msg, sizeof(unit->debug), M_WAITOK | M_NULLOK);
 			if (rsp == NULL) {
 				error = ENOMEM;
 				break;
@@ -386,7 +387,7 @@ ng_hci_default_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			ng_hci_node_buffer_ep	*ep = NULL;
 
 			NG_MKRESPONSE(rsp, msg, sizeof(ng_hci_node_buffer_ep),
-				M_NOWAIT);
+				M_WAITOK | M_NULLOK);
 			if (rsp == NULL) {
 				error = ENOMEM;
 				break;
@@ -405,7 +406,7 @@ ng_hci_default_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 		/* Get BDADDR */
 		case NGM_HCI_NODE_GET_BDADDR:
-			NG_MKRESPONSE(rsp, msg, sizeof(bdaddr_t), M_NOWAIT);
+			NG_MKRESPONSE(rsp, msg, sizeof(bdaddr_t), M_WAITOK | M_NULLOK);
 			if (rsp == NULL) {
 				error = ENOMEM;
 				break;
@@ -416,7 +417,7 @@ ng_hci_default_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 		/* Get features */
 		case NGM_HCI_NODE_GET_FEATURES:
-			NG_MKRESPONSE(rsp,msg,sizeof(unit->features),M_NOWAIT);
+			NG_MKRESPONSE(rsp,msg,sizeof(unit->features),M_WAITOK | M_NULLOK);
 			if (rsp == NULL) {
 				error = ENOMEM;
 				break;
@@ -427,7 +428,7 @@ ng_hci_default_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 		/* Get stat */
 		case NGM_HCI_NODE_GET_STAT:
-			NG_MKRESPONSE(rsp, msg, sizeof(unit->stat), M_NOWAIT);
+			NG_MKRESPONSE(rsp, msg, sizeof(unit->stat), M_WAITOK | M_NULLOK);
 			if (rsp == NULL) {
 				error = ENOMEM;
 				break;
@@ -469,7 +470,7 @@ ng_hci_default_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 			/* Prepare response */
 			NG_MKRESPONSE(rsp, msg, sizeof(*e1) + s * sizeof(*e2),
-				M_NOWAIT);
+				M_WAITOK | M_NULLOK);
 			if (rsp == NULL) {
 				error = ENOMEM;
 				break;
@@ -510,7 +511,7 @@ ng_hci_default_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 			/* Prepare response */
 			NG_MKRESPONSE(rsp, msg, sizeof(*e1) + s * sizeof(*e2), 
-				M_NOWAIT);
+				M_WAITOK | M_NULLOK);
 			if (rsp == NULL) {
 				error = ENOMEM;
 				break;
@@ -545,7 +546,7 @@ ng_hci_default_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		/* Get link policy settings mask */
 		case NGM_HCI_NODE_GET_LINK_POLICY_SETTINGS_MASK:
 			NG_MKRESPONSE(rsp, msg, sizeof(unit->link_policy_mask),
-				M_NOWAIT);
+				M_WAITOK | M_NULLOK);
 			if (rsp == NULL) {
 				error = ENOMEM;
 				break;
@@ -571,7 +572,7 @@ ng_hci_default_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		/* Get packet mask */
 		case NGM_HCI_NODE_GET_PACKET_MASK:
 			NG_MKRESPONSE(rsp, msg, sizeof(unit->packet_mask),
-				M_NOWAIT);
+				M_WAITOK | M_NULLOK);
 			if (rsp == NULL) {
 				error = ENOMEM;
 				break;
@@ -596,7 +597,7 @@ ng_hci_default_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		/* Get role switch */
 		case NGM_HCI_NODE_GET_ROLE_SWITCH:
 			NG_MKRESPONSE(rsp, msg, sizeof(unit->role_switch),
-				M_NOWAIT);
+				M_WAITOK | M_NULLOK);
 			if (rsp == NULL) {
 				error = ENOMEM;
 				break;

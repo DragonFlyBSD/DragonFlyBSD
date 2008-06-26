@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_car.c,v 1.7 2008/03/30 07:53:51 mav Exp $
+ * $DragonFly: src/sys/netgraph7/ng_car.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -43,10 +44,10 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_car.h>
+#include "ng_message.h"
+#include "ng_parse.h"
+#include "netgraph.h"
+#include "ng_car.h"
 
 #define NG_CAR_QUEUE_SIZE	100	/* Maximum queue size for SHAPE mode */
 #define NG_CAR_QUEUE_MIN_TH	8	/* Minimum RED threshhold for SHAPE mode */
@@ -186,7 +187,7 @@ ng_car_constructor(node_p node)
 	priv_p priv;
 
 	/* Initialize private descriptor. */
-	priv = malloc(sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
@@ -393,7 +394,7 @@ ng_car_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				struct ng_car_bulkstats *bstats;
 
 				NG_MKRESPONSE(resp, msg,
-					sizeof(*bstats), M_NOWAIT);
+					sizeof(*bstats), M_WAITOK | M_NULLOK);
 				if (resp == NULL) {
 					error = ENOMEM;
 					break;
@@ -418,7 +419,7 @@ ng_car_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				struct ng_car_bulkconf *bconf;
 
 				NG_MKRESPONSE(resp, msg,
-					sizeof(*bconf), M_NOWAIT);
+					sizeof(*bconf), M_WAITOK | M_NULLOK);
 				if (resp == NULL) {
 					error = ENOMEM;
 					break;
@@ -540,7 +541,7 @@ ng_car_shutdown(node_p node)
 	mtx_destroy(&priv->upper.q_mtx);
 	mtx_destroy(&priv->lower.q_mtx);
 	NG_NODE_UNREF(priv->node);
-	free(priv, M_NETGRAPH);
+	kfree(priv, M_NETGRAPH);
 	return (0);
 }
 

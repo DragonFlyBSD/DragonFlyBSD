@@ -29,6 +29,7 @@
  *
  * $Id: ng_bt3c_var.h,v 1.1 2002/11/24 19:46:54 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/drivers/bt3c/ng_bt3c_var.h,v 1.4 2006/07/05 17:18:47 emax Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/drivers/bt3c/ng_bt3c_var.h,v 1.2 2008/06/26 23:05:40 dillon Exp $
  *
  * XXX XXX XX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX 
  *

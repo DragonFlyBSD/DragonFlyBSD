@@ -63,6 +63,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_gif_demux.c,v 1.10 2005/01/07 01:45:39 imp Exp $
+ * $DragonFly: src/sys/netgraph7/ng_gif_demux.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -83,10 +84,10 @@
 #include <sys/errno.h>
 #include <sys/socket.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_gif_demux.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_gif_demux.h"
 
 #ifdef NG_SEPARATE_MALLOC
 MALLOC_DEFINE(M_NETGRAPH_GIF_DEMUX, "netgraph_gif_demux",
@@ -234,7 +235,7 @@ ng_gif_demux_constructor(node_p node)
 
 	/* Allocate and initialize private info */
 	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH_GIF_DEMUX,
-	    M_NOWAIT | M_ZERO);
+	    M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 	priv->node = node;
@@ -344,7 +345,7 @@ ng_gif_demux_rcvdata(hook_p hook, item_p item)
 		 * Add address family header and set the output hook.
 		 */
 		iffam = get_iffam_from_hook(priv, hook);
-		M_PREPEND(m, sizeof (iffam->family), M_DONTWAIT);
+		M_PREPEND(m, sizeof (iffam->family), MB_DONTWAIT);
 		if (m == NULL) {
 			NG_FREE_M(m);
 			NG_FREE_ITEM(item);

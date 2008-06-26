@@ -15,9 +15,10 @@
  * works or modified versions.
  *
  * Cronyx Id: ng_sppp.c,v 1.1.2.10 2004/03/01 15:17:21 rik Exp $
+ *
+ * $FreeBSD: src/sys/netgraph/ng_sppp.c,v 1.11 2006/12/29 13:59:50 jhb Exp $
+ * $DragonFly: src/sys/netgraph7/ng_sppp.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/netgraph/ng_sppp.c,v 1.11 2006/12/29 13:59:50 jhb Exp $");
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -38,10 +39,10 @@ __FBSDID("$FreeBSD: src/sys/netgraph/ng_sppp.c,v 1.11 2006/12/29 13:59:50 jhb Ex
 
 #include <netinet/in.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_sppp.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_sppp.h"
 
 #ifdef NG_SEPARATE_MALLOC
 MALLOC_DEFINE(M_NETGRAPH_SPPP, "netgraph_sppp", "netgraph sppp node ");
@@ -122,7 +123,7 @@ ng_sppp_get_unit (int *unit)
 		
 		newlen = (2 * ng_sppp_units_len) + sizeof (*ng_sppp_units);
 		MALLOC (newarray, unsigned char *,
-		    newlen * sizeof (*ng_sppp_units), M_NETGRAPH_SPPP, M_NOWAIT);
+		    newlen * sizeof (*ng_sppp_units), M_NETGRAPH_SPPP, M_WAITOK | M_NULLOK);
 		if (newarray == NULL)
 			return (ENOMEM);
 		bcopy (ng_sppp_units, newarray,
@@ -248,7 +249,7 @@ ng_sppp_constructor (node_p node)
 	int error = 0;
 
 	/* Allocate node and interface private structures */
-	MALLOC (priv, priv_p, sizeof(*priv), M_NETGRAPH_SPPP, M_NOWAIT|M_ZERO);
+	MALLOC (priv, priv_p, sizeof(*priv), M_NETGRAPH_SPPP, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
@@ -333,7 +334,7 @@ ng_sppp_rcvmsg (node_p node, item_p item, hook_p lasthook)
 	case NGM_SPPP_COOKIE:
 		switch (msg->header.cmd) {
 		case NGM_SPPP_GET_IFNAME:
-			NG_MKRESPONSE (resp, msg, IFNAMSIZ, M_NOWAIT);
+			NG_MKRESPONSE (resp, msg, IFNAMSIZ, M_WAITOK | M_NULLOK);
 			if (!resp) {
 				error = ENOMEM;
 				break;

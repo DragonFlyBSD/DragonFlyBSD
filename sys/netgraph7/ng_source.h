@@ -37,6 +37,7 @@
  * Author: Dave Chapeskie <dchapeskie@sandvine.com>
  *
  * $FreeBSD: src/sys/netgraph/ng_source.h,v 1.9 2007/03/02 01:44:04 emaste Exp $
+ * $DragonFly: src/sys/netgraph7/ng_source.h,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #ifndef _NETGRAPH_NG_SOURCE_H_

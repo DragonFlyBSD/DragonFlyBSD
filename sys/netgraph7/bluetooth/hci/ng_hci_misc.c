@@ -29,6 +29,7 @@
  *
  * $Id: ng_hci_misc.c,v 1.5 2003/09/08 18:57:51 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/hci/ng_hci_misc.c,v 1.10 2005/01/07 01:45:43 imp Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/hci/ng_hci_misc.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,15 +38,15 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/queue.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/bluetooth/include/ng_bluetooth.h>
-#include <netgraph/bluetooth/include/ng_hci.h>
-#include <netgraph/bluetooth/hci/ng_hci_var.h>
-#include <netgraph/bluetooth/hci/ng_hci_cmds.h>
-#include <netgraph/bluetooth/hci/ng_hci_evnt.h>
-#include <netgraph/bluetooth/hci/ng_hci_ulpi.h>
-#include <netgraph/bluetooth/hci/ng_hci_misc.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "bluetooth/include/ng_bluetooth.h"
+#include "bluetooth/include/ng_hci.h"
+#include "bluetooth/hci/ng_hci_var.h"
+#include "bluetooth/hci/ng_hci_cmds.h"
+#include "bluetooth/hci/ng_hci_evnt.h"
+#include "bluetooth/hci/ng_hci_ulpi.h"
+#include "bluetooth/hci/ng_hci_misc.h"
 
 /******************************************************************************
  ******************************************************************************
@@ -65,7 +66,7 @@ ng_hci_mtap(ng_hci_unit_p unit, struct mbuf *m0)
 	int		 error = 0;
 
 	if (unit->raw != NULL && NG_HOOK_IS_VALID(unit->raw)) {
-		m = m_dup(m0, M_DONTWAIT);
+		m = m_dup(m0, MB_DONTWAIT);
 		if (m != NULL)
 			NG_SEND_DATA_ONLY(error, unit->raw, m);
 
@@ -99,7 +100,7 @@ ng_hci_node_is_up(node_p node, hook_p hook, void *arg1, int arg2)
 	if (hook != unit->acl && hook != unit->sco)
 		return;
 
-	NG_MKMESSAGE(msg,NGM_HCI_COOKIE,NGM_HCI_NODE_UP,sizeof(*ep),M_NOWAIT);
+	NG_MKMESSAGE(msg,NGM_HCI_COOKIE,NGM_HCI_NODE_UP,sizeof(*ep),M_WAITOK | M_NULLOK);
 	if (msg != NULL) {
 		ep = (ng_hci_node_up_ep *)(msg->data);
 
@@ -177,7 +178,7 @@ ng_hci_new_neighbor(ng_hci_unit_p unit)
 	ng_hci_neighbor_p	n = NULL;
 
 	MALLOC(n, ng_hci_neighbor_p, sizeof(*n), M_NETGRAPH_HCI,
-		M_NOWAIT | M_ZERO); 
+		M_WAITOK | M_NULLOK | M_ZERO); 
 	if (n != NULL) {
 		getmicrotime(&n->updated);
 		LIST_INSERT_HEAD(&unit->neighbors, n, next);
@@ -259,7 +260,7 @@ ng_hci_new_con(ng_hci_unit_p unit, int link_type)
 	static int		fake_con_handle = 0x0f00;
 
 	MALLOC(con, ng_hci_unit_con_p, sizeof(*con), M_NETGRAPH_HCI,
-		M_NOWAIT | M_ZERO);
+		M_WAITOK | M_NULLOK | M_ZERO);
 	if (con != NULL) {
 		con->unit = unit;
 		con->state = NG_HCI_CON_CLOSED;

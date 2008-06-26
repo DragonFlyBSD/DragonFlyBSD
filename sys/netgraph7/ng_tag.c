@@ -28,6 +28,7 @@
  * (ng_bpf by Archie Cobbs <archie@freebsd.org>)
  *
  * $FreeBSD: src/sys/netgraph/ng_tag.c,v 1.1 2006/06/27 12:45:28 glebius Exp $
+ * $DragonFly: src/sys/netgraph7/ng_tag.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -63,10 +64,10 @@
 #include <sys/mbuf.h>
 #include <sys/stddef.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_tag.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_tag.h"
 
 #ifdef NG_SEPARATE_MALLOC
 MALLOC_DEFINE(M_NETGRAPH_TAG, "netgraph_tag", "netgraph tag node ");
@@ -572,7 +573,7 @@ ng_tag_rcvdata(hook_p hook, item_p item)
 	tag_len = dhip->out_tag_len;
 	
 	if ((cookie != 0) || (type != 0)) {
-		tag = m_tag_alloc(cookie, type, tag_len, M_NOWAIT);
+		tag = m_tag_alloc(cookie, type, tag_len, MB_DONTWAIT);
 		/* XXX may be free the mbuf if tag allocation failed? */
 		if (tag != NULL) {
 			if (tag_len != 0) {

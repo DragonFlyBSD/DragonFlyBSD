@@ -29,6 +29,7 @@
  *
  * $Id: ng_hci_ulpi.c,v 1.7 2003/09/08 18:57:51 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/hci/ng_hci_ulpi.c,v 1.8 2005/01/07 01:45:43 imp Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/hci/ng_hci_ulpi.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,15 +39,15 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/queue.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/bluetooth/include/ng_bluetooth.h>
-#include <netgraph/bluetooth/include/ng_hci.h>
-#include <netgraph/bluetooth/hci/ng_hci_var.h>
-#include <netgraph/bluetooth/hci/ng_hci_cmds.h>
-#include <netgraph/bluetooth/hci/ng_hci_evnt.h>
-#include <netgraph/bluetooth/hci/ng_hci_ulpi.h>
-#include <netgraph/bluetooth/hci/ng_hci_misc.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "bluetooth/include/ng_bluetooth.h"
+#include "bluetooth/include/ng_hci.h"
+#include "bluetooth/hci/ng_hci_var.h"
+#include "bluetooth/hci/ng_hci_cmds.h"
+#include "bluetooth/hci/ng_hci_evnt.h"
+#include "bluetooth/hci/ng_hci_ulpi.h"
+#include "bluetooth/hci/ng_hci_misc.h"
 
 /******************************************************************************
  ******************************************************************************
@@ -171,7 +172,7 @@ ng_hci_lp_acl_con_req(ng_hci_unit_p unit, item_p item, hook_p hook)
 
 				NG_MKMESSAGE(msg, NGM_HCI_COOKIE, 
 					NGM_HCI_LP_CON_CFM, sizeof(*cfm), 
-					M_NOWAIT);
+					M_WAITOK | M_NULLOK);
 				if (msg != NULL) {
 					cfm = (ng_hci_lp_con_cfm_ep *)msg->data;
 					cfm->status = 0;
@@ -224,7 +225,7 @@ ng_hci_lp_acl_con_req(ng_hci_unit_p unit, item_p item, hook_p hook)
 	 * Create HCI command 
 	 */
 
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL) {
 		ng_hci_free_con(con);
 		error = ENOBUFS;
@@ -417,7 +418,7 @@ ng_hci_lp_sco_con_req(ng_hci_unit_p unit, item_p item, hook_p hook)
 	 * Create HCI command 
 	 */
 
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL) {
 		ng_hci_free_con(sco_con);
 		error = ENOBUFS;
@@ -531,7 +532,7 @@ ng_hci_lp_discon_req(ng_hci_unit_p unit, item_p item, hook_p hook)
 	 * Create HCI command
 	 */
 
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL) {
 		error = ENOBUFS;
 		goto out;
@@ -582,7 +583,7 @@ ng_hci_lp_con_cfm(ng_hci_unit_con_p con, int status)
 	    con->flags & NG_HCI_CON_NOTIFY_ACL) {
 		if (unit->acl != NULL && NG_HOOK_IS_VALID(unit->acl)) {
 			NG_MKMESSAGE(msg, NGM_HCI_COOKIE, NGM_HCI_LP_CON_CFM, 
-				sizeof(*ep), M_NOWAIT);
+				sizeof(*ep), M_WAITOK | M_NULLOK);
 			if (msg != NULL) {
 				ep = (ng_hci_lp_con_cfm_ep *) msg->data;
 				ep->status = status;
@@ -605,7 +606,7 @@ ng_hci_lp_con_cfm(ng_hci_unit_con_p con, int status)
 	if (con->flags & NG_HCI_CON_NOTIFY_SCO) {
 		if (unit->sco != NULL && NG_HOOK_IS_VALID(unit->sco)) {
 			NG_MKMESSAGE(msg, NGM_HCI_COOKIE, NGM_HCI_LP_CON_CFM, 
-				sizeof(*ep), M_NOWAIT);
+				sizeof(*ep), M_WAITOK | M_NULLOK);
 			if (msg != NULL) {
 				ep = (ng_hci_lp_con_cfm_ep *) msg->data;
 				ep->status = status;
@@ -653,7 +654,7 @@ ng_hci_lp_con_ind(ng_hci_unit_con_p con, u_int8_t *uclass)
 
 	if (hook != NULL && NG_HOOK_IS_VALID(hook)) {
 		NG_MKMESSAGE(msg, NGM_HCI_COOKIE, NGM_HCI_LP_CON_IND, 
-			sizeof(*ep), M_NOWAIT);
+			sizeof(*ep), M_WAITOK | M_NULLOK);
 		if (msg == NULL)
 			return (ENOMEM);
 
@@ -776,7 +777,7 @@ ng_hci_lp_con_rsp(ng_hci_unit_p unit, item_p item, hook_p hook)
 		 * Create HCI command 
 		 */
 
-		MGETHDR(m, M_DONTWAIT, MT_DATA);
+		MGETHDR(m, MB_DONTWAIT, MT_DATA);
 		if (m == NULL) {
 			error = ENOBUFS;
 			goto out;
@@ -890,7 +891,7 @@ ng_hci_lp_discon_ind(ng_hci_unit_con_p con, int reason)
 	if (con->link_type == NG_HCI_LINK_ACL) {
 		if (unit->acl != NULL && NG_HOOK_IS_VALID(unit->acl)) {
 			NG_MKMESSAGE(msg, NGM_HCI_COOKIE, 
-				NGM_HCI_LP_DISCON_IND, sizeof(*ep), M_NOWAIT);
+				NGM_HCI_LP_DISCON_IND, sizeof(*ep), M_WAITOK | M_NULLOK);
 			if (msg == NULL)
 				return (ENOMEM);
 
@@ -908,7 +909,7 @@ ng_hci_lp_discon_ind(ng_hci_unit_con_p con, int reason)
 
 	if (unit->sco != NULL && NG_HOOK_IS_VALID(unit->sco)) {
 		NG_MKMESSAGE(msg, NGM_HCI_COOKIE, NGM_HCI_LP_DISCON_IND, 
-			sizeof(*ep), M_NOWAIT);
+			sizeof(*ep), M_WAITOK | M_NULLOK);
 		if (msg == NULL)
 			return (ENOMEM);
 
@@ -996,7 +997,7 @@ ng_hci_lp_qos_req(ng_hci_unit_p unit, item_p item, hook_p hook)
 	 * Create HCI command 
 	 */
 
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL) {
 		error = ENOBUFS;
 		goto out;
@@ -1054,7 +1055,7 @@ ng_hci_lp_qos_cfm(ng_hci_unit_con_p con, int status)
 	if (con->flags & NG_HCI_CON_NOTIFY_ACL) {
 		if (unit->acl != NULL && NG_HOOK_IS_VALID(unit->acl)) {
 			NG_MKMESSAGE(msg, NGM_HCI_COOKIE, NGM_HCI_LP_QOS_CFM, 
-				sizeof(*ep), M_NOWAIT);
+				sizeof(*ep), M_WAITOK | M_NULLOK);
 			if (msg != NULL) {
 				ep = (ng_hci_lp_qos_cfm_ep *) msg->data;
 				ep->status = status;
@@ -1074,7 +1075,7 @@ ng_hci_lp_qos_cfm(ng_hci_unit_con_p con, int status)
 	if (con->flags & NG_HCI_CON_NOTIFY_SCO) {
 		if (unit->sco != NULL && NG_HOOK_IS_VALID(unit->sco)) {
 			NG_MKMESSAGE(msg, NGM_HCI_COOKIE, NGM_HCI_LP_QOS_CFM, 
-				sizeof(*ep), M_NOWAIT);
+				sizeof(*ep), M_WAITOK | M_NULLOK);
 			if (msg != NULL) {
 				ep = (ng_hci_lp_qos_cfm_ep *) msg->data;
 				ep->status = status;
@@ -1113,7 +1114,7 @@ ng_hci_lp_qos_ind(ng_hci_unit_con_p con)
 
 	if (unit->acl != NULL && NG_HOOK_IS_VALID(unit->acl)) {
 		NG_MKMESSAGE(msg, NGM_HCI_COOKIE, NGM_HCI_LP_QOS_IND, 
-			sizeof(*ep), M_NOWAIT);
+			sizeof(*ep), M_WAITOK | M_NULLOK);
 		if (msg == NULL)
 			return (ENOMEM);
 
@@ -1128,7 +1129,7 @@ ng_hci_lp_qos_ind(ng_hci_unit_con_p con)
 
 	if (unit->sco != NULL && NG_HOOK_IS_VALID(unit->sco)) {
 		NG_MKMESSAGE(msg, NGM_HCI_COOKIE, NGM_HCI_LP_QOS_IND, 
-			sizeof(*ep), M_NOWAIT);
+			sizeof(*ep), M_WAITOK | M_NULLOK);
 		if (msg == NULL)
 			return (ENOMEM);
 

@@ -38,6 +38,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tty.c,v 1.37 2006/11/06 13:42:03 rwatson Exp $
+ * $DragonFly: src/sys/netgraph7/ng_tty.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_tty.c,v 1.21 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -75,9 +76,9 @@
 #include <net/if.h>
 #include <net/if_var.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_tty.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_tty.h"
 
 /* Misc defs */
 #define MAX_MBUFQ		3	/* Max number of queued mbufs */
@@ -365,7 +366,7 @@ ngt_input(int c, struct tty *tp)
 
 	/* Get a new header mbuf if we need one */
 	if (!(m = sc->m)) {
-		MGETHDR(m, M_DONTWAIT, MT_DATA);
+		MGETHDR(m, MB_DONTWAIT, MT_DATA);
 		if (!m) {
 			if (sc->flags & FLG_DEBUG)
 				log(LOG_ERR,
@@ -641,7 +642,7 @@ ngt_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			break;
 		    }
 		case NGM_TTY_GET_HOTCHAR:
-			NG_MKRESPONSE(resp, msg, sizeof(int), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(int), M_WAITOK | M_NULLOK);
 			if (!resp)
 				ERROUT(ENOMEM);
 			/* Race condition here is OK */

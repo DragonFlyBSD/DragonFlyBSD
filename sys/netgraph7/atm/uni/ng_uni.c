@@ -27,11 +27,11 @@
  * SUCH DAMAGE.
  *
  * Netgraph module for ATM-Forum UNI 4.0 signalling
+ *
+ * $FreeBSD: src/sys/netgraph/atm/uni/ng_uni.c,v 1.6 2005/10/31 15:41:26 rwatson Exp $
+ * $DragonFly: src/sys/netgraph7/atm/uni/ng_uni.c,v 1.2 2008/06/26 23:05:39 dillon Exp $
+ * $DragonFly: src/sys/netgraph7/atm/uni/ng_uni.c,v 1.2 2008/06/26 23:05:39 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/netgraph/atm/uni/ng_uni.c,v 1.6 2005/10/31 15:41:26 rwatson Exp $");
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -45,20 +45,20 @@ __FBSDID("$FreeBSD: src/sys/netgraph/atm/uni/ng_uni.c,v 1.6 2005/10/31 15:41:26 
 #include <sys/sbuf.h>
 #include <machine/stdarg.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
 #include <netnatm/unimsg.h>
 #include <netnatm/msg/unistruct.h>
-#include <netgraph/atm/ngatmbase.h>
+#include "netgraph/atm/ngatmbase.h"
 #include <netnatm/saal/sscopdef.h>
 #include <netnatm/saal/sscfudef.h>
-#include <netgraph/atm/uni/ng_uni_cust.h>
+#include "netgraph/atm/uni/ng_uni_cust.h"
 #include <netnatm/sig/uni.h>
 #include <netnatm/sig/unisig.h>
-#include <netgraph/atm/ng_sscop.h>
-#include <netgraph/atm/ng_sscfu.h>
-#include <netgraph/atm/ng_uni.h>
+#include "atm/ng_sscop.h"
+#include "atm/ng_sscfu.h"
+#include "atm/ng_uni.h"
 
 MALLOC_DEFINE(M_NG_UNI, "netgraph_uni_node", "netgraph uni node");
 MALLOC_DEFINE(M_UNI, "netgraph_uni_data", "uni protocol data");
@@ -223,11 +223,11 @@ ng_uni_constructor(node_p node)
 {
 	struct priv *priv;
 
-	if ((priv = malloc(sizeof(*priv), M_NG_UNI, M_NOWAIT | M_ZERO)) == NULL)
+	if ((priv = kmalloc(sizeof(*priv), M_NG_UNI, M_WAITOK | M_NULLOK | M_ZERO)) == NULL)
 		return (ENOMEM);
 
 	if ((priv->uni = uni_create(node, &uni_funcs)) == NULL) {
-		free(priv, M_NG_UNI);
+		kfree(priv, M_NG_UNI);
 		return (ENOMEM);
 	}
 
@@ -244,7 +244,7 @@ ng_uni_shutdown(node_p node)
 
 	uni_destroy(priv->uni);
 
-	free(priv, M_NG_UNI);
+	kfree(priv, M_NG_UNI);
 	NG_NODE_SET_PRIVATE(node, NULL);
 
 	NG_NODE_UNREF(node);
@@ -319,7 +319,7 @@ ng_uni_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		switch (msg->header.cmd) {
 
 		  case NGM_TEXT_STATUS:
-			NG_MKRESPONSE(resp, msg, NG_TEXTRESPONSE, M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, NG_TEXTRESPONSE, M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -356,7 +356,7 @@ ng_uni_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		    {
 			struct ngm_uni_debug *arg;
 
-			NG_MKRESPONSE(resp, msg, sizeof(*arg), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(*arg), M_WAITOK | M_NULLOK);
 			if(resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -375,7 +375,7 @@ ng_uni_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				error = EINVAL;
 				break;
 			}
-			NG_MKRESPONSE(resp, msg, sizeof(*config), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(*config), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -397,7 +397,7 @@ ng_uni_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			}
 			arg = (struct ngm_uni_set_config *)msg->data;
 
-			NG_MKRESPONSE(resp, msg, sizeof(*mask), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(*mask), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -442,7 +442,7 @@ ng_uni_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				error = EINVAL;
 				break;
 			}
-			NG_MKRESPONSE(resp, msg, sizeof(u_int32_t), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(u_int32_t), M_WAITOK | M_NULLOK);
 			if(resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -811,7 +811,7 @@ uni_fini(void)
 	for (type = 0; type < UNIMEM_TYPES; type++) {
 		while ((h = LIST_FIRST(&nguni_freemem[type])) != NULL) {
 			LIST_REMOVE(h, link);
-			free(h, M_UNI);
+			kfree(h, M_UNI);
 		}
 
 		while ((h = LIST_FIRST(&nguni_usedmem[type])) != NULL) {
@@ -819,7 +819,7 @@ uni_fini(void)
 			printf("ng_uni: %s in use: %p (%s,%u)\n",
 			    unimem_names[type], (caddr_t)h->data,
 			    h->file, h->lno);
-			free(h, M_UNI);
+			kfree(h, M_UNI);
 		}
 	}
 
@@ -848,7 +848,7 @@ ng_uni_malloc(enum unimem type, const char *file, u_int lno)
 		 * allocate
 		 */
 		full = unimem_sizes[type] + offsetof(struct unimem_debug, data);
-		if ((d = malloc(full, M_UNI, M_NOWAIT | M_ZERO)) == NULL)
+		if ((d = kmalloc(full, M_UNI, M_WAITOK | M_NULLOK | M_ZERO)) == NULL)
 			return (NULL);
 	} else {
 		bzero(d->data, unimem_sizes[type]);

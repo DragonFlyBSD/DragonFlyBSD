@@ -38,6 +38,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_lmi.c,v 1.25 2006/01/14 14:17:27 glebius Exp $
+ * $DragonFly: src/sys/netgraph7/ng_lmi.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_lmi.c,v 1.38 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -60,9 +61,9 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/syslog.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_lmi.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_lmi.h"
 
 /*
  * Human readable names for LMI
@@ -185,7 +186,7 @@ nglmi_constructor(node_p node)
 {
 	sc_p sc;
 
-	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (sc == NULL)
 		return (ENOMEM);
 
@@ -319,7 +320,7 @@ nglmi_inquire(sc_p sc, int full)
 
 	if (sc->lmi_channel == NULL)
 		return;
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL) {
 		log(LOG_ERR, "nglmi: unable to start up LMI processing\n");
 		return;
@@ -330,7 +331,7 @@ nglmi_inquire(sc_p sc, int full)
 	 * that device driver would put it in the beginning of queue */
 
 	ptag = (struct ng_tag_prio *)m_tag_alloc(NGM_GENERIC_COOKIE, NG_TAG_PRIO,
-	    (sizeof(struct ng_tag_prio) - sizeof(struct m_tag)), M_NOWAIT);
+	    (sizeof(struct ng_tag_prio) - sizeof(struct m_tag)), MB_DONTWAIT);
 	if (ptag != NULL) {	/* if it failed, well, it was optional anyhow */
 		ptag->priority = NG_PRIO_LINKSTATE;
 		ptag->discardability = -1;
@@ -456,7 +457,7 @@ nglmi_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			char   *arg;
 			int     pos, count;
 
-			NG_MKRESPONSE(resp, msg, NG_TEXTRESPONSE, M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, NG_TEXTRESPONSE, M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -502,7 +503,7 @@ nglmi_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			struct nglmistat *stat;
 			int k;
 
-			NG_MKRESPONSE(resp, msg, sizeof(*stat), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(*stat), M_WAITOK | M_NULLOK);
 			if (!resp) {
 				error = ENOMEM;
 				break;

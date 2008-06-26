@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_nat.c,v 1.12 2008/06/01 15:13:32 mav Exp $
+ * $DragonFly: src/sys/netgraph7/ng_nat.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,10 +45,10 @@
 
 #include <netinet/libalias/alias.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_nat.h>
-#include <netgraph/netgraph.h>
+#include "ng_message.h"
+#include "ng_parse.h"
+#include "ng_nat.h"
+#include "netgraph.h"
 
 static ng_constructor_t	ng_nat_constructor;
 static ng_rcvmsg_t	ng_nat_rcvmsg;
@@ -273,7 +274,7 @@ ng_nat_constructor(node_p node)
 
 	/* Initialize private descriptor. */
 	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH,
-		M_NOWAIT | M_ZERO);
+		M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
@@ -393,8 +394,8 @@ ng_nat_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				break;
 			}
 
-			if ((entry = malloc(sizeof(struct ng_nat_rdr_lst),
-			    M_NETGRAPH, M_NOWAIT | M_ZERO)) == NULL) {
+			if ((entry = kmalloc(sizeof(struct ng_nat_rdr_lst),
+			    M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO)) == NULL) {
 				error = ENOMEM;
 				break;
 			}
@@ -433,7 +434,7 @@ ng_nat_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			STAILQ_INSERT_TAIL(&priv->redirhead, entry, entries);
 
 			/* Response with id of newly added entry. */
-			NG_MKRESPONSE(resp, msg, sizeof(entry->rdr.id), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(entry->rdr.id), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -452,8 +453,8 @@ ng_nat_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				break;
 			}
 
-			if ((entry = malloc(sizeof(struct ng_nat_rdr_lst),
-			    M_NETGRAPH, M_NOWAIT | M_ZERO)) == NULL) {
+			if ((entry = kmalloc(sizeof(struct ng_nat_rdr_lst),
+			    M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO)) == NULL) {
 				error = ENOMEM;
 				break;
 			}
@@ -485,7 +486,7 @@ ng_nat_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			STAILQ_INSERT_TAIL(&priv->redirhead, entry, entries);
 
 			/* Response with id of newly added entry. */
-			NG_MKRESPONSE(resp, msg, sizeof(entry->rdr.id), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(entry->rdr.id), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -504,8 +505,8 @@ ng_nat_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				break;
 			}
 
-			if ((entry = malloc(sizeof(struct ng_nat_rdr_lst),
-			    M_NETGRAPH, M_NOWAIT | M_ZERO)) == NULL) {
+			if ((entry = kmalloc(sizeof(struct ng_nat_rdr_lst),
+			    M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO)) == NULL) {
 				error = ENOMEM;
 				break;
 			}
@@ -539,7 +540,7 @@ ng_nat_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			STAILQ_INSERT_TAIL(&priv->redirhead, entry, entries);
 
 			/* Response with id of newly added entry. */
-			NG_MKRESPONSE(resp, msg, sizeof(entry->rdr.id), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(entry->rdr.id), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -625,7 +626,7 @@ ng_nat_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			int i = 0;
 
 			NG_MKRESPONSE(resp, msg, sizeof(*ary) +
-			    (priv->rdrcount) * sizeof(*entry), M_NOWAIT);
+			    (priv->rdrcount) * sizeof(*entry), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;

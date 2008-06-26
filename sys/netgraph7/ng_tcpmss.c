@@ -30,6 +30,7 @@
  *	tcpmssd		Ruslan Ermilov <ru@FreeBSD.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tcpmss.c,v 1.4 2007/01/15 05:01:31 glebius Exp $
+ * $DragonFly: src/sys/netgraph7/ng_tcpmss.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -57,10 +58,10 @@
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_tcpmss.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_tcpmss.h"
 
 /* Per hook info. */
 typedef struct {
@@ -159,7 +160,7 @@ ng_tcpmss_newhook(node_p node, hook_p hook, const char *name)
 {
 	hpriv_p priv;
 
-	MALLOC(priv, hpriv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	MALLOC(priv, hpriv_p, sizeof(*priv), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
@@ -204,7 +205,7 @@ ng_tcpmss_rcvmsg
 			/* Create response. */
 			if (msg->header.cmd != NGM_TCPMSS_CLR_STATS) {
 				NG_MKRESPONSE(resp, msg,
-				    sizeof(struct ng_tcpmss_hookstat), M_NOWAIT);
+				    sizeof(struct ng_tcpmss_hookstat), M_WAITOK | M_NULLOK);
 				if (resp == NULL)
 					ERROUT(ENOMEM);
 				bcopy(&priv->stats, resp->data,

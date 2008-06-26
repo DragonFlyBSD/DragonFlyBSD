@@ -24,6 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_ipfw.h,v 1.2 2006/02/17 09:42:49 glebius Exp $
+ * $DragonFly: src/sys/netgraph7/ng_ipfw.h,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #define NG_IPFW_NODE_TYPE    "ipfw"

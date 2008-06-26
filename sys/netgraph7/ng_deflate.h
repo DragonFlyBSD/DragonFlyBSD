@@ -25,6 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_deflate.h,v 1.1 2006/12/28 15:44:05 glebius Exp $
+ * $DragonFly: src/sys/netgraph7/ng_deflate.h,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #ifndef _NETGRAPH_NG_DEFLATE_H_

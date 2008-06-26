@@ -25,15 +25,15 @@
  * SUCH DAMAGE.
  *
  * Author: Hartmut Brandt <harti@freebsd.org>
+ *
+ * $FreeBSD: src/sys/netgraph/atm/ng_atm.c,v 1.15 2005/08/10 06:25:40 obrien Exp $
+ * $DragonFly: src/sys/netgraph7/atm/ng_atm.c,v 1.2 2008/06/26 23:05:37 dillon Exp $
+ * $DragonFly: src/sys/netgraph7/atm/ng_atm.c,v 1.2 2008/06/26 23:05:37 dillon Exp $
  */
 
 /*
  * Netgraph module to connect NATM interfaces to netgraph.
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/netgraph/atm/ng_atm.c,v 1.15 2005/08/10 06:25:40 obrien Exp $");
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -54,10 +54,10 @@ __FBSDID("$FreeBSD: src/sys/netgraph/atm/ng_atm.c,v 1.15 2005/08/10 06:25:40 obr
 #include <net/if_media.h>
 #include <net/if_atm.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/atm/ng_atm.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "atm/ng_atm.h"
 
 /*
  * Hooks in the NATM code
@@ -382,7 +382,7 @@ ng_atm_input(struct ifnet *ifp, struct mbuf **mp,
 		/*
 		 * Prepend the atm_pseudoheader.
 		 */
-		M_PREPEND(*mp, sizeof(*ah), M_DONTWAIT);
+		M_PREPEND(*mp, sizeof(*ah), MB_DONTWAIT);
 		if (*mp == NULL)
 			return;
 		memcpy(mtod(*mp, struct atm_pseudohdr *), ah, sizeof(*ah));
@@ -460,7 +460,7 @@ ng_atm_input_orphans(struct ifnet *ifp, struct mbuf *m,
 	/*
 	 * Prepend the atm_pseudoheader.
 	 */
-	M_PREPEND(m, sizeof(*ah), M_DONTWAIT);
+	M_PREPEND(m, sizeof(*ah), MB_DONTWAIT);
 	if (m == NULL)
 		return;
 	memcpy(mtod(m, struct atm_pseudohdr *), ah, sizeof(*ah));
@@ -500,7 +500,7 @@ ng_atm_rcvdata(hook_p hook, item_p item)
 	/*
 	 * Prepend pseudo-hdr. Drivers don't care about the flags.
 	 */
-	M_PREPEND(m, sizeof(*aph), M_DONTWAIT);
+	M_PREPEND(m, sizeof(*aph), MB_DONTWAIT);
 	if (m == NULL) {
 		NG_FREE_M(m);
 		return (ENOMEM);
@@ -554,7 +554,7 @@ ng_atm_event_func(node_p node, hook_p hook, void *arg, int event)
 		/* convert into a flow control message */
 		NG_MKMESSAGE(mesg, NGM_FLOW_COOKIE,
 		    ev->busy ? NGM_HIGH_WATER_PASSED : NGM_LOW_WATER_PASSED,
-		    sizeof(struct ngm_queue_state), M_NOWAIT);
+		    sizeof(struct ngm_queue_state), M_WAITOK | M_NULLOK);
 		if (mesg == NULL)
 			break;
 		qstate = (struct ngm_queue_state *)mesg->data;
@@ -573,7 +573,7 @@ ng_atm_event_func(node_p node, hook_p hook, void *arg, int event)
 		if (priv->manage == NULL)
 			break;
 		NG_MKMESSAGE(mesg, NGM_ATM_COOKIE, NGM_ATM_VCC_CHANGE,
-		    sizeof(struct ngm_atm_vcc_change), M_NOWAIT);
+		    sizeof(struct ngm_atm_vcc_change), M_WAITOK | M_NULLOK);
 		if (mesg == NULL)
 			break;
 		chg = (struct ngm_atm_vcc_change *)mesg->data;
@@ -593,7 +593,7 @@ ng_atm_event_func(node_p node, hook_p hook, void *arg, int event)
 		if (priv->manage == NULL)
 			break;
 		NG_MKMESSAGE(mesg, NGM_ATM_COOKIE, NGM_ATM_IF_CHANGE,
-		    sizeof(struct ngm_atm_if_change), M_NOWAIT);
+		    sizeof(struct ngm_atm_if_change), M_WAITOK | M_NULLOK);
 		if (mesg == NULL)
 			break;
 		chg = (struct ngm_atm_if_change *)mesg->data;
@@ -618,7 +618,7 @@ ng_atm_event_func(node_p node, hook_p hook, void *arg, int event)
 
 		/* convert into a flow control message */
 		NG_MKMESSAGE(mesg, NGM_ATM_COOKIE, NGM_ATM_ACR_CHANGE,
-		    sizeof(struct ngm_atm_acr_change), M_NOWAIT);
+		    sizeof(struct ngm_atm_acr_change), M_WAITOK | M_NULLOK);
 		if (mesg == NULL)
 			break;
 		acr = (struct ngm_atm_acr_change *)mesg->data;
@@ -916,7 +916,7 @@ ng_atm_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		switch (msg->header.cmd) {
 
 		  case NGM_TEXT_STATUS:
-			NG_MKRESPONSE(resp, msg, NG_TEXTRESPONSE, M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, NG_TEXTRESPONSE, M_WAITOK | M_NULLOK);
 			if(resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -936,7 +936,7 @@ ng_atm_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		switch (msg->header.cmd) {
 
 		  case NGM_ATM_GET_IFNAME:
-			NG_MKRESPONSE(resp, msg, IFNAMSIZ, M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, IFNAMSIZ, M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -948,7 +948,7 @@ ng_atm_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		    {
 			struct ngm_atm_config *config;
 
-			NG_MKRESPONSE(resp, msg, sizeof(*config), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(*config), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -978,15 +978,15 @@ ng_atm_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 			len = sizeof(*vccs) +
 			    vccs->count * sizeof(vccs->vccs[0]);
-			NG_MKRESPONSE(resp, msg, len, M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, len, M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
-				free(vccs, M_DEVBUF);
+				kfree(vccs, M_DEVBUF);
 				break;
 			}
 
 			(void)memcpy(resp->data, vccs, len);
-			free(vccs, M_DEVBUF);
+			kfree(vccs, M_DEVBUF);
 
 			break;
 		    }
@@ -1026,20 +1026,20 @@ ng_atm_rcvmsg(node_p node, item_p item, hook_p lasthook)
 					break;
 			if (i == vccs->count) {
 				error = ENOTCONN;
-				free(vccs, M_DEVBUF);
+				kfree(vccs, M_DEVBUF);
 				break;
 			}
 
 			NG_MKRESPONSE(resp, msg, sizeof(vccs->vccs[0]),
-			    M_NOWAIT);
+			    M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
-				free(vccs, M_DEVBUF);
+				kfree(vccs, M_DEVBUF);
 				break;
 			}
 
 			*(struct atmio_vcc *)resp->data = vccs->vccs[i];
-			free(vccs, M_DEVBUF);
+			kfree(vccs, M_DEVBUF);
 			break;
 		    }
 
@@ -1070,20 +1070,20 @@ ng_atm_rcvmsg(node_p node, item_p item, hook_p lasthook)
 					break;
 			if (i == vccs->count) {
 				error = ENOTCONN;
-				free(vccs, M_DEVBUF);
+				kfree(vccs, M_DEVBUF);
 				break;
 			}
 
 			NG_MKRESPONSE(resp, msg, sizeof(vccs->vccs[0]),
-			    M_NOWAIT);
+			    M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
-				free(vccs, M_DEVBUF);
+				kfree(vccs, M_DEVBUF);
 				break;
 			}
 
 			*(struct atmio_vcc *)resp->data = vccs->vccs[i];
-			free(vccs, M_DEVBUF);
+			kfree(vccs, M_DEVBUF);
 			break;
 		    }
 
@@ -1115,7 +1115,7 @@ ng_atm_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				error = EINVAL;
 				break;
 			}
-			NG_MKRESPONSE(resp, msg, sizeof(*p), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(*p), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -1180,7 +1180,7 @@ ng_atm_newhook(node_p node, hook_p hook, const char *name)
 	/*
 	 * Allocate a new entry
 	 */
-	vcc = malloc(sizeof(*vcc), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	vcc = kmalloc(sizeof(*vcc), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (vcc == NULL)
 		return (ENOMEM);
 
@@ -1240,7 +1240,7 @@ ng_atm_disconnect(hook_p hook)
 	NG_HOOK_SET_PRIVATE(hook, NULL);
 
 	LIST_REMOVE(vcc, link);
-	free(vcc, M_NETGRAPH);
+	kfree(vcc, M_NETGRAPH);
 
 	if (hook == priv->manage)
 		priv->manage = NULL;
@@ -1270,7 +1270,7 @@ ng_atm_attach(struct ifnet *ifp)
 		return;
 	}
 
-	priv = malloc(sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL) {
 		log(LOG_ERR, "%s: can't allocate memory for %s\n",
 		    __func__, ifp->if_xname);
@@ -1324,7 +1324,7 @@ ng_atm_shutdown(node_p node)
 		 * already handled in the detach routine.
 		 */
 		NG_NODE_SET_PRIVATE(node, NULL);
-		free(priv, M_NETGRAPH);
+		kfree(priv, M_NETGRAPH);
 
 		NG_NODE_UNREF(node);
 		return (0);
@@ -1336,7 +1336,7 @@ ng_atm_shutdown(node_p node)
 	else {
 		IFP2NG_SET(priv->ifp, NULL);
 		NG_NODE_SET_PRIVATE(node, NULL);
-		free(priv, M_NETGRAPH);
+		kfree(priv, M_NETGRAPH);
 		NG_NODE_UNREF(node);
 	}
 #else

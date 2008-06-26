@@ -29,6 +29,7 @@
  *
  * $Id: ng_btsocket_hci_raw.c,v 1.14 2003/09/14 23:29:06 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/socket/ng_btsocket_hci_raw.c,v 1.23 2006/11/06 13:42:04 rwatson Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/socket/ng_btsocket_hci_raw.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -51,13 +52,13 @@
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
 #include <sys/taskqueue.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/bluetooth/include/ng_bluetooth.h>
-#include <netgraph/bluetooth/include/ng_hci.h>
-#include <netgraph/bluetooth/include/ng_l2cap.h>
-#include <netgraph/bluetooth/include/ng_btsocket.h>
-#include <netgraph/bluetooth/include/ng_btsocket_hci_raw.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "bluetooth/include/ng_bluetooth.h"
+#include "bluetooth/include/ng_hci.h"
+#include "bluetooth/include/ng_l2cap.h"
+#include "bluetooth/include/ng_btsocket.h"
+#include "bluetooth/include/ng_btsocket_hci_raw.h"
 
 /* MALLOC define */
 #ifdef NG_SEPARATE_MALLOC
@@ -305,7 +306,7 @@ ng_btsocket_hci_raw_node_rcvdata(hook_p hook, item_p item)
 	 * for now
 	 */
 
-	MGET(nam, M_DONTWAIT, MT_SONAME);
+	MGET(nam, MB_DONTWAIT, MT_SONAME);
 	if (nam != NULL) {
 		struct sockaddr_hci	*sa = mtod(nam, struct sockaddr_hci *);
 
@@ -378,7 +379,7 @@ ng_btsocket_hci_raw_send_ngmsg(char *path, int cmd, void *arg, int arglen)
 	struct ng_mesg	*msg = NULL;
 	int		 error = 0;
 
-	NG_MKMESSAGE(msg, NGM_HCI_COOKIE, cmd, arglen, M_NOWAIT);
+	NG_MKMESSAGE(msg, NGM_HCI_COOKIE, cmd, arglen, M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		return (ENOMEM);
 
@@ -403,7 +404,7 @@ ng_btsocket_hci_raw_send_sync_ngmsg(ng_btsocket_hci_raw_pcb_p pcb, char *path,
 
 	mtx_assert(&pcb->pcb_mtx, MA_OWNED);
 
-	NG_MKMESSAGE(msg, NGM_HCI_COOKIE, cmd, 0, M_NOWAIT);
+	NG_MKMESSAGE(msg, NGM_HCI_COOKIE, cmd, 0, M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		return (ENOMEM);
 
@@ -514,7 +515,7 @@ ng_btsocket_hci_raw_data_input(struct mbuf *nam)
 		 * will check if socket has enough buffer space.
 		 */
 
-		m = m_dup(m0, M_DONTWAIT);
+		m = m_dup(m0, MB_DONTWAIT);
 		if (m != NULL) {
 			struct mbuf	*ctl = NULL;
 
@@ -786,7 +787,7 @@ ng_btsocket_hci_raw_init(void)
 	MALLOC(ng_btsocket_hci_raw_sec_filter, 
 		struct ng_btsocket_hci_raw_sec_filter *,
 		sizeof(struct ng_btsocket_hci_raw_sec_filter), 
-		M_NETGRAPH_BTSOCKET_HCI_RAW, M_NOWAIT|M_ZERO);
+		M_NETGRAPH_BTSOCKET_HCI_RAW, M_WAITOK | M_NULLOK | M_ZERO);
 	if (ng_btsocket_hci_raw_sec_filter == NULL) {
 		printf("%s: Could not allocate security filter!\n", __func__);
 		return;
@@ -910,7 +911,7 @@ ng_btsocket_hci_raw_attach(struct socket *so, int proto, struct thread *td)
 		return (error);
 
 	MALLOC(pcb, ng_btsocket_hci_raw_pcb_p, sizeof(*pcb), 
-		M_NETGRAPH_BTSOCKET_HCI_RAW, M_NOWAIT|M_ZERO);
+		M_NETGRAPH_BTSOCKET_HCI_RAW, M_WAITOK | M_NULLOK | M_ZERO);
 	if (pcb == NULL)
 		return (ENOMEM);
 
@@ -1148,7 +1149,7 @@ ng_btsocket_hci_raw_control(struct socket *so, u_long cmd, caddr_t data,
 		}
 
 		NG_MKMESSAGE(msg, NGM_HCI_COOKIE,
-			NGM_HCI_NODE_GET_NEIGHBOR_CACHE, 0, M_NOWAIT);
+			NGM_HCI_NODE_GET_NEIGHBOR_CACHE, 0, M_WAITOK | M_NULLOK);
 		if (msg == NULL) {
 			error = ENOMEM;
 			break;
@@ -1204,7 +1205,7 @@ ng_btsocket_hci_raw_control(struct socket *so, u_long cmd, caddr_t data,
 		}
 
 		NG_MKMESSAGE(msg, NGM_HCI_COOKIE, NGM_HCI_NODE_GET_CON_LIST,
-			0, M_NOWAIT);
+			0, M_WAITOK | M_NULLOK);
 		if (msg == NULL) {
 			error = ENOMEM;
 			break;
@@ -1324,7 +1325,7 @@ ng_btsocket_hci_raw_control(struct socket *so, u_long cmd, caddr_t data,
 		}
 
 		NG_MKMESSAGE(msg, NGM_GENERIC_COOKIE, NGM_LISTNAMES,
-			0, M_NOWAIT);
+			0, M_WAITOK | M_NULLOK);
 		if (msg == NULL) {
 			error = ENOMEM;
 			break;
@@ -1584,7 +1585,7 @@ ng_btsocket_hci_raw_send(struct socket *so, int flags, struct mbuf *m,
 		sa = (struct sockaddr *) &pcb->addr;
 	}
 
-	MGET(nam, M_DONTWAIT, MT_SONAME);
+	MGET(nam, MB_DONTWAIT, MT_SONAME);
 	if (nam == NULL) {
 		mtx_unlock(&pcb->pcb_mtx);
 		error = ENOBUFS;
@@ -1632,7 +1633,7 @@ ng_btsocket_hci_raw_sockaddr(struct socket *so, struct sockaddr **nam)
 	strlcpy(sa.hci_node, pcb->addr.hci_node, sizeof(sa.hci_node));
 	mtx_unlock(&pcb->pcb_mtx);
 
-	*nam = sodupsockaddr((struct sockaddr *) &sa, M_NOWAIT);
+	*nam = sodupsockaddr((struct sockaddr *) &sa, M_WAITOK | M_NULLOK);
 
 	return ((*nam == NULL)? ENOMEM : 0);
 } /* ng_btsocket_hci_raw_sockaddr */

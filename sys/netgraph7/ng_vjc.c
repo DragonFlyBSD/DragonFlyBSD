@@ -39,6 +39,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_vjc.c,v 1.26 2005/12/04 00:25:03 ru Exp $
+ * $DragonFly: src/sys/netgraph7/ng_vjc.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_vjc.c,v 1.17 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -55,10 +56,10 @@
 #include <sys/malloc.h>
 #include <sys/errno.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_vjc.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_vjc.h"
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -243,7 +244,7 @@ ng_vjc_constructor(node_p node)
 	priv_p priv;
 
 	/* Allocate private structure */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
@@ -326,7 +327,7 @@ ng_vjc_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		    {
 			struct ngm_vjc_config *conf;
 
-			NG_MKRESPONSE(resp, msg, sizeof(*conf), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(*conf), M_WAITOK | M_NULLOK);
 			if (resp == NULL)
 				ERROUT(ENOMEM);
 			conf = (struct ngm_vjc_config *)resp->data;
@@ -341,7 +342,7 @@ ng_vjc_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			int i;
 
 			/* Get response structure */
-			NG_MKRESPONSE(resp, msg, sizeof(*sl), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(*sl), M_WAITOK | M_NULLOK);
 			if (resp == NULL)
 				ERROUT(ENOMEM);
 			sl = (struct slcompress *)resp->data;
@@ -473,7 +474,7 @@ ng_vjc_rcvdata(hook_p hook, item_p item)
 		m_adj(m, vjlen);
 
 		/* Copy the reconstructed TCP/IP headers into a new mbuf */
-		MGETHDR(hm, M_DONTWAIT, MT_DATA);
+		MGETHDR(hm, MB_DONTWAIT, MT_DATA);
 		if (hm == NULL) {
 			priv->slc.sls_errorin++;
 			NG_FREE_M(m);
@@ -483,7 +484,7 @@ ng_vjc_rcvdata(hook_p hook, item_p item)
 		hm->m_len = 0;
 		hm->m_pkthdr.rcvif = NULL;
 		if (hlen > MHLEN) {		/* unlikely, but can happen */
-			MCLGET(hm, M_DONTWAIT);
+			MCLGET(hm, MB_DONTWAIT);
 			if ((hm->m_flags & M_EXT) == 0) {
 				m_freem(hm);
 				priv->slc.sls_errorin++;

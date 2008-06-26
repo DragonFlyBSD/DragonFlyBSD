@@ -15,6 +15,7 @@
  * works or modified versions.
  *
  * $FreeBSD: src/sys/netgraph/ng_sppp.h,v 1.3 2005/02/03 13:03:31 ru Exp $
+ * $DragonFly: src/sys/netgraph7/ng_sppp.h,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * Cronyx Id: ng_sppp.h,v 1.1.2.6 2004/03/01 15:17:21 rik Exp $
  */
 

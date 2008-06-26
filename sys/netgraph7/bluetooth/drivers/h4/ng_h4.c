@@ -29,6 +29,8 @@
  *
  * $Id: ng_h4.c,v 1.10 2005/10/31 17:57:43 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/drivers/h4/ng_h4.c,v 1.17 2007/08/13 17:19:28 emax Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/drivers/h4/ng_h4.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/drivers/h4/ng_h4.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  * 
  * Based on:
  * ---------
@@ -54,14 +56,14 @@
 #include <sys/ttycom.h>
 #include <net/if.h>
 #include <net/if_var.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/bluetooth/include/ng_bluetooth.h>
-#include <netgraph/bluetooth/include/ng_hci.h>
-#include <netgraph/bluetooth/include/ng_h4.h>
-#include <netgraph/bluetooth/drivers/h4/ng_h4_var.h>
-#include <netgraph/bluetooth/drivers/h4/ng_h4_prse.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "bluetooth/include/ng_bluetooth.h"
+#include "bluetooth/include/ng_hci.h"
+#include "bluetooth/include/ng_h4.h"
+#include "bluetooth/drivers/h4/ng_h4_var.h"
+#include "bluetooth/drivers/h4/ng_h4_prse.h"
 
 /*****************************************************************************
  *****************************************************************************
@@ -161,7 +163,7 @@ ng_h4_open(struct cdev *dev, struct tty *tp)
 		return (error);
 
 	/* Initialize private struct */
-	MALLOC(sc, ng_h4_info_p, sizeof(*sc), M_NETGRAPH_H4, M_NOWAIT|M_ZERO);
+	MALLOC(sc, ng_h4_info_p, sizeof(*sc), M_NETGRAPH_H4, M_WAITOK | M_NULLOK | M_ZERO);
 	if (sc == NULL)
 		return (ENOMEM);
 
@@ -525,7 +527,7 @@ ng_h4_input(int c, struct tty *tp)
 		if (sc->hook != NULL && NG_HOOK_IS_VALID(sc->hook)) {
 			struct mbuf	*m = NULL;
 
-			MGETHDR(m, M_DONTWAIT, MT_DATA);
+			MGETHDR(m, MB_DONTWAIT, MT_DATA);
 			if (m != NULL) {
 				m->m_pkthdr.len = 0;
 
@@ -849,7 +851,7 @@ ng_h4_rcvmsg(node_p node, item_p item, hook_p lasthook)
 	case NGM_GENERIC_COOKIE:
 		switch (msg->header.cmd) {
 		case NGM_TEXT_STATUS:
-			NG_MKRESPONSE(resp, msg, NG_TEXTRESPONSE, M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, NG_TEXTRESPONSE, M_WAITOK | M_NULLOK);
 			if (resp == NULL)
 				error = ENOMEM;
 			else
@@ -885,7 +887,7 @@ ng_h4_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 		case NGM_H4_NODE_GET_STATE:
 			NG_MKRESPONSE(resp, msg, sizeof(ng_h4_node_state_ep),
-				M_NOWAIT);
+				M_WAITOK | M_NULLOK);
 			if (resp == NULL)
 				error = ENOMEM;
 			else
@@ -895,7 +897,7 @@ ng_h4_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 		case NGM_H4_NODE_GET_DEBUG:
 			NG_MKRESPONSE(resp, msg, sizeof(ng_h4_node_debug_ep),
-				M_NOWAIT);
+				M_WAITOK | M_NULLOK);
 			if (resp == NULL)
 				error = ENOMEM;
 			else
@@ -913,7 +915,7 @@ ng_h4_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 		case NGM_H4_NODE_GET_QLEN:
 			NG_MKRESPONSE(resp, msg, sizeof(ng_h4_node_qlen_ep),
-				M_NOWAIT);
+				M_WAITOK | M_NULLOK);
 			if (resp == NULL)
 				error = ENOMEM;
 			else
@@ -933,7 +935,7 @@ ng_h4_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 		case NGM_H4_NODE_GET_STAT:
 			NG_MKRESPONSE(resp, msg, sizeof(ng_h4_node_stat_ep),
-				M_NOWAIT);
+				M_WAITOK | M_NULLOK);
 			if (resp == NULL)
 				error = ENOMEM;
 			else

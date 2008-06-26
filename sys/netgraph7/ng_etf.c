@@ -31,6 +31,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_etf.c,v 1.9 2005/03/14 20:49:48 glebius Exp $
+ * $DragonFly: src/sys/netgraph7/ng_etf.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,10 +46,10 @@
 
 #include <net/ethernet.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_etf.h>
-#include <netgraph/netgraph.h>
+#include "ng_message.h"
+#include "ng_parse.h"
+#include "ng_etf.h"
+#include "netgraph.h"
 
 /* If you do complicated mallocs you may want to do this */
 /* and use it for your mallocs */
@@ -181,7 +182,7 @@ ng_etf_constructor(node_p node)
 
 	/* Initialize private descriptor */
 	MALLOC(privdata, etf_p, sizeof(*privdata), M_NETGRAPH_ETF,
-		M_NOWAIT | M_ZERO);
+		M_WAITOK | M_NULLOK | M_ZERO);
 	if (privdata == NULL)
 		return (ENOMEM);
 	for (i = 0; i < HASHSIZE; i++) {
@@ -218,7 +219,7 @@ ng_etf_newhook(node_p node, hook_p hook, const char *name)
 		 * later be associated with a filter rule.
 		 */
 		MALLOC(hpriv, struct ETF_hookinfo *, sizeof(*hpriv),
-			M_NETGRAPH_ETF, M_NOWAIT | M_ZERO);
+			M_NETGRAPH_ETF, M_WAITOK | M_NULLOK | M_ZERO);
 		if (hpriv == NULL) {
 			return (ENOMEM);
 		}
@@ -263,7 +264,7 @@ ng_etf_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		    {
 			struct ng_etfstat *stats;
 
-			NG_MKRESPONSE(resp, msg, sizeof(*stats), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(*stats), M_WAITOK | M_NULLOK);
 			if (!resp) {
 				error = ENOMEM;
 				break;
@@ -318,7 +319,7 @@ ng_etf_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				 * hashtable ready for matching.
 				 */
 				MALLOC(fil, struct filter *, sizeof(*fil),
-					M_NETGRAPH_ETF, M_NOWAIT | M_ZERO);
+					M_NETGRAPH_ETF, M_WAITOK | M_NULLOK | M_ZERO);
 				if (fil == NULL) {
 					error = ENOMEM;
 					break;

@@ -29,6 +29,7 @@
  *
  * $Id: ng_btsocket.c,v 1.4 2003/09/14 23:29:06 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/socket/ng_btsocket.c,v 1.13 2006/07/21 17:11:13 rwatson Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/socket/ng_btsocket.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,15 +46,15 @@
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
 #include <sys/taskqueue.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/bluetooth/include/ng_bluetooth.h>
-#include <netgraph/bluetooth/include/ng_hci.h>
-#include <netgraph/bluetooth/include/ng_l2cap.h>
-#include <netgraph/bluetooth/include/ng_btsocket.h>
-#include <netgraph/bluetooth/include/ng_btsocket_hci_raw.h>
-#include <netgraph/bluetooth/include/ng_btsocket_l2cap.h>
-#include <netgraph/bluetooth/include/ng_btsocket_rfcomm.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "bluetooth/include/ng_bluetooth.h"
+#include "bluetooth/include/ng_hci.h"
+#include "bluetooth/include/ng_l2cap.h"
+#include "bluetooth/include/ng_btsocket.h"
+#include "bluetooth/include/ng_btsocket_hci_raw.h"
+#include "bluetooth/include/ng_btsocket_l2cap.h"
+#include "bluetooth/include/ng_btsocket_rfcomm.h"
 
 static int			ng_btsocket_modevent (module_t, int, void *);
 extern struct domain		ng_btsocket_domain;

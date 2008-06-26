@@ -29,6 +29,7 @@
  *
  * $Id: ng_btsocket_l2cap_raw.c,v 1.12 2003/09/14 23:29:06 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/socket/ng_btsocket_l2cap_raw.c,v 1.20 2006/11/06 13:42:04 rwatson Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/socket/ng_btsocket_l2cap_raw.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,13 +51,13 @@
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
 #include <sys/taskqueue.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/bluetooth/include/ng_bluetooth.h>
-#include <netgraph/bluetooth/include/ng_hci.h>
-#include <netgraph/bluetooth/include/ng_l2cap.h>
-#include <netgraph/bluetooth/include/ng_btsocket.h>
-#include <netgraph/bluetooth/include/ng_btsocket_l2cap.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "bluetooth/include/ng_bluetooth.h"
+#include "bluetooth/include/ng_hci.h"
+#include "bluetooth/include/ng_l2cap.h"
+#include "bluetooth/include/ng_btsocket.h"
+#include "bluetooth/include/ng_btsocket_l2cap.h"
 
 /* MALLOC define */
 #ifdef NG_SEPARATE_MALLOC
@@ -374,7 +375,7 @@ ng_btsocket_l2cap_raw_input(void *context, int pending)
 				MALLOC(rt, ng_btsocket_l2cap_rtentry_p, 
 					sizeof(*rt),
 					M_NETGRAPH_BTSOCKET_L2CAP_RAW,
-					M_NOWAIT|M_ZERO);
+					M_WAITOK | M_NULLOK | M_ZERO);
 				if (rt == NULL)
 					break;
 
@@ -613,7 +614,7 @@ ng_btsocket_l2cap_raw_attach(struct socket *so, int proto, struct thread *td)
 
 	/* Allocate the PCB */
         MALLOC(pcb, ng_btsocket_l2cap_raw_pcb_p, sizeof(*pcb),
-		M_NETGRAPH_BTSOCKET_L2CAP_RAW, M_NOWAIT|M_ZERO);
+		M_NETGRAPH_BTSOCKET_L2CAP_RAW, M_WAITOK | M_NULLOK | M_ZERO);
         if (pcb == NULL)
                 return (ENOMEM);
 
@@ -840,7 +841,7 @@ ng_btsocket_l2cap_raw_control(struct socket *so, u_long cmd, caddr_t data,
 		}
 
 		NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, NGM_L2CAP_NODE_GET_CON_LIST,
-			0, M_NOWAIT);
+			0, M_WAITOK | M_NULLOK);
 		if (msg == NULL) {
 			error = ENOMEM;
 			break;
@@ -895,7 +896,7 @@ ng_btsocket_l2cap_raw_control(struct socket *so, u_long cmd, caddr_t data,
 		}
  
 		NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE,
-			NGM_L2CAP_NODE_GET_CHAN_LIST, 0, M_NOWAIT);
+			NGM_L2CAP_NODE_GET_CHAN_LIST, 0, M_WAITOK | M_NULLOK);
 		if (msg == NULL) {
 			error = ENOMEM;
 			break;
@@ -955,7 +956,7 @@ ng_btsocket_l2cap_raw_control(struct socket *so, u_long cmd, caddr_t data,
 
 		NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE,
 			NGM_L2CAP_L2CA_PING, sizeof(*ip) + p->echo_size,
-			M_NOWAIT);
+			M_WAITOK | M_NULLOK);
 		if (msg == NULL) {
 			error = ENOMEM;
 			break;
@@ -1025,7 +1026,7 @@ ng_btsocket_l2cap_raw_control(struct socket *so, u_long cmd, caddr_t data,
 
 		NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE,
 			NGM_L2CAP_L2CA_GET_INFO, sizeof(*ip) + p->info_size,
-			M_NOWAIT);
+			M_WAITOK | M_NULLOK);
 		if (msg == NULL) {
 			error = ENOMEM;
 			break;
@@ -1173,7 +1174,7 @@ ng_btsocket_l2cap_raw_peeraddr(struct socket *so, struct sockaddr **nam)
 	sa.l2cap_len = sizeof(sa);
 	sa.l2cap_family = AF_BLUETOOTH;
 
-	*nam = sodupsockaddr((struct sockaddr *) &sa, M_NOWAIT);
+	*nam = sodupsockaddr((struct sockaddr *) &sa, M_WAITOK | M_NULLOK);
 
 	return ((*nam == NULL)? ENOMEM : 0);
 } /* ng_btsocket_l2cap_raw_peeraddr */
@@ -1215,7 +1216,7 @@ ng_btsocket_l2cap_raw_sockaddr(struct socket *so, struct sockaddr **nam)
 	sa.l2cap_len = sizeof(sa);
 	sa.l2cap_family = AF_BLUETOOTH;
 
-	*nam = sodupsockaddr((struct sockaddr *) &sa, M_NOWAIT);
+	*nam = sodupsockaddr((struct sockaddr *) &sa, M_WAITOK | M_NULLOK);
 
 	return ((*nam == NULL)? ENOMEM : 0);
 } /* ng_btsocket_l2cap_raw_sockaddr */
@@ -1247,7 +1248,7 @@ ng_btsocket_l2cap_raw_send_ngmsg(hook_p hook, int cmd, void *arg, int arglen)
 	struct ng_mesg	*msg = NULL;
 	int		 error = 0;
 
-	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, cmd, arglen, M_NOWAIT);
+	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, cmd, arglen, M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		return (ENOMEM);
 
@@ -1272,7 +1273,7 @@ ng_btsocket_l2cap_raw_send_sync_ngmsg(ng_btsocket_l2cap_raw_pcb_p pcb,
 
 	mtx_assert(&pcb->pcb_mtx, MA_OWNED);
 
-	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, cmd, 0, M_NOWAIT);
+	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, cmd, 0, M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		return (ENOMEM);
 

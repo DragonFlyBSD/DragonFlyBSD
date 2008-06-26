@@ -38,6 +38,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/netgraph.h,v 1.74 2008/06/24 18:49:49 gnn Exp $
+ * $DragonFly: src/sys/netgraph7/netgraph.h,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: netgraph.h,v 1.29 1999/11/01 07:56:13 julian Exp $
  */
 
@@ -52,7 +53,8 @@
 #include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/module.h>
-#include <sys/mutex.h>
+/*#include <sys/mutex.h>*/
+#include "dragonfly.h"
 
 #ifdef HAVE_KERNEL_OPTION_HEADERS
 #include "opt_netgraph.h"

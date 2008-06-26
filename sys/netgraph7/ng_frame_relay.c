@@ -38,6 +38,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_frame_relay.c,v 1.25 2006/01/14 21:49:31 glebius Exp $
+ * $DragonFly: src/sys/netgraph7/ng_frame_relay.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_frame_relay.c,v 1.20 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -59,9 +60,9 @@
 #include <sys/syslog.h>
 #include <sys/ctype.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_frame_relay.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_frame_relay.h"
 
 /*
  * Line info, and status per channel.
@@ -212,7 +213,7 @@ ngfrm_constructor(node_p node)
 {
 	sc_p sc;
 
-	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	MALLOC(sc, sc_p, sizeof(*sc), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (!sc)
 		return (ENOMEM);
 	sc->addrlen = 2;	/* default */
@@ -362,7 +363,7 @@ ngfrm_rcvdata(hook_p hook, item_p item)
 	alen = sc->addrlen;
 	if (alen == 0)
 		alen = 2;	/* default value for transmit */
-	M_PREPEND(m, alen, M_DONTWAIT);
+	M_PREPEND(m, alen, MB_DONTWAIT);
 	if (m == NULL) {
 		error = ENOBUFS;
 		goto bad;

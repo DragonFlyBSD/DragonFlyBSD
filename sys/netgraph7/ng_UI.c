@@ -38,6 +38,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_UI.c,v 1.20 2005/01/07 01:45:39 imp Exp $
+ * $DragonFly: src/sys/netgraph7/ng_UI.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_UI.c,v 1.14 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -50,9 +51,9 @@
 #include <sys/errno.h>
 
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_UI.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_UI.h"
 
 /*
  * DEFINITIONS
@@ -103,7 +104,7 @@ ng_UI_constructor(node_p node)
 	priv_p  priv;
 
 	/* Allocate private structure */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL) {
 		return (ENOMEM);
 	}
@@ -191,7 +192,7 @@ ng_UI_rcvdata(hook_p hook, item_p item)
 		m_adj(m, ptr - start);
 		NG_FWD_NEW_DATA(error, item, priv->uplink, m);	/* m -> NULL */
 	} else if (hook == priv->uplink) {
-		M_PREPEND(m, 1, M_DONTWAIT);	/* Prepend IP NLPID */
+		M_PREPEND(m, 1, MB_DONTWAIT);	/* Prepend IP NLPID */
 		if (!m)
 			ERROUT(ENOBUFS);
 		mtod(m, u_char *)[0] = HDLC_UI;

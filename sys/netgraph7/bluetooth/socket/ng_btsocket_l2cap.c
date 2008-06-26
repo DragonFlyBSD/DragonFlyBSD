@@ -29,6 +29,7 @@
  *
  * $Id: ng_btsocket_l2cap.c,v 1.16 2003/09/14 23:29:06 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/socket/ng_btsocket_l2cap.c,v 1.25 2007/10/31 16:17:20 emax Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/socket/ng_btsocket_l2cap.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,13 +51,13 @@
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
 #include <sys/taskqueue.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/bluetooth/include/ng_bluetooth.h>
-#include <netgraph/bluetooth/include/ng_hci.h>
-#include <netgraph/bluetooth/include/ng_l2cap.h>
-#include <netgraph/bluetooth/include/ng_btsocket.h>
-#include <netgraph/bluetooth/include/ng_btsocket_l2cap.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "bluetooth/include/ng_bluetooth.h"
+#include "bluetooth/include/ng_hci.h"
+#include "bluetooth/include/ng_l2cap.h"
+#include "bluetooth/include/ng_btsocket.h"
+#include "bluetooth/include/ng_btsocket_l2cap.h"
 
 /* MALLOC define */
 #ifdef NG_SEPARATE_MALLOC
@@ -1156,7 +1157,7 @@ ng_btsocket_l2cap_send_l2ca_con_req(ng_btsocket_l2cap_pcb_p pcb)
 		return (ENETDOWN); 
 
 	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, NGM_L2CAP_L2CA_CON,
-		sizeof(*ip), M_NOWAIT);
+		sizeof(*ip), M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		return (ENOMEM);
 
@@ -1188,7 +1189,7 @@ ng_btsocket_l2cap_send_l2ca_con_rsp_req(u_int32_t token,
 		return (ENETDOWN); 
 
 	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, NGM_L2CAP_L2CA_CON_RSP,
-		sizeof(*ip), M_NOWAIT);
+		sizeof(*ip), M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		return (ENOMEM);
 
@@ -1224,7 +1225,7 @@ ng_btsocket_l2cap_send_l2ca_cfg_req(ng_btsocket_l2cap_pcb_p pcb)
 		return (ENETDOWN); 
 
 	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, NGM_L2CAP_L2CA_CFG,
-		sizeof(*ip), M_NOWAIT);
+		sizeof(*ip), M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		return (ENOMEM);
 
@@ -1260,7 +1261,7 @@ ng_btsocket_l2cap_send_l2ca_cfg_rsp(ng_btsocket_l2cap_pcb_p pcb)
 		return (ENETDOWN); 
 
 	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, NGM_L2CAP_L2CA_CFG_RSP,
-		sizeof(*ip), M_NOWAIT);
+		sizeof(*ip), M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		return (ENOMEM);
 
@@ -1295,7 +1296,7 @@ ng_btsocket_l2cap_send_l2ca_discon_req(u_int32_t token,
 		return (ENETDOWN); 
 
 	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, NGM_L2CAP_L2CA_DISCON,
-		sizeof(*ip), M_NOWAIT);
+		sizeof(*ip), M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		return (ENOMEM);
 
@@ -1521,7 +1522,7 @@ ng_btsocket_l2cap_data_input(struct mbuf *m, hook_p hook)
 			 * it is a broadcast traffic after all
 			 */
 
-			copy = m_dup(m, M_DONTWAIT);
+			copy = m_dup(m, MB_DONTWAIT);
 			if (copy != NULL) {
 				sbappendrecord(&pcb->so->so_rcv, copy);
 				sorwakeup(pcb->so);
@@ -1558,7 +1559,7 @@ ng_btsocket_l2cap_default_msg_input(struct ng_mesg *msg, hook_p hook)
 		rt = (ng_btsocket_l2cap_rtentry_t *) NG_HOOK_PRIVATE(hook);
 		if (rt == NULL) {
 			MALLOC(rt, ng_btsocket_l2cap_rtentry_p, sizeof(*rt),
-				M_NETGRAPH_BTSOCKET_L2CAP, M_NOWAIT|M_ZERO);
+				M_NETGRAPH_BTSOCKET_L2CAP, M_WAITOK | M_NULLOK | M_ZERO);
 			if (rt == NULL) {
 				mtx_unlock(&ng_btsocket_l2cap_rt_mtx);
 				break;
@@ -1925,7 +1926,7 @@ ng_btsocket_l2cap_attach(struct socket *so, int proto, struct thread *td)
 
 	/* Allocate the PCB */
         MALLOC(pcb, ng_btsocket_l2cap_pcb_p, sizeof(*pcb),
-		M_NETGRAPH_BTSOCKET_L2CAP, M_NOWAIT | M_ZERO);
+		M_NETGRAPH_BTSOCKET_L2CAP, M_WAITOK | M_NULLOK | M_ZERO);
         if (pcb == NULL)
                 return (ENOMEM);
 
@@ -2405,7 +2406,7 @@ ng_btsocket_l2cap_peeraddr(struct socket *so, struct sockaddr **nam)
 	sa.l2cap_len = sizeof(sa);
 	sa.l2cap_family = AF_BLUETOOTH;
 
-	*nam = sodupsockaddr((struct sockaddr *) &sa, M_NOWAIT);
+	*nam = sodupsockaddr((struct sockaddr *) &sa, M_WAITOK | M_NULLOK);
 
 	return ((*nam == NULL)? ENOMEM : 0);
 } /* ng_btsocket_l2cap_peeraddr */
@@ -2501,12 +2502,12 @@ ng_btsocket_l2cap_send2(ng_btsocket_l2cap_pcb_p pcb)
 	if (pcb->so->so_snd.sb_cc == 0)
 		return (EINVAL); /* XXX */
 
-	m = m_dup(pcb->so->so_snd.sb_mb, M_DONTWAIT);
+	m = m_dup(pcb->so->so_snd.sb_mb, MB_DONTWAIT);
 	if (m == NULL)
 		return (ENOBUFS);
 
 	/* Create L2CA packet header */
-	M_PREPEND(m, sizeof(*hdr), M_DONTWAIT);
+	M_PREPEND(m, sizeof(*hdr), MB_DONTWAIT);
 	if (m != NULL)
 		if (m->m_len < sizeof(*hdr))
 			m = m_pullup(m, sizeof(*hdr));
@@ -2558,7 +2559,7 @@ ng_btsocket_l2cap_sockaddr(struct socket *so, struct sockaddr **nam)
 	sa.l2cap_len = sizeof(sa);
 	sa.l2cap_family = AF_BLUETOOTH;
 
-	*nam = sodupsockaddr((struct sockaddr *) &sa, M_NOWAIT);
+	*nam = sodupsockaddr((struct sockaddr *) &sa, M_WAITOK | M_NULLOK);
 
 	return ((*nam == NULL)? ENOMEM : 0);
 } /* ng_btsocket_l2cap_sockaddr */

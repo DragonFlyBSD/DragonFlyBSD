@@ -25,10 +25,9 @@
  * SUCH DAMAGE.
  *
  * $SourceForge: ng_netflow.c,v 1.30 2004/09/05 11:37:43 glebius Exp $
+ * $FreeBSD: src/sys/netgraph/netflow/ng_netflow.c,v 1.17 2008/04/16 16:47:14 kris Exp $
+ * $DragonFly: src/sys/netgraph7/netflow/ng_netflow.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
-
-static const char rcs_id[] =
-    "@(#) $FreeBSD: src/sys/netgraph/netflow/ng_netflow.c,v 1.17 2008/04/16 16:47:14 kris Exp $";
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -51,11 +50,11 @@ static const char rcs_id[] =
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/netflow/netflow.h>
-#include <netgraph/netflow/ng_netflow.h>
+#include "ng_message.h"
+#include "ng_parse.h"
+#include "netgraph.h"
+#include "netflow/netflow.h"
+#include "netflow/ng_netflow.h"
 
 /* Netgraph methods */
 static ng_constructor_t	ng_netflow_constructor;
@@ -170,7 +169,7 @@ ng_netflow_constructor(node_p node)
 	int error = 0;
 
 	/* Initialize private data */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_WAITOK | M_NULLOK);
 	if (priv == NULL)
 		return (ENOMEM);
 	bzero(priv, sizeof(*priv));
@@ -305,7 +304,7 @@ ng_netflow_rcvmsg (node_p node, item_p item, hook_p lasthook)
 			struct ng_netflow_info *i;
 
 			NG_MKRESPONSE(resp, msg, sizeof(struct ng_netflow_info),
-			    M_NOWAIT);
+			    M_WAITOK | M_NULLOK);
 			i = (struct ng_netflow_info *)resp->data;
 			ng_netflow_copyinfo(priv, i);
 
@@ -328,7 +327,7 @@ ng_netflow_rcvmsg (node_p node, item_p item, hook_p lasthook)
 				 ERROUT(EINVAL);
 
 			NG_MKRESPONSE(resp, msg,
-			     sizeof(struct ng_netflow_ifinfo), M_NOWAIT);
+			     sizeof(struct ng_netflow_ifinfo), M_WAITOK | M_NULLOK);
 			i = (struct ng_netflow_ifinfo *)resp->data;
 			memcpy((void *)i, (void *)&priv->ifaces[*index].info,
 			    sizeof(priv->ifaces[*index].info));
@@ -408,7 +407,7 @@ ng_netflow_rcvmsg (node_p node, item_p item, hook_p lasthook)
 
 			last = (uint32_t *)msg->data;
 
-			NG_MKRESPONSE(resp, msg, NGRESP_SIZE, M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, NGRESP_SIZE, M_WAITOK | M_NULLOK);
 
 			if (!resp)
 				ERROUT(ENOMEM);

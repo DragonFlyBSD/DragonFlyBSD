@@ -38,6 +38,7 @@
  * Author: Julian Elisher <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_hole.c,v 1.15 2005/12/09 07:09:44 ru Exp $
+ * $DragonFly: src/sys/netgraph7/ng_hole.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_hole.c,v 1.10 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -50,10 +51,10 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_hole.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_hole.h"
 
 /* Per hook private info. */
 struct ng_hole_hookinfo {
@@ -132,7 +133,7 @@ ngh_newhook(node_p node, hook_p hook, const char *name)
 	hinfo_p hip;
 
 	/* Create hook private structure. */
-	MALLOC(hip, hinfo_p, sizeof(*hip), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	MALLOC(hip, hinfo_p, sizeof(*hip), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (hip == NULL)
 		return (ENOMEM);
 	NG_HOOK_SET_PRIVATE(hook, hip);
@@ -173,7 +174,7 @@ ngh_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			/* Build response (if desired). */
 			if (msg->header.cmd != NGM_HOLE_CLR_STATS) {
 				NG_MKRESPONSE(resp, msg, sizeof(*stats),
-				    M_NOWAIT);
+				    M_WAITOK | M_NULLOK);
 				if (resp == NULL) {
 					error = ENOMEM;
 					break;

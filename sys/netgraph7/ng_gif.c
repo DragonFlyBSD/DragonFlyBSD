@@ -63,6 +63,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_gif.c,v 1.19 2005/06/10 16:49:21 brooks Exp $
+ * $DragonFly: src/sys/netgraph7/ng_gif.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -84,10 +85,10 @@
 #include <net/if_var.h>
 #include <net/if_gif.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_gif.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_gif.h"
 
 #define IFP2NG(ifp)  ((struct ng_node *)((struct gif_softc *)(ifp->if_softc))->gif_netgraph)
 #define IFP2NG_SET(ifp, val)  (((struct gif_softc *)(ifp->if_softc))->gif_netgraph = (val))
@@ -240,7 +241,7 @@ ng_gif_attach(struct ifnet *ifp)
 	}
 
 	/* Allocate private data */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL) {
 		log(LOG_ERR, "%s: can't %s for %s\n",
 		    __func__, "allocate memory", ifp->if_xname);
@@ -309,7 +310,7 @@ ng_gif_glue_af(struct mbuf **mp, int af)
 	 * hopefully everything after that will not
 	 * need one. So let's just use M_PREPEND.
 	 */
-	M_PREPEND(m, sizeof (tmp_af), M_DONTWAIT);
+	M_PREPEND(m, sizeof (tmp_af), MB_DONTWAIT);
 	if (m == NULL) {
 		error = ENOBUFS;
 		goto done;
@@ -405,7 +406,7 @@ ng_gif_rcvmsg(node_p node, item_p item, hook_p lasthook)
 	case NGM_GIF_COOKIE:
 		switch (msg->header.cmd) {
 		case NGM_GIF_GET_IFNAME:
-			NG_MKRESPONSE(resp, msg, IFNAMSIZ, M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, IFNAMSIZ, M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -413,7 +414,7 @@ ng_gif_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			strlcpy(resp->data, priv->ifp->if_xname, IFNAMSIZ);
 			break;
 		case NGM_GIF_GET_IFINDEX:
-			NG_MKRESPONSE(resp, msg, sizeof(u_int32_t), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(u_int32_t), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;

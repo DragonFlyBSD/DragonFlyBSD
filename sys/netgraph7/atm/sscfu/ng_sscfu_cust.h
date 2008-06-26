@@ -29,6 +29,8 @@
  * Customisation of the SSCFU code to ng_sscfu.
  *
  * $FreeBSD: src/sys/netgraph/atm/sscfu/ng_sscfu_cust.h,v 1.2 2005/01/07 01:45:41 imp Exp $
+ * $DragonFly: src/sys/netgraph7/atm/sscfu/ng_sscfu_cust.h,v 1.2 2008/06/26 23:05:39 dillon Exp $
+ * $DragonFly: src/sys/netgraph7/atm/sscfu/ng_sscfu_cust.h,v 1.2 2008/06/26 23:05:39 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/types.h>
@@ -51,9 +53,9 @@
 	DECL_SIGQ_GET
 
 #define	MEMZALLOC(PTR, CAST, SIZE) \
-	((PTR) = (CAST)malloc((SIZE), M_NG_SSCFU, M_NOWAIT | M_ZERO))
+	((PTR) = (CAST)kmalloc((SIZE), M_NG_SSCFU, M_WAITOK | M_NULLOK | M_ZERO))
 #define	MEMFREE(PTR) \
-	free(PTR, M_NG_SSCFU)
+	kfree(PTR, M_NG_SSCFU)
 
 #define	SIG_ALLOC(PTR) \
 	MEMZALLOC(PTR, struct sscfu_sig *, sizeof(struct sscfu_sig))
@@ -68,13 +70,13 @@
 	DECL_SIGQ_GET
 
 #define	MEMZALLOC(PTR, CAST, SIZE)					\
-	((PTR) = (CAST)malloc((SIZE), M_NG_SSCFU_INS, M_NOWAIT | M_ZERO))
+	((PTR) = (CAST)kmalloc((SIZE), M_NG_SSCFU_INS, M_WAITOK | M_NULLOK | M_ZERO))
 #define	MEMFREE(PTR)							\
 	FREE(PTR, M_NG_SSCFU_INS)
 
 #define	SIG_ALLOC(PTR)							\
-	((PTR) = malloc(sizeof(struct sscfu_sig),			\
-	    M_NG_SSCFU_SIG, M_NOWAIT | M_ZERO))
+	((PTR) = kmalloc(sizeof(struct sscfu_sig),			\
+	    M_NG_SSCFU_SIG, M_WAITOK | M_NULLOK | M_ZERO))
 #define	SIG_FREE(PTR)							\
 	FREE(PTR, M_NG_SSCFU_SIG)
 

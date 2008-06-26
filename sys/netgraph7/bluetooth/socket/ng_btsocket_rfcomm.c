@@ -29,6 +29,7 @@
  *
  * $Id: ng_btsocket_rfcomm.c,v 1.28 2003/09/14 23:29:06 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/socket/ng_btsocket_rfcomm.c,v 1.27 2007/10/29 19:06:47 emax Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/socket/ng_btsocket_rfcomm.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,14 +53,14 @@
 #include <sys/sysctl.h>
 #include <sys/taskqueue.h>
 #include <sys/uio.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/bluetooth/include/ng_bluetooth.h>
-#include <netgraph/bluetooth/include/ng_hci.h>
-#include <netgraph/bluetooth/include/ng_l2cap.h>
-#include <netgraph/bluetooth/include/ng_btsocket.h>
-#include <netgraph/bluetooth/include/ng_btsocket_l2cap.h>
-#include <netgraph/bluetooth/include/ng_btsocket_rfcomm.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "bluetooth/include/ng_bluetooth.h"
+#include "bluetooth/include/ng_hci.h"
+#include "bluetooth/include/ng_l2cap.h"
+#include "bluetooth/include/ng_btsocket.h"
+#include "bluetooth/include/ng_btsocket_l2cap.h"
+#include "bluetooth/include/ng_btsocket_rfcomm.h"
 
 /* MALLOC define */
 #ifdef NG_SEPARATE_MALLOC
@@ -400,7 +401,7 @@ ng_btsocket_rfcomm_attach(struct socket *so, int proto, struct thread *td)
 
 	/* Allocate the PCB */
         MALLOC(pcb, ng_btsocket_rfcomm_pcb_p, sizeof(*pcb),
-		M_NETGRAPH_BTSOCKET_RFCOMM, M_NOWAIT | M_ZERO);
+		M_NETGRAPH_BTSOCKET_RFCOMM, M_WAITOK | M_NULLOK | M_ZERO);
         if (pcb == NULL)
                 return (ENOMEM);
 
@@ -934,7 +935,7 @@ ng_btsocket_rfcomm_peeraddr(struct socket *so, struct sockaddr **nam)
 	sa.rfcomm_len = sizeof(sa);
 	sa.rfcomm_family = AF_BLUETOOTH;
 
-	*nam = sodupsockaddr((struct sockaddr *) &sa, M_NOWAIT);
+	*nam = sodupsockaddr((struct sockaddr *) &sa, M_WAITOK | M_NULLOK);
 
 	return ((*nam == NULL)? ENOMEM : 0);
 } /* ng_btsocket_rfcomm_peeraddr */
@@ -1000,7 +1001,7 @@ ng_btsocket_rfcomm_sockaddr(struct socket *so, struct sockaddr **nam)
 	sa.rfcomm_len = sizeof(sa);
 	sa.rfcomm_family = AF_BLUETOOTH;
 
-	*nam = sodupsockaddr((struct sockaddr *) &sa, M_NOWAIT);
+	*nam = sodupsockaddr((struct sockaddr *) &sa, M_WAITOK | M_NULLOK);
 
 	return ((*nam == NULL)? ENOMEM : 0);
 } /* ng_btsocket_rfcomm_sockaddr */
@@ -1265,7 +1266,7 @@ ng_btsocket_rfcomm_session_create(ng_btsocket_rfcomm_session_p *sp,
 
 	/* Allocate the RFCOMM session */
         MALLOC(s, ng_btsocket_rfcomm_session_p, sizeof(*s),
-		M_NETGRAPH_BTSOCKET_RFCOMM, M_NOWAIT | M_ZERO);
+		M_NETGRAPH_BTSOCKET_RFCOMM, M_WAITOK | M_NULLOK | M_ZERO);
         if (s == NULL)
                 return (ENOMEM);
 
@@ -3006,7 +3007,7 @@ ng_btsocket_rfcomm_send_command(ng_btsocket_rfcomm_session_p s,
 		/* NOT REACHED */
 	}
 
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL)
 		return (ENOBUFS);
 
@@ -3037,14 +3038,14 @@ ng_btsocket_rfcomm_send_uih(ng_btsocket_rfcomm_session_p s, u_int8_t address,
 
 	mtx_assert(&s->session_mtx, MA_OWNED);
 
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL) {
 		NG_FREE_M(data);
 		return (ENOBUFS);
 	}
 	m->m_pkthdr.len = m->m_len = sizeof(*hdr);
 
-	MGET(mcrc, M_DONTWAIT, MT_DATA);
+	MGET(mcrc, MB_DONTWAIT, MT_DATA);
 	if (mcrc == NULL) {
 		NG_FREE_M(data);
 		return (ENOBUFS);
@@ -3111,7 +3112,7 @@ ng_btsocket_rfcomm_send_msc(ng_btsocket_rfcomm_pcb_p pcb)
 	mtx_assert(&pcb->session->session_mtx, MA_OWNED);
 	mtx_assert(&pcb->pcb_mtx, MA_OWNED);
 
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL)
 		return (ENOBUFS);
 
@@ -3149,7 +3150,7 @@ ng_btsocket_rfcomm_send_pn(ng_btsocket_rfcomm_pcb_p pcb)
 	mtx_assert(&pcb->session->session_mtx, MA_OWNED);
 	mtx_assert(&pcb->pcb_mtx, MA_OWNED);
 
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL)
 		return (ENOBUFS);
 
@@ -3520,7 +3521,7 @@ ng_btsocket_rfcomm_prepare_packet(struct sockbuf *sb, int length)
 	struct mbuf	*top = NULL, *m = NULL, *n = NULL, *nextpkt = NULL;
 	int		 mlen, noff, len;
 
-	MGETHDR(top, M_DONTWAIT, MT_DATA);
+	MGETHDR(top, MB_DONTWAIT, MT_DATA);
 	if (top == NULL)
 		return (NULL);
 
@@ -3544,7 +3545,7 @@ ng_btsocket_rfcomm_prepare_packet(struct sockbuf *sb, int length)
 		length -= len;
 
 		if (length > 0 && m->m_len == mlen) {
-			MGET(m->m_next, M_DONTWAIT, MT_DATA);
+			MGET(m->m_next, MB_DONTWAIT, MT_DATA);
 			if (m->m_next == NULL) {
 				NG_FREE_M(top);
 				return (NULL);

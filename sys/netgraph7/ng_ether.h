@@ -39,6 +39,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ether.h,v 1.14 2005/02/14 12:01:09 glebius Exp $
+ * $DragonFly: src/sys/netgraph7/ng_ether.h,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_ether.h,v 1.1 1999/02/02 03:17:22 julian Exp $
  */
 

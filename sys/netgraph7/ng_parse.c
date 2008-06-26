@@ -39,6 +39,7 @@
  *
  * $Whistle: ng_parse.c,v 1.3 1999/11/29 01:43:48 archie Exp $
  * $FreeBSD: src/sys/netgraph/ng_parse.c,v 1.30 2007/06/23 00:02:20 mjacob Exp $
+ * $DragonFly: src/sys/netgraph7/ng_parse.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -57,9 +58,9 @@
 
 #include <netinet/in.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
 
 #ifdef NG_SEPARATE_MALLOC
 MALLOC_DEFINE(M_NETGRAPH_PARSE, "netgraph_parse", "netgraph parse info");
@@ -1219,7 +1220,7 @@ ng_parse_composite(const struct ng_parse_type *type, const char *s,
 	int align, len, blen, error = 0;
 
 	/* Initialize */
-	MALLOC(foff, int *, num * sizeof(*foff), M_NETGRAPH_PARSE, M_NOWAIT | M_ZERO);
+	MALLOC(foff, int *, num * sizeof(*foff), M_NETGRAPH_PARSE, M_WAITOK | M_NULLOK | M_ZERO);
 	if (foff == NULL) {
 		error = ENOMEM;
 		goto done;
@@ -1395,7 +1396,7 @@ ng_unparse_composite(const struct ng_parse_type *type, const u_char *data,
 	u_char *workBuf;
 
 	/* Get workspace for checking default values */
-	MALLOC(workBuf, u_char *, workSize, M_NETGRAPH_PARSE, M_NOWAIT);
+	MALLOC(workBuf, u_char *, workSize, M_NETGRAPH_PARSE, M_WAITOK | M_NULLOK);
 	if (workBuf == NULL)
 		return (ENOMEM);
 
@@ -1745,7 +1746,7 @@ ng_get_string_token(const char *s, int *startp, int *lenp, int *slenp)
 	start = *startp;
 	if (s[*startp] != '"')
 		return (NULL);
-	MALLOC(cbuf, char *, strlen(s + start), M_NETGRAPH_PARSE, M_NOWAIT);
+	MALLOC(cbuf, char *, strlen(s + start), M_NETGRAPH_PARSE, M_WAITOK | M_NULLOK);
 	if (cbuf == NULL)
 		return (NULL);
 	strcpy(cbuf, s + start + 1);
@@ -1828,7 +1829,7 @@ ng_encode_string(const char *raw, int slen)
 	int off = 0;
 	int i;
 
-	MALLOC(cbuf, char *, strlen(raw) * 4 + 3, M_NETGRAPH_PARSE, M_NOWAIT);
+	MALLOC(cbuf, char *, strlen(raw) * 4 + 3, M_NETGRAPH_PARSE, M_WAITOK | M_NULLOK);
 	if (cbuf == NULL)
 		return (NULL);
 	cbuf[off++] = '"';

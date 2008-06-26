@@ -29,6 +29,7 @@
  *
  * $Id: ng_btsocket_hci_raw.h,v 1.3 2003/03/25 23:53:32 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/include/ng_btsocket_hci_raw.h,v 1.7 2006/07/21 17:11:13 rwatson Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/include/ng_btsocket_hci_raw.h,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #ifndef _NETGRAPH_BTSOCKET_HCI_RAW_H_

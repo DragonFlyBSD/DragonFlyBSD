@@ -29,6 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_eiface.h,v 1.9 2005/02/03 11:52:42 ru Exp $
+ * $DragonFly: src/sys/netgraph7/ng_eiface.h,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #ifndef _NETGRAPH_NG_EIFACE_H_

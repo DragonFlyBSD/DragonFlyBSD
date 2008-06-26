@@ -36,10 +36,10 @@
  * DAMAGE.
  *
  * Author: Dave Chapeskie <dchapeskie@sandvine.com>
+ *
+ * $FreeBSD: src/sys/netgraph/ng_source.c,v 1.30 2007/03/02 14:36:19 emaste Exp $
+ * $DragonFly: src/sys/netgraph7/ng_source.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/netgraph/ng_source.c,v 1.30 2007/03/02 14:36:19 emaste Exp $");
 
 /*
  * This node is used for high speed packet geneneration.  It queues
@@ -68,11 +68,11 @@ __FBSDID("$FreeBSD: src/sys/netgraph/ng_source.c,v 1.30 2007/03/02 14:36:19 emas
 #include <sys/syslog.h>
 #include <net/if.h>
 #include <net/if_var.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_ether.h>
-#include <netgraph/ng_source.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_ether.h"
+#include "ng_source.h"
 
 #define NG_SOURCE_INTR_TICKS		1
 #define NG_SOURCE_DRIVER_IFQ_MAXLEN	(4*1024)
@@ -272,7 +272,7 @@ ng_source_constructor(node_p node)
 {
 	sc_p sc;
 
-	sc = malloc(sizeof(*sc), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	sc = kmalloc(sizeof(*sc), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (sc == NULL)
 		return (ENOMEM);
 
@@ -320,7 +320,7 @@ ng_source_connect(hook_p hook)
 	 */
 	if (hook == sc->output) {
 		NG_MKMESSAGE(msg, NGM_ETHER_COOKIE, NGM_ETHER_GET_IFNAME,
-		    0, M_NOWAIT);
+		    0, M_WAITOK | M_NULLOK);
 		if (msg == NULL)
 			return (ENOBUFS);
 
@@ -362,7 +362,7 @@ ng_source_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
                         if (msg->header.cmd != NGM_SOURCE_CLR_STATS) {
                                 NG_MKRESPONSE(resp, msg,
-                                    sizeof(*stats), M_NOWAIT);
+                                    sizeof(*stats), M_WAITOK | M_NULLOK);
 				if (resp == NULL) {
 					error = ENOMEM;
 					goto done;
@@ -447,7 +447,7 @@ ng_source_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		    {
 			struct ng_source_embed_info *embed;
 
-			NG_MKRESPONSE(resp, msg, sizeof(*embed), M_DONTWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(*embed), M_WAITOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				goto done;
@@ -486,7 +486,7 @@ ng_source_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				error = EINVAL;
 				goto done;
 			}
-			NG_MKRESPONSE(resp, msg, sizeof(*embed), M_DONTWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(*embed), M_WAITOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				goto done;
@@ -582,7 +582,7 @@ ng_source_rmnode(node_p node)
 	ng_source_clr_data(sc);
 	NG_NODE_SET_PRIVATE(node, NULL);
 	NG_NODE_UNREF(node);
-	free(sc, M_NETGRAPH);
+	kfree(sc, M_NETGRAPH);
 
 	return (0);
 }
@@ -647,7 +647,7 @@ ng_source_set_autosrc(sc_p sc, uint32_t flag)
 	int error = 0;
 
 	NG_MKMESSAGE(msg, NGM_ETHER_COOKIE, NGM_ETHER_SET_AUTOSRC,
-	    sizeof (uint32_t), M_NOWAIT);
+	    sizeof (uint32_t), M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		return(ENOBUFS);
 
@@ -878,9 +878,9 @@ ng_source_dup_mod(sc_p sc, struct mbuf *m0, struct mbuf **m_ptr)
 
 	/* Duplicate the packet. */
 	if (modify)
-		m = m_dup(m0, M_DONTWAIT);
+		m = m_dup(m0, MB_DONTWAIT);
 	else
-		m = m_copypacket(m0, M_DONTWAIT);
+		m = m_copypacket(m0, MB_DONTWAIT);
 	if (m == NULL) {
 		error = ENOBUFS;
 		goto done;

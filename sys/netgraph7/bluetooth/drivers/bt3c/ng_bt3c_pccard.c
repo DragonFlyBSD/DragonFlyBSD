@@ -29,6 +29,8 @@
  *
  * $Id: ng_bt3c_pccard.c,v 1.5 2003/04/01 18:15:21 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/drivers/bt3c/ng_bt3c_pccard.c,v 1.20 2007/02/23 12:19:02 piso Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/drivers/bt3c/ng_bt3c_pccard.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/drivers/bt3c/ng_bt3c_pccard.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  *
  * XXX XXX XX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX XXX 
  *
@@ -63,13 +65,13 @@
 #include <dev/pccard/pccardvar.h>
 #include "pccarddevs.h"
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/bluetooth/include/ng_bluetooth.h>
-#include <netgraph/bluetooth/include/ng_hci.h>
-#include <netgraph/bluetooth/include/ng_bt3c.h>
-#include <netgraph/bluetooth/drivers/bt3c/ng_bt3c_var.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "bluetooth/include/ng_bluetooth.h"
+#include "bluetooth/include/ng_hci.h"
+#include "bluetooth/include/ng_bt3c.h"
+#include "bluetooth/drivers/bt3c/ng_bt3c_var.h"
 
 /* Netgraph methods */
 static ng_constructor_t	ng_bt3c_constructor;
@@ -376,7 +378,7 @@ ng_bt3c_rcvmsg(node_p node, item_p item, hook_p lasthook)
 	case NGM_GENERIC_COOKIE:
 		switch (msg->header.cmd) {
 		case NGM_TEXT_STATUS:
-			NG_MKRESPONSE(rsp, msg, NG_TEXTRESPONSE, M_NOWAIT);
+			NG_MKRESPONSE(rsp, msg, NG_TEXTRESPONSE, M_WAITOK | M_NULLOK);
 			if (rsp == NULL)
 				error = ENOMEM;
 			else
@@ -408,7 +410,7 @@ ng_bt3c_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		switch (msg->header.cmd) {
 		case NGM_BT3C_NODE_GET_STATE:
 			NG_MKRESPONSE(rsp, msg, sizeof(ng_bt3c_node_state_ep),
-				M_NOWAIT);
+				M_WAITOK | M_NULLOK);
 			if (rsp == NULL)
 				error = ENOMEM;
 			else
@@ -426,7 +428,7 @@ ng_bt3c_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 		case NGM_BT3C_NODE_GET_DEBUG:
 			NG_MKRESPONSE(rsp, msg, sizeof(ng_bt3c_node_debug_ep),
-				M_NOWAIT);
+				M_WAITOK | M_NULLOK);
 			if (rsp == NULL)
 				error = ENOMEM;
 			else
@@ -436,7 +438,7 @@ ng_bt3c_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 		case NGM_BT3C_NODE_GET_QLEN:
 			NG_MKRESPONSE(rsp, msg, sizeof(ng_bt3c_node_qlen_ep),
-				M_NOWAIT);
+				M_WAITOK | M_NULLOK);
 			if (rsp == NULL) {
 				error = ENOMEM;
 				break;
@@ -494,7 +496,7 @@ ng_bt3c_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 		case NGM_BT3C_NODE_GET_STAT:
 			NG_MKRESPONSE(rsp, msg, sizeof(ng_bt3c_node_stat_ep),
-				M_NOWAIT);
+				M_WAITOK | M_NULLOK);
 			if (rsp == NULL)
 				error = ENOMEM;
 			else
@@ -807,7 +809,7 @@ bt3c_receive(bt3c_softc_p sc)
 			sc->state = NG_BT3C_W4_PKT_IND;
 			sc->want = 1;
 
-			MGETHDR(sc->m, M_DONTWAIT, MT_DATA);
+			MGETHDR(sc->m, MB_DONTWAIT, MT_DATA);
 			if (sc->m == NULL) {
 				NG_BT3C_ERR(sc->dev, "Could not get mbuf\n");
 				NG_BT3C_STAT_IERROR(sc->stat);
@@ -815,7 +817,7 @@ bt3c_receive(bt3c_softc_p sc)
 				break; /* XXX lost of sync */
 			}
 
-			MCLGET(sc->m, M_DONTWAIT);
+			MCLGET(sc->m, MB_DONTWAIT);
 			if (!(sc->m->m_flags & M_EXT)) {
 				NG_FREE_M(sc->m);
 

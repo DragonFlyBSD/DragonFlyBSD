@@ -29,6 +29,7 @@
  *
  * $Id: ng_hci_evnt.c,v 1.6 2003/09/08 18:57:51 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/hci/ng_hci_evnt.c,v 1.8 2005/01/07 01:45:43 imp Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/hci/ng_hci_evnt.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,15 +39,15 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/queue.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/bluetooth/include/ng_bluetooth.h>
-#include <netgraph/bluetooth/include/ng_hci.h>
-#include <netgraph/bluetooth/hci/ng_hci_var.h>
-#include <netgraph/bluetooth/hci/ng_hci_cmds.h>
-#include <netgraph/bluetooth/hci/ng_hci_evnt.h>
-#include <netgraph/bluetooth/hci/ng_hci_ulpi.h>
-#include <netgraph/bluetooth/hci/ng_hci_misc.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "bluetooth/include/ng_bluetooth.h"
+#include "bluetooth/include/ng_hci.h"
+#include "bluetooth/hci/ng_hci_var.h"
+#include "bluetooth/hci/ng_hci_cmds.h"
+#include "bluetooth/hci/ng_hci_evnt.h"
+#include "bluetooth/hci/ng_hci_ulpi.h"
+#include "bluetooth/hci/ng_hci_misc.h"
 
 /******************************************************************************
  ******************************************************************************
@@ -351,7 +352,7 @@ sync_con_queue(ng_hci_unit_p unit, ng_hci_unit_con_p con, int completed)
 		return (ENOTCONN);
 
 	NG_MKMESSAGE(msg, NGM_HCI_COOKIE, NGM_HCI_SYNC_CON_QUEUE,
-		sizeof(*state), M_NOWAIT);
+		sizeof(*state), M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		return (ENOMEM);
 
@@ -511,7 +512,7 @@ con_compl(ng_hci_unit_p unit, struct mbuf *event)
 			} __attribute__ ((packed))			*lp;
 			struct mbuf					*m;
 
-			MGETHDR(m, M_DONTWAIT, MT_DATA);
+			MGETHDR(m, MB_DONTWAIT, MT_DATA);
 			if (m != NULL) {
 				m->m_pkthdr.len = m->m_len = sizeof(*lp);
 				lp = mtod(m, struct __link_policy *);

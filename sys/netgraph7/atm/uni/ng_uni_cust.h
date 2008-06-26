@@ -29,6 +29,8 @@
  * Customisation of signalling source to the NG environment.
  *
  * $FreeBSD: src/sys/netgraph/atm/uni/ng_uni_cust.h,v 1.6 2006/06/02 09:08:51 dds Exp $
+ * $DragonFly: src/sys/netgraph7/atm/uni/ng_uni_cust.h,v 1.2 2008/06/26 23:05:39 dillon Exp $
+ * $DragonFly: src/sys/netgraph7/atm/uni/ng_uni_cust.h,v 1.2 2008/06/26 23:05:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -39,9 +41,9 @@
 #include <sys/lock.h>
 #include <sys/mutex.h>
 #include <sys/mbuf.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/atm/ngatmbase.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "atm/ngatmbase.h"
 
 #define	ASSERT(E, M) KASSERT(E,M)
 

@@ -25,10 +25,9 @@
  * SUCH DAMAGE.
  *
  * $SourceForge: netflow.c,v 1.41 2004/09/05 11:41:10 glebius Exp $
+ * $FreeBSD: src/sys/netgraph/netflow/netflow.c,v 1.29 2008/05/09 23:02:57 julian Exp $
+ * $DragonFly: src/sys/netgraph7/netflow/netflow.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
-
-static const char rcs_id[] =
-    "@(#) $FreeBSD: src/sys/netgraph/netflow/netflow.c,v 1.29 2008/05/09 23:02:57 julian Exp $";
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -48,11 +47,11 @@ static const char rcs_id[] =
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
+#include "ng_message.h"
+#include "netgraph.h"
 
-#include <netgraph/netflow/netflow.h>
-#include <netgraph/netflow/ng_netflow.h>
+#include "netflow/netflow.h"
+#include "netflow/ng_netflow.h"
 
 #define	NBUCKETS	(65536)		/* must be power of 2 */
 
@@ -158,7 +157,7 @@ get_export_dgram(priv_p priv)
 		struct netflow_v5_export_dgram *dgram;
 		struct mbuf *m;
 
-		m = m_getcl(M_DONTWAIT, MT_DATA, M_PKTHDR);
+		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (m == NULL)
 			return (NULL);
 		item = ng_package_data(m, NG_NOFLAGS);
@@ -243,7 +242,7 @@ hash_insert(priv_p priv, struct flow_hash_entry  *hsh, struct flow_rec *r,
 
 	mtx_assert(&hsh->mtx, MA_OWNED);
 
-	fle = uma_zalloc_arg(priv->zone, priv, M_NOWAIT);
+	fle = uma_zalloc_arg(priv->zone, priv, M_WAITOK | M_NULLOK);
 	if (fle == NULL) {
 		atomic_add_32(&priv->info.nfinfo_alloc_failed, 1);
 		return (ENOMEM);
@@ -564,7 +563,7 @@ ng_netflow_flow_show(priv_p priv, uint32_t last, struct ng_mesg *resp)
 			continue;
 
 		TAILQ_FOREACH(fle, &hsh->head, fle_hash) {
-			if (hsh->mtx.mtx_lock & MTX_CONTESTED)
+			if (mtx_contested(&hsh->mtx)
 				break;
 
 			bcopy(&fle->f, &(data->entries[data->nentries]),
@@ -688,7 +687,7 @@ ng_netflow_expire(void *arg)
 			 * Interrupt thread wants this entry!
 			 * Quick! Quick! Bail out!
 			 */
-			if (hsh->mtx.mtx_lock & MTX_CONTESTED)
+			if (mtx_contested(&hsh->mtx))
 				break;
 
 			/*

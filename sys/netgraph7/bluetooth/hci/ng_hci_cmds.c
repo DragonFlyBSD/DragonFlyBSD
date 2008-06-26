@@ -29,6 +29,7 @@
  *
  * $Id: ng_hci_cmds.c,v 1.4 2003/09/08 18:57:51 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/hci/ng_hci_cmds.c,v 1.7 2005/01/07 01:45:43 imp Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/hci/ng_hci_cmds.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,15 +39,15 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/queue.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/bluetooth/include/ng_bluetooth.h>
-#include <netgraph/bluetooth/include/ng_hci.h>
-#include <netgraph/bluetooth/hci/ng_hci_var.h>
-#include <netgraph/bluetooth/hci/ng_hci_cmds.h>
-#include <netgraph/bluetooth/hci/ng_hci_evnt.h>
-#include <netgraph/bluetooth/hci/ng_hci_ulpi.h>
-#include <netgraph/bluetooth/hci/ng_hci_misc.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "bluetooth/include/ng_bluetooth.h"
+#include "bluetooth/include/ng_hci.h"
+#include "bluetooth/hci/ng_hci_var.h"
+#include "bluetooth/hci/ng_hci_cmds.h"
+#include "bluetooth/hci/ng_hci_evnt.h"
+#include "bluetooth/hci/ng_hci_ulpi.h"
+#include "bluetooth/hci/ng_hci_misc.h"
 
 /******************************************************************************
  ******************************************************************************
@@ -118,7 +119,7 @@ ng_hci_send_command(ng_hci_unit_p unit)
 
 	ng_hci_mtap(unit, m0);
 
-	m = m_dup(m0, M_DONTWAIT);
+	m = m_dup(m0, MB_DONTWAIT);
 	if (m != NULL)
 		NG_SEND_DATA_ONLY(error, unit->drv, m);
 	else

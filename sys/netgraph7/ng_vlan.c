@@ -26,6 +26,7 @@
  * Author: Ruslan Ermilov <ru@FreeBSD.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_vlan.c,v 1.5 2007/06/11 15:29:02 imp Exp $
+ * $DragonFly: src/sys/netgraph7/ng_vlan.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -41,10 +42,10 @@
 #include <net/if.h>
 #include <net/if_vlan_var.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_vlan.h>
-#include <netgraph/netgraph.h>
+#include "ng_message.h"
+#include "ng_parse.h"
+#include "ng_vlan.h"
+#include "netgraph.h"
 
 static ng_constructor_t	ng_vlan_constructor;
 static ng_rcvmsg_t	ng_vlan_rcvmsg;
@@ -161,7 +162,7 @@ ng_vlan_constructor(node_p node)
 	priv_p priv;
 	int i;
 
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 	for (i = 0; i < HASHSIZE; i++)
@@ -242,7 +243,7 @@ ng_vlan_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			}
 			/* Create filter. */
 			MALLOC(f, struct filter *, sizeof(*f),
-			    M_NETGRAPH, M_NOWAIT | M_ZERO);
+			    M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 			if (f == NULL) {
 				error = ENOMEM;
 				break;
@@ -277,7 +278,7 @@ ng_vlan_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			break;
 		case NGM_VLAN_GET_TABLE:
 			NG_MKRESPONSE(resp, msg, sizeof(*t) +
-			    priv->nent * sizeof(*t->filter), M_NOWAIT);
+			    priv->nent * sizeof(*t->filter), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -319,7 +320,7 @@ ng_vlan_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		for (i = 0, chain = priv->hashtable; i < HASHSIZE;
 		    i++, chain++)
 		LIST_FOREACH(f, chain, next) {
-			NG_COPYMESSAGE(copy, msg, M_NOWAIT);
+			NG_COPYMESSAGE(copy, msg, M_WAITOK | M_NULLOK);
 			if (copy == NULL)
 				continue;
 			NG_SEND_MSG_HOOK(error, node, copy, f->hook, 0);
@@ -408,7 +409,7 @@ ng_vlan_rcvdata(hook_p hook, item_p item)
 				NG_FREE_M(m);
 				return (EOPNOTSUPP);
 			}
-			M_PREPEND(m, ETHER_VLAN_ENCAP_LEN, M_DONTWAIT);
+			M_PREPEND(m, ETHER_VLAN_ENCAP_LEN, MB_DONTWAIT);
 			/* M_PREPEND takes care of m_len and m_pkthdr.len. */
 			if (m == NULL || (m->m_len < sizeof(*evl) &&
 			    (m = m_pullup(m, sizeof(*evl))) == NULL)) {

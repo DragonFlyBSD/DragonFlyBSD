@@ -38,6 +38,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_iface.c,v 1.48 2008/01/31 08:51:48 mav Exp $
+ * $DragonFly: src/sys/netgraph7/ng_iface.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_iface.c,v 1.33 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -77,11 +78,11 @@
 
 #include <netinet/in.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_iface.h>
-#include <netgraph/ng_cisco.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_iface.h"
+#include "ng_cisco.h"
 
 #ifdef NG_SEPARATE_MALLOC
 MALLOC_DEFINE(M_NETGRAPH_IFACE, "netgraph_iface", "netgraph iface node ");
@@ -373,7 +374,7 @@ ng_iface_output(struct ifnet *ifp, struct mbuf *m,
 	ng_iface_bpftap(ifp, m, dst->sa_family);
 
 	if (ALTQ_IS_ENABLED(&ifp->if_snd)) {
-		M_PREPEND(m, sizeof(sa_family_t), M_DONTWAIT);
+		M_PREPEND(m, sizeof(sa_family_t), MB_DONTWAIT);
 		if (m == NULL) {
 			IFQ_LOCK(&ifp->if_snd);
 			IFQ_INC_DROPS(&ifp->if_snd);
@@ -509,7 +510,7 @@ ng_iface_constructor(node_p node)
 	priv_p priv;
 
 	/* Allocate node and interface private structures */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH_IFACE, M_NOWAIT|M_ZERO);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH_IFACE, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 	ifp = if_alloc(IFT_PROPVIRTUAL);
@@ -594,7 +595,7 @@ ng_iface_rcvmsg(node_p node, item_p item, hook_p lasthook)
 	case NGM_IFACE_COOKIE:
 		switch (msg->header.cmd) {
 		case NGM_IFACE_GET_IFNAME:
-			NG_MKRESPONSE(resp, msg, IFNAMSIZ, M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, IFNAMSIZ, M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -625,7 +626,7 @@ ng_iface_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		    }
 
 		case NGM_IFACE_GET_IFINDEX:
-			NG_MKRESPONSE(resp, msg, sizeof(uint32_t), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(uint32_t), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -650,7 +651,7 @@ ng_iface_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 				if (ifa->ifa_addr->sa_family != AF_INET)
 					continue;
-				NG_MKRESPONSE(resp, msg, sizeof(ips), M_NOWAIT);
+				NG_MKRESPONSE(resp, msg, sizeof(ips), M_WAITOK | M_NULLOK);
 				if (resp == NULL) {
 					error = ENOMEM;
 					break;

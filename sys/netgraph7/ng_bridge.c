@@ -38,6 +38,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_bridge.c,v 1.31 2005/02/09 15:14:44 ru Exp $
+ * $DragonFly: src/sys/netgraph7/ng_bridge.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -74,10 +75,10 @@
 #include <netinet/in.h>
 #include <netinet/ip_fw.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_bridge.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_bridge.h"
 
 #ifdef NG_SEPARATE_MALLOC
 MALLOC_DEFINE(M_NETGRAPH_BRIDGE, "netgraph_bridge", "netgraph bridge node ");
@@ -297,14 +298,14 @@ ng_bridge_constructor(node_p node)
 	priv_p priv;
 
 	/* Allocate and initialize private info */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH_BRIDGE, M_NOWAIT | M_ZERO);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH_BRIDGE, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 	ng_callout_init(&priv->timer);
 
 	/* Allocate and initialize hash table, etc. */
 	MALLOC(priv->tab, struct ng_bridge_bucket *,
-	    MIN_BUCKETS * sizeof(*priv->tab), M_NETGRAPH_BRIDGE, M_NOWAIT | M_ZERO);
+	    MIN_BUCKETS * sizeof(*priv->tab), M_NETGRAPH_BRIDGE, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv->tab == NULL) {
 		FREE(priv, M_NETGRAPH_BRIDGE);
 		return (ENOMEM);
@@ -359,7 +360,7 @@ ng_bridge_newhook(node_p node, hook_p hook, const char *name)
 		if (priv->links[linkNum] != NULL)
 			return (EISCONN);
 		MALLOC(priv->links[linkNum], struct ng_bridge_link *,
-		    sizeof(*priv->links[linkNum]), M_NETGRAPH_BRIDGE, M_NOWAIT|M_ZERO);
+		    sizeof(*priv->links[linkNum]), M_NETGRAPH_BRIDGE, M_WAITOK | M_NULLOK | M_ZERO);
 		if (priv->links[linkNum] == NULL)
 			return (ENOMEM);
 		priv->links[linkNum]->hook = hook;
@@ -392,7 +393,7 @@ ng_bridge_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			struct ng_bridge_config *conf;
 
 			NG_MKRESPONSE(resp, msg,
-			    sizeof(struct ng_bridge_config), M_NOWAIT);
+			    sizeof(struct ng_bridge_config), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -459,7 +460,7 @@ ng_bridge_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			/* Get/clear stats */
 			if (msg->header.cmd != NGM_BRIDGE_CLR_STATS) {
 				NG_MKRESPONSE(resp, msg,
-				    sizeof(link->stats), M_NOWAIT);
+				    sizeof(link->stats), M_WAITOK | M_NULLOK);
 				if (resp == NULL) {
 					error = ENOMEM;
 					break;
@@ -478,7 +479,7 @@ ng_bridge_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			int i = 0, bucket;
 
 			NG_MKRESPONSE(resp, msg, sizeof(*ary)
-			    + (priv->numHosts * sizeof(*ary->hosts)), M_NOWAIT);
+			    + (priv->numHosts * sizeof(*ary->hosts)), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -707,7 +708,7 @@ ng_bridge_rcvdata(hook_p hook, item_p item)
 			 * It's usable link but not the reserved (first) one.
 			 * Copy mbuf info for sending.
 			 */
-			m2 = m_dup(m, M_DONTWAIT);	/* XXX m_copypacket() */
+			m2 = m_dup(m, MB_DONTWAIT);	/* XXX m_copypacket() */
 			if (m2 == NULL) {
 				link->stats.memoryFailures++;
 				NG_FREE_ITEM(item);
@@ -850,7 +851,7 @@ ng_bridge_put(priv_p priv, const u_char *addr, int linkNum)
 
 	/* Allocate and initialize new hashtable entry */
 	MALLOC(hent, struct ng_bridge_hent *,
-	    sizeof(*hent), M_NETGRAPH_BRIDGE, M_NOWAIT);
+	    sizeof(*hent), M_NETGRAPH_BRIDGE, M_WAITOK | M_NULLOK);
 	if (hent == NULL)
 		return (0);
 	bcopy(addr, hent->host.addr, ETHER_ADDR_LEN);

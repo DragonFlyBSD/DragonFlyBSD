@@ -65,6 +65,7 @@
  * Derived from:	ng_hole.c
  *
  * $FreeBSD: src/sys/netgraph/ng_ip_input.c,v 1.4 2005/01/07 01:45:39 imp Exp $
+ * $DragonFly: src/sys/netgraph7/ng_ip_input.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -83,9 +84,9 @@
 #include <netinet/in.h>
 #include <netinet/in_var.h>
 #include <net/netisr.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_ip_input.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_ip_input.h"
 
 /* Netgraph methods */
 static ng_constructor_t	ngipi_cons;

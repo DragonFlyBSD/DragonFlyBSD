@@ -38,6 +38,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_rfc1490.c,v 1.24 2005/01/07 01:45:39 imp Exp $
+ * $DragonFly: src/sys/netgraph7/ng_rfc1490.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  * $Whistle: ng_rfc1490.c,v 1.22 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -60,10 +61,10 @@
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_rfc1490.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_rfc1490.h"
 
 /*
  * DEFINITIONS
@@ -165,7 +166,7 @@ ng_rfc1490_constructor(node_p node)
 	priv_p priv;
 
 	/* Allocate private structure */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
@@ -248,7 +249,7 @@ ng_rfc1490_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		}
 		case NGM_RFC1490_GET_ENCAP:
 
-			NG_MKRESPONSE(resp, msg, strlen(priv->enc->name) + 1, M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, strlen(priv->enc->name) + 1, M_WAITOK | M_NULLOK);
 			if (resp == NULL)
 				ERROUT(ENOMEM);
 
@@ -387,7 +388,7 @@ switch_on_etype:		etype = ntohs(*((const u_int16_t *)ptr));
 			break;
 		}
 	} else if (hook == priv->ppp) {
-		M_PREPEND(m, 2, M_DONTWAIT);	/* Prepend PPP NLPID */
+		M_PREPEND(m, 2, MB_DONTWAIT);	/* Prepend PPP NLPID */
 		if (!m)
 			ERROUT(ENOBUFS);
 		mtod(m, u_char *)[0] = HDLC_UI;
@@ -396,7 +397,7 @@ switch_on_etype:		etype = ntohs(*((const u_int16_t *)ptr));
 	} else if (hook == priv->inet) {
 		switch (priv->enc->method) {
 		case NG_RFC1490_ENCAP_IETF_IP:
-			M_PREPEND(m, 2, M_DONTWAIT);	/* Prepend IP NLPID */
+			M_PREPEND(m, 2, MB_DONTWAIT);	/* Prepend IP NLPID */
 			if (!m)
 				ERROUT(ENOBUFS);
 			mtod(m, u_char *)[0] = HDLC_UI;
@@ -408,7 +409,7 @@ switch_on_etype:		etype = ntohs(*((const u_int16_t *)ptr));
 			 *  HDLC_UI  PAD  NLIPID  OUI      PID
 			 *  03      00   80      00 00 00  08 00
 			 */
-			M_PREPEND(m, 8, M_DONTWAIT);
+			M_PREPEND(m, 8, MB_DONTWAIT);
 			if (!m)
 				ERROUT(ENOBUFS);
 			mtod(m, u_char *)[0] = HDLC_UI;
@@ -419,7 +420,7 @@ switch_on_etype:		etype = ntohs(*((const u_int16_t *)ptr));
 			    = htons(ETHERTYPE_IP);  /* PID */
 			break;
 		case NG_RFC1490_ENCAP_CISCO:
-			M_PREPEND(m, 2, M_DONTWAIT);	/* Prepend IP ethertype */
+			M_PREPEND(m, 2, MB_DONTWAIT);	/* Prepend IP ethertype */
 			if (!m)
 				ERROUT(ENOBUFS);
 			*((u_int16_t *)mtod(m, u_int16_t *)) = htons(ETHERTYPE_IP);
@@ -427,7 +428,7 @@ switch_on_etype:		etype = ntohs(*((const u_int16_t *)ptr));
 		}
 		NG_FWD_NEW_DATA(error, item, priv->downlink, m);
 	} else if (hook == priv->ethernet) {
-		M_PREPEND(m, 8, M_DONTWAIT);	/* Prepend NLPID, OUI, PID */
+		M_PREPEND(m, 8, MB_DONTWAIT);	/* Prepend NLPID, OUI, PID */
 		if (!m)
 			ERROUT(ENOBUFS);
 		mtod(m, u_char *)[0] = HDLC_UI;

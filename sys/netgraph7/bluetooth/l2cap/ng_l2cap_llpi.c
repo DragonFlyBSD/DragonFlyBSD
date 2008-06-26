@@ -29,6 +29,7 @@
  *
  * $Id: ng_l2cap_llpi.c,v 1.5 2003/09/08 19:11:45 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/l2cap/ng_l2cap_llpi.c,v 1.9 2005/07/29 14:44:17 emax Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/l2cap/ng_l2cap_llpi.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,17 +39,17 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/queue.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/bluetooth/include/ng_bluetooth.h>
-#include <netgraph/bluetooth/include/ng_hci.h>
-#include <netgraph/bluetooth/include/ng_l2cap.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_var.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_cmds.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_evnt.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_llpi.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_ulpi.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_misc.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "bluetooth/include/ng_bluetooth.h"
+#include "bluetooth/include/ng_hci.h"
+#include "bluetooth/include/ng_l2cap.h"
+#include "bluetooth/l2cap/ng_l2cap_var.h"
+#include "bluetooth/l2cap/ng_l2cap_cmds.h"
+#include "bluetooth/l2cap/ng_l2cap_evnt.h"
+#include "bluetooth/l2cap/ng_l2cap_llpi.h"
+#include "bluetooth/l2cap/ng_l2cap_ulpi.h"
+#include "bluetooth/l2cap/ng_l2cap_misc.h"
 
 /******************************************************************************
  ******************************************************************************
@@ -99,7 +100,7 @@ ng_l2cap_lp_con_req(ng_l2cap_p l2cap, bdaddr_p bdaddr)
 
 	/* Create and send LP_ConnectReq event */
 	NG_MKMESSAGE(msg, NGM_HCI_COOKIE, NGM_HCI_LP_CON_REQ,
-		sizeof(*ep), M_NOWAIT);
+		sizeof(*ep), M_WAITOK | M_NULLOK);
 	if (msg == NULL) {
 		ng_l2cap_free_con(con);
 
@@ -249,7 +250,7 @@ ng_l2cap_lp_con_ind(ng_l2cap_p l2cap, struct ng_mesg *msg)
 
 	/* Create and send LP_ConnectRsp event */
 	NG_MKMESSAGE(rsp, NGM_HCI_COOKIE, NGM_HCI_LP_CON_RSP,
-		sizeof(*rp), M_NOWAIT);
+		sizeof(*rp), M_WAITOK | M_NULLOK);
 	if (rsp == NULL) {
 		ng_l2cap_free_con(con);
 		error = ENOMEM;
@@ -382,7 +383,7 @@ ng_l2cap_lp_qos_req(ng_l2cap_p l2cap, u_int16_t con_handle,
 
 	/* Create and send LP_QoSSetupReq event */
 	NG_MKMESSAGE(msg, NGM_HCI_COOKIE, NGM_HCI_LP_QOS_REQ,
-		sizeof(*ep), M_NOWAIT);
+		sizeof(*ep), M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		return (ENOMEM);
 
@@ -522,7 +523,7 @@ ng_l2cap_lp_send(ng_l2cap_con_p con, u_int16_t dcid, struct mbuf *m0)
 		/* Check length of the packet against HCI MTU */
 		len = m0->m_pkthdr.len;
 		if (len > l2cap->pkt_size) {
-			m = m_split(m0, l2cap->pkt_size, M_DONTWAIT);
+			m = m_split(m0, l2cap->pkt_size, MB_DONTWAIT);
 			if (m == NULL) {
 				NG_L2CAP_ALERT(
 "%s: %s - m_split(%d) failed\n",	__func__, NG_NODE_NAME(l2cap->node),
@@ -893,7 +894,7 @@ ng_l2cap_process_discon_timeout(node_p node, hook_p hook, void *arg1, int con_ha
 
 	/* Create and send LP_DisconReq event */
 	NG_MKMESSAGE(msg, NGM_HCI_COOKIE, NGM_HCI_LP_DISCON_REQ,
-		sizeof(*ep), M_NOWAIT);
+		sizeof(*ep), M_WAITOK | M_NULLOK);
 	if (msg == NULL)
 		return;
 

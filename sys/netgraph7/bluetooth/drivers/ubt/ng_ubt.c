@@ -29,6 +29,7 @@
  *
  * $Id: ng_ubt.c,v 1.16 2003/10/10 19:15:06 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/drivers/ubt/ng_ubt.c,v 1.33 2007/06/23 04:34:38 imp Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/drivers/ubt/ng_ubt.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -51,13 +52,13 @@
 #include <dev/usb/usbdi_util.h>
 #include <dev/usb/usbdivar.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/bluetooth/include/ng_bluetooth.h>
-#include <netgraph/bluetooth/include/ng_hci.h>
-#include <netgraph/bluetooth/include/ng_ubt.h>
-#include <netgraph/bluetooth/drivers/ubt/ng_ubt_var.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "bluetooth/include/ng_bluetooth.h"
+#include "bluetooth/include/ng_hci.h"
+#include "bluetooth/include/ng_ubt.h"
+#include "bluetooth/drivers/ubt/ng_ubt_var.h"
 
 #include "usbdevs.h"
 
@@ -655,8 +656,8 @@ ubt_attach(device_t self)
 			device_get_nameunit(sc->sc_dev));
 		goto bad;
 	}
-	sc->sc_isoc_in_frlen = malloc(sizeof(u_int16_t) * sc->sc_isoc_nframes, 
-						M_USBDEV, M_NOWAIT);
+	sc->sc_isoc_in_frlen = kmalloc(sizeof(u_int16_t) * sc->sc_isoc_nframes, 
+						M_USBDEV, M_WAITOK | M_NULLOK);
 	if (sc->sc_isoc_in_frlen == NULL) {
 		printf("%s: Could not allocate isoc-in frame sizes buffer\n",
 			device_get_nameunit(sc->sc_dev));
@@ -676,8 +677,8 @@ ubt_attach(device_t self)
 			device_get_nameunit(sc->sc_dev));
 		goto bad;
 	}
-	sc->sc_isoc_out_frlen = malloc(sizeof(u_int16_t) * sc->sc_isoc_nframes, 
-						M_USBDEV, M_NOWAIT);
+	sc->sc_isoc_out_frlen = kmalloc(sizeof(u_int16_t) * sc->sc_isoc_nframes, 
+						M_USBDEV, M_WAITOK | M_NULLOK);
 	if (sc->sc_isoc_out_frlen == NULL) {
 		printf("%s: Could not allocate isoc-out frame sizes buffer\n",
 			device_get_nameunit(sc->sc_dev));
@@ -851,11 +852,11 @@ ubt_detach(device_t self)
 
 	/* Destroy isoc. frame size buffers */
 	if (sc->sc_isoc_in_frlen != NULL) {
-		free(sc->sc_isoc_in_frlen, M_USBDEV);
+		kfree(sc->sc_isoc_in_frlen, M_USBDEV);
 		sc->sc_isoc_in_frlen = NULL;
 	}
 	if (sc->sc_isoc_out_frlen != NULL) {
-		free(sc->sc_isoc_out_frlen, M_USBDEV);
+		kfree(sc->sc_isoc_out_frlen, M_USBDEV);
 		sc->sc_isoc_out_frlen = NULL;
 	}
 
@@ -1026,11 +1027,11 @@ ubt_intr_start(ubt_softc_p sc)
 		__func__, device_get_nameunit(sc->sc_dev)));
 
 	/* Allocate new mbuf cluster */
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL)
 		return (USBD_NOMEM);
 
-	MCLGET(m, M_DONTWAIT);
+	MCLGET(m, MB_DONTWAIT);
 	if (!(m->m_flags & M_EXT)) {
 		NG_FREE_M(m);
 		return (USBD_NOMEM);
@@ -1192,11 +1193,11 @@ ubt_bulk_in_start(ubt_softc_p sc)
 		__func__, device_get_nameunit(sc->sc_dev)));
 
 	/* Allocate new mbuf cluster */
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL)
 		return (USBD_NOMEM);
 
-	MCLGET(m, M_DONTWAIT);
+	MCLGET(m, MB_DONTWAIT);
 	if (!(m->m_flags & M_EXT)) {
 		NG_FREE_M(m);
 		return (USBD_NOMEM);
@@ -1585,7 +1586,7 @@ ubt_isoc_in_complete2(node_p node, hook_p hook, void *arg1, int arg2)
 		__func__, device_get_nameunit(sc->sc_dev), h->actlen);
 
 	/* Copy SCO data frame to mbuf */
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL) {
 		NG_UBT_ALERT(
 "%s: %s - Could not allocate mbuf\n",
@@ -1990,7 +1991,7 @@ ng_ubt_rcvmsg(node_p node, item_p item, hook_p lasthook)
 	case NGM_GENERIC_COOKIE:
 		switch (msg->header.cmd) {
 		case NGM_TEXT_STATUS:
-			NG_MKRESPONSE(rsp, msg, NG_TEXTRESPONSE, M_NOWAIT);
+			NG_MKRESPONSE(rsp, msg, NG_TEXTRESPONSE, M_WAITOK | M_NULLOK);
 			if (rsp == NULL)
 				error = ENOMEM;
 			else
@@ -2030,7 +2031,7 @@ ng_ubt_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 		case NGM_UBT_NODE_GET_DEBUG:
 			NG_MKRESPONSE(rsp, msg, sizeof(ng_ubt_node_debug_ep),
-				M_NOWAIT);
+				M_WAITOK | M_NULLOK);
 			if (rsp == NULL)
 				error = ENOMEM;
 			else
@@ -2104,7 +2105,7 @@ ng_ubt_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 			if (q != NULL) {
 				NG_MKRESPONSE(rsp, msg, 
-					sizeof(ng_ubt_node_qlen_ep), M_NOWAIT);
+					sizeof(ng_ubt_node_qlen_ep), M_WAITOK | M_NULLOK);
 				if (rsp == NULL) {
 					error = ENOMEM;
 					break;
@@ -2119,7 +2120,7 @@ ng_ubt_rcvmsg(node_p node, item_p item, hook_p lasthook)
 
 		case NGM_UBT_NODE_GET_STAT:
 			NG_MKRESPONSE(rsp, msg, sizeof(ng_ubt_node_stat_ep),
-				M_NOWAIT);
+				M_WAITOK | M_NULLOK);
 			if (rsp == NULL)
 				error = ENOMEM;
 			else

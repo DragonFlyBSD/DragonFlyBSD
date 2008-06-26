@@ -31,12 +31,11 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/atm/ccatm/ng_ccatm.c,v 1.3 2006/09/30 12:37:43 netchild Exp $
+ * $DragonFly: src/sys/netgraph7/atm/ccatm/ng_ccatm.c,v 1.2 2008/06/26 23:05:39 dillon Exp $
+ * $DragonFly: src/sys/netgraph7/atm/ccatm/ng_ccatm.c,v 1.2 2008/06/26 23:05:39 dillon Exp $
  *
  * ATM call control and API
  */
-
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/sys/netgraph/atm/ccatm/ng_ccatm.c,v 1.3 2006/09/30 12:37:43 netchild Exp $");
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -49,17 +48,17 @@ __FBSDID("$FreeBSD: src/sys/netgraph/atm/ccatm/ng_ccatm.c,v 1.3 2006/09/30 12:37
 #include <sys/sbuf.h>
 #include <machine/stdarg.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
 #include <netnatm/unimsg.h>
 #include <netnatm/msg/unistruct.h>
 #include <netnatm/api/unisap.h>
 #include <netnatm/sig/unidef.h>
-#include <netgraph/atm/ngatmbase.h>
-#include <netgraph/atm/ng_uni.h>
+#include "atm/ngatmbase.h"
+#include "atm/ng_uni.h"
 #include <netnatm/api/atmapi.h>
-#include <netgraph/atm/ng_ccatm.h>
+#include "atm/ng_ccatm.h"
 #include <netnatm/api/ccatm.h>
 
 MODULE_DEPEND(ng_ccatm, ngatmbase, 1, 1, 1);
@@ -348,14 +347,14 @@ ng_ccatm_constructor(node_p node)
 {
 	struct ccnode *priv;
 
-	priv = malloc(sizeof(*priv), M_NG_CCATM, M_NOWAIT | M_ZERO);
+	priv = kmalloc(sizeof(*priv), M_NG_CCATM, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 
 	priv->node = node;
 	priv->data = cc_create(&cc_funcs);
 	if (priv->data == NULL) {
-		free(priv, M_NG_CCATM);
+		kfree(priv, M_NG_CCATM);
 		return (ENOMEM);
 	}
 
@@ -377,7 +376,7 @@ ng_ccatm_shutdown(node_p node)
 
 	cc_destroy(priv->data);
 
-	free(priv, M_NG_CCATM);
+	kfree(priv, M_NG_CCATM);
 	NG_NODE_SET_PRIVATE(node, NULL);
 
 	NG_NODE_UNREF(node);
@@ -406,10 +405,10 @@ ng_ccatm_get_addresses(node_p node, uint32_t portno, struct ng_mesg *msg,
 		return (err);
 
 	len = sizeof(*list) + count * sizeof(list->addr[0]);
-	NG_MKRESPONSE(*resp, msg, len, M_NOWAIT);
+	NG_MKRESPONSE(*resp, msg, len, M_WAITOK | M_NULLOK);
 	if (*resp == NULL) {
-		free(addrs, M_NG_CCATM);
-		free(ports, M_NG_CCATM);
+		kfree(addrs, M_NG_CCATM);
+		kfree(ports, M_NG_CCATM);
 		return (ENOMEM);
 	}
 	list = (struct ngm_ccatm_get_addresses *)(*resp)->data;
@@ -420,8 +419,8 @@ ng_ccatm_get_addresses(node_p node, uint32_t portno, struct ng_mesg *msg,
 		list->addr[i].addr = addrs[i];
 	}
 
-	free(addrs, M_NG_CCATM);
-	free(ports, M_NG_CCATM);
+	kfree(addrs, M_NG_CCATM);
+	kfree(ports, M_NG_CCATM);
 
 	return (0);
 }
@@ -436,13 +435,13 @@ send_dump(struct ccdata *data, void *uarg, const char *buf)
 	struct ccnode *priv = uarg;
 
 	if (priv->dump == NULL) {
-		m = m_getcl(M_DONTWAIT, MT_DATA, M_PKTHDR);
+		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (m == NULL)
 			return (ENOBUFS);
 		priv->dump_first = priv->dump_last = m;
 		m->m_pkthdr.len = 0;
 	} else {
-		m = m_getcl(M_DONTWAIT, MT_DATA, 0);
+		m = m_getcl(MB_DONTWAIT, MT_DATA, 0);
 		if (m == 0) {
 			m_freem(priv->dump_first);
 			return (ENOBUFS);
@@ -545,7 +544,7 @@ ng_ccatm_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			    &state);
 			if (error == 0) {
 				NG_MKRESPONSE(resp, msg, sizeof(uint32_t),
-				    M_NOWAIT);
+				    M_WAITOK | M_NULLOK);
 				if (resp == NULL) {
 					error = ENOMEM;
 					break;
@@ -620,7 +619,7 @@ ng_ccatm_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			}
 			arg = (struct ngm_ccatm_port *)msg->data;
 			NG_MKRESPONSE(resp, msg, sizeof(struct atm_port_info),
-			    M_NOWAIT);
+			    M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -628,7 +627,7 @@ ng_ccatm_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			error = cc_port_get_param(priv->data, arg->port,
 			    (struct atm_port_info *)resp->data);
 			if (error != 0) {
-				free(resp, M_NETGRAPH_MSG);
+				kfree(resp, M_NETGRAPH_MSG);
 				resp = NULL;
 			}
 			break;
@@ -661,9 +660,9 @@ ng_ccatm_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				break;
 
 			NG_MKRESPONSE(resp, msg, sizeof(*arg) +
-			    n * sizeof(arg->ports[0]), M_NOWAIT);
+			    n * sizeof(arg->ports[0]), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
-				free(ports, M_NG_CCATM);
+				kfree(ports, M_NG_CCATM);
 				error = ENOMEM;
 				break;
 			}
@@ -672,7 +671,7 @@ ng_ccatm_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			arg->nports = 0;
 			for (arg->nports = 0; arg->nports < n; arg->nports++)
 				arg->ports[arg->nports] = ports[arg->nports];
-			free(ports, M_NG_CCATM);
+			kfree(ports, M_NG_CCATM);
 			break;
 		    }
 
@@ -689,7 +688,7 @@ ng_ccatm_rcvmsg(node_p node, item_p item, hook_p lasthook)
 				cc_set_log(priv->data, *(uint32_t *)msg->data);
 			}
 
-			NG_MKRESPONSE(resp, msg, sizeof(uint32_t), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(uint32_t), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				if (msg->header.arglen != 0)
@@ -736,7 +735,7 @@ ng_ccatm_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			    s.nconns * sizeof(*conns) +
 			    s.nparties * sizeof(*parties);
 
-			NG_MKRESPONSE(resp, msg, offs, M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, offs, M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -761,10 +760,10 @@ ng_ccatm_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			    sizeof(*parties) * s.nparties);
 			offs += sizeof(*parties) * s.nparties;
 
-			free(eps, M_NG_CCATM);
-			free(ports, M_NG_CCATM);
-			free(conns, M_NG_CCATM);
-			free(parties, M_NG_CCATM);
+			kfree(eps, M_NG_CCATM);
+			kfree(ports, M_NG_CCATM);
+			kfree(conns, M_NG_CCATM);
+			kfree(parties, M_NG_CCATM);
 			break;
 		    }
 
@@ -810,7 +809,7 @@ ng_ccatm_newhook(node_p node, hook_p hook, const char *name)
 		if (*end != '\0' || lport == 0 || lport > 0xffffffff)
 			return (EINVAL);
 
-		hd = malloc(sizeof(*hd), M_NG_CCATM, M_NOWAIT);
+		hd = kmalloc(sizeof(*hd), M_NG_CCATM, M_WAITOK | M_NULLOK);
 		if (hd == NULL)
 			return (ENOMEM);
 		hd->is_uni = 1;
@@ -819,7 +818,7 @@ ng_ccatm_newhook(node_p node, hook_p hook, const char *name)
 
 		port = cc_port_create(priv->data, hd, (u_int)lport);
 		if (port == NULL) {
-			free(hd, M_NG_CCATM);
+			kfree(hd, M_NG_CCATM);
 			return (ENOMEM);
 		}
 		hd->inst = port;
@@ -848,7 +847,7 @@ ng_ccatm_newhook(node_p node, hook_p hook, const char *name)
 	/*
 	 * User hook
 	 */
-	hd = malloc(sizeof(*hd), M_NG_CCATM, M_NOWAIT);
+	hd = kmalloc(sizeof(*hd), M_NG_CCATM, M_WAITOK | M_NULLOK);
 	if (hd == NULL)
 		return (ENOMEM);
 	hd->is_uni = 0;
@@ -857,7 +856,7 @@ ng_ccatm_newhook(node_p node, hook_p hook, const char *name)
 
 	user = cc_user_create(priv->data, hd, NG_HOOK_NAME(hook));
 	if (user == NULL) {
-		free(hd, M_NG_CCATM);
+		kfree(hd, M_NG_CCATM);
 		return (ENOMEM);
 	}
 
@@ -896,7 +895,7 @@ ng_ccatm_disconnect(hook_p hook)
 
 		cc = hd->node->data;
 
-		free(hd, M_NG_CCATM);
+		kfree(hd, M_NG_CCATM);
 		NG_HOOK_SET_PRIVATE(hook, NULL);
 
 		priv->hook_cnt--;
@@ -960,7 +959,7 @@ pack_buf(void *h, size_t hlen, void *t, size_t tlen)
 	size_t n;
 
 	/* header should fit into a normal mbuf */
-	MGETHDR(m0, M_NOWAIT, MT_DATA);
+	MGETHDR(m0, MB_DONTWAIT, MT_DATA);
 	if (m0 == NULL)
 		return NULL;
 
@@ -973,11 +972,11 @@ pack_buf(void *h, size_t hlen, void *t, size_t tlen)
 	last = m0;
 	while ((n = tlen) != 0) {
 		if (n > MLEN) {
-			m = m_getcl(M_NOWAIT, MT_DATA, 0);
+			m = m_getcl(MB_DONTWAIT, MT_DATA, 0);
 			if (n > MCLBYTES)
 				n = MCLBYTES;
 		} else
-			MGET(m, M_NOWAIT, MT_DATA);
+			MGET(m, MB_DONTWAIT, MT_DATA);
 
 		if(m == NULL)
 			goto drop;

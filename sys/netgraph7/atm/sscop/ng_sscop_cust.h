@@ -27,6 +27,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/atm/sscop/ng_sscop_cust.h,v 1.5 2005/01/07 01:45:41 imp Exp $
+ * $DragonFly: src/sys/netgraph7/atm/sscop/ng_sscop_cust.h,v 1.2 2008/06/26 23:05:39 dillon Exp $
+ * $DragonFly: src/sys/netgraph7/atm/sscop/ng_sscop_cust.h,v 1.2 2008/06/26 23:05:39 dillon Exp $
  *
  * Customisation of the SSCOP code to ng_sscop.
  */
@@ -40,9 +42,9 @@
 #include <sys/queue.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
 #include <machine/stdarg.h>
+#include "ng_message.h"
+#include "netgraph.h"
 
 #include <netnatm/saal/sscopdef.h>
 
@@ -59,9 +61,9 @@
 	DECL_MBUF_ALLOC
 
 #define	MEMZALLOC(PTR, CAST, SIZE) \
-	((PTR) = (CAST)malloc((SIZE), M_NG_SSCOP, M_NOWAIT | M_ZERO))
+	((PTR) = (CAST)kmalloc((SIZE), M_NG_SSCOP, M_WAITOK | M_NULLOK | M_ZERO))
 #define	MEMFREE(PTR) \
-	free((PTR), M_NG_SSCOP)
+	kfree((PTR), M_NG_SSCOP)
 
 #define	MSG_ALLOC(PTR) \
 	MEMZALLOC(PTR, struct sscop_msg *, sizeof(struct sscop_msg))
@@ -84,21 +86,21 @@
 	DECL_MBUF_ALLOC
 
 #define	MEMZALLOC(PTR, CAST, SIZE)					\
-	((PTR) = (CAST)malloc((SIZE), M_NG_SSCOP_INS, M_NOWAIT | M_ZERO))
+	((PTR) = (CAST)kmalloc((SIZE), M_NG_SSCOP_INS, M_WAITOK | M_NULLOK | M_ZERO))
 #define	MEMFREE(PTR)							\
-	free((PTR), M_NG_SSCOP_INS)
+	kfree((PTR), M_NG_SSCOP_INS)
 
 #define	MSG_ALLOC(PTR)							\
-	((PTR) = malloc(sizeof(struct sscop_msg),			\
-	    M_NG_SSCOP_MSG, M_NOWAIT | M_ZERO))
+	((PTR) = kmalloc(sizeof(struct sscop_msg),			\
+	    M_NG_SSCOP_MSG, M_WAITOK | M_NULLOK | M_ZERO))
 #define	MSG_FREE(PTR)							\
-	free((PTR), M_NG_SSCOP_MSG)
+	kfree((PTR), M_NG_SSCOP_MSG)
 
 #define	SIG_ALLOC(PTR)							\
-	((PTR) = malloc(sizeof(struct sscop_sig),			\
-	    M_NG_SSCOP_SIG, M_NOWAIT | M_ZERO))
+	((PTR) = kmalloc(sizeof(struct sscop_sig),			\
+	    M_NG_SSCOP_SIG, M_WAITOK | M_NULLOK | M_ZERO))
 #define	SIG_FREE(PTR)							\
-	free((PTR), M_NG_SSCOP_SIG)
+	kfree((PTR), M_NG_SSCOP_SIG)
 
 #endif
 
@@ -234,7 +236,7 @@ ng_sscop_sigq_get(struct sscop_sigq *q)					\
  * Message buffers
  */
 #define	MBUF_FREE(M)	do { if ((M)) m_freem((M)); } while(0)
-#define	MBUF_DUP(M)	m_copypacket((M), M_NOWAIT)
+#define	MBUF_DUP(M)	m_copypacket((M), MB_DONTWAIT)
 #define	MBUF_LEN(M) 	((size_t)(M)->m_pkthdr.len)
 
 /*
@@ -322,12 +324,12 @@ ng_sscop_mbuf_alloc(size_t n)						\
 {									\
 	struct mbuf *m;							\
 									\
-	MGETHDR(m, M_NOWAIT, MT_DATA);					\
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);				\
 	if (m != NULL) {						\
 		m->m_len = 0;						\
 		m->m_pkthdr.len = 0;					\
 		if (n > MHLEN) {					\
-			MCLGET(m, M_NOWAIT);				\
+			MCLGET(m, MB_DONTWAIT);				\
 			if (!(m->m_flags & M_EXT)){			\
 				m_free(m);				\
 				m = NULL;				\

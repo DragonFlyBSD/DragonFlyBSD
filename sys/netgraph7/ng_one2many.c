@@ -38,6 +38,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_one2many.c,v 1.21 2005/03/11 10:29:38 glebius Exp $
+ * $DragonFly: src/sys/netgraph7/ng_one2many.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 /*
@@ -56,10 +57,10 @@
 #include <sys/mbuf.h>
 #include <sys/errno.h>
 
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/ng_parse.h>
-#include <netgraph/ng_one2many.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "ng_parse.h"
+#include "ng_one2many.h"
 
 /* Per-link private data */
 struct ng_one2many_link {
@@ -187,7 +188,7 @@ ng_one2many_constructor(node_p node)
 	priv_p priv;
 
 	/* Allocate and initialize private info */
-	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT | M_ZERO);
+	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_WAITOK | M_NULLOK | M_ZERO);
 	if (priv == NULL)
 		return (ENOMEM);
 	priv->conf.xmitAlg = NG_ONE2MANY_XMIT_ROUNDROBIN;
@@ -307,7 +308,7 @@ ng_one2many_rcvmsg(node_p node, item_p item, hook_p lasthook)
 		    {
 			struct ng_one2many_config *conf;
 
-			NG_MKRESPONSE(resp, msg, sizeof(*conf), M_NOWAIT);
+			NG_MKRESPONSE(resp, msg, sizeof(*conf), M_WAITOK | M_NULLOK);
 			if (resp == NULL) {
 				error = ENOMEM;
 				break;
@@ -342,7 +343,7 @@ ng_one2many_rcvmsg(node_p node, item_p item, hook_p lasthook)
 			/* Get/clear stats */
 			if (msg->header.cmd != NGM_ONE2MANY_CLR_STATS) {
 				NG_MKRESPONSE(resp, msg,
-				    sizeof(link->stats), M_NOWAIT);
+				    sizeof(link->stats), M_WAITOK | M_NULLOK);
 				if (resp == NULL) {
 					error = ENOMEM;
 					break;
@@ -460,7 +461,7 @@ ng_one2many_rcvdata(hook_p hook, item_p item)
 				struct ng_one2many_link *mdst;
 
 				mdst = &priv->many[priv->activeMany[i]];
-				m2 = m_dup(m, M_DONTWAIT);        /* XXX m_copypacket() */
+				m2 = m_dup(m, MB_DONTWAIT);        /* XXX m_copypacket() */
 				if (m2 == NULL) {
 					mdst->stats.memoryFailures++;
 					NG_FREE_ITEM(item);
@@ -603,7 +604,7 @@ ng_one2many_notify(priv_p priv, uint32_t cmd)
 	if (priv->one.hook == NULL)
 		return;
 
-	NG_MKMESSAGE(msg, NGM_FLOW_COOKIE, cmd, 0, M_NOWAIT);
+	NG_MKMESSAGE(msg, NGM_FLOW_COOKIE, cmd, 0, M_WAITOK | M_NULLOK);
 	if (msg != NULL)
 		NG_SEND_MSG_HOOK(dummy_error, priv->node, msg, priv->one.hook, 0);
 }

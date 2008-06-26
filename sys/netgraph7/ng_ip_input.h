@@ -65,6 +65,7 @@
  * Derived from:	ng_hole.h
  *
  * $FreeBSD: src/sys/netgraph/ng_ip_input.h,v 1.3 2005/01/07 01:45:39 imp Exp $
+ * $DragonFly: src/sys/netgraph7/ng_ip_input.h,v 1.2 2008/06/26 23:05:35 dillon Exp $
  */
 
 #ifndef _NETGRAPH_NG_IP_INPUT_H_

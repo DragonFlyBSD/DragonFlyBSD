@@ -29,6 +29,7 @@
  *
  * $Id: ng_l2cap_misc.c,v 1.5 2003/09/08 19:11:45 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/l2cap/ng_l2cap_misc.c,v 1.12 2005/08/31 18:13:23 emax Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/l2cap/ng_l2cap_misc.c,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,17 +38,17 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/queue.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/bluetooth/include/ng_bluetooth.h>
-#include <netgraph/bluetooth/include/ng_hci.h>
-#include <netgraph/bluetooth/include/ng_l2cap.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_var.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_cmds.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_evnt.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_llpi.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_ulpi.h>
-#include <netgraph/bluetooth/l2cap/ng_l2cap_misc.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "bluetooth/include/ng_bluetooth.h"
+#include "bluetooth/include/ng_hci.h"
+#include "bluetooth/include/ng_l2cap.h"
+#include "bluetooth/l2cap/ng_l2cap_var.h"
+#include "bluetooth/l2cap/ng_l2cap_cmds.h"
+#include "bluetooth/l2cap/ng_l2cap_evnt.h"
+#include "bluetooth/l2cap/ng_l2cap_llpi.h"
+#include "bluetooth/l2cap/ng_l2cap_ulpi.h"
+#include "bluetooth/l2cap/ng_l2cap_misc.h"
 
 static u_int16_t	ng_l2cap_get_cid	(ng_l2cap_p);
 
@@ -78,7 +79,7 @@ ng_l2cap_send_hook_info(node_p node, hook_p hook, void *arg1, int arg2)
 		return;
 
 	NG_MKMESSAGE(msg, NGM_L2CAP_COOKIE, NGM_L2CAP_NODE_HOOK_INFO,
-		sizeof(bdaddr_t), M_NOWAIT);
+		sizeof(bdaddr_t), M_WAITOK | M_NULLOK);
 	if (msg != NULL) {
 		bcopy(&l2cap->bdaddr, msg->data, sizeof(bdaddr_t));
 		NG_SEND_MSG_HOOK(error, node, msg, hook, 0);
@@ -105,7 +106,7 @@ ng_l2cap_new_con(ng_l2cap_p l2cap, bdaddr_p bdaddr)
 
 	/* Create new connection descriptor */
 	MALLOC(con, ng_l2cap_con_p, sizeof(*con), M_NETGRAPH_L2CAP,
-		M_NOWAIT|M_ZERO);
+		M_WAITOK | M_NULLOK | M_ZERO);
 	if (con == NULL)
 		return (NULL);
 
@@ -330,7 +331,7 @@ ng_l2cap_new_chan(ng_l2cap_p l2cap, ng_l2cap_con_p con, u_int16_t psm)
 	ng_l2cap_chan_p	ch = NULL;
 
 	MALLOC(ch, ng_l2cap_chan_p, sizeof(*ch), M_NETGRAPH_L2CAP,
-		M_NOWAIT|M_ZERO);
+		M_WAITOK | M_NULLOK | M_ZERO);
 	if (ch == NULL)
 		return (NULL);
 
@@ -426,7 +427,7 @@ ng_l2cap_new_cmd(ng_l2cap_con_p con, ng_l2cap_chan_p ch, u_int8_t ident,
 		__func__, NG_NODE_NAME(con->l2cap->node)));
 
 	MALLOC(cmd, ng_l2cap_cmd_p, sizeof(*cmd), M_NETGRAPH_L2CAP,
-		M_NOWAIT|M_ZERO);
+		M_WAITOK | M_NULLOK | M_ZERO);
 	if (cmd == NULL)
 		return (NULL);
 
@@ -558,7 +559,7 @@ ng_l2cap_command_untimeout(ng_l2cap_cmd_p cmd)
 struct mbuf *
 ng_l2cap_prepend(struct mbuf *m, int size)
 {
-	M_PREPEND(m, size, M_DONTWAIT);
+	M_PREPEND(m, size, MB_DONTWAIT);
 	if (m == NULL || (m->m_len < size && (m = m_pullup(m, size)) == NULL))
 		return (NULL);
 

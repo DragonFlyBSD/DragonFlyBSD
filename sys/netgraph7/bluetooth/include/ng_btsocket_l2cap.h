@@ -29,6 +29,7 @@
  *
  * $Id: ng_btsocket_l2cap.h,v 1.4 2003/03/25 23:53:33 max Exp $
  * $FreeBSD: src/sys/netgraph/bluetooth/include/ng_btsocket_l2cap.h,v 1.8 2006/07/21 17:11:13 rwatson Exp $
+ * $DragonFly: src/sys/netgraph7/bluetooth/include/ng_btsocket_l2cap.h,v 1.2 2008/06/26 23:05:40 dillon Exp $
  */
 
 #ifndef _NETGRAPH_BTSOCKET_L2CAP_H_

@@ -29,6 +29,8 @@
  * Customisation of call control source to the NG environment.
  *
  * $FreeBSD: src/sys/netgraph/atm/ccatm/ng_ccatm_cust.h,v 1.2 2005/01/07 01:45:41 imp Exp $
+ * $DragonFly: src/sys/netgraph7/atm/ccatm/ng_ccatm_cust.h,v 1.2 2008/06/26 23:05:39 dillon Exp $
+ * $DragonFly: src/sys/netgraph7/atm/ccatm/ng_ccatm_cust.h,v 1.2 2008/06/26 23:05:39 dillon Exp $ 
  */
 
 #include <sys/param.h>
@@ -39,16 +41,16 @@
 #include <sys/lock.h>
 #include <sys/mutex.h>
 #include <sys/mbuf.h>
-#include <netgraph/ng_message.h>
-#include <netgraph/netgraph.h>
-#include <netgraph/atm/ngatmbase.h>
+#include "ng_message.h"
+#include "netgraph.h"
+#include "atm/ngatmbase.h"
 
 #define	CCASSERT(E, M) KASSERT(E, M)
 
 MALLOC_DECLARE(M_NG_CCATM);
 
-#define	CCMALLOC(S)	(malloc((S), M_NG_CCATM, M_NOWAIT))
-#define	CCZALLOC(S)	(malloc((S), M_NG_CCATM, M_NOWAIT | M_ZERO))
-#define	CCFREE(P)	do { free((P), M_NG_CCATM); } while (0)
+#define	CCMALLOC(S)	(kmalloc((S), M_NG_CCATM, M_WAITOK | M_NULLOK))
+#define	CCZALLOC(S)	(kmalloc((S), M_NG_CCATM, M_WAITOK | M_NULLOK | M_ZERO))
+#define	CCFREE(P)	do { kfree((P), M_NG_CCATM); } while (0)
 
 #define	CCGETERRNO()	(ENOMEM)
