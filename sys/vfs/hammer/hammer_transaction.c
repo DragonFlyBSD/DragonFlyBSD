@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.21 2008/06/24 17:38:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.22 2008/06/26 04:06:23 dillon Exp $
  */
 
 #include "hammer.h"
@@ -141,12 +141,18 @@ static hammer_tid_t
 hammer_alloc_tid(hammer_mount_t hmp, int count)
 {
 	hammer_tid_t tid;
-	int multiplier = (hmp->masterid < 0) ? 1 : HAMMER_MAX_MASTERS;
 
-	tid = (hmp->next_tid + multiplier) & ~(hammer_tid_t)(multiplier - 1);
-	if (tid >= 0xFFFFFFFFFFFFF000ULL)
+	if (hmp->masterid < 0) {
+		tid = hmp->next_tid + 1;
+		hmp->next_tid = tid + count;
+	} else {
+		tid = (hmp->next_tid + HAMMER_MAX_MASTERS) &
+		      ~(hammer_tid_t)(HAMMER_MAX_MASTERS - 1);
+		hmp->next_tid = tid + count * HAMMER_MAX_MASTERS;
+		tid |= hmp->masterid;
+	}
+	if (tid >= 0xFFFFFFFFFF000000ULL)
 		panic("hammer_start_transaction: Ran out of TIDs!");
-	hmp->next_tid = tid + count * multiplier;
 	if (hammer_debug_tid)
 		kprintf("alloc_tid %016llx\n", tid);
 	return(tid);

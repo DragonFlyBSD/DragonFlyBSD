@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.57 2008/06/20 21:24:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.58 2008/06/26 04:06:22 dillon Exp $
  */
 
 /*
@@ -184,6 +184,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 		 */
 		if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
 			elm = &node->elms[cursor->index];
+
 			r = hammer_btree_cmp(&cursor->key_end, &elm[0].base);
 			s = hammer_btree_cmp(&cursor->key_beg, &elm[1].base);
 			if (hammer_debug_btree) {
@@ -223,6 +224,18 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 			 * Better not be zero
 			 */
 			KKASSERT(elm->internal.subtree_offset != 0);
+
+			/*
+			 * If running the mirror filter see if we can skip
+			 * the entire sub-tree.
+			 */
+			if (cursor->flags & HAMMER_CURSOR_MIRROR_FILTERED) {
+				if (elm->internal.mirror_tid <
+				    cursor->mirror_tid) {
+					++cursor->index;
+					continue;
+				}
+			}
 
 			error = hammer_cursor_down(cursor);
 			if (error)
@@ -682,7 +695,28 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm)
 	}
 	node->elms[i].leaf = *elm;
 	++node->count;
+
+	/*
+	 * Update the leaf node's aggregate mirror_tid for mirroring
+	 * support.
+	 */
+	if (node->mirror_tid < elm->base.delete_tid)
+		node->mirror_tid = elm->base.delete_tid;
+	if (node->mirror_tid < elm->base.create_tid)
+		node->mirror_tid = elm->base.create_tid;
 	hammer_modify_node_done(cursor->node);
+
+	/*
+	 * What we really want to do is propogate mirror_tid all the way
+	 * up the parent chain to the B-Tree root.  That would be
+	 * ultra-expensive, though.
+	 */
+	if (cursor->parent &&
+	    (cursor->trans->hmp->hflags & (HMNT_MASTERID|HMNT_SLAVE))) {
+		hammer_btree_mirror_propagate(cursor->trans, cursor->parent,
+					      cursor->parent_index,
+					      node->mirror_tid);
+	}
 
 	/*
 	 * Debugging sanity checks.
@@ -1966,6 +2000,11 @@ hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid)
  * This routine is always called with an empty, locked leaf but may recurse
  * into want-to-be-empty parents as part of its operation.
  *
+ * It should also be noted that when removing empty leaves we must be sure
+ * to test and update mirror_tid because another thread may have deadlocked
+ * against us (or someone) trying to propogate it up and cannot retry once
+ * the node has been deleted.
+ *
  * On return the cursor may end up pointing to an internal node, suitable
  * for further iteration but not for an immediate insertion or deletion.
  */
@@ -1985,10 +2024,11 @@ btree_remove(hammer_cursor_t cursor)
 	 * When deleting the root of the filesystem convert it to
 	 * an empty leaf node.  Internal nodes cannot be empty.
 	 */
-	if (node->ondisk->parent == 0) {
+	ondisk = node->ondisk;
+	if (ondisk->parent == 0) {
 		KKASSERT(cursor->parent == NULL);
 		hammer_modify_node_all(cursor->trans, node);
-		ondisk = node->ondisk;
+		KKASSERT(ondisk == node->ondisk);
 		ondisk->type = HAMMER_BTREE_TYPE_LEAF;
 		ondisk->count = 0;
 		hammer_modify_node_done(node);
@@ -1996,13 +2036,26 @@ btree_remove(hammer_cursor_t cursor)
 		return(0);
 	}
 
+	parent = cursor->parent;
+
+	/*
+	 * If another thread deadlocked trying to propogate mirror_tid up
+	 * we have to finish the job before deleting node. XXX
+	 */
+	if (parent->ondisk->mirror_tid < node->ondisk->mirror_tid &&
+	    (cursor->trans->hmp->hflags & (HMNT_MASTERID|HMNT_SLAVE))) {
+		hammer_btree_mirror_propagate(cursor->trans,
+					      parent,
+					      cursor->parent_index,
+					      node->ondisk->mirror_tid);
+
+	}
+
 	/*
 	 * Attempt to remove the parent's reference to the child.  If the
 	 * parent would become empty we have to recurse.  If we fail we 
 	 * leave the parent pointing to an empty leaf node.
 	 */
-	parent = cursor->parent;
-
 	if (parent->ondisk->count == 1) {
 		/*
 		 * This special cursor_up_locked() call leaves the original
@@ -2042,6 +2095,7 @@ btree_remove(hammer_cursor_t cursor)
 		hammer_modify_node_all(cursor->trans, parent);
 		ondisk = parent->ondisk;
 		KKASSERT(ondisk->type == HAMMER_BTREE_TYPE_INTERNAL);
+
 		elm = &ondisk->elms[cursor->parent_index];
 		KKASSERT(elm->internal.subtree_offset == node->node_offset);
 		KKASSERT(ondisk->count > 0);
@@ -2059,6 +2113,118 @@ btree_remove(hammer_cursor_t cursor)
 		error = hammer_cursor_up(cursor);
 	}
 	return (error);
+}
+
+/*
+ * Propagate a mirror TID update upwards through the B-Tree to the root.
+ *
+ * A locked internal node must be passed in.  The node will remain locked
+ * on return.
+ *
+ * This function syncs mirror_tid at the specified internal node's element,
+ * adjusts the node's aggregation mirror_tid, and then recurses upwards.
+ */
+int
+hammer_btree_mirror_propagate(hammer_transaction_t trans, hammer_node_t node,
+			      int index, hammer_tid_t mirror_tid)
+{
+	hammer_btree_internal_elm_t elm;
+	hammer_node_t parent;
+	int parent_index;
+	int error;
+
+	KKASSERT (node->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL);
+
+	/*
+	 * Adjust the node's element
+	 */
+	elm = &node->ondisk->elms[index].internal;
+	if (elm->mirror_tid >= mirror_tid)
+		return(0);
+	hammer_modify_node(trans, node, &elm->mirror_tid,
+			   sizeof(elm->mirror_tid));
+	elm->mirror_tid = mirror_tid;
+	hammer_modify_node_done(node);
+
+	/*
+	 * Adjust the node's mirror_tid aggragator
+	 */
+	if (node->ondisk->mirror_tid >= mirror_tid)
+		return(0);
+	hammer_modify_node_field(trans, node, mirror_tid);
+	node->ondisk->mirror_tid = mirror_tid;
+	hammer_modify_node_done(node);
+
+	error = 0;
+		error = 0;
+	if (node->ondisk->parent &&
+	    (trans->hmp->hflags & (HMNT_MASTERID|HMNT_SLAVE))) {
+		parent = hammer_btree_get_parent(node, &parent_index,
+						 &error, 1);
+		if (parent) {
+			hammer_btree_mirror_propagate(trans, parent,
+						      parent_index, mirror_tid);
+			hammer_unlock(&parent->lock);
+			hammer_rel_node(parent);
+		}
+	}
+	return(error);
+}
+
+hammer_node_t
+hammer_btree_get_parent(hammer_node_t node, int *parent_indexp, int *errorp,
+			int try_exclusive)
+{
+	hammer_node_t parent;
+	hammer_btree_elm_t elm;
+	int i;
+
+	/*
+	 * Get the node
+	 */
+	parent = hammer_get_node(node->hmp, node->ondisk->parent, 0, errorp);
+	if (*errorp) {
+		KKASSERT(parent == NULL);
+		return(NULL);
+	}
+	KKASSERT ((parent->flags & HAMMER_NODE_DELETED) == 0);
+
+	/*
+	 * Lock the node
+	 */
+	if (try_exclusive) {
+		if (hammer_lock_ex_try(&parent->lock)) {
+			hammer_rel_node(parent);
+			*errorp = EDEADLK;
+			return(NULL);
+		}
+	} else {
+		hammer_lock_sh(&parent->lock);
+	}
+
+	/*
+	 * Figure out which element in the parent is pointing to the
+	 * child.
+	 */
+	if (node->ondisk->count) {
+		i = hammer_btree_search_node(&node->ondisk->elms[0].base,
+					     parent->ondisk);
+	} else {
+		i = 0;
+	}
+	while (i < parent->ondisk->count) {
+		elm = &parent->ondisk->elms[i];
+		if (elm->internal.subtree_offset == node->node_offset)
+			break;
+		++i;
+	}
+	if (i == parent->ondisk->count) {
+		hammer_unlock(&parent->lock);
+		panic("Bad B-Tree link: parent %p node %p\n", parent, node);
+	}
+	*parent_indexp = i;
+	KKASSERT(*errorp == 0);
+	return(parent);
 }
 
 /*

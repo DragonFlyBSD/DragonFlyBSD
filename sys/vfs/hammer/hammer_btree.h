@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.23 2008/06/24 17:38:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.h,v 1.24 2008/06/26 04:06:22 dillon Exp $
  */
 
 /*
@@ -144,6 +144,8 @@ struct hammer_btree_internal_elm {
 	int32_t		unused02;
 	int32_t		unused03;
 };
+
+typedef struct hammer_btree_internal_elm *hammer_btree_internal_elm_t;
 
 /*
  * Leaf B-Tree element (40 + 24 = 64 bytes).

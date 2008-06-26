@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.7 2008/06/24 17:38:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.8 2008/06/26 04:06:23 dillon Exp $
  */
 
 #include "hammer.h"
@@ -44,10 +44,7 @@
  * created during the iteration due to alignments.  This also allows us
  * to adjust alignments without blowing up the B-Tree.
  */
-static int check_prune(struct hammer_ioc_prune *prune, hammer_btree_elm_t elm,
-			int *realign_cre, int *realign_del);
-static int realign_prune(struct hammer_ioc_prune *prune, hammer_cursor_t cursor,
-			int realign_cre, int realign_del);
+static int check_prune(struct hammer_ioc_prune *prune, hammer_btree_elm_t elm);
 
 int
 hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
@@ -59,8 +56,6 @@ hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 	struct hammer_ioc_prune_elm *user_elms;
 	int error;
 	int isdir;
-	int realign_cre;
-	int realign_del;
 	int elm_array_size;
 
 	if (prune->nelms < 0 || prune->nelms > HAMMER_MAX_PRUNE_ELMS)
@@ -167,7 +162,7 @@ retry:
 					elm->base.delete_tid);
 		}
 				
-		if (check_prune(prune, elm, &realign_cre, &realign_del) == 0) {
+		if (check_prune(prune, elm) == 0) {
 			if (hammer_debug_general & 0x0200) {
 				kprintf("check %016llx %016llx: DELETE\n",
 					elm->base.obj_id, elm->base.key);
@@ -198,18 +193,6 @@ retry:
 			 * to skip it (since we are iterating backwards).
 			 */
 			cursor.flags |= HAMMER_CURSOR_ATEDISK;
-		} else if (realign_cre >= 0 || realign_del >= 0) {
-			error = realign_prune(prune, &cursor,
-					      realign_cre, realign_del);
-			if (error == 0) {
-				cursor.flags |= HAMMER_CURSOR_ATEDISK;
-				if (hammer_debug_general & 0x0200) {
-					kprintf("check %016llx %016llx: "
-						"REALIGN\n",
-						elm->base.obj_id,
-						elm->base.key);
-				}
-			}
 		} else {
 			cursor.flags |= HAMMER_CURSOR_ATEDISK;
 			if (hammer_debug_general & 0x0100) {
@@ -241,14 +224,10 @@ failed:
  * Check pruning list.  The list must be sorted in descending order.
  */
 static int
-check_prune(struct hammer_ioc_prune *prune, hammer_btree_elm_t elm,
-	    int *realign_cre, int *realign_del)
+check_prune(struct hammer_ioc_prune *prune, hammer_btree_elm_t elm)
 {
 	struct hammer_ioc_prune_elm *scan;
 	int i;
-
-	*realign_cre = -1;
-	*realign_del = -1;
 
 	/*
 	 * If pruning everything remove all records with a non-zero
@@ -263,6 +242,7 @@ check_prune(struct hammer_ioc_prune *prune, hammer_btree_elm_t elm,
 	for (i = 0; i < prune->nelms; ++i) {
 		scan = &prune->elms[i];
 
+#if 0
 		/*
 		 * Locate the scan index covering the create and delete TIDs.
 		 */
@@ -276,6 +256,7 @@ check_prune(struct hammer_ioc_prune *prune, hammer_btree_elm_t elm,
 		    elm->base.delete_tid <= scan->end_tid) {
 			*realign_del = i;
 		}
+#endif
 
 		/*
 		 * Now check for loop termination.
@@ -299,7 +280,18 @@ check_prune(struct hammer_ioc_prune *prune, hammer_btree_elm_t elm,
 	return(-1);
 }
 
+#if 0
+
 /*
+ * NOTE: THIS CODE HAS BEEN REMOVED!  Pruning no longer attempts to realign
+ *	 adjacent records because it seriously interferes with every 
+ *	 mirroring algorithm I could come up with.
+ *
+ *	 This means that historical accesses beyond the first snapshot
+ *	 softlink should be on snapshot boundaries only.  Historical
+ *	 accesses from "now" to the first snapshot softlink continue to
+ *	 be fine-grained.
+ *
  * Align the record to cover any gaps created through the deletion of
  * records within the pruning space.  If we were to just delete the records
  * there would be gaps which in turn would cause a snapshot that is NOT on
@@ -392,3 +384,4 @@ realign_prune(struct hammer_ioc_prune *prune,
 	return (error);
 }
 
+#endif

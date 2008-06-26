@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.32 2008/06/20 05:38:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.33 2008/06/26 04:06:22 dillon Exp $
  */
 
 /*
@@ -308,54 +308,21 @@ hammer_load_cursor_parent(hammer_cursor_t cursor, int try_exclusive)
 	hammer_node_t node;
 	hammer_btree_elm_t elm;
 	int error;
-	int i;
+	int parent_index;
 
 	hmp = cursor->trans->hmp;
 
 	if (cursor->node->ondisk->parent) {
 		node = cursor->node;
-		parent = hammer_get_node(hmp, node->ondisk->parent, 0, &error);
-		if (error)
-			return(error);
-		if (try_exclusive) {
-			if (hammer_lock_ex_try(&parent->lock)) {
-				hammer_rel_node(parent);
-				return(EDEADLK);
-			}
-		} else {
-			hammer_lock_sh(&parent->lock);
+		parent = hammer_btree_get_parent(node, &parent_index,
+						 &error, try_exclusive);
+		if (error == 0) {
+			elm = &parent->ondisk->elms[parent_index];
+			cursor->parent = parent;
+			cursor->parent_index = parent_index;
+			cursor->left_bound = &elm[0].internal.base;
+			cursor->right_bound = &elm[1].internal.base;
 		}
-		KKASSERT ((parent->flags & HAMMER_NODE_DELETED) == 0);
-		elm = NULL;
-
-		/*
-		 * Locate the parent index to the child node as quickly
-		 * as possible.
-		 */
-		if (node->ondisk->count) {
-			i = hammer_btree_search_node(
-				&node->ondisk->elms[0].base, node->ondisk);
-		} else {
-			i = 0;
-		}
-		while (i < parent->ondisk->count) {
-			elm = &parent->ondisk->elms[i];
-			if (parent->ondisk->elms[i].internal.subtree_offset ==
-			    node->node_offset) {
-				break;
-			}
-			++i;
-		}
-		if (i == parent->ondisk->count) {
-			hammer_unlock(&parent->lock);
-			panic("Bad B-Tree link: parent %p node %p\n", parent, node);
-		}
-		KKASSERT(i != parent->ondisk->count);
-		cursor->parent = parent;
-		cursor->parent_index = i;
-		cursor->left_bound = &elm[0].internal.base;
-		cursor->right_bound = &elm[1].internal.base;
-		return(error);
 	} else {
 		cursor->parent = NULL;
 		cursor->parent_index = 0;

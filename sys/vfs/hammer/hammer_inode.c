@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.84 2008/06/24 17:38:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.85 2008/06/26 04:06:23 dillon Exp $
  */
 
 #include "hammer.h"
@@ -344,7 +344,7 @@ loop:
 	ip->flags = flags & HAMMER_INODE_RO;
 	ip->cache[0].ip = ip;
 	ip->cache[1].ip = ip;
-	if (hmp->ronly)
+	if (hmp->ronly || (hmp->hflags & HMNT_SLAVE))
 		ip->flags |= HAMMER_INODE_RO;
 	ip->sync_trunc_off = ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
 	RB_INIT(&ip->rec_tree);

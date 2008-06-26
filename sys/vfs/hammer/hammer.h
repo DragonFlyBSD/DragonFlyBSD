@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.92 2008/06/24 17:38:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.93 2008/06/26 04:06:22 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -523,6 +523,7 @@ struct hammer_node {
 #define HAMMER_NODE_FLUSH	0x0002
 #define HAMMER_NODE_CRCGOOD	0x0004
 #define HAMMER_NODE_NEEDSCRC	0x0008
+#define HAMMER_NODE_NEEDSMIRROR	0x0010
 
 typedef struct hammer_node	*hammer_node_t;
 
@@ -833,6 +834,10 @@ int	hammer_btree_iterate_reverse(hammer_cursor_t cursor);
 int	hammer_btree_insert(hammer_cursor_t cursor,
 			    hammer_btree_leaf_elm_t elm);
 int	hammer_btree_delete(hammer_cursor_t cursor);
+int	hammer_btree_mirror_propagate(hammer_transaction_t trans,
+			    hammer_node_t node, int index,
+			    hammer_tid_t mirror_tid);
+
 int	hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2);
 int	hammer_btree_chkts(hammer_tid_t ts, hammer_base_elm_t key);
 int	hammer_btree_correct_rhb(hammer_cursor_t cursor, hammer_tid_t tid);
@@ -844,6 +849,8 @@ int	hammer_btree_lock_children(hammer_cursor_t cursor,
                         struct hammer_node_locklist **locklistp);
 void	hammer_btree_unlock_children(struct hammer_node_locklist **locklistp);
 int	hammer_btree_search_node(hammer_base_elm_t elm, hammer_node_ondisk_t node);
+hammer_node_t hammer_btree_get_parent(hammer_node_t node, int *parent_indexp,
+			int *errorp, int try_exclusive);
 
 void	hammer_print_btree_node(hammer_node_ondisk_t ondisk);
 void	hammer_print_btree_elm(hammer_btree_elm_t elm, u_int8_t type, int i);
@@ -1005,6 +1012,10 @@ int hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 			struct hammer_ioc_reblock *reblock);
 int hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 			struct hammer_ioc_prune *prune);
+int hammer_ioc_mirror_read(hammer_transaction_t trans, hammer_inode_t ip,
+			struct hammer_ioc_mirror_rw *mirror);
+int hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
+			struct hammer_ioc_mirror_rw *mirror);
 
 int hammer_signal_check(hammer_mount_t hmp);
 

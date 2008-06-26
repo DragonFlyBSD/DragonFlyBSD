@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.75 2008/06/24 17:38:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.76 2008/06/26 04:06:23 dillon Exp $
  */
 
 #include "hammer.h"
@@ -590,8 +590,11 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 		     struct hammer_inode *dip, const char *name, int bytes,
 		     struct hammer_inode *ip)
 {
+	struct hammer_cursor cursor;
 	hammer_record_t record;
 	int error;
+	int count;
+	u_int32_t iterator;
 
 	record = hammer_alloc_mem_record(dip, HAMMER_ENTRY_SIZE(bytes));
 	if (++trans->hmp->namekey_iterator == 0)
@@ -613,6 +616,31 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 	hammer_modify_inode(ip, HAMMER_INODE_DDIRTY);
 
 	/*
+	 * Find an unused namekey.  Both the in-memory record tree and
+	 * the B-Tree are checked.  Exact matches also match create_tid
+	 * so use an ASOF search to (mostly) ignore it.
+	 */
+	hammer_init_cursor(trans, &cursor, &dip->cache[1], dip);
+	cursor.key_beg = record->leaf.base;
+	cursor.flags |= HAMMER_CURSOR_ASOF;
+	cursor.asof = ip->obj_asof;
+
+	count = 0;
+	while (hammer_ip_lookup(&cursor) == 0) {
+		iterator = (u_int32_t)record->leaf.base.key + 1;
+		if (iterator == 0)
+			iterator = 1;
+		record->leaf.base.key &= ~0xFFFFFFFFLL;
+		record->leaf.base.key |= iterator;
+		cursor.key_beg.key = record->leaf.base.key;
+		if (++count == 1000000000) {
+			hammer_rel_mem_record(record);
+			error = ENOSPC;
+			goto failed;
+		}
+	}
+
+	/*
 	 * The target inode and the directory entry are bound together.
 	 */
 	record->target_ip = ip;
@@ -628,6 +656,8 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 		ip->flush_state = HAMMER_FST_SETUP;
 	}
 	error = hammer_mem_add(record);
+failed:
+	hammer_done_cursor(&cursor);
 	return(error);
 }
 
@@ -1038,24 +1068,14 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	 */
 	cursor->flags |= HAMMER_CURSOR_INSERT;
 
-	for (;;) {
-		error = hammer_btree_lookup(cursor);
-		if (hammer_debug_inode)
-			kprintf("DOINSERT LOOKUP %d\n", error);
-		if (error)
-			break;
-		if (record->leaf.base.rec_type != HAMMER_RECTYPE_DIRENTRY) {
-			kprintf("hammer_ip_sync_record: duplicate rec "
-				"at (%016llx)\n", record->leaf.base.key);
-			Debugger("duplicate record1");
-			error = EIO;
-			break;
-		}
-		if (++trans->hmp->namekey_iterator == 0)
-			++trans->hmp->namekey_iterator;
-		record->leaf.base.key &= ~(0xFFFFFFFFLL);
-		record->leaf.base.key |= trans->hmp->namekey_iterator;
-		cursor->key_beg.key = record->leaf.base.key;
+	error = hammer_btree_lookup(cursor);
+	if (hammer_debug_inode)
+		kprintf("DOINSERT LOOKUP %d\n", error);
+	if (error == 0) {
+		kprintf("hammer_ip_sync_record: duplicate rec "
+			"at (%016llx)\n", record->leaf.base.key);
+		Debugger("duplicate record1");
+		error = EIO;
 	}
 #if 0
 	if (record->type == HAMMER_MEM_RECORD_DATA)
@@ -1063,7 +1083,6 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 			record->leaf.base.key - record->leaf.data_len,
 			record->leaf.data_offset, error);
 #endif
-			
 
 	if (error != ENOENT)
 		goto done;
@@ -1166,19 +1185,13 @@ hammer_mem_add(hammer_record_t record)
 		KKASSERT(record->flags & HAMMER_RECF_ALLOCDATA);
 
 	/*
-	 * Insert into the RB tree, find an unused iterator if this is
-	 * a directory entry.
+	 * Insert into the RB tree.  A unique key should have already
+	 * been selected if this is a directory entry.
 	 */
-	while (RB_INSERT(hammer_rec_rb_tree, &record->ip->rec_tree, record)) {
-		if (record->leaf.base.rec_type != HAMMER_RECTYPE_DIRENTRY){
-			record->flags |= HAMMER_RECF_DELETED_FE;
-			hammer_rel_mem_record(record);
-			return (EEXIST);
-		}
-		if (++hmp->namekey_iterator == 0)
-			++hmp->namekey_iterator;
-		record->leaf.base.key &= ~(0xFFFFFFFFLL);
-		record->leaf.base.key |= hmp->namekey_iterator;
+	if (RB_INSERT(hammer_rec_rb_tree, &record->ip->rec_tree, record)) {
+		record->flags |= HAMMER_RECF_DELETED_FE;
+		hammer_rel_mem_record(record);
+		return (EEXIST);
 	}
 	++hmp->count_newrecords;
 	++hmp->rsv_recs;

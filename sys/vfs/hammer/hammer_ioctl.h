@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.14 2008/06/24 17:38:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.15 2008/06/26 04:06:23 dillon Exp $
  */
 /*
  * HAMMER ioctl's.  This file can be #included from userland
@@ -219,12 +219,21 @@ struct hammer_ioc_mirror_rw {
 	int			size;		/* max size */
 };
 
+/*
+ * NOTE: crc is for the data block starting at rec_size, not including the
+ * data[] array.
+ */
 typedef struct hammer_ioc_mrecord {
 	u_int32_t		signature;	/* signature for byte order */
+	u_int32_t		rec_crc;
 	u_int32_t		rec_size;
+	u_int32_t		unused01;
 	struct hammer_btree_leaf_elm leaf;
 	char			data[8];	/* extended */
 } *hammer_ioc_mrecord_t;
+
+#define HAMMER_MREC_CRCOFF	(offsetof(struct hammer_ioc_mrecord, rec_size))
+#define HAMMER_MREC_HEADSIZE	(offsetof(struct hammer_ioc_mrecord, data[0]))
 
 #define HAMMER_IOC_MIRROR_SIGNATURE	0x4dd97272U
 #define HAMMER_IOC_MIRROR_SIGNATURE_REV	0x7272d94dU

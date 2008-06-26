@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.76 2008/06/23 07:31:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.77 2008/06/26 04:06:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -699,6 +699,12 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	struct vattr *vap = ap->a_vap;
 
 	vap->va_fsid = ip->hmp->fsid_udev;
+	/* 
+	 * XXX munge the device if we are in a pseudo-fs, so user utilities
+	 * do not think its the same 'filesystem'.
+	 */
+	if (ip->obj_localization)
+		vap->va_fsid += ip->obj_localization;
 	vap->va_fileid = ip->ino_leaf.base.obj_id;
 	vap->va_mode = ip->ino_data.mode;
 	vap->va_nlink = ip->ino_data.nlinks;
