@@ -31,22 +31,26 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_snapshot.c,v 1.2 2008/06/25 13:25:06 mneumann Exp $
+ * $DragonFly: src/sbin/hammer/cmd_snapshot.c,v 1.3 2008/06/26 15:56:44 mneumann Exp $
  */
 
 #include "hammer.h"
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <unistd.h>
+#include <string.h>
+#include <time.h>
 
 static void snapshot_usage(int exit_code);
 
 /*
- * snapshot <softlink-dir> [<filesystem>]
+ * snapshot <softlink-dir-in-filesystem>
+ * snapshot <filesystem> <softlink-dir>
  */
 void
 hammer_cmd_snapshot(char **av, int ac)
 {
+	char *softlink_fmt;
 	char *softlink_dir;
 	const char *filesystem;
 	struct statfs buf;
@@ -55,40 +59,71 @@ hammer_cmd_snapshot(char **av, int ac)
 	char *from;
 	char *to;
 
-	if (ac == 0 || ac > 2)
+	if (ac == 1) {
+		filesystem = NULL;
+		softlink_fmt = av[0];
+	}
+	else if (ac == 2) {
+		filesystem = av[0];
+		softlink_fmt = av[1];
+	}
+	else {
 		snapshot_usage(1);
+	}
 
-	softlink_dir = av[0];
+	/*
+	 * Determine softlink directory
+	 */
+	softlink_dir = strdup(softlink_fmt);
+	fd = open(softlink_dir, O_RDONLY);
+	if (fd < 0) {
+		/* strip-off last '/path' segment */
+		char *pos = strrchr(softlink_dir, '/');
+		if (pos != NULL)
+			*pos = '\0';
+		fd = open(softlink_dir, O_RDONLY);
+		if (fd < 0) {
+			err(2, "Unable to determine softlink dir %s",
+			    softlink_dir);
+		}
+	}
+	close(fd);
 
-	if (ac > 1) 
-		filesystem = av[1];
-	else if (statfs(softlink_dir, &buf) == 0)
+	if (filesystem == NULL) {
+		if (statfs(softlink_dir, &buf) != 0) {
+			err(2, "Unable to determine filesystem of %s",
+			    softlink_dir);
+		}
 		filesystem = buf.f_mntonname;
-	else
-		err(2, "Unable to determine filesystem of %s", softlink_dir);
+	}
 
+	free(softlink_dir);
+
+	/*
+	 * Synctid 
+	 */
 	bzero(&synctid, sizeof(synctid));
 	synctid.op = HAMMER_SYNCTID_SYNC2;
-
 	fd = open(filesystem, O_RDONLY);
 	if (fd < 0)
 		err(2, "Unable to open %s", filesystem);
 	if (ioctl(fd, HAMMERIOC_SYNCTID, &synctid) < 0)
 		err(2, "Synctid %s failed", filesystem);
+	close(fd);
 
 	asprintf(&from, "%s@@0x%016llx", filesystem, synctid.tid); 
-
 	if (from == NULL)
 		err(2, "Couldn't generate string");
-
-	if (softlink_dir[strlen(softlink_dir)-1] == '/')
-		asprintf(&to, "%s0x%016llx", softlink_dir, synctid.tid);
-	else
-		asprintf(&to, "%s/0x%016llx", softlink_dir, synctid.tid);
 	
+	int sz = strlen(softlink_fmt) + 50;
+	to = malloc(sz);
 	if (to == NULL)
-		err(2, "Couldn't generate string");
-
+		err(2, "Failed to allocate string");
+	
+	time_t t = time(NULL);
+	if (strftime(to, sz, softlink_fmt, localtime(&t)) == 0)
+		err(2, "String buffer too small");
+	
 	if (symlink(from, to) != 0)
 		err(2, "Unable to symlink %s to %s", from, to);
 
@@ -96,14 +131,14 @@ hammer_cmd_snapshot(char **av, int ac)
 
 	free(from);
 	free(to);
-	close(fd);
 }
 
 static
 void
 snapshot_usage(int exit_code)
 {
-	fprintf(stderr, "hammer snapshot <softlink-dir> [<filesystem>]\n");
+	fprintf(stderr, "hammer snapshot <snapshot-dir-in-filesystem>\n");
+	fprintf(stderr, "hammer snapshot <filesystem> <snapshot-dir>\n");
 	exit(exit_code);
 }
 
