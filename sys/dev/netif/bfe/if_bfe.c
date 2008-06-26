@@ -29,8 +29,9 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.34 2008/06/05 18:06:31 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.35 2008/06/26 12:05:19 sephe Exp $
  */
+#include "opt_ethernet.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1105,10 +1106,17 @@ bfe_rxeof(struct bfe_softc *sc)
 	struct bfe_rxheader *rxheader;
 	struct bfe_data *r;
 	uint32_t cons, status, current, len, flags;
+#ifdef ETHER_INPUT_CHAIN
+	struct mbuf_chain chain[MAXCPU];
+#endif
 
 	cons = sc->bfe_rx_cons;
 	status = CSR_READ_4(sc, BFE_DMARX_STAT);
 	current = (status & BFE_STAT_CDMASK) / sizeof(struct bfe_desc);
+
+#ifdef ETHER_INPUT_CHAIN
+	ether_input_chain_init(chain);
+#endif
 
 	while (current != cons) {
 		r = &sc->bfe_rx_ring[cons];
@@ -1147,9 +1155,22 @@ bfe_rxeof(struct bfe_softc *sc)
 		ifp->if_ipackets++;
 		m->m_pkthdr.rcvif = ifp;
 
+#ifdef ETHER_INPUT_CHAIN
+#ifdef ETHER_INPUT2
+		ether_input_chain2(ifp, m, chain);
+#else
+		ether_input_chain(ifp, m, chain);
+#endif
+#else
 		ifp->if_input(ifp, m);
+#endif
 		BFE_INC(cons, BFE_RX_LIST_CNT);
 	}
+
+#ifdef ETHER_INPUT_CHAIN
+	ether_input_dispatch(chain);
+#endif
+
 	sc->bfe_rx_cons = cons;
 }
 
