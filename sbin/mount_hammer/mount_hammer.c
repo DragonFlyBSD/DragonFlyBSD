@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/mount_hammer/mount_hammer.c,v 1.5 2008/06/23 21:31:57 dillon Exp $
+ * $DragonFly: src/sbin/mount_hammer/mount_hammer.c,v 1.6 2008/06/26 15:03:47 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -64,7 +64,8 @@ static void extract_volumes(ary_ptr_t *aryp, int *countp, char **av, int ac);
 
 #define MOPT_HAMMEROPTS		\
 	{ "history", 1, HMNT_NOHISTORY, 1 },	\
-	{ "master=", 0, HMNT_MASTERID, 1 }
+	{ "master=", 0, HMNT_MASTERID, 1 },	\
+	{ "slave", 0, HMNT_SLAVE, 1 }		\
 
 static struct mntopt mopts[] = { MOPT_STDOPTS, MOPT_HAMMEROPTS,
 				 MOPT_UPDATE, MOPT_NULL };
