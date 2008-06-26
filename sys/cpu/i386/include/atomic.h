@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.24 2007/11/07 17:42:50 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.25 2008/06/26 23:06:50 dillon Exp $
  */
 #ifndef _CPU_ATOMIC_H_
 #define _CPU_ATOMIC_H_
@@ -346,8 +346,13 @@ atomic_intr_cond_exit(__atomic_intr_t *p, void (*func)(void *), void *arg)
  * Returns 0 on failure, non-zero on success
  */
 #if defined(KLD_MODULE)
+
 extern int atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new);
+extern int atomic_cmpset_long(volatile u_long *dst, u_long exp, u_long src);
+extern u_int atomic_fetchadd_int(volatile u_int *p, u_int v);
+
 #else
+
 static __inline int
 atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new)
 {
@@ -361,6 +366,162 @@ atomic_cmpset_int(volatile u_int *_dst, u_int _old, u_int _new)
 			 : "memory");
 	return res;
 }
+
+static __inline int
+atomic_cmpset_long(volatile u_long *dst, u_long exp, u_long src)
+{
+	 return (atomic_cmpset_int((volatile u_int *)dst, (u_int)exp,
+				   (u_int)src));
+}
+
+/*
+ * Atomically add the value of v to the integer pointed to by p and return
+ * the previous value of *p.
+ */
+static __inline u_int
+atomic_fetchadd_int(volatile u_int *p, u_int v)
+{
+	__asm __volatile(MPLOCKED "xaddl %0,%1; " \
+			 : "+r" (v), "=m" (*p)	\
+			 : "m" (*p)		\
+			 : "memory");
+	return (v);
+}
+
 #endif	/* KLD_MODULE */
+
+/* Acquire and release variants are identical to the normal ones. */
+#define	atomic_set_acq_char		atomic_set_char
+#define	atomic_set_rel_char		atomic_set_char
+#define	atomic_clear_acq_char		atomic_clear_char
+#define	atomic_clear_rel_char		atomic_clear_char
+#define	atomic_add_acq_char		atomic_add_char
+#define	atomic_add_rel_char		atomic_add_char
+#define	atomic_subtract_acq_char	atomic_subtract_char
+#define	atomic_subtract_rel_char	atomic_subtract_char
+
+#define	atomic_set_acq_short		atomic_set_short
+#define	atomic_set_rel_short		atomic_set_short
+#define	atomic_clear_acq_short		atomic_clear_short
+#define	atomic_clear_rel_short		atomic_clear_short
+#define	atomic_add_acq_short		atomic_add_short
+#define	atomic_add_rel_short		atomic_add_short
+#define	atomic_subtract_acq_short	atomic_subtract_short
+#define	atomic_subtract_rel_short	atomic_subtract_short
+
+#define	atomic_set_acq_int		atomic_set_int
+#define	atomic_set_rel_int		atomic_set_int
+#define	atomic_clear_acq_int		atomic_clear_int
+#define	atomic_clear_rel_int		atomic_clear_int
+#define	atomic_add_acq_int		atomic_add_int
+#define	atomic_add_rel_int		atomic_add_int
+#define	atomic_subtract_acq_int		atomic_subtract_int
+#define	atomic_subtract_rel_int		atomic_subtract_int
+#define	atomic_cmpset_acq_int		atomic_cmpset_int
+#define	atomic_cmpset_rel_int		atomic_cmpset_int
+
+#define	atomic_set_acq_long		atomic_set_long
+#define	atomic_set_rel_long		atomic_set_long
+#define	atomic_clear_acq_long		atomic_clear_long
+#define	atomic_clear_rel_long		atomic_clear_long
+#define	atomic_add_acq_long		atomic_add_long
+#define	atomic_add_rel_long		atomic_add_long
+#define	atomic_subtract_acq_long	atomic_subtract_long
+#define	atomic_subtract_rel_long	atomic_subtract_long
+#define	atomic_cmpset_acq_long		atomic_cmpset_long
+#define	atomic_cmpset_rel_long		atomic_cmpset_long
+
+/* Operations on 8-bit bytes. */
+#define	atomic_set_8		atomic_set_char
+#define	atomic_set_acq_8	atomic_set_acq_char
+#define	atomic_set_rel_8	atomic_set_rel_char
+#define	atomic_clear_8		atomic_clear_char
+#define	atomic_clear_acq_8	atomic_clear_acq_char
+#define	atomic_clear_rel_8	atomic_clear_rel_char
+#define	atomic_add_8		atomic_add_char
+#define	atomic_add_acq_8	atomic_add_acq_char
+#define	atomic_add_rel_8	atomic_add_rel_char
+#define	atomic_subtract_8	atomic_subtract_char
+#define	atomic_subtract_acq_8	atomic_subtract_acq_char
+#define	atomic_subtract_rel_8	atomic_subtract_rel_char
+#define	atomic_load_acq_8	atomic_load_acq_char
+#define	atomic_store_rel_8	atomic_store_rel_char
+
+/* Operations on 16-bit words. */
+#define	atomic_set_16		atomic_set_short
+#define	atomic_set_acq_16	atomic_set_acq_short
+#define	atomic_set_rel_16	atomic_set_rel_short
+#define	atomic_clear_16		atomic_clear_short
+#define	atomic_clear_acq_16	atomic_clear_acq_short
+#define	atomic_clear_rel_16	atomic_clear_rel_short
+#define	atomic_add_16		atomic_add_short
+#define	atomic_add_acq_16	atomic_add_acq_short
+#define	atomic_add_rel_16	atomic_add_rel_short
+#define	atomic_subtract_16	atomic_subtract_short
+#define	atomic_subtract_acq_16	atomic_subtract_acq_short
+#define	atomic_subtract_rel_16	atomic_subtract_rel_short
+#define	atomic_load_acq_16	atomic_load_acq_short
+#define	atomic_store_rel_16	atomic_store_rel_short
+
+/* Operations on 32-bit double words. */
+#define	atomic_set_32		atomic_set_int
+#define	atomic_set_acq_32	atomic_set_acq_int
+#define	atomic_set_rel_32	atomic_set_rel_int
+#define	atomic_clear_32		atomic_clear_int
+#define	atomic_clear_acq_32	atomic_clear_acq_int
+#define	atomic_clear_rel_32	atomic_clear_rel_int
+#define	atomic_add_32		atomic_add_int
+#define	atomic_add_acq_32	atomic_add_acq_int
+#define	atomic_add_rel_32	atomic_add_rel_int
+#define	atomic_subtract_32	atomic_subtract_int
+#define	atomic_subtract_acq_32	atomic_subtract_acq_int
+#define	atomic_subtract_rel_32	atomic_subtract_rel_int
+#define	atomic_load_acq_32	atomic_load_acq_int
+#define	atomic_store_rel_32	atomic_store_rel_int
+#define	atomic_cmpset_32	atomic_cmpset_int
+#define	atomic_cmpset_acq_32	atomic_cmpset_acq_int
+#define	atomic_cmpset_rel_32	atomic_cmpset_rel_int
+#define	atomic_readandclear_32	atomic_readandclear_int
+#define	atomic_fetchadd_32	atomic_fetchadd_int
+
+/* Operations on pointers. */
+#define	atomic_set_ptr(p, v) \
+	atomic_set_int((volatile u_int *)(p), (u_int)(v))
+#define	atomic_set_acq_ptr(p, v) \
+	atomic_set_acq_int((volatile u_int *)(p), (u_int)(v))
+#define	atomic_set_rel_ptr(p, v) \
+	atomic_set_rel_int((volatile u_int *)(p), (u_int)(v))
+#define	atomic_clear_ptr(p, v) \
+	atomic_clear_int((volatile u_int *)(p), (u_int)(v))
+#define	atomic_clear_acq_ptr(p, v) \
+	atomic_clear_acq_int((volatile u_int *)(p), (u_int)(v))
+#define	atomic_clear_rel_ptr(p, v) \
+	atomic_clear_rel_int((volatile u_int *)(p), (u_int)(v))
+#define	atomic_add_ptr(p, v) \
+	atomic_add_int((volatile u_int *)(p), (u_int)(v))
+#define	atomic_add_acq_ptr(p, v) \
+	atomic_add_acq_int((volatile u_int *)(p), (u_int)(v))
+#define	atomic_add_rel_ptr(p, v) \
+	atomic_add_rel_int((volatile u_int *)(p), (u_int)(v))
+#define	atomic_subtract_ptr(p, v) \
+	atomic_subtract_int((volatile u_int *)(p), (u_int)(v))
+#define	atomic_subtract_acq_ptr(p, v) \
+	atomic_subtract_acq_int((volatile u_int *)(p), (u_int)(v))
+#define	atomic_subtract_rel_ptr(p, v) \
+	atomic_subtract_rel_int((volatile u_int *)(p), (u_int)(v))
+#define	atomic_load_acq_ptr(p) \
+	atomic_load_acq_int((volatile u_int *)(p))
+#define	atomic_store_rel_ptr(p, v) \
+	atomic_store_rel_int((volatile u_int *)(p), (v))
+#define	atomic_cmpset_ptr(dst, old, new) \
+	atomic_cmpset_int((volatile u_int *)(dst), (u_int)(old), (u_int)(new))
+#define	atomic_cmpset_acq_ptr(dst, old, new) \
+	atomic_cmpset_acq_int((volatile u_int *)(dst), (u_int)(old), \
+	    (u_int)(new))
+#define	atomic_cmpset_rel_ptr(dst, old, new) \
+	atomic_cmpset_rel_int((volatile u_int *)(dst), (u_int)(old), \
+	    (u_int)(new))
+#define	atomic_readandclear_ptr(p) \
+	atomic_readandclear_int((volatile u_int *)(p))
 
 #endif /* ! _CPU_ATOMIC_H_ */
