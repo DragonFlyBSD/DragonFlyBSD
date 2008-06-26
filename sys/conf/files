@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.218 2008/06/26 04:06:21 dillon Exp $
+# $DragonFly: src/sys/conf/files,v 1.219 2008/06/26 23:24:11 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -717,7 +717,6 @@ net/pf/pf_ioctl.c		optional pf
 net/pf/pf_norm.c		optional pf
 net/pf/pf_table.c		optional pf
 net/pf/pf_osfp.c		optional pf
-net/ppp_layer/slcompress.c	optional netgraph_vjc
 net/ppp_layer/slcompress.c	optional ppp
 net/ppp_layer/slcompress.c	optional sl
 net/ppp_layer/slcompress.c	optional sppp
@@ -852,11 +851,111 @@ netproto/atm/uni/unisig_sigmgr_state.c	optional atm_uni atm_core
 netproto/atm/uni/unisig_subr.c	optional atm_uni atm_core
 netproto/atm/uni/unisig_util.c	optional atm_uni atm_core
 netproto/atm/uni/unisig_vc_state.c	optional atm_uni atm_core
-netgraph/netgraph/ng_base.c	optional netgraph
-netgraph/netgraph/ng_parse.c	optional netgraph
-netgraph/async/ng_async.c	optional netgraph_async
-netgraph/bpf/ng_bpf.c	optional netgraph_bpf
-net/bpf_filter.c	optional netgraph_bpf
+
+#
+# New netgraph
+#
+netgraph7/atm/ccatm/ng_ccatm.c				optional ngatm7_ccatm \
+	compile-with "${NORMAL_C} -I$S/contrib/ngatm"
+netgraph7/atm/ng_atm.c					optional ngatm7_atm
+netgraph7/atm/ngatmbase.c				optional ngatm7_atmbase \
+	compile-with "${NORMAL_C} -I$S/contrib/ngatm"
+netgraph7/atm/sscfu/ng_sscfu.c				optional ngatm7_sscfu \
+	compile-with "${NORMAL_C} -I$S/contrib/ngatm"
+netgraph7/atm/sscop/ng_sscop.c				optional ngatm7_sscop \
+	compile-with "${NORMAL_C} -I$S/contrib/ngatm"
+netgraph7/atm/uni/ng_uni.c				optional ngatm7_uni \
+	compile-with "${NORMAL_C} -I$S/contrib/ngatm"
+netgraph7/bluetooth/common/ng_bluetooth.c		optional netgraph7_bluetooth
+netgraph7/bluetooth/drivers/bt3c/ng_bt3c_pccard.c	optional netgraph7_bluetooth_bt3c
+netgraph7/bluetooth/drivers/h4/ng_h4.c			optional netgraph7_bluetooth_h4
+netgraph7/bluetooth/drivers/ubt/ng_ubt.c		optional netgraph7_bluetooth_ubt
+netgraph7/bluetooth/drivers/ubtbcmfw/ubtbcmfw.c		optional netgraph7_bluetooth_ubtbcmfw
+netgraph7/bluetooth/hci/ng_hci_cmds.c			optional netgraph7_bluetooth_hci
+netgraph7/bluetooth/hci/ng_hci_evnt.c			optional netgraph7_bluetooth_hci
+netgraph7/bluetooth/hci/ng_hci_main.c			optional netgraph7_bluetooth_hci
+netgraph7/bluetooth/hci/ng_hci_misc.c			optional netgraph7_bluetooth_hci
+netgraph7/bluetooth/hci/ng_hci_ulpi.c			optional netgraph7_bluetooth_hci
+netgraph7/bluetooth/l2cap/ng_l2cap_cmds.c		optional netgraph7_bluetooth_l2cap
+netgraph7/bluetooth/l2cap/ng_l2cap_evnt.c		optional netgraph7_bluetooth_l2cap
+netgraph7/bluetooth/l2cap/ng_l2cap_llpi.c		optional netgraph7_bluetooth_l2cap
+netgraph7/bluetooth/l2cap/ng_l2cap_main.c		optional netgraph7_bluetooth_l2cap
+netgraph7/bluetooth/l2cap/ng_l2cap_misc.c		optional netgraph7_bluetooth_l2cap
+netgraph7/bluetooth/l2cap/ng_l2cap_ulpi.c		optional netgraph7_bluetooth_l2cap
+netgraph7/bluetooth/socket/ng_btsocket.c		optional netgraph7_bluetooth_socket
+netgraph7/bluetooth/socket/ng_btsocket_hci_raw.c	optional netgraph7_bluetooth_socket
+netgraph7/bluetooth/socket/ng_btsocket_l2cap.c		optional netgraph7_bluetooth_socket
+netgraph7/bluetooth/socket/ng_btsocket_l2cap_raw.c	optional netgraph7_bluetooth_socket
+netgraph7/bluetooth/socket/ng_btsocket_rfcomm.c		optional netgraph7_bluetooth_socket
+netgraph7/netflow/netflow.c	optional netgraph7_netflow
+netgraph7/netflow/ng_netflow.c	optional netgraph7_netflow
+netgraph7/ng_UI.c		optional netgraph7_UI
+netgraph7/ng_async.c		optional netgraph7_async
+netgraph7/ng_atmllc.c		optional netgraph7_atmllc
+netgraph7/ng_base.c		optional netgraph7
+netgraph7/ng_bpf.c		optional netgraph7_bpf
+netgraph7/ng_bridge.c		optional netgraph7_bridge
+netgraph7/ng_car.c		optional netgraph7_car
+netgraph7/ng_cisco.c		optional netgraph7_cisco
+netgraph7/ng_deflate.c		optional netgraph7_deflate
+netgraph7/ng_device.c		optional netgraph7_device
+netgraph7/ng_echo.c		optional netgraph7_echo
+netgraph7/ng_eiface.c		optional netgraph7_eiface
+netgraph7/ng_ether.c		optional netgraph7_ether
+netgraph7/ng_fec.c		optional netgraph7_fec
+netgraph7/ng_frame_relay.c	optional netgraph7_frame_relay
+netgraph7/ng_gif.c		optional netgraph7_gif
+netgraph7/ng_gif_demux.c	optional netgraph7_gif_demux
+netgraph7/ng_hole.c		optional netgraph7_hole
+netgraph7/ng_iface.c		optional netgraph7_iface
+netgraph7/ng_ip_input.c		optional netgraph7_ip_input
+netgraph7/ng_ipfw.c		optional netgraph7_ipfw
+netgraph7/ng_ksocket.c		optional netgraph7_ksocket
+netgraph7/ng_l2tp.c		optional netgraph7_l2tp
+netgraph7/ng_lmi.c		optional netgraph7_lmi
+netgraph7/ng_mppc.c		optional netgraph7_mppc_compression
+netgraph7/ng_mppc.c		optional netgraph7_mppc_encryption
+netgraph7/ng_nat.c		optional netgraph7_nat
+netgraph7/ng_one2many.c		optional netgraph7_one2many
+netgraph7/ng_parse.c		optional netgraph
+netgraph7/ng_ppp.c		optional netgraph7_ppp
+netgraph7/ng_pppoe.c		optional netgraph7_pppoe
+netgraph7/ng_pptpgre.c		optional netgraph7_pptpgre
+netgraph7/ng_pred1.c		optional netgraph7_pred1
+netgraph7/ng_rfc1490.c		optional netgraph7_rfc1490
+netgraph7/ng_socket.c		optional netgraph7_socket
+netgraph7/ng_split.c		optional netgraph7_split
+netgraph7/ng_sppp.c		optional netgraph7_sppp
+netgraph7/ng_tag.c		optional netgraph7_tag
+netgraph7/ng_tcpmss.c		optional netgraph7_tcpmss
+netgraph7/ng_tee.c		optional netgraph7_tee
+netgraph7/ng_tty.c		optional netgraph7_tty
+netgraph7/ng_vjc.c		optional netgraph7_vjc
+
+netinet/libalias/alias.c	optional netgraph7_nat
+netinet/libalias/alias_db.c	optional netgraph7_nat
+netinet/libalias/alias_mod.c	optional netgraph7_nat
+netinet/libalias/alias_proxy.c	optional netgraph7_nat
+netinet/libalias/alias_util.c	optional netgraph7_nat
+
+crypto/rc4/rc4.c		optional netgraph7_mppc_encryption
+crypto/sha1.c			optional netgraph7_mppc_encryption
+net/bpf_filter.c		optional netgraph7_bpf
+
+net/if_spppfr.c			optional netgraph7_sppp
+net/if_spppsubr.c		optional netgraph7_sppp
+net/mppcc.c			optional netgraph7_mppc_compression
+net/mppcd.c			optional netgraph7_mppc_compression
+net/slcompress.c		optional netgraph7_vjc
+net/slcompress.c		optional netgraph7_sppp
+net/zlib.c			optional netgraph7_deflate
+
+# Original netgraph
+#
+netgraph/netgraph/ng_base.c		optional netgraph
+netgraph/netgraph/ng_parse.c		optional netgraph
+netgraph/async/ng_async.c		optional netgraph_async
+netgraph/bpf/ng_bpf.c			optional netgraph_bpf
 netgraph/bridge/ng_bridge.c		optional netgraph_bridge
 netgraph/cisco/ng_cisco.c		optional netgraph_cisco
 netgraph/echo/ng_echo.c			optional netgraph_echo
@@ -874,8 +973,6 @@ netgraph/mppc/ng_mppc.c			optional netgraph_mppc_compression
 netgraph/mppc/mppcc.c			optional netgraph_mppc_compression
 netgraph/mppc/mppcd.c			optional netgraph_mppc_compression
 netgraph/mppc/ng_mppc.c			optional netgraph_mppc_encryption
-crypto/rc4/rc4.c			optional netgraph_mppc_encryption
-crypto/sha1.c				optional netgraph_mppc_encryption
 netgraph/one2many/ng_one2many.c		optional netgraph_one2many
 netgraph/ppp/ng_ppp.c			optional netgraph_ppp
 netgraph/pppoe/ng_pppoe.c		optional netgraph_pppoe
@@ -886,6 +983,12 @@ netgraph/tee/ng_tee.c			optional netgraph_tee
 netgraph/tty/ng_tty.c			optional netgraph_tty
 netgraph/UI/ng_UI.c			optional netgraph_UI
 netgraph/vjc/ng_vjc.c			optional netgraph_vjc
+
+net/ppp_layer/slcompress.c		optional netgraph_vjc
+net/bpf_filter.c			optional netgraph_bpf
+crypto/rc4/rc4.c			optional netgraph_mppc_encryption
+crypto/sha1.c				optional netgraph_mppc_encryption
+
 net/accf_data/accf_data.c		optional accept_filter_data
 net/accf_http/accf_http.c		optional accept_filter_http
 netinet/if_atm.c			optional atm

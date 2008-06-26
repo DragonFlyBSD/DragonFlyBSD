@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.89 2008/06/26 18:54:50 dillon Exp $
+# $DragonFly: src/sys/conf/options,v 1.90 2008/06/26 23:24:11 dillon Exp $
 #
 #        On the handling of kernel options
 #
@@ -315,6 +315,74 @@ TCP_DROP_SYNFIN		opt_tcp_input.h
 
 XBONEHACK
 MBUF_STRESS_TEST	opt_mbuf_stress_test.h
+
+# (New netgraph, port still in progress)
+#
+# Netgraph(4). Use option NETGRAPH7 to enable the base netgraph code.
+# Each netgraph node type can be either be compiled into the kernel
+# or loaded dynamically. To get the former, include the corresponding
+# option below. Each type has its own man page, e.g. ng_async(4).
+NETGRAPH7
+NETGRAPH7_DEBUG		opt_netgraph.h
+NETGRAPH7_ASYNC		opt_netgraph.h
+NETGRAPH7_ATMLLC	opt_netgraph.h
+NETGRAPH7_ATM_ATMPIF	opt_netgraph.h
+NETGRAPH7_BLUETOOTH		opt_netgraph.h
+NETGRAPH7_BLUETOOTH_BT3C	opt_netgraph.h
+NETGRAPH7_BLUETOOTH_H4		opt_netgraph.h
+NETGRAPH7_BLUETOOTH_HCI		opt_netgraph.h
+NETGRAPH7_BLUETOOTH_L2CAP	opt_netgraph.h
+NETGRAPH7_BLUETOOTH_SOCKET	opt_netgraph.h
+NETGRAPH7_BLUETOOTH_UBT		opt_netgraph.h
+NETGRAPH7_BLUETOOTH_UBTBCMFW	opt_netgraph.h
+NETGRAPH7_BPF		opt_netgraph.h
+NETGRAPH7_BRIDGE	opt_netgraph.h
+NETGRAPH7_CAR		opt_netgraph.h
+NETGRAPH7_CISCO		opt_netgraph.h
+NETGRAPH7_DEFLATE	opt_netgraph.h
+NETGRAPH7_DEVICE	opt_netgraph.h
+NETGRAPH7_ECHO		opt_netgraph.h
+NETGRAPH7_EIFACE	opt_netgraph.h
+NETGRAPH7_ETHER		opt_netgraph.h
+NETGRAPH7_FEC		opt_netgraph.h
+NETGRAPH7_FRAME_RELAY	opt_netgraph.h
+NETGRAPH7_GIF		opt_netgraph.h
+NETGRAPH7_GIF_DEMUX	opt_netgraph.h
+NETGRAPH7_HOLE		opt_netgraph.h
+NETGRAPH7_IFACE		opt_netgraph.h
+NETGRAPH7_IP_INPUT	opt_netgraph.h
+NETGRAPH7_IPFW		opt_netgraph.h
+NETGRAPH7_KSOCKET	opt_netgraph.h
+NETGRAPH7_L2TP		opt_netgraph.h
+NETGRAPH7_LMI		opt_netgraph.h
+# MPPC compression requires proprietary files (not included)
+NETGRAPH7_MPPC_COMPRESSION	opt_netgraph.h
+NETGRAPH7_MPPC_ENCRYPTION	opt_netgraph.h
+NETGRAPH7_NAT		opt_netgraph.h
+NETGRAPH7_NETFLOW	opt_netgraph.h
+NETGRAPH7_ONE2MANY	opt_netgraph.h
+NETGRAPH7_PPP		opt_netgraph.h
+NETGRAPH7_PPPOE		opt_netgraph.h
+NETGRAPH7_PPTPGRE	opt_netgraph.h
+NETGRAPH7_PRED1		opt_netgraph.h
+NETGRAPH7_RFC1490	opt_netgraph.h
+NETGRAPH7_SOCKET	opt_netgraph.h
+NETGRAPH7_SPLIT		opt_netgraph.h
+NETGRAPH7_SPPP		opt_netgraph.h
+NETGRAPH7_TAG		opt_netgraph.h
+NETGRAPH7_TCPMSS	opt_netgraph.h
+NETGRAPH7_TEE		opt_netgraph.h
+NETGRAPH7_TTY		opt_netgraph.h
+NETGRAPH7_UI		opt_netgraph.h
+NETGRAPH7_VJC		opt_netgraph.h
+
+# NgATM options
+NGATM7_ATM		opt_netgraph.h
+NGATM7_ATMBASE		opt_netgraph.h
+NGATM7_SSCOP		opt_netgraph.h
+NGATM7_SSCFU		opt_netgraph.h
+NGATM7_UNI		opt_netgraph.h
+NGATM7_CCATM		opt_netgraph.h
 
 # Netgraph(4). Use option NETGRAPH to enable the base netgraph code.
 # Each netgraph node type can be either be compiled into the kernel
