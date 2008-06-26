@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_snapshot.c,v 1.3 2008/06/26 15:56:44 mneumann Exp $
+ * $DragonFly: src/sbin/hammer/cmd_snapshot.c,v 1.4 2008/06/26 16:13:43 mneumann Exp $
  */
 
 #include "hammer.h"
@@ -51,7 +51,6 @@ void
 hammer_cmd_snapshot(char **av, int ac)
 {
 	char *softlink_fmt;
-	char *softlink_dir;
 	const char *filesystem;
 	struct statfs buf;
 	struct hammer_ioc_synctid synctid;
@@ -71,33 +70,33 @@ hammer_cmd_snapshot(char **av, int ac)
 		snapshot_usage(1);
 	}
 
-	/*
-	 * Determine softlink directory
-	 */
-	softlink_dir = strdup(softlink_fmt);
-	fd = open(softlink_dir, O_RDONLY);
-	if (fd < 0) {
-		/* strip-off last '/path' segment */
-		char *pos = strrchr(softlink_dir, '/');
-		if (pos != NULL)
-			*pos = '\0';
+	if (filesystem == NULL) {
+		/*
+		 * Determine softlink directory required to
+		 * determine the filesystem we are on.
+		 */
+		char *softlink_dir = strdup(softlink_fmt);
 		fd = open(softlink_dir, O_RDONLY);
 		if (fd < 0) {
-			err(2, "Unable to determine softlink dir %s",
-			    softlink_dir);
+			/* strip-off last '/path' segment */
+			char *pos = strrchr(softlink_dir, '/');
+			if (pos != NULL)
+				*pos = '\0';
+			fd = open(softlink_dir, O_RDONLY);
+			if (fd < 0) {
+				err(2, "Unable to determine softlink dir %s",
+				    softlink_dir);
+			}
 		}
-	}
-	close(fd);
+		close(fd);
 
-	if (filesystem == NULL) {
 		if (statfs(softlink_dir, &buf) != 0) {
 			err(2, "Unable to determine filesystem of %s",
 			    softlink_dir);
 		}
 		filesystem = buf.f_mntonname;
+		free(softlink_dir);
 	}
-
-	free(softlink_dir);
 
 	/*
 	 * Synctid 
