@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.26 2008/06/25 13:10:06 mneumann Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.27 2008/06/26 04:07:57 dillon Exp $
  */
 
 #include "hammer.h"
@@ -129,6 +129,10 @@ main(int ac, char **av)
 		hammer_cmd_pseudofs(av + 1, ac - 1);
 		exit(0);
 	}
+	if (strcmp(av[0], "status") == 0) {
+		hammer_cmd_status(av + 1, ac - 1);
+		exit(0);
+	}
 	if (strcmp(av[0], "prune") == 0) {
 		hammer_cmd_softprune(av + 1, ac - 1, 0);
 		exit(0);
@@ -165,6 +169,17 @@ main(int ac, char **av)
 			hammer_cmd_reblock(av + 1, ac - 1, HAMMER_IOC_DO_DIRS);
 		else if (strcmp(av[0], "reblock-data") == 0)
 			hammer_cmd_reblock(av + 1, ac - 1, HAMMER_IOC_DO_DATA);
+		else
+			usage(1);
+		exit(0);
+	}
+	if (strncmp(av[0], "mirror", 6) == 0) {
+		if (strcmp(av[0], "mirror-read") == 0)
+			hammer_cmd_mirror_read(av + 1, ac - 1);
+		else if (strcmp(av[0], "mirror-write") == 0)
+			hammer_cmd_mirror_write(av + 1, ac - 1);
+		else if (strcmp(av[0], "mirror-copy") == 0)
+			hammer_cmd_mirror_copy(av + 1, ac - 1);
 		else
 			usage(1);
 		exit(0);
@@ -234,6 +249,10 @@ usage(int exit_code)
 		"hammer snapshot <softlink-dir> [<filesystem>]\n"
 		"hammer bstats <interval>\n"
 		"hammer iostats <interval>\n"
+		"hammer mirror-read <filesystem>\n"
+		"hammer mirror-write <filesystem>\n"
+		"hammer mirror-copy [[user@]host:]<filesystem>"
+				  " [[user@]host:]<filesystem>\n"
 		"hammer reblock[-btree/inodes/dirs/data] "
 			"<filesystem> [pack%%]\n"
 		"hammer pseudofs <dirpath>\n"

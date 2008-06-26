@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.17 2008/06/17 04:03:38 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.18 2008/06/26 04:07:57 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -131,7 +131,9 @@ void *alloc_data_element(hammer_off_t *offp, int32_t data_len,
 			 struct buffer_info **data_bufferp);
 
 int hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2);
-
+void hammer_key_beg_init(hammer_base_elm_t base);
+void hammer_key_end_init(hammer_base_elm_t base);
+int hammer_crc_test_leaf(void *data, hammer_btree_leaf_elm_t leaf);
 
 void format_freemap(struct volume_info *root_vol, hammer_blockmap_t blockmap);
 int64_t initialize_freemap(struct volume_info *vol);

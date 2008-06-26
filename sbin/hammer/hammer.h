@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.h,v 1.18 2008/06/25 13:10:06 mneumann Exp $
+ * $DragonFly: src/sbin/hammer/hammer.h,v 1.19 2008/06/26 04:07:57 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -69,13 +69,17 @@ void hammer_cmd_softprune(char **av, int ac, int everything_opt);
 void hammer_cmd_bstats(char **av, int ac);
 void hammer_cmd_iostats(char **av, int ac);
 void hammer_cmd_synctid(char **av, int ac);
+void hammer_cmd_mirror_read(char **av, int ac);
+void hammer_cmd_mirror_write(char **av, int ac);
+void hammer_cmd_mirror_copy(char **av, int ac);
 void hammer_cmd_history(const char *offset_str, char **av, int ac);
 void hammer_cmd_blockmap(void);
 void hammer_cmd_reblock(char **av, int ac, int flags);
 void hammer_cmd_pseudofs(char **av, int ac);
+void hammer_cmd_status(char **av, int ac);
 void hammer_cmd_snapshot(char **av, int ac);
 
-void hammer_get_cycle(int64_t *obj_idp, uint32_t *localizationp);
-void hammer_set_cycle(int64_t obj_id, uint32_t localization);
+void hammer_get_cycle(hammer_base_elm_t base);
+void hammer_set_cycle(hammer_base_elm_t base);
 void hammer_reset_cycle(void);
 

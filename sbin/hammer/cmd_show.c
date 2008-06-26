@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.12 2008/05/18 01:49:41 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.13 2008/06/26 04:07:57 dillon Exp $
  */
 
 #include "hammer.h"
@@ -93,13 +93,16 @@ print_btree_node(hammer_off_t node_offset, int depth, int spike,
 		badc = 'B';
 
 	if (spike == 0) {
-		printf("%c   NODE %016llx count=%d parent=%016llx "
-		       "type=%c depth=%d fill=",
+		printf("%c   NODE %016llx cnt=%d p=%016llx "
+		       "type=%c depth=%d",
 		       badc,
 		       node_offset, node->count, node->parent,
 		       (node->type ? node->type : '?'), depth);
-		if (VerboseOpt)
+		printf(" mirror %016llx", node->mirror_tid);
+		if (VerboseOpt) {
+			printf(" fill=");
 			print_bigblock_fill(node_offset);
+		}
 		printf(" {\n");
 
 		maxcount = (node->type == HAMMER_BTREE_TYPE_INTERNAL) ?
@@ -318,8 +321,9 @@ print_record(hammer_btree_elm_t elm)
 	case HAMMER_RECTYPE_DIRENTRY:
 		printf("\n%17s", "");
 		data_len -= HAMMER_ENTRY_NAME_OFF;
-		printf("dir-entry ino=%016llx name=\"%*.*s\"",
+		printf("dir-entry ino=%016llx lo=%08x name=\"%*.*s\"",
 		       data->entry.obj_id,
+		       data->entry.localization,
 		       data_len, data_len, data->entry.name);
 		break;
 	case HAMMER_RECTYPE_FIX:

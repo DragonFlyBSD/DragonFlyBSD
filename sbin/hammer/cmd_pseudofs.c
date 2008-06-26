@@ -31,11 +31,10 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.1 2008/06/23 07:37:54 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.2 2008/06/26 04:07:57 dillon Exp $
  */
 
 #include "hammer.h"
-#include <sys/sysctl.h>
 
 void
 hammer_cmd_pseudofs(char **av, int ac)

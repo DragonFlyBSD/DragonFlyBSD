@@ -31,42 +31,26 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cycle.c,v 1.4 2008/06/26 04:07:57 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_status.c,v 1.1 2008/06/26 04:07:57 dillon Exp $
  */
 
 #include "hammer.h"
 
 void
-hammer_get_cycle(hammer_base_elm_t base)
+hammer_cmd_status(char **av, int ac)
 {
-	FILE *fp;
+	struct hammer_ioc_get_pseudofs pfs;
+	int i;
+	int fd;
 
-	if (CyclePath && (fp = fopen(CyclePath, "r")) != NULL) {
-		if (fscanf(fp, "%llx %x\n", &base->obj_id, &base->localization) != 2) {
-			fprintf(stderr, "Warning: malformed cycle in %s\n",
-				CyclePath);
+	for (i = 0; i < ac; ++i) {
+		printf("%s\t", av[i]);
+		fd = open(av[i], O_RDONLY);
+		if (fd < 0 || ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
+			printf("HAMMER ioctl failed\n");
+		} else {
+			printf("Pseudo-fs #0x%08x\n", pfs.pseudoid);
 		}
-		fclose(fp);
 	}
-}
-
-void
-hammer_set_cycle(hammer_base_elm_t base)
-{
-	FILE *fp;
-
-	if ((fp = fopen(CyclePath, "w")) != NULL) {
-		fprintf(fp, "%016llx %08x\n", base->obj_id, base->localization);
-		fclose(fp);
-	} else {
-		fprintf(stderr, "Warning: Unable to write to %s: %s\n",
-			CyclePath, strerror(errno));
-	}
-}
-
-void
-hammer_reset_cycle(void)
-{
-	remove(CyclePath);
 }
 

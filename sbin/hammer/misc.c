@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/misc.c,v 1.4 2008/06/14 01:44:11 dillon Exp $
+ * $DragonFly: src/sbin/hammer/misc.c,v 1.5 2008/06/26 04:07:57 dillon Exp $
  */
 
 #include "hammer.h"
@@ -82,5 +82,51 @@ hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2)
 	if (key1->create_tid > key2->create_tid)
 		return(1);
 	return(0);
+}
+
+void
+hammer_key_beg_init(hammer_base_elm_t base)
+{
+	bzero(base, sizeof(*base));
+
+	base->localization = HAMMER_MIN_LOCALIZATION;
+	base->obj_id = HAMMER_MIN_OBJID;
+	base->key = HAMMER_MIN_KEY;
+	base->create_tid = 1;
+	base->rec_type = HAMMER_MIN_RECTYPE;
+}
+
+void
+hammer_key_end_init(hammer_base_elm_t base)
+{
+	bzero(base, sizeof(*base));
+
+	base->localization = HAMMER_MAX_LOCALIZATION;
+	base->obj_id = HAMMER_MAX_OBJID;
+	base->key = HAMMER_MAX_KEY;
+	base->create_tid = HAMMER_MAX_TID;
+	base->rec_type = HAMMER_MAX_RECTYPE;
+}
+
+int
+hammer_crc_test_leaf(void *data, hammer_btree_leaf_elm_t leaf)
+{
+	hammer_crc_t crc;
+
+	if (leaf->data_len == 0) {
+		crc = 0;
+	} else {
+		switch(leaf->base.rec_type) {
+		case HAMMER_RECTYPE_INODE:
+			if (leaf->data_len != sizeof(struct hammer_inode_data))
+				return(0);
+			crc = crc32(data, HAMMER_INODE_CRCSIZE);
+			break;
+		default:
+			crc = crc32(data, leaf->data_len);
+			break;
+		}
+	}
+	return (leaf->data_crc == crc);
 }
 
