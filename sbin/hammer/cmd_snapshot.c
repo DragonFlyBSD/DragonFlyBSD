@@ -31,15 +31,19 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_snapshot.c,v 1.4 2008/06/26 16:13:43 mneumann Exp $
+ * $DragonFly: src/sbin/hammer/cmd_snapshot.c,v 1.5 2008/06/26 20:43:45 mneumann Exp $
  */
 
 #include "hammer.h"
 #include <sys/param.h>
 #include <sys/mount.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
+
+#define DEFAULT_SNAPSHOT_NAME "snap-%Y%m%d-%H%M"
 
 static void snapshot_usage(int exit_code);
 
@@ -50,60 +54,84 @@ static void snapshot_usage(int exit_code);
 void
 hammer_cmd_snapshot(char **av, int ac)
 {
-	char *softlink_fmt;
 	const char *filesystem;
+	const char *softlink_dir;
+	char *softlink_fmt;
 	struct statfs buf;
+	struct stat st;
 	struct hammer_ioc_synctid synctid;
-	int fd;
 	char *from;
 	char *to;
 
 	if (ac == 1) {
 		filesystem = NULL;
-		softlink_fmt = av[0];
+		softlink_dir = av[0];
 	}
 	else if (ac == 2) {
 		filesystem = av[0];
-		softlink_fmt = av[1];
+		softlink_dir = av[1];
 	}
 	else {
 		snapshot_usage(1);
 	}
 
-	if (filesystem == NULL) {
-		/*
-		 * Determine softlink directory required to
-		 * determine the filesystem we are on.
-		 */
-		char *softlink_dir = strdup(softlink_fmt);
-		fd = open(softlink_dir, O_RDONLY);
-		if (fd < 0) {
-			/* strip-off last '/path' segment */
-			char *pos = strrchr(softlink_dir, '/');
-			if (pos != NULL)
-				*pos = '\0';
-			fd = open(softlink_dir, O_RDONLY);
-			if (fd < 0) {
-				err(2, "Unable to determine softlink dir %s",
+	if (stat(softlink_dir, &st) == 0) {
+		if (!S_ISDIR(st.st_mode)) 
+			err(2, "File %s already exists", softlink_dir);
+
+		if (filesystem == NULL) {
+			if (statfs(softlink_dir, &buf) != 0) {
+				err(2, "Unable to determine filesystem of %s",
 				    softlink_dir);
 			}
+			filesystem = buf.f_mntonname;
 		}
-		close(fd);
 
-		if (statfs(softlink_dir, &buf) != 0) {
-			err(2, "Unable to determine filesystem of %s",
-			    softlink_dir);
-		}
-		filesystem = buf.f_mntonname;
-		free(softlink_dir);
+		softlink_fmt = malloc(strlen(softlink_dir) + 1 + 1 +
+		                      sizeof(DEFAULT_SNAPSHOT_NAME));
+		if (softlink_fmt == NULL)
+			err(2, "Failed to allocate string");
+	
+		strcpy(softlink_fmt, softlink_dir);
+		if (softlink_fmt[strlen(softlink_fmt)-1] != '/')
+			strcat(softlink_fmt, "/");
+		strcat(softlink_fmt, DEFAULT_SNAPSHOT_NAME); 
 	}
+	else {
+		softlink_fmt = strdup(softlink_dir);
 
+		if (filesystem == NULL) {
+			/* 
+			 * strip-off last '/path' segment to get the softlink
+			 * directory, which we need to determine the filesystem
+			 * we are on.
+			 */
+			char *pos = strrchr(softlink_fmt, '/');
+			if (pos != NULL)
+				*pos = '\0';
+
+			if (stat(softlink_fmt, &st) != 0 ||
+			    !S_ISDIR(st.st_mode)) {
+				err(2, "Unable to determine softlink dir %s",
+				    softlink_fmt);
+			}
+			if (statfs(softlink_fmt, &buf) != 0) {
+				err(2, "Unable to determine filesystem of %s",
+				    softlink_fmt);
+			}
+			filesystem = buf.f_mntonname;
+
+			if (pos != NULL)
+				*pos = '/';
+		}
+	}
+	
 	/*
 	 * Synctid 
 	 */
 	bzero(&synctid, sizeof(synctid));
 	synctid.op = HAMMER_SYNCTID_SYNC2;
-	fd = open(filesystem, O_RDONLY);
+	int fd = open(filesystem, O_RDONLY);
 	if (fd < 0)
 		err(2, "Unable to open %s", filesystem);
 	if (ioctl(fd, HAMMERIOC_SYNCTID, &synctid) < 0)
@@ -128,6 +156,7 @@ hammer_cmd_snapshot(char **av, int ac)
 
 	printf("%s\n", to);
 
+	free(softlink_fmt);
 	free(from);
 	free(to);
 }
