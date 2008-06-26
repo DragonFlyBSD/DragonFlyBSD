@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.65 2008/06/19 23:27:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.66 2008/06/26 18:53:14 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -228,6 +228,10 @@ ufs_mknod(struct vop_old_mknod_args *ap)
 	    makeudev(vap->va_rmajor, vap->va_rminor) == NOUDEV) {
 		return(EINVAL);
 	}
+
+	/* no special directory support */
+	if (vap->va_type == VDIR)
+		return(EINVAL);
 
 	error = ufs_makeinode(MAKEIMODE(vap->va_type, vap->va_mode),
 	    ap->a_dvp, vpp, ap->a_cnp);
