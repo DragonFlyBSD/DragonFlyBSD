@@ -93,13 +93,14 @@
  */
 
 /* $FreeBSD: src/sys/dev/msk/if_msk.c,v 1.26 2007/12/05 09:41:58 remko Exp $ */
-/* $DragonFly: src/sys/dev/netif/msk/if_msk.c,v 1.4 2008/05/14 11:59:20 sephe Exp $ */
+/* $DragonFly: src/sys/dev/netif/msk/if_msk.c,v 1.5 2008/06/26 13:08:55 sephe Exp $ */
 
 /*
  * Device driver for the Marvell Yukon II Ethernet controller.
  * Due to lack of documentation, this driver is based on the code from
  * sk(4) and Marvell's myk(4) driver for FreeBSD 5.x.
  */
+#include "opt_ethernet.h"
 
 #include <sys/param.h>
 #include <sys/endian.h>
@@ -243,7 +244,8 @@ static void	msk_intr_gmac(struct msk_if_softc *);
 static __inline void
 		msk_rxput(struct msk_if_softc *);
 static void	msk_handle_hwerr(struct msk_if_softc *, uint32_t);
-static void	msk_rxeof(struct msk_if_softc *, uint32_t, int);
+static void	msk_rxeof(struct msk_if_softc *, uint32_t, int,
+			  struct mbuf_chain *);
 static void	msk_txeof(struct msk_if_softc *, int);
 static void	msk_set_prefetch(struct msk_softc *, int, bus_addr_t, uint32_t);
 static void	msk_set_rambuffer(struct msk_if_softc *);
@@ -2808,7 +2810,8 @@ mskc_resume(device_t dev)
 }
 
 static void
-msk_rxeof(struct msk_if_softc *sc_if, uint32_t status, int len)
+msk_rxeof(struct msk_if_softc *sc_if, uint32_t status, int len,
+	  struct mbuf_chain *chain)
 {
 	struct mbuf *m;
 	struct ifnet *ifp;
@@ -2851,7 +2854,16 @@ msk_rxeof(struct msk_if_softc *sc_if, uint32_t status, int len)
 			m->m_flags |= M_VLANTAG;
 		}
 #endif
+
+#ifdef ETHER_INPUT_CHAIN
+#ifdef ETHER_INPUT2
+		ether_input_chain2(ifp, m, chain);
+#else
+		ether_input_chain(ifp, m, chain);
+#endif
+#else
 		ifp->if_input(ifp, m);
+#endif
 	} while (0);
 
 	MSK_INC(sc_if->msk_cdata.msk_rx_cons, MSK_RX_RING_CNT);
@@ -3184,10 +3196,21 @@ mskc_handle_events(struct msk_softc *sc)
 	struct msk_stat_desc *sd;
 	uint32_t control, status;
 	int cons, idx, len, port, rxprog;
+#ifdef ETHER_INPUT_CHAIN
+	struct mbuf_chain chain0[MAXCPU];
+#endif
+	struct mbuf_chain *chain;
 
 	idx = CSR_READ_2(sc, STAT_PUT_IDX);
 	if (idx == sc->msk_stat_cons)
 		return (0);
+
+#ifdef ETHER_INPUT_CHAIN
+	chain = chain0;
+	ether_input_chain_init(chain);
+#else
+	chain = NULL;
+#endif
 
 	/* Sync status LEs. */
 	bus_dmamap_sync(sc->msk_stat_tag, sc->msk_stat_map,
@@ -3234,7 +3257,7 @@ mskc_handle_events(struct msk_softc *sc)
 				msk_jumbo_rxeof(sc_if, status, len);
 			else
 #endif
-				msk_rxeof(sc_if, status, len);
+				msk_rxeof(sc_if, status, len, chain);
 			rxprog++;
 			/*
 			 * Because there is no way to sync single Rx LE
@@ -3270,6 +3293,11 @@ mskc_handle_events(struct msk_softc *sc)
 		if (rxprog > sc->msk_process_limit)
 			break;
 	}
+
+#ifdef ETHER_INPUT_CHAIN
+	if (rxprog > 0)
+		ether_input_dispatch(chain);
+#endif
 
 	sc->msk_stat_cons = cons;
 	/* XXX We should sync status LEs here. See above notes. */
