@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.76 2008/06/26 04:06:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.77 2008/06/27 20:56:59 dillon Exp $
  */
 
 #include "hammer.h"
@@ -619,10 +619,14 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 	 * Find an unused namekey.  Both the in-memory record tree and
 	 * the B-Tree are checked.  Exact matches also match create_tid
 	 * so use an ASOF search to (mostly) ignore it.
+	 *
+	 * delete-visibility is set so pending deletions do not give us
+	 * a false-negative on our ability to use an iterator.
 	 */
 	hammer_init_cursor(trans, &cursor, &dip->cache[1], dip);
 	cursor.key_beg = record->leaf.base;
 	cursor.flags |= HAMMER_CURSOR_ASOF;
+	cursor.flags |= HAMMER_CURSOR_DELETE_VISIBILITY;
 	cursor.asof = ip->obj_asof;
 
 	count = 0;
@@ -1572,7 +1576,10 @@ hammer_ip_resolve_data(hammer_cursor_t cursor)
  * Backend truncation / record replacement - delete records in range.
  *
  * Delete all records within the specified range for inode ip.  In-memory
- * records still associated with the frontend are ignored.
+ * records still associated with the frontend are ignored. 
+ *
+ * If truncating is non-zero in-memory records associated with the back-end
+ * are ignored.  If truncating is > 1 we can return EWOULDBLOCK.
  *
  * NOTE: An unaligned range will cause new records to be added to cover
  * the edge cases. (XXX not implemented yet).
@@ -1693,9 +1700,18 @@ retry:
 		 * data if the retention policy dictates.  The function
 		 * will set HAMMER_CURSOR_DELBTREE which hammer_ip_next()
 		 * uses to perform a fixup.
+		 *
+		 * If we have built up too many meta-buffers we risk
+		 * deadlocking the kernel and must stop.  This can occur
+		 * when deleting ridiculously huge files.
 		 */
-		if (truncating == 0 || hammer_cursor_ondisk(cursor))
+		if (truncating == 0 || hammer_cursor_ondisk(cursor)) {
 			error = hammer_ip_delete_record(cursor, ip, trans->tid);
+			if (truncating > 1 && error == 0 &&
+			    hammer_flusher_meta_limit(ip->hmp)) {
+				error = EWOULDBLOCK;
+			}
+		}
 		if (error)
 			break;
 		error = hammer_ip_next(cursor);
@@ -1720,6 +1736,8 @@ retry:
  * Delete all user records associated with an inode except the inode record
  * itself.  Directory entries are not deleted (they must be properly disposed
  * of or nlinks would get upset).
+ *
+ * This function can return EWOULDBLOCK.
  */
 int
 hammer_ip_delete_range_all(hammer_cursor_t cursor, hammer_inode_t ip,
@@ -1774,6 +1792,8 @@ retry:
 		if (leaf->base.rec_type != HAMMER_RECTYPE_DIRENTRY) {
 			error = hammer_ip_delete_record(cursor, ip, trans->tid);
 			++*countp;
+			if (error == 0 && hammer_flusher_meta_limit(ip->hmp))
+				error = EWOULDBLOCK;
 		}
 		if (error)
 			break;

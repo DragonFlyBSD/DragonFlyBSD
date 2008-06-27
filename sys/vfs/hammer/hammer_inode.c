@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.85 2008/06/26 04:06:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.86 2008/06/27 20:56:59 dillon Exp $
  */
 
 #include "hammer.h"
@@ -599,6 +599,7 @@ hammer_update_inode(hammer_cursor_t cursor, hammer_inode_t ip)
 	hammer_transaction_t trans = cursor->trans;
 	hammer_record_t record;
 	int error;
+	int redirty;
 
 retry:
 	error = 0;
@@ -680,6 +681,21 @@ retry:
 		record->leaf.create_ts = trans->time32;
 		record->data = (void *)&ip->sync_ino_data;
 		record->flags |= HAMMER_RECF_INTERLOCK_BE;
+
+		/*
+		 * If this flag is set we cannot sync the new file size
+		 * because we haven't finished related truncations.  The
+		 * inode will be flushed in another flush group to finish
+		 * the job.
+		 */
+		if ((ip->flags & HAMMER_INODE_WOULDBLOCK) &&
+		    ip->sync_ino_data.size != ip->ino_data.size) {
+			redirty = 1;
+			ip->sync_ino_data.size = ip->ino_data.size;
+		} else {
+			redirty = 0;
+		}
+
 		for (;;) {
 			error = hammer_ip_sync_record_cursor(cursor, record);
 			if (hammer_debug_inode)
@@ -719,6 +735,8 @@ retry:
 					    HAMMER_INODE_ATIME |
 					    HAMMER_INODE_MTIME);
 			ip->flags &= ~HAMMER_INODE_DELONDISK;
+			if (redirty)
+				ip->sync_flags |= HAMMER_INODE_DDIRTY;
 
 			/*
 			 * Root volume count of inodes
@@ -1440,10 +1458,18 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 		break;
 	case HAMMER_FST_FLUSH:
 		/* 
-		 * Record already associated with a flush group.  It had
-		 * better be ours.
+		 * If the WOULDBLOCK flag is set records may have been left
+		 * over from a previous flush attempt and should be moved
+		 * to the current flush group.  If it is not set then all
+		 * such records had better have been flushed already or
+		 * already associated with the current flush group.
 		 */
-		KKASSERT(rec->flush_group == ip->flush_group);
+		if (ip->flags & HAMMER_INODE_WOULDBLOCK) {
+			kprintf("b");
+			rec->flush_group = ip->flush_group;
+		} else {
+			KKASSERT(rec->flush_group == ip->flush_group);
+		}
 		r = 1;
 		break;
 	}
@@ -1467,7 +1493,6 @@ hammer_wait_inode(hammer_inode_t ip)
 	waitcount = (ip->flags & HAMMER_INODE_REFLUSH) ? 2 : 1;
 
 	if (ip->flush_state == HAMMER_FST_SETUP) {
-		kprintf("X");
 		hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
 	}
 	/* XXX can we make this != FST_IDLE ? check SETUP depends */
@@ -1541,9 +1566,20 @@ hammer_flush_inode_done(hammer_inode_t ip)
 	/*
 	 * Adjust flush_state.  The target state (idle or setup) shouldn't
 	 * be terribly important since we will reflush if we really need
-	 * to do anything. XXX
+	 * to do anything.
+	 *
+	 * If the WOULDBLOCK flag is set we must re-flush immediately
+	 * to continue a potentially large deletion.  The flag also causes
+	 * the hammer_setup_child_callback() to move records in the old
+	 * flush group to the new one.
 	 */
-	if (TAILQ_EMPTY(&ip->target_list) && RB_EMPTY(&ip->rec_tree)) {
+	if (ip->flags & HAMMER_INODE_WOULDBLOCK) {
+		kprintf("B");
+		ip->flush_state = HAMMER_FST_IDLE;
+		hammer_flush_inode_core(ip, HAMMER_FLUSH_SIGNAL);
+		ip->flags &= ~HAMMER_INODE_WOULDBLOCK;
+		dorel = 1;
+	} else if (TAILQ_EMPTY(&ip->target_list) && RB_EMPTY(&ip->rec_tree)) {
 		ip->flush_state = HAMMER_FST_IDLE;
 		dorel = 1;
 	} else {
@@ -1854,10 +1890,19 @@ hammer_sync_inode(hammer_inode_t ip)
 		 * already cleaned out any partial block and made it
 		 * pending.  The front-end may have updated trunc_off
 		 * while we were blocked so we only use sync_trunc_off.
+		 *
+		 * This operation can blow out the buffer cache, EWOULDBLOCK
+		 * means we were unable to complete the deletion.
 		 */
 		error = hammer_ip_delete_range(&cursor, ip,
 						aligned_trunc_off,
-						0x7FFFFFFFFFFFFFFFLL, 1);
+						0x7FFFFFFFFFFFFFFFLL, 2);
+		if (error == EWOULDBLOCK) {
+			ip->flags |= HAMMER_INODE_WOULDBLOCK;
+			error = 0;
+			goto defer_buffer_flush;
+		}
+
 		if (error)
 			Debugger("hammer_ip_delete_range errored");
 
@@ -1922,9 +1967,9 @@ hammer_sync_inode(hammer_inode_t ip)
 	    (ip->flags & HAMMER_INODE_DELETED) == 0) {
 		int count1 = 0;
 
-		ip->flags |= HAMMER_INODE_DELETED;
 		error = hammer_ip_delete_range_all(&cursor, ip, &count1);
 		if (error == 0) {
+			ip->flags |= HAMMER_INODE_DELETED;
 			ip->sync_flags &= ~HAMMER_INODE_DELETING;
 			ip->sync_flags &= ~HAMMER_INODE_TRUNCATED;
 			KKASSERT(RB_EMPTY(&ip->rec_tree));
@@ -1950,8 +1995,11 @@ hammer_sync_inode(hammer_inode_t ip)
 				--ip->hmp->rootvol->ondisk->vol0_stat_inodes;
 				hammer_modify_volume_done(trans.rootvol);
 			}
+		} else if (error == EWOULDBLOCK) {
+			ip->flags |= HAMMER_INODE_WOULDBLOCK;
+			error = 0;
+			goto defer_buffer_flush;
 		} else {
-			ip->flags &= ~HAMMER_INODE_DELETED;
 			Debugger("hammer_ip_delete_range_all errored");
 		}
 	}
@@ -1961,9 +2009,14 @@ hammer_sync_inode(hammer_inode_t ip)
 	if (error)
 		Debugger("RB_SCAN errored");
 
+defer_buffer_flush:
 	/*
 	 * Now update the inode's on-disk inode-data and/or on-disk record.
 	 * DELETED and ONDISK are managed only in ip->flags.
+	 *
+	 * In the case of a defered buffer flush we still update the on-disk
+	 * inode to satisfy visibility requirements if there happen to be
+	 * directory dependancies.
 	 */
 	switch(ip->flags & (HAMMER_INODE_DELETED | HAMMER_INODE_ONDISK)) {
 	case HAMMER_INODE_DELETED|HAMMER_INODE_ONDISK:

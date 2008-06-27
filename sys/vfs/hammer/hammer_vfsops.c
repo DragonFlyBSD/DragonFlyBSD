@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.54 2008/06/26 04:06:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.55 2008/06/27 20:56:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -320,7 +320,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 				hammer_adjust_volume_mode, NULL);
 			rootvol = hammer_get_root_volume(hmp, &error);
 			if (rootvol) {
-				hammer_recover_flush_buffers(hmp, rootvol);
+				hammer_recover_flush_buffers(hmp, rootvol, 1);
 				bcopy(rootvol->ondisk->vol0_blockmap,
 				      hmp->blockmap,
 				      sizeof(hmp->blockmap));

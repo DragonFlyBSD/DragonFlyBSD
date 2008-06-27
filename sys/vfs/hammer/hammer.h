@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.93 2008/06/26 04:06:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.94 2008/06/27 20:56:59 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -286,7 +286,8 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_DELETING	0x00020000 /* inode delete request (frontend)*/
 #define HAMMER_INODE_RESIGNAL	0x00040000 /* re-signal on re-flush */
 #define HAMMER_INODE_ATIME	0x00100000 /* in-memory atime modified */
-#define HAMMER_INODE_MTIME	0x00100000 /* in-memory mtime modified */
+#define HAMMER_INODE_MTIME	0x00200000 /* in-memory mtime modified */
+#define HAMMER_INODE_WOULDBLOCK 0x00400000 /* re-issue to new flush group */
 
 #define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|			    \
 				 HAMMER_INODE_XDIRTY|HAMMER_INODE_BUFS|	    \
@@ -932,8 +933,8 @@ hammer_off_t hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t bmap_off,
 			int *errorp);
 hammer_off_t hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t bmap_off,
 			int *errorp);
-int64_t hammer_undo_used(hammer_mount_t hmp);
-int64_t hammer_undo_space(hammer_mount_t hmp);
+int64_t hammer_undo_used(hammer_transaction_t trans);
+int64_t hammer_undo_space(hammer_transaction_t trans);
 int64_t hammer_undo_max(hammer_mount_t hmp);
 
 void hammer_start_transaction(struct hammer_transaction *trans,
@@ -1023,10 +1024,12 @@ void hammer_flusher_create(hammer_mount_t hmp);
 void hammer_flusher_destroy(hammer_mount_t hmp);
 void hammer_flusher_sync(hammer_mount_t hmp);
 void hammer_flusher_async(hammer_mount_t hmp);
+int  hammer_flusher_meta_limit(hammer_mount_t hmp);
+int  hammer_flusher_undo_exhausted(hammer_transaction_t trans, int quarter);
 
 int hammer_recover(hammer_mount_t hmp, hammer_volume_t rootvol);
 void hammer_recover_flush_buffers(hammer_mount_t hmp,
-			hammer_volume_t root_volume);
+			hammer_volume_t root_volume, int final);
 
 void hammer_crc_set_blockmap(hammer_blockmap_t blockmap);
 void hammer_crc_set_volume(hammer_volume_ondisk_t ondisk);

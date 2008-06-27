@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.8 2008/06/26 04:06:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.9 2008/06/27 20:56:59 dillon Exp $
  */
 
 #include "hammer.h"
@@ -44,14 +44,17 @@
  * created during the iteration due to alignments.  This also allows us
  * to adjust alignments without blowing up the B-Tree.
  */
-static int check_prune(struct hammer_ioc_prune *prune, hammer_btree_elm_t elm);
+static int prune_should_delete(struct hammer_ioc_prune *prune,
+			       hammer_btree_leaf_elm_t elm);
+static void prune_check_nlinks(hammer_cursor_t cursor,
+			       hammer_btree_leaf_elm_t elm);
 
 int
 hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 		 struct hammer_ioc_prune *prune)
 {
 	struct hammer_cursor cursor;
-	hammer_btree_elm_t elm;
+	hammer_btree_leaf_elm_t elm;
 	struct hammer_ioc_prune_elm *copy_elms;
 	struct hammer_ioc_prune_elm *user_elms;
 	int error;
@@ -128,6 +131,12 @@ retry:
 
 	while (error == 0) {
 		/*
+		 * Check for work
+		 */
+		elm = &cursor.node->ondisk->elms[cursor.index].leaf;
+		prune->key_cur = elm->base;
+
+		/*
 		 * Yield to more important tasks
 		 */
 		if ((error = hammer_signal_check(trans->hmp)) != 0)
@@ -137,22 +146,14 @@ retry:
 			tsleep(trans, 0, "hmrslo", hz / 10);
 			hammer_sync_lock_sh(trans);
 		}
-		if (trans->hmp->locked_dirty_count +
-		    trans->hmp->io_running_count > hammer_limit_dirtybufs) {
-			hammer_sync_unlock(trans);
-			hammer_flusher_async(trans->hmp);
-			tsleep(trans, 0, "hmrslo", hz / 10);
-			hammer_sync_lock_sh(trans);
+		if (hammer_flusher_meta_limit(trans->hmp) ||
+		    hammer_flusher_undo_exhausted(trans, 2)) {
+			error = EWOULDBLOCK;
+			break;
 		}
 
-		/*
-		 * Check for work
-		 */
-		elm = &cursor.node->ondisk->elms[cursor.index];
-		prune->key_cur = elm->base;
-
-		if (prune->stat_oldest_tid > elm->leaf.base.create_tid)
-			prune->stat_oldest_tid = elm->leaf.base.create_tid;
+		if (prune->stat_oldest_tid > elm->base.create_tid)
+			prune->stat_oldest_tid = elm->base.create_tid;
 
 		if (hammer_debug_general & 0x0200) {
 			kprintf("check %016llx %016llx cre=%016llx del=%016llx\n",
@@ -162,7 +163,7 @@ retry:
 					elm->base.delete_tid);
 		}
 				
-		if (check_prune(prune, elm) == 0) {
+		if (prune_should_delete(prune, elm)) {
 			if (hammer_debug_general & 0x0200) {
 				kprintf("check %016llx %016llx: DELETE\n",
 					elm->base.obj_id, elm->base.key);
@@ -194,6 +195,11 @@ retry:
 			 */
 			cursor.flags |= HAMMER_CURSOR_ATEDISK;
 		} else {
+			/*
+			 * Nothing to delete, but we may have to check other
+			 * things.
+			 */
+			prune_check_nlinks(&cursor, elm);
 			cursor.flags |= HAMMER_CURSOR_ATEDISK;
 			if (hammer_debug_general & 0x0100) {
 				kprintf("check %016llx %016llx: SKIP\n",
@@ -207,6 +213,10 @@ retry:
 	if (error == ENOENT)
 		error = 0;
 	hammer_done_cursor(&cursor);
+	if (error == EWOULDBLOCK) {
+		hammer_flusher_sync(trans->hmp);
+		goto retry;
+	}
 	if (error == EDEADLK)
 		goto retry;
 	if (error == EINTR) {
@@ -222,9 +232,11 @@ failed:
 
 /*
  * Check pruning list.  The list must be sorted in descending order.
+ *
+ * Return non-zero if the record should be deleted.
  */
 static int
-check_prune(struct hammer_ioc_prune *prune, hammer_btree_elm_t elm)
+prune_should_delete(struct hammer_ioc_prune *prune, hammer_btree_leaf_elm_t elm)
 {
 	struct hammer_ioc_prune_elm *scan;
 	int i;
@@ -235,31 +247,15 @@ check_prune(struct hammer_ioc_prune *prune, hammer_btree_elm_t elm)
 	 */
 	if (prune->head.flags & HAMMER_IOC_PRUNE_ALL) {
 		if (elm->base.delete_tid != 0)
-			return(0);
-		return(-1);
+			return(1);
+		return(0);
 	}
 
 	for (i = 0; i < prune->nelms; ++i) {
 		scan = &prune->elms[i];
 
-#if 0
 		/*
-		 * Locate the scan index covering the create and delete TIDs.
-		 */
-		if (*realign_cre < 0 &&
-		    elm->base.create_tid >= scan->beg_tid &&
-		    elm->base.create_tid < scan->end_tid) {
-			*realign_cre = i;
-		}
-		if (*realign_del < 0 && elm->base.delete_tid &&
-		    elm->base.delete_tid > scan->beg_tid &&
-		    elm->base.delete_tid <= scan->end_tid) {
-			*realign_del = i;
-		}
-#endif
-
-		/*
-		 * Now check for loop termination.
+		 * Check for loop termination.
 		 */
 		if (elm->base.create_tid >= scan->end_tid ||
 		    elm->base.delete_tid > scan->end_tid) {
@@ -267,17 +263,32 @@ check_prune(struct hammer_ioc_prune *prune, hammer_btree_elm_t elm)
 		}
 
 		/*
-		 * Now determine if we can delete the record.
+		 * Determine if we can delete the record.
 		 */
 		if (elm->base.delete_tid &&
 		    elm->base.create_tid >= scan->beg_tid &&
 		    elm->base.delete_tid <= scan->end_tid &&
 		    (elm->base.create_tid - scan->beg_tid) / scan->mod_tid ==
 		    (elm->base.delete_tid - scan->beg_tid) / scan->mod_tid) {
-			return(0);
+			return(1);
 		}
 	}
-	return(-1);
+	return(0);
+}
+
+static
+void
+prune_check_nlinks(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm)
+{
+	if (elm->base.rec_type != HAMMER_RECTYPE_INODE)
+		return;
+	if (elm->base.delete_tid != 0)
+		return;
+	if (hammer_btree_extract(cursor, HAMMER_CURSOR_GET_DATA))
+		return;
+	if (cursor->data->inode.nlinks)
+		return;
+	kprintf("found disconnected inode %016llx\n", elm->base.obj_id);
 }
 
 #if 0

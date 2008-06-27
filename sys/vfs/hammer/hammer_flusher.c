@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.29 2008/06/23 07:31:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.30 2008/06/27 20:56:59 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -48,7 +48,6 @@ static void hammer_flusher_clean_loose_ios(hammer_mount_t hmp);
 static void hammer_flusher_flush(hammer_mount_t hmp);
 static void hammer_flusher_flush_inode(hammer_inode_t ip,
 					hammer_transaction_t trans);
-static int hammer_must_finalize_undo(hammer_mount_t hmp);
 static void hammer_flusher_finalize(hammer_transaction_t trans, int final);
 
 /*
@@ -293,6 +292,18 @@ hammer_flusher_flush(hammer_mount_t hmp)
 	hammer_start_transaction_fls(&hmp->flusher.trans, hmp);
 
 	/*
+	 * If the previous flush cycle just about exhausted our UNDO space
+	 * we may have to do a dummy cycle to move the first_offset up
+	 * before actually digging into a new cycle, or the new cycle will
+	 * not have sufficient undo space.
+	 */
+	if (hammer_flusher_undo_exhausted(&hmp->flusher.trans, 3)) {
+		hammer_lock_ex(&hmp->flusher.finalize_lock);
+		hammer_flusher_finalize(&hmp->flusher.trans, 0);
+		hammer_unlock(&hmp->flusher.finalize_lock);
+	}
+
+	/*
 	 * Start work threads.
 	 */
 	i = 0;
@@ -333,20 +344,28 @@ hammer_flusher_flush(hammer_mount_t hmp)
 
 /*
  * Flush a single inode that is part of a flush group.
+ *
+ * NOTE!  The sync code can return EWOULDBLOCK if the flush operation
+ * would otherwise blow out the buffer cache.  hammer_flush_inode_done()
+ * will re-queue the inode for the next flush sequence and force the
+ * flusher to run again if this occurs.
  */
 static
 void
 hammer_flusher_flush_inode(hammer_inode_t ip, hammer_transaction_t trans)
 {
 	hammer_mount_t hmp = ip->hmp;
+	int error;
 
 	hammer_lock_sh(&hmp->flusher.finalize_lock);
-	ip->error = hammer_sync_inode(ip);
+	error = hammer_sync_inode(ip);
+	if (error != EWOULDBLOCK)
+		ip->error = error;
 	hammer_flush_inode_done(ip);
 	hammer_unlock(&hmp->flusher.finalize_lock);
 	while (hmp->flusher.finalize_want)
 		tsleep(&hmp->flusher.finalize_want, 0, "hmrsxx", 0);
-	if (hammer_must_finalize_undo(hmp)) {
+	if (hammer_flusher_undo_exhausted(trans, 1)) {
 		hmp->flusher.finalize_want = 1;
 		hammer_lock_ex(&hmp->flusher.finalize_lock);
 		kprintf("HAMMER: Warning: UNDO area too small!\n");
@@ -354,8 +373,7 @@ hammer_flusher_flush_inode(hammer_inode_t ip, hammer_transaction_t trans)
 		hammer_unlock(&hmp->flusher.finalize_lock);
 		hmp->flusher.finalize_want = 0;
 		wakeup(&hmp->flusher.finalize_want);
-	} else if (trans->hmp->locked_dirty_count +
-		   trans->hmp->io_running_count > hammer_limit_dirtybufs) {
+	} else if (hammer_flusher_meta_limit(trans->hmp)) {
 		hmp->flusher.finalize_want = 1;
 		hammer_lock_ex(&hmp->flusher.finalize_lock);
 		hammer_flusher_finalize(trans, 0);
@@ -366,16 +384,25 @@ hammer_flusher_flush_inode(hammer_inode_t ip, hammer_transaction_t trans)
 }
 
 /*
- * If the UNDO area gets over half full we have to flush it.  We can't
- * afford the UNDO area becoming completely full as that would break
- * the crash recovery atomicy.
+ * Return non-zero if the UNDO area has less then (QUARTER / 4) of its
+ * space left.
+ *
+ * 1/4 - Emergency free undo space level.  Below this point the flusher
+ *	 will finalize even if directory dependancies have not been resolved.
+ *
+ * 2/4 - Used by the pruning and reblocking code.  These functions may be
+ *	 running in parallel with a flush and cannot be allowed to drop
+ *	 available undo space to emergency levels.
+ *
+ * 3/4 - Used at the beginning of a flush to force-sync the volume header
+ *	 to give the flush plenty of runway to work in.
  */
-static
 int
-hammer_must_finalize_undo(hammer_mount_t hmp)
+hammer_flusher_undo_exhausted(hammer_transaction_t trans, int quarter)
 {
-	if (hammer_undo_space(hmp) < hammer_undo_max(hmp) / 2) {
-		hkprintf("*");
+	if (hammer_undo_space(trans) <
+	    hammer_undo_max(trans->hmp) * quarter / 4) {
+		kprintf("%c", '0' + quarter);
 		return(1);
 	} else {
 		return(0);
@@ -477,6 +504,11 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 * an UNDO.  However, because our TID is generated before we get
 	 * the sync lock another sync may have beat us to the punch.
 	 *
+	 * This also has the side effect of updating first_offset based on
+	 * a prior finalization when the first finalization of the next flush
+	 * cycle occurs, removing any undo info from the prior finalization
+	 * from consideration.
+	 *
 	 * The volume header will be flushed out synchronously.
 	 */
 	dundomap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
@@ -527,8 +559,10 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	/*
 	 * If this is the final finalization for the flush group set
 	 * up for the next sequence by setting a new first_offset in
-	 * our cached blockmap and
-	 * clearing the undo history.
+	 * our cached blockmap and clearing the undo history.
+	 *
+	 * Even though we have updated our cached first_offset, the on-disk
+	 * first_offset still governs available-undo-space calculations.
 	 */
 	if (final) {
 		cundomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
@@ -537,5 +571,21 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	}
 
 	hammer_sync_unlock(trans);
+}
+
+/*
+ * Return non-zero if too many dirty meta-data buffers have built up.
+ *
+ * Since we cannot allow such buffers to flush until we have dealt with
+ * the UNDOs, we risk deadlocking the kernel's buffer cache.
+ */
+int
+hammer_flusher_meta_limit(hammer_mount_t hmp)
+{
+	if (hmp->locked_dirty_count + hmp->io_running_count >
+	    hammer_limit_dirtybufs) {
+		return(1);
+	}
+	return(0);
 }
 

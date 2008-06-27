@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.2 2008/06/26 04:06:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.3 2008/06/27 20:56:59 dillon Exp $
  */
 /*
  * HAMMER mirroring ioctls - serialize and deserialize modifications made
@@ -328,6 +328,14 @@ hammer_mirror_update(hammer_cursor_t cursor, struct hammer_ioc_mrecord *mrec)
 	hammer_btree_leaf_elm_t elm;
 
 	elm = cursor->leaf;
+
+	if (mrec->leaf.base.delete_tid == 0) {
+		kprintf("mirror_write: object %016llx:%016llx deleted on "
+			"target, not deleted on source\n",
+			elm->base.obj_id, elm->base.key);
+		return(0);
+	}
+
 	KKASSERT(elm->base.create_tid < mrec->leaf.base.delete_tid);
 	hammer_modify_node(cursor->trans, cursor->node, elm, sizeof(*elm));
 	elm->base.delete_tid = mrec->leaf.base.delete_tid;

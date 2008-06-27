@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.21 2008/06/24 17:38:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.22 2008/06/27 20:56:59 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -126,10 +126,10 @@ retry:
 		if (trans->hmp->sync_lock.wanted) {
 			tsleep(trans, 0, "hmrslo", hz / 10);
 		}
-		if (trans->hmp->locked_dirty_count +
-		    trans->hmp->io_running_count > hammer_limit_dirtybufs) {
-			hammer_flusher_async(trans->hmp);
-			tsleep(trans, 0, "hmrslo", hz / 10);
+		if (hammer_flusher_meta_limit(trans->hmp) ||
+		    hammer_flusher_undo_exhausted(trans, 2)) {
+			error = EWOULDBLOCK;
+			break;
 		}
 
 		/*
@@ -149,6 +149,10 @@ retry:
 	if (error == ENOENT)
 		error = 0;
 	hammer_done_cursor(&cursor);
+	if (error == EWOULDBLOCK) {
+		hammer_flusher_sync(trans->hmp);
+		goto retry;
+	}
 	if (error == EDEADLK)
 		goto retry;
 	if (error == EINTR) {

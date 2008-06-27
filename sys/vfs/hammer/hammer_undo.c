@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.17 2008/06/17 04:02:38 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.18 2008/06/27 20:56:59 dillon Exp $
  */
 
 /*
@@ -117,7 +117,7 @@ again:
 	bytes = ((len + HAMMER_HEAD_ALIGN_MASK) & ~HAMMER_HEAD_ALIGN_MASK) +
 		sizeof(struct hammer_fifo_undo) +
 		sizeof(struct hammer_fifo_tail);
-	if (hammer_undo_space(hmp) < bytes + HAMMER_BUFSIZE*2)
+	if (hammer_undo_space(trans) < bytes + HAMMER_BUFSIZE*2)
 		panic("hammer: insufficient undo FIFO space!");
 
 	next_offset = undomap->next_offset;
@@ -251,37 +251,47 @@ hammer_clear_undo_history(hammer_mount_t hmp)
 }
 
 /*
- * Misc helper routines.  Return available space and total space.
+ * Return how much of the undo FIFO has been used
+ *
+ * The calculation includes undo FIFO space still reserved from a previous
+ * flush (because it will still be run on recovery if a crash occurs and
+ * we can't overwrite it yet).
  */
 int64_t
-hammer_undo_used(hammer_mount_t hmp)
+hammer_undo_used(hammer_transaction_t trans)
 {
-	hammer_blockmap_t rootmap;
+	hammer_blockmap_t cundomap;
+	hammer_blockmap_t dundomap;
 	int64_t max_bytes;
 	int64_t bytes;
 
-	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
+	cundomap = &trans->hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
+	dundomap = &trans->rootvol->ondisk->
+				vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 
-	if (rootmap->first_offset <= rootmap->next_offset) {
-		bytes = rootmap->next_offset - rootmap->first_offset;
+	if (dundomap->first_offset <= cundomap->next_offset) {
+		bytes = cundomap->next_offset - dundomap->first_offset;
 	} else {
-		bytes = rootmap->alloc_offset - rootmap->first_offset +
-		        (rootmap->next_offset & HAMMER_OFF_LONG_MASK);
+		bytes = cundomap->alloc_offset - dundomap->first_offset +
+		        (cundomap->next_offset & HAMMER_OFF_LONG_MASK);
 	}
-	max_bytes = rootmap->alloc_offset & HAMMER_OFF_SHORT_MASK;
+	max_bytes = cundomap->alloc_offset & HAMMER_OFF_SHORT_MASK;
 	KKASSERT(bytes <= max_bytes);
 	return(bytes);
 }
 
+/*
+ * Return how much of the undo FIFO is available for new records.
+ */
 int64_t
-hammer_undo_space(hammer_mount_t hmp)
+hammer_undo_space(hammer_transaction_t trans)
 {
 	hammer_blockmap_t rootmap;
 	int64_t max_bytes;
 
-	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
+	rootmap = &trans->hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 	max_bytes = rootmap->alloc_offset & HAMMER_OFF_SHORT_MASK;
-	return(max_bytes - hammer_undo_used(hmp));
+	return(max_bytes - hammer_undo_used(trans));
 }
 
 int64_t

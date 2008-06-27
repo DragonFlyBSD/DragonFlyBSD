@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.25 2008/06/20 05:38:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.26 2008/06/27 20:56:59 dillon Exp $
  */
 
 #include "hammer.h"
@@ -65,6 +65,7 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 	hammer_off_t first_offset;
 	hammer_off_t last_offset;
 	int error;
+	int reported = 0;
 
 	/*
 	 * Examine the UNDO FIFO.  If it is empty the filesystem is clean
@@ -155,6 +156,22 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 		}
 		scan_offset -= tail->tail_size;
 		bytes -= tail->tail_size;
+
+		/*
+		 * If too many dirty buffers have built up 
+		 */
+		if (hammer_flusher_meta_limit(hmp)) {
+			if (hmp->ronly == 0) {
+				hammer_recover_flush_buffers(hmp, root_volume,
+							     0);
+				kprintf("HAMMER(%s) Continuing recovery\n",
+					root_volume->ondisk->vol_name);
+			} else if (reported == 0) {
+				reported = 1;
+				kprintf("HAMMER(%s) Recovery failure: Insufficient buffer cache to hold dirty buffers on read-only mount!\n",
+					root_volume->ondisk->vol_name);
+			}
+		}
 	}
 done:
 	if (buffer)
@@ -180,7 +197,7 @@ done:
 	 * be flushed out last.
 	 */
 	if (hmp->ronly == 0 && error == 0)
-		hammer_recover_flush_buffers(hmp, root_volume);
+		hammer_recover_flush_buffers(hmp, root_volume, 1);
 	kprintf("HAMMER(%s) End Recovery\n", root_volume->ondisk->vol_name);
 	return (error);
 }
@@ -429,7 +446,8 @@ static int hammer_recover_flush_volume_callback(hammer_volume_t, void *);
 static int hammer_recover_flush_buffer_callback(hammer_buffer_t, void *);
 
 void
-hammer_recover_flush_buffers(hammer_mount_t hmp, hammer_volume_t root_volume)
+hammer_recover_flush_buffers(hammer_mount_t hmp, hammer_volume_t root_volume,
+			     int final)
 {
         /*
          * Flush the buffers out asynchronously, wait for all the I/O to
@@ -448,7 +466,7 @@ hammer_recover_flush_buffers(hammer_mount_t hmp, hammer_volume_t root_volume)
 	/*
 	 * Finaly, deal with the volume header.
 	 */
-	if (root_volume->io.recovered) {
+	if (root_volume->io.recovered && final) {
 		crit_enter();
 		while (hmp->io_running_count)
 			tsleep(&hmp->io_running_count, 0, "hmrflx", 0);
