@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfereg.h,v 1.19 2006/05/28 00:20:21 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfereg.h,v 1.7 2008/06/27 13:47:36 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfereg.h,v 1.8 2008/06/27 16:30:53 sephe Exp $	*/
 
 /*
  * Copyright (c) 2005 Jonathan Gray <jsg@openbsd.org>
@@ -35,6 +35,7 @@
 #define NFE_IRQ_MASK		0x004
 #define NFE_SETUP_R6		0x008
 #define NFE_IMTIMER		0x00c
+#define NFE_MAC_RESET		0x034
 #define NFE_MISC1		0x080
 #define NFE_TX_CTL		0x084
 #define NFE_TX_STATUS		0x088
@@ -75,6 +76,7 @@
 #define NFE_PWR_CAP		0x268
 #define NFE_PWR_STATE		0x26c
 #define NFE_VTAG_CTL		0x300
+#define NFE_PWR_STATE2		0x600
 
 #define NFE_PHY_ERROR		0x00001
 #define NFE_PHY_WRITE		0x00400
@@ -82,6 +84,8 @@
 #define NFE_PHYADD_SHIFT	5
 
 #define NFE_STATUS_MAGIC	0x140000
+
+#define NFE_RESET_ASSERT	0xf3
 
 #define NFE_R1_MAGIC		0x16070f
 #define NFE_R2_MAGIC		0x16
@@ -114,8 +118,8 @@
 #define NFE_RXTX_VTAG_STRIP	0x0040
 #define NFE_RXTX_VTAG_INSERT	0x0080
 #define NFE_RXTX_RXCSUM		0x0400
-#define NFE_RXTX_V2MAGIC	0x2100
-#define NFE_RXTX_V3MAGIC	0x2200
+#define NFE_RXTX_DESC_V2	0x002100
+#define NFE_RXTX_DESC_V3	0xc02200
 #define NFE_RXFILTER_MAGIC	0x007f0008
 #define NFE_U2M			(1 << 5)
 #define NFE_PROMISC		(1 << 7)
@@ -128,6 +132,9 @@
 
 #define NFE_PWR_VALID		(1 << 8)
 #define NFE_PWR_WAKEUP		(1 << 15)
+
+#define NFE_PWRUP_MASK		0x0f11
+#define NFE_PWRUP_REV_A3	0x1
 
 #define NFE_MEDIA_SET		0x10000
 #define	NFE_MEDIA_1000T		0x00032

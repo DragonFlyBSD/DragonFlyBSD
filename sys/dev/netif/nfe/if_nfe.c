@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.26 2008/06/27 13:47:36 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.27 2008/06/27 16:30:53 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -139,6 +139,8 @@ static void	nfe_ifmedia_sts(struct ifnet *, struct ifmediareq *);
 static void	nfe_setmulti(struct nfe_softc *);
 static void	nfe_get_macaddr(struct nfe_softc *, uint8_t *);
 static void	nfe_set_macaddr(struct nfe_softc *, const uint8_t *);
+static void	nfe_powerup(device_t);
+static void	nfe_mac_reset(struct nfe_softc *);
 static void	nfe_tick(void *);
 static void	nfe_ring_dma_addr(void *, bus_dma_segment_t *, int, int);
 static void	nfe_buf_dma_addr(void *, bus_dma_segment_t *, int, bus_size_t,
@@ -460,6 +462,11 @@ nfe_attach(device_t dev)
 
 	sc->sc_mem_rid = PCIR_BAR(0);
 
+	if (sc->sc_flags & NFE_40BIT_ADDR)
+		sc->rxtxctl_desc = NFE_RXTX_DESC_V3;
+	else if (sc->sc_flags & NFE_JUMBO_SUP)
+		sc->rxtxctl_desc = NFE_RXTX_DESC_V2;
+
 #ifndef BURN_BRIDGES
 	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
 		uint32_t mem, irq;
@@ -503,6 +510,9 @@ nfe_attach(device_t dev)
 
 	/* Disable WOL */
 	NFE_WRITE(sc, NFE_WOL_CTL, 0);
+
+	if ((sc->sc_flags & NFE_NO_PWRCTL) == 0)
+		nfe_powerup(dev);
 
 	nfe_get_macaddr(sc, eaddr);
 
@@ -1333,6 +1343,9 @@ nfe_init(void *xsc)
 
 	nfe_stop(sc);
 
+	if ((sc->sc_flags & NFE_NO_PWRCTL) == 0)
+		nfe_mac_reset(sc);
+
 	/*
 	 * NOTE:
 	 * Switching between jumbo frames and normal frames should
@@ -1365,11 +1378,7 @@ nfe_init(void *xsc)
 	NFE_WRITE(sc, NFE_TX_POLL, 0);
 	NFE_WRITE(sc, NFE_STATUS, 0);
 
-	sc->rxtxctl = NFE_RXTX_BIT2;
-	if (sc->sc_flags & NFE_40BIT_ADDR)
-		sc->rxtxctl |= NFE_RXTX_V3MAGIC;
-	else if (sc->sc_flags & NFE_JUMBO_SUP)
-		sc->rxtxctl |= NFE_RXTX_V2MAGIC;
+	sc->rxtxctl = NFE_RXTX_BIT2 | sc->rxtxctl_desc;
 
 	if (ifp->if_capenable & IFCAP_RXCSUM)
 		sc->rxtxctl |= NFE_RXTX_RXCSUM;
@@ -2310,4 +2319,53 @@ nfe_sysctl_imtime(SYSCTL_HANDLER_ARGS)
 back:
 	lwkt_serialize_exit(ifp->if_serializer);
 	return error;
+}
+
+static void
+nfe_powerup(device_t dev)
+{
+	struct nfe_softc *sc = device_get_softc(dev);
+	uint32_t pwr_state;
+	uint16_t did;
+
+	/*
+	 * Bring MAC and PHY out of low power state
+	 */
+
+	pwr_state = NFE_READ(sc, NFE_PWR_STATE2) & ~NFE_PWRUP_MASK;
+
+	did = pci_get_device(dev);
+	if ((did == PCI_PRODUCT_NVIDIA_MCP51_LAN1 ||
+	     did == PCI_PRODUCT_NVIDIA_MCP51_LAN2) &&
+	    pci_get_revid(dev) >= 0xa3)
+		pwr_state |= NFE_PWRUP_REV_A3;
+
+	NFE_WRITE(sc, NFE_PWR_STATE2, pwr_state);
+}
+
+static void
+nfe_mac_reset(struct nfe_softc *sc)
+{
+	uint32_t rxtxctl = sc->rxtxctl_desc | NFE_RXTX_BIT2;
+	uint32_t macaddr_hi, macaddr_lo, tx_poll;
+
+	NFE_WRITE(sc, NFE_RXTX_CTL, NFE_RXTX_RESET | rxtxctl);
+
+	/* Save several registers for later restoration */
+	macaddr_hi = NFE_READ(sc, NFE_MACADDR_HI);
+	macaddr_lo = NFE_READ(sc, NFE_MACADDR_LO);
+	tx_poll = NFE_READ(sc, NFE_TX_POLL);
+
+	NFE_WRITE(sc, NFE_MAC_RESET, NFE_RESET_ASSERT);
+	DELAY(100);
+
+	NFE_WRITE(sc, NFE_MAC_RESET, 0);
+	DELAY(100);
+
+	/* Restore saved registers */
+	NFE_WRITE(sc, NFE_MACADDR_HI, macaddr_hi);
+	NFE_WRITE(sc, NFE_MACADDR_LO, macaddr_lo);
+	NFE_WRITE(sc, NFE_TX_POLL, tx_poll);
+
+	NFE_WRITE(sc, NFE_RXTX_CTL, rxtxctl);
 }

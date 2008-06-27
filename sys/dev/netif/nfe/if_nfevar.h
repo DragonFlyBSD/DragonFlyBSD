@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfevar.h,v 1.11 2006/02/19 13:57:02 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfevar.h,v 1.4 2008/06/27 13:30:56 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfevar.h,v 1.5 2008/06/27 16:30:53 sephe Exp $	*/
 
 /*
  * Copyright (c) 2005 Jonathan Gray <jsg@openbsd.org>
@@ -101,6 +101,7 @@ struct nfe_softc {
 #define NFE_USE_JUMBO	0x10
 #define NFE_NO_PWRCTL	0x20
 
+	uint32_t		rxtxctl_desc;
 	uint32_t		rxtxctl;
 	uint8_t			mii_phyaddr;
 
