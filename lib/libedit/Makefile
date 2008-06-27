@@ -1,6 +1,6 @@
 # @(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libedit/Makefile,v 1.18.2.2 2002/07/23 10:20:19 ru Exp $
-# $DragonFly: src/lib/libedit/Makefile,v 1.5 2007/05/05 00:27:39 pavalos Exp $
+# $DragonFly: src/lib/libedit/Makefile,v 1.6 2008/06/27 08:06:48 corecode Exp $
 
 LIB=	edit
 SHLIB_MAJOR=	5
@@ -39,7 +39,7 @@ CFLAGS+=#-DDEBUG_PASTE
 AHDR=vi.h emacs.h common.h
 ASRC=${.CURDIR}/vi.c ${.CURDIR}/emacs.c ${.CURDIR}/common.c
 
-# SUBDIR=	readline
+SUBDIR=	readline
 
 vi.h: vi.c makelist
 	sh ${.CURDIR}/makelist -h ${.CURDIR}/vi.c > ${.TARGET}
