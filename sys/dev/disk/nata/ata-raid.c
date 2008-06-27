@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.120 2006/04/15 10:27:41 maxim Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-raid.c,v 1.8 2008/01/06 16:55:49 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-raid.c,v 1.9 2008/06/27 00:03:56 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -928,10 +928,17 @@ ata_raid_config_changed(struct ar_softc *rdp, int writeback)
 	rdp->status &= ~AR_S_READY;
     }
 
+    /*
+     * Note that when the array breaks so comes up broken we
+     * force a write of the array config to the remaining
+     * drives so that the generation will be incremented past
+     * those of the missing or failed drives (in all cases).
+     */
     if (rdp->status != status) {
 	if (!(rdp->status & AR_S_READY)) {
 	    kprintf("ar%d: FAILURE - %s array broken\n",
 		   rdp->lun, ata_raid_type(rdp));
+	    writeback = 1;
 	}
 	else if (rdp->status & AR_S_DEGRADED) {
 	    if (rdp->type & (AR_T_RAID1 | AR_T_RAID01))
@@ -940,6 +947,7 @@ ata_raid_config_changed(struct ar_softc *rdp, int writeback)
 		kprintf("ar%d: WARNING - parity", rdp->lun);
 	    kprintf(" protection lost. %s array in DEGRADED mode\n",
 		   ata_raid_type(rdp));
+	    writeback = 1;
 	}
     }
     spin_unlock_wr(&rdp->lock);
@@ -2251,11 +2259,16 @@ ata_raid_intel_write_meta(struct ar_softc *rdp)
     meta = (struct intel_raid_conf *)kmalloc(1536, M_AR, M_WAITOK | M_ZERO);
 
     rdp->generation++;
-    microtime(&timestamp);
+
+    /* Generate a new config_id if none exists */
+    if (!rdp->magic_0) {
+	microtime(&timestamp);
+	rdp->magic_0 = timestamp.tv_sec ^ timestamp.tv_usec;
+    }
 
     bcopy(INTEL_MAGIC, meta->intel_id, sizeof(meta->intel_id));
     bcopy(INTEL_VERSION_1100, meta->version, sizeof(meta->version));
-    meta->config_id = timestamp.tv_sec;
+    meta->config_id = rdp->magic_0;
     meta->generation = rdp->generation;
     meta->total_disks = rdp->total_disks;
     meta->total_volumes = 1;                                    /* XXX SOS */
