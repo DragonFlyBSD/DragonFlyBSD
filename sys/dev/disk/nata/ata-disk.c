@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.199 2006/09/14 19:12:29 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-disk.c,v 1.7 2008/03/24 06:41:56 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-disk.c,v 1.8 2008/06/27 01:24:46 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -298,7 +298,7 @@ ad_strategy(struct dev_strategy_args *ap)
     request->dev = dev;
     request->bio = bp;
     request->callback = ad_done;
-    request->timeout = 5;
+    request->timeout = ATA_DEFAULT_TIMEOUT;
     request->retries = 2;
     request->data = bbp->b_data;
     request->bytecount = bbp->b_bcount;
@@ -402,7 +402,7 @@ ad_dump(struct dev_dump_args *ap)
 	bzero(&request, sizeof(struct ata_request));
 	request.dev = dev;
 	/* request.bio = NULL; */
-	request.timeout = 5;
+	request.timeout = ATA_DEFAULT_TIMEOUT;
 	request.retries = 2;
 	request.data = va;
 	request.bytecount = dumppages * PAGE_SIZE;

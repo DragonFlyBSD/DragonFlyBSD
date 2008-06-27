@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.196 2007/11/19 21:11:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.11 2008/03/24 06:41:56 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cd.c,v 1.12 2008/06/27 01:24:46 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -246,7 +246,7 @@ acd_open(struct dev_open_args *ap)
 	request->dev = dev;
 	bcopy(ccb, request->u.atapi.ccb, 16);
 	request->flags = ATA_R_ATAPI;
-	request->timeout = 5;
+	request->timeout = ATA_DEFAULT_TIMEOUT;
 	ata_queue_request(request);
 	if (!request->error &&
 	    (request->u.atapi.sense.key == 2 ||

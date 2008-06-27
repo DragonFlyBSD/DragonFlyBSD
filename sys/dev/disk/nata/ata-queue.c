@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-queue.c,v 1.67 2007/01/27 21:15:58 remko Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.7 2007/06/05 18:30:40 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.8 2008/06/27 01:24:46 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -395,7 +395,7 @@ ata_completed(void *context, int dummy)
 	    request->bytecount = sizeof(struct atapi_sense);
 	    request->donecount = 0;
 	    request->transfersize = sizeof(struct atapi_sense);
-	    request->timeout = 5;
+	    request->timeout = ATA_DEFAULT_TIMEOUT;
 	    request->flags &= (ATA_R_ATAPI | ATA_R_QUIET);
 	    request->flags |= (ATA_R_READ | ATA_R_AT_HEAD | ATA_R_REQUEUE);
 	    ATA_DEBUG_RQ(request, "autoissue request sense");

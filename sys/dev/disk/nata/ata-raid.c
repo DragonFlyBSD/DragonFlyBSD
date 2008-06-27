@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.120 2006/04/15 10:27:41 maxim Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-raid.c,v 1.9 2008/06/27 00:03:56 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-raid.c,v 1.10 2008/06/27 01:24:46 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -3954,7 +3954,7 @@ ata_raid_init_request(struct ar_softc *rdp, struct bio *bio)
 	kprintf("FAILURE - out of memory in ata_raid_init_request\n");
 	return NULL;
     }
-    request->timeout = 5;
+    request->timeout = ATA_DEFAULT_TIMEOUT;
     request->retries = 2;
     request->callback = ata_raid_done;
     request->driver = rdp;

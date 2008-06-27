@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.h,v 1.123 2007/04/08 19:18:51 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-all.h,v 1.9 2008/03/24 06:41:56 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-all.h,v 1.10 2008/06/27 01:24:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -696,3 +696,7 @@ MALLOC_DECLARE(M_ATA);
 
 #define ATA_IDX_OUTSL_STRM(ch, idx, addr, count) \
 	ATA_OUTSL_STRM(ch->r_io[idx].res, ch->r_io[idx].offset, addr, count)
+
+/* Dragonfly: Default request timeout increased from 5 to 10 */
+#define ATA_DEFAULT_TIMEOUT	10
+
