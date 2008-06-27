@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.219 2008/06/26 23:24:11 dillon Exp $
+# $DragonFly: src/sys/conf/files,v 1.220 2008/06/27 14:02:14 swildner Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -917,7 +917,7 @@ netgraph7/ng_mppc.c		optional netgraph7_mppc_compression
 netgraph7/ng_mppc.c		optional netgraph7_mppc_encryption
 netgraph7/ng_nat.c		optional netgraph7_nat
 netgraph7/ng_one2many.c		optional netgraph7_one2many
-netgraph7/ng_parse.c		optional netgraph
+netgraph7/ng_parse.c		optional netgraph7
 netgraph7/ng_ppp.c		optional netgraph7_ppp
 netgraph7/ng_pppoe.c		optional netgraph7_pppoe
 netgraph7/ng_pptpgre.c		optional netgraph7_pptpgre
