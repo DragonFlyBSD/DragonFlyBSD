@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfereg.h,v 1.19 2006/05/28 00:20:21 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfereg.h,v 1.8 2008/06/27 16:30:53 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfereg.h,v 1.9 2008/06/27 17:03:40 sephe Exp $	*/
 
 /*
  * Copyright (c) 2005 Jonathan Gray <jsg@openbsd.org>
@@ -86,6 +86,9 @@
 #define NFE_STATUS_MAGIC	0x140000
 
 #define NFE_RESET_ASSERT	0xf3
+
+#define NFE_TX_STATUS_BUSY	0x1
+#define NFE_RX_STATUS_BUSY	0x1
 
 #define NFE_R1_MAGIC		0x16070f
 #define NFE_R2_MAGIC		0x16
