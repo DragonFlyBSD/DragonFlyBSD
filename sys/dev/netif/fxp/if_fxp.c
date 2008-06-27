@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.54 2008/06/25 11:56:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.55 2008/06/27 10:55:23 sephe Exp $
  */
 
 /*
@@ -786,12 +786,17 @@ fxp_detach(device_t dev)
 static int
 fxp_shutdown(device_t dev)
 {
+	struct fxp_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+
+	lwkt_serialize_enter(ifp->if_serializer);
 	/*
 	 * Make sure that DMA is disabled prior to reboot. Not doing
 	 * do could allow DMA to corrupt kernel memory during the
 	 * reboot before the driver initializes.
 	 */
-	fxp_stop((struct fxp_softc *) device_get_softc(dev));
+	fxp_stop(sc);
+	lwkt_serialize_exit(ifp->if_serializer);
 	return (0);
 }
 
@@ -1560,6 +1565,8 @@ fxp_stop(struct fxp_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct fxp_cb_tx *txp;
 	int i;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 	ifp->if_timer = 0;
