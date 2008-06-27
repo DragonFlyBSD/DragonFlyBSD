@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.24 2008/06/25 16:25:58 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.25 2008/06/27 13:30:56 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -366,12 +366,18 @@ nfe_probe(device_t dev)
 			struct nfe_softc *sc = device_get_softc(dev);
 
 			switch (did) {
+			case PCI_PRODUCT_NVIDIA_NFORCE_LAN:
+			case PCI_PRODUCT_NVIDIA_NFORCE2_LAN:
+			case PCI_PRODUCT_NVIDIA_NFORCE3_LAN1:
+				sc->sc_flags = NFE_NO_PWRCTL;
+				break;
 			case PCI_PRODUCT_NVIDIA_NFORCE3_LAN2:
 			case PCI_PRODUCT_NVIDIA_NFORCE3_LAN3:
 			case PCI_PRODUCT_NVIDIA_NFORCE3_LAN4:
 			case PCI_PRODUCT_NVIDIA_NFORCE3_LAN5:
 				sc->sc_flags = NFE_JUMBO_SUP |
-					       NFE_HW_CSUM;
+					       NFE_HW_CSUM |
+					       NFE_NO_PWRCTL;
 				break;
 			case PCI_PRODUCT_NVIDIA_MCP51_LAN1:
 			case PCI_PRODUCT_NVIDIA_MCP51_LAN2:
@@ -395,7 +401,8 @@ nfe_probe(device_t dev)
 			case PCI_PRODUCT_NVIDIA_MCP04_LAN2:
 				sc->sc_flags = NFE_JUMBO_SUP |
 					       NFE_40BIT_ADDR |
-					       NFE_HW_CSUM;
+					       NFE_HW_CSUM |
+					       NFE_NO_PWRCTL;
 				break;
 			case PCI_PRODUCT_NVIDIA_MCP65_LAN1:
 			case PCI_PRODUCT_NVIDIA_MCP65_LAN2:
