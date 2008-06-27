@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.25 2008/06/25 17:51:16 swildner Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.26 2008/06/27 11:57:49 mneumann Exp $
 .Dd December 31, 2007
 .Dt HAMMER 8
 .Os
@@ -160,6 +160,43 @@ Note that pruning a filesystem may not immediately free-up space,
 though typically some space will be freed if a large number of records are
 pruned out.  The filesystem must be reblocked to completely recover all
 available space.
+.It Ar snapshot Ar snapshot-dir
+.It Ar snapshot Ar filesystem snapshot-dir
+
+Takes a snapshot of the filesystem either explicitly given by
+.Ar filesystem
+or implicitly derived from the 
+.Ar snapshot-dir
+argument and creates a symlink in the directory provided by
+.Ar snapshot-dir
+pointing to the snapshot.  
+
+If
+.Ar snapshot-dir 
+is no directory, it is assumed to be a format string
+passed to strftime(3) with the current time as parameter.
+If 
+.Ar snapshot-dir 
+refers to an existing directory, a default format string of "snap-%Y%d%m-%H%M"
+is assumed and used as name for the newly created symlink.
+
+Assuming that "/mysnapshots" is on filesystem "/" and that "/obj" is a
+filesystem on its own, the following invocations:
+
+.Li hammer snapshot /mysnapshots
+
+.Li hammer snapshot /mysnapshots/%Y-%m-%d 
+
+.Li hammer snapshot /obj /mysnapshots/obj-%Y-%m-%d 
+
+would create symlinks similar to:
+
+.Li /mysnapshots/snap-20080627-1210 -> /@@0x10d2cd05b7270d16 
+
+.Li /mysnapshots/2008-06-27 -> /@@0x10d2cd05b7270d16 
+
+.Li /mysnapshots/obj-2008-06-27 -> /obj@@0x10d2cd05b7270d16 
+
 .It Ar reblock Ar filesystem Op Ar fill_percentage
 .It Ar reblock-btree Ar filesystem Op Ar fill_percentage
 .It Ar reblock-inodes Ar filesystem Op Ar fill_percentage
