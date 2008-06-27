@@ -4,7 +4,7 @@
 # Check the LINT configuration file in sys/config, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/config/GENERIC,v 1.57 2008/02/01 13:18:49 sephe Exp $
+# $DragonFly: src/sys/config/GENERIC,v 1.58 2008/06/27 12:49:34 sephe Exp $
 
 platform	pc32
 machine		i386
@@ -232,6 +232,7 @@ device		xl		# 3Com 3c90x (``Boomerang'', ``Cyclone'')
 device		bge		# Broadcom BCM570x (``Tigon III'')
 device		stge		# Sundance/Tamarack TC9021 Gigabit Ethernet
 device		msk		# Marvell/SysKonnect Yukon II Gigabit Ethernet
+device		nfe		# NVIDIA nForce MCP 10/100/Gigabit Ethernet
 
 # ISA Ethernet NICs.
 # 'device ed' requires 'device miibus'
