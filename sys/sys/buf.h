@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.49 2008/06/28 17:59:47 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.50 2008/06/28 23:45:19 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -358,7 +358,7 @@ extern int	maxswzone;		/* Max KVA for swap structures */
 extern int	maxbcache;		/* Max KVA for buffer cache */
 extern int	runningbufspace;
 extern int	runningbufcount;
-extern int	hidirtybuffers;
+extern int	hidirtybufspace;
 extern int      buf_maxio;              /* nominal maximum I/O for buffer */
 extern struct buf *buf;			/* The buffer headers. */
 extern char	*buffers;		/* The buffer contents. */

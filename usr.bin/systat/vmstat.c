@@ -32,7 +32,7 @@
  *
  * @(#)vmstat.c	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/usr.bin/systat/vmstat.c,v 1.38.2.4 2002/03/12 19:50:23 phantom Exp $
- * $DragonFly: src/usr.bin/systat/vmstat.c,v 1.9 2005/10/13 00:04:48 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/vmstat.c,v 1.10 2008/06/28 23:45:20 dillon Exp $
  */
 
 /*
@@ -82,7 +82,7 @@ static struct Info {
 	int	desiredvnodes;
 	long	numvnodes;
 	long	freevnodes;
-	long	numdirtybuffers;
+	long	dirtybufspace;
 } s, s1, s2, z;
 
 struct kinfo_cputime cp_time, old_cp_time;
@@ -155,7 +155,7 @@ static struct nlist namelist[] = {
 #define	X_FREEVNODES	4
 	{ "_freevnodes" },
 #define X_NUMDIRTYBUFFERS 5
-	{ "_numdirtybuffers" },
+	{ "_dirtybufspace" },
 	{ "" },
 };
 
@@ -528,7 +528,7 @@ showkre(void)
 	}
 
 	putint(s.bufspace/1024, VMSTATROW + 13, VMSTATCOL, 9);
-	putint(s.numdirtybuffers, VMSTATROW + 14, VMSTATCOL, 9);
+	putint(s.dirtybufspace/1024, VMSTATROW + 14, VMSTATCOL, 9);
 	putint(s.desiredvnodes, VMSTATROW + 15, VMSTATCOL, 9);
 	putint(s.numvnodes, VMSTATROW + 16, VMSTATCOL, 9);
 	putint(s.freevnodes, VMSTATROW + 17, VMSTATCOL, 9);
@@ -749,7 +749,7 @@ getinfo(struct Info *s, enum state st)
 	NREAD(X_DESIREDVNODES, &s->desiredvnodes, sizeof(s->desiredvnodes));
 	NREAD(X_NUMVNODES, &s->numvnodes, LONG);
 	NREAD(X_FREEVNODES, &s->freevnodes, LONG);
-	NREAD(X_NUMDIRTYBUFFERS, &s->numdirtybuffers, sizeof(s->numdirtybuffers));
+	NREAD(X_NUMDIRTYBUFFERS, &s->dirtybufspace, sizeof(s->dirtybufspace));
 
 	if (nintr) {
 		size = nintr * sizeof(s->intrcnt[0]);

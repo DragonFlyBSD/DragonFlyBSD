@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.106 2008/06/28 17:59:49 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.107 2008/06/28 23:45:18 dillon Exp $
  */
 
 /*
@@ -101,7 +101,7 @@ static void vfs_setdirty(struct buf *bp);
 static void vfs_vmio_release(struct buf *bp);
 static int flushbufqueues(bufq_type_t q);
 
-static void bd_signal(void);
+static void bd_signal(int totalspace);
 static void buf_daemon(void);
 static void buf_daemon_hw(void);
 
@@ -122,9 +122,8 @@ int bufspace, maxbufspace,
 	bufmallocspace, maxbufmallocspace, lobufspace, hibufspace;
 static int bufreusecnt, bufdefragcnt, buffreekvacnt;
 static int lorunningspace, hirunningspace, runningbufreq;
-int numdirtybuffers, numdirtybuffershw, lodirtybuffers, hidirtybuffers;
+int dirtybufspace, dirtybufspacehw, lodirtybufspace, hidirtybufspace;
 int runningbufspace, runningbufcount;
-static int numfreebuffers, lofreebuffers, hifreebuffers;
 static int getnewbufcalls;
 static int getnewbufrestarts;
 static int needsbuffer;		/* locked by needsbuffer_spin */
@@ -137,14 +136,10 @@ static struct spinlock needsbuffer_spin;
 /*
  * Sysctls for operational control of the buffer cache.
  */
-SYSCTL_INT(_vfs, OID_AUTO, lodirtybuffers, CTLFLAG_RW, &lodirtybuffers, 0,
+SYSCTL_INT(_vfs, OID_AUTO, lodirtybufspace, CTLFLAG_RW, &lodirtybufspace, 0,
 	"Number of dirty buffers to flush before bufdaemon becomes inactive");
-SYSCTL_INT(_vfs, OID_AUTO, hidirtybuffers, CTLFLAG_RW, &hidirtybuffers, 0,
+SYSCTL_INT(_vfs, OID_AUTO, hidirtybufspace, CTLFLAG_RW, &hidirtybufspace, 0,
 	"High watermark used to trigger explicit flushing of dirty buffers");
-SYSCTL_INT(_vfs, OID_AUTO, lofreebuffers, CTLFLAG_RW, &lofreebuffers, 0,
-	"Low watermark for special reserve in low-memory situations");
-SYSCTL_INT(_vfs, OID_AUTO, hifreebuffers, CTLFLAG_RW, &hifreebuffers, 0,
-	"High watermark for special reserve in low-memory situations");
 SYSCTL_INT(_vfs, OID_AUTO, lorunningspace, CTLFLAG_RW, &lorunningspace, 0,
 	"Minimum amount of buffer space required for active I/O");
 SYSCTL_INT(_vfs, OID_AUTO, hirunningspace, CTLFLAG_RW, &hirunningspace, 0,
@@ -154,12 +149,10 @@ SYSCTL_INT(_vfs, OID_AUTO, hirunningspace, CTLFLAG_RW, &hirunningspace, 0,
  */
 SYSCTL_INT(_vfs, OID_AUTO, nbuf, CTLFLAG_RD, &nbuf, 0,
 	"Total number of buffers in buffer cache");
-SYSCTL_INT(_vfs, OID_AUTO, numdirtybuffers, CTLFLAG_RD, &numdirtybuffers, 0,
+SYSCTL_INT(_vfs, OID_AUTO, dirtybufspace, CTLFLAG_RD, &dirtybufspace, 0,
 	"Pending number of dirty buffers (all)");
-SYSCTL_INT(_vfs, OID_AUTO, numdirtybuffershw, CTLFLAG_RD, &numdirtybuffershw, 0,
+SYSCTL_INT(_vfs, OID_AUTO, dirtybufspacehw, CTLFLAG_RD, &dirtybufspacehw, 0,
 	"Pending number of dirty buffers (heavy weight)");
-SYSCTL_INT(_vfs, OID_AUTO, numfreebuffers, CTLFLAG_RD, &numfreebuffers, 0,
-	"Number of free buffers on the buffer cache free list");
 SYSCTL_INT(_vfs, OID_AUTO, runningbufspace, CTLFLAG_RD, &runningbufspace, 0,
 	"I/O bytes currently in progress due to asynchronous writes");
 SYSCTL_INT(_vfs, OID_AUTO, runningbufcount, CTLFLAG_RD, &runningbufcount, 0,
@@ -195,7 +188,7 @@ extern int vm_swap_size;
 
 #define VFS_BIO_NEED_ANY	0x01	/* any freeable buffer */
 #define VFS_BIO_NEED_UNUSED02	0x02
-#define VFS_BIO_NEED_FREE	0x04	/* wait for free bufs, hi hysteresis */
+#define VFS_BIO_NEED_UNUSED04	0x04
 #define VFS_BIO_NEED_BUFSPACE	0x08	/* wait for buf space, lo hysteresis */
 
 /*
@@ -232,15 +225,17 @@ bufspacewakeup(void)
 static __inline void
 runningbufwakeup(struct buf *bp)
 {
-	if (bp->b_runningbufspace) {
-		runningbufspace -= bp->b_runningbufspace;
+	int totalspace;
+
+	if ((totalspace = bp->b_runningbufspace) != 0) {
+		runningbufspace -= totalspace;
 		--runningbufcount;
 		bp->b_runningbufspace = 0;
 		if (runningbufreq && runningbufspace <= lorunningspace) {
 			runningbufreq = 0;
 			wakeup(&runningbufreq);
 		}
-		bd_signal();
+		bd_signal(totalspace);
 	}
 }
 
@@ -256,12 +251,9 @@ runningbufwakeup(struct buf *bp)
 static __inline void
 bufcountwakeup(void) 
 {
-	++numfreebuffers;
 	if (needsbuffer) {
 		spin_lock_wr(&needsbuffer_spin);
 		needsbuffer &= ~VFS_BIO_NEED_ANY;
-		if (numfreebuffers >= hifreebuffers)
-			needsbuffer &= ~VFS_BIO_NEED_FREE;
 		spin_unlock_wr(&needsbuffer_spin);
 		wakeup(&needsbuffer);
 	}
@@ -324,13 +316,13 @@ static __inline__
 void
 bd_speedup(void)
 {
-	if (bd_request == 0 && numdirtybuffers) {
+	if (bd_request == 0 && dirtybufspace) {
 		spin_lock_wr(&needsbuffer_spin);
 		bd_request = 1;
 		spin_unlock_wr(&needsbuffer_spin);
 		wakeup(&bd_request);
 	}
-	if (bd_request_hw == 0 && numdirtybuffershw) {
+	if (bd_request_hw == 0 && dirtybufspacehw) {
 		spin_lock_wr(&needsbuffer_spin);
 		bd_request_hw = 1;
 		spin_unlock_wr(&needsbuffer_spin);
@@ -349,16 +341,16 @@ bd_heatup(void)
 {
 	int mid1;
 	int mid2;
-	int count;
+	int totalspace;
 
-	mid1 = lodirtybuffers + (hidirtybuffers - lodirtybuffers) / 2;
+	mid1 = lodirtybufspace + (hidirtybufspace - lodirtybufspace) / 2;
 
-	count = runningbufcount + numdirtybuffers;
-	if (count >= mid1) {
+	totalspace = runningbufspace + dirtybufspace;
+	if (totalspace >= mid1) {
 		bd_speedup();
-		mid2 = mid1 + (hidirtybuffers - mid1) / 2;
-		if (count >= mid2)
-			return(count - mid2);
+		mid2 = mid1 + (hidirtybufspace - mid1) / 2;
+		if (totalspace >= mid2)
+			return(totalspace - mid2);
 	}
 	return(0);
 }
@@ -366,21 +358,24 @@ bd_heatup(void)
 /*
  * bd_wait()
  *
- *	Wait for the buffer cache to flush (count) buffers, then return.
+ *	Wait for the buffer cache to flush (totalspace) bytes worth of
+ *	buffers, then return.
  *
  *	Regardless this function blocks while the number of dirty buffers
- *	exceeds hidirtybuffers.
+ *	exceeds hidirtybufspace.
  */
 void
-bd_wait(int count)
+bd_wait(int totalspace)
 {
 	u_int i;
+	int count;
 
-	while (count > 0) {
+	while (totalspace > 0) {
 		bd_heatup();
 		crit_enter();
-		if (count > runningbufcount + numdirtybuffers)
-			count = runningbufcount + numdirtybuffers;
+		if (totalspace > runningbufspace + dirtybufspace)
+			totalspace = runningbufspace + dirtybufspace;
+		count = totalspace / BKVASIZE;
 		if (count >= BD_WAKE_SIZE)
 			count = BD_WAKE_SIZE - 1;
 		i = (bd_wake_index + count) & BD_WAKE_MASK;
@@ -388,27 +383,30 @@ bd_wait(int count)
 		tsleep(&bd_wake_ary[i], 0, "flstik", hz);
 		crit_exit();
 
-		count = runningbufcount + numdirtybuffers - hidirtybuffers;
+		totalspace = runningbufspace + dirtybufspace - hidirtybufspace;
 	}
 }
 
 /*
  * bd_signal()
  * 
- *	This function is called whenever runningbufcount or numdirtybuffers
- *	is decremented.  Track threads waiting for run+dirty buffer I/O
+ *	This function is called whenever runningbufspace or dirtybufspace
+ *	is reduced.  Track threads waiting for run+dirty buffer I/O
  *	complete.
  */
 static void
-bd_signal(void)
+bd_signal(int totalspace)
 {
 	u_int i;
 
-	i = atomic_fetchadd_int(&bd_wake_index, 1);
-	i &= BD_WAKE_MASK;
-	if (bd_wake_ary[i]) {
-		bd_wake_ary[i] = 0;
-		wakeup(&bd_wake_ary[i]);
+	while (totalspace > 0) {
+		i = atomic_fetchadd_int(&bd_wake_index, 1);
+		i &= BD_WAKE_MASK;
+		if (bd_wake_ary[i]) {
+			bd_wake_ary[i] = 0;
+			wakeup(&bd_wake_ary[i]);
+		}
+		totalspace -= BKVASIZE;
 	}
 }
 
@@ -464,48 +462,31 @@ bufinit(void)
 	lorunningspace = 512 * 1024;
 	hirunningspace = 1024 * 1024;
 
-/*
- * Limit the amount of malloc memory since it is wired permanently into
- * the kernel space.  Even though this is accounted for in the buffer
- * allocation, we don't want the malloced region to grow uncontrolled.
- * The malloc scheme improves memory utilization significantly on average
- * (small) directories.
- */
+	/*
+	 * Limit the amount of malloc memory since it is wired permanently
+	 * into the kernel space.  Even though this is accounted for in
+	 * the buffer allocation, we don't want the malloced region to grow
+	 * uncontrolled.  The malloc scheme improves memory utilization
+	 * significantly on average (small) directories.
+	 */
 	maxbufmallocspace = hibufspace / 20;
 
-/*
- * Reduce the chance of a deadlock occuring by limiting the number
- * of delayed-write dirty buffers we allow to stack up.
- */
-	hidirtybuffers = nbuf / 4 + 20;
-	numdirtybuffers = 0;
-	numdirtybuffershw = 0;
-/*
- * To support extreme low-memory systems, make sure hidirtybuffers cannot
- * eat up all available buffer space.  This occurs when our minimum cannot
- * be met.  We try to size hidirtybuffers to 3/4 our buffer space assuming
- * BKVASIZE'd (8K) buffers.
- */
-	while (hidirtybuffers * BKVASIZE > 3 * hibufspace / 4) {
-		hidirtybuffers >>= 1;
-	}
-	lodirtybuffers = hidirtybuffers / 2;
+	/*
+	 * Reduce the chance of a deadlock occuring by limiting the number
+	 * of delayed-write dirty buffers we allow to stack up.
+	 */
+	hidirtybufspace = hibufspace / 2;
+	dirtybufspace = 0;
+	dirtybufspacehw = 0;
 
-/*
- * Try to keep the number of free buffers in the specified range,
- * and give special processes (e.g. like buf_daemon) access to an 
- * emergency reserve.
- */
-	lofreebuffers = nbuf / 18 + 5;
-	hifreebuffers = 2 * lofreebuffers;
-	numfreebuffers = nbuf;
+	lodirtybufspace = hidirtybufspace / 2;
 
-/*
- * Maximum number of async ops initiated per buf_daemon loop.  This is
- * somewhat of a hack at the moment, we really need to limit ourselves
- * based on the number of bytes of I/O in-transit that were initiated
- * from buf_daemon.
- */
+	/*
+	 * Maximum number of async ops initiated per buf_daemon loop.  This is
+	 * somewhat of a hack at the moment, we really need to limit ourselves
+	 * based on the number of bytes of I/O in-transit that were initiated
+	 * from buf_daemon.
+	 */
 
 	bogus_offset = kmem_alloc_pageable(&kernel_map, PAGE_SIZE);
 	bogus_page = vm_page_alloc(&kernel_object,
@@ -646,24 +627,6 @@ bremfree(struct buf *bp)
 			panic("bremfree: removing a buffer not on a queue");
 	}
 
-	/*
-	 * Fixup numfreebuffers count.  If the buffer is invalid or not
-	 * delayed-write, and it was on the EMPTY, LRU, or AGE queues,
-	 * the buffer was free and we must decrement numfreebuffers.
-	 */
-	if ((bp->b_flags & B_INVAL) || (bp->b_flags & B_DELWRI) == 0) {
-		switch(old_qindex) {
-		case BQUEUE_DIRTY:
-		case BQUEUE_DIRTY_HW:
-		case BQUEUE_CLEAN:
-		case BQUEUE_EMPTY:
-		case BQUEUE_EMPTYKVA:
-			--numfreebuffers;
-			break;
-		default:
-			break;
-		}
-	}
 	crit_exit();
 }
 
@@ -879,9 +842,6 @@ bdwrite(struct buf *bp)
  *	We reassign the buffer to itself to properly update it in the
  *	dirty/clean lists. 
  *
- *	Since the buffer is not on a queue, we do not update the 
- *	numfreebuffers count.
- *
  *	Must be called from a critical section.
  *	The buffer must be on BQUEUE_NONE.
  */
@@ -901,9 +861,9 @@ bdirty(struct buf *bp)
 	if ((bp->b_flags & B_DELWRI) == 0) {
 		bp->b_flags |= B_DELWRI;
 		reassignbuf(bp);
-		++numdirtybuffers;
+		dirtybufspace += bp->b_bufsize;
 		if (bp->b_flags & B_HEAVY)
-			++numdirtybuffershw;
+			dirtybufspacehw += bp->b_bufsize;
 		bd_heatup();
 	}
 }
@@ -919,7 +879,7 @@ bheavy(struct buf *bp)
 	if ((bp->b_flags & B_HEAVY) == 0) {
 		bp->b_flags |= B_HEAVY;
 		if (bp->b_flags & B_DELWRI)
-			++numdirtybuffershw;
+			dirtybufspacehw += bp->b_bufsize;
 	}
 }
 
@@ -928,9 +888,6 @@ bheavy(struct buf *bp)
  *
  *	Clear B_DELWRI for buffer.
  *
- *	Since the buffer is not on a queue, we do not update the numfreebuffers
- *	count.
- *	
  *	Must be called from a critical section.
  *
  *	The buffer is typically on BQUEUE_NONE but there is one case in 
@@ -944,10 +901,10 @@ bundirty(struct buf *bp)
 	if (bp->b_flags & B_DELWRI) {
 		bp->b_flags &= ~B_DELWRI;
 		reassignbuf(bp);
-		--numdirtybuffers;
+		dirtybufspace -= bp->b_bufsize;
 		if (bp->b_flags & B_HEAVY)
-			--numdirtybuffershw;
-		bd_signal();
+			dirtybufspacehw -= bp->b_bufsize;
+		bd_signal(bp->b_bufsize);
 	}
 	/*
 	 * Since it is now being written, we can clear its deferred write flag.
@@ -994,7 +951,7 @@ bowrite(struct buf *bp)
 int
 buf_dirty_count_severe(void)
 {
-	return(runningbufcount + numdirtybuffers >= hidirtybuffers);
+	return(runningbufspace + dirtybufspace >= hidirtybufspace);
 }
 
 /*
@@ -1060,10 +1017,10 @@ brelse(struct buf *bp)
 		if (LIST_FIRST(&bp->b_dep) != NULL)
 			buf_deallocate(bp);
 		if (bp->b_flags & B_DELWRI) {
-			--numdirtybuffers;
+			dirtybufspace -= bp->b_bufsize;
 			if (bp->b_flags & B_HEAVY)
-				--numdirtybuffershw;
-			bd_signal();
+				dirtybufspacehw -= bp->b_bufsize;
+			bd_signal(bp->b_bufsize);
 		}
 		bp->b_flags &= ~(B_DELWRI | B_CACHE);
 	}
@@ -1327,8 +1284,9 @@ brelse(struct buf *bp)
 		bundirty(bp);
 
 	/*
-	 * Fixup numfreebuffers count.  The bp is on an appropriate queue
-	 * unless locked.  We then bump numfreebuffers if it is not B_DELWRI.
+	 * The bp is on an appropriate queue unless locked.  If it is not
+	 * locked or dirty we can wakeup threads waiting for buffer space.
+	 *
 	 * We've already handled the B_INVAL case ( B_DELWRI will be clear
 	 * if B_INVAL is set ).
 	 */
@@ -1983,12 +1941,12 @@ buf_daemon(void)
 		 * the I/O system.  Wakeup any waiting processes before we
 		 * normally would so they can run in parallel with our drain.
 		 */
-		while (numdirtybuffers > lodirtybuffers) {
+		while (dirtybufspace > lodirtybufspace) {
 			if (flushbufqueues(BQUEUE_DIRTY) == 0)
 				break;
 			waitrunningbufspace();
 		}
-		if (runningbufcount + numdirtybuffers > lodirtybuffers) {
+		if (runningbufspace + dirtybufspace > lodirtybufspace) {
 			waitrunningbufspace();
 		}
 
@@ -2002,7 +1960,7 @@ buf_daemon(void)
 		 * find any flushable buffers, we sleep half a second. 
 		 * Otherwise we loop immediately.
 		 */
-		if (runningbufcount + numdirtybuffers <= lodirtybuffers) {
+		if (runningbufspace + dirtybufspace <= lodirtybufspace) {
 			/*
 			 * We reached our low water mark, reset the
 			 * request and sleep until we are needed again.
@@ -2047,12 +2005,12 @@ buf_daemon_hw(void)
 		 * the I/O system.  Wakeup any waiting processes before we
 		 * normally would so they can run in parallel with our drain.
 		 */
-		while (numdirtybuffershw > lodirtybuffers) {
+		while (dirtybufspacehw > lodirtybufspace) {
 			if (flushbufqueues(BQUEUE_DIRTY_HW) == 0)
 				break;
 			waitrunningbufspace();
 		}
-		if (runningbufcount + numdirtybuffershw > lodirtybuffers) {
+		if (runningbufspace + dirtybufspacehw > lodirtybufspace) {
 			waitrunningbufspace();
 		}
 
@@ -2066,7 +2024,7 @@ buf_daemon_hw(void)
 		 * find any flushable buffers, we sleep half a second. 
 		 * Otherwise we loop immediately.
 		 */
-		if (runningbufcount + numdirtybuffershw <= lodirtybuffers) {
+		if (runningbufspace + dirtybufspacehw <= lodirtybufspace) {
 			/*
 			 * We reached our low water mark, reset the
 			 * request and sleep until we are needed again.
@@ -2906,6 +2864,11 @@ allocbuf(struct buf *bp, int size)
 			bp->b_data = (caddr_t)((vm_offset_t)bp->b_data | 
 			    (vm_offset_t)(bp->b_loffset & PAGE_MASK));
 		}
+	}
+	if (bp->b_flags & B_DELWRI) {
+		dirtybufspace += newbsize - bp->b_bufsize;
+		if (bp->b_flags & B_HEAVY)
+			dirtybufspacehw += newbsize - bp->b_bufsize;
 	}
 	if (newbsize < bp->b_bufsize)
 		bufspacewakeup();
