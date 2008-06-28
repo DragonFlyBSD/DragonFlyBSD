@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.77 2008/06/26 04:06:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.78 2008/06/28 18:10:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -359,6 +359,8 @@ hammer_vop_write(struct vop_write_args *ap)
 		if ((error = hammer_checkspace(hmp)) != 0)
 			break;
 
+		blksize = hammer_blocksize(uio->uio_offset);
+
 		/*
 		 * Do not allow HAMMER to blow out the buffer cache.  Very
 		 * large UIOs can lockout other processes due to bwillwrite()
@@ -387,7 +389,7 @@ hammer_vop_write(struct vop_write_args *ap)
 			if (uio->uio_segflg != UIO_NOCOPY) {
 				vn_unlock(ap->a_vp);
 				if ((ap->a_ioflag & IO_NOBWILL) == 0)
-					bwillwrite();
+					bwillwrite(blksize);
 			}
 
 			/*
@@ -431,7 +433,6 @@ hammer_vop_write(struct vop_write_args *ap)
 		 * Calculate the blocksize at the current offset and figure
 		 * out how much we can actually write.
 		 */
-		blksize = hammer_blocksize(uio->uio_offset);
 		blkmask = blksize - 1;
 		offset = (int)uio->uio_offset & blkmask;
 		base_offset = uio->uio_offset & ~(int64_t)blkmask;
@@ -524,9 +525,6 @@ hammer_vop_write(struct vop_write_args *ap)
 		/*
 		 * Final buffer disposition.
 		 *
-		 * If write_mode is non-zero we call bawrite()
-		 * unconditionally.  Otherwise we only use bawrite()
-		 * if the writes are clearly sequential.
 		 */
 		bp->b_flags |= B_AGE;
 		if (ap->a_ioflag & IO_SYNC) {
@@ -536,29 +534,6 @@ hammer_vop_write(struct vop_write_args *ap)
 		} else {
 			bdwrite(bp);
 		}
-#if 0
-		else if (hammer_write_mode &&
-			   ((int)uio->uio_offset & blkmask) == 0) {
-#if 0
-			bp->b_flags |= B_CLUSTEROK;
-			cluster_write(bp, ip->ino_data.size, XXX seqcount);
-#else
-			bdwrite(bp);
-#endif
-		} else if ((ap->a_ioflag >> 16) == IO_SEQMAX &&
-			   ((int)uio->uio_offset & blkmask) == 0) {
-			/*
-			 * If seqcount indicates sequential operation and
-			 * we just finished filling a buffer, push it out
-			 * now to prevent the buffer cache from becoming
-			 * too full, which would trigger non-optimal
-			 * flushes.
-			 */
-			bawrite(bp);
-		} else {
-			bdwrite(bp);
-		}
-#endif
 	}
 	hammer_done_transaction(&trans);
 	return (error);

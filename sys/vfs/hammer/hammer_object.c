@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.77 2008/06/27 20:56:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.78 2008/06/28 18:10:55 dillon Exp $
  */
 
 #include "hammer.h"
@@ -969,13 +969,13 @@ hammer_record_needs_overwrite_delete(hammer_record_t record)
 		file_offset = record->leaf.base.key;
 	else
 		file_offset = record->leaf.base.key - record->leaf.data_len;
-	r = (file_offset < ip->sync_trunc_off);
+	r = (file_offset < ip->save_trunc_off);
 	if (ip->ino_data.obj_type == HAMMER_OBJTYPE_DBFILE) {
-		if (ip->sync_trunc_off <= record->leaf.base.key)
-			ip->sync_trunc_off = record->leaf.base.key + 1;
+		if (ip->save_trunc_off <= record->leaf.base.key)
+			ip->save_trunc_off = record->leaf.base.key + 1;
 	} else {
-		if (ip->sync_trunc_off < record->leaf.base.key)
-			ip->sync_trunc_off = record->leaf.base.key;
+		if (ip->save_trunc_off < record->leaf.base.key)
+			ip->save_trunc_off = record->leaf.base.key;
 	}
 	return(r);
 }
@@ -1581,16 +1581,23 @@ hammer_ip_resolve_data(hammer_cursor_t cursor)
  * If truncating is non-zero in-memory records associated with the back-end
  * are ignored.  If truncating is > 1 we can return EWOULDBLOCK.
  *
- * NOTE: An unaligned range will cause new records to be added to cover
- * the edge cases. (XXX not implemented yet).
+ * NOTES:
  *
- * NOTE: Replacement via reservations (see hammer_ip_sync_record_cursor())
- * also do not deal with unaligned ranges.
+ *	* An unaligned range will cause new records to be added to cover
+ *        the edge cases. (XXX not implemented yet).
  *
- * NOTE: ran_end is inclusive (e.g. 0,1023 instead of 0,1024).
+ *	* Replacement via reservations (see hammer_ip_sync_record_cursor())
+ *        also do not deal with unaligned ranges.
  *
- * NOTE: Record keys for regular file data have to be special-cased since
- * they indicate the end of the range (key = base + bytes).
+ *	* ran_end is inclusive (e.g. 0,1023 instead of 0,1024).
+ *
+ *	* Record keys for regular file data have to be special-cased since
+ * 	  they indicate the end of the range (key = base + bytes).
+ *
+ *	* This function may be asked to delete ridiculously huge ranges, for
+ *	  example if someone truncates or removes a 1TB regular file.  We
+ *	  must be very careful on restarts and we may have to stop w/
+ *	  EWOULDBLOCK to avoid blowing out the buffer cache.
  */
 int
 hammer_ip_delete_range(hammer_cursor_t cursor, hammer_inode_t ip,
@@ -1600,6 +1607,7 @@ hammer_ip_delete_range(hammer_cursor_t cursor, hammer_inode_t ip,
 	hammer_btree_leaf_elm_t leaf;
 	int error;
 	int64_t off;
+	int64_t tmp64;
 
 #if 0
 	kprintf("delete_range %p %016llx-%016llx\n", ip, ran_beg, ran_end);
@@ -1614,35 +1622,35 @@ retry:
 	cursor->key_beg.create_tid = 0;
 	cursor->key_beg.delete_tid = 0;
 	cursor->key_beg.obj_type = 0;
-	cursor->asof = ip->obj_asof;
-	cursor->flags &= ~HAMMER_CURSOR_INITMASK;
-	cursor->flags |= HAMMER_CURSOR_ASOF;
-	cursor->flags |= HAMMER_CURSOR_DELETE_VISIBILITY;
-	cursor->flags |= HAMMER_CURSOR_BACKEND;
 
-	cursor->key_end = cursor->key_beg;
 	if (ip->ino_data.obj_type == HAMMER_OBJTYPE_DBFILE) {
 		cursor->key_beg.key = ran_beg;
 		cursor->key_beg.rec_type = HAMMER_RECTYPE_DB;
-		cursor->key_end.rec_type = HAMMER_RECTYPE_DB;
-		cursor->key_end.key = ran_end;
 	} else {
 		/*
 		 * The key in the B-Tree is (base+bytes), so the first possible
 		 * matching key is ran_beg + 1.
 		 */
-		int64_t tmp64;
-
 		cursor->key_beg.key = ran_beg + 1;
 		cursor->key_beg.rec_type = HAMMER_RECTYPE_DATA;
-		cursor->key_end.rec_type = HAMMER_RECTYPE_DATA;
+	}
 
+	cursor->key_end = cursor->key_beg;
+	if (ip->ino_data.obj_type == HAMMER_OBJTYPE_DBFILE) {
+		cursor->key_end.key = ran_end;
+	} else {
 		tmp64 = ran_end + MAXPHYS + 1;	/* work around GCC-4 bug */
 		if (tmp64 < ran_end)
 			cursor->key_end.key = 0x7FFFFFFFFFFFFFFFLL;
 		else
 			cursor->key_end.key = ran_end + MAXPHYS + 1;
 	}
+
+	cursor->asof = ip->obj_asof;
+	cursor->flags &= ~HAMMER_CURSOR_INITMASK;
+	cursor->flags |= HAMMER_CURSOR_ASOF;
+	cursor->flags |= HAMMER_CURSOR_DELETE_VISIBILITY;
+	cursor->flags |= HAMMER_CURSOR_BACKEND;
 	cursor->flags |= HAMMER_CURSOR_END_INCLUSIVE;
 
 	error = hammer_ip_first(cursor);
@@ -1689,6 +1697,8 @@ retry:
 					break;
 				panic("hammer right edge case\n");
 			}
+		} else {
+			off = leaf->base.key;
 		}
 
 		/*
@@ -1700,20 +1710,27 @@ retry:
 		 * data if the retention policy dictates.  The function
 		 * will set HAMMER_CURSOR_DELBTREE which hammer_ip_next()
 		 * uses to perform a fixup.
-		 *
-		 * If we have built up too many meta-buffers we risk
-		 * deadlocking the kernel and must stop.  This can occur
-		 * when deleting ridiculously huge files.
 		 */
 		if (truncating == 0 || hammer_cursor_ondisk(cursor)) {
 			error = hammer_ip_delete_record(cursor, ip, trans->tid);
+			/*
+			 * If we have built up too many meta-buffers we risk
+			 * deadlocking the kernel and must stop.  This can
+			 * occur when deleting ridiculously huge files.
+			 * sync_trunc_off is updated so the next cycle does
+			 * not re-iterate records we have already deleted.
+			 *
+			 * This is only done with formal truncations.
+			 */
 			if (truncating > 1 && error == 0 &&
 			    hammer_flusher_meta_limit(ip->hmp)) {
+				ip->sync_trunc_off = off;
 				error = EWOULDBLOCK;
 			}
 		}
 		if (error)
 			break;
+		ran_beg = off;	/* for restart */
 		error = hammer_ip_next(cursor);
 	}
 	if (cursor->node)
@@ -1731,17 +1748,13 @@ retry:
 }
 
 /*
- * Backend truncation - delete all records.
- *
- * Delete all user records associated with an inode except the inode record
- * itself.  Directory entries are not deleted (they must be properly disposed
- * of or nlinks would get upset).
- *
- * This function can return EWOULDBLOCK.
+ * This function deletes remaining auxillary records when an inode is
+ * being deleted.  This function explicitly does not delete the
+ * inode record, directory entry, data, or db records.  Those must be
+ * properly disposed of prior to this call.
  */
 int
-hammer_ip_delete_range_all(hammer_cursor_t cursor, hammer_inode_t ip,
-			   int *countp)
+hammer_ip_delete_clean(hammer_cursor_t cursor, hammer_inode_t ip, int *countp)
 {
 	hammer_transaction_t trans = cursor->trans;
 	hammer_btree_leaf_elm_t leaf;
@@ -1756,11 +1769,11 @@ retry:
 	cursor->key_beg.create_tid = 0;
 	cursor->key_beg.delete_tid = 0;
 	cursor->key_beg.obj_type = 0;
-	cursor->key_beg.rec_type = HAMMER_RECTYPE_INODE + 1;
+	cursor->key_beg.rec_type = HAMMER_RECTYPE_CLEAN_START;
 	cursor->key_beg.key = HAMMER_MIN_KEY;
 
 	cursor->key_end = cursor->key_beg;
-	cursor->key_end.rec_type = 0xFFFF;
+	cursor->key_end.rec_type = HAMMER_RECTYPE_MAX;
 	cursor->key_end.key = HAMMER_MAX_KEY;
 
 	cursor->asof = ip->obj_asof;
@@ -1789,12 +1802,8 @@ retry:
 		 * Directory entries (and delete-on-disk directory entries)
 		 * must be synced and cannot be deleted.
 		 */
-		if (leaf->base.rec_type != HAMMER_RECTYPE_DIRENTRY) {
-			error = hammer_ip_delete_record(cursor, ip, trans->tid);
-			++*countp;
-			if (error == 0 && hammer_flusher_meta_limit(ip->hmp))
-				error = EWOULDBLOCK;
-		}
+		error = hammer_ip_delete_record(cursor, ip, trans->tid);
+		++*countp;
 		if (error)
 			break;
 		error = hammer_ip_next(cursor);

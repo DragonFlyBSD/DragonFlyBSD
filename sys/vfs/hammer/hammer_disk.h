@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.42 2008/06/23 21:42:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.43 2008/06/28 18:10:55 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -526,9 +526,6 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 /*
  * Record types are fairly straightforward.  The B-Tree includes the record
  * type in its index sort.
- *
- * NOTE: hammer_ip_delete_range_all() deletes all record types greater
- * then HAMMER_RECTYPE_INODE.
  */
 #define HAMMER_RECTYPE_UNKNOWN		0
 #define HAMMER_RECTYPE_LOWEST		1	/* lowest record type avail */
@@ -541,6 +538,9 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 #define HAMMER_RECTYPE_EXT		0x0013	/* ext attributes */
 #define HAMMER_RECTYPE_FIX		0x0014	/* fixed attribute */
 #define HAMMER_RECTYPE_MOVED		0x8000	/* special recovery flag */
+#define HAMMER_RECTYPE_MAX		0xFFFF
+
+#define HAMMER_RECTYPE_CLEAN_START	HAMMER_RECTYPE_EXT
 
 #define HAMMER_FIXKEY_SYMLINK		1
 

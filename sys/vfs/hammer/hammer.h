@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.94 2008/06/27 20:56:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.95 2008/06/28 18:10:55 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -257,6 +257,7 @@ struct hammer_inode {
 	 */
 	int		sync_flags;		/* to-sync flags cache */
 	off_t		sync_trunc_off;		/* to-sync truncation */
+	off_t		save_trunc_off;		/* write optimization */
 	struct hammer_btree_leaf_elm sync_ino_leaf; /* to-sync cache */
 	struct hammer_inode_data sync_ino_data; /* to-sync cache */
 };
@@ -974,7 +975,7 @@ int  hammer_ip_add_record(struct hammer_transaction *trans,
 			hammer_record_t record);
 int  hammer_ip_delete_range(hammer_cursor_t cursor, hammer_inode_t ip,
 			int64_t ran_beg, int64_t ran_end, int truncating);
-int  hammer_ip_delete_range_all(hammer_cursor_t cursor, hammer_inode_t ip,
+int  hammer_ip_delete_clean(hammer_cursor_t cursor, hammer_inode_t ip,
 			int *countp);
 int  hammer_ip_sync_data(hammer_cursor_t cursor, hammer_inode_t ip,
 			int64_t offset, void *data, int bytes);

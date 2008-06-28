@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.86 2008/06/27 20:56:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.87 2008/06/28 18:10:55 dillon Exp $
  */
 
 #include "hammer.h"
@@ -346,7 +346,8 @@ loop:
 	ip->cache[1].ip = ip;
 	if (hmp->ronly || (hmp->hflags & HMNT_SLAVE))
 		ip->flags |= HAMMER_INODE_RO;
-	ip->sync_trunc_off = ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
+	ip->sync_trunc_off = ip->trunc_off = ip->save_trunc_off =
+		0x7FFFFFFFFFFFFFFFLL;
 	RB_INIT(&ip->rec_tree);
 	TAILQ_INIT(&ip->target_list);
 
@@ -395,12 +396,12 @@ retry:
 
 		/*
 		 * The file should not contain any data past the file size
-		 * stored in the inode.  Setting sync_trunc_off to the
+		 * stored in the inode.  Setting save_trunc_off to the
 		 * file size instead of max reduces B-Tree lookup overheads
 		 * on append by allowing the flusher to avoid checking for
 		 * record overwrites.
 		 */
-		ip->sync_trunc_off = ip->ino_data.size;
+		ip->save_trunc_off = ip->ino_data.size;
 	}
 
 	/*
@@ -504,6 +505,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	ip->cache[1].ip = ip;
 
 	ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
+	/* ip->save_trunc_off = 0; (already zero) */
 	RB_INIT(&ip->rec_tree);
 	TAILQ_INIT(&ip->target_list);
 
@@ -1315,20 +1317,36 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 	/*
 	 * Snapshot the state of the inode for the backend flusher.
 	 *
-	 * The truncation must be retained in the frontend until after
-	 * we've actually performed the record deletion.
-	 *
-	 * We continue to retain sync_trunc_off even when all truncations
+	 * We continue to retain save_trunc_off even when all truncations
 	 * have been resolved as an optimization to determine if we can
 	 * skip the B-Tree lookup for overwrite deletions.
 	 *
 	 * NOTE: The DELETING flag is a mod flag, but it is also sticky,
 	 * and stays in ip->flags.  Once set, it stays set until the
 	 * inode is destroyed.
+	 *
+	 * NOTE: If a truncation from a previous flush cycle had to be
+	 * continued into this one, the TRUNCATED flag will still be
+	 * set in sync_flags.
 	 */
-	ip->sync_flags = (ip->flags & HAMMER_INODE_MODMASK);
-	if (ip->sync_flags & HAMMER_INODE_TRUNCATED)
-		ip->sync_trunc_off = ip->trunc_off;
+	if (ip->flags & HAMMER_INODE_TRUNCATED) {
+		if (ip->sync_flags & HAMMER_INODE_TRUNCATED) {
+			if (ip->sync_trunc_off > ip->trunc_off)
+				ip->sync_trunc_off = ip->trunc_off;
+		} else {
+			ip->sync_trunc_off = ip->trunc_off;
+		}
+
+		/*
+		 * The save_trunc_off used to cache whether the B-Tree
+		 * holds any records past that point is not used until
+		 * after the truncation has succeeded, so we can safely
+		 * set it now.
+		 */
+		if (ip->save_trunc_off > ip->sync_trunc_off)
+			ip->save_trunc_off = ip->sync_trunc_off;
+	}
+	ip->sync_flags |= (ip->flags & HAMMER_INODE_MODMASK);
 	ip->sync_ino_leaf = ip->ino_leaf;
 	ip->sync_ino_data = ip->ino_data;
 	ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
@@ -1526,8 +1544,10 @@ hammer_flush_inode_done(hammer_inode_t ip)
 
 	/*
 	 * Merge left-over flags back into the frontend and fix the state.
+	 * Incomplete truncations are retained by the backend.
 	 */
-	ip->flags |= ip->sync_flags;
+	ip->flags |= ip->sync_flags & ~HAMMER_INODE_TRUNCATED;
+	ip->sync_flags &= HAMMER_INODE_TRUNCATED;
 
 	/*
 	 * The backend may have adjusted nlinks, so if the adjusted nlinks
@@ -1564,6 +1584,14 @@ hammer_flush_inode_done(hammer_inode_t ip)
 		ip->flags |= HAMMER_INODE_REFLUSH;
 
 	/*
+	 * Clean up the vnode ref
+	 */
+	if (ip->flags & HAMMER_INODE_VHELD) {
+		ip->flags &= ~HAMMER_INODE_VHELD;
+		vrele(ip->vp);
+	}
+
+	/*
 	 * Adjust flush_state.  The target state (idle or setup) shouldn't
 	 * be terribly important since we will reflush if we really need
 	 * to do anything.
@@ -1589,14 +1617,6 @@ hammer_flush_inode_done(hammer_inode_t ip)
 
 	--hmp->count_iqueued;
 	--hammer_count_iqueued;
-
-	/*
-	 * Clean up the vnode ref
-	 */
-	if (ip->flags & HAMMER_INODE_VHELD) {
-		ip->flags &= ~HAMMER_INODE_VHELD;
-		vrele(ip->vp);
-	}
 
 	/*
 	 * If the frontend made more changes and requested another flush,
@@ -1892,7 +1912,8 @@ hammer_sync_inode(hammer_inode_t ip)
 		 * while we were blocked so we only use sync_trunc_off.
 		 *
 		 * This operation can blow out the buffer cache, EWOULDBLOCK
-		 * means we were unable to complete the deletion.
+		 * means we were unable to complete the deletion.  The
+		 * deletion will update sync_trunc_off in that case.
 		 */
 		error = hammer_ip_delete_range(&cursor, ip,
 						aligned_trunc_off,
@@ -1960,6 +1981,10 @@ hammer_sync_inode(hammer_inode_t ip)
 	/*
 	 * If we are deleting the inode the frontend had better not have
 	 * any active references on elements making up the inode.
+	 *
+	 * The call to hammer_ip_delete_clean() cleans up auxillary records
+	 * but not DB or DATA records.  Those must have already been deleted
+	 * by the normal truncation mechanic.
 	 */
 	if (error == 0 && ip->sync_ino_data.nlinks == 0 &&
 		RB_EMPTY(&ip->rec_tree)  &&
@@ -1967,7 +1992,7 @@ hammer_sync_inode(hammer_inode_t ip)
 	    (ip->flags & HAMMER_INODE_DELETED) == 0) {
 		int count1 = 0;
 
-		error = hammer_ip_delete_range_all(&cursor, ip, &count1);
+		error = hammer_ip_delete_clean(&cursor, ip, &count1);
 		if (error == 0) {
 			ip->flags |= HAMMER_INODE_DELETED;
 			ip->sync_flags &= ~HAMMER_INODE_DELETING;
@@ -1995,12 +2020,8 @@ hammer_sync_inode(hammer_inode_t ip)
 				--ip->hmp->rootvol->ondisk->vol0_stat_inodes;
 				hammer_modify_volume_done(trans.rootvol);
 			}
-		} else if (error == EWOULDBLOCK) {
-			ip->flags |= HAMMER_INODE_WOULDBLOCK;
-			error = 0;
-			goto defer_buffer_flush;
 		} else {
-			Debugger("hammer_ip_delete_range_all errored");
+			Debugger("hammer_ip_delete_clean errored");
 		}
 	}
 
