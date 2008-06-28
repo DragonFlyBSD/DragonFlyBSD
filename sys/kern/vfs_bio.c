@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.105 2008/06/19 23:27:35 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.106 2008/06/28 17:59:49 dillon Exp $
  */
 
 /*
@@ -81,6 +81,9 @@ enum bufq_type {
 
 typedef enum bufq_type bufq_type_t;
 
+#define BD_WAKE_SIZE	128
+#define BD_WAKE_MASK	(BD_WAKE_SIZE - 1)
+
 TAILQ_HEAD(bqueues, buf) bufqueues[BUFFER_QUEUES];
 
 static MALLOC_DEFINE(M_BIOBUF, "BIO buffer", "BIO buffer");
@@ -98,8 +101,10 @@ static void vfs_setdirty(struct buf *bp);
 static void vfs_vmio_release(struct buf *bp);
 static int flushbufqueues(bufq_type_t q);
 
+static void bd_signal(void);
 static void buf_daemon(void);
 static void buf_daemon_hw(void);
+
 /*
  * bogus page -- for I/O to/from partially complete buffers
  * this is a temporary solution to the problem, but it is not
@@ -122,10 +127,11 @@ int runningbufspace, runningbufcount;
 static int numfreebuffers, lofreebuffers, hifreebuffers;
 static int getnewbufcalls;
 static int getnewbufrestarts;
-static int hidirtywait;
 static int needsbuffer;		/* locked by needsbuffer_spin */
 static int bd_request;		/* locked by needsbuffer_spin */
 static int bd_request_hw;	/* locked by needsbuffer_spin */
+static u_int bd_wake_ary[BD_WAKE_SIZE];
+static u_int bd_wake_index;
 static struct spinlock needsbuffer_spin;
 
 /*
@@ -188,39 +194,9 @@ char *buf_wmesg = BUF_WMESG;
 extern int vm_swap_size;
 
 #define VFS_BIO_NEED_ANY	0x01	/* any freeable buffer */
-#define VFS_BIO_NEED_DIRTYFLUSH	0x02	/* waiting for dirty buffer flush */
+#define VFS_BIO_NEED_UNUSED02	0x02
 #define VFS_BIO_NEED_FREE	0x04	/* wait for free bufs, hi hysteresis */
 #define VFS_BIO_NEED_BUFSPACE	0x08	/* wait for buf space, lo hysteresis */
-
-/*
- * numdirtywakeup:
- *
- *	If someone is blocked due to there being too many dirty buffers,
- *	and numdirtybuffers is now reasonable, wake them up.
- */
-static __inline void
-numdirtywakeup(void)
-{
-	if (runningbufcount + numdirtybuffers <= 
-	    (lodirtybuffers + hidirtybuffers) / 2) {
-		if (needsbuffer & VFS_BIO_NEED_DIRTYFLUSH) {
-			spin_lock_wr(&needsbuffer_spin);
-			needsbuffer &= ~VFS_BIO_NEED_DIRTYFLUSH;
-			spin_unlock_wr(&needsbuffer_spin);
-			wakeup(&needsbuffer);
-		}
-
-		/*
-		 * Heuristical wakeup for flstik.  If the I/O is draining
-		 * in large bursts we can allow new dirty buffers to be
-		 * queued immediately.
-		 */
-		if (hidirtywait) {
-			hidirtywait = 0;
-			wakeup(&hidirtybuffers);
-		}
-	}
-}
 
 /*
  * bufspacewakeup:
@@ -264,7 +240,7 @@ runningbufwakeup(struct buf *bp)
 			runningbufreq = 0;
 			wakeup(&runningbufreq);
 		}
-		numdirtywakeup();
+		bd_signal();
 	}
 }
 
@@ -340,31 +316,21 @@ vfs_buf_test_cache(struct buf *bp,
 }
 
 /*
- * bd_wakeup:
+ * bd_speedup:
  *
- *	Wake up the buffer daemon if the number of outstanding dirty buffers
- *	is above specified threshold 'dirtybuflevel'.
- *
- *	The buffer daemons are explicitly woken up when (a) the pending number
- *	of dirty buffers exceeds the recovery and stall mid-point value,
- *	(b) during bwillwrite() or (c) buf freelist was exhausted.
- *
- *	The buffer daemons will generally not stop flushing until the dirty
- *	buffer count goes below lodirtybuffers.
+ * Unconditionally speed-up the buf_daemon
  */
 static __inline__
 void
-bd_wakeup(int dirtybuflevel)
+bd_speedup(void)
 {
-	if (bd_request == 0 && numdirtybuffers && 
-	    runningbufcount + numdirtybuffers >= dirtybuflevel) {
+	if (bd_request == 0 && numdirtybuffers) {
 		spin_lock_wr(&needsbuffer_spin);
 		bd_request = 1;
 		spin_unlock_wr(&needsbuffer_spin);
 		wakeup(&bd_request);
 	}
-	if (bd_request_hw == 0 && numdirtybuffershw &&
-	    numdirtybuffershw >= dirtybuflevel) {
+	if (bd_request_hw == 0 && numdirtybuffershw) {
 		spin_lock_wr(&needsbuffer_spin);
 		bd_request_hw = 1;
 		spin_unlock_wr(&needsbuffer_spin);
@@ -373,16 +339,77 @@ bd_wakeup(int dirtybuflevel)
 }
 
 /*
- * bd_speedup:
+ * bd_heatup()
  *
- *	Speed up the buffer cache flushing process.
+ *	Get the buf_daemon heated up when the number of running and dirty
+ *	buffers exceeds the mid-point.
  */
-
-static __inline__
-void
-bd_speedup(void)
+int
+bd_heatup(void)
 {
-	bd_wakeup(1);
+	int mid1;
+	int mid2;
+	int count;
+
+	mid1 = lodirtybuffers + (hidirtybuffers - lodirtybuffers) / 2;
+
+	count = runningbufcount + numdirtybuffers;
+	if (count >= mid1) {
+		bd_speedup();
+		mid2 = mid1 + (hidirtybuffers - mid1) / 2;
+		if (count >= mid2)
+			return(count - mid2);
+	}
+	return(0);
+}
+
+/*
+ * bd_wait()
+ *
+ *	Wait for the buffer cache to flush (count) buffers, then return.
+ *
+ *	Regardless this function blocks while the number of dirty buffers
+ *	exceeds hidirtybuffers.
+ */
+void
+bd_wait(int count)
+{
+	u_int i;
+
+	while (count > 0) {
+		bd_heatup();
+		crit_enter();
+		if (count > runningbufcount + numdirtybuffers)
+			count = runningbufcount + numdirtybuffers;
+		if (count >= BD_WAKE_SIZE)
+			count = BD_WAKE_SIZE - 1;
+		i = (bd_wake_index + count) & BD_WAKE_MASK;
+		++bd_wake_ary[i];
+		tsleep(&bd_wake_ary[i], 0, "flstik", hz);
+		crit_exit();
+
+		count = runningbufcount + numdirtybuffers - hidirtybuffers;
+	}
+}
+
+/*
+ * bd_signal()
+ * 
+ *	This function is called whenever runningbufcount or numdirtybuffers
+ *	is decremented.  Track threads waiting for run+dirty buffer I/O
+ *	complete.
+ */
+static void
+bd_signal(void)
+{
+	u_int i;
+
+	i = atomic_fetchadd_int(&bd_wake_index, 1);
+	i &= BD_WAKE_MASK;
+	if (bd_wake_ary[i]) {
+		bd_wake_ary[i] = 0;
+		wakeup(&bd_wake_ary[i]);
+	}
 }
 
 /*
@@ -838,13 +865,6 @@ bdwrite(struct buf *bp)
 	bqrelse(bp);
 
 	/*
-	 * Wakeup the buffer flushing daemon if we have a lot of dirty
-	 * buffers (midpoint between our recovery point and our stall
-	 * point).
-	 */
-	bd_wakeup((lodirtybuffers + hidirtybuffers) / 2);
-
-	/*
 	 * note: we cannot initiate I/O from a bdwrite even if we wanted to,
 	 * due to the softdep code.
 	 */
@@ -884,7 +904,7 @@ bdirty(struct buf *bp)
 		++numdirtybuffers;
 		if (bp->b_flags & B_HEAVY)
 			++numdirtybuffershw;
-		bd_wakeup((lodirtybuffers + hidirtybuffers) / 2);
+		bd_heatup();
 	}
 }
 
@@ -927,7 +947,7 @@ bundirty(struct buf *bp)
 		--numdirtybuffers;
 		if (bp->b_flags & B_HEAVY)
 			--numdirtybuffershw;
-		numdirtywakeup();
+		bd_signal();
 	}
 	/*
 	 * Since it is now being written, we can clear its deferred write flag.
@@ -964,78 +984,6 @@ bowrite(struct buf *bp)
 {
 	bp->b_flags |= B_ORDERED | B_ASYNC;
 	return (bwrite(bp));
-}
-
-/*
- * bwillwrite:
- *
- *	Called prior to the locking of any vnodes when we are expecting to
- *	write.  We do not want to starve the buffer cache with too many
- *	dirty buffers so we block here.  By blocking prior to the locking
- *	of any vnodes we attempt to avoid the situation where a locked vnode
- *	prevents the various system daemons from flushing related buffers.
- */
-void
-bwillwrite(void)
-{
-	int mid1 = hidirtybuffers / 2;
-	int mid2 = mid1 + hidirtybuffers / 4;
-	int delay;
-	int count;
-	int priority = 0;
-
-	count = runningbufcount + numdirtybuffers;
-
-	/*
-	 * Nothing to do if nothing is stressed.
-	 */
-	if (count < mid1)
-		return;
-
-	/*
-	 * Get the buffer daemon heated up
-	 */
-	bd_wakeup(1);
-
-	while (count >= mid2) {
-		/*
-		 * Start slowing down writes, down to 1 per second.
-		 */
-		if (count < hidirtybuffers) {
-			delay = (count - mid2) * hz / (hidirtybuffers - mid2);
-			delay = delay * 10 / (10 + priority);
-			if (delay == 0)
-				delay = 1;
-			++hidirtywait;
-			tsleep(&hidirtybuffers, 0, "flstik", delay);
-			return;
-		}
-
-		/*
-		 * Now we are really in trouble.
-		 */
-		bd_wakeup(1);
-		spin_lock_wr(&needsbuffer_spin);
-		count = runningbufcount + numdirtybuffers;
-		if (count >= hidirtybuffers) {
-			needsbuffer |= VFS_BIO_NEED_DIRTYFLUSH;
-			msleep(&needsbuffer, &needsbuffer_spin, 0, "flswai", 0);
-			spin_unlock_wr(&needsbuffer_spin);
-		}
-		count = runningbufcount + numdirtybuffers;
-	} 
-#if 0
-	/* FUTURE - maybe */
-	else if (runningbufcount + numdirtybuffershw > hidirtybuffers / 2) {
-		bd_wakeup(1);
-
-		while (runningbufcount + numdirtybuffershw > hidirtybuffers) {
-			needsbuffer |= VFS_BIO_NEED_DIRTYFLUSH;
-			tsleep(&needsbuffer, slpflags, "newbuf",
-			       slptimeo);
-		}
-	}
-#endif
 }
 
 /*
@@ -1115,7 +1063,7 @@ brelse(struct buf *bp)
 			--numdirtybuffers;
 			if (bp->b_flags & B_HEAVY)
 				--numdirtybuffershw;
-			numdirtywakeup();
+			bd_signal();
 		}
 		bp->b_flags &= ~(B_DELWRI | B_CACHE);
 	}
@@ -2039,12 +1987,10 @@ buf_daemon(void)
 			if (flushbufqueues(BQUEUE_DIRTY) == 0)
 				break;
 			waitrunningbufspace();
-			numdirtywakeup();
 		}
 		if (runningbufcount + numdirtybuffers > lodirtybuffers) {
 			waitrunningbufspace();
 		}
-		numdirtywakeup();
 
 		/*
 		 * Only clear bd_request if we have reached our low water
@@ -2105,7 +2051,6 @@ buf_daemon_hw(void)
 			if (flushbufqueues(BQUEUE_DIRTY_HW) == 0)
 				break;
 			waitrunningbufspace();
-			numdirtywakeup();
 		}
 		if (runningbufcount + numdirtybuffershw > lodirtybuffers) {
 			waitrunningbufspace();

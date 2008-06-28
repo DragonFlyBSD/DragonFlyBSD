@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.119 2008/06/13 00:25:01 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.120 2008/06/28 17:59:47 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -69,6 +69,7 @@
 #include <sys/globaldata.h>
 #endif
 #include <sys/systimer.h>
+#include <sys/iosched.h>
 #include <sys/usched.h>
 #include <machine/proc.h>		/* Machine-dependent proc substruct. */
 #include <machine/atomic.h>		/* Machine-dependent proc substruct. */
@@ -199,6 +200,7 @@ struct lwp {
 	struct rusage	lwp_ru;		/* stats for this lwp */
 
 	union usched_data lwp_usdata;	/* User scheduler specific */
+	struct iosched_data lwp_iosdata; /* Dynamic I/O scheduling data */
 
 #define lwp_startcopy	lwp_cpumask
 	cpumask_t	lwp_cpumask;
@@ -243,6 +245,7 @@ struct	proc {
 	struct proclist p_children;	/* Pointer to list of children. */
 	struct callout	p_ithandle;	/* for scheduling p_realtimer */
 	struct varsymset p_varsymset;
+	struct iosched_data p_iosdata;	/* Dynamic I/O scheduling data */
 
 	pid_t		p_oppid;	/* Save parent pid during ptrace. XXX */
 

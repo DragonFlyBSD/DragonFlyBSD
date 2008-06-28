@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.132 2008/06/23 17:21:58 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.133 2008/06/28 17:59:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1860,7 +1860,7 @@ kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor)
 	if (error)
 		return (error);
 
-	bwillwrite();
+	bwillinode(1);
 	nd->nl_flags |= NLC_CREATE | NLC_REFDVP;
 	if ((error = nlookup(nd)) != 0)
 		return (error);
@@ -1940,7 +1940,7 @@ kern_mkfifo(struct nlookupdata *nd, int mode)
 	struct vnode *vp;
 	int error;
 
-	bwillwrite();
+	bwillinode(1);
 
 	nd->nl_flags |= NLC_CREATE | NLC_REFDVP;
 	if ((error = nlookup(nd)) != 0)
@@ -2041,7 +2041,7 @@ kern_link(struct nlookupdata *nd, struct nlookupdata *linknd)
 	 *
 	 * XXX relookup on vget failure / race ?
 	 */
-	bwillwrite();
+	bwillinode(1);
 	if ((error = nlookup(nd)) != 0)
 		return (error);
 	vp = nd->nl_nch.ncp->nc_vp;
@@ -2114,7 +2114,7 @@ kern_symlink(struct nlookupdata *nd, char *path, int mode)
 	struct vnode *dvp;
 	int error;
 
-	bwillwrite();
+	bwillinode(1);
 	nd->nl_flags |= NLC_CREATE | NLC_REFDVP;
 	if ((error = nlookup(nd)) != 0)
 		return (error);
@@ -2172,7 +2172,7 @@ sys_undelete(struct undelete_args *uap)
 	int error;
 
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
-	bwillwrite();
+	bwillinode(1);
 	nd.nl_flags |= NLC_DELETE | NLC_REFDVP;
 	if (error == 0)
 		error = nlookup(&nd);
@@ -2191,7 +2191,7 @@ kern_unlink(struct nlookupdata *nd)
 {
 	int error;
 
-	bwillwrite();
+	bwillinode(1);
 	nd->nl_flags |= NLC_DELETE | NLC_REFDVP;
 	if ((error = nlookup(nd)) != 0)
 		return (error);
@@ -3100,7 +3100,7 @@ kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 	struct mount *mp;
 	int error;
 
-	bwillwrite();
+	bwillinode(1);
 	fromnd->nl_flags |= NLC_REFDVP;
 	if ((error = nlookup(fromnd)) != 0)
 		return (error);
@@ -3296,7 +3296,7 @@ kern_mkdir(struct nlookupdata *nd, int mode)
 	struct vattr vattr;
 	int error;
 
-	bwillwrite();
+	bwillinode(1);
 	nd->nl_flags |= NLC_WILLBEDIR | NLC_CREATE | NLC_REFDVP;
 	if ((error = nlookup(nd)) != 0)
 		return (error);
@@ -3340,7 +3340,7 @@ kern_rmdir(struct nlookupdata *nd)
 {
 	int error;
 
-	bwillwrite();
+	bwillinode(1);
 	nd->nl_flags |= NLC_DELETE | NLC_REFDVP;
 	if ((error = nlookup(nd)) != 0)
 		return (error);

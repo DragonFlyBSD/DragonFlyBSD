@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.56 2008/06/19 23:27:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.57 2008/06/28 17:59:51 dillon Exp $
  */
 
 /*
@@ -648,7 +648,7 @@ softdep_process_worklist(struct mount *matchmnt)
 		 * we are really being a buffer hog, we will stop and wait.
 		 */
 		if (loopcount++ % 128 == 0)
-			bwillwrite();
+			bwillinode(1);
 		/*
 		 * Never allow processing to run for more than one
 		 * second. Otherwise the other syncer tasks may get

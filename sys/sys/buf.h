@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.48 2008/06/19 23:27:36 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.49 2008/06/28 17:59:47 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -369,7 +369,8 @@ extern int	nswbuf;			/* Number of swap I/O buffer headers. */
 struct uio;
 
 void	bufinit (void);
-void	bwillwrite (void);
+int	bd_heatup (void);
+void	bd_wait (int count);
 int	buf_dirty_count_severe (void);
 void	initbufbio(struct buf *);
 void	reinitbufbio(struct buf *);

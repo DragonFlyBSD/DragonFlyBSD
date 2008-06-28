@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.57 2008/05/09 17:52:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.58 2008/06/28 17:59:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -156,7 +156,7 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 			nd->nl_flags |= NLC_FOLLOW;
 		nd->nl_flags |= NLC_CREATE;
 		nd->nl_flags |= NLC_REFDVP;
-		bwillwrite();
+		bwillinode(1);
 		error = nlookup(nd);
 	} else {
 		/*
@@ -519,8 +519,16 @@ vn_rdwr_inchunks(enum uio_rw rw, struct vnode *vp, caddr_t base, int len,
 
 		if (chunk > len)
 			chunk = len;
-		if (rw != UIO_READ && vp->v_type == VREG)
-			bwillwrite();
+		if (vp->v_type == VREG) {
+			switch(rw) {
+			case UIO_READ:
+				bwillread(chunk);
+				break;
+			case UIO_WRITE:
+				bwillwrite(chunk);
+				break;
+			}
+		}
 		error = vn_rdwr(rw, vp, base, chunk, offset, segflg,
 			    ioflg, cred, aresid);
 		len -= chunk;	/* aresid calc already includes length */
@@ -662,8 +670,11 @@ vn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 	KASSERT(uio->uio_td == curthread,
 		("uio_td %p is not p %p", uio->uio_td, curthread));
 	vp = (struct vnode *)fp->f_data;
+#if 0
+	/* VOP_WRITE should handle this now */
 	if (vp->v_type == VREG || vp->v_type == VDATABASE)
 		bwillwrite();
+#endif
 	vp = (struct vnode *)fp->f_data;	/* XXX needed? */
 
 	ioflag = IO_UNIT;
@@ -737,7 +748,7 @@ svn_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags)
 		goto done;
 	}
 	if (vp->v_type == VREG)
-		bwillwrite();
+		bwillwrite(uio->uio_resid);
 	vp = (struct vnode *)fp->f_data;	/* XXX needed? */
 
 	if ((dev = vp->v_rdev) == NULL) {
