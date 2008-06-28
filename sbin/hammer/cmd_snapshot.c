@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_snapshot.c,v 1.5 2008/06/26 20:43:45 mneumann Exp $
+ * $DragonFly: src/sbin/hammer/cmd_snapshot.c,v 1.6 2008/06/28 14:18:00 swildner Exp $
  */
 
 #include "hammer.h"
@@ -66,12 +66,10 @@ hammer_cmd_snapshot(char **av, int ac)
 	if (ac == 1) {
 		filesystem = NULL;
 		softlink_dir = av[0];
-	}
-	else if (ac == 2) {
+	} else if (ac == 2) {
 		filesystem = av[0];
 		softlink_dir = av[1];
-	}
-	else {
+	} else {
 		snapshot_usage(1);
 	}
 
@@ -96,8 +94,7 @@ hammer_cmd_snapshot(char **av, int ac)
 		if (softlink_fmt[strlen(softlink_fmt)-1] != '/')
 			strcat(softlink_fmt, "/");
 		strcat(softlink_fmt, DEFAULT_SNAPSHOT_NAME); 
-	}
-	else {
+	} else {
 		softlink_fmt = strdup(softlink_dir);
 
 		if (filesystem == NULL) {
@@ -169,4 +166,3 @@ snapshot_usage(int exit_code)
 	fprintf(stderr, "hammer snapshot <filesystem> <snapshot-dir>\n");
 	exit(exit_code);
 }
-
