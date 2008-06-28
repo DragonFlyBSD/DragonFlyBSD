@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-queue.c,v 1.67 2007/01/27 21:15:58 remko Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.9 2008/06/28 01:06:40 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.10 2008/06/28 01:41:32 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -646,7 +646,7 @@ ata_sort_queue(struct ata_channel *ch, struct ata_request *request)
      *
      * (Added by DragonFly)
      */
-    if (next && ++next->sortq_lost > 8) {
+    if (next && ++next->sortq_lost > 128) {
 	ch->freezepoint = request;
 	TAILQ_INSERT_TAIL(&ch->ata_queue, request, chain);
     } else {
