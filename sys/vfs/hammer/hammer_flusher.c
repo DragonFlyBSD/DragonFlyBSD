@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.30 2008/06/27 20:56:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.31 2008/06/28 23:50:37 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -582,8 +582,8 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 int
 hammer_flusher_meta_limit(hammer_mount_t hmp)
 {
-	if (hmp->locked_dirty_count + hmp->io_running_count >
-	    hammer_limit_dirtybufs) {
+	if (hmp->locked_dirty_space + hmp->io_running_space >
+	    hammer_limit_dirtybufspace) {
 		return(1);
 	}
 	return(0);

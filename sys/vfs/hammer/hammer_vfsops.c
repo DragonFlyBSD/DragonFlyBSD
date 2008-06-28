@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.55 2008/06/27 20:56:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.56 2008/06/28 23:50:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -73,13 +73,13 @@ int64_t hammer_stats_btree_elements;
 int64_t hammer_stats_btree_splits;
 int64_t hammer_stats_btree_iterations;
 int64_t hammer_stats_record_iterations;
-int hammer_count_dirtybufs;		/* global */
+int hammer_count_dirtybufspace;		/* global */
 int hammer_count_refedbufs;		/* global */
 int hammer_count_reservations;
 int hammer_count_io_running_read;
 int hammer_count_io_running_write;
 int hammer_count_io_locked;
-int hammer_limit_dirtybufs;		/* per-mount */
+int hammer_limit_dirtybufspace;		/* per-mount */
 int hammer_limit_recs;			/* as a whole XXX */
 int hammer_limit_iqueued;		/* per-mount */
 int hammer_bio_count;
@@ -110,8 +110,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_recover_faults, CTLFLAG_RW,
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_cluster_enable, CTLFLAG_RW,
 	   &hammer_debug_cluster_enable, 0, "");
 
-SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_dirtybufs, CTLFLAG_RW,
-	   &hammer_limit_dirtybufs, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_dirtybufspace, CTLFLAG_RW,
+	   &hammer_limit_dirtybufspace, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_recs, CTLFLAG_RW,
 	   &hammer_limit_recs, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_iqueued, CTLFLAG_RW,
@@ -149,8 +149,8 @@ SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_btree_iterations, CTLFLAG_RD,
 	   &hammer_stats_btree_iterations, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_record_iterations, CTLFLAG_RD,
 	   &hammer_stats_record_iterations, 0, "");
-SYSCTL_INT(_vfs_hammer, OID_AUTO, count_dirtybufs, CTLFLAG_RD,
-	   &hammer_count_dirtybufs, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, count_dirtybufspace, CTLFLAG_RD,
+	   &hammer_count_dirtybufspace, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_refedbufs, CTLFLAG_RD,
 	   &hammer_count_refedbufs, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_reservations, CTLFLAG_RD,
@@ -220,10 +220,10 @@ hammer_vfs_init(struct vfsconf *conf)
 {
 	if (hammer_limit_recs == 0)		/* XXX TODO */
 		hammer_limit_recs = nbuf * 25;
-	if (hammer_limit_dirtybufs == 0) {
-		hammer_limit_dirtybufs = hidirtybuffers / 2;
-		if (hammer_limit_dirtybufs < 100)
-			hammer_limit_dirtybufs = 100;
+	if (hammer_limit_dirtybufspace == 0) {
+		hammer_limit_dirtybufspace = hidirtybufspace / 2;
+		if (hammer_limit_dirtybufspace < 100)
+			hammer_limit_dirtybufspace = 100;
 	}
 	if (hammer_limit_iqueued == 0)
 		hammer_limit_iqueued = desiredvnodes / 5;

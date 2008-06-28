@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.46 2008/06/23 07:31:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.47 2008/06/28 23:50:37 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -154,8 +154,8 @@ void
 hammer_io_wait_all(hammer_mount_t hmp, const char *ident)
 {
 	crit_enter();
-	while (hmp->io_running_count)
-		tsleep(&hmp->io_running_count, 0, ident, 0);
+	while (hmp->io_running_space)
+		tsleep(&hmp->io_running_space, 0, ident, 0);
 	crit_exit();
 }
 
@@ -180,7 +180,7 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io, hammer_off_t limit)
 	int   error;
 
 	if ((bp = io->bp) == NULL) {
-		++hammer_count_io_running_read;
+		hammer_count_io_running_read += io->bytes;
 #if 1
 		error = cluster_read(devvp, limit, io->offset, io->bytes,
 				     HAMMER_CLUSTER_SIZE,
@@ -188,7 +188,7 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io, hammer_off_t limit)
 #else
 		error = bread(devvp, io->offset, io->bytes, &io->bp);
 #endif
-		--hammer_count_io_running_read;
+		hammer_count_io_running_read -= io->bytes;
 		if (error == 0) {
 			bp = io->bp;
 			bp->b_ops = &hammer_bioops;
@@ -466,8 +466,8 @@ hammer_io_flush(struct hammer_io *io)
 	 * Transfer ownership to the kernel and initiate I/O.
 	 */
 	io->running = 1;
-	++io->hmp->io_running_count;
-	++hammer_count_io_running_write;
+	io->hmp->io_running_space += io->bytes;
+	hammer_count_io_running_write += io->bytes;
 	bawrite(bp);
 }
 
@@ -516,13 +516,13 @@ hammer_io_modify(hammer_io_t io, int count)
 		switch(io->type) {
 		case HAMMER_STRUCTURE_VOLUME:
 			io->mod_list = &hmp->volu_list;
-			++hmp->locked_dirty_count;
-			++hammer_count_dirtybufs;
+			hmp->locked_dirty_space += io->bytes;
+			hammer_count_dirtybufspace += io->bytes;
 			break;
 		case HAMMER_STRUCTURE_META_BUFFER:
 			io->mod_list = &hmp->meta_list;
-			++hmp->locked_dirty_count;
-			++hammer_count_dirtybufs;
+			hmp->locked_dirty_space += io->bytes;
+			hammer_count_dirtybufspace += io->bytes;
 			break;
 		case HAMMER_STRUCTURE_UNDO_BUFFER:
 			io->mod_list = &hmp->undo_list;
@@ -654,8 +654,8 @@ hammer_io_clear_modify(struct hammer_io *io, int inval)
 	KKASSERT(io->mod_list != NULL);
 	if (io->mod_list == &io->hmp->volu_list ||
 	    io->mod_list == &io->hmp->meta_list) {
-		--io->hmp->locked_dirty_count;
-		--hammer_count_dirtybufs;
+		io->hmp->locked_dirty_space -= io->bytes;
+		hammer_count_dirtybufspace -= io->bytes;
 	}
 	TAILQ_REMOVE(io->mod_list, io, mod_entry);
 	io->mod_list = NULL;
@@ -742,10 +742,11 @@ hammer_io_complete(struct buf *bp)
 	 * Deal with people waiting for I/O to drain
 	 */
 	if (iou->io.running) {
-		--hammer_count_io_running_write;
-		if (--iou->io.hmp->io_running_count == 0)
-			wakeup(&iou->io.hmp->io_running_count);
-		KKASSERT(iou->io.hmp->io_running_count >= 0);
+		hammer_count_io_running_write -= iou->io.bytes;
+		iou->io.hmp->io_running_space -= iou->io.bytes;
+		if (iou->io.hmp->io_running_space == 0)
+			wakeup(&iou->io.hmp->io_running_space);
+		KKASSERT(iou->io.hmp->io_running_space >= 0);
 		iou->io.running = 0;
 	}
 
@@ -884,8 +885,8 @@ hammer_io_checkwrite(struct buf *bp)
 	 */
 	KKASSERT(io->running == 0);
 	io->running = 1;
-	++io->hmp->io_running_count;
-	++hammer_count_io_running_write;
+	io->hmp->io_running_space += io->bytes;
+	hammer_count_io_running_write += io->bytes;
 	return(0);
 }
 

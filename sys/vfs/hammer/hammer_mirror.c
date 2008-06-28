@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.3 2008/06/27 20:56:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.4 2008/06/28 23:50:37 dillon Exp $
  */
 /*
  * HAMMER mirroring ioctls - serialize and deserialize modifications made
@@ -129,8 +129,8 @@ retry:
 		if (trans->hmp->sync_lock.wanted) {
 			tsleep(trans, 0, "hmrslo", hz / 10);
 		}
-		if (trans->hmp->locked_dirty_count +
-		    trans->hmp->io_running_count > hammer_limit_dirtybufs) {
+		if (trans->hmp->locked_dirty_space +
+		    trans->hmp->io_running_space > hammer_limit_dirtybufspace) {
 			hammer_flusher_async(trans->hmp);
 			tsleep(trans, 0, "hmrslo", hz / 10);
 		}

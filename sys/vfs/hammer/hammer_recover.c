@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.26 2008/06/27 20:56:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.27 2008/06/28 23:50:37 dillon Exp $
  */
 
 #include "hammer.h"
@@ -468,8 +468,8 @@ hammer_recover_flush_buffers(hammer_mount_t hmp, hammer_volume_t root_volume,
 	 */
 	if (root_volume->io.recovered && final) {
 		crit_enter();
-		while (hmp->io_running_count)
-			tsleep(&hmp->io_running_count, 0, "hmrflx", 0);
+		while (hmp->io_running_space > 0)
+			tsleep(&hmp->io_running_space, 0, "hmrflx", 0);
 		crit_exit();
 		root_volume->io.recovered = 0;
 		hammer_io_flush(&root_volume->io);

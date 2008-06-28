@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.95 2008/06/28 18:10:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.96 2008/06/28 23:50:37 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -657,8 +657,8 @@ struct hammer_mount {
 	struct hammer_io_list alt_data_list;	/* dirty data buffers */
 	struct hammer_io_list meta_list;	/* dirty meta bufs    */
 	struct hammer_io_list lose_list;	/* loose buffers      */
-	int	locked_dirty_count;		/* meta/volu count    */
-	int	io_running_count;
+	int	locked_dirty_space;		/* meta/volu count    */
+	int	io_running_space;
 	int	objid_cache_count;
 	hammer_tid_t	asof;			/* snapshot mount */
 	hammer_off_t	next_tid;
@@ -724,13 +724,13 @@ extern int64_t hammer_stats_btree_elements;
 extern int64_t hammer_stats_btree_splits;
 extern int64_t hammer_stats_btree_iterations;
 extern int64_t hammer_stats_record_iterations;
-extern int hammer_count_dirtybufs;
+extern int hammer_count_dirtybufspace;
 extern int hammer_count_refedbufs;
 extern int hammer_count_reservations;
 extern int hammer_count_io_running_read;
 extern int hammer_count_io_running_write;
 extern int hammer_count_io_locked;
-extern int hammer_limit_dirtybufs;
+extern int hammer_limit_dirtybufspace;
 extern int hammer_limit_iqueued;
 extern int hammer_limit_recs;
 extern int hammer_bio_count;
