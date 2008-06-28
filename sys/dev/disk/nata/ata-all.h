@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.h,v 1.123 2007/04/08 19:18:51 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-all.h,v 1.10 2008/06/27 01:24:46 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-all.h,v 1.11 2008/06/28 01:06:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -390,6 +390,7 @@ struct ata_request {
     struct spinlock             done;           /* request done sema */
     int                         retries;        /* retry count */
     int                         timeout;        /* timeout for this cmd */
+    int				sortq_lost;	/* waiting too long in queue */
     struct callout              callout;        /* callout management */
     struct task                 task;           /* task management */
     struct bio                  *bio;           /* bio for this request */

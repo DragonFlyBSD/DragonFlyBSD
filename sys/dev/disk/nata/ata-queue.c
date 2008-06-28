@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-queue.c,v 1.67 2007/01/27 21:15:58 remko Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.8 2008/06/27 01:24:46 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.9 2008/06/28 01:06:40 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -591,6 +591,7 @@ ata_sort_queue(struct ata_channel *ch, struct ata_request *request)
 {
     struct ata_request *this, *next;
 
+    request->sortq_lost = 0;
     this = TAILQ_FIRST(&ch->ata_queue);
 
     /* if the queue is empty just insert */
@@ -636,7 +637,21 @@ ata_sort_queue(struct ata_channel *ch, struct ata_request *request)
 
     if (request->composite)
 	ch->freezepoint = request;
-    TAILQ_INSERT_AFTER(&ch->ata_queue, this, request, chain);
+
+    /*
+     * Do not let linear I/O hog the queue, otherwise other requests can
+     * get delayed indefinitely.  This typically occurs with large continuous
+     * writing but HAMMER's log-like linear writing really seems to make
+     * it happen.
+     *
+     * (Added by DragonFly)
+     */
+    if (next && ++next->sortq_lost > 8) {
+	ch->freezepoint = request;
+	TAILQ_INSERT_TAIL(&ch->ata_queue, request, chain);
+    } else {
+	TAILQ_INSERT_AFTER(&ch->ata_queue, this, request, chain);
+    }
 }
 
 char *
