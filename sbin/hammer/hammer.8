@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.27 2008/06/28 14:23:59 swildner Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.28 2008/06/28 14:48:50 swildner Exp $
 .Dd June 26, 2008
 .Dt HAMMER 8
 .Os
@@ -39,7 +39,7 @@
 .Nd HAMMER file system utility
 .Sh SYNOPSIS
 .Nm
-.Op Fl hrx
+.Op Fl hrv
 .Op Fl c Ar cyclefile
 .Op Fl f Ar blkdev[:blkdev]*
 .Op Fl s Ar linkpath
@@ -136,18 +136,23 @@ paths.  Softlinks must use 20-character (@@0x%016llx) transaction ids,
 as might be returned from 'hammer synctid <filesystem>'.
 .Pp
 Example, lets say your snapshot directory contains the following links:
-.Pp
-.Li "lrwxr-xr-x  1 root  wheel  29 May 31 17:57 snap1 -> /usr/obj/@@0x10d2cd05b7270d16"
-.Pp
-.Li "lrwxr-xr-x  1 root  wheel  29 May 31 17:58 snap2 -> /usr/obj/@@0x10d2cd13f3fde98f"
-.Pp
-.Li "lrwxr-xr-x  1 root  wheel  29 May 31 17:59 snap3 -> /usr/obj/@@0x10d2cd222adee364"
+.Bd -literal
+lrwxr-xr-x  1 root  wheel  29 May 31 17:57 snap1 ->
+/usr/obj/@@0x10d2cd05b7270d16
+
+lrwxr-xr-x  1 root  wheel  29 May 31 17:58 snap2 ->
+/usr/obj/@@0x10d2cd13f3fde98f
+
+lrwxr-xr-x  1 root  wheel  29 May 31 17:59 snap3 ->
+/usr/obj/@@0x10d2cd222adee364
+.Ed
 .Pp
 If you were to run the prune command on this directory, then the HAMMER
-/usr/obj mount will be pruned to retain the above three snapshots.
-In addition, modifications made to the filesystem older then the oldest
+.Pa /usr/obj
+mount will be pruned to retain the above three snapshots.
+In addition, modifications made to the filesystem older than the oldest
 snapshot will be destroyed and potentially fine-grained modifications made
-to the filesystem more recently then the most recent snapshot will be
+to the filesystem more recently than the most recent snapshot will be
 retained.
 .Pp
 If you then delete the snap2 softlink and rerun the prune command,
@@ -172,20 +177,36 @@ pointing to the snapshot.
 If
 .Ar snapshot-dir
 is no directory, it is assumed to be a format string
-passed to strftime(3) with the current time as parameter.
+passed to
+.Xr strftime 3
+with the current time as parameter.
 If
 .Ar snapshot-dir
 refers to an existing directory, a default format string of "snap-%Y%d%m-%H%M"
 is assumed and used as name for the newly created symlink.
-Assuming that "/mysnapshots" is on filesystem "/" and that "/obj" is a
-filesystem on its own, the following invocations:
-.Li hammer snapshot /mysnapshots
-.Li hammer snapshot /mysnapshots/%Y-%m-%d
-.Li hammer snapshot /obj /mysnapshots/obj-%Y-%m-%d
+Assuming that
+.Pa /mysnapshots
+is on filesystem
+.Pa /
+and that
+.Pa /obj
+is a filesystem on its own, the following invocations:
+.Bd -literal
+hammer snapshot /mysnapshots
+
+hammer snapshot /mysnapshots/%Y-%m-%d
+
+hammer snapshot /obj /mysnapshots/obj-%Y-%m-%d
+.Ed
+.Pp
 would create symlinks similar to:
-.Li /mysnapshots/snap-20080627-1210 -> /@@0x10d2cd05b7270d16
-.Li /mysnapshots/2008-06-27 -> /@@0x10d2cd05b7270d16
-.Li /mysnapshots/obj-2008-06-27 -> /obj@@0x10d2cd05b7270d16
+.Bd -literal
+/mysnapshots/snap-20080627-1210 -> /@@0x10d2cd05b7270d16
+
+/mysnapshots/2008-06-27 -> /@@0x10d2cd05b7270d16
+
+/mysnapshots/obj-2008-06-27 -> /obj@@0x10d2cd05b7270d16
+.Ed
 .It Ar reblock Ar filesystem Op Ar fill_percentage
 .It Ar reblock-btree Ar filesystem Op Ar fill_percentage
 .It Ar reblock-inodes Ar filesystem Op Ar fill_percentage
@@ -219,9 +240,9 @@ Create a pseudo-filesystem inside a HAMMER filesystem.  Up to 65535 such
 filesystems can be created.  Each one uses an independant inode numbering
 space making it suitable for use as a replication source or target.
 .El
-.Sh EXAMPLES
+.\".Sh EXAMPLES
 .Sh DIAGNOSTICS
-Exit status is 0 on success and 1 on error.
+.Ex -std
 .Sh SEE ALSO
 .Xr newfs_hammer 8
 .Sh HISTORY
