@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.80 2008/04/01 20:55:06 swildner Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.81 2008/06/29 10:23:23 corecode Exp $
 #
 
 #########################################################################
@@ -149,10 +149,10 @@ check:
 	@exit 1
 .endif
 .for PKG in ${OLD_PKGSRC_PACKAGES}
-	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_DELETE} -K ${ISOROOT}/var/db/pkg ${PKG} > /dev/null 2>&1 || exit 0
+	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_DELETE} -K ${ISOROOT}${PKGSRC_DB} ${PKG} > /dev/null 2>&1 || exit 0
 .endfor
 .for PKG in ${PKGSRC_PACKAGES}
-	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -K ${ISOROOT}/var/db/pkg -n ${PKG} > /dev/null 2>&1 || \
+	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -K ${ISOROOT}${PKGSRC_DB} -n ${PKG} > /dev/null 2>&1 || \
 		(echo "Unable to find ${PKG}, use the following command to fetch required packages:"; echo "    make [installer] fetch"; exit 1)
 .endfor
 .if !exists(${PKGBIN_MKISOFS})
@@ -200,7 +200,7 @@ buildiso:
 .endif
 	( cd ${.CURDIR}/../etc; MAKEOBJDIRPREFIX=${NRLOBJDIR}/nrelease \
 		make -m ${.CURDIR}/../share/mk DESTDIR=${ISOROOT} distribution )
-	chroot ${ISOROOT} /usr/bin/newaliases
+	/usr/libexec/sendmail/sendmail -bi -O AliasFile=${ISOROOT}/etc/mail/aliases -O DontBlameSendmail=mapinunsafedirpath
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
 	cd ${.CURDIR}/..; \
 	first=; \
@@ -251,15 +251,11 @@ customizeiso:
 	# directory prefix so we mount_null our package directory into the
 	# ISO root and do the install chrooted.
 	#
-	mkdir ${ISOROOT}/tmp/packages
-	mount_null -o ro ${PKGSRC_PKG_PATH} ${ISOROOT}/tmp/packages
 .for PKG in ${PKGSRC_PACKAGES}
-	${ENVCMD} PKG_PATH=/tmp/packages chroot ${ISOROOT} ${PKGBIN_PKG_ADD} -I ${PKG}
+	${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -K ${ISOROOT}${PKGSRC_DB} -I ${PKG}
 .endfor
-	umount ${ISOROOT}/tmp/packages
-	rmdir ${ISOROOT}/tmp/packages
 	find ${ISOROOT}${PKGSRC_DB} -name +CONTENTS -type f -exec sed -i '' -e 's,${ISOROOT},,' -- {} \;
-	chroot ${ISOROOT} ${PKGBIN_PKG_ADMIN} rebuild
+	${PKGBIN_PKG_ADMIN} -K ${ISOROOT}${PKGSRC_DB} rebuild
 .if defined(WITH_GUI)
 .for FONT in 75dpi 100dpi misc Type1 TTF
 	chroot ${ISOROOT} /usr/pkg/bin/mkfontdir /usr/pkg/lib/X11/fonts/${FONT}
@@ -292,7 +288,7 @@ realclean:	clean
 fetch:
 	@if [ ! -d ${PKGSRC_PKG_PATH} ]; then mkdir -p ${PKGSRC_PKG_PATH}; fi
 .for PKG in ${PKGSRC_PACKAGES}
-	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -K ${ISOROOT}/var/db/pkg -n ${PKG} > /dev/null 2>&1 || \
+	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -K ${ISOROOT}${PKGSRC_DB} -n ${PKG} > /dev/null 2>&1 || \
 	(cd ${PKGSRC_PKG_PATH}; echo "Fetching ${PKGSRC_BOOTSTRAP_URL}/${PKG}"; fetch ${PKGSRC_BOOTSTRAP_URL}/${PKG})
 .endfor
 .if !exists(${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
