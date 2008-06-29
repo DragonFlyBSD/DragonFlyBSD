@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD-4.7: /usr/src/sys/pci/silan.c,v 1.0 2003/01/10 gaoyonghong $
- * $DragonFly: src/sys/dev/netif/sln/if_sln.c,v 1.2 2008/05/14 11:59:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sln/if_sln.c,v 1.3 2008/06/29 20:45:44 swildner Exp $
  */
 
 #include <sys/bus.h>
@@ -79,7 +79,7 @@ static const struct sln_dev {
 	uint16_t did;
 	const char *desc;
 } sln_devs[] = {
-	{PCI_VENDOR_SILAN, PCI_PRODUCT_SILAN_SC92301,
+	{PCI_VENDOR_SILAN, PCI_PRODUCT_SILAN_SC92031,
 	 "Silan SC92031 Fast Ethernet" },
 	{PCI_VENDOR_SILAN, PCI_PRODUCT_SILAN_8139D,
 	 "Silan Rsltek 8139D Fast Ethernet" },
