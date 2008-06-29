@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_sim.c,v 1.3 1999/08/28 00:40:42 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_sim.c,v 1.11 2008/05/18 20:30:19 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_sim.c,v 1.12 2008/06/29 19:15:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -34,7 +34,9 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/lock.h>
+#include <sys/spinlock.h>
 #include <sys/thread2.h>
+#include <sys/spinlock2.h>
 
 #include "cam.h"
 #include "cam_ccb.h"
@@ -170,6 +172,7 @@ cam_sim_alloc(sim_action_func sim_action, sim_poll_func sim_poll,
 
 	SLIST_INIT(&sim->ccb_freeq);
 	TAILQ_INIT(&sim->sim_doneq);
+	spin_init(&sim->sim_spin);
 
 	return (sim);
 }

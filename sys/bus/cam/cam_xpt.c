@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.65 2008/05/18 20:30:19 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.66 2008/06/29 19:15:34 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -45,8 +45,10 @@
 #include <sys/taskqueue.h>
 #include <sys/bus.h>
 #include <sys/thread.h>
-#include <sys/thread2.h>
 #include <sys/lock.h>
+#include <sys/spinlock.h>
+#include <sys/thread2.h>
+#include <sys/spinlock2.h>
 
 #include <machine/clock.h>
 #include <machine/stdarg.h>
@@ -654,7 +656,7 @@ static struct xpt_softc xsoftc;
 typedef TAILQ_HEAD(cam_isrq, ccb_hdr) cam_isrq_t;
 typedef TAILQ_HEAD(cam_simq, cam_sim) cam_simq_t;
 static cam_simq_t cam_simq;
-static struct lock cam_simq_lock;
+static struct spinlock cam_simq_spin;
 
 struct cam_periph *xpt_periph;
 
@@ -803,7 +805,7 @@ static void	 xptaction(struct cam_sim *sim, union ccb *work_ccb);
 static void	 xptpoll(struct cam_sim *sim);
 static inthand2_t swi_cambio;
 static void	 camisr(void *);
-static void	 camisr_runqueue(void *);
+static void	 camisr_runqueue(struct cam_sim *);
 static dev_match_ret	xptbusmatch(struct dev_match_pattern *patterns,
 				    u_int num_patterns, struct cam_eb *bus);
 static dev_match_ret	xptdevicematch(struct dev_match_pattern *patterns,
@@ -1466,7 +1468,7 @@ xpt_init(void *dummy)
 	STAILQ_INIT(&xsoftc.highpowerq);
 	xsoftc.num_highpower = CAM_MAX_HIGHPOWER;
 
-	lockinit(&cam_simq_lock, "CAM SIMQ lock", 0, LK_CANRECURSE);
+	spin_init(&cam_simq_spin);
 	lockinit(&xsoftc.xpt_lock, "XPT lock", 0, LK_CANRECURSE);
 	lockinit(&xsoftc.xpt_topo_lock, "XPT topology lock", 0, LK_CANRECURSE);
 
@@ -3553,7 +3555,7 @@ xpt_polled_action(union ccb *start_ccb)
 	   && (--timeout > 0)) {
 		DELAY(1000);
 		(*(sim->sim_poll))(sim);
-		camisr_runqueue(&sim->sim_doneq);
+		camisr_runqueue(sim);
 	}
 
 	dev->ccbq.devq_openings++;
@@ -3563,7 +3565,7 @@ xpt_polled_action(union ccb *start_ccb)
 		xpt_action(start_ccb);
 		while(--timeout > 0) {
 			(*(sim->sim_poll))(sim);
-			camisr_runqueue(&sim->sim_doneq);
+			camisr_runqueue(sim);
 			if ((start_ccb->ccb_h.status  & CAM_STATUS_MASK)
 			    != CAM_REQ_INPROG)
 				break;
@@ -4389,7 +4391,7 @@ xpt_bus_deregister(path_id_t pathid)
 
 	/* Make sure all completed CCBs are processed. */
 	while (!TAILQ_EMPTY(&ccbsim->sim_doneq)) {
-		camisr_runqueue(&ccbsim->sim_doneq);
+		camisr_runqueue(ccbsim);
 
 		/* Repeat the async's for the benefit of any new devices. */
 		xpt_async(AC_LOST_DEVICE, &bus_path, NULL);
@@ -4815,15 +4817,19 @@ xpt_done(union ccb *done_ccb)
 		sim = done_ccb->ccb_h.path->bus->sim;
 		switch (done_ccb->ccb_h.path->periph->type) {
 		case CAM_PERIPH_BIO:
+			spin_lock_wr(&sim->sim_spin);
 			TAILQ_INSERT_TAIL(&sim->sim_doneq, &done_ccb->ccb_h,
 					  sim_links.tqe);
 			done_ccb->ccb_h.pinfo.index = CAM_DONEQ_INDEX;
+			spin_unlock_wr(&sim->sim_spin);
 			if ((sim->flags & CAM_SIM_ON_DONEQ) == 0) {
-				lockmgr(&cam_simq_lock, LK_EXCLUSIVE);
-				TAILQ_INSERT_TAIL(&cam_simq, sim,
-						  links);
-				sim->flags |= CAM_SIM_ON_DONEQ;
-				lockmgr(&cam_simq_lock, LK_RELEASE);
+				spin_lock_wr(&cam_simq_spin);
+				if ((sim->flags & CAM_SIM_ON_DONEQ) == 0) {
+					TAILQ_INSERT_TAIL(&cam_simq, sim,
+							  links);
+					sim->flags |= CAM_SIM_ON_DONEQ;
+				}
+				spin_unlock_wr(&cam_simq_spin);
 			}
 			if ((done_ccb->ccb_h.path->periph->flags &
 			    CAM_PERIPH_POLLED) == 0)
@@ -7125,30 +7131,30 @@ camisr(void *dummy)
 	cam_simq_t queue;
 	struct cam_sim *sim;
 
-	lockmgr(&cam_simq_lock, LK_EXCLUSIVE);
+	spin_lock_wr(&cam_simq_spin);
 	TAILQ_INIT(&queue);
 	TAILQ_CONCAT(&queue, &cam_simq, links);
-	lockmgr(&cam_simq_lock, LK_RELEASE);
+	spin_unlock_wr(&cam_simq_spin);
 
 	while ((sim = TAILQ_FIRST(&queue)) != NULL) {
 		TAILQ_REMOVE(&queue, sim, links);
 		CAM_SIM_LOCK(sim);
 		sim->flags &= ~CAM_SIM_ON_DONEQ;
-		camisr_runqueue(&sim->sim_doneq);
+		camisr_runqueue(sim);
 		CAM_SIM_UNLOCK(sim);
 	}
 }
 
 static void
-camisr_runqueue(void *V_queue)
+camisr_runqueue(struct cam_sim *sim)
 {
-	cam_isrq_t *queue = V_queue;
 	struct	ccb_hdr *ccb_h;
+	int	runq;
 
-	while ((ccb_h = TAILQ_FIRST(queue)) != NULL) {
-		int	runq;
-
-		TAILQ_REMOVE(queue, ccb_h, sim_links.tqe);
+	spin_lock_wr(&sim->sim_spin);
+	while ((ccb_h = TAILQ_FIRST(&sim->sim_doneq)) != NULL) {
+		TAILQ_REMOVE(&sim->sim_doneq, ccb_h, sim_links.tqe);
+		spin_unlock_wr(&sim->sim_spin);
 		ccb_h->pinfo.index = CAM_UNQUEUED_INDEX;
 
 		CAM_DEBUG(ccb_h->path, CAM_DEBUG_TRACE,
@@ -7237,7 +7243,9 @@ camisr_runqueue(void *V_queue)
 
 		/* Call the peripheral driver's callback */
 		(*ccb_h->cbfcnp)(ccb_h->path->periph, (union ccb *)ccb_h);
+		spin_lock_wr(&sim->sim_spin);
 	}
+	spin_unlock_wr(&sim->sim_spin);
 }
 
 static void

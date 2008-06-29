@@ -26,13 +26,17 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_sim.h,v 1.4 1999/12/29 04:54:27 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_sim.h,v 1.7 2008/05/18 20:30:19 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_sim.h,v 1.8 2008/06/29 19:15:34 dillon Exp $
  */
 
 #ifndef _CAM_CAM_SIM_H
 #define _CAM_CAM_SIM_H 1
 
 #ifdef _KERNEL
+
+#ifndef _SYS_SPINLOCK_H_
+#include <sys/spinlock.h>
+#endif
 
 /*
  * The sim driver creates a sim for each controller.  The sim device
@@ -104,6 +108,7 @@ struct cam_sim {
 	const char		*sim_name;
 	void			*softc;		/* might be NULL */
 	sim_lock		*lock;
+	struct spinlock		sim_spin;
 	TAILQ_HEAD(, ccb_hdr)	sim_doneq;
 	TAILQ_ENTRY(cam_sim)	links;
 	u_int32_t		path_id;	/* bootdev may set this to 0? */
