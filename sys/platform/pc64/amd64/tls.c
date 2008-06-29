@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc64/amd64/tls.c,v 1.2 2007/09/24 03:24:45 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/tls.c,v 1.3 2008/06/29 19:04:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -61,7 +61,7 @@
  * Returns the value userland needs to load into %gs representing the 
  * TLS descriptor or -1 on error.
  *
- * (struct tls_info *info, int infosize, int which)
+ * (int which, struct tls_info *info, size_t infosize)
  */
 int
 sys_set_tls_area(struct set_tls_area_args *uap)
@@ -153,7 +153,7 @@ sys_set_tls_area(struct set_tls_area_args *uap)
  * Returns the value userland needs to load into %gs representing the 
  * TLS descriptor or -1 on error.
  *
- * (struct tls_info *info, int infosize, int which)
+ * (int which, struct tls_info *info, size_t infosize)
  */
 int
 sys_get_tls_area(struct get_tls_area_args *uap)
