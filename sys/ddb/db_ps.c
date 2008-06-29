@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_ps.c,v 1.24 2007/08/15 03:15:05 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.25 2008/06/29 21:38:21 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -63,6 +63,15 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 	    return;
 	db_printf("  pid      lwp  uid  ppid  pgrp  pflag  lflag stat  wmesg    wchan cmd\n");
 	for (;;) {
+		while (lp == NULL) {
+			--np;
+			p = p->p_list.le_next;
+			if (p == NULL && np > 0)
+				p = zombproc.lh_first;
+			if (p == NULL)
+				break;
+			lp = FIRST_LWP_IN_PROC(__DEVOLATILE(struct proc *, p));
+		}
 		/*
 		 * XXX just take 20 for now...
 		 */
@@ -82,8 +91,9 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 		    p->p_pgrp ? p->p_pgrp->pg_id : 0, p->p_flag,
 		    lp->lwp_flag, p->p_stat, lp->lwp_stat);
 		if (lp->lwp_wchan) {
-			db_printf(" %6s %8p", lp->lwp_wmesg,
-			    (void *)lp->lwp_wchan);
+			db_printf(" %6s %8p",
+				(lp->lwp_wmesg ? lp->lwp_wmesg : "?"),
+				lp->lwp_wchan);
 		} else {
 			db_printf("                 ");
 		}
@@ -91,15 +101,6 @@ db_ps(db_expr_t dummy1, boolean_t dummy2, db_expr_t dummy3, char *dummy4)
 		db_dump_td_tokens(lp->lwp_thread);
 
 		lp = lwp_rb_tree_RB_NEXT(lp);
-		if (lp == NULL) {
-			--np;
-			p = p->p_list.le_next;
-			if (p == NULL && np > 0)
-				p = zombproc.lh_first;
-			if (p == NULL)
-				break;
-			lp = FIRST_LWP_IN_PROC(__DEVOLATILE(struct proc *, p));
-		}
     	}
 
 	/*
