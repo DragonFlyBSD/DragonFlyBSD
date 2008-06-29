@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.47 2008/06/28 23:50:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.48 2008/06/29 07:50:40 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -69,19 +69,22 @@ hammer_io_init(hammer_io_t io, hammer_mount_t hmp, enum hammer_io_type type)
 
 /*
  * Helper routine to disassociate a buffer cache buffer from an I/O
- * structure.
+ * structure.  The buffer is unlocked and marked appropriate for reclamation.
  *
  * The io may have 0 or 1 references depending on who called us.  The
  * caller is responsible for dealing with the refs.
  *
  * This call can only be made when no action is required on the buffer.
- * HAMMER must own the buffer (released == 0) since we mess around with it.
+ *
+ * The caller must own the buffer and the IO must indicate that the
+ * structure no longer owns it (io.released != 0).
  */
 static void
-hammer_io_disassociate(hammer_io_structure_t iou, int elseit)
+hammer_io_disassociate(hammer_io_structure_t iou)
 {
 	struct buf *bp = iou->io.bp;
 
+	KKASSERT(iou->io.released);
 	KKASSERT(iou->io.modified == 0);
 	KKASSERT(LIST_FIRST(&bp->b_dep) == (void *)iou);
 	buf_dep_init(bp);
@@ -94,21 +97,10 @@ hammer_io_disassociate(hammer_io_structure_t iou, int elseit)
 		--hammer_count_io_locked;
 		bp->b_flags &= ~B_LOCKED;
 	}
-
-	/*
-	 * elseit is 0 when called from the kernel path when the io
-	 * might have no references.
-	 */
-	if (elseit) {
-		KKASSERT(iou->io.released == 0);
-		iou->io.released = 1;
-		if (iou->io.reclaim)
-			bp->b_flags |= B_NOCACHE|B_RELBUF;
-		bqrelse(bp);
-	} else {
-		KKASSERT(iou->io.released);
+	if (iou->io.reclaim) {
+		bp->b_flags |= B_NOCACHE|B_RELBUF;
+		iou->io.reclaim = 0;
 	}
-	iou->io.reclaim = 0;
 
 	switch(iou->io.type) {
 	case HAMMER_STRUCTURE_VOLUME:
@@ -269,29 +261,37 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 			KKASSERT((bp->b_flags & B_LOCKED) == 0);
 			bundirty(bp);
 			bp->b_flags |= B_NOCACHE|B_RELBUF;
-			brelse(bp);
 		}
+		brelse(bp);
 	}
 	crit_exit();
 }
 
 /*
  * This routine is called on the last reference to a hammer structure.
- * The io is usually locked exclusively (but may not be during unmount).
+ * The io is usually interlocked with io.loading and io.refs must be 1.
  *
- * This routine is responsible for the disposition of the buffer cache
- * buffer backing the IO.  Only pure-data and undo buffers can be handed
- * back to the kernel.  Volume and meta-data buffers must be retained
- * by HAMMER until explicitly flushed by the backend.
+ * This routine may return a non-NULL bp to the caller for dispoal.  Disposal
+ * simply means the caller finishes decrementing the ref-count on the 
+ * IO structure then brelse()'s the bp.  The bp may or may not still be
+ * passively associated with the IO.
+ * 
+ * The only requirement here is that modified meta-data and volume-header
+ * buffer may NOT be disassociated from the IO structure, and consequently
+ * we also leave such buffers actively associated with the IO if they already
+ * are (since the kernel can't do anything with them anyway).  Only the
+ * flusher is allowed to write such buffers out.  Modified pure-data and
+ * undo buffers are returned to the kernel but left passively associated
+ * so we can track when the kernel writes the bp out.
  */
-void
+struct buf *
 hammer_io_release(struct hammer_io *io, int flush)
 {
 	union hammer_io_structure *iou = (void *)io;
 	struct buf *bp;
 
 	if ((bp = io->bp) == NULL)
-		return;
+		return(NULL);
 
 	/*
 	 * Try to flush a dirty IO to disk if asked to by the
@@ -337,14 +337,18 @@ hammer_io_release(struct hammer_io *io, int flush)
 		if (io->released) {
 			regetblk(bp);
 			BUF_KERNPROC(bp);
-			io->released = 0;
+		} else {
+			io->released = 1;
 		}
-		hammer_io_disassociate((hammer_io_structure_t)io, 1);
+		hammer_io_disassociate((hammer_io_structure_t)io);
+		/* return the bp */
 	} else if (io->modified) {
 		/*
-		 * Only certain IO types can be released to the kernel.
-		 * volume and meta-data IO types must be explicitly flushed
-		 * by HAMMER.
+		 * Only certain IO types can be released to the kernel if
+		 * the buffer has been modified.
+		 *
+		 * volume and meta-data IO types may only be explicitly
+		 * flushed by HAMMER.
 		 */
 		switch(io->type) {
 		case HAMMER_STRUCTURE_DATA_BUFFER:
@@ -357,21 +361,26 @@ hammer_io_release(struct hammer_io *io, int flush)
 		default:
 			break;
 		}
+		bp = NULL;	/* bp left associated */
 	} else if (io->released == 0) {
 		/*
 		 * Clean buffers can be generally released to the kernel.
 		 * We leave the bp passively associated with the HAMMER
 		 * structure and use bioops to disconnect it later on
 		 * if the kernel wants to discard the buffer.
+		 *
+		 * We can steal the structure's ownership of the bp.
 		 */
+		io->released = 1;
 		if (bp->b_flags & B_LOCKED) {
-			hammer_io_disassociate(iou, 1);
+			hammer_io_disassociate(iou);
+			/* return the bp */
 		} else {
 			if (io->reclaim) {
-				hammer_io_disassociate(iou, 1);
+				hammer_io_disassociate(iou);
+				/* return the bp */
 			} else {
-				io->released = 1;
-				bqrelse(bp);
+				/* return the bp (bp passively associated) */
 			}
 		}
 	} else {
@@ -390,19 +399,25 @@ hammer_io_release(struct hammer_io *io, int flush)
 		 * XXX there are two ways of doing this.  We can re-acquire
 		 * and passively release to reset the LRU, or not.
 		 */
-		crit_enter();
 		if (io->running == 0) {
 			regetblk(bp);
 			if ((bp->b_flags & B_LOCKED) || io->reclaim) {
-				/*regetblk(bp);*/
-				io->released = 0;
-				hammer_io_disassociate(iou, 1);
+				hammer_io_disassociate(iou);
+				/* return the bp */
 			} else {
-				bqrelse(bp);
+				/* return the bp (bp passively associated) */
 			}
+		} else {
+			/*
+			 * bp is left passively associated but we do not
+			 * try to reacquire it.  Interactions with the io
+			 * structure will occur on completion of the bp's
+			 * I/O.
+			 */
+			bp = NULL;
 		}
-		crit_exit();
 	}
+	return(bp);
 }
 
 /*
@@ -801,9 +816,9 @@ hammer_io_deallocate(struct buf *bp)
 		 * Disassociate the BP.  If the io has no refs left we
 		 * have to add it to the loose list.
 		 */
-		hammer_io_disassociate(iou, 0);
-		if (iou->io.bp == NULL && 
-		    iou->io.type != HAMMER_STRUCTURE_VOLUME) {
+		hammer_io_disassociate(iou);
+		if (iou->io.type != HAMMER_STRUCTURE_VOLUME) {
+			KKASSERT(iou->io.bp == NULL);
 			KKASSERT(iou->io.mod_list == NULL);
 			crit_enter();	/* biodone race against list */
 			iou->io.mod_list = &iou->io.hmp->lose_list;

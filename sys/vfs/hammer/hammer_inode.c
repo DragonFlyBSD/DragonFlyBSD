@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.87 2008/06/28 18:10:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.88 2008/06/29 07:50:40 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1395,9 +1395,21 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 	 * Don't get confused between record deletion and, say, directory
 	 * entry deletion.  The deletion of a directory entry that is on
 	 * the media has nothing to do with the record deletion flags.
+	 *
+	 * The flush_group for a record already in a flush state must
+	 * be updated.  This case can only occur if the inode deleting
+	 * too many records had to be moved to the next flush group.
 	 */
-	if (rec->flags & (HAMMER_RECF_DELETED_FE|HAMMER_RECF_DELETED_BE))
-		return(0);
+	if (rec->flags & (HAMMER_RECF_DELETED_FE|HAMMER_RECF_DELETED_BE)) {
+		if (rec->flush_state == HAMMER_FST_FLUSH) {
+			KKASSERT(rec->ip->flags & HAMMER_INODE_WOULDBLOCK);
+			rec->flush_group = rec->ip->flush_group;
+			r = 1;
+		} else {
+			r = 0;
+		}
+		return(r);
+	}
 
 	/*
 	 * If the record is in an idle state it has no dependancies and

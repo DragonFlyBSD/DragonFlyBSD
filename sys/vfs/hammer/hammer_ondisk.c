@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.62 2008/06/21 20:21:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.63 2008/06/29 07:50:40 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -259,6 +259,7 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 {
 	struct hammer_mount *hmp = volume->io.hmp;
 	int ronly = ((hmp->mp->mnt_flag & MNT_RDONLY) ? 1 : 0);
+	struct buf *bp;
 
 	/*
 	 * Clean up the root volume pointer, which is held unlocked in hmp.
@@ -270,7 +271,7 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 	 * Release our buffer and flush anything left in the buffer cache.
 	 */
 	volume->io.waitdep = 1;
-	hammer_io_release(&volume->io, 1);
+	bp = hammer_io_release(&volume->io, 1);
 	hammer_io_clear_modlist(&volume->io);
 
 	/*
@@ -278,6 +279,8 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 	 * no super-clusters.
 	 */
 	KKASSERT(volume->io.lock.refs == 0);
+	if (bp)
+		brelse(bp);
 
 	volume->ondisk = NULL;
 	if (volume->devvp) {
@@ -433,18 +436,22 @@ hammer_load_volume(hammer_volume_t volume)
 void
 hammer_rel_volume(hammer_volume_t volume, int flush)
 {
+	struct buf *bp = NULL;
+
 	crit_enter();
 	if (volume->io.lock.refs == 1) {
 		++volume->io.loading;
 		hammer_lock_ex(&volume->io.lock);
 		if (volume->io.lock.refs == 1) {
 			volume->ondisk = NULL;
-			hammer_io_release(&volume->io, flush);
+			bp = hammer_io_release(&volume->io, flush);
 		}
 		--volume->io.loading;
 		hammer_unlock(&volume->io.lock);
 	}
 	hammer_unref(&volume->io.lock);
+	if (bp)
+		brelse(bp);
 	crit_exit();
 }
 
@@ -749,6 +756,7 @@ void
 hammer_rel_buffer(hammer_buffer_t buffer, int flush)
 {
 	hammer_volume_t volume;
+	struct buf *bp = NULL;
 	int freeme = 0;
 
 	crit_enter();
@@ -756,7 +764,7 @@ hammer_rel_buffer(hammer_buffer_t buffer, int flush)
 		++buffer->io.loading;	/* force interlock check */
 		hammer_lock_ex(&buffer->io.lock);
 		if (buffer->io.lock.refs == 1) {
-			hammer_io_release(&buffer->io, flush);
+			bp = hammer_io_release(&buffer->io, flush);
 
 			if (buffer->io.lock.refs == 1)
 				--hammer_count_refedbufs;
@@ -787,6 +795,8 @@ hammer_rel_buffer(hammer_buffer_t buffer, int flush)
 	}
 	hammer_unref(&buffer->io.lock);
 	crit_exit();
+	if (bp)
+		brelse(bp);
 	if (freeme) {
 		--hammer_count_buffers;
 		kfree(buffer, M_HAMMER);
