@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.33 2008/06/25 15:33:04 sephe Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.34 2008/06/29 20:43:49 swildner Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.33 2008/06/25 15:28:59 sephe Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.34 2008/06/29 20:33:57 swildner Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -9485,10 +9485,10 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "Cyber20x 2S1P 16850 PCI",
 	},
 	{
-	    PCI_VENDOR_SILAN, PCI_PRODUCT_SILAN_SC92301,
+	    PCI_VENDOR_SILAN, PCI_PRODUCT_SILAN_SC92031,
 	    0,
 	    "Hangzhou Silan Microelectronics",
-	    "SC92301 based fast ethernet adapter",
+	    "SC92031 based fast ethernet adapter",
 	},
 	{
 	    PCI_VENDOR_SILAN, PCI_PRODUCT_SILAN_8139D,
