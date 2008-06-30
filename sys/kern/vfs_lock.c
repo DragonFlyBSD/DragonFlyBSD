@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.29 2008/06/19 23:27:35 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lock.c,v 1.30 2008/06/30 03:57:41 dillon Exp $
  */
 
 /*
@@ -618,6 +618,14 @@ allocvnode(int lktimeout, int lkflags)
 	vp->v_socket = 0;
 	vp->v_opencount = 0;
 	vp->v_writecount = 0;	/* XXX */
+
+	/*
+	 * lktimeout only applies when LK_TIMELOCK is used, and only
+	 * the pageout daemon uses it.  The timeout may not be zero
+	 * or the pageout daemon can deadlock in low-VM situations.
+	 */
+	if (lktimeout == 0)
+		lktimeout = hz / 10;
 	lockreinit(&vp->v_lock, "vnode", lktimeout, lkflags);
 	KKASSERT(TAILQ_FIRST(&vp->v_namecache) == NULL);
 	/* exclusive lock still held */
