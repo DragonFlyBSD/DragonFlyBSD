@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.56 2008/06/28 23:50:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.57 2008/06/30 04:18:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -218,8 +218,14 @@ MODULE_VERSION(hammer, 1);
 static int
 hammer_vfs_init(struct vfsconf *conf)
 {
-	if (hammer_limit_recs == 0)		/* XXX TODO */
+	int n;
+
+	if (hammer_limit_recs == 0) {
 		hammer_limit_recs = nbuf * 25;
+		n = kmalloc_limit(M_HAMMER) / 512;
+		if (hammer_limit_recs > n)
+			hammer_limit_recs = n;
+	}
 	if (hammer_limit_dirtybufspace == 0) {
 		hammer_limit_dirtybufspace = hidirtybufspace / 2;
 		if (hammer_limit_dirtybufspace < 100)
