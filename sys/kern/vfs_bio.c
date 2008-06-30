@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.107 2008/06/28 23:45:18 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.108 2008/06/30 02:11:53 dillon Exp $
  */
 
 /*
@@ -262,29 +262,35 @@ bufcountwakeup(void)
 /*
  * waitrunningbufspace()
  *
- *	runningbufspace is a measure of the amount of I/O currently
- *	running.  This routine is used in async-write situations to
- *	prevent creating huge backups of pending writes to a device.
- *	Only asynchronous writes are governed by this function.  
+ * Wait for the amount of running I/O to drop to a reasonable level.
  *
- *	Reads will adjust runningbufspace, but will not block based on it.
- *	The read load has a side effect of reducing the allowed write load.
- *
- *	This does NOT turn an async write into a sync write.  It waits
- *	for earlier writes to complete and generally returns before the
- *	caller's write has reached the device.
+ * The caller may be using this function to block in a tight loop, we
+ * must block of runningbufspace is greater then the passed limit.
+ * And even with that it may not be enough, due to the presence of
+ * B_LOCKED dirty buffers, so also wait for at least one running buffer
+ * to complete.
  */
 static __inline void
-waitrunningbufspace(void)
+waitrunningbufspace(int limit)
 {
-	if (runningbufspace > hirunningspace) {
-		crit_enter();
-		while (runningbufspace > hirunningspace) {
+	int lorun;
+
+	if (lorunningspace < limit)
+		lorun = lorunningspace;
+	else
+		lorun = limit;
+
+	crit_enter();
+	if (runningbufspace > lorun) {
+		while (runningbufspace > lorun) {
 			++runningbufreq;
 			tsleep(&runningbufreq, 0, "wdrain", 0);
 		}
-		crit_exit();
+	} else if (runningbufspace) {
+		++runningbufreq;
+		tsleep(&runningbufreq, 0, "wdrain2", 1);
 	}
+	crit_exit();
 }
 
 /*
@@ -308,21 +314,27 @@ vfs_buf_test_cache(struct buf *bp,
 }
 
 /*
- * bd_speedup:
+ * bd_speedup()
  *
- * Unconditionally speed-up the buf_daemon
+ * Spank the buf_daemon[_hw] if the total dirty buffer space exceeds the
+ * low water mark.
  */
 static __inline__
 void
 bd_speedup(void)
 {
-	if (bd_request == 0 && dirtybufspace) {
+	if (dirtybufspace > lodirtybufspace)
+		return;
+
+	if (bd_request == 0 &&
+	    dirtybufspace - dirtybufspacehw > lodirtybufspace / 2) {
 		spin_lock_wr(&needsbuffer_spin);
 		bd_request = 1;
 		spin_unlock_wr(&needsbuffer_spin);
 		wakeup(&bd_request);
 	}
-	if (bd_request_hw == 0 && dirtybufspacehw) {
+	if (bd_request_hw == 0 &&
+	    dirtybufspacehw > lodirtybufspace / 2) {
 		spin_lock_wr(&needsbuffer_spin);
 		bd_request_hw = 1;
 		spin_unlock_wr(&needsbuffer_spin);
@@ -1921,6 +1933,8 @@ SYSINIT(bufdaemon_hw, SI_SUB_KTHREAD_BUF, SI_ORDER_FIRST,
 static void
 buf_daemon(void)
 {
+	int limit;
+
 	/*
 	 * This process needs to be suspended prior to shutdown sync.
 	 */
@@ -1940,51 +1954,39 @@ buf_daemon(void)
 		 * allow to build up, otherwise we would completely saturate
 		 * the I/O system.  Wakeup any waiting processes before we
 		 * normally would so they can run in parallel with our drain.
+		 *
+		 * Our aggregate normal+HW lo water mark is lodirtybufspace,
+		 * but because we split the operation into two threads we
+		 * have to cut it in half for each thread.
 		 */
-		while (dirtybufspace > lodirtybufspace) {
+		limit = lodirtybufspace / 2;
+		waitrunningbufspace(limit);
+		while (runningbufspace + dirtybufspace > limit) {
 			if (flushbufqueues(BQUEUE_DIRTY) == 0)
 				break;
-			waitrunningbufspace();
-		}
-		if (runningbufspace + dirtybufspace > lodirtybufspace) {
-			waitrunningbufspace();
+			waitrunningbufspace(limit);
 		}
 
 		/*
-		 * Only clear bd_request if we have reached our low water
-		 * mark.  The buf_daemon normally waits 5 seconds and
-		 * then incrementally flushes any dirty buffers that have
-		 * built up, within reason.
-		 *
-		 * If we were unable to hit our low water mark and couldn't
-		 * find any flushable buffers, we sleep half a second. 
-		 * Otherwise we loop immediately.
+		 * We reached our low water mark, reset the
+		 * request and sleep until we are needed again.
+		 * The sleep is just so the suspend code works.
 		 */
-		if (runningbufspace + dirtybufspace <= lodirtybufspace) {
-			/*
-			 * We reached our low water mark, reset the
-			 * request and sleep until we are needed again.
-			 * The sleep is just so the suspend code works.
-			 */
-			spin_lock_wr(&needsbuffer_spin);
-			bd_request = 0;
+		spin_lock_wr(&needsbuffer_spin);
+		if (bd_request == 0) {
 			msleep(&bd_request, &needsbuffer_spin, 0,
 			       "psleep", hz);
-			spin_unlock_wr(&needsbuffer_spin);
-		} else {
-			/*
-			 * We couldn't find any flushable dirty buffers but
-			 * still have too many dirty buffers, we
-			 * have to sleep and try again.  (rare)
-			 */
-			tsleep(&bd_request, 0, "qsleep", hz / 2);
 		}
+		bd_request = 0;
+		spin_unlock_wr(&needsbuffer_spin);
 	}
 }
 
 static void
 buf_daemon_hw(void)
 {
+	int limit;
+
 	/*
 	 * This process needs to be suspended prior to shutdown sync.
 	 */
@@ -2004,45 +2006,31 @@ buf_daemon_hw(void)
 		 * allow to build up, otherwise we would completely saturate
 		 * the I/O system.  Wakeup any waiting processes before we
 		 * normally would so they can run in parallel with our drain.
+		 *
+		 * Our aggregate normal+HW lo water mark is lodirtybufspace,
+		 * but because we split the operation into two threads we
+		 * have to cut it in half for each thread.
 		 */
-		while (dirtybufspacehw > lodirtybufspace) {
+		limit = lodirtybufspace / 2;
+		waitrunningbufspace(limit);
+		while (runningbufspace + dirtybufspacehw > limit) {
 			if (flushbufqueues(BQUEUE_DIRTY_HW) == 0)
 				break;
-			waitrunningbufspace();
-		}
-		if (runningbufspace + dirtybufspacehw > lodirtybufspace) {
-			waitrunningbufspace();
+			waitrunningbufspace(limit);
 		}
 
 		/*
-		 * Only clear bd_request if we have reached our low water
-		 * mark.  The buf_daemon normally waits 5 seconds and
-		 * then incrementally flushes any dirty buffers that have
-		 * built up, within reason.
-		 *
-		 * If we were unable to hit our low water mark and couldn't
-		 * find any flushable buffers, we sleep half a second. 
-		 * Otherwise we loop immediately.
+		 * We reached our low water mark, reset the
+		 * request and sleep until we are needed again.
+		 * The sleep is just so the suspend code works.
 		 */
-		if (runningbufspace + dirtybufspacehw <= lodirtybufspace) {
-			/*
-			 * We reached our low water mark, reset the
-			 * request and sleep until we are needed again.
-			 * The sleep is just so the suspend code works.
-			 */
-			spin_lock_wr(&needsbuffer_spin);
-			bd_request_hw = 0;
+		spin_lock_wr(&needsbuffer_spin);
+		if (bd_request_hw == 0) {
 			msleep(&bd_request_hw, &needsbuffer_spin, 0,
 			       "psleep", hz);
-			spin_unlock_wr(&needsbuffer_spin);
-		} else {
-			/*
-			 * We couldn't find any flushable dirty buffers but
-			 * still have too many dirty buffers, we
-			 * have to sleep and try again.  (rare)
-			 */
-			tsleep(&bd_request_hw, 0, "qsleep", hz / 2);
 		}
+		bd_request_hw = 0;
+		spin_unlock_wr(&needsbuffer_spin);
 	}
 }
 
