@@ -32,7 +32,7 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.28 2007/04/30 07:18:56 dillon Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.29 2008/06/30 03:00:34 dillon Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
@@ -205,6 +205,7 @@ void	*krealloc (void *addr, unsigned long size,
 		      struct malloc_type *type, int flags);
 void	kfree (void *addr, struct malloc_type *type);
 char	*kstrdup (const char *, struct malloc_type *);
+long	kmalloc_limit (struct malloc_type *type);
 
 #endif /* _KERNEL */
 

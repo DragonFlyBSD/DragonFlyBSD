@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.52 2008/05/09 07:24:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.53 2008/06/30 03:00:36 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -750,6 +750,21 @@ krealloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
     bcopy(ptr, nptr, min(size, z->z_ChunkSize));
     kfree(ptr, type);
     return(nptr);
+}
+
+/*
+ * Return the kmalloc limit for this type, in bytes.
+ */
+long
+kmalloc_limit(struct malloc_type *type)
+{
+    if (type->ks_limit == 0) {
+	crit_enter();
+	if (type->ks_limit == 0)
+	    malloc_init(type);
+	crit_exit();
+    }
+    return(type->ks_limit);
 }
 
 /*
