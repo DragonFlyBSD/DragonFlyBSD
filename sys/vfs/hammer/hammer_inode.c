@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.88 2008/06/29 07:50:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.89 2008/06/30 00:03:55 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1278,8 +1278,13 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 	/*
 	 * Figure out how many in-memory records we can actually flush
 	 * (not including inode meta-data, buffers, etc).
+	 *
+	 * Do not add new records to the flush if this is a recursion or
+	 * if we must still complete a flush from the previous flush cycle.
 	 */
 	if (flags & HAMMER_FLUSH_RECURSION) {
+		go_count = 1;
+	} else if (ip->flags & HAMMER_INODE_WOULDBLOCK) {
 		go_count = 1;
 	} else {
 		go_count = RB_SCAN(hammer_rec_rb_tree, &ip->rec_tree, NULL,
@@ -1327,15 +1332,19 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 	 *
 	 * NOTE: If a truncation from a previous flush cycle had to be
 	 * continued into this one, the TRUNCATED flag will still be
-	 * set in sync_flags.
+	 * set in sync_flags as will WOULDBLOCK.  When this occurs
+	 * we CANNOT safely integrate a new truncation from the front-end
+	 * because there may be data records in-memory assigned a flush
+	 * state from the previous cycle that are supposed to be flushed
+	 * before the next frontend truncation.
 	 */
-	if (ip->flags & HAMMER_INODE_TRUNCATED) {
-		if (ip->sync_flags & HAMMER_INODE_TRUNCATED) {
-			if (ip->sync_trunc_off > ip->trunc_off)
-				ip->sync_trunc_off = ip->trunc_off;
-		} else {
-			ip->sync_trunc_off = ip->trunc_off;
-		}
+	if ((ip->flags & (HAMMER_INODE_TRUNCATED | HAMMER_INODE_WOULDBLOCK)) ==
+	    HAMMER_INODE_TRUNCATED) {
+		KKASSERT((ip->sync_flags & HAMMER_INODE_TRUNCATED) == 0);
+		ip->sync_trunc_off = ip->trunc_off;
+		ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
+		ip->flags &= ~HAMMER_INODE_TRUNCATED;
+		ip->sync_flags |= HAMMER_INODE_TRUNCATED;
 
 		/*
 		 * The save_trunc_off used to cache whether the B-Tree
@@ -1346,11 +1355,11 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 		if (ip->save_trunc_off > ip->sync_trunc_off)
 			ip->save_trunc_off = ip->sync_trunc_off;
 	}
-	ip->sync_flags |= (ip->flags & HAMMER_INODE_MODMASK);
+	ip->sync_flags |= (ip->flags & HAMMER_INODE_MODMASK &
+			   ~HAMMER_INODE_TRUNCATED);
 	ip->sync_ino_leaf = ip->ino_leaf;
 	ip->sync_ino_data = ip->ino_data;
-	ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
-	ip->flags &= ~HAMMER_INODE_MODMASK;
+	ip->flags &= ~HAMMER_INODE_MODMASK | HAMMER_INODE_TRUNCATED;
 #ifdef DEBUG_TRUNCATE
 	if ((ip->sync_flags & HAMMER_INODE_TRUNCATED) && ip == HammerTruncIp)
 		kprintf("truncateS %016llx\n", ip->sync_trunc_off);

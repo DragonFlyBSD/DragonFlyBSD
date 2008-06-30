@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.27 2008/06/28 23:50:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.28 2008/06/30 00:03:55 dillon Exp $
  */
 
 #include "hammer.h"
@@ -158,9 +158,18 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 		bytes -= tail->tail_size;
 
 		/*
-		 * If too many dirty buffers have built up 
+		 * If too many dirty buffers have built up we have to flush'm
+		 * out.  As long as we do not flush out the volume header
+		 * a crash here should not cause any problems.
+		 *
+		 * buffer must be released so the flush can assert that
+		 * all buffers are idle.
 		 */
 		if (hammer_flusher_meta_limit(hmp)) {
+			if (buffer) {
+				hammer_rel_buffer(buffer, 0);
+				buffer = NULL;
+			}
 			if (hmp->ronly == 0) {
 				hammer_recover_flush_buffers(hmp, root_volume,
 							     0);

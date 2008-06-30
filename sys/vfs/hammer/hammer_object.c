@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.78 2008/06/28 18:10:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.79 2008/06/30 00:03:55 dillon Exp $
  */
 
 #include "hammer.h"
@@ -39,7 +39,7 @@
 static int hammer_mem_add(hammer_record_t record);
 static int hammer_mem_lookup(hammer_cursor_t cursor);
 static int hammer_mem_first(hammer_cursor_t cursor);
-static int hammer_rec_trunc_callback(hammer_record_t record,
+static int hammer_frontend_trunc_callback(hammer_record_t record,
 				void *data __unused);
 static int hammer_record_needs_overwrite_delete(hammer_record_t record);
 
@@ -933,12 +933,12 @@ hammer_ip_frontend_trunc(struct hammer_inode *ip, off_t file_size)
 	}
 	info.trunc_off = file_size;
 	hammer_rec_rb_tree_RB_SCAN(&ip->rec_tree, hammer_rec_trunc_cmp,
-				   hammer_rec_trunc_callback, &info);
+				   hammer_frontend_trunc_callback, &info);
 	return(0);
 }
 
 static int
-hammer_rec_trunc_callback(hammer_record_t record, void *data __unused)
+hammer_frontend_trunc_callback(hammer_record_t record, void *data __unused)
 {
 	if (record->flags & HAMMER_RECF_DELETED_FE)
 		return(0);

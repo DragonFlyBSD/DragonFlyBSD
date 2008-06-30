@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.9 2008/06/27 20:56:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.10 2008/06/30 00:03:55 dillon Exp $
  */
 
 #include "hammer.h"
@@ -302,6 +302,11 @@ prune_check_nlinks(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm)
  *	 softlink should be on snapshot boundaries only.  Historical
  *	 accesses from "now" to the first snapshot softlink continue to
  *	 be fine-grained.
+ *
+ * NOTE: It also looks like there's a bug in the removed code.  It is believed
+ *	 that create_tid can sometimes get set to 0xffffffffffffffff.  Just as
+ *	 well we no longer try to do this fancy shit.  Probably the attempt to
+ *	 correct the rhb is blowing up the cursor's indexing or addressing mapping.
  *
  * Align the record to cover any gaps created through the deletion of
  * records within the pruning space.  If we were to just delete the records
