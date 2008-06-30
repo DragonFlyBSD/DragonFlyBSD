@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/lib/gcc41/Makefile,v 1.2 2007/01/15 23:09:05 corecode Exp $
+# $DragonFly: src/gnu/lib/gcc41/Makefile,v 1.3 2008/06/30 12:16:03 hasso Exp $
 
 SUBDIR=		csu libgcc libgcov
 
@@ -8,6 +8,10 @@ MAKE := HOST_CCVER=${HOST_CCVER} CCVER=gcc41 ${MAKE}
 
 .if !defined(NO_CXX)
 SUBDIR+=	libstdc++ libsupc++
+.endif
+
+.if !defined(NO_OBJC)
+SUBDIR+=	libobjc
 .endif
 
 .include <bsd.subdir.mk>
