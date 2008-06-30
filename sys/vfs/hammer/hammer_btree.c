@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.58 2008/06/26 04:06:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.59 2008/06/30 02:45:30 dillon Exp $
  */
 
 /*
@@ -308,6 +308,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 				elm->internal.base.localization
 			);
 		}
+		hammer_flusher_clean_loose_ios(cursor->trans->hmp);
 		return(0);
 	}
 	return(error);
@@ -469,6 +470,7 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 				elm->internal.base.localization
 			);
 		}
+		hammer_flusher_clean_loose_ios(cursor->trans->hmp);
 		return(0);
 	}
 	return(error);

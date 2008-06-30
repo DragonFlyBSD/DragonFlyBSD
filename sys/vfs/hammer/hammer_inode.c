@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.89 2008/06/30 00:03:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.90 2008/06/30 02:45:30 dillon Exp $
  */
 
 #include "hammer.h"
@@ -42,6 +42,7 @@
 static int	hammer_unload_inode(struct hammer_inode *ip);
 static void	hammer_flush_inode_core(hammer_inode_t ip, int flags);
 static int	hammer_setup_child_callback(hammer_record_t rec, void *data);
+static int	hammer_syncgrp_child_callback(hammer_record_t rec, void *data);
 static int	hammer_setup_parent_inodes(hammer_inode_t ip);
 static int	hammer_setup_parent_inodes_helper(hammer_record_t record);
 static void	hammer_inode_wakereclaims(hammer_inode_t ip);
@@ -1285,6 +1286,8 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 	if (flags & HAMMER_FLUSH_RECURSION) {
 		go_count = 1;
 	} else if (ip->flags & HAMMER_INODE_WOULDBLOCK) {
+		go_count = RB_SCAN(hammer_rec_rb_tree, &ip->rec_tree, NULL,
+				   hammer_syncgrp_child_callback, NULL);
 		go_count = 1;
 	} else {
 		go_count = RB_SCAN(hammer_rec_rb_tree, &ip->rec_tree, NULL,
@@ -1504,7 +1507,6 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 		 * already associated with the current flush group.
 		 */
 		if (ip->flags & HAMMER_INODE_WOULDBLOCK) {
-			kprintf("b");
 			rec->flush_group = ip->flush_group;
 		} else {
 			KKASSERT(rec->flush_group == ip->flush_group);
@@ -1513,6 +1515,29 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 		break;
 	}
 	return(r);
+}
+
+/*
+ * This version just moves records already in a flush state to the new
+ * flush group and that is it.
+ */
+static int
+hammer_syncgrp_child_callback(hammer_record_t rec, void *data)
+{
+	hammer_inode_t ip = rec->ip;
+
+	switch(rec->flush_state) {
+	case HAMMER_FST_FLUSH:
+		if (ip->flags & HAMMER_INODE_WOULDBLOCK) {
+			rec->flush_group = ip->flush_group;
+		} else {
+			KKASSERT(rec->flush_group == ip->flush_group);
+		}
+		break;
+	default:
+		break;
+	}
+	return(0);
 }
 
 /*

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.31 2008/06/28 23:50:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.32 2008/06/30 02:45:30 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -44,7 +44,6 @@
 
 static void hammer_flusher_master_thread(void *arg);
 static void hammer_flusher_slave_thread(void *arg);
-static void hammer_flusher_clean_loose_ios(hammer_mount_t hmp);
 static void hammer_flusher_flush(hammer_mount_t hmp);
 static void hammer_flusher_flush_inode(hammer_inode_t ip,
 					hammer_transaction_t trans);
@@ -251,31 +250,31 @@ hammer_flusher_slave_thread(void *arg)
 	lwkt_exit();
 }
 
-static void
+void
 hammer_flusher_clean_loose_ios(hammer_mount_t hmp)
 {
 	hammer_buffer_t buffer;
 	hammer_io_t io;
-	int panic_count = 1000000;
 
 	/*
 	 * loose ends - buffers without bp's aren't tracked by the kernel
 	 * and can build up, so clean them out.  This can occur when an
 	 * IO completes on a buffer with no references left.
 	 */
-	crit_enter();	/* biodone() race */
-	while ((io = TAILQ_FIRST(&hmp->lose_list)) != NULL) {
-		KKASSERT(--panic_count > 0);
-		KKASSERT(io->mod_list == &hmp->lose_list);
-		TAILQ_REMOVE(&hmp->lose_list, io, mod_entry);
-		io->mod_list = NULL;
-		if (io->lock.refs == 0)
-			++hammer_count_refedbufs;
-		hammer_ref(&io->lock);
-		buffer = (void *)io;
-		hammer_rel_buffer(buffer, 0);
+	if ((io = TAILQ_FIRST(&hmp->lose_list)) != NULL) {
+		crit_enter();	/* biodone() race */
+		while ((io = TAILQ_FIRST(&hmp->lose_list)) != NULL) {
+			KKASSERT(io->mod_list == &hmp->lose_list);
+			TAILQ_REMOVE(&hmp->lose_list, io, mod_entry);
+			io->mod_list = NULL;
+			if (io->lock.refs == 0)
+				++hammer_count_refedbufs;
+			hammer_ref(&io->lock);
+			buffer = (void *)io;
+			hammer_rel_buffer(buffer, 0);
+		}
+		crit_exit();
 	}
-	crit_exit();
 }
 
 /*
@@ -357,6 +356,7 @@ hammer_flusher_flush_inode(hammer_inode_t ip, hammer_transaction_t trans)
 	hammer_mount_t hmp = ip->hmp;
 	int error;
 
+	hammer_flusher_clean_loose_ios(hmp);
 	hammer_lock_sh(&hmp->flusher.finalize_lock);
 	error = hammer_sync_inode(ip);
 	if (error != EWOULDBLOCK)
