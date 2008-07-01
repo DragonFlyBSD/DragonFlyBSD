@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.59 2008/06/30 02:45:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.60 2008/07/01 16:48:51 dillon Exp $
  */
 
 /*
@@ -147,6 +147,8 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 		 * up our scan.
 		 */
 		++hammer_stats_btree_iterations;
+		hammer_flusher_clean_loose_ios(cursor->trans->hmp);
+
 		if (cursor->index == node->count) {
 			if (hammer_debug_btree) {
 				kprintf("BRACKETU %016llx[%d] -> %016llx[%d] (td=%p)\n",
@@ -308,7 +310,6 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 				elm->internal.base.localization
 			);
 		}
-		hammer_flusher_clean_loose_ios(cursor->trans->hmp);
 		return(0);
 	}
 	return(error);
@@ -346,6 +347,9 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 	 * Loop until an element is found or we are done.
 	 */
 	for (;;) {
+		++hammer_stats_btree_iterations;
+		hammer_flusher_clean_loose_ios(cursor->trans->hmp);
+
 		/*
 		 * We iterate up the tree and then index over one element
 		 * while we are at the last element in the current node.
@@ -470,7 +474,6 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 				elm->internal.base.localization
 			);
 		}
-		hammer_flusher_clean_loose_ios(cursor->trans->hmp);
 		return(0);
 	}
 	return(error);
