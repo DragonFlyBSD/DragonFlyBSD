@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.53 2008/06/30 03:00:36 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.54 2008/07/01 02:02:54 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -1120,8 +1120,8 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	 *
 	 * VM_ALLOC_SYSTEM is automatically set if we are preempting and
 	 * M_WAITOK was specified as an alternative (i.e. M_USE_RESERVE is
-	 * implied in this case), though I'm sure if we really need to do
-	 * that.
+	 * implied in this case), though I'm not sure if we really need to
+	 * do that.
 	 */
 	vmflags = base_vmflags;
 	if (flags & M_WAITOK) {
@@ -1150,7 +1150,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 		    vm_map_lock(&kernel_map);
 		} else {
 		    vm_map_unlock(&kernel_map);
-		    vm_wait();
+		    vm_wait(0);
 		    vm_map_lock(&kernel_map);
 		}
 		i -= PAGE_SIZE;	/* retry */

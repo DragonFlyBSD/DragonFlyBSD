@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.80 2008/05/18 21:47:05 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.81 2008/07/01 02:02:55 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -295,10 +295,6 @@ struct vnode {
 /*
  * Flags for ioflag. (high 16 bits used to ask for read-ahead and
  * help with write clustering)
- *
- * IO_NOBWILL - tells the system not to call bwillwrite() and potentially
- *		block when too many dirty buffers are present.  This is 
- *		used by recursive subsystems such as VN which might deadlock.
  */
 #define	IO_UNIT		0x0001		/* do I/O as atomic unit */
 #define	IO_APPEND	0x0002		/* append write to end */
@@ -309,7 +305,7 @@ struct vnode {
 #define	IO_INVAL	0x0040		/* invalidate after I/O */
 #define IO_ASYNC	0x0080		/* bawrite rather then bdwrite */
 #define	IO_DIRECT	0x0100		/* attempt to bypass buffer cache */
-#define	IO_NOBWILL	0x0200		/* do not block w/ bwillread/write */
+#define	IO_UNUSED0200	0x0200
 #define	IO_CORE		0x0400		/* I/O is part of core dump */
 
 #define	IO_SEQMAX	0x7F		/* seq heuristic max value */

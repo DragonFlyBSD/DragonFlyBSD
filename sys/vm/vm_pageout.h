@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.h,v 1.26.2.1 2002/02/26 05:49:28 silby Exp $
- * $DragonFly: src/sys/vm/vm_pageout.h,v 1.7 2006/05/20 02:42:15 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.h,v 1.8 2008/07/01 02:02:56 dillon Exp $
  */
 
 #ifndef _VM_VM_PAGEOUT_H_
@@ -107,7 +107,7 @@ extern int vm_load_debug;
  */
 
 extern void pagedaemon_wakeup (void);
-extern void vm_wait (void);
+extern void vm_wait (int timo);
 extern void vm_waitpfault (void);
 
 #ifdef _KERNEL

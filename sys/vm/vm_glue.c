@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.55 2007/04/30 07:18:57 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.56 2008/07/01 02:02:56 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -239,7 +239,7 @@ vm_fork(struct proc *p1, struct proc *p2, int flags)
 	}
 
 	while (vm_page_count_severe()) {
-		vm_wait();
+		vm_wait(0);
 	}
 
 	if ((flags & RFMEM) == 0) {
@@ -345,7 +345,7 @@ loop:
 	 * Don't try to swap anything in if we are low on memory.
 	 */
 	if (vm_page_count_min()) {
-		vm_wait();
+		vm_wait(0);
 		goto loop;
 	}
 

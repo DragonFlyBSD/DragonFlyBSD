@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.35 2008/05/09 07:24:48 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.36 2008/07/01 02:02:56 dillon Exp $
  */
 
 /*
@@ -1384,6 +1384,7 @@ vm_pageout(void)
 	/*
 	 * Initialize some paging parameters.
 	 */
+	curthread->td_flags |= TDF_SYSTHREAD;
 
 	vmstats.v_interrupt_free_min = 2;
 	if (vmstats.v_page_count < 2000)

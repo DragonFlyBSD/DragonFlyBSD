@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.38 2008/05/09 07:24:48 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.39 2008/07/01 02:02:56 dillon Exp $
  */
 
 /*
@@ -678,9 +678,10 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 		(VM_ALLOC_NORMAL|VM_ALLOC_INTERRUPT|VM_ALLOC_SYSTEM));
 
 	/*
-	 * The pager is allowed to eat deeper into the free page list.
+	 * Certain system threads (pageout daemon, buf_daemon's) are
+	 * allowed to eat deeper into the free page list.
 	 */
-	if (curthread == pagethread)
+	if (curthread->td_flags & TDF_SYSTHREAD)
 		page_req |= VM_ALLOC_SYSTEM;
 
 	crit_enter();
@@ -804,18 +805,18 @@ loop:
  * places before memory allocations.
  */
 void
-vm_wait(void)
+vm_wait(int timo)
 {
 	crit_enter();
 	if (curthread == pagethread) {
 		vm_pageout_pages_needed = 1;
-		tsleep(&vm_pageout_pages_needed, 0, "VMWait", 0);
+		tsleep(&vm_pageout_pages_needed, 0, "VMWait", timo);
 	} else {
 		if (!vm_pages_needed) {
 			vm_pages_needed = 1;
 			wakeup(&vm_pages_needed);
 		}
-		tsleep(&vmstats.v_free_count, 0, "vmwait", 0);
+		tsleep(&vmstats.v_free_count, 0, "vmwait", timo);
 	}
 	crit_exit();
 }
@@ -1387,7 +1388,7 @@ retrylookup:
 	}
 	m = vm_page_alloc(object, pindex, allocflags & ~VM_ALLOC_RETRY);
 	if (m == NULL) {
-		vm_wait();
+		vm_wait(0);
 		if ((allocflags & VM_ALLOC_RETRY) == 0)
 			goto done;
 		goto retrylookup;

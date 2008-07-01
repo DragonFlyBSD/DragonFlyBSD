@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.46 2008/05/09 07:24:48 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.47 2008/07/01 02:02:56 dillon Exp $
  */
 
 /*
@@ -1649,7 +1649,7 @@ vm_fault_copy_entry(vm_map_t dst_map, vm_map_t src_map,
 			dst_m = vm_page_alloc(dst_object,
 				OFF_TO_IDX(dst_offset), VM_ALLOC_NORMAL);
 			if (dst_m == NULL) {
-				vm_wait();
+				vm_wait(0);
 			}
 		} while (dst_m == NULL);
 

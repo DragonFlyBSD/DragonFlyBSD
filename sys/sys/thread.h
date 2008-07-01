@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.93 2008/05/26 17:11:09 nth Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.94 2008/07/01 02:02:55 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -266,7 +266,7 @@ struct thread {
 #define TDF_SINTR		0x0040	/* interruptability hint for 'ps' */
 #define TDF_TSLEEPQ		0x0080	/* on a tsleep wait queue */
 
-#define TDF_SYSTHREAD		0x0100	/* system thread */
+#define TDF_SYSTHREAD		0x0100	/* allocations may use reserve */
 #define TDF_ALLOCATED_THREAD	0x0200	/* objcache allocated thread */
 #define TDF_ALLOCATED_STACK	0x0400	/* objcache allocated stack */
 #define TDF_VERBOSE		0x0800	/* verbose on exit */

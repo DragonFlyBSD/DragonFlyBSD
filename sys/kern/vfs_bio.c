@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.108 2008/06/30 02:11:53 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.109 2008/07/01 02:02:54 dillon Exp $
  */
 
 /*
@@ -100,6 +100,7 @@ static void vfs_clean_pages(struct buf *bp);
 static void vfs_setdirty(struct buf *bp);
 static void vfs_vmio_release(struct buf *bp);
 static int flushbufqueues(bufq_type_t q);
+static vm_page_t bio_page_alloc(vm_object_t obj, vm_pindex_t pg, int deficit);
 
 static void bd_signal(int totalspace);
 static void buf_daemon(void);
@@ -126,12 +127,17 @@ int dirtybufspace, dirtybufspacehw, lodirtybufspace, hidirtybufspace;
 int runningbufspace, runningbufcount;
 static int getnewbufcalls;
 static int getnewbufrestarts;
+static int recoverbufcalls;
 static int needsbuffer;		/* locked by needsbuffer_spin */
 static int bd_request;		/* locked by needsbuffer_spin */
 static int bd_request_hw;	/* locked by needsbuffer_spin */
 static u_int bd_wake_ary[BD_WAKE_SIZE];
 static u_int bd_wake_index;
 static struct spinlock needsbuffer_spin;
+
+static struct thread *bufdaemon_td;
+static struct thread *bufdaemonhw_td;
+
 
 /*
  * Sysctls for operational control of the buffer cache.
@@ -173,6 +179,8 @@ SYSCTL_INT(_vfs, OID_AUTO, getnewbufcalls, CTLFLAG_RD, &getnewbufcalls, 0,
 	"New buffer header acquisition requests");
 SYSCTL_INT(_vfs, OID_AUTO, getnewbufrestarts, CTLFLAG_RD, &getnewbufrestarts,
 	0, "New buffer header acquisition restarts");
+SYSCTL_INT(_vfs, OID_AUTO, recoverbufcalls, CTLFLAG_RD, &recoverbufcalls, 0,
+	"Recover VM space in an emergency");
 SYSCTL_INT(_vfs, OID_AUTO, bufdefragcnt, CTLFLAG_RD, &bufdefragcnt, 0,
 	"Buffer acquisition restarts due to fragmented buffer map");
 SYSCTL_INT(_vfs, OID_AUTO, buffreekvacnt, CTLFLAG_RD, &buffreekvacnt, 0,
@@ -381,6 +389,9 @@ bd_wait(int totalspace)
 {
 	u_int i;
 	int count;
+
+	if (curthread == bufdaemonhw_td || curthread == bufdaemon_td)
+		return;
 
 	while (totalspace > 0) {
 		bd_heatup();
@@ -1900,6 +1911,117 @@ restart:
 }
 
 /*
+ * This routine is called in an emergency to recover VM pages from the
+ * buffer cache by cashing in clean buffers.  The idea is to recover
+ * enough pages to be able to satisfy a stuck bio_page_alloc().
+ */
+static int
+recoverbufpages(void)
+{
+	struct buf *bp;
+	int bytes = 0;
+
+	++recoverbufcalls;
+
+	while (bytes < MAXBSIZE) {
+		bp = TAILQ_FIRST(&bufqueues[BQUEUE_CLEAN]);
+		if (bp == NULL)
+			break;
+
+		/*
+		 * BQUEUE_CLEAN - B_AGE special case.  If not set the bp
+		 * cycles through the queue twice before being selected.
+		 */
+		if ((bp->b_flags & B_AGE) == 0 && TAILQ_NEXT(bp, b_freelist)) {
+			bp->b_flags |= B_AGE;
+			TAILQ_REMOVE(&bufqueues[BQUEUE_CLEAN], bp, b_freelist);
+			TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_CLEAN],
+					  bp, b_freelist);
+			continue;
+		}
+
+		/*
+		 * Sanity Checks
+		 */
+		KKASSERT(bp->b_qindex == BQUEUE_CLEAN);
+		KKASSERT((bp->b_flags & B_DELWRI) == 0);
+
+		/*
+		 * Start freeing the bp.  This is somewhat involved.
+		 *
+		 * Buffers on the clean list must be disassociated from
+		 * their current vnode
+		 */
+
+		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) != 0) {
+			kprintf("recoverbufpages: warning, locked buf %p, race corrected\n", bp);
+			tsleep(&bd_request, 0, "gnbxxx", hz / 100);
+			continue;
+		}
+		if (bp->b_qindex != BQUEUE_CLEAN) {
+			kprintf("recoverbufpages: warning, BUF_LOCK blocked unexpectedly on buf %p index %d, race corrected\n", bp, bp->b_qindex);
+			BUF_UNLOCK(bp);
+			continue;
+		}
+		bremfree(bp);
+
+		/*
+		 * Dependancies must be handled before we disassociate the
+		 * vnode.
+		 *
+		 * NOTE: HAMMER will set B_LOCKED if the buffer cannot
+		 * be immediately disassociated.  HAMMER then becomes
+		 * responsible for releasing the buffer.
+		 */
+		if (LIST_FIRST(&bp->b_dep) != NULL) {
+			buf_deallocate(bp);
+			if (bp->b_flags & B_LOCKED) {
+				bqrelse(bp);
+				continue;
+			}
+			KKASSERT(LIST_FIRST(&bp->b_dep) == NULL);
+		}
+
+		bytes += bp->b_bufsize;
+
+		if (bp->b_flags & B_VMIO) {
+			bp->b_flags &= ~B_ASYNC;
+			bp->b_flags |= B_DIRECT;    /* try to free pages */
+			vfs_vmio_release(bp);
+		}
+		if (bp->b_vp)
+			brelvp(bp);
+
+		KKASSERT(bp->b_vp == NULL);
+		KKASSERT((bp->b_flags & B_HASHED) == 0);
+
+		/*
+		 * critical section protection is not required when
+		 * scrapping a buffer's contents because it is already 
+		 * wired.
+		 */
+		if (bp->b_bufsize)
+			allocbuf(bp, 0);
+
+		bp->b_flags = B_BNOCLIP;
+		bp->b_cmd = BUF_CMD_DONE;
+		bp->b_vp = NULL;
+		bp->b_error = 0;
+		bp->b_resid = 0;
+		bp->b_bcount = 0;
+		bp->b_xio.xio_npages = 0;
+		bp->b_dirtyoff = bp->b_dirtyend = 0;
+		reinitbufbio(bp);
+		KKASSERT(LIST_FIRST(&bp->b_dep) == NULL);
+		buf_dep_init(bp);
+		bp->b_flags |= B_INVAL;
+		/* bfreekva(bp); */
+		brelse(bp);
+	}
+	return(bytes);
+}
+
+/*
  * buf_daemon:
  *
  *	Buffer flushing daemon.  Buffers are normally flushed by the
@@ -1910,9 +2032,6 @@ restart:
  *	of buffers falls below lodirtybuffers, but we will wake up anyone
  *	waiting at the mid-point.
  */
-
-static struct thread *bufdaemon_td;
-static struct thread *bufdaemonhw_td;
 
 static struct kproc_desc buf_kp = {
 	"bufdaemon",
@@ -1940,6 +2059,7 @@ buf_daemon(void)
 	 */
 	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc,
 			      bufdaemon_td, SHUTDOWN_PRI_LAST);
+	curthread->td_flags |= TDF_SYSTHREAD;
 
 	/*
 	 * This process is allowed to take the buffer cache to the limit
@@ -1992,6 +2112,7 @@ buf_daemon_hw(void)
 	 */
 	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc,
 			      bufdaemonhw_td, SHUTDOWN_PRI_LAST);
+	curthread->td_flags |= TDF_SYSTHREAD;
 
 	/*
 	 * This process is allowed to take the buffer cache to the limit
@@ -2751,12 +2872,8 @@ allocbuf(struct buf *bp, int size)
 					 * with paging I/O, no matter which
 					 * process we are.
 					 */
-					m = vm_page_alloc(obj, pi, VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM);
-					if (m == NULL) {
-						vm_wait();
-						vm_pageout_deficit += desiredpages -
-							bp->b_xio.xio_npages;
-					} else {
+					m = bio_page_alloc(obj, pi, desiredpages - bp->b_xio.xio_npages);
+					if (m) {
 						vm_page_wire(m);
 						vm_page_wakeup(m);
 						bp->b_flags &= ~B_CACHE;
@@ -3506,31 +3623,89 @@ vm_hold_load_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 	from = round_page(from);
 	index = (from - trunc_page((vm_offset_t)bp->b_data)) >> PAGE_SHIFT;
 
-	for (pg = from; pg < to; pg += PAGE_SIZE, index++) {
-
-tryagain:
-
+	pg = from;
+	while (pg < to) {
 		/*
 		 * Note: must allocate system pages since blocking here
 		 * could intefere with paging I/O, no matter which
 		 * process we are.
 		 */
-		p = vm_page_alloc(&kernel_object,
-				  (pg >> PAGE_SHIFT),
-				  VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM);
-		if (!p) {
-			vm_pageout_deficit += (to - from) >> PAGE_SHIFT;
-			vm_wait();
-			goto tryagain;
+		p = bio_page_alloc(&kernel_object, pg >> PAGE_SHIFT,
+				   (vm_pindex_t)((to - pg) >> PAGE_SHIFT));
+		if (p) {
+			vm_page_wire(p);
+			p->valid = VM_PAGE_BITS_ALL;
+			vm_page_flag_clear(p, PG_ZERO);
+			pmap_kenter(pg, VM_PAGE_TO_PHYS(p));
+			bp->b_xio.xio_pages[index] = p;
+			vm_page_wakeup(p);
+
+			pg += PAGE_SIZE;
+			++index;
 		}
-		vm_page_wire(p);
-		p->valid = VM_PAGE_BITS_ALL;
-		vm_page_flag_clear(p, PG_ZERO);
-		pmap_kenter(pg, VM_PAGE_TO_PHYS(p));
-		bp->b_xio.xio_pages[index] = p;
-		vm_page_wakeup(p);
 	}
 	bp->b_xio.xio_npages = index;
+}
+
+/*
+ * Allocate pages for a buffer cache buffer.
+ *
+ * Under extremely severe memory conditions even allocating out of the
+ * system reserve can fail.  If this occurs we must allocate out of the
+ * interrupt reserve to avoid a deadlock with the pageout daemon.
+ *
+ * The pageout daemon can run (putpages -> VOP_WRITE -> getblk -> allocbuf).
+ * If the buffer cache's vm_page_alloc() fails a vm_wait() can deadlock
+ * against the pageout daemon if pages are not freed from other sources.
+ */
+static
+vm_page_t
+bio_page_alloc(vm_object_t obj, vm_pindex_t pg, int deficit)
+{
+	vm_page_t p;
+
+	/*
+	 * Try a normal allocation, allow use of system reserve.
+	 */
+	p = vm_page_alloc(obj, pg, VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM);
+	if (p)
+		return(p);
+
+	/*
+	 * The normal allocation failed and we clearly have a page
+	 * deficit.  Try to reclaim some clean VM pages directly
+	 * from the buffer cache.
+	 */
+	vm_pageout_deficit += deficit;
+	recoverbufpages();
+
+	/*
+	 * We may have blocked, the caller will know what to do if the
+	 * page now exists.
+	 */
+	if (vm_page_lookup(obj, pg))
+		return(NULL);
+
+	/*
+	 * Allocate and allow use of the interrupt reserve.
+	 *
+	 * If after all that we still can't allocate a VM page we are
+	 * in real trouble, but we slog on anyway hoping that the system
+	 * won't deadlock.
+	 */
+	p = vm_page_alloc(obj, pg, VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM |
+				   VM_ALLOC_INTERRUPT);
+	if (p) {
+		kprintf("bio_page_alloc: WARNING emergency page "
+			"allocation\n");
+		if (vm_page_count_severe())
+			vm_wait(hz / 20);
+	} else {
+		kprintf("bio_page_alloc: WARNING emergency page "
+			"allocation failed\n");
+		vm_wait(hz * 5);
+	}
+	return(p);
 }
 
 /*
