@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.10 2008/06/30 00:03:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.11 2008/07/01 17:30:42 dillon Exp $
  */
 
 #include "hammer.h"
@@ -276,10 +276,19 @@ prune_should_delete(struct hammer_ioc_prune *prune, hammer_btree_leaf_elm_t elm)
 	return(0);
 }
 
+/*
+ * Dangling inodes can occur if processes are holding open descriptors on
+ * deleted files as-of when a machine crashes.  When we find one simply
+ * acquire the inode and release it.  The inode handling code will then
+ * do the right thing.
+ */
 static
 void
 prune_check_nlinks(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm)
 {
+	hammer_inode_t ip;
+	int error;
+
 	if (elm->base.rec_type != HAMMER_RECTYPE_INODE)
 		return;
 	if (elm->base.delete_tid != 0)
@@ -288,7 +297,21 @@ prune_check_nlinks(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm)
 		return;
 	if (cursor->data->inode.nlinks)
 		return;
-	kprintf("found disconnected inode %016llx\n", elm->base.obj_id);
+	hammer_cursor_downgrade(cursor);
+	hammer_sync_unlock(cursor->trans);
+	ip = hammer_get_inode(cursor->trans, NULL, elm->base.obj_id,
+		      HAMMER_MAX_TID,
+		      elm->base.localization & HAMMER_LOCALIZE_PSEUDOFS_MASK,
+		      0, &error);
+	if (ip) {
+		kprintf("pruning disconnected inode %016llx\n",
+			elm->base.obj_id);
+		hammer_rel_inode(ip, 0);
+	} else {
+		kprintf("unable to prune disconnected inode %016llx\n",
+			elm->base.obj_id);
+	}
+	hammer_sync_lock_sh(cursor->trans);
 }
 
 #if 0
