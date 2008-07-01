@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.30 2008/06/08 08:38:05 sephe Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.31 2008/07/01 08:21:25 hasso Exp $
  */
 
 #include "opt_inet6.h"
@@ -330,7 +330,7 @@ rip_ctloutput(struct socket *so, struct sockopt *sopt)
 		switch (sopt->sopt_name) {
 		case IP_HDRINCL:
 			optval = inp->inp_flags & INP_HDRINCL;
-			error = sooptcopyout(sopt, &optval, sizeof optval);
+			soopt_from_kbuf(sopt, &optval, sizeof optval);
 			break;
 
 		case IP_FW_ADD: /* ADD actually returns the body... */
@@ -370,8 +370,8 @@ rip_ctloutput(struct socket *so, struct sockopt *sopt)
 	case SOPT_SET:
 		switch (sopt->sopt_name) {
 		case IP_HDRINCL:
-			error = sooptcopyin(sopt, &optval, sizeof optval,
-					    sizeof optval);
+			error = soopt_to_kbuf(sopt, &optval, sizeof optval,
+					      sizeof optval);
 			if (error)
 				break;
 			if (optval)
