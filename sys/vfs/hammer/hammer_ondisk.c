@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.63 2008/06/29 07:50:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.64 2008/07/01 02:08:58 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -569,7 +569,8 @@ again:
 	 * Allocate a new buffer structure.  We will check for races later.
 	 */
 	++hammer_count_buffers;
-	buffer = kmalloc(sizeof(*buffer), M_HAMMER, M_WAITOK|M_ZERO);
+	buffer = kmalloc(sizeof(*buffer), M_HAMMER,
+			 M_WAITOK|M_ZERO|M_USE_RESERVE);
 	buffer->zone2_offset = zone2_offset;
 	buffer->zoneX_offset = buf_offset;
 	buffer->volume = volume;
@@ -953,7 +954,7 @@ again:
 	node = RB_LOOKUP(hammer_nod_rb_tree, &hmp->rb_nods_root, node_offset);
 	if (node == NULL) {
 		++hammer_count_nodes;
-		node = kmalloc(sizeof(*node), M_HAMMER, M_WAITOK|M_ZERO);
+		node = kmalloc(sizeof(*node), M_HAMMER, M_WAITOK|M_ZERO|M_USE_RESERVE);
 		node->node_offset = node_offset;
 		node->hmp = hmp;
 		TAILQ_INIT(&node->cache_list);

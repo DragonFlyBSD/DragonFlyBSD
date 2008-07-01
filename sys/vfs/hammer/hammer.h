@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.98 2008/06/30 02:45:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.99 2008/07/01 02:08:58 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -568,6 +568,7 @@ struct hammer_reserve {
 	int		flags;
 	int		refs;
 	int		zone;
+	int		append_off;
 	hammer_off_t	zone_offset;
 };
 
@@ -921,8 +922,6 @@ hammer_reserve_t hammer_blockmap_reserve(hammer_mount_t hmp, int zone,
 			int bytes, hammer_off_t *zone_offp, int *errorp);
 void hammer_blockmap_reserve_complete(hammer_mount_t hmp,
 			hammer_reserve_t resv);
-void hammer_reserve_setdelay(hammer_mount_t hmp, hammer_reserve_t resv,
-                        hammer_off_t zone2_offset);
 void hammer_reserve_clrdelay(hammer_mount_t hmp, hammer_reserve_t resv);
 void hammer_blockmap_free(hammer_transaction_t trans,
 			hammer_off_t bmap_off, int bytes);

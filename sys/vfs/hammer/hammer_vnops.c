@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.78 2008/06/28 18:10:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.79 2008/07/01 02:08:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -303,7 +303,6 @@ hammer_vop_write(struct vop_write_args *ap)
 	int error;
 	int n;
 	int flags;
-	int count;
 	int delta;
 	int seqcount;
 
@@ -350,7 +349,6 @@ hammer_vop_write(struct vop_write_args *ap)
 	 * buffer cache, but HAMMER may use a variable block size based
 	 * on the offset.
 	 */
-	count = 0;
 	while (uio->uio_resid > 0) {
 		int fixsize = 0;
 		int blksize;
@@ -375,58 +373,46 @@ hammer_vop_write(struct vop_write_args *ap)
 		 * HAMMER has hit its write limit but the frontend has
 		 * no pushback to slow it down.
 		 *
-		 * Always check at the beginning so separate writes are
-		 * not able to bypass this code (count++).
-		 *
-		 * WARNING: Cannot unlock vp when doing a NOCOPY write as
-		 * part of a putpages operation.  Doing so could cause us
-		 * to deadlock against the VM system when we try to re-lock.
+		 * The hammer inode is not locked during these operations.
+		 * The vnode is locked which can interfere with the pageout
+		 * daemon for non-UIO_NOCOPY writes but should not interfere
+		 * with the buffer cache.  Even so, we cannot afford to
+		 * allow the pageout daemon to build up too many dirty buffer
+		 * cache buffers.
 		 */
-		if ((count++ & 15) == 0 || count > 64) {
+		bwillwrite(blksize);
+
+		/*
+		 * Pending record flush check.
+		 */
+		if (hmp->rsv_recs > hammer_limit_recs / 2) {
 			/*
-			 * Buffer cache check
+			 * Get the inode on the flush list
 			 */
-			if (uio->uio_segflg != UIO_NOCOPY) {
-				vn_unlock(ap->a_vp);
-				if ((ap->a_ioflag & IO_NOBWILL) == 0)
-					bwillwrite(blksize);
+			if (ip->rsv_recs >= 64)
+				hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+			else if (ip->rsv_recs >= 16)
+				hammer_flush_inode(ip, 0);
+
+			/*
+			 * Keep the flusher going if the system keeps
+			 * queueing records.
+			 */
+			delta = hmp->count_newrecords -
+				hmp->last_newrecords;
+			if (delta < 0 || delta > hammer_limit_recs / 2) {
+				hmp->last_newrecords = hmp->count_newrecords;
+				hammer_sync_hmp(hmp, MNT_NOWAIT);
 			}
 
 			/*
-			 * Pending record flush check.
+			 * If we have gotten behind start slowing
+			 * down the writers.
 			 */
-			if (hmp->rsv_recs > hammer_limit_recs / 2) {
-				/*
-				 * Get the inode on the flush list
-				 */
-				if (ip->rsv_recs >= 64)
-					hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-				else if (ip->rsv_recs >= 16)
-					hammer_flush_inode(ip, 0);
-
-				/*
-				 * Keep the flusher going if the system keeps
-				 * queueing records.
-				 */
-				delta = hmp->count_newrecords -
-					hmp->last_newrecords;
-				if (delta < 0 || delta > hammer_limit_recs / 2) {
-					hmp->last_newrecords = hmp->count_newrecords;
-					hammer_sync_hmp(hmp, MNT_NOWAIT);
-				}
-
-				/*
-				 * If we have gotten behind start slowing
-				 * down the writers.
-				 */
-				delta = (hmp->rsv_recs - hammer_limit_recs) *
-					hz / hammer_limit_recs;
-				if (delta > 0)
-					tsleep(&trans, 0, "hmrslo", delta);
-			}
-
-			if (uio->uio_segflg != UIO_NOCOPY)
-				vn_lock(ap->a_vp, LK_EXCLUSIVE|LK_RETRY);
+			delta = (hmp->rsv_recs - hammer_limit_recs) *
+				hz / hammer_limit_recs;
+			if (delta > 0)
+				tsleep(&trans, 0, "hmrslo", delta);
 		}
 
 		/*

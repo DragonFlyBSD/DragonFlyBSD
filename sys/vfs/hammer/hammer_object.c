@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.79 2008/06/30 00:03:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.80 2008/07/01 02:08:58 dillon Exp $
  */
 
 #include "hammer.h"
@@ -252,7 +252,8 @@ hammer_alloc_mem_record(hammer_inode_t ip, int data_len)
 	hammer_record_t record;
 
 	++hammer_count_records;
-	record = kmalloc(sizeof(*record), M_HAMMER, M_WAITOK | M_ZERO);
+	record = kmalloc(sizeof(*record), M_HAMMER,
+			 M_WAITOK | M_ZERO | M_USE_RESERVE);
 	record->flush_state = HAMMER_FST_IDLE;
 	record->ip = ip;
 	record->leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
