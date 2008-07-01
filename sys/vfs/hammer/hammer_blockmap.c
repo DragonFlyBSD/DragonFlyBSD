@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.21 2008/07/01 02:08:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.22 2008/07/01 04:54:25 dillon Exp $
  */
 
 /*
@@ -361,8 +361,8 @@ hammer_blockmap_reserve(hammer_mount_t hmp, int zone, int bytes,
 	KKASSERT(bytes > 0 && bytes <= HAMMER_XBUFSIZE);
 
 	next_offset = blockmap->next_offset;
-	resv = NULL;
 again:
+	resv = NULL;
 	/*
 	 * Check for wrap
 	 */
