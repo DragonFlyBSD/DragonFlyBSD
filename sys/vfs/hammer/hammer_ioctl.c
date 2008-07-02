@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.24 2008/06/26 04:06:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.25 2008/07/02 21:57:54 dillon Exp $
  */
 
 #include "hammer.h"
@@ -40,9 +40,6 @@ static int hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 				struct hammer_ioc_history *hist);
 static int hammer_ioc_synctid(hammer_transaction_t trans, hammer_inode_t ip,
 				struct hammer_ioc_synctid *std);
-static int hammer_ioc_get_pseudofs(hammer_transaction_t trans,
-				hammer_inode_t ip,
-				struct hammer_ioc_get_pseudofs *pfs);
 
 int
 hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
@@ -67,8 +64,10 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 					(struct hammer_ioc_history *)data);
 		break;
 	case HAMMERIOC_REBLOCK:
-		error = hammer_ioc_reblock(&trans, ip,
+		if (error == 0) {
+			error = hammer_ioc_reblock(&trans, ip,
 					(struct hammer_ioc_reblock *)data);
+		}
 		break;
 	case HAMMERIOC_SYNCTID:
 		error = hammer_ioc_synctid(&trans, ip,
@@ -76,15 +75,25 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		break;
 	case HAMMERIOC_GET_PSEUDOFS:
 		error = hammer_ioc_get_pseudofs(&trans, ip,
-				    (struct hammer_ioc_get_pseudofs *)data);
+				    (struct hammer_ioc_pseudofs_rw *)data);
+		break;
+	case HAMMERIOC_SET_PSEUDOFS:
+		if (error == 0) {
+			error = hammer_ioc_set_pseudofs(&trans, ip,
+				    (struct hammer_ioc_pseudofs_rw *)data);
+		}
 		break;
 	case HAMMERIOC_MIRROR_READ:
-		error = hammer_ioc_mirror_read(&trans, ip,
+		if (error == 0) {
+			error = hammer_ioc_mirror_read(&trans, ip,
 				    (struct hammer_ioc_mirror_rw *)data);
+		}
 		break;
 	case HAMMERIOC_MIRROR_WRITE:
-		error = hammer_ioc_mirror_write(&trans, ip,
+		if (error == 0) {
+			error = hammer_ioc_mirror_write(&trans, ip,
 				    (struct hammer_ioc_mirror_rw *)data);
+		}
 		break;
 	default:
 		error = EOPNOTSUPP;
@@ -355,16 +364,5 @@ hammer_ioc_synctid(hammer_transaction_t trans, hammer_inode_t ip,
 		break;
 	}
 	return(error);
-}
-
-/*
- * Return the pseudoid for a pseudo-filesystem.
- */
-static int
-hammer_ioc_get_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
-			struct hammer_ioc_get_pseudofs *pfs)
-{
-	pfs->pseudoid = ip->obj_localization;
-	return(0);
 }
 

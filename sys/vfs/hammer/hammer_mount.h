@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_mount.h,v 1.7 2008/06/26 04:06:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_mount.h,v 1.8 2008/07/02 21:57:54 dillon Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -58,7 +58,6 @@ struct hammer_mount_info {
 #define HMNT_NOHISTORY	0x00000001
 #define HMNT_MASTERID	0x00000002	/* masterid field set */
 #define HMNT_EXPORTREQ	0x00000004
-#define HMNT_SLAVE	0x00000008	/* slave mode (RW mount, RO access) */
 
 #define HMNT_USERFLAGS	(HMNT_NOHISTORY | HMNT_MASTERID)
 

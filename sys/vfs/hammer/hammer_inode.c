@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.90 2008/06/30 02:45:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.91 2008/07/02 21:57:54 dillon Exp $
  */
 
 #include "hammer.h"
@@ -40,6 +40,7 @@
 #include <sys/buf2.h>
 
 static int	hammer_unload_inode(struct hammer_inode *ip);
+static void	hammer_free_inode(hammer_inode_t ip);
 static void	hammer_flush_inode_core(hammer_inode_t ip, int flags);
 static int	hammer_setup_child_callback(hammer_record_t rec, void *data);
 static int	hammer_syncgrp_child_callback(hammer_record_t rec, void *data);
@@ -52,9 +53,7 @@ extern struct hammer_inode *HammerTruncIp;
 #endif
 
 /*
- * Red-Black tree support for inode structures.
- *
- * Insertions
+ * RB-Tree support for inode structures
  */
 int
 hammer_ino_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2)
@@ -75,7 +74,7 @@ hammer_ino_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2)
 }
 
 /*
- * LOOKUP_INFO
+ * RB-Tree support for inode structures / special LOOKUP_INFO
  */
 static int
 hammer_inode_info_cmp(hammer_inode_info_t info, hammer_inode_t ip)
@@ -116,9 +115,25 @@ hammer_inode_info_cmp_all_history(hammer_inode_t ip, void *data)
 	return(0);
 }
 
+/*
+ * RB-Tree support for pseudofs structures
+ */
+static int
+hammer_pfs_rb_compare(hammer_pseudofs_inmem_t p1, hammer_pseudofs_inmem_t p2)
+{
+	if (p1->localization < p2->localization)
+		return(-1);
+	if (p1->localization > p2->localization)
+		return(1);
+	return(0);
+}
+
+
 RB_GENERATE(hammer_ino_rb_tree, hammer_inode, rb_node, hammer_ino_rb_compare);
 RB_GENERATE_XLOOKUP(hammer_ino_rb_tree, INFO, hammer_inode, rb_node,
 		hammer_inode_info_cmp, hammer_inode_info_t);
+RB_GENERATE2(hammer_pfs_rb_tree, hammer_pseudofs_inmem, rb_node,
+             hammer_pfs_rb_compare, u_int32_t, localization);
 
 /*
  * The kernel is not actively referencing this vnode but is still holding
@@ -317,6 +332,7 @@ hammer_get_inode(hammer_transaction_t trans, hammer_inode_t dip,
 	struct hammer_cursor cursor;
 	struct hammer_inode *ip;
 
+
 	/*
 	 * Determine if we already have an inode cached.  If we do then
 	 * we are golden.
@@ -345,12 +361,13 @@ loop:
 	ip->flags = flags & HAMMER_INODE_RO;
 	ip->cache[0].ip = ip;
 	ip->cache[1].ip = ip;
-	if (hmp->ronly || (hmp->hflags & HMNT_SLAVE))
+	if (hmp->ronly)
 		ip->flags |= HAMMER_INODE_RO;
 	ip->sync_trunc_off = ip->trunc_off = ip->save_trunc_off =
 		0x7FFFFFFFFFFFFFFFLL;
 	RB_INIT(&ip->rec_tree);
 	TAILQ_INIT(&ip->target_list);
+	hammer_ref(&ip->lock);
 
 	/*
 	 * Locate the on-disk inode.
@@ -403,6 +420,17 @@ retry:
 		 * record overwrites.
 		 */
 		ip->save_trunc_off = ip->ino_data.size;
+
+		/*
+		 * Locate and assign the pseudofs management structure to
+		 * the inode.
+		 */
+		if (dip && dip->obj_localization == ip->obj_localization) {
+			ip->pfsm = dip->pfsm;
+			hammer_ref(&ip->pfsm->lock);
+		} else {
+			*errorp = hammer_load_pseudofs(trans, ip);
+		}
 	}
 
 	/*
@@ -411,14 +439,8 @@ retry:
 	 * another instantiation/lookup the insertion will fail.
 	 */
 	if (*errorp == 0) {
-		hammer_ref(&ip->lock);
 		if (RB_INSERT(hammer_ino_rb_tree, &hmp->rb_inos_root, ip)) {
-			hammer_uncache_node(&ip->cache[0]);
-			hammer_uncache_node(&ip->cache[1]);
-			KKASSERT(ip->lock.refs == 1);
-			--hammer_count_inodes;
-			--hmp->count_inodes;
-			kfree(ip, M_HAMMER);
+			hammer_free_inode(ip);
 			hammer_done_cursor(&cursor);
 			goto loop;
 		}
@@ -431,9 +453,7 @@ retry:
 		hmp->rsv_databufs -= ip->rsv_databufs;
 		ip->rsv_databufs = 0;			       /* sanity */
 
-		--hammer_count_inodes;
-		--hmp->count_inodes;
-		kfree(ip, M_HAMMER);
+		hammer_free_inode(ip);
 		ip = NULL;
 	}
 	hammer_done_cursor(&cursor);
@@ -585,12 +605,213 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 		ip->ino_data.gid = dip->ino_data.gid;
 
 	hammer_ref(&ip->lock);
-	if (RB_INSERT(hammer_ino_rb_tree, &hmp->rb_inos_root, ip)) {
-		hammer_unref(&ip->lock);
+
+	if (dip->obj_localization == ip->obj_localization) {
+		ip->pfsm = dip->pfsm;
+		hammer_ref(&ip->pfsm->lock);
+		error = 0;
+	} else {
+		error = hammer_load_pseudofs(trans, ip);
+	}
+
+	if (error) {
+		hammer_free_inode(ip);
+		ip = NULL;
+	} else if (RB_INSERT(hammer_ino_rb_tree, &hmp->rb_inos_root, ip)) {
 		panic("hammer_create_inode: duplicate obj_id %llx", ip->obj_id);
+		/* not reached */
+		hammer_free_inode(ip);
 	}
 	*ipp = ip;
-	return(0);
+	return(error);
+}
+
+/*
+ * Final cleanup / freeing of an inode structure
+ */
+static void
+hammer_free_inode(hammer_inode_t ip)
+{
+	KKASSERT(ip->lock.refs == 1);
+	hammer_uncache_node(&ip->cache[0]);
+	hammer_uncache_node(&ip->cache[1]);
+	hammer_inode_wakereclaims(ip);
+	if (ip->objid_cache)
+		hammer_clear_objid(ip);
+	--hammer_count_inodes;
+	--ip->hmp->count_inodes;
+	if (ip->pfsm) {
+		hammer_rel_pseudofs(ip->hmp, ip->pfsm);
+		ip->pfsm = NULL;
+	}
+	kfree(ip, M_HAMMER);
+	ip = NULL;
+}
+
+/*
+ * Retrieve pseudo-fs data.
+ */
+int
+hammer_load_pseudofs(hammer_transaction_t trans, hammer_inode_t ip)
+{
+	hammer_mount_t hmp = trans->hmp;
+	hammer_pseudofs_inmem_t pfsm;
+	struct hammer_cursor cursor;
+	int error;
+	int bytes;
+
+retry:
+	pfsm = RB_LOOKUP(hammer_pfs_rb_tree, &hmp->rb_pfsm_root,
+			 ip->obj_localization);
+	if (pfsm) {
+		KKASSERT(ip->pfsm == NULL);
+		ip->pfsm = pfsm;
+		hammer_ref(&pfsm->lock);
+		return(0);
+	}
+
+	pfsm = kmalloc(sizeof(*pfsm), M_HAMMER, M_WAITOK | M_ZERO);
+	pfsm->localization = ip->obj_localization;
+
+	hammer_init_cursor(trans, &cursor, NULL, NULL);
+	cursor.key_beg.localization = ip->obj_localization +
+				      HAMMER_LOCALIZE_MISC;
+	cursor.key_beg.obj_id = HAMMER_OBJID_ROOT;
+	cursor.key_beg.create_tid = 0;
+	cursor.key_beg.delete_tid = 0;
+	cursor.key_beg.rec_type = HAMMER_RECTYPE_FIX;
+	cursor.key_beg.obj_type = 0;
+	cursor.key_beg.key = HAMMER_FIXKEY_PSEUDOFS;
+	cursor.asof = HAMMER_MAX_TID;
+	cursor.flags |= HAMMER_CURSOR_ASOF;
+
+	error = hammer_btree_lookup(&cursor);
+	if (error == 0) {
+		error = hammer_btree_extract(&cursor, HAMMER_CURSOR_GET_DATA);
+		if (error == 0) {
+			bytes = cursor.leaf->data_len;
+			if (bytes > sizeof(pfsm->pfsd))
+				bytes = sizeof(pfsm->pfsd);
+			bcopy(cursor.data, &pfsm->pfsd, bytes);
+		}
+	} else if (error == ENOENT) {
+		error = 0;
+	}
+
+	hammer_done_cursor(&cursor);
+
+	if (error == 0) {
+		hammer_ref(&pfsm->lock);
+		if (RB_INSERT(hammer_pfs_rb_tree, &hmp->rb_pfsm_root, pfsm)) {
+			kfree(pfsm, M_HAMMER);
+			goto retry;
+		}
+		ip->pfsm = pfsm;
+
+		/*
+		 * Certain aspects of the pseudofs configuration are reflected
+		 * in the inode.
+		 */
+		if (pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE) {
+			ip->flags |= HAMMER_INODE_RO;
+			ip->flags |= HAMMER_INODE_PFSD;
+			if (ip->obj_asof > pfsm->pfsd.sync_beg_tid)
+				ip->obj_asof = pfsm->pfsd.sync_beg_tid;
+		} else if (pfsm->pfsd.master_id >= 0) {
+			ip->flags |= HAMMER_INODE_PFSD;
+		}
+	} else {
+		kfree(pfsm, M_HAMMER);
+	}
+	return(error);
+}
+
+/*
+ * Store pseudo-fs data.  The backend will automatically delete any prior
+ * on-disk pseudo-fs data but we have to delete in-memory versions.
+ */
+int
+hammer_save_pseudofs(hammer_transaction_t trans, hammer_inode_t ip)
+{
+	struct hammer_cursor cursor;
+	hammer_pseudofs_inmem_t pfsm;
+	hammer_record_t record;
+	int error;
+
+retry:
+	pfsm = ip->pfsm;
+	hammer_init_cursor(trans, &cursor, &ip->cache[1], ip);
+	cursor.key_beg.localization = ip->obj_localization +
+				      HAMMER_LOCALIZE_MISC;
+	cursor.key_beg.obj_id = ip->obj_id;
+	cursor.key_beg.create_tid = 0;
+	cursor.key_beg.delete_tid = 0;
+	cursor.key_beg.rec_type = HAMMER_RECTYPE_FIX;
+	cursor.key_beg.obj_type = 0;
+	cursor.key_beg.key = HAMMER_FIXKEY_PSEUDOFS;
+	cursor.asof = HAMMER_MAX_TID;
+	cursor.flags |= HAMMER_CURSOR_ASOF;
+
+	error = hammer_ip_lookup(&cursor);
+	if (error == 0 && hammer_cursor_inmem(&cursor)) {
+		record = cursor.iprec;
+		if (record->flags & HAMMER_RECF_INTERLOCK_BE) {
+			KKASSERT(cursor.deadlk_rec == NULL);
+			hammer_ref(&record->lock);
+			cursor.deadlk_rec = record;
+			error = EDEADLK;
+		} else {
+			record->flags |= HAMMER_RECF_DELETED_FE;
+			error = 0;
+		}
+	}
+	if (error == 0 || error == ENOENT) {
+		record = hammer_alloc_mem_record(ip, sizeof(pfsm->pfsd));
+		record->type = HAMMER_MEM_RECORD_GENERAL;
+
+		record->leaf.base.localization = ip->obj_localization +
+						 HAMMER_LOCALIZE_MISC;
+		record->leaf.base.rec_type = HAMMER_RECTYPE_FIX;
+		record->leaf.base.key = HAMMER_FIXKEY_PSEUDOFS;
+		record->leaf.data_len = sizeof(pfsm->pfsd);
+		bcopy(&pfsm->pfsd, record->data, sizeof(pfsm->pfsd));
+		error = hammer_ip_add_record(trans, record);
+	}
+	hammer_done_cursor(&cursor);
+	if (error == EDEADLK)
+		goto retry;
+	if (error == 0) {
+		/*
+		 * Certain aspects of the pseudofs configuration are reflected
+		 * in the inode.  Note that we cannot mess with the as-of or
+		 * clear the read-only state.
+		 *
+		 * If this inode represented a slave snapshot its asof will
+		 * be set to a snapshot tid.  When clearing slave mode any
+		 * re-access of the inode via the parent directory will
+		 * wind up using a different asof and thus will instantiate
+		 * a new inode.
+		 */
+		if (pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE) {
+			ip->flags |= HAMMER_INODE_RO;
+			ip->flags |= HAMMER_INODE_PFSD;
+		} else if (pfsm->pfsd.master_id >= 0) {
+			ip->flags |= HAMMER_INODE_PFSD;
+		} else {
+			ip->flags &= ~HAMMER_INODE_PFSD;
+		}
+	}
+	return(error);
+}
+
+void
+hammer_rel_pseudofs(hammer_mount_t hmp, hammer_pseudofs_inmem_t pfsm)
+{
+	hammer_unref(&pfsm->lock);
+	if (pfsm->lock.refs == 0) {
+		RB_REMOVE(hammer_pfs_rb_tree, &hmp->rb_pfsm_root, pfsm);
+		kfree(pfsm, M_HAMMER);
+	}
 }
 
 /*
@@ -921,16 +1142,7 @@ hammer_unload_inode(struct hammer_inode *ip)
 
 	RB_REMOVE(hammer_ino_rb_tree, &hmp->rb_inos_root, ip);
 
-	hammer_uncache_node(&ip->cache[0]);
-	hammer_uncache_node(&ip->cache[1]);
-	if (ip->objid_cache)
-		hammer_clear_objid(ip);
-	--hammer_count_inodes;
-	--hmp->count_inodes;
-
-	hammer_inode_wakereclaims(ip);
-	kfree(ip, M_HAMMER);
-
+	hammer_free_inode(ip);
 	return(0);
 }
 
@@ -965,7 +1177,7 @@ hammer_reload_inode(hammer_inode_t ip, void *arg __unused)
 void
 hammer_modify_inode(hammer_inode_t ip, int flags)
 {
-	KKASSERT ((ip->flags & HAMMER_INODE_RO) == 0 ||
+	KKASSERT(ip->hmp->ronly == 0 ||
 		  (flags & (HAMMER_INODE_DDIRTY | HAMMER_INODE_XDIRTY | 
 			    HAMMER_INODE_BUFS | HAMMER_INODE_DELETED |
 			    HAMMER_INODE_ATIME | HAMMER_INODE_MTIME)) == 0);
@@ -2017,8 +2229,11 @@ hammer_sync_inode(hammer_inode_t ip)
 	if (error == 0) {
 		tmp_node = hammer_ref_node_safe(ip->hmp, &ip->cache[0], &error);
 		if (tmp_node) {
+			hammer_cursor_downgrade(&cursor);
+			hammer_lock_sh(&tmp_node->lock);
 			if ((tmp_node->flags & HAMMER_NODE_DELETED) == 0)
 				hammer_cursor_seek(&cursor, tmp_node, 0);
+			hammer_unlock(&tmp_node->lock);
 			hammer_rel_node(tmp_node);
 		}
 		error = 0;

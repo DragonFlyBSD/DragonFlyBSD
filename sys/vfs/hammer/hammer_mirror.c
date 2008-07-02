@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.4 2008/06/28 23:50:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.5 2008/07/02 21:57:54 dillon Exp $
  */
 /*
  * HAMMER mirroring ioctls - serialize and deserialize modifications made
@@ -145,7 +145,7 @@ retry:
 			if (error)
 				break;
 		}
-		bytes = offsetof(struct hammer_ioc_mrecord, data[data_len]);
+		bytes = sizeof(struct hammer_ioc_mrecord) + data_len;
 		bytes = (bytes + HAMMER_HEAD_ALIGN_MASK) &
 			~HAMMER_HEAD_ALIGN_MASK;
 		if (mirror->count + bytes > mirror->size)
@@ -160,6 +160,7 @@ retry:
 		 * userland and delete_tid is cleared.
 		 */
 		mrec.signature = HAMMER_IOC_MIRROR_SIGNATURE;
+		mrec.type = HAMMER_MREC_TYPE_REC;
 		mrec.rec_size = bytes;
 		mrec.leaf = *elm;
 		if (elm->base.delete_tid >= mirror->tid_end)
@@ -231,6 +232,10 @@ retry:
 			error = EINVAL;
 			break;
 		}
+		if (mrec.type != HAMMER_MREC_TYPE_REC) {
+			error = EINVAL;
+			break;
+		}
 		if (rec_crc != mrec.rec_crc) {
 			error = EINVAL;
 			break;
@@ -243,7 +248,7 @@ retry:
 		}
 		if (mrec.leaf.data_len < 0 || 
 		    mrec.leaf.data_len > HAMMER_XBUFSIZE ||
-		    offsetof(struct hammer_ioc_mrecord, data[mrec.leaf.data_len]) > mrec.rec_size) {
+		    sizeof(struct hammer_ioc_mrecord) + mrec.leaf.data_len > mrec.rec_size) {
 			error = EINVAL;
 		}
 
@@ -450,12 +455,82 @@ hammer_mirror_localize_data(hammer_data_ondisk_t data,
 		if (data->entry.obj_id == 1)
 			error = EBADF;
 	}
-	if (leaf->base.rec_type == HAMMER_RECTYPE_INODE) {
-		if (leaf->base.obj_id == HAMMER_OBJID_ROOT)
+	if (leaf->base.obj_id == HAMMER_OBJID_ROOT) {
+		if (leaf->base.rec_type == HAMMER_RECTYPE_INODE ||
+		    leaf->base.rec_type == HAMMER_RECTYPE_FIX) {
 			error = EBADF;
+		}
 	}
 	if (modified)
 		hammer_crc_set_leaf(data, leaf);
+	return(error);
+}
+
+/*
+ * Set mirroring/pseudo-fs information
+ */
+int
+hammer_ioc_set_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
+			struct hammer_ioc_pseudofs_rw *pfs)
+{
+	hammer_pseudofs_inmem_t pfsm;
+	int error;
+
+	pfsm = ip->pfsm;
+	error = 0;
+
+	if (pfs->pseudoid != ip->obj_localization)
+		error = EINVAL;
+	if (pfs->bytes != sizeof(pfsm->pfsd))
+		error = EINVAL;
+	if (pfs->version != HAMMER_IOC_PSEUDOFS_VERSION)
+		error = EINVAL;
+	if (error == 0 && pfs->ondisk) {
+		if (ip->obj_id != HAMMER_OBJID_ROOT)
+			error = EINVAL;
+		if (error == 0) {
+			error = copyin(pfs->ondisk, &ip->pfsm->pfsd,
+				       sizeof(ip->pfsm->pfsd));
+		}
+		if (error == 0)
+			error = hammer_save_pseudofs(trans, ip);
+	}
+	return(error);
+}
+
+/*
+ * Get mirroring/pseudo-fs information
+ */
+int
+hammer_ioc_get_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
+			struct hammer_ioc_pseudofs_rw *pfs)
+{
+	hammer_pseudofs_inmem_t pfsm;
+	int error;
+
+	pfs->pseudoid = ip->obj_localization;
+	pfs->bytes = sizeof(struct hammer_pseudofs_data);
+	pfs->version = HAMMER_IOC_PSEUDOFS_VERSION;
+
+	/*
+	 * Update pfsm->sync_end_tid if a master
+	 */
+	pfsm = ip->pfsm;
+	if (pfsm->pfsd.master_id >= 0)
+		pfsm->pfsd.sync_end_tid = trans->rootvol->ondisk->vol0_next_tid;
+
+	/*
+	 * Return PFS information for root inodes only.
+	 */
+	error = 0;
+	if (pfs->ondisk) {
+		if (ip->obj_id != HAMMER_OBJID_ROOT)
+			error = EINVAL;
+		if (error == 0) {
+			error = copyout(&ip->pfsm->pfsd, pfs->ondisk,
+					sizeof(ip->pfsm->pfsd));
+		}
+	}
 	return(error);
 }
 

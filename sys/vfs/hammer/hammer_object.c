@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.80 2008/07/01 02:08:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.81 2008/07/02 21:57:54 dillon Exp $
  */
 
 #include "hammer.h"
@@ -42,6 +42,8 @@ static int hammer_mem_first(hammer_cursor_t cursor);
 static int hammer_frontend_trunc_callback(hammer_record_t record,
 				void *data __unused);
 static int hammer_record_needs_overwrite_delete(hammer_record_t record);
+static int hammer_delete_general(hammer_cursor_t cursor, hammer_inode_t ip,
+		      hammer_btree_leaf_elm_t leaf);
 
 struct rec_trunc_info {
 	u_int16_t	rec_type;
@@ -1032,6 +1034,17 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	}
 
 	/*
+	 * If this is a general record there may be an on-disk version
+	 * that must be deleted before we can insert the new record.
+	 */
+	if (record->type == HAMMER_MEM_RECORD_GENERAL) {
+		error = hammer_delete_general(cursor, record->ip,
+					      &record->leaf);
+		if (error && error != ENOENT)
+			goto done;
+	}
+
+	/*
 	 * Setup the cursor.
 	 */
 	hammer_normalize_cursor(cursor);
@@ -1745,6 +1758,45 @@ retry:
 	}
 	if (error == ENOENT)
 		error = 0;
+	return(error);
+}
+
+/*
+ * This backend function deletes the specified record on-disk, similar to
+ * delete_range but for a specific record.  Unlike the exact deletions
+ * used when deleting a directory entry this function uses an ASOF search 
+ * like delete_range.
+ *
+ * This function may be called with ip->obj_asof set for a slave snapshot,
+ * so don't use it.  We always delete non-historical records only.
+ */
+static int
+hammer_delete_general(hammer_cursor_t cursor, hammer_inode_t ip,
+		      hammer_btree_leaf_elm_t leaf)
+{
+	hammer_transaction_t trans = cursor->trans;
+	int error;
+
+	KKASSERT(trans->type == HAMMER_TRANS_FLS);
+retry:
+	hammer_normalize_cursor(cursor);
+	cursor->key_beg = leaf->base;
+	cursor->asof = HAMMER_MAX_TID;
+	cursor->flags &= ~HAMMER_CURSOR_INITMASK;
+	cursor->flags |= HAMMER_CURSOR_ASOF;
+	cursor->flags |= HAMMER_CURSOR_BACKEND;
+	cursor->flags &= ~HAMMER_CURSOR_INSERT;
+
+	error = hammer_btree_lookup(cursor);
+	if (error == 0) {
+		error = hammer_ip_delete_record(cursor, ip, trans->tid);
+	}
+	if (error == EDEADLK) {
+		hammer_done_cursor(cursor);
+		error = hammer_init_cursor(trans, cursor, &ip->cache[1], ip);
+		if (error == 0)
+			goto retry;
+	}
 	return(error);
 }
 

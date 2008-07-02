@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.99 2008/07/01 02:08:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.100 2008/07/02 21:57:54 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -166,6 +166,24 @@ typedef enum hammer_inode_state {
 TAILQ_HEAD(hammer_record_list, hammer_record);
 
 /*
+ * Pseudo-filesystem extended data tracking
+ */
+struct hammer_pfs_rb_tree;
+struct hammer_pseudofs_inmem;
+RB_HEAD(hammer_pfs_rb_tree, hammer_pseudofs_inmem);
+RB_PROTOTYPE2(hammer_pfs_rb_tree, hammer_pseudofs_inmem, rb_node,
+	      hammer_pfs_rb_compare, u_int32_t);
+
+struct hammer_pseudofs_inmem {
+	RB_ENTRY(hammer_pseudofs_inmem)	rb_node;
+	struct hammer_lock	lock;
+	u_int32_t		localization;
+	struct hammer_pseudofs_data pfsd;
+};
+
+typedef struct hammer_pseudofs_inmem *hammer_pseudofs_inmem_t;
+
+/*
  * Cache object ids.  A fixed number of objid cache structures are
  * created to reserve object id's for newly created files in multiples
  * of 100,000, localized to a particular directory, and recycled as
@@ -241,6 +259,7 @@ struct hammer_inode {
 	int			rsv_databufs;
 	int			rsv_recs;
 	struct vnode		*vp;
+	hammer_pseudofs_inmem_t	pfsm;
 	struct lockf		advlock;
 	struct hammer_lock	lock;		/* sync copy interlock */
 	off_t			trunc_off;
@@ -269,7 +288,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_DDIRTY	0x0001	/* in-memory ino_data is dirty */
 					/* (not including atime/mtime) */
 #define HAMMER_INODE_RSV_INODES	0x0002	/* hmp->rsv_inodes bumped */
-#define HAMMER_INODE_UNUSED0004	0x0004
+#define HAMMER_INODE_PFSD	0x0004	/* obj_asof set based on pfsd */
 #define HAMMER_INODE_XDIRTY	0x0008	/* in-memory records */
 #define HAMMER_INODE_ONDISK	0x0010	/* inode is on-disk (else not yet) */
 #define HAMMER_INODE_FLUSH	0x0020	/* flush on last ref */
@@ -627,6 +646,7 @@ struct hammer_mount {
 	struct hammer_und_rb_tree rb_undo_root;
 	struct hammer_res_rb_tree rb_resv_root;
 	struct hammer_buf_rb_tree rb_bufs_root;
+	struct hammer_pfs_rb_tree rb_pfsm_root;
 	struct hammer_volume *rootvol;
 	struct hammer_base_elm root_btree_beg;
 	struct hammer_base_elm root_btree_end;
@@ -771,7 +791,6 @@ int	hammer_ip_check_directory_empty(hammer_transaction_t trans,
 			hammer_inode_t ip);
 int	hammer_sync_hmp(hammer_mount_t hmp, int waitfor);
 int	hammer_queue_inodes_flusher(hammer_mount_t hmp, int waitfor);
-
 
 hammer_record_t
 	hammer_alloc_mem_record(hammer_inode_t ip, int data_len);
@@ -980,7 +999,9 @@ int  hammer_ip_sync_data(hammer_cursor_t cursor, hammer_inode_t ip,
 			int64_t offset, void *data, int bytes);
 int  hammer_ip_sync_record(hammer_transaction_t trans, hammer_record_t rec);
 int  hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t rec);
-
+int  hammer_load_pseudofs(hammer_transaction_t trans, hammer_inode_t ip);
+int  hammer_save_pseudofs(hammer_transaction_t trans, hammer_inode_t ip);
+void hammer_rel_pseudofs(hammer_mount_t hmp, hammer_pseudofs_inmem_t pfsm);
 int hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 			struct ucred *cred);
 
@@ -1017,6 +1038,10 @@ int hammer_ioc_mirror_read(hammer_transaction_t trans, hammer_inode_t ip,
 			struct hammer_ioc_mirror_rw *mirror);
 int hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
 			struct hammer_ioc_mirror_rw *mirror);
+int hammer_ioc_set_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
+                        struct hammer_ioc_pseudofs_rw *pfs);
+int hammer_ioc_get_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
+                        struct hammer_ioc_pseudofs_rw *pfs);
 
 int hammer_signal_check(hammer_mount_t hmp);
 

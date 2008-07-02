@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.15 2008/06/26 04:06:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.16 2008/07/02 21:57:54 dillon Exp $
  */
 /*
  * HAMMER ioctl's.  This file can be #included from userland
@@ -197,12 +197,26 @@ struct hammer_ioc_synctid {
 
 /*
  * HAMMERIOC_GET_PSEUDOFS
+ * HAMMERIOC_SET_PSEUDOFS
  */
-struct hammer_ioc_get_pseudofs {
+struct hammer_ioc_pseudofs_rw {
 	struct hammer_ioc_head	head;
 	u_int32_t		pseudoid;
-	int			masterid;
+	u_int32_t		bytes;
+	u_int32_t		version;
+	u_int32_t		flags;
+	struct hammer_pseudofs_data *ondisk;
 };
+
+#define HAMMER_IOC_PSEUDOFS_VERSION	1
+
+#define HAMMER_IOC_PFS_SYNC_BEG		0x0001
+#define HAMMER_IOC_PFS_SYNC_END		0x0002
+#define HAMMER_IOC_PFS_SHARED_UUID	0x0004
+#define HAMMER_IOC_PFS_MIRROR_UUID	0x0008
+#define HAMMER_IOC_PFS_MASTER_ID	0x0010
+#define HAMMER_IOC_PFS_MIRROR_FLAGS	0x0020
+#define HAMMER_IOC_PFS_LABEL		0x0040
 
 /*
  * HAMMERIOC_MIRROR_READ/WRITE
@@ -227,13 +241,18 @@ typedef struct hammer_ioc_mrecord {
 	u_int32_t		signature;	/* signature for byte order */
 	u_int32_t		rec_crc;
 	u_int32_t		rec_size;
-	u_int32_t		unused01;
+	u_int32_t		type;
 	struct hammer_btree_leaf_elm leaf;
-	char			data[8];	/* extended */
+	/* extended by data */
 } *hammer_ioc_mrecord_t;
 
+#define HAMMER_MREC_TYPE_RESERVED	0
+#define HAMMER_MREC_TYPE_REC		1
+#define HAMMER_MREC_TYPE_PFSD		2
+#define HAMMER_MREC_TYPE_UPDATE		3
+
 #define HAMMER_MREC_CRCOFF	(offsetof(struct hammer_ioc_mrecord, rec_size))
-#define HAMMER_MREC_HEADSIZE	(offsetof(struct hammer_ioc_mrecord, data[0]))
+#define HAMMER_MREC_HEADSIZE	sizeof(struct hammer_ioc_mrecord)
 
 #define HAMMER_IOC_MIRROR_SIGNATURE	0x4dd97272U
 #define HAMMER_IOC_MIRROR_SIGNATURE_REV	0x7272d94dU
@@ -246,8 +265,10 @@ typedef struct hammer_ioc_mrecord {
 #define HAMMERIOC_GETHISTORY	_IOWR('h',2,struct hammer_ioc_history)
 #define HAMMERIOC_REBLOCK	_IOWR('h',3,struct hammer_ioc_reblock)
 #define HAMMERIOC_SYNCTID	_IOWR('h',4,struct hammer_ioc_synctid)
-#define HAMMERIOC_GET_PSEUDOFS	_IOR('h',6,struct hammer_ioc_get_pseudofs)
+#define HAMMERIOC_SET_PSEUDOFS	_IOWR('h',5,struct hammer_ioc_pseudofs_rw)
+#define HAMMERIOC_GET_PSEUDOFS	_IOWR('h',6,struct hammer_ioc_pseudofs_rw)
 #define HAMMERIOC_MIRROR_READ	_IOWR('h',7,struct hammer_ioc_mirror_rw)
 #define HAMMERIOC_MIRROR_WRITE	_IOWR('h',8,struct hammer_ioc_mirror_rw)
 
 #endif
+

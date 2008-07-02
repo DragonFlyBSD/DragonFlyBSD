@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.60 2008/07/01 16:48:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.61 2008/07/02 21:57:54 dillon Exp $
  */
 
 /*
@@ -89,6 +89,16 @@ static int btree_remove(hammer_cursor_t cursor);
 static int btree_node_is_full(hammer_node_ondisk_t node);
 static void hammer_make_separator(hammer_base_elm_t key1,
 			hammer_base_elm_t key2, hammer_base_elm_t dest);
+
+static __inline
+int
+hammer_do_mirror_propagate(hammer_cursor_t cursor)
+{
+	return(1);
+	/*
+            (cursor->trans->hmp->hflags & (HMNT_MASTERID|HMNT_SLAVE)))
+	*/
+}
 
 /*
  * Iterate records after a search.  The cursor is iterated forwards past
@@ -712,12 +722,11 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm)
 	hammer_modify_node_done(cursor->node);
 
 	/*
-	 * What we really want to do is propogate mirror_tid all the way
+	 * What we really want to do is propagate mirror_tid all the way
 	 * up the parent chain to the B-Tree root.  That would be
 	 * ultra-expensive, though.
 	 */
-	if (cursor->parent &&
-	    (cursor->trans->hmp->hflags & (HMNT_MASTERID|HMNT_SLAVE))) {
+	if (cursor->parent && hammer_do_mirror_propagate(cursor)) {
 		hammer_btree_mirror_propagate(cursor->trans, cursor->parent,
 					      cursor->parent_index,
 					      node->mirror_tid);
@@ -2007,7 +2016,7 @@ hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid)
  *
  * It should also be noted that when removing empty leaves we must be sure
  * to test and update mirror_tid because another thread may have deadlocked
- * against us (or someone) trying to propogate it up and cannot retry once
+ * against us (or someone) trying to propagate it up and cannot retry once
  * the node has been deleted.
  *
  * On return the cursor may end up pointing to an internal node, suitable
@@ -2044,11 +2053,11 @@ btree_remove(hammer_cursor_t cursor)
 	parent = cursor->parent;
 
 	/*
-	 * If another thread deadlocked trying to propogate mirror_tid up
+	 * If another thread deadlocked trying to propagate mirror_tid up
 	 * we have to finish the job before deleting node. XXX
 	 */
 	if (parent->ondisk->mirror_tid < node->ondisk->mirror_tid &&
-	    (cursor->trans->hmp->hflags & (HMNT_MASTERID|HMNT_SLAVE))) {
+	    hammer_do_mirror_propagate(cursor)) {
 		hammer_btree_mirror_propagate(cursor->trans,
 					      parent,
 					      cursor->parent_index,
@@ -2162,8 +2171,7 @@ hammer_btree_mirror_propagate(hammer_transaction_t trans, hammer_node_t node,
 
 	error = 0;
 		error = 0;
-	if (node->ondisk->parent &&
-	    (trans->hmp->hflags & (HMNT_MASTERID|HMNT_SLAVE))) {
+	if (node->ondisk->parent) {
 		parent = hammer_btree_get_parent(node, &parent_index,
 						 &error, 1);
 		if (parent) {

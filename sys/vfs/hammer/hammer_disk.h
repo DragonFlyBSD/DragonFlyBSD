@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.43 2008/06/28 18:10:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.44 2008/07/02 21:57:54 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -497,7 +497,7 @@ struct hammer_volume_ondisk {
 	int64_t vol0_stat_records;	/* total records in filesystem */
 	hammer_off_t vol0_btree_root;	/* B-Tree root */
 	hammer_tid_t vol0_next_tid;	/* highest synchronized TID */
-	hammer_off_t vol0_unused03;	/* limit the zone size */
+	hammer_off_t vol0_unused03;
 
 	/*
 	 * Blockmaps for zones.  Not all zones use a blockmap.  Note that
@@ -543,6 +543,7 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 #define HAMMER_RECTYPE_CLEAN_START	HAMMER_RECTYPE_EXT
 
 #define HAMMER_FIXKEY_SYMLINK		1
+#define HAMMER_FIXKEY_PSEUDOFS		2
 
 #define HAMMER_OBJTYPE_UNKNOWN		0	/* (never exists on-disk) */
 #define HAMMER_OBJTYPE_DIRECTORY	1
@@ -653,6 +654,40 @@ struct hammer_symlink_data {
 };
 
 #define HAMMER_SYMLINK_NAME_OFF	offsetof(struct hammer_symlink_data, name[0])
+
+/*
+ * The root inode for the primary filesystem and root inode for any
+ * pseudo-fs may be tagged with an optional data structure using
+ * HAMMER_RECTYPE_FIX/HAMMER_FIXKEY_PSEUDOFS.  This structure allows
+ * the node to be used as a mirroring master or slave.
+ *
+ * When operating as a slave CD's into the node automatically become read-only
+ * and as-of sync_beg_tid.  Synchronization runs must complete to
+ * sync_end_tid before it can be cycled into sync_beg_tid.  No pruning can
+ * occur beyond sync_beg_tid.
+ *
+ * When operating as a master the read PFSD info sets sync_beg_tid to
+ * the most recently flushed TID.
+ *
+ * sync_low_tid is not yet used but will represent the highest pruning
+ * end-point, after which full history is available.
+ */
+struct hammer_pseudofs_data {
+	hammer_tid_t	sync_low_tid;	/* full history beyond this point */
+	hammer_tid_t	sync_beg_tid;	/* last completed sync (snapshot pt) */
+	hammer_tid_t	sync_end_tid;	/* currently running sync end pt */
+	u_int64_t	sync_beg_ts;	/* real-time of last completed sync */
+	u_int64_t	sync_end_ts;	/* initiation of current sync cycle */
+	uuid_t		shared_uuid;	/* shared uuid (match required) */
+	uuid_t		unique_uuid;	/* unique uuid of this master/slave */
+	int32_t		master_id;	/* 0-15 (-1 if slave) */
+	int32_t		mirror_flags;	/* (reserved) */
+	char		label[64];	/* filesystem space label */
+};
+
+typedef struct hammer_pseudofs_data *hammer_pseudofs_data_t;
+
+#define HAMMER_PFSD_SLAVE	0x00000001
 
 /*
  * Rollup various structures embedded as record data

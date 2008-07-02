@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.57 2008/06/30 04:18:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.58 2008/07/02 21:57:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -357,6 +357,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	RB_INIT(&hmp->rb_undo_root);
 	RB_INIT(&hmp->rb_resv_root);
 	RB_INIT(&hmp->rb_bufs_root);
+	RB_INIT(&hmp->rb_pfsm_root);
 
 	hmp->ronly = ((mp->mnt_flag & MNT_RDONLY) != 0);
 
