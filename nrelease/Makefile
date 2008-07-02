@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.82 2008/06/29 10:34:04 corecode Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.83 2008/07/02 05:40:43 corecode Exp $
 #
 
 #########################################################################
@@ -200,7 +200,6 @@ buildiso:
 .endif
 	( cd ${.CURDIR}/../etc; MAKEOBJDIRPREFIX=${NRLOBJDIR}/nrelease \
 		make -m ${.CURDIR}/../share/mk DESTDIR=${ISOROOT} distribution )
-	/usr/libexec/sendmail/sendmail -bi -O AliasFile=${ISOROOT}/etc/mail/aliases -O DontBlameSendmail=mapinunsafedirpath
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
 	cd ${.CURDIR}/..; \
 	first=; \
