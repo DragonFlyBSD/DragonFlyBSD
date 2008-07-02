@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.h,v 1.19 2008/06/26 04:07:57 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.h,v 1.20 2008/07/02 22:05:59 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -40,6 +40,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/mount.h>
+#include <sys/wait.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -53,6 +54,7 @@
 #include <err.h>
 #include <ctype.h>
 #include <dirent.h>
+#include <uuid.h>
 
 #include "hammer_util.h"
 #include <vfs/hammer/hammer_ioctl.h>
@@ -75,7 +77,9 @@ void hammer_cmd_mirror_copy(char **av, int ac);
 void hammer_cmd_history(const char *offset_str, char **av, int ac);
 void hammer_cmd_blockmap(void);
 void hammer_cmd_reblock(char **av, int ac, int flags);
-void hammer_cmd_pseudofs(char **av, int ac);
+void hammer_cmd_pseudofs_status(char **av, int ac);
+void hammer_cmd_pseudofs_create(char **av, int ac);
+void hammer_cmd_pseudofs_update(char **av, int ac, int doinit);
 void hammer_cmd_status(char **av, int ac);
 void hammer_cmd_snapshot(char **av, int ac);
 

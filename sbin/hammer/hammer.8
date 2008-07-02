@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.29 2008/06/28 14:51:50 swildner Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.30 2008/07/02 22:05:59 dillon Exp $
 .Dd June 26, 2008
 .Dt HAMMER 8
 .Os
@@ -235,10 +235,86 @@ It is recommended that separate invocations be used for each data type.
 Btree nodes, inodes, and directories are typically the most important
 elements needing defragmentation.  Data can be defragmented over a longer
 period of time.
-.It Ar pseudofs Ar dirpath
+.It Ar pfs-status Ar dirpath
+Retrieve the mirroring configuration parameters for the specified
+HAMMER filesystem or pseudo-filesystem.
+.It Ar pfs-create Ar dirpath Op options
 Create a pseudo-filesystem inside a HAMMER filesystem.  Up to 65535 such
 filesystems can be created.  Each one uses an independant inode numbering
 space making it suitable for use as a replication source or target.
+.Pp
+Note that rm -rf'ing a pseudo-fs will not allow the pseudo-id to be reused
+until all historical data has been pruned out and the pseudo-fs is truely
+empty.
+.It Ar pfs-update Ar dirpath Op options
+Update the configuration parameters for an existing HAMMER filesystem
+or pseudo-filesystem.  Options that may be specified:
+.Pp
+.Bl -tag -width indent
+.It sync-beg-tid=0x16llx
+This is the automatic snapshot access TID for mirroring slaves.
+This parameter is normally updated automatically by the
+.Ar mirror-write
+directive.
+.Pp
+It is important to note that accessing a mirroring slave
+with a transaction id greater then the last fully synchronized transaction
+id can result in an unreliable snapshot since you will be accessing
+data that is still undergoing synchronization.
+.Pp
+Manually modifying this field is dangerous and can result in a broken
+mirror.
+.It sync-end-tid=0x16llx
+This is the current synchronization target for mirroring slaves.
+This parameter is normally updated automatically by the
+.Ar mirror-write
+directive.
+.Pp
+Manually modifying this field is dangerous and can result in a broken
+mirror.
+.It shared-uuid=<uuid>
+Set the shared uuid for this filesystem.  All mirrors must have the same
+shared uuid.  For safety purposes the mirror-write directives will refuse
+to operate on a target with a different shared uuid.
+.Pp
+Changing the shared uuid on an existing, non-empty mirroring target,
+including an empty but not completely pruned target, can lead
+to corruption of the mirroring target.
+.It unique-uuid=<uuid>
+Set the unique uuid for this filesystem.  This uuid should not be used
+anywhere else, even on exact copies of the filesystem.
+.It master=<num>
+Set the master id for multi-master mirroring.  Only values between 0 and 15
+inclusive may be specified.  All masters sharing the same
+.Ar shared-uuid
+must have different ids.
+Up to 16 masters will eventually be supported.
+Multi-master mirroring is not supported yet and the master id should be
+set to 0 on the single master when mirroring to one or more slaves.
+.It no-mirror
+This disables the ability to use this filesystem as a mirroring source
+or target.  You can still do full scans with mirror-read but incremental
+scans will not work.
+.It slave
+Sets slave mode, allowing the mirror to be used as a slave.  Except for
+the mirror-write directive all accesses to the mirror will be made read-only
+and will be as-of the
+.Ar sync_beg_tid .
+.It label=<string>
+Set a descriptive label for this filesystem.
+.El
+.It Ar mirror-read Ar filesystem Op Ar <begin-tid>
+Generate a mirroring stream to stdout.
+.It Ar mirror-write Ar filesystem Op Ar
+Take a mirroring stream on stdin and output it to stdout.
+.Pp
+This command will fail if the
+.Ar shared_uuid
+configuration field for the two filesystems do not match.
+.It Ar mirror-copy Ar [[user@]host:]filesystem Ar [[user@]host:]filesystem
+This is a shortcut which pipes a mirror-read command to a mirror-write
+command.  If a remote host specification is made the program forks an
+ssh and execs the mirror-read and/or mirror-write on the appropriate host.
 .El
 .\".Sh EXAMPLES
 .Sh DIAGNOSTICS

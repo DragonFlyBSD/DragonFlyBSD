@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_status.c,v 1.1 2008/06/26 04:07:57 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_status.c,v 1.2 2008/07/02 22:05:59 dillon Exp $
  */
 
 #include "hammer.h"
@@ -39,7 +39,7 @@
 void
 hammer_cmd_status(char **av, int ac)
 {
-	struct hammer_ioc_get_pseudofs pfs;
+	struct hammer_ioc_pseudofs_rw pfs;
 	int i;
 	int fd;
 

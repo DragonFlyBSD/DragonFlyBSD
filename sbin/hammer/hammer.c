@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.28 2008/06/26 15:12:21 mneumann Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.29 2008/07/02 22:05:59 dillon Exp $
  */
 
 #include "hammer.h"
@@ -125,8 +125,16 @@ main(int ac, char **av)
 		printf("0x%08x\n", key);
 		exit(0);
 	}
-	if (strcmp(av[0], "pseudofs") == 0) {
-		hammer_cmd_pseudofs(av + 1, ac - 1);
+	if (strcmp(av[0], "pfs-status") == 0) {
+		hammer_cmd_pseudofs_status(av + 1, ac - 1);
+		exit(0);
+	}
+	if (strcmp(av[0], "pfs-create") == 0) {
+		hammer_cmd_pseudofs_create(av + 1, ac - 1);
+		exit(0);
+	}
+	if (strcmp(av[0], "pfs-update") == 0) {
+		hammer_cmd_pseudofs_update(av + 1, ac - 1, 0);
 		exit(0);
 	}
 	if (strcmp(av[0], "status") == 0) {
@@ -255,7 +263,9 @@ usage(int exit_code)
 				  " [[user@]host:]<filesystem>\n"
 		"hammer reblock[-btree/inodes/dirs/data] "
 			"<filesystem> [pack%%]\n"
-		"hammer pseudofs <dirpath>\n"
+		"hammer pfs-status <dirpath>\n"
+		"hammer pfs-create <dirpath> [options]\n"
+		"hammer pfs-update <dirpath> [options]\n"
 		"hammer history[@offset[,len]] <file-1>...<file-N>\n"
 		"hammer -f blkdevs [-r] show\n"
 		"hammer -f blkdevs blockmap\n"

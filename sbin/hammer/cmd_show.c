@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.13 2008/06/26 04:07:57 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.14 2008/07/02 22:05:59 dillon Exp $
  */
 
 #include "hammer.h"
@@ -177,6 +177,8 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 	switch(type) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
 		printf("suboff=%016llx", elm->internal.subtree_offset);
+		if (VerboseOpt)
+			printf(" mirror %016llx", elm->internal.mirror_tid);
 		break;
 	case HAMMER_BTREE_TYPE_LEAF:
 		switch(elm->base.btype) {
