@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.81 2008/06/09 11:24:24 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.82 2008/07/03 08:22:36 corecode Exp $
  */
 
 #define	_IP_VHL
@@ -292,8 +292,6 @@ static struct malloc_pipe ipq_mpipe;
 
 static void		save_rte (u_char *, struct in_addr);
 static int		ip_dooptions (struct mbuf *m, int,
-					struct sockaddr_in *next_hop);
-static void		ip_forward (struct mbuf *m, boolean_t using_srcrt,
 					struct sockaddr_in *next_hop);
 static void		ip_freef (struct ipq *);
 static void		ip_input_handler (struct netmsg *);
@@ -1876,7 +1874,7 @@ u_char inetctlerrmap[PRC_NCMDS] = {
  * The using_srcrt parameter indicates whether the packet is being forwarded
  * via a source route.
  */
-static void
+void
 ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 {
 	struct ip *ip = mtod(m, struct ip *);
