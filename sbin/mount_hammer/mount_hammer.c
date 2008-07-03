@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/mount_hammer/mount_hammer.c,v 1.6 2008/06/26 15:03:47 dillon Exp $
+ * $DragonFly: src/sbin/mount_hammer/mount_hammer.c,v 1.7 2008/07/03 06:36:27 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -63,9 +63,7 @@ static void extract_volumes(ary_ptr_t *aryp, int *countp, char **av, int ac);
 #define MOPT_UPDATE         { "update",     0, MNT_UPDATE, 0 }
 
 #define MOPT_HAMMEROPTS		\
-	{ "history", 1, HMNT_NOHISTORY, 1 },	\
-	{ "master=", 0, HMNT_MASTERID, 1 },	\
-	{ "slave", 0, HMNT_SLAVE, 1 }		\
+	{ "history", 1, HMNT_NOHISTORY, 1 }	\
 
 static struct mntopt mopts[] = { MOPT_STDOPTS, MOPT_HAMMEROPTS,
 				 MOPT_UPDATE, MOPT_NULL };
@@ -82,7 +80,6 @@ main(int ac, char **av)
 	int ch;
 	int init_flags = 0;
 	char *mountpt;
-	char *ptr;
 
 	bzero(&info, sizeof(info));
 	info.asof = 0;
@@ -96,16 +93,6 @@ main(int ac, char **av)
 			break;
 		case 'o':
 			getmntopts(optarg, mopts, &mount_flags, &info.hflags);
-
-			/*
-			 * Handle extended flags with parameters.
-			 */
-			if (info.hflags & HMNT_MASTERID) {
-				ptr = strstr(optarg, "master=");
-				assert(ptr);
-				info.masterid = strtol(ptr + 7, NULL, 0);
-			}
-
 			break;
 		case 'u':
 			init_flags |= MNT_UPDATE;

@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/mount_hammer/mount_hammer.8,v 1.8 2008/06/24 03:24:52 thomas Exp $
+.\" $DragonFly: src/sbin/mount_hammer/mount_hammer.8,v 1.9 2008/07/03 06:36:27 dillon Exp $
 .Dd June 24, 2008
 .Dt MOUNT_HAMMER 8
 .Os
@@ -59,8 +59,6 @@ Specify mount options, which are a comma delimited set of options (see
 .Xr mount 8 ) .
 Supported mount options are:
 .Bl -tag -width indent
-.It Ar nohistory
-Do not retain history of file system changes.
 .It Ar ro
 Issue a read-only mount.
 .It Ar nohistory
@@ -68,11 +66,6 @@ Put the entire filesystem in no-history mode.  Change history is not
 retained.
 Use of this option may increase the overhead of doing mirroring.
 This option is generally only used in an emergency.
-.It Ar master=<number>
-The filesystem is mounted in multi-master mode with the specified
-id (0-15).
-The id must uniquely identify the mount relative to other masters
-in the cluster.
 .El
 .It Fl T Ar transactionid
 Mount the filesystem as-of a particular
