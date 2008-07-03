@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.22 2008/07/01 04:54:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.23 2008/07/03 04:24:51 dillon Exp $
  */
 
 /*
@@ -496,6 +496,7 @@ again:
 		resv = RB_INSERT(hammer_res_rb_tree, &hmp->rb_resv_root, resx);
 		KKASSERT(resv == NULL);
 		resv = resx;
+		++hammer_count_reservations;
 	}
 	resv->append_off = offset + bytes;
 
@@ -576,6 +577,8 @@ hammer_reserve_setdelay(hammer_mount_t hmp, hammer_reserve_t resv,
 			++hammer_count_reservations;
 		}
 	} else if (resv->flags & HAMMER_RESF_ONDELAY) {
+		--hmp->rsv_fromdelay;
+		resv->flags &= ~HAMMER_RESF_ONDELAY;
 		TAILQ_REMOVE(&hmp->delay_list, resv, delay_entry);
 		resv->flush_group = hmp->flusher.next + 1;
 		error = 0;
@@ -584,6 +587,7 @@ hammer_reserve_setdelay(hammer_mount_t hmp, hammer_reserve_t resv,
 		error = 0;
 	}
 	if (error == 0) {
+		++hmp->rsv_fromdelay;
 		resv->flags |= HAMMER_RESF_ONDELAY;
 		resv->flush_group = hmp->flusher.next + 1;
 		TAILQ_INSERT_TAIL(&hmp->delay_list, resv, delay_entry);
@@ -597,6 +601,7 @@ hammer_reserve_clrdelay(hammer_mount_t hmp, hammer_reserve_t resv)
 	KKASSERT(resv->flags & HAMMER_RESF_ONDELAY);
 	resv->flags &= ~HAMMER_RESF_ONDELAY;
 	TAILQ_REMOVE(&hmp->delay_list, resv, delay_entry);
+	--hmp->rsv_fromdelay;
 	hammer_blockmap_reserve_complete(hmp, resv);
 }
 
@@ -1024,34 +1029,35 @@ hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t zone_offset,
  * Check space availability
  */
 int
-hammer_checkspace(hammer_mount_t hmp)
+hammer_checkspace(hammer_mount_t hmp, int slop)
 {
 	const int in_size = sizeof(struct hammer_inode_data) +
 			    sizeof(union hammer_btree_elm);
 	const int rec_size = (sizeof(union hammer_btree_elm) * 2);
-	const int blkconv = HAMMER_LARGEBLOCK_SIZE / HAMMER_BUFSIZE;
-	const int limit_inodes = HAMMER_LARGEBLOCK_SIZE / in_size;
-	const int limit_recs = HAMMER_LARGEBLOCK_SIZE / rec_size;
-	int usedbigblocks;;
+	int64_t usedbytes;
 
 	/*
-	 * Quick and very dirty, not even using the right units (bigblocks
-	 * vs 16K buffers), but this catches almost everything.
+	 * Hopefully a quick and fast check.
 	 */
-	if (hmp->copy_stat_freebigblocks >= hmp->rsv_databufs + 8 &&
-	    hmp->rsv_inodes < limit_inodes &&
-	    hmp->rsv_recs < limit_recs &&
-	    hmp->rsv_databytes < HAMMER_LARGEBLOCK_SIZE) {
+	if (hmp->copy_stat_freebigblocks * HAMMER_LARGEBLOCK_SIZE >=
+	    (int64_t)hidirtybufspace * 4 + 10 * HAMMER_LARGEBLOCK_SIZE) {
+		hammer_count_extra_space_used = -1;
 		return(0);
 	}
 
 	/*
 	 * Do a more involved check
 	 */
-	usedbigblocks = (hmp->rsv_inodes * in_size / HAMMER_LARGEBLOCK_SIZE) +
-			(hmp->rsv_recs * rec_size / HAMMER_LARGEBLOCK_SIZE) +
-			hmp->rsv_databufs / blkconv + 6;
-	if (hmp->copy_stat_freebigblocks >= usedbigblocks)
+	usedbytes = hmp->rsv_inodes * in_size +
+		    hmp->rsv_recs * rec_size +
+		    hmp->rsv_databytes +
+		    hmp->rsv_fromdelay * HAMMER_LARGEBLOCK_SIZE +
+		    hidirtybufspace +
+		    slop * HAMMER_LARGEBLOCK_SIZE;
+
+	hammer_count_extra_space_used = usedbytes;
+
+	if (hmp->copy_stat_freebigblocks >= usedbytes / HAMMER_LARGEBLOCK_SIZE)
 		return(0);
 	return (ENOSPC);
 }

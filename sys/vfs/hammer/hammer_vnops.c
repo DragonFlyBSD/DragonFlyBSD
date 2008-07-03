@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.79 2008/07/01 02:08:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.80 2008/07/03 04:24:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -159,8 +159,6 @@ static int hammer_dounlink(hammer_transaction_t trans, struct nchandle *nch,
 			   struct vnode *dvp, struct ucred *cred, int flags);
 static int hammer_vop_strategy_read(struct vop_strategy_args *ap);
 static int hammer_vop_strategy_write(struct vop_strategy_args *ap);
-static void hammer_cleanup_write_io(hammer_inode_t ip);
-static void hammer_update_rsv_databufs(hammer_inode_t ip);
 
 #if 0
 static
@@ -354,7 +352,7 @@ hammer_vop_write(struct vop_write_args *ap)
 		int blksize;
 		int blkmask;
 
-		if ((error = hammer_checkspace(hmp)) != 0)
+		if ((error = hammer_checkspace(hmp, HAMMER_CHECKSPACE_SLOP_WRITE)) != 0)
 			break;
 
 		blksize = hammer_blocksize(uio->uio_offset);
@@ -501,16 +499,7 @@ hammer_vop_write(struct vop_write_args *ap)
 		hammer_modify_inode(ip, flags);
 
 		/*
-		 * Try to keep track of cached dirty data.
-		 */
-		if ((bp->b_flags & B_DIRTY) == 0) {
-			++ip->rsv_databufs;
-			++hmp->rsv_databufs;
-		}
-
-		/*
 		 * Final buffer disposition.
-		 *
 		 */
 		bp->b_flags |= B_AGE;
 		if (ap->a_ioflag & IO_SYNC) {
@@ -592,7 +581,7 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 
 	if (dip->flags & HAMMER_INODE_RO)
 		return (EROFS);
-	if ((error = hammer_checkspace(dip->hmp)) != 0)
+	if ((error = hammer_checkspace(dip->hmp, HAMMER_CHECKSPACE_SLOP_CREATE)) != 0)
 		return (error);
 
 	/*
@@ -955,7 +944,7 @@ hammer_vop_nlink(struct vop_nlink_args *ap)
 		return (EROFS);
 	if (ip->flags & HAMMER_INODE_RO)
 		return (EROFS);
-	if ((error = hammer_checkspace(dip->hmp)) != 0)
+	if ((error = hammer_checkspace(dip->hmp, HAMMER_CHECKSPACE_SLOP_CREATE)) != 0)
 		return (error);
 
 	/*
@@ -1004,7 +993,7 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 
 	if (dip->flags & HAMMER_INODE_RO)
 		return (EROFS);
-	if ((error = hammer_checkspace(dip->hmp)) != 0)
+	if ((error = hammer_checkspace(dip->hmp, HAMMER_CHECKSPACE_SLOP_CREATE)) != 0)
 		return (error);
 
 	/*
@@ -1074,7 +1063,7 @@ hammer_vop_nmknod(struct vop_nmknod_args *ap)
 
 	if (dip->flags & HAMMER_INODE_RO)
 		return (EROFS);
-	if ((error = hammer_checkspace(dip->hmp)) != 0)
+	if ((error = hammer_checkspace(dip->hmp, HAMMER_CHECKSPACE_SLOP_CREATE)) != 0)
 		return (error);
 
 	/*
@@ -1379,7 +1368,7 @@ hammer_vop_nremove(struct vop_nremove_args *ap)
 	dip = VTOI(ap->a_dvp);
 
 	if (hammer_nohistory(dip) == 0 &&
-	    (error = hammer_checkspace(dip->hmp)) != 0) {
+	    (error = hammer_checkspace(dip->hmp, HAMMER_CHECKSPACE_SLOP_REMOVE)) != 0) {
 		return (error);
 	}
 
@@ -1420,7 +1409,7 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 		return (EROFS);
 	if (ip->flags & HAMMER_INODE_RO)
 		return (EROFS);
-	if ((error = hammer_checkspace(fdip->hmp)) != 0)
+	if ((error = hammer_checkspace(fdip->hmp, HAMMER_CHECKSPACE_SLOP_CREATE)) != 0)
 		return (error);
 
 	hammer_start_transaction(&trans, fdip->hmp);
@@ -1536,7 +1525,7 @@ hammer_vop_nrmdir(struct vop_nrmdir_args *ap)
 	dip = VTOI(ap->a_dvp);
 
 	if (hammer_nohistory(dip) == 0 &&
-	    (error = hammer_checkspace(dip->hmp)) != 0) {
+	    (error = hammer_checkspace(dip->hmp, HAMMER_CHECKSPACE_SLOP_REMOVE)) != 0) {
 		return (error);
 	}
 
@@ -1573,7 +1562,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 	if (ip->flags & HAMMER_INODE_RO)
 		return (EROFS);
 	if (hammer_nohistory(ip) == 0 &&
-	    (error = hammer_checkspace(ip->hmp)) != 0) {
+	    (error = hammer_checkspace(ip->hmp, HAMMER_CHECKSPACE_SLOP_REMOVE)) != 0) {
 		return (error);
 	}
 
@@ -1654,7 +1643,6 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			 */
 			if (truncating) {
 				hammer_ip_frontend_trunc(ip, vap->va_size);
-				hammer_update_rsv_databufs(ip);
 #ifdef DEBUG_TRUNCATE
 				if (HammerTruncIp == NULL)
 					HammerTruncIp = ip;
@@ -1775,7 +1763,7 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 
 	if (dip->flags & HAMMER_INODE_RO)
 		return (EROFS);
-	if ((error = hammer_checkspace(dip->hmp)) != 0)
+	if ((error = hammer_checkspace(dip->hmp, HAMMER_CHECKSPACE_SLOP_CREATE)) != 0)
 		return (error);
 
 	/*
@@ -1863,7 +1851,7 @@ hammer_vop_nwhiteout(struct vop_nwhiteout_args *ap)
 	dip = VTOI(ap->a_dvp);
 
 	if (hammer_nohistory(dip) == 0 &&
-	    (error = hammer_checkspace(dip->hmp)) != 0) {
+	    (error = hammer_checkspace(dip->hmp, HAMMER_CHECKSPACE_SLOP_CREATE)) != 0) {
 		return (error);
 	}
 
@@ -2420,6 +2408,7 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	hammer_inode_t ip;
 	struct bio *bio;
 	struct buf *bp;
+	int blksize;
 	int bytes;
 	int error;
 
@@ -2428,13 +2417,13 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	ip = ap->a_vp->v_data;
 	hmp = ip->hmp;
 
-	KKASSERT(bp->b_bufsize == hammer_blocksize(bio->bio_offset));
+	blksize = hammer_blocksize(bio->bio_offset);
+	KKASSERT(bp->b_bufsize == blksize);
 
 	if (ip->flags & HAMMER_INODE_RO) {
 		bp->b_error = EROFS;
 		bp->b_flags |= B_ERROR;
 		biodone(ap->a_bio);
-		hammer_cleanup_write_io(ip);
 		return(EROFS);
 	}
 
@@ -2447,7 +2436,6 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	if (ip->flags & (HAMMER_INODE_DELETING|HAMMER_INODE_DELETED)) {
 		bp->b_resid = 0;
 		biodone(ap->a_bio);
-		hammer_cleanup_write_io(ip);
 		return(0);
 	}
 
@@ -2488,46 +2476,7 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 		bp->b_flags |= B_ERROR;
 		biodone(ap->a_bio);
 	}
-	hammer_cleanup_write_io(ip);
 	return(error);
-}
-
-/*
- * Clean-up after disposing of a dirty frontend buffer's data.
- * This is somewhat heuristical so try to be robust.
- */
-static void
-hammer_cleanup_write_io(hammer_inode_t ip)
-{
-	if (ip->rsv_databufs) {
-		--ip->rsv_databufs;
-		--ip->hmp->rsv_databufs;
-	}
-}
-
-/*
- * We can lose track of dirty buffer cache buffers if we truncate, this
- * routine will resynchronize the count.
- */
-static
-void
-hammer_update_rsv_databufs(hammer_inode_t ip)
-{
-	struct buf *bp;
-	int delta;
-	int n;
-
-	if (ip->vp) {
-		n = 0;
-		RB_FOREACH(bp, buf_rb_tree, &ip->vp->v_rbdirty_tree) {
-			++n;
-		}
-	} else {
-		n = 0;
-	}
-	delta = n - ip->rsv_databufs;
-	ip->rsv_databufs += delta;
-	ip->hmp->rsv_databufs += delta;
 }
 
 /*

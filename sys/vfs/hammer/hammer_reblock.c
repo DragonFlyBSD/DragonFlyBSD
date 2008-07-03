@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.22 2008/06/27 20:56:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.23 2008/07/03 04:24:51 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -62,6 +62,7 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 	struct hammer_cursor cursor;
 	hammer_btree_elm_t elm;
 	int error;
+	int checkspace_count;
 
 	if ((reblock->key_beg.localization | reblock->key_end.localization) &
 	    HAMMER_LOCALIZE_PSEUDOFS_MASK) {
@@ -75,6 +76,7 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 	reblock->key_cur = reblock->key_beg;
 	reblock->key_cur.localization += ip->obj_localization;
 
+	checkspace_count = 0;
 retry:
 	error = hammer_init_cursor(trans, &cursor, NULL, NULL);
 	if (error) {
@@ -126,9 +128,27 @@ retry:
 		if (trans->hmp->sync_lock.wanted) {
 			tsleep(trans, 0, "hmrslo", hz / 10);
 		}
+
+		/*
+		 * If we build up too much meta-data we have to wait for
+		 * a flush cycle.
+		 */
 		if (hammer_flusher_meta_limit(trans->hmp) ||
 		    hammer_flusher_undo_exhausted(trans, 2)) {
 			error = EWOULDBLOCK;
+			break;
+		}
+
+		/*
+		 * If there is insufficient free space it may be due to
+		 * reserved bigblocks, which flushing might fix.
+		 */
+		if (hammer_checkspace(trans->hmp, HAMMER_CHECKSPACE_SLOP_REBLOCK)) {
+			if (++checkspace_count == 10) {
+				error = ENOSPC;
+			} else {
+				error = EWOULDBLOCK;
+			}
 			break;
 		}
 
@@ -145,6 +165,7 @@ retry:
 			cursor.flags |= HAMMER_CURSOR_ATEDISK;
 			error = hammer_btree_iterate(&cursor);
 		}
+
 	}
 	if (error == ENOENT)
 		error = 0;

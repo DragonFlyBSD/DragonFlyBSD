@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.91 2008/07/02 21:57:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.92 2008/07/03 04:24:51 dillon Exp $
  */
 
 #include "hammer.h"
@@ -450,8 +450,6 @@ retry:
 			ip->flags &= ~HAMMER_INODE_RSV_INODES; /* sanity */
 			--hmp->rsv_inodes;
 		}
-		hmp->rsv_databufs -= ip->rsv_databufs;
-		ip->rsv_databufs = 0;			       /* sanity */
 
 		hammer_free_inode(ip);
 		ip = NULL;
@@ -1815,14 +1813,10 @@ hammer_flush_inode_done(hammer_inode_t ip)
 		ip->flags |= HAMMER_INODE_DDIRTY;
 
 	/*
-	 * Fix up the dirty buffer status.  IO completions will also
-	 * try to clean up rsv_databufs.
+	 * Fix up the dirty buffer status.
 	 */
 	if (ip->vp && RB_ROOT(&ip->vp->v_rbdirty_tree)) {
 		ip->flags |= HAMMER_INODE_BUFS;
-	} else {
-		hmp->rsv_databufs -= ip->rsv_databufs;
-		ip->rsv_databufs = 0;
 	}
 
 	/*

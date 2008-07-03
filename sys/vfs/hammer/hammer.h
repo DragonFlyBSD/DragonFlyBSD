@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.100 2008/07/02 21:57:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.101 2008/07/03 04:24:51 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -256,7 +256,6 @@ struct hammer_inode {
 	int			flags;
 	int			error;		/* flush error */
 	int			cursor_ip_refs;	/* sanity */
-	int			rsv_databufs;
 	int			rsv_recs;
 	struct vnode		*vp;
 	hammer_pseudofs_inmem_t	pfsm;
@@ -657,9 +656,9 @@ struct hammer_mount {
 	int	volume_iterator;
 	int	masterid;	/* -1 or 0-15 - clustering and mirroring */
 	int	rsv_inodes;	/* reserved space due to dirty inodes */
-	int	rsv_databufs;	/* reserved space due to dirty buffers */
-	int	rsv_databytes;	/* reserved space due to record data */
+	int64_t	rsv_databytes;	/* reserved space due to record data */
 	int	rsv_recs;	/* reserved space due to dirty records */
+	int	rsv_fromdelay;	/* bigblocks reserved due to flush delay */
 	int	last_newrecords;
 	int	count_newrecords;
 
@@ -712,6 +711,14 @@ struct hammer_sync_info {
 
 #endif
 
+/*
+ * checkspace slop (8MB chunks), higher numbers are more conservative.
+ */
+#define HAMMER_CHECKSPACE_SLOP_REBLOCK	25
+#define HAMMER_CHECKSPACE_SLOP_WRITE	20
+#define HAMMER_CHECKSPACE_SLOP_CREATE	15
+#define HAMMER_CHECKSPACE_SLOP_REMOVE	10
+
 #if defined(_KERNEL)
 
 extern struct vop_ops hammer_vnode_vops;
@@ -737,6 +744,7 @@ extern int hammer_count_record_datas;
 extern int hammer_count_volumes;
 extern int hammer_count_buffers;
 extern int hammer_count_nodes;
+extern int64_t hammer_count_extra_space_used;
 extern int64_t hammer_stats_btree_lookups;
 extern int64_t hammer_stats_btree_searches;
 extern int64_t hammer_stats_btree_inserts;
@@ -934,7 +942,7 @@ hammer_off_t hammer_freemap_alloc(hammer_transaction_t trans,
 			hammer_off_t owner, int *errorp);
 void hammer_freemap_free(hammer_transaction_t trans, hammer_off_t phys_offset,
 			hammer_off_t owner, int *errorp);
-int hammer_checkspace(hammer_mount_t hmp);
+int hammer_checkspace(hammer_mount_t hmp, int slop);
 hammer_off_t hammer_blockmap_alloc(hammer_transaction_t trans, int zone,
 			int bytes, int *errorp);
 hammer_reserve_t hammer_blockmap_reserve(hammer_mount_t hmp, int zone,
