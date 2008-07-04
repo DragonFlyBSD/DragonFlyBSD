@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.2 2008/07/02 22:05:59 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.3 2008/07/04 07:20:43 dillon Exp $
  */
 
 #include "hammer.h"
@@ -192,10 +192,10 @@ hammer_cmd_mirror_copy(char **av, int ac)
 			*ptr++ = 0;
 			run_cmd("/usr/bin/ssh", "ssh",
 				av[0], "hammer mirror-read", ptr, NULL);
-			_exit(1);
 		} else {
 			hammer_cmd_mirror_read(av, 1);
 		}
+		_exit(1);
 	}
 
 	/*
@@ -210,10 +210,10 @@ hammer_cmd_mirror_copy(char **av, int ac)
 			*ptr++ = 0;
 			run_cmd("/usr/bin/ssh", "ssh",
 				av[1], "hammer mirror-write", ptr, NULL);
-			_exit(1);
 		} else {
 			hammer_cmd_mirror_write(av + 1, 1);
 		}
+		_exit(1);
 	}
 	close(fds[0]);
 	close(fds[1]);
