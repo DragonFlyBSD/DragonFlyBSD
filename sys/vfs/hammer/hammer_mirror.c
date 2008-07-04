@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.5 2008/07/02 21:57:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.6 2008/07/04 07:25:36 dillon Exp $
  */
 /*
  * HAMMER mirroring ioctls - serialize and deserialize modifications made
@@ -46,7 +46,7 @@ static int hammer_mirror_update(hammer_cursor_t cursor,
 				struct hammer_ioc_mrecord *mrec);
 static int hammer_mirror_write(hammer_cursor_t cursor,
 				struct hammer_ioc_mrecord *mrec,
-				char *udata);
+				hammer_inode_t ip, char *udata);
 static int hammer_mirror_localize_data(hammer_data_ondisk_t data,
 				hammer_btree_leaf_elm_t leaf);
 
@@ -199,6 +199,8 @@ failed:
 /*
  * Copy records from userland to the target mirror.  Records which already
  * exist may only have their delete_tid updated.
+ *
+ * The passed ip is the root ip of the pseudofs
  */
 int
 hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
@@ -282,7 +284,7 @@ retry:
 			hammer_sync_unlock(trans);
 		} else if (error == ENOENT && mrec.leaf.base.delete_tid == 0) {
 			hammer_sync_lock_sh(trans);
-			error = hammer_mirror_write(&cursor, &mrec,
+			error = hammer_mirror_write(&cursor, &mrec, ip,
 						    uptr + head_size);
 			hammer_sync_unlock(trans);
 		}
@@ -357,12 +359,13 @@ hammer_mirror_update(hammer_cursor_t cursor, struct hammer_ioc_mrecord *mrec)
 static
 int
 hammer_mirror_write(hammer_cursor_t cursor, struct hammer_ioc_mrecord *mrec,
-		    char *udata)
+		    hammer_inode_t ip, char *udata)
 {
 	hammer_buffer_t data_buffer = NULL;
 	hammer_off_t ndata_offset;
 	void *ndata;
 	int error;
+	int doprop;
 	int wanted_skip = 0;
 
 	if (mrec->leaf.data_len && mrec->leaf.data_offset) {
@@ -405,7 +408,9 @@ hammer_mirror_write(hammer_cursor_t cursor, struct hammer_ioc_mrecord *mrec,
 	/*
 	 * Physical insertion
 	 */
-	error = hammer_btree_insert(cursor, &mrec->leaf);
+	error = hammer_btree_insert(cursor, &mrec->leaf, &doprop);
+	if (error == 0 && doprop)
+		hammer_btree_do_propagation(cursor, ip, &mrec->leaf);
 
 failed:
 	/*

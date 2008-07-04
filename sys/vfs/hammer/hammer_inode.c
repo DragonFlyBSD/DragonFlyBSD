@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.92 2008/07/03 04:24:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.93 2008/07/04 07:25:36 dillon Exp $
  */
 
 #include "hammer.h"
@@ -719,6 +719,7 @@ retry:
 			ip->flags |= HAMMER_INODE_PFSD;
 		}
 	} else {
+		kprintf("cannot load pfsm error %d\n", error);
 		kfree(pfsm, M_HAMMER);
 	}
 	return(error);
@@ -1854,7 +1855,6 @@ hammer_flush_inode_done(hammer_inode_t ip)
 	 * flush group to the new one.
 	 */
 	if (ip->flags & HAMMER_INODE_WOULDBLOCK) {
-		kprintf("B");
 		ip->flush_state = HAMMER_FST_IDLE;
 		hammer_flush_inode_core(ip, HAMMER_FLUSH_SIGNAL);
 		ip->flags &= ~HAMMER_INODE_WOULDBLOCK;

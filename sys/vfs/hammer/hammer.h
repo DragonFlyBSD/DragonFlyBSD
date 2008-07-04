@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.101 2008/07/03 04:24:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.102 2008/07/04 07:25:36 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -388,6 +388,12 @@ typedef struct hammer_record *hammer_record_t;
 #define HAMMER_RECF_INTERLOCK_BE	0x0020	/* backend interlock */
 #define HAMMER_RECF_WANTED		0x0040	/* wanted by the frontend */
 #define HAMMER_RECF_CONVERT_DELETE 	0x0100 /* special case */
+
+/*
+ * hammer_delete_at_cursor() flags
+ */
+#define HAMMER_DELETE_ADJUST		0x0001
+#define HAMMER_DELETE_DESTROY		0x0002
 
 /*
  * In-memory structures representing on-disk structures.
@@ -794,7 +800,8 @@ int	hammer_ip_next(hammer_cursor_t cursor);
 int	hammer_ip_resolve_data(hammer_cursor_t cursor);
 int	hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 			hammer_tid_t tid);
-int	hammer_delete_at_cursor(hammer_cursor_t cursor, int64_t *stat_bytes);
+int	hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
+			int64_t *stat_bytes);
 int	hammer_ip_check_directory_empty(hammer_transaction_t trans,
 			hammer_inode_t ip);
 int	hammer_sync_hmp(hammer_mount_t hmp, int waitfor);
@@ -853,7 +860,6 @@ int	hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 int	hammer_reinit_cursor(hammer_cursor_t cursor);
 void	hammer_normalize_cursor(hammer_cursor_t cursor);
 void	hammer_done_cursor(hammer_cursor_t cursor);
-void	hammer_mem_done(hammer_cursor_t cursor);
 
 int	hammer_btree_lookup(hammer_cursor_t cursor);
 int	hammer_btree_first(hammer_cursor_t cursor);
@@ -862,12 +868,10 @@ int	hammer_btree_extract(hammer_cursor_t cursor, int flags);
 int	hammer_btree_iterate(hammer_cursor_t cursor);
 int	hammer_btree_iterate_reverse(hammer_cursor_t cursor);
 int	hammer_btree_insert(hammer_cursor_t cursor,
-			    hammer_btree_leaf_elm_t elm);
+			    hammer_btree_leaf_elm_t elm, int *doprop);
 int	hammer_btree_delete(hammer_cursor_t cursor);
-int	hammer_btree_mirror_propagate(hammer_transaction_t trans,
-			    hammer_node_t node, int index,
-			    hammer_tid_t mirror_tid);
-
+void	hammer_btree_do_propagation(hammer_cursor_t cursor, hammer_inode_t ip,
+			    hammer_btree_leaf_elm_t leaf);
 int	hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2);
 int	hammer_btree_chkts(hammer_tid_t ts, hammer_base_elm_t key);
 int	hammer_btree_correct_rhb(hammer_cursor_t cursor, hammer_tid_t tid);

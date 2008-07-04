@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.11 2008/07/01 17:30:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.12 2008/07/04 07:25:36 dillon Exp $
  */
 
 #include "hammer.h"
@@ -179,6 +179,7 @@ retry:
 			isdir = (elm->base.rec_type == HAMMER_RECTYPE_DIRENTRY);
 
 			error = hammer_delete_at_cursor(&cursor,
+							HAMMER_DELETE_DESTROY,
 							&prune->stat_bytes);
 			if (error)
 				break;

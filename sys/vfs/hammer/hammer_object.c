@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.81 2008/07/02 21:57:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.82 2008/07/04 07:25:36 dillon Exp $
  */
 
 #include "hammer.h"
@@ -560,15 +560,6 @@ hammer_mem_first(hammer_cursor_t cursor)
 	return(ENOENT);
 }
 
-void
-hammer_mem_done(hammer_cursor_t cursor)
-{
-        if (cursor->iprec) {
-		hammer_rel_mem_record(cursor->iprec);
-		cursor->iprec = NULL;
-	}
-}
-
 /************************************************************************
  *		     HAMMER IN-MEMORY RECORD FUNCTIONS			*
  ************************************************************************
@@ -994,6 +985,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	int bytes;
 	void *bdata;
 	int error;
+	int doprop;
 
 	KKASSERT(record->flush_state == HAMMER_FST_FLUSH);
 	KKASSERT(record->flags & HAMMER_RECF_INTERLOCK_BE);
@@ -1144,7 +1136,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 		record->leaf.data_crc = 0;
 	}
 
-	error = hammer_btree_insert(cursor, &record->leaf);
+	error = hammer_btree_insert(cursor, &record->leaf, &doprop);
 	if (hammer_debug_inode && error)
 		kprintf("BTREE INSERT error %d @ %016llx:%d key %016llx\n", error, cursor->node->node_offset, cursor->index, record->leaf.base.key);
 
@@ -1156,6 +1148,10 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	 * visibility on the synced entry.
 	 */
 	if (error == 0) {
+		if (doprop) {
+			hammer_btree_do_propagation(cursor, record->ip,
+						    &record->leaf);
+		}
 		if (record->flags & HAMMER_RECF_CONVERT_DELETE) {
 			KKASSERT(record->type == HAMMER_MEM_RECORD_ADD);
 			record->flags &= ~HAMMER_RECF_DELETED_FE;
@@ -1893,7 +1889,6 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 	hammer_btree_elm_t elm;
 	hammer_mount_t hmp;
 	int error;
-	int dodelete;
 
 	KKASSERT(cursor->flags & HAMMER_CURSOR_BACKEND);
 	KKASSERT(tid != 0);
@@ -1937,80 +1932,134 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 	error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_LEAF);
 	elm = NULL;
 
-	/*
-	 * If we were mounted with the nohistory option, we physically
-	 * delete the record.
-	 */
-	dodelete = hammer_nohistory(ip);
-
 	if (error == 0) {
-		error = hammer_cursor_upgrade(cursor);
-		if (error == 0) {
-			elm = &cursor->node->ondisk->elms[cursor->index];
-			hammer_modify_node(cursor->trans, cursor->node,
-					   elm, sizeof(*elm));
-			elm->leaf.base.delete_tid = tid;
-			elm->leaf.delete_ts = cursor->trans->time32;
-			hammer_modify_node_done(cursor->node);
-
-			/*
-			 * An on-disk record cannot have the same delete_tid
-			 * as its create_tid.  In a chain of record updates
-			 * this could result in a duplicate record.
-			 */
-			KKASSERT(elm->leaf.base.delete_tid != elm->leaf.base.create_tid);
-		}
-	}
-
-	if (error == 0 && dodelete) {
-		error = hammer_delete_at_cursor(cursor, NULL);
-		if (error) {
-			panic("hammer_ip_delete_record: unable to physically delete the record!\n");
-			error = 0;
-		}
+		error = hammer_delete_at_cursor(
+				cursor,
+				HAMMER_DELETE_ADJUST | hammer_nohistory(ip),
+				NULL);
 	}
 	return(error);
 }
 
+/*
+ * Delete the B-Tree element at the current cursor and do any necessary
+ * mirror propagation.
+ *
+ * The cursor must be properly positioned for an iteration on return but
+ * may be pointing at an internal element.
+ */
 int
-hammer_delete_at_cursor(hammer_cursor_t cursor, int64_t *stat_bytes)
+hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
+			int64_t *stat_bytes)
 {
+	struct hammer_btree_leaf_elm save_leaf;
+	hammer_btree_leaf_elm_t leaf;
+	hammer_node_t node;
 	hammer_btree_elm_t elm;
 	hammer_off_t data_offset;
 	int32_t data_len;
 	u_int16_t rec_type;
 	int error;
+	int doprop;
 
-	elm = &cursor->node->ondisk->elms[cursor->index];
+	error = hammer_cursor_upgrade(cursor);
+	if (error)
+		return(error);
+
+	node = cursor->node;
+	elm = &node->ondisk->elms[cursor->index];
+	leaf = &elm->leaf;
 	KKASSERT(elm->base.btype == HAMMER_BTREE_TYPE_RECORD);
 
-	data_offset = elm->leaf.data_offset;
-	data_len = elm->leaf.data_len;
-	rec_type = elm->leaf.base.rec_type;
+	/*
+	 * Adjust the delete_tid.  Update the mirror_tid propagation field
+	 * as well.
+	 */
+	doprop = 0;
+	if (delete_flags & HAMMER_DELETE_ADJUST) {
+		hammer_modify_node(cursor->trans, node, elm, sizeof(*elm));
+		elm->leaf.base.delete_tid = cursor->trans->tid;
+		elm->leaf.delete_ts = cursor->trans->time32;
+		hammer_modify_node_done(node);
 
-	error = hammer_btree_delete(cursor);
-	if (error == 0) {
+		if (elm->leaf.base.delete_tid > node->ondisk->mirror_tid) {
+			hammer_modify_node_field(cursor->trans, node, mirror_tid);
+			node->ondisk->mirror_tid = elm->leaf.base.delete_tid;
+			hammer_modify_node_done(node);
+			doprop = 1;
+		}
+
 		/*
-		 * This forces a fixup for the iteration because
-		 * the cursor is now either sitting at the 'next'
-		 * element or sitting at the end of a leaf.
+		 * Adjust for the iteration.  We have deleted the current
+		 * element and want to clear ATEDISK so the iteration does
+		 * not skip the element after, which now becomes the current
+		 * element.
 		 */
 		if ((cursor->flags & HAMMER_CURSOR_DISKEOF) == 0) {
 			cursor->flags |= HAMMER_CURSOR_DELBTREE;
 			cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
 		}
+
+		/*
+		 * An on-disk record cannot have the same delete_tid
+		 * as its create_tid.  In a chain of record updates
+		 * this could result in a duplicate record.
+		 */
+		KKASSERT(elm->leaf.base.delete_tid !=
+			 elm->leaf.base.create_tid);
 	}
-	if (error == 0) {
-		switch(data_offset & HAMMER_OFF_ZONE_MASK) {
-		case HAMMER_ZONE_LARGE_DATA:
-		case HAMMER_ZONE_SMALL_DATA:
-		case HAMMER_ZONE_META:
-			hammer_blockmap_free(cursor->trans,
-					     data_offset, data_len);
-			break;
-		default:
-			break;
+
+	/*
+	 * Destroy the B-Tree element if asked (typically if a nohistory
+	 * file or mount, or when called by the pruning code).
+	 *
+	 * Adjust the ATEDISK flag to properly support iterations.
+	 */
+	if (delete_flags & HAMMER_DELETE_DESTROY) {
+		data_offset = elm->leaf.data_offset;
+		data_len = elm->leaf.data_len;
+		rec_type = elm->leaf.base.rec_type;
+		if (doprop) {
+			save_leaf = elm->leaf;
+			leaf = &save_leaf;
 		}
+
+		error = hammer_btree_delete(cursor);
+		if (error == 0) {
+			/*
+			 * This forces a fixup for the iteration because
+			 * the cursor is now either sitting at the 'next'
+			 * element or sitting at the end of a leaf.
+			 */
+			if ((cursor->flags & HAMMER_CURSOR_DISKEOF) == 0) {
+				cursor->flags |= HAMMER_CURSOR_DELBTREE;
+				cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
+			}
+		}
+		if (error == 0) {
+			switch(data_offset & HAMMER_OFF_ZONE_MASK) {
+			case HAMMER_ZONE_LARGE_DATA:
+			case HAMMER_ZONE_SMALL_DATA:
+			case HAMMER_ZONE_META:
+				hammer_blockmap_free(cursor->trans,
+						     data_offset, data_len);
+				break;
+			default:
+				break;
+			}
+		}
+	}
+
+	/*
+	 * mirror_tid propagation occurs if the node's mirror_tid had to be
+	 * updated while adjusting the delete_tid.
+	 *
+	 * This occurs when deleting even in nohistory mode, but does not
+	 * occur when pruning an already-deleted node.
+	 */
+	if (doprop) {
+		KKASSERT(cursor->ip != NULL);
+		hammer_btree_do_propagation(cursor, cursor->ip, leaf);
 	}
 	return (error);
 }

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.35 2008/07/02 21:57:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.36 2008/07/04 07:25:36 dillon Exp $
  */
 
 /*
@@ -172,12 +172,13 @@ hammer_done_cursor(hammer_cursor_t cursor)
                 cursor->record_buffer = NULL;
         }
 	if ((ip = cursor->ip) != NULL) {
-		hammer_mem_done(cursor);
+		if (cursor->iprec) {
+			hammer_rel_mem_record(cursor->iprec);
+			cursor->iprec = NULL;
+		}
                 KKASSERT(ip->cursor_ip_refs > 0);
                 --ip->cursor_ip_refs;
-#if 1
 		hammer_unlock(&ip->lock);
-#endif
                 cursor->ip = NULL;
         }
 
