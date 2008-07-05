@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.93 2008/06/25 13:00:09 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.94 2008/07/05 12:22:37 sephe Exp $
  *
  */
 
@@ -517,13 +517,10 @@ bge_read_eeprom(struct bge_softc *sc, caddr_t dest, uint32_t off, size_t len)
 static int
 bge_miibus_readreg(device_t dev, int phy, int reg)
 {
-	struct bge_softc *sc;
-	struct ifnet *ifp;
+	struct bge_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t val, autopoll;
 	int i;
-
-	sc = device_get_softc(dev);
-	ifp = &sc->arpcom.ac_if;
 
 	/*
 	 * Broadcom's own driver always assumes the internal
@@ -548,17 +545,20 @@ bge_miibus_readreg(device_t dev, int phy, int reg)
 	    BGE_MIPHY(phy)|BGE_MIREG(reg));
 
 	for (i = 0; i < BGE_TIMEOUT; i++) {
+		DELAY(10);
 		val = CSR_READ_4(sc, BGE_MI_COMM);
 		if (!(val & BGE_MICOMM_BUSY))
 			break;
 	}
 
 	if (i == BGE_TIMEOUT) {
-		if_printf(ifp, "PHY read timed out\n");
+		if_printf(ifp, "PHY read timed out "
+			  "(phy %d, reg %d, val 0x%08x)\n", phy, reg, val);
 		val = 0;
 		goto done;
 	}
 
+	DELAY(5);
 	val = CSR_READ_4(sc, BGE_MI_COMM);
 
 done:
@@ -576,11 +576,15 @@ done:
 static int
 bge_miibus_writereg(device_t dev, int phy, int reg, int val)
 {
-	struct bge_softc *sc;
+	struct bge_softc *sc = device_get_softc(dev);
 	uint32_t autopoll;
 	int i;
 
-	sc = device_get_softc(dev);
+	/*
+	 * See the related comment in bge_miibus_readreg()
+	 */
+	if (phy != 1)
+		return(0);
 
 	/* Reading with autopolling on may trigger PCI errors */
 	autopoll = CSR_READ_4(sc, BGE_MI_MODE);
@@ -593,8 +597,12 @@ bge_miibus_writereg(device_t dev, int phy, int reg, int val)
 	    BGE_MIPHY(phy)|BGE_MIREG(reg)|val);
 
 	for (i = 0; i < BGE_TIMEOUT; i++) {
-		if (!(CSR_READ_4(sc, BGE_MI_COMM) & BGE_MICOMM_BUSY))
+		DELAY(10);
+		if (!(CSR_READ_4(sc, BGE_MI_COMM) & BGE_MICOMM_BUSY)) {
+			DELAY(5);
+			CSR_READ_4(sc, BGE_MI_COMM); /* dummy read */
 			break;
+		}
 	}
 
 	if (autopoll & BGE_MIMODE_AUTOPOLL) {
@@ -603,7 +611,8 @@ bge_miibus_writereg(device_t dev, int phy, int reg, int val)
 	}
 
 	if (i == BGE_TIMEOUT) {
-		if_printf(&sc->arpcom.ac_if, "PHY read timed out\n");
+		if_printf(&sc->arpcom.ac_if, "PHY write timed out "
+			  "(phy %d, reg %d, val %d)\n", phy, reg, val);
 		return(0);
 	}
 
