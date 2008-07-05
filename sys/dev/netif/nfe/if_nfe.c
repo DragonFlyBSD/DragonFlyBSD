@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.29 2008/07/05 05:16:54 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.30 2008/07/05 05:34:31 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -999,7 +999,7 @@ nfe_rxeof(struct nfe_softc *sc)
 
 		m = data->m;
 
-		if (sc->sc_caps & NFE_USE_JUMBO)
+		if (sc->sc_flags & NFE_F_USE_JUMBO)
 			error = nfe_newbuf_jumbo(sc, ring, ring->cur, 0);
 		else
 			error = nfe_newbuf_std(sc, ring, ring->cur, 0);
@@ -1352,12 +1352,12 @@ nfe_init(void *xsc)
 	 * be done _after_ nfe_stop() but _before_ nfe_init_rx_ring().
 	 */
 	if (ifp->if_mtu > ETHERMTU) {
-		sc->sc_caps |= NFE_USE_JUMBO;
+		sc->sc_flags |= NFE_F_USE_JUMBO;
 		sc->rxq.bufsz = NFE_JBYTES;
 		if (bootverbose)
 			if_printf(ifp, "use jumbo frames\n");
 	} else {
-		sc->sc_caps &= ~NFE_USE_JUMBO;
+		sc->sc_flags &= ~NFE_F_USE_JUMBO;
 		sc->rxq.bufsz = MCLBYTES;
 		if (bootverbose)
 			if_printf(ifp, "use non-jumbo frames\n");
@@ -1660,7 +1660,7 @@ nfe_reset_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 		struct nfe_rx_data *data = &ring->data[i];
 
 		if (data->m != NULL) {
-			if ((sc->sc_caps & NFE_USE_JUMBO) == 0)
+			if ((sc->sc_flags & NFE_F_USE_JUMBO) == 0)
 				bus_dmamap_unload(ring->data_tag, data->map);
 			m_freem(data->m);
 			data->m = NULL;
@@ -1680,7 +1680,7 @@ nfe_init_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 		int error;
 
 		/* XXX should use a function pointer */
-		if (sc->sc_caps & NFE_USE_JUMBO)
+		if (sc->sc_flags & NFE_F_USE_JUMBO)
 			error = nfe_newbuf_jumbo(sc, ring, i, 1);
 		else
 			error = nfe_newbuf_std(sc, ring, i, 1);
