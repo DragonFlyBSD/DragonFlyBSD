@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfevar.h,v 1.11 2006/02/19 13:57:02 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfevar.h,v 1.6 2008/07/05 05:02:42 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfevar.h,v 1.7 2008/07/05 05:16:54 sephe Exp $	*/
 
 /*
  * Copyright (c) 2005 Jonathan Gray <jsg@openbsd.org>
@@ -92,7 +92,7 @@ struct nfe_softc {
 	struct callout		sc_tick_ch;
 
 	int			sc_if_flags;
-	uint32_t		sc_flags;
+	uint32_t		sc_caps;
 #define NFE_JUMBO_SUP	0x01
 #define NFE_40BIT_ADDR	0x02
 #define NFE_HW_CSUM	0x04

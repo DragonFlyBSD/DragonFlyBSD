@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.28 2008/06/27 17:03:40 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.29 2008/07/05 05:16:54 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -371,13 +371,13 @@ nfe_probe(device_t dev)
 			case PCI_PRODUCT_NVIDIA_NFORCE_LAN:
 			case PCI_PRODUCT_NVIDIA_NFORCE2_LAN:
 			case PCI_PRODUCT_NVIDIA_NFORCE3_LAN1:
-				sc->sc_flags = NFE_NO_PWRCTL;
+				sc->sc_caps = NFE_NO_PWRCTL;
 				break;
 			case PCI_PRODUCT_NVIDIA_NFORCE3_LAN2:
 			case PCI_PRODUCT_NVIDIA_NFORCE3_LAN3:
 			case PCI_PRODUCT_NVIDIA_NFORCE3_LAN4:
 			case PCI_PRODUCT_NVIDIA_NFORCE3_LAN5:
-				sc->sc_flags = NFE_JUMBO_SUP |
+				sc->sc_caps = NFE_JUMBO_SUP |
 					       NFE_HW_CSUM |
 					       NFE_NO_PWRCTL;
 				break;
@@ -395,13 +395,13 @@ nfe_probe(device_t dev)
 			case PCI_PRODUCT_NVIDIA_MCP73_LAN2:
 			case PCI_PRODUCT_NVIDIA_MCP73_LAN3:
 			case PCI_PRODUCT_NVIDIA_MCP73_LAN4:
-				sc->sc_flags = NFE_40BIT_ADDR;
+				sc->sc_caps = NFE_40BIT_ADDR;
 				break;
 			case PCI_PRODUCT_NVIDIA_CK804_LAN1:
 			case PCI_PRODUCT_NVIDIA_CK804_LAN2:
 			case PCI_PRODUCT_NVIDIA_MCP04_LAN1:
 			case PCI_PRODUCT_NVIDIA_MCP04_LAN2:
-				sc->sc_flags = NFE_JUMBO_SUP |
+				sc->sc_caps = NFE_JUMBO_SUP |
 					       NFE_40BIT_ADDR |
 					       NFE_HW_CSUM |
 					       NFE_NO_PWRCTL;
@@ -410,12 +410,12 @@ nfe_probe(device_t dev)
 			case PCI_PRODUCT_NVIDIA_MCP65_LAN2:
 			case PCI_PRODUCT_NVIDIA_MCP65_LAN3:
 			case PCI_PRODUCT_NVIDIA_MCP65_LAN4:
-				sc->sc_flags = NFE_JUMBO_SUP |
+				sc->sc_caps = NFE_JUMBO_SUP |
 					       NFE_40BIT_ADDR;
 				break;
 			case PCI_PRODUCT_NVIDIA_MCP55_LAN1:
 			case PCI_PRODUCT_NVIDIA_MCP55_LAN2:
-				sc->sc_flags = NFE_JUMBO_SUP |
+				sc->sc_caps = NFE_JUMBO_SUP |
 					       NFE_40BIT_ADDR |
 					       NFE_HW_CSUM |
 					       NFE_HW_VLAN;
@@ -428,7 +428,7 @@ nfe_probe(device_t dev)
 			case PCI_PRODUCT_NVIDIA_MCP79_LAN2:
 			case PCI_PRODUCT_NVIDIA_MCP79_LAN3:
 			case PCI_PRODUCT_NVIDIA_MCP79_LAN4:
-				sc->sc_flags = NFE_40BIT_ADDR |
+				sc->sc_caps = NFE_40BIT_ADDR |
 					       NFE_HW_CSUM;
 				break;
 			}
@@ -462,9 +462,9 @@ nfe_attach(device_t dev)
 
 	sc->sc_mem_rid = PCIR_BAR(0);
 
-	if (sc->sc_flags & NFE_40BIT_ADDR)
+	if (sc->sc_caps & NFE_40BIT_ADDR)
 		sc->rxtxctl_desc = NFE_RXTX_DESC_V3;
-	else if (sc->sc_flags & NFE_JUMBO_SUP)
+	else if (sc->sc_caps & NFE_JUMBO_SUP)
 		sc->rxtxctl_desc = NFE_RXTX_DESC_V2;
 
 #ifndef BURN_BRIDGES
@@ -511,7 +511,7 @@ nfe_attach(device_t dev)
 	/* Disable WOL */
 	NFE_WRITE(sc, NFE_WOL_CTL, 0);
 
-	if ((sc->sc_flags & NFE_NO_PWRCTL) == 0)
+	if ((sc->sc_caps & NFE_NO_PWRCTL) == 0)
 		nfe_powerup(dev);
 
 	nfe_get_macaddr(sc, eaddr);
@@ -580,16 +580,16 @@ nfe_attach(device_t dev)
 
 	ifp->if_capabilities = IFCAP_VLAN_MTU;
 
-	if (sc->sc_flags & NFE_HW_VLAN)
+	if (sc->sc_caps & NFE_HW_VLAN)
 		ifp->if_capabilities |= IFCAP_VLAN_HWTAGGING;
 
 #ifdef NFE_CSUM
-	if (sc->sc_flags & NFE_HW_CSUM) {
+	if (sc->sc_caps & NFE_HW_CSUM) {
 		ifp->if_capabilities |= IFCAP_HWCSUM;
 		ifp->if_hwassist = NFE_CSUM_FEATURES;
 	}
 #else
-	sc->sc_flags &= ~NFE_HW_CSUM;
+	sc->sc_caps &= ~NFE_HW_CSUM;
 #endif
 	ifp->if_capenable = ifp->if_capabilities;
 
@@ -873,9 +873,9 @@ nfe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 	switch (cmd) {
 	case SIOCSIFMTU:
-		if (((sc->sc_flags & NFE_JUMBO_SUP) &&
+		if (((sc->sc_caps & NFE_JUMBO_SUP) &&
 		     ifr->ifr_mtu > NFE_JUMBO_MTU) ||
-		    ((sc->sc_flags & NFE_JUMBO_SUP) == 0 &&
+		    ((sc->sc_caps & NFE_JUMBO_SUP) == 0 &&
 		     ifr->ifr_mtu > ETHERMTU)) {
 			return EINVAL;
 		} else if (ifp->if_mtu != ifr->ifr_mtu) {
@@ -957,7 +957,7 @@ nfe_rxeof(struct nfe_softc *sc)
 		uint16_t flags;
 		int len, error;
 
-		if (sc->sc_flags & NFE_40BIT_ADDR) {
+		if (sc->sc_caps & NFE_40BIT_ADDR) {
 			struct nfe_desc64 *desc64 = &ring->desc64[ring->cur];
 
 			flags = le16toh(desc64->flags);
@@ -974,7 +974,7 @@ nfe_rxeof(struct nfe_softc *sc)
 
 		reap = 1;
 
-		if ((sc->sc_flags & (NFE_JUMBO_SUP | NFE_40BIT_ADDR)) == 0) {
+		if ((sc->sc_caps & (NFE_JUMBO_SUP | NFE_40BIT_ADDR)) == 0) {
 			if (!(flags & NFE_RX_VALID_V1))
 				goto skip;
 
@@ -999,7 +999,7 @@ nfe_rxeof(struct nfe_softc *sc)
 
 		m = data->m;
 
-		if (sc->sc_flags & NFE_USE_JUMBO)
+		if (sc->sc_caps & NFE_USE_JUMBO)
 			error = nfe_newbuf_jumbo(sc, ring, ring->cur, 0);
 		else
 			error = nfe_newbuf_std(sc, ring, ring->cur, 0);
@@ -1062,7 +1062,7 @@ nfe_txeof(struct nfe_softc *sc)
 	while (ring->next != ring->cur) {
 		uint16_t flags;
 
-		if (sc->sc_flags & NFE_40BIT_ADDR)
+		if (sc->sc_caps & NFE_40BIT_ADDR)
 			flags = le16toh(ring->desc64[ring->next].flags);
 		else
 			flags = le16toh(ring->desc32[ring->next].flags);
@@ -1072,7 +1072,7 @@ nfe_txeof(struct nfe_softc *sc)
 
 		data = &ring->data[ring->next];
 
-		if ((sc->sc_flags & (NFE_JUMBO_SUP | NFE_40BIT_ADDR)) == 0) {
+		if ((sc->sc_caps & (NFE_JUMBO_SUP | NFE_40BIT_ADDR)) == 0) {
 			if (!(flags & NFE_TX_LASTFRAG_V1) && data->m == NULL)
 				goto skip;
 
@@ -1205,7 +1205,7 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 		j = (ring->cur + i) % NFE_TX_RING_COUNT;
 		data = &ring->data[j];
 
-		if (sc->sc_flags & NFE_40BIT_ADDR) {
+		if (sc->sc_caps & NFE_40BIT_ADDR) {
 			desc64 = &ring->desc64[j];
 #if defined(__LP64__)
 			desc64->physaddr[0] =
@@ -1232,10 +1232,10 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 	}
 
 	/* the whole mbuf chain has been DMA mapped, fix last descriptor */
-	if (sc->sc_flags & NFE_40BIT_ADDR) {
+	if (sc->sc_caps & NFE_40BIT_ADDR) {
 		desc64->flags |= htole16(NFE_TX_LASTFRAG_V2);
 	} else {
-		if (sc->sc_flags & NFE_JUMBO_SUP)
+		if (sc->sc_caps & NFE_JUMBO_SUP)
 			flags = NFE_TX_LASTFRAG_V2;
 		else
 			flags = NFE_TX_LASTFRAG_V1;
@@ -1248,7 +1248,7 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 	 */
 	for (i = ctx.nsegs - 1; i >= 0; --i) {
 		j = (ring->cur + i) % NFE_TX_RING_COUNT;
-		if (sc->sc_flags & NFE_40BIT_ADDR) {
+		if (sc->sc_caps & NFE_40BIT_ADDR) {
 			desc64 = &ring->desc64[j];
 			desc64->flags |= htole16(NFE_TX_VALID);
 		} else {
@@ -1343,7 +1343,7 @@ nfe_init(void *xsc)
 
 	nfe_stop(sc);
 
-	if ((sc->sc_flags & NFE_NO_PWRCTL) == 0)
+	if ((sc->sc_caps & NFE_NO_PWRCTL) == 0)
 		nfe_mac_reset(sc);
 
 	/*
@@ -1352,12 +1352,12 @@ nfe_init(void *xsc)
 	 * be done _after_ nfe_stop() but _before_ nfe_init_rx_ring().
 	 */
 	if (ifp->if_mtu > ETHERMTU) {
-		sc->sc_flags |= NFE_USE_JUMBO;
+		sc->sc_caps |= NFE_USE_JUMBO;
 		sc->rxq.bufsz = NFE_JBYTES;
 		if (bootverbose)
 			if_printf(ifp, "use jumbo frames\n");
 	} else {
-		sc->sc_flags &= ~NFE_USE_JUMBO;
+		sc->sc_caps &= ~NFE_USE_JUMBO;
 		sc->rxq.bufsz = MCLBYTES;
 		if (bootverbose)
 			if_printf(ifp, "use non-jumbo frames\n");
@@ -1388,14 +1388,14 @@ nfe_init(void *xsc)
 	 * frames (NFE_RXTX_VTAG_STRIP), we do not enable this functionality on
 	 * purpose.  This will be done in software by our network stack.
 	 */
-	if (sc->sc_flags & NFE_HW_VLAN)
+	if (sc->sc_caps & NFE_HW_VLAN)
 		sc->rxtxctl |= NFE_RXTX_VTAG_INSERT;
 
 	NFE_WRITE(sc, NFE_RXTX_CTL, NFE_RXTX_RESET | sc->rxtxctl);
 	DELAY(10);
 	NFE_WRITE(sc, NFE_RXTX_CTL, sc->rxtxctl);
 
-	if (sc->sc_flags & NFE_HW_VLAN)
+	if (sc->sc_caps & NFE_HW_VLAN)
 		NFE_WRITE(sc, NFE_VTAG_CTL, NFE_VTAG_ENABLE);
 
 	NFE_WRITE(sc, NFE_SETUP_R6, 0);
@@ -1551,7 +1551,7 @@ nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 	int i, j, error, descsize;
 	void **desc;
 
-	if (sc->sc_flags & NFE_40BIT_ADDR) {
+	if (sc->sc_caps & NFE_40BIT_ADDR) {
 		desc = (void **)&ring->desc64;
 		descsize = sizeof(struct nfe_desc64);
 	} else {
@@ -1602,7 +1602,7 @@ nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 		return error;
 	}
 
-	if (sc->sc_flags & NFE_JUMBO_SUP) {
+	if (sc->sc_caps & NFE_JUMBO_SUP) {
 		error = nfe_jpool_alloc(sc, ring);
 		if (error) {
 			if_printf(&sc->arpcom.ac_if,
@@ -1660,7 +1660,7 @@ nfe_reset_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 		struct nfe_rx_data *data = &ring->data[i];
 
 		if (data->m != NULL) {
-			if ((sc->sc_flags & NFE_USE_JUMBO) == 0)
+			if ((sc->sc_caps & NFE_USE_JUMBO) == 0)
 				bus_dmamap_unload(ring->data_tag, data->map);
 			m_freem(data->m);
 			data->m = NULL;
@@ -1680,7 +1680,7 @@ nfe_init_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 		int error;
 
 		/* XXX should use a function pointer */
-		if (sc->sc_flags & NFE_USE_JUMBO)
+		if (sc->sc_caps & NFE_USE_JUMBO)
 			error = nfe_newbuf_jumbo(sc, ring, i, 1);
 		else
 			error = nfe_newbuf_std(sc, ring, i, 1);
@@ -1727,7 +1727,7 @@ nfe_free_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 	if (ring->tag != NULL) {
 		void *desc;
 
-		if (sc->sc_flags & NFE_40BIT_ADDR)
+		if (sc->sc_caps & NFE_40BIT_ADDR)
 			desc = ring->desc64;
 		else
 			desc = ring->desc32;
@@ -1875,7 +1875,7 @@ nfe_alloc_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 	int i, j, error, descsize;
 	void **desc;
 
-	if (sc->sc_flags & NFE_40BIT_ADDR) {
+	if (sc->sc_caps & NFE_40BIT_ADDR) {
 		desc = (void **)&ring->desc64;
 		descsize = sizeof(struct nfe_desc64);
 	} else {
@@ -1960,7 +1960,7 @@ nfe_reset_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 	for (i = 0; i < NFE_TX_RING_COUNT; i++) {
 		struct nfe_tx_data *data = &ring->data[i];
 
-		if (sc->sc_flags & NFE_40BIT_ADDR)
+		if (sc->sc_caps & NFE_40BIT_ADDR)
 			ring->desc64[i].flags = 0;
 		else
 			ring->desc32[i].flags = 0;
@@ -2009,7 +2009,7 @@ nfe_free_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 	if (ring->tag != NULL) {
 		void *desc;
 
-		if (sc->sc_flags & NFE_40BIT_ADDR)
+		if (sc->sc_caps & NFE_40BIT_ADDR)
 			desc = ring->desc64;
 		else
 			desc = ring->desc32;
@@ -2255,7 +2255,7 @@ static void
 nfe_set_paddr_rxdesc(struct nfe_softc *sc, struct nfe_rx_ring *ring, int idx,
 		     bus_addr_t physaddr)
 {
-	if (sc->sc_flags & NFE_40BIT_ADDR) {
+	if (sc->sc_caps & NFE_40BIT_ADDR) {
 		struct nfe_desc64 *desc64 = &ring->desc64[idx];
 
 #if defined(__LP64__)
@@ -2272,7 +2272,7 @@ nfe_set_paddr_rxdesc(struct nfe_softc *sc, struct nfe_rx_ring *ring, int idx,
 static void
 nfe_set_ready_rxdesc(struct nfe_softc *sc, struct nfe_rx_ring *ring, int idx)
 {
-	if (sc->sc_flags & NFE_40BIT_ADDR) {
+	if (sc->sc_caps & NFE_40BIT_ADDR) {
 		struct nfe_desc64 *desc64 = &ring->desc64[idx];
 
 		desc64->length = htole16(ring->bufsz);
