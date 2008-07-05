@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.35 2008/06/24 17:40:22 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.36 2008/07/05 23:59:38 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -116,6 +116,12 @@ main(int ac, char **av)
 	av += optind;
 	NumVolumes = ac;
 	RootVolNo = 0;
+
+        if ( NumVolumes == 0) {
+                fprintf(stderr,
+                        "newfs_hammer: You should specify at least one volume\n");
+                exit(1);
+        }
 
 	total = 0;
 	for (i = 0; i < NumVolumes; ++i) {
