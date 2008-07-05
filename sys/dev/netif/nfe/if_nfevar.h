@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfevar.h,v 1.11 2006/02/19 13:57:02 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfevar.h,v 1.8 2008/07/05 05:34:31 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfevar.h,v 1.9 2008/07/05 07:29:44 sephe Exp $	*/
 
 /*
  * Copyright (c) 2005 Jonathan Gray <jsg@openbsd.org>
@@ -92,7 +92,7 @@ struct nfe_softc {
 	struct callout		sc_tick_ch;
 
 	int			sc_if_flags;
-	uint32_t		sc_caps;
+	uint32_t		sc_caps;	/* hardware capabilities */
 #define NFE_JUMBO_SUP	0x01
 #define NFE_40BIT_ADDR	0x02
 #define NFE_HW_CSUM	0x04
@@ -100,7 +100,9 @@ struct nfe_softc {
 #define NFE_NO_PWRCTL	0x20
 
 	uint32_t		sc_flags;
-#define NFE_F_USE_JUMBO	0x01
+#define NFE_F_USE_JUMBO	0x01	/* use jumbo frame */
+#define NFE_F_DYN_IM	0x02	/* enable dynamic interrupt moderation */
+#define NFE_F_IRQ_TIMER	0x04	/* hardware timer irq is used */
 
 	uint32_t		rxtxctl_desc;
 	uint32_t		rxtxctl;
@@ -120,4 +122,5 @@ struct nfe_softc {
 };
 
 #define NFE_IRQ_ENABLE(sc)	\
-	((sc)->sc_imtime < 0 ? NFE_IRQ_NOIMTIMER : NFE_IRQ_IMTIMER)
+	((sc)->sc_imtime == 0 ? NFE_IRQ_NOIMTIMER : \
+	 (((sc)->sc_flags & NFE_F_DYN_IM) ? NFE_IRQ_NOIMTIMER: NFE_IRQ_IMTIMER))

@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.30 2008/07/05 05:34:31 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.31 2008/07/05 07:29:44 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -113,8 +113,8 @@ static void	nfe_poll(struct ifnet *, enum poll_cmd, int);
 #endif
 static void	nfe_intr(void *);
 static int	nfe_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static void	nfe_rxeof(struct nfe_softc *);
-static void	nfe_txeof(struct nfe_softc *);
+static int	nfe_rxeof(struct nfe_softc *);
+static int	nfe_txeof(struct nfe_softc *);
 static int	nfe_encap(struct nfe_softc *, struct nfe_tx_ring *,
 			  struct mbuf *);
 static void	nfe_start(struct ifnet *);
@@ -153,6 +153,8 @@ static int	nfe_newbuf_std(struct nfe_softc *, struct nfe_rx_ring *, int,
 			       int);
 static int	nfe_newbuf_jumbo(struct nfe_softc *, struct nfe_rx_ring *, int,
 				 int);
+static void	nfe_enable_intrs(struct nfe_softc *);
+static void	nfe_disable_intrs(struct nfe_softc *);
 
 static int	nfe_sysctl_imtime(SYSCTL_HANDLER_ARGS);
 
@@ -161,7 +163,7 @@ static int	nfe_sysctl_imtime(SYSCTL_HANDLER_ARGS);
 
 static int	nfe_debug = 0;
 static int	nfe_rx_ring_count = NFE_RX_RING_DEF_COUNT;
-static int	nfe_imtime = -1;
+static int	nfe_imtime = 0;	/* Disable interrupt moderation */
 
 TUNABLE_INT("hw.nfe.rx_ring_count", &nfe_rx_ring_count);
 TUNABLE_INT("hw.nfe.imtime", &nfe_imtime);
@@ -455,10 +457,15 @@ nfe_attach(device_t dev)
 	/*
 	 * Initialize sysctl variables
 	 */
-	sc->sc_imtime = nfe_imtime;
-	sc->sc_irq_enable = NFE_IRQ_ENABLE(sc);
 	sc->sc_rx_ring_count = nfe_rx_ring_count;
 	sc->sc_debug = nfe_debug;
+	if (nfe_imtime < 0) {
+		sc->sc_flags |= NFE_F_DYN_IM;
+		sc->sc_imtime = -nfe_imtime;
+	} else {
+		sc->sc_imtime = nfe_imtime;
+	}
+	sc->sc_irq_enable = NFE_IRQ_ENABLE(sc);
 
 	sc->sc_mem_rid = PCIR_BAR(0);
 
@@ -550,7 +557,7 @@ nfe_attach(device_t dev)
 			OID_AUTO, "imtimer", CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, nfe_sysctl_imtime, "I",
 			"Interrupt moderation time (usec).  "
-			"-1 to disable interrupt moderation.");
+			"0 to disable interrupt moderation.");
 	SYSCTL_ADD_INT(NULL, SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
 		       "rx_ring_count", CTLFLAG_RD, &sc->sc_rx_ring_count,
 		       0, "RX ring count");
@@ -814,13 +821,13 @@ nfe_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 
 	switch(cmd) {
 	case POLL_REGISTER:
-		/* Disable interrupts */
-		NFE_WRITE(sc, NFE_IRQ_MASK, 0);
+		nfe_disable_intrs(sc);
 		break;
+
 	case POLL_DEREGISTER:
-		/* enable interrupts */
-		NFE_WRITE(sc, NFE_IRQ_MASK, sc->sc_irq_enable);
+		nfe_enable_intrs(sc);
 		break;
+
 	case POLL_AND_CHECK_STATUS:
 		/* fall through */
 	case POLL_ONLY:
@@ -855,11 +862,31 @@ nfe_intr(void *arg)
 	}
 
 	if (ifp->if_flags & IFF_RUNNING) {
+		int ret;
+
 		/* check Rx ring */
-		nfe_rxeof(sc);
+		ret = nfe_rxeof(sc);
 
 		/* check Tx ring */
-		nfe_txeof(sc);
+		ret |= nfe_txeof(sc);
+
+		if (sc->sc_flags & NFE_F_DYN_IM) {
+			if (ret && (sc->sc_flags & NFE_F_IRQ_TIMER) == 0) {
+				/*
+				 * Assume that using hardware timer could reduce
+				 * the interrupt rate.
+				 */
+				NFE_WRITE(sc, NFE_IRQ_MASK, NFE_IRQ_IMTIMER);
+				sc->sc_flags |= NFE_F_IRQ_TIMER;
+			} else if (!ret && (sc->sc_flags & NFE_F_IRQ_TIMER)) {
+				/*
+				 * Nothing needs to be processed, fall back to
+				 * use TX/RX interrupts.
+				 */
+				NFE_WRITE(sc, NFE_IRQ_MASK, NFE_IRQ_NOIMTIMER);
+				sc->sc_flags &= ~NFE_F_IRQ_TIMER;
+			}
+		}
 	}
 }
 
@@ -934,7 +961,7 @@ nfe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	return error;
 }
 
-static void
+static int
 nfe_rxeof(struct nfe_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -1049,9 +1076,10 @@ skip:
 		ether_input_dispatch(chain);
 #endif
 	}
+	return reap;
 }
 
-static void
+static int
 nfe_txeof(struct nfe_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
@@ -1119,7 +1147,9 @@ skip:
 	if (data != NULL) {	/* at least one slot freed */
 		ifp->if_flags &= ~IFF_OACTIVE;
 		if_devstart(ifp);
+		return 1;
 	}
+	return 0;
 }
 
 static int
@@ -1426,25 +1456,6 @@ nfe_init(void *xsc)
 	tmp = NFE_READ(sc, NFE_PWR_STATE);
 	NFE_WRITE(sc, NFE_PWR_STATE, tmp | NFE_PWR_VALID);
 
-	/*
-	 * NFE_IMTIMER generates a periodic interrupt via NFE_IRQ_TIMER.
-	 * It is unclear how wide the timer is.  Base programming does
-	 * not seem to effect NFE_IRQ_TX_DONE or NFE_IRQ_RX_DONE so
-	 * we don't get any interrupt moderation.  TX moderation is
-	 * possible by using the timer interrupt instead of TX_DONE.
-	 *
-	 * It is unclear whether there are other bits that can be
-	 * set to make the NFE device actually do interrupt moderation
-	 * on the RX side.
-	 *
-	 * For now set a 128uS interval as a placemark, but don't use
-	 * the timer.
-	 */
-	if (sc->sc_imtime < 0)
-		NFE_WRITE(sc, NFE_IMTIMER, NFE_IMTIME_DEFAULT);
-	else
-		NFE_WRITE(sc, NFE_IMTIMER, NFE_IMTIME(sc->sc_imtime));
-
 	NFE_WRITE(sc, NFE_SETUP_R1, NFE_R1_MAGIC);
 	NFE_WRITE(sc, NFE_SETUP_R2, NFE_R2_MAGIC);
 	NFE_WRITE(sc, NFE_SETUP_R6, NFE_R6_MAGIC);
@@ -1473,10 +1484,11 @@ nfe_init(void *xsc)
 	NFE_WRITE(sc, NFE_PHY_STATUS, 0xf);
 
 #ifdef DEVICE_POLLING
-	if ((ifp->if_flags & IFF_POLLING) == 0)
+	if ((ifp->if_flags & IFF_POLLING))
+		nfe_disable_intrs(sc);
+	else
 #endif
-	/* enable interrupts */
-	NFE_WRITE(sc, NFE_IRQ_MASK, sc->sc_irq_enable);
+	nfe_enable_intrs(sc);
 
 	callout_reset(&sc->sc_tick_ch, hz, nfe_tick, sc);
 
@@ -1502,6 +1514,7 @@ nfe_stop(struct nfe_softc *sc)
 
 	ifp->if_timer = 0;
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	sc->sc_flags &= ~NFE_F_IRQ_TIMER;
 
 #define WAITMAX	50000
 
@@ -2290,32 +2303,41 @@ nfe_sysctl_imtime(SYSCTL_HANDLER_ARGS)
 {
 	struct nfe_softc *sc = arg1;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+	uint32_t flags;
 	int error, v;
 
 	lwkt_serialize_enter(ifp->if_serializer);
 
+	flags = sc->sc_flags & ~NFE_F_DYN_IM;
 	v = sc->sc_imtime;
+	if (sc->sc_flags & NFE_F_DYN_IM)
+		v = -v;
+
 	error = sysctl_handle_int(oidp, &v, 0, req);
 	if (error || req->newptr == NULL)
 		goto back;
-	if (v == 0) {
-		error = EINVAL;
-		goto back;
+
+	if (v < 0) {
+		flags |= NFE_F_DYN_IM;
+		v = -v;
 	}
 
-	if (sc->sc_imtime != v) {
+	if (v != sc->sc_imtime || (flags ^ sc->sc_flags)) {
 		int old_imtime = sc->sc_imtime;
+		uint32_t old_flags = sc->sc_flags;
 
 		sc->sc_imtime = v;
+		sc->sc_flags = flags;
 		sc->sc_irq_enable = NFE_IRQ_ENABLE(sc);
 
 		if ((ifp->if_flags & (IFF_POLLING | IFF_RUNNING))
 		    == IFF_RUNNING) {
-			if (old_imtime > 0 && sc->sc_imtime > 0) {
+			if (old_imtime * sc->sc_imtime == 0 ||
+			    (old_flags ^ sc->sc_flags)) {
+				ifp->if_init(sc);
+			} else {
 				NFE_WRITE(sc, NFE_IMTIMER,
 					  NFE_IMTIME(sc->sc_imtime));
-			} else if ((old_imtime * sc->sc_imtime) < 0) {
-				ifp->if_init(sc);
 			}
 		}
 	}
@@ -2371,4 +2393,43 @@ nfe_mac_reset(struct nfe_softc *sc)
 	NFE_WRITE(sc, NFE_TX_POLL, tx_poll);
 
 	NFE_WRITE(sc, NFE_RXTX_CTL, rxtxctl);
+}
+
+static void
+nfe_enable_intrs(struct nfe_softc *sc)
+{
+	/*
+	 * NFE_IMTIMER generates a periodic interrupt via NFE_IRQ_TIMER.
+	 * It is unclear how wide the timer is.  Base programming does
+	 * not seem to effect NFE_IRQ_TX_DONE or NFE_IRQ_RX_DONE so
+	 * we don't get any interrupt moderation.  TX moderation is
+	 * possible by using the timer interrupt instead of TX_DONE.
+	 *
+	 * It is unclear whether there are other bits that can be
+	 * set to make the NFE device actually do interrupt moderation
+	 * on the RX side.
+	 *
+	 * For now set a 128uS interval as a placemark, but don't use
+	 * the timer.
+	 */
+	if (sc->sc_imtime == 0)
+		NFE_WRITE(sc, NFE_IMTIMER, NFE_IMTIME_DEFAULT);
+	else
+		NFE_WRITE(sc, NFE_IMTIMER, NFE_IMTIME(sc->sc_imtime));
+
+	/* Enable interrupts */
+	NFE_WRITE(sc, NFE_IRQ_MASK, sc->sc_irq_enable);
+
+	if (sc->sc_irq_enable & NFE_IRQ_TIMER)
+		sc->sc_flags |= NFE_F_IRQ_TIMER;
+	else
+		sc->sc_flags &= ~NFE_F_IRQ_TIMER;
+}
+
+static void
+nfe_disable_intrs(struct nfe_softc *sc)
+{
+	/* Disable interrupts */
+	NFE_WRITE(sc, NFE_IRQ_MASK, 0);
+	sc->sc_flags &= ~NFE_F_IRQ_TIMER;
 }
