@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.102 2008/07/04 07:25:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.103 2008/07/05 18:59:27 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -540,6 +540,7 @@ struct hammer_node {
 	struct hammer_mount	*hmp;
 	struct hammer_buffer	*buffer;	/* backing buffer */
 	hammer_node_ondisk_t	ondisk;		/* ptr to on-disk structure */
+	TAILQ_HEAD(, hammer_cursor) cursor_list;  /* deadlock recovery */
 	struct hammer_node_cache_list cache_list; /* passive caches */
 	int			flags;
 	int			loading;	/* load interlock */
@@ -828,6 +829,7 @@ void	hammer_lock_sh_lowpri(struct hammer_lock *lock);
 int	hammer_lock_sh_try(struct hammer_lock *lock);
 int	hammer_lock_upgrade(struct hammer_lock *lock);
 void	hammer_lock_downgrade(struct hammer_lock *lock);
+int	hammer_lock_status(struct hammer_lock *lock);
 void	hammer_unlock(struct hammer_lock *lock);
 void	hammer_ref(struct hammer_lock *lock);
 void	hammer_unref(struct hammer_lock *lock);
@@ -847,7 +849,7 @@ void hammer_clear_objid(hammer_inode_t dip);
 void hammer_destroy_objid_cache(hammer_mount_t hmp);
 
 int hammer_enter_undo_history(hammer_mount_t hmp, hammer_off_t offset,
-			      int bytes);
+			int bytes);
 void hammer_clear_undo_history(hammer_mount_t hmp);
 enum vtype hammer_get_vnode_type(u_int8_t obj_type);
 int hammer_get_dtype(u_int8_t obj_type);
@@ -856,10 +858,18 @@ int64_t hammer_directory_namekey(const void *name, int len);
 int	hammer_nohistory(hammer_inode_t ip);
 
 int	hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
-			   hammer_node_cache_t cache, hammer_inode_t ip);
-int	hammer_reinit_cursor(hammer_cursor_t cursor);
+			hammer_node_cache_t cache, hammer_inode_t ip);
 void	hammer_normalize_cursor(hammer_cursor_t cursor);
 void	hammer_done_cursor(hammer_cursor_t cursor);
+int	hammer_recover_cursor(hammer_cursor_t cursor);
+
+void	hammer_cursor_replaced_node(hammer_node_t onode, hammer_node_t nnode);
+void	hammer_cursor_removed_node(hammer_node_t onode, hammer_node_t parent,
+			int index);
+void	hammer_cursor_split_node(hammer_node_t onode, hammer_node_t nnode,
+			int index);
+void	hammer_cursor_inserted_element(hammer_node_t node, int index);
+void	hammer_cursor_deleted_element(hammer_node_t node, int index);
 
 int	hammer_btree_lookup(hammer_cursor_t cursor);
 int	hammer_btree_first(hammer_cursor_t cursor);

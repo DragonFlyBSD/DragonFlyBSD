@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.62 2008/07/04 07:25:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.63 2008/07/05 18:59:27 dillon Exp $
  */
 
 /*
@@ -781,6 +781,7 @@ hammer_btree_delete(hammer_cursor_t cursor)
 	}
 	--ondisk->count;
 	hammer_modify_node_done(node);
+	hammer_cursor_deleted_element(node, i);
 
 	/*
 	 * Validate local parent
@@ -1443,6 +1444,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	new_node->ondisk->parent = parent->node_offset;
 	new_node->ondisk->type = HAMMER_BTREE_TYPE_INTERNAL;
 	KKASSERT(ondisk->type == new_node->ondisk->type);
+	hammer_cursor_split_node(node, new_node, split);
 
 	/*
 	 * Cleanup the original node.  Elm (P) becomes the new boundary,
@@ -1470,6 +1472,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	parent_elm->internal.subtree_offset = new_node->node_offset;
 	++ondisk->count;
 	hammer_modify_node_done(parent);
+	hammer_cursor_inserted_element(parent, parent_index + 1);
 
 	/*
 	 * The children of new_node need their parent pointer set to new_node.
@@ -1507,7 +1510,6 @@ btree_split_internal(hammer_cursor_t cursor)
 		hammer_rel_volume(volume, 0);
 	}
 	hammer_modify_node_done(node);
-
 
 	/*
 	 * Ok, now adjust the cursor depending on which element the original
@@ -1672,6 +1674,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	new_leaf->ondisk->type = HAMMER_BTREE_TYPE_LEAF;
 	KKASSERT(ondisk->type == new_leaf->ondisk->type);
 	hammer_modify_node_done(new_leaf);
+	hammer_cursor_split_node(leaf, new_leaf, split);
 
 	/*
 	 * Cleanup the original node.  Because this is a leaf node and
@@ -1703,6 +1706,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	mid_boundary = &parent_elm->base;
 	++ondisk->count;
 	hammer_modify_node_done(parent);
+	hammer_cursor_inserted_element(parent, parent_index + 1);
 
 	/*
 	 * The filesystem's root B-Tree pointer may have to be updated.
@@ -2038,6 +2042,7 @@ btree_remove(hammer_cursor_t cursor)
 	}
 
 	parent = cursor->parent;
+	hammer_cursor_removed_node(node, parent, cursor->parent_index);
 
 	/*
 	 * Attempt to remove the parent's reference to the child.  If the
@@ -2129,9 +2134,6 @@ hammer_btree_do_propagation(hammer_cursor_t cursor, hammer_inode_t ip,
 		return;
 	}
 
-	/*
-	 * Get as far as we can without deadlocking.
-	 */
 	error = hammer_btree_mirror_propagate(cursor->trans,
 					cursor->parent, cursor->parent_index,
 					cursor->node->ondisk->mirror_tid);

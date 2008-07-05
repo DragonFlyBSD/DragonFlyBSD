@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.29 2008/07/04 07:25:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.30 2008/07/05 18:59:28 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -229,6 +229,20 @@ hammer_unlock(struct hammer_lock *lock)
 	crit_exit();
 }
 
+/*
+ * The calling thread must be holding a shared or exclusive lock.
+ * Returns < 0 if lock is held shared, and > 0 if held exlusively.
+ */
+int
+hammer_lock_status(struct hammer_lock *lock)
+{
+	if (lock->lockcount < 0)
+		return(-1);
+	if (lock->lockcount > 0)
+		return(1);
+	panic("hammer_lock_status: lock must be held: %p", lock);
+}
+
 void
 hammer_ref(struct hammer_lock *lock)
 {
@@ -336,6 +350,8 @@ hammer_get_vnode_type(u_int8_t obj_type)
 		return(VDATABASE);
 	case HAMMER_OBJTYPE_FIFO:
 		return(VFIFO);
+	case HAMMER_OBJTYPE_SOCKET:
+		return(VSOCK);
 	case HAMMER_OBJTYPE_CDEV:
 		return(VCHR);
 	case HAMMER_OBJTYPE_BDEV:
@@ -360,6 +376,8 @@ hammer_get_dtype(u_int8_t obj_type)
 		return(DT_DBF);
 	case HAMMER_OBJTYPE_FIFO:
 		return(DT_FIFO);
+	case HAMMER_OBJTYPE_SOCKET:
+		return(DT_SOCK);
 	case HAMMER_OBJTYPE_CDEV:
 		return(DT_CHR);
 	case HAMMER_OBJTYPE_BDEV:
@@ -384,6 +402,8 @@ hammer_get_obj_type(enum vtype vtype)
 		return(HAMMER_OBJTYPE_DBFILE);
 	case VFIFO:
 		return(HAMMER_OBJTYPE_FIFO);
+	case VSOCK:
+		return(HAMMER_OBJTYPE_SOCKET);
 	case VCHR:
 		return(HAMMER_OBJTYPE_CDEV);
 	case VBLK:

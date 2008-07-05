@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.23 2008/07/03 04:24:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.24 2008/07/05 18:59:28 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -400,6 +400,7 @@ hammer_reblock_leaf_node(struct hammer_ioc_reblock *reblock,
                 hammer_rel_volume(volume, 0);
         }
 
+	hammer_cursor_replaced_node(onode, nnode);
 	hammer_delete_node(cursor->trans, onode);
 
 	if (hammer_debug_general & 0x4000) {
@@ -490,6 +491,7 @@ hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 	 * The new node replaces the current node in the cursor.  The cursor
 	 * expects it to be locked so leave it locked.  Discard onode.
 	 */
+	hammer_cursor_replaced_node(onode, nnode);
 	hammer_delete_node(cursor->trans, onode);
 
 	if (hammer_debug_general & 0x4000) {

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.44 2008/07/02 21:57:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.45 2008/07/05 18:59:27 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -554,6 +554,7 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 #define HAMMER_OBJTYPE_BDEV		6
 #define HAMMER_OBJTYPE_SOFTLINK		7
 #define HAMMER_OBJTYPE_PSEUDOFS		8	/* pseudo filesystem obj */
+#define HAMMER_OBJTYPE_SOCKET		9
 
 /*
  * HAMMER inode attribute data

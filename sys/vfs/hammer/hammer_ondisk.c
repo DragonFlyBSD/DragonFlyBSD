@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.64 2008/07/01 02:08:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.65 2008/07/05 18:59:27 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -957,6 +957,7 @@ again:
 		node = kmalloc(sizeof(*node), M_HAMMER, M_WAITOK|M_ZERO|M_USE_RESERVE);
 		node->node_offset = node_offset;
 		node->hmp = hmp;
+		TAILQ_INIT(&node->cursor_list);
 		TAILQ_INIT(&node->cache_list);
 		if (RB_INSERT(hammer_nod_rb_tree, &hmp->rb_nods_root, node)) {
 			--hammer_count_nodes;
