@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.94 2008/07/05 12:22:37 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.95 2008/07/05 13:37:17 sephe Exp $
  *
  */
 
@@ -1767,6 +1767,13 @@ bge_attach(device_t dev)
 		    BGE_PCISTATE_PCI_BUSMODE) == 0)
 			sc->bge_flags |= BGE_FLAG_PCIX;
  	}
+
+	if (bootverbose) {
+		device_printf(dev, "asic 0x%04x, chip 0x%04x, %s\n",
+			      sc->bge_asicrev, sc->bge_chiprev,
+			      (sc->bge_flags & BGE_FLAG_PCIX) ? "PCI-X"
+			      : ((sc->bge_flags & BGE_FLAG_PCIE) ? "PCI-E" : "PCI"));
+	}
 
 	ifp = &sc->arpcom.ac_if;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
