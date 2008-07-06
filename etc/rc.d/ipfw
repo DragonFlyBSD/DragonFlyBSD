@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/ipfw,v 1.4 2003/03/30 15:52:18 mtm Exp $
-# $DragonFly: src/etc/rc.d/ipfw,v 1.3 2005/11/19 21:47:32 swildner Exp $
+# $DragonFly: src/etc/rc.d/ipfw,v 1.4 2008/07/06 23:55:51 thomas Exp $
 #
 
 # PROVIDE: ipfw
@@ -20,7 +20,7 @@ ipfw_precmd()
 {
 	if ! ${SYSCTL} net.inet.ip.fw.enable > /dev/null 2>&1; then
 		if ! kldload ipfw; then
-			warn unable to load firewall module.
+			warn "unable to load ipfw firewall module."
 			return 1
 		fi
 	fi
