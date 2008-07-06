@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.99 2008/07/06 08:46:33 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.100 2008/07/06 09:17:12 sephe Exp $
  *
  */
 
@@ -116,14 +116,6 @@
 
 #define BGE_CSUM_FEATURES	(CSUM_IP | CSUM_TCP | CSUM_UDP)
 #define BGE_MIN_FRAME		60
-
-/*
- * Various supported device vendors/types and their names. Note: the
- * spec seems to indicate that the hardware still has Alteon's vendor
- * ID burned into it, though it will always be overriden by the vendor
- * ID in the EEPROM. Just to be safe, we cover all possibilities.
- */
-#define BGE_DEVDESC_MAX		64	/* Maximum device description length */
 
 static const struct bge_type bge_devs[] = {
 	{ PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3C996,
