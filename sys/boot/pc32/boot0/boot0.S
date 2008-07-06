@@ -46,10 +46,14 @@
  *
  *
  * $FreeBSD: src/sys/boot/i386/boot0/boot0.s,v 1.26 2003/06/01 20:41:04 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/boot0/boot0.S,v 1.8 2006/06/27 20:32:39 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/boot0/boot0.S,v 1.9 2008/07/06 17:17:01 mneumann Exp $
  */
 
 #include "../bootasm.h"
+
+#ifdef SIO
+/* ... using a serial console on COM1. */
+#endif
 
 		/*
 		 * A 512-byte boot manager.
@@ -65,6 +69,9 @@
 		.set KEY_ENTER,0x1c		# Enter key scan code
 		.set KEY_F1,0x3b		# F1 key scan code
 		.set KEY_1,0x02			# #1 key scan code
+
+		.set ASCII_BEL,0x07		# ASCII code for <BEL>
+		.set ASCII_CR,0x0D		# ASCII code for <CR>
 
 		/*
 		 * Addresses in the sector of embedded data values.  Accessed
@@ -127,15 +134,25 @@ start:		cld				# String ops inc
 		pushw $main			# Jump to relocated code
 		retw
 
+main:
+#if defined(SIO) && COMSPEED != 0
+		/*
+		 * Initialize the serial port.
+		 * bioscom preserves the driver number in DX.
+		 */
+		movw $COMSPEED,%ax		# defined by Makefile
+		callw bioscom
+#endif
 		/*
 		 * Check what flags were loaded with us, specifically, Use a
 		 * predefined Drive.  If what the bios gives us is bad, use
 		 * the '0' in the block instead, as well.
 		 */
-main:		testb $0x20,_FLAGS(%bp)		# Set number drive?
+		testb $0x20,_FLAGS(%bp)		# Set number drive?
 		jnz main.1			# Yes
 		testb %dl,%dl			# Drive number valid?
 		js main.2			# Possibly (0x80 set)
+
 main.1: 	movb _SETDRV(%bp),%dl		# Drive number to use
 
 		/*
@@ -253,9 +270,17 @@ main.7: 	movw $prompt,%si		# Display
 		 * Busy loop, looking for keystrokes but
 		 * keeping one eye on the time.
 		 */
-main.8: 	movb $0x1,%ah			# BIOS: Check
+main.8:
+#ifndef SIO
+		movb $0x1,%ah			# BIOS: Check
 		int $0x16			#  for keypress
 		jnz main.11			# Have one
+#else  /* SIO */
+		movb $0x03,%ah			# BIOS: Read COM
+		call bioscom
+		testb $0x01,%ah			# Check line status
+		jnz main.11			# (bit 1 indicates input)
+#endif /* SIO */
 		xorb %ah,%ah			# BIOS: Get
 		int $0x1a			#  system time
 		cmpw %di,%dx			# Timeout?
@@ -275,30 +300,44 @@ main.9: 	movb _OPT(%bp),%al		# Load default
 		 * until either the timeout occurs or the user hits a good
 		 * key.
 		 */
-main.10:	movb $0x7,%al			# Signal
+main.10:	movb $ASCII_BEL,%al		# Signal
 		callw putchr			#  error
 
 		/*
 		 * Get the keystroke.
 		 */
-main.11:	xorb %ah,%ah			# BIOS: Get
+main.11:
+#ifndef SIO
+		xorb %ah,%ah			# BIOS: Get
 		int $0x16			#  keypress
 		movb %ah,%al			# Scan code
+#else
+		movb $0x02,%ah			# BIOS: Receive
+		call bioscom
+#endif
 
 		/*
 		 * If it's CR act as if timed out.
 		 */
+#ifndef SIO
 		cmpb $KEY_ENTER,%al		# Enter pressed?
+#else
+		cmpb $ASCII_CR,%al		# Enter pressed?
+#endif
 		je main.9			# Yes
 
 		/*
 		 * Otherwise check if legal
 		 * If not ask again.
 		 */
+#ifndef SIO
 		subb $KEY_F1,%al		# Less F1 scan code
 		cmpb $0x4,%al			# F1..F5?
 		jna main.12			# Yes
 		subb $(KEY_1 - KEY_F1),%al	# Less #1 scan code
+#else
+		subb $'1',%al			# Less '1' ascii character
+#endif
 		cmpb $0x4,%al			# #1..#5?
 		ja main.10			# No
 
@@ -368,8 +407,11 @@ main.15:	movw $MEM_BIOS_LADDR,%bx	# Address for read
 		/*
 		 * Display routines
 		 */
-putkey: 	movb $'F',%al			# Display
+putkey: 	
+#ifndef SIO
+		movb $'F',%al			# Display
 		callw putchr			#  'F'
+#endif
 		movb $'1',%al			# Prepare
 		addb %dl,%al			#  digit
 		jmp putstr.1			# Display the rest
@@ -394,12 +436,25 @@ putstr.1:	callw putchr			# Display char
 		jmp putstr			# Continue
 putstr.2:	andb $~0x80,%al 		# Clear MSB
 
-putchr: 	pusha				# Save
+#ifndef SIO
+putchr: 	
+		pusha 				# Save
 		movw $0x7,%bx	 		# Page:attribute
 		movb $0xe,%ah			# BIOS: Display
 		int $0x10			#  character
 		popa 				# Restore
 		retw				# To caller
+#else /* SIO */
+putchr: 	
+		movb $0x01,%ah			# BIOS: Send
+bioscom:
+		pusha				# Save
+		xorw %dx,%dx			# Use COM1
+		int $0x14			#  Character
+		popa				# Restore
+		retw				# To caller
+#endif
+		
 
 		/*
 		 * One-sector disk I/O routine
