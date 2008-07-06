@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcireg.h,v 1.24.2.5 2002/08/31 10:06:51 gibbs Exp $
- * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.17 2008/03/24 14:28:44 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.18 2008/07/06 05:47:14 sephe Exp $
  *
  */
 
@@ -445,6 +445,16 @@
 #define PCIE_DOWN_STREAM_PORT	0x0060	/* Switch downstream port */
 #define PCIE_PCIE2PCI_BRIDGE	0x0070	/* PCI Express to PCI/PCI-X bridge */
 #define PCIE_PCI2PCIE_BRIDGE	0x0080	/* PCI/PCI-X to PCI Express bridge */
+
+/* PCI Express device control, 16bits */
+#define PCIER_DEVCTRL			0x08
+#define PCIEM_DEVCTL_MAX_READRQ_MASK	0x7000	/* Max read request size */
+#define PCIEM_DEVCTL_MAX_READRQ_128	0x0000
+#define PCIEM_DEVCTL_MAX_READRQ_256	0x1000
+#define PCIEM_DEVCTL_MAX_READRQ_512	0x2000
+#define PCIEM_DEVCTL_MAX_READRQ_1024	0x3000
+#define PCIEM_DEVCTL_MAX_READRQ_2048	0x4000
+#define PCIEM_DEVCTL_MAX_READRQ_4096	0x5000
 
 /* PCI Express slot capabilities, 32bits */
 #define PCIER_SLOTCAP		0x14
