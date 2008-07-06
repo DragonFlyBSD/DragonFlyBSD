@@ -65,7 +65,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.49 2008/06/17 20:50:11 aggelos Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.50 2008/07/06 19:01:57 nth Exp $
  */
 
 #include "opt_inet.h"
@@ -1600,23 +1600,26 @@ int
 soopt_mcopyin(struct sockopt *sopt, struct mbuf *m)
 {
 	struct mbuf *m0 = m;
+	size_t valsize;
+	void *val;
 
 	if (sopt->sopt_val == NULL)
 		return 0;
-	while (m != NULL && sopt->sopt_valsize >= m->m_len) {
+	val = sopt->sopt_val;
+	valsize = sopt->sopt_valsize;
+	while (m != NULL && valsize >= m->m_len) {
 		if (sopt->sopt_td != NULL) {
 			int error;
 
-			error = copyin(sopt->sopt_val, mtod(m, char *),
-				       m->m_len);
+			error = copyin(val, mtod(m, char *), m->m_len);
 			if (error != 0) {
 				m_freem(m0);
 				return (error);
 			}
 		} else
-			bcopy(sopt->sopt_val, mtod(m, char *), m->m_len);
-		sopt->sopt_valsize -= m->m_len;
-		sopt->sopt_val = (caddr_t)sopt->sopt_val + m->m_len;
+			bcopy(val, mtod(m, char *), m->m_len);
+		valsize -= m->m_len;
+		val = (caddr_t)val + m->m_len;
 		m = m->m_next;
 	}
 	if (m != NULL) /* should be allocated enoughly at ip6_sooptmcopyin() */
@@ -1646,23 +1649,26 @@ soopt_mcopyout(struct sockopt *sopt, struct mbuf *m)
 {
 	struct mbuf *m0 = m;
 	size_t valsize = 0;
+	size_t maxsize;
+	void *val;
 
 	if (sopt->sopt_val == NULL)
 		return 0;
-	while (m != NULL && sopt->sopt_valsize >= m->m_len) {
+	val = sopt->sopt_val;
+	maxsize = sopt->sopt_valsize;
+	while (m != NULL && maxsize >= m->m_len) {
 		if (sopt->sopt_td != NULL) {
 			int error;
 
-			error = copyout(mtod(m, char *), sopt->sopt_val,
-				       m->m_len);
+			error = copyout(mtod(m, char *), val, m->m_len);
 			if (error != 0) {
 				m_freem(m0);
 				return (error);
 			}
 		} else
-			bcopy(mtod(m, char *), sopt->sopt_val, m->m_len);
-	       sopt->sopt_valsize -= m->m_len;
-	       sopt->sopt_val = (caddr_t)sopt->sopt_val + m->m_len;
+			bcopy(mtod(m, char *), val, m->m_len);
+	       maxsize -= m->m_len;
+	       val = (caddr_t)val + m->m_len;
 	       valsize += m->m_len;
 	       m = m->m_next;
 	}
