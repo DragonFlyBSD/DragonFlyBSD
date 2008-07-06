@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.98 2008/07/06 08:13:46 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.99 2008/07/06 08:46:33 sephe Exp $
  *
  */
 
@@ -125,7 +125,7 @@
  */
 #define BGE_DEVDESC_MAX		64	/* Maximum device description length */
 
-static struct bge_type bge_devs[] = {
+static const struct bge_type bge_devs[] = {
 	{ PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3C996,
 		"3COM 3C996 Gigabit Ethernet" },
 
@@ -1637,9 +1637,7 @@ bge_blockinit(struct bge_softc *sc)
 static int
 bge_probe(device_t dev)
 {
-	struct bge_softc *sc;
-	struct bge_type *t;
-	char *descbuf;
+	const struct bge_type *t;
 	uint16_t product, vendor;
 
 	product = pci_get_device(dev);
@@ -1649,18 +1647,14 @@ bge_probe(device_t dev)
 		if (vendor == t->bge_vid && product == t->bge_did)
 			break;
 	}
-
 	if (t->bge_name == NULL)
 		return(ENXIO);
 
-	sc = device_get_softc(dev);
-	descbuf = kmalloc(BGE_DEVDESC_MAX, M_TEMP, M_WAITOK);
-	ksnprintf(descbuf, BGE_DEVDESC_MAX, "%s, ASIC rev. %#04x", t->bge_name,
-	    pci_read_config(dev, BGE_PCI_MISC_CTL, 4) >> 16);
-	device_set_desc_copy(dev, descbuf);
-	if (pci_get_subvendor(dev) == PCI_VENDOR_DELL)
+	device_set_desc(dev, t->bge_name);
+	if (pci_get_subvendor(dev) == PCI_VENDOR_DELL) {
+		struct bge_softc *sc = device_get_softc(dev);
 		sc->bge_flags |= BGE_FLAG_NO_3LED;
-	kfree(descbuf, M_TEMP);
+	}
 	return(0);
 }
 
@@ -1696,7 +1690,7 @@ bge_attach(device_t dev)
 	sc->bge_btag = rman_get_bustag(sc->bge_res);
 	sc->bge_bhandle = rman_get_bushandle(sc->bge_res);
 
-	/* Save ASIC rev. */
+	/* Save various chip information */
 	sc->bge_chipid =
 	    pci_read_config(dev, BGE_PCI_MISC_CTL, 4) &
 	    BGE_PCIMISCCTL_ASICREV;
@@ -1800,12 +1794,12 @@ bge_attach(device_t dev)
 			sc->bge_flags |= BGE_FLAG_PCIX;
  	}
 
-	if (bootverbose) {
-		device_printf(dev, "asic 0x%04x, chip 0x%04x, %s\n",
-			      sc->bge_asicrev, sc->bge_chiprev,
-			      (sc->bge_flags & BGE_FLAG_PCIX) ? "PCI-X"
-			      : ((sc->bge_flags & BGE_FLAG_PCIE) ? "PCI-E" : "PCI"));
-	}
+	device_printf(dev, "CHIP ID 0x%08x; "
+		      "ASIC REV 0x%02x; CHIP REV 0x%02x; %s\n",
+		      sc->bge_chipid, sc->bge_asicrev, sc->bge_chiprev,
+		      (sc->bge_flags & BGE_FLAG_PCIX) ? "PCI-X"
+		      : ((sc->bge_flags & BGE_FLAG_PCIE) ?
+			"PCI-E" : "PCI"));
 
 	ifp = &sc->arpcom.ac_if;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
