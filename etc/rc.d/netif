@@ -23,7 +23,7 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/netif,v 1.2 2003/06/29 05:34:41 mtm Exp $
-# $DragonFly: src/etc/rc.d/netif,v 1.7 2007/07/10 22:36:01 swildner Exp $
+# $DragonFly: src/etc/rc.d/netif,v 1.8 2008/07/06 23:56:32 thomas Exp $
 #
 
 # PROVIDE: netif
@@ -88,7 +88,7 @@ network_stop()
 
 # network_common routine verbose
 #	Common configuration subroutine for network interfaces. This
-#	routine takes all the preparatory steps needed for configuriing
+#	routine takes all the preparatory steps needed for configuring
 #	an interface and then calls $routine. If $verbose is specified,
 #	it will call ifconfig(8) to show, in long format, the configured
 #	interfaces. If $verbose is not given, it will simply output the
