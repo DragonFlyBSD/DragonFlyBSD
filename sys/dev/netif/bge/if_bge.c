@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.96 2008/07/06 05:54:09 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.97 2008/07/06 06:47:10 sephe Exp $
  *
  */
 
@@ -318,6 +318,7 @@ static uint32_t	bge_readreg_ind(struct bge_softc *, uint32_t);
 #endif
 static void	bge_writereg_ind(struct bge_softc *, uint32_t, uint32_t);
 static void	bge_writemem_direct(struct bge_softc *, uint32_t, uint32_t);
+static void	bge_set_max_readrq(struct bge_softc *);
 
 static int	bge_miibus_readreg(device_t, int, int);
 static int	bge_miibus_writereg(device_t, int, int, int);
@@ -420,6 +421,32 @@ bge_writemem_ind(struct bge_softc *sc, uint32_t off, uint32_t val)
 	pci_write_config(dev, BGE_PCI_MEMWIN_BASEADDR, off, 4);
 	pci_write_config(dev, BGE_PCI_MEMWIN_DATA, val, 4);
 	pci_write_config(dev, BGE_PCI_MEMWIN_BASEADDR, 0, 4);
+}
+
+/*
+ * PCI Express only
+ */
+static void
+bge_set_max_readrq(struct bge_softc *sc)
+{
+	device_t dev = sc->bge_dev;
+	uint16_t val;
+	uint8_t expr_ptr;
+
+	KKASSERT((sc->bge_flags & BGE_FLAG_PCIE) && sc->bge_expr_ptr != 0);
+	expr_ptr = sc->bge_expr_ptr;
+
+	val = pci_read_config(dev, expr_ptr + PCIER_DEVCTRL, 2);
+	if ((val & PCIEM_DEVCTL_MAX_READRQ_MASK) !=
+	    PCIEM_DEVCTL_MAX_READRQ_4096) {
+		device_printf(dev, "adjust device control 0x%04x ", val);
+
+		val &= ~PCIEM_DEVCTL_MAX_READRQ_MASK;
+		val |= PCIEM_DEVCTL_MAX_READRQ_4096;
+		pci_write_config(dev, expr_ptr + PCIER_DEVCTRL, val, 2);
+
+		kprintf("-> 0x%04x\n", val);
+	}
 }
 
 #ifdef notdef
@@ -1523,10 +1550,14 @@ bge_blockinit(struct bge_softc *sc)
 	    sc->bge_asicrev == BGE_ASICREV_BCM5787)
 		val |= (1 << 29);	/* Enable host coalescing bug fix. */
 	CSR_WRITE_4(sc, BGE_WDMA_MODE, val);
-	
+	DELAY(40);
+
 	/* Turn on read DMA state machine */
-	CSR_WRITE_4(sc, BGE_RDMA_MODE,
-	    BGE_RDMAMODE_ENABLE|BGE_RDMAMODE_ALL_ATTNS);
+	val = BGE_RDMAMODE_ENABLE | BGE_RDMAMODE_ALL_ATTNS;
+	if (sc->bge_flags & BGE_FLAG_PCIE)
+		val |= BGE_RDMAMODE_FIFO_LONG_BURST;
+	CSR_WRITE_4(sc, BGE_RDMA_MODE, val);
+	DELAY(40);
 
 	/* Turn on RX data completion state machine */
 	CSR_WRITE_4(sc, BGE_RDC_MODE, BGE_RDCMODE_ENABLE);
@@ -1753,11 +1784,12 @@ bge_attach(device_t dev)
 	 * Check if this is a PCI-X or PCI Express device.
   	 */
 	if (BGE_IS_5705_PLUS(sc)) {
-		uint32_t reg;
+		sc->bge_expr_ptr = pci_get_pciecap_ptr(dev);
 
-		reg = pci_read_config(dev, BGE_PCIE_CAPID_REG, 4);
-		if ((reg & 0xff) == BGE_PCIE_CAPID)
+		if (sc->bge_expr_ptr != 0) {
 			sc->bge_flags |= BGE_FLAG_PCIE;
+			bge_set_max_readrq(sc);
+		}
 	} else {
 		/*
 		 * Check if the device is in PCI-X Mode.

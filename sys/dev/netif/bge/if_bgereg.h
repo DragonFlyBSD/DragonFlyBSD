@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.16 2004/09/23 20:11:18 ps Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.22 2007/06/19 14:59:41 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.23 2008/07/06 06:47:10 sephe Exp $
  */
 
 /*
@@ -1347,6 +1347,8 @@
 #define BGE_RDMAMODE_PCI_FIFOOREAD_ATTN	0x00000100
 #define BGE_RDMAMODE_LOCWRITE_TOOBIG	0x00000200
 #define BGE_RDMAMODE_ALL_ATTNS		0x000003FC
+#define BGE_RDMAMODE_FIFO_SIZE_128	0x00020000
+#define BGE_RDMAMODE_FIFO_LONG_BURST	0x00030000
 
 /* Read DMA status register */
 #define BGE_RDMASTAT_PCI_TGT_ABRT_ATTN	0x00000004
@@ -2401,6 +2403,7 @@ struct bge_softc {
 
 	void			(*bge_link_upd)(struct bge_softc *, uint32_t);
 	uint32_t		bge_link_chg;
+	uint8_t			bge_expr_ptr;
 };
 
 #define BGE_NSEG_NEW		32
