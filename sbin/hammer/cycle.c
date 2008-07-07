@@ -31,33 +31,56 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cycle.c,v 1.4 2008/06/26 04:07:57 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cycle.c,v 1.5 2008/07/07 00:27:22 dillon Exp $
  */
 
 #include "hammer.h"
 
 void
-hammer_get_cycle(hammer_base_elm_t base)
+hammer_get_cycle(hammer_base_elm_t base, hammer_tid_t *extra)
 {
-	FILE *fp;
+	struct stat st;
+	int fd;
 
-	if (CyclePath && (fp = fopen(CyclePath, "r")) != NULL) {
-		if (fscanf(fp, "%llx %x\n", &base->obj_id, &base->localization) != 2) {
-			fprintf(stderr, "Warning: malformed cycle in %s\n",
+	if (CyclePath && (fd = open(CyclePath, O_RDONLY)) >= 0) {
+		if (fstat(fd, &st) < 0) {
+			fprintf(stderr, "cycle-file %s: cannot stat\n",
 				CyclePath);
+			close(fd);
+			return;
 		}
-		fclose(fp);
+		if (st.st_size < sizeof(*base)) {
+			fprintf(stderr, "cycle-file %s: clearing old version\n",
+				CyclePath);
+			close(fd);
+			remove(CyclePath);
+			return;
+		}
+		if (read(fd, base, sizeof(*base)) != sizeof(*base)) {
+			fprintf(stderr, "cycle-file %s: read failed %s\n",
+				CyclePath, strerror(errno));
+			return;
+		}
+		if (extra) {
+			if (read(fd, extra, sizeof(*extra)) != sizeof(*extra)) {
+				fprintf(stderr, "cycle-file %s: Warning, malformed\n",
+					CyclePath);
+			}
+		}
+		close(fd);
 	}
+	/* ok if the file does not exist */
 }
 
 void
-hammer_set_cycle(hammer_base_elm_t base)
+hammer_set_cycle(hammer_base_elm_t base, hammer_tid_t extra)
 {
-	FILE *fp;
+	int fd;
 
-	if ((fp = fopen(CyclePath, "w")) != NULL) {
-		fprintf(fp, "%016llx %08x\n", base->obj_id, base->localization);
-		fclose(fp);
+	if ((fd = open(CyclePath, O_RDWR|O_CREAT|O_TRUNC, 0666)) >= 0) {
+		write(fd, base, sizeof(*base));
+		write(fd, &extra, sizeof(extra));
+		close(fd);
 	} else {
 		fprintf(stderr, "Warning: Unable to write to %s: %s\n",
 			CyclePath, strerror(errno));

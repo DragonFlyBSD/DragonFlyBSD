@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.3 2008/07/02 22:05:59 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.4 2008/07/07 00:27:22 dillon Exp $
  */
 
 #include "hammer.h"
@@ -77,6 +77,12 @@ hammer_cmd_pseudofs_create(char **av, int ac)
 		exit(1);
 	}
 	hammer_cmd_pseudofs_update(av, ac, 1);
+}
+
+void
+hammer_cmd_pseudofs_destroy(char **av, int ac)
+{
+	fprintf(stderr, "pfs-destroy not implemented yet\n");
 }
 
 void

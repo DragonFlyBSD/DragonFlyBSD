@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_softprune.c,v 1.5 2008/06/26 04:07:57 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_softprune.c,v 1.6 2008/07/07 00:27:22 dillon Exp $
  */
 
 #include "hammer.h"
@@ -68,6 +68,8 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 
 	base = NULL;
 	rcode = 0;
+	if (TimeoutOpt > 0)
+		alarm(TimeoutOpt);
 
 	/*
 	 * NOTE: To restrict to a single file XXX we have to set
@@ -81,7 +83,7 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 	template.key_beg.obj_id = HAMMER_MIN_OBJID;
 	template.key_end.localization = HAMMER_MAX_LOCALIZATION;
 	template.key_end.obj_id = HAMMER_MAX_OBJID;
-	hammer_get_cycle(&template.key_end);
+	hammer_get_cycle(&template.key_end, NULL);
 	template.stat_oldest_tid = HAMMER_MAX_TID;
 
 	/*
@@ -158,7 +160,7 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 			       scan->prune.key_cur.obj_id,
 			       scan->prune.key_cur.localization);
 			if (CyclePath)
-				hammer_set_cycle(&scan->prune.key_cur);
+				hammer_set_cycle(&scan->prune.key_cur, 0);
 			rcode = 0;
 		} else {
 			if (CyclePath)

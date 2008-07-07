@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.14 2008/07/02 22:05:59 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.15 2008/07/07 00:27:22 dillon Exp $
  */
 
 #include "hammer.h"
@@ -63,8 +63,9 @@ hammer_cmd_show(hammer_off_t node_offset, int depth,
 		volume = get_volume(RootVolNo);
 		node_offset = volume->ondisk->vol0_btree_root;
 		if (VerboseOpt) {
-			printf("\trecords=%lld\n",
-			       volume->ondisk->vol0_stat_records);
+			printf("Volume header\trecords=%lld next_tid=%016llx\n",
+			       volume->ondisk->vol0_stat_records,
+			       volume->ondisk->vol0_next_tid);
 		}
 		rel_volume(volume);
 	}

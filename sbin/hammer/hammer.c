@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.29 2008/07/02 22:05:59 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.30 2008/07/07 00:27:22 dillon Exp $
  */
 
 #include "hammer.h"
@@ -45,6 +45,8 @@ static void usage(int exit_code);
 int RecurseOpt;
 int VerboseOpt;
 int NoSyncOpt;
+int TwoWayPipeOpt;
+int TimeoutOpt;
 const char *CyclePath;
 const char *LinkPath;
 
@@ -52,12 +54,14 @@ int
 main(int ac, char **av)
 {
 	int ch;
-	int timeout = 0;
 	u_int32_t status;
 	char *blkdevs = NULL;
 
-	while ((ch = getopt(ac, av, "c:dhf:rs:t:v")) != -1) {
+	while ((ch = getopt(ac, av, "c:dhf:rs:t:v2")) != -1) {
 		switch(ch) {
+		case '2':
+			TwoWayPipeOpt = 1;
+			break;
 		case 'c':
 			CyclePath = optarg;
 			break;
@@ -77,7 +81,7 @@ main(int ac, char **av)
 			LinkPath = optarg;
 			break;
 		case 't':
-			timeout = strtol(optarg, NULL, 0);
+			TimeoutOpt = strtol(optarg, NULL, 0);
 			break;
 		case 'v':
 			++VerboseOpt;
@@ -94,10 +98,7 @@ main(int ac, char **av)
 		/* not reached */
 	}
 
-	if (timeout > 0) {
-		signal(SIGALRM, sigalrm);
-		alarm(timeout);
-	}
+	signal(SIGALRM, sigalrm);
 
 	if (strcmp(av[0], "synctid") == 0) {
 		hammer_cmd_synctid(av + 1, ac - 1);
@@ -135,6 +136,10 @@ main(int ac, char **av)
 	}
 	if (strcmp(av[0], "pfs-update") == 0) {
 		hammer_cmd_pseudofs_update(av + 1, ac - 1, 0);
+		exit(0);
+	}
+	if (strcmp(av[0], "pfs-destroy") == 0) {
+		hammer_cmd_pseudofs_destroy(av + 1, ac - 1);
 		exit(0);
 	}
 	if (strcmp(av[0], "status") == 0) {
@@ -188,6 +193,8 @@ main(int ac, char **av)
 			hammer_cmd_mirror_write(av + 1, ac - 1);
 		else if (strcmp(av[0], "mirror-copy") == 0)
 			hammer_cmd_mirror_copy(av + 1, ac - 1);
+		else if (strcmp(av[0], "mirror-dump") == 0)
+			hammer_cmd_mirror_dump();
 		else
 			usage(1);
 		exit(0);
@@ -259,6 +266,7 @@ usage(int exit_code)
 		"hammer iostats <interval>\n"
 		"hammer mirror-read <filesystem>\n"
 		"hammer mirror-write <filesystem>\n"
+		"hammer mirror-dump\n"
 		"hammer mirror-copy [[user@]host:]<filesystem>"
 				  " [[user@]host:]<filesystem>\n"
 		"hammer reblock[-btree/inodes/dirs/data] "

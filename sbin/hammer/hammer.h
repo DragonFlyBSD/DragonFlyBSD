@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.h,v 1.20 2008/07/02 22:05:59 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.h,v 1.21 2008/07/07 00:27:22 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -53,6 +53,7 @@
 #include <assert.h>
 #include <err.h>
 #include <ctype.h>
+#include <signal.h>
 #include <dirent.h>
 #include <uuid.h>
 
@@ -61,6 +62,8 @@
 
 extern int RecurseOpt;
 extern int VerboseOpt;
+extern int TwoWayPipeOpt;
+extern int TimeoutOpt;
 extern const char *LinkPath;
 extern const char *CyclePath;
 
@@ -74,16 +77,18 @@ void hammer_cmd_synctid(char **av, int ac);
 void hammer_cmd_mirror_read(char **av, int ac);
 void hammer_cmd_mirror_write(char **av, int ac);
 void hammer_cmd_mirror_copy(char **av, int ac);
+void hammer_cmd_mirror_dump(void);
 void hammer_cmd_history(const char *offset_str, char **av, int ac);
 void hammer_cmd_blockmap(void);
 void hammer_cmd_reblock(char **av, int ac, int flags);
 void hammer_cmd_pseudofs_status(char **av, int ac);
 void hammer_cmd_pseudofs_create(char **av, int ac);
 void hammer_cmd_pseudofs_update(char **av, int ac, int doinit);
+void hammer_cmd_pseudofs_destroy(char **av, int ac);
 void hammer_cmd_status(char **av, int ac);
 void hammer_cmd_snapshot(char **av, int ac);
 
-void hammer_get_cycle(hammer_base_elm_t base);
-void hammer_set_cycle(hammer_base_elm_t base);
+void hammer_get_cycle(hammer_base_elm_t base, hammer_tid_t *tidp);
+void hammer_set_cycle(hammer_base_elm_t base, hammer_tid_t tid);
 void hammer_reset_cycle(void);
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.3 2008/07/04 07:20:43 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.4 2008/07/07 00:27:22 dillon Exp $
  */
 
 #include "hammer.h"
@@ -39,27 +39,35 @@
 #define SERIALBUF_SIZE	(512 * 1024)
 
 struct hammer_pfs_head {
-	struct hammer_ioc_mrecord mrec;
 	u_int32_t version;
 	struct hammer_pseudofs_data pfsd;
 };
 
 static int read_mrecords(int fd, char *buf, u_int size,
 			 hammer_ioc_mrecord_t pickup);
+static struct hammer_ioc_mrecord *read_mrecord(int fdin, int *errorp,
+			 hammer_ioc_mrecord_t pickup);
+static void write_mrecord(int fdout, u_int32_t type, void *payload, int bytes);
 static void generate_mrec_header(int fd, int fdout,
 			 hammer_tid_t *tid_begp, hammer_tid_t *tid_endp);
 static void validate_mrec_header(int fd, int fdin,
 			 hammer_tid_t *tid_begp, hammer_tid_t *tid_endp);
-static void run_cmd(const char *path, ...);
+static void update_pfs_snapshot(int fd, hammer_tid_t snapshot_tid);
 static void mirror_usage(int code);
 
 void
 hammer_cmd_mirror_read(char **av, int ac)
 {
 	struct hammer_ioc_mirror_rw mirror;
+	hammer_ioc_mrecord_t mrec;
+	hammer_tid_t sync_tid;
 	const char *filesystem;
 	char *buf = malloc(SERIALBUF_SIZE);
+	int interrupted = 0;
+	int error;
 	int fd;
+	int n;
+	time_t base_t = time(NULL);
 
 	if (ac > 2)
 		mirror_usage(1);
@@ -73,10 +81,22 @@ hammer_cmd_mirror_read(char **av, int ac)
 	if (fd < 0)
 		err(1, "Unable to open %s", filesystem);
 
-	hammer_get_cycle(&mirror.key_beg);
-
+	/*
+	 * Write out the PFS header
+	 */
 	generate_mrec_header(fd, 1, &mirror.tid_beg, &mirror.tid_end);
+	hammer_get_cycle(&mirror.key_beg, &mirror.tid_beg);
 
+	fprintf(stderr, "mirror-read: Mirror from %016llx to %016llx\n",
+		mirror.tid_beg, mirror.tid_end);
+	if (mirror.key_beg.obj_id != (int64_t)HAMMER_MIN_OBJID) {
+		fprintf(stderr, "mirror-read: Resuming at object %016llx\n",
+			mirror.key_beg.obj_id);
+	}
+
+	/*
+	 * Write out bulk records
+	 */
 	mirror.ubuf = buf;
 	mirror.size = SERIALBUF_SIZE;
 	if (ac == 2)
@@ -89,26 +109,69 @@ hammer_cmd_mirror_read(char **av, int ac)
 				filesystem, strerror(errno));
 			exit(1);
 		}
-		if (mirror.head.flags & HAMMER_IOC_HEAD_INTR) {
-			fprintf(stderr,
-				"Mirror-read %s interrupted by timer at"
-				" %016llx %08x\n",
-				filesystem,
-				mirror.key_cur.obj_id,
-				mirror.key_cur.localization);
-			if (CyclePath)
-				hammer_set_cycle(&mirror.key_cur);
-			exit(0);
+		if (mirror.count) {
+			n = write(1, mirror.ubuf, mirror.count);
+			if (n != mirror.count) {
+				fprintf(stderr, "Mirror-read %s failed: "
+						"short write\n",
+				filesystem);
+				exit(1);
+			}
 		}
 		mirror.key_beg = mirror.key_cur;
-		if (mirror.count)
-			write(1, mirror.ubuf, mirror.count);
+		if (TimeoutOpt &&
+		    (unsigned)(time(NULL) - base_t) > (unsigned)TimeoutOpt) {
+			fprintf(stderr,
+				"Mirror-read %s interrupted by timer at"
+				" %016llx\n",
+				filesystem,
+				mirror.key_cur.obj_id);
+			interrupted = 1;
+			break;
+		}
 	} while (mirror.count != 0);
 
-	/* generate_mrec_update(fd, 1); */
+	/*
+	 * Write out the termination sync record
+	 */
+	write_mrecord(1, HAMMER_MREC_TYPE_SYNC, NULL, 0);
 
-	if (CyclePath)
-		hammer_reset_cycle();
+	/*
+	 * If the -2 option was given (automatic when doing mirror-copy),
+	 * a two-way pipe is assumed and we expect a response mrec from
+	 * the target.
+	 */
+	if (TwoWayPipeOpt) {
+		mrec = read_mrecord(0, &error, NULL);
+		if (mrec == NULL || mrec->type != HAMMER_MREC_TYPE_UPDATE) {
+			fprintf(stderr, "mirror_read: Did not get final "
+					"acknowledgement packet from target\n");
+			exit(1);
+		}
+		if (interrupted) {
+			if (CyclePath) {
+				hammer_set_cycle(&mirror.key_cur, mirror.tid_beg);
+				fprintf(stderr, "Cyclefile %s updated for continuation\n", CyclePath);
+			}
+		} else {
+			sync_tid = *(hammer_tid_t *)(mrec + 1);
+			if (CyclePath) {
+				hammer_key_beg_init(&mirror.key_beg);
+				hammer_set_cycle(&mirror.key_beg, sync_tid);
+				fprintf(stderr, "Cyclefile %s updated to 0x%016llx\n",
+					CyclePath, sync_tid);
+			} else {
+				fprintf(stderr, "Source can update synctid "
+						"to 0x%016llx\n",
+					sync_tid);
+			}
+		}
+	} else if (CyclePath) {
+		/* NOTE! mirror.tid_beg cannot be updated */
+		fprintf(stderr, "Warning: cycle file (-c option) cannot be "
+				"fully updated unless you use mirror-copy\n");
+		hammer_set_cycle(&mirror.key_beg, mirror.tid_beg);
+	}
 	fprintf(stderr, "Mirror-read %s succeeded\n", filesystem);
 }
 
@@ -118,8 +181,11 @@ hammer_cmd_mirror_write(char **av, int ac)
 	struct hammer_ioc_mirror_rw mirror;
 	const char *filesystem;
 	char *buf = malloc(SERIALBUF_SIZE);
-	int fd;
 	struct hammer_ioc_mrecord pickup;
+	struct hammer_ioc_synctid synctid;
+	hammer_ioc_mrecord_t mrec;
+	int error;
+	int fd;
 
 	if (ac > 2)
 		mirror_usage(1);
@@ -133,13 +199,20 @@ hammer_cmd_mirror_write(char **av, int ac)
 	if (fd < 0)
 		err(1, "Unable to open %s", filesystem);
 
+	/*
+	 * Read and process the PFS header 
+	 */
 	validate_mrec_header(fd, 0, &mirror.tid_beg, &mirror.tid_end);
 
 	mirror.ubuf = buf;
 	mirror.size = SERIALBUF_SIZE;
 
 	pickup.signature = 0;
+	pickup.type = 0;
 
+	/*
+	 * Read and process bulk records
+	 */
 	for (;;) {
 		mirror.count = 0;
 		mirror.size = read_mrecords(0, buf, SERIALBUF_SIZE, &pickup);
@@ -150,18 +223,104 @@ hammer_cmd_mirror_write(char **av, int ac)
 				filesystem, strerror(errno));
 			exit(1);
 		}
+#if 0
 		if (mirror.head.flags & HAMMER_IOC_HEAD_INTR) {
 			fprintf(stderr,
 				"Mirror-write %s interrupted by timer at"
-				" %016llx %08x\n",
+				" %016llx\n",
 				filesystem,
-				mirror.key_cur.obj_id,
-				mirror.key_cur.localization);
+				mirror.key_cur.obj_id);
 			exit(0);
 		}
+#endif
 		mirror.key_beg = mirror.key_cur;
 	}
-	fprintf(stderr, "Mirror-write %s succeeded\n", filesystem);
+
+	/*
+	 * Read and process the termination sync record.
+	 */
+	mrec = read_mrecord(0, &error, &pickup);
+	if (mrec == NULL || mrec->type != HAMMER_MREC_TYPE_SYNC) {
+		fprintf(stderr, "Mirror-write %s: Did not get termination "
+				"sync record\n",
+				filesystem);
+	}
+
+	/*
+	 * Update the PFS info on the target so the user has visibility
+	 * into the new snapshot.
+	 */
+	update_pfs_snapshot(fd, mirror.tid_end);
+
+	/*
+	 * Sync the target filesystem
+	 */
+	bzero(&synctid, sizeof(synctid));
+	synctid.op = HAMMER_SYNCTID_SYNC2;
+	ioctl(fd, HAMMERIOC_SYNCTID, &synctid);
+
+	fprintf(stderr, "Mirror-write %s: succeeded\n", filesystem);
+
+	/*
+	 * Report back to the originator.
+	 */
+	if (TwoWayPipeOpt) {
+		write_mrecord(1, HAMMER_MREC_TYPE_UPDATE,
+			      &mirror.tid_end, sizeof(mirror.tid_end));
+	} else {
+		printf("Source can update synctid to 0x%016llx\n",
+		       mirror.tid_end);
+	}
+}
+
+void
+hammer_cmd_mirror_dump(void)
+{
+	char *buf = malloc(SERIALBUF_SIZE);
+	struct hammer_ioc_mrecord pickup;
+	hammer_ioc_mrecord_t mrec;
+	int error;
+	int size;
+
+	/*
+	 * Read and process the PFS header 
+	 */
+	pickup.signature = 0;
+	pickup.type = 0;
+
+	mrec = read_mrecord(0, &error, &pickup);
+
+	/*
+	 * Read and process bulk records
+	 */
+	for (;;) {
+		size = read_mrecords(0, buf, SERIALBUF_SIZE, &pickup);
+		if (size <= 0)
+			break;
+		mrec = (void *)buf;
+		while (mrec < (hammer_ioc_mrecord_t)((char *)buf + size)) {
+			printf("Record obj=%016llx key=%016llx "
+			       "rt=%02x ot=%02x\n",
+				mrec->leaf.base.obj_id,
+				mrec->leaf.base.key,
+				mrec->leaf.base.rec_type,
+				mrec->leaf.base.obj_type);
+			printf("       tids %016llx:%016llx data=%d\n",
+				mrec->leaf.base.create_tid,
+				mrec->leaf.base.delete_tid,
+				mrec->leaf.data_len);
+			mrec = (void *)((char *)mrec + mrec->rec_size);
+		}
+	}
+
+	/*
+	 * Read and process the termination sync record.
+	 */
+	mrec = read_mrecord(0, &error, &pickup);
+	if (mrec == NULL || mrec->type != HAMMER_MREC_TYPE_SYNC) {
+		fprintf(stderr, "Mirror-dump: Did not get termination "
+				"sync record\n");
+	}
 }
 
 void
@@ -170,7 +329,10 @@ hammer_cmd_mirror_copy(char **av, int ac)
 	pid_t pid1;
 	pid_t pid2;
 	int fds[2];
+	const char *xav[16];
+	char tbuf[16];
 	char *ptr;
+	int xac;
 
 	if (ac != 2)
 		mirror_usage(1);
@@ -179,6 +341,8 @@ hammer_cmd_mirror_copy(char **av, int ac)
 		perror("pipe");
 		exit(1);
 	}
+
+	TwoWayPipeOpt = 1;
 
 	/*
 	 * Source
@@ -190,10 +354,26 @@ hammer_cmd_mirror_copy(char **av, int ac)
 		close(fds[1]);
 		if ((ptr = strchr(av[0], ':')) != NULL) {
 			*ptr++ = 0;
-			run_cmd("/usr/bin/ssh", "ssh",
-				av[0], "hammer mirror-read", ptr, NULL);
+			xac = 0;
+			xav[xac++] = "ssh";
+			xav[xac++] = av[0];
+			xav[xac++] = "hammer";
+			if (VerboseOpt)
+				xav[xac++] = "-v";
+			xav[xac++] = "-2";
+			if (TimeoutOpt) {
+				snprintf(tbuf, sizeof(tbuf), "%d", TimeoutOpt);
+				xav[xac++] = "-t";
+				xav[xac++] = tbuf;
+			}
+			xav[xac++] = "mirror-read";
+			xav[xac++] = ptr;
+			xav[xac++] = NULL;
+			execv("/usr/bin/ssh", (void *)xav);
 		} else {
 			hammer_cmd_mirror_read(av, 1);
+			fflush(stdout);
+			fflush(stderr);
 		}
 		_exit(1);
 	}
@@ -208,10 +388,21 @@ hammer_cmd_mirror_copy(char **av, int ac)
 		close(fds[1]);
 		if ((ptr = strchr(av[1], ':')) != NULL) {
 			*ptr++ = 0;
-			run_cmd("/usr/bin/ssh", "ssh",
-				av[1], "hammer mirror-write", ptr, NULL);
+			xac = 0;
+			xav[xac++] = "ssh";
+			xav[xac++] = av[1];
+			xav[xac++] = "hammer";
+			if (VerboseOpt)
+				xav[xac++] = "-v";
+			xav[xac++] = "-2";
+			xav[xac++] = "mirror-write";
+			xav[xac++] = ptr;
+			xav[xac++] = NULL;
+			execv("/usr/bin/ssh", (void *)xav);
 		} else {
 			hammer_cmd_mirror_write(av + 1, 1);
+			fflush(stdout);
+			fflush(stderr);
 		}
 		_exit(1);
 	}
@@ -224,6 +415,9 @@ hammer_cmd_mirror_copy(char **av, int ac)
 		;
 }
 
+/*
+ * Read and return multiple mrecords
+ */
 static int
 read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_t pickup)
 {
@@ -277,10 +471,17 @@ read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_t pickup)
 			break;
 
 		/*
+		 * Stop if the record type is not HAMMER_MREC_TYPE_REC
+		 */
+		if (pickup->type != HAMMER_MREC_TYPE_REC)
+			break;
+
+		/*
 		 * Read the remainder and clear the pickup signature.
 		 */
 		bcopy(pickup, buf + count, HAMMER_MREC_HEADSIZE);
 		pickup->signature = 0;
+		pickup->type = 0;
 		for (n = HAMMER_MREC_HEADSIZE; n < pickup->rec_size; n += i) {
 			i = read(fd, buf + count + n, pickup->rec_size - n);
 			if (i <= 0)
@@ -300,6 +501,98 @@ read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_t pickup)
 		count += pickup->rec_size;
 	}
 	return(count);
+}
+
+/*
+ * Read and return a single mrecord.  The returned mrec->rec_size will be
+ * adjusted to be the size of the payload.
+ */
+static
+struct hammer_ioc_mrecord *
+read_mrecord(int fdin, int *errorp, hammer_ioc_mrecord_t pickup)
+{
+	hammer_ioc_mrecord_t mrec;
+	struct hammer_ioc_mrecord mrechd;
+	size_t bytes;
+	size_t n;
+	size_t i;
+
+	if (pickup && pickup->type != 0) {
+		mrechd = *pickup;
+		pickup->signature = 0;
+		pickup->type = 0;
+		n = HAMMER_MREC_HEADSIZE;
+	} else {
+		/*
+		 * Read in the PFSD header from the sender.
+		 */
+		for (n = 0; n < HAMMER_MREC_HEADSIZE; n += i) {
+			i = read(fdin, (char *)&mrechd + n, HAMMER_MREC_HEADSIZE - n);
+			if (i <= 0)
+				break;
+		}
+		if (n == 0) {
+			*errorp = 0;	/* EOF */
+			return(NULL);
+		}
+		if (n != HAMMER_MREC_HEADSIZE) {
+			fprintf(stderr, "short read of mrecord header\n");
+			*errorp = EPIPE;
+			return(NULL);
+		}
+	}
+	if (mrechd.signature != HAMMER_IOC_MIRROR_SIGNATURE) {
+		fprintf(stderr, "read_mrecord: bad signature\n");
+		*errorp = EINVAL;
+		return(NULL);
+	}
+	bytes = mrechd.rec_size;
+	if (bytes < HAMMER_MREC_HEADSIZE)
+		bytes = (int)HAMMER_MREC_HEADSIZE;
+	mrec = malloc(bytes);
+	*mrec = mrechd;
+	while (n < bytes) {
+		i = read(fdin, (char *)mrec + n, bytes - n);
+		if (i <= 0)
+			break;
+		n += i;
+	}
+	if (n != bytes) {
+		fprintf(stderr, "read_mrecord: short read on payload\n");
+		*errorp = EPIPE;
+		return(NULL);
+	}
+	if (mrec->rec_crc != crc32((char *)mrec + HAMMER_MREC_CRCOFF,
+				   bytes - HAMMER_MREC_CRCOFF)) {
+		fprintf(stderr, "read_mrecord: bad CRC\n");
+		*errorp = EINVAL;
+		return(NULL);
+	}
+	mrec->rec_size -= HAMMER_MREC_HEADSIZE;
+	*errorp = 0;
+	return(mrec);
+}
+
+static
+void
+write_mrecord(int fdout, u_int32_t type, void *payload, int bytes)
+{
+	hammer_ioc_mrecord_t mrec;
+
+	mrec = malloc(HAMMER_MREC_HEADSIZE + bytes);
+	bzero(mrec, sizeof(*mrec));
+	mrec->signature = HAMMER_IOC_MIRROR_SIGNATURE;
+	mrec->type = type;
+	mrec->rec_size = HAMMER_MREC_HEADSIZE + bytes;
+	bcopy(payload, mrec + 1, bytes);
+	mrec->rec_crc = crc32((char *)mrec + HAMMER_MREC_CRCOFF,
+				   mrec->rec_size - HAMMER_MREC_CRCOFF);
+	if (write(fdout, mrec, mrec->rec_size) != (int)mrec->rec_size) {
+		fprintf(stderr, "write_mrecord: error %d (%s)\n",
+			errno, strerror(errno));
+		exit(1);
+	}
+	free(mrec);
 }
 
 /*
@@ -336,12 +629,8 @@ generate_mrec_header(int fd, int fdout,
 	*tid_endp = pfs_head.pfsd.sync_end_tid;
 
 	pfs_head.version = pfs.version;
-	pfs_head.mrec.signature = HAMMER_IOC_MIRROR_SIGNATURE;
-	pfs_head.mrec.rec_size = sizeof(pfs_head);
-	pfs_head.mrec.type = HAMMER_MREC_TYPE_PFSD;
-	pfs_head.mrec.rec_crc = crc32((char *)&pfs_head + HAMMER_MREC_CRCOFF,
-				      sizeof(pfs_head) - HAMMER_MREC_CRCOFF);
-	write(fdout, &pfs_head, sizeof(pfs_head));
+	write_mrecord(fdout, HAMMER_MREC_TYPE_PFSD,
+		      &pfs_head, sizeof(pfs_head));
 }
 
 /*
@@ -353,11 +642,11 @@ validate_mrec_header(int fd, int fdin,
 		     hammer_tid_t *tid_begp, hammer_tid_t *tid_endp)
 {
 	struct hammer_ioc_pseudofs_rw pfs;
-	struct hammer_pfs_head pfs_head;
+	struct hammer_pfs_head *pfs_head;
 	struct hammer_pseudofs_data pfsd;
+	hammer_ioc_mrecord_t mrec;
 	size_t bytes;
-	size_t n;
-	size_t i;
+	int error;
 
 	/*
 	 * Get the PFSD info from the target filesystem.
@@ -375,54 +664,33 @@ validate_mrec_header(int fd, int fdin,
 		exit(1);
 	}
 
-	/*
-	 * Read in the PFSD header from the sender.
-	 */
-	for (n = 0; n < HAMMER_MREC_HEADSIZE; n += i) {
-		i = read(fdin, (char *)&pfs_head + n, HAMMER_MREC_HEADSIZE - n);
-		if (i <= 0)
-			break;
-	}
-	if (n != HAMMER_MREC_HEADSIZE) {
-		fprintf(stderr, "mirror-write: short read of PFS header\n");
+	mrec = read_mrecord(fdin, &error, NULL);
+	if (mrec == NULL) {
+		if (error == 0)
+			fprintf(stderr, "validate_mrec_header: short read\n");
 		exit(1);
 	}
-	if (pfs_head.mrec.signature != HAMMER_IOC_MIRROR_SIGNATURE) {
-		fprintf(stderr, "mirror-write: PFS header has bad signature\n");
+	if (mrec->type != HAMMER_MREC_TYPE_PFSD) {
+		fprintf(stderr, "validate_mrec_header: did not get expected "
+				"PFSD record type\n");
 		exit(1);
 	}
-	if (pfs_head.mrec.type != HAMMER_MREC_TYPE_PFSD) {
-		fprintf(stderr, "mirror-write: Expected PFS header, got mirroring record header instead!\n");
+	pfs_head = (void *)(mrec + 1);
+	bytes = mrec->rec_size;	/* post-adjusted for payload */
+	if (bytes != sizeof(*pfs_head)) {
+		fprintf(stderr, "validate_mrec_header: unexpected payload "
+				"size\n");
 		exit(1);
 	}
-	bytes = pfs_head.mrec.rec_size;
-	if (bytes < HAMMER_MREC_HEADSIZE)
-		bytes = (int)HAMMER_MREC_HEADSIZE;
-	if (bytes > sizeof(pfs_head))
-		bytes = sizeof(pfs_head);
-	while (n < bytes) {
-		i = read(fdin, (char *)&pfs_head + n, bytes - n);
-		if (i <= 0)
-			break;
-		n += i;
-	}
-	if (n != bytes) {
-		fprintf(stderr, "mirror-write: short read of PFS payload\n");
-		exit(1);
-	}
-	if (pfs_head.version != pfs.version) {
-		fprintf(stderr, "mirror-write: Version mismatch in PFS header\n");
-		exit(1);
-	}
-	if (pfs_head.mrec.rec_size != sizeof(pfs_head)) {
-		fprintf(stderr, "mirror-write: The PFS header has the wrong size!\n");
+	if (pfs_head->version != pfs.version) {
+		fprintf(stderr, "validate_mrec_header: Version mismatch\n");
 		exit(1);
 	}
 
 	/*
 	 * Whew.  Ok, is the read PFS info compatible with the target?
 	 */
-	if (bcmp(&pfs_head.pfsd.shared_uuid, &pfsd.shared_uuid, sizeof(pfsd.shared_uuid)) != 0) {
+	if (bcmp(&pfs_head->pfsd.shared_uuid, &pfsd.shared_uuid, sizeof(pfsd.shared_uuid)) != 0) {
 		fprintf(stderr, "mirror-write: source and target have different shared_uuid's!\n");
 		exit(1);
 	}
@@ -430,27 +698,32 @@ validate_mrec_header(int fd, int fdin,
 		fprintf(stderr, "mirror-write: target must be in slave mode\n");
 		exit(1);
 	}
-	*tid_begp = pfs_head.pfsd.sync_beg_tid;
-	*tid_endp = pfs_head.pfsd.sync_end_tid;
+	*tid_begp = pfs_head->pfsd.sync_beg_tid;
+	*tid_endp = pfs_head->pfsd.sync_end_tid;
+	free(mrec);
 }
 
 static void
-run_cmd(const char *path, ...)
+update_pfs_snapshot(int fd, hammer_tid_t snapshot_tid)
 {
-	va_list va;
-	char *av[16];
-	int n;
+	struct hammer_ioc_pseudofs_rw pfs;
+	struct hammer_pseudofs_data pfsd;
 
-	va_start(va, path);
-	for (n = 0; n < 16; ++n) {
-		av[n] = va_arg(va, char *);
-		if (av[n] == NULL)
-			break;
+	bzero(&pfs, sizeof(pfs));
+	bzero(&pfsd, sizeof(pfsd));
+	pfs.ondisk = &pfsd;
+	pfs.bytes = sizeof(pfsd);
+	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) != 0) {
+		perror("update_pfs_snapshot (read)");
+		exit(1);
 	}
-	va_end(va);
-	assert(n != 16);
-	execv(path, av);
+	pfsd.sync_beg_tid = snapshot_tid;
+	if (ioctl(fd, HAMMERIOC_SET_PSEUDOFS, &pfs) != 0) {
+		perror("update_pfs_snapshot (rewrite)");
+		exit(1);
+	}
 }
+
 
 static void
 mirror_usage(int code)
@@ -458,6 +731,7 @@ mirror_usage(int code)
 	fprintf(stderr, 
 		"hammer mirror-read <filesystem>\n"
 		"hammer mirror-write <filesystem>\n"
+		"hammer mirror-dump\n"
 		"hammer mirror-copy [[user@]host:]fs [[user@]host:]fs\n"
 	);
 	exit(code);

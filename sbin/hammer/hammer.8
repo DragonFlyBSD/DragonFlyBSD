@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.30 2008/07/02 22:05:59 dillon Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.31 2008/07/07 00:27:22 dillon Exp $
 .Dd June 26, 2008
 .Dt HAMMER 8
 .Os
@@ -311,6 +311,9 @@ Take a mirroring stream on stdin and output it to stdout.
 This command will fail if the
 .Ar shared_uuid
 configuration field for the two filesystems do not match.
+.It Ar mirror-dump
+A mirror-read can be piped into a mirror-dump to dump an ascii
+representation of the mirroring stream.
 .It Ar mirror-copy Ar [[user@]host:]filesystem Ar [[user@]host:]filesystem
 This is a shortcut which pipes a mirror-read command to a mirror-write
 command.  If a remote host specification is made the program forks an

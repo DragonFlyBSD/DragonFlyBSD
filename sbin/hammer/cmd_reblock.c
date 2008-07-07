@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_reblock.c,v 1.9 2008/06/26 04:07:57 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_reblock.c,v 1.10 2008/07/07 00:27:22 dillon Exp $
  */
 
 #include "hammer.h"
@@ -49,11 +49,14 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 	int fd;
 	int perc;
 
+	if (TimeoutOpt > 0)
+		alarm(TimeoutOpt);
+
 	bzero(&reblock, sizeof(reblock));
 
 	reblock.key_beg.localization = HAMMER_MIN_LOCALIZATION;
 	reblock.key_beg.obj_id = HAMMER_MIN_OBJID;
-	hammer_get_cycle(&reblock.key_beg);
+	hammer_get_cycle(&reblock.key_beg, NULL);
 
 	reblock.key_end.localization = HAMMER_MAX_LOCALIZATION;
 	reblock.key_end.obj_id = HAMMER_MAX_OBJID;
@@ -104,7 +107,7 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 			reblock.key_cur.obj_id,
 			reblock.key_cur.localization);
 		if (CyclePath) {
-			hammer_set_cycle(&reblock.key_cur);
+			hammer_set_cycle(&reblock.key_cur, 0);
 		}
 	} else {
 		if (CyclePath)
