@@ -65,7 +65,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.50 2008/07/06 19:01:57 nth Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.51 2008/07/07 14:35:12 aggelos Exp $
  */
 
 #include "opt_inet.h"
@@ -1237,7 +1237,16 @@ out:
 int
 sooptcopyin(struct sockopt *sopt, void *buf, size_t len, size_t minlen)
 {
+	return soopt_to_kbuf(sopt, buf, len, minlen);
+}
+
+int
+soopt_to_kbuf(struct sockopt *sopt, void *buf, size_t len, size_t minlen)
+{
 	size_t	valsize;
+
+	KKASSERT(kva_p(sopt->sopt_val));
+	KKASSERT(kva_p(buf));
 
 	/*
 	 * If the user gives us more than we wanted, we ignore it,
@@ -1250,28 +1259,8 @@ sooptcopyin(struct sockopt *sopt, void *buf, size_t len, size_t minlen)
 	if (valsize > len)
 		sopt->sopt_valsize = valsize = len;
 
-	if (sopt->sopt_td != NULL)
-		return (copyin(sopt->sopt_val, buf, valsize));
-
 	bcopy(sopt->sopt_val, buf, valsize);
 	return 0;
-}
-
-int
-soopt_to_kbuf(struct sockopt *sopt, void *buf, size_t len, size_t minlen)
-{
-	void *td;
-	int err;
-
-	/* XXX: addr_is_kva_p() */
-	KKASSERT(kva_p(sopt->sopt_val));
-	KKASSERT(kva_p(buf));
-
-	td = sopt->sopt_td;
-	sopt->sopt_td = NULL;
-	err = sooptcopyin(sopt, buf, len, minlen);
-	sopt->sopt_td = td;
-	return err;
 }
 
 
@@ -1425,10 +1414,17 @@ bad:
 int
 sooptcopyout(struct sockopt *sopt, const void *buf, size_t len)
 {
-	int	error;
+	soopt_from_kbuf(sopt, buf, len);
+	return 0;
+}
+
+void
+soopt_from_kbuf(struct sockopt *sopt, const void *buf, size_t len)
+{
 	size_t	valsize;
 
-	error = 0;
+	KKASSERT(kva_p(sopt->sopt_val));
+	KKASSERT(kva_p(buf));
 
 	/*
 	 * Documented get behavior is that we always return a value,
@@ -1442,28 +1438,8 @@ sooptcopyout(struct sockopt *sopt, const void *buf, size_t len)
 	valsize = min(len, sopt->sopt_valsize);
 	sopt->sopt_valsize = valsize;
 	if (sopt->sopt_val != 0) {
-		if (sopt->sopt_td != NULL)
-			error = copyout(buf, sopt->sopt_val, valsize);
-		else
-			bcopy(buf, sopt->sopt_val, valsize);
+		bcopy(buf, sopt->sopt_val, valsize);
 	}
-	return error;
-}
-
-void
-soopt_from_kbuf(struct sockopt *sopt, const void *buf, size_t len)
-{
-	void *td;
-	int err;
-
-	KKASSERT(kva_p(sopt->sopt_val));
-	KKASSERT(kva_p(buf));
-
-	td = sopt->sopt_td;
-	sopt->sopt_td = NULL;
-	err = sooptcopyout(sopt, buf, len);
-	KKASSERT(err == 0);	/* can't fail */
-	sopt->sopt_td = td;
 }
 
 int
@@ -1599,74 +1575,56 @@ soopt_getm(struct sockopt *sopt, struct mbuf **mp)
 int
 soopt_mcopyin(struct sockopt *sopt, struct mbuf *m)
 {
-	struct mbuf *m0 = m;
-	size_t valsize;
-	void *val;
-
-	if (sopt->sopt_val == NULL)
-		return 0;
-	val = sopt->sopt_val;
-	valsize = sopt->sopt_valsize;
-	while (m != NULL && valsize >= m->m_len) {
-		if (sopt->sopt_td != NULL) {
-			int error;
-
-			error = copyin(val, mtod(m, char *), m->m_len);
-			if (error != 0) {
-				m_freem(m0);
-				return (error);
-			}
-		} else
-			bcopy(val, mtod(m, char *), m->m_len);
-		valsize -= m->m_len;
-		val = (caddr_t)val + m->m_len;
-		m = m->m_next;
-	}
-	if (m != NULL) /* should be allocated enoughly at ip6_sooptmcopyin() */
-		panic("ip6_sooptmcopyin");
+	soopt_to_mbuf(sopt, m);
 	return 0;
 }
 
 void
 soopt_to_mbuf(struct sockopt *sopt, struct mbuf *m)
 {
-	void *td;
-	int err;
+	struct mbuf *m0 = m;
+	size_t valsize;
+	void *val;
 
 	KKASSERT(kva_p(sopt->sopt_val));
 	KKASSERT(kva_p(m));
-
-	td = sopt->sopt_td;
-	sopt->sopt_td = NULL;
-	err = soopt_mcopyin(sopt, m);
-	KKASSERT(err == 0);	/* can't fail */
-	sopt->sopt_td = td;
+	if (sopt->sopt_val == NULL)
+		return 0;
+	val = sopt->sopt_val;
+	valsize = sopt->sopt_valsize;
+	while (m != NULL && valsize >= m->m_len) {
+		bcopy(val, mtod(m, char *), m->m_len);
+		valsize -= m->m_len;
+		val = (caddr_t)val + m->m_len;
+		m = m->m_next;
+	}
+	if (m != NULL) /* should be allocated enoughly at ip6_sooptmcopyin() */
+		panic("ip6_sooptmcopyin");
 }
 
 /* XXX; copyout mbuf chain data into soopt for (__FreeBSD__ < 3) routines. */
 int
 soopt_mcopyout(struct sockopt *sopt, struct mbuf *m)
 {
+	return soopt_from_mbuf(sopt, m);
+}
+
+int
+soopt_from_mbuf(struct sockopt *sopt, struct mbuf *m)
+{
 	struct mbuf *m0 = m;
 	size_t valsize = 0;
 	size_t maxsize;
 	void *val;
 
+	KKASSERT(kva_p(sopt->sopt_val));
+	KKASSERT(kva_p(m));
 	if (sopt->sopt_val == NULL)
 		return 0;
 	val = sopt->sopt_val;
 	maxsize = sopt->sopt_valsize;
 	while (m != NULL && maxsize >= m->m_len) {
-		if (sopt->sopt_td != NULL) {
-			int error;
-
-			error = copyout(mtod(m, char *), val, m->m_len);
-			if (error != 0) {
-				m_freem(m0);
-				return (error);
-			}
-		} else
-			bcopy(mtod(m, char *), val, m->m_len);
+		bcopy(mtod(m, char *), val, m->m_len);
 	       maxsize -= m->m_len;
 	       val = (caddr_t)val + m->m_len;
 	       valsize += m->m_len;
@@ -1679,22 +1637,6 @@ soopt_mcopyout(struct sockopt *sopt, struct mbuf *m)
 	}
 	sopt->sopt_valsize = valsize;
 	return 0;
-}
-
-int
-soopt_from_mbuf(struct sockopt *sopt, struct mbuf *m)
-{
-	void *td;
-	int err;
-
-	KKASSERT(kva_p(sopt->sopt_val));
-	KKASSERT(kva_p(m));
-
-	td = sopt->sopt_td;
-	sopt->sopt_td = NULL;
-	err = soopt_mcopyout(sopt, m);
-	sopt->sopt_td = td;
-	return err;
 }
 
 void

@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.21 2008/06/17 20:50:11 aggelos Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.22 2008/07/07 14:35:12 aggelos Exp $
  */
 
 #include <sys/param.h>
@@ -44,6 +44,7 @@
 #include <sys/thread.h>
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+#include <vm/pmap.h>
 #include <net/netmsg2.h>
 
 #include <net/netisr.h>
@@ -386,21 +387,8 @@ so_pru_ctloutput(struct socket *so, struct sockopt *sopt)
 	struct netmsg_pru_ctloutput msg;
 	lwkt_port_t port;
 	int error;
-	void *uval = NULL;
-	int need_copy;
 
-	need_copy = sopt->sopt_td != NULL;
-	if (need_copy) {
-		uval = sopt->sopt_val;
-		/*
-		 * we keep duplicate copies, but for option {s,g}etting
-		 * who cares?
-		 */
-		sopt->sopt_val = kmalloc(sopt->sopt_valsize, M_TEMP, M_WAITOK);
-		error = copyin(uval, sopt->sopt_val, sopt->sopt_valsize);
-		if (error)
-			goto out;
-	}
+	KKASSERT(kva_p(sopt->sopt_val));
 	port = so->so_proto->pr_mport(so, NULL, NULL, PRU_CTLOUTPUT);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_ctloutput);
@@ -409,20 +397,6 @@ so_pru_ctloutput(struct socket *so, struct sockopt *sopt)
 	msg.nm_so = so;
 	msg.nm_sopt = sopt;
 	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
-out:
-	if (need_copy) {
-		if (!error) {
-			error = copyout(sopt->sopt_val, uval,
-					sopt->sopt_valsize);
-		}
-		/*
-		 * watch out: this may not be the same memory we allocated,
-		 * callees "know" we're using M_TEMP so any reallocations
-		 * will happen from there
-		 */
-		kfree(sopt->sopt_val, M_TEMP);
-		sopt->sopt_val = uval;
-	}
 	return (error);
 }
 
