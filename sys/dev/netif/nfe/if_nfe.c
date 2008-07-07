@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.31 2008/07/05 07:29:44 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.32 2008/07/07 11:29:28 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -373,7 +373,8 @@ nfe_probe(device_t dev)
 			case PCI_PRODUCT_NVIDIA_NFORCE_LAN:
 			case PCI_PRODUCT_NVIDIA_NFORCE2_LAN:
 			case PCI_PRODUCT_NVIDIA_NFORCE3_LAN1:
-				sc->sc_caps = NFE_NO_PWRCTL;
+				sc->sc_caps = NFE_NO_PWRCTL |
+					      NFE_FIX_EADDR;
 				break;
 			case PCI_PRODUCT_NVIDIA_NFORCE3_LAN2:
 			case PCI_PRODUCT_NVIDIA_NFORCE3_LAN3:
@@ -381,10 +382,13 @@ nfe_probe(device_t dev)
 			case PCI_PRODUCT_NVIDIA_NFORCE3_LAN5:
 				sc->sc_caps = NFE_JUMBO_SUP |
 					       NFE_HW_CSUM |
-					       NFE_NO_PWRCTL;
+					       NFE_NO_PWRCTL |
+					       NFE_FIX_EADDR;
 				break;
 			case PCI_PRODUCT_NVIDIA_MCP51_LAN1:
 			case PCI_PRODUCT_NVIDIA_MCP51_LAN2:
+				sc->sc_caps = NFE_FIX_EADDR;
+				/* FALL THROUGH */
 			case PCI_PRODUCT_NVIDIA_MCP61_LAN1:
 			case PCI_PRODUCT_NVIDIA_MCP61_LAN2:
 			case PCI_PRODUCT_NVIDIA_MCP61_LAN3:
@@ -397,7 +401,7 @@ nfe_probe(device_t dev)
 			case PCI_PRODUCT_NVIDIA_MCP73_LAN2:
 			case PCI_PRODUCT_NVIDIA_MCP73_LAN3:
 			case PCI_PRODUCT_NVIDIA_MCP73_LAN4:
-				sc->sc_caps = NFE_40BIT_ADDR;
+				sc->sc_caps |= NFE_40BIT_ADDR;
 				break;
 			case PCI_PRODUCT_NVIDIA_CK804_LAN1:
 			case PCI_PRODUCT_NVIDIA_CK804_LAN2:
@@ -406,7 +410,8 @@ nfe_probe(device_t dev)
 				sc->sc_caps = NFE_JUMBO_SUP |
 					       NFE_40BIT_ADDR |
 					       NFE_HW_CSUM |
-					       NFE_NO_PWRCTL;
+					       NFE_NO_PWRCTL |
+					       NFE_FIX_EADDR;
 				break;
 			case PCI_PRODUCT_NVIDIA_MCP65_LAN1:
 			case PCI_PRODUCT_NVIDIA_MCP65_LAN2:
@@ -420,7 +425,8 @@ nfe_probe(device_t dev)
 				sc->sc_caps = NFE_JUMBO_SUP |
 					       NFE_40BIT_ADDR |
 					       NFE_HW_CSUM |
-					       NFE_HW_VLAN;
+					       NFE_HW_VLAN |
+					       NFE_FIX_EADDR;
 				break;
 			case PCI_PRODUCT_NVIDIA_MCP77_LAN1:
 			case PCI_PRODUCT_NVIDIA_MCP77_LAN2:
@@ -2114,17 +2120,27 @@ done:
 static void
 nfe_get_macaddr(struct nfe_softc *sc, uint8_t *addr)
 {
-	uint32_t tmp;
+	uint32_t lo, hi;
 
-	tmp = NFE_READ(sc, NFE_MACADDR_LO);
-	addr[0] = (tmp >> 8) & 0xff;
-	addr[1] = (tmp & 0xff);
+	lo = NFE_READ(sc, NFE_MACADDR_LO);
+	hi = NFE_READ(sc, NFE_MACADDR_HI);
+	if (sc->sc_caps & NFE_FIX_EADDR) {
+		addr[0] = (lo >> 8) & 0xff;
+		addr[1] = (lo & 0xff);
 
-	tmp = NFE_READ(sc, NFE_MACADDR_HI);
-	addr[2] = (tmp >> 24) & 0xff;
-	addr[3] = (tmp >> 16) & 0xff;
-	addr[4] = (tmp >>  8) & 0xff;
-	addr[5] = (tmp & 0xff);
+		addr[2] = (hi >> 24) & 0xff;
+		addr[3] = (hi >> 16) & 0xff;
+		addr[4] = (hi >>  8) & 0xff;
+		addr[5] = (hi & 0xff);
+	} else {
+		addr[0] = (hi & 0xff);
+		addr[1] = (hi >>  8) & 0xff;
+		addr[2] = (hi >> 16) & 0xff;
+		addr[3] = (hi >> 24) & 0xff;
+
+		addr[4] = (lo & 0xff);
+		addr[5] = (lo >>  8) & 0xff;
+	}
 }
 
 static void

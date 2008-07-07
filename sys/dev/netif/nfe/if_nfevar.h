@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfevar.h,v 1.11 2006/02/19 13:57:02 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfevar.h,v 1.9 2008/07/05 07:29:44 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfevar.h,v 1.10 2008/07/07 11:29:28 sephe Exp $	*/
 
 /*
  * Copyright (c) 2005 Jonathan Gray <jsg@openbsd.org>
@@ -97,6 +97,7 @@ struct nfe_softc {
 #define NFE_40BIT_ADDR	0x02
 #define NFE_HW_CSUM	0x04
 #define NFE_HW_VLAN	0x08
+#define NFE_FIX_EADDR	0x10
 #define NFE_NO_PWRCTL	0x20
 
 	uint32_t		sc_flags;
