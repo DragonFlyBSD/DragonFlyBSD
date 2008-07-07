@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.44 2008/06/02 06:42:45 hasso Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.45 2008/07/07 16:02:36 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -70,14 +70,15 @@ struct statvfs;
 typedef struct fsid { int32_t val[2]; } fsid_t;	/* file system id type */
 
 /*
- * File identifier.
- * These are unique per filesystem on a single machine.
+ * File identifier.  These are unique per filesystem on a single machine.
+ *
+ * fix_ext is also used by HAMMER.
  */
 #define	MAXFIDSZ	16
 
 struct fid {
 	u_short		fid_len;		/* length of data in bytes */
-	u_short		fid_reserved;		/* force longword alignment */
+	u_short		fid_ext;		/* extended data 	   */
 	char		fid_data[MAXFIDSZ];	/* data (variable length) */
 };
 
