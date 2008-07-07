@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/wpa_supplicant,v 1.2 2005/10/19 22:26:47 jkim Exp $
-# $DragonFly: src/etc/rc.d/wpa_supplicant,v 1.1 2007/07/10 22:36:01 swildner Exp $
+# $DragonFly: src/etc/rc.d/wpa_supplicant,v 1.2 2008/07/07 00:00:56 thomas Exp $
 #
 
 # PROVIDE: wpa_supplicant
@@ -15,6 +15,19 @@ name="wpa_supplicant"
 rcvar=
 command="/usr/sbin/${name}"
 conf_file="/etc/wpa_supplicant.conf"
+
+start_precmd="wpa_supplicant_precmd"
+wpa_supplicant_precmd()
+{
+	ifconfig $ifn up
+}
+start_postcmd="wpa_supplicant_postcmd"
+wpa_supplicant_postcmd()
+{
+	while ! ifconfig $ifn | grep -qw "status: associated"; do
+		sleep 1
+	done
+}
 
 ifn="$2"
 if [ -z "$ifn" ]; then
