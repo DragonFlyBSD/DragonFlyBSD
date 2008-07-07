@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.10 2008/05/18 07:47:14 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.11 2008/07/07 13:14:23 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1178,7 +1178,7 @@ et_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		if (ifp->if_flags & IFF_UP) {
 			if (ifp->if_flags & IFF_RUNNING) {
 				if ((ifp->if_flags ^ sc->sc_if_flags) &
-				(IFF_ALLMULTI | IFF_PROMISC | IFF_BROADCAST))
+				    (IFF_ALLMULTI | IFF_PROMISC))
 					et_setmulti(sc);
 			} else {
 				et_init(sc);
