@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.32 2008/07/07 11:29:28 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.33 2008/07/07 11:31:28 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -381,9 +381,9 @@ nfe_probe(device_t dev)
 			case PCI_PRODUCT_NVIDIA_NFORCE3_LAN4:
 			case PCI_PRODUCT_NVIDIA_NFORCE3_LAN5:
 				sc->sc_caps = NFE_JUMBO_SUP |
-					       NFE_HW_CSUM |
-					       NFE_NO_PWRCTL |
-					       NFE_FIX_EADDR;
+					      NFE_HW_CSUM |
+					      NFE_NO_PWRCTL |
+					      NFE_FIX_EADDR;
 				break;
 			case PCI_PRODUCT_NVIDIA_MCP51_LAN1:
 			case PCI_PRODUCT_NVIDIA_MCP51_LAN2:
@@ -408,25 +408,25 @@ nfe_probe(device_t dev)
 			case PCI_PRODUCT_NVIDIA_MCP04_LAN1:
 			case PCI_PRODUCT_NVIDIA_MCP04_LAN2:
 				sc->sc_caps = NFE_JUMBO_SUP |
-					       NFE_40BIT_ADDR |
-					       NFE_HW_CSUM |
-					       NFE_NO_PWRCTL |
-					       NFE_FIX_EADDR;
+					      NFE_40BIT_ADDR |
+					      NFE_HW_CSUM |
+					      NFE_NO_PWRCTL |
+					      NFE_FIX_EADDR;
 				break;
 			case PCI_PRODUCT_NVIDIA_MCP65_LAN1:
 			case PCI_PRODUCT_NVIDIA_MCP65_LAN2:
 			case PCI_PRODUCT_NVIDIA_MCP65_LAN3:
 			case PCI_PRODUCT_NVIDIA_MCP65_LAN4:
 				sc->sc_caps = NFE_JUMBO_SUP |
-					       NFE_40BIT_ADDR;
+					      NFE_40BIT_ADDR;
 				break;
 			case PCI_PRODUCT_NVIDIA_MCP55_LAN1:
 			case PCI_PRODUCT_NVIDIA_MCP55_LAN2:
 				sc->sc_caps = NFE_JUMBO_SUP |
-					       NFE_40BIT_ADDR |
-					       NFE_HW_CSUM |
-					       NFE_HW_VLAN |
-					       NFE_FIX_EADDR;
+					      NFE_40BIT_ADDR |
+					      NFE_HW_CSUM |
+					      NFE_HW_VLAN |
+					      NFE_FIX_EADDR;
 				break;
 			case PCI_PRODUCT_NVIDIA_MCP77_LAN1:
 			case PCI_PRODUCT_NVIDIA_MCP77_LAN2:
@@ -437,7 +437,7 @@ nfe_probe(device_t dev)
 			case PCI_PRODUCT_NVIDIA_MCP79_LAN3:
 			case PCI_PRODUCT_NVIDIA_MCP79_LAN4:
 				sc->sc_caps = NFE_40BIT_ADDR |
-					       NFE_HW_CSUM;
+					      NFE_HW_CSUM;
 				break;
 			}
 
