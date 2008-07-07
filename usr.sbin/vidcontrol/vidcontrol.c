@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.32.2.7 2002/09/15 22:31:50 dd Exp $
- * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.13 2008/06/05 18:06:33 swildner Exp $
+ * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.14 2008/07/07 23:03:25 swildner Exp $
  */
 
 #include <machine/console.h>
@@ -809,12 +809,7 @@ set_mouse(char *arg)
 		revert();
 		errx(1, "argument to -m must be either on or off");
 	}
-
-	if (ioctl(0, CONS_MOUSECTL, &mouse) == -1) {
-		revert();
-		errc(1, errno, "%sing the mouse",
-		     mouse.operation == MOUSE_SHOW ? "show" : "hid");
-	}
+	ioctl(0, CONS_MOUSECTL, &mouse);
 }
 
 
