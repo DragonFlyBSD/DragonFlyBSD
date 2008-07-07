@@ -64,7 +64,7 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.22 2008/06/05 15:29:47 sephe Exp $
+ * $DragonFly: src/sys/net/route.h,v 1.23 2008/07/07 22:02:10 nant Exp $
  */
 
 #ifndef _NET_ROUTE_H_
@@ -79,7 +79,6 @@
 #ifndef _SYS_SOCKET_H_
 #include <sys/socket.h>
 #endif
-
 
 /*
  * Kernel resident routing tables.
@@ -161,6 +160,7 @@ struct rtentry {
 					/* output routine for this (rt,if) */
 	struct	rtentry *rt_parent;	/* cloning parent of this route */
 	int	rt_cpuid;		/* owner cpu */
+	struct	sockaddr *rt_shim[3];	/* mpls label / operation array */
 };
 
 /*
@@ -203,7 +203,8 @@ struct ortentry {
 #define	RTF_LOCAL	0x200000	/* route represents a local address */
 #define	RTF_BROADCAST	0x400000	/* route represents a bcast address */
 #define	RTF_MULTICAST	0x800000	/* route represents a mcast address */
-					/* 0x1000000 and up unassigned */
+#define	RTF_MPLSOPS	0x1000000	/* route uses mpls label operations */
+					/* 0x2000000 and up unassigned */
 
 /*
  * Routing statistics.
@@ -233,7 +234,7 @@ struct rt_msghdr {
 	struct	rt_metrics rtm_rmx; /* metrics themselves */
 };
 
-#define RTM_VERSION	5	/* Up the ante and ignore older versions */
+#define RTM_VERSION	6	/* Up the ante and ignore older versions */
 
 /*
  * Message types.
@@ -280,6 +281,9 @@ struct rt_msghdr {
 #define RTA_IFA		0x20	/* interface addr sockaddr present */
 #define RTA_AUTHOR	0x40	/* sockaddr for author of redirect */
 #define RTA_BRD		0x80	/* for NEWADDR, broadcast or p-p dest addr */
+#define RTA_MPLS1	0x100	/* mpls label and/or operation present */
+#define RTA_MPLS2	0x200	/* mpls label and/or operation present */
+#define RTA_MPLS3	0x400	/* mpls label and/or operation present */
 
 /*
  * Index offsets for sockaddr array for alternate internal encoding.
@@ -292,7 +296,10 @@ struct rt_msghdr {
 #define RTAX_IFA	5	/* interface addr sockaddr present */
 #define RTAX_AUTHOR	6	/* sockaddr for author of redirect */
 #define RTAX_BRD	7	/* for NEWADDR, broadcast or p-p dest addr */
-#define RTAX_MAX	8	/* size of array to allocate */
+#define RTAX_MPLS1	8	/* mpls label and/or operation present */
+#define RTAX_MPLS2	9	/* mpls label and/or operation present */
+#define RTAX_MPLS3	10	/* mpls label and/or operation present */
+#define RTAX_MAX	11	/* size of array to allocate */
 
 struct rt_addrinfo {
 	int		 rti_addrs;
@@ -312,6 +319,9 @@ struct rt_addrinfo {
 #define	rti_ifaaddr	rti_info[RTAX_IFA]
 #define	rti_author	rti_info[RTAX_AUTHOR]
 #define	rti_bcastaddr	rti_info[RTAX_BRD]
+#define	rti_mpls1	rti_info[RTAX_MPLS1]
+#define	rti_mpls2	rti_info[RTAX_MPLS2]
+#define	rti_mpls3	rti_info[RTAX_MPLS3]
 
 extern struct radix_node_head *rt_tables[MAXCPU][AF_MAX+1];
 extern struct lwkt_port *rt_ports[MAXCPU];

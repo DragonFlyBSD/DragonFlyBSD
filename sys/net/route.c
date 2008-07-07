@@ -64,10 +64,11 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.34 2008/06/05 15:29:47 sephe Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.35 2008/07/07 22:02:10 nant Exp $
  */
 
 #include "opt_inet.h"
+#include "opt_mpls.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -91,6 +92,10 @@
 #include <sys/msgport2.h>
 #include <net/netmsg2.h>
 
+#ifdef MPLS
+#include <netproto/mpls/mpls.h>
+#endif
+
 static struct rtstatistics rtstatistics_percpu[MAXCPU];
 #ifdef SMP
 #define rtstat	rtstatistics_percpu[mycpuid]
@@ -112,6 +117,8 @@ static void rtinit_rtrequest_callback(int, int, struct rt_addrinfo *,
 static void rtredirect_msghandler(struct netmsg *netmsg);
 static void rtrequest1_msghandler(struct netmsg *netmsg);
 #endif
+
+static int rt_setshims(struct rtentry *, struct sockaddr **);
 
 SYSCTL_NODE(_net, OID_AUTO, route, CTLFLAG_RW, 0, "Routing");
 
@@ -846,6 +853,9 @@ rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 		rtinfo->rti_info[RTAX_GATEWAY] = rt->rt_gateway;
 		if ((rtinfo->rti_info[RTAX_NETMASK] = rt->rt_genmask) == NULL)
 			rtinfo->rti_flags |= RTF_HOST;
+		rtinfo->rti_info[RTAX_MPLS1] = rt->rt_shim[0];
+		rtinfo->rti_info[RTAX_MPLS2] = rt->rt_shim[1];
+		rtinfo->rti_info[RTAX_MPLS3] = rt->rt_shim[2];
 		goto makeroute;
 
 	case RTM_ADD:
@@ -875,6 +885,9 @@ makeroute:
 				      rtinfo->rti_info[RTAX_NETMASK]);
 		else
 			bcopy(dst, ndst, dst->sa_len);
+
+		if (rtinfo->rti_info[RTAX_MPLS1] != NULL)
+			rt_setshims(rt, rtinfo->rti_info);
 
 		/*
 		 * Note that we now have a reference to the ifa.
@@ -1273,6 +1286,25 @@ rt_llroute(struct sockaddr *dst, struct rtentry *rt0, struct rtentry **drt)
 	     time_second < rt->rt_rmx.rmx_expire))	/* rt not expired */
 		return (rt->rt_flags & RTF_HOST ?  EHOSTDOWN : EHOSTUNREACH);
 	*drt = rt;
+	return 0;
+}
+
+static int
+rt_setshims(struct rtentry *rt, struct sockaddr **rt_shim){
+	int i;
+	
+	for (i=0; i<3; i++) {
+		struct sockaddr *shim = rt_shim[RTAX_MPLS1 + i];
+		int shimlen;
+
+		if (shim == NULL)
+			break;
+
+		shimlen = ROUNDUP(shim->sa_len);
+		R_Malloc(rt->rt_shim[i], struct sockaddr_mpls *, shimlen);
+		bcopy(shim, rt->rt_shim[i], shimlen);
+	}
+
 	return 0;
 }
 

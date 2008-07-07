@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)route.8	8.3 (Berkeley) 3/19/94
 .\" $FreeBSD: src/sbin/route/route.8,v 1.17.2.9 2003/02/24 00:56:43 trhodes Exp $
-.\" $DragonFly: src/sbin/route/route.8,v 1.5 2006/01/19 22:19:30 dillon Exp $
+.\" $DragonFly: src/sbin/route/route.8,v 1.6 2008/07/07 22:02:09 nant Exp $
 .\"
 .Dd June 8, 2001
 .Dt ROUTE 8
@@ -226,12 +226,14 @@ itself may be given, in which case the route remains valid even
 if the local or remote addresses change.
 .Pp
 The optional modifiers
+.Fl mpls ,
 .Fl xns ,
 .Fl osi ,
 .Fl atalk ,
 and
 .Fl link
 specify that all subsequent addresses are in the
+.Tn MPLS ,
 .Tn XNS ,
 .Tn OSI ,
 or
@@ -349,6 +351,71 @@ are looked up first as a host name using
 If this lookup fails,
 .Xr getnetbyname 3
 is then used to interpret the name as that of a network.
+.Pp
+The optional
+.Fl push ,
+.Fl pop ,
+and
+.Fl swap
+modifiers may be used to specify the desired mpls label
+operations for the route. Each route may have up to 3
+label operations assigned to it. The label operations
+may be combined between them, but specifically the
+.Fl push
+and
+.Fl pop
+operations may be repeated if the intent is to push or pop
+more than one label at once. The
+.Fl swap
+operation always swaps the outer label and may not be
+repeated. 
+Here are some MPLS route examples:
+.Pp
+Add an normal inet route, but push an mpls
+.Ar label
+to the packet:
+.Pp
+.Bd -ragged -offset indent -compact
+.Nm
+.Cm add
+.Ar destination gateway
+.Fl push
+.Ar label
+.Ed
+.Pp
+Add an normal inet route, but double-push an mpls
+.Ar inner-label
+and an
+.Ar outer-label
+to the packet:
+.Pp
+.Bd -ragged -offset indent -compact
+.Nm
+.Cm add
+.Ar destination gateway
+.Fl push
+.Ar inner-label
+.Fl push
+.Ar outer-label
+.Ed
+.Pp
+Add an mpls route for an
+.Ar incoming-label
+to be forwarded to
+.Ar gateway
+and swap that label with
+.Ar new-label :
+.Pp
+.Bd -ragged -offset indent -compact
+.Nm
+.Cm add
+.Fl mpls
+.Ar incoming-label
+.Fl inet
+.Ar gateway
+.Fl swap
+.Ar new-label
+.Ed
 .Pp
 The
 .Nm

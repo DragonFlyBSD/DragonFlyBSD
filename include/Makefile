@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.38 2007/12/30 20:02:56 hasso Exp $
+# $DragonFly: src/include/Makefile,v 1.39 2008/07/07 22:02:09 nant Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -62,7 +62,7 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	netproto/atalk netproto/atm netproto/ipsec netproto/ipx \
 	netproto/key netproto/natm netproto/ncp netproto/ns netproto/smb \
 	netproto/atm/ipatm netproto/atm/sigpvc netproto/atm/spans \
-	netproto/atm/uni netproto/802_11
+	netproto/atm/uni netproto/802_11 netproto/mpls
 
 LSUBDIRS3= vfs/isofs/cd9660 net/i4b/include \
 	dev/misc/lpt dev/netif/wi dev/video/bktr dev/video/meteor

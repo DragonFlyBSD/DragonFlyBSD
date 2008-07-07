@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)route.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/route/route.c,v 1.40.2.11 2003/02/27 23:10:10 ru Exp $
- * $DragonFly: src/sbin/route/route.c,v 1.16 2007/09/10 15:13:55 dillon Exp $
+ * $DragonFly: src/sbin/route/route.c,v 1.17 2008/07/07 22:02:09 nant Exp $
  */
 
 #include <sys/param.h>
@@ -54,6 +54,8 @@
 #endif
 #include <arpa/inet.h>
 #include <netdb.h>
+
+#include <netproto/mpls/mpls.h>
 
 #include <ctype.h>
 #include <err.h>
@@ -79,10 +81,12 @@ union	sockunion {
 #ifdef NS
 	struct	sockaddr_ns sns;
 #endif
+	struct	sockaddr_mpls smpls;
 	struct	sockaddr_dl sdl;
 	struct	sockaddr_inarp sinarp;
 	struct	sockaddr_storage ss; /* added to avoid memory overrun */
-} so_dst, so_gate, so_mask, so_genmask, so_ifa, so_ifp;
+} so_dst, so_gate, so_mask, so_genmask, so_ifa, so_ifp, so_mpls1,
+	so_mpls2, so_mpls3;
 
 typedef union sockunion *sup;
 
@@ -96,6 +100,7 @@ static int	s;
 static int	forcehost, forcenet, af, qflag, tflag;
 static int	iflag, verbose, aflen = sizeof(struct sockaddr_in);
 static int	locking, lockrest, debugonly;
+static int	mplsop, popcount, pushcount, swapcount;
 static u_long	rtm_inits;
 static uid_t	uid;
 #ifdef NS
@@ -253,6 +258,9 @@ flushroutes(int argc, char **argv)
 #endif
 			case K_LINK:
 				af = AF_LINK;
+				break;
+			case K_MPLS:
+				af = AF_MPLS;
 				break;
 			default:
 				goto bad;
@@ -740,6 +748,64 @@ newroute(int argc, char **argv)
 					ishost = 0;
 				}
 				break;
+			case K_MPLS:
+				af = AF_MPLS;
+				aflen = sizeof(struct sockaddr_mpls);
+				break;
+			case K_POP:
+				flags |= RTF_MPLSOPS;
+				af = AF_MPLS;
+				mplsop = MPLSLOP_POP;
+				switch(++popcount){
+					case 1:
+						getaddr(RTA_MPLS1, "", 0);
+						break;
+					case 2:
+						getaddr(RTA_MPLS2, "", 0);
+						break;
+					case 3:
+						getaddr(RTA_MPLS3, "", 0);
+						break;
+				}
+				break;
+			case K_PUSH:
+			case K_SWAP:
+				if (popcount > 0) {
+					warnx("Push or swap after pop. Ignoring.");
+					break;
+				}
+				if (key == K_PUSH) {
+					mplsop = MPLSLOP_PUSH;
+					++pushcount;
+				} else {
+					if (pushcount > 0) {
+						warnx("Swap after push. Ignoring.");
+						break;
+					}
+					if (swapcount > 0) {
+						warnx("Too many swaps. Ignoring.");
+						break;
+					}
+					mplsop = MPLSLOP_SWAP;
+					++swapcount;
+				}
+				flags |= RTF_MPLSOPS;
+				af = AF_MPLS;
+				aflen = sizeof(struct sockaddr_mpls);
+				if (--argc == 0)
+					usage((char *)NULL);
+				switch(pushcount + swapcount){
+					case 1:
+						getaddr(RTA_MPLS1, *++argv, 0);
+						break;
+					case 2:
+						getaddr(RTA_MPLS2, *++argv, 0);
+						break;
+					case 3:
+						getaddr(RTA_MPLS3, *++argv, 0);
+						break;
+				}
+				break;
 			case K_MTU:
 			case K_HOPCOUNT:
 			case K_EXPIRE:
@@ -993,6 +1059,15 @@ getaddr(int which, char *str, struct hostent **hpp)
 	case RTA_IFA:
 		su = &so_ifa;
 		break;
+	case RTA_MPLS1:
+		su = &so_mpls1;
+		break;
+	case RTA_MPLS2:
+		su = &so_mpls2;
+		break;
+	case RTA_MPLS3:
+		su = &so_mpls3;
+		break;
 	default:
 		usage("internal error");
 		/*NOTREACHED*/
@@ -1069,7 +1144,6 @@ getaddr(int which, char *str, struct hostent **hpp)
 		return(!ns_nullhost(su->sns.sns_addr));
 #endif
 
-
 	case AF_APPLETALK:
 		if (!atalk_aton(str, &su->sat.sat_addr))
 			errx(EX_NOHOST, "bad address: %s", str);
@@ -1080,11 +1154,27 @@ getaddr(int which, char *str, struct hostent **hpp)
 		link_addr(str, &su->sdl);
 		return(1);
 
-
 	case PF_ROUTE:
 		su->sa.sa_len = sizeof(*su);
 		sockaddr(str, &su->sa);
 		return(1);
+
+	case AF_MPLS:
+	{
+		mpls_label_t label;
+
+		bzero(su, sizeof(*su));
+		su->sa.sa_len = sizeof(*su);
+		su->sa.sa_family = AF_MPLS;
+		su->smpls.smpls_op = mplsop;
+		if (mplsop != MPLSLOP_POP && mplsop != MPLSLOP_POPALL &&
+		    *str != '\0') {
+			if (sscanf(str, "%u", &label) != 1)
+				errx(EX_NOHOST, "bad address: %s", str);
+			su->smpls.smpls_label = htonl(label);
+		}
+		return(1);
+	}
 
 	case AF_INET:
 	default:
@@ -1327,6 +1417,9 @@ rtmsg(int cmd, int flags)
 	NEXTADDR(RTA_GENMASK, so_genmask);
 	NEXTADDR(RTA_IFP, so_ifp);
 	NEXTADDR(RTA_IFA, so_ifa);
+	NEXTADDR(RTA_MPLS1, so_mpls1);
+	NEXTADDR(RTA_MPLS2, so_mpls2);
+	NEXTADDR(RTA_MPLS3, so_mpls3);
 	rtm.rtm_msglen = l = cp - (char *)&m_rtmsg;
 	if (verbose)
 		print_rtmsg(&rtm, l);
@@ -1418,7 +1511,8 @@ char ifnetflags[] =
 "\011PPROMISC\012ALLMULTI\013OACTIVE\014SIMPLEX\015LINK0\016LINK1"
 "\017LINK2\020MULTICAST";
 char addrnames[] =
-"\1DST\2GATEWAY\3NETMASK\4GENMASK\5IFP\6IFA\7AUTHOR\010BRD";
+"\1DST\2GATEWAY\3NETMASK\4GENMASK\5IFP\6IFA\7AUTHOR\010BRD"
+"\011MPLS1\012MPLS2\013MPLS3";
 
 static void
 print_rtmsg(struct rt_msghdr *rtm, int msglen __unused)

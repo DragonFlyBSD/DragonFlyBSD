@@ -64,7 +64,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.43 2008/03/07 11:34:19 sephe Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.44 2008/07/07 22:02:10 nant Exp $
  */
 
 #include "opt_sctp.h"
@@ -748,6 +748,7 @@ rt_xaddrs(char *cp, char *cplim, struct rt_addrinfo *rtinfo)
 			};
 
 			rtinfo->rti_info[i] = &sa_zero;
+			kprintf("rtsock: received more addr bits than sockaddrs.\n");
 			return (0); /* should be EINVAL but for compat */
 		}
 

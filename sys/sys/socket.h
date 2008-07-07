@@ -32,7 +32,7 @@
  *
  *	@(#)socket.h	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/sys/socket.h,v 1.39.2.7 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/socket.h,v 1.21 2008/05/27 01:10:47 dillon Exp $
+ * $DragonFly: src/sys/sys/socket.h,v 1.22 2008/07/07 22:02:10 nant Exp $
  */
 
 #ifndef _SYS_SOCKET_H_
@@ -162,8 +162,9 @@ struct	accept_filter_arg {
 					 */
 #define	AF_NETGRAPH	32		/* Netgraph sockets */
 #define	AF_BLUETOOTH	33		/* Bluetooth */
+#define	AF_MPLS		34		/* Multi-Protocol Label Switching */
 
-#define	AF_MAX		34
+#define	AF_MAX		35
 
 /*
  * Structure used by kernel to store most

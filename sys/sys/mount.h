@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.45 2008/07/07 16:02:36 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.46 2008/07/07 22:02:10 nant Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -499,7 +499,7 @@ struct vfsops {
 
 #include <net/radix.h>
 
-#define	AF_MAX		34	/* XXX */
+#define	AF_MAX		35	/* XXX */
 
 /*
  * Network address lookup element

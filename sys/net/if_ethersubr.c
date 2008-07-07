@@ -32,13 +32,14 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.74 2008/06/25 11:45:07 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.75 2008/07/07 22:02:10 nant Exp $
  */
 
 #include "opt_atalk.h"
 #include "opt_inet.h"
 #include "opt_inet6.h"
 #include "opt_ipx.h"
+#include "opt_mpls.h"
 #include "opt_netgraph.h"
 #include "opt_carp.h"
 #include "opt_ethernet.h"
@@ -110,6 +111,10 @@ int ether_inputdebug = 0;
 extern u_char	at_org_code[3];
 extern u_char	aarp_org_code[3];
 #endif /* NETATALK */
+
+#ifdef MPLS
+#include <netproto/mpls/mpls.h>
+#endif
 
 /* netgraph node hooks for ng_ether(4) */
 void	(*ng_ether_input_p)(struct ifnet *ifp, struct mbuf **mp);
@@ -302,6 +307,33 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		if (bcmp(edst, &ns_broadhost, ETHER_ADDR_LEN) == 0)
 			m->m_flags |= M_BCAST;
 		break;
+#endif
+#ifdef MPLS
+	case AF_MPLS:
+	{
+		struct sockaddr *sa_gw;
+
+		if (rt)
+			sa_gw = (struct sockaddr *)rt->rt_gateway;
+		else {
+			/* We realy need a gateway. */
+			m_freem(m);
+			return (0);
+		}
+
+		switch (sa_gw->sa_family) {
+			case AF_INET:
+				if (!arpresolve(ifp, rt, m, sa_gw, edst))
+					return (0);
+				break;
+			default:
+				kprintf("ether_output: address family not supported to forward mpls packets: %d.\n", sa_gw->sa_family);
+				m_freem(m);
+				return (0);
+		}
+		eh->ether_type = htons(ETHERTYPE_MPLS); /* XXX how about multicast? */
+		break;
+	}
 #endif
 	case pseudo_AF_HDRCMPLT:
 	case AF_UNSPEC:
@@ -785,6 +817,13 @@ post_stats:
 		break;
 	case ETHERTYPE_AARP:
 		isr = NETISR_AARP;
+		break;
+#endif
+
+#ifdef MPLS
+	case ETHERTYPE_MPLS:
+	case ETHERTYPE_MPLS_MCAST:
+		isr = NETISR_MPLS;
 		break;
 #endif
 

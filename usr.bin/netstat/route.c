@@ -32,7 +32,7 @@
  *
  * @(#)route.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/route.c,v 1.41.2.14 2002/07/17 02:22:22 kbyanc Exp $
- * $DragonFly: src/usr.bin/netstat/route.c,v 1.12 2007/09/30 12:45:05 sephe Exp $
+ * $DragonFly: src/usr.bin/netstat/route.c,v 1.13 2008/07/07 22:02:10 nant Exp $
  */
 
 #include <sys/param.h>
@@ -55,6 +55,8 @@
 #ifdef NS
 #include <netns/ns.h>
 #endif
+
+#include <netproto/mpls/mpls.h>
 
 #include <sys/sysctl.h>
 
@@ -103,6 +105,7 @@ struct bits {
 	{ RTF_PROTO3,	'3' },
 	{ RTF_BLACKHOLE,'B' },
 	{ RTF_BROADCAST,'b' },
+	{ RTF_MPLSOPS,	'm' },
 	{ 0 }
 };
 
@@ -138,6 +141,7 @@ static const char *fmt_flags(int f);
 static void p_rtentry (struct rtentry *);
 static u_long forgemask (u_long);
 static void domask (char *, u_long, u_long);
+static const char *labelops(struct rtentry *);
 
 /*
  * Print routing tables.
@@ -221,6 +225,9 @@ pr_family(int af)
 	case AF_NETGRAPH:
 		afname = "Netgraph";
 		break;
+	case AF_MPLS:
+		afname = "MPLS";
+		break;
 	default:
 		afname = NULL;
 		break;
@@ -252,6 +259,7 @@ static int wid_use;
 static int wid_mtu;
 static int wid_if;
 static int wid_expire;
+static int wid_mplslops;
 
 static void
 size_cols(int ef, struct radix_node *rn)
@@ -264,6 +272,7 @@ size_cols(int ef, struct radix_node *rn)
 	wid_mtu = 6;
 	wid_if = WID_IF_DEFAULT(ef);
 	wid_expire = 6;
+	wid_mplslops = 7;
 
 	if (Wflag)
 		size_cols_tree(rn);
@@ -297,7 +306,7 @@ size_cols_rtentry(struct rtentry *rt)
 	const char *bp;
 	struct sockaddr *sa;
 	sa_u addr, mask;
-	int len;
+	int len, i;
 
 	/*
 	 * Don't print protocol-cloned routes unless -a.
@@ -355,6 +364,9 @@ size_cols_rtentry(struct rtentry *rt)
 			}
 		}
 	}
+	if (rt->rt_shim[0] != NULL)
+		len = strlen(labelops(rt));
+	wid_mplslops = MAX(len, wid_mplslops);
 }
 
 
@@ -369,7 +381,7 @@ pr_rthdr(int af)
 		printf("%-8.8s ","Address");
 	if (af == AF_INET || Wflag) {
 		if (Wflag) {
-			printf("%-*.*s %-*.*s %-*.*s %*.*s %*.*s %*.*s %*.*s %*s\n",
+			printf("%-*.*s %-*.*s %-*.*s %*.*s %*.*s %*.*s %*.*s %*s %-*s\n",
 				wid_dst,	wid_dst,	"Destination",
 				wid_gw,		wid_gw,		"Gateway",
 				wid_flags,	wid_flags,	"Flags",
@@ -377,7 +389,8 @@ pr_rthdr(int af)
 				wid_use,	wid_use,	"Use",
 				wid_mtu,	wid_mtu,	"Mtu",
 				wid_if,		wid_if,		"Netif",
-				wid_expire,			"Expire");
+				wid_expire,			"Expire",
+				wid_mplslops,			"Labelops");
 		} else {
 			printf("%-*.*s %-*.*s %-*.*s %*.*s %*.*s %*.*s %*s\n",
 				wid_dst,	wid_dst,	"Destination",
@@ -687,6 +700,14 @@ fmt_sockaddr(struct sockaddr *sa, struct sockaddr *mask, int flags)
 		break;
 	    }
 
+	case AF_MPLS:
+	    {
+		struct sockaddr_mpls *smpls = (struct sockaddr_mpls *)sa;
+
+		(void) sprintf(workbuf, "%d", ntohl(smpls->smpls_label));
+		break;
+	    }
+		
 	default:
 	    {
 		u_char *s = (u_char *)sa->sa_data, *slim;
@@ -778,9 +799,15 @@ p_rtentry(struct rtentry *rt)
 			if ((expire_time =
 			    rt->rt_rmx.rmx_expire - time((time_t *)0)) > 0)
 				printf(" %*d", wid_expire, (int)expire_time);
+		} else {
+			printf("%*s ", wid_expire, "");
 		}
 		if (rt->rt_nodes[0].rn_dupedkey)
 			printf(" =>");
+	}
+	if (Wflag) {
+		if (rt->rt_shim[0] != NULL)
+			printf(" %-*s", wid_mplslops, labelops(rt));
 	}
 	putchar('\n');
 }
@@ -1196,4 +1223,41 @@ upHex(char *p0)
 			*p += ('A' - 'a');
 			break;
 		}
+}
+
+static const char *
+labelops(struct rtentry *rt)
+{
+	char *lops[] = { "push", "pop", "swap", "pop all" };
+	static char buffer[100];
+	char *cp = buffer;
+	struct sockaddr_mpls *smpls;
+	int i;
+
+	for (i=0; i<MPLS_MAXLOPS; ++i) {
+
+		if (rt->rt_shim[i] == NULL)
+			break;
+		if (i>0) {
+			cp += snprintf(cp,
+				       sizeof(buffer) - (cp - buffer),
+				       ", ");
+		}
+		smpls = (struct sockaddr_mpls *)kgetsa(rt->rt_shim[i]);
+		if (smpls->smpls_op != MPLSLOP_POP &&
+		    smpls->smpls_op != MPLSLOP_POPALL){
+			cp += snprintf(cp,
+				       sizeof(buffer) - (cp - buffer),
+				       "%s %d",
+				       lops[smpls->smpls_op - 1],
+				       ntohl(smpls->smpls_label));
+		} else {
+			cp += snprintf(cp,
+				       sizeof(buffer) - (cp - buffer),
+				       "%s",
+				       lops[smpls->smpls_op - 1]);
+		}
+	}
+
+	return (buffer);
 }

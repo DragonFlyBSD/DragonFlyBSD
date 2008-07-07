@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.90 2008/06/26 23:24:11 dillon Exp $
+# $DragonFly: src/sys/conf/options,v 1.91 2008/07/07 22:02:09 nant Exp $
 #
 #        On the handling of kernel options
 #
@@ -303,6 +303,7 @@ IPX			opt_ipx.h
 IPXIP			opt_ipx.h
 IPTUNNEL		opt_ipx.h
 LIBMCHAIN
+MPLS			opt_mpls.h
 NCP			opt_ncp.h
 NETATALK		opt_atalk.h
 NS			opt_ns.h

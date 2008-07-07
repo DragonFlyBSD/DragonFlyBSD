@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.221 2008/06/28 17:59:46 dillon Exp $
+# $DragonFly: src/sys/conf/files,v 1.222 2008/07/07 22:02:09 nant Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1104,6 +1104,10 @@ netproto/key/key.c		optional ipsec
 netproto/key/key_debug.c	optional ipsec
 netproto/key/keydb.c		optional ipsec
 netproto/key/keysock.c		optional ipsec
+netproto/mpls/mpls_demux.c	optional mpls
+netproto/mpls/mpls_input.c	optional mpls
+netproto/mpls/mpls_output.c	optional mpls
+netproto/mpls/mpls_proto.c	optional mpls
 netproto/natm/natm.c		optional natm
 netproto/natm/natm_pcb.c	optional natm
 netproto/natm/natm_proto.c	optional natm

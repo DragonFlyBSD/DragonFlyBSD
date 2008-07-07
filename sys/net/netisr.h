@@ -65,7 +65,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.33 2008/06/23 11:57:19 sephe Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.34 2008/07/07 22:02:10 nant Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -93,6 +93,7 @@
 #define	NETISR_ATALK2	16		/* Appletalk phase 2 */
 #define	NETISR_ATALK1	17		/* Appletalk phase 1 */
 #define	NETISR_ARP	18		/* same as AF_LINK */
+#define	NETISR_MPLS	21		/* MPLS */
 #define	NETISR_IPX	23		/* same as AF_IPX */
 #define	NETISR_USB	25		/* USB soft interrupt */
 #define	NETISR_PPP	27		/* PPP soft interrupt */

@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.45 2008/06/17 20:50:11 aggelos Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.46 2008/07/07 22:02:10 nant Exp $
  */
 
 #define _IP_VHL
@@ -39,6 +39,7 @@
 #include "opt_ipfilter.h"
 #include "opt_ipsec.h"
 #include "opt_mbuf_stress_test.h"
+#include "opt_mpls.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -64,6 +65,8 @@
 #include <netinet/in_pcb.h>
 #include <netinet/in_var.h>
 #include <netinet/ip_var.h>
+
+#include <netproto/mpls/mpls_var.h>
 
 static MALLOC_DEFINE(M_IPMOPTS, "ip_moptions", "internet multicast options");
 
@@ -1021,6 +1024,13 @@ pass:
 			m->m_pkthdr.len = tmp;
 		}
 #endif
+
+#ifdef MPLS
+		struct rtentry *send_route = ro->ro_rt;	/* copy-in/copy-out parameter */
+
+		if (!mpls_output_process(ifp, m, &dst, send_route))
+			goto done;
+#endif
 		error = ifp->if_output(ifp, m, (struct sockaddr *)dst,
 				       ro->ro_rt);
 		goto done;
@@ -1064,6 +1074,12 @@ pass:
 				ia->ia_ifa.if_opackets++;
 				ia->ia_ifa.if_obytes += m->m_pkthdr.len;
 			}
+#ifdef MPLS
+		struct rtentry *send_route = ro->ro_rt;	/* copy-in/copy-out parameter */
+
+		if (!mpls_output_process(ifp, m, &dst, send_route))
+			goto done;
+#endif
 			error = ifp->if_output(ifp, m, (struct sockaddr *)dst,
 					       ro->ro_rt);
 		} else {
