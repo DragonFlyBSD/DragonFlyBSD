@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.59 2008/07/03 04:24:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.60 2008/07/07 00:24:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -449,7 +449,9 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	}
 
 	/*
-	 * Finish setup now that we have a good root volume
+	 * Finish setup now that we have a good root volume.
+	 *
+	 * The top 16 bits of fsid.val[1] is a pfs id.
 	 */
 	ksnprintf(mp->mnt_stat.f_mntfromname,
 		  sizeof(mp->mnt_stat.f_mntfromname), "%s",
@@ -458,6 +460,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		crc32((char *)&rootvol->ondisk->vol_fsid + 0, 8);
 	mp->mnt_stat.f_fsid.val[1] =
 		crc32((char *)&rootvol->ondisk->vol_fsid + 8, 8);
+	mp->mnt_stat.f_fsid.val[1] &= 0x0000FFFF;
 
 	mp->mnt_vstat.f_fsid_uuid = rootvol->ondisk->vol_fsid;
 	mp->mnt_vstat.f_fsid = crc32(&mp->mnt_vstat.f_fsid_uuid,
@@ -727,7 +730,7 @@ hammer_vfs_vptofh(struct vnode *vp, struct fid *fhp)
 	KKASSERT(MAXFIDSZ >= 16);
 	ip = VTOI(vp);
 	fhp->fid_len = offsetof(struct fid, fid_data[16]);
-	fhp->fid_reserved = 0;
+	fhp->fid_ext = ip->obj_localization >> 16;
 	bcopy(&ip->obj_id, fhp->fid_data + 0, sizeof(ip->obj_id));
 	bcopy(&ip->obj_asof, fhp->fid_data + 8, sizeof(ip->obj_asof));
 	return(0);
@@ -744,9 +747,11 @@ hammer_vfs_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
 	struct hammer_inode *ip;
 	struct hammer_inode_info info;
 	int error;
+	u_int32_t localization;
 
 	bcopy(fhp->fid_data + 0, &info.obj_id, sizeof(info.obj_id));
 	bcopy(fhp->fid_data + 8, &info.obj_asof, sizeof(info.obj_asof));
+	localization = (u_int32_t)fhp->fid_ext << 16;
 
 	hammer_simple_transaction(&trans, (void *)mp->mnt_data);
 
@@ -755,9 +760,9 @@ hammer_vfs_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
 	 * unlocked while we manipulate the related vnode to avoid a
 	 * deadlock.
 	 */
+	kprintf("localization %08x\n", localization);
 	ip = hammer_get_inode(&trans, NULL, info.obj_id,
-			      info.obj_asof, HAMMER_DEF_LOCALIZATION,
-			      0, &error);
+			      info.obj_asof, localization, 0, &error);
 	if (ip == NULL) {
 		*vpp = NULL;
 		return(error);

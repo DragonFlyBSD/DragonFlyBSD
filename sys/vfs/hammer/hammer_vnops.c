@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.80 2008/07/03 04:24:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.81 2008/07/07 00:24:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -733,7 +733,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	int i;
 	int nlen;
 	int flags;
-	u_int64_t obj_id;
+	int64_t obj_id;
 	u_int32_t localization;
 
 	/*

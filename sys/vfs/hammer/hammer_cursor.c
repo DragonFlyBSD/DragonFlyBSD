@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.37 2008/07/05 18:59:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.38 2008/07/07 00:24:31 dillon Exp $
  */
 
 /*
@@ -153,6 +153,7 @@ hammer_done_cursor(hammer_cursor_t cursor)
 {
 	hammer_inode_t ip;
 
+	KKASSERT((cursor->flags & HAMMER_CURSOR_TRACKED) == 0);
 	if (cursor->parent) {
 		hammer_unlock(&cursor->parent->lock);
 		hammer_rel_node(cursor->parent);
@@ -166,10 +167,6 @@ hammer_done_cursor(hammer_cursor_t cursor)
         if (cursor->data_buffer) {
                 hammer_rel_buffer(cursor->data_buffer, 0);
                 cursor->data_buffer = NULL;
-        }
-        if (cursor->record_buffer) {
-                hammer_rel_buffer(cursor->record_buffer, 0);
-                cursor->record_buffer = NULL;
         }
 	if ((ip = cursor->ip) != NULL) {
 		if (cursor->iprec) {
@@ -489,22 +486,13 @@ hammer_cursor_down(hammer_cursor_t cursor)
  * ultimately the intention is to use them for all deadlock recovery
  * operations.
  */
-
-/*
- * Recover from a deadlocked cursor, tracking any node removals or
- * replacements.  If the cursor's current node is removed by another
- * thread (via btree_remove()) the cursor will be seeked upwards.
- */
-int
-hammer_recover_cursor(hammer_cursor_t cursor)
+void
+hammer_unlock_cursor(hammer_cursor_t cursor)
 {
-	hammer_inode_t ip;
 	hammer_node_t node;
-	int status;
-	int error;
+	hammer_inode_t ip;
 
-again:
-	KKASSERT((cursor->flags & HAMMER_CURSOR_DEADLK_RECOVER) == 0);
+	KKASSERT((cursor->flags & HAMMER_CURSOR_TRACKED) == 0);
 	KKASSERT(cursor->node);
 	/*
 	 * Release the cursor's locks and track B-Tree operations on node.
@@ -517,13 +505,81 @@ again:
 		cursor->parent = NULL;
 	}
 	node = cursor->node;
-	cursor->flags |= HAMMER_CURSOR_DEADLK_RECOVER;
+	cursor->flags |= HAMMER_CURSOR_TRACKED;
 	TAILQ_INSERT_TAIL(&node->cursor_list, cursor, deadlk_entry);
-	status = hammer_lock_status(&node->lock);
 	hammer_unlock(&node->lock);
 
 	if ((ip = cursor->ip) != NULL)
 		hammer_unlock(&ip->lock);
+}
+
+/*
+ * Get the cursor heated up again.  The cursor's node may have
+ * changed and we might have to locate the new parent.
+ *
+ * If the exact element we were on got deleted RIPOUT will be
+ * set and we must clear ATEDISK so an iteration does not skip
+ * the element after it.
+ */
+int
+hammer_lock_cursor(hammer_cursor_t cursor)
+{
+	hammer_inode_t ip;
+	hammer_node_t node;
+	int error;
+
+	KKASSERT(cursor->flags & HAMMER_CURSOR_TRACKED);
+
+	/*
+	 * Relock the inode
+	 */
+	if ((ip = cursor->ip) != NULL) {
+		if (cursor->trans->type == HAMMER_TRANS_FLS)
+			hammer_lock_ex(&ip->lock);
+		else
+			hammer_lock_sh(&ip->lock);
+	}
+
+	/*
+	 * Relock the node
+	 */
+	for (;;) {
+		node = cursor->node;
+		hammer_ref_node(node);
+		hammer_lock_sh(&node->lock);
+		if (cursor->node == node) {
+			hammer_rel_node(node);
+			break;
+		}
+		hammer_unlock(&node->lock);
+		hammer_rel_node(node);
+	}
+
+	/*
+	 * Untrack the cursor, clean up, and re-establish the parent node.
+	 */
+	TAILQ_REMOVE(&node->cursor_list, cursor, deadlk_entry);
+	cursor->flags &= ~HAMMER_CURSOR_TRACKED;
+
+	if (cursor->flags & HAMMER_CURSOR_TRACKED_RIPOUT) {
+		cursor->flags &= ~HAMMER_CURSOR_TRACKED_RIPOUT;
+		cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
+	}
+	error = hammer_load_cursor_parent(cursor, 0);
+	return(error);
+}
+
+/*
+ * Recover from a deadlocked cursor, tracking any node removals or
+ * replacements.  If the cursor's current node is removed by another
+ * thread (via btree_remove()) the cursor will be seeked upwards.
+ */
+int
+hammer_recover_cursor(hammer_cursor_t cursor)
+{
+	int error;
+
+	hammer_unlock_cursor(cursor);
 
 	/*
 	 * Wait for the deadlock to clear
@@ -540,34 +596,44 @@ again:
 		cursor->deadlk_rec = NULL;
 	}
 
-	/*
-	 * Get the cursor heated up again.  The cursor's node may have
-	 * changed and we might have to locate the new parent.
-	 *
-	 * If the exact element we were on got deleted RIPOUT will be
-	 * set and we must clear ATEDISK so an iteration does not skip
-	 * the element after it.
-	 */
-	KKASSERT(cursor->flags & HAMMER_CURSOR_DEADLK_RECOVER);
-	node = cursor->node;
-	TAILQ_REMOVE(&node->cursor_list, cursor, deadlk_entry);
-	cursor->flags &= ~HAMMER_CURSOR_DEADLK_RECOVER;
-	if (cursor->flags & HAMMER_CURSOR_DEADLK_RIPOUT) {
-		cursor->flags &= ~HAMMER_CURSOR_DEADLK_RIPOUT;
-		cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
-	}
-	hammer_lock_sh(&node->lock);
-	error = hammer_load_cursor_parent(cursor, 0);
-	if (error == 0) {
-		if (status > 0) {
-			error = hammer_cursor_upgrade(cursor);
-			if (error == EDEADLK) {
-				kprintf("r");
-				goto again;
-			}
-		}
-	}
+	error = hammer_lock_cursor(cursor);
 	return(error);
+}
+
+/*
+ * Dup ocursor to ncursor.  ncursor inherits ocursor's locks and ocursor
+ * is effectively unlocked and becomes tracked.  If ocursor was not locked
+ * then ncursor also inherits the tracking.
+ *
+ * After the caller finishes working with ncursor it must be cleaned up
+ * with hammer_done_cursor(), and the caller must re-lock ocursor.
+ */
+void
+hammer_dup_cursor(hammer_cursor_t ocursor, hammer_cursor_t ncursor)
+{
+	hammer_inode_t ip;
+	hammer_node_t node;
+
+	bcopy(ocursor, ncursor, sizeof(*ocursor));
+
+	node = ocursor->node;
+	hammer_ref_node(node);
+	if ((ocursor->flags & HAMMER_CURSOR_TRACKED) == 0) {
+		ocursor->flags |= HAMMER_CURSOR_TRACKED;
+		TAILQ_INSERT_TAIL(&node->cursor_list, ocursor, deadlk_entry);
+	}
+	if (ncursor->parent)
+		ocursor->parent = NULL;
+	ocursor->data_buffer = NULL;
+	ocursor->leaf = NULL;
+	ocursor->data = NULL;
+	if (ncursor->flags & HAMMER_CURSOR_TRACKED)
+		TAILQ_INSERT_TAIL(&node->cursor_list, ncursor, deadlk_entry);
+	if ((ip = ncursor->ip) != NULL) {
+                ++ip->cursor_ip_refs;
+	}
+	if (ncursor->iprec)
+		hammer_ref(&ncursor->iprec->lock);
 }
 
 /*
@@ -603,7 +669,7 @@ hammer_cursor_removed_node(hammer_node_t node, hammer_node_t parent, int index)
 		KKASSERT(cursor->index == 0);
 		TAILQ_REMOVE(&node->cursor_list, cursor, deadlk_entry);
 		TAILQ_INSERT_TAIL(&parent->cursor_list, cursor, deadlk_entry);
-		cursor->flags |= HAMMER_CURSOR_DEADLK_RIPOUT;
+		cursor->flags |= HAMMER_CURSOR_TRACKED_RIPOUT;
 		cursor->node = parent;
 		cursor->index = index;
 		hammer_ref_node(parent);
@@ -647,7 +713,7 @@ hammer_cursor_deleted_element(hammer_node_t node, int index)
 	TAILQ_FOREACH(cursor, &node->cursor_list, deadlk_entry) {
 		KKASSERT(cursor->node == node);
 		if (cursor->index == index) {
-			cursor->flags |= HAMMER_CURSOR_DEADLK_RIPOUT;
+			cursor->flags |= HAMMER_CURSOR_TRACKED_RIPOUT;
 		} else if (cursor->index > index) {
 			--cursor->index;
 		}

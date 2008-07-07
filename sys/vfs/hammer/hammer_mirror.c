@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.6 2008/07/04 07:25:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.7 2008/07/07 00:24:31 dillon Exp $
  */
 /*
  * HAMMER mirroring ioctls - serialize and deserialize modifications made
@@ -287,19 +287,24 @@ retry:
 			error = hammer_mirror_write(&cursor, &mrec, ip,
 						    uptr + head_size);
 			hammer_sync_unlock(trans);
+		} else if (error == ENOENT) {
+			error = 0;
 		}
 
 		/*
-		 * Setup for loop
+		 * Clean for loop.  It is ok if the record already exists
+		 * on the target.
 		 */
 		if (error == EDEADLK) {
 			hammer_done_cursor(&cursor);
 			error = hammer_init_cursor(trans, &cursor, NULL, NULL);
 			goto retry;
 		}
-		if (error == 0) {
+
+		if (error == EALREADY)
+			error = 0;
+		if (error == 0)
 			mirror->count += mrec.rec_size;
-		}
 	}
 	hammer_done_cursor(&cursor);
 	return(0);
@@ -332,9 +337,11 @@ static
 int
 hammer_mirror_update(hammer_cursor_t cursor, struct hammer_ioc_mrecord *mrec)
 {
+	hammer_transaction_t trans;
 	hammer_btree_leaf_elm_t elm;
 
 	elm = cursor->leaf;
+	trans = cursor->trans;
 
 	if (mrec->leaf.base.delete_tid == 0) {
 		kprintf("mirror_write: object %016llx:%016llx deleted on "
@@ -344,38 +351,65 @@ hammer_mirror_update(hammer_cursor_t cursor, struct hammer_ioc_mrecord *mrec)
 	}
 
 	KKASSERT(elm->base.create_tid < mrec->leaf.base.delete_tid);
-	hammer_modify_node(cursor->trans, cursor->node, elm, sizeof(*elm));
+	hammer_modify_node(trans, cursor->node, elm, sizeof(*elm));
 	elm->base.delete_tid = mrec->leaf.base.delete_tid;
 	elm->delete_ts = mrec->leaf.delete_ts;
 	hammer_modify_node_done(cursor->node);
+
+	/*
+	 * Track a count of active inodes.
+	 */
+	if (elm->base.obj_type == HAMMER_RECTYPE_INODE) {
+		hammer_modify_volume_field(trans,
+					   trans->rootvol,
+					   vol0_stat_inodes);
+		--trans->hmp->rootvol->ondisk->vol0_stat_inodes;
+		hammer_modify_volume_done(trans->rootvol);
+	}
+
 	return(0);
 }
 
 /*
  * Write out a new record.
- *
- * XXX this is messy.
  */
 static
 int
 hammer_mirror_write(hammer_cursor_t cursor, struct hammer_ioc_mrecord *mrec,
 		    hammer_inode_t ip, char *udata)
 {
-	hammer_buffer_t data_buffer = NULL;
+	hammer_transaction_t trans;
+	hammer_buffer_t data_buffer;
 	hammer_off_t ndata_offset;
 	void *ndata;
 	int error;
 	int doprop;
-	int wanted_skip = 0;
 
+	/*
+	 * Skip records related to the root inode other then
+	 * directory entries.
+	 */
+	if (mrec->leaf.base.obj_id == HAMMER_OBJID_ROOT) {
+		if (mrec->leaf.base.rec_type == HAMMER_RECTYPE_INODE ||
+		    mrec->leaf.base.rec_type == HAMMER_RECTYPE_FIX) {
+			return(0);
+		}
+	}
+
+	trans = cursor->trans;
+	data_buffer = NULL;
+
+	/*
+	 * Allocate and adjust data
+	 */
 	if (mrec->leaf.data_len && mrec->leaf.data_offset) {
-		ndata = hammer_alloc_data(cursor->trans, mrec->leaf.data_len,
+		ndata = hammer_alloc_data(trans, mrec->leaf.data_len,
 					  mrec->leaf.base.rec_type,
 					  &ndata_offset, &data_buffer, &error);
 		if (ndata == NULL)
 			return(error);
 		mrec->leaf.data_offset = ndata_offset;
-		hammer_modify_buffer(cursor->trans, data_buffer, NULL, 0);
+		hammer_modify_buffer(trans, data_buffer, NULL, 0);
 		error = copyin(udata, ndata, mrec->leaf.data_len);
 		if (error == 0) {
 			if (hammer_crc_test_leaf(ndata, &mrec->leaf) == 0) {
@@ -384,8 +418,6 @@ hammer_mirror_write(hammer_cursor_t cursor, struct hammer_ioc_mrecord *mrec,
 			} else {
 				error = hammer_mirror_localize_data(
 							ndata, &mrec->leaf);
-				if (error)
-					wanted_skip = 1;
 			}
 		}
 		hammer_modify_buffer_done(data_buffer);
@@ -396,6 +428,10 @@ hammer_mirror_write(hammer_cursor_t cursor, struct hammer_ioc_mrecord *mrec,
 	}
 	if (error)
 		goto failed;
+
+	/*
+	 * Do the insertion
+	 */
 	cursor->flags |= HAMMER_CURSOR_INSERT;
 	error = hammer_btree_lookup(cursor);
 	if (error != ENOENT) {
@@ -405,10 +441,19 @@ hammer_mirror_write(hammer_cursor_t cursor, struct hammer_ioc_mrecord *mrec,
 	}
 	error = 0;
 
-	/*
-	 * Physical insertion
-	 */
 	error = hammer_btree_insert(cursor, &mrec->leaf, &doprop);
+
+	/*
+	 * Track a count of active inodes.
+	 */
+	if (error == 0 && mrec->leaf.base.delete_tid == 0 &&
+	    mrec->leaf.base.obj_type == HAMMER_RECTYPE_INODE) {
+		hammer_modify_volume_field(trans,
+					   trans->rootvol,
+					   vol0_stat_inodes);
+		++trans->hmp->rootvol->ondisk->vol0_stat_inodes;
+		hammer_modify_volume_done(trans->rootvol);
+	}
 	if (error == 0 && doprop)
 		hammer_btree_do_propagation(cursor, ip, &mrec->leaf);
 
@@ -423,8 +468,6 @@ failed:
 	}
 	if (data_buffer)
 		hammer_rel_buffer(data_buffer, 0);
-	if (wanted_skip)
-		error = 0;
 	return(error);
 }
 
@@ -432,43 +475,26 @@ failed:
  * Localize the data payload.  Directory entries may need their
  * localization adjusted.
  *
- * Pseudo-fs directory entries must be skipped entirely (EBADF).
- *
- * The root inode must be skipped, it will exist on the target with a
- * different create_tid so updating it would result in a duplicate.  This
- * also prevents inode updates on the root directory (aka mtime, ctime, etc)
- * from mirroring, which is ok.
- *
- * XXX Root directory inode updates - parent_obj_localization is broken.
+ * PFS directory entries must be skipped entirely (return EALREADY).
  */
 static
 int
 hammer_mirror_localize_data(hammer_data_ondisk_t data,
 			    hammer_btree_leaf_elm_t leaf)
 {
-	int modified = 0;
-	int error = 0;
 	u_int32_t localization;
 
 	if (leaf->base.rec_type == HAMMER_RECTYPE_DIRENTRY) {
+		if (data->entry.obj_id == HAMMER_OBJID_ROOT)
+			return(EALREADY);
 		localization = leaf->base.localization &
 			       HAMMER_LOCALIZE_PSEUDOFS_MASK;
 		if (data->entry.localization != localization) {
 			data->entry.localization = localization;
-			modified = 1;
-		}
-		if (data->entry.obj_id == 1)
-			error = EBADF;
-	}
-	if (leaf->base.obj_id == HAMMER_OBJID_ROOT) {
-		if (leaf->base.rec_type == HAMMER_RECTYPE_INODE ||
-		    leaf->base.rec_type == HAMMER_RECTYPE_FIX) {
-			error = EBADF;
+			hammer_crc_set_leaf(data, leaf);
 		}
 	}
-	if (modified)
-		hammer_crc_set_leaf(data, leaf);
-	return(error);
+	return(0);
 }
 
 /*

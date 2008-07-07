@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.45 2008/07/05 18:59:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.46 2008/07/07 00:24:31 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -583,7 +583,7 @@ struct hammer_inode_data {
 	u_int32_t rmajor;	/* used by device nodes */
 	u_int32_t rminor;	/* used by device nodes */
 	u_int64_t ctime;
-	u_int64_t parent_obj_id;/* parent directory obj_id */
+	int64_t parent_obj_id;	/* parent directory obj_id */
 	uuid_t	  uid;
 	uuid_t	  gid;
 
@@ -637,7 +637,7 @@ struct hammer_inode_data {
  * NOTE: den_name / the filename data reference is NOT terminated with \0.
  */
 struct hammer_entry_data {
-	u_int64_t obj_id;		/* object being referenced */
+	int64_t obj_id;			/* object being referenced */
 	u_int32_t localization;		/* identify pseudo-filesystem */
 	u_int32_t reserved02;
 	char	name[16];		/* name (extended) */

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.23 2008/07/05 18:59:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.24 2008/07/07 00:24:31 dillon Exp $
  */
 
 /*
@@ -97,7 +97,6 @@ struct hammer_cursor {
 	 * can be NULL when data and/or record is not, typically indicating
 	 * information referenced via an in-memory record.
 	 */
-	struct hammer_buffer *record_buffer;	/* record (+ built-in data) */
 	struct hammer_buffer *data_buffer;	/* extended data */
 	struct hammer_btree_leaf_elm *leaf;
 	union hammer_data_ondisk *data;
@@ -135,8 +134,8 @@ typedef struct hammer_cursor *hammer_cursor_t;
 
 #define HAMMER_CURSOR_PRUNING		0x00010000
 #define HAMMER_CURSOR_REBLOCKING	0x00020000
-#define HAMMER_CURSOR_DEADLK_RECOVER	0x00040000
-#define HAMMER_CURSOR_DEADLK_RIPOUT	0x00080000
+#define HAMMER_CURSOR_TRACKED		0x00040000
+#define HAMMER_CURSOR_TRACKED_RIPOUT	0x00080000
 
 /*
  * Flags we can clear when reusing a cursor (we can clear all of them)

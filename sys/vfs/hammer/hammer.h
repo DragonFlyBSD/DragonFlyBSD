@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.103 2008/07/05 18:59:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.104 2008/07/07 00:24:31 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -248,7 +248,7 @@ struct hammer_inode {
 	int			flush_group;
 	TAILQ_ENTRY(hammer_inode) flush_entry;
 	struct hammer_record_list target_list;	/* target of dependant recs */
-	u_int64_t		obj_id;		/* (key) object identifier */
+	int64_t			obj_id;		/* (key) object identifier */
 	hammer_tid_t		obj_asof;	/* (key) snapshot or 0 */
 	u_int32_t		obj_localization; /* (key) pseudo-fs */
 	struct hammer_mount 	*hmp;
@@ -778,7 +778,7 @@ int	hammer_vop_inactive(struct vop_inactive_args *);
 int	hammer_vop_reclaim(struct vop_reclaim_args *);
 int	hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp);
 struct hammer_inode *hammer_get_inode(hammer_transaction_t trans,
-			hammer_inode_t dip, u_int64_t obj_id,
+			hammer_inode_t dip, int64_t obj_id,
 			hammer_tid_t asof, u_int32_t localization,
 			int flags, int *errorp);
 void	hammer_scan_inode_snapshots(hammer_mount_t hmp,
@@ -862,6 +862,9 @@ int	hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 void	hammer_normalize_cursor(hammer_cursor_t cursor);
 void	hammer_done_cursor(hammer_cursor_t cursor);
 int	hammer_recover_cursor(hammer_cursor_t cursor);
+void	hammer_unlock_cursor(hammer_cursor_t cursor);
+int	hammer_lock_cursor(hammer_cursor_t cursor);
+void	hammer_dup_cursor(hammer_cursor_t ocursor, hammer_cursor_t ncursor);
 
 void	hammer_cursor_replaced_node(hammer_node_t onode, hammer_node_t nnode);
 void	hammer_cursor_removed_node(hammer_node_t onode, hammer_node_t parent,

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.63 2008/07/05 18:59:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.64 2008/07/07 00:24:31 dillon Exp $
  */
 
 /*
@@ -87,8 +87,8 @@ static int btree_split_internal(hammer_cursor_t cursor);
 static int btree_split_leaf(hammer_cursor_t cursor);
 static int btree_remove(hammer_cursor_t cursor);
 static int btree_node_is_full(hammer_node_ondisk_t node);
-static int hammer_btree_mirror_propagate(hammer_transaction_t trans,
-			hammer_node_t node, int index, hammer_tid_t mirror_tid);
+static int hammer_btree_mirror_propagate(hammer_cursor_t cursor,	
+			hammer_tid_t mirror_tid);
 static void hammer_make_separator(hammer_base_elm_t key1,
 			hammer_base_elm_t key2, hammer_base_elm_t dest);
 
@@ -1777,6 +1777,8 @@ done:
 	return (error);
 }
 
+#if 0
+
 /*
  * Recursively correct the right-hand boundary's create_tid to (tid) as
  * long as the rest of the key matches.  We have to recurse upward in
@@ -1997,6 +1999,8 @@ hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid)
 	return (error);
 }
 
+#endif
+
 /*
  * Attempt to remove the locked, empty or want-to-be-empty B-Tree node at
  * (cursor->node).  Returns 0 on success, EDEADLK if we could not complete
@@ -2121,6 +2125,8 @@ hammer_btree_do_propagation(hammer_cursor_t cursor, hammer_inode_t ip,
 			    hammer_btree_leaf_elm_t leaf)
 {
 	hammer_pseudofs_inmem_t pfsm;
+	hammer_cursor_t ncursor;
+	hammer_tid_t mirror_tid;
 	int error;
 
 	/*
@@ -2134,10 +2140,28 @@ hammer_btree_do_propagation(hammer_cursor_t cursor, hammer_inode_t ip,
 		return;
 	}
 
-	error = hammer_btree_mirror_propagate(cursor->trans,
-					cursor->parent, cursor->parent_index,
-					cursor->node->ondisk->mirror_tid);
-	/* XXX */
+	/*
+	 * This is a bit of a hack because we cannot deadlock or return
+	 * EDEADLK here.  The related operation has already completed and
+	 * we must propagate the mirror_tid now regardless.
+	 *
+	 * Generate a new cursor which inherits the original's locks and
+	 * unlock the original.  Use the new cursor to propagate the
+	 * mirror_tid.  Then clean up the new cursor and reacquire locks
+	 * on the original.
+	 *
+	 * hammer_dup_cursor() cannot dup locks.  The dup inherits the
+	 * original's locks and the original is tracked and must be
+	 * re-locked.
+	 */
+	mirror_tid = cursor->node->ondisk->mirror_tid;
+	ncursor = kmalloc(sizeof(*ncursor), M_HAMMER, M_WAITOK | M_ZERO);
+	hammer_dup_cursor(cursor, ncursor);
+	error = hammer_btree_mirror_propagate(ncursor, mirror_tid);
+	KKASSERT(error == 0);
+	hammer_done_cursor(ncursor);
+	kfree(ncursor, M_HAMMER);
+	hammer_lock_cursor(cursor);	/* shared-lock */
 }
 
 
@@ -2151,47 +2175,47 @@ hammer_btree_do_propagation(hammer_cursor_t cursor, hammer_inode_t ip,
  * adjusts the node's aggregation mirror_tid, and then recurses upwards.
  */
 static int
-hammer_btree_mirror_propagate(hammer_transaction_t trans, hammer_node_t node,
-			      int index, hammer_tid_t mirror_tid)
+hammer_btree_mirror_propagate(hammer_cursor_t cursor, hammer_tid_t mirror_tid)
 {
 	hammer_btree_internal_elm_t elm;
-	hammer_node_t parent;
-	int parent_index;
+	hammer_node_t node;
 	int error;
 
-	KKASSERT (node->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL);
-
-	/*
-	 * Adjust the node's element
-	 */
-	elm = &node->ondisk->elms[index].internal;
-	if (elm->mirror_tid >= mirror_tid)
-		return(0);
-	hammer_modify_node(trans, node, &elm->mirror_tid,
-			   sizeof(elm->mirror_tid));
-	elm->mirror_tid = mirror_tid;
-	hammer_modify_node_done(node);
-
-	/*
-	 * Adjust the node's mirror_tid aggregator
-	 */
-	if (node->ondisk->mirror_tid >= mirror_tid)
-		return(0);
-	hammer_modify_node_field(trans, node, mirror_tid);
-	node->ondisk->mirror_tid = mirror_tid;
-	hammer_modify_node_done(node);
-
-	error = 0;
-	if (node->ondisk->parent) {
-		parent = hammer_btree_get_parent(node, &parent_index,
-						 &error, 1);
-		if (parent) {
-			hammer_btree_mirror_propagate(trans, parent,
-						      parent_index, mirror_tid);
-			hammer_unlock(&parent->lock);
-			hammer_rel_node(parent);
+	for (;;) {
+		error = hammer_cursor_up(cursor);
+		if (error == 0)
+			error = hammer_cursor_upgrade(cursor);
+		while (error == EDEADLK) {
+			hammer_recover_cursor(cursor);
+			error = hammer_cursor_upgrade(cursor);
 		}
+		if (error)
+			break;
+		node = cursor->node;
+		KKASSERT (node->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL);
+
+		/*
+		 * Adjust the node's element
+		 */
+		elm = &node->ondisk->elms[cursor->index].internal;
+		if (elm->mirror_tid >= mirror_tid)
+			break;
+		hammer_modify_node(cursor->trans, node, &elm->mirror_tid,
+				   sizeof(elm->mirror_tid));
+		elm->mirror_tid = mirror_tid;
+		hammer_modify_node_done(node);
+
+		/*
+		 * Adjust the node's mirror_tid aggregator
+		 */
+		if (node->ondisk->mirror_tid >= mirror_tid)
+			return(0);
+		hammer_modify_node_field(cursor->trans, node, mirror_tid);
+		node->ondisk->mirror_tid = mirror_tid;
+		hammer_modify_node_done(node);
 	}
+	if (error == ENOENT)
+		error = 0;
 	return(error);
 }
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.32 2008/06/30 02:45:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.33 2008/07/07 00:24:31 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -520,13 +520,15 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 		dundomap->first_offset = cundomap->first_offset;
 		dundomap->next_offset = cundomap->next_offset;
 		hammer_crc_set_blockmap(dundomap);
-		hammer_crc_set_volume(root_volume->ondisk);
-		if (root_volume->ondisk->vol0_next_tid < trans->tid)
-			root_volume->ondisk->vol0_next_tid = trans->tid;
 		hammer_modify_volume_done(root_volume);
 	}
 
 	if (root_volume->io.modified) {
+		hammer_modify_volume(NULL, root_volume, NULL, 0);
+		if (root_volume->ondisk->vol0_next_tid < trans->tid)
+			root_volume->ondisk->vol0_next_tid = trans->tid;
+		hammer_crc_set_volume(root_volume->ondisk);
+		hammer_modify_volume_done(root_volume);
 		hammer_io_flush(&root_volume->io);
 	}
 

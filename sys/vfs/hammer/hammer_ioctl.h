@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.16 2008/07/02 21:57:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.17 2008/07/07 00:24:31 dillon Exp $
  */
 /*
  * HAMMER ioctl's.  This file can be #included from userland
@@ -250,6 +250,7 @@ typedef struct hammer_ioc_mrecord {
 #define HAMMER_MREC_TYPE_REC		1
 #define HAMMER_MREC_TYPE_PFSD		2
 #define HAMMER_MREC_TYPE_UPDATE		3
+#define HAMMER_MREC_TYPE_SYNC		4
 
 #define HAMMER_MREC_CRCOFF	(offsetof(struct hammer_ioc_mrecord, rec_size))
 #define HAMMER_MREC_HEADSIZE	sizeof(struct hammer_ioc_mrecord)

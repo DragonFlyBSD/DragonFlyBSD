@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.93 2008/07/04 07:25:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.94 2008/07/07 00:24:31 dillon Exp $
  */
 
 #include "hammer.h"
@@ -324,7 +324,7 @@ hammer_scan_inode_snapshots(hammer_mount_t hmp, hammer_inode_info_t iinfo,
  */
 struct hammer_inode *
 hammer_get_inode(hammer_transaction_t trans, hammer_inode_t dip,
-		 u_int64_t obj_id, hammer_tid_t asof, u_int32_t localization,
+		 int64_t obj_id, hammer_tid_t asof, u_int32_t localization,
 		 int flags, int *errorp)
 {
 	hammer_mount_t hmp = trans->hmp;
