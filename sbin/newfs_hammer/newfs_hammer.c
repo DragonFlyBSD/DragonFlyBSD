@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.36 2008/07/05 23:59:38 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.37 2008/07/07 01:29:32 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -41,7 +41,7 @@ static const char *sizetostr(off_t size);
 static void check_volume(struct volume_info *vol);
 static void format_volume(struct volume_info *vol, int nvols,const char *label,
 			off_t total_size);
-static hammer_off_t format_root(void);
+static hammer_off_t format_root(const char *label);
 static u_int64_t nowtime(void);
 static void usage(void);
 
@@ -117,9 +117,9 @@ main(int ac, char **av)
 	NumVolumes = ac;
 	RootVolNo = 0;
 
-        if ( NumVolumes == 0) {
+        if (NumVolumes == 0) {
                 fprintf(stderr,
-                        "newfs_hammer: You should specify at least one volume\n");
+                        "newfs_hammer: You must specify at least one volume\n");
                 exit(1);
         }
 
@@ -439,7 +439,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 		}
 		format_undomap(ondisk);
 
-		ondisk->vol0_btree_root = format_root();
+		ondisk->vol0_btree_root = format_root(label);
 		++ondisk->vol0_stat_inodes;	/* root inode */
 	} else {
 		freeblks = initialize_freemap(vol);
@@ -456,19 +456,23 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
  */
 static
 hammer_off_t
-format_root(void)
+format_root(const char *label)
 {
 	hammer_off_t btree_off;
+	hammer_off_t pfsd_off;
 	hammer_off_t data_off;
 	hammer_tid_t create_tid;
 	hammer_node_ondisk_t bnode;
 	struct hammer_inode_data *idata;
-	struct buffer_info *data_buffer = NULL;
+	hammer_pseudofs_data_t pfsd;
+	struct buffer_info *data_buffer1 = NULL;
+	struct buffer_info *data_buffer2 = NULL;
 	hammer_btree_elm_t elm;
 	u_int64_t xtime;
 
 	bnode = alloc_btree_element(&btree_off);
-	idata = alloc_data_element(&data_off, sizeof(*idata), &data_buffer);
+	idata = alloc_data_element(&data_off, sizeof(*idata), &data_buffer1);
+	pfsd = alloc_data_element(&pfsd_off, sizeof(*pfsd), &data_buffer2);
 	create_tid = createtid();
 	xtime = nowtime();
 
@@ -484,12 +488,21 @@ format_root(void)
 	idata->size = 0;
 	idata->nlinks = 1;
 
+	pfsd->sync_low_tid = 1;
+	pfsd->sync_beg_tid = 1;
+	pfsd->sync_end_tid = 0;	/* overriden by vol0_next_tid on pfs0 */
+	pfsd->shared_uuid = Hammer_FSId;
+	pfsd->unique_uuid = Hammer_FSId;
+	pfsd->master_id = 0;
+	pfsd->mirror_flags = 0;
+	snprintf(pfsd->label, sizeof(pfsd->label), "%s", label);
+
 	/*
 	 * Create the root of the B-Tree.  The root is a leaf node so we
 	 * do not have to worry about boundary elements.
 	 */
 	bnode->signature = HAMMER_BTREE_SIGNATURE_GOOD;
-	bnode->count = 1;
+	bnode->count = 2;
 	bnode->type = HAMMER_BTREE_TYPE_LEAF;
 
 	elm = &bnode->elms[0];
@@ -506,6 +519,21 @@ format_root(void)
 	elm->leaf.data_offset = data_off;
 	elm->leaf.data_len = sizeof(*idata);
 	elm->leaf.data_crc = crc32(idata, HAMMER_INODE_CRCSIZE);
+
+	elm = &bnode->elms[1];
+	elm->leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
+	elm->leaf.base.localization = HAMMER_LOCALIZE_MISC;
+	elm->leaf.base.obj_id = HAMMER_OBJID_ROOT;
+	elm->leaf.base.key = HAMMER_FIXKEY_PSEUDOFS;
+	elm->leaf.base.create_tid = create_tid;
+	elm->leaf.base.delete_tid = 0;
+	elm->leaf.base.rec_type = HAMMER_RECTYPE_FIX;
+	elm->leaf.base.obj_type = 0;
+	elm->leaf.create_ts = (u_int32_t)time(NULL);
+
+	elm->leaf.data_offset = pfsd_off;
+	elm->leaf.data_len = sizeof(*pfsd);
+	elm->leaf.data_crc = crc32(pfsd, sizeof(*pfsd));
 
 	bnode->crc = crc32(&bnode->crc + 1, HAMMER_BTREE_CRCSIZE);
 
