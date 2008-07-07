@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netproto/mpls/mpls.h,v 1.1 2008/07/07 22:02:10 nant Exp $
+ * $DragonFly: src/sys/netproto/mpls/mpls.h,v 1.2 2008/07/07 23:11:54 nant Exp $
  */
 
 #ifndef _NETMPLS_MPLS_H_
@@ -38,7 +38,6 @@
 
 #include <sys/types.h>
 
-/* should any of the folowing be moved to sys/types.h? */
 typedef u_int32_t	mpls_label_t;
 typedef u_int8_t	mpls_exp_t;
 typedef u_int8_t	mpls_s_t;
