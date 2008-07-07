@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.82 2008/07/04 07:25:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.83 2008/07/07 22:42:35 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1672,11 +1672,15 @@ retry:
 		leaf = cursor->leaf;
 
 		KKASSERT(leaf->base.delete_tid == 0);
+		KKASSERT(leaf->base.obj_id == ip->obj_id);
 
 		/*
 		 * There may be overlap cases for regular file data.  Also
 		 * remember the key for a regular file record is (base + len),
 		 * NOT (base).
+		 *
+		 * Note that do to duplicates (mem & media) allowed by
+		 * DELETE_VISIBILITY, off can wind up less then ran_beg.
 		 */
 		if (leaf->base.rec_type == HAMMER_RECTYPE_DATA) {
 			off = leaf->base.key - leaf->data_len;
@@ -1684,7 +1688,7 @@ retry:
 			 * Check the left edge case.  We currently do not
 			 * split existing records.
 			 */
-			if (off < ran_beg) {
+			if (off < ran_beg && leaf->base.key > ran_beg) {
 				panic("hammer left edge case %016llx %d\n",
 					leaf->base.key, leaf->data_len);
 			}

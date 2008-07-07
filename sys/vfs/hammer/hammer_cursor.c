@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.38 2008/07/07 00:24:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.39 2008/07/07 22:42:35 dillon Exp $
  */
 
 /*
@@ -701,7 +701,7 @@ again:
 }
 
 /*
- * Inserted element at (node, index)
+ * Deleted element at (node, index)
  *
  * Shift indexes >= index
  */
@@ -721,7 +721,7 @@ hammer_cursor_deleted_element(hammer_node_t node, int index)
 }
 
 /*
- * Deleted element at (node, index)
+ * Inserted element at (node, index)
  *
  * Shift indexes >= index
  */

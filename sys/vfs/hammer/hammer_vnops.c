@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.82 2008/07/07 03:49:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.83 2008/07/07 22:42:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -362,6 +362,17 @@ hammer_vop_write(struct vop_write_args *ap)
 		 * large UIOs can lockout other processes due to bwillwrite()
 		 * mechanics.
 		 *
+		 * The hammer inode is not locked during these operations.
+		 * The vnode is locked which can interfere with the pageout
+		 * daemon for non-UIO_NOCOPY writes but should not interfere
+		 * with the buffer cache.  Even so, we cannot afford to
+		 * allow the pageout daemon to build up too many dirty buffer
+		 * cache buffers.
+		 */
+		/*if (((int)uio->uio_offset & (blksize - 1)) == 0)*/
+		bwillwrite(blksize);
+
+		/*
 		 * Do not allow HAMMER to blow out system memory by
 		 * accumulating too many records.   Records are so well
 		 * decoupled from the buffer cache that it is possible
@@ -370,18 +381,6 @@ hammer_vop_write(struct vop_write_args *ap)
 		 * backend faster then the backend can flush them out.
 		 * HAMMER has hit its write limit but the frontend has
 		 * no pushback to slow it down.
-		 *
-		 * The hammer inode is not locked during these operations.
-		 * The vnode is locked which can interfere with the pageout
-		 * daemon for non-UIO_NOCOPY writes but should not interfere
-		 * with the buffer cache.  Even so, we cannot afford to
-		 * allow the pageout daemon to build up too many dirty buffer
-		 * cache buffers.
-		 */
-		bwillwrite(blksize);
-
-		/*
-		 * Pending record flush check.
 		 */
 		if (hmp->rsv_recs > hammer_limit_recs / 2) {
 			/*

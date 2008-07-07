@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.105 2008/07/07 03:49:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.106 2008/07/07 22:42:35 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -723,7 +723,7 @@ struct hammer_sync_info {
  */
 #define HAMMER_CHECKSPACE_SLOP_REBLOCK	25
 #define HAMMER_CHECKSPACE_SLOP_WRITE	20
-#define HAMMER_CHECKSPACE_SLOP_CREATE	15
+#define HAMMER_CHECKSPACE_SLOP_CREATE	20
 #define HAMMER_CHECKSPACE_SLOP_REMOVE	10
 
 #if defined(_KERNEL)

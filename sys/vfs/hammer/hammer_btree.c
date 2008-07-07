@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.65 2008/07/07 03:49:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.66 2008/07/07 22:42:35 dillon Exp $
  */
 
 /*
@@ -704,6 +704,7 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm,
 	}
 	node->elms[i].leaf = *elm;
 	++node->count;
+	hammer_cursor_inserted_element(cursor->node, i);
 
 	/*
 	 * Update the leaf node's aggregate mirror_tid for mirroring
