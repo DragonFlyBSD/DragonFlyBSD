@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.109 2008/07/01 02:02:54 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.110 2008/07/07 17:31:07 dillon Exp $
  */
 
 /*
@@ -124,6 +124,7 @@ int bufspace, maxbufspace,
 static int bufreusecnt, bufdefragcnt, buffreekvacnt;
 static int lorunningspace, hirunningspace, runningbufreq;
 int dirtybufspace, dirtybufspacehw, lodirtybufspace, hidirtybufspace;
+int dirtybufcount, dirtybufcounthw;
 int runningbufspace, runningbufcount;
 static int getnewbufcalls;
 static int getnewbufrestarts;
@@ -156,8 +157,12 @@ SYSCTL_INT(_vfs, OID_AUTO, hirunningspace, CTLFLAG_RW, &hirunningspace, 0,
 SYSCTL_INT(_vfs, OID_AUTO, nbuf, CTLFLAG_RD, &nbuf, 0,
 	"Total number of buffers in buffer cache");
 SYSCTL_INT(_vfs, OID_AUTO, dirtybufspace, CTLFLAG_RD, &dirtybufspace, 0,
-	"Pending number of dirty buffers (all)");
+	"Pending bytes of dirty buffers (all)");
 SYSCTL_INT(_vfs, OID_AUTO, dirtybufspacehw, CTLFLAG_RD, &dirtybufspacehw, 0,
+	"Pending bytes of dirty buffers (heavy weight)");
+SYSCTL_INT(_vfs, OID_AUTO, dirtybufcount, CTLFLAG_RD, &dirtybufcount, 0,
+	"Pending number of dirty buffers");
+SYSCTL_INT(_vfs, OID_AUTO, dirtybufcounthw, CTLFLAG_RD, &dirtybufcounthw, 0,
 	"Pending number of dirty buffers (heavy weight)");
 SYSCTL_INT(_vfs, OID_AUTO, runningbufspace, CTLFLAG_RD, &runningbufspace, 0,
 	"I/O bytes currently in progress due to asynchronous writes");
@@ -331,18 +336,20 @@ static __inline__
 void
 bd_speedup(void)
 {
-	if (dirtybufspace > lodirtybufspace)
+	if (dirtybufspace < lodirtybufspace && dirtybufcount < nbuf / 2)
 		return;
 
 	if (bd_request == 0 &&
-	    dirtybufspace - dirtybufspacehw > lodirtybufspace / 2) {
+	    (dirtybufspace - dirtybufspacehw > lodirtybufspace / 2 ||
+	     dirtybufcount - dirtybufcounthw >= nbuf / 2)) {
 		spin_lock_wr(&needsbuffer_spin);
 		bd_request = 1;
 		spin_unlock_wr(&needsbuffer_spin);
 		wakeup(&bd_request);
 	}
 	if (bd_request_hw == 0 &&
-	    dirtybufspacehw > lodirtybufspace / 2) {
+	    (dirtybufspacehw > lodirtybufspace / 2 ||
+	     dirtybufcounthw >= nbuf / 2)) {
 		spin_lock_wr(&needsbuffer_spin);
 		bd_request_hw = 1;
 		spin_unlock_wr(&needsbuffer_spin);
@@ -366,7 +373,7 @@ bd_heatup(void)
 	mid1 = lodirtybufspace + (hidirtybufspace - lodirtybufspace) / 2;
 
 	totalspace = runningbufspace + dirtybufspace;
-	if (totalspace >= mid1) {
+	if (totalspace >= mid1 || dirtybufcount >= nbuf / 2) {
 		bd_speedup();
 		mid2 = mid1 + (hidirtybufspace - mid1) / 2;
 		if (totalspace >= mid2)
@@ -884,9 +891,12 @@ bdirty(struct buf *bp)
 	if ((bp->b_flags & B_DELWRI) == 0) {
 		bp->b_flags |= B_DELWRI;
 		reassignbuf(bp);
+		++dirtybufcount;
 		dirtybufspace += bp->b_bufsize;
-		if (bp->b_flags & B_HEAVY)
+		if (bp->b_flags & B_HEAVY) {
+			++dirtybufcounthw;
 			dirtybufspacehw += bp->b_bufsize;
+		}
 		bd_heatup();
 	}
 }
@@ -901,8 +911,10 @@ bheavy(struct buf *bp)
 {
 	if ((bp->b_flags & B_HEAVY) == 0) {
 		bp->b_flags |= B_HEAVY;
-		if (bp->b_flags & B_DELWRI)
+		if (bp->b_flags & B_DELWRI) {
+			++dirtybufcounthw;
 			dirtybufspacehw += bp->b_bufsize;
+		}
 	}
 }
 
@@ -924,9 +936,12 @@ bundirty(struct buf *bp)
 	if (bp->b_flags & B_DELWRI) {
 		bp->b_flags &= ~B_DELWRI;
 		reassignbuf(bp);
+		--dirtybufcount;
 		dirtybufspace -= bp->b_bufsize;
-		if (bp->b_flags & B_HEAVY)
+		if (bp->b_flags & B_HEAVY) {
+			--dirtybufcounthw;
 			dirtybufspacehw -= bp->b_bufsize;
+		}
 		bd_signal(bp->b_bufsize);
 	}
 	/*
@@ -974,7 +989,8 @@ bowrite(struct buf *bp)
 int
 buf_dirty_count_severe(void)
 {
-	return(runningbufspace + dirtybufspace >= hidirtybufspace);
+	return (runningbufspace + dirtybufspace >= hidirtybufspace ||
+	        dirtybufcount >= nbuf / 2);
 }
 
 /*
@@ -1040,9 +1056,12 @@ brelse(struct buf *bp)
 		if (LIST_FIRST(&bp->b_dep) != NULL)
 			buf_deallocate(bp);
 		if (bp->b_flags & B_DELWRI) {
+			--dirtybufcount;
 			dirtybufspace -= bp->b_bufsize;
-			if (bp->b_flags & B_HEAVY)
+			if (bp->b_flags & B_HEAVY) {
+				--dirtybufcounthw;
 				dirtybufspacehw -= bp->b_bufsize;
+			}
 			bd_signal(bp->b_bufsize);
 		}
 		bp->b_flags &= ~(B_DELWRI | B_CACHE);
@@ -2081,7 +2100,8 @@ buf_daemon(void)
 		 */
 		limit = lodirtybufspace / 2;
 		waitrunningbufspace(limit);
-		while (runningbufspace + dirtybufspace > limit) {
+		while (runningbufspace + dirtybufspace > limit ||
+		       dirtybufcount - dirtybufcounthw >= nbuf / 2) {
 			if (flushbufqueues(BQUEUE_DIRTY) == 0)
 				break;
 			waitrunningbufspace(limit);
@@ -2134,7 +2154,8 @@ buf_daemon_hw(void)
 		 */
 		limit = lodirtybufspace / 2;
 		waitrunningbufspace(limit);
-		while (runningbufspace + dirtybufspacehw > limit) {
+		while (runningbufspace + dirtybufspacehw > limit ||
+		       dirtybufcounthw >= nbuf / 2) {
 			if (flushbufqueues(BQUEUE_DIRTY_HW) == 0)
 				break;
 			waitrunningbufspace(limit);
@@ -2970,6 +2991,8 @@ allocbuf(struct buf *bp, int size)
 			    (vm_offset_t)(bp->b_loffset & PAGE_MASK));
 		}
 	}
+
+	/* adjust space use on already-dirty buffer */
 	if (bp->b_flags & B_DELWRI) {
 		dirtybufspace += newbsize - bp->b_bufsize;
 		if (bp->b_flags & B_HEAVY)
