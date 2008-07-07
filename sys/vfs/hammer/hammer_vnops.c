@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.81 2008/07/07 00:24:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.82 2008/07/07 03:49:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -648,13 +648,23 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	struct hammer_inode *ip = VTOI(ap->a_vp);
 	struct vattr *vap = ap->a_vap;
 
-	vap->va_fsid = ip->hmp->fsid_udev;
-	/* 
-	 * XXX munge the device if we are in a pseudo-fs, so user utilities
-	 * do not think its the same 'filesystem'.
+	/*
+	 * We want the fsid to be different when accessing a filesystem
+	 * with different as-of's so programs like diff don't think
+	 * the files are the same.
+	 *
+	 * We also want the fsid to be the same when comparing snapshots,
+	 * or when comparing mirrors (which might be backed by different
+	 * physical devices).  HAMMER fsids are based on the PFS's
+	 * shared_uuid field.
+	 *
+	 * XXX there is a chance of collision here.  The va_fsid reported
+	 * by stat is different from the more involved fsid used in the
+	 * mount structure.
 	 */
-	if (ip->obj_localization)
-		vap->va_fsid += ip->obj_localization;
+	vap->va_fsid = ip->pfsm->fsid_udev ^ (u_int32_t)ip->obj_asof ^
+		       (u_int32_t)(ip->obj_asof >> 32);
+
 	vap->va_fileid = ip->ino_leaf.base.obj_id;
 	vap->va_mode = ip->ino_data.mode;
 	vap->va_nlink = ip->ino_data.nlinks;
@@ -733,6 +743,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	int i;
 	int nlen;
 	int flags;
+	int ispfs;
 	int64_t obj_id;
 	u_int32_t localization;
 
@@ -746,6 +757,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	asof = dip->obj_asof;
 	nlen = ncp->nc_nlen;
 	flags = dip->flags;
+	ispfs = 0;
 
 	hammer_simple_transaction(&trans, dip->hmp);
 
@@ -823,6 +835,13 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 			if (nlen == cursor.leaf->data_len - HAMMER_ENTRY_NAME_OFF &&
 			    bcmp(ncp->nc_name, cursor.data->entry.name, nlen) == 0) {
 				obj_id = cursor.data->entry.obj_id;
+
+				/*
+				 * Force relookups whenever a PFS root is
+				 * accessed.
+				 */
+				if (obj_id == HAMMER_OBJID_ROOT)
+					ispfs = 1;
 				localization = cursor.data->entry.localization;
 				break;
 			}
@@ -834,6 +853,15 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 		ip = hammer_get_inode(&trans, dip, obj_id,
 				      asof, localization,
 				      flags, &error);
+		if (ispfs && asof > ip->pfsm->pfsd.sync_end_tid) {
+			asof = ip->pfsm->pfsd.sync_end_tid;
+			hammer_rel_inode(ip, 0);
+			ip = hammer_get_inode(&trans, dip, obj_id,
+					      asof, localization,
+					      flags, &error);
+		}
+
+
 		if (error == 0) {
 			error = hammer_get_vnode(ip, &vp);
 			hammer_rel_inode(ip, 0);
@@ -843,6 +871,8 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 		if (error == 0) {
 			vn_unlock(vp);
 			cache_setvp(ap->a_nch, vp);
+			if (ispfs)
+				cache_settimeout(ap->a_nch, 0);
 			vrele(vp);
 		}
 	} else if (error == ENOENT) {

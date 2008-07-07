@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.104 2008/07/07 00:24:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.105 2008/07/07 03:49:50 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -178,6 +178,7 @@ struct hammer_pseudofs_inmem {
 	RB_ENTRY(hammer_pseudofs_inmem)	rb_node;
 	struct hammer_lock	lock;
 	u_int32_t		localization;
+	udev_t			fsid_udev;
 	struct hammer_pseudofs_data pfsd;
 };
 
@@ -677,7 +678,6 @@ struct hammer_mount {
 
 	u_int	check_interrupt;
 	uuid_t	fsid;
-	udev_t	fsid_udev;
 	struct hammer_io_list volu_list;	/* dirty undo buffers */
 	struct hammer_io_list undo_list;	/* dirty undo buffers */
 	struct hammer_io_list data_list;	/* dirty data buffers */
@@ -1091,6 +1091,8 @@ int hammer_crc_test_volume(hammer_volume_ondisk_t ondisk);
 int hammer_crc_test_btree(hammer_node_ondisk_t ondisk);
 int hammer_crc_test_leaf(void *data, hammer_btree_leaf_elm_t leaf);
 void hkprintf(const char *ctl, ...);
+udev_t hammer_fsid_to_udev(uuid_t *uuid);
+
 
 int hammer_blocksize(int64_t file_offset);
 int64_t hammer_blockdemarc(int64_t file_offset1, int64_t file_offset2);

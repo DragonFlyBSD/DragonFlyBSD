@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.94 2008/07/07 00:24:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.95 2008/07/07 03:49:50 dillon Exp $
  */
 
 #include "hammer.h"
@@ -670,6 +670,8 @@ retry:
 
 	pfsm = kmalloc(sizeof(*pfsm), M_HAMMER, M_WAITOK | M_ZERO);
 	pfsm->localization = ip->obj_localization;
+	pfsm->pfsd.unique_uuid = trans->rootvol->ondisk->vol_fsid;
+	pfsm->pfsd.shared_uuid = pfsm->pfsd.unique_uuid;
 
 	hammer_init_cursor(trans, &cursor, NULL, NULL);
 	cursor.key_beg.localization = ip->obj_localization +
@@ -699,6 +701,7 @@ retry:
 	hammer_done_cursor(&cursor);
 
 	if (error == 0) {
+		pfsm->fsid_udev = hammer_fsid_to_udev(&pfsm->pfsd.shared_uuid);
 		hammer_ref(&pfsm->lock);
 		if (RB_INSERT(hammer_pfs_rb_tree, &hmp->rb_pfsm_root, pfsm)) {
 			kfree(pfsm, M_HAMMER);
@@ -713,8 +716,6 @@ retry:
 		if (pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE) {
 			ip->flags |= HAMMER_INODE_RO;
 			ip->flags |= HAMMER_INODE_PFSD;
-			if (ip->obj_asof > pfsm->pfsd.sync_beg_tid)
-				ip->obj_asof = pfsm->pfsd.sync_beg_tid;
 		} else if (pfsm->pfsd.master_id >= 0) {
 			ip->flags |= HAMMER_INODE_PFSD;
 		}
@@ -739,6 +740,7 @@ hammer_save_pseudofs(hammer_transaction_t trans, hammer_inode_t ip)
 
 retry:
 	pfsm = ip->pfsm;
+	pfsm->fsid_udev = hammer_fsid_to_udev(&pfsm->pfsd.shared_uuid);
 	hammer_init_cursor(trans, &cursor, &ip->cache[1], ip);
 	cursor.key_beg.localization = ip->obj_localization +
 				      HAMMER_LOCALIZE_MISC;

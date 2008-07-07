@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.30 2008/07/05 18:59:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.31 2008/07/07 03:49:51 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -588,5 +588,14 @@ hammer_blockdemarc(int64_t file_offset1, int64_t file_offset2)
 	}
 	panic("hammer_blockdemarc: illegal range %lld %lld\n",
 	      file_offset1, file_offset2);
+}
+
+udev_t
+hammer_fsid_to_udev(uuid_t *uuid)
+{
+	u_int32_t crc;
+
+	crc = crc32(uuid, sizeof(*uuid));
+	return((udev_t)crc);
 }
 

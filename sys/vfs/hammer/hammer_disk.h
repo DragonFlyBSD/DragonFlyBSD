@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.46 2008/07/07 00:24:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.47 2008/07/07 03:49:50 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -663,11 +663,9 @@ struct hammer_symlink_data {
  * the node to be used as a mirroring master or slave.
  *
  * When operating as a slave CD's into the node automatically become read-only
- * and as-of sync_beg_tid.  Synchronization runs must complete to
- * sync_end_tid before it can be cycled into sync_beg_tid.  No pruning can
- * occur beyond sync_beg_tid.
+ * and as-of sync_end_tid.
  *
- * When operating as a master the read PFSD info sets sync_beg_tid to
+ * When operating as a master the read PFSD info sets sync_end_tid to
  * the most recently flushed TID.
  *
  * sync_low_tid is not yet used but will represent the highest pruning
@@ -675,8 +673,8 @@ struct hammer_symlink_data {
  */
 struct hammer_pseudofs_data {
 	hammer_tid_t	sync_low_tid;	/* full history beyond this point */
-	hammer_tid_t	sync_beg_tid;	/* last completed sync (snapshot pt) */
-	hammer_tid_t	sync_end_tid;	/* currently running sync end pt */
+	hammer_tid_t	sync_beg_tid;	/* earliest tid w/ full history avail */
+	hammer_tid_t	sync_end_tid;	/* current synchronizatoin point */
 	u_int64_t	sync_beg_ts;	/* real-time of last completed sync */
 	u_int64_t	sync_end_ts;	/* initiation of current sync cycle */
 	uuid_t		shared_uuid;	/* shared uuid (match required) */

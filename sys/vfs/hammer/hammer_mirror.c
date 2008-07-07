@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.7 2008/07/07 00:24:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.8 2008/07/07 03:49:51 dillon Exp $
  */
 /*
  * HAMMER mirroring ioctls - serialize and deserialize modifications made
@@ -381,6 +381,7 @@ hammer_mirror_write(hammer_cursor_t cursor, struct hammer_ioc_mrecord *mrec,
 	hammer_transaction_t trans;
 	hammer_buffer_t data_buffer;
 	hammer_off_t ndata_offset;
+	hammer_tid_t high_tid;
 	void *ndata;
 	int error;
 	int doprop;
@@ -454,6 +455,20 @@ hammer_mirror_write(hammer_cursor_t cursor, struct hammer_ioc_mrecord *mrec,
 		++trans->hmp->rootvol->ondisk->vol0_stat_inodes;
 		hammer_modify_volume_done(trans->rootvol);
 	}
+
+	/*
+	 * vol0_next_tid must track the highest TID stored in the filesystem.
+	 * We do not need to generate undo for this update.
+	 */
+	high_tid = mrec->leaf.base.create_tid;
+	if (high_tid < mrec->leaf.base.delete_tid)
+		high_tid = mrec->leaf.base.delete_tid;
+	if (trans->rootvol->ondisk->vol0_next_tid < high_tid) {
+		hammer_modify_volume(trans, trans->rootvol, NULL, 0);
+		trans->rootvol->ondisk->vol0_next_tid = high_tid;
+		hammer_modify_volume_done(trans->rootvol);
+	}
+
 	if (error == 0 && doprop)
 		hammer_btree_do_propagation(cursor, ip, &mrec->leaf);
 

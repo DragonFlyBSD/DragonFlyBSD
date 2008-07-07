@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.64 2008/07/07 00:24:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.65 2008/07/07 03:49:50 dillon Exp $
  */
 
 /*
@@ -1389,6 +1389,7 @@ btree_split_internal(hammer_cursor_t cursor)
 		ondisk = parent->ondisk;
 		ondisk->count = 1;
 		ondisk->parent = 0;
+		ondisk->mirror_tid = node->ondisk->mirror_tid;
 		ondisk->type = HAMMER_BTREE_TYPE_INTERNAL;
 		ondisk->elms[0].base = hmp->root_btree_beg;
 		ondisk->elms[0].base.btype = node->ondisk->type;
@@ -1443,6 +1444,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	new_node->ondisk->count = ondisk->count - split;
 	new_node->ondisk->parent = parent->node_offset;
 	new_node->ondisk->type = HAMMER_BTREE_TYPE_INTERNAL;
+	new_node->ondisk->mirror_tid = ondisk->mirror_tid;
 	KKASSERT(ondisk->type == new_node->ondisk->type);
 	hammer_cursor_split_node(node, new_node, split);
 
@@ -1470,6 +1472,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	parent_elm->internal.base = elm->base;	/* separator P */
 	parent_elm->internal.base.btype = new_node->ondisk->type;
 	parent_elm->internal.subtree_offset = new_node->node_offset;
+	parent_elm->internal.mirror_tid = new_node->ondisk->mirror_tid;
 	++ondisk->count;
 	hammer_modify_node_done(parent);
 	hammer_cursor_inserted_element(parent, parent_index + 1);
@@ -1622,6 +1625,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 		ondisk = parent->ondisk;
 		ondisk->count = 1;
 		ondisk->parent = 0;
+		ondisk->mirror_tid = leaf->ondisk->mirror_tid;
 		ondisk->type = HAMMER_BTREE_TYPE_INTERNAL;
 		ondisk->elms[0].base = hmp->root_btree_beg;
 		ondisk->elms[0].base.btype = leaf->ondisk->type;
@@ -1672,6 +1676,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	new_leaf->ondisk->count = ondisk->count - split;
 	new_leaf->ondisk->parent = parent->node_offset;
 	new_leaf->ondisk->type = HAMMER_BTREE_TYPE_LEAF;
+	new_leaf->ondisk->mirror_tid = ondisk->mirror_tid;
 	KKASSERT(ondisk->type == new_leaf->ondisk->type);
 	hammer_modify_node_done(new_leaf);
 	hammer_cursor_split_node(leaf, new_leaf, split);
@@ -1703,6 +1708,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	hammer_make_separator(&elm[-1].base, &elm[0].base, &parent_elm->base);
 	parent_elm->internal.base.btype = new_leaf->ondisk->type;
 	parent_elm->internal.subtree_offset = new_leaf->node_offset;
+	parent_elm->internal.mirror_tid = new_leaf->ondisk->mirror_tid;
 	mid_boundary = &parent_elm->base;
 	++ondisk->count;
 	hammer_modify_node_done(parent);
@@ -2155,6 +2161,7 @@ hammer_btree_do_propagation(hammer_cursor_t cursor, hammer_inode_t ip,
 	 * re-locked.
 	 */
 	mirror_tid = cursor->node->ondisk->mirror_tid;
+	KKASSERT(mirror_tid != 0);
 	ncursor = kmalloc(sizeof(*ncursor), M_HAMMER, M_WAITOK | M_ZERO);
 	hammer_dup_cursor(cursor, ncursor);
 	error = hammer_btree_mirror_propagate(ncursor, mirror_tid);
