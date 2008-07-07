@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.37 2008/07/07 01:29:32 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.38 2008/07/07 03:51:29 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -54,6 +54,7 @@ main(int ac, char **av)
 	int i;
 	const char *label = NULL;
 	struct volume_info *vol;
+	char *fsidstr;
 
 	/*
 	 * Sanity check basic filesystem structures.  No cookies for us
@@ -176,6 +177,7 @@ main(int ac, char **av)
 	vol = get_volume(RootVolNo);
 	vol->ondisk->vol0_stat_bigblocks = vol->ondisk->vol0_stat_freebigblocks;
 	vol->cache.modified = 1;
+	uuid_to_string(&Hammer_FSId, &fsidstr, &status);
 
 	printf("---------------------------------------------\n");
 	printf("%d volume%s total size %s\n",
@@ -185,6 +187,7 @@ main(int ac, char **av)
 	printf("undo-buffer-size:    %s\n", sizetostr(UndoBufferSize));
 	printf("total-pre-allocated: %s\n",
 		sizetostr(vol->vol_free_off & HAMMER_OFF_SHORT_MASK));
+	printf("fsid:                %s\n", fsidstr);
 	printf("\n");
 
 	flush_all_volumes();
@@ -489,7 +492,7 @@ format_root(const char *label)
 	idata->nlinks = 1;
 
 	pfsd->sync_low_tid = 1;
-	pfsd->sync_beg_tid = 1;
+	pfsd->sync_beg_tid = 0;
 	pfsd->sync_end_tid = 0;	/* overriden by vol0_next_tid on pfs0 */
 	pfsd->shared_uuid = Hammer_FSId;
 	pfsd->unique_uuid = Hammer_FSId;

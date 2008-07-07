@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.4 2008/07/07 00:27:22 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.5 2008/07/07 03:51:28 dillon Exp $
  */
 
 #include "hammer.h"
@@ -717,7 +717,7 @@ update_pfs_snapshot(int fd, hammer_tid_t snapshot_tid)
 		perror("update_pfs_snapshot (read)");
 		exit(1);
 	}
-	pfsd.sync_beg_tid = snapshot_tid;
+	pfsd.sync_end_tid = snapshot_tid;
 	if (ioctl(fd, HAMMERIOC_SET_PSEUDOFS, &pfs) != 0) {
 		perror("update_pfs_snapshot (rewrite)");
 		exit(1);
