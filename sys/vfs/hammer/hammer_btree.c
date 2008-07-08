@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.66 2008/07/07 22:42:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.67 2008/07/08 04:34:41 dillon Exp $
  */
 
 /*
@@ -2163,13 +2163,10 @@ hammer_btree_do_propagation(hammer_cursor_t cursor, hammer_inode_t ip,
 	 */
 	mirror_tid = cursor->node->ondisk->mirror_tid;
 	KKASSERT(mirror_tid != 0);
-	ncursor = kmalloc(sizeof(*ncursor), M_HAMMER, M_WAITOK | M_ZERO);
-	hammer_dup_cursor(cursor, ncursor);
+	ncursor = hammer_push_cursor(cursor);
 	error = hammer_btree_mirror_propagate(ncursor, mirror_tid);
 	KKASSERT(error == 0);
-	hammer_done_cursor(ncursor);
-	kfree(ncursor, M_HAMMER);
-	hammer_lock_cursor(cursor);	/* shared-lock */
+	hammer_pop_cursor(cursor, ncursor);
 }
 
 

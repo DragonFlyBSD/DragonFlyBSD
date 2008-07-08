@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.106 2008/07/07 22:42:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.107 2008/07/08 04:34:41 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -862,9 +862,10 @@ int	hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 void	hammer_normalize_cursor(hammer_cursor_t cursor);
 void	hammer_done_cursor(hammer_cursor_t cursor);
 int	hammer_recover_cursor(hammer_cursor_t cursor);
-void	hammer_unlock_cursor(hammer_cursor_t cursor);
-int	hammer_lock_cursor(hammer_cursor_t cursor);
-void	hammer_dup_cursor(hammer_cursor_t ocursor, hammer_cursor_t ncursor);
+void	hammer_unlock_cursor(hammer_cursor_t cursor, int also_ip);
+int	hammer_lock_cursor(hammer_cursor_t cursor, int also_ip);
+hammer_cursor_t	hammer_push_cursor(hammer_cursor_t ocursor);
+void	hammer_pop_cursor(hammer_cursor_t ocursor, hammer_cursor_t ncursor);
 
 void	hammer_cursor_replaced_node(hammer_node_t onode, hammer_node_t nnode);
 void	hammer_cursor_removed_node(hammer_node_t onode, hammer_node_t parent,

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.83 2008/07/07 22:42:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.84 2008/07/08 04:34:41 dillon Exp $
  */
 
 #include "hammer.h"
@@ -474,17 +474,10 @@ hammer_rec_scan_callback(hammer_record_t rec, void *data)
         }
 
 	/*
-	 * If the record is queued to the flusher we have to block until
-	 * it isn't.  Otherwise we may see duplication between our memory
-	 * cache and the media.
+	 * ref the record.  The record is protected from backend B-Tree
+	 * interactions by virtue of the cursor's IP lock.
 	 */
 	hammer_ref(&rec->lock);
-
-#warning "This deadlocks"
-#if 0
-	if (rec->flush_state == HAMMER_FST_FLUSH)
-		hammer_wait_mem_record(rec);
-#endif
 
 	/*
 	 * The record may have been deleted while we were blocked.
@@ -1387,9 +1380,7 @@ next_btree:
 
 next_memory:
 	/*
-	 * Get the next in-memory record.  The record can be ripped out
-	 * of the RB tree so we maintain a scan_info structure to track
-	 * the next node.
+	 * Get the next in-memory record.
 	 *
 	 * hammer_rec_scan_cmp:  Is the record still in our general range,
 	 *			 (non-inclusive of snapshot exclusions)?
@@ -1499,7 +1490,7 @@ next_memory:
 				}
 				/* fall through to memory entry */
 			} else {
-				panic("hammer_ip_next: duplicate mem/b-tree entry");
+				panic("hammer_ip_next: duplicate mem/b-tree entry %p %d %08x", cursor->iprec, cursor->iprec->type, cursor->iprec->flags);
 				cursor->flags |= HAMMER_CURSOR_ATEMEM;
 				goto next_memory;
 			}
@@ -1520,7 +1511,7 @@ next_memory:
 		 */
 		if (cursor->iprec->type == HAMMER_MEM_RECORD_DEL &&
 		    (cursor->flags & HAMMER_CURSOR_DELETE_VISIBILITY) == 0) {
-			panic("hammer_ip_next: del-on-disk with no b-tree entry");
+			panic("hammer_ip_next: del-on-disk with no b-tree entry iprec %p flags %08x", cursor->iprec, cursor->iprec->flags);
 		}
 		break;
 	case HAMMER_CURSOR_ATEMEM:

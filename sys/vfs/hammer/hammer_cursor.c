@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.39 2008/07/07 22:42:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.40 2008/07/08 04:34:41 dillon Exp $
  */
 
 /*
@@ -169,15 +169,15 @@ hammer_done_cursor(hammer_cursor_t cursor)
                 cursor->data_buffer = NULL;
         }
 	if ((ip = cursor->ip) != NULL) {
-		if (cursor->iprec) {
-			hammer_rel_mem_record(cursor->iprec);
-			cursor->iprec = NULL;
-		}
                 KKASSERT(ip->cursor_ip_refs > 0);
                 --ip->cursor_ip_refs;
 		hammer_unlock(&ip->lock);
                 cursor->ip = NULL;
         }
+	if (cursor->iprec) {
+		hammer_rel_mem_record(cursor->iprec);
+		cursor->iprec = NULL;
+	}
 
 	/*
 	 * If we deadlocked this node will be referenced.  Do a quick
@@ -487,7 +487,7 @@ hammer_cursor_down(hammer_cursor_t cursor)
  * operations.
  */
 void
-hammer_unlock_cursor(hammer_cursor_t cursor)
+hammer_unlock_cursor(hammer_cursor_t cursor, int also_ip)
 {
 	hammer_node_t node;
 	hammer_inode_t ip;
@@ -509,7 +509,7 @@ hammer_unlock_cursor(hammer_cursor_t cursor)
 	TAILQ_INSERT_TAIL(&node->cursor_list, cursor, deadlk_entry);
 	hammer_unlock(&node->lock);
 
-	if ((ip = cursor->ip) != NULL)
+	if (also_ip && (ip = cursor->ip) != NULL)
 		hammer_unlock(&ip->lock);
 }
 
@@ -522,7 +522,7 @@ hammer_unlock_cursor(hammer_cursor_t cursor)
  * the element after it.
  */
 int
-hammer_lock_cursor(hammer_cursor_t cursor)
+hammer_lock_cursor(hammer_cursor_t cursor, int also_ip)
 {
 	hammer_inode_t ip;
 	hammer_node_t node;
@@ -533,7 +533,7 @@ hammer_lock_cursor(hammer_cursor_t cursor)
 	/*
 	 * Relock the inode
 	 */
-	if ((ip = cursor->ip) != NULL) {
+	if (also_ip && (ip = cursor->ip) != NULL) {
 		if (cursor->trans->type == HAMMER_TRANS_FLS)
 			hammer_lock_ex(&ip->lock);
 		else
@@ -579,7 +579,7 @@ hammer_recover_cursor(hammer_cursor_t cursor)
 {
 	int error;
 
-	hammer_unlock_cursor(cursor);
+	hammer_unlock_cursor(cursor, 0);
 
 	/*
 	 * Wait for the deadlock to clear
@@ -596,7 +596,7 @@ hammer_recover_cursor(hammer_cursor_t cursor)
 		cursor->deadlk_rec = NULL;
 	}
 
-	error = hammer_lock_cursor(cursor);
+	error = hammer_lock_cursor(cursor, 0);
 	return(error);
 }
 
@@ -608,12 +608,14 @@ hammer_recover_cursor(hammer_cursor_t cursor)
  * After the caller finishes working with ncursor it must be cleaned up
  * with hammer_done_cursor(), and the caller must re-lock ocursor.
  */
-void
-hammer_dup_cursor(hammer_cursor_t ocursor, hammer_cursor_t ncursor)
+hammer_cursor_t
+hammer_push_cursor(hammer_cursor_t ocursor)
 {
+	hammer_cursor_t ncursor;
 	hammer_inode_t ip;
 	hammer_node_t node;
 
+	ncursor = kmalloc(sizeof(*ncursor), M_HAMMER, M_WAITOK | M_ZERO);
 	bcopy(ocursor, ncursor, sizeof(*ocursor));
 
 	node = ocursor->node;
@@ -634,6 +636,29 @@ hammer_dup_cursor(hammer_cursor_t ocursor, hammer_cursor_t ncursor)
 	}
 	if (ncursor->iprec)
 		hammer_ref(&ncursor->iprec->lock);
+	return(ncursor);
+}
+
+/*
+ * Destroy ncursor and restore ocursor
+ *
+ * This is a temporary hack for the release.  We can't afford to lose
+ * the IP lock until the IP object scan code is able to deal with it,
+ * so have ocursor inherit it back.
+ */
+void
+hammer_pop_cursor(hammer_cursor_t ocursor, hammer_cursor_t ncursor)
+{
+	hammer_inode_t ip;
+
+	ip = ncursor->ip;
+	ncursor->ip = NULL;
+	if (ip)
+                --ip->cursor_ip_refs;
+	hammer_done_cursor(ncursor);
+	kfree(ncursor, M_HAMMER);
+	KKASSERT(ocursor->ip == ip);
+	hammer_lock_cursor(ocursor, 0);
 }
 
 /*
