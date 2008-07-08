@@ -1,67 +1,79 @@
 $FreeBSD: src/share/examples/etc/README.examples,v 1.5.2.2 2001/07/25 16:00:55 dd Exp $
-$DragonFly: src/share/examples/etc/README.examples,v 1.2 2003/06/17 04:36:57 dillon Exp $
+$DragonFly: src/share/examples/etc/README.examples,v 1.3 2008/07/08 14:04:11 thomas Exp $
 
 The /usr/share/examples/etc directory contains the original
 distribution versions of the files which are shipped in /etc.  This is
 intended to make it easy to recover when the /etc versions are
 accidentally deleted or broken beyond repair.
 
+Description of files below and their use is generally found in manual
+section 5 or section 8, so eg. crontab is described in crontab(5);
+which can be accessed by `man 5 crontab'.
+
 This directory contains the following files:
 
-aliases		- sendmail aliases file (see aliases(5))
-amd.map		- filesystem automounter lookup resolution map (see amd(8))
-auth.conf	- authentication capability database (see auth.conf(5))
-crontab		- system scheduled command table (see crontab(5))
-csh.cshrc	- sample .cshrc (see csh(1))
-csh.login	- sample .login
-csh.logout	- sample .logout
-disktab		- disk description file (see disktab(5))
+amd.map		- configuration file for amd(8)
+apmd.conf	- configuration file for apmd(8)
+auth.conf	- authentication capability database
+crontab		- system scheduled command table
+csh.cshrc	- system-wide .cshrc for csh(1)
+csh.login	- system-wide .login for csh(1)
+csh.logout	- system-wide .logout for csh(1)
+devices.conf	- ownership and permission for device nodes
+dhclient.conf	- DHCP client configuration file
+disktab		- disk description file
 dm.conf		- configuration file for games (see dm(6))
+dntpd.conf	- configuration file for dntpd(8)
 fbtab		- configuration file for login(1)
 ftpusers	- user restriction file for ftpd(8)
 gettytab	- defines port configuration for getty(8)
-group		- group permissions file (see group(5))
-host.conf	- defines name resolution order for gethostbyname(3)
-hosts		- see hosts(5)
+group		- group permissions file
+host.conf	- resolver services configuration file
+hosts		- host name database
+hosts.allow	- host access control configuration (see tcpd(8))
 hosts.equiv	- defines system-wide trusted hosts (see ruserok(3))
 hosts.lpd	- defines trusted hosts for lpd(8)
 inetd.conf	- configuration file for inetd(8)
-locate.rc	- confiuration file for locate(1)
-login.access	- configuration file for login(8) (see login.access(5))
-login.conf	- login class capabilities database (see login.conf(5))
+locate.rc	- configuration file for locate(1)
+login.access	- configuration file for login(8)
+login.conf	- login class capabilities database
 mail.rc		- systemwide initialization files for mail(1)
-make.conf	- defines configuration variables for system builds
 manpath.config	- configuration file for man(1)
-modems		- modem configuration database (see modems(5))
+modems		- modem configuration database
 motd		- sample Message of the Day
-netstart	- network startup script run from /etc/rc
-networks	- see networks(5)
-newsyslog.conf	- configuration for system log file rotator newsyslog(8)
+network.subr	- subroutines for network rc(8) scripts
+networks	- network name database
+newsyslog.conf	- configuration for system log file rotator
+nsmb.conf	- smbfs configuration file (see mount_smbfs(8))
+opieaccess	- OPIE(4) database of trusted networks
 pam.conf	- configuration file for pam(8)
-pccard_ether	- confiuration script for ethernet pccards (see pccardd(8))
+pccard_ether	- confiuration script for ethernet pccards
+pf.conf		- configuration file for pf(4)
+pf.os		- operating system fingerprint file for pf(4)
 phones		- phone number database for tip(1)
 printcap	- configuration file for lpr(1)
-protocols	- see protocols(5)
 profile		- system-wide .profile for sh(1)
-rc		- system startup script (see init(8))
-rc.atm		- networking startup script for atm(8)
-rc.diskless1	- general BOOTP startup script
-rc.diskless2	- 
+protocols	- protocol name database
+rc		- system startup script
 rc.firewall	- setup system for ipfw(8)
-rc.i386		- startup script for i386-specific processing
-rc.alpha	- startup script for axp-specific processing
-rc.isdn		- startup script for isdnd(8)
-rc.network	- network startup script
-rc.pccard	- startup script for PC-cards
-rc.serial	- sample local startup script fragments
-rc.shutdown	- system shutdown script (see init(8))
+rc.firewall6	- setup system for ip6fw(8)
+rc.resume	- run command for APM / ACPI resume event
+rc.sendmail	- sendmail(8) rc script
+rc.shutdown	- system shutdown script
+rc.subr		- subroutines for rc(8) scripts
+rc.suspend	- run command for APM / ACPI suspend event
 remote		- configuration file for tip(1)
-rpc		- see rpc(5)
-security	- script run from crontab to do nightly security checks
-services	- see services(5)
-shells		- list of configurable shells (see shells(5))
-skey.access	- configuration file for S/Key (see skey.access(5))
+rpc		- rpc program number database
+sensorsd.conf	- configuration file for sensorsd(8)
+services	- service name data base
+shells		- list of configurable shells
+skey.access	- configuration file for skey(1)
+sysctl.conf	- kernel state defaults
 syslog.conf	- configuration file for syslogd(8)
 ttys		- defines port configuration for init(8)
-defaults/rc.conf	- default system configuration info (see rc.conf(5))
-defaults/pccard.conf	- default configuration file for pccardd(8)
+usbd.conf	- configuration file for usbd(8)
+defaults/	- directory containing default configuration files
+defaults/rc.conf	- system configuration default info
+defaults/make.conf	- system build default information
+defaults/periodic.conf	- default configuration file for periodic(8)
+defaults/uuids		- default list of UUIDs and names (see uuid(3))
