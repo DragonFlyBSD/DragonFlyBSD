@@ -4,7 +4,7 @@
 # Check the LINT configuration file in sys/config, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/config/GENERIC,v 1.58 2008/06/27 12:49:34 sephe Exp $
+# $DragonFly: src/sys/config/GENERIC,v 1.59 2008/07/08 01:39:27 dillon Exp $
 
 platform	pc32
 machine		i386
@@ -20,6 +20,7 @@ makeoptions	DEBUG=-g		#Build kernel with gdb(1) debug symbols
 options 	MATH_EMULATE		#Support for x87 emulation
 options 	INET			#InterNETworking
 options 	INET6			#IPv6 communications protocols
+options 	HAMMER			#Hammer Filesystem
 options 	FFS			#Berkeley Fast Filesystem
 options 	FFS_ROOT		#FFS usable as root device [keep this!]
 options 	SOFTUPDATES		#Enable FFS soft updates support

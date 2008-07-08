@@ -1,6 +1,6 @@
 # VKERNEL - configuration for a virtual kernel
 #
-# $DragonFly: src/sys/config/VKERNEL,v 1.12 2007/09/03 19:24:53 pavalos Exp $
+# $DragonFly: src/sys/config/VKERNEL,v 1.13 2008/07/08 01:39:27 dillon Exp $
 
 platform	vkernel		# platform architecture (i386, vkernel, etc)
 machine		i386
@@ -33,6 +33,7 @@ options		IPSEC_DEBUG		#debug for IP security
 options		EXT2FS
 options 	INET			#InterNETworking
 options 	INET6			#IPv6 communications protocols
+options 	HAMMER			#Hammer Filesystem
 options 	FFS			#Berkeley Fast Filesystem
 options 	FFS_ROOT		#FFS usable as root device [keep this!]
 options 	SOFTUPDATES		#Enable FFS soft updates support
