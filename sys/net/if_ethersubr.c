@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.75 2008/07/07 22:02:10 nant Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.76 2008/07/08 13:50:52 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -1515,6 +1515,13 @@ post_stats:
 		break;
 #endif
 
+#ifdef MPLS
+	case ETHERTYPE_MPLS:
+	case ETHERTYPE_MPLS_MCAST:
+		isr = NETISR_MPLS;
+		break;
+#endif
+
 	default:
 		/*
 		 * The accurate msgport is not determined before
@@ -1781,6 +1788,13 @@ ether_input_chain2(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 		break;
 	case ETHERTYPE_AARP:
 		isr = NETISR_AARP;
+		break;
+#endif
+
+#ifdef MPLS
+	case ETHERTYPE_MPLS:
+	case ETHERTYPE_MPLS_MCAST:
+		isr = NETISR_MPLS;
 		break;
 #endif
 
