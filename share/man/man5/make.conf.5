@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/make.conf.5,v 1.12.2.30 2003/05/18 17:05:55 brueffer Exp $
-.\" $DragonFly: src/share/man/man5/make.conf.5,v 1.33 2008/05/14 15:02:48 hasso Exp $
+.\" $DragonFly: src/share/man/man5/make.conf.5,v 1.34 2008/07/08 15:12:36 thomas Exp $
 .\"
 .Dd December 24, 2007
 .Dt MAKE.CONF 5
@@ -145,6 +145,12 @@ Setting this variable will prevent CPU specific compiler flags
 from being automatically added to
 .Va CFLAGS
 during compile time.
+.It Va CVS_UPDATE
+.Pq Vt bool
+Set this to use
+.Xr cvs 1
+to update your source tree as the final step when doing a
+.Dq Li "make update" .
 .It Va CXXFLAGS
 .Pq Vt str
 Controls the compiler settings when compiling C++ code.
@@ -207,22 +213,26 @@ symbols.
 .Pq Vt bool
 Set this to use
 .Xr cvsup 1
-to update your ports with
+to update your source tree with
 .Dq Li "make update" .
+See also
+.Va CVS_UPDATE .
 .It Va SUP
 .Pq Vt str
 The location of the
 .Xr cvsup 1
 command for
 .Dq Li "make update" .
+This defaults to
+.Pa /usr/local/bin/cvsup .
 .It Va SUPFLAGS
 .Pq Vt str
 The flag for the
-.Xr sup 1
+.Xr cvsup 1
 command when doing
 .Dq Li "make update" .
 This defaults to
-.Dq Fl g L Ar 2 .
+.Dq Fl g L Ar 2 Fl P Ar - .
 .It Va SUPHOST
 .Pq Vt str
 The hostname of the sup server to use when doing
@@ -233,32 +243,24 @@ The first
 .Ar supfile
 to use when doing a
 .Dq Li "make update" .
-This defaults to
-.Pa /usr/share/examples/cvsup/standard\-supfile .
 .It Va SUPFILE1
 .Pq Vt str
 The second
 .Ar supfile
 to use when doing a
 .Dq Li "make update" .
-This defaults to
-.Pa /usr/share/examples/cvsup/secure\-supfile .
 .It Va SUPFILE2
 .Pq Vt str
 The third
 .Ar supfile
 to use when doing a
 .Dq Li "make update" .
-This defaults to
-.Pa /usr/share/examples/cvsup/secure\-supfile .
 .It Va DOCSUPFILE
 .Pq Vt str
 The documentation
 .Ar supfile
 to use when doing a
 .Dq Li "make update" .
-This defaults to
-.Pa /usr/share/examples/cvsup/doc\-supfile .
 .It Va WARNS_WERROR
 Causes
 .Fl Werror
