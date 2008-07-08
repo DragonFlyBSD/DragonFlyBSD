@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.34 2008/05/18 21:47:02 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.35 2008/07/08 03:34:27 dillon Exp $
  */
 
 /*
@@ -321,7 +321,7 @@ vfs_getvfs(fsid_t *fsid)
 		if (mp->mnt_stat.f_fsid.val[0] == fsid->val[0] &&
 		    mp->mnt_stat.f_fsid.val[1] == fsid->val[1]) {
 			break;
-	    }
+		}
 	}
 	lwkt_reltoken(&ilock);
 	return (mp);

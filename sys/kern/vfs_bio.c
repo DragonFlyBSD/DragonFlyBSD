@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.110 2008/07/07 17:31:07 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.111 2008/07/08 03:34:27 dillon Exp $
  */
 
 /*
@@ -3719,10 +3719,11 @@ bio_page_alloc(vm_object_t obj, vm_pindex_t pg, int deficit)
 	p = vm_page_alloc(obj, pg, VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM |
 				   VM_ALLOC_INTERRUPT);
 	if (p) {
-		kprintf("bio_page_alloc: WARNING emergency page "
-			"allocation\n");
-		if (vm_page_count_severe())
+		if (vm_page_count_severe()) {
+			kprintf("bio_page_alloc: WARNING emergency page "
+				"allocation\n");
 			vm_wait(hz / 20);
+		}
 	} else {
 		kprintf("bio_page_alloc: WARNING emergency page "
 			"allocation failed\n");
