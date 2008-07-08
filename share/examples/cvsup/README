@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/examples/cvsup/README,v 1.15.2.5 2002/12/03 05:58:04 kuriyama Exp $
-# $DragonFly: src/share/examples/cvsup/README,v 1.8 2008/02/10 22:46:02 swildner Exp $
+# $DragonFly: src/share/examples/cvsup/README,v 1.9 2008/07/08 11:59:15 thomas Exp $
 
 This directory contains sample "supfiles" for obtaining and updating
 DragonFly and the various BSDs via the Internet.  These supfiles will
@@ -8,13 +8,16 @@ itself, please see http://wiki.dragonflybsd.org/index.cgi/cvsup.html
 
 To maintain the sources for DragonFlyBSD, use one of:
 
-        DragonFly-cvs-supfile		Main CVS repository for DragonFly BSD
+        DragonFly-cvs-supfile           Main CVS repository for DragonFly BSD
 
-	DragonFly-preview-supfile	A recent development snapshot of the
-					DragonFly source tree.
+        DragonFly-src-supfile           The source tree for HEAD, the bleeding
+                                        edge of DragonFly development.
 
-	DragonFly-releaseX_Y-supfile	The source tree for release X.Y of
-					DragonFly.
+        DragonFly-preview-supfile       A recent development snapshot of the
+                                        DragonFly source tree.
+
+        DragonFly-releaseX_Y-supfile    The source tree for release X.Y of
+                                        DragonFly.
 
     A list of mirrors is maintained at:
 
@@ -23,7 +26,7 @@ To maintain the sources for DragonFlyBSD, use one of:
 
 To maintain the sources for FreeBSD, use:
 
-        FreeBSD-supfile		Main source tree for FreeBSD
+        FreeBSD-supfile                 Main source tree for FreeBSD
 
     A list of mirrors is maintained at:
 
@@ -32,15 +35,16 @@ To maintain the sources for FreeBSD, use:
 
 To maintain the sources for NetBSD, use:
 
-        NetBSD-supfile		Main source tree for NetBSD
+        NetBSD-supfile                  Main source tree for NetBSD
 
     A list of mirrors is maintained at:
 
         http://www.netbsd.org/mirrors/#cvsup
 
+
 To maintain the sources for OpenBSD, use:
 
-        OpenBSD-supfile		Main source tree for OpenBSD
+        OpenBSD-supfile                 Main source tree for OpenBSD
 
     A list of mirrors is maintained at:
 
