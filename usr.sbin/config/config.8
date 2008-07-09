@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)config.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/usr.sbin/config/config.8,v 1.21.2.7 2003/04/23 07:32:39 brueffer Exp $
-.\" $DragonFly: src/usr.sbin/config/config.8,v 1.8 2008/06/21 17:15:57 swildner Exp $
+.\" $DragonFly: src/usr.sbin/config/config.8,v 1.9 2008/07/09 23:54:42 thomas Exp $
 .\"
 .Dd July 4, 2001
 .Dt CONFIG 8
@@ -129,9 +129,6 @@ it is necessary to run
 .Dq Li make depend
 in the directory where the new makefile
 was created.
-The
-.Nm
-utility prints a reminder of this when it completes.
 .Pp
 If any other error messages are produced by
 .Nm ,
@@ -165,7 +162,7 @@ debuggers available prior to
 .Bx 4.4 Lite
 were able to find some information
 from a normal kernel;
-.Xr gdb 1
+.Xr kgdb 1
 provides very little support for normal kernels, and a debug kernel is needed
 for any meaningful analysis.
 .Pp
@@ -200,11 +197,25 @@ generic makefile for the
 list of
 .Va PLATFORM
 specific files
+.It Pa /sys/config/ Ns Ar SYSTEM_NAME
+default location for kernel configuration file
+.It Pa /sys/config/GENERIC
+default kernel configuration file
+.It Pa /sys/config/VKERNEL
+default
+.Xr vkernel 7
+kernel configuration file
+.It Pa /sys/config/LINT
+kernel configuration file for checking all the sources
 .It Pa /sys/compile/ Ns Ar SYSTEM_NAME
 default kernel build directory for system
 .Ar SYSTEM_NAME .
 .El
 .Sh SEE ALSO
+.Xr kernconf 5 ,
+.Xr build 7 ,
+.Xr vkernel 7
+.Pp
 The
 .Sx SYNOPSIS
 portion of each device in section 4.
