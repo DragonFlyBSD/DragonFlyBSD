@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/main.c,v 1.37.2.3 2001/06/13 00:25:53 cg Exp $
- * $DragonFly: src/usr.sbin/config/main.c,v 1.22 2008/05/01 09:24:42 swildner Exp $
+ * $DragonFly: src/usr.sbin/config/main.c,v 1.23 2008/07/09 23:52:16 thomas Exp $
  */
 
 #include <sys/types.h>
@@ -409,7 +409,7 @@ configfile(void)
 		err(2, "%s", p);
 	fprintf(fo, "#include \"opt_config.h\"\n");
 	fprintf(fo, "#ifdef INCLUDE_CONFIG_FILE \n");
-	fprintf(fo, "static const char config[] = \"\\\n");
+	fprintf(fo, "const char config_INCLUDE_CONFIG_FILE[] = \"\\\n");
 	fprintf(fo, "START CONFIG FILE %s\\n\\\n___", PREFIX);
 	while (EOF != (i = getc(fi))) {
 		if (i == '\n') {
