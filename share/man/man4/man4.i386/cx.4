@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/cx.4,v 1.7.2.6 2001/08/17 13:08:45 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/cx.4,v 1.6 2008/05/02 02:05:06 swildner Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/cx.4,v 1.7 2008/07/09 17:38:31 thomas Exp $
 .\"
 .Dd December 12, 1994
 .Dt CX 4 i386
@@ -257,7 +257,7 @@ The X.21 mode options.
 The software protocol options.
 .El
 .Sh FILES
-.Bl -tag -width /dev/cxXXXX -compact
+.Bl -tag -width /dev/cronyx -compact
 .It Pa /dev/cx??
 Asynchronous channels.
 .It Pa /dev/cronyx
@@ -266,11 +266,11 @@ The special device file for the channel options management.
 .Pp
 The sources for the driver reside in:
 .Pp
-.Bl -tag -width /dev/cxXXXX -compact
+.Bl -tag -width /sys/platform/pc32/include/cronyx.h -compact
 .It Pa /sys/dev/serial/cronyx/cronyx.c
 .It Pa /sys/dev/netif/cx/cx.c
 .It Pa /sys/dev/netif/cx/if_cx.c
-.It Pa /sys/machine/pc32/include/cronyx.h
+.It Pa /sys/platform/pc32/include/cronyx.h
 .It Pa /sys/dev/netif/cx/cxreg.h
 .It Pa /sys/net/sppp/if_spppsubr.c
 .It Pa /sys/net/sppp/if_sppp.h
