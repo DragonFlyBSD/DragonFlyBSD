@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.38 2008/07/07 03:51:29 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.39 2008/07/09 20:48:33 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -527,10 +527,10 @@ format_root(const char *label)
 	elm->leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
 	elm->leaf.base.localization = HAMMER_LOCALIZE_MISC;
 	elm->leaf.base.obj_id = HAMMER_OBJID_ROOT;
-	elm->leaf.base.key = HAMMER_FIXKEY_PSEUDOFS;
+	elm->leaf.base.key = 0;
 	elm->leaf.base.create_tid = create_tid;
 	elm->leaf.base.delete_tid = 0;
-	elm->leaf.base.rec_type = HAMMER_RECTYPE_FIX;
+	elm->leaf.base.rec_type = HAMMER_RECTYPE_PFS;
 	elm->leaf.base.obj_type = 0;
 	elm->leaf.create_ts = (u_int32_t)time(NULL);
 
