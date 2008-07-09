@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.13 2008/07/09 13:57:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.14 2008/07/09 15:42:12 sephe Exp $
  */
 
 #include "opt_ethernet.h"
@@ -93,7 +93,7 @@ static void	et_intr(void *);
 static void	et_enable_intrs(struct et_softc *, uint32_t);
 static void	et_disable_intrs(struct et_softc *);
 static void	et_rxeof(struct et_softc *);
-static void	et_txeof(struct et_softc *);
+static void	et_txeof(struct et_softc *, int);
 
 static int	et_dma_alloc(device_t);
 static void	et_dma_free(device_t);
@@ -189,7 +189,7 @@ DRIVER_MODULE(miibus, et, miibus_driver, miibus_devclass, 0, 0);
 
 static int	et_rx_intr_npkts = 129;
 static int	et_rx_intr_delay = 25;		/* x4 usec */
-static int	et_tx_intr_nsegs = 126;
+static int	et_tx_intr_nsegs = 256;
 static uint32_t	et_timer = 1000 * 1000 * 1000;	/* nanosec */
 
 TUNABLE_INT("hw.et.timer", &et_timer);
@@ -1109,7 +1109,7 @@ et_intr(void *xsc)
 	if (intrs & ET_INTR_RXEOF)
 		et_rxeof(sc);
 	if (intrs & (ET_INTR_TXEOF | ET_INTR_TIMER))
-		et_txeof(sc);
+		et_txeof(sc, 1);
 	if (intrs & ET_INTR_TIMER)
 		CSR_WRITE_4(sc, ET_TIMER, sc->sc_timer);
 back:
@@ -1231,7 +1231,7 @@ et_start(struct ifnet *ifp)
 {
 	struct et_softc *sc = ifp->if_softc;
 	struct et_txbuf_data *tbd = &sc->sc_tx_data;
-	int trans;
+	int trans, oactive;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -1243,23 +1243,46 @@ et_start(struct ifnet *ifp)
 	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
 		return;
 
+	oactive = 0;
 	trans = 0;
 	for (;;) {
 		struct mbuf *m;
+		int error;
 
 		if ((tbd->tbd_used + ET_NSEG_SPARE) > ET_TX_NDESC) {
-			ifp->if_flags |= IFF_OACTIVE;
-			break;
+			if (oactive) {
+				ifp->if_flags |= IFF_OACTIVE;
+				break;
+			}
+
+			et_txeof(sc, 0);
+			oactive = 1;
+			continue;
 		}
 
 		m = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m == NULL)
 			break;
 
-		if (et_encap(sc, &m)) {
+		error = et_encap(sc, &m);
+		if (error) {
 			ifp->if_oerrors++;
-			ifp->if_flags |= IFF_OACTIVE;
-			break;
+			KKASSERT(m == NULL);
+
+			if (error == EFBIG) {
+				/*
+				 * Excessive fragmented packets
+				 */
+				if (oactive) {
+					ifp->if_flags |= IFF_OACTIVE;
+					break;
+				}
+				et_txeof(sc, 0);
+				oactive = 1;
+			}
+			continue;
+		} else {
+			oactive = 0;
 		}
 		trans = 1;
 
@@ -2120,7 +2143,7 @@ back:
 }
 
 static void
-et_txeof(struct et_softc *sc)
+et_txeof(struct et_softc *sc, int start)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct et_txdesc_ring *tx_ring = &sc->sc_tx_ring;
@@ -2170,7 +2193,8 @@ et_txeof(struct et_softc *sc)
 	if (tbd->tbd_used + ET_NSEG_SPARE <= ET_TX_NDESC)
 		ifp->if_flags &= ~IFF_OACTIVE;
 
-	if_devstart(ifp);
+	if (start)
+		if_devstart(ifp);
 }
 
 static void
