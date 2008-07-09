@@ -33,7 +33,7 @@
 #
 #	@(#)newvers.sh	8.1 (Berkeley) 4/20/94
 # $FreeBSD: src/sys/conf/newvers.sh,v 1.44.2.30 2003/04/04 07:02:46 murray Exp $
-# $DragonFly: src/sys/conf/newvers.sh,v 1.21 2008/02/12 02:26:07 dillon Exp $
+# $DragonFly: src/sys/conf/newvers.sh,v 1.22 2008/07/09 18:15:10 thomas Exp $
 
 tag="\$Name:  $"
 
@@ -42,7 +42,7 @@ tag="\$Name:  $"
 BRANCH=$(echo $tag | awk '{ print $2; }')
 
 # Remove any DragonFly_ prefix or _Slip suffix.  Release branches are 
-# typically extracted using a slip tag rather then the branch tag in order
+# typically extracted using a slip tag rather than the branch tag in order
 # to guarentee that the subversion file is synchronized with the files being
 # extracted.
 #
