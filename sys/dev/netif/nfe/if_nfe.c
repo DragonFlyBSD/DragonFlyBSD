@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.33 2008/07/07 11:31:28 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.34 2008/07/09 15:51:43 thomas Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -166,7 +166,7 @@ static int	nfe_rx_ring_count = NFE_RX_RING_DEF_COUNT;
 static int	nfe_imtime = 0;	/* Disable interrupt moderation */
 
 TUNABLE_INT("hw.nfe.rx_ring_count", &nfe_rx_ring_count);
-TUNABLE_INT("hw.nfe.imtime", &nfe_imtime);
+TUNABLE_INT("hw.nfe.imtimer", &nfe_imtime);
 TUNABLE_INT("hw.nfe.debug", &nfe_debug);
 
 #define DPRINTF(sc, fmt, ...) do {		\

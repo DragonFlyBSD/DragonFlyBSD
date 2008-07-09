@@ -1,5 +1,5 @@
 .\"	$OpenBSD: nfe.4,v 1.10 2006/08/30 22:56:05 jmc Exp $
-.\"	$DragonFly: src/share/man/man4/nfe.4,v 1.5 2008/03/16 17:44:24 swildner Exp $
+.\"	$DragonFly: src/share/man/man4/nfe.4,v 1.6 2008/07/09 15:51:43 thomas Exp $
 .\"
 .\" Copyright (c) 2006 Jonathan Gray <jsg@openbsd.org>
 .\"
@@ -15,7 +15,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd September 2, 2006
+.Dd July 9, 2008
 .Dt NFE 4
 .Os
 .Sh NAME
@@ -42,7 +42,7 @@ The
 driver supports PCI Ethernet adapters based on the NVIDIA
 nForce Media and Communications Processors (MCP), such as
 the nForce, nForce 2, nForce 3, CK804, MCP04, MCP51, MCP55,
-MCP61, MCP65 and MCP67 Ethernet controller chips.
+MCP61, MCP65, MCP67, MCP73, MCP77 and MCP79 Ethernet controller chips.
 .Pp
 The
 .Nm
@@ -60,6 +60,37 @@ Set 100Mbps (Fast Ethernet) operation.
 .It Cm 1000baseT
 Set 1000Mbps (Gigabit Ethernet) operation (recent models only).
 .El
+.Ss MIB Variables and Kernel Tunables
+The following per-interface variables are implemented in the
+.Va hw.nfe Ns Em X
+branch of the
+.Xr sysctl 3
+MIB.
+Kernel tunables with the same names, but using prefix
+.Va hw.nfe
+are also implemented, they apply to all
+.Nm
+interfaces in system and can be set in
+.Xr loader.conf 5 .
+.Bl -tag -width ".Va rx_ring_count"
+.It Va imtimer
+Interrupt moderation time (unit: microseconds).
+The default value is 0.
+A value of 0 means disabled.
+A negative value, -Y, means hardware timer simulated interrupt moderation,
+the simulated interrupt moderation timer will be set to Y.
+A positive valye, Y, means hardware timer only interrupt moderation,
+hardware timer will be set to Y.
+Value can be tuned when the interface is running.
+Positive values in the range 64-128 seems to be a reasonable.
+The value -125 should work on most systems.
+.It Va rx_ring_count
+RX ring count.
+sysctl node is read-only.
+The default value is 128.
+With heavier interrupt moderation (eg. imtimer=-250),
+it is recommended to increase rx_ring_count (eg. to 512).
+.El
 .Sh SEE ALSO
 .Xr arp 4 ,
 .Xr ifmedia 4 ,
@@ -69,6 +100,7 @@ Set 1000Mbps (Gigabit Ethernet) operation (recent models only).
 .Xr pci 4 ,
 .Xr polling 4 ,
 .Xr vlan 4 ,
+.Xr loader.conf 5 ,
 .Xr ifconfig 8
 .Sh HISTORY
 The
