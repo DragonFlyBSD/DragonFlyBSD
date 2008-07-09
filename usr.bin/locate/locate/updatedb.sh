@@ -27,7 +27,7 @@
 # updatedb - update locate database for local mounted filesystems
 #
 # $FreeBSD: src/usr.bin/locate/locate/updatedb.sh,v 1.17 2000/01/12 08:01:01 kris Exp $
-# $DragonFly: src/usr.bin/locate/locate/updatedb.sh,v 1.2 2003/06/17 04:29:28 dillon Exp $
+# $DragonFly: src/usr.bin/locate/locate/updatedb.sh,v 1.3 2008/07/09 19:53:27 swildner Exp $
 
 : ${LOCATE_CONFIG="/etc/locate.rc"}
 if [ -f "$LOCATE_CONFIG" -a -r "$LOCATE_CONFIG" ]; then
@@ -48,7 +48,7 @@ PATH=$LIBEXECDIR:/bin:/usr/bin:$PATH; export PATH
 : ${FCODES:=/var/db/locate.database}	 # the database
 : ${SEARCHPATHS:="/"}		# directories to be put in the database
 : ${PRUNEPATHS:="/tmp /usr/tmp /var/tmp"} # unwanted directories
-: ${FILESYSTEMS:="ufs"}			 # allowed filesystems 
+: ${FILESYSTEMS:="hammer ufs"}		 # allowed filesystems 
 : ${find:=find}
 
 case X"$SEARCHPATHS" in 
