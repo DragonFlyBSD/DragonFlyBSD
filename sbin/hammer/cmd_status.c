@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_status.c,v 1.2 2008/07/02 22:05:59 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_status.c,v 1.3 2008/07/09 10:32:30 dillon Exp $
  */
 
 #include "hammer.h"
@@ -49,7 +49,7 @@ hammer_cmd_status(char **av, int ac)
 		if (fd < 0 || ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
 			printf("HAMMER ioctl failed\n");
 		} else {
-			printf("Pseudo-fs #0x%08x\n", pfs.pseudoid);
+			printf("PFS #%d\n", pfs.pfs_id);
 		}
 	}
 }

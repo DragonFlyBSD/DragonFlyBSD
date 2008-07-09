@@ -31,52 +31,194 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.4 2008/07/07 00:27:22 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.5 2008/07/09 10:32:30 dillon Exp $
  */
 
 #include "hammer.h"
 
 static void parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd);
-static void init_pfsd(hammer_pseudofs_data_t pfsd);
+static void init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave);
 static void dump_pfsd(hammer_pseudofs_data_t pfsd);
 static void pseudofs_usage(int code);
+
+/*
+ * Calculate the pfs_id given a path to a directory or a @@PFS or @@%llx:%d
+ * softlink.
+ */
+int
+getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
+{
+	hammer_tid_t dummy_tid;
+	struct stat st;
+	char *dirpath;
+	char buf[64];
+	int fd;
+	int n;
+
+	bzero(pfs, sizeof(*pfs));
+	pfs->ondisk = malloc(sizeof(*pfs->ondisk));
+	bzero(pfs->ondisk, sizeof(*pfs->ondisk));
+	pfs->bytes = sizeof(*pfs->ondisk);
+
+	/*
+	 * Calculate the directory containing the softlink
+	 */
+	dirpath = strdup(path);
+	if (strrchr(dirpath, '/'))
+		*strrchr(dirpath, '/') = 0;
+	else
+		dirpath = strdup(".");
+
+	if (lstat(path, &st) == 0 && S_ISLNK(st.st_mode)) {
+		n = readlink(path, buf, sizeof(buf) - 1);
+		if (n < 0)
+			n = 0;
+		buf[n] = 0;
+		if (sscanf(buf, "@@PFS%d", &pfs->pfs_id) == 1) {
+			fd = open(dirpath, O_RDONLY);
+			goto done;
+		}
+		if (sscanf(buf, "@@%llx:%d", &dummy_tid, &pfs->pfs_id) == 2) {
+			fd = open(dirpath, O_RDONLY);
+			goto done;
+		}
+	}
+
+	/*
+	 * Try to open the path and request the pfs_id that way.
+	 */
+	fd = open(path, O_RDONLY);
+	if (fd >= 0) {
+		pfs->pfs_id = -1;
+		ioctl(fd, HAMMERIOC_GET_PSEUDOFS, pfs);
+		if (pfs->pfs_id == -1) {
+			close(fd);
+			fd = -1;
+		}
+	}
+
+	/*
+	 * Cleanup
+	 */
+done:
+	if (fd < 0) {
+		fprintf(stderr, "Cannot access PFS %s: %s\n",
+			path, strerror(errno));
+		exit(1);
+	}
+	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, pfs) < 0) {
+		fprintf(stderr, "Cannot access PFS %s: %s\n",
+			path, strerror(errno));
+		exit(1);
+	}
+	free(dirpath);
+	return(fd);
+}
 
 void
 hammer_cmd_pseudofs_status(char **av, int ac)
 {
 	struct hammer_ioc_pseudofs_rw pfs;
-	struct hammer_pseudofs_data pfsd;
 	int i;
 	int fd;
 
 	for (i = 0; i < ac; ++i) {
-		bzero(&pfsd, sizeof(pfsd));
-		bzero(&pfs, sizeof(pfs));
-		pfs.ondisk = &pfsd;
-		pfs.bytes = sizeof(pfsd);
 		printf("%s\t", av[i]);
-		fd = open(av[i], O_RDONLY);
+		fd = getpfs(&pfs, av[i]);
 		if (fd < 0 || ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
 			printf("Not a HAMMER root\n");
 		} else {
-			printf("Pseudo-fs #0x%08x {\n", pfs.pseudoid);
-			dump_pfsd(&pfsd);
+			printf("PFS #%d {\n", pfs.pfs_id);
+			dump_pfsd(pfs.ondisk);
 			printf("}\n");
 		}
+		if (fd >= 0)
+			close(fd);
+		if (pfs.ondisk)
+			free(pfs.ondisk);
 	}
 }
 
 void
-hammer_cmd_pseudofs_create(char **av, int ac)
+hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 {
+	struct hammer_ioc_pseudofs_rw pfs;
+	struct hammer_pseudofs_data pfsd;
+	struct stat st;
+	const char *path;
+	char *dirpath;
+	char *linkpath;
+	int pfs_id;
+	int fd;
+	int error;
+
 	if (ac == 0)
 		pseudofs_usage(1);
-
-	if (mknod(av[0], S_IFDIR|0777, 0) < 0) {
-		perror("mknod (create pseudofs):");
+	path = av[0];
+	if (lstat(path, &st) == 0) {
+		fprintf(stderr, "cannot create %s, file exists!\n", path);
 		exit(1);
 	}
-	hammer_cmd_pseudofs_update(av, ac, 1);
+
+	dirpath = strdup(path);
+	if (strrchr(dirpath, '/') != NULL)
+		*strrchr(dirpath, '/') = 0;
+	else
+		dirpath = strdup(".");
+	fd = open(dirpath, O_RDONLY);
+	if (fd < 0) {
+		fprintf(stderr, "Cannot open directory %s\n", dirpath);
+		exit(1);
+	}
+
+	error = 0;
+	for (pfs_id = 0; pfs_id < HAMMER_MAX_PFS; ++pfs_id) {
+		bzero(&pfs, sizeof(pfs));
+		bzero(&pfsd, sizeof(pfsd));
+		pfs.pfs_id = pfs_id;
+		pfs.ondisk = &pfsd;
+		pfs.bytes = sizeof(pfsd);
+		pfs.version = HAMMER_IOC_PSEUDOFS_VERSION;
+		if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) < 0) {
+			error = errno;
+			break;
+		}
+	}
+	if (pfs_id == HAMMER_MAX_PFS) {
+		fprintf(stderr, "Cannot create %s, all PFSs in use\n", path);
+		exit(1);
+	}
+	if (error != ENOENT) {
+		fprintf(stderr, "Cannot create %s, got %s during scan\n",
+			path, strerror(error));
+		exit(1);
+	}
+
+	/*
+	 * Create the new PFS
+	 */
+	printf("Creating PFS #%d\t", pfs_id);
+	bzero(&pfsd, sizeof(pfsd));
+	init_pfsd(&pfsd, is_slave);
+	pfs.pfs_id = pfs_id;
+	pfs.ondisk = &pfsd;
+	pfs.bytes = sizeof(pfsd);
+	pfs.version = HAMMER_IOC_PSEUDOFS_VERSION;
+
+	if (ioctl(fd, HAMMERIOC_SET_PSEUDOFS, &pfs) < 0) {
+		printf("failed: %s\n", strerror(errno));
+	} else {
+		/* special symlink, must be exactly 10 characters */
+		asprintf(&linkpath, "@@PFS%05d", pfs_id);
+		if (symlink(linkpath, path) < 0) {
+			printf("failed: cannot create symlink: %s\n",
+				strerror(errno));
+		} else {
+			printf("succeeded!\n");
+			hammer_cmd_pseudofs_update(av, ac);
+		}
+	}
+	close(fd);
 }
 
 void
@@ -86,36 +228,30 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 }
 
 void
-hammer_cmd_pseudofs_update(char **av, int ac, int doinit)
+hammer_cmd_pseudofs_update(char **av, int ac)
 {
 	struct hammer_ioc_pseudofs_rw pfs;
-	struct hammer_pseudofs_data pfsd;
 	int fd;
 
 	if (ac == 0)
 		pseudofs_usage(1);
 	bzero(&pfs, sizeof(pfs));
-	bzero(&pfsd, sizeof(pfsd));
-	pfs.ondisk = &pfsd;
-	pfs.bytes = sizeof(pfsd);
-	pfs.version = HAMMER_IOC_PSEUDOFS_VERSION;
+	fd = getpfs(&pfs, av[0]);
 
-	printf("%s\t", av[0]);
+	printf("%s\n", av[0]);
 	fflush(stdout);
-	fd = open(av[0], O_RDONLY);
 
 	if (fd >= 0 && ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) == 0) {
-		if (doinit) {
-			printf("Pseudo-fs #0x%08x created\n", pfs.pseudoid);
-			init_pfsd(&pfsd);
-		} else {
-			printf("\n");
+		parse_pfsd_options(av + 1, ac - 1, pfs.ondisk);
+		if ((pfs.ondisk->mirror_flags & HAMMER_PFSD_SLAVE) &&
+		    pfs.pfs_id == 0) {
+			fprintf(stderr, "The real mount point cannot be made a PFS slave, only PFS sub-directories can be made slaves\n");
+			exit(1);
 		}
-		parse_pfsd_options(av + 1, ac - 1, &pfsd);
-		pfs.bytes = sizeof(pfsd);
+		pfs.bytes = sizeof(*pfs.ondisk);
 		if (ioctl(fd, HAMMERIOC_SET_PSEUDOFS, &pfs) == 0) {
 			if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) == 0) {
-				dump_pfsd(&pfsd);
+				dump_pfsd(pfs.ondisk);
 			} else {
 				printf("Unable to retrieve pfs configuration after successful update: %s\n", strerror(errno));
 				exit(1);
@@ -131,7 +267,7 @@ hammer_cmd_pseudofs_update(char **av, int ac, int doinit)
 }
 
 static void
-init_pfsd(hammer_pseudofs_data_t pfsd)
+init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave)
 {
 	uint32_t status;
 
@@ -141,7 +277,12 @@ init_pfsd(hammer_pseudofs_data_t pfsd)
 	pfsd->sync_end_ts = 0;
 	uuid_create(&pfsd->shared_uuid, &status);
 	uuid_create(&pfsd->unique_uuid, &status);
-	pfsd->master_id = 0;
+	if (is_slave) {
+		pfsd->master_id = -1;
+		pfsd->mirror_flags |= HAMMER_PFSD_SLAVE;
+	} else {
+		pfsd->master_id = 0;
+	}
 }
 
 static
@@ -211,12 +352,24 @@ parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd)
 		} else if (strcmp(cmd, "unique-uuid") == 0) {
 			uuid_from_string(ptr, &pfsd->unique_uuid, &status);
 		} else if (strcmp(cmd, "master") == 0) {
+			if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE) {
+				fprintf(stderr, "master mode cannot be set on a slave PFS\n");
+				exit(1);
+			}
 			pfsd->master_id = strtol(ptr, NULL, 0);
 			pfsd->mirror_flags &= ~HAMMER_PFSD_SLAVE;
 		} else if (strcmp(cmd, "slave") == 0) {
+			if ((pfsd->mirror_flags & HAMMER_PFSD_SLAVE) == 0) {
+				fprintf(stderr, "slave mode cannot be set on a master PFS\n");
+				exit(1);
+			}
 			pfsd->master_id = -1;
 			pfsd->mirror_flags |= HAMMER_PFSD_SLAVE;
 		} else if (strcmp(cmd, "no-mirror") == 0) {
+			if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE) {
+				fprintf(stderr, "no-mirror master mode cannot be set on a slave PFS\n");
+				exit(1);
+			}
 			pfsd->master_id = -1;
 			pfsd->mirror_flags &= ~HAMMER_PFSD_SLAVE;
 		} else if (strcmp(cmd, "label") == 0) {
@@ -251,7 +404,9 @@ pseudofs_usage(int code)
 {
 	fprintf(stderr, 
 		"hammer pfs-status <dirpath1>...<dirpathN>\n"
-		"hammer pfs-create <dirpath> [options]\n"
+		"hammer pfs-master <dirpath> [options]\n"
+		"hammer pfs-slave <dirpath> [options]\n"
+		"hammer pfs-destroy <dirpath>\n"
 		"hammer pfs-update <dirpath> [options]\n"
 		"\n"
 		"    sync-beg-tid=0x16llx\n"

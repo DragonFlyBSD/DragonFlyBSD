@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.h,v 1.21 2008/07/07 00:27:22 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.h,v 1.22 2008/07/09 10:32:30 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -82,8 +82,8 @@ void hammer_cmd_history(const char *offset_str, char **av, int ac);
 void hammer_cmd_blockmap(void);
 void hammer_cmd_reblock(char **av, int ac, int flags);
 void hammer_cmd_pseudofs_status(char **av, int ac);
-void hammer_cmd_pseudofs_create(char **av, int ac);
-void hammer_cmd_pseudofs_update(char **av, int ac, int doinit);
+void hammer_cmd_pseudofs_create(char **av, int ac, int is_slave);
+void hammer_cmd_pseudofs_update(char **av, int ac);
 void hammer_cmd_pseudofs_destroy(char **av, int ac);
 void hammer_cmd_status(char **av, int ac);
 void hammer_cmd_snapshot(char **av, int ac);
@@ -91,4 +91,6 @@ void hammer_cmd_snapshot(char **av, int ac);
 void hammer_get_cycle(hammer_base_elm_t base, hammer_tid_t *tidp);
 void hammer_set_cycle(hammer_base_elm_t base, hammer_tid_t tid);
 void hammer_reset_cycle(void);
+
+int getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path);
 

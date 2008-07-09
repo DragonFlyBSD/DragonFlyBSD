@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.5 2008/07/07 03:51:28 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.6 2008/07/09 10:32:30 dillon Exp $
  */
 
 #include "hammer.h"
@@ -48,17 +48,18 @@ static int read_mrecords(int fd, char *buf, u_int size,
 static struct hammer_ioc_mrecord *read_mrecord(int fdin, int *errorp,
 			 hammer_ioc_mrecord_t pickup);
 static void write_mrecord(int fdout, u_int32_t type, void *payload, int bytes);
-static void generate_mrec_header(int fd, int fdout,
+static void generate_mrec_header(int fd, int fdout, int pfs_id,
 			 hammer_tid_t *tid_begp, hammer_tid_t *tid_endp);
-static void validate_mrec_header(int fd, int fdin,
+static void validate_mrec_header(int fd, int fdin, int is_target, int pfs_id,
 			 hammer_tid_t *tid_begp, hammer_tid_t *tid_endp);
-static void update_pfs_snapshot(int fd, hammer_tid_t snapshot_tid);
+static void update_pfs_snapshot(int fd, hammer_tid_t snapshot_tid, int pfs_id);
 static void mirror_usage(int code);
 
 void
 hammer_cmd_mirror_read(char **av, int ac)
 {
 	struct hammer_ioc_mirror_rw mirror;
+	struct hammer_ioc_pseudofs_rw pfs;
 	hammer_ioc_mrecord_t mrec;
 	hammer_tid_t sync_tid;
 	const char *filesystem;
@@ -77,14 +78,29 @@ hammer_cmd_mirror_read(char **av, int ac)
 	hammer_key_beg_init(&mirror.key_beg);
 	hammer_key_end_init(&mirror.key_end);
 
-	fd = open(filesystem, O_RDONLY);
-	if (fd < 0)
-		err(1, "Unable to open %s", filesystem);
+	fd = getpfs(&pfs, filesystem);
 
 	/*
-	 * Write out the PFS header
+	 * In 2-way mode the target will send us a PFS info packet
+	 * first.  Use the target's current snapshot TID as our default
+	 * begin TID.
 	 */
-	generate_mrec_header(fd, 1, &mirror.tid_beg, &mirror.tid_end);
+	mirror.tid_beg = 0;
+	if (TwoWayPipeOpt)
+		validate_mrec_header(fd, 0, 0, pfs.pfs_id,
+				     NULL, &mirror.tid_beg);
+
+	/*
+	 * Write out the PFS header, tid_beg will be updated if our PFS
+	 * has a larger begin sync.  tid_end is set to the latest source
+	 * TID whos flush cycle has completed.
+	 */
+	generate_mrec_header(fd, 1, pfs.pfs_id,
+			     &mirror.tid_beg, &mirror.tid_end);
+
+	/*
+	 * A cycle file overrides the beginning TID
+	 */
 	hammer_get_cycle(&mirror.key_beg, &mirror.tid_beg);
 
 	fprintf(stderr, "mirror-read: Mirror from %016llx to %016llx\n",
@@ -104,6 +120,8 @@ hammer_cmd_mirror_read(char **av, int ac)
 
 	do {
 		mirror.count = 0;
+		mirror.pfs_id = pfs.pfs_id;
+		mirror.shared_uuid = pfs.ondisk->shared_uuid;
 		if (ioctl(fd, HAMMERIOC_MIRROR_READ, &mirror) < 0) {
 			fprintf(stderr, "Mirror-read %s failed: %s\n",
 				filesystem, strerror(errno));
@@ -181,6 +199,7 @@ hammer_cmd_mirror_write(char **av, int ac)
 	struct hammer_ioc_mirror_rw mirror;
 	const char *filesystem;
 	char *buf = malloc(SERIALBUF_SIZE);
+	struct hammer_ioc_pseudofs_rw pfs;
 	struct hammer_ioc_mrecord pickup;
 	struct hammer_ioc_synctid synctid;
 	hammer_ioc_mrecord_t mrec;
@@ -195,14 +214,26 @@ hammer_cmd_mirror_write(char **av, int ac)
 	hammer_key_beg_init(&mirror.key_beg);
 	hammer_key_end_init(&mirror.key_end);
 
-	fd = open(filesystem, O_RDONLY);
-	if (fd < 0)
-		err(1, "Unable to open %s", filesystem);
+	fd = getpfs(&pfs, filesystem);
 
 	/*
-	 * Read and process the PFS header 
+	 * In two-way mode the target writes out a PFS packet first.
+	 * The source uses our tid_end as its tid_beg by default,
+	 * picking up where it left off.
 	 */
-	validate_mrec_header(fd, 0, &mirror.tid_beg, &mirror.tid_end);
+	mirror.tid_beg = 0;
+	if (TwoWayPipeOpt) {
+		generate_mrec_header(fd, 1, pfs.pfs_id,
+				     &mirror.tid_beg, &mirror.tid_end);
+	}
+
+	/*
+	 * Read and process the PFS header.  The source informs of its 
+	 * tid_end, which we set ours too upon completion of the operation
+	 * without error.
+	 */
+	validate_mrec_header(fd, 0, 1, pfs.pfs_id,
+			     &mirror.tid_beg, &mirror.tid_end);
 
 	mirror.ubuf = buf;
 	mirror.size = SERIALBUF_SIZE;
@@ -215,6 +246,8 @@ hammer_cmd_mirror_write(char **av, int ac)
 	 */
 	for (;;) {
 		mirror.count = 0;
+		mirror.pfs_id = pfs.pfs_id;
+		mirror.shared_uuid = pfs.ondisk->shared_uuid;
 		mirror.size = read_mrecords(0, buf, SERIALBUF_SIZE, &pickup);
 		if (mirror.size <= 0)
 			break;
@@ -250,7 +283,7 @@ hammer_cmd_mirror_write(char **av, int ac)
 	 * Update the PFS info on the target so the user has visibility
 	 * into the new snapshot.
 	 */
-	update_pfs_snapshot(fd, mirror.tid_end);
+	update_pfs_snapshot(fd, mirror.tid_end, pfs.pfs_id);
 
 	/*
 	 * Sync the target filesystem
@@ -600,7 +633,7 @@ write_mrecord(int fdout, u_int32_t type, void *payload, int bytes)
  * originating filesytem.
  */
 static void
-generate_mrec_header(int fd, int fdout,
+generate_mrec_header(int fd, int fdout, int pfs_id,
 		     hammer_tid_t *tid_begp, hammer_tid_t *tid_endp)
 {
 	struct hammer_ioc_pseudofs_rw pfs;
@@ -608,6 +641,7 @@ generate_mrec_header(int fd, int fdout,
 
 	bzero(&pfs, sizeof(pfs));
 	bzero(&pfs_head, sizeof(pfs_head));
+	pfs.pfs_id = pfs_id;
 	pfs.ondisk = &pfs_head.pfsd;
 	pfs.bytes = sizeof(pfs_head.pfsd);
 	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) != 0) {
@@ -625,8 +659,10 @@ generate_mrec_header(int fd, int fdout,
 	 *
 	 * sync_end_tid - highest fully synchronized TID from source.
 	 */
-	*tid_begp = pfs_head.pfsd.sync_beg_tid;
-	*tid_endp = pfs_head.pfsd.sync_end_tid;
+	if (tid_begp && *tid_begp < pfs_head.pfsd.sync_beg_tid)
+		*tid_begp = pfs_head.pfsd.sync_beg_tid;
+	if (tid_endp)
+		*tid_endp = pfs_head.pfsd.sync_end_tid;
 
 	pfs_head.version = pfs.version;
 	write_mrecord(fdout, HAMMER_MREC_TYPE_PFSD,
@@ -638,7 +674,7 @@ generate_mrec_header(int fd, int fdout,
  * against the target filesystem.  shared_uuid must match.
  */
 static void
-validate_mrec_header(int fd, int fdin,
+validate_mrec_header(int fd, int fdin, int is_target, int pfs_id,
 		     hammer_tid_t *tid_begp, hammer_tid_t *tid_endp)
 {
 	struct hammer_ioc_pseudofs_rw pfs;
@@ -653,6 +689,7 @@ validate_mrec_header(int fd, int fdin,
 	 */
 	bzero(&pfs, sizeof(pfs));
 	bzero(&pfsd, sizeof(pfsd));
+	pfs.pfs_id = pfs_id;
 	pfs.ondisk = &pfsd;
 	pfs.bytes = sizeof(pfsd);
 	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) != 0) {
@@ -694,23 +731,27 @@ validate_mrec_header(int fd, int fdin,
 		fprintf(stderr, "mirror-write: source and target have different shared_uuid's!\n");
 		exit(1);
 	}
-	if ((pfsd.mirror_flags & HAMMER_PFSD_SLAVE) == 0) {
+	if (is_target &&
+	    (pfsd.mirror_flags & HAMMER_PFSD_SLAVE) == 0) {
 		fprintf(stderr, "mirror-write: target must be in slave mode\n");
 		exit(1);
 	}
-	*tid_begp = pfs_head->pfsd.sync_beg_tid;
-	*tid_endp = pfs_head->pfsd.sync_end_tid;
+	if (tid_begp)
+		*tid_begp = pfs_head->pfsd.sync_beg_tid;
+	if (tid_endp)
+		*tid_endp = pfs_head->pfsd.sync_end_tid;
 	free(mrec);
 }
 
 static void
-update_pfs_snapshot(int fd, hammer_tid_t snapshot_tid)
+update_pfs_snapshot(int fd, hammer_tid_t snapshot_tid, int pfs_id)
 {
 	struct hammer_ioc_pseudofs_rw pfs;
 	struct hammer_pseudofs_data pfsd;
 
 	bzero(&pfs, sizeof(pfs));
 	bzero(&pfsd, sizeof(pfsd));
+	pfs.pfs_id = pfs_id;
 	pfs.ondisk = &pfsd;
 	pfs.bytes = sizeof(pfsd);
 	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) != 0) {
