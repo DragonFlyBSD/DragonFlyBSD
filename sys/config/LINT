@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.165 2008/07/07 23:11:54 nant Exp $
+# $DragonFly: src/sys/config/LINT,v 1.166 2008/07/09 16:23:56 thomas Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -67,7 +67,7 @@ makeoptions	CONF_CFLAGS=-fno-builtin  #Don't allow use of memcmp, etc.
 
 #
 # Certain applications can grow to be larger than the 128M limit
-# that FreeBSD initially imposes.  Below are some options to
+# that DragonFly initially imposes.  Below are some options to
 # allow that limit to grow to 256MB, and can be increased further
 # with changing the parameters.  MAXDSIZ is the maximum that the
 # limit can be set to, and the DFLDSIZ is the default value for
@@ -359,7 +359,7 @@ options 	DDB_UNATTENDED
 # extension to the remote protocol that can be used to use the serial
 # port as both the debugging port and the system console.  It's non-
 # standard and you're on your own if you enable it.  See also the
-# "remotechat" variables in the FreeBSD specific version of gdb.
+# "remotechat" variables in the DragonFly specific version of gdb.
 #
 options 	GDB_REMOTE_CHAT
 
@@ -415,7 +415,7 @@ options 	VISUAL_USERCONFIG	#visual boot -c editor
 
 #
 # Protocol families:
-#  Only the INET (Internet) family is officially supported in FreeBSD.
+#  Only the INET (Internet) family is officially supported in DragonFly.
 #  Source code for the NS (Xerox Network Service) is provided for amusement
 #  value.
 #
@@ -1057,7 +1057,7 @@ device		pnpbios
 # versions.
 #
 # MAXMEM specifies the amount of RAM on the machine; if this is not
-# specified, FreeBSD will first read the amount of memory from the CMOS
+# specified, DragonFly will first read the amount of memory from the CMOS
 # RAM, so the amount of memory will initially be limited to 64MB or 16MB
 # depending on the BIOS.  If the BIOS reports 64MB, a memory probe will
 # then attempt to detect the installed amount of RAM.  If this probe
@@ -1363,7 +1363,7 @@ options 	COM_MULTIPORT		#code for some cards with shared IRQs
 # PCI Universal Communications driver
 # Supports various single and multi port PCI serial cards. Maybe later
 # also the parallel ports on combination serial/parallel cards. New cards
-# can be added in src/sys/dev/puc/pucdata.c.
+# can be added in src/sys/dev/misc/puc/pucdata.c.
 #
 # If the PUC_FASTINTR option is used the driver will try to use fast
 # interrupts. The card must then be the only user of that interrupt.
@@ -1598,10 +1598,10 @@ device		"snd_uaudio"
 #  The cards can use an IRQ of 11, 12 or 15.
 
 # Notes on the Stallion stl and stli drivers:
-#  See src/i386/isa/README.stl for complete instructions.
+#  See src/sys/platform/pc32/isa/README.stl for complete instructions.
 #  This is version 2.0.0, unsupported by Stallion.
 #  The stl driver has a secondary IO port hard coded at 0x280.  You need
-#     to change src/i386/isa/stallion.c if you reconfigure this on the boards.
+#     to change src/sys/dev/serial/stl/stallion.c if you reconfigure this on the boards.
 #  The "flags" and "iosiz" settings on the stli driver depend on the board:
 #	EasyConnection 8/64 ISA:     flags 23         iosiz 0x1000
 #	EasyConnection 8/64 EISA:    flags 24         iosiz 0x10000
@@ -1862,7 +1862,7 @@ options 	AHD_REG_PRETTY_PRINT
 # options 	OVERRIDE_MSP=1
 # options 	OVERRIDE_DBX=1
 # These options can be used to override the auto detection
-# The current values for xxx are found in src/sys/dev/bktr/bktr_card.h
+# The current values for xxx are found in src/sys/dev/video/bktr/bktr_card.h
 # Using sysctl(8) run-time overrides on a per-card basis can be made
 #
 # options 	BKTR_SYSTEM_DEFAULT=BROOKTREE_PAL
@@ -2464,7 +2464,7 @@ device		asr
 # some controllers by Olivetti, Dec, HP, AT&T, SNI, AST, Alphatronic, NEC and
 # Compaq are actually DPT controllers.
 #
-# See src/sys/dev/dpt for debugging and other subtle options.
+# See src/sys/dev/raid/dpt for debugging and other subtle options.
 #   DPT_MEASURE_PERFORMANCE Enables a set of (semi)invasive metrics. Various
 #                           instruments are enabled.  The tools in
 #                           /usr/sbin/dpt_* assume these to be enabled.
@@ -2474,7 +2474,7 @@ device		asr
 #                           option will create more trouble than solve.
 #   DPT_TIMEOUT_FACTOR      Used to compute the excessive amount of time to
 #                           wait when timing out with the above option.
-#  DPT_DEBUG_xxxx           These are controllable from sys/dev/dpt/dpt.h
+#  DPT_DEBUG_xxxx           These are controllable from sys/dev/dpt/raid/dpt.h
 #  DPT_LOST_IRQ             When enabled, will try, once per second, to catch
 #                           any interrupt that got lost.  Seems to help in some
 #                           DPT-firmware/Motherboard combinations.  Minimal

@@ -29,7 +29,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/sr.4,v 1.15.2.4 2001/08/17 13:08:46 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/sr.4,v 1.8 2008/05/02 02:05:06 swildner Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/sr.4,v 1.9 2008/07/09 16:23:55 thomas Exp $
 .\"
 .Dd July 4, 1996
 .Dt SR 4 i386
@@ -49,7 +49,7 @@ driver supports the RISCom/N2 ISA cards and the WANic 400/405 PCI cards
 that is based on the HD64570 chip.
 .Pp
 The standard
-.Fx
+.Dx
 sppp code is used for the link level layer.
 The
 default protocol used is PPP.
@@ -109,12 +109,12 @@ The node will have the same name as the device with ``sync_''
 prepended, e.g.,
 .Dv sync_sr0 .
 .Sh FILES
-.Bl -tag -width /sys/machine/pc32/isa/ic/hd64570.h -compact
+.Bl -tag -width /sys/platform/pc32/isa/ic/hd64570.h -compact
 .It Pa /sys/dev/netif/sr/if_sr.c
 .It Pa /sys/dev/netif/sr/if_sr.h
 .It Pa /sys/dev/netif/sr/if_sr_pci.c
 .It Pa /sys/dev/netif/sr/if_srregs.h
-.It Pa /sys/machine/pc32/isa/ic/hd64570.h
+.It Pa /sys/platform/pc32/isa/ic/hd64570.h
 .El
 .Sh DIAGNOSTICS
 .Bl -diag

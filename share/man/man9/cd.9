@@ -26,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/cd.9,v 1.11.2.3 2002/04/15 06:06:40 trhodes Exp $
-.\" $DragonFly: src/share/man/man9/cd.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/cd.9,v 1.3 2008/07/09 16:23:56 thomas Exp $
 .\"
 .Dd October 10, 1998
 .Dt CD 9
@@ -77,8 +77,8 @@ driver to run the initial read capacity command for LUN 0 of the changer
 through the changer scheduling code.
 .El
 .Sh FILES
-.Bl -tag -width /sys/cam/scsi/scsi_cd.c -compact
-.It Pa /sys/cam/scsi/scsi_cd.c
+.Bl -tag -width /sys/bus/cam/scsi/scsi_cd.c -compact
+.It Pa /sys/bus/cam/scsi/scsi_cd.c
 is the driver source file.
 .El
 .Sh SEE ALSO

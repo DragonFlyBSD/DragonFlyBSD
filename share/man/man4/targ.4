@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/targ.4,v 1.3.2.1 2003/02/18 22:07:11 njl Exp $
-.\" $DragonFly: src/share/man/man4/targ.4,v 1.5 2007/04/26 17:35:03 swildner Exp $
+.\" $DragonFly: src/share/man/man4/targ.4,v 1.6 2008/07/09 16:23:55 thomas Exp $
 .\"
 .Dd November 15, 2002
 .Dt TARG 4
@@ -114,10 +114,10 @@ debugging if the argument is non-zero, otherwise disables
 it.
 .El
 .Sh FILES
-.Bl -tag -width ".Pa /sys/cam/scsi/scsi_target.c" -compact
+.Bl -tag -width ".Pa /sys/bus/cam/scsi/scsi_target.c" -compact
 .It In bus/cam/scsi/scsi_targetio.h
 describes the usermode interface.
-.It Pa /sys/cam/scsi/scsi_target.c
+.It Pa /sys/bus/cam/scsi/scsi_target.c
 is the driver source file.
 .It Pa /dev/targ*
 are the control devices.
