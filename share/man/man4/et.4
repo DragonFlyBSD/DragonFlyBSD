@@ -28,9 +28,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man4/et.4,v 1.2 2007/10/23 14:28:42 sephe Exp $
+.\" $DragonFly: src/share/man/man4/et.4,v 1.3 2008/07/09 14:00:44 sephe Exp $
 .\"
-.Dd October 11, 2007
+.Dd July 9, 2008
 .Dt ET 4
 .Os
 .Sh NAME
@@ -121,14 +121,16 @@ see
 .It Va hw.et.rx_intr_npkts
 This value controls how many packets should be recevied
 before a receive interrupt is generated.
-The default value is 32.
+The default value is 129.
+It is recommended to set this value above 38 to prevent host from being
+livelocked under a high degree of stress.
 .It Va hw.et.rx_intr_delay
 This value delays the generation of receive interrupts
-in units of 10 microseconds (I guess).
+in units of ~4 microseconds.
 It is used together with
 .Va hw.et.rx_intr_npkts
 to achieve RX interrupt moderation.
-The default value is 20.
+The default value is 25.
 .It Va hw.et.tx_intr_nsegs
 This value controls how many segments (not packets) should be transmitted
 before a transmit interrupt is generated.
