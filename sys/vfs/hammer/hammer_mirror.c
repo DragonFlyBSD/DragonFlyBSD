@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.8 2008/07/07 03:49:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.9 2008/07/09 10:29:20 dillon Exp $
  */
 /*
  * HAMMER mirroring ioctls - serialize and deserialize modifications made
@@ -55,6 +55,10 @@ static int hammer_mirror_localize_data(hammer_data_ondisk_t data,
  * to the transaction id range are returned.  Mirroring code keeps track
  * of the last transaction id fully scanned and can efficiently pick up
  * where it left off if interrupted.
+ *
+ * The PFS is identified in the mirror structure.  The passed ip is just
+ * some directory in the overall HAMMER filesystem and has nothing to
+ * do with the PFS.
  */
 int
 hammer_ioc_mirror_read(hammer_transaction_t trans, hammer_inode_t ip,
@@ -69,6 +73,9 @@ hammer_ioc_mirror_read(hammer_transaction_t trans, hammer_inode_t ip,
 	int error;
 	int data_len;
 	int bytes;
+	u_int32_t localization;
+
+	localization = (u_int32_t)mirror->pfs_id << 16;
 
 	if ((mirror->key_beg.localization | mirror->key_end.localization) &
 	    HAMMER_LOCALIZE_PSEUDOFS_MASK) {
@@ -78,7 +85,7 @@ hammer_ioc_mirror_read(hammer_transaction_t trans, hammer_inode_t ip,
 		return(EINVAL);
 
 	mirror->key_cur = mirror->key_beg;
-	mirror->key_cur.localization += ip->obj_localization;
+	mirror->key_cur.localization += localization;
 	bzero(&mrec, sizeof(mrec));
 
 retry:
@@ -89,7 +96,7 @@ retry:
 	}
 	cursor.key_beg = mirror->key_cur;
 	cursor.key_end = mirror->key_end;
-	cursor.key_end.localization += ip->obj_localization;
+	cursor.key_end.localization += localization;
 
 	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE;
 	cursor.flags |= HAMMER_CURSOR_BACKEND;
@@ -200,7 +207,10 @@ failed:
  * Copy records from userland to the target mirror.  Records which already
  * exist may only have their delete_tid updated.
  *
- * The passed ip is the root ip of the pseudofs
+ * The PFS is identified in the mirror structure.  The passed ip is just
+ * some directory in the overall HAMMER filesystem and has nothing to
+ * do with the PFS.  In fact, there might not even be a root directory for
+ * the PFS yet!
  */
 int
 hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
@@ -213,6 +223,9 @@ hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
 	u_int32_t rec_crc;
 	int error;
 	char *uptr;
+	u_int32_t localization;
+
+	localization = (u_int32_t)mirror->pfs_id << 16;
 
 	if (mirror->size < 0 || mirror->size > 0x70000000)
 		return(EINVAL);
@@ -259,7 +272,7 @@ retry:
 		 * by hammer_mirror_write().
 		 */
 		mrec.leaf.base.localization &= HAMMER_LOCALIZE_MASK;
-		mrec.leaf.base.localization += ip->obj_localization;
+		mrec.leaf.base.localization += localization;
 
 		/*
 		 * Locate the record.
@@ -324,7 +337,7 @@ hammer_mirror_check(hammer_cursor_t cursor, struct hammer_ioc_mrecord *mrec)
 	hammer_btree_leaf_elm_t leaf = cursor->leaf;
 
 	if (leaf->base.delete_tid != mrec->leaf.base.delete_tid) {
-		if (leaf->base.delete_tid != 0)
+		if (mrec->leaf.base.delete_tid != 0)
 			return(1);
 	}
 	return(0);
@@ -386,9 +399,10 @@ hammer_mirror_write(hammer_cursor_t cursor, struct hammer_ioc_mrecord *mrec,
 	int error;
 	int doprop;
 
-	/*
-	 * Skip records related to the root inode other then
-	 * directory entries.
+#if 0
+	/* 
+	 * removed: all records are now duplicated, including the root
+	 * inode.
 	 */
 	if (mrec->leaf.base.obj_id == HAMMER_OBJID_ROOT) {
 		if (mrec->leaf.base.rec_type == HAMMER_RECTYPE_INODE ||
@@ -396,6 +410,7 @@ hammer_mirror_write(hammer_cursor_t cursor, struct hammer_ioc_mrecord *mrec,
 			return(0);
 		}
 	}
+#endif
 
 	trans = cursor->trans;
 	data_buffer = NULL;
@@ -513,35 +528,14 @@ hammer_mirror_localize_data(hammer_data_ondisk_t data,
 }
 
 /*
- * Set mirroring/pseudo-fs information
+ * Auto-detect the pseudofs.
  */
-int
-hammer_ioc_set_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
-			struct hammer_ioc_pseudofs_rw *pfs)
+static
+void
+hammer_mirror_autodetect(struct hammer_ioc_pseudofs_rw *pfs, hammer_inode_t ip)
 {
-	hammer_pseudofs_inmem_t pfsm;
-	int error;
-
-	pfsm = ip->pfsm;
-	error = 0;
-
-	if (pfs->pseudoid != ip->obj_localization)
-		error = EINVAL;
-	if (pfs->bytes != sizeof(pfsm->pfsd))
-		error = EINVAL;
-	if (pfs->version != HAMMER_IOC_PSEUDOFS_VERSION)
-		error = EINVAL;
-	if (error == 0 && pfs->ondisk) {
-		if (ip->obj_id != HAMMER_OBJID_ROOT)
-			error = EINVAL;
-		if (error == 0) {
-			error = copyin(pfs->ondisk, &ip->pfsm->pfsd,
-				       sizeof(ip->pfsm->pfsd));
-		}
-		if (error == 0)
-			error = hammer_save_pseudofs(trans, ip);
-	}
-	return(error);
+	if (pfs->pfs_id == -1)
+		pfs->pfs_id = (int)(ip->obj_localization >> 16);
 }
 
 /*
@@ -552,30 +546,76 @@ hammer_ioc_get_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 			struct hammer_ioc_pseudofs_rw *pfs)
 {
 	hammer_pseudofs_inmem_t pfsm;
+	u_int32_t localization;
 	int error;
 
-	pfs->pseudoid = ip->obj_localization;
+	hammer_mirror_autodetect(pfs, ip);
+	if (pfs->pfs_id < 0 || pfs->pfs_id >= HAMMER_MAX_PFS)
+		return(EINVAL);
+	localization = (u_int32_t)pfs->pfs_id << 16;
 	pfs->bytes = sizeof(struct hammer_pseudofs_data);
 	pfs->version = HAMMER_IOC_PSEUDOFS_VERSION;
 
+	pfsm = hammer_load_pseudofs(trans, localization, &error);
+	if (error) {
+		hammer_rel_pseudofs(trans->hmp, pfsm);
+		return(error);
+	}
+
 	/*
-	 * Update pfsm->sync_end_tid if a master
+	 * If the PFS is a master the sync tid is set by normal operation
+	 * rather then the mirroring code, and will always track the
+	 * real HAMMER filesystem.
 	 */
-	pfsm = ip->pfsm;
 	if (pfsm->pfsd.master_id >= 0)
 		pfsm->pfsd.sync_end_tid = trans->rootvol->ondisk->vol0_next_tid;
 
 	/*
-	 * Return PFS information for root inodes only.
+	 * Copy out to userland.
 	 */
 	error = 0;
-	if (pfs->ondisk) {
-		if (ip->obj_id != HAMMER_OBJID_ROOT)
-			error = EINVAL;
-		if (error == 0) {
-			error = copyout(&ip->pfsm->pfsd, pfs->ondisk,
-					sizeof(ip->pfsm->pfsd));
-		}
+	if (pfs->ondisk && error == 0)
+		error = copyout(&pfsm->pfsd, pfs->ondisk, sizeof(pfsm->pfsd));
+	hammer_rel_pseudofs(trans->hmp, pfsm);
+	return(error);
+}
+
+/*
+ * Set mirroring/pseudo-fs information
+ */
+int
+hammer_ioc_set_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
+			struct ucred *cred, struct hammer_ioc_pseudofs_rw *pfs)
+{
+	hammer_pseudofs_inmem_t pfsm;
+	int error;
+	u_int32_t localization;
+
+	error = 0;
+	hammer_mirror_autodetect(pfs, ip);
+	if (pfs->pfs_id < 0 || pfs->pfs_id >= HAMMER_MAX_PFS)
+		error = EINVAL;
+	if (pfs->bytes != sizeof(pfsm->pfsd))
+		error = EINVAL;
+	if (pfs->version != HAMMER_IOC_PSEUDOFS_VERSION)
+		error = EINVAL;
+	if (error == 0 && pfs->ondisk) {
+		/*
+		 * Load the PFS so we can modify our in-core copy.
+		 */
+		localization = (u_int32_t)pfs->pfs_id << 16;
+		pfsm = hammer_load_pseudofs(trans, localization, &error);
+		error = copyin(pfs->ondisk, &pfsm->pfsd, sizeof(pfsm->pfsd));
+
+		/*
+		 * Save it back, create a root inode if we are in master
+		 * mode and no root exists.
+		 */
+		if (error == 0)
+			error = hammer_mkroot_pseudofs(trans, cred, pfsm);
+		if (error == 0)
+			error = hammer_save_pseudofs(trans, pfsm);
+		hammer_rel_pseudofs(trans->hmp, pfsm);
 	}
 	return(error);
 }

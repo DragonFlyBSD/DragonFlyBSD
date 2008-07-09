@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.95 2008/07/07 03:49:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.96 2008/07/09 10:29:20 dillon Exp $
  */
 
 #include "hammer.h"
@@ -223,6 +223,7 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 	hammer_mount_t hmp;
 	struct vnode *vp;
 	int error = 0;
+	u_int8_t obj_type;
 
 	hmp = ip->hmp;
 
@@ -241,8 +242,9 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			hammer_ref(&ip->lock);
 			vp = *vpp;
 			ip->vp = vp;
-			vp->v_type =
-				hammer_get_vnode_type(ip->ino_data.obj_type);
+
+			obj_type = ip->ino_data.obj_type;
+			vp->v_type = hammer_get_vnode_type(obj_type);
 
 			hammer_inode_wakereclaims(ip);
 
@@ -370,7 +372,10 @@ loop:
 	hammer_ref(&ip->lock);
 
 	/*
-	 * Locate the on-disk inode.
+	 * Locate the on-disk inode.  If this is a PFS root we always
+	 * access the current version of the root inode and (if it is not
+	 * a master) always access information under it with a snapshot
+	 * TID.
 	 */
 retry:
 	hammer_init_cursor(trans, &cursor, (dip ? &dip->cache[0] : NULL), NULL);
@@ -381,6 +386,7 @@ retry:
 	cursor.key_beg.delete_tid = 0;
 	cursor.key_beg.rec_type = HAMMER_RECTYPE_INODE;
 	cursor.key_beg.obj_type = 0;
+
 	cursor.asof = iinfo.obj_asof;
 	cursor.flags = HAMMER_CURSOR_GET_LEAF | HAMMER_CURSOR_GET_DATA |
 		       HAMMER_CURSOR_ASOF;
@@ -429,7 +435,10 @@ retry:
 			ip->pfsm = dip->pfsm;
 			hammer_ref(&ip->pfsm->lock);
 		} else {
-			*errorp = hammer_load_pseudofs(trans, ip);
+			ip->pfsm = hammer_load_pseudofs(trans,
+							ip->obj_localization,
+							errorp);
+			*errorp = 0;	/* ignore ENOENT */
 		}
 	}
 
@@ -460,59 +469,36 @@ retry:
 
 /*
  * Create a new filesystem object, returning the inode in *ipp.  The
- * returned inode will be referenced.
+ * returned inode will be referenced.  The inode is created in-memory.
  *
- * The inode is created in-memory.
+ * If pfsm is non-NULL the caller wishes to create the root inode for
+ * a master PFS.
  */
 int
 hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 		    struct ucred *cred, hammer_inode_t dip,
-		    int pseudofs, struct hammer_inode **ipp)
+		    hammer_pseudofs_inmem_t pfsm, struct hammer_inode **ipp)
 {
 	hammer_mount_t hmp;
 	hammer_inode_t ip;
 	uid_t xuid;
-	u_int32_t localization;
 	int error;
 
 	hmp = trans->hmp;
-
-	/*
-	 * Assign the localization domain.  If if dip is NULL we are creating
-	 * a pseudo-fs and must locate an unused localization domain.
-	 */
-	if (pseudofs) {
-		for (localization = HAMMER_DEF_LOCALIZATION;
-		     localization < HAMMER_LOCALIZE_PSEUDOFS_MASK;
-		     localization += HAMMER_LOCALIZE_PSEUDOFS_INC) {
-			ip = hammer_get_inode(trans, NULL, HAMMER_OBJID_ROOT,
-					      hmp->asof, localization,
-					      0, &error);
-			if (ip == NULL) {
-				if (error != ENOENT)
-					return(error);
-				break;
-			}
-			if (ip)
-				hammer_rel_inode(ip, 0);
-		}
-	} else {
-		localization = dip->obj_localization;
-	}
 
 	ip = kmalloc(sizeof(*ip), M_HAMMER, M_WAITOK|M_ZERO);
 	++hammer_count_inodes;
 	++hmp->count_inodes;
 
-	/*
-	 * Allocate a new object id.  If creating a new pseudo-fs the
-	 * obj_id is 1.
-	 */
-	if (pseudofs)
+	if (pfsm) {
+		KKASSERT(pfsm->localization != 0);
 		ip->obj_id = HAMMER_OBJID_ROOT;
-	else
+		ip->obj_localization = pfsm->localization;
+	} else {
+		KKASSERT(dip != NULL);
 		ip->obj_id = hammer_alloc_objid(hmp, dip);
-	ip->obj_localization = localization;
+		ip->obj_localization = dip->obj_localization;
+	}
 
 	KKASSERT(ip->obj_id != 0);
 	ip->obj_asof = hmp->asof;
@@ -538,8 +524,10 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	 * the child.  We will do this even for pseudo-fs creation... the
 	 * sysad can turn it off.
 	 */
-	ip->ino_data.uflags = dip->ino_data.uflags &
-			      (SF_NOHISTORY|UF_NOHISTORY|UF_NODUMP);
+	if (dip) {
+		ip->ino_data.uflags = dip->ino_data.uflags &
+				      (SF_NOHISTORY|UF_NOHISTORY|UF_NODUMP);
+	}
 
 	ip->ino_leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
 	ip->ino_leaf.base.localization = ip->obj_localization +
@@ -559,15 +547,21 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	/*
 	 * Setup the ".." pointer.  This only needs to be done for directories
 	 * but we do it for all objects as a recovery aid.
-	 *
-	 * The parent_obj_localization field only applies to pseudo-fs roots.
 	 */
-	ip->ino_data.parent_obj_id = dip->ino_leaf.base.obj_id;
+	if (dip)
+		ip->ino_data.parent_obj_id = dip->ino_leaf.base.obj_id;
+#if 0
+	/*
+	 * The parent_obj_localization field only applies to pseudo-fs roots.
+	 * XXX this is no longer applicable, PFSs are no longer directly
+	 * tied into the parent's directory structure.
+	 */
 	if (ip->ino_data.obj_type == HAMMER_OBJTYPE_DIRECTORY &&
 	    ip->obj_id == HAMMER_OBJID_ROOT) {
 		ip->ino_data.ext.obj.parent_obj_localization = 
 						dip->obj_localization;
 	}
+#endif
 
 	switch(ip->ino_leaf.base.obj_type) {
 	case HAMMER_OBJTYPE_CDEV:
@@ -583,9 +577,13 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	 * Calculate default uid/gid and overwrite with information from
 	 * the vap.
 	 */
-	xuid = hammer_to_unix_xid(&dip->ino_data.uid);
-	xuid = vop_helper_create_uid(hmp->mp, dip->ino_data.mode, xuid, cred,
-				     &vap->va_mode);
+	if (dip) {
+		xuid = hammer_to_unix_xid(&dip->ino_data.uid);
+		xuid = vop_helper_create_uid(hmp->mp, dip->ino_data.mode,
+					     xuid, cred, &vap->va_mode);
+	} else {
+		xuid = 0;
+	}
 	ip->ino_data.mode = vap->va_mode;
 
 	if (vap->va_vaflags & VA_UID_UUID_VALID)
@@ -599,17 +597,24 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 		ip->ino_data.gid = vap->va_gid_uuid;
 	else if (vap->va_gid != (gid_t)VNOVAL)
 		hammer_guid_to_uuid(&ip->ino_data.gid, vap->va_gid);
-	else
+	else if (dip)
 		ip->ino_data.gid = dip->ino_data.gid;
 
 	hammer_ref(&ip->lock);
 
-	if (dip->obj_localization == ip->obj_localization) {
+	if (pfsm) {
+		ip->pfsm = pfsm;
+		hammer_ref(&pfsm->lock);
+		error = 0;
+	} else if (dip->obj_localization == ip->obj_localization) {
 		ip->pfsm = dip->pfsm;
 		hammer_ref(&ip->pfsm->lock);
 		error = 0;
 	} else {
-		error = hammer_load_pseudofs(trans, ip);
+		ip->pfsm = hammer_load_pseudofs(trans,
+						ip->obj_localization,
+						&error);
+		error = 0;	/* ignore ENOENT */
 	}
 
 	if (error) {
@@ -647,83 +652,84 @@ hammer_free_inode(hammer_inode_t ip)
 }
 
 /*
- * Retrieve pseudo-fs data.
+ * Retrieve pseudo-fs data.  NULL will never be returned.
+ *
+ * If an error occurs *errorp will be set and a default template is returned,
+ * otherwise *errorp is set to 0.  Typically when an error occurs it will
+ * be ENOENT.
  */
-int
-hammer_load_pseudofs(hammer_transaction_t trans, hammer_inode_t ip)
+hammer_pseudofs_inmem_t
+hammer_load_pseudofs(hammer_transaction_t trans,
+		     u_int32_t localization, int *errorp)
 {
 	hammer_mount_t hmp = trans->hmp;
+	hammer_inode_t ip;
 	hammer_pseudofs_inmem_t pfsm;
 	struct hammer_cursor cursor;
-	int error;
 	int bytes;
 
 retry:
-	pfsm = RB_LOOKUP(hammer_pfs_rb_tree, &hmp->rb_pfsm_root,
-			 ip->obj_localization);
+	pfsm = RB_LOOKUP(hammer_pfs_rb_tree, &hmp->rb_pfsm_root, localization);
 	if (pfsm) {
-		KKASSERT(ip->pfsm == NULL);
-		ip->pfsm = pfsm;
 		hammer_ref(&pfsm->lock);
-		return(0);
+		*errorp = 0;
+		return(pfsm);
+	}
+
+	/*
+	 * PFS records are stored in the root inode (not the PFS root inode,
+	 * but the real root).  Avoid an infinite recursion if loading
+	 * the PFS for the real root.
+	 */
+	if (localization) {
+		ip = hammer_get_inode(trans, NULL, HAMMER_OBJID_ROOT,
+				      HAMMER_MAX_TID,
+				      HAMMER_DEF_LOCALIZATION, 0, errorp);
+	} else {
+		ip = NULL;
 	}
 
 	pfsm = kmalloc(sizeof(*pfsm), M_HAMMER, M_WAITOK | M_ZERO);
-	pfsm->localization = ip->obj_localization;
+	pfsm->localization = localization;
 	pfsm->pfsd.unique_uuid = trans->rootvol->ondisk->vol_fsid;
 	pfsm->pfsd.shared_uuid = pfsm->pfsd.unique_uuid;
 
-	hammer_init_cursor(trans, &cursor, NULL, NULL);
-	cursor.key_beg.localization = ip->obj_localization +
+	hammer_init_cursor(trans, &cursor, (ip ? &ip->cache[1] : NULL), ip);
+	cursor.key_beg.localization = HAMMER_DEF_LOCALIZATION +
 				      HAMMER_LOCALIZE_MISC;
 	cursor.key_beg.obj_id = HAMMER_OBJID_ROOT;
 	cursor.key_beg.create_tid = 0;
 	cursor.key_beg.delete_tid = 0;
-	cursor.key_beg.rec_type = HAMMER_RECTYPE_FIX;
+	cursor.key_beg.rec_type = HAMMER_RECTYPE_PFS;
 	cursor.key_beg.obj_type = 0;
-	cursor.key_beg.key = HAMMER_FIXKEY_PSEUDOFS;
+	cursor.key_beg.key = localization;
 	cursor.asof = HAMMER_MAX_TID;
 	cursor.flags |= HAMMER_CURSOR_ASOF;
 
-	error = hammer_btree_lookup(&cursor);
-	if (error == 0) {
-		error = hammer_btree_extract(&cursor, HAMMER_CURSOR_GET_DATA);
-		if (error == 0) {
+	if (ip)
+		*errorp = hammer_ip_lookup(&cursor);
+	else
+		*errorp = hammer_btree_lookup(&cursor);
+	if (*errorp == 0) {
+		*errorp = hammer_ip_resolve_data(&cursor);
+		if (*errorp == 0) {
 			bytes = cursor.leaf->data_len;
 			if (bytes > sizeof(pfsm->pfsd))
 				bytes = sizeof(pfsm->pfsd);
 			bcopy(cursor.data, &pfsm->pfsd, bytes);
 		}
-	} else if (error == ENOENT) {
-		error = 0;
 	}
-
 	hammer_done_cursor(&cursor);
 
-	if (error == 0) {
-		pfsm->fsid_udev = hammer_fsid_to_udev(&pfsm->pfsd.shared_uuid);
-		hammer_ref(&pfsm->lock);
-		if (RB_INSERT(hammer_pfs_rb_tree, &hmp->rb_pfsm_root, pfsm)) {
-			kfree(pfsm, M_HAMMER);
-			goto retry;
-		}
-		ip->pfsm = pfsm;
-
-		/*
-		 * Certain aspects of the pseudofs configuration are reflected
-		 * in the inode.
-		 */
-		if (pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE) {
-			ip->flags |= HAMMER_INODE_RO;
-			ip->flags |= HAMMER_INODE_PFSD;
-		} else if (pfsm->pfsd.master_id >= 0) {
-			ip->flags |= HAMMER_INODE_PFSD;
-		}
-	} else {
-		kprintf("cannot load pfsm error %d\n", error);
+	pfsm->fsid_udev = hammer_fsid_to_udev(&pfsm->pfsd.shared_uuid);
+	hammer_ref(&pfsm->lock);
+	if (ip)
+		hammer_rel_inode(ip, 0);
+	if (RB_INSERT(hammer_pfs_rb_tree, &hmp->rb_pfsm_root, pfsm)) {
 		kfree(pfsm, M_HAMMER);
+		goto retry;
 	}
-	return(error);
+	return(pfsm);
 }
 
 /*
@@ -731,25 +737,26 @@ retry:
  * on-disk pseudo-fs data but we have to delete in-memory versions.
  */
 int
-hammer_save_pseudofs(hammer_transaction_t trans, hammer_inode_t ip)
+hammer_save_pseudofs(hammer_transaction_t trans, hammer_pseudofs_inmem_t pfsm)
 {
 	struct hammer_cursor cursor;
-	hammer_pseudofs_inmem_t pfsm;
 	hammer_record_t record;
+	hammer_inode_t ip;
 	int error;
 
+	ip = hammer_get_inode(trans, NULL, HAMMER_OBJID_ROOT, HAMMER_MAX_TID,
+			      HAMMER_DEF_LOCALIZATION, 0, &error);
 retry:
-	pfsm = ip->pfsm;
 	pfsm->fsid_udev = hammer_fsid_to_udev(&pfsm->pfsd.shared_uuid);
 	hammer_init_cursor(trans, &cursor, &ip->cache[1], ip);
 	cursor.key_beg.localization = ip->obj_localization +
 				      HAMMER_LOCALIZE_MISC;
-	cursor.key_beg.obj_id = ip->obj_id;
+	cursor.key_beg.obj_id = HAMMER_OBJID_ROOT;
 	cursor.key_beg.create_tid = 0;
 	cursor.key_beg.delete_tid = 0;
-	cursor.key_beg.rec_type = HAMMER_RECTYPE_FIX;
+	cursor.key_beg.rec_type = HAMMER_RECTYPE_PFS;
 	cursor.key_beg.obj_type = 0;
-	cursor.key_beg.key = HAMMER_FIXKEY_PSEUDOFS;
+	cursor.key_beg.key = pfsm->localization;
 	cursor.asof = HAMMER_MAX_TID;
 	cursor.flags |= HAMMER_CURSOR_ASOF;
 
@@ -772,8 +779,8 @@ retry:
 
 		record->leaf.base.localization = ip->obj_localization +
 						 HAMMER_LOCALIZE_MISC;
-		record->leaf.base.rec_type = HAMMER_RECTYPE_FIX;
-		record->leaf.base.key = HAMMER_FIXKEY_PSEUDOFS;
+		record->leaf.base.rec_type = HAMMER_RECTYPE_PFS;
+		record->leaf.base.key = pfsm->localization;
 		record->leaf.data_len = sizeof(pfsm->pfsd);
 		bcopy(&pfsm->pfsd, record->data, sizeof(pfsm->pfsd));
 		error = hammer_ip_add_record(trans, record);
@@ -781,30 +788,37 @@ retry:
 	hammer_done_cursor(&cursor);
 	if (error == EDEADLK)
 		goto retry;
-	if (error == 0) {
-		/*
-		 * Certain aspects of the pseudofs configuration are reflected
-		 * in the inode.  Note that we cannot mess with the as-of or
-		 * clear the read-only state.
-		 *
-		 * If this inode represented a slave snapshot its asof will
-		 * be set to a snapshot tid.  When clearing slave mode any
-		 * re-access of the inode via the parent directory will
-		 * wind up using a different asof and thus will instantiate
-		 * a new inode.
-		 */
-		if (pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE) {
-			ip->flags |= HAMMER_INODE_RO;
-			ip->flags |= HAMMER_INODE_PFSD;
-		} else if (pfsm->pfsd.master_id >= 0) {
-			ip->flags |= HAMMER_INODE_PFSD;
-		} else {
-			ip->flags &= ~HAMMER_INODE_PFSD;
-		}
-	}
+	hammer_rel_inode(ip, 0);
 	return(error);
 }
 
+/*
+ * Create a root directory for a PFS if one does not alredy exist.
+ */
+int
+hammer_mkroot_pseudofs(hammer_transaction_t trans, struct ucred *cred,
+		       hammer_pseudofs_inmem_t pfsm)
+{
+	hammer_inode_t ip;
+	struct vattr vap;
+	int error;
+
+	ip = hammer_get_inode(trans, NULL, HAMMER_OBJID_ROOT, HAMMER_MAX_TID,
+			      pfsm->localization, 0, &error);
+	if (ip == NULL) {
+		vattr_null(&vap);
+		vap.va_mode = 0755;
+		vap.va_type = VDIR;
+		error = hammer_create_inode(trans, &vap, cred, NULL, pfsm, &ip);
+	}
+	if (ip)
+		hammer_rel_inode(ip, 0);
+	return(error);
+}
+
+/*
+ * Release a reference on a PFS
+ */
 void
 hammer_rel_pseudofs(hammer_mount_t hmp, hammer_pseudofs_inmem_t pfsm)
 {

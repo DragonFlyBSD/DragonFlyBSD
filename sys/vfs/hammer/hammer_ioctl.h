@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.17 2008/07/07 00:24:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.18 2008/07/09 10:29:20 dillon Exp $
  */
 /*
  * HAMMER ioctl's.  This file can be #included from userland
@@ -201,7 +201,7 @@ struct hammer_ioc_synctid {
  */
 struct hammer_ioc_pseudofs_rw {
 	struct hammer_ioc_head	head;
-	u_int32_t		pseudoid;
+	int			pfs_id;
 	u_int32_t		bytes;
 	u_int32_t		version;
 	u_int32_t		flags;
@@ -218,6 +218,8 @@ struct hammer_ioc_pseudofs_rw {
 #define HAMMER_IOC_PFS_MIRROR_FLAGS	0x0020
 #define HAMMER_IOC_PFS_LABEL		0x0040
 
+#define HAMMER_MAX_PFS			65536
+
 /*
  * HAMMERIOC_MIRROR_READ/WRITE
  */
@@ -231,6 +233,9 @@ struct hammer_ioc_mirror_rw {
 	void			*ubuf;		/* user buffer */
 	int			count;		/* current size */
 	int			size;		/* max size */
+	int			pfs_id;		/* PFS id being read/written */
+	int			reserved01;
+	uuid_t			shared_uuid;	/* validator for safety */
 };
 
 /*

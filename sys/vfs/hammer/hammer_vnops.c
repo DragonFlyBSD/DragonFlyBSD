@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.83 2008/07/07 22:42:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.84 2008/07/09 10:29:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -595,7 +595,7 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 	 */
 
 	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred,
-				    dip, 0, &nip);
+				    dip, NULL, &nip);
 	if (error) {
 		hkprintf("hammer_create_inode error %d\n", error);
 		hammer_done_transaction(&trans);
@@ -717,7 +717,6 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	default:
 		break;
 	}
-
 	return(0);
 }
 
@@ -755,19 +754,42 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	ncp = ap->a_nch->ncp;
 	asof = dip->obj_asof;
 	nlen = ncp->nc_nlen;
-	flags = dip->flags;
+	flags = dip->flags & HAMMER_INODE_RO;
 	ispfs = 0;
 
 	hammer_simple_transaction(&trans, dip->hmp);
 
 	for (i = 0; i < nlen; ++i) {
 		if (ncp->nc_name[i] == '@' && ncp->nc_name[i+1] == '@') {
-			asof = hammer_str_to_tid(ncp->nc_name + i + 2);
-			flags |= HAMMER_INODE_RO;
+			asof = hammer_str_to_tid(ncp->nc_name + i + 2,
+						 &ispfs, &localization);
+			if (asof != HAMMER_MAX_TID)
+				flags |= HAMMER_INODE_RO;
 			break;
 		}
 	}
 	nlen = i;
+
+	/*
+	 * If this is a PFS softlink we dive into the PFS
+	 */
+	if (ispfs && nlen == 0) {
+		ip = hammer_get_inode(&trans, dip, HAMMER_OBJID_ROOT,
+				      asof, localization,
+				      flags, &error);
+		if (error == 0) {
+			error = hammer_get_vnode(ip, &vp);
+			hammer_rel_inode(ip, 0);
+		} else {
+			vp = NULL;
+		}
+		if (error == 0) {
+			vn_unlock(vp);
+			cache_setvp(ap->a_nch, vp);
+			vrele(vp);
+		}
+		goto done;
+	}
 
 	/*
 	 * If there is no path component the time extension is relative to
@@ -834,13 +856,6 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 			if (nlen == cursor.leaf->data_len - HAMMER_ENTRY_NAME_OFF &&
 			    bcmp(ncp->nc_name, cursor.data->entry.name, nlen) == 0) {
 				obj_id = cursor.data->entry.obj_id;
-
-				/*
-				 * Force relookups whenever a PFS root is
-				 * accessed.
-				 */
-				if (obj_id == HAMMER_OBJID_ROOT)
-					ispfs = 1;
 				localization = cursor.data->entry.localization;
 				break;
 			}
@@ -852,15 +867,6 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 		ip = hammer_get_inode(&trans, dip, obj_id,
 				      asof, localization,
 				      flags, &error);
-		if (ispfs && asof > ip->pfsm->pfsd.sync_end_tid) {
-			asof = ip->pfsm->pfsd.sync_end_tid;
-			hammer_rel_inode(ip, 0);
-			ip = hammer_get_inode(&trans, dip, obj_id,
-					      asof, localization,
-					      flags, &error);
-		}
-
-
 		if (error == 0) {
 			error = hammer_get_vnode(ip, &vp);
 			hammer_rel_inode(ip, 0);
@@ -870,8 +876,6 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 		if (error == 0) {
 			vn_unlock(vp);
 			cache_setvp(ap->a_nch, vp);
-			if (ispfs)
-				cache_settimeout(ap->a_nch, 0);
 			vrele(vp);
 		}
 	} else if (error == ENOENT) {
@@ -1035,7 +1039,7 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 	 * returned inode will be referenced but not locked.
 	 */
 	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred,
-				    dip, 0, &nip);
+				    dip, NULL, &nip);
 	if (error) {
 		hkprintf("hammer_mkdir error %d\n", error);
 		hammer_done_transaction(&trans);
@@ -1085,7 +1089,6 @@ hammer_vop_nmknod(struct vop_nmknod_args *ap)
 	struct hammer_inode *nip;
 	struct nchandle *nch;
 	int error;
-	int pseudofs;
 
 	nch = ap->a_nch;
 	dip = VTOI(ap->a_dvp);
@@ -1106,9 +1109,8 @@ hammer_vop_nmknod(struct vop_nmknod_args *ap)
 	 *
 	 * If mknod specifies a directory a pseudo-fs is created.
 	 */
-	pseudofs = (ap->a_vap->va_type == VDIR);
 	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred,
-				    dip, pseudofs, &nip);
+				    dip, NULL, &nip);
 	if (error) {
 		hammer_done_transaction(&trans);
 		*ap->a_vpp = NULL;
@@ -1195,6 +1197,7 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 	off_t *cookies;
 	off_t saveoff;
 	int r;
+	int dtype;
 
 	ip = VTOI(ap->a_vp);
 	uio = ap->a_uio;
@@ -1280,9 +1283,13 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 		if (base->obj_id != ip->obj_id)
 			panic("readdir: bad record at %p", cursor.node);
 
+		/*
+		 * Convert pseudo-filesystems into softlinks
+		 */
+		dtype = hammer_get_dtype(cursor.leaf->base.obj_type);
 		r = vop_write_dirent(
 			     &error, uio, cursor.data->entry.obj_id,
-			     hammer_get_dtype(cursor.leaf->base.obj_type),
+			     dtype,
 			     cursor.leaf->data_len - HAMMER_ENTRY_NAME_OFF ,
 			     (void *)cursor.data->entry.name);
 		if (r)
@@ -1332,16 +1339,57 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 	struct hammer_transaction trans;
 	struct hammer_cursor cursor;
 	struct hammer_inode *ip;
+	char buf[32];
+	u_int32_t localization;
+	hammer_pseudofs_inmem_t pfsm;
 	int error;
 
 	ip = VTOI(ap->a_vp);
 
 	/*
+	 * Special softlink for PFS access, created by hammer pfs-create
+	 */
+
+	if (ip->obj_id == HAMMER_OBJID_ROOT && ip->obj_localization &&
+	    ip->obj_asof == HAMMER_MAX_TID) {
+		ksnprintf(buf, sizeof(buf), "@@0x%016llx:0x%04x",
+			ip->pfsm->pfsd.sync_end_tid,
+			ip->obj_localization >> 16);
+		error = uiomove(buf, strlen(buf), ap->a_uio);
+		return(error);
+	}
+
+	/*
 	 * Shortcut if the symlink data was stuffed into ino_data.
+	 *
+	 * Also expand special @@PFSxxxxx softlinks.
 	 */
 	if (ip->ino_data.size <= HAMMER_INODE_BASESYMLEN) {
-		error = uiomove(ip->ino_data.ext.symlink,
-				ip->ino_data.size, ap->a_uio);
+		char *ptr;
+		int bytes;
+
+		ptr = ip->ino_data.ext.symlink;
+		bytes = (int)ip->ino_data.size;
+		if (bytes == 10 && strncmp(ptr, "@@PFS", 5) == 0) {
+			hammer_simple_transaction(&trans, ip->hmp);
+			bcopy(ptr + 5, buf, 5);
+			buf[5] = 0;
+			localization = strtoul(buf, NULL, 10) << 16;
+			pfsm = hammer_load_pseudofs(&trans, localization,
+						    &error);
+			if (error == 0) {
+				ksnprintf(buf, sizeof(buf),
+					 "@@0x%016llx:%05d",
+					 pfsm->pfsd.sync_end_tid,
+					 localization >> 16);
+				ptr = buf;
+				bytes = strlen(buf);
+			}
+			if (pfsm)
+				hammer_rel_pseudofs(trans.hmp, pfsm);
+			hammer_done_transaction(&trans);
+		}
+		error = uiomove(ptr, bytes, ap->a_uio);
 		return(error);
 	}
 
@@ -1806,7 +1854,7 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 	 */
 
 	error = hammer_create_inode(&trans, ap->a_vap, ap->a_cred,
-				    dip, 0, &nip);
+				    dip, NULL, &nip);
 	if (error) {
 		hammer_done_transaction(&trans);
 		*ap->a_vpp = NULL;

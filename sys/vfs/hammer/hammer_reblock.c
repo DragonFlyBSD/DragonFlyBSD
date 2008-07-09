@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.24 2008/07/05 18:59:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.25 2008/07/09 10:29:20 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -230,6 +230,7 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 		break;
 	case HAMMER_RECTYPE_EXT:
 	case HAMMER_RECTYPE_FIX:
+	case HAMMER_RECTYPE_PFS:
 	case HAMMER_RECTYPE_DIRENTRY:
 		iocflags = HAMMER_IOC_DO_DIRS;
 		break;

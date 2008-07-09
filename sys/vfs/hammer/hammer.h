@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.107 2008/07/08 04:34:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.108 2008/07/09 10:29:20 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -178,6 +178,7 @@ struct hammer_pseudofs_inmem {
 	RB_ENTRY(hammer_pseudofs_inmem)	rb_node;
 	struct hammer_lock	lock;
 	u_int32_t		localization;
+	hammer_tid_t		create_tid;
 	udev_t			fsid_udev;
 	struct hammer_pseudofs_data pfsd;
 };
@@ -288,7 +289,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_DDIRTY	0x0001	/* in-memory ino_data is dirty */
 					/* (not including atime/mtime) */
 #define HAMMER_INODE_RSV_INODES	0x0002	/* hmp->rsv_inodes bumped */
-#define HAMMER_INODE_PFSD	0x0004	/* obj_asof set based on pfsd */
+#define HAMMER_INODE_UNUSED0004	0x0004
 #define HAMMER_INODE_XDIRTY	0x0008	/* in-memory records */
 #define HAMMER_INODE_ONDISK	0x0010	/* inode is on-disk (else not yet) */
 #define HAMMER_INODE_FLUSH	0x0020	/* flush on last ref */
@@ -843,7 +844,8 @@ u_int32_t hammer_to_unix_xid(uuid_t *uuid);
 void hammer_guid_to_uuid(uuid_t *uuid, u_int32_t guid);
 void	hammer_time_to_timespec(u_int64_t xtime, struct timespec *ts);
 u_int64_t hammer_timespec_to_time(struct timespec *ts);
-hammer_tid_t hammer_str_to_tid(const char *str);
+hammer_tid_t hammer_str_to_tid(const char *str, int *ispfs,
+			u_int32_t *localizationp);
 hammer_tid_t hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip);
 void hammer_clear_objid(hammer_inode_t dip);
 void hammer_destroy_objid_cache(hammer_mount_t hmp);
@@ -997,7 +999,8 @@ void hammer_wait_inode(hammer_inode_t ip);
 
 int  hammer_create_inode(struct hammer_transaction *trans, struct vattr *vap,
 			struct ucred *cred, struct hammer_inode *dip,
-			int pseudofs, struct hammer_inode **ipp);
+			hammer_pseudofs_inmem_t pfsm,
+			struct hammer_inode **ipp);
 void hammer_rel_inode(hammer_inode_t ip, int flush);
 int hammer_reload_inode(hammer_inode_t ip, void *arg __unused);
 int hammer_ino_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2);
@@ -1025,8 +1028,12 @@ int  hammer_ip_sync_data(hammer_cursor_t cursor, hammer_inode_t ip,
 			int64_t offset, void *data, int bytes);
 int  hammer_ip_sync_record(hammer_transaction_t trans, hammer_record_t rec);
 int  hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t rec);
-int  hammer_load_pseudofs(hammer_transaction_t trans, hammer_inode_t ip);
-int  hammer_save_pseudofs(hammer_transaction_t trans, hammer_inode_t ip);
+hammer_pseudofs_inmem_t  hammer_load_pseudofs(hammer_transaction_t trans,
+			u_int32_t localization, int *errorp);
+int  hammer_mkroot_pseudofs(hammer_transaction_t trans, struct ucred *cred,
+			hammer_pseudofs_inmem_t pfsm);
+int  hammer_save_pseudofs(hammer_transaction_t trans,
+			hammer_pseudofs_inmem_t pfsm);
 void hammer_rel_pseudofs(hammer_mount_t hmp, hammer_pseudofs_inmem_t pfsm);
 int hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 			struct ucred *cred);
@@ -1065,7 +1072,7 @@ int hammer_ioc_mirror_read(hammer_transaction_t trans, hammer_inode_t ip,
 int hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
 			struct hammer_ioc_mirror_rw *mirror);
 int hammer_ioc_set_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
-                        struct hammer_ioc_pseudofs_rw *pfs);
+			struct ucred *cred, struct hammer_ioc_pseudofs_rw *pfs);
 int hammer_ioc_get_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
                         struct hammer_ioc_pseudofs_rw *pfs);
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.66 2008/07/07 03:49:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.67 2008/07/09 10:29:20 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -1289,6 +1289,7 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 		case HAMMER_RECTYPE_DIRENTRY:
 		case HAMMER_RECTYPE_EXT:
 		case HAMMER_RECTYPE_FIX:
+		case HAMMER_RECTYPE_PFS:
 			zone = HAMMER_ZONE_META_INDEX;
 			break;
 		case HAMMER_RECTYPE_DATA:
