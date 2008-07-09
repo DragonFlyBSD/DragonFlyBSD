@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.83 2008/07/02 05:40:43 corecode Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.84 2008/07/09 07:21:03 swildner Exp $
 #
 
 #########################################################################
@@ -14,7 +14,6 @@ installer_fetch: warning fetch
 
 .if make(installer_release) || make(installer_quickrel) || make(installer_realquickrel) || make(installer_fetch)
 WITH_INSTALLER=
-WITH_LOCAL_INSTALLER=
 .endif
 
 # New method e.g. 'make installer fetch'.  A series of enhancement
@@ -35,7 +34,6 @@ WITH_GUI=
 .endif
 .if make(installer)
 WITH_INSTALLER=
-WITH_LOCAL_INSTALLER=
 .endif
 
 #########################################################################
@@ -92,18 +90,7 @@ PKGSRC_PACKAGES+=	modular-xorg-apps \
 ROOTSKELS+=		${.CURDIR}/gui
 .endif
 
-.if defined(WITH_INSTALLER) || defined(WITH_LOCAL_INSTALLER)
-.if !defined(WITH_LOCAL_INSTALLER)
-# note: the old dfuibe_install and curses depend on the old gettext and
-# must be removed for the old gettext to be removed.  The new dfuibe install
-# and curses are named the same as the old.
-#
-OLD_PKGSRC_PACKAGES+=	dfuibe_installer-1.1.6 gettext-lib-0.14.5 \
-#			dfuibe_installer-1.1.7nb1 dfuife_curses-1.5
-PKGSRC_PACKAGES+=	dfuibe_installer-1.1.7nb1.tgz dfuife_curses-1.5.tgz
-PKGSRC_PACKAGES+=	gettext-lib-0.14.6.tgz gettext-tools-0.14.6nb1.tgz
-PKGSRC_PACKAGES+=	libaura-3.1.tgz libdfui-4.2.tgz libinstaller-5.1.tgz
-.endif
+.if defined(WITH_INSTALLER)
 ROOTSKELS+=		${.CURDIR}/installer
 .endif
 
@@ -121,13 +108,13 @@ KERNEL_CCVER ?= ${CCVER}
 #				BASE ISO TARGETS 			#
 #########################################################################
 
-release:	localinstaller check clean buildworld1 buildkernel1 \
+release:	check clean buildworld1 buildkernel1 \
 		buildiso syssrcs customizeiso mklocatedb mkiso
 
-quickrel:	localinstaller check clean buildworld2 buildkernel2 \
+quickrel:	check clean buildworld2 buildkernel2 \
 		buildiso syssrcs customizeiso mklocatedb mkiso
 
-realquickrel:	localinstaller check clean buildiso syssrcs customizeiso mklocatedb mkiso
+realquickrel:	check clean buildiso syssrcs customizeiso mklocatedb mkiso
 
 quick:		quickrel
 
@@ -136,10 +123,6 @@ realquick:	realquickrel
 #########################################################################
 #			   CORE SUPPORT TARGETS 			#
 #########################################################################
-localinstaller:
-.if defined(WITH_LOCAL_INSTALLER)
-	cd ${.CURDIR}/../usr.sbin/installer; make  	
-.endif
 
 check:
 .if !exists(${PKGBIN_PKG_ADD})
@@ -173,7 +156,7 @@ check:
 .endif
 
 buildworld1 buildworld2:
-	cd ${.CURDIR}/..; CCVER=${WORLD_CCVER} make ${.TARGET:C/build(.*)2/quick\1/:C/1//}
+	cd ${.CURDIR}/..; CCVER=${WORLD_CCVER} make ${WITH_INSTALLER:C/^/-DWANT_INSTALLER/} ${.TARGET:C/build(.*)2/quick\1/:C/1//}
 
 buildkernel1 buildkernel2:
 	cd ${.CURDIR}/..; \
@@ -193,11 +176,7 @@ buildkernel1 buildkernel2:
 buildiso:
 	if [ ! -d ${ISOROOT} ]; then mkdir -p ${ISOROOT}; fi
 	if [ ! -d ${NRLOBJDIR}/nrelease ]; then mkdir -p ${NRLOBJDIR}/nrelease; fi
-	( cd ${.CURDIR}/..; make DESTDIR=${ISOROOT} installworld )
-.if defined(WITH_LOCAL_INSTALLER)
-	( cd ${.CURDIR}/../usr.sbin/installer; make DESTDIR=${ISOROOT} install )
-	( cd ${.CURDIR}/../share/installer; make DESTDIR=${ISOROOT} install ) 	
-.endif
+	( cd ${.CURDIR}/..; make ${WITH_INSTALLER:C/^/-DWANT_INSTALLER/} DESTDIR=${ISOROOT} installworld )
 	( cd ${.CURDIR}/../etc; MAKEOBJDIRPREFIX=${NRLOBJDIR}/nrelease \
 		make -m ${.CURDIR}/../share/mk DESTDIR=${ISOROOT} distribution )
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd

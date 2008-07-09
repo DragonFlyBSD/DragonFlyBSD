@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	5.20 (Berkeley) 6/12/93
 # $FreeBSD: src/usr.sbin/Makefile,v 1.183.2.14 2003/04/16 11:01:51 ru Exp $
-# $DragonFly: src/usr.sbin/Makefile,v 1.46 2008/05/27 07:46:57 dillon Exp $
+# $DragonFly: src/usr.sbin/Makefile,v 1.47 2008/07/09 07:21:03 swildner Exp $
 
 .include "../sys/platform/${MACHINE_PLATFORM}/Makefile.inc"
 
@@ -194,6 +194,10 @@ SUBDIR+=i4b
 
 .ifdef BOOT0CFG_SUPPORT
 SUBDIR+=boot0cfg
+.endif
+
+.ifdef WANT_INSTALLER
+SUBDIR+=installer
 .endif
 
 .include <bsd.subdir.mk>

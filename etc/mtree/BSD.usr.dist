@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.53 2008/04/10 10:21:00 hasso Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.54 2008/07/09 07:21:03 swildner Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -334,6 +334,8 @@
             ..
         ..
         info
+        ..
+        installer
         ..
         isdn
         ..
