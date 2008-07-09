@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.12 2008/07/08 14:36:02 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.13 2008/07/09 13:57:59 sephe Exp $
  */
 
 #include "opt_ethernet.h"
@@ -187,8 +187,8 @@ MODULE_DEPEND(if_et, miibus, 1, 1, 1);
 DRIVER_MODULE(if_et, pci, et_driver, et_devclass, 0, 0);
 DRIVER_MODULE(miibus, et, miibus_driver, miibus_devclass, 0, 0);
 
-static int	et_rx_intr_npkts = 32;
-static int	et_rx_intr_delay = 20;		/* x10 usec */
+static int	et_rx_intr_npkts = 129;
+static int	et_rx_intr_delay = 25;		/* x4 usec */
 static int	et_tx_intr_nsegs = 126;
 static uint32_t	et_timer = 1000 * 1000 * 1000;	/* nanosec */
 
