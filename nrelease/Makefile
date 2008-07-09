@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.84 2008/07/09 07:21:03 swildner Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.85 2008/07/09 07:54:34 swildner Exp $
 #
 
 #########################################################################
@@ -91,6 +91,10 @@ ROOTSKELS+=		${.CURDIR}/gui
 .endif
 
 .if defined(WITH_INSTALLER)
+OLD_PKGSRC_PACKAGES+=	dfuibe_installer-1.1.6 gettext-lib-0.14.5 \
+			dfuibe_installer-1.1.7nb1 dfuife_curses-1.5 \
+			gettext-lib-0.14.6 gettext-tools-0.14.6nb1 \
+			libaura-3.1 libdfui-4.2 libinstaller-5.1
 ROOTSKELS+=		${.CURDIR}/installer
 .endif
 
