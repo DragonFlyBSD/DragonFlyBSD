@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.31 2008/07/09 10:32:30 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.32 2008/07/09 18:32:19 swildner Exp $
  */
 
 #include "hammer.h"
@@ -262,7 +262,7 @@ usage(int exit_code)
 {
 	fprintf(stderr, 
 		"hammer -h\n"
-		"hammer [-t timeout] [-c cyclefile] ....\n"
+		"hammer [-t seconds] [-c cyclefile] ....\n"
 		"hammer prune <dir-holding-softlinks>\n"
 		"hammer prune-everything <filesystem>\n"
 		"hammer snapshot <softlink-dir> [<filesystem>]\n"
