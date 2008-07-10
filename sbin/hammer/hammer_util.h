@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.18 2008/06/26 04:07:57 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer_util.h,v 1.19 2008/07/10 04:44:58 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -107,6 +107,7 @@ extern int RootVolNo;
 extern struct volume_list VolList;
 
 uint32_t crc32(const void *buf, size_t size);
+uint32_t crc32_ext(const void *buf, size_t size, uint32_t ocrc);
 
 struct volume_info *setup_volume(int32_t vol_no, const char *filename,
 				int isnew, int oflags);
