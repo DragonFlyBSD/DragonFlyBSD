@@ -34,9 +34,9 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel64/disklabel64.8,v 1.4 2008/05/02 02:05:05 swildner Exp $
+.\" $DragonFly: src/sbin/disklabel64/disklabel64.8,v 1.5 2008/07/10 03:15:56 thomas Exp $
 .\"
-.Dd August 8, 2007
+.Dd July 10, 2008
 .Dt DISKLABEL64 8
 .Os
 .Sh NAME
@@ -134,20 +134,12 @@ All
 forms require a disk device name, which should always be the raw
 device name representing the disk or slice.
 For example
-.Pa da0
+.Pa da0s0
 represents the entire disk regardless of any DOS partitioning,
+this is called the compatibility slice,
 and
 .Pa da0s1
-represents a slice.
-Some devices, most notably
-.Ar ccd ,
-require that the
-.Dq whole-disk
-(or
-.Dq c )
-partition be specified.
-For example
-.Pa ccd0c .
+represents a BSD slice.
 You do not have to include the
 .Pa /dev/
 path prefix when specifying the device.
@@ -165,9 +157,9 @@ without options:
 .Pp
 .Ar disk
 represents the raw disk in question, and may be in the form
-.Pa da0
+.Pa da0s1
 or
-.Pa /dev/da0c .
+.Pa /dev/da0s1 .
 It will display all of the parameters associated with the drive and its
 partition layout.
 Unless the
@@ -324,9 +316,10 @@ To restore a disk label from a file, use the form
 .Ar disk Ar protofile
 .Pp
 .Nm
-is capable of restoring a disk label that was previously saved in a file in ASCII format.
-The prototype file used to create the label should be in the same format as that
-produced when reading or editing a label.
+is capable of restoring a disk label that was previously saved in a file
+in ASCII format.
+The prototype file used to create the label should be in the same format
+as that produced when reading or editing a label.
 Comments are delimited by
 .Ar \&#
 and newline.
@@ -371,12 +364,12 @@ are used to install bootstrap code.
 If you are creating a
 .Dq dangerously-dedicated
 slice for compatibility with older PC systems,
-you generally want to specify the raw disk name such as
-.Pa da0 .
+you generally want to specify the compatibility slice, such as
+.Pa da0s0 .
 If you are creating a label within an existing DOS slice,
 you should specify
-the partition name such as
-.Pa da0s1a .
+the slice name such as
+.Pa da0s1 .
 Making a slice bootable can be tricky.
 If you are using a normal DOS
 slice you typically install (or leave) a standard MBR on the base disk and
@@ -395,11 +388,12 @@ bootblocks in the slice.
 .Pp
 This form installs the bootstrap only.
 It does not change the disk label.
-You should never use this command on a base disk unless you intend to create a
+You should never use this command on the compatibility slice unless you
+intend to create a
 .Dq dangerously-dedicated
 disk, such as
-.Ar da0 .
-This command is typically run on a slice such as
+.Ar da0s0 .
+This command is typically run on a BSD slice such as
 .Ar da0s1 .
 .Pp
 .Nm
@@ -417,10 +411,11 @@ This form corresponds to the
 .Dq write label
 command described above.
 In addition to writing a new volume label, it also installs the bootstrap.
-If run on a base disk this command will create a
+If run on the compatibility slice this command will create a
 .Dq dangerously-dedicated
 label.
-This command is normally run on a slice rather than a base disk.
+This command is normally run on a BSD slice rather than the compatibility
+slice.
 If
 .Fl n
 is used, no data will be written to the device, and instead the
@@ -441,10 +436,11 @@ This form corresponds to the
 .Dq restore label
 command described above.
 In addition to restoring the volume label, it also installs the bootstrap.
-If run on a base disk this command will create a
+If run on the compatibility slice this command will create a
 .Dq dangerously-dedicated
 label.
-This command is normally run on a slice rather than a base disk.
+This command is normally run on a BSD slice rather than the compatibility
+slice.
 .Pp
 The bootstrap commands always access the disk directly, so it is not necessary
 to specify the
@@ -522,23 +518,23 @@ to create file systems on new partitions.
 A typical partitioning scheme would be to have an
 .Ql a
 partition
-of approximately 128MB to hold the root file system, a
+of approximately 512MB to hold the root file system, a
 .Ql b
 partition for
-swap, a
+swap (usually 4GB), a
 .Ql d
 partition for
 .Pa /var
-(usually 128MB), an
+(usually 2GB), an
 .Ql e
 partition
 for
 .Pa /var/tmp
-(usually 128MB), an
+(usually 2GB), an
 .Ql f
 partition for
 .Pa /usr
-(usually around 2GB),
+(usually around 4GB),
 and finally a
 .Ql g
 partition for
@@ -558,8 +554,10 @@ Your mileage may vary.
 .Pa da0s1
 .Sh FILES
 .Bl -tag -width ".Pa /etc/disktab" -compact
-.It Pa /boot/boot
-Default boot image.
+.It Pa /boot/boot1
+Default stage1 boot image.
+.It Pa /boot/boot2
+Default stage2 boot image.
 .It Pa /etc/disktab
 Disk description file.
 .El
@@ -573,31 +571,44 @@ version of the label when examining, editing, or restoring a disk
 label.
 The format is:
 .Bd -literal -offset 4n
-# /dev/da1c:
-type: SCSI
-disk: da0s1
-label:
-flags:
-bytes/sector: 512
-sectors/track: 51
-tracks/cylinder: 19
-sectors/cylinder: 969
-cylinders: 1211
-sectors/unit: 1173930
-rpm: 3600
-interleave: 1
-trackskew: 0
-cylinderskew: 0
-headswitch: 0           # milliseconds
-track-to-track seek: 0  # milliseconds
-drivedata: 0
+# /dev/ad4s4:
+#
+# Informational fields calculated from the above
+# All byte equivalent offsets must be aligned
+#
+# boot space:      32768 bytes
+# data space:  121790552 blocks	# 118936.09 MB (124713525248 bytes)
+#
+diskid: 5e3ef4db-4e24-11dd-8318-010e0cd0bad1
+label: 
+boot2 data base:      0x000000001000
+partitions data base: 0x000000009000
+partitions data stop: 0x001d0981f000
+backup label:         0x001d0981f000
+total size:           0x001d09820000	# 118936.12 MB
+alignment: 4096
+display block size: 1024	# for partition display only
 
 16 partitions:
-#        size   offset    fstype
-  a:    81920        0    4.2BSD
-  b:   160000    81920      swap
-  c:  1173930        0    unused
-  h:   962010   211920     vinum
+#          size     offset    fstype   fsuuid
+  a:     524288          0    4.2BSD	#     512.000MB
+  b:    4194304     524288      swap	#    4096.000MB
+  d:    2097152    4718592    4.2BSD	#    2048.000MB
+  e:    2097152    6815744    4.2BSD	#    2048.000MB
+  f:    4194304    8912896    4.2BSD	#    4096.000MB
+  g:    4194304   13107200    4.2BSD	#    4096.000MB
+  h:   94003288   17301504    HAMMER	#   91800.086MB
+  i:    5242880  111304792       ccd	#    5120.000MB
+  j:    5242880  116547672     vinum	#    5120.000MB
+  a-stor_uuid: 4370efdb-4e25-11dd-8318-010e0cd0bad1
+  b-stor_uuid: 4370eff4-4e25-11dd-8318-010e0cd0bad1
+  d-stor_uuid: 4370f00b-4e25-11dd-8318-010e0cd0bad1
+  e-stor_uuid: 4370f024-4e25-11dd-8318-010e0cd0bad1
+  f-stor_uuid: 4370f03a-4e25-11dd-8318-010e0cd0bad1
+  g-stor_uuid: 4370f053-4e25-11dd-8318-010e0cd0bad1
+  h-stor_uuid: 4370f06a-4e25-11dd-8318-010e0cd0bad1
+  i-stor_uuid: 4370f083-4e25-11dd-8318-010e0cd0bad1
+  j-stor_uuid: 4370f099-4e25-11dd-8318-010e0cd0bad1
 .Ed
 .Pp
 Lines starting with a
@@ -643,7 +654,7 @@ It contains the following information:
 The partition identifier is a single letter in the range
 .Ql a
 to
-.Ql h .
+.Ql p .
 By convention, partition
 .Ql c
 is reserved to describe the entire disk.
@@ -658,18 +669,11 @@ The size of the partition in sectors,
 .Cm %
 (percentage of free space
 .Em after
-removing any fixed-size partitions other than partition
-.Ql c ) ,
-or
+removing any fixed-size partitions),
 .Cm *
 (all remaining free space
 .Em after
 fixed-size and percentage partitions).
-For partition
-.Ql c ,
-a size of
-.Cm *
-indicates the entire disk.
 Lowercase versions of
 .Cm K , M ,
 and
@@ -686,45 +690,59 @@ drive in sectors, or
 to have
 .Nm
 calculate the correct offset to use (the end of the previous partition plus
-one, ignoring partition
-.Ql c .
-For partition
-.Ql c ,
-.Cm *
-will be interpreted as an offset of 0.
+one.
 .It Ar fstype
 Describes the purpose of the partition.
 The example shows all currently used partition types.
 For
 .Tn UFS
-file systems and
+file systems, use type
+.Cm 4.2BSD .
+For
+.Tn HAMMER
+file systems, use type
+.Cm HAMMER .
+For
 .Xr ccd 4
 partitions, use type
-.Cm 4.2BSD .
+.Cm ccd .
 For Vinum drives, use type
 .Cm vinum .
 Other common types are
 .Cm swap
 and
 .Cm unused .
-By convention, partition
-.Ql c
-represents the entire slice and should be of type
-.Cm unused ,
-though
-.Nm
-does not enforce this convention.
 The
 .Nm
 utility
 also knows about a number of other partition types,
 none of which are in current use.
-(See the definitions starting with
-.Dv FS_UNUSED
+(See
+.Dv fstypenames
 in
-.In sys/disklabel64.h
+.In sys/dtype.h
 for more details).
 .El
+.Pp
+The remainder of the line is a comment and shows the size of the partition
+in MB.
+.Pp
+.Dx
+no longer snoop-adjusts the on-disklabel when reading or writing
+raw labels.
+.Nm
+is now responsible for adjusting the label when operating in raw mode.
+Traditional (32 bit BSD) disklabels store offsets as absolute block numbers
+rather than slice-relative block numbers.
+If
+.Nm
+is unable to issue the
+.Dv DIOCGPART
+ioctl to get slice information it will
+refuse to read or write the label in raw mode.
+The
+.Fl f
+option may be used to force the operation by supplying a manual offset.
 .Sh EXAMPLES
 .Dl "disklabel64 da0s1"
 .Pp
@@ -734,8 +752,8 @@ disk, as obtained via
 .Pa /dev/da0s1 .
 (If the disk is
 .Dq dangerously-dedicated ,
-the base disk name should be specified, such as
-.Pa da0 . )
+the compatibility slice name should be specified, such as
+.Pa da0s0 . )
 .Pp
 .Dl "disklabel64 da0s1 > savedlabel"
 .Pp
@@ -850,35 +868,37 @@ and
 .Cm * ,
 which could be used as a source file for
 .Pp
-.Dl disklabel64 -R ad0s1c new_label_file
+.Dl disklabel64 -R ad0s1 new_label_file
 .Bd -literal -offset 4n
-# /dev/ad0s1c:
-type: ESDI
-disk: ad0s1
-label:
-flags:
-bytes/sector: 512
-sectors/track: 63
-tracks/cylinder: 16
-sectors/cylinder: 1008
-cylinders: 40633
-sectors/unit: 40959009
-rpm: 3600
-interleave: 1
-trackskew: 0
-cylinderskew: 0
-headswitch: 0		# milliseconds
-track-to-track seek: 0	# milliseconds
-drivedata: 0
+# /dev/ad4s4:
+#
+# Informational fields calculated from the above
+# All byte equivalent offsets must be aligned
+#
+# boot space:      32768 bytes
+# data space:  121790552 blocks	# 118936.09 MB (124713525248 bytes)
+#
+diskid: b1db58a3-4e26-11dd-8318-010e0cd0bad1
+label: 
+boot2 data base:      0x000000001000
+partitions data base: 0x000000009000
+partitions data stop: 0x001d0981f000
+backup label:         0x001d0981f000
+total size:           0x001d09820000	# 118936.12 MB
+alignment: 4096
+display block size: 1024	# for partition display only
 
 16 partitions:
-#        size   offset    fstype
-  a:   400M        0    4.2BSD
-  b:     1G        *      swap
-  c:      *        *    unused
-  e: 204800        *    4.2BSD
-  f:     5g        *    4.2BSD
-  g:      *        *    4.2BSD
+#          size     offset    fstype   fsuuid
+  a:       512M          0    4.2BSD
+  b:         4G          *      swap
+  d:         2G          *    4.2BSD
+  e:      2048M          *    4.2BSD
+  f:         4G          *    4.2BSD
+  g:         4G          *    4.2BSD
+  h:          *          *    HAMMER
+  i:         5g          *       ccd
+  j:      5120m          *     vinum
 .Ed
 .Sh DIAGNOSTICS
 The kernel device drivers will not allow the size of a disk partition
@@ -889,8 +909,8 @@ if a disk is unlabeled; thus, the label must be written to the
 partition of the disk while it is open.
 This sometimes requires the desired
 label to be set in two steps, the first one creating at least one other
-partition, and the second setting the label on the new partition while shrinking
-the
+partition, and the second setting the label on the new partition while
+shrinking the
 .Dq a
 partition.
 .Pp
@@ -928,10 +948,14 @@ will not install bootstrap code that overlaps it.
 .Xr fdisk 8 ,
 .Xr vinum 8
 .Sh BUGS
-When a disk name is given without a full pathname,
-the constructed device name uses the
-.Dq c
-partition.
+Installing a
+.Xr disklabel 8
+disklabel on a slice with a
+.Nm
+disklabel installed requires reboot. First the existing disklabel
+has to be overwritten, eg. by
+.Xr dd 1 ,
+see above, then a reboot is required before the new disklabel can be installed.
 .Pp
 For the i386 architecture, the primary bootstrap sector contains
 an embedded
@@ -962,8 +986,7 @@ The
 utility
 does not perform all possible error checking.
 Warning *is* given if partitions
-overlap; if an absolute offset does not match the expected offset; if the
-.Dq c
-partition does not start at 0 or does not cover the entire slice; if a
+overlap; if an absolute offset does not match the expected offset;
+if a
 partition runs past the end of the device; and a number of other errors; but
 no warning is given if space remains unused.

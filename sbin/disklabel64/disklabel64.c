@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.5 2008/04/20 13:44:25 swildner Exp $
+ * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.6 2008/07/10 03:15:56 thomas Exp $
  */
 /*
  * Copyright (c) 1987, 1993
@@ -71,7 +71,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.5 2008/04/20 13:44:25 swildner Exp $
+ * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.6 2008/07/10 03:15:56 thomas Exp $
  */
 
 #include <sys/param.h>
@@ -726,7 +726,7 @@ display(FILE *f, const struct disklabel64 *lp)
 			fprintf(f, "%8.8s", fstypenames[pp->p_fstype]);
 		else
 			fprintf(f, "%8d", pp->p_fstype);
-		fprintf(f, "\t# %11.3fM", (double)pp->p_bsize / onemeg);
+		fprintf(f, "\t# %11.3fMB", (double)pp->p_bsize / onemeg);
 		fprintf(f, "\n");
 	}
 	for (part = 0; part < lp->d_npartitions; part++) {

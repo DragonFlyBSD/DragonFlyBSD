@@ -34,9 +34,9 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.21 2008/07/10 01:01:44 thomas Exp $
+.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.22 2008/07/10 03:15:56 thomas Exp $
 .\"
-.Dd August 10, 2007
+.Dd July 10, 2008
 .Dt DISKLABEL 8
 .Os
 .Sh NAME
@@ -571,33 +571,36 @@ version of the label when examining, editing, or restoring a disk
 label.
 The format is:
 .Bd -literal -offset 4n
-# /dev/da0s1:
-type: SCSI
-disk: da0s1
-label:
+# /dev/ad4s4:
+type: unknown
+disk: amnesiac
+label: fictitious
 flags:
 bytes/sector: 512
-sectors/track: 51
-tracks/cylinder: 19
-sectors/cylinder: 969
-cylinders: 1211
-sectors/unit: 1173930
+sectors/track: 63
+tracks/cylinder: 24
+sectors/cylinder: 1512
+cylinders: 161098
+sectors/unit: 243581184
 rpm: 3600
 interleave: 1
 trackskew: 0
 cylinderskew: 0
-headswitch: 0           # milliseconds
-track-to-track seek: 0  # milliseconds
-drivedata: 0
+headswitch: 0		# milliseconds
+track-to-track seek: 0	# milliseconds
+drivedata: 0 
 
 16 partitions:
 #          size     offset    fstype
-  a:      81920          0    4.2BSD	#      40.000MB
-  b:     160000      81920      swap	#      78.125MB
-  c:    1173930          0    unused	#     573.208MB
-  f:     320000     241920    HAMMER	#     156.250MB
-  g:     300000     561920       ccd	#     146.484MB
-  h:     312010     861920     vinum	#     152.349MB
+  a:    1048560         16    4.2BSD	#     511.992MB
+  b:    8388608    1048576      swap	#    4096.000MB
+  c:  243581184          0    unused	#  118936.125MB
+  d:    4194304    9437184    4.2BSD	#    2048.000MB
+  e:    4194304   13631488    4.2BSD	#    2048.000MB
+  f:    8388608   17825792    4.2BSD	#    4096.000MB
+  h:  196395264   26214400    HAMMER	#   95896.125MB
+  i:   10485760  222609664       ccd	#    5120.000MB
+  j:   10485760  233095424     vinum	#    5120.000MB
 .Ed
 .Pp
 Lines starting with a
@@ -954,10 +957,14 @@ will not install bootstrap code that overlaps it.
 .Xr fdisk 8 ,
 .Xr vinum 8
 .Sh BUGS
-When a disk name is given without a full pathname,
-the constructed device name uses the
-.Dq c
-partition.
+Installing a
+.Xr disklabel64 8
+disklabel on a slice with a
+.Nm
+disklabel installed requires reboot. First the existing disklabel
+has to be overwritten, eg. by
+.Xr dd 1 ,
+see above, then a reboot is required before the new disklabel can be installed.
 .Pp
 For the i386 architecture, the primary bootstrap sector contains
 an embedded
