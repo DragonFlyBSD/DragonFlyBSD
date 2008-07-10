@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ncplogin/ncplogin.c,v 1.1 1999/10/31 02:14:59 bp Exp $
- * $DragonFly: src/usr.bin/ncplogin/ncplogin.c,v 1.4 2007/05/13 18:33:58 swildner Exp $
+ * $DragonFly: src/usr.bin/ncplogin/ncplogin.c,v 1.5 2008/07/10 18:29:52 swildner Exp $
  */
 #include <sys/types.h>
 #include <sys/errno.h>
@@ -64,7 +64,7 @@ static void
 login(int argc, char *argv[], struct ncp_conn_loginfo *li) {
 	int error = 0, connid, opt, setprimary = 0;
 
-	while ((opt = getopt(argc, argv, STDPARAM_OPT"D")) != EOF){
+	while ((opt = getopt(argc, argv, STDPARAM_OPT"D")) != -1){
 		switch(opt){
 		    case STDPARAM_ARGS:
 			if (ncp_li_arg(li, opt, optarg))	
@@ -105,7 +105,7 @@ logout(int argc, char *argv[], struct ncp_conn_loginfo *li) {
 	int error = 0, connid, opt;
 
 	connid = -1;
-	while ((opt = getopt(argc, argv, STDPARAM_OPT"c:")) != EOF){
+	while ((opt = getopt(argc, argv, STDPARAM_OPT"c:")) != -1){
 		switch (opt) {
 		    case 'c':
 			connid = atoi(optarg);

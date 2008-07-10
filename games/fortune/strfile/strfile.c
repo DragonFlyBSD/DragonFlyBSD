@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/games/fortune/strfile/strfile.c,v 1.15.2.2 2001/03/05 11:52:37 kris Exp $
- * $DragonFly: src/games/fortune/strfile/strfile.c,v 1.5 2006/08/08 16:58:59 pavalos Exp $
+ * $DragonFly: src/games/fortune/strfile/strfile.c,v 1.6 2008/07/10 18:29:51 swildner Exp $
  *
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)strfile.c   8.1 (Berkeley) 5/31/93
@@ -253,7 +253,7 @@ getargs(int argc, char **argv)
 {
 	int	ch;
 
-	while ((ch = getopt(argc, argv, "Cc:iorsx")) != EOF)
+	while ((ch = getopt(argc, argv, "Cc:iorsx")) != -1)
 		switch(ch) {
 		case 'C':			/* embedded comments */
 			Cflag++;

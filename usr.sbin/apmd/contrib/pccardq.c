@@ -1,5 +1,5 @@
 /* $FreeBSD: src/usr.sbin/apmd/contrib/pccardq.c,v 1.2 1999/08/28 05:11:25 peter Exp $ */
-/* $DragonFly: src/usr.sbin/apmd/contrib/pccardq.c,v 1.3 2005/12/05 01:04:00 swildner Exp $ */
+/* $DragonFly: src/usr.sbin/apmd/contrib/pccardq.c,v 1.4 2008/07/10 18:29:52 swildner Exp $ */
 
 #include <err.h>
 #include <errno.h>
@@ -37,7 +37,7 @@ proc_arg(int ac, char **av)
 
     tmp_dir = getenv("TMPDIR") ? getenv("TMPDIR") : tmp_dir;
 
-    while ((ch = getopt(ac, av, "ans:")) != EOF) {
+    while ((ch = getopt(ac, av, "ans:")) != -1) {
 	switch (ch) {
 	case 'a':
 	    slot_map = ~0;

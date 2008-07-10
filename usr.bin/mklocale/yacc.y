@@ -1,5 +1,5 @@
 /*	$NetBSD: src/usr.bin/mklocale/yacc.y,v 1.24 2004/01/05 23:23:36 jmmv Exp $	*/
-/*	$DragonFly: src/usr.bin/mklocale/yacc.y,v 1.7 2005/04/21 16:36:35 joerg Exp $ */
+/*	$DragonFly: src/usr.bin/mklocale/yacc.y,v 1.8 2008/07/10 18:29:52 swildner Exp $ */
 
 %{
 /*-
@@ -241,7 +241,7 @@ main(int ac, char *av[])
 {
     int x;
 
-    while ((x = getopt(ac, av, "do:")) != EOF) {
+    while ((x = getopt(ac, av, "do:")) != -1) {
 	switch(x) {
 	case 'd':
 	    debug = 1;

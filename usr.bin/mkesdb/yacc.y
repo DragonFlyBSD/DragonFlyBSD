@@ -1,5 +1,5 @@
 /*	$NetBSD: src/usr.bin/mkesdb/yacc.y,v 1.3 2004/01/02 12:09:48 itojun Exp $	*/
-/*	$DragonFly: src/usr.bin/mkesdb/yacc.y,v 1.1 2005/03/11 20:17:11 joerg Exp $ */
+/*	$DragonFly: src/usr.bin/mkesdb/yacc.y,v 1.2 2008/07/10 18:29:51 swildner Exp $ */
 
 %{
 /*-
@@ -298,7 +298,7 @@ main(int argc, char **argv)
 	FILE *in = NULL;
 	int mkdb = 0;
 
-	while ((ch=getopt(argc, argv, "do:m")) != EOF) {
+	while ((ch=getopt(argc, argv, "do:m")) != -1) {
 		switch (ch) {
 		case 'd':
 			debug = 1;

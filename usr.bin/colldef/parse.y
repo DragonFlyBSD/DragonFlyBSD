@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/colldef/parse.y,v 1.15.2.5 2002/10/11 10:43:45 ache Exp $
- * $DragonFly: src/usr.bin/colldef/parse.y,v 1.5 2006/10/25 08:27:27 swildner Exp $
+ * $DragonFly: src/usr.bin/colldef/parse.y,v 1.6 2008/07/10 18:29:51 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -298,9 +298,9 @@ main(int ac, char **av)
 	int ch;
 
 #ifdef COLLATE_DEBUG
-	while((ch = getopt(ac, av, ":do:I:")) != EOF) {
+	while((ch = getopt(ac, av, ":do:I:")) != -1) {
 #else
-	while((ch = getopt(ac, av, ":o:I:")) != EOF) {
+	while((ch = getopt(ac, av, ":o:I:")) != -1) {
 #endif
 		switch (ch)
 		{

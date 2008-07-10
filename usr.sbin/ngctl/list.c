@@ -34,7 +34,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/list.c,v 1.2 1999/11/30 02:45:30 archie Exp $
- * $DragonFly: src/usr.sbin/ngctl/list.c,v 1.5 2007/06/04 00:40:31 swildner Exp $
+ * $DragonFly: src/usr.sbin/ngctl/list.c,v 1.6 2008/07/10 18:29:52 swildner Exp $
  */
 
 #include "ngctl.h"
@@ -63,7 +63,7 @@ ListCmd(int ac, const char **av)
 
 	/* Get options */
 	optind = 1;
-	while ((ch = getopt(ac, __DECONST(char **, av), "n")) != EOF) {
+	while ((ch = getopt(ac, __DECONST(char **, av), "n")) != -1) {
 		switch (ch) {
 		case 'n':
 			named_only = 1;

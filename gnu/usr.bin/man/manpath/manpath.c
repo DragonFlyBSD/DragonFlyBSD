@@ -14,7 +14,7 @@
  * Austin, Texas  78712
  *
  * $FreeBSD: src/gnu/usr.bin/man/manpath/manpath.c,v 1.11.2.2 2003/02/15 05:33:06 kris Exp $
- * $DragonFly: src/gnu/usr.bin/man/manpath/manpath.c,v 1.4 2007/05/12 09:18:52 swildner Exp $
+ * $DragonFly: src/gnu/usr.bin/man/manpath/manpath.c,v 1.5 2008/07/10 18:29:51 swildner Exp $
  */
 
 #define MANPATH_MAIN
@@ -79,7 +79,7 @@ main(argc, argv)
 
   prognam = mkprogname (argv[0]);
 
-  while ((c = getopt (argc, argv, "dhLq?")) != EOF)
+  while ((c = getopt (argc, argv, "dhLq?")) != -1)
     {
       switch (c)
 	{

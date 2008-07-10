@@ -29,7 +29,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)dbtest.c	8.17 (Berkeley) 9/1/94
  * $FreeBSD: src/lib/libc/db/test/dbtest.c,v 1.3.8.1 2000/08/21 22:44:47 jhb Exp $
- * $DragonFly: src/lib/libc/db/test/dbtest.c,v 1.7 2005/11/12 23:01:55 swildner Exp $
+ * $DragonFly: src/lib/libc/db/test/dbtest.c,v 1.8 2008/07/10 18:29:51 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -90,7 +90,7 @@ main(int argc, char *argv[])
 	fname = NULL;
 	oflags = O_CREAT | O_RDWR;
 	sflag = 0;
-	while ((ch = getopt(argc, argv, "f:i:lo:s")) != EOF)
+	while ((ch = getopt(argc, argv, "f:i:lo:s")) != -1)
 		switch (ch) {
 		case 'f':
 			fname = optarg;

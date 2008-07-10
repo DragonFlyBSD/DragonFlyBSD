@@ -34,7 +34,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/show.c,v 1.2 1999/11/30 02:45:31 archie Exp $
- * $DragonFly: src/usr.sbin/ngctl/show.c,v 1.4 2005/03/16 05:19:11 joerg Exp $
+ * $DragonFly: src/usr.sbin/ngctl/show.c,v 1.5 2008/07/10 18:29:52 swildner Exp $
  */
 
 #include "ngctl.h"
@@ -65,7 +65,7 @@ ShowCmd(int ac, const char **av)
 
 	/* Get options */
 	optind = 1;
-	while ((ch = getopt(ac, __DECONST(char **, av), "n")) != EOF) {
+	while ((ch = getopt(ac, __DECONST(char **, av), "n")) != -1) {
 		switch (ch) {
 		case 'n':
 			no_hooks = 1;

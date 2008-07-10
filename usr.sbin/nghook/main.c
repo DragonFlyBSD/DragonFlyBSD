@@ -35,7 +35,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/nghook/main.c,v 1.4 1999/11/30 02:09:36 archie Exp $
- * $DragonFly: src/usr.sbin/nghook/main.c,v 1.4 2005/03/16 05:27:27 joerg Exp $
+ * $DragonFly: src/usr.sbin/nghook/main.c,v 1.5 2008/07/10 18:29:52 swildner Exp $
  * $Whistle: main.c,v 1.9 1999/01/20 00:26:26 archie Exp $
  */
 
@@ -75,7 +75,7 @@ main(int ac, char *av[])
 	int	ch;
 
 	/* Parse flags */
-	while ((ch = getopt(ac, av, "da")) != EOF) {
+	while ((ch = getopt(ac, av, "da")) != -1) {
 		switch (ch) {
 		case 'd':
 			NgSetDebug(NgSetDebug(-1) + 1);

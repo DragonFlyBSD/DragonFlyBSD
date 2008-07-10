@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ncplist/ncplist.c,v 1.1 1999/10/20 11:31:02 bp Exp $
- * $DragonFly: src/usr.bin/ncplist/ncplist.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/ncplist/ncplist.c,v 1.3 2008/07/10 18:29:52 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/time.h>
@@ -368,7 +368,7 @@ main(int argc, char *argv[]) {
 	bzero(args, sizeof(args));
 
 	what = LO_NONE;
-	while ((opt = getopt(argc, argv, "h")) != EOF) {
+	while ((opt = getopt(argc, argv, "h")) != -1) {
 		switch (opt) {
 		    case 'h': case '?':
 			help();

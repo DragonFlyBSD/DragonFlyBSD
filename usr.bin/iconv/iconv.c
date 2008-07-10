@@ -1,5 +1,5 @@
 /*	$NetBSD: iconv.c,v 1.4 2003/10/20 12:56:18 yamt Exp $	*/
-/*	$DragonFly: src/usr.bin/iconv/iconv.c,v 1.1 2005/03/11 19:16:53 joerg Exp $ */
+/*	$DragonFly: src/usr.bin/iconv/iconv.c,v 1.2 2008/07/10 18:29:51 swildner Exp $ */
 
 /*-
  * Copyright (c)2003 Citrus Project,
@@ -160,7 +160,7 @@ main(int argc, char **argv)
 	char *opt_f = NULL, *opt_t = NULL;
 	FILE *fp;
 
-	while ((ch=getopt(argc, argv, "cslf:t:")) != EOF) {
+	while ((ch=getopt(argc, argv, "cslf:t:")) != -1) {
 		switch (ch) {
 		case 'c':
 			opt_c = 1;

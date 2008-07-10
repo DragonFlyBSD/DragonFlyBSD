@@ -40,7 +40,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)bdes.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/secure/usr.bin/bdes/bdes.c,v 1.3.2.1 2000/09/22 09:42:03 kris Exp $
- * $DragonFly: src/secure/usr.bin/bdes/bdes.c,v 1.3 2005/03/09 02:53:03 drhodus Exp $
+ * $DragonFly: src/secure/usr.bin/bdes/bdes.c,v 1.4 2008/07/10 18:29:51 swildner Exp $
  */
 
 /*
@@ -168,7 +168,7 @@ main(int argc, char **argv)
 
 	/* process the argument list */
 	kflag = 0;
-	while ((i = getopt(argc, argv, "abdF:f:k:m:o:pv:")) != EOF)
+	while ((i = getopt(argc, argv, "abdF:f:k:m:o:pv:")) != -1)
 		switch(i) {
 		case 'a':		/* key is ASCII */
 			keybase = KEY_ASCII;

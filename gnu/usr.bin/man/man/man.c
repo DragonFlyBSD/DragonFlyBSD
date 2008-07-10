@@ -14,7 +14,7 @@
  * Austin, Texas  78712
  *
  * $FreeBSD: src/gnu/usr.bin/man/man/man.c,v 1.37.2.10 2003/02/14 15:38:51 ru Exp $
- * $DragonFly: src/gnu/usr.bin/man/man/man.c,v 1.8 2008/04/04 19:25:46 swildner Exp $
+ * $DragonFly: src/gnu/usr.bin/man/man/man.c,v 1.9 2008/07/10 18:29:51 swildner Exp $
  */
 
 #define MAN_MAIN
@@ -331,7 +331,7 @@ man_getopt (argc, argv)
   extern void downcase ();
   extern char *manpath ();
 
-  while ((c = getopt (argc, argv, args)) != EOF)
+  while ((c = getopt (argc, argv, args)) != -1)
     {
       switch (c)
 	{

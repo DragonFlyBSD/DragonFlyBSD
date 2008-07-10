@@ -3,7 +3,7 @@
  * ppi 'geek port' interface.
  *
  * $FreeBSD: src/share/examples/ppi/ppilcd.c,v 1.2.2.1 2003/01/05 19:45:29 semenu Exp $
- * $DragonFly: src/share/examples/ppi/ppilcd.c,v 1.2 2003/06/17 04:36:57 dillon Exp $
+ * $DragonFly: src/share/examples/ppi/ppilcd.c,v 1.3 2008/07/10 18:29:51 swildner Exp $
  */
 
 #include <stdio.h>
@@ -108,7 +108,7 @@ main(int argc, char *argv[])
 
     drivertype = getenv("LCD_TYPE");
     
-    while ((ch = getopt(argc, argv, "Dd:f:o:v")) != EOF) {
+    while ((ch = getopt(argc, argv, "Dd:f:o:v")) != -1) {
 	switch(ch) {
 	case 'D':
 	    debuglevel++;

@@ -1,5 +1,5 @@
 /* $NetBSD: btpin.c,v 1.3 2007/04/14 09:28:39 plunky Exp $ */
-/* $DragonFly: src/usr.bin/btpin/btpin.c,v 1.1 2008/02/08 14:06:25 hasso Exp $ */
+/* $DragonFly: src/usr.bin/btpin/btpin.c,v 1.2 2008/07/10 18:29:51 swildner Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.
@@ -60,7 +60,7 @@ main(int ac, char *av[])
 	un.sun_family = AF_LOCAL;
 	strlcpy(un.sun_path, BTHCID_SOCKET_NAME, sizeof(un.sun_path));
 
-	while ((ch = getopt(ac, av, "a:d:l:p:rs:")) != EOF) {
+	while ((ch = getopt(ac, av, "a:d:l:p:rs:")) != -1) {
 		switch (ch) {
 		case 'a':
 			if (!bt_aton(optarg, &rp.raddr)) {

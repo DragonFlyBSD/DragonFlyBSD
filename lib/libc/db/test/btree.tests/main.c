@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)main.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/db/test/btree.tests/main.c,v 1.7 2005/11/12 23:01:55 swildner Exp $
+ * $DragonFly: src/lib/libc/db/test/btree.tests/main.c,v 1.8 2008/07/10 18:29:51 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -128,7 +128,7 @@ main(int argc, char **argv)
 	b.prefix = NULL;
 	b.lorder = 0;
 
-	while ((c = getopt(argc, argv, "bc:di:lp:ru")) != EOF) {
+	while ((c = getopt(argc, argv, "bc:di:lp:ru")) != -1) {
 		switch (c) {
 		case 'b':
 			b.lorder = BIG_ENDIAN;

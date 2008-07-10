@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/apmd/apmd.c,v 1.3.2.1 2001/08/13 17:30:30 nsayer Exp $
- * $DragonFly: src/usr.sbin/apmd/apmd.c,v 1.6 2007/12/27 15:29:40 matthias Exp $
+ * $DragonFly: src/usr.sbin/apmd/apmd.c,v 1.7 2008/07/10 18:29:52 swildner Exp $
  */
 
 #include <assert.h>
@@ -626,7 +626,7 @@ main(int ac, char* av[])
 	char	*prog;
 	int	logopt = LOG_NDELAY | LOG_PID;
 
-	while ((ch = getopt(ac, av, "df:v")) != EOF) {
+	while ((ch = getopt(ac, av, "df:v")) != -1) {
 		switch (ch) {
 		case 'd':
 			daemonize = 0;

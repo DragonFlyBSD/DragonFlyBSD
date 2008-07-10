@@ -34,7 +34,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/main.c,v 1.4.2.4 2002/02/01 18:17:43 archie Exp $
- * $DragonFly: src/usr.sbin/ngctl/main.c,v 1.5 2007/06/04 00:40:31 swildner Exp $
+ * $DragonFly: src/usr.sbin/ngctl/main.c,v 1.6 2008/07/10 18:29:52 swildner Exp $
  * $Whistle: main.c,v 1.12 1999/11/29 19:17:46 archie Exp $
  */
 
@@ -119,7 +119,7 @@ main(int ac, char *av[])
 	snprintf(name, sizeof(name), "ngctl%d", getpid());
 
 	/* Parse command line */
-	while ((ch = getopt(ac, av, "df:n:")) != EOF) {
+	while ((ch = getopt(ac, av, "df:n:")) != -1) {
 		switch (ch) {
 		case 'd':
 			NgSetDebug(NgSetDebug(-1) + 1);

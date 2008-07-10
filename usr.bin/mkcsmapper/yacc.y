@@ -1,5 +1,5 @@
 /*	$NetBSD: yacc.y,v 1.7 2006/09/09 14:35:17 tnozaki Exp $	*/
-/*	$DragonFly: src/usr.bin/mkcsmapper/yacc.y,v 1.2 2008/04/10 10:21:13 hasso Exp $	*/
+/*	$DragonFly: src/usr.bin/mkcsmapper/yacc.y,v 1.3 2008/07/10 18:29:51 swildner Exp $	*/
 
 %{
 /*-
@@ -679,7 +679,7 @@ main(int argc, char **argv)
 	FILE *in = NULL;
 	int mkdb = 0, mkpv = 0;
 
-	while ((ch = getopt(argc, argv, "do:mp")) != EOF) {
+	while ((ch = getopt(argc, argv, "do:mp")) != -1) {
 		switch (ch) {
 		case 'd':
 			debug=1;
