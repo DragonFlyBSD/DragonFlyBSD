@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.20 2008/05/02 02:05:05 swildner Exp $
+.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.21 2008/07/10 01:01:44 thomas Exp $
 .\"
 .Dd August 10, 2007
 .Dt DISKLABEL 8
@@ -518,23 +518,23 @@ to create file systems on new partitions.
 A typical partitioning scheme would be to have an
 .Ql a
 partition
-of approximately 128MB to hold the root file system, a
+of approximately 512MB to hold the root file system, a
 .Ql b
 partition for
-swap, a
+swap (usually 4GB), a
 .Ql d
 partition for
 .Pa /var
-(usually 128MB), an
+(usually 2GB), an
 .Ql e
 partition
 for
 .Pa /var/tmp
-(usually 128MB), an
+(usually 2GB), an
 .Ql f
 partition for
 .Pa /usr
-(usually around 2GB),
+(usually around 4GB),
 and finally a
 .Ql g
 partition for
