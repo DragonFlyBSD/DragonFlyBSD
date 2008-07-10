@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.97 2008/07/10 04:44:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.98 2008/07/10 21:23:58 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1939,6 +1939,7 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 {
 	hammer_cursor_t cursor = data;
 	hammer_transaction_t trans = cursor->trans;
+	hammer_mount_t hmp = trans->hmp;
 	int error;
 
 	/*
@@ -2072,6 +2073,21 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 	}
 done:
 	hammer_flush_record_done(record, error);
+
+	/*
+	 * Do partial finalization if we have built up too many dirty
+	 * buffers.  Otherwise a buffer cache deadlock can occur when
+	 * doing things like creating tens of thousands of tiny files.
+	 *
+	 * The finalization lock is already being held by virtue of the
+	 * flusher calling us.
+	 */
+        if (hammer_flusher_meta_limit(hmp)) {
+		hammer_unlock(&hmp->flusher.finalize_lock);
+                hammer_flusher_finalize(trans, 0);
+		hammer_lock_sh(&hmp->flusher.finalize_lock);
+	}
+
 	return(error);
 }
 
@@ -2223,11 +2239,7 @@ hammer_sync_inode(hammer_inode_t ip)
 
 	/*
 	 * Now sync related records.  These will typically be directory
-	 * entries or delete-on-disk records.
-	 *
-	 * Not all records will be flushed, but clear XDIRTY anyway.  We
-	 * will set it again in the frontend hammer_flush_inode_done() 
-	 * if records remain.
+	 * entries, records tracking direct-writes, or delete-on-disk records.
 	 */
 	if (error == 0) {
 		tmp_error = RB_SCAN(hammer_rec_rb_tree, &ip->rec_tree, NULL,

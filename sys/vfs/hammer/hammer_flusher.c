@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.33 2008/07/07 00:24:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.34 2008/07/10 21:23:58 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -47,7 +47,6 @@ static void hammer_flusher_slave_thread(void *arg);
 static void hammer_flusher_flush(hammer_mount_t hmp);
 static void hammer_flusher_flush_inode(hammer_inode_t ip,
 					hammer_transaction_t trans);
-static void hammer_flusher_finalize(hammer_transaction_t trans, int final);
 
 /*
  * Support structures for the flusher threads.
@@ -296,11 +295,8 @@ hammer_flusher_flush(hammer_mount_t hmp)
 	 * before actually digging into a new cycle, or the new cycle will
 	 * not have sufficient undo space.
 	 */
-	if (hammer_flusher_undo_exhausted(&hmp->flusher.trans, 3)) {
-		hammer_lock_ex(&hmp->flusher.finalize_lock);
+	if (hammer_flusher_undo_exhausted(&hmp->flusher.trans, 3))
 		hammer_flusher_finalize(&hmp->flusher.trans, 0);
-		hammer_unlock(&hmp->flusher.finalize_lock);
-	}
 
 	/*
 	 * Start work threads.
@@ -366,20 +362,10 @@ hammer_flusher_flush_inode(hammer_inode_t ip, hammer_transaction_t trans)
 	while (hmp->flusher.finalize_want)
 		tsleep(&hmp->flusher.finalize_want, 0, "hmrsxx", 0);
 	if (hammer_flusher_undo_exhausted(trans, 1)) {
-		hmp->flusher.finalize_want = 1;
-		hammer_lock_ex(&hmp->flusher.finalize_lock);
 		kprintf("HAMMER: Warning: UNDO area too small!\n");
 		hammer_flusher_finalize(trans, 1);
-		hammer_unlock(&hmp->flusher.finalize_lock);
-		hmp->flusher.finalize_want = 0;
-		wakeup(&hmp->flusher.finalize_want);
 	} else if (hammer_flusher_meta_limit(trans->hmp)) {
-		hmp->flusher.finalize_want = 1;
-		hammer_lock_ex(&hmp->flusher.finalize_lock);
 		hammer_flusher_finalize(trans, 0);
-		hammer_unlock(&hmp->flusher.finalize_lock);
-		hmp->flusher.finalize_want = 0;
-		wakeup(&hmp->flusher.finalize_want);
 	}
 }
 
@@ -417,8 +403,11 @@ hammer_flusher_undo_exhausted(hammer_transaction_t trans, int quarter)
  * If this is the last finalization in a flush group we also synchronize
  * our cached blockmap and set hmp->flusher_undo_start and our cached undo
  * fifo first_offset so the next flush resets the FIFO pointers.
+ *
+ * If this is not final it is being called because too many dirty meta-data
+ * buffers have built up and must be flushed with UNDO synchronization to
+ * avoid a buffer cache deadlock.
  */
-static
 void
 hammer_flusher_finalize(hammer_transaction_t trans, int final)
 {
@@ -431,6 +420,21 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 
 	hmp = trans->hmp;
 	root_volume = trans->rootvol;
+
+	/*
+	 * Exclusively lock the flusher.  This guarantees that all dirty
+	 * buffers will be idled (have a mod-count of 0).
+	 */
+	++hmp->flusher.finalize_want;
+	hammer_lock_ex(&hmp->flusher.finalize_lock);
+
+	/*
+	 * If this isn't the final sync several threads may have hit the
+	 * meta-limit at the same time and raced.  Only sync if we really
+	 * have to, after acquiring the lock.
+	 */
+	if (final == 0 && !hammer_flusher_meta_limit(hmp))
+		goto done;
 
 	/*
 	 * Flush data buffers.  This can occur asynchronously and at any
@@ -573,6 +577,11 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	}
 
 	hammer_sync_unlock(trans);
+
+done:
+	hammer_unlock(&hmp->flusher.finalize_lock);
+	if (--hmp->flusher.finalize_want == 0)
+		wakeup(&hmp->flusher.finalize_want);
 }
 
 /*

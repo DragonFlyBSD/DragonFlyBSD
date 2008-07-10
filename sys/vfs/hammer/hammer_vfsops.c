@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.60 2008/07/07 00:24:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.61 2008/07/10 21:23:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -760,7 +760,6 @@ hammer_vfs_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
 	 * unlocked while we manipulate the related vnode to avoid a
 	 * deadlock.
 	 */
-	kprintf("localization %08x\n", localization);
 	ip = hammer_get_inode(&trans, NULL, info.obj_id,
 			      info.obj_asof, localization, 0, &error);
 	if (ip == NULL) {
