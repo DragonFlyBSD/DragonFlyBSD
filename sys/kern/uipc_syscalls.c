@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.87 2008/07/07 14:35:12 aggelos Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.88 2008/07/10 00:19:27 aggelos Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1069,16 +1069,22 @@ sys_setsockopt(struct setsockopt_args *uap)
 	sopt.sopt_valsize = uap->valsize;
 	sopt.sopt_td = td;
 
-	sopt.sopt_val = kmalloc(sopt.sopt_valsize, M_TEMP, M_WAITOK);
-	error = copyin(uap->val, sopt.sopt_val, sopt.sopt_valsize);
-	if (error)
-		goto out;
+	if (uap->val) {
+		sopt.sopt_val = kmalloc(sopt.sopt_valsize, M_TEMP, M_WAITOK);
+		error = copyin(uap->val, sopt.sopt_val, sopt.sopt_valsize);
+		if (error)
+			goto out;
+	} else {
+		sopt.sopt_val = NULL;
+	}
 	error = kern_setsockopt(uap->s, &sopt);
 	if (error)
 		goto out;
-	error = copyout(sopt.sopt_val, uap->val, sopt.sopt_valsize);
+	if (uap->val)
+		error = copyout(sopt.sopt_val, uap->val, sopt.sopt_valsize);
 out:
-	kfree(sopt.sopt_val, M_TEMP);
+	if (uap->val)
+		kfree(sopt.sopt_val, M_TEMP);
 	return(error);
 }
 
@@ -1134,10 +1140,14 @@ sys_getsockopt(struct getsockopt_args *uap)
 	sopt.sopt_valsize = valsize;
 	sopt.sopt_td = td;
 
-	sopt.sopt_val = kmalloc(sopt.sopt_valsize, M_TEMP, M_WAITOK);
-	error = copyin(uap->val, sopt.sopt_val, sopt.sopt_valsize);
-	if (error)
-		goto out;
+	if (uap->val) {
+		sopt.sopt_val = kmalloc(sopt.sopt_valsize, M_TEMP, M_WAITOK);
+		error = copyin(uap->val, sopt.sopt_val, sopt.sopt_valsize);
+		if (error)
+			goto out;
+	} else {
+		sopt.sopt_val = NULL;
+	}
 	error = kern_getsockopt(uap->s, &sopt);
 	if (error)
 		goto out;
@@ -1145,9 +1155,11 @@ sys_getsockopt(struct getsockopt_args *uap)
 	error = copyout(&valsize, uap->avalsize, sizeof(valsize));
 	if (error)
 		goto out;
-	error = copyout(sopt.sopt_val, uap->val, sopt.sopt_valsize);
+	if (uap->val)
+		error = copyout(sopt.sopt_val, uap->val, sopt.sopt_valsize);
 out:
-	kfree(sopt.sopt_val, M_TEMP);
+	if (uap->val)
+		kfree(sopt.sopt_val, M_TEMP);
 	return (error);
 }
 

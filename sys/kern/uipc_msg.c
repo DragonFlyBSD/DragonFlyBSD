@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.22 2008/07/07 14:35:12 aggelos Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.23 2008/07/10 00:19:27 aggelos Exp $
  */
 
 #include <sys/param.h>
@@ -388,7 +388,7 @@ so_pru_ctloutput(struct socket *so, struct sockopt *sopt)
 	lwkt_port_t port;
 	int error;
 
-	KKASSERT(kva_p(sopt->sopt_val));
+	KKASSERT(!sopt->sopt_val || kva_p(sopt->sopt_val));
 	port = so->so_proto->pr_mport(so, NULL, NULL, PRU_CTLOUTPUT);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
 		    netmsg_pru_ctloutput);

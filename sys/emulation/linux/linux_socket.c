@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.27 2007/01/28 06:31:00 y0netan1 Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.28 2008/07/10 00:19:27 aggelos Exp $
  */
 
 #include <sys/param.h>
@@ -1086,11 +1086,26 @@ linux_setsockopt(struct linux_setsockopt_args *args, int *res)
 	sopt.sopt_dir = SOPT_SET;
 	sopt.sopt_level = level;
 	sopt.sopt_name = name;
-	sopt.sopt_val = linux_args.optval;
 	sopt.sopt_valsize = linux_args.optlen;
 	sopt.sopt_td = td;
 
+	if (linux_args.optval) {
+		sopt.sopt_val = kmalloc(sopt.sopt_valsize, M_TEMP, M_WAITOK);
+		error = copyin(linux_args.optval, sopt.sopt_val, sopt.sopt_valsize);
+		if (error)
+			goto out;
+	} else {
+		sopt.sopt_val = NULL;
+	}
 	error = kern_setsockopt(linux_args.s, &sopt);
+	if (error)
+		goto out;
+	if (linux_args.optval)
+		error = copyout(sopt.sopt_val, linux_args.optval,
+				sopt.sopt_valsize);
+out:
+	if (linux_args.optval)
+		kfree(sopt.sopt_val, M_TEMP);
 	return(error);
 }
 
@@ -1146,15 +1161,29 @@ linux_getsockopt(struct linux_getsockopt_args *args, int *res)
 	sopt.sopt_dir = SOPT_GET;
 	sopt.sopt_level = level;
 	sopt.sopt_name = name;
-	sopt.sopt_val = linux_args.optval;
 	sopt.sopt_valsize = valsize;
 	sopt.sopt_td = td;
 
-	error = kern_getsockopt(linux_args.s, &sopt);
-	if (error == 0) {
-		valsize = sopt.sopt_valsize;
-		error = copyout(&valsize, linux_args.optlen, sizeof(valsize));
+	if (linux_args.optval) {
+		sopt.sopt_val = kmalloc(sopt.sopt_valsize, M_TEMP, M_WAITOK);
+		error = copyin(linux_args.optval, sopt.sopt_val, sopt.sopt_valsize);
+		if (error)
+			goto out;
+	} else {
+		sopt.sopt_val = NULL;
 	}
+	error = kern_getsockopt(linux_args.s, &sopt);
+	if (error)
+		goto out;
+	valsize = sopt.sopt_valsize;
+	error = copyout(&valsize, linux_args.optlen, sizeof(valsize));
+	if (error)
+		goto out;
+	if (linux_args.optval)
+		error = copyout(sopt.sopt_val, linux_args.optval, sopt.sopt_valsize);
+out:
+	if (linux_args.optval)
+		kfree(sopt.sopt_val, M_TEMP);
 	return(error);
 }
 

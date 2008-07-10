@@ -65,7 +65,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.51 2008/07/07 14:35:12 aggelos Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.52 2008/07/10 00:19:27 aggelos Exp $
  */
 
 #include "opt_inet.h"
@@ -1245,7 +1245,7 @@ soopt_to_kbuf(struct sockopt *sopt, void *buf, size_t len, size_t minlen)
 {
 	size_t	valsize;
 
-	KKASSERT(kva_p(sopt->sopt_val));
+	KKASSERT(!sopt->sopt_val || kva_p(sopt->sopt_val));
 	KKASSERT(kva_p(buf));
 
 	/*
@@ -1423,7 +1423,7 @@ soopt_from_kbuf(struct sockopt *sopt, const void *buf, size_t len)
 {
 	size_t	valsize;
 
-	KKASSERT(kva_p(sopt->sopt_val));
+	KKASSERT(!sopt->sopt_val || kva_p(sopt->sopt_val));
 	KKASSERT(kva_p(buf));
 
 	/*
@@ -1582,14 +1582,13 @@ soopt_mcopyin(struct sockopt *sopt, struct mbuf *m)
 void
 soopt_to_mbuf(struct sockopt *sopt, struct mbuf *m)
 {
-	struct mbuf *m0 = m;
 	size_t valsize;
 	void *val;
 
-	KKASSERT(kva_p(sopt->sopt_val));
+	KKASSERT(!sopt->sopt_val || kva_p(sopt->sopt_val));
 	KKASSERT(kva_p(m));
 	if (sopt->sopt_val == NULL)
-		return 0;
+		return;
 	val = sopt->sopt_val;
 	valsize = sopt->sopt_valsize;
 	while (m != NULL && valsize >= m->m_len) {
@@ -1617,7 +1616,7 @@ soopt_from_mbuf(struct sockopt *sopt, struct mbuf *m)
 	size_t maxsize;
 	void *val;
 
-	KKASSERT(kva_p(sopt->sopt_val));
+	KKASSERT(!sopt->sopt_val || kva_p(sopt->sopt_val));
 	KKASSERT(kva_p(m));
 	if (sopt->sopt_val == NULL)
 		return 0;
