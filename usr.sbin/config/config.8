@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)config.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/usr.sbin/config/config.8,v 1.21.2.7 2003/04/23 07:32:39 brueffer Exp $
-.\" $DragonFly: src/usr.sbin/config/config.8,v 1.9 2008/07/09 23:54:42 thomas Exp $
+.\" $DragonFly: src/usr.sbin/config/config.8,v 1.10 2008/07/10 00:46:57 thomas Exp $
 .\"
 .Dd July 4, 2001
 .Dt CONFIG 8
@@ -171,7 +171,7 @@ make the debugging environment more uniform,
 .Dx
 installs kernel and modules unstripped.
 Debug information is not loaded into memory, so the only impact is
-a minor growth in root file-system consumption by 10MB.
+a growth in root file-system consumption by 60MB.
 Those wishing to install stripped down kernel and modules can specify two new
 makeoptions in their kernel config file or when they run the
 kernel-related targets to make:
