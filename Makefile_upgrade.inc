@@ -1,4 +1,4 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.28 2008/07/10 22:24:18 swildner Exp $
+# $DragonFly: src/Makefile_upgrade.inc,v 1.29 2008/07/10 22:52:18 swildner Exp $
 #
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
@@ -930,3 +930,17 @@ TO_REMOVE+=/usr/share/info/cppinternals40.info.gz
 TO_REMOVE+=/usr/share/info/gcc40.info.gz
 TO_REMOVE+=/usr/share/info/gccint40.info.gz
 TO_REMOVE+=/usr/share/info/tar.info.gz
+TO_REMOVE+=/usr/include/readline/chardefs.h
+TO_REMOVE+=/usr/include/readline/keymaps.h
+TO_REMOVE+=/usr/include/readline/rlconf.h
+TO_REMOVE+=/usr/include/readline/rlstdc.h
+TO_REMOVE+=/usr/include/readline/rltypedefs.h
+TO_REMOVE+=/usr/lib/libhistory.a
+TO_REMOVE+=/usr/lib/libreadline.a
+TO_REMOVE+=/usr/lib/profile/libhistory.a
+TO_REMOVE+=/usr/lib/profile/libreadline.a
+TO_REMOVE+=/usr/share/info/history.info.gz
+TO_REMOVE+=/usr/share/info/readline.info.gz
+TO_REMOVE+=/usr/share/info/rluserman.info.gz
+TO_REMOVE+=/usr/share/man/cat3/readline.3.gz
+TO_REMOVE+=/usr/share/man/man3/readline.3.gz
