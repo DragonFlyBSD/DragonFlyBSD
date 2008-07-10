@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_snapshot.c,v 1.6 2008/06/28 14:18:00 swildner Exp $
+ * $DragonFly: src/sbin/hammer/cmd_snapshot.c,v 1.7 2008/07/10 18:47:22 mneumann Exp $
  */
 
 #include "hammer.h"
@@ -118,6 +118,7 @@ hammer_cmd_snapshot(char **av, int ac)
 			}
 			filesystem = buf.f_mntonname;
 
+			/* restore '/' */
 			if (pos != NULL)
 				*pos = '/';
 		}
@@ -135,7 +136,7 @@ hammer_cmd_snapshot(char **av, int ac)
 		err(2, "Synctid %s failed", filesystem);
 	close(fd);
 
-	asprintf(&from, "%s@@0x%016llx", filesystem, synctid.tid); 
+	asprintf(&from, "%s/@@0x%016llx", filesystem, synctid.tid); 
 	if (from == NULL)
 		err(2, "Couldn't generate string");
 	
