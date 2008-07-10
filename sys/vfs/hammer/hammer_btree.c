@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.67 2008/07/08 04:34:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.68 2008/07/10 04:44:33 dillon Exp $
  */
 
 /*
@@ -91,6 +91,7 @@ static int hammer_btree_mirror_propagate(hammer_cursor_t cursor,
 			hammer_tid_t mirror_tid);
 static void hammer_make_separator(hammer_base_elm_t key1,
 			hammer_base_elm_t key2, hammer_base_elm_t dest);
+static void hammer_cursor_mirror_filter(hammer_cursor_t cursor);
 
 /*
  * Iterate records after a search.  The cursor is iterated forwards past
@@ -231,13 +232,15 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 
 			/*
 			 * If running the mirror filter see if we can skip
-			 * the entire sub-tree.
+			 * one or more entire sub-trees.  If we can we
+			 * return the internal mode and the caller processes
+			 * the skipped range (see mirror_read)
 			 */
 			if (cursor->flags & HAMMER_CURSOR_MIRROR_FILTERED) {
 				if (elm->internal.mirror_tid <
-				    cursor->mirror_tid) {
-					++cursor->index;
-					continue;
+				    cursor->cmirror->mirror_tid) {
+					hammer_cursor_mirror_filter(cursor);
+					return(0);
 				}
 			}
 
@@ -318,6 +321,51 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 }
 
 /*
+ * We hit an internal element that we could skip as part of a mirroring
+ * scan.  Calculate the entire range being skipped.
+ *
+ * It is important to include any gaps between the parent's left_bound
+ * and the node's left_bound, and same goes for the right side.
+ */
+static void
+hammer_cursor_mirror_filter(hammer_cursor_t cursor)
+{
+	struct hammer_cmirror *cmirror;
+	hammer_node_ondisk_t ondisk;
+	hammer_btree_elm_t elm;
+
+	ondisk = cursor->node->ondisk;
+	cmirror = cursor->cmirror;
+
+	/*
+	 * Calculate the skipped range
+	 */
+	elm = &ondisk->elms[cursor->index];
+	if (cursor->index == 0)
+		cmirror->skip_beg = *cursor->left_bound;
+	else
+		cmirror->skip_beg = elm->internal.base;
+	while (cursor->index < ondisk->count) {
+		if (elm->internal.mirror_tid >= cmirror->mirror_tid)
+			break;
+		++cursor->index;
+		++elm;
+	}
+	if (cursor->index == ondisk->count)
+		cmirror->skip_end = *cursor->right_bound;
+	else
+		cmirror->skip_end = elm->internal.base;
+
+	/*
+	 * clip the returned result.
+	 */
+	if (hammer_btree_cmp(&cmirror->skip_beg, &cursor->key_beg) < 0)
+		cmirror->skip_beg = cursor->key_beg;
+	if (hammer_btree_cmp(&cmirror->skip_end, &cursor->key_end) > 0)
+		cmirror->skip_end = cursor->key_end;
+}
+
+/*
  * Iterate in the reverse direction.  This is used by the pruning code to
  * avoid overlapping records.
  */
@@ -329,6 +377,9 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 	int error;
 	int r;
 	int s;
+
+	/* mirror filtering not supported for reverse iteration */
+	KKASSERT ((cursor->flags & HAMMER_CURSOR_MIRROR_FILTERED) == 0);
 
 	/*
 	 * Skip past the current record.  For various reasons the cursor
@@ -2093,9 +2144,6 @@ btree_remove(hammer_cursor_t cursor)
 	} else {
 		KKASSERT(parent->ondisk->count > 1);
 
-		/*
-		 * Delete the subtree reference in the parent
-		 */
 		hammer_modify_node_all(cursor->trans, parent);
 		ondisk = parent->ondisk;
 		KKASSERT(ondisk->type == HAMMER_BTREE_TYPE_INTERNAL);
@@ -2103,6 +2151,36 @@ btree_remove(hammer_cursor_t cursor)
 		elm = &ondisk->elms[cursor->parent_index];
 		KKASSERT(elm->internal.subtree_offset == node->node_offset);
 		KKASSERT(ondisk->count > 0);
+
+		/*
+		 * We must retain the highest mirror_tid.  The deleted
+		 * range is now encompassed by the element to the left.
+		 * If we are already at the left edge the new left edge
+		 * inherits mirror_tid.
+		 *
+		 * Note that bounds of the parent to our parent may create
+		 * a gap to the left of our left-most node or to the right
+		 * of our right-most node.  The gap is silently included
+		 * in the mirror_tid's area of effect from the point of view
+		 * of the scan.
+		 */
+		if (cursor->parent_index) {
+			if (elm[-1].internal.mirror_tid <
+			    elm[0].internal.mirror_tid) {
+				elm[-1].internal.mirror_tid =
+				    elm[0].internal.mirror_tid;
+			}
+		} else {
+			if (elm[1].internal.mirror_tid <
+			    elm[0].internal.mirror_tid) {
+				elm[1].internal.mirror_tid =
+				    elm[0].internal.mirror_tid;
+			}
+		}
+
+		/*
+		 * Delete the subtree reference in the parent
+		 */
 		bcopy(&elm[1], &elm[0],
 		      (ondisk->count - cursor->parent_index) * esize);
 		--ondisk->count;
@@ -2128,10 +2206,10 @@ btree_remove(hammer_cursor_t cursor)
  * are propagating the mirror_tid for.
  */
 void
-hammer_btree_do_propagation(hammer_cursor_t cursor, hammer_inode_t ip,
+hammer_btree_do_propagation(hammer_cursor_t cursor,
+			    hammer_pseudofs_inmem_t pfsm,
 			    hammer_btree_leaf_elm_t leaf)
 {
-	hammer_pseudofs_inmem_t pfsm;
 	hammer_cursor_t ncursor;
 	hammer_tid_t mirror_tid;
 	int error;
@@ -2139,10 +2217,11 @@ hammer_btree_do_propagation(hammer_cursor_t cursor, hammer_inode_t ip,
 	/*
 	 * We only propagate the mirror_tid up if we are in master or slave
 	 * mode.  We do not bother if we are in no-mirror mode.
+	 *
+	 * If pfsm is NULL we propagate (from mirror_write).
 	 */
-	pfsm = ip->pfsm;
-	KKASSERT(pfsm != NULL);
-	if (pfsm->pfsd.master_id < 0 &&
+	if (pfsm &&
+	    pfsm->pfsd.master_id < 0 &&
 	    (pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE) == 0) {
 		return;
 	}

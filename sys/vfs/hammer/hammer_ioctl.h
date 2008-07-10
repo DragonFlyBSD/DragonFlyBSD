@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.18 2008/07/09 10:29:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.19 2008/07/10 04:44:33 dillon Exp $
  */
 /*
  * HAMMER ioctl's.  This file can be #included from userland
@@ -51,10 +51,11 @@
  */
 struct hammer_ioc_head {
 	int32_t		flags;
-	int32_t		reserved01;
+	int32_t		error;
 	int32_t		reserved02[4];
 };
 
+#define HAMMER_IOC_HEAD_ERROR	0x00008000
 #define HAMMER_IOC_HEAD_INTR	0x00010000
 #define HAMMER_IOC_DO_BTREE	0x00020000	/* reblocker */
 #define HAMMER_IOC_DO_INODES	0x00040000	/* reblocker */
@@ -242,23 +243,65 @@ struct hammer_ioc_mirror_rw {
  * NOTE: crc is for the data block starting at rec_size, not including the
  * data[] array.
  */
-typedef struct hammer_ioc_mrecord {
+struct hammer_ioc_mrecord_head {
 	u_int32_t		signature;	/* signature for byte order */
 	u_int32_t		rec_crc;
 	u_int32_t		rec_size;
 	u_int32_t		type;
-	struct hammer_btree_leaf_elm leaf;
+	/* extended */
+};
+
+typedef struct hammer_ioc_mrecord_head *hammer_ioc_mrecord_head_t;
+
+struct hammer_ioc_mrecord_rec {
+	struct hammer_ioc_mrecord_head	head;
+	struct hammer_btree_leaf_elm	leaf;
 	/* extended by data */
-} *hammer_ioc_mrecord_t;
+};
+
+struct hammer_ioc_mrecord_skip {
+	struct hammer_ioc_mrecord_head	head;
+	struct hammer_base_elm	 	skip_beg;
+	struct hammer_base_elm 		skip_end;
+};
+
+struct hammer_ioc_mrecord_update {
+	struct hammer_ioc_mrecord_head	head;
+	hammer_tid_t			tid;
+};
+
+struct hammer_ioc_mrecord_sync {
+	struct hammer_ioc_mrecord_head	head;
+};
+
+struct hammer_ioc_mrecord_pfs {
+	struct hammer_ioc_mrecord_head	head;
+	u_int32_t			version;
+	u_int32_t			reserved01;
+	struct hammer_pseudofs_data	pfsd;
+};
+
+union hammer_ioc_mrecord_any {
+	struct hammer_ioc_mrecord_head	head;
+	struct hammer_ioc_mrecord_rec	rec;
+	struct hammer_ioc_mrecord_skip	skip;
+	struct hammer_ioc_mrecord_update update;
+	struct hammer_ioc_mrecord_update sync;
+	struct hammer_ioc_mrecord_pfs	pfs;
+};
+
+typedef union hammer_ioc_mrecord_any *hammer_ioc_mrecord_any_t;
 
 #define HAMMER_MREC_TYPE_RESERVED	0
-#define HAMMER_MREC_TYPE_REC		1
-#define HAMMER_MREC_TYPE_PFSD		2
-#define HAMMER_MREC_TYPE_UPDATE		3
-#define HAMMER_MREC_TYPE_SYNC		4
+#define HAMMER_MREC_TYPE_REC		1	/* record w/ data */
+#define HAMMER_MREC_TYPE_PFSD		2	/* (userland only) */
+#define HAMMER_MREC_TYPE_UPDATE		3	/* (userland only) */
+#define HAMMER_MREC_TYPE_SYNC		4	/* (userland only) */
+#define HAMMER_MREC_TYPE_SKIP		5	/* skip-range */
+#define HAMMER_MREC_TYPE_PASS		6	/* record for cmp only (pass) */
 
-#define HAMMER_MREC_CRCOFF	(offsetof(struct hammer_ioc_mrecord, rec_size))
-#define HAMMER_MREC_HEADSIZE	sizeof(struct hammer_ioc_mrecord)
+#define HAMMER_MREC_CRCOFF	(offsetof(struct hammer_ioc_mrecord_head, rec_size))
+#define HAMMER_MREC_HEADSIZE	sizeof(struct hammer_ioc_mrecord_head)
 
 #define HAMMER_IOC_MIRROR_SIGNATURE	0x4dd97272U
 #define HAMMER_IOC_MIRROR_SIGNATURE_REV	0x7272d94dU

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.48 2008/07/09 10:29:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.49 2008/07/10 04:44:33 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -354,6 +354,8 @@ typedef struct hammer_blockmap_layer2 *hammer_blockmap_layer2_t;
 #define HAMMER_HEAD_ALIGN		8
 #define HAMMER_HEAD_ALIGN_MASK		(HAMMER_HEAD_ALIGN - 1)
 #define HAMMER_TAIL_ONDISK_SIZE		8
+#define HAMMER_HEAD_DOALIGN(bytes)	\
+	(((bytes) + HAMMER_HEAD_ALIGN_MASK) & ~HAMMER_HEAD_ALIGN_MASK)
 
 struct hammer_fifo_head {
 	u_int16_t hdr_signature;
@@ -680,8 +682,17 @@ struct hammer_pseudofs_data {
 	uuid_t		shared_uuid;	/* shared uuid (match required) */
 	uuid_t		unique_uuid;	/* unique uuid of this master/slave */
 	int32_t		master_id;	/* 0-15 (-1 if slave) */
-	int32_t		mirror_flags;	/* (reserved) */
+	int32_t		mirror_flags;	/* misc flags */
 	char		label[64];	/* filesystem space label */
+	char		prune_path[64];	/* softlink dir for pruning */
+	int16_t		prune_time;	/* how long to spend pruning */
+	int16_t		prune_freq;	/* how often we prune */
+	int16_t		reblock_time;	/* how long to spend reblocking */
+	int16_t		reblock_freq;	/* how often we reblock */
+	int32_t		snapshot_freq;	/* how often we create a snapshot */
+	int32_t		prune_min;	/* do not prune recent history */
+	int32_t		prune_max;	/* do not retain history beyond here */
+	int32_t		reserved[16];
 };
 
 typedef struct hammer_pseudofs_data *hammer_pseudofs_data_t;

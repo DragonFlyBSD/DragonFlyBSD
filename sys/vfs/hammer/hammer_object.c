@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.84 2008/07/08 04:34:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.85 2008/07/10 04:44:33 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1142,7 +1142,8 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	 */
 	if (error == 0) {
 		if (doprop) {
-			hammer_btree_do_propagation(cursor, record->ip,
+			hammer_btree_do_propagation(cursor,
+						    record->ip->pfsm,
 						    &record->leaf);
 		}
 		if (record->flags & HAMMER_RECF_CONVERT_DELETE) {
@@ -2054,7 +2055,7 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 	 */
 	if (doprop) {
 		KKASSERT(cursor->ip != NULL);
-		hammer_btree_do_propagation(cursor, cursor->ip, leaf);
+		hammer_btree_do_propagation(cursor, cursor->ip->pfsm, leaf);
 	}
 	return (error);
 }

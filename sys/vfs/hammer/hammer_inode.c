@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.96 2008/07/09 10:29:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.97 2008/07/10 04:44:33 dillon Exp $
  */
 
 #include "hammer.h"
@@ -794,6 +794,9 @@ retry:
 
 /*
  * Create a root directory for a PFS if one does not alredy exist.
+ *
+ * The PFS root stands alone so we must also bump the nlinks count
+ * to prevent it from being destroyed on release.
  */
 int
 hammer_mkroot_pseudofs(hammer_transaction_t trans, struct ucred *cred,
@@ -810,6 +813,10 @@ hammer_mkroot_pseudofs(hammer_transaction_t trans, struct ucred *cred,
 		vap.va_mode = 0755;
 		vap.va_type = VDIR;
 		error = hammer_create_inode(trans, &vap, cred, NULL, pfsm, &ip);
+		if (error == 0) {
+			++ip->ino_data.nlinks;
+			hammer_modify_inode(ip, HAMMER_INODE_DDIRTY);
+		}
 	}
 	if (ip)
 		hammer_rel_inode(ip, 0);

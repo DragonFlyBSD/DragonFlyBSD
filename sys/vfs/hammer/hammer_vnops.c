@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.84 2008/07/09 10:29:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.85 2008/07/10 04:44:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1347,22 +1347,9 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 	ip = VTOI(ap->a_vp);
 
 	/*
-	 * Special softlink for PFS access, created by hammer pfs-create
-	 */
-
-	if (ip->obj_id == HAMMER_OBJID_ROOT && ip->obj_localization &&
-	    ip->obj_asof == HAMMER_MAX_TID) {
-		ksnprintf(buf, sizeof(buf), "@@0x%016llx:0x%04x",
-			ip->pfsm->pfsd.sync_end_tid,
-			ip->obj_localization >> 16);
-		error = uiomove(buf, strlen(buf), ap->a_uio);
-		return(error);
-	}
-
-	/*
 	 * Shortcut if the symlink data was stuffed into ino_data.
 	 *
-	 * Also expand special @@PFSxxxxx softlinks.
+	 * Also expand special "@@PFS%05d" softlinks.
 	 */
 	if (ip->ino_data.size <= HAMMER_INODE_BASESYMLEN) {
 		char *ptr;
@@ -1378,10 +1365,18 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 			pfsm = hammer_load_pseudofs(&trans, localization,
 						    &error);
 			if (error == 0) {
-				ksnprintf(buf, sizeof(buf),
-					 "@@0x%016llx:%05d",
-					 pfsm->pfsd.sync_end_tid,
-					 localization >> 16);
+				if (pfsm->pfsd.mirror_flags &
+				    HAMMER_PFSD_SLAVE) {
+					ksnprintf(buf, sizeof(buf),
+						  "@@0x%016llx:%05d",
+						  pfsm->pfsd.sync_end_tid,
+						  localization >> 16);
+				} else {
+					ksnprintf(buf, sizeof(buf),
+						  "@@0x%016llx:%05d",
+						  HAMMER_MAX_TID,
+						  localization >> 16);
+				}
 				ptr = buf;
 				bytes = strlen(buf);
 			}

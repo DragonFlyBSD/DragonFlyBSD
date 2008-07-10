@@ -31,8 +31,10 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.24 2008/07/07 00:24:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.25 2008/07/10 04:44:33 dillon Exp $
  */
+
+struct hammer_cmirror;
 
 /*
  * The hammer_cursor structure is the primary in-memory management structure
@@ -90,7 +92,7 @@ struct hammer_cursor {
 	struct hammer_base_elm key_beg;
 	struct hammer_base_elm key_end;
 	hammer_tid_t	asof;
-	hammer_tid_t	mirror_tid;
+	struct hammer_cmirror *cmirror;
 
 	/*
 	 * Related data and record references.  Note that the related buffers
@@ -141,6 +143,21 @@ typedef struct hammer_cursor *hammer_cursor_t;
  * Flags we can clear when reusing a cursor (we can clear all of them)
  */
 #define HAMMER_CURSOR_INITMASK		(~0)
+
+/*
+ * Mirror scan extension structure.  Caller sets mirror_tid to restrict
+ * the scan.  If the iteration is able to skip one or more internal nodes
+ * it returns an internal node with skip_beg/end set to the skipped range.
+ *
+ * If the first element of an internal node is skipped skip_beg will use
+ * the left_bound inherited from the parent, and the same for the last
+ * element.  This is because gaps can develop in the bounds.
+ */
+struct hammer_cmirror {
+	hammer_tid_t	mirror_tid;
+	struct hammer_base_elm skip_beg;
+	struct hammer_base_elm skip_end;
+};
 
 /*
  * NOTE: iprec can be NULL, but the address-of does not indirect through
