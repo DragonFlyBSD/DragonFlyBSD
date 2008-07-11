@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.40 2008/07/08 04:34:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.41 2008/07/11 01:22:29 dillon Exp $
  */
 
 /*
@@ -75,7 +75,7 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 	if (cache && cache->node) {
 		node = hammer_ref_node_safe(trans->hmp, cache, &error);
 		if (error == 0) {
-			hammer_lock_sh_lowpri(&node->lock);
+			hammer_lock_sh(&node->lock);
 			if (node->flags & HAMMER_NODE_DELETED) {
 				hammer_unlock(&node->lock);
 				hammer_rel_node(node);
@@ -100,7 +100,7 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 		hammer_rel_volume(volume, 0);
 		if (error)
 			break;
-		hammer_lock_sh_lowpri(&node->lock);
+		hammer_lock_sh(&node->lock);
 
 		/*
 		 * If someone got in before we could lock the node, retry.
@@ -573,6 +573,10 @@ hammer_lock_cursor(hammer_cursor_t cursor, int also_ip)
  * Recover from a deadlocked cursor, tracking any node removals or
  * replacements.  If the cursor's current node is removed by another
  * thread (via btree_remove()) the cursor will be seeked upwards.
+ *
+ * The caller is working a modifying operation and must be holding the
+ * sync lock (shared).  We do not release the sync lock because this
+ * would break atomicy.
  */
 int
 hammer_recover_cursor(hammer_cursor_t cursor)
@@ -580,6 +584,7 @@ hammer_recover_cursor(hammer_cursor_t cursor)
 	int error;
 
 	hammer_unlock_cursor(cursor, 0);
+	KKASSERT(cursor->trans->sync_lock_refs > 0);
 
 	/*
 	 * Wait for the deadlock to clear
@@ -595,7 +600,6 @@ hammer_recover_cursor(hammer_cursor_t cursor)
 		hammer_rel_mem_record(cursor->deadlk_rec);
 		cursor->deadlk_rec = NULL;
 	}
-
 	error = hammer_lock_cursor(cursor, 0);
 	return(error);
 }

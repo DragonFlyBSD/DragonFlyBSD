@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.10 2008/07/10 04:44:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.11 2008/07/11 01:22:29 dillon Exp $
  */
 /*
  * HAMMER mirroring ioctls - serialize and deserialize modifications made
@@ -560,6 +560,8 @@ hammer_ioc_mirror_write_rec(hammer_cursor_t cursor,
 	 * mirror operations are effective an as-of operation and
 	 * delete_tid can be 0 for mirroring purposes even if it is
 	 * not actually 0 at the originator.
+	 *
+	 * These functions can return EDEADLK
 	 */
 	cursor->key_beg = mrec->leaf.base;
 	cursor->flags |= HAMMER_CURSOR_BACKEND;
@@ -567,13 +569,9 @@ hammer_ioc_mirror_write_rec(hammer_cursor_t cursor,
 	error = hammer_btree_lookup(cursor);
 
 	if (error == 0 && hammer_mirror_check(cursor, mrec)) {
-		hammer_sync_lock_sh(trans);
 		error = hammer_mirror_update(cursor, mrec);
-		hammer_sync_unlock(trans);
 	} else if (error == ENOENT && mrec->leaf.base.delete_tid == 0) {
-		hammer_sync_lock_sh(trans);
 		error = hammer_mirror_write(cursor, mrec, uptr);
-		hammer_sync_unlock(trans);
 	} else if (error == ENOENT) {
 		error = 0;
 	}
@@ -663,6 +661,10 @@ hammer_mirror_delete_at_cursor(hammer_cursor_t cursor,
 {
 	hammer_transaction_t trans;
 	hammer_btree_elm_t elm;
+	int error;
+
+	if ((error = hammer_cursor_upgrade(cursor)) != 0)
+		return(error);
 
 	elm = &cursor->node->ondisk->elms[cursor->index];
 	KKASSERT(elm->leaf.base.btype == HAMMER_BTREE_TYPE_RECORD);
@@ -731,6 +733,10 @@ hammer_mirror_update(hammer_cursor_t cursor,
 {
 	hammer_transaction_t trans;
 	hammer_btree_leaf_elm_t elm;
+	int error;
+
+	if ((error = hammer_cursor_upgrade(cursor)) != 0)
+		return(error);
 
 	elm = cursor->leaf;
 	trans = cursor->trans;
@@ -741,6 +747,7 @@ hammer_mirror_update(hammer_cursor_t cursor,
 			elm->base.obj_id, elm->base.key);
 		return(0);
 	}
+	hammer_sync_lock_sh(trans);
 
 	KKASSERT(elm->base.create_tid < mrec->leaf.base.delete_tid);
 	hammer_modify_node(trans, cursor->node, elm, sizeof(*elm));
@@ -763,6 +770,7 @@ hammer_mirror_update(hammer_cursor_t cursor,
 		--trans->hmp->rootvol->ondisk->vol0_stat_inodes;
 		hammer_modify_volume_done(trans->rootvol);
 	}
+	hammer_sync_unlock(trans);
 
 	return(0);
 }
@@ -786,6 +794,11 @@ hammer_mirror_write(hammer_cursor_t cursor,
 
 	trans = cursor->trans;
 	data_buffer = NULL;
+
+	/*
+	 * Get the sync lock so the whole mess is atomic
+	 */
+	hammer_sync_lock_sh(trans);
 
 	/*
 	 * Allocate and adjust data
@@ -873,6 +886,7 @@ failed:
 				     mrec->leaf.data_offset,
 				     mrec->leaf.data_len);
 	}
+	hammer_sync_unlock(trans);
 	if (data_buffer)
 		hammer_rel_buffer(data_buffer, 0);
 	return(error);

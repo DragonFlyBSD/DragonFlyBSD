@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.69 2008/07/10 21:23:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.70 2008/07/11 01:22:29 dillon Exp $
  */
 
 /*
@@ -572,6 +572,8 @@ hammer_btree_lookup(hammer_cursor_t cursor)
 {
 	int error;
 
+	KKASSERT ((cursor->flags & HAMMER_CURSOR_INSERT) == 0 ||
+		  cursor->trans->sync_lock_refs > 0);
 	++hammer_stats_btree_lookups;
 	if (cursor->flags & HAMMER_CURSOR_ASOF) {
 		KKASSERT((cursor->flags & HAMMER_CURSOR_INSERT) == 0);
@@ -811,6 +813,7 @@ hammer_btree_delete(hammer_cursor_t cursor)
 	int error;
 	int i;
 
+	KKASSERT (cursor->trans->sync_lock_refs > 0);
 	if ((error = hammer_cursor_upgrade(cursor)) != 0)
 		return(error);
 	++hammer_stats_btree_deletes;

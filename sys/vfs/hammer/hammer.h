@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.110 2008/07/10 21:23:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.111 2008/07/11 01:22:29 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -826,7 +826,6 @@ int	hammer_cursor_seek(hammer_cursor_t cursor, hammer_node_t node,
 void	hammer_lock_ex_ident(struct hammer_lock *lock, const char *ident);
 int	hammer_lock_ex_try(struct hammer_lock *lock);
 void	hammer_lock_sh(struct hammer_lock *lock);
-void	hammer_lock_sh_lowpri(struct hammer_lock *lock);
 int	hammer_lock_sh_try(struct hammer_lock *lock);
 int	hammer_lock_upgrade(struct hammer_lock *lock);
 void	hammer_lock_downgrade(struct hammer_lock *lock);

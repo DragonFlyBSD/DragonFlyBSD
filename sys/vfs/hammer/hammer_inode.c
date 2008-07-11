@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.98 2008/07/10 21:23:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.99 2008/07/11 01:22:29 dillon Exp $
  */
 
 #include "hammer.h"
@@ -987,6 +987,7 @@ retry:
 			/*
 			 * Root volume count of inodes
 			 */
+			hammer_sync_lock_sh(trans);
 			if ((ip->flags & HAMMER_INODE_ONDISK) == 0) {
 				hammer_modify_volume_field(trans,
 							   trans->rootvol,
@@ -997,6 +998,7 @@ retry:
 				if (hammer_debug_inode)
 					kprintf("NOWONDISK %p\n", ip);
 			}
+			hammer_sync_unlock(trans);
 		}
 	}
 
@@ -1062,21 +1064,25 @@ retry:
 			 * Updating MTIME requires an UNDO.  Just cover
 			 * both atime and mtime.
 			 */
+			hammer_sync_lock_sh(trans);
 			hammer_modify_buffer(trans, cursor->data_buffer,
 				     HAMMER_ITIMES_BASE(&cursor->data->inode),
 				     HAMMER_ITIMES_BYTES);
 			cursor->data->inode.atime = ip->sync_ino_data.atime;
 			cursor->data->inode.mtime = ip->sync_ino_data.mtime;
 			hammer_modify_buffer_done(cursor->data_buffer);
+			hammer_sync_unlock(trans);
 		} else if (ip->sync_flags & HAMMER_INODE_ATIME) {
 			/*
 			 * Updating atime only can be done in-place with
 			 * no UNDO.
 			 */
+			hammer_sync_lock_sh(trans);
 			hammer_modify_buffer(trans, cursor->data_buffer,
 					     NULL, 0);
 			cursor->data->inode.atime = ip->sync_ino_data.atime;
 			hammer_modify_buffer_done(cursor->data_buffer);
+			hammer_sync_unlock(trans);
 		}
 		ip->sync_flags &= ~(HAMMER_INODE_ATIME | HAMMER_INODE_MTIME);
 	}
@@ -2082,11 +2088,8 @@ done:
 	 * The finalization lock is already being held by virtue of the
 	 * flusher calling us.
 	 */
-        if (hammer_flusher_meta_limit(hmp)) {
-		hammer_unlock(&hmp->flusher.finalize_lock);
+        if (hammer_flusher_meta_limit(hmp))
                 hammer_flusher_finalize(trans, 0);
-		hammer_lock_sh(&hmp->flusher.finalize_lock);
-	}
 
 	return(error);
 }
@@ -2303,6 +2306,7 @@ hammer_sync_inode(hammer_inode_t ip)
 			/*
 			 * Adjust the inode count in the volume header
 			 */
+			hammer_sync_lock_sh(&trans);
 			if (ip->flags & HAMMER_INODE_ONDISK) {
 				hammer_modify_volume_field(&trans,
 							   trans.rootvol,
@@ -2310,6 +2314,7 @@ hammer_sync_inode(hammer_inode_t ip)
 				--ip->hmp->rootvol->ondisk->vol0_stat_inodes;
 				hammer_modify_volume_done(trans.rootvol);
 			}
+			hammer_sync_unlock(&trans);
 		} else {
 			Debugger("hammer_ip_delete_clean errored");
 		}

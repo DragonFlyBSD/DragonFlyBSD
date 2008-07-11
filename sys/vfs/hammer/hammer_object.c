@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.85 2008/07/10 04:44:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.86 2008/07/11 01:22:29 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1069,8 +1069,8 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	 * we may have to iterate the low 32 bits of the key to find an unused
 	 * key.
 	 */
+	hammer_sync_lock_sh(trans);
 	cursor->flags |= HAMMER_CURSOR_INSERT;
-
 	error = hammer_btree_lookup(cursor);
 	if (hammer_debug_inode)
 		kprintf("DOINSERT LOOKUP %d\n", error);
@@ -1088,7 +1088,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 #endif
 
 	if (error != ENOENT)
-		goto done;
+		goto done_unlock;
 
 	/*
 	 * Allocate the record and data.  The result buffers will be
@@ -1116,7 +1116,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 					  &record->leaf.data_offset,
 					  &cursor->data_buffer, &error);
 		if (bdata == NULL)
-			goto done;
+			goto done_unlock;
 		hammer_crc_set_leaf(record->data, &record->leaf);
 		hammer_modify_buffer(trans, cursor->data_buffer, NULL, 0);
 		bcopy(record->data, bdata, record->leaf.data_len);
@@ -1163,7 +1163,8 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 					     record->leaf.data_len);
 		}
 	}
-
+done_unlock:
+	hammer_sync_unlock(trans);
 done:
 	return(error);
 }
@@ -1971,6 +1972,7 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 	 * Adjust the delete_tid.  Update the mirror_tid propagation field
 	 * as well.
 	 */
+	hammer_sync_lock_sh(cursor->trans);
 	doprop = 0;
 	if (delete_flags & HAMMER_DELETE_ADJUST) {
 		hammer_modify_node(cursor->trans, node, elm, sizeof(*elm));
@@ -2057,6 +2059,7 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 		KKASSERT(cursor->ip != NULL);
 		hammer_btree_do_propagation(cursor, cursor->ip->pfsm, leaf);
 	}
+	hammer_sync_unlock(cursor->trans);
 	return (error);
 }
 

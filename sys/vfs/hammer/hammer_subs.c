@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.33 2008/07/10 04:44:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.34 2008/07/11 01:22:29 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -93,6 +93,9 @@ hammer_lock_ex_try(struct hammer_lock *lock)
 
 /*
  * Obtain a shared lock
+ *
+ * We do not give pending exclusive locks priority over shared locks as
+ * doing so could lead to a deadlock.
  */
 void
 hammer_lock_sh(struct hammer_lock *lock)
@@ -100,31 +103,6 @@ hammer_lock_sh(struct hammer_lock *lock)
 	KKASSERT(lock->refs > 0);
 	crit_enter();
 	while (lock->locktd != NULL) {
-		if (lock->locktd == curthread) {
-			Debugger("hammer_lock_sh: lock_sh on exclusive");
-			++lock->lockcount;
-			crit_exit();
-			return;
-		}
-		lock->wanted = 1;
-		tsleep(lock, 0, "hmrlck", 0);
-	}
-	KKASSERT(lock->lockcount <= 0);
-	--lock->lockcount;
-	crit_exit();
-}
-
-/*
- * Obtain a shared lock at a lower priority then thread waiting for an
- * exclusive lock.  To avoid a deadlock this may only be done if no other
- * shared locks are being held by the caller.
- */
-void
-hammer_lock_sh_lowpri(struct hammer_lock *lock)
-{
-	KKASSERT(lock->refs > 0);
-	crit_enter();
-	while (lock->locktd != NULL || lock->exwanted) {
 		if (lock->locktd == curthread) {
 			Debugger("hammer_lock_sh: lock_sh on exclusive");
 			++lock->lockcount;
@@ -263,11 +241,16 @@ hammer_unref(struct hammer_lock *lock)
 
 /*
  * The sync_lock must be held when doing any modifying operations on
- * meta-data.  The flusher holds the lock exclusively while the reblocker
- * and pruner use a shared lock.
+ * meta-data.  It does not have to be held when modifying non-meta-data buffers
+ * (backend or frontend).
  *
- * Modifying operations can run in parallel until the flusher needs to
- * sync the disk media.
+ * The flusher holds the lock exclusively while all other consumers hold it
+ * shared.  All modifying operations made while holding the lock are atomic
+ * in that they will be made part of the same flush group.
+ *
+ * Due to the atomicy requirement deadlock recovery code CANNOT release the
+ * sync lock, nor can we give pending exclusive sync locks priority over
+ * a shared sync lock as this could lead to a 3-way deadlock.
  */
 void
 hammer_sync_lock_ex(hammer_transaction_t trans)

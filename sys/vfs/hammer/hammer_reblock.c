@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.25 2008/07/09 10:29:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.26 2008/07/11 01:22:29 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -125,9 +125,6 @@ retry:
 		 */
 		if ((error = hammer_signal_check(trans->hmp)) != 0)
 			break;
-		if (trans->hmp->sync_lock.wanted) {
-			tsleep(trans, 0, "hmrslo", hz / 10);
-		}
 
 		/*
 		 * If we build up too much meta-data we have to wait for

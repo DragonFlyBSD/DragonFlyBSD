@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.34 2008/07/10 21:23:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.35 2008/07/11 01:22:29 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -353,12 +353,10 @@ hammer_flusher_flush_inode(hammer_inode_t ip, hammer_transaction_t trans)
 	int error;
 
 	hammer_flusher_clean_loose_ios(hmp);
-	hammer_lock_sh(&hmp->flusher.finalize_lock);
 	error = hammer_sync_inode(ip);
 	if (error != EWOULDBLOCK)
 		ip->error = error;
 	hammer_flush_inode_done(ip);
-	hammer_unlock(&hmp->flusher.finalize_lock);
 	while (hmp->flusher.finalize_want)
 		tsleep(&hmp->flusher.finalize_want, 0, "hmrsxx", 0);
 	if (hammer_flusher_undo_exhausted(trans, 1)) {
@@ -388,7 +386,6 @@ hammer_flusher_undo_exhausted(hammer_transaction_t trans, int quarter)
 {
 	if (hammer_undo_space(trans) <
 	    hammer_undo_max(trans->hmp) * quarter / 4) {
-		kprintf("%c", '0' + quarter);
 		return(1);
 	} else {
 		return(0);

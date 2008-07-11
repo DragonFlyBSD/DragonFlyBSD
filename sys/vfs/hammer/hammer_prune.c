@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.12 2008/07/04 07:25:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.13 2008/07/11 01:22:29 dillon Exp $
  */
 
 #include "hammer.h"
@@ -126,7 +126,6 @@ retry:
 	 */
 	cursor.flags |= HAMMER_CURSOR_PRUNING;
 
-	hammer_sync_lock_sh(trans);
 	error = hammer_btree_last(&cursor);
 
 	while (error == 0) {
@@ -141,11 +140,6 @@ retry:
 		 */
 		if ((error = hammer_signal_check(trans->hmp)) != 0)
 			break;
-		if (trans->hmp->sync_lock.wanted) {
-			hammer_sync_unlock(trans);
-			tsleep(trans, 0, "hmrslo", hz / 10);
-			hammer_sync_lock_sh(trans);
-		}
 		if (hammer_flusher_meta_limit(trans->hmp) ||
 		    hammer_flusher_undo_exhausted(trans, 2)) {
 			error = EWOULDBLOCK;
@@ -178,9 +172,11 @@ retry:
 			 */
 			isdir = (elm->base.rec_type == HAMMER_RECTYPE_DIRENTRY);
 
+			hammer_sync_lock_sh(trans);
 			error = hammer_delete_at_cursor(&cursor,
 							HAMMER_DELETE_DESTROY,
 							&prune->stat_bytes);
+			hammer_sync_unlock(trans);
 			if (error)
 				break;
 
@@ -210,7 +206,6 @@ retry:
 		++prune->stat_scanrecords;
 		error = hammer_btree_iterate_reverse(&cursor);
 	}
-	hammer_sync_unlock(trans);
 	if (error == ENOENT)
 		error = 0;
 	hammer_done_cursor(&cursor);
@@ -299,7 +294,6 @@ prune_check_nlinks(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm)
 	if (cursor->data->inode.nlinks)
 		return;
 	hammer_cursor_downgrade(cursor);
-	hammer_sync_unlock(cursor->trans);
 	ip = hammer_get_inode(cursor->trans, NULL, elm->base.obj_id,
 		      HAMMER_MAX_TID,
 		      elm->base.localization & HAMMER_LOCALIZE_PSEUDOFS_MASK,
@@ -312,7 +306,6 @@ prune_check_nlinks(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm)
 		kprintf("unable to prune disconnected inode %016llx\n",
 			elm->base.obj_id);
 	}
-	hammer_sync_lock_sh(cursor->trans);
 }
 
 #if 0
