@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.78 2008/03/05 12:44:42 sephe Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.79 2008/07/11 11:59:44 swildner Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -165,6 +165,7 @@ int	is_physical_memory (vm_offset_t addr);
 
 extern uint32_t crc32_tab[];
 uint32_t crc32(const void *buf, size_t size);
+uint32_t crc32_ext(const void *buf, size_t size, uint32_t ocrc);
 void	init_param1 (void);
 void	init_param2 (int physpages);
 void	tablefull (const char *);
