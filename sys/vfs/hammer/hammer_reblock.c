@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.26 2008/07/11 01:22:29 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.27 2008/07/11 05:44:23 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -61,8 +61,9 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 {
 	struct hammer_cursor cursor;
 	hammer_btree_elm_t elm;
-	int error;
 	int checkspace_count;
+	int error;
+	int seq;
 
 	if ((reblock->key_beg.localization | reblock->key_end.localization) &
 	    HAMMER_LOCALIZE_PSEUDOFS_MASK) {
@@ -77,6 +78,7 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 	reblock->key_cur.localization += ip->obj_localization;
 
 	checkspace_count = 0;
+	seq = trans->hmp->flusher.act;
 retry:
 	error = hammer_init_cursor(trans, &cursor, NULL, NULL);
 	if (error) {
@@ -127,26 +129,18 @@ retry:
 			break;
 
 		/*
-		 * If we build up too much meta-data we have to wait for
-		 * a flush cycle.
-		 */
-		if (hammer_flusher_meta_limit(trans->hmp) ||
-		    hammer_flusher_undo_exhausted(trans, 2)) {
-			error = EWOULDBLOCK;
-			break;
-		}
-
-		/*
 		 * If there is insufficient free space it may be due to
 		 * reserved bigblocks, which flushing might fix.
 		 */
-		if (hammer_checkspace(trans->hmp, HAMMER_CHECKSPACE_SLOP_REBLOCK)) {
+		if (hammer_checkspace(trans->hmp, HAMMER_CHKSPC_REBLOCK)) {
 			if (++checkspace_count == 10) {
 				error = ENOSPC;
-			} else {
-				error = EWOULDBLOCK;
+				break;
 			}
-			break;
+			hammer_unlock_cursor(&cursor, 0);
+			hammer_flusher_wait(trans->hmp, seq);
+			hammer_lock_cursor(&cursor, 0);
+			seq = hammer_flusher_async(trans->hmp);
 		}
 
 		/*
@@ -158,6 +152,14 @@ retry:
 		hammer_sync_lock_sh(trans);
 		error = hammer_reblock_helper(reblock, &cursor, elm);
 		hammer_sync_unlock(trans);
+
+		if (hammer_flusher_meta_halflimit(trans->hmp) ||
+		    hammer_flusher_undo_exhausted(trans, 1)) {
+			hammer_unlock_cursor(&cursor, 0);
+			hammer_flusher_wait(trans->hmp, seq);
+			hammer_lock_cursor(&cursor, 0);
+			seq = hammer_flusher_async(trans->hmp);
+		}
 		if (error == 0) {
 			cursor.flags |= HAMMER_CURSOR_ATEDISK;
 			error = hammer_btree_iterate(&cursor);

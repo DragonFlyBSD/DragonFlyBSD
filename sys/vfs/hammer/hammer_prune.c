@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.13 2008/07/11 01:22:29 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.14 2008/07/11 05:44:23 dillon Exp $
  */
 
 #include "hammer.h"
@@ -60,6 +60,7 @@ hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 	int error;
 	int isdir;
 	int elm_array_size;
+	int seq;
 
 	if (prune->nelms < 0 || prune->nelms > HAMMER_MAX_PRUNE_ELMS)
 		return(EINVAL);
@@ -91,6 +92,8 @@ hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 	if ((error = copyin(user_elms, copy_elms, elm_array_size)) != 0)
 		goto failed;
 	prune->elms = copy_elms;
+
+	seq = trans->hmp->flusher.act;
 
 	/*
 	 * Scan backwards.  Retries typically occur if a deadlock is detected.
@@ -140,11 +143,6 @@ retry:
 		 */
 		if ((error = hammer_signal_check(trans->hmp)) != 0)
 			break;
-		if (hammer_flusher_meta_limit(trans->hmp) ||
-		    hammer_flusher_undo_exhausted(trans, 2)) {
-			error = EWOULDBLOCK;
-			break;
-		}
 
 		if (prune->stat_oldest_tid > elm->base.create_tid)
 			prune->stat_oldest_tid = elm->base.create_tid;
@@ -204,15 +202,19 @@ retry:
 			}
 		}
 		++prune->stat_scanrecords;
+
+		if (hammer_flusher_meta_halflimit(trans->hmp) ||
+		    hammer_flusher_undo_exhausted(trans, 1)) {
+			hammer_unlock_cursor(&cursor, 0);
+			hammer_flusher_wait(trans->hmp, seq);
+			hammer_lock_cursor(&cursor, 0);
+			seq = hammer_flusher_async(trans->hmp);
+		}
 		error = hammer_btree_iterate_reverse(&cursor);
 	}
 	if (error == ENOENT)
 		error = 0;
 	hammer_done_cursor(&cursor);
-	if (error == EWOULDBLOCK) {
-		hammer_flusher_sync(trans->hmp);
-		goto retry;
-	}
 	if (error == EDEADLK)
 		goto retry;
 	if (error == EINTR) {

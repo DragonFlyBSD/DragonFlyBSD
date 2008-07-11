@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.111 2008/07/11 01:22:29 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.112 2008/07/11 05:44:23 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -722,10 +722,11 @@ struct hammer_sync_info {
 /*
  * checkspace slop (8MB chunks), higher numbers are more conservative.
  */
-#define HAMMER_CHECKSPACE_SLOP_REBLOCK	25
-#define HAMMER_CHECKSPACE_SLOP_WRITE	20
-#define HAMMER_CHECKSPACE_SLOP_CREATE	20
-#define HAMMER_CHECKSPACE_SLOP_REMOVE	10
+#define HAMMER_CHKSPC_REBLOCK	25
+#define HAMMER_CHKSPC_MIRROR	20
+#define HAMMER_CHKSPC_WRITE	20
+#define HAMMER_CHKSPC_CREATE	20
+#define HAMMER_CHKSPC_REMOVE	10
 
 #if defined(_KERNEL)
 
@@ -1081,8 +1082,10 @@ int hammer_signal_check(hammer_mount_t hmp);
 void hammer_flusher_create(hammer_mount_t hmp);
 void hammer_flusher_destroy(hammer_mount_t hmp);
 void hammer_flusher_sync(hammer_mount_t hmp);
-void hammer_flusher_async(hammer_mount_t hmp);
+int  hammer_flusher_async(hammer_mount_t hmp);
+void hammer_flusher_wait(hammer_mount_t hmp, int seq);
 int  hammer_flusher_meta_limit(hammer_mount_t hmp);
+int  hammer_flusher_meta_halflimit(hammer_mount_t hmp);
 int  hammer_flusher_undo_exhausted(hammer_transaction_t trans, int quarter);
 void hammer_flusher_clean_loose_ios(hammer_mount_t hmp);
 void hammer_flusher_finalize(hammer_transaction_t trans, int final);

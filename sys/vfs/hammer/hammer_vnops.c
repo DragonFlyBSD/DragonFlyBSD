@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.85 2008/07/10 04:44:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.86 2008/07/11 05:44:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -352,7 +352,7 @@ hammer_vop_write(struct vop_write_args *ap)
 		int blksize;
 		int blkmask;
 
-		if ((error = hammer_checkspace(hmp, HAMMER_CHECKSPACE_SLOP_WRITE)) != 0)
+		if ((error = hammer_checkspace(hmp, HAMMER_CHKSPC_WRITE)) != 0)
 			break;
 
 		blksize = hammer_blocksize(uio->uio_offset);
@@ -580,7 +580,7 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 
 	if (dip->flags & HAMMER_INODE_RO)
 		return (EROFS);
-	if ((error = hammer_checkspace(dip->hmp, HAMMER_CHECKSPACE_SLOP_CREATE)) != 0)
+	if ((error = hammer_checkspace(dip->hmp, HAMMER_CHKSPC_CREATE)) != 0)
 		return (error);
 
 	/*
@@ -977,7 +977,7 @@ hammer_vop_nlink(struct vop_nlink_args *ap)
 		return (EROFS);
 	if (ip->flags & HAMMER_INODE_RO)
 		return (EROFS);
-	if ((error = hammer_checkspace(dip->hmp, HAMMER_CHECKSPACE_SLOP_CREATE)) != 0)
+	if ((error = hammer_checkspace(dip->hmp, HAMMER_CHKSPC_CREATE)) != 0)
 		return (error);
 
 	/*
@@ -1026,7 +1026,7 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 
 	if (dip->flags & HAMMER_INODE_RO)
 		return (EROFS);
-	if ((error = hammer_checkspace(dip->hmp, HAMMER_CHECKSPACE_SLOP_CREATE)) != 0)
+	if ((error = hammer_checkspace(dip->hmp, HAMMER_CHKSPC_CREATE)) != 0)
 		return (error);
 
 	/*
@@ -1095,7 +1095,7 @@ hammer_vop_nmknod(struct vop_nmknod_args *ap)
 
 	if (dip->flags & HAMMER_INODE_RO)
 		return (EROFS);
-	if ((error = hammer_checkspace(dip->hmp, HAMMER_CHECKSPACE_SLOP_CREATE)) != 0)
+	if ((error = hammer_checkspace(dip->hmp, HAMMER_CHKSPC_CREATE)) != 0)
 		return (error);
 
 	/*
@@ -1440,7 +1440,7 @@ hammer_vop_nremove(struct vop_nremove_args *ap)
 	dip = VTOI(ap->a_dvp);
 
 	if (hammer_nohistory(dip) == 0 &&
-	    (error = hammer_checkspace(dip->hmp, HAMMER_CHECKSPACE_SLOP_REMOVE)) != 0) {
+	    (error = hammer_checkspace(dip->hmp, HAMMER_CHKSPC_REMOVE)) != 0) {
 		return (error);
 	}
 
@@ -1481,7 +1481,7 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 		return (EROFS);
 	if (ip->flags & HAMMER_INODE_RO)
 		return (EROFS);
-	if ((error = hammer_checkspace(fdip->hmp, HAMMER_CHECKSPACE_SLOP_CREATE)) != 0)
+	if ((error = hammer_checkspace(fdip->hmp, HAMMER_CHKSPC_CREATE)) != 0)
 		return (error);
 
 	hammer_start_transaction(&trans, fdip->hmp);
@@ -1597,7 +1597,7 @@ hammer_vop_nrmdir(struct vop_nrmdir_args *ap)
 	dip = VTOI(ap->a_dvp);
 
 	if (hammer_nohistory(dip) == 0 &&
-	    (error = hammer_checkspace(dip->hmp, HAMMER_CHECKSPACE_SLOP_REMOVE)) != 0) {
+	    (error = hammer_checkspace(dip->hmp, HAMMER_CHKSPC_REMOVE)) != 0) {
 		return (error);
 	}
 
@@ -1634,7 +1634,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 	if (ip->flags & HAMMER_INODE_RO)
 		return (EROFS);
 	if (hammer_nohistory(ip) == 0 &&
-	    (error = hammer_checkspace(ip->hmp, HAMMER_CHECKSPACE_SLOP_REMOVE)) != 0) {
+	    (error = hammer_checkspace(ip->hmp, HAMMER_CHKSPC_REMOVE)) != 0) {
 		return (error);
 	}
 
@@ -1835,7 +1835,7 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 
 	if (dip->flags & HAMMER_INODE_RO)
 		return (EROFS);
-	if ((error = hammer_checkspace(dip->hmp, HAMMER_CHECKSPACE_SLOP_CREATE)) != 0)
+	if ((error = hammer_checkspace(dip->hmp, HAMMER_CHKSPC_CREATE)) != 0)
 		return (error);
 
 	/*
@@ -1923,7 +1923,7 @@ hammer_vop_nwhiteout(struct vop_nwhiteout_args *ap)
 	dip = VTOI(ap->a_dvp);
 
 	if (hammer_nohistory(dip) == 0 &&
-	    (error = hammer_checkspace(dip->hmp, HAMMER_CHECKSPACE_SLOP_CREATE)) != 0) {
+	    (error = hammer_checkspace(dip->hmp, HAMMER_CHKSPC_CREATE)) != 0) {
 		return (error);
 	}
 

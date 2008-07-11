@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.35 2008/07/11 01:22:29 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.36 2008/07/11 05:44:23 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -81,13 +81,26 @@ hammer_flusher_sync(hammer_mount_t hmp)
 /*
  * Sync all inodes pending on the flusher - return immediately.
  */
-void
+int
 hammer_flusher_async(hammer_mount_t hmp)
 {
+	int seq;
+
 	if (hmp->flusher.td) {
+		seq = hmp->flusher.next;
 		if (hmp->flusher.signal++ == 0)
 			wakeup(&hmp->flusher.signal);
+	} else {
+		seq = hmp->flusher.done;
 	}
+	return(seq);
+}
+
+void
+hammer_flusher_wait(hammer_mount_t hmp, int seq)
+{
+	while ((int)(seq - hmp->flusher.done) > 0)
+		tsleep(&hmp->flusher.done, 0, "hmrfls", 0);
 }
 
 void
@@ -592,6 +605,16 @@ hammer_flusher_meta_limit(hammer_mount_t hmp)
 {
 	if (hmp->locked_dirty_space + hmp->io_running_space >
 	    hammer_limit_dirtybufspace) {
+		return(1);
+	}
+	return(0);
+}
+
+int
+hammer_flusher_meta_halflimit(hammer_mount_t hmp)
+{
+	if (hmp->locked_dirty_space + hmp->io_running_space >
+	    hammer_limit_dirtybufspace / 2) {
 		return(1);
 	}
 	return(0);

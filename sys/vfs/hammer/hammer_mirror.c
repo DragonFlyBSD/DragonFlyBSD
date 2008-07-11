@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.11 2008/07/11 01:22:29 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.12 2008/07/11 05:44:23 dillon Exp $
  */
 /*
  * HAMMER mirroring ioctls - serialize and deserialize modifications made
@@ -133,6 +133,15 @@ retry:
 	error = hammer_btree_first(&cursor);
 	while (error == 0) {
 		/*
+		 * Yield to more important tasks
+		 */
+		if (error == 0) {
+			error = hammer_signal_check(trans->hmp);
+			if (error)
+				break;
+		}
+
+		/*
 		 * An internal node can be returned in mirror-filtered
 		 * mode and indicates that the scan is returning a skip
 		 * range in the cursor->cmirror structure.
@@ -208,20 +217,6 @@ retry:
 			eatdisk = 1;
 			goto didwrite;
 			
-		}
-
-		/*
-		 * Yield to more important tasks
-		 */
-		if ((error = hammer_signal_check(trans->hmp)) != 0)
-			break;
-		if (trans->hmp->sync_lock.wanted) {
-			tsleep(trans, 0, "hmrslo", hz / 10);
-		}
-		if (trans->hmp->locked_dirty_space +
-		    trans->hmp->io_running_space > hammer_limit_dirtybufspace) {
-			hammer_flusher_async(trans->hmp);
-			tsleep(trans, 0, "hmrslo", hz / 10);
 		}
 
 		/*
@@ -312,11 +307,14 @@ hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
 	union hammer_ioc_mrecord_any mrec;
 	struct hammer_cursor cursor;
 	u_int32_t localization;
+	int checkspace_count = 0;
 	int error;
 	int bytes;
 	char *uptr;
+	int seq;
 
 	localization = (u_int32_t)mirror->pfs_id << 16;
+	seq = trans->hmp->flusher.act;
 
 	/*
 	 * Validate the mirror structure and relocalize the tracking keys.
@@ -350,7 +348,35 @@ hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
 	 * Loop until our input buffer has been exhausted.
 	 */
 	while (error == 0 &&
-	       mirror->count + sizeof(mrec.head) <= mirror->size) {
+		mirror->count + sizeof(mrec.head) <= mirror->size) {
+
+	        /*
+		 * Don't blow out the buffer cache.  Leave room for frontend
+		 * cache as well.
+		 */
+		if (hammer_flusher_meta_halflimit(trans->hmp) ||
+		    hammer_flusher_undo_exhausted(trans, 1)) {
+			hammer_unlock_cursor(&cursor, 0);
+			hammer_flusher_wait(trans->hmp, seq);
+			hammer_lock_cursor(&cursor, 0);
+			seq = hammer_flusher_async(trans->hmp);
+		}
+
+		/*
+		 * If there is insufficient free space it may be due to
+		 * reserved bigblocks, which flushing might fix.
+		 */
+		if (hammer_checkspace(trans->hmp, HAMMER_CHKSPC_MIRROR)) {
+			if (++checkspace_count == 10) {
+				error = ENOSPC;
+				break;
+			}
+			hammer_unlock_cursor(&cursor, 0);
+			hammer_flusher_wait(trans->hmp, seq);
+			hammer_lock_cursor(&cursor, 0);
+			seq = hammer_flusher_async(trans->hmp);
+		}
+
 
 		/*
 		 * Acquire and validate header
@@ -668,8 +694,6 @@ hammer_mirror_delete_at_cursor(hammer_cursor_t cursor,
 
 	elm = &cursor->node->ondisk->elms[cursor->index];
 	KKASSERT(elm->leaf.base.btype == HAMMER_BTREE_TYPE_RECORD);
-
-	kprintf("mirror_delete %016llx %016llx\n", elm->leaf.base.obj_id, elm->leaf.base.key);
 
 	trans = cursor->trans;
 	hammer_sync_lock_sh(trans);
