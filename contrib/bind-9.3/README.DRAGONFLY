@@ -5,6 +5,8 @@
     bind-9.3.4.tar.gz distribution.  No files have been moved
     or modified from their extracted position.
 
+    This also has the patch from 9.3.5 to 9.3.5-P1 backported here.
+
     This distribution was downloaded from the following site:
 
 	http://www.isc.org/index.pl?/sw/bind/

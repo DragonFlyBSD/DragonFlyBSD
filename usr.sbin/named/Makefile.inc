@@ -1,13 +1,15 @@
 # From: Id: Makefile.inc,v 8.4 1996/03/03 17:42:43 vixie Exp
 # $FreeBSD: src/usr.sbin/named/Makefile.inc,v 1.12.2.3 2001/07/22 18:57:06 dillon Exp $
-# $DragonFly: src/usr.sbin/named/Makefile.inc,v 1.10 2007/07/31 21:47:14 dillon Exp $
+# $DragonFly: src/usr.sbin/named/Makefile.inc,v 1.11 2008/07/11 22:42:30 reed Exp $
 
 .ifndef (Mk.Inc)
 Mk.Inc?=defined
 
 BIND_DIR?=	${.CURDIR}/../../contrib/bind-9.3
 
-VER=		9.3.4-P1
+# P2 doesn't officially exist from ISC
+# this is the patch for 9.3.5-P1 backported to 9.3.4-P1
+VER=		9.3.4-P2
 
 PS=		ps
 PIDDIR=		/var/run

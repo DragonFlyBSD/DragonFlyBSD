@@ -1,4 +1,11 @@
 
+	--- 9.3.5-P1 released ---
+
+2375.   [security]      Fully randomize UDP query ports to improve
+			forgery resilience. [RT #17949]
+
+(9.3.5 not in DragonFly at this time, just the -P1 above.)
+
 	--- 9.3.4-P1 released ---
 
 2203.	[security]	Query id generation was cryptographically weak.
