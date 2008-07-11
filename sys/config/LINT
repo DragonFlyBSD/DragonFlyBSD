@@ -3,7 +3,10 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.166 2008/07/09 16:23:56 thomas Exp $
+# $DragonFly: src/sys/config/LINT,v 1.167 2008/07/11 18:42:14 thomas Exp $
+#
+# See the kernconf(5) manual page for more information on the format of
+# this file.
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -122,7 +125,11 @@ options 	ROOTDEVNAME=\"ufs:da0s2e\"
 #   are required by your hardware.
 #
 
-# Mandatory:
+# To make an SMP kernel both SMP and APIC_IO are usually
+# specified.  SMP boxes with severely broken BIOSes which
+# boot fine for non-SMP builds *might* work in SMP mode
+# if you define SMP and leave APIC_IO turned off.
+#
 options 	SMP			# Symmetric MultiProcessor Kernel
 options 	APIC_IO			# Symmetric (APIC) I/O
 
@@ -658,8 +665,6 @@ options 	ICMP_BANDLIM
 
 # DUMMYNET enables the "dummynet" bandwidth limiter. You need
 # IPFIREWALL as well. See the dummynet(4) and ipfw(8) manpages for more info.
-# When you run DUMMYNET it is advisable to also have "options HZ=1000"
-# to achieve a smoother scheduling of the traffic.
 #
 options 	DUMMYNET
 
@@ -697,23 +702,9 @@ device		hfa			#FORE PCA-200E ATM PCI
 # of network device drivers, which has significant benefits in terms
 # of robustness to overloads and responsivity, as well as permitting
 # accurate scheduling of the CPU time between kernel network processing
-# and other activities. The drawback is a moderate (up to 1/HZ seconds)
-# potential increase in response times.
-#
-# Additionally, you can enable/disable polling at runtime with the
-# sysctl variable kern.polling.enable (defaults off), set polling
-# frequency with the sysctl variable kern.polling.pollhz (default 2000,
-# range 1..30000) and select the CPU fraction reserved to userland with
-# the sysctl variable kern.polling.user_frac (default 50, range 0..100).
-#
-# It is strongly recommended to set the sysctl variable kern.polling.pollhz
-# to 1000 or 2000 as to achieve smoother behaviour.
-#
-# Only the following devices support this mode of operation at the time of
-# this writing:
-#
-# bce, bge, dc, em, fwe, fxp, nfe, nge, re, rl, sis, stge, vge, vr, wi, xl
- 
+# and other activities. The drawback is a moderate (up to 1/pollhz seconds)
+# potential increase in response times. See polling(4) for further details.
+# 
 options         DEVICE_POLLING
 
 
@@ -723,9 +714,9 @@ options         DEVICE_POLLING
 #
 # Only the root, /usr, and /tmp filesystems need be statically
 # compiled; everything else will be automatically loaded at mount
-# time.  (Exception: the UFS family---FFS, and MFS --- cannot
-# currently be demand-loaded.)  Some people still prefer to statically
-# compile other filesystems as well.
+# time.  (Exception: HAMMER and the UFS family --- FFS, and MFS ---
+# cannot currently be demand-loaded.)  Some people still prefer
+# to statically compile other filesystems as well.
 #
 # NB: The PORTAL and UNION filesystems are known to be
 # buggy, and WILL panic your system if you attempt to do anything with
@@ -758,7 +749,7 @@ options		HAMMER			#HAMMER filesystem
 options 	FFS_ROOT		#FFS usable as root device
 options 	NFS_ROOT		#NFS usable as root device
 
-# Soft updates is technique for improving filesystem speed and
+# Soft updates is technique for improving UFS filesystem speed and
 # making abrupt shutdown less risky.
 options 	SOFTUPDATES
 
@@ -849,8 +840,6 @@ options 	_KPOSIX_VERSION=199309L
 
 # The granularity of operation is controlled by the kernel option HZ whose
 # default value (100) means a granularity of 10ms (1s/HZ).
-# Some subsystems, such as DUMMYNET or DEVICE_POLLING, might benefit from
-# a smaller granularity such as 1ms or less.
 # Consider, however, that reducing the granularity too much might
 # cause excessive overhead in clock interrupt processing,
 # potentially causing ticks to be missed and thus actually reducing
@@ -1287,7 +1276,7 @@ device		natapicam	# ATAPI CAM layer emulation
 device		nataraid	# support for ATA software RAID controllers
 device		natausb		# ATA-over-USB support
 
-#The following options are valid on the ATA driver:
+#The following options are valid on the ATA & NATA drivers:
 #
 # ATA_STATIC_ID:	controller numbering is static (like the old driver)
 #			else the device numbers are dynamically allocated.
