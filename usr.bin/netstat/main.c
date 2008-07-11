@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1993 Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.4 (Berkeley) 3/1/94
  * $FreeBSD: src/usr.bin/netstat/main.c,v 1.34.2.12 2001/09/17 15:17:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/main.c,v 1.15 2008/07/09 09:29:17 thomas Exp $
+ * $DragonFly: src/usr.bin/netstat/main.c,v 1.16 2008/07/11 23:09:18 thomas Exp $
  */
 
 #include <sys/param.h>
@@ -748,9 +748,9 @@ static void
 usage(void)
 {
 	(void)fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
-"usage: netstat [-AaLnSW] [-c cpu] [-f protocol_family | -p protocol]\n"
+"usage: netstat [-AaLnPSW] [-c cpu] [-f protocol_family | -p protocol]\n"
 "               [-M core] [-N system]",
-"       netstat -i | -I interface [-abdnt] [-f address_family]\n"
+"       netstat -i | -I interface [-aBbdnt] [-f address_family]\n"
 "               [-M core] [-N system]",
 "       netstat -w wait [-I interface] [-d] [-M core] [-N system]",
 "       netstat -s [-s] [-z] [-f protocol_family | -p protocol] [-M core]",
