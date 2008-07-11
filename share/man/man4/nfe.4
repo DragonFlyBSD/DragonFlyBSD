@@ -1,5 +1,5 @@
 .\"	$OpenBSD: nfe.4,v 1.10 2006/08/30 22:56:05 jmc Exp $
-.\"	$DragonFly: src/share/man/man4/nfe.4,v 1.6 2008/07/09 15:51:43 thomas Exp $
+.\"	$DragonFly: src/share/man/man4/nfe.4,v 1.7 2008/07/11 10:38:50 thomas Exp $
 .\"
 .\" Copyright (c) 2006 Jonathan Gray <jsg@openbsd.org>
 .\"
@@ -91,6 +91,13 @@ The default value is 128.
 With heavier interrupt moderation (eg. imtimer=-250),
 it is recommended to increase rx_ring_count (eg. to 512).
 .El
+.Pp
+For more information on configuring this device, see
+.Xr ifconfig 8 .
+The
+.Nm
+driver supports
+.Xr polling 4 .
 .Sh SEE ALSO
 .Xr arp 4 ,
 .Xr ifmedia 4 ,

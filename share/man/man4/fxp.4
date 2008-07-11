@@ -24,7 +24,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/fxp.4,v 1.11.2.8 2003/02/17 21:20:39 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/fxp.4,v 1.5 2008/05/02 02:05:05 swildner Exp $
+.\" $DragonFly: src/share/man/man4/fxp.4,v 1.6 2008/07/11 10:38:50 thomas Exp $
 .\"
 .Dd January 19, 1997
 .Dt FXP 4
@@ -83,6 +83,13 @@ flag with
 .Xr ifconfig 8
 will download the microcode to the chip if it is available.
 .El
+.Pp
+For more information on configuring this device, see
+.Xr ifconfig 8 .
+The
+.Nm
+driver supports
+.Xr polling 4 .
 .Sh DIAGNOSTICS
 .Bl -diag
 .It "fxp%d: couldn't map memory"

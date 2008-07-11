@@ -29,7 +29,7 @@
 .\" THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD$
-.\" $DragonFly: src/share/man/man4/re.4,v 1.6 2008/03/16 15:50:22 hasso Exp $
+.\" $DragonFly: src/share/man/man4/re.4,v 1.7 2008/07/11 10:38:50 thomas Exp $
 .\"
 .Dd November 2, 2006
 .Dt RE 4
@@ -135,6 +135,10 @@ Force half duplex operation.
 .Pp
 For more information on configuring this device, see
 .Xr ifconfig 8 .
+The
+.Nm
+driver supports
+.Xr polling 4 .
 .Ss MIB Variables
 A number of per-interface variables are implemented in the
 .Va hw.re Ns Em X

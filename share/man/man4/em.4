@@ -30,7 +30,7 @@
 .\" * Other names and brands may be claimed as the property of others.
 .\"
 .\" $FreeBSD: src/share/man/man4/em.4,v 1.2.2.6 2003/02/01 01:21:31 pdeuskar Exp $
-.\" $DragonFly: src/share/man/man4/em.4,v 1.11 2008/02/01 21:40:53 swildner Exp $
+.\" $DragonFly: src/share/man/man4/em.4,v 1.12 2008/07/11 10:38:50 thomas Exp $
 .\"
 .Dd February 1, 2008
 .Dt EM 4
@@ -188,6 +188,10 @@ is not specified, the driver defaults to
 .Pp
 For more information on configuring this device, see
 .Xr ifconfig 8 .
+The
+.Nm
+driver supports
+.Xr polling 4 .
 .Sh TUNABLES
 .Bl -tag -width ".Va hw.em.int_throttle_ceil"
 .It Va hw.em.int_throttle_ceil

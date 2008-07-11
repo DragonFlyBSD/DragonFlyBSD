@@ -23,7 +23,7 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/fwe.4,v 1.2.4.4 2003/12/25 22:47:38 brueffer Exp $
-.\" $DragonFly: src/share/man/man4/fwe.4,v 1.4 2006/02/17 19:37:09 swildner Exp $
+.\" $DragonFly: src/share/man/man4/fwe.4,v 1.5 2008/07/11 10:38:50 thomas Exp $
 .\"
 .\"
 .Dd November 8, 2002
@@ -58,11 +58,12 @@ the
 .Va hw.firewire.fwe.stream_ch
 .Xr sysctl 8 .
 .Pp
-This driver supports
-.Xr polling 4
-as well if it is compiled with the
-.Dv DEVICE_POLLING
-option.
+For more information on configuring this device, see
+.Xr ifconfig 8 .
+The
+.Nm
+driver supports
+.Xr polling 4 .
 .Sh SEE ALSO
 .Xr arp 4 ,
 .Xr firewire 4 ,
