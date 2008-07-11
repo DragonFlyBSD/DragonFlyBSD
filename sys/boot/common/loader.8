@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
-.\" $DragonFly: src/sys/boot/common/loader.8,v 1.18 2008/05/02 02:05:07 swildner Exp $
+.\" $DragonFly: src/sys/boot/common/loader.8,v 1.19 2008/07/11 23:42:46 thomas Exp $
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
@@ -408,7 +408,9 @@ MIB variable.
 .El
 .Pp
 Other variables are used to override kernel tunable parameters.
-The following tunables are available:
+The following
+.Nm
+tunables are available:
 .Bl -tag -width Va
 .It Va hw.physmem
 Limit the amount of physical memory the system will use.
@@ -839,7 +841,8 @@ Unspecified error.
 .Xr tuning 7 ,
 .Xr boot 8 ,
 .Xr btxld 8 ,
-.Xr loader.4th 8
+.Xr loader.4th 8 ,
+.Xr sysctl 8
 .Sh STANDARDS
 For the purposes of ANS Forth compliance, loader is an
 .Bf Em

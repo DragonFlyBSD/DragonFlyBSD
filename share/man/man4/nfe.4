@@ -1,5 +1,5 @@
 .\"	$OpenBSD: nfe.4,v 1.10 2006/08/30 22:56:05 jmc Exp $
-.\"	$DragonFly: src/share/man/man4/nfe.4,v 1.7 2008/07/11 10:38:50 thomas Exp $
+.\"	$DragonFly: src/share/man/man4/nfe.4,v 1.8 2008/07/11 23:42:46 thomas Exp $
 .\"
 .\" Copyright (c) 2006 Jonathan Gray <jsg@openbsd.org>
 .\"
@@ -60,13 +60,13 @@ Set 100Mbps (Fast Ethernet) operation.
 .It Cm 1000baseT
 Set 1000Mbps (Gigabit Ethernet) operation (recent models only).
 .El
-.Ss MIB Variables and Kernel Tunables
+.Ss MIB Variables and Loader Tunables
 The following per-interface variables are implemented in the
 .Va hw.nfe Ns Em X
 branch of the
 .Xr sysctl 3
 MIB.
-Kernel tunables with the same names, but using prefix
+Loader tunables with the same names, but using the prefix
 .Va hw.nfe
 are also implemented, they apply to all
 .Nm
