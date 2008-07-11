@@ -1,7 +1,7 @@
 <!--#set var="title" value="The DragonFly Team" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/about/team.shtml,v 1.9 2008/01/26 17:00:09 nth Exp $ -->
+<!-- $DragonFly: site/data/about/team.shtml,v 1.10 2008/07/11 20:56:41 thomas Exp $ -->
 
 
 <p>
@@ -115,6 +115,12 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 </tr>
 
 <tr><td valign="top">
+<a href="mailto:thomas.nikolajsen 'at' mail 'dot' dk">Thomas Nikolajsen</a> </td>
+<td valign="top">Networking, documentation (commit access)
+</td>
+</tr>
+
+<tr><td valign="top">
 <a href="mailto:eirikn 'at' kerneled 'dot' com">Eirik Nygaard</a> </td>
 <td valign="top">Code cleanness and userland utilities
 (commit access)</td>
@@ -170,8 +176,7 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 
 <tr><td valign="top">
 <a href="mailto:hrs 'at' allbsd 'dot' org">Hiroki Sato</a></td>
-<td valign="top">IPv6, KAME integration, i18n framework and documentation, mirro
-r in Japan (AllBSD) (commit access)
+<td valign="top">IPv6, KAME integration, i18n framework and documentation, mirror in Japan (AllBSD) (commit access)
 </td>
 </tr>
 
@@ -250,7 +255,7 @@ r in Japan (AllBSD) (commit access)
 
 <tr><td valign="top">
 <a href="mailto:qhwt 'plus' dfly 'at' les 'dot' ath 'dot' cx">YONETANI Tomokazu</a></td>
-<td valign="top">device drivers(ACPI, ServeRAID, etc), fixing minor build problems, testing patches (commit access)
+<td valign="top">device drivers (ACPI, ServeRAID, etc), fixing minor build problems, testing patches (commit access)
 </td>
 </tr>
 
