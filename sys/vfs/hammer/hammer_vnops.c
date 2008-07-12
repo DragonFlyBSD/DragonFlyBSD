@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.88 2008/07/12 23:04:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.89 2008/07/12 23:47:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -2683,6 +2683,7 @@ retry:
 	} else {
 		hammer_done_cursor(&cursor);
 	}
+	hammer_inode_waitreclaims(ip->hmp);
 	if (error == EDEADLK)
 		goto retry;
 
