@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.115 2008/07/12 01:09:46 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.116 2008/07/12 02:44:59 dillon Exp $
  */
 
 /*
@@ -1068,7 +1068,7 @@ vclean_unlocked(struct vnode *vp)
 {
 	vx_get(vp);
 	if (sysref_isactive(&vp->v_sysref) == 0)
-		vclean_vxlocked(vp, 0);
+		vgone_vxlocked(vp);
 	vx_put(vp);
 }
 
