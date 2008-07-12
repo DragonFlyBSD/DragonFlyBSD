@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.56 2008/05/18 20:30:20 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.57 2008/07/12 20:36:06 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -543,6 +543,14 @@ static struct da_quirk_entry da_quirk_table[] =
 		 * PR: 103702
 		 */
 		{T_DIRECT, SIP_MEDIA_REMOVABLE, "ChipsBnk", "USB*",
+		 "*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Samsung YP-U3 mp3-player
+		 * PR: 125398
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Samsung", "YP-U3",
 		 "*"}, /*quirks*/ DA_Q_NO_SYNC_CACHE
 	},
 	{
