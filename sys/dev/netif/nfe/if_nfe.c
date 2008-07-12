@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.34 2008/07/09 15:51:43 thomas Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.35 2008/07/12 05:48:32 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -564,10 +564,12 @@ nfe_attach(device_t dev)
 			sc, 0, nfe_sysctl_imtime, "I",
 			"Interrupt moderation time (usec).  "
 			"0 to disable interrupt moderation.");
-	SYSCTL_ADD_INT(NULL, SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
 		       "rx_ring_count", CTLFLAG_RD, &sc->sc_rx_ring_count,
 		       0, "RX ring count");
-	SYSCTL_ADD_INT(NULL, SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+	SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
 		       "debug", CTLFLAG_RW, &sc->sc_debug,
 		       0, "control debugging printfs");
 
@@ -902,18 +904,22 @@ nfe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	struct nfe_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct mii_data *mii;
-	int error = 0, mask;
+	int error = 0, mask, jumbo_cap;
 
 	switch (cmd) {
 	case SIOCSIFMTU:
-		if (((sc->sc_caps & NFE_JUMBO_SUP) &&
-		     ifr->ifr_mtu > NFE_JUMBO_MTU) ||
-		    ((sc->sc_caps & NFE_JUMBO_SUP) == 0 &&
-		     ifr->ifr_mtu > ETHERMTU)) {
+		if ((sc->sc_caps & NFE_JUMBO_SUP) && sc->rxq.jbuf != NULL)
+			jumbo_cap = 1;
+		else
+			jumbo_cap = 0;
+
+		if ((jumbo_cap && ifr->ifr_mtu > NFE_JUMBO_MTU) ||
+		    (!jumbo_cap && ifr->ifr_mtu > ETHERMTU)) {
 			return EINVAL;
 		} else if (ifp->if_mtu != ifr->ifr_mtu) {
 			ifp->if_mtu = ifr->ifr_mtu;
-			nfe_init(sc);
+			if (ifp->if_flags & IFF_RUNNING)
+				nfe_init(sc);
 		}
 		break;
 	case SIOCSIFFLAGS:
@@ -1578,11 +1584,6 @@ nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 		descsize = sizeof(struct nfe_desc32);
 	}
 
-	ring->jbuf = kmalloc(sizeof(struct nfe_jbuf) * NFE_JPOOL_COUNT,
-			     M_DEVBUF, M_WAITOK | M_ZERO);
-	ring->data = kmalloc(sizeof(struct nfe_rx_data) * sc->sc_rx_ring_count,
-			     M_DEVBUF, M_WAITOK | M_ZERO);
-
 	ring->bufsz = MCLBYTES;
 	ring->cur = ring->next = 0;
 
@@ -1590,7 +1591,7 @@ nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
 				   sc->sc_rx_ring_count * descsize, 1,
-				   sc->sc_rx_ring_count * descsize,
+				   BUS_SPACE_MAXSIZE_32BIT,
 				   0, &ring->tag);
 	if (error) {
 		if_printf(&sc->arpcom.ac_if,
@@ -1622,19 +1623,27 @@ nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 	}
 
 	if (sc->sc_caps & NFE_JUMBO_SUP) {
+		ring->jbuf = kmalloc(sizeof(struct nfe_jbuf) * NFE_JPOOL_COUNT,
+				     M_DEVBUF, M_WAITOK | M_ZERO);
+
 		error = nfe_jpool_alloc(sc, ring);
 		if (error) {
 			if_printf(&sc->arpcom.ac_if,
 				  "could not allocate jumbo frames\n");
-			return error;
+			kfree(ring->jbuf, M_DEVBUF);
+			ring->jbuf = NULL;
+			/* Allow jumbo frame allocation to fail */
 		}
 	}
+
+	ring->data = kmalloc(sizeof(struct nfe_rx_data) * sc->sc_rx_ring_count,
+			     M_DEVBUF, M_WAITOK | M_ZERO);
 
 	error = bus_dma_tag_create(NULL, 1, 0,
 				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   MCLBYTES, 1, MCLBYTES,
-				   0, &ring->data_tag);
+				   MCLBYTES, 1, BUS_SPACE_MAXSIZE_32BIT,
+				   BUS_DMA_ALLOCNOW, &ring->data_tag);
 	if (error) {
 		if_printf(&sc->arpcom.ac_if,
 			  "could not create RX mbuf DMA tag\n");
@@ -1737,7 +1746,7 @@ nfe_free_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 	}
 
 	nfe_jpool_free(sc, ring);
-	
+
 	if (ring->jbuf != NULL)
 		kfree(ring->jbuf, M_DEVBUF);
 	if (ring->data != NULL)
@@ -1825,7 +1834,7 @@ nfe_jpool_alloc(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 	error = bus_dma_tag_create(NULL, PAGE_SIZE, 0,
 				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   NFE_JPOOL_SIZE, 1, NFE_JPOOL_SIZE,
+				   NFE_JPOOL_SIZE, 1, BUS_SPACE_MAXSIZE_32BIT,
 				   0, &ring->jtag);
 	if (error) {
 		if_printf(&sc->arpcom.ac_if,
@@ -1909,7 +1918,7 @@ nfe_alloc_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
 				   NFE_TX_RING_COUNT * descsize, 1,
-				   NFE_TX_RING_COUNT * descsize,
+				   BUS_SPACE_MAXSIZE_32BIT,
 				   0, &ring->tag);
 	if (error) {
 		if_printf(&sc->arpcom.ac_if,
@@ -1943,9 +1952,9 @@ nfe_alloc_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 	error = bus_dma_tag_create(NULL, PAGE_SIZE, 0,
 				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   NFE_JBYTES * NFE_MAX_SCATTER,
-				   NFE_MAX_SCATTER, NFE_JBYTES,
-				   0, &ring->data_tag);
+				   NFE_JBYTES, NFE_MAX_SCATTER,
+				   BUS_SPACE_MAXSIZE_32BIT,
+				   BUS_DMA_ALLOCNOW, &ring->data_tag);
 	if (error) {
 		if_printf(&sc->arpcom.ac_if,
 			  "could not create TX buf DMA tag\n");
