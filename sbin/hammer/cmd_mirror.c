@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.8 2008/07/12 02:48:46 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.9 2008/07/12 23:05:30 dillon Exp $
  */
 
 #include "hammer.h"
@@ -111,11 +111,21 @@ hammer_cmd_mirror_read(char **av, int ac)
 	if (ac == 2)
 		mirror.tid_beg = strtoull(av[1], NULL, 0);
 
-	fprintf(stderr, "mirror-read: Mirror from %016llx to %016llx\n",
+	fprintf(stderr, "Mirror-read: Mirror from %016llx to %016llx\n",
 		mirror.tid_beg, mirror.tid_end);
 	if (mirror.key_beg.obj_id != (int64_t)HAMMER_MIN_OBJID) {
-		fprintf(stderr, "mirror-read: Resuming at object %016llx\n",
+		fprintf(stderr, "Mirror-read: Resuming at object %016llx\n",
 			mirror.key_beg.obj_id);
+	}
+
+	/*
+	 * Nothing to do if begin equals end.
+	 */
+	if (mirror.tid_beg == mirror.tid_end) {
+		fprintf(stderr, "Mirror-read: No work to do, stopping\n");
+		write_mrecord(1, HAMMER_MREC_TYPE_TERM,
+			      &mrec_tmp, sizeof(mrec_tmp.sync));
+		goto done;
 	}
 
 	/*
@@ -193,10 +203,6 @@ hammer_cmd_mirror_read(char **av, int ac)
 				hammer_set_cycle(&mirror.key_beg, sync_tid);
 				fprintf(stderr, "Cyclefile %s updated to 0x%016llx\n",
 					CyclePath, sync_tid);
-			} else {
-				fprintf(stderr, "Source can update synctid "
-						"to 0x%016llx\n",
-					sync_tid);
 			}
 		}
 	} else if (CyclePath) {
@@ -205,6 +211,7 @@ hammer_cmd_mirror_read(char **av, int ac)
 				"fully updated unless you use mirror-copy\n");
 		hammer_set_cycle(&mirror.key_beg, mirror.tid_beg);
 	}
+done:
 	fprintf(stderr, "Mirror-read %s succeeded\n", filesystem);
 }
 
@@ -322,6 +329,12 @@ hammer_cmd_mirror_write(char **av, int ac)
 	 * Read and process the termination sync record.
 	 */
 	mrec = read_mrecord(0, &error, &pickup);
+
+	if (mrec && mrec->head.type == HAMMER_MREC_TYPE_TERM) {
+		fprintf(stderr, "Mirror-write: No work to do, stopping\n");
+		return;
+	}
+
 	if (mrec == NULL || 
 	    mrec->head.type != HAMMER_MREC_TYPE_SYNC ||
 	    mrec->head.rec_size != sizeof(mrec->sync)) {
@@ -775,11 +788,11 @@ generate_mrec_header(int fd, int fdout, int pfs_id,
 	pfs.ondisk = &mrec_tmp.pfs.pfsd;
 	pfs.bytes = sizeof(mrec_tmp.pfs.pfsd);
 	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) != 0) {
-		fprintf(stderr, "mirror-read: not a HAMMER fs/pseudofs!\n");
+		fprintf(stderr, "Mirror-read: not a HAMMER fs/pseudofs!\n");
 		exit(1);
 	}
 	if (pfs.version != HAMMER_IOC_PSEUDOFS_VERSION) {
-		fprintf(stderr, "mirror-read: HAMMER pfs version mismatch!\n");
+		fprintf(stderr, "Mirror-read: HAMMER pfs version mismatch!\n");
 		exit(1);
 	}
 
@@ -892,6 +905,10 @@ update_pfs_snapshot(int fd, hammer_tid_t snapshot_tid, int pfs_id)
 			perror("update_pfs_snapshot (rewrite)");
 			exit(1);
 		}
+		fprintf(stderr,
+			"Mirror-write: Completed, updated snapshot "
+			"to %016llx\n",
+			snapshot_tid);
 	}
 }
 
