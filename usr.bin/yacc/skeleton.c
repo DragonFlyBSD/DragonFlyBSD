@@ -36,7 +36,7 @@
  * @(#)skeleton.c	5.8 (Berkeley) 4/29/95
  *
  * $FreeBSD: src/usr.bin/yacc/skeleton.c,v 1.28.2.1 2001/07/19 05:46:39 peter Exp $
- * $DragonFly: src/usr.bin/yacc/skeleton.c,v 1.6 2006/01/22 13:38:50 swildner Exp $
+ * $DragonFly: src/usr.bin/yacc/skeleton.c,v 1.7 2008/07/12 16:52:48 mneumann Exp $
  */
 
 #include "defs.h"
@@ -55,6 +55,7 @@
 
 const char *banner[] = {
     "#include <stdlib.h>",
+    "#include <string.h>",
     "#define YYBYACC 1",
     "#define YYMAJOR 1",
     "#define YYMINOR 9",
@@ -313,6 +314,10 @@ const char *body[] = {
     "                YYPREFIX, yystate, yyn, yyrule[yyn]);",
     "#endif",
     "    yym = yylen[yyn];",
+    "    if (yym)",
+    "        yyval = yyvsp[1-yym];",
+    "    else",
+    "        memset(&yyval, 0, sizeof yyval);",
     "    yyval = yyvsp[1-yym];",
     "    switch (yyn)",
     "    {",
