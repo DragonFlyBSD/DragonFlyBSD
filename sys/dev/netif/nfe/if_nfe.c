@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.36 2008/07/12 06:01:37 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.37 2008/07/12 06:16:22 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -590,7 +590,7 @@ nfe_attach(device_t dev)
 #endif
 	ifp->if_watchdog = nfe_watchdog;
 	ifp->if_init = nfe_init;
-	ifq_set_maxlen(&ifp->if_snd, NFE_IFQ_MAXLEN);
+	ifq_set_maxlen(&ifp->if_snd, NFE_TX_RING_COUNT - 1);
 	ifq_set_ready(&ifp->if_snd);
 
 	ifp->if_capabilities = IFCAP_VLAN_MTU;
