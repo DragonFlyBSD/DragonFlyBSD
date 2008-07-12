@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfevar.h,v 1.11 2006/02/19 13:57:02 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfevar.h,v 1.11 2008/07/12 06:16:22 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfevar.h,v 1.12 2008/07/12 09:27:49 sephe Exp $	*/
 
 /*
  * Copyright (c) 2005 Jonathan Gray <jsg@openbsd.org>
@@ -30,7 +30,7 @@ struct nfe_tx_ring {
 	struct nfe_desc64	*desc64;
 
 	bus_dma_tag_t		data_tag;
-	struct nfe_tx_data	data[NFE_TX_RING_COUNT];
+	struct nfe_tx_data	*data;
 	int			queued;
 	int			cur;
 	int			next;
@@ -113,6 +113,7 @@ struct nfe_softc {
 	uint32_t		sc_irq_enable;
 	int			sc_imtime;
 	int			sc_rx_ring_count;
+	int			sc_tx_ring_count;
 	int			sc_debug;
 	struct sysctl_ctx_list	sc_sysctl_ctx;
 	struct sysctl_oid	*sc_sysctl_tree;

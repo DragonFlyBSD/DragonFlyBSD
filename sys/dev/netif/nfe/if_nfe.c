@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.38 2008/07/12 06:50:04 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.39 2008/07/12 09:27:49 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -163,9 +163,11 @@ static int	nfe_sysctl_imtime(SYSCTL_HANDLER_ARGS);
 
 static int	nfe_debug = 0;
 static int	nfe_rx_ring_count = NFE_RX_RING_DEF_COUNT;
+static int	nfe_tx_ring_count = NFE_TX_RING_DEF_COUNT;
 static int	nfe_imtime = 0;	/* Disable interrupt moderation */
 
 TUNABLE_INT("hw.nfe.rx_ring_count", &nfe_rx_ring_count);
+TUNABLE_INT("hw.nfe.tx_ring_count", &nfe_tx_ring_count);
 TUNABLE_INT("hw.nfe.imtimer", &nfe_imtime);
 TUNABLE_INT("hw.nfe.debug", &nfe_debug);
 
@@ -464,6 +466,7 @@ nfe_attach(device_t dev)
 	 * Initialize sysctl variables
 	 */
 	sc->sc_rx_ring_count = nfe_rx_ring_count;
+	sc->sc_tx_ring_count = nfe_tx_ring_count;
 	sc->sc_debug = nfe_debug;
 	if (nfe_imtime < 0) {
 		sc->sc_flags |= NFE_F_DYN_IM;
@@ -570,6 +573,10 @@ nfe_attach(device_t dev)
 		       0, "RX ring count");
 	SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
 		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
+		       "tx_ring_count", CTLFLAG_RD, &sc->sc_tx_ring_count,
+		       0, "TX ring count");
+	SYSCTL_ADD_INT(&sc->sc_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->sc_sysctl_tree), OID_AUTO,
 		       "debug", CTLFLAG_RW, &sc->sc_debug,
 		       0, "control debugging printfs");
 
@@ -590,7 +597,7 @@ nfe_attach(device_t dev)
 #endif
 	ifp->if_watchdog = nfe_watchdog;
 	ifp->if_init = nfe_init;
-	ifq_set_maxlen(&ifp->if_snd, NFE_TX_RING_COUNT - 1);
+	ifq_set_maxlen(&ifp->if_snd, sc->sc_tx_ring_count - 1);
 	ifq_set_ready(&ifp->if_snd);
 
 	ifp->if_capabilities = IFCAP_VLAN_MTU;
@@ -1153,7 +1160,7 @@ nfe_txeof(struct nfe_softc *sc)
 skip:
 		ring->queued--;
 		KKASSERT(ring->queued >= 0);
-		ring->next = (ring->next + 1) % NFE_TX_RING_COUNT;
+		ring->next = (ring->next + 1) % sc->sc_tx_ring_count;
 	}
 
 	if (data != NULL) {	/* at least one slot freed */
@@ -1224,7 +1231,7 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 
 	error = 0;
 
-	if (ring->queued + ctx.nsegs >= NFE_TX_RING_COUNT - 1) {
+	if (ring->queued + ctx.nsegs >= sc->sc_tx_ring_count - 1) {
 		bus_dmamap_unload(ring->data_tag, map);
 		error = ENOBUFS;
 		goto back;
@@ -1251,7 +1258,7 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 	 */
 
 	for (i = 0; i < ctx.nsegs; i++) {
-		j = (ring->cur + i) % NFE_TX_RING_COUNT;
+		j = (ring->cur + i) % sc->sc_tx_ring_count;
 		data = &ring->data[j];
 
 		if (sc->sc_caps & NFE_40BIT_ADDR) {
@@ -1277,7 +1284,7 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 		vtag = 0;
 
 		ring->queued++;
-		KKASSERT(ring->queued <= NFE_TX_RING_COUNT);
+		KKASSERT(ring->queued <= sc->sc_tx_ring_count);
 	}
 
 	/* the whole mbuf chain has been DMA mapped, fix last descriptor */
@@ -1296,7 +1303,7 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 	 * whole mess until the first descriptor in the map is flagged.
 	 */
 	for (i = ctx.nsegs - 1; i >= 0; --i) {
-		j = (ring->cur + i) % NFE_TX_RING_COUNT;
+		j = (ring->cur + i) % sc->sc_tx_ring_count;
 		if (sc->sc_caps & NFE_40BIT_ADDR) {
 			desc64 = &ring->desc64[j];
 			desc64->flags |= htole16(NFE_TX_VALID);
@@ -1305,7 +1312,7 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 			desc32->flags |= htole16(NFE_TX_VALID);
 		}
 	}
-	ring->cur = (ring->cur + ctx.nsegs) % NFE_TX_RING_COUNT;
+	ring->cur = (ring->cur + ctx.nsegs) % sc->sc_tx_ring_count;
 
 	/* Exchange DMA map */
 	data_map->map = data->map;
@@ -1464,7 +1471,7 @@ nfe_init(void *xsc)
 
 	NFE_WRITE(sc, NFE_RING_SIZE,
 	    (sc->sc_rx_ring_count - 1) << 16 |
-	    (NFE_TX_RING_COUNT - 1));
+	    (sc->sc_tx_ring_count - 1));
 
 	NFE_WRITE(sc, NFE_RXBUFSZ, sc->rxq.bufsz);
 
@@ -1926,7 +1933,7 @@ nfe_alloc_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 	error = bus_dma_tag_create(NULL, PAGE_SIZE, 0,
 				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   NFE_TX_RING_COUNT * descsize, 1,
+				   sc->sc_tx_ring_count * descsize, 1,
 				   BUS_SPACE_MAXSIZE_32BIT,
 				   0, &ring->tag);
 	if (error) {
@@ -1946,7 +1953,7 @@ nfe_alloc_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 	}
 
 	error = bus_dmamap_load(ring->tag, ring->map, *desc,
-				NFE_TX_RING_COUNT * descsize,
+				sc->sc_tx_ring_count * descsize,
 				nfe_ring_dma_addr, &ring->physaddr,
 				BUS_DMA_WAITOK);
 	if (error) {
@@ -1957,6 +1964,9 @@ nfe_alloc_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 		ring->tag = NULL;
 		return error;
 	}
+
+	ring->data = kmalloc(sizeof(struct nfe_tx_data) * sc->sc_tx_ring_count,
+			     M_DEVBUF, M_WAITOK | M_ZERO);
 
 	error = bus_dma_tag_create(NULL, PAGE_SIZE, 0,
 				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
@@ -1970,7 +1980,7 @@ nfe_alloc_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 		return error;
 	}
 
-	for (i = 0; i < NFE_TX_RING_COUNT; i++) {
+	for (i = 0; i < sc->sc_tx_ring_count; i++) {
 		error = bus_dmamap_create(ring->data_tag, 0,
 					  &ring->data[i].map);
 		if (error) {
@@ -1994,7 +2004,7 @@ nfe_reset_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 {
 	int i;
 
-	for (i = 0; i < NFE_TX_RING_COUNT; i++) {
+	for (i = 0; i < sc->sc_tx_ring_count; i++) {
 		struct nfe_tx_data *data = &ring->data[i];
 
 		if (sc->sc_caps & NFE_40BIT_ADDR)
@@ -2030,7 +2040,7 @@ nfe_free_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 		struct nfe_tx_data *data;
 		int i;
 
-		for (i = 0; i < NFE_TX_RING_COUNT; ++i) {
+		for (i = 0; i < sc->sc_tx_ring_count; ++i) {
 			data = &ring->data[i];
 
 			if (data->m != NULL) {
@@ -2042,6 +2052,9 @@ nfe_free_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 
 		bus_dma_tag_destroy(ring->data_tag);
 	}
+
+	if (ring->data != NULL)
+		kfree(ring->data, M_DEVBUF);
 
 	if (ring->tag != NULL) {
 		void *desc;
