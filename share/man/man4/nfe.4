@@ -1,5 +1,5 @@
 .\"	$OpenBSD: nfe.4,v 1.10 2006/08/30 22:56:05 jmc Exp $
-.\"	$DragonFly: src/share/man/man4/nfe.4,v 1.8 2008/07/11 23:42:46 thomas Exp $
+.\"	$DragonFly: src/share/man/man4/nfe.4,v 1.9 2008/07/12 09:31:08 sephe Exp $
 .\"
 .\" Copyright (c) 2006 Jonathan Gray <jsg@openbsd.org>
 .\"
@@ -15,7 +15,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd July 9, 2008
+.Dd July 12, 2008
 .Dt NFE 4
 .Os
 .Sh NAME
@@ -90,6 +90,10 @@ sysctl node is read-only.
 The default value is 128.
 With heavier interrupt moderation (eg. imtimer=-250),
 it is recommended to increase rx_ring_count (eg. to 512).
+.It Va tx_ring_count
+TX ring count.
+sysctl node is read-only.
+The default value is 256.
 .El
 .Pp
 For more information on configuring this device, see
