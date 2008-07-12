@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.100 2008/07/12 02:47:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.101 2008/07/12 23:04:50 dillon Exp $
  */
 
 #include "hammer.h"
@@ -41,11 +41,16 @@
 
 static int	hammer_unload_inode(struct hammer_inode *ip);
 static void	hammer_free_inode(hammer_inode_t ip);
-static void	hammer_flush_inode_core(hammer_inode_t ip, int flags);
+static void	hammer_flush_inode_core(hammer_inode_t ip,
+					hammer_flush_group_t flg, int flags);
 static int	hammer_setup_child_callback(hammer_record_t rec, void *data);
+#if 0
 static int	hammer_syncgrp_child_callback(hammer_record_t rec, void *data);
-static int	hammer_setup_parent_inodes(hammer_inode_t ip);
-static int	hammer_setup_parent_inodes_helper(hammer_record_t record);
+#endif
+static int	hammer_setup_parent_inodes(hammer_inode_t ip,
+					hammer_flush_group_t flg);
+static int	hammer_setup_parent_inodes_helper(hammer_record_t record,
+					hammer_flush_group_t flg);
 static void	hammer_inode_wakereclaims(hammer_inode_t ip);
 
 #ifdef DEBUG_TRUNCATE
@@ -215,9 +220,14 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 			++hammer_count_reclaiming;
 			++hmp->inode_reclaims;
 			ip->flags |= HAMMER_INODE_RECLAIM;
+
+			/*
+			 * Poke the flusher.  If we don't do this programs
+			 * will start to stall on the reclaiming count.
+			 */
 			if (hmp->inode_reclaims > HAMMER_RECLAIM_FLUSH &&
-			    (hmp->inode_reclaims & 255) == 0) {
-				hammer_flusher_async(hmp);
+			   (hmp->inode_reclaims & 255) == 0) {
+			       hammer_flusher_async(hmp, NULL);
 			}
 		}
 		hammer_rel_inode(ip, 1);
@@ -978,7 +988,9 @@ retry:
 	 */
 	if (error == 0 && (ip->flags & HAMMER_INODE_DELETED) == 0) {
 		/*
-		 * Generate a record and write it to the media
+		 * Generate a record and write it to the media.  We clean-up
+		 * the state before releasing so we do not have to set-up
+		 * a flush_group.
 		 */
 		record = hammer_alloc_mem_record(ip, 0);
 		record->type = HAMMER_MEM_RECORD_INODE;
@@ -1294,19 +1306,48 @@ hammer_modify_inode(hammer_inode_t ip, int flags)
 void
 hammer_flush_inode(hammer_inode_t ip, int flags)
 {
+	hammer_mount_t hmp;
+	hammer_flush_group_t flg;
 	int good;
 
 	/*
-	 * Trivial 'nothing to flush' case.  If the inode is ina SETUP
+	 * Setup a flush group.  It remains cached so it is ok if we
+	 * wind up not flushing the inode.
+	 */
+	hmp = ip->hmp;
+	flg = TAILQ_LAST(&ip->hmp->flush_group_list, hammer_flush_group_list);
+
+	if (flg) {
+		if (flg->running) {
+			flg = NULL;
+		} else if (flg->total_count + flg->refs >
+			   ip->hmp->undo_rec_limit) {
+			hammer_flusher_async(ip->hmp, flg);
+			flg = NULL;
+		}
+	}
+	if (flg == NULL) {
+		flg = kmalloc(sizeof(*flg), M_HAMMER, M_WAITOK|M_ZERO);
+		TAILQ_INIT(&flg->flush_list);
+		TAILQ_INSERT_TAIL(&hmp->flush_group_list, flg, flush_entry);
+	}
+
+	/*
+	 * Trivial 'nothing to flush' case.  If the inode is in a SETUP
 	 * state we have to put it back into an IDLE state so we can
 	 * drop the extra ref.
+	 *
+	 * If we have a parent dependancy we must still fall through
+	 * so we can run it.
 	 */
 	if ((ip->flags & HAMMER_INODE_MODMASK) == 0) {
-		if (ip->flush_state == HAMMER_FST_SETUP) {
+		if (ip->flush_state == HAMMER_FST_SETUP &&
+		    TAILQ_EMPTY(&ip->target_list)) {
 			ip->flush_state = HAMMER_FST_IDLE;
 			hammer_rel_inode(ip, 0);
 		}
-		return;
+		if (ip->flush_state == HAMMER_FST_IDLE)
+			return;
 	}
 
 	/*
@@ -1319,7 +1360,7 @@ hammer_flush_inode(hammer_inode_t ip, int flags)
 		 * our children may not be flushable so we have to re-test
 		 * with that additional knowledge.
 		 */
-		hammer_flush_inode_core(ip, flags);
+		hammer_flush_inode_core(ip, flg, flags);
 		break;
 	case HAMMER_FST_SETUP:
 		/*
@@ -1330,19 +1371,19 @@ hammer_flush_inode(hammer_inode_t ip, int flags)
 		 * can't flush, 0 means there weren't any dependancies, and
 		 * 1 means we have good connectivity.
 		 */
-		good = hammer_setup_parent_inodes(ip);
+		good = hammer_setup_parent_inodes(ip, flg);
 
 		/*
 		 * We can continue if good >= 0.  Determine how many records
 		 * under our inode can be flushed (and mark them).
 		 */
 		if (good >= 0) {
-			hammer_flush_inode_core(ip, flags);
+			hammer_flush_inode_core(ip, flg, flags);
 		} else {
 			ip->flags |= HAMMER_INODE_REFLUSH;
 			if (flags & HAMMER_FLUSH_SIGNAL) {
 				ip->flags |= HAMMER_INODE_RESIGNAL;
-				hammer_flusher_async(ip->hmp);
+				hammer_flusher_async(ip->hmp, flg);
 			}
 		}
 		break;
@@ -1355,7 +1396,7 @@ hammer_flush_inode(hammer_inode_t ip, int flags)
 			ip->flags |= HAMMER_INODE_REFLUSH;
 		if (flags & HAMMER_FLUSH_SIGNAL) {
 			ip->flags |= HAMMER_INODE_RESIGNAL;
-			hammer_flusher_async(ip->hmp);
+			hammer_flusher_async(ip->hmp, flg);
 		}
 		break;
 	}
@@ -1370,19 +1411,15 @@ hammer_flush_inode(hammer_inode_t ip, int flags)
  *     ref/rel code later, the rel CAN block.
  */
 static int
-hammer_setup_parent_inodes(hammer_inode_t ip)
+hammer_setup_parent_inodes(hammer_inode_t ip, hammer_flush_group_t flg)
 {
 	hammer_record_t depend;
-#if 0
-	hammer_record_t next;
-	hammer_inode_t  pip;
-#endif
 	int good;
 	int r;
 
 	good = 0;
 	TAILQ_FOREACH(depend, &ip->target_list, target_entry) {
-		r = hammer_setup_parent_inodes_helper(depend);
+		r = hammer_setup_parent_inodes_helper(depend, flg);
 		KKASSERT(depend->target_ip == ip);
 		if (r < 0 && good == 0)
 			good = -1;
@@ -1390,39 +1427,6 @@ hammer_setup_parent_inodes(hammer_inode_t ip)
 			good = 1;
 	}
 	return(good);
-
-#if 0
-retry:
-	good = 0;
-	next = TAILQ_FIRST(&ip->target_list);
-	if (next) {
-		hammer_ref(&next->lock);
-		hammer_ref(&next->ip->lock);
-	}
-	while ((depend = next) != NULL) {
-		if (depend->target_ip == NULL) {
-			pip = depend->ip;
-			hammer_rel_mem_record(depend);
-			hammer_rel_inode(pip, 0);
-			goto retry;
-		}
-		KKASSERT(depend->target_ip == ip);
-		next = TAILQ_NEXT(depend, target_entry);
-		if (next) {
-			hammer_ref(&next->lock);
-			hammer_ref(&next->ip->lock);
-		}
-		r = hammer_setup_parent_inodes_helper(depend);
-		if (r < 0 && good == 0)
-			good = -1;
-		if (r > 0)
-			good = 1;
-		pip = depend->ip;
-		hammer_rel_mem_record(depend);
-		hammer_rel_inode(pip, 0);
-	}
-	return(good);
-#endif
 }
 
 /*
@@ -1442,7 +1446,8 @@ retry:
  * Return -1 if we can't resolve the dependancy and there is no connectivity.
  */
 static int
-hammer_setup_parent_inodes_helper(hammer_record_t record)
+hammer_setup_parent_inodes_helper(hammer_record_t record,
+				  hammer_flush_group_t flg)
 {
 	hammer_mount_t hmp;
 	hammer_inode_t pip;
@@ -1461,7 +1466,7 @@ hammer_setup_parent_inodes_helper(hammer_record_t record)
 	 * allow the operation yet anyway (the second return -1).
 	 */
 	if (record->flush_state == HAMMER_FST_FLUSH) {
-		if (record->flush_group != hmp->flusher.next) {
+		if (record->flush_group != flg) {
 			pip->flags |= HAMMER_INODE_REFLUSH;
 			return(-1);
 		}
@@ -1477,7 +1482,7 @@ hammer_setup_parent_inodes_helper(hammer_record_t record)
 	 */
 	KKASSERT(record->flush_state == HAMMER_FST_SETUP);
 
-	good = hammer_setup_parent_inodes(pip);
+	good = hammer_setup_parent_inodes(pip, flg);
 
 	/*
 	 * We can't flush ip because it has no connectivity (XXX also check
@@ -1496,7 +1501,7 @@ hammer_setup_parent_inodes_helper(hammer_record_t record)
 	 * group as the parent.
 	 */
 	if (pip->flush_state != HAMMER_FST_FLUSH)
-		hammer_flush_inode_core(pip, HAMMER_FLUSH_RECURSION);
+		hammer_flush_inode_core(pip, flg, HAMMER_FLUSH_RECURSION);
 	KKASSERT(pip->flush_state == HAMMER_FST_FLUSH);
 	KKASSERT(record->flush_state == HAMMER_FST_SETUP);
 
@@ -1516,7 +1521,7 @@ hammer_setup_parent_inodes_helper(hammer_record_t record)
 		return(-1);
 	} else
 #endif
-	if (pip->flush_group == pip->hmp->flusher.next) {
+	if (pip->flush_group == flg) {
 		/*
 		 * This is the record we wanted to synchronize.  If the
 		 * record went into a flush state while we blocked it 
@@ -1525,6 +1530,7 @@ hammer_setup_parent_inodes_helper(hammer_record_t record)
 		if (record->flush_state != HAMMER_FST_FLUSH) {
 			record->flush_state = HAMMER_FST_FLUSH;
 			record->flush_group = pip->flush_group;
+			++record->flush_group->refs;
 			hammer_ref(&record->lock);
 		} else {
 			KKASSERT(record->flush_group == pip->flush_group);
@@ -1551,7 +1557,7 @@ hammer_setup_parent_inodes_helper(hammer_record_t record)
  * This is the core routine placing an inode into the FST_FLUSH state.
  */
 static void
-hammer_flush_inode_core(hammer_inode_t ip, int flags)
+hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 {
 	int go_count;
 
@@ -1564,10 +1570,11 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 	if (ip->flush_state == HAMMER_FST_IDLE)
 		hammer_ref(&ip->lock);
 	ip->flush_state = HAMMER_FST_FLUSH;
-	ip->flush_group = ip->hmp->flusher.next;
+	ip->flush_group = flg;
 	++ip->hmp->flusher.group_lock;
 	++ip->hmp->count_iqueued;
 	++hammer_count_iqueued;
+	++flg->total_count;
 
 	/*
 	 * We need to be able to vfsync/truncate from the backend.
@@ -1581,17 +1588,35 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 	/*
 	 * Figure out how many in-memory records we can actually flush
 	 * (not including inode meta-data, buffers, etc).
-	 *
-	 * Do not add new records to the flush if this is a recursion or
-	 * if we must still complete a flush from the previous flush cycle.
 	 */
 	if (flags & HAMMER_FLUSH_RECURSION) {
+		/*
+		 * If this is a upwards recursion we do not want to
+		 * recurse down again!
+		 */
 		go_count = 1;
 	} else if (ip->flags & HAMMER_INODE_WOULDBLOCK) {
+		/*
+		 * No new records are added if we must complete a flush
+		 * from a previous cycle, but we do have to move the records
+		 * from the previous cycle to the current one.
+		 */
+#if 0
 		go_count = RB_SCAN(hammer_rec_rb_tree, &ip->rec_tree, NULL,
 				   hammer_syncgrp_child_callback, NULL);
+#endif
 		go_count = 1;
 	} else {
+		/*
+		 * Normal flush, scan records and bring them into the flush.
+		 * Directory adds and deletes are usually skipped (they are
+		 * grouped with the related inode rather then with the
+		 * directory).
+		 *
+		 * go_count can be negative, which means the scan aborted
+		 * due to the flush group being over-full and we should
+		 * flush what we have.
+		 */
 		go_count = RB_SCAN(hammer_rec_rb_tree, &ip->rec_tree, NULL,
 				   hammer_setup_child_callback, NULL);
 	}
@@ -1610,13 +1635,14 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 			--hammer_count_iqueued;
 
 			ip->flush_state = HAMMER_FST_SETUP;
+			ip->flush_group = NULL;
 			if (ip->flags & HAMMER_INODE_VHELD) {
 				ip->flags &= ~HAMMER_INODE_VHELD;
 				vrele(ip->vp);
 			}
 			if (flags & HAMMER_FLUSH_SIGNAL) {
 				ip->flags |= HAMMER_INODE_RESIGNAL;
-				hammer_flusher_async(ip->hmp);
+				hammer_flusher_async(ip->hmp, flg);
 			}
 			if (--ip->hmp->flusher.group_lock == 0)
 				wakeup(&ip->hmp->flusher.group_lock);
@@ -1673,12 +1699,13 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 	/*
 	 * The flusher list inherits our inode and reference.
 	 */
-	TAILQ_INSERT_TAIL(&ip->hmp->flush_list, ip, flush_entry);
+	KKASSERT(flg->running == 0);
+	TAILQ_INSERT_TAIL(&flg->flush_list, ip, flush_entry);
 	if (--ip->hmp->flusher.group_lock == 0)
 		wakeup(&ip->hmp->flusher.group_lock);
 
 	if (flags & HAMMER_FLUSH_SIGNAL) {
-		hammer_flusher_async(ip->hmp);
+		hammer_flusher_async(ip->hmp, flg);
 	}
 }
 
@@ -1696,6 +1723,7 @@ hammer_flush_inode_core(hammer_inode_t ip, int flags)
 static int
 hammer_setup_child_callback(hammer_record_t rec, void *data)
 {
+	hammer_flush_group_t flg;
 	hammer_inode_t target_ip;
 	hammer_inode_t ip;
 	int r;
@@ -1709,15 +1737,10 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 	 * Don't get confused between record deletion and, say, directory
 	 * entry deletion.  The deletion of a directory entry that is on
 	 * the media has nothing to do with the record deletion flags.
-	 *
-	 * The flush_group for a record already in a flush state must
-	 * be updated.  This case can only occur if the inode deleting
-	 * too many records had to be moved to the next flush group.
 	 */
 	if (rec->flags & (HAMMER_RECF_DELETED_FE|HAMMER_RECF_DELETED_BE)) {
 		if (rec->flush_state == HAMMER_FST_FLUSH) {
-			KKASSERT(rec->ip->flags & HAMMER_INODE_WOULDBLOCK);
-			rec->flush_group = rec->ip->flush_group;
+			KKASSERT(rec->flush_group == rec->ip->flush_group);
 			r = 1;
 		} else {
 			r = 0;
@@ -1730,45 +1753,75 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 	 * can be flushed.
 	 */
 	ip = rec->ip;
+	flg = ip->flush_group;
 	r = 0;
 
 	switch(rec->flush_state) {
 	case HAMMER_FST_IDLE:
 		/*
-		 * Record has no setup dependancy, we can flush it.
+		 * The record has no setup dependancy, we can flush it.
 		 */
 		KKASSERT(rec->target_ip == NULL);
 		rec->flush_state = HAMMER_FST_FLUSH;
-		rec->flush_group = ip->flush_group;
+		rec->flush_group = flg;
+		++flg->refs;
 		hammer_ref(&rec->lock);
 		r = 1;
 		break;
 	case HAMMER_FST_SETUP:
 		/*
-		 * Record has a setup dependancy.  Try to include the
-		 * target ip in the flush. 
-		 *
-		 * We have to be careful here, if we do not do the right
-		 * thing we can lose track of dirty inodes and the system
-		 * will lockup trying to allocate buffers.
+		 * The record has a setup dependancy.  These are typically
+		 * directory entry adds and deletes.  Such entries will be
+		 * flushed when their inodes are flushed so we do not have
+		 * to add them to the flush here.
 		 */
 		target_ip = rec->target_ip;
 		KKASSERT(target_ip != NULL);
 		KKASSERT(target_ip->flush_state != HAMMER_FST_IDLE);
+
+		/*
+		 * If the target IP is already flushing in our group
+		 * we are golden, otherwise make sure the target
+		 * reflushes.
+		 */
 		if (target_ip->flush_state == HAMMER_FST_FLUSH) {
-			/*
-			 * If the target IP is already flushing in our group
-			 * we are golden, otherwise make sure the target
-			 * reflushes.
-			 */
-			if (target_ip->flush_group == ip->flush_group) {
+			if (target_ip->flush_group == flg) {
 				rec->flush_state = HAMMER_FST_FLUSH;
-				rec->flush_group = ip->flush_group;
+				rec->flush_group = flg;
+				++flg->refs;
 				hammer_ref(&rec->lock);
 				r = 1;
 			} else {
 				target_ip->flags |= HAMMER_INODE_REFLUSH;
 			}
+			break;
+		} 
+
+		/*
+		 * Target IP is not yet flushing.  This can get complex
+		 * because we have to be careful about the recursion.
+		 */
+		if ((target_ip->flags & HAMMER_INODE_RECLAIM) == 0 &&
+		    (target_ip->flags & HAMMER_INODE_REFLUSH) == 0) {
+			/*
+			 * We aren't reclaiming or trying to flush target_ip.
+			 * Let the record flush with the target.
+			 */
+			/*r = 0;*/
+		} else if (flg->total_count + flg->refs >
+			   ip->hmp->undo_rec_limit) {
+			/*
+			 * Our flush group is over-full and we risk blowing
+			 * out the UNDO FIFO.  Stop the scan, flush what we
+			 * have, then reflush the directory.
+			 *
+			 * The directory may be forced through multiple
+			 * flush groups before it can be completely
+			 * flushed.
+			 */
+			ip->flags |= HAMMER_INODE_REFLUSH;
+			ip->flags |= HAMMER_INODE_RESIGNAL;
+			r = -1;
 		} else if (rec->type == HAMMER_MEM_RECORD_ADD) {
 			/*
 			 * If the target IP is not flushing we can force
@@ -1777,9 +1830,10 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 			 * hand that we CAN deal with.
 			 */
 			rec->flush_state = HAMMER_FST_FLUSH;
-			rec->flush_group = ip->flush_group;
+			rec->flush_group = flg;
+			++flg->refs;
 			hammer_ref(&rec->lock);
-			hammer_flush_inode_core(target_ip,
+			hammer_flush_inode_core(target_ip, flg,
 						HAMMER_FLUSH_RECURSION);
 			r = 1;
 		} else {
@@ -1793,9 +1847,10 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 			 * XXX
 			 */
 			rec->flush_state = HAMMER_FST_FLUSH;
-			rec->flush_group = ip->flush_group;
+			rec->flush_group = flg;
+			++flg->refs;
 			hammer_ref(&rec->lock);
-			hammer_flush_inode_core(target_ip,
+			hammer_flush_inode_core(target_ip, flg,
 						HAMMER_FLUSH_RECURSION);
 			r = 1;
 		}
@@ -1803,22 +1858,18 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 	case HAMMER_FST_FLUSH:
 		/* 
 		 * If the WOULDBLOCK flag is set records may have been left
-		 * over from a previous flush attempt and should be moved
-		 * to the current flush group.  If it is not set then all
-		 * such records had better have been flushed already or
-		 * already associated with the current flush group.
+		 * over from a previous flush attempt.  The flush group will
+		 * have been left intact - we are probably reflushing it
+		 * now.
 		 */
-		if (ip->flags & HAMMER_INODE_WOULDBLOCK) {
-			rec->flush_group = ip->flush_group;
-		} else {
-			KKASSERT(rec->flush_group == ip->flush_group);
-		}
+		KKASSERT(rec->flush_group == flg);
 		r = 1;
 		break;
 	}
 	return(r);
 }
 
+#if 0
 /*
  * This version just moves records already in a flush state to the new
  * flush group and that is it.
@@ -1830,46 +1881,30 @@ hammer_syncgrp_child_callback(hammer_record_t rec, void *data)
 
 	switch(rec->flush_state) {
 	case HAMMER_FST_FLUSH:
-		if (ip->flags & HAMMER_INODE_WOULDBLOCK) {
-			rec->flush_group = ip->flush_group;
-		} else {
-			KKASSERT(rec->flush_group == ip->flush_group);
-		}
+		KKASSERT(rec->flush_group == ip->flush_group);
 		break;
 	default:
 		break;
 	}
 	return(0);
 }
+#endif
 
 /*
- * Wait for a previously queued flush to complete.  Not only do we need to
- * wait for the inode to sync out, we also may have to run the flusher again
- * to get it past the UNDO position pertaining to the flush so a crash does
- * not 'undo' our flush.
+ * Wait for a previously queued flush to complete.
  */
 void
 hammer_wait_inode(hammer_inode_t ip)
 {
-	hammer_mount_t hmp = ip->hmp;
-	int sync_group;
-	int waitcount;
+	hammer_flush_group_t flg;
 
-	sync_group = ip->flush_group;
-	waitcount = (ip->flags & HAMMER_INODE_REFLUSH) ? 2 : 1;
-
+	flg = NULL;
 	if (ip->flush_state == HAMMER_FST_SETUP) {
 		hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
 	}
-	/* XXX can we make this != FST_IDLE ? check SETUP depends */
-	while (ip->flush_state == HAMMER_FST_FLUSH &&
-	       (ip->flush_group - sync_group) < waitcount) {
+	while (ip->flush_state != HAMMER_FST_IDLE) {
 		ip->flags |= HAMMER_INODE_FLUSHW;
 		tsleep(&ip->flags, 0, "hmrwin", 0);
-	}
-	while (hmp->flusher.done - sync_group < waitcount) {
-		kprintf("Y");
-		hammer_flusher_sync(hmp);
 	}
 }
 
@@ -1928,38 +1963,56 @@ hammer_flush_inode_done(hammer_inode_t ip)
 		ip->flags |= HAMMER_INODE_REFLUSH;
 
 	/*
-	 * Clean up the vnode ref
-	 */
-	if (ip->flags & HAMMER_INODE_VHELD) {
-		ip->flags &= ~HAMMER_INODE_VHELD;
-		vrele(ip->vp);
-	}
-
-	/*
-	 * Adjust flush_state.  The target state (idle or setup) shouldn't
-	 * be terribly important since we will reflush if we really need
-	 * to do anything.
-	 *
-	 * If the WOULDBLOCK flag is set we must re-flush immediately
-	 * to continue a potentially large deletion.  The flag also causes
-	 * the hammer_setup_child_callback() to move records in the old
-	 * flush group to the new one.
+	 * Adjust the flush state.
 	 */
 	if (ip->flags & HAMMER_INODE_WOULDBLOCK) {
-		ip->flush_state = HAMMER_FST_IDLE;
-		hammer_flush_inode_core(ip, HAMMER_FLUSH_SIGNAL);
+		/*
+		 * We were unable to flush out all our records, leave the
+		 * inode in a flush state and in the current flush group.
+		 *
+		 * This occurs if the UNDO block gets too full
+		 * or there is too much dirty meta-data and allows the
+		 * flusher to finalize the UNDO block and then re-flush.
+		 */
 		ip->flags &= ~HAMMER_INODE_WOULDBLOCK;
-		dorel = 1;
-	} else if (TAILQ_EMPTY(&ip->target_list) && RB_EMPTY(&ip->rec_tree)) {
-		ip->flush_state = HAMMER_FST_IDLE;
-		dorel = 1;
-	} else {
-		ip->flush_state = HAMMER_FST_SETUP;
 		dorel = 0;
-	}
+	} else {
+		/*
+		 * Remove from the flush_group
+		 */
+		TAILQ_REMOVE(&ip->flush_group->flush_list, ip, flush_entry);
+		ip->flush_group = NULL;
 
-	--hmp->count_iqueued;
-	--hammer_count_iqueued;
+		/*
+		 * Clean up the vnode ref and tracking counts.
+		 */
+		if (ip->flags & HAMMER_INODE_VHELD) {
+			ip->flags &= ~HAMMER_INODE_VHELD;
+			vrele(ip->vp);
+		}
+		--hmp->count_iqueued;
+		--hammer_count_iqueued;
+
+		/*
+		 * And adjust the state.
+		 */
+		if (TAILQ_EMPTY(&ip->target_list) && RB_EMPTY(&ip->rec_tree)) {
+			ip->flush_state = HAMMER_FST_IDLE;
+			dorel = 1;
+		} else {
+			ip->flush_state = HAMMER_FST_SETUP;
+			dorel = 0;
+		}
+
+		/*
+		 * If the frontend is waiting for a flush to complete,
+		 * wake it up.
+		 */
+		if (ip->flags & HAMMER_INODE_FLUSHW) {
+			ip->flags &= ~HAMMER_INODE_FLUSHW;
+			wakeup(&ip->flags);
+		}
+	}
 
 	/*
 	 * If the frontend made more changes and requested another flush,
@@ -1984,16 +2037,6 @@ hammer_flush_inode_done(hammer_inode_t ip)
 		--hmp->rsv_inodes;
 	}
 
-	/*
-	 * Finally, if the frontend is waiting for a flush to complete,
-	 * wake it up.
-	 */
-	if (ip->flush_state != HAMMER_FST_FLUSH) {
-		if (ip->flags & HAMMER_INODE_FLUSHW) {
-			ip->flags &= ~HAMMER_INODE_FLUSHW;
-			wakeup(&ip->flags);
-		}
-	}
 	if (dorel)
 		hammer_rel_inode(ip, 0);
 }
@@ -2019,7 +2062,7 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 
 #if 1
 	if (record->flush_group != record->ip->flush_group) {
-		kprintf("sync_record %p ip %p bad flush group %d %d\n", record, record->ip, record->flush_group ,record->ip->flush_group);
+		kprintf("sync_record %p ip %p bad flush group %p %p\n", record, record->ip, record->flush_group ,record->ip->flush_group);
 		Debugger("blah2");
 		return(0);
 	}
@@ -2197,7 +2240,7 @@ hammer_sync_inode(hammer_inode_t ip)
 	while ((depend = next) != NULL) {
 		next = TAILQ_NEXT(depend, target_entry);
 		if (depend->flush_state == HAMMER_FST_FLUSH &&
-		    depend->flush_group == ip->hmp->flusher.act) {
+		    depend->flush_group == ip->flush_group) {
 			/*
 			 * If this is an ADD that was deleted by the frontend
 			 * the frontend nlinks count will have already been

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.113 2008/07/12 02:47:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.114 2008/07/12 23:04:50 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -210,12 +210,32 @@ typedef struct hammer_objid_cache {
  * Associate an inode with a B-Tree node to cache search start positions
  */
 typedef struct hammer_node_cache {
-	TAILQ_ENTRY(hammer_node_cache) entry;
+	TAILQ_ENTRY(hammer_node_cache)	entry;
 	struct hammer_node		*node;
 	struct hammer_inode		*ip;
 } *hammer_node_cache_t;
 
 TAILQ_HEAD(hammer_node_cache_list, hammer_node_cache);
+
+/*
+ * Structure used to organize flush groups.  Flush groups must be
+ * organized into chunks in order to avoid blowing out the UNDO FIFO.
+ * Without this a 'sync' could end up flushing 50,000 inodes in a single
+ * transaction.
+ */
+struct hammer_flush_group {
+	TAILQ_ENTRY(hammer_flush_group)	flush_entry;
+	TAILQ_HEAD(, hammer_inode)	flush_list;
+	int				inode_count;	/* inode load */
+	int				total_count;	/* record load */
+	int				running;	/* group is running */
+	int				closed;
+	int				refs;
+};
+
+typedef struct hammer_flush_group *hammer_flush_group_t;
+
+TAILQ_HEAD(hammer_flush_group_list, hammer_flush_group);
 
 /*
  * Structure used to represent an inode in-memory.
@@ -250,7 +270,7 @@ TAILQ_HEAD(hammer_node_list, hammer_node);
 struct hammer_inode {
 	RB_ENTRY(hammer_inode)	rb_node;
 	hammer_inode_state_t	flush_state;
-	int			flush_group;
+	hammer_flush_group_t	flush_group;
 	TAILQ_ENTRY(hammer_inode) flush_entry;
 	struct hammer_record_list target_list;	/* target of dependant recs */
 	int64_t			obj_id;		/* (key) object identifier */
@@ -368,7 +388,7 @@ struct hammer_record {
 	RB_ENTRY(hammer_record)		rb_node;
 	TAILQ_ENTRY(hammer_record)	target_entry;
 	hammer_inode_state_t		flush_state;
-	int				flush_group;
+	hammer_flush_group_t		flush_group;
 	hammer_record_type_t		type;
 	struct hammer_lock		lock;
 	struct hammer_reserve		*resv;
@@ -614,8 +634,8 @@ typedef struct hammer_reserve *hammer_reserve_t;
  *
  * This is strictly a heuristic.
  */
-#define HAMMER_MAX_UNDOS	1024
-#define HAMMER_MAX_FLUSHERS	4
+#define HAMMER_MAX_UNDOS		1024
+#define HAMMER_MAX_FLUSHERS		4
 
 struct hammer_undo {
 	RB_ENTRY(hammer_undo)	rb_node;
@@ -627,6 +647,7 @@ struct hammer_undo {
 typedef struct hammer_undo *hammer_undo_t;
 
 struct hammer_flusher_info;
+TAILQ_HEAD(hammer_flusher_info_list, hammer_flusher_info);
 
 struct hammer_flusher {
 	int		signal;		/* flusher thread sequencer */
@@ -635,14 +656,13 @@ struct hammer_flusher {
 	int		next;		/* next flush group */
 	int		group_lock;	/* lock sequencing of the next flush */
 	int		exiting;	/* request master exit */
-	int		count;		/* number of slave flushers */
-	int		running;	/* number of slave flushers running */
 	thread_t	td;		/* master flusher thread */
 	hammer_tid_t	tid;		/* last flushed transaction id */
 	int		finalize_want;		/* serialize finalization */
 	struct hammer_lock finalize_lock;	/* serialize finalization */
 	struct hammer_transaction trans;	/* shared transaction */
-	struct hammer_flusher_info *info[HAMMER_MAX_FLUSHERS];
+	struct hammer_flusher_info_list run_list;
+	struct hammer_flusher_info_list ready_list;
 };
 
 /*
@@ -671,6 +691,7 @@ struct hammer_mount {
 	int64_t	rsv_databytes;	/* reserved space due to record data */
 	int	rsv_recs;	/* reserved space due to dirty records */
 	int	rsv_fromdelay;	/* bigblocks reserved due to flush delay */
+	int	undo_rec_limit;	/* based on size of undo area */
 	int	last_newrecords;
 	int	count_newrecords;
 
@@ -705,8 +726,8 @@ struct hammer_mount {
 	struct hammer_undo	undos[HAMMER_MAX_UNDOS];
 	int			undo_alloc;
 	TAILQ_HEAD(, hammer_undo)  undo_lru_list;
-	TAILQ_HEAD(, hammer_inode) flush_list;
 	TAILQ_HEAD(, hammer_reserve) delay_list;
+	struct hammer_flush_group_list	flush_group_list;
 	TAILQ_HEAD(, hammer_objid_cache) objid_cache_list;
 	TAILQ_HEAD(, hammer_reclaim) reclaim_list;
 };
@@ -748,6 +769,7 @@ extern int hammer_debug_tid;
 extern int hammer_debug_recover;
 extern int hammer_debug_recover_faults;
 extern int hammer_debug_cluster_enable;
+extern int hammer_count_fsyncs;
 extern int hammer_count_inodes;
 extern int hammer_count_iqueued;
 extern int hammer_count_reclaiming;
@@ -1093,7 +1115,7 @@ int hammer_signal_check(hammer_mount_t hmp);
 void hammer_flusher_create(hammer_mount_t hmp);
 void hammer_flusher_destroy(hammer_mount_t hmp);
 void hammer_flusher_sync(hammer_mount_t hmp);
-int  hammer_flusher_async(hammer_mount_t hmp);
+int  hammer_flusher_async(hammer_mount_t hmp, hammer_flush_group_t flg);
 void hammer_flusher_wait(hammer_mount_t hmp, int seq);
 int  hammer_flusher_meta_limit(hammer_mount_t hmp);
 int  hammer_flusher_meta_halflimit(hammer_mount_t hmp);

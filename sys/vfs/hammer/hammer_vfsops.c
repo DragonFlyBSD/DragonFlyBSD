@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.61 2008/07/10 21:23:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.62 2008/07/12 23:04:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -57,6 +57,7 @@ int hammer_debug_tid;
 int hammer_debug_recover;		/* -1 will disable, +1 will force */
 int hammer_debug_recover_faults;
 int hammer_debug_cluster_enable = 1;	/* enable read clustering by default */
+int hammer_count_fsyncs;
 int hammer_count_inodes;
 int hammer_count_iqueued;
 int hammer_count_reclaiming;
@@ -118,6 +119,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_recs, CTLFLAG_RW,
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_iqueued, CTLFLAG_RW,
 	   &hammer_limit_iqueued, 0, "");
 
+SYSCTL_INT(_vfs_hammer, OID_AUTO, count_fsyncs, CTLFLAG_RD,
+	   &hammer_count_fsyncs, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_inodes, CTLFLAG_RD,
 	   &hammer_count_inodes, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_iqueued, CTLFLAG_RD,
@@ -297,8 +300,8 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp->undo_lock.refs = 1;
 		hmp->blkmap_lock.refs = 1;
 
-		TAILQ_INIT(&hmp->flush_list);
 		TAILQ_INIT(&hmp->delay_list);
+		TAILQ_INIT(&hmp->flush_group_list);
 		TAILQ_INIT(&hmp->objid_cache_list);
 		TAILQ_INIT(&hmp->undo_lru_list);
 		TAILQ_INIT(&hmp->reclaim_list);
@@ -441,6 +444,16 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 */
 	bcopy(rootvol->ondisk->vol0_blockmap, hmp->blockmap,
 	      sizeof(hmp->blockmap));
+
+	/*
+	 * The undo_rec_limit limits the size of flush groups to avoid
+	 * blowing out the UNDO FIFO.  This calculation is typically in
+	 * the tens of thousands and is designed primarily when small
+	 * HAMMER filesystems are created.
+	 */
+	hmp->undo_rec_limit = hammer_undo_max(hmp) / 8192 + 100;
+	if (hammer_debug_general & 0x0001)
+		kprintf("HAMMER: undo_rec_limit %d\n", hmp->undo_rec_limit);
 
 	error = hammer_recover(hmp, rootvol);
 	if (error) {

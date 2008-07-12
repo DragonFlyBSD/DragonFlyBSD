@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.87 2008/07/12 02:47:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.88 2008/07/12 23:04:50 dillon Exp $
  */
 
 #include "hammer.h"
@@ -303,6 +303,9 @@ hammer_flush_record_done(hammer_record_t record, int error)
 		 */
 		Debugger("flush_record_done error");
 	}
+
+	--record->flush_group->refs;
+	record->flush_group = NULL;
 
 	if (record->flags & HAMMER_RECF_DELETED_BE) {
 		if ((target_ip = record->target_ip) != NULL) {

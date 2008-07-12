@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.36 2008/07/11 05:44:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.37 2008/07/12 23:04:50 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -52,42 +52,52 @@ static void hammer_flusher_flush_inode(hammer_inode_t ip,
  * Support structures for the flusher threads.
  */
 struct hammer_flusher_info {
+	TAILQ_ENTRY(hammer_flusher_info) entry;
 	struct hammer_mount *hmp;
 	thread_t	td;
-	int		startit;
+	int		runstate;
+	int		count;
+	hammer_flush_group_t flg;
 	hammer_inode_t	work_array[HAMMER_FLUSH_GROUP_SIZE];
 };
 
 typedef struct hammer_flusher_info *hammer_flusher_info_t;
 
 /*
- * Sync all inodes pending on the flusher.  This routine may have to be
- * called twice to get them all as some may be queued to a later flush group.
+ * Sync all inodes pending on the flusher.
+ *
+ * All flush groups will be flushed.  This does not queue dirty inodes
+ * to the flush groups, it just flushes out what has already been queued!
  */
 void
 hammer_flusher_sync(hammer_mount_t hmp)
 {
 	int seq;
 
-	if (hmp->flusher.td) {
-		seq = hmp->flusher.next;
-		if (hmp->flusher.signal++ == 0)
-			wakeup(&hmp->flusher.signal);
-		while ((int)(seq - hmp->flusher.done) > 0)
-			tsleep(&hmp->flusher.done, 0, "hmrfls", 0);
-	}
+	seq = hammer_flusher_async(hmp, NULL);
+	while ((int)(seq - hmp->flusher.done) > 0)
+		tsleep(&hmp->flusher.done, 0, "hmrfls", 0);
 }
 
 /*
  * Sync all inodes pending on the flusher - return immediately.
+ *
+ * All flush groups will be flushed.
  */
 int
-hammer_flusher_async(hammer_mount_t hmp)
+hammer_flusher_async(hammer_mount_t hmp, hammer_flush_group_t close_flg)
 {
-	int seq;
+	hammer_flush_group_t flg;
+	int seq = hmp->flusher.next;
 
+	TAILQ_FOREACH(flg, &hmp->flush_group_list, flush_entry) {
+		if (flg->running == 0)
+			++seq;
+		flg->closed = 1;
+		if (flg == close_flg)
+			break;
+	}
 	if (hmp->flusher.td) {
-		seq = hmp->flusher.next;
 		if (hmp->flusher.signal++ == 0)
 			wakeup(&hmp->flusher.signal);
 	} else {
@@ -113,16 +123,16 @@ hammer_flusher_create(hammer_mount_t hmp)
 	hmp->flusher.act = 0;
 	hmp->flusher.done = 0;
 	hmp->flusher.next = 1;
-	hmp->flusher.count = 0;
 	hammer_ref(&hmp->flusher.finalize_lock);
+	TAILQ_INIT(&hmp->flusher.run_list);
+	TAILQ_INIT(&hmp->flusher.ready_list);
 
 	lwkt_create(hammer_flusher_master_thread, hmp,
 		    &hmp->flusher.td, NULL, 0, -1, "hammer-M");
 	for (i = 0; i < HAMMER_MAX_FLUSHERS; ++i) {
 		info = kmalloc(sizeof(*info), M_HAMMER, M_WAITOK|M_ZERO);
 		info->hmp = hmp;
-		++hmp->flusher.count;
-		hmp->flusher.info[i] = info;
+		TAILQ_INSERT_TAIL(&hmp->flusher.ready_list, info, entry);
 		lwkt_create(hammer_flusher_slave_thread, info,
 			    &info->td, NULL, 0, -1, "hammer-S%d", i);
 	}
@@ -132,7 +142,6 @@ void
 hammer_flusher_destroy(hammer_mount_t hmp)
 {
 	hammer_flusher_info_t info;
-	int i;
 
 	/*
 	 * Kill the master
@@ -147,20 +156,16 @@ hammer_flusher_destroy(hammer_mount_t hmp)
 	/*
 	 * Kill the slaves
 	 */
-	for (i = 0; i < HAMMER_MAX_FLUSHERS; ++i) {
-		if ((info = hmp->flusher.info[i]) != NULL) {
-			KKASSERT(info->startit == 0);
-			info->startit = -1;
-			wakeup(&info->startit);
-			while (info->td) {
-				tsleep(&info->td, 0, "hmrwwc", 0);
-			}
-			hmp->flusher.info[i] = NULL;
-			kfree(info, M_HAMMER);
-			--hmp->flusher.count;
-		}
+	while ((info = TAILQ_FIRST(&hmp->flusher.ready_list)) != NULL) {
+		KKASSERT(info->runstate == 0);
+		TAILQ_REMOVE(&hmp->flusher.ready_list, info, entry);
+		info->runstate = -1;
+		wakeup(&info->runstate);
+		while (info->td)
+			tsleep(&info->td, 0, "hmrwwc", 0);
+		TAILQ_REMOVE(&hmp->flusher.ready_list, info, entry);
+		kfree(info, M_HAMMER);
 	}
-	KKASSERT(hmp->flusher.count == 0);
 }
 
 /*
@@ -170,28 +175,35 @@ hammer_flusher_destroy(hammer_mount_t hmp)
 static void
 hammer_flusher_master_thread(void *arg)
 {
-	hammer_mount_t hmp = arg;
+	hammer_flush_group_t flg;
+	hammer_mount_t hmp;
+
+	hmp = arg;
 
 	for (;;) {
-		while (hmp->flusher.group_lock)
-			tsleep(&hmp->flusher.group_lock, 0, "hmrhld", 0);
-		hmp->flusher.act = hmp->flusher.next;
-		++hmp->flusher.next;
-		hammer_flusher_clean_loose_ios(hmp);
-		hammer_flusher_flush(hmp);
-		hmp->flusher.done = hmp->flusher.act;
-		wakeup(&hmp->flusher.done);
+		/*
+		 * Do at least one flush cycle.  We may have to update the
+		 * UNDO FIFO even if no inodes are queued.
+		 */
+		for (;;) {
+			while (hmp->flusher.group_lock)
+				tsleep(&hmp->flusher.group_lock, 0, "hmrhld", 0);
+			hmp->flusher.act = hmp->flusher.next;
+			++hmp->flusher.next;
+			hammer_flusher_clean_loose_ios(hmp);
+			hammer_flusher_flush(hmp);
+			hmp->flusher.done = hmp->flusher.act;
+			wakeup(&hmp->flusher.done);
+			flg = TAILQ_FIRST(&hmp->flush_group_list);
+			if (flg == NULL || flg->closed == 0)
+				break;
+		}
 
 		/*
 		 * Wait for activity.
 		 */
-		if (hmp->flusher.exiting && TAILQ_EMPTY(&hmp->flush_list))
+		if (hmp->flusher.exiting && TAILQ_EMPTY(&hmp->flush_group_list))
 			break;
-
-		/*
-		 * This is a hack until we can dispose of frontend buffer
-		 * cache buffers on the frontend.
-		 */
 		while (hmp->flusher.signal == 0)
 			tsleep(&hmp->flusher.signal, 0, "hmrwwa", 0);
 		hmp->flusher.signal = 0;
@@ -206,56 +218,166 @@ hammer_flusher_master_thread(void *arg)
 }
 
 /*
+ * Flush all inodes in the current flush group.
+ */
+static void
+hammer_flusher_flush(hammer_mount_t hmp)
+{
+	hammer_flusher_info_t info;
+	hammer_flush_group_t flg;
+	hammer_reserve_t resv;
+	hammer_inode_t ip;
+	hammer_inode_t next_ip;
+	int slave_index;
+
+	/*
+	 * Just in-case there's a flush race on mount
+	 */
+	if (TAILQ_FIRST(&hmp->flusher.ready_list) == NULL)
+		return;
+
+	/*
+	 * We only do one flg but we may have to loop/retry.
+	 */
+	while ((flg = TAILQ_FIRST(&hmp->flush_group_list)) != NULL) {
+		if (hammer_debug_general & 0x0001) {
+			kprintf("hammer_flush %d ttl=%d recs=%d\n",
+				hmp->flusher.act,
+				flg->total_count, flg->refs);
+		}
+		hammer_start_transaction_fls(&hmp->flusher.trans, hmp);
+
+		/*
+		 * If the previous flush cycle just about exhausted our
+		 * UNDO space we may have to do a dummy cycle to move the
+		 * first_offset up before actually digging into a new cycle,
+		 * or the new cycle will not have sufficient undo space.
+		 */
+		if (hammer_flusher_undo_exhausted(&hmp->flusher.trans, 3))
+			hammer_flusher_finalize(&hmp->flusher.trans, 0);
+
+		/*
+		 * Iterate the inodes in the flg's flush_list and assign
+		 * them to slaves.
+		 */
+		flg->running = 1;
+		slave_index = 0;
+		info = TAILQ_FIRST(&hmp->flusher.ready_list);
+		next_ip = TAILQ_FIRST(&flg->flush_list);
+
+		while ((ip = next_ip) != NULL) {
+			next_ip = TAILQ_NEXT(ip, flush_entry);
+
+			/*
+			 * Add ip to the slave's work array.  The slave is
+			 * not currently running.
+			 */
+			info->work_array[info->count++] = ip;
+			if (info->count != HAMMER_FLUSH_GROUP_SIZE)
+				continue;
+
+			/*
+			 * Get the slave running
+			 */
+			TAILQ_REMOVE(&hmp->flusher.ready_list, info, entry);
+			TAILQ_INSERT_TAIL(&hmp->flusher.run_list, info, entry);
+			info->flg = flg;
+			info->runstate = 1;
+			wakeup(&info->runstate);
+
+			/*
+			 * Get a new slave.  We may have to wait for one to
+			 * finish running.
+			 */
+			while ((info = TAILQ_FIRST(&hmp->flusher.ready_list)) == NULL) {
+				tsleep(&hmp->flusher.ready_list, 0, "hmrfcc", 0);
+			}
+		}
+
+		/*
+		 * Run the current slave if necessary
+		 */
+		if (info->count) {
+			TAILQ_REMOVE(&hmp->flusher.ready_list, info, entry);
+			TAILQ_INSERT_TAIL(&hmp->flusher.run_list, info, entry);
+			info->flg = flg;
+			info->runstate = 1;
+			wakeup(&info->runstate);
+		}
+
+		/*
+		 * Wait for all slaves to finish running
+		 */
+		while (TAILQ_FIRST(&hmp->flusher.run_list) != NULL)
+			tsleep(&hmp->flusher.ready_list, 0, "hmrfcc", 0);
+
+		/*
+		 * Do the final finalization, clean up
+		 */
+		hammer_flusher_finalize(&hmp->flusher.trans, 1);
+		hmp->flusher.tid = hmp->flusher.trans.tid;
+
+		hammer_done_transaction(&hmp->flusher.trans);
+
+		/*
+		 * Loop up on the same flg.  If the flg is done clean it up
+		 * and break out.  We only flush one flg.
+		 */
+		if (TAILQ_FIRST(&flg->flush_list) == NULL) {
+			KKASSERT(TAILQ_EMPTY(&flg->flush_list));
+			KKASSERT(flg->refs == 0);
+			TAILQ_REMOVE(&hmp->flush_group_list, flg, flush_entry);
+			kfree(flg, M_HAMMER);
+			break;
+		}
+	}
+
+	/*
+	 * Clean up any freed big-blocks (typically zone-2). 
+	 * resv->flush_group is typically set several flush groups ahead
+	 * of the free to ensure that the freed block is not reused until
+	 * it can no longer be reused.
+	 */
+	while ((resv = TAILQ_FIRST(&hmp->delay_list)) != NULL) {
+		if (resv->flush_group != hmp->flusher.act)
+			break;
+		hammer_reserve_clrdelay(hmp, resv);
+	}
+}
+
+
+/*
  * The slave flusher thread pulls work off the master flush_list until no
  * work is left.
  */
 static void
 hammer_flusher_slave_thread(void *arg)
 {
+	hammer_flush_group_t flg;
 	hammer_flusher_info_t info;
 	hammer_mount_t hmp;
 	hammer_inode_t ip;
-	int c;
 	int i;
-	int n;
 
 	info = arg;
 	hmp = info->hmp;
 
 	for (;;) {
-		while (info->startit == 0)
-			tsleep(&info->startit, 0, "hmrssw", 0);
-		if (info->startit < 0)
+		while (info->runstate == 0)
+			tsleep(&info->runstate, 0, "hmrssw", 0);
+		if (info->runstate < 0)
 			break;
-		info->startit = 0;
+		flg = info->flg;
 
-		/*
-		 * Try to pull out around ~64 inodes at a time to flush.
-		 * The idea is to try to avoid deadlocks between the slaves.
-		 */
-		n = c = 0;
-		while ((ip = TAILQ_FIRST(&hmp->flush_list)) != NULL) {
-			if (ip->flush_group != hmp->flusher.act)
-				break;
-			TAILQ_REMOVE(&hmp->flush_list, ip, flush_entry);
-			info->work_array[n++] = ip;
-			c += ip->rsv_recs;
-			if (n < HAMMER_FLUSH_GROUP_SIZE &&
-			    c < HAMMER_FLUSH_GROUP_SIZE * 8) {
-				continue;
-			}
-			for (i = 0; i < n; ++i){
-				hammer_flusher_flush_inode(info->work_array[i],
-							&hmp->flusher.trans);
-			}
-			n = c = 0;
+		for (i = 0; i < info->count; ++i) {
+			ip = info->work_array[i];
+			hammer_flusher_flush_inode(ip, &hmp->flusher.trans);
 		}
-		for (i = 0; i < n; ++i) {
-			hammer_flusher_flush_inode(info->work_array[i],
-						   &hmp->flusher.trans);
-		}
-		if (--hmp->flusher.running == 0)
-			wakeup(&hmp->flusher.running);
+		info->count = 0;
+		info->runstate = 0;
+		TAILQ_REMOVE(&hmp->flusher.run_list, info, entry);
+		TAILQ_INSERT_TAIL(&hmp->flusher.ready_list, info, entry);
+		wakeup(&hmp->flusher.ready_list);
 	}
 	info->td = NULL;
 	wakeup(&info->td);
@@ -287,67 +409,6 @@ hammer_flusher_clean_loose_ios(hammer_mount_t hmp)
 		}
 		crit_exit();
 	}
-}
-
-/*
- * Flush all inodes in the current flush group.
- */
-static void
-hammer_flusher_flush(hammer_mount_t hmp)
-{
-	hammer_flusher_info_t info;
-	hammer_reserve_t resv;
-	int i;
-	int n;
-
-	hammer_start_transaction_fls(&hmp->flusher.trans, hmp);
-
-	/*
-	 * If the previous flush cycle just about exhausted our UNDO space
-	 * we may have to do a dummy cycle to move the first_offset up
-	 * before actually digging into a new cycle, or the new cycle will
-	 * not have sufficient undo space.
-	 */
-	if (hammer_flusher_undo_exhausted(&hmp->flusher.trans, 3))
-		hammer_flusher_finalize(&hmp->flusher.trans, 0);
-
-	/*
-	 * Start work threads.
-	 */
-	i = 0;
-	n = hmp->count_iqueued / HAMMER_FLUSH_GROUP_SIZE;
-	if (TAILQ_FIRST(&hmp->flush_list)) {
-		for (i = 0; i <= n; ++i) {
-			if (i == HAMMER_MAX_FLUSHERS ||
-			    hmp->flusher.info[i] == NULL) {
-				break;
-			}
-			info = hmp->flusher.info[i];
-			if (info->startit == 0) {
-				++hmp->flusher.running;
-				info->startit = 1;
-				wakeup(&info->startit);
-			}
-		}
-	}
-	while (hmp->flusher.running)
-		tsleep(&hmp->flusher.running, 0, "hmrfcc", 0);
-
-	hammer_flusher_finalize(&hmp->flusher.trans, 1);
-	hmp->flusher.tid = hmp->flusher.trans.tid;
-
-	/*
-	 * Clean up any freed big-blocks (typically zone-2). 
-	 * resv->flush_group is typically set several flush groups ahead
-	 * of the free to ensure that the freed block is not reused until
-	 * it can no longer be reused.
-	 */
-	while ((resv = TAILQ_FIRST(&hmp->delay_list)) != NULL) {
-		if (resv->flush_group != hmp->flusher.act)
-			break;
-		hammer_reserve_clrdelay(hmp, resv);
-	}
-	hammer_done_transaction(&hmp->flusher.trans);
 }
 
 /*

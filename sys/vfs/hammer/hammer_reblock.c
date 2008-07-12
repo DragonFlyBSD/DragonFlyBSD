@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.28 2008/07/12 02:47:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.29 2008/07/12 23:04:50 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -142,7 +142,7 @@ retry:
 			hammer_unlock_cursor(&cursor, 0);
 			hammer_flusher_wait(trans->hmp, seq);
 			hammer_lock_cursor(&cursor, 0);
-			seq = hammer_flusher_async(trans->hmp);
+			seq = hammer_flusher_async(trans->hmp, NULL);
 		}
 
 		/*
@@ -156,11 +156,11 @@ retry:
 		hammer_sync_unlock(trans);
 
 		if (hammer_flusher_meta_halflimit(trans->hmp) ||
-		    hammer_flusher_undo_exhausted(trans, 1)) {
+		    hammer_flusher_undo_exhausted(trans, 2)) {
 			hammer_unlock_cursor(&cursor, 0);
 			hammer_flusher_wait(trans->hmp, seq);
 			hammer_lock_cursor(&cursor, 0);
-			seq = hammer_flusher_async(trans->hmp);
+			seq = hammer_flusher_async(trans->hmp, NULL);
 		}
 		if (error == 0) {
 			cursor.flags |= HAMMER_CURSOR_ATEDISK;

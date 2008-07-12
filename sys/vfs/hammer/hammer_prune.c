@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.15 2008/07/12 02:47:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.16 2008/07/12 23:04:50 dillon Exp $
  */
 
 #include "hammer.h"
@@ -215,11 +215,11 @@ retry:
 		++prune->stat_scanrecords;
 
 		if (hammer_flusher_meta_halflimit(trans->hmp) ||
-		    hammer_flusher_undo_exhausted(trans, 1)) {
+		    hammer_flusher_undo_exhausted(trans, 2)) {
 			hammer_unlock_cursor(&cursor, 0);
 			hammer_flusher_wait(trans->hmp, seq);
 			hammer_lock_cursor(&cursor, 0);
-			seq = hammer_flusher_async(trans->hmp);
+			seq = hammer_flusher_async(trans->hmp, NULL);
 		}
 		hammer_sync_lock_sh(trans);
 		error = hammer_btree_iterate_reverse(&cursor);

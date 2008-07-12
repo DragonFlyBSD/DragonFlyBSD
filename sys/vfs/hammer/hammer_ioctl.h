@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.20 2008/07/12 02:47:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.21 2008/07/12 23:04:50 dillon Exp $
  */
 /*
  * HAMMER ioctl's.  This file can be #included from userland
@@ -299,6 +299,7 @@ typedef union hammer_ioc_mrecord_any *hammer_ioc_mrecord_any_t;
 #define HAMMER_MREC_TYPE_SYNC		4	/* (userland only) */
 #define HAMMER_MREC_TYPE_SKIP		5	/* skip-range */
 #define HAMMER_MREC_TYPE_PASS		6	/* record for cmp only (pass) */
+#define HAMMER_MREC_TYPE_TERM		7	/* (userland only) */
 
 #define HAMMER_MREC_CRCOFF	(offsetof(struct hammer_ioc_mrecord_head, rec_size))
 #define HAMMER_MREC_HEADSIZE	sizeof(struct hammer_ioc_mrecord_head)
