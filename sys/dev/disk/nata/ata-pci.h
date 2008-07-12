@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.h,v 1.76 2007/03/09 22:23:39 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-pci.h,v 1.8 2008/03/24 06:41:56 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-pci.h,v 1.9 2008/07/12 16:38:10 mneumann Exp $
  */
 
 #include <sys/param.h>
@@ -237,6 +237,15 @@ struct ata_connect_task {
 #define ATA_NFORCE_MCP55        0x036e10de
 #define ATA_NFORCE_MCP55_S1     0x037e10de
 #define ATA_NFORCE_MCP55_S2     0x037f10de
+#define ATA_NFORCE_MCP61        0x03ec10de
+#define ATA_NFORCE_MCP61_S1     0x03e710de
+#define ATA_NFORCE_MCP61_S2     0x03f610de
+#define ATA_NFORCE_MCP61_S3     0x03f710de
+#define ATA_NFORCE_MCP65        0x044810de
+#define ATA_NFORCE_MCP67        0x056010de
+#define ATA_NFORCE_MCP67_S2     0x055810de
+#define ATA_NFORCE_MCP73        0x056c10de
+#define ATA_NFORCE_MCP77        0x075910de
 
 #define ATA_PROMISE_ID          0x105a
 #define ATA_PDC20246            0x4d33105a

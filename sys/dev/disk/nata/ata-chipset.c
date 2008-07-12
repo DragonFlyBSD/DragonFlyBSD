@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-chipset.c,v 1.196 2007/04/08 19:18:51 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.14 2008/04/05 20:13:04 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-chipset.c,v 1.15 2008/07/12 16:38:10 mneumann Exp $
  */
 
 #include "opt_ata.h"
@@ -3164,6 +3164,15 @@ ata_nvidia_ident(device_t dev)
      { ATA_NFORCE_MCP55,    0, AMDNVIDIA, NVIDIA,  ATA_UDMA6, "nForce MCP55" },
      { ATA_NFORCE_MCP55_S1, 0, 0,         NV4|NVQ, ATA_SA300, "nForce MCP55" },
      { ATA_NFORCE_MCP55_S2, 0, 0,         NV4|NVQ, ATA_SA300, "nForce MCP55" },
+     { ATA_NFORCE_MCP61,    0, AMDNVIDIA, NVIDIA,  ATA_UDMA6, "nForce MCP61" },
+     { ATA_NFORCE_MCP61_S1, 0, 0,         NV4|NVQ, ATA_SA300, "nForce MCP61" },
+     { ATA_NFORCE_MCP61_S2, 0, 0,         NV4|NVQ, ATA_SA300, "nForce MCP61" },
+     { ATA_NFORCE_MCP61_S3, 0, 0,         NV4|NVQ, ATA_SA300, "nForce MCP61" },
+     { ATA_NFORCE_MCP65,    0, AMDNVIDIA, NVIDIA,  ATA_UDMA6, "nForce MCP65" },
+     { ATA_NFORCE_MCP67,    0, AMDNVIDIA, NVIDIA,  ATA_UDMA6, "nForce MCP67" },
+     { ATA_NFORCE_MCP67_S2, 0, 0,         NV4|NVQ, ATA_SA300, "nForce MCP67" },
+     { ATA_NFORCE_MCP73,    0, AMDNVIDIA, NVIDIA,  ATA_UDMA6, "nForce MCP73" },
+     { ATA_NFORCE_MCP77,    0, AMDNVIDIA, NVIDIA,  ATA_UDMA6, "nForce MCP77" },
      { 0, 0, 0, 0, 0, 0}} ;
     char buffer[64] ;
 
@@ -3266,15 +3275,23 @@ ata_nvidia_status(device_t dev)
     struct ata_channel *ch = device_get_softc(dev);
     int offset = ctlr->chip->cfg2 & NV4 ? 0x0440 : 0x0010;
     int shift = ch->unit << (ctlr->chip->cfg2 & NVQ ? 4 : 2);
-    u_int32_t istatus = ATA_INL(ctlr->r_res2, offset);
+    u_int32_t istatus; 
+    
+    /* get interrupt status */
+    if (ctlr->chip->cfg2 & NVQ)
+      istatus = ATA_INL(ctlr->r_res2, offset);
+    else
+      istatus = ATA_INB(ctlr->r_res2, offset);
 
     /* do we have any PHY events ? */
     if (istatus & (0x0c << shift))
 	ata_sata_phy_check_events(dev);
 
     /* clear interrupt(s) */
-    ATA_OUTB(ctlr->r_res2, offset,
-	     (0x0f << shift) | (ctlr->chip->cfg2 & NVQ ? 0x00f000f0 : 0));
+    if (ctlr->chip->cfg2 & NVQ)
+	ATA_OUTL(ctlr->r_res2, offset, (0x0f << shift) | 0x00f000f0);
+    else
+	ATA_OUTB(ctlr->r_res2, offset, (0x0f << shift));
 
     /* do we have any device action ? */
     return (istatus & (0x01 << shift));
