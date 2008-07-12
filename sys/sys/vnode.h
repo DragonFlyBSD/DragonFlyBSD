@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.81 2008/07/01 02:02:55 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.82 2008/07/12 01:09:45 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -476,6 +476,7 @@ int	vmntvnodescan(struct mount *mp, int flags,
 void	insmntque(struct vnode *vp, struct mount *mp);
 
 void	vclean_vxlocked (struct vnode *vp, int flags);
+void	vclean_unlocked (struct vnode *vp);
 void	vgone_vxlocked (struct vnode *vp);
 void	vupdatefsmid (struct vnode *vp);
 int	vinvalbuf (struct vnode *vp, int save, int slpflag, int slptimeo);

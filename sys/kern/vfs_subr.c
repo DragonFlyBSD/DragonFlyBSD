@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.114 2008/05/18 05:54:25 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.115 2008/07/12 01:09:46 dillon Exp $
  */
 
 /*
@@ -1053,6 +1053,23 @@ addaliasu(struct vnode *nvp, int x, int y)
 		panic("addaliasu on non-special vnode");
 	nvp->v_umajor = x;
 	nvp->v_uminor = y;
+}
+
+/*
+ * Simple call that a filesystem can make to try to get rid of a
+ * vnode.  It will fail if anyone is referencing the vnode (including
+ * the caller).
+ *
+ * The filesystem can check whether its in-memory inode structure still
+ * references the vp on return.
+ */
+void
+vclean_unlocked(struct vnode *vp)
+{
+	vx_get(vp);
+	if (sysref_isactive(&vp->v_sysref) == 0)
+		vclean_vxlocked(vp, 0);
+	vx_put(vp);
 }
 
 /*
