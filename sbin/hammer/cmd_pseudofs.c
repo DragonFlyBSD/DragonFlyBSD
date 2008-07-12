@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.5 2008/07/09 10:32:30 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.6 2008/07/12 02:48:46 dillon Exp $
  */
 
 #include "hammer.h"
@@ -40,6 +40,7 @@ static void parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd);
 static void init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave);
 static void dump_pfsd(hammer_pseudofs_data_t pfsd);
 static void pseudofs_usage(int code);
+static int getyn(void);
 
 /*
  * Calculate the pfs_id given a path to a directory or a @@PFS or @@%llx:%d
@@ -70,6 +71,33 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 		dirpath = strdup(".");
 
 	if (lstat(path, &st) == 0 && S_ISLNK(st.st_mode)) {
+		/*
+		 * Avoid foot-shooting.  Don't let the user access a PFS
+		 * softlink via a PFS.  PFS softlinks may only be accessed
+		 * via the master filesystem.
+		 */
+		fd = open(dirpath, O_RDONLY);
+		if (fd < 0)
+			goto done;
+		pfs->pfs_id = -1;
+		ioctl(fd, HAMMERIOC_GET_PSEUDOFS, pfs);
+		if (pfs->pfs_id != 0) {
+			fprintf(stderr,
+				"You are attempting to access a PFS softlink "
+				"from a PFS.  It may not represent the PFS\n"
+				"on the main filesystem mount that you "
+				"expect!  You may only access PFS softlinks\n"
+				"via the main filesystem mount!\n");
+			exit(1);
+		}
+		close(fd);
+
+		/*
+		 * Extract the PFS from the link.  HAMMER will automatically
+		 * convert @@PFS%05d links so if actually see one in that
+		 * form the target PFS may not exist or may be corrupt.  But
+		 * we can extract the PFS id anyway.
+		 */
 		n = readlink(path, buf, sizeof(buf) - 1);
 		if (n < 0)
 			n = 0;
@@ -224,7 +252,139 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 void
 hammer_cmd_pseudofs_destroy(char **av, int ac)
 {
-	fprintf(stderr, "pfs-destroy not implemented yet\n");
+	struct hammer_ioc_pseudofs_rw pfs;
+	struct stat st;
+	int fd;
+	int i;
+
+	if (ac == 0)
+		pseudofs_usage(1);
+	bzero(&pfs, sizeof(pfs));
+	fd = getpfs(&pfs, av[0]);
+
+	if (pfs.pfs_id == 0) {
+		fprintf(stderr, "You cannot destroy PFS#0\n");
+		exit(1);
+	}
+	printf("You have requested that PFS#%d (%s) be destroyed\n",
+		pfs.pfs_id, pfs.ondisk->label);
+	printf("This will irrevocably destroy all data on this PFS!!!!!\n");
+	printf("Do you really want to do this? ");
+	fflush(stdout);
+	if (getyn() == 0) {
+		fprintf(stderr, "No action taken on PFS#%d\n", pfs.pfs_id);
+		exit(1);
+	}
+
+	if ((pfs.ondisk->mirror_flags & HAMMER_PFSD_SLAVE) == 0) {
+		printf("This PFS is currently setup as a MASTER!\n");
+		printf("Are you absolutely sure you want to destroy it? ");
+		fflush(stdout);
+		if (getyn() == 0) {
+			fprintf(stderr, "No action taken on PFS#%d\n",
+				pfs.pfs_id);
+			exit(1);
+		}
+	}
+
+	printf("Destroying PFS #%d (%s) in ", pfs.pfs_id, pfs.ondisk->label);
+	for (i = 5; i; --i) {
+		printf(" %d", i);
+		fflush(stdout);
+		sleep(1);
+	}
+	printf(".. starting destruction pass\n");
+	fflush(stdout);
+
+	/*
+	 * Set the sync_beg_tid and sync_end_tid's to 1, once we start the
+	 * RMR the PFS is basically destroyed even if someone ^C's it.
+	 */
+	pfs.ondisk->mirror_flags |= HAMMER_PFSD_SLAVE;
+	pfs.ondisk->master_id = -1;
+	pfs.ondisk->sync_beg_tid = 1;
+	pfs.ondisk->sync_end_tid = 1;
+
+	if (ioctl(fd, HAMMERIOC_SET_PSEUDOFS, &pfs) < 0) {
+		fprintf(stderr, "Unable to update the PFS configuration: %s\n",
+			strerror(errno));
+		exit(1);
+	}
+
+	/*
+	 * Ok, do it.  Remove the softlink on success.
+	 */
+	if (ioctl(fd, HAMMERIOC_RMR_PSEUDOFS, &pfs) == 0) {
+		printf("pfs-destroy of PFS#%d succeeded!\n", pfs.pfs_id);
+		if (lstat(av[0], &st) == 0 && S_ISLNK(st.st_mode)) {
+			if (remove(av[0]) < 0) {
+				fprintf(stderr, "Unable to remove softlink: %s "
+					"(but the PFS has been destroyed)\n",
+					av[0]);
+				/* exit status 0 anyway */
+			}
+		}
+	} else {
+		printf("pfs-destroy of PFS#%d failed: %s\n",
+			pfs.pfs_id, strerror(errno));
+	}
+}
+
+void
+hammer_cmd_pseudofs_upgrade(char **av, int ac)
+{
+	struct hammer_ioc_pseudofs_rw pfs;
+	int fd;
+
+	if (ac == 0)
+		pseudofs_usage(1);
+	bzero(&pfs, sizeof(pfs));
+	fd = getpfs(&pfs, av[0]);
+
+	if (pfs.pfs_id == 0) {
+		fprintf(stderr, "You cannot upgrade PFS#0"
+				" (It should already be a master)\n");
+		exit(1);
+	}
+	if (pfs.ondisk->master_id == -1) {
+		fprintf(stderr, "You must configure a master id before "
+				"upgrading a slave to a master.\n"
+				"Use pfs-update ... master=<id> first.\n");
+		exit(1);
+	}
+
+	if (ioctl(fd, HAMMERIOC_UPG_PSEUDOFS, &pfs) == 0) {
+		printf("pfs-upgrade of PFS#%d (%s) succeeded\n",
+			pfs.pfs_id, pfs.ondisk->label);
+	} else {
+		fprintf(stderr, "pfs-upgrade of PFS#%d (%s) failed: %s\n",
+			pfs.pfs_id, pfs.ondisk->label, strerror(errno));
+	}
+}
+
+void
+hammer_cmd_pseudofs_downgrade(char **av, int ac)
+{
+	struct hammer_ioc_pseudofs_rw pfs;
+	int fd;
+
+	if (ac == 0)
+		pseudofs_usage(1);
+	bzero(&pfs, sizeof(pfs));
+	fd = getpfs(&pfs, av[0]);
+
+	if (pfs.pfs_id == 0) {
+		fprintf(stderr, "You cannot downgrade PFS#0\n");
+		exit(1);
+	}
+
+	if (ioctl(fd, HAMMERIOC_DGD_PSEUDOFS, &pfs) == 0) {
+		printf("pfs-downgrade of PFS#%d (%s) succeeded\n",
+			pfs.pfs_id, pfs.ondisk->label);
+	} else {
+		fprintf(stderr, "pfs-upgrade of PFS#%d (%s) failed: %s\n",
+			pfs.pfs_id, pfs.ondisk->label, strerror(errno));
+	}
 }
 
 void
@@ -241,11 +401,13 @@ hammer_cmd_pseudofs_update(char **av, int ac)
 	printf("%s\n", av[0]);
 	fflush(stdout);
 
-	if (fd >= 0 && ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) == 0) {
+	if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) == 0) {
 		parse_pfsd_options(av + 1, ac - 1, pfs.ondisk);
 		if ((pfs.ondisk->mirror_flags & HAMMER_PFSD_SLAVE) &&
 		    pfs.pfs_id == 0) {
-			fprintf(stderr, "The real mount point cannot be made a PFS slave, only PFS sub-directories can be made slaves\n");
+			printf("The real mount point cannot be made a PFS "
+			       "slave, only PFS sub-directories can be made "
+			       "slaves\n");
 			exit(1);
 		}
 		pfs.bytes = sizeof(*pfs.ondisk);
@@ -260,9 +422,6 @@ hammer_cmd_pseudofs_update(char **av, int ac)
 			printf("Unable to adjust pfs configuration: %s\n", strerror(errno));
 			exit(1);
 		}
-	} else {
-		printf("PFS Creation failed: %s\n", strerror(errno));
-		exit(1);
 	}
 }
 
@@ -300,10 +459,20 @@ dump_pfsd(hammer_pseudofs_data_t pfsd)
 	printf("    unique-uuid=%s\n", str);
 	if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE) {
 		printf("    slave\n");
-	} else if (pfsd->master_id < 0) {
-		printf("    no-mirror\n");
+	}
+	if (pfsd->master_id < 0) {
+		if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE) {
+			printf("    master=-1 "
+			       "(no upgrade id assigned for slave)\n");
+		} else {
+			printf("    no-mirror "
+			       "(mirror TID propagation disabled)\n");
+		}
 	} else {
-		printf("    master=%d\n", pfsd->master_id);
+		printf("    master=%d", pfsd->master_id);
+		if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE)
+			printf(" (only if upgraded, currently a slave)");
+		printf("\n");
 	}
 	printf("    label=\"%s\"\n", pfsd->label);
 }
@@ -353,21 +522,25 @@ parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd)
 			uuid_from_string(ptr, &pfsd->unique_uuid, &status);
 		} else if (strcmp(cmd, "master") == 0) {
 			if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE) {
-				fprintf(stderr, "master mode cannot be set on a slave PFS\n");
-				exit(1);
+				printf("NOTE: This PFS is a slave, the master "
+				       "id you are setting only applies\n"
+				       "when you pfs-upgrade the PFS to "
+				       "a master!\n");
 			}
 			pfsd->master_id = strtol(ptr, NULL, 0);
-			pfsd->mirror_flags &= ~HAMMER_PFSD_SLAVE;
 		} else if (strcmp(cmd, "slave") == 0) {
 			if ((pfsd->mirror_flags & HAMMER_PFSD_SLAVE) == 0) {
-				fprintf(stderr, "slave mode cannot be set on a master PFS\n");
+				fprintf(stderr,
+					"slave mode cannot be set on a master "
+					"PFS, use pfs-upgrade instead!\n");
 				exit(1);
 			}
-			pfsd->master_id = -1;
 			pfsd->mirror_flags |= HAMMER_PFSD_SLAVE;
 		} else if (strcmp(cmd, "no-mirror") == 0) {
 			if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE) {
-				fprintf(stderr, "no-mirror master mode cannot be set on a slave PFS\n");
+				fprintf(stderr,
+					"no-mirror mode cannot be set on a "
+					"slave PFS\n");
 				exit(1);
 			}
 			pfsd->master_id = -1;
@@ -406,9 +579,12 @@ pseudofs_usage(int code)
 		"hammer pfs-status <dirpath1>...<dirpathN>\n"
 		"hammer pfs-master <dirpath> [options]\n"
 		"hammer pfs-slave <dirpath> [options]\n"
-		"hammer pfs-destroy <dirpath>\n"
 		"hammer pfs-update <dirpath> [options]\n"
+		"hammer pfs-upgrade <dirpath>\n"
+		"hammer pfs-downgrade <dirpath>\n"
+		"hammer pfs-destroy <dirpath>\n"
 		"\n"
+		"options:\n"
 		"    sync-beg-tid=0x16llx\n"
 		"    sync-end-tid=0x16llx\n"
 		"    shared-uuid=0x16llx\n"
@@ -419,5 +595,27 @@ pseudofs_usage(int code)
 		"    label=\"string\"\n"
 	);
 	exit(code);
+}
+
+static
+int
+getyn(void)
+{
+	char buf[256];
+	int len;
+
+	if (fgets(buf, sizeof(buf), stdin) == NULL)
+		return(0);
+	len = strlen(buf);
+	while (len && (buf[len-1] == '\n' || buf[len-1] == '\r'))
+		--len;
+	buf[len] = 0;
+	if (strcmp(buf, "y") == 0 ||
+	    strcmp(buf, "yes") == 0 ||
+	    strcmp(buf, "Y") == 0 ||
+	    strcmp(buf, "YES") == 0) {
+		return(1);
+	}
+	return(0);
 }
 

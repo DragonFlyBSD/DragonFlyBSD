@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.7 2008/07/10 04:44:58 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.8 2008/07/12 02:48:46 dillon Exp $
  */
 
 #include "hammer.h"
@@ -131,6 +131,12 @@ hammer_cmd_mirror_read(char **av, int ac)
 		if (ioctl(fd, HAMMERIOC_MIRROR_READ, &mirror) < 0) {
 			fprintf(stderr, "Mirror-read %s failed: %s\n",
 				filesystem, strerror(errno));
+			exit(1);
+		}
+		if (mirror.head.flags & HAMMER_IOC_HEAD_ERROR) {
+			fprintf(stderr,
+				"Mirror-read %s fatal error %d\n",
+				filesystem, mirror.head.error);
 			exit(1);
 		}
 		if (mirror.count) {
@@ -880,10 +886,12 @@ update_pfs_snapshot(int fd, hammer_tid_t snapshot_tid, int pfs_id)
 		perror("update_pfs_snapshot (read)");
 		exit(1);
 	}
-	pfsd.sync_end_tid = snapshot_tid;
-	if (ioctl(fd, HAMMERIOC_SET_PSEUDOFS, &pfs) != 0) {
-		perror("update_pfs_snapshot (rewrite)");
-		exit(1);
+	if (pfsd.sync_end_tid != snapshot_tid) {
+		pfsd.sync_end_tid = snapshot_tid;
+		if (ioctl(fd, HAMMERIOC_SET_PSEUDOFS, &pfs) != 0) {
+			perror("update_pfs_snapshot (rewrite)");
+			exit(1);
+		}
 	}
 }
 

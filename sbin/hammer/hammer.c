@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.32 2008/07/09 18:32:19 swildner Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.33 2008/07/12 02:48:46 dillon Exp $
  */
 
 #include "hammer.h"
@@ -140,6 +140,14 @@ main(int ac, char **av)
 	}
 	if (strcmp(av[0], "pfs-update") == 0) {
 		hammer_cmd_pseudofs_update(av + 1, ac - 1);
+		exit(0);
+	}
+	if (strcmp(av[0], "pfs-upgrade") == 0) {
+		hammer_cmd_pseudofs_upgrade(av + 1, ac - 1);
+		exit(0);
+	}
+	if (strcmp(av[0], "pfs-downgrade") == 0) {
+		hammer_cmd_pseudofs_downgrade(av + 1, ac - 1);
 		exit(0);
 	}
 	if (strcmp(av[0], "pfs-destroy") == 0) {
@@ -279,6 +287,9 @@ usage(int exit_code)
 		"hammer pfs-master <dirpath> [options]\n"
 		"hammer pfs-slave <dirpath> [options]\n"
 		"hammer pfs-update <dirpath> [options]\n"
+		"hammer pfs-upgrade <dirpath>\n"
+		"hammer pfs-downgrade <dirpath>\n"
+		"hammer pfs-destroy <dirpath>\n"
 		"hammer history[@offset[,len]] <file-1>...<file-N>\n"
 		"hammer -f blkdevs [-r] show\n"
 		"hammer -f blkdevs blockmap\n"
