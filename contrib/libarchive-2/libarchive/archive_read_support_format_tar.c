@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_tar.c,v 1.67 2008/03/15 01:43:58 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_read_support_format_tar.c,v 1.69 2008/05/27 04:46:12 kientzle Exp $");
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
@@ -2362,7 +2362,7 @@ url_decode(const char *in)
 	if (out == NULL)
 		return (NULL);
 	for (s = in, d = out; *s != '\0'; ) {
-		if (*s == '%') {
+		if (s[0] == '%' && s[1] != '\0' && s[2] != '\0') {
 			/* Try to convert % escape */
 			int digit1 = tohex(s[1]);
 			int digit2 = tohex(s[2]);

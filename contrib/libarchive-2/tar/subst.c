@@ -24,7 +24,7 @@
  */
 
 #include "bsdtar_platform.h"
-__FBSDID("$FreeBSD$");
+__FBSDID("$FreeBSD: src/usr.bin/tar/subst.c,v 1.4 2008/06/15 10:08:16 kientzle Exp $");
 
 #if HAVE_REGEX_H
 #include "bsdtar.h"
@@ -34,11 +34,15 @@ __FBSDID("$FreeBSD$");
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef REG_BASIC
+#define	REG_BASIC 0
+#endif
+
 struct subst_rule {
 	struct subst_rule *next;
 	regex_t re;
 	char *result;
-	int global:1, print:1, symlink:1;
+	unsigned int global:1, print:1, symlink:1;
 };
 
 struct substitution {
@@ -222,7 +226,15 @@ apply_substitution(struct bsdtar *bsdtar, const char *name, char **result, int s
 				realloc_strncat(bsdtar, result, rule->result + j, i - j - 1);
 				j = i;
 				break;
-			case '1' ... '9':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
 				realloc_strncat(bsdtar, result, rule->result + j, i - j - 1);
 				if ((size_t)(c - '0') > (size_t)(rule->re.re_nsub)) {
 					free(*result);
