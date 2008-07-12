@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.39 2008/07/12 09:27:49 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.40 2008/07/12 11:44:17 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -114,7 +114,7 @@ static void	nfe_poll(struct ifnet *, enum poll_cmd, int);
 static void	nfe_intr(void *);
 static int	nfe_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static int	nfe_rxeof(struct nfe_softc *);
-static int	nfe_txeof(struct nfe_softc *);
+static int	nfe_txeof(struct nfe_softc *, int);
 static int	nfe_encap(struct nfe_softc *, struct nfe_tx_ring *,
 			  struct mbuf *);
 static void	nfe_start(struct ifnet *);
@@ -597,7 +597,7 @@ nfe_attach(device_t dev)
 #endif
 	ifp->if_watchdog = nfe_watchdog;
 	ifp->if_init = nfe_init;
-	ifq_set_maxlen(&ifp->if_snd, sc->sc_tx_ring_count - 1);
+	ifq_set_maxlen(&ifp->if_snd, sc->sc_tx_ring_count);
 	ifq_set_ready(&ifp->if_snd);
 
 	ifp->if_capabilities = IFCAP_VLAN_MTU;
@@ -848,7 +848,7 @@ nfe_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	case POLL_ONLY:
 		if (ifp->if_flags & IFF_RUNNING) {
 			nfe_rxeof(sc);
-			nfe_txeof(sc);
+			nfe_txeof(sc, 1);
 		}
 		break;
 	}
@@ -883,7 +883,7 @@ nfe_intr(void *arg)
 		ret = nfe_rxeof(sc);
 
 		/* check Tx ring */
-		ret |= nfe_txeof(sc);
+		ret |= nfe_txeof(sc, 1);
 
 		if (sc->sc_flags & NFE_F_DYN_IM) {
 			if (ret && (sc->sc_flags & NFE_F_IRQ_TIMER) == 0) {
@@ -1099,7 +1099,7 @@ skip:
 }
 
 static int
-nfe_txeof(struct nfe_softc *sc)
+nfe_txeof(struct nfe_softc *sc, int start)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct nfe_tx_ring *ring = &sc->txq;
@@ -1155,20 +1155,26 @@ nfe_txeof(struct nfe_softc *sc)
 		bus_dmamap_unload(ring->data_tag, data->map);
 		m_freem(data->m);
 		data->m = NULL;
-
-		ifp->if_timer = 0;
 skip:
 		ring->queued--;
 		KKASSERT(ring->queued >= 0);
 		ring->next = (ring->next + 1) % sc->sc_tx_ring_count;
 	}
 
-	if (data != NULL) {	/* at least one slot freed */
+	if (sc->sc_tx_ring_count - ring->queued >=
+	    sc->sc_tx_spare + NFE_NSEG_RSVD)
 		ifp->if_flags &= ~IFF_OACTIVE;
+
+	if (ring->queued == 0)
+		ifp->if_timer = 0;
+
+	if (start && !ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
+
+	if (data != NULL)
 		return 1;
-	}
-	return 0;
+	else
+		return 0;
 }
 
 static int
@@ -1182,13 +1188,19 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 	struct nfe_desc32 *desc32 = NULL;
 	uint16_t flags = 0;
 	uint32_t vtag = 0;
-	int error, i, j;
+	int error, i, j, maxsegs;
 
 	data = &ring->data[ring->cur];
 	map = data->map;
 	data_map = data;	/* Remember who owns the DMA map */
 
-	ctx.nsegs = NFE_MAX_SCATTER;
+	maxsegs = (sc->sc_tx_ring_count - ring->queued) - NFE_NSEG_RSVD;
+	if (maxsegs > NFE_MAX_SCATTER)
+		maxsegs = NFE_MAX_SCATTER;
+	KASSERT(maxsegs >= sc->sc_tx_spare,
+		("no enough segments %d,%d\n", maxsegs, sc->sc_tx_spare));
+
+	ctx.nsegs = maxsegs;
 	ctx.segs = segs;
 	error = bus_dmamap_load_mbuf(ring->data_tag, map, m0,
 				     nfe_buf_dma_addr, &ctx, BUS_DMA_NOWAIT);
@@ -1213,7 +1225,7 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 			m0 = m_new;
 		}
 
-		ctx.nsegs = NFE_MAX_SCATTER;
+		ctx.nsegs = maxsegs;
 		ctx.segs = segs;
 		error = bus_dmamap_load_mbuf(ring->data_tag, map, m0,
 					     nfe_buf_dma_addr, &ctx,
@@ -1230,12 +1242,6 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 	}
 
 	error = 0;
-
-	if (ring->queued + ctx.nsegs >= sc->sc_tx_ring_count - 1) {
-		bus_dmamap_unload(ring->data_tag, map);
-		error = ENOBUFS;
-		goto back;
-	}
 
 	/* setup h/w VLAN tagging */
 	if (m0->m_flags & M_VLANTAG)
@@ -1331,22 +1337,47 @@ nfe_start(struct ifnet *ifp)
 {
 	struct nfe_softc *sc = ifp->if_softc;
 	struct nfe_tx_ring *ring = &sc->txq;
-	int count = 0;
+	int count = 0, oactive = 0;
 	struct mbuf *m0;
 
 	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
 		return;
 
 	for (;;) {
+		int error;
+
+		if (sc->sc_tx_ring_count - ring->queued <
+		    sc->sc_tx_spare + NFE_NSEG_RSVD) {
+			if (oactive) {
+				ifp->if_flags |= IFF_OACTIVE;
+				break;
+			}
+
+			nfe_txeof(sc, 0);
+			oactive = 1;
+			continue;
+		}
+
 		m0 = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m0 == NULL)
 			break;
 
 		ETHER_BPF_MTAP(ifp, m0);
 
-		if (nfe_encap(sc, ring, m0) != 0) {
-			ifp->if_flags |= IFF_OACTIVE;
-			break;
+		error = nfe_encap(sc, ring, m0);
+		if (error) {
+			ifp->if_oerrors++;
+			if (error == EFBIG) {
+				if (oactive) {
+					ifp->if_flags |= IFF_OACTIVE;
+					break;
+				}
+				nfe_txeof(sc, 0);
+				oactive = 1;
+			}
+			continue;
+		} else {
+			oactive = 0;
 		}
 		++count;
 
@@ -1378,7 +1409,7 @@ nfe_watchdog(struct ifnet *ifp)
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		if_printf(ifp, "watchdog timeout - lost interrupt recovered\n");
-		nfe_txeof(sc);
+		nfe_txeof(sc, 1);
 		return;
 	}
 
@@ -1410,11 +1441,13 @@ nfe_init(void *xsc)
 	if (ifp->if_mtu > ETHERMTU) {
 		sc->sc_flags |= NFE_F_USE_JUMBO;
 		sc->rxq.bufsz = NFE_JBYTES;
+		sc->sc_tx_spare = NFE_NSEG_SPARE_JUMBO;
 		if (bootverbose)
 			if_printf(ifp, "use jumbo frames\n");
 	} else {
 		sc->sc_flags &= ~NFE_F_USE_JUMBO;
 		sc->rxq.bufsz = MCLBYTES;
+		sc->sc_tx_spare = NFE_NSEG_SPARE;
 		if (bootverbose)
 			if_printf(ifp, "use non-jumbo frames\n");
 	}
@@ -1526,7 +1559,8 @@ nfe_init(void *xsc)
 	 * so we are not going to get an interrupt, jump-start any pending
 	 * output.
 	 */
-	if_devstart(ifp);
+	if (!ifq_is_empty(&ifp->if_snd))
+		if_devstart(ifp);
 }
 
 static void

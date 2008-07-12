@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfereg.h,v 1.19 2006/05/28 00:20:21 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfereg.h,v 1.12 2008/07/12 09:27:49 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfereg.h,v 1.13 2008/07/12 11:44:17 sephe Exp $	*/
 
 /*
  * Copyright (c) 2005 Jonathan Gray <jsg@openbsd.org>
@@ -30,6 +30,9 @@
 #define NFE_JPOOL_SIZE(sc)	(NFE_JPOOL_COUNT((sc)) * NFE_JBYTES)
 
 #define NFE_MAX_SCATTER		32
+#define NFE_NSEG_SPARE_JUMBO	5
+#define NFE_NSEG_SPARE		1
+#define NFE_NSEG_RSVD		1
 
 #define NFE_IRQ_STATUS		0x000
 #define NFE_IRQ_MASK		0x004

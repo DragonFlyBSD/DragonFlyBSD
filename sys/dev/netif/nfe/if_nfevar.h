@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfevar.h,v 1.11 2006/02/19 13:57:02 damien Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfevar.h,v 1.12 2008/07/12 09:27:49 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfevar.h,v 1.13 2008/07/12 11:44:17 sephe Exp $	*/
 
 /*
  * Copyright (c) 2005 Jonathan Gray <jsg@openbsd.org>
@@ -111,6 +111,7 @@ struct nfe_softc {
 	struct nfe_rx_ring	rxq;
 
 	uint32_t		sc_irq_enable;
+	int			sc_tx_spare;
 	int			sc_imtime;
 	int			sc_rx_ring_count;
 	int			sc_tx_ring_count;
