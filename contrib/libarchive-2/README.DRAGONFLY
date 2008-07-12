@@ -8,6 +8,7 @@ A list of deleted files is in README.DELETED.
 
 This source is used in:
 	lib/libarchive
+	usr.bin/cpio
 	usr.bin/tar
 
-Remember to update the version string in tar's Makefile.
+Remember to update cpio's version string in config.h.

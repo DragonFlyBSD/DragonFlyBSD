@@ -1,9 +1,9 @@
-/* $DragonFly: src/lib/libarchive/config.h,v 1.12 2008/06/16 08:20:23 pavalos Exp $ */
+/* $DragonFly: src/lib/libarchive/config.h,v 1.13 2008/07/12 14:57:33 pavalos Exp $ */
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
 /* Version number of bsdcpio */
-/* #undef BSDCPIO_VERSION_STRING */
+#define BSDCPIO_VERSION_STRING "1.0.0"
 
 /* Version number of bsdtar */
 /* #undef BSDTAR_VERSION_STRING */
@@ -46,6 +46,9 @@
 
 /* Define to 1 if you have the `chown' function. */
 #define HAVE_CHOWN 1
+
+/* Define to 1 if you have the `chroot' function. */
+#define HAVE_CHROOT 1
 
 /* Define to 1 if you have the declaration of `INT64_MAX', and to 0 if you
    don't. */
@@ -128,6 +131,9 @@
 /* Define to 1 if fnmatch(3) supports the FNM_LEADING_DIR flag */
 #define HAVE_FNM_LEADING_DIR 1
 
+/* Define to 1 if you have the `fork' function. */
+#define HAVE_FORK 1
+
 /* Define to 1 if fseeko (and presumably ftello) exists and is declared. */
 #define HAVE_FSEEKO 1
 
@@ -193,9 +199,6 @@
 
 /* Define to 1 if you have the <limits.h> header file. */
 #define HAVE_LIMITS_H 1
-
-/* Define to 1 if you have the <linux/ext2_fs.h> header file. */
-/* #undef HAVE_LINUX_EXT2_FS_H */
 
 /* Define to 1 if you have the <linux/fs.h> header file. */
 /* #undef HAVE_LINUX_FS_H */
@@ -316,12 +319,6 @@
 /* Define to 1 if `st_mtim.tv_nsec' is member of `struct stat'. */
 /* #undef HAVE_STRUCT_STAT_ST_MTIM_TV_NSEC */
 
-/* Define to 1 if `st_rdev' is member of `struct stat'. */
-#define HAVE_STRUCT_STAT_ST_RDEV 1
-
-/* Define to 1 if `tm_gmtoff' is member of `struct tm'. */
-#define HAVE_STRUCT_TM_TM_GMTOFF 1
-
 /* Define to 1 if you have the <sys/acl.h> header file. */
 #define HAVE_SYS_ACL_H 1
 
@@ -407,6 +404,9 @@
 
 /* Define to 1 if you have the `wcslen' function. */
 #define HAVE_WCSLEN 1
+
+/* Define to 1 if you have the `wctomb' function. */
+#define HAVE_WCTOMB 1
 
 /* Define to 1 if you have the `wmemcmp' function. */
 #define HAVE_WMEMCMP 1

@@ -7,7 +7,7 @@ config.h.in
 configure
 configure.ac
 contrib/
-cpio/
+cpio/test/
 doc/
 examples/
 libarchive/archive_windows.c

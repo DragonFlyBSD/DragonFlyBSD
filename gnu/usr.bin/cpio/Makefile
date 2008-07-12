@@ -2,13 +2,13 @@
 # even though it may live in src/gnu/...
 
 # $FreeBSD: src/gnu/usr.bin/cpio/Makefile,v 1.7.2.1 2001/04/25 12:03:30 ru Exp $
-# $DragonFly: src/gnu/usr.bin/cpio/Makefile,v 1.2 2003/06/17 04:25:45 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cpio/Makefile,v 1.3 2008/07/12 14:57:33 pavalos Exp $
 
 .PATH:	${.CURDIR}/../../../contrib/cpio
 
 SUBDIR=	doc
 
-PROG=	cpio
+PROG=	gcpio
 
 CFLAGS+= -I${.CURDIR} -I${.CURDIR}/../../../contrib/cpio 
 CFLAGS+= -DRETSIGTYPE=void -DHAVE_SYS_MTIO_H=1 -DSTDC_HEADERS=1 \
@@ -20,5 +20,15 @@ SRCS =  copyin.c copyout.c copypass.c defer.c dirname.c dstring.c error.c \
 	filemode.c getopt.c getopt1.c global.c idcache.c main.c makepath.c \
 	rtapelib.c stripslash.c tar.c userspec.c util.c version.c \
 	xmalloc.c xstrdup.c
+
+gcpio.1: cpio.1
+	cp ${.CURDIR}/../../../contrib/cpio/cpio.1 ${.TARGET}
+
+CLEANFILES+=	gcpio.1
+
+.if !defined(WITH_BSDCPIO)
+SYMLINKS=	${BINDIR}/gcpio ${BINDIR}/cpio
+MLINKS=		gcpio.1 cpio.1
+.endif
 
 .include <bsd.prog.mk>
