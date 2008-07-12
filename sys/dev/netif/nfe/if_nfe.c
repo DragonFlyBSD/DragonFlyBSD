@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.37 2008/07/12 06:16:22 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.38 2008/07/12 06:50:04 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -1185,11 +1185,14 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 	ctx.segs = segs;
 	error = bus_dmamap_load_mbuf(ring->data_tag, map, m0,
 				     nfe_buf_dma_addr, &ctx, BUS_DMA_NOWAIT);
+	if (!error && ctx.nsegs == 0) {
+		bus_dmamap_unload(ring->data_tag, map);
+		error = EFBIG;
+	}
 	if (error && error != EFBIG) {
 		if_printf(&sc->arpcom.ac_if, "could not map TX mbuf\n");
 		goto back;
 	}
-
 	if (error) {	/* error == EFBIG */
 		struct mbuf *m_new;
 
@@ -1208,7 +1211,11 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 		error = bus_dmamap_load_mbuf(ring->data_tag, map, m0,
 					     nfe_buf_dma_addr, &ctx,
 					     BUS_DMA_NOWAIT);
-		if (error) {
+		if (error || ctx.nsegs == 0) {
+			if (!error) {
+				bus_dmamap_unload(ring->data_tag, map);
+				error = EFBIG;
+			}
 			if_printf(&sc->arpcom.ac_if,
 				  "could not map defraged TX mbuf\n");
 			goto back;
@@ -2199,9 +2206,10 @@ nfe_buf_dma_addr(void *arg, bus_dma_segment_t *segs, int nsegs,
 	if (error)
 		return;
 
-	KASSERT(nsegs <= ctx->nsegs,
-		("too many segments(%d), should be <= %d\n",
-		 nsegs, ctx->nsegs));
+	if (nsegs > ctx->nsegs) {
+		ctx->nsegs = 0;
+		return;
+	}
 
 	ctx->nsegs = nsegs;
 	for (i = 0; i < nsegs; ++i)
@@ -2229,9 +2237,18 @@ nfe_newbuf_std(struct nfe_softc *sc, struct nfe_rx_ring *ring, int idx,
 	error = bus_dmamap_load_mbuf(ring->data_tag, ring->data_tmpmap,
 				     m, nfe_buf_dma_addr, &ctx,
 				     wait ? BUS_DMA_WAITOK : BUS_DMA_NOWAIT);
-	if (error) {
+	if (error || ctx.nsegs == 0) {
+		if (!error) {
+			bus_dmamap_unload(ring->data_tag, ring->data_tmpmap);
+			error = EFBIG;
+			if_printf(&sc->arpcom.ac_if, "too many segments?!\n");
+		}
 		m_freem(m);
-		if_printf(&sc->arpcom.ac_if, "could map RX mbuf %d\n", error);
+
+		if (wait) {
+			if_printf(&sc->arpcom.ac_if,
+				  "could map RX mbuf %d\n", error);
+		}
 		return error;
 	}
 
