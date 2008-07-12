@@ -1,7 +1,7 @@
 <!--#set var="title" value="The DragonFly Team" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/about/team.shtml,v 1.10 2008/07/11 20:56:41 thomas Exp $ -->
+<!-- $DragonFly: site/data/about/team.shtml,v 1.11 2008/07/12 17:03:51 mneumann Exp $ -->
 
 
 <p>
@@ -111,6 +111,12 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 <tr><td valign="top">
 <a href="mailto:andre 'at' digirati 'dot' com 'dot' br">Andre Nathan</a> </td>
 <td valign="top">Code cleanup, 'route show'
+</td>
+</tr>
+
+<tr><td valign="top">
+<a href="mailto:mneumann 'at' ntecs 'dot' de">Michael Neumann</a> </td>
+<td valign="top">Misc (commit access)
 </td>
 </tr>
 
