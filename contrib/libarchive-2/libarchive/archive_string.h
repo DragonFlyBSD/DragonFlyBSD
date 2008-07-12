@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libarchive/archive_string.h,v 1.10 2008/03/14 22:00:09 kientzle Exp $
+ * $FreeBSD: src/lib/libarchive/archive_string.h,v 1.12 2008/06/15 05:11:08 kientzle Exp $
  *
  */
 
@@ -30,6 +30,9 @@
 #define	ARCHIVE_STRING_H_INCLUDED
 
 #include <stdarg.h>
+#ifdef HAVE_STDLIB_H
+#include <stdlib.h>  /* required for wchar_t on some systems */
+#endif
 #ifdef HAVE_STRING_H
 #include <string.h>
 #endif

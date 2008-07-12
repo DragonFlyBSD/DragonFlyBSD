@@ -24,7 +24,7 @@
  */
 
 #include "bsdtar_platform.h"
-__FBSDID("$FreeBSD: src/usr.bin/tar/write.c,v 1.69 2008/05/23 05:07:22 cperciva Exp $");
+__FBSDID("$FreeBSD: src/usr.bin/tar/write.c,v 1.70 2008/05/26 17:10:10 kientzle Exp $");
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -61,9 +61,6 @@ __FBSDID("$FreeBSD: src/usr.bin/tar/write.c,v 1.69 2008/05/23 05:07:22 cperciva 
 #endif
 #ifdef HAVE_LINUX_FS_H
 #include <linux/fs.h>	/* for Linux file flags */
-#endif
-#ifdef HAVE_LINUX_EXT2_FS_H
-#include <linux/ext2_fs.h>	/* for Linux file flags */
 #endif
 #ifdef HAVE_PWD_H
 #include <pwd.h>

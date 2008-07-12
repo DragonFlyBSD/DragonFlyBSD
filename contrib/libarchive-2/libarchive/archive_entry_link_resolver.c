@@ -24,7 +24,7 @@
  */
 
 #include "archive_platform.h"
-__FBSDID("$FreeBSD: src/lib/libarchive/archive_entry_link_resolver.c,v 1.1 2007/12/30 04:58:21 kientzle Exp $");
+__FBSDID("$FreeBSD: src/lib/libarchive/archive_entry_link_resolver.c,v 1.3 2008/06/15 04:31:43 kientzle Exp $");
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
@@ -180,6 +180,9 @@ archive_entry_linkify(struct archive_entry_linkresolver *res,
 
 	/* If it has only one link, then we're done. */
 	if (archive_entry_nlink(*e) == 1)
+		return;
+	/* Directories never have hardlinks. */
+	if (archive_entry_filetype(*e) == AE_IFDIR)
 		return;
 
 	switch (res->strategy) {
