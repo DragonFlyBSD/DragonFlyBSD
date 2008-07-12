@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.35 2008/07/12 05:48:32 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.36 2008/07/12 06:01:37 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -1623,8 +1623,9 @@ nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 	}
 
 	if (sc->sc_caps & NFE_JUMBO_SUP) {
-		ring->jbuf = kmalloc(sizeof(struct nfe_jbuf) * NFE_JPOOL_COUNT,
-				     M_DEVBUF, M_WAITOK | M_ZERO);
+		ring->jbuf =
+		kmalloc(sizeof(struct nfe_jbuf) * NFE_JPOOL_COUNT(sc),
+			M_DEVBUF, M_WAITOK | M_ZERO);
 
 		error = nfe_jpool_alloc(sc, ring);
 		if (error) {
@@ -1834,7 +1835,8 @@ nfe_jpool_alloc(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 	error = bus_dma_tag_create(NULL, PAGE_SIZE, 0,
 				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   NFE_JPOOL_SIZE, 1, BUS_SPACE_MAXSIZE_32BIT,
+				   NFE_JPOOL_SIZE(sc), 1,
+				   BUS_SPACE_MAXSIZE_32BIT,
 				   0, &ring->jtag);
 	if (error) {
 		if_printf(&sc->arpcom.ac_if,
@@ -1853,8 +1855,8 @@ nfe_jpool_alloc(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 	}
 
 	error = bus_dmamap_load(ring->jtag, ring->jmap, ring->jpool,
-				NFE_JPOOL_SIZE, nfe_ring_dma_addr, &physaddr,
-				BUS_DMA_WAITOK);
+				NFE_JPOOL_SIZE(sc),
+				nfe_ring_dma_addr, &physaddr, BUS_DMA_WAITOK);
 	if (error) {
 		if_printf(&sc->arpcom.ac_if,
 			  "could not load jumbo DMA map\n");
@@ -1868,7 +1870,7 @@ nfe_jpool_alloc(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 	SLIST_INIT(&ring->jfreelist);
 
 	buf = ring->jpool;
-	for (i = 0; i < NFE_JPOOL_COUNT; i++) {
+	for (i = 0; i < NFE_JPOOL_COUNT(sc); i++) {
 		jbuf = &ring->jbuf[i];
 
 		jbuf->sc = sc;

@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfereg.h,v 1.19 2006/05/28 00:20:21 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfereg.h,v 1.9 2008/06/27 17:03:40 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfereg.h,v 1.10 2008/07/12 06:01:37 sephe Exp $	*/
 
 /*
  * Copyright (c) 2005 Jonathan Gray <jsg@openbsd.org>
@@ -26,8 +26,8 @@
 #define NFE_JUMBO_MTU		(NFE_JUMBO_FRAMELEN - ETHER_HDR_LEN - ETHER_CRC_LEN)
 
 #define NFE_JBYTES		(NFE_JUMBO_FRAMELEN + ETHER_ALIGN)
-#define NFE_JPOOL_COUNT		(nfe_rx_ring_count + 64)
-#define NFE_JPOOL_SIZE		(NFE_JPOOL_COUNT * NFE_JBYTES)
+#define NFE_JPOOL_COUNT(sc)	(((sc)->sc_rx_ring_count * 3) / 2)
+#define NFE_JPOOL_SIZE(sc)	(NFE_JPOOL_COUNT((sc)) * NFE_JBYTES)
 
 #define NFE_MAX_SCATTER		(NFE_TX_RING_COUNT - 2)
 
