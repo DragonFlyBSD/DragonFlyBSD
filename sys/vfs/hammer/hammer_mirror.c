@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.12 2008/07/11 05:44:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.13 2008/07/12 02:47:39 dillon Exp $
  */
 /*
  * HAMMER mirroring ioctls - serialize and deserialize modifications made
@@ -60,7 +60,7 @@ static int hammer_ioc_mirror_write_skip(hammer_cursor_t cursor,
 				struct hammer_ioc_mrecord_skip *mrec,
 				struct hammer_ioc_mirror_rw *mirror,
 				u_int32_t localization);
-static int hammer_mirror_delete_at_cursor(hammer_cursor_t cursor,
+static int hammer_mirror_delete_to(hammer_cursor_t cursor,
 			        struct hammer_ioc_mirror_rw *mirror);
 static int hammer_mirror_localize_data(hammer_data_ondisk_t data,
 				hammer_btree_leaf_elm_t leaf);
@@ -488,19 +488,7 @@ hammer_ioc_mirror_write_skip(hammer_cursor_t cursor,
 	 */
 	cursor->key_end = mrec->skip_beg;
 	cursor->flags |= HAMMER_CURSOR_BACKEND;
-
-	error = hammer_btree_iterate(cursor);
-	while (error == 0) {
-		error = hammer_mirror_delete_at_cursor(cursor, mirror);
-		if (error == 0)
-			error = hammer_btree_iterate(cursor);
-	}
-
-	/*
-	 * ENOENT just means we hit the end of our iteration.
-	 */
-	if (error == ENOENT)
-		error = 0;
+	error = hammer_mirror_delete_to(cursor, mirror);
 
 	/*
 	 * Now skip past the skip (which is the whole point point of
@@ -566,15 +554,7 @@ hammer_ioc_mirror_write_rec(hammer_cursor_t cursor,
 	cursor->key_end = mrec->leaf.base;
 	cursor->flags &= ~HAMMER_CURSOR_END_INCLUSIVE;
 	cursor->flags |= HAMMER_CURSOR_BACKEND;
-
-	error = hammer_btree_iterate(cursor);
-	while (error == 0) {
-		error = hammer_mirror_delete_at_cursor(cursor, mirror);
-		if (error == 0)
-			error = hammer_btree_iterate(cursor);
-	}
-	if (error == ENOENT)
-		error = 0;
+	error = hammer_mirror_delete_to(cursor, mirror);
 
 	/*
 	 * Locate the record.
@@ -647,14 +627,7 @@ hammer_ioc_mirror_write_pass(hammer_cursor_t cursor,
 	cursor->flags &= ~HAMMER_CURSOR_END_INCLUSIVE;
 	cursor->flags |= HAMMER_CURSOR_BACKEND;
 
-	error = hammer_btree_iterate(cursor);
-	while (error == 0) {
-		error = hammer_mirror_delete_at_cursor(cursor, mirror);
-		if (error == 0)
-			error = hammer_btree_iterate(cursor);
-	}
-	if (error == ENOENT)
-		error = 0;
+	error = hammer_mirror_delete_to(cursor, mirror);
 
 	/*
 	 * Locate the record and get past it by setting ATEDISK.
@@ -679,52 +652,37 @@ hammer_ioc_mirror_write_pass(hammer_cursor_t cursor,
  * As part of the mirror write we iterate across swaths of records
  * on the target which no longer exist on the source, and mark them
  * deleted.
+ *
+ * The caller has indexed the cursor and set up key_end.  We iterate
+ * through to key_end.
  */
 static
 int
-hammer_mirror_delete_at_cursor(hammer_cursor_t cursor,
-			       struct hammer_ioc_mirror_rw *mirror)
+hammer_mirror_delete_to(hammer_cursor_t cursor,
+		       struct hammer_ioc_mirror_rw *mirror)
 {
-	hammer_transaction_t trans;
-	hammer_btree_elm_t elm;
+	hammer_btree_leaf_elm_t elm;
 	int error;
 
-	if ((error = hammer_cursor_upgrade(cursor)) != 0)
-		return(error);
-
-	elm = &cursor->node->ondisk->elms[cursor->index];
-	KKASSERT(elm->leaf.base.btype == HAMMER_BTREE_TYPE_RECORD);
-
-	trans = cursor->trans;
-	hammer_sync_lock_sh(trans);
-
-	if (elm->leaf.base.delete_tid == 0) {
-		/*
-		 * We don't know when the originator deleted the element
-		 * because it was destroyed, tid_end works.
-		 */
-		KKASSERT(elm->base.create_tid < mirror->tid_end);
-		hammer_modify_node(trans, cursor->node, elm, sizeof(*elm));
-		elm->base.delete_tid = mirror->tid_end;
-		elm->leaf.delete_ts = time_second;
-		hammer_modify_node_done(cursor->node);
-
-		/*
-		 * Track a count of active inodes.
-		 */
-		if (elm->base.obj_type == HAMMER_RECTYPE_INODE) {
-			hammer_modify_volume_field(trans,
-						   trans->rootvol,
-						   vol0_stat_inodes);
-			--trans->hmp->rootvol->ondisk->vol0_stat_inodes;
-			hammer_modify_volume_done(trans->rootvol);
+	error = hammer_btree_iterate(cursor);
+	while (error == 0) {
+		elm = &cursor->node->ondisk->elms[cursor->index].leaf;
+		KKASSERT(elm->base.btype == HAMMER_BTREE_TYPE_RECORD);
+		if (elm->base.delete_tid == 0) {
+			error = hammer_delete_at_cursor(cursor,
+							HAMMER_DELETE_ADJUST,
+							mirror->tid_end,
+							time_second,
+							1, NULL);
+			if (error == 0)
+				cursor->flags |= HAMMER_CURSOR_ATEDISK;
 		}
+		if (error == 0)
+			error = hammer_btree_iterate(cursor);
 	}
-	hammer_sync_unlock(trans);
-
-	cursor->flags |= HAMMER_CURSOR_ATEDISK;
-
-	return(0);
+	if (error == ENOENT)
+		error = 0;
+	return(error);
 }
 
 /*
@@ -748,55 +706,31 @@ hammer_mirror_check(hammer_cursor_t cursor, struct hammer_ioc_mrecord_rec *mrec)
 }
 
 /*
- * Update a record in-place.  Only the delete_tid can change.
+ * Update a record in-place.  Only the delete_tid can change, and
+ * only from zero to non-zero.
  */
 static
 int
 hammer_mirror_update(hammer_cursor_t cursor,
 		     struct hammer_ioc_mrecord_rec *mrec)
 {
-	hammer_transaction_t trans;
-	hammer_btree_leaf_elm_t elm;
 	int error;
 
-	if ((error = hammer_cursor_upgrade(cursor)) != 0)
-		return(error);
-
-	elm = cursor->leaf;
-	trans = cursor->trans;
-
-	if (mrec->leaf.base.delete_tid == 0) {
-		kprintf("mirror_write: object %016llx:%016llx deleted on "
-			"target, not deleted on source\n",
-			elm->base.obj_id, elm->base.key);
+	/*
+	 * This case shouldn't occur.
+	 */
+	if (mrec->leaf.base.delete_tid == 0)
 		return(0);
-	}
-	hammer_sync_lock_sh(trans);
-
-	KKASSERT(elm->base.create_tid < mrec->leaf.base.delete_tid);
-	hammer_modify_node(trans, cursor->node, elm, sizeof(*elm));
-	elm->base.delete_tid = mrec->leaf.base.delete_tid;
-	elm->delete_ts = mrec->leaf.delete_ts;
-	hammer_modify_node_done(cursor->node);
 
 	/*
-	 * Cursor is left on the current element, we want to skip it now.
+	 * Mark the record deleted on the mirror target.
 	 */
+	error = hammer_delete_at_cursor(cursor, HAMMER_DELETE_ADJUST,
+					mrec->leaf.base.delete_tid,
+					mrec->leaf.delete_ts,
+					1, NULL);
 	cursor->flags |= HAMMER_CURSOR_ATEDISK;
-
-	/*
-	 * Track a count of active inodes.
-	 */
-	if (elm->base.obj_type == HAMMER_RECTYPE_INODE) {
-		hammer_modify_volume_field(trans,
-					   trans->rootvol,
-					   vol0_stat_inodes);
-		--trans->hmp->rootvol->ondisk->vol0_stat_inodes;
-		hammer_modify_volume_done(trans->rootvol);
-	}
-	hammer_sync_unlock(trans);
-
-	return(0);
+	return(error);
 }
 
 /*
@@ -876,8 +810,9 @@ hammer_mirror_write(hammer_cursor_t cursor,
 	/*
 	 * Track a count of active inodes.
 	 */
-	if (error == 0 && mrec->leaf.base.delete_tid == 0 &&
-	    mrec->leaf.base.obj_type == HAMMER_RECTYPE_INODE) {
+	if (error == 0 &&
+	    mrec->leaf.base.rec_type == HAMMER_RECTYPE_INODE &&
+	    mrec->leaf.base.delete_tid == 0) {
 		hammer_modify_volume_field(trans,
 					   trans->rootvol,
 					   vol0_stat_inodes);
@@ -940,98 +875,5 @@ hammer_mirror_localize_data(hammer_data_ondisk_t data,
 		}
 	}
 	return(0);
-}
-
-/*
- * Auto-detect the pseudofs.
- */
-static
-void
-hammer_mirror_autodetect(struct hammer_ioc_pseudofs_rw *pfs, hammer_inode_t ip)
-{
-	if (pfs->pfs_id == -1)
-		pfs->pfs_id = (int)(ip->obj_localization >> 16);
-}
-
-/*
- * Get mirroring/pseudo-fs information
- */
-int
-hammer_ioc_get_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
-			struct hammer_ioc_pseudofs_rw *pfs)
-{
-	hammer_pseudofs_inmem_t pfsm;
-	u_int32_t localization;
-	int error;
-
-	hammer_mirror_autodetect(pfs, ip);
-	if (pfs->pfs_id < 0 || pfs->pfs_id >= HAMMER_MAX_PFS)
-		return(EINVAL);
-	localization = (u_int32_t)pfs->pfs_id << 16;
-	pfs->bytes = sizeof(struct hammer_pseudofs_data);
-	pfs->version = HAMMER_IOC_PSEUDOFS_VERSION;
-
-	pfsm = hammer_load_pseudofs(trans, localization, &error);
-	if (error) {
-		hammer_rel_pseudofs(trans->hmp, pfsm);
-		return(error);
-	}
-
-	/*
-	 * If the PFS is a master the sync tid is set by normal operation
-	 * rather then the mirroring code, and will always track the
-	 * real HAMMER filesystem.
-	 */
-	if (pfsm->pfsd.master_id >= 0)
-		pfsm->pfsd.sync_end_tid = trans->rootvol->ondisk->vol0_next_tid;
-
-	/*
-	 * Copy out to userland.
-	 */
-	error = 0;
-	if (pfs->ondisk && error == 0)
-		error = copyout(&pfsm->pfsd, pfs->ondisk, sizeof(pfsm->pfsd));
-	hammer_rel_pseudofs(trans->hmp, pfsm);
-	return(error);
-}
-
-/*
- * Set mirroring/pseudo-fs information
- */
-int
-hammer_ioc_set_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
-			struct ucred *cred, struct hammer_ioc_pseudofs_rw *pfs)
-{
-	hammer_pseudofs_inmem_t pfsm;
-	int error;
-	u_int32_t localization;
-
-	error = 0;
-	hammer_mirror_autodetect(pfs, ip);
-	if (pfs->pfs_id < 0 || pfs->pfs_id >= HAMMER_MAX_PFS)
-		error = EINVAL;
-	if (pfs->bytes != sizeof(pfsm->pfsd))
-		error = EINVAL;
-	if (pfs->version != HAMMER_IOC_PSEUDOFS_VERSION)
-		error = EINVAL;
-	if (error == 0 && pfs->ondisk) {
-		/*
-		 * Load the PFS so we can modify our in-core copy.
-		 */
-		localization = (u_int32_t)pfs->pfs_id << 16;
-		pfsm = hammer_load_pseudofs(trans, localization, &error);
-		error = copyin(pfs->ondisk, &pfsm->pfsd, sizeof(pfsm->pfsd));
-
-		/*
-		 * Save it back, create a root inode if we are in master
-		 * mode and no root exists.
-		 */
-		if (error == 0)
-			error = hammer_mkroot_pseudofs(trans, cred, pfsm);
-		if (error == 0)
-			error = hammer_save_pseudofs(trans, pfsm);
-		hammer_rel_pseudofs(trans->hmp, pfsm);
-	}
-	return(error);
 }
 

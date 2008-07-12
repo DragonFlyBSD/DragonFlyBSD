@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.49 2008/07/10 04:44:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.50 2008/07/12 02:47:39 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -698,6 +698,7 @@ struct hammer_pseudofs_data {
 typedef struct hammer_pseudofs_data *hammer_pseudofs_data_t;
 
 #define HAMMER_PFSD_SLAVE	0x00000001
+#define HAMMER_PFSD_DELETED	0x80000000
 
 /*
  * Rollup various structures embedded as record data
@@ -706,6 +707,7 @@ union hammer_data_ondisk {
 	struct hammer_entry_data entry;
 	struct hammer_inode_data inode;
 	struct hammer_symlink_data symlink;
+	struct hammer_pseudofs_data pfsd;
 };
 
 typedef union hammer_data_ondisk *hammer_data_ondisk_t;

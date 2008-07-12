@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.86 2008/07/11 01:22:29 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.87 2008/07/12 02:47:39 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1925,6 +1925,9 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 	 * On-disk records are marked as deleted by updating their delete_tid.
 	 * This does not effect their position in the B-Tree (which is based
 	 * on their create_tid).
+	 *
+	 * Frontend B-Tree operations track inodes so we tell 
+	 * hammer_delete_at_cursor() not to.
 	 */
 	error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_LEAF);
 	elm = NULL;
@@ -1933,7 +1936,9 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 		error = hammer_delete_at_cursor(
 				cursor,
 				HAMMER_DELETE_ADJUST | hammer_nohistory(ip),
-				NULL);
+				cursor->trans->tid,
+				cursor->trans->time32,
+				0, NULL);
 	}
 	return(error);
 }
@@ -1944,12 +1949,17 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
  *
  * The cursor must be properly positioned for an iteration on return but
  * may be pointing at an internal element.
+ *
+ * An element can be un-deleted by passing a delete_tid of 0 with
+ * HAMMER_DELETE_ADJUST.
  */
 int
 hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
-			int64_t *stat_bytes)
+			hammer_tid_t delete_tid, u_int32_t delete_ts,
+			int track, int64_t *stat_bytes)
 {
 	struct hammer_btree_leaf_elm save_leaf;
+	hammer_transaction_t trans;
 	hammer_btree_leaf_elm_t leaf;
 	hammer_node_t node;
 	hammer_btree_elm_t elm;
@@ -1957,31 +1967,42 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 	int32_t data_len;
 	u_int16_t rec_type;
 	int error;
+	int icount;
 	int doprop;
 
 	error = hammer_cursor_upgrade(cursor);
 	if (error)
 		return(error);
 
+	trans = cursor->trans;
 	node = cursor->node;
 	elm = &node->ondisk->elms[cursor->index];
 	leaf = &elm->leaf;
 	KKASSERT(elm->base.btype == HAMMER_BTREE_TYPE_RECORD);
 
+	hammer_sync_lock_sh(trans);
+	doprop = 0;
+	icount = 0;
+
 	/*
 	 * Adjust the delete_tid.  Update the mirror_tid propagation field
 	 * as well.
 	 */
-	hammer_sync_lock_sh(cursor->trans);
-	doprop = 0;
 	if (delete_flags & HAMMER_DELETE_ADJUST) {
-		hammer_modify_node(cursor->trans, node, elm, sizeof(*elm));
-		elm->leaf.base.delete_tid = cursor->trans->tid;
-		elm->leaf.delete_ts = cursor->trans->time32;
+		if (elm->base.rec_type == HAMMER_RECTYPE_INODE) {
+			if (elm->leaf.base.delete_tid == 0 && delete_tid)
+				icount = -1;
+			if (elm->leaf.base.delete_tid && delete_tid == 0)
+				icount = 1;
+		}
+
+		hammer_modify_node(trans, node, elm, sizeof(*elm));
+		elm->leaf.base.delete_tid = delete_tid;
+		elm->leaf.delete_ts = delete_ts;
 		hammer_modify_node_done(node);
 
 		if (elm->leaf.base.delete_tid > node->ondisk->mirror_tid) {
-			hammer_modify_node_field(cursor->trans, node, mirror_tid);
+			hammer_modify_node_field(trans, node, mirror_tid);
 			node->ondisk->mirror_tid = elm->leaf.base.delete_tid;
 			hammer_modify_node_done(node);
 			doprop = 1;
@@ -2021,6 +2042,10 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 			save_leaf = elm->leaf;
 			leaf = &save_leaf;
 		}
+		if (elm->base.rec_type == HAMMER_RECTYPE_INODE &&
+		    elm->leaf.base.delete_tid == 0) {
+			icount = -1;
+		}
 
 		error = hammer_btree_delete(cursor);
 		if (error == 0) {
@@ -2039,7 +2064,7 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 			case HAMMER_ZONE_LARGE_DATA:
 			case HAMMER_ZONE_SMALL_DATA:
 			case HAMMER_ZONE_META:
-				hammer_blockmap_free(cursor->trans,
+				hammer_blockmap_free(trans,
 						     data_offset, data_len);
 				break;
 			default:
@@ -2049,17 +2074,41 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 	}
 
 	/*
+	 * Track inode count and next_tid.  This is used by the mirroring
+	 * and PFS code.  icount can be negative, zero, or positive.
+	 */
+	if (error == 0 && track) {
+		if (icount) {
+			hammer_modify_volume_field(trans, trans->rootvol,
+						   vol0_stat_inodes);
+			trans->rootvol->ondisk->vol0_stat_inodes += icount;
+			hammer_modify_volume_done(trans->rootvol);
+		}
+		if (trans->rootvol->ondisk->vol0_next_tid < delete_tid) {
+			hammer_modify_volume(trans, trans->rootvol, NULL, 0);
+			trans->rootvol->ondisk->vol0_next_tid = delete_tid;
+			hammer_modify_volume_done(trans->rootvol);
+		}
+	}
+
+	/*
 	 * mirror_tid propagation occurs if the node's mirror_tid had to be
 	 * updated while adjusting the delete_tid.
 	 *
 	 * This occurs when deleting even in nohistory mode, but does not
 	 * occur when pruning an already-deleted node.
+	 *
+	 * cursor->ip is NULL when called from the pruning, mirroring,
+	 * and pfs code.  If non-NULL propagation will be conditionalized
+	 * on whether the PFS is in no-history mode or not.
 	 */
 	if (doprop) {
-		KKASSERT(cursor->ip != NULL);
-		hammer_btree_do_propagation(cursor, cursor->ip->pfsm, leaf);
+		if (cursor->ip)
+			hammer_btree_do_propagation(cursor, cursor->ip->pfsm, leaf);
+		else
+			hammer_btree_do_propagation(cursor, NULL, leaf);
 	}
-	hammer_sync_unlock(cursor->trans);
+	hammer_sync_unlock(trans);
 	return (error);
 }
 

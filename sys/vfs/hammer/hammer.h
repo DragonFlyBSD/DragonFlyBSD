@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.112 2008/07/11 05:44:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.113 2008/07/12 02:47:39 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -179,11 +179,14 @@ struct hammer_pseudofs_inmem {
 	struct hammer_lock	lock;
 	u_int32_t		localization;
 	hammer_tid_t		create_tid;
+	int			flags;
 	udev_t			fsid_udev;
 	struct hammer_pseudofs_data pfsd;
 };
 
 typedef struct hammer_pseudofs_inmem *hammer_pseudofs_inmem_t;
+
+#define HAMMER_PFSM_DELETED	0x0001
 
 /*
  * Cache object ids.  A fixed number of objid cache structures are
@@ -804,7 +807,8 @@ int	hammer_ip_resolve_data(hammer_cursor_t cursor);
 int	hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 			hammer_tid_t tid);
 int	hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
-			int64_t *stat_bytes);
+			hammer_tid_t delete_tid, u_int32_t delete_ts,
+			int track, int64_t *stat_bytes);
 int	hammer_ip_check_directory_empty(hammer_transaction_t trans,
 			hammer_inode_t ip);
 int	hammer_sync_hmp(hammer_mount_t hmp, int waitfor);
@@ -1035,6 +1039,7 @@ int  hammer_mkroot_pseudofs(hammer_transaction_t trans, struct ucred *cred,
 			hammer_pseudofs_inmem_t pfsm);
 int  hammer_save_pseudofs(hammer_transaction_t trans,
 			hammer_pseudofs_inmem_t pfsm);
+int  hammer_unload_pseudofs(hammer_transaction_t trans, u_int32_t localization);
 void hammer_rel_pseudofs(hammer_mount_t hmp, hammer_pseudofs_inmem_t pfsm);
 int hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 			struct ucred *cred);
@@ -1075,6 +1080,12 @@ int hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
 int hammer_ioc_set_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 			struct ucred *cred, struct hammer_ioc_pseudofs_rw *pfs);
 int hammer_ioc_get_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
+                        struct hammer_ioc_pseudofs_rw *pfs);
+int hammer_ioc_destroy_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
+                        struct hammer_ioc_pseudofs_rw *pfs);
+int hammer_ioc_downgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
+                        struct hammer_ioc_pseudofs_rw *pfs);
+int hammer_ioc_upgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
                         struct hammer_ioc_pseudofs_rw *pfs);
 
 int hammer_signal_check(hammer_mount_t hmp);

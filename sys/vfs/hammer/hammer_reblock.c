@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.27 2008/07/11 05:44:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.28 2008/07/12 02:47:39 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -75,6 +75,7 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 		return(EINVAL);
 
 	reblock->key_cur = reblock->key_beg;
+	reblock->key_cur.localization &= HAMMER_LOCALIZE_MASK;
 	reblock->key_cur.localization += ip->obj_localization;
 
 	checkspace_count = 0;
@@ -93,7 +94,8 @@ retry:
 	cursor.key_beg.rec_type = HAMMER_MIN_RECTYPE;
 	cursor.key_beg.obj_type = 0;
 
-	cursor.key_end.localization = reblock->key_end.localization +
+	cursor.key_end.localization = (reblock->key_end.localization &
+					HAMMER_LOCALIZE_MASK) +
 				      ip->obj_localization;
 	cursor.key_end.obj_id = reblock->key_end.obj_id;
 	cursor.key_end.key = HAMMER_MAX_KEY;

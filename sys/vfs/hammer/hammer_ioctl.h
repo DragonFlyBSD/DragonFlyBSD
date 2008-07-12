@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.19 2008/07/10 04:44:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.20 2008/07/12 02:47:39 dillon Exp $
  */
 /*
  * HAMMER ioctl's.  This file can be #included from userland
@@ -318,6 +318,9 @@ typedef union hammer_ioc_mrecord_any *hammer_ioc_mrecord_any_t;
 #define HAMMERIOC_GET_PSEUDOFS	_IOWR('h',6,struct hammer_ioc_pseudofs_rw)
 #define HAMMERIOC_MIRROR_READ	_IOWR('h',7,struct hammer_ioc_mirror_rw)
 #define HAMMERIOC_MIRROR_WRITE	_IOWR('h',8,struct hammer_ioc_mirror_rw)
+#define HAMMERIOC_UPG_PSEUDOFS	_IOWR('h',9,struct hammer_ioc_pseudofs_rw)
+#define HAMMERIOC_DGD_PSEUDOFS	_IOWR('h',10,struct hammer_ioc_pseudofs_rw)
+#define HAMMERIOC_RMR_PSEUDOFS	_IOWR('h',11,struct hammer_ioc_pseudofs_rw)
 
 #endif
 

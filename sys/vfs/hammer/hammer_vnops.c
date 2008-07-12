@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.86 2008/07/11 05:44:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.87 2008/07/12 02:47:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1349,7 +1349,9 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 	/*
 	 * Shortcut if the symlink data was stuffed into ino_data.
 	 *
-	 * Also expand special "@@PFS%05d" softlinks.
+	 * Also expand special "@@PFS%05d" softlinks (expansion only
+	 * occurs for non-historical (current) accesses made from the
+	 * primary filesystem).
 	 */
 	if (ip->ino_data.size <= HAMMER_INODE_BASESYMLEN) {
 		char *ptr;
@@ -1357,7 +1359,10 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 
 		ptr = ip->ino_data.ext.symlink;
 		bytes = (int)ip->ino_data.size;
-		if (bytes == 10 && strncmp(ptr, "@@PFS", 5) == 0) {
+		if (bytes == 10 &&
+		    ip->obj_asof == HAMMER_MAX_TID &&
+		    ip->obj_localization == 0 &&
+		    strncmp(ptr, "@@PFS", 5) == 0) {
 			hammer_simple_transaction(&trans, ip->hmp);
 			bcopy(ptr + 5, buf, 5);
 			buf[5] = 0;

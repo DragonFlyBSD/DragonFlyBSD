@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.99 2008/07/11 01:22:29 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.100 2008/07/12 02:47:39 dillon Exp $
  */
 
 #include "hammer.h"
@@ -111,6 +111,21 @@ hammer_inode_info_cmp_all_history(hammer_inode_t ip, void *data)
 	if (ip->obj_id > info->obj_id)
 		return(1);
 	if (ip->obj_id < info->obj_id)
+		return(-1);
+	return(0);
+}
+
+/*
+ * Used by hammer_unload_pseudofs() to locate all inodes associated with
+ * a particular PFS.
+ */
+static int
+hammer_inode_pfs_cmp(hammer_inode_t ip, void *data)
+{
+	u_int32_t localization = *(u_int32_t *)data;
+	if (ip->obj_localization > localization)
+		return(1);
+	if (ip->obj_localization < localization)
 		return(-1);
 	return(0);
 }
@@ -713,10 +728,15 @@ retry:
 	if (*errorp == 0) {
 		*errorp = hammer_ip_resolve_data(&cursor);
 		if (*errorp == 0) {
-			bytes = cursor.leaf->data_len;
-			if (bytes > sizeof(pfsm->pfsd))
-				bytes = sizeof(pfsm->pfsd);
-			bcopy(cursor.data, &pfsm->pfsd, bytes);
+			if (cursor.data->pfsd.mirror_flags &
+			    HAMMER_PFSD_DELETED) {
+				*errorp = ENOENT;
+			} else {
+				bytes = cursor.leaf->data_len;
+				if (bytes > sizeof(pfsm->pfsd))
+					bytes = sizeof(pfsm->pfsd);
+				bcopy(cursor.data, &pfsm->pfsd, bytes);
+			}
 		}
 	}
 	hammer_done_cursor(&cursor);
@@ -822,6 +842,48 @@ hammer_mkroot_pseudofs(hammer_transaction_t trans, struct ucred *cred,
 		hammer_rel_inode(ip, 0);
 	return(error);
 }
+
+/*
+ * Unload any vnodes & inodes associated with a PFS, return ENOTEMPTY
+ * if we are unable to disassociate all the inodes.
+ */
+static
+int
+hammer_unload_pseudofs_callback(hammer_inode_t ip, void *data)
+{
+	int res;
+
+	hammer_ref(&ip->lock);
+	if (ip->lock.refs == 2 && ip->vp)
+		vclean_unlocked(ip->vp);
+	if (ip->lock.refs == 1 && ip->vp == NULL)
+		res = 0;
+	else
+		res = -1;	/* stop, someone is using the inode */
+	hammer_rel_inode(ip, 0);
+	return(res);
+}
+
+int
+hammer_unload_pseudofs(hammer_transaction_t trans, u_int32_t localization)
+{
+	int res;
+	int try;
+
+	for (try = res = 0; try < 4; ++try) {
+		res = hammer_ino_rb_tree_RB_SCAN(&trans->hmp->rb_inos_root,
+					   hammer_inode_pfs_cmp,
+					   hammer_unload_pseudofs_callback,
+					   &localization);
+		if (res == 0 && try > 1)
+			break;
+		hammer_flusher_sync(trans->hmp);
+	}
+	if (res != 0)
+		res = ENOTEMPTY;
+	return(res);
+}
+
 
 /*
  * Release a reference on a PFS
@@ -2085,11 +2147,14 @@ done:
 	 * buffers.  Otherwise a buffer cache deadlock can occur when
 	 * doing things like creating tens of thousands of tiny files.
 	 *
-	 * The finalization lock is already being held by virtue of the
-	 * flusher calling us.
+	 * We must release our cursor lock to avoid a 3-way deadlock
+	 * due to the exclusive sync lock the finalizer must get.
 	 */
-        if (hammer_flusher_meta_limit(hmp))
+        if (hammer_flusher_meta_limit(hmp)) {
+		hammer_unlock_cursor(cursor, 0);
                 hammer_flusher_finalize(trans, 0);
+		hammer_lock_cursor(cursor, 0);
+	}
 
 	return(error);
 }

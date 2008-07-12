@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.14 2008/07/11 05:44:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.15 2008/07/12 02:47:39 dillon Exp $
  */
 
 #include "hammer.h"
@@ -78,7 +78,8 @@ hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 	if ((prune->head.flags & HAMMER_IOC_PRUNE_ALL) && prune->nelms)
 		return(EINVAL);
 
-	prune->key_cur.localization = prune->key_end.localization +
+	prune->key_cur.localization = (prune->key_end.localization &
+					HAMMER_LOCALIZE_MASK) +
 				      ip->obj_localization;
 	prune->key_cur.obj_id = prune->key_end.obj_id;
 	prune->key_cur.key = HAMMER_MAX_KEY;
@@ -104,7 +105,8 @@ retry:
 		hammer_done_cursor(&cursor);
 		goto failed;
 	}
-	cursor.key_beg.localization = prune->key_beg.localization +
+	cursor.key_beg.localization = (prune->key_beg.localization &
+					HAMMER_LOCALIZE_MASK) +
 				      ip->obj_localization;
 	cursor.key_beg.obj_id = prune->key_beg.obj_id;
 	cursor.key_beg.key = HAMMER_MIN_KEY;
@@ -125,11 +127,15 @@ retry:
 	cursor.flags |= HAMMER_CURSOR_BACKEND;
 
 	/*
-	 * This flag allows the B-Tree code to clean up loose ends.
+	 * This flag allows the B-Tree code to clean up loose ends.  At
+	 * the moment (XXX) it also means we have to hold the sync lock
+	 * through the iteration.
 	 */
 	cursor.flags |= HAMMER_CURSOR_PRUNING;
 
+	hammer_sync_lock_sh(trans);
 	error = hammer_btree_last(&cursor);
+	hammer_sync_unlock(trans);
 
 	while (error == 0) {
 		/*
@@ -167,13 +173,18 @@ retry:
 			 * Acquiring the sync lock guarantees that the
 			 * operation will not cross a synchronization
 			 * boundary (see the flusher).
+			 *
+			 * We dont need to track inodes or next_tid when
+			 * we are destroying deleted records.
 			 */
 			isdir = (elm->base.rec_type == HAMMER_RECTYPE_DIRENTRY);
 
 			hammer_sync_lock_sh(trans);
 			error = hammer_delete_at_cursor(&cursor,
 							HAMMER_DELETE_DESTROY,
-							&prune->stat_bytes);
+							cursor.trans->tid,
+							cursor.trans->time32,
+							0, &prune->stat_bytes);
 			hammer_sync_unlock(trans);
 			if (error)
 				break;
@@ -210,7 +221,9 @@ retry:
 			hammer_lock_cursor(&cursor, 0);
 			seq = hammer_flusher_async(trans->hmp);
 		}
+		hammer_sync_lock_sh(trans);
 		error = hammer_btree_iterate_reverse(&cursor);
+		hammer_sync_unlock(trans);
 	}
 	if (error == ENOENT)
 		error = 0;
