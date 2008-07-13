@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.14 2008/07/12 23:04:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.15 2008/07/13 01:12:41 dillon Exp $
  */
 /*
  * HAMMER mirroring ioctls - serialize and deserialize modifications made
@@ -354,12 +354,12 @@ hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
 		 * Don't blow out the buffer cache.  Leave room for frontend
 		 * cache as well.
 		 */
-		if (hammer_flusher_meta_halflimit(trans->hmp) ||
-		    hammer_flusher_undo_exhausted(trans, 2)) {
+		while (hammer_flusher_meta_halflimit(trans->hmp) ||
+		       hammer_flusher_undo_exhausted(trans, 2)) {
 			hammer_unlock_cursor(&cursor, 0);
 			hammer_flusher_wait(trans->hmp, seq);
 			hammer_lock_cursor(&cursor, 0);
-			seq = hammer_flusher_async(trans->hmp, NULL);
+			seq = hammer_flusher_async_one(trans->hmp);
 		}
 
 		/*

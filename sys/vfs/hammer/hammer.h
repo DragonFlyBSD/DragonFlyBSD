@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.114 2008/07/12 23:04:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.115 2008/07/13 01:12:41 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -1116,6 +1116,7 @@ void hammer_flusher_create(hammer_mount_t hmp);
 void hammer_flusher_destroy(hammer_mount_t hmp);
 void hammer_flusher_sync(hammer_mount_t hmp);
 int  hammer_flusher_async(hammer_mount_t hmp, hammer_flush_group_t flg);
+int  hammer_flusher_async_one(hammer_mount_t hmp);
 void hammer_flusher_wait(hammer_mount_t hmp, int seq);
 int  hammer_flusher_meta_limit(hammer_mount_t hmp);
 int  hammer_flusher_meta_halflimit(hammer_mount_t hmp);

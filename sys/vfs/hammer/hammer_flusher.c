@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.37 2008/07/12 23:04:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.38 2008/07/13 01:12:41 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -98,6 +98,21 @@ hammer_flusher_async(hammer_mount_t hmp, hammer_flush_group_t close_flg)
 			break;
 	}
 	if (hmp->flusher.td) {
+		if (hmp->flusher.signal++ == 0)
+			wakeup(&hmp->flusher.signal);
+	} else {
+		seq = hmp->flusher.done;
+	}
+	return(seq);
+}
+
+int
+hammer_flusher_async_one(hammer_mount_t hmp)
+{
+	int seq;
+
+	if (hmp->flusher.td) {
+		seq = hmp->flusher.next;
 		if (hmp->flusher.signal++ == 0)
 			wakeup(&hmp->flusher.signal);
 	} else {
@@ -229,6 +244,7 @@ hammer_flusher_flush(hammer_mount_t hmp)
 	hammer_inode_t ip;
 	hammer_inode_t next_ip;
 	int slave_index;
+	int count;
 
 	/*
 	 * Just in-case there's a flush race on mount
@@ -239,7 +255,9 @@ hammer_flusher_flush(hammer_mount_t hmp)
 	/*
 	 * We only do one flg but we may have to loop/retry.
 	 */
+	count = 0;
 	while ((flg = TAILQ_FIRST(&hmp->flush_group_list)) != NULL) {
+		++count;
 		if (hammer_debug_general & 0x0001) {
 			kprintf("hammer_flush %d ttl=%d recs=%d\n",
 				hmp->flusher.act,
@@ -330,6 +348,16 @@ hammer_flusher_flush(hammer_mount_t hmp)
 			kfree(flg, M_HAMMER);
 			break;
 		}
+	}
+
+	/*
+	 * We may have pure meta-data to flush, even if there were no
+	 * flush groups.
+	 */
+	if (count == 0 && hmp->locked_dirty_space) {
+		hammer_start_transaction_fls(&hmp->flusher.trans, hmp);
+		hammer_flusher_finalize(&hmp->flusher.trans, 1);
+		hammer_done_transaction(&hmp->flusher.trans);
 	}
 
 	/*
