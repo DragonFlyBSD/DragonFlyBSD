@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.35 2008/07/12 02:48:46 dillon Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.36 2008/07/13 00:56:06 swildner Exp $
 .Dd June 26, 2008
 .Dt HAMMER 8
 .Os
@@ -247,7 +247,7 @@ HAMMER filesystem or pseudo-filesystem.
 .It Ar pfs-master Ar dirpath Op options
 Create a pseudo-filesystem (PFS) inside a HAMMER filesystem.
 Up to 65535 such filesystems can be created.
-Each PFS uses an independant inode numbering space making it suitable
+Each PFS uses an independent inode numbering space making it suitable
 for use as a replication source or target.
 .Pp
 The
@@ -257,12 +257,12 @@ source.
 .It Ar pfs-slave Ar dirpath Op options
 Create a pseudo-filesystem (PFS) inside a HAMMER filesystem.
 Up to 65535 such filesystems can be created.
-Each PFS uses an independant inode numbering space making it suitable
+Each PFS uses an independent inode numbering space making it suitable
 for use as a replication source or target.
 .Pp
 The
 .Ar pfs-slave
-directive creates a PFS that you can use as a mirroring target.  
+directive creates a PFS that you can use as a mirroring target.
 You will not be able to access a slave PFS until you have completed the
 first mirroring operation with it as the target (its root directory will
 not exist until then).
@@ -271,8 +271,8 @@ Access to the pfs-slave via the special softlink allows Hammer to
 dynamically modify the snapshot TID by returning a dynamic result
 from readlink() calls.
 .Pp
-A PFS can only be truely destroyed with the
-.AR pfs-destroy
+A PFS can only be truly destroyed with the
+.Ar pfs-destroy
 directive.
 Removing the softlink will not destroy the underlying PFS.
 .It Ar pfs-upgrade Ar dirpath
@@ -299,7 +299,6 @@ in the PFS, including programs chdir'd into the PFS.
 .It Ar pfs-update Ar dirpath Op options
 Update the configuration parameters for an existing HAMMER filesystem
 or pseudo-filesystem.  Options that may be specified:
-.Pp
 .Bl -tag -width indent
 .It sync-beg-tid=0x16llx
 This is the automatic snapshot access starting TID for mirroring slaves.
@@ -308,7 +307,7 @@ This parameter is normally updated automatically by the
 directive.
 .Pp
 It is important to note that accessing a mirroring slave
-with a transaction id greater then the last fully synchronized transaction
+with a transaction id greater than the last fully synchronized transaction
 id can result in an unreliable snapshot since you will be accessing
 data that is still undergoing synchronization.
 .Pp
@@ -377,7 +376,7 @@ ssh and execs the mirror-read and/or mirror-write on the appropriate host.
 The source may be a master or slave PFS, and the target must be a slave PFS.
 .Pp
 This command also established full duplex communication and turns on
-the two-way protocol feature which automatically negotiates TID ranges 
+the two-way protocol feature which automatically negotiates TID ranges
 without having to use a cycle file.
 If the operation completes successfully the target PFS's sync_end_tid will
 be updated.  Note that you must re-chdir into the target PFS to see the
