@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.100 2008/07/06 09:17:12 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.101 2008/07/13 03:57:41 sephe Exp $
  *
  */
 
@@ -348,7 +348,7 @@ TUNABLE_INT("hw.bge.fake_autoneg", &bge_fake_autoneg);
 /* Interrupt moderation control variables. */
 static int	bge_rx_coal_ticks = 150;	/* usec */
 static int	bge_tx_coal_ticks = 1023;	/* usec */
-static int	bge_rx_max_coal_bds = 24;
+static int	bge_rx_max_coal_bds = 80;
 static int	bge_tx_max_coal_bds = 128;
 
 TUNABLE_INT("hw.bge.rx_coal_ticks", &bge_rx_coal_ticks);
