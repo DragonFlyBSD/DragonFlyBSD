@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.101 2008/07/13 03:57:41 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.102 2008/07/13 11:02:50 sephe Exp $
  *
  */
 
@@ -861,6 +861,11 @@ bge_newbuf_std(struct bge_softc *sc, int i, struct mbuf *m)
 				     m_new, bge_dma_map_mbuf, &ctx,
 				     BUS_DMA_NOWAIT);
 	if (error || ctx.bge_maxsegs == 0) {
+		if (!error) {
+			if_printf(&sc->arpcom.ac_if, "too many segments?!\n");
+			bus_dmamap_unload(sc->bge_cdata.bge_mtag,
+					  sc->bge_cdata.bge_rx_std_dmamap[i]);
+		}
 		if (m == NULL)
 			m_freem(m_new);
 		return ENOMEM;
@@ -2681,6 +2686,9 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 	if (error == EFBIG || ctx.bge_maxsegs == 0) {
 		struct mbuf *m_new;
 
+		if (!error)
+			bus_dmamap_unload(sc->bge_cdata.bge_mtag, map);
+
 		m_new = m_defrag(m_head, MB_DONTWAIT);
 		if (m_new == NULL) {
 			if_printf(&sc->arpcom.ac_if,
@@ -2714,8 +2722,10 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 		if (error || ctx.bge_maxsegs == 0) {
 			if_printf(&sc->arpcom.ac_if,
 				  "could not defrag TX mbuf\n");
-			if (error == 0)
+			if (!error) {
+				bus_dmamap_unload(sc->bge_cdata.bge_mtag, map);
 				error = EFBIG;
+			}
 			goto back;
 		}
 	} else if (error) {
