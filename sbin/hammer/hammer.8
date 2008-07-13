@@ -30,8 +30,8 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.37 2008/07/13 22:14:16 swildner Exp $
-.Dd June 26, 2008
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.38 2008/07/13 22:18:18 swildner Exp $
+.Dd July 13, 2008
 .Dt HAMMER 8
 .Os
 .Sh NAME
@@ -105,12 +105,8 @@ Output HAMMER I/O statistics until interrupted.  The default interval
 is one second.
 .It Ar history Ar path
 Show the modification history for a HAMMER file's inode and data.
-.It Ar show Op vol_no[:clu_no]
-Dump the B-tree starting at the specified volume and cluster, or
-at the root volume if not specified.
-The B-Tree is dumped recursively if the
-.Fl r
-option is specified.
+.It Ar show
+Dump the B-tree.
 .It Ar blockmap
 Dump the B-tree, record, large-data, and small-data blockmaps, showing
 physical block assignments and free space percentages.
@@ -405,7 +401,6 @@ The
 directive requires that the target be configured as a slave and that the
 .Ar shared-uuid
 field of the mirroring source and target match.
-.Pp
 .Sh DIAGNOSTICS
 .Ex -std
 .Sh SEE ALSO
