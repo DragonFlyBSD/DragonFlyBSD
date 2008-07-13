@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)du.c	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/du/du.c,v 1.17.2.4 2002/12/12 16:29:39 trhodes Exp $
- * $DragonFly: src/usr.bin/du/du.c,v 1.9 2006/01/12 13:43:10 corecode Exp $
+ * $DragonFly: src/usr.bin/du/du.c,v 1.10 2008/07/13 03:37:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -99,12 +99,15 @@ int		ignorep(FTSENT *);
 
 static char period[] = ".";
 
+typedef long long	du_number_t;
+
 int
 main(int argc, char **argv)
 {
 	FTS		*fts;
 	FTSENT		*p;
-	long		blocksize, savednumber = 0;
+	long		blocksize;
+	du_number_t	savednumber = 0;
 	int		ftsoptions;
 	int		listall;
 	int		depth;
@@ -242,18 +245,31 @@ main(int argc, char **argv)
 				if (ignorep(p))
 					break;
 
-				p->fts_parent->fts_number +=
-				    p->fts_number += p->fts_statp->st_blocks;
+				if (p->fts_pointer == NULL) {
+					p->fts_pointer = malloc(sizeof(du_number_t));
+					*(du_number_t *)p->fts_pointer = 0;
+				}
+				*(du_number_t *)p->fts_pointer += p->fts_statp->st_blocks;
+
+				if (p->fts_parent->fts_pointer == NULL) {
+					p->fts_parent->fts_pointer = malloc(sizeof(du_number_t));
+					*(du_number_t *)p->fts_parent->fts_pointer = 0;
+				}
+				*(du_number_t *)p->fts_parent->fts_pointer += *(du_number_t *)p->fts_pointer += p->fts_statp->st_blocks;
 				
 				if (p->fts_level <= depth) {
 					if (hflag) {
-						(void) prthumanval(howmany(p->fts_number, blocksize));
+						(void) prthumanval(howmany(*(du_number_t *)p->fts_pointer, blocksize));
 						(void) printf("\t%s\n", p->fts_path);
 					} else {
-					(void) printf("%ld\t%s\n",
-					    howmany(p->fts_number, blocksize),
+					(void) printf("%lld\t%s\n",
+					    howmany(*(du_number_t *)p->fts_pointer, blocksize),
 					    p->fts_path);
 					}
+				}
+				if (p->fts_pointer) {
+					free(p->fts_pointer);
+					p->fts_pointer = NULL;
 				}
 				break;
 			case FTS_DC:			/* Ignore. */
@@ -277,15 +293,19 @@ main(int argc, char **argv)
 							blocksize));
 						(void) printf("\t%s\n", p->fts_path);
 					} else {
-						(void) printf("%qd\t%s\n",
-							howmany(p->fts_statp->st_blocks, blocksize),
+						(void) printf("%lld\t%s\n",
+							howmany((long long)p->fts_statp->st_blocks, blocksize),
 							p->fts_path);
 					}
 				}
-
-				p->fts_parent->fts_number += p->fts_statp->st_blocks;
+				if (p->fts_parent->fts_pointer == NULL) {
+					p->fts_parent->fts_pointer = malloc(sizeof(du_number_t));
+					*(du_number_t *)p->fts_parent->fts_pointer = 0;
+				}
+				*(du_number_t *)p->fts_parent->fts_pointer += p->fts_statp->st_blocks;
 		}
-		savednumber = p->fts_parent->fts_number;
+		if (p->fts_parent->fts_pointer)
+			savednumber = *(du_number_t *)p->fts_parent->fts_pointer;
 	}
 
 	if (errno)
@@ -296,7 +316,7 @@ main(int argc, char **argv)
 			(void) prthumanval(howmany(savednumber, blocksize));
 			(void) printf("\ttotal\n");
 		} else {
-			(void) printf("%ld\ttotal\n", howmany(savednumber, blocksize));
+			(void) printf("%lld\ttotal\n", howmany(savednumber, blocksize));
 		}
 	}
 
