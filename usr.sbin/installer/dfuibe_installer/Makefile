@@ -1,5 +1,5 @@
 #
-# $DragonFly: src/usr.sbin/installer/dfuibe_installer/Makefile,v 1.2 2008/03/25 22:55:38 dave Exp $
+# $DragonFly: src/usr.sbin/installer/dfuibe_installer/Makefile,v 1.3 2008/07/13 10:55:05 swildner Exp $
 
 BSDINS_DIR=${.CURDIR}/../../../contrib/bsdinstaller-1.1.6
 BSDINS_SRC=${BSDINS_DIR}/src
@@ -7,7 +7,7 @@ BSDINS_SRC=${BSDINS_DIR}/src
 CONTRIBDIR=${BSDINS_SRC}/backend/installer
 .PATH: ${CONTRIBDIR}
 
-PATCHES=	fn_install.c.patch flow.c.patch
+PATCHES=	fn_install.c.patch
 
 BINDIR=	/usr/sbin
 PROG=	dfuibe_installer
