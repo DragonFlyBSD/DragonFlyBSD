@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_stats.c,v 1.1 2008/06/17 04:03:38 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_stats.c,v 1.2 2008/07/13 02:02:40 swildner Exp $
  */
 
 #include "hammer.h"
@@ -135,7 +135,7 @@ hammer_cmd_iostats(char **av, int ac)
 	r |= sysctlnametomib("vfs.hammer.stats_wr_cached",
 			     mibs[3], &lens[3]);
 	if (r < 0) {
-		perror("sysctl: HAMMER stats not available:");
+		perror("sysctl: HAMMER stats not available");
 		exit(1);
 	}
 
