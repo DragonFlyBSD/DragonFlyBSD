@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.36 2008/07/13 00:56:06 swildner Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.37 2008/07/13 22:14:16 swildner Exp $
 .Dd June 26, 2008
 .Dt HAMMER 8
 .Os
@@ -98,7 +98,7 @@ crash might still undo the state of the filesystem as of the transaction
 id returned but any new modifications will occur after the returned
 transaction id as expected.
 .It Ar bstats Op interval
-Output HAMMER B-Tree statistics until interrupted.  The default interval
+Output HAMMER B-tree statistics until interrupted.  The default interval
 is one second.
 .It Ar iostats Op interval
 Output HAMMER I/O statistics until interrupted.  The default interval
@@ -106,13 +106,13 @@ is one second.
 .It Ar history Ar path
 Show the modification history for a HAMMER file's inode and data.
 .It Ar show Op vol_no[:clu_no]
-Dump the B-Tree starting at the specified volume and cluster, or
+Dump the B-tree starting at the specified volume and cluster, or
 at the root volume if not specified.
 The B-Tree is dumped recursively if the
 .Fl r
 option is specified.
 .It Ar blockmap
-Dump the btree, record, large-data, and small-data blockmaps, showing
+Dump the B-tree, record, large-data, and small-data blockmaps, showing
 physical block assignments and free space percentages.
 .It Ar namekey Ar filename
 Generate a HAMMER 64 bit directory hash for the specified file name.
@@ -238,7 +238,7 @@ options to limit the run time.
 The filesystem would thus be defragmented over long period of time.
 .Pp
 It is recommended that separate invocations be used for each data type.
-Btree nodes, inodes, and directories are typically the most important
+B-tree nodes, inodes, and directories are typically the most important
 elements needing defragmentation.  Data can be defragmented over a longer
 period of time.
 .It Ar pfs-status Ar dirpath
