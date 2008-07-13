@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.33 2008/05/19 10:28:06 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/trap.c,v 1.34 2008/07/13 10:28:51 nth Exp $
  */
 
 /*
@@ -323,8 +323,18 @@ userexit(struct lwp *lp)
 	 * Handle a LWKT reschedule request first.  Since our passive release
 	 * is still in place we do not have to do anything special.
 	 */
-	if (lwkt_resched_wanted())
+	while (lwkt_resched_wanted()) {
 		lwkt_switch();
+
+		/*
+		 * The thread that preempted us may have stopped our process.
+		 */
+		while (lp->lwp_proc->p_stat == SSTOP) {
+			get_mplock();
+			tstop();
+			rel_mplock();
+		}
+	}
 
 	/*
 	 * Acquire the current process designation for this user scheduler
