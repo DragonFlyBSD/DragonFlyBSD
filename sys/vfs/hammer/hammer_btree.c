@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.70 2008/07/11 01:22:29 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.71 2008/07/13 09:32:48 dillon Exp $
  */
 
 /*
@@ -2292,6 +2292,12 @@ hammer_btree_mirror_propagate(hammer_cursor_t cursor, hammer_tid_t mirror_tid)
 				   sizeof(elm->mirror_tid));
 		elm->mirror_tid = mirror_tid;
 		hammer_modify_node_done(node);
+		if (hammer_debug_general & 0x0002) {
+			kprintf("mirror_propagate: propagate "
+				"%016llx @%016llx:%d\n",
+				mirror_tid, node->node_offset, cursor->index);
+		}
+
 
 		/*
 		 * Adjust the node's mirror_tid aggregator
@@ -2301,6 +2307,11 @@ hammer_btree_mirror_propagate(hammer_cursor_t cursor, hammer_tid_t mirror_tid)
 		hammer_modify_node_field(cursor->trans, node, mirror_tid);
 		node->ondisk->mirror_tid = mirror_tid;
 		hammer_modify_node_done(node);
+		if (hammer_debug_general & 0x0002) {
+			kprintf("mirror_propagate: propagate "
+				"%016llx @%016llx\n",
+				mirror_tid, node->node_offset);
+		}
 	}
 	if (error == ENOENT)
 		error = 0;

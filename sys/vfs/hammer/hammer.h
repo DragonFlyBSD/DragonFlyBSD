@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.115 2008/07/13 01:12:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.116 2008/07/13 09:32:48 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -1032,7 +1032,7 @@ void hammer_rel_inode(hammer_inode_t ip, int flush);
 int hammer_reload_inode(hammer_inode_t ip, void *arg __unused);
 int hammer_ino_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2);
 
-int hammer_sync_inode(hammer_inode_t ip);
+int hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip);
 void hammer_test_inode(hammer_inode_t ip);
 void hammer_inode_unloadable_check(hammer_inode_t ip, int getvp);
 

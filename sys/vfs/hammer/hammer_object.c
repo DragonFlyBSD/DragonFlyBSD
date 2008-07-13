@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.88 2008/07/12 23:04:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.89 2008/07/13 09:32:48 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1054,6 +1054,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	if (record->type == HAMMER_MEM_RECORD_DEL) {
 		error = hammer_btree_lookup(cursor);
 		if (error == 0) {
+			/* XXX iprec? */
 			error = hammer_ip_delete_record(cursor, record->ip,
 							trans->tid);
 			if (error == 0) {
@@ -1989,7 +1990,7 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 
 	/*
 	 * Adjust the delete_tid.  Update the mirror_tid propagation field
-	 * as well.
+	 * as well.  delete_tid can be 0 (undelete -- used by mirroring).
 	 */
 	if (delete_flags & HAMMER_DELETE_ADJUST) {
 		if (elm->base.rec_type == HAMMER_RECTYPE_INODE) {
@@ -2009,6 +2010,12 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 			node->ondisk->mirror_tid = elm->leaf.base.delete_tid;
 			hammer_modify_node_done(node);
 			doprop = 1;
+			if (hammer_debug_general & 0x0002) {
+				kprintf("delete_at_cursor: propagate %016llx"
+					" @%016llx\n",
+					elm->leaf.base.delete_tid,
+					node->node_offset);
+			}
 		}
 
 		/*

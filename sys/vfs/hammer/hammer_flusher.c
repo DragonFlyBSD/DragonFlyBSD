@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.38 2008/07/13 01:12:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.39 2008/07/13 09:32:48 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -264,6 +264,8 @@ hammer_flusher_flush(hammer_mount_t hmp)
 				flg->total_count, flg->refs);
 		}
 		hammer_start_transaction_fls(&hmp->flusher.trans, hmp);
+		if (hammer_debug_general & 0x0001)
+			kprintf("T");
 
 		/*
 		 * If the previous flush cycle just about exhausted our
@@ -455,7 +457,7 @@ hammer_flusher_flush_inode(hammer_inode_t ip, hammer_transaction_t trans)
 	int error;
 
 	hammer_flusher_clean_loose_ios(hmp);
-	error = hammer_sync_inode(ip);
+	error = hammer_sync_inode(trans, ip);
 	if (error != EWOULDBLOCK)
 		ip->error = error;
 	hammer_flush_inode_done(ip);

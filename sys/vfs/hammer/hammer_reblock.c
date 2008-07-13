@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.30 2008/07/13 01:12:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.31 2008/07/13 09:32:48 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -143,6 +143,18 @@ retry:
 			hammer_flusher_wait(trans->hmp, seq);
 			hammer_lock_cursor(&cursor, 0);
 			seq = hammer_flusher_async(trans->hmp, NULL);
+		}
+
+		/*
+		 * We allocate data buffers, which atm we don't track
+		 * dirty levels for because we allow the kernel to write
+		 * them.  But if we allocate too many we can still deadlock
+		 * the buffer cache.
+		 */
+		if (bd_heatup()) {
+			hammer_unlock_cursor(&cursor, 0);
+			bwillwrite(HAMMER_BUFSIZE);
+			hammer_lock_cursor(&cursor, 0);
 		}
 
 		/*

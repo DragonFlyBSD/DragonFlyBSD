@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.101 2008/07/12 23:04:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.102 2008/07/13 09:32:48 dillon Exp $
  */
 
 #include "hammer.h"
@@ -2206,9 +2206,8 @@ done:
  * XXX error handling
  */
 int
-hammer_sync_inode(hammer_inode_t ip)
+hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip)
 {
-	struct hammer_transaction trans;
 	struct hammer_cursor cursor;
 	hammer_node_t tmp_node;
 	hammer_record_t depend;
@@ -2219,8 +2218,7 @@ hammer_sync_inode(hammer_inode_t ip)
 	if ((ip->sync_flags & HAMMER_INODE_MODMASK) == 0)
 		return(0);
 
-	hammer_start_transaction_fls(&trans, ip->hmp);
-	error = hammer_init_cursor(&trans, &cursor, &ip->cache[1], ip);
+	error = hammer_init_cursor(trans, &cursor, &ip->cache[1], ip);
 	if (error)
 		goto done;
 
@@ -2405,24 +2403,24 @@ hammer_sync_inode(hammer_inode_t ip)
 			 * copy of the inode record.  The DELETED flag handles
 			 * this, do not set RDIRTY.
 			 */
-			ip->ino_leaf.base.delete_tid = trans.tid;
-			ip->sync_ino_leaf.base.delete_tid = trans.tid;
-			ip->ino_leaf.delete_ts = trans.time32;
-			ip->sync_ino_leaf.delete_ts = trans.time32;
+			ip->ino_leaf.base.delete_tid = trans->tid;
+			ip->sync_ino_leaf.base.delete_tid = trans->tid;
+			ip->ino_leaf.delete_ts = trans->time32;
+			ip->sync_ino_leaf.delete_ts = trans->time32;
 
 
 			/*
 			 * Adjust the inode count in the volume header
 			 */
-			hammer_sync_lock_sh(&trans);
+			hammer_sync_lock_sh(trans);
 			if (ip->flags & HAMMER_INODE_ONDISK) {
-				hammer_modify_volume_field(&trans,
-							   trans.rootvol,
+				hammer_modify_volume_field(trans,
+							   trans->rootvol,
 							   vol0_stat_inodes);
 				--ip->hmp->rootvol->ondisk->vol0_stat_inodes;
-				hammer_modify_volume_done(trans.rootvol);
+				hammer_modify_volume_done(trans->rootvol);
 			}
-			hammer_sync_unlock(&trans);
+			hammer_sync_unlock(trans);
 		} else {
 			Debugger("hammer_ip_delete_clean errored");
 		}
@@ -2486,10 +2484,10 @@ defer_buffer_flush:
 		 * Also set the create_tid in both the frontend and backend
 		 * copy of the inode record.
 		 */
-		ip->ino_leaf.base.create_tid = trans.tid;
-		ip->ino_leaf.create_ts = trans.time32;
-		ip->sync_ino_leaf.base.create_tid = trans.tid;
-		ip->sync_ino_leaf.create_ts = trans.time32;
+		ip->ino_leaf.base.create_tid = trans->tid;
+		ip->ino_leaf.create_ts = trans->time32;
+		ip->sync_ino_leaf.base.create_tid = trans->tid;
+		ip->sync_ino_leaf.create_ts = trans->time32;
 		ip->sync_flags |= HAMMER_INODE_DDIRTY;
 		break;
 	}
@@ -2521,7 +2519,6 @@ done:
 	 * do not improperly reuse it.
 	 */
 	hammer_done_cursor(&cursor);
-	hammer_done_transaction(&trans);
 	return(error);
 }
 
