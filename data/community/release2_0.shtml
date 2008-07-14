@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - xxx 2008 Release 2.0.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/release2_0.shtml,v 1.5 2008/05/19 08:33:22 matthias Exp $ -->
+<!-- $DragonFly: site/data/community/release2_0.shtml,v 1.6 2008/07/14 12:22:54 matthias Exp $ -->
 
 <h1>Obtaining DragonFly 2.0.x for your system</h1>
 
@@ -172,17 +172,21 @@ only commit bug fixes to release branches.
 <ul>
     <li>Citrus iconv was synced with NetBSD.
     <li>Add blacklist feature for weak Debian-generated SSH keys.
+    <li>Build the installer as part of normal build-/installworld if <tt>WANT_INSTALLER</tt> is set.
 </ul>
 <h3>Removals</h3>
 <ul>
 	<li>Fortran was removed from the base.
+	<li>libreadline was removed from the base.
 </ul>
 <h3>Contributed Software</h3>
 <ul>
+    <li>BIND was updated to version 9.3.5-P1 fixing a security issue.
     <li>bzip was updated to version 1.0.5.
     <li>less was updated to version 418.
-    <li>libarchive was updated to version 2.4.17.
+    <li>libarchive was updated to version 2.5.5.
     <li>OpenSSH was updated to version 5.0.
+    <li>The timezone database was synced with tzdata2008d.
     <li>tnftpd was synced with NetBSD as of May 2008.
 </ul>
 <h3>Sub-project progress report</h3>
