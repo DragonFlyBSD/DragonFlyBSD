@@ -25,7 +25,7 @@
  */
 /* $Id: asf.c,v 1.6 2003/11/04 06:38:37 green Exp $ */
 /* $FreeBSD: src/usr.sbin/asf/asf.c,v 1.6 2003/11/04 06:38:37 green Exp $ */
-/* $DragonFly: src/usr.sbin/asf/asf.c,v 1.5 2008/05/19 10:13:08 corecode Exp $ */
+/* $DragonFly: src/usr.sbin/asf/asf.c,v 1.6 2008/07/14 00:09:42 dillon Exp $ */
 
 #define MAXLINE 1024
 #include <ctype.h>
@@ -254,6 +254,8 @@ main(int argc, char *argv[])
 	    quad_t bssaddr;
 
 	    tokens = tokenize(buf, token, MAXTOKEN);
+	    if (tokens <= 1)
+		continue;
 	    base = strtoll(token[2], NULL, 16);
 	    if (!dofind) {
 		snprintf(ocbuf,
