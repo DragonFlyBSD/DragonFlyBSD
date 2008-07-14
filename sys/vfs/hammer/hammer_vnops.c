@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.91 2008/07/14 03:20:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.92 2008/07/14 20:27:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -275,6 +275,7 @@ hammer_vop_read(struct vop_read_args *ap)
 		bqrelse(bp);
 		if (error)
 			break;
+		hammer_stats_file_read += n;
 	}
 	if ((ip->flags & HAMMER_INODE_RO) == 0 &&
 	    (ip->hmp->mp->mnt_flag & MNT_NOATIME) == 0) {
@@ -486,6 +487,7 @@ hammer_vop_write(struct vop_write_args *ap)
 			}
 			break;
 		}
+		hammer_stats_file_write += n;
 		/* bp->b_flags |= B_CLUSTEROK; temporarily disabled */
 		if (ip->ino_data.size < uio->uio_offset) {
 			ip->ino_data.size = uio->uio_offset;
@@ -534,6 +536,7 @@ hammer_vop_access(struct vop_access_args *ap)
 	gid_t gid;
 	int error;
 
+	++hammer_stats_file_iopsr;
 	uid = hammer_to_unix_xid(&ip->ino_data.uid);
 	gid = hammer_to_unix_xid(&ip->ino_data.gid);
 
@@ -596,6 +599,7 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 	 * Create a transaction to cover the operations we perform.
 	 */
 	hammer_start_transaction(&trans, dip->hmp);
+	++hammer_stats_file_iopsw;
 
 	/*
 	 * Create a new filesystem object of the requested type.  The
@@ -670,6 +674,7 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	 * by stat is different from the more involved fsid used in the
 	 * mount structure.
 	 */
+	++hammer_stats_file_iopsr;
 	vap->va_fsid = ip->pfsm->fsid_udev ^ (u_int32_t)ip->obj_asof ^
 		       (u_int32_t)(ip->obj_asof >> 32);
 
@@ -767,6 +772,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	ispfs = 0;
 
 	hammer_simple_transaction(&trans, dip->hmp);
+	++hammer_stats_file_iopsr;
 
 	for (i = 0; i < nlen; ++i) {
 		if (ncp->nc_name[i] == '@' && ncp->nc_name[i+1] == '@') {
@@ -951,6 +957,7 @@ hammer_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 	}
 
 	hammer_simple_transaction(&trans, dip->hmp);
+	++hammer_stats_file_iopsr;
 
 	ip = hammer_get_inode(&trans, dip, parent_obj_id,
 			      asof, parent_obj_localization,
@@ -993,6 +1000,7 @@ hammer_vop_nlink(struct vop_nlink_args *ap)
 	 * Create a transaction to cover the operations we perform.
 	 */
 	hammer_start_transaction(&trans, dip->hmp);
+	++hammer_stats_file_iopsw;
 
 	/*
 	 * Add the filesystem object to the directory.  Note that neither
@@ -1042,6 +1050,7 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 	 * Create a transaction to cover the operations we perform.
 	 */
 	hammer_start_transaction(&trans, dip->hmp);
+	++hammer_stats_file_iopsw;
 
 	/*
 	 * Create a new filesystem object of the requested type.  The
@@ -1111,6 +1120,7 @@ hammer_vop_nmknod(struct vop_nmknod_args *ap)
 	 * Create a transaction to cover the operations we perform.
 	 */
 	hammer_start_transaction(&trans, dip->hmp);
+	++hammer_stats_file_iopsw;
 
 	/*
 	 * Create a new filesystem object of the requested type.  The
@@ -1161,6 +1171,7 @@ hammer_vop_open(struct vop_open_args *ap)
 {
 	hammer_inode_t ip;
 
+	++hammer_stats_file_iopsr;
 	ip = VTOI(ap->a_vp);
 
 	if ((ap->a_mode & FWRITE) && (ip->flags & HAMMER_INODE_RO))
@@ -1208,6 +1219,7 @@ hammer_vop_readdir(struct vop_readdir_args *ap)
 	int r;
 	int dtype;
 
+	++hammer_stats_file_iopsr;
 	ip = VTOI(ap->a_vp);
 	uio = ap->a_uio;
 	saveoff = uio->uio_offset;
@@ -1406,6 +1418,7 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 	 * Long version
 	 */
 	hammer_simple_transaction(&trans, ip->hmp);
+	++hammer_stats_file_iopsr;
 	hammer_init_cursor(&trans, &cursor, &ip->cache[1], ip);
 
 	/*
@@ -1459,6 +1472,7 @@ hammer_vop_nremove(struct vop_nremove_args *ap)
 	}
 
 	hammer_start_transaction(&trans, dip->hmp);
+	++hammer_stats_file_iopsw;
 	error = hammer_dounlink(&trans, ap->a_nch, ap->a_dvp, ap->a_cred, 0);
 	hammer_done_transaction(&trans);
 
@@ -1499,6 +1513,7 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 		return (error);
 
 	hammer_start_transaction(&trans, fdip->hmp);
+	++hammer_stats_file_iopsw;
 
 	/*
 	 * Remove tncp from the target directory and then link ip as
@@ -1616,6 +1631,7 @@ hammer_vop_nrmdir(struct vop_nrmdir_args *ap)
 	}
 
 	hammer_start_transaction(&trans, dip->hmp);
+	++hammer_stats_file_iopsw;
 	error = hammer_dounlink(&trans, ap->a_nch, ap->a_dvp, ap->a_cred, 0);
 	hammer_done_transaction(&trans);
 
@@ -1653,6 +1669,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 	}
 
 	hammer_start_transaction(&trans, ip->hmp);
+	++hammer_stats_file_iopsw;
 	error = 0;
 
 	if (vap->va_flags != VNOVAL) {
@@ -1858,6 +1875,7 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 	 * Create a transaction to cover the operations we perform.
 	 */
 	hammer_start_transaction(&trans, dip->hmp);
+	++hammer_stats_file_iopsw;
 
 	/*
 	 * Create a new filesystem object of the requested type.  The
@@ -1944,6 +1962,7 @@ hammer_vop_nwhiteout(struct vop_nwhiteout_args *ap)
 	}
 
 	hammer_start_transaction(&trans, dip->hmp);
+	++hammer_stats_file_iopsw;
 	error = hammer_dounlink(&trans, ap->a_nch, ap->a_dvp,
 				ap->a_cred, ap->a_flags);
 	hammer_done_transaction(&trans);
@@ -1960,6 +1979,7 @@ hammer_vop_ioctl(struct vop_ioctl_args *ap)
 {
 	struct hammer_inode *ip = ap->a_vp->v_data;
 
+	++hammer_stats_file_iopsr;
 	return(hammer_ioctl(ip, ap->a_command, ap->a_data,
 			    ap->a_fflag, ap->a_cred));
 }
@@ -2289,6 +2309,7 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 	int	error;
 	int	blksize;
 
+	++hammer_stats_file_iopsr;
 	ip = ap->a_vp->v_data;
 
 	/*

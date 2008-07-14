@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.49 2008/07/14 03:20:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.50 2008/07/14 20:27:54 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -177,13 +177,15 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io, hammer_off_t limit)
 
 	if ((bp = io->bp) == NULL) {
 		hammer_count_io_running_read += io->bytes;
-#if 1
-		error = cluster_read(devvp, limit, io->offset, io->bytes,
-				     HAMMER_CLUSTER_SIZE,
-				     HAMMER_CLUSTER_BUFS, &io->bp);
-#else
-		error = bread(devvp, io->offset, io->bytes, &io->bp);
-#endif
+		if (hammer_cluster_enable) {
+			error = cluster_read(devvp, limit,
+					     io->offset, io->bytes,
+					     HAMMER_CLUSTER_SIZE,
+					     HAMMER_CLUSTER_BUFS, &io->bp);
+		} else {
+			error = bread(devvp, io->offset, io->bytes, &io->bp);
+		}
+		hammer_stats_disk_read += io->bytes;
 		hammer_count_io_running_read -= io->bytes;
 		if (error == 0) {
 			bp = io->bp;
@@ -761,12 +763,15 @@ hammer_io_complete(struct buf *bp)
 	 * Deal with people waiting for I/O to drain
 	 */
 	if (iou->io.running) {
+		hammer_stats_disk_write += iou->io.bytes;
 		hammer_count_io_running_write -= iou->io.bytes;
 		iou->io.hmp->io_running_space -= iou->io.bytes;
 		if (iou->io.hmp->io_running_space == 0)
 			wakeup(&iou->io.hmp->io_running_space);
 		KKASSERT(iou->io.hmp->io_running_space >= 0);
 		iou->io.running = 0;
+	} else {
+		hammer_stats_disk_read += iou->io.bytes;
 	}
 
 	if (iou->io.waiting) {
@@ -1012,6 +1017,7 @@ hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio,
 			nbio->bio_caller_info1.uvalue32 = leaf->data_crc;
 		}
 #endif
+		hammer_stats_disk_read += bp->b_bufsize;
 		vn_strategy(volume->devvp, nbio);
 	}
 	hammer_rel_volume(volume, 0);
@@ -1119,6 +1125,7 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
 			nbio = push_bio(nbio);
 			nbio->bio_offset = volume->ondisk->vol_buf_beg +
 					   zone2_offset;
+			hammer_stats_disk_write += bp->b_bufsize;
 			vn_strategy(volume->devvp, nbio);
 		}
 		hammer_rel_volume(volume, 0);

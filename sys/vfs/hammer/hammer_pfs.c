@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_pfs.c,v 1.1 2008/07/12 02:47:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_pfs.c,v 1.2 2008/07/14 20:27:54 dillon Exp $
  */
 /*
  * HAMMER PFS ioctls - Manage pseudo-fs configurations
@@ -302,6 +302,7 @@ hammer_pfs_rollback(hammer_transaction_t trans,
 	struct hammer_cursor cursor;
 	struct hammer_base_elm key_cur;
 	int error;
+	int seq;
 
 	bzero(&cmirror, sizeof(cmirror));
 	bzero(&key_cur, sizeof(key_cur));
@@ -310,6 +311,8 @@ hammer_pfs_rollback(hammer_transaction_t trans,
 	key_cur.key = HAMMER_MIN_KEY;
 	key_cur.create_tid = 1;
 	key_cur.rec_type = HAMMER_MIN_RECTYPE;
+
+	seq = trans->hmp->flusher.act;
 
 retry:
 	error = hammer_init_cursor(trans, &cursor, NULL, NULL);
@@ -357,6 +360,14 @@ retry:
 		if (cursor.node->ondisk->type == HAMMER_BTREE_TYPE_LEAF) {
 			key_cur = cursor.node->ondisk->elms[cursor.index].base;
 			error = hammer_pfs_delete_at_cursor(&cursor, trunc_tid);
+		}
+
+		while (hammer_flusher_meta_halflimit(trans->hmp) ||
+		       hammer_flusher_undo_exhausted(trans, 2)) {
+			hammer_unlock_cursor(&cursor, 0);
+			hammer_flusher_wait(trans->hmp, seq);
+			hammer_lock_cursor(&cursor, 0);
+			seq = hammer_flusher_async_one(trans->hmp);
 		}
 
 		if (error == 0)
