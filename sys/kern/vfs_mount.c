@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.35 2008/07/08 03:34:27 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.35.2.1 2008/07/14 22:19:42 dillon Exp $
  */
 
 /*
@@ -944,8 +944,10 @@ vmntvnodescan(
 		 * A positive number aborts the loop.
 		 */
 		if (fastfunc) {
-			if ((r = fastfunc(mp, vp, data)) < 0)
+			if ((r = fastfunc(mp, vp, data)) < 0) {
+				r = 0;
 				goto next;
+			}
 			if (r)
 				break;
 		}
