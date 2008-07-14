@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.15 2008/07/07 00:27:22 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.16 2008/07/14 03:21:34 dillon Exp $
  */
 
 #include "hammer.h"
@@ -185,9 +185,10 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 		switch(elm->base.btype) {
 		case HAMMER_BTREE_TYPE_RECORD:
 			printf("\n\t         ");
-			printf(" dataoff=%016llx/%d",
+			printf("dataoff=%016llx/%d",
 				elm->leaf.data_offset, elm->leaf.data_len);
 			if (VerboseOpt) {
+				printf(" crc=%04x", elm->leaf.data_crc);
 				printf("\n\t         fills=");
 				print_bigblock_fill(elm->leaf.data_offset);
 			}
