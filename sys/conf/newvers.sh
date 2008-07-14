@@ -33,9 +33,9 @@
 #
 #	@(#)newvers.sh	8.1 (Berkeley) 4/20/94
 # $FreeBSD: src/sys/conf/newvers.sh,v 1.44.2.30 2003/04/04 07:02:46 murray Exp $
-# $DragonFly: src/sys/conf/newvers.sh,v 1.22 2008/07/09 18:15:10 thomas Exp $
+# $DragonFly: src/sys/conf/newvers.sh,v 1.22.2.1 2008/07/14 04:20:36 dillon Exp $
 
-tag="\$Name:  $"
+tag="\$Name: DragonFly_RELEASE_2_0 $"
 
 # Extract the tag name, if any.
 #
@@ -53,17 +53,17 @@ BRANCH=${BRANCH%_Slip}
 # implicitly or explicitly.
 #
 if [ "X${BRANCH}" = "X$" ]; then
-    BRANCH="DEVELOPMENT_1_13"
+    BRANCH="DEVELOPMENT_2_1"
 fi
 if [ "X${BRANCH}" = "XHEAD" ]; then
-    BRANCH="DEVELOPMENT_1_13"
+    BRANCH="DEVELOPMENT_2_1"
 fi
 if [ "X${BRANCH}" = "XPreview" ]; then
-    BRANCH="PREVIEW_1_13"
-    SHORTTAG="DEVELOPMENT_1_13"
+    BRANCH="PREVIEW_2_1"
+    SHORTTAG="DEVELOPMENT_2_1"
 fi
 
-# This case occurs if the $Name:  $ field has not been expanded.
+# This case occurs if the $Name: DragonFly_RELEASE_2_0 $ field has not been expanded.
 #
 if [ "X${BRANCH}" = "X" ]; then
     BRANCH="UNKNOWN"
