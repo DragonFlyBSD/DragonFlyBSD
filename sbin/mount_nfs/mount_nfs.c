@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_nfs.c	8.11 (Berkeley) 5/4/95
  * $FreeBSD: src/sbin/mount_nfs/mount_nfs.c,v 1.36.2.6 2003/05/13 14:45:40 trhodes Exp $
- * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.13 2008/02/16 20:48:29 dillon Exp $
+ * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.14 2008/07/14 22:22:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -631,16 +631,8 @@ getnfsargs(char *spec, struct nfs_args *nfsargsp)
 			_res.retrans = 3;
 			break;
 		}
-		if (inet_aton(hostp, &iaddr)) {
-		  if ((hp = gethostbyaddr((char *) &iaddr, 
-					  sizeof(iaddr), 
-					  AF_INET)) != NULL) {
-		    	memmove(&saddr.sin_addr, hp->h_addr, 
-			    MIN(hp->h_length, (int)sizeof(saddr.sin_addr)));
-		  } else {
-		    warnx("bad net address %s", hostp);
-		    haserror = EAI_FAIL;
-		  }
+		if (inet_pton(AF_INET, hostp, &iaddr) == 1) {
+			saddr.sin_addr = iaddr;
 		} else if ((hp = gethostbyname(hostp)) != NULL) {
 			memmove(&saddr.sin_addr, hp->h_addr, 
 			    MIN(hp->h_length, (int)sizeof(saddr.sin_addr)));
