@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.51 2007/09/04 00:48:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.52 2008/07/14 17:45:49 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -1130,7 +1130,7 @@ nfs_sync(struct mount *mp, int waitfor)
 	struct scaninfo scaninfo;
 	int error;
 
-	scaninfo.rescan = 0;
+	scaninfo.rescan = 1;
 	scaninfo.waitfor = waitfor;
 	scaninfo.allerror = 0;
 

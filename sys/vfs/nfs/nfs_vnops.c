@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.77 2008/06/08 08:38:06 sephe Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.78 2008/07/14 17:45:49 dillon Exp $
  */
 
 
@@ -225,6 +225,10 @@ struct nfsmount *nfs_iodmount[NFS_MAXASYNCDAEMON];
 int nfs_numasync = 0;
 
 SYSCTL_DECL(_vfs_nfs);
+
+static int nfs_flush_on_rename = 1;
+SYSCTL_INT(_vfs_nfs, OID_AUTO, flush_on_rename, CTLFLAG_RW, 
+	   &nfs_flush_on_rename, 0, "flush fvp prior to rename");
 
 static int	nfsaccess_cache_timeout = NFS_DEFATTRTIMO;
 SYSCTL_INT(_vfs_nfs, OID_AUTO, access_cache_timeout, CTLFLAG_RW, 
@@ -670,7 +674,11 @@ nfs_setattr(struct vop_setattr_args *ap)
 	    vap->va_mtime.tv_sec != VNOVAL || vap->va_mode != (mode_t)VNOVAL) &&
 	    (vp->v_mount->mnt_flag & MNT_RDONLY))
 		return (EROFS);
+
 	if (vap->va_size != VNOVAL) {
+		/*
+		 * truncation requested
+		 */
  		switch (vp->v_type) {
  		case VDIR:
  			return (EISDIR);
@@ -729,12 +737,26 @@ again:
 			np->n_vattr.va_size = vap->va_size;
 			break;
 		}
-  	} else if ((vap->va_mtime.tv_sec != VNOVAL ||
-		vap->va_atime.tv_sec != VNOVAL) && (np->n_flag & NLMODIFIED) &&
-		vp->v_type == VREG &&
-  		(error = nfs_vinvalbuf(vp, V_SAVE, 1)) == EINTR
-	) {
-		return (error);
+	} else if ((np->n_flag & NLMODIFIED) && vp->v_type == VREG) {
+		/*
+		 * What to do.  If we are modifying the mtime we lose
+		 * mtime detection of changes made by the server or other
+		 * clients.  But programs like rsync/rdist/cpdup are going
+		 * to call utimes a lot.  We don't want to piecemeal sync.
+		 *
+		 * For now sync if any prior remote changes were detected,
+		 * but allow us to lose track of remote changes made during
+		 * the utimes operation.
+		 */
+		if (np->n_flag & NRMODIFIED)
+			error = nfs_vinvalbuf(vp, V_SAVE, 1);
+		if (error == EINTR)
+			return (error);
+		if (error == 0) {
+			if (vap->va_mtime.tv_sec != VNOVAL) {
+				np->n_mtime = vap->va_mtime.tv_sec;
+			}
+		}
 	}
 	error = nfs_setattrrpc(vp, vap, ap->a_cred, td);
 
@@ -1700,15 +1722,14 @@ nfs_rename(struct vop_old_rename_args *ap)
 	}
 
 	/*
-	 * We have to flush B_DELWRI data prior to renaming
-	 * the file.  If we don't, the delayed-write buffers
-	 * can be flushed out later after the file has gone stale
-	 * under NFSV3.  NFSV2 does not have this problem because
-	 * ( as far as I can tell ) it flushes dirty buffers more
-	 * often.
+	 * We shouldn't have to flush fvp on rename as the file handle should
+	 * not change, but the default is to do so.
+	 *
+	 * We must flush tvp on rename because it might become stale on the
+	 * server after the rename.
 	 */
-
-	VOP_FSYNC(fvp, MNT_WAIT);
+	if (nfs_flush_on_rename)
+	    VOP_FSYNC(fvp, MNT_WAIT);
 	if (tvp)
 	    VOP_FSYNC(tvp, MNT_WAIT);
 
@@ -3053,9 +3074,8 @@ nfs_flush_bp(struct buf *bp, void *data)
 			}
 			bremfree(bp);
 
-			bp->b_flags |= B_ASYNC;
 			crit_exit();
-			bwrite(bp);
+			bawrite(bp);
 		} else {
 			crit_exit();
 			error = 0;

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs.h	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sys/nfs/nfs.h,v 1.53.2.5 2002/02/20 01:35:34 iedowse Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.19 2006/12/23 00:41:29 swildner Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.20 2008/07/14 17:45:49 dillon Exp $
  */
 
 #ifndef _NFS_NFS_H_
@@ -305,6 +305,7 @@ extern vm_zone_t nfsmount_zone;
 #endif
 
 extern struct callout nfs_timer_handle;
+extern int nfs_async;
 
 struct uio;
 struct buf;

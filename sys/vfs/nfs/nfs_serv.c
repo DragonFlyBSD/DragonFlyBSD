@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.46 2007/11/20 21:36:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.47 2008/07/14 17:45:49 dillon Exp $
  */
 
 /*
@@ -134,7 +134,7 @@ static struct timespec	nfsver;
 
 SYSCTL_DECL(_vfs_nfs);
 
-static int nfs_async;
+int nfs_async;
 SYSCTL_INT(_vfs_nfs, OID_AUTO, async, CTLFLAG_RW, &nfs_async, 0, "");
 static int nfs_commit_blks;
 static int nfs_commit_miss;

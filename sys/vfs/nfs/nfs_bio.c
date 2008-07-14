@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.43 2008/04/22 18:46:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.44 2008/07/14 17:45:49 dillon Exp $
  */
 
 
@@ -1045,6 +1045,11 @@ again:
 		 *
 		 * IO_INVAL appears to be unused.  The idea appears to be
 		 * to turn off caching in this case.  Very odd.  XXX
+		 *
+		 * If nfs_async is set bawrite() will use an unstable write
+		 * (build dirty bufs on the server), so we might as well
+		 * push it out with bawrite().  If nfs_async is not set we
+		 * use bdwrite() to cache dirty bufs on the client.
 		 */
 		if ((np->n_flag & NDONTCACHE) || (ioflag & IO_SYNC)) {
 			if (ioflag & IO_INVAL)
@@ -1057,9 +1062,8 @@ again:
 				if (error)
 					break;
 			}
-		} else if ((n + on) == biosize) {
-			bp->b_flags |= B_ASYNC;
-			bwrite(bp);
+		} else if ((n + on) == biosize && nfs_async) {
+			bawrite(bp);
 		} else {
 			bdwrite(bp);
 		}
