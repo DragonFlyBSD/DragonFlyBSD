@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.50 2008/06/28 23:45:19 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.51 2008/07/14 03:08:58 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -195,9 +195,16 @@ struct buf {
  *
  * GETBLK_BHEAVY - This is a heavy weight buffer, meaning that resolving
  *		   writes can require additional buffers.
+ *
+ * GETBLK_SZMATCH- blksize must match pre-existing b_bcount.  getblk() can
+ *		   return NULL.
+ *
+ * GETBLK_NOWAIT - Do not use a blocking lock.  getblk() can return NULL.
  */
 #define GETBLK_PCATCH	0x0001	/* catch signals */
 #define GETBLK_BHEAVY	0x0002	/* heavy weight buffer */
+#define GETBLK_SZMATCH	0x0004	/* pre-existing buffer must match */
+#define GETBLK_NOWAIT	0x0008	/* non-blocking */
 
 /*
  * These flags are kept in b_flags.
@@ -396,7 +403,7 @@ struct buf *getblk (struct vnode *, off_t, int, int, int);
 struct buf *geteblk (int);
 void regetblk(struct buf *bp);
 struct bio *push_bio(struct bio *);
-void pop_bio(struct bio *);
+struct bio *pop_bio(struct bio *);
 int	biowait (struct buf *);
 void	biodone (struct bio *);
 

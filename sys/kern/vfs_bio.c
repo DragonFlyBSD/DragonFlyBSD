@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.111 2008/07/08 03:34:27 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.112 2008/07/14 03:09:00 dillon Exp $
  */
 
 /*
@@ -587,10 +587,14 @@ push_bio(struct bio *bio)
 	return(nbio);
 }
 
-void
+/*
+ * Pop a BIO translation layer, returning the previous layer.  The
+ * must have been previously pushed.
+ */
+struct bio *
 pop_bio(struct bio *bio)
 {
-	/* NOP */
+	return(bio->bio_prev);
 }
 
 void
@@ -2465,6 +2469,10 @@ loop:
 		 * once the lock has been obtained.
 		 */
 		if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT)) {
+			if (blkflags & GETBLK_NOWAIT) {
+				crit_exit();
+				return(NULL);
+			}
 			int lkflags = LK_EXCLUSIVE | LK_SLEEPFAIL;
 			if (blkflags & GETBLK_PCATCH)
 				lkflags |= LK_PCATCH;
@@ -2487,6 +2495,17 @@ loop:
 			kprintf("Warning buffer %p (vp %p loffset %lld) was recycled\n", bp, vp, loffset);
 			BUF_UNLOCK(bp);
 			goto loop;
+		}
+
+		/*
+		 * If SZMATCH any pre-existing buffer must be of the requested
+		 * size or NULL is returned.  The caller absolutely does not
+		 * want getblk() to bwrite() the buffer on a size mismatch.
+		 */
+		if ((blkflags & GETBLK_SZMATCH) && size != bp->b_bcount) {
+			BUF_UNLOCK(bp);
+			crit_exit();
+			return(NULL);
 		}
 
 		/*

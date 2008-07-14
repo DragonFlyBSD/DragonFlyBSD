@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/bio.h,v 1.5 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/bio.h,v 1.6 2008/07/14 03:08:58 dillon Exp $
  */
 
 #ifndef _SYS_BIO_H_
@@ -71,6 +71,7 @@ struct bio {
 		void	*ptr;
 		off_t	offset;
 		int	index;
+		u_int32_t uvalue32;
 		struct buf *cluster_head;
 		struct bio *cluster_parent;
 	} bio_caller_info1;

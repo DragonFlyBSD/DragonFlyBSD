@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.39 2008/06/20 05:40:04 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.40 2008/07/14 03:09:00 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -244,13 +244,10 @@ single_block_read:
 		int burstbytes;
 		int tmp_error;
 
-		if ((rbp = findblk(vp, loffset)) != NULL) {
-			if (BUF_LOCK(rbp, LK_EXCLUSIVE | LK_NOWAIT)) {
-				goto no_read_ahead;
-			}
-			BUF_UNLOCK(rbp);
-		}
-		rbp = getblk(vp, loffset, blksize, 0, 0);
+		rbp = getblk(vp, loffset, blksize,
+			     GETBLK_SZMATCH|GETBLK_NOWAIT, 0);
+		if (rbp == NULL)
+			goto no_read_ahead;
 		if ((rbp->b_flags & B_CACHE)) {
 			bqrelse(rbp);
 			goto no_read_ahead;
@@ -380,24 +377,18 @@ cluster_rbuild(struct vnode *vp, off_t filesize, off_t loffset,
 			 * would block in the lock.  The same checks have to
 			 * be made again after we officially get the buffer.
 			 */
-			if ((tbp = findblk(vp, loffset + i * blksize)) != NULL) {
-				if (BUF_LOCK(tbp, LK_EXCLUSIVE | LK_NOWAIT))
-					break;
-				BUF_UNLOCK(tbp);
-
-				for (j = 0; j < tbp->b_xio.xio_npages; j++) {
-					if (tbp->b_xio.xio_pages[j]->valid)
-						break;
-				}
-				
-				if (j != tbp->b_xio.xio_npages)
-					break;
-	
-				if (tbp->b_bcount != blksize)
+			tbp = getblk(vp, loffset + i * blksize, blksize,
+				     GETBLK_SZMATCH|GETBLK_NOWAIT, 0);
+			if (tbp == NULL)
+				break;
+			for (j = 0; j < tbp->b_xio.xio_npages; j++) {
+				if (tbp->b_xio.xio_pages[j]->valid)
 					break;
 			}
-
-			tbp = getblk(vp, loffset + i * blksize, blksize, 0, 0);
+			if (j != tbp->b_xio.xio_npages) {
+				bqrelse(tbp);
+				break;
+			}
 
 			/*
 			 * Stop scanning if the buffer is fuly valid 
