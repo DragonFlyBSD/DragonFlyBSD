@@ -1,0 +1,24 @@
+$DragonFly: src/usr.sbin/installer/libinstaller/Attic/survey.c.patch,v 1.1 2008/07/14 23:57:10 swildner Exp $
+
+Index: survey.c
+===================================================================
+RCS file: /home/dcvs/src/contrib/bsdinstaller-1.1.6/src/lib/libinstaller/survey.c,v
+retrieving revision 1.1.1.1
+diff -u -r1.1.1.1 survey.c
+--- survey.c	12 Mar 2008 22:15:55 -0000	1.1.1.1
++++ survey.c	14 Jul 2008 22:29:54 -0000
+@@ -201,10 +201,12 @@
+ 			continue;
+ 
+ 		/*
+-		 * If the disk is a memory disk or CD-ROM, skip it.
++		 * If the disk is a memory disk, floppy or CD-ROM, skip it.
+ 		 */
+ 		if (strncmp(disk, "md", 2) == 0 ||
+-		    strncmp(disk, "cd", 2) == 0)
++		    strncmp(disk, "cd", 2) == 0 ||
++		    strncmp(disk, "acd", 3) == 0 ||
++		    strncmp(disk, "fd", 2) == 0)
+ 			continue;
+ 
+ 		aura_dict_store(di, disk, strlen(disk) + 1, "", 1);
