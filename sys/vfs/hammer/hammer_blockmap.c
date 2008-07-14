@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.23 2008/07/03 04:24:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.24 2008/07/14 03:20:49 dillon Exp $
  */
 
 /*
@@ -533,6 +533,17 @@ failed:
 }
 
 /*
+ * Backend function - undo a portion of a reservation.
+ */
+void
+hammer_blockmap_reserve_undo(hammer_reserve_t resv,
+			 hammer_off_t zone_offset, int bytes)
+{
+	resv->bytes_freed += bytes;
+}
+
+
+/*
  * A record with a storage reservation calls this function when it is
  * being freed.  The storage may or may not have actually been allocated.
  *
@@ -542,9 +553,37 @@ failed:
 void
 hammer_blockmap_reserve_complete(hammer_mount_t hmp, hammer_reserve_t resv)
 {
+	hammer_off_t zone2_offset;
+
 	KKASSERT(resv->refs > 0);
 	if (--resv->refs == 0) {
 		KKASSERT((resv->flags & HAMMER_RESF_ONDELAY) == 0);
+
+		zone2_offset = (resv->zone_offset & ~HAMMER_OFF_ZONE_MASK) |
+				HAMMER_ZONE_RAW_BUFFER;
+
+		/*
+		 * If we are releasing a zone and all of its reservations
+		 * were undone we have to clean out all hammer and device
+		 * buffers associated with the big block.
+		 *
+		 * Any direct allocations will cause this test to fail
+		 * (bytes_freed will never reach append_off), which is
+		 * the behavior we desire.  Once the zone has been assigned
+		 * to the big-block the only way to allocate from it in the
+		 * future is if the reblocker can completely clean it out,
+		 * and that will also properly call hammer_del_buffers().
+		 *
+		 * If we don't we risk all sorts of buffer cache aliasing
+		 * effects, including overlapping buffers with different
+		 * sizes.
+		 */
+		if (resv->bytes_freed == resv->append_off) {
+			kprintf("U");
+			hammer_del_buffers(hmp, resv->zone_offset,
+					   zone2_offset,
+					   HAMMER_LARGEBLOCK_SIZE);
+		}
 		RB_REMOVE(hammer_res_rb_tree, &hmp->rb_resv_root, resv);
 		kfree(resv, M_HAMMER);
 		--hammer_count_reservations;
@@ -710,9 +749,14 @@ again:
 			 * the next flush cycle so potentially undoable
 			 * data is not overwritten.
 			 */
-			if (hammer_reserve_setdelay(hmp, resv, base_off))
+			if (hammer_reserve_setdelay(hmp, NULL, base_off))
 				goto again;
 			KKASSERT(layer2->zone == zone);
+			/*
+			 * XXX maybe incorporate this del call in the
+			 * release code by setting base_offset, bytes_freed,
+			 * etc.
+			 */
 			hammer_del_buffers(hmp,
 					   zone_offset &
 					      ~HAMMER_LARGEBLOCK_MASK64,

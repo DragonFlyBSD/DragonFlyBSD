@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.68 2008/07/12 23:04:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.69 2008/07/14 03:20:49 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -204,6 +204,7 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname)
 	 */
 	if (error == 0 && ondisk->vol_rootvol == ondisk->vol_no) {
 		hmp->rootvol = volume;
+		hmp->nvolumes = ondisk->vol_count;
 		if (bp) {
 			brelse(bp);
 			bp = NULL;
@@ -454,6 +455,20 @@ hammer_rel_volume(hammer_volume_t volume, int flush)
 	crit_exit();
 }
 
+int
+hammer_mountcheck_volumes(struct hammer_mount *hmp)
+{
+	hammer_volume_t vol;
+	int i;
+
+	for (i = 0; i < hmp->nvolumes; ++i) {
+		vol = RB_LOOKUP(hammer_vol_rb_tree, &hmp->rb_vols_root, i);
+		if (vol == NULL)
+			return(EINVAL);
+	}
+	return(0);
+}
+
 /************************************************************************
  *				BUFFERS					*
  ************************************************************************
@@ -606,6 +621,44 @@ found:
 		*errorp = 0;
 	}
 	return(buffer);
+}
+
+/*
+ * This is used by the direct-read code to deal with large-data buffers
+ * created by the reblocker and mirror-write code.  The direct-read code
+ * bypasses the HAMMER buffer subsystem and so any aliased dirty hammer
+ * buffers must be fully synced to disk before we can issue the direct-read.
+ *
+ * This code path is not considered critical as only the rebocker and
+ * mirror-write code will create large-data buffers via the HAMMER buffer
+ * subsystem.  They do that because they operate at the B-Tree level and
+ * do not access the vnode/inode structures.
+ */
+void
+hammer_sync_buffers(hammer_mount_t hmp, hammer_off_t base_offset, int bytes)
+{
+	hammer_buffer_t buffer;
+	int error;
+
+	KKASSERT((base_offset & HAMMER_OFF_ZONE_MASK) ==
+		 HAMMER_ZONE_LARGE_DATA);
+
+	while (bytes > 0) {
+		buffer = RB_LOOKUP(hammer_buf_rb_tree, &hmp->rb_bufs_root,
+				   base_offset);
+		if (buffer && buffer->io.modified) {
+			error = hammer_ref_buffer(buffer);
+			if (error == 0 && buffer->io.modified) {
+				hammer_io_write_interlock(&buffer->io);
+				hammer_io_flush(&buffer->io);
+				hammer_io_done_interlock(&buffer->io);
+				hammer_io_wait(&buffer->io);
+				hammer_rel_buffer(buffer, 0);
+			}
+		}
+		base_offset += HAMMER_BUFSIZE;
+		bytes -= HAMMER_BUFSIZE;
+	}
 }
 
 /*

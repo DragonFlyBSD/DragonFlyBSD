@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.48 2008/06/29 07:50:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.49 2008/07/14 03:20:49 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -54,6 +54,10 @@
 
 static void hammer_io_modify(hammer_io_t io, int count);
 static void hammer_io_deallocate(struct buf *bp);
+#if 0
+static void hammer_io_direct_read_complete(struct bio *nbio);
+#endif
+static void hammer_io_direct_write_complete(struct bio *nbio);
 static int hammer_io_direct_uncache_callback(hammer_inode_t ip, void *data);
 
 /*
@@ -117,7 +121,7 @@ hammer_io_disassociate(hammer_io_structure_t iou)
 /*
  * Wait for any physical IO to complete
  */
-static void
+void
 hammer_io_wait(hammer_io_t io)
 {
 	if (io->running) {
@@ -937,14 +941,22 @@ struct bio_ops hammer_bioops = {
 
 /*
  * Read a buffer associated with a front-end vnode directly from the
- * disk media.  The bio may be issued asynchronously.
+ * disk media.  The bio may be issued asynchronously.  If leaf is non-NULL
+ * we validate the CRC.
  *
  * A second-level bio already resolved to a zone-2 offset (typically by
  * the BMAP code, or by a previous hammer_io_direct_write()), is passed. 
+ *
+ * We must check for the presence of a HAMMER buffer to handle the case
+ * where the reblocker has rewritten the data (which it does via the HAMMER
+ * buffer system, not via the high-level vnode buffer cache), but not yet
+ * committed the buffer to the media. 
  */
 int
-hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio)
+hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio,
+		      hammer_btree_leaf_elm_t leaf)
 {
+	hammer_off_t buf_offset;
 	hammer_off_t zone2_offset;
 	hammer_volume_t volume;
 	struct buf *bp;
@@ -952,34 +964,61 @@ hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio)
 	int vol_no;
 	int error;
 
-	zone2_offset = bio->bio_offset;
+	buf_offset = bio->bio_offset;
+	KKASSERT((buf_offset & HAMMER_OFF_ZONE_MASK) ==
+		 HAMMER_ZONE_LARGE_DATA);
 
+	/*
+	 * The buffer cache may have an aliased buffer (the reblocker can
+	 * write them).  If it does we have to sync any dirty data before
+	 * we can build our direct-read.  This is a non-critical code path.
+	 */
+	bp = bio->bio_buf;
+	hammer_sync_buffers(hmp, buf_offset, bp->b_bufsize);
+
+	/*
+	 * Resolve to a zone-2 offset.  The conversion just requires
+	 * munging the top 4 bits but we want to abstract it anyway
+	 * so the blockmap code can verify the zone assignment.
+	 */
+	zone2_offset = hammer_blockmap_lookup(hmp, buf_offset, &error);
+	if (error)
+		goto done;
 	KKASSERT((zone2_offset & HAMMER_OFF_ZONE_MASK) ==
 		 HAMMER_ZONE_RAW_BUFFER);
 
+	/*
+	 * Resolve volume and raw-offset for 3rd level bio.  The
+	 * offset will be specific to the volume.
+	 */
 	vol_no = HAMMER_VOL_DECODE(zone2_offset);
 	volume = hammer_get_volume(hmp, vol_no, &error);
 	if (error == 0 && zone2_offset >= volume->maxbuf_off)
 		error = EIO;
 
-	/*
-	 * Third level bio - raw offset specific to the
-	 * correct volume.
-	 */
 	if (error == 0) {
 		zone2_offset &= HAMMER_OFF_SHORT_MASK;
 
 		nbio = push_bio(bio);
 		nbio->bio_offset = volume->ondisk->vol_buf_beg +
 				   zone2_offset;
+#if 0
+		/*
+		 * XXX disabled - our CRC check doesn't work if the OS
+		 * does bogus_page replacement on the direct-read.
+		 */
+		if (leaf && hammer_verify_data) {
+			nbio->bio_done = hammer_io_direct_read_complete;
+			nbio->bio_caller_info1.uvalue32 = leaf->data_crc;
+		}
+#endif
 		vn_strategy(volume->devvp, nbio);
 	}
 	hammer_rel_volume(volume, 0);
-
+done:
 	if (error) {
 		kprintf("hammer_direct_read: failed @ %016llx\n",
 			zone2_offset);
-		bp = bio->bio_buf;
 		bp->b_error = error;
 		bp->b_flags |= B_ERROR;
 		biodone(bio);
@@ -987,14 +1026,45 @@ hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio)
 	return(error);
 }
 
+#if 0
+/*
+ * On completion of the BIO this callback must check the data CRC
+ * and chain to the previous bio.
+ */
+static
+void
+hammer_io_direct_read_complete(struct bio *nbio)
+{
+	struct bio *obio;
+	struct buf *bp;
+	u_int32_t rec_crc = nbio->bio_caller_info1.uvalue32;
+
+	bp = nbio->bio_buf;
+	if (crc32(bp->b_data, bp->b_bufsize) != rec_crc) {
+		kprintf("HAMMER: data_crc error @%016llx/%d\n",
+			nbio->bio_offset, bp->b_bufsize);
+		if (hammer_debug_debug)
+			Debugger("");
+		bp->b_flags |= B_ERROR;
+		bp->b_error = EIO;
+	}
+	obio = pop_bio(nbio);
+	biodone(obio);
+}
+#endif
+
 /*
  * Write a buffer associated with a front-end vnode directly to the
  * disk media.  The bio may be issued asynchronously.
+ *
+ * The BIO is associated with the specified record and RECF_DIRECT_IO
+ * is set.
  */
 int
-hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
+hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
 		       struct bio *bio)
 {
+	hammer_btree_leaf_elm_t leaf = &record->leaf;
 	hammer_off_t buf_offset;
 	hammer_off_t zone2_offset;
 	hammer_volume_t volume;
@@ -1028,11 +1098,18 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 			KKASSERT((bp->b_bufsize & HAMMER_BUFMASK) == 0);
 			hammer_del_buffers(hmp, buf_offset,
 					   zone2_offset, bp->b_bufsize);
+
 			/*
 			 * Second level bio - cached zone2 offset.
+			 *
+			 * (We can put our bio_done function in either the
+			 *  2nd or 3rd level).
 			 */
 			nbio = push_bio(bio);
 			nbio->bio_offset = zone2_offset;
+			nbio->bio_done = hammer_io_direct_write_complete;
+			nbio->bio_caller_info1.ptr = record;
+			record->flags |= HAMMER_RECF_DIRECT_IO;
 
 			/*
 			 * Third level bio - raw offset specific to the
@@ -1046,7 +1123,11 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 		}
 		hammer_rel_volume(volume, 0);
 	} else {
-		/* must fit in a standard HAMMER buffer */
+		/* 
+		 * Must fit in a standard HAMMER buffer.  In this case all
+		 * consumers use the HAMMER buffer system and RECF_DIRECT_IO
+		 * does not need to be set-up.
+		 */
 		KKASSERT(((buf_offset ^ (buf_offset + leaf->data_len - 1)) & ~HAMMER_BUFMASK64) == 0);
 		buffer = NULL;
 		ptr = hammer_bread(hmp, buf_offset, &error, &buffer);
@@ -1071,6 +1152,48 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
 		biodone(bio);
 	}
 	return(error);
+}
+
+/*
+ * On completion of the BIO this callback must disconnect
+ * it from the hammer_record and chain to the previous bio.
+ */
+static
+void
+hammer_io_direct_write_complete(struct bio *nbio)
+{
+	struct bio *obio;
+	hammer_record_t record = nbio->bio_caller_info1.ptr;
+
+	obio = pop_bio(nbio);
+	biodone(obio);
+	KKASSERT(record != NULL && (record->flags & HAMMER_RECF_DIRECT_IO));
+	record->flags &= ~HAMMER_RECF_DIRECT_IO;
+	if (record->flags & HAMMER_RECF_DIRECT_WAIT) {
+		record->flags &= ~HAMMER_RECF_DIRECT_WAIT;
+		wakeup(&record->flags);
+	}
+}
+
+
+/*
+ * This is called before a record is either committed to the B-Tree
+ * or destroyed, to resolve any associated direct-IO.  We must
+ * ensure that the data is available on-media to other consumers
+ * such as the reblocker or mirroring code.
+ *
+ * Note that other consumers might access the data via the block
+ * device's buffer cache and not the high level vnode's buffer cache.
+ */
+void
+hammer_io_direct_wait(hammer_record_t record)
+{
+	crit_enter();
+	while (record->flags & HAMMER_RECF_DIRECT_IO) {
+		record->flags |= HAMMER_RECF_DIRECT_WAIT;
+		tsleep(&record->flags, 0, "hmdiow", 0);
+	}
+	crit_exit();
 }
 
 /*

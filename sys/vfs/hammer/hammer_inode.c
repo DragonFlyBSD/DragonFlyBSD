@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.102 2008/07/13 09:32:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.103 2008/07/14 03:20:49 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1041,7 +1041,7 @@ retry:
 		 * destroy it whether we succeed or fail.
 		 */
 		record->flags &= ~HAMMER_RECF_INTERLOCK_BE;
-		record->flags |= HAMMER_RECF_DELETED_FE;
+		record->flags |= HAMMER_RECF_DELETED_FE | HAMMER_RECF_COMMITTED;
 		record->flush_state = HAMMER_FST_IDLE;
 		hammer_rel_mem_record(record);
 

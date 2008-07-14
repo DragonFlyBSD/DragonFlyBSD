@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.90 2008/07/12 23:55:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.91 2008/07/14 03:20:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -238,7 +238,7 @@ hammer_vop_read(struct vop_read_args *ap)
 		offset = (int)uio->uio_offset & (blksize - 1);
 		base_offset = uio->uio_offset - offset;
 
-		if (hammer_debug_cluster_enable) {
+		if (hammer_cluster_enable) {
 			/*
 			 * Use file_limit to prevent cluster_read() from
 			 * creating buffers of the wrong block size past
@@ -497,6 +497,14 @@ hammer_vop_write(struct vop_write_args *ap)
 		ip->ino_data.mtime = trans.time;
 		flags |= HAMMER_INODE_MTIME | HAMMER_INODE_BUFS;
 		hammer_modify_inode(ip, flags);
+
+		/*
+		 * Once we dirty the buffer any cached zone-X offset
+		 * becomes invalid.  HAMMER NOTE: no-history mode cannot 
+		 * allow overwriting over the same data sector unless
+		 * we provide UNDOs for the old data, which we don't.
+		 */
+		bp->b_bio2.bio_offset = NOOFFSET;
 
 		/*
 		 * Final buffer disposition.
@@ -1766,6 +1774,8 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 				if (error == 0) {
 					bzero(bp->b_data + offset,
 					      blksize - offset);
+					/* must de-cache direct-io offset */
+					bp->b_bio2.bio_offset = NOOFFSET;
 					bdwrite(bp);
 				} else {
 					kprintf("ERROR %d\n", error);
@@ -2055,8 +2065,8 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 	 */
 	nbio = push_bio(bio);
 	if ((nbio->bio_offset & HAMMER_OFF_ZONE_MASK) ==
-	    HAMMER_ZONE_RAW_BUFFER) {
-		error = hammer_io_direct_read(ip->hmp, nbio);
+	    HAMMER_ZONE_LARGE_DATA) {
+		error = hammer_io_direct_read(ip->hmp, nbio, NULL);
 		return (error);
 	}
 
@@ -2191,16 +2201,15 @@ hammer_vop_strategy_read(struct vop_strategy_args *ap)
 		 * truncation point, but may not be for any synthesized
 		 * truncation point from above.
 		 */
+		disk_offset = cursor.leaf->data_offset + roff;
 		if (boff == 0 && n == bp->b_bufsize &&
-		    ((cursor.leaf->data_offset + roff) & HAMMER_BUFMASK) == 0) {
-			disk_offset = hammer_blockmap_lookup(
-						trans.hmp,
-						cursor.leaf->data_offset + roff,
-						&error);
-			if (error)
-				break;
+		    hammer_cursor_ondisk(&cursor) &&
+		    (disk_offset & HAMMER_BUFMASK) == 0) {
+			KKASSERT((disk_offset & HAMMER_OFF_ZONE_MASK) ==
+				 HAMMER_ZONE_LARGE_DATA);
 			nbio->bio_offset = disk_offset;
-			error = hammer_io_direct_read(trans.hmp, nbio);
+			error = hammer_io_direct_read(trans.hmp, nbio,
+						      cursor.leaf);
 			goto done;
 		} else if (n) {
 			error = hammer_ip_resolve_data(&cursor);
@@ -2388,21 +2397,20 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 		 * block reset base_offset unless we are already beyond the
 		 * requested offset.  If we are, that's it, we stop.
 		 */
-		disk_offset = hammer_blockmap_lookup(trans.hmp,
-						     cursor.leaf->data_offset,
-						     &error);
 		if (error)
 			break;
-		if (rec_offset != last_offset ||
-		    disk_offset != last_disk_offset) {
-			if (rec_offset > ap->a_loffset)
-				break;
-			base_offset = rec_offset;
-			base_disk_offset = disk_offset;
+		if (hammer_cursor_ondisk(&cursor)) {
+			disk_offset = cursor.leaf->data_offset;
+			if (rec_offset != last_offset ||
+			    disk_offset != last_disk_offset) {
+				if (rec_offset > ap->a_loffset)
+					break;
+				base_offset = rec_offset;
+				base_disk_offset = disk_offset;
+			}
+			last_offset = rec_offset + rec_len;
+			last_disk_offset = disk_offset + rec_len;
 		}
-		last_offset = rec_offset + rec_len;
-		last_disk_offset = disk_offset + rec_len;
-
 		error = hammer_ip_next(&cursor);
 	}
 
@@ -2451,14 +2459,22 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 	 */
 	disk_offset = base_disk_offset + (ap->a_loffset - base_offset);
 
-	/*
-	 * If doffsetp is not aligned or the forward run size does
-	 * not cover a whole buffer, disallow the direct I/O.
-	 */
-	if ((disk_offset & HAMMER_BUFMASK) ||
-	    (last_offset - ap->a_loffset) < blksize) {
+	if ((disk_offset & HAMMER_OFF_ZONE_MASK) != HAMMER_ZONE_LARGE_DATA) {
+		/*
+		 * Only large-data zones can be direct-IOd
+		 */
+		error = EOPNOTSUPP;
+	} else if ((disk_offset & HAMMER_BUFMASK) ||
+		   (last_offset - ap->a_loffset) < blksize) {
+		/*
+		 * doffsetp is not aligned or the forward run size does
+		 * not cover a whole buffer, disallow the direct I/O.
+		 */
 		error = EOPNOTSUPP;
 	} else {
+		/*
+		 * We're good.
+		 */
 		*ap->a_doffsetp = disk_offset;
 		if (ap->a_runb) {
 			*ap->a_runb = ap->a_loffset - base_offset;
@@ -2544,7 +2560,7 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	record = hammer_ip_add_bulk(ip, bio->bio_offset, bp->b_data,
 				    bytes, &error);
 	if (record) {
-		hammer_io_direct_write(hmp, &record->leaf, bio);
+		hammer_io_direct_write(hmp, record, bio);
 		hammer_rel_mem_record(record);
 		if (ip->rsv_recs > 1 && hmp->rsv_recs > hammer_limit_recs)
 			hammer_flush_inode(ip, 0);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.31 2008/07/13 09:32:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.32 2008/07/14 03:20:49 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -146,18 +146,6 @@ retry:
 		}
 
 		/*
-		 * We allocate data buffers, which atm we don't track
-		 * dirty levels for because we allow the kernel to write
-		 * them.  But if we allocate too many we can still deadlock
-		 * the buffer cache.
-		 */
-		if (bd_heatup()) {
-			hammer_unlock_cursor(&cursor, 0);
-			bwillwrite(HAMMER_BUFSIZE);
-			hammer_lock_cursor(&cursor, 0);
-		}
-
-		/*
 		 * Acquiring the sync_lock prevents the operation from
 		 * crossing a synchronization boundary.
 		 *
@@ -174,8 +162,28 @@ retry:
 			hammer_lock_cursor(&cursor, 0);
 			seq = hammer_flusher_async_one(trans->hmp);
 		}
+
+		/*
+		 * Setup for iteration, our cursor flags may be modified by
+		 * other threads while we are unlocked.
+		 */
+		cursor.flags |= HAMMER_CURSOR_ATEDISK;
+
+		/*
+		 * We allocate data buffers, which atm we don't track
+		 * dirty levels for because we allow the kernel to write
+		 * them.  But if we allocate too many we can still deadlock
+		 * the buffer cache.
+		 *
+		 * (The cursor's node and element may change!)
+		 */
+		if (bd_heatup()) {
+			hammer_unlock_cursor(&cursor, 0);
+			bwillwrite(HAMMER_XBUFSIZE);
+			hammer_lock_cursor(&cursor, 0);
+		}
+
 		if (error == 0) {
-			cursor.flags |= HAMMER_CURSOR_ATEDISK;
 			error = hammer_btree_iterate(&cursor);
 		}
 

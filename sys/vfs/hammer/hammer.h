@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.116 2008/07/13 09:32:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.117 2008/07/14 03:20:49 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -409,10 +409,12 @@ typedef struct hammer_record *hammer_record_t;
 #define HAMMER_RECF_ONRBTREE		0x0002
 #define HAMMER_RECF_DELETED_FE		0x0004	/* deleted (frontend) */
 #define HAMMER_RECF_DELETED_BE		0x0008	/* deleted (backend) */
-#define HAMMER_RECF_UNUSED0010		0x0010
+#define HAMMER_RECF_COMMITTED		0x0010	/* committed to the B-Tree */
 #define HAMMER_RECF_INTERLOCK_BE	0x0020	/* backend interlock */
 #define HAMMER_RECF_WANTED		0x0040	/* wanted by the frontend */
-#define HAMMER_RECF_CONVERT_DELETE 	0x0100 /* special case */
+#define HAMMER_RECF_CONVERT_DELETE 	0x0100	/* special case */
+#define HAMMER_RECF_DIRECT_IO		0x0200	/* related direct I/O running*/
+#define HAMMER_RECF_DIRECT_WAIT		0x0400	/* related direct I/O running*/
 
 /*
  * hammer_delete_at_cursor() flags
@@ -618,6 +620,7 @@ struct hammer_reserve {
 	int		flags;
 	int		refs;
 	int		zone;
+	int		bytes_freed;
 	int		append_off;
 	hammer_off_t	zone_offset;
 };
@@ -768,7 +771,7 @@ extern int hammer_debug_btree;
 extern int hammer_debug_tid;
 extern int hammer_debug_recover;
 extern int hammer_debug_recover_faults;
-extern int hammer_debug_cluster_enable;
+extern int hammer_cluster_enable;
 extern int hammer_count_fsyncs;
 extern int hammer_count_inodes;
 extern int hammer_count_iqueued;
@@ -798,6 +801,7 @@ extern int hammer_limit_iqueued;
 extern int hammer_limit_recs;
 extern int hammer_bio_count;
 extern int hammer_verify_zone;
+extern int hammer_verify_data;
 extern int hammer_write_mode;
 extern int64_t hammer_contention_count;
 
@@ -821,6 +825,7 @@ int	hammer_adjust_volume_mode(hammer_volume_t volume, void *data __unused);
 
 int	hammer_unload_buffer(hammer_buffer_t buffer, void *data __unused);
 int	hammer_install_volume(hammer_mount_t hmp, const char *volname);
+int	hammer_mountcheck_volumes(hammer_mount_t hmp);
 
 int	hammer_ip_lookup(hammer_cursor_t cursor);
 int	hammer_ip_first(hammer_cursor_t cursor);
@@ -947,7 +952,10 @@ hammer_volume_t	hammer_get_volume(hammer_mount_t hmp,
 			int32_t vol_no, int *errorp);
 hammer_buffer_t	hammer_get_buffer(hammer_mount_t hmp, hammer_off_t buf_offset,
 			int bytes, int isnew, int *errorp);
-void		hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
+void		hammer_sync_buffers(hammer_mount_t hmp,
+			hammer_off_t base_offset, int bytes);
+void		hammer_del_buffers(hammer_mount_t hmp,
+			hammer_off_t base_offset,
 			hammer_off_t zone2_offset, int bytes);
 
 int		hammer_ref_volume(hammer_volume_t volume);
@@ -994,6 +1002,8 @@ hammer_off_t hammer_blockmap_alloc(hammer_transaction_t trans, int zone,
 			int bytes, int *errorp);
 hammer_reserve_t hammer_blockmap_reserve(hammer_mount_t hmp, int zone,
 			int bytes, hammer_off_t *zone_offp, int *errorp);
+void hammer_blockmap_reserve_undo(hammer_reserve_t resv,
+			hammer_off_t zone_offset, int bytes);
 void hammer_blockmap_reserve_complete(hammer_mount_t hmp,
 			hammer_reserve_t resv);
 void hammer_reserve_clrdelay(hammer_mount_t hmp, hammer_reserve_t resv);
@@ -1074,11 +1084,14 @@ int hammer_io_new(struct vnode *devvp, struct hammer_io *io);
 void hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset);
 struct buf *hammer_io_release(struct hammer_io *io, int flush);
 void hammer_io_flush(struct hammer_io *io);
+void hammer_io_wait(struct hammer_io *io);
 void hammer_io_waitdep(struct hammer_io *io);
 void hammer_io_wait_all(hammer_mount_t hmp, const char *ident);
-int hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio);
-int hammer_io_direct_write(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf,
-			  struct bio *bio);
+int hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio,
+			hammer_btree_leaf_elm_t leaf);
+int hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
+			struct bio *bio);
+void hammer_io_direct_wait(hammer_record_t record);
 void hammer_io_direct_uncache(hammer_mount_t hmp, hammer_btree_leaf_elm_t leaf);
 void hammer_io_write_interlock(hammer_io_t io);
 void hammer_io_done_interlock(hammer_io_t io);
@@ -1123,6 +1136,8 @@ int  hammer_flusher_meta_halflimit(hammer_mount_t hmp);
 int  hammer_flusher_undo_exhausted(hammer_transaction_t trans, int quarter);
 void hammer_flusher_clean_loose_ios(hammer_mount_t hmp);
 void hammer_flusher_finalize(hammer_transaction_t trans, int final);
+int  hammer_flusher_haswork(hammer_mount_t hmp);
+
 
 int hammer_recover(hammer_mount_t hmp, hammer_volume_t rootvol);
 void hammer_recover_flush_buffers(hammer_mount_t hmp,

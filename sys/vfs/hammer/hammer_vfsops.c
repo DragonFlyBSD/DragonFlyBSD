@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.62 2008/07/12 23:04:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.63 2008/07/14 03:20:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -49,14 +49,14 @@
 
 int hammer_debug_io;
 int hammer_debug_general;
-int hammer_debug_debug;
+int hammer_debug_debug = 1;		/* medium-error panics */ 
 int hammer_debug_inode;
 int hammer_debug_locks;
 int hammer_debug_btree;
 int hammer_debug_tid;
 int hammer_debug_recover;		/* -1 will disable, +1 will force */
 int hammer_debug_recover_faults;
-int hammer_debug_cluster_enable = 1;	/* enable read clustering by default */
+int hammer_cluster_enable = 1;		/* enable read clustering by default */
 int hammer_count_fsyncs;
 int hammer_count_inodes;
 int hammer_count_iqueued;
@@ -86,6 +86,7 @@ int hammer_limit_recs;			/* as a whole XXX */
 int hammer_limit_iqueued;		/* per-mount */
 int hammer_bio_count;
 int hammer_verify_zone;
+int hammer_verify_data = 1;
 int hammer_write_mode;
 int64_t hammer_contention_count;
 int64_t hammer_zone_limit;
@@ -109,8 +110,8 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_recover, CTLFLAG_RW,
 	   &hammer_debug_recover, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_recover_faults, CTLFLAG_RW,
 	   &hammer_debug_recover_faults, 0, "");
-SYSCTL_INT(_vfs_hammer, OID_AUTO, debug_cluster_enable, CTLFLAG_RW,
-	   &hammer_debug_cluster_enable, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, cluster_enable, CTLFLAG_RW,
+	   &hammer_cluster_enable, 0, "");
 
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_dirtybufspace, CTLFLAG_RW,
 	   &hammer_limit_dirtybufspace, 0, "");
@@ -173,6 +174,8 @@ SYSCTL_QUAD(_vfs_hammer, OID_AUTO, contention_count, CTLFLAG_RW,
 	   &hammer_contention_count, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, verify_zone, CTLFLAG_RW,
 	   &hammer_verify_zone, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, verify_data, CTLFLAG_RW,
+	   &hammer_verify_data, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, write_mode, CTLFLAG_RW,
 	   &hammer_write_mode, 0, "");
 
@@ -377,7 +380,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * Load volumes
 	 */
 	path = objcache_get(namei_oc, M_WAITOK);
-	hmp->nvolumes = info.nvolumes;
+	hmp->nvolumes = -1;
 	for (i = 0; i < info.nvolumes; ++i) {
 		error = copyin(&info.volumes[i], &upath, sizeof(char *));
 		if (error == 0)
@@ -396,6 +399,15 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		kprintf("hammer_mount: No root volume found!\n");
 		error = EINVAL;
 	}
+
+	/*
+	 * Check that all required volumes are available
+	 */
+	if (error == 0 && hammer_mountcheck_volumes(hmp)) {
+		kprintf("hammer_mount: Missing volumes, cannot mount!\n");
+		error = EINVAL;
+	}
+
 	if (error) {
 		hammer_free_hmp(mp);
 		return (error);
@@ -554,6 +566,7 @@ static void
 hammer_free_hmp(struct mount *mp)
 {
 	struct hammer_mount *hmp = (void *)mp->mnt_data;
+	int count;
 
 #if 0
 	/*
@@ -564,8 +577,24 @@ hammer_free_hmp(struct mount *mp)
 		hmp->rootvp = NULL;
 	}
 #endif
-	hammer_flusher_sync(hmp);
-	hammer_flusher_sync(hmp);
+	count = 0;
+	while (hammer_flusher_haswork(hmp)) {
+		hammer_flusher_sync(hmp);
+		++count;
+		if (count >= 5) {
+			if (count == 5)
+				kprintf("HAMMER: umount flushing.");
+			else
+				kprintf(".");
+			tsleep(hmp, 0, "hmrufl", hz);
+		}
+		if (count == 30) {
+			kprintf("giving up\n");
+			break;
+		}
+	}
+	if (count >= 5 && count < 30)
+		kprintf("\n");
 	hammer_flusher_destroy(hmp);
 
 	KKASSERT(RB_EMPTY(&hmp->rb_inos_root));

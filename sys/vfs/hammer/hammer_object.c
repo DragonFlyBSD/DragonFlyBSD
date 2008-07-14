@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.89 2008/07/13 09:32:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.90 2008/07/14 03:20:49 dillon Exp $
  */
 
 #include "hammer.h"
@@ -340,7 +340,10 @@ hammer_flush_record_done(hammer_record_t record, int error)
 void
 hammer_rel_mem_record(struct hammer_record *record)
 {
-	hammer_inode_t ip, target_ip;
+	hammer_mount_t hmp;
+	hammer_reserve_t resv;
+	hammer_inode_t ip;
+	hammer_inode_t target_ip;
 
 	hammer_unref(&record->lock);
 
@@ -354,6 +357,7 @@ hammer_rel_mem_record(struct hammer_record *record)
 		 * might possibly block.  hammer_test_inode() can block!
 		 */
 		ip = record->ip;
+		hmp = ip->hmp;
 
 		/*
 		 * Upon release of the last reference a record marked deleted
@@ -380,9 +384,9 @@ hammer_rel_mem_record(struct hammer_record *record)
 					  &record->ip->rec_tree,
 					  record);
 				KKASSERT(ip->rsv_recs > 0);
-				--ip->hmp->rsv_recs;
+				--hmp->rsv_recs;
 				--ip->rsv_recs;
-				ip->hmp->rsv_databytes -= record->leaf.data_len;
+				hmp->rsv_databytes -= record->leaf.data_len;
 				record->flags &= ~HAMMER_RECF_ONRBTREE;
 
 				if (RB_EMPTY(&record->ip->rec_tree)) {
@@ -391,6 +395,14 @@ hammer_rel_mem_record(struct hammer_record *record)
 					hammer_test_inode(record->ip);
 				}
 			}
+
+			/*
+			 * We must wait for any direct-IO to complete before
+			 * we can destroy the record.
+			 */
+			if (record->flags & HAMMER_RECF_DIRECT_IO)
+				hammer_io_direct_wait(record);
+
 
 			/*
 			 * Do this test after removing record from the B-Tree.
@@ -405,9 +417,20 @@ hammer_rel_mem_record(struct hammer_record *record)
 				kfree(record->data, M_HAMMER);
 				record->flags &= ~HAMMER_RECF_ALLOCDATA;
 			}
-			if (record->resv) {
-				hammer_blockmap_reserve_complete(ip->hmp,
-								 record->resv);
+
+			/*
+			 * Release the reservation.  If the record was not
+			 * committed return the reservation before
+			 * releasing it.
+			 */
+			if ((resv = record->resv) != NULL) {
+				if ((record->flags & HAMMER_RECF_COMMITTED) == 0) {
+					hammer_blockmap_reserve_undo(
+						resv,
+						record->leaf.data_offset,
+						record->leaf.data_len);
+				}
+				hammer_blockmap_reserve_complete(hmp, resv);
 				record->resv = NULL;
 			}
 			record->data = NULL;
@@ -1060,6 +1083,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 			if (error == 0) {
 				record->flags |= HAMMER_RECF_DELETED_FE;
 				record->flags |= HAMMER_RECF_DELETED_BE;
+				record->flags |= HAMMER_RECF_COMMITTED;
 			}
 		}
 		goto done;
@@ -1133,6 +1157,13 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 		record->leaf.data_crc = 0;
 	}
 
+	/*
+	 * If the record's data was direct-written we cannot insert
+	 * it until the direct-IO has completed.
+	 */
+	if (record->flags & HAMMER_RECF_DIRECT_IO)
+		hammer_io_direct_wait(record);
+
 	error = hammer_btree_insert(cursor, &record->leaf, &doprop);
 	if (hammer_debug_inode && error)
 		kprintf("BTREE INSERT error %d @ %016llx:%d key %016llx\n", error, cursor->node->node_offset, cursor->index, record->leaf.base.key);
@@ -1161,6 +1192,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 			record->flags |= HAMMER_RECF_DELETED_FE;
 			record->flags |= HAMMER_RECF_DELETED_BE;
 		}
+		record->flags |= HAMMER_RECF_COMMITTED;
 	} else {
 		if (record->leaf.data_offset) {
 			hammer_blockmap_free(trans, record->leaf.data_offset,
@@ -1885,7 +1917,6 @@ int
 hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 			hammer_tid_t tid)
 {
-	hammer_off_t zone2_offset;
 	hammer_record_t iprec;
 	hammer_btree_elm_t elm;
 	hammer_mount_t hmp;
@@ -1902,26 +1933,14 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 	 * the interlock.
 	 *
 	 * An in-memory record may be deleted before being committed to disk,
-	 * but could have been accessed in the mean time.  The backing store
-	 * may never been marked allocated and so hammer_blockmap_free() may
-	 * never get called on it.  Because of this we have to make sure that
-	 * we've gotten rid of any related hammer_buffer or buffer cache
- 	 * buffer.
+	 * but could have been accessed in the mean time.  The reservation
+	 * code will deal with the case.
 	 */
 	if (hammer_cursor_inmem(cursor)) {
 		iprec = cursor->iprec;
 		KKASSERT((iprec->flags & HAMMER_RECF_INTERLOCK_BE) ==0);
 		iprec->flags |= HAMMER_RECF_DELETED_FE;
 		iprec->flags |= HAMMER_RECF_DELETED_BE;
-
-		if (iprec->leaf.data_offset && iprec->leaf.data_len) {
-			zone2_offset = hammer_blockmap_lookup(hmp, iprec->leaf.data_offset, &error);
-			KKASSERT(error == 0);
-			hammer_del_buffers(hmp,
-					   iprec->leaf.data_offset,
-					   zone2_offset,
-					   iprec->leaf.data_len);
-		}
 		return(0);
 	}
 

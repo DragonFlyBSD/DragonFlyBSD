@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.39 2008/07/13 09:32:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.40 2008/07/14 03:20:49 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -353,10 +353,10 @@ hammer_flusher_flush(hammer_mount_t hmp)
 	}
 
 	/*
-	 * We may have pure meta-data to flush, even if there were no
-	 * flush groups.
+	 * We may have pure meta-data to flush, or we may have to finish
+	 * cycling the UNDO FIFO, even if there were no flush groups.
 	 */
-	if (count == 0 && hmp->locked_dirty_space) {
+	if (count == 0 && hammer_flusher_haswork(hmp)) {
 		hammer_start_transaction_fls(&hmp->flusher.trans, hmp);
 		hammer_flusher_finalize(&hmp->flusher.trans, 1);
 		hammer_done_transaction(&hmp->flusher.trans);
@@ -673,7 +673,12 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 */
 	if (final) {
 		cundomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
-		cundomap->first_offset = cundomap->next_offset;
+		if (cundomap->first_offset == cundomap->next_offset) {
+			hmp->hflags &= ~HMNT_UNDO_DIRTY;
+		} else {
+			cundomap->first_offset = cundomap->next_offset;
+			hmp->hflags |= HMNT_UNDO_DIRTY;
+		}
 		hammer_clear_undo_history(hmp);
 	}
 
@@ -701,11 +706,35 @@ hammer_flusher_meta_limit(hammer_mount_t hmp)
 	return(0);
 }
 
+/*
+ * Return non-zero if too many dirty meta-data buffers have built up.
+ *
+ * This version is used by background operations (mirror, prune, reblock)
+ * to leave room for foreground operations.
+ */
 int
 hammer_flusher_meta_halflimit(hammer_mount_t hmp)
 {
 	if (hmp->locked_dirty_space + hmp->io_running_space >
 	    hammer_limit_dirtybufspace / 2) {
+		return(1);
+	}
+	return(0);
+}
+
+/*
+ * Return non-zero if the flusher still has something to flush.
+ */
+int
+hammer_flusher_haswork(hammer_mount_t hmp)
+{
+	if (TAILQ_FIRST(&hmp->flush_group_list) ||	/* dirty inodes */
+	    TAILQ_FIRST(&hmp->volu_list) ||		/* dirty bufffers */
+	    TAILQ_FIRST(&hmp->undo_list) ||
+	    TAILQ_FIRST(&hmp->data_list) ||
+	    TAILQ_FIRST(&hmp->meta_list) ||
+	    (hmp->hflags & HMNT_UNDO_DIRTY)		/* UNDO FIFO sync */
+	) {
 		return(1);
 	}
 	return(0);
