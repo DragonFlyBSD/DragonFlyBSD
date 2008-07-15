@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.71 2008/07/13 09:32:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.72 2008/07/15 18:01:58 dillon Exp $
  */
 
 /*
@@ -117,7 +117,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 {
 	hammer_node_ondisk_t node;
 	hammer_btree_elm_t elm;
-	int error;
+	int error = 0;
 	int r;
 	int s;
 
@@ -289,6 +289,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 					++cursor->index;
 					continue;
 				}
+				error = 0;
 				break;
 			default:
 				error = EINVAL;
