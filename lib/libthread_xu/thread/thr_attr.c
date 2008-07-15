@@ -30,7 +30,7 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_attr.c,v 1.8 2007/05/03 23:08:34 dillon Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_attr.c,v 1.9 2008/07/15 01:18:53 dillon Exp $
  */
 
 #include "namespace.h"
@@ -380,13 +380,17 @@ _pthread_attr_setschedparam(pthread_attr_t *attr, const struct sched_param *para
 		ret = EINVAL;
 	else if (param == NULL) {
 		ret = ENOTSUP;
-	} else if ((param->sched_priority < THR_MIN_PRIORITY) ||
-	    (param->sched_priority > THR_MAX_PRIORITY)) {
-		/* Return an unsupported value error. */
-		ret = ENOTSUP;
-	} else
-		(*attr)->prio = param->sched_priority;
-
+	} else {
+		int minv = sched_get_priority_min((*attr)->sched_policy);
+		int maxv = sched_get_priority_max((*attr)->sched_policy);
+		if (minv == -1 || maxv == -1 ||
+		    param->sched_priority < minv ||
+		    param->sched_priority > maxv) {
+			ret = ENOTSUP;
+		} else {
+			(*attr)->prio = param->sched_priority;
+		}
+	}
 	return(ret);
 }
 
