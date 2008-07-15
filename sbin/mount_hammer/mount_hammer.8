@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/mount_hammer/mount_hammer.8,v 1.9 2008/07/03 06:36:27 dillon Exp $
+.\" $DragonFly: src/sbin/mount_hammer/mount_hammer.8,v 1.10 2008/07/15 23:42:21 thomas Exp $
 .Dd June 24, 2008
 .Dt MOUNT_HAMMER 8
 .Os
@@ -40,7 +40,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl o Ar mount-options
-.Op Fl T Ar transactionid
+.Op Fl T Ar transaction-id
 .Ar special ...
 .Ar mount-point
 .Nm
@@ -51,6 +51,11 @@
 The
 .Nm
 utility mounts a HAMMER filesystem backed by one or more block devices.
+.Ar Special
+files can be separated by colon,
+.Dq \&: ,
+instead of blanks, this is usefull in
+.Xr fstab 5 .
 .Pp
 The options are as follows:
 .Bl -tag -width indent
@@ -67,12 +72,12 @@ retained.
 Use of this option may increase the overhead of doing mirroring.
 This option is generally only used in an emergency.
 .El
-.It Fl T Ar transactionid
+.It Fl T Ar transaction-id
 Mount the filesystem as-of a particular
 transaction id.
 The mount will automatically be made read-only.
 The
-.Ar transactionid
+.Ar transaction-id
 must be specified as a 64 bit hex value prefixed with "0x".
 .It Fl u
 Update the mount point.  This is typically used to upgrade a mount to
@@ -87,14 +92,19 @@ the mount is updated to read-write.
 mount_hammer -o ro,noatime /dev/ad0s1d /dev/ad1s1d /mnt
 .Ed
 .Pp
-Mount a hammer filesystem made up of two volumes onto
+Mount a HAMMER filesystem made up of two volumes onto
 .Pa /mnt .
 .Sh DIAGNOSTICS
 Exit status is 0 on success and 1 on error.
 .Sh SEE ALSO
+.Xr mount 2 ,
+.Xr unmount 2 ,
+.Xr fstab 5 ,
 .Xr disklabel 8 ,
+.Xr disklabel64 8 ,
 .Xr fdisk 8 ,
 .Xr hammer 8 ,
+.Xr mount 8 ,
 .Xr newfs_hammer 8
 .Sh HISTORY
 The
