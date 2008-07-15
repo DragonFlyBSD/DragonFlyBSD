@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_private.h,v 1.120 2004/11/01 10:49:34 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.18 2008/04/14 20:12:41 dillon Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.18.2.1 2008/07/15 01:24:54 dillon Exp $
  */
 
 #ifndef _THR_PRIVATE_H
@@ -277,15 +277,8 @@ struct pthread_attr {
  * The approach taken is that, within each class, signal delivery
  * always has priority over thread execution.
  */
-#define THR_DEFAULT_PRIORITY			15
-#define THR_MIN_PRIORITY			0
-#define THR_MAX_PRIORITY			31	/* 0x1F */
-#define THR_SIGNAL_PRIORITY			32	/* 0x20 */
-#define THR_RT_PRIORITY				64	/* 0x40 */
-#define THR_FIRST_PRIORITY			THR_MIN_PRIORITY
-#define THR_LAST_PRIORITY	\
-	(THR_MAX_PRIORITY + THR_SIGNAL_PRIORITY + THR_RT_PRIORITY)
-#define THR_BASE_PRIORITY(prio)	((prio) & THR_MAX_PRIORITY)
+#define THR_DEFAULT_PRIORITY		0
+#define THR_MUTEX_CEIL_PRIORITY		31	/* dummy */
 
 /*
  * Time slice period in microseconds.
