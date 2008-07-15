@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.63 2008/07/14 03:20:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.63.2.1 2008/07/15 18:04:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -75,6 +75,16 @@ int64_t hammer_stats_btree_elements;
 int64_t hammer_stats_btree_splits;
 int64_t hammer_stats_btree_iterations;
 int64_t hammer_stats_record_iterations;
+
+int64_t hammer_stats_file_read;
+int64_t hammer_stats_file_write;
+int64_t hammer_stats_file_iopsr;
+int64_t hammer_stats_file_iopsw;
+int64_t hammer_stats_disk_read;
+int64_t hammer_stats_disk_write;
+int64_t hammer_stats_inode_flushes;
+int64_t hammer_stats_commits;
+
 int hammer_count_dirtybufspace;		/* global */
 int hammer_count_refedbufs;		/* global */
 int hammer_count_reservations;
@@ -140,6 +150,7 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, count_nodes, CTLFLAG_RD,
 	   &hammer_count_nodes, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, count_extra_space_used, CTLFLAG_RD,
 	   &hammer_count_extra_space_used, 0, "");
+
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_btree_searches, CTLFLAG_RD,
 	   &hammer_stats_btree_searches, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_btree_lookups, CTLFLAG_RD,
@@ -156,6 +167,24 @@ SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_btree_iterations, CTLFLAG_RD,
 	   &hammer_stats_btree_iterations, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_record_iterations, CTLFLAG_RD,
 	   &hammer_stats_record_iterations, 0, "");
+
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_file_read, CTLFLAG_RD,
+	   &hammer_stats_file_read, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_file_write, CTLFLAG_RD,
+	   &hammer_stats_file_write, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_file_iopsr, CTLFLAG_RD,
+	   &hammer_stats_file_iopsr, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_file_iopsw, CTLFLAG_RD,
+	   &hammer_stats_file_iopsw, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_disk_read, CTLFLAG_RD,
+	   &hammer_stats_disk_read, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_disk_write, CTLFLAG_RD,
+	   &hammer_stats_disk_write, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_inode_flushes, CTLFLAG_RD,
+	   &hammer_stats_inode_flushes, 0, "");
+SYSCTL_QUAD(_vfs_hammer, OID_AUTO, stats_commits, CTLFLAG_RD,
+	   &hammer_stats_commits, 0, "");
+
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_dirtybufspace, CTLFLAG_RD,
 	   &hammer_count_dirtybufspace, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_refedbufs, CTLFLAG_RD,
