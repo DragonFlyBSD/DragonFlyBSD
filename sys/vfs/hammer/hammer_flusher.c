@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.40.2.1 2008/07/15 18:04:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.40.2.2 2008/07/16 18:39:31 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -275,10 +275,17 @@ hammer_flusher_flush(hammer_mount_t hmp)
 			hammer_flusher_finalize(&hmp->flusher.trans, 0);
 
 		/*
+		 * Ok, we are running this flush group now (this prevents new
+		 * additions to it).
+		 */
+		flg->running = 1;
+		if (hmp->next_flush_group == flg)
+			hmp->next_flush_group = TAILQ_NEXT(flg, flush_entry);
+
+		/*
 		 * Iterate the inodes in the flg's flush_list and assign
 		 * them to slaves.
 		 */
-		flg->running = 1;
 		slave_index = 0;
 		info = TAILQ_FIRST(&hmp->flusher.ready_list);
 		next_ip = TAILQ_FIRST(&flg->flush_list);

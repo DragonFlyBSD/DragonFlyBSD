@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.103 2008/07/14 03:20:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.103.2.1 2008/07/16 18:39:31 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1311,23 +1311,21 @@ hammer_flush_inode(hammer_inode_t ip, int flags)
 	int good;
 
 	/*
-	 * Setup a flush group.  It remains cached so it is ok if we
-	 * wind up not flushing the inode.
+	 * next_flush_group is the first flush group we can place the inode
+	 * in.  It may be NULL.  If it becomes full we append a new flush
+	 * group and make that the next_flush_group.
 	 */
 	hmp = ip->hmp;
-	flg = TAILQ_LAST(&ip->hmp->flush_group_list, hammer_flush_group_list);
-
-	if (flg) {
-		if (flg->running) {
-			flg = NULL;
-		} else if (flg->total_count + flg->refs >
-			   ip->hmp->undo_rec_limit) {
-			hammer_flusher_async(ip->hmp, flg);
-			flg = NULL;
-		}
+	while ((flg = hmp->next_flush_group) != NULL) {
+		KKASSERT(flg->running == 0);
+		if (flg->total_count + flg->refs <= ip->hmp->undo_rec_limit)
+			break;
+		hmp->next_flush_group = TAILQ_NEXT(flg, flush_entry);
+		hammer_flusher_async(ip->hmp, flg);
 	}
 	if (flg == NULL) {
 		flg = kmalloc(sizeof(*flg), M_HAMMER, M_WAITOK|M_ZERO);
+		hmp->next_flush_group = flg;
 		TAILQ_INIT(&flg->flush_list);
 		TAILQ_INSERT_TAIL(&hmp->flush_group_list, flg, flush_entry);
 	}
@@ -1373,21 +1371,26 @@ hammer_flush_inode(hammer_inode_t ip, int flags)
 		 */
 		good = hammer_setup_parent_inodes(ip, flg);
 
-		/*
-		 * We can continue if good >= 0.  Determine how many records
-		 * under our inode can be flushed (and mark them).
-		 */
 		if (good >= 0) {
+			/*
+			 * We can continue if good >= 0.  Determine how 
+			 * many records under our inode can be flushed (and
+			 * mark them).
+			 */
 			hammer_flush_inode_core(ip, flg, flags);
 		} else {
-			ip->flags |= HAMMER_INODE_REFLUSH;
+			/*
+			 * parent has no connectivity, tell it to flush
+			 * us as soon as it does.
+			 */
+			ip->flags |= HAMMER_INODE_CONN_DOWN;
 			if (flags & HAMMER_FLUSH_SIGNAL) {
 				ip->flags |= HAMMER_INODE_RESIGNAL;
 				hammer_flusher_async(ip->hmp, flg);
 			}
 		}
 		break;
-	default:
+	case HAMMER_FST_FLUSH:
 		/*
 		 * We are already flushing, flag the inode to reflush
 		 * if needed after it completes its current flush.
@@ -1466,13 +1469,23 @@ hammer_setup_parent_inodes_helper(hammer_record_t record,
 	 * allow the operation yet anyway (the second return -1).
 	 */
 	if (record->flush_state == HAMMER_FST_FLUSH) {
+		/*
+		 * If not in our flush group ask the parent to reflush
+		 * us as soon as possible.
+		 */
 		if (record->flush_group != flg) {
 			pip->flags |= HAMMER_INODE_REFLUSH;
+			record->target_ip->flags |= HAMMER_INODE_CONN_DOWN;
 			return(-1);
 		}
+
+		/*
+		 * If in our flush group everything is already set up,
+		 * just return whether the record will improve our
+		 * visibility or not.
+		 */
 		if (record->type == HAMMER_MEM_RECORD_ADD)
 			return(1);
-		/* GENERAL or DEL */
 		return(0);
 	}
 
@@ -1485,12 +1498,14 @@ hammer_setup_parent_inodes_helper(hammer_record_t record,
 	good = hammer_setup_parent_inodes(pip, flg);
 
 	/*
-	 * We can't flush ip because it has no connectivity (XXX also check
-	 * nlinks for pre-existing connectivity!).  Flag it so any resolution
-	 * recurses back down.
+	 * If good < 0 the parent has no connectivity and we cannot safely
+	 * flush the directory entry, which also means we can't flush our
+	 * ip.  Flag the parent and us for downward recursion once the
+	 * parent's connectivity is resolved.
 	 */
 	if (good < 0) {
-		pip->flags |= HAMMER_INODE_REFLUSH;
+		/* pip->flags |= HAMMER_INODE_CONN_DOWN; set by recursion */
+		record->target_ip->flags |= HAMMER_INODE_CONN_DOWN;
 		return(good);
 	}
 
@@ -1523,32 +1538,34 @@ hammer_setup_parent_inodes_helper(hammer_record_t record,
 #endif
 	if (pip->flush_group == flg) {
 		/*
-		 * This is the record we wanted to synchronize.  If the
-		 * record went into a flush state while we blocked it 
-		 * had better be in the correct flush group.
+		 * If the parent is in the same flush group as us we can
+		 * just set the record to a flushing state and we are
+		 * done.
 		 */
-		if (record->flush_state != HAMMER_FST_FLUSH) {
-			record->flush_state = HAMMER_FST_FLUSH;
-			record->flush_group = pip->flush_group;
-			++record->flush_group->refs;
-			hammer_ref(&record->lock);
-		} else {
-			KKASSERT(record->flush_group == pip->flush_group);
-		}
-		if (record->type == HAMMER_MEM_RECORD_ADD)
-			return(1);
+		record->flush_state = HAMMER_FST_FLUSH;
+		record->flush_group = flg;
+		++record->flush_group->refs;
+		hammer_ref(&record->lock);
 
 		/*
-		 * A general or delete-on-disk record does not contribute
-		 * to our visibility.  We can still flush it, however.
+		 * A general directory-add contributes to our visibility.
+		 *
+		 * Otherwise it is probably a directory-delete or 
+		 * delete-on-disk record and does not contribute to our
+		 * visbility (but we can still flush it).
 		 */
+		if (record->type == HAMMER_MEM_RECORD_ADD)
+			return(1);
 		return(0);
 	} else {
 		/*
-		 * We couldn't resolve the dependancies, request that the
-		 * inode be flushed when the dependancies can be resolved.
+		 * If the parent is not in our flush group we cannot
+		 * flush this record yet, there is no visibility.
+		 * We tell the parent to reflush and mark ourselves
+		 * so the parent knows it should flush us too.
 		 */
 		pip->flags |= HAMMER_INODE_REFLUSH;
+		record->target_ip->flags |= HAMMER_INODE_CONN_DOWN;
 		return(-1);
 	}
 }
@@ -1772,8 +1789,10 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 		/*
 		 * The record has a setup dependancy.  These are typically
 		 * directory entry adds and deletes.  Such entries will be
-		 * flushed when their inodes are flushed so we do not have
-		 * to add them to the flush here.
+		 * flushed when their inodes are flushed so we do not
+		 * usually have to add them to the flush here.  However,
+		 * if the target_ip has set HAMMER_INODE_CONN_DOWN then
+		 * it is asking us to flush this record (and it).
 		 */
 		target_ip = rec->target_ip;
 		KKASSERT(target_ip != NULL);
@@ -1800,15 +1819,26 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 		/*
 		 * Target IP is not yet flushing.  This can get complex
 		 * because we have to be careful about the recursion.
+		 *
+		 * Directories create an issue for us in that if a flush
+		 * of a directory is requested the expectation is to flush
+		 * any pending directory entries, but this will cause the
+		 * related inodes to recursively flush as well.  We can't
+		 * really defer the operation so just get as many as we
+		 * can and
 		 */
+#if 0
 		if ((target_ip->flags & HAMMER_INODE_RECLAIM) == 0 &&
-		    (target_ip->flags & HAMMER_INODE_REFLUSH) == 0) {
+		    (target_ip->flags & HAMMER_INODE_CONN_DOWN) == 0) {
 			/*
-			 * We aren't reclaiming or trying to flush target_ip.
-			 * Let the record flush with the target.
+			 * We aren't reclaiming and the target ip was not
+			 * previously prevented from flushing due to this
+			 * record dependancy.  Do not flush this record.
 			 */
 			/*r = 0;*/
-		} else if (flg->total_count + flg->refs >
+		} else
+#endif
+		if (flg->total_count + flg->refs >
 			   ip->hmp->undo_rec_limit) {
 			/*
 			 * Our flush group is over-full and we risk blowing
@@ -2027,6 +2057,12 @@ hammer_flush_inode_done(hammer_inode_t ip)
 			hammer_flush_inode(ip, 0);
 		}
 	}
+
+	/*
+	 * If we have no parent dependancies we can clear CONN_DOWN
+	 */
+	if (TAILQ_EMPTY(&ip->target_list))
+		ip->flags &= ~HAMMER_INODE_CONN_DOWN;
 
 	/*
 	 * If the inode is now clean drop the space reservation.
@@ -2568,8 +2604,8 @@ hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 }
 
 /*
- * Re-test an inode when a dependancy had gone away to see if we
- * can chain flush it.
+ * After potentially resolving a dependancy the inode is tested
+ * to determine whether it needs to be reflushed.
  */
 void
 hammer_test_inode(hammer_inode_t ip)

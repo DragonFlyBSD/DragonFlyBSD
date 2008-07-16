@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.69 2008/07/14 03:20:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.69.2.1 2008/07/16 18:39:31 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -686,12 +686,14 @@ hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
 		buffer = RB_LOOKUP(hammer_buf_rb_tree, &hmp->rb_bufs_root,
 				   base_offset);
 		if (buffer) {
-			KKASSERT(buffer->zone2_offset == zone2_offset);
-			hammer_io_clear_modify(&buffer->io, 1);
-			buffer->io.reclaim = 1;
-			KKASSERT(buffer->volume == volume);
-			if (buffer->io.lock.refs == 0)
-				hammer_unload_buffer(buffer, NULL);
+			error = hammer_ref_buffer(buffer);
+			if (error == 0) {
+				KKASSERT(buffer->zone2_offset == zone2_offset);
+				hammer_io_clear_modify(&buffer->io, 1);
+				buffer->io.reclaim = 1;
+				KKASSERT(buffer->volume == volume);
+				hammer_rel_buffer(buffer, 0);
+			}
 		} else {
 			hammer_io_inval(volume, zone2_offset);
 		}
@@ -1383,6 +1385,9 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 
 /*
  * Sync dirty buffers to the media and clean-up any loose ends.
+ *
+ * These functions do not start the flusher going, they simply
+ * queue everything up to the flusher.
  */
 static int hammer_sync_scan1(struct mount *mp, struct vnode *vp, void *data);
 static int hammer_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
@@ -1460,7 +1465,7 @@ hammer_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 	     RB_EMPTY(&vp->v_rbdirty_tree))) {
 		return(0);
 	}
-	error = VOP_FSYNC(vp, info->waitfor);
+	error = VOP_FSYNC(vp, MNT_NOWAIT);
 	if (error)
 		info->error = error;
 	return(0);

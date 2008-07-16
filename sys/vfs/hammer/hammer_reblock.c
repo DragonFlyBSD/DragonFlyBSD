@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.32 2008/07/14 03:20:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.32.2.1 2008/07/16 18:39:32 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -64,6 +64,16 @@ hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 	int checkspace_count;
 	int error;
 	int seq;
+	int slop;
+
+	/*
+	 * A fill level <= 20% is considered an emergency.  free_level is
+	 * inverted from fill_level.
+	 */
+	if (reblock->free_level >= HAMMER_LARGEBLOCK_SIZE * 8 / 10)
+		slop = HAMMER_CHKSPC_EMERGENCY;
+	else
+		slop = HAMMER_CHKSPC_REBLOCK;
 
 	if ((reblock->key_beg.localization | reblock->key_end.localization) &
 	    HAMMER_LOCALIZE_PSEUDOFS_MASK) {
@@ -134,7 +144,7 @@ retry:
 		 * If there is insufficient free space it may be due to
 		 * reserved bigblocks, which flushing might fix.
 		 */
-		if (hammer_checkspace(trans->hmp, HAMMER_CHKSPC_REBLOCK)) {
+		if (hammer_checkspace(trans->hmp, slop)) {
 			if (++checkspace_count == 10) {
 				error = ENOSPC;
 				break;
@@ -143,6 +153,7 @@ retry:
 			hammer_flusher_wait(trans->hmp, seq);
 			hammer_lock_cursor(&cursor, 0);
 			seq = hammer_flusher_async(trans->hmp, NULL);
+			continue;
 		}
 
 		/*
