@@ -1,0 +1,160 @@
+.\"
+.\" Copyright (c) 2008
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $DragonFly: src/share/man/man5/hammer.5,v 1.2 2008/07/16 20:39:28 swildner Exp $
+.\"
+.Dd July 16, 2008
+.Os
+.Dt HAMMER 5
+.Sh NAME
+.Nm HAMMER
+.Nd HAMMER file system
+.Sh SYNOPSIS
+.Cd options HAMMER
+.Pp
+In
+.Xr fstab 5 :
+.Bd -literal
+# single volume
+#
+/dev/disk0a	/mnt hammer rw 2 0
+
+# multi volume
+#
+/dev/disk0a:/dev/disk1a:/dev/disk2a	/mnt hammer rw 2 0
+.Ed
+.Sh DESCRIPTION
+The
+.Nm
+file system provides facilities to store file system data onto a disk device
+and is intended to replace UFS as the default file system for
+.Dx .
+Among its features are fine grained history retention, file systems spanning
+multiple volumes, mirroring capability, and pseudo file systems.
+.Pp
+All functions related to managing
+.Nm
+file systems are provided by the
+.Xr newfs_hammer 8 ,
+.Xr mount_hammer 8 ,
+.Xr hammer 8 ,
+and
+.Xr undo 1
+utilities.
+.Ss Transaction IDs
+The
+.Nm
+file system uses 64 bit, hexadecimal transaction IDs to refer to historical
+file or directory data.
+An ID has the format
+.Li 0x%016llx ,
+such as
+.Li 0x00000001061a8ba6 .
+.Ss History & Pruning
+History metadata on the media is updated with every sync operation.
+Prior versions of files or directories are accessible by appending
+.Li @@
+and a transaction ID to the name.
+Pruning a
+.Nm
+file system will free all unused historical records.
+.Ss Snapshots
+A snapshot can be taken by creating a symbolic link to a specific
+version of a file or directory.
+Snapshots created this way will be retained across subsequent prune
+operations.
+Removing the symbolic link enables the file system to reclaim the space
+again.
+.\".Ss Mirroring
+.\".Ss Pseudo File Systems
+.Sh EXAMPLES
+.Ss Preparing the file system
+To create and mount a
+.Nm
+file system use the
+.Xr newfs_hammer 8
+and
+.Xr mount_hammer 8
+commands.
+Note that all
+.Nm
+file systems must have a unique name on a per-machine basis.
+.Bd -literal
+newfs_hammer -L Home /dev/ad0s1d
+mount_hammer /dev/ad0s1d /home
+.Ed
+.Pp
+Similarly, multi volume file systems can be created and mounted by just
+specifying more arguments.
+.Bd -literal
+newfs_hammer -L MultiHome /dev/ad0s1d /dev/ad1s1d
+mount_hammer /dev/ad0s1d /dev/ad1s1d /home
+.Ed
+.Pp
+Once created and mounted,
+.Nm
+file systems need to be reblocked periodically in order not to fill up
+over time, either manually or with a
+.Xr cron 8
+job.
+It is recommended that the
+.Xr hammer 8
+utility's
+.Fl c
+and
+.Fl t
+options be used for this job (for example, every night up to 5 minutes).
+.Bd -literal
+2 15 * * * hammer -c /var/run/Home -t 300 reblock /home >/dev/null 2>&1
+.Ed
+.Sh SEE ALSO
+.Xr undo 1 ,
+.Xr hammer 8 ,
+.Xr mount_hammer 8 ,
+.Xr newfs_hammer 8
+.Rs
+.%A Matthew Dillon
+.%D June 2008
+.%T "The HAMMER Filesystem"
+.Re
+.Sh HISTORY
+The
+.Nm
+file system first appeared in
+.Dx 1.11 .
+.Sh AUTHORS
+.An -nosplit
+The
+.Nm
+file system was designed and implemented by
+.An Matthew Dillon Aq dillon@backplane.com .
+This manual page was written by
+.An Sascha Wildner .
