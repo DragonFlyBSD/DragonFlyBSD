@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/usr.bin/undo/undo.1,v 1.4 2008/07/16 01:27:09 thomas Exp $
+.\" $DragonFly: src/usr.bin/undo/undo.1,v 1.5 2008/07/16 21:38:10 dillon Exp $
 .Dd May 31, 2008
 .Dt UNDO 1
 .Os
@@ -39,7 +39,7 @@
 .Nd Undo changes made to files on HAMMER filesystems
 .Sh SYNOPSIS
 .Nm
-.Op Fl dDhiuv
+.Op Fl adDiuv
 .Op Fl o Ar outfile
 .Op Fl t Ar transaction-id
 .Op Fl t Ar transaction-id
@@ -61,7 +61,7 @@ Generate a unified diff from the current version to the older version.
 Generate a single line giving the transaction id and converted timestamp
 of the version of the file requested, rather than dumping the contents
 of the file.
-.It Fl h
+.It Fl a
 Iterate through the file's entire history generating undo files, diffs,
 output, etc.  Execute the generation operation for each version.
 .It Fl u
@@ -91,7 +91,7 @@ transaction id (0x16chars).  If not specified
 the program will attempt to locate the most recent version of the
 file(s) prior to the current version.
 This option does not apply if
-.Fl h
+.Fl a
 is specified.
 .Pp
 A second
