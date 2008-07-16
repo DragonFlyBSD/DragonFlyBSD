@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.33 2008/07/12 02:48:46 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.34 2008/07/16 00:53:48 thomas Exp $
  */
 
 #include "hammer.h"
@@ -245,7 +245,7 @@ hammer_parsedevs(const char *blkdevs)
 	char *volname;
 
 	if (blkdevs == NULL) {
-		errx(1, "A -f blkdevs specification is required "
+		errx(1, "A -f blkdev[:blkdev]* specification is required "
 			"for this command");
 	}
 
@@ -270,19 +270,21 @@ usage(int exit_code)
 {
 	fprintf(stderr, 
 		"hammer -h\n"
-		"hammer [-t seconds] [-c cyclefile] ....\n"
-		"hammer prune <dir-holding-softlinks>\n"
+		"hammer [-v] [-t seconds] [-c cyclefile] command [argument ...]\n"
+		"hammer synctid <filesystem> [quick]\n"
+		"hammer namekey[32] <path>\n"
+		"hammer prune <softlink-dir>\n"
 		"hammer prune-everything <filesystem>\n"
-		"hammer snapshot <softlink-dir> [<filesystem>]\n"
-		"hammer bstats <interval>\n"
-		"hammer iostats <interval>\n"
-		"hammer mirror-read <filesystem>\n"
-		"hammer mirror-write <filesystem>\n"
+		"hammer snapshot [filesystem] <snapshot-dir>\n"
+		"hammer bstats [interval]\n"
+		"hammer iostats [interval]\n"
+		"hammer mirror-read <filesystem> [begin-tid]\n"
+		"hammer mirror-write <filesystem> [file ...]\n"
 		"hammer mirror-dump\n"
 		"hammer mirror-copy [[user@]host:]<filesystem>"
 				  " [[user@]host:]<filesystem>\n"
 		"hammer reblock[-btree/inodes/dirs/data] "
-			"<filesystem> [pack%%]\n"
+			"<filesystem> [fill_percentage]\n"
 		"hammer pfs-status <dirpath>\n"
 		"hammer pfs-master <dirpath> [options]\n"
 		"hammer pfs-slave <dirpath> [options]\n"
@@ -290,9 +292,11 @@ usage(int exit_code)
 		"hammer pfs-upgrade <dirpath>\n"
 		"hammer pfs-downgrade <dirpath>\n"
 		"hammer pfs-destroy <dirpath>\n"
-		"hammer history[@offset[,len]] <file-1>...<file-N>\n"
-		"hammer -f blkdevs [-r] show\n"
-		"hammer -f blkdevs blockmap\n"
+		"hammer history[@offset[,len]] <file> ...\n"
+		"hammer -f blkdev[:blkdev]* [-r] show [offset]\n"
+#if 0
+		"hammer -f blkdev[:blkdev]* blockmap\n"
+#endif
 	);
 	exit(exit_code);
 }

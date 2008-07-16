@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_reblock.c,v 1.10 2008/07/07 00:27:22 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_reblock.c,v 1.11 2008/07/16 00:53:48 thomas Exp $
  */
 
 #include "hammer.h"
@@ -39,7 +39,7 @@
 static void reblock_usage(int exit_code);
 
 /*
- * reblock <filesystem> [compaction_precentage] (default 90%)
+ * reblock <filesystem> [compaction_precentage] (default 100%)
  */
 void
 hammer_cmd_reblock(char **av, int ac, int flags)
@@ -134,7 +134,7 @@ reblock_usage(int exit_code)
 	fprintf(stderr, "hammer reblock-inodes <filesystem> [percentage]\n");
 	fprintf(stderr, "hammer reblock-dirs <filesystem> [percentage]\n");
 	fprintf(stderr, "hammer reblock-data <filesystem> [percentage]\n");
-	fprintf(stderr, "By default 90%% is used.  Use 100%% to defragment\n");
+	fprintf(stderr, "By default 100%% is used.\n");
 	exit(exit_code);
 }
 

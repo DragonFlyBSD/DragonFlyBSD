@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.38 2008/07/13 22:18:18 swildner Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.39 2008/07/16 00:53:48 thomas Exp $
 .Dd July 13, 2008
 .Dt HAMMER 8
 .Os
@@ -39,13 +39,13 @@
 .Nd HAMMER file system utility
 .Sh SYNOPSIS
 .Nm
-.Op Fl hrv2
+.Op Fl h2rv
 .Op Fl c Ar cyclefile
 .Op Fl f Ar blkdev[:blkdev]*
-.Op Fl s Ar linkpath
+\." .Op Fl s Ar linkpath
 .Op Fl t Ar seconds
 .Ar command
-.Ar ...
+.Ar [argument ...]
 .Sh DESCRIPTION
 The
 .Nm
@@ -55,7 +55,7 @@ filesystem.
 The options are as follows:
 .Bl -tag -width indent
 .It Fl h
-Get help
+Get help.
 .It Fl 2
 Tell the mirror commands to use a 2-way protocol, which allows
 automatic negotiation of transaction id ranges.  This option is
@@ -65,17 +65,28 @@ command.
 .It Fl r
 Specify recursion for those commands which support it.
 .It Fl c Ar cyclefile
-When pruning and reblocking you can instruction HAMMER to start at the
-object id stored in the specified file.  If the file does not exist
-HAMMER will start at the beginning.  If HAMMER is told to run for a
+When pruning and reblocking you can instruction
+.Nm
+to start at the
+object id stored in the specified file.
+If the file does not exist
+Nm
+will start at the beginning.
+If
+Nm
+is told to run for a
 specific period of time and is unable to complete the operation it will
-write out the current obj_id so the next run can pick up where it left
-off.  If HAMMER runs to completion it will delete the cyclefile.
+write out the current object id so the next run can pick up where it left
+off.
+If
+.Nm
+runs to completion it will delete the cyclefile.
 .It Fl f Ar blkdev[:blkdev]*
 Specify the volumes making up a HAMMER filesystem.
-.It Fl s Ar linkpath
-When pruning a filesystem you can instruct HAMMER to create softlinks
-to available snapshots.
+\." .It Fl s Ar linkpath
+\." When pruning a filesystem you can instruct
+\." .Nm to create softlinks
+\." to available snapshots.
 .It Fl t Ar seconds
 When pruning and reblocking you can tell the utility to stop after a
 certain period of time.  This option is used along with the cycle file
@@ -98,18 +109,26 @@ crash might still undo the state of the filesystem as of the transaction
 id returned but any new modifications will occur after the returned
 transaction id as expected.
 .It Ar bstats Op interval
-Output HAMMER B-tree statistics until interrupted.  The default interval
-is one second.
+Output HAMMER B-tree statistics until interrupted.
+Pause
+.Ar interval
+seconds between each dispaly.
+The default interval is one second.
 .It Ar iostats Op interval
-Output HAMMER I/O statistics until interrupted.  The default interval
-is one second.
-.It Ar history Ar path
-Show the modification history for a HAMMER file's inode and data.
+Output HAMMER I/O statistics until interrupted.
+Pause
+.Ar interval
+seconds between each dispaly.
+The default interval is one second.
+.It Ar history Ar path ...
+Show the modification history for HAMMER file's inode and data.
 .It Ar show
-Dump the B-tree.
-.It Ar blockmap
-Dump the B-tree, record, large-data, and small-data blockmaps, showing
-physical block assignments and free space percentages.
+Dump the B-tree. This command needs the
+.Fl f Ar blkdev[:blkdev]*
+flag.
+.\" .It Ar blockmap
+.\" Dump the B-tree, record, large-data, and small-data blockmaps, showing
+.\" physical block assignments and free space percentages.
 .It Ar namekey Ar filename
 Generate a HAMMER 64 bit directory hash for the specified file name.
 The low 32 bits are used as an iterator for hash collisions and will be
@@ -119,6 +138,15 @@ Generate the top 32 bits of a HAMMER 64 bit directory hash for the specified
 file name.
 .It Ar prune Ar softlink-dir
 Prune the filesystem based on previously created snapshot softlinks.
+Pruning is the act of deleting filesystem history.
+The
+.Ar prune
+command
+will delete filesystem history such that 
+the filesystem state is retained for the given snapshots,
+and all history after the latest snapshot,
+but all other history is deleted.
+.Pp
 The target directory is expected to contain softlinks pointing to
 snapshots of the filesystems you wish to retain.  The directory is scanned
 non-recursively and the mount points and transaction ids stored in the
@@ -135,7 +163,8 @@ containing the @@ snapshot id extension.
 Currently the scanned softlink directory must contain softlinks pointing
 to a single HAMMER mount.  The softlinks may specify absolute or relative
 paths.  Softlinks must use 20-character (@@0x%016llx) transaction ids,
-as might be returned from 'hammer synctid <filesystem>'.
+as might be returned from
+.Dq Nm Ar synctid filesystem .
 .Pp
 Example, lets say your snapshot directory contains the following links:
 .Bd -literal
@@ -149,16 +178,20 @@ lrwxr-xr-x  1 root  wheel  29 May 31 17:59 snap3 ->
 /usr/obj/@@0x10d2cd222adee364
 .Ed
 .Pp
-If you were to run the prune command on this directory, then the HAMMER
+If you were to run the
+.Ar prune
+command on this directory, then the HAMMER
 .Pa /usr/obj
 mount will be pruned to retain the above three snapshots.
-In addition, modifications made to the filesystem older than the oldest
-snapshot will be destroyed and potentially fine-grained modifications made
+In addition, history for modifications made to the filesystem older than the oldest
+snapshot will be destroyed and history for potentially fine-grained modifications made
 to the filesystem more recently than the most recent snapshot will be
 retained.
 .Pp
-If you then delete the snap2 softlink and rerun the prune command,
-modifications pertaining to that snapshot would be destroyed.
+If you then delete the snap2 softlink and rerun the
+.Ar prune
+command,
+history for modifications pertaining to that snapshot would be destroyed.
 .It Ar prune-everything Ar filesystem
 This command will remove all historical records from the filesystem.
 This directive is not normally used on a production system.
@@ -178,7 +211,7 @@ argument and creates a symlink in the directory provided by
 pointing to the snapshot.
 If
 .Ar snapshot-dir
-is no directory, it is assumed to be a format string
+is not a directory, it is assumed to be a format string
 passed to
 .Xr strftime 3
 with the current time as parameter.
@@ -226,7 +259,9 @@ and rewritten.  If you wish to quickly free up space instead try specifying
 a smaller fill percentage, such as 90% or 80% (the '%' suffix is not needed).
 .Pp
 Since this command may rewrite the entire contents of the disk it is
-best to do it incrementally from a cron job along with the
+best to do it incrementally from a
+.Xr cron 8
+job along with the
 .Fl c Ar cyclefile
 and
 .Fl t Ar seconds
@@ -263,9 +298,12 @@ You will not be able to access a slave PFS until you have completed the
 first mirroring operation with it as the target (its root directory will
 not exist until then).
 .Pp
-Access to the pfs-slave via the special softlink allows Hammer to
-dynamically modify the snapshot TID by returning a dynamic result
-from readlink() calls.
+Access to the pfs-slave via the special softlink,
+as described in the PFS NOTES below, allows HAMMER to
+dynamically modify the snapshot transaction id by returning a dynamic result
+from
+.Xr readlink 2
+calls.
 .Pp
 A PFS can only be truly destroyed with the
 .Ar pfs-destroy
@@ -283,7 +321,8 @@ This directive will refuse to run if any programs have open descriptors
 in the PFS, including programs chdir'd into the PFS.
 .It Ar pfs-downgrade Ar dirpath
 Downgrade a master PFS from master to slave operation.  The PFS becomes
-read-only and access will be locked to its sync_end_tid.
+read-only and access will be locked to its
+.Ar sync-end-tid .
 .Pp
 This directive will refuse to run if any programs have open descriptors
 in the PFS, including programs chdir'd into the PFS.
@@ -297,7 +336,7 @@ Update the configuration parameters for an existing HAMMER filesystem
 or pseudo-filesystem.  Options that may be specified:
 .Bl -tag -width indent
 .It sync-beg-tid=0x16llx
-This is the automatic snapshot access starting TID for mirroring slaves.
+This is the automatic snapshot access starting transaction id for mirroring slaves.
 This parameter is normally updated automatically by the
 .Ar mirror-write
 directive.
@@ -318,15 +357,15 @@ directive.
 Manually modifying this field is dangerous and can result in a broken
 mirror.
 .It shared-uuid=<uuid>
-Set the shared uuid for this filesystem.  All mirrors must have the same
-shared uuid.  For safety purposes the mirror-write directives will refuse
-to operate on a target with a different shared uuid.
+Set the shared UUID for this filesystem.  All mirrors must have the same
+shared UUID.  For safety purposes the mirror-write directives will refuse
+to operate on a target with a different shared UUID.
 .Pp
-Changing the shared uuid on an existing, non-empty mirroring target,
+Changing the shared UUID on an existing, non-empty mirroring target,
 including an empty but not completely pruned target, can lead
 to corruption of the mirroring target.
 .It unique-uuid=<uuid>
-Set the unique uuid for this filesystem.  This uuid should not be used
+Set the unique UUID for this filesystem.  This UUID should not be used
 anywhere else, even on exact copies of the filesystem.
 .It master=<num>
 Set the master id for multi-master mirroring.  Only values between 0 and 15
@@ -348,7 +387,7 @@ scans will not work.  This option may only be set on masters.
 Sets slave mode, allowing the mirror to be used as a slave.  Except for
 the mirror-write directive all accesses to the mirror will be made read-only
 and will be as-of the
-.Ar sync_beg_tid .
+.Ar sync-beg-tid .
 This option is currently not supported, slave mode must be specified
 when creating the PFS and cannot be changed on the fly.
 .It label=<string>
@@ -360,21 +399,32 @@ Generate a mirroring stream to stdout.
 Take a mirroring stream on stdin and output it to stdout.
 .Pp
 This command will fail if the
-.Ar shared_uuid
+.Ar shared-uuid
 configuration field for the two filesystems do not match.
 .It Ar mirror-dump
 A mirror-read can be piped into a mirror-dump to dump an ascii
 representation of the mirroring stream.
 .It Ar mirror-copy Ar [[user@]host:]filesystem Ar [[user@]host:]filesystem
-This is a shortcut which pipes a mirror-read command to a mirror-write
+This is a shortcut which pipes a
+.Ar mirror-read
+command to a
+.Ar mirror-write
 command.  If a remote host specification is made the program forks a
-ssh and execs the mirror-read and/or mirror-write on the appropriate host.
+.Xr
+ssh 1
+and execs the
+.Ar mirror-read
+and/or
+.Ar mirror-write
+on the appropriate host.
 The source may be a master or slave PFS, and the target must be a slave PFS.
 .Pp
 This command also established full duplex communication and turns on
-the two-way protocol feature which automatically negotiates TID ranges
+the two-way protocol feature which automatically negotiates transaction id ranges
 without having to use a cycle file.
-If the operation completes successfully the target PFS's sync_end_tid will
+If the operation completes successfully the target PFS's
+.Ar sync-end-tid
+will
 be updated.  Note that you must re-chdir into the target PFS to see the
 updated information.  If you do not you will still be in the previous snapshot.
 .El
@@ -386,7 +436,11 @@ Instead, HAMMER creates a special softlink called "@@PFS%05d" (exactly 10
 characters long) in the primary HAMMER filesystem.
 HAMMER then modifies the contents of the softlink as read by
 .Xr readlink 2 ,
-and thus what you see with an ls command or if you were to cd into the link.
+and thus what you see with an
+.Xr ls 1
+command or if you were to
+.Xr cd 1
+into the link.
 If the PFS is a master the link reflects the current state of the PFS.
 If the PFS is a slave the link reflects the last completed snapshot, and the
 contents of the link will change when the next snapshot is completed, and
@@ -404,6 +458,8 @@ field of the mirroring source and target match.
 .Sh DIAGNOSTICS
 .Ex -std
 .Sh SEE ALSO
+.Xr undo 1 ,
+.Xr mount_hammer 8 ,
 .Xr newfs_hammer 8
 .Sh HISTORY
 The
