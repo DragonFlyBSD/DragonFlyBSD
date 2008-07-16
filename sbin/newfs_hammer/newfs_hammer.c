@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.39 2008/07/09 20:48:33 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.40 2008/07/16 00:58:22 thomas Exp $
  */
 
 #include "newfs_hammer.h"
@@ -120,7 +120,7 @@ main(int ac, char **av)
 
         if (NumVolumes == 0) {
                 fprintf(stderr,
-                        "newfs_hammer: You must specify at least one volume\n");
+                        "newfs_hammer: You must specify at least one special file (volume)\n");
                 exit(1);
         }
 
@@ -198,7 +198,10 @@ static
 void
 usage(void)
 {
-	fprintf(stderr, "newfs_hammer vol0 [vol1 ...]\n");
+	fprintf(stderr,
+		"newfs_hammer -L label [-b bootsize] [-m savesize] [ -u undosize] "
+			"special ...\n"
+	);
 	exit(1);
 }
 
@@ -333,7 +336,7 @@ check_volume(struct volume_info *vol)
 		err(1, "Unable to open %s R+W", vol->name);
 	if (ioctl(vol->fd, DIOCGPART, &pinfo) < 0) {
 		/*
-		 * Allow the formatting of regular filews as HAMMER volumes
+		 * Allow the formatting of regular files as HAMMER volumes
 		 */
 		if (fstat(vol->fd, &st) < 0)
 			err(1, "Unable to stat %s", vol->name);
