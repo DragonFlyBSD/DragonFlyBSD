@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 #	$FreeBSD: src/share/man/man5/Makefile,v 1.27.2.12 2003/05/23 22:20:24 dwhite Exp $
-#	$DragonFly: src/share/man/man5/Makefile,v 1.15 2008/05/11 06:46:19 swildner Exp $
+#	$DragonFly: src/share/man/man5/Makefile,v 1.15.2.1 2008/07/16 21:11:27 swildner Exp $
 
 #MISSING: dump.5 plot.5
 MAN=	acct.5 \
@@ -22,6 +22,7 @@ MAN=	acct.5 \
 	gb18030.5 \
 	gbk.5 \
 	group.5 \
+	hammer.5 \
 	host.conf.5 \
 	hosts.5 \
 	hosts.equiv.5 \
@@ -51,7 +52,6 @@ MAN=	acct.5 \
 	shells.5 \
 	stab.5 \
 	sysctl.conf.5 \
-	types.5 \
 	utf2.5 \
 	utf8.5 \
 	utmp.5 \
@@ -59,6 +59,7 @@ MAN=	acct.5 \
 
 MLINKS=	dir.5 dirent.5
 MLINKS+=fs.5 inode.5
+MLINKS+=hammer.5 HAMMER.5
 MLINKS+=hosts.equiv.5 rhosts.5
 MLINKS+=passwd.5 master.passwd.5
 MLINKS+=resolver.5 resolv.conf.5
