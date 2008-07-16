@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.24 2008/07/14 03:20:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.25 2008/07/16 18:30:59 dillon Exp $
  */
 
 /*
@@ -1080,29 +1080,19 @@ hammer_checkspace(hammer_mount_t hmp, int slop)
 	const int rec_size = (sizeof(union hammer_btree_elm) * 2);
 	int64_t usedbytes;
 
-	/*
-	 * Hopefully a quick and fast check.
-	 */
-	if (hmp->copy_stat_freebigblocks * HAMMER_LARGEBLOCK_SIZE >=
-	    (int64_t)hidirtybufspace * 4 + 10 * HAMMER_LARGEBLOCK_SIZE) {
-		hammer_count_extra_space_used = -1;
-		return(0);
-	}
-
-	/*
-	 * Do a more involved check
-	 */
 	usedbytes = hmp->rsv_inodes * in_size +
 		    hmp->rsv_recs * rec_size +
 		    hmp->rsv_databytes +
-		    hmp->rsv_fromdelay * HAMMER_LARGEBLOCK_SIZE +
-		    hidirtybufspace +
-		    slop * HAMMER_LARGEBLOCK_SIZE;
+		    ((int64_t)hmp->rsv_fromdelay << HAMMER_LARGEBLOCK_BITS) +
+		    ((int64_t)hidirtybufspace << 2) +
+		    (slop << HAMMER_LARGEBLOCK_BITS);
 
-	hammer_count_extra_space_used = usedbytes;
+	hammer_count_extra_space_used = usedbytes;	/* debugging */
 
-	if (hmp->copy_stat_freebigblocks >= usedbytes / HAMMER_LARGEBLOCK_SIZE)
+	if (hmp->copy_stat_freebigblocks >=
+	    (usedbytes >> HAMMER_LARGEBLOCK_BITS)) {
 		return(0);
+	}
 	return (ENOSPC);
 }
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.118 2008/07/14 20:27:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.119 2008/07/16 18:30:59 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -312,7 +312,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_DDIRTY	0x0001	/* in-memory ino_data is dirty */
 					/* (not including atime/mtime) */
 #define HAMMER_INODE_RSV_INODES	0x0002	/* hmp->rsv_inodes bumped */
-#define HAMMER_INODE_UNUSED0004	0x0004
+#define HAMMER_INODE_CONN_DOWN	0x0004	/* include in downward recursion */
 #define HAMMER_INODE_XDIRTY	0x0008	/* in-memory records */
 #define HAMMER_INODE_ONDISK	0x0010	/* inode is on-disk (else not yet) */
 #define HAMMER_INODE_FLUSH	0x0020	/* flush on last ref */
@@ -731,6 +731,7 @@ struct hammer_mount {
 	TAILQ_HEAD(, hammer_undo)  undo_lru_list;
 	TAILQ_HEAD(, hammer_reserve) delay_list;
 	struct hammer_flush_group_list	flush_group_list;
+	hammer_flush_group_t	next_flush_group;
 	TAILQ_HEAD(, hammer_objid_cache) objid_cache_list;
 	TAILQ_HEAD(, hammer_reclaim) reclaim_list;
 };
@@ -754,6 +755,7 @@ struct hammer_sync_info {
 #define HAMMER_CHKSPC_WRITE	20
 #define HAMMER_CHKSPC_CREATE	20
 #define HAMMER_CHKSPC_REMOVE	10
+#define HAMMER_CHKSPC_EMERGENCY	0
 
 #if defined(_KERNEL)
 
@@ -1051,7 +1053,7 @@ int hammer_reload_inode(hammer_inode_t ip, void *arg __unused);
 int hammer_ino_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2);
 
 int hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip);
-void hammer_test_inode(hammer_inode_t ip);
+void hammer_test_inode(hammer_inode_t dip);
 void hammer_inode_unloadable_check(hammer_inode_t ip, int getvp);
 
 int  hammer_ip_add_directory(struct hammer_transaction *trans,
