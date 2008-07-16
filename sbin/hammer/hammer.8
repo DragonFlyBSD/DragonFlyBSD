@@ -30,8 +30,8 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.39 2008/07/16 00:53:48 thomas Exp $
-.Dd July 13, 2008
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.40 2008/07/16 20:00:41 swildner Exp $
+.Dd July 16, 2008
 .Dt HAMMER 8
 .Os
 .Sh NAME
@@ -42,15 +42,18 @@
 .Op Fl h2rv
 .Op Fl c Ar cyclefile
 .Op Fl f Ar blkdev[:blkdev]*
-\." .Op Fl s Ar linkpath
+.\" .Op Fl s Ar linkpath
 .Op Fl t Ar seconds
 .Ar command
 .Ar [argument ...]
 .Sh DESCRIPTION
-The
+This manual page documents the
 .Nm
-utility provides miscellaneous functions related to managing a HAMMER
-filesystem.
+utility which provides miscellaneous functions related to managing a
+HAMMER file system.
+For a general introduction to the HAMMER file system, its features, and
+examples on how to set up and maintain one, see
+.Xr hammer 5 .
 .Pp
 The options are as follows:
 .Bl -tag -width indent
@@ -142,7 +145,7 @@ Pruning is the act of deleting filesystem history.
 The
 .Ar prune
 command
-will delete filesystem history such that 
+will delete filesystem history such that
 the filesystem state is retained for the given snapshots,
 and all history after the latest snapshot,
 but all other history is deleted.
@@ -410,8 +413,7 @@ This is a shortcut which pipes a
 command to a
 .Ar mirror-write
 command.  If a remote host specification is made the program forks a
-.Xr
-ssh 1
+.Xr ssh 1
 and execs the
 .Ar mirror-read
 and/or
@@ -459,6 +461,7 @@ field of the mirroring source and target match.
 .Ex -std
 .Sh SEE ALSO
 .Xr undo 1 ,
+.Xr hammer 5 ,
 .Xr mount_hammer 8 ,
 .Xr newfs_hammer 8
 .Sh HISTORY
