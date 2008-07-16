@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.bin/undo/undo.c,v 1.3 2008/07/15 17:04:35 thomas Exp $
+ * $DragonFly: src/usr.bin/undo/undo.c,v 1.4 2008/07/16 01:27:09 thomas Exp $
  */
 /*
  * UNDO - retrieve an older version of a file.
@@ -614,7 +614,7 @@ timestamp(hammer_ioc_hist_entry_t hen)
 static void
 usage(void)
 {
-	fprintf(stderr, "undo [-dDhiuv] [-o outfile] [-t n{s,m,h,d}] [-t n...] "
+	fprintf(stderr, "undo [-dDhiuv] [-o outfile] [-t transaction-id] [-t transaction-id] "
 			"file ...\n");
 	fprintf(stderr, "    -d       Forward diff\n"
 			"    -D       Reverse diff\n"
@@ -623,9 +623,8 @@ usage(void)
 			"    -u       Generate .undo files\n"
 			"    -v       Verbose\n"
 			"    -o file  Output to the specified file\n"
-			"    -t spec  Retrieve as of n secs,mins,etc ago\n"
-			"             (a second `-t spec' to diff two versions)\n"
-			"             (a 0x transaction id may also be specified)\n");
+			"    -t TID   Retrieve as of transaction-id, TID\n"
+			"             (a second `-t TID' to diff two versions)\n");
 	exit(1);
 }
 
