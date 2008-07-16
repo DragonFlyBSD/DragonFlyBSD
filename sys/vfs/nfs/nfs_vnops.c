@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.78 2008/07/14 17:45:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.79 2008/07/16 18:20:40 dillon Exp $
  */
 
 
@@ -1559,11 +1559,10 @@ again:
 nfsmout:
 	if (error) {
 		if (v3 && (fmode & O_EXCL) && error == NFSERR_NOTSUPP) {
+			KKASSERT(newvp == NULL);
 			fmode &= ~O_EXCL;
 			goto again;
 		}
-		if (newvp)
-			vput(newvp);
 	} else if (v3 && (fmode & O_EXCL)) {
 		/*
 		 * We are normally called with only a partially initialized
@@ -1579,7 +1578,7 @@ nfsmout:
 			vap->va_atime = vap->va_mtime;
 		error = nfs_setattrrpc(newvp, vap, cnp->cn_cred, cnp->cn_td);
 	}
-	if (!error) {
+	if (error == 0) {
 		/*
 		 * The new np may have enough info for access
 		 * checks, make sure rucred and wucred are
@@ -1591,6 +1590,8 @@ nfsmout:
 		if (np->n_wucred == NULL)
 			np->n_wucred = crhold(cnp->cn_cred);
 		*ap->a_vpp = newvp;
+	} else if (newvp) {
+		vput(newvp);
 	}
 	VTONFS(dvp)->n_flag |= NLMODIFIED;
 	if (!wccflag)
