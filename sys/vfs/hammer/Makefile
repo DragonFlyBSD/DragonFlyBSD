@@ -1,5 +1,5 @@
 #
-# $DragonFly: src/sys/vfs/hammer/Makefile,v 1.14 2008/07/17 00:16:14 swildner Exp $
+# $DragonFly: src/sys/vfs/hammer/Makefile,v 1.15 2008/07/17 10:11:58 swildner Exp $
 
 KMOD=	hammer
 SRCS=	hammer_vfsops.c hammer_vnops.c hammer_inode.c \
@@ -9,5 +9,6 @@ SRCS=	hammer_vfsops.c hammer_vnops.c hammer_inode.c \
 	hammer_blockmap.c hammer_freemap.c hammer_undo.c \
 	hammer_reblock.c hammer_flusher.c hammer_mirror.c \
 	hammer_pfs.c hammer_prune.c
+SRCS+=	opt_ktr.h
 
 .include <bsd.kmod.mk>
