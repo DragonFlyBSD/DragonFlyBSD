@@ -29,9 +29,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man5/hammer.5,v 1.4 2008/07/17 09:41:19 swildner Exp $
+.\" $DragonFly: src/share/man/man5/hammer.5,v 1.5 2008/07/17 11:23:23 swildner Exp $
 .\"
-.Dd July 16, 2008
+.Dd July 17, 2008
 .Os
 .Dt HAMMER 5
 .Sh NAME
@@ -93,10 +93,10 @@ Pruning a
 .Nm
 file system will free all unused historical records.
 .Ss Snapshots
-A snapshot can be taken by creating a symbolic link to a specific
-version of a file or directory.
-Snapshots created this way will be retained across subsequent prune
-operations.
+Snapshots are symbolic links to specific versions of directories or files,
+prior or current.
+Their data will be retained across prune operations for as long as the
+symbolic link exists.
 Removing the symbolic link enables the file system to reclaim the space
 again.
 .\".Ss Mirroring
@@ -141,6 +141,17 @@ options be used for this job (for example, every night at 2:15 up to 5
 minutes).
 .Bd -literal
 15 2 * * * hammer -c /var/run/Home -t 300 reblock /home >/dev/null 2>&1
+.Ed
+.Ss Snapshots
+The
+.Xr hammer 8
+utility's
+.Ar snapshot
+command provides several ways of taking snapshots.
+They all assume a directory where snapshots are kept.
+.Bd -literal
+mkdir /snaps
+hammer snapshot /home /snaps/snap1
 .Ed
 .Sh SEE ALSO
 .Xr undo 1 ,
