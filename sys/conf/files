@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.223 2008/07/12 02:47:38 dillon Exp $
+# $DragonFly: src/sys/conf/files,v 1.223.2.1 2008/07/17 10:18:06 swildner Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -633,7 +633,7 @@ kern/vfs_cache.c	standard
 kern/vfs_cluster.c	standard
 kern/vfs_conf.c		standard
 kern/vfs_default.c	standard
-kern/vfs_helper.c	optional hammer
+kern/vfs_helper.c	standard
 kern/vfs_init.c		standard
 kern/vfs_journal.c	standard
 kern/vfs_jops.c		standard
