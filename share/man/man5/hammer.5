@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man5/hammer.5,v 1.2 2008/07/16 20:39:28 swildner Exp $
+.\" $DragonFly: src/share/man/man5/hammer.5,v 1.2.2.1 2008/07/17 10:18:37 swildner Exp $
 .\"
 .Dd July 16, 2008
 .Os
@@ -38,18 +38,24 @@
 .Nm HAMMER
 .Nd HAMMER file system
 .Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following line in your
+kernel configuration file:
+.Bd -ragged -offset indent
 .Cd options HAMMER
+.Ed
 .Pp
-In
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+hammer_load="YES"
+.Ed
+.Pp
+To mount via
 .Xr fstab 5 :
-.Bd -literal
-# single volume
-#
-/dev/disk0a	/mnt hammer rw 2 0
-
-# multi volume
-#
-/dev/disk0a:/dev/disk1a:/dev/disk2a	/mnt hammer rw 2 0
+.Bd -literal -offset indent
+/dev/ad0s1d[:/dev/ad1s1d:...]	/mnt hammer rw 2 0
 .Ed
 .Sh DESCRIPTION
 The
@@ -112,8 +118,8 @@ newfs_hammer -L Home /dev/ad0s1d
 mount_hammer /dev/ad0s1d /home
 .Ed
 .Pp
-Similarly, multi volume file systems can be created and mounted by just
-specifying more arguments.
+Similarly, multi volume file systems can be created and mounted by
+specifying additional arguments.
 .Bd -literal
 newfs_hammer -L MultiHome /dev/ad0s1d /dev/ad1s1d
 mount_hammer /dev/ad0s1d /dev/ad1s1d /home
@@ -131,9 +137,10 @@ utility's
 .Fl c
 and
 .Fl t
-options be used for this job (for example, every night up to 5 minutes).
+options be used for this job (for example, every night at 2:15 up to 5
+minutes).
 .Bd -literal
-2 15 * * * hammer -c /var/run/Home -t 300 reblock /home >/dev/null 2>&1
+15 2 * * * hammer -c /var/run/Home -t 300 reblock /home >/dev/null 2>&1
 .Ed
 .Sh SEE ALSO
 .Xr undo 1 ,
