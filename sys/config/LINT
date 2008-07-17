@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.167 2008/07/11 18:42:14 thomas Exp $
+# $DragonFly: src/sys/config/LINT,v 1.167.2.1 2008/07/17 23:36:58 thomas Exp $
 #
 # See the kernconf(5) manual page for more information on the format of
 # this file.
@@ -714,7 +714,7 @@ options         DEVICE_POLLING
 #
 # Only the root, /usr, and /tmp filesystems need be statically
 # compiled; everything else will be automatically loaded at mount
-# time.  (Exception: HAMMER and the UFS family --- FFS, and MFS ---
+# time.  (Exception: the UFS family --- FFS, and MFS ---
 # cannot currently be demand-loaded.)  Some people still prefer
 # to statically compile other filesystems as well.
 #
