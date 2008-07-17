@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/add.c,v 1.15 2006/10/04 18:20:25 marcel Exp $
- * $DragonFly: src/sbin/gpt/add.c,v 1.5 2007/06/19 02:30:35 dillon Exp $
+ * $DragonFly: src/sbin/gpt/add.c,v 1.6 2008/07/17 01:15:59 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -149,7 +149,7 @@ add(int fd)
 	gpt_write(fd, lbt);
 	gpt_write(fd, tpg);
 
-	printf("%ss%u added\n", device_name, i + 1);
+	printf("%ss%u added\n", device_name, i);
 }
 
 int
