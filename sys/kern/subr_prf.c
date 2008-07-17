@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_prf.c,v 1.61.2.5 2002/08/31 18:22:08 dwmalone Exp $
- * $DragonFly: src/sys/kern/subr_prf.c,v 1.20 2008/01/04 12:16:19 matthias Exp $
+ * $DragonFly: src/sys/kern/subr_prf.c,v 1.21 2008/07/17 23:56:23 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -335,6 +335,9 @@ kvprintf(const char *fmt, __va_list ap)
  * Limited rate kprintf.  The passed rate structure must be initialized
  * with the desired reporting frequency.  A frequency of 0 will result in
  * no output.
+ *
+ * count may be initialized to a negative number to allow an initial
+ * burst.
  */
 void
 krateprintf(struct krate *rate, const char *fmt, ...)
@@ -343,7 +346,8 @@ krateprintf(struct krate *rate, const char *fmt, ...)
 
 	if (rate->ticks != (int)time_second) {
 		rate->ticks = (int)time_second;
-		rate->count = 0;
+		if (rate->count > 0)
+			rate->count = 0;
 	}
 	if (rate->count < rate->freq) {
 		++rate->count;
