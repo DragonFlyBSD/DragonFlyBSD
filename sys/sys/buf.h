@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.51 2008/07/14 03:08:58 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.52 2008/07/17 23:55:24 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -271,6 +271,10 @@ struct buf {
  *			Setting B_AGE on a dirty buffer will not cause it
  *			to be flushed more quickly but will cause it to be
  *			reallocated more quickly after having been flushed.
+ *
+ *	B_NOCACHE	Request that the buffer and backing store be
+ *			destroyed on completion.  If B_DELWRI is set and the
+ *			write fails, the buffer remains intact.
  */
 
 #define	B_AGE		0x00000001	/* Reuse more quickly */
