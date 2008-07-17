@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.bin/undo/undo.c,v 1.5 2008/07/16 21:38:10 dillon Exp $
+ * $DragonFly: src/usr.bin/undo/undo.c,v 1.6 2008/07/17 21:34:47 thomas Exp $
  */
 /*
  * UNDO - retrieve an older version of a file.
@@ -288,8 +288,9 @@ dogenerate(const char *filename, const char *outFileName,
 		asprintf(&ipath1, "%s", filename);
 		if (force == 0 || lstat(ipath1, &st) < 0) {
 			fprintf(stderr, "Cannot locate src/historical "
-					"idx=%d %s@@0x%016llx, the file"
-					"may have been renamed in the past.\n",
+					"idx=%d %s@@0x%016llx,\n"
+					"the file may have been renamed "
+					"in the past.\n",
 				idx, filename, ts1.tid);
 			goto done;
 		}
