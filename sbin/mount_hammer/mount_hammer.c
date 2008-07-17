@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/mount_hammer/mount_hammer.c,v 1.7 2008/07/03 06:36:27 dillon Exp $
+ * $DragonFly: src/sbin/mount_hammer/mount_hammer.c,v 1.7.2.1 2008/07/17 23:54:06 thomas Exp $
  */
 
 #include <sys/types.h>
@@ -194,10 +194,8 @@ static
 void
 usage(void)
 {
-	fprintf(stderr, "mount_hammer [-T time] [-o options] "
-			"volume [volume...] mount_pt");
-	fprintf(stderr, "mount_hammer -u [-o options] mount_pt");
-	fprintf(stderr, "    time: +n[s/m/h/D/M/Y]\n"
-			"    time: yyyymmdd[:hhmmss]\n");
+	fprintf(stderr, "mount_hammer [-T transaction-id] [-o options] "
+			"special ... mount-point\n");
+	fprintf(stderr, "mount_hammer -u [-o options] mount-point\n");
 	exit(1);
 }
