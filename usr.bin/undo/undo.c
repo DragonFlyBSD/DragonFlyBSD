@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.bin/undo/undo.c,v 1.2 2008/06/24 17:40:24 dillon Exp $
+ * $DragonFly: src/usr.bin/undo/undo.c,v 1.2.2.1 2008/07/17 23:50:02 thomas Exp $
  */
 /*
  * UNDO - retrieve an older version of a file.
@@ -58,7 +58,8 @@ static void dogenerate(const char *filename, const char *outFileName,
 		   const char *outFilePostfix,
 		   int mult, int idx, enum undo_type type,
 		   struct hammer_ioc_hist_entry ts1,
-		   struct hammer_ioc_hist_entry ts2);
+		   struct hammer_ioc_hist_entry ts2,
+		   int force);
 static struct hammer_ioc_hist_entry
 	    find_recent(const char *filename);
 static struct hammer_ioc_hist_entry
@@ -89,7 +90,7 @@ main(int ac, char **av)
 	cmd = CMD_DUMP;
 	type = TYPE_FILE;
 
-	while ((c = getopt(ac, av, "dDhiuvo:t:")) != -1) {
+	while ((c = getopt(ac, av, "adDiuvo:t:")) != -1) {
 		switch(c) {
 		case 'd':
 			if (type != TYPE_FILE)
@@ -106,7 +107,7 @@ main(int ac, char **av)
 				usage();
 			type = TYPE_HISTORY;
 			break;
-		case 'h':
+		case 'a':
 			cmd = CMD_ITERATEALL;
 			break;
 		case 'u':
@@ -177,7 +178,7 @@ main(int ac, char **av)
 		switch(cmd) {
 		case CMD_DUMP:
 			dogenerate(*av, outFileName, outFilePostfix,
-				   mult, -1, type, ts1, ts2);
+				   mult, -1, type, ts1, ts2, 1);
 			break;
 		case CMD_ITERATEALL:
 			doiterate(*av, outFileName, outFilePostfix,
@@ -233,12 +234,12 @@ doiterate(const char *orig_filename, const char *outFileName,
 				dogenerate(orig_filename,
 					   outFileName, outFilePostfix,
 					   mult, i, type,
-					   tid_ary[i], tid_max);
+					   tid_ary[i], tid_max, 0);
 			} else {
 				dogenerate(orig_filename,
 					   outFileName, outFilePostfix,
 					   mult, i, type,
-					   tid_ary[i], tid_ary[i+1]);
+					   tid_ary[i], tid_ary[i+1], 0);
 			}
 		}
 
@@ -260,7 +261,8 @@ dogenerate(const char *filename, const char *outFileName,
 	   const char *outFilePostfix,
 	   int mult, int idx, enum undo_type type,
 	   struct hammer_ioc_hist_entry ts1,
-	   struct hammer_ioc_hist_entry ts2)
+	   struct hammer_ioc_hist_entry ts2,
+	   int force)
 {
 	struct stat st;
 	const char *elm;
@@ -282,12 +284,20 @@ dogenerate(const char *filename, const char *outFileName,
 		ts1 = find_recent(filename);
 	asprintf(&ipath1, "%s@@0x%016llx", filename, ts1.tid);
 	if (lstat(ipath1, &st) < 0) {
-		if (VerboseOpt) {
+		free(ipath1);
+		asprintf(&ipath1, "%s", filename);
+		if (force == 0 || lstat(ipath1, &st) < 0) {
 			fprintf(stderr, "Cannot locate src/historical "
-					"idx=%d %s\n",
-				idx, ipath1);
+					"idx=%d %s@@0x%016llx,\n"
+					"the file may have been renamed "
+					"in the past.\n",
+				idx, filename, ts1.tid);
+			goto done;
 		}
-		goto done;
+		fprintf(stderr, 
+			"WARNING: %s was renamed at some point in the past,\n"
+			"attempting to continue with current version\n",
+			filename);
 	}
 
 	if (ts2.tid == 0) {
@@ -614,17 +624,17 @@ timestamp(hammer_ioc_hist_entry_t hen)
 static void
 usage(void)
 {
-	fprintf(stderr, "undo [-dDhiuv] [-t n{s,m,h,d}] [-t n...] "
-			"file1....fileN\n");
-	fprintf(stderr, "    -d       Forward diff\n"
+	fprintf(stderr, "undo [-adDiuv] [-o outfile] "
+			"[-t transaction-id] [-t transaction-id] file...\n"
+			"    -a       Iterate all historical segments\n"
+			"    -d       Forward diff\n"
 			"    -D       Reverse diff\n"
 			"    -i       Dump history transaction ids\n"
-			"    -h       Iterate all historical segments\n"
 			"    -u       Generate .undo files\n"
 			"    -v       Verbose\n"
-			"    -t spec  Retrieve as of n secs,mins,etc ago\n"
-			"             (a second one to diff two versions)\n"
-			"             (a 0x TID may also be specified)\n");
+			"    -o file  Output to the specified file\n"
+			"    -t TID   Retrieve as of transaction-id, TID\n"
+			"             (a second `-t TID' to diff two versions)\n");
 	exit(1);
 }
 
