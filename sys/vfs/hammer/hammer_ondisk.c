@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.70 2008/07/16 18:30:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.71 2008/07/18 00:19:53 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -268,11 +268,21 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 		hmp->rootvol = NULL;
 
 	/*
-	 * Release our buffer and flush anything left in the buffer cache.
+	 * We must not flush a dirty buffer to disk on umount.  It should
+	 * have already been dealt with by the flusher, or we may be in
+	 * catastrophic failure.
 	 */
+	hammer_io_clear_modify(&volume->io, 1);
 	volume->io.waitdep = 1;
 	bp = hammer_io_release(&volume->io, 1);
-	hammer_io_clear_modlist(&volume->io);
+
+	/*
+	 * Clean up the persistent ref ioerror might have on the volume
+	 */
+	if (volume->io.ioerror) {
+		volume->io.ioerror = 0;
+		hammer_unref(&volume->io.lock);
+	}
 
 	/*
 	 * There should be no references on the volume, no clusters, and
@@ -290,9 +300,19 @@ hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 			volume->devvp->v_rdev->si_mountpoint = NULL;
 		}
 		if (ronly) {
+			/*
+			 * Make sure we don't sync anything to disk if we
+			 * are in read-only mode (1) or critically-errored
+			 * (2).  Note that there may be dirty buffers in
+			 * normal read-only mode from crash recovery.
+			 */
 			vinvalbuf(volume->devvp, 0, 0, 0);
 			VOP_CLOSE(volume->devvp, FREAD);
 		} else {
+			/*
+			 * Normal termination, save any dirty buffers
+			 * (XXX there really shouldn't be any).
+			 */
 			vinvalbuf(volume->devvp, V_SAVE, 0, 0);
 			VOP_CLOSE(volume->devvp, FREAD|FWRITE);
 		}
@@ -744,12 +764,29 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 
 /*
  * NOTE: Called from RB_SCAN, must return >= 0 for scan to continue.
+ * This routine is only called during unmount.
  */
 int
 hammer_unload_buffer(hammer_buffer_t buffer, void *data __unused)
 {
-	++hammer_count_refedbufs;
-	hammer_ref(&buffer->io.lock);
+	/*
+	 * Clean up the persistent ref ioerror might have on the buffer
+	 * and acquire a ref (steal ioerror's if we can).
+	 */
+	if (buffer->io.ioerror) {
+		buffer->io.ioerror = 0;
+	} else {
+		if (buffer->io.lock.refs == 0)
+			++hammer_count_refedbufs;
+		hammer_ref(&buffer->io.lock);
+	}
+
+	/*
+	 * We must not flush a dirty buffer to disk on umount.  It should
+	 * have already been dealt with by the flusher, or we may be in
+	 * catastrophic failure.
+	 */
+	hammer_io_clear_modify(&buffer->io, 1);
 	hammer_flush_buffer_nodes(buffer);
 	KKASSERT(buffer->io.lock.refs == 1);
 	hammer_rel_buffer(buffer, 2);
@@ -1203,9 +1240,11 @@ void
 hammer_cache_node(hammer_node_cache_t cache, hammer_node_t node)
 {
 	/*
-	 * If the node is being deleted, don't cache it!
+	 * If the node doesn't exist, or is being deleted, don't cache it!
+	 *
+	 * The node can only ever be NULL in the I/O failure path.
 	 */
-	if (node->flags & HAMMER_NODE_DELETED)
+	if (node == NULL || (node->flags & HAMMER_NODE_DELETED))
 		return;
 	if (cache->node == node)
 		return;
@@ -1372,14 +1411,12 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 		if (data_len) {
 			data = hammer_bread_ext(trans->hmp, *data_offsetp,
 						data_len, errorp, data_bufferp);
-			KKASSERT(*errorp == 0);
 		} else {
 			data = NULL;
 		}
 	} else {
 		data = NULL;
 	}
-	KKASSERT(*errorp == 0);
 	return(data);
 }
 

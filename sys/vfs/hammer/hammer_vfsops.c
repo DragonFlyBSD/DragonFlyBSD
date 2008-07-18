@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.64 2008/07/14 20:27:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.65 2008/07/18 00:19:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -327,6 +327,9 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp->root_btree_end.rec_type = 0xFFFFU;
 		hmp->root_btree_end.obj_type = 0;
 
+		hmp->krate.freq = 1;	/* maximum reporting rate (hz) */
+		hmp->krate.count = -16;	/* initial burst */
+
 		hmp->sync_lock.refs = 1;
 		hmp->free_lock.refs = 1;
 		hmp->undo_lock.refs = 1;
@@ -595,17 +598,13 @@ static void
 hammer_free_hmp(struct mount *mp)
 {
 	struct hammer_mount *hmp = (void *)mp->mnt_data;
+	hammer_flush_group_t flg;
 	int count;
 
-#if 0
 	/*
-	 * Clean up the root vnode
+	 * Flush anything dirty.  This won't even run if the
+	 * filesystem errored-out.
 	 */
-	if (hmp->rootvp) {
-		vrele(hmp->rootvp);
-		hmp->rootvp = NULL;
-	}
-#endif
 	count = 0;
 	while (hammer_flusher_haswork(hmp)) {
 		hammer_flusher_sync(hmp);
@@ -624,24 +623,36 @@ hammer_free_hmp(struct mount *mp)
 	}
 	if (count >= 5 && count < 30)
 		kprintf("\n");
+
+	/*
+	 * If the mount had a critical error we have to destroy any
+	 * remaining inodes before we can finish cleaning up the flusher.
+	 */
+	if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR) {
+		RB_SCAN(hammer_ino_rb_tree, &hmp->rb_inos_root, NULL,
+			hammer_destroy_inode_callback, NULL);
+	}
+
+	/*
+	 * There shouldn't be any inodes left now and any left over
+	 * flush groups should now be empty.
+	 */
+	KKASSERT(RB_EMPTY(&hmp->rb_inos_root));
+	while ((flg = TAILQ_FIRST(&hmp->flush_group_list)) != NULL) {
+		TAILQ_REMOVE(&hmp->flush_group_list, flg, flush_entry);
+		KKASSERT(TAILQ_EMPTY(&flg->flush_list));
+		if (flg->refs) {
+			kprintf("HAMMER: Warning, flush_group %p was "
+				"not empty on umount!\n", flg);
+		}
+		kfree(flg, M_HAMMER);
+	}
+
+	/*
+	 * We can finally destroy the flusher
+	 */
 	hammer_flusher_destroy(hmp);
 
-	KKASSERT(RB_EMPTY(&hmp->rb_inos_root));
-
-#if 0
-	/*
-	 * Unload & flush inodes
-	 *
-	 * XXX illegal to call this from here, it can only be done from
-	 * the flusher.
-	 */
-	RB_SCAN(hammer_ino_rb_tree, &hmp->rb_inos_root, NULL,
-		hammer_unload_inode, (void *)MNT_WAIT);
-
-	/*
-	 * Unload & flush volumes
-	 */
-#endif
 	/*
 	 * Unload buffers and then volumes
 	 */
@@ -656,6 +667,28 @@ hammer_free_hmp(struct mount *mp)
 	hammer_destroy_objid_cache(hmp);
 	kfree(hmp, M_HAMMER);
 }
+
+/*
+ * Report critical errors.  ip may be NULL.
+ */
+void
+hammer_critical_error(hammer_mount_t hmp, hammer_inode_t ip,
+		      int error, const char *msg)
+{
+	hmp->flags |= HAMMER_MOUNT_CRITICAL_ERROR;
+	krateprintf(&hmp->krate,
+		"HAMMER(%s): Critical error inode=%lld %s\n",
+		hmp->mp->mnt_stat.f_mntfromname,
+		(ip ? ip->obj_id : -1), msg);
+	if (hmp->ronly == 0) {
+		hmp->ronly = 2;		/* special errored read-only mode */
+		hmp->mp->mnt_flag |= MNT_RDONLY;
+		kprintf("HAMMER(%s): Forcing read-only mode\n",
+			hmp->mp->mnt_stat.f_mntfromname);
+	}
+	hmp->error = error;
+}
+
 
 /*
  * Obtain a vnode for the specified inode number.  An exclusively locked

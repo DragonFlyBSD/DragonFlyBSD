@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.50 2008/07/14 20:27:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.51 2008/07/18 00:19:53 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -59,6 +59,7 @@ static void hammer_io_direct_read_complete(struct bio *nbio);
 #endif
 static void hammer_io_direct_write_complete(struct bio *nbio);
 static int hammer_io_direct_uncache_callback(hammer_inode_t ip, void *data);
+static void hammer_io_set_modlist(struct hammer_io *io);
 
 /*
  * Initialize a new, already-zero'd hammer_io structure, or reinitialize
@@ -187,13 +188,16 @@ hammer_io_read(struct vnode *devvp, struct hammer_io *io, hammer_off_t limit)
 		}
 		hammer_stats_disk_read += io->bytes;
 		hammer_count_io_running_read -= io->bytes;
-		if (error == 0) {
-			bp = io->bp;
-			bp->b_ops = &hammer_bioops;
-			KKASSERT(LIST_FIRST(&bp->b_dep) == NULL);
-			LIST_INSERT_HEAD(&bp->b_dep, &io->worklist, node);
-			BUF_KERNPROC(bp);
-		}
+
+		/*
+		 * The code generally assumes b_ops/b_dep has been set-up,
+		 * even if we error out here.
+		 */
+		bp = io->bp;
+		bp->b_ops = &hammer_bioops;
+		KKASSERT(LIST_FIRST(&bp->b_dep) == NULL);
+		LIST_INSERT_HEAD(&bp->b_dep, &io->worklist, node);
+		BUF_KERNPROC(bp);
 		KKASSERT(io->modified == 0);
 		KKASSERT(io->running == 0);
 		KKASSERT(io->waiting == 0);
@@ -513,8 +517,6 @@ static
 void
 hammer_io_modify(hammer_io_t io, int count)
 {
-	struct hammer_mount *hmp = io->hmp;
-
 	/*
 	 * io->modify_refs must be >= 0
 	 */
@@ -533,26 +535,7 @@ hammer_io_modify(hammer_io_t io, int count)
 
 	hammer_lock_ex(&io->lock);
 	if (io->modified == 0) {
-		KKASSERT(io->mod_list == NULL);
-		switch(io->type) {
-		case HAMMER_STRUCTURE_VOLUME:
-			io->mod_list = &hmp->volu_list;
-			hmp->locked_dirty_space += io->bytes;
-			hammer_count_dirtybufspace += io->bytes;
-			break;
-		case HAMMER_STRUCTURE_META_BUFFER:
-			io->mod_list = &hmp->meta_list;
-			hmp->locked_dirty_space += io->bytes;
-			hammer_count_dirtybufspace += io->bytes;
-			break;
-		case HAMMER_STRUCTURE_UNDO_BUFFER:
-			io->mod_list = &hmp->undo_list;
-			break;
-		case HAMMER_STRUCTURE_DATA_BUFFER:
-			io->mod_list = &hmp->data_list;
-			break;
-		}
-		TAILQ_INSERT_TAIL(io->mod_list, io, mod_entry);
+		hammer_io_set_modlist(io);
 		io->modified = 1;
 	}
 	if (io->released) {
@@ -731,6 +714,34 @@ hammer_io_clear_modlist(struct hammer_io *io)
 	}
 }
 
+static void
+hammer_io_set_modlist(struct hammer_io *io)
+{
+	struct hammer_mount *hmp = io->hmp;
+
+	KKASSERT(io->mod_list == NULL);
+
+	switch(io->type) {
+	case HAMMER_STRUCTURE_VOLUME:
+		io->mod_list = &hmp->volu_list;
+		hmp->locked_dirty_space += io->bytes;
+		hammer_count_dirtybufspace += io->bytes;
+		break;
+	case HAMMER_STRUCTURE_META_BUFFER:
+		io->mod_list = &hmp->meta_list;
+		hmp->locked_dirty_space += io->bytes;
+		hammer_count_dirtybufspace += io->bytes;
+		break;
+	case HAMMER_STRUCTURE_UNDO_BUFFER:
+		io->mod_list = &hmp->undo_list;
+		break;
+	case HAMMER_STRUCTURE_DATA_BUFFER:
+		io->mod_list = &hmp->data_list;
+		break;
+	}
+	TAILQ_INSERT_TAIL(io->mod_list, io, mod_entry);
+}
+
 /************************************************************************
  *				HAMMER_BIOOPS				*
  ************************************************************************
@@ -763,6 +774,41 @@ hammer_io_complete(struct buf *bp)
 	 * Deal with people waiting for I/O to drain
 	 */
 	if (iou->io.running) {
+		/*
+		 * Deal with critical write errors.  Once a critical error
+		 * has been flagged in hmp the UNDO FIFO will not be updated.
+		 * That way crash recover will give us a consistent
+		 * filesystem.
+		 *
+		 * Because of this we can throw away failed UNDO buffers.  If
+		 * we throw away META or DATA buffers we risk corrupting
+		 * the now read-only version of the filesystem visible to
+		 * the user.  Clear B_ERROR so the buffer is not re-dirtied
+		 * by the kernel and ref the io so it doesn't get thrown
+		 * away.
+		 */
+		if (bp->b_flags & B_ERROR) {
+			hammer_critical_error(iou->io.hmp, NULL, bp->b_error,
+					      "while flushing meta-data");
+			switch(iou->io.type) {
+			case HAMMER_STRUCTURE_UNDO_BUFFER:
+				break;
+			default:
+				if (iou->io.ioerror == 0) {
+					iou->io.ioerror = 1;
+					if (iou->io.lock.refs == 0)
+						++hammer_count_refedbufs;
+					hammer_ref(&iou->io.lock);
+				}
+				break;
+			}
+			bp->b_flags &= ~B_ERROR;
+			bundirty(bp);
+#if 0
+			hammer_io_set_modlist(&iou->io);
+			iou->io.modified = 1;
+#endif
+		}
 		hammer_stats_disk_write += iou->io.bytes;
 		hammer_count_io_running_write -= iou->io.bytes;
 		iou->io.hmp->io_running_space -= iou->io.bytes;
@@ -1164,6 +1210,10 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
 /*
  * On completion of the BIO this callback must disconnect
  * it from the hammer_record and chain to the previous bio.
+ *
+ * An I/O error forces the mount to read-only.  Data buffers
+ * are not B_LOCKED like meta-data buffers are, so we have to
+ * throw the buffer away to prevent the kernel from retrying.
  */
 static
 void
@@ -1173,6 +1223,12 @@ hammer_io_direct_write_complete(struct bio *nbio)
 	hammer_record_t record = nbio->bio_caller_info1.ptr;
 
 	obio = pop_bio(nbio);
+	if (obio->bio_buf->b_flags & B_ERROR) {
+		hammer_critical_error(record->ip->hmp, record->ip,
+				      obio->bio_buf->b_error,
+				      "while writing bulk data");
+		obio->bio_buf->b_flags |= B_INVAL;
+	}
 	biodone(obio);
 	KKASSERT(record != NULL && (record->flags & HAMMER_RECF_DIRECT_IO));
 	record->flags &= ~HAMMER_RECF_DIRECT_IO;
