@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man5/kernconf.5,v 1.7 2008/05/02 22:10:58 swildner Exp $
+.\" $DragonFly: src/share/man/man5/kernconf.5,v 1.7.2.1 2008/07/18 00:02:59 thomas Exp $
 .\"
 .Dd May 2, 2008
 .Os
@@ -206,6 +206,10 @@ instances.
 description of kernel configuration options
 .It Pa /sys/config/GENERIC
 default kernel configuration file
+.It Pa /sys/config/VKERNEL
+default
+.Xr vkernel 7
+kernel configuration file
 .El
 .Sh SEE ALSO
 .Xr build 7 ,
