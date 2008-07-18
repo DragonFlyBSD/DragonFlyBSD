@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.40.2.2 2008/07/16 18:39:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.40.2.3 2008/07/18 00:21:09 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -124,8 +124,9 @@ hammer_flusher_async_one(hammer_mount_t hmp)
 void
 hammer_flusher_wait(hammer_mount_t hmp, int seq)
 {
-	while ((int)(seq - hmp->flusher.done) > 0)
+	while ((int)(seq - hmp->flusher.done) > 0) {
 		tsleep(&hmp->flusher.done, 0, "hmrfls", 0);
+	}
 }
 
 void
@@ -212,6 +213,8 @@ hammer_flusher_master_thread(void *arg)
 			flg = TAILQ_FIRST(&hmp->flush_group_list);
 			if (flg == NULL || flg->closed == 0)
 				break;
+			if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
+				break;
 		}
 
 		/*
@@ -263,6 +266,8 @@ hammer_flusher_flush(hammer_mount_t hmp)
 				hmp->flusher.act,
 				flg->total_count, flg->refs);
 		}
+		if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
+			break;
 		hammer_start_transaction_fls(&hmp->flusher.trans, hmp);
 
 		/*
@@ -450,10 +455,9 @@ hammer_flusher_clean_loose_ios(hammer_mount_t hmp)
 /*
  * Flush a single inode that is part of a flush group.
  *
- * NOTE!  The sync code can return EWOULDBLOCK if the flush operation
- * would otherwise blow out the buffer cache.  hammer_flush_inode_done()
- * will re-queue the inode for the next flush sequence and force the
- * flusher to run again if this occurs.
+ * Flusher errors are extremely serious, even ENOSPC shouldn't occur because
+ * the front-end should have reserved sufficient space on the media.  Any
+ * error other then EWOULDBLOCK will force the mount to be read-only.
  */
 static
 void
@@ -464,9 +468,19 @@ hammer_flusher_flush_inode(hammer_inode_t ip, hammer_transaction_t trans)
 
 	hammer_flusher_clean_loose_ios(hmp);
 	error = hammer_sync_inode(trans, ip);
-	if (error != EWOULDBLOCK)
-		ip->error = error;
-	hammer_flush_inode_done(ip);
+
+	/*
+	 * EWOULDBLOCK can happen under normal operation, all other errors
+	 * are considered extremely serious.  We must set WOULDBLOCK
+	 * mechanics to deal with the mess left over from the abort of the
+	 * previous flush.
+	 */
+	if (error) {
+		ip->flags |= HAMMER_INODE_WOULDBLOCK;
+		if (error == EWOULDBLOCK)
+			error = 0;
+	}
+	hammer_flush_inode_done(ip, error);
 	while (hmp->flusher.finalize_want)
 		tsleep(&hmp->flusher.finalize_want, 0, "hmrsxx", 0);
 	if (hammer_flusher_undo_exhausted(trans, 1)) {
@@ -543,6 +557,9 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	if (final == 0 && !hammer_flusher_meta_limit(hmp))
 		goto done;
 
+	if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
+		goto done;
+
 	/*
 	 * Flush data buffers.  This can occur asynchronously and at any
 	 * time.  We must interlock against the frontend direct-data write
@@ -550,6 +567,8 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 */
 	count = 0;
 	while ((io = TAILQ_FIRST(&hmp->data_list)) != NULL) {
+		if (io->ioerror)
+			break;
 		if (io->lock.refs == 0)
 			++hammer_count_refedbufs;
 		hammer_ref(&io->lock);
@@ -590,6 +609,8 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 */
 	count = 0;
 	while ((io = TAILQ_FIRST(&hmp->undo_list)) != NULL) {
+		if (io->ioerror)
+			break;
 		KKASSERT(io->modify_refs == 0);
 		if (io->lock.refs == 0)
 			++hammer_count_refedbufs;
@@ -605,6 +626,9 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 */
 	hammer_flusher_clean_loose_ios(hmp);
 	hammer_io_wait_all(hmp, "hmrfl1");
+
+	if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
+		goto failed;
 
 	/*
 	 * Update the on-disk volume header with new UNDO FIFO end position
@@ -626,7 +650,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	cundomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 
 	if (dundomap->first_offset != cundomap->first_offset ||
-	    dundomap->next_offset != cundomap->next_offset) {
+		   dundomap->next_offset != cundomap->next_offset) {
 		hammer_modify_volume(NULL, root_volume, NULL, 0);
 		dundomap->first_offset = cundomap->first_offset;
 		dundomap->next_offset = cundomap->next_offset;
@@ -649,6 +673,9 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	hammer_flusher_clean_loose_ios(hmp);
 	hammer_io_wait_all(hmp, "hmrfl2");
 
+	if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
+		goto failed;
+
 	/*
 	 * Flush meta-data.  The meta-data will be undone if we crash
 	 * so we can safely flush it asynchronously.
@@ -659,6 +686,8 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 */
 	count = 0;
 	while ((io = TAILQ_FIRST(&hmp->meta_list)) != NULL) {
+		if (io->ioerror)
+			break;
 		KKASSERT(io->modify_refs == 0);
 		if (io->lock.refs == 0)
 			++hammer_count_refedbufs;
@@ -688,7 +717,17 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 		hammer_clear_undo_history(hmp);
 	}
 
+	/*
+	 * Cleanup.  Report any critical errors.
+	 */
+failed:
 	hammer_sync_unlock(trans);
+
+	if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR) {
+		kprintf("HAMMER(%s): Critical write error during flush, "
+			"refusing to sync UNDO FIFO\n",
+			root_volume->ondisk->vol_name);
+	}
 
 done:
 	hammer_unlock(&hmp->flusher.finalize_lock);
@@ -735,6 +774,8 @@ hammer_flusher_meta_halflimit(hammer_mount_t hmp)
 int
 hammer_flusher_haswork(hammer_mount_t hmp)
 {
+	if (hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR)
+		return(0);
 	if (TAILQ_FIRST(&hmp->flush_group_list) ||	/* dirty inodes */
 	    TAILQ_FIRST(&hmp->volu_list) ||		/* dirty bufffers */
 	    TAILQ_FIRST(&hmp->undo_list) ||

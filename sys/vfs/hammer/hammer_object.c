@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.90 2008/07/14 03:20:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.90.2.1 2008/07/18 00:21:09 dillon Exp $
  */
 
 #include "hammer.h"
@@ -301,7 +301,8 @@ hammer_flush_record_done(hammer_record_t record, int error)
 		 * An error occured, the backend was unable to sync the
 		 * record to its media.  Leave the record intact.
 		 */
-		Debugger("flush_record_done error");
+		hammer_critical_error(record->ip->hmp, record->ip, error,
+				      "while flushing record");
 	}
 
 	--record->flush_group->refs;
@@ -1132,9 +1133,9 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 		 * statistics in the same transaction as our B-Tree insert.
 		 */
 		KKASSERT(record->leaf.data_offset != 0);
-		hammer_blockmap_finalize(trans, record->leaf.data_offset,
-					 record->leaf.data_len);
-		error = 0;
+		error = hammer_blockmap_finalize(trans,
+						 record->leaf.data_offset,
+						 record->leaf.data_len);
 	} else if (record->data && record->leaf.data_len) {
 		/*
 		 * Wholely cached record, with data.  Allocate the data.

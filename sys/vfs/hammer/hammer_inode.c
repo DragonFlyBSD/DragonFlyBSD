@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.103.2.1 2008/07/16 18:39:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.103.2.2 2008/07/18 00:21:09 dillon Exp $
  */
 
 #include "hammer.h"
@@ -948,19 +948,11 @@ retry:
 		error = hammer_btree_lookup(cursor);
 		if (hammer_debug_inode)
 			kprintf("IPDEL %p %08x %d", ip, ip->flags, error);
-		if (error) {
-			kprintf("error %d\n", error);
-			Debugger("hammer_update_inode");
-		}
 
 		if (error == 0) {
 			error = hammer_ip_delete_record(cursor, ip, trans->tid);
 			if (hammer_debug_inode)
 				kprintf(" error %d\n", error);
-			if (error && error != EDEADLK) {
-				kprintf("error %d\n", error);
-				Debugger("hammer_update_inode2");
-			}
 			if (error == 0) {
 				ip->flags |= HAMMER_INODE_DELONDISK;
 			}
@@ -1030,10 +1022,6 @@ retry:
 				kprintf("GENREC reinit %d\n", error);
 			if (error)
 				break;
-		}
-		if (error) {
-			kprintf("error %d\n", error);
-			Debugger("hammer_update_inode3");
 		}
 
 		/*
@@ -1127,10 +1115,6 @@ retry:
 	cursor->flags |= HAMMER_CURSOR_BACKEND;
 
 	error = hammer_btree_lookup(cursor);
-	if (error) {
-		kprintf("error %d\n", error);
-		Debugger("hammer_update_itimes1");
-	}
 	if (error == 0) {
 		hammer_cache_node(&ip->cache[0], cursor->node);
 		if (ip->sync_flags & HAMMER_INODE_MTIME) {
@@ -1224,7 +1208,7 @@ hammer_rel_inode(struct hammer_inode *ip, int flush)
  * Unload and destroy the specified inode.  Must be called with one remaining
  * reference.  The reference is disposed of.
  *
- * This can only be called in the context of the flusher.
+ * The inode must be completely clean.
  */
 static int
 hammer_unload_inode(struct hammer_inode *ip)
@@ -1245,6 +1229,78 @@ hammer_unload_inode(struct hammer_inode *ip)
 	RB_REMOVE(hammer_ino_rb_tree, &hmp->rb_inos_root, ip);
 
 	hammer_free_inode(ip);
+	return(0);
+}
+
+/*
+ * Called during unmounting if a critical error occured.  The in-memory
+ * inode and all related structures are destroyed.
+ *
+ * If a critical error did not occur the unmount code calls the standard
+ * release and asserts that the inode is gone.
+ */
+int
+hammer_destroy_inode_callback(struct hammer_inode *ip, void *data __unused)
+{
+	hammer_record_t rec;
+
+	/*
+	 * Get rid of the inodes in-memory records, regardless of their
+	 * state, and clear the mod-mask.
+	 */
+	while ((rec = TAILQ_FIRST(&ip->target_list)) != NULL) {
+		TAILQ_REMOVE(&ip->target_list, rec, target_entry);
+		rec->target_ip = NULL;
+		if (rec->flush_state == HAMMER_FST_SETUP)
+			rec->flush_state = HAMMER_FST_IDLE;
+	}
+	while ((rec = RB_ROOT(&ip->rec_tree)) != NULL) {
+		if (rec->flush_state == HAMMER_FST_FLUSH)
+			--rec->flush_group->refs;
+		else
+			hammer_ref(&rec->lock);
+		KKASSERT(rec->lock.refs == 1);
+		rec->flush_state = HAMMER_FST_IDLE;
+		rec->flush_group = NULL;
+		rec->flags |= HAMMER_RECF_DELETED_FE;
+		rec->flags |= HAMMER_RECF_DELETED_BE;
+		hammer_rel_mem_record(rec);
+	}
+	ip->flags &= ~HAMMER_INODE_MODMASK;
+	ip->sync_flags &= ~HAMMER_INODE_MODMASK;
+	KKASSERT(ip->vp == NULL);
+
+	/*
+	 * Remove the inode from any flush group, force it idle.  FLUSH
+	 * and SETUP states have an inode ref.
+	 */
+	switch(ip->flush_state) {
+	case HAMMER_FST_FLUSH:
+		TAILQ_REMOVE(&ip->flush_group->flush_list, ip, flush_entry);
+		--ip->flush_group->refs;
+		ip->flush_group = NULL;
+		/* fall through */
+	case HAMMER_FST_SETUP:
+		hammer_unref(&ip->lock);
+		ip->flush_state = HAMMER_FST_IDLE;
+		/* fall through */
+	case HAMMER_FST_IDLE:
+		break;
+	}
+
+	/*
+	 * There shouldn't be any associated vnode.  The unload needs at
+	 * least one ref, if we do have a vp steal its ip ref.
+	 */
+	if (ip->vp) {
+		kprintf("hammer_destroy_inode_callback: Unexpected "
+			"vnode association ip %p vp %p\n", ip, ip->vp);
+		ip->vp->v_data = NULL;
+		ip->vp = NULL;
+	} else {
+		hammer_ref(&ip->lock);
+	}
+	hammer_unload_inode(ip);
 	return(0);
 }
 
@@ -1279,7 +1335,11 @@ hammer_reload_inode(hammer_inode_t ip, void *arg __unused)
 void
 hammer_modify_inode(hammer_inode_t ip, int flags)
 {
-	KKASSERT(ip->hmp->ronly == 0 ||
+	/* 
+	 * ronly of 0 or 2 does not trigger assertion.
+	 * 2 is a special error state 
+	 */
+	KKASSERT(ip->hmp->ronly != 1 ||
 		  (flags & (HAMMER_INODE_DDIRTY | HAMMER_INODE_XDIRTY | 
 			    HAMMER_INODE_BUFS | HAMMER_INODE_DELETED |
 			    HAMMER_INODE_ATIME | HAMMER_INODE_MTIME)) == 0);
@@ -1891,6 +1951,8 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 		 * over from a previous flush attempt.  The flush group will
 		 * have been left intact - we are probably reflushing it
 		 * now.
+		 *
+		 * If a flush error occured ip->error will be non-zero.
 		 */
 		KKASSERT(rec->flush_group == flg);
 		r = 1;
@@ -1922,6 +1984,8 @@ hammer_syncgrp_child_callback(hammer_record_t rec, void *data)
 
 /*
  * Wait for a previously queued flush to complete.
+ *
+ * If a critical error occured we don't try to wait.
  */
 void
 hammer_wait_inode(hammer_inode_t ip)
@@ -1929,12 +1993,15 @@ hammer_wait_inode(hammer_inode_t ip)
 	hammer_flush_group_t flg;
 
 	flg = NULL;
-	if (ip->flush_state == HAMMER_FST_SETUP) {
-		hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-	}
-	while (ip->flush_state != HAMMER_FST_IDLE) {
-		ip->flags |= HAMMER_INODE_FLUSHW;
-		tsleep(&ip->flags, 0, "hmrwin", 0);
+	if ((ip->hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR) == 0) {
+		if (ip->flush_state == HAMMER_FST_SETUP) {
+			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+		}
+		while (ip->flush_state != HAMMER_FST_IDLE &&
+		       (ip->hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR) == 0) {
+			ip->flags |= HAMMER_INODE_FLUSHW;
+			tsleep(&ip->flags, 0, "hmrwin", 0);
+		}
 	}
 }
 
@@ -1946,7 +2013,7 @@ hammer_wait_inode(hammer_inode_t ip)
  * inode on the list and re-copy its fields.
  */
 void
-hammer_flush_inode_done(hammer_inode_t ip)
+hammer_flush_inode_done(hammer_inode_t ip, int error)
 {
 	hammer_mount_t hmp;
 	int dorel;
@@ -1959,6 +2026,7 @@ hammer_flush_inode_done(hammer_inode_t ip)
 	 * Merge left-over flags back into the frontend and fix the state.
 	 * Incomplete truncations are retained by the backend.
 	 */
+	ip->error = error;
 	ip->flags |= ip->sync_flags & ~HAMMER_INODE_TRUNCATED;
 	ip->sync_flags &= HAMMER_INODE_TRUNCATED;
 
@@ -2047,6 +2115,8 @@ hammer_flush_inode_done(hammer_inode_t ip)
 	/*
 	 * If the frontend made more changes and requested another flush,
 	 * then try to get it running.
+	 *
+	 * Reflushes are aborted when the inode is errored out.
 	 */
 	if (ip->flags & HAMMER_INODE_REFLUSH) {
 		ip->flags &= ~HAMMER_INODE_REFLUSH;
@@ -2210,14 +2280,8 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 	}
 	record->flags &= ~HAMMER_RECF_CONVERT_DELETE;
 
-	if (error) {
+	if (error)
 		error = -error;
-		if (error != -ENOSPC) {
-			kprintf("hammer_sync_record_callback: sync failed rec "
-				"%p, error %d\n", record, error);
-			Debugger("sync failed rec");
-		}
-	}
 done:
 	hammer_flush_record_done(record, error);
 
@@ -2361,7 +2425,7 @@ hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip)
 		}
 
 		if (error)
-			Debugger("hammer_ip_delete_range errored");
+			goto done;
 
 		/*
 		 * Clear the truncation flag on the backend after we have
@@ -2457,15 +2521,12 @@ hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip)
 				hammer_modify_volume_done(trans->rootvol);
 			}
 			hammer_sync_unlock(trans);
-		} else {
-			Debugger("hammer_ip_delete_clean errored");
 		}
 	}
 
-	ip->sync_flags &= ~HAMMER_INODE_BUFS;
-
 	if (error)
-		Debugger("RB_SCAN errored");
+		goto done;
+	ip->sync_flags &= ~HAMMER_INODE_BUFS;
 
 defer_buffer_flush:
 	/*
@@ -2547,13 +2608,11 @@ defer_buffer_flush:
 	if (ip->sync_flags & (HAMMER_INODE_DDIRTY | HAMMER_INODE_ATIME | HAMMER_INODE_MTIME)) {
 		error = hammer_update_inode(&cursor, ip);
 	}
-	if (error)
-		Debugger("hammer_update_itimes/inode errored");
 done:
-	/*
-	 * Save the TID we used to sync the inode with to make sure we
-	 * do not improperly reuse it.
-	 */
+	if (error) {
+		hammer_critical_error(ip->hmp, ip, error,
+				      "while syncing inode");
+	}
 	hammer_done_cursor(&cursor);
 	return(error);
 }

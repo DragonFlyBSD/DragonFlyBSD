@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.117.2.2 2008/07/16 18:39:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.117.2.3 2008/07/18 00:21:09 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -499,6 +499,7 @@ struct hammer_io {
 	u_int		waitmod : 1;	/* waiting for modify_refs */
 	u_int		reclaim : 1;	/* reclaim requested */
 	u_int		gencrc : 1;	/* crc needs to be generated */
+	u_int		ioerror : 1;	/* abort on io-error */
 };
 
 typedef struct hammer_io *hammer_io_t;
@@ -684,7 +685,7 @@ struct hammer_mount {
 	struct hammer_volume *rootvol;
 	struct hammer_base_elm root_btree_beg;
 	struct hammer_base_elm root_btree_end;
-	int	flags;
+	int	flags;		/* HAMMER_MOUNT_xxx flags */
 	int	hflags;
 	int	ronly;
 	int	nvolumes;
@@ -715,6 +716,8 @@ struct hammer_mount {
 	int	locked_dirty_space;		/* meta/volu count    */
 	int	io_running_space;
 	int	objid_cache_count;
+	int	error;				/* critical I/O error */
+	struct krate	krate;			/* rate limited kprintf */
 	hammer_tid_t	asof;			/* snapshot mount */
 	hammer_off_t	next_tid;
 	int64_t copy_stat_freebigblocks;	/* number of free bigblocks */
@@ -738,7 +741,7 @@ struct hammer_mount {
 
 typedef struct hammer_mount	*hammer_mount_t;
 
-#define HAMMER_MOUNT_UNUSED0001	0x0001
+#define HAMMER_MOUNT_CRITICAL_ERROR	0x0001
 
 struct hammer_sync_info {
 	int error;
@@ -815,6 +818,8 @@ extern int hammer_verify_data;
 extern int hammer_write_mode;
 extern int64_t hammer_contention_count;
 
+void	hammer_critical_error(hammer_mount_t hmp, hammer_inode_t ip,
+			int error, const char *msg);
 int	hammer_vop_inactive(struct vop_inactive_args *);
 int	hammer_vop_reclaim(struct vop_reclaim_args *);
 int	hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp);
@@ -1019,7 +1024,7 @@ void hammer_blockmap_reserve_complete(hammer_mount_t hmp,
 void hammer_reserve_clrdelay(hammer_mount_t hmp, hammer_reserve_t resv);
 void hammer_blockmap_free(hammer_transaction_t trans,
 			hammer_off_t bmap_off, int bytes);
-void hammer_blockmap_finalize(hammer_transaction_t trans,
+int hammer_blockmap_finalize(hammer_transaction_t trans,
 			hammer_off_t bmap_off, int bytes);
 int hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t bmap_off,
 			int *curp, int *errorp);
@@ -1041,7 +1046,7 @@ void hammer_done_transaction(struct hammer_transaction *trans);
 
 void hammer_modify_inode(hammer_inode_t ip, int flags);
 void hammer_flush_inode(hammer_inode_t ip, int flags);
-void hammer_flush_inode_done(hammer_inode_t ip);
+void hammer_flush_inode_done(hammer_inode_t ip, int error);
 void hammer_wait_inode(hammer_inode_t ip);
 
 int  hammer_create_inode(struct hammer_transaction *trans, struct vattr *vap,
@@ -1051,6 +1056,7 @@ int  hammer_create_inode(struct hammer_transaction *trans, struct vattr *vap,
 void hammer_rel_inode(hammer_inode_t ip, int flush);
 int hammer_reload_inode(hammer_inode_t ip, void *arg __unused);
 int hammer_ino_rb_compare(hammer_inode_t ip1, hammer_inode_t ip2);
+int hammer_destroy_inode_callback(hammer_inode_t ip, void *data __unused);
 
 int hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip);
 void hammer_test_inode(hammer_inode_t dip);

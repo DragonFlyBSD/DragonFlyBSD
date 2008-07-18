@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.18.2.1 2008/07/16 18:39:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_undo.c,v 1.18.2.2 2008/07/18 00:21:09 dillon Exp $
  */
 
 /*
@@ -138,6 +138,9 @@ again:
 		undo = hammer_bnew(hmp, next_offset, &error, &buffer);
 	else
 		undo = hammer_bread(hmp, next_offset, &error, &buffer);
+	if (error)
+		goto done;
+
 	hammer_modify_buffer(NULL, buffer, NULL, 0);
 
 	KKASSERT(undomap->next_offset == next_offset);
@@ -191,8 +194,8 @@ again:
 	undomap->next_offset += bytes;
 
 	hammer_modify_buffer_done(buffer);
+done:
 	hammer_modify_volume_done(root_volume);
-
 	hammer_unlock(&hmp->undo_lock);
 
 	if (buffer)
