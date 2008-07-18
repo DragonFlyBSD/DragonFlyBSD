@@ -25,9 +25,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/printf.9,v 1.8 2006/09/08 14:05:03 ru Exp $
-.\" $DragonFly: src/share/man/man9/kprintf.9,v 1.4 2007/08/01 21:44:07 swildner Exp $
+.\" $DragonFly: src/share/man/man9/kprintf.9,v 1.4.4.1 2008/07/18 00:30:02 swildner Exp $
 .\"
-.Dd August 1, 2007
+.Dd July 17, 2008
 .Dt KPRINTF 9
 .Os
 .Sh NAME
@@ -172,11 +172,18 @@ The
 function is a rate controlled version of
 .Fn kprintf .
 The
+.Fa freq
+member of the
 .Vt struct krate
 pointed to by
 .Fa rate
 must be initialized with the desired reporting frequency.
-A frequency of 0 will result in no output.
+A
+.Fa freq
+of 0 will result in no output.
+Initializing
+.Fa count
+to a negative value allows an initial burst.
 .Sh RETURN VALUES
 The
 .Fn kprintf ,
