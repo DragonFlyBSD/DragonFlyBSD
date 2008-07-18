@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.44 2008/07/14 17:45:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.45 2008/07/18 00:09:39 dillon Exp $
  */
 
 
@@ -528,7 +528,7 @@ again:
 		    vfs_busy_pages(vp, bp);
 		    error = nfs_doio(vp, &bp->b_bio2, td);
 		    if (error) {
-			bp->b_flags |= B_ERROR;
+			bp->b_flags |= B_ERROR | B_INVAL;
 			brelse(bp);
 			return (error);
 		    }
