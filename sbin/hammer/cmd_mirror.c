@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.9 2008/07/12 23:05:30 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.9.2.1 2008/07/18 23:25:05 swildner Exp $
  */
 
 #include "hammer.h"
@@ -869,7 +869,7 @@ validate_mrec_header(int fd, int fdin, int is_target, int pfs_id,
 		 sizeof(pfsd.shared_uuid)) != 0) {
 		fprintf(stderr, 
 			"mirror-write: source and target have "
-			"different shared_uuid's!\n");
+			"different shared-uuid's!\n");
 		exit(1);
 	}
 	if (is_target &&
