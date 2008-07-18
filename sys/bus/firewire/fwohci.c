@@ -33,7 +33,7 @@
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.72 2004/01/22 14:41:17 simokawa Exp $
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.1.2.19 2003/05/01 06:24:37 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.18 2008/05/20 18:23:33 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.19 2008/07/18 03:51:28 dillon Exp $
  */
 
 #define ATRQ_CH 0
@@ -1966,19 +1966,25 @@ sidout:
 #ifndef ACK_ALL
 		OWRITE(sc, FWOHCI_INTSTATCLR, OHCI_INT_PW_ERR);
 #endif
+		/* permanently mask unsupported interrupt source */
+		OWRITE(sc, FWOHCI_INTMASKCLR, OHCI_INT_PW_ERR);
 		device_printf(fc->dev, "posted write error\n");
 	}
 	if((stat & OHCI_INT_ERR )){
 #ifndef ACK_ALL
 		OWRITE(sc, FWOHCI_INTSTATCLR, OHCI_INT_ERR);
 #endif
+		/* permanently mask unsupported interrupt source */
+		OWRITE(sc, FWOHCI_INTMASKCLR, OHCI_INT_ERR);
 		device_printf(fc->dev, "unrecoverable error\n");
 	}
 	if((stat & OHCI_INT_PHY_INT)) {
 #ifndef ACK_ALL
 		OWRITE(sc, FWOHCI_INTSTATCLR, OHCI_INT_PHY_INT);
 #endif
-		device_printf(fc->dev, "phy int\n");
+		/* permanently mask unsupported interrupt source */
+		OWRITE(sc, FWOHCI_INTMASKCLR, OHCI_INT_PHY_INT);
+		/*device_printf(fc->dev, "phy int\n");*/
 	}
 
 	return;
