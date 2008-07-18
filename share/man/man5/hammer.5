@@ -29,9 +29,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man5/hammer.5,v 1.2.2.1 2008/07/17 10:18:37 swildner Exp $
+.\" $DragonFly: src/share/man/man5/hammer.5,v 1.2.2.2 2008/07/18 23:28:02 swildner Exp $
 .\"
-.Dd July 16, 2008
+.Dd July 18, 2008
 .Os
 .Dt HAMMER 5
 .Sh NAME
@@ -65,6 +65,9 @@ and is intended to replace UFS as the default file system for
 .Dx .
 Among its features are fine grained history retention, file systems spanning
 multiple volumes, mirroring capability, and pseudo file systems.
+For a more detailed introduction, see the paper listed in the
+.Sx SEE ALSO
+section.
 .Pp
 All functions related to managing
 .Nm
@@ -84,23 +87,73 @@ An ID has the format
 .Li 0x%016llx ,
 such as
 .Li 0x00000001061a8ba6 .
-.Ss History & Pruning
-History metadata on the media is updated with every sync operation.
+.Pp
+Related
+.Xr hammer 8
+commands:
+.Ar synctid
+.Ss History
+History metadata on the media is written with every sync operation.
 Prior versions of files or directories are accessible by appending
 .Li @@
 and a transaction ID to the name.
+.Ss Snapshots
+Snapshots are symbolic links to specific versions of directories or files,
+prior or current.
+Their data will be retained across prune operations for as long as the
+symbolic link exists.
+Removing the symbolic link enables the file system to reclaim the space
+again upon the next reblock operation.
+.Pp
+Related
+.Xr hammer 8
+commands:
+.Ar snapshot
+.Ss Reblocking & Pruning
+Reblocking will reorder all elements and thus defragment the file system and
+free space for reuse.
 Pruning a
 .Nm
-file system will free all unused historical records.
-.Ss Snapshots
-A snapshot can be taken by creating a symbolic link to a specific
-version of a file or directory.
-Snapshots created this way will be retained across subsequent prune
-operations.
-Removing the symbolic link enables the file system to reclaim the space
-again.
-.\".Ss Mirroring
-.\".Ss Pseudo File Systems
+file system free all historical records no longer used by any snapshots.
+.Pp
+Related
+.Xr hammer 8
+commands:
+.Ar reblock ,
+.Ar reblock-btree ,
+.Ar reblock-inodes ,
+.Ar reblock-dirs ,
+.Ar reblock-data ,
+.Ar prune ,
+.Ar prune-everything
+.Ss Mirroring & Pseudo File Systems
+In order to allow inode numbers to be duplicated on the slaves
+.Nm Ap s
+mirroring feature uses
+.Dq Pseudo File Systems
+(PFSs).
+A
+.Nm
+file system supports up to 65536 PFSs.
+Multiple slaves per master are supported, but multiple masters per slave
+are not.
+Slaves are always read-only.
+Upgrading slaves to masters and downgrading masters to slaves are supported.
+.Pp
+Related
+.Xr hammer 8
+commands:
+.Ar pfs-master ,
+.Ar pfs-slave ,
+.Ar pfs-status ,
+.Ar pfs-update ,
+.Ar pfs-destroy ,
+.Ar pfs-upgrade ,
+.Ar pfs-downgrade ,
+.Ar mirror-copy ,
+.Ar mirror-read ,
+.Ar mirror-write ,
+.Ar mirror-dump
 .Sh EXAMPLES
 .Ss Preparing the file system
 To create and mount a
@@ -141,6 +194,64 @@ options be used for this job (for example, every night at 2:15 up to 5
 minutes).
 .Bd -literal
 15 2 * * * hammer -c /var/run/Home -t 300 reblock /home >/dev/null 2>&1
+.Ed
+.Ss Snapshots
+The
+.Xr hammer 8
+utility's
+.Ar snapshot
+command provides several ways of taking snapshots.
+They all assume a directory where snapshots are kept.
+.Bd -literal
+mkdir /snaps
+hammer snapshot /home /snaps/snap1
+(...after some changes in /home...)
+hammer snapshot /home /snaps/snap2
+.Ed
+.Ss Pruning
+A snapshot directory is also the argument to the
+.Xr hammer 8 Ap s
+.Ar prune
+command which frees historical data from the file system that is no longer
+pointed to by any snapshot link.
+.Bd -literal
+rm /snaps/snap1
+hammer prune /snaps
+.Ed
+.Pp
+Unless the file system is mounted with the
+.Ar nohistory
+option, it might be advisable to also set up
+.Xr cron 8
+jobs for pruning no longer used historical data regularly.
+.Ss Mirroring
+Mirroring can be set up using
+.Nm Ap s
+pseudo file systems.
+To associate the slave with the master its shared UUID should be set to
+the master's shared UUID as output by the
+.Nm hammer Ar pfs-master
+command.
+.Bd -literal
+hammer pfs-master /home/master
+hammer pfs-slave /home/slave shared-uuid=<master's shared uuid>
+.Ed
+.Pp
+The
+.Pa /home/slave
+link is unusable for as long as no mirroring operation has taken place.
+.Pp
+To mirror the master's data, either pipe a
+.Fa mirror-read
+command into a
+.Fa mirror-write
+or, as a short-cut, use the
+.Fa mirror-copy
+command (which works across a
+.Xr ssh 1
+connection as well).
+.Bd -literal
+hammer mirror-copy /home/master /home/slave
 .Ed
 .Sh SEE ALSO
 .Xr undo 1 ,
