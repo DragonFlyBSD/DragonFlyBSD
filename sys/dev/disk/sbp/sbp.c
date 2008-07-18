@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.74 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.28 2008/05/18 20:30:22 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.28.2.1 2008/07/18 03:50:00 dillon Exp $
  *
  */
 
@@ -716,12 +716,16 @@ SBP_DEBUG(0)
 				sbp_show_sdev_info(sdev, 2);
 				kprintf("lost target\n");
 END_DEBUG
+#if 0
 				if (sdev->path) {
 					xpt_freeze_devq(sdev->path, 1);
 					sdev->freeze ++;
 				}
 				sdev->status = SBP_DEV_RETRY;
 				sbp_abort_all_ocbs(sdev, CAM_SCSI_BUS_RESET);
+#endif
+				sbp_cam_detach_target(sdev->target);
+				sdev->status = SBP_DEV_RESET;
 				break;
 			case SBP_DEV_PROBE:
 			case SBP_DEV_TOATTACH:
@@ -2737,8 +2741,8 @@ sbp_abort_all_ocbs(struct sbp_dev *sdev, int status)
 	STAILQ_HEAD(, sbp_ocb) temp;
 
 	crit_enter();
-	bcopy(&sdev->ocbs, &temp, sizeof(temp));
-	STAILQ_INIT(&sdev->ocbs);
+	STAILQ_INIT(&temp);
+	STAILQ_CONCAT(&temp, &sdev->ocbs);
 	for (ocb = STAILQ_FIRST(&temp); ocb != NULL; ocb = next) {
 		next = STAILQ_NEXT(ocb, ocb);
 		sbp_abort_ocb(ocb, status);
