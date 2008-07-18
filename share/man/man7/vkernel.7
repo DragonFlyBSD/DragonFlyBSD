@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.41 2008/06/22 11:11:09 swildner Exp $
+.\" $DragonFly: src/share/man/man7/vkernel.7,v 1.41.2.1 2008/07/18 00:05:26 thomas Exp $
 .\"
 .Dd May 6, 2008
 .Dt VKERNEL 7
@@ -271,6 +271,14 @@ to ignore page faults processed by the virtual kernel itself and
 .Ql handle SIGUSR1 noprint
 to ignore signals used for simulating inter-processor interrupts (SMP build
 only).
+.Sh FILES
+.Bl -tag -width ".It Pa /sys/config/VKERNEL" -compact
+.It Pa /sys/config/VKERNEL
+default
+.Nm
+configuration file, for
+.Xr config 8 .
+.El
 .Sh EXAMPLES
 A couple of steps are necessary in order to prepare the system to build and
 run a virtual kernel.
@@ -326,7 +334,7 @@ vnconfig -u vn0
 In order to compile a virtual kernel use the
 .Li VKERNEL
 kernel configuration file residing in
-.Pa /usr/src/sys/config
+.Pa /sys/config
 (or a configuration file derived thereof):
 .Bd -literal
 cd /usr/src
@@ -362,7 +370,7 @@ ifconfig bridge0 up
 Finally, the virtual kernel can be run:
 .Bd -literal
 cd /var/vkernel
-\&./kernel -m 64m -r /var/vkernel/rootimg.01 -I auto:bridge0
+\&./kernel -m 64m -r rootimg.01 -I auto:bridge0
 .Ed
 .Pp
 You can issue the
@@ -402,6 +410,7 @@ blanktime="NO"
 .Xr bridge 4 ,
 .Xr tap 4 ,
 .Xr vn 4 ,
+.Xr sysctl.conf 5 ,
 .Xr build 7 ,
 .Xr disklabel 8 ,
 .Xr ifconfig 8 ,
