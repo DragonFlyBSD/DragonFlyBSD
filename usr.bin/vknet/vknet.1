@@ -31,7 +31,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/usr.bin/vknet/vknet.1,v 1.2 2008/05/31 12:04:15 swildner Exp $
+.\" $DragonFly: src/usr.bin/vknet/vknet.1,v 1.2.2.1 2008/07/18 00:07:54 thomas Exp $
 .\"
 .Dd May 27, 2008
 .Dt vknet 1
@@ -39,7 +39,7 @@
 .Sh NAME
 .Nm vknet
 .Nd create a bridged network between two hosts over
-.Xr ssh 1 .
+.Xr ssh 1
 .Sh SYNOPSIS
 .Nm
 .Op Fl C
@@ -69,7 +69,7 @@ keyword to automatically allocate a
 .Xr tap 4
 interface.
 .Pp
-If a tap interface is used on any given side it can be bridged on that
+If a TAP interface is used on any given side it can be bridged on that
 side.
 .Pp
 If a unix domain socket path is specified
@@ -100,7 +100,9 @@ of retries will be made.
 .It Fl S
 This option is used by the
 .Nm
-run on the remote side of the ssh link to use stdin and stdout as its
+run on the remote side of the
+.Xr ssh
+link to use stdin and stdout as its
 remote specification.  This option is typically not specified manually.
 .El
 .Sh EXAMPLES
@@ -119,7 +121,7 @@ to provide an interconnect to the local and remote machine's nework.
 .Bl -tag -width /var/log/lastlog -compact
 .It Pa /dev/tap*
 TAP interface used to route packets from userland providers back into the
-real machine.  If not otherwise specified an unused tap interface will be
+real machine.  If not otherwise specified an unused TAP interface will be
 selected.
 .Pp
 .It Pa /dev/vknet
