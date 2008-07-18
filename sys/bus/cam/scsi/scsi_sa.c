@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.35 2008/05/18 20:30:20 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.36 2008/07/18 00:07:23 dillon Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -497,15 +497,13 @@ saopen(struct dev_open_args *ap)
 		if (error && (ap->a_oflags & O_NONBLOCK)) {
 			softc->flags |= SA_FLAG_OPEN;
 			softc->open_pending_mount = 1;
-			cam_periph_unhold(periph);
-			cam_periph_unlock(periph);
+			cam_periph_unhold(periph, 1);
 			return (0);
 		}
 	}
 
 	if (error) {
-		cam_periph_unhold(periph);
-		cam_periph_unlock(periph);
+		cam_periph_unhold(periph, 1);
 		cam_periph_release(periph);
 		return (error);
 	}
@@ -513,8 +511,7 @@ saopen(struct dev_open_args *ap)
 	saprevent(periph, PR_PREVENT);
 	softc->flags |= SA_FLAG_OPEN;
 
-	cam_periph_unhold(periph);
-	cam_periph_unlock(periph);
+	cam_periph_unhold(periph, 1);
 	return (error);
 }
 
@@ -669,8 +666,7 @@ saclose(struct dev_close_args *ap)
 	if ((softc->flags & SA_FLAG_TAPE_MOUNTED) == 0)
 		sareservereleaseunit(periph, FALSE);
 
-	cam_periph_unhold(periph);
-	cam_periph_unlock(periph);
+	cam_periph_unhold(periph, 1);
 	cam_periph_release(periph);
 
 	return (error);	
@@ -835,7 +831,7 @@ saioctl(struct dev_ioctl_args *ap)
 	struct cam_periph *periph;
 	struct sa_softc *softc;
 	scsi_space_code spaceop;
-	int didlockperiph = 0;
+	int didholdperiph = 0;
 	int unit;
 	int mode;
 	int error = 0;
@@ -880,7 +876,7 @@ saioctl(struct dev_ioctl_args *ap)
 				if (error != 0) {
 					return (error);
 				}
-				didlockperiph = 1;
+				didholdperiph = 1;
 			}
 			break;
 
@@ -916,7 +912,7 @@ saioctl(struct dev_ioctl_args *ap)
 			if (error != 0) {
 				return (error);
 			}
-			didlockperiph = 1;
+			didholdperiph = 1;
 			break;
 
 		default:
@@ -999,13 +995,13 @@ saioctl(struct dev_ioctl_args *ap)
 		 */
 		if (softc->last_resid_was_io) {
 			if ((g->mt_resid = (short) softc->last_io_resid) != 0) {
-				if (SA_IS_CTRL(dev) == 0 || didlockperiph) {
+				if (SA_IS_CTRL(dev) == 0 || didholdperiph) {
 					softc->last_io_resid = 0;
 				}
 			}
 		} else {
 			if ((g->mt_resid = (short)softc->last_ctl_resid) != 0) {
-				if (SA_IS_CTRL(dev) == 0 || didlockperiph) {
+				if (SA_IS_CTRL(dev) == 0 || didholdperiph) {
 					softc->last_ctl_resid = 0;
 				}
 			}
@@ -1034,7 +1030,7 @@ saioctl(struct dev_ioctl_args *ap)
 		    sizeof (sep->ctl_cdb));
 
 		if ((SA_IS_CTRL(dev) == 0 && softc->open_pending_mount) ||
-		    didlockperiph)
+		    didholdperiph)
 			bzero((caddr_t) &softc->errinfo,
 			    sizeof (softc->errinfo));
 		error = 0;
@@ -1340,10 +1336,10 @@ saioctl(struct dev_ioctl_args *ap)
 			break;
 		}
 	}
-	if (didlockperiph) {
-		cam_periph_unhold(periph);
-	}
-	cam_periph_unlock(periph);
+	if (didholdperiph)
+		cam_periph_unhold(periph, 1);
+	else
+		cam_periph_unlock(periph);
 	return (error);
 }
 

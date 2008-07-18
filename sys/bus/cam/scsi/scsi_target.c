@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_target.c,v 1.22.2.7 2003/02/18 22:07:10 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.19 2008/05/18 20:30:20 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.20 2008/07/18 00:07:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -374,7 +374,7 @@ targreadfilt(struct knote *kn, long hint)
 	int	retval;
 
 	softc = (struct targ_softc *)kn->kn_hook;
-	cam_periph_unlock(softc->periph);
+	cam_periph_lock(softc->periph);
 	retval = !TAILQ_EMPTY(&softc->user_ccb_queue) ||
 		 !TAILQ_EMPTY(&softc->abort_queue);
 	cam_periph_unlock(softc->periph);

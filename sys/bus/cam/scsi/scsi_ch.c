@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.27 2008/05/18 20:30:20 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.28 2008/07/18 00:07:23 dillon Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -424,13 +424,11 @@ chopen(struct dev_open_args *ap)
 	 */
 	if ((error = chgetparams(periph)) != 0) {
 		softc->flags &= ~CH_FLAG_OPEN;
-		cam_periph_unlock(periph);
+		cam_periph_unhold(periph, 1);
 		cam_periph_release(periph);
-		return(error);
+	} else {
+		cam_periph_unhold(periph, 1);
 	}
-
-	cam_periph_unhold(periph);
-	cam_periph_unlock(periph);
 
 	return(error);
 }
@@ -645,7 +643,7 @@ chdone(struct cam_periph *periph, union ccb *done_ccb)
 		 * operation.
 		 */
 		xpt_release_ccb(done_ccb);
-		cam_periph_unhold(periph);
+		cam_periph_unhold(periph, 0);
 		return;
 	}
 	case CH_CCB_WAITING:

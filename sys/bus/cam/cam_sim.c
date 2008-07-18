@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_sim.c,v 1.3 1999/08/28 00:40:42 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_sim.c,v 1.12 2008/06/29 19:15:34 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_sim.c,v 1.13 2008/07/18 00:07:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -69,13 +69,27 @@ cam_sim_unlock(sim_lock *lock)
 		lockmgr(lock, LK_RELEASE);
 }
 
+/*
+ * lock can be NULL if sim was &dead_sim
+ */
 void
 sim_lock_assert_owned(sim_lock *lock)
 {
-	if (lock == &sim_mplock)
-		ASSERT_MP_LOCK_HELD(curthread);
-	else
-		KKASSERT(lockstatus(lock, curthread) != 0);
+	if (lock) {
+		if (lock == &sim_mplock)
+			ASSERT_MP_LOCK_HELD(curthread);
+		else
+			KKASSERT(lockstatus(lock, curthread) != 0);
+	}
+}
+
+void
+sim_lock_assert_unowned(sim_lock *lock)
+{
+	if (lock) {
+		if (lock != &sim_mplock)
+			KKASSERT(lockstatus(lock, curthread) == 0);
+	}
 }
 
 int

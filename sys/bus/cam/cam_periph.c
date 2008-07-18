@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.70 2008/02/12 11:07:33 raj Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.40 2008/05/18 20:30:19 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.41 2008/07/18 00:07:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -328,18 +328,24 @@ cam_periph_hold(struct cam_periph *periph, int flags)
 }
 
 void
-cam_periph_unhold(struct cam_periph *periph)
+cam_periph_unhold(struct cam_periph *periph, int unlock)
 {
+	struct cam_sim *sim;
 
 	sim_lock_assert_owned(periph->sim->lock);
-
 	periph->flags &= ~CAM_PERIPH_LOCKED;
 	if ((periph->flags & CAM_PERIPH_LOCK_WANTED) != 0) {
 		periph->flags &= ~CAM_PERIPH_LOCK_WANTED;
 		wakeup(periph);
 	}
-
-	cam_periph_release(periph);
+	if (unlock) {
+		sim = periph->sim;
+		cam_periph_release(periph);
+		/* periph may be garbage now */
+		CAM_SIM_UNLOCK(sim);
+	} else {
+		cam_periph_release(periph);
+	}
 }
 
 /*
@@ -758,9 +764,10 @@ cam_periph_ccbwait(union ccb *ccb)
 	struct cam_sim *sim;
 
 	sim = xpt_path_sim(ccb->ccb_h.path);
-	if ((ccb->ccb_h.pinfo.index != CAM_UNQUEUED_INDEX)
-	 || ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_INPROG))
+	while ((ccb->ccb_h.pinfo.index != CAM_UNQUEUED_INDEX)
+	 || ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_INPROG)) {
 		sim_lock_sleep(&ccb->ccb_h.cbfcnp, 0, "cbwait", 0, sim->lock);
+	}
 }
 
 int
