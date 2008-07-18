@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.112 2008/07/14 03:09:00 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.113 2008/07/18 00:01:11 dillon Exp $
  */
 
 /*
@@ -683,7 +683,8 @@ bread(struct vnode *vp, off_t loffset, int size, struct buf **bpp)
 
 	/* if not found in cache, do some I/O */
 	if ((bp->b_flags & B_CACHE) == 0) {
-		KASSERT(!(bp->b_flags & B_ASYNC), ("bread: illegal async bp %p", bp));
+		KASSERT(!(bp->b_flags & B_ASYNC),
+			("bread: illegal async bp %p", bp));
 		bp->b_flags &= ~(B_ERROR | B_INVAL);
 		bp->b_cmd = BUF_CMD_READ;
 		vfs_busy_pages(vp, bp);
@@ -1028,30 +1029,19 @@ brelse(struct buf *bp)
 		bundirty(bp);
 	}
 
-	if (bp->b_flags & B_LOCKED)
-		bp->b_flags &= ~B_ERROR;
-
-	/*
-	 * If a write error occurs and the caller does not want to throw
-	 * away the buffer, redirty the buffer.  This will also clear
-	 * B_NOCACHE.
-	 */
-	if (bp->b_cmd == BUF_CMD_WRITE &&
-	    (bp->b_flags & (B_ERROR | B_INVAL)) == B_ERROR) {
+	if ((bp->b_flags & (B_INVAL | B_DELWRI)) == B_DELWRI) {
 		/*
-		 * Failed write, redirty.  Must clear B_ERROR to prevent
-		 * pages from being scrapped.  If B_INVAL is set then
-		 * this case is not run and the next case is run to 
-		 * destroy the buffer.  B_INVAL can occur if the buffer
-		 * is outside the range supported by the underlying device.
+		 * A re-dirtied buffer is only subject to destruction
+		 * by B_INVAL.  B_ERROR and B_NOCACHE are ignored.
 		 */
-		bp->b_flags &= ~B_ERROR;
-		bdirty(bp);
+		/* leave buffer intact */
 	} else if ((bp->b_flags & (B_NOCACHE | B_INVAL | B_ERROR)) ||
-		   (bp->b_bufsize <= 0) || bp->b_cmd == BUF_CMD_FREEBLKS) {
+		   (bp->b_bufsize <= 0)) {
 		/*
-		 * Either a failed I/O or we were asked to free or not
-		 * cache the buffer.
+		 * Either a failed read or we were asked to free or not
+		 * cache the buffer.  This path is reached with B_DELWRI
+		 * set only if B_INVAL is already set.  B_NOCACHE governs
+		 * backing store destruction.
 		 *
 		 * NOTE: HAMMER will set B_LOCKED in buf_deallocate if the
 		 * buffer cannot be immediately freed.
@@ -1093,7 +1083,7 @@ brelse(struct buf *bp)
 		bp->b_flags &= ~B_RELBUF;
 	} else if (vm_page_count_severe()) {
 		if (LIST_FIRST(&bp->b_dep) != NULL)
-			buf_deallocate(bp);
+			buf_deallocate(bp);		/* can set B_LOCKED */
 		if (bp->b_flags & (B_DELWRI | B_LOCKED))
 			bp->b_flags &= ~B_RELBUF;
 		else
@@ -1101,6 +1091,9 @@ brelse(struct buf *bp)
 	}
 
 	/*
+	 * Make sure b_cmd is clear.  It may have already been cleared by
+	 * biodone().
+	 *
 	 * At this point destroying the buffer is governed by the B_INVAL 
 	 * or B_RELBUF flags.
 	 */
@@ -1285,7 +1278,7 @@ brelse(struct buf *bp)
 			bp->b_qindex = BQUEUE_EMPTY;
 		}
 		TAILQ_INSERT_HEAD(&bufqueues[bp->b_qindex], bp, b_freelist);
-	} else if (bp->b_flags & (B_ERROR | B_INVAL | B_NOCACHE | B_RELBUF)) {
+	} else if (bp->b_flags & (B_INVAL | B_NOCACHE | B_RELBUF)) {
 		/*
 		 * Buffers with junk contents.   Again these buffers had better
 		 * already be disassociated from their vnode.
@@ -1389,7 +1382,6 @@ bqrelse(struct buf *bp)
 		 * queue and later on after the I/O completes successfully it
 		 * will be released to the locked queue.
 		 */
-		bp->b_flags &= ~B_ERROR;
 		bp->b_qindex = BQUEUE_LOCKED;
 		TAILQ_INSERT_TAIL(&bufqueues[BQUEUE_LOCKED], bp, b_freelist);
 	} else if (bp->b_flags & B_DELWRI) {
@@ -2199,7 +2191,6 @@ flushbufqueues(bufq_type_t q)
 	int r = 0;
 
 	bp = TAILQ_FIRST(&bufqueues[q]);
-
 	while (bp) {
 		KASSERT((bp->b_flags & B_DELWRI),
 			("unexpected clean buffer %p", bp));
@@ -2227,13 +2218,22 @@ flushbufqueues(bufq_type_t q)
 			/*
 			 * Only write it out if we can successfully lock
 			 * it.  If the buffer has a dependancy,
-			 * buf_checkwrite must also return 0.
+			 * buf_checkwrite must also return 0 for us to
+			 * be able to initate the write.
+			 *
+			 * If the buffer is flagged B_ERROR it may be
+			 * requeued over and over again, we try to
+			 * avoid a live lock.
 			 */
 			if (BUF_LOCK(bp, LK_EXCLUSIVE | LK_NOWAIT) == 0) {
 				if (LIST_FIRST(&bp->b_dep) != NULL &&
 				    buf_checkwrite(bp)) {
 					bremfree(bp);
 					brelse(bp);
+				} else if (bp->b_flags & B_ERROR) {
+					tsleep(bp, 0, "bioer", 1);
+					bp->b_flags &= ~B_AGE;
+					vfs_bio_awrite(bp);
 				} else {
 					bp->b_flags |= B_AGE;
 					vfs_bio_awrite(bp);
@@ -3170,16 +3170,30 @@ biodone(struct bio *bio)
 	 * Only reads and writes are processed past this point.
 	 */
 	if (cmd != BUF_CMD_READ && cmd != BUF_CMD_WRITE) {
+		if (cmd == BUF_CMD_FREEBLKS)
+			bp->b_flags |= B_NOCACHE;
 		brelse(bp);
 		crit_exit();
 		return;
 	}
 
 	/*
-	 * Warning: softupdates may re-dirty the buffer.
+	 * Warning: softupdates may re-dirty the buffer, and HAMMER can do
+	 * a lot worse.  XXX - move this above the clearing of b_cmd
 	 */
 	if (LIST_FIRST(&bp->b_dep) != NULL)
 		buf_complete(bp);
+
+	/*
+	 * A failed write must re-dirty the buffer unless B_INVAL
+	 * was set.
+	 */
+	if (cmd == BUF_CMD_WRITE &&
+	    (bp->b_flags & (B_ERROR | B_INVAL)) == B_ERROR) {
+		bp->b_flags &= ~B_NOCACHE;
+		bdirty(bp);
+	}
+
 
 	if (bp->b_flags & B_VMIO) {
 		int i;
