@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.66 2008/06/29 19:15:34 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.66.2.1 2008/07/18 00:08:22 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -696,13 +696,8 @@ static void dead_sim_action(struct cam_sim *sim, union ccb *ccb);
 static void dead_sim_poll(struct cam_sim *sim);
 
 /* Dummy SIM that is used when the real one has gone. */
-static struct cam_sim cam_dead_sim = {
-	.sim_action =	dead_sim_action,
-	.sim_poll =	dead_sim_poll,
-	.sim_name =	"dead_sim",
-};
-
-#define SIM_DEAD(sim)	((sim) == &cam_dead_sim)
+static struct cam_sim cam_dead_sim;
+static struct lock    cam_dead_lock;
 
 /* Storage for debugging datastructures */
 #ifdef	CAMDEBUG
@@ -1471,6 +1466,16 @@ xpt_init(void *dummy)
 	spin_init(&cam_simq_spin);
 	lockinit(&xsoftc.xpt_lock, "XPT lock", 0, LK_CANRECURSE);
 	lockinit(&xsoftc.xpt_topo_lock, "XPT topology lock", 0, LK_CANRECURSE);
+
+	SLIST_INIT(&cam_dead_sim.ccb_freeq);
+	TAILQ_INIT(&cam_dead_sim.sim_doneq);
+	spin_init(&cam_dead_sim.sim_spin);
+	cam_dead_sim.sim_action = dead_sim_action;
+	cam_dead_sim.sim_poll = dead_sim_poll;
+	cam_dead_sim.sim_name = "dead_sim";
+	cam_dead_sim.lock = &cam_dead_lock;
+	lockinit(&cam_dead_lock, "XPT dead_sim lock", 0, LK_CANRECURSE);
+	cam_dead_sim.flags |= CAM_SIM_DEREGISTERED;
 
 	/*
 	 * The xpt layer is, itself, the equivelent of a SIM.
@@ -3021,7 +3026,7 @@ xpt_action(union ccb *start_ccb)
 		path = start_ccb->ccb_h.path;
 
 		sim = path->bus->sim;
-		if (SIM_DEAD(sim)) {
+		if (sim == &cam_dead_sim) {
 			/* The SIM has gone; just execute the CCB directly. */
 			cam_ccbq_send_ccb(&path->device->ccbq, start_ccb);
 			(*(sim->sim_action))(sim, start_ccb);
@@ -3610,7 +3615,7 @@ xpt_schedule(struct cam_periph *perph, u_int32_t new_priority)
 					     new_priority);
 		}
 		runq = 0;
-	} else if (SIM_DEAD(perph->path->bus->sim)) {
+	} else if (perph->path->bus->sim == &cam_dead_sim) {
 		/* The SIM is gone so just call periph_start directly. */
 		work_ccb = xpt_get_ccb(perph->path->device);
 		if (work_ccb == NULL)
@@ -4249,7 +4254,9 @@ xpt_release_ccb(union ccb *free_ccb)
 	if (sim->ccb_count > sim->max_ccbs) {
 		xpt_free_ccb(free_ccb);
 		sim->ccb_count--;
-	} else {
+	} else if (sim == &cam_dead_sim) {
+		xpt_free_ccb(free_ccb);
+	} else  {
 		SLIST_INSERT_HEAD(&sim->ccb_freeq, &free_ccb->ccb_h,
 		    xpt_links.sle);
 	}
@@ -4339,6 +4346,7 @@ int32_t
 xpt_bus_deregister(path_id_t pathid)
 {
 	struct cam_path bus_path;
+	struct cam_et *target;
 	struct cam_ed *device;
 	struct cam_ed_qinfo *qinfo;
 	struct cam_devq *devq;
@@ -4346,6 +4354,7 @@ xpt_bus_deregister(path_id_t pathid)
 	struct cam_sim *ccbsim;
 	union ccb *work_ccb;
 	cam_status status;
+	int retries = 0;
 
 	status = xpt_compile_path(&bus_path, NULL, pathid,
 				  CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD);
@@ -4362,12 +4371,19 @@ xpt_bus_deregister(path_id_t pathid)
 	xpt_async(AC_LOST_DEVICE, &bus_path, NULL);
 	xpt_async(AC_PATH_DEREGISTERED, &bus_path, NULL);
 
-	/* The SIM may be gone, so use a dummy SIM for any stray operations. */
+	/*
+	 * Mark the SIM as having been deregistered.  This prevents
+	 * certain operations from re-queueing to it, stops new devices
+	 * from being added, etc.
+	 */
 	devq = bus_path.bus->sim->devq;
 	ccbsim = bus_path.bus->sim;
-	bus_path.bus->sim = &cam_dead_sim;
+	ccbsim->flags |= CAM_SIM_DEREGISTERED;
 
-	/* Execute any pending operations now. */
+again:
+	/*
+	 * Execute any pending operations now. 
+	 */
 	while ((qinfo = (struct cam_ed_qinfo *)camq_remove(&devq->send_queue,
 	    CAMQ_HEAD)) != NULL ||
 	    (qinfo = (struct cam_ed_qinfo *)camq_remove(&devq->alloc_queue,
@@ -4389,14 +4405,57 @@ xpt_bus_deregister(path_id_t pathid)
 		} while (work_ccb != NULL || periph != NULL);
 	}
 
-	/* Make sure all completed CCBs are processed. */
+	/*
+	 * Make sure all completed CCBs are processed. 
+	 */
 	while (!TAILQ_EMPTY(&ccbsim->sim_doneq)) {
 		camisr_runqueue(ccbsim);
-
-		/* Repeat the async's for the benefit of any new devices. */
-		xpt_async(AC_LOST_DEVICE, &bus_path, NULL);
-		xpt_async(AC_PATH_DEREGISTERED, &bus_path, NULL);
 	}
+
+	/*
+	 * Check for requeues, reissues asyncs if necessary
+	 */
+	if (CAMQ_GET_HEAD(&devq->send_queue))
+		kprintf("camq: devq send_queue still in use\n");
+	if (CAMQ_GET_HEAD(&devq->alloc_queue))
+		kprintf("camq: devq alloc_queue still in use\n");
+	if (CAMQ_GET_HEAD(&devq->send_queue) || 
+	    CAMQ_GET_HEAD(&devq->alloc_queue)) {
+		if (++retries < 5) {
+			xpt_async(AC_LOST_DEVICE, &bus_path, NULL);
+			xpt_async(AC_PATH_DEREGISTERED, &bus_path, NULL);
+			goto again;
+		}
+	}
+
+	/*
+	 * Retarget the bus and all cached sim pointers to dead_sim.
+	 *
+	 * Various CAM subsystems may be holding on to targets, devices,
+	 * and/or peripherals and may attempt to use the sim pointer cached
+	 * in some of these structures during close.
+	 */
+	bus_path.bus->sim = &cam_dead_sim;
+	TAILQ_FOREACH(target, &bus_path.bus->et_entries, links) {
+		TAILQ_FOREACH(device, &target->ed_entries, links) {
+			device->sim = &cam_dead_sim;
+			SLIST_FOREACH(periph, &device->periphs, periph_links) {
+				periph->sim = &cam_dead_sim;
+			}
+		}
+	}
+
+	/*
+	 * Repeat the async's for the benefit of any new devices, such as
+	 * might be created from completed probes.  Any new device
+	 * ops will run on dead_sim.
+	 *
+	 * XXX There are probably races :-(
+	 */
+	CAM_SIM_LOCK(&cam_dead_sim);
+	xpt_async(AC_LOST_DEVICE, &bus_path, NULL);
+	xpt_async(AC_PATH_DEREGISTERED, &bus_path, NULL);
+	CAM_SIM_UNLOCK(&cam_dead_sim);
 
 	/* Release the reference count held while registered. */
 	xpt_release_bus(bus_path.bus);
@@ -4959,13 +5018,18 @@ xpt_alloc_device(struct cam_eb *bus, struct cam_et *target, lun_id_t lun_id)
 	struct	   cam_devq *devq;
 	cam_status status;
 
-	if (SIM_DEAD(bus->sim))
+	/*
+	 * Disallow new devices while trying to deregister a sim
+	 */
+	if (bus->sim->flags & CAM_SIM_DEREGISTERED)
 		return (NULL);
 
-	/* Make space for us in the device queue on our bus */
-	if (bus->sim->devq == NULL)
-		return(NULL);
+	/*
+	 * Make space for us in the device queue on our bus
+	 */
 	devq = bus->sim->devq;
+	if (devq == NULL)
+		return(NULL);
 	status = cam_devq_resize(devq, devq->alloc_queue.array_size + 1);
 
 	if (status != CAM_REQ_CMP) {
@@ -5077,9 +5141,8 @@ xpt_release_device(struct cam_eb *bus, struct cam_et *target,
 		TAILQ_REMOVE(&target->ed_entries, device,links);
 		target->generation++;
 		bus->sim->max_ccbs -= device->ccbq.devq_openings;
-		if (!SIM_DEAD(bus->sim)) {
+		if ((devq = bus->sim->devq) != NULL) {
 			/* Release our slot in the devq */
-			devq = bus->sim->devq;
 			cam_devq_resize(devq, devq->alloc_queue.array_size - 1);
 		}
 		camq_fini(&device->drvq);
@@ -7199,7 +7262,10 @@ camisr_runqueue(struct cam_sim *sim)
 
 			cam_ccbq_ccb_done(&dev->ccbq, (union ccb *)ccb_h);
 
-			if (!SIM_DEAD(ccb_h->path->bus->sim)) {
+			/*
+			 * devq may be NULL if this is cam_dead_sim
+			 */
+			if (ccb_h->path->bus->sim->devq) {
 				ccb_h->path->bus->sim->devq->send_active--;
 				ccb_h->path->bus->sim->devq->send_openings++;
 			}
@@ -7248,12 +7314,18 @@ camisr_runqueue(struct cam_sim *sim)
 	spin_unlock_wr(&sim->sim_spin);
 }
 
+/*
+ * The dead_sim isn't completely hooked into CAM, we have to make sure
+ * the doneq is cleared after calling xpt_done() so cam_periph_ccbwait()
+ * doesn't block.
+ */
 static void
 dead_sim_action(struct cam_sim *sim, union ccb *ccb)
 {
 
 	ccb->ccb_h.status = CAM_DEV_NOT_THERE;
 	xpt_done(ccb);
+	camisr_runqueue(sim);
 }
 
 static void

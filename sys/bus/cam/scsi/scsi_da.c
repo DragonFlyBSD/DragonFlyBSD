@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.57 2008/07/12 20:36:06 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.57.2.1 2008/07/18 00:08:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -791,8 +791,7 @@ daopen(struct dev_open_args *ap)
 		softc->flags &= ~DA_FLAG_OPEN;
 		cam_periph_release(periph);
 	}
-	cam_periph_unhold(periph);
-	cam_periph_unlock(periph);
+	cam_periph_unhold(periph, 1);
 	return (error);
 }
 
@@ -889,8 +888,7 @@ daclose(struct dev_close_args *ap)
 		xpt_print(periph->path,
 			  "daclose() called on an already closed device!\n");
 	}
-	cam_periph_unhold(periph);
-	cam_periph_unlock(periph);
+	cam_periph_unhold(periph, 1);
 	return (0);	
 }
 
@@ -1177,6 +1175,7 @@ dacleanup(struct cam_periph *periph)
 	    && sysctl_ctx_free(&softc->sysctl_ctx) != 0) {
 		xpt_print(periph->path, "can't remove sysctl context\n");
 	}
+	periph->softc = NULL;
 	if (softc->disk.d_rawdev) {
 		cam_periph_unlock(periph);
 		disk_destroy(&softc->disk);
@@ -1909,7 +1908,7 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 		 * operation.
 		 */
 		xpt_release_ccb(done_ccb);
-		cam_periph_unhold(periph);
+		cam_periph_unhold(periph, 0);
 		return;
 	}
 	case DA_CCB_WAITING:

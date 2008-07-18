@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.43 2008/05/23 19:46:37 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.43.2.1 2008/07/18 00:08:23 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -1022,8 +1022,7 @@ cdopen(struct dev_open_args *ap)
 	error = cdcheckmedia(periph);
 
 	CAM_DEBUG(periph->path, CAM_DEBUG_TRACE, ("leaving cdopen\n"));
-	cam_periph_unhold(periph);
-	cam_periph_unlock(periph);
+	cam_periph_unhold(periph, 1);
 	/* stays acquired */
 
 	return (0);
@@ -1070,8 +1069,7 @@ cdclose(struct dev_close_args *ap)
 	 */
 	softc->flags &= ~(CD_FLAG_VALID_MEDIA|CD_FLAG_VALID_TOC|CD_FLAG_OPEN);
 
-	cam_periph_unhold(periph);
-	cam_periph_unlock(periph);
+	cam_periph_unhold(periph, 1);
 	cam_periph_release(periph);
 
 	return (0);
@@ -1809,7 +1807,7 @@ cddone(struct cam_periph *periph, union ccb *done_ccb)
 		 * operation.
 		 */
 		xpt_release_ccb(done_ccb);
-		cam_periph_unhold(periph);
+		cam_periph_unhold(periph, 0);
 		return;
 	}
 	case CD_CCB_WAITING:
@@ -1899,8 +1897,7 @@ cdioctl(struct dev_ioctl_args *ap)
 	    && (IOCGROUP(ap->a_cmd) == 'c')) {
 		error = cdcheckmedia(periph);
 		if (error != 0) {
-			cam_periph_unhold(periph);
-			cam_periph_unlock(periph);
+			cam_periph_unhold(periph, 1);
 			return (error);
 		}
 	}
@@ -2719,11 +2716,8 @@ cdioctl(struct dev_ioctl_args *ap)
 	}
 
 	cam_periph_lock(periph);
-	cam_periph_unhold(periph);
-
 	CAM_DEBUG(periph->path, CAM_DEBUG_TRACE, ("leaving cdioctl\n"));
-
-	cam_periph_unlock(periph);
+	cam_periph_unhold(periph, 1);
 
 	return (error);
 }

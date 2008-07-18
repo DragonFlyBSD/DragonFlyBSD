@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_sim.h,v 1.4 1999/12/29 04:54:27 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_sim.h,v 1.8 2008/06/29 19:15:34 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_sim.h,v 1.8.2.1 2008/07/18 00:08:22 dillon Exp $
  */
 
 #ifndef _CAM_CAM_SIM_H
@@ -59,6 +59,7 @@ extern	sim_lock	sim_mplock;
 void		  cam_sim_lock(sim_lock *lock);
 void		  cam_sim_unlock(sim_lock *lock);
 void		  sim_lock_assert_owned(sim_lock *lock);
+void		  sim_lock_assert_unowned(sim_lock *lock);
 int		  sim_lock_sleep(void *ident, int flags, const char *wmesg,
 				 int timo, sim_lock *lock);
 struct cam_devq * cam_simq_alloc(u_int32_t max_sim_transactions);
@@ -120,6 +121,7 @@ struct cam_sim {
 #define	CAM_SIM_REL_TIMEOUT_PENDING	0x01
 #define	CAM_SIM_MPSAFE			0x02
 #define CAM_SIM_ON_DONEQ		0x04
+#define CAM_SIM_DEREGISTERED		0x08
 	struct callout		callout;
 	struct cam_devq 	*devq;	/* Device Queue to use for this SIM */
 	int			refcount;	/* References to the sim */
