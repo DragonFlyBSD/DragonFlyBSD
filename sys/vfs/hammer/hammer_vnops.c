@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.92 2008/07/14 20:27:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.93 2008/07/19 04:49:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -688,6 +688,18 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	vap->va_size = ip->ino_data.size;
 
 	/*
+	 * Special case for @@PFS softlinks.  The actual size of the
+	 * expanded softlink is "@@0x%016llx:%05d" == 26 bytes.
+	 */
+	if (ip->ino_data.obj_type == HAMMER_OBJTYPE_SOFTLINK &&
+	    ip->ino_data.size == 10 &&
+	    ip->obj_asof == HAMMER_MAX_TID &&
+	    ip->obj_localization == 0 &&
+	    strncmp(ip->ino_data.ext.symlink, "@@PFS", 5) == 0) {
+		    vap->va_size = 26;
+	}
+
+	/*
 	 * We must provide a consistent atime and mtime for snapshots
 	 * so people can do a 'tar cf - ... | md5' on them and get
 	 * consistent results.
@@ -985,9 +997,15 @@ hammer_vop_nlink(struct vop_nlink_args *ap)
 	struct nchandle *nch;
 	int error;
 
+	if (ap->a_dvp->v_mount != ap->a_vp->v_mount)	
+		return(EXDEV);
+
 	nch = ap->a_nch;
 	dip = VTOI(ap->a_dvp);
 	ip = VTOI(ap->a_vp);
+
+	if (dip->obj_localization != ip->obj_localization)
+		return(EXDEV);
 
 	if (dip->flags & HAMMER_INODE_RO)
 		return (EROFS);
@@ -1496,12 +1514,22 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 	int64_t namekey;
 	int nlen, error;
 
+	if (ap->a_fdvp->v_mount != ap->a_tdvp->v_mount)	
+		return(EXDEV);
+	if (ap->a_fdvp->v_mount != ap->a_fnch->ncp->nc_vp->v_mount)
+		return(EXDEV);
+
 	fdip = VTOI(ap->a_fdvp);
 	tdip = VTOI(ap->a_tdvp);
 	fncp = ap->a_fnch->ncp;
 	tncp = ap->a_tnch->ncp;
 	ip = VTOI(fncp->nc_vp);
 	KKASSERT(ip != NULL);
+
+	if (fdip->obj_localization != tdip->obj_localization)
+		return(EXDEV);
+	if (fdip->obj_localization != ip->obj_localization)
+		return(EXDEV);
 
 	if (fdip->flags & HAMMER_INODE_RO)
 		return (EROFS);

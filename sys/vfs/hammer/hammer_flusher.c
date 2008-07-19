@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.43 2008/07/18 00:19:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.44 2008/07/19 04:49:39 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -75,8 +75,7 @@ hammer_flusher_sync(hammer_mount_t hmp)
 	int seq;
 
 	seq = hammer_flusher_async(hmp, NULL);
-	while ((int)(seq - hmp->flusher.done) > 0)
-		tsleep(&hmp->flusher.done, 0, "hmrfls", 0);
+	hammer_flusher_wait(hmp, seq);
 }
 
 /*
@@ -121,10 +120,18 @@ hammer_flusher_async_one(hammer_mount_t hmp)
 	return(seq);
 }
 
+/*
+ * Wait for the flusher to get to the specified sequence number.
+ * Signal the flusher as often as necessary to keep it going.
+ */
 void
 hammer_flusher_wait(hammer_mount_t hmp, int seq)
 {
 	while ((int)(seq - hmp->flusher.done) > 0) {
+		if (hmp->flusher.act != seq) {
+			if (hmp->flusher.signal++ == 0)
+				wakeup(&hmp->flusher.signal);
+		}
 		tsleep(&hmp->flusher.done, 0, "hmrfls", 0);
 	}
 }

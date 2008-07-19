@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_pfs.c,v 1.2 2008/07/14 20:27:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_pfs.c,v 1.3 2008/07/19 04:49:39 dillon Exp $
  */
 /*
  * HAMMER PFS ioctls - Manage pseudo-fs configurations
@@ -77,7 +77,7 @@ hammer_ioc_get_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 	 * rather then the mirroring code, and will always track the
 	 * real HAMMER filesystem.
 	 */
-	if (pfsm->pfsd.master_id >= 0)
+	if ((pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE) == 0)
 		pfsm->pfsd.sync_end_tid = trans->rootvol->ondisk->vol0_next_tid;
 
 	/*
