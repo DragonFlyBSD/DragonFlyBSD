@@ -24,9 +24,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/pci.9,v 1.2.2.1 2003/06/13 01:04:17 hmp Exp $
-.\" $DragonFly: src/share/man/man9/pci.9,v 1.4 2006/10/14 23:46:23 swildner Exp $
+.\" $DragonFly: src/share/man/man9/pci.9,v 1.5 2008/07/19 23:53:36 swildner Exp $
 .\"
-.Dd May 21, 2003
+.Dd July 19, 2008
 .Dt PCI 9
 .Os
 .Sh NAME
@@ -50,13 +50,13 @@
 .Pp
 .Ft void
 .Fn pci_write_config "device_t dev" "int reg" "u_int32_t val" "int width"
-.Ft int
+.Ft void
 .Fn pci_enable_busmaster "device_t dev"
-.Ft int
+.Ft void
 .Fn pci_disable_busmaster "device_t dev"
-.Ft int
+.Ft void
 .Fn pci_enable_io "device_t dev" "int space"
-.Ft int
+.Ft void
 .Fn pci_disable_io "device_t dev" "int space"
 .Ft int
 .Fn pci_set_powerstate "device_t dev" "int state"
@@ -65,9 +65,9 @@
 .Ft u_int32_t
 .Fn pci_read_config "device_t dev" "int reg" "int width"
 .Ft device_t
-.Fn pci_find_bsf "u_int8_t" "u_int8_t" "u_int8_t"
+.Fn pci_find_bsf "u_int8_t bus" "u_int8_t slot" "u_int8_t func"
 .Ft device_t
-.Fn pci_find_device "u_int16_t" "u_int16_t"
+.Fn pci_find_device "u_int16_t vendor" "u_int16_t device"
 .Sh DESCRIPTION
 The
 .Nm
@@ -120,11 +120,12 @@ or
 .Dv PCIM_CMD_PORTEN
 bit in the
 .Dv PCIR_COMMAND
-register appropriately. The
+register appropriately.
+The
 .Fn pci_disable_io
 function clears the appropriate bit.
 The
-.Fa state
+.Fa space
 argument specifies which resource is affected; this can be either
 .Dv SYS_RES_MEMORY
 or
@@ -144,16 +145,16 @@ state of
 .Dv PCI_POWERSTATE_D0
 is returned.
 The following power states are defined by ACPI:
-.Bl -hang -width PCI_POWERSTATE_UNKNOWN
+.Bl -hang -width ".Dv PCI_POWERSTATE_UNKNOWN"
 .It Dv PCI_POWERSTATE_D0
 State in which device is on and running.
 It is receiving full power from the system and delivering
 full functionality to the user.
 .It Dv PCI_POWERSTATE_D1
 Class-specific low-power state in which device context may or
-may not be lot.
+may not be lost.
 Buses in this state cannot do anything to the bus, to
-force devices to loose context.
+force devices to lose context.
 .It Dv PCI_POWERSTATE_D2
 Class-specific low-power state in which device context may or
 may not be lost.
@@ -193,7 +194,7 @@ of a PCI device, given its
 .Fa bus ,
 .Fa slot ,
 and
-.Fa function .
+.Fa func .
 .Pp
 The
 .Fn pci_find_device
@@ -203,12 +204,13 @@ of a PCI device, given its
 .Fa vendor
 and
 .Fa device
-IDs. Note that there can be multiple matches for this search; this function
+IDs.
+Note that there can be multiple matches for this search; this function
 only returns the first matching device.
 .Sh IMPLEMENTATION NOTES
 The
 .Vt pci_addr_t
-type is varies according to the size of the PCI bus address
+type varies according to the size of the PCI bus address
 space on the target architecture.
 .Sh SEE ALSO
 .Xr pci 4 ,
