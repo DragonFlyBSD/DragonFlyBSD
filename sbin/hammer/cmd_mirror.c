@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.9.2.1 2008/07/18 23:25:05 swildner Exp $
+ * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.9.2.2 2008/07/19 18:49:08 dillon Exp $
  */
 
 #include "hammer.h"
@@ -341,6 +341,7 @@ hammer_cmd_mirror_write(char **av, int ac)
 		fprintf(stderr, "Mirror-write %s: Did not get termination "
 				"sync record, or rec_size is wrong rt=%d\n",
 				filesystem, mrec->head.type);
+		exit(1);
 	}
 	free(mrec);
 	mrec = NULL;

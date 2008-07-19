@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/mount_hammer/mount_hammer.c,v 1.7.2.1 2008/07/17 23:54:06 thomas Exp $
+ * $DragonFly: src/sbin/mount_hammer/mount_hammer.c,v 1.7.2.2 2008/07/19 18:49:09 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -63,7 +63,9 @@ static void extract_volumes(ary_ptr_t *aryp, int *countp, char **av, int ac);
 #define MOPT_UPDATE         { "update",     0, MNT_UPDATE, 0 }
 
 #define MOPT_HAMMEROPTS		\
-	{ "history", 1, HMNT_NOHISTORY, 1 }	\
+	{ "history", 1, HMNT_NOHISTORY, 1 },	\
+	{ "master=", 0, HMNT_MASTERID, 1 },	\
+	{ "nomirror", 0, HMNT_MASTERID, 1 }
 
 static struct mntopt mopts[] = { MOPT_STDOPTS, MOPT_HAMMEROPTS,
 				 MOPT_UPDATE, MOPT_NULL };
@@ -80,6 +82,7 @@ main(int ac, char **av)
 	int ch;
 	int init_flags = 0;
 	char *mountpt;
+	char *ptr;
 
 	bzero(&info, sizeof(info));
 	info.asof = 0;
@@ -93,6 +96,25 @@ main(int ac, char **av)
 			break;
 		case 'o':
 			getmntopts(optarg, mopts, &mount_flags, &info.hflags);
+
+
+			/*
+			 * Handle extended flags with parameters.
+			 */
+			if (info.hflags & HMNT_MASTERID) {
+				ptr = strstr(optarg, "master=");
+				if (ptr) {
+					info.master_id = strtol(ptr + 7, NULL, 0);
+					if (info.master_id == 0) {
+						fprintf(stderr,
+	"hammer_mount: Warning: a master id of 0 is the default, explicit\n"
+	"settings should probably use 1-15\n");
+					}
+				}
+				ptr = strstr(optarg, "nomirror");
+				if (ptr)
+					info.master_id = -1;
+			}
 			break;
 		case 'u':
 			init_flags |= MNT_UPDATE;

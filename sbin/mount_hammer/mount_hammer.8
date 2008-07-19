@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/mount_hammer/mount_hammer.8,v 1.9.2.1 2008/07/17 23:54:06 thomas Exp $
+.\" $DragonFly: src/sbin/mount_hammer/mount_hammer.8,v 1.9.2.2 2008/07/19 18:49:09 dillon Exp $
 .Dd June 24, 2008
 .Dt MOUNT_HAMMER 8
 .Os
@@ -71,6 +71,19 @@ Put the entire filesystem in no-history mode.  Change history is not
 retained.
 Use of this option may increase the overhead of doing mirroring.
 This option is generally only used in an emergency.
+.It Ar master=<id>
+Assign a master id for the entire mount which applies to all PFSs under
+the mount.  This is intended to help support multi-master and fail-over
+operation.  Multi-master operation is not yet supported.  If you intend
+to upgrade slaves to masters and downgrade masters to slaves as part of
+a fail-over setup, it's a good idea to assign a different master id
+to the HAMMER mounts making up the fail-over group.
+.It Ar nomirror
+By default a HAMMER mount assigns a master id of 0.  You can force
+no-mirror operation by specifying this option.  This option disables
+mirror transaction id propagation in the B-Tree and will improve write
+performance somewhat but also prevents incremental mirroring from working
+at all, and is not recommended.
 .El
 .It Fl T Ar transaction-id
 Mount the filesystem as-of a particular
