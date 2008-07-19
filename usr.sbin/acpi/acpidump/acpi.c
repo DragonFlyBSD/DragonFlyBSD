@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/usr.sbin/acpi/acpidump/acpi.c,v 1.31 2005/02/14 11:21:48 scottl Exp $
- *	$DragonFly: src/usr.sbin/acpi/acpidump/acpi.c,v 1.6 2007/01/10 12:23:23 hsu Exp $
+ *	$DragonFly: src/usr.sbin/acpi/acpidump/acpi.c,v 1.7 2008/07/19 13:50:51 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -821,7 +821,7 @@ aml_disassemble(struct ACPIsdt *rsdt, struct ACPIsdt *dsdp)
 		close(STDOUT_FILENO);
 		if (vflag == 0)
 			close(STDERR_FILENO);
-		execl("/usr/sbin/iasl", "iasl", "-d", tmpstr, 0);
+		execl("/usr/sbin/iasl", "iasl", "-d", tmpstr, NULL);
 		err(1, "exec");
 	}
 
