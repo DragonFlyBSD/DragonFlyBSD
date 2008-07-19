@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.39.2.1 2008/07/18 00:00:19 thomas Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.39.2.2 2008/07/19 20:26:17 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -499,7 +499,7 @@ format_root(const char *label)
 	pfsd->sync_end_tid = 0;	/* overriden by vol0_next_tid on pfs0 */
 	pfsd->shared_uuid = Hammer_FSId;
 	pfsd->unique_uuid = Hammer_FSId;
-	pfsd->master_id = 0;
+	pfsd->reserved01 = 0;
 	pfsd->mirror_flags = 0;
 	snprintf(pfsd->label, sizeof(pfsd->label), "%s", label);
 
