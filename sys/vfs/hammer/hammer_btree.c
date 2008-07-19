@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.71.2.2 2008/07/15 22:14:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.71.2.3 2008/07/19 18:46:20 dillon Exp $
  */
 
 /*
@@ -2221,16 +2221,11 @@ hammer_btree_do_propagation(hammer_cursor_t cursor,
 	int error;
 
 	/*
-	 * We only propagate the mirror_tid up if we are in master or slave
-	 * mode.  We do not bother if we are in no-mirror mode.
-	 *
-	 * If pfsm is NULL we propagate (from mirror_write).
+	 * We do not propagate a mirror_tid if the filesystem was mounted
+	 * in no-mirror mode.
 	 */
-	if (pfsm &&
-	    pfsm->pfsd.master_id < 0 &&
-	    (pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE) == 0) {
+	if (cursor->trans->hmp->master_id < 0)
 		return;
-	}
 
 	/*
 	 * This is a bit of a hack because we cannot deadlock or return

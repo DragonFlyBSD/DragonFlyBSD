@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.50 2008/07/12 02:47:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.50.2.1 2008/07/19 18:46:20 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -681,7 +681,7 @@ struct hammer_pseudofs_data {
 	u_int64_t	sync_end_ts;	/* initiation of current sync cycle */
 	uuid_t		shared_uuid;	/* shared uuid (match required) */
 	uuid_t		unique_uuid;	/* unique uuid of this master/slave */
-	int32_t		master_id;	/* 0-15 (-1 if slave) */
+	int32_t		reserved01;	/* reserved for future master_id */
 	int32_t		mirror_flags;	/* misc flags */
 	char		label[64];	/* filesystem space label */
 	char		prune_path[64];	/* softlink dir for pruning */

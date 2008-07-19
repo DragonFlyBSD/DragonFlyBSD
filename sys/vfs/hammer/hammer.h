@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.117.2.3 2008/07/18 00:21:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.117.2.4 2008/07/19 18:46:20 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -690,7 +690,7 @@ struct hammer_mount {
 	int	ronly;
 	int	nvolumes;
 	int	volume_iterator;
-	int	masterid;	/* -1 or 0-15 - clustering and mirroring */
+	int	master_id;	/* -1 or 0-15 - clustering and mirroring */
 	int	rsv_inodes;	/* reserved space due to dirty inodes */
 	int64_t	rsv_databytes;	/* reserved space due to record data */
 	int	rsv_recs;	/* reserved space due to dirty records */

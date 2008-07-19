@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_pfs.c,v 1.1.2.2 2008/07/19 04:51:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_pfs.c,v 1.1.2.3 2008/07/19 18:46:20 dillon Exp $
  */
 /*
  * HAMMER PFS ioctls - Manage pseudo-fs configurations
@@ -158,10 +158,6 @@ hammer_ioc_upgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 	 * A master id must be set when upgrading
 	 */
 	pfsm = hammer_load_pseudofs(trans, localization, &error);
-	if ((pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE) == 0 &&
-	    pfsm->pfsd.master_id < 0) {
-		error = EINVAL;
-	}
 	if (error == 0) {
 		if ((pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE) != 0) {
 			error = hammer_pfs_rollback(trans, pfsm,
@@ -183,8 +179,7 @@ hammer_ioc_upgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 /*
  * Downgrade a master to a slave
  *
- * This is really easy to do, just set the SLAVE flag.  The master_id is
- * left intact.
+ * This is really easy to do, just set the SLAVE flag.
  *
  * We also leave sync_end_tid intact... the field is not used in master
  * mode (vol0_next_tid overrides it), but if someone switches to master
@@ -357,6 +352,7 @@ retry:
 		 * in mirror-filtered mode (they are used to generate SKIP
 		 * mrecords), but we don't need them for this code.
 		 */
+		cursor.flags |= HAMMER_CURSOR_ATEDISK;
 		if (cursor.node->ondisk->type == HAMMER_BTREE_TYPE_LEAF) {
 			key_cur = cursor.node->ondisk->elms[cursor.index].base;
 			error = hammer_pfs_delete_at_cursor(&cursor, trunc_tid);

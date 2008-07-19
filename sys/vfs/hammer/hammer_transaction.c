@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.22.2.1 2008/07/19 04:51:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.22.2.2 2008/07/19 18:46:20 dillon Exp $
  */
 
 #include "hammer.h"
@@ -142,14 +142,14 @@ hammer_alloc_tid(hammer_mount_t hmp, int count)
 {
 	hammer_tid_t tid;
 
-	if (hmp->masterid < 0) {
+	if (hmp->master_id < 0) {
 		tid = hmp->next_tid + 1;
 		hmp->next_tid = tid + count;
 	} else {
 		tid = (hmp->next_tid + HAMMER_MAX_MASTERS) &
 		      ~(hammer_tid_t)(HAMMER_MAX_MASTERS - 1);
 		hmp->next_tid = tid + count * HAMMER_MAX_MASTERS;
-		tid |= hmp->masterid;
+		tid |= hmp->master_id;
 	}
 	if (tid >= 0xFFFFFFFFFF000000ULL)
 		panic("hammer_start_transaction: Ran out of TIDs!");
@@ -194,7 +194,7 @@ hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip)
 	 * mount is operating in.
 	 */
 	tid = ocp->next_tid;
-	ocp->next_tid += (hmp->masterid < 0) ? 1 : HAMMER_MAX_MASTERS;
+	ocp->next_tid += (hmp->master_id < 0) ? 1 : HAMMER_MAX_MASTERS;
 
 	if (--ocp->count == 0) {
 		dip->objid_cache = NULL;
