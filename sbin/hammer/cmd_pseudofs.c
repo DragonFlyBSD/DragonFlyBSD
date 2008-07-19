@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.6 2008/07/12 02:48:46 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.7 2008/07/19 18:48:14 dillon Exp $
  */
 
 #include "hammer.h"
@@ -301,7 +301,7 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 	 * RMR the PFS is basically destroyed even if someone ^C's it.
 	 */
 	pfs.ondisk->mirror_flags |= HAMMER_PFSD_SLAVE;
-	pfs.ondisk->master_id = -1;
+	pfs.ondisk->reserved01 = -1;
 	pfs.ondisk->sync_beg_tid = 1;
 	pfs.ondisk->sync_end_tid = 1;
 
@@ -346,13 +346,6 @@ hammer_cmd_pseudofs_upgrade(char **av, int ac)
 				" (It should already be a master)\n");
 		exit(1);
 	}
-	if (pfs.ondisk->master_id == -1) {
-		fprintf(stderr, "You must configure a master id before "
-				"upgrading a slave to a master.\n"
-				"Use pfs-update ... master=<id> first.\n");
-		exit(1);
-	}
-
 	if (ioctl(fd, HAMMERIOC_UPG_PSEUDOFS, &pfs) == 0) {
 		printf("pfs-upgrade of PFS#%d (%s) succeeded\n",
 			pfs.pfs_id, pfs.ondisk->label);
@@ -436,12 +429,8 @@ init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave)
 	pfsd->sync_end_ts = 0;
 	uuid_create(&pfsd->shared_uuid, &status);
 	uuid_create(&pfsd->unique_uuid, &status);
-	if (is_slave) {
-		pfsd->master_id = -1;
+	if (is_slave)
 		pfsd->mirror_flags |= HAMMER_PFSD_SLAVE;
-	} else {
-		pfsd->master_id = 0;
-	}
 }
 
 static
@@ -460,21 +449,11 @@ dump_pfsd(hammer_pseudofs_data_t pfsd)
 	if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE) {
 		printf("    slave\n");
 	}
-	if (pfsd->master_id < 0) {
-		if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE) {
-			printf("    master=-1 "
-			       "(no upgrade id assigned for slave)\n");
-		} else {
-			printf("    no-mirror "
-			       "(mirror TID propagation disabled)\n");
-		}
-	} else {
-		printf("    master=%d", pfsd->master_id);
-		if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE)
-			printf(" (only if upgraded, currently a slave)");
-		printf("\n");
-	}
 	printf("    label=\"%s\"\n", pfsd->label);
+	if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE)
+		printf("    operating as a SLAVE\n");
+	else
+		printf("    operating as a MASTER\n");
 }
 
 static void
@@ -493,22 +472,11 @@ parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd)
 		/*
 		 * Basic assignment value test
 		 */
-		if (strcmp(cmd, "no-mirror") == 0 ||
-		    strcmp(cmd, "slave") == 0) {
-			if (ptr) {
-				fprintf(stderr,
-					"option %s should not have "
-					"an assignment\n",
-					cmd);
-				exit(1);
-			}
-		} else {
-			if (ptr == NULL) {
-				fprintf(stderr,
-					"option %s requires an assignment\n",
-					cmd);
-				exit(1);
-			}
+		if (ptr == NULL) {
+			fprintf(stderr,
+				"option %s requires an assignment\n",
+				cmd);
+			exit(1);
 		}
 
 		status = uuid_s_ok;
@@ -520,31 +488,6 @@ parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd)
 			uuid_from_string(ptr, &pfsd->shared_uuid, &status);
 		} else if (strcmp(cmd, "unique-uuid") == 0) {
 			uuid_from_string(ptr, &pfsd->unique_uuid, &status);
-		} else if (strcmp(cmd, "master") == 0) {
-			if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE) {
-				printf("NOTE: This PFS is a slave, the master "
-				       "id you are setting only applies\n"
-				       "when you pfs-upgrade the PFS to "
-				       "a master!\n");
-			}
-			pfsd->master_id = strtol(ptr, NULL, 0);
-		} else if (strcmp(cmd, "slave") == 0) {
-			if ((pfsd->mirror_flags & HAMMER_PFSD_SLAVE) == 0) {
-				fprintf(stderr,
-					"slave mode cannot be set on a master "
-					"PFS, use pfs-upgrade instead!\n");
-				exit(1);
-			}
-			pfsd->mirror_flags |= HAMMER_PFSD_SLAVE;
-		} else if (strcmp(cmd, "no-mirror") == 0) {
-			if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE) {
-				fprintf(stderr,
-					"no-mirror mode cannot be set on a "
-					"slave PFS\n");
-				exit(1);
-			}
-			pfsd->master_id = -1;
-			pfsd->mirror_flags &= ~HAMMER_PFSD_SLAVE;
 		} else if (strcmp(cmd, "label") == 0) {
 			len = strlen(ptr);
 			if (ptr[0] == '"' && ptr[len-1] == '"') {
@@ -589,9 +532,6 @@ pseudofs_usage(int code)
 		"    sync-end-tid=0x16llx\n"
 		"    shared-uuid=0x16llx\n"
 		"    unique-uuid=0x16llx\n"
-		"    master=0-15\n"
-		"    slave\n"
-		"    no-mirror\n"
 		"    label=\"string\"\n"
 	);
 	exit(code);

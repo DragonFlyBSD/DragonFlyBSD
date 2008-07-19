@@ -31,18 +31,17 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_blockmap.c,v 1.3 2008/06/17 04:03:38 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_blockmap.c,v 1.4 2008/07/19 18:48:14 dillon Exp $
  */
 
 #include "hammer.h"
 
-#if 0
 static void dump_blockmap(const char *label, int zone);
-#endif
 
 void
 hammer_cmd_blockmap(void)
 {
+	dump_blockmap("btree", HAMMER_ZONE_FREEMAP_INDEX);
 #if 0
 	dump_blockmap("btree", HAMMER_ZONE_BTREE_INDEX);
 	dump_blockmap("meta", HAMMER_ZONE_META_INDEX);
@@ -51,7 +50,7 @@ hammer_cmd_blockmap(void)
 #endif
 }
 
-#if 0
+#if 1
 
 static
 void
@@ -68,7 +67,6 @@ dump_blockmap(const char *label, int zone)
 	hammer_off_t scan1;
 	hammer_off_t scan2;
 
-	assert(zone >= HAMMER_ZONE_BTREE_INDEX && zone < HAMMER_MAX_ZONES);
 	assert(RootVolNo >= 0);
 	root_volume = get_volume(RootVolNo);
 	rootmap = &root_volume->ondisk->vol0_blockmap[zone];
@@ -78,21 +76,22 @@ dump_blockmap(const char *label, int zone)
 		label, rootmap->next_offset, rootmap->alloc_offset);
 
 	for (scan1 = HAMMER_ZONE_ENCODE(zone, 0);
-	     scan1 < rootmap->alloc_offset;
-	     scan1 += HAMMER_BLOCKMAP_LAYER1) {
+	     scan1 < HAMMER_ZONE_ENCODE(zone, HAMMER_OFF_LONG_MASK);
+	     scan1 += HAMMER_BLOCKMAP_LAYER2) {
 		/*
 		 * Dive layer 1.
 		 */
 		layer1_offset = rootmap->phys_offset +
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(scan1);
 		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
+		if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL)
+			continue;
 		printf(" layer1 %016llx @%016llx blocks-free %lld\n",
 			scan1, layer1->phys_offset, layer1->blocks_free);
 		if (layer1->phys_offset == HAMMER_BLOCKMAP_FREE)
 			continue;
 		for (scan2 = scan1; 
-		     scan2 < scan1 + HAMMER_BLOCKMAP_LAYER1 &&
-		     scan2 < rootmap->alloc_offset;
+		     scan2 < scan1 + HAMMER_BLOCKMAP_LAYER2;
 		     scan2 += HAMMER_LARGEBLOCK_SIZE
 		) {
 			/*
@@ -101,20 +100,11 @@ dump_blockmap(const char *label, int zone)
 			layer2_offset = layer1->phys_offset +
 					HAMMER_BLOCKMAP_LAYER2_OFFSET(scan2);
 			layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
-			switch(layer2->u.phys_offset) {
-			case HAMMER_BLOCKMAP_FREE:
-				break;
-			case HAMMER_BLOCKMAP_UNAVAIL:
-				break;
-			default:
-				printf("        %016llx @%016llx "
-				       "free %3d%% (%u)\n",
-				       scan2, layer2->u.phys_offset,
-				       layer2->bytes_free * 100 /
-					HAMMER_LARGEBLOCK_SIZE,
-				       layer2->bytes_free);
-				break;
-			}
+			printf("        %016llx zone=%d app=%-7d free=%-7d\n",
+				scan2,
+				layer2->zone,
+				layer2->append_off,
+				layer2->bytes_free);
 		}
 	}
 	if (buffer1)
