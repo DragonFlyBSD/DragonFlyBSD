@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.24 2008/05/09 17:52:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.24.2.1 2008/07/19 04:44:15 dillon Exp $
  */
 /*
  * nlookup() is the 'new' namei interface.  Rather then return directory and
@@ -455,8 +455,12 @@ nlookup(struct nlookupdata *nd)
 	for (xptr = ptr; *xptr == '/'; ++xptr)
 		;
 	if (*xptr == 0) {
-	    if (error == ENOENT && (nd->nl_flags & NLC_CREATE))
-		error = naccess(&nch, VCREATE, nd->nl_cred);
+	    if (error == ENOENT && (nd->nl_flags & NLC_CREATE)) {
+		if (nd->nl_flags & NLC_NFS_RDONLY)
+			error = EROFS;
+		else
+			error = naccess(&nch, VCREATE, nd->nl_cred);
+	    }
 	    if (error == 0 && wasdotordotdot && (nd->nl_flags & NLC_DELETE))
 		error = EINVAL;
 	}
