@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.22 2008/06/26 04:06:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.22.2.1 2008/07/19 04:51:09 dillon Exp $
  */
 
 #include "hammer.h"
@@ -227,6 +227,8 @@ hammer_destroy_objid_cache(hammer_mount_t hmp)
 
 	while ((ocp = TAILQ_FIRST(&hmp->objid_cache_list)) != NULL) {
 		TAILQ_REMOVE(&hmp->objid_cache_list, ocp, entry);
+		if (ocp->dip)
+			ocp->dip->objid_cache = NULL;
 		kfree(ocp, M_HAMMER);
 	}
 }
