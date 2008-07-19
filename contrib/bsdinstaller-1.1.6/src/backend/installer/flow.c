@@ -121,8 +121,8 @@ state_lang_menu(struct i_fn_args *a)
 
 			"p", "role", "menu",
 
-			"a", "default", "default",
-			"Do not choose any language", "",
+			"a", "default", "English",
+			"English Standard Default", "",
 			"a", "ru", "Russian",
 			"Russian KOI8-R", "",
 			NULL
