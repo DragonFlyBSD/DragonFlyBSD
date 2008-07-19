@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.65 2008/07/18 00:19:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.66 2008/07/19 18:44:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -286,25 +286,47 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	char *path;		/* volume name in system space */
 	int error;
 	int i;
+	int master_id;
 
 	if ((error = copyin(data, &info, sizeof(info))) != 0)
 		return (error);
-	if ((mp->mnt_flag & MNT_UPDATE) == 0) {
-		if (info.nvolumes <= 0 || info.nvolumes >= 32768)
-			return (EINVAL);
-	}
-	if ((info.hflags & HMNT_MASTERID) &&
-	    (info.masterid < -1 || info.masterid >= HAMMER_MAX_MASTERS)) {
-			return (EINVAL);
-	}
 
 	/*
-	 * Interal mount data structure
+	 * updating or new mount
 	 */
 	if (mp->mnt_flag & MNT_UPDATE) {
 		hmp = (void *)mp->mnt_data;
 		KKASSERT(hmp != NULL);
 	} else {
+		if (info.nvolumes <= 0 || info.nvolumes >= 32768)
+			return (EINVAL);
+		hmp = NULL;
+	}
+
+	/*
+	 * master-id validation.  The master id may not be changed by a
+	 * mount update.
+	 */
+	if (info.hflags & HMNT_MASTERID) {
+		if (hmp && hmp->master_id != info.master_id) {
+			kprintf("hammer: cannot change master id "
+				"with mount update\n");
+			return(EINVAL);
+		}
+		master_id = info.master_id;
+		if (master_id < -1 || master_id >= HAMMER_MAX_MASTERS)
+			return (EINVAL);
+	} else {
+		if (hmp)
+			master_id = hmp->master_id;
+		else
+			master_id = 0;
+	}
+
+	/*
+	 * Interal mount data structure
+	 */
+	if (hmp == NULL) {
 		hmp = kmalloc(sizeof(*hmp), M_HAMMER, M_WAITOK | M_ZERO);
 		mp->mnt_data = (qaddr_t)hmp;
 		hmp->mp = mp;
@@ -343,10 +365,9 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	}
 	hmp->hflags &= ~HMNT_USERFLAGS;
 	hmp->hflags |= info.hflags & HMNT_USERFLAGS;
-	if (info.hflags & HMNT_MASTERID)
-		hmp->masterid = info.masterid;
-	else
-		hmp->masterid = -1;
+
+	hmp->master_id = master_id;
+
 	if (info.asof) {
 		kprintf("ASOF\n");
 		mp->mnt_flag |= MNT_RDONLY;

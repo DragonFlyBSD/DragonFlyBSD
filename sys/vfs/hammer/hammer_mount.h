@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_mount.h,v 1.9 2008/07/14 03:20:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_mount.h,v 1.10 2008/07/19 18:44:49 dillon Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -49,14 +49,14 @@ struct hammer_mount_info {
 	const char	**volumes;	/* array of pointers to device names */
 	int		nvolumes;	/* number of devices */
 	int		hflags;		/* extended hammer mount flags */
-	int		masterid;
+	int		master_id;	/* -1=no-mirror mode, or 0-15 */
 	u_int64_t	asof;		/* asof - HAMMER_MAX_TID is current */
 	struct export_args export;	/* export arguments */
 	u_int64_t	reserved[15];
 };
 
 #define HMNT_NOHISTORY	0x00000001
-#define HMNT_MASTERID	0x00000002	/* masterid field set */
+#define HMNT_MASTERID	0x00000002	/* master_id field set */
 #define HMNT_EXPORTREQ	0x00000004
 #define HMNT_UNDO_DIRTY	0x00000008
 
