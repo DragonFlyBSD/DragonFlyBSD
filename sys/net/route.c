@@ -64,7 +64,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.35 2008/07/07 22:02:10 nant Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.36 2008/07/20 18:43:12 nant Exp $
  */
 
 #include "opt_inet.h"
@@ -1301,7 +1301,7 @@ rt_setshims(struct rtentry *rt, struct sockaddr **rt_shim){
 			break;
 
 		shimlen = ROUNDUP(shim->sa_len);
-		R_Malloc(rt->rt_shim[i], struct sockaddr_mpls *, shimlen);
+		R_Malloc(rt->rt_shim[i], struct sockaddr *, shimlen);
 		bcopy(shim, rt->rt_shim[i], shimlen);
 	}
 
