@@ -2,7 +2,7 @@
      "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
-<!-- $DragonFly: site/data/includes/header.shtml,v 1.6 2008/02/26 18:52:47 dillon Exp $ -->
+<!-- $DragonFly: site/data/includes/header.shtml,v 1.7 2008/07/21 17:55:49 dillon Exp $ -->
 <title><!--#echo var="title" --></title>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <link href="/favicon.ico" rel="shortcut icon" type="image/x-icon">
@@ -60,6 +60,12 @@
 
 <ul class="minor">
 <li><a href="/security/keys.shtml">PGP Keys</a>
+</ul>
+
+<li class="major">Exports
+
+<ul class="minor">
+<li><a href="/hammer/index.shtml">HAMMER</a>
 </ul>
 
 </ul>
