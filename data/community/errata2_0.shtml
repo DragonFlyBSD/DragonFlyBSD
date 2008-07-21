@@ -1,0 +1,24 @@
+<!--#set var="title" value="DragonFly - August 2007 Release 2.0.x Errata Page" -->
+<!--#include virtual="/includes/header.shtml" -->
+<!-- $DragonFly: site/data/community/errata2_0.shtml,v 1.1 2008/07/21 16:45:08 dillon Exp $ -->
+
+<h1>Errata Page for DragonFly 2.0.x</h1>
+
+<p>
+General note on errata:  We do not roll a release CD every time we bump
+the sub-version.  The standard upgrade method is to build from sources.
+The 
+<A HREF="http://leaf.dragonflybsd.org/cgi/web-man?command=build&section=ANY">build</A>
+manual page gives you information on how to upgrade your system from
+sources.  See the <A HREF="download.cgi">download</A> page for information on tracking changes with
+cvsup.
+</p>
+
+<h2>2.0.0 Errata</h2>
+<ul>
+    <p>
+    No new errata.
+    </p>
+</ul>
+
+<!--#include virtual="/includes/footer.shtml" -->
