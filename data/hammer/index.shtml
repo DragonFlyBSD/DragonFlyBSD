@@ -1,0 +1,85 @@
+<!--#set var="title" value="The HAMMER Filesystem" -->
+<!--#include virtual="/includes/header.shtml" -->
+
+<!-- $DragonFly: site/data/hammer/index.shtml,v 1.1 2008/07/21 17:53:04 dillon Exp $ -->
+<p>
+The HAMMER filesystem is a new addition to DragonFly.
+Being a brand-new filesystem we consider HAMMER to be in an early Beta state
+as of the 2.0 release, and expect it to become production-ready by the
+end of 2008.  All major features except the mirroring are quite well tested
+as-of the release.  The mirroring was the last big-ticket item to go in
+prior to the 2.0 release and should be considered more in a late-alpha light.
+</p>
+<p>
+Now that it has been released, HAMMER is going to be given some settling
+time through the end of 2008.  We will be testing the waters on porting
+interest and making adjustments to the source files to support that work,
+mainly by wrapping the DragonFly-specific calls and globals used by the 
+filesystem into more OS-specific files and leaving as much of the meat of
+the filesystem as possible as machine-independant code.
+</p>
+<p>
+If you are interesting in porting HAMMER to another OS, please drop me
+a line at <strong>dillon at backplane.com</strong>.
+I will be creating a new DragonFly
+mailing list specifically for HAMMER porting as well as a git or
+mercurial repository (I haven't decided which yet) separate from the
+DragonFly repository.
+</p>
+<p>
+I can't stress enough that HAMMER is designed for large storage media.
+The minimum I would be comfortable with would be around a 40G partition,
+though I often create smaller partitions for testing purposes.
+HAMMER can address up to 1-Exabyte of space and the use target is really
+designed for 500G and up.  What does this mean for people who want to
+use HAMMER on a smaller partition?  Well, there are two issues.  First,
+the filesystem needs to reserve several hundred megabytes of media space
+to serve as buffer space for the reblocker.  If you create a small
+filesystem the space efficiency is not going to be all that good.  More
+importantly, HAMMER recovers space via pruning and reblocking cron jobs
+which early adopters must set up manually and are intended to run a few
+minutes every night to incrementally clean up the filesystem.  You don't
+get instant gratification when you 'rm' something, so if the filesystem
+is too small normal use may run you out of space before the pruning and
+reblocking can catch up.
+</p>
+<p>
+If you remember only two things about this filesystem, the first should
+be the large-media nature of the filesystem's management functions, and
+the second should be the historical data retention.  Most systems sync
+their mounts every 30-60 seconds.  For HAMMER this means that you effectively
+get a snapshot every 30-60 seconds.  The filesystem's fine-grained nature
+shows up when you use the <strong>hammer</strong> or <strong>undo</strong>
+commands to sift through the history, but the absolute best way to utilize
+the fine-grained nature of the filesystem is to create a cron job 
+which creates a snapshot softlink at the desired interval, for example
+once an hour, using the <strong>hammer snapshot</strong> command.
+Creating an actual softlink via this command guarantees you a consistent
+view of the filesystem state.
+</p>
+<p><strong>Documentation</strong>:<br />
+</p>
+<table width="100%" cellpadding="3" cellspacing="0" border="1"
+style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
+<tr bgcolor="#ffcc00">
+<th>Document</th><th>Description</th>
+</tr>
+
+<tr>
+<td valign="top"><a href="hammer.pdf">hammer.pdf</a></td>
+<td valign="top">Hammer Major feature document</td>
+</tr>
+
+<tr>
+<td valign="top"><a href="http://leaf.dragonflybsd.org/cgi/web-man?command=hammer&section=5">hammer(5)</a></td>
+<td valign="top">Hammer starter manual page</td>
+</tr>
+
+<tr>
+<td valign="top"><a href="http://leaf.dragonflybsd.org/cgi/web-man?command=hammer&section=8">hammer(8)</a></td>
+<td valign="top">Hammer utility manual page</td>
+</tr>
+
+</table>
+
+<!--#include virtual="/includes/footer.shtml" -->
