@@ -3,7 +3,7 @@
 # rcsfreeze - assign a symbolic revision number to a configuration of RCS files
 
 # $FreeBSD: src/gnu/usr.bin/rcs/rcsfreeze/rcsfreeze.sh,v 1.8.2.1 2001/03/05 13:08:40 ru Exp $
-# $DragonFly: src/gnu/usr.bin/rcs/rcsfreeze/rcsfreeze.sh,v 1.2 2003/06/17 04:25:48 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/rcs/rcsfreeze/rcsfreeze.sh,v 1.3 2008/07/21 23:42:01 swildner Exp $
 
 #       The idea is to run rcsfreeze each time a new version is checked
 #       in. A unique symbolic revision number (C_[number], where number
@@ -62,7 +62,7 @@ rcsfreeze: give log message, summarizing changes (end with EOF or single '.')" \
 # first we will have to save everything right now in a temporary file.
 TMPLOG=/tmp/rcsfrz$$
 trap 'rm -f $TMPLOG; exit 1' 1 2 13 15
-# Now ask for a log message, continously add to the log file
+# Now ask for a log message, continuously add to the log file
 (
 	echo "Version: $SYMREVNAME($SYMREV), Date: $DATE
 -----------" || exit

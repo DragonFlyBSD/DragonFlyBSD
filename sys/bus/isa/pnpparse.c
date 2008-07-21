@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/pnpparse.c,v 1.14 2003/06/11 00:32:45 obrien Exp $
- * $DragonFly: src/sys/bus/isa/pnpparse.c,v 1.10 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/isa/pnpparse.c,v 1.11 2008/07/21 23:42:02 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -458,7 +458,7 @@ pnp_parse_resources(device_t dev, u_char *resources, int len, int ldn)
 				}
 				start = p + l;
 				if (ncfgs > MAXDEP) {
-					device_printf(parent, "too many dependant configs (%d)\n", MAXDEP);
+					device_printf(parent, "too many dependent configs (%d)\n", MAXDEP);
 					len = 0;
 					break;
 				}

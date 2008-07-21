@@ -2,7 +2,7 @@
 #
 # rcng command
 #
-# $DragonFly: src/sbin/rcrun/rcrun.sh,v 1.8 2007/10/06 17:31:21 swildner Exp $
+# $DragonFly: src/sbin/rcrun/rcrun.sh,v 1.9 2008/07/21 23:42:02 swildner Exp $
 
 dostart()
 {
@@ -37,7 +37,7 @@ dostart()
 		    fi
 		done
 	    done
-	    # $j contains the last dependancy, which we run
+	    # $j contains the last dependency, which we run
 	    #
 	    if [ X$j = X ]; then
 		echo "Unable to find keyword $i"

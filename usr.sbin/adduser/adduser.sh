@@ -25,7 +25,7 @@
 #       Email: Mike Makonnen <mtm@FreeBSD.Org>
 #
 # $FreeBSD: src/usr.sbin/adduser/adduser.sh,v 1.31 2007/10/20 00:45:31 mtm Exp $
-# $DragonFly: src/usr.sbin/adduser/adduser.sh,v 1.3 2008/05/18 03:02:53 pavalos Exp $
+# $DragonFly: src/usr.sbin/adduser/adduser.sh,v 1.4 2008/07/21 23:42:02 swildner Exp $
 #
 
 # err msg
@@ -882,7 +882,7 @@ if [ -n "$readconfig" ]; then
 	fi
 fi 
 
-# Proccess command-line options
+# Process command-line options
 #
 for _switch ; do
 	case $_switch in
