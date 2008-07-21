@@ -1,6 +1,6 @@
 <!--#set var="title" value="Welcome to DragonFlyBSD.org" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/index.shtml,v 1.9 2008/04/20 19:39:38 dillon Exp $ -->
+<!-- $DragonFly: site/data/index.shtml,v 1.10 2008/07/21 20:22:06 dillon Exp $ -->
 
 <h1>Ongoing DragonFly News</h1>
 <p>
@@ -13,42 +13,42 @@ Check the
 DragonFly is participating in Google's Summer of Code.  
 For more information, check the <a href="http://wiki.dragonflybsd.org/index.cgi/GoogleSoC2008">SoC page on our wiki</a>.
 </p>
-
-    <h1>DragonFly-1.12.2 RELEASED!</h1>
-	<h1>20 April 2008</h1>
-
+    <h1>DragonFly-2.0 RELEASED!!</h1>
+	<h1>21 July 2008</h1>
 <p>
-The <a href="/community/release1_12.shtml"><b>DragonFly-1.12.2 Release</b></a> is ready!
-
+The <a href="/community/release2_0.shtml"><b>DragonFly-2.0.0 Release</b></a> is ready!
 </p>
 
 <h1>What is DragonFly BSD?</h1>
-<p>
-DragonFly is an operating system and environment originally based on
-FreeBSD.  DragonFly branched from FreeBSD in 2003 in order to develop
-a radically different approach to concurrency, SMP, and most other 
-kernel subsystems.
-</p>
-
 <p>
 DragonFly belongs to the same class of operating system as BSD and Linux
 and is based on the same UNIX ideals and APIs.  DragonFly gives the BSD
 base an opportunity to grow in an entirely different direction from the one
 taken in the FreeBSD, NetBSD, and OpenBSD series.</p>
 <p>
-From 2003 to early 2007 the DragonFly project focused on rewriting most
-of the major kernel subsystems in order to support the second phase of
-the project.  This involved a great deal of work in nearly every subsystem,
-particularly the filsystem APIs and kernel core.  During all of this we have
-managed to keep the system up-to-date with regards to the third party
-applications and base system utilities that are needed to make any system
-usable in production.  We have also adopted the PkgSrc system for
+From 2003 (when DragonFly first forked from FreeBSD), to early 2007,
+the DragonFly project focused on rewriting most of the major kernel
+subsystems to implement required abstractions and support mechanics
+for the second phase of the project.  This involved a great deal of work
+in nearly every subsystem, particularly the filsystem APIs and kernel core.
+During all of this we have managed to keep the system updated with regards
+to the third party applications and base system utilities needed to make
+any system usable in production.  We have also adopted the PkgSrc system for
 management of all non-base-system third-party applications in order to pool
 our resources with other BSD projects using the system.</p>
 <p>
+In the 2007-2008 time-frame a new filesystem called HAMMER was developed
+for DragonFly.  HAMMER sees its first light of day in the July 2008
+2.0 release.  This filesystem has been designed to solve numerous issues
+and to add many new capabilities to DragonFly, such as fine-grained
+snapshot access, instant crash recovery, and near real-time mirroring.
+The filesytem is also intended to serve as a basis for the clustering
+work that makes up the second phase of the project.
+</p>
+<p>
 The second phase of the project is now upon us.  The DragonFly project's
-ultimate goal is to provide generic clustering support natively in 
-the kernel.  This involves the creation of a sophisticated cache management
+ultimate goal is to provide native clustering support in the kernel.
+This involves the creation of a sophisticated cache management
 framework for filesystem namespaces, file spaces, and VM spaces, which
 allows heavily interactive programs to run across multiple machines with
 cache coherency fully guarenteed in all respects.  This also involves being
