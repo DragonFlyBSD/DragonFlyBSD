@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man5/hammer.5,v 1.6 2008/07/18 22:54:52 swildner Exp $
+.\" $DragonFly: src/share/man/man5/hammer.5,v 1.7 2008/07/21 21:20:52 thomas Exp $
 .\"
 .Dd July 18, 2008
 .Os
@@ -60,11 +60,13 @@ To mount via
 .Sh DESCRIPTION
 The
 .Nm
-file system provides facilities to store file system data onto a disk device
+file system provides facilities to store file system data onto disk devices
 and is intended to replace UFS as the default file system for
 .Dx .
-Among its features are fine grained history retention, file systems spanning
-multiple volumes, mirroring capability, and pseudo file systems.
+Among its features are instant crash recovery,
+large file systems spanning multiple volumes,
+fine grained history retention,
+mirroring capability, and pseudo file systems.
 For a more detailed introduction, see the paper listed in the
 .Sx SEE ALSO
 section.
@@ -92,6 +94,26 @@ Related
 .Xr hammer 8
 commands:
 .Ar synctid
+.Ss Instant Crash Recovery
+After a non-gracefull system shutdown,
+.Nm
+file systems will be brought back into a fully coherent state
+within a few seconds, at system startup.
+This is accomplished by mounting the file system,
+no special utility needs to be run.
+.Ss Large File Systems & Multi Volume
+A
+.Nm
+file system can span up to 256 volumes.
+Each volume occupies a
+.Dx
+disk slice or partition, or another special file,
+it can be up to 4096 TB in size.
+For volumes over 2 TB in size,
+.Xr gpt 8
+and
+.Xr disklabel64 8
+normally needs to be used.
 .Ss History
 History metadata on the media is written with every sync operation.
 Prior versions of files or directories are accessible by appending
@@ -155,7 +177,7 @@ commands:
 .Ar mirror-write ,
 .Ar mirror-dump
 .Sh EXAMPLES
-.Ss Preparing the file system
+.Ss Preparing the File System
 To create and mount a
 .Nm
 file system use the
@@ -190,8 +212,10 @@ utility's
 .Fl c
 and
 .Fl t
-options be used for this job (for example, every night at 2:15 up to 5
-minutes).
+options be used for this job;
+for example, to reblock the
+.Pa /home
+file system every night at 2:15 for up to 5 minutes:
 .Bd -literal
 15 2 * * * hammer -c /var/run/Home -t 300 reblock /home >/dev/null 2>&1
 .Ed
@@ -255,6 +279,8 @@ hammer mirror-copy /home/master /home/slave
 .Ed
 .Sh SEE ALSO
 .Xr undo 1 ,
+.Xr disklabel64 8 ,
+.Xr gpt 8 ,
 .Xr hammer 8 ,
 .Xr mount_hammer 8 ,
 .Xr newfs_hammer 8
