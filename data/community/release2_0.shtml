@@ -1,7 +1,7 @@
-<!--#set var="title" value="DragonFly - xxx 2008 Release 2.0.x Download" -->
+<!--#set var="title" value="DragonFly - July 2008 Release 2.0.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/release2_0.shtml,v 1.6 2008/07/14 12:22:54 matthias Exp $ -->
+<!-- $DragonFly: site/data/community/release2_0.shtml,v 1.7 2008/07/21 16:44:51 dillon Exp $ -->
 
 <h1>Obtaining DragonFly 2.0.x for your system</h1>
 
@@ -34,7 +34,8 @@ See the 'Download Site' list below for a list of download locations.
 
 <p>
 <b>The MD5 for the release is:
-
+<br/>MD5 (dfly-2.0.0_REL.iso) = f85a9a50424e7d6407383364f8c4c605
+<br/>MD5 (dfly-2.0.0_REL.iso.gz) = e1e320a0dbc9c9b94c49012d5b096b5e
 </b><br /> </p>
 
 <h2>2.0.x Release Errata</h2>
@@ -59,7 +60,7 @@ See the 'Download Site' list below for a list of download locations.
 </TR>
 <TR>
 <TD>2.0.0</TD>
-<TD>xx-xx-2008</TD>
+<TD>20-July-2008</TD>
 <TD>RELEASE CD</TD>
 <TD><A HREF="errata2_0.shtml">Errata</A></TD>
 </TR>
@@ -107,6 +108,7 @@ See the 'Download Site' list below for a list of download locations.
     <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-2.0.0_REL.iso.gz">FTP</A>
 </TD></TR>
 
+<!--
 <TR><TD>high5.net (Amsterdam)</TD>
 <TD>2.0.0_REL image</TD>
 <TD>
@@ -124,6 +126,7 @@ See the 'Download Site' list below for a list of download locations.
 <TD>
     <A HREF="ftp://ftp.mathematik.uni-marburg.de/pub/mirror/dragonfly/iso-images/dfly-2.0.0_REL.iso.gz">FTP</A>
 </TD></TR>
+-->
 
 
 <TR><TD>Dragonflybsd.org (USA)</TD>
@@ -138,59 +141,158 @@ See the 'Download Site' list below for a list of download locations.
 <p>
 2.0 is our eighth major DragonFly release.  DragonFly's policy is to
 only commit bug fixes to release branches.
-</p>
-<p>
-</p>
-<p>
-</p>
-<p>
-</p>
-<p>
-</p>
 <p>
 </p>
 <p>
 </p>
 
 <h1>DragonFly 2.0 Release Notes</h1>
+<h3>HAMMER filesystem released!</h3>
+<ul>
+    <li>Crash recovery on-mount, no fsck.
+    <li>Fine-grained snapshots, snapshot management, snapshot-support
+	for filesystem-wide data integrity checks.
+    <li>Historically accessible by default.
+    <li>Mirroring:  Queueless incremental mirroring, master to multi-slave.
+    <li>Undo and rollback.
+    <li>Reblocking.
+    <li>Multi-volume, maximum storage capacity of 1-Exabyte.
+</ul>
 <h3>Kernel changes</h3>
 <ul>
-    <li>Add a sysctl jail.allow_raw_sockets (default to disabled) which allows jails to use raw sockets.
+    <li>Add a sysctl jail.allow_raw_sockets (default to disabled) which
+	allows jails to use raw sockets.
+    <li>Enhance the firmware loading support.
+    <li>Improved random number operation.
+    <li><b>Add native fairq-queue implementation using ALTQ, for PF</b>
+    <li><b>Add native connection state recovery to PF</b> - so router
+	reboots do not drop active TCP connections.  New 'pickups' 
+	directives, and a 'set' directive to set default keep policy.
+    <li>Incorporate the 'probability' keyword into PDF from NetBSD.
+    <li>Miscellanious bug fixes to the LWP (Light Weight Process) code.
+	Fixes issues with kill -9 on vkernels.
+    <li>Significant work on the buffer cache and VM system relating to
+	system operation under heavy loads and with low amounts of 
+	free memory.
+    <li>Major cleanup of the LWKT token code.  This code works very well
+	now and is here to stay.
+    <li>Implement a cothread API and abstraction for vkernel drivers.  This
+	allows a vkernel driver to use a real thread as an I/O co-processor,
+	outside of the ncpus abstraction, improving vkernel performance
+	for both UP and SMP bulids.
+    <li>Revamp and clean-up a good chunk of the low level pmap code in both
+	the vkernel and i386 builds.  This fixes a number of access safety
+	issues and races which could occur under heavy loads.
+    <li>Fix issues related to gdb'ing a vkernel.
+    <li>Add a feature which allows boot0 and boot1 to accept commands
+	over the serial port (instead of just boot2).
+    <li>Fix an issue with the use of O_CREAT on read-only NFS mounts.
+    <li>proc structure now allocated with kmalloc instead of zalloc.
+    <li>Add support for local SOCK_SEQPACKET ... a connection oriented
+	protocol over unix domain sockets which retains packetization
+	boundaries for read() and write().
+    <li>Improve network polling support.
+    <li>TCP keepalives are now turned on by default.
+    <li>Fix ktrace support for threaded processes.
+    <li>kern.trap_mpsafe and kern.syscall_mpsafe are now enabled by default,
+	pushing the MP lock deeper into the kernel.
+    <li>Fix a memory corruption issue related to the kernel losing track
+	of the kernel's own use of the FP unit for bcopy operations.
+    <li>Jails can now use raw sockets if jail.allow_raw_sockets is set.
+    <li>CAM sync w/ FreeBSD, plus additional CAM work to fix disconnect
+	races and panics.
+    <li>Bring in bug fixes for UFS from FreeBSD related to when the
+	filesystem becomes full.
+    <li>getsockopt() and setsockopt() now copyin/copyout data early,
+	so the rest of the kernel can just access a kernel buffer.
+    <li>Experimental MPLS over ethernet support added.
+    <li>Adjust NATA queueing to not allow I/O requests to languish
+	forever due to sequential writes keeping the elevator going in
+	one direction only.
 </ul>
 <h3>Hardware changes</h3>
 <ul>
     <li>Add cmx(4) from FreeBSD, the driver for Omnikey CardMan 4040
     smartcard readers.
+    <li>Sync NATA from FreeBSD.
+    <li>Sync DRM from FreeBSD.
 </ul>
 <h3>Hardware changes (Networking)</h3>
 <ul>
+    <li><b>A double-ton of work on wireless drivers (by Sephe)</b>
+    <li><b>A double-ton of work on ethernet drivers (by Sephe)</b>
+    <li>Good progress made on removing the BGL from the network paths.
+	The BGL is still being left in-place for this release.
+    <li>Some significant Bluetooth stack work has been done.
+    <li>Greatly imrpoved packet routing on SMP systems.
+    <li>Greatly improved polling support.
+    <li>Greatly improved interrupt moderation support with certain
+	drivers.
 </ul>
 <h3>Hardware changes (USB)</h3>
 <ul>
+    <li>Better survivability when pulling mass storage devices
+	without unmounting.
+    <li>Add many more device IDs across the board.
+    <li>Recognize when a device is pulled out of a firewire port (sbp).
+    <li>Numerous fixes made to ugen(4), including using interrupt
+	endpoints to increase responsiveness.
+    <li>A few fixes made to firewire (fwohic).
+    <li>Defer bus exploration to allow ehci to initialize. Add
+	a boot loader tunable hw.usb.hack_defer_exploration which
+	defaults to 1 and can be set to 0 to rever to the old behavior.
 </ul>
 <h3>Userland changes</h3>
 <ul>
-    <li>Citrus iconv was synced with NetBSD.
     <li>Add blacklist feature for weak Debian-generated SSH keys.
+    <li>Miscellanious additions to help with pkgsrc compatibility.
+	O_SYNC, O_FSYNC.
+    <li>Improved ktrdump.
+    <li>Unique mode history feature added to /bin/sh (from NetBSD).
+    <li>Many improvements to manual pages and documentation.
+    <li>mount_nfs no longer gets confused by domain names which start
+	with a digit.
+    <li>Improved pkg_search
+    <li>Removal of remaining (x)ntpd bits.  dntpd is the official NTP
+	client for DragonFly.
+    <li>Lots of adjustments to libthread_xu to enhance pkgsrc compatibility
+	and thread support.
+    <li>Installer moved to contrib / direct-compile, instead of using
+	pkgsrc.
+    <li>Properly clear the direction flag (DF) on entry to a signal handler.
+    <li>cpdup enhanced to support a verification mode, better remote
+	operation, and parallelization.
+    <li>Add vknet and vknetd ... a simple userland virtual ether switch,
+	making user-run vkernel execution possible.
+    <li>Add lsearch(3) and lfind(3) to libc.
+    <li>Bug fixes to strcspn() and strspn() from FreeBSD.
+    <li>Add a new utility 'notty', which runs a program detached from
+	the terminal.
+    <li>du now collects information with a 64 bit quantity instead of a
+	32 bit quantity.  ls now displays inode numbers as 64 bit integers.
+    <li>Add objc support to gcc.
     <li>Build the installer as part of normal build-/installworld if <tt>WANT_INSTALLER</tt> is set.
 </ul>
 <h3>Removals</h3>
 <ul>
-	<li>Fortran was removed from the base.
-	<li>libreadline was removed from the base.
+    <li>Fortran was removed from the base.
+    <li>libreadline (and its incompatible license) removed.
+    <li>Numerous old device drivers have been removed.
 </ul>
 <h3>Contributed Software</h3>
 <ul>
+    <li>Sync zoneinfo database with tzdata2008d from elsie.
     <li>BIND was updated to version 9.3.5-P1 fixing a security issue.
     <li>bzip was updated to version 1.0.5.
     <li>less was updated to version 418.
     <li>libarchive was updated to version 2.5.5.
-    <li>OpenSSH was updated to version 5.0.
-    <li>The timezone database was synced with tzdata2008d.
+    <li>OpenSSH was updated to version 5.0p1.
+    <li>OpenSSH now has a blacklist feature for weak Debian-generated ssh
+	keys.
     <li>tnftpd was synced with NetBSD as of May 2008.
-</ul>
-<h3>Sub-project progress report</h3>
-<ul>
+    <li>Sync Citrus iconv support from NetBSD.
+    <li>BIND updated to 9.3.5P1 w/ port randomization security fixes.
+    <li>GCC updated to 4.1.2.
 </ul>
 
 <!--#include virtual="/includes/footer.shtml" -->
