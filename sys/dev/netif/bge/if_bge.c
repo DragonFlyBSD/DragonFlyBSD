@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.102 2008/07/13 11:02:50 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.103 2008/07/22 11:55:01 sephe Exp $
  *
  */
 
@@ -2625,6 +2625,49 @@ bge_stats_update(struct bge_softc *sc)
 #endif
 }
 
+static __inline int
+bge_cksum_pad(struct mbuf *pkt)
+{
+	struct mbuf *last = NULL;
+	int padlen;
+
+	padlen = BGE_MIN_FRAME - pkt->m_pkthdr.len;
+
+	/* if there's only the packet-header and we can pad there, use it. */
+	if (pkt->m_pkthdr.len == pkt->m_len &&
+	    M_TRAILINGSPACE(pkt) >= padlen) {
+		last = pkt;
+	} else {
+		/*
+		 * Walk packet chain to find last mbuf. We will either
+		 * pad there, or append a new mbuf and pad it
+		 * (thus perhaps avoiding the bcm5700 dma-min bug).
+		 */
+		for (last = pkt; last->m_next != NULL; last = last->m_next)
+			; /* EMPTY */
+
+		/* `last' now points to last in chain. */
+		if (M_TRAILINGSPACE(last) < padlen) {
+			/* Allocate new empty mbuf, pad it.  Compact later. */
+			struct mbuf *n;
+			MGET(n, MB_DONTWAIT, MT_DATA);
+			if (n == NULL)
+				return ENOBUFS;
+			n->m_len = 0;
+			last->m_next = n;
+			last = n;
+		}
+	}
+	KKASSERT(M_TRAILINGSPACE(last) >= padlen);
+	KKASSERT(M_WRITABLE(last));
+
+	/* Now zero the pad area, to avoid the bge cksum-assist bug */
+	bzero(mtod(last, char *) + last->m_len, padlen);
+	last->m_len += padlen;
+	pkt->m_pkthdr.len += padlen;
+	return 0;
+}
+
 /*
  * Encapsulate an mbuf chain in the tx ring  by coupling the mbuf data
  * pointers to descriptors.
@@ -2668,21 +2711,19 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 	 * offload, the hardware checksum assist gives incorrect results
 	 * (possibly from incorporating its own padding into the UDP/TCP
 	 * checksum; who knows).  If we pad such runts with zeros, the
-	 * onboard checksum comes out correct.  We do this by pretending
-	 * the mbuf chain has too many fragments so the coalescing code
-	 * below can assemble the packet into a single buffer that's
-	 * padded out to the mininum frame size.
+	 * onboard checksum comes out correct.
 	 */
 	if ((csum_flags & BGE_TXBDFLAG_TCP_UDP_CSUM) &&
 	    m_head->m_pkthdr.len < BGE_MIN_FRAME) {
-		error = EFBIG;
-	} else {
-		ctx.bge_segs = segs;
-		ctx.bge_maxsegs = maxsegs;
-		error = bus_dmamap_load_mbuf(sc->bge_cdata.bge_mtag, map,
-					     m_head, bge_dma_map_mbuf, &ctx,
-					     BUS_DMA_NOWAIT);
+		error = bge_cksum_pad(m_head);
+		if (error)
+			goto back;
 	}
+
+	ctx.bge_segs = segs;
+	ctx.bge_maxsegs = maxsegs;
+	error = bus_dmamap_load_mbuf(sc->bge_cdata.bge_mtag, map, m_head,
+				     bge_dma_map_mbuf, &ctx, BUS_DMA_NOWAIT);
 	if (error == EFBIG || ctx.bge_maxsegs == 0) {
 		struct mbuf *m_new;
 
@@ -2698,20 +2739,6 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 		} else {
 			m_head = m_new;
 			*m_head0 = m_head;
-		}
-
-		/*
-		 * Manually pad short frames, and zero the pad space
-		 * to avoid leaking data.
-		 */
-		if ((csum_flags & BGE_TXBDFLAG_TCP_UDP_CSUM) &&
-		    m_head->m_pkthdr.len < BGE_MIN_FRAME) {
-			int pad_len = BGE_MIN_FRAME - m_head->m_pkthdr.len;
-
-			bzero(mtod(m_head, char *) + m_head->m_pkthdr.len,
-			      pad_len);
-			m_head->m_pkthdr.len += pad_len;
-			m_head->m_len = m_head->m_pkthdr.len;
 		}
 
 		ctx.bge_segs = segs;
@@ -2844,6 +2871,7 @@ bge_start(struct ifnet *ifp)
 		 */
 		if (bge_encap(sc, &m_head, &prodidx)) {
 			ifp->if_flags |= IFF_OACTIVE;
+			ifp->if_oerrors++;
 			break;
 		}
 		need_trans = 1;
