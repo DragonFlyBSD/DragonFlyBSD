@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.40 2008/07/12 11:44:17 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.41 2008/07/22 11:52:06 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -720,6 +720,8 @@ nfe_miibus_statchg(device_t dev)
 	struct mii_data *mii = device_get_softc(sc->sc_miibus);
 	uint32_t phy, seed, misc = NFE_MISC1_MAGIC, link = NFE_MEDIA_SET;
 
+	ASSERT_SERIALIZED(sc->arpcom.ac_if.if_serializer);
+
 	phy = NFE_READ(sc, NFE_PHY_IFACE);
 	phy &= ~(NFE_PHY_HDX | NFE_PHY_100TX | NFE_PHY_1000T);
 
@@ -912,6 +914,8 @@ nfe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct mii_data *mii;
 	int error = 0, mask, jumbo_cap;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	switch (cmd) {
 	case SIOCSIFMTU:
@@ -1340,6 +1344,8 @@ nfe_start(struct ifnet *ifp)
 	int count = 0, oactive = 0;
 	struct mbuf *m0;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
 		return;
 
@@ -1407,6 +1413,8 @@ nfe_watchdog(struct ifnet *ifp)
 {
 	struct nfe_softc *sc = ifp->if_softc;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	if (ifp->if_flags & IFF_RUNNING) {
 		if_printf(ifp, "watchdog timeout - lost interrupt recovered\n");
 		nfe_txeof(sc, 1);
@@ -1427,6 +1435,8 @@ nfe_init(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t tmp;
 	int error;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	nfe_stop(sc);
 
@@ -1569,6 +1579,8 @@ nfe_stop(struct nfe_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t rxtxctl = sc->rxtxctl_desc | NFE_RXTX_BIT2;
 	int i;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	callout_stop(&sc->sc_tick_ch);
 
@@ -2110,6 +2122,8 @@ nfe_ifmedia_upd(struct ifnet *ifp)
 	struct nfe_softc *sc = ifp->if_softc;
 	struct mii_data *mii = device_get_softc(sc->sc_miibus);
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	if (mii->mii_instance != 0) {
 		struct mii_softc *miisc;
 
@@ -2126,6 +2140,8 @@ nfe_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	struct nfe_softc *sc = ifp->if_softc;
 	struct mii_data *mii = device_get_softc(sc->sc_miibus);
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	mii_pollstat(mii);
 	ifmr->ifm_status = mii->mii_media_status;
