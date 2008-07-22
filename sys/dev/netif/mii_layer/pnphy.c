@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/pnphy.c,v 1.1.2.1 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/pnphy.c,v 1.12 2006/12/22 23:26:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/pnphy.c,v 1.13 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -238,6 +238,9 @@ pnphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
 			break;
 
+		/*
+		 * This PHY's autonegotiation doesn't need to be kicked.
+		 */
 		return(0);
 	}
 

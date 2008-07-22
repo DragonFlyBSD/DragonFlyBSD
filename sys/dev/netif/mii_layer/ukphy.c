@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/ukphy.c,v 1.2.2.2 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ukphy.c,v 1.11 2006/12/22 23:26:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/ukphy.c,v 1.12 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -180,7 +180,6 @@ ukphy_detach(device_t dev)
 	struct mii_softc *sc;
 
 	sc = device_get_softc(dev);
-	mii_phy_auto_stop(sc);
 	sc->mii_dev = NULL;
 	LIST_REMOVE(sc, mii_list);
 

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/ip1000phy.c,v 1.1 2006/07/25 00:16:09 yongari Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ip1000phy.c,v 1.3 2008/03/16 15:50:22 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/ip1000phy.c,v 1.4 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -271,10 +271,8 @@ done:
 		/*
 		 * Only used for autonegotiation.
 		 */
-		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO) {
-			sc->mii_ticks = 0;
+		if (IFM_SUBTYPE(ife->ifm_media) != IFM_AUTO)
 			break;
-		}
 
 		/*
 		 * check for link.

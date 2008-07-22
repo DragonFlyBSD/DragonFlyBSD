@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/xmphy.c,v 1.1.2.5 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/xmphy.c,v 1.10 2006/12/22 23:26:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/xmphy.c,v 1.11 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -244,8 +244,10 @@ xmphy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 		 */
 		reg = PHY_READ(sc, XMPHY_MII_BMSR) |
 		    PHY_READ(sc, XMPHY_MII_BMSR);
-		if (reg & XMPHY_BMSR_LINK)
+		if (reg & XMPHY_BMSR_LINK) {
+			sc->mii_ticks = 0;
 			break;
+		}
 
 		/*
 		 * Only retry autonegotiation every mii_anegticks seconds.
@@ -324,14 +326,12 @@ xmphy_mii_phy_auto(struct mii_softc *sc, int waitfor)
 {
 	int bmsr, anar = 0, i;
 
-	if ((sc->mii_flags & MIIF_DOINGAUTO) == 0) {
-		anar = PHY_READ(sc, XMPHY_MII_ANAR);
-		anar |= XMPHY_ANAR_FDX | XMPHY_ANAR_HDX;
-		PHY_WRITE(sc, XMPHY_MII_ANAR, anar);
-		DELAY(1000);
-		PHY_WRITE(sc, XMPHY_MII_BMCR,
-		    XMPHY_BMCR_AUTOEN | XMPHY_BMCR_STARTNEG);
-	}
+	anar = PHY_READ(sc, XMPHY_MII_ANAR);
+	anar |= XMPHY_ANAR_FDX | XMPHY_ANAR_HDX;
+	PHY_WRITE(sc, XMPHY_MII_ANAR, anar);
+	DELAY(1000);
+	PHY_WRITE(sc, XMPHY_MII_BMCR,
+	    XMPHY_BMCR_AUTOEN | XMPHY_BMCR_STARTNEG);
 
 	if (waitfor) {
 		/* Wait 500ms for it to complete. */
@@ -341,24 +341,7 @@ xmphy_mii_phy_auto(struct mii_softc *sc, int waitfor)
 				return (0);
 			DELAY(1000);
 		}
-
-		/*
-		 * Don't need to worry about clearing MIIF_DOINGAUTO.
-		 * If that's set, a timeout is pending, and it will
-		 * clear the flag.
-		 */
 		return (EIO);
-	}
-
-	/*
-	 * Just let it finish asynchronously.  This is for the benefit of
-	 * the tick handler driving autonegotiation.  Don't want 500ms
-	 * delays all the time while the system is running!
-	 */
-	if ((sc->mii_flags & MIIF_DOINGAUTO) == 0) {
-		sc->mii_flags |= MIIF_DOINGAUTO;
-		callout_reset(&sc->mii_auto_ch, hz >> 1, 
-			      mii_phy_auto_timeout, sc);
 	}
 	return (EJUSTRETURN);
 }

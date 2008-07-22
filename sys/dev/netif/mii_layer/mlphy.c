@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mlphy.c,v 1.2.2.3 2001/02/09 09:50:15 asmodai Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mlphy.c,v 1.11 2006/12/22 23:26:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mlphy.c,v 1.12 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -186,7 +186,6 @@ mlphy_detach(device_t dev)
 	struct mlphy_softc *sc;
 
 	sc = device_get_softc(dev);
-	mii_phy_auto_stop(&sc->ml_mii);
 	sc->ml_mii.mii_dev = NULL;
 	LIST_REMOVE(&sc->ml_mii, mii_list);
 
@@ -325,14 +324,6 @@ mlphy_service(struct mii_softc *xsc, struct mii_data *mii, int cmd)
 			break;
 
 		/*
-		 * Only retry autonegotiation every 5 seconds.
-		 */
-		if (++sc->mii_ticks <= sc->mii_anegticks)
-			return (0);
-		
-		sc->mii_ticks = 0;
-
-		/*
 		 * Check to see if we have link.  If we do, we don't
 		 * need to restart the autonegotiation process.  Read
 		 * the BMSR twice in case it's latched.
@@ -348,16 +339,22 @@ mlphy_service(struct mii_softc *xsc, struct mii_data *mii, int cmd)
 			reg = PHY_READ(sc, MII_BMSR) |
 			    PHY_READ(sc, MII_BMSR);
 		}
-
 		if (reg & BMSR_LINK) {
 			if (!msc->ml_linked) {
 				msc->ml_linked = 1;
 				mlphy_status(sc);
-				break;
 			}
-			return(0);
+			sc->mii_ticks = 0;
+			break;
 		}
 
+		/*
+		 * Only retry autonegotiation every 5 seconds.
+		 */
+		if (++sc->mii_ticks <= sc->mii_anegticks)
+			return (0);
+		
+		sc->mii_ticks = 0;
 		msc->ml_linked = 0;
 		mii->mii_media_active = IFM_NONE;
 		mii_phy_reset(sc);

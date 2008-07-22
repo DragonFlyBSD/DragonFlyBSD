@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii.c,v 1.6.2.2 2002/08/19 16:56:33 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii.c,v 1.11 2006/09/05 00:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mii.c,v 1.12 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -287,8 +287,12 @@ mii_mediachg(struct mii_data *mii)
 	for (child = LIST_FIRST(&mii->mii_phys); child != NULL;
 	     child = LIST_NEXT(child, mii_list)) {
 		rv = (*child->mii_service)(child, mii, MII_MEDIACHG);
-		if (rv)
+		if (rv) {
 			return (rv);
+		} else {
+			/* Reset autonegotiation timer. */
+			child->mii_ticks = 0;
+		}
 	}
 	return (0);
 }

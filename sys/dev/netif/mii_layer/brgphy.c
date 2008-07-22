@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.20 2008/03/16 15:50:22 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.21 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -317,12 +317,13 @@ setit:
 
 		/*
 		 * Check to see if we have link.  If we do, we don't
-		 * need to restart the autonegotiation process.  Read
-		 * the BMSR twice in case it's latched.
+		 * need to restart the autonegotiation process.
 		 */
 		reg = PHY_READ(sc, BRGPHY_MII_AUXSTS);
-		if (reg & BRGPHY_AUXSTS_LINK)
+		if (reg & BRGPHY_AUXSTS_LINK) {
+			sc->mii_ticks = 0;
 			break;
+		}
 
 		/*
 		 * Only retry autonegotiation every 5 seconds.

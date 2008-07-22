@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii_physubr.c,v 1.2.2.1 2000/12/12 19:29:14 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.14 2007/03/24 05:57:49 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.15 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -106,7 +106,6 @@ const struct mii_media	mii_media_table[MII_NMEDIA] = {
 void
 mii_softc_init(struct mii_softc *mii, struct mii_attach_args *ma)
 {
-	callout_init(&mii->mii_auto_ch);
 	mii->mii_phy = ma->mii_phyno;
 	mii->mii_flags |= ma->mii_flags;
 	mii->mii_model = MII_MODEL(ma->mii_id2);
@@ -121,111 +120,61 @@ mii_softc_init(struct mii_softc *mii, struct mii_attach_args *ma)
 int
 mii_phy_auto(struct mii_softc *sc, int waitfor)
 {
-	int i;
+	uint16_t anar;
 
-	if ((sc->mii_flags & MIIF_DOINGAUTO) == 0) {
-		/*
-		 * Check for 1000BASE-X.  Autonegotiation is a bit
-		 * different on such devices.
-		 */
-		if (sc->mii_flags & MIIF_IS_1000X) {
-			uint16_t anar = 0;
+	/*
+	 * Check for 1000BASE-X.  Autonegotiation is a bit
+	 * different on such devices.
+	 */
+	if (sc->mii_flags & MIIF_IS_1000X) {
+		anar = 0;
+		if (sc->mii_extcapabilities & EXTSR_1000XFDX)
+			anar |= ANAR_X_FD;
+		if (sc->mii_extcapabilities & EXTSR_1000XHDX)
+			anar |= ANAR_X_HD;
 
-			if (sc->mii_extcapabilities & EXTSR_1000XFDX)
-				anar |= ANAR_X_FD;
-			if (sc->mii_extcapabilities & EXTSR_1000XHDX)
-				anar |= ANAR_X_HD;
-
-			if (sc->mii_flags & MIIF_DOPAUSE) {
-				/* XXX Asymmetric vs. symmetric? */
-				anar |= ANLPAR_X_PAUSE_TOWARDS;
-			}
-
-			PHY_WRITE(sc, MII_ANAR, anar);
-		} else {
-			uint16_t anar;
-
-			anar = BMSR_MEDIA_TO_ANAR(sc->mii_capabilities) |
-			    ANAR_CSMA;
-			if (sc->mii_flags & MIIF_DOPAUSE) {
-				anar |= ANAR_FC;
-				/* XXX Only 1000BASE-T has PAUSE_ASYM? */
-				if ((sc->mii_flags & MIIF_HAVE_GTCR) &&
-				    (sc->mii_extcapabilities &
-				     (EXTSR_1000THDX|EXTSR_1000TFDX)))
-					anar |= ANAR_X_PAUSE_ASYM;
-			}
-			PHY_WRITE(sc, MII_ANAR, anar);
-			if (sc->mii_flags & MIIF_HAVE_GTCR) {
-				uint16_t gtcr = 0;
-
-				if (sc->mii_extcapabilities & EXTSR_1000TFDX)
-					gtcr |= GTCR_ADV_1000TFDX;
-				if (sc->mii_extcapabilities & EXTSR_1000THDX)
-					gtcr |= GTCR_ADV_1000THDX;
-
-				PHY_WRITE(sc, MII_100T2CR, gtcr);
-			}
+		if (sc->mii_flags & MIIF_DOPAUSE) {
+			/* XXX Asymmetric vs. symmetric? */
+			anar |= ANLPAR_X_PAUSE_TOWARDS;
 		}
-		PHY_WRITE(sc, MII_BMCR, BMCR_AUTOEN | BMCR_STARTNEG);
+		PHY_WRITE(sc, MII_ANAR, anar);
+	} else {
+		anar = BMSR_MEDIA_TO_ANAR(sc->mii_capabilities) |
+		    ANAR_CSMA;
+		if (sc->mii_flags & MIIF_DOPAUSE) {
+			anar |= ANAR_FC;
+			/* XXX Only 1000BASE-T has PAUSE_ASYM? */
+			if ((sc->mii_flags & MIIF_HAVE_GTCR) &&
+			    (sc->mii_extcapabilities &
+			     (EXTSR_1000THDX|EXTSR_1000TFDX)))
+				anar |= ANAR_X_PAUSE_ASYM;
+		}
+		PHY_WRITE(sc, MII_ANAR, anar);
+		if (sc->mii_flags & MIIF_HAVE_GTCR) {
+			uint16_t gtcr = 0;
+
+			if (sc->mii_extcapabilities & EXTSR_1000TFDX)
+				gtcr |= GTCR_ADV_1000TFDX;
+			if (sc->mii_extcapabilities & EXTSR_1000THDX)
+				gtcr |= GTCR_ADV_1000THDX;
+
+			PHY_WRITE(sc, MII_100T2CR, gtcr);
+		}
 	}
+	PHY_WRITE(sc, MII_BMCR, BMCR_AUTOEN | BMCR_STARTNEG);
 
 	if (waitfor) {
+		int i;
+
 		/* Wait 500ms for it to complete. */
 		for (i = 0; i < 500; i++) {
 			if (PHY_READ(sc, MII_BMSR) & BMSR_ACOMP)
 				return (0);
 			DELAY(1000);
 		}
-
-		/*
-		 * Don't need to worry about clearing MIIF_DOINGAUTO.
-		 * If that's set, a timeout is pending, and it will
-		 * clear the flag.
-		 */
 		return (EIO);
 	}
-
-	/*
-	 * Just let it finish asynchronously.  This is for the benefit of
-	 * the tick handler driving autonegotiation.  Don't want 500ms
-	 * delays all the time while the system is running!
-	 */
-	if (sc->mii_flags & MIIF_AUTOTSLEEP) {
-		sc->mii_flags |= MIIF_DOINGAUTO;
-		tsleep(&sc->mii_flags, 0, "miiaut", hz >> 1);
-		mii_phy_auto_timeout(sc);
-	} else if ((sc->mii_flags & MIIF_DOINGAUTO) == 0) {
-		sc->mii_flags |= MIIF_DOINGAUTO;
-		callout_reset(&sc->mii_auto_ch, hz >> 1,
-			      mii_phy_auto_timeout, sc);
-	}
 	return (EJUSTRETURN);
-}
-
-void
-mii_phy_auto_stop(struct mii_softc *sc)
-{
-	if (sc->mii_flags & MIIF_DOINGAUTO) {
-		sc->mii_flags &= ~MIIF_DOINGAUTO;
-		callout_stop(&sc->mii_auto_ch);
-	}
-}
-
-/* XXX should use serializer */
-void
-mii_phy_auto_timeout(void *arg)
-{
-	struct mii_softc *sc = arg;
-
-	crit_enter();
-
-	sc->mii_flags &= ~MIIF_DOINGAUTO;
-
-	/* Update the media status. */
-	sc->mii_service(sc, sc->mii_pdata, MII_POLLSTAT);
-
-	crit_exit();
 }
 
 void
@@ -477,6 +426,9 @@ mii_phy_tick(struct mii_softc *sc)
 		/*
 		 * See above.
 		 */
+
+		/* Reset autonegotiation timer. */
+		sc->mii_ticks = 0;
 		return (0);
 	}
 
@@ -484,19 +436,12 @@ mii_phy_tick(struct mii_softc *sc)
 	 * Only retry autonegotiation every N seconds.
 	 */
 	KKASSERT(sc->mii_anegticks > 0);
-	if (++sc->mii_ticks != sc->mii_anegticks)
+	if (++sc->mii_ticks <= sc->mii_anegticks)
 		return (EJUSTRETURN);
 
 	sc->mii_ticks = 0;
 	sc->mii_reset(sc);	/* Reset PHY */
-
-	if (mii_phy_auto(sc, 0) == EJUSTRETURN)
-		return (EJUSTRETURN);
-
-	/*
-	 * Might need to generate a status message if autonegotiation
-	 * failed.
-	 */
+	mii_phy_auto(sc, 0);	/* Ignore EJUSTRETURN */
 	return (0);
 }
 

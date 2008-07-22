@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/tlphy.c,v 1.2.2.2 2001/07/29 22:48:37 kris Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/tlphy.c,v 1.12 2006/12/22 23:26:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/tlphy.c,v 1.13 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -234,7 +234,7 @@ tlphy_service(struct mii_softc *self, struct mii_data *mii, int cmd)
 	struct ifmedia_entry *ife = mii->mii_media.ifm_cur;
 	int reg;
 
-	if ((sc->sc_mii.mii_flags & MIIF_DOINGAUTO) == 0 && sc->sc_need_acomp)
+	if (sc->sc_need_acomp)
 		tlphy_acomp(sc);
 
 	switch (cmd) {
@@ -314,8 +314,10 @@ tlphy_service(struct mii_softc *self, struct mii_data *mii, int cmd)
 		 */
 		reg = PHY_READ(&sc->sc_mii, MII_BMSR) |
 		    PHY_READ(&sc->sc_mii, MII_BMSR);
-		if (reg & BMSR_LINK)
-			return (0);
+		if (reg & BMSR_LINK) {
+			sc->sc_mii.mii_ticks = 0;
+			break;
+		}
 
 		/*
 		 * Only retry autonegotiation every mii_anegticks seconds.

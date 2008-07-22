@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/rgephy.c,v 1.7 2005/09/30 19:39:27 imp Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/rgephy.c,v 1.6 2007/09/17 11:29:36 hasso Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/rgephy.c,v 1.7 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -283,12 +283,16 @@ setit:
 
 		if (MII_REV(id2) < 2) {
 			reg = PHY_READ(sc, RE_GMEDIASTAT);
-			if (reg & RE_GMEDIASTAT_LINK)
+			if (reg & RE_GMEDIASTAT_LINK) {
+				sc->mii_ticks = 0;
 				break;
+			}
 		} else {
 			reg = PHY_READ(sc, RGEPHY_SR);
-			if (reg & RGEPHY_SR_LINK)
+			if (reg & RGEPHY_SR_LINK) {
+				sc->mii_ticks = 0;
 				break;
+			}
 		}
 
 		/*

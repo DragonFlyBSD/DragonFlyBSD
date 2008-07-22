@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/ruephy.c,v 1.1.4.1 2003/07/30 13:57:35 akiyama Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/ruephy.c,v 1.6 2006/12/22 23:26:20 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/ruephy.c,v 1.7 2008/07/22 10:59:16 sephe Exp $
  */
 
 /*
@@ -202,8 +202,10 @@ ruephy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 		 */
 		reg = PHY_READ(sc, RUEPHY_MII_MSR) |
 		      PHY_READ(sc, RUEPHY_MII_MSR);
-		if (reg & RUEPHY_MSR_LINK)
+		if (reg & RUEPHY_MSR_LINK) {
+			sc->mii_ticks = 0;
 			break;
+		}
 
 		/*
 		 * Only retry autonegotiation every 5 seconds.

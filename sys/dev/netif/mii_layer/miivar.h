@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/miivar.h,v 1.3.2.1 2000/12/12 19:29:14 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/miivar.h,v 1.12 2006/08/06 10:32:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/miivar.h,v 1.13 2008/07/22 10:59:16 sephe Exp $
  */
 
 #ifndef _DEV_MII_MIIVAR_H_
@@ -119,7 +119,6 @@ struct mii_softc {
 	void (*mii_status)(struct mii_softc *);
 
 	struct mii_data *mii_pdata;	/* pointer to parent's mii_data */
-	struct callout	mii_auto_ch;	/* callout handle for phy autoneg */
 
 	int mii_flags;			/* misc. flags; see below */
 	int mii_capabilities;		/* capabilities from BMSR */
@@ -136,8 +135,6 @@ typedef struct mii_softc mii_softc_t;
 #define	MIIF_INITDONE	0x0001		/* has been initialized (mii_data) */
 #define	MIIF_NOISOLATE	0x0002		/* do not isolate the PHY */
 #define	MIIF_NOLOOP	0x0004		/* no loopback capability */
-#define	MIIF_DOINGAUTO	0x0008		/* doing autonegotiation (mii_softc) */
-#define	MIIF_AUTOTSLEEP	0x0010		/* use tsleep(), not callout() */
 #define	MIIF_HAVEFIBER	0x0020		/* from parent: has fiber interface */
 #define	MIIF_HAVE_GTCR	0x0040		/* has 100base-T2/1000base-T CR */
 #define	MIIF_IS_1000X	0x0080		/* is a 1000BASE-X device */
@@ -145,7 +142,7 @@ typedef struct mii_softc mii_softc_t;
 #define	MIIF_IS_HPNA	0x0200		/* is a HomePNA device */
 #define	MIIF_FORCEANEG	0x0400		/* is a HomePNA device */
 
-#define	MIIF_INHERIT_MASK	(MIIF_NOISOLATE|MIIF_NOLOOP|MIIF_AUTOTSLEEP)
+#define	MIIF_INHERIT_MASK	(MIIF_NOISOLATE|MIIF_NOLOOP)
 
 /*
  * Used to attach a PHY to a parent.
@@ -249,8 +246,6 @@ const struct mii_phydesc *mii_phy_match(const struct mii_attach_args *,
 void	mii_softc_init(struct mii_softc *, struct mii_attach_args *);
 
 int	mii_phy_auto(struct mii_softc *, int);
-void	mii_phy_auto_stop(struct mii_softc *);
-void	mii_phy_auto_timeout(void *arg);
 void	mii_phy_reset(struct mii_softc *);
 
 void	ukphy_status(struct mii_softc *);
