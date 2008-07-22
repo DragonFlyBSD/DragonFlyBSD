@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.75 2008/06/24 13:32:27 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.76 2008/07/22 12:08:41 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -317,7 +317,7 @@ static void	em_print_hw_stats(struct adapter *);
 static void	em_update_link_status(struct adapter *);
 static int	em_get_buf(int i, struct adapter *, struct mbuf *, int how);
 static void	em_enable_vlans(struct adapter *);
-static void	em_disable_vlans(struct adapter *);
+static void	em_disable_vlans(struct adapter *) __unused;
 static int	em_encap(struct adapter *, struct mbuf *);
 static void	em_smartspeed(struct adapter *);
 static int	em_82547_fifo_workaround(struct adapter *, int);
@@ -917,7 +917,7 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			if (!(ifp->if_flags & IFF_RUNNING)) {
 				em_init(adapter);
 			} else if ((ifp->if_flags ^ adapter->if_flags) &
-				   IFF_PROMISC) {
+				   (IFF_PROMISC | IFF_ALLMULTI)) {
 				em_disable_promisc(adapter);
 				em_set_promisc(adapter);
 			}
@@ -1686,19 +1686,9 @@ em_set_promisc(struct adapter *adapter)
 
 	reg_rctl = E1000_READ_REG(&adapter->hw, RCTL);
 
-	adapter->em_insert_vlan_header = 0;
 	if (ifp->if_flags & IFF_PROMISC) {
 		reg_rctl |= (E1000_RCTL_UPE | E1000_RCTL_MPE);
 		E1000_WRITE_REG(&adapter->hw, RCTL, reg_rctl);
-
-		/*
-		 * Disable VLAN stripping in promiscous mode.
-		 * This enables bridging of vlan tagged frames to occur 
-		 * and also allows vlan tags to be seen in tcpdump.
-		 */
-		if (ifp->if_capenable & IFCAP_VLAN_HWTAGGING)
-			em_disable_vlans(adapter);
-		adapter->em_insert_vlan_header = 1;
 	} else if (ifp->if_flags & IFF_ALLMULTI) {
 		reg_rctl |= E1000_RCTL_MPE;
 		reg_rctl &= ~E1000_RCTL_UPE;
@@ -1709,8 +1699,6 @@ em_set_promisc(struct adapter *adapter)
 static void
 em_disable_promisc(struct adapter *adapter)
 {
-	struct ifnet *ifp = &adapter->interface_data.ac_if;
-
 	uint32_t reg_rctl;
 
 	reg_rctl = E1000_READ_REG(&adapter->hw, RCTL);
@@ -1718,10 +1706,6 @@ em_disable_promisc(struct adapter *adapter)
 	reg_rctl &= (~E1000_RCTL_UPE);
 	reg_rctl &= (~E1000_RCTL_MPE);
 	E1000_WRITE_REG(&adapter->hw, RCTL, reg_rctl);
-
-	if (ifp->if_capenable & IFCAP_VLAN_HWTAGGING)
-		em_enable_vlans(adapter);
-	adapter->em_insert_vlan_header = 0;
 }
 
 /*********************************************************************
@@ -2181,7 +2165,7 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 	 */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
 	ifp->if_capabilities |= IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_MTU;
-	ifp->if_capenable |= IFCAP_VLAN_MTU;
+	ifp->if_capenable |= IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_MTU;
 
 	/*
 	 * Specify the media types supported by this adapter and register
