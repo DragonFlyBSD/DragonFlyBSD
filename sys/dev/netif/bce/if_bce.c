@@ -28,7 +28,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bce.c,v 1.31 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.14 2008/06/25 13:36:52 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.15 2008/07/22 11:49:22 sephe Exp $
  */
 
 /*
@@ -397,7 +397,7 @@ static uint32_t	bce_tx_ticks = 1000;	/* bcm: 80 */
 static uint32_t	bce_rx_bds_int = 6;	/* bcm: 6 */
 static uint32_t	bce_rx_bds = 24;	/* bcm: 6 */
 static uint32_t	bce_rx_ticks_int = 18;	/* bcm: 18 */
-static uint32_t	bce_rx_ticks = 125;	/* bcm: 18 */
+static uint32_t	bce_rx_ticks = 100;	/* bcm: 18 */
 
 TUNABLE_INT("hw.bce.tx_bds_int", &bce_tx_bds_int);
 TUNABLE_INT("hw.bce.tx_bds", &bce_tx_bds);

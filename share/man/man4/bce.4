@@ -27,7 +27,7 @@
 .\" THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/bce.4,v 1.7 2007/02/09 18:26:13 brueffer Exp $
-.\" $DragonFly: src/share/man/man4/bce.4,v 1.4 2008/07/11 10:38:50 thomas Exp $
+.\" $DragonFly: src/share/man/man4/bce.4,v 1.5 2008/07/22 11:49:22 sephe Exp $
 .\"
 .Dd May 29, 2008
 .Dt BCE 4
@@ -179,7 +179,7 @@ due to receiving packets.
 It is used together with
 .Va hw.bce.rx_bds
 to achieve RX interrupt moderation.
-Default value is 125 (microseconds).
+Default value is 100 (microseconds).
 .It Va hw.bce.rx_ticks_int
 How often status block should be updated by the device
 during host interrupt processing,
