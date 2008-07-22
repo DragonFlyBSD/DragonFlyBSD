@@ -1,4 +1,4 @@
-$DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.15 2008/03/16 15:50:22 hasso Exp $
+$DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.16 2008/07/22 11:16:11 sephe Exp $
 /* $FreeBSD: src/sys/dev/mii/miidevs,v 1.4.2.13 2003/07/22 02:12:55 ps Exp $ */
 /*$NetBSD: miidevs,v 1.6 1999/05/14 11:37:30 drochner Exp $*/
 
@@ -59,6 +59,7 @@ oui DAVICOM			0x00606e	Davicom Semiconductor
 oui ICS				0x00a0be	Integrated Circuit Systems
 oui INTEL			0x00aa00	Intel
 oui JATO			0x00e083	Jato Technologies
+oui JMICRON			0x001b8c	JMicron Technologies
 oui LEVEL1			0x00207b	Level 1
 oui NATSEMI			0x080017	National Semiconductor
 oui QUALSEMI			0x006051	Quality Semiconductor
@@ -181,6 +182,10 @@ model INTEL I82553C		0x0035 i82553 10/100 media interface
 
 /* Jato Technologies PHYs */
 model JATO BASEX		0x0000 Jato 1000baseX media interface
+
+/* JMicron Technologies PHYs */
+model JMICRON JMP211		0x0021 JMP211 10/100/1000 media interface
+model JMICRON JMP202		0x0022 JMP202 10/100 media interface
 
 /* Level 1 PHYs */
 model xxLEVEL1 LXT970		0x0000 LXT970 10/100 media interface
