@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.15 2008/03/16 15:54:31 hasso Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.16 2008/07/22 11:16:28 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
@@ -66,6 +66,7 @@
 #define	MII_OUI_ICS	0x00a0be	/* Integrated Circuit Systems */
 #define	MII_OUI_INTEL	0x00aa00	/* Intel */
 #define	MII_OUI_JATO	0x00e083	/* Jato Technologies */
+#define	MII_OUI_JMICRON	0x001b8c	/* JMicron Technologies */
 #define	MII_OUI_LEVEL1	0x00207b	/* Level 1 */
 #define	MII_OUI_NATSEMI	0x080017	/* National Semiconductor */
 #define	MII_OUI_QUALSEMI	0x006051	/* Quality Semiconductor */
@@ -242,6 +243,12 @@
 /* Jato Technologies PHYs */
 #define	MII_MODEL_JATO_BASEX	0x0000
 #define	MII_STR_JATO_BASEX	"Jato 1000baseX media interface"
+
+/* JMicron Technologies PHYs */
+#define	MII_MODEL_JMICRON_JMP211	0x0021
+#define	MII_STR_JMICRON_JMP211	"JMP211 10/100/1000 media interface"
+#define	MII_MODEL_JMICRON_JMP202	0x0022
+#define	MII_STR_JMICRON_JMP202	"JMP202 10/100 media interface"
 
 /* Level 1 PHYs */
 #define	MII_MODEL_xxLEVEL1_LXT970	0x0000
