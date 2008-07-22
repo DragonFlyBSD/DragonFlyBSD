@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - July 2008 Release 2.0.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/release2_0.shtml,v 1.7 2008/07/21 16:44:51 dillon Exp $ -->
+<!-- $DragonFly: site/data/community/release2_0.shtml,v 1.8 2008/07/22 03:51:45 justin Exp $ -->
 
 <h1>Obtaining DragonFly 2.0.x for your system</h1>
 
@@ -169,7 +169,7 @@ only commit bug fixes to release branches.
 	reboots do not drop active TCP connections.  New 'pickups' 
 	directives, and a 'set' directive to set default keep policy.
     <li>Incorporate the 'probability' keyword into PDF from NetBSD.
-    <li>Miscellanious bug fixes to the LWP (Light Weight Process) code.
+    <li>Miscellaneous bug fixes to the LWP (Light Weight Process) code.
 	Fixes issues with kill -9 on vkernels.
     <li>Significant work on the buffer cache and VM system relating to
 	system operation under heavy loads and with low amounts of 
@@ -224,7 +224,7 @@ only commit bug fixes to release branches.
     <li>Good progress made on removing the BGL from the network paths.
 	The BGL is still being left in-place for this release.
     <li>Some significant Bluetooth stack work has been done.
-    <li>Greatly imrpoved packet routing on SMP systems.
+    <li>Greatly improved packet routing on SMP systems.
     <li>Greatly improved polling support.
     <li>Greatly improved interrupt moderation support with certain
 	drivers.
@@ -240,12 +240,12 @@ only commit bug fixes to release branches.
     <li>A few fixes made to firewire (fwohic).
     <li>Defer bus exploration to allow ehci to initialize. Add
 	a boot loader tunable hw.usb.hack_defer_exploration which
-	defaults to 1 and can be set to 0 to rever to the old behavior.
+	defaults to 1 and can be set to 0 to revert to the old behavior.
 </ul>
 <h3>Userland changes</h3>
 <ul>
     <li>Add blacklist feature for weak Debian-generated SSH keys.
-    <li>Miscellanious additions to help with pkgsrc compatibility.
+    <li>Miscellaneous additions to help with pkgsrc compatibility.
 	O_SYNC, O_FSYNC.
     <li>Improved ktrdump.
     <li>Unique mode history feature added to /bin/sh (from NetBSD).
