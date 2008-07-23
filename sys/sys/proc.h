@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.120 2008/06/28 17:59:47 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.121 2008/07/23 17:22:33 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -61,6 +61,7 @@
 #endif
 #include <sys/ucred.h>
 #include <sys/event.h>			/* For struct klist */
+#include <sys/sysent.h>			/* For struct klist */
 #include <sys/thread.h>
 #include <sys/varsym.h>
 #include <sys/upcall.h>

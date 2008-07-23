@@ -32,7 +32,7 @@
  *
  *	@(#)queue.h	8.5 (Berkeley) 8/20/94
  * $FreeBSD: src/sys/sys/queue.h,v 1.32.2.7 2002/04/17 14:21:02 des Exp $
- * $DragonFly: src/sys/sys/queue.h,v 1.9 2008/04/14 19:44:18 dillon Exp $
+ * $DragonFly: src/sys/sys/queue.h,v 1.10 2008/07/23 17:22:33 dillon Exp $
  */
 
 #ifndef _SYS_QUEUE_H_
@@ -379,6 +379,12 @@ struct {								\
 	for ((var) = TAILQ_FIRST((head));				\
 	    (var);							\
 	    (var) = TAILQ_NEXT((var), field))
+
+#define	TAILQ_FOREACH_SAFE(var, head, field, tvar)			\
+	for ((var) = TAILQ_FIRST((head));				\
+	    (var) && ((tvar) = TAILQ_NEXT((var), field), 1);		\
+	    (var) = (tvar))
+
 
 #define	TAILQ_FOREACH_REVERSE(var, head, headname, field)		\
 	for ((var) = TAILQ_LAST((head), headname);			\

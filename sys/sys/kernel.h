@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.30 2008/03/07 11:34:21 sephe Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.31 2008/07/23 17:22:33 dillon Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -316,6 +316,8 @@ static void __Tunable_ ## var (void *ignored)	\
 }						\
 SYSINIT(__Tunable_init_ ## var, SI_BOOT1_TUNABLES, SI_ORDER_MIDDLE, \
 	__Tunable_ ## var , NULL);
+
+#define	TUNABLE_ULONG_FETCH(path, var)	kgetenv_ulong((path), (var))
 
 extern void tunable_quad_init(void *);
 struct tunable_quad {

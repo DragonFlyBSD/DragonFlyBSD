@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/imgact_elf.h,v 1.17.2.1 2000/07/06 22:26:40 obrien Exp $
- * $DragonFly: src/sys/sys/imgact_elf.h,v 1.8 2007/12/12 23:29:20 dillon Exp $
+ * $DragonFly: src/sys/sys/imgact_elf.h,v 1.9 2008/07/23 17:22:33 dillon Exp $
  */
 
 #ifndef _SYS_IMGACT_ELF_H_
@@ -93,6 +93,7 @@ typedef struct {
 typedef struct {
 	int brand;
 	const char *compat_3_brand;	/* pre Binutils 2.10 method (FBSD 3) */
+	int (*match_abi_note)(const Elf_Note *);
 	const char *emul_path;
 	const char *interp_path;
         struct sysentvec *sysvec;

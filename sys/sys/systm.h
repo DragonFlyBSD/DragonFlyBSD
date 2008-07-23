@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.79 2008/07/11 11:59:44 swildner Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.80 2008/07/23 17:22:33 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -175,6 +175,7 @@ int	log (int, const char *, ...) __printflike(2, 3);
 void	logwakeup (void);
 void	log_console (struct uio *);
 int	kprintf (const char *, ...) __printflike(1, 2);
+int	kprintf0(const char *, ...) __printflike(1, 2);
 void	krateprintf (struct krate *, const char *, ...) __printflike(2, 3);
 int	ksnprintf (char *, size_t, const char *, ...) __printflike(3, 4);
 int	ksprintf (char *buf, const char *, ...) __printflike(2, 3);
@@ -246,6 +247,7 @@ void	kfreeenv(char *env);
 int	ktestenv(const char *name);
 int	kgetenv_int (const char *name, int *data);
 int	kgetenv_string (const char *name, char *data, int size);
+int	kgetenv_ulong(const char *name, unsigned long *data);
 int	kgetenv_quad (const char *name, quad_t *data);
 extern char *kern_envp;
 
@@ -279,7 +281,7 @@ typedef void timeout_t (void *);	/* timeout function type */
  * For the alpha arch, some of these functions are static __inline, and
  * the others should be.
  */
-#ifdef __i386__
+#if defined(__i386__) || defined(__amd64__)
 void		setdelayed (void);
 void		setsoftcambio (void);
 void		setsoftcamnet (void);
