@@ -1,11 +1,10 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/Makefile,v 1.107.2.16 2002/10/10 19:24:35 kbyanc Exp $
-# $DragonFly: src/lib/Makefile,v 1.33 2008/01/30 12:57:50 hasso Exp $
+# $DragonFly: src/lib/Makefile,v 1.34 2008/07/23 14:09:05 swildner Exp $
 
 # To satisfy shared library or ELF linkage when only the libraries being
 # built are visible:
 #
-# csu must be built before all shared libaries for ELF.
 # libcom_err must be built before libkrb and libpam.
 # libcrypt must be built before libkrb, libpam and libskey.
 # libmd must be built before libatm, libopie, libradius, libskey, and
