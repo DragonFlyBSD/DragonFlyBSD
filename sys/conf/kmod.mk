@@ -1,6 +1,6 @@
 #	From: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/sys/conf/kmod.mk,v 1.82.2.15 2003/02/10 13:11:50 nyan Exp $
-# $DragonFly: src/sys/conf/kmod.mk,v 1.33 2007/08/26 07:53:25 corecode Exp $
+# $DragonFly: src/sys/conf/kmod.mk,v 1.34 2008/07/23 16:39:31 dillon Exp $
 #
 # The include file <bsd.kmod.mk> handles installing Kernel Loadable Device
 # drivers (KLD's).
@@ -134,8 +134,10 @@ OBJS+=  ${SRCS:N*.h:N*.patch:R:S/$/.o/g}
 PROG=	${KMOD}.ko
 .endif
 
+.if ${MACHINE_ARCH} != amd64
 ${PROG}: ${KMOD}.kld ${KMODDEPS}
 	${LD} -Bshareable ${LDFLAGS} -o ${.TARGET} ${KMOD}.kld ${KMODDEPS}
+.endif
 
 .if defined(KMODDEPS)
 .for dep in ${KMODDEPS}
@@ -147,8 +149,12 @@ ${dep}:
 .endfor
 .endif
 
+.if ${MACHINE_ARCH} != amd64
 ${KMOD}.kld: ${OBJS}
 	${LD} ${LDFLAGS} -r -o ${.TARGET} ${OBJS}
+.else
+${PROG}: ${OBJS}
+.endif
 
 .if !defined(NOMAN)
 .include <bsd.man.mk>

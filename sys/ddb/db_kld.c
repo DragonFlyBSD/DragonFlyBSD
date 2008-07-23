@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_kld.c,v 1.9 2000/01/11 13:25:12 peter Exp $
- * $DragonFly: src/sys/ddb/db_kld.c,v 1.4 2005/12/23 21:35:44 swildner Exp $
+ * $DragonFly: src/sys/ddb/db_kld.c,v 1.5 2008/07/23 16:39:32 dillon Exp $
  *	from db_aout.c,v 1.20 1998/06/07 17:09:36 dfr Exp
  */
 
@@ -42,6 +42,10 @@
 
 #include <ddb/ddb.h>
 #include <ddb/db_sym.h>
+
+#if defined(__amd64__)
+vm_offset_t    ksym_start, ksym_end;
+#endif
 
 c_db_sym_t
 X_db_lookup(db_symtab_t *stab, const char *symstr)

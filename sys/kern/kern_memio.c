@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/kern/kern_memio.c,v 1.31 2008/01/05 14:02:38 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_memio.c,v 1.32 2008/07/23 16:39:28 dillon Exp $
  */
 
 /*
@@ -338,13 +338,21 @@ memmmap(struct dev_mmap_args *ap)
 		/* 
 		 * minor device 0 is physical memory 
 		 */
+#if defined(__i386__)
         	ap->a_result = i386_btop(ap->a_offset);
+#elif defined(__amd64__)
+		ap->a_result = amd64_btop(ap->a_offset);
+#endif
 		return 0;
 	case 1:
 		/*
 		 * minor device 1 is kernel memory 
 		 */
+#if defined(__i386__)
         	ap->a_result = i386_btop(vtophys(ap->a_offset));
+#elif defined(__amd64__)
+        	ap->a_result = amd64_btop(vtophys(ap->a_offset));
+#endif
 		return 0;
 
 	default:

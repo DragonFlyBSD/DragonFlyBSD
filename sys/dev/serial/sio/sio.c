@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.43 2008/06/05 18:06:32 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.44 2008/07/23 16:39:33 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -2736,7 +2736,7 @@ static cn_checkc_t siocncheckc;
 static cn_getc_t siocngetc;
 static cn_putc_t siocnputc;
 
-#ifdef __i386__
+#if defined(__i386__) || defined(__amd64__)
 CONS_DRIVER(sio, siocnprobe, siocninit, siocninit_fini,
 	    NULL, siocngetc, siocncheckc, siocnputc, NULL);
 #endif
@@ -2945,7 +2945,7 @@ siocnprobe(struct consdev *cp)
 			}
 		}
 	}
-#ifdef	__i386__
+#if defined(__i386__) || defined(__amd64__)
 #if DDB > 0
 	/*
 	 * XXX Ugly Compatability.

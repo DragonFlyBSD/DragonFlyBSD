@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_environment.c,v 1.10.2.7 2002/05/07 09:57:16 bde Exp $
- * $DragonFly: src/sys/kern/kern_environment.c,v 1.6 2007/04/30 07:18:53 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_environment.c,v 1.7 2008/07/23 16:39:28 dillon Exp $
  */
 
 /*
@@ -277,6 +277,21 @@ kgetenv_int(const char *name, int *data)
 	rval = kgetenv_quad(name, &tmp);
 	if (rval)
 		*data = (int) tmp;
+	return (rval);
+}
+
+/*
+ * Return an unsigned long value from an environment variable.
+ */
+int
+kgetenv_ulong(const char *name, unsigned long *data)
+{
+	quad_t tmp;
+	int rval;
+
+	rval = kgetenv_quad(name, &tmp);
+	if (rval)
+		*data = (unsigned long) tmp;
 	return (rval);
 }
 

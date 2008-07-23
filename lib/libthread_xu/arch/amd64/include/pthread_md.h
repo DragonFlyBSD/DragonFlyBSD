@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/arch/amd64/include/pthread_md.h,v 1.10 2004/08/25 23:42:40 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/arch/amd64/include/pthread_md.h,v 1.4 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/amd64/include/pthread_md.h,v 1.5 2008/07/23 16:39:30 dillon Exp $
  */
 
 /*
@@ -41,6 +41,8 @@
 #include <machine/tls.h>
 
 struct pthread;
+
+#define atomic_cmpset_acq_int  atomic_cmpset_int
 
 /*
  * The constructors.
