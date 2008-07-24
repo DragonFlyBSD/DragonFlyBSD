@@ -29,7 +29,7 @@
  *    Rickard E. (Rik) Faith <faith@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  *
- * $DragonFly: src/sys/dev/drm/drmP.h,v 1.6 2008/06/10 06:35:59 hasso Exp $
+ * $DragonFly: src/sys/dev/drm/drmP.h,v 1.7 2008/07/24 01:27:47 swildner Exp $
  */
 
 #ifndef _DRM_P_H_
@@ -453,7 +453,6 @@ for ( ret = 0 ; !ret && !(condition) ; ) {		\
 #endif
 
 #ifdef __DragonFly__
-#define TAILQ_FOREACH_SAFE TAILQ_FOREACH_MUTABLE
 #define printf	kprintf
 #define snprintf ksnprintf
 #define sscanf	ksscanf
