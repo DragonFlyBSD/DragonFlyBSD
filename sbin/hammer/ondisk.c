@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/ondisk.c,v 1.23 2008/06/19 23:30:30 dillon Exp $
+ * $DragonFly: src/sbin/hammer/ondisk.c,v 1.24 2008/07/24 05:40:14 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -567,10 +567,15 @@ format_undomap(hammer_volume_ondisk_t ondisk)
 	 * Size the undo buffer in multiples of HAMMER_LARGEBLOCK_SIZE,
 	 * up to HAMMER_UNDO_LAYER2 large blocks.  Size to approximately
 	 * 0.1% of the disk.
+	 *
+	 * The minimum UNDO fifo size is 100MB.
 	 */
 	undo_limit = UndoBufferSize;
-	if (undo_limit == 0)
+	if (undo_limit == 0) {
 		undo_limit = (ondisk->vol_buf_end - ondisk->vol_buf_beg) / 1000;
+		if (undo_limit < 100*1024*1024)
+			undo_limit = 100*1024*1024;
+	}
 	undo_limit = (undo_limit + HAMMER_LARGEBLOCK_MASK64) &
 		     ~HAMMER_LARGEBLOCK_MASK64;
 	if (undo_limit < HAMMER_LARGEBLOCK_SIZE)

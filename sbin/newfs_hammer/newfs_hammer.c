@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.41 2008/07/19 20:26:01 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.42 2008/07/24 05:40:13 dillon Exp $
  */
 
 #include "newfs_hammer.h"
@@ -44,6 +44,10 @@ static void format_volume(struct volume_info *vol, int nvols,const char *label,
 static hammer_off_t format_root(const char *label);
 static u_int64_t nowtime(void);
 static void usage(void);
+
+static int ForceOpt = 0;
+
+#define GIG	(1024LL*1024*1024)
 
 int
 main(int ac, char **av)
@@ -77,8 +81,11 @@ main(int ac, char **av)
 	/*
 	 * Parse arguments
 	 */
-	while ((ch = getopt(ac, av, "L:b:m:u:")) != -1) {
+	while ((ch = getopt(ac, av, "fL:b:m:u:")) != -1) {
 		switch(ch) {
+		case 'f':
+			ForceOpt = 1;
+			break;
 		case 'L':
 			label = optarg;
 			break;
@@ -97,6 +104,14 @@ main(int ac, char **av)
 					 HAMMER_LARGEBLOCK_SIZE,
 					 HAMMER_LARGEBLOCK_SIZE *
 					 HAMMER_UNDO_LAYER2, 2);
+			if (UndoBufferSize < 100*1024*1024 && ForceOpt == 0)
+				errx(1, "The minimum UNDO fifo size is 100M\n");
+			if (UndoBufferSize < 100*1024*1024) {
+				fprintf(stderr, 
+					"WARNING: you have specified an UNDO "
+					"FIFO size less then 100M, which may\n"
+					"lead to VFS panics.\n");
+			}
 			break;
 		default:
 			usage();
@@ -189,7 +204,16 @@ main(int ac, char **av)
 		sizetostr(vol->vol_free_off & HAMMER_OFF_SHORT_MASK));
 	printf("fsid:                %s\n", fsidstr);
 	printf("\n");
-
+	printf("NOTE: Please remember to set up a cron job to prune and\n"
+		"reblock the filesystem regularly, see 'man hammer' for\n"
+		"more information.\n");
+	if (total < 50*GIG) {
+		printf("\nWARNING: HAMMER filesystems less then 50G are "
+			"not recommended!\n"
+			"You may have to run 'hammer prune-everything' and "
+			"'hammer reblock'\n"
+			"quite often, even if using a nohistory mount.\n");
+	}
 	flush_all_volumes();
 	return(0);
 }
@@ -383,6 +407,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 	struct volume_info *root_vol;
 	struct hammer_volume_ondisk *ondisk;
 	int64_t freeblks;
+	int64_t freebytes;
 	int i;
 
 	/*
@@ -439,6 +464,13 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 		freeblks = initialize_freemap(vol);
 		ondisk->vol0_stat_freebigblocks = freeblks;
 
+		freebytes = freeblks * HAMMER_LARGEBLOCK_SIZE64;
+		if (freebytes < 1*GIG && ForceOpt == 0) {
+			errx(1, "Cannot create a HAMMER filesystem less then "
+				"1GB unless you use -f.  HAMMER filesystems\n"
+				"less then 50G are not recommended\n");
+		}
+			
 		for (i = 8; i < HAMMER_MAX_ZONES; ++i) {
 			format_blockmap(&ondisk->vol0_blockmap[i],
 					HAMMER_ZONE_ENCODE(i, 0));
