@@ -31,9 +31,9 @@
 .\"
 .\"	@(#)queue.3	8.2 (Berkeley) 1/24/94
 .\" $FreeBSD: src/share/man/man3/queue.3,v 1.15.2.7 2001/12/18 10:09:02 ru Exp $
-.\" $DragonFly: src/share/man/man3/queue.3,v 1.5 2007/01/28 14:52:02 swildner Exp $
+.\" $DragonFly: src/share/man/man3/queue.3,v 1.6 2008/07/24 01:24:24 swildner Exp $
 .\"
-.Dd January 8, 2007
+.Dd July 23, 2008
 .Dt QUEUE 3
 .Os
 .Sh NAME
@@ -82,6 +82,7 @@
 .Nm TAILQ_ENTRY ,
 .Nm TAILQ_FIRST ,
 .Nm TAILQ_FOREACH ,
+.Nm TAILQ_FOREACH_SAFE ,
 .Nm TAILQ_FOREACH_MUTABLE ,
 .Nm TAILQ_FOREACH_REVERSE ,
 .Nm TAILQ_HEAD ,
@@ -164,6 +165,7 @@ lists, tail queues, and circular queues
 .Fn TAILQ_ENTRY "TYPE"
 .Fn TAILQ_FIRST "TAILQ_HEAD *head"
 .Fn TAILQ_FOREACH "TYPE *var" "TAILQ_HEAD *head" "TAILQ_ENTRY NAME"
+.Fn TAILQ_FOREACH_SAFE "TYPE *var" "TAILQ_HEAD *head" "TAILQ_ENTRY NAME" "TYPE *temp_var"
 .Fn TAILQ_FOREACH_MUTABLE "TYPE *var" "TAILQ_HEAD *head" "TAILQ_ENTRY NAME" "TYPE *temp_var"
 .Fn TAILQ_FOREACH_REVERSE "TYPE *var" "TAILQ_HEAD *head" "HEADNAME" "TAILQ_ENTRY NAME"
 .Fn TAILQ_HEAD "HEADNAME" "TYPE"
@@ -851,6 +853,20 @@ in the reverse direction, assigning each element in turn to
 .Fa var .
 .Pp
 The macro
+.Nm TAILQ_FOREACH_SAFE
+traverses the list referenced by
+.Fa head
+in the forward direction,
+assigning each element in turn to
+.Fa var .
+However, unlike its unsafe counterpart,
+.Nm TAILQ_FOREACH_SAVE
+permits to both remove
+.Fa var
+as well as free it from within the loop safely without interfering with the
+traversal.
+.Pp
+The macro
 .Nm TAILQ_INIT
 initializes the tail queue referenced by
 .Fa head .
@@ -930,6 +946,13 @@ free(n2);
 					/* Forward traversal. */
 TAILQ_FOREACH(np, &head, entries)
 	np-> ...
+					/* Safe forward traversal. */
+TAILQ_FOREACH_SAFE(np, &head, entries, np_temp) {
+	np->do_stuff();
+	...
+	TAILQ_REMOVE(&head, np, entries);
+	free(np);
+}
 					/* Reverse traversal. */
 TAILQ_FOREACH_REVERSE(np, &head, tailhead, entries)
 	np-> ...
