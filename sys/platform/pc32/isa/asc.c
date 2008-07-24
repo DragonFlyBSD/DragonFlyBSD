@@ -35,7 +35,7 @@
  */
 /*
  * $FreeBSD: src/sys/i386/isa/asc.c,v 1.42.2.2 2001/03/01 03:22:39 jlemon Exp $
- * $DragonFly: src/sys/platform/pc32/isa/asc.c,v 1.19 2007/08/01 12:35:29 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/asc.c,v 1.20 2008/07/24 03:26:46 swildner Exp $
  */
 
 #include "use_asc.h"
@@ -50,11 +50,13 @@
 #include <sys/selinfo.h>
 #include <sys/uio.h>
 #include <sys/thread2.h>
+#include <sys/bus.h>
 
 #include <machine/asc_ioctl.h>
 
 #include <bus/isa/i386/isa.h>
 #include <bus/isa/i386/isa_device.h>
+#include <bus/isa/isavar.h>
 #include "ascreg.h"
 
 /***
@@ -292,7 +294,7 @@ dma_restart(struct asc_unit *scu)
     unsigned char al=scu->cmd_byte;
 
     if (geomtab[scu->geometry].g_res==0) {/* color */
-	isa_dmastart(BUF_CMD_READ, 0, scu->sbuf.base+scu->sbuf.wptr,
+	isa_dmastart(BUF_CMD_READ, scu->sbuf.base+scu->sbuf.wptr,
 	    scu->linesize + 90 /* XXX */ , scu->dma_num);
 	/*
 	 * looks like we have to set and then clear this
@@ -305,7 +307,7 @@ dma_restart(struct asc_unit *scu)
 	outb( ASC_CMD, al &= 0xfb );
 	scu->cmd_byte = al;
     } else {					/* normal */
-    isa_dmastart(BUF_CMD_READ, 0, scu->sbuf.base+scu->sbuf.wptr,
+    isa_dmastart(BUF_CMD_READ, scu->sbuf.base+scu->sbuf.wptr,
 	scu->linesize, scu->dma_num);
     /*** this is done in sub_20, after dmastart ? ***/  
 #if 0
@@ -504,7 +506,7 @@ ascintr(void *arg)
 	outb( ASC_CMD, ASC_STANDBY);
 	scu->flags &= ~DMA_ACTIVE;
 		/* bounce buffers... */
-        isa_dmadone(BUF_CMD_READ, 0, scu->sbuf.base+scu->sbuf.wptr,
+        isa_dmadone(BUF_CMD_READ, scu->sbuf.base+scu->sbuf.wptr,
 	    scu->linesize, scu->dma_num);
 	scu->sbuf.wptr += scu->linesize;
 	if (scu->sbuf.wptr >= scu->sbuf.size) scu->sbuf.wptr=0;

@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/gsc.c,v 1.35.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.15 2006/12/22 23:26:27 swildner Exp $
+ * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.16 2008/07/24 03:26:46 swildner Exp $
  *
  */
 
@@ -45,11 +45,13 @@
 #include <sys/kernel.h>
 #include <sys/uio.h>
 #include <sys/thread2.h>
+#include <sys/bus.h>
 
 #include <machine/gsc.h>
 
 #include <bus/isa/i386/isa.h>
 #include <bus/isa/i386/isa_device.h>
+#include <bus/isa/isavar.h>
 #include "gscreg.h"
 
 /***********************************************************************
@@ -316,7 +318,7 @@ buffer_read(struct gsc_unit *scu)
   outb( scu->clrp, 0 );
   stb = inb( scu->stat );
 
-  isa_dmastart(BUF_CMD_READ, 0, scu->sbuf.base, scu->sbuf.size, scu->channel);
+  isa_dmastart(BUF_CMD_READ, scu->sbuf.base, scu->sbuf.size, scu->channel);
 
   chan_bit = 0x01 << scu->channel;
 
@@ -336,7 +338,7 @@ buffer_read(struct gsc_unit *scu)
 	break;
     }
   crit_exit();
-  isa_dmadone(BUF_CMD_READ, 0, scu->sbuf.base, scu->sbuf.size, scu->channel);
+  isa_dmadone(BUF_CMD_READ, scu->sbuf.base, scu->sbuf.size, scu->channel);
   outb( scu->clrp, 0 );
 
   if(res != SUCCESS)
