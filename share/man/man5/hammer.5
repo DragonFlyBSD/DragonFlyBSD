@@ -29,9 +29,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man5/hammer.5,v 1.7 2008/07/21 21:20:52 thomas Exp $
+.\" $DragonFly: src/share/man/man5/hammer.5,v 1.8 2008/07/25 01:21:06 swildner Exp $
 .\"
-.Dd July 18, 2008
+.Dd July 24, 2008
 .Os
 .Dt HAMMER 5
 .Sh NAME
@@ -67,9 +67,14 @@ Among its features are instant crash recovery,
 large file systems spanning multiple volumes,
 fine grained history retention,
 mirroring capability, and pseudo file systems.
-For a more detailed introduction, see the paper listed in the
+For a more detailed introduction refer to the paper listed in the
 .Sx SEE ALSO
 section.
+For some common usages of
+.Nm
+see the
+.Sx EXAMPLES
+section below.
 .Pp
 All functions related to managing
 .Nm
@@ -80,6 +85,24 @@ file systems are provided by the
 and
 .Xr undo 1
 utilities.
+.Ss Instant Crash Recovery
+After a non-graceful system shutdown,
+.Nm
+file systems will be brought back into a fully coherent state
+when mounting the file system, usually within a few seconds.
+.Ss Large File Systems & Multi Volume
+A
+.Nm
+file system can span up to 256 volumes.
+Each volume occupies a
+.Dx
+disk slice or partition, or another special file,
+and can be up to 4096 TB in size.
+For volumes over 2 TB in size
+.Xr gpt 8
+and
+.Xr disklabel64 8
+normally need to be used.
 .Ss Transaction IDs
 The
 .Nm
@@ -94,49 +117,33 @@ Related
 .Xr hammer 8
 commands:
 .Ar synctid
-.Ss Instant Crash Recovery
-After a non-gracefull system shutdown,
-.Nm
-file systems will be brought back into a fully coherent state
-within a few seconds, at system startup.
-This is accomplished by mounting the file system,
-no special utility needs to be run.
-.Ss Large File Systems & Multi Volume
-A
-.Nm
-file system can span up to 256 volumes.
-Each volume occupies a
-.Dx
-disk slice or partition, or another special file,
-it can be up to 4096 TB in size.
-For volumes over 2 TB in size,
-.Xr gpt 8
-and
-.Xr disklabel64 8
-normally needs to be used.
-.Ss History
-History metadata on the media is written with every sync operation.
-Prior versions of files or directories are accessible by appending
+.Ss History & Snapshots
+History metadata on the media is written with every sync operation, so that
+by default the resolution of a file's history is 30-60 seconds until the next
+prune operation.
+Prior versions of files or directories are generally accessible by appending
 .Li @@
 and a transaction ID to the name.
-.Ss Snapshots
-Snapshots are symbolic links to specific versions of directories or files,
-prior or current.
+The common way of accessing history, however, is by taking snapshots.
+.Pp
+Snapshots are softlinks to prior versions of directories and their files.
 Their data will be retained across prune operations for as long as the
-symbolic link exists.
-Removing the symbolic link enables the file system to reclaim the space
-again upon the next reblock operation.
+softlink exists.
+Removing the softlink enables the file system to reclaim the space
+again upon the next prune & reblock operations.
 .Pp
 Related
 .Xr hammer 8
 commands:
+.Ar history ,
 .Ar snapshot
 .Ss Reblocking & Pruning
 Reblocking will reorder all elements and thus defragment the file system and
 free space for reuse.
-Pruning a
-.Nm
-file system free all historical records no longer used by any snapshots.
+Pruning is the act of deleting file system history.
+Only history used by the given snapshots and history from after the latest
+snapshot will be retained.
+All other history is deleted.
 .Pp
 Related
 .Xr hammer 8
@@ -232,12 +239,19 @@ hammer snapshot /home /snaps/snap1
 (...after some changes in /home...)
 hammer snapshot /home /snaps/snap2
 .Ed
+.Pp
+The softlinks in
+.Pa /snaps
+point to the state of the
+.Pa /home
+directory at the time each snapshot was taken, and could now be used to copy
+the data somewhere else for backup purposes.
 .Ss Pruning
 A snapshot directory is also the argument to the
 .Xr hammer 8 Ap s
 .Ar prune
-command which frees historical data from the file system that is no longer
-pointed to by any snapshot link.
+command which frees historical data from the file system that is not
+pointed to by any snapshot link and is not from after the latest snapshot.
 .Bd -literal
 rm /snaps/snap1
 hammer prune /snaps
