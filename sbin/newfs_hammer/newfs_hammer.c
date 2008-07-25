@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.39.2.3 2008/07/24 05:41:54 dillon Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.39.2.4 2008/07/25 03:18:44 swildner Exp $
  */
 
 #include "newfs_hammer.h"
@@ -109,7 +109,7 @@ main(int ac, char **av)
 			if (UndoBufferSize < 100*1024*1024) {
 				fprintf(stderr, 
 					"WARNING: you have specified an UNDO "
-					"FIFO size less then 100M, which may\n"
+					"FIFO size less than 100M, which may\n"
 					"lead to VFS panics.\n");
 			}
 			break;
@@ -208,7 +208,7 @@ main(int ac, char **av)
 		"reblock the filesystem regularly, see 'man hammer' for\n"
 		"more information.\n");
 	if (total < 50*GIG) {
-		printf("\nWARNING: HAMMER filesystems less then 50G are "
+		printf("\nWARNING: HAMMER filesystems less than 50G are "
 			"not recommended!\n"
 			"You may have to run 'hammer prune-everything' and "
 			"'hammer reblock'\n"
@@ -466,9 +466,9 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 
 		freebytes = freeblks * HAMMER_LARGEBLOCK_SIZE64;
 		if (freebytes < 1*GIG && ForceOpt == 0) {
-			errx(1, "Cannot create a HAMMER filesystem less then "
+			errx(1, "Cannot create a HAMMER filesystem less than "
 				"1GB unless you use -f.  HAMMER filesystems\n"
-				"less then 50G are not recommended\n");
+				"less than 50G are not recommended\n");
 		}
 			
 		for (i = 8; i < HAMMER_MAX_ZONES; ++i) {
