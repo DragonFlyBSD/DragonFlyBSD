@@ -29,9 +29,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man5/hammer.5,v 1.2.2.2 2008/07/18 23:28:02 swildner Exp $
+.\" $DragonFly: src/share/man/man5/hammer.5,v 1.2.2.3 2008/07/25 03:16:12 swildner Exp $
 .\"
-.Dd July 18, 2008
+.Dd July 24, 2008
 .Os
 .Dt HAMMER 5
 .Sh NAME
@@ -60,14 +60,21 @@ To mount via
 .Sh DESCRIPTION
 The
 .Nm
-file system provides facilities to store file system data onto a disk device
+file system provides facilities to store file system data onto disk devices
 and is intended to replace UFS as the default file system for
 .Dx .
-Among its features are fine grained history retention, file systems spanning
-multiple volumes, mirroring capability, and pseudo file systems.
-For a more detailed introduction, see the paper listed in the
+Among its features are instant crash recovery,
+large file systems spanning multiple volumes,
+fine grained history retention,
+mirroring capability, and pseudo file systems.
+For a more detailed introduction refer to the paper listed in the
 .Sx SEE ALSO
 section.
+For some common usages of
+.Nm
+see the
+.Sx EXAMPLES
+section below.
 .Pp
 All functions related to managing
 .Nm
@@ -78,6 +85,24 @@ file systems are provided by the
 and
 .Xr undo 1
 utilities.
+.Ss Instant Crash Recovery
+After a non-graceful system shutdown,
+.Nm
+file systems will be brought back into a fully coherent state
+when mounting the file system, usually within a few seconds.
+.Ss Large File Systems & Multi Volume
+A
+.Nm
+file system can span up to 256 volumes.
+Each volume occupies a
+.Dx
+disk slice or partition, or another special file,
+and can be up to 4096 TB in size.
+For volumes over 2 TB in size
+.Xr gpt 8
+and
+.Xr disklabel64 8
+normally need to be used.
 .Ss Transaction IDs
 The
 .Nm
@@ -92,29 +117,33 @@ Related
 .Xr hammer 8
 commands:
 .Ar synctid
-.Ss History
-History metadata on the media is written with every sync operation.
-Prior versions of files or directories are accessible by appending
+.Ss History & Snapshots
+History metadata on the media is written with every sync operation, so that
+by default the resolution of a file's history is 30-60 seconds until the next
+prune operation.
+Prior versions of files or directories are generally accessible by appending
 .Li @@
 and a transaction ID to the name.
-.Ss Snapshots
-Snapshots are symbolic links to specific versions of directories or files,
-prior or current.
+The common way of accessing history, however, is by taking snapshots.
+.Pp
+Snapshots are softlinks to prior versions of directories and their files.
 Their data will be retained across prune operations for as long as the
-symbolic link exists.
-Removing the symbolic link enables the file system to reclaim the space
-again upon the next reblock operation.
+softlink exists.
+Removing the softlink enables the file system to reclaim the space
+again upon the next prune & reblock operations.
 .Pp
 Related
 .Xr hammer 8
 commands:
+.Ar history ,
 .Ar snapshot
 .Ss Reblocking & Pruning
 Reblocking will reorder all elements and thus defragment the file system and
 free space for reuse.
-Pruning a
-.Nm
-file system free all historical records no longer used by any snapshots.
+Pruning is the act of deleting file system history.
+Only history used by the given snapshots and history from after the latest
+snapshot will be retained.
+All other history is deleted.
 .Pp
 Related
 .Xr hammer 8
@@ -155,7 +184,7 @@ commands:
 .Ar mirror-write ,
 .Ar mirror-dump
 .Sh EXAMPLES
-.Ss Preparing the file system
+.Ss Preparing the File System
 To create and mount a
 .Nm
 file system use the
@@ -190,8 +219,10 @@ utility's
 .Fl c
 and
 .Fl t
-options be used for this job (for example, every night at 2:15 up to 5
-minutes).
+options be used for this job;
+for example, to reblock the
+.Pa /home
+file system every night at 2:15 for up to 5 minutes:
 .Bd -literal
 15 2 * * * hammer -c /var/run/Home -t 300 reblock /home >/dev/null 2>&1
 .Ed
@@ -208,12 +239,19 @@ hammer snapshot /home /snaps/snap1
 (...after some changes in /home...)
 hammer snapshot /home /snaps/snap2
 .Ed
+.Pp
+The softlinks in
+.Pa /snaps
+point to the state of the
+.Pa /home
+directory at the time each snapshot was taken, and could now be used to copy
+the data somewhere else for backup purposes.
 .Ss Pruning
 A snapshot directory is also the argument to the
 .Xr hammer 8 Ap s
 .Ar prune
-command which frees historical data from the file system that is no longer
-pointed to by any snapshot link.
+command which frees historical data from the file system that is not
+pointed to by any snapshot link and is not from after the latest snapshot.
 .Bd -literal
 rm /snaps/snap1
 hammer prune /snaps
@@ -255,6 +293,8 @@ hammer mirror-copy /home/master /home/slave
 .Ed
 .Sh SEE ALSO
 .Xr undo 1 ,
+.Xr disklabel64 8 ,
+.Xr gpt 8 ,
 .Xr hammer 8 ,
 .Xr mount_hammer 8 ,
 .Xr newfs_hammer 8
