@@ -30,8 +30,8 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/newfs_hammer/newfs_hammer.8,v 1.7 2008/07/16 00:58:22 thomas Exp $
-.Dd September 10, 2007
+.\" $DragonFly: src/sbin/newfs_hammer/newfs_hammer.8,v 1.8 2008/07/25 03:17:03 swildner Exp $
+.Dd July 24, 2008
 .Dt NEWFS_HAMMER 8
 .Os
 .Sh NAME
@@ -41,6 +41,7 @@
 .Nm
 .Fl L Ar label
 .Op Fl b Ar bootsize
+.Op Fl f
 .Op Fl m Ar savesize
 .Op Fl u Ar undosize
 .Ar special ...
@@ -66,6 +67,9 @@ per-machine basis.
 .It Fl b Ar bootsize
 Specify a fixed area in which a boot related kernel and data can be stored.
 By default a boot area of approximately 4MB will be created.
+.It Fl f
+Force the creation of a HAMMER file system with less than 100M UNDO FIFO.
+This should not be used under normal circumstances.
 .It Fl m Ar savesize
 Specify a fixed area which HAMMER may use as a memory log.  This area is
 currently unused.
