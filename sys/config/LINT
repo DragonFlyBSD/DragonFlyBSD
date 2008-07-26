@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.168 2008/07/17 21:38:07 thomas Exp $
+# $DragonFly: src/sys/config/LINT,v 1.169 2008/07/26 14:26:30 sephe Exp $
 #
 # See the kernconf(5) manual page for more information on the format of
 # this file.
@@ -1967,6 +1967,7 @@ device		sk		# SysKonnect GEnesis, LinkSys EG1023, D-Link
 device		ti		# Alteon (``Tigon I'', ``Tigon II'')
 device		stge		# Sundance/Tamarack TC9021 Gigabit Ethernet
 device		msk		# Marvell/SysKonnect Yukon II Gigabit Ethernet
+device		jme		# JMicron Gigabit/Fast Ethernet
 
 device		meteor
 
