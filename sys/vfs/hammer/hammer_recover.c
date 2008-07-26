@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.28 2008/06/30 00:03:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_recover.c,v 1.29 2008/07/26 05:36:21 dillon Exp $
  */
 
 #include "hammer.h"
@@ -65,7 +65,6 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 	hammer_off_t first_offset;
 	hammer_off_t last_offset;
 	int error;
-	int reported = 0;
 
 	/*
 	 * Examine the UNDO FIFO.  If it is empty the filesystem is clean
@@ -175,10 +174,11 @@ hammer_recover(hammer_mount_t hmp, hammer_volume_t root_volume)
 							     0);
 				kprintf("HAMMER(%s) Continuing recovery\n",
 					root_volume->ondisk->vol_name);
-			} else if (reported == 0) {
-				reported = 1;
+			} else {
 				kprintf("HAMMER(%s) Recovery failure: Insufficient buffer cache to hold dirty buffers on read-only mount!\n",
 					root_volume->ondisk->vol_name);
+				error = EIO;
+				break;
 			}
 		}
 	}
@@ -194,19 +194,21 @@ done:
 		hammer_ref_volume(root_volume);
 		root_volume->io.recovered = 1;
 	}
-	hammer_modify_volume(NULL, root_volume, NULL, 0);
-	rootmap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
-	rootmap->first_offset = last_offset;
-	rootmap->next_offset = last_offset;
-	hammer_modify_volume_done(root_volume);
 
 	/*
-	 * We have collected a large number of dirty buffers during the
-	 * recovery, flush them all out.  The root volume header will
-	 * be flushed out last.
+	 * Finish up flushing (or discarding) recovered buffers
 	 */
-	if (hmp->ronly == 0 && error == 0)
-		hammer_recover_flush_buffers(hmp, root_volume, 1);
+	if (error == 0) {
+		hammer_modify_volume(NULL, root_volume, NULL, 0);
+		rootmap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
+		rootmap->first_offset = last_offset;
+		rootmap->next_offset = last_offset;
+		hammer_modify_volume_done(root_volume);
+		if (hmp->ronly == 0)
+			hammer_recover_flush_buffers(hmp, root_volume, 1);
+	} else {
+		hammer_recover_flush_buffers(hmp, root_volume, -1);
+	}
 	kprintf("HAMMER(%s) End Recovery\n", root_volume->ondisk->vol_name);
 	return (error);
 }
@@ -244,7 +246,7 @@ hammer_check_tail_signature(hammer_fifo_tail_t tail, hammer_off_t end_off)
 	/*
 	 * The undo structure must not overlap a buffer boundary.
 	 */
-	if (tail->tail_size < 0 || tail->tail_size > max_bytes) {
+	if (tail->tail_size < sizeof(*tail) || tail->tail_size > max_bytes) {
 		return(3);
 	}
 	return(0);
@@ -450,6 +452,10 @@ hammer_recover_debug_dump(int w, char *buf, int bytes)
  * to zero-length by setting next_offset to first_offset.  This leaves the
  * (now stale) UNDO information used to recover the disk available for
  * forensic analysis.
+ *
+ * final is typically 0 or 1.  The volume header is only written if final
+ * is 1.  If final is -1 the recovered buffers are discarded instead of
+ * written and root_volume can also be passed as NULL in that case.
  */
 static int hammer_recover_flush_volume_callback(hammer_volume_t, void *);
 static int hammer_recover_flush_buffer_callback(hammer_buffer_t, void *);
@@ -464,18 +470,27 @@ hammer_recover_flush_buffers(hammer_mount_t hmp, hammer_volume_t root_volume,
 	 * so it doesn't alias something later on.
          */
 	RB_SCAN(hammer_buf_rb_tree, &hmp->rb_bufs_root, NULL,
-		hammer_recover_flush_buffer_callback, NULL);
+		hammer_recover_flush_buffer_callback, &final);
 	hammer_io_wait_all(hmp, "hmrrcw");
 	RB_SCAN(hammer_buf_rb_tree, &hmp->rb_bufs_root, NULL,
-		hammer_recover_flush_buffer_callback, NULL);
-
-	RB_SCAN(hammer_vol_rb_tree, &hmp->rb_vols_root, NULL,
-		hammer_recover_flush_volume_callback, root_volume);
+		hammer_recover_flush_buffer_callback, &final);
 
 	/*
-	 * Finaly, deal with the volume header.
+	 * Flush all volume headers except the root volume.  If final < 0
+	 * we discard all volume headers including the root volume.
 	 */
-	if (root_volume->io.recovered && final) {
+	if (final >= 0) {
+		RB_SCAN(hammer_vol_rb_tree, &hmp->rb_vols_root, NULL,
+			hammer_recover_flush_volume_callback, root_volume);
+	} else {
+		RB_SCAN(hammer_vol_rb_tree, &hmp->rb_vols_root, NULL,
+			hammer_recover_flush_volume_callback, NULL);
+	}
+
+	/*
+	 * Finalize the root volume header.
+	 */
+	if (root_volume && root_volume->io.recovered && final > 0) {
 		crit_enter();
 		while (hmp->io_running_space > 0)
 			tsleep(&hmp->io_running_space, 0, "hmrflx", 0);
@@ -486,6 +501,12 @@ hammer_recover_flush_buffers(hammer_mount_t hmp, hammer_volume_t root_volume,
 	}
 }
 
+/*
+ * Callback to flush volume headers.  If discarding data will be NULL and
+ * all volume headers (including the root volume) will be discarded.
+ * Otherwise data is the root_volume and we flush all volume headers
+ * EXCEPT the root_volume.
+ */
 static
 int
 hammer_recover_flush_volume_callback(hammer_volume_t volume, void *data)
@@ -494,7 +515,10 @@ hammer_recover_flush_volume_callback(hammer_volume_t volume, void *data)
 
 	if (volume->io.recovered && volume != root_volume) {
 		volume->io.recovered = 0;
-		hammer_io_flush(&volume->io);
+		if (root_volume != NULL)
+			hammer_io_flush(&volume->io);
+		else
+			hammer_io_clear_modify(&volume->io, 1);
 		hammer_rel_volume(volume, 0);
 	}
 	return(0);
@@ -504,10 +528,15 @@ static
 int
 hammer_recover_flush_buffer_callback(hammer_buffer_t buffer, void *data)
 {
+	int final = *(int *)data;
+
 	if (buffer->io.recovered) {
 		buffer->io.recovered = 0;
 		buffer->io.reclaim = 1;
-		hammer_io_flush(&buffer->io);
+		if (final < 0)
+			hammer_io_clear_modify(&buffer->io, 1);
+		else
+			hammer_io_flush(&buffer->io);
 		hammer_rel_buffer(buffer, 0);
 	} else {
 		KKASSERT(buffer->io.lock.refs == 0);
