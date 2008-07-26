@@ -340,7 +340,7 @@ dfui_npipe_fe_ll_request(struct dfui_connection *c, char msgtype, const char *ms
 	 * Construct a message.
 	 */
 
-	fmsg = malloc(strlen(msg) + 1);
+	fmsg = malloc(strlen(msg) + 2);
 	fmsg[0] = msgtype;
 	strcpy(fmsg + 1, msg);
 

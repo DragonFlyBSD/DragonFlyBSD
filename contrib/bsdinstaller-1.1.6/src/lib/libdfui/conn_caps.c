@@ -285,7 +285,7 @@ dfui_caps_fe_ll_request(struct dfui_connection *c, char msgtype, const char *msg
 	 * Construct a message.
 	 */
 
-	fmsg = aura_malloc(strlen(msg) + 1, "exchange message");
+	fmsg = aura_malloc(strlen(msg) + 2, "exchange message");
 	fmsg[0] = msgtype;
 	strcpy(fmsg + 1, msg);
 	dfui_debug("SEND<<%s>>\n", fmsg);
