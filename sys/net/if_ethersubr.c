@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.76 2008/07/08 13:50:52 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.76.2.1 2008/07/26 04:58:41 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -1658,11 +1658,8 @@ ether_init_netpacket(int num, struct mbuf *m)
 }
 
 static __inline struct lwkt_port *
-ether_mport(int num, struct mbuf **m0)
+ether_mport(int num, struct mbuf **m)
 {
-	struct lwkt_port *port;
-	struct mbuf *m = *m0;
-
 	if (num == NETISR_MAX) {
 		/*
 		 * All packets whose target msgports can't be
@@ -1671,13 +1668,7 @@ ether_mport(int num, struct mbuf **m0)
 		 */
 		return cpu_portfn(0);
 	}
-
-	port = netisr_find_port(num, &m);
-	if (port == NULL)
-		return NULL;
-
-	*m0 = m;
-	return port;
+	return netisr_find_port(num, m);
 }
 
 void
