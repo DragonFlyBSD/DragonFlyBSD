@@ -1,6 +1,6 @@
 .\"	$NetBSD: rtw.4,v 1.3 2005/09/09 14:11:39 drochner Exp $
 .\"	$OpenBSD: rtw.4,v 1.18 2005/06/09 09:03:38 jmc Exp $
-.\"	$DragonFly: src/share/man/man4/rtw.4,v 1.7 2008/07/26 15:09:32 swildner Exp $
+.\"	$DragonFly: src/share/man/man4/rtw.4,v 1.8 2008/07/26 16:25:40 swildner Exp $
 .\"
 .\" Copyright (c) 2004 Jonathan Gray <jsg@openbsd.org>
 .\"
@@ -214,42 +214,10 @@ The following adapters should work:
 .It Li "VCTnet PC-11B1" Ta CardBus
 .El
 .Sh EXAMPLES
-Join an existing BSS network (i.e., connect to an access point):
-.Pp
-.Dl "ifconfig rtw0 inet 192.168.0.20 netmask 0xffffff00"
-.Pp
-Join a specific BSS network with network name
-.Dq Li my_net :
-.Pp
-.Dl "ifconfig rtw0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net"
-.Pp
-Join a specific BSS network with 64 bit WEP encryption:
-.Bd -literal -offset indent
-ifconfig rtw0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net \e
-        wepmode on wepkey 0x1234567890 weptxkey 1
-.Ed
-.Pp
-Join a specific BSS network with 128 bit WEP encryption:
-.Bd -literal -offset indent
-ifconfig rtw0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net \e
-        wepmode on wepkey 0x01020304050607080910111213 weptxkey 1
-.Ed
-.Pp
-Join/create an 802.11b IBSS network:
-.Bd -literal -offset indent
-ifconfig rtw0 192.168.0.20 netmask 0xffffff00 ssid my_net \e
-        mediaopt adhoc
-.Ed
-.Pp
-To debug a network setup, you may wish to enable interface debugging:
-.Bd -literal -offset indent
-ifconfig rtw0 down debug up
-.Ed
-.Pp
-To disable debugging, you may simply use:
-.Bd -literal -offset indent
-ifconfig rtw0 down -debug up
-.Ed
+Refer to the
+.Sx EXAMPLES
+section of
+.Xr wlan 4 .
 .Sh SEE ALSO
 .Xr arp 4 ,
 .Xr cardbus 4 ,
@@ -257,6 +225,7 @@ ifconfig rtw0 down -debug up
 .Xr intro 4 ,
 .Xr netintro 4 ,
 .Xr pci 4 ,
+.Xr wlan 4 ,
 .Xr wlan_ratectl 4 ,
 .Xr hostapd 8 ,
 .Xr ifconfig 8

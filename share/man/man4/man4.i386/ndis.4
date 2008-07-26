@@ -29,7 +29,7 @@
 .\" THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/ndis.4,v 1.9 2004/12/21 01:09:34 brueffer Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/ndis.4,v 1.5 2008/07/26 15:20:50 swildner Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/ndis.4,v 1.6 2008/07/26 16:25:41 swildner Exp $
 .\"
 .Dd December 10, 2003
 .Dt NDIS 4 i386
@@ -123,6 +123,11 @@ driver-specific registry keys to control the media setting
 which can be configured via the
 .Xr sysctl 8
 command.
+.Sh EXAMPLES
+Refer to the
+.Sx EXAMPLES
+section of
+.Xr wlan 4 .
 .Sh DIAGNOSTICS
 .Bl -diag
 .It "ndis%d: watchdog timeout"
@@ -135,6 +140,7 @@ before a timeout expired.
 .Xr ifmedia 4 ,
 .Xr netintro 4 ,
 .Xr ng_ether 4 ,
+.Xr wlan 4 ,
 .Xr ifconfig 8 ,
 .Xr ndiscvt 8
 .Rs

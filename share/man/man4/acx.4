@@ -28,7 +28,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man4/acx.4,v 1.13 2008/07/26 15:09:32 swildner Exp $
+.\" $DragonFly: src/share/man/man4/acx.4,v 1.14 2008/07/26 16:25:40 swildner Exp $
 .\"
 .Dd July 26, 2008
 .Dt ACX 4
@@ -120,43 +120,6 @@ WESTELL A90-200WG-01	ACX111	CardBus	b/g
 ZyXEL G-160	ACX111	CardBus	b/g
 ZyXEL G-360 EE	ACX111	PCI	b/g
 .El
-.Sh EXAMPLES
-Join an existing BSS network (i.e., connect to an access point):
-.Pp
-.Dl "ifconfig acx0 inet 192.168.0.20 netmask 0xffffff00"
-.Pp
-Join a specific BSS network with network name
-.Dq Li my_net :
-.Pp
-.Dl "ifconfig acx0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net"
-.Pp
-Join a specific BSS network with 64 bit WEP encryption:
-.Bd -literal -offset indent
-ifconfig acx0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net \e
-        wepmode on wepkey 0x1234567890 weptxkey 1
-.Ed
-.Pp
-Join a specific BSS network with 128 bit WEP encryption:
-.Bd -literal -offset indent
-ifconfig acx0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net \e
-        wepmode on wepkey 0x01020304050607080910111213 weptxkey 1
-.Ed
-.Pp
-Join/create an 802.11b IBSS network:
-.Bd -literal -offset indent
-ifconfig acx0 192.168.0.20 netmask 0xffffff00 ssid my_net \e
-        mediaopt adhoc
-.Ed
-.Pp
-To debug a network setup, you may wish to enable interface debugging:
-.Bd -literal -offset indent
-ifconfig acx0 down debug up
-.Ed
-.Pp
-To disable debugging, you may simply use:
-.Bd -literal -offset indent
-ifconfig acx0 down -debug up
-.Ed
 .Sh FILES
 The firmware for the adapter is not shipped with
 .Dx
@@ -169,11 +132,17 @@ http://leaf.dragonflybsd.org/~sephe/acx/acx_fw.tbz
 The firmware files have to reside in
 .Pa /etc/firmware/acx
 and will be loaded when the interface is brought up.
+.Sh EXAMPLES
+Refer to the
+.Sx EXAMPLES
+section of
+.Xr wlan 4 .
 .Sh SEE ALSO
 .Xr arp 4 ,
 .Xr cardbus 4 ,
 .Xr ifmedia 4 ,
 .Xr pci 4 ,
+.Xr wlan 4 ,
 .Xr wlan_ratectl 4 ,
 .Xr hostapd 8 ,
 .Xr ifconfig 8 ,
