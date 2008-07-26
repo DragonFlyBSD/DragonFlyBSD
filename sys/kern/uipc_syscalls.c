@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.88 2008/07/10 00:19:27 aggelos Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.89 2008/07/26 15:36:28 sephe Exp $
  */
 
 #include "opt_ktrace.h"
@@ -453,7 +453,7 @@ kern_connect(int s, int fflags, struct sockaddr *sa)
 	struct proc *p = td->td_proc;
 	struct file *fp;
 	struct socket *so;
-	int error;
+	int error, interrupted = 0;
 
 	error = holdsock(p->p_fd, s, &fp);
 	if (error)
@@ -467,7 +467,7 @@ kern_connect(int s, int fflags, struct sockaddr *sa)
 	else
 		fflags = fp->f_flag;
 
-	if ((fflags & FNONBLOCK) && (so->so_state & SS_ISCONNECTING)) {
+	if (so->so_state & SS_ISCONNECTING) {
 		error = EALREADY;
 		goto done;
 	}
@@ -492,13 +492,16 @@ kern_connect(int s, int fflags, struct sockaddr *sa)
 		msg.nm_so = so;
 		msg.nm_etype = NM_REVENT;
 		error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, PCATCH);
+		if (error == EINTR || error == ERESTART)
+			interrupted = 1;
 	}
 	if (error == 0) {
 		error = so->so_error;
 		so->so_error = 0;
 	}
 bad:
-	so->so_state &= ~SS_ISCONNECTING;
+	if (!interrupted)
+		so->so_state &= ~SS_ISCONNECTING;
 	if (error == ERESTART)
 		error = EINTR;
 done:
