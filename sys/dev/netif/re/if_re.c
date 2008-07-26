@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.44 2008/06/25 11:02:33 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.45 2008/07/26 16:12:06 sephe Exp $
  */
 
 /*
@@ -214,6 +214,9 @@ static const struct re_hwrev re_hwrevs[] = {
 static int	re_probe(device_t);
 static int	re_attach(device_t);
 static int	re_detach(device_t);
+static int	re_suspend(device_t);
+static int	re_resume(device_t);
+static void	re_shutdown(device_t);
 
 static int	re_encap(struct re_softc *, struct mbuf **, int *, int *);
 
@@ -229,14 +232,12 @@ static void	re_txeof(struct re_softc *);
 static void	re_intr(void *);
 static void	re_tick(void *);
 static void	re_tick_serialized(void *);
+
 static void	re_start(struct ifnet *);
 static int	re_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	re_init(void *);
 static void	re_stop(struct re_softc *);
 static void	re_watchdog(struct ifnet *);
-static int	re_suspend(device_t);
-static int	re_resume(device_t);
-static void	re_shutdown(device_t);
 static int	re_ifmedia_upd(struct ifnet *);
 static void	re_ifmedia_sts(struct ifnet *, struct ifmediareq *);
 
@@ -1734,6 +1735,8 @@ re_tick_serialized(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	mii = device_get_softc(sc->re_miibus);
 	mii_tick(mii);
 	if (sc->re_link) {
@@ -1757,6 +1760,8 @@ static void
 re_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 {
 	struct re_softc *sc = ifp->if_softc;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	switch(cmd) {
 	case POLL_REGISTER:
@@ -1804,6 +1809,8 @@ re_intr(void *arg)
 	struct re_softc	*sc = arg;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint16_t status;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if (sc->suspended || (ifp->if_flags & IFF_UP) == 0)
 		return;
@@ -1999,6 +2006,8 @@ re_start(struct ifnet *ifp)
 	struct mbuf *m_head2;
 	int called_defrag, idx, need_trans;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	if (!sc->re_link) {
 		ifq_purge(&ifp->if_snd);
 		return;
@@ -2094,6 +2103,8 @@ re_init(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
 	uint32_t rxcfg = 0;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	mii = device_get_softc(sc->re_miibus);
 
@@ -2267,6 +2278,8 @@ re_ifmedia_upd(struct ifnet *ifp)
 	struct re_softc *sc = ifp->if_softc;
 	struct mii_data *mii;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	mii = device_get_softc(sc->re_miibus);
 	mii_mediachg(mii);
 
@@ -2282,6 +2295,8 @@ re_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 	struct re_softc *sc = ifp->if_softc;
 	struct mii_data *mii;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	mii = device_get_softc(sc->re_miibus);
 
 	mii_pollstat(mii);
@@ -2296,6 +2311,8 @@ re_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct ifreq *ifr = (struct ifreq *) data;
 	struct mii_data *mii;
 	int error = 0;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	switch(command) {
 	case SIOCSIFMTU:
@@ -2342,6 +2359,8 @@ re_watchdog(struct ifnet *ifp)
 {
 	struct re_softc *sc = ifp->if_softc;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	if_printf(ifp, "watchdog timeout\n");
 
 	ifp->if_oerrors++;
@@ -2364,6 +2383,8 @@ re_stop(struct re_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	ifp->if_timer = 0;
 	callout_stop(&sc->re_timer);
@@ -2412,6 +2433,9 @@ re_suspend(device_t dev)
 	int i;
 #endif
 	struct re_softc *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	re_stop(sc);
 
@@ -2425,6 +2449,8 @@ re_suspend(device_t dev)
 #endif
 
 	sc->suspended = 1;
+
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return (0);
 }
@@ -2442,6 +2468,8 @@ re_resume(device_t dev)
 #ifndef BURN_BRIDGES
 	int i;
 #endif
+
+	lwkt_serialize_enter(ifp->if_serializer);
 
 #ifndef BURN_BRIDGES
 	/* better way to do this? */
@@ -2462,6 +2490,8 @@ re_resume(device_t dev)
 		re_init(sc);
 
 	sc->suspended = 0;
+
+	lwkt_serialize_exit(ifp->if_serializer);
 
 	return (0);
 }
