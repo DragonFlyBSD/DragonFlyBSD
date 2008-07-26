@@ -29,9 +29,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man4/iwl.4,v 1.1 2008/03/09 11:04:35 swildner Exp $
+.\" $DragonFly: src/share/man/man4/iwl.4,v 1.2 2008/07/26 15:09:32 swildner Exp $
 .\"
-.Dd March 9, 2008
+.Dd July 26, 2008
 .Os
 .Dt IWL 4
 .Sh NAME
@@ -77,7 +77,7 @@ The firmware files have to reside in
 .Pa /etc/firmware/iwl/2100/1.3
 and will be loaded when the interface is brought up.
 .Sh EXAMPLES
-Join an existing BSS network (ie: connect to an access point):
+Join an existing BSS network (i.e., connect to an access point):
 .Pp
 .Dl "ifconfig iwl0 inet 192.168.0.20 netmask 0xffffff00"
 .Pp
@@ -86,16 +86,32 @@ Join a specific BSS network with network name
 .Pp
 .Dl "ifconfig iwl0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net"
 .Pp
-Join a specific BSS network with 64 bits WEP encryption:
+Join a specific BSS network with 64 bit WEP encryption:
 .Bd -literal -offset indent
 ifconfig iwl0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net \e
-        wepmode on wepkey 0x1234567890
+        wepmode on wepkey 0x1234567890 weptxkey 1
 .Ed
 .Pp
-Join a specific BSS network with 128bits WEP encryption:
+Join a specific BSS network with 128 bit WEP encryption:
 .Bd -literal -offset indent
 ifconfig iwl0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net \e
-        wepmode on wepkey 0x01020304050607080910111213
+        wepmode on wepkey 0x01020304050607080910111213 weptxkey 1
+.Ed
+.Pp
+Join/create an 802.11b IBSS network:
+.Bd -literal -offset indent
+ifconfig iwl0 192.168.0.20 netmask 0xffffff00 ssid my_net \e
+        mediaopt adhoc
+.Ed
+.Pp
+To debug a network setup, you may wish to enable interface debugging:
+.Bd -literal -offset indent
+ifconfig iwl0 down debug up
+.Ed
+.Pp
+To disable debugging, you may simply use:
+.Bd -literal -offset indent
+ifconfig iwl0 down -debug up
 .Ed
 .\".Sh DIAGNOSTICS
 .\".Bl -diag

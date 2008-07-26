@@ -28,9 +28,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man4/iwi.4,v 1.12 2008/02/01 21:40:53 swildner Exp $
+.\" $DragonFly: src/share/man/man4/iwi.4,v 1.13 2008/07/26 15:09:32 swildner Exp $
 .\"
-.Dd March 1, 2005
+.Dd July 26, 2008
 .Os
 .Dt IWI 4
 .Sh NAME
@@ -59,7 +59,7 @@ for more details on how to load firmware.
 For more (general) information on configuring this device, see
 .Xr ifconfig 8 .
 .Sh EXAMPLES
-Join an existing BSS network (ie: connect to an access point):
+Join an existing BSS network (i.e., connect to an access point):
 .Pp
 .Dl "ifconfig iwi0 inet 192.168.0.20 netmask 0xffffff00"
 .Pp
@@ -68,19 +68,19 @@ Join a specific BSS network with network name
 .Pp
 .Dl "ifconfig iwi0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net"
 .Pp
-Join a specific BSS network with 64 bits WEP encryption:
+Join a specific BSS network with 64 bit WEP encryption:
 .Bd -literal -offset indent
 ifconfig iwi0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net \e
-        wepmode on wepkey 0x1234567890
+        wepmode on wepkey 0x1234567890 weptxkey 1
 .Ed
 .Pp
-Join a specific BSS network with 128bits WEP encryption:
+Join a specific BSS network with 128 bit WEP encryption:
 .Bd -literal -offset indent
 ifconfig iwi0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net \e
-        wepmode on wepkey 0x01020304050607080910111213
+        wepmode on wepkey 0x01020304050607080910111213 weptxkey 1
 .Ed
 .Pp
-To join or create an IBSS network, use something like:
+Join/create an 802.11b IBSS network:
 .Bd -literal -offset indent
 ifconfig iwi0 192.168.0.20 netmask 0xffffff00 ssid my_net \e
         mediaopt adhoc

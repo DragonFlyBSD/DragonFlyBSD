@@ -28,9 +28,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man4/bwi.4,v 1.8 2008/05/01 12:34:06 sephe Exp $
+.\" $DragonFly: src/share/man/man4/bwi.4,v 1.9 2008/07/26 15:09:32 swildner Exp $
 .\"
-.Dd September 16, 2007
+.Dd July 26, 2008
 .Dt BWI 4
 .Os
 .Sh NAME
@@ -83,6 +83,43 @@ Buffalo WLI-PCI-G54S	BCM4306	PCI	b/g
 Dell Wireless 1470	BCM4318	Mini PCI	b/g
 Dell Truemobile 1400	BCM4309	Mini PCI	b/g
 .El
+.Sh EXAMPLES
+Join an existing BSS network (i.e., connect to an access point):
+.Pp
+.Dl "ifconfig bwi0 inet 192.168.0.20 netmask 0xffffff00"
+.Pp
+Join a specific BSS network with network name
+.Dq Li my_net :
+.Pp
+.Dl "ifconfig bwi0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net"
+.Pp
+Join a specific BSS network with 64 bit WEP encryption:
+.Bd -literal -offset indent
+ifconfig bwi0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net \e
+        wepmode on wepkey 0x1234567890 weptxkey 1
+.Ed
+.Pp
+Join a specific BSS network with 128 bit WEP encryption:
+.Bd -literal -offset indent
+ifconfig bwi0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net \e
+        wepmode on wepkey 0x01020304050607080910111213 weptxkey 1
+.Ed
+.Pp
+Join/create an 802.11b IBSS network:
+.Bd -literal -offset indent
+ifconfig bwi0 192.168.0.20 netmask 0xffffff00 ssid my_net \e
+        mediaopt adhoc
+.Ed
+.Pp
+To debug a network setup, you may wish to enable interface debugging:
+.Bd -literal -offset indent
+ifconfig bwi0 down debug up
+.Ed
+.Pp
+To disable debugging, you may simply use:
+.Bd -literal -offset indent
+ifconfig bwi0 down -debug up
+.Ed
 .Sh FILES
 The firmware for the adapter is not shipped with
 .Dx

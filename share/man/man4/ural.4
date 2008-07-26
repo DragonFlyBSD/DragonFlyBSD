@@ -14,9 +14,9 @@
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ural.4,v 1.11 2006/10/07 18:18:40 flz Exp $
-.\" $DragonFly: src/share/man/man4/ural.4,v 1.7 2007/09/16 19:06:26 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ural.4,v 1.8 2008/07/26 15:09:32 swildner Exp $
 .\"
-.Dd November 26, 2006
+.Dd July 26, 2008
 .Os
 .Dt URAL 4
 .Sh NAME
@@ -143,16 +143,32 @@ Join a specific BSS network with network name
 .Pp
 .Dl "ifconfig ural0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net"
 .Pp
-Join a specific BSS network with 40-bit WEP encryption:
+Join a specific BSS network with 64 bit WEP encryption:
 .Bd -literal -offset indent
 ifconfig ural0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net \e
-    wepmode on wepkey 0x1234567890 weptxkey 1
+        wepmode on wepkey 0x1234567890 weptxkey 1
 .Ed
 .Pp
-Join a specific BSS network with 104-bit WEP encryption:
+Join a specific BSS network with 128 bit WEP encryption:
 .Bd -literal -offset indent
 ifconfig ural0 inet 192.168.0.20 netmask 0xffffff00 ssid my_net \e
-    wepmode on wepkey 0x01020304050607080910111213 weptxkey 1
+        wepmode on wepkey 0x01020304050607080910111213 weptxkey 1
+.Ed
+.Pp
+Join/create an 802.11b IBSS network:
+.Bd -literal -offset indent
+ifconfig ural0 192.168.0.20 netmask 0xffffff00 ssid my_net \e
+        mediaopt adhoc
+.Ed
+.Pp
+To debug a network setup, you may wish to enable interface debugging:
+.Bd -literal -offset indent
+ifconfig ural0 down debug up
+.Ed
+.Pp
+To disable debugging, you may simply use:
+.Bd -literal -offset indent
+ifconfig ural0 down -debug up
 .Ed
 .Sh DIAGNOSTICS
 .Bl -diag
