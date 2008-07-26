@@ -1,4 +1,4 @@
-# $DragonFly: src/usr.bin/cpio/Makefile,v 1.1 2008/07/12 14:57:33 pavalos Exp $
+# $DragonFly: src/usr.bin/cpio/Makefile,v 1.2 2008/07/26 16:25:31 pavalos Exp $
 
 PROG=	bsdcpio
 SRCS=	cmdline.c cpio.c err.c matching.c pathmatch.c
@@ -10,7 +10,7 @@ CONTRIBDIR=	${.CURDIR}/../../contrib/libarchive-2/cpio
 CFLAGS+=	-I${.OBJDIR} -I${.CURDIR}/../../lib/libarchive -I${CONTRIBDIR}
 CFLAGS+=	-DPLATFORM_CONFIG_H=\"config.h\"
 
-.if defined(WITH_BSDCPIO)
+.if !defined(WITH_GCPIO)
 SYMLINKS=	${BINDIR}/bsdcpio ${BINDIR}/cpio
 MLINKS=	bsdcpio.1 cpio.1
 .endif

@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/make.conf.5,v 1.12.2.30 2003/05/18 17:05:55 brueffer Exp $
-.\" $DragonFly: src/share/man/man5/make.conf.5,v 1.36 2008/07/12 14:57:33 pavalos Exp $
+.\" $DragonFly: src/share/man/man5/make.conf.5,v 1.37 2008/07/26 16:25:30 pavalos Exp $
 .\"
 .Dd July 12, 2008
 .Dt MAKE.CONF 5
@@ -267,14 +267,14 @@ Causes
 to be added to
 .Va CFLAGS
 when WARNS is in effect.
-.It Va WITH_BSDCPIO
+.It Va WITH_GCPIO
 .Pq Vt bool
 Set this to use
-.Xr bsdcpio 1
+.Xr gcpio 1
 as the standard
 .Xr cpio 1 .
-The default is to use GNU
-.Xr gcpio 1 .
+The default is to use
+.Xr bsdcpio 1 .
 .El
 .Pp
 The following list provides a name and short description for variables

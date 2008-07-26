@@ -2,7 +2,7 @@
 # even though it may live in src/gnu/...
 
 # $FreeBSD: src/gnu/usr.bin/cpio/Makefile,v 1.7.2.1 2001/04/25 12:03:30 ru Exp $
-# $DragonFly: src/gnu/usr.bin/cpio/Makefile,v 1.3 2008/07/12 14:57:33 pavalos Exp $
+# $DragonFly: src/gnu/usr.bin/cpio/Makefile,v 1.4 2008/07/26 16:25:31 pavalos Exp $
 
 .PATH:	${.CURDIR}/../../../contrib/cpio
 
@@ -26,7 +26,7 @@ gcpio.1: cpio.1
 
 CLEANFILES+=	gcpio.1
 
-.if !defined(WITH_BSDCPIO)
+.if defined(WITH_GCPIO)
 SYMLINKS=	${BINDIR}/gcpio ${BINDIR}/cpio
 MLINKS=		gcpio.1 cpio.1
 .endif
