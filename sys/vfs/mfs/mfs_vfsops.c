@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.40 2007/05/09 00:53:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.41 2008/07/26 22:31:54 mneumann Exp $
  */
 
 
@@ -240,7 +240,7 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	/*
 	 * Use NULL path to flag a root mount
 	 */
-	if( path == NULL) {
+	if (path == NULL) {
 		/*
 		 ***
 		 * Mounting root file system
