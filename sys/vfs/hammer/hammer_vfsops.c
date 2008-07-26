@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.63.2.3 2008/07/19 18:46:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.63.2.4 2008/07/26 05:37:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -369,7 +369,6 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	hmp->master_id = master_id;
 
 	if (info.asof) {
-		kprintf("ASOF\n");
 		mp->mnt_flag |= MNT_RDONLY;
 		hmp->asof = info.asof;
 	} else {
@@ -675,6 +674,13 @@ hammer_free_hmp(struct mount *mp)
 	hammer_flusher_destroy(hmp);
 
 	/*
+	 * We may have held recovered buffers due to a read-only mount.
+	 * These must be discarded.
+	 */
+	if (hmp->ronly)
+		hammer_recover_flush_buffers(hmp, NULL, -1);
+
+	/*
 	 * Unload buffers and then volumes
 	 */
         RB_SCAN(hammer_buf_rb_tree, &hmp->rb_bufs_root, NULL,
@@ -735,6 +741,7 @@ hammer_vfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 			      0, &error);
 	if (ip == NULL) {
 		*vpp = NULL;
+		hammer_done_transaction(&trans);
 		return(error);
 	}
 	error = hammer_get_vnode(ip, vpp);
