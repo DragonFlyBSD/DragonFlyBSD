@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.41 2008/07/22 11:52:06 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.42 2008/07/26 07:41:45 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -164,7 +164,8 @@ static int	nfe_sysctl_imtime(SYSCTL_HANDLER_ARGS);
 static int	nfe_debug = 0;
 static int	nfe_rx_ring_count = NFE_RX_RING_DEF_COUNT;
 static int	nfe_tx_ring_count = NFE_TX_RING_DEF_COUNT;
-static int	nfe_imtime = 0;	/* Disable interrupt moderation */
+/* hw timer simulated interrupt moderation @8000Hz */
+static int	nfe_imtime = -125;
 
 TUNABLE_INT("hw.nfe.rx_ring_count", &nfe_rx_ring_count);
 TUNABLE_INT("hw.nfe.tx_ring_count", &nfe_tx_ring_count);

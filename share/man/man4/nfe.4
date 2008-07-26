@@ -1,5 +1,5 @@
 .\"	$OpenBSD: nfe.4,v 1.10 2006/08/30 22:56:05 jmc Exp $
-.\"	$DragonFly: src/share/man/man4/nfe.4,v 1.9 2008/07/12 09:31:08 sephe Exp $
+.\"	$DragonFly: src/share/man/man4/nfe.4,v 1.10 2008/07/26 07:41:45 sephe Exp $
 .\"
 .\" Copyright (c) 2006 Jonathan Gray <jsg@openbsd.org>
 .\"
@@ -75,7 +75,7 @@ interfaces in system and can be set in
 .Bl -tag -width ".Va rx_ring_count"
 .It Va imtimer
 Interrupt moderation time (unit: microseconds).
-The default value is 0.
+The default value is -125.
 A value of 0 means disabled.
 A negative value, -Y, means hardware timer simulated interrupt moderation,
 the simulated interrupt moderation timer will be set to Y.
@@ -83,7 +83,6 @@ A positive valye, Y, means hardware timer only interrupt moderation,
 hardware timer will be set to Y.
 Value can be tuned when the interface is running.
 Positive values in the range 64-128 seems to be a reasonable.
-The value -125 should work on most systems.
 .It Va rx_ring_count
 RX ring count.
 sysctl node is read-only.
