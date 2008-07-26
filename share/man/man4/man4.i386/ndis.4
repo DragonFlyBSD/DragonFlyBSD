@@ -29,7 +29,7 @@
 .\" THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/man4.i386/ndis.4,v 1.9 2004/12/21 01:09:34 brueffer Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/ndis.4,v 1.4 2008/07/26 00:36:35 swildner Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/ndis.4,v 1.5 2008/07/26 15:20:50 swildner Exp $
 .\"
 .Dd December 10, 2003
 .Dt NDIS 4 i386
@@ -58,13 +58,13 @@ driver supplied with your network adapter.
 The
 .Nm
 driver uses the
-.Xr ndisapi 9
+.Nm ndisapi
 kernel subsystem to relocate and link the
 .Tn Windows\[rg]
 binary so
 that it can be used in conjunction with native code.
 The
-.Xr ndisapi 9
+.Nm ndisapi
 subsystem provides an interface between the NDIS API and the
 .Dx
 networking infrastructure.
