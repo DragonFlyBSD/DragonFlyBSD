@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/mount_hammer/mount_hammer.8,v 1.12 2008/07/21 23:42:01 swildner Exp $
+.\" $DragonFly: src/sbin/mount_hammer/mount_hammer.8,v 1.13 2008/07/27 17:12:13 thomas Exp $
 .Dd June 24, 2008
 .Dt MOUNT_HAMMER 8
 .Os
@@ -39,27 +39,32 @@
 .Nd mount a HAMMER file system
 .Sh SYNOPSIS
 .Nm
-.Op Fl o Ar mount-options
+.Op Fl o Ar options
 .Op Fl T Ar transaction-id
 .Ar special ...
-.Ar mount-point
+.Ar node
+.Nm
+.Op Fl o Ar options
+.Op Fl T Ar transaction-id
+.Ar special[:special]*
+.Ar node
 .Nm
 .Op Fl u
-.Op Fl o Ar mount-options
-.Ar mount-point
+.Op Fl o Ar options
+.Ar node
 .Sh DESCRIPTION
 The
 .Nm
-utility mounts a HAMMER filesystem backed by one or more block devices.
-.Ar Special
-files can be separated by colon,
-.Dq \&: ,
-instead of blanks, this is useful in
-.Xr fstab 5 .
+utility mounts a
+.Nm HAMMER
+file system backed by
+.Ar special
+file(s) at mount point
+.Ar node .
 .Pp
 The options are as follows:
 .Bl -tag -width indent
-.It Fl o Ar mount-options
+.It Fl o Ar options
 Specify mount options, which are a comma delimited set of options (see
 .Xr mount 8 ) .
 Supported mount options are:
@@ -67,7 +72,7 @@ Supported mount options are:
 .It Ar ro
 Issue a read-only mount.
 .It Ar nohistory
-Put the entire filesystem in no-history mode.  Change history is not
+Put the entire file system in no-history mode.  Change history is not
 retained.
 Use of this option may increase the overhead of doing mirroring.
 This option is generally only used in an emergency.
@@ -77,16 +82,20 @@ the mount.  This is intended to help support multi-master and fail-over
 operation.  Multi-master operation is not yet supported.  If you intend
 to upgrade slaves to masters and downgrade masters to slaves as part of
 a fail-over setup, it's a good idea to assign a different master id
-to the HAMMER mounts making up the fail-over group.
+to the
+.Nm HAMMER
+mounts making up the fail-over group.
 .It Ar nomirror
-By default a HAMMER mount assigns a master id of 0.  You can force
+By default a
+.Nm HAMMER
+mount assigns a master id of 0.  You can force
 no-mirror operation by specifying this option.  This option disables
 mirror transaction id propagation in the B-Tree and will improve write
 performance somewhat but also prevents incremental mirroring from working
 at all, and is not recommended.
 .El
 .It Fl T Ar transaction-id
-Mount the filesystem as-of a particular
+Mount the file system as-of a particular
 transaction id.
 The mount will automatically be made read-only.
 The
@@ -101,21 +110,31 @@ Note that issuing a read-only mount which requires UNDOs to be run will
 still run the UNDOs, but will not flush the buffer cache buffers until/if
 the mount is updated to read-write.
 .Sh EXAMPLES
+Mount a
+.Nm HAMMER
+file system made up of two volumes onto
+.Pa /mnt :
 .Bd -literal -offset indent
 mount_hammer -o ro,noatime /dev/ad0s1d /dev/ad1s1d /mnt
 .Ed
 .Pp
-Mount a HAMMER filesystem made up of two volumes onto
-.Pa /mnt .
+A corresponding
+.Xr fstab 5
+entry is:
+.Bd -literal -offset indent
+/dev/ad0s1d:/dev/ad1s1d /mnt hammer ro,noatime
+.Ed
 .Sh DIAGNOSTICS
 Exit status is 0 on success and 1 on error.
 .Sh SEE ALSO
 .Xr mount 2 ,
 .Xr unmount 2 ,
 .Xr fstab 5 ,
+.Xr HAMMER 5 ,
 .Xr disklabel 8 ,
 .Xr disklabel64 8 ,
 .Xr fdisk 8 ,
+.Xr gpt 8 ,
 .Xr hammer 8 ,
 .Xr mount 8 ,
 .Xr newfs_hammer 8
