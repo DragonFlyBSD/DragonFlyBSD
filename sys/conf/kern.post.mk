@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/kern.post.mk,v 1.12 2008/01/13 08:41:15 swildner Exp $
+# $DragonFly: src/sys/conf/kern.post.mk,v 1.13 2008/07/27 23:38:27 mneumann Exp $
 # 
 # This Makefile covers the bottom part of the MI build instructions
 #
@@ -210,6 +210,7 @@ modules-install:
 	fi
 .  endif
 .endif
+	mkdir -p ${DESTDIR}/modules # Ensure that the modules directory exists!
 	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules install
 
 modules-reinstall:
