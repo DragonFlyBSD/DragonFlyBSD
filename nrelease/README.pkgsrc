@@ -1,4 +1,4 @@
-$DragonFly: src/nrelease/README.pkgsrc,v 1.1 2008/02/12 02:06:12 dillon Exp $
+$DragonFly: src/nrelease/README.pkgsrc,v 1.2 2008/07/27 23:48:40 swildner Exp $
 
 		    Generating bootstrap and nrelease packages
 
@@ -20,20 +20,6 @@ $DragonFly: src/nrelease/README.pkgsrc,v 1.1 2008/02/12 02:06:12 dillon Exp $
 
     (rehash if running on csh)
 
-    cd /usr/pkgsrc/sysutils/dfuibe_installer
-    bmake clean-depends
-    cd /usr/pkgsrc/devel/gettext-lib
-    bmake package
-    cd /usr/pkgsrc/devel/gettext-tools/
-    bmake package
-    cd /usr/pkgsrc/devel/libaura/
-    bmake package
-    cd /usr/pkgsrc/devel/libdfui/
-    bmake package
-    cd /usr/pkgsrc/devel/libinstaller/
-    bmake package
-    cd /usr/pkgsrc/sysutils/dfuibe_installer
-    bmake package
     cd /usr/pkgsrc/sysutils/cdrtools-ossdvd
     bmake package
 
