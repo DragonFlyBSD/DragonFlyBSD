@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/newfs_hammer/newfs_hammer.8,v 1.8 2008/07/25 03:17:03 swildner Exp $
+.\" $DragonFly: src/sbin/newfs_hammer/newfs_hammer.8,v 1.9 2008/07/27 16:15:33 thomas Exp $
 .Dd July 24, 2008
 .Dt NEWFS_HAMMER 8
 .Os
@@ -48,30 +48,55 @@
 .Sh DESCRIPTION
 The
 .Nm
-utility creates a HAMMER filesystem on device
+utility creates a
+.Nm HAMMER
+file system on device
 .Ar special .
-If multiple devices are specified a single HAMMER filesystem is created
+If multiple devices are specified a single
+.Nm HAMMER
+file system is created
 which spans all of them.
-HAMMER filesystems are sector-size agnostic, however the
+Each
+.Ar special
+will constitute a volume which the
+.Nm HAMMER
+file system is built on.
+.Nm HAMMER
+file systems are sector-size agnostic, however the
 .Dx
 implementation requires the sector size to be no larger than 16K.
-HAMMER filesystems start at a relative offset of 0 and may only be created
-under out-of-band disk labels (disklabel64 or gpt labels), or in standard
-disklabel partitions which do not overlap the label area.
+.Nm HAMMER
+file systems start at a relative offset of 0 and may only be created
+under out-of-band disk labels
+.Po
+.Xr disklabel64 5
+or
+.Xr gpt 8
+labels
+.Pc ,
+or in
+.Xr disklabel 5
+partitions which do not overlap the label area.
 .Pp
 The options are as follows:
 .Bl -tag -width indent
 .It Fl L Ar label
-All HAMMER filesystems must be named and names should be unique on a
+All
+.Nm HAMMER
+file systems must be named and names should be unique on a
 per-machine basis.
 .It Fl b Ar bootsize
 Specify a fixed area in which a boot related kernel and data can be stored.
 By default a boot area of approximately 4MB will be created.
 .It Fl f
-Force the creation of a HAMMER file system with less than 100M UNDO FIFO.
+Force the creation of a
+.Nm HAMMER
+file system with less than 100M UNDO FIFO.
 This should not be used under normal circumstances.
 .It Fl m Ar savesize
-Specify a fixed area which HAMMER may use as a memory log.  This area is
+Specify a fixed area which
+.Nm HAMMER
+may use as a memory log.  This area is
 currently unused.
 .It Fl u Ar undosize
 Specify the size of the fixed UNDO FIFO.  By default 0.1% of the root
@@ -92,9 +117,11 @@ on
 .Sh DIAGNOSTICS
 Exit status is 0 on success and 1 on error.
 .Sh SEE ALSO
-.Xr disklabel 8 ,
-.Xr disklabel64 8 ,
+.Xr HAMMER 5 ,
+.Xr disklabel 5 ,
+.Xr disklabel64 5 ,
 .Xr fdisk 8 ,
+.Xr gpt 8 ,
 .Xr newfs 8
 .Sh HISTORY
 The
