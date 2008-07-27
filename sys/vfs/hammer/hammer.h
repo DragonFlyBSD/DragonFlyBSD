@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.122 2008/07/27 21:34:04 mneumann Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.123 2008/07/27 23:01:25 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -66,6 +66,7 @@
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 MALLOC_DECLARE(M_HAMMER);
+MALLOC_DECLARE(M_HAMMER_INO);
 
 /*
  * Kernel trace

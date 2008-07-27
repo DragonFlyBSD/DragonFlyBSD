@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.105 2008/07/18 00:19:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.106 2008/07/27 23:01:25 dillon Exp $
  */
 
 #include "hammer.h"
@@ -378,7 +378,7 @@ loop:
 	/*
 	 * Allocate a new inode structure and deal with races later.
 	 */
-	ip = kmalloc(sizeof(*ip), M_HAMMER, M_WAITOK|M_ZERO);
+	ip = kmalloc(sizeof(*ip), M_HAMMER_INO, M_WAITOK|M_ZERO);
 	++hammer_count_inodes;
 	++hmp->count_inodes;
 	ip->obj_id = obj_id;
@@ -511,7 +511,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 
 	hmp = trans->hmp;
 
-	ip = kmalloc(sizeof(*ip), M_HAMMER, M_WAITOK|M_ZERO);
+	ip = kmalloc(sizeof(*ip), M_HAMMER_INO, M_WAITOK|M_ZERO);
 	++hammer_count_inodes;
 	++hmp->count_inodes;
 
@@ -672,7 +672,7 @@ hammer_free_inode(hammer_inode_t ip)
 		hammer_rel_pseudofs(ip->hmp, ip->pfsm);
 		ip->pfsm = NULL;
 	}
-	kfree(ip, M_HAMMER);
+	kfree(ip, M_HAMMER_INO);
 	ip = NULL;
 }
 

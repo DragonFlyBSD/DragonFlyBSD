@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.68 2008/07/27 21:34:04 mneumann Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.69 2008/07/27 23:01:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -248,7 +248,8 @@ static struct vfsops hammer_vfsops = {
 	.vfs_checkexp	= hammer_vfs_checkexp
 };
 
-MALLOC_DEFINE(M_HAMMER, "hammer-mount", "hammer mount");
+MALLOC_DEFINE(M_HAMMER, "hammer-general", "hammer general");
+MALLOC_DEFINE(M_HAMMER_INO, "hammer-inodes", "hammer inodes");
 
 VFS_SET(hammer_vfsops, hammer, 0);
 MODULE_VERSION(hammer, 1);
