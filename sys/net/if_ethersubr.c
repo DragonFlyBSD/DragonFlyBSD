@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.78 2008/07/27 02:41:07 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.79 2008/07/27 02:52:36 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -1373,6 +1373,9 @@ ether_input_chain_init(struct mbuf_chain *chain)
 
 #ifdef ETHER_INPUT2
 
+/*
+ * Upper layer processing for a received Ethernet packet.
+ */
 static void
 ether_demux_oncpu(struct ifnet *ifp, struct mbuf *m)
 {
@@ -1583,6 +1586,10 @@ dropanyway:
 		netisr_dispatch(isr, m);
 }
 
+/*
+ * First we perform any link layer operations, then continue to the
+ * upper layers with ether_demux_oncpu().
+ */
 void
 ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
 {
