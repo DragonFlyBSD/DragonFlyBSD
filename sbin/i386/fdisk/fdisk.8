@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/sbin/i386/fdisk/fdisk.8,v 1.17.2.11 2002/04/25 16:25:12 trhodes Exp $
-.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.13 2008/05/02 02:05:05 swildner Exp $
+.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.14 2008/07/27 22:15:49 thomas Exp $
 .\"
 .Dd October 4, 1996
 .Dt FDISK 8
@@ -430,9 +430,23 @@ a       1
 .It Pa /boot/mbr
 The default boot code
 .El
+.Sh COMPATIBILITY
+Due to the use of 32 bit to store the number of sectors in the MBR,
+.Nm fdisk
+can at most use 2^32 - 1 sectors.
+For the prevalent sector size of 512B this means a maximum of 2TB.
+Larger disks should be partitioned using
+.Xr gpt 8 .
+.Pp
+The MBR that
+.Nm
+manipulates, is used by many different OSs, but the exact requirements seems to differ,
+it can be a hassle to get multiple OSs to recognize the same MBR.
+Some OSs will require that slices are located at cylinder boundaries.
 .Sh SEE ALSO
 .Xr boot0cfg 8 ,
 .Xr disklabel 8 ,
+.Xr gpt 8 ,
 .Xr newfs 8
 .Sh BUGS
 The default boot code will not necessarily handle all slice types
