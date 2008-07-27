@@ -23,9 +23,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/gpt/gpt.8,v 1.17 2006/06/22 22:22:32 marcel Exp $
-.\" $DragonFly: src/sbin/gpt/gpt.8,v 1.4 2007/12/23 15:31:28 swildner Exp $
+.\" $DragonFly: src/sbin/gpt/gpt.8,v 1.5 2008/07/27 21:05:10 thomas Exp $
 .\"
-.Dd June 22, 2006
+.Dd July 27, 2008
 .Os
 .Dt GPT 8
 .Sh NAME
@@ -44,6 +44,9 @@ utility provides the necessary functionality to manipulate GUID partition
 tables (GPTs), but see
 .Sx BUGS
 below for how and where functionality is missing.
+GPT partitions are accessed as
+.Dx
+disk slices, with same number as GPT partition.
 The basic usage model of the
 .Nm
 tool follows that of the
@@ -102,8 +105,11 @@ There is no formalized definition of the different levels yet.
 .Xc
 The
 .Ic add
-command allows the user to add a new partition to an existing table.
-By default, it will create a UFS partition covering the first available block
+command allows the user to add a new partition to an existing table,
+the name of the disk slice for the added partition is printed.
+By default, it will create a
+.Cm dfly
+partition covering the first available block
 of an unused disk space.
 The command-specific options can be used to control this behaviour.
 .Pp
@@ -136,7 +142,20 @@ accepts
 and
 .Cm windows
 as aliases for the most commonly used partition types.
-You may also specify any symbolic name in the system uuids file.
+.Cm ufs
+is a
+.Fx
+UFS UUID.
+.Cm dfly
+has the alias
+.Cm dragonfly
+and is a
+.Dx
+.Xr disklabel64 5
+UUID.
+You may also specify any symbolic name in the system
+.Xr uuids 5
+files.
 .\" ==== create ====
 .It Nm Ic create Oo Fl fp Oc Ar device ...
 The
@@ -300,10 +319,76 @@ option takes precedence over the
 .Fl u
 option.
 .El
+.Sh FILES
+.Bl -tag -width ".Pa /etc/defaults/uuids"
+.It Pa /etc/defaults/uuids
+A list of UUIDs
+and their symbolic names provided by the OS vendor.
+.It Pa /etc/uuids
+A list of UUIDs
+and their symbolic names provided by the system administrator.
+.El
+.Sh EXAMPLES
+To install an empty GPT on
+.Pa ad6 :
+.Pp
+.Dl "gpt create ad6"
+.Pp
+GPT partitions are defined in number of sectors, the sector size is usually 512B,
+which is assumed in the examples below, it can be found using:
+.Pp
+.Dl "gpt -v show ad6"
+.Pp
+To add a dummy GPT partition 0:
+.Pp
+.Dl "gpt add -i0 -s1 ad6"
+.Pp
+You might want to do this to not use slice 0 for data;
+when GPT is not used on a disk, slice 0 is the compatibility slice,
+which is used for
+.Dq dangerously dedicated
+disks.
+For GPT slice 0 has no special meaning, it is just the first slice on the disk.
+.Pp
+To add a GPT partition of size approx. 100GB:
+.Pp
+.Dl "gpt add -s200000000 ad6"
+.Pp
+This will be GPT partition 1 as it is the first one free,
+it will be accessible as
+.Pa ad6s1 ,
+which is also printed by the command.
+The type will be
+.Dq DragonFly Label64 ,
+it will have to be set up by
+.Xr disklabel64 8 .
+.Pp
+To add GPT partition 5 with type
+.Dq DragonFly HAMMER
+using the remaining free space:
+.Bd -literal -offset indent
+gpt add -i5 -t "DragonFly HAMMER" ad6
+.Ed
+.Pp
+To print the contents of the GPT:
+.Pp
+.Dl "gpt show ad6"
+.Sh COMPATIBILITY
+The GPT that
+.Nm
+manipulates is part of the EFI standard and is supported by many OSs.
+GPT uses 64 bits to store number of sectors, this supports very large disks.
+With the prevalent sector size of 512B this is 8 billion TB.
 .Sh SEE ALSO
+.Xr uuid 3 ,
+.Xr disklabel64 5 ,
+.Xr uuids 5 ,
+.Xr disklabel 8 ,
+.Xr disklabel64 8 ,
 .Xr fdisk 8 ,
 .Xr mount 8 ,
 .Xr newfs 8 ,
+.Xr newfs_hammer 8 ,
 .Xr swapon 8
 .Sh HISTORY
 The
@@ -311,6 +396,8 @@ The
 utility appeared in
 .Fx 5.0
 for ia64.
+It was imported to
+.Dx 1.9 .
 .Sh BUGS
 The development of the
 .Nm
@@ -337,3 +424,12 @@ removed in future versions.
 Another possibility is that the current usage model is accompanied by
 other interfaces to make the tool usable as a back-end.
 This all depends on demand and thus feedback.
+.Pp
+The
+.Ic migrate
+command doesn't support
+.Dx
+partition types.
+.Pp
+.Dx
+doesn't support booting from GPT partitions.
