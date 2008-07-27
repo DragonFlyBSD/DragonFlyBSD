@@ -36,7 +36,7 @@
 .\"
 .\"     @(#)vnconfig.8	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/usr.sbin/vnconfig/vnconfig.8,v 1.14.2.8 2003/01/04 22:35:53 keramida Exp $
-.\" $DragonFly: src/usr.sbin/vnconfig/vnconfig.8,v 1.9 2008/04/16 07:14:11 swildner Exp $
+.\" $DragonFly: src/usr.sbin/vnconfig/vnconfig.8,v 1.10 2008/07/27 22:36:01 thomas Exp $
 .\"
 .Dd January 30, 2008
 .Dt VNCONFIG 8
@@ -47,18 +47,16 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl cdeguvTZ
-.Oo Fl s Ar option Ns
-.Op , Ns Ar option Ns Ar ... Oc
-.Oo Fl r Ar option Ns
-.Op , Ns Ar option Ns Ar ... Oc
+.Op Fl s Ar options
+.Op Fl r Ar options
 .Op Fl S Ar value
 .Ar special_file Op Ar regular_file
 .Op Ar feature
 .Nm
 .Fl a
 .Op Fl cdeguv
-.Op Fl s Ar option
-.Op Fl r Ar option
+.Op Fl s Ar options
+.Op Fl r Ar options
 .Op Fl f Ar config_file
 .Nm
 .Fl l
@@ -75,7 +73,9 @@ allowing the latter to be accessed as though it were a disk.
 Hence a regular file within the filesystem can be used for swapping
 or can contain a filesystem that is mounted in the name space.  If you
 want to use swap backing store for your device instead of a file, you
-can leave regular_file out and specify the size of the block device
+can leave
+.Ar regular_file
+out and specify the size of the block device
 with the
 .Fl S
 option.
@@ -107,15 +107,16 @@ Use
 as an alternate config file.
 .It Fl g
 Fiddle global options.
-.It Fl l Ar special_file...
-List the vn devices and indicate which ones are in use.
+.It Fl l Ar special_file Ar ...
+List the VN devices and indicate which ones are in use.
 If a
 .Ar special_file
 list is given, only those devices will be described.
-.It Fl r Ar flag
+.It Fl r Ar options
 Reset
-.Ar flag .
-The list of allowed flags and their meanings are:
+.Ar options ,
+which is a comma separated string of options.
+The list of allowed options and their meanings are:
 .Bl -tag -width "follow"
 .It Ar labels
 use disk/slice labels.
@@ -141,14 +142,15 @@ debug I/O in the
 .Xr vn 4
 driver.
 .It Ar all
-turn on all flags.
+turn on all options.
 .It Ar none
-turn off all flags.
+turn off all options.
 .El
-.It Fl s Ar flag
+.It Fl s Ar options
 Set
-.Ar flag .
-The list of allowed flags and their meanings are the same as for the
+.Ar options ,
+which is a comma separated string of options.
+The list of allowed options and their meanings are the same as for the
 .Fl r
 option.
 .It Fl S Xo
@@ -159,13 +161,17 @@ option.
 .Sm on
 .Xc
 If no regular file is specified, VN will use swap for backing store.
-This option specifies the size of the device.  For example, '23m' for
+This option specifies the size of the device.  For example,
+.Sq 23m
+for
 23 megabytes.  The VN device will round the size up to a machine page boundary.
 Filesystems up to 7.9 terabytes are supported.  When specified along with
 a regular file, this option overrides the regular file's size insofar as
 VN is concerned.
 .It Fl T
-When a regular file is specified, VN will ftruncate() the file to 0 first.
+When a regular file is specified, VN will
+.Fn ftruncate
+the file to length 0 first.
 Normally you should also specify the
 .Fl S
 option to set the size of the file.
@@ -281,8 +287,10 @@ VN partitions that previously contained filesystems.
 Is an example of a swap-backed VN disk configuration.  This example assumes
 that you have at least 400 megabytes of swap free (and hopefully much more).
 The swap space is pre-reserved in order to maintain maximum performance.
-We then label the disk, newfs it, and mount it as /usr/obj.  Swap-backed VN
-devices are recoverable after a crash if you (A) use the reserve flag, and if
+We then label the disk, newfs it, and mount it as
+.Pa /usr/obj .
+Swap-backed VN
+devices are recoverable after a crash if you (A) use the reserve option, and if
 (B) the same swap is reserved as was the last time, meaning that such
 vnconfig's would have to be run in your rc.local.  In general, though, you
 only use swap-backed VN devices to hold information you don't mind losing
