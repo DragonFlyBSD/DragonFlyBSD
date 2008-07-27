@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.121 2008/07/19 18:44:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.122 2008/07/27 21:34:04 mneumann Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -839,7 +839,8 @@ int	hammer_unload_volume(hammer_volume_t volume, void *data __unused);
 int	hammer_adjust_volume_mode(hammer_volume_t volume, void *data __unused);
 
 int	hammer_unload_buffer(hammer_buffer_t buffer, void *data __unused);
-int	hammer_install_volume(hammer_mount_t hmp, const char *volname);
+int	hammer_install_volume(hammer_mount_t hmp, const char *volname,
+			struct vnode *devvp);
 int	hammer_mountcheck_volumes(hammer_mount_t hmp);
 
 int	hammer_ip_lookup(hammer_cursor_t cursor);

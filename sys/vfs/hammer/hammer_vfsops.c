@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.67 2008/07/26 05:36:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.68 2008/07/27 21:34:04 mneumann Exp $
  */
 
 #include <sys/param.h>
@@ -282,14 +282,29 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	hammer_mount_t hmp;
 	hammer_volume_t rootvol;
 	struct vnode *rootvp;
+	struct vnode *devvp = NULL;
 	const char *upath;	/* volume name in userspace */
 	char *path;		/* volume name in system space */
 	int error;
 	int i;
 	int master_id;
-
-	if ((error = copyin(data, &info, sizeof(info))) != 0)
-		return (error);
+	if (mntpt == NULL) {
+		/*
+		 * Root mount
+		 */
+		if ((error = bdevvp(rootdev, &devvp))) {
+			kprintf("hammer_mountroot: can't find devvp\n");
+			return (error);
+		}
+		mp->mnt_flag &= ~MNT_RDONLY; /* mount R/W */
+		bzero(&info, sizeof(info));
+		info.asof = 0;
+		info.hflags = 0;
+		info.nvolumes = 1;
+	} else {
+		if ((error = copyin(data, &info, sizeof(info))) != 0)
+			return (error);
+	}
 
 	/*
 	 * updating or new mount
@@ -434,11 +449,24 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	path = objcache_get(namei_oc, M_WAITOK);
 	hmp->nvolumes = -1;
 	for (i = 0; i < info.nvolumes; ++i) {
-		error = copyin(&info.volumes[i], &upath, sizeof(char *));
+		if (mntpt == NULL) {
+			/*
+			 * Root mount.
+			 * Only one volume; and no need for copyin.
+			 */
+			KKASSERT(info.nvolumes == 1);
+			ksnprintf(path, MAXPATHLEN, "/dev/%s",
+				  mp->mnt_stat.f_mntfromname);  
+			error = 0;
+		} else {
+			error = copyin(&info.volumes[i], &upath,
+				       sizeof(char *));
+			if (error == 0)
+				error = copyinstr(upath, path,
+						  MAXPATHLEN, NULL);
+		}
 		if (error == 0)
-			error = copyinstr(upath, path, MAXPATHLEN, NULL);
-		if (error == 0)
-			error = hammer_install_volume(hmp, path);
+			error = hammer_install_volume(hmp, path, devvp);
 		if (error)
 			break;
 	}

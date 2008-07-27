@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.71 2008/07/18 00:19:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.72 2008/07/27 21:34:04 mneumann Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -98,7 +98,8 @@ RB_GENERATE2(hammer_nod_rb_tree, hammer_node, rb_node,
  * Calls made to hammer_load_volume() or single-threaded
  */
 int
-hammer_install_volume(struct hammer_mount *hmp, const char *volname)
+hammer_install_volume(struct hammer_mount *hmp, const char *volname,
+		      struct vnode *devvp)
 {
 	struct mount *mp;
 	hammer_volume_t volume;
@@ -125,12 +126,18 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname)
 	/*
 	 * Get the device vnode
 	 */
-	error = nlookup_init(&nd, volume->vol_name, UIO_SYSSPACE, NLC_FOLLOW);
-	if (error == 0)
-		error = nlookup(&nd);
-	if (error == 0)
-		error = cache_vref(&nd.nl_nch, nd.nl_cred, &volume->devvp);
-	nlookup_done(&nd);
+	if (devvp == NULL) {
+		error = nlookup_init(&nd, volume->vol_name, UIO_SYSSPACE, NLC_FOLLOW);
+		if (error == 0)
+			error = nlookup(&nd);
+		if (error == 0)
+			error = cache_vref(&nd.nl_nch, nd.nl_cred, &volume->devvp);
+		nlookup_done(&nd);
+	} else {
+		error = 0;
+		volume->devvp = devvp;
+	}
+
 	if (error == 0) {
 		if (vn_isdisk(volume->devvp, &error)) {
 			error = vfs_mountedon(volume->devvp);
