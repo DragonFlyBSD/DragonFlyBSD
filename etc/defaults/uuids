@@ -1,4 +1,4 @@
-# $DragonFly: src/etc/defaults/uuids,v 1.3 2007/09/29 03:20:40 dillon Exp $
+# $DragonFly: src/etc/defaults/uuids,v 1.4 2008/07/27 22:12:10 thomas Exp $
 #
 #
 # EFI
@@ -17,7 +17,6 @@ dbd5211b-1ca5-11dc-8817-01301bb8a9f5	"DragonFly CCD"
 3d48ce54-1d16-11dc-8696-01301bb8a9f5	"DragonFly Label64"
 bd215ab2-1d16-11dc-8696-01301bb8a9f5	"DragonFly Legacy"
 61dc63ac-6e38-11dc-8513-01301bb8a9f5	"DragonFly HAMMER"
-
 #
 # FreeBSD
 #
@@ -35,7 +34,7 @@ af9b60a0-1431-4f62-bc68-3311714a69ad	"MS LDM Data"
 #
 # Linux
 #
-a19d880f-05fc-4d3b-a006-743f0f84911e	"Linux Raid"	
-0657fd6d-a4ab-43c4-84e5-0933c84b4f4f	"Linux Swap"	
+a19d880f-05fc-4d3b-a006-743f0f84911e	"Linux Raid"
+0657fd6d-a4ab-43c4-84e5-0933c84b4f4f	"Linux Swap"
 e6d6d379-f507-44c2-a23c-238f2a3df928	"Linux LVM"
 48465300-0000-11aa-aa11-00306543ecac	"Apple HFS"
