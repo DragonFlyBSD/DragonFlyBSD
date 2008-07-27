@@ -36,18 +36,28 @@
 .\"	from: com.4,v 1.1 1993/08/06 11:19:07 cgd Exp
 .\"	from: sio.4,v 1.15 1994/12/06 20:14:30 bde Exp
 .\" $FreeBSD: src/share/man/man4/man4.i386/dgb.4,v 1.13.2.6 2001/08/17 13:08:45 ru Exp $
-.\" $DragonFly: src/share/man/man4/man4.i386/dgb.4,v 1.6 2008/07/27 18:37:30 thomas Exp $
+.\" $DragonFly: src/share/man/man4/man4.i386/digi.4,v 1.1 2008/07/27 18:37:30 thomas Exp $
 .\"
 .Dd October 13, 1995
-.Dt DGB 4 i386
+.Dt DIGI 4 i386
 .Os
 .Sh NAME
-.Nm dgb
+.Nm digi
 .Nd DigiBoard intelligent serial cards driver
 .Sh SYNOPSIS
+To compile this driver into the kernel, place the following line in your
+kernel configuration file:
+.Bd -ragged -offset indent
 .Cd "options NDGBPORTS=8"
-.Cd "device dgb0 at isa? port 0x220 iomem 0xfc0000 iosiz ? flags 0x0"
+.Cd "device digi0 at isa? port 0x220 iomem 0xfc0000 iosiz ? flags 0x0"
+.Ed
 All values are just examples.
+.Pp
+To load this driver as a module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+digi_load="YES"
+.Ed
 .Pp
 The
 .Dv NDGBPORTS
@@ -122,7 +132,7 @@ driver.
 The
 .Cm flags
 keyword may be used on each
-.Dq Li "device dgb"
+.Dq Li "device digi"
 line in the kernel configuration file
 to change the pinout of the interface or to use new PC/Xe cards
 which can work with an 8K memory window in compatibility mode
@@ -176,7 +186,7 @@ Then the DigiBoard's address space can be set to this
 .Dq hole .
 .\" XXX the following should be true for all serial drivers and
 .\" should not be repeated in the man pages for all serial drivers.
-.\" It was copied from sio.4.  The only changes were s/sio/dgb/g.
+.\" It was copied from sio.4.  The only changes were s/sio/digi/g.
 .Pp
 Serial ports controlled by the
 .Nm
@@ -283,71 +293,71 @@ The second question mark is short for the port number
 .Sh DIAGNOSTICS
 You may enable extended diagnostics by defining DEBUG at the
 start of the source file
-.Pa dgb.c .
+.Pa digi.c .
 .Bl -diag
-.It dgb\fIX\fP: warning: address \fIN\fP truncated to \fIM\fP
+.It digi\fIX\fP: warning: address \fIN\fP truncated to \fIM\fP
 The memory address for the PC/Xe's 8K window is misaligned (it should be
 on an 8K boundary) or outside of the first megabyte.
-.It dgb\fIX\fP: 1st reset failed
+.It digi\fIX\fP: 1st reset failed
 Problems with accessing I/O port of the card, probably
 the wrong
 .Cm port
 value is specified in the kernel config file.
-.It dgb\fIX\fP: 2nd reset failed
+.It digi\fIX\fP: 2nd reset failed
 Problems with hardware.
-.It dgb\fIX\fP: \fIN\fP[st,nd,rd,th] memory test failed
+.It digi\fIX\fP: \fIN\fP[st,nd,rd,th] memory test failed
 Problems with accessing the memory of the card, probably
 the wrong
 .Cm iomem
 value is specified in the kernel config file.
-.It dgb\fIX\fP: BIOS start failed
+.It digi\fIX\fP: BIOS start failed
 Problems with starting the on-board BIOS.
 Probably the memory addresses of the
 DigiBoard overlap with some other device or with RAM.
-.It dgb\fIX\fP: BIOS download failed
+.It digi\fIX\fP: BIOS download failed
 Problems with the on-board BIOS.
 Probably the memory addresses of the
 DigiBoard overlap with some other device or with RAM.
-.It dgb\fIX\fP: FEP code download failed
+.It digi\fIX\fP: FEP code download failed
 Problems with downloading of the Front-End Processor's micro-OS.
 Probably the memory addresses of the
 DigiBoard overlap with some other device or with RAM.
-.It dgb\fIX\fP: FEP/OS start failed
+.It digi\fIX\fP: FEP/OS start failed
 Problems with starting of the Front-End Processor's micro-OS.
 Probably the memory addresses of the
 DigiBoard overlap with some other device or with RAM.
-.It dgb\fIX\fP: too many ports
+.It digi\fIX\fP: too many ports
 This DigiBoard reports that it has more than 32 ports.
 Perhaps a hardware problem or
 the memory addresses of the
 DigiBoard overlap with some other device or with RAM.
-.It dgb\fIX\fP: only \fIN\fP ports are usable
+.It digi\fIX\fP: only \fIN\fP ports are usable
 The
 .Dv NDGBPORTS
 parameter is too small and there is only enough space allocated
 for
 .Ar N
 ports on this card.
-.It dgb\fIX\fP: port \fIY\fP is broken
+.It digi\fIX\fP: port \fIY\fP is broken
 The on-board diagnostic has reported that the specified port has hardware
 problems.
-.It dgb\fIX\fP: polling of disabled board stopped
+.It digi\fIX\fP: polling of disabled board stopped
 Internal problems in the polling logic of driver.
-.It dgb\fIX\fP: event queue's head or tail is wrong!
+.It digi\fIX\fP: event queue's head or tail is wrong!
 Internal problems in the driver or hardware.
-.It dgb\fIX\fP: port \fIY\fP: got event on nonexisting port
+.It digi\fIX\fP: port \fIY\fP: got event on nonexisting port
 Some status changed on a port that is physically present but is
 unusable due to misconfiguration.
-.It dgb\fIX\fP: port \fIY\fP: event \fIN\fP mstat \fIM\fP lstat \fIK\fP
+.It digi\fIX\fP: port \fIY\fP: event \fIN\fP mstat \fIM\fP lstat \fIK\fP
 The driver got a strange event from card.
 Probably this means that you have a
 newer card with an extended list of events or some other hardware problem.
-.It dgb\fIX\fP: port \fIY\fP: overrun
+.It digi\fIX\fP: port \fIY\fP: overrun
 Input buffer has filled up.
 Problems in polling logic of driver.
-.It dgb\fIX\fP: port \fIY\fP: FEP command on disabled port
+.It digi\fIX\fP: port \fIY\fP: FEP command on disabled port
 Internal problems in driver.
-.It dgb\fIX\fP: port \fIY\fP: timeout on FEP command
+.It digi\fIX\fP: port \fIY\fP: timeout on FEP command
 Problems in hardware.
 .El
 .Sh SEE ALSO
@@ -383,9 +393,3 @@ Most of its functions (alternate pinout,
 speed up to 115200 baud, etc.) are implemented in the driver itself.
 Some
 other functions are missing.
-.Pp
-The
-.Nm
-driver is deprecated, please consider the
-.Xr digi 4
-driver.

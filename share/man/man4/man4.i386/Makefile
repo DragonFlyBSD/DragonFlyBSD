@@ -1,9 +1,9 @@
 # $FreeBSD: src/share/man/man4/man4.i386/Makefile,v 1.122.2.12 2003/04/15 17:23:32 fjoe Exp $
-# $DragonFly: src/share/man/man4/man4.i386/Makefile,v 1.13 2008/06/22 20:00:23 swildner Exp $
+# $DragonFly: src/share/man/man4/man4.i386/Makefile,v 1.14 2008/07/27 18:37:30 thomas Exp $
 
 MAN=	acpi_toshiba.4 aic.4 alpm.4 amdpm.4 apm.4 ar.4 asc.4 asr.4 \
 	cs.4 cx.4 cy.4 \
-	dgb.4 el.4 en.4 ep.4 est.4 ex.4 fe.4 gsc.4 \
+	dgb.4 digi.4 el.4 en.4 ep.4 est.4 ex.4 fe.4 gsc.4 \
 	ie.4 io.4 labpc.4 le.4 linux.4 lnc.4 longrun.4 \
 	meteor.4 mse.4 ndis.4 npx.4 \
 	pcf.4 perfmon.4 pnp.4 pnpbios.4 \
