@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.77 2008/07/26 04:49:37 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.78 2008/07/27 02:41:07 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -1671,6 +1671,27 @@ ether_mport(int num, struct mbuf **m)
 	return netisr_find_port(num, m);
 }
 
+/*
+ * Process a received Ethernet packet.
+ *
+ * The ethernet header is assumed to be in the mbuf so the caller
+ * MUST MAKE SURE that there are at least sizeof(struct ether_header)
+ * bytes in the first mbuf.
+ *
+ * We first try to find the target msgport for this ether frame, if
+ * there is no target msgport for it, this ether frame is discarded,
+ * else we do following processing according to whether 'chain' is
+ * NULL or not:
+ * - If 'chain' is NULL, this ether frame is sent to the target msgport
+ *   immediately.  This situation happens when ether_input_chain2 is
+ *   accessed through ifnet.if_input.
+ * - If 'chain' is not NULL, this ether frame is queued to the 'chain'
+ *   bucket indexed by the target msgport's cpuid and the target msgport
+ *   is saved in mbuf's m_pkthdr.m_head.  Caller of ether_input_chain2
+ *   must initialize 'chain' by calling ether_input_chain_init().
+ *   ether_input_dispatch must be called later to send ether frames
+ *   queued on 'chain' to their target msgport.
+ */
 void
 ether_input_chain2(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 {
