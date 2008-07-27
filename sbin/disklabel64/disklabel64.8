@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel64/disklabel64.8,v 1.8 2008/07/27 20:54:52 thomas Exp $
+.\" $DragonFly: src/sbin/disklabel64/disklabel64.8,v 1.9 2008/07/27 21:00:09 swildner Exp $
 .\"
 .Dd July 27, 2008
 .Dt DISKLABEL64 8
@@ -133,7 +133,8 @@ All
 .Nm
 forms require a disk device name, which should always be the raw
 device name representing the disk or slice.
-.Dx uses the following scheme for slice numbering:
+.Dx
+uses the following scheme for slice numbering:
 If the disk doesn't use
 .Xr gpt 8 ,
 but e.g. MBR (typically laid out by
