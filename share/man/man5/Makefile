@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 #	$FreeBSD: src/share/man/man5/Makefile,v 1.27.2.12 2003/05/23 22:20:24 dwhite Exp $
-#	$DragonFly: src/share/man/man5/Makefile,v 1.17 2008/07/16 12:45:13 swildner Exp $
+#	$DragonFly: src/share/man/man5/Makefile,v 1.18 2008/07/27 18:25:38 thomas Exp $
 
 #MISSING: dump.5 plot.5
 MAN=	acct.5 \
@@ -55,6 +55,7 @@ MAN=	acct.5 \
 	utf2.5 \
 	utf8.5 \
 	utmp.5 \
+	uuids.5 \
 	varsym.conf.5
 
 MLINKS=	dir.5 dirent.5
