@@ -1,6 +1,6 @@
 .\"	$OpenBSD: isa.4,v 1.60 2008/03/19 19:33:12 deraadt Exp $
 .\"	$NetBSD: isa.4,v 1.19 2000/03/18 16:54:37 augustss Exp $
-.\"	$DragonFly: src/share/man/man4/isa.4,v 1.1 2008/06/22 20:57:39 swildner Exp $
+.\"	$DragonFly: src/share/man/man4/isa.4,v 1.2 2008/07/27 19:26:24 swildner Exp $
 .\"
 .\" Copyright (c) 2000 Theo de Raadt.  All rights reserved.
 .\" Copyright (c) 1997 Jason R. Thorpe.  All rights reserved.
@@ -32,7 +32,7 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd June 22, 2008
+.Dd July 27, 2008
 .Dt ISA 4
 .Os
 .Sh NAME
@@ -69,8 +69,8 @@ Adaptec AIC-6260 and AIC-6360 SCSI driver
 .\"EISA/VL only?
 .It Xr bt 4
 Buslogic/Mylex MultiMaster SCSI host adapter driver
-.\".It Xr stg 4
-.\"No manpage, PC98 only?
+.It Xr stg 4
+Future Domain based SCSI controller driver
 .El
 .Ss Disk and tape controllers
 .Bl -tag -width 12n -offset indent -compact
@@ -87,6 +87,8 @@ Generic ATA/ATAPI disk controller driver (deprecated)
 .Bl -tag -width 12n -offset indent -compact
 .It Xr cy 4
 Cyclades Cyclom-Y serial driver
+.It Xr digi 4
+DigiBoard intelligent serial cards driver
 .It Xr lpt 4
 Generic printer device driver
 .It Xr rc 4
@@ -101,6 +103,8 @@ Generic serial controller driver
 Stallion Technologies multiport serial controller driver
 .It Xr stli 4
 Stallion Technologies multiport serial controller driver
+.It Xr dgb 4
+DigiBoard intelligent serial cards driver (deprecated)
 .El
 .Ss Network interfaces
 .Bl -tag -width 12n -offset indent -compact
