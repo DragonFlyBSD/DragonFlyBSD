@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.52 2008/07/27 10:06:56 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.53 2008/07/27 11:26:59 sephe Exp $
  */
 
 /*
@@ -202,6 +202,9 @@ static struct xl_type xl_devs[] = {
 static int xl_probe		(device_t);
 static int xl_attach		(device_t);
 static int xl_detach		(device_t);
+static void xl_shutdown		(device_t);
+static int xl_suspend		(device_t); 
+static int xl_resume		(device_t);
 
 static int xl_newbuf		(struct xl_softc *, struct xl_chain_onefrag *);
 static void xl_stats_update	(void *);
@@ -223,9 +226,6 @@ static int xl_ioctl		(struct ifnet *, u_long, caddr_t,
 static void xl_init		(void *);
 static void xl_stop		(struct xl_softc *);
 static void xl_watchdog		(struct ifnet *);
-static void xl_shutdown		(device_t);
-static int xl_suspend		(device_t); 
-static int xl_resume		(device_t);
 #ifdef DEVICE_POLLING
 static void xl_poll		(struct ifnet *, enum poll_cmd, int);
 #endif
@@ -630,9 +630,10 @@ xl_miibus_statchg(device_t dev)
         struct xl_softc		*sc;
         struct mii_data		*mii;
 
-	
 	sc = device_get_softc(dev);
 	mii = device_get_softc(sc->xl_miibus);
+
+	ASSERT_SERIALIZED(sc->arpcom.ac_if.if_serializer);
 
 	xl_setcfg(sc);
 
@@ -643,8 +644,6 @@ xl_miibus_statchg(device_t dev)
 	else
 		CSR_WRITE_1(sc, XL_W3_MAC_CTRL,
 			(CSR_READ_1(sc, XL_W3_MAC_CTRL) & ~XL_MACCTRL_DUPLEX));
-
-        return;
 }
 
 /*
@@ -2352,6 +2351,8 @@ xl_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 {
 	struct xl_softc *sc = ifp->if_softc;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	switch (cmd) {
 	case POLL_REGISTER:
 		xl_enable_intrs(sc, 0);
@@ -2415,6 +2416,8 @@ xl_intr(void *arg)
 
 	sc = arg;
 	ifp = &sc->arpcom.ac_if;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	while(((status = CSR_READ_2(sc, XL_STATUS)) & XL_INTRS) &&
 	      status != 0xFFFF) {
@@ -2599,6 +2602,7 @@ xl_encap(struct xl_softc *sc, struct xl_chain *c, struct mbuf *m_head)
 static void
 xl_start(struct ifnet *ifp)
 {
+	ASSERT_SERIALIZED(ifp->if_serializer);
 	xl_start_body(ifp, 1);
 }
 
@@ -2748,6 +2752,8 @@ xl_start_90xB(struct ifnet *ifp)
 	struct xl_chain		*prev_tx;
 	int			error, idx;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	sc = ifp->if_softc;
 
 	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING)
@@ -2825,6 +2831,8 @@ xl_init(void *xsc)
 	int			error, i;
 	u_int16_t		rxfilt = 0;
 	struct mii_data		*mii = NULL;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	/*
 	 * Cancel pending I/O and free all RX/TX buffers.
@@ -3048,6 +3056,8 @@ xl_ifmedia_upd(struct ifnet *ifp)
 	struct ifmedia		*ifm = NULL;
 	struct mii_data		*mii = NULL;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	sc = ifp->if_softc;
 	if (sc->xl_miibus != NULL)
 		mii = device_get_softc(sc->xl_miibus);
@@ -3087,6 +3097,8 @@ xl_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 	struct xl_softc		*sc;
 	u_int32_t		icfg;
 	struct mii_data		*mii = NULL;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	sc = ifp->if_softc;
 	if (sc->xl_miibus != NULL)
@@ -3152,6 +3164,8 @@ xl_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	int			error = 0;
 	struct mii_data		*mii = NULL;
 	u_int8_t		rxfilt;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	switch(command) {
 	case SIOCSIFFLAGS:
@@ -3221,6 +3235,8 @@ xl_watchdog(struct ifnet *ifp)
 	struct xl_softc		*sc;
 	u_int16_t		status = 0;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	sc = ifp->if_softc;
 
 	ifp->if_oerrors++;
@@ -3251,6 +3267,8 @@ xl_stop(struct xl_softc *sc)
 	struct ifnet		*ifp;
 
 	ifp = &sc->arpcom.ac_if;
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	ifp->if_timer = 0;
 
 	CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_RX_DISABLE);
