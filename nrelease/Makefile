@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.85 2008/07/09 07:54:34 swildner Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.86 2008/07/27 22:10:53 swildner Exp $
 #
 
 #########################################################################
@@ -230,7 +230,7 @@ customizeiso:
 	cp -R ${.CURDIR}/../etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
 .endfor
 .for PKG in ${PKGSRC_PACKAGES}
-	${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -K ${ISOROOT}${PKGSRC_DB} -I ${PKG}
+	${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -I -K ${ISOROOT}${PKGSRC_DB} -p ${ISOROOT}${PKGSRC_PREFIX} ${PKG}
 .endfor
 	find ${ISOROOT}${PKGSRC_DB} -name +CONTENTS -type f -exec sed -i '' -e 's,${ISOROOT},,' -- {} \;
 	${PKGBIN_PKG_ADMIN} -K ${ISOROOT}${PKGSRC_DB} rebuild
