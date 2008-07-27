@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.116 2008/07/12 02:44:59 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.117 2008/07/27 17:37:52 dillon Exp $
  */
 
 /*
@@ -173,16 +173,14 @@ void
 vfs_subr_init(void)
 {
 	/*
-	 * Desired vnodes is a result of the physical page count
-	 * and the size of kernel's heap.  It scales in proportion
-	 * to the amount of available physical memory.  This can
-	 * cause trouble on 64-bit and large memory platforms.
+	 * Desiredvnodes is kern.maxvnodes.  We want to scale it 
+	 * according to available system memory but we may also have
+	 * to limit it based on available KVM, which is capped on 32 bit
+	 * systems.
 	 */
-	/* desiredvnodes = maxproc + vmstats.v_page_count / 4; */
-	desiredvnodes =
-		min(maxproc + vmstats.v_page_count / 4,
-		    2 * KvaSize /
-		    (5 * (sizeof(struct vm_object) + sizeof(struct vnode))));
+	desiredvnodes = min(maxproc + vmstats.v_page_count / 4,
+			    KvaSize / (20 * 
+			    (sizeof(struct vm_object) + sizeof(struct vnode))));
 
 	lwkt_token_init(&spechash_token);
 }
