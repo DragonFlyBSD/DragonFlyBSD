@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.62 2008/07/27 03:49:30 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.63 2008/07/27 10:06:56 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -536,16 +536,13 @@ void	ether_ifattach(struct ifnet *, uint8_t *, struct lwkt_serialize *);
 void	ether_ifattach_bpf(struct ifnet *, uint8_t *, u_int, u_int,
 			struct lwkt_serialize *);
 void	ether_ifdetach(struct ifnet *);
-void	ether_input_chain(struct ifnet *, struct mbuf *, struct mbuf_chain *);
-#ifdef ETHER_INPUT2
+void	ether_demux_oncpu(struct ifnet *, struct mbuf *);
 void	ether_input_oncpu(struct ifnet *, struct mbuf *);
 void	ether_input_chain2(struct ifnet *, struct mbuf *, struct mbuf_chain *);
-#endif
 #ifdef ETHER_INPUT_CHAIN
 void	ether_input_chain_init(struct mbuf_chain *);
 void	ether_input_dispatch(struct mbuf_chain *);
 #endif
-void	ether_demux(struct ifnet *, struct mbuf *);
 int	ether_output_frame(struct ifnet *, struct mbuf *);
 int	ether_ioctl(struct ifnet *, int, caddr_t);
 uint32_t	ether_crc32_le(const uint8_t *, size_t);

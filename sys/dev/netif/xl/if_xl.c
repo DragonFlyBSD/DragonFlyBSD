@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.51 2008/06/25 11:46:03 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.52 2008/07/27 10:06:56 sephe Exp $
  */
 
 /*
@@ -2142,11 +2142,7 @@ again:
 		}
 
 #ifdef ETHER_INPUT_CHAIN
-#ifdef ETHER_INPUT2
 		ether_input_chain2(ifp, m, chain);
-#else
-		ether_input_chain(ifp, m, chain);
-#endif
 #else
 		ifp->if_input(ifp, m);
 #endif

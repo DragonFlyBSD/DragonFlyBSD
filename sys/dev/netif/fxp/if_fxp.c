@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.55 2008/06/27 10:55:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.56 2008/07/27 10:06:56 sephe Exp $
  */
 
 /*
@@ -1403,11 +1403,7 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 			}
 			m->m_pkthdr.len = m->m_len = total_len;
 #ifdef ETHER_INPUT_CHAIN
-#ifdef ETHER_INPUT2
 			ether_input_chain2(ifp, m, chain);
-#else
-			ether_input_chain(ifp, m, chain);
-#endif
 #else
 			ifp->if_input(ifp, m);
 #endif

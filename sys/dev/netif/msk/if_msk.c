@@ -93,7 +93,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/msk/if_msk.c,v 1.26 2007/12/05 09:41:58 remko Exp $ */
-/* $DragonFly: src/sys/dev/netif/msk/if_msk.c,v 1.5 2008/06/26 13:08:55 sephe Exp $ */
+/* $DragonFly: src/sys/dev/netif/msk/if_msk.c,v 1.6 2008/07/27 10:06:56 sephe Exp $ */
 
 /*
  * Device driver for the Marvell Yukon II Ethernet controller.
@@ -2856,11 +2856,7 @@ msk_rxeof(struct msk_if_softc *sc_if, uint32_t status, int len,
 #endif
 
 #ifdef ETHER_INPUT_CHAIN
-#ifdef ETHER_INPUT2
 		ether_input_chain2(ifp, m, chain);
-#else
-		ether_input_chain(ifp, m, chain);
-#endif
 #else
 		ifp->if_input(ifp, m);
 #endif

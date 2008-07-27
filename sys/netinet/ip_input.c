@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.82 2008/07/03 08:22:36 corecode Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.83 2008/07/27 10:06:57 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -2014,8 +2014,8 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		ipstat.ips_forward++;
 		if (type == 0) {
 			if (mcopy) {
-				/* ipflow_create() will free mcopy */
 				ipflow_create(cache_rt, mcopy);
+				m_freem(mcopy);
 			}
 			return;		/* most common case */
 		} else {

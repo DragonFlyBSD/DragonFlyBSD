@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.41 2008/06/19 15:51:57 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.42 2008/07/27 10:06:57 sephe Exp $
  */
 
 /*
@@ -738,27 +738,28 @@ bridge_delete_member(struct bridge_softc *sc, struct bridge_iflist *bif,
 	ASSERT_SERIALIZED(bifp->if_serializer);
 
 	ifs->if_bridge = NULL;
-#ifdef notyet
+
+	/*
+	 * Release bridge interface's serializer:
+	 * - To avoid possible dead lock.
+	 * - netmsg_service_sync will block current thread.
+	 */
+	lwkt_serialize_exit(bifp->if_serializer);
+
+	/*
+	 * Make sure that all protocol threads see 'ifs' if_bridge change.
+	 */
 	netmsg_service_sync();
-#endif
 
 	if (!gone) {
 		switch (ifs->if_type) {
 		case IFT_ETHER:
 		case IFT_L2VLAN:
 			/*
-			 * Release bridge interface's serializer to
-			 * avoid possible dead lock.
-			 */
-			lwkt_serialize_exit(bifp->if_serializer);
-
-			/*
 			 * Take the interface out of promiscuous mode.
 			 */
 			ifpromisc(ifs, 0);
 			bridge_mutecaps(bif, 0);
-
-			lwkt_serialize_enter(bifp->if_serializer);
 			break;
 
 		case IFT_GIF:
@@ -769,6 +770,8 @@ bridge_delete_member(struct bridge_softc *sc, struct bridge_iflist *bif,
 			break;
 		}
 	}
+
+	lwkt_serialize_enter(bifp->if_serializer);
 
 	LIST_REMOVE(bif, bif_next);
 

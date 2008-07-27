@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.80 2008/07/27 03:49:30 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.81 2008/07/27 10:06:56 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -124,15 +124,12 @@ int	(*ng_ether_output_p)(struct ifnet *ifp, struct mbuf **mp);
 void	(*ng_ether_attach_p)(struct ifnet *ifp);
 void	(*ng_ether_detach_p)(struct ifnet *ifp);
 
-int	(*vlan_input_p)(struct mbuf *, struct mbuf_chain *);
 void	(*vlan_input2_p)(struct mbuf *);
 
 static int ether_output(struct ifnet *, struct mbuf *, struct sockaddr *,
 			struct rtentry *);
 static void ether_restore_header(struct mbuf **, const struct ether_header *,
 				 const struct ether_header *);
-static void ether_demux_chain(struct ifnet *, struct mbuf *,
-			      struct mbuf_chain *);
 
 /*
  * if_bridge support
@@ -550,369 +547,15 @@ ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst, struct ip_fw **rule,
 	return FALSE;
 }
 
-/*
- * Process a received Ethernet packet.
- *
- * The ethernet header is assumed to be in the mbuf so the caller
- * MUST MAKE SURE that there are at least sizeof(struct ether_header)
- * bytes in the first mbuf.
- *
- * This allows us to concentrate in one place a bunch of code which
- * is replicated in all device drivers. Also, many functions called
- * from ether_input() try to put the eh back into the mbuf, so we
- * can later propagate the 'contiguous packet' interface to them.
- *
- * NOTA BENE: for all drivers "eh" is a pointer into the first mbuf or
- * cluster, right before m_data. So be very careful when working on m,
- * as you could destroy *eh !!
- *
- * First we perform any link layer operations, then continue to the
- * upper layers with ether_demux().
- */
-void
-ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
-{
-	struct ether_header *eh;
-
-	ASSERT_SERIALIZED(ifp->if_serializer);
-	M_ASSERTPKTHDR(m);
-
-	/* Discard packet if interface is not up */
-	if (!(ifp->if_flags & IFF_UP)) {
-		m_freem(m);
-		return;
-	}
-
-	if (m->m_len < sizeof(struct ether_header)) {
-		/* XXX error in the caller. */
-		m_freem(m);
-		return;
-	}
-	eh = mtod(m, struct ether_header *);
-
-	if (ntohs(eh->ether_type) == ETHERTYPE_VLAN &&
-	    (m->m_flags & M_VLANTAG) == 0) {
-		/*
-		 * Extract vlan tag if hardware does not do it for us
-		 */
-		vlan_ether_decap(&m);
-		if (m == NULL)
-			return;
-		eh = mtod(m, struct ether_header *);
-	}
-
-	m->m_pkthdr.rcvif = ifp;
-
-	if (ETHER_IS_MULTICAST(eh->ether_dhost)) {
-		if (bcmp(ifp->if_broadcastaddr, eh->ether_dhost,
-			 ifp->if_addrlen) == 0)
-			m->m_flags |= M_BCAST;
-		else
-			m->m_flags |= M_MCAST;
-		ifp->if_imcasts++;
-	}
-
-	ETHER_BPF_MTAP(ifp, m);
-
-	ifp->if_ibytes += m->m_pkthdr.len;
-
-	if (ifp->if_flags & IFF_MONITOR) {
-		/*
-		 * Interface marked for monitoring; discard packet.
-		 */
-		 m_freem(m);
-		 return;
-	}
-
-	/*
-	 * Tap the packet off here for a bridge.  bridge_input()
-	 * will return NULL if it has consumed the packet, otherwise
-	 * it gets processed as normal.  Note that bridge_input()
-	 * will always return the original packet if we need to
-	 * process it locally.
-	 */
-	if (ifp->if_bridge) {
-		KASSERT(bridge_input_p != NULL,
-			("%s: if_bridge not loaded!", __func__));
-
-		if(m->m_flags & M_PROTO1) {
-			m->m_flags &= ~M_PROTO1;
-		} else {
-			/* clear M_PROMISC, in case the packets comes from a vlan */
-			/* m->m_flags &= ~M_PROMISC; */
-			lwkt_serialize_exit(ifp->if_serializer);
-			m = bridge_input_p(ifp, m);
-			lwkt_serialize_enter(ifp->if_serializer);
-			if (m == NULL)
-				return;
-
-			KASSERT(ifp == m->m_pkthdr.rcvif,
-				("bridge_input_p changed rcvif\n"));
-
-			/* 'm' may be changed by bridge_input_p() */
-			eh = mtod(m, struct ether_header *);
-		}
-	}
-
-	/* Handle ng_ether(4) processing, if any */
-	if (ng_ether_input_p != NULL) {
-		ng_ether_input_p(ifp, &m);
-		if (m == NULL)
-			return;
-
-		/* 'm' may be changed by ng_ether_input_p() */
-		eh = mtod(m, struct ether_header *);
-	}
-
-	/* Continue with upper layer processing */
-	ether_demux_chain(ifp, m, chain);
-}
-
 static void
 ether_input(struct ifnet *ifp, struct mbuf *m)
 {
-	ether_input_chain(ifp, m, NULL);
-}
-
-/*
- * Upper layer processing for a received Ethernet packet.
- */
-static void
-ether_demux_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
-{
-	struct ether_header save_eh, *eh;
-	int isr;
-	u_short ether_type;
-	struct ip_fw *rule = NULL;
-	struct m_tag *mtag;
-#ifdef NETATALK
-	struct llc *l;
-#endif
-
-	M_ASSERTPKTHDR(m);
-	KASSERT(m->m_len >= ETHER_HDR_LEN,
-		("ether header is no contiguous!\n"));
-
-	eh = mtod(m, struct ether_header *);
-	save_eh = *eh;
-
-	/* XXX old crufty stuff, needs to be removed */
-	m_adj(m, sizeof(struct ether_header));
-
-	/* Extract info from dummynet tag */
-	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
-	if (mtag != NULL) {
-		rule = ((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
-		KKASSERT(ifp == NULL);
-		ifp = m->m_pkthdr.rcvif;
-
-		m_tag_delete(m, mtag);
-		mtag = NULL;
-	}
-	if (rule)	/* packet is passing the second time */
-		goto post_stats;
-
-#ifdef CARP
-	/*
-	 * XXX: Okay, we need to call carp_forus() and - if it is for
-	 * us jump over code that does the normal check
-	 * "ac_enaddr == ether_dhost". The check sequence is a bit
-	 * different from OpenBSD, so we jump over as few code as
-	 * possible, to catch _all_ sanity checks. This needs
-	 * evaluation, to see if the carp ether_dhost values break any
-	 * of these checks!
-	 */
-	if (ifp->if_carp && carp_forus(ifp->if_carp, eh->ether_dhost))
-		goto post_stats;
-#endif
-
-	/*
-	 * Discard packet if upper layers shouldn't see it because
-	 * it was unicast to a different Ethernet address.  If the
-	 * driver is working properly, then this situation can only
-	 * happen when the interface is in promiscuous mode.
-	 */
-	if (((ifp->if_flags & (IFF_PROMISC | IFF_PPROMISC)) == IFF_PROMISC) &&
-	    (eh->ether_dhost[0] & 1) == 0 &&
-	    bcmp(eh->ether_dhost, IFP2AC(ifp)->ac_enaddr, ETHER_ADDR_LEN)) {
-		m_freem(m);
-		return;
-	}
-
-post_stats:
-	if (IPFW_LOADED && ether_ipfw != 0) {
-		if (!ether_ipfw_chk(&m, NULL, &rule, eh)) {
-			m_freem(m);
-			return;
-		}
-	}
-
-	ether_type = ntohs(save_eh.ether_type);
-
-	if (m->m_flags & M_VLANTAG) {
-		if (ether_type == ETHERTYPE_VLAN) {
-			/*
-			 * To prevent possible dangerous recursion,
-			 * we don't do vlan-in-vlan
-			 */
-			m->m_pkthdr.rcvif->if_noproto++;
-			m_freem(m);
-			return;
-		}
-
-		if (vlan_input_p != NULL) {
-			ether_restore_header(&m, eh, &save_eh);
-			if (m != NULL)
-				vlan_input_p(m, chain);
-		} else {
-			m->m_pkthdr.rcvif->if_noproto++;
-			m_freem(m);
-		}
-		return;
-	}
-	KKASSERT(ether_type != ETHERTYPE_VLAN);
-
-	switch (ether_type) {
-#ifdef INET
-	case ETHERTYPE_IP:
-		if (ipflow_fastforward(m, ifp->if_serializer))
-			return;
-		isr = NETISR_IP;
-		break;
-
-	case ETHERTYPE_ARP:
-		if (ifp->if_flags & IFF_NOARP) {
-			/* Discard packet if ARP is disabled on interface */
-			m_freem(m);
-			return;
-		}
-		isr = NETISR_ARP;
-		break;
-#endif
-
-#ifdef INET6
-	case ETHERTYPE_IPV6:
-		isr = NETISR_IPV6;
-		break;
-#endif
-
-#ifdef IPX
-	case ETHERTYPE_IPX:
-		if (ef_inputp && ef_inputp(ifp, &save_eh, m) == 0)
-			return;
-		isr = NETISR_IPX;
-		break;
-#endif
-
-#ifdef NS
-	case 0x8137: /* Novell Ethernet_II Ethernet TYPE II */
-		isr = NETISR_NS;
-		break;
-
-#endif
-
-#ifdef NETATALK
-	case ETHERTYPE_AT:
-		isr = NETISR_ATALK1;
-		break;
-	case ETHERTYPE_AARP:
-		isr = NETISR_AARP;
-		break;
-#endif
-
-#ifdef MPLS
-	case ETHERTYPE_MPLS:
-	case ETHERTYPE_MPLS_MCAST:
-		isr = NETISR_MPLS;
-		break;
-#endif
-
-	default:
-#ifdef IPX
-		if (ef_inputp && ef_inputp(ifp, &save_eh, m) == 0)
-			return;
-#endif
-#ifdef NS
-		checksum = mtod(m, ushort *);
-		/* Novell 802.3 */
-		if ((ether_type <= ETHERMTU) &&
-		    ((*checksum == 0xffff) || (*checksum == 0xE0E0))) {
-			if (*checksum == 0xE0E0) {
-				m->m_pkthdr.len -= 3;
-				m->m_len -= 3;
-				m->m_data += 3;
-			}
-			isr = NETISR_NS;
-			break;
-		}
-#endif
-#ifdef NETATALK
-		if (ether_type > ETHERMTU)
-			goto dropanyway;
-		l = mtod(m, struct llc *);
-		if (l->llc_dsap == LLC_SNAP_LSAP &&
-		    l->llc_ssap == LLC_SNAP_LSAP &&
-		    l->llc_control == LLC_UI) {
-			if (bcmp(&(l->llc_snap_org_code)[0], at_org_code,
-				 sizeof at_org_code) == 0 &&
-			    ntohs(l->llc_snap_ether_type) == ETHERTYPE_AT) {
-				m_adj(m, sizeof(struct llc));
-				isr = NETISR_ATALK2;
-				break;
-			}
-			if (bcmp(&(l->llc_snap_org_code)[0], aarp_org_code,
-				 sizeof aarp_org_code) == 0 &&
-			    ntohs(l->llc_snap_ether_type) == ETHERTYPE_AARP) {
-				m_adj(m, sizeof(struct llc));
-				isr = NETISR_AARP;
-				break;
-			}
-		}
-dropanyway:
-#endif
-		if (ng_ether_input_orphan_p != NULL)
-			(*ng_ether_input_orphan_p)(ifp, m, &save_eh);
-		else
-			m_freem(m);
-		return;
-	}
-
-#ifdef ETHER_INPUT_CHAIN
-	if (chain != NULL) {
-		struct mbuf_chain *c;
-		lwkt_port_t port;
-		int cpuid;
-
-		port = netisr_mport(isr, &m);
-		if (port == NULL)
-			return;
-
-		m->m_pkthdr.header = port; /* XXX */
-		cpuid = port->mpu_td->td_gd->gd_cpuid;
-
-		c = &chain[cpuid];
-		if (c->mc_head == NULL) {
-			c->mc_head = c->mc_tail = m;
-		} else {
-			c->mc_tail->m_nextpkt = m;
-			c->mc_tail = m;
-		}
-		m->m_nextpkt = NULL;
-	} else
-#endif	/* ETHER_INPUT_CHAIN */
-		netisr_dispatch(isr, m);
-}
-
-void
-ether_demux(struct ifnet *ifp, struct mbuf *m)
-{
-	ether_demux_chain(ifp, m, NULL);
+	ether_input_chain2(ifp, m, NULL);
 }
 
 /*
  * Perform common duties while attaching to interface list
  */
-
 void
 ether_ifattach(struct ifnet *ifp, uint8_t *lla, lwkt_serialize_t serializer)
 {
@@ -1371,12 +1014,10 @@ ether_input_chain_init(struct mbuf_chain *chain)
 
 #endif	/* ETHER_INPUT_CHAIN */
 
-#ifdef ETHER_INPUT2
-
 /*
  * Upper layer processing for a received Ethernet packet.
  */
-static void
+void
 ether_demux_oncpu(struct ifnet *ifp, struct mbuf *m)
 {
 	struct ether_header *eh;
@@ -1471,10 +1112,8 @@ post_stats:
 	switch (ether_type) {
 #ifdef INET
 	case ETHERTYPE_IP:
-#ifdef notyet
-		if (ipflow_fastforward(m, ifp->if_serializer))
+		if (ipflow_fastforward(m))
 			return;
-#endif
 		isr = NETISR_IP;
 		break;
 
@@ -1896,5 +1535,3 @@ ether_input_chain2(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 #endif	/* ETHER_INPUT_CHAIN */
 		lwkt_sendmsg(port, &m->m_hdr.mh_netmsg.nm_netmsg.nm_lmsg);
 }
-
-#endif	/* ETHER_INPUT2 */

@@ -32,7 +32,7 @@
  *
  *	@(#)in_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in_var.h,v 1.33.2.3 2001/12/14 20:09:34 jlemon Exp $
- * $DragonFly: src/sys/netinet/in_var.h,v 1.14 2008/07/03 08:22:36 corecode Exp $
+ * $DragonFly: src/sys/netinet/in_var.h,v 1.15 2008/07/27 10:06:57 sephe Exp $
  */
 
 #ifndef _NETINET_IN_VAR_H_
@@ -253,7 +253,7 @@ void	in_ifscrub (struct ifnet *, struct in_ifaddr *);
 void	in_iaunlink (struct in_ifaddr *);
 void	in_iahash_insert (struct in_ifaddr *);
 void	in_iahash_remove (struct in_ifaddr *);
-int	ipflow_fastforward (struct mbuf *, struct lwkt_serialize *);
+int	ipflow_fastforward (struct mbuf *);
 void	ipflow_create (const struct route *, struct mbuf *);
 void	ipflow_slowtimo (void);
 

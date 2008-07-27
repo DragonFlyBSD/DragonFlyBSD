@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.38 2008/05/14 11:59:23 sephe Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.39 2008/07/27 10:06:57 sephe Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -1487,8 +1487,10 @@ ppp_inproc(struct ppp_softc *sc, struct mbuf *m)
 	m->m_pkthdr.len -= PPP_HDRLEN;
 	m->m_data += PPP_HDRLEN;
 	m->m_len -= PPP_HDRLEN;
-	if (ipflow_fastforward(m, ifp->if_serializer))
+#ifdef notyet
+	if (ipflow_fastforward(m))
 	    return;
+#endif
 	isr = NETISR_IP;
 	break;
 #endif

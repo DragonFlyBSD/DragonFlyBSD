@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.14 2008/05/14 11:59:24 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.15 2008/07/27 10:06:57 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -115,7 +115,7 @@ ipflow_lookup(const struct ip *ip)
 }
 
 int
-ipflow_fastforward(struct mbuf *m, lwkt_serialize_t serializer)
+ipflow_fastforward(struct mbuf *m)
 {
 	struct ip *ip;
 	struct ipflow *ipf;
@@ -180,9 +180,6 @@ ipflow_fastforward(struct mbuf *m, lwkt_serialize_t serializer)
 	else
 		dst = &ipf->ipf_ro.ro_dst;
 
-	if (serializer)
-		lwkt_serialize_exit(serializer);
-
 	error = ifp->if_output(ifp, m, dst, rt);
 	if (error) {
 		if (error == ENOBUFS)
@@ -190,9 +187,6 @@ ipflow_fastforward(struct mbuf *m, lwkt_serialize_t serializer)
 		else
 			ipf->ipf_errors++;
 	}
-
-	if (serializer)
-		lwkt_serialize_enter(serializer);
 	return 1;
 }
 
@@ -319,12 +313,18 @@ ipflow_slowtimo(void)
 #endif
 }
 
-static void
-ipflow_create_oncpu(const struct route *ro, struct mbuf *m)
+void
+ipflow_create(const struct route *ro, struct mbuf *m)
 {
 	const struct ip *const ip = mtod(m, struct ip *);
 	struct ipflow *ipf;
 	unsigned hash;
+
+	/*
+	 * Don't create cache entries for ICMP messages.
+	 */
+	if (!ipflow_active || ip->ip_p == IPPROTO_ICMP)
+		return;
 
 	/*
 	 * See if an existing flow struct exists.  If so remove it from it's
@@ -343,7 +343,7 @@ ipflow_create_oncpu(const struct route *ro, struct mbuf *m)
 			ipflow_inuse++;
 		}
 		bzero(ipf, sizeof(*ipf));
-	} else if (IPFLOW_RTENTRY_ISDOWN(ipf->ipf_ro.ro_rt)) {
+	} else {
 		crit_enter();
 		LIST_REMOVE(ipf, ipf_next);
 		crit_exit();
@@ -352,14 +352,6 @@ ipflow_create_oncpu(const struct route *ro, struct mbuf *m)
 		RTFREE(ipf->ipf_ro.ro_rt);
 		ipf->ipf_uses = ipf->ipf_last_uses = 0;
 		ipf->ipf_errors = ipf->ipf_dropped = 0;
-	} else {
-		/*
-		 * The route entry cached in ipf is still up,
-		 * this could happen while the ipf installation
-		 * is in transition state.
-		 * XXX should not happen on UP box
-		 */
-		return;
 	}
 
 	/*
@@ -379,80 +371,6 @@ ipflow_create_oncpu(const struct route *ro, struct mbuf *m)
 	crit_enter();
 	LIST_INSERT_HEAD(&ipflows[hash], ipf, ipf_next);
 	crit_exit();
-}
-
-#ifdef SMP
-
-static void
-ipflow_create_dispatch(struct netmsg *nmsg)
-{
-	struct netmsg_packet *nmp = (struct netmsg_packet *)nmsg;
-	struct sockaddr_in *sin;
-	struct route ro;
-	int nextcpu;
-
-	bzero(&ro, sizeof(ro));
-	sin = (struct sockaddr_in *)&ro.ro_dst;
-	sin->sin_family = AF_INET;
-	sin->sin_len = sizeof(struct sockaddr_in);
-	sin->sin_addr.s_addr = (in_addr_t)nmsg->nm_lmsg.u.ms_result32;
-
-	rtalloc_ign(&ro, RTF_PRCLONING);
-	if (ro.ro_rt != NULL) {
-		ipflow_create_oncpu(&ro, nmp->nm_packet);
-		RTFREE(ro.ro_rt);
-	}
-
-	nextcpu = mycpuid + 1;
-	if (nextcpu < ncpus)
-		lwkt_forwardmsg(cpu_portfn(nextcpu), &nmsg->nm_lmsg);
-	else
-		m_freem(nmp->nm_packet);
-}
-
-#endif	/* SMP */
-
-void
-ipflow_create(const struct route *ro, struct mbuf *m)
-{
-	const struct ip *const ip = mtod(m, struct ip *);
-#ifdef SMP
-	struct netmsg_packet *nmp;
-	struct netmsg *nmsg;
-	int nextcpu;
-#endif
-
-	/*
-	 * Don't create cache entries for ICMP messages.
-	 */
-	if (!ipflow_active || ip->ip_p == IPPROTO_ICMP) {
-		m_freem(m);
-		return;
-	}
-
-#ifdef SMP
-	nmp = &m->m_hdr.mh_netmsg;
-	nmsg = &nmp->nm_netmsg;
-
-	netmsg_init(nmsg, &netisr_apanic_rport, 0, ipflow_create_dispatch);
-	nmp->nm_packet = m;
-	nmsg->nm_lmsg.u.ms_result32 =
-		((const struct sockaddr_in *)&ro->ro_dst)->sin_addr.s_addr;
-
-	if (mycpuid == 0) {
-		ipflow_create_oncpu(ro, m);
-		nextcpu = 1;
-	} else {
-		nextcpu = 0;
-	}
-	if (nextcpu < ncpus)
-		lwkt_sendmsg(cpu_portfn(nextcpu), &nmsg->nm_lmsg);
-	else
-		m_freem(m);
-#else
-	ipflow_create_oncpu(ro, m);
-	m_freem(m);
-#endif
 }
 
 static void

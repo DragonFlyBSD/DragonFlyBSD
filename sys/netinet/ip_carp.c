@@ -25,7 +25,7 @@
  */
 /*
  * $FreeBSD: src/sys/netinet/ip_carp.c,v 1.48 2007/02/02 09:39:09 glebius Exp $
- * $DragonFly: src/sys/netinet/ip_carp.c,v 1.9 2008/06/08 08:38:05 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_carp.c,v 1.10 2008/07/27 10:06:57 sephe Exp $
  */
 
 #include "opt_carp.h"
@@ -161,7 +161,7 @@ struct carp_if {
 /* Get carp_if from softc. Valid after carp_set_addr{,6}. */
 #define	SC2CIF(sc)		((struct carp_if *)(sc)->sc_carpdev->if_carp)
 
-#define	CARP_LOCK_INIT(cif)	lockinit(&(cif)->vhif_lock, "carp_if", 0,  LK_NOWAIT);
+#define	CARP_LOCK_INIT(cif)	lockinit(&(cif)->vhif_lock, "carp_if", 0, 0);
 #define	CARP_LOCK_DESTROY(cif)	;
 #define	CARP_LOCK_ASSERT(cif)	;
 #define	CARP_LOCK(cif)		lockmgr(&(cif)->vhif_lock, LK_EXCLUSIVE);

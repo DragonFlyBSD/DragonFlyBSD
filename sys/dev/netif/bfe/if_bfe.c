@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.35 2008/06/26 12:05:19 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.36 2008/07/27 10:06:55 sephe Exp $
  */
 #include "opt_ethernet.h"
 
@@ -1156,11 +1156,7 @@ bfe_rxeof(struct bfe_softc *sc)
 		m->m_pkthdr.rcvif = ifp;
 
 #ifdef ETHER_INPUT_CHAIN
-#ifdef ETHER_INPUT2
 		ether_input_chain2(ifp, m, chain);
-#else
-		ether_input_chain(ifp, m, chain);
-#endif
 #else
 		ifp->if_input(ifp, m);
 #endif

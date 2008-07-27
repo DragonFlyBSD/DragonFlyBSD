@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.39 2005/07/03 03:41:18 silby Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.103 2008/07/22 11:55:01 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.104 2008/07/27 10:06:55 sephe Exp $
  *
  */
 
@@ -2356,11 +2356,7 @@ bge_rxeof(struct bge_softc *sc)
 			have_tag = vlan_tag = 0;
 		}
 #ifdef ETHER_INPUT_CHAIN
-#ifdef ETHER_INPUT2
 		ether_input_chain2(ifp, m, chain);
-#else
-		ether_input_chain(ifp, m, chain);
-#endif
 #else
 		ifp->if_input(ifp, m);
 #endif

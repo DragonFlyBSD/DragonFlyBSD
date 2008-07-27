@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.91 2008/07/07 22:02:09 nant Exp $
+# $DragonFly: src/sys/conf/options,v 1.92 2008/07/27 10:06:55 sephe Exp $
 #
 #        On the handling of kernel options
 #
@@ -641,4 +641,3 @@ PROFILE_SERIALIZER	opt_serializer.h
 
 # ethernet options
 ETHER_INPUT_CHAIN	opt_ethernet.h
-ETHER_INPUT2		opt_ethernet.h

@@ -38,7 +38,7 @@
  *	    Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ether.c,v 1.2.2.13 2002/07/02 20:10:25 archie Exp $
- * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.16 2008/05/28 12:11:13 sephe Exp $
+ * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.17 2008/07/27 10:06:57 sephe Exp $
  */
 
 /*
@@ -204,8 +204,6 @@ NETGRAPH_INIT(ether, &ng_ether_typestruct);
 /*
  * Handle a packet that has come in on an interface. We get to
  * look at it here before any upper layer protocols do.
- *
- * NOTE: this function will get called with ifp's serializer being held
  */
 static void
 ng_ether_input(struct ifnet *ifp, struct mbuf **mp)
@@ -222,8 +220,6 @@ ng_ether_input(struct ifnet *ifp, struct mbuf **mp)
 /*
  * Handle a packet that has come in on an interface, and which
  * does not match any of our known protocols (an ``orphan'').
- *
- * NOTE: this function will get called at splimp()
  */
 static void
 ng_ether_input_orphan(struct ifnet *ifp,
@@ -634,10 +630,13 @@ ng_ether_rcv_upper(node_p node, struct mbuf *m, meta_p meta)
 
 	m->m_pkthdr.rcvif = priv->ifp;
 
+	/*
+	 * XXX
+	 * Since frame processing is run in netisr0,
+	 * 'm' may _not_ even on its target CPU.
+	 */
 	/* Route packet back in */
-	lwkt_serialize_enter(priv->ifp->if_serializer);
-	ether_demux(priv->ifp, m);
-	lwkt_serialize_exit(priv->ifp->if_serializer);
+	ether_demux_oncpu(priv->ifp, m);
 	return (0);
 }
 

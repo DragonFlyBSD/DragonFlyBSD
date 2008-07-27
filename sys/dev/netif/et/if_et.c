@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.14 2008/07/09 15:42:12 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.15 2008/07/27 10:06:56 sephe Exp $
  */
 
 #include "opt_ethernet.h"
@@ -1981,11 +1981,7 @@ et_rxeof(struct et_softc *sc)
 
 				ifp->if_ipackets++;
 #ifdef ETHER_INPUT_CHAIN
-#ifdef ETHER_INPUT2
 				ether_input_chain2(ifp, m, chain);
-#else
-				ether_input_chain(ifp, m, chain);
-#endif
 #else
 				ifp->if_input(ifp, m);
 #endif

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.26 2008/03/07 11:34:19 sephe Exp $
+ * $DragonFly: src/sys/net/ef/if_ef.c,v 1.27 2008/07/27 10:06:57 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -240,8 +240,10 @@ ef_inputEII(struct mbuf *m, struct llc* l, u_short ether_type)
 #endif
 #ifdef INET
 	case ETHERTYPE_IP:
-		if (ipflow_fastforward(m, NULL))
+#ifdef notyet
+		if (ipflow_fastforward(m))
 			return (0);
+#endif
 		isr = NETISR_IP;
 		break;
 	case ETHERTYPE_ARP:
