@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.79 2008/07/27 02:52:36 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.80 2008/07/27 03:49:30 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -668,7 +668,7 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 	ether_demux_chain(ifp, m, chain);
 }
 
-void
+static void
 ether_input(struct ifnet *ifp, struct mbuf *m)
 {
 	ether_input_chain(ifp, m, NULL);
