@@ -1,5 +1,5 @@
 .\" $FreeBSD: src/sbin/i386/fdisk/fdisk.8,v 1.17.2.11 2002/04/25 16:25:12 trhodes Exp $
-.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.14 2008/07/27 22:15:49 thomas Exp $
+.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.15 2008/07/28 12:37:58 swildner Exp $
 .\"
 .Dd October 4, 1996
 .Dt FDISK 8
@@ -432,7 +432,7 @@ The default boot code
 .El
 .Sh COMPATIBILITY
 Due to the use of 32 bit to store the number of sectors in the MBR,
-.Nm fdisk
+.Nm
 can at most use 2^32 - 1 sectors.
 For the prevalent sector size of 512B this means a maximum of 2TB.
 Larger disks should be partitioned using
