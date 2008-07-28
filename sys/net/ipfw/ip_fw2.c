@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.45 2008/07/28 12:00:32 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.46 2008/07/28 12:35:41 sephe Exp $
  */
 
 #define        DEB(x)
@@ -56,8 +56,11 @@
 #include <sys/thread2.h>
 #include <sys/ucred.h>
 #include <sys/in_cksum.h>
+
 #include <net/if.h>
 #include <net/route.h>
+#include <net/netmsg2.h>
+
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
 #include <netinet/in_var.h>
@@ -2901,8 +2904,18 @@ ipfw_init_default_rule(struct ip_fw **head)
 }
 
 static void
-ipfw_init(void)
+ipfw_init_dispatch(struct netmsg *nmsg)
 {
+	int error = 0;
+
+	crit_enter();
+
+	if (IPFW_LOADED) {
+		kprintf("IP firewall already loaded\n");
+		error = EEXIST;
+		goto reply;
+	}
+
 	ip_fw_chk_ptr = ipfw_chk;
 	ip_fw_ctl_ptr = ipfw_ctl;
 	ip_fw_dn_io_ptr = ipfw_dummynet_io;
@@ -2926,15 +2939,61 @@ ipfw_init(void)
 #ifdef IPFIREWALL_VERBOSE_LIMIT
 	verbose_limit = IPFIREWALL_VERBOSE_LIMIT;
 #endif
-	if (fw_verbose == 0)
+	if (fw_verbose == 0) {
 		kprintf("disabled\n");
-	else if (verbose_limit == 0)
+	} else if (verbose_limit == 0) {
 		kprintf("unlimited\n");
-	else
+	} else {
 		kprintf("limited to %d packets/entry by default\n",
-		    verbose_limit);
+			verbose_limit);
+	}
 	callout_init(&ipfw_timeout_h);
 	callout_reset(&ipfw_timeout_h, hz, ipfw_tick, NULL);
+reply:
+	crit_exit();
+	lwkt_replymsg(&nmsg->nm_lmsg, error);
+}
+
+static void
+ipfw_fini_dispatch(struct netmsg *nmsg)
+{
+	int error = 0;
+
+	crit_enter();
+
+	if (ipfw_refcnt != 0) {
+		error = EBUSY;
+		goto reply;
+	}
+
+	callout_stop(&ipfw_timeout_h);
+	ip_fw_chk_ptr = NULL;
+	ip_fw_ctl_ptr = NULL;
+	ip_fw_dn_io_ptr = NULL;
+	free_chain(&layer3_chain, 1 /* kill default rule */);
+
+	kprintf("IP firewall unloaded\n");
+reply:
+	crit_exit();
+	lwkt_replymsg(&nmsg->nm_lmsg, error);
+}
+
+static int
+ipfw_init(void)
+{
+	struct netmsg smsg;
+
+	netmsg_init(&smsg, &curthread->td_msgport, 0, ipfw_init_dispatch);
+	return lwkt_domsg(cpu_portfn(0), &smsg.nm_lmsg, 0);
+}
+
+static int
+ipfw_fini(void)
+{
+	struct netmsg smsg;
+
+	netmsg_init(&smsg, &curthread->td_msgport, 0, ipfw_fini_dispatch);
+	return lwkt_domsg(cpu_portfn(0), &smsg.nm_lmsg, 0);
 }
 
 static int
@@ -2944,15 +3003,7 @@ ipfw_modevent(module_t mod, int type, void *unused)
 
 	switch (type) {
 	case MOD_LOAD:
-		crit_enter();
-		if (IPFW_LOADED) {
-			crit_exit();
-			kprintf("IP firewall already loaded\n");
-			err = EEXIST;
-		} else {
-			ipfw_init();
-			crit_exit();
-		}
+		err = ipfw_init();
 		break;
 
 	case MOD_UNLOAD:
@@ -2960,19 +3011,7 @@ ipfw_modevent(module_t mod, int type, void *unused)
 		kprintf("ipfw statically compiled, cannot unload\n");
 		err = EBUSY;
 #else
-		if (ipfw_refcnt != 0) {
-			err = EBUSY;
-			break;
-		}
-
-		crit_enter();
-		callout_stop(&ipfw_timeout_h);
-		ip_fw_chk_ptr = NULL;
-		ip_fw_ctl_ptr = NULL;
-		ip_fw_dn_io_ptr = NULL;
-		free_chain(&layer3_chain, 1 /* kill default rule */);
-		crit_exit();
-		kprintf("IP firewall unloaded\n");
+		err = ipfw_fini();
 #endif
 		break;
 	default:
