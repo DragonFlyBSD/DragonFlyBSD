@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.31 2008/07/01 08:21:25 hasso Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.32 2008/07/28 15:07:28 sephe Exp $
  */
 
 #include "opt_inet6.h"
@@ -336,7 +336,7 @@ rip_ctloutput(struct socket *so, struct sockopt *sopt)
 		case IP_FW_ADD: /* ADD actually returns the body... */
 		case IP_FW_GET:
 			if (IPFW_LOADED)
-				error = ip_fw_ctl_ptr(sopt);
+				error = ip_fw_sockopt(sopt);
 			else
 				error = ENOPROTOOPT;
 			break;

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.47 2008/07/28 13:45:43 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.48 2008/07/28 15:07:28 sephe Exp $
  */
 
 #define        DEB(x)
@@ -2737,16 +2737,6 @@ ipfw_ctl(struct sockopt *sopt)
 	int error, rulenum;
 	uint32_t *masks;
 	size_t size;
-
-	/*
-	 * Disallow modifications in really-really secure mode, but still allow
-	 * the logging counters to be reset.
-	 */
-	if (sopt->sopt_name == IP_FW_ADD ||
-	    (sopt->sopt_dir == SOPT_SET && sopt->sopt_name != IP_FW_RESETLOG)) {
-		if (securelevel >= 3)
-			return EPERM;
-	}
 
 	error = 0;
 

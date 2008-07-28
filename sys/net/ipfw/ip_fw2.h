@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.h,v 1.1.2.2 2002/08/16 11:03:11 luigi Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.9 2008/07/28 13:45:43 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.10 2008/07/28 15:07:28 sephe Exp $
  */
 
 #ifndef _IPFW2_H
@@ -368,6 +368,7 @@ struct ip_fw_args {
 /*
  * Function definitions.
  */
+int	ip_fw_sockopt(struct sockopt *);
 
 /* Firewall hooks */
 struct sockopt;
