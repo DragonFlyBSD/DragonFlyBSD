@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.44 2008/06/21 06:47:29 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.45 2008/07/28 12:00:32 sephe Exp $
  */
 
 #define        DEB(x)
@@ -214,14 +214,7 @@ SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, dyn_keepalive, CTLFLAG_RW,
 
 #endif /* SYSCTL_NODE */
 
-/**
- * dummynet needs a reference to the default rule, because rules can be
- * deleted while packets hold a reference to them. When this happens,
- * dummynet changes the reference to the default rule (it could well be a
- * NULL pointer, but this way we do not need to check for the special
- * case, plus here he have info on the default behaviour).
- */
-struct ip_fw *ip_fw_default_rule;
+static struct ip_fw *ip_fw_default_rule;
 
 static ip_fw_chk_t	ipfw_chk;
 
