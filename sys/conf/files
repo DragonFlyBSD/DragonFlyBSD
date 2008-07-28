@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.227 2008/07/26 14:26:30 sephe Exp $
+# $DragonFly: src/sys/conf/files,v 1.228 2008/07/28 01:21:39 swildner Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -50,11 +50,9 @@ bus/cam/scsi/scsi_pt.c			optional pt
 bus/cam/scsi/scsi_sa.c			optional sa
 bus/cam/scsi/scsi_cd.c			optional cd
 bus/cam/scsi/scsi_ch.c			optional ch
-bus/cam/scsi/scsi_low.c			optional ct
 bus/cam/scsi/scsi_low.c			optional ncv
 bus/cam/scsi/scsi_low.c			optional nsp
 bus/cam/scsi/scsi_low.c			optional stg
-bus/cam/scsi/scsi_low_pisa.c		optional ct
 bus/cam/scsi/scsi_low_pisa.c		optional ncv
 bus/cam/scsi/scsi_low_pisa.c		optional nsp
 bus/cam/scsi/scsi_low_pisa.c		optional stg

@@ -24,15 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.h,v 1.27.2.11 2002/10/05 18:31:48 scottl Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_compat.h,v 1.12 2007/08/29 15:42:05 swildner Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_compat.h,v 1.13 2008/07/28 01:21:39 swildner Exp $
  */
 
-#include "use_vt.h"
 #include "use_cx.h"
 #include "use_el.h"
 #include "use_le.h"
 #include "use_rdp.h"
-#include "use_pcm.h"
 #include "use_wt.h"
 #include "use_ctx.h"
 #include "use_spigot.h"
@@ -52,13 +50,10 @@ struct old_isa_driver {
 	struct isa_driver	*driver;
 };
 
-extern struct isa_driver  vtdriver;
 extern struct isa_driver  cxdriver;
 extern struct isa_driver  eldriver;
 extern struct isa_driver  ledriver;
 extern struct isa_driver rdpdriver;
-extern struct isa_driver mcddriver;
-extern struct isa_driver scddriver;
 extern struct isa_driver  wtdriver;
 extern struct isa_driver ctxdriver;
 extern struct isa_driver spigotdriver;
@@ -68,12 +63,10 @@ extern struct isa_driver  cydriver;
 extern struct isa_driver dgbdriver;
 extern struct isa_driver labpcdriver;
 extern struct isa_driver  rcdriver;
-extern struct isa_driver  rpdriver;
 extern struct isa_driver  twdriver;
 extern struct isa_driver ascdriver;
 extern struct isa_driver stldriver;
 extern struct isa_driver stlidriver;
-extern struct isa_driver lorandriver;
 
 
 static struct old_isa_driver old_drivers[] = {
@@ -91,9 +84,6 @@ static struct old_isa_driver old_drivers[] = {
 
 /* TTY */
 
-#if NVT > 0
-	{ 0, &vtdriver },
-#endif
 #if NGP > 0
 	{ 0, &gpdriver },
 #endif
@@ -112,9 +102,6 @@ static struct old_isa_driver old_drivers[] = {
 #if NRC > 0
 	{ 0, &rcdriver },
 #endif
-#if NRP > 0
-	{ 0, &rpdriver },
-#endif
 #if NTW > 0
 	{ 0, &twdriver },
 #endif
@@ -127,18 +114,9 @@ static struct old_isa_driver old_drivers[] = {
 #if NSTLI > 0
 	{ 0, &stlidriver },
 #endif
-#if NLORAN > 0
-	{ INTR_FAST, &lorandriver },
-#endif
 
 /* BIO */
 
-#if NMCD > 0
-	{ 0, &mcddriver },
-#endif
-#if NSCD > 0
-	{ 0, &scddriver },
-#endif
 #if NWT > 0
 	{ 0, &wtdriver },
 #endif
