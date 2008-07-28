@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.57 2008/02/17 19:51:53 swildner Exp $
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.58 2008/07/28 00:08:56 thomas Exp $
 .Dd January 30, 2008
 .Dt RC.CONF 5
 .Os
@@ -49,13 +49,14 @@ which conditionalize their
 internal actions according to the settings found there.
 .Pp
 The
+.Pa /etc/defaults/rc.conf
+file specifies the default settings for all the available options,
+the
 .Pa /etc/rc.conf
-file is included from the file
-.Pa /etc/defaults/rc.conf ,
-which specifies the default settings for all the available options.
+file specifies override settings.
 Options need only be specified in
 .Pa /etc/rc.conf
-when the system administrator wishes to override these defaults.
+when the system administrator wishes to override the defaults.
 The file
 .Pa /etc/rc.conf.local
 is used to override settings in
@@ -161,7 +162,7 @@ a sensors monitoring and logging daemon.
 .It Va sensorsd_flags
 .Pq Vt str
 Empty by default.
-This variable contains additional flags passed to the
+Additional flags passed to the
 .Xr sensorsd 8
 program.
 .It Va pccard_ifconfig
@@ -228,21 +229,11 @@ if NIS is not used.
 .It Va dhclient_program
 .Pq Vt str
 Path to the DHCP client program
-.Pa ( /sbin/dhclient ,
-the ISC DHCP client, is the default).
+(default
+.Pa /sbin/dhclient ) .
 .It Va dhclient_flags
 .Pq Vt str
 Additional flags to pass to the DHCP client program.
-For the ISC DHCP client, see the
-.Xr dhclient 8
-manpage for a description of the command line options available.
-.\".It Va background_dhclient
-.\".Pq Vt bool
-.\"Set to
-.\".Dq Li YES
-.\"to start the DHCP client in background.
-.\"This can cause trouble with applications depending on
-.\"a working network, but it will provide a faster startup in many cases.
 .It Va dhcpd_enable
 .Pq Vt bool
 Set to
@@ -345,9 +336,9 @@ the
 kernel module will be loaded.
 .It Va firewall_script
 .Pq Vt str
-This variable specifies the full path to the firewall script to run.
-The default is
-.Pa /etc/rc.firewall .
+The full path to the firewall script to run
+(default
+.Pa /etc/rc.firewall ) .
 .It Va ipv6_firewall_script
 .Pq Vt str
 The IPv6 equivalent of
@@ -542,7 +533,7 @@ Path to
 Set to
 .Pa /etc/ipf.rules
 by default.
-This variable contains the name of the filter rule definition file.
+The name of the filter rule definition file.
 The file is expected to be readable for the
 .Xr ipf 8
 command to execute.
@@ -552,7 +543,7 @@ command to execute.
 Set to
 .Pa /etc/ipf6.rules
 by default.
-This variable contains the IPv6 filter rule definition file.
+The name of the IPv6 filter rule definition file.
 The file is expected to be readable for the
 .Xr ipf 8
 command to execute.
@@ -560,7 +551,7 @@ command to execute.
 .It Va ipfilter_flags
 .Pq Vt str
 Empty by default.
-This variable contains flags passed to the
+Flags passed to the
 .Xr ipf 8
 program.
 .\" ----- ipnat_enable setting ----------------------------------
@@ -590,7 +581,7 @@ Path to
 Set to
 .Pa /etc/ipnat.rules
 by default.
-This variable contains the name of the file
+The name of the file
 holding the network address translation definition.
 This file is expected to be readable for the
 .Xr ipnat 8
@@ -599,7 +590,7 @@ command to execute.
 .It Va ipnat_flags
 .Pq Vt str
 Empty by default.
-This variable contains flags passed to the
+Flags passed to the
 .Xr ipnat 8
 program.
 .\" ----- ipmon_enable setting ----------------------------------
@@ -638,7 +629,7 @@ Path to
 Set to
 .Dq Li -Ds
 by default.
-This variable contains flags passed to the
+Flags passed to the
 .Xr ipmon 8
 program.
 Another typical example would be
@@ -693,7 +684,7 @@ Path to
 .It Va ipfs_flags
 .Pq Vt str
 Empty by default.
-This variable contains flags passed to the
+Flags passed to the
 .Xr ipfs 8
 program.
 .\" ----- end of added ipf hook ---------------------------------
@@ -798,46 +789,18 @@ this is the last port in the default portrange.
 Refer to
 .Xr ip 4
 for more information.
-.It Va network_interfaces
+.\"
+.It Va ifconfig_ Ns Aq Ar interface
 .Pq Vt str
-Set to the list of network interfaces to configure on this host.
-For example, if the only network devices in the system are the loopback device
-.Pq Li lo0
-and a NIC using the
-.Xr ed 4
-driver, this could be set to
-.Dq Li "lo0 ed0" .
-An
-.Va ifconfig_ Ns Aq Ar interface
-variable is also assumed to exist for each value of
-.Ar interface .
-It is also possible to add IP alias entries here in cases where
-multiple IP addresses registered against a single interface are desired.
+Configuration for
+.Dq interface .
+Typically includes IP address.
 Assuming that the interface in question was
 .Li ed0 ,
 it might look something like this:
 .Bd -literal
-ifconfig_ed0_alias0="inet 127.0.0.253 netmask 0xffffffff"
-ifconfig_ed0_alias1="inet 127.0.0.254 netmask 0xffffffff"
+ifconfig_ed0="inet 10.0.0.1 netmask 0xffff0000"
 .Ed
-.Pp
-And so on.
-For each
-.Va ifconfig_ Ns Ao Ar interface Ac Ns Va _alias Ns Aq Ar n
-entry that is found, its contents are passed to
-.Xr ifconfig 8 .
-Execution stops at the first unsuccessful access, so if
-something like this is present:
-.Bd -literal
-ifconfig_ed0_alias0="inet 127.0.0.251 netmask 0xffffffff"
-ifconfig_ed0_alias1="inet 127.0.0.252 netmask 0xffffffff"
-ifconfig_ed0_alias2="inet 127.0.0.253 netmask 0xffffffff"
-ifconfig_ed0_alias4="inet 127.0.0.254 netmask 0xffffffff"
-.Ed
-.Pp
-Then note that alias4 would
-.Em not
-be added since the search would stop with the missing alias3 entry.
 .Pp
 If the
 .Pa /etc/start_if. Ns Aq Ar interface
@@ -885,11 +848,65 @@ possible to use something like:
 ifconfig_wi0="up DHCP WPA mode 11b"
 .Ed
 .Pp
-It is also possible to rename interface by doing:
+.\"
+.It Va ifconfig_ Ns Ao Ar interface Ac Ns Va _alias Ns Aq Ar n
+.Pq Vt str
+Configuration to establish an additional network address for
+.Dq interface .
+Assuming that the interface in question was
+.Li ed0 ,
+it might look something like this:
+.Bd -literal
+ifconfig_ed0_alias0="inet 127.0.0.253 netmask 0xffffffff"
+ifconfig_ed0_alias1="inet 127.0.0.254 netmask 0xffffffff"
+.Ed
+.Pp
+And so on.
+For each
+.Va ifconfig_ Ns Ao Ar interface Ac Ns Va _alias Ns Aq Ar n
+entry that is found, its contents are passed to
+.Xr ifconfig 8 .
+Execution stops at the first unsuccessful access, so if
+something like this is present:
+.Bd -literal
+ifconfig_ed0_alias0="inet 127.0.0.251 netmask 0xffffffff"
+ifconfig_ed0_alias1="inet 127.0.0.252 netmask 0xffffffff"
+ifconfig_ed0_alias2="inet 127.0.0.253 netmask 0xffffffff"
+ifconfig_ed0_alias4="inet 127.0.0.254 netmask 0xffffffff"
+.Ed
+.Pp
+Then note that alias4 would
+.Em not
+be added since the search would stop with the missing alias3 entry.
+.Pp
+.\"
+.It Va ifconfig_ Ns Ao Ar interface Ac Ns Va _name
+.Pq Vt str
+New name for
+.Dq interface .
+It is possible to rename interface by doing:
 .Bd -literal
 ifconfig_ed0_name="net0"
 ifconfig_net0="inet 10.0.0.1 netmask 0xffff0000"
 .Ed
+.It Va network_interfaces
+.Pq Vt str
+The list of network interfaces to configure on this host,
+or
+.Dq Li auto
+to configure all network interfaces
+(default
+.Dq Li auto ) .
+For example, if the only network devices to be configured are the loopback device
+.Pq Li lo0
+and a NIC using the
+.Xr ed 4
+driver, this could be set to
+.Dq Li "lo0 ed0" .
+An
+.Va ifconfig_ Ns Aq Ar interface
+variable is assumed to exist for each value of
+.Ar interface .
 .It Va ipv6_network_interfaces
 .Pq Vt str
 This is the IPv6 equivalent of
@@ -900,8 +917,6 @@ they should be set as
 .Va ipv6_ifconfig_ Ns Aq Ar interface .
 Aliases should be set as
 .Va ipv6_ifconfig_ Ns Ao Ar interface Ac Ns Va _alias Ns Aq Ar n .
-.Va ipv6_prefix_ Ns Aq Ar interface
-does something.
 Interfaces that do not have a
 .Va ipv6_ifconfig_ Ns Aq Ar interface
 setting will be auto configured by
@@ -913,6 +928,11 @@ is set to
 Note that the IPv6 networking code does not support the
 .Pa /etc/start_if. Ns Aq Ar interface
 files.
+.It Va ipv6_prefix_ Ns Aq Ar interface
+.Pq Vt str
+Assign prefix to
+.Ar interface ,
+prefixlen 64 is used.
 .It Va ipv6_default_interface
 .Pq Vt str
 If not set to
@@ -1351,26 +1371,24 @@ and also an NFS server, run
 at boot time.
 .It Va rpcbind_program
 .Pq Vt str
-Path to
-.Xr rpcbind 8
+Path to program for rpcbind daemon
 (default
-.Pa /usr/sbin/rpcbind ) .
+.Pa /usr/sbin/portmap ) .
 .It Va rpcbind_enable
 .Pq Vt bool
 If set to
 .Dq Li YES ,
-run the
-.Xr rpcbind 8
-service at boot time.
+run
+.Va rpcbind_program
+at boot time.
 .It Va rpcbind_flags
 .Pq Vt str
 If
 .Va rpcbind_enable
 is set to
 .Dq Li YES ,
-these are the flags to pass to the
-.Xr rpcbind 8
-daemon.
+these are the flags to pass to
+.Va rpcbind_program .
 .It Va keyserv_enable
 .Pq Vt bool
 If set to
@@ -1676,11 +1694,15 @@ If
 .Va router_enable
 is set to
 .Dq Li YES ,
-this is the name of the routing daemon to use.
+this is the name of the routing daemon to use
+(default
+.Pa /sbin/routed ) .
 .It Va ipv6_router_program
 .Pq Vt str
 The IPv6 equivalent of
-.Va router_program .
+.Va router_program
+(default
+.Pa /sbin/route6d ) .
 .It Va router_flags
 .Pq Vt str
 If
@@ -2271,7 +2293,7 @@ preserve
 settings across reboots.
 .It Va mta_start_script
 .Pq Vt str
-This variable specifies the full path to the script to run to start
+The full path to the script to run to start
 a mail transfer agent.
 The default is
 .Pa /etc/rc.sendmail .
@@ -2408,8 +2430,8 @@ at system boot time.
 .It Va sshd_program
 .Pq Vt str
 Path to the SSH server program
-.Pa ( /usr/sbin/sshd
-is the default).
+(default
+.Pa /usr/sbin/sshd ) .
 .It Va sshd_flags
 .Pq Vt str
 If
@@ -2798,10 +2820,11 @@ if
 has not completed within the specified time (in seconds).
 .El
 .Sh FILES
-.Bl -tag -width ".Pa /etc/defaults/rc.conf" -compact
+.Bl -tag -width ".Pa /etc/start_if. Ns Aq Ar interface" -compact
 .It Pa /etc/defaults/rc.conf
 .It Pa /etc/rc.conf
 .It Pa /etc/rc.conf.local
+.It Pa /etc/start_if. Ns Aq Ar interface
 .El
 .Sh SEE ALSO
 .Xr catman 1 ,
@@ -2850,6 +2873,7 @@ has not completed within the specified time (in seconds).
 .Xr pcnfsd 8 ,
 .Xr pfctl 8 ,
 .Xr pflogd 8 ,
+.Xr portmap 8 ,
 .Xr quotacheck 8 ,
 .Xr quotaon 8 ,
 .Xr rc 8 ,
@@ -2860,7 +2884,7 @@ has not completed within the specified time (in seconds).
 .Xr routed 8 ,
 .Xr rpc.lockd 8 ,
 .Xr rpc.statd 8 ,
-.Xr rpcbind 8 ,
+.Xr rtadvd 8 ,
 .Xr rtsold 8 ,
 .Xr rwhod 8 ,
 .Xr savecore 8 ,
