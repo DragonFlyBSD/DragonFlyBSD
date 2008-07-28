@@ -1,0 +1,11 @@
+# $DragonFly: src/gnu/usr.bin/gdb/libbfd/Makefile.host.i386,v 1.1 2008/07/28 22:33:21 corecode Exp $
+
+# Used to do keyword replacement in bfd-X.h
+#
+BFD_HOST_64BIT_LONG?=0
+# While in theory long long is 64bit, the currently packaged bfd
+# fails to use it properly.
+BFD_HOST_64BIT_LONG_LONG?=0
+BFD_HOST_64_BIT?=long long
+BFD_HOST_U_64_BIT?=unsigned long long
+BFD_HOSTPTR_T?=unsigned long

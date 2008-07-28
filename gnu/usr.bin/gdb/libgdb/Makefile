@@ -1,6 +1,8 @@
-# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile,v 1.7 2008/02/04 01:38:11 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile,v 1.8 2008/07/28 22:33:21 corecode Exp $
 
 .include "../Makefile.inc"
+
+TARGET_ARCH?=	${MACHINE_ARCH}
 
 LIB=	gdb
 INTERNALLIB=	# yes
@@ -14,6 +16,7 @@ CFLAGS+= -I${CONTRIBDIR} -I${CONTRIBDIR}/config -I${.CURDIR}/../libbfd
 CFLAGS+= -I${BASEDIR} 
 CFLAGS+= -DTARGET_SYSTEM_ROOT='"/"' -DBINDIR='"/usr/bin"'
 CFLAGS+= -DMACHINE_ARCH='"${MACHINE_ARCH}"'
+CFLAGS+= -DTARGET_ARCH='"${TARGET_ARCH}"'
 
 CLEANFILES+=	observer.h observer.inc gdb_stdint.h
 
@@ -142,7 +145,7 @@ DPADD+=	../libbfd/libbfd.a ../libopcodes/libopcodes.a ../libiberty/libiberty.a
 LDADD=	-ledit -lkvm -ltermcap -lm
 LDADD+=	-L../libbfd -lbfd -L../libopcodes -lopcodes -L../libiberty -liberty
 
-.include "Makefile.${MACHINE_ARCH}"
+.include "Makefile.${TARGET_ARCH}"
 
 init.c: ${SRCS:Ninit.c} Makefile
 	echo '#include "defs.h"' > ${.TARGET}

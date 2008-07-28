@@ -1,8 +1,10 @@
-# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile.amd64,v 1.5 2008/01/31 14:30:13 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile.amd64,v 1.6 2008/07/28 22:33:21 corecode Exp $
 
 # TDEPFILES (part 2, cleaned)
-SRCS+=	amd64-tdep.o amd64fbsd-tdep.o \
-	i386-tdep.o i387-tdep.o i386bsd-tdep.o i386fbsd-tdep.o
+SRCS+=	amd64-tdep.c amd64fbsd-tdep.c \
+	i386-tdep.c i387-tdep.c i386bsd-tdep.c i386fbsd-tdep.c
 
+.if ${TARGET_ARCH} == ${MACHINE_ARCH}
 # NATDEPFILES (part 2)
-SRCS+=	amd64-nat.o amd64bsd-nat.o amd64fbsd-nat.o
+SRCS+=	amd64-nat.c amd64bsd-nat.c amd64fbsd-nat.c
+.endif
