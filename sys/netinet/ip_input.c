@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.83 2008/07/27 10:06:57 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.84 2008/07/28 13:45:43 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -260,6 +260,7 @@ static const int ipstealth = 0;
 /* Firewall hooks */
 ip_fw_chk_t *ip_fw_chk_ptr;
 ip_fw_dn_io_t *ip_fw_dn_io_ptr;
+int ip_fw_loaded;
 int fw_enable = 1;
 int fw_one_pass = 1;
 

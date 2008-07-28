@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.46 2008/07/28 12:35:41 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.47 2008/07/28 13:45:43 sephe Exp $
  */
 
 #define        DEB(x)
@@ -2948,6 +2948,8 @@ ipfw_init_dispatch(struct netmsg *nmsg)
 			verbose_limit);
 	}
 	callout_init(&ipfw_timeout_h);
+
+	ip_fw_loaded = 1;
 	callout_reset(&ipfw_timeout_h, hz, ipfw_tick, NULL);
 reply:
 	crit_exit();
@@ -2967,6 +2969,10 @@ ipfw_fini_dispatch(struct netmsg *nmsg)
 	}
 
 	callout_stop(&ipfw_timeout_h);
+
+	ip_fw_loaded = 0;
+	netmsg_service_sync();
+
 	ip_fw_chk_ptr = NULL;
 	ip_fw_ctl_ptr = NULL;
 	ip_fw_dn_io_ptr = NULL;

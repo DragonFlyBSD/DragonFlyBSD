@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.h,v 1.1.2.2 2002/08/16 11:03:11 luigi Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.8 2007/11/16 02:45:45 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.9 2008/07/28 13:45:43 sephe Exp $
  */
 
 #ifndef _IPFW2_H
@@ -383,7 +383,9 @@ extern ip_fw_dn_io_t	*ip_fw_dn_io_ptr;
 
 extern int fw_one_pass;
 extern int fw_enable;
-#define	IPFW_LOADED	(ip_fw_chk_ptr != NULL)
+
+extern int ip_fw_loaded;
+#define	IPFW_LOADED	(ip_fw_loaded)
 
 #endif /* _KERNEL */
 
