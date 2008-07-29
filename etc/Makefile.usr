@@ -2,7 +2,7 @@
 #
 # Provides simple targets to download and maintain /usr/pkgsrc.
 #
-# $DragonFly: src/etc/Makefile.usr,v 1.5 2008/02/19 20:54:23 thomas Exp $
+# $DragonFly: src/etc/Makefile.usr,v 1.5.2.1 2008/07/29 13:10:57 swildner Exp $
 
 all:
 	@echo "Install or update /usr/pkgsrc using NetBSDs anoncvs"
@@ -41,9 +41,9 @@ cvs-cvsup:
 
 release-src-cvsup: cvs-cvsup
 	cd ${.CURDIR}; if [ -d src/CVS ]; then \
-	    cvs -R -d /home/dcvs update -PAd -rDragonFly_RELEASE_1_12_Slip src; \
+	    cvs -R -d /home/dcvs update -PAd -rDragonFly_RELEASE_2_0_Slip src; \
 	else \
-	    cvs -R -d /home/dcvs checkout -PA -rDragonFly_RELEASE_1_12_Slip src; \
+	    cvs -R -d /home/dcvs checkout -PA -rDragonFly_RELEASE_2_0_Slip src; \
 	fi
 
 preview-src-cvsup: cvs-cvsup
