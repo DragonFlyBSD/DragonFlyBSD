@@ -1,4 +1,4 @@
-$DragonFly: doc/notes/release.txt,v 1.4 2008/07/09 18:15:10 thomas Exp $
+$DragonFly: doc/notes/release.txt,v 1.5 2008/07/29 16:30:51 dillon Exp $
 
 			Rolling a DragonFly release
 
@@ -66,8 +66,13 @@ $DragonFly: doc/notes/release.txt,v 1.4 2008/07/09 18:15:10 thomas Exp $
 	cd /usr/src
 	vi sys/sys/param.h
 	vi sys/conf/subvers-RELEASE_a_b
-	vi sys/conf/newvers.sh		(no changes are needed)
+	rm sys/conf/subvers-DEVELOP*
+	vi sys/conf/newvers.sh		(no changes are needed, however
+					 the file must be removed and
+					 re-checked out to get the
+					 correct Name tag).
 	vi gnu/usr.bin/groff/tmac/mdoc.local (adjust version for man pages)
+	vi etc/Makefile.usr		(adjust slip tags)
 	cvs commit ...
 
 (V) Set the initial slip tag on the release branch.
