@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.48 2008/07/28 15:07:28 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.49 2008/07/29 11:17:49 sephe Exp $
  */
 
 #define        DEB(x)
@@ -2946,6 +2946,17 @@ reply:
 	lwkt_replymsg(&nmsg->nm_lmsg, error);
 }
 
+static int
+ipfw_init(void)
+{
+	struct netmsg smsg;
+
+	netmsg_init(&smsg, &curthread->td_msgport, 0, ipfw_init_dispatch);
+	return lwkt_domsg(cpu_portfn(0), &smsg.nm_lmsg, 0);
+}
+
+#ifdef KLD_MODULE
+
 static void
 ipfw_fini_dispatch(struct netmsg *nmsg)
 {
@@ -2975,15 +2986,6 @@ reply:
 }
 
 static int
-ipfw_init(void)
-{
-	struct netmsg smsg;
-
-	netmsg_init(&smsg, &curthread->td_msgport, 0, ipfw_init_dispatch);
-	return lwkt_domsg(cpu_portfn(0), &smsg.nm_lmsg, 0);
-}
-
-static int
 ipfw_fini(void)
 {
 	struct netmsg smsg;
@@ -2991,6 +2993,8 @@ ipfw_fini(void)
 	netmsg_init(&smsg, &curthread->td_msgport, 0, ipfw_fini_dispatch);
 	return lwkt_domsg(cpu_portfn(0), &smsg.nm_lmsg, 0);
 }
+
+#endif	/* KLD_MODULE */
 
 static int
 ipfw_modevent(module_t mod, int type, void *unused)
