@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.52 2008/07/14 17:45:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.53 2008/07/29 16:21:52 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -528,13 +528,10 @@ nfs_mountroot(struct mount *mp)
 	ksnprintf(buf, sizeof(buf), "%ld.%ld.%ld.%ld:%s",
 		(l >> 24) & 0xff, (l >> 16) & 0xff,
 		(l >>  8) & 0xff, (l >>  0) & 0xff,nd->root_hostnam);
-	kprintf("NFS ROOT: %s\n",buf);
+	kprintf("NFS_ROOT: %s\n",buf);
 	if ((error = nfs_mountdiskless(buf, "/", MNT_RDONLY,
 	    &nd->root_saddr, &nd->root_args, td, &vp, &mp)) != 0) {
-		if (swap_mp) {
-			mp->mnt_vfc->vfc_refcount--;
-			kfree(swap_mp, M_MOUNT);
-		}
+		mp->mnt_vfc->vfc_refcount--;
 		crit_exit();
 		return (error);
 	}
@@ -604,6 +601,7 @@ nfs_mountdiskless(char *path, char *which, int mountflag,
 {
 	struct mount *mp;
 	struct sockaddr *nam;
+	char *xpath;
 	int didalloc = 0;
 	int error;
 
@@ -623,10 +621,15 @@ nfs_mountdiskless(char *path, char *which, int mountflag,
 #if defined(BOOTP) || defined(NFS_ROOT)
 	if (args->fhsize == 0) {
 		kprintf("NFS_ROOT: No FH passed from loader, attempting mount rpc...");
+		xpath = path;
+		while (*xpath && *xpath != ':')
+			++xpath;
+		if (*xpath)
+			++xpath;
 		args->fhsize = 0;
-		error = md_mount(sin, which, args->fh, &args->fhsize, args, td);
+		error = md_mount(sin, xpath, args->fh, &args->fhsize, args, td);
 		if (error) {
-			kprintf("failed.\n");
+			kprintf("failed error %d.\n", error);
 			goto haderror;
 		}
 		kprintf("success!\n");
