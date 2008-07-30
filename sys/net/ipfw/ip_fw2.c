@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.51 2008/07/30 12:57:59 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.52 2008/07/30 15:33:08 sephe Exp $
  */
 
 #define        DEB(x)
@@ -1327,7 +1327,7 @@ ipfw_chk(struct ip_fw_args *args)
 	uint8_t proto;
 	uint16_t src_port = 0, dst_port = 0;	/* NOTE: host format	*/
 	struct in_addr src_ip, dst_ip;		/* NOTE: network format	*/
-	uint16_t ip_len=0;
+	uint16_t ip_len = 0;
 	int dyn_dir = MATCH_UNKNOWN;
 	ipfw_dyn_rule *q = NULL;
 
@@ -1340,9 +1340,9 @@ ipfw_chk(struct ip_fw_args *args)
 	 */
 
 	if (args->eh == NULL ||		/* layer 3 packet */
-		( m->m_pkthdr.len >= sizeof(struct ip) &&
-		    ntohs(args->eh->ether_type) == ETHERTYPE_IP))
-			hlen = ip->ip_hl << 2;
+	    (m->m_pkthdr.len >= sizeof(struct ip) &&
+	     ntohs(args->eh->ether_type) == ETHERTYPE_IP))
+		hlen = ip->ip_hl << 2;
 
 	/*
 	 * Collect parameters into local variables for faster matching.
@@ -1363,38 +1363,38 @@ ipfw_chk(struct ip_fw_args *args)
 		ip_len = ip->ip_len;
 	}
 
-#define PULLUP_TO(len)						\
-		do {						\
-			if ((m)->m_len < (len)) {		\
-			    args->m = m = m_pullup(m, (len));	\
-			    if (m == 0)				\
-				goto pullup_failed;		\
-			    ip = mtod(m, struct ip *);		\
-			}					\
-		} while (0)
+#define PULLUP_TO(len)				\
+do {						\
+	if (m->m_len < (len)) {			\
+		args->m = m = m_pullup(m, (len));\
+		if (m == NULL)			\
+			goto pullup_failed;	\
+		ip = mtod(m, struct ip *);	\
+	}					\
+} while (0)
 
 	if (offset == 0) {
 		switch (proto) {
 		case IPPROTO_TCP:
-		    {
-			struct tcphdr *tcp;
+			{
+				struct tcphdr *tcp;
 
-			PULLUP_TO(hlen + sizeof(struct tcphdr));
-			tcp = L3HDR(struct tcphdr, ip);
-			dst_port = tcp->th_dport;
-			src_port = tcp->th_sport;
-			args->f_id.flags = tcp->th_flags;
+				PULLUP_TO(hlen + sizeof(struct tcphdr));
+				tcp = L3HDR(struct tcphdr, ip);
+				dst_port = tcp->th_dport;
+				src_port = tcp->th_sport;
+				args->f_id.flags = tcp->th_flags;
 			}
 			break;
 
 		case IPPROTO_UDP:
-		    {
-			struct udphdr *udp;
+			{
+				struct udphdr *udp;
 
-			PULLUP_TO(hlen + sizeof(struct udphdr));
-			udp = L3HDR(struct udphdr, ip);
-			dst_port = udp->uh_dport;
-			src_port = udp->uh_sport;
+				PULLUP_TO(hlen + sizeof(struct udphdr));
+				udp = L3HDR(struct udphdr, ip);
+				dst_port = udp->uh_dport;
+				src_port = udp->uh_sport;
 			}
 			break;
 
@@ -1406,8 +1406,9 @@ ipfw_chk(struct ip_fw_args *args)
 		default:
 			break;
 		}
-#undef PULLUP_TO
 	}
+
+#undef PULLUP_TO
 
 	args->f_id.src_ip = ntohl(src_ip.s_addr);
 	args->f_id.dst_ip = ntohl(dst_ip.s_addr);
@@ -1469,12 +1470,12 @@ after_ip_checks:
 		int skip_or; /* skip rest of OR block */
 
 again:
-		if (set_disable & (1 << f->set) )
+		if (set_disable & (1 << f->set))
 			continue;
 
 		skip_or = 0;
-		for (l = f->cmd_len, cmd = f->cmd ; l > 0 ;
-		    l -= cmdlen, cmd += cmdlen) {
+		for (l = f->cmd_len, cmd = f->cmd; l > 0;
+		     l -= cmdlen, cmd += cmdlen) {
 			int match;
 
 			/*
@@ -1513,7 +1514,7 @@ check_body:
 
 			case O_FORWARD_MAC:
 				kprintf("ipfw: opcode %d unimplemented\n",
-				    cmd->opcode);
+					cmd->opcode);
 				break;
 
 			case O_GID:
@@ -1551,13 +1552,13 @@ check_body:
 
 				if (pcb == NULL || pcb->inp_socket == NULL)
 					break;
-#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD_version < 500034)
-#define socheckuid(a,b)	((a)->so_cred->cr_uid != (b))
-#endif
+
 				if (cmd->opcode == O_UID) {
+#define socheckuid(a,b)	((a)->so_cred->cr_uid != (b))
 					match =
 					  !socheckuid(pcb->inp_socket,
 					   (uid_t)((ipfw_insn_u32 *)cmd)->d[0]);
+#undef socheckuid
 				} else  {
 					match = groupmember(
 					    (uid_t)((ipfw_insn_u32 *)cmd)->d[0],
@@ -1589,9 +1590,9 @@ check_body:
 					uint32_t *hdr = (uint32_t *)args->eh;
 
 					match =
-					    ( want[0] == (hdr[0] & mask[0]) &&
-					      want[1] == (hdr[1] & mask[1]) &&
-					      want[2] == (hdr[2] & mask[2]) );
+					(want[0] == (hdr[0] & mask[0]) &&
+					 want[1] == (hdr[1] & mask[1]) &&
+					 want[2] == (hdr[2] & mask[2]));
 				}
 				break;
 
@@ -1607,9 +1608,11 @@ check_body:
 					if (m->m_flags & M_VLANTAG)
 						t = ETHERTYPE_VLAN;
 
-					for (i = cmdlen - 1; !match && i>0;
-					    i--, p += 2)
-						match = (t>=p[0] && t<=p[1]);
+					for (i = cmdlen - 1; !match && i > 0;
+					     i--, p += 2) {
+						match =
+						(t >= p[0] && t <= p[1]);
+					}
 				}
 				break;
 
@@ -1664,12 +1667,13 @@ check_body:
 						args->f_id.dst_ip :
 						args->f_id.src_ip;
 
-					    if (addr < d[0])
-						    break;
-					    addr -= d[0]; /* subtract base */
-					    match = (addr < cmd->arg1) &&
-						( d[ 1 + (addr>>5)] &
-						  (1<<(addr & 0x1f)) );
+					if (addr < d[0])
+						break;
+					addr -= d[0]; /* subtract base */
+					match =
+					(addr < cmd->arg1) &&
+					 (d[1 + (addr >> 5)] &
+					  (1 << (addr & 0x1f)));
 				}
 				break;
 
@@ -1711,19 +1715,21 @@ check_body:
 					    ((ipfw_insn_u16 *)cmd)->ports;
 					int i;
 
-					for (i = cmdlen - 1; !match && i>0;
-					    i--, p += 2)
-						match = (x>=p[0] && x<=p[1]);
+					for (i = cmdlen - 1; !match && i > 0;
+					     i--, p += 2) {
+						match =
+						(x >= p[0] && x <= p[1]);
+					}
 				}
 				break;
 
 			case O_ICMPTYPE:
 				match = (offset == 0 && proto==IPPROTO_ICMP &&
-				    icmptype_match(ip, (ipfw_insn_u32 *)cmd) );
+				    icmptype_match(ip, (ipfw_insn_u32 *)cmd));
 				break;
 
 			case O_IPOPT:
-				match = (hlen > 0 && ipopts_match(ip, cmd) );
+				match = (hlen > 0 && ipopts_match(ip, cmd));
 				break;
 
 			case O_IPVER:
@@ -1745,7 +1751,7 @@ check_body:
 
 			case O_IPPRECEDENCE:
 				match = (hlen > 0 &&
-				    (cmd->arg1 == (ip->ip_tos & 0xe0)) );
+				    (cmd->arg1 == (ip->ip_tos & 0xe0)));
 				break;
 
 			case O_IPTOS:
@@ -1951,9 +1957,10 @@ check_body:
 			case O_FORWARD_IP:
 				if (args->eh)	/* not valid on layer2 pkts */
 					break;
-				if (!q || dyn_dir == MATCH_FORWARD)
+				if (!q || dyn_dir == MATCH_FORWARD) {
 					args->next_hop =
 					    &((ipfw_insn_sa *)cmd)->sa;
+				}
 				retval = 0;
 				goto done;
 
