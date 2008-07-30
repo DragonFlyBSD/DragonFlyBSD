@@ -26,7 +26,7 @@
  * CRC32 code derived from work by Gary S. Brown.
  *
  * $FreeBSD: src/sbin/gpt/gpt.c,v 1.16 2006/07/07 02:44:23 marcel Exp $
- * $DragonFly: src/sbin/gpt/gpt.c,v 1.4 2007/06/17 23:50:15 dillon Exp $
+ * $DragonFly: src/sbin/gpt/gpt.c,v 1.5 2008/07/30 00:45:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -397,7 +397,7 @@ gpt_mbr(int fd, off_t lba)
 		else
 			break;
 	}
-	if (pmbr && i == 4 && lba == 0) {
+	if (pmbr && (i == 1 || i == 4) && lba == 0) {
 		if (pmbr != 1)
 			warnx("%s: Suspicious PMBR at sector %llu",
 			    device_name, (long long)lba);
@@ -627,6 +627,7 @@ static struct {
 	const char *name;
 } cmdsw[] = {
 	{ cmd_add, "add" },
+	{ cmd_boot, "boot" },
 	{ cmd_create, "create" },
 	{ cmd_destroy, "destroy" },
 	{ NULL, "help" },

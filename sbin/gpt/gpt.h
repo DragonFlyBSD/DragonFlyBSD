@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/gpt/gpt.h,v 1.11 2006/06/22 22:05:28 marcel Exp $
- * $DragonFly: src/sbin/gpt/gpt.h,v 1.1 2007/06/16 22:29:27 dillon Exp $
+ * $DragonFly: src/sbin/gpt/gpt.h,v 1.2 2008/07/30 00:45:26 dillon Exp $
  */
 
 #ifndef _GPT_H_
@@ -77,6 +77,7 @@ uint8_t *utf16_to_utf8(uint16_t *);
 void	utf8_to_utf16(const uint8_t *, uint16_t *, size_t);
 
 int	cmd_add(int, char *[]);
+int	cmd_boot(int, char *[]);
 int	cmd_create(int, char *[]);
 int	cmd_destroy(int, char *[]);
 int	cmd_label(int, char *[]);
