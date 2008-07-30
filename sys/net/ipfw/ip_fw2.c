@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.50 2008/07/30 12:31:51 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.51 2008/07/30 12:57:59 sephe Exp $
  */
 
 #define        DEB(x)
@@ -1087,7 +1087,7 @@ send_pkt(struct ipfw_flow_id *id, uint32_t seq, uint32_t ack, int flags)
 	MGETHDR(m, MB_DONTWAIT, MT_HEADER);
 	if (m == 0)
 		return;
-	m->m_pkthdr.rcvif = (struct ifnet *)0;
+	m->m_pkthdr.rcvif = NULL;
 	m->m_pkthdr.len = m->m_len = sizeof(struct ip) + sizeof(struct tcphdr);
 	m->m_data += max_linkhdr;
 
@@ -1096,6 +1096,7 @@ send_pkt(struct ipfw_flow_id *id, uint32_t seq, uint32_t ack, int flags)
 	tcp = (struct tcphdr *)(ip + 1); /* no IP options */
 	ip->ip_p = IPPROTO_TCP;
 	tcp->th_off = 5;
+
 	/*
 	 * Assume we are sending a RST (or a keepalive in the reverse
 	 * direction), swap src and destination addresses and ports.
@@ -1136,6 +1137,7 @@ send_pkt(struct ipfw_flow_id *id, uint32_t seq, uint32_t ack, int flags)
 		tcp->th_ack = htonl(ack);
 		tcp->th_flags = TH_ACK;
 	}
+
 	/*
 	 * set ip_len to the payload size so we can compute
 	 * the tcp checksum on the pseudoheader
@@ -1143,13 +1145,16 @@ send_pkt(struct ipfw_flow_id *id, uint32_t seq, uint32_t ack, int flags)
 	 */
 	ip->ip_len = htons(sizeof(struct tcphdr));
 	tcp->th_sum = in_cksum(m, m->m_pkthdr.len);
+
 	/*
 	 * now fill fields left out earlier
 	 */
 	ip->ip_ttl = ip_defttl;
 	ip->ip_len = m->m_pkthdr.len;
-	bzero (&sro, sizeof (sro));
+
+	bzero(&sro, sizeof(sro));
 	ip_rtaddr(ip->ip_dst, &sro);
+
 	m->m_pkthdr.fw_flags |= IPFW_MBUF_GENERATED;
 	ip_output(m, NULL, &sro, 0, NULL, NULL);
 	if (sro.ro_rt)
@@ -2834,7 +2839,7 @@ ipfw_ctl(struct sockopt *sopt)
  * every dyn_keepalive_period
  */
 static void
-ipfw_tick(void * __unused unused)
+ipfw_tick(void *unused __unused)
 {
 	int i;
 	ipfw_dyn_rule *q;
@@ -2843,22 +2848,22 @@ ipfw_tick(void * __unused unused)
 		goto done;
 
 	crit_enter();
-	for (i = 0 ; i < curr_dyn_buckets ; i++) {
-		for (q = ipfw_dyn_v[i] ; q ; q = q->next ) {
+	for (i = 0; i < curr_dyn_buckets; i++) {
+		for (q = ipfw_dyn_v[i]; q; q = q->next) {
 			if (q->dyn_type == O_LIMIT_PARENT)
 				continue;
 			if (q->id.proto != IPPROTO_TCP)
 				continue;
-			if ( (q->state & BOTH_SYN) != BOTH_SYN)
+			if ((q->state & BOTH_SYN) != BOTH_SYN)
 				continue;
-			if (TIME_LEQ( time_second+dyn_keepalive_interval,
+			if (TIME_LEQ(time_second + dyn_keepalive_interval,
 			    q->expire))
 				continue;	/* too early */
 			if (TIME_LEQ(q->expire, time_second))
 				continue;	/* too late, rule expired */
 
-			send_pkt(&(q->id), q->ack_rev - 1, q->ack_fwd, TH_SYN);
-			send_pkt(&(q->id), q->ack_fwd - 1, q->ack_rev, 0);
+			send_pkt(&q->id, q->ack_rev - 1, q->ack_fwd, TH_SYN);
+			send_pkt(&q->id, q->ack_fwd - 1, q->ack_rev, 0);
 		}
 	}
 	crit_exit();
