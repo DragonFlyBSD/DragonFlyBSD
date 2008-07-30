@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile,v 1.8 2008/07/28 22:33:21 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/libgdb/Makefile,v 1.9 2008/07/30 01:48:14 corecode Exp $
 
 .include "../Makefile.inc"
 
@@ -12,7 +12,7 @@ CONTRIBDIR=	${BASEDIR}/gdb
 .PATH:	${CONTRIBDIR}/tui
 
 CFLAGS+= -I${.OBJDIR} -I${.CURDIR} -I${BASEDIR}/include -I${BASEDIR}/bfd
-CFLAGS+= -I${CONTRIBDIR} -I${CONTRIBDIR}/config -I${.CURDIR}/../libbfd
+CFLAGS+= -I${CONTRIBDIR} -I${CONTRIBDIR}/config -I${.CURDIR}/../libbfd -I${.OBJDIR}/../libbfd
 CFLAGS+= -I${BASEDIR} 
 CFLAGS+= -DTARGET_SYSTEM_ROOT='"/"' -DBINDIR='"/usr/bin"'
 CFLAGS+= -DMACHINE_ARCH='"${MACHINE_ARCH}"'
