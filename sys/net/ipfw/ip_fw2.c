@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.49 2008/07/29 11:17:49 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.50 2008/07/30 12:31:51 sephe Exp $
  */
 
 #define        DEB(x)
@@ -2221,8 +2221,8 @@ free_chain(struct ip_fw **chain, int kill_default)
 
 	flush_rule_ptrs(); /* more efficient to do outside the loop */
 
-	while ( (rule = *chain) != NULL &&
-	    (kill_default || rule->rulenum != IPFW_DEFAULT_RULE) )
+	while ((rule = *chain) != NULL &&
+	       (kill_default || rule->rulenum != IPFW_DEFAULT_RULE))
 		delete_rule(chain, NULL, rule);
 
 	KASSERT(dyn_count == 0, ("%u dyn rule remains\n", dyn_count));
@@ -2292,7 +2292,7 @@ del_entry(struct ip_fw **chain, uint32_t arg)
 		 * locate first rule to delete
 		 */
 		for (prev = NULL, rule = *chain;
-		    rule && rule->rulenum < rulenum;
+		     rule && rule->rulenum < rulenum;
 		     prev = rule, rule = rule->next)
 			;
 		if (rule->rulenum != rulenum)
@@ -2312,39 +2312,43 @@ del_entry(struct ip_fw **chain, uint32_t arg)
 	case 1:	/* delete all rules with given set number */
 		crit_enter();
 		flush_rule_ptrs();
-		for (prev = NULL, rule = *chain; rule ; )
-			if (rule->set == rulenum)
+		for (prev = NULL, rule = *chain; rule;) {
+			if (rule->set == rulenum) {
 				rule = delete_rule(chain, prev, rule);
-			else {
+			} else {
 				prev = rule;
 				rule = rule->next;
 			}
+		}
 		crit_exit();
 		break;
 
 	case 2:	/* move rules with given number to new set */
 		crit_enter();
-		for (rule = *chain; rule ; rule = rule->next)
+		for (rule = *chain; rule; rule = rule->next) {
 			if (rule->rulenum == rulenum)
 				rule->set = new_set;
+		}
 		crit_exit();
 		break;
 
 	case 3: /* move rules with given set number to new set */
 		crit_enter();
-		for (rule = *chain; rule ; rule = rule->next)
+		for (rule = *chain; rule; rule = rule->next) {
 			if (rule->set == rulenum)
 				rule->set = new_set;
+		}
 		crit_exit();
 		break;
 
 	case 4: /* swap two sets */
 		crit_enter();
-		for (rule = *chain; rule ; rule = rule->next)
+		for (rule = *chain; rule; rule = rule->next) {
 			if (rule->set == rulenum)
 				rule->set = new_set;
 			else if (rule->set == new_set)
 				rule->set = rulenum;
+		}
 		crit_exit();
 		break;
 	}
@@ -2385,15 +2389,16 @@ zero_entry(int rulenum, int log_only)
 		for (rule = layer3_chain; rule; rule = rule->next)
 			clear_counters(rule, log_only);
 		crit_exit();
-		msg = log_only ? "ipfw: All logging counts reset.\n" :
-				"ipfw: Accounting cleared.\n";
+		msg = log_only ? "ipfw: All logging counts reset.\n"
+			       : "ipfw: Accounting cleared.\n";
 	} else {
 		int cleared = 0;
+
 		/*
 		 * We can have multiple rules with the same number, so we
 		 * need to clear them all.
 		 */
-		for (rule = layer3_chain; rule; rule = rule->next)
+		for (rule = layer3_chain; rule; rule = rule->next) {
 			if (rule->rulenum == rulenum) {
 				crit_enter();
 				while (rule && rule->rulenum == rulenum) {
@@ -2404,10 +2409,11 @@ zero_entry(int rulenum, int log_only)
 				cleared = 1;
 				break;
 			}
+		}
 		if (!cleared)	/* we did not find any matching rules */
 			return (EINVAL);
-		msg = log_only ? "ipfw: Entry %d logging count reset.\n" :
-				"ipfw: Entry %d cleared.\n";
+		msg = log_only ? "ipfw: Entry %d logging count reset.\n"
+			       : "ipfw: Entry %d cleared.\n";
 	}
 	if (fw_verbose)
 		log(LOG_SECURITY | LOG_NOTICE, msg, rulenum);
@@ -2445,7 +2451,7 @@ ipfw_ctl_check_rule(struct ipfw_ioc_rule *rule, int size)
 		cmdlen = F_LEN(cmd);
 		if (cmdlen > l) {
 			kprintf("ipfw: opcode %d size truncated\n",
-			    cmd->opcode);
+				cmd->opcode);
 			return EINVAL;
 		}
 		DEB(kprintf("ipfw: opcode %d\n", cmd->opcode);)
@@ -2605,8 +2611,8 @@ ipfw_ctl_add_rule(struct sockopt *sopt)
 	int error;
 	
 	size = sopt->sopt_valsize;
-	if ((size > (sizeof(uint32_t) * IPFW_RULE_SIZE_MAX)) ||
-	    (size < sizeof(*ioc_rule))) {
+	if (size > (sizeof(uint32_t) * IPFW_RULE_SIZE_MAX) ||
+	    size < sizeof(*ioc_rule)) {
 		return EINVAL;
 	}
 	if (size != (sizeof(uint32_t) * IPFW_RULE_SIZE_MAX)) {
@@ -2623,9 +2629,8 @@ ipfw_ctl_add_rule(struct sockopt *sopt)
 	if (error)
 		return error;
 
-	if (sopt->sopt_dir == SOPT_GET) {
+	if (sopt->sopt_dir == SOPT_GET)
 		sopt->sopt_valsize = IOC_RULESIZE(ioc_rule);
-	}
 	return 0;
 }
 
@@ -2821,7 +2826,6 @@ ipfw_ctl(struct sockopt *sopt)
 		kprintf("ipfw_ctl invalid option %d\n", sopt->sopt_name);
 		error = EINVAL;
 	}
-
 	return error;
 }
 
