@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.57 2008/07/31 12:35:15 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.58 2008/07/31 12:42:40 sephe Exp $
  */
 
 #define        DEB(x)
@@ -1211,11 +1211,11 @@ send_pkt(struct ipfw_flow_id *id, uint32_t seq, uint32_t ack, int flags)
 static void
 send_reject(struct ip_fw_args *args, int code, int offset, int ip_len)
 {
-
 	if (code != ICMP_REJECT_RST) { /* Send an ICMP unreach */
 		/* We need the IP header in host order for icmp_error(). */
 		if (args->eh != NULL) {
 			struct ip *ip = mtod(args->m, struct ip *);
+
 			ip->ip_len = ntohs(ip->ip_len);
 			ip->ip_off = ntohs(ip->ip_off);
 		}
@@ -1223,13 +1223,15 @@ send_reject(struct ip_fw_args *args, int code, int offset, int ip_len)
 	} else if (offset == 0 && args->f_id.proto == IPPROTO_TCP) {
 		struct tcphdr *const tcp =
 		    L3HDR(struct tcphdr, mtod(args->m, struct ip *));
-		if ( (tcp->th_flags & TH_RST) == 0)
-			send_pkt(&(args->f_id), ntohl(tcp->th_seq),
-				ntohl(tcp->th_ack),
-				tcp->th_flags | TH_RST);
+
+		if ((tcp->th_flags & TH_RST) == 0) {
+			send_pkt(&args->f_id, ntohl(tcp->th_seq),
+				 ntohl(tcp->th_ack), tcp->th_flags | TH_RST);
+		}
 		m_freem(args->m);
-	} else
+	} else {
 		m_freem(args->m);
+	}
 	args->m = NULL;
 }
 
@@ -1258,10 +1260,12 @@ lookup_next_rule(struct ip_fw *me)
 	cmd = ACTION_PTR(me);
 	if (cmd->opcode == O_LOG)
 		cmd += F_LEN(cmd);
-	if ( cmd->opcode == O_SKIPTO )
-		for (rule = me->next; rule ; rule = rule->next)
+	if (cmd->opcode == O_SKIPTO) {
+		for (rule = me->next; rule; rule = rule->next) {
 			if (rule->rulenum >= cmd->arg1)
 				break;
+		}
+	}
 	if (rule == NULL)			/* failure or not a skipto */
 		rule = me->next;
 	me->next_rule = rule;
