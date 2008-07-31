@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.54 2008/07/31 11:46:51 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.55 2008/07/31 11:58:42 sephe Exp $
  */
 
 #define        DEB(x)
@@ -449,7 +449,7 @@ static uint64_t norule_counter;	/* counter for ipfw_log(NULL...) */
  */
 static void
 ipfw_log(struct ip_fw *f, u_int hlen, struct ether_header *eh,
-	struct mbuf *m, struct ifnet *oif)
+	 struct mbuf *m, struct ifnet *oif)
 {
 	char *action;
 	int limit_reached = 0;
@@ -485,52 +485,59 @@ ipfw_log(struct ip_fw *f, u_int hlen, struct ether_header *eh,
 			break;
 
 		case O_REJECT:
-			if (cmd->arg1==ICMP_REJECT_RST)
+			if (cmd->arg1==ICMP_REJECT_RST) {
 				action = "Reset";
-			else if (cmd->arg1==ICMP_UNREACH_HOST)
+			} else if (cmd->arg1==ICMP_UNREACH_HOST) {
 				action = "Reject";
-			else
+			} else {
 				ksnprintf(SNPARGS(action2, 0), "Unreach %d",
-					cmd->arg1);
+					  cmd->arg1);
+			}
 			break;
 
 		case O_ACCEPT:
 			action = "Accept";
 			break;
+
 		case O_COUNT:
 			action = "Count";
 			break;
-		case O_DIVERT:
-			ksnprintf(SNPARGS(action2, 0), "Divert %d",
-				cmd->arg1);
-			break;
-		case O_TEE:
-			ksnprintf(SNPARGS(action2, 0), "Tee %d",
-				cmd->arg1);
-			break;
-		case O_SKIPTO:
-			ksnprintf(SNPARGS(action2, 0), "SkipTo %d",
-				cmd->arg1);
-			break;
-		case O_PIPE:
-			ksnprintf(SNPARGS(action2, 0), "Pipe %d",
-				cmd->arg1);
-			break;
-		case O_QUEUE:
-			ksnprintf(SNPARGS(action2, 0), "Queue %d",
-				cmd->arg1);
-			break;
-		case O_FORWARD_IP: {
-			ipfw_insn_sa *sa = (ipfw_insn_sa *)cmd;
-			int len;
 
-			len = ksnprintf(SNPARGS(action2, 0), "Forward to %s",
-				inet_ntoa(sa->sa.sin_addr));
-			if (sa->sa.sin_port)
-				ksnprintf(SNPARGS(action2, len), ":%d",
-				    sa->sa.sin_port);
+		case O_DIVERT:
+			ksnprintf(SNPARGS(action2, 0), "Divert %d", cmd->arg1);
+			break;
+
+		case O_TEE:
+			ksnprintf(SNPARGS(action2, 0), "Tee %d", cmd->arg1);
+			break;
+
+		case O_SKIPTO:
+			ksnprintf(SNPARGS(action2, 0), "SkipTo %d", cmd->arg1);
+			break;
+
+		case O_PIPE:
+			ksnprintf(SNPARGS(action2, 0), "Pipe %d", cmd->arg1);
+			break;
+
+		case O_QUEUE:
+			ksnprintf(SNPARGS(action2, 0), "Queue %d", cmd->arg1);
+			break;
+
+		case O_FORWARD_IP:
+			{
+				ipfw_insn_sa *sa = (ipfw_insn_sa *)cmd;
+				int len;
+
+				len = ksnprintf(SNPARGS(action2, 0),
+						"Forward to %s",
+						inet_ntoa(sa->sa.sin_addr));
+				if (sa->sa.sin_port) {
+					ksnprintf(SNPARGS(action2, len), ":%d",
+						  sa->sa.sin_port);
+				}
 			}
 			break;
+
 		default:
 			action = "UNKNOWN";
 			break;
@@ -547,7 +554,6 @@ ipfw_log(struct ip_fw *f, u_int hlen, struct ether_header *eh,
 		struct udphdr *const udp = (struct udphdr *)icmp;
 
 		int ip_off, offset, ip_len;
-
 		int len;
 
 		if (eh != NULL) { /* layer 2 packets are as on the wire */
@@ -561,73 +567,81 @@ ipfw_log(struct ip_fw *f, u_int hlen, struct ether_header *eh,
 		switch (ip->ip_p) {
 		case IPPROTO_TCP:
 			len = ksnprintf(SNPARGS(proto, 0), "TCP %s",
-			    inet_ntoa(ip->ip_src));
-			if (offset == 0)
+					inet_ntoa(ip->ip_src));
+			if (offset == 0) {
 				ksnprintf(SNPARGS(proto, len), ":%d %s:%d",
-				    ntohs(tcp->th_sport),
-				    inet_ntoa(ip->ip_dst),
-				    ntohs(tcp->th_dport));
-			else
+					  ntohs(tcp->th_sport),
+					  inet_ntoa(ip->ip_dst),
+					  ntohs(tcp->th_dport));
+			} else {
 				ksnprintf(SNPARGS(proto, len), " %s",
-				    inet_ntoa(ip->ip_dst));
+					  inet_ntoa(ip->ip_dst));
+			}
 			break;
 
 		case IPPROTO_UDP:
 			len = ksnprintf(SNPARGS(proto, 0), "UDP %s",
-				inet_ntoa(ip->ip_src));
-			if (offset == 0)
+					inet_ntoa(ip->ip_src));
+			if (offset == 0) {
 				ksnprintf(SNPARGS(proto, len), ":%d %s:%d",
-				    ntohs(udp->uh_sport),
-				    inet_ntoa(ip->ip_dst),
-				    ntohs(udp->uh_dport));
-			else
+					  ntohs(udp->uh_sport),
+					  inet_ntoa(ip->ip_dst),
+					  ntohs(udp->uh_dport));
+			} else {
 				ksnprintf(SNPARGS(proto, len), " %s",
-				    inet_ntoa(ip->ip_dst));
+					  inet_ntoa(ip->ip_dst));
+			}
 			break;
 
 		case IPPROTO_ICMP:
-			if (offset == 0)
+			if (offset == 0) {
 				len = ksnprintf(SNPARGS(proto, 0),
-				    "ICMP:%u.%u ",
-				    icmp->icmp_type, icmp->icmp_code);
-			else
+						"ICMP:%u.%u ",
+						icmp->icmp_type,
+						icmp->icmp_code);
+			} else {
 				len = ksnprintf(SNPARGS(proto, 0), "ICMP ");
+			}
 			len += ksnprintf(SNPARGS(proto, len), "%s",
-			    inet_ntoa(ip->ip_src));
+					 inet_ntoa(ip->ip_src));
 			ksnprintf(SNPARGS(proto, len), " %s",
-			    inet_ntoa(ip->ip_dst));
+				  inet_ntoa(ip->ip_dst));
 			break;
 
 		default:
 			len = ksnprintf(SNPARGS(proto, 0), "P:%d %s", ip->ip_p,
-			    inet_ntoa(ip->ip_src));
+					inet_ntoa(ip->ip_src));
 			ksnprintf(SNPARGS(proto, len), " %s",
-			    inet_ntoa(ip->ip_dst));
+				  inet_ntoa(ip->ip_dst));
 			break;
 		}
 
-		if (ip_off & (IP_MF | IP_OFFMASK))
+		if (ip_off & (IP_MF | IP_OFFMASK)) {
 			ksnprintf(SNPARGS(fragment, 0), " (frag %d:%d@%d%s)",
-			     ntohs(ip->ip_id), ip_len - (ip->ip_hl << 2),
-			     offset << 3,
-			     (ip_off & IP_MF) ? "+" : "");
+				  ntohs(ip->ip_id), ip_len - (ip->ip_hl << 2),
+				  offset << 3, (ip_off & IP_MF) ? "+" : "");
+		}
 	}
-	if (oif || m->m_pkthdr.rcvif)
+
+	if (oif || m->m_pkthdr.rcvif) {
 		log(LOG_SECURITY | LOG_INFO,
 		    "ipfw: %d %s %s %s via %s%s\n",
 		    f ? f->rulenum : -1,
 		    action, proto, oif ? "out" : "in",
 		    oif ? oif->if_xname : m->m_pkthdr.rcvif->if_xname,
 		    fragment);
-	else
+	} else {
 		log(LOG_SECURITY | LOG_INFO,
 		    "ipfw: %d %s %s [no if info]%s\n",
 		    f ? f->rulenum : -1,
 		    action, proto, fragment);
-	if (limit_reached)
+	}
+
+	if (limit_reached) {
 		log(LOG_SECURITY | LOG_NOTICE,
 		    "ipfw: limit %d reached on entry %d\n",
 		    limit_reached, f ? f->rulenum : -1);
+	}
 }
 
 #undef SNPARGS
