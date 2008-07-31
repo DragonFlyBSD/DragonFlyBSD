@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.52 2008/07/30 15:33:08 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.53 2008/07/31 11:36:38 sephe Exp $
  */
 
 #define        DEB(x)
@@ -433,7 +433,6 @@ iface_match(struct ifnet *ifp, ipfw_insn_if *cmd)
 static uint64_t norule_counter;	/* counter for ipfw_log(NULL...) */
 
 #define SNPARGS(buf, len) buf + len, sizeof(buf) > len ? sizeof(buf) - len : 0
-#define SNP(buf) buf, sizeof(buf)
 
 /*
  * We enter here when we have a rule with O_LOG.
@@ -621,6 +620,8 @@ ipfw_log(struct ip_fw *f, u_int hlen, struct ether_header *eh,
 		    "ipfw: limit %d reached on entry %d\n",
 		    limit_reached, f ? f->rulenum : -1);
 }
+
+#undef SNPARGS
 
 /*
  * IMPORTANT: the hash function for dynamic rules must be commutative
