@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.7 2008/07/19 18:48:14 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.8 2008/07/31 06:01:31 dillon Exp $
  */
 
 #include "hammer.h"
@@ -65,10 +65,12 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 	 * Calculate the directory containing the softlink
 	 */
 	dirpath = strdup(path);
-	if (strrchr(dirpath, '/'))
+	if (strrchr(dirpath, '/')) {
 		*strrchr(dirpath, '/') = 0;
-	else
+	} else {
+		free(dirpath);
 		dirpath = strdup(".");
+	}
 
 	if (lstat(path, &st) == 0 && S_ISLNK(st.st_mode)) {
 		/*
@@ -144,6 +146,16 @@ done:
 }
 
 void
+relpfs(int fd, struct hammer_ioc_pseudofs_rw *pfs)
+{
+	close(fd);
+	if (pfs->ondisk) {
+		free(pfs->ondisk);
+		pfs->ondisk = NULL;
+	}
+}
+
+void
 hammer_cmd_pseudofs_status(char **av, int ac)
 {
 	struct hammer_ioc_pseudofs_rw pfs;
@@ -189,10 +201,12 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 	}
 
 	dirpath = strdup(path);
-	if (strrchr(dirpath, '/') != NULL)
+	if (strrchr(dirpath, '/') != NULL) {
 		*strrchr(dirpath, '/') = 0;
-	else
+	} else {
+		free(dirpath);
 		dirpath = strdup(".");
+	}
 	fd = open(dirpath, O_RDONLY);
 	if (fd < 0) {
 		fprintf(stderr, "Cannot open directory %s\n", dirpath);

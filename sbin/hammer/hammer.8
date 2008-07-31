@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.43 2008/07/27 21:59:44 thomas Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.44 2008/07/31 06:01:31 dillon Exp $
 .Dd July 27, 2008
 .Dt HAMMER 8
 .Os
@@ -40,9 +40,11 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl h2rv
+.Op Fl b Ar bandwidth
 .Op Fl c Ar cyclefile
 .Op Fl f Ar blkdev[:blkdev]*
 .\" .Op Fl s Ar linkpath
+.Op Fl i Ar delay
 .Op Fl t Ar seconds
 .Ar command
 .Ar [argument ...]
@@ -70,6 +72,12 @@ automatically enabled by the
 command.
 .It Fl r
 Specify recursion for those commands which support it.
+.It Fl b Ar bandwidth
+Specify a bandwidth limit in bytes per second for mirroring streams.
+This option is typically used to prevent batch mirroring operations from
+loading down the machine.
+The bandwidth may be suffixed with 'k', 'm', or 'g' to specify
+values in kilobytes, megabytes, and gigabytes per second.
 .It Fl c Ar cyclefile
 When pruning and reblocking you can instruction
 .Nm
@@ -95,6 +103,11 @@ file system.
 .\" When pruning a filesystem you can instruct
 .\" .Nm to create softlinks
 .\" to available snapshots.
+.It Fl i Ar delay
+When maintaining a streaming mirroring this option specifies the
+minimum delay after a batch ends before the next batch is allowed
+to start.
+The default is five seconds.
 .It Fl t Ar seconds
 When pruning and reblocking you can tell the utility to stop after a
 certain period of time.  This option is used along with the cycle file
@@ -410,6 +423,12 @@ Set a descriptive label for this file system.
 .El
 .It Ar mirror-read Ar filesystem Op Ar <begin-tid>
 Generate a mirroring stream to stdout.
+The stream ends when the transaction id space has been exhausted.
+.It Ar mirror-read-stream Ar filesystem Op Ar <begin-tid>
+Generate a mirroring stream to stdout.
+Upon completion the stream is paused until new data is synced to the
+master, then resumed.
+Operation continues until the pipe is broken.
 .It Ar mirror-write Ar filesystem Op Ar
 Take a mirroring stream on stdin and output it to stdout.
 .Pp
@@ -441,6 +460,17 @@ If the operation completes successfully the target PFS's
 will
 be updated.  Note that you must re-chdir into the target PFS to see the
 updated information.  If you do not you will still be in the previous snapshot.
+.It Ar mirror-stream Ar [[user@]host:]filesystem Ar [[user@]host:]filesystem
+This command works similarly to
+.Ar mirror-copy
+but does not exit unless the pipe is broken.
+This command will resume the mirroring operation whenever the master is
+synced.  The command is commonly used with
+.Fl i Ar delay
+and
+.Fl b Ar bandwidth
+options to keep the mirroring target in sync with the source on a continuing
+basis.
 .El
 .\".Sh EXAMPLES
 .Sh PSEUDO FILESYSTEM (PFS) NOTES

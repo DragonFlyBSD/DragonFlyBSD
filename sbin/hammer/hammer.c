@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.34 2008/07/16 00:53:48 thomas Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.35 2008/07/31 06:01:32 dillon Exp $
  */
 
 #include "hammer.h"
@@ -47,20 +47,42 @@ int VerboseOpt;
 int NoSyncOpt;
 int TwoWayPipeOpt;
 int TimeoutOpt;
+int DelayOpt = 5;
+u_int64_t BandwidthOpt;
 const char *CyclePath;
 const char *LinkPath;
 
 int
 main(int ac, char **av)
 {
-	int ch;
-	u_int32_t status;
 	char *blkdevs = NULL;
+	char *ptr;
+	u_int32_t status;
+	int ch;
 
-	while ((ch = getopt(ac, av, "c:dhf:rs:t:v2")) != -1) {
+	while ((ch = getopt(ac, av, "b:c:dhf:i:rs:t:v2")) != -1) {
 		switch(ch) {
 		case '2':
 			TwoWayPipeOpt = 1;
+			break;
+		case 'b':
+			BandwidthOpt = strtoull(optarg, &ptr, 0);
+			switch(*ptr) {
+			case 'g':
+			case 'G':
+				BandwidthOpt *= 1024;
+				/* fall through */
+			case 'm':
+			case 'M':
+				BandwidthOpt *= 1024;
+				/* fall through */
+			case 'k':
+			case 'K':
+				BandwidthOpt *= 1024;
+				break;
+			default:
+				usage(1);
+			}
 			break;
 		case 'c':
 			CyclePath = optarg;
@@ -71,6 +93,9 @@ main(int ac, char **av)
 		case 'h':
 			usage(0);
 			/* not reached */
+		case 'i':
+			DelayOpt = strtol(optarg, NULL, 0);
+			break;
 		case 'r':
 			RecurseOpt = 1;
 			break;
@@ -200,11 +225,15 @@ main(int ac, char **av)
 	}
 	if (strncmp(av[0], "mirror", 6) == 0) {
 		if (strcmp(av[0], "mirror-read") == 0)
-			hammer_cmd_mirror_read(av + 1, ac - 1);
+			hammer_cmd_mirror_read(av + 1, ac - 1, 0);
+		if (strcmp(av[0], "mirror-read-stream") == 0)
+			hammer_cmd_mirror_read(av + 1, ac - 1, 1);
 		else if (strcmp(av[0], "mirror-write") == 0)
 			hammer_cmd_mirror_write(av + 1, ac - 1);
 		else if (strcmp(av[0], "mirror-copy") == 0)
-			hammer_cmd_mirror_copy(av + 1, ac - 1);
+			hammer_cmd_mirror_copy(av + 1, ac - 1, 0);
+		else if (strcmp(av[0], "mirror-stream") == 0)
+			hammer_cmd_mirror_copy(av + 1, ac - 1, 1);
 		else if (strcmp(av[0], "mirror-dump") == 0)
 			hammer_cmd_mirror_dump();
 		else

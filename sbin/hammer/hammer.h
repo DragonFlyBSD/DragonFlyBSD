@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.h,v 1.23 2008/07/12 02:48:46 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.h,v 1.24 2008/07/31 06:01:32 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -64,6 +64,8 @@ extern int RecurseOpt;
 extern int VerboseOpt;
 extern int TwoWayPipeOpt;
 extern int TimeoutOpt;
+extern int DelayOpt;
+extern u_int64_t BandwidthOpt;
 extern const char *LinkPath;
 extern const char *CyclePath;
 
@@ -74,9 +76,9 @@ void hammer_cmd_softprune(char **av, int ac, int everything_opt);
 void hammer_cmd_bstats(char **av, int ac);
 void hammer_cmd_iostats(char **av, int ac);
 void hammer_cmd_synctid(char **av, int ac);
-void hammer_cmd_mirror_read(char **av, int ac);
+void hammer_cmd_mirror_read(char **av, int ac, int streaming);
 void hammer_cmd_mirror_write(char **av, int ac);
-void hammer_cmd_mirror_copy(char **av, int ac);
+void hammer_cmd_mirror_copy(char **av, int ac, int streaming);
 void hammer_cmd_mirror_dump(void);
 void hammer_cmd_history(const char *offset_str, char **av, int ac);
 void hammer_cmd_blockmap(void);
@@ -95,4 +97,5 @@ void hammer_set_cycle(hammer_base_elm_t base, hammer_tid_t tid);
 void hammer_reset_cycle(void);
 
 int getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path);
+void relpfs(int fd, struct hammer_ioc_pseudofs_rw *pfs);
 
