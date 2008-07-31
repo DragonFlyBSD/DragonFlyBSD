@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.53 2008/07/31 11:36:38 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.54 2008/07/31 11:46:51 sephe Exp $
  */
 
 #define        DEB(x)
@@ -261,18 +261,23 @@ icmptype_match(struct ip *ip, ipfw_insn_u32 *cmd)
 {
 	int type = L3HDR(struct icmp,ip)->icmp_type;
 
-	return (type <= ICMP_MAXTYPE && (cmd->d[0] & (1<<type)) );
+	return (type <= ICMP_MAXTYPE && (cmd->d[0] & (1 << type)));
 }
 
-#define TT	( (1 << ICMP_ECHO) | (1 << ICMP_ROUTERSOLICIT) | \
-    (1 << ICMP_TSTAMP) | (1 << ICMP_IREQ) | (1 << ICMP_MASKREQ) )
+#define TT	((1 << ICMP_ECHO) | \
+		 (1 << ICMP_ROUTERSOLICIT) | \
+		 (1 << ICMP_TSTAMP) | \
+		 (1 << ICMP_IREQ) | \
+		 (1 << ICMP_MASKREQ))
 
 static int
 is_icmp_query(struct ip *ip)
 {
 	int type = L3HDR(struct icmp, ip)->icmp_type;
-	return (type <= ICMP_MAXTYPE && (TT & (1<<type)) );
+
+	return (type <= ICMP_MAXTYPE && (TT & (1 << type)));
 }
+
 #undef TT
 
 /*
@@ -293,10 +298,11 @@ flags_match(ipfw_insn *cmd, uint8_t bits)
 	u_char want_clear;
 	bits = ~bits;
 
-	if ( ((cmd->arg1 & 0xff) & bits) != 0)
+	if (((cmd->arg1 & 0xff) & bits) != 0)
 		return 0; /* some bits we want set were clear */
+
 	want_clear = (cmd->arg1 >> 8) & 0xff;
-	if ( (want_clear & bits) != want_clear)
+	if ((want_clear & bits) != want_clear)
 		return 0; /* some bits we want clear were set */
 	return 1;
 }
@@ -306,25 +312,23 @@ ipopts_match(struct ip *ip, ipfw_insn *cmd)
 {
 	int optlen, bits = 0;
 	u_char *cp = (u_char *)(ip + 1);
-	int x = (ip->ip_hl << 2) - sizeof (struct ip);
+	int x = (ip->ip_hl << 2) - sizeof(struct ip);
 
 	for (; x > 0; x -= optlen, cp += optlen) {
 		int opt = cp[IPOPT_OPTVAL];
 
 		if (opt == IPOPT_EOL)
 			break;
-		if (opt == IPOPT_NOP)
+
+		if (opt == IPOPT_NOP) {
 			optlen = 1;
-		else {
+		} else {
 			optlen = cp[IPOPT_OLEN];
 			if (optlen <= 0 || optlen > x)
 				return 0; /* invalid or truncated */
 		}
+
 		switch (opt) {
-
-		default:
-			break;
-
 		case IPOPT_LSRR:
 			bits |= IP_FW_IPOPT_LSRR;
 			break;
@@ -339,6 +343,9 @@ ipopts_match(struct ip *ip, ipfw_insn *cmd)
 
 		case IPOPT_TS:
 			bits |= IP_FW_IPOPT_TS;
+			break;
+
+		default:
 			break;
 		}
 	}
@@ -355,21 +362,19 @@ tcpopts_match(struct ip *ip, ipfw_insn *cmd)
 
 	for (; x > 0; x -= optlen, cp += optlen) {
 		int opt = cp[0];
+
 		if (opt == TCPOPT_EOL)
 			break;
-		if (opt == TCPOPT_NOP)
+
+		if (opt == TCPOPT_NOP) {
 			optlen = 1;
-		else {
+		} else {
 			optlen = cp[1];
 			if (optlen <= 0)
 				break;
 		}
 
 		switch (opt) {
-
-		default:
-			break;
-
 		case TCPOPT_MAXSEG:
 			bits |= IP_FW_TCPOPT_MSS;
 			break;
@@ -392,6 +397,9 @@ tcpopts_match(struct ip *ip, ipfw_insn *cmd)
 		case TCPOPT_CCECHO:
 			bits |= IP_FW_TCPOPT_CC;
 			break;
+
+		default:
+			break;
 		}
 	}
 	return (flags_match(cmd, bits));
@@ -402,6 +410,7 @@ iface_match(struct ifnet *ifp, ipfw_insn_if *cmd)
 {
 	if (ifp == NULL)	/* no iface with this packet, match fails */
 		return 0;
+
 	/* Check by name or by IP address */
 	if (cmd->name[0] != '\0') { /* match by name */
 		/* Check name */
