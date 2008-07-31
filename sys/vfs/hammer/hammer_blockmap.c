@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.26 2008/07/18 00:19:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_blockmap.c,v 1.27 2008/07/31 22:30:33 dillon Exp $
  */
 
 /*
@@ -573,7 +573,11 @@ hammer_blockmap_reserve_complete(hammer_mount_t hmp, hammer_reserve_t resv)
 		/*
 		 * If we are releasing a zone and all of its reservations
 		 * were undone we have to clean out all hammer and device
-		 * buffers associated with the big block.
+		 * buffers associated with the big block.  We do this
+		 * primarily because the large-block may be reallocated
+		 * from non-large-data to large-data or vise-versa, resulting
+		 * in a different mix of 16K and 64K buffer cache buffers.
+		 * XXX - this isn't fun and needs to be redone.
 		 *
 		 * Any direct allocations will cause this test to fail
 		 * (bytes_freed will never reach append_off), which is

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.124 2008/07/31 04:42:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.125 2008/07/31 22:30:33 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -398,6 +398,7 @@ struct hammer_record {
 	struct hammer_btree_leaf_elm	leaf;
 	union hammer_data_ondisk	*data;
 	int				flags;
+	hammer_off_t			zone2_offset;	/* direct-write only */
 };
 
 typedef struct hammer_record *hammer_record_t;
@@ -416,6 +417,7 @@ typedef struct hammer_record *hammer_record_t;
 #define HAMMER_RECF_CONVERT_DELETE 	0x0100	/* special case */
 #define HAMMER_RECF_DIRECT_IO		0x0200	/* related direct I/O running*/
 #define HAMMER_RECF_DIRECT_WAIT		0x0400	/* related direct I/O running*/
+#define HAMMER_RECF_DIRECT_INVAL	0x0800	/* buffer alias invalidation */
 
 /*
  * hammer_delete_at_cursor() flags
@@ -846,6 +848,7 @@ int	hammer_install_volume(hammer_mount_t hmp, const char *volname,
 			struct vnode *devvp);
 int	hammer_mountcheck_volumes(hammer_mount_t hmp);
 
+int	hammer_mem_add(hammer_record_t record);
 int	hammer_ip_lookup(hammer_cursor_t cursor);
 int	hammer_ip_first(hammer_cursor_t cursor);
 int	hammer_ip_next(hammer_cursor_t cursor);

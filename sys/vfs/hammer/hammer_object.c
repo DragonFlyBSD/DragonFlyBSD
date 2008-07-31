@@ -31,12 +31,11 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.92 2008/07/19 04:49:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.93 2008/07/31 22:30:33 dillon Exp $
  */
 
 #include "hammer.h"
 
-static int hammer_mem_add(hammer_record_t record);
 static int hammer_mem_lookup(hammer_cursor_t cursor);
 static int hammer_mem_first(hammer_cursor_t cursor);
 static int hammer_frontend_trunc_callback(hammer_record_t record,
@@ -399,10 +398,13 @@ hammer_rel_mem_record(struct hammer_record *record)
 
 			/*
 			 * We must wait for any direct-IO to complete before
-			 * we can destroy the record.
+			 * we can destroy the record because the bio may
+			 * have a reference to it.
 			 */
-			if (record->flags & HAMMER_RECF_DIRECT_IO)
+			if (record->flags & 
+			   (HAMMER_RECF_DIRECT_IO | HAMMER_RECF_DIRECT_INVAL)) {
 				hammer_io_direct_wait(record);
+			}
 
 
 			/*
@@ -843,6 +845,8 @@ hammer_ip_get_bulk(hammer_inode_t ip, off_t file_offset, int bytes)
  * flush a buffer cache buffer.  The frontend has locked the related buffer
  * cache buffers and we should be able to manipulate any overlapping
  * in-memory records.
+ *
+ * The caller is responsible for adding the returned record.
  */
 hammer_record_t
 hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
@@ -851,7 +855,6 @@ hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
 	hammer_record_t record;
 	hammer_record_t conflict;
 	int zone;
-	int flags;
 
 	/*
 	 * Deal with conflicting in-memory records.  We cannot have multiple
@@ -903,30 +906,8 @@ hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
 					 HAMMER_LOCALIZE_MISC;
 	record->leaf.data_len = bytes;
 	hammer_crc_set_leaf(data, &record->leaf);
-	flags = record->flags;
-
-	hammer_ref(&record->lock);	/* mem_add eats a reference */
-	*errorp = hammer_mem_add(record);
-	if (*errorp) {
-		conflict = hammer_ip_get_bulk(ip, file_offset, bytes);
-		kprintf("hammer_ip_add_bulk: error %d conflict %p file_offset %lld bytes %d\n",
-			*errorp, conflict, file_offset, bytes);
-		if (conflict)
-			kprintf("conflict %lld %d\n", conflict->leaf.base.key, conflict->leaf.data_len);
-		if (conflict)
-			hammer_rel_mem_record(conflict);
-	}
 	KKASSERT(*errorp == 0);
-	conflict = hammer_ip_get_bulk(ip, file_offset, bytes);
-	if (conflict != record) {
-		kprintf("conflict mismatch %p %p %08x\n", conflict, record, record->flags);
-		if (conflict)
-		    kprintf("conflict mismatch %lld/%d %lld/%d\n", conflict->leaf.base.key, conflict->leaf.data_len, record->leaf.base.key, record->leaf.data_len);
-	}
-	KKASSERT(conflict == record);
-	hammer_rel_mem_record(conflict);
-
-	return (record);
+	return(record);
 }
 
 /*
@@ -1016,6 +997,13 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	KKASSERT(record->flush_state == HAMMER_FST_FLUSH);
 	KKASSERT(record->flags & HAMMER_RECF_INTERLOCK_BE);
 	KKASSERT(record->leaf.base.localization != 0);
+
+	/*
+	 * Any direct-write related to the record must complete before we
+	 * can sync the record to the on-disk media.
+	 */
+	if (record->flags & (HAMMER_RECF_DIRECT_IO | HAMMER_RECF_DIRECT_INVAL))
+		hammer_io_direct_wait(record);
 
 	/*
 	 * If this is a bulk-data record placemarker there may be an existing
@@ -1164,13 +1152,6 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 		record->leaf.data_crc = 0;
 	}
 
-	/*
-	 * If the record's data was direct-written we cannot insert
-	 * it until the direct-IO has completed.
-	 */
-	if (record->flags & HAMMER_RECF_DIRECT_IO)
-		hammer_io_direct_wait(record);
-
 	error = hammer_btree_insert(cursor, &record->leaf, &doprop);
 	if (hammer_debug_inode && error)
 		kprintf("BTREE INSERT error %d @ %016llx:%d key %016llx\n", error, cursor->node->node_offset, cursor->index, record->leaf.base.key);
@@ -1224,7 +1205,6 @@ done:
  * A copy of the temporary record->data pointer provided by the caller
  * will be made.
  */
-static
 int
 hammer_mem_add(hammer_record_t record)
 {

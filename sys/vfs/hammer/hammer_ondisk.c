@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.73 2008/07/31 04:42:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.74 2008/07/31 22:30:33 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -526,7 +526,7 @@ again:
 		hammer_ref(&buffer->io.lock);
 
 		/*
-		 * Onced refed the ondisk field will not be cleared by
+		 * Once refed the ondisk field will not be cleared by
 		 * any other action.
 		 */
 		if (buffer->ondisk && buffer->io.loading == 0) {

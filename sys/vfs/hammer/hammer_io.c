@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.51 2008/07/18 00:19:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.52 2008/07/31 22:30:33 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -248,7 +248,11 @@ hammer_io_new(struct vnode *devvp, struct hammer_io *io)
 
 /*
  * Remove potential device level aliases against buffers managed by high level
- * vnodes.
+ * vnodes.  Aliases can also be created due to mixed buffer sizes.
+ *
+ * This is nasty because the buffers are also VMIO-backed.  Even if a buffer
+ * does not exist its backing VM pages might, and we have to invalidate
+ * those as well or a getblk() will reinstate them.
  */
 void
 hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
@@ -260,20 +264,21 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 	phys_offset = volume->ondisk->vol_buf_beg +
 		      (zone2_offset & HAMMER_OFF_SHORT_MASK);
 	crit_enter();
-	if ((bp = findblk(volume->devvp, phys_offset)) != NULL) {
+	if ((bp = findblk(volume->devvp, phys_offset)) != NULL)
 		bp = getblk(volume->devvp, phys_offset, bp->b_bufsize, 0, 0);
-		if ((iou = (void *)LIST_FIRST(&bp->b_dep)) != NULL) {
-			hammer_io_clear_modify(&iou->io, 1);
-			bundirty(bp);
-			iou->io.reclaim = 1;
-			hammer_io_deallocate(bp);
-		} else {
-			KKASSERT((bp->b_flags & B_LOCKED) == 0);
-			bundirty(bp);
-			bp->b_flags |= B_NOCACHE|B_RELBUF;
-		}
-		brelse(bp);
+	else
+		bp = getblk(volume->devvp, phys_offset, HAMMER_BUFSIZE, 0, 0);
+	if ((iou = (void *)LIST_FIRST(&bp->b_dep)) != NULL) {
+		hammer_io_clear_modify(&iou->io, 1);
+		bundirty(bp);
+		iou->io.reclaim = 1;
+		hammer_io_deallocate(bp);
+	} else {
+		KKASSERT((bp->b_flags & B_LOCKED) == 0);
+		bundirty(bp);
+		bp->b_flags |= B_NOCACHE|B_RELBUF;
 	}
+	brelse(bp);
 	crit_exit();
 }
 
@@ -995,9 +1000,6 @@ struct bio_ops hammer_bioops = {
  * disk media.  The bio may be issued asynchronously.  If leaf is non-NULL
  * we validate the CRC.
  *
- * A second-level bio already resolved to a zone-2 offset (typically by
- * the BMAP code, or by a previous hammer_io_direct_write()), is passed. 
- *
  * We must check for the presence of a HAMMER buffer to handle the case
  * where the reblocker has rewritten the data (which it does via the HAMMER
  * buffer system, not via the high-level vnode buffer cache), but not yet
@@ -1048,11 +1050,12 @@ hammer_io_direct_read(hammer_mount_t hmp, struct bio *bio,
 		error = EIO;
 
 	if (error == 0) {
-		zone2_offset &= HAMMER_OFF_SHORT_MASK;
-
+		/*
+		 * 3rd level bio
+		 */
 		nbio = push_bio(bio);
 		nbio->bio_offset = volume->ondisk->vol_buf_beg +
-				   zone2_offset;
+				   (zone2_offset & HAMMER_OFF_SHORT_MASK);
 #if 0
 		/*
 		 * XXX disabled - our CRC check doesn't work if the OS
@@ -1110,7 +1113,7 @@ hammer_io_direct_read_complete(struct bio *nbio)
  * disk media.  The bio may be issued asynchronously.
  *
  * The BIO is associated with the specified record and RECF_DIRECT_IO
- * is set.
+ * is set.  The recorded is added to its object.
  */
 int
 hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
@@ -1148,8 +1151,10 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
 		if (error == 0) {
 			bp = bio->bio_buf;
 			KKASSERT((bp->b_bufsize & HAMMER_BUFMASK) == 0);
+			/*
 			hammer_del_buffers(hmp, buf_offset,
 					   zone2_offset, bp->b_bufsize);
+			*/
 
 			/*
 			 * Second level bio - cached zone2 offset.
@@ -1161,7 +1166,9 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
 			nbio->bio_offset = zone2_offset;
 			nbio->bio_done = hammer_io_direct_write_complete;
 			nbio->bio_caller_info1.ptr = record;
-			record->flags |= HAMMER_RECF_DIRECT_IO;
+			record->zone2_offset = zone2_offset;
+			record->flags |= HAMMER_RECF_DIRECT_IO |
+					 HAMMER_RECF_DIRECT_INVAL;
 
 			/*
 			 * Third level bio - raw offset specific to the
@@ -1195,7 +1202,17 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
 			biodone(bio);
 		}
 	}
-	if (error) {
+	if (error == 0) {
+		/*
+		 * The record is all setup now, add it.  Potential conflics
+		 * have already been dealt with.
+		 */
+		error = hammer_mem_add(record);
+		KKASSERT(error == 0);
+	} else {
+		/*
+		 * Major suckage occured.
+		 */
 		kprintf("hammer_direct_write: failed @ %016llx\n",
 			leaf->data_offset);
 		bp = bio->bio_buf;
@@ -1203,6 +1220,8 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
 		bp->b_error = EIO;
 		bp->b_flags |= B_ERROR;
 		biodone(bio);
+		record->flags |= HAMMER_RECF_DELETED_FE;
+		hammer_rel_mem_record(record);
 	}
 	return(error);
 }
@@ -1220,17 +1239,21 @@ void
 hammer_io_direct_write_complete(struct bio *nbio)
 {
 	struct bio *obio;
+	struct buf *bp;
 	hammer_record_t record = nbio->bio_caller_info1.ptr;
 
+	bp = nbio->bio_buf;
 	obio = pop_bio(nbio);
-	if (obio->bio_buf->b_flags & B_ERROR) {
+	if (bp->b_flags & B_ERROR) {
 		hammer_critical_error(record->ip->hmp, record->ip,
-				      obio->bio_buf->b_error,
+				      bp->b_error,
 				      "while writing bulk data");
-		obio->bio_buf->b_flags |= B_INVAL;
+		bp->b_flags |= B_INVAL;
 	}
 	biodone(obio);
-	KKASSERT(record != NULL && (record->flags & HAMMER_RECF_DIRECT_IO));
+
+	KKASSERT(record != NULL);
+	KKASSERT(record->flags & HAMMER_RECF_DIRECT_IO);
 	record->flags &= ~HAMMER_RECF_DIRECT_IO;
 	if (record->flags & HAMMER_RECF_DIRECT_WAIT) {
 		record->flags &= ~HAMMER_RECF_DIRECT_WAIT;
@@ -1241,22 +1264,40 @@ hammer_io_direct_write_complete(struct bio *nbio)
 
 /*
  * This is called before a record is either committed to the B-Tree
- * or destroyed, to resolve any associated direct-IO.  We must
- * ensure that the data is available on-media to other consumers
- * such as the reblocker or mirroring code.
+ * or destroyed, to resolve any associated direct-IO. 
  *
- * Note that other consumers might access the data via the block
- * device's buffer cache and not the high level vnode's buffer cache.
+ * (1) We must wait for any direct-IO related to the record to complete.
+ *
+ * (2) We must remove any buffer cache aliases for data accessed via
+ *     leaf->data_offset or zone2_offset so non-direct-IO consumers  
+ *     (the mirroring and reblocking code) do not see stale data.
  */
 void
 hammer_io_direct_wait(hammer_record_t record)
 {
-	crit_enter();
-	while (record->flags & HAMMER_RECF_DIRECT_IO) {
-		record->flags |= HAMMER_RECF_DIRECT_WAIT;
-		tsleep(&record->flags, 0, "hmdiow", 0);
+	/*
+	 * Wait for I/O to complete
+	 */
+	if (record->flags & HAMMER_RECF_DIRECT_IO) {
+		crit_enter();
+		while (record->flags & HAMMER_RECF_DIRECT_IO) {
+			record->flags |= HAMMER_RECF_DIRECT_WAIT;
+			tsleep(&record->flags, 0, "hmdiow", 0);
+		}
+		crit_exit();
 	}
-	crit_exit();
+
+	/*
+	 * Invalidate any related buffer cache aliases.
+	 */
+	if (record->flags & HAMMER_RECF_DIRECT_INVAL) {
+		KKASSERT(record->leaf.data_offset);
+		hammer_del_buffers(record->ip->hmp,
+				   record->leaf.data_offset,
+				   record->zone2_offset,
+				   record->leaf.data_len);
+		record->flags &= ~HAMMER_RECF_DIRECT_INVAL;
+	}
 }
 
 /*

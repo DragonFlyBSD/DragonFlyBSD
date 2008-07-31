@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.16 2008/07/31 04:42:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.17 2008/07/31 22:30:33 dillon Exp $
  */
 /*
  * HAMMER mirroring ioctls - serialize and deserialize modifications made
@@ -186,10 +186,21 @@ retry:
 		elm = &cursor.node->ondisk->elms[cursor.index].leaf;
 		mirror->key_cur = elm->base;
 
-		if ((elm->base.create_tid < mirror->tid_beg ||
-		    elm->base.create_tid > mirror->tid_end) &&
-		    (elm->base.delete_tid < mirror->tid_beg ||
-		    elm->base.delete_tid > mirror->tid_end)) {
+		/*
+		 * Determine if we should generate a PASS or a REC.  PASS
+		 * records are records without any data payload.  Such
+		 * records will be generated if the target is already expected
+		 * to have the record, allowing it to delete the gaps.
+		 *
+		 * A PASS record is also used to perform deletions on the
+		 * target.
+		 *
+		 * Such deletions are needed if the master or files on the
+		 * master are no-history, or if the slave is so far behind
+		 * the master has already been pruned.
+		 */
+		if (elm->base.create_tid < mirror->tid_beg ||
+		    elm->base.create_tid > mirror->tid_end) {
 			bytes = sizeof(mrec.rec);
 			if (mirror->count + HAMMER_HEAD_DOALIGN(bytes) >
 			    mirror->size) {
@@ -197,15 +208,7 @@ retry:
 			}
 
 			/*
-			 * Fill mrec.  PASS records are records which are
-			 * outside the TID range needed for the mirror
-			 * update.  They are sent without any data payload
-			 * because the mirroring target must still compare
-			 * records that fall outside the SKIP ranges to
-			 * determine what might need to be deleted.  Such
-			 * deletions are needed if the master or files on
-			 * the master are no-history, or if the slave is
-			 * so far behind the master has already been pruned.
+			 * Fill mrec.
 			 */
 			mrec.head.signature = HAMMER_IOC_MIRROR_SIGNATURE;
 			mrec.head.type = HAMMER_MREC_TYPE_PASS;
@@ -561,10 +564,12 @@ hammer_ioc_mirror_write_rec(hammer_cursor_t cursor,
 	 *
 	 * If the record exists only the delete_tid may be updated.
 	 *
-	 * If the record does not exist we create it.  For now we
-	 * ignore records with a non-zero delete_tid.  Note that
-	 * mirror operations are effective an as-of operation and
-	 * delete_tid can be 0 for mirroring purposes even if it is
+	 * If the record does not exist we can create it only if the
+	 * create_tid is not too old.  If the create_tid is too old
+	 * it may have already been destroyed on the slave from pruning.
+	 *
+	 * Note that mirror operations are effectively as-of operations
+	 * and delete_tid can be 0 for mirroring purposes even if it is
 	 * not actually 0 at the originator.
 	 *
 	 * These functions can return EDEADLK
@@ -576,10 +581,11 @@ hammer_ioc_mirror_write_rec(hammer_cursor_t cursor,
 
 	if (error == 0 && hammer_mirror_check(cursor, mrec)) {
 		error = hammer_mirror_update(cursor, mrec);
-	} else if (error == ENOENT && mrec->leaf.base.delete_tid == 0) {
-		error = hammer_mirror_write(cursor, mrec, uptr);
 	} else if (error == ENOENT) {
-		error = 0;
+		if (mrec->leaf.base.create_tid >= mirror->tid_beg)
+			error = hammer_mirror_write(cursor, mrec, uptr);
+		else
+			error = 0;
 	}
 	if (error == 0 || error == EALREADY)
 		mirror->key_cur = mrec->leaf.base;
@@ -630,7 +636,9 @@ hammer_ioc_mirror_write_pass(hammer_cursor_t cursor,
 	error = hammer_mirror_delete_to(cursor, mirror);
 
 	/*
-	 * Locate the record and get past it by setting ATEDISK.
+	 * Locate the record and get past it by setting ATEDISK.  Perform
+	 * any necessary deletions.  We have no data payload and cannot
+	 * create a new record.
 	 */
 	if (error == 0) {
 		mirror->key_cur = mrec->leaf.base;
@@ -638,10 +646,13 @@ hammer_ioc_mirror_write_pass(hammer_cursor_t cursor,
 		cursor->flags |= HAMMER_CURSOR_BACKEND;
 		cursor->flags &= ~HAMMER_CURSOR_INSERT;
 		error = hammer_btree_lookup(cursor);
-		if (error == 0)
+		if (error == 0) {
+			if (hammer_mirror_check(cursor, mrec))
+				error = hammer_mirror_update(cursor, mrec);
 			cursor->flags |= HAMMER_CURSOR_ATEDISK;
-		else
+		} else {
 			cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
+		}
 		if (error == ENOENT)
 			error = 0;
 	}
