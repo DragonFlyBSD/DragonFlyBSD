@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_pfs.c,v 1.4 2008/07/19 18:44:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_pfs.c,v 1.5 2008/07/31 04:42:04 dillon Exp $
  */
 /*
  * HAMMER PFS ioctls - Manage pseudo-fs configurations
@@ -76,9 +76,13 @@ hammer_ioc_get_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 	 * If the PFS is a master the sync tid is set by normal operation
 	 * rather then the mirroring code, and will always track the
 	 * real HAMMER filesystem.
+	 *
+	 * We use flush_tid1, which is the highest fully committed TID.
+	 * flush_tid2 is the TID most recently flushed, but the UNDO hasn't
+	 * caught up to it yet so a crash will roll us back to flush_tid1.
 	 */
 	if ((pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE) == 0)
-		pfsm->pfsd.sync_end_tid = trans->rootvol->ondisk->vol0_next_tid;
+		pfsm->pfsd.sync_end_tid = trans->hmp->flush_tid1;
 
 	/*
 	 * Copy out to userland.
@@ -126,6 +130,11 @@ hammer_ioc_set_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 			error = hammer_mkroot_pseudofs(trans, cred, pfsm);
 		if (error == 0)
 			error = hammer_save_pseudofs(trans, pfsm);
+
+		/*
+		 * Wakeup anyone waiting for a TID update for this PFS
+		 */
+		wakeup(&pfsm->pfsd.sync_end_tid);
 		hammer_rel_pseudofs(trans->hmp, pfsm);
 	}
 	return(error);
@@ -254,6 +263,48 @@ hammer_ioc_destroy_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 	}
 	return(error);
 }
+
+/*
+ * Wait for the PFS to sync past the specified TID
+ */
+int
+hammer_ioc_wait_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
+			 struct hammer_ioc_pseudofs_rw *pfs)
+{
+	hammer_pseudofs_inmem_t pfsm;
+	struct hammer_pseudofs_data pfsd;
+	u_int32_t localization;
+	hammer_tid_t tid;
+	void *waitp;
+	int error;
+
+	if ((error = hammer_pfs_autodetect(pfs, ip)) != 0)
+		return(error);
+	localization = (u_int32_t)pfs->pfs_id << 16;
+
+	if ((error = copyin(pfs->ondisk, &pfsd, sizeof(pfsd))) != 0)
+		return(error);
+
+	pfsm = hammer_load_pseudofs(trans, localization, &error);
+	if (error == 0) {
+		if (pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE) {
+			tid = pfsm->pfsd.sync_end_tid;
+			waitp = &pfsm->pfsd.sync_end_tid;
+		} else {
+			tid = trans->hmp->flush_tid1;
+			waitp = &trans->hmp->flush_tid1;
+		}
+		if (tid <= pfsd.sync_end_tid)
+			tsleep(waitp, PCATCH, "hmrmwt", 0);
+	}
+	hammer_rel_pseudofs(trans->hmp, pfsm);
+	if (error == EINTR) {
+		pfs->head.flags |= HAMMER_IOC_HEAD_INTR;
+		error = 0;
+	}
+	return(error);
+}
+
 
 /*
  * Auto-detect the pseudofs and do basic bounds checking.

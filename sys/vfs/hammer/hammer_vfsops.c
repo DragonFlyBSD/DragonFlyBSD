@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.69 2008/07/27 23:01:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.70 2008/07/31 04:42:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -583,6 +583,8 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * on-disk first_offset represents the LAST flush cycle.
 	 */
 	hmp->next_tid = rootvol->ondisk->vol0_next_tid;
+	hmp->flush_tid1 = hmp->next_tid;
+	hmp->flush_tid2 = hmp->next_tid;
 	bcopy(rootvol->ondisk->vol0_blockmap, hmp->blockmap,
 	      sizeof(hmp->blockmap));
 	hmp->copy_stat_freebigblocks = rootvol->ondisk->vol0_stat_freebigblocks;
@@ -872,8 +874,6 @@ hammer_vfs_sync(struct mount *mp, int waitfor)
 
 	if (panicstr == NULL) {
 		error = hammer_sync_hmp(hmp, waitfor);
-		if (error == 0)
-			error = hammer_sync_hmp(hmp, waitfor);
 	} else {
 		error = EIO;
 	}

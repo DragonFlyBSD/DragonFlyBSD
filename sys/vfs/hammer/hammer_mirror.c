@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.15 2008/07/13 01:12:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_mirror.c,v 1.16 2008/07/31 04:42:04 dillon Exp $
  */
 /*
  * HAMMER mirroring ioctls - serialize and deserialize modifications made
@@ -246,7 +246,7 @@ retry:
 		mrec.head.type = HAMMER_MREC_TYPE_REC;
 		mrec.head.rec_size = bytes;
 		mrec.rec.leaf = *elm;
-		if (elm->base.delete_tid >= mirror->tid_end)
+		if (elm->base.delete_tid > mirror->tid_end)
 			mrec.rec.leaf.base.delete_tid = 0;
 		rec_crc = crc32(&mrec.head.rec_size,
 				sizeof(mrec.rec) - crc_start);
@@ -668,14 +668,13 @@ hammer_mirror_delete_to(hammer_cursor_t cursor,
 	while (error == 0) {
 		elm = &cursor->node->ondisk->elms[cursor->index].leaf;
 		KKASSERT(elm->base.btype == HAMMER_BTREE_TYPE_RECORD);
+		cursor->flags |= HAMMER_CURSOR_ATEDISK;
 		if (elm->base.delete_tid == 0) {
 			error = hammer_delete_at_cursor(cursor,
 							HAMMER_DELETE_ADJUST,
 							mirror->tid_end,
 							time_second,
 							1, NULL);
-			if (error == 0)
-				cursor->flags |= HAMMER_CURSOR_ATEDISK;
 		}
 		if (error == 0)
 			error = hammer_btree_iterate(cursor);

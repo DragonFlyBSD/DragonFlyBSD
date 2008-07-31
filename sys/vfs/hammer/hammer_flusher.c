@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.44 2008/07/19 04:49:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_flusher.c,v 1.45 2008/07/31 04:42:04 dillon Exp $
  */
 /*
  * HAMMER dependancy flusher thread
@@ -231,7 +231,13 @@ hammer_flusher_master_thread(void *arg)
 			break;
 		while (hmp->flusher.signal == 0)
 			tsleep(&hmp->flusher.signal, 0, "hmrwwa", 0);
-		hmp->flusher.signal = 0;
+
+		/*
+		 * Flush for each count on signal but only allow one extra
+		 * flush request to build up.
+		 */
+		if (--hmp->flusher.signal != 0)
+			hmp->flusher.signal = 1;
 	}
 
 	/*
@@ -665,6 +671,13 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 		hammer_modify_volume_done(root_volume);
 	}
 
+	/*
+	 * vol0_next_tid is used for TID selection and is updated without
+	 * an UNDO so we do not reuse a TID that may have been rolled-back.
+	 *
+	 * vol0_last_tid is the highest fully-synchronized TID.  It is
+	 * set-up when the UNDO fifo is fully synced, later on (not here).
+	 */
 	if (root_volume->io.modified) {
 		hammer_modify_volume(NULL, root_volume, NULL, 0);
 		if (root_volume->ondisk->vol0_next_tid < trans->tid)
@@ -722,6 +735,18 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 			hmp->hflags |= HMNT_UNDO_DIRTY;
 		}
 		hammer_clear_undo_history(hmp);
+
+		/*
+		 * Flush tid sequencing.  flush_tid1 is fully synchronized,
+		 * meaning a crash will not roll it back.  flush_tid2 has
+		 * been written out asynchronously and a crash will roll
+		 * it back.  flush_tid1 is used for all mirroring masters.
+		 */
+		if (hmp->flush_tid1 != hmp->flush_tid2) {
+			hmp->flush_tid1 = hmp->flush_tid2;
+			wakeup(&hmp->flush_tid1);
+		}
+		hmp->flush_tid2 = trans->tid;
 	}
 
 	/*
@@ -738,6 +763,7 @@ failed:
 
 done:
 	hammer_unlock(&hmp->flusher.finalize_lock);
+
 	if (--hmp->flusher.finalize_want == 0)
 		wakeup(&hmp->flusher.finalize_want);
 	hammer_stats_commits += final;

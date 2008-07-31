@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.72 2008/07/27 21:34:04 mneumann Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.73 2008/07/31 04:42:04 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -1477,6 +1477,7 @@ hammer_sync_hmp(hammer_mount_t hmp, int waitfor)
                 hammer_flusher_sync(hmp);
                 hammer_flusher_sync(hmp);
 	} else {
+                hammer_flusher_async(hmp, NULL);
                 hammer_flusher_async(hmp, NULL);
 	}
 	return(info.error);

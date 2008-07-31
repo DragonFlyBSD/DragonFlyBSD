@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.51 2008/07/19 18:44:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.52 2008/07/31 04:42:04 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -498,7 +498,7 @@ struct hammer_volume_ondisk {
 	int64_t vol0_stat_inodes;	/* for statfs only */
 	int64_t vol0_stat_records;	/* total records in filesystem */
 	hammer_off_t vol0_btree_root;	/* B-Tree root */
-	hammer_tid_t vol0_next_tid;	/* highest synchronized TID */
+	hammer_tid_t vol0_next_tid;	/* highest partially synchronized TID */
 	hammer_off_t vol0_unused03;
 
 	/*

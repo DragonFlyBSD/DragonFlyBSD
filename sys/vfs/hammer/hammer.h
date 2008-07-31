@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.123 2008/07/27 23:01:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.124 2008/07/31 04:42:04 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -720,7 +720,9 @@ struct hammer_mount {
 	int	error;				/* critical I/O error */
 	struct krate	krate;			/* rate limited kprintf */
 	hammer_tid_t	asof;			/* snapshot mount */
-	hammer_off_t	next_tid;
+	hammer_tid_t	next_tid;
+	hammer_tid_t	flush_tid1;		/* flusher tid sequencing */
+	hammer_tid_t	flush_tid2;		/* flusher tid sequencing */
 	int64_t copy_stat_freebigblocks;	/* number of free bigblocks */
 
 	u_int32_t namekey_iterator;
@@ -1139,6 +1141,8 @@ int hammer_ioc_destroy_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 int hammer_ioc_downgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
                         struct hammer_ioc_pseudofs_rw *pfs);
 int hammer_ioc_upgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
+                        struct hammer_ioc_pseudofs_rw *pfs);
+int hammer_ioc_wait_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
                         struct hammer_ioc_pseudofs_rw *pfs);
 
 int hammer_signal_check(hammer_mount_t hmp);

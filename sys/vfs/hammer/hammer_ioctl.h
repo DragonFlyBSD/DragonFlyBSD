@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.21 2008/07/12 23:04:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.22 2008/07/31 04:42:04 dillon Exp $
  */
 /*
  * HAMMER ioctl's.  This file can be #included from userland
@@ -300,6 +300,7 @@ typedef union hammer_ioc_mrecord_any *hammer_ioc_mrecord_any_t;
 #define HAMMER_MREC_TYPE_SKIP		5	/* skip-range */
 #define HAMMER_MREC_TYPE_PASS		6	/* record for cmp only (pass) */
 #define HAMMER_MREC_TYPE_TERM		7	/* (userland only) */
+#define HAMMER_MREC_TYPE_IDLE		8	/* (userland only) */
 
 #define HAMMER_MREC_CRCOFF	(offsetof(struct hammer_ioc_mrecord_head, rec_size))
 #define HAMMER_MREC_HEADSIZE	sizeof(struct hammer_ioc_mrecord_head)
@@ -322,6 +323,7 @@ typedef union hammer_ioc_mrecord_any *hammer_ioc_mrecord_any_t;
 #define HAMMERIOC_UPG_PSEUDOFS	_IOWR('h',9,struct hammer_ioc_pseudofs_rw)
 #define HAMMERIOC_DGD_PSEUDOFS	_IOWR('h',10,struct hammer_ioc_pseudofs_rw)
 #define HAMMERIOC_RMR_PSEUDOFS	_IOWR('h',11,struct hammer_ioc_pseudofs_rw)
+#define HAMMERIOC_WAI_PSEUDOFS	_IOWR('h',12,struct hammer_ioc_pseudofs_rw)
 
 #endif
 
