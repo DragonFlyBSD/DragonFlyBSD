@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.53 2008/07/29 16:21:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.54 2008/07/31 20:23:40 swildner Exp $
  */
 
 #include "opt_bootp.h"
@@ -601,7 +601,6 @@ nfs_mountdiskless(char *path, char *which, int mountflag,
 {
 	struct mount *mp;
 	struct sockaddr *nam;
-	char *xpath;
 	int didalloc = 0;
 	int error;
 
@@ -620,8 +619,9 @@ nfs_mountdiskless(char *path, char *which, int mountflag,
 
 #if defined(BOOTP) || defined(NFS_ROOT)
 	if (args->fhsize == 0) {
+		char *xpath = path;
+
 		kprintf("NFS_ROOT: No FH passed from loader, attempting mount rpc...");
-		xpath = path;
 		while (*xpath && *xpath != ':')
 			++xpath;
 		if (*xpath)
