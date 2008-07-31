@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.56 2008/07/31 12:09:00 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.57 2008/07/31 12:35:15 sephe Exp $
  */
 
 #define        DEB(x)
@@ -723,8 +723,8 @@ remove_dyn_rule(struct ip_fw *rule, ipfw_dyn_rule *keep_me)
 	 * them in a second pass.
 	 */
 next_pass:
-	for (i = 0 ; i < curr_dyn_buckets ; i++) {
-		for (prev=NULL, q = ipfw_dyn_v[i] ; q ; ) {
+	for (i = 0; i < curr_dyn_buckets; i++) {
+		for (prev = NULL, q = ipfw_dyn_v[i]; q;) {
 			/*
 			 * Logic can become complex here, so we split tests.
 			 */
@@ -740,21 +740,20 @@ next_pass:
 				max_pass = 1;
 				if (pass == 0)
 					goto next;
-				if (FORCE && q->count != 0 ) {
+				if (FORCE && q->count != 0) {
 					/* XXX should not happen! */
-					kprintf( "OUCH! cannot remove rule,"
-					     " count %d\n", q->count);
+					kprintf("OUCH! cannot remove rule, "
+						"count %d\n", q->count);
 				}
 			} else {
-				if (!FORCE &&
-				    !TIME_LEQ( q->expire, time_second ))
+				if (!FORCE && !TIME_LEQ(q->expire, time_second))
 					goto next;
 			}
 			UNLINK_DYN_RULE(prev, ipfw_dyn_v[i], q);
 			continue;
 next:
-			prev=q;
-			q=q->next;
+			prev = q;
+			q = q->next;
 		}
 	}
 	if (pass++ < max_pass)
@@ -769,7 +768,7 @@ next:
  */
 static ipfw_dyn_rule *
 lookup_dyn_rule(struct ipfw_flow_id *pkt, int *match_direction,
-	struct tcphdr *tcp)
+		struct tcphdr *tcp)
 {
 	/*
 	 * stateful ipfw extensions.
@@ -784,26 +783,28 @@ lookup_dyn_rule(struct ipfw_flow_id *pkt, int *match_direction,
 
 	if (ipfw_dyn_v == NULL)
 		goto done;	/* not found */
-	i = hash_packet( pkt );
-	for (prev=NULL, q = ipfw_dyn_v[i] ; q != NULL ; ) {
+
+	i = hash_packet(pkt);
+	for (prev = NULL, q = ipfw_dyn_v[i]; q != NULL;) {
 		if (q->dyn_type == O_LIMIT_PARENT)
 			goto next;
+
 		if (TIME_LEQ( q->expire, time_second)) { /* expire entry */
 			UNLINK_DYN_RULE(prev, ipfw_dyn_v[i], q);
 			continue;
 		}
-		if ( pkt->proto == q->id.proto) {
+		if (pkt->proto == q->id.proto) {
 			if (pkt->src_ip == q->id.src_ip &&
 			    pkt->dst_ip == q->id.dst_ip &&
 			    pkt->src_port == q->id.src_port &&
-			    pkt->dst_port == q->id.dst_port ) {
+			    pkt->dst_port == q->id.dst_port) {
 				dir = MATCH_FORWARD;
 				break;
 			}
 			if (pkt->src_ip == q->id.dst_ip &&
 			    pkt->dst_ip == q->id.src_ip &&
 			    pkt->src_port == q->id.dst_port &&
-			    pkt->dst_port == q->id.src_port ) {
+			    pkt->dst_port == q->id.src_port) {
 				dir = MATCH_REVERSE;
 				break;
 			}
@@ -815,16 +816,18 @@ next:
 	if (q == NULL)
 		goto done; /* q = NULL, not found */
 
-	if ( prev != NULL) { /* found and not in front */
+	if (prev != NULL) { /* found and not in front */
 		prev->next = q->next;
 		q->next = ipfw_dyn_v[i];
 		ipfw_dyn_v[i] = q;
 	}
+
 	if (pkt->proto == IPPROTO_TCP) { /* update state according to flags */
 		u_char flags = pkt->flags & (TH_FIN|TH_SYN|TH_RST);
 
 #define BOTH_SYN	(TH_SYN | (TH_SYN << 8))
 #define BOTH_FIN	(TH_FIN | (TH_FIN << 8))
+
 		q->state |= (dir == MATCH_FORWARD ) ? flags : (flags << 8);
 		switch (q->state) {
 		case TH_SYN:				/* opening */
@@ -835,21 +838,24 @@ next:
 		case BOTH_SYN | TH_FIN :	/* one side tries to close */
 		case BOTH_SYN | (TH_FIN << 8) :
  			if (tcp) {
-#define _SEQ_GE(a,b) ((int)(a) - (int)(b) >= 0)
-			    uint32_t ack = ntohl(tcp->th_ack);
-			    if (dir == MATCH_FORWARD) {
-				if (q->ack_fwd == 0 || _SEQ_GE(ack, q->ack_fwd))
-				    q->ack_fwd = ack;
-				else { /* ignore out-of-sequence */
-				    break;
+				uint32_t ack = ntohl(tcp->th_ack);
+
+#define _SEQ_GE(a, b)	((int)(a) - (int)(b) >= 0)
+
+				if (dir == MATCH_FORWARD) {
+					if (q->ack_fwd == 0 ||
+					    _SEQ_GE(ack, q->ack_fwd))
+						q->ack_fwd = ack;
+					else /* ignore out-of-sequence */
+						break;
+				} else {
+					if (q->ack_rev == 0 ||
+					    _SEQ_GE(ack, q->ack_rev))
+						q->ack_rev = ack;
+					else /* ignore out-of-sequence */
+						break;
 				}
-			    } else {
-				if (q->ack_rev == 0 || _SEQ_GE(ack, q->ack_rev))
-				    q->ack_rev = ack;
-				else { /* ignore out-of-sequence */
-				    break;
-				}
-			    }
+#undef _SEQ_GE
 			}
 			q->expire = time_second + dyn_ack_lifetime;
 			break;
@@ -866,7 +872,7 @@ next:
 			 * reset or some invalid combination, but can also
 			 * occur if we use keep-state the wrong way.
 			 */
-			if ( (q->state & ((TH_RST << 8)|TH_RST)) == 0)
+			if ((q->state & ((TH_RST << 8) | TH_RST)) == 0)
 				kprintf("invalid state: 0x%x\n", q->state);
 #endif
 			if (dyn_rst_lifetime >= dyn_keepalive_period)
@@ -902,11 +908,13 @@ realloc_dynamic_table(void)
 		return;
 	}
 	curr_dyn_buckets = dyn_buckets;
+
 	if (ipfw_dyn_v != NULL)
 		kfree(ipfw_dyn_v, M_IPFW);
+
 	for (;;) {
 		ipfw_dyn_v = kmalloc(curr_dyn_buckets * sizeof(ipfw_dyn_rule *),
-		       M_IPFW, M_INTWAIT | M_NULLOK | M_ZERO);
+				     M_IPFW, M_INTWAIT | M_NULLOK | M_ZERO);
 		if (ipfw_dyn_v != NULL || curr_dyn_buckets <= 2)
 			break;
 		curr_dyn_buckets /= 2;
@@ -937,7 +945,7 @@ add_dyn_rule(struct ipfw_flow_id *id, uint8_t dyn_type, struct ip_fw *rule)
 	}
 	i = hash_packet(id);
 
-	r = kmalloc(sizeof *r, M_IPFW, M_INTWAIT | M_NULLOK | M_ZERO);
+	r = kmalloc(sizeof(*r), M_IPFW, M_INTWAIT | M_NULLOK | M_ZERO);
 	if (r == NULL) {
 		kprintf ("sorry cannot allocate state\n");
 		return NULL;
@@ -946,7 +954,8 @@ add_dyn_rule(struct ipfw_flow_id *id, uint8_t dyn_type, struct ip_fw *rule)
 	/* increase refcount on parent, and set pointer */
 	if (dyn_type == O_LIMIT) {
 		ipfw_dyn_rule *parent = (ipfw_dyn_rule *)rule;
-		if ( parent->dyn_type != O_LIMIT_PARENT)
+
+		if (parent->dyn_type != O_LIMIT_PARENT)
 			panic("invalid parent");
 		parent->count++;
 		r->parent = parent;
@@ -968,7 +977,7 @@ add_dyn_rule(struct ipfw_flow_id *id, uint8_t dyn_type, struct ip_fw *rule)
 	   dyn_type,
 	   (r->id.src_ip), (r->id.src_port),
 	   (r->id.dst_ip), (r->id.dst_port),
-	   dyn_count ); )
+	   dyn_count );)
 	return r;
 }
 
@@ -983,8 +992,8 @@ lookup_dyn_parent(struct ipfw_flow_id *pkt, struct ip_fw *rule)
 	int i;
 
 	if (ipfw_dyn_v) {
-		i = hash_packet( pkt );
-		for (q = ipfw_dyn_v[i] ; q != NULL ; q=q->next)
+		i = hash_packet(pkt);
+		for (q = ipfw_dyn_v[i]; q != NULL; q = q->next) {
 			if (q->dyn_type == O_LIMIT_PARENT &&
 			    rule== q->rule &&
 			    pkt->proto == q->id.proto &&
@@ -996,6 +1005,7 @@ lookup_dyn_parent(struct ipfw_flow_id *pkt, struct ip_fw *rule)
 				DEB(kprintf("lookup_dyn_parent found 0x%p\n",q);)
 				return q;
 			}
+		}
 	}
 	return add_dyn_rule(pkt, O_LIMIT_PARENT, rule);
 }
@@ -1008,7 +1018,7 @@ lookup_dyn_parent(struct ipfw_flow_id *pkt, struct ip_fw *rule)
  */
 static int
 install_state(struct ip_fw *rule, ipfw_insn_limit *cmd,
-	struct ip_fw_args *args)
+	      struct ip_fw_args *args)
 {
 	static int last_log;
 
@@ -1020,7 +1030,6 @@ install_state(struct ip_fw *rule, ipfw_insn_limit *cmd,
 	    (args->f_id.dst_ip), (args->f_id.dst_port) );)
 
 	q = lookup_dyn_rule(&args->f_id, NULL, NULL);
-
 	if (q != NULL) { /* should never occur */
 		if (last_log != time_second) {
 			last_log = time_second;
@@ -1029,11 +1038,12 @@ install_state(struct ip_fw *rule, ipfw_insn_limit *cmd,
 		return 0;
 	}
 
-	if (dyn_count >= dyn_max)
+	if (dyn_count >= dyn_max) {
 		/*
 		 * Run out of slots, try to remove any expired rule.
 		 */
 		remove_dyn_rule(NULL, (ipfw_dyn_rule *)1);
+	}
 
 	if (dyn_count >= dyn_max) {
 		if (last_log != time_second) {
@@ -1049,46 +1059,52 @@ install_state(struct ip_fw *rule, ipfw_insn_limit *cmd,
 		break;
 
 	case O_LIMIT: /* limit number of sessions */
-	    {
-		uint16_t limit_mask = cmd->limit_mask;
-		struct ipfw_flow_id id;
-		ipfw_dyn_rule *parent;
+		{
+			uint16_t limit_mask = cmd->limit_mask;
+			struct ipfw_flow_id id;
+			ipfw_dyn_rule *parent;
 
-		DEB(kprintf("installing dyn-limit rule %d\n", cmd->conn_limit);)
+			DEB(kprintf("installing dyn-limit rule %d\n",
+			    cmd->conn_limit);)
 
-		id.dst_ip = id.src_ip = 0;
-		id.dst_port = id.src_port = 0;
-		id.proto = args->f_id.proto;
+			id.dst_ip = id.src_ip = 0;
+			id.dst_port = id.src_port = 0;
+			id.proto = args->f_id.proto;
 
-		if (limit_mask & DYN_SRC_ADDR)
-			id.src_ip = args->f_id.src_ip;
-		if (limit_mask & DYN_DST_ADDR)
-			id.dst_ip = args->f_id.dst_ip;
-		if (limit_mask & DYN_SRC_PORT)
-			id.src_port = args->f_id.src_port;
-		if (limit_mask & DYN_DST_PORT)
-			id.dst_port = args->f_id.dst_port;
-		parent = lookup_dyn_parent(&id, rule);
-		if (parent == NULL) {
-			kprintf("add parent failed\n");
-			return 1;
-		}
-		if (parent->count >= cmd->conn_limit) {
-			/*
-			 * See if we can remove some expired rule.
-			 */
-			remove_dyn_rule(rule, parent);
-			if (parent->count >= cmd->conn_limit) {
-				if (fw_verbose && last_log != time_second) {
-					last_log = time_second;
-					log(LOG_SECURITY | LOG_DEBUG,
-					    "drop session, too many entries\n");
-				}
+			if (limit_mask & DYN_SRC_ADDR)
+				id.src_ip = args->f_id.src_ip;
+			if (limit_mask & DYN_DST_ADDR)
+				id.dst_ip = args->f_id.dst_ip;
+			if (limit_mask & DYN_SRC_PORT)
+				id.src_port = args->f_id.src_port;
+			if (limit_mask & DYN_DST_PORT)
+				id.dst_port = args->f_id.dst_port;
+
+			parent = lookup_dyn_parent(&id, rule);
+			if (parent == NULL) {
+				kprintf("add parent failed\n");
 				return 1;
 			}
+
+			if (parent->count >= cmd->conn_limit) {
+				/*
+				 * See if we can remove some expired rule.
+				 */
+				remove_dyn_rule(rule, parent);
+				if (parent->count >= cmd->conn_limit) {
+					if (fw_verbose &&
+					    last_log != time_second) {
+						last_log = time_second;
+						log(LOG_SECURITY | LOG_DEBUG,
+						    "drop session, "
+						    "too many entries\n");
+					}
+					return 1;
+				}
+			}
+			add_dyn_rule(&args->f_id, O_LIMIT,
+				     (struct ip_fw *)parent);
 		}
-		add_dyn_rule(&args->f_id, O_LIMIT, (struct ip_fw *)parent);
-	    }
 		break;
 	default:
 		kprintf("unknown dynamic rule type %u\n", cmd->o.opcode);
