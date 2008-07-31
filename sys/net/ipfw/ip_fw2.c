@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.58 2008/07/31 12:42:40 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.59 2008/07/31 14:39:36 sephe Exp $
  */
 
 #define        DEB(x)
@@ -2136,6 +2136,9 @@ flush_rule_ptrs(void)
 static __inline void
 ipfw_inc_static_count(struct ip_fw *rule)
 {
+	KASSERT(mycpuid == 0,
+		("adding static rule not on cpu0 (%d)", mycpuid));
+
 	static_count++;
 	static_ioc_len += IOC_RULESIZE(rule);
 }
@@ -2144,6 +2147,9 @@ static __inline void
 ipfw_dec_static_count(struct ip_fw *rule)
 {
 	int l = IOC_RULESIZE(rule);
+
+	KASSERT(mycpuid == 0,
+		("deleting static rule not on cpu0 (%d)", mycpuid));
 
 	KASSERT(static_count > 0, ("invalid static count %u\n", static_count));
 	static_count--;
