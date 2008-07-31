@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.55 2008/07/31 11:58:42 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.56 2008/07/31 12:09:00 sephe Exp $
  */
 
 #define        DEB(x)
@@ -667,13 +667,14 @@ hash_packet(struct ipfw_flow_id *id)
  * head is a pointer to the head of the queue.
  * Modifies q and potentially also head.
  */
-#define UNLINK_DYN_RULE(prev, head, q) {				\
+#define UNLINK_DYN_RULE(prev, head, q)					\
+do {									\
 	ipfw_dyn_rule *old_q = q;					\
 									\
 	/* remove a refcount to the parent */				\
 	if (q->dyn_type == O_LIMIT)					\
 		q->parent->count--;					\
-	DEB(kprintf("-- unlink entry 0x%08x %d -> 0x%08x %d, %d left\n",	\
+	DEB(kprintf("-- unlink entry 0x%08x %d -> 0x%08x %d, %d left\n", \
 		(q->id.src_ip), (q->id.src_port),			\
 		(q->id.dst_ip), (q->id.dst_port), dyn_count-1 ); )	\
 	if (prev != NULL)						\
@@ -682,9 +683,10 @@ hash_packet(struct ipfw_flow_id *id)
 		head = q = q->next;					\
 	KASSERT(dyn_count > 0, ("invalid dyn count %u\n", dyn_count));	\
 	dyn_count--;							\
-	kfree(old_q, M_IPFW); }
+	kfree(old_q, M_IPFW);						\
+} while (0)
 
-#define TIME_LEQ(a,b)       ((int)((a)-(b)) <= 0)
+#define TIME_LEQ(a, b)	((int)((a) - (b)) <= 0)
 
 /**
  * Remove dynamic rules pointing to "rule", or all of them if rule == NULL.
@@ -703,7 +705,7 @@ remove_dyn_rule(struct ip_fw *rule, ipfw_dyn_rule *keep_me)
 {
 	static uint32_t last_remove = 0;
 
-#define FORCE (keep_me == NULL)
+#define FORCE	(keep_me == NULL)
 
 	ipfw_dyn_rule *prev, *q;
 	int i, pass = 0, max_pass = 0;
@@ -757,6 +759,8 @@ next:
 	}
 	if (pass++ < max_pass)
 		goto next_pass;
+
+#undef FORCE
 }
 
 
