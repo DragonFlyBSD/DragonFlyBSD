@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.35 2008/07/31 06:01:32 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.36 2008/07/31 06:21:19 dillon Exp $
  */
 
 #include "hammer.h"
@@ -226,7 +226,7 @@ main(int ac, char **av)
 	if (strncmp(av[0], "mirror", 6) == 0) {
 		if (strcmp(av[0], "mirror-read") == 0)
 			hammer_cmd_mirror_read(av + 1, ac - 1, 0);
-		if (strcmp(av[0], "mirror-read-stream") == 0)
+		else if (strcmp(av[0], "mirror-read-stream") == 0)
 			hammer_cmd_mirror_read(av + 1, ac - 1, 1);
 		else if (strcmp(av[0], "mirror-write") == 0)
 			hammer_cmd_mirror_write(av + 1, ac - 1);
