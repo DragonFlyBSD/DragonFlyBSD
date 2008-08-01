@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf64.h,v 1.9 1999/08/28 00:51:42 peter Exp $
- * $DragonFly: src/sys/sys/elf64.h,v 1.8 2008/07/23 16:39:29 dillon Exp $
+ * $DragonFly: src/sys/sys/elf64.h,v 1.9 2008/08/01 23:11:15 dillon Exp $
  */
 
 #ifndef _SYS_ELF64_H_
@@ -41,17 +41,27 @@
  * ELF definitions common to all 64-bit architectures.
  */
 
-typedef u_int64_t	Elf64_Addr;
-typedef u_int16_t	Elf64_Half;
-typedef u_int64_t	Elf64_Off;
+typedef uint64_t	Elf64_Addr;
+typedef uint16_t	Elf64_Half;
+typedef uint64_t	Elf64_Off;
 typedef int32_t		Elf64_Sword;
 typedef int64_t		Elf64_Sxword;
-typedef u_int32_t	Elf64_Word;
-typedef u_int64_t	Elf64_Lword;
-typedef u_int64_t	Elf64_Xword;
-typedef u_int64_t	Elf64_Size;
-typedef u_int16_t	Elf64_Quarter;
-typedef Elf64_Half      Elf64_Hashelt;
+typedef uint32_t	Elf64_Word;
+typedef uint64_t	Elf64_Lword;
+typedef uint64_t	Elf64_Xword;
+
+/*
+ * Types of dynamic symbol hash table bucket and chain elements.
+ * 
+ * This is inconsistent among 64 bit architectures, so a machine dependent
+ * typedef is required.
+ */
+
+typedef Elf64_Word	Elf64_Hashelt;
+
+/* Non-standard class-dependent datatype used for abstraction. */
+typedef Elf64_Xword	Elf64_Size;
+typedef Elf64_Sxword	Elf64_Ssize;
 
 /*
  * ELF header.
@@ -112,9 +122,9 @@ typedef struct {
  */
 
 typedef struct {
-	Elf64_Size	d_tag;		/* Entry type. */
+	Elf64_Sxword	d_tag;		/* Entry type. */
 	union {
-		Elf64_Size	d_val;	/* Integer value. */
+		Elf64_Xword	d_val;	/* Integer value. */
 		Elf64_Addr	d_ptr;	/* Address value. */
 	} d_un;
 } Elf64_Dyn;
@@ -138,10 +148,46 @@ typedef struct {
 
 /* Macros for accessing the fields of r_info. */
 #define ELF64_R_SYM(info)	((info) >> 32)
-#define ELF64_R_TYPE(info)	((unsigned char)(info))
+#define ELF64_R_TYPE(info)	((info) & 0xffffffffL)
 
 /* Macro for constructing r_info from field values. */
-#define ELF64_R_INFO(sym, type)	(((sym) << 32) + (unsigned char)(type))
+#define ELF64_R_INFO(sym, type)	(((sym) << 32) + ((type) & 0xffffffffL))
+
+#define        ELF64_R_TYPE_DATA(info)	(((Elf64_Xword)(info)<<32)>>40)
+#define        ELF64_R_TYPE_ID(info)	(((Elf64_Xword)(info)<<56)>>56)
+#define        ELF64_R_TYPE_INFO(data, type)   \
+		(((Elf64_Xword)(data)<<8)+(Elf64_Xword)(type))
+
+/*
+ * Note entry header
+ */
+typedef Elf_Note Elf64_Nhdr;
+
+/*
+ * Move entry
+ */
+typedef struct {
+	Elf64_Lword	m_value;	/* symbol value */
+	Elf64_Xword	m_info;		/* size + index */
+	Elf64_Xword	m_poffset;	/* symbol offset */
+	Elf64_Half	m_repeat;	/* repeat count */
+	Elf64_Half	m_stride;	/* stride info */
+} Elf64_Move;
+
+#define	ELF64_M_SYM(info)	((info)>>8)
+#define	ELF64_M_SIZE(info)	((unsigned char)(info))
+#define	ELF64_M_INFO(sym, size)	(((sym)<<8)+(unsigned char)(size))
+
+/*
+ * Hardware/Software capabilities entry
+ */
+typedef struct {
+	Elf64_Xword	c_tag;		/* how to interpret value */
+	union {
+		Elf64_Xword	c_val;
+		Elf64_Addr	c_ptr;
+	} c_un;
+} Elf64_Cap;
 
 /*
  * Symbol table entries.
@@ -162,5 +208,47 @@ typedef struct {
 
 /* Macro for constructing st_info from field values. */
 #define ELF64_ST_INFO(bind, type)	(((bind) << 4) + ((type) & 0xf))
+
+/* Macro for accessing the fields of st_other. */
+#define ELF64_ST_VISIBILITY(oth)	((oth) & 0x3)
+
+/* Structures used by Sun & GNU-style symbol versioning. */
+typedef struct {
+	Elf64_Half	vd_version;
+	Elf64_Half	vd_flags;
+	Elf64_Half	vd_ndx;
+	Elf64_Half	vd_cnt;
+	Elf64_Word	vd_hash;
+	Elf64_Word	vd_aux;
+	Elf64_Word	vd_next;
+} Elf64_Verdef;
+
+typedef struct {
+	Elf64_Word	vda_name;
+	Elf64_Word	vda_next;
+} Elf64_Verdaux;
+
+typedef struct {
+	Elf64_Half	vn_version;
+	Elf64_Half	vn_cnt;
+	Elf64_Word	vn_file;
+	Elf64_Word	vn_aux;
+	Elf64_Word	vn_next;
+} Elf64_Verneed;
+
+typedef struct {
+	Elf64_Word	vna_hash;
+	Elf64_Half	vna_flags;
+	Elf64_Half	vna_other;
+	Elf64_Word	vna_name;
+	Elf64_Word	vna_next;
+} Elf64_Vernaux;
+
+typedef Elf64_Half Elf64_Versym;
+
+typedef struct {
+	Elf64_Half	si_boundto;     /* direct bindings - symbol bound to */
+	Elf64_Half	si_flags;       /* per symbol flags */
+} Elf64_Syminfo;
 
 #endif /* !_SYS_ELF64_H_ */

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.28 2008/02/06 22:37:46 nth Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.29 2008/08/01 23:11:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -89,10 +89,10 @@ typedef struct elf_file {
     vm_object_t		object;		/* VM object to hold file pages */
 #endif
     const Elf_Dyn*	dynamic;	/* Symbol table etc. */
-    Elf_Off		nbuckets;	/* DT_HASH info */
-    Elf_Off		nchains;
-    const Elf_Off*	buckets;
-    const Elf_Off*	chains;
+    Elf_Hashelt		nbuckets;	/* DT_HASH info */
+    Elf_Hashelt		nchains;
+    const Elf_Hashelt*	buckets;
+    const Elf_Hashelt*	chains;
     caddr_t		hash;
     caddr_t		strtab;		/* DT_STRTAB */
     int			strsz;		/* DT_STRSZ */
@@ -241,7 +241,7 @@ parse_dynamic(linker_file_t lf)
 	case DT_HASH:
 	{
 	    /* From src/libexec/rtld-elf/rtld.c */
-	    const Elf_Off *hashtab = (const Elf_Off *)
+	    const Elf_Hashelt *hashtab = (const Elf_Hashelt *)
 		(ef->address + dp->d_un.d_ptr);
 	    ef->nbuckets = hashtab[0];
 	    ef->nchains = hashtab[1];
@@ -757,7 +757,7 @@ out:
 }
 
 static const char *
-symbol_name(elf_file_t ef, Elf_Word r_info)
+symbol_name(elf_file_t ef, Elf_Size r_info)
 {
     const Elf_Sym *ref;
 
