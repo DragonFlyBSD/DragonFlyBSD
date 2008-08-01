@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_nrandom.c,v 1.6 2008/02/16 20:40:47 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_nrandom.c,v 1.7 2008/08/01 04:42:30 dillon Exp $
  */
 /*			   --- NOTES ---
  *
@@ -615,7 +615,8 @@ NANOUP_EVENT(void)
 		unsigned long timeDelay;
 
 		one_mil = 1000000UL;	/* 0.001 s */
-		timeDelay = (one_mil * 200) + (((unsigned)ACCUM.tv_nsec % 151) * one_mil);
+		timeDelay = (one_mil * 200) + 
+			    (((unsigned long)ACCUM.tv_nsec % 151) * one_mil);
 		NEXT.tv_nsec = now.tv_nsec + timeDelay;
 		NEXT.tv_sec = now.tv_sec;
 		ACCUM.tv_nsec += now.tv_nsec;
