@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.63 2008/08/02 07:05:48 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.64 2008/08/02 11:39:00 sephe Exp $
  */
 
 #define        DEB(x)
@@ -166,6 +166,7 @@ SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, verbose_limit, CTLFLAG_RW,
 static ipfw_dyn_rule **ipfw_dyn_v = NULL;
 static uint32_t dyn_buckets = 256; /* must be power of 2 */
 static uint32_t curr_dyn_buckets = 256; /* must be power of 2 */
+static uint32_t dyn_buckets_gen; /* generation of dyn buckets array */
 
 /*
  * Timeouts for various events in handing dynamic rules.
@@ -712,7 +713,7 @@ remove_dyn_rule(struct ip_fw *rule, ipfw_dyn_rule *keep_me)
 #define FORCE	(keep_me == NULL)
 
 	ipfw_dyn_rule *prev, *q;
-	int i, pass = 0, max_pass = 0;
+	int i, pass = 0, max_pass = 0, unlinked = 0;
 
 	if (ipfw_dyn_v == NULL || dyn_count == 0)
 		return;
@@ -753,6 +754,7 @@ next_pass:
 				if (!FORCE && !TIME_LEQ(q->expire, time_second))
 					goto next;
 			}
+			unlinked = 1;
 			UNLINK_DYN_RULE(prev, ipfw_dyn_v[i], q);
 			continue;
 next:
@@ -762,6 +764,9 @@ next:
 	}
 	if (pass++ < max_pass)
 		goto next_pass;
+
+	if (unlinked)
+		++dyn_buckets_gen;
 
 #undef FORCE
 }
@@ -782,7 +787,7 @@ lookup_dyn_rule(struct ipfw_flow_id *pkt, int *match_direction,
 #define MATCH_FORWARD	1
 #define MATCH_NONE	2
 #define MATCH_UNKNOWN	3
-	int i, dir = MATCH_NONE;
+	int i, dir = MATCH_NONE, changed = 0;
 	ipfw_dyn_rule *prev, *q=NULL;
 
 	if (ipfw_dyn_v == NULL)
@@ -794,6 +799,7 @@ lookup_dyn_rule(struct ipfw_flow_id *pkt, int *match_direction,
 			goto next;
 
 		if (TIME_LEQ( q->expire, time_second)) { /* expire entry */
+			changed = 1;
 			UNLINK_DYN_RULE(prev, ipfw_dyn_v[i], q);
 			continue;
 		}
@@ -824,6 +830,7 @@ next:
 		prev->next = q->next;
 		q->next = ipfw_dyn_v[i];
 		ipfw_dyn_v[i] = q;
+		changed = 1;
 	}
 
 	if (pkt->proto == IPPROTO_TCP) { /* update state according to flags */
@@ -891,6 +898,8 @@ next:
 		q->expire = time_second + dyn_short_lifetime;
 	}
 done:
+	if (changed)
+		++dyn_buckets_gen;
 	if (match_direction)
 		*match_direction = dir;
 	return q;
@@ -948,6 +957,9 @@ realloc_dynamic_table(void)
 		ipfw_dyn_v = old_dyn_v;
 		curr_dyn_buckets = old_curr_dyn_buckets;
 	}
+
+	if (ipfw_dyn_v != NULL)
+		++dyn_buckets_gen;
 }
 
 /**
@@ -1002,6 +1014,7 @@ add_dyn_rule(struct ipfw_flow_id *id, uint8_t dyn_type, struct ip_fw *rule)
 	r->next = ipfw_dyn_v[i];
 	ipfw_dyn_v[i] = r;
 	dyn_count++;
+	dyn_buckets_gen++;
 	DEB(kprintf("-- add dyn entry ty %d 0x%08x %d -> 0x%08x %d, total %d\n",
 	   dyn_type,
 	   (r->id.src_ip), (r->id.src_port),
@@ -2940,15 +2953,25 @@ ipfw_ctl(struct sockopt *sopt)
 static void
 ipfw_tick(void *unused __unused)
 {
+	time_t keep_alive;
+	uint32_t gen;
 	int i;
-	ipfw_dyn_rule *q;
 
 	if (dyn_keepalive == 0 || ipfw_dyn_v == NULL || dyn_count == 0)
 		goto done;
 
 	crit_enter();
+
+	keep_alive = time_second;
+again:
+	gen = dyn_buckets_gen;
 	for (i = 0; i < curr_dyn_buckets; i++) {
+		ipfw_dyn_rule *q;
+
 		for (q = ipfw_dyn_v[i]; q; q = q->next) {
+			uint32_t ack_rev, ack_fwd;
+			struct ipfw_flow_id id;
+
 			if (q->dyn_type == O_LIMIT_PARENT)
 				continue;
 			if (q->id.proto != IPPROTO_TCP)
@@ -2960,9 +2983,30 @@ ipfw_tick(void *unused __unused)
 				continue;	/* too early */
 			if (TIME_LEQ(q->expire, time_second))
 				continue;	/* too late, rule expired */
+			if (q->keep_alive == keep_alive)
+				continue;	/* alreay done */
 
-			send_pkt(&q->id, q->ack_rev - 1, q->ack_fwd, TH_SYN);
-			send_pkt(&q->id, q->ack_fwd - 1, q->ack_rev, 0);
+			/*
+			 * Save necessary information, so that they could
+			 * survive after possible blocking in send_pkt()
+			 */
+			id = q->id;
+			ack_rev = q->ack_rev;
+			ack_fwd = q->ack_fwd;
+
+			/* Sending has been started */
+			q->keep_alive = keep_alive;
+
+			send_pkt(&id, ack_rev - 1, ack_fwd, TH_SYN);
+			send_pkt(&id, ack_fwd - 1, ack_rev, 0);
+
+			if (gen != dyn_buckets_gen) {
+				/*
+				 * Dyn bucket array has been changed during
+				 * the above two sending; reiterate.
+				 */
+				goto again;
+			}
 		}
 	}
 	crit_exit();

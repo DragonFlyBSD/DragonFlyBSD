@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.h,v 1.1.2.2 2002/08/16 11:03:11 luigi Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.11 2008/08/02 03:32:38 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.12 2008/08/02 11:39:00 sephe Exp $
  */
 
 #ifndef _IPFW2_H
@@ -335,6 +335,7 @@ struct _ipfw_dyn_rule {
 					/* to generate keepalives)	*/
 	uint16_t	dyn_type;	/* rule type			*/
 	uint16_t	count;		/* refcount			*/
+	time_t		keep_alive;	/* last keep-alive sending time */
 };
 
 /*
