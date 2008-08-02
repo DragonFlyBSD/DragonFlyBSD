@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.107 2008/07/31 04:42:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.108 2008/08/02 21:21:28 dillon Exp $
  */
 
 #include "hammer.h"
@@ -2007,13 +2007,14 @@ hammer_wait_inode(hammer_inode_t ip)
 
 	flg = NULL;
 	if ((ip->hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR) == 0) {
-		if (ip->flush_state == HAMMER_FST_SETUP) {
-			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-		}
 		while (ip->flush_state != HAMMER_FST_IDLE &&
 		       (ip->hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR) == 0) {
-			ip->flags |= HAMMER_INODE_FLUSHW;
-			tsleep(&ip->flags, 0, "hmrwin", 0);
+			if (ip->flush_state == HAMMER_FST_SETUP)
+				hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+			if (ip->flush_state != HAMMER_FST_IDLE) {
+				ip->flags |= HAMMER_INODE_FLUSHW;
+				tsleep(&ip->flags, 0, "hmrwin", 0);
+			}
 		}
 	}
 }

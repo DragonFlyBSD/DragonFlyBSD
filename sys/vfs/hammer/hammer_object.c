@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.93 2008/07/31 22:30:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.94 2008/08/02 21:21:28 dillon Exp $
  */
 
 #include "hammer.h"
@@ -670,10 +670,16 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 	/*
 	 * The inode now has a dependancy and must be taken out of the idle
 	 * state.  An inode not in an idle state is given an extra reference.
+	 *
+	 * When transitioning to a SETUP state flag for an automatic reflush
+	 * when the dependancies are disposed of if someone is waiting on
+	 * the inode.
 	 */
 	if (ip->flush_state == HAMMER_FST_IDLE) {
 		hammer_ref(&ip->lock);
 		ip->flush_state = HAMMER_FST_SETUP;
+		if (ip->flags & HAMMER_INODE_FLUSHW)
+			ip->flags |= HAMMER_INODE_REFLUSH;
 	}
 	error = hammer_mem_add(record);
 	if (error == 0) {
@@ -744,10 +750,16 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 		 * The inode now has a dependancy and must be taken out of
 		 * the idle state.  An inode not in an idle state is given
 		 * an extra reference.
+		 *
+		 * When transitioning to a SETUP state flag for an automatic
+		 * reflush when the dependancies are disposed of if someone
+		 * is waiting on the inode.
 		 */
 		if (ip->flush_state == HAMMER_FST_IDLE) {
 			hammer_ref(&ip->lock);
 			ip->flush_state = HAMMER_FST_SETUP;
+			if (ip->flags & HAMMER_INODE_FLUSHW)
+				ip->flags |= HAMMER_INODE_REFLUSH;
 		}
 
 		error = hammer_mem_add(record);
@@ -1905,7 +1917,6 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 			hammer_tid_t tid)
 {
 	hammer_record_t iprec;
-	hammer_btree_elm_t elm;
 	hammer_mount_t hmp;
 	int error;
 
@@ -1940,7 +1951,6 @@ hammer_ip_delete_record(hammer_cursor_t cursor, hammer_inode_t ip,
 	 * hammer_delete_at_cursor() not to.
 	 */
 	error = hammer_btree_extract(cursor, HAMMER_CURSOR_GET_LEAF);
-	elm = NULL;
 
 	if (error == 0) {
 		error = hammer_delete_at_cursor(

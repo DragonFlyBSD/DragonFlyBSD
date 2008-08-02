@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.125 2008/07/31 22:30:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.126 2008/08/02 21:21:28 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -323,7 +323,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_VHELD	0x0400	/* vnode held on sync */
 #define HAMMER_INODE_DONDISK	0x0800	/* data records may be on disk */
 #define HAMMER_INODE_BUFS	0x1000	/* dirty high level bps present */
-#define HAMMER_INODE_REFLUSH	0x2000	/* pipelined flush during flush */
+#define HAMMER_INODE_REFLUSH	0x2000	/* flush on dependancy / reflush */
 #define HAMMER_INODE_RECLAIM	0x4000	/* trying to reclaim */
 #define HAMMER_INODE_FLUSHW	0x8000	/* Someone waiting for flush */
 
