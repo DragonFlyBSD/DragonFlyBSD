@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/net/ipfw/ip_fw2_glue.c,v 1.1 2008/07/28 15:07:28 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2_glue.c,v 1.2 2008/08/02 03:32:38 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -64,7 +64,7 @@ ip_fw_sockopt(struct sockopt *sopt)
 
 	netmsg_init(&smsg, &curthread->td_msgport, 0, ip_fw_sockopt_dispatch);
 	smsg.nm_lmsg.u.ms_resultp = sopt;
-	return lwkt_domsg(cpu_portfn(0), &smsg.nm_lmsg, 0);
+	return lwkt_domsg(IPFW_CFGPORT, &smsg.nm_lmsg, 0);
 }
 
 static void

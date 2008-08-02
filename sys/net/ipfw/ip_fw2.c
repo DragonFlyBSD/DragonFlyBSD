@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.60 2008/08/02 03:03:06 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.61 2008/08/02 03:32:38 sephe Exp $
  */
 
 #define        DEB(x)
@@ -2140,8 +2140,7 @@ flush_rule_ptrs(void)
 static __inline void
 ipfw_inc_static_count(struct ip_fw *rule)
 {
-	KASSERT(mycpuid == 0,
-		("adding static rule not on cpu0 (%d)", mycpuid));
+	IPFW_ASSERT_CFGPORT(&curthread->td_msgport);
 
 	static_count++;
 	static_ioc_len += IOC_RULESIZE(rule);
@@ -2152,8 +2151,7 @@ ipfw_dec_static_count(struct ip_fw *rule)
 {
 	int l = IOC_RULESIZE(rule);
 
-	KASSERT(mycpuid == 0,
-		("deleting static rule not on cpu0 (%d)", mycpuid));
+	IPFW_ASSERT_CFGPORT(&curthread->td_msgport);
 
 	KASSERT(static_count > 0, ("invalid static count %u\n", static_count));
 	static_count--;
@@ -2195,8 +2193,7 @@ ipfw_add_rule(struct ip_fw **head, struct ipfw_ioc_rule *ioc_rule)
 	struct ip_fw *rule, *f, *prev;
 
 	KKASSERT(*head != NULL);
-	KASSERT(mycpuid == 0,
-		("adding static rule not on cpu0 (%d)", mycpuid));
+	IPFW_ASSERT_CFGPORT(&curthread->td_msgport);
 
 	rule = ipfw_create_rule(ioc_rule);
 
@@ -3036,7 +3033,7 @@ ipfw_init(void)
 	struct netmsg smsg;
 
 	netmsg_init(&smsg, &curthread->td_msgport, 0, ipfw_init_dispatch);
-	return lwkt_domsg(cpu_portfn(0), &smsg.nm_lmsg, 0);
+	return lwkt_domsg(IPFW_CFGPORT, &smsg.nm_lmsg, 0);
 }
 
 #ifdef KLD_MODULE
@@ -3075,7 +3072,7 @@ ipfw_fini(void)
 	struct netmsg smsg;
 
 	netmsg_init(&smsg, &curthread->td_msgport, 0, ipfw_fini_dispatch);
-	return lwkt_domsg(cpu_portfn(0), &smsg.nm_lmsg, 0);
+	return lwkt_domsg(IPFW_CFGPORT, &smsg.nm_lmsg, 0);
 }
 
 #endif	/* KLD_MODULE */
