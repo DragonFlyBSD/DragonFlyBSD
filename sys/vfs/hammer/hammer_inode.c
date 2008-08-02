@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.103.2.2 2008/07/18 00:21:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.103.2.3 2008/08/02 21:24:28 dillon Exp $
  */
 
 #include "hammer.h"
@@ -378,7 +378,7 @@ loop:
 	/*
 	 * Allocate a new inode structure and deal with races later.
 	 */
-	ip = kmalloc(sizeof(*ip), M_HAMMER, M_WAITOK|M_ZERO);
+	ip = kmalloc(sizeof(*ip), M_HAMMER_INO, M_WAITOK|M_ZERO);
 	++hammer_count_inodes;
 	++hmp->count_inodes;
 	ip->obj_id = obj_id;
@@ -511,7 +511,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 
 	hmp = trans->hmp;
 
-	ip = kmalloc(sizeof(*ip), M_HAMMER, M_WAITOK|M_ZERO);
+	ip = kmalloc(sizeof(*ip), M_HAMMER_INO, M_WAITOK|M_ZERO);
 	++hammer_count_inodes;
 	++hmp->count_inodes;
 
@@ -672,7 +672,7 @@ hammer_free_inode(hammer_inode_t ip)
 		hammer_rel_pseudofs(ip->hmp, ip->pfsm);
 		ip->pfsm = NULL;
 	}
-	kfree(ip, M_HAMMER);
+	kfree(ip, M_HAMMER_INO);
 	ip = NULL;
 }
 
@@ -1360,8 +1360,9 @@ hammer_modify_inode(hammer_inode_t ip, int flags)
  * place the inode in a flushing state if it is currently idle and flag it
  * to reflush if it is currently flushing.
  *
- * If the HAMMER_FLUSH_SYNCHRONOUS flag is specified we will attempt to
- * flush the indoe synchronously using the caller's context.
+ * Upon return if the inode could not be flushed due to a setup
+ * dependancy, then it will be automatically flushed when the dependancy
+ * is satisfied.
  */
 void
 hammer_flush_inode(hammer_inode_t ip, int flags)
@@ -1440,10 +1441,14 @@ hammer_flush_inode(hammer_inode_t ip, int flags)
 			hammer_flush_inode_core(ip, flg, flags);
 		} else {
 			/*
-			 * parent has no connectivity, tell it to flush
+			 * Parent has no connectivity, tell it to flush
 			 * us as soon as it does.
+			 *
+			 * The REFLUSH flag is also needed to trigger
+			 * dependancy wakeups.
 			 */
-			ip->flags |= HAMMER_INODE_CONN_DOWN;
+			ip->flags |= HAMMER_INODE_CONN_DOWN |
+				     HAMMER_INODE_REFLUSH;
 			if (flags & HAMMER_FLUSH_SIGNAL) {
 				ip->flags |= HAMMER_INODE_RESIGNAL;
 				hammer_flusher_async(ip->hmp, flg);
@@ -1454,6 +1459,9 @@ hammer_flush_inode(hammer_inode_t ip, int flags)
 		/*
 		 * We are already flushing, flag the inode to reflush
 		 * if needed after it completes its current flush.
+		 *
+		 * The REFLUSH flag is also needed to trigger
+		 * dependancy wakeups.
 		 */
 		if ((ip->flags & HAMMER_INODE_REFLUSH) == 0)
 			ip->flags |= HAMMER_INODE_REFLUSH;
@@ -1706,17 +1714,22 @@ hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 	 */
 	if (go_count == 0) {
 		if ((ip->flags & HAMMER_INODE_MODMASK_NOXDIRTY) == 0) {
-			ip->flags |= HAMMER_INODE_REFLUSH;
-
 			--ip->hmp->count_iqueued;
 			--hammer_count_iqueued;
 
+			--flg->total_count;
 			ip->flush_state = HAMMER_FST_SETUP;
 			ip->flush_group = NULL;
 			if (ip->flags & HAMMER_INODE_VHELD) {
 				ip->flags &= ~HAMMER_INODE_VHELD;
 				vrele(ip->vp);
 			}
+
+			/*
+			 * REFLUSH is needed to trigger dependancy wakeups
+			 * when an inode is in SETUP.
+			 */
+			ip->flags |= HAMMER_INODE_REFLUSH;
 			if (flags & HAMMER_FLUSH_SIGNAL) {
 				ip->flags |= HAMMER_INODE_RESIGNAL;
 				hammer_flusher_async(ip->hmp, flg);
@@ -1909,8 +1922,8 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 			 * flush groups before it can be completely
 			 * flushed.
 			 */
-			ip->flags |= HAMMER_INODE_REFLUSH;
-			ip->flags |= HAMMER_INODE_RESIGNAL;
+			ip->flags |= HAMMER_INODE_RESIGNAL |
+				     HAMMER_INODE_REFLUSH;
 			r = -1;
 		} else if (rec->type == HAMMER_MEM_RECORD_ADD) {
 			/*
@@ -1994,13 +2007,14 @@ hammer_wait_inode(hammer_inode_t ip)
 
 	flg = NULL;
 	if ((ip->hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR) == 0) {
-		if (ip->flush_state == HAMMER_FST_SETUP) {
-			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-		}
 		while (ip->flush_state != HAMMER_FST_IDLE &&
 		       (ip->hmp->flags & HAMMER_MOUNT_CRITICAL_ERROR) == 0) {
-			ip->flags |= HAMMER_INODE_FLUSHW;
-			tsleep(&ip->flags, 0, "hmrwin", 0);
+			if (ip->flush_state == HAMMER_FST_SETUP)
+				hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+			if (ip->flush_state != HAMMER_FST_IDLE) {
+				ip->flags |= HAMMER_INODE_FLUSHW;
+				tsleep(&ip->flags, 0, "hmrwin", 0);
+			}
 		}
 	}
 }

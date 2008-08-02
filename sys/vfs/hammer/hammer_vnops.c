@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.91.2.2 2008/07/19 04:51:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.91.2.3 2008/08/02 21:24:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -2610,7 +2610,6 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 				    bytes, &error);
 	if (record) {
 		hammer_io_direct_write(hmp, record, bio);
-		hammer_rel_mem_record(record);
 		if (ip->rsv_recs > 1 && hmp->rsv_recs > hammer_limit_recs)
 			hammer_flush_inode(ip, 0);
 	} else {

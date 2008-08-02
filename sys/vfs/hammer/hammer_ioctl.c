@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.28.2.1 2008/07/16 18:39:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.28.2.2 2008/08/02 21:24:28 dillon Exp $
  */
 
 #include "hammer.h"
@@ -98,6 +98,12 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 	case HAMMERIOC_RMR_PSEUDOFS:
 		if (error == 0) {
 			error = hammer_ioc_destroy_pseudofs(&trans, ip,
+				    (struct hammer_ioc_pseudofs_rw *)data);
+		}
+		break;
+	case HAMMERIOC_WAI_PSEUDOFS:
+		if (error == 0) {
+			error = hammer_ioc_wait_pseudofs(&trans, ip,
 				    (struct hammer_ioc_pseudofs_rw *)data);
 		}
 		break;

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.63.2.5 2008/07/30 07:53:01 mneumann Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.63.2.6 2008/08/02 21:24:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -248,7 +248,8 @@ static struct vfsops hammer_vfsops = {
 	.vfs_checkexp	= hammer_vfs_checkexp
 };
 
-MALLOC_DEFINE(M_HAMMER, "hammer-mount", "hammer mount");
+MALLOC_DEFINE(M_HAMMER, "hammer-general", "hammer general");
+MALLOC_DEFINE(M_HAMMER_INO, "hammer-inodes", "hammer inodes");
 
 VFS_SET(hammer_vfsops, hammer, 0);
 MODULE_VERSION(hammer, 1);
@@ -582,6 +583,8 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 * on-disk first_offset represents the LAST flush cycle.
 	 */
 	hmp->next_tid = rootvol->ondisk->vol0_next_tid;
+	hmp->flush_tid1 = hmp->next_tid;
+	hmp->flush_tid2 = hmp->next_tid;
 	bcopy(rootvol->ondisk->vol0_blockmap, hmp->blockmap,
 	      sizeof(hmp->blockmap));
 	hmp->copy_stat_freebigblocks = rootvol->ondisk->vol0_stat_freebigblocks;
@@ -871,8 +874,6 @@ hammer_vfs_sync(struct mount *mp, int waitfor)
 
 	if (panicstr == NULL) {
 		error = hammer_sync_hmp(hmp, waitfor);
-		if (error == 0)
-			error = hammer_sync_hmp(hmp, waitfor);
 	} else {
 		error = EIO;
 	}

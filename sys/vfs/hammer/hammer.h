@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.117.2.5 2008/07/30 07:53:01 mneumann Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.117.2.6 2008/08/02 21:24:27 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -66,6 +66,7 @@
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 MALLOC_DECLARE(M_HAMMER);
+MALLOC_DECLARE(M_HAMMER_INO);
 
 /*
  * Kernel trace
@@ -322,7 +323,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_VHELD	0x0400	/* vnode held on sync */
 #define HAMMER_INODE_DONDISK	0x0800	/* data records may be on disk */
 #define HAMMER_INODE_BUFS	0x1000	/* dirty high level bps present */
-#define HAMMER_INODE_REFLUSH	0x2000	/* pipelined flush during flush */
+#define HAMMER_INODE_REFLUSH	0x2000	/* flush on dependancy / reflush */
 #define HAMMER_INODE_RECLAIM	0x4000	/* trying to reclaim */
 #define HAMMER_INODE_FLUSHW	0x8000	/* Someone waiting for flush */
 
@@ -397,6 +398,7 @@ struct hammer_record {
 	struct hammer_btree_leaf_elm	leaf;
 	union hammer_data_ondisk	*data;
 	int				flags;
+	hammer_off_t			zone2_offset;	/* direct-write only */
 };
 
 typedef struct hammer_record *hammer_record_t;
@@ -415,6 +417,7 @@ typedef struct hammer_record *hammer_record_t;
 #define HAMMER_RECF_CONVERT_DELETE 	0x0100	/* special case */
 #define HAMMER_RECF_DIRECT_IO		0x0200	/* related direct I/O running*/
 #define HAMMER_RECF_DIRECT_WAIT		0x0400	/* related direct I/O running*/
+#define HAMMER_RECF_DIRECT_INVAL	0x0800	/* buffer alias invalidation */
 
 /*
  * hammer_delete_at_cursor() flags
@@ -719,7 +722,9 @@ struct hammer_mount {
 	int	error;				/* critical I/O error */
 	struct krate	krate;			/* rate limited kprintf */
 	hammer_tid_t	asof;			/* snapshot mount */
-	hammer_off_t	next_tid;
+	hammer_tid_t	next_tid;
+	hammer_tid_t	flush_tid1;		/* flusher tid sequencing */
+	hammer_tid_t	flush_tid2;		/* flusher tid sequencing */
 	int64_t copy_stat_freebigblocks;	/* number of free bigblocks */
 
 	u_int32_t namekey_iterator;
@@ -843,6 +848,7 @@ int	hammer_install_volume(hammer_mount_t hmp, const char *volname,
 			struct vnode *devvp);
 int	hammer_mountcheck_volumes(hammer_mount_t hmp);
 
+int	hammer_mem_add(hammer_record_t record);
 int	hammer_ip_lookup(hammer_cursor_t cursor);
 int	hammer_ip_first(hammer_cursor_t cursor);
 int	hammer_ip_next(hammer_cursor_t cursor);
@@ -1138,6 +1144,8 @@ int hammer_ioc_destroy_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
 int hammer_ioc_downgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
                         struct hammer_ioc_pseudofs_rw *pfs);
 int hammer_ioc_upgrade_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
+                        struct hammer_ioc_pseudofs_rw *pfs);
+int hammer_ioc_wait_pseudofs(hammer_transaction_t trans, hammer_inode_t ip,
                         struct hammer_ioc_pseudofs_rw *pfs);
 
 int hammer_signal_check(hammer_mount_t hmp);
