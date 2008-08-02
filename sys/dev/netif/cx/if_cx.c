@@ -17,7 +17,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
- * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.23 2006/12/22 23:26:19 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.24 2008/08/02 01:14:42 dillon Exp $
  *
  */
 #undef DEBUG
@@ -42,7 +42,7 @@
 
 #include <net/bpf.h>
 
-#include <bus/isa/i386/isa_device.h>
+#include <bus/isa/isa_device.h>
 #define watchdog_func_t void(*)(struct ifnet *)
 #define start_func_t    void(*)(struct ifnet*)
 

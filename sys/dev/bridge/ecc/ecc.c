@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/bridge/ecc/ecc.c,v 1.1 2006/10/10 18:31:03 dillon Exp $
+ * $DragonFly: src/sys/dev/bridge/ecc/ecc.c,v 1.2 2008/08/02 01:14:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,8 +43,8 @@
 
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
-#include <bus/pci/i386/pcibus.h>
-#include <bus/pci/i386/pci_cfgreg.h>
+#include <bus/pci/pcibus.h>
+#include <bus/pci/pci_cfgreg.h>
 #include <bus/pci/pcib_private.h>
 
 #include "pcib_if.h"

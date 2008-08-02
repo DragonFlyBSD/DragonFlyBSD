@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/tw.c,v 1.38 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.18 2006/09/10 01:26:35 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.19 2008/08/02 01:14:42 dillon Exp $
  *
  */
 
@@ -156,7 +156,7 @@
 #include <sys/time.h>
 #endif /* HIRESTIME */
 
-#include <bus/isa/i386/isa_device.h>
+#include <bus/isa/isa_device.h>
 
 /*
  * Transmission is done by calling write() to send three byte packets of data.

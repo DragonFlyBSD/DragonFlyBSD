@@ -48,7 +48,7 @@
  * also provided sample code upon which this driver was based.
  *
  * $FreeBSD: src/sys/i386/isa/spic.c,v 1.4.2.1 2002/04/15 00:52:12 will Exp $
- * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.16 2006/12/22 23:26:18 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.17 2008/08/02 01:14:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -69,7 +69,7 @@
 
 #include <bus/isa/isavar.h>
 
-#include <machine/pci_cfgreg.h>
+#include <bus/pci/pci_cfgreg.h>
 #include <machine/clock.h>
 
 #include "spicreg.h"

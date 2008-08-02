@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.38 2008/05/08 01:21:06 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.39 2008/08/02 01:14:43 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -13,7 +13,7 @@
 #include <machine/trap.h>
 
 #include <machine_base/icu/icu.h>
-#include <bus/isa/i386/isa.h>
+#include <bus/isa/isa.h>
 
 #include "assym.s"
 

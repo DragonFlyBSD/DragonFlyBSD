@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.38 2008/05/14 11:59:20 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.39 2008/08/02 01:14:42 dillon Exp $
  */
 
 /*
@@ -62,7 +62,7 @@
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 
-#include <bus/isa/i386/isa_device.h>
+#include <bus/isa/isa_device.h>
 #include <machine_base/icu/icu.h>
 
 #include <vm/vm.h>

@@ -17,7 +17,7 @@
  * all derivative works or modified versions.
  *
  * $FreeBSD: src/sys/i386/isa/gpib.c,v 1.29 2000/01/29 16:17:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/gpib/gpib.c,v 1.15 2008/01/06 16:55:50 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/gpib/gpib.c,v 1.16 2008/08/02 01:14:42 dillon Exp $
  *
  */
 /*Please read the README file for usage information*/
@@ -30,7 +30,7 @@
 #include <sys/malloc.h>
 #include "gpibreg.h"
 #include "gpib.h"
-#include <bus/isa/i386/isa_device.h>
+#include <bus/isa/isa_device.h>
 
 #define GPIBPRI  PCATCH
 #define SLEEP_MAX 1000

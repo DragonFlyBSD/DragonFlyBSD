@@ -1,6 +1,6 @@
 /*-
  *  dgb.c $FreeBSD: src/sys/gnu/i386/isa/dgb.c,v 1.56.2.1 2001/02/26 04:23:09 jlemon Exp $
- *  dgb.c $DragonFly: src/sys/platform/pc32/gnu/isa/dgb.c,v 1.19 2006/12/23 00:27:03 swildner Exp $
+ *  dgb.c $DragonFly: src/sys/platform/pc32/gnu/isa/dgb.c,v 1.20 2008/08/02 01:14:43 dillon Exp $
  *
  *  Digiboard driver.
  *
@@ -64,7 +64,7 @@
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
-#include <bus/isa/i386/isa_device.h>
+#include <bus/isa/isa_device.h>
 
 #include "dgbios.h"
 #include "dgfep.h"

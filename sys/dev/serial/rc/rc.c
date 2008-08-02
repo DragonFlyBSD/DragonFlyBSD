@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rc.c,v 1.53.2.1 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.23 2007/04/12 18:35:09 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.24 2008/08/02 01:14:43 dillon Exp $
  *
  */
 
@@ -50,7 +50,7 @@
 #include <sys/thread2.h>
 #include <machine/clock.h>
 
-#include <bus/isa/i386/isa_device.h>
+#include <bus/isa/isa_device.h>
 
 #include <machine_base/isa/ic/cd180.h>
 #include "rcreg.h"

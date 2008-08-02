@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcf.c,v 1.14 2000/01/14 00:18:05 nsouch Exp $
- * $DragonFly: src/sys/bus/iicbus/i386/pcf.c,v 1.9 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/iicbus/i386/pcf.c,v 1.11 2008/08/02 01:14:38 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -40,7 +40,7 @@
 #include <bus/isa/isareg.h>
 #include <bus/isa/isavar.h>
 
-#include <bus/isa/i386/isa_device.h>
+#include <bus/isa/isa_device.h>
 
 #include "../iiconf.h"
 #include "iicbus_if.h"

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.25 2007/01/22 19:37:04 corecode Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.26 2008/08/02 01:14:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,7 +50,7 @@
 #include <machine/specialreg.h>
 #include <machine/sysarch.h>
 #include <machine/clock.h>
-#include <bus/isa/i386/isa.h>
+#include <bus/isa/isa.h>
 #include <bus/isa/rtc.h>
 #include <machine_base/isa/timerreg.h>
 

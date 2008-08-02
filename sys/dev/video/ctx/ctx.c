@@ -9,7 +9,7 @@
  *	for damages incurred with its use.
  *
  * $FreeBSD: src/sys/i386/isa/ctx.c,v 1.36 2000/01/29 16:17:31 peter Exp $
- * $DragonFly: src/sys/dev/video/ctx/ctx.c,v 1.12 2008/01/06 16:55:51 swildner Exp $
+ * $DragonFly: src/sys/dev/video/ctx/ctx.c,v 1.13 2008/08/02 01:14:43 dillon Exp $
  */
 
 /*
@@ -118,7 +118,7 @@
 #include <sys/uio.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
-#include <bus/isa/i386/isa_device.h>
+#include <bus/isa/isa_device.h>
 #include "ctxreg.h"
 #include <machine/ioctl_ctx.h>
 #include <machine/md_var.h>

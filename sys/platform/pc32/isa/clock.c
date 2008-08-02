@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.54 2008/05/10 17:24:09 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.55 2008/08/02 01:14:43 dillon Exp $
  */
 
 /*
@@ -83,7 +83,7 @@
 #include <machine/specialreg.h>
 
 #include <machine_base/icu/icu.h>
-#include <bus/isa/i386/isa.h>
+#include <bus/isa/isa.h>
 #include <bus/isa/rtc.h>
 #include <machine_base/isa/timerreg.h>
 

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdHardware.c,v 1.13 2004/04/14 03:39:08 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdHardware.c,v 1.4 2006/12/22 23:26:14 swildner Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdHardware.c,v 1.5 2008/08/02 01:14:42 dillon Exp $
  */
 
 /*
@@ -35,7 +35,7 @@
 #include "acpi.h"
 
 #include <sys/bus.h>
-#include <machine/pci_cfgreg.h>
+#include <bus/pci/pci_cfgreg.h>
 #include <bus/pci/pcireg.h>
 
 /*

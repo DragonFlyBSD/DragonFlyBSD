@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/bus/isa/pnpeat.c,v 1.4 2006/11/07 06:43:21 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/pnpeat.c,v 1.5 2008/08/02 01:14:39 dillon Exp $
  */
 
 /*
@@ -58,8 +58,8 @@
 #include <machine/smp.h>
 #include <machine_base/apic/mpapic.h>
 
-#include <bus/isa/isavar.h>
-#include <bus/isa/i386/isa.h>
+#include "isavar.h"
+#include "isa.h"
 #include <machine_base/isa/intr_machdep.h>
 
 /*

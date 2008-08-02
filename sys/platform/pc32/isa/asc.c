@@ -35,7 +35,7 @@
  */
 /*
  * $FreeBSD: src/sys/i386/isa/asc.c,v 1.42.2.2 2001/03/01 03:22:39 jlemon Exp $
- * $DragonFly: src/sys/platform/pc32/isa/asc.c,v 1.20 2008/07/24 03:26:46 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/asc.c,v 1.21 2008/08/02 01:14:43 dillon Exp $
  */
 
 #include "use_asc.h"
@@ -54,8 +54,8 @@
 
 #include <machine/asc_ioctl.h>
 
-#include <bus/isa/i386/isa.h>
-#include <bus/isa/i386/isa_device.h>
+#include <bus/isa/isa.h>
+#include <bus/isa/isa_device.h>
 #include <bus/isa/isavar.h>
 #include "ascreg.h"
 

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.52 2008/06/05 18:06:31 swildner Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.53 2008/08/02 01:14:40 dillon Exp $
  *
  */
 
@@ -51,9 +51,7 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <machine/smp.h>
-#ifdef __i386__
-#include <bus/pci/i386/pci_cfgreg.h>
-#endif
+#include "pci_cfgreg.h"
 
 #include <sys/pciio.h>
 #include "pcireg.h"

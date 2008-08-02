@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.60 2008/05/25 18:47:26 nth Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.61 2008/08/02 01:14:43 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -79,7 +79,7 @@
 #include <sys/user.h>
 #include <sys/thread2.h>
 
-#include <bus/isa/i386/isa.h>
+#include <bus/isa/isa.h>
 
 static void	cpu_reset_real (void);
 #ifdef SMP

@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.28 2008/06/05 18:06:31 swildner Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.29 2008/08/02 01:14:42 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -86,7 +86,7 @@
 #endif
 #include <machine/psl.h>
 
-#include <bus/isa/i386/isa_device.h>
+#include <bus/isa/isa_device.h>
 #include "cyreg.h"
 #include <machine_base/isa/ic/cd1400.h>
 

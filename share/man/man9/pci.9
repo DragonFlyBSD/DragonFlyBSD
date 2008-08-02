@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/pci.9,v 1.2.2.1 2003/06/13 01:04:17 hmp Exp $
-.\" $DragonFly: src/share/man/man9/pci.9,v 1.5 2008/07/19 23:53:36 swildner Exp $
+.\" $DragonFly: src/share/man/man9/pci.9,v 1.6 2008/08/02 01:14:36 dillon Exp $
 .\"
 .Dd July 19, 2008
 .Dt PCI 9
@@ -46,7 +46,7 @@
 .In sys/bus.h
 .In bus/pci/pcivar.h
 .In bus/pci/pcireg.h
-.In machine/pci_cfgreg.h
+.In bus/pci/pci_cfgreg.h
 .Pp
 .Ft void
 .Fn pci_write_config "device_t dev" "int reg" "u_int32_t val" "int width"

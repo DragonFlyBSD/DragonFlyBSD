@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_pcib_acpi.c,v 1.34 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_pcib_acpi.c,v 1.4 2005/11/01 23:36:32 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_pcib_acpi.c,v 1.5 2008/08/02 01:14:41 dillon Exp $
  */
 #include "opt_acpi.h"
 #include <sys/param.h>
@@ -38,7 +38,7 @@
 
 #include "acpivar.h"
 
-#include <machine/pci_cfgreg.h>
+#include <bus/pci/pci_cfgreg.h>
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcib_private.h>
 #include "pcib_if.h"

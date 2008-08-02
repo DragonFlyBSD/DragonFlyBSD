@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.31 2008/05/14 11:59:22 sephe Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.32 2008/08/02 01:14:42 dillon Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -223,7 +223,7 @@ WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <net/bpf.h>
 
 #include <bus/isa/isavar.h>
-#include <bus/isa/i386/isa_device.h>
+#include <bus/isa/isa_device.h>
 #include "if_wl_i82586.h"	/* Definitions for the Intel chip */
 
 /* was 1000 in original, fed to DELAY(x) */

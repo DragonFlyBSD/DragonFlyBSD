@@ -7,7 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
- * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.22 2006/12/22 23:26:19 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.23 2008/08/02 01:14:42 dillon Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)
@@ -46,7 +46,7 @@
 
 #include <machine/clock.h>
 
-#include <bus/isa/i386/isa_device.h>
+#include <bus/isa/isa_device.h>
 #include "if_elreg.h"
 
 DECLARE_DUMMY_MODULE(if_el);
