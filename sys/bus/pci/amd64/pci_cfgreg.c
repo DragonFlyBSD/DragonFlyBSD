@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pci_cfgreg.c,v 1.1.2.7 2001/11/28 05:47:03 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pci_cfgreg.c,v 1.15 2008/08/02 05:22:20 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/amd64/pci_cfgreg.c,v 1.1 2008/08/02 05:22:19 dillon Exp $
  *
  */
 
@@ -62,14 +62,18 @@ TUNABLE_INT("hw.pci_disable_bios_route", &pci_disable_bios_route);
 static int cfgmech;
 static int devmax;
 
+#if 0
 static int	pci_cfgintr_valid(struct PIR_entry *pe, int pin, int irq);
 static int	pci_cfgintr_unique(struct PIR_entry *pe, int pin);
 static int	pci_cfgintr_linked(struct PIR_entry *pe, int pin);
 static int	pci_cfgintr_search(struct PIR_entry *pe, int bus, int device, int matchpin, int pin);
 static int	pci_cfgintr_virgin(struct PIR_entry *pe, int pin);
+#endif
 
 static void	pci_print_irqmask(u_int16_t irqs);
+#if 0
 static void	pci_print_route_table(struct PIR_table *prt, int size);
+#endif
 static int	pcireg_cfgread(int bus, int slot, int func, int reg, int bytes);
 static void	pcireg_cfgwrite(int bus, int slot, int func, int reg, int data, int bytes);
 static int	pcireg_cfgopen(void);
@@ -92,6 +96,8 @@ pci_map_intline(int line)
 	return (line);
 }
 
+#if 0
+
 static u_int16_t
 pcibios_get_version(void)
 {
@@ -113,6 +119,8 @@ pcibios_get_version(void)
 	return (args.ebx & 0xffff);
 }
 
+#endif
+
 /* 
  * Initialise access to PCI configuration space 
  */
@@ -132,11 +140,11 @@ pci_cfgregopen(void)
 	if (pcireg_cfgopen() == 0)
 		return (0);
 
+#if 0
 	v = pcibios_get_version();
 	if (v > 0)
 		kprintf("pcibios: BIOS version %x.%02x\n", (v & 0xff00) >> 8,
 		       v & 0xff);
-
 	/*
 	 * Look for the interrupt routing table.
 	 *
@@ -169,6 +177,7 @@ pci_cfgregopen(void)
 			}
 		}
 	}
+#endif
 	opened = 1;
 	return (1);	
 }
@@ -256,6 +265,16 @@ pci_cfgwrite(pcicfgregs *cfg, int reg, int data, int bytes)
 	pci_cfgregwrite(cfg->bus, cfg->slot, cfg->func, reg, data, bytes);
 }
 
+/*
+ * XXX
+ */
+int
+pci_cfgintr(int bus, int device, int pin, int oldirq)
+{
+	return (PCI_INVALID_IRQ);
+}
+
+#if 0
 
 /*
  * Route a PCI interrupt
@@ -606,6 +625,8 @@ pci_probe_route_table(int bus)
 			return (1);
 	return (0);
 }
+
+#endif
 
 /* 
  * Configuration space access using direct register operations

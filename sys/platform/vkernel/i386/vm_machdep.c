@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/vm_machdep.c,v 1.9 2007/03/01 01:46:52 corecode Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/vm_machdep.c,v 1.10 2008/08/02 05:22:21 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -78,7 +78,7 @@
 #include <sys/user.h>
 #include <sys/thread2.h>
 
-#include <bus/isa/i386/isa.h>
+#include <bus/isa/isa.h>
 
 #include <stdio.h>
 #include <stdlib.h>
