@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/gdb/libbfd/Makefile,v 1.3 2008/07/28 22:33:21 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/libbfd/Makefile,v 1.4 2008/08/02 15:29:53 corecode Exp $
 
 .include "../Makefile.inc"
 
@@ -32,6 +32,15 @@ elf64-target.h: elfxx-target.h
 
 TARGET_ARCH?=	${MACHINE_ARCH}
 .include "Makefile.${TARGET_ARCH}"
+
+.for _v in ${VECTORS}
+CFLAGS+= -DHAVE_${_v}
+_select+= &${_v},
+.endfor
+CFLAGS+= -DSELECT_VECS='${_select}NULL'
+CFLAGS+= -DSELECT_ARCHITECTURES='&${ARCHITECTURE}'
+CFLAGS+= -DDEFAULT_VECTOR=${DEFAULT_VECTOR}
+
 
 SRCS+=		bfd.h bfdver.h
 CLEANFILES+=	bfd.h bfdver.h
