@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.61 2008/08/02 03:32:38 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.62 2008/08/02 06:35:20 sephe Exp $
  */
 
 #define        DEB(x)
@@ -899,29 +899,54 @@ done:
 static void
 realloc_dynamic_table(void)
 {
+	ipfw_dyn_rule **old_dyn_v;
+	uint32_t old_curr_dyn_buckets;
+
 	/*
 	 * Try reallocation, make sure we have a power of 2 and do
-	 * not allow more than 64k entries. In case of overflow,
+	 * not allow more than 64k entries.  In case of overflow,
 	 * default to 1024.
 	 */
-
 	if (dyn_buckets > 65536)
 		dyn_buckets = 1024;
-	if ((dyn_buckets & (dyn_buckets-1)) != 0) { /* not a power of 2 */
-		dyn_buckets = curr_dyn_buckets; /* reset */
-		return;
+	if ((dyn_buckets & (dyn_buckets - 1)) != 0) {
+		/*
+		 * Not a power of 2; reset
+		 */
+		dyn_buckets = curr_dyn_buckets;
+		if (ipfw_dyn_v != NULL)
+			return;
 	}
+
+	/* Save the current buckets array for later error recovery */
+	old_dyn_v = ipfw_dyn_v;
+	old_curr_dyn_buckets = curr_dyn_buckets;
+
 	curr_dyn_buckets = dyn_buckets;
-
-	if (ipfw_dyn_v != NULL)
-		kfree(ipfw_dyn_v, M_IPFW);
-
 	for (;;) {
 		ipfw_dyn_v = kmalloc(curr_dyn_buckets * sizeof(ipfw_dyn_rule *),
-				     M_IPFW, M_INTWAIT | M_NULLOK | M_ZERO);
+				     M_IPFW, M_NOWAIT | M_ZERO);
 		if (ipfw_dyn_v != NULL || curr_dyn_buckets <= 2)
 			break;
+
 		curr_dyn_buckets /= 2;
+		if (curr_dyn_buckets <= old_curr_dyn_buckets &&
+		    old_dyn_v != NULL) {
+			/*
+			 * Don't try allocating smaller buckets array, reuse
+			 * the old one, which alreay contains enough buckets
+			 */
+			break;
+		}
+	}
+
+	if (ipfw_dyn_v != NULL) {
+		if (old_dyn_v != NULL)
+			kfree(old_dyn_v, M_IPFW);
+	} else {
+		/* Allocation failed, restore old buckets array */
+		ipfw_dyn_v = old_dyn_v;
+		curr_dyn_buckets = old_curr_dyn_buckets;
 	}
 }
 
@@ -949,7 +974,7 @@ add_dyn_rule(struct ipfw_flow_id *id, uint8_t dyn_type, struct ip_fw *rule)
 	}
 	i = hash_packet(id);
 
-	r = kmalloc(sizeof(*r), M_IPFW, M_INTWAIT | M_NULLOK | M_ZERO);
+	r = kmalloc(sizeof(*r), M_IPFW, M_NOWAIT | M_ZERO);
 	if (r == NULL) {
 		kprintf ("sorry cannot allocate state\n");
 		return NULL;
@@ -1059,7 +1084,8 @@ install_state(struct ip_fw *rule, ipfw_insn_limit *cmd,
 
 	switch (cmd->o.opcode) {
 	case O_KEEP_STATE: /* bidir rule */
-		add_dyn_rule(&args->f_id, O_KEEP_STATE, rule);
+		if (add_dyn_rule(&args->f_id, O_KEEP_STATE, rule) == NULL)
+			return 1;
 		break;
 
 	case O_LIMIT: /* limit number of sessions */
@@ -1106,8 +1132,9 @@ install_state(struct ip_fw *rule, ipfw_insn_limit *cmd,
 					return 1;
 				}
 			}
-			add_dyn_rule(&args->f_id, O_LIMIT,
-				     (struct ip_fw *)parent);
+			if (add_dyn_rule(&args->f_id, O_LIMIT,
+					 (struct ip_fw *)parent) == NULL)
+				return 1;
 		}
 		break;
 	default:
