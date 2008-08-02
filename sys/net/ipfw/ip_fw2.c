@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.59 2008/07/31 14:39:36 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.60 2008/08/02 03:03:06 sephe Exp $
  */
 
 #define        DEB(x)
@@ -79,6 +79,10 @@
 
 #include <netinet/if_ether.h> /* XXX for ETHERTYPE_IP */
 
+#define IPFW_AUTOINC_STEP_MIN	1
+#define IPFW_AUTOINC_STEP_MAX	1000
+#define IPFW_AUTOINC_STEP_DEF	100
+
 /*
  * set_disable contains one bit per set value (0..31).
  * If the bit is set, all rules with the corresponding set
@@ -105,7 +109,7 @@ static struct ip_fw *layer3_chain;
 MALLOC_DEFINE(M_IPFW, "IpFw/IpAcct", "IpFw/IpAcct chain's");
 
 static int fw_debug = 1;
-static int autoinc_step = 100; /* bounded to 1..1000 in ipfw_add_rule() */
+static int autoinc_step = IPFW_AUTOINC_STEP_DEF;
 
 #ifdef SYSCTL_NODE
 SYSCTL_NODE(_net_inet_ip, OID_AUTO, fw, CTLFLAG_RW, 0, "Firewall");
@@ -2180,16 +2184,19 @@ ipfw_create_rule(const struct ipfw_ioc_rule *ioc_rule)
 }
 
 /*
- * Add a new rule to the list. Copy the rule into a malloc'ed area, then
- * possibly create a rule number and add the rule to the list.
- * Update the rule_number in the input struct so the caller knows it as well.
+ * Add a new rule to the list.  Copy the rule into a malloc'ed area,
+ * then possibly create a rule number and add the rule to the list.
+ * Update the rule_number in the input struct so the caller knows
+ * it as well.
  */
-static int
+static void
 ipfw_add_rule(struct ip_fw **head, struct ipfw_ioc_rule *ioc_rule)
 {
 	struct ip_fw *rule, *f, *prev;
 
 	KKASSERT(*head != NULL);
+	KASSERT(mycpuid == 0,
+		("adding static rule not on cpu0 (%d)", mycpuid));
 
 	rule = ipfw_create_rule(ioc_rule);
 
@@ -2197,23 +2204,32 @@ ipfw_add_rule(struct ip_fw **head, struct ipfw_ioc_rule *ioc_rule)
 
 	/*
 	 * If rulenum is 0, find highest numbered rule before the
-	 * default rule, and add autoinc_step
+	 * default rule, and add rule number incremental step
 	 */
-	if (autoinc_step < 1)
-		autoinc_step = 1;
-	else if (autoinc_step > 1000)
-		autoinc_step = 1000;
 	if (rule->rulenum == 0) {
+		int step = autoinc_step;
+
 		/*
-		 * locate the highest numbered rule before default
+		 * Make sure that rule number incremental step
+		 * is within range
+		 */
+		if (step < IPFW_AUTOINC_STEP_MIN)
+			step = IPFW_AUTOINC_STEP_MIN;
+		else if (step > IPFW_AUTOINC_STEP_MAX)
+			step = IPFW_AUTOINC_STEP_MAX;
+
+		/*
+		 * Locate the highest numbered rule before default
 		 */
 		for (f = *head; f; f = f->next) {
 			if (f->rulenum == IPFW_DEFAULT_RULE)
 				break;
 			rule->rulenum = f->rulenum;
 		}
-		if (rule->rulenum < IPFW_DEFAULT_RULE - autoinc_step)
-			rule->rulenum += autoinc_step;
+		if (rule->rulenum < IPFW_DEFAULT_RULE - step)
+			rule->rulenum += step;
+
+		/* Update the input structure */
 		ioc_rule->rulenum = rule->rulenum;
 	}
 
@@ -2221,11 +2237,12 @@ ipfw_add_rule(struct ip_fw **head, struct ipfw_ioc_rule *ioc_rule)
 	 * Now insert the new rule in the right place in the sorted list.
 	 */
 	for (prev = NULL, f = *head; f; prev = f, f = f->next) {
-		if (f->rulenum > rule->rulenum) { /* found the location */
+		if (f->rulenum > rule->rulenum) {
+			/* Found the location */
 			if (prev) {
 				rule->next = f;
 				prev->next = rule;
-			} else { /* head insert */
+			} else {
 				rule->next = *head;
 				*head = rule;
 			}
@@ -2240,7 +2257,6 @@ ipfw_add_rule(struct ip_fw **head, struct ipfw_ioc_rule *ioc_rule)
 
 	DEB(kprintf("++ installed rule %d, static count now %d\n",
 		rule->rulenum, static_count);)
-	return (0);
 }
 
 /**
@@ -2691,9 +2707,7 @@ ipfw_ctl_add_rule(struct sockopt *sopt)
 	if (error)
 		return error;
 
-	error = ipfw_add_rule(&layer3_chain, ioc_rule);
-	if (error)
-		return error;
+	ipfw_add_rule(&layer3_chain, ioc_rule);
 
 	if (sopt->sopt_dir == SOPT_GET)
 		sopt->sopt_valsize = IOC_RULESIZE(ioc_rule);
