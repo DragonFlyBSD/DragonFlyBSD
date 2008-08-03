@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.33 2007/08/19 11:39:11 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.33.4.1 2008/08/03 03:00:58 dillon Exp $
  */
 
 #include "use_splash.h"
@@ -120,8 +120,8 @@ SYSCTL_INT(_machdep, OID_AUTO, enable_panic_key, CTLFLAG_RW, &enable_panic_key,
 
 #define SC_CONSOLECTL	255
 
-#define VIRTUAL_TTY(sc, x) (SC_DEV((sc), (x)) != NULL ?	\
-	SC_DEV((sc), (x))->si_tty : NULL)
+#define VIRTUAL_TTY(sc, x) ((SC_DEV((sc),(x)) != NULL) ?	\
+	(SC_DEV((sc),(x))->si_tty) : NULL)
 #define ISTTYOPEN(tp)	((tp) && ((tp)->t_state & TS_ISOPEN))
 
 static	int		debugger;
@@ -578,6 +578,9 @@ sckbdevent(keyboard_t *thiskbd, int event, void *arg)
     size_t len;
     u_char *cp;
 
+    /*
+     * WARNING: In early boot sc->dev may not be setup yet.
+     */
     sc = (sc_softc_t *)arg;
     /* assert(thiskbd == sc->kbd) */
 
@@ -599,7 +602,6 @@ sckbdevent(keyboard_t *thiskbd, int event, void *arg)
      * the Xaccel-2.1 keyboard hang, but it can't hurt.		XXX
      */
     while ((c = scgetc(sc, SCGETC_NONBLOCK)) != NOKEY) {
-
 	cur_tty = VIRTUAL_TTY(sc, sc->cur_scp->index);
 	if (!ISTTYOPEN(cur_tty)) {
 	    cur_tty = sc_console_tty;
