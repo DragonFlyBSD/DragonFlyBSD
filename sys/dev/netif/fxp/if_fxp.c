@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.56 2008/07/27 10:06:56 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.57 2008/08/03 06:19:20 sephe Exp $
  */
 
 /*
@@ -1053,6 +1053,8 @@ fxp_start(struct ifnet *ifp)
 	struct fxp_softc *sc = ifp->if_softc;
 	struct fxp_cb_tx *txp;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	/*
 	 * See if we need to suspend xmit until the multicast filter
 	 * has been reprogrammed (which can only be done at the head
@@ -1204,6 +1206,8 @@ fxp_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	struct fxp_softc *sc = ifp->if_softc;
 	u_int8_t statack;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	switch(cmd) {
 	case POLL_REGISTER:
 		/* disable interrupts */
@@ -1243,6 +1247,8 @@ fxp_intr(void *xsc)
 {
 	struct fxp_softc *sc = xsc;
 	u_int8_t statack;
+
+	ASSERT_SERIALIZED(sc->arpcom.ac_if.if_serializer);
 
 	if (sc->suspended) {
 		return;
@@ -1621,6 +1627,8 @@ fxp_stop(struct fxp_softc *sc)
 static void
 fxp_watchdog(struct ifnet *ifp)
 {
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	if_printf(ifp, "device timeout\n");
 	ifp->if_oerrors++;
 	fxp_init(ifp->if_softc);
@@ -1636,6 +1644,8 @@ fxp_init(void *xsc)
 	struct fxp_cb_tx *txp;
 	struct fxp_cb_mcs *mcsp;
 	int i, prm;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	/*
 	 * Cancel any pending I/O
@@ -1880,14 +1890,14 @@ fxp_init(void *xsc)
 static int
 fxp_serial_ifmedia_upd(struct ifnet *ifp)
 {
-
+	ASSERT_SERIALIZED(ifp->if_serializer);
 	return (0);
 }
 
 static void
 fxp_serial_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
-
+	ASSERT_SERIALIZED(ifp->if_serializer);
 	ifmr->ifm_active = IFM_ETHER|IFM_MANUAL;
 }
 
@@ -1899,6 +1909,8 @@ fxp_ifmedia_upd(struct ifnet *ifp)
 {
 	struct fxp_softc *sc = ifp->if_softc;
 	struct mii_data *mii;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	mii = device_get_softc(sc->miibus);
 	mii_mediachg(mii);
@@ -1913,6 +1925,8 @@ fxp_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	struct fxp_softc *sc = ifp->if_softc;
 	struct mii_data *mii;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	mii = device_get_softc(sc->miibus);
 	mii_pollstat(mii);
@@ -2040,6 +2054,8 @@ fxp_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct mii_data *mii;
 	int error = 0;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	switch (command) {
 
