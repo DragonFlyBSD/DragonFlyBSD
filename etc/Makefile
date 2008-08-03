@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.212 2008/05/15 18:29:30 swildner Exp $
+# $DragonFly: src/etc/Makefile,v 1.212.2.1 2008/08/03 01:02:20 swildner Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -192,6 +192,10 @@ upgrade_etc:	preupgrade remove-obsolete-files
 	rm -f ${DESTDIR}/usr/lib/${lib}
 .endif
 .endfor
+.if !defined(NO_OPENSSH)
+	cd ${.CURDIR}/../secure/lib/libssh; ${MAKE} -f Makefile.etc obj
+	cd ${.CURDIR}/../secure/lib/libssh; ${MAKE} -f Makefile.etc install
+.endif
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
 .if !defined(NOMAN)
