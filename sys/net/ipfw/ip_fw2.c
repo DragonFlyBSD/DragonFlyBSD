@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.64 2008/08/02 11:39:00 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.65 2008/08/03 03:26:22 sephe Exp $
  */
 
 #define        DEB(x)
@@ -1037,7 +1037,7 @@ lookup_dyn_parent(struct ipfw_flow_id *pkt, struct ip_fw *rule)
 		i = hash_packet(pkt);
 		for (q = ipfw_dyn_v[i]; q != NULL; q = q->next) {
 			if (q->dyn_type == O_LIMIT_PARENT &&
-			    rule== q->rule &&
+			    rule == q->rule &&
 			    pkt->proto == q->id.proto &&
 			    pkt->src_ip == q->id.src_ip &&
 			    pkt->dst_ip == q->id.dst_ip &&
