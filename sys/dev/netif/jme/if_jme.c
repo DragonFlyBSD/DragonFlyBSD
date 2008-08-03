@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jme.c,v 1.2 2008/07/18 04:20:48 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.1 2008/07/26 14:00:31 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.2 2008/08/03 11:00:32 sephe Exp $
  */
 
 #include "opt_ethernet.h"
@@ -120,7 +120,6 @@ static void	jme_setlinkspeed(struct jme_softc *);
 #endif
 
 static void	jme_sysctl_node(struct jme_softc *);
-static int	sysctl_int_range(SYSCTL_HANDLER_ARGS, int, int);
 static int	sysctl_hw_jme_tx_coal_to(SYSCTL_HANDLER_ARGS);
 static int	sysctl_hw_jme_tx_coal_pkt(SYSCTL_HANDLER_ARGS);
 static int	sysctl_hw_jme_rx_coal_to(SYSCTL_HANDLER_ARGS);
@@ -2772,24 +2771,6 @@ jme_set_filter(struct jme_softc *sc)
 	CSR_WRITE_4(sc, JME_MAR0, mchash[0]);
 	CSR_WRITE_4(sc, JME_MAR1, mchash[1]);
 	CSR_WRITE_4(sc, JME_RXMAC, rxcfg);
-}
-
-static int
-sysctl_int_range(SYSCTL_HANDLER_ARGS, int low, int high)
-{
-	int error, value;
-
-	if (arg1 == NULL)
-		return (EINVAL);
-	value = *(int *)arg1;
-	error = sysctl_handle_int(oidp, &value, 0, req);
-	if (error || req->newptr == NULL)
-		return (error);
-	if (value < low || value > high)
-		return (EINVAL);
-        *(int *)arg1 = value;
-
-        return (0);
 }
 
 static int

@@ -93,7 +93,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/msk/if_msk.c,v 1.26 2007/12/05 09:41:58 remko Exp $ */
-/* $DragonFly: src/sys/dev/netif/msk/if_msk.c,v 1.6 2008/07/27 10:06:56 sephe Exp $ */
+/* $DragonFly: src/sys/dev/netif/msk/if_msk.c,v 1.7 2008/08/03 11:00:32 sephe Exp $ */
 
 /*
  * Device driver for the Marvell Yukon II Ethernet controller.
@@ -221,8 +221,6 @@ static int	mskc_status_dma_alloc(struct msk_softc *);
 static void	mskc_status_dma_free(struct msk_softc *);
 static int	mskc_sysctl_proc_limit(SYSCTL_HANDLER_ARGS);
 static int	mskc_sysctl_intr_rate(SYSCTL_HANDLER_ARGS);
-
-static int	sysctl_int_range(SYSCTL_HANDLER_ARGS, int, int);
 
 static int	msk_probe(device_t);
 static int	msk_attach(device_t);
@@ -3828,24 +3826,6 @@ msk_stop(struct msk_if_softc *sc_if)
 	 */
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 	sc_if->msk_link = 0;
-}
-
-static int
-sysctl_int_range(SYSCTL_HANDLER_ARGS, int low, int high)
-{
-	int error, value;
-
-	if (!arg1)
-		return (EINVAL);
-	value = *(int *)arg1;
-	error = sysctl_handle_int(oidp, &value, 0, req);
-	if (error || !req->newptr)
-		return (error);
-	if (value < low || value > high)
-		return (EINVAL);
-	*(int *)arg1 = value;
-
-	return (0);
 }
 
 static int

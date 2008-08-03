@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.57 2008/08/03 06:19:20 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.58 2008/08/03 11:00:32 sephe Exp $
  */
 
 /*
@@ -239,8 +239,6 @@ static int		fxp_miibus_readreg(device_t dev, int phy, int reg);
 static void		fxp_miibus_writereg(device_t dev, int phy, int reg,
 			    int value);
 static void		fxp_load_ucode(struct fxp_softc *sc);
-static int		sysctl_int_range(SYSCTL_HANDLER_ARGS,
-			    int low, int high);
 static int		sysctl_hw_fxp_bundle_max(SYSCTL_HANDLER_ARGS);
 static int		sysctl_hw_fxp_int_delay(SYSCTL_HANDLER_ARGS);
 #ifdef DEVICE_POLLING
@@ -2319,21 +2317,6 @@ fxp_load_ucode(struct fxp_softc *sc)
 	    sc->tunable_int_delay, 
 	    uc->bundle_max_offset == 0 ? 0 : sc->tunable_bundle_max);
 	sc->flags |= FXP_FLAG_UCODE;
-}
-
-static int
-sysctl_int_range(SYSCTL_HANDLER_ARGS, int low, int high)
-{
-	int error, value;
-
-	value = *(int *)arg1;
-	error = sysctl_handle_int(oidp, &value, 0, req);
-	if (error || !req->newptr)
-		return (error);
-	if (value < low || value > high)
-		return (EINVAL);
-	*(int *)arg1 = value;
-	return (0);
 }
 
 /*

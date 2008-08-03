@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.29 2008/01/06 16:55:51 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.30 2008/08/03 11:00:32 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -1310,3 +1310,17 @@ sysctl_ctx_unlock(void)
 	lockmgr(&sysctl_ctx_lkp, LK_RELEASE);
 }
 
+int
+sysctl_int_range(SYSCTL_HANDLER_ARGS, int low, int high)
+{
+	int error, value;
+
+	value = *(int *)arg1;
+	error = sysctl_handle_int(oidp, &value, 0, req);
+	if (error || !req->newptr)
+		return (error);
+	if (value < low || value > high)
+		return (EINVAL);
+	*(int *)arg1 = value;
+	return (0);
+}

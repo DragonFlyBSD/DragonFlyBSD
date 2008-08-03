@@ -1,6 +1,6 @@
 /*	$NetBSD: if_stge.c,v 1.32 2005/12/11 12:22:49 christos Exp $	*/
 /*	$FreeBSD: src/sys/dev/stge/if_stge.c,v 1.2 2006/08/12 01:21:36 yongari Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/stge/if_stge.c,v 1.6 2008/05/16 13:19:12 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/stge/if_stge.c,v 1.7 2008/08/03 11:00:32 sephe Exp $	*/
 
 /*-
  * Copyright (c) 2001 The NetBSD Foundation, Inc.
@@ -183,7 +183,6 @@ static int	stge_init_rx_ring(struct stge_softc *);
 static void	stge_poll(struct ifnet *, enum poll_cmd, int);
 #endif
 
-static int	sysctl_int_range(SYSCTL_HANDLER_ARGS, int, int);
 static int	sysctl_hw_stge_rxint_nframe(SYSCTL_HANDLER_ARGS);
 static int	sysctl_hw_stge_rxint_dmawait(SYSCTL_HANDLER_ARGS);
 
@@ -2578,24 +2577,6 @@ stge_set_multi(struct stge_softc *sc)
 	CSR_WRITE_4(sc, STGE_HashTable0, mchash[0]);
 	CSR_WRITE_4(sc, STGE_HashTable1, mchash[1]);
 	CSR_WRITE_2(sc, STGE_ReceiveMode, mode);
-}
-
-static int
-sysctl_int_range(SYSCTL_HANDLER_ARGS, int low, int high)
-{
-	int error, value;
-
-	if (!arg1)
-		return (EINVAL);
-	value = *(int *)arg1;
-	error = sysctl_handle_int(oidp, &value, 0, req);
-	if (error || !req->newptr)
-		return (error);
-	if (value < low || value > high)
-		return (EINVAL);
-        *(int *)arg1 = value;
-
-        return (0);
 }
 
 static int

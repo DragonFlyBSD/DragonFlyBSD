@@ -35,7 +35,7 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.27 2008/06/10 05:20:10 nth Exp $
+ * $DragonFly: src/sys/sys/sysctl.h,v 1.28 2008/08/03 11:00:32 sephe Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
@@ -645,6 +645,8 @@ int	userland_sysctl(int *name, u_int namelen, void *old,
 			size_t *retval);
 int	sysctl_find_oid(int *name, u_int namelen, struct sysctl_oid **noid,
 			int *nindx, struct sysctl_req *req);
+
+int	sysctl_int_range(SYSCTL_HANDLER_ARGS, int low, int high);
 
 #endif	/* _KERNEL */
 
