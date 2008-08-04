@@ -34,9 +34,9 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.22 2008/07/10 03:15:56 thomas Exp $
+.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.22.2.1 2008/08/04 20:31:36 thomas Exp $
 .\"
-.Dd July 10, 2008
+.Dd July 27, 2008
 .Dt DISKLABEL 8
 .Os
 .Sh NAME
@@ -133,13 +133,26 @@ All
 .Nm
 forms require a disk device name, which should always be the raw
 device name representing the disk or slice.
-For example
-.Pa da0s0
+.Dx
+uses the following scheme for slice numbering:
+If the disk doesn't use
+.Xr gpt 8 ,
+but e.g. MBR (typically laid out by
+.Xr fdisk 8 ) ,
+then slice 0, e.g.
+.Pa da0s0 ,
 represents the entire disk regardless of any DOS partitioning,
 this is called the compatibility slice,
-and
-.Pa da0s1
-represents a BSD slice.
+and slice 1 and onward, e.g.
+.Pa da0s1 ,
+represents a
+.Bx
+slice.
+If the disk does use GPT (typically laid out by
+.Xr gpt 8 ) ,
+then all slices are
+.Bx
+slices, slice 0 isn't special, it is just the first slice on the disk.
 You do not have to include the
 .Pa /dev/
 path prefix when specifying the device.
@@ -393,7 +406,9 @@ intend to create a
 .Dq dangerously-dedicated
 disk, such as
 .Ar da0s0 .
-This command is typically run on a BSD slice such as
+This command is typically run on a
+.Bx
+slice such as
 .Ar da0s1 .
 .Pp
 .Nm
@@ -414,7 +429,9 @@ In addition to writing a new volume label, it also installs the bootstrap.
 If run on the compatibility slice this command will create a
 .Dq dangerously-dedicated
 label.
-This command is normally run on a BSD slice rather than the compatibility
+This command is normally run on a
+.Bx
+slice rather than the compatibility
 slice.
 If
 .Fl n
@@ -439,7 +456,9 @@ In addition to restoring the volume label, it also installs the bootstrap.
 If run on the compatibility slice this command will create a
 .Dq dangerously-dedicated
 label.
-This command is normally run on a BSD slice rather than the compatibility
+This command is normally run on a
+.Bx
+slice rather than the compatibility
 slice.
 .Pp
 The bootstrap commands always access the disk directly, so it is not necessary
@@ -588,7 +607,7 @@ trackskew: 0
 cylinderskew: 0
 headswitch: 0		# milliseconds
 track-to-track seek: 0	# milliseconds
-drivedata: 0 
+drivedata: 0
 
 16 partitions:
 #          size     offset    fstype
@@ -703,7 +722,7 @@ For
 file systems, use type
 .Cm 4.2BSD .
 For
-.Tn HAMMER
+.Xr HAMMER 5
 file systems, use type
 .Cm HAMMER .
 For
@@ -743,7 +762,9 @@ no longer snoop-adjusts the on-disklabel when reading or writing
 raw labels.
 .Nm
 is now responsible for adjusting the label when operating in raw mode.
-Traditional (32 bit BSD) disklabels store offsets as absolute block numbers
+Traditional (32 bit
+.Bx )
+disklabels store offsets as absolute block numbers
 rather than slice-relative block numbers.
 If
 .Nm
@@ -947,6 +968,25 @@ or
 .Dv FS_BOOT ,
 .Nm
 will not install bootstrap code that overlaps it.
+.Sh COMPATIBILITY
+Due to
+.Xr disklabel 5
+storing sector numbers in 32 bit format
+.Nm
+is restricted to 2TB, using the prevalent sector size of 512B.
+.Xr disklabel64 5 labels should be used to partition larger disks.
+.Pp
+The various
+.Bx Ns s
+use slightly different versions of
+.Bx
+disklabels
+and are not generally compatible.
+The
+.Dx
+kernel can often use labels from other
+.Bx Ns s
+for read-only operation.
 .Sh SEE ALSO
 .Xr ccd 4 ,
 .Xr disklabel 5 ,
@@ -955,16 +995,17 @@ will not install bootstrap code that overlaps it.
 .Xr diskinfo 8 ,
 .Xr disklabel64 8 ,
 .Xr fdisk 8 ,
+.Xr gpt 8 ,
 .Xr vinum 8
 .Sh BUGS
 Installing a
 .Xr disklabel64 8
-disklabel on a slice with a
+label on a slice with a
 .Nm
-disklabel installed requires reboot. First the existing disklabel
-has to be overwritten, eg. by
+label installed requires reboot. First the existing label
+has to be overwritten, e.g. by
 .Xr dd 1 ,
-see above, then a reboot is required before the new disklabel can be installed.
+see above, then a reboot is required before the new label can be installed.
 .Pp
 For the i386 architecture, the primary bootstrap sector contains
 an embedded
@@ -994,7 +1035,9 @@ The
 .Nm
 utility
 does not perform all possible error checking.
-Warning *is* given if partitions
+Warning
+.Em is
+given if partitions
 overlap; if an absolute offset does not match the expected offset; if the
 .Dq c
 partition does not start at 0 or does not cover the entire slice; if a
