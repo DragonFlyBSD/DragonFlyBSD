@@ -1,6 +1,6 @@
-.\"	$NetBSD: humanize_number.3,v 1.4 2003/04/16 13:34:37 wiz Exp $
-.\" $FreeBSD: /repoman/r/ncvs/src/lib/libutil/humanize_number.3,v 1.4.2.1 2004/09/28 18:24:50 pjd Exp $
-.\" $DragonFly: src/lib/libutil/humanize_number.3,v 1.1 2004/11/05 17:05:26 dillon Exp $
+.\"	$NetBSD: humanize_number.3,v 1.5 2005/04/11 12:19:16 wiz Exp $
+.\" $FreeBSD: src/lib/libutil/humanize_number.3,v 1.12 2007/09/28 15:31:44 obrien Exp $
+.\" $DragonFly: src/lib/libutil/humanize_number.3,v 1.2 2008/08/04 19:09:26 swildner Exp $
 .\"
 .\" Copyright (c) 1999, 2002 The NetBSD Foundation, Inc.
 .\" All rights reserved.
@@ -16,13 +16,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"        This product includes software developed by the NetBSD
-.\"        Foundation, Inc. and its contributors.
-.\" 4. Neither the name of The NetBSD Foundation nor the names of its
-.\"    contributors may be used to endorse or promote products derived
-.\"    from this software without specific prior written permission.
 .\"
 .\" THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
 .\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -65,7 +58,7 @@ The buffer pointed to by
 .Fa buffer
 must be at least
 .Fa len
-bytes bytes long.
+bytes long.
 .Pp
 If the formatted number (including
 .Fa suffix )
@@ -77,16 +70,21 @@ by 1024 until it will.
 In this case, prefix
 .Fa suffix
 with the appropriate SI designator.
+The
+.Fn humanize_number
+function
+follows the traditional computer science conventions rather than the proposed
+SI power of two convention.
 .Pp
 The prefixes are:
-.Bl -column "Prefix" "Description" "Multiplier" -offset indent
-.It Sy "Prefix" Ta Sy "Description" Ta Sy "Multiplier"
-.It Li k Ta No kilo Ta 1024
-.It Li M Ta No mega Ta 1048576
-.It Li G Ta No giga Ta 1073741824
-.It Li T Ta No tera Ta 1099511627776
-.It Li P Ta No peta Ta 1125899906842624
-.It Li E Ta No exa Ta 1152921504606846976
+.Bl -column "Prefix" "Description" "1000000000000000000" -offset indent
+.It Sy "Prefix" Ta Sy "Description" Ta Sy "Multiplier" Ta Sy "Multiplier 1000x"
+.It Li k Ta No kilo Ta 1024 Ta 1000
+.It Li M Ta No mega Ta 1048576 Ta 1000000
+.It Li G Ta No giga Ta 1073741824 Ta 1000000000
+.It Li T Ta No tera Ta 1099511627776 Ta 1000000000000
+.It Li P Ta No peta Ta 1125899906842624 Ta 1000000000000000
+.It Li E Ta No exa Ta 1152921504606846976 Ta 1000000000000000000
 .El
 .Pp
 The
@@ -142,8 +140,12 @@ upon success, or \-1 upon failure.
 If
 .Dv HN_GETSCALE
 is specified, the prefix index number will be returned instead.
+.Sh SEE ALSO
+.Xr expand_number 3
 .Sh HISTORY
 The
 .Fn humanize_number
 function first appeared in
-.Nx 2.0 .
+.Nx 2.0
+and then in
+.Fx 5.3 .

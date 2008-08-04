@@ -1,5 +1,5 @@
-/*	$NetBSD: humanize_number.c,v 1.8 2004/07/27 01:56:24 enami Exp $	*/
-/* $DragonFly: src/lib/libutil/humanize_number.c,v 1.2 2005/03/04 04:31:11 cpressey Exp $ */
+/*	$NetBSD: humanize_number.c,v 1.14 2008/04/28 20:22:59 martin Exp $	*/
+/* $DragonFly: src/lib/libutil/humanize_number.c,v 1.3 2008/08/04 19:09:26 swildner Exp $ */
 
 /*
  * Copyright (c) 1997, 1998, 1999, 2002 The NetBSD Foundation, Inc.
@@ -17,13 +17,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *      This product includes software developed by the NetBSD
- *      Foundation, Inc. and its contributors.
- * 4. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
@@ -37,17 +30,16 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: /repoman/r/ncvs/src/lib/libutil/humanize_number.c,v 1.1.2.1 2004/09/28 18:24:10 pjd Exp $
+ * $FreeBSD: src/lib/libutil/humanize_number.c,v 1.3 2008/03/08 21:55:59 antoine Exp $
  */
 
-#include <sys/cdefs.h>
 #include <sys/types.h>
-
 #include <assert.h>
-#include <locale.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <locale.h>
 
 #include "libutil.h"
 
@@ -121,7 +113,12 @@ humanize_number(char *buf, size_t len, int64_t bytes,
 		for (max = 100, i = len - baselen; i-- > 0;)
 			max *= 10;
 
-		for (i = 0; bytes >= max && i < maxscale; i++)
+		/*
+		 * Divide the number until it fits the given column.
+		 * If there will be an overflow by the rounding below,
+		 * divide once more.
+		 */
+		for (i = 0; bytes >= max - 50 && i < maxscale; i++)
 			bytes /= divisor;
 
 		if (scale & HN_GETSCALE)
@@ -142,9 +139,8 @@ humanize_number(char *buf, size_t len, int64_t bytes,
 		    sign * s1, localeconv()->decimal_point, s2,
 		    sep, SCALE2PREFIX(i), suffix);
 	} else
-		r = snprintf(buf, len, "%lld%s%s%s",
-		    /* LONGLONG */
-		    (long long)(sign * ((bytes + 50) / 100)),
+		r = snprintf(buf, len, "%" PRId64 "%s%s%s",
+		    sign * ((bytes + 50) / 100),
 		    sep, SCALE2PREFIX(i), suffix);
 
 	return (r);
