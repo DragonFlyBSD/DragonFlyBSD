@@ -37,13 +37,13 @@
  *
  *	@(#)dinode.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/ufs/ufs/dinode.h,v 1.7 1999/08/28 00:52:27 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/dinode.h,v 1.7 2006/09/10 01:26:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/dinode.h,v 1.8 2008/08/04 18:15:47 dillon Exp $
  */
 
 #ifndef _VFS_UFS_DINODE_H_
 #define _VFS_UFS_DINODE_H_
 
-typedef __uint32_t	ufs1_ino_t;
+#include "ufs_types.h"
 
 /*
  * The root inode is the root of the filesystem.  Inode 0 can't be used for
@@ -67,8 +67,6 @@ typedef __uint32_t	ufs1_ino_t;
  * this structure describes an on-disk structure, all its fields
  * are defined by types with precise widths.
  */
-
-typedef __int32_t       ufs_daddr_t;
 
 #define	NDADDR	12			/* Direct addresses in inode. */
 #define	NIADDR	3			/* Indirect addresses in inode. */

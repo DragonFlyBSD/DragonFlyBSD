@@ -32,7 +32,7 @@
  *
  *	@(#)ufsmount.h	8.6 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/ufs/ufsmount.h,v 1.17 1999/12/29 04:55:06 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ufsmount.h,v 1.10 2006/09/10 01:26:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufsmount.h,v 1.11 2008/08/04 18:15:47 dillon Exp $
  */
 
 #ifndef _VFS_UFS_UFSMOUNT_H_
@@ -88,8 +88,8 @@ struct ufsmount {
 	u_long	um_nindir;			/* indirect ptrs per block */
 	u_long	um_bptrtodb;			/* indir ptr to disk block */
 	u_long	um_seqinc;			/* inc between seq blocks */
-	time_t	um_btime[MAXQUOTAS];		/* block quota time limit */
-	time_t	um_itime[MAXQUOTAS];		/* inode quota time limit */
+	ufs_time_t um_btime[MAXQUOTAS];		/* block quota time limit */
+	ufs_time_t um_itime[MAXQUOTAS];		/* inode quota time limit */
 	char	um_qflags[MAXQUOTAS];		/* quota specific flags */
 	struct	netexport um_export;		/* export information */
 	int64_t	um_savedmaxfilesize;		/* XXX - limit maxfilesize */

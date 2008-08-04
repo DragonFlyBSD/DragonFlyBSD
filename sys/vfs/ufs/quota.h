@@ -35,11 +35,13 @@
  *
  *	@(#)quota.h	8.3 (Berkeley) 8/19/94
  * $FreeBSD: src/sys/ufs/ufs/quota.h,v 1.15.2.1 2003/02/27 12:04:13 das Exp $
- * $DragonFly: src/sys/vfs/ufs/quota.h,v 1.9 2007/11/06 17:11:38 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/quota.h,v 1.10 2008/08/04 18:15:47 dillon Exp $
  */
 
 #ifndef _VFS_UFS_QUOTA_H_
 #define	_VFS_UFS_QUOTA_H_
+
+#include "ufs_types.h"
 
 /*
  * Definitions for disk quotas imposed on the average user
@@ -105,8 +107,8 @@ struct ufs_dqblk {
 	uint32_t dqb_ihardlimit;	/* maximum # allocated inodes + 1 */
 	uint32_t dqb_isoftlimit;	/* preferred inode limit */
 	uint32_t dqb_curinodes;	/* current # allocated inodes */
-	time_t	  dqb_btime;		/* time limit for excessive disk use */
-	time_t	  dqb_itime;		/* time limit for excessive files */
+	ufs_time_t dqb_btime;		/* time limit for excessive disk use */
+	ufs_time_t dqb_itime;		/* time limit for excessive files */
 };
 
 #ifdef _KERNEL
