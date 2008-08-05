@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netproto/mpls/mpls_var.h,v 1.1 2008/07/07 22:02:10 nant Exp $
+ * $DragonFly: src/sys/netproto/mpls/mpls_var.h,v 1.2 2008/08/05 15:11:32 nant Exp $
  */
 
 #ifndef _NETMPLS_MPLS_VAR_H_
@@ -46,6 +46,7 @@ struct mpls_stats {
 	u_long	mplss_reserved;
 	u_long	mplss_cantforward;
 	u_long	mplss_forwarded;
+	u_long	mplss_ttlexpired;
 };
 
 #ifdef _KERNEL
@@ -62,12 +63,8 @@ void			mpls_init(void);
 boolean_t		mpls_lengthcheck(struct mbuf **);
 struct	lwkt_port *	mpls_mport(struct mbuf **);
 void			mpls_input(struct mbuf *);
-int			mpls_output(struct ifnet *, struct mbuf *,
-				    struct sockaddr *,
-				    struct rtentry *);
-boolean_t		mpls_output_process(struct ifnet *, struct mbuf *,
-					    struct sockaddr *,
-					    struct rtentry *);
+int			mpls_output(struct mbuf *, struct rtentry *);
+boolean_t		mpls_output_process(struct mbuf *, struct rtentry *);
 
 #endif	/* _KERNEL */
 

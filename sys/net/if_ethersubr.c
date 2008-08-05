@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.81 2008/07/27 10:06:56 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.82 2008/08/05 15:11:32 nant Exp $
  */
 
 #include "opt_atalk.h"
@@ -205,7 +205,12 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	case AF_INET:
 		if (!arpresolve(ifp, rt, m, dst, edst))
 			return (0);	/* if not yet resolved */
-		eh->ether_type = htons(ETHERTYPE_IP);
+#ifdef MPLS
+		if (m->m_flags & M_MPLSLABELED)
+			eh->ether_type = htons(ETHERTYPE_MPLS);
+		else
+#endif
+			eh->ether_type = htons(ETHERTYPE_IP);
 		break;
 #endif
 #ifdef INET6
@@ -304,33 +309,6 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		if (bcmp(edst, &ns_broadhost, ETHER_ADDR_LEN) == 0)
 			m->m_flags |= M_BCAST;
 		break;
-#endif
-#ifdef MPLS
-	case AF_MPLS:
-	{
-		struct sockaddr *sa_gw;
-
-		if (rt)
-			sa_gw = (struct sockaddr *)rt->rt_gateway;
-		else {
-			/* We realy need a gateway. */
-			m_freem(m);
-			return (0);
-		}
-
-		switch (sa_gw->sa_family) {
-			case AF_INET:
-				if (!arpresolve(ifp, rt, m, sa_gw, edst))
-					return (0);
-				break;
-			default:
-				kprintf("ether_output: address family not supported to forward mpls packets: %d.\n", sa_gw->sa_family);
-				m_freem(m);
-				return (0);
-		}
-		eh->ether_type = htons(ETHERTYPE_MPLS); /* XXX how about multicast? */
-		break;
-	}
 #endif
 	case pseudo_AF_HDRCMPLT:
 	case AF_UNSPEC:
@@ -1160,6 +1138,8 @@ post_stats:
 #ifdef MPLS
 	case ETHERTYPE_MPLS:
 	case ETHERTYPE_MPLS_MCAST:
+		/* Should have been set by ether_input_chain2(). */
+		KKASSERT(m->m_flags & M_MPLSLABELED);
 		isr = NETISR_MPLS;
 		break;
 #endif
@@ -1452,6 +1432,7 @@ ether_input_chain2(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 #ifdef MPLS
 	case ETHERTYPE_MPLS:
 	case ETHERTYPE_MPLS_MCAST:
+		m->m_flags |= M_MPLSLABELED;
 		isr = NETISR_MPLS;
 		break;
 #endif

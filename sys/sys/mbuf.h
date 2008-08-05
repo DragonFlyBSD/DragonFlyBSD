@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.48 2008/05/02 07:40:32 sephe Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.49 2008/08/05 15:11:32 nant Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -205,13 +205,14 @@ struct mbuf {
 #define	M_PHCACHE	0x8000	/* mbuf allocated from the pkt header cache */
 #define M_NOTIFICATION	0x10000	/* notification event */
 #define M_VLANTAG	0x20000	/* ether_vlantag is valid */
+#define M_MPLSLABELED	0x40000	/* packet is mpls labeled */
 
 /*
  * Flags copied when copying m_pkthdr.
  */
 #define	M_COPYFLAGS	(M_PKTHDR|M_EOR|M_PROTO1|M_PROTO1|M_PROTO2|M_PROTO3 | \
 			    M_PROTO4|M_PROTO5|M_BCAST|M_MCAST|M_FRAG | \
-			    M_FIRSTFRAG|M_LASTFRAG|M_VLANTAG)
+			    M_FIRSTFRAG|M_LASTFRAG|M_VLANTAG|M_MPLSLABELED)
 
 /*
  * Flags indicating hw checksum support and sw checksum requirements.

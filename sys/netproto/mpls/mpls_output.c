@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netproto/mpls/mpls_output.c,v 1.1 2008/07/07 22:02:10 nant Exp $
+ * $DragonFly: src/sys/netproto/mpls/mpls_output.c,v 1.2 2008/08/05 15:11:32 nant Exp $
  */
 
 #include <sys/param.h>
@@ -48,21 +48,20 @@ static int mpls_swap(struct mbuf *, mpls_label_t);
 static int mpls_pop(struct mbuf *, mpls_s_t *);
 
 int
-mpls_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
-	     struct rtentry *rt)
+mpls_output(struct mbuf *m, struct rtentry *rt)
 {
 	struct sockaddr_mpls *smpls = NULL;
-	int error=0, i;
-	struct sockaddr *sa = NULL;
+	int error = 0, i;
 	mpls_s_t stackempty;
 	mpls_ttl_t ttl = 255;
 	struct ip *ip;
 
 	M_ASSERTPKTHDR(m);
 
-	KASSERT(ifp != NULL, ("mpls_output: ifp can't be NULL"));
-
-	/* Check if we are coming from an MPLS routing table lookup */
+	/*
+	 * Check if we are coming from an MPLS routing table lookup.
+	 * The rt_key of this rtentry will have a family AF_MPLS if so.
+	 */
 	stackempty = rt_key(rt)->sa_family != AF_MPLS ? 1 : 0;
 	if (stackempty) {
 		switch (rt_key(rt)->sa_family) {
@@ -79,13 +78,17 @@ mpls_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		case MPLSLOP_PUSH:
 			error = mpls_push(&m,
 				  ntohl(smpls->smpls_label),
-				  (i==0 && dst->sa_family != AF_MPLS) ? 1 : 0,
+				  /*
+				   * If we are the first label push, then
+				   * set the bottom-of-stack bit.
+				   */
+				  (stackempty && i == 0) ? 1 : 0,
 				  0,
 				  ttl);
 			if (error)
 				return (error);
 			stackempty = 0;
-			sa = (struct sockaddr *)smpls;
+			m->m_flags |= M_MPLSLABELED;
 			break;
 		case MPLSLOP_SWAP:
 			/*
@@ -94,10 +97,10 @@ mpls_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			 */
 			if (stackempty)
 				return (ENOTSUP);
+			KKASSERT(m->m_flags & M_MPLSLABELED);
 			error = mpls_swap(m, ntohl(smpls->smpls_label));
 			if (error)
 				return (error);
-			sa = (struct sockaddr *)smpls;
 			break;
 		case MPLSLOP_POP:
 			/*
@@ -106,12 +109,16 @@ mpls_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			 */
 			if (stackempty)
 				return (ENOTSUP);
-			mpls_pop(m, &stackempty);
-			/* If not bottom label */
-			if (!stackempty)
-				sa = (struct sockaddr *)smpls;
-			else
-				sa = dst;
+			KKASSERT(m->m_flags & M_MPLSLABELED);
+			error = mpls_pop(m, &stackempty);
+			if (error)
+				return (error);
+			/*
+			 * If we are popping out the last label then
+			 * mark the mbuf as ~M_MPLSLABELED.
+			 */
+			if (stackempty)
+				m->m_flags &= ~M_MPLSLABELED;
 			break;
 		default:
 			/* Unknown label operation */
@@ -119,8 +126,6 @@ mpls_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		}
 	}
 	
-	error = (*ifp->if_output)(ifp, m, sa, rt);
-
 	return (error);
 }
 
@@ -128,19 +133,19 @@ mpls_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
  * Returns FALSE if no further output processing required.
  */
 boolean_t
-mpls_output_process(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
-		 struct rtentry *rt)
+mpls_output_process(struct mbuf *m, struct rtentry *rt)
 {
 	int error;
 
+	/* Does this route have MPLS label operations? */
 	if (!(rt->rt_flags & RTF_MPLSOPS))
 		return TRUE;
 
-	error = mpls_output(ifp, m,
-			(struct sockaddr *)dst,
-			rt);
-	if (error)
+	error = mpls_output(m, rt);
+	if (error) {
+		m_freem(m);
 		return FALSE;
+	}
 
 	return TRUE;
 }
@@ -176,9 +181,14 @@ mpls_swap(struct mbuf *m, mpls_label_t label) {
 
 	mpls = mtod(m, struct mpls *);
 	buf = ntohl(mpls->mpls_shim);
-	MPLS_SET_LABEL(buf, label);
 	ttl = MPLS_TTL(buf);
-	MPLS_SET_TTL(buf, --ttl); /* XXX tunnel mode: uniform, pipe, short pipe */
+	if (--ttl <= 0) {
+		/* XXX: should send icmp ttl expired. */
+		mplsstat.mplss_ttlexpired++;
+		return (ETIMEDOUT);
+	}
+	MPLS_SET_LABEL(buf, label);
+	MPLS_SET_TTL(buf, ttl); /* XXX tunnel mode: uniform, pipe, short pipe */
 	mpls->mpls_shim = htonl(buf);
 	
 	return (0);

@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netproto/mpls/mpls_input.c,v 1.1 2008/07/07 22:02:10 nant Exp $
+ * $DragonFly: src/sys/netproto/mpls/mpls_input.c,v 1.2 2008/08/05 15:11:32 nant Exp $
  */
 
 #include <sys/globaldata.h>
@@ -185,9 +185,10 @@ mpls_forward(struct mbuf *m)
 	mpls_label_t label;
 	struct ifnet *ifp;
 	struct sockaddr *dst;
+	int error;
 
 	KASSERT(m->m_len >= sizeof(struct mpls),
-	    ("mpls_input: mpls header not in one mbuf"));
+	    ("mpls_forward: mpls header not in one mbuf"));
 
 	mpls = mtod(m, struct mpls *);
 	label = MPLS_LABEL(ntohl(mpls->mpls_shim));
@@ -210,9 +211,15 @@ mpls_forward(struct mbuf *m)
 
 	ifp = cache_rt->ro_rt->rt_ifp;
 	dst = cache_rt->ro_rt->rt_gateway;
+	error = mpls_output(m, cache_rt->ro_rt);
+	if (error)
+		goto bad;
+	error = (*ifp->if_output)(ifp, m, dst, cache_rt->ro_rt);
+	if (error)
+		goto bad;
+	mplsstat.mplss_forwarded++;
 
-	if (mpls_output(ifp, m, dst, cache_rt->ro_rt) != 0)
-		m_freem(m);
-	else
-		mplsstat.mplss_forwarded++;
+	return;
+bad:
+	m_freem(m);
 }

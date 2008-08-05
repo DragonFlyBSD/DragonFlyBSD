@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netproto/mpls/mpls_demux.c,v 1.1 2008/07/07 22:02:10 nant Exp $
+ * $DragonFly: src/sys/netproto/mpls/mpls_demux.c,v 1.2 2008/08/05 15:11:32 nant Exp $
  */
 
 #include <sys/mbuf.h>
@@ -105,5 +105,4 @@ mpls_mport(struct mbuf **mp)
 
 	return (port);
 }
-
 
