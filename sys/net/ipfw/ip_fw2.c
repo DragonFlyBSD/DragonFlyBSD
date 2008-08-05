@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.65 2008/08/03 03:26:22 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.66 2008/08/05 11:57:40 sephe Exp $
  */
 
 #define        DEB(x)
@@ -111,12 +111,15 @@ MALLOC_DEFINE(M_IPFW, "IpFw/IpAcct", "IpFw/IpAcct chain's");
 static int fw_debug = 1;
 static int autoinc_step = IPFW_AUTOINC_STEP_DEF;
 
+static int	ipfw_sysctl_autoinc_step(SYSCTL_HANDLER_ARGS);
+
 #ifdef SYSCTL_NODE
 SYSCTL_NODE(_net_inet_ip, OID_AUTO, fw, CTLFLAG_RW, 0, "Firewall");
 SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, enable, CTLFLAG_RW,
     &fw_enable, 0, "Enable ipfw");
-SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, autoinc_step, CTLFLAG_RW,
-    &autoinc_step, 0, "Rule number autincrement step");
+SYSCTL_PROC(_net_inet_ip_fw, OID_AUTO, autoinc_step, CTLTYPE_INT | CTLFLAG_RW,
+    &autoinc_step, 0, ipfw_sysctl_autoinc_step, "I",
+    "Rule number autincrement step");
 SYSCTL_INT(_net_inet_ip_fw, OID_AUTO,one_pass,CTLFLAG_RW,
     &fw_one_pass, 0,
     "Only do a single pass through ipfw when using dummynet(4)");
@@ -2246,14 +2249,8 @@ ipfw_add_rule(struct ip_fw **head, struct ipfw_ioc_rule *ioc_rule)
 	if (rule->rulenum == 0) {
 		int step = autoinc_step;
 
-		/*
-		 * Make sure that rule number incremental step
-		 * is within range
-		 */
-		if (step < IPFW_AUTOINC_STEP_MIN)
-			step = IPFW_AUTOINC_STEP_MIN;
-		else if (step > IPFW_AUTOINC_STEP_MAX)
-			step = IPFW_AUTOINC_STEP_MAX;
+		KKASSERT(step >= IPFW_AUTOINC_STEP_MIN &&
+			 step <= IPFW_AUTOINC_STEP_MAX);
 
 		/*
 		 * Locate the highest numbered rule before default
@@ -3043,6 +3040,13 @@ ipfw_init_default_rule(struct ip_fw **head)
 
 	/* Install the default rule */
 	ip_fw_default_rule = def_rule;
+}
+
+static int
+ipfw_sysctl_autoinc_step(SYSCTL_HANDLER_ARGS)
+{
+	return sysctl_int_range(oidp, arg1, arg2, req,
+	       IPFW_AUTOINC_STEP_MIN, IPFW_AUTOINC_STEP_MAX);
 }
 
 static void
