@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.36 2008/07/27 10:06:55 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.37 2008/08/05 11:08:30 sephe Exp $
  */
 #include "opt_ethernet.h"
 
@@ -112,7 +112,6 @@ static int	bfe_ifmedia_upd(struct ifnet *);
 static void	bfe_ifmedia_sts(struct ifnet *, struct ifmediareq *);
 static int	bfe_miibus_readreg(device_t, int, int);
 static int	bfe_miibus_writereg(device_t, int, int, int);
-static void	bfe_miibus_statchg(device_t);
 static int	bfe_wait_bit(struct bfe_softc *, uint32_t, uint32_t,
 			     u_long, const int);
 static void	bfe_get_config(struct bfe_softc *sc);
@@ -147,7 +146,6 @@ static device_method_t bfe_methods[] = {
 	/* MII interface */
 	DEVMETHOD(miibus_readreg,	bfe_miibus_readreg),
 	DEVMETHOD(miibus_writereg,	bfe_miibus_writereg),
-	DEVMETHOD(miibus_statchg,	bfe_miibus_statchg),
 
 	{ 0, 0 }
 };
@@ -512,12 +510,6 @@ bfe_miibus_writereg(device_t dev, int phy, int reg, int val)
 	bfe_writephy(sc, reg, val); 
 
 	return(0);
-}
-
-static void
-bfe_miibus_statchg(device_t dev)
-{
-	return;
 }
 
 static void
@@ -1320,6 +1312,8 @@ bfe_start(struct ifnet *ifp)
 	struct mbuf *m_head = NULL;
 	int idx, need_trans;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	/* 
 	 * Not much point trying to send if the link is down
 	 * or we have nothing to send.
@@ -1382,6 +1376,8 @@ bfe_init(void *xsc)
 	struct bfe_softc *sc = (struct bfe_softc*)xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	if (ifp->if_flags & IFF_RUNNING)
 		return;
 
@@ -1418,6 +1414,8 @@ bfe_ifmedia_upd(struct ifnet *ifp)
 	struct bfe_softc *sc = ifp->if_softc;
 	struct mii_data *mii;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	mii = device_get_softc(sc->bfe_miibus);
 	sc->bfe_link = 0;
 	if (mii->mii_instance) {
@@ -1442,6 +1440,8 @@ bfe_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 	struct bfe_softc *sc = ifp->if_softc;
 	struct mii_data *mii;
 
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
 	mii = device_get_softc(sc->bfe_miibus);
 	mii_pollstat(mii);
 	ifmr->ifm_active = mii->mii_media_active;
@@ -1455,6 +1455,8 @@ bfe_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct ifreq *ifr = (struct ifreq *) data;
 	struct mii_data *mii;
 	int error = 0;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	switch (command) {
 		case SIOCSIFFLAGS:
@@ -1488,6 +1490,8 @@ static void
 bfe_watchdog(struct ifnet *ifp)
 {
 	struct bfe_softc *sc = ifp->if_softc;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	if_printf(ifp, "watchdog timeout -- resetting\n");
 
@@ -1531,6 +1535,8 @@ static void
 bfe_stop(struct bfe_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	callout_stop(&sc->bfe_stat_timer);
 
