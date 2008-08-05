@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.56 2008/05/14 11:59:19 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.57 2008/08/05 11:23:01 sephe Exp $
  */
 
 /*
@@ -1261,6 +1261,9 @@ dc_setfilt_xircom(struct dc_softc *sc)
 	int			i;
 
 	ifp = &sc->arpcom.ac_if;
+	KASSERT(ifp->if_flags & IFF_RUNNING,
+		("%s is not running yet\n", ifp->if_xname));
+
 	DC_CLRBIT(sc, DC_NETCFG, (DC_NETCFG_TX_ON|DC_NETCFG_RX_ON));
 
 	i = sc->dc_cdata.dc_tx_prod;
@@ -1307,7 +1310,6 @@ dc_setfilt_xircom(struct dc_softc *sc)
 	
 	DC_SETBIT(sc, DC_NETCFG, DC_NETCFG_TX_ON);
 	DC_SETBIT(sc, DC_NETCFG, DC_NETCFG_RX_ON);
-	ifp->if_flags |= IFF_RUNNING;
 	sframe->dc_status = DC_TXSTAT_OWN;
 	CSR_WRITE_4(sc, DC_TXSTART, 0xFFFFFFFF);
 
@@ -2912,7 +2914,7 @@ dc_intr(void *arg)
 		return ;
 
 	/* Suppress unwanted interrupts */
-	if (!(ifp->if_flags & IFF_UP)) {
+	if ((ifp->if_flags & IFF_RUNNING) == 0) {
 		if (CSR_READ_4(sc, DC_ISR) & DC_INTRS)
 			dc_stop(sc);
 		return;
@@ -3288,6 +3290,13 @@ dc_init(void *xsc)
 	}
 
 	/*
+	 * Set IFF_RUNNING here to keep the assertion in dc_setfilt()
+	 * working.
+	 */
+	ifp->if_flags |= IFF_RUNNING;
+	ifp->if_flags &= ~IFF_OACTIVE;
+
+	/*
 	 * Load the RX/multicast filter. We do this sort of late
 	 * because the filter programming scheme on the 21143 and
 	 * some clones requires DMAing a setup frame via the TX
@@ -3302,9 +3311,6 @@ dc_init(void *xsc)
 	mii_mediachg(mii);
 	dc_setcfg(sc, sc->dc_if_media);
 
-	ifp->if_flags |= IFF_RUNNING;
-	ifp->if_flags &= ~IFF_OACTIVE;
-
 	/* Don't start the ticker if this is a homePNA link. */
 	if (IFM_SUBTYPE(mii->mii_media.ifm_media) == IFM_HPNA_1)
 		sc->dc_link = 1;
@@ -3314,8 +3320,6 @@ dc_init(void *xsc)
 		else
 			callout_reset(&sc->dc_stat_timer, hz, dc_tick, sc);
 	}
-
-	return;
 }
 
 /*
@@ -3394,12 +3398,11 @@ dc_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 				dc_stop(sc);
 		}
 		sc->dc_if_flags = ifp->if_flags;
-		error = 0;
 		break;
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-		dc_setfilt(sc);
-		error = 0;
+		if (ifp->if_flags & IFF_RUNNING)
+			dc_setfilt(sc);
 		break;
 	case SIOCGIFMEDIA:
 	case SIOCSIFMEDIA:
