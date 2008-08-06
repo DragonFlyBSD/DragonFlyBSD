@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)df.c	8.9 (Berkeley) 5/8/95
  * $FreeBSD: src/bin/df/df.c,v 1.23.2.9 2002/07/01 00:14:24 iedowse Exp $
- * $DragonFly: src/bin/df/df.c,v 1.10 2008/06/01 20:52:21 dillon Exp $
+ * $DragonFly: src/bin/df/df.c,v 1.10.2.1 2008/08/06 07:54:07 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -56,7 +56,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <fstab.h>
-#include <math.h>
+#include <libutil.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -65,24 +65,6 @@
 
 #define UNITS_SI 1
 #define UNITS_2 2
-
-#define KILO_SZ(n) (n)
-#define MEGA_SZ(n) ((n) * (n))
-#define GIGA_SZ(n) ((n) * (n) * (n))
-#define TERA_SZ(n) ((n) * (n) * (n) * (n))
-#define PETA_SZ(n) ((n) * (n) * (n) * (n) * (n))
-
-#define KILO_2_SZ (KILO_SZ(1024ULL))
-#define MEGA_2_SZ (MEGA_SZ(1024ULL))
-#define GIGA_2_SZ (GIGA_SZ(1024ULL))
-#define TERA_2_SZ (TERA_SZ(1024ULL))
-#define PETA_2_SZ (PETA_SZ(1024ULL))
-
-#define KILO_SI_SZ (KILO_SZ(1000ULL))
-#define MEGA_SI_SZ (MEGA_SZ(1000ULL))
-#define GIGA_SI_SZ (GIGA_SZ(1000ULL))
-#define TERA_SI_SZ (TERA_SZ(1000ULL))
-#define PETA_SI_SZ (PETA_SZ(1000ULL))
 
 /* Maximum widths of various fields. */
 struct maxwidths {
@@ -94,14 +76,6 @@ struct maxwidths {
 	int ifree;
 };
 
-unsigned long long vals_si [] = {1, KILO_SI_SZ, MEGA_SI_SZ, GIGA_SI_SZ, TERA_SI_SZ, PETA_SI_SZ};
-unsigned long long vals_base2[] = {1, KILO_2_SZ, MEGA_2_SZ, GIGA_2_SZ, TERA_2_SZ, PETA_2_SZ};
-unsigned long long *valp;
-
-typedef enum { NONE, KILO, MEGA, GIGA, TERA, PETA, UNIT_MAX } unit_t;
-
-unit_t unitp [] = { NONE, KILO, MEGA, GIGA, TERA, PETA };
-
 int	  bread(off_t, void *, int);
 int	  checkvfsname(const char *, char **);
 char	 *getmntpt(char *);
@@ -109,11 +83,10 @@ int	  quadwidth(int64_t);
 char	 *makenetvfslist(void);
 char	**makevfslist(char *);
 void	  prthuman(struct statvfs *, long);
-void	  prthumanval(double);
+void	  prthumanval(int64_t);
 void	  prtstat(struct statfs *, struct statvfs *, struct maxwidths *);
 long	  regetmntinfo(struct statfs **, struct statvfs **,  long, char **);
 int	  ufs_df(char *, struct maxwidths *);
-unit_t	  unit_adjust(double *);
 void	  update_maxwidths(struct maxwidths *, struct statfs *, struct statvfs *);
 void	  usage(void);
 
@@ -166,11 +139,9 @@ main(int argc, char **argv)
 			break;
 		case 'H':
 			hflag = UNITS_SI;
-			valp = vals_si;
 			break;
 		case 'h':
 			hflag = UNITS_2;
-			valp = vals_base2;
 			break;
 		case 'i':
 			iflag = 1;
@@ -338,54 +309,28 @@ regetmntinfo(struct statfs **mntbufp, struct statvfs **mntvbufp, long mntsize, c
 	return (j);
 }
 
-/*
- * Output in "human-readable" format.  Uses 3 digits max and puts
- * unit suffixes at the end.  Makes output compact and easy to read,
- * especially on huge disks.
- *
- */
-unit_t
-unit_adjust(double *val)
-{
-	double abval;
-	unit_t unit;
-	unsigned int unit_sz;
-
-	abval = fabs(*val);
-
-	unit_sz = abval ? ilogb(abval) / 10 : 0;
-
-	if (unit_sz >= UNIT_MAX) {
-		unit = NONE;
-	} else {
-		unit = unitp[unit_sz];
-		*val /= (double)valp[unit_sz];
-	}
-
-	return (unit);
-}
-
 void
 prthuman(struct statvfs *vsfsp, long used)
 {
-	prthumanval((double)vsfsp->f_blocks * (double)vsfsp->f_bsize);
-	prthumanval((double)used * (double)vsfsp->f_bsize);
-	prthumanval((double)vsfsp->f_bavail * (double)vsfsp->f_bsize);
+	prthumanval(vsfsp->f_blocks * vsfsp->f_bsize);
+	prthumanval(used * vsfsp->f_bsize);
+	prthumanval(vsfsp->f_bavail * vsfsp->f_bsize);
 }
 
 void
-prthumanval(double bytes)
+prthumanval(int64_t bytes)
 {
+	char buf[6];
+	int flags;
 
-	unit_t unit;
-	unit = unit_adjust(&bytes);
+	flags = HN_B | HN_NOSPACE | HN_DECIMAL;
+	if (hflag == UNITS_SI)
+		flags |= HN_DIVISOR_1000;
 
-	if (bytes == 0)
-		printf("     0B");
-	else if (bytes > 10)
-		printf(" %5.0f%c", bytes, "BKMGTPE"[unit]);
-	else
-		printf(" %5.1f%c", bytes, "BKMGTPE"[unit]);
+	humanize_number(buf, sizeof(buf) - (bytes < 0 ? 0 : 1),
+	    bytes, "", HN_AUTOSCALE, flags);
+
+	printf(" %6s", buf);
 }
 
 /*
