@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.25 2008/07/10 04:44:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.h,v 1.26 2008/08/06 15:38:58 dillon Exp $
  */
 
 struct hammer_cmirror;
@@ -129,7 +129,7 @@ typedef struct hammer_cursor *hammer_cursor_t;
 #define HAMMER_CURSOR_ATEMEM		0x0200
 #define HAMMER_CURSOR_DISKEOF		0x0400
 #define HAMMER_CURSOR_MEMEOF		0x0800
-#define HAMMER_CURSOR_DELBTREE		0x1000	/* ip_delete from b-tree */
+#define HAMMER_CURSOR_RETEST		0x1000	/* retest current element */
 #define HAMMER_CURSOR_MIRROR_FILTERED	0x2000	/* mirror_tid filter */
 #define HAMMER_CURSOR_ASOF		0x4000	/* as-of lookup */
 #define HAMMER_CURSOR_CREATE_CHECK	0x8000	/* as-of lookup */

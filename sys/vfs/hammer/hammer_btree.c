@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.75 2008/07/31 22:30:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_btree.c,v 1.76 2008/08/06 15:38:58 dillon Exp $
  */
 
 /*
@@ -2072,8 +2072,8 @@ hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid)
  * (cursor->node).  Returns 0 on success, EDEADLK if we could not complete
  * the operation due to a deadlock, or some other error.
  *
- * This routine is always called with an empty, locked leaf but may recurse
- * into want-to-be-empty parents as part of its operation.
+ * This routine is initially called with an empty leaf and may be
+ * recursively called with single-element internal nodes.
  *
  * It should also be noted that when removing empty leaves we must be sure
  * to test and update mirror_tid because another thread may have deadlocked
@@ -2118,6 +2118,13 @@ btree_remove(hammer_cursor_t cursor)
 	 * Attempt to remove the parent's reference to the child.  If the
 	 * parent would become empty we have to recurse.  If we fail we 
 	 * leave the parent pointing to an empty leaf node.
+	 *
+	 * We have to recurse successfully before we can delete the internal
+	 * node as it is illegal to have empty internal nodes.  Even though
+	 * the operation may be aborted we must still fixup any unlocked
+	 * cursors as if we had deleted the element prior to recursing
+	 * (by calling hammer_cursor_deleted_element()) so those cursors
+	 * are properly forced up the chain by the recursion.
 	 */
 	if (parent->ondisk->count == 1) {
 		/*
@@ -2128,6 +2135,7 @@ btree_remove(hammer_cursor_t cursor)
 		 */
 		error = hammer_cursor_up_locked(cursor);
 		if (error == 0) {
+			hammer_cursor_deleted_element(cursor->node, 0);
 			error = btree_remove(cursor);
 			if (error == 0) {
 				hammer_modify_node_all(cursor->trans, node);

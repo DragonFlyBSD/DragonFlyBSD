@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.108 2008/08/02 21:21:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.109 2008/08/06 15:38:58 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1873,19 +1873,19 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 
 		/*
 		 * If the target IP is already flushing in our group
-		 * we are golden, otherwise make sure the target
-		 * reflushes.
+		 * we could associate the record, but target_ip has
+		 * already synced ino_data to sync_ino_data and we
+		 * would also have to adjust nlinks.   Plus there are
+		 * ordering issues for adds and deletes.
+		 *
+		 * Reflush downward if this is an ADD, and upward if
+		 * this is a DEL.
 		 */
 		if (target_ip->flush_state == HAMMER_FST_FLUSH) {
-			if (target_ip->flush_group == flg) {
-				rec->flush_state = HAMMER_FST_FLUSH;
-				rec->flush_group = flg;
-				++flg->refs;
-				hammer_ref(&rec->lock);
-				r = 1;
-			} else {
+			if (rec->flush_state == HAMMER_MEM_RECORD_ADD)
+				ip->flags |= HAMMER_INODE_REFLUSH;
+			else
 				target_ip->flags |= HAMMER_INODE_REFLUSH;
-			}
 			break;
 		} 
 

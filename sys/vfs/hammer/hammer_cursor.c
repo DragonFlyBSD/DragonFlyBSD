@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.41 2008/07/11 01:22:29 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_cursor.c,v 1.42 2008/08/06 15:38:58 dillon Exp $
  */
 
 /*
@@ -497,7 +497,7 @@ hammer_unlock_cursor(hammer_cursor_t cursor, int also_ip)
 	/*
 	 * Release the cursor's locks and track B-Tree operations on node.
 	 * While being tracked our cursor can be modified by other threads
-	 * and node may be replaced.
+	 * and the node may be replaced.
 	 */
 	if (cursor->parent) {
 		hammer_unlock(&cursor->parent->lock);
@@ -561,9 +561,15 @@ hammer_lock_cursor(hammer_cursor_t cursor, int also_ip)
 	TAILQ_REMOVE(&node->cursor_list, cursor, deadlk_entry);
 	cursor->flags &= ~HAMMER_CURSOR_TRACKED;
 
+	/*
+	 * If a ripout has occured iterations must re-test the (new)
+	 * current element.  Clearing ATEDISK prevents the element from
+	 * being skipped and RETEST causes it to be re-tested.
+	 */
 	if (cursor->flags & HAMMER_CURSOR_TRACKED_RIPOUT) {
 		cursor->flags &= ~HAMMER_CURSOR_TRACKED_RIPOUT;
 		cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
+		cursor->flags |= HAMMER_CURSOR_RETEST;
 	}
 	error = hammer_load_cursor_parent(cursor, 0);
 	return(error);
