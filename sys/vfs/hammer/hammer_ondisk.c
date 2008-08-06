@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.69.2.4 2008/08/02 21:24:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.69.2.5 2008/08/06 15:41:56 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -653,8 +653,9 @@ found:
 /*
  * This is used by the direct-read code to deal with large-data buffers
  * created by the reblocker and mirror-write code.  The direct-read code
- * bypasses the HAMMER buffer subsystem and so any aliased dirty hammer
- * buffers must be fully synced to disk before we can issue the direct-read.
+ * bypasses the HAMMER buffer subsystem and so any aliased dirty or write-
+ * running hammer buffers must be fully synced to disk before we can issue
+ * the direct-read.
  *
  * This code path is not considered critical as only the rebocker and
  * mirror-write code will create large-data buffers via the HAMMER buffer
@@ -673,13 +674,16 @@ hammer_sync_buffers(hammer_mount_t hmp, hammer_off_t base_offset, int bytes)
 	while (bytes > 0) {
 		buffer = RB_LOOKUP(hammer_buf_rb_tree, &hmp->rb_bufs_root,
 				   base_offset);
-		if (buffer && buffer->io.modified) {
+		if (buffer && (buffer->io.modified || buffer->io.running)) {
 			error = hammer_ref_buffer(buffer);
-			if (error == 0 && buffer->io.modified) {
-				hammer_io_write_interlock(&buffer->io);
-				hammer_io_flush(&buffer->io);
-				hammer_io_done_interlock(&buffer->io);
+			if (error == 0) {
 				hammer_io_wait(&buffer->io);
+				if (buffer->io.modified) {
+					hammer_io_write_interlock(&buffer->io);
+					hammer_io_flush(&buffer->io);
+					hammer_io_done_interlock(&buffer->io);
+					hammer_io_wait(&buffer->io);
+				}
 				hammer_rel_buffer(buffer, 0);
 			}
 		}
@@ -718,6 +722,7 @@ hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
 				KKASSERT(buffer->zone2_offset == zone2_offset);
 				hammer_io_clear_modify(&buffer->io, 1);
 				buffer->io.reclaim = 1;
+				buffer->io.waitdep = 1;
 				KKASSERT(buffer->volume == volume);
 				hammer_rel_buffer(buffer, 0);
 			}

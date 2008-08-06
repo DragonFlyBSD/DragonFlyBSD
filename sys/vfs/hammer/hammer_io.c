@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.49.2.3 2008/08/02 21:24:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.49.2.4 2008/08/06 15:41:56 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -269,10 +269,14 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 	else
 		bp = getblk(volume->devvp, phys_offset, HAMMER_BUFSIZE, 0, 0);
 	if ((iou = (void *)LIST_FIRST(&bp->b_dep)) != NULL) {
+		hammer_ref(&iou->io.lock);
 		hammer_io_clear_modify(&iou->io, 1);
 		bundirty(bp);
 		iou->io.reclaim = 1;
-		hammer_io_deallocate(bp);
+		iou->io.waitdep = 1;
+		KKASSERT(iou->io.lock.refs == 0);
+		hammer_rel_buffer(&iou->buffer, 0);
+		/*hammer_io_deallocate(bp);*/
 	} else {
 		KKASSERT((bp->b_flags & B_LOCKED) == 0);
 		bundirty(bp);
@@ -332,7 +336,9 @@ hammer_io_release(struct hammer_io *io, int flush)
 	}
 
 	/*
-	 * Wait for the IO to complete if asked to.
+	 * Wait for the IO to complete if asked to.  This occurs when
+	 * the buffer must be disposed of definitively during an umount
+	 * or buffer invalidation.
 	 */
 	if (io->waitdep && io->running) {
 		hammer_io_wait(io);
@@ -490,7 +496,9 @@ hammer_io_flush(struct hammer_io *io)
 	 * Do this before potentially blocking so any attempt to modify the
 	 * ondisk while we are blocked blocks waiting for us.
 	 */
+	hammer_ref(&io->lock);
 	hammer_io_clear_modify(io, 0);
+	hammer_unref(&io->lock);
 
 	/*
 	 * Transfer ownership to the kernel and initiate I/O.
@@ -650,6 +658,9 @@ hammer_modify_buffer_done(hammer_buffer_t buffer)
  * making bulk-modifications to the B-Tree.
  *
  * If inval is non-zero delayed adjustments are ignored.
+ *
+ * This routine may dereference related btree nodes and cause the
+ * buffer to be dereferenced.  The caller must own a reference on io.
  */
 void
 hammer_io_clear_modify(struct hammer_io *io, int inval)
@@ -698,7 +709,8 @@ restart:
 			goto restart;
 		}
 	}
-
+	/* caller must still have ref on io */
+	KKASSERT(io->lock.refs > 0);
 }
 
 /*
@@ -951,9 +963,18 @@ hammer_io_checkwrite(struct buf *bp)
 	/*
 	 * We can only clear the modified bit if the IO is not currently
 	 * undergoing modification.  Otherwise we may miss changes.
+	 *
+	 * Only data and undo buffers can reach here.  These buffers do
+	 * not have terminal crc functions but we temporarily reference
+	 * the IO anyway, just in case.
 	 */
-	if (io->modify_refs == 0 && io->modified)
+	if (io->modify_refs == 0 && io->modified) {
+		hammer_ref(&io->lock);
 		hammer_io_clear_modify(io, 0);
+		hammer_unref(&io->lock);
+	} else if (io->modified) {
+		KKASSERT(io->type == HAMMER_STRUCTURE_DATA_BUFFER);
+	}
 
 	/*
 	 * The kernel is going to start the IO, set io->running.

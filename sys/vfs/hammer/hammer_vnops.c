@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.91.2.3 2008/08/02 21:24:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.91.2.4 2008/08/06 15:41:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1652,6 +1652,8 @@ hammer_vop_nrmdir(struct vop_nrmdir_args *ap)
 	int error;
 
 	dip = VTOI(ap->a_dvp);
+	if (dip->ino_data.obj_type != HAMMER_OBJTYPE_DIRECTORY)
+		return(ENOTDIR);
 
 	if (hammer_nohistory(dip) == 0 &&
 	    (error = hammer_checkspace(dip->hmp, HAMMER_CHKSPC_REMOVE)) != 0) {

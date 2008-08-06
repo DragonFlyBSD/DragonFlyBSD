@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.90.2.3 2008/08/02 21:24:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.90.2.4 2008/08/06 15:41:56 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1084,7 +1084,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	if (record->type == HAMMER_MEM_RECORD_DEL) {
 		error = hammer_btree_lookup(cursor);
 		if (error == 0) {
-			/* XXX iprec? */
+			KKASSERT(cursor->iprec == NULL);
 			error = hammer_ip_delete_record(cursor, record->ip,
 							trans->tid);
 			if (error == 0) {
@@ -1312,7 +1312,7 @@ hammer_ip_first(hammer_cursor_t cursor)
 	/*
 	 * Clean up fields and setup for merged scan
 	 */
-	cursor->flags &= ~HAMMER_CURSOR_DELBTREE;
+	cursor->flags &= ~HAMMER_CURSOR_RETEST;
 	cursor->flags |= HAMMER_CURSOR_ATEDISK | HAMMER_CURSOR_ATEMEM;
 	cursor->flags |= HAMMER_CURSOR_DISKEOF | HAMMER_CURSOR_MEMEOF;
 	if (cursor->iprec) {
@@ -1393,17 +1393,17 @@ next_btree:
 	 * records we have to get the next one. 
 	 *
 	 * If we deleted the last on-disk record we had scanned ATEDISK will
-	 * be clear and DELBTREE will be set, forcing a call to iterate. The
+	 * be clear and RETEST will be set, forcing a call to iterate.  The
 	 * fact that ATEDISK is clear causes iterate to re-test the 'current'
 	 * element.  If ATEDISK is set, iterate will skip the 'current'
 	 * element.
 	 *
 	 * Get the next on-disk record
 	 */
-	if (cursor->flags & (HAMMER_CURSOR_ATEDISK|HAMMER_CURSOR_DELBTREE)) {
+	if (cursor->flags & (HAMMER_CURSOR_ATEDISK|HAMMER_CURSOR_RETEST)) {
 		if ((cursor->flags & HAMMER_CURSOR_DISKEOF) == 0) {
 			error = hammer_btree_iterate(cursor);
-			cursor->flags &= ~HAMMER_CURSOR_DELBTREE;
+			cursor->flags &= ~HAMMER_CURSOR_RETEST;
 			if (error == 0) {
 				cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
 				hammer_cache_node(&cursor->ip->cache[1],
@@ -1750,8 +1750,8 @@ retry:
 		 *
 		 * This will also physically destroy the B-Tree entry and
 		 * data if the retention policy dictates.  The function
-		 * will set HAMMER_CURSOR_DELBTREE which hammer_ip_next()
-		 * uses to perform a fixup.
+		 * will set HAMMER_CURSOR_RETEST to cause hammer_ip_next()
+		 * to retest the new 'current' element.
 		 */
 		if (truncating == 0 || hammer_cursor_ondisk(cursor)) {
 			error = hammer_ip_delete_record(cursor, ip, trans->tid);
@@ -1877,8 +1877,8 @@ retry:
 		 * Mark the record and B-Tree entry as deleted.  This will
 		 * also physically delete the B-Tree entry, record, and
 		 * data if the retention policy dictates.  The function
-		 * will set HAMMER_CURSOR_DELBTREE which hammer_ip_next()
-		 * uses to perform a fixup.
+		 * will set HAMMER_CURSOR_RETEST to cause hammer_ip_next()
+		 * to retest the new 'current' element.
 		 *
 		 * Directory entries (and delete-on-disk directory entries)
 		 * must be synced and cannot be deleted.
@@ -2038,10 +2038,11 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 		 * Adjust for the iteration.  We have deleted the current
 		 * element and want to clear ATEDISK so the iteration does
 		 * not skip the element after, which now becomes the current
-		 * element.
+		 * element.  This element must be re-tested if doing an
+		 * iteration, which is handled by the RETEST flag.
 		 */
 		if ((cursor->flags & HAMMER_CURSOR_DISKEOF) == 0) {
-			cursor->flags |= HAMMER_CURSOR_DELBTREE;
+			cursor->flags |= HAMMER_CURSOR_RETEST;
 			cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
 		}
 
@@ -2076,12 +2077,14 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 		error = hammer_btree_delete(cursor);
 		if (error == 0) {
 			/*
-			 * This forces a fixup for the iteration because
-			 * the cursor is now either sitting at the 'next'
-			 * element or sitting at the end of a leaf.
+			 * The deletion moves the next element (if any) to
+			 * the current element position.  We must clear
+			 * ATEDISK so this element is not skipped and we
+			 * must set RETEST to force any iteration to re-test
+			 * the element.
 			 */
 			if ((cursor->flags & HAMMER_CURSOR_DISKEOF) == 0) {
-				cursor->flags |= HAMMER_CURSOR_DELBTREE;
+				cursor->flags |= HAMMER_CURSOR_RETEST;
 				cursor->flags &= ~HAMMER_CURSOR_ATEDISK;
 			}
 		}
