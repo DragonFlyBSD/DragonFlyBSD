@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)df.c	8.9 (Berkeley) 5/8/95
  * $FreeBSD: src/bin/df/df.c,v 1.23.2.9 2002/07/01 00:14:24 iedowse Exp $
- * $DragonFly: src/bin/df/df.c,v 1.10.2.1 2008/08/06 07:54:07 swildner Exp $
+ * $DragonFly: src/bin/df/df.c,v 1.10.2.2 2008/08/07 10:01:38 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -82,7 +82,7 @@ char	 *getmntpt(char *);
 int	  quadwidth(int64_t);
 char	 *makenetvfslist(void);
 char	**makevfslist(char *);
-void	  prthuman(struct statvfs *, long);
+void	  prthuman(struct statvfs *, int64_t);
 void	  prthumanval(int64_t);
 void	  prtstat(struct statfs *, struct statvfs *, struct maxwidths *);
 long	  regetmntinfo(struct statfs **, struct statvfs **,  long, char **);
@@ -310,7 +310,7 @@ regetmntinfo(struct statfs **mntbufp, struct statvfs **mntvbufp, long mntsize, c
 }
 
 void
-prthuman(struct statvfs *vsfsp, long used)
+prthuman(struct statvfs *vsfsp, int64_t used)
 {
 	prthumanval(vsfsp->f_blocks * vsfsp->f_bsize);
 	prthumanval(used * vsfsp->f_bsize);
