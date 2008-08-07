@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)dumpfs.c	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/sbin/dumpfs/dumpfs.c,v 1.13.2.1 2001/01/22 18:10:11 iedowse Exp $
- * $DragonFly: src/sbin/dumpfs/dumpfs.c,v 1.9 2008/01/07 12:07:06 matthias Exp $
+ * $DragonFly: src/sbin/dumpfs/dumpfs.c,v 1.10 2008/08/07 11:15:45 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -136,7 +136,7 @@ dumpfs(char *name)
 		afs.fs_nrpos = 8;
 	dev_bsize = afs.fs_fsize / fsbtodb(&afs, 1);
 	printf("magic\t%x\ttime\t%s", afs.fs_magic,
-	    ctime(&afs.fs_time));
+	    ctime((time_t *)&afs.fs_time));
 	printf("id\t[ %x %x ]\n", afs.fs_id[0], afs.fs_id[1]);
 	printf("cylgrp\t%s\tinodes\t%s\n",
 	    afs.fs_postblformat == FS_42POSTBLFMT ? "static" : "dynamic",
@@ -262,7 +262,7 @@ dumpcg(char *name, int fd, int c)
 	printf("magic\t%x\ttell\t%qx\ttime\t%s",
 	    afs.fs_postblformat == FS_42POSTBLFMT ?
 	    ((struct ocg *)&acg)->cg_magic : acg.cg_magic,
-	    cur, ctime(&acg.cg_time));
+	    cur, ctime((time_t *)&acg.cg_time));
 	printf("cgx\t%d\tncyl\t%d\tniblk\t%d\tndblk\t%d\n",
 	    acg.cg_cgx, acg.cg_ncyl, acg.cg_niblk, acg.cg_ndblk);
 	printf("nbfree\t%d\tndir\t%d\tnifree\t%d\tnffree\t%d\n",
