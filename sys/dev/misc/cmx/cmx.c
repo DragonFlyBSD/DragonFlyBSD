@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cmx/cmx.c,v 1.1 2008/03/06 08:09:45 rink Exp $
- * $DragonFly: src/sys/dev/misc/cmx/cmx.c,v 1.1 2008/04/23 08:57:10 hasso Exp $
+ * $DragonFly: src/sys/dev/misc/cmx/cmx.c,v 1.2 2008/08/08 18:33:11 hasso Exp $
  */
 
 /*
@@ -284,10 +284,10 @@ cmx_detach(device_t dev)
 	}
 
 	wakeup(sc);
-	destroy_dev(sc->cdev);
-
 	DEBUG_printf(dev, "releasing resources\n");
 	cmx_release_resources(dev);
+	dev_ops_remove(&cmx_ops, -1, device_get_unit(dev));
+
 	return 0;
 }
 
