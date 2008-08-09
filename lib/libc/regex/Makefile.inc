@@ -1,6 +1,6 @@
 #	from @(#)Makefile.inc	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libc/regex/Makefile.inc,v 1.5.2.1 2001/04/25 10:04:08 ru Exp $
-# $DragonFly: src/lib/libc/regex/Makefile.inc,v 1.2 2003/06/17 04:26:44 dillon Exp $
+# $DragonFly: src/lib/libc/regex/Makefile.inc,v 1.3 2008/08/09 20:20:03 swildner Exp $
 
 # regex sources
 .PATH: ${.CURDIR}/../libc/regex
@@ -14,5 +14,5 @@ MAN+=	regex.3
 MAN+=	re_format.7
 
 MLINKS+=regex.3 regcomp.3 regex.3 regexec.3 regex.3 regerror.3
-MLINKS+=regexec.3 regfree.3
+MLINKS+=regex.3 regfree.3
 .endif
