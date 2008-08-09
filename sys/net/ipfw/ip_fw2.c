@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.68 2008/08/09 06:29:45 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.69 2008/08/09 07:08:20 sephe Exp $
  */
 
 #define        DEB(x)
@@ -2921,6 +2921,11 @@ ipfw_ctl_get_rules(struct sockopt *sopt)
 		int i;
 
 		lockmgr(&dyn_lock, LK_SHARED);
+
+		/* Check 'ipfw_dyn_v' again with lock held */
+		if (ipfw_dyn_v == NULL)
+			goto skip;
+
 		for (i = 0; i < curr_dyn_buckets; i++) {
 			ipfw_dyn_rule *p;
 
@@ -2935,6 +2940,7 @@ ipfw_ctl_get_rules(struct sockopt *sopt)
 			     p = p->next, ioc_state++, dcount--, dcount2++)
 				ipfw_copy_state(p, ioc_state);
 		}
+skip:
 		lockmgr(&dyn_lock, LK_RELEASE);
 
 		/*
@@ -3068,7 +3074,12 @@ ipfw_tick(void *dummy __unused)
 
 	lockmgr(&dyn_lock, LK_EXCLUSIVE);
 again:
+	if (ipfw_dyn_v == NULL || dyn_count == 0) {
+		lockmgr(&dyn_lock, LK_RELEASE);
+		goto done;
+	}
 	gen = dyn_buckets_gen;
+
 	for (i = 0; i < curr_dyn_buckets; i++) {
 		ipfw_dyn_rule *q, *prev;
 
