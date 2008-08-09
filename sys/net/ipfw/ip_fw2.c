@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.67 2008/08/09 06:09:18 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.68 2008/08/09 06:29:45 sephe Exp $
  */
 
 #define        DEB(x)
@@ -3190,7 +3190,7 @@ ipfw_sysctl_dyn_buckets(SYSCTL_HANDLER_ARGS)
 	 * do not allow more than 64k entries.
 	 */
 	error = EINVAL;
-	if (value < 0 || value > 65536)
+	if (value <= 1 || value > 65536)
 		goto back;
 	if ((value & (value - 1)) != 0)
 		goto back;
