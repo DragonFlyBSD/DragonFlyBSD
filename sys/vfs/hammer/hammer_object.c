@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.95 2008/08/06 15:38:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.96 2008/08/09 07:04:16 dillon Exp $
  */
 
 #include "hammer.h"
@@ -40,6 +40,7 @@ static int hammer_mem_lookup(hammer_cursor_t cursor);
 static int hammer_mem_first(hammer_cursor_t cursor);
 static int hammer_frontend_trunc_callback(hammer_record_t record,
 				void *data __unused);
+static int hammer_bulk_scan_callback(hammer_record_t record, void *data);
 static int hammer_record_needs_overwrite_delete(hammer_record_t record);
 static int hammer_delete_general(hammer_cursor_t cursor, hammer_inode_t ip,
 		      hammer_btree_leaf_elm_t leaf);
@@ -47,6 +48,11 @@ static int hammer_delete_general(hammer_cursor_t cursor, hammer_inode_t ip,
 struct rec_trunc_info {
 	u_int16_t	rec_type;
 	int64_t		trunc_off;
+};
+
+struct hammer_bulk_info {
+	hammer_record_t record;
+	struct hammer_btree_leaf_elm leaf;
 };
 
 /*
@@ -108,52 +114,46 @@ hammer_rec_cmp(hammer_base_elm_t elm, hammer_record_t rec)
 }
 
 /*
- * Special LOOKUP_INFO to locate an overlapping record.  This used by
- * the reservation code to implement small-block records (whos keys will
- * be different depending on data_len, when representing the same base
- * offset).
+ * Ranged scan to locate overlapping record(s).  This is used by
+ * hammer_ip_get_bulk() to locate an overlapping record.  We have
+ * to use a ranged scan because the keys for data records with the
+ * same file base offset can be different due to differing data_len's.
  *
  * NOTE: The base file offset of a data record is (key - data_len), not (key).
  */
 static int
-hammer_rec_overlap_compare(hammer_btree_leaf_elm_t leaf, hammer_record_t rec)
+hammer_rec_overlap_cmp(hammer_record_t rec, void *data)
 {
-	if (leaf->base.rec_type < rec->leaf.base.rec_type)
+	struct hammer_bulk_info *info = data;
+	hammer_btree_leaf_elm_t leaf = &info->leaf;
+
+	if (rec->leaf.base.rec_type < leaf->base.rec_type)
 		return(-3);
-	if (leaf->base.rec_type > rec->leaf.base.rec_type)
+	if (rec->leaf.base.rec_type > leaf->base.rec_type)
 		return(3);
 
 	/*
 	 * Overlap compare
 	 */
 	if (leaf->base.rec_type == HAMMER_RECTYPE_DATA) {
-		/* leaf_end <= rec_beg */
-		if (leaf->base.key <= rec->leaf.base.key - rec->leaf.data_len)
-			return(-2);
-		/* leaf_beg >= rec_end */
-		if (leaf->base.key - leaf->data_len >= rec->leaf.base.key)
+		/* rec_beg >= leaf_end */
+		if (rec->leaf.base.key - rec->leaf.data_len >= leaf->base.key)
 			return(2);
-	} else {
-		if (leaf->base.key < rec->leaf.base.key)
+		/* rec_end <= leaf_beg */
+		if (rec->leaf.base.key <= leaf->base.key - leaf->data_len)
 			return(-2);
-		if (leaf->base.key > rec->leaf.base.key)
+	} else {
+		if (rec->leaf.base.key < leaf->base.key)
+			return(-2);
+		if (rec->leaf.base.key > leaf->base.key)
 			return(2);
 	}
 
 	/*
-	 * Never match against an item deleted by the front-end.
-	 * leaf is less then rec if rec is marked deleted.
-	 *
-	 * We must still return the proper code for the scan to continue
-	 * along the correct branches.
+	 * We have to return 0 at this point, even if DELETED_FE is set,
+	 * because returning anything else will cause the scan to ignore
+	 * one of the branches when we really want it to check both.
 	 */
-	if (rec->flags & HAMMER_RECF_DELETED_FE) {
-		if (leaf->base.key < rec->leaf.base.key)
-			return(-2);
-		if (leaf->base.key > rec->leaf.base.key)
-			return(2);
-		return(-1);
-	}
         return(0);
 }
 
@@ -240,8 +240,6 @@ hammer_rec_trunc_cmp(hammer_record_t rec, void *data)
 }
 
 RB_GENERATE(hammer_rec_rb_tree, hammer_record, rb_node, hammer_rec_rb_compare);
-RB_GENERATE_XLOOKUP(hammer_rec_rb_tree, INFO, hammer_record, rb_node,
-		    hammer_rec_overlap_compare, hammer_btree_leaf_elm_t);
 
 /*
  * Allocate a record for the caller to finish filling in.  The record is
@@ -827,27 +825,44 @@ hammer_ip_add_record(struct hammer_transaction *trans, hammer_record_t record)
  * to queue the BIO to the flusher.  Only the related record gets queued
  * to the flusher.
  */
+
 static hammer_record_t
 hammer_ip_get_bulk(hammer_inode_t ip, off_t file_offset, int bytes)
 {
-	hammer_record_t record;
-	struct hammer_btree_leaf_elm leaf;
+	struct hammer_bulk_info info;
+	
+	bzero(&info, sizeof(info));
+	info.leaf.base.obj_id = ip->obj_id;
+	info.leaf.base.key = file_offset + bytes;
+	info.leaf.base.create_tid = 0;
+	info.leaf.base.delete_tid = 0;
+	info.leaf.base.rec_type = HAMMER_RECTYPE_DATA;
+	info.leaf.base.obj_type = 0;				/* unused */
+	info.leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;	/* unused */
+	info.leaf.base.localization = ip->obj_localization +	/* unused */
+				      HAMMER_LOCALIZE_MISC;
+	info.leaf.data_len = bytes;
 
-	bzero(&leaf, sizeof(leaf));
-	leaf.base.obj_id = ip->obj_id;
-	leaf.base.key = file_offset + bytes;
-	leaf.base.create_tid = 0;
-	leaf.base.delete_tid = 0;
-	leaf.base.rec_type = HAMMER_RECTYPE_DATA;
-	leaf.base.obj_type = 0;			/* unused */
-	leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;	/* unused */
-	leaf.base.localization = ip->obj_localization + HAMMER_LOCALIZE_MISC;
-	leaf.data_len = bytes;
+	hammer_rec_rb_tree_RB_SCAN(&ip->rec_tree, hammer_rec_overlap_cmp,
+				   hammer_bulk_scan_callback, &info);
 
-	record = hammer_rec_rb_tree_RB_LOOKUP_INFO(&ip->rec_tree, &leaf);
-	if (record)
-		hammer_ref(&record->lock);
-	return(record);
+	return(info.record);	/* may be NULL */
+}
+
+/*
+ * Take records vetted by overlap_cmp.  The first non-deleted record
+ * (if any) stops the scan.
+ */
+static int
+hammer_bulk_scan_callback(hammer_record_t record, void *data)
+{
+	struct hammer_bulk_info *info = data;
+
+	if (record->flags & HAMMER_RECF_DELETED_FE)
+		return(0);
+	hammer_ref(&record->lock);
+	info->record = record;
+	return(-1);			/* stop scan */
 }
 
 /*
@@ -870,10 +885,10 @@ hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
 
 	/*
 	 * Deal with conflicting in-memory records.  We cannot have multiple
-	 * in-memory records for the same offset without seriously confusing
-	 * the backend, including but not limited to the backend issuing
-	 * delete-create-delete sequences and asserting on the delete_tid
-	 * being the same as the create_tid.
+	 * in-memory records for the same base offset without seriously
+	 * confusing the backend, including but not limited to the backend
+	 * issuing delete-create-delete or create-delete-create sequences
+	 * and asserting on the delete_tid being the same as the create_tid.
 	 *
 	 * If we encounter a record with the backend interlock set we cannot
 	 * immediately delete it without confusing the backend.

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.95 2008/08/06 15:38:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.96 2008/08/09 07:04:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -156,7 +156,8 @@ struct hammer_inode *HammerTruncIp;
 #endif
 
 static int hammer_dounlink(hammer_transaction_t trans, struct nchandle *nch,
-			   struct vnode *dvp, struct ucred *cred, int flags);
+			   struct vnode *dvp, struct ucred *cred,
+			   int flags, int isdir);
 static int hammer_vop_strategy_read(struct vop_strategy_args *ap);
 static int hammer_vop_strategy_write(struct vop_strategy_args *ap);
 
@@ -1491,7 +1492,7 @@ hammer_vop_nremove(struct vop_nremove_args *ap)
 
 	hammer_start_transaction(&trans, dip->hmp);
 	++hammer_stats_file_iopsw;
-	error = hammer_dounlink(&trans, ap->a_nch, ap->a_dvp, ap->a_cred, 0);
+	error = hammer_dounlink(&trans, ap->a_nch, ap->a_dvp, ap->a_cred, 0, 0);
 	hammer_done_transaction(&trans);
 
 	return (error);
@@ -1550,7 +1551,8 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 	 * Force the inode sync-time to match the transaction so it is
 	 * in-sync with the creation of the target directory entry.
 	 */
-	error = hammer_dounlink(&trans, ap->a_tnch, ap->a_tdvp, ap->a_cred, 0);
+	error = hammer_dounlink(&trans, ap->a_tnch, ap->a_tdvp,
+				ap->a_cred, 0, -1);
 	if (error == 0 || error == ENOENT) {
 		error = hammer_ip_add_directory(&trans, tdip,
 						tncp->nc_name, tncp->nc_nlen,
@@ -1652,8 +1654,6 @@ hammer_vop_nrmdir(struct vop_nrmdir_args *ap)
 	int error;
 
 	dip = VTOI(ap->a_dvp);
-	if (dip->ino_data.obj_type != HAMMER_OBJTYPE_DIRECTORY)
-		return(ENOTDIR);
 
 	if (hammer_nohistory(dip) == 0 &&
 	    (error = hammer_checkspace(dip->hmp, HAMMER_CHKSPC_REMOVE)) != 0) {
@@ -1662,7 +1662,7 @@ hammer_vop_nrmdir(struct vop_nrmdir_args *ap)
 
 	hammer_start_transaction(&trans, dip->hmp);
 	++hammer_stats_file_iopsw;
-	error = hammer_dounlink(&trans, ap->a_nch, ap->a_dvp, ap->a_cred, 0);
+	error = hammer_dounlink(&trans, ap->a_nch, ap->a_dvp, ap->a_cred, 0, 1);
 	hammer_done_transaction(&trans);
 
 	return (error);
@@ -1994,7 +1994,7 @@ hammer_vop_nwhiteout(struct vop_nwhiteout_args *ap)
 	hammer_start_transaction(&trans, dip->hmp);
 	++hammer_stats_file_iopsw;
 	error = hammer_dounlink(&trans, ap->a_nch, ap->a_dvp,
-				ap->a_cred, ap->a_flags);
+				ap->a_cred, ap->a_flags, -1);
 	hammer_done_transaction(&trans);
 
 	return (error);
@@ -2630,7 +2630,8 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
  */
 static int
 hammer_dounlink(hammer_transaction_t trans, struct nchandle *nch,
-		struct vnode *dvp, struct ucred *cred, int flags)
+		struct vnode *dvp, struct ucred *cred, 
+		int flags, int isdir)
 {
 	struct namecache *ncp;
 	hammer_inode_t dip;
@@ -2710,6 +2711,20 @@ retry:
 		if (error == ENOENT) {
 			kprintf("obj_id %016llx\n", cursor.data->entry.obj_id);
 			Debugger("ENOENT unlinking object that should exist");
+		}
+
+		/*
+		 * If isdir >= 0 we validate that the entry is or is not a
+		 * directory.  If isdir < 0 we don't care.
+		 */
+		if (error == 0 && isdir >= 0) {
+			if (isdir &&
+			    ip->ino_data.obj_type != HAMMER_OBJTYPE_DIRECTORY) {
+				error = ENOTDIR;
+			} else if (isdir == 0 &&
+			    ip->ino_data.obj_type == HAMMER_OBJTYPE_DIRECTORY) {
+				error = EISDIR;
+			}
 		}
 
 		/*
