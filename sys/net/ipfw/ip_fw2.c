@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.69 2008/08/09 07:08:20 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.70 2008/08/09 09:41:54 sephe Exp $
  */
 
 #define        DEB(x)
@@ -106,6 +106,7 @@ static struct callout ipfw_timeout_h;
  * list of rules for layer 3
  */
 static struct ip_fw *layer3_chain;
+static uint64_t norule_counter;	/* counter for ipfw_log(NULL...) */
 
 MALLOC_DEFINE(M_IPFW, "IpFw/IpAcct", "IpFw/IpAcct chain's");
 
@@ -467,8 +468,6 @@ iface_match(struct ifnet *ifp, ipfw_insn_if *cmd)
 	}
 	return(0);	/* no match, fail ... */
 }
-
-static uint64_t norule_counter;	/* counter for ipfw_log(NULL...) */
 
 #define SNPARGS(buf, len) buf + len, sizeof(buf) > len ? sizeof(buf) - len : 0
 
@@ -1995,8 +1994,10 @@ check_body:
 			 *   These opcodes try to install an entry in the
 			 *   state tables; if successful, we continue with
 			 *   the next opcode (match=1; break;), otherwise
-			 *   the packet *   must be dropped
-			 *   ('goto done' after setting retval);
+			 *   the packet must be dropped ('goto done' after
+			 *   setting retval).  If static rules are changed
+			 *   during the state installation, the packet will
+			 *   be dropped ('return IP_FW_PORT_DENY_FLAG').
 			 *
 			 * O_PROBE_STATE and O_CHECK_STATE: these opcodes
 			 *   cause a lookup of the state table, and a jump
@@ -2006,7 +2007,9 @@ check_body:
 			 *   the entry is not found ('goto next_rule').
 			 *   The result of the lookup is cached to make
 			 *   further instances of these opcodes are
-			 *   effectively NOPs.
+			 *   effectively NOPs.  If static rules are changed
+			 *   during the state looking up, the packet will
+			 *   be dropped ('return IP_FW_PORT_DENY_FLAG').
 			 */
 			case O_LIMIT:
 			case O_KEEP_STATE:
