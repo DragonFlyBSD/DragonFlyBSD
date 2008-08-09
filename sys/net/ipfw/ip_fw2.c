@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.66 2008/08/05 11:57:40 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.67 2008/08/09 06:09:18 sephe Exp $
  */
 
 #define        DEB(x)
@@ -56,6 +56,7 @@
 #include <sys/thread2.h>
 #include <sys/ucred.h>
 #include <sys/in_cksum.h>
+#include <sys/lock.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -110,8 +111,14 @@ MALLOC_DEFINE(M_IPFW, "IpFw/IpAcct", "IpFw/IpAcct chain's");
 
 static int fw_debug = 1;
 static int autoinc_step = IPFW_AUTOINC_STEP_DEF;
+static uint32_t static_count;	/* # of static rules */
+static uint32_t static_ioc_len;	/* bytes of static rules */
+static uint32_t static_gen;	/* generation of static rules */
 
 static int	ipfw_sysctl_autoinc_step(SYSCTL_HANDLER_ARGS);
+static int	ipfw_sysctl_dyn_buckets(SYSCTL_HANDLER_ARGS);
+static int	ipfw_sysctl_dyn_fin(SYSCTL_HANDLER_ARGS);
+static int	ipfw_sysctl_dyn_rst(SYSCTL_HANDLER_ARGS);
 
 #ifdef SYSCTL_NODE
 SYSCTL_NODE(_net_inet_ip, OID_AUTO, fw, CTLFLAG_RW, 0, "Firewall");
@@ -165,11 +172,25 @@ SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, verbose_limit, CTLFLAG_RW,
  * There are some limitations with dynamic rules -- we do not
  * obey the 'randomized match', and we do not do multiple
  * passes through the firewall. XXX check the latter!!!
+ *
+ * NOTE about the SHARED LOCKMGR LOCK during dynamic rule looking up:
+ * Only TCP state transition will change dynamic rule's state and ack
+ * sequences, while all packets of one TCP connection only goes through
+ * one TCP thread, so it is safe to use shared lockmgr lock during dynamic
+ * rule looking up.  The keep alive callout uses exclusive lockmgr lock
+ * when it tries to find suitable dynamic rules to send keep alive, so
+ * it will not see half updated state and ack sequences.  Though the expire
+ * field updating looks racy for other protocols, the resolution (second)
+ * of expire field makes this kind of race harmless.
+ * XXX statistics' updating is _not_ MPsafe!!!
+ * XXX once UDP output path is fixed, we could use lockless dynamic rule
+ *     hash table
  */
 static ipfw_dyn_rule **ipfw_dyn_v = NULL;
 static uint32_t dyn_buckets = 256; /* must be power of 2 */
 static uint32_t curr_dyn_buckets = 256; /* must be power of 2 */
 static uint32_t dyn_buckets_gen; /* generation of dyn buckets array */
+static struct lock dyn_lock; /* dynamic rules' hash table lock */
 
 /*
  * Timeouts for various events in handing dynamic rules.
@@ -193,13 +214,11 @@ static uint32_t dyn_keepalive_interval = 20;
 static uint32_t dyn_keepalive_period = 5;
 static uint32_t dyn_keepalive = 1;	/* do send keepalives */
 
-static uint32_t static_count;		/* # of static rules */
-static uint32_t static_ioc_len;	/* bytes of static rules */
 static uint32_t dyn_count;		/* # of dynamic rules */
-static uint32_t dyn_max = 4096;	/* max # of dynamic rules */
+static uint32_t dyn_max = 4096;		/* max # of dynamic rules */
 
-SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, dyn_buckets, CTLFLAG_RW,
-    &dyn_buckets, 0, "Number of dyn. buckets");
+SYSCTL_PROC(_net_inet_ip_fw, OID_AUTO, dyn_buckets, CTLTYPE_INT | CTLFLAG_RW,
+    &dyn_buckets, 0, ipfw_sysctl_dyn_buckets, "I", "Number of dyn. buckets");
 SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, curr_dyn_buckets, CTLFLAG_RD,
     &curr_dyn_buckets, 0, "Current Number of dyn. buckets");
 SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, dyn_count, CTLFLAG_RD,
@@ -212,10 +231,12 @@ SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, dyn_ack_lifetime, CTLFLAG_RW,
     &dyn_ack_lifetime, 0, "Lifetime of dyn. rules for acks");
 SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, dyn_syn_lifetime, CTLFLAG_RW,
     &dyn_syn_lifetime, 0, "Lifetime of dyn. rules for syn");
-SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, dyn_fin_lifetime, CTLFLAG_RW,
-    &dyn_fin_lifetime, 0, "Lifetime of dyn. rules for fin");
-SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, dyn_rst_lifetime, CTLFLAG_RW,
-    &dyn_rst_lifetime, 0, "Lifetime of dyn. rules for rst");
+SYSCTL_PROC(_net_inet_ip_fw, OID_AUTO, dyn_fin_lifetime,
+    CTLTYPE_INT | CTLFLAG_RW, &dyn_fin_lifetime, 0, ipfw_sysctl_dyn_fin, "I",
+    "Lifetime of dyn. rules for fin");
+SYSCTL_PROC(_net_inet_ip_fw, OID_AUTO, dyn_rst_lifetime,
+    CTLTYPE_INT | CTLFLAG_RW, &dyn_rst_lifetime, 0, ipfw_sysctl_dyn_rst, "I",
+    "Lifetime of dyn. rules for rst");
 SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, dyn_udp_lifetime, CTLFLAG_RW,
     &dyn_udp_lifetime, 0, "Lifetime of dyn. rules for UDP");
 SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, dyn_short_lifetime, CTLFLAG_RW,
@@ -709,9 +730,9 @@ do {									\
  * value will do.
  */
 static void
-remove_dyn_rule(struct ip_fw *rule, ipfw_dyn_rule *keep_me)
+remove_dyn_rule_locked(struct ip_fw *rule, ipfw_dyn_rule *keep_me)
 {
-	static uint32_t last_remove = 0;
+	static uint32_t last_remove = 0; /* XXX */
 
 #define FORCE	(keep_me == NULL)
 
@@ -774,6 +795,13 @@ next:
 #undef FORCE
 }
 
+static void
+remove_dyn_rule(struct ip_fw *rule, ipfw_dyn_rule *keep_me)
+{
+	lockmgr(&dyn_lock, LK_EXCLUSIVE);
+	remove_dyn_rule_locked(rule, keep_me);
+	lockmgr(&dyn_lock, LK_RELEASE);
+}
 
 /**
  * lookup a dynamic rule.
@@ -790,7 +818,7 @@ lookup_dyn_rule(struct ipfw_flow_id *pkt, int *match_direction,
 #define MATCH_FORWARD	1
 #define MATCH_NONE	2
 #define MATCH_UNKNOWN	3
-	int i, dir = MATCH_NONE, changed = 0;
+	int i, dir = MATCH_NONE;
 	ipfw_dyn_rule *prev, *q=NULL;
 
 	if (ipfw_dyn_v == NULL)
@@ -801,11 +829,14 @@ lookup_dyn_rule(struct ipfw_flow_id *pkt, int *match_direction,
 		if (q->dyn_type == O_LIMIT_PARENT)
 			goto next;
 
-		if (TIME_LEQ( q->expire, time_second)) { /* expire entry */
-			changed = 1;
-			UNLINK_DYN_RULE(prev, ipfw_dyn_v[i], q);
-			continue;
+		if (TIME_LEQ(q->expire, time_second)) {
+			/*
+			 * Entry expired; skip.
+			 * Let ipfw_tick() take care of it
+			 */
+			goto next;
 		}
+
 		if (pkt->proto == q->id.proto) {
 			if (pkt->src_ip == q->id.src_ip &&
 			    pkt->dst_ip == q->id.dst_ip &&
@@ -828,13 +859,6 @@ next:
 	}
 	if (q == NULL)
 		goto done; /* q = NULL, not found */
-
-	if (prev != NULL) { /* found and not in front */
-		prev->next = q->next;
-		q->next = ipfw_dyn_v[i];
-		ipfw_dyn_v[i] = q;
-		changed = 1;
-	}
 
 	if (pkt->proto == IPPROTO_TCP) { /* update state according to flags */
 		u_char flags = pkt->flags & (TH_FIN|TH_SYN|TH_RST);
@@ -875,8 +899,7 @@ next:
 			break;
 
 		case BOTH_SYN | BOTH_FIN:	/* both sides closed */
-			if (dyn_fin_lifetime >= dyn_keepalive_period)
-				dyn_fin_lifetime = dyn_keepalive_period - 1;
+			KKASSERT(dyn_fin_lifetime < dyn_keepalive_period);
 			q->expire = time_second + dyn_fin_lifetime;
 			break;
 
@@ -889,8 +912,7 @@ next:
 			if ((q->state & ((TH_RST << 8) | TH_RST)) == 0)
 				kprintf("invalid state: 0x%x\n", q->state);
 #endif
-			if (dyn_rst_lifetime >= dyn_keepalive_period)
-				dyn_rst_lifetime = dyn_keepalive_period - 1;
+			KKASSERT(dyn_rst_lifetime < dyn_keepalive_period);
 			q->expire = time_second + dyn_rst_lifetime;
 			break;
 		}
@@ -901,11 +923,48 @@ next:
 		q->expire = time_second + dyn_short_lifetime;
 	}
 done:
-	if (changed)
-		++dyn_buckets_gen;
 	if (match_direction)
 		*match_direction = dir;
 	return q;
+}
+
+static struct ip_fw *
+lookup_rule(struct ipfw_flow_id *pkt, int *match_direction, struct tcphdr *tcp,
+	    uint16_t len, int *deny)
+{
+	struct ip_fw *rule = NULL;
+	ipfw_dyn_rule *q;
+	uint32_t gen;
+
+	*deny = 0;
+	gen = static_gen;
+
+	lockmgr(&dyn_lock, LK_SHARED);
+
+	if (static_gen != gen) {
+		/*
+		 * Static rules had been change when we were waiting
+		 * for the dynamic hash table lock; deny this packet,
+		 * since it is _not_ known whether it is safe to keep
+		 * iterating the static rules.
+		 */
+		*deny = 1;
+		goto back;
+	}
+
+	q = lookup_dyn_rule(pkt, match_direction, tcp);
+	if (q == NULL) {
+		rule = NULL;
+	} else {
+		rule = q->rule;
+
+		/* XXX */
+		q->pcnt++;
+		q->bcnt += len;
+	}
+back:
+	lockmgr(&dyn_lock, LK_RELEASE);
+	return rule;
 }
 
 static void
@@ -914,21 +973,8 @@ realloc_dynamic_table(void)
 	ipfw_dyn_rule **old_dyn_v;
 	uint32_t old_curr_dyn_buckets;
 
-	/*
-	 * Try reallocation, make sure we have a power of 2 and do
-	 * not allow more than 64k entries.  In case of overflow,
-	 * default to 1024.
-	 */
-	if (dyn_buckets > 65536)
-		dyn_buckets = 1024;
-	if ((dyn_buckets & (dyn_buckets - 1)) != 0) {
-		/*
-		 * Not a power of 2; reset
-		 */
-		dyn_buckets = curr_dyn_buckets;
-		if (ipfw_dyn_v != NULL)
-			return;
-	}
+	KASSERT(dyn_buckets <= 65536 && (dyn_buckets & (dyn_buckets - 1)) == 0,
+		("invalid dyn_buckets %d\n", dyn_buckets));
 
 	/* Save the current buckets array for later error recovery */
 	old_dyn_v = ipfw_dyn_v;
@@ -1062,10 +1108,10 @@ lookup_dyn_parent(struct ipfw_flow_id *pkt, struct ip_fw *rule)
  * session limitations are enforced.
  */
 static int
-install_state(struct ip_fw *rule, ipfw_insn_limit *cmd,
-	      struct ip_fw_args *args)
+install_state_locked(struct ip_fw *rule, ipfw_insn_limit *cmd,
+		     struct ip_fw_args *args)
 {
-	static int last_log;
+	static int last_log; /* XXX */
 
 	ipfw_dyn_rule *q;
 
@@ -1087,15 +1133,15 @@ install_state(struct ip_fw *rule, ipfw_insn_limit *cmd,
 		/*
 		 * Run out of slots, try to remove any expired rule.
 		 */
-		remove_dyn_rule(NULL, (ipfw_dyn_rule *)1);
-	}
-
-	if (dyn_count >= dyn_max) {
-		if (last_log != time_second) {
-			last_log = time_second;
-			kprintf("install_state: Too many dynamic rules\n");
+		remove_dyn_rule_locked(NULL, (ipfw_dyn_rule *)1);
+		if (dyn_count >= dyn_max) {
+			if (last_log != time_second) {
+				last_log = time_second;
+				kprintf("install_state: "
+					"Too many dynamic rules\n");
+			}
+			return 1; /* cannot install, notify caller */
 		}
-		return 1; /* cannot install, notify caller */
 	}
 
 	switch (cmd->o.opcode) {
@@ -1136,7 +1182,7 @@ install_state(struct ip_fw *rule, ipfw_insn_limit *cmd,
 				/*
 				 * See if we can remove some expired rule.
 				 */
-				remove_dyn_rule(rule, parent);
+				remove_dyn_rule_locked(rule, parent);
 				if (parent->count >= cmd->conn_limit) {
 					if (fw_verbose &&
 					    last_log != time_second) {
@@ -1159,6 +1205,28 @@ install_state(struct ip_fw *rule, ipfw_insn_limit *cmd,
 	}
 	lookup_dyn_rule(&args->f_id, NULL, NULL); /* XXX just set lifetime */
 	return 0;
+}
+
+static int
+install_state(struct ip_fw *rule, ipfw_insn_limit *cmd,
+	      struct ip_fw_args *args, int *deny)
+{
+	uint32_t gen;
+	int ret = 0;
+
+	*deny = 0;
+	gen = static_gen;
+
+	lockmgr(&dyn_lock, LK_EXCLUSIVE);
+	if (static_gen != gen) {
+		/* See the comment in lookup_rule() */
+		*deny = 1;
+	} else {
+		ret = install_state_locked(rule, cmd, args);
+	}
+	lockmgr(&dyn_lock, LK_RELEASE);
+
+	return ret;
 }
 
 /*
@@ -1571,7 +1639,7 @@ again:
 		skip_or = 0;
 		for (l = f->cmd_len, cmd = f->cmd; l > 0;
 		     l -= cmdlen, cmd += cmdlen) {
-			int match;
+			int match, deny;
 
 			/*
 			 * check_body is a jump target used when we find a
@@ -1943,10 +2011,15 @@ check_body:
 			case O_LIMIT:
 			case O_KEEP_STATE:
 				if (install_state(f,
-				    (ipfw_insn_limit *)cmd, args)) {
+				    (ipfw_insn_limit *)cmd, args, &deny)) {
+					if (deny)
+						return IP_FW_PORT_DENY_FLAG;
+
 					retval = IP_FW_PORT_DENY_FLAG;
 					goto done; /* error/limit violation */
 				}
+				if (deny)
+					return IP_FW_PORT_DENY_FLAG;
 				match = 1;
 				break;
 
@@ -1961,22 +2034,27 @@ check_body:
 				 * KEEP_STATE (because PROBE_STATE needs
 				 * to be run first).
 				 */
-				if (dyn_dir == MATCH_UNKNOWN &&
-				    (q = lookup_dyn_rule(&args->f_id,
-				     &dyn_dir, proto == IPPROTO_TCP ?
-					L3HDR(struct tcphdr, ip) : NULL))
-					!= NULL) {
-					/*
-					 * Found dynamic entry, update stats
-					 * and jump to the 'action' part of
-					 * the parent rule.
-					 */
-					q->pcnt++;
-					q->bcnt += ip_len;
-					f = q->rule;
-					cmd = ACTION_PTR(f);
-					l = f->cmd_len - f->act_ofs;
-					goto check_body;
+				if (dyn_dir == MATCH_UNKNOWN) {
+					struct ip_fw *dyn_f;
+
+					dyn_f = lookup_rule(&args->f_id,
+						&dyn_dir,
+						proto == IPPROTO_TCP ?
+						L3HDR(struct tcphdr, ip) : NULL,
+						ip_len, &deny);
+					if (deny)
+						return IP_FW_PORT_DENY_FLAG;
+					if (dyn_f != NULL) {
+						/*
+						 * Found a rule from a dynamic
+						 * entry; jump to the 'action'
+						 * part of the rule.
+						 */
+						f = dyn_f;
+						cmd = ACTION_PTR(f);
+						l = f->cmd_len - f->act_ofs;
+						goto check_body;
+					}
 				}
 				/*
 				 * Dynamic entry not found. If CHECK_STATE,
@@ -2238,6 +2316,8 @@ ipfw_add_rule(struct ip_fw **head, struct ipfw_ioc_rule *ioc_rule)
 	KKASSERT(*head != NULL);
 	IPFW_ASSERT_CFGPORT(&curthread->td_msgport);
 
+	++static_gen;
+
 	rule = ipfw_create_rule(ioc_rule);
 
 	crit_enter();
@@ -2306,6 +2386,8 @@ static struct ip_fw *
 delete_rule(struct ip_fw **head, struct ip_fw *prev, struct ip_fw *rule)
 {
 	struct ip_fw *n;
+
+	++static_gen;
 
 	n = rule->next;
 	remove_dyn_rule(rule, NULL /* force removal */);
@@ -2804,6 +2886,7 @@ ipfw_ctl_get_rules(struct sockopt *sopt)
 	struct ip_fw *rule;
 	void *bp;
 	size_t size;
+	uint32_t dcount = 0;
 
 	/*
 	 * pass up a copy of the current rules. Static rules
@@ -2813,8 +2896,10 @@ ipfw_ctl_get_rules(struct sockopt *sopt)
 	crit_enter();
 
 	size = static_ioc_len;	/* size of static rules */
-	if (ipfw_dyn_v)		/* add size of dyn.rules */
-		size += (dyn_count * sizeof(struct ipfw_ioc_state));
+	if (ipfw_dyn_v) {	/* add size of dyn.rules */
+		dcount = dyn_count;
+		size += dcount * sizeof(struct ipfw_ioc_state);
+	}
 
 	if (sopt->sopt_valsize < size) {
 		/* short length, no need to return incomplete rules */
@@ -2827,18 +2912,40 @@ ipfw_ctl_get_rules(struct sockopt *sopt)
 	for (rule = layer3_chain; rule; rule = rule->next)
 		bp = ipfw_copy_rule(rule, bp);
 
-	if (ipfw_dyn_v) {
-		struct ipfw_ioc_state *ioc_state;
+	if (ipfw_dyn_v && dcount != 0) {
+		struct ipfw_ioc_state *ioc_state = bp;
+		uint32_t dcount2 = 0;
+#ifdef INVARIANTS
+		size_t old_size = size;
+#endif
 		int i;
 
-		ioc_state = bp;
+		lockmgr(&dyn_lock, LK_SHARED);
 		for (i = 0; i < curr_dyn_buckets; i++) {
 			ipfw_dyn_rule *p;
 
-			for (p = ipfw_dyn_v[i]; p != NULL;
-			     p = p->next, ioc_state++)
+			/*
+			 * The # of dynamic rules may have grown after the
+			 * snapshot of 'dyn_count' was taken, so we will have
+			 * to check 'dcount' (snapshot of dyn_count) here to
+			 * make sure that we don't overflow the pre-allocated
+			 * buffer.
+			 */
+			for (p = ipfw_dyn_v[i]; p != NULL && dcount != 0;
+			     p = p->next, ioc_state++, dcount--, dcount2++)
 				ipfw_copy_state(p, ioc_state);
 		}
+		lockmgr(&dyn_lock, LK_RELEASE);
+
+		/*
+		 * The # of dynamic rules may be shrinked after the
+		 * snapshot of 'dyn_count' was taken.  To give user a
+		 * correct dynamic rule count, we use the 'dcount2'
+		 * calculated above (with shared lockmgr lock held).
+		 */
+		size = static_ioc_len +
+		       (dcount2 * sizeof(struct ipfw_ioc_state));
+		KKASSERT(size <= old_size);
 	}
 
 	crit_exit();
@@ -2948,40 +3055,51 @@ ipfw_ctl(struct sockopt *sopt)
  * every dyn_keepalive_period
  */
 static void
-ipfw_tick(void *unused __unused)
+ipfw_tick(void *dummy __unused)
 {
 	time_t keep_alive;
 	uint32_t gen;
 	int i;
 
-	if (dyn_keepalive == 0 || ipfw_dyn_v == NULL || dyn_count == 0)
+	if (ipfw_dyn_v == NULL || dyn_count == 0)
 		goto done;
 
-	crit_enter();
-
 	keep_alive = time_second;
+
+	lockmgr(&dyn_lock, LK_EXCLUSIVE);
 again:
 	gen = dyn_buckets_gen;
 	for (i = 0; i < curr_dyn_buckets; i++) {
-		ipfw_dyn_rule *q;
+		ipfw_dyn_rule *q, *prev;
 
-		for (q = ipfw_dyn_v[i]; q; q = q->next) {
+		for (prev = NULL, q = ipfw_dyn_v[i]; q != NULL;) {
 			uint32_t ack_rev, ack_fwd;
 			struct ipfw_flow_id id;
 
 			if (q->dyn_type == O_LIMIT_PARENT)
+				goto next;
+
+			if (TIME_LEQ(q->expire, time_second)) {
+				/* State expired */
+				UNLINK_DYN_RULE(prev, ipfw_dyn_v[i], q);
 				continue;
+			}
+
+			/*
+			 * Keep alive processing
+			 */
+
+			if (!dyn_keepalive)
+				goto next;
 			if (q->id.proto != IPPROTO_TCP)
-				continue;
+				goto next;
 			if ((q->state & BOTH_SYN) != BOTH_SYN)
-				continue;
+				goto next;
 			if (TIME_LEQ(time_second + dyn_keepalive_interval,
 			    q->expire))
-				continue;	/* too early */
-			if (TIME_LEQ(q->expire, time_second))
-				continue;	/* too late, rule expired */
+				goto next;	/* too early */
 			if (q->keep_alive == keep_alive)
-				continue;	/* alreay done */
+				goto next;	/* alreay done */
 
 			/*
 			 * Save necessary information, so that they could
@@ -2994,8 +3112,11 @@ again:
 			/* Sending has been started */
 			q->keep_alive = keep_alive;
 
+			/* Release lock to avoid possible dead lock */
+			lockmgr(&dyn_lock, LK_RELEASE);
 			send_pkt(&id, ack_rev - 1, ack_fwd, TH_SYN);
 			send_pkt(&id, ack_fwd - 1, ack_rev, 0);
+			lockmgr(&dyn_lock, LK_EXCLUSIVE);
 
 			if (gen != dyn_buckets_gen) {
 				/*
@@ -3004,9 +3125,12 @@ again:
 				 */
 				goto again;
 			}
+next:
+			prev = q;
+			q = q->next;
 		}
 	}
-	crit_exit();
+	lockmgr(&dyn_lock, LK_RELEASE);
 done:
 	callout_reset(&ipfw_timeout_h, dyn_keepalive_period * hz,
 		      ipfw_tick, NULL);
@@ -3047,6 +3171,49 @@ ipfw_sysctl_autoinc_step(SYSCTL_HANDLER_ARGS)
 {
 	return sysctl_int_range(oidp, arg1, arg2, req,
 	       IPFW_AUTOINC_STEP_MIN, IPFW_AUTOINC_STEP_MAX);
+}
+
+static int
+ipfw_sysctl_dyn_buckets(SYSCTL_HANDLER_ARGS)
+{
+	int error, value;
+
+	lockmgr(&dyn_lock, LK_EXCLUSIVE);
+
+	value = dyn_buckets;
+	error = sysctl_handle_int(oidp, &value, 0, req);
+	if (error || !req->newptr)
+		goto back;
+
+	/*
+	 * Make sure we have a power of 2 and
+	 * do not allow more than 64k entries.
+	 */
+	error = EINVAL;
+	if (value < 0 || value > 65536)
+		goto back;
+	if ((value & (value - 1)) != 0)
+		goto back;
+
+	error = 0;
+	dyn_buckets = value;
+back:
+	lockmgr(&dyn_lock, LK_RELEASE);
+	return error;
+}
+
+static int
+ipfw_sysctl_dyn_fin(SYSCTL_HANDLER_ARGS)
+{
+	return sysctl_int_range(oidp, arg1, arg2, req,
+				1, dyn_keepalive_period - 1);
+}
+
+static int
+ipfw_sysctl_dyn_rst(SYSCTL_HANDLER_ARGS)
+{
+	return sysctl_int_range(oidp, arg1, arg2, req,
+				1, dyn_keepalive_period - 1);
 }
 
 static void
@@ -3093,7 +3260,9 @@ ipfw_init_dispatch(struct netmsg *nmsg)
 		kprintf("limited to %d packets/entry by default\n",
 			verbose_limit);
 	}
+
 	callout_init(&ipfw_timeout_h);
+	lockinit(&dyn_lock, "ipfw_dyn", 0, 0);
 
 	ip_fw_loaded = 1;
 	callout_reset(&ipfw_timeout_h, hz, ipfw_tick, NULL);
