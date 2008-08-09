@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.34 2008/06/01 20:46:45 dillon Exp $
+# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.35 2008/08/09 18:33:39 swildner Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
@@ -99,7 +99,6 @@ MAN+=	sched_get_priority_max.2 sched_setparam.2 \
 .endif
 
 MLINKS+=brk.2 sbrk.2
-MLINKS+=madvise.2 mcontrol.2
 MLINKS+=caps_sys_get.2 caps_sys_wait.2
 MLINKS+=chdir.2 fchdir.2
 MLINKS+=chflags.2 fchflags.2
@@ -108,22 +107,26 @@ MLINKS+=chown.2 fchown.2 chown.2 lchown.2
 MLINKS+=clock_gettime.2 clock_getres.2 clock_gettime.2 clock_settime.2
 MLINKS+=dup.2 dup2.2
 MLINKS+=fhopen.2 fhstat.2 fhopen.2 fhstatfs.2
-MLINKS+=getdirentries.2 getdents.2
+MLINKS+=getdirentries.2 _DIRENT_DIRSIZ.2 \
+	getdirentries.2 _DIRENT_NEXT.2 \
+	getdirentries.2 getdents.2
+MLINKS+=getfsstat.2 getvfsstat.2
 MLINKS+=getgid.2 getegid.2
 MLINKS+=getitimer.2 setitimer.2
-MLINKS+=getlogin.2 getlogin_r.3
-MLINKS+=getlogin.2 setlogin.2
+MLINKS+=getlogin.2 getlogin_r.3 \
+	getlogin.2 setlogin.2
 MLINKS+=getpgrp.2 getpgid.2
 MLINKS+=getpid.2 getppid.2
 MLINKS+=getpriority.2 setpriority.2
-MLINKS+=getfsstat.2 getvfsstat.2
 MLINKS+=getrlimit.2 setrlimit.2
 MLINKS+=getsockopt.2 setsockopt.2
 MLINKS+=gettimeofday.2 settimeofday.2
 MLINKS+=getuid.2 geteuid.2
 MLINKS+=intro.2 errno.2
-MLINKS+=kqueue.2 kevent.2
+MLINKS+=kqueue.2 EV_SET.2 \
+	kqueue.2 kevent.2
 MLINKS+=lseek.2 seek.2
+MLINKS+=madvise.2 mcontrol.2
 MLINKS+=mlock.2 munlock.2
 MLINKS+=modnext.2 modfnext.2
 MLINKS+=mount.2 unmount.2
@@ -131,6 +134,16 @@ MLINKS+=pathconf.2 fpathconf.2
 MLINKS+=read.2 pread.2 read.2 preadv.2 read.2 readv.2
 MLINKS+=recv.2 recvfrom.2 recv.2 recvmsg.2
 MLINKS+=rtprio.2 lwp_rtprio.2
+.if !defined(NO_P1003_1B)
+MLINKS+=sched_get_priority_max.2 sched_get_priority_min.2 \
+	sched_get_priority_max.2 sched_rr_get_interval.2
+MLINKS+=sched_setparam.2 sched_getparam.2
+MLINKS+=sched_setscheduler.2 sched_getscheduler.2
+.endif
+MLINKS+=select.2 FD_CLR.2 \
+	select.2 FD_ISSET.2 \
+	select.2 FD_SET.2 \
+	select.2 FD_ZERO.2
 MLINKS+=send.2 sendmsg.2 send.2 sendto.2
 MLINKS+=setpgid.2 setpgrp.2
 MLINKS+=setresuid.2 getresgid.2 setresuid.2 getresuid.2 setresuid.2 setresgid.2
@@ -139,7 +152,9 @@ MLINKS+=shmat.2 shmdt.2
 MLINKS+=stat.2 fstat.2 stat.2 lstat.2
 MLINKS+=statfs.2 fstatfs.2
 MLINKS+=syscall.2 __syscall.2
+MLINKS+=tls.2 set_tls_area.2 tls.2 get_tls_area.2
 MLINKS+=truncate.2 ftruncate.2
+MLINKS+=umtx.2 umtx_sleep.2 umtx.2 umtx_wakeup.2
 MLINKS+=upc_register.2 upc_control.2
 MLINKS+=utimes.2 futimes.2 utimes.2 lutimes.2
 MLINKS+=varsym.2 varsym_get.2 \
@@ -147,12 +162,4 @@ MLINKS+=varsym.2 varsym_get.2 \
 	varsym.2 varsym_set.2
 MLINKS+=wait.2 wait3.2 wait.2 wait4.2 wait.2 waitpid.2
 MLINKS+=write.2 pwrite.2 write.2 pwritev.2 write.2 writev.2
-.if !defined(NO_P1003_1B)
-MLINKS+=sched_get_priority_max.2 sched_get_priority_min.2 \
-	sched_get_priority_max.2 sched_rr_get_interval.2
-MLINKS+=sched_setparam.2 sched_getparam.2
-MLINKS+=sched_setscheduler.2 sched_getscheduler.2
-MLINKS+=tls.2 set_tls_area.2 tls.2 get_tls_area.2
-MLINKS+=umtx.2 umtx_sleep.2 umtx.2 umtx_wakeup.2
-.endif
 .endif
