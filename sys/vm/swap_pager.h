@@ -37,7 +37,7 @@
  *
  *	from: @(#)swap_pager.h	7.1 (Berkeley) 12/5/90
  * $FreeBSD: src/sys/vm/swap_pager.h,v 1.28.2.1 2000/10/13 07:13:23 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.h,v 1.5 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.h,v 1.6 2008/08/10 22:09:52 dillon Exp $
  */
 
 /*
@@ -54,6 +54,9 @@
 #ifndef _VM_VM_OBJECT_H_
 #include <vm/vm_object.h>
 #endif
+#ifndef _SYS_BLIST_H_
+#include <sys/blist.h>
+#endif
 
 /*
  * SWB_NPAGES must be a power of 2.  It may be set to 1, 2, 4, 8, or 16
@@ -65,17 +68,12 @@
 #endif
 
 /*
- * Piecemeal swap metadata structure.  Swap is stored in a radix tree.
+ * Piecemeal swap metadata structure.  Swap is stored in a hash table.
  *
- * If SWB_NPAGES is 8 and sizeof(char *) == sizeof(daddr_t), our radix
- * is basically 8.  Assuming PAGE_SIZE == 4096, one tree level represents
- * 32K worth of data, two levels represent 256K, three levels represent
- * 2 MBytes.   This is acceptable.
+ * Storage use is ~1:16384 or so.
  *
  * Overall memory utilization is about the same as the old swap structure.
  */
-
-#define SWCORRECT(n) (sizeof(void *) * (n) / sizeof(daddr_t))
 
 #define SWAP_META_PAGES		(SWB_NPAGES * 2)
 #define SWAP_META_MASK		(SWAP_META_PAGES - 1)
@@ -85,7 +83,7 @@ struct swblock {
 	vm_object_t	swb_object;
 	vm_pindex_t	swb_index;
 	int		swb_count;
-	daddr_t		swb_pages[SWAP_META_PAGES];
+	swblk_t		swb_pages[SWAP_META_PAGES];
 };
 
 #ifdef _KERNEL

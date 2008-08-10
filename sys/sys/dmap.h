@@ -32,7 +32,7 @@
  *
  *	@(#)dmap.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/dmap.h,v 1.7 1999/12/29 04:24:40 peter Exp $
- * $DragonFly: src/sys/sys/dmap.h,v 1.3 2006/05/20 02:42:13 dillon Exp $
+ * $DragonFly: src/sys/sys/dmap.h,v 1.4 2008/08/10 22:09:51 dillon Exp $
  */
 
 #ifndef _SYS_DMAP_H_
@@ -40,6 +40,9 @@
 
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
+#endif
+#ifndef _SYS_BLIST_H_
+#include <sys/blist.h>
 #endif
 
 /*
