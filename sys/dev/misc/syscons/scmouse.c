@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scmouse.c,v 1.12.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scmouse.c,v 1.13 2006/09/05 00:55:38 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scmouse.c,v 1.14 2008/08/10 19:47:31 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -302,7 +302,6 @@ mouse_cut(scr_stat *scp)
     int i;
 
     start = scp->mouse_cut_start;
-    end = scp->mouse_cut_end;
     if (scp->mouse_pos >= start) {
 	from = start;
 	to = end = scp->mouse_pos;

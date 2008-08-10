@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scterm-sc.c,v 1.4.2.10 2001/06/11 09:05:39 phk Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scterm-sc.c,v 1.7 2006/07/28 02:17:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scterm-sc.c,v 1.8 2008/08/10 19:47:31 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -182,7 +182,6 @@ scterm_scan_esc(scr_stat *scp, term_stat *tcp, u_char c)
 	sc_softc_t *sc;
 	int i, n;
 
-	i = n = 0;
 	sc = scp->sc; 
 	if (tcp->esc == 1) {	/* seen ESC */
 		switch (c) {

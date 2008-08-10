@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.34 2008/08/03 03:00:21 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.35 2008/08/10 19:47:31 swildner Exp $
  */
 
 #include "use_splash.h"
@@ -1608,9 +1608,6 @@ scrn_timer(void *arg)
 	    kbd_interval = 0;
 	}
     }
-
-    /* find the vty to update */
-    scp = sc->cur_scp;
 
     /* should we stop the screen saver? */
     getmicrouptime(&tv);
