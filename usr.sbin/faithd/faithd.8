@@ -28,7 +28,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	$FreeBSD: src/usr.sbin/faithd/faithd.8,v 1.2.2.12 2003/03/12 22:08:14 trhodes Exp $
-.\"	$DragonFly: src/usr.sbin/faithd/faithd.8,v 1.9 2007/11/23 23:16:37 swildner Exp $
+.\"	$DragonFly: src/usr.sbin/faithd/faithd.8,v 1.10 2008/08/10 21:29:16 hasso Exp $
 .\"
 .Dd May 17, 1998
 .Dt FAITHD 8
@@ -64,13 +64,13 @@ connection will be determined by the last 4 octets of the original
 .Tn IPv6
 destination.
 For example, if
-.Li 3ffe:0501:4819:ffff::
+.Li 2001:db8:4819:ffff::
 is reserved for
 .Nm ,
 and the
 .Tn TCPv6
 destination address is
-.Li 3ffe:0501:4819:ffff::0a01:0101 ,
+.Li 2001:db8:4819:ffff::a01:101 ,
 the traffic will be relayed to IPv4 destination
 .Li 10.1.1.1 .
 .Pp
@@ -290,8 +290,8 @@ interface has to be configured properly.
 # sysctl net.inet6.ip6.forwarding=1
 # sysctl net.inet6.ip6.keepfaith=1
 # ifconfig faith0 up
-# route add -inet6 3ffe:501:4819:ffff:: -prefixlen 96 ::1
-# route change -inet6 3ffe:501:4819:ffff:: -prefixlen 96 -ifp faith0
+# route add -inet6 2001:db8:4819:ffff:: -prefixlen 96 ::1
+# route change -inet6 2001:db8:4819:ffff:: -prefixlen 96 -ifp faith0
 .Ed
 .Ss Daemon mode samples
 To translate
@@ -361,14 +361,14 @@ The following illustrates a simple
 .Pa faithd.conf
 setting.
 .Bd -literal -offset
-# permit anyone from 3ffe:501:ffff::/48 to use the translator,
+# permit anyone from 2001:db8:ffff::/48 to use the translator,
 # to connect to the following IPv4 destinations:
 # - any location except 10.0.0.0/8 and 127.0.0.0/8.
 # Permit no other connections.
 #
-3ffe:501:ffff::/48 deny 10.0.0.0/8
-3ffe:501:ffff::/48 deny 127.0.0.0/8
-3ffe:501:ffff::/48 permit 0.0.0.0/0
+2001:db8:ffff::/48 deny 10.0.0.0/8
+2001:db8:ffff::/48 deny 127.0.0.0/8
+2001:db8:ffff::/48 permit 0.0.0.0/0
 .Ed
 .Sh DIAGNOSTICS
 The

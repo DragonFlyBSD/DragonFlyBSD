@@ -1,5 +1,5 @@
 .\"	$FreeBSD: src/usr.sbin/rtadvd/rtadvd.conf.5,v 1.1.2.9 2002/12/29 16:35:43 schweikh Exp $
-.\"	$DragonFly: src/usr.sbin/rtadvd/rtadvd.conf.5,v 1.3 2007/04/09 21:20:37 swildner Exp $
+.\"	$DragonFly: src/usr.sbin/rtadvd/rtadvd.conf.5,v 1.4 2008/08/10 21:29:16 hasso Exp $
 .\"	$KAME: rtadvd.conf.5,v 1.35 2001/05/25 07:40:22 jinmei Exp $
 .\"
 .\" Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
@@ -348,7 +348,7 @@ option to
 .Xr rtadvd 8 .
 .Bd -literal -offset
 ef0:\\
-	:addrs#1:addr="3ffe:501:ffff:1000::":prefixlen#64:
+	:addrs#1:addr="2001:db8:ffff:1000::":prefixlen#64:
 .Ed
 .Pp
 The following example presents the default values in an explicit manner.
@@ -359,7 +359,7 @@ default:\\
 	:chlim#64:raflags#0:rltime#1800:rtime#0:retrans#0:\\
 	:pinfoflags#192:vltime#2592000:pltime#604800:mtu#0:
 ef0:\\
-	:addrs#1:addr="3ffe:501:ffff:1000::":prefixlen#64:tc=default:
+	:addrs#1:addr="2001:db8:ffff:1000::":prefixlen#64:tc=default:
 .Ed
 .Sh SEE ALSO
 .Xr termcap 5 ,
