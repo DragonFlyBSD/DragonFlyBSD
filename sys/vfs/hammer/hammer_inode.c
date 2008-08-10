@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.103.2.4 2008/08/06 15:41:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.103.2.5 2008/08/10 17:01:08 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1606,9 +1606,9 @@ hammer_setup_parent_inodes_helper(hammer_record_t record,
 #endif
 	if (pip->flush_group == flg) {
 		/*
-		 * If the parent is in the same flush group as us we can
-		 * just set the record to a flushing state and we are
-		 * done.
+		 * Because we have not calculated nlinks yet we can just
+		 * set records to the flush state if the parent is in
+		 * the same flush group as we are.
 		 */
 		record->flush_state = HAMMER_FST_FLUSH;
 		record->flush_group = flg;
@@ -1674,12 +1674,14 @@ hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 	 * Figure out how many in-memory records we can actually flush
 	 * (not including inode meta-data, buffers, etc).
 	 */
+	KKASSERT((ip->flags & HAMMER_INODE_WOULDBLOCK) == 0);
 	if (flags & HAMMER_FLUSH_RECURSION) {
 		/*
 		 * If this is a upwards recursion we do not want to
 		 * recurse down again!
 		 */
 		go_count = 1;
+#if 0
 	} else if (ip->flags & HAMMER_INODE_WOULDBLOCK) {
 		/*
 		 * No new records are added if we must complete a flush
@@ -1691,6 +1693,7 @@ hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 				   hammer_syncgrp_child_callback, NULL);
 #endif
 		go_count = 1;
+#endif
 	} else {
 		/*
 		 * Normal flush, scan records and bring them into the flush.
@@ -1750,17 +1753,8 @@ hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 	 * NOTE: The DELETING flag is a mod flag, but it is also sticky,
 	 * and stays in ip->flags.  Once set, it stays set until the
 	 * inode is destroyed.
-	 *
-	 * NOTE: If a truncation from a previous flush cycle had to be
-	 * continued into this one, the TRUNCATED flag will still be
-	 * set in sync_flags as will WOULDBLOCK.  When this occurs
-	 * we CANNOT safely integrate a new truncation from the front-end
-	 * because there may be data records in-memory assigned a flush
-	 * state from the previous cycle that are supposed to be flushed
-	 * before the next frontend truncation.
 	 */
-	if ((ip->flags & (HAMMER_INODE_TRUNCATED | HAMMER_INODE_WOULDBLOCK)) ==
-	    HAMMER_INODE_TRUNCATED) {
+	if (ip->flags & HAMMER_INODE_TRUNCATED) {
 		KKASSERT((ip->sync_flags & HAMMER_INODE_TRUNCATED) == 0);
 		ip->sync_trunc_off = ip->trunc_off;
 		ip->trunc_off = 0x7FFFFFFFFFFFFFFFLL;
@@ -1960,12 +1954,7 @@ hammer_setup_child_callback(hammer_record_t rec, void *data)
 		break;
 	case HAMMER_FST_FLUSH:
 		/* 
-		 * If the WOULDBLOCK flag is set records may have been left
-		 * over from a previous flush attempt.  The flush group will
-		 * have been left intact - we are probably reflushing it
-		 * now.
-		 *
-		 * If a flush error occured ip->error will be non-zero.
+		 * The flush_group should already match.
 		 */
 		KKASSERT(rec->flush_group == flg);
 		r = 1;
@@ -2081,10 +2070,11 @@ hammer_flush_inode_done(hammer_inode_t ip, int error)
 		/*
 		 * We were unable to flush out all our records, leave the
 		 * inode in a flush state and in the current flush group.
+		 * The flush group will be re-run.
 		 *
-		 * This occurs if the UNDO block gets too full
-		 * or there is too much dirty meta-data and allows the
-		 * flusher to finalize the UNDO block and then re-flush.
+		 * This occurs if the UNDO block gets too full or there is
+		 * too much dirty meta-data and allows the flusher to
+		 * finalize the UNDO block and then re-flush.
 		 */
 		ip->flags &= ~HAMMER_INODE_WOULDBLOCK;
 		dorel = 0;
@@ -2124,21 +2114,21 @@ hammer_flush_inode_done(hammer_inode_t ip, int error)
 			ip->flags &= ~HAMMER_INODE_FLUSHW;
 			wakeup(&ip->flags);
 		}
-	}
 
-	/*
-	 * If the frontend made more changes and requested another flush,
-	 * then try to get it running.
-	 *
-	 * Reflushes are aborted when the inode is errored out.
-	 */
-	if (ip->flags & HAMMER_INODE_REFLUSH) {
-		ip->flags &= ~HAMMER_INODE_REFLUSH;
-		if (ip->flags & HAMMER_INODE_RESIGNAL) {
-			ip->flags &= ~HAMMER_INODE_RESIGNAL;
-			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-		} else {
-			hammer_flush_inode(ip, 0);
+		/*
+		 * If the frontend made more changes and requested another
+		 * flush, then try to get it running.
+		 *
+		 * Reflushes are aborted when the inode is errored out.
+		 */
+		if (ip->flags & HAMMER_INODE_REFLUSH) {
+			ip->flags &= ~HAMMER_INODE_REFLUSH;
+			if (ip->flags & HAMMER_INODE_RESIGNAL) {
+				ip->flags &= ~HAMMER_INODE_RESIGNAL;
+				hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+			} else {
+				hammer_flush_inode(ip, 0);
+			}
 		}
 	}
 
@@ -2317,7 +2307,7 @@ done:
 }
 
 /*
- * XXX error handling
+ * Backend function called by the flusher to sync an inode to media.
  */
 int
 hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip)
