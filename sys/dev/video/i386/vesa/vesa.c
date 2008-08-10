@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.26 2008/08/02 01:14:43 dillon Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.27 2008/08/10 17:03:29 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -835,7 +835,6 @@ static int
 vesa_configure(int flags)
 {
 	video_adapter_t *adp;
-	int adapters;
 	int i;
 
 	if (vesa_init_done)
@@ -863,11 +862,6 @@ vesa_configure(int flags)
 		vga_sub_configure = vesa_configure;
 		return ENODEV;
 	}
-
-	/* count number of registered adapters */
-	for (++i; vid_get_adapter(i) != NULL; ++i)
-		;
-	adapters = i;
 
 	/* call VESA BIOS */
 	vesa_adp = adp;
