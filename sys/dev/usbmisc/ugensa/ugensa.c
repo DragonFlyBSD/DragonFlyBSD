@@ -1,4 +1,4 @@
-/* $DragonFly: src/sys/dev/usbmisc/ugensa/ugensa.c,v 1.4 2008/05/14 20:21:22 hasso Exp $ */
+/* $DragonFly: src/sys/dev/usbmisc/ugensa/ugensa.c,v 1.5 2008/08/10 21:57:45 hasso Exp $ */
 /* $OpenBSD: umsm.c,v 1.15 2007/06/14 10:11:16 mbalmer Exp $ */
 
 /*
@@ -36,6 +36,7 @@
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
+#include <bus/usb/usbcdc.h>
 #include <dev/usbmisc/ucom/ucomvar.h>
 
 #ifdef UGENSA_DEBUG
@@ -51,6 +52,7 @@ static int	ugensadebug = 1;
 
 struct ugensa_softc {
 	struct ucom_softc	 sc_ucom;
+	int			 sc_iface_no;
 
 	/* interrupt ep */
 	int			 sc_intr_number;
@@ -60,6 +62,8 @@ struct ugensa_softc {
 
 	u_char			 sc_lsr;	/* Local status register */
 	u_char			 sc_msr;	/* Status register */
+	u_char			 sc_dtr;	/* Current DTR state */
+	u_char			 sc_rts;	/* Current RTS state */
 };
 
 static device_probe_t ugensa_match;
@@ -70,6 +74,7 @@ int ugensa_open(void *, int);
 void ugensa_close(void *, int);
 void ugensa_intr(usbd_xfer_handle, usbd_private_handle, usbd_status);
 void ugensa_get_status(void *, int, u_char *, u_char *);
+void ugensa_set(void *, int, int, int);
 
 static device_method_t ugensa_methods[] = {
 	/* Device interface */
@@ -87,7 +92,7 @@ static driver_t ugensa_driver = {
 
 struct ucom_callback ugensa_callback = {
 	ugensa_get_status,
-	NULL,
+	ugensa_set,
 	NULL,
 	NULL,
 	ugensa_open,
@@ -188,6 +193,7 @@ ugensa_attach(device_t self)
 
 	id = usbd_get_interface_descriptor(ucom->sc_iface);
 
+	sc->sc_iface_no = id->bInterfaceNumber;
 	ucom->sc_bulkin_no = ucom->sc_bulkout_no = -1;
 	for (i = 0; i < id->bNumEndpoints; i++) {
 		ed = usbd_interface2endpoint_descriptor(ucom->sc_iface, i);
@@ -212,6 +218,8 @@ ugensa_attach(device_t self)
 		device_printf(ucom->sc_dev, "missing endpoint\n");
 		goto error;
 	}
+
+	sc->sc_dtr = sc->sc_rts = -1;
 
 	ucom->sc_parent = sc;
 	ucom->sc_portno = UCOM_UNK_PORTNO;
@@ -242,6 +250,14 @@ ugensa_detach(device_t self)
 {
 	struct ugensa_softc *sc = device_get_softc(self);
 	int rv = 0;
+
+	/* close the interrupt endpoint if that is opened */
+	if (sc->sc_intr_pipe != NULL) {
+		usbd_abort_pipe(sc->sc_intr_pipe);
+		usbd_close_pipe(sc->sc_intr_pipe);
+		kfree(sc->sc_intr_buf, M_USBDEV);
+		sc->sc_intr_pipe = NULL;
+	}
 
 	DPRINTF(("ugensa_detach: sc=%p\n", sc));
 	sc->sc_ucom.sc_dying = 1;
@@ -329,9 +345,10 @@ void
 ugensa_intr(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 {
 	struct ugensa_softc *sc = priv;
-	u_char *buf;
+	usb_cdc_notification_t *buf;
+	u_char mstatus;
 
-	buf = sc->sc_intr_buf;
+	buf = (usb_cdc_notification_t *)sc->sc_intr_buf;
 	if (sc->sc_ucom.sc_dying)
 		return;
 
@@ -345,9 +362,30 @@ ugensa_intr(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 		return;
 	}
 
-	/* XXX */
-	sc->sc_lsr = buf[2];
-	sc->sc_msr = buf[3];
+	if (buf->bmRequestType != UCDC_NOTIFICATION) {
+		DPRINTF(("%s: umsm_intr: unknown message type(0x%02x)\n",
+		    sc->sc_dev.dv_xname, buf->bmRequestType));
+		return;
+	}
+
+	if (buf->bNotification == UCDC_N_SERIAL_STATE) {
+		/* invalid message length, discard it */
+		if (UGETW(buf->wLength) != 2)
+			return;
+		/* XXX: sc_lsr is always 0 */
+		sc->sc_lsr = sc->sc_msr = 0;
+		mstatus = buf->data[0];
+		if (ISSET(mstatus, UCDC_N_SERIAL_RI))
+			sc->sc_msr |= UMSR_RI;
+		if (ISSET(mstatus, UCDC_N_SERIAL_DSR))
+			sc->sc_msr |= UMSR_DSR;
+		if (ISSET(mstatus, UCDC_N_SERIAL_DCD))
+			sc->sc_msr |= UMSR_DCD;
+	} else if (buf->bNotification != UCDC_N_CONNECTION_SPEED_CHANGE) {
+		DPRINTF(("%s: umsm_intr: unknown notify message (0x%02x)\n",
+		    sc->sc_dev.dv_xname, buf->bNotification));
+		return;
+	}
 
 	ucom_status_change(&sc->sc_ucom);
 }
@@ -362,3 +400,38 @@ ugensa_get_status(void *addr, int portno, u_char *lsr, u_char *msr)
 	if (msr != NULL)
 		*msr = sc->sc_msr;
 }
+
+void
+ugensa_set(void *addr, int portno, int reg, int onoff)
+{
+	struct ugensa_softc *sc = addr;
+	usb_device_request_t req;
+	int ls;
+
+	switch (reg) {
+	case UCOM_SET_DTR:
+		if (sc->sc_dtr == onoff)
+			return;
+		sc->sc_dtr = onoff;
+		break;
+	case UCOM_SET_RTS:
+		if (sc->sc_rts == onoff)
+			return;
+		sc->sc_rts = onoff;
+		break;
+	default:
+		return;
+	}
+
+	/* build an usb request */
+	ls = (sc->sc_dtr ? UCDC_LINE_DTR : 0) |
+	    (sc->sc_rts ? UCDC_LINE_RTS : 0);
+	req.bmRequestType = UT_WRITE_CLASS_INTERFACE;
+	req.bRequest = UCDC_SET_CONTROL_LINE_STATE;
+	USETW(req.wValue, ls);
+	USETW(req.wIndex, sc->sc_iface_no);
+	USETW(req.wLength, 0);
+
+	(void)usbd_do_request(sc->sc_ucom.sc_udev, &req, 0);
+}
+
