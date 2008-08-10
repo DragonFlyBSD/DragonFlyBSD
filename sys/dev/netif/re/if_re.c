@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.46 2008/07/27 10:06:56 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.47 2008/08/10 17:19:38 swildner Exp $
  */
 
 /*
@@ -804,8 +804,6 @@ re_probe(device_t dev)
 	int rid;
 	uint32_t hwrev;
 	uint16_t vendor, product;
-
-	t = re_devs;
 
 	vendor = pci_get_vendor(dev);
 	product = pci_get_device(dev);
