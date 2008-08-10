@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: patch.c,v 1.45 2007/04/18 21:52:24 sobrado Exp $
- * $DragonFly: src/usr.bin/patch/patch.c,v 1.7 2007/09/29 23:11:10 swildner Exp $
+ * $DragonFly: src/usr.bin/patch/patch.c,v 1.8 2008/08/10 23:01:51 joerg Exp $
  */
 
 /*
@@ -631,13 +631,7 @@ locate_hunk(LINENUM fuzz)
 		    || diff_type == UNI_DIFF)) {
 			say("Empty context always matches.\n");
 		}
-		if (diff_type == CONTEXT_DIFF
-		    || diff_type == NEW_CONTEXT_DIFF
-		    || diff_type == UNI_DIFF) {
-			if (fuzz == 0)
-				return (input_lines == 0 ? first_guess : 0);
-		} else
-			return (first_guess);
+		return (first_guess);
 	}
 	if (max_neg_offset >= first_guess)	/* do not try lines < 0 */
 		max_neg_offset = first_guess - 1;
