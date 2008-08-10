@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: pch.c,v 1.37 2007/09/02 15:19:33 deraadt Exp $
- * $DragonFly: src/usr.bin/patch/pch.c,v 1.5 2007/09/29 23:11:10 swildner Exp $
+ * $DragonFly: src/usr.bin/patch/pch.c,v 1.6 2008/08/10 23:35:40 joerg Exp $
  */
 
 /*
@@ -109,7 +109,8 @@ open_patch_file(const char *filename)
 			pfatal("can't create %s", TMPPATNAME);
 		while (fgets(buf, buf_len, stdin) != NULL)
 			fputs(buf, pfp);
-		fclose(pfp);
+		if (ferror(pfp) || fclose(pfp))
+			pfatal("can't write %s", TMPPATNAME);
 		filename = TMPPATNAME;
 	}
 	pfp = fopen(filename, "r");

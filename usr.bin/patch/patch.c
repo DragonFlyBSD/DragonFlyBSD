@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: patch.c,v 1.45 2007/04/18 21:52:24 sobrado Exp $
- * $DragonFly: src/usr.bin/patch/patch.c,v 1.8 2008/08/10 23:01:51 joerg Exp $
+ * $DragonFly: src/usr.bin/patch/patch.c,v 1.9 2008/08/10 23:35:40 joerg Exp $
  */
 
 /*
@@ -98,7 +98,7 @@ static void	apply_hunk(LINENUM);
 static void	init_output(const char *);
 static void	init_reject(const char *);
 static void	copy_till(LINENUM, bool);
-static void	spew_output(void);
+static bool	spew_output(void);
 static void	dump_line(LINENUM, bool);
 static bool	patch_match(LINENUM, LINENUM, LINENUM);
 static bool	similar(const char *, const char *, int);
@@ -297,7 +297,11 @@ main(int argc, char *argv[])
 				    ++fuzz <= mymaxfuzz);
 
 				if (skip_rest_of_patch) {	/* just got decided */
-					fclose(ofp);
+					if (ferror(ofp) || fclose(ofp)) {
+						say("Error writing %s\n",
+						    TMPOUTNAME);
+						error = 1;
+					}
 					ofp = NULL;
 				}
 			}
@@ -346,8 +350,10 @@ main(int argc, char *argv[])
 			fatal("Internal error: hunk should not be 0\n");
 
 		/* finish spewing out the new file */
-		if (!skip_rest_of_patch)
-			spew_output();
+		if (!skip_rest_of_patch && !spew_output()) {
+			say("Can't write %s\n", TMPOUTNAME);
+			error = 1;
+		}
 
 		/* and put the output where desired */
 		ignore_signals();
@@ -373,7 +379,10 @@ main(int argc, char *argv[])
 				}
 			}
 		}
-		fclose(rejfp);
+		if (ferror(rejfp) || fclose(rejfp)) {
+			say("Error writing %s\n", rejname);
+			error = 1;
+		}
 		rejfp = NULL;
 		if (failed) {
 			error = 1;
@@ -948,17 +957,20 @@ copy_till(LINENUM lastline, bool endoffile)
 /*
  * Finish copying the input file to the output file.
  */
-static void
+static bool
 spew_output(void)
 {
+	int rv;
+
 #ifdef DEBUGGING
 	if (debug & 256)
 		say("il=%ld lfl=%ld\n", input_lines, last_frozen_line);
 #endif
 	if (input_lines)
 		copy_till(input_lines, true);	/* dump remainder of file */
-	fclose(ofp);
+	rv = (ferror(ofp) || fclose(ofp));
 	ofp = NULL;
+	return rv;
 }
 
 /*
