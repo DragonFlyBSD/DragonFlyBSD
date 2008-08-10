@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvgarndr.c,v 1.5.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.16 2008/01/09 21:29:11 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.17 2008/08/10 19:45:01 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -884,14 +884,13 @@ draw_pxlmouse_planar(scr_stat *scp, int x, int y)
 {
 	vm_offset_t p;
 	int line_width;
-	int xoff, yoff;
+	int xoff;
 	int ymax;
 	u_short m;
 	int i, j;
 
 	line_width = scp->sc->adp->va_line_width;
 	xoff = (x - scp->xoff*8)%8;
-	yoff = y - (y/line_width)*line_width;
 	ymax = imin(y + 16, scp->font_size * (scp->yoff + scp->ysize));
 
 	outw(GDCIDX, 0x0805);		/* read mode 1, write mode 0 */
