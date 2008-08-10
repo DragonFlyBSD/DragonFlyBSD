@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: patch.c,v 1.45 2007/04/18 21:52:24 sobrado Exp $
- * $DragonFly: src/usr.bin/patch/patch.c,v 1.9 2008/08/10 23:35:40 joerg Exp $
+ * $DragonFly: src/usr.bin/patch/patch.c,v 1.10 2008/08/10 23:39:56 joerg Exp $
  */
 
 /*
@@ -968,7 +968,7 @@ spew_output(void)
 #endif
 	if (input_lines)
 		copy_till(input_lines, true);	/* dump remainder of file */
-	rv = (ferror(ofp) || fclose(ofp));
+	rv = ferror(ofp) == 0 && fclose(ofp) == 0;
 	ofp = NULL;
 	return rv;
 }
