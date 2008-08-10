@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/isa/pnp.c,v 1.5.2.1 2002/10/14 09:31:09 nyan Exp $
- *	$DragonFly: src/sys/bus/isa/pnp.c,v 1.13 2007/05/01 00:05:15 dillon Exp $
+ *	$DragonFly: src/sys/bus/isa/pnp.c,v 1.14 2008/08/10 18:57:03 swildner Exp $
  *      from: pnp.c,v 1.11 1999/05/06 22:11:19 peter Exp
  */
 
@@ -443,7 +443,6 @@ pnp_create_devices(device_t parent, pnp_id *p, int csn,
 	u_char tag, *resp, *resinfo, *startres = 0;
 	int large_len, scanning = len, retval = FALSE;
 	u_int32_t logical_id;
-	u_int32_t compat_id;
 	device_t dev = 0;
 	int ldn = 0;
 	struct pnp_set_config_arg *csnldn;
@@ -519,7 +518,6 @@ pnp_create_devices(device_t parent, pnp_id *p, int csn,
 			 */
 			bcopy(resinfo, &logical_id, 4);
 			pnp_check_quirks(p->vendor_id, logical_id, ldn, NULL);
-			compat_id = 0;
 			dev = BUS_ADD_CHILD(parent, parent, ISA_ORDER_PNP,
 					    NULL, -1);
 			if (desc)
