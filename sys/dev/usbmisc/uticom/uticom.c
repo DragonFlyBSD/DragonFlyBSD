@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/usbmisc/uticom/uticom.c,v 1.2 2008/01/06 16:55:51 swildner Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uticom/uticom.c,v 1.3 2008/08/10 20:05:54 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -908,7 +908,10 @@ static int uticom_download_fw(struct uticom_softc *sc, unsigned int pipeno,
 	int pos;
 	uint8_t cs = 0;
 	uint8_t *buffer;
-	usbd_status err;
+	usbd_status err = 0;
+	usbd_xfer_handle oxfer = 0;
+	u_char *obuf;
+	usbd_pipe_handle pipe;
 	struct uticom_fw_header *header;
 
 	buffer_size = UTICOM_FW_BUFSZ + sizeof(struct uticom_fw_header);
@@ -928,29 +931,24 @@ static int uticom_download_fw(struct uticom_softc *sc, unsigned int pipeno,
 	DPRINTF(("%s: downloading firmware ...\n",
 		 device_get_nameunit(sc->sc_ucom.sc_dev)));
 
-	usbd_xfer_handle oxfer = 0;
-	u_char *obuf;
-	usbd_status error = 0;
-	usbd_pipe_handle pipe;
-
 	err = usbd_open_pipe(sc->sc_ucom.sc_iface, pipeno, USBD_EXCLUSIVE_USE,
 			     &pipe);
 	if (err) {
 		device_printf(sc->sc_ucom.sc_dev, "open bulk out error "
 			      "(addr %d): %s\n", pipeno, usbd_errstr(err));
-		error = EIO;
+		err = EIO;
 		goto finish;
 	}
 
 	oxfer = usbd_alloc_xfer(dev);
 	if (oxfer == NULL) {
-		error = ENOMEM;
+		err = ENOMEM;
 		goto finish;
 	}
 
 	obuf = usbd_alloc_buffer(oxfer, buffer_size);
 	if (obuf == NULL) {
-		error = ENOMEM;
+		err = ENOMEM;
 		goto finish;
 	}
 
