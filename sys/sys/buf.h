@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.52 2008/07/17 23:55:24 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.53 2008/08/10 20:03:15 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -432,6 +432,8 @@ int	scan_all_buffers (int (*)(struct buf *, void *), void *);
 void	reassignbuf (struct buf *);
 struct	buf *trypbuf (int *);
 void	bio_ops_sync(struct mount *mp);
+void	vm_hold_free_pages(struct buf *bp, vm_offset_t from, vm_offset_t to);
+void	vm_hold_load_pages(struct buf *bp, vm_offset_t from, vm_offset_t to);
 
 #endif	/* _KERNEL */
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */
