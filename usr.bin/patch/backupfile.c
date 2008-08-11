@@ -1,11 +1,12 @@
 /*
  * $OpenBSD: backupfile.c,v 1.19 2006/03/11 19:41:30 otto Exp $
- * $DragonFly: src/usr.bin/patch/backupfile.c,v 1.4 2007/09/29 23:11:10 swildner Exp $
+ * $DragonFly: src/usr.bin/patch/backupfile.c,v 1.5 2008/08/11 00:05:06 joerg Exp $
  */
 
 /*
- * backupfile.c -- make Emacs style backup file names Copyright (C) 1990 Free
- * Software Foundation, Inc.
+ * backupfile.c -- make Emacs style backup file names
+ *
+ * Copyright (C) 1990 Free Software Foundation, Inc.
  * 
  * This program is free software; you can redistribute it and/or modify it
  * without restriction.
