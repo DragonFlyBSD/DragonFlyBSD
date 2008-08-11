@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.32 2008/08/02 01:14:42 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.33 2008/08/11 18:01:17 swildner Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -789,13 +789,12 @@ wlinit(void *xsc)
 {
     struct wl_softc *sc = xsc;
     struct ifnet	*ifp = &sc->wl_if;
-    int			stat;
 
 #ifdef WLDEBUG
     if (ifp->if_flags & IFF_DEBUG)
 	if_printf(ifp, "entered wlinit()\n");
 #endif
-    if ((stat = wlhwrst(sc)) == TRUE) {
+    if (wlhwrst(sc) == TRUE) {
 	ifp->if_flags |= IFF_RUNNING;   /* same as DSF_RUNNING */
 	/* 
 	 * OACTIVE is used by upper-level routines
@@ -1792,7 +1791,6 @@ static void
 wlxmt(struct wl_softc *sc, struct mbuf *m)
 {
     u_short		xmtdata_p = OFFSET_TBUF;
-    u_short		xmtshort_p;
     struct	mbuf			*tm_p = m;
     struct ether_header	*eh_p = mtod(m, struct ether_header *);
     u_char				*mb_p = mtod(m, u_char *) + sizeof(struct ether_header);
@@ -1890,8 +1888,10 @@ wlxmt(struct wl_softc *sc, struct mbuf *m)
     if (clen < ETHERMIN) {
 	outw(PIOP0(base), inw(PIOP0(base)) + ETHERMIN - clen);
 	outw(PIOR1(base), xmtdata_p);
-	for (xmtshort_p = xmtdata_p; clen < ETHERMIN; clen += 2)
+	while (clen < ETHERMIN) {
 	    outw(PIOP1(base), 0);
+	    clen += 2;
+	}
     }	
     outw(PIOP0(base), inw(PIOP0(base)) | TBD_SW_EOF);
     outw(PIOR0(base), tbd_p + 2);
