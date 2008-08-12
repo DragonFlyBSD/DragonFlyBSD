@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)du.c	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/du/du.c,v 1.17.2.4 2002/12/12 16:29:39 trhodes Exp $
- * $DragonFly: src/usr.bin/du/du.c,v 1.11 2008/08/04 19:22:44 swildner Exp $
+ * $DragonFly: src/usr.bin/du/du.c,v 1.12 2008/08/12 03:35:35 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -431,7 +431,7 @@ linkchk(FTSENT *p)
 void
 prthumanval(int64_t bytes)
 {
-	char buf[4];
+	char buf[sizeof("999M")];
 
 	bytes *= DEV_BSIZE;
 
