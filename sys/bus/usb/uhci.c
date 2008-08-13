@@ -1,6 +1,6 @@
 /*	$NetBSD: uhci.c,v 1.170 2003/02/19 01:35:04 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhci.c,v 1.162.2.1 2006/03/01 01:59:04 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.28 2008/06/12 07:09:31 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.29 2008/08/13 00:55:55 dillon Exp $	*/
 
 /*	Also already incorporated from NetBSD:
  *	$NetBSD: uhci.c,v 1.172 2003/02/23 04:19:26 simonb Exp $
@@ -1192,7 +1192,11 @@ uhci_softintr(void *v)
 	DPRINTFN(10,("%s: uhci_softintr (%d)\n", device_get_nameunit(sc->sc_bus.bdev),
 		     sc->sc_bus.intr_context));
 
-	sc->sc_bus.intr_context++;
+	/*
+	 * this is a software interrupt, not a real interrupt,
+	 * do not bump intr_context
+	 */
+	/* sc->sc_bus.intr_context++; */
 
 	/*
 	 * Interrupts on UHCI really suck.  When the host controller
@@ -1215,7 +1219,7 @@ uhci_softintr(void *v)
 	}
 #endif /* USB_USE_SOFTINTR */
 
-	sc->sc_bus.intr_context--;
+	/* sc->sc_bus.intr_context--; */
 }
 
 /* Check for an interrupt. */
