@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.44 2008/01/15 14:19:11 hasso Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.45 2008/08/13 10:30:20 swildner Exp $
  */
 
 /*-
@@ -2381,7 +2381,6 @@ ttyinfo(struct tty *tp)
 		 */
 		char buf[64];
 		const char *str;
-		int isinmem;
 		long vmsz;
 		int pctcpu;
 
@@ -2429,12 +2428,8 @@ ttyinfo(struct tty *tp)
 		 * 'pick' becomes invalid the moment we exit the critical
 		 * section.
 		 */
-		if (lp->lwp_thread && (pick->p_flag & P_SWAPPEDOUT) == 0) {
+		if (lp->lwp_thread && (pick->p_flag & P_SWAPPEDOUT) == 0)
 			calcru_proc(pick, &ru);
-			isinmem = 1;
-		} else {
-			isinmem = 0;
-		}
 
 		pctcpu = (lp->lwp_pctcpu * 10000 + FSCALE / 2) >> FSHIFT;
 
