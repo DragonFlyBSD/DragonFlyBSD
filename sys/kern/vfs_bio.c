@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.114 2008/08/10 20:03:14 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.115 2008/08/13 11:02:31 swildner Exp $
  */
 
 /*
@@ -642,10 +642,7 @@ bfreekva(struct buf *bp)
 void
 bremfree(struct buf *bp)
 {
-	int old_qindex;
-
 	crit_enter();
-	old_qindex = bp->b_qindex;
 
 	if (bp->b_qindex != BQUEUE_NONE) {
 		KASSERT(BUF_REFCNTNB(bp) == 1, 
@@ -3541,12 +3538,8 @@ vfs_clean_pages(struct buf *bp)
 		for (i = 0; i < bp->b_xio.xio_npages; i++) {
 			vm_page_t m = bp->b_xio.xio_pages[i];
 			vm_ooffset_t noff = (foff + PAGE_SIZE) & ~(off_t)PAGE_MASK;
-			vm_ooffset_t eoff = noff;
 
-			if (eoff > bp->b_loffset + bp->b_bufsize)
-				eoff = bp->b_loffset + bp->b_bufsize;
 			vfs_page_set_valid(bp, foff, i, m);
-			/* vm_page_clear_dirty(m, foff & PAGE_MASK, eoff - foff); */
 			foff = noff;
 		}
 	}
@@ -3622,7 +3615,7 @@ vfs_bio_clrbuf(struct buf *bp)
 				return;
 			}
 		}
-		ea = sa = bp->b_data;
+		sa = bp->b_data;
 		for(i=0;i<bp->b_xio.xio_npages;i++,sa=ea) {
 			int j = ((vm_offset_t)sa & PAGE_MASK) / DEV_BSIZE;
 			ea = (caddr_t)trunc_page((vm_offset_t)sa + PAGE_SIZE);
