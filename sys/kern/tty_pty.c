@@ -32,7 +32,7 @@
  *
  *	@(#)tty_pty.c	8.4 (Berkeley) 2/20/95
  * $FreeBSD: src/sys/kern/tty_pty.c,v 1.74.2.4 2002/02/20 19:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/tty_pty.c,v 1.20 2008/01/05 14:02:38 swildner Exp $
+ * $DragonFly: src/sys/kern/tty_pty.c,v 1.21 2008/08/13 10:29:38 swildner Exp $
  */
 
 /*
@@ -158,14 +158,14 @@ ptsopen(struct dev_open_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct tty *tp;
 	int error;
-	int minr;
 #if 0
+	int minr;
 	cdev_t nextdev;
 #endif
 	struct pt_ioctl *pti;
 
-	minr = lminor(dev);
 #if 0
+	minr = lminor(dev);
 	/*
 	 * REMOVED gross hack for devfs.  also note that makedev()
 	 * no longer exists in this form and reference counting makes
