@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.42 2008/04/20 13:44:25 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.43 2008/08/13 08:18:09 swildner Exp $
  *
  */
 
@@ -978,8 +978,8 @@ fd_probe(device_t dev)
 		break;
 	case RTCFDT_144M | RTCFDT_144M_PRETENDED:
 		device_set_desc(dev, "config-pretended 1440-MB 3.5\" drive");
-		fdt = RTCFDT_144M;
 		fd->type = FD_1440;
+		break;
 	case RTCFDT_144M:
 		device_set_desc(dev, "1440-KB 3.5\" drive");
 		fd->type = FD_1440;
@@ -1631,7 +1631,7 @@ fdstate(fdc_p fdc)
 {
 	int read, format, head, i, sec = 0, sectrac, st0, cyl, st3;
 	unsigned blknum = 0, b_cylinder = 0;
-	fdu_t fdu = fdc->fdu;
+	fdu_t fdu;
 	fd_p fd;
 	struct bio *bio;
 	struct buf *bp;
@@ -2287,11 +2287,8 @@ fdioctl(struct dev_ioctl_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
  	fdu_t	fdu = dkunit(dev);
  	fd_p	fd = devclass_get_softc(fd_devclass, fdu);
-	size_t fdblk;
 	struct fdc_status *fsp;
 	int error = 0;
-
-	fdblk = 128 << fd->ft.secsize;
 
 	switch (ap->a_cmd) {
 	case FD_FORM:
