@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/mlfk_ipl.c,v 1.9.2.2 2002/04/27 17:37:12 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/mlfk_ipl.c,v 1.8 2006/07/28 02:17:35 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/mlfk_ipl.c,v 1.8.8.1 2008/08/14 07:44:43 swildner Exp $
  */
 
 
@@ -178,7 +178,7 @@ ipfilter_modevent(module_t mod, int type, void *unused)
 }
 
 static moduledata_t ipfiltermod = {
-	IPL_VERSION,
+	"ipl",
 	ipfilter_modevent,
         0
 };
