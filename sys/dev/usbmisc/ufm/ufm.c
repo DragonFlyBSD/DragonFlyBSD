@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/ufm.c,v 1.16 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.23 2007/11/06 07:37:01 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.24 2008/08/14 20:55:53 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -146,7 +146,6 @@ ufm_attach(device_t self)
 	struct ufm_softc *sc = device_get_softc(self);
 	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usb_endpoint_descriptor_t *edesc;
-	usbd_device_handle udev;
 	usbd_interface_handle iface;
 	u_int8_t epcount;
 	usbd_status r;
@@ -154,7 +153,7 @@ ufm_attach(device_t self)
 
 	DPRINTFN(10,("ufm_attach: sc=%p\n", sc));
 	sc->sc_dev = self;
-	sc->sc_udev = udev = uaa->device;
+	sc->sc_udev = uaa->device;
 
  	if ((!uaa->device) || (!uaa->iface)) {
 		ermsg = "device or iface";

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.30 2007/11/06 07:37:01 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.31 2008/08/14 20:55:54 hasso Exp $
  */
 
 /*
@@ -210,7 +210,6 @@ ums_attach(device_t self)
 	struct ums_softc *sc = device_get_softc(self);
 	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usbd_interface_handle iface = uaa->iface;
-	usb_interface_descriptor_t *id;
 	usb_endpoint_descriptor_t *ed;
 	int size;
 	void *desc;
@@ -221,7 +220,6 @@ ums_attach(device_t self)
 
 	sc->sc_disconnected = 1;
 	sc->sc_iface = iface;
-	id = usbd_get_interface_descriptor(iface);
 	sc->sc_dev = self;
 	ed = usbd_interface2endpoint_descriptor(iface, 0);
 	if (!ed) {

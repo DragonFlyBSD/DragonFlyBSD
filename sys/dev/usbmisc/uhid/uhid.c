@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.32 2007/11/06 07:37:01 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.33 2008/08/14 20:55:53 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -197,7 +197,6 @@ uhid_attach(device_t self)
 	struct uhid_softc *sc = device_get_softc(self);
 	struct usb_attach_arg *uaa = device_get_ivars(self);
 	usbd_interface_handle iface = uaa->iface;
-	usb_interface_descriptor_t *id;
 	usb_endpoint_descriptor_t *ed;
 	int size;
 	void *desc;
@@ -205,7 +204,6 @@ uhid_attach(device_t self)
 
 	sc->sc_udev = uaa->device;
 	sc->sc_iface = iface;
-	id = usbd_get_interface_descriptor(iface);
 	sc->sc_dev = self;
 
 	ed = usbd_interface2endpoint_descriptor(iface, 0);
@@ -511,7 +509,6 @@ uhid_do_write(struct uhid_softc *sc, struct uio *uio, int flag)
 		return (EIO);
 
 	size = sc->sc_osize;
-	error = 0;
 	if (uio->uio_resid != size)
 		return (EINVAL);
 	error = uiomove(sc->sc_obuf, size, uio);

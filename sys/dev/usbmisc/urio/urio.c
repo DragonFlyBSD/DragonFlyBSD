@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/urio.c,v 1.28 2003/08/25 22:01:06 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.26 2007/11/06 07:37:01 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.27 2008/08/14 20:55:54 hasso Exp $
  */
 
 /*
@@ -173,7 +173,6 @@ urio_attach(device_t self)
 {
 	struct urio_softc *sc = device_get_softc(self);
 	struct usb_attach_arg *uaa = device_get_ivars(self);
-	usbd_device_handle udev;
 	usbd_interface_handle iface;
 	u_int8_t epcount;
 	usbd_status r;
@@ -182,7 +181,7 @@ urio_attach(device_t self)
 
 	DPRINTFN(10,("urio_attach: sc=%p\n", sc));
 	sc->sc_dev = self;
-	sc->sc_udev = udev = uaa->device;
+	sc->sc_udev = uaa->device;
 
  	if ((!uaa->device) || (!uaa->iface)) {
 		ermsg = "device or iface";

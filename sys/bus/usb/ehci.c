@@ -1,6 +1,6 @@
 /*	$NetBSD: ehci.c,v 1.91 2005/02/27 00:27:51 perry Exp $ */
 /*	$FreeBSD: src/sys/dev/usb/ehci.c,v 1.36.2.3 2006/09/24 13:39:04 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/ehci.c,v 1.35 2008/06/10 10:04:05 hasso Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/ehci.c,v 1.36 2008/08/14 20:55:53 hasso Exp $	*/
 
 /*
  * Copyright (c) 2004 The NetBSD Foundation, Inc.
@@ -587,7 +587,6 @@ ehci_intr1(ehci_softc_t *sc)
 void
 ehci_pcd(ehci_softc_t *sc, usbd_xfer_handle xfer)
 {
-	usbd_pipe_handle pipe;
 	u_char *p;
 	int i, m;
 
@@ -595,8 +594,6 @@ ehci_pcd(ehci_softc_t *sc, usbd_xfer_handle xfer)
 		/* Just ignore the change. */
 		return;
 	}
-
-	pipe = xfer->pipe;
 
 	p = KERNADDR(&xfer->dmabuf, 0);
 	m = min(sc->sc_noport, xfer->length * 8 - 1);
@@ -2446,7 +2443,6 @@ ehci_abort_xfer(usbd_xfer_handle xfer, usbd_status status)
 		 * (if there is one). We only need to do this if
 		 * it was previously pointing to us.
 		 */
-		sqtd = exfer->sqtdstart;
 		for (sqtd = exfer->sqtdstart; ; sqtd = sqtd->nextqtd) {
 			if (cur == sqtd->physaddr) {
 				hit++;
