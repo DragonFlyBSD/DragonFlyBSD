@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.42 2008/06/19 00:03:45 aggelos Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.43 2008/08/15 21:39:04 nth Exp $
  */
 
 #include <sys/param.h>
@@ -59,9 +59,8 @@
 #include <sys/file2.h>
 #include <sys/spinlock2.h>
 
-#include <vm/vm_zone.h>
 
-static	struct vm_zone *unp_zone;
+static	MALLOC_DEFINE(M_UNPCB, "unpcb", "unpcb struct");
 static	unp_gen_t unp_gencnt;
 static	u_int unp_count;
 
@@ -560,10 +559,9 @@ unp_attach(struct socket *so, struct pru_attach_info *ai)
 		if (error)
 			return (error);
 	}
-	unp = zalloc(unp_zone);
+	unp = kmalloc(sizeof(*unp), M_UNPCB, M_NOWAIT|M_ZERO);
 	if (unp == NULL)
 		return (ENOBUFS);
-	bzero(unp, sizeof *unp);
 	unp->unp_gencnt = ++unp_gencnt;
 	unp_count++;
 	LIST_INIT(&unp->unp_refs);
@@ -605,7 +603,7 @@ unp_detach(struct unpcb *unp)
 	}
 	if (unp->unp_addr)
 		kfree(unp->unp_addr, M_SONAME);
-	zfree(unp_zone, unp);
+	kfree(unp, M_UNPCB);
 }
 
 static int
@@ -1008,9 +1006,6 @@ unp_externalize(struct mbuf *rights)
 void
 unp_init(void)
 {
-	unp_zone = zinit("unpcb", sizeof(struct unpcb), nmbclusters, 0, 0);
-	if (unp_zone == NULL)
-		panic("unp_init");
 	LIST_INIT(&unp_dhead);
 	LIST_INIT(&unp_shead);
 	spin_init(&unp_spin);
