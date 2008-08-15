@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/tcp_sack.c,v 1.7 2008/02/03 21:40:42 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_sack.c,v 1.8 2008/08/15 21:37:16 nth Exp $
  */
 
 #include <sys/param.h>
@@ -55,8 +55,6 @@
 #include <netinet/tcp_seq.h>
 #include <netinet/tcp_var.h>
 
-#include <vm/vm_zone.h>
-
 struct sackblock {
 	tcp_seq			sblk_start;
 	tcp_seq			sblk_end;
@@ -69,17 +67,7 @@ static void insert_block(struct scoreboard *scb, struct sackblock *newblock);
 static void update_lostseq(struct scoreboard *scb, tcp_seq snd_una,
 			   u_int maxseg);
 
-static vm_zone_t sackblock_zone;
-
-/*
- * Initialize SACK module.
- */
-void
-tcp_sack_init(void)
-{
-	sackblock_zone = zinit("sack blocks", sizeof(struct sackblock),
-	    maxsockets, ZONE_INTERRUPT, 0);
-}
+static MALLOC_DEFINE(M_SACKBLOCK, "sblk", "sackblock struct");
 
 /*
  * Per-tcpcb initialization.
@@ -153,7 +141,7 @@ sack_block_lookup(struct scoreboard *scb, tcp_seq seq, struct sackblock **sb)
 static __inline struct sackblock *
 alloc_sackblock(void)
 {
-	return zalloc(sackblock_zone);
+	return (kmalloc(sizeof(struct sackblock), M_SACKBLOCK, M_NOWAIT));
 }
 
 /*
@@ -162,7 +150,7 @@ alloc_sackblock(void)
 static __inline void
 free_sackblock(struct sackblock *s)
 {
-	zfree(sackblock_zone, s);
+	kfree(s, M_SACKBLOCK);
 }
 
 /*

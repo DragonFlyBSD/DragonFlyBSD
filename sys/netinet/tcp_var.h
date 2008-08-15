@@ -65,7 +65,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.40 2007/12/19 11:00:22 sephe Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.41 2008/08/15 21:37:16 nth Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -605,7 +605,6 @@ int	 tcp_sack_ndsack_blocks(struct raw_sackblock *blocks,
 void	 tcp_sack_fill_report(struct tcpcb *tp, u_char *opt, u_int *plen);
 boolean_t
 	 tcp_sack_has_sacked(struct scoreboard *scb, u_int amount);
-void	 tcp_sack_init(void);
 void	 tcp_sack_tcpcb_init(struct tcpcb *tp);
 uint32_t tcp_sack_compute_pipe(struct tcpcb *tp);
 boolean_t

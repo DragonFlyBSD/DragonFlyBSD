@@ -65,7 +65,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.59 2007/07/06 11:59:03 sephe Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.60 2008/08/15 21:37:16 nth Exp $
  */
 
 #include "opt_compat.h"
@@ -370,7 +370,6 @@ tcp_init(void)
 #endif
 
 	syncache_init();
-	tcp_sack_init();
 	tcp_thread_init();
 }
 
