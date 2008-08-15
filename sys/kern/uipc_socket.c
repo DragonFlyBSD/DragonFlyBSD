@@ -65,7 +65,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.52 2008/07/10 00:19:27 aggelos Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.53 2008/08/15 17:37:29 nth Exp $
  */
 
 #include "opt_inet.h"
@@ -117,8 +117,7 @@ static struct filterops soread_filtops =
 static struct filterops sowrite_filtops = 
 	{ 1, NULL, filt_sowdetach, filt_sowrite };
 
-struct	vm_zone *socket_zone;
-
+MALLOC_DEFINE(M_SOCKET, "socket", "socket struct");
 MALLOC_DEFINE(M_SONAME, "soname", "socket name");
 MALLOC_DEFINE(M_PCB, "pcb", "protocol control block");
 
@@ -136,8 +135,7 @@ SYSCTL_INT(_kern_ipc, KIPC_SOMAXCONN, somaxconn, CTLFLAG_RW,
  */
 
 /*
- * Get a socket structure from our zone, and initialize it.
- * We don't implement `waitok' yet (see comments in uipc_domain.c).
+ * Get a socket structure, and initialize it.
  * Note that it would probably be better to allocate socket
  * and PCB at the same time, but I'm not convinced that all
  * the protocols can be easily modified to do this.
@@ -146,11 +144,12 @@ struct socket *
 soalloc(int waitok)
 {
 	struct socket *so;
+	unsigned waitmask;
 
-	so = zalloc(socket_zone);
+	waitmask = waitok ? M_WAITOK : M_NOWAIT;
+	so = kmalloc(sizeof(struct socket), M_SOCKET, M_ZERO|waitmask);
 	if (so) {
 		/* XXX race condition for reentrant kernel */
-		bzero(so, sizeof *so);
 		TAILQ_INIT(&so->so_aiojobq);
 		TAILQ_INIT(&so->so_rcv.ssb_sel.si_mlist);
 		TAILQ_INIT(&so->so_snd.ssb_sel.si_mlist);
@@ -234,7 +233,7 @@ sodealloc(struct socket *so)
 		do_setopt_accept_filter(so, NULL);
 #endif /* INET */
 	crfree(so->so_cred);
-	zfree(socket_zone, so);
+	kfree(so, M_SOCKET);
 }
 
 int

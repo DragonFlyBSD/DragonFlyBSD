@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_domain.c	8.2 (Berkeley) 10/18/93
  * $FreeBSD: src/sys/kern/uipc_domain.c,v 1.22.2.1 2001/07/03 11:01:37 ume Exp $
- * $DragonFly: src/sys/kern/uipc_domain.c,v 1.11 2008/06/05 18:06:32 swildner Exp $
+ * $DragonFly: src/sys/kern/uipc_domain.c,v 1.12 2008/08/15 17:37:29 nth Exp $
  */
 
 #include <sys/param.h>
@@ -120,21 +120,6 @@ net_add_domain(void *data)
 static void
 domaininit(void *dummy)
 {
-	/*
-	 * Before we do any setup, make sure to initialize the
-	 * zone allocator we get struct sockets from.  The obvious
-	 * maximum number of sockets is `maxfiles', but it is possible
-	 * to have a socket without an open file (e.g., a connection waiting
-	 * to be accept(2)ed).  Rather than think up and define a
-	 * better value, we just use nmbclusters, since that's what people
-	 * are told to increase first when the network runs out of memory.
-	 * Perhaps we should have two pools, one of unlimited size
-	 * for use during socreate(), and one ZONE_INTERRUPT pool for
-	 * use in sonewconn().
-	 */
-	socket_zone = zinit("socket", sizeof(struct socket), maxsockets,
-			    ZONE_INTERRUPT, 0);
-
 	if (max_linkhdr < 16)		/* XXX */
 		max_linkhdr = 16;
 
