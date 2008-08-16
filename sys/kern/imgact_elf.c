@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.53 2008/06/07 11:37:23 mneumann Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.54 2008/08/16 07:31:11 nth Exp $
  */
 
 #include <sys/param.h>
@@ -977,8 +977,6 @@ generic_elf_coredump(struct lwp *lp, int sig, struct file *fp, off_t limit)
 	target.off = 0;
 	target.buf = kmalloc(target.off_max, M_TEMP, M_WAITOK|M_ZERO);
 
-	if (target.buf == NULL)
-		return EINVAL;
 	error = elf_corehdr(lp, sig, fp, cred, seginfo.count, &target);
 
 	/* Write the contents of all of the writable segments. */
