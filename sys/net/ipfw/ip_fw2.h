@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.h,v 1.1.2.2 2002/08/16 11:03:11 luigi Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.12 2008/08/02 11:39:00 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.13 2008/08/16 09:05:59 sephe Exp $
  */
 
 #ifndef _IPFW2_H
@@ -251,6 +251,11 @@ typedef struct  _ipfw_insn_log {
 
 #ifdef _KERNEL
 
+struct ip_fw;
+struct ip_fw_stub {
+	struct ip_fw	*rule[1];
+};
+
 /*
  * Here we have the structure representing an ipfw rule.
  *
@@ -290,6 +295,10 @@ struct ip_fw {
 	uint64_t	bcnt;		/* Byte counter			*/
 	uint32_t	timestamp;	/* tv_sec of last match		*/
 
+	struct ip_fw_stub *stub;	/* back pointers to clones	*/
+	struct ip_fw	*sibling;	/* clone on next cpu		*/
+	int		cpuid;		/* owner cpu			*/
+
 	uint32_t	refcnt;		/* Ref count for transit pkts	*/
 	uint32_t	rule_flags;	/* IPFW_RULE_F_			*/
 
@@ -297,6 +306,7 @@ struct ip_fw {
 };
 
 #define IPFW_RULE_F_INVALID	0x1
+#define IPFW_RULE_F_STATE	0x2
 
 #define RULESIZE(rule)	(sizeof(struct ip_fw) + (rule)->cmd_len * 4 - 4)
 
@@ -321,7 +331,11 @@ typedef struct _ipfw_dyn_rule ipfw_dyn_rule;
 struct _ipfw_dyn_rule {
 	ipfw_dyn_rule	*next;		/* linked list of rules.	*/
 	struct ipfw_flow_id id;		/* (masked) flow id		*/
+#ifdef notyet
 	struct ip_fw *rule;		/* pointer to rule		*/
+#else
+	const struct ip_fw_stub *stub;	/* pointer to rule's stub	*/
+#endif
 	ipfw_dyn_rule *parent;		/* pointer to parent rule	*/
 	uint32_t	expire;		/* expire time			*/
 	uint64_t	pcnt;		/* packet match counter		*/
