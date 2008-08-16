@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.45 2008/05/14 11:59:23 sephe Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.46 2008/08/16 13:10:59 sephe Exp $
  */
 
 #include "use_bpf.h"
@@ -497,7 +497,7 @@ bpf_timed_out(void *arg)
 	crit_exit();
 }
 
-static	int
+static int
 bpfwrite(struct dev_write_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
@@ -1019,7 +1019,7 @@ bpf_setif(struct bpf_d *d, struct ifreq *ifr)
  * Return true iff the specific operation will not block indefinitely.
  * Otherwise, return false but make a note that a selwakeup() must be done.
  */
-int
+static int
 bpfpoll(struct dev_poll_args *ap)
 {
 	cdev_t dev = ap->a_head.a_dev;
