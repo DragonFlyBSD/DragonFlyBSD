@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.39 2008/08/16 17:48:16 hasso Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.40 2008/08/16 21:42:19 thomas Exp $
  */
 
 /*
@@ -3099,7 +3099,7 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 		DPRINTF(UDMASS_SCSI, ("%s:%d:%d:%d:func_code 0x%04x: "
 			"Not implemented\n",
 			(sc == NULL ? DEVNAME_SIM : device_get_nameunit(sc->sc_dev)),
-			(sc == NULL ? 0 : cam_sim_path(sc->umass_sim),
+			(sc == NULL ? 0 : cam_sim_path(sc->umass_sim)),
 			ccb->ccb_h.target_id, ccb->ccb_h.target_lun,
 			ccb->ccb_h.func_code));
 
