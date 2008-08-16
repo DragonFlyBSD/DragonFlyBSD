@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.38 2008/05/18 20:30:23 pavalos Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.39 2008/08/16 17:48:16 hasso Exp $
  */
 
 /*
@@ -2851,9 +2851,8 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 		if (sc == NULL) {
 			kprintf("%s:%d:%d:%d:func_code 0x%04x: "
 				"Invalid target (target needed)\n",
-				DEVNAME_SIM, cam_sim_path(sc->umass_sim),
-				ccb->ccb_h.target_id, ccb->ccb_h.target_lun,
-				ccb->ccb_h.func_code);
+				DEVNAME_SIM, 0, ccb->ccb_h.target_id,
+				ccb->ccb_h.target_lun, ccb->ccb_h.func_code);
 
 			ccb->ccb_h.status = CAM_TID_INVALID;
 			xpt_done(ccb);
@@ -2869,9 +2868,8 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 		if (sc == NULL && ccb->ccb_h.target_id != CAM_TARGET_WILDCARD) {
 			DPRINTF(UDMASS_SCSI, ("%s:%d:%d:%d:func_code 0x%04x: "
 				"Invalid target (no wildcard)\n",
-				DEVNAME_SIM, cam_sim_path(sc->umass_sim),
-				ccb->ccb_h.target_id, ccb->ccb_h.target_lun,
-				ccb->ccb_h.func_code));
+				DEVNAME_SIM, 0, ccb->ccb_h.target_id, 
+				ccb->ccb_h.target_lun, ccb->ccb_h.func_code));
 
 			ccb->ccb_h.status = CAM_TID_INVALID;
 			xpt_done(ccb);
@@ -3006,8 +3004,8 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 		struct ccb_pathinq *cpi = &ccb->cpi;
 
 		DPRINTF(UDMASS_SCSI, ("%s:%d:%d:%d:XPT_PATH_INQ:.\n",
-			(sc == NULL? DEVNAME_SIM:device_get_nameunit(sc->sc_dev)),
-			cam_sim_path(sc->umass_sim),
+			(sc == NULL ? DEVNAME_SIM : device_get_nameunit(sc->sc_dev)),
+			(sc == NULL ? 0 : cam_sim_path(sc->umass_sim)),
 			ccb->ccb_h.target_id, ccb->ccb_h.target_lun));
 
 		/* host specific information */
@@ -3022,12 +3020,13 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 		strncpy(cpi->hba_vid, "USB SCSI", HBA_IDLEN);
 		strncpy(cpi->dev_name, cam_sim_name(sim), DEV_IDLEN);
 		cpi->unit_number = cam_sim_unit(sim);
-		cpi->bus_id = device_get_unit(sc->sc_dev);
 
 		if (sc == NULL) {
 			cpi->base_transfer_speed = 0;
 			cpi->max_lun = 0;
 		} else {
+			cpi->bus_id = device_get_unit(sc->sc_dev);
+
 			if (sc->quirks & FLOPPY_SPEED) {
 				cpi->base_transfer_speed =
 				    UMASS_FLOPPY_TRANSFER_SPEED;
@@ -3088,8 +3087,8 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 	case XPT_NOOP:
 	{
 		DPRINTF(UDMASS_SCSI, ("%s:%d:%d:%d:XPT_NOOP:.\n",
-			(sc == NULL? DEVNAME_SIM:device_get_nameunit(sc->sc_dev)),
-			cam_sim_path(sc->umass_sim),
+			(sc == NULL ? DEVNAME_SIM : device_get_nameunit(sc->sc_dev)),
+			(sc == NULL ? 0 : cam_sim_path(sc->umass_sim)),
 			ccb->ccb_h.target_id, ccb->ccb_h.target_lun));
 
 		ccb->ccb_h.status = CAM_REQ_CMP;
@@ -3099,8 +3098,8 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 	default:
 		DPRINTF(UDMASS_SCSI, ("%s:%d:%d:%d:func_code 0x%04x: "
 			"Not implemented\n",
-			(sc == NULL? DEVNAME_SIM:device_get_nameunit(sc->sc_dev)),
-			cam_sim_path(sc->umass_sim),
+			(sc == NULL ? DEVNAME_SIM : device_get_nameunit(sc->sc_dev)),
+			(sc == NULL ? 0 : cam_sim_path(sc->umass_sim),
 			ccb->ccb_h.target_id, ccb->ccb_h.target_lun,
 			ccb->ccb_h.func_code));
 
