@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.8 2008/07/31 06:01:31 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.9 2008/08/17 10:35:18 mneumann Exp $
  */
 
 #include "hammer.h"
@@ -67,6 +67,10 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 	dirpath = strdup(path);
 	if (strrchr(dirpath, '/')) {
 		*strrchr(dirpath, '/') = 0;
+		if (strlen(dirpath) == 0) {
+			free(dirpath);
+			dirpath = strdup("/");
+		}
 	} else {
 		free(dirpath);
 		dirpath = strdup(".");
