@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.76 2008/08/17 05:45:56 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.77 2008/08/17 06:01:50 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -2338,6 +2338,8 @@ ifnet_portfn(int cpu)
 void
 ifnet_forwardmsg(struct lwkt_msg *lmsg, int next_cpu)
 {
+	KKASSERT(next_cpu > mycpuid && next_cpu <= ncpus);
+
 	if (next_cpu < ncpus)
 		lwkt_forwardmsg(ifnet_portfn(next_cpu), lmsg);
 	else
