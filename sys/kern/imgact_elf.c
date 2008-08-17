@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.54 2008/08/16 07:31:11 nth Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.55 2008/08/17 17:21:36 nth Exp $
  */
 
 #include <sys/param.h>
@@ -899,9 +899,10 @@ static int cb_put_fp(vm_map_entry_t, void *);
 static int each_segment (struct proc *, segment_callback, void *, int);
 static int elf_corehdr (struct lwp *, int, struct file *, struct ucred *,
 			int, elf_buf_t);
-static int elf_puthdr (struct lwp *, elf_buf_t, const prstatus_t *,
-			const prfpregset_t *, const prpsinfo_t *, int,
-			struct file *);
+enum putmode { WRITE, DRYRUN };
+static int elf_puthdr (struct lwp *, elf_buf_t, int sig, enum putmode,
+			int, struct file *);
+static int elf_putallnotes(struct lwp *, elf_buf_t, int, enum putmode);
 static int elf_putnote (elf_buf_t, const char *, int, const void *, size_t);
 
 static int elf_putsigs(struct lwp *, elf_buf_t);
@@ -964,7 +965,7 @@ generic_elf_coredump(struct lwp *lp, int sig, struct file *fp, off_t limit)
 	 * size is calculated.
 	 */
 	bzero(&target, sizeof(target));
-	elf_puthdr(lp, &target, NULL, NULL, NULL, seginfo.count, fp);
+	elf_puthdr(lp, &target, sig, DRYRUN, seginfo.count, fp);
 
 	if (target.off + seginfo.vsize >= limit)
 		return (EFAULT);
@@ -1217,54 +1218,18 @@ target_reserve(elf_buf_t target, size_t bytes, int *error)
  * the page boundary.
  */
 static int
-elf_corehdr(struct lwp *lp, int sig, struct file *fp, struct ucred *cred, int numsegs,
-	    elf_buf_t target)
+elf_corehdr(struct lwp *lp, int sig, struct file *fp, struct ucred *cred,
+	    int numsegs, elf_buf_t target)
 {
-	/* XXX lwp handle more than one lwp */
-	struct proc *p = lp->lwp_proc;
-	struct {
-		prstatus_t status;
-		prfpregset_t fpregset;
-		prpsinfo_t psinfo;
-	} *tempdata;
 	int error;
-	prstatus_t *status;
-	prfpregset_t *fpregset;
-	prpsinfo_t *psinfo;
 	int nbytes;
-
-	tempdata = kmalloc(sizeof(*tempdata), M_TEMP, M_ZERO | M_WAITOK);
-	status = &tempdata->status;
-	fpregset = &tempdata->fpregset;
-	psinfo = &tempdata->psinfo;
-
-	/* Gather the information for the header. */
-	status->pr_version = PRSTATUS_VERSION;
-	status->pr_statussz = sizeof(prstatus_t);
-	status->pr_gregsetsz = sizeof(gregset_t);
-	status->pr_fpregsetsz = sizeof(fpregset_t);
-	status->pr_osreldate = osreldate;
-	status->pr_cursig = sig;
-	status->pr_pid = p->p_pid;
-	fill_regs(lp, &status->pr_reg);
-
-	fill_fpregs(lp, fpregset);
-
-	psinfo->pr_version = PRPSINFO_VERSION;
-	psinfo->pr_psinfosz = sizeof(prpsinfo_t);
-	strncpy(psinfo->pr_fname, p->p_comm, sizeof(psinfo->pr_fname) - 1);
-
-	/* XXX - We don't fill in the command line arguments properly yet. */
-	strncpy(psinfo->pr_psargs, p->p_comm, PRARGSZ);
 
 	/*
 	 * Fill in the header.  The fp is passed so we can detect and flag
 	 * a checkpoint file pointer within the core file itself, because
 	 * it may not be restored from the same file handle.
 	 */
-	error = elf_puthdr(lp, target, status, fpregset, psinfo, numsegs, fp);
-
-	kfree(tempdata, M_TEMP);
+	error = elf_puthdr(lp, target, sig, WRITE, numsegs, fp);
 
 	/* Write it to the core file. */
 	if (error == 0) {
@@ -1275,9 +1240,8 @@ elf_corehdr(struct lwp *lp, int sig, struct file *fp, struct ucred *cred, int nu
 }
 
 static int
-elf_puthdr(struct lwp *lp, elf_buf_t target, const prstatus_t *status,
-	const prfpregset_t *fpregset, const prpsinfo_t *psinfo, int numsegs,
-	struct file *fp)
+elf_puthdr(struct lwp *lp, elf_buf_t target, int sig, enum putmode mode,
+    int numsegs, struct file *fp)
 {
 	struct proc *p = lp->lwp_proc;
 	int error = 0;
@@ -1293,18 +1257,8 @@ elf_puthdr(struct lwp *lp, elf_buf_t target, const prstatus_t *status,
 	phdr = target_reserve(target, (numsegs + 1) * sizeof(Elf_Phdr), &error);
 
 	noteoff = target->off;
-	if (error == 0) {
-		error = elf_putnote(target, "FreeBSD", NT_PRSTATUS, 
-					status, sizeof *status);
-	}
-	if (error == 0) {
-		error = elf_putnote(target, "FreeBSD", NT_FPREGSET,
-					fpregset, sizeof *fpregset);
-	}
-	if (error == 0) {
-		error = elf_putnote(target, "FreeBSD", NT_PRPSINFO,
-					psinfo, sizeof *psinfo);
-	}
+	if (error == 0)
+		elf_putallnotes(lp, target, sig, mode);
 	notesz = target->off - noteoff;
 
 	/*
@@ -1377,6 +1331,119 @@ elf_puthdr(struct lwp *lp, elf_buf_t target, const prstatus_t *status,
 		phc.offset = target->off;
 		each_segment(p, cb_put_phdr, &phc, 1);
 	}
+	return (error);
+}
+
+/*
+ * Append core dump notes to target ELF buffer or simply update target size
+ * if dryrun selected.
+ */
+static int
+elf_putallnotes(struct lwp *corelp, elf_buf_t target, int sig,
+    enum putmode mode)
+{
+	struct proc *p = corelp->lwp_proc;
+	int error;
+	struct {
+		prstatus_t status;
+		prfpregset_t fpregs;
+		prpsinfo_t psinfo;
+	} *tmpdata;
+	prstatus_t *status;
+	prfpregset_t *fpregs;
+	prpsinfo_t *psinfo;
+	struct lwp *lp;
+
+	/*
+	 * Allocate temporary storage for notes on heap to avoid stack overflow.
+	 */
+	if (mode != DRYRUN) {
+		tmpdata = kmalloc(sizeof(*tmpdata), M_TEMP, M_ZERO | M_WAITOK);
+		status = &tmpdata->status;
+		fpregs = &tmpdata->fpregs;
+		psinfo = &tmpdata->psinfo;
+	} else {
+		tmpdata = NULL;
+		status = NULL;
+		fpregs = NULL;
+		psinfo = NULL;
+	}
+
+	/*
+	 * Append LWP-agnostic note.
+	 */
+	if (mode != DRYRUN) {
+		psinfo->pr_version = PRPSINFO_VERSION;
+		psinfo->pr_psinfosz = sizeof(prpsinfo_t);
+		strncpy(psinfo->pr_fname, p->p_comm,
+			sizeof(psinfo->pr_fname) - 1);
+		/*
+		 * XXX - We don't fill in the command line arguments
+		 * properly yet.
+		 */
+		strncpy(psinfo->pr_psargs, p->p_comm, PRARGSZ);
+	}
+	error =
+	    elf_putnote(target, "FreeBSD", NT_PRPSINFO, psinfo, sizeof *psinfo);
+	if (error)
+		goto exit;
+
+	/*
+	 * Append first note for LWP that triggered core so that it is
+	 * the selected one when the debugger starts.
+	 */
+	if (mode != DRYRUN) {
+		status->pr_version = PRSTATUS_VERSION;
+		status->pr_statussz = sizeof(prstatus_t);
+		status->pr_gregsetsz = sizeof(gregset_t);
+		status->pr_fpregsetsz = sizeof(fpregset_t);
+		status->pr_osreldate = osreldate;
+		status->pr_cursig = sig;
+		/*
+		 * XXX GDB needs unique pr_pid for each LWP and does not
+		 * not support pr_pid==0 but lwp_tid can be 0, so hack unique
+		 * value.
+		 */
+		status->pr_pid = p->p_pid + corelp->lwp_tid;
+		fill_regs(corelp, &status->pr_reg);
+		fill_fpregs(corelp, fpregs);
+	}
+	error =
+	    elf_putnote(target, "FreeBSD", NT_PRSTATUS, status, sizeof *status);
+	if (error)
+		goto exit;
+	error =
+	    elf_putnote(target, "FreeBSD", NT_FPREGSET, fpregs, sizeof *fpregs);
+	if (error)
+		goto exit;
+
+	/*
+	 * Then append notes for other LWPs.
+	 */
+	FOREACH_LWP_IN_PROC(lp, p) {
+		if (lp == corelp)
+			continue;
+		/* skip lwps being created */
+		if (lp->lwp_thread == NULL)
+			continue;
+		if (mode != DRYRUN) {
+			status->pr_pid = p->p_pid + lp->lwp_tid;
+			fill_regs(lp, &status->pr_reg);
+			fill_fpregs(lp, fpregs);
+		}
+		error = elf_putnote(target, "FreeBSD", NT_PRSTATUS,
+					status, sizeof *status);
+		if (error)
+			goto exit;
+		error = elf_putnote(target, "FreeBSD", NT_FPREGSET,
+					fpregs, sizeof *fpregs);
+		if (error)
+			goto exit;
+	}
+
+exit:
+	if (tmpdata != NULL)
+		kfree(tmpdata, M_TEMP);
 	return (error);
 }
 
