@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.75 2008/08/17 05:20:09 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.76 2008/08/17 05:45:56 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -2151,22 +2151,6 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 	return 0;
 }
 
-void
-ifa_forwardmsg(struct lwkt_msg *lmsg, int next_cpu)
-{
-	if (next_cpu < ncpus)
-		lwkt_forwardmsg(ifa_portfn(next_cpu), lmsg);
-	else
-		lwkt_replymsg(lmsg, 0);
-}
-
-void
-ifa_domsg(struct lwkt_msg *lmsg, int cpu)
-{
-	KKASSERT(cpu < ncpus);
-	lwkt_domsg(ifa_portfn(cpu), lmsg, 0);
-}
-
 void *
 ifa_create(int size, int flags)
 {
@@ -2349,6 +2333,22 @@ struct lwkt_port *
 ifnet_portfn(int cpu)
 {
 	return &ifnet_threads[cpu].td_msgport;
+}
+
+void
+ifnet_forwardmsg(struct lwkt_msg *lmsg, int next_cpu)
+{
+	if (next_cpu < ncpus)
+		lwkt_forwardmsg(ifnet_portfn(next_cpu), lmsg);
+	else
+		lwkt_replymsg(lmsg, 0);
+}
+
+void
+ifnet_domsg(struct lwkt_msg *lmsg, int cpu)
+{
+	KKASSERT(cpu < ncpus);
+	lwkt_domsg(ifnet_portfn(cpu), lmsg, 0);
 }
 
 static void

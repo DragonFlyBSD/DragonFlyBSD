@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.64 2008/08/17 05:20:09 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.65 2008/08/17 05:45:56 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -519,11 +519,19 @@ IFAFREE(struct ifaddr *_ifa)
 }
 
 struct lwkt_port *ifnet_portfn(int);
+void	ifnet_domsg(struct lwkt_msg *, int);
+void	ifnet_forwardmsg(struct lwkt_msg *, int);
 
-static __inline struct lwkt_port *
-ifa_portfn(int cpu)
+static __inline void
+ifa_domsg(struct lwkt_msg *_lmsg, int _cpu)
 {
-	return ifnet_portfn(cpu);
+	ifnet_domsg(_lmsg, _cpu);
+}
+
+static __inline void
+ifa_forwardmsg(struct lwkt_msg *_lmsg, int _nextcpu)
+{
+	ifnet_forwardmsg(_lmsg, _nextcpu);
 }
 
 extern	struct ifnethead ifnet;
@@ -579,8 +587,6 @@ void	*ifa_create(int, int);
 void	ifa_destroy(struct ifaddr *);
 void	ifa_iflink(struct ifaddr *, struct ifnet *, int);
 void	ifa_ifunlink(struct ifaddr *, struct ifnet *);
-void	ifa_domsg(struct lwkt_msg *, int);
-void	ifa_forwardmsg(struct lwkt_msg *, int);
 
 struct	ifmultiaddr *ifmaof_ifpforaddr(struct sockaddr *, struct ifnet *);
 int	if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen);
