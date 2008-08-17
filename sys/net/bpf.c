@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.46 2008/08/16 13:10:59 sephe Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.47 2008/08/17 03:44:48 sephe Exp $
  */
 
 #include "use_bpf.h"
@@ -1071,6 +1071,14 @@ bpf_tap(struct bpf_if *bp, u_char *pkt, u_int pktlen)
 	int gottime = 0;
 	u_int slen;
 
+	get_mplock();
+
+	/* Re-check */
+	if (bp == NULL) {
+		rel_mplock();
+		return;
+	}
+
 	/*
 	 * Note that the ipl does not have to be raised at this point.
 	 * The only problem that could arise here is that if two different
@@ -1087,6 +1095,8 @@ bpf_tap(struct bpf_if *bp, u_char *pkt, u_int pktlen)
 			catchpacket(d, pkt, pktlen, slen, ovbcopy, &tv);
 		}
 	}
+
+	rel_mplock();
 }
 
 /*
@@ -1126,9 +1136,19 @@ bpf_mtap(struct bpf_if *bp, struct mbuf *m)
 	struct timeval tv;
 	int gottime = 0;
 
-	/* Don't compute pktlen, if no descriptor is attached. */
-	if (SLIST_EMPTY(&bp->bif_dlist))
+	get_mplock();
+
+	/* Re-check */
+	if (bp == NULL) {
+		rel_mplock();
 		return;
+	}
+
+	/* Don't compute pktlen, if no descriptor is attached. */
+	if (SLIST_EMPTY(&bp->bif_dlist)) {
+		rel_mplock();
+		return;
+	}
 
 	pktlen = m_lengthm(m, NULL);
 
@@ -1146,6 +1166,8 @@ bpf_mtap(struct bpf_if *bp, struct mbuf *m)
 				    &tv);
 		}
 	}
+
+	rel_mplock();
 }
 
 void
