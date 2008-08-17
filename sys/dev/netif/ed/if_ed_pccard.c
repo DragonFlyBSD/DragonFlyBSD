@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pccard.c,v 1.55 2003/12/31 04:25:00 kato Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.21 2008/05/14 11:59:19 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.22 2008/08/17 04:32:33 sephe Exp $
  */
 
 #include "opt_ed.h"
@@ -283,7 +283,7 @@ ed_pccard_attach(device_t dev)
 	}
 #endif
 
-	error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
+	error = bus_setup_intr(dev, sc->irq_res, INTR_MPSAFE,
 			       edintr, sc, &sc->irq_handle,
 			       ifp->if_serializer);
 	if (error) {

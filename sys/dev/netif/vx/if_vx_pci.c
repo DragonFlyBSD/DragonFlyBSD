@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_pci.c,v 1.21 2000/05/28 15:59:52 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.16 2008/05/14 11:59:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.17 2008/08/17 04:32:35 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -172,7 +172,7 @@ vx_pci_attach(device_t dev)
 	}
     }
 
-    if (bus_setup_intr(dev, sc->vx_irq, INTR_NETSAFE,
+    if (bus_setup_intr(dev, sc->vx_irq, INTR_MPSAFE,
 		       vxintr, sc, &sc->vx_intrhand, 
 		       ifp->if_serializer)
     ) {

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.41 2008/05/14 11:59:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.42 2008/08/17 04:32:35 sephe Exp $
  */
 
 /*
@@ -810,7 +810,7 @@ wb_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, eaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->wb_irq, INTR_NETSAFE,
+	error = bus_setup_intr(dev, sc->wb_irq, INTR_MPSAFE,
 			       wb_intr, sc, &sc->wb_intrhand, 
 			       ifp->if_serializer);
 

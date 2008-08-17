@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.53 2008/07/27 11:26:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.54 2008/08/17 04:32:35 sephe Exp $
  */
 
 /*
@@ -1598,7 +1598,7 @@ done:
         ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
 
 	/* Hook interrupt last to avoid having to lock softc */
-	error = bus_setup_intr(dev, sc->xl_irq, INTR_NETSAFE,
+	error = bus_setup_intr(dev, sc->xl_irq, INTR_MPSAFE,
 			       xl_intr, sc, &sc->xl_intrhand, 
 			       ifp->if_serializer);
 	if (error) {

@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_isa.c,v 1.8.2.1 2000/12/16 03:47:57 nyan Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_isa.c,v 1.14 2008/05/14 11:59:19 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_isa.c,v 1.15 2008/08/17 04:32:33 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -321,7 +321,7 @@ ep_isa_attach(device_t dev)
 		goto bad;
 	}
 
-	error = bus_setup_intr(dev, sc->irq, INTR_NETSAFE, ep_intr,
+	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE, ep_intr,
 			       sc, &sc->ep_intrhand, ifp->if_serializer);
 	if (error) {
 		device_printf(dev, "bus_setup_intr() failed! (%d)\n", error);

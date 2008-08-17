@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.42 2008/05/14 11:59:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.43 2008/08/17 04:32:35 sephe Exp $
  */
 
 /*
@@ -271,7 +271,7 @@ epic_attach(device_t dev)
 	ether_ifattach(ifp, sc->sc_macaddr, NULL);
 	ifp->if_hdrlen = sizeof(struct ether_vlan_header);
 
-	error = bus_setup_intr(dev, sc->irq, INTR_NETSAFE,
+	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
 			       epic_intr, sc, &sc->sc_ih, 
 			       ifp->if_serializer);
 

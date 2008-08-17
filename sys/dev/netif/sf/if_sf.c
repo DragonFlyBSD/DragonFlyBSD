@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.32 2008/05/14 11:59:21 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.33 2008/08/17 04:32:34 sephe Exp $
  */
 
 /*
@@ -777,7 +777,7 @@ sf_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->sf_irq, INTR_NETSAFE,
+	error = bus_setup_intr(dev, sc->sf_irq, INTR_MPSAFE,
 			       sf_intr, sc, &sc->sf_intrhand, 
 			       ifp->if_serializer);
 

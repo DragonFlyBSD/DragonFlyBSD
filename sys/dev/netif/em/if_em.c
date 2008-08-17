@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.77 2008/07/27 10:06:55 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.78 2008/08/17 04:32:33 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -679,7 +679,7 @@ em_attach(device_t dev)
 	else
 		adapter->pcix_82544 = FALSE;
 
-	error = bus_setup_intr(dev, adapter->res_interrupt, INTR_NETSAFE,
+	error = bus_setup_intr(dev, adapter->res_interrupt, INTR_MPSAFE,
 			   em_intr, adapter,
 			   &adapter->int_handler_tag, ifp->if_serializer);
 	if (error) {

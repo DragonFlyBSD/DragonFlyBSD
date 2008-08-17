@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.47 2008/08/10 17:19:38 swildner Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.48 2008/08/17 04:32:34 sephe Exp $
  */
 
 /*
@@ -1277,7 +1277,7 @@ re_attach(device_t dev)
 #endif	/* RE_DIAG */
 
 	/* Hook interrupt last to avoid having to lock softc */
-	error = bus_setup_intr(dev, sc->re_irq, INTR_NETSAFE, re_intr, sc,
+	error = bus_setup_intr(dev, sc->re_irq, INTR_MPSAFE, re_intr, sc,
 			       &sc->re_intrhand, ifp->if_serializer);
 
 	if (error) {

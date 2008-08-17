@@ -28,7 +28,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bce.c,v 1.31 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.16 2008/07/27 10:06:55 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.17 2008/08/17 04:32:32 sephe Exp $
  */
 
 /*
@@ -768,7 +768,7 @@ bce_attach(device_t dev)
 	callout_init(&sc->bce_stat_ch);
 
 	/* Hookup IRQ last. */
-	rc = bus_setup_intr(dev, sc->bce_res_irq, INTR_NETSAFE, bce_intr, sc,
+	rc = bus_setup_intr(dev, sc->bce_res_irq, INTR_MPSAFE, bce_intr, sc,
 			    &sc->bce_intrhand, ifp->if_serializer);
 	if (rc != 0) {
 		device_printf(dev, "Failed to setup IRQ!\n");

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_eisa.c,v 1.14 2000/01/29 14:50:31 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx_eisa.c,v 1.16 2008/05/14 11:59:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx_eisa.c,v 1.17 2008/08/17 04:32:35 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -142,7 +142,7 @@ vx_eisa_attach(device_t dev)
 
     vxattach(dev);
 
-    if (bus_setup_intr(dev, sc->vx_irq, INTR_NETSAFE, 
+    if (bus_setup_intr(dev, sc->vx_irq, INTR_MPSAFE, 
 		       vxintr, sc, &sc->vx_intrhand,
 		       ifp->if_serializer)
     ) {

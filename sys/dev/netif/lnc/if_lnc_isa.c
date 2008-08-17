@@ -1,6 +1,6 @@
 /*	$NetBSD: if_le_isa.c,v 1.41 2005/12/24 20:27:41 perry Exp $	*/
 /*	$FreeBSD: src/sys/dev/le/if_le_isa.c,v 1.1 2006/05/17 21:25:22 marius Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/lnc/if_lnc_isa.c,v 1.11 2008/05/14 11:59:20 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/lnc/if_lnc_isa.c,v 1.12 2008/08/17 04:32:33 sephe Exp $	*/
 
 /*-
  * Copyright (c) 1997, 1998 The NetBSD Foundation, Inc.
@@ -424,7 +424,7 @@ le_isa_attach(device_t dev)
 		goto fail_dmap;
 	}
 
-	error = bus_setup_intr(dev, lesc->sc_ires, INTR_NETSAFE | INTR_MPSAFE,
+	error = bus_setup_intr(dev, lesc->sc_ires, INTR_MPSAFE,
 	    am7990_intr, sc, &lesc->sc_ih, sc->ifp->if_serializer);
 	if (error != 0) {
 		device_printf(dev, "cannot set up interrupt\n");

@@ -1,6 +1,6 @@
 /*	$NetBSD: if_le_pci.c,v 1.43 2005/12/11 12:22:49 christos Exp $	*/
 /*	$FreeBSD: src/sys/dev/le/if_le_pci.c,v 1.4 2006/06/05 15:14:14 marius Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/lnc/if_lnc_pci.c,v 1.12 2008/05/14 11:59:20 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/lnc/if_lnc_pci.c,v 1.13 2008/08/17 04:32:33 sephe Exp $	*/
 
 
 /*-
@@ -437,7 +437,7 @@ le_pci_attach(device_t dev)
 		goto fail_dmap;
 	}
 
-	error = bus_setup_intr(dev, lesc->sc_ires, INTR_NETSAFE | INTR_MPSAFE,
+	error = bus_setup_intr(dev, lesc->sc_ires, INTR_MPSAFE,
 	    am79900_intr, sc, &lesc->sc_ih, sc->ifp->if_serializer);
 	if (error != 0) {
 		device_printf(dev, "cannot set up interrupt\n");

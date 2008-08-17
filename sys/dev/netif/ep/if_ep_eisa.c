@@ -20,7 +20,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_eisa.c,v 1.18 2000/01/14 07:14:00 peter Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_eisa.c,v 1.13 2008/05/14 11:59:19 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_eisa.c,v 1.14 2008/08/17 04:32:33 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -229,7 +229,7 @@ ep_eisa_attach(device_t dev)
 		goto bad;
 	}
 
-	error = bus_setup_intr(dev, sc->irq, INTR_NETSAFE,
+	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
 			       ep_intr, sc, &sc->ep_intrhand, 
 			       ifp->if_serializer);
 	if (error) {

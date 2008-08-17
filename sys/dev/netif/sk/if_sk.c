@@ -31,7 +31,7 @@
  *
  * $OpenBSD: if_sk.c,v 1.129 2006/10/16 12:30:08 tom Exp $
  * $FreeBSD: /c/ncvs/src/sys/pci/if_sk.c,v 1.20 2000/04/22 02:16:37 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.56 2008/05/14 11:59:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.57 2008/08/17 04:32:34 sephe Exp $
  */
 
 /*
@@ -1508,7 +1508,7 @@ skc_attach(device_t dev)
 
 	bus_generic_attach(dev);
 
-	error = bus_setup_intr(dev, sc->sk_irq, INTR_NETSAFE, sk_intr, sc,
+	error = bus_setup_intr(dev, sc->sk_irq, INTR_MPSAFE, sk_intr, sc,
 			       &sc->sk_intrhand, &sc->sk_serializer);
 	if (error) {
 		device_printf(dev, "couldn't set up irq\n");

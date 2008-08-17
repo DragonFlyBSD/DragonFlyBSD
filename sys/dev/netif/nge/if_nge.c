@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.48 2008/05/16 13:19:12 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.49 2008/08/17 04:32:34 sephe Exp $
  */
 
 /*
@@ -899,7 +899,7 @@ nge_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, eaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->nge_irq, INTR_NETSAFE,
+	error = bus_setup_intr(dev, sc->nge_irq, INTR_MPSAFE,
 			       nge_intr, sc, &sc->nge_intrhand, 
 			       ifp->if_serializer);
 	if (error) {

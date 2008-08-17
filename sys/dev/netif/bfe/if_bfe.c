@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.37 2008/08/05 11:08:30 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.38 2008/08/17 04:32:32 sephe Exp $
  */
 #include "opt_ethernet.h"
 
@@ -421,7 +421,7 @@ bfe_attach(device_t dev)
 	/*
 	 * Hook interrupt last to avoid having to lock softc
 	 */
-	error = bus_setup_intr(dev, sc->bfe_irq, INTR_NETSAFE,
+	error = bus_setup_intr(dev, sc->bfe_irq, INTR_MPSAFE,
 			       bfe_intr, sc, &sc->bfe_intrhand, 
 			       sc->arpcom.ac_if.if_serializer);
 

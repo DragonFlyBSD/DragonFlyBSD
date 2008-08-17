@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.33 2008/05/14 11:59:21 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.34 2008/08/17 04:32:34 sephe Exp $
  */
 
 /*
@@ -615,7 +615,7 @@ pcn_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, eaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->pcn_irq, INTR_NETSAFE,
+	error = bus_setup_intr(dev, sc->pcn_irq, INTR_MPSAFE,
 			       pcn_intr, sc, &sc->pcn_intrhand, 
 			       ifp->if_serializer);
 	if (error) {

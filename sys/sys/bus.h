@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.5 2004/03/17 17:54:25 njl Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.26 2007/09/12 07:59:31 hasso Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.27 2008/08/17 04:32:32 sephe Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -70,8 +70,6 @@ typedef void driver_intr_t(void*);
 #define	INTR_MPSAFE	0x0200
 #define	INTR_NOENTROPY	0x0400
 #define INTR_NOPOLL	0x0800	/* interrupt cannot be polled (e.g. ata) */
-
-#define INTR_NETSAFE	INTR_MPSAFE
 
 enum intr_trigger {
     INTR_TRIGGER_CONFORM = 0,

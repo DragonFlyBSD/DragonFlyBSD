@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.39 2008/05/14 11:59:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.40 2008/08/17 04:32:34 sephe Exp $
  */
 
 /*
@@ -1238,7 +1238,7 @@ tl_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, eaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->tl_irq, INTR_NETSAFE,
+	error = bus_setup_intr(dev, sc->tl_irq, INTR_MPSAFE,
 			       tl_intr, sc, &sc->tl_intrhand, 
 			       ifp->if_serializer);
 

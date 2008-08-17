@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_pccard.c,v 1.12.2.2 2000/08/08 23:55:02 peter Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_pccard.c,v 1.12 2008/05/14 11:59:19 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_pccard.c,v 1.13 2008/08/17 04:32:33 sephe Exp $
  */
 
 /*
@@ -210,7 +210,7 @@ ep_pccard_attach(device_t dev)
 		goto bad;
 	}
 
-	error = bus_setup_intr(dev, sc->irq, INTR_NETSAFE, ep_intr,
+	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE, ep_intr,
 				    sc, &sc->ep_intrhand, 
 				    sc->arpcom.ac_if.if_serializer);
 	if (error) {

@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.28 2008/05/14 11:59:22 sephe Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.29 2008/08/17 04:32:34 sephe Exp $
  */
 
 /*
@@ -227,7 +227,7 @@ sn_attach(device_t dev)
 
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
+	error = bus_setup_intr(dev, sc->irq_res, INTR_MPSAFE,
 			       sn_intr, sc, &sc->intrhand,
 			       ifp->if_serializer);
 	if (error) {

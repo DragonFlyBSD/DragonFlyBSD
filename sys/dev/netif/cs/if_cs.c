@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.29 2008/05/14 11:59:19 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.30 2008/08/17 04:32:33 sephe Exp $
  */
 
 /*
@@ -676,7 +676,7 @@ cs_attach(device_t dev)
 
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
+	error = bus_setup_intr(dev, sc->irq_res, INTR_MPSAFE,
 			       csintr, sc, &sc->irq_handle, 
 			       ifp->if_serializer);
 	if (error) {

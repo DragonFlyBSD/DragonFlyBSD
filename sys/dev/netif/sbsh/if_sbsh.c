@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.27 2008/05/14 11:59:21 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.28 2008/08/17 04:32:34 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -266,7 +266,7 @@ sbsh_attach(device_t dev)
 
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
+	error = bus_setup_intr(dev, sc->irq_res, INTR_MPSAFE,
 				sbsh_intr, sc, &sc->intr_hand, 
 				ifp->if_serializer);
 	if (error) {

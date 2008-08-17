@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.22 2008/05/14 11:59:21 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.23 2008/08/17 04:32:34 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -649,7 +649,7 @@ nonettypes:
 	}
 
 	if (error == 0) {
-		error = bus_setup_intr(dev, sc->ndis_irq, INTR_NETSAFE,
+		error = bus_setup_intr(dev, sc->ndis_irq, INTR_MPSAFE,
 				       ndis_intr, sc,
 				       &sc->ndis_intrhand, 
 				       ifp->if_serializer);

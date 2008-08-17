@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_isa.c,v 1.15 2003/10/31 18:31:58 brooks Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.16 2008/05/14 11:59:19 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.17 2008/08/17 04:32:33 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -134,7 +134,7 @@ ed_isa_attach(device_t dev)
 	if (error == 0) {
 		struct ifnet *ifp = &sc->arpcom.ac_if;
 
-		error = bus_setup_intr(dev, sc->irq_res, INTR_NETSAFE,
+		error = bus_setup_intr(dev, sc->irq_res, INTR_MPSAFE,
 				       edintr, sc, &sc->irq_handle,
 				       ifp->if_serializer);
 		if (error) {

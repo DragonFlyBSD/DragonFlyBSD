@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.49 2008/05/16 13:19:12 sephe Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.50 2008/08/17 04:32:35 sephe Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -312,7 +312,7 @@ txp_attach(device_t dev)
 
 	ether_ifattach(ifp, enaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->sc_irq, INTR_NETSAFE,
+	error = bus_setup_intr(dev, sc->sc_irq, INTR_MPSAFE,
 			       txp_intr, sc, &sc->sc_intrhand, 
 			       ifp->if_serializer);
 	if (error) {

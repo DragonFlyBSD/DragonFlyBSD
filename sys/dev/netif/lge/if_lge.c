@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.41 2008/05/14 11:59:20 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.42 2008/08/17 04:32:33 sephe Exp $
  */
 
 /*
@@ -549,7 +549,7 @@ lge_attach(device_t dev)
 	 */
 	ether_ifattach(ifp, eaddr, NULL);
 
-	error = bus_setup_intr(dev, sc->lge_irq, INTR_NETSAFE,
+	error = bus_setup_intr(dev, sc->lge_irq, INTR_MPSAFE,
 			       lge_intr, sc, &sc->lge_intrhand, 
 			       ifp->if_serializer);
 	if (error) {

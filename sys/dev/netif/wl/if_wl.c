@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.33 2008/08/11 18:01:17 swildner Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.34 2008/08/17 04:32:35 sephe Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -551,7 +551,7 @@ wlattach(device_t dev)
 	kprintf(", Freq %d MHz",sc->freq24); 		/* 2.4 Gz       */
     kprintf("\n");                                       /* 2.4 Gz       */
 
-    error = bus_setup_intr(dev, sc->res_irq, INTR_NETSAFE,
+    error = bus_setup_intr(dev, sc->res_irq, INTR_MPSAFE,
 			   wlintr, sc, &sc->intr_handle, 
 			   ifp->if_serializer);
     if (error) {
