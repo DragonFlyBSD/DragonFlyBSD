@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.37 2008/07/27 10:06:57 sephe Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.38 2008/08/17 06:26:45 sephe Exp $
  */
 
 /*
@@ -155,15 +155,6 @@ static eventhandler_tag vlan_ifdetach_cookie;
 static struct if_clone vlan_cloner =
 	IF_CLONE_INITIALIZER("vlan", vlan_clone_create, vlan_clone_destroy,
 			     NVLAN, IF_MAXUNIT);
-
-static __inline void
-vlan_forwardmsg(struct lwkt_msg *lmsg, int next_cpu)
-{
-	if (next_cpu < ncpus)
-		lwkt_forwardmsg(ifnet_portfn(next_cpu), lmsg);
-	else
-		lwkt_replymsg(lmsg, 0);
-}
 
 /*
  * Program our multicast filter. What we're actually doing is
@@ -534,7 +525,7 @@ vlan_link_dispatch(struct netmsg *nmsg)
 	LIST_INSERT_HEAD(&trunk->vlan_list, entry, ifv_link);
 	crit_exit();
 
-	vlan_forwardmsg(&nmsg->nm_lmsg, cpu + 1);
+	ifnet_forwardmsg(&nmsg->nm_lmsg, cpu + 1);
 }
 
 static void
@@ -565,7 +556,7 @@ vlan_link(struct ifvlan *ifv, struct ifnet *ifp_p)
 	vmsg.nv_ifv = ifv;
 	vmsg.nv_ifp_p = ifp_p;
 
-	lwkt_domsg(ifnet_portfn(0), &nmsg->nm_lmsg, 0);
+	ifnet_domsg(&nmsg->nm_lmsg, 0);
 }
 
 static void
@@ -684,7 +675,7 @@ vlan_unlink_dispatch(struct netmsg *nmsg)
 	LIST_REMOVE(entry, ifv_link);
 	crit_exit();
 
-	vlan_forwardmsg(&nmsg->nm_lmsg, cpu + 1);
+	ifnet_forwardmsg(&nmsg->nm_lmsg, cpu + 1);
 }
 
 static void
@@ -707,7 +698,7 @@ vlan_unlink(struct ifvlan *ifv, struct ifnet *ifp_p)
 	vmsg.nv_ifv = ifv;
 	vmsg.nv_ifp_p = ifp_p;
 
-	lwkt_domsg(ifnet_portfn(0), &nmsg->nm_lmsg, 0);
+	ifnet_domsg(&nmsg->nm_lmsg, 0);
 
 	crit_enter();
 	if (LIST_EMPTY(&vlantrunks[mycpuid].vlan_list)) {
