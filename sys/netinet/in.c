@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.40 2008/06/14 08:40:16 sephe Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.41 2008/08/17 05:20:10 sephe Exp $
  */
 
 #include "opt_bootp.h"
@@ -379,7 +379,7 @@ in_ialink(struct in_ifaddr *ia)
 	lmsg = &nmsg.nm_lmsg;
 	lmsg->u.ms_resultp = ia;
 
-	ifa_domsg(lmsg);
+	ifa_domsg(lmsg, 0);
 }
 
 void
@@ -392,7 +392,7 @@ in_iaunlink(struct in_ifaddr *ia)
 	lmsg = &nmsg.nm_lmsg;
 	lmsg->u.ms_resultp = ia;
 
-	ifa_domsg(lmsg);
+	ifa_domsg(lmsg, 0);
 }
 
 void
@@ -405,7 +405,7 @@ in_iahash_insert(struct in_ifaddr *ia)
 	lmsg = &nmsg.nm_lmsg;
 	lmsg->u.ms_resultp = ia;
 
-	ifa_domsg(lmsg);
+	ifa_domsg(lmsg, 0);
 }
 
 void
@@ -418,7 +418,7 @@ in_iahash_remove(struct in_ifaddr *ia)
 	lmsg = &nmsg.nm_lmsg;
 	lmsg->u.ms_resultp = ia;
 
-	ifa_domsg(lmsg);
+	ifa_domsg(lmsg, 0);
 }
 
 static __inline struct in_ifaddr *

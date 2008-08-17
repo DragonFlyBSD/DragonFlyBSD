@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.63 2008/07/27 10:06:56 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.64 2008/08/17 05:20:09 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -579,7 +579,7 @@ void	*ifa_create(int, int);
 void	ifa_destroy(struct ifaddr *);
 void	ifa_iflink(struct ifaddr *, struct ifnet *, int);
 void	ifa_ifunlink(struct ifaddr *, struct ifnet *);
-void	ifa_domsg(struct lwkt_msg *);
+void	ifa_domsg(struct lwkt_msg *, int);
 void	ifa_forwardmsg(struct lwkt_msg *, int);
 
 struct	ifmultiaddr *ifmaof_ifpforaddr(struct sockaddr *, struct ifnet *);
