@@ -1,4 +1,4 @@
-/* $DragonFly: src/sys/dev/usbmisc/ugensa/ugensa.c,v 1.5 2008/08/10 21:57:45 hasso Exp $ */
+/* $DragonFly: src/sys/dev/usbmisc/ugensa/ugensa.c,v 1.6 2008/08/19 11:28:48 matthias Exp $ */
 /* $OpenBSD: umsm.c,v 1.15 2007/06/14 10:11:16 mbalmer Exp $ */
 
 /*
@@ -102,6 +102,7 @@ struct ucom_callback ugensa_callback = {
 };
 
 static const struct usb_devno ugensa_devs[] = {
+	{ USB_DEVICE(0x05c6, 0x6000) }, /* Qualcomm HSDPA MSM */
 	{ USB_DEVICE(0x05c6, 0x6613) }, /* Qualcomm HSDPA MSM */
 	{ USB_DEVICE(0x0c88, 0x17da) }, /* Kyocera KPC650 */
 	{ USB_DEVICE(0x0f3d, 0x0112) }, /* AirPrime PC5220 */
