@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.12 2008/07/31 06:01:31 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.13 2008/08/19 11:02:34 mneumann Exp $
  */
 
 #include "hammer.h"
@@ -1102,6 +1102,7 @@ mirror_usage(int code)
 		"hammer mirror-write <filesystem>\n"
 		"hammer mirror-dump\n"
 		"hammer mirror-copy [[user@]host:]fs [[user@]host:]fs\n"
+		"hammer mirror-stream [[user@]host:]fs [[user@]host:]fs\n"
 	);
 	exit(code);
 }
