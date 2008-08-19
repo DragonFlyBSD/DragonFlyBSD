@@ -1,8 +1,8 @@
-/* $DragonFly: src/lib/libc/stdlib/strtoul.c,v 1.4 2005/03/17 15:09:01 joerg Exp $ */
+/* $DragonFly: src/lib/libc/stdlib/strtoul.c,v 1.5 2008/08/19 15:50:24 joerg Exp $ */
 
 /*-
- * Copyright (c) 2005 The DragonFly Project.  All rigths reserved.
- * Copyright (c)2003 Citrus Project,
+ * Copyright (c) 2005 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003 Citrus Project,
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
