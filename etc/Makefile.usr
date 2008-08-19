@@ -2,7 +2,7 @@
 #
 # Provides simple targets to download and maintain /usr/pkgsrc.
 #
-# $DragonFly: src/etc/Makefile.usr,v 1.6 2008/07/29 13:10:22 swildner Exp $
+# $DragonFly: src/etc/Makefile.usr,v 1.7 2008/08/19 11:55:40 matthias Exp $
 
 all:
 	@echo "Install or update /usr/pkgsrc using NetBSDs anoncvs"
@@ -16,6 +16,10 @@ all:
 	@echo "    make release-src-cvsup     (suggested)"
 	@echo "    make preview-src-cvsup"
 	@echo "    make head-src-cvsup"
+	@echo ""
+	@echo "Install or update /usr/pkgsrc/wip using NetBSD.se anoncvs"
+	@echo "    make pkgsrc-wip-checkout"
+	@echo "    make pkgsrc-wip-update"
 	@echo ""
 	@echo "Extract kernel sources from src-sys.tar.bz2 in this directory."
 	@echo "    make release-sys-extract"
@@ -31,6 +35,16 @@ pkgsrc-checkout:
 pkgsrc-update:
 	cd ${.CURDIR}; \
 	cvs -d anoncvs@anoncvs.NetBSD.org:/cvsroot update -Pd pkgsrc
+
+pkgsrc-wip-checkout:
+	cd ${.CURDIR}; \
+	mkdir -p pkgsrc/wip; \
+	cd pkgsrc; \
+	cvs -d anoncvs@anoncvs.NetBSD.se:/cvsroot checkout wip
+
+pkgsrc-wip-update:
+	cd ${.CURDIR}/pkgsrc; \
+	cvs -d anoncvs@anoncvs.NetBSD.se:/cvsroot update -Pd wip
 
 release-sys-extract:
 	bunzip2 < src-sys.tar.bz2 | tar xvpf -
