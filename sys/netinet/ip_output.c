@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.47 2008/08/05 15:11:32 nant Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.48 2008/08/21 11:57:49 sephe Exp $
  */
 
 #define _IP_VHL
@@ -1074,7 +1074,7 @@ pass:
 			}
 #ifdef MPLS
 			if (!mpls_output_process(m, ro->ro_rt))
-				goto done;
+				continue;
 #endif
 			error = ifp->if_output(ifp, m, (struct sockaddr *)dst,
 					       ro->ro_rt);
