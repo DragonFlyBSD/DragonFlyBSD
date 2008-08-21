@@ -23,9 +23,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/gpt/gpt.8,v 1.17 2006/06/22 22:22:32 marcel Exp $
-.\" $DragonFly: src/sbin/gpt/gpt.8,v 1.6 2008/07/30 01:16:29 dillon Exp $
+.\" $DragonFly: src/sbin/gpt/gpt.8,v 1.7 2008/08/21 23:10:04 thomas Exp $
 .\"
-.Dd July 27, 2008
+.Dd August 22, 2008
 .Os
 .Dt GPT 8
 .Sh NAME
@@ -46,7 +46,8 @@ tables (GPTs), but see
 below for how and where functionality is missing.
 GPT partitions are accessed as
 .Dx
-disk slices, with same number as GPT partition.
+disk slices, with same number as GPT partition,
+32 slices per disk device are supported.
 The basic usage model of the
 .Nm
 tool follows that of the
@@ -163,22 +164,44 @@ The
 command allows the user to create a small boot partition in a freshly
 created GPT.
 .Pp
-This command creates the small, 100MB boot partition as partition #0
-and hacks in a special 'slice 1' in the PMBR which aliases it.
+This command creates a small, 256MB boot partition as partition #0
+and hacks in a special
+.Sq slice 1
+in the PMBR which aliases it.
 The PMBR is further modified to add the necessary boot code.
 You can then disklabel GPT partition #0 and mount it, placing the boot
 directory and kernel within.
-The boot directory must be a sub-directory, e.g. /mnt/boot in XXXs0a.
-You must also add a "vfs.root.mountfrom="filesystem:device" line to
-/mnt/boot/loader.conf to point to the actual root mount.
-For example, "ufs:da8s1a".
+The boot directory must be a sub-directory, e.g.\&
+.Pa /mnt/boot
+in
+.Pa da8s0a .
+You must also add a
+.Dq vfs.root.mountfrom="filesystem:device"
+line to
+.Pa /mnt/boot/loader.conf
+to point to the actual root mount.
+For example,
+.Dq ufs:da8s1a .
 .Pp
 Your root partition may be another GPT partition and you may use a 64 bit
-disklabel within that partition if you desire.  Note that the boot partition
-must use a 32 bit disklabel.
+disklabel within that partition if you desire.
+Note that the boot partition must use a 32 bit disklabel.
 .Pp
-WARNING WARNING!  Some BIOSes may not be able to deal with this hack,
-your mileage may vary.
+The
+.Sq boot0
+boot manager is used, it can be manipulated with the
+.Xr boot0cfg 8
+command,
+.Sq packet
+option usually needs to be set.
+.Pp
+.Em NOTE!
+A disk setup with the
+.Ar boot
+command can't be shared with another OS as it doesn't use a fully standard GPT.
+.Pp
+.Em WARNING!
+Some BIOSes may not be able to deal with this hack, your mileage may vary.
 .\" ==== create ====
 .It Nm Ic create Oo Fl fp Oc Ar device ...
 The
@@ -344,6 +367,10 @@ option.
 .El
 .Sh FILES
 .Bl -tag -width ".Pa /etc/defaults/uuids"
+.It Pa /boot/boot0
+The default
+.Sq boot0
+image.
 .It Pa /etc/defaults/uuids
 A list of UUIDs
 and their symbolic names provided by the OS vendor.
@@ -396,6 +423,48 @@ gpt add -i5 -t "DragonFly HAMMER" ad6
 To print the contents of the GPT:
 .Pp
 .Dl "gpt show ad6"
+.Ss Boot Setup
+To setup a disk using GPT for booting, the following steps can be used:
+.Em NOTE!
+This will delete any previous data on disk.
+.Bd -literal -offset indent
+gpt create -f da8
+gpt boot da8
+boot0cfg -o packet da8
+disklabel -B -r -w da8s0 auto
+disklabel -e da8s0	# add `a' partition covering whole slice
+
+newfs /dev/da8s0a
+mount /dev/da8s0a /mnt
+cpdup /boot /mnt/boot
+cpdup /kernel /mnt/kernel
+cpdup /modules /mnt/modules
+cpdup /kernel.old /mnt/kernel.old
+cpdup /modules.old /mnt/modules.old
+vi /mnt/boot/loader.conf # add: vfs.root.mountfrom="hammer:da8s1a"
+umount /mnt
+
+gpt add da8
+disklabel64 -r -w da8s1 auto
+disklabel64 -e da8s1	# add `a' partition covering whole slice
+newfs_hammer -L hammer /dev/da8s1a
+mount_hammer /dev/da8s1a /mnt
+cpdup / /mnt		# copy each file system you need, e.g.
+cpdup /var /mnt/var
+cpdup /usr /mnt/usr
+
+mkdir /mnt/boot_
+mount /dev/da8s0a /mnt/boot_
+vi /mnt/etc/fstab	# add: /dev/da8s0a /boot_ ufs rw
+cd /mnt			# add links for installkernel/world use
+ln -s boot_/boot
+ln -s boot_/kernel
+ln -s boot_/modules
+ln -s boot_/kernel.old
+ln -s boot_/modules.old
+cd
+umount /mnt
+.Ed
 .Sh COMPATIBILITY
 The GPT that
 .Nm
@@ -406,6 +475,7 @@ With the prevalent sector size of 512B this is 8 billion TB.
 .Xr uuid 3 ,
 .Xr disklabel64 5 ,
 .Xr uuids 5 ,
+.Xr boot0cfg 8 ,
 .Xr disklabel 8 ,
 .Xr disklabel64 8 ,
 .Xr fdisk 8 ,
@@ -453,6 +523,3 @@ The
 command doesn't support
 .Dx
 partition types.
-.Pp
-.Dx
-doesn't support booting from GPT partitions.
