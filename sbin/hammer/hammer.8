@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.45 2008/08/11 19:58:10 thomas Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.46 2008/08/21 23:28:43 thomas Exp $
 .Dd July 27, 2008
 .Dt HAMMER 8
 .Os
@@ -47,7 +47,7 @@
 .Op Fl i Ar delay
 .Op Fl t Ar seconds
 .Ar command
-.Ar [argument ...]
+.Op Ar argument ...
 .Sh DESCRIPTION
 This manual page documents the
 .Nm
@@ -338,10 +338,10 @@ Reblocking is a per-PFS operation, so a
 .Nm HAMMER
 file system and each PFS in it have to be reblocked separately.
 .\" ==== pfs-status ====
-.It Ar pfs-status Ar dirpath
+.It Ar pfs-status Ar dirpath ...
 Retrieve the mirroring configuration parameters for the specified
 .Nm HAMMER
-file system or pseudo-filesystem.
+file systems or pseudo-filesystems.
 .\" ==== pfs-master ====
 .It Ar pfs-master Ar dirpath Op options
 Create a pseudo-filesystem (PFS) inside a
@@ -384,34 +384,6 @@ A PFS can only be truly destroyed with the
 .Ar pfs-destroy
 directive.
 Removing the softlink will not destroy the underlying PFS.
-.\" ==== pfs-upgrade ====
-.It Ar pfs-upgrade Ar dirpath
-Upgrade a PFS from slave to master operation.  The PFS will be rolled back
-to the current end synchronization tid (removing any partial synchronizations),
-and will then becomes writable.
-.Pp
-.Em WARNING!
-.Nm HAMMER
-currently supports only single masters and using
-this command can easily result in file system corruption if you don't
-know what you are doing.
-.Pp
-This directive will refuse to run if any programs have open descriptors
-in the PFS, including programs chdir'd into the PFS.
-.\" ==== pfs-downgrade ====
-.It Ar pfs-downgrade Ar dirpath
-Downgrade a master PFS from master to slave operation.  The PFS becomes
-read-only and access will be locked to its
-.Ar sync-end-tid .
-.Pp
-This directive will refuse to run if any programs have open descriptors
-in the PFS, including programs chdir'd into the PFS.
-.\" ==== pfs-destroy ====
-.It Ar pfs-destroy Ar dirpath
-This permanently destroys a PFS.
-.Pp
-This directive will refuse to run if any programs have open descriptors
-in the PFS, including programs chdir'd into the PFS.
 .\" ==== pfs-update ====
 .It Ar pfs-update Ar dirpath Op options
 Update the configuration parameters for an existing
@@ -442,7 +414,9 @@ Manually modifying this field is dangerous and can result in a broken
 mirror.
 .It shared-uuid=<uuid>
 Set the shared UUID for this file system.  All mirrors must have the same
-shared UUID.  For safety purposes the mirror-write directives will refuse
+shared UUID.  For safety purposes the
+.Ar mirror-write
+directives will refuse
 to operate on a target with a different shared UUID.
 .Pp
 Changing the shared UUID on an existing, non-empty mirroring target,
@@ -454,6 +428,34 @@ anywhere else, even on exact copies of the file system.
 .It label=<string>
 Set a descriptive label for this file system.
 .El
+.\" ==== pfs-upgrade ====
+.It Ar pfs-upgrade Ar dirpath
+Upgrade a PFS from slave to master operation.  The PFS will be rolled back
+to the current end synchronization tid (removing any partial synchronizations),
+and will then becomes writable.
+.Pp
+.Em WARNING!
+.Nm HAMMER
+currently supports only single masters and using
+this command can easily result in file system corruption if you don't
+know what you are doing.
+.Pp
+This directive will refuse to run if any programs have open descriptors
+in the PFS, including programs chdir'd into the PFS.
+.\" ==== pfs-downgrade ====
+.It Ar pfs-downgrade Ar dirpath
+Downgrade a master PFS from master to slave operation.  The PFS becomes
+read-only and access will be locked to its
+.Ar sync-end-tid .
+.Pp
+This directive will refuse to run if any programs have open descriptors
+in the PFS, including programs chdir'd into the PFS.
+.\" ==== pfs-destroy ====
+.It Ar pfs-destroy Ar dirpath
+This permanently destroys a PFS.
+.Pp
+This directive will refuse to run if any programs have open descriptors
+in the PFS, including programs chdir'd into the PFS.
 .\" ==== mirror-read ====
 .It Ar mirror-read Ar filesystem Op Ar <begin-tid>
 Generate a mirroring stream to stdout.
@@ -465,8 +467,8 @@ Upon completion the stream is paused until new data is synced to the
 master, then resumed.
 Operation continues until the pipe is broken.
 .\" ==== mirror-write ====
-.It Ar mirror-write Ar filesystem Op Ar
-Take a mirroring stream on stdin and output it to stdout.
+.It Ar mirror-write Ar filesystem
+Take a mirroring stream on stdin.
 .Pp
 This command will fail if the
 .Ar shared-uuid

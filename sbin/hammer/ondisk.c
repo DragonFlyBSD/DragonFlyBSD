@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/ondisk.c,v 1.24 2008/07/24 05:40:14 dillon Exp $
+ * $DragonFly: src/sbin/hammer/ondisk.c,v 1.25 2008/08/21 23:28:43 thomas Exp $
  */
 
 #include <sys/types.h>
@@ -701,7 +701,8 @@ again:
 		assert(layer2->append_off == 0);
 	}
 	if (layer2->zone != zone) {
-		blockmap->next_offset = (blockmap->next_offset + HAMMER_LARGEBLOCK_SIZE) & ~HAMMER_LARGEBLOCK_MASK64;
+		blockmap->next_offset = (blockmap->next_offset + HAMMER_LARGEBLOCK_SIZE) &
+					~HAMMER_LARGEBLOCK_MASK64;
 		goto again;
 	}
 

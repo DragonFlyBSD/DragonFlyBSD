@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_softprune.c,v 1.6 2008/07/07 00:27:22 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_softprune.c,v 1.7 2008/08/21 23:28:43 thomas Exp $
  */
 
 #include "hammer.h"
@@ -386,7 +386,7 @@ void
 softprune_usage(int code)
 {
 	fprintf(stderr, "Badly formed prune command, use:\n");
-	fprintf(stderr, "hammer prune            <dir-holding-softlinks>\n");
+	fprintf(stderr, "hammer prune <softlink-dir>\n");
 	fprintf(stderr, "hammer prune-everything <filesystem>\n");
 	exit(code);
 }

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.13 2008/08/19 11:02:34 mneumann Exp $
+ * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.14 2008/08/21 23:28:43 thomas Exp $
  */
 
 #include "hammer.h"
@@ -83,7 +83,7 @@ hammer_cmd_mirror_read(char **av, int ac, int streaming)
 	struct timeval bwtv;
 	u_int64_t bwcount;
 
-	if (ac > 2)
+	if (ac == 0 || ac > 2)
 		mirror_usage(1);
 	filesystem = av[0];
 
@@ -245,7 +245,8 @@ done:
 		if (interrupted) {
 			if (CyclePath) {
 				hammer_set_cycle(&mirror.key_cur, mirror.tid_beg);
-				fprintf(stderr, "Cyclefile %s updated for continuation\n", CyclePath);
+				fprintf(stderr, "Cyclefile %s updated for "
+					"continuation\n", CyclePath);
 			}
 		} else {
 			sync_tid = mrec->update.tid;
@@ -337,7 +338,7 @@ hammer_cmd_mirror_write(char **av, int ac)
 	int fd;
 	int n;
 
-	if (ac > 2)
+	if (ac != 1)
 		mirror_usage(1);
 	filesystem = av[0];
 
@@ -712,13 +713,15 @@ read_mrecords(int fd, char *buf, u_int size, hammer_ioc_mrecord_head_t pickup)
 			}
 
 			if (pickup->signature != HAMMER_IOC_MIRROR_SIGNATURE) {
-				fprintf(stderr, "read_mrecords: malformed record on pipe, bad signature\n");
+				fprintf(stderr, "read_mrecords: malformed record on pipe, "
+					"bad signature\n");
 				exit(1);
 			}
 		}
 		if (pickup->rec_size < HAMMER_MREC_HEADSIZE ||
 		    pickup->rec_size > sizeof(*mrec) + HAMMER_XBUFSIZE) {
-			fprintf(stderr, "read_mrecords: malformed record on pipe, illegal rec_size\n");
+			fprintf(stderr, "read_mrecords: malformed record on pipe, "
+				"illegal rec_size\n");
 			exit(1);
 		}
 
@@ -1098,11 +1101,14 @@ static void
 mirror_usage(int code)
 {
 	fprintf(stderr, 
-		"hammer mirror-read <filesystem>\n"
+		"hammer mirror-read <filesystem> [begin-tid]\n"
+		"hammer mirror-read-stream <filesystem> [begin-tid]\n"
 		"hammer mirror-write <filesystem>\n"
 		"hammer mirror-dump\n"
-		"hammer mirror-copy [[user@]host:]fs [[user@]host:]fs\n"
-		"hammer mirror-stream [[user@]host:]fs [[user@]host:]fs\n"
+		"hammer mirror-copy [[user@]host:]<filesystem>"
+				  " [[user@]host:]<filesystem>\n"
+		"hammer mirror-stream [[user@]host:]<filesystem>"
+				    " [[user@]host:]<filesystem>\n"
 	);
 	exit(code);
 }
