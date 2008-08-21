@@ -34,14 +34,14 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.26 2008/07/27 20:58:33 swildner Exp $
+.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.27 2008/08/21 21:22:36 thomas Exp $
 .\"
-.Dd July 27, 2008
+.Dd August 21, 2008
 .Dt DISKLABEL 8
 .Os
 .Sh NAME
 .Nm disklabel
-.Nd read and write disk pack label
+.Nd read and write 32 bit disk pack label
 .Sh SYNOPSIS
 .Nm
 .Op Fl r
@@ -135,22 +135,20 @@ forms require a disk device name, which should always be the raw
 device name representing the disk or slice.
 .Dx
 uses the following scheme for slice numbering:
-If the disk doesn't use
-.Xr gpt 8 ,
-but e.g. MBR (typically laid out by
-.Xr fdisk 8 ) ,
-then slice 0, e.g.
-.Pa da0s0 ,
-represents the entire disk regardless of any DOS partitioning,
-this is called the compatibility slice,
-and slice 1 and onward, e.g.
-.Pa da0s1 ,
-represents a
-.Bx
-slice.
-If the disk does use GPT (typically laid out by
+If the disk doesn't use GPT (typically laid out by
 .Xr gpt 8 ) ,
-then all slices are
+but e.g.\& MBR (typically laid out by
+.Xr fdisk 8 ) ,
+then slice 0, e.g.\&
+.Pa da0s0 ,
+represents the entire disk regardless of any DOS partitioning.
+Slice 0 is called the compatibility slice,
+and slice 1 and onward, e.g.\&
+.Pa da0s1 ,
+represents
+.Bx
+slices.
+If the disk does use GPT, then all slices are
 .Bx
 slices, slice 0 isn't special, it is just the first slice on the disk.
 You do not have to include the
@@ -571,6 +569,25 @@ Your mileage may vary.
 .Nm
 .Fl e
 .Pa da0s1
+.Ss Manual offset
+.Dx
+no longer snoop-adjusts the on-disk label when reading or writing
+raw labels.
+.Nm
+is now responsible for adjusting the label when operating in raw mode.
+Traditional (32 bit
+.Bx )
+disklabels store offsets as absolute block numbers
+rather than slice-relative block numbers.
+If
+.Nm
+is unable to issue the
+.Dv DIOCGPART
+ioctl to get slice information it will
+refuse to read or write the label in raw mode.
+The
+.Fl f
+option may be used to force the operation by supplying a manual offset.
 .Sh FILES
 .Bl -tag -width ".Pa /etc/disktab" -compact
 .It Pa /boot/boot1
@@ -756,25 +773,6 @@ for more details).
 .Pp
 The remainder of the line is a comment and shows the size of the partition
 in MB.
-.Pp
-.Dx
-no longer snoop-adjusts the on-disklabel when reading or writing
-raw labels.
-.Nm
-is now responsible for adjusting the label when operating in raw mode.
-Traditional (32 bit
-.Bx )
-disklabels store offsets as absolute block numbers
-rather than slice-relative block numbers.
-If
-.Nm
-is unable to issue the
-.Dv DIOCGPART
-ioctl to get slice information it will
-refuse to read or write the label in raw mode.
-The
-.Fl f
-option may be used to force the operation by supplying a manual offset.
 .Sh EXAMPLES
 .Dl "disklabel da0s1"
 .Pp
@@ -1003,7 +1001,7 @@ Installing a
 label on a slice with a
 .Nm
 label installed requires reboot. First the existing label
-has to be overwritten, e.g. by
+has to be overwritten, e.g.\& by
 .Xr dd 1 ,
 see above, then a reboot is required before the new label can be installed.
 .Pp
