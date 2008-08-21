@@ -13,9 +13,9 @@
 .\" Austin, Texas  78712
 .\"
 .\" $FreeBSD: src/gnu/usr.bin/man/man/man.man,v 1.10.2.8 2002/06/25 00:02:55 eric Exp $
-.\" $DragonFly: src/gnu/usr.bin/man/man/man.man,v 1.6 2008/04/04 19:25:46 swildner Exp $
+.\" $DragonFly: src/gnu/usr.bin/man/man/man.man,v 1.7 2008/08/21 21:02:33 thomas Exp $
 .\"
-.Dd April 4, 2008
+.Dd August 21, 2008
 .Dt MAN 1
 .Os
 .Sh NAME
@@ -86,6 +86,8 @@ This option overrides the
 environment variable.
 .It Fl S Ar list
 List is a colon separated list of manual sections to search.
+The default is
+.Dq 1:8:2:3:4:5:6:7:9 .
 This option overrides the
 .Ev MANSECT
 environment variable.
