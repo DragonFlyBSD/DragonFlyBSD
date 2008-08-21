@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/bwi/bwirf.c,v 1.8 2008/01/15 09:01:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bwi/bwirf.c,v 1.9 2008/08/21 12:19:33 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -2102,7 +2102,7 @@ bwi_rf_init_hw_nrssi_table(struct bwi_mac *mac, uint16_t adjust)
 		val -= adjust;
 		if (val < -32)
 			val = -32;
-		else if (val > 31);
+		else if (val > 31)
 			val = 31;
 
 		bwi_nrssi_write(mac, i, val);
