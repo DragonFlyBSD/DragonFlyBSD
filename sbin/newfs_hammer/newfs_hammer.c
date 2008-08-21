@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.43 2008/07/25 03:17:15 swildner Exp $
+ * $DragonFly: src/sbin/newfs_hammer/newfs_hammer.c,v 1.44 2008/08/21 23:32:27 thomas Exp $
  */
 
 #include "newfs_hammer.h"
@@ -223,7 +223,7 @@ void
 usage(void)
 {
 	fprintf(stderr,
-		"newfs_hammer -L label [-b bootsize] [-m savesize] [ -u undosize] "
+		"newfs_hammer -L label [-b bootsize] [-m savesize] [-u undosize] "
 			"special ...\n"
 	);
 	exit(1);
