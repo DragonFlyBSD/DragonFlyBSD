@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man5/hammer.5,v 1.8 2008/07/25 01:21:06 swildner Exp $
+.\" $DragonFly: src/share/man/man5/hammer.5,v 1.9 2008/08/21 23:38:03 thomas Exp $
 .\"
 .Dd July 24, 2008
 .Os
@@ -136,14 +136,17 @@ Related
 .Xr hammer 8
 commands:
 .Ar history ,
-.Ar snapshot
-.Ss Reblocking & Pruning
-Reblocking will reorder all elements and thus defragment the file system and
-free space for reuse.
+.Ar snapshot ;
+see also
+.Xr undo 1
+.Ss Pruning & Reblocking
 Pruning is the act of deleting file system history.
 Only history used by the given snapshots and history from after the latest
 snapshot will be retained.
 All other history is deleted.
+Reblocking will reorder all elements and thus defragment the file system and
+free space for reuse.
+After pruning a file system must be reblocked to recover all available space.
 .Pp
 Related
 .Xr hammer 8
@@ -163,7 +166,7 @@ mirroring feature uses
 (PFSs).
 A
 .Nm
-file system supports up to 65536 PFSs.
+file system supports up to 65535 PFSs.
 Multiple slaves per master are supported, but multiple masters per slave
 are not.
 Slaves are always read-only.
@@ -180,7 +183,9 @@ commands:
 .Ar pfs-upgrade ,
 .Ar pfs-downgrade ,
 .Ar mirror-copy ,
+.Ar mirror-stream ,
 .Ar mirror-read ,
+.Ar mirror-read-stream ,
 .Ar mirror-write ,
 .Ar mirror-dump
 .Sh EXAMPLES
