@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.73 2008/08/17 05:45:56 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.74 2008/08/21 12:11:34 sephe Exp $
  */
 
 #define        DEB(x)
@@ -1661,17 +1661,18 @@ ipfw_chk(struct ip_fw_args *args)
 	uint16_t src_port = 0, dst_port = 0;	/* NOTE: host format	*/
 	struct in_addr src_ip, dst_ip;		/* NOTE: network format	*/
 	uint16_t ip_len = 0;
+
+	/*
+	 * dyn_dir = MATCH_UNKNOWN when rules unchecked,
+	 * 	MATCH_NONE when checked and not matched (dyn_f = NULL),
+	 *	MATCH_FORWARD or MATCH_REVERSE otherwise (dyn_f != NULL)
+	 */
 	int dyn_dir = MATCH_UNKNOWN;
-	ipfw_dyn_rule *q = NULL;
+	struct ip_fw *dyn_f = NULL;
 	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
 
 	if (m->m_pkthdr.fw_flags & IPFW_MBUF_GENERATED)
 		return 0;	/* accept */
-	/*
-	 * dyn_dir = MATCH_UNKNOWN when rules unchecked,
-	 * 	MATCH_NONE when checked and not matched (q = NULL),
-	 *	MATCH_FORWARD or MATCH_REVERSE otherwise (q != NULL)
-	 */
 
 	if (args->eh == NULL ||		/* layer 3 packet */
 	    (m->m_pkthdr.len >= sizeof(struct ip) &&
@@ -2233,8 +2234,6 @@ check_body:
 				 * to be run first).
 				 */
 				if (dyn_dir == MATCH_UNKNOWN) {
-					struct ip_fw *dyn_f;
-
 					dyn_f = lookup_rule(&args->f_id,
 						&dyn_dir,
 						proto == IPPROTO_TCP ?
@@ -2344,7 +2343,7 @@ check_body:
 			case O_FORWARD_IP:
 				if (args->eh)	/* not valid on layer2 pkts */
 					break;
-				if (!q || dyn_dir == MATCH_FORWARD) {
+				if (!dyn_f || dyn_dir == MATCH_FORWARD) {
 					args->next_hop =
 					    &((ipfw_insn_sa *)cmd)->sa;
 				}
