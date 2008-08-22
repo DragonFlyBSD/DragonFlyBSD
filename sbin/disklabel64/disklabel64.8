@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel64/disklabel64.8,v 1.10 2008/08/21 21:59:23 thomas Exp $
+.\" $DragonFly: src/sbin/disklabel64/disklabel64.8,v 1.11 2008/08/22 21:00:01 swildner Exp $
 .\"
 .Dd August 21, 2008
 .Dt DISKLABEL64 8
@@ -65,7 +65,7 @@
 .Nm
 .Op Fl NW
 .Ar disk
-.Pp
+.\" .Pp
 .\" .Nm
 .\" .Fl B
 .\" .Oo
@@ -279,7 +279,7 @@ and then create a
 disklabel within that slice.
 This is described
 later on in this page.
-.Pp
+.\" .Pp
 .\" Installing a new disklabel does not in of itself allow your system to boot
 .\" a kernel using that label.
 .\" You must also install boot blocks, which is
@@ -898,7 +898,7 @@ partition, and the second setting the label on the new partition while
 shrinking the
 .Dq a
 partition.
-.Pp
+.\" .Pp
 .\" On some machines the bootstrap code may not fit entirely in the area
 .\" allocated for it by some file systems.
 .\" As a result, it may not be possible to have file systems on some partitions
