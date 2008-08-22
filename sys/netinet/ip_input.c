@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.85 2008/08/22 09:14:16 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.86 2008/08/22 10:19:27 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -381,21 +381,18 @@ transport_processing_oncpu(struct mbuf *m, int hlen, struct ip *ip)
 	(*inetsw[ip_protox[ip->ip_p]].pr_input)(m, hlen, ip->ip_p);
 }
 
-struct netmsg_transport_packet {
-	struct netmsg		nm_netmsg;
-	struct mbuf		*nm_mbuf;
-	int			nm_hlen;
-};
-
 static void
 transport_processing_handler(netmsg_t netmsg)
 {
-	struct netmsg_transport_packet *msg = (void *)netmsg;
+	struct netmsg_packet *pmsg = (struct netmsg_packet *)netmsg;
 	struct ip *ip;
+	int hlen;
 
-	ip = mtod(msg->nm_mbuf, struct ip *);
-	transport_processing_oncpu(msg->nm_mbuf, msg->nm_hlen, ip);
-	lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, 0);
+	ip = mtod(pmsg->nm_packet, struct ip *);
+	hlen = pmsg->nm_netmsg.nm_lmsg.u.ms_result;
+
+	transport_processing_oncpu(pmsg->nm_packet, hlen, ip);
+	/* netmsg was embedded in the mbuf, do not reply! */
 }
 
 static void
@@ -1056,7 +1053,7 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 
 	ipstat.ips_delivered++;
 	if (needredispatch) {
-		struct netmsg_transport_packet *msg;
+		struct netmsg_packet *pmsg;
 		lwkt_port_t port;
 
 		ip->ip_off = htons(ip->ip_off);
@@ -1065,20 +1062,16 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 		if (port == NULL)
 			return;
 
-		msg = kmalloc(sizeof(struct netmsg_transport_packet), M_LWKTMSG,
-			     M_INTWAIT | M_NULLOK);
-		if (msg == NULL)
-			goto bad;
-
-		netmsg_init(&msg->nm_netmsg, &netisr_afree_rport, 0,
+		pmsg = &m->m_hdr.mh_netmsg;
+		netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, 0,
 			    transport_processing_handler);
-		msg->nm_hlen = hlen;
+		pmsg->nm_packet = m;
+		pmsg->nm_netmsg.nm_lmsg.u.ms_result = hlen;
 
-		msg->nm_mbuf = m;
 		ip = mtod(m, struct ip *);
 		ip->ip_len = ntohs(ip->ip_len);
 		ip->ip_off = ntohs(ip->ip_off);
-		lwkt_sendmsg(port, &msg->nm_netmsg.nm_lmsg);
+		lwkt_sendmsg(port, &pmsg->nm_netmsg.nm_lmsg);
 	} else {
 		transport_processing_oncpu(m, hlen, ip);
 	}
