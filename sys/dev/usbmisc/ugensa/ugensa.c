@@ -1,4 +1,4 @@
-/* $DragonFly: src/sys/dev/usbmisc/ugensa/ugensa.c,v 1.6 2008/08/19 11:28:48 matthias Exp $ */
+/* $DragonFly: src/sys/dev/usbmisc/ugensa/ugensa.c,v 1.7 2008/08/22 06:57:33 hasso Exp $ */
 /* $OpenBSD: umsm.c,v 1.15 2007/06/14 10:11:16 mbalmer Exp $ */
 
 /*
@@ -70,11 +70,13 @@ static device_probe_t ugensa_match;
 static device_attach_t ugensa_attach;
 static device_detach_t ugensa_detach;
 
-int ugensa_open(void *, int);
-void ugensa_close(void *, int);
-void ugensa_intr(usbd_xfer_handle, usbd_private_handle, usbd_status);
-void ugensa_get_status(void *, int, u_char *, u_char *);
-void ugensa_set(void *, int, int, int);
+static int  ugensa_open(void *, int);
+static void ugensa_close(void *, int);
+static void ugensa_intr(usbd_xfer_handle, usbd_private_handle, usbd_status);
+static void ugensa_get_status(void *, int, u_char *, u_char *);
+static void ugensa_set(void *, int, int, int);
+
+static void ugensa_e220_changemode(usbd_device_handle);
 
 static device_method_t ugensa_methods[] = {
 	/* Device interface */
@@ -167,9 +169,32 @@ static int
 ugensa_match(device_t self)
 {
 	struct usb_attach_arg *uaa = device_get_ivars(self);
+	usb_interface_descriptor_t *id;
 
 	if (uaa->iface == NULL)
 		return UMATCH_NONE;
+
+	/*
+	 * Some devices have massstorage interfaces - don't claim ownership
+	 * of these ... in general.
+	 * 
+	 * Some devices (most notably Huawei E220) need special handling
+	 * though. These come up with single umass interface, waiting for
+	 * magic sent to it, detach and attach again with three interfaces.
+	 * We have to claim such mass storage interface to send a magic to
+	 * it.
+	 */
+	id = usbd_get_interface_descriptor(uaa->iface);
+	if (id == NULL || id->bInterfaceClass == UICLASS_MASS) {
+		if ((uaa->vendor == 0x12d1 && uaa->product == 0x1003) ||
+		    (uaa->vendor == 0x12d1 && uaa->product == 0x1004)) {
+			if (uaa->nifaces == 1)
+				return UMATCH_VENDOR_IFACESUBCLASS;
+			else
+				return UMATCH_NONE;
+		} else
+			return UMATCH_NONE;
+	}
 
 	return (usb_lookup(ugensa_devs, uaa->vendor, uaa->product) != NULL) ?
 	    UMATCH_VENDOR_IFACESUBCLASS : UMATCH_NONE;
@@ -193,6 +218,13 @@ ugensa_attach(device_t self)
 	ucom->sc_iface = uaa->iface;
 
 	id = usbd_get_interface_descriptor(ucom->sc_iface);
+	if (id == NULL || id->bInterfaceClass == UICLASS_MASS) {
+		if ((uaa->vendor == 0x12d1 && uaa->product == 0x1003) ||
+		    (uaa->vendor == 0x12d1 && uaa->product == 0x1004)) {
+			ugensa_e220_changemode(uaa->device);
+		}
+		return ENXIO;
+	}
 
 	sc->sc_iface_no = id->bInterfaceNumber;
 	ucom->sc_bulkin_no = ucom->sc_bulkout_no = -1;
@@ -290,7 +322,7 @@ ugensa_activate(struct device *self, enum devact act)
 }
 #endif
 
-int
+static int
 ugensa_open(void *addr, int portno)
 {
 	struct ugensa_softc *sc = addr;
@@ -316,7 +348,7 @@ ugensa_open(void *addr, int portno)
 	return (0);
 }
 
-void
+static void
 ugensa_close(void *addr, int portno)
 {
 	struct ugensa_softc *sc = addr;
@@ -342,7 +374,7 @@ ugensa_close(void *addr, int portno)
 
 }
 
-void
+static void
 ugensa_intr(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 {
 	struct ugensa_softc *sc = priv;
@@ -391,7 +423,7 @@ ugensa_intr(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	ucom_status_change(&sc->sc_ucom);
 }
 
-void
+static void
 ugensa_get_status(void *addr, int portno, u_char *lsr, u_char *msr)
 {
 	struct ugensa_softc *sc = addr;
@@ -402,7 +434,7 @@ ugensa_get_status(void *addr, int portno, u_char *lsr, u_char *msr)
 		*msr = sc->sc_msr;
 }
 
-void
+static void
 ugensa_set(void *addr, int portno, int reg, int onoff)
 {
 	struct ugensa_softc *sc = addr;
@@ -434,5 +466,19 @@ ugensa_set(void *addr, int portno, int reg, int onoff)
 	USETW(req.wLength, 0);
 
 	(void)usbd_do_request(sc->sc_ucom.sc_udev, &req, 0);
+}
+
+static void
+ugensa_e220_changemode(usbd_device_handle dev)
+{
+	usb_device_request_t req;
+
+	req.bmRequestType = UT_WRITE_DEVICE;
+	req.bRequest = UR_SET_FEATURE;
+	USETW(req.wValue, UF_DEVICE_REMOTE_WAKEUP);
+	USETW(req.wIndex, 0x2);
+	USETW(req.wLength, 0);
+
+	usbd_do_request(dev, &req, 0);
 }
 
