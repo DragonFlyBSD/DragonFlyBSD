@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.7 2008/08/21 21:59:23 thomas Exp $
+ * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.8 2008/08/22 14:25:02 swildner Exp $
  */
 /*
  * Copyright (c) 1987, 1993
@@ -71,7 +71,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.7 2008/08/21 21:59:23 thomas Exp $
+ * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.8 2008/08/22 14:25:02 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1511,7 +1511,7 @@ Warning(const char *fmt, ...)
 void
 usage(void)
 {
-	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 		"usage: disklabel64 [-r] disk",
 		"\t\t(to read label)",
 		"       disklabel64 -w [-r] [-n] disk type [ packid ]",
