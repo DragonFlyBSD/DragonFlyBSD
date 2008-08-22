@@ -23,7 +23,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/gpt/gpt.8,v 1.17 2006/06/22 22:22:32 marcel Exp $
-.\" $DragonFly: src/sbin/gpt/gpt.8,v 1.7 2008/08/21 23:10:04 thomas Exp $
+.\" $DragonFly: src/sbin/gpt/gpt.8,v 1.8 2008/08/22 20:38:38 thomas Exp $
 .\"
 .Dd August 22, 2008
 .Os
@@ -436,18 +436,20 @@ disklabel -e da8s0	# add `a' partition covering whole slice
 
 newfs /dev/da8s0a
 mount /dev/da8s0a /mnt
-cpdup /boot /mnt/boot
-cpdup /kernel /mnt/kernel
-cpdup /modules /mnt/modules
-cpdup /kernel.old /mnt/kernel.old
-cpdup /modules.old /mnt/modules.old
+mv /boot /mnt
+chflags noschg /kernel
+mv /kernel /mnt
+chflags schg /mnt/kernel
+mv /modules /mnt
+mv /kernel.old /mnt
+mv /modules.old /mnt
 vi /mnt/boot/loader.conf # add: vfs.root.mountfrom="hammer:da8s1a"
 umount /mnt
 
 gpt add da8
 disklabel64 -r -w da8s1 auto
 disklabel64 -e da8s1	# add `a' partition covering whole slice
-newfs_hammer -L hammer /dev/da8s1a
+newfs_hammer -L root /dev/da8s1a
 mount_hammer /dev/da8s1a /mnt
 cpdup / /mnt		# copy each file system you need, e.g.
 cpdup /var /mnt/var
@@ -455,7 +457,7 @@ cpdup /usr /mnt/usr
 
 mkdir /mnt/boot_
 mount /dev/da8s0a /mnt/boot_
-vi /mnt/etc/fstab	# add: /dev/da8s0a /boot_ ufs rw
+vi /mnt/etc/fstab	# add: /dev/da8s0a /boot_ ufs rw 1 1
 cd /mnt			# add links for installkernel/world use
 ln -s boot_/boot
 ln -s boot_/kernel
