@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.74 2008/08/21 12:11:34 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.75 2008/08/22 09:14:16 sephe Exp $
  */
 
 #define        DEB(x)
@@ -1572,7 +1572,6 @@ lookup_next_rule(struct ip_fw *me)
  *		The incoming interface is in the mbuf. (in)
  *
  *	args->rule	Pointer to the last matching rule (in/out)
- *	args->next_hop	Socket we are forwarding to (out).
  *	args->f_id	Addresses grabbed from the packet (out)
  *
  * Return value:
@@ -2344,8 +2343,22 @@ check_body:
 				if (args->eh)	/* not valid on layer2 pkts */
 					break;
 				if (!dyn_f || dyn_dir == MATCH_FORWARD) {
-					args->next_hop =
-					    &((ipfw_insn_sa *)cmd)->sa;
+					struct sockaddr_in *sin;
+
+					mtag = m_tag_get(PACKET_TAG_IPFORWARD,
+					       sizeof(*sin), MB_DONTWAIT);
+					if (mtag == NULL) {
+						retval = IP_FW_PORT_DENY_FLAG;
+						goto done;
+					}
+					sin = m_tag_data(mtag);
+
+					/* Structure copy */
+					*sin = ((ipfw_insn_sa *)cmd)->sa;
+
+					m_tag_prepend(m, mtag);
+					m->m_pkthdr.fw_flags |=
+						IPFORWARD_MBUF_TAGGED;
 				}
 				retval = 0;
 				goto done;

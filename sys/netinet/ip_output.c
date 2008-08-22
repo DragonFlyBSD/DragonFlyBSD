@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.48 2008/08/21 11:57:49 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.49 2008/08/22 09:14:16 sephe Exp $
  */
 
 #define _IP_VHL
@@ -138,38 +138,30 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	int isbroadcast, sw_csum;
 	struct in_addr pkt_dst;
 	struct route iproute;
-	struct m_tag *dn_mtag = NULL;
+	struct m_tag *dn_mtag, *mtag;
 #ifdef IPSEC
 	struct secpolicy *sp = NULL;
 	struct socket *so = inp ? inp->inp_socket : NULL;
 #endif
 #ifdef FAST_IPSEC
-	struct m_tag *mtag;
 	struct secpolicy *sp = NULL;
 	struct tdb_ident *tdbi;
 #endif /* FAST_IPSEC */
 	struct ip_fw_args args;
+	struct sockaddr_in *next_hop = NULL;
 	int src_was_INADDR_ANY = 0;	/* as the name says... */
 
 	args.eh = NULL;
 	args.rule = NULL;
-	args.next_hop = NULL;
 
-	/* Grab info from MT_TAG mbufs prepended to the chain. */
-	while (m0 != NULL && m0->m_type == MT_TAG) {
-		switch(m0->_m_tag_id) {
-		case PACKET_TAG_IPFORWARD:
-			args.next_hop = (struct sockaddr_in *)m0->m_data;
-			break;
-		default:
-			kprintf("ip_output: unrecognised MT_TAG tag %d\n",
-			    m0->_m_tag_id);
-			break;
-		}
-		m0 = m0->m_next;
-	}
 	m = m0;
 	M_ASSERTPKTHDR(m);
+
+	if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
+		mtag = m_tag_find(m, PACKET_TAG_IPFORWARD, NULL);
+		KKASSERT(mtag != NULL);
+		next_hop = m_tag_data(mtag);
+	}
 
 	/* Extract info from dummynet tag */
 	dn_mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
@@ -219,7 +211,7 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 			hlen = len;
 	}
 	ip = mtod(m, struct ip *);
-	pkt_dst = args.next_hop ? args.next_hop->sin_addr : ip->ip_dst;
+	pkt_dst = next_hop ? next_hop->sin_addr : ip->ip_dst;
 
 	/*
 	 * Fill in IP header.
@@ -729,15 +721,20 @@ spd_done:
 	 * Check with the firewall...
 	 * but not if we are already being fwd'd from a firewall.
 	 */
-	if (fw_enable && IPFW_LOADED && !args.next_hop) {
+	if (fw_enable && IPFW_LOADED && !next_hop) {
 		struct sockaddr_in *old = dst;
 
 		args.m = m;
-		args.next_hop = dst;
 		args.oif = ifp;
 		off = ip_fw_chk_ptr(&args);
 		m = args.m;
-		dst = args.next_hop;
+
+		if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
+			mtag = m_tag_find(m, PACKET_TAG_IPFORWARD, NULL);
+			KKASSERT(mtag != NULL);
+			next_hop = m_tag_data(mtag);
+			dst = next_hop;
+		}
 
 		/*
 		 * On return we must do the following:
@@ -886,13 +883,6 @@ spd_done:
 				}
 			}
 			if (ia != NULL) {    /* tell ip_input "dont filter" */
-				struct m_hdr tag;
-
-				tag.mh_type = MT_TAG;
-				tag.mh_flags = PACKET_TAG_IPFORWARD;
-				tag.mh_data = (caddr_t)args.next_hop;
-				tag.mh_next = m;
-
 				if (m->m_pkthdr.rcvif == NULL)
 					m->m_pkthdr.rcvif = ifunit("lo0");
 				if (m->m_pkthdr.csum_flags & CSUM_DELAY_DATA) {
@@ -904,7 +894,7 @@ spd_done:
 				    CSUM_IP_CHECKED | CSUM_IP_VALID;
 				ip->ip_len = htons(ip->ip_len);
 				ip->ip_off = htons(ip->ip_off);
-				ip_input((struct mbuf *)&tag);
+				ip_input(m);
 				goto done;
 			}
 			/* Some of the logic for this was nicked from above.

@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.49 2008/08/05 15:11:32 nant Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.50 2008/08/22 09:14:16 sephe Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -245,10 +245,11 @@ struct mbuf {
 				0x00000008
 #define	PF_MBUF_FRAGCACHE	0x00000010
 #define	ALTQ_MBUF_TAGGED	0x00000020	/* altq_qid is valid */
-#define	PF_MBUF_GENERATED	FW_MBUF_GENERATED
-#define	IPFW_MBUF_GENERATED	FW_MBUF_GENERATED
+#define IPFORWARD_MBUF_TAGGED	0x00000040
 #define DUMMYNET_MBUF_TAGGED	0x00000080
 #define ALTQ_MBUF_STATE_HASHED	0x00000100
+#define	PF_MBUF_GENERATED	FW_MBUF_GENERATED
+#define	IPFW_MBUF_GENERATED	FW_MBUF_GENERATED
 
 /*
  * mbuf types.
@@ -257,7 +258,7 @@ struct mbuf {
 #define	MT_DATA		1	/* dynamic (data) allocation */
 #define	MT_HEADER	2	/* packet header */
 #define	MT_SONAME	3	/* socket name */
-#define	MT_TAG		4	/* volatile metadata associated to pkts */
+/* 4 was MT_TAG */
 #define	MT_CONTROL	5	/* extra-data protocol message */
 #define	MT_OOBDATA	6	/* expedited data  */
 #define	MT_NTYPES	7	/* number of mbuf types for mbtypes[] */
@@ -586,25 +587,9 @@ m_getb(int len, int how, int type, int flags)
 /* uint16_t */
 #define	PACKET_TAG_DUMMYNET			15 /* dummynet info */
 /* struct dn_pkt */
-#define	PACKET_TAG_CARP                         28 /* CARP info */
-
-/*
- * As a temporary and low impact solution to replace the even uglier
- * approach used so far in some parts of the network stack (which relies
- * on global variables), packet tag-like annotations are stored in MT_TAG
- * mbufs (or lookalikes) prepended to the actual mbuf chain.
- *
- *	m_type	= MT_TAG
- *	m_flags = m_tag_id
- *	m_next	= next buffer in chain.
- *
- * BE VERY CAREFUL not to pass these blocks to the mbuf handling routines.
- */
-#define	_m_tag_id	m_hdr.mh_flags
-
-/* Packet tags used in the FreeBSD network stack */
 #define	PACKET_TAG_IPFORWARD			18 /* ipforward info */
-/* struct sockaddr_in * as m_data */
+/* struct sockaddr_in */
+#define	PACKET_TAG_CARP                         28 /* CARP info */
 
 /* Packet tag routines */
 struct	m_tag 	*m_tag_alloc(u_int32_t, int, int, int);

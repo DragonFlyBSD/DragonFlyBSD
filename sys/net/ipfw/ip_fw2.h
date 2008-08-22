@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.h,v 1.1.2.2 2002/08/16 11:03:11 luigi Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.13 2008/08/16 09:05:59 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.14 2008/08/22 09:14:16 sephe Exp $
  */
 
 #ifndef _IPFW2_H
@@ -368,7 +368,6 @@ struct _ipfw_dyn_rule {
 struct ip_fw_args {
 	struct mbuf	*m;		/* the mbuf chain		*/
 	struct ifnet	*oif;		/* output interface		*/
-	struct sockaddr_in *next_hop;	/* forward address		*/
 	struct ip_fw	*rule;		/* matching rule		*/
 	struct ether_header *eh;	/* for bridged packets		*/
 

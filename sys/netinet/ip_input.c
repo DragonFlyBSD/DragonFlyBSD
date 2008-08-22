@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.84 2008/07/28 13:45:43 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.85 2008/08/22 09:14:16 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -373,46 +373,28 @@ struct route ipforward_rt[MAXCPU];
 
 /* Do transport protocol processing. */
 static void
-transport_processing_oncpu(struct mbuf *m, int hlen, struct ip *ip,
-			   struct sockaddr_in *nexthop)
+transport_processing_oncpu(struct mbuf *m, int hlen, struct ip *ip)
 {
 	/*
 	 * Switch out to protocol's input routine.
 	 */
-	if (nexthop && ip->ip_p == IPPROTO_TCP) {
-		/* TCP needs IPFORWARD info if available */
-		struct m_hdr tag;
-
-		tag.mh_type = MT_TAG;
-		tag.mh_flags = PACKET_TAG_IPFORWARD;
-		tag.mh_data = (caddr_t)nexthop;
-		tag.mh_next = m;
-
-		(*inetsw[ip_protox[ip->ip_p]].pr_input)
-		    ((struct mbuf *)&tag, hlen, ip->ip_p);
-	} else {
-		(*inetsw[ip_protox[ip->ip_p]].pr_input)(m, hlen, ip->ip_p);
-	}
+	(*inetsw[ip_protox[ip->ip_p]].pr_input)(m, hlen, ip->ip_p);
 }
 
 struct netmsg_transport_packet {
 	struct netmsg		nm_netmsg;
 	struct mbuf		*nm_mbuf;
 	int			nm_hlen;
-	boolean_t		nm_hasnexthop;
-	struct sockaddr_in	nm_nexthop;
 };
 
 static void
 transport_processing_handler(netmsg_t netmsg)
 {
 	struct netmsg_transport_packet *msg = (void *)netmsg;
-	struct sockaddr_in *nexthop;
 	struct ip *ip;
 
 	ip = mtod(msg->nm_mbuf, struct ip *);
-	nexthop = msg->nm_hasnexthop ? &msg->nm_nexthop : NULL;
-	transport_processing_oncpu(msg->nm_mbuf, msg->nm_hlen, ip, nexthop);
+	transport_processing_oncpu(msg->nm_mbuf, msg->nm_hlen, ip);
 	lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, 0);
 }
 
@@ -445,6 +427,7 @@ ip_input(struct mbuf *m)
 	boolean_t needredispatch = FALSE;
 	struct in_addr odst;			/* original dst address(NAT) */
 	struct m_tag *mtag;
+	struct sockaddr_in *next_hop = NULL;
 #ifdef FAST_IPSEC
 	struct tdb_ident *tdbi;
 	struct secpolicy *sp;
@@ -454,30 +437,21 @@ ip_input(struct mbuf *m)
 	args.eh = NULL;
 	args.oif = NULL;
 	args.rule = NULL;
-	args.next_hop = NULL;
 
-	/* Grab info from MT_TAG mbufs prepended to the chain. */
-	while (m != NULL && m->m_type == MT_TAG) {
-		switch(m->_m_tag_id) {
-		case PACKET_TAG_IPFORWARD:
-			args.next_hop = (struct sockaddr_in *)m->m_hdr.mh_data;
-			break;
-		default:
-			kprintf("ip_input: unrecognised MT_TAG tag %d\n",
-			    m->_m_tag_id);
-			break;
-		}
-		m = m->m_next;
-	}
 	M_ASSERTPKTHDR(m);
+
+	if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
+		/* Next hop */
+		mtag = m_tag_find(m, PACKET_TAG_IPFORWARD, NULL);
+		KKASSERT(mtag != NULL);
+		next_hop = m_tag_data(mtag);
+	}
 
 	/* Extract info from dummynet tag */
 	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
 	if (mtag != NULL) {
 		args.rule = ((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
-
 		m_tag_delete(m, mtag);
-		mtag = NULL;
 	}
 
 	if (args.rule != NULL) {	/* dummynet already filtered us */
@@ -605,7 +579,7 @@ iphack:
 		 * If we've been forwarded from the output side, then
 		 * skip the firewall a second time
 		 */
-		if (args.next_hop != NULL)
+		if (next_hop != NULL)
 			goto ours;
 
 		args.m = m;
@@ -618,7 +592,14 @@ iphack:
 			return;
 		}
 		ip = mtod(m, struct ip *);	/* just in case m changed */
-		if (i == 0 && args.next_hop == NULL)	/* common case */
+
+		if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
+			mtag = m_tag_find(m, PACKET_TAG_IPFORWARD, NULL);
+			KKASSERT(mtag != NULL);
+			next_hop = m_tag_data(mtag);
+		}
+
+		if (i == 0 && next_hop == NULL)	/* common case */
 			goto pass;
 		if (i & IP_FW_PORT_DYNT_FLAG) {
 			/* Send packet to the appropriate pipe */
@@ -632,7 +613,7 @@ iphack:
 			goto ours;
 		}
 #endif
-		if (i == 0 && args.next_hop != NULL)
+		if (i == 0 && next_hop != NULL)
 			goto pass;
 		/*
 		 * if we get here, the packet must be dropped
@@ -649,7 +630,7 @@ pass:
 	 * to be sent and the original packet to be freed).
 	 */
 	ip_nhops = 0;		/* for source routed packets */
-	if (hlen > sizeof(struct ip) && ip_dooptions(m, 0, args.next_hop))
+	if (hlen > sizeof(struct ip) && ip_dooptions(m, 0, next_hop))
 		return;
 
 	/* greedy RSVP, snatches any PATH packet of the RSVP protocol and no
@@ -675,7 +656,7 @@ pass:
 	 * Cache the destination address of the packet; this may be
 	 * changed by use of 'ipfw fwd'.
 	 */
-	pkt_dst = args.next_hop ? args.next_hop->sin_addr : ip->ip_dst;
+	pkt_dst = next_hop ? next_hop->sin_addr : ip->ip_dst;
 
 	/*
 	 * Enable a consistency check between the destination address
@@ -695,7 +676,7 @@ pass:
 		  !ipforwarding &&
 		  m->m_pkthdr.rcvif != NULL &&
 		  !(m->m_pkthdr.rcvif->if_flags & IFF_LOOPBACK) &&
-		  (args.next_hop == NULL);
+		  next_hop == NULL;
 
 	/*
 	 * Check for exact addresses in the hash bucket.
@@ -846,7 +827,7 @@ pass:
 			goto bad;
 		}
 #endif
-		ip_forward(m, using_srcrt, args.next_hop);
+		ip_forward(m, using_srcrt, next_hop);
 	}
 	return;
 
@@ -858,7 +839,7 @@ ours:
 	 */
 	if (ipstealth &&
 	    hlen > sizeof(struct ip) &&
-	    ip_dooptions(m, 1, args.next_hop))
+	    ip_dooptions(m, 1, next_hop))
 		return;
 
 	/* Count the packet in the ip address stats */
@@ -1007,8 +988,8 @@ found:
 		 * Jump backwards to complete processing of the
 		 * packet. But first clear divert_info to avoid
 		 * entering this block again.
-		 * We do not need to clear args.divert_rule
-		 * or args.next_hop as they will not be used.
+		 * We do not need to clear args.divert_rule as
+		 * it will not be used.
 		 *
 		 * XXX Better safe than sorry, remove the DIVERT tag.
 		 */
@@ -1092,9 +1073,6 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 		netmsg_init(&msg->nm_netmsg, &netisr_afree_rport, 0,
 			    transport_processing_handler);
 		msg->nm_hlen = hlen;
-		msg->nm_hasnexthop = (args.next_hop != NULL);
-		if (msg->nm_hasnexthop)
-			msg->nm_nexthop = *args.next_hop;  /* structure copy */
 
 		msg->nm_mbuf = m;
 		ip = mtod(m, struct ip *);
@@ -1102,7 +1080,7 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 		ip->ip_off = ntohs(ip->ip_off);
 		lwkt_sendmsg(port, &msg->nm_netmsg.nm_lmsg);
 	} else {
-		transport_processing_oncpu(m, hlen, ip, args.next_hop);
+		transport_processing_oncpu(m, hlen, ip);
 	}
 	return;
 
@@ -1885,7 +1863,6 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 	struct mbuf *mcopy;
 	n_long dest;
 	struct in_addr pkt_dst;
-	struct m_hdr tag;
 	struct route *cache_rt = &ipforward_rt[mycpuid];
 
 	dest = INADDR_ANY;
@@ -2000,17 +1977,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		}
 	}
 
-	if (next_hop != NULL) {
-		/* Pass IPFORWARD info if available */
-		tag.mh_type = MT_TAG;
-		tag.mh_flags = PACKET_TAG_IPFORWARD;
-		tag.mh_data = (caddr_t)next_hop;
-		tag.mh_next = m;
-		m = (struct mbuf *)&tag;
-	}
-
-	error = ip_output(m, NULL, cache_rt, IP_FORWARDING, NULL,
-			  NULL);
+	error = ip_output(m, NULL, cache_rt, IP_FORWARDING, NULL, NULL);
 	if (error == 0) {
 		ipstat.ips_forward++;
 		if (type == 0) {

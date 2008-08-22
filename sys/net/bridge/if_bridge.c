@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.42 2008/07/27 10:06:57 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.43 2008/08/22 09:14:17 sephe Exp $
  */
 
 /*
@@ -1451,11 +1451,6 @@ bridge_enqueue_internal(struct ifnet *dst_ifp, struct mbuf *m,
 	struct netmsg_packet *nmp;
 	lwkt_port_t port;
 	int cpu = mycpu->gd_cpuid;
-
-	while (m->m_type == MT_TAG) {
-		/* XXX see ether_output_frame for full rules check */
-		m = m->m_next;
-	}
 
 	nmp = &m->m_hdr.mh_netmsg;
 	netmsg_init(&nmp->nm_netmsg, &netisr_apanic_rport, 0, handler);
@@ -2962,10 +2957,6 @@ bridge_pfil_enqueue_handler(struct netmsg *nmsg)
 static void
 bridge_handoff(struct ifnet *dst_ifp, struct mbuf *m)
 {
-	while (m->m_type == MT_TAG) {
-		/* XXX see ether_output_frame for full rules check */
-		m = m->m_next;
-	}
 	bridge_handoff_notags(dst_ifp, m);
 }
 
@@ -2973,8 +2964,6 @@ static void
 bridge_handoff_notags(struct ifnet *dst_ifp, struct mbuf *m)
 {
 	struct mbuf *m0;
-
-	KKASSERT(m->m_type != MT_TAG);
 
 	lwkt_serialize_enter(dst_ifp->if_serializer);
 

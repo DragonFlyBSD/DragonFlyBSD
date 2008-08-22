@@ -65,7 +65,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.67 2007/04/22 01:13:14 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.68 2008/08/22 09:14:17 sephe Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -538,11 +538,12 @@ tcp_input(struct mbuf *m, ...)
 
 	tcpstat.tcps_rcvtotal++;
 
-	/* Grab info from and strip MT_TAG mbufs prepended to the chain. */
-	while  (m->m_type == MT_TAG) {
-		if (m->_m_tag_id == PACKET_TAG_IPFORWARD)
-			next_hop = (struct sockaddr_in *)m->m_hdr.mh_data;
-		m = m->m_next;
+	if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
+		struct m_tag *mtag;
+
+		mtag = m_tag_find(m, PACKET_TAG_IPFORWARD, NULL);
+		KKASSERT(mtag != NULL);
+		next_hop = m_tag_data(mtag);
 	}
 
 #ifdef INET6

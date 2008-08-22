@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.82 2008/08/05 15:11:32 nant Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.83 2008/08/22 09:14:16 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -484,12 +484,21 @@ ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst, struct ip_fw **rule,
 			return FALSE;
 	}
 
-	args.m = *m0;		/* the packet we are looking at		*/
-	args.oif = dst;		/* destination, if any			*/
+	/*
+	 * Clean up tags
+	 */
 	if ((mtag = m_tag_find(*m0, PACKET_TAG_IPFW_DIVERT, NULL)) != NULL)
 		m_tag_delete(*m0, mtag);
+	if ((*m0)->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
+		mtag = m_tag_find(*m0, PACKET_TAG_IPFORWARD, NULL);
+		KKASSERT(mtag != NULL);
+		m_tag_delete(*m0, mtag);
+		(*m0)->m_pkthdr.fw_flags &= ~IPFORWARD_MBUF_TAGGED;
+	}
+
+	args.m = *m0;		/* the packet we are looking at		*/
+	args.oif = dst;		/* destination, if any			*/
 	args.rule = *rule;	/* matching rule to restart		*/
-	args.next_hop = NULL;	/* we do not support forward yet	*/
 	args.eh = &save_eh;	/* MAC header for bridged/MAC packets	*/
 	i = ip_fw_chk_ptr(&args);
 	*m0 = args.m;

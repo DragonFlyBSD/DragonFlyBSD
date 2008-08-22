@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/net/dummynet/ip_dummynet_glue.c,v 1.7 2008/07/27 10:06:57 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet_glue.c,v 1.8 2008/08/22 09:14:17 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -85,7 +85,6 @@ ip_dn_queue(struct mbuf *m)
 	struct netmsg_packet *nmp;
 	lwkt_port_t port;
 
-	KASSERT(m->m_type != MT_TAG, ("mbuf contains old style tag!\n"));
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
 		("mbuf is not tagged for dummynet!\n"));
@@ -106,7 +105,6 @@ ip_dn_packet_free(struct dn_pkt *pkt)
 	lwkt_port_t port;
 	struct mbuf *m = pkt->dn_m;
 
-	KASSERT(m->m_type != MT_TAG, ("mbuf contains old style tag!\n"));
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
 		("mbuf is not tagged for dummynet!\n"));
@@ -150,7 +148,6 @@ ip_dn_packet_redispatch(struct dn_pkt *pkt)
 		("unsupported dummynet redispatch dir %d\n", dir));
 
 	m = pkt->dn_m;
-	KASSERT(m->m_type != MT_TAG, ("mbuf contains old style tag!\n"));
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
 		("mbuf is not tagged for dummynet!\n"));
