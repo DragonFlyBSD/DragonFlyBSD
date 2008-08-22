@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.30 2008/06/08 10:06:05 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/acx/if_acx.c,v 1.31 2008/08/22 10:27:16 swildner Exp $
  */
 
 /*
@@ -1038,11 +1038,9 @@ acx_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct acx_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = &sc->sc_ic;
-	struct ifreq *req;
 	int error;
 
 	error = 0;
-	req = (struct ifreq *)data;
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
@@ -2406,7 +2404,6 @@ acx_encap(struct acx_softc *sc, struct acx_txbuf *txbuf, struct mbuf *m,
 	int error;
 
 	KASSERT(txbuf->tb_mbuf == NULL, ("free TX buf has mbuf installed\n"));
-	error = 0;
 
 	if (m->m_pkthdr.len > MCLBYTES) {
 		if_printf(&sc->sc_ic.ic_if, "mbuf too big\n");
