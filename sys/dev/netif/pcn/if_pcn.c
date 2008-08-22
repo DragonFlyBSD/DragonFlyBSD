@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.34 2008/08/17 04:32:34 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.35 2008/08/22 08:38:15 swildner Exp $
  */
 
 /*
@@ -698,11 +698,9 @@ pcn_list_tx_init(struct pcn_softc *sc)
 static int
 pcn_list_rx_init(struct pcn_softc *sc)
 {
-	struct pcn_list_data	*ld;
 	struct pcn_ring_data	*cd;
 	int			i;
 
-	ld = sc->pcn_ldata;
 	cd = &sc->pcn_cdata;
 
 	for (i = 0; i < PCN_RX_LIST_CNT; i++) {
