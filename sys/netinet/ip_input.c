@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.86 2008/08/22 10:19:27 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.87 2008/08/22 11:51:40 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -291,13 +291,12 @@ static	struct ip_srcrt {
 static MALLOC_DEFINE(M_IPQ, "ipq", "IP Fragment Management");
 static struct malloc_pipe ipq_mpipe;
 
-static void		save_rte (u_char *, struct in_addr);
-static int		ip_dooptions (struct mbuf *m, int,
-					struct sockaddr_in *next_hop);
-static void		ip_freef (struct ipq *);
-static void		ip_input_handler (struct netmsg *);
-static struct mbuf	*ip_reass (struct mbuf *, struct ipq *,
-					struct ipq *, u_int32_t *);
+static void		save_rte(u_char *, struct in_addr);
+static int		ip_dooptions(struct mbuf *m, int, struct sockaddr_in *);
+static void		ip_freef(struct ipq *);
+static void		ip_input_handler(struct netmsg *);
+static struct mbuf	*ip_reass(struct mbuf *, struct ipq *, struct ipq *,
+				  u_int32_t *);
 
 /*
  * IP initialization: fill in IP protocol switch table.
