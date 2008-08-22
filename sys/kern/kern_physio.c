@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.4 2003/11/14 09:51:47 simokawa Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.26 2008/08/10 20:03:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.27 2008/08/22 08:47:56 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -44,7 +44,6 @@ physio(cdev_t dev, struct uio *uio, int ioflag)
 {
 	int i;
 	int error;
-	int chk_blockno;
 	int saflags;
 	int iolen;
 	int bcount;
@@ -65,12 +64,6 @@ physio(cdev_t dev, struct uio *uio, int ioflag)
 
 	/* Must be a real uio */
 	KKASSERT(uio->uio_segflg != UIO_NOCOPY);
-
-	/* Don't check block number overflow for D_MEM */
-	if ((dev_dflags(dev) & D_TYPEMASK) == D_MEM)
-		chk_blockno = 0;
-	else
-		chk_blockno = 1;
 
 	for (i = 0; i < uio->uio_iovcnt; i++) {
 		while (uio->uio_iov[i].iov_len) {
