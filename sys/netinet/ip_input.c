@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.88 2008/08/22 11:58:49 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.89 2008/08/22 13:37:22 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -295,8 +295,7 @@ static void		save_rte(u_char *, struct in_addr);
 static int		ip_dooptions(struct mbuf *m, int, struct sockaddr_in *);
 static void		ip_freef(struct ipq *);
 static void		ip_input_handler(struct netmsg *);
-static struct mbuf	*ip_reass(struct mbuf *, struct ipq *, struct ipq *,
-				  u_int32_t *);
+static struct mbuf	*ip_reass(struct mbuf *, u_int32_t *);
 
 /*
  * IP initialization: fill in IP protocol switch table.
@@ -411,7 +410,6 @@ void
 ip_input(struct mbuf *m)
 {
 	struct ip *ip;
-	struct ipq *fp;
 	struct in_ifaddr *ia = NULL;
 	struct in_ifaddr_container *iac;
 	int i, hlen, checkif;
@@ -852,81 +850,12 @@ ours:
 	 * but it's not worth the time; just let them time out.)
 	 */
 	if (ip->ip_off & (IP_MF | IP_OFFMASK)) {
-
-		/* If maxnipq is 0, never accept fragments. */
-		if (maxnipq == 0) {
-			ipstat.ips_fragments++;
-			ipstat.ips_fragdropped++;
-			goto bad;
-		}
-
-		sum = IPREASS_HASH(ip->ip_src.s_addr, ip->ip_id);
-		/*
-		 * Look for queue of fragments
-		 * of this datagram.
-		 */
-		for (fp = ipq[sum].next; fp != &ipq[sum]; fp = fp->next)
-			if (ip->ip_id == fp->ipq_id &&
-			    ip->ip_src.s_addr == fp->ipq_src.s_addr &&
-			    ip->ip_dst.s_addr == fp->ipq_dst.s_addr &&
-			    ip->ip_p == fp->ipq_p)
-				goto found;
-
-		fp = NULL;
-
-		/*
-		 * Enforce upper bound on number of fragmented packets
-		 * for which we attempt reassembly;
-		 * If maxnipq is -1, accept all fragments without limitation.
-		 */
-		if ((nipq > maxnipq) && (maxnipq > 0)) {
-			/*
-			 * drop something from the tail of the current queue
-			 * before proceeding further
-			 */
-			if (ipq[sum].prev == &ipq[sum]) {   /* gak */
-				for (i = 0; i < IPREASS_NHASH; i++) {
-					if (ipq[i].prev != &ipq[i]) {
-						ipstat.ips_fragtimeout +=
-						    ipq[i].prev->ipq_nfrags;
-						ip_freef(ipq[i].prev);
-						break;
-					}
-				}
-			} else {
-				ipstat.ips_fragtimeout +=
-				    ipq[sum].prev->ipq_nfrags;
-				ip_freef(ipq[sum].prev);
-			}
-		}
-found:
-		/*
-		 * Adjust ip_len to not reflect header,
-		 * convert offset of this to bytes.
-		 */
-		ip->ip_len -= hlen;
-		if (ip->ip_off & IP_MF) {
-			/*
-			 * Make sure that fragments have a data length
-			 * that's a non-zero multiple of 8 bytes.
-			 */
-			if (ip->ip_len == 0 || (ip->ip_len & 0x7) != 0) {
-				ipstat.ips_toosmall++; /* XXX */
-				goto bad;
-			}
-			m->m_flags |= M_FRAG;
-		} else
-			m->m_flags &= ~M_FRAG;
-		ip->ip_off <<= 3;
-
 		/*
 		 * Attempt reassembly; if it succeeds, proceed.
 		 * ip_reass() will return a different mbuf, and update
 		 * the divert info in divert_info.
 		 */
-		ipstat.ips_fragments++;
-		m->m_pkthdr.header = ip;
-		m = ip_reass(m, fp, &ipq[sum], &divert_info);
+		m = ip_reass(m, &divert_info);
 		if (m == NULL)
 			return;
 
@@ -1091,17 +1020,88 @@ bad:
  */
 
 static struct mbuf *
-ip_reass(struct mbuf *m, struct ipq *fp, struct ipq *where,
-	 u_int32_t *divinfo)
+ip_reass(struct mbuf *m, u_int32_t *divinfo)
 {
 	struct ip *ip = mtod(m, struct ip *);
 	struct mbuf *p = NULL, *q, *nq;
 	struct mbuf *n;
+	struct ipq *fp = NULL;
 	int hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 	int i, next;
+	u_short sum;
 #ifdef IPDIVERT
 	struct m_tag *mtag;
 #endif
+
+	/* If maxnipq is 0, never accept fragments. */
+	if (maxnipq == 0) {
+		ipstat.ips_fragments++;
+		ipstat.ips_fragdropped++;
+		m_freem(m);
+		return NULL;
+	}
+
+	sum = IPREASS_HASH(ip->ip_src.s_addr, ip->ip_id);
+	/*
+	 * Look for queue of fragments of this datagram.
+	 */
+	for (fp = ipq[sum].next; fp != &ipq[sum]; fp = fp->next)
+		if (ip->ip_id == fp->ipq_id &&
+		    ip->ip_src.s_addr == fp->ipq_src.s_addr &&
+		    ip->ip_dst.s_addr == fp->ipq_dst.s_addr &&
+		    ip->ip_p == fp->ipq_p)
+			goto found;
+
+	fp = NULL;
+
+	/*
+	 * Enforce upper bound on number of fragmented packets
+	 * for which we attempt reassembly;
+	 * If maxnipq is -1, accept all fragments without limitation.
+	 */
+	if (nipq > maxnipq && maxnipq > 0) {
+		/*
+		 * drop something from the tail of the current queue
+		 * before proceeding further
+		 */
+		if (ipq[sum].prev == &ipq[sum]) {   /* gak */
+			for (i = 0; i < IPREASS_NHASH; i++) {
+				if (ipq[i].prev != &ipq[i]) {
+					ipstat.ips_fragtimeout +=
+					    ipq[i].prev->ipq_nfrags;
+					ip_freef(ipq[i].prev);
+					break;
+				}
+			}
+		} else {
+			ipstat.ips_fragtimeout +=
+			    ipq[sum].prev->ipq_nfrags;
+			ip_freef(ipq[sum].prev);
+		}
+	}
+found:
+	/*
+	 * Adjust ip_len to not reflect header,
+	 * convert offset of this to bytes.
+	 */
+	ip->ip_len -= hlen;
+	if (ip->ip_off & IP_MF) {
+		/*
+		 * Make sure that fragments have a data length
+		 * that's a non-zero multiple of 8 bytes.
+		 */
+		if (ip->ip_len == 0 || (ip->ip_len & 0x7) != 0) {
+			ipstat.ips_toosmall++; /* XXX */
+			m_freem(m);
+			return NULL;
+		}
+		m->m_flags |= M_FRAG;
+	} else
+		m->m_flags &= ~M_FRAG;
+	ip->ip_off <<= 3;
+
+	ipstat.ips_fragments++;
+	m->m_pkthdr.header = ip;
 
 	/*
 	 * If the hardware has not done csum over this fragment
@@ -1126,7 +1126,7 @@ ip_reass(struct mbuf *m, struct ipq *fp, struct ipq *where,
 	if (fp == NULL) {
 		if ((fp = mpipe_alloc_nowait(&ipq_mpipe)) == NULL)
 			goto dropfrag;
-		insque(fp, where);
+		insque(fp, &ipq[sum]);
 		nipq++;
 		fp->ipq_nfrags = 1;
 		fp->ipq_ttl = IPFRAGTTL;
