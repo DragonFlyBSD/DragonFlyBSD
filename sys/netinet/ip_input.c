@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.87 2008/08/22 11:51:40 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.88 2008/08/22 11:58:49 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -929,7 +929,7 @@ found:
 		m = ip_reass(m, fp, &ipq[sum], &divert_info);
 		if (m == NULL)
 			return;
-		ipstat.ips_reassembled++;
+
 		needredispatch = TRUE;
 		ip = mtod(m, struct ip *);
 		/* Get the header length of the reassembled packet */
@@ -1317,6 +1317,8 @@ inserted:
 			plen += n->m_len;
 		m->m_pkthdr.len = plen;
 	}
+
+	ipstat.ips_reassembled++;
 	return (m);
 
 dropfrag:
