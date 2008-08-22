@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.25 2008/05/14 11:59:19 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.26 2008/08/22 08:33:59 swildner Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -662,7 +662,6 @@ ex_rx_intr(struct ex_softc *sc)
 	int			iobase = sc->iobase;
 	int			rx_status;
 	int			pkt_len;
-	int			QQQ;
 	struct mbuf *		m;
 	struct mbuf *		ipkt;
 
@@ -682,7 +681,7 @@ ex_rx_intr(struct ex_softc *sc)
 
 		rx_status = inw(iobase + IO_PORT_REG);
 		sc->rx_head = inw(iobase + IO_PORT_REG);
-		QQQ = pkt_len = inw(iobase + IO_PORT_REG);
+		pkt_len = inw(iobase + IO_PORT_REG);
 
 		if (rx_status & RCV_OK_bit) {
 			MGETHDR(m, MB_DONTWAIT, MT_DATA);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ex/if_ex_isa.c,v 1.3.2.1 2001/03/05 05:33:20 imp Exp $
- *	$DragonFly: src/sys/dev/netif/ex/if_ex_isa.c,v 1.16 2008/08/17 04:32:33 sephe Exp $
+ *	$DragonFly: src/sys/dev/netif/ex/if_ex_isa.c,v 1.17 2008/08/22 08:33:59 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -163,7 +163,6 @@ ex_isa_probe(device_t dev)
 {
 	u_int		iobase;
 	u_int		irq;
-	char *		irq2ee;
 	u_char *	ee2irq;
 	u_char 		enaddr[6];
 	int		tmp;
@@ -205,13 +204,10 @@ ex_isa_probe(device_t dev)
 	ex_get_address(iobase, enaddr);
 
 	/* work out which set of irq <-> internal tables to use */
-	if (ex_card_type(enaddr) == CARD_TYPE_EX_10_PLUS) {
-		irq2ee = plus_irq2eemap;
+	if (ex_card_type(enaddr) == CARD_TYPE_EX_10_PLUS)
 		ee2irq = plus_ee2irqmap;
-	} else {
-		irq2ee = irq2eemap;
+	else
 		ee2irq = ee2irqmap;
-	}
 
 	tmp = eeprom_read(iobase, EE_W1) & EE_W1_INT_SEL;
 	irq = bus_get_resource_start(dev, SYS_RES_IRQ, 0);
