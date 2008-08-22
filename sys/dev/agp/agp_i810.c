@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/agp/agp_i810.c,v 1.43 2007/11/12 21:51:36 jhb Exp $
- *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.17 2008/01/08 04:25:07 hasso Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.18 2008/08/22 07:08:13 hasso Exp $
  */
 
 /*
@@ -158,14 +158,12 @@ static const struct agp_i810_match {
 	    "Intel Q965 SVGA controller"},
 	{0x29a28086, CHIP_I965, 0x00020000,
 	    "Intel G965 SVGA controller"},
-/*
 	{0x29b28086, CHIP_G33, 0x00020000,
 	    "Intel Q35 SVGA controller"},
 	{0x29c28086, CHIP_G33, 0x00020000,
 	    "Intel G33 SVGA controller"},
 	{0x29d28086, CHIP_G33, 0x00020000,
 	    "Intel Q33 SVGA controller"},
-*/
 	{0x2a028086, CHIP_I965, 0x00020000,
 	    "Intel GM965 SVGA controller"},
 	{0x2a128086, CHIP_I965, 0x00020000,
@@ -624,6 +622,21 @@ agp_i810_detach(device_t dev)
 	return 0;
 }
 
+static int
+agp_i810_resume(device_t dev)
+{
+	struct agp_i810_softc *sc;
+	sc = device_get_softc(dev);
+
+	AGP_SET_APERTURE(dev, sc->initial_aperture);
+
+	/* Install the GATT. */
+	bus_write_4(sc->sc_res[0], AGP_I810_PGTBL_CTL,
+	sc->gatt->ag_physical | 1);
+
+	return (bus_generic_resume(dev));
+}
+
 /**
  * Sets the PCI resource size of the aperture on i830-class and below chipsets,
  * while returning failure on later chipsets when an actual change is
@@ -984,6 +997,8 @@ static device_method_t agp_i810_methods[] = {
 	DEVMETHOD(device_probe,		agp_i810_probe),
 	DEVMETHOD(device_attach,	agp_i810_attach),
 	DEVMETHOD(device_detach,	agp_i810_detach),
+	DEVMETHOD(device_suspend,	bus_generic_suspend),
+	DEVMETHOD(device_resume,	agp_i810_resume),
 
 	/* AGP interface */
 	DEVMETHOD(agp_get_aperture,	agp_generic_get_aperture),
