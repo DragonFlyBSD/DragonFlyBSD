@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.83 2008/08/22 09:14:16 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.84 2008/08/23 04:12:23 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -409,17 +409,20 @@ ether_output_frame(struct ifnet *ifp, struct mbuf *m)
 	struct ip_fw *rule = NULL;
 	int error = 0;
 	struct altq_pktattr pktattr;
-	struct m_tag *mtag;
 
 	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
 
-	/* Extract info from dummynet tag */
-	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
-	if (mtag != NULL) {
+	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
+		struct m_tag *mtag;
+
+		/* Extract info from dummynet tag */
+		mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
+		KKASSERT(mtag != NULL);
 		rule = ((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
+		KKASSERT(rule != NULL);
 
 		m_tag_delete(m, mtag);
-		mtag = NULL;
+		m->m_pkthdr.fw_flags &= ~DUMMYNET_MBUF_TAGGED;
 	}
 
 	if (ifq_is_enabled(&ifp->if_snd))
@@ -1011,7 +1014,6 @@ ether_demux_oncpu(struct ifnet *ifp, struct mbuf *m)
 	int isr, redispatch;
 	u_short ether_type;
 	struct ip_fw *rule = NULL;
-	struct m_tag *mtag;
 #ifdef NETATALK
 	struct llc *l;
 #endif
@@ -1022,18 +1024,24 @@ ether_demux_oncpu(struct ifnet *ifp, struct mbuf *m)
 
 	eh = mtod(m, struct ether_header *);
 
-	/* Extract info from dummynet tag */
-	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
-	if (mtag != NULL) {
+	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
+		struct m_tag *mtag;
+
+		/* Extract info from dummynet tag */
+		mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
+		KKASSERT(mtag != NULL);
 		rule = ((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
+		KKASSERT(rule != NULL);
+
 		KKASSERT(ifp == NULL);
 		ifp = m->m_pkthdr.rcvif;
 
 		m_tag_delete(m, mtag);
-		mtag = NULL;
-	}
-	if (rule)	/* packet is passing the second time */
+		m->m_pkthdr.fw_flags &= ~DUMMYNET_MBUF_TAGGED;
+
+		/* packet is passing the second time */
 		goto post_stats;
+	}
 
 #ifdef CARP
 	/*

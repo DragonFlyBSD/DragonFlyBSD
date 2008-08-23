@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.49 2008/08/22 09:14:16 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.50 2008/08/23 04:12:23 sephe Exp $
  */
 
 #define _IP_VHL
@@ -138,7 +138,7 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	int isbroadcast, sw_csum;
 	struct in_addr pkt_dst;
 	struct route iproute;
-	struct m_tag *dn_mtag, *mtag;
+	struct m_tag *dn_mtag = NULL, *mtag;
 #ifdef IPSEC
 	struct secpolicy *sp = NULL;
 	struct socket *so = inp ? inp->inp_socket : NULL;
@@ -158,15 +158,19 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	M_ASSERTPKTHDR(m);
 
 	if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
+		/* Next hop */
 		mtag = m_tag_find(m, PACKET_TAG_IPFORWARD, NULL);
 		KKASSERT(mtag != NULL);
 		next_hop = m_tag_data(mtag);
 	}
 
-	/* Extract info from dummynet tag */
-	dn_mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
-	if (dn_mtag != NULL) {
-		struct dn_pkt *dn_pkt = m_tag_data(dn_mtag);
+	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
+		struct dn_pkt *dn_pkt;
+
+		/* Extract info from dummynet tag */
+		dn_mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
+		KKASSERT(dn_mtag != NULL);
+		dn_pkt = m_tag_data(dn_mtag);
 
 		/*
 		 * The packet was already tagged, so part of the
@@ -174,6 +178,7 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 		 * Get parameters from the tag.
 		 */
 		args.rule = dn_pkt->dn_priv;
+		KKASSERT(args.rule != NULL);
 		opt = NULL;
 		ro = &dn_pkt->ro;
 		imo = NULL;
@@ -189,6 +194,7 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 		 * output process.
 		 */
 		m_tag_unlink(m, dn_mtag);
+		m->m_pkthdr.fw_flags &= ~DUMMYNET_MBUF_TAGGED;
 	}
 
 	if (ro == NULL) {

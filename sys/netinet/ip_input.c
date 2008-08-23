@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.89 2008/08/22 13:37:22 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.90 2008/08/23 04:12:23 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -441,14 +441,17 @@ ip_input(struct mbuf *m)
 		next_hop = m_tag_data(mtag);
 	}
 
-	/* Extract info from dummynet tag */
-	mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
-	if (mtag != NULL) {
+	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
+		/* Extract info from dummynet tag */
+		mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
+		KKASSERT(mtag != NULL);
 		args.rule = ((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
-		m_tag_delete(m, mtag);
-	}
+		KKASSERT(args.rule != NULL);
 
-	if (args.rule != NULL) {	/* dummynet already filtered us */
+		m_tag_delete(m, mtag);
+		m->m_pkthdr.fw_flags &= ~DUMMYNET_MBUF_TAGGED;
+
+		/* dummynet already filtered us */
 		ip = mtod(m, struct ip *);
 		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 		goto iphack;
