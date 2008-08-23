@@ -32,7 +32,7 @@
  *
  * @(#)score.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/robots/score.c,v 1.5 1999/11/30 03:49:20 billf Exp $
- * $DragonFly: src/games/robots/score.c,v 1.3 2006/08/27 21:45:07 pavalos Exp $
+ * $DragonFly: src/games/robots/score.c,v 1.3.8.1 2008/08/23 23:30:10 swildner Exp $
  */
 
 # include	"robots.h"
@@ -145,11 +145,11 @@ static void
 set_name(SCORE *scp)
 {
 	PASSWD	*pp;
-	static char	unk[] = "???";
 
 	if ((pp = getpwuid(scp->s_uid)) == NULL)
-		pp->pw_name = unk;
-	strncpy(scp->s_name, pp->pw_name, MAXNAME);
+		strncpy(scp->s_name, "???", MAXNAME);
+	else
+		strncpy(scp->s_name, pp->pw_name, MAXNAME);
 }
 
 /*
