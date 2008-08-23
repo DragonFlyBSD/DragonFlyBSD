@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.30 2008/06/09 11:24:24 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.31 2008/08/23 06:56:22 sephe Exp $
  */
 
 #include "opt_ipsec.h"
@@ -680,7 +680,7 @@ match:
 		 * add on any record-route or timestamp options.
 		 */
 		cp = (u_char *) (ip + 1);
-		if ((opts = ip_srcroute()) == 0 &&
+		if ((opts = ip_srcroute(m)) == 0 &&
 		    (opts = m_gethdr(MB_DONTWAIT, MT_HEADER))) {
 			opts->m_len = sizeof(struct in_addr);
 			mtod(opts, struct in_addr *)->s_addr = 0;

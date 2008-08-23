@@ -32,7 +32,7 @@
  *
  *	@(#)ip_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/ip_var.h,v 1.50.2.13 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/ip_var.h,v 1.22 2007/12/19 11:00:22 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_var.h,v 1.23 2008/08/23 06:56:22 sephe Exp $
  */
 
 #ifndef _NETINET_IP_VAR_H_
@@ -216,7 +216,7 @@ void	 ip_savecontrol(struct inpcb *, struct mbuf **, struct ip *,
 		struct mbuf *);
 void	 ip_slowtimo(void);
 struct mbuf *
-	 ip_srcroute(void);
+	 ip_srcroute(struct mbuf *);
 void	 ip_stripoptions(struct mbuf *);
 u_int16_t ip_randomid(void);
 int	rip_ctloutput(struct socket *, struct sockopt *);

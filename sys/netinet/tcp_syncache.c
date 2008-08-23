@@ -69,7 +69,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.31 2007/05/24 05:51:29 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.32 2008/08/23 06:56:22 sephe Exp $
  */
 
 #include "opt_inet6.h"
@@ -143,7 +143,8 @@ static void	 syncache_free(struct syncache *);
 static void	 syncache_insert(struct syncache *, struct syncache_head *);
 struct syncache *syncache_lookup(struct in_conninfo *, struct syncache_head **);
 static int	 syncache_respond(struct syncache *, struct mbuf *);
-static struct	 socket *syncache_socket(struct syncache *, struct socket *);
+static struct	 socket *syncache_socket(struct syncache *, struct socket *,
+		    struct mbuf *);
 static void	 syncache_timer(void *);
 static u_int32_t syncookie_generate(struct syncache *);
 static struct syncache *syncookie_lookup(struct in_conninfo *,
@@ -628,7 +629,7 @@ syncache_unreach(struct in_conninfo *inc, struct tcphdr *th)
  * Build a new TCP socket structure from a syncache entry.
  */
 static struct socket *
-syncache_socket(struct syncache *sc, struct socket *lso)
+syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 {
 	struct inpcb *inp = NULL, *linp;
 	struct socket *so;
@@ -724,7 +725,7 @@ syncache_socket(struct syncache *sc, struct socket *lso)
 		struct in_addr laddr;
 		struct sockaddr_in sin;
 
-		inp->inp_options = ip_srcroute();
+		inp->inp_options = ip_srcroute(m);
 		if (inp->inp_options == NULL) {
 			inp->inp_options = sc->sc_ipopts;
 			sc->sc_ipopts = NULL;
@@ -842,7 +843,7 @@ syncache_expand(struct in_conninfo *inc, struct tcphdr *th, struct socket **sop,
 	if (th->th_ack != sc->sc_iss + 1)
 		return (0);
 
-	so = syncache_socket(sc, *sop);
+	so = syncache_socket(sc, *sop, m);
 	if (so == NULL) {
 #if 0
 resetandabort:
@@ -899,7 +900,7 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 #ifdef INET6
 	if (!inc->inc_isipv6)
 #endif
-		ipopts = ip_srcroute();
+		ipopts = ip_srcroute(m);
 
 	/*
 	 * See if we already have an entry for this connection.
@@ -1055,7 +1056,7 @@ syncache_add(struct in_conninfo *inc, struct tcpopt *to, struct tcphdr *th,
 		    taop != NULL && taop->tao_cc != 0 &&
 		    CC_GT(to->to_cc, taop->tao_cc)) {
 			sc->sc_rxtslot = 0;
-			so = syncache_socket(sc, *sop);
+			so = syncache_socket(sc, *sop, m);
 			if (so != NULL) {
 				taop->tao_cc = to->to_cc;
 				*sop = so;

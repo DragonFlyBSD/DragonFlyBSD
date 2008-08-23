@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.50 2008/08/22 09:14:16 sephe Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.51 2008/08/23 06:56:22 sephe Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -589,6 +589,8 @@ m_getb(int len, int how, int type, int flags)
 /* struct dn_pkt */
 #define	PACKET_TAG_IPFORWARD			18 /* ipforward info */
 /* struct sockaddr_in */
+#define PACKET_TAG_IPSRCRT			27 /* IP srcrt opts */
+/* struct ip_srcrt_opt */
 #define	PACKET_TAG_CARP                         28 /* CARP info */
 
 /* Packet tag routines */
