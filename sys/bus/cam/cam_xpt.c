@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.67 2008/07/18 00:07:21 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.68 2008/08/23 17:13:31 pavalos Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -2956,7 +2956,7 @@ xpt_action_sasync_cb(void *context, int pending)
 		 * the currently existing busses.
 		 */
 		xpt_for_all_busses(xptsetasyncbusfunc, cur_entry);
-		}
+	}
 
 	kfree(task, M_CAMXPT);
 }
