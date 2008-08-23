@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/net/dummynet/ip_dummynet_glue.c,v 1.8 2008/08/22 09:14:17 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet_glue.c,v 1.9 2008/08/23 08:26:04 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -410,7 +410,7 @@ ip_dn_ether_demux(struct netmsg *nmsg)
 		kprintf("%s: pullup fail, dropping pkt\n", __func__);
 		goto back;
 	}
-	ether_demux_oncpu(NULL, m);
+	ether_demux_oncpu(m->m_pkthdr.rcvif, m);
 back:
 	if (unref_priv)
 		unref_priv(priv);

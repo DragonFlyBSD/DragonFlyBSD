@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.84 2008/08/23 04:12:23 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.85 2008/08/23 08:26:04 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -1032,9 +1032,6 @@ ether_demux_oncpu(struct ifnet *ifp, struct mbuf *m)
 		KKASSERT(mtag != NULL);
 		rule = ((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
 		KKASSERT(rule != NULL);
-
-		KKASSERT(ifp == NULL);
-		ifp = m->m_pkthdr.rcvif;
 
 		m_tag_delete(m, mtag);
 		m->m_pkthdr.fw_flags &= ~DUMMYNET_MBUF_TAGGED;
