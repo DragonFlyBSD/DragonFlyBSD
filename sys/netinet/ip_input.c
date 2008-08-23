@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.90 2008/08/23 04:12:23 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.91 2008/08/23 04:50:29 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -1720,7 +1720,7 @@ ip_rtaddr(struct in_addr dst, struct route *ro)
  * Save incoming source route for use in replies,
  * to be picked up later by ip_srcroute if the receiver is interested.
  */
-void
+static void
 save_rte(u_char *option, struct in_addr dst)
 {
 	unsigned olen;
