@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.92 2008/08/23 06:56:22 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.93 2008/08/23 09:06:37 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -344,7 +344,7 @@ ip_init(void)
 	}
 
 	for (i = 0; i < IPREASS_NHASH; i++)
-	    ipq[i].next = ipq[i].prev = &ipq[i];
+		ipq[i].next = ipq[i].prev = &ipq[i];
 
 	maxnipq = nmbclusters / 32;
 	maxfragsperpacket = 16;
