@@ -32,7 +32,7 @@
  *
  * @(#)announce.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/libexec/talkd/announce.c,v 1.11.2.3 2001/10/18 12:30:42 des Exp $
- * $DragonFly: src/libexec/talkd/announce.c,v 1.3 2003/11/14 03:54:31 dillon Exp $
+ * $DragonFly: src/libexec/talkd/announce.c,v 1.4 2008/08/23 22:26:56 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -57,7 +57,7 @@
 
 extern char hostname[];
 
-int print_mesg (char *, FILE *, CTL_MSG *, char *);
+int print_mesg (char *, CTL_MSG *, char *);
 
 /*
  * Announce an invitation to talk.
@@ -73,14 +73,13 @@ announce(request, remote_machine)
 	char *remote_machine;
 {
 	char full_tty[32];
-	FILE *tf;
 	struct stat stbuf;
 
 	(void)snprintf(full_tty, sizeof(full_tty),
 	    "%s%s", _PATH_DEV, request->r_tty);
 	if (stat(full_tty, &stbuf) < 0 || (stbuf.st_mode&020) == 0)
 		return (PERMISSION_DENIED);
-	return (print_mesg(request->r_tty, tf, request, remote_machine));
+	return (print_mesg(request->r_tty, request, remote_machine));
 }
 
 #define max(a,b) ( (a) > (b) ? (a) : (b) )
@@ -94,9 +93,8 @@ announce(request, remote_machine)
  * in in vi at the time
  */
 int
-print_mesg(tty, tf, request, remote_machine)
+print_mesg(tty, request, remote_machine)
 	char *tty;
-	FILE *tf;
 	CTL_MSG *request;
 	char *remote_machine;
 {
@@ -145,7 +143,6 @@ print_mesg(tty, tf, request, remote_machine)
 	(void)snprintf(line_buf[i], N_CHARS, " ");
 	sizes[i] = strlen(line_buf[i]);
 	max_size = max(max_size, sizes[i]);
-	i++;
 	bptr = big_buf;
 	*bptr++ = '\007'; /* send something to wake them up */
 	*bptr++ = '\r';	/* add a \r in case of raw mode */
