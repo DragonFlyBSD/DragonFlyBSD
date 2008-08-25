@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_run.c,v 1.18 1999/08/28 00:41:10 peter Exp $
- * $DragonFly: src/sys/ddb/db_run.c,v 1.7 2005/12/23 21:35:44 swildner Exp $
+ * $DragonFly: src/sys/ddb/db_run.c,v 1.8 2008/08/25 17:01:37 dillon Exp $
  */
 
 /*
@@ -106,6 +106,8 @@ db_stop_at_pc(boolean_t *is_breakpoint)
 	} else if (*is_breakpoint) {
 #ifdef __i386__			/* XXx */
 		ddb_regs.tf_eip += 1;
+#elif defined(__amd64__)
+		ddb_regs.tf_rip += 1;
 #endif
 	}
 

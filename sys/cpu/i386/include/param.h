@@ -35,7 +35,7 @@
  *
  *	from: @(#)param.h	5.8 (Berkeley) 6/28/91
  * $FreeBSD: src/sys/i386/include/param.h,v 1.54.2.8 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/cpu/i386/include/param.h,v 1.14 2007/07/02 03:44:08 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/param.h,v 1.15 2008/08/25 17:01:35 dillon Exp $
  */
 
 #ifndef _CPU_PARAM_H_
@@ -204,8 +204,8 @@
 #endif
 #define ptoa(x)			((x) << PAGE_SHIFT)
 
-#define i386_btop(x)		((x) >> PAGE_SHIFT)
-#define i386_ptob(x)		((x) << PAGE_SHIFT)
+#define i386_btop(x)		((vm_pindex_t)((x) >> PAGE_SHIFT))
+#define i386_ptob(x)		((vm_paddr_t)(x) << PAGE_SHIFT)
 
 #define	pgtok(x)		((x) * (PAGE_SIZE / 1024))
 

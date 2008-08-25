@@ -38,7 +38,7 @@
  * 
  * from:   @(#)pmap.c      7.7 (Berkeley)  5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.30 2008/06/06 13:19:25 swildner Exp $
+ * $DragonFly: src/sys/platform/vkernel/platform/pmap.c,v 1.31 2008/08/25 17:01:40 dillon Exp $
  */
 /*
  * NOTE: PMAP_INVAL_ADD: In pc32 this function is called prior to adjusting
@@ -2793,7 +2793,7 @@ pmap_page_protect(vm_page_t m, vm_prot_t prot)
 }
 
 vm_paddr_t
-pmap_phys_address(int ppn)
+pmap_phys_address(vm_pindex_t ppn)
 {
 	return (i386_ptob(ppn));
 }

@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.86 2008/06/05 18:06:32 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.87 2008/08/25 17:01:38 dillon Exp $
  */
 
 /*
@@ -3053,7 +3053,7 @@ pmap_page_protect(vm_page_t m, vm_prot_t prot)
 }
 
 vm_paddr_t
-pmap_phys_address(int ppn)
+pmap_phys_address(vm_pindex_t ppn)
 {
 	return (i386_ptob(ppn));
 }

@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.39 2008/07/01 02:02:56 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.40 2008/08/25 17:01:42 dillon Exp $
  */
 
 /*
@@ -672,6 +672,7 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 {
 	vm_page_t m = NULL;
 
+	KKASSERT(object != NULL);
 	KASSERT(!vm_page_lookup(object, pindex),
 		("vm_page_alloc: page already allocated"));
 	KKASSERT(page_req & 
