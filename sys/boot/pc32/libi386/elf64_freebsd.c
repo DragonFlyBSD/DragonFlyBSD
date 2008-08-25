@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/elf64_freebsd.c,v 1.14 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/elf64_freebsd.c,v 1.2 2004/09/09 03:47:08 joerg Exp $
+ * $DragonFly: src/sys/boot/pc32/libi386/elf64_freebsd.c,v 1.3 2008/08/25 16:58:41 dillon Exp $
  */
 
 #define __ELF_WORD_SIZE 64
@@ -88,8 +88,8 @@ elf64_exec(struct preloaded_file *fp)
     bzero(PT2, PAGE_SIZE);
 
     /*
-     * This is kinda brutal, but every single 1GB VM memory segment points to
-     * the same first 1GB of physical memory.  But it is more than adequate.
+     * This is kinda brutal, but every single 512MB VM memory segment points to
+     * the same first 512MB of physical memory.  But it is more than adequate.
      */
     for (i = 0; i < 512; i++) {
 	/* Each slot of the level 4 pages points to the same level 3 page */
@@ -99,10 +99,13 @@ elf64_exec(struct preloaded_file *fp)
 	/* Each slot of the level 3 pages points to the same level 2 page */
 	PT3[i] = (p3_entry_t)VTOP((uintptr_t)&PT2[0]);
 	PT3[i] |= PG_V | PG_RW | PG_U;
-
+    }
+    for (i = 0; i < 256; i++) {
 	/* The level 2 page slots are mapped with 2MB pages for 1GB. */
 	PT2[i] = i * (2 * 1024 * 1024);
 	PT2[i] |= PG_V | PG_RW | PG_PS | PG_U;
+	PT2[256 + i] = i * (2 * 1024 * 1024);
+	PT2[256 + i] |= PG_V | PG_RW | PG_PS | PG_U;
     }
 
     entry_lo = ehdr->e_entry & 0xffffffff;
