@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.27 2008/03/05 13:03:29 sephe Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.28 2008/08/25 23:34:34 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -90,6 +90,8 @@ typedef struct lwkt_msg {
  *		being passed through an IPI).
  *
  * ABORTABLE	Static flag indicates that ms_abortfn is valid.
+ *
+ * High 16 bits are available to message handlers.
  */
 #define MSGF_DONE	0x0001		/* message is complete */
 #define MSGF_REPLY	0x0002		/* asynch message has been returned */
@@ -97,6 +99,11 @@ typedef struct lwkt_msg {
 #define MSGF_SYNC	0x0008		/* synchronous message operation */
 #define MSGF_INTRANSIT	0x0010		/* in-transit (IPI) */
 #define MSGF_ABORTABLE	0x0080		/* message supports abort */
+
+#define MSGF_USER0	0x00010000
+#define MSGF_USER1	0x00020000
+#define MSGF_USER2	0x00040000
+#define MSGF_USER3	0x00080000
 
 #define MSG_CMD_CDEV	0x00010000
 #define MSG_CMD_VFS	0x00020000
