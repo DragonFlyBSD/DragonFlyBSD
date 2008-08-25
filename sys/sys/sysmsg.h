@@ -1,7 +1,7 @@
 /*
  * SYS/SYSMSG.H
  *
- * $DragonFly: src/sys/sys/sysmsg.h,v 1.11 2006/10/20 17:02:13 dillon Exp $
+ * $DragonFly: src/sys/sys/sysmsg.h,v 1.12 2008/08/25 23:35:47 dillon Exp $
  */
 
 #ifndef _SYS_SYSMSG_H_
@@ -17,6 +17,9 @@
  * The sysmsg holds the kernelland version of a system call's arguments
  * and return value.  It typically preceeds the syscall arguments in sysunion
  * (see sys/sysunion.h).
+ *
+ * WARNING: fds must be long so it translates to two 64 bit registers
+ * on 64 bit architectures.
  */
 union sysunion;
 
@@ -25,7 +28,7 @@ struct sysmsg {
 	    void    *resultp;            /* misc pointer data or result */
 	    int     result;              /* standard 'int'eger result */
 	    long    lresult;             /* long result */
-	    int     fds[2];              /* two int bit results */
+	    long    fds[2];              /* double result */
 	    __int32_t result32;          /* 32 bit result */
 	    __int64_t result64;          /* 64 bit result */
 	    __off_t offset;              /* off_t result */
