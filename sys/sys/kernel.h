@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.31 2008/07/23 17:22:33 dillon Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.32 2008/08/25 17:11:23 dillon Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -234,6 +234,7 @@ struct sysinit {
 	unsigned int	order;			/* init order within subsystem*/
 	sysinit_cfunc_t func;			/* function		*/
 	const void	*udata;			/* multiplexer/argument */
+	const char	*name;
 };
 
 /*
@@ -253,7 +254,8 @@ struct sysinit {
 		subsystem,					\
 		order,						\
 		func,						\
-		ident						\
+		ident,						\
+		#uniquifier                                     \
 	};							\
 	DATA_SET(sysinit_set,uniquifier ## _sys_init);
 
