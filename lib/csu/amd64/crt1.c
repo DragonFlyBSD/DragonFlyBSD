@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/csu/amd64/crt1.c,v 1.13 2003/04/30 19:27:07 peter Exp $
- * $DragonFly: src/lib/csu/amd64/crt1.c,v 1.1 2004/02/02 05:43:13 dillon Exp $
+ * $DragonFly: src/lib/csu/amd64/crt1.c,v 1.2 2008/08/25 23:38:35 dillon Exp $
  */
 
 #ifndef lint
@@ -78,6 +78,15 @@ _start(char **ap, void (*cleanup)(void))
 				__progname = s + 1;
 	}
 
+	/*
+	 * Setup the initial TLS space.  The RTLD does not set up our TLS
+	 * (it can't, it doesn't know how our errno is declared).  It simply
+	 * does all the groundwork required so that we can call
+	 * _rtld_allocate_tls().
+	 */
+	_init_tls();
+	_rtld_call_init();
+
 	if (&_DYNAMIC != NULL)
 		atexit(cleanup);
 
@@ -98,4 +107,4 @@ __asm__("eprol:");
 __asm__(".previous");
 #endif
 
-__asm__(".ident\t\"$DragonFly: src/lib/csu/amd64/crt1.c,v 1.1 2004/02/02 05:43:13 dillon Exp $\"");
+__asm__(".ident\t\"$DragonFly: src/lib/csu/amd64/crt1.c,v 1.2 2008/08/25 23:38:35 dillon Exp $\"");
