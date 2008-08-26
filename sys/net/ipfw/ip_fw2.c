@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.75 2008/08/22 09:14:16 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.76 2008/08/26 11:26:26 sephe Exp $
  */
 
 #define        DEB(x)
@@ -3589,6 +3589,12 @@ ipfw_check_ioc_rule(struct ipfw_ioc_rule *rule, int size, uint32_t *rule_flags)
 		case O_FORWARD_IP:
 			if (cmdlen != F_INSN_SIZE(ipfw_insn_sa))
 				goto bad_size;
+			if (IN_MULTICAST(((ipfw_insn_sa *)cmd)
+					 ->sa.sin_addr.s_addr)) {
+				kprintf("ipfw: try forwarding to "
+					"multicast address\n");
+				return EINVAL;
+			}
 			goto check_action;
 
 		case O_FORWARD_MAC: /* XXX not implemented yet */
