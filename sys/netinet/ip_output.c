@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.50 2008/08/23 04:12:23 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.51 2008/08/26 12:05:10 sephe Exp $
  */
 
 #define _IP_VHL
@@ -266,7 +266,7 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 		ifp = ia->ia_ifp;
 		ip->ip_ttl = 1;
 		isbroadcast = in_broadcast(dst->sin_addr, ifp);
-	} else if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr)) &&
+	} else if (IN_MULTICAST(ntohl(pkt_dst.s_addr)) &&
 		   imo != NULL && imo->imo_multicast_ifp != NULL) {
 		/*
 		 * Bypass the normal routing lookup for multicast
@@ -398,6 +398,8 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 		}
 
 		goto sendit;
+	} else {
+		m->m_flags &= ~M_MCAST;
 	}
 #ifndef notdef
 	/*
