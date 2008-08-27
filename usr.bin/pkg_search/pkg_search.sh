@@ -31,7 +31,7 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-# $DragonFly: src/usr.bin/pkg_search/pkg_search.sh,v 1.9 2008/07/19 12:29:59 matthias Exp $
+# $DragonFly: src/usr.bin/pkg_search/pkg_search.sh,v 1.10 2008/08/27 13:11:37 matthias Exp $
 
 UNAME=`uname -s`
 VERSION=`uname -r | cut -d '.' -f 1,2`
@@ -159,7 +159,7 @@ show_description()
 
 usage()
 {
-        echo "usage: $0 [-k | -v] package"
+        echo "usage: $0 [ -k | -s | -v ] package"
         exit 1
 }
 
