@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.52 2004/06/13 22:52:30 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.13 2007/10/23 03:04:48 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.14 2008/08/27 16:35:19 hasso Exp $
  */
 /******************************************************************************
  *
@@ -138,7 +138,7 @@
  *****************************************************************************/
  /*
   * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.52 2004/06/13 22:52:30 njl Exp $
-  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.13 2007/10/23 03:04:48 y0netan1 Exp $
+  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.14 2008/08/27 16:35:19 hasso Exp $
   *
   */
 
@@ -327,11 +327,19 @@ static ACPI_STATUS	EcWrite(struct acpi_ec_softc *sc, UINT8 Address,
 				UINT8 *Data);
 static int		acpi_ec_probe(device_t dev);
 static int		acpi_ec_attach(device_t dev);
+static int		acpi_ec_read_method(device_t dev, u_int addr,
+				ACPI_INTEGER *val, int width);
+static int		acpi_ec_write_method(device_t dev, u_int addr,
+				ACPI_INTEGER val, int width);
 
 static device_method_t acpi_ec_methods[] = {
     /* Device interface */
     DEVMETHOD(device_probe,	acpi_ec_probe),
     DEVMETHOD(device_attach,	acpi_ec_attach),
+
+    /* Embedded controller interface */
+    DEVMETHOD(acpi_ec_read,     acpi_ec_read_method),
+    DEVMETHOD(acpi_ec_write,    acpi_ec_write_method),
 
     {0, 0}
 };
@@ -620,6 +628,33 @@ error:
 			     sc->ec_data_res);
     /* mtx_destroy(&sc->ec_mtx); */
     return (ENXIO);
+}
+
+/* Methods to allow other devices (e.g., smbat) to read/write EC space. */
+static int
+acpi_ec_read_method(device_t dev, u_int addr, ACPI_INTEGER *val, int width)
+{
+    struct acpi_ec_softc *sc;
+    ACPI_STATUS status;
+
+    sc = device_get_softc(dev);
+    status = EcSpaceHandler(ACPI_READ, addr, width * 8, val, sc, NULL);
+    if (ACPI_FAILURE(status))
+        return (ENXIO);
+    return (0);
+}
+
+static int
+acpi_ec_write_method(device_t dev, u_int addr, ACPI_INTEGER val, int width)
+{
+    struct acpi_ec_softc *sc;
+    ACPI_STATUS status;
+
+    sc = device_get_softc(dev);
+    status = EcSpaceHandler(ACPI_WRITE, addr, width * 8, &val, sc, NULL);
+    if (ACPI_FAILURE(status))
+        return (ENXIO);
+    return (0);
 }
 
 static void

@@ -26,9 +26,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpivar.h,v 1.71 2004/06/13 22:52:30 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.12 2007/10/23 03:04:48 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.13 2008/08/27 16:35:19 hasso Exp $
  */
 
+#include "acpi_if.h"
 #include "bus_if.h"
 #include <sys/eventhandler.h>
 #include <sys/sysctl.h>

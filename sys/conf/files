@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.229 2008/07/28 15:07:28 sephe Exp $
+# $DragonFly: src/sys/conf/files,v 1.230 2008/08/27 16:35:19 hasso Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1537,6 +1537,7 @@ ${OSACPI_MI_DIR}/acpi_button.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_cmbat.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_cpu.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_ec.c		optional acpi
+${OSACPI_MI_DIR}/acpi_if.m		optional acpi
 ${OSACPI_MI_DIR}/acpi_isab.c		optional acpi isa
 ${OSACPI_MI_DIR}/acpi_lid.c		optional acpi
 ${OSACPI_MI_DIR}/acpi_package.c		optional acpi

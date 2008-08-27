@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.160 2004/06/14 03:52:19 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.34 2008/06/05 18:06:31 swildner Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.35 2008/08/27 16:35:19 hasso Exp $
  */
 
 #include "opt_acpi.h"
@@ -135,6 +135,7 @@ static int	acpi_release_resource(device_t bus, device_t child, int type,
 			int rid, struct resource *r);
 static uint32_t	acpi_isa_get_logicalid(device_t dev);
 static int	acpi_isa_get_compatid(device_t dev, uint32_t *cids, int count);
+static char	*acpi_device_id_probe(device_t bus, device_t dev, char **ids);
 static int	acpi_isa_pnp_probe(device_t bus, device_t child,
 			struct isa_pnp_id *ids);
 static void	acpi_probe_children(device_t bus);
@@ -189,6 +190,9 @@ static device_method_t acpi_methods[] = {
     DEVMETHOD(bus_deactivate_resource,	bus_generic_deactivate_resource),
     DEVMETHOD(bus_setup_intr,		bus_generic_setup_intr),
     DEVMETHOD(bus_teardown_intr,	bus_generic_teardown_intr),
+
+    /* ACPI bus */
+    DEVMETHOD(acpi_id_probe,		acpi_device_id_probe),
 
     /* ISA emulation */
     DEVMETHOD(isa_pnp_probe,		acpi_isa_pnp_probe),
@@ -1121,6 +1125,24 @@ out:
 	AcpiOsFree(buf.Pointer);
     ACPI_UNLOCK;
     return_VALUE (valid);
+}
+
+static char *
+acpi_device_id_probe(device_t bus, device_t dev, char **ids) 
+{
+    ACPI_HANDLE h;
+    int i;
+
+    h = acpi_get_handle(dev);
+    if (ids == NULL || h == NULL || acpi_get_type(dev) != ACPI_TYPE_DEVICE)
+	return (NULL);
+
+    /* Try to match one of the array of IDs with a HID or CID. */
+    for (i = 0; ids[i] != NULL; i++) {
+	if (acpi_MatchHid(h, ids[i]))
+	    return (ids[i]);
+    }
+    return (NULL);
 }
 
 static int
