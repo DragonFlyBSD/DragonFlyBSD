@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.51 2008/08/23 06:56:22 sephe Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.52 2008/08/27 14:00:45 sephe Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -584,7 +584,7 @@ m_getb(int len, int how, int type, int flags)
 #define	PACKET_TAG_IPV6_INPUT			8 /* IPV6 input processing */
 /* struct ip6aux */
 #define	PACKET_TAG_IPFW_DIVERT			9 /* divert info */
-/* uint16_t */
+/* struct divert_info */
 #define	PACKET_TAG_DUMMYNET			15 /* dummynet info */
 /* struct dn_pkt */
 #define	PACKET_TAG_IPFORWARD			18 /* ipforward info */

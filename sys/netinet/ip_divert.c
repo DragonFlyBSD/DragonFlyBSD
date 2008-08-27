@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.36 2008/03/07 11:34:20 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.37 2008/08/27 14:00:45 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -72,6 +72,7 @@
 #include <netinet/in_pcb.h>
 #include <netinet/in_var.h>
 #include <netinet/ip_var.h>
+#include <netinet/ip_divert.h>
 
 /*
  * Divert sockets
@@ -228,11 +229,13 @@ div_packet(struct mbuf *m, int incoming, int port)
 	struct inpcb *inp;
 	struct socket *sa;
 	struct m_tag *mtag;
+	struct divert_info *divinfo;
 	u_int16_t nport;
 
-	/* Locate the divert tag */
+	/* Locate the divert info */
 	mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
-	divsrc.sin_port = *(u_int16_t *)m_tag_data(mtag);
+	divinfo = m_tag_data(mtag);
+	divsrc.sin_port = divinfo->skipto;
 
 	/*
 	 * Record receive interface address, if any.
@@ -377,6 +380,7 @@ div_output(struct socket *so, struct mbuf *m,
 {
 	int error = 0;
 	struct m_tag *mtag;
+	struct divert_info *divinfo;
 
 	if (control)
 		m_freem(control);		/* XXX */
@@ -386,7 +390,7 @@ div_output(struct socket *so, struct mbuf *m,
 	 * with a 0 tag in mh_data is effectively untagged,
 	 * so we could optimize that case.
 	 */
-	mtag = m_tag_get(PACKET_TAG_IPFW_DIVERT, sizeof(u_int16_t), MB_DONTWAIT);
+	mtag = m_tag_get(PACKET_TAG_IPFW_DIVERT, sizeof(*divinfo), MB_DONTWAIT);
 	if (mtag == NULL) {
 		error = ENOBUFS;
 		goto cantsend;
@@ -394,10 +398,11 @@ div_output(struct socket *so, struct mbuf *m,
 	m_tag_prepend(m, mtag);
 
 	/* Loopback avoidance and state recovery */
+	divinfo = m_tag_data(mtag);
 	if (sin)
-		*(u_int16_t *)m_tag_data(mtag) = sin->sin_port;
+		divinfo->skipto = sin->sin_port;
 	else
-		*(u_int16_t *)m_tag_data(mtag) = 0;
+		divinfo->skipto = 0;
 
 	/* Reinject packet into the system as incoming or outgoing */
 	if (DIV_IS_OUTPUT(sin)) {

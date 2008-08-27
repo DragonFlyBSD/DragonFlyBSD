@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.77 2008/08/26 11:42:40 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.78 2008/08/27 14:00:45 sephe Exp $
  */
 
 #define        DEB(x)
@@ -77,6 +77,7 @@
 #include <netinet/tcpip.h>
 #include <netinet/udp.h>
 #include <netinet/udp_var.h>
+#include <netinet/ip_divert.h>
 
 #include <netinet/if_ether.h> /* XXX for ETHERTYPE_IP */
 
@@ -1627,6 +1628,7 @@ ipfw_chk(struct ip_fw_args *args)
 	struct ip_fw *f = NULL;		/* matching rule */
 	int retval = 0;
 	struct m_tag *mtag;
+	struct divert_info *divinfo;
 
 	/*
 	 * hlen	The length of the IPv4 header.
@@ -1784,10 +1786,12 @@ after_ip_checks:
 		int skipto;
 
 		mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
-		if (mtag != NULL)
-			skipto = *(uint16_t *)m_tag_data(mtag);
-		else
+		if (mtag != NULL) {
+			divinfo = m_tag_data(mtag);
+			skipto = divinfo->skipto;
+		} else {
 			skipto = 0;
+		}
 
 		f = ctx->ipfw_layer3_chain;
 		if (args->eh == NULL && skipto != 0) {
@@ -2280,13 +2284,18 @@ check_body:
 					break;
 
 				mtag = m_tag_get(PACKET_TAG_IPFW_DIVERT,
-						 sizeof(uint16_t), MB_DONTWAIT);
+						 sizeof(*divinfo), MB_DONTWAIT);
 				if (mtag == NULL) {
 					retval = IP_FW_PORT_DENY_FLAG;
 					goto done;
 				}
-				*(uint16_t *)m_tag_data(mtag) = f->rulenum;
+				divinfo = m_tag_data(mtag);
+
+				divinfo->skipto = f->rulenum;
+				divinfo->port = cmd->arg1;
+				divinfo->tee = (cmd->opcode == O_TEE);
 				m_tag_prepend(m, mtag);
+
 				retval = (cmd->opcode == O_DIVERT) ?
 				    cmd->arg1 :
 				    cmd->arg1 | IP_FW_PORT_TEE_FLAG;
