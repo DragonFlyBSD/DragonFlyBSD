@@ -32,7 +32,7 @@
  *
  *	@(#)queue.h	8.5 (Berkeley) 8/20/94
  * $FreeBSD: src/sys/sys/queue.h,v 1.32.2.7 2002/04/17 14:21:02 des Exp $
- * $DragonFly: src/sys/sys/queue.h,v 1.10 2008/07/23 17:22:33 dillon Exp $
+ * $DragonFly: src/sys/sys/queue.h,v 1.11 2008/08/28 08:42:29 hasso Exp $
  */
 
 #ifndef _SYS_QUEUE_H_
@@ -103,7 +103,7 @@
  * _PREV		-	-	-	+	+
  * _LAST		-	-	+	+	+
  * _FOREACH		+	+	+	+	+
- * _FOREACH_MUTABLE	-	+	-	+	-
+ * _FOREACH_MUTABLE	-	+	+	+	-
  * _FOREACH_REVERSE	-	-	-	+	+
  * _INSERT_HEAD		+	+	+	+	+
  * _INSERT_BEFORE	-	+	-	+	+
@@ -214,6 +214,11 @@ struct {								\
 	for((var) = STAILQ_FIRST((head));				\
 	   (var);							\
 	   (var) = STAILQ_NEXT((var), field))
+
+#define STAILQ_FOREACH_MUTABLE(var, head, field, tvar)			\
+	for ((var) = STAILQ_FIRST((head));				\
+	    (var) && ((tvar) = STAILQ_NEXT((var), field), 1);		\
+	    (var) = (tvar))
 
 #define	STAILQ_INIT(head) do {						\
 	STAILQ_FIRST((head)) = NULL;					\
