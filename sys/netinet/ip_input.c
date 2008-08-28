@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.95 2008/08/28 14:10:03 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.96 2008/08/28 14:15:47 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -705,12 +705,9 @@ iphack:
 				return;
 			m = clone;
 			ip = mtod(m, struct ip *);
+
 			/*
-			 * Jump backwards to complete processing of the
-			 * packet. But first clear divert_info to avoid
-			 * entering this block again.
-			 * We do not need to clear args.divert_rule as
-			 * it will not be used.
+			 * Complete processing of the packet.
 			 *
 			 * XXX
 			 * Better safe than sorry, remove the DIVERT
@@ -1069,12 +1066,7 @@ bad:
  * Take incoming datagram fragment and try to reassemble it into
  * whole datagram.  If a chain for reassembly of this datagram already
  * exists, then it is given as fp; otherwise have to make a chain.
- *
- * When IPDIVERT enabled, keep additional state with each packet that
- * tells us if we need to divert or tee the packet we're building.
- * In particular, *divinfo includes the port and TEE flag.
  */
-
 static struct mbuf *
 ip_reass(struct mbuf *m)
 {
