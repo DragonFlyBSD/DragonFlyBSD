@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD$
-.\" $DragonFly: src/share/man/man4/acpi_thinkpad.4,v 1.3 2008/08/28 17:00:27 swildner Exp $
+.\" $DragonFly: src/share/man/man4/acpi_thinkpad.4,v 1.4 2008/08/28 20:30:46 swildner Exp $
 .\"
 .Dd August 28, 2008
 .Dt ACPI_THINKPAD 4
@@ -180,8 +180,7 @@ driver being loaded, only the Fn+F4 button generates an ACPI event.
 Sets the ACPI events which are reported to
 .Xr devd 8
 (not yet available in
-.Dx
-).
+.Dx ) .
 Fn+F3, Fn+F4 and Fn+F12 always generate ACPI events, regardless which value
 .Va eventmask
 has.
