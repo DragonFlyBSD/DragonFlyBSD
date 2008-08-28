@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpivar.h,v 1.71 2004/06/13 22:52:30 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.13 2008/08/27 16:35:19 hasso Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.14 2008/08/28 16:46:54 hasso Exp $
  */
 
 #include "acpi_if.h"
@@ -138,7 +138,7 @@ struct acpi_prw_data {
 #define	ACPI_PROCESSOR		0x00800000
 #define	ACPI_THERMAL		0x01000000
 #define	ACPI_TIMER		0x02000000
-#define	ACPI_ASUS		0x04000000
+#define	ACPI_OEM		0x04000000
 
 /*
  * Constants for different interrupt models used with acpi_SetIntrModel().
