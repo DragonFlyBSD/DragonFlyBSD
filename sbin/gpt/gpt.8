@@ -23,9 +23,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/gpt/gpt.8,v 1.17 2006/06/22 22:22:32 marcel Exp $
-.\" $DragonFly: src/sbin/gpt/gpt.8,v 1.8 2008/08/22 20:38:38 thomas Exp $
+.\" $DragonFly: src/sbin/gpt/gpt.8,v 1.9 2008/08/28 21:12:44 thomas Exp $
 .\"
-.Dd August 22, 2008
+.Dd August 28, 2008
 .Os
 .Dt GPT 8
 .Sh NAME
@@ -424,49 +424,61 @@ To print the contents of the GPT:
 .Pp
 .Dl "gpt show ad6"
 .Ss Boot Setup
-To setup a disk using GPT for booting, the following steps can be used:
-.Em NOTE!
-This will delete any previous data on disk.
+To setup a disk using GPT for booting, the steps below can be used.
+System is copied from an already installed disk,
+e.g.\& a hard disk or an install CD.
+This example will setup disk
+.Pa da8
+with GPT for booting, using the
+.Ic boot
+command.
+.Pp
+.Em WARNING!
+Any previous data on disk installed to will be deleted.
 .Bd -literal -offset indent
 gpt create -f da8
 gpt boot da8
-boot0cfg -o packet da8
+boot0cfg -s 2 -o packet da8
 disklabel -B -r -w da8s0 auto
-disklabel -e da8s0	# add `a' partition covering whole slice
-
-newfs /dev/da8s0a
-mount /dev/da8s0a /mnt
-mv /boot /mnt
-chflags noschg /kernel
-mv /kernel /mnt
-chflags schg /mnt/kernel
-mv /modules /mnt
-mv /kernel.old /mnt
-mv /modules.old /mnt
-vi /mnt/boot/loader.conf # add: vfs.root.mountfrom="hammer:da8s1a"
-umount /mnt
+disklabel -e da8s0	# add `a' partition with fstype `4.2BSD' covering whole slice
 
 gpt add da8
 disklabel64 -r -w da8s1 auto
-disklabel64 -e da8s1	# add `a' partition covering whole slice
+disklabel64 -e da8s1	# add `b' partition with fstype `swap' and size 4GB,
+			# add `a' partition with fstype `HAMMER' covering rest of slice
 newfs_hammer -L root /dev/da8s1a
 mount_hammer /dev/da8s1a /mnt
 cpdup / /mnt		# copy each file system you need, e.g.
 cpdup /var /mnt/var
 cpdup /usr /mnt/usr
 
-mkdir /mnt/boot_
-mount /dev/da8s0a /mnt/boot_
-vi /mnt/etc/fstab	# add: /dev/da8s0a /boot_ ufs rw 1 1
-cd /mnt			# add links for installkernel/world use
-ln -s boot_/boot
-ln -s boot_/kernel
-ln -s boot_/modules
-ln -s boot_/kernel.old
-ln -s boot_/modules.old
+newfs /dev/da8s0a
+mkdir /mnt/boot-fs
+mount /dev/da8s0a /mnt/boot-fs
+cd /mnt
+vi etc/fstab		# add `/dev/da8s1a / hammer rw',
+			# add `/dev/da8s1b none swap sw',
+			# add `/dev/da8s0a /boot-fs ufs rw 1 1',
+			# delete lines for file systems cpdup'ed above
+chflags noschg kernel
+mv boot kernel modules kernel.old modules.old boot-fs
+chflags schg boot-fs/kernel
+ln -s boot-fs/boot
+
+vi boot/loader.conf	# add `vfs.root.mountfrom="hammer:da8s1a"'
 cd
+umount /mnt/boot-fs
 umount /mnt
 .Ed
+.Pp
+.Em NOTE!
+When installing a new kernel, it needs to be installed to
+.Pa /boot-fs ,
+see
+.Xr build 7 ,
+command below can be used:
+.Pp
+.Dl "make installkernel DESTDIR=/boot-fs"
 .Sh COMPATIBILITY
 The GPT that
 .Nm
@@ -477,6 +489,7 @@ With the prevalent sector size of 512B this is 8 billion TB.
 .Xr uuid 3 ,
 .Xr disklabel64 5 ,
 .Xr uuids 5 ,
+.Xr build 7 ,
 .Xr boot0cfg 8 ,
 .Xr disklabel 8 ,
 .Xr disklabel64 8 ,
