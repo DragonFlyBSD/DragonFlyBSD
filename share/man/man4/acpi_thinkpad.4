@@ -24,10 +24,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD$
-.\" $DragonFly: src/share/man/man4/acpi_thinkpad.4,v 1.1 2008/08/28 10:32:27 hasso Exp $
+.\" $DragonFly: src/share/man/man4/acpi_thinkpad.4,v 1.2 2008/08/28 16:39:22 swildner Exp $
 .\"
-.Dd January 14, 2006
-.Dt ACPI_IBM 4 i386
+.Dd August 28, 2008
+.Dt ACPI_THINKPAD 4
 .Os
 .Sh NAME
 .Nm acpi_thinkpad
@@ -54,7 +54,7 @@ Thinkpad laptops.
 The main purpose of this driver is to provide an interface,
 accessible via
 .Xr sysctl 8
-and
+.\" and
 .\" .Xr devd 8 ,
 through which applications can determine the status of
 various laptop components.
@@ -440,7 +440,7 @@ Sensors can be monitored by
 .\"         ${ECHO} ${MESSAGE} >> ${DISPLAY_PIPE} &
 .\" fi
 .\" exit 0
-.Ed
+.\" .Ed
 .Sh SEE ALSO
 .Xr acpi 4 ,
 .\" .Xr led 4 ,
