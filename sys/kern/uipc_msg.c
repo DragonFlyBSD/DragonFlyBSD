@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.23 2008/07/10 00:19:27 aggelos Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.24 2008/08/28 23:15:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,20 +50,39 @@
 #include <net/netisr.h>
 #include <net/netmsg.h>
 
-int
+/*
+ * Abort a socket and free it
+ */
+void
 so_pru_abort(struct socket *so)
 {
-	int error;
 	struct netmsg_pru_abort msg;
 	lwkt_port_t port;
 
 	port = so->so_proto->pr_mport(so, NULL, NULL, PRU_ABORT);
-	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
-		    netmsg_pru_abort);
+	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport,
+		    0, netmsg_pru_abort);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_abort;
 	msg.nm_so = so;
-	error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
-	return (error);
+	(void)lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
+}
+
+/*
+ * Abort a socket and free it, asynchronously.
+ */
+void
+so_pru_aborta(struct socket *so)
+{
+	struct netmsg_pru_abort *msg;
+	lwkt_port_t port;
+
+	msg = kmalloc(sizeof(*msg), M_LWKTMSG, M_WAITOK | M_ZERO);
+	port = so->so_proto->pr_mport(so, NULL, NULL, PRU_ABORT);
+	netmsg_init(&msg->nm_netmsg, &netisr_afree_rport,
+		    0, netmsg_pru_abort);
+	msg->nm_prufn = so->so_proto->pr_usrreqs->pru_abort;
+	msg->nm_so = so;
+	lwkt_sendmsg(port, &msg->nm_netmsg.nm_lmsg);
 }
 
 int
@@ -406,12 +425,23 @@ so_pru_ctloutput(struct socket *so, struct sockopt *sopt)
  * our dispatcher ignores the return value, but since we are handling
  * the replymsg ourselves we return EASYNC by convention.
  */
+
+/*
+ * Abort and destroy a socket.
+ */
 void
 netmsg_pru_abort(netmsg_t msg)
 {
 	struct netmsg_pru_abort *nm = (void *)msg;
+	struct socket *so = nm->nm_so;
+	int error;
 
-	lwkt_replymsg(&msg->nm_lmsg, nm->nm_prufn(nm->nm_so));
+	KKASSERT(so->so_state & SS_ABORTING);
+	so->so_state &= ~SS_ABORTING;
+	error = nm->nm_prufn(so);
+	if (error)
+		sofree(so);
+	lwkt_replymsg(&msg->nm_lmsg, error);
 }
 
 #ifdef notused

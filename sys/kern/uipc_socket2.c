@@ -33,7 +33,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.31 2008/05/27 05:25:34 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.32 2008/08/28 23:15:43 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -229,6 +229,7 @@ struct socket *
 sonewconn(struct socket *head, int connstatus)
 {
 	struct socket *so;
+	struct socket *sp;
 	struct pru_attach_info ai;
 
 	if (head->so_qlen > 3 * head->so_qlimit / 2)
@@ -262,9 +263,15 @@ sonewconn(struct socket *head, int connstatus)
 		head->so_qlen++;
 	} else {
 		if (head->so_incqlen > head->so_qlimit) {
-			struct socket *sp;
 			sp = TAILQ_FIRST(&head->so_incomp);
-			(void) soabort(sp);
+			TAILQ_REMOVE(&head->so_incomp, sp, so_list);
+			head->so_incqlen--;
+			sp->so_state &= ~SS_INCOMP;
+			sp->so_head = NULL;
+			if ((sp->so_state & SS_ABORTING) == 0) {
+				sp->so_state |= SS_ABORTING;
+				soaborta(sp);
+			}
 		}
 		TAILQ_INSERT_TAIL(&head->so_incomp, so, so_list);
 		so->so_state |= SS_INCOMP;

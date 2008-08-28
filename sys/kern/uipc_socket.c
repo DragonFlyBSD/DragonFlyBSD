@@ -65,7 +65,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.53 2008/08/15 17:37:29 nth Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.54 2008/08/28 23:15:43 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -278,12 +278,22 @@ solisten(struct socket *so, int backlog, struct thread *td)
 	return (0);
 }
 
+/*
+ * Destroy a disconnected socket.  This routine is a NOP if entities
+ * still have a reference on the socket:
+ *
+ *	so_pcb -	The protocol stack still has a reference
+ *	SS_NOFDREF -	There is no longer a file pointer reference
+ *	SS_ABORTING -	An abort netmsg is in-flight
+ */
 void
 sofree(struct socket *so)
 {
 	struct socket *head = so->so_head;
 
 	if (so->so_pcb || (so->so_state & SS_NOFDREF) == 0)
+		return;
+	if (so->so_state & SS_ABORTING)
 		return;
 	if (head != NULL) {
 		if (so->so_state & SS_INCOMP) {
@@ -350,21 +360,27 @@ drop:
 	}
 discard:
 	if (so->so_options & SO_ACCEPTCONN) {
-		struct socket *sp, *sonext;
+		struct socket *sp;
 
-		sp = TAILQ_FIRST(&so->so_incomp);
-		for (; sp != NULL; sp = sonext) {
-			sonext = TAILQ_NEXT(sp, so_list);
-			(void) soabort(sp);
+		while ((sp = TAILQ_FIRST(&so->so_incomp)) != NULL) {
+			TAILQ_REMOVE(&so->so_incomp, sp, so_list);
+			sp->so_state &= ~SS_INCOMP;
+			sp->so_head = NULL;
+			so->so_incqlen--;
+			if ((sp->so_state & SS_ABORTING) == 0) {
+				sp->so_state |= SS_ABORTING;
+				soaborta(sp);
+			}
 		}
-		for (sp = TAILQ_FIRST(&so->so_comp); sp != NULL; sp = sonext) {
-			sonext = TAILQ_NEXT(sp, so_list);
-			/* Dequeue from so_comp since sofree() won't do it */
+		while ((sp = TAILQ_FIRST(&so->so_comp)) != NULL) {
 			TAILQ_REMOVE(&so->so_comp, sp, so_list);
-			so->so_qlen--;
 			sp->so_state &= ~SS_COMP;
 			sp->so_head = NULL;
-			(void) soabort(sp);
+			so->so_qlen--;
+			if ((sp->so_state & SS_ABORTING) == 0) {
+				sp->so_state |= SS_ABORTING;
+				soaborta(sp);
+			}
 		}
 	}
 	if (so->so_state & SS_NOFDREF)
@@ -376,19 +392,18 @@ discard:
 }
 
 /*
- * Must be called from a critical section.
+ * Abort and destroy a socket.
  */
-int
+void
 soabort(struct socket *so)
 {
-	int error;
+	so_pru_abort(so);
+}
 
-	error = so_pru_abort(so);
-	if (error) {
-		sofree(so);
-		return error;
-	}
-	return (0);
+void
+soaborta(struct socket *so)
+{
+	so_pru_aborta(so);
 }
 
 int
