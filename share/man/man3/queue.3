@@ -31,9 +31,9 @@
 .\"
 .\"	@(#)queue.3	8.2 (Berkeley) 1/24/94
 .\" $FreeBSD: src/share/man/man3/queue.3,v 1.15.2.7 2001/12/18 10:09:02 ru Exp $
-.\" $DragonFly: src/share/man/man3/queue.3,v 1.6 2008/07/24 01:24:24 swildner Exp $
+.\" $DragonFly: src/share/man/man3/queue.3,v 1.7 2008/08/28 09:35:53 hasso Exp $
 .\"
-.Dd July 23, 2008
+.Dd August 28, 2008
 .Dt QUEUE 3
 .Os
 .Sh NAME
@@ -54,6 +54,7 @@
 .Nm STAILQ_ENTRY ,
 .Nm STAILQ_FIRST ,
 .Nm STAILQ_FOREACH ,
+.Nm STAILQ_FOREACH_MUTABLE ,
 .Nm STAILQ_HEAD ,
 .Nm STAILQ_HEAD_INITIALIZER ,
 .Nm STAILQ_INIT ,
@@ -135,6 +136,7 @@ lists, tail queues, and circular queues
 .Fn STAILQ_ENTRY "TYPE"
 .Fn STAILQ_FIRST "STAILQ_HEAD *head"
 .Fn STAILQ_FOREACH "TYPE *var" "STAILQ_HEAD *head" "STAILQ_ENTRY NAME"
+.Fn STAILQ_FOREACH_MUTABLE "TYPE *var" "STAILQ_HEAD *head" "STAILQ_ENTRY NAME" "TYPE * temp_var"
 .Fn STAILQ_HEAD "HEADNAME" "TYPE"
 .Fn STAILQ_HEAD_INITIALIZER "STAILQ_HEAD head"
 .Fn STAILQ_INIT "STAILQ_HEAD *head"
@@ -523,6 +525,20 @@ traverses the tail queue referenced by
 in the forward direction, assigning each element
 in turn to
 .Fa var .
+.Pp
+The macro
+.Nm STAILQ_FOREACH_MUTABLE
+traverses the tail queue referenced by
+.Fa head
+in the forward direction, assigning each element
+in turn to
+.Fa var .
+However, unlike
+.Fa STAILQ_FOREACH
+here it is permitted to both remove
+.Fa var
+as well as free it from within the loop safely without interfering with the
+traversal.
 .Pp
 The macro
 .Nm STAILQ_INIT
