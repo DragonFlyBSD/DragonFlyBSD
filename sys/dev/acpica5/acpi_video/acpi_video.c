@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_video.c,v 1.13 2006/08/10 13:18:02 bruno Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_video/acpi_video.c,v 1.1 2008/08/28 09:25:42 hasso Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_video/acpi_video.c,v 1.2 2008/08/28 11:05:34 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -328,7 +328,7 @@ acpi_video_notify_handler(ACPI_HANDLE handle, UINT32 notify, void *context)
 		STAILQ_FOREACH(vo, &sc->vid_outputs, vo_next)
 			vo->handle = NULL;
 		acpi_video_bind_outputs(sc);
-		STAILQ_FOREACH_SAFE(vo, &sc->vid_outputs, vo_next, vo_tmp) {
+		STAILQ_FOREACH_MUTABLE(vo, &sc->vid_outputs, vo_next, vo_tmp) {
 			if (vo->handle == NULL) {
 				STAILQ_REMOVE(&sc->vid_outputs, vo,
 				    acpi_video_output, vo_next);
