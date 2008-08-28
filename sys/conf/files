@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.230 2008/08/27 16:35:19 hasso Exp $
+# $DragonFly: src/sys/conf/files,v 1.231 2008/08/28 06:16:32 hasso Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1561,6 +1561,8 @@ ${OSACPI_MI_DIR}/Osd/OsdSchedule.c	optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdStream.c	optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdSynch.c		optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdTable.c		optional acpi
+
+${OSACPI_MI_DIR}/acpi_toshiba/acpi_toshiba.c	optional acpi_toshiba acpi
 
 # ACPICA code
 ${ACPICA_DIR}/debugger/dbcmds.c			optional acpi acpi_debug

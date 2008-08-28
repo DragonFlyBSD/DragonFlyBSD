@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpi_support/acpi_toshiba.c,v 1.10 2004/06/15 02:17:23 njl Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/Attic/acpi_toshiba.c,v 1.6 2007/10/23 03:04:49 y0netan1 Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_toshiba/acpi_toshiba.c,v 1.1 2008/08/28 06:16:32 hasso Exp $
  */
 
 #include "opt_acpi.h"
