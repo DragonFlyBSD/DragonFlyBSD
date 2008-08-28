@@ -32,7 +32,7 @@
  *
  *	@(#)in_proto.c	8.2 (Berkeley) 2/9/95
  * $FreeBSD: src/sys/netinet/in_proto.c,v 1.53.2.7 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in_proto.c,v 1.15 2007/12/19 11:00:22 sephe Exp $
+ * $DragonFly: src/sys/netinet/in_proto.c,v 1.16 2008/08/28 14:24:59 sephe Exp $
  */
 
 #include "opt_ipdivert.h"
@@ -69,7 +69,9 @@
 #include <netinet/udp.h>
 #include <netinet/udp_var.h>
 #include <netinet/ip_encap.h>
-
+#ifdef IPDIVERT
+#include <netinet/ip_divert.h>
+#endif
 
 /*
  * TCP/IP protocol family: IP, ICMP, UDP, TCP.

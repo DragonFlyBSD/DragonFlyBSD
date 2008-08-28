@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.52 2008/08/28 14:10:03 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.53 2008/08/28 14:24:59 sephe Exp $
  */
 
 #define _IP_VHL
@@ -65,6 +65,9 @@
 #include <netinet/in_pcb.h>
 #include <netinet/in_var.h>
 #include <netinet/ip_var.h>
+#ifdef IPDIVERT
+#include <netinet/ip_divert.h>
+#endif
 
 #include <netproto/mpls/mpls_var.h>
 

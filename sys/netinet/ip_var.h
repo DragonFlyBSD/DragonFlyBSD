@@ -32,7 +32,7 @@
  *
  *	@(#)ip_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/ip_var.h,v 1.50.2.13 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/ip_var.h,v 1.24 2008/08/28 14:10:03 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_var.h,v 1.25 2008/08/28 14:24:59 sephe Exp $
  */
 
 #ifndef _NETINET_IP_VAR_H_
@@ -228,16 +228,6 @@ int	ip_rsvp_done(void);
 extern int	(*ip_rsvp_vif)(struct socket *, struct sockopt *);
 extern void	(*ip_rsvp_force_done)(struct socket *);
 extern void	(*rsvp_input_p)(struct mbuf *m, ...);
-
-#ifdef IPDIVERT
-void	div_init(void);
-void	div_input(struct mbuf *, ...);
-struct lwkt_port *
-	div_soport(struct socket *, struct sockaddr *,
-		   struct mbuf **, int);
-void	divert_packet(struct mbuf *, int);
-extern struct pr_usrreqs div_usrreqs;
-#endif
 
 extern	struct pfil_head inet_pfil_hook;
 
