@@ -25,66 +25,68 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libc/amd64/gen/mcontext.S,v 1.1 2007/08/21 19:49:10 corecode Exp $
+ * $DragonFly: src/lib/libc/amd64/gen/mcontext.S,v 1.2 2008/08/28 23:36:31 dillon Exp $
  */
 
 #include <machine/asm.h>
 #include <asmcontext.h>
 
 	/*
-	 * int get_mcontext(mcontext_t *mcp)
+	 * int get_mcontext(mcontext_t *mcp : rdi)
 	 *
 	 * Copy the caller's context into the mcontext, %eax excepted.
 	 */
         .weak   get_mcontext
         .set    get_mcontext,_get_mcontext
 ENTRY(_get_mcontext)
-	movl	4(%esp),%eax
-	/*	mc_onstack,0*4(%eax)	*/
-	movw	%gs,1*4(%eax)
-	movw	%fs,2*4(%eax)
-	movw	%es,3*4(%eax)
-	/*	%ds,4*4(%eax)	*/
-	movl	%edi,5*4(%eax)
-	movl	%esi,6*4(%eax)
-	movl	%ebp,7*4(%eax)
-	/*	%isp,8*4(%eax)	*/
-	movl	%ebx,9*4(%eax)
-	movl	%edx,10*4(%eax)
-	movl	%ecx,11*4(%eax)
-	/*	mc_eax:		12*4(%eax)	*/
-	/*	mc_xflags:	13*4(%eax)	*/
-	/*	mc_trapno:	14*4(%eax)	*/
-	/*	mc_err:		15*4(%eax)	*/
-	/*	mc_eip:		16*4(%eax)	*/
-	/*	mc_cs:		17*4(%eax)	*/
-	/*	mc_eflags:	18*4(%eax)	*/
-	/*	mc_esp:		19*4(%eax)	*/
+	/*	MC_ONSTACK(%rdi)	*/
+	movq	%rdi,MC_RDI(%rdi)
+	movq	%rsi,MC_RSI(%rdi)
+	movq	%rdx,MC_RDX(%rdi)
+	movq	%r8,MC_R8(%rdi)
+	movq	%r9,MC_R9(%rdi)
+	/* movq	%rax,MC_RAX(%rdi) - not needed, replaced below */
+	movq	%rbx,MC_RBX(%rdi)
+	movq	%rbp,MC_RBP(%rdi)
+	movq	%r10,MC_R10(%rdi)
+	movq	%r11,MC_R11(%rdi)
+	movq	%r12,MC_R12(%rdi)
+	movq	%r13,MC_R13(%rdi)
+	movq	%r14,MC_R14(%rdi)
+	movq	%r15,MC_R15(%rdi)
+	/*	MC_TRAPNO(%rdi)	*/
+	/*	MC_ADDR(%rdi)	*/
+	/*	MC_FLAGS(%rdi)	*/
+	/*	MC_ERR(%rdi)	*/
+	/*	MC_RIP(%rdi)	- see below */
+	/*	MC_CS(%rdi)	*/
+	/*	MC_RFLAGS(%rdi)	*/
+	/*	MC_RSP(%rdi)	- see below */
+	/*	MC_SS(%rdi)	*/
 
 	/*
 	 * Saved stack pointer as if we had returned from this
 	 * procedure.
 	 */
-	movl	%esp,19*4(%eax)
-	addl	$4,19*4(%eax)
+	movq	%rsp,MC_RSP(%eax)
+	addq	$8,MC_RSP(%eax)
 
 	/*
 	 * Save eflags
-	pushfl
-	popl	18*4(%eax)
+	 * XXX
 	 */
 
 	/*
 	 * Saved instruction pointer as if we had returned from
 	 * this procedure.
 	 */
-	movl	(%esp),%edx
-	movl	%edx,16*4(%eax)
+	movq	(%rsp),%rdx
+	movq	%rdx,MC_RIP(%rdi)
 
 	/*
 	 * On restore as if procedure returned the value 1
 	 */
-	movl	$1,12*4(%eax)	
+	movq	$1,MC_RAX(%rdi)	
 
 	/*
 	 * Set MC_LEN
@@ -94,7 +96,7 @@ ENTRY(_get_mcontext)
 	/*
 	 * Return 0
 	 */
-	xorl	%eax,%eax
+	subq	%rax,%rax
 	ret
 
 
@@ -107,46 +109,50 @@ ENTRY(_get_mcontext)
         .weak   set_mcontext
         .set    set_mcontext,_set_mcontext
 ENTRY(_set_mcontext)
-	movl	4(%esp),%eax
-	/*	0*4(%eax),mc_onstack	*/
-	movw	1*4(%eax),%gs
-	movw	2*4(%eax),%fs
-	movw	3*4(%eax),%es
-	/*	4*4(%eax),%ds	*/
-	movl	5*4(%eax),%edi
-	movl	6*4(%eax),%esi
-	movl	7*4(%eax),%ebp
-	/*	8*4(%eax),%isp	*/
-	movl	9*4(%eax),%ebx
-	movl	10*4(%eax),%edx
-	movl	11*4(%eax),%ecx
-	/*	mc_eax:		12*4(%eax)	*/
-	/*	mc_xflags:	13*4(%eax)	*/
-	/*	mc_trapno:	14*4(%eax)	*/
-	/*	mc_err:		15*4(%eax)	*/
-	/*	mc_eip:		16*4(%eax)	*/
-	/*	mc_cs:		17*4(%eax)	*/
-	/*	mc_eflags:	18*4(%eax)	*/
-	/*	mc_esp:		19*4(%eax)	*/
+	/*	MC_ONSTACK(%rdi)	*/
+	/*	MC_RDI(%rdi)	- see below */
+	movq	MC_RSI(%rdi),%rsi
+	movq	MC_RDX(%rdi),%rdx
+	movq	MC_R8(%rdi),%r8
+	movq	MC_R9(%rdi),%r9
+	/*	MC_RAX(%rdi)	- see below */
+	movq	MC_RBX(%rdi),%rbx
+	movq	MC_RBP(%rdi),%rbp
+	movq	MC_R10(%rdi),%r10
+	movq	MC_R11(%rdi),%r11
+	movq	MC_R12(%rdi),%r12
+	movq	MC_R13(%rdi),%r13
+	movq	MC_R14(%rdi),%r14
+	movq	MC_R15(%rdi),%r15
+	/*	MC_TRAPNO(%rdi)	*/
+	/*	MC_ADDR(%rdi)	*/
+	/*	MC_FLAGS(%rdi)	*/
+	/*	MC_ERR(%rdi)	*/
+	/*	MC_RIP(%rdi)	- see below */
+	/*	MC_CS(%rdi)	*/
+	/*	MC_RFLAGS(%rdi)	*/
+	/*	MC_RSP(%rdi)	- see below */
+	/*	MC_SS(%rdi)	*/
 
 	/*
 	 * Load the new stack pointer
 	 */
-	movl	19*4(%eax),%esp
+	movq	MC_RSP(%rdi),%rsp
 
 	/*
 	 * Restore the flags
-	pushl	18*4(%eax)
-	popfl
+	 * XXX
 	 */
 
 	/*
 	 * Push the return pc so we can 'ret' to it.
-	pushl	16*4(%eax)
 	 */
+	pushq	MC_RIP(%rdi)
 
 	/*
-	 * Load %eax last, and return.
+	 * Finally rax and rdi
 	 */
-	movl	12*4(%eax),%eax
-	ret
+	movq	MC_RAX(%rdi),%rax
+	movq	MC_RDI(%rdi),%rdi
+	retq
+
