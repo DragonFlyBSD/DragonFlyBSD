@@ -35,7 +35,7 @@
  *
  * @(#)cerror.s	5.1 (Berkeley) 4/23/90
  * $FreeBSD: src/lib/libc/amd64/sys/cerror.S,v 1.13 2003/04/30 18:16:33 peter Exp $
- * $DragonFly: src/lib/libc/amd64/sys/cerror.S,v 1.2 2006/07/27 00:44:27 corecode Exp $
+ * $DragonFly: src/lib/libc/amd64/sys/cerror.S,v 1.3 2008/08/28 23:38:52 dillon Exp $
  */
 
 #include <machine/asm.h>
@@ -45,8 +45,8 @@
 	.globl HIDENAME(cerror)
 
 HIDENAME(cerror):
-#ifdef PIC
 	pushq	%rax
+#ifdef PIC
 #  ifdef __thread
 	movq	PIC_GOT(CNAME(errno)),%rax
 #  else
@@ -62,7 +62,7 @@ HIDENAME(cerror):
 #  endif
 #endif
 	popq	%rcx
-	movq	%rcx,(%rax)
+	movl	%ecx,(%rax)
 	movq	$-1,%rax
 	movq	$-1,%rdx
 	ret
