@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.93 2008/08/23 09:06:37 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.94 2008/08/28 11:55:32 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -611,7 +611,92 @@ iphack:
 		if (i != 0 && !(i & IP_FW_PORT_DYNT_FLAG)) {
 			/* Divert or tee packet */
 			divert_info = i;
-			goto ours;
+
+			if (ip->ip_off & (IP_MF | IP_OFFMASK)) {
+				/*
+				 * Attempt reassembly; if it succeeds, proceed.
+				 * ip_reass() will return a different mbuf, and
+				 * update the divert info in divert_info.
+				 */
+				m = ip_reass(m, &divert_info);
+				if (m == NULL)
+					return;
+				ip = mtod(m, struct ip *);
+
+				needredispatch = TRUE;
+
+				/*
+				 * Get the header length of the reassembled
+				 * packet
+				 */
+				hlen = IP_VHL_HL(ip->ip_vhl) << 2;
+
+				/*
+				 * Restore original checksum before diverting
+				 * packet
+				 */
+				ip->ip_len += hlen;
+				ip->ip_len = htons(ip->ip_len);
+				ip->ip_off = htons(ip->ip_off);
+				ip->ip_sum = 0;
+				if (hlen == sizeof(struct ip))
+					ip->ip_sum = in_cksum_hdr(ip);
+				else
+					ip->ip_sum = in_cksum(m, hlen);
+				ip->ip_off = ntohs(ip->ip_off);
+				ip->ip_len = ntohs(ip->ip_len);
+			}
+
+			/*
+			 * Divert or tee packet to the divert protocol if
+			 * required.
+			 */
+			if (divert_info != 0) {
+				struct mbuf *clone = NULL;
+
+				/* Clone packet if we're doing a 'tee' */
+				if ((divert_info & IP_FW_PORT_TEE_FLAG) != 0)
+					clone = m_dup(m, MB_DONTWAIT);
+
+				/*
+				 * Restore packet header fields to original
+				 * values
+				 */
+				ip->ip_len = htons(ip->ip_len);
+				ip->ip_off = htons(ip->ip_off);
+
+				/* Deliver packet to divert input routine */
+				divert_packet(m, 1, divert_info & 0xffff);
+				ipstat.ips_delivered++;
+
+				/* If 'tee', continue with original packet */
+				if (clone == NULL)
+					return;
+				m = clone;
+				ip = mtod(m, struct ip *);
+				/*
+				 * Jump backwards to complete processing of the
+				 * packet. But first clear divert_info to avoid
+				 * entering this block again.
+				 * We do not need to clear args.divert_rule as
+				 * it will not be used.
+				 *
+				 * XXX
+				 * Better safe than sorry, remove the DIVERT
+				 * tag.
+				 */
+				mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT,
+						  NULL);
+				if (mtag != NULL)
+					m_tag_delete(m, mtag);
+
+				divert_info = 0;
+				goto pass;
+			} else {
+				kprintf("ip_input no divert info?!\n");
+				m_freem(m);
+				return;
+			}
 		}
 #endif
 		if (i == 0 && next_hop != NULL)
@@ -869,69 +954,9 @@ ours:
 		ip = mtod(m, struct ip *);
 		/* Get the header length of the reassembled packet */
 		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
-#ifdef IPDIVERT
-		/* Restore original checksum before diverting packet */
-		if (divert_info != 0) {
-			ip->ip_len += hlen;
-			ip->ip_len = htons(ip->ip_len);
-			ip->ip_off = htons(ip->ip_off);
-			ip->ip_sum = 0;
-			if (hlen == sizeof(struct ip))
-				ip->ip_sum = in_cksum_hdr(ip);
-			else
-				ip->ip_sum = in_cksum(m, hlen);
-			ip->ip_off = ntohs(ip->ip_off);
-			ip->ip_len = ntohs(ip->ip_len);
-			ip->ip_len -= hlen;
-		}
-#endif
 	} else {
 		ip->ip_len -= hlen;
 	}
-
-#ifdef IPDIVERT
-	/*
-	 * Divert or tee packet to the divert protocol if required.
-	 */
-	if (divert_info != 0) {
-		struct mbuf *clone = NULL;
-
-		/* Clone packet if we're doing a 'tee' */
-		if ((divert_info & IP_FW_PORT_TEE_FLAG) != 0)
-			clone = m_dup(m, MB_DONTWAIT);
-
-		/* Restore packet header fields to original values */
-		ip->ip_len += hlen;
-		ip->ip_len = htons(ip->ip_len);
-		ip->ip_off = htons(ip->ip_off);
-
-		/* Deliver packet to divert input routine */
-		divert_packet(m, 1, divert_info & 0xffff);
-		ipstat.ips_delivered++;
-
-		/* If 'tee', continue with original packet */
-		if (clone == NULL)
-			return;
-		m = clone;
-		ip = mtod(m, struct ip *);
-		ip->ip_len += hlen;
-		/*
-		 * Jump backwards to complete processing of the
-		 * packet. But first clear divert_info to avoid
-		 * entering this block again.
-		 * We do not need to clear args.divert_rule as
-		 * it will not be used.
-		 *
-		 * XXX Better safe than sorry, remove the DIVERT tag.
-		 */
-		mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
-		if (mtag != NULL)
-			m_tag_delete(m, mtag);
-		
-		divert_info = 0;
-		goto pass;
-	}
-#endif
 
 #ifdef IPSEC
 	/*
