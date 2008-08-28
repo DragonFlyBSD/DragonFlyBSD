@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.37 2008/08/27 14:00:45 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.38 2008/08/28 14:10:03 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -329,10 +329,12 @@ div_packet_handler(struct netmsg *nmsg)
 #endif	/* SMP */
 
 void
-divert_packet(struct mbuf *m, int incoming, int port)
+divert_packet(struct mbuf *m, int incoming)
 {
-	/* Sanity check */
-	KASSERT(port != 0, ("%s: port=0", __func__));
+	struct m_tag *mtag;
+	struct divert_info *divinfo;
+	int port;
+
 	M_ASSERTPKTHDR(m);
 
 	/* Assure header */
@@ -340,9 +342,12 @@ divert_packet(struct mbuf *m, int incoming, int port)
 	    (m = m_pullup(m, sizeof(struct ip))) == NULL)
 		return;
 
-	/* Sanity check */
-	KASSERT(m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL) != NULL,
-		("%s no divert tag!", __func__));
+	mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
+	KASSERT(mtag != NULL, ("%s no divert tag!", __func__));
+	divinfo = m_tag_data(mtag);
+
+	port = divinfo->port;
+	KASSERT(port != 0, ("%s: port=0", __func__));
 
 #ifdef SMP
 	if (mycpuid != 0) {

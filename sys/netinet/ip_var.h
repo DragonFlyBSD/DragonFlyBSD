@@ -32,7 +32,7 @@
  *
  *	@(#)ip_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/ip_var.h,v 1.50.2.13 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/ip_var.h,v 1.23 2008/08/23 06:56:22 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_var.h,v 1.24 2008/08/28 14:10:03 sephe Exp $
  */
 
 #ifndef _NETINET_IP_VAR_H_
@@ -87,9 +87,6 @@ struct ipq {
 	struct mbuf *ipq_frags;		/* to ip headers of fragments */
 	struct	in_addr ipq_src,ipq_dst;
 	u_char	ipq_nfrags;		/* # frags in this packet */
-#ifdef IPDIVERT
-	u_int32_t ipq_div_info;		/* ipfw divert port & flags */
-#endif
 };
 
 /*
@@ -238,7 +235,7 @@ void	div_input(struct mbuf *, ...);
 struct lwkt_port *
 	div_soport(struct socket *, struct sockaddr *,
 		   struct mbuf **, int);
-void	divert_packet(struct mbuf *m, int incoming, int port);
+void	divert_packet(struct mbuf *, int);
 extern struct pr_usrreqs div_usrreqs;
 #endif
 

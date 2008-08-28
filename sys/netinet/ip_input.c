@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.94 2008/08/28 11:55:32 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.95 2008/08/28 14:10:03 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -111,6 +111,9 @@
 #include <netinet/in_pcb.h>
 #include <netinet/ip_var.h>
 #include <netinet/ip_icmp.h>
+#ifdef IPDIVERT
+#include <netinet/ip_divert.h>
+#endif
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
@@ -299,7 +302,7 @@ static void		save_rte(struct mbuf *, u_char *, struct in_addr);
 static int		ip_dooptions(struct mbuf *m, int, struct sockaddr_in *);
 static void		ip_freef(struct ipq *);
 static void		ip_input_handler(struct netmsg *);
-static struct mbuf	*ip_reass(struct mbuf *, u_int32_t *);
+static struct mbuf	*ip_reass(struct mbuf *);
 
 /*
  * IP initialization: fill in IP protocol switch table.
@@ -419,7 +422,6 @@ ip_input(struct mbuf *m)
 	int i, hlen, checkif;
 	u_short sum;
 	struct in_addr pkt_dst;
-	u_int32_t divert_info = 0;		/* packet divert/tee info */
 	struct ip_fw_args args;
 	boolean_t using_srcrt = FALSE;		/* forward (by PFIL_HOOKS) */
 	boolean_t needredispatch = FALSE;
@@ -609,16 +611,33 @@ iphack:
 		}
 #ifdef IPDIVERT
 		if (i != 0 && !(i & IP_FW_PORT_DYNT_FLAG)) {
-			/* Divert or tee packet */
-			divert_info = i;
+			struct mbuf *clone = NULL;
+			int tee = 0;
+
+			/* Divert or 'tee'? */
+			if (i & IP_FW_PORT_TEE_FLAG)
+				tee = 1;
 
 			if (ip->ip_off & (IP_MF | IP_OFFMASK)) {
+				const struct divert_info *divinfo;
+				u_short frag_off;
+
+				/*
+				 * Only trust divert info in the fragment
+				 * at offset 0.
+				 */
+				frag_off = ip->ip_off << 3;
+				if (frag_off != 0) {
+					mtag = m_tag_find(m,
+					PACKET_TAG_IPFW_DIVERT, NULL);
+					m_tag_delete(m, mtag);
+				}
+
 				/*
 				 * Attempt reassembly; if it succeeds, proceed.
-				 * ip_reass() will return a different mbuf, and
-				 * update the divert info in divert_info.
+				 * ip_reass() will return a different mbuf.
 				 */
-				m = ip_reass(m, &divert_info);
+				m = ip_reass(m);
 				if (m == NULL)
 					return;
 				ip = mtod(m, struct ip *);
@@ -645,58 +664,64 @@ iphack:
 					ip->ip_sum = in_cksum(m, hlen);
 				ip->ip_off = ntohs(ip->ip_off);
 				ip->ip_len = ntohs(ip->ip_len);
+
+				/*
+				 * Only use the saved divert info
+				 */
+				mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT,
+						  NULL);
+				if (mtag == NULL) {
+					/* Wrongly configured ipfw */
+					kprintf("ip_input no divert info\n");
+					m_freem(m);
+					return;
+				}
+				divinfo = m_tag_data(mtag);
+				tee = divinfo->tee;
 			}
 
 			/*
 			 * Divert or tee packet to the divert protocol if
 			 * required.
 			 */
-			if (divert_info != 0) {
-				struct mbuf *clone = NULL;
 
-				/* Clone packet if we're doing a 'tee' */
-				if ((divert_info & IP_FW_PORT_TEE_FLAG) != 0)
-					clone = m_dup(m, MB_DONTWAIT);
+			/* Clone packet if we're doing a 'tee' */
+			if (tee)
+				clone = m_dup(m, MB_DONTWAIT);
 
-				/*
-				 * Restore packet header fields to original
-				 * values
-				 */
-				ip->ip_len = htons(ip->ip_len);
-				ip->ip_off = htons(ip->ip_off);
+			/*
+			 * Restore packet header fields to original
+			 * values
+			 */
+			ip->ip_len = htons(ip->ip_len);
+			ip->ip_off = htons(ip->ip_off);
 
-				/* Deliver packet to divert input routine */
-				divert_packet(m, 1, divert_info & 0xffff);
-				ipstat.ips_delivered++;
+			/* Deliver packet to divert input routine */
+			divert_packet(m, 1);
+			ipstat.ips_delivered++;
 
-				/* If 'tee', continue with original packet */
-				if (clone == NULL)
-					return;
-				m = clone;
-				ip = mtod(m, struct ip *);
-				/*
-				 * Jump backwards to complete processing of the
-				 * packet. But first clear divert_info to avoid
-				 * entering this block again.
-				 * We do not need to clear args.divert_rule as
-				 * it will not be used.
-				 *
-				 * XXX
-				 * Better safe than sorry, remove the DIVERT
-				 * tag.
-				 */
-				mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT,
-						  NULL);
-				if (mtag != NULL)
-					m_tag_delete(m, mtag);
-
-				divert_info = 0;
-				goto pass;
-			} else {
-				kprintf("ip_input no divert info?!\n");
-				m_freem(m);
+			/* If 'tee', continue with original packet */
+			if (clone == NULL)
 				return;
-			}
+			m = clone;
+			ip = mtod(m, struct ip *);
+			/*
+			 * Jump backwards to complete processing of the
+			 * packet. But first clear divert_info to avoid
+			 * entering this block again.
+			 * We do not need to clear args.divert_rule as
+			 * it will not be used.
+			 *
+			 * XXX
+			 * Better safe than sorry, remove the DIVERT
+			 * tag.
+			 */
+			mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT,
+					  NULL);
+			KKASSERT(mtag != NULL);
+			m_tag_delete(m, mtag);
+
+			goto pass;
 		}
 #endif
 		if (i == 0 && next_hop != NULL)
@@ -943,17 +968,17 @@ ours:
 	if (ip->ip_off & (IP_MF | IP_OFFMASK)) {
 		/*
 		 * Attempt reassembly; if it succeeds, proceed.
-		 * ip_reass() will return a different mbuf, and update
-		 * the divert info in divert_info.
+		 * ip_reass() will return a different mbuf.
 		 */
-		m = ip_reass(m, &divert_info);
+		m = ip_reass(m);
 		if (m == NULL)
 			return;
-
-		needredispatch = TRUE;
 		ip = mtod(m, struct ip *);
+
 		/* Get the header length of the reassembled packet */
 		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
+
+		needredispatch = TRUE;
 	} else {
 		ip->ip_len -= hlen;
 	}
@@ -1051,7 +1076,7 @@ bad:
  */
 
 static struct mbuf *
-ip_reass(struct mbuf *m, u_int32_t *divinfo)
+ip_reass(struct mbuf *m)
 {
 	struct ip *ip = mtod(m, struct ip *);
 	struct mbuf *p = NULL, *q, *nq;
@@ -1060,9 +1085,6 @@ ip_reass(struct mbuf *m, u_int32_t *divinfo)
 	int hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 	int i, next;
 	u_short sum;
-#ifdef IPDIVERT
-	struct m_tag *mtag;
-#endif
 
 	/* If maxnipq is 0, never accept fragments. */
 	if (maxnipq == 0) {
@@ -1167,9 +1189,6 @@ found:
 		fp->ipq_dst = ip->ip_dst;
 		fp->ipq_frags = m;
 		m->m_nextpkt = NULL;
-#ifdef IPDIVERT
-		fp->ipq_div_info = 0;
-#endif
 		goto inserted;
 	} else {
 		fp->ipq_nfrags++;
@@ -1233,22 +1252,6 @@ found:
 	}
 
 inserted:
-
-#ifdef IPDIVERT
-	/*
-	 * Transfer firewall instructions to the fragment structure.
-	 * Only trust info in the fragment at offset 0.
-	 */
-	if (ip->ip_off == 0) {
-		fp->ipq_div_info = *divinfo;
-	} else {
-		mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
-		if (mtag != NULL)
-			m_tag_delete(m, mtag);
-	}
-	*divinfo = 0;
-#endif
-
 	/*
 	 * Check for complete reassembly and perform frag per packet
 	 * limiting.
@@ -1318,14 +1321,6 @@ inserted:
 	if (m->m_pkthdr.csum_data > 0xFFFF)
 		m->m_pkthdr.csum_data -= 0xFFFF;
 
-
-#ifdef IPDIVERT
-	/*
-	 * Extract firewall instructions from the fragment structure.
-	 */
-	*divinfo = fp->ipq_div_info;
-#endif
-
 	/*
 	 * Create header for new ip packet by
 	 * modifying header of first packet;
@@ -1353,9 +1348,6 @@ inserted:
 	return (m);
 
 dropfrag:
-#ifdef IPDIVERT
-	*divinfo = 0;
-#endif
 	ipstat.ips_fragdropped++;
 	if (fp != NULL)
 		fp->ipq_nfrags--;
