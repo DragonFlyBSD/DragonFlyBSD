@@ -39,8 +39,8 @@
 #include <ctype.h>
 #include <stdlib.h>
 
-#include <aura/mem.h>
-#include <aura/buffer.h>
+#include <libaura/mem.h>
+#include <libaura/buffer.h>
 
 #define	NEEDS_DFUI_STRUCTURE_DEFINITIONS
 #include "dfui.h"

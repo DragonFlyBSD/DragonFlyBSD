@@ -50,11 +50,11 @@
 #define _(String) (String)
 #endif
 
-#include "aura/mem.h"
+#include "libaura/mem.h"
 
-#include "dfui/dfui.h"
-#include "dfui/dump.h"
-#include "dfui/system.h"
+#include "libdfui/dfui.h"
+#include "libdfui/dump.h"
+#include "libdfui/system.h"
 
 #include "flow.h"
 #include "pathnames.h"

@@ -38,7 +38,7 @@
 
 #include <stdio.h>
 
-#include "dfui/dfui.h"
+#include "libdfui/dfui.h"
 
 #ifndef __COMMANDS_H_
 #define __COMMANDS_H_

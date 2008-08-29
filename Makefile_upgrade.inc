@@ -1,4 +1,4 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.30 2008/07/14 23:59:34 swildner Exp $
+# $DragonFly: src/Makefile_upgrade.inc,v 1.31 2008/08/29 22:51:55 swildner Exp $
 #
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
@@ -946,3 +946,10 @@ TO_REMOVE+=/usr/share/man/cat3/readline.3.gz
 TO_REMOVE+=/usr/share/man/man3/readline.3.gz
 TO_REMOVE+=/usr/share/man/cat5/types.5.gz
 TO_REMOVE+=/usr/share/man/man5/types.5.gz
+TO_REMOVE+=/usr/include/commands.h
+TO_REMOVE+=/usr/include/confed.h
+TO_REMOVE+=/usr/include/diskutil.h
+TO_REMOVE+=/usr/include/functions.h
+TO_REMOVE+=/usr/include/package.h
+TO_REMOVE+=/usr/include/sysids.h
+TO_REMOVE+=/usr/include/uiutil.h

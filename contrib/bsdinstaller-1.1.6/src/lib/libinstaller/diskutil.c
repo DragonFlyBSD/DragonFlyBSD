@@ -42,12 +42,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "aura/mem.h"
-#include "aura/fspred.h"
-#include "aura/popen.h"
+#include "libaura/mem.h"
+#include "libaura/fspred.h"
+#include "libaura/popen.h"
 
-#include "dfui/dfui.h"
-#include "dfui/dump.h"
+#include "libdfui/dfui.h"
+#include "libdfui/dump.h"
 
 #define NEEDS_DISKUTIL_STRUCTURE_DEFINITIONS
 #include "diskutil.h"

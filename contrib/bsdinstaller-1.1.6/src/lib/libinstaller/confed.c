@@ -48,9 +48,9 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "aura/mem.h"
-#include "aura/dict.h"
-#include "dfui/system.h"
+#include "libaura/mem.h"
+#include "libaura/dict.h"
+#include "libdfui/system.h"
 
 #include "confed.h"
 #include "commands.h"

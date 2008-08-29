@@ -39,10 +39,10 @@
 #ifndef __FN_H_
 #define __FN_H_
 
-#include "aura/dict.h"
-#include "dfui/dfui.h"
+#include "libaura/dict.h"
+#include "libdfui/dfui.h"
 
-#include "installer/functions.h"
+#include "libinstaller/functions.h"
 
 /*** PROTOTYPES ***/
 

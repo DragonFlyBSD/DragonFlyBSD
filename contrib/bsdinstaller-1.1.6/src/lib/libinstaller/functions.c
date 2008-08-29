@@ -44,10 +44,10 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "aura/mem.h"
-#include "aura/dict.h"
+#include "libaura/mem.h"
+#include "libaura/dict.h"
 
-#include "dfui/dfui.h"
+#include "libdfui/dfui.h"
 
 #include "functions.h"
 #include "diskutil.h"

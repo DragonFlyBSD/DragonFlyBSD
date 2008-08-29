@@ -41,7 +41,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "dfui/dfui.h"
+#include "libdfui/dfui.h"
 
 #include "functions.h"
 #include "uiutil.h"

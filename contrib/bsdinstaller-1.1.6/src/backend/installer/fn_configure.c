@@ -57,19 +57,19 @@
 #define _(String) (String)
 #endif
 
-#include "aura/mem.h"
-#include "aura/dict.h"
-#include "aura/fspred.h"
+#include "libaura/mem.h"
+#include "libaura/dict.h"
+#include "libaura/fspred.h"
 
-#include "dfui/dfui.h"
-#include "dfui/system.h"
+#include "libdfui/dfui.h"
+#include "libdfui/system.h"
 
-#include "installer/commands.h"
-#include "installer/confed.h"
-#include "installer/diskutil.h"
-#include "installer/functions.h"
-#include "installer/package.h"
-#include "installer/uiutil.h"
+#include "libinstaller/commands.h"
+#include "libinstaller/confed.h"
+#include "libinstaller/diskutil.h"
+#include "libinstaller/functions.h"
+#include "libinstaller/package.h"
+#include "libinstaller/uiutil.h"
 
 #include "fn.h"
 #include "pathnames.h"

@@ -40,7 +40,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <aura/mem.h>
+#include <libaura/mem.h>
 
 #define	NEEDS_DFUI_STRUCTURE_DEFINITIONS
 #include "dfui.h"

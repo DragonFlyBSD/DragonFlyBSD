@@ -46,7 +46,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "aura/dict.h"
+#include "libaura/dict.h"
 
 #include "commands.h"
 #include "diskutil.h"

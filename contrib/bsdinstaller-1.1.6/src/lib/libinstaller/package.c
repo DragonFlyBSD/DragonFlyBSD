@@ -43,11 +43,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "aura/dict.h"
-#include "aura/fspred.h"
-#include "aura/popen.h"
+#include "libaura/dict.h"
+#include "libaura/fspred.h"
+#include "libaura/popen.h"
 
-#include "dfui/dfui.h"
+#include "libdfui/dfui.h"
 
 #include "commands.h"
 #include "diskutil.h"

@@ -43,8 +43,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <aura/mem.h>
-#include <aura/buffer.h>
+#include <libaura/mem.h>
+#include <libaura/buffer.h>
 
 #include "system.h"
 #define	NEEDS_DFUI_STRUCTURE_DEFINITIONS

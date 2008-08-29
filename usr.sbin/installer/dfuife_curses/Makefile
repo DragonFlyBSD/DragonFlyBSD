@@ -1,42 +1,22 @@
 #
-# $DragonFly: src/usr.sbin/installer/dfuife_curses/Makefile,v 1.2 2008/03/25 22:55:38 dave Exp $
+# $DragonFly: src/usr.sbin/installer/dfuife_curses/Makefile,v 1.3 2008/08/29 22:51:56 swildner Exp $
 
 BSDINS_DIR=${.CURDIR}/../../../contrib/bsdinstaller-1.1.6
 BSDINS_SRC=${BSDINS_DIR}/src
 
-PATCHES= 
-
 .PATH: ${BSDINS_SRC}/frontends/ncurses
 
-BINDIR=	/usr/sbin
-
 PROG=	dfuife_curses
-MAN=	 
-SRCS=	curses_bar.c curses_form.c curses_util.c curses_widget.c curses_xlat.c main.c \
-	aura.h dfui.h installer.h ${PATCHES}
-BINOWN=	root
-BINGRP=	wheel
+NOMAN=
+SRCS=	curses_bar.c curses_form.c curses_util.c curses_widget.c \
+	curses_xlat.c main.c
 
-CFLAGS+= -I${BSDINS_SRC}/frontends/ncurses -I. -g
+CFLAGS+= -I${BSDINS_SRC}/lib
 
 DPADD+= ${LIBPANEL} ${LIBNCURSES}
 LDADD+= -lpanel -lncurses
 
-# This madness is because the installer sources reference aura includes
-# as <aura/mem.h> rather than <libaura/mem.h>
-aura.h:
-	${LN} -sf ${BSDINS_SRC}/lib/libaura aura
-	/usr/bin/touch aura.h
-
-dfui.h:
-	${LN} -sf ${BSDINS_SRC}/lib/libdfui dfui
-	/usr/bin/touch dfui.h
-
-installer.h:
-	${LN} -sf ${BSDINS_SRC}/lib/libinstaller installer
-	/usr/bin/touch installer.h
-
-CLEANFILES+=	aura.h aura dfui.h dfui installer.h installer
+CLEANFILES+=	aura dfui installer
 
 .if exists(${.OBJDIR}/../libaura)
 LIBAURADIR:=      ${.OBJDIR}/../libaura
@@ -62,4 +42,5 @@ LIBINSTALLER:=         ${LIBINSTALLERDIR}/libinstaller.a
 DPADD+=	${LIBAURA} ${LIBDFUI} ${LIBINSTALLER}
 LDADD+=	-L${LIBAURADIR} -L${LIBDFUIDIR} -L${LIBINSTALLERDIR} -linstaller -ldfui -laura
 
+.include "../../Makefile.inc"
 .include <bsd.prog.mk>

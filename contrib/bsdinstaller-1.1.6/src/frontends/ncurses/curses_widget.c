@@ -41,7 +41,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "aura/mem.h"
+#include "libaura/mem.h"
 
 #include "curses_form.h"
 #include "curses_widget.h"

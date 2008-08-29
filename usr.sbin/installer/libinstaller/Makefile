@@ -1,4 +1,4 @@
-# $DragonFly: src/usr.sbin/installer/libinstaller/Makefile,v 1.4 2008/08/29 20:41:01 swildner Exp $
+# $DragonFly: src/usr.sbin/installer/libinstaller/Makefile,v 1.5 2008/08/29 22:51:56 swildner Exp $
 
 BSDINS_DIR=${.CURDIR}/../../../contrib/bsdinstaller-1.1.6
 BSDINS_SRC=${BSDINS_DIR}/src
@@ -6,30 +6,17 @@ BSDINS_SRC=${BSDINS_DIR}/src
 CONTRIBDIR=	${BSDINS_SRC}/lib/libinstaller
 .PATH:	${CONTRIBDIR}
 
-CFLAGS+=	-I${BSDINS_SRC}/lib/libdfui -I${CONTRIBDIR} -I. -g
+CFLAGS+=	-I${BSDINS_SRC}/lib
 
 LIB=    installer
 
-SRCS+=	commands.c confed.c diskutil.c functions.c mount.c package.c survey.c uiutil.c 
-SRCS+=	aura.h dfui.h
+SRCS=	commands.c confed.c diskutil.c functions.c mount.c package.c survey.c \
+	uiutil.c 
 
-INCS+=	commands.h confed.h diskutil.h functions.h package.h sysids.h uiutil.h
-
-# This madness is because the installer sources reference aura includes
-# as <aura/mem.h> rather than <libaura/mem.h>
-aura.h:
-	${LN} -sf ${BSDINS_SRC}/lib/libaura aura
-	/usr/bin/touch aura.h
-
-dfui.h:
-	${LN} -sf ${BSDINS_SRC}/lib/libdfui dfui
-	/usr/bin/touch dfui.h
-
-CLEANFILES+=	aura.h dfui.h aura dfui
-INTERNALLIB=            true
+CLEANFILES+=	aura dfui
+INTERNALLIB=	true
 
 DPADD+= ${.CURDIR}/../libaura/libaura.a  ${.CURDIR}/../libdfui/libdfui.a
 LDADD+= -laura -ldfui
 
 .include <bsd.lib.mk>
-

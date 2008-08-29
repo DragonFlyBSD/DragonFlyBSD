@@ -52,8 +52,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <aura/buffer.h>
-#include <aura/fspred.h>
+#include <libaura/buffer.h>
+#include <libaura/fspred.h>
 
 #define	NEEDS_DFUI_STRUCTURE_DEFINITIONS
 #include "dfui.h"

@@ -40,7 +40,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <aura/buffer.h>
+#include <libaura/buffer.h>
 
 #define	NEEDS_DFUI_STRUCTURE_DEFINITIONS
 #include "dfui.h"

@@ -45,29 +45,29 @@
 #ifdef ENABLE_NLS
 #include <libintl.h>
 #include <locale.h>
-#include "dfui/lang.h"
+#include "libdfui/lang.h"
 #define _(String) gettext (String)
 extern int _nl_msg_cat_cntr;
 #else
 #define _(String) (String)
 #endif
 
-#include "aura/mem.h"
-#include "aura/dict.h"
-#include "aura/fspred.h"
+#include "libaura/mem.h"
+#include "libaura/dict.h"
+#include "libaura/fspred.h"
 
-#include "dfui/dfui.h"
+#include "libdfui/dfui.h"
 #ifdef DEBUG
-#include "dfui/dump.h"
+#include "libdfui/dump.h"
 #endif
-#include "dfui/system.h"
+#include "libdfui/system.h"
 
-#include "installer/commands.h"
-#include "installer/confed.h"
-#include "installer/diskutil.h"
-#include "installer/functions.h"
-#include "installer/package.h"
-#include "installer/uiutil.h"
+#include "libinstaller/commands.h"
+#include "libinstaller/confed.h"
+#include "libinstaller/diskutil.h"
+#include "libinstaller/functions.h"
+#include "libinstaller/package.h"
+#include "libinstaller/uiutil.h"
 
 #include "flow.h"
 #include "fn.h"

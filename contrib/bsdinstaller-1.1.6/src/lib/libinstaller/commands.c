@@ -48,11 +48,11 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "aura/mem.h"
-#include "aura/buffer.h"
-#include "aura/popen.h"
+#include "libaura/mem.h"
+#include "libaura/buffer.h"
+#include "libaura/popen.h"
 
-#include "dfui/dfui.h"
+#include "libdfui/dfui.h"
 
 #define	NEEDS_COMMANDS_STRUCTURE_DEFINITIONS
 #include "commands.h"

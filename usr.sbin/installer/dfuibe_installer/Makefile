@@ -1,5 +1,5 @@
 #
-# $DragonFly: src/usr.sbin/installer/dfuibe_installer/Makefile,v 1.4 2008/08/29 20:41:01 swildner Exp $
+# $DragonFly: src/usr.sbin/installer/dfuibe_installer/Makefile,v 1.5 2008/08/29 22:51:56 swildner Exp $
 
 BSDINS_DIR=${.CURDIR}/../../../contrib/bsdinstaller-1.1.6
 BSDINS_SRC=${BSDINS_DIR}/src
@@ -7,32 +7,14 @@ BSDINS_SRC=${BSDINS_DIR}/src
 CONTRIBDIR=${BSDINS_SRC}/backend/installer
 .PATH: ${CONTRIBDIR}
 
-BINDIR=	/usr/sbin
 PROG=	dfuibe_installer
-MAN=	 
+NOMAN=
 SRCS=	flow.c fn_diagnostic.c fn_install.c fn_zonetab.c \
-        fn_configure.c fn_disk.c fn_subpart.c main.c \
-	aura.h dfui.h installer.h
-BINOWN=	root
-BINGRP=	wheel
+        fn_configure.c fn_disk.c fn_subpart.c main.c
 
-CFLAGS+= -I${CONTRIBDIR} -I. -g
+CFLAGS+= -I${BSDINS_SRC}/lib
 
-# This madness is because the installer sources reference aura includes
-# as <aura/mem.h> rather than <libaura/mem.h>
-aura.h:
-	${LN} -sf ${BSDINS_SRC}/lib/libaura aura
-	/usr/bin/touch aura.h
-
-dfui.h:
-	${LN} -sf ${BSDINS_SRC}/lib/libdfui dfui
-	/usr/bin/touch dfui.h
-
-installer.h:
-	${LN} -sf ${BSDINS_SRC}/lib/libinstaller installer
-	/usr/bin/touch installer.h
-
-CLEANFILES+=	aura.h aura dfui.h dfui installer.h installer
+CLEANFILES+=	aura dfui installer
 
 .if exists(${.OBJDIR}/../libaura)
 LIBAURADIR:=      ${.OBJDIR}/../libaura
@@ -58,4 +40,5 @@ LIBINSTALLER:=         ${LIBINSTALLERDIR}/libinstaller.a
 DPADD+=	${LIBAURA} ${LIBDFUI} ${LIBINSTALLER}
 LDADD+=	-L${LIBAURADIR} -L${LIBDFUIDIR} -L${LIBINSTALLERDIR} -linstaller -ldfui -laura
 
+.include "../../Makefile.inc"
 .include <bsd.prog.mk>

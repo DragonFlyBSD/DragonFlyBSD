@@ -47,7 +47,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "aura/fspred.h"
+#include "libaura/fspred.h"
 
 #include "commands.h"
 #include "functions.h"

@@ -41,8 +41,8 @@
 
 #include <stdio.h>
 
-#include "aura/dict.h"
-#include "dfui/dfui.h"
+#include "libaura/dict.h"
+#include "libdfui/dfui.h"
 
 #include "confed.h"
 

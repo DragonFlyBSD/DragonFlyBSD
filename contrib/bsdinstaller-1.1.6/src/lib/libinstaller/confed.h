@@ -39,7 +39,7 @@
 #ifndef __CONFED_H_
 #define __CONFED_H_
 
-#include "aura/dict.h"
+#include "libaura/dict.h"
 
 struct i_fn_args;
 

@@ -36,7 +36,7 @@
  * $Id: encoding.h,v 1.7 2005/02/07 06:40:00 cpressey Exp $
  */
 
-#include <aura/buffer.h>
+#include <libaura/buffer.h>
 
 #include "dfui.h"
 

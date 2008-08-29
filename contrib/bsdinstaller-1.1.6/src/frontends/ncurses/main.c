@@ -47,20 +47,20 @@
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
-#include "dfui/lang.h"
+#include "libdfui/lang.h"
 #define _(String) gettext (String)
 extern int _nl_msg_cat_cntr;
 #else
 #define _(String) (String)
 #endif
 
-#include "aura/mem.h"
+#include "libaura/mem.h"
 
-#include "dfui/dfui.h"
+#include "libdfui/dfui.h"
 #ifdef DEBUG
-#include "dfui/dump.h"
+#include "libdfui/dump.h"
 #endif
-#include "dfui/system.h"
+#include "libdfui/system.h"
 
 #include "curses_form.h"
 #include "curses_widget.h"

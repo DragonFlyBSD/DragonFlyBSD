@@ -49,7 +49,7 @@
 
 DFUI_BEGINDECLS
 
-#include <aura/buffer.h>
+#include <libaura/buffer.h>
 
 /*
  * TYPEDEFS
