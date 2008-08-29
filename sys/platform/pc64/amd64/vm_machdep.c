@@ -2,6 +2,7 @@
  * Copyright (c) 1982, 1986 The Regents of the University of California.
  * Copyright (c) 1989, 1990 William Jolitz
  * Copyright (c) 1994 John Dyson
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -39,7 +40,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/vm_machdep.c,v 1.2 2007/09/24 03:24:45 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/vm_machdep.c,v 1.3 2008/08/29 17:07:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -73,11 +74,9 @@
 
 #include <sys/thread2.h>
 
-char machine[] = MACHINE;
+#include <bus/isa/i386/isa.h>
 
-char cpu_vendor[] = "DragonFly";	/* XXX */
-u_int cpu_id = 0x80000000;		/* XXX */
-
+static void	cpu_reset_real (void);
 /*
  * Finish a fork operation, with lwp lp2 nearly set up.
  * Copy and update the pcb, set up the stack so that the child
@@ -86,6 +85,109 @@ u_int cpu_id = 0x80000000;		/* XXX */
 void
 cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
 {
+	struct pcb *pcb2;
+
+	if ((flags & RFPROC) == 0) {
+		if ((flags & RFMEM) == 0) {
+			/* unshare user LDT */
+			struct pcb *pcb1 = lp1->lwp_thread->td_pcb;
+			struct pcb_ldt *pcb_ldt = pcb1->pcb_ldt;
+			if (pcb_ldt && pcb_ldt->ldt_refcnt > 1) {
+				pcb_ldt = user_ldt_alloc(pcb1,pcb_ldt->ldt_len);
+				user_ldt_free(pcb1);
+				pcb1->pcb_ldt = pcb_ldt;
+				set_user_ldt(pcb1);
+			}
+		}
+		return;
+	}
+
+#if NNPX > 0
+	/* Ensure that lp1's pcb is up to date. */
+	if (mdcpu->gd_npxthread == lp1->lwp_thread)
+		npxsave(lp1->lwp_thread->td_savefpu);
+#endif
+	
+	/*
+	 * Copy lp1's PCB.  This really only applies to the
+	 * debug registers and FP state, but its faster to just copy the
+	 * whole thing.  Because we only save the PCB at switchout time,
+	 * the register state may not be current.
+	 */
+	pcb2 = lp2->lwp_thread->td_pcb;
+	*pcb2 = *lp1->lwp_thread->td_pcb;
+
+	/*
+	 * Create a new fresh stack for the new process.
+	 * Copy the trap frame for the return to user mode as if from a
+	 * syscall.  This copies the user mode register values.
+	 *
+	 * pcb_rsp must allocate an additional call-return pointer below
+	 * the trap frame which will be restored by cpu_heavy_restore from
+	 * PCB_RIP, and the thread's td_sp pointer must allocate an
+	 * additonal two quadwords below the pcb_rsp call-return pointer to
+	 * hold the LWKT restore function pointer and rflags.
+	 *
+	 * The LWKT restore function pointer must be set to cpu_heavy_restore,
+	 * which is our standard heavy-weight process switch-in function.
+	 * YYY eventually we should shortcut fork_return and fork_trampoline
+	 * to use the LWKT restore function directly so we can get rid of
+	 * all the extra crap we are setting up.
+	 */
+	lp2->lwp_md.md_regs = (struct trapframe *)pcb2 - 1;
+	bcopy(lp1->lwp_md.md_regs, lp2->lwp_md.md_regs, sizeof(*lp2->lwp_md.md_regs));
+
+	/*
+	 * Set registers for trampoline to user mode.  Leave space for the
+	 * return address on stack.  These are the kernel mode register values.
+	 */
+	pcb2->pcb_cr3 = vtophys(vmspace_pmap(lp2->lwp_proc->p_vmspace)->pm_pdir);
+	pcb2->pcb_cr3 |= PG_RW | PG_U | PG_V;
+	pcb2->pcb_rbx = (unsigned long)fork_return;	/* fork_trampoline argument */
+	pcb2->pcb_rbp = 0;
+	pcb2->pcb_rsp = (unsigned long)lp2->lwp_md.md_regs - sizeof(void *);
+	pcb2->pcb_r12 = (unsigned long)lp2;		/* fork_trampoline argument */
+	pcb2->pcb_r13 = 0;
+	pcb2->pcb_r14 = 0;
+	pcb2->pcb_r15 = 0;
+	pcb2->pcb_rip = (unsigned long)fork_trampoline;
+	lp2->lwp_thread->td_sp = (char *)(pcb2->pcb_rsp - sizeof(void *));
+	*(u_int64_t *)lp2->lwp_thread->td_sp = PSL_USER;
+	lp2->lwp_thread->td_sp -= sizeof(void *);
+	*(void **)lp2->lwp_thread->td_sp = (void *)cpu_heavy_restore;
+
+	/*
+	 * pcb2->pcb_ldt:	duplicated below, if necessary.
+	 * pcb2->pcb_savefpu:	cloned above.
+	 * pcb2->pcb_flags:	cloned above (always 0 here?).
+	 * pcb2->pcb_onfault:	cloned above (always NULL here?).
+	 */
+
+	/*
+	 * XXX don't copy the i/o pages.  this should probably be fixed.
+	 */
+	pcb2->pcb_ext = 0;
+
+        /* Copy the LDT, if necessary. */
+        if (pcb2->pcb_ldt != 0) {
+		if (flags & RFMEM) {
+			pcb2->pcb_ldt->ldt_refcnt++;
+		} else {
+			pcb2->pcb_ldt = user_ldt_alloc(pcb2,
+				pcb2->pcb_ldt->ldt_len);
+		}
+        }
+	bcopy(&lp1->lwp_thread->td_tls, &lp2->lwp_thread->td_tls,
+	      sizeof(lp2->lwp_thread->td_tls));
+	/*
+	 * Now, cpu_switch() can schedule the new lwp.
+	 * pcb_rsp is loaded pointing to the cpu_switch() stack frame
+	 * containing the return address when exiting cpu_switch.
+	 * This will normally be to fork_trampoline(), which will have
+	 * %rbx loaded with the new lwp's pointer.  fork_trampoline()
+	 * will set up a stack to call fork_return(lp, frame); to complete
+	 * the return to user-mode.
+	 */
 }
 
 /*
@@ -94,6 +196,7 @@ cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
 int
 cpu_prepare_lwp(struct lwp *lp, struct lwp_params *params)
 {
+	panic("dummy called in vm_machdep.c: line: %d", __LINE__);
 	return (0);
 }
 
@@ -107,16 +210,30 @@ void
 cpu_set_fork_handler(struct lwp *lp, void (*func)(void *, struct trapframe *),
 		     void *arg)
 {
+	/*
+	 * Note that the trap frame follows the args, so the function
+	 * is really called like this:  func(arg, frame);
+	 */
+	lp->lwp_thread->td_pcb->pcb_rbx = (long)func;	/* function */
+	lp->lwp_thread->td_pcb->pcb_r12 = (long)arg;	/* first arg */
 }
 
 void
 cpu_set_thread_handler(thread_t td, void (*rfunc)(void), void *func, void *arg)
 {
+	td->td_pcb->pcb_rbx = (long)func;
+	td->td_pcb->pcb_r12 = (long)arg;
+	td->td_switch = cpu_lwkt_switch;
+	td->td_sp -= sizeof(void *);
+	*(void **)td->td_sp = rfunc;	/* exit function on return */
+	td->td_sp -= sizeof(void *);
+	*(void **)td->td_sp = cpu_kthread_restore;
 }
 
 void
 cpu_lwp_exit(void)
 {
+	panic("dummy called in vm_machdep.c: line: %d", __LINE__);
 }
 
 /*
@@ -131,6 +248,7 @@ cpu_lwp_exit(void)
 void
 cpu_thread_exit(void)
 {
+	panic("dummy called in vm_machdep.c: line: %d", __LINE__);
 }
 
 /*
@@ -140,11 +258,94 @@ cpu_thread_exit(void)
 void
 cpu_proc_wait(struct proc *p)
 {
+	panic("dummy called in vm_machdep.c: line: %d", __LINE__);
+}
+
+void
+cpu_reset(void)
+{
+	cpu_reset_real();
+}
+
+static void
+cpu_reset_real(void)
+{
+	/*
+	 * Attempt to do a CPU reset via the keyboard controller,
+	 * do not turn of the GateA20, as any machine that fails
+	 * to do the reset here would then end up in no man's land.
+	 */
+
+#if !defined(BROKEN_KEYBOARD_RESET)
+	outb(IO_KBD + 4, 0xFE);
+	DELAY(500000);	/* wait 0.5 sec to see if that did it */
+	kprintf("Keyboard reset did not work, attempting CPU shutdown\n");
+	DELAY(1000000);	/* wait 1 sec for kprintf to complete */
+#endif
+#if JG
+	/* force a shutdown by unmapping entire address space ! */
+	bzero((caddr_t) PTD, PAGE_SIZE);
+#endif
+
+	/* "good night, sweet prince .... <THUNK!>" */
+	cpu_invltlb();
+	/* NOTREACHED */
+	while(1);
+}
+
+int
+grow_stack(struct proc *p, u_long sp)
+{
+	int rv;
+
+	rv = vm_map_growstack (p, sp);
+	if (rv != KERN_SUCCESS)
+		return (0);
+
+	return (1);
+}
+
+/*
+ * Tell whether this address is in some physical memory region.
+ * Currently used by the kernel coredump code in order to avoid
+ * dumping the ``ISA memory hole'' which could cause indefinite hangs,
+ * or other unpredictable behaviour.
+ */
+
+int
+is_physical_memory(vm_offset_t addr)
+{
+#if NISA > 0
+	/* The ISA ``memory hole''. */
+	if (addr >= 0xa0000 && addr < 0x100000)
+		return 0;
+#endif
+	/*
+	 * stuff other tests for known memory-mapped devices (PCI?)
+	 * here
+	 */
+
+	return 1;
+}
+
+/*
+ * platform-specific vmspace initialization (nothing for amd64)
+ */
+void
+cpu_vmspace_alloc(struct vmspace *vm __unused)
+{
+}
+
+void
+cpu_vmspace_free(struct vmspace *vm __unused)
+{
+	panic("dummy called in vm_machdep.c: line: %d", __LINE__);
 }
 
 int
 kvm_access_check(vm_offset_t saddr, vm_offset_t eaddr, int prot)
 {
+	panic("dummy called in vm_machdep.c: line: %d", __LINE__);
 	return 0;
 }
 

@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 1990 The Regents of the University of California.
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -35,7 +36,7 @@
  *
  *	from: @(#)npx.h	5.3 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/npx.h,v 1.18.2.1 2001/08/15 01:23:52 peter Exp $
- * $DragonFly: src/sys/cpu/amd64/include/npx.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/npx.h,v 1.3 2008/08/29 17:07:06 dillon Exp $
  */
 
 /*
@@ -156,7 +157,7 @@ struct trapframe;
 void	npxexit (void);
 void	npxinit (u_short control);
 void	npxsave (union savefpu *addr);
-int	npxdna(struct trapframe *);
+int	npxdna(void);
 #endif
 
 #endif /* !_CPU_NPX_H_ */

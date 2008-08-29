@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 1990 The Regents of the University of California.
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -35,7 +36,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/autoconf.c,v 1.2 2008/03/08 07:50:49 sephe Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/autoconf.c,v 1.3 2008/08/29 17:07:10 dillon Exp $
  */
 
 /*
@@ -60,7 +61,6 @@
 #include <sys/systm.h>
 #include <sys/bootmaj.h>
 #include <sys/bus.h>
-#include <sys/buf.h>
 #include <sys/conf.h>
 #include <sys/diskslice.h>
 #include <sys/reboot.h>
@@ -72,19 +72,14 @@
 #include <sys/device.h>
 #include <sys/machintr.h>
 
-#include <vm/pmap.h>
-#include <vm/vm_kern.h>
-#include <vm/vm_extern.h>
-#include <vm/vm_pager.h>
+#include <machine/bootinfo.h>
+#include <machine/md_var.h>
+#include <machine/smp.h>
+#include <machine_base/icu/icu.h>
 
-#if 0
 #include <machine/pcb.h>
 #include <machine/pcb_ext.h>
-#include <machine/vm86.h>
-#endif
-#include <machine/smp.h>
 #include <machine/globaldata.h>
-#include <machine/md_var.h>
 
 #if NISA > 0
 #include <bus/isa/isavar.h>
@@ -92,10 +87,9 @@
 device_t isa_bus_device = 0;
 #endif
 
-static void cpu_startup (void *);
-static void configure_first (void *);
-static void configure (void *);
-static void configure_final (void *);
+static void	configure_first (void *);
+static void	configure (void *);
+static void	configure_final (void *);
 
 #if defined(FFS) && defined(FFS_ROOT)
 static void	setroot (void);
@@ -107,7 +101,6 @@ static void	pxe_setup_nfsdiskless(void);
 #endif
 #endif
 
-SYSINIT(cpu, SI_BOOT2_SMP, SI_ORDER_FIRST, cpu_startup, NULL);
 SYSINIT(configure1, SI_SUB_CONFIGURE, SI_ORDER_FIRST, configure_first, NULL);
 /* SI_ORDER_SECOND is hookable */
 SYSINIT(configure2, SI_SUB_CONFIGURE, SI_ORDER_THIRD, configure, NULL);
@@ -116,77 +109,6 @@ SYSINIT(configure3, SI_SUB_CONFIGURE, SI_ORDER_ANY, configure_final, NULL);
 
 cdev_t	rootdev = NULL;
 cdev_t	dumpdev = NULL;
-
-/*
- * 
- */
-static void
-cpu_startup(void *dummy)
-{
-	vm_offset_t buffer_sva;
-	vm_offset_t buffer_eva;
-	vm_offset_t pager_sva;
-	vm_offset_t pager_eva;
-
-	kprintf("%s", version);
-	kprintf("real memory = %llu (%lluK bytes)\n",
-		ptoa(Maxmem), ptoa(Maxmem) / 1024);
-
-	if (nbuf == 0) {
-		int factor = 4 * BKVASIZE / 1024;
-		int kbytes = Maxmem * (PAGE_SIZE / 1024);
-
-		nbuf = 50;
-		if (kbytes > 4096)
-			nbuf += min((kbytes - 4096) / factor, 65536 / factor);
-		if (kbytes > 65536)
-			nbuf += (kbytes - 65536) * 2 / (factor * 5);
-		if (maxbcache && nbuf > maxbcache / BKVASIZE)
-			nbuf = maxbcache / BKVASIZE;
-	}
-	if (nbuf > (virtual_end - virtual_start) / (BKVASIZE * 2)) {
-		nbuf = (virtual_end - virtual_start) / (BKVASIZE * 2);
-		kprintf("Warning: nbufs capped at %d\n", nbuf);
-	}
-
-	nswbuf = max(min(nbuf/4, 256), 16);
-#ifdef NSWBUF_MIN
-	if (nswbuf < NSWBUF_MIN)
-		nswbuf = NSWBUF_MIN;
-#endif
-
-	/*
-	 * Allocate memory for the buffer cache
-	 */
-	buf = (void *)kmem_alloc(&kernel_map, nbuf * sizeof(struct buf));
-	swbuf = (void *)kmem_alloc(&kernel_map, nswbuf * sizeof(struct buf));
-
-
-#ifdef DIRECTIO
-        ffs_rawread_setup();
-#endif
-	kmem_suballoc(&kernel_map, &clean_map, &clean_sva, &clean_eva,
-		      (nbuf*BKVASIZE) + (nswbuf*MAXPHYS) + pager_map_size);
-	kmem_suballoc(&clean_map, &buffer_map, &buffer_sva, &buffer_eva,
-		      (nbuf*BKVASIZE));
-	buffer_map.system_map = 1;
-	kmem_suballoc(&clean_map, &pager_map, &pager_sva, &pager_eva,
-		      (nswbuf*MAXPHYS) + pager_map_size);
-	pager_map.system_map = 1;
-#if defined(USERCONFIG)
-        userconfig();
-	cninit();               /* the preferred console may have changed */
-#endif
-	kprintf("avail memory = %u (%uK bytes)\n", ptoa(vmstats.v_free_count),
-		ptoa(vmstats.v_free_count) / 1024);
-	bufinit();
-	vm_pager_bufferinit();
-#ifdef SMP
-	mp_start();
-	mp_announce();
-#endif
-	cpu_setregs();
-}
 
 /*
  * Determine i/o configuration for a machine.
@@ -199,12 +121,6 @@ configure_first(void *dummy)
 static void
 configure(void *dummy)
 {
-        /*
-	 * Final interrupt support acviation, then enable hardware interrupts.
-	 */
-	MachIntrABI.finalize();
-	cpu_enable_intr();
-
 	/*
 	 * This will configure all devices, generally starting with the
 	 * nexus (i386/i386/nexus.c).  The nexus ISA code explicitly
@@ -235,10 +151,49 @@ configure(void *dummy)
 static void
 configure_final(void *dummy)
 {
+	int i;
+
 	cninit_finish();
 
-	if (bootverbose)
+	if (bootverbose) {
+#ifdef APIC_IO
+		imen_dump();
+#endif /* APIC_IO */
+
+#if JG
+		/*
+		 * Print out the BIOS's idea of the disk geometries.
+		 */
+		kprintf("BIOS Geometries:\n");
+		for (i = 0; i < N_BIOS_GEOM; i++) {
+			unsigned long bios_geom;
+			int max_cylinder, max_head, max_sector;
+
+			bios_geom = bootinfo.bi_bios_geom[i];
+
+			/*
+			 * XXX the bootstrap punts a 1200K floppy geometry
+			 * when the get-disk-geometry interrupt fails.  Skip
+			 * drives that have this geometry.
+			 */
+			if (bios_geom == 0x4f010f)
+				continue;
+
+			kprintf(" %x:%08lx ", i, bios_geom);
+			max_cylinder = bios_geom >> 16;
+			max_head = (bios_geom >> 8) & 0xff;
+			max_sector = bios_geom & 0xff;
+			kprintf(
+		"0..%d=%d cylinders, 0..%d=%d heads, 1..%d=%d sectors\n",
+			       max_cylinder, max_cylinder + 1,
+			       max_head, max_head + 1,
+			       max_sector, max_sector);
+		}
+		kprintf(" %d accounted for\n", bootinfo.bi_n_bios_used);
+
 		kprintf("Device configuration finished.\n");
+#endif
+	}
 }
 
 #ifdef BOOTP
@@ -270,6 +225,8 @@ SYSINIT(cpu_rootconf, SI_SUB_ROOT_CONF, SI_ORDER_FIRST, cpu_rootconf, NULL)
 u_long	bootdev = 0;		/* not a cdev_t - encoding is different */
 
 #if defined(FFS) && defined(FFS_ROOT)
+#define FDMAJOR 	2
+#define FDUNITSHIFT     6
 
 /*
  * The boot code uses old block device major numbers to pass bootdev to
@@ -465,7 +422,6 @@ pxe_setup_nfsdiskless(void)
 {
 	struct nfs_diskless	*nd = &nfs_diskless;
 	struct ifnet		*ifp;
-	struct ifaddr		*ifa;
 	struct sockaddr_dl	*sdl, ourdl;
 	struct sockaddr_in	myaddr, netmask;
 	char			*cp;
@@ -487,13 +443,12 @@ pxe_setup_nfsdiskless(void)
 		kprintf("PXE: no hardware address\n");
 		return;
 	}
-	ifa = NULL;
 	ifp = TAILQ_FIRST(&ifnet);
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
 		struct ifaddr_container *ifac;
 
 		TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
-			ifa = ifac->ifa;
+			struct ifaddr *ifa = ifac->ifa;
 
 			if ((ifa->ifa_addr->sa_family == AF_LINK) &&
 			    (sdl = ((struct sockaddr_dl *)ifa->ifa_addr))) {

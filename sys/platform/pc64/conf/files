@@ -1,7 +1,7 @@
 # This file tells config what files go into building a kernel,
 # files marked standard are always included.
 #
-# $DragonFly: src/sys/platform/pc64/conf/files,v 1.2 2007/09/24 03:24:45 yanyh Exp $
+# $DragonFly: src/sys/platform/pc64/conf/files,v 1.3 2008/08/29 17:07:15 dillon Exp $
 #
 
 linux32_genassym.o		optional	compat_linux32			\
@@ -15,6 +15,22 @@ linux32_assym.h			optional	compat_linux32		   \
 	compile-with	"sh $S/kern/genassym.sh linux32_genassym.o > ${.TARGET}" \
 	no-obj no-implicit-rule before-depend				   \
 	clean		"linux32_assym.h"
+#
+font.h				optional	sc_dflt_font		\
+	compile-with	"uudecode < /usr/share/syscons/fonts/${SC_DFLT_FONT}-8x16.fnt && file2c 'static u_char dflt_font_16[16*256] = {' '};' < ${SC_DFLT_FONT}-8x16 > font.h && uudecode < /usr/share/syscons/fonts/${SC_DFLT_FONT}-8x14.fnt && file2c 'static u_char dflt_font_14[14*256] = {' '};' < ${SC_DFLT_FONT}-8x14 >> font.h && uudecode < /usr/share/syscons/fonts/${SC_DFLT_FONT}-8x8.fnt && file2c 'static u_char dflt_font_8[8*256] = {' '};' < ${SC_DFLT_FONT}-8x8 >> font.h" \
+	no-obj no-implicit-rule before-depend				\
+	clean		"font.h"
+#
+atkbdmap.h			optional	atkbd_dflt_keymap	\
+	compile-with	"/usr/sbin/kbdcontrol -L ${ATKBD_DFLT_KEYMAP} | sed -e 's/^static keymap_t.* = /static keymap_t key_map = /' -e 's/^static accentmap_t.* = /static accentmap_t accent_map = /' > atkbdmap.h"				\
+	no-obj no-implicit-rule before-depend				\
+	clean		"atkbdmap.h"
+#
+ukbdmap.h			optional	ukbd_dflt_keymap	\
+	compile-with	"/usr/sbin/kbdcontrol -L ${UKBD_DFLT_KEYMAP} | sed -e 's/^static keymap_t.* = /static keymap_t key_map = /' -e 's/^static accentmap_t.* = /static accentmap_t accent_map = /' > ukbdmap.h"				\
+	no-obj no-implicit-rule before-depend				\
+	clean		"ukbdmap.h"
+#
 #
 emulation/linux/linux_file.c	optional	compat_linux32
 emulation/linux/linux_getcwd.c	optional	compat_linux32
@@ -35,6 +51,25 @@ emulation/linux/amd64/linux32_machdep.c	optional	compat_linux32
 emulation/linux/amd64/linux32_sysent.c	optional	compat_linux32
 emulation/linux/amd64/linux32_sysvec.c	optional	compat_linux32
 
+dev/video/fb/fb.c			optional	vga
+dev/video/fb/splash.c			optional	splash
+dev/video/fb/vga.c			optional	vga
+dev/misc/kbd/atkbd.c			optional	atkbd
+dev/misc/kbd/atkbdc.c			optional	atkbdc
+dev/misc/kbd/kbd.c			optional	atkbd
+dev/misc/kbd/kbd.c			optional	kbd
+dev/misc/kbd/kbd.c			optional	sc
+dev/misc/kbd/kbd.c			optional	ukbd
+dev/misc/syscons/schistory.c		optional	sc
+dev/misc/syscons/scmouse.c		optional	sc
+dev/misc/syscons/scterm.c		optional	sc
+dev/misc/syscons/scterm-dumb.c		optional	sc
+dev/misc/syscons/scterm-sc.c		optional	sc
+dev/misc/syscons/scvgarndr.c		optional	sc vga
+dev/misc/syscons/scvidctl.c		optional	sc
+dev/misc/syscons/scvtb.c		optional	sc
+dev/misc/syscons/syscons.c		optional	sc
+dev/misc/syscons/sysmouse.c		optional	sc
 vfs/smbfs/smbfs_io.c		optional	smbfs
 vfs/smbfs/smbfs_node.c		optional	smbfs
 vfs/smbfs/smbfs_smb.c		optional	smbfs
@@ -50,16 +85,17 @@ platform/pc64/amd64/mp.c		optional	smp             \
 platform/pc64/amd64/mplock.s		optional	smp
 
 # DDB XXX
+cpu/amd64/misc/amd64-gdbstub.c		optional	ddb
 platform/pc64/amd64/elf_machdep.c		standard
 platform/pc64/amd64/in_cksum2.s			optional	inet
 platform/pc64/amd64/ktr.c			optional	ktr
 platform/pc64/amd64/db_disasm.c			optional	ddb
-# platform/pc64/amd64/i386-gdbstub.c		optional	ddb
 #
 # DOS mbr and gpt
 kern/subr_diskmbr.c			standard
 kern/subr_diskgpt.c			standard
 
+libkern/memset.c			standard
 libkern/stack_protector.c		standard
 
 # DEVICES
@@ -67,31 +103,52 @@ libkern/stack_protector.c		standard
 
 # PLATFORM FILES
 #
+platform/pc64/amd64/exception.S		standard
+platform/pc64/amd64/ipl.s		standard
 platform/pc64/amd64/global.s		standard
 platform/pc64/amd64/support.s		standard
 platform/pc64/amd64/sigtramp.s		standard
 platform/pc64/amd64/swtch.s		standard
-platform/pc64/amd64/npx.c		mandatory       npx
+platform/pc64/amd64/npx.c		standard
 platform/pc64/amd64/db_interface.c	standard
 platform/pc64/amd64/db_trace.c		standard
 platform/pc64/amd64/vm_machdep.c	standard
-platform/pc64/amd64/cpu_regs.c		standard
+platform/pc64/amd64/machdep.c		standard
 platform/pc64/amd64/userldt.c		standard
 platform/pc64/amd64/tls.c		standard
 platform/pc64/amd64/trap.c		standard
-platform/pc64/amd64/exception.c		standard
 platform/pc64/amd64/procfs_machdep.c	standard
-platform/pc64/amd64/fork_tramp.s	standard
-#platform/pc64/amd64/machdep.c		standard
-#platform/pc64/amd64/initcpu.c		standard
-#platform/pc64/amd64/identcpu.c		standard
+platform/pc64/amd64/initcpu.c		standard
+platform/pc64/amd64/identcpu.c		standard
+
+bus/isa/amd64/isa.c			optional	isa
+bus/isa/amd64/isa_compat.c		optional	isa compat_oldisa
+bus/isa/amd64/isa_dma.c			optional	isa
+
+platform/pc64/amd64/nexus.c		standard
+bus/pci/amd64/pci_cfgreg.c		optional	pci
+bus/pci/amd64/pcibus.c			optional	pci
+
+platform/pc64/icu/icu_abi.c             standard
+platform/pc64/icu/icu_ipl.s             standard
+platform/pc64/icu/icu_vector.s          standard
 
 platform/pc64/amd64/init.c		standard
 platform/pc64/amd64/globaldata.c	standard
-platform/pc64/amd64/machintr.c	standard
 platform/pc64/amd64/pmap.c		standard
+platform/pc64/amd64/pmap_inval.c		standard
 platform/pc64/amd64/busdma_machdep.c standard
 platform/pc64/amd64/sysarch.c	standard
 platform/pc64/amd64/systimer.c	standard
 platform/pc64/amd64/console.c	standard
 platform/pc64/amd64/ipl_funcs.c	standard
+kern/syscalls.c			standard
+dev/misc/atkbd/atkbd_isa.c		optional	atkbd
+dev/misc/atkbdc_layer/atkbdc_isa.c	optional	atkbdc
+dev/misc/psm/psm.c			optional	psm
+dev/serial/sio/sio.c			optional	sio
+bus/isa/syscons_isa.c			optional	sc
+bus/isa/vga_isa.c			optional	vga
+platform/pc64/isa/clock.c		standard
+platform/pc64/isa/intr_machdep.c	standard
+platform/pc64/amd64/spinlock.s		standard

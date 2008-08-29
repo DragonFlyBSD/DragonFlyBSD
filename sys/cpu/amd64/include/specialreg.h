@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 1991 The Regents of the University of California.
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,7 +29,7 @@
  *
  *	from: @(#)specialreg.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/amd64/include/specialreg.h,v 1.39 2007/05/31 11:26:44 des Exp $
- * $DragonFly: src/sys/cpu/amd64/include/specialreg.h,v 1.1 2007/09/23 04:29:30 yanyh Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/specialreg.h,v 1.2 2008/08/29 17:07:06 dillon Exp $
  */
 
 #ifndef _CPU_SPECIALREG_H_
@@ -135,6 +136,7 @@
 #define	AMDID_NX	0x00100000
 #define	AMDID_EXT_MMX	0x00400000
 #define	AMDID_FFXSR	0x01000000
+#define	AMDID_PAGE1GB	0x04000000
 #define	AMDID_RDTSCP	0x08000000
 #define	AMDID_LM	0x20000000
 #define	AMDID_EXT_3DNOW	0x40000000

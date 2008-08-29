@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003,2004,2008 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by David Xu <davidxu@t2t2.com> and Matthew Dillon <dillon@backplane.com>
@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc64/amd64/tls.c,v 1.3 2008/06/29 19:04:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/tls.c,v 1.4 2008/08/29 17:07:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,21 +43,24 @@
 #include <sys/sysctl.h>
 #include <sys/tls.h>
 #include <sys/reg.h>
+#include <sys/globaldata.h>
+
 #include <sys/thread2.h>
 
 #include <machine/cpu.h>
 #include <machine/clock.h>
 #include <machine/specialreg.h>
+#include <machine/segments.h>
 #include <machine/md_var.h>
 #include <machine/pcb_ext.h>		/* pcb.h included via sys/user.h */
 #include <machine/globaldata.h>		/* CPU_prvspace */
 #include <machine/smp.h>
+#include <machine/pcb.h>
 
 /*
- * set a TLS descriptor and resync the GDT.  A descriptor may be cleared
- * by passing info=NULL and infosize=0.  Note that hardware limitations may
- * cause the size passed in tls_info to be approximated. 
- *
+ * set a TLS descriptor.  For AMD64 descriptor 0 identifies %fs and
+ * descriptor 1 identifies %gs, and 0 is returned in sysmsg_result.
+ * 
  * Returns the value userland needs to load into %gs representing the 
  * TLS descriptor or -1 on error.
  *
@@ -67,15 +70,16 @@ int
 sys_set_tls_area(struct set_tls_area_args *uap)
 {
 	struct tls_info info;
-	struct segment_descriptor *desc;
 	int error;
 	int i;
 
 	/*
 	 * Sanity checks
+	 *
+	 * which 0 == %fs, which 1 == %gs
 	 */
 	i = uap->which;
-	if (i < 0 || i >= NGTLS)
+	if (i < 0 || i > 1)
 		return (ERANGE);
 	if (uap->infosize < 0)
 		return (EINVAL);
@@ -94,56 +98,13 @@ sys_set_tls_area(struct set_tls_area_args *uap)
 		return (error);
 	if (info.size < -1)
 		return (EINVAL);
-	if (info.size > (1 << 20))
-		info.size = (info.size + PAGE_MASK) & ~PAGE_MASK;
 
 	/*
-	 * Load the descriptor.  A critical section is required in case
-	 * an interrupt thread comes along and switches us out and then back
-	 * in.
+	 * For AMD64 we can only adjust FSBASE and GSBASE
 	 */
-	desc = &curthread->td_tls.tls[i];
-	crit_enter();
-	if (info.size == 0) {
-		bzero(desc, sizeof(*desc));
-	} else {
-		desc->sd_lobase = (intptr_t)info.base;
-		desc->sd_hibase = (intptr_t)info.base >> 24;
-		desc->sd_def32 = 1;
-		desc->sd_type = SDT_MEMRWA;
-		desc->sd_dpl = SEL_UPL;
-		desc->sd_xx = 0;
-		desc->sd_p = 1;
-		if (info.size == -1) {
-			/*
-			 * A descriptor size of -1 is a hack to map the
-			 * whole address space.  This type of mapping is
-			 * required for direct-tls accesses of variable
-			 * data, e.g. %gs:OFFSET where OFFSET is negative.
-			 */
-			desc->sd_lolimit = -1;
-			desc->sd_hilimit = -1;
-			desc->sd_gran = 1;
-		} else if (info.size >= (1 << 20)) {
-			/*
-			 * A descriptor size greater then 1MB requires page
-			 * granularity (the lo+hilimit field is only 20 bits)
-			 */
-			desc->sd_lolimit = info.size >> PAGE_SHIFT;
-			desc->sd_hilimit = info.size >> (PAGE_SHIFT + 16);
-			desc->sd_gran = 1;
-		} else {
-			/*
-			 * Otherwise a byte-granular size is supported.
-			 */
-			desc->sd_lolimit = info.size;
-			desc->sd_hilimit = info.size >> 16;
-			desc->sd_gran = 0;
-		}
-	}
-	crit_exit();
-	uap->sysmsg_result = GSEL(GTLS_START + i, SEL_UPL);
+	curthread->td_tls.info[i] = info;
 	set_user_TLS();
+	uap->sysmsg_result = 0;	/* segment descriptor $0 */
 	return(0);
 }
 	
@@ -159,7 +120,6 @@ int
 sys_get_tls_area(struct get_tls_area_args *uap)
 {
 	struct tls_info info;
-	struct segment_descriptor *desc;
 	int error;
 	int i;
 
@@ -167,41 +127,35 @@ sys_get_tls_area(struct get_tls_area_args *uap)
 	 * Sanity checks
 	 */
 	i = uap->which;
-	if (i < 0 || i >= NGTLS)
+	if (i < 0 || i > 1)
 		return (ERANGE);
 	if (uap->infosize < 0)
 		return (EINVAL);
 
-	/*
-	 * unpack the descriptor, ENOENT is returned for any descriptor
-	 * which has not been loaded.  uap->info may be NULL.
-	 */
-	desc = &curthread->td_tls.tls[i];
-	if (desc->sd_p) {
-		if (uap->info && uap->infosize > 0) {
-			bzero(&info, sizeof(info));
-			info.base = (void *)(intptr_t)
-				((desc->sd_hibase << 24) | desc->sd_lobase);
-			info.size = (desc->sd_hilimit << 16) | desc->sd_lolimit;
-			if (desc->sd_gran)
-				info.size <<= PAGE_SHIFT;
-			error = copyout(&info, uap->info,
-					min(sizeof(info), uap->infosize));
-		} else {
-			error = 0;
-		}
-		uap->sysmsg_result = GSEL(GTLS_START + i, SEL_UPL);
-	} else {
-		error = ENOENT;
-	}
+	info = curthread->td_tls.info[i];
+
+	error = copyout(&info, uap->info, min(sizeof(info), uap->infosize));
 	return(error);
 }
 
 /*
- * This function is a NOP because the TLS segments are proactively copied
- * by vmspace_ctl() when we switch to the (emulated) user process.
+ * Install the TLS
  */
 void
 set_user_TLS(void)
 {
+	struct mdglobaldata *gd = mdcpu;
+	thread_t td = gd->mi.gd_curthread;
+
+	td->td_pcb->pcb_fsbase = (register_t)td->td_tls.info[0].base;
+	td->td_pcb->pcb_gsbase = (register_t)td->td_tls.info[1].base;
+	if (gd->gd_user_fs != td->td_pcb->pcb_fsbase) {
+		gd->gd_user_fs = td->td_pcb->pcb_fsbase;
+		wrmsr(MSR_FSBASE, gd->gd_user_fs);
+	}
+	if (gd->gd_user_gs != td->td_pcb->pcb_gsbase) {
+		gd->gd_user_gs = td->td_pcb->pcb_gsbase;
+		wrmsr(MSR_KGSBASE, gd->gd_user_gs);
+	}
 }
+

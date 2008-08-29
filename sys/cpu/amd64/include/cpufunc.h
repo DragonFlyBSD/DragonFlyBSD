@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2003 Peter Wemm.
  * Copyright (c) 1993 The Regents of the University of California.
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/amd64/include/cpufunc.h,v 1.139 2004/01/28 23:53:04 peter Exp $
- * $DragonFly: src/sys/cpu/amd64/include/cpufunc.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/cpufunc.h,v 1.3 2008/08/29 17:07:06 dillon Exp $
  */
 
 /*
@@ -112,7 +113,7 @@ bsrq(u_long mask)
 }
 
 static __inline void
-disable_intr(void)
+cpu_disable_intr(void)
 {
 	__asm __volatile("cli" : : : "memory");
 }
@@ -123,6 +124,14 @@ do_cpuid(u_int ax, u_int *p)
 	__asm __volatile("cpuid"
 			 : "=a" (p[0]), "=b" (p[1]), "=c" (p[2]), "=d" (p[3])
 			 :  "0" (ax));
+}
+
+static __inline void
+cpuid_count(u_int ax, u_int cx, u_int *p)
+{
+	__asm __volatile("cpuid"
+			 : "=a" (p[0]), "=b" (p[1]), "=c" (p[2]), "=d" (p[3])
+			 :  "0" (ax), "c" (cx));
 }
 
 static __inline void
@@ -345,6 +354,34 @@ invd(void)
 	__asm __volatile("invd");
 }
 
+#if defined(_KERNEL)
+
+/*
+ * If we are not a true-SMP box then smp_invltlb() is a NOP.  Note that this
+ * will cause the invl*() functions to be equivalent to the cpu_invl*()
+ * functions.
+ */
+#ifdef SMP
+void smp_invltlb(void);
+#else
+#define smp_invltlb()
+#endif
+
+#ifndef _CPU_INVLPG_DEFINED
+
+/*
+ * Invalidate a patricular VA on this cpu only
+ */
+static __inline void
+cpu_invlpg(void *addr)
+{
+	__asm __volatile("invlpg %0" : : "m" (*(char *)addr) : "memory");
+}
+
+#endif
+
+#endif	/* _KERNEL */
+
 static __inline u_short
 inw(u_int port)
 {
@@ -543,7 +580,7 @@ rcr4(void)
  * Global TLB flush (except for thise for pages marked PG_G)
  */
 static __inline void
-invltlb(void)
+cpu_invltlb(void)
 {
 
 	load_cr3(rcr3());
@@ -618,7 +655,7 @@ load_gs(u_int sel)
 	 * being trashed happens to be the kernel gsbase at the time.
 	 */
 	gsbase = MSR_GSBASE;
-        __asm __volatile("pushfq; cli; rdmsr; movl %0,%%gs; wrmsr; popfq"
+        __asm __volatile("pushfq; cli; rdmsr; movw %0,%%gs; wrmsr; popfq"
             : : "rm" (sel), "c" (gsbase) : "eax", "edx");
 }
 #else
@@ -775,7 +812,7 @@ intr_disable(void)
 	register_t rflags;
 
 	rflags = read_rflags();
-	disable_intr();
+	cpu_disable_intr();
 	return (rflags);
 }
 
@@ -791,11 +828,11 @@ int	breakpoint(void);
 void	cpu_pause(void);
 u_int	bsfl(u_int mask);
 u_int	bsrl(u_int mask);
+void	cpu_disable_intr(void);
+void	cpu_enable_intr(void);
 void	cpu_invlpg(u_long addr);
 void	cpu_invlpg_range(u_long start, u_long end);
-void	disable_intr(void);
 void	do_cpuid(u_int ax, u_int *p);
-void	enable_intr(void);
 void	halt(void);
 u_char	inb(u_int port);
 u_int	inl(u_int port);
@@ -805,7 +842,7 @@ void	insw(u_int port, void *addr, size_t cnt);
 void	invd(void);
 void	invlpg(u_int addr);
 void	invlpg_range(u_int start, u_int end);
-void	invltlb(void);
+void	cpu_invltlb(void);
 u_short	inw(u_int port);
 void	load_cr0(u_int cr0);
 void	load_cr3(u_int cr3);

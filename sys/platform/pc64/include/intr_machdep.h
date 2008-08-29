@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2003 John Baldwin <jhb@FreeBSD.org>
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/amd64/include/intr_machdep.h,v 1.18 2007/05/08 21:29:13 jhb Exp $
- * $DragonFly: src/sys/platform/pc64/include/intr_machdep.h,v 1.1 2007/09/23 04:42:07 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/include/intr_machdep.h,v 1.2 2008/08/29 17:07:17 dillon Exp $
  */
 
 #ifndef __MACHINE_INTR_MACHDEP_H__
@@ -69,5 +70,13 @@
 #define	INTRCNT_COUNT	(1 + NUM_IO_INTS * 2 + 1)
 #endif
 
+#ifndef LOCORE
+
+#ifndef JG_defined_inthand_t
+#define JG_defined_inthand_t
+typedef void inthand_t(u_int cs, u_int ef, u_int esp, u_int ss);
+#endif
+
+#endif	/* !LOCORE */
 #endif	/* _KERNEL */
 #endif	/* !__MACHINE_INTR_MACHDEP_H__ */

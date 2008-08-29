@@ -1,11 +1,9 @@
 /*
- * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
  * Copyright (c) 1990 William Jolitz.
  * Copyright (c) 1991 The Regents of the University of California.
+ * Copyright (c) 2006 The DragonFly Project.
+ * Copyright (c) 2006 Matthew Dillon.
  * All rights reserved.
- * 
- * This code is derived from software contributed to The DragonFly Project
- * by Matthew Dillon <dillon@backplane.com>
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,7 +34,7 @@
  * 
  * from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/npx.c,v 1.3 2007/12/12 23:49:22 dillon Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/npx.c,v 1.4 2008/08/29 17:07:10 dillon Exp $
  */
 
 #include "opt_debug_npx.h"
@@ -83,6 +81,9 @@
 #define	fxrstor(addr)		__asm("fxrstor %0" : : "m" (*(addr)))
 #define	fxsave(addr)		__asm __volatile("fxsave %0" : "=m" (*(addr)))
 #endif
+#define start_emulating()       __asm("smsw %%ax; orb %0,%%al; lmsw %%ax" \
+				      : : "n" (CR0_TS) : "ax")
+#define stop_emulating()        __asm("clts")
 
 #ifndef CPU_DISABLE_SSE
 #define GET_FPU_EXSW_PTR(td) \
@@ -99,17 +100,11 @@ typedef u_char bool_t;
 static	void	fpu_clean_state(void);
 #endif
 
-u_int cpu_fxsr = 0;
+static struct krate badfprate = { 1 };
 
 static	int	npx_attach	(device_t dev);
 static	void	fpusave		(union savefpu *);
 static	void	fpurstor	(union savefpu *);
-
-#if (defined(I586_CPU) || defined(I686_CPU)) && !defined(CPU_DISABLE_SSE)
-int mmxopt = 1;
-SYSCTL_INT(_kern, OID_AUTO, mmxopt, CTLFLAG_RD, &mmxopt, 0,
-	"MMX/XMM optimized bcopy/copyin/copyout support");
-#endif
 
 /*
  * Attach routine - announce which it is, and wire into system
@@ -136,11 +131,11 @@ npxinit(u_short control)
 	 */
 	npxsave(&dummy);
 	crit_enter();
-	/*stop_emulating();*/
+	stop_emulating();
 	fldcw(&control);
 	fpusave(curthread->td_savefpu);
 	mdcpu->gd_npxthread = NULL;
-	/*start_emulating();*/
+	start_emulating();
 	crit_exit();
 }
 
@@ -453,9 +448,11 @@ npx_intr(void *dummy)
  * section to stabilize the FP state.
  */
 int
-npxdna(struct trapframe *frame)
+npxdna(void)
 {
+	thread_t td = curthread;
 	u_long *exstat;
+	int didinit = 0;
 
 	if (mdcpu->gd_npxthread != NULL) {
 		kprintf("npxdna: npxthread = %p, curthread = %p\n",
@@ -468,9 +465,10 @@ npxdna(struct trapframe *frame)
 	 * used the FP unit.  This also occurs when a thread pushes a
 	 * signal handler and uses FP in the handler.
 	 */
-	if ((curthread->td_flags & TDF_USINGFP) == 0) {
-		curthread->td_flags |= TDF_USINGFP;
+	if ((td->td_flags & (TDF_USINGFP | TDF_KERNELFP)) == 0) {
+		td->td_flags |= TDF_USINGFP;
 		npxinit(__INITIAL_NPXCW__);
+		didinit = 1;
 	}
 
 	/*
@@ -481,12 +479,12 @@ npxdna(struct trapframe *frame)
 	 * fpstate.
 	 */
 	crit_enter();
-	/*stop_emulating();*/
+	stop_emulating();
 	/*
 	 * Record new context early in case frstor causes an IRQ13.
 	 */
-	mdcpu->gd_npxthread = curthread;
-	exstat = GET_FPU_EXSW_PTR(curthread);
+	mdcpu->gd_npxthread = td;
+	exstat = GET_FPU_EXSW_PTR(td);
 	*exstat = 0;
 	/*
 	 * The following frstor may cause an IRQ13 when the state being
@@ -500,7 +498,18 @@ npxdna(struct trapframe *frame)
 	 * fnsave are broken, so our treatment breaks fnclex if it is the
 	 * first FPU instruction after a context switch.
 	 */
-	fpurstor(curthread->td_savefpu);
+	if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~0xFFBF)
+#ifndef CPU_DISABLE_SSE
+	    && cpu_fxsr
+#endif
+	) {
+		krateprintf(&badfprate,
+			    "FXRSTR: illegal FP MXCSR %08x didinit = %d\n",
+			    td->td_savefpu->sv_xmm.sv_env.en_mxcsr, didinit);
+		td->td_savefpu->sv_xmm.sv_env.en_mxcsr &= 0xFFBF;
+		lwpsignal(curproc, curthread->td_lwp, SIGFPE);
+	}
+	fpurstor(td->td_savefpu);
 	crit_exit();
 
 	return (1);
@@ -530,20 +539,22 @@ void
 npxsave(union savefpu *addr)
 {
 	crit_enter();
-	/*stop_emulating();*/
+	stop_emulating();
 	fpusave(addr);
 	mdcpu->gd_npxthread = NULL;
 	fninit();
-	/*start_emulating();*/
+	start_emulating();
 	crit_exit();
 }
 
 static void
 fpusave(union savefpu *addr)
 {
+#ifndef CPU_DISABLE_SSE
 	if (cpu_fxsr)
 		fxsave(addr);
 	else
+#endif
 		fnsave(addr);
 }
 
@@ -557,6 +568,8 @@ void
 npxpush(mcontext_t *mctx)
 {
 	thread_t td = curthread;
+
+	KKASSERT((td->td_flags & TDF_KERNELFP) == 0);
 
 	if (td->td_flags & TDF_USINGFP) {
 		if (mdcpu->gd_npxthread == td) {
@@ -572,8 +585,14 @@ npxpush(mcontext_t *mctx)
 		}
 		bcopy(td->td_savefpu, mctx->mc_fpregs, sizeof(mctx->mc_fpregs));
 		td->td_flags &= ~TDF_USINGFP;
+		mctx->mc_fpformat =
+#ifndef CPU_DISABLE_SSE
+			(cpu_fxsr) ? _MC_FPFMT_XMM :
+#endif
+			_MC_FPFMT_387;
 	} else {
 		mctx->mc_ownedfp = _MC_FPOWNED_NONE;
+		mctx->mc_fpformat = _MC_FPFMT_NODEV;
 	}
 }
 
@@ -610,10 +629,25 @@ npxpop(mcontext_t *mctx)
 		 * XXX: This is bit inefficient, if the code being returned
 		 * to is actively using the FP this results in multiple
 		 * kernel faults.
+		 *
+		 * WARNING: The saved state was exposed to userland and may
+		 * have to be sanitized to avoid a GP fault in the kernel.
 		 */
 		if (td == mdcpu->gd_npxthread)
 			npxsave(td->td_savefpu);
 		bcopy(mctx->mc_fpregs, td->td_savefpu, sizeof(*td->td_savefpu));
+		if ((td->td_savefpu->sv_xmm.sv_env.en_mxcsr & ~0xFFBF)
+#ifndef CPU_DISABLE_SSE
+		    && cpu_fxsr
+#endif
+		) {
+			krateprintf(&badfprate,
+				    "pid %d (%s) signal return from user: "
+				    "illegal FP MXCSR %08x\n",
+				    td->td_proc->p_pid,
+				    td->td_proc->p_comm,
+				    td->td_savefpu->sv_xmm.sv_env.en_mxcsr);
+		}
 		td->td_flags |= TDF_USINGFP;
 		break;
 	}

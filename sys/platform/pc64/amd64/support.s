@@ -1,6 +1,7 @@
 /*-
- * Copyright (c) 2003 Peter Wemm.
  * Copyright (c) 1993 The Regents of the University of California.
+ * Copyright (c) 2003 Peter Wemm.
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/amd64/amd64/support.S,v 1.127 2007/05/23 08:33:04 kib Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/support.s,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/support.s,v 1.2 2008/08/29 17:07:10 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -69,9 +70,6 @@ ENTRY(bzero)
 	andq	$7,%rcx
 	rep
 	stosb
-	ret
-
-ENTRY(memset)
 	ret
 
 /* Address: %rdi */
@@ -149,8 +147,10 @@ ENTRY(bcopy)
 	cld
 	ret
 ENTRY(ovbcopy)
+	ud2
 	ret
 ENTRY(reset_dbregs)
+	ud2
 	ret
 
 /*
@@ -223,6 +223,7 @@ ENTRY(fillw)
  */
 ENTRY(copyout)
 	movq	PCPU(curthread),%rax
+	movq	TD_PCB(%rax), %rax
 	movq	$copyout_fault,PCB_ONFAULT(%rax)
 	testq	%rdx,%rdx			/* anything to do? */
 	jz	done_copyout
@@ -266,12 +267,14 @@ ENTRY(copyout)
 done_copyout:
 	xorl	%eax,%eax
 	movq	PCPU(curthread),%rdx
+	movq	TD_PCB(%rdx), %rdx
 	movq	%rax,PCB_ONFAULT(%rdx)
 	ret
 
 	ALIGN_TEXT
 copyout_fault:
 	movq	PCPU(curthread),%rdx
+	movq	TD_PCB(%rdx), %rdx
 	movq	$0,PCB_ONFAULT(%rdx)
 	movq	$EFAULT,%rax
 	ret
@@ -282,6 +285,7 @@ copyout_fault:
  */
 ENTRY(copyin)
 	movq	PCPU(curthread),%rax
+	movq	TD_PCB(%rax), %rax
 	movq	$copyin_fault,PCB_ONFAULT(%rax)
 	testq	%rdx,%rdx			/* anything to do? */
 	jz	done_copyin
@@ -311,12 +315,14 @@ ENTRY(copyin)
 done_copyin:
 	xorl	%eax,%eax
 	movq	PCPU(curthread),%rdx
+	movq	TD_PCB(%rdx), %rdx
 	movq	%rax,PCB_ONFAULT(%rdx)
 	ret
 
 	ALIGN_TEXT
 copyin_fault:
 	movq	PCPU(curthread),%rdx
+	movq	TD_PCB(%rdx), %rdx
 	movq	$0,PCB_ONFAULT(%rdx)
 	movq	$EFAULT,%rax
 	ret
@@ -327,6 +333,7 @@ copyin_fault:
  */
 ENTRY(casuword32)
 	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 
 	movq	$VM_MAXUSER_ADDRESS-4,%rax
@@ -346,6 +353,7 @@ ENTRY(casuword32)
 	 */
 
 	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
 	movq	$0,PCB_ONFAULT(%rcx)
 	ret
 
@@ -355,6 +363,7 @@ ENTRY(casuword32)
  */
 ENTRY(casuword)
 	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 
 	movq	$VM_MAXUSER_ADDRESS-4,%rax
@@ -374,6 +383,7 @@ ENTRY(casuword)
 	 */
 
 	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 	movq	$0,PCB_ONFAULT(%rcx)
 	ret
@@ -387,6 +397,7 @@ ENTRY(casuword)
 ALTENTRY(fuword64)
 ENTRY(fuword)
 	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 
 	movq	$VM_MAXUSER_ADDRESS-8,%rax
@@ -399,6 +410,7 @@ ENTRY(fuword)
 
 ENTRY(fuword32)
 	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 
 	movq	$VM_MAXUSER_ADDRESS-4,%rax
@@ -423,6 +435,7 @@ ENTRY(fuswintr)
 
 ENTRY(fuword16)
 	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 
 	movq	$VM_MAXUSER_ADDRESS-2,%rax
@@ -435,6 +448,7 @@ ENTRY(fuword16)
 
 ENTRY(fubyte)
 	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 
 	movq	$VM_MAXUSER_ADDRESS-1,%rax
@@ -449,6 +463,7 @@ ENTRY(fubyte)
 fusufault:
 	movq	PCPU(curthread),%rcx
 	xorl	%eax,%eax
+	movq	TD_PCB(%rcx), %rcx
 	movq	%rax,PCB_ONFAULT(%rcx)
 	decq	%rax
 	ret
@@ -461,6 +476,7 @@ fusufault:
 ALTENTRY(suword64)
 ENTRY(suword)
 	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 
 	movq	$VM_MAXUSER_ADDRESS-8,%rax
@@ -470,11 +486,13 @@ ENTRY(suword)
 	movq	%rsi,(%rdi)
 	xorl	%eax,%eax
 	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
 	movq	%rax,PCB_ONFAULT(%rcx)
 	ret
 
 ENTRY(suword32)
 	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 
 	movq	$VM_MAXUSER_ADDRESS-4,%rax
@@ -484,11 +502,13 @@ ENTRY(suword32)
 	movl	%esi,(%rdi)
 	xorl	%eax,%eax
 	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
 	movq	%rax,PCB_ONFAULT(%rcx)
 	ret
 
 ENTRY(suword16)
 	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 
 	movq	$VM_MAXUSER_ADDRESS-2,%rax
@@ -498,11 +518,13 @@ ENTRY(suword16)
 	movw	%si,(%rdi)
 	xorl	%eax,%eax
 	movq	PCPU(curthread),%rcx		/* restore trashed register */
+	movq	TD_PCB(%rcx), %rcx
 	movq	%rax,PCB_ONFAULT(%rcx)
 	ret
 
 ENTRY(subyte)
 	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
 	movq	$fusufault,PCB_ONFAULT(%rcx)
 
 	movq	$VM_MAXUSER_ADDRESS-1,%rax
@@ -513,6 +535,7 @@ ENTRY(subyte)
 	movb	%al,(%rdi)
 	xorl	%eax,%eax
 	movq	PCPU(curthread),%rcx		/* restore trashed register */
+	movq	TD_PCB(%rcx), %rcx
 	movq	%rax,PCB_ONFAULT(%rcx)
 	ret
 
@@ -530,6 +553,7 @@ ENTRY(copyinstr)
 	movq	%rcx,%r9			/* %r9 = *len */
 	xchgq	%rdi,%rsi			/* %rdi = from, %rsi = to */
 	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
 	movq	$cpystrflt,PCB_ONFAULT(%rcx)
 
 	movq	$VM_MAXUSER_ADDRESS,%rax
@@ -575,6 +599,7 @@ cpystrflt:
 cpystrflt_x:
 	/* set *lencopied and return %eax */
 	movq	PCPU(curthread),%rcx
+	movq	TD_PCB(%rcx), %rcx
 	movq	$0,PCB_ONFAULT(%rcx)
 
 	testq	%r9,%r9

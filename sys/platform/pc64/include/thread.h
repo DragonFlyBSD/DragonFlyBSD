@@ -1,5 +1,7 @@
 /*
- * Copyright (c) 2003 Matt Dillon <dillon@backplane.com>, All rights reserved.
+ * Copyright (c) 2003 Matt Dillon <dillon@backplane.com>
+ * Copyright (c) 2008 The DragonFly Project.
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,7 +26,7 @@
  *
  *	Machine independant code should not directly include this file.
  *
- * $DragonFly: src/sys/platform/pc64/include/thread.h,v 1.2 2007/09/23 04:29:31 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/include/thread.h,v 1.3 2008/08/29 17:07:17 dillon Exp $
  */
 
 #ifndef	_MACHINE_THREAD_H_
@@ -37,7 +39,7 @@
 struct md_thread {
     unsigned int	mtd_cpl;
     union savefpu	*mtd_savefpu;
-    struct savetls      mtd_savetls;
+    struct savetls	mtd_savetls;
 };
 
 #ifdef _KERNEL
@@ -68,7 +70,7 @@ _get_mycpu(void)
 {
     struct globaldata *gd;
 
-    __asm ("movq %%fs:globaldata,%0" : "=r" (gd) : "m"(__mycpu__dummy));
+    __asm ("movq %%gs:globaldata,%0" : "=r" (gd) : "m"(__mycpu__dummy));
     return(gd);
 }
 

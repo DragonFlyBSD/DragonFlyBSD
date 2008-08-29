@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2006-2008 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,11 +31,12 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc64/amd64/console.c,v 1.2 2007/09/24 03:24:45 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/console.c,v 1.3 2008/08/29 17:07:10 dillon Exp $
  */
 
 #include <sys/systm.h>
 
+#if JG
 /*
  * Global console locking functions
  */
@@ -48,3 +49,4 @@ void
 cons_unlock(void)
 {
 }
+#endif

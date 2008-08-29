@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 2008 The DragonFly Project.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,7 +33,7 @@
  *
  *	@(#)types.h	8.3 (Berkeley) 1/5/94
  * $FreeBSD: src/sys/i386/include/types.h,v 1.19.2.1 2001/03/21 10:50:58 peter Exp $
- * $DragonFly: src/sys/cpu/amd64/include/types.h,v 1.1 2007/08/21 19:40:24 corecode Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/types.h,v 1.2 2008/08/29 17:07:06 dillon Exp $
  */
 
 #ifndef _CPU_TYPES_H_
@@ -66,10 +67,13 @@ typedef	__uint64_t	uintfptr_t;
 /*
  * MMU page tables
  */
+#ifndef JG_defined_pml4_entry_t
+#define JG_defined_pml4_entry_t
 typedef __uint64_t	pml4_entry_t;
 typedef __uint64_t	pdp_entry_t;
 typedef __uint64_t	pd_entry_t;
 typedef __uint64_t	pt_entry_t;
+#endif
 typedef __uint32_t      cpumask_t;      /* mask representing a set of cpus */
 
 #define PML4SIZE	sizeof(pml4_entry_t) /* for assembly files */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2005,2008 The DragonFly Project.  All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/tls.h,v 1.9 2008/08/25 23:34:35 dillon Exp $
+ * $DragonFly: src/sys/sys/tls.h,v 1.10 2008/08/29 17:07:04 dillon Exp $
  */
 
 #ifndef _SYS_TLS_H_
@@ -38,7 +38,7 @@
 
 struct tls_info {
 	void *base;
-	long size;
+	size_t size;
 };
 
 int set_tls_area(int which, struct tls_info *info, size_t infosize);

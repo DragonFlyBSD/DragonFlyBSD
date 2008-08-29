@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 1990 The Regents of the University of California.
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -35,7 +36,7 @@
  *
  *	from: @(#)param.h	5.8 (Berkeley) 6/28/91
  * $FreeBSD: src/sys/i386/include/param.h,v 1.54.2.8 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/cpu/amd64/include/param.h,v 1.3 2007/09/23 04:29:30 yanyh Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/param.h,v 1.4 2008/08/29 17:07:06 dillon Exp $
  */
 
 #ifndef _CPU_PARAM_H_
@@ -98,27 +99,33 @@
 #define ALIGNBYTES	_ALIGNBYTES
 #define ALIGN(p)	_ALIGN(p)
 
+/* JG license? from fbsd/src/sys/amd64/include/param.h */
 /* level 1 == page table */
+#define	NPTEPGSHIFT	9		/* LOG2(NPTEPG) */
 #define PAGE_SHIFT	12		/* LOG2(PAGE_SIZE) */
 #define PAGE_SIZE	(1<<PAGE_SHIFT)	/* bytes/page */
 #define PAGE_MASK	(PAGE_SIZE-1)
 #define NPTEPG		(PAGE_SIZE/(sizeof (pt_entry_t)))
 
 /* level 2 == page directory */
+#define	NPDEPGSHIFT	9		/* LOG2(NPDEPG) */
 #define PDRSHIFT	21		/* LOG2(NBPDR) */
 #define NBPDR		(1<<PDRSHIFT)	/* bytes/page dir */
 #define PDRMASK		(NBPDR-1)
 #define NPDEPG		(PAGE_SIZE/(sizeof (pd_entry_t)))
 
 /* level 3 == page directory pointer table */
+#define	NPDPEPGSHIFT	9		/* LOG2(NPDPEPG) */
 #define PDPSHIFT	30		/* LOG2(NBPDP) */
 #define NBPDP		(1<<PDPSHIFT)	/* bytes/page dir ptr table */
 #define PDPMASK		(NBPDP-1)
 #define NPDPEPG		(PAGE_SIZE/(sizeof (pdp_entry_t)))
 
 /* level 4 */
+#define	NPML4EPGSHIFT	9		/* LOG2(NPML4EPG) */
 #define PML4SHIFT	39		/* LOG2(NPML4) */
 #define NPML4		(1UL<<PML4SHIFT)/* bytes/page map level4 table */
+#define	NBPML4		(1ul<<PML4SHIFT)/* bytes/page map lev4 table */
 #define PML4MASK	(NPML4-1)
 #define NPML4EPG	(PAGE_SIZE/(sizeof (pml4_entry_t)))
 
@@ -162,7 +169,7 @@
  * of the hardware page size.
  */
 #ifndef	MSIZE
-#define MSIZE		256		/* size of an mbuf */
+#define MSIZE		512		/* size of an mbuf */
 #endif	/* MSIZE */
 
 #ifndef	MCLSHIFT
@@ -198,18 +205,18 @@
 /*
  * Mach derived conversion macros
  */
-#define trunc_page(x)		((x) & ~PAGE_MASK)
-#define round_page(x)		(((x) + PAGE_MASK) & ~PAGE_MASK)
-#define trunc_4mpage(x)		((x) & ~PDRMASK)
-#define round_4mpage(x)		((((x)) + PDRMASK) & ~PDRMASK)
+#define	round_page(x)	((((unsigned long)(x)) + PAGE_MASK) & ~(PAGE_MASK))
+#define	trunc_page(x)	((unsigned long)(x) & ~(PAGE_MASK))
+#define trunc_2mpage(x)	((unsigned long)(x) & ~PDRMASK)
+#define round_2mpage(x)	((((unsigned long)(x)) + PDRMASK) & ~PDRMASK)
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-#define atop(x)			((x) >> PAGE_SHIFT)
+#define	atop(x)		((vm_pindex_t)((x) >> PAGE_SHIFT))
 #endif
-#define ptoa(x)			((x) << PAGE_SHIFT)
+#define	ptoa(x)		((vm_paddr_t)(x) << PAGE_SHIFT)
 
-#define i386_btop(x)		((x) >> PAGE_SHIFT)
-#define i386_ptob(x)		((x) << PAGE_SHIFT)
+#define	amd64_btop(x)	((vm_pindex_t)((x) >> PAGE_SHIFT))
+#define	amd64_ptob(x)	((vm_paddr_t)(x) << PAGE_SHIFT)
 
 #define	pgtok(x)		((x) * (PAGE_SIZE / 1024))
 

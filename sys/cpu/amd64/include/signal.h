@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 1986, 1989, 1991, 1993
- *	The Regents of the University of California.  All rights reserved.
+ *	The Regents of the University of California.
+ * Copyright (c) 2008 The DragonFly Project.
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,7 +34,7 @@
  *
  *	@(#)signal.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/i386/include/signal.h,v 1.12 1999/11/12 13:52:11 marcel Exp $
- * $DragonFly: src/sys/cpu/amd64/include/signal.h,v 1.2 2008/08/25 23:34:31 dillon Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/signal.h,v 1.3 2008/08/29 17:07:06 dillon Exp $
  */
 
 #ifndef _CPU_SIGNAL_H_
@@ -99,12 +101,6 @@ typedef int sig_atomic_t;
 
 #if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
 
-/*
- * XXX temporarily use a <machine/bla.h> path instead of "bla.h" so the
- * XFree86-4-clients port, which uses -I-, builds.  Use of -I- should
- * be banned, or the option should be fixed to not screw up relative-path
- * includes.
- */
 #include <machine/trap.h>	/* codes for SIGILL, SIGFPE */
 
 /*
@@ -118,40 +114,45 @@ typedef int sig_atomic_t;
  * those in mcontext_t.
  */
 struct	sigcontext {
-	sigset_t sc_mask;		/* signal mask to restore */
-	long	sc_onstack;		/* sigstack state to restore */
-	long	sc_rdi;
-	long	sc_rsi;
-	long	sc_rdx;
-	long	sc_rcx;
-	long	sc_r8;
-	long	sc_r9;
-	long	sc_rax;
-	long	sc_rbx;
-	long	sc_rbp;
-	long	sc_r10;
-	long	sc_r11;
-	long	sc_r12;
-	long	sc_r13;
-	long	sc_r14;
-	long	sc_r15;
-	long	sc_trapno;
-	long	sc_addr;
-	long	sc_flags;
-	long	sc_err;
-	long	sc_rip;
-	long	sc_cs;
-	long	sc_rflags;
-	long	sc_rsp;
-	long	sc_ss;
-	long	sc_len;
-	/*
-	 * XXX - taken from freebsd
-	 */
-	long	sc_fpformat;
-	long	sc_ownedfp;
-	long	sc_fpstate[64] __aligned(16);
-	long	sc_spare[9];
+	sigset_t	sc_mask;	/* signal mask to restore */
+
+	long		sc_onstack;	/* sigstack state to restore */
+	long		sc_rdi;
+	long		sc_rsi;
+	long		sc_rdx;
+	long		sc_rcx;
+	long		sc_r8;
+	long		sc_r9;
+	long		sc_rax;
+	long		sc_rbx;
+	long		sc_rbp;
+	long		sc_r10;
+	long		sc_r11;
+	long		sc_r12;
+	long		sc_r13;
+	long		sc_r14;
+	long		sc_r15;
+	long		sc_trapno;
+	long		sc_addr;
+	long		sc_flags;
+	long		sc_err;
+	long		sc_rip;
+	long		sc_cs;
+	long		sc_rflags;
+	long		sc_rsp;
+	long		sc_ss;
+
+	unsigned int	sc_len;
+	unsigned int	sc_fpformat;
+	unsigned int	sc_ownedfp;
+	unsigned int	sc_reserved;
+	unsigned int	sc_unused01;
+	unsigned int	sc_unused02;
+
+	/* 16 byte aligned */
+
+	int		sc_fpregs[128];
+	int		__spare__[16];
 };
 
 #endif /* !_ANSI_SOURCE && !_POSIX_SOURCE */

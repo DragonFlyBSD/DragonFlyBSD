@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) Peter Wemm <peter@netplex.com.au>
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,7 +29,7 @@
  *	should not include this file.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/platform/pc64/include/globaldata.h,v 1.1 2007/08/21 19:45:45 corecode Exp $
+ * $DragonFly: src/sys/platform/pc64/include/globaldata.h,v 1.2 2008/08/29 17:07:17 dillon Exp $
  */
 
 #ifndef _MACHINE_GLOBALDATA_H_
@@ -43,10 +44,13 @@
 #include <sys/thread.h>		/* struct thread */
 #endif
 #ifndef _MACHINE_SEGMENTS_H_
-#include <machine/segments.h>	/* struct segment_descriptor */
+#include <machine/segments.h>	/* struct user_segment_descriptor */
 #endif
 #ifndef _MACHINE_TSS_H_
-#include <machine/tss.h>	/* struct i386tss */
+#include <machine/tss.h>	/* struct amd64tss */
+#endif
+#ifndef _MACHINE_NPX_H_
+#include <machine/npx.h>
 #endif
 
 /*
@@ -63,10 +67,12 @@
  */
 struct mdglobaldata {
 	struct globaldata mi;
-	struct segment_descriptor gd_common_tssd;
-	struct segment_descriptor *gd_tss_gdt;
+	struct user_segment_descriptor gd_common_tssd;
+	struct user_segment_descriptor *gd_tss_gdt;
 	struct thread   *gd_npxthread;
 	struct amd64tss gd_common_tss;
+	union savefpu	gd_savefpu;	/* fast bcopy/zero temp fpu save area */
+	int		gd_fpu_lock;	/* fast bcopy/zero cpu lock */
 	int		gd_fpending;	/* fast interrupt pending */
 	int		gd_ipending;	/* normal interrupt pending */
 	int		gd_spending;	/* software interrupt pending */
@@ -83,15 +89,26 @@ struct mdglobaldata {
 	caddr_t		gd_CADDR1;
 	caddr_t		gd_CADDR2;
 	caddr_t		gd_CADDR3;
-	unsigned	*gd_PADDR1;
+	pt_entry_t	*gd_PADDR1;
+	register_t	gd_scratch_rsp;
+	register_t	gd_rsp0;
+	register_t	gd_user_fs;	/* current user fs in MSR */
+	register_t	gd_user_gs;	/* current user gs in MSR */
 };
+
+#define MDGLOBALDATA_BASEALLOC_SIZE	\
+	((sizeof(struct mdglobaldata) + PAGE_MASK) & ~PAGE_MASK)
+#define MDGLOBALDATA_BASEALLOC_PAGES	\
+	(MDGLOBALDATA_BASEALLOC_SIZE / PAGE_SIZE)
+#define MDGLOBALDATA_PAD		\
+	(MDGLOBALDATA_BASEALLOC_SIZE - sizeof(struct mdglobaldata))
 
 /*
  * This is the upper (0xff800000) address space layout that is per-cpu.
  * It is setup in locore.s and pmap.c for the BSP and in mp_machdep.c for
  * each AP.  genassym helps export this to the assembler code.
  *
- * WARNING!  page-bounded fields are hardwired for SMPpt[] setup in
+ * JG WARNING!  page-bounded fields are hardwired for SMPpt[] setup in
  * i386/i386/mp_machdep.c and locore.s.
  */
 struct privatespace {

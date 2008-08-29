@@ -1,4 +1,35 @@
 /*
+ * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name of The DragonFly Project nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific, prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ * 
+ * --
+ *
  * Mach Operating System
  * Copyright (c) 1991,1990 Carnegie Mellon University
  * All Rights Reserved.
@@ -24,7 +55,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_interface.c,v 1.48.2.1 2000/07/07 00:38:46 obrien Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/db_interface.c,v 1.2 2007/09/24 03:24:45 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/db_interface.c,v 1.3 2008/08/29 17:07:10 dillon Exp $
  */
 
 /*
@@ -49,6 +80,8 @@
 
 static jmp_buf *db_nofault = 0;
 extern jmp_buf	db_jmpbuf;
+
+extern void	gdb_handle_exception (db_regs_t *, int, int);
 
 int	db_active;
 db_regs_t ddb_regs;
@@ -121,14 +154,6 @@ kdb_trap(int type, int code, struct amd64_saved_state *regs)
 	 */
 	ddb_regs = *regs;
 
-	/*
-	 * If in kernel mode, esp and ss are not saved, so dummy them up.
-	 */
-	if (ISPL(regs->tf_cs) == 0) {
-	    ddb_regs.tf_rsp = (int)&regs->tf_rsp;
-	    ddb_regs.tf_ss = rss();
-	}
-
 #ifdef SMP
 	db_printf("\nCPU%d stopping CPUs: 0x%08x\n", 
 	    mycpu->gd_cpuid, mycpu->gd_other_cpus);
@@ -148,7 +173,7 @@ kdb_trap(int type, int code, struct amd64_saved_state *regs)
 	    db_trap(type, code);
 	    cndbctl(FALSE);
 	} else
-	    /* gdb_handle_exception(&ddb_regs, type, code); */
+	    gdb_handle_exception(&ddb_regs, type, code);
 	db_active--;
 	/* vcons_set_mode(0); */
 	db_global_jmpbuf_valid = FALSE;
@@ -175,17 +200,22 @@ kdb_trap(int type, int code, struct amd64_saved_state *regs)
 	regs->tf_rdx    = ddb_regs.tf_rdx;
 	regs->tf_rbx    = ddb_regs.tf_rbx;
 
-	/*
-	 * If in user mode, the saved ESP and SS were valid, restore them.
-	 */
-	if (ISPL(regs->tf_cs)) {
-	    regs->tf_rsp = ddb_regs.tf_rsp;
-	    regs->tf_ss  = ddb_regs.tf_ss & 0xffff;
-	}
+    	regs->tf_rsp    = ddb_regs.tf_rsp;
+    	regs->tf_ss     = ddb_regs.tf_ss & 0xffff;
 
 	regs->tf_rbp    = ddb_regs.tf_rbp;
 	regs->tf_rsi    = ddb_regs.tf_rsi;
 	regs->tf_rdi    = ddb_regs.tf_rdi;
+
+	regs->tf_r8     = ddb_regs.tf_r8;
+	regs->tf_r9     = ddb_regs.tf_r9;
+	regs->tf_r10    = ddb_regs.tf_r10;
+	regs->tf_r11    = ddb_regs.tf_r11;
+	regs->tf_r12    = ddb_regs.tf_r12;
+	regs->tf_r13    = ddb_regs.tf_r13;
+	regs->tf_r14    = ddb_regs.tf_r14;
+	regs->tf_r15    = ddb_regs.tf_r15;
+
 	/* regs->tf_es     = ddb_regs.tf_es & 0xffff; */
 	/* regs->tf_fs     = ddb_regs.tf_fs & 0xffff; */
 	/* regs->tf_gs     = ddb_regs.tf_gs & 0xffff; */

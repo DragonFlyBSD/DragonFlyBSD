@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2003,2004,2008 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc64/amd64/in_cksum2.s,v 1.2 2007/09/24 03:24:45 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/in_cksum2.s,v 1.3 2008/08/29 17:07:10 dillon Exp $
  */
 
 #include <machine/asmacros.h>		/* miscellaneous asm macros */
@@ -58,29 +58,29 @@
 	 */
 	.p2align 4
 ENTRY(asm_ones32)
-	movl	4(%esp),%edx	/* %edx = buffer pointer */
-	movl	8(%esp),%ecx	/* %ecx = counter */
-	subl	%eax,%eax	/* %eax = checksum */
+	movq	%rdi,%rdx	/* %rdx = buffer pointer */
+	movl	%esi,%ecx	/* %ecx = counter */
+	xorl	%eax,%eax	/* %eax = checksum */
 	cmpl	$5,%ecx
 	jl	2f
 1:
 	subl	$5,%ecx
-	addl	(%edx),%eax
-	adcl	4(%edx),%eax
-	adcl	8(%edx),%eax
-	adcl	12(%edx),%eax
-	adcl	16(%edx),%eax
+	addl	(%rdx),%eax
+	adcl	4(%rdx),%eax
+	adcl	8(%rdx),%eax
+	adcl	12(%rdx),%eax
+	adcl	16(%rdx),%eax
 	adcl	$0,%eax
-	addl	$20,%edx
+	addq	$20,%rdx
 	cmpl	$5,%ecx
 	jge	1b
 2:
 	testl	%ecx,%ecx
 	je	4f
 3:
-	addl	(%edx),%eax
+	addl	(%rdx),%eax
 	adcl	$0,%eax
-	addl	$4,%edx
+	addq	$4,%rdx
 	decl	%ecx
 	jnz	3b
 4:

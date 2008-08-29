@@ -1,4 +1,35 @@
 /*
+ * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name of The DragonFly Project nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific, prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ * 
+ * --
+ *
  * Mach Operating System
  * Copyright (c) 1991,1990 Carnegie Mellon University
  * All Rights Reserved.
@@ -24,7 +55,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_trace.c,v 1.35.2.3 2002/02/21 22:31:25 silby Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/db_trace.c,v 1.2 2007/09/24 03:24:45 yanyh Exp $ 
+ * $DragonFly: src/sys/platform/pc64/amd64/db_trace.c,v 1.3 2008/08/29 17:07:10 dillon Exp $ 
  */
 
 #include <sys/param.h>
@@ -79,6 +110,14 @@ struct db_variable db_regs[] = {
 	{ "rdi",	&ddb_regs.tf_rdi,    FCN_NULL },
 	{ "rip",	&ddb_regs.tf_rip,    FCN_NULL },
 	{ "rfl",	&ddb_regs.tf_rflags, FCN_NULL },
+	{ "r8",		&ddb_regs.tf_r8,     FCN_NULL },
+	{ "r9",		&ddb_regs.tf_r9,     FCN_NULL },
+	{ "r10",	&ddb_regs.tf_r10,    FCN_NULL },
+	{ "r11",	&ddb_regs.tf_r11,    FCN_NULL },
+	{ "r12",	&ddb_regs.tf_r12,    FCN_NULL },
+	{ "r13",	&ddb_regs.tf_r13,    FCN_NULL },
+	{ "r14",	&ddb_regs.tf_r14,    FCN_NULL },
+	{ "r15",	&ddb_regs.tf_r15,    FCN_NULL },
 	{ "dr0",	NULL,		     db_dr0 },
 	{ "dr1",	NULL,		     db_dr1 },
 	{ "dr2",	NULL,		     db_dr2 },
@@ -108,8 +147,8 @@ struct amd64_frame {
 
 static void	db_nextframe(struct amd64_frame **, db_addr_t *);
 static int	db_numargs(struct amd64_frame *);
-static void	db_print_stack_entry(const char *, int, char **, int *, db_addr_t);
-static void	dl_symbol_values(int callpc, const char **name);
+static void	db_print_stack_entry(const char *, int, char **, long *, db_addr_t);
+static void	dl_symbol_values(long callpc, const char **name);
 
 
 static char	*watchtype_str(int type);
@@ -127,6 +166,9 @@ void		db_md_list_watchpoints(void);
 static int
 db_numargs(struct amd64_frame *fp)
 {
+#if 1
+	return (0);	/* regparm, needs dwarf2 info */
+#else
 	int	args;
 #if 0
 	int	*argp;
@@ -152,21 +194,22 @@ db_numargs(struct amd64_frame *fp)
 #endif
 	args = 5;
 	return(args);
+#endif
 }
 
 static void
-db_print_stack_entry(const char *name, int narg, char **argnp, int *argp,
+db_print_stack_entry(const char *name, int narg, char **argnp, long *argp,
 		     db_addr_t callpc)
 {
 	db_printf("%s(", name);
 	while (narg) {
 		if (argnp)
 			db_printf("%s=", *argnp++);
-		db_printf("%r", db_get_value((int)argp, 4, FALSE));
+		db_printf("%r", db_get_value((long)argp, 8, FALSE));
 		argp++;
 		if (--narg != 0)
 			db_printf(",");
-  	}
+	}
 	db_printf(") at ");
 	db_printsym(callpc, DB_STGY_PROC);
 	db_printf("\n");
@@ -180,12 +223,12 @@ db_nextframe(struct amd64_frame **fp, db_addr_t *ip)
 {
 	struct trapframe *tf;
 	int frame_type;
-	int eip, esp, ebp;
+	long rip, rsp, rbp;
 	db_expr_t offset;
 	const char *sym, *name;
 
-	eip = db_get_value((int) &(*fp)->f_retaddr, 4, FALSE);
-	ebp = db_get_value((int) &(*fp)->f_frame, 4, FALSE);
+	rip = db_get_value((long) &(*fp)->f_retaddr, 8, FALSE);
+	rbp = db_get_value((long) &(*fp)->f_frame, 8, FALSE);
 
 	/*
 	 * Figure out frame type.
@@ -193,9 +236,9 @@ db_nextframe(struct amd64_frame **fp, db_addr_t *ip)
 
 	frame_type = NORMAL;
 
-	sym = db_search_symbol(eip, DB_STGY_ANY, &offset);
+	sym = db_search_symbol(rip, DB_STGY_ANY, &offset);
 	db_symbol_values(sym, &name, NULL);
-	dl_symbol_values(eip, &name);
+	dl_symbol_values(rip, &name);
 	if (name != NULL) {
 		if (!strcmp(name, "calltrap")) {
 			frame_type = TRAP;
@@ -210,59 +253,59 @@ db_nextframe(struct amd64_frame **fp, db_addr_t *ip)
 	 * Normal frames need no special processing.
 	 */
 	if (frame_type == NORMAL) {
-		*ip = (db_addr_t) eip;
-		*fp = (struct amd64_frame *) ebp;
+		*ip = (db_addr_t) rip;
+		*fp = (struct amd64_frame *) rbp;
 		return;
 	}
 
-	db_print_stack_entry(name, 0, 0, 0, eip);
+	db_print_stack_entry(name, 0, 0, 0, rip);
 
 	/*
 	 * Point to base of trapframe which is just above the
 	 * current frame.
 	 */
-	tf = (struct trapframe *) ((int)*fp + 8);
+	tf = (struct trapframe *)((long)*fp + 16);
 
 #if 0
-	esp = (ISPL(tf->tf_cs) == SEL_UPL) ?  tf->tf_rsp : (int)&tf->tf_rsp;
+	rsp = (ISPL(tf->tf_cs) == SEL_UPL) ?  tf->tf_rsp : (long)&tf->tf_rsp;
 #endif
-	esp = (int)&tf->tf_rsp;
+	rsp = (long)&tf->tf_rsp;
 
 	switch (frame_type) {
 	case TRAP:
 		{
-			eip = tf->tf_rip;
-			ebp = tf->tf_rbp;
+			rip = tf->tf_rip;
+			rbp = tf->tf_rbp;
 			db_printf(
-		    "--- trap %#r, eip = %#r, esp = %#r, ebp = %#r ---\n",
-			    tf->tf_trapno, eip, esp, ebp);
+		    "--- trap %#r, rip = %#r, rsp = %#r, rbp = %#r ---\n",
+			    tf->tf_trapno, rip, rsp, rbp);
 		}
 		break;
 	case SYSCALL:
 		{
-			eip = tf->tf_rip;
-			ebp = tf->tf_rbp;
+			rip = tf->tf_rip;
+			rbp = tf->tf_rbp;
 			db_printf(
-		    "--- syscall %#r, eip = %#r, esp = %#r, ebp = %#r ---\n",
-			    tf->tf_rax, eip, esp, ebp);
+		    "--- syscall %#r, rip = %#r, rsp = %#r, rbp = %#r ---\n",
+			    tf->tf_rax, rip, rsp, rbp);
 		}
 		break;
 	case INTERRUPT:
-		tf = (struct trapframe *)((int)*fp + 16);
+		tf = (struct trapframe *)((long)*fp + 16);
 		{
-			eip = tf->tf_rip;
-			ebp = tf->tf_rbp;
+			rip = tf->tf_rip;
+			rbp = tf->tf_rbp;
 			db_printf(
-		    "--- interrupt, eip = %#r, esp = %#r, ebp = %#r ---\n",
-			    eip, esp, ebp);
+		    "--- interrupt, rip = %#r, rsp = %#r, rbp = %#r ---\n",
+			    rip, rsp, rbp);
 		}
 		break;
 	default:
 		break;
 	}
 
-	*ip = (db_addr_t) eip;
-	*fp = (struct amd64_frame *) ebp;
+	*ip = (db_addr_t) rip;
+	*fp = (struct amd64_frame *) rbp;
 }
 
 void
@@ -281,7 +324,7 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 	if (!have_addr) {
 		frame = (struct amd64_frame *)BP_REGS(&ddb_regs);
 		if (frame == NULL)
-			frame = (struct amd64_frame *)(SP_REGS(&ddb_regs) - 4);
+			frame = (struct amd64_frame *)(SP_REGS(&ddb_regs) - 8);
 		callpc = PC_REGS(&ddb_regs);
 	} else {
 		/*
@@ -289,10 +332,10 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 		 * a convenience.
 		 */
 		frame = (struct amd64_frame *)addr;
-		for (i = 0; i < 4096; i += 4) {
+		for (i = 0; i < 4096; i += 8) {
 			struct amd64_frame *check;
 
-			check = (struct amd64_frame *)db_get_value((int)((char *)&frame->f_frame + i), 4, FALSE);
+			check = (struct amd64_frame *)db_get_value((long)((char *)&frame->f_frame + i), 8, FALSE);
 			if ((char *)check - (char *)frame >= 0 &&
 			    (char *)check - (char *)frame < 4096
 			) {
@@ -306,7 +349,7 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 		}
 		frame = (void *)((char *)frame + i);
 		db_printf("Trace beginning at frame %p\n", frame);
-		callpc = (db_addr_t)db_get_value((int)&frame->f_retaddr, 4, FALSE);
+		callpc = (db_addr_t)db_get_value((long)&frame->f_retaddr, 8, FALSE);
 	}
 
 	first = TRUE;
@@ -340,26 +383,26 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 				int instr;
 
 				instr = db_get_value(callpc, 4, FALSE);
-				if ((instr & 0x00ffffff) == 0x00e58955) {
-					/* pushl %ebp; movl %esp, %ebp */
+				if ((instr & 0xffffffff) == 0xe5894855) {
+					/* pushq %rbp; movq %rsp, %rbp */
 					actframe = (struct amd64_frame *)
-					    (SP_REGS(&ddb_regs) - 4);
-				} else if ((instr & 0x0000ffff) == 0x0000e589) {
-					/* movl %esp, %ebp */
+					    (SP_REGS(&ddb_regs) - 8);
+				} else if ((instr & 0xffffff) == 0xe58948) {
+					/* movq %rsp, %rbp */
 					actframe = (struct amd64_frame *)
 					    SP_REGS(&ddb_regs);
 					if (ddb_regs.tf_rbp == 0) {
 						/* Fake caller's frame better. */
 						frame = actframe;
 					}
-				} else if ((instr & 0x000000ff) == 0x000000c3) {
+				} else if ((instr & 0xff) == 0xc3) {
 					/* ret */
 					actframe = (struct amd64_frame *)
-					    (SP_REGS(&ddb_regs) - 4);
+					    (SP_REGS(&ddb_regs) - 8);
 				} else if (offset == 0) {
 					/* Probably a symbol in assembler code. */
 					actframe = (struct amd64_frame *)
-					    (SP_REGS(&ddb_regs) - 4);
+					    (SP_REGS(&ddb_regs) - 8);
 				}
 			} else if (name != NULL &&
 				   strcmp(name, "fork_trampoline") == 0) {
@@ -386,7 +429,7 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 		if (actframe != frame) {
 			/* `frame' belongs to caller. */
 			callpc = (db_addr_t)
-			    db_get_value((int)&actframe->f_retaddr, 4, FALSE);
+			    db_get_value((long)&actframe->f_retaddr, 8, FALSE);
 			continue;
 		}
 
@@ -399,10 +442,10 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 void
 db_print_backtrace(void)
 {
-	register_t  ebp;
+	register_t  rbp;
 
-	/* __asm __volatile("movl %%ebp, %0" : "=r" (ebp)); */
-	db_stack_trace_cmd(ebp, 1, -1, NULL);
+	__asm __volatile("movq %%rbp, %0" : "=r" (rbp));
+	db_stack_trace_cmd(rbp, 1, -1, NULL);
 }
 
 #define DB_DRX_FUNC(reg)						\
@@ -442,7 +485,7 @@ kamd64_set_watch(int watchnum, unsigned int watchaddr, int size, int access,
 		else
 			return(-1);
 	}
-	
+
 	switch (access) {
 	case DBREG_DR7_EXEC:
 		size = 1; /* size must be 1 for an execution breakpoint */
@@ -455,7 +498,7 @@ kamd64_set_watch(int watchnum, unsigned int watchaddr, int size, int access,
 	}
 
 	/*
-	 * we can watch a 1, 2, or 4 byte sized location
+	 * we can watch a 1, 2, 4, or 8 byte sized location
 	 */
 	switch (size) {
 	case 1:
@@ -466,6 +509,8 @@ kamd64_set_watch(int watchnum, unsigned int watchaddr, int size, int access,
 		break;
 	case 4:
 		mask = 0x03 << 2;
+	case 8:
+		mask = 0x02 << 2;
 		break;
 	default:
 		return(-1);
@@ -491,10 +536,10 @@ kamd64_clr_watch(int watchnum, struct dbreg *d)
 {
 	if (watchnum < 0 || watchnum >= 4)
 		return(-1);
-	
+
 	d->dr[7] &= ~((0x3 << (watchnum * 2)) | (0x0f << (watchnum * 4 + 16)));
 	DBREG_DRX(d, watchnum) = 0;
-	
+
 	return(0);
 }
 
@@ -507,19 +552,21 @@ db_md_set_watchpoint(db_expr_t addr, db_expr_t size)
 	struct dbreg d;
 	
 	fill_dbregs(NULL, &d);
-	
+
 	avail = 0;
-	for(i=0; i < 4; i++) {
+	for (i = 0; i < 4; i++) {
 		if ((d.dr[7] & (3 << (i * 2))) == 0)
 			avail++;
 	}
-	
-	if (avail * 4 < size)
+
+	if (avail * 8 < size)
 		return(-1);
-	
+
 	for (i=0; i < 4 && (size != 0); i++) {
 		if ((d.dr[7] & (3 << (i * 2))) == 0) {
-			if (size > 4)
+			if (size >= 8 || (avail == 1 && size > 4))
+				wsize = 8;
+			else if (size > 2)
 				wsize = 4;
 			else
 				wsize = size;
@@ -539,12 +586,12 @@ db_md_set_watchpoint(db_expr_t addr, db_expr_t size)
 int
 db_md_clr_watchpoint(db_expr_t addr, db_expr_t size)
 {
-	int i;
 	struct dbreg d;
+	int i;
 
 	fill_dbregs(NULL, &d);
 
-	for(i=0; i<4; i++) {
+	for(i = 0; i < 4; i++) {
 		if (d.dr[7] & (3 << (i * 2))) {
 			if ((DBREG_DRX((&d), i) >= addr) && 
 			    (DBREG_DRX((&d), i) < addr + size))
@@ -583,7 +630,7 @@ db_md_list_watchpoints(void)
 	db_printf("\nhardware watchpoints:\n");
 	db_printf("  watch    status        type  len     address\n"
 		  "  -----  --------  ----------  ---  ----------\n");
-	for (i=0; i < 4; i++) {
+	for (i = 0; i < 4; i++) {
 		if (d.dr[7] & (0x03 << (i * 2))) {
 			unsigned type, len;
 			type = (d.dr[7] >> (16 + (i * 4))) & 3;
@@ -597,7 +644,7 @@ db_md_list_watchpoints(void)
 	}
 
 	db_printf("\ndebug register values:\n");
-	for (i=0; i < 8; i++)
+	for (i = 0; i < 8; i++)
 		db_printf("  dr%d 0x%08x\n", i, DBREG_DRX((&d),i));
 	db_printf("\n");
 }
@@ -607,7 +654,7 @@ db_md_list_watchpoints(void)
  */
 static
 void
-dl_symbol_values(int callpc, const char **name)
+dl_symbol_values(long callpc, const char **name)
 {
 	Dl_info info;
 

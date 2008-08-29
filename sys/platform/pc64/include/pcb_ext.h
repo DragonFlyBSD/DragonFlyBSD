@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 1997 Jonathan Lemon
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/pcb_ext.h,v 1.4 1999/12/29 04:33:04 peter Exp $
- * $DragonFly: src/sys/platform/pc64/include/pcb_ext.h,v 1.2 2007/09/24 03:24:45 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/include/pcb_ext.h,v 1.3 2008/08/29 17:07:17 dillon Exp $
  */
 
 #ifndef _MACHINE_PCB_EXT_H_
@@ -45,18 +46,18 @@
 #endif
 
 struct pcb_ext {
-	struct 	segment_descriptor ext_tssd;	/* tss descriptor */
+	struct 	user_segment_descriptor ext_tssd;	/* tss descriptor */
 	struct 	amd64tss	ext_tss;	/* per-process amd64tss */
 	caddr_t	ext_iomap;		/* i/o permission bitmap */
-	/* struct	vm86_kernel ext_vm86; */	/* vm86 area */
 };
 
+/* JG remove this structure? */
 struct pcb_ldt {
 	caddr_t	ldt_base;
 	int	ldt_len;
 	int	ldt_refcnt;
 	u_long	ldt_active;
-	struct	segment_descriptor ldt_sd;
+	struct	user_segment_descriptor ldt_sd;
 };
 
 #ifdef _KERNEL

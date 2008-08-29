@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 1990 The Regents of the University of California.
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -35,7 +36,7 @@
  *
  *	from: @(#)tss.h	5.4 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/amd64/include/tss.h,v 1.15 2003/11/17 08:58:14 peter Exp $
- * $DragonFly: src/sys/cpu/amd64/include/tss.h,v 1.1 2007/08/21 19:40:24 corecode Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/tss.h,v 1.2 2008/08/29 17:07:06 dillon Exp $
  */
 
 #ifndef _CPU_TSS_H_
@@ -55,7 +56,6 @@ struct amd64tss {
 	u_int64_t	tss_rsp2 __packed; 	/* kernel stack pointer ring 2 */
 	u_int32_t	tss_rsvd1;
 	u_int32_t	tss_rsvd2;
-	u_int32_t	tss_rsvd3;
 	u_int64_t	tss_ist1 __packed;	/* Interrupt stack table 1 */
 	u_int64_t	tss_ist2 __packed;	/* Interrupt stack table 2 */
 	u_int64_t	tss_ist3 __packed;	/* Interrupt stack table 3 */
@@ -63,9 +63,9 @@ struct amd64tss {
 	u_int64_t	tss_ist5 __packed;	/* Interrupt stack table 5 */
 	u_int64_t	tss_ist6 __packed;	/* Interrupt stack table 6 */
 	u_int64_t	tss_ist7 __packed;	/* Interrupt stack table 7 */
+	u_int32_t	tss_rsvd3;
 	u_int32_t	tss_rsvd4;
-	u_int32_t	tss_rsvd5;
-	u_int16_t	tss_rsvd6;
+	u_int16_t	tss_rsvd5;
 	u_int16_t	tss_iobase;	/* io bitmap offset */
 };
 

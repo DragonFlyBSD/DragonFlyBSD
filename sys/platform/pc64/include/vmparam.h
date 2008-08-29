@@ -1,9 +1,8 @@
 /*-
  * Copyright (c) 1990 The Regents of the University of California.
- * All rights reserved.
  * Copyright (c) 1994 John S. Dyson
- * All rights reserved.
  * Copyright (c) 2003 Peter Wemm
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -39,7 +38,7 @@
  *
  *	from: @(#)vmparam.h	5.9 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/amd64/include/vmparam.h,v 1.44 2003/12/07 04:51:04 alc Exp $
- * $DragonFly: src/sys/platform/pc64/include/vmparam.h,v 1.1 2007/08/21 19:45:45 corecode Exp $
+ * $DragonFly: src/sys/platform/pc64/include/vmparam.h,v 1.2 2008/08/29 17:07:17 dillon Exp $
  */
 
 
@@ -58,13 +57,13 @@
 #define	DFLDSIZ		(128UL*1024*1024)	/* initial data size limit */
 #endif
 #ifndef MAXDSIZ
-#define	MAXDSIZ		(256UL*1024*1024*1024)	/* max data size */
+#define	MAXDSIZ		(256UL*1024*1024)	/* max data size */
 #endif
 #ifndef	DFLSSIZ
 #define	DFLSSIZ		(8UL*1024*1024)		/* initial stack size limit */
 #endif
 #ifndef	MAXSSIZ
-#define	MAXSSIZ		(128UL*1024*1024*1024)	/* max stack size */
+#define	MAXSSIZ		(128UL*1024*1024)	/* max stack size */
 #endif
 #ifndef SGROWSIZ
 #define	SGROWSIZ	(128UL*1024)		/* amount to grow stack */
@@ -89,24 +88,36 @@
 #define	UMA_MD_SMALL_ALLOC
 
 /*
+ * The number of PHYSSEG entries must be one greater than the number
+ * of phys_avail entries because the phys_avail entry that spans the
+ * largest physical address that is accessible by ISA DMA is split
+ * into two PHYSSEG entries. 
+ */
+#define	VM_PHYSSEG_MAX		31
+
+/*
  * Virtual addresses of things.  Derived from the page directory and
  * page table indexes from pmap.h for precision.
  * Because of the page that is both a PD and PT, it looks a little
  * messy at times, but hey, we'll do anything to save a page :-)
  */
 
-#define	VM_MAX_KERNEL_ADDRESS	KVADDR(KPML4I, NPDPEPG-1, NKPDE-1, NPTEPG-1)
-#define	VM_MIN_KERNEL_ADDRESS	KVADDR(KPML4I, KPDPI, 0, 0)
+#define	VM_MAX_KERNEL_ADDRESS	(1024UL * 1024 * 1024)
+#define	VM_MIN_KERNEL_ADDRESS	(512UL * 1024 * 1024)
 
 #define	DMAP_MIN_ADDRESS	KVADDR(DMPML4I, 0, 0, 0)
 #define	DMAP_MAX_ADDRESS	KVADDR(DMPML4I+1, 0, 0, 0)
 
-#define	KERNBASE		KVADDR(KPML4I, KPDPI, 0, 0)
+#define	KERNBASE		(512 * 1024 * 1024)
+#define PTOV_OFFSET		KERNBASE
 
-#define	UPT_MAX_ADDRESS		KVADDR(PML4PML4I, PML4PML4I, PML4PML4I, PML4PML4I)
-#define	UPT_MIN_ADDRESS		KVADDR(PML4PML4I, 0, 0, 0)
+#define KPT_MAX_ADDRESS		VADDR(PTDPTDI, KPTDI+NKPT)
+#define KPT_MIN_ADDRESS		VADDR(PTDPTDI, KPTDI)
 
-#define	VM_MAXUSER_ADDRESS	UVADDR(NUPML4E, 0, 0, 0)
+#define UPT_MAX_ADDRESS		VADDR(PTDPTDI, PTDPTDI)
+#define UPT_MIN_ADDRESS		VADDR(PTDPTDI, 0)
+
+#define	VM_MAXUSER_ADDRESS	UPT_MIN_ADDRESS
 
 #define	USRSTACK		VM_MAXUSER_ADDRESS
 
@@ -114,7 +125,7 @@
 #define	VM_MIN_ADDRESS		(0)
 
 #define VM_MIN_USER_ADDRESS	((vm_offset_t)0)
-#define VM_MAX_USER_ADDRESS	UVADDR(PTDPTDI, 0, 0, 0)
+#define VM_MAX_USER_ADDRESS	VM_MAXUSER_ADDRESS
 
 #define	PHYS_TO_DMAP(x)		((x) | DMAP_MIN_ADDRESS)
 #define	DMAP_TO_PHYS(x)		((x) & ~DMAP_MIN_ADDRESS)

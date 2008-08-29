@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 1995 Bruce D. Evans.
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,11 +28,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/amd64/include/md_var.h,v 1.71 2004/01/29 00:05:03 peter Exp $
- * $DragonFly: src/sys/platform/pc64/include/md_var.h,v 1.4 2007/12/12 23:49:23 dillon Exp $
+ * $DragonFly: src/sys/platform/pc64/include/md_var.h,v 1.5 2008/08/29 17:07:17 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
 #define	_MACHINE_MD_VAR_H_
+
+#include <machine/globaldata.h>
 
 /*
  * Miscellaneous machine-dependent declarations.
@@ -41,10 +44,13 @@ extern	u_long	atdevbase;	/* offset in virtual memory of ISA io mem */
 extern	u_int	basemem;
 extern	int	busdma_swi_pending;
 extern	u_int	cpu_exthigh;
+extern	u_int	amd_feature;
+extern	u_int	amd_feature2;
 extern	u_int	cpu_fxsr;
 extern	u_int	cpu_high;
 extern	u_int	cpu_id;
 extern	u_int	cpu_procinfo;
+extern	u_int	cpu_procinfo2;
 extern	char	cpu_vendor[];
 extern	char	kstack[];
 extern	char	sigcode[];
@@ -58,6 +64,8 @@ struct  dbreg;
 struct __mcontext;
 
 void	busdma_swi(void);
+void	cpu_gdinit (struct mdglobaldata *gd, int cpu);
+void	cpu_idle_restore (void);	/* cannot be called from C */
 void	cpu_setregs(void);
 void	doreti_iret(void) __asm(__STRING(doreti_iret));
 void	doreti_iret_fault(void) __asm(__STRING(doreti_iret_fault));
@@ -65,6 +73,7 @@ void	enable_sse(void);
 void	fillw(int /*u_short*/ pat, void *base, size_t cnt);
 void	pagezero(void *addr);
 int	isa_nmi(int cd);
+void	pagecopy(void *from, void *to);
 void	setidt(int idx, alias_for_inthand_t *func, int typ, int dpl, int ist);
 int	user_dbreg_trap(void);
 void	fpstate_drop(struct thread *td);

@@ -1,6 +1,7 @@
 /*-
- * Copyright (c) 2003 Peter Wemm.
  * Copyright (c) 1990 The Regents of the University of California.
+ * Copyright (c) 2003 Peter Wemm.
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -36,7 +37,7 @@
  *
  *	from: @(#)pcb.h	5.10 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/amd64/include/pcb.h,v 1.57 2004/01/28 23:54:31 peter Exp $
- * $DragonFly: src/sys/platform/pc64/include/pcb.h,v 1.2 2007/09/23 04:29:31 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/include/pcb.h,v 1.3 2008/08/29 17:07:17 dillon Exp $
  */
 
 #ifndef _MACHINE_PCB_H_
@@ -63,6 +64,7 @@ struct pcb {
 	register_t	pcb_rflags;
 	register_t	pcb_fsbase;
 	register_t	pcb_gsbase;
+	u_long		pcb_flags;
 	u_int32_t	pcb_ds;
 	u_int32_t	pcb_es;
 	u_int32_t	pcb_fs;
@@ -76,7 +78,6 @@ struct pcb {
 
 	struct pcb_ldt *pcb_ldt;
 	union savefpu	pcb_save;
-	u_long	pcb_flags;
 #define	PCB_DBREGS	0x02	/* process using debug registers */
 #define	PCB_FPUINITDONE	0x08	/* fpu state is initialized */
 #define	PCB_FULLCTX	0x80	/* full context restore on sysret */

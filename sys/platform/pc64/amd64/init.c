@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2006-2008 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/platform/pc64/amd64/init.c,v 1.2 2007/09/24 03:24:45 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/init.c,v 1.3 2008/08/29 17:07:10 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -64,27 +64,31 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#if JG
 struct privatespace CPU_prvspace[];
+#endif
 
-vm_paddr_t phys_avail[16];
-vm_paddr_t Maxmem;
+extern vm_paddr_t phys_avail[16];
+extern vm_paddr_t Maxmem;
 vm_paddr_t Maxmem_bytes;
 int MemImageFd = -1;
 int DiskNum;
 int NetifNum;
 char *pid_file;
-struct msgbuf *msgbufp;
-caddr_t ptvmmap;
+extern struct msgbuf *msgbufp;
+extern caddr_t ptvmmap;
+#if JG
 u_int tsc_present; 
 vm_offset_t KvaStart;
 vm_offset_t KvaEnd;
 vm_offset_t KvaSize;
 vm_offset_t virtual_start;
-vm_offset_t virtual_end;
-vm_offset_t kernel_vm_end;
+#endif
+extern vm_offset_t virtual_end;
+extern vm_offset_t kernel_vm_end;
 vm_offset_t crashdumpmap;
-vm_offset_t clean_sva;
-vm_offset_t clean_eva;
+extern vm_offset_t clean_sva;
+extern vm_offset_t clean_eva;
 
 static void init_sys_memory(char *imageFile);
 static void init_kern_memory(void);
@@ -166,6 +170,7 @@ usage(const char *ctl, ...)
 {
 }
 
+#if JG
 void
 cpu_reset(void)
 {
@@ -175,3 +180,4 @@ void
 cpu_halt(void)
 {
 }
+#endif

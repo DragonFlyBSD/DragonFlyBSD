@@ -1,5 +1,6 @@
-/*-
+/*
  * Copyright (c) 1993 The Regents of the University of California.
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/amd64/include/asmacros.h,v 1.32 2006/10/28 06:04:29 bde Exp $
- * $DragonFly: src/sys/cpu/amd64/include/asmacros.h,v 1.1 2007/09/23 04:29:30 yanyh Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/asmacros.h,v 1.2 2008/08/29 17:07:06 dillon Exp $
  */
 
 #ifndef _CPU_ASMACROS_H_
@@ -142,7 +143,7 @@
  * Macros to create and destroy a trap frame.
  */
 #define PUSH_FRAME							\
-	subq	$TF_RIP,%rsp ;	/* skip dummy tf_err and tf_trapno */	\
+	subq	$TF_RIP,%rsp ;	/* extend hardware frame to trapframe */ \
 	testb	$SEL_RPL_MASK,TF_CS(%rsp) ; /* come from kernel? */	\
 	jz	1f ;		/* Yes, dont swapgs again */		\
 	swapgs ;							\

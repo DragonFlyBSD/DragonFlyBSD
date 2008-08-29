@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2003 Peter Wemm
  * Copyright (c) 1999 Marcel Moolenaar
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/amd64/include/ucontext.h,v 1.18 2003/11/08 04:39:22 peter Exp $
- * $DragonFly: src/sys/cpu/amd64/include/ucontext.h,v 1.1 2007/08/21 19:40:24 corecode Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/ucontext.h,v 1.2 2008/08/29 17:07:06 dillon Exp $
  */
 
 #ifndef _CPU_UCONTEXT_H_
@@ -39,8 +40,8 @@ typedef struct __mcontext {
 	 * sigcontext. So that we can support sigcontext
 	 * and ucontext_t at the same time.
 	 */
-	__register_t	mc_onstack;		/* XXX - sigcontext compat. */
-	__register_t	mc_rdi;			/* machine state (struct trapframe) */
+	__register_t	mc_onstack;	/* XXX - sigcontext compat. */
+	__register_t	mc_rdi;
 	__register_t	mc_rsi;
 	__register_t	mc_rdx;
 	__register_t	mc_rcx;
@@ -62,22 +63,28 @@ typedef struct __mcontext {
 	__register_t	mc_rip;
 	__register_t	mc_cs;
 	__register_t	mc_rflags;
-	__register_t	mc_rsp;
+	__register_t	mc_rsp;		/* machine state */
 	__register_t	mc_ss;
 
-	long	mc_len;			/* sizeof(mcontext_t) */
-#define	_MC_FPFMT_NODEV		0x10000	/* device not present or configured */
-#define	_MC_FPFMT_XMM		0x10002
-	long	mc_fpformat;
-#define	_MC_FPOWNED_NONE	0x20000	/* FP state not used */
-#define	_MC_FPOWNED_FPU		0x20001	/* FP state came from FPU */
-#define	_MC_FPOWNED_PCB		0x20002	/* FP state came from PCB */
-	long	mc_ownedfp;
-	/*
-	 * See <machine/fpu.h> for the internals of mc_fpstate[].
-	 */
-	long	mc_fpstate[64] __aligned(16);
-	long	mc_spare[8];
+	unsigned int	mc_len;		/* sizeof(mcontext_t) */
+	unsigned int	mc_fpformat;
+	unsigned int	mc_ownedfp;
+	unsigned int	mc_reserved;
+	unsigned int	mc_unused01;
+	unsigned int	mc_unused02;
+
+	/* 16 byte aligned */
+
+	int		mc_fpregs[128];
+	int		__spare__[16];
 } mcontext_t;
+
+#define _MC_FPFMT_NODEV		0x10000 /* device not present or configured */
+#define _MC_FPFMT_387		0x10001
+#define _MC_FPFMT_XMM		0x10002
+
+#define _MC_FPOWNED_NONE	0x20000 /* FP state not used */
+#define _MC_FPOWNED_FPU		0x20001 /* FP state came from FPU */
+#define _MC_FPOWNED_PCB		0x20002 /* FP state came from PCB */
 
 #endif /* !_CPU_UCONTEXT_H_ */

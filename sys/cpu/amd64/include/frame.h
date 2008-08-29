@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2003 Peter Wemm.
  * Copyright (c) 1990 The Regents of the University of California.
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -36,11 +37,14 @@
  *
  *	from: @(#)frame.h	5.2 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/amd64/include/frame.h,v 1.26 2003/11/08 04:39:22 peter Exp $
- * $DragonFly: src/sys/cpu/amd64/include/frame.h,v 1.2 2007/09/23 04:29:30 yanyh Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/frame.h,v 1.3 2008/08/29 17:07:06 dillon Exp $
  */
 
 #ifndef _CPU_FRAME_H_
 #define _CPU_FRAME_H_
+
+/* JG? */
+#include <sys/types.h>
 
 /*
  * System stack frames.
@@ -88,7 +92,6 @@ struct trapframe {
 
 struct intrframe {
 	register_t	if_vec;	/* vec */
-	/* ppl */
 	/* fs XXX */
 	/* es XXX */
 	/* ds XXX */

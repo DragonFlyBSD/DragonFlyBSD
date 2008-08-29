@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2005,2008 The DragonFly Project.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/cpu/amd64/include/tls.h,v 1.1 2007/08/21 19:40:24 corecode Exp $
+ * $DragonFly: src/sys/cpu/amd64/include/tls.h,v 1.2 2008/08/29 17:07:06 dillon Exp $
  */
 
 #ifndef	_CPU_TLS_H_
@@ -106,7 +106,7 @@ tls_set_tcb(struct tls_tcb *tcb)
 	info.base = tcb;
 	info.size = -1;
 	seg = set_tls_area(0, &info, sizeof(info));
-	__asm __volatile("movl %0, %%fs" : : "r" (seg));
+	/*__asm __volatile("movl %0, %%fs" : : "r" (seg));*/
 }
 
 struct tls_tcb	*_rtld_allocate_tls(void);

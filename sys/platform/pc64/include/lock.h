@@ -1,5 +1,7 @@
 /*
- * Copyright (c) 2003 Matthew Dillon, All rights reserved.
+ * Copyright (c) 2003,2008 The DragonFly Project.
+ * Copyright (c) 2003 Matthew Dillon.
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/lock.h,v 1.11.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/platform/pc64/include/lock.h,v 1.3 2008/06/19 21:32:55 aggelos Exp $
+ * $DragonFly: src/sys/platform/pc64/include/lock.h,v 1.4 2008/08/29 17:07:17 dillon Exp $
  */
 
 #ifndef _MACHINE_LOCK_H_
@@ -42,7 +44,7 @@
 #ifdef LOCORE
 
 /*
- * Spinlock assembly support.  Note: eax and ecx can be tromped.  No
+ * Spinlock assembly support.  Note: rax and rcx can be tromped.  No
  * other register will be.   Note that these routines are sometimes
  * called with (%edx) as the mem argument.
  *
@@ -54,30 +56,30 @@
 #ifdef SMP
 
 #define SPIN_INIT(mem)						\
-	movl	$0,mem ;					\
+	movq	$0,mem ;					\
 
 #define SPIN_INIT_NOREG(mem)					\
 	SPIN_INIT(mem) ;					\
 
 #define SPIN_LOCK(mem)						\
-	pushfl ;						\
-	popl	%ecx ;		/* flags */			\
+	pushfq ;						\
+	popq	%rcx ;		/* flags */			\
 	cli ;							\
-	orl	$PSL_C,%ecx ;	/* make sure non-zero */	\
+	orl	$PSL_C,%rcx ;	/* make sure non-zero */	\
 7: ;								\
-	movl	$0,%eax ;	/* expected contents of lock */	\
-	lock cmpxchgl %ecx,mem ; /* Z=1 (jz) on success */	\
+	movq	$0,%rax ;	/* expected contents of lock */	\
+	lock cmpxchgq %rcx,mem ; /* Z=1 (jz) on success */	\
 	jnz	7b ; 						\
 
 #define SPIN_LOCK_PUSH_REGS					\
-	subl	$8,%esp ;					\
-	movl	%ecx,(%esp) ;					\
-	movl	%eax,4(%esp) ;					\
+	subq	$2*8,%rsp ;					\
+	movq	%rcx,(%rsp) ;					\
+	movq	%rax,8(%rsp) ;					\
 
 #define SPIN_LOCK_POP_REGS					\
-	movl	(%esp),%ecx ;					\
-	movl	4(%esp),%eax ;					\
-	addl	$8,%esp ;					\
+	movq	(%rsp),%rcx ;					\
+	movq	8(%rsp),%rax ;					\
+	addq	$2*8,%rsp ;					\
 
 #define SPIN_LOCK_FRAME_SIZE	8
 
@@ -87,9 +89,9 @@
 	SPIN_LOCK_POP_REGS ;					\
 
 #define SPIN_UNLOCK(mem)					\
-	pushl	mem ;						\
-	movl	$0,mem ;					\
-	popfl ;							\
+	pushq	mem ;						\
+	movq	$0,mem ;					\
+	popfq ;							\
 
 #define SPIN_UNLOCK_PUSH_REGS
 #define SPIN_UNLOCK_POP_REGS
@@ -98,22 +100,22 @@
 #define SPIN_UNLOCK_NOREG(mem)					\
 	SPIN_UNLOCK(mem) ;					\
 
-#else
+#else /* !SMP */
 
 #define SPIN_LOCK(mem)						\
-	pushfl ;						\
+	pushfq ;						\
 	cli ;							\
-	orl	$PSL_C,(%esp) ;					\
-	popl	mem ;						\
+	orq	$PSL_C,(%rsp) ;					\
+	popq	mem ;						\
 
 #define SPIN_LOCK_PUSH_RESG
 #define SPIN_LOCK_POP_REGS
 #define SPIN_LOCK_FRAME_SIZE	0
 
 #define SPIN_UNLOCK(mem)					\
-	pushl	mem ;						\
-	movl	$0,mem ;					\
-	popfl ;							\
+	pushq	mem ;						\
+	movq	$0,mem ;					\
+	popfq ;							\
 
 #define SPIN_UNLOCK_PUSH_REGS
 #define SPIN_UNLOCK_POP_REGS
@@ -130,7 +132,7 @@
  * to disable/restore interrupts even if it doesn't spin.
  */
 struct spinlock_deprecated {
-	volatile int	opaque;
+	volatile long	opaque;
 };
 
 typedef struct spinlock_deprecated *spinlock_t;

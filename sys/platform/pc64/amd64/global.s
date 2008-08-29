@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) Peter Wemm <peter@netplex.com.au>
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/globals.s,v 1.13.2.1 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/global.s,v 1.2 2007/09/24 03:24:45 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/global.s,v 1.3 2008/08/29 17:07:10 dillon Exp $
  */
 
 #include <machine/asmacros.h>
@@ -41,6 +42,9 @@
 	 * segment.
 	 */
 	.data
+	.globl	CPU_prvspace, lapic
+	.set	CPU_prvspace,(MPPTDI << PDRSHIFT)
+	.set	lapic,CPU_prvspace + (NPTEPG-1) * PAGE_SIZE
 
 	.globl	globaldata
 	.set	globaldata,0
@@ -75,9 +79,12 @@
 	.globl  gd_CMAP1, gd_CMAP2, gd_CMAP3, gd_PMAP1
 	.globl  gd_CADDR1, gd_CADDR2, gd_CADDR3, gd_PADDR1
 	.globl  gd_spending, gd_ipending, gd_fpending
-	.globl	gd_cnt
+	.globl	gd_cnt, gd_private_tss
+	.globl	gd_scratch_rsp, gd_rsp0
+	.globl	gd_user_fs, gd_user_gs
 
 	.set    gd_cpuid,globaldata + GD_CPUID
+	.set    gd_private_tss,globaldata + GD_PRIVATE_TSS
 	.set    gd_other_cpus,globaldata + GD_OTHER_CPUS
 	.set    gd_ss_eflags,globaldata + GD_SS_EFLAGS
 	.set    gd_intr_nesting_level,globaldata + GD_INTR_NESTING_LEVEL
@@ -93,4 +100,8 @@
 	.set	gd_ipending,globaldata + GD_IPENDING
 	.set	gd_spending,globaldata + GD_SPENDING
 	.set	gd_cnt,globaldata + GD_CNT
+	.set	gd_scratch_rsp,globaldata + GD_SCRATCH_RSP
+	.set	gd_rsp0,globaldata + GD_RSP0
+	.set	gd_user_fs,globaldata + GD_USER_FS
+	.set	gd_user_gs,globaldata + GD_USER_GS
 

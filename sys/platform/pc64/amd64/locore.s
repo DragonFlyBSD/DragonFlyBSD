@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2003 Peter Wemm <peter@FreeBSD.org>
+ * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/amd64/amd64/locore.S,v 1.175 2003/05/31 06:54:28 peter Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/locore.s,v 1.1 2007/09/23 04:29:31 yanyh Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/locore.s,v 1.2 2008/08/29 17:07:10 dillon Exp $
  */
 
 #include <machine/asmacros.h>
@@ -38,9 +39,19 @@
  * PTmap is recursive pagemap at top of virtual address space.
  * Within PTmap, the page directory can be found (third indirection).
  */
-	.globl	PTmap,PTD
+	.globl	PTmap,PTD,PTDpde
 	.set	PTmap,(PTDPTDI << PDRSHIFT)
-        .set	PTD,PTmap + (PTDPTDI * PAGE_SIZE)
+	.set	PTD,PTmap + (PTDPTDI * PAGE_SIZE)
+	.set	PTDpde,PTD + (PTDPTDI * PDESIZE)
+
+/*
+ * APTmap, APTD is the alternate recursive pagemap.
+ * It's used when modifying another process's page tables.
+ */
+	.globl	APTmap,APTD,APTDpde
+	.set	APTmap,APTDPTDI << PDRSHIFT
+	.set	APTD,APTmap + (APTDPTDI * PAGE_SIZE)
+	.set	APTDpde,PTD + (APTDPTDI * PDESIZE)
 
 /*
  * Compiled KERNBASE location
@@ -56,6 +67,7 @@
 	.set	dmapend,DMAP_MAX_ADDRESS
 
 	.text
+
 /**********************************************************************
  *
  * This is where the loader trampoline start us, set the ball rolling...
@@ -85,7 +97,7 @@ NON_GPROF_ENTRY(btext)
 	movq	$bootstack,%rsp
 	xorl	%ebp, %ebp
 
-	/* call	hammer_time*/		/* set up cpu for unix operation */
+	call	hammer_time		/* set up cpu for unix operation */
 	movq	%rax,%rsp		/* set up kstack for mi_startup() */
 	call	mi_startup		/* autoconfiguration, mountroot etc */
 0:	hlt
