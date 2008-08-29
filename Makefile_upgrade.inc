@@ -1,4 +1,4 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.31 2008/08/29 22:51:55 swildner Exp $
+# $DragonFly: src/Makefile_upgrade.inc,v 1.32 2008/08/29 23:06:37 swildner Exp $
 #
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
@@ -953,3 +953,5 @@ TO_REMOVE+=/usr/include/functions.h
 TO_REMOVE+=/usr/include/package.h
 TO_REMOVE+=/usr/include/sysids.h
 TO_REMOVE+=/usr/include/uiutil.h
+TO_REMOVE+=/usr/share/man/cat4/i386/acpi_toshiba.4.gz
+TO_REMOVE+=/usr/share/man/man4/i386/acpi_toshiba.4.gz
