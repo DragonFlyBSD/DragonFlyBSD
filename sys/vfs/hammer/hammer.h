@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.126 2008/08/02 21:21:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.127 2008/08/29 20:19:08 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -484,6 +484,7 @@ struct hammer_io {
 	struct hammer_lock	lock;
 	enum hammer_io_type	type;
 	struct hammer_mount	*hmp;
+	struct hammer_volume	*volume;
 	TAILQ_ENTRY(hammer_io)	mod_entry; /* list entry if modified */
 	hammer_io_list_t	mod_list;
 	struct buf		*bp;
@@ -541,7 +542,6 @@ struct hammer_buffer {
 	struct hammer_io io;
 	RB_ENTRY(hammer_buffer) rb_node;
 	void *ondisk;
-	struct hammer_volume *volume;
 	hammer_off_t zoneX_offset;
 	hammer_off_t zone2_offset;
 	struct hammer_reserve *resv;
@@ -1099,7 +1099,7 @@ void hammer_rel_pseudofs(hammer_mount_t hmp, hammer_pseudofs_inmem_t pfsm);
 int hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 			struct ucred *cred);
 
-void hammer_io_init(hammer_io_t io, hammer_mount_t hmp,
+void hammer_io_init(hammer_io_t io, hammer_volume_t volume,
 			enum hammer_io_type type);
 int hammer_io_read(struct vnode *devvp, struct hammer_io *io,
 			hammer_off_t limit);
@@ -1120,6 +1120,8 @@ void hammer_io_write_interlock(hammer_io_t io);
 void hammer_io_done_interlock(hammer_io_t io);
 void hammer_io_clear_modify(struct hammer_io *io, int inval);
 void hammer_io_clear_modlist(struct hammer_io *io);
+void hammer_io_flush_sync(hammer_mount_t hmp);
+
 void hammer_modify_volume(hammer_transaction_t trans, hammer_volume_t volume,
 			void *base, int len);
 void hammer_modify_buffer(hammer_transaction_t trans, hammer_buffer_t buffer,

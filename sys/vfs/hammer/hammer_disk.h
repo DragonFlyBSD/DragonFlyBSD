@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.52 2008/07/31 04:42:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.53 2008/08/29 20:19:08 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -518,6 +518,7 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 
 #define HAMMER_VOLF_VALID		0x0001	/* valid entry */
 #define HAMMER_VOLF_OPEN		0x0002	/* volume is open */
+#define HAMMER_VOLF_NEEDFLUSH		0x0004	/* volume needs flush */
 
 #define HAMMER_VOL_CRCSIZE1	\
 	offsetof(struct hammer_volume_ondisk, vol_crc)

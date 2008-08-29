@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.53 2008/08/06 15:38:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.54 2008/08/29 20:19:08 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -60,15 +60,19 @@ static void hammer_io_direct_read_complete(struct bio *nbio);
 static void hammer_io_direct_write_complete(struct bio *nbio);
 static int hammer_io_direct_uncache_callback(hammer_inode_t ip, void *data);
 static void hammer_io_set_modlist(struct hammer_io *io);
+static void hammer_io_flush_mark(hammer_volume_t volume);
+static void hammer_io_flush_sync_done(struct bio *bio);
+
 
 /*
  * Initialize a new, already-zero'd hammer_io structure, or reinitialize
  * an existing hammer_io structure which may have switched to another type.
  */
 void
-hammer_io_init(hammer_io_t io, hammer_mount_t hmp, enum hammer_io_type type)
+hammer_io_init(hammer_io_t io, hammer_volume_t volume, enum hammer_io_type type)
 {
-	io->hmp = hmp;
+	io->volume = volume;
+	io->hmp = volume->io.hmp;
 	io->type = type;
 }
 
@@ -150,6 +154,7 @@ hammer_io_wait(hammer_io_t io)
 void
 hammer_io_wait_all(hammer_mount_t hmp, const char *ident)
 {
+	hammer_io_flush_sync(hmp);
 	crit_enter();
 	while (hmp->io_running_space)
 		tsleep(&hmp->io_running_space, 0, ident, 0);
@@ -507,6 +512,7 @@ hammer_io_flush(struct hammer_io *io)
 	io->hmp->io_running_space += io->bytes;
 	hammer_count_io_running_write += io->bytes;
 	bawrite(bp);
+	hammer_io_flush_mark(io->volume);
 }
 
 /************************************************************************
@@ -1201,6 +1207,7 @@ hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
 					   zone2_offset;
 			hammer_stats_disk_write += bp->b_bufsize;
 			vn_strategy(volume->devvp, nbio);
+			hammer_io_flush_mark(volume);
 		}
 		hammer_rel_volume(volume, 0);
 	} else {
@@ -1388,5 +1395,68 @@ hammer_io_direct_uncache_callback(hammer_inode_t ip, void *data)
 	}
 	hammer_rel_inode(ip, 0);
 	return(0);
+}
+
+
+/*
+ * This function is called when writes may have occured on the volume,
+ * indicating that the device may be holding cached writes.
+ */
+static void
+hammer_io_flush_mark(hammer_volume_t volume)
+{
+	volume->vol_flags |= HAMMER_VOLF_NEEDFLUSH;
+}
+
+/*
+ * This function ensures that the device has flushed any cached writes out.
+ */
+void
+hammer_io_flush_sync(hammer_mount_t hmp)
+{
+	hammer_volume_t volume;
+	struct buf *bp_base = NULL;
+	struct buf *bp;
+
+	RB_FOREACH(volume, hammer_vol_rb_tree, &hmp->rb_vols_root) {
+		if (volume->vol_flags & HAMMER_VOLF_NEEDFLUSH) {
+			volume->vol_flags &= ~HAMMER_VOLF_NEEDFLUSH;
+			bp = getpbuf(NULL);
+			bp->b_bio1.bio_offset = 0;
+			bp->b_bufsize = 0;
+			bp->b_bcount = 0;
+			bp->b_cmd = BUF_CMD_FLUSH;
+			bp->b_bio1.bio_caller_info1.cluster_head = bp_base;
+			bp->b_bio1.bio_done = hammer_io_flush_sync_done;
+			bp->b_flags |= B_ASYNC;
+			bp_base = bp;
+			vn_strategy(volume->devvp, &bp->b_bio1);
+		}
+	}
+	while ((bp = bp_base) != NULL) {
+		bp_base = bp->b_bio1.bio_caller_info1.cluster_head;
+		while (bp->b_cmd != BUF_CMD_DONE) {
+			crit_enter();
+			tsleep_interlock(&bp->b_cmd);
+			if (bp->b_cmd != BUF_CMD_DONE)
+				tsleep(&bp->b_cmd, 0, "hmrFLS", 0);
+			crit_exit();
+		}
+		bp->b_flags &= ~B_ASYNC;
+		relpbuf(bp, NULL);
+	}
+}
+
+/*
+ * Callback to deal with completed flush commands to the device.
+ */
+static void
+hammer_io_flush_sync_done(struct bio *bio)
+{
+	struct buf *bp;
+
+	bp = bio->bio_buf;
+	bp->b_cmd = BUF_CMD_DONE;
+	wakeup(&bp->b_cmd);
 }
 
