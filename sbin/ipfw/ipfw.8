@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
-.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.16 2008/05/02 02:05:05 swildner Exp $
+.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.17 2008/08/29 07:44:09 swildner Exp $
 .\"
 .Dd August 13, 2002
 .Dt IPFW 8
@@ -480,8 +480,8 @@ The logging only occurs if the sysctl variable
 .Em net.inet.ip.fw.verbose
 is set to 1
 (which is the default when the kernel is compiled with
-.Dv IPFIREWALL_VERBOSE
-) and the number of packets logged so far for that
+.Dv IPFIREWALL_VERBOSE )
+and the number of packets logged so far for that
 particular rule does not exceed the
 .Cm logamount
 parameter.
@@ -641,9 +641,9 @@ operator to reverse the result of the match, as in
 .Pp
 .Dl "ipfw add 100 allow ip from not 1.2.3.4 to any"
 .Pp
-Additionally, sets of alternative match patterns (
-.Em or-blocks
-) can be constructed by putting the patterns in
+Additionally, sets of alternative match patterns
+.Em ( or-blocks )
+can be constructed by putting the patterns in
 lists enclosed between parentheses ( ) or braces { }, and
 using the
 .Cm or
@@ -1513,9 +1513,8 @@ dropped.
 A set of
 .Xr sysctl 8
 variables controls the behaviour of the firewall and
-associated modules (
-.Nm dummynet
-).
+associated modules
+.Nm ( dummynet ) .
 These are shown below together with their default value
 (but always check with the
 .Xr sysctl 8
@@ -1644,8 +1643,7 @@ operator will make this rule into a pass-all.
 .It Address sets
 .Nm ipfw1
 does not supports address sets (those in the form
-.Ar addr/masklen{num,num,...}
-).
+.Ar addr/masklen{num,num,...} ) .
 .Pp
 .It Port specifications
 .Nm ipfw1
