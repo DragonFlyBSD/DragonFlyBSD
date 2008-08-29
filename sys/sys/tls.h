@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/tls.h,v 1.10 2008/08/29 17:07:04 dillon Exp $
+ * $DragonFly: src/sys/sys/tls.h,v 1.11 2008/08/29 20:01:08 dillon Exp $
  */
 
 #ifndef _SYS_TLS_H_
@@ -38,7 +38,7 @@
 
 struct tls_info {
 	void *base;
-	size_t size;
+	long size;	/* must be signed */
 };
 
 int set_tls_area(int which, struct tls_info *info, size_t infosize);
