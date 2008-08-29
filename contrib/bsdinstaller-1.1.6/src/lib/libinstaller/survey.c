@@ -201,10 +201,12 @@ survey_storage(struct i_fn_args *a)
 			continue;
 
 		/*
-		 * If the disk is a memory disk or CD-ROM, skip it.
+		 * If the disk is a memory disk, floppy or CD-ROM, skip it.
 		 */
 		if (strncmp(disk, "md", 2) == 0 ||
-		    strncmp(disk, "cd", 2) == 0)
+		    strncmp(disk, "cd", 2) == 0 ||
+		    strncmp(disk, "acd", 3) == 0 ||
+		    strncmp(disk, "fd", 2) == 0)
 			continue;
 
 		aura_dict_store(di, disk, strlen(disk) + 1, "", 1);

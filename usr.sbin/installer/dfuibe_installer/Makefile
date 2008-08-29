@@ -1,5 +1,5 @@
 #
-# $DragonFly: src/usr.sbin/installer/dfuibe_installer/Makefile,v 1.3 2008/07/13 10:55:05 swildner Exp $
+# $DragonFly: src/usr.sbin/installer/dfuibe_installer/Makefile,v 1.4 2008/08/29 20:41:01 swildner Exp $
 
 BSDINS_DIR=${.CURDIR}/../../../contrib/bsdinstaller-1.1.6
 BSDINS_SRC=${BSDINS_DIR}/src
@@ -7,14 +7,12 @@ BSDINS_SRC=${BSDINS_DIR}/src
 CONTRIBDIR=${BSDINS_SRC}/backend/installer
 .PATH: ${CONTRIBDIR}
 
-PATCHES=	fn_install.c.patch
-
 BINDIR=	/usr/sbin
 PROG=	dfuibe_installer
 MAN=	 
 SRCS=	flow.c fn_diagnostic.c fn_install.c fn_zonetab.c \
         fn_configure.c fn_disk.c fn_subpart.c main.c \
-	aura.h dfui.h installer.h ${PATCHES}
+	aura.h dfui.h installer.h
 BINOWN=	root
 BINGRP=	wheel
 

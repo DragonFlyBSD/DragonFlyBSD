@@ -1,4 +1,4 @@
-# $DragonFly: src/usr.sbin/installer/libinstaller/Makefile,v 1.3 2008/07/14 23:57:10 swildner Exp $
+# $DragonFly: src/usr.sbin/installer/libinstaller/Makefile,v 1.4 2008/08/29 20:41:01 swildner Exp $
 
 BSDINS_DIR=${.CURDIR}/../../../contrib/bsdinstaller-1.1.6
 BSDINS_SRC=${BSDINS_DIR}/src
@@ -6,15 +6,12 @@ BSDINS_SRC=${BSDINS_DIR}/src
 CONTRIBDIR=	${BSDINS_SRC}/lib/libinstaller
 .PATH:	${CONTRIBDIR}
 
-PATCHES=	functions.c.patch survey.c.patch
-
 CFLAGS+=	-I${BSDINS_SRC}/lib/libdfui -I${CONTRIBDIR} -I. -g
 
 LIB=    installer
 
 SRCS+=	commands.c confed.c diskutil.c functions.c mount.c package.c survey.c uiutil.c 
 SRCS+=	aura.h dfui.h
-SRCS+=	${PATCHES}
 
 INCS+=	commands.h confed.h diskutil.h functions.h package.h sysids.h uiutil.h
 

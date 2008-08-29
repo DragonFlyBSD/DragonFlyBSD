@@ -113,7 +113,7 @@ i_fn_args_new(const char *os_root, const char *def_tmp_dir, int transport, const
 	a->temp_files = aura_dict_new(23, AURA_DICT_HASH);
 	a->cmd_names = config_vars_new();
 	if (!config_vars_read(a, a->cmd_names, CONFIG_TYPE_SH,
-	    "usr/local/share/dfuibe_installer/cmdnames.conf")) {
+	    "usr/share/installer/cmdnames.conf")) {
 		i_log(a, "! ERROR: Couldn't read cmdnames config file");
 		i_fn_args_free(a);
 		return(NULL);
