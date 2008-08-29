@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.53 2008/08/10 20:03:15 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.54 2008/08/29 20:08:37 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -93,7 +93,8 @@ typedef enum buf_cmd {
 	BUF_CMD_READ,
 	BUF_CMD_WRITE,
 	BUF_CMD_FREEBLKS,
-	BUF_CMD_FORMAT
+	BUF_CMD_FORMAT,
+	BUF_CMD_FLUSH
 } buf_cmd_t;
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)

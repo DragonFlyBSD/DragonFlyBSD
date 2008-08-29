@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.199 2006/09/14 19:12:29 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-disk.c,v 1.8 2008/06/27 01:24:46 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-disk.c,v 1.9 2008/08/29 20:08:38 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -330,7 +330,6 @@ ad_strategy(struct dev_strategy_args *ap)
 	else
 	    request->u.ata.command = ATA_WRITE;
 	break;
-#if 0	/* NOT YET */
     case BUF_CMD_FLUSH:
 	request->u.ata.lba = 0;
 	request->u.ata.count = 0;
@@ -340,7 +339,6 @@ ad_strategy(struct dev_strategy_args *ap)
 	request->flags = ATA_R_CONTROL;
 	request->u.ata.command = ATA_FLUSHCACHE;
 	break;
-#endif
     default:
 	device_printf(dev, "FAILURE - unknown BUF operation\n");
 	ata_free_request(request);

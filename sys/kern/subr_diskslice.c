@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.50 2008/04/20 13:44:25 swildner Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.51 2008/08/29 20:08:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -222,7 +222,7 @@ doshift:
 	 * Disallow writes to reserved areas unless ds_wlabel allows it.
 	 */
 	if (slicerel_secno < sp->ds_reserved && nsec &&
-	    bp->b_cmd != BUF_CMD_READ && sp->ds_wlabel == 0) {
+	    bp->b_cmd == BUF_CMD_WRITE && sp->ds_wlabel == 0) {
 		bp->b_error = EROFS;
 		goto error;
 	}
