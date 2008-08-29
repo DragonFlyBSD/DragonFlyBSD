@@ -151,8 +151,10 @@ _initialize_amd64fbsd_nat (void)
   t->to_make_corefile_notes = fbsd_make_corefile_notes;
   add_target (t);
 
+#if 0
   /* Support debugging kernel virtual memory images.  */
   bsd_kvm_add_target (amd64fbsd_supply_pcb);
+#endif
 
   /* To support the recognition of signal handlers, i386bsd-tdep.c
      hardcodes some constants.  Inclusion of this file means that we
