@@ -2,7 +2,7 @@
 #
 # $NetBSD: dhclient,v 1.8 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/dhclient,v 1.20.2.4 2007/03/10 14:07:01 yar Exp $
-# $DragonFly: src/etc/rc.d/dhclient,v 1.10 2007/07/10 22:36:01 swildner Exp $
+# $DragonFly: src/etc/rc.d/dhclient,v 1.11 2008/08/30 21:21:40 swildner Exp $
 #
 
 # PROVIDE: dhclient
@@ -33,15 +33,6 @@ dhclient_start()
 	if [ -z "$flags" -a -n "$specific" ]; then
 		rc_flags=$specific
 	fi
-
-#	eval specific=\$background_dhclient_$ifn
-#	if [ -n "$specific" ]; then
-#		if checkyesno background_dhclient_$ifn; then
-#			rc_flags="${rc_flags} -b"
-#		fi
-#	elif checkyesno background_dhclient; then
-#		rc_flags="${rc_flags} -b"
-#	fi
 
 	${dhclient_program} ${rc_flags} $ifn
 }
