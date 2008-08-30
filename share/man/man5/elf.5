@@ -1,31 +1,31 @@
-.\"Copyright (c) 1999 Jeroen Ruigrok van der Werven
-.\"All rights reserved.
+.\" Copyright (c) 1999 Jeroen Ruigrok van der Werven
+.\" All rights reserved.
 .\"
-.\"Redistribution and use in source and binary forms, with or without
-.\"modification, are permitted provided that the following conditions
-.\"are met:
-.\"1. Redistributions of source code must retain the above copyright
-.\"   notice, this list of conditions and the following disclaimer.
-.\"2. Redistributions in binary form must reproduce the above copyright
-.\"   notice, this list of conditions and the following disclaimer in the
-.\"   documentation and/or other materials provided with the distribution.
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
 .\"
-.\"THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
-.\"ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-.\"IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-.\"ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
-.\"FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-.\"DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-.\"OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-.\"HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-.\"LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
-.\"OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-.\"SUCH DAMAGE.
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
 .\"
-.\"	$FreeBSD: src/share/man/man5/elf.5,v 1.6.2.8 2001/12/17 11:30:13 ru Exp $
-.\"	$DragonFly: src/share/man/man5/elf.5,v 1.11 2008/05/02 02:05:06 swildner Exp $
+.\" $FreeBSD: src/share/man/man5/elf.5,v 1.36 2007/09/08 08:12:31 jkoshy Exp $
+.\" $DragonFly: src/share/man/man5/elf.5,v 1.12 2008/08/30 17:01:17 swildner Exp $
 .\"
-.Dd February 9, 2008
+.Dd August 30, 2008
 .Dt ELF 5
 .Os
 .Sh NAME
@@ -108,7 +108,6 @@ Elf64_Sxword	Signed 64-bit field or integer
 Elf64_Word	Unsigned 32-bit field
 Elf64_Xword	Unsigned 64-bit field or integer
 Elf64_Size	Unsigned object size
-Elf64_Quarter	Unsigned quarterword field
 .Ed
 .Pp
 All data structures that the file format defines follow the
@@ -140,19 +139,19 @@ typedef struct {
 .Bd -literal -offset indent
 typedef struct {
 	unsigned char   e_ident[EI_NIDENT];
-	Elf64_Quarter   e_type;
-	Elf64_Quarter   e_machine;
-	Elf64_Half      e_version;
+	Elf64_Half      e_type;
+	Elf64_Half      e_machine;
+	Elf64_Word      e_version;
 	Elf64_Addr      e_entry;
 	Elf64_Off       e_phoff;
 	Elf64_Off       e_shoff;
-	Elf64_Half      e_flags;
-	Elf64_Quarter   e_ehsize;
-	Elf64_Quarter   e_phentsize;
-	Elf64_Quarter   e_phnum;
-	Elf64_Quarter   e_shentsize;
-	Elf64_Quarter   e_shnum;
-	Elf64_Quarter   e_shstrndx;
+	Elf64_Word      e_flags;
+	Elf64_Half      e_ehsize;
+	Elf64_Half      e_phentsize;
+	Elf64_Half      e_phnum;
+	Elf64_Half      e_shentsize;
+	Elf64_Half      e_shnum;
+	Elf64_Half      e_shstrndx;
 } Elf64_Ehdr;
 .Ed
 .Pp
@@ -470,14 +469,14 @@ typedef struct {
 .Ed
 .Bd -literal -offset indent
 typedef struct {
-        Elf64_Half      p_type;
-        Elf64_Half      p_flags;
+        Elf64_Word      p_type;
+        Elf64_Word      p_flags;
         Elf64_Off       p_offset;
         Elf64_Addr      p_vaddr;
         Elf64_Addr      p_paddr;
-        Elf64_Size      p_filesz;
-        Elf64_Size      p_memsz;
-        Elf64_Size      p_align;
+        Elf64_Xword     p_filesz;
+        Elf64_Xword     p_memsz;
+        Elf64_Xword     p_align;
 } Elf64_Phdr;
 .Ed
 .Pp
@@ -684,16 +683,16 @@ typedef struct {
 .Ed
 .Bd -literal -offset indent
 typedef struct {
-	Elf64_Half      sh_name;
-	Elf64_Half      sh_type;
-	Elf64_Size      sh_flags;
+	Elf64_Word      sh_name;
+	Elf64_Word      sh_type;
+	Elf64_Xword     sh_flags;
 	Elf64_Addr      sh_addr;
 	Elf64_Off       sh_offset;
-	Elf64_Size      sh_size;
-	Elf64_Half      sh_link;
-	Elf64_Half      sh_info;
-	Elf64_Size      sh_addralign;
-	Elf64_Size      sh_entsize;
+	Elf64_Xword     sh_size;
+	Elf64_Word      sh_link;
+	Elf64_Word      sh_info;
+	Elf64_Xword     sh_addralign;
+	Elf64_Xword     sh_entsize;
 } Elf64_Shdr;
 .Ed
 .Pp
@@ -1118,12 +1117,12 @@ typedef struct {
 .Ed
 .Bd -literal -offset indent
 typedef struct {
-	Elf64_Half      st_name;
+	Elf64_Word      st_name;
 	unsigned char   st_info;
 	unsigned char   st_other;
-	Elf64_Quarter   st_shndx;
+	Elf64_Half      st_shndx;
 	Elf64_Addr      st_value;
-	Elf64_Size      st_size;
+	Elf64_Xword     st_size;
 } Elf64_Sym;
 .Ed
 .Pp
@@ -1258,7 +1257,7 @@ typedef struct {
 .Bd -literal -offset indent
 typedef struct {
 	Elf64_Addr      r_offset;
-	Elf64_Size      r_info;
+	Elf64_Xword     r_info;
 } Elf64_Rel;
 .Ed
 .Pp
@@ -1273,8 +1272,8 @@ typedef struct {
 .Bd -literal -offset indent
 typedef struct {
 	Elf64_Addr      r_offset;
-	Elf64_Size      r_info;
-	Elf64_Off       r_addend;
+	Elf64_Xword     r_info;
+	Elf64_Sxword    r_addend;
 } Elf64_Rela;
 .Ed
 .Pp
