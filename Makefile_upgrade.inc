@@ -1,4 +1,4 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.32 2008/08/29 23:06:37 swildner Exp $
+# $DragonFly: src/Makefile_upgrade.inc,v 1.33 2008/08/30 16:34:28 hasso Exp $
 #
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
@@ -955,3 +955,15 @@ TO_REMOVE+=/usr/include/sysids.h
 TO_REMOVE+=/usr/include/uiutil.h
 TO_REMOVE+=/usr/share/man/cat4/i386/acpi_toshiba.4.gz
 TO_REMOVE+=/usr/share/man/man4/i386/acpi_toshiba.4.gz
+TO_REMOVE+=/etc/rc.d/dhcpd
+TO_REMOVE+=/etc/rc.d/dhcrelay
+TO_REMOVE+=/usr/sbin/dhcpd
+TO_REMOVE+=/usr/sbin/dhcrelay
+TO_REMOVE+=/usr/share/man/cat5/dhcpd.conf.5.gz
+TO_REMOVE+=/usr/share/man/man5/dhcpd.conf.5.gz
+TO_REMOVE+=/usr/share/man/cat5/dhcpd.leases.5.gz
+TO_REMOVE+=/usr/share/man/man5/dhcpd.leases.5.gz
+TO_REMOVE+=/usr/share/man/cat8/dhcpd.8.gz
+TO_REMOVE+=/usr/share/man/man8/dhcpd.8.gz
+TO_REMOVE+=/usr/share/man/cat8/dhcrelay.8.gz
+TO_REMOVE+=/usr/share/man/man8/dhcrelay.8.gz
