@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	5.20 (Berkeley) 6/12/93
 # $FreeBSD: src/usr.sbin/Makefile,v 1.183.2.14 2003/04/16 11:01:51 ru Exp $
-# $DragonFly: src/usr.sbin/Makefile,v 1.47 2008/07/09 07:21:03 swildner Exp $
+# $DragonFly: src/usr.sbin/Makefile,v 1.48 2008/08/30 16:07:59 hasso Exp $
 
 .include "../sys/platform/${MACHINE_PLATFORM}/Makefile.inc"
 
@@ -154,10 +154,6 @@ SUBDIR+=named \
 	rndc-confgen \
 	nslookup \
 	nsupdate
-.endif
-
-.if !defined(NO_DHCPD)
-SUBDIR+=dhcp
 .endif
 
 .if !defined(NO_LPR)

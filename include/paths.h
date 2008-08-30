@@ -32,7 +32,7 @@
  *
  *	@(#)paths.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/paths.h,v 1.9.6.4 2002/07/19 07:53:41 jmallett Exp $
- * $DragonFly: src/include/paths.h,v 1.4 2005/03/16 06:56:20 joerg Exp $
+ * $DragonFly: src/include/paths.h,v 1.5 2008/08/30 16:07:58 hasso Exp $
  */
 
 #ifndef _PATHS_H_
@@ -84,6 +84,7 @@
 #define	_PATH_DEV	__SYS_PATH_DEV
 #define	_PATH_TMP	"/tmp/"
 #define	_PATH_VARDB	"/var/db/"
+#define	_PATH_VAREMPTY	"/var/empty/"
 #define	_PATH_VARRUN	"/var/run/"
 #define	_PATH_VARTMP	"/var/tmp/"
 #define	_PATH_YP	"/var/yp/"

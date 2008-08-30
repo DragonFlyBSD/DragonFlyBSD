@@ -32,7 +32,7 @@
  *
  *	@(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if.h,v 1.58.2.9 2002/08/30 14:23:38 sobomax Exp $
- * $DragonFly: src/sys/net/if.h,v 1.20 2008/01/11 11:59:40 sephe Exp $
+ * $DragonFly: src/sys/net/if.h,v 1.21 2008/08/30 16:07:59 hasso Exp $
  */
 
 #ifndef _NET_IF_H_
@@ -62,6 +62,7 @@
 #define	LINK_STATE_UNKNOWN	0	/* link invalid/unknown */
 #define	LINK_STATE_DOWN		1	/* link is down */
 #define	LINK_STATE_UP		2	/* link is up */
+#define	LINK_STATE_IS_UP(_s)	((_s) >= LINK_STATE_UP)
 
 struct ifnet;
 
