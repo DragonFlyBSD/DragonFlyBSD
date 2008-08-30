@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.77 2008/05/15 09:21:40 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.78 2008/08/30 17:11:42 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -390,6 +390,7 @@ MLINKS+=kenv.9 kfreeenv.9 \
 	kenv.9 kgetenv_int.9 \
 	kenv.9 kgetenv_quad.9 \
 	kenv.9 kgetenv_string.9 \
+	kenv.9 kgetenv_ulong.9 \
 	kenv.9 ksetenv.9 \
 	kenv.9 ktestenv.9 \
 	kenv.9 kunsetenv.9
