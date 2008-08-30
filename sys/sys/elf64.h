@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/sys/elf64.h,v 1.9 1999/08/28 00:51:42 peter Exp $
- * $DragonFly: src/sys/sys/elf64.h,v 1.9 2008/08/01 23:11:15 dillon Exp $
+ * $FreeBSD: src/sys/sys/elf64.h,v 1.17 2006/10/17 05:43:30 jkoshy Exp $
+ * $DragonFly: src/sys/sys/elf64.h,v 1.10 2008/08/30 17:07:17 swildner Exp $
  */
 
 #ifndef _SYS_ELF64_H_
@@ -52,7 +52,7 @@ typedef uint64_t	Elf64_Xword;
 
 /*
  * Types of dynamic symbol hash table bucket and chain elements.
- * 
+ *
  * This is inconsistent among 64 bit architectures, so a machine dependent
  * typedef is required.
  */
@@ -153,9 +153,9 @@ typedef struct {
 /* Macro for constructing r_info from field values. */
 #define ELF64_R_INFO(sym, type)	(((sym) << 32) + ((type) & 0xffffffffL))
 
-#define        ELF64_R_TYPE_DATA(info)	(((Elf64_Xword)(info)<<32)>>40)
-#define        ELF64_R_TYPE_ID(info)	(((Elf64_Xword)(info)<<56)>>56)
-#define        ELF64_R_TYPE_INFO(data, type)   \
+#define	ELF64_R_TYPE_DATA(info)	(((Elf64_Xword)(info)<<32)>>40)
+#define	ELF64_R_TYPE_ID(info)	(((Elf64_Xword)(info)<<56)>>56)
+#define	ELF64_R_TYPE_INFO(data, type)	\
 		(((Elf64_Xword)(data)<<8)+(Elf64_Xword)(type))
 
 /*
@@ -247,8 +247,8 @@ typedef struct {
 typedef Elf64_Half Elf64_Versym;
 
 typedef struct {
-	Elf64_Half	si_boundto;     /* direct bindings - symbol bound to */
-	Elf64_Half	si_flags;       /* per symbol flags */
+	Elf64_Half	si_boundto;	/* direct bindings - symbol bound to */
+	Elf64_Half	si_flags;	/* per symbol flags */
 } Elf64_Syminfo;
 
 #endif /* !_SYS_ELF64_H_ */
