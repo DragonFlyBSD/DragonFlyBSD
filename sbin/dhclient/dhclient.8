@@ -1,5 +1,5 @@
 .\" $OpenBSD: dhclient.8,v 1.6 2007/05/31 19:19:43 jmc Exp $
-.\" $DragonFly: src/sbin/dhclient/dhclient.8,v 1.1 2008/08/30 16:07:58 hasso Exp $
+.\" $DragonFly: src/sbin/dhclient/dhclient.8,v 1.2 2008/08/30 20:52:00 swildner Exp $
 .\"
 .\" Copyright (c) 1997 The Internet Software Consortium.
 .\" All rights reserved.
@@ -36,7 +36,7 @@
 .\" Enterprises.  To learn more about the Internet Software Consortium,
 .\" see ``http://www.isc.org/isc''.  To learn more about Vixie
 .\" Enterprises, see ``http://www.vix.com''.
-.Dd $Mdocdate$
+.Dd August 30, 2008
 .Dt DHCLIENT 8
 .Os
 .Sh NAME
@@ -170,8 +170,8 @@ database of acquired leases
 .Xr dhclient.leases 5 ,
 .Xr dhclient-script 8 ,
 .Xr dhcp 8 ,
-.Xr dhcpd 8 ,
-.Xr dhcrelay 8
+.Xr dhcpd 8 Pq Pa pkgsrc/net/isc-dhcpd4 ,
+.Xr dhcrelay 8 Pq Pa pkgsrc/net/isc-dhcrelay4
 .Sh AUTHORS
 .An -nosplit
 .Nm

@@ -1,5 +1,5 @@
 .\"	$OpenBSD: dhclient.conf.5,v 1.14 2007/10/16 05:03:23 jmc Exp $
-.\"	$DragonFly: src/sbin/dhclient/dhclient.conf.5,v 1.1 2008/08/30 16:07:58 hasso Exp $
+.\"	$DragonFly: src/sbin/dhclient/dhclient.conf.5,v 1.2 2008/08/30 20:52:00 swildner Exp $
 .\"
 .\" Copyright (c) 1997 The Internet Software Consortium.
 .\" All rights reserved.
@@ -37,7 +37,7 @@
 .\" see ``http://www.isc.org/isc''.  To learn more about Vixie
 .\" Enterprises, see ``http://www.vix.com''.
 .\"
-.Dd $Mdocdate$
+.Dd August 30, 2008
 .Dt DHCLIENT.CONF 5
 .Os
 .Sh NAME
@@ -532,9 +532,9 @@ file \- the defaults are usually fine.
 .Sh SEE ALSO
 .Xr dhclient.leases 5 ,
 .Xr dhcp-options 5 ,
-.Xr dhcpd.conf 5 ,
+.Xr dhcpd.conf 5 Pq Pa pkgsrc/net/isc-dhcpd4 ,
 .Xr dhclient 8 ,
-.Xr dhcpd 8
+.Xr dhcpd 8 Pq Pa pkgsrc/net/isc-dhcpd4
 .Pp
 RFC 2132, RFC 2131.
 .Sh AUTHORS
