@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.87 2008/08/30 16:47:47 hasso Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.88 2008/08/30 21:35:05 swildner Exp $
 #
 
 #########################################################################
@@ -64,7 +64,7 @@ CVSUP_BOOTSTRAP_KIT?=	cvsup-bootstrap-20070716
 # Default packages to be installed on the release ISO.
 #
 PKGSRC_PACKAGES?=	cdrtools-ossdvd-2.01.1.36nb2.tgz \
-			isc-dhcp-base-4.0.0 isc-dhcp-server-4.0.0
+			isc-dhcp-base-4.0.0.tgz isc-dhcp-server-4.0.0.tgz
 
 # Even though buildiso wipes the packages, our check target has to run
 # first and old packages (listed as they appear in pkg_info) must be
