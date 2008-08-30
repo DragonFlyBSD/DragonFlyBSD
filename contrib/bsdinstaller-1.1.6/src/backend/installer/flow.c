@@ -1408,7 +1408,7 @@ state_setup_remote_installation_server(struct i_fn_args *a)
 			    a->os_root, cmd_name(a, "INETD"));
 			command_add(cmds, "%s%s %svar/db/dhcpd.leases",
 			    a->os_root, cmd_name(a, "TOUCH"), a->os_root);
-			command_add(cmds, "%s%s >%sdev/null 2>&1",
+			command_add(cmds, "%s%s -cf /etc/dhcpd.conf >%sdev/null 2>&1",
 			    a->os_root, cmd_name(a, "DHCPD"), a->os_root);
 			command_add(cmds, "%s%s >%sdev/null 2>&1",
 			    a->os_root, cmd_name(a, "RPCBIND"), a->os_root);
