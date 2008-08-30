@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.58 2008/07/28 00:08:56 thomas Exp $
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.59 2008/08/30 17:50:43 swildner Exp $
 .Dd January 30, 2008
 .Dt RC.CONF 5
 .Os
@@ -234,19 +234,6 @@ Path to the DHCP client program
 .It Va dhclient_flags
 .Pq Vt str
 Additional flags to pass to the DHCP client program.
-.It Va dhcpd_enable
-.Pq Vt bool
-Set to
-.Dq Li YES
-to run
-.Xr dhcpd 8
-at system boot time.
-.It Va dhcrelay_enable
-.Pq Vt bool
-Set to
-.Dq Li YES
-to run
-.Xr dhcrelay 8
 .It Va pf_enable
 .Pq Vt bool
 Set to
@@ -2852,8 +2839,6 @@ has not completed within the specified time (in seconds).
 .Xr bthcid 8 ,
 .Xr cron 8 ,
 .Xr dhclient 8 ,
-.Xr dhcpd 8 ,
-.Xr dhcrelay 8 ,
 .Xr dntpd 8 ,
 .Xr ftpd 8 ,
 .Xr ifconfig 8 ,
