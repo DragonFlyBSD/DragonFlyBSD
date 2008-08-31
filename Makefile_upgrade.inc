@@ -1,4 +1,4 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.34 2008/08/30 17:19:13 swildner Exp $
+# $DragonFly: src/Makefile_upgrade.inc,v 1.35 2008/08/31 18:19:33 swildner Exp $
 #
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
@@ -957,8 +957,24 @@ TO_REMOVE+=/usr/share/man/cat4/i386/acpi_toshiba.4.gz
 TO_REMOVE+=/usr/share/man/man4/i386/acpi_toshiba.4.gz
 TO_REMOVE+=/etc/rc.d/dhcpd
 TO_REMOVE+=/etc/rc.d/dhcrelay
+TO_REMOVE+=/usr/include/dhcpctl.h
+TO_REMOVE+=/usr/lib/libdhcpctl.a
+TO_REMOVE+=/usr/lib/libomapi.a
+TO_REMOVE+=/usr/lib/profile/libdhcpctl.a
+TO_REMOVE+=/usr/lib/profile/libomapi.a
 TO_REMOVE+=/usr/sbin/dhcpd
 TO_REMOVE+=/usr/sbin/dhcrelay
+TO_REMOVE+=/usr/sbin/omshell
+TO_REMOVE+=/usr/share/man/cat1/omshell.1.gz
+TO_REMOVE+=/usr/share/man/man1/omshell.1.gz
+TO_REMOVE+=/usr/share/man/cat3/dhcpctl.3.gz
+TO_REMOVE+=/usr/share/man/man3/dhcpctl.3.gz
+TO_REMOVE+=/usr/share/man/cat3/omapi.3.gz
+TO_REMOVE+=/usr/share/man/man3/omapi.3.gz
+TO_REMOVE+=/usr/share/man/cat5/dhcp-eval.5.gz
+TO_REMOVE+=/usr/share/man/man5/dhcp-eval.5.gz
+TO_REMOVE+=/usr/share/man/cat5/dhcp-options.5.gz
+TO_REMOVE+=/usr/share/man/man5/dhcp-options.5.gz
 TO_REMOVE+=/usr/share/man/cat5/dhcpd.conf.5.gz
 TO_REMOVE+=/usr/share/man/man5/dhcpd.conf.5.gz
 TO_REMOVE+=/usr/share/man/cat5/dhcpd.leases.5.gz
