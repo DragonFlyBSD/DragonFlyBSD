@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.88 2008/08/30 21:35:05 swildner Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.89 2008/08/31 15:46:48 swildner Exp $
 #
 
 #########################################################################
@@ -57,7 +57,6 @@ PKGSRC_BOOTSTRAP_URL?=	http://pkgbox.dragonflybsd.org/DragonFly-pkgsrc-packages/
 ENVCMD?=	env
 TAR?=	tar
 
-PKGSRC_CDRECORD?=	cdrtools-ossdvd-2.01.1.36nb2.tgz
 PKGSRC_BOOTSTRAP_KIT?=	bootstrap-kit-20080211
 CVSUP_BOOTSTRAP_KIT?=	cvsup-bootstrap-20070716
 
