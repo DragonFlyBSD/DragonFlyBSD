@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/kern.post.mk,v 1.13 2008/07/27 23:38:27 mneumann Exp $
+# $DragonFly: src/sys/conf/kern.post.mk,v 1.14 2008/09/01 19:39:47 dillon Exp $
 # 
 # This Makefile covers the bottom part of the MI build instructions
 #
@@ -148,6 +148,12 @@ kernel-installable:
 	@exit 1
 .endif
 .endif
+	@if [ -f ${DESTDIR}/${CHECKKERNNAME} ]; then \
+		echo "You need to make buildworld, installworld, and upgrade"; \
+		echo "before you can install a new kernel, because the"; \
+		echo "kernel and modules have moved to /boot"; \
+		exit 1; \
+	fi
 	@exit 0
 
 .if !defined(MODULES_WITH_WORLD) && !defined(NO_MODULES)
@@ -193,24 +199,24 @@ modules-tags:
 modules-install:
 .if !defined(NO_MODULES_OLD)
 .  ifdef NO_KERNEL_OLD_STRIP
-	set -- ${DESTDIR}/modules/*; \
+	set -- ${DESTDIR}/boot/modules/*; \
 	if [ -f "$$1" ]; then \
-		mkdir -p ${DESTDIR}/modules.old; \
+		mkdir -p ${DESTDIR}/boot/modules.old; \
 		for file; do \
-		cp -p $$file ${DESTDIR}/modules.old; \
+		cp -p $$file ${DESTDIR}/boot/modules.old; \
 		done; \
 	fi
 .  else
-	set -- ${DESTDIR}/modules/*; \
+	set -- ${DESTDIR}/boot/modules/*; \
 	if [ -f "$$1" ]; then \
-		mkdir -p ${DESTDIR}/modules.old; \
+		mkdir -p ${DESTDIR}/boot/modules.old; \
 		for file; do \
-		${OBJCOPY} --strip-debug $$file ${DESTDIR}/modules.old/$${file##*/}; \
+		${OBJCOPY} --strip-debug $$file ${DESTDIR}/boot/modules.old/$${file##*/}; \
 		done; \
 	fi
 .  endif
 .endif
-	mkdir -p ${DESTDIR}/modules # Ensure that the modules directory exists!
+	mkdir -p ${DESTDIR}/boot/modules # Ensure that the modules directory exists!
 	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules install
 
 modules-reinstall:

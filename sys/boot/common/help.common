@@ -6,7 +6,7 @@
 	?
 
 	The help command displays help on commands and their usage.
-	$DragonFly: src/sys/boot/common/help.common,v 1.5 2008/02/19 21:41:07 thomas Exp $
+	$DragonFly: src/sys/boot/common/help.common,v 1.6 2008/09/01 19:39:45 dillon Exp $
 
 	In command help, a term enclosed with <...> indicates a value as
 	described by the term.  A term enclosed with [...] is optional,
@@ -207,7 +207,7 @@
 
 	Sets the list of directories which will be searched in for modules
 	named in a load command or implicitly required by a dependency. The
-	default module_path is "/;/boot;/modules".
+	default module_path is "/boot;/boot/modules;/;/modules".
 
 ################################################################################
 # Tset Sprompt DSet the command prompt

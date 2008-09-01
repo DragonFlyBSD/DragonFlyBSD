@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/module.c,v 1.25 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/module.c,v 1.4 2004/12/20 13:13:19 joerg Exp $
+ * $DragonFly: src/sys/boot/common/module.c,v 1.5 2008/09/01 19:39:45 dillon Exp $
  */
 
 /*
@@ -66,7 +66,7 @@ static void			moduledir_rebuild(void);
 /* load address should be tweaked by first module loaded (kernel) */
 static vm_offset_t	loadaddr = 0;
 
-static const char	*default_searchpath ="/;/boot;/modules";
+static const char	*default_searchpath ="/boot;/boot/modules;/;/modules";
 
 static STAILQ_HEAD(, moduledir) moduledir_list = STAILQ_HEAD_INITIALIZER(moduledir_list);
 

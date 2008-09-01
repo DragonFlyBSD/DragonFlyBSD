@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.214 2008/08/30 16:34:29 hasso Exp $
+# $DragonFly: src/etc/Makefile,v 1.215 2008/09/01 19:39:41 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -201,6 +201,24 @@ upgrade_etc:	preupgrade remove-obsolete-files
 .if !defined(NO_OPENSSH)
 	cd ${.CURDIR}/../secure/lib/libssh; ${MAKE} -f Makefile.etc obj
 	cd ${.CURDIR}/../secure/lib/libssh; ${MAKE} -f Makefile.etc install
+.endif
+.if exists(${DESTDIR}/boot)
+.if exists(${DESTDIR}/kernel)
+	chflags noschg ${DESTDIR}/kernel
+	mv ${DESTDIR}/kernel ${DESTDIR}/boot/kernel
+	chflags schg ${DESTDIR}/boot/kernel
+.endif
+.if exists(${DESTDIR}/modules)
+	mv ${DESTDIR}/modules ${DESTDIR}/boot/modules
+	rm -rf ${DESTDIR}/boot/modules/modules
+.endif
+.if exists(${DESTDIR}/kernel.old)
+	mv ${DESTDIR}/kernel.old ${DESTDIR}/boot/kernel.old
+.endif
+.if exists(${DESTDIR}/modules.old)
+	mv ${DESTDIR}/modules.old ${DESTDIR}/boot/modules.old
+	rm -rf ${DESTDIR}/boot/modules.old/modules.old
+.endif
 .endif
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
