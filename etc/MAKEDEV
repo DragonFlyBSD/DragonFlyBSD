@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.41 2008/04/23 09:44:07 hasso Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.42 2008/09/01 20:19:56 thomas Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -238,7 +238,7 @@ dkitop()
 	case $1 in
 	 0) p=a;;  1) p=b;;  2) p=c;;  3) p=d;;
 	 4) p=e;;  5) p=f;;  6) p=g;;  7) p=h;;
-	 8) p=i;; 9) p=j;;  10) p=k;; 11) p=l;;
+	 8) p=i;;  9) p=j;; 10) p=k;; 11) p=l;;
 	12) p=m;; 13) p=n;; 14) p=o;; 15) p=p;;
 	 *) p="?";;
 	esac
@@ -752,7 +752,7 @@ aacd*s*|acd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|ccd*s*|da*s*|fd*s*|idad*s*|ipsd*s*|md*
 	case $unit in
 	[0-9]|[0-9][0-9]|[0-4][0-9][0-9]|50[0-9]|51[0-1])
 		case $slice in
-		[0-9]|[1-2][0-9]|30)
+		[0-9]|[0-9][0-9]|1[0-1][0-9]|12[0-6])
 			# [no s*] == whole-disk slice (slice #1 in minor)
 			# s0 == slice #0 in minor (compatibility slice)
 			# s1 == slice #2 in minor
@@ -781,7 +781,8 @@ aacd*s*|acd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|ccd*s*|da*s*|fd*s*|idad*s*|ipsd*s*|md*
 			    rm -f $name$unit$i
 			done
 
-			case $part in [a-p])
+			case $part in
+			[a-p])
 
 			for part in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
 			do
