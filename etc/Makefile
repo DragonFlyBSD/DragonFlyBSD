@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.215 2008/09/01 19:39:41 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.216 2008/09/01 20:54:35 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -181,6 +181,9 @@ upgrade_etc:	preupgrade remove-obsolete-files
 .endif
 .endfor
 .endif
+	# these removals must occur AFTER any pam conversion
+	csh -c "rm -f /usr/lib/pam_{cleartext_pass_ok,deny,opie,opieaccess,permit,radius,skey,ssh,tacplus,unix}.so"
+	rm -f /etc/pam.conf
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these files
 	cd ${UPGRADE_SRCDIR}/..; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${FREEBSD} ${DESTDIR}/
