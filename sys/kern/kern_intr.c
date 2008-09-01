@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.54 2008/06/07 11:37:23 mneumann Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.55 2008/09/01 12:49:00 sephe Exp $
  *
  */
 
@@ -95,7 +95,7 @@ static struct thread emergency_intr_thread;
 #define ISTATE_LIVELOCKED	2
 
 #ifdef SMP
-static int intr_mpsafe = 0;
+static int intr_mpsafe = 1;
 TUNABLE_INT("kern.intr_mpsafe", &intr_mpsafe);
 SYSCTL_INT(_kern, OID_AUTO, intr_mpsafe,
         CTLFLAG_RW, &intr_mpsafe, 0, "Run INTR_MPSAFE handlers without the BGL");
