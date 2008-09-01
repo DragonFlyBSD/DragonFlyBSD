@@ -1,0 +1,10 @@
+table Icon
+  Caption: README
+  Command: urxvt -e less /README
+  Icon: /root/.idesktop/readme.png
+  Width: 64
+  Height: 64
+  X: 110 
+  Y: 40
+end
+

@@ -1,0 +1,10 @@
+table Icon
+  Caption: Install 
+  Command: /usr/pkg/bin/urxvt -e ~/installDragonFly.sh
+  Icon: /root/.idesktop/install.png
+  Width: 64
+  Height: 64
+  X: 10
+  Y: 40
+end
+

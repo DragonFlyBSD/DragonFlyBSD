@@ -1,0 +1,19 @@
+table Config
+   FontName: Terminus 
+   FontSize: 10
+   FontColor: #FFFFFF
+   Locked: true
+   Transparency: 0
+   HighContrast: true
+   Shadow: true 
+   ShadowColor: #000000
+   ShadowX: 0
+   ShadowY: 2
+   Bold: false
+   ClickDelay: 300
+   CaptionOnHover: true
+ end
+ table Actions
+   Execute[0]: left Clk
+ end
+

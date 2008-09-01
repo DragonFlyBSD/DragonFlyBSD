@@ -1,0 +1,27 @@
+urxvt*font: xft:Terminus:pixelsize=10
+urxvt*termName: rxvt
+urxvt*background: rgba:0000/0000/0000/dddd
+urxvt*foreground: grey90
+urxvt*depth: 32
+urxvt*geometry: 100x30
+urxvt*scrollBar: False
+urxvt*inheritPixmap: True
+urxvt*tintColor: grey
+urxvt*shading: 10
+
+! Tango color scheme
+
+urxvt*color0: #000000
+urxvt*color1: #a40000
+urxvt*color2: #4e9a06
+urxvt*color3: #c4a000
+urxvt*color4: #204a87
+urxvt*color6: #038e82
+urxvt*color7: #babdb6
+urxvt*color8: #555753
+urxvt*color9: #cc0000
+urxvt*color10: #73d216
+urxvt*color11: #edd400
+urxvt*color12: #3465a4
+urxvt*color14: #05d2c1
+urxvt*color15: #d3d7cf

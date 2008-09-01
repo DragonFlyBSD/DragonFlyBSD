@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.89 2008/08/31 15:46:48 swildner Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.90 2008/09/01 21:20:30 swildner Exp $
 #
 
 #########################################################################
@@ -43,7 +43,12 @@ WITH_INSTALLER=
 ISODIR ?= /usr/release
 ISOROOT ?= ${ISODIR}/root
 OBJSYS= ${.OBJDIR}/../sys
+
+.if make(gui)
+KERNCONF ?= DFLYLIVE VKERNEL DFLYLIVE-SMP DFLYLIVE-SMP-NOAPIC
+.else
 KERNCONF ?= GENERIC VKERNEL
+.endif
 
 PKGSRC_PREFIX?=		/usr/pkg
 PKGBIN_PKG_ADD?=	${PKGSRC_PREFIX}/sbin/pkg_add
@@ -80,22 +85,45 @@ OLD_PKGSRC_PACKAGES?= cdrtools-2.01.01.27nb1 cdrecord-2.00.3nb2 \
 REQ_ROOTSKELS= ${.CURDIR}/root
 ROOTSKELS?=	${REQ_ROOTSKELS}
 
-.if defined(WITH_GUI)
-ISOFILE?=		${ISODIR}/dfly-gui.iso
-PKGSRC_PACKAGES+=	modular-xorg-apps \
-			modular-xorg-drivers \
-			modular-xorg-fonts \
-			modular-xorg-libs \
-			fluxbox
-ROOTSKELS+=		${.CURDIR}/gui
-.endif
-
 .if defined(WITH_INSTALLER)
 OLD_PKGSRC_PACKAGES+=	dfuibe_installer-1.1.6 gettext-lib-0.14.5 \
 			dfuibe_installer-1.1.7nb1 dfuife_curses-1.5 \
 			gettext-lib-0.14.6 gettext-tools-0.14.6nb1 \
 			libaura-3.1 libdfui-4.2 libinstaller-5.1
 ROOTSKELS+=		${.CURDIR}/installer
+.endif
+
+.if defined(WITH_GUI)
+ISOFILE?=		${ISODIR}/dfly-gui.iso
+PKGSRC_PACKAGES+=	modular-xorg-apps \
+			modular-xorg-drivers \
+			modular-xorg-fonts \
+			modular-xorg-libs \
+			fluxbox \
+			firefox3 \
+			xpdf \
+			zsh \
+			emacs \
+			vim \
+			pidgin \
+			irssi \
+			xchat \
+			rxvt-unicode \
+			eterm \
+			perl \
+			nano \
+			bash \
+			exctags \
+			zip \
+			sudo \
+			links-gui \
+			nmap \
+			wget \
+			terminus-font \
+			rsync \
+			idesk \
+			screen
+ROOTSKELS+=		${.CURDIR}/gui
 .endif
 
 ISOFILE ?= ${ISODIR}/dfly.iso
@@ -163,6 +191,13 @@ buildworld1 buildworld2:
 	cd ${.CURDIR}/..; CCVER=${WORLD_CCVER} make ${WITH_INSTALLER:C/^/-DWANT_INSTALLER/} ${.TARGET:C/build(.*)2/quick\1/:C/1//}
 
 buildkernel1 buildkernel2:
+.if make(gui)
+	cd ${.CURDIR}/..; \
+	for kernconf in ${KERNCONF}; do \
+		CCVER=${KERNEL_CCVER} make ${.TARGET:C/build(.*)2/quick\1/:C/1//} \
+			KERNCONF=$${kernconf} KERNCONFDIR=${.CURDIR}/gui/root; \
+	done
+.else
 	cd ${.CURDIR}/..; \
 	first=; \
 	for kernconf in ${KERNCONF}; do \
@@ -171,6 +206,7 @@ buildkernel1 buildkernel2:
 			$${first:+-DNO_MODULES}; \
 		first=done; \
 	done
+.endif
 
 # note that we do not want to mess with any /usr/obj directories not related
 # to buildworld, buildkernel, or nrelease, so we must supply the proper
@@ -184,6 +220,22 @@ buildiso:
 	( cd ${.CURDIR}/../etc; MAKEOBJDIRPREFIX=${NRLOBJDIR}/nrelease \
 		make -m ${.CURDIR}/../share/mk DESTDIR=${ISOROOT} distribution )
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
+.if make(gui)
+	if [ ! -d ${ISOROOT}/kernel.smp ]; then mkdir -p ${ISOROOT}/kernel.smp; fi
+	cd ${.CURDIR}/..; \
+	make installkernel DESTDIR=${ISOROOT} \
+	KERNCONF=DFLYLIVE DESTKERNNAME=kernel KERNCONFDIR=${.CURDIR}/gui/root; \
+	cd ${.CURDIR}/..; \
+	make installkernel DESTDIR=${ISOROOT} \
+	KERNCONF=VKERNEL DESTKERNNAME=kernel.VKERNEL -DNO_MODULES KERNCONFDIR=${.CURDIR}/gui/root; \
+	cd ${.CURDIR}/..; \
+	make installkernel DESTDIR=${ISOROOT}/kernel.smp \
+	KERNCONF=DFLYLIVE-SMP DESTKERNNAME=kernel KERNCONFDIR=${.CURDIR}/gui/root; \
+	cd ${.CURDIR}/..; \
+	make installkernel DESTDIR=${ISOROOT}/kernel.smp \
+	KERNCONF=DFLYLIVE-SMP-NOAPIC DESTKERNNAME=kernel.noapic \
+		KERNCONFDIR=${.CURDIR}/gui/root -DNO_MODULES;
+.else
 	cd ${.CURDIR}/..; \
 	first=; \
 	for kernconf in ${KERNCONF}; do \
@@ -193,6 +245,7 @@ buildiso:
 			$${first:+-DNO_MODULES}; \
 		first=done; \
 	done
+.endif
 	ln -s kernel ${ISOROOT}/kernel.BOOTP
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.local.dist -p ${ISOROOT}/usr/local/
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
