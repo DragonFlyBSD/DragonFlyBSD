@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.38 2008/05/14 11:59:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.38.2.1 2008/09/01 13:09:02 sephe Exp $
  */
 
 /*
@@ -911,19 +911,15 @@ aue_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 
 	if (sc->aue_dying)
 		return;
-	AUE_LOCK(sc);
+
 	ifp = &sc->arpcom.ac_if;
 
-	if (!(ifp->if_flags & IFF_RUNNING)) {
-		AUE_UNLOCK(sc);
+	if (!(ifp->if_flags & IFF_RUNNING))
 		return;
-	}
 
 	if (status != USBD_NORMAL_COMPLETION) {
-		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED) {
-			AUE_UNLOCK(sc);
+		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED)
 			return;
-		}
 		if (usbd_ratecheck(&sc->aue_rx_notice)) {
 			if_printf(ifp, "usb error on rx: %s\n",
 			    usbd_errstr(status));
@@ -961,10 +957,6 @@ aue_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	/* Put the packet on the special USB input queue. */
 	usb_ether_input(m);
 	aue_rxstart(ifp);
-	if (!ifq_is_empty(&ifp->if_snd))
-		if_devstart(ifp);
-
-	AUE_UNLOCK(sc);
 	return;
 done:
 
@@ -973,16 +965,38 @@ done:
 	    c, mtod(c->aue_mbuf, char *), AUE_BUFSZ, USBD_SHORT_XFER_OK,
 	    USBD_NO_TIMEOUT, aue_rxeof);
 	usbd_transfer(xfer);
+}
 
-	AUE_UNLOCK(sc);
-	return;
+static void
+aue_start_ipifunc(void *arg)
+{
+	struct ifnet *ifp = arg;
+	struct lwkt_msg *lmsg = &ifp->if_start_nmsg[mycpuid].nm_lmsg;
+
+	crit_enter();
+	if (lmsg->ms_flags & MSGF_DONE)
+		lwkt_sendmsg(ifnet_portfn(mycpuid), lmsg);
+	crit_exit();
+}
+
+static void
+aue_start_schedule(struct ifnet *ifp)
+{
+#ifdef SMP
+        int cpu;
+
+	cpu = ifp->if_start_cpuid(ifp);
+	if (cpu != mycpuid)
+		lwkt_send_ipiq(globaldata_find(cpu), aue_start_ipifunc, ifp);
+	else
+#endif
+	aue_start_ipifunc(ifp);
 }
 
 /*
  * A frame was downloaded to the chip. It's safe for us to clean up
  * the list buffers.
  */
-
 static void
 aue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 {
@@ -991,41 +1005,29 @@ aue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	struct ifnet		*ifp;
 	usbd_status		err;
 
-	AUE_LOCK(sc);
 	ifp = &sc->arpcom.ac_if;
 
 	if (status != USBD_NORMAL_COMPLETION) {
-		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED) {
-			AUE_UNLOCK(sc);
+		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED)
 			return;
-		}
 		if_printf(ifp, "usb error on tx: %s\n", usbd_errstr(status));
 		if (status == USBD_STALLED)
 			usbd_clear_endpoint_stall(sc->aue_ep[AUE_ENDPT_TX]);
-		AUE_UNLOCK(sc);
 		return;
 	}
 
-	ifp->if_timer = 0;
-	ifp->if_flags &= ~IFF_OACTIVE;
 	usbd_get_xfer_status(c->aue_xfer, NULL, NULL, NULL, &err);
-
-	if (c->aue_mbuf != NULL) {
-		m_free(c->aue_mbuf);
-		c->aue_mbuf = NULL;
-	}
-
 	if (err)
 		ifp->if_oerrors++;
 	else
 		ifp->if_opackets++;
 
+	/* XXX should hold serializer */
+	ifp->if_timer = 0;
+	ifp->if_flags &= ~IFF_OACTIVE;
+
 	if (!ifq_is_empty(&ifp->if_snd))
-		if_devstart(ifp);
-
-	AUE_UNLOCK(sc);
-
-	return;
+		aue_start_schedule(ifp);
 }
 
 static void
@@ -1038,12 +1040,13 @@ aue_tick(void *xsc)
 	if (sc == NULL)
 		return;
 
-	AUE_LOCK(sc);
-
 	ifp = &sc->arpcom.ac_if;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
 	mii = GET_MII(sc);
 	if (mii == NULL) {
-		AUE_UNLOCK(sc);
+		lwkt_serialize_exit(ifp->if_serializer);
 		return;
 	}
 
@@ -1052,14 +1055,12 @@ aue_tick(void *xsc)
 	    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 		sc->aue_link++;
 		if (!ifq_is_empty(&ifp->if_snd))
-			if_devstart(ifp);
+			aue_start_schedule(ifp);
 	}
 
 	callout_reset(&sc->aue_stat_timer, hz, aue_tick, sc);
 
-	AUE_UNLOCK(sc);
-
-	return;
+	lwkt_serialize_exit(ifp->if_serializer);
 }
 
 static int
@@ -1088,6 +1089,10 @@ aue_encap(struct aue_softc *sc, struct mbuf *m, int idx)
 	 */
 	c->aue_buf[0] = (u_int8_t)m->m_pkthdr.len;
 	c->aue_buf[1] = (u_int8_t)(m->m_pkthdr.len >> 8);
+
+	m_freem(c->aue_mbuf);
+	c->aue_mbuf = NULL;
+	m = NULL;
 
 	usbd_setup_xfer(c->aue_xfer, sc->aue_ep[AUE_ENDPT_TX],
 	    c, c->aue_buf, total_len, USBD_FORCE_SHORT_XFER,
@@ -1119,7 +1124,7 @@ aue_start(struct ifnet *ifp)
 		return;
 	}
 
-	if (ifp->if_flags & IFF_OACTIVE) {
+	if ((ifp->if_flags & (IFF_OACTIVE | IFF_RUNNING)) != IFF_RUNNING) {
 		AUE_UNLOCK(sc);
 		return;
 	}
@@ -1357,7 +1362,7 @@ aue_watchdog(struct ifnet *ifp)
 	struct aue_chain	*c;
 	usbd_status		stat;
 
-	AUE_LOCK(sc);
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	ifp->if_oerrors++;
 	if_printf(ifp, "watchdog timeout\n");
@@ -1365,11 +1370,6 @@ aue_watchdog(struct ifnet *ifp)
 	c = &sc->aue_cdata.aue_tx_chain[0];
 	usbd_get_xfer_status(c->aue_xfer, NULL, NULL, NULL, &stat);
 	aue_txeof(c->aue_xfer, c, stat);
-
-	if (!ifq_is_empty(&ifp->if_snd))
-		if_devstart(ifp);
-	AUE_UNLOCK(sc);
-	return;
 }
 
 /*
@@ -1492,13 +1492,15 @@ static void
 aue_shutdown(device_t dev)
 {
 	struct aue_softc	*sc;
+	struct ifnet		*ifp;
 
 	sc = device_get_softc(dev);
 	sc->aue_dying++;
-	AUE_LOCK(sc);
+
+	ifp = &sc->arpcom.ac_if;
+
+	lwkt_serialize_enter(ifp->if_serializer);
 	aue_reset(sc);
 	aue_stop(sc);
-	AUE_UNLOCK(sc);
-
-	return;
+	lwkt_serialize_exit(ifp->if_serializer);
 }
