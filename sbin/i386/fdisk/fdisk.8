@@ -1,12 +1,12 @@
 .\" $FreeBSD: src/sbin/i386/fdisk/fdisk.8,v 1.17.2.11 2002/04/25 16:25:12 trhodes Exp $
-.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.16 2008/09/01 19:27:31 thomas Exp $
+.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.17 2008/09/01 20:13:32 thomas Exp $
 .\"
 .Dd September 1, 2008
 .Dt FDISK 8
 .Os
 .Sh NAME
 .Nm fdisk
-.Nd PC slice table maintenance program
+.Nd PC slice table (MBR) maintenance program
 .Sh SYNOPSIS
 .Nm
 .Op Fl BCIaistu
@@ -21,10 +21,20 @@
 .Sh PROLOGUE
 In order for the BIOS to boot the kernel,
 certain conventions must be adhered to.
-Sector 0 of the disk must contain boot code,
+Sector 0 of the disk must contain an MBR, which contain boot code,
 a slice table,
 and a magic number.
 BIOS slices can be used to break the disk up into several pieces.
+.Dx
+slices are called partitions under DOS
+.Dq ( partition
+has another meaning under
+.Dx ,
+see
+.Xr disklabel 8 ) .
+.Dx
+supports 30 MBR slices, s1-s4 will be DOS primary partitions,
+s5-s30 will be DOS partitions in extended DOS partitions.
 The BIOS brings in sector 0 and verifies the magic number.
 The sector
 0 boot code then searches the slice table to determine which
@@ -74,7 +84,7 @@ Ignored if
 is given.
 .It Fl C
 Set CHS fields to wrapped values.
-Normally the CHS fields for a partition are set to all 1's if they
+Normally the CHS fields for a slice are set to all 1's if they
 would otherwise wrap.
 This typically causes BIOSes to properly detect
 that the disk should be put in Large mode.
@@ -366,7 +376,11 @@ Note that a bootable
 slice (the
 .Dq Pa /
 file system) must lie completely within the
-first 1024 cylinders; if this is not true, booting may fail.
+first 1024 cylinders, if
+.Dq packet
+mode isn't used, see
+.Xr boot0cfg 8 ;
+if this is not true, booting may fail.
 Non-bootable slices do not have this restriction.
 .Pp
 Example (all of these are equivalent), for a disk with 1019 cylinders,
@@ -486,6 +500,15 @@ Some OSs will require that slices are located at cylinder boundaries.
 .Xr gpt 8 ,
 .Xr newfs 8
 .Sh BUGS
+Only slices s1-s4
+.Pq primary DOS partitions
+can be changed by
+.Nm ,
+s5-s30
+.Pq slices in extended DOS partitions
+can't be changed by
+.Nm .
+.Pp
 The default boot code will not necessarily handle all slice types
 correctly, in particular those introduced since MS-DOS 6.x.
 .Pp
