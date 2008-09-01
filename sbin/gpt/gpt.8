@@ -23,9 +23,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/gpt/gpt.8,v 1.17 2006/06/22 22:22:32 marcel Exp $
-.\" $DragonFly: src/sbin/gpt/gpt.8,v 1.9 2008/08/28 21:12:44 thomas Exp $
+.\" $DragonFly: src/sbin/gpt/gpt.8,v 1.10 2008/09/01 20:26:49 thomas Exp $
 .\"
-.Dd August 28, 2008
+.Dd September 1, 2008
 .Os
 .Dt GPT 8
 .Sh NAME
@@ -47,7 +47,7 @@ below for how and where functionality is missing.
 GPT partitions are accessed as
 .Dx
 disk slices, with same number as GPT partition,
-32 slices per disk device are supported.
+127 slices per disk device are supported.
 The basic usage model of the
 .Nm
 tool follows that of the
@@ -463,7 +463,8 @@ vi etc/fstab		# add `/dev/da8s1a / hammer rw',
 chflags noschg kernel
 mv boot kernel modules kernel.old modules.old boot-fs
 chflags schg boot-fs/kernel
-ln -s boot-fs/boot
+ln -s boot-fs/boot boot-fs/kernel boot-fs/modules .
+ln -s boot-fs/kernel.old boot-fs/modules.old .
 
 vi boot/loader.conf	# add `vfs.root.mountfrom="hammer:da8s1a"'
 cd
