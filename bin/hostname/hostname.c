@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)hostname.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/hostname/hostname.c,v 1.10.2.1 2001/08/01 02:40:23 obrien Exp $
- * $DragonFly: src/bin/hostname/hostname.c,v 1.13 2005/03/21 16:59:31 liamfoy Exp $
+ * $DragonFly: src/bin/hostname/hostname.c,v 1.14 2008/09/02 22:20:55 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -112,7 +112,7 @@ main(int argc, char **argv)
 
 	int mib[6];
 	size_t needed;
-	char *buf,*lim,*next,*p;
+	char *buf, *next, *p;
 	int idx;
 	struct sockaddr_dl *sdl;
 	struct rt_msghdr *rtm;
@@ -191,8 +191,6 @@ main(int argc, char **argv)
 		if (sysctl(mib, 6, buf, &needed, NULL, 0) < 0)
 			err(1, "sysctl: retrieval of interface table");
 	
-		lim = buf + needed;
-
 		for (next = buf; next < buf + needed; next += rtm->rtm_msglen) {
 			rtm = (struct rt_msghdr *)(void *)next;
 			if (rtm->rtm_version != RTM_VERSION)
