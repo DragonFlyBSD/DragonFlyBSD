@@ -23,9 +23,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/gpt/gpt.8,v 1.17 2006/06/22 22:22:32 marcel Exp $
-.\" $DragonFly: src/sbin/gpt/gpt.8,v 1.10 2008/09/01 20:26:49 thomas Exp $
+.\" $DragonFly: src/sbin/gpt/gpt.8,v 1.11 2008/09/02 22:37:12 thomas Exp $
 .\"
-.Dd September 1, 2008
+.Dd September 3, 2008
 .Os
 .Dt GPT 8
 .Sh NAME
@@ -448,38 +448,30 @@ disklabel64 -e da8s1	# add `b' partition with fstype `swap' and size 4GB,
 			# add `a' partition with fstype `HAMMER' covering rest of slice
 newfs_hammer -L root /dev/da8s1a
 mount_hammer /dev/da8s1a /mnt
-cpdup / /mnt		# copy each file system you need, e.g.
-cpdup /var /mnt/var
-cpdup /usr /mnt/usr
 
 newfs /dev/da8s0a
-mkdir /mnt/boot-fs
-mount /dev/da8s0a /mnt/boot-fs
+mkdir /mnt/boot
+mount /dev/da8s0a /mnt/boot
+
+cpdup / /mnt		# copy each file system you need, e.g.
+cpdup /boot /mnt/boot
+cpdup /var /mnt/var
+cpdup /var/tmp /mnt/var/tmp
+cpdup /usr /mnt/usr
+
 cd /mnt
+chflags noschg kernel
+mv kernel modules kernel.old modules.old boot
+chflags schg boot/kernel
 vi etc/fstab		# add `/dev/da8s1a / hammer rw',
 			# add `/dev/da8s1b none swap sw',
-			# add `/dev/da8s0a /boot-fs ufs rw 1 1',
+			# add `/dev/da8s0a /boot ufs rw 1 1',
 			# delete lines for file systems cpdup'ed above
-chflags noschg kernel
-mv boot kernel modules kernel.old modules.old boot-fs
-chflags schg boot-fs/kernel
-ln -s boot-fs/boot boot-fs/kernel boot-fs/modules .
-ln -s boot-fs/kernel.old boot-fs/modules.old .
-
 vi boot/loader.conf	# add `vfs.root.mountfrom="hammer:da8s1a"'
 cd
-umount /mnt/boot-fs
+umount /mnt/boot
 umount /mnt
 .Ed
-.Pp
-.Em NOTE!
-When installing a new kernel, it needs to be installed to
-.Pa /boot-fs ,
-see
-.Xr build 7 ,
-command below can be used:
-.Pp
-.Dl "make installkernel DESTDIR=/boot-fs"
 .Sh COMPATIBILITY
 The GPT that
 .Nm
@@ -490,7 +482,6 @@ With the prevalent sector size of 512B this is 8 billion TB.
 .Xr uuid 3 ,
 .Xr disklabel64 5 ,
 .Xr uuids 5 ,
-.Xr build 7 ,
 .Xr boot0cfg 8 ,
 .Xr disklabel 8 ,
 .Xr disklabel64 8 ,
