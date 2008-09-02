@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)chmod.c	8.8 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/chmod/chmod.c,v 1.16.2.6 2002/10/18 01:36:38 trhodes Exp $
- * $DragonFly: src/bin/chmod/chmod.c,v 1.8 2004/10/31 16:18:37 liamfoy Exp $
+ * $DragonFly: src/bin/chmod/chmod.c,v 1.9 2008/09/02 22:13:11 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -57,24 +57,23 @@ main(int argc, char **argv)
 	FTSENT *p;
 	mode_t newmode;
 	void *set;
-	int Hflag, Lflag, Pflag, Rflag, ch, fflag;
+	int Hflag, Lflag, Rflag, ch, fflag;
 	int fts_options, hflag, rval, vflag;
 	char *mode;
 	int (*change_mode) (const char *, mode_t);
 
-	Hflag = Lflag = Pflag = Rflag = fflag = hflag = vflag = 0;
+	Hflag = Lflag = Rflag = fflag = hflag = vflag = 0;
 	while ((ch = getopt(argc, argv, "HLPRXfghorstuvwx")) != -1)
 		switch (ch) {
 		case 'H':
 			Hflag = 1;
-			Lflag = Pflag = 0;
+			Lflag = 0;
 			break;
 		case 'L':
 			Lflag = 1;
-			Hflag = Pflag = 0;
+			Hflag = 0;
 			break;
 		case 'P':
-			Pflag = 1;
 			Hflag = Lflag = 0;
 			break;
 		case 'R':
