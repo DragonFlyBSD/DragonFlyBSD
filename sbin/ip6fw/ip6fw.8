@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/sbin/ip6fw/ip6fw.8,v 1.3.2.12 2003/02/23 20:17:15 trhodes Exp $
-.\" $DragonFly: src/sbin/ip6fw/ip6fw.8,v 1.6 2008/05/02 02:05:05 swildner Exp $
+.\" $DragonFly: src/sbin/ip6fw/ip6fw.8,v 1.7 2008/09/02 11:50:45 matthias Exp $
 .\"
 .\"	$KAME$
 .\"
@@ -31,7 +31,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd March 13, 2000
+.Dd September 2, 2008
 .Dt IP6FW 8
 .Os
 .Sh NAME
@@ -499,7 +499,7 @@ is probably not as straightforward as you would think
 .Em ( "not supported" ) .
 I recommend this command line:
 .Bd -literal -offset center
-kldload /modules/ip6fw_mod.o && \e
+kldload /boot/modules/ip6fw_mod.o && \e
 ip6fw add 32000 allow all from any to any
 .Ed
 .Pp

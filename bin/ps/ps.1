@@ -31,9 +31,9 @@
 .\"
 .\"     @(#)ps.1	8.3 (Berkeley) 4/18/94
 .\" $FreeBSD: src/bin/ps/ps.1,v 1.24.2.7 2002/06/20 22:43:33 charnier Exp $
-.\" $DragonFly: src/bin/ps/ps.1,v 1.19 2008/01/04 12:31:45 matthias Exp $
+.\" $DragonFly: src/bin/ps/ps.1,v 1.20 2008/09/02 11:50:45 matthias Exp $
 .\"
-.Dd April 6, 2006
+.Dd September 2, 2008
 .Dt PS 1
 .Os
 .Sh NAME
@@ -127,7 +127,7 @@ instead of the default
 Sort by memory usage, instead of by process ID.
 .It Fl N
 Extract the name list from the specified system instead of the default
-.Pa /kernel .
+.Pa /boot/kernel .
 .It Fl O
 Add the information associated with the space or comma separated list
 of keywords specified, after the process ID,
@@ -507,7 +507,7 @@ default kernel memory
 /dev name database
 .It Pa /var/db/kvm_kernel.db
 system namelist database
-.It Pa /kernel
+.It Pa /boot/kernel
 default system namelist
 .It Pa /proc
 the mount point of

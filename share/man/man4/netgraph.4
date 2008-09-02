@@ -34,10 +34,10 @@
 .\"          Archie Cobbs <archie@FreeBSD.org>
 .\"
 .\" $FreeBSD: src/share/man/man4/netgraph.4,v 1.39.2.1 2001/12/21 09:00:50 ru Exp $
-.\" $DragonFly: src/share/man/man4/netgraph.4,v 1.13 2008/05/02 02:05:05 swildner Exp $
+.\" $DragonFly: src/share/man/man4/netgraph.4,v 1.14 2008/09/02 11:50:46 matthias Exp $
 .\" $Whistle: netgraph.4,v 1.7 1999/01/28 23:54:52 julian Exp $
 .\"
-.Dd January 19, 1999
+.Dd September 2, 2008
 .Dt NETGRAPH 4
 .Os
 .Sh NAME
@@ -986,9 +986,9 @@ Definitions needed to use
 .Nm
 {type}
 nodes, including the type cookie definition.
-.It Pa /modules/netgraph.ko
+.It Pa /boot/modules/netgraph.ko
 Netgraph subsystem loadable KLD module.
-.It Pa /modules/ng_{type}.ko
+.It Pa /boot/modules/ng_{type}.ko
 Loadable KLD module for node type {type}.
 .El
 .Sh USER MODE SUPPORT

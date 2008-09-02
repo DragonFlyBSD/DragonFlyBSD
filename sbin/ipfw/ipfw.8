@@ -1,8 +1,8 @@
 .\"
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
-.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.17 2008/08/29 07:44:09 swildner Exp $
+.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.18 2008/09/02 11:50:45 matthias Exp $
 .\"
-.Dd August 13, 2002
+.Dd September 2, 2008
 .Dt IPFW 8
 .Os
 .Sh NAME
@@ -1482,7 +1482,7 @@ version of
 is probably not as straightforward as you would think.
 I recommend the following command line:
 .Bd -literal -offset indent
-kldload /modules/ipfw.ko && \e
+kldload /boot/modules/ipfw.ko && \e
 ipfw add 32000 allow ip from any to any
 .Ed
 .Pp

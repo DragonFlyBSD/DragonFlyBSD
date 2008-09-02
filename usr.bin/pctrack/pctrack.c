@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/pctrack/pctrack.c,v 1.1 2006/06/08 18:48:30 dillon Exp $
+ * $DragonFly: src/usr.bin/pctrack/pctrack.c,v 1.2 2008/09/02 11:50:46 matthias Exp $
  */
 
 #include <sys/cdefs.h>
@@ -260,7 +260,7 @@ read_symbols(const char *execfile)
 
 	if (execfile == NULL) {
 		if (sysctlbyname("kern.bootfile", buf, &buflen, NULL, 0) < 0)
-			execfile = "/kernel";
+			execfile = "/boot/kernel";
 		else
 			execfile = buf;
 	}

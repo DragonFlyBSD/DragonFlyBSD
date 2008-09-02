@@ -1,6 +1,6 @@
 .\" $FreeBSD: src/sbin/i386/nextboot/nextboot.8,v 1.11.2.5 2003/01/05 19:19:39 semenu Exp $
-.\" $DragonFly: src/sbin/i386/nextboot/nextboot.8,v 1.3 2004/03/11 12:28:54 hmp Exp $
-.Dd July 9, 1996
+.\" $DragonFly: src/sbin/i386/nextboot/nextboot.8,v 1.4 2008/09/02 11:50:45 matthias Exp $
+.Dd September 2, 2008
 .Dt NEXTBOOT 8
 .Os
 .Sh NAME
@@ -77,14 +77,14 @@ At this time the nameblock will contain only zeroed out names.
 .Pp
 An example of usage might be:
 .Bd -literal
-   nextboot -b  /dev/rad0 1:da(0,a)/kernel.experimental ad(0,a)/kernel.old
+   nextboot -b  /dev/rad0 1:da(0,a)/boot/kernel.experimental ad(0,a)/boot/kernel.old
 .Ed
 .Pp
 Which would instruct the boot blocks at the next boot,
 to try boot the experimental kernel off the SCSI disk.
 If for any reason this failed, the next boot attempt would
 boot the kernel
-.Pa /kernel.old
+.Pa /boot/kernel.old
 off the IDE drive.  (Assuming the write-back option were enabled) If this
 in turn failed.
 The compiled in default would be used.

@@ -23,8 +23,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/aac.4,v 1.3.2.8 2001/09/27 22:01:38 scottl Exp $
-.\" $DragonFly: src/share/man/man4/aac.4,v 1.7 2007/11/10 19:58:23 swildner Exp $
-.Dd May 11, 2006
+.\" $DragonFly: src/share/man/man4/aac.4,v 1.8 2008/09/02 11:50:46 matthias Exp $
+.Dd September 2, 2008
 .Dt AAC 4
 .Os
 .Sh NAME
@@ -112,12 +112,12 @@ performance peaks at a value of 96K,
 and drops off dramatically at 128K,
 due to other limitations of the card.
 .Sh FILES
-.Bl -tag -width /modules/aac.ko -compact
+.Bl -tag -width /boot/modules/aac.ko -compact
 .It Pa /dev/aac?
 aac management interface
 .It Pa /dev/aacd?
 disk/container interface
-.It Pa /modules/aac.ko
+.It Pa /boot/modules/aac.ko
 aac loadable module
 .El
 .Sh DIAGNOSTICS

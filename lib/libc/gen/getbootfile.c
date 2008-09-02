@@ -32,7 +32,7 @@
  *
  * @(#)gethostname.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/getbootfile.c,v 1.5 1999/08/27 23:58:37 peter Exp $
- * $DragonFly: src/lib/libc/gen/getbootfile.c,v 1.3 2005/11/19 22:32:53 swildner Exp $
+ * $DragonFly: src/lib/libc/gen/getbootfile.c,v 1.4 2008/09/02 11:50:46 matthias Exp $
  */
 
 #include <sys/param.h>
@@ -49,6 +49,6 @@ getbootfile(void)
 	mib[0] = CTL_KERN;
 	mib[1] = KERN_BOOTFILE;
 	if (sysctl(mib, 2, name, &size, NULL, 0) == -1)
-		return ("/kernel");
+		return ("/boot/kernel");
 	return (name);
 }

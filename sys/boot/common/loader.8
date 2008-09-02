@@ -23,11 +23,11 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
-.\" $DragonFly: src/sys/boot/common/loader.8,v 1.20 2008/09/01 19:39:45 dillon Exp $
+.\" $DragonFly: src/sys/boot/common/loader.8,v 1.21 2008/09/02 11:50:46 matthias Exp $
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
-.Dd May 11, 2006
+.Dd September 2, 2008
 .Dt LOADER 8
 .Os
 .Sh NAME
@@ -797,7 +797,7 @@ This would be needed in a system with two IDE disks,
 with the second IDE disk hardwired to wd2 instead of wd1.
 .Bd -literal -offset indent
 set root_disk_unit=2
-boot /kernel
+boot /boot/kernel
 .Ed
 .Pp
 See also:

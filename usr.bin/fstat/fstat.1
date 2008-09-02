@@ -31,9 +31,9 @@
 .\"
 .\"     @(#)fstat.1	8.3 (Berkeley) 2/25/94
 .\" $FreeBSD: src/usr.bin/fstat/fstat.1,v 1.9.2.7 2002/06/21 15:26:59 charnier Exp $
-.\" $DragonFly: src/usr.bin/fstat/fstat.1,v 1.6 2007/11/04 16:33:19 swildner Exp $
+.\" $DragonFly: src/usr.bin/fstat/fstat.1,v 1.7 2008/09/02 11:50:45 matthias Exp $
 .\"
-.Dd February 25, 1994
+.Dd September 2, 2008
 .Dt FSTAT 1
 .Os
 .Sh NAME
@@ -75,7 +75,7 @@ instead of the default
 .Pa /dev/kmem .
 .It Fl N
 Extract the name list from the specified system instead of the default
-.Pa /kernel .
+.Pa /boot/kernel .
 .It Fl m
 Include memory-mapped files in the listing; normally these are excluded
 due to the extra processing required.

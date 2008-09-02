@@ -31,9 +31,9 @@
 .\"
 .\"	@(#)vmstat.8	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/vmstat/vmstat.8,v 1.16.2.5 2001/08/16 13:17:13 ru Exp $
-.\" $DragonFly: src/usr.bin/vmstat/vmstat.8,v 1.5 2008/05/02 02:05:07 swildner Exp $
+.\" $DragonFly: src/usr.bin/vmstat/vmstat.8,v 1.6 2008/09/02 11:50:46 matthias Exp $
 .\"
-.Dd June 4, 2007
+.Dd September 2, 2008
 .Dt VMSTAT 8
 .Os
 .Sh NAME
@@ -92,7 +92,7 @@ instead of the default
 Extract the name list from the specified
 .Ar system
 instead of the default
-.Pa /kernel .
+.Pa /boot/kernel .
 .It Fl m
 Report on the usage of kernel dynamic memory listed first by size of
 allocation and then by type of usage.
@@ -288,7 +288,7 @@ cpu idle
 .El
 .Sh FILES
 .Bl -tag -width /dev/kmemxxx -compact
-.It Pa /kernel
+.It Pa /boot/kernel
 default kernel namelist
 .It Pa /dev/kmem
 default memory file

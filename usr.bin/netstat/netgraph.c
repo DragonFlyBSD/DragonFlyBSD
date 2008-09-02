@@ -32,7 +32,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/netstat/netgraph.c,v 1.3.2.2 2001/08/10 09:07:09 ru Exp $
- * $DragonFly: src/usr.bin/netstat/netgraph.c,v 1.5 2007/04/22 01:25:04 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/netgraph.c,v 1.6 2008/09/02 11:50:46 matthias Exp $
  *
  * $Id: atalk.c,v 1.11 1998/07/06 21:01:22 bde Exp $
  */
@@ -76,7 +76,7 @@ netgraphprotopr(u_long off, char *name, int af __unused)
 	if (off == 0) {
 		const char *const modname = "ng_socket.ko";
 /* XXX We should get "mpath" from "sysctl kern.module_path" */
-		const char *mpath[] = { "/", "/boot/", "/modules/", NULL };
+		const char *mpath[] = { "/", "/boot/", "/boot/modules/", NULL };
 		struct nlist sym[] = { { "_ngsocklist" }, { NULL } };
 		const char **pre;
 		struct kld_file_stat ks;

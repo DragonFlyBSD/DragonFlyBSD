@@ -31,9 +31,9 @@
 .\"
 .\"     @(#)pstat.8	8.5 (Berkeley) 5/13/94
 .\" $FreeBSD: src/usr.sbin/pstat/pstat.8,v 1.19.2.10 2002/07/12 09:12:49 des Exp $
-.\" $DragonFly: src/usr.sbin/pstat/pstat.8,v 1.4 2008/05/09 20:31:04 swildner Exp $
+.\" $DragonFly: src/usr.sbin/pstat/pstat.8,v 1.5 2008/09/02 11:50:46 matthias Exp $
 .\"
-.Dd May 13, 1994
+.Dd September 2, 2008
 .Dt PSTAT 8
 .Os
 .Sh NAME
@@ -238,11 +238,11 @@ instead of the default
 .Pa /dev/kmem .
 .It Fl N
 Extract the name list from the specified system instead of the default
-.Pa /kernel .
+.Pa /boot/kernel .
 .El
 .Sh FILES
 .Bl -tag -width /dev/memxxx -compact
-.It Pa /kernel
+.It Pa /boot/kernel
 namelist
 .It Pa /dev/mem
 default source of tables

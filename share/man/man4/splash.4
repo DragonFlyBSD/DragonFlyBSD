@@ -25,9 +25,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/splash.4,v 1.9.2.7 2001/08/17 13:08:39 ru Exp $
-.\" $DragonFly: src/share/man/man4/splash.4,v 1.5 2007/08/09 02:27:51 swildner Exp $
+.\" $DragonFly: src/share/man/man4/splash.4,v 1.6 2008/09/02 11:50:46 matthias Exp $
 .\"
-.Dd August 8, 2007
+.Dd September 2, 2008
 .Dt SPLASH 4
 .Os
 .Sh NAME
@@ -172,11 +172,11 @@ section above.
 boot loader configuration defaults
 .It Pa /etc/rc.conf
 system configuration information
-.It Pa /modules/splash_*.ko
+.It Pa /boot/modules/splash_*.ko
 splash image decoder modules
-.It Pa /modules/*_saver.ko
+.It Pa /boot/modules/*_saver.ko
 screen saver modules
-.It Pa /modules/vesa.ko
+.It Pa /boot/modules/vesa.ko
 the VESA support module
 .El
 .Sh EXAMPLES

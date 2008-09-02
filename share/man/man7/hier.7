@@ -31,9 +31,9 @@
 .\"
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
-.\" $DragonFly: src/share/man/man7/hier.7,v 1.23 2008/02/03 18:02:42 swildner Exp $
+.\" $DragonFly: src/share/man/man7/hier.7,v 1.24 2008/09/02 11:50:46 matthias Exp $
 .\"
-.Dd February 2, 2008
+.Dd September 2, 2008
 .Dt HIER 7
 .Os
 .Sh NAME
@@ -53,6 +53,13 @@ programs and configuration files used during operating system bootstrap
 .It Pa defaults/
 default bootstrapping configuration files; see
 .Xr loader.conf 5
+.It Pa kernel
+pure kernel executable (the operating system loaded into memory
+at boot time).
+.It Pa modules/
+loadable kernel modules;
+see
+.Xr kldstat 8
 .El
 .It Pa /dev/
 block and character device files
@@ -133,16 +140,9 @@ see
 .El
 .It Pa /home/
 HOME directories of non-root users
-.It Pa /kernel
-pure kernel executable (the operating system loaded into memory
-at boot time).
 .It Pa /mnt/
 empty directory commonly used by
 system administrators as a temporary mount point
-.It Pa /modules/
-loadable kernel modules;
-see
-.Xr kldstat 8
 .It Pa /proc/
 process file system;
 see

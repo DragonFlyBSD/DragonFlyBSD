@@ -35,9 +35,9 @@
 .\" advised of the possibility of such damage.
 .\"
 .\" $FreeBSD: src/share/man/man4/vinum.4,v 1.22.2.9 2002/04/22 08:19:35 kuriyama Exp $
-.\" $DragonFly: src/share/man/man4/vinum.4,v 1.14 2008/02/11 15:59:37 matthias Exp $
+.\" $DragonFly: src/share/man/man4/vinum.4,v 1.15 2008/09/02 11:50:46 matthias Exp $
 .\"
-.Dd February 11, 2008
+.Dd September 2, 2008
 .Dt VINUM 4
 .Os
 .Sh NAME
@@ -876,19 +876,19 @@ builds a module with debugging symbols by default.
 If the version of
 .Nm
 in
-.Pa /modules
+.Pa /boot/modules
 does not contain symbols, you will not get an error message, but the stack trace
 will not show the symbols.
 Check the module before starting
 .Xr kgdb 1 :
 .Bd -literal
-$ file /modules/vinum.ko
-/modules/vinum.ko: ELF 32-bit LSB shared object, Intel 80386,
-  version 1 (FreeBSD), not stripped
+$ file /boot/modules/vinum.ko
+/boot/modules/vinum.ko: ELF 32-bit LSB shared object, Intel 80386,
+  version 1 (SYSV), dynamically linked, not stripped
 .Ed
 .Pp
 If the output shows that
-.Pa /modules/vinum.ko
+.Pa /boot/modules/vinum.ko
 is stripped, you will have to find a version which is not.
 Usually this will be
 either in

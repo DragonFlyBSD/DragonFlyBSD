@@ -28,9 +28,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.bin/ipcs/ipcs.1,v 1.9.2.4 2003/04/08 11:07:51 tjr Exp $
-.\" $DragonFly: src/usr.bin/ipcs/ipcs.1,v 1.6 2006/07/22 18:49:25 swildner Exp $
+.\" $DragonFly: src/usr.bin/ipcs/ipcs.1,v 1.7 2008/09/02 11:50:45 matthias Exp $
 .\"
-.Dd October 31, 2004
+.Dd September 2, 2008
 .Dt "IPCS" 1
 .Os
 .Sh NAME
@@ -119,7 +119,7 @@ Display system information about shared memory.
 .It Fl N Ar system
 Extract the name list from the specified system instead of the
 default
-.Dq Pa /kernel .
+.Dq Pa /boot/kernel .
 .It Fl Q
 Display system information about messages queues.
 .It Fl S
@@ -149,7 +149,7 @@ is not guaranteed to be consistent.
 .Bl -tag -width /etc/passwd -compact
 .It Pa /dev/kmem
 default kernel memory
-.It Pa /kernel
+.It Pa /boot/kernel
 default system name list
 .El
 .Sh SEE ALSO

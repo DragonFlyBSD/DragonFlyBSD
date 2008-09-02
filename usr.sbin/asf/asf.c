@@ -25,7 +25,7 @@
  */
 /* $Id: asf.c,v 1.6 2003/11/04 06:38:37 green Exp $ */
 /* $FreeBSD: src/usr.sbin/asf/asf.c,v 1.6 2003/11/04 06:38:37 green Exp $ */
-/* $DragonFly: src/usr.sbin/asf/asf.c,v 1.6 2008/07/14 00:09:42 dillon Exp $ */
+/* $DragonFly: src/usr.sbin/asf/asf.c,v 1.7 2008/09/02 11:50:46 matthias Exp $ */
 
 #define MAXLINE 1024
 #include <ctype.h>
@@ -234,7 +234,7 @@ main(int argc, char *argv[])
 	return 1;
     }
     if (modules_path == NULL)
-	modules_path = "/modules";
+	modules_path = "/boot/modules";
     if (outfile == NULL)
 	outfile = ".asf";
     if ((out = fopen(outfile, filemode)) == NULL) {

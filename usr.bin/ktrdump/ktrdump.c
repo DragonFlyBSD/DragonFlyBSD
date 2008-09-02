@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ktrdump/ktrdump.c,v 1.10 2005/05/21 09:55:06 ru Exp $
- * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.11 2008/02/17 10:23:57 corecode Exp $
+ * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.12 2008/09/02 11:50:45 matthias Exp $
  */
 
 #include <sys/cdefs.h>
@@ -451,7 +451,7 @@ read_symbols(const char *execfile)
 
 	if (execfile == NULL) {
 		if (sysctlbyname("kern.bootfile", buf, &buflen, NULL, 0) < 0)
-			execfile = "/kernel";
+			execfile = "/boot/kernel";
 		else
 			execfile = buf;
 	}
