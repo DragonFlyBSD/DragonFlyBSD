@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/coretemp/coretemp.c,v 1.2 2007/08/23 10:53:03 des Exp $
- * $DragonFly: src/sys/dev/powermng/coretemp/coretemp.c,v 1.1 2007/10/02 13:16:42 hasso Exp $
+ * $DragonFly: src/sys/dev/powermng/coretemp/coretemp.c,v 1.2 2008/09/02 18:12:48 hasso Exp $
  */
 
 /*
@@ -212,10 +212,11 @@ static int
 coretemp_get_temp(device_t dev)
 {
 	uint64_t msr;
-	int temp;
-	int cpu = device_get_unit(dev);
+	int temp, cpu, origcpu;
 	struct coretemp_softc *sc = device_get_softc(dev);
 	char stemp[16];
+
+	cpu = device_get_unit(device_get_parent(dev));
 
 	/*
 	 * Bind to specific CPU to read the correct temperature.
@@ -223,9 +224,14 @@ coretemp_get_temp(device_t dev)
 	 * cpu0, returning -1 on all other CPUs.
 	 */
 	if (ncpus > 1) {
+		origcpu = mycpuid;
+		lwkt_migratecpu(cpu);
+
 		spin_lock_rd(&coretemp_lock);
 		msr = rdmsr(MSR_THERM_STATUS);
 		spin_unlock_rd(&coretemp_lock);
+
+		lwkt_migratecpu(origcpu);
 	} else if (cpu != 0)
 		return (-1);
 	else
