@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/libexec/dma/base64.c,v 1.1 2008/02/02 18:20:51 matthias Exp $
+ * $DragonFly: src/libexec/dma/base64.c,v 1.2 2008/09/02 15:11:49 matthias Exp $
  */
 
 #include <stdlib.h>
@@ -40,6 +40,17 @@ int base64_encode(const void *data, int size, char **str);
 
 static char base64_chars[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+static int
+pos(char c)
+{
+	char *p;
+	for (p = base64_chars; *p; p++)
+		if (*p == c)
+			return p - base64_chars;
+	return -1;
+}
+
 
 int
 base64_encode(const void *data, int size, char **str)
@@ -77,5 +88,50 @@ base64_encode(const void *data, int size, char **str)
     *p = 0;
     *str = s;
     return strlen(s);
+}
+
+#define DECODE_ERROR 0xffffffff
+
+static unsigned int
+token_decode(const char *token)
+{
+	int i;
+	unsigned int val = 0;
+	int marker = 0;
+	if (strlen(token) < 4)
+		return DECODE_ERROR;
+	for (i = 0; i < 4; i++) {
+		val *= 64;
+		if (token[i] == '=')
+			marker++;
+		else if (marker > 0)
+			return DECODE_ERROR;
+		else
+			val += pos(token[i]);
+	}
+	if (marker > 2)
+		return DECODE_ERROR;
+	return (marker << 24) | val;
+}
+
+int
+base64_decode(const char *str, void *data)
+{
+	const char *p;
+	unsigned char *q;
+
+	q = data;
+	for (p = str; *p && (*p == '=' || strchr(base64_chars, *p)); p += 4) {
+		unsigned int val = token_decode(p);
+		unsigned int marker = (val >> 24) & 0xff;
+		if (val == DECODE_ERROR)
+			return -1;
+		*q++ = (val >> 16) & 0xff;
+		if (marker < 2)
+			*q++ = (val >> 8) & 0xff;
+		if (marker < 1)
+			*q++ = val & 0xff;
+	}
+	return q - (unsigned char *) data;
 }
 

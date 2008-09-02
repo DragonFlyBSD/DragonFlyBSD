@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/libexec/dma/dma.h,v 1.5 2008/03/04 11:36:09 matthias Exp $
+ * $DragonFly: src/libexec/dma/dma.h,v 1.6 2008/09/02 15:11:49 matthias Exp $
  */
 
 #ifndef DMA_H
@@ -146,12 +146,13 @@ extern int smtp_init_crypto(struct qitem *, int, int);
 #endif /* HAVE_CRYPTO */
 
 /* net.c */
-extern int read_remote(int);
+extern int read_remote(int, int, char *);
 extern ssize_t send_remote_command(int, const char*, ...);
 extern int deliver_remote(struct qitem *, const char **);
 
 /* base64.c */
 extern int base64_encode(const void *, int, char **);
+extern int base64_decode(const char *, void *);
 
 /* dma.c */
 extern char * hostname(void);

@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/libexec/dma/net.c,v 1.6 2008/04/20 13:44:24 swildner Exp $
+ * $DragonFly: src/libexec/dma/net.c,v 1.7 2008/09/02 15:11:49 matthias Exp $
  */
 
 #include <sys/param.h>
@@ -90,12 +90,12 @@ send_remote_command(int fd, const char* fmt, ...)
 }
 
 int
-read_remote(int fd)
+read_remote(int fd, int extbufsize, char *extbuf)
 {
 	ssize_t rlen = 0;
 	size_t pos, len;
 	char buff[BUF_SIZE];
-	int done = 0, status = 0;
+	int done = 0, status = 0, extbufpos = 0;
 
 	if (signal(SIGALRM, sig_alarm) == SIG_ERR) {
 		syslog(LOG_ERR, "SIGALRM error: %m");
@@ -111,6 +111,7 @@ read_remote(int fd)
 	 * OpenBSD and released under a BSD style license.
 	 */
 	for (len = pos = 0; !done; ) {
+		rlen = 0;
 		if (pos == 0 ||
 		    (pos > 0 && memchr(buff + pos, '\n', len - pos) == NULL)) {
 			memmove(buff, buff + pos, len - pos);
@@ -127,6 +128,21 @@ read_remote(int fd)
 					err(1, "read");
 			}
 			len += rlen;
+		}
+		/*
+		 * If there is an external buffer with a size bigger than zero
+		 * and as long as there is space in the external buffer and
+		 * there are new characters read from the mailserver
+		 * copy them to the external buffer
+		 */
+		if (extbufpos <= (extbufsize - 1) && rlen && extbufsize > 0 
+		    && extbuf != NULL) {
+			/* do not write over the bounds of the buffer */
+			if(extbufpos + rlen > (extbufsize - 1)) {
+				rlen = extbufsize - extbufpos;
+			}
+			memcpy(extbuf + extbufpos, buff + len - rlen, rlen);
+			extbufpos += rlen;
 		}
 		for (; pos < len && buff[pos] >= '0' && buff[pos] <= '9'; pos++)
 			; /* Do nothing */
@@ -152,8 +168,6 @@ read_remote(int fd)
 
 /*
  * Handle SMTP authentication
- *
- * XXX TODO: give me AUTH CRAM-MD5
  */
 static int
 smtp_login(struct qitem *it, int fd, char *login, char* password)
@@ -161,39 +175,58 @@ smtp_login(struct qitem *it, int fd, char *login, char* password)
 	char *temp;
 	int len, res = 0;
 
-	/* Send AUTH command according to RFC 2554 */
-	send_remote_command(fd, "AUTH LOGIN");
-	if (read_remote(fd) != 3) {
-		syslog(LOG_ERR, "%s: remote delivery deferred:"
-		       " AUTH login not available: %m", it->queueid);
+#ifdef HAVE_CRYPTO
+	res = smtp_auth_md5(it, fd, login, password);
+	if (res == 0) {
+		return (0);
+	} else if (res == -2) {
+	/*
+	 * If the return code is -2, then then the login attempt failed, 
+	 * do not try other login mechanisms
+	 */
+		return (-1);
+	}
+#endif /* HAVE_CRYPTO */
+
+	if ((config->features & INSECURE) != 0) {
+		/* Send AUTH command according to RFC 2554 */
+		send_remote_command(fd, "AUTH LOGIN");
+		if (read_remote(fd, 0, NULL) != 3) {
+			syslog(LOG_ERR, "%s: remote delivery deferred:"
+					" AUTH login not available: %m", it->queueid);
+			return (1);
+		}
+
+		len = base64_encode(login, strlen(login), &temp);
+		if (len <= 0)
+			return (-1);
+
+		send_remote_command(fd, "%s", temp);
+		if (read_remote(fd, 0, NULL) != 3) {
+			syslog(LOG_ERR, "%s: remote delivery deferred:"
+					" AUTH login failed: %m", it->queueid);
+			return (-1);
+		}
+
+		len = base64_encode(password, strlen(password), &temp);
+		if (len <= 0)
+			return (-1);
+
+		send_remote_command(fd, "%s", temp);
+		res = read_remote(fd, 0, NULL);
+		if (res == 5) {
+			syslog(LOG_ERR, "%s: remote delivery failed:"
+					" Authentication failed: %m", it->queueid);
+			return (-1);
+		} else if (res != 2) {
+			syslog(LOG_ERR, "%s: remote delivery failed:"
+					" AUTH password failed: %m", it->queueid);
+			return (-1);
+		}
+	} else {
+		syslog(LOG_ERR, "%s: non-encrypted SMTP login is disabled in config, so skipping it. ",
+				it->queueid);
 		return (1);
-	}
-
-	len = base64_encode(login, strlen(login), &temp);
-	if (len <= 0)
-		return (-1);
-
-	send_remote_command(fd, "%s", temp);
-	if (read_remote(fd) != 3) {
-		syslog(LOG_ERR, "%s: remote delivery deferred:"
-		       " AUTH login failed: %m", it->queueid);
-		return (-1);
-	}
-
-	len = base64_encode(password, strlen(password), &temp);
-	if (len <= 0)
-		return (-1);
-
-	send_remote_command(fd, "%s", temp);
-	res = read_remote(fd);
-	if (res == 5) {
-		syslog(LOG_ERR, "%s: remote delivery failed:"
-		       " Authentication failed: %m", it->queueid);
-		return (-1);
-	} else if (res != 2) {
-		syslog(LOG_ERR, "%s: remote delivery failed:"
-		       " AUTH password failed: %m", it->queueid);
-		return (-1);
 	}
 
 	return (0);
@@ -212,6 +245,7 @@ open_connection(struct qitem *it, const char *host)
 	else
 		port = SMTP_PORT;
 
+	/* FIXME get MX record of host */
 	/* Shamelessly taken from getaddrinfo(3) */
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = PF_UNSPEC;
@@ -279,7 +313,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 
 	/* Check first reply from remote host */
 	config->features |= NOSSL;
-	res = read_remote(fd);
+	res = read_remote(fd, 0, NULL);
 	if (res != 2) {
 		syslog(LOG_INFO, "%s: Invalid initial response: %i",
 			it->queueid, res);
@@ -304,7 +338,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	if (((config->features & STARTTLS) == 0) &&
 	    ((config->features & SECURETRANS) != 0)) {
 		send_remote_command(fd, "EHLO %s", hostname());
-		if (read_remote(fd) != 2) {
+		if (read_remote(fd, 0, NULL) != 2) {
 			syslog(LOG_ERR, "%s: remote delivery deferred: "
 			       " EHLO failed: %m", it->queueid);
 			return (-1);
@@ -313,7 +347,7 @@ deliver_remote(struct qitem *it, const char **errmsg)
 #endif /* HAVE_CRYPTO */
 	if (((config->features & SECURETRANS) == 0)) {
 		send_remote_command(fd, "EHLO %s", hostname());
-		if (read_remote(fd) != 2) {
+		if (read_remote(fd, 0, NULL) != 2) {
 			syslog(LOG_ERR, "%s: remote delivery deferred: "
 			       " EHLO failed: %m", it->queueid);
 			return (-1);
@@ -336,44 +370,36 @@ deliver_remote(struct qitem *it, const char **errmsg)
 		 * Check if the user wants plain text login without using
 		 * encryption.
 		 */
-		if ((config->features & INSECURE) != 0) {
-			syslog(LOG_INFO, "%s: Use SMTP authentication",
+		syslog(LOG_INFO, "%s: Use SMTP authentication",
 				it->queueid);
-			error = smtp_login(it, fd, a->login, a->password);
-			if (error < 0) {
-				syslog(LOG_ERR, "%s: remote delivery failed:"
+		error = smtp_login(it, fd, a->login, a->password);
+		if (error < 0) {
+			syslog(LOG_ERR, "%s: remote delivery failed:"
 					" SMTP login failed: %m", it->queueid);
-				return (-1);
-			}
-			/* SMTP login is not available, so try without */
-			else if (error > 0)
-				syslog(LOG_ERR, "%s: SMTP login not available."
-					" Try without", it->queueid);
-		} else {
-			syslog(LOG_ERR, "%s: Skip SMTP login. ",
-				it->queueid);
+			return (-1);
 		}
+		/* SMTP login is not available, so try without */
+		else if (error > 0)
+			syslog(LOG_ERR, "%s: SMTP login not available."
+					" Try without", it->queueid);
 	}
 
 	send_remote_command(fd, "MAIL FROM:<%s>", it->sender);
-	if (read_remote(fd) != 2) {
+	if (read_remote(fd, 0, NULL) != 2) {
 		syslog(LOG_ERR, "%s: remote delivery deferred:"
 		       " MAIL FROM failed: %m", it->queueid);
 		return (1);
 	}
 
-	/* XXX TODO:
-	 * Iterate over all recepients and open only one connection
-	 */
 	send_remote_command(fd, "RCPT TO:<%s>", it->addr);
-	if (read_remote(fd) != 2) {
+	if (read_remote(fd, 0, NULL) != 2) {
 		syslog(LOG_ERR, "%s: remote delivery deferred:"
-		       " RCPT TO failed: %m", it->queueid);
+				" RCPT TO failed: %m", it->queueid);
 		return (1);
 	}
 
 	send_remote_command(fd, "DATA");
-	if (read_remote(fd) != 3) {
+	if (read_remote(fd, 0, NULL) != 3) {
 		syslog(LOG_ERR, "%s: remote delivery deferred:"
 		       " DATA failed: %m", it->queueid);
 		return (1);
@@ -416,14 +442,14 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	}
 
 	send_remote_command(fd, ".");
-	if (read_remote(fd) != 2) {
+	if (read_remote(fd, 0, NULL) != 2) {
 		syslog(LOG_ERR, "%s: remote delivery deferred: %m",
 		       it->queueid);
 		return (1);
 	}
 
 	send_remote_command(fd, "QUIT");
-	if (read_remote(fd) != 2) {
+	if (read_remote(fd, 0, NULL) != 2) {
 		syslog(LOG_ERR, "%s: remote delivery deferred: "
 		       "QUIT failed: %m", it->queueid);
 		return (1);

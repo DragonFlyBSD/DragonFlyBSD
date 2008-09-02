@@ -32,12 +32,13 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/libexec/dma/crypto.c,v 1.2 2008/03/04 11:36:08 matthias Exp $
+ * $DragonFly: src/libexec/dma/crypto.c,v 1.3 2008/09/02 15:11:49 matthias Exp $
  */
 
 #ifdef HAVE_CRYPTO
 
 #include <openssl/x509.h>
+#include <openssl/md5.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
@@ -118,9 +119,9 @@ smtp_init_crypto(struct qitem *it, int fd, int feature)
 		config->features |= NOSSL;
 
 		send_remote_command(fd, "EHLO %s", hostname());
-		if (read_remote(fd) == 2) {
+		if (read_remote(fd, 0, NULL) == 2) {
 			send_remote_command(fd, "STARTTLS");
-			if (read_remote(fd) != 2) {
+			if (read_remote(fd, 0, NULL) != 2) {
 				syslog(LOG_ERR, "%s: remote delivery failed:"
 				  " STARTTLS not available: %m", it->queueid);
 				config->features &= ~NOSSL;
@@ -169,16 +170,137 @@ smtp_init_crypto(struct qitem *it, int fd, int feature)
 	return (0);
 }
 
-#if 0
+/*
+ * hmac_md5() taken out of RFC 2104.  This RFC was written by H. Krawczyk,
+ * M. Bellare and R. Canetti.
+ */ 
+void
+hmac_md5(text, text_len, key, key_len, digest)
+unsigned char*  text;                /* pointer to data stream */
+int             text_len;            /* length of data stream */
+unsigned char*  key;                 /* pointer to authentication key */
+int             key_len;             /* length of authentication key */
+caddr_t         digest;              /* caller digest to be filled in */
+
+{
+        MD5_CTX context;
+        unsigned char k_ipad[65];    /* inner padding -
+                                      * key XORd with ipad
+                                      */
+        unsigned char k_opad[65];    /* outer padding -
+                                      * key XORd with opad
+                                      */
+        unsigned char tk[16];
+        int i;
+        /* if key is longer than 64 bytes reset it to key=MD5(key) */
+        if (key_len > 64) {
+
+                MD5_CTX      tctx;
+
+                MD5_Init(&tctx);
+                MD5_Update(&tctx, key, key_len);
+                MD5_Final(tk, &tctx);
+
+                key = tk;
+                key_len = 16;
+        }
+
+        /*
+         * the HMAC_MD5 transform looks like:
+         *
+         * MD5(K XOR opad, MD5(K XOR ipad, text))
+         *
+         * where K is an n byte key
+         * ipad is the byte 0x36 repeated 64 times
+	 *
+         * opad is the byte 0x5c repeated 64 times
+         * and text is the data being protected
+         */
+
+        /* start out by storing key in pads */
+        bzero( k_ipad, sizeof k_ipad);
+        bzero( k_opad, sizeof k_opad);
+        bcopy( key, k_ipad, key_len);
+        bcopy( key, k_opad, key_len);
+
+        /* XOR key with ipad and opad values */
+        for (i=0; i<64; i++) {
+                k_ipad[i] ^= 0x36;
+                k_opad[i] ^= 0x5c;
+        }
+        /*
+         * perform inner MD5
+         */
+        MD5_Init(&context);                   /* init context for 1st
+                                              * pass */
+        MD5_Update(&context, k_ipad, 64);     /* start with inner pad */
+        MD5_Update(&context, text, text_len); /* then text of datagram */
+        MD5_Final(digest, &context);          /* finish up 1st pass */
+        /*
+         * perform outer MD5
+         */
+        MD5_Init(&context);                   /* init context for 2nd
+                                              * pass */
+        MD5_Update(&context, k_opad, 64);     /* start with outer pad */
+        MD5_Update(&context, digest, 16);     /* then results of 1st
+                                              * hash */
+        MD5_Final(digest, &context);          /* finish up 2nd pass */
+}
+
 /*
  * CRAM-MD5 authentication
- *
- * XXX TODO implement me, I don't have a mail server with CRAM-MD5 available
  */
 int
-smtp_auth_md5(int fd, char *login, char *password)
+smtp_auth_md5(struct qitem *it, int fd, char *login, char *password)
 {
+	unsigned char buffer[BUF_SIZE], digest[BUF_SIZE], ascii_digest[33];
+	char *temp;
+	int len, i;
+	static char hextab[] = "0123456789abcdef";
+
+	temp = calloc(BUF_SIZE, 1);
+	memset(buffer, 0, sizeof(buffer));
+	memset(digest, 0, sizeof(digest));
+	memset(ascii_digest, 0, sizeof(ascii_digest));
+
+	/* Send AUTH command according to RFC 2554 */
+	send_remote_command(fd, "AUTH CRAM-MD5");
+	if (read_remote(fd, sizeof(buffer), buffer) != 3) {
+		syslog(LOG_ERR, "%s: smarthost authentification:"
+		       " AUTH cram-md5 not available: %m", it->queueid);
+		/* if cram-md5 is not available */
+		return (-1);
+	}
+
+	/* skip 3 char status + 1 char space */
+	base64_decode(buffer + 4, temp);
+	hmac_md5(temp, strlen(temp), password, strlen(password), digest);
+
+	ascii_digest[32] = 0;
+	for (i = 0; i < 16; i++) {
+		ascii_digest[2*i] = hextab[digest[i] >> 4];
+		ascii_digest[2*i+1] = hextab[digest[i] & 15];
+	}
+
+	/* prepare answer */
+	snprintf(buffer, BUF_SIZE, "%s %s", login, ascii_digest);
+
+	/* temp will be allocated inside base64_encode again */
+	free(temp);
+	/* encode answer */
+	len = base64_encode(buffer, strlen(buffer), &temp);
+	if (len <= 0)
+		return (-1);
+
+	/* send answer */
+	send_remote_command(fd, "%s", temp);
+	if (read_remote(fd, 0, NULL) != 2) {
+		syslog(LOG_ERR, "%s: remote delivery deferred:"
+				" AUTH cram-md5 failed: %m", it->queueid);
+		return (-2);
+	}
+
+	return (0);
 }
-#endif /* 0 */
 
 #endif /* HAVE_CRYPTO */
