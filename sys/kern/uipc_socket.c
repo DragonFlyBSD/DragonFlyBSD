@@ -65,7 +65,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.54 2008/08/28 23:15:43 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.55 2008/09/02 16:17:52 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -367,20 +367,14 @@ discard:
 			sp->so_state &= ~SS_INCOMP;
 			sp->so_head = NULL;
 			so->so_incqlen--;
-			if ((sp->so_state & SS_ABORTING) == 0) {
-				sp->so_state |= SS_ABORTING;
-				soaborta(sp);
-			}
+			soaborta(sp);
 		}
 		while ((sp = TAILQ_FIRST(&so->so_comp)) != NULL) {
 			TAILQ_REMOVE(&so->so_comp, sp, so_list);
 			sp->so_state &= ~SS_COMP;
 			sp->so_head = NULL;
 			so->so_qlen--;
-			if ((sp->so_state & SS_ABORTING) == 0) {
-				sp->so_state |= SS_ABORTING;
-				soaborta(sp);
-			}
+			soaborta(sp);
 		}
 	}
 	if (so->so_state & SS_NOFDREF)
@@ -392,18 +386,25 @@ discard:
 }
 
 /*
- * Abort and destroy a socket.
+ * Abort and destroy a socket.  Only one abort can be in progress
+ * at any given moment.
  */
 void
 soabort(struct socket *so)
 {
-	so_pru_abort(so);
+	if ((so->so_state & SS_ABORTING) == 0) {
+		so->so_state |= SS_ABORTING;
+		so_pru_abort(so);
+	}
 }
 
 void
 soaborta(struct socket *so)
 {
-	so_pru_aborta(so);
+	if ((so->so_state & SS_ABORTING) == 0) {
+		so->so_state |= SS_ABORTING;
+		so_pru_aborta(so);
+	}
 }
 
 int

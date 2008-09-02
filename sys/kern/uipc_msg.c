@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.24 2008/08/28 23:15:42 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.25 2008/09/02 16:17:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -51,7 +51,9 @@
 #include <net/netmsg.h>
 
 /*
- * Abort a socket and free it
+ * Abort a socket and free it.  Called from soabort() only.
+ *
+ * The SS_ABORTING flag must already be set.
  */
 void
 so_pru_abort(struct socket *so)
@@ -59,6 +61,7 @@ so_pru_abort(struct socket *so)
 	struct netmsg_pru_abort msg;
 	lwkt_port_t port;
 
+	KKASSERT(so->so_state & SS_ABORTING);
 	port = so->so_proto->pr_mport(so, NULL, NULL, PRU_ABORT);
 	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport,
 		    0, netmsg_pru_abort);
@@ -68,7 +71,10 @@ so_pru_abort(struct socket *so)
 }
 
 /*
- * Abort a socket and free it, asynchronously.
+ * Abort a socket and free it, asynchronously.  Called from
+ * soaborta() only.
+ *
+ * The SS_ABORTING flag must already be set.
  */
 void
 so_pru_aborta(struct socket *so)
@@ -76,6 +82,7 @@ so_pru_aborta(struct socket *so)
 	struct netmsg_pru_abort *msg;
 	lwkt_port_t port;
 
+	KKASSERT(so->so_state & SS_ABORTING);
 	msg = kmalloc(sizeof(*msg), M_LWKTMSG, M_WAITOK | M_ZERO);
 	port = so->so_proto->pr_mport(so, NULL, NULL, PRU_ABORT);
 	netmsg_init(&msg->nm_netmsg, &netisr_afree_rport,

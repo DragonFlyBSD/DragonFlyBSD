@@ -69,7 +69,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.32 2008/08/23 06:56:22 sephe Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.33 2008/09/02 16:17:54 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -798,7 +798,7 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 
 abort:
 	if (so != NULL)
-		soabort(so);
+		soaborta(so);
 	return (NULL);
 }
 
