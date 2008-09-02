@@ -45,7 +45,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/boot2/boot2.c,v 1.64 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.16 2007/06/18 05:13:42 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.17 2008/09/02 17:21:17 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/disklabel32.h>
@@ -92,7 +92,8 @@
 #define RBX_MASK	0x2005ffff
 
 #define PATH_CONFIG	"/boot.config"
-#define PATH_BOOT3	"/boot/loader"
+#define PATH_BOOT3	"/boot/loader"		/* /boot in root */
+#define PATH_BOOT3_ALT	"/loader"		/* /boot partition */
 #define PATH_KERNEL	"/kernel"
 
 #define NDEV		3
@@ -297,11 +298,15 @@ main(void)
     /*
      * Try to exec stage 3 boot loader. If interrupted by a keypress,
      * or in case of failure, try to load a kernel directly instead.
+     *
+     * We have to try boot /boot/loader and /loader to support booting
+     * from a /boot partition instead of a root partition.
      */
-
     if (autoboot && !*kname) {
 	memcpy(kname, PATH_BOOT3, sizeof(PATH_BOOT3));
 	if (!keyhit(3*SECOND)) {
+	    load();
+	    memcpy(kname, PATH_BOOT3_ALT, sizeof(PATH_BOOT3_ALT));
 	    load();
 	    memcpy(kname, PATH_KERNEL, sizeof(PATH_KERNEL));
 	}

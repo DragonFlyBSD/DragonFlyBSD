@@ -2,7 +2,7 @@
  * mjs copyright
  *
  * $FreeBSD: src/sys/boot/common/pnp.c,v 1.16 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/pnp.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
+ * $DragonFly: src/sys/boot/common/pnp.c,v 1.4 2008/09/02 17:21:12 dillon Exp $
  */
 
 /*
@@ -176,7 +176,7 @@ pnp_readconf(char *path)
     char		*cp, *ep, *tp, c;
 
     /* try to open the file */
-    if ((fd = open(path, O_RDONLY)) >= 0) {
+    if ((fd = rel_open(path, O_RDONLY)) >= 0) {
 	line = 0;
 	currbus = NULL;
 	

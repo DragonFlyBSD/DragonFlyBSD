@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/load.c,v 1.3 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/load.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
+ * $DragonFly: src/sys/boot/common/load.c,v 1.4 2008/09/02 17:21:12 dillon Exp $
  */
 #include <stand.h>
 
@@ -45,7 +45,7 @@ filedup(const char *path, int flags)
     int		fd;
     size_t	size, result;
     
-    if ((fd = open(path, F_READ | flags)) == -1)
+    if ((fd = rel_open(path, F_READ | flags)) == -1)
 	return(NULL);
     
     printf("%s open, flags 0x%x\n", path, files[fd].f_flags);
@@ -87,7 +87,7 @@ filedup(const char *path, int flags)
     close(fd);
 
     /* reopen the file, realloc the buffer */
-    if ((fd = open(path, F_READ | flags)) == -1)
+    if ((fd = rel_open(path, F_READ | flags)) == -1)
 	return(NULL);
     buf = alloc(size);
     result = read(fd, buf, size);

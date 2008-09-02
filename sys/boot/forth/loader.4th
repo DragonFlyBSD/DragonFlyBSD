@@ -23,7 +23,7 @@
 \ SUCH DAMAGE.
 \
 \ $FreeBSD: src/sys/boot/forth/loader.4th,v 1.24 2002/05/24 02:28:58 gordon Exp $
-\ $DragonFly: src/sys/boot/forth/loader.4th,v 1.8 2005/02/20 16:31:53 swildner Exp $
+\ $DragonFly: src/sys/boot/forth/loader.4th,v 1.9 2008/09/02 17:21:15 dillon Exp $
 
 s" arch-i386" environment? [if] [if]
 	s" loader_version" environment?  [if]
@@ -40,7 +40,7 @@ s" arch-i386" environment? [if] [if]
 256 dictthreshold !  \ 256 cells minimum free space
 2048 dictincrease !  \ 2048 additional cells each time
 
-include /boot/support.4th
+include support.4th
 
 \ ***** boot-conf
 \
@@ -122,9 +122,9 @@ only forth definitions also support-functions
 
 : start  ( -- ) ( throws: abort & user-defined )
   s" boot.nfsroot.path" getenv? if
-    s" /boot/defaults/loader-bootp.conf" initialize
+    s" defaults/loader-bootp.conf" initialize
   else
-    s" /boot/defaults/loader.conf" initialize
+    s" defaults/loader.conf" initialize
   then
   include_conf_files
   include_nextboot_file
@@ -144,9 +144,9 @@ only forth definitions also support-functions
 
 : initialize ( -- flag )
   s" boot.nfsroot.path" getenv? if
-    s" /boot/defaults/loader-bootp.conf" initialize
+    s" defaults/loader-bootp.conf" initialize
   else
-    s" /boot/defaults/loader.conf" initialize
+    s" defaults/loader.conf" initialize
   then
   include_conf_files
   include_nextboot_file

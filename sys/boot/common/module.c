@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/module.c,v 1.25 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/module.c,v 1.5 2008/09/01 19:39:45 dillon Exp $
+ * $DragonFly: src/sys/boot/common/module.c,v 1.6 2008/09/02 17:21:12 dillon Exp $
  */
 
 /*
@@ -327,7 +327,7 @@ file_loadraw(char *type, char *name)
     }
     name = cp;
     
-    if ((fd = open(name, O_RDONLY)) < 0) {
+    if ((fd = rel_open(name, O_RDONLY)) < 0) {
 	sprintf(command_errbuf, "can't open '%s': %s", name, strerror(errno));
 	free(name);
 	return(CMD_ERROR);
@@ -865,7 +865,7 @@ moduledir_readhints(struct moduledir *mdp)
 	return;
     path = moduledir_fullpath(mdp, "linker.hints");
     if (stat(path, &st) != 0 || st.st_size < (sizeof(version) + sizeof(int)) ||
-	st.st_size > 100 * 1024 || (fd = open(path, O_RDONLY)) < 0) {
+	st.st_size > 100 * 1024 || (fd = rel_open(path, O_RDONLY)) < 0) {
 	free(path);
 	mdp->d_flags |= MDIR_NOHINTS;
 	return;

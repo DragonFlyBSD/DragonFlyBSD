@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/load_elf.c,v 1.29 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/load_elf.c,v 1.6 2007/11/25 18:10:07 swildner Exp $
+ * $DragonFly: src/sys/boot/common/load_elf.c,v 1.7 2008/09/02 17:21:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -104,7 +104,7 @@ __elfN(loadfile)(char *filename, u_int64_t dest, struct preloaded_file **result)
      */
     if (filename == NULL)	/* can't handle nameless */
 	return(EFTYPE);
-    if ((ef.fd = open(filename, O_RDONLY)) == -1)
+    if ((ef.fd = rel_open(filename, O_RDONLY)) == -1)
 	return(errno);
     ef.firstpage = malloc(PAGE_SIZE);
     if (ef.firstpage == NULL) {

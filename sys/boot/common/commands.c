@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/commands.c,v 1.19 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/commands.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
+ * $DragonFly: src/sys/boot/common/commands.c,v 1.4 2008/09/02 17:21:12 dillon Exp $
  */
 
 #include <stand.h>
@@ -131,8 +131,8 @@ command_help(int argc, char *argv[])
     char	*topic, *subtopic, *t, *s, *d;
 
     /* page the help text from our load path */
-    sprintf(buf, "%s/boot/loader.help", getenv("loaddev"));
-    if ((hfd = open(buf, O_RDONLY)) < 0) {
+    /* sprintf(buf, "%s/boot/loader.help", getenv("loaddev")); */
+    if ((hfd = rel_open("loader.help", O_RDONLY)) < 0) {
 	printf("Verbose help not available, use '?' to list commands\n");
 	return(CMD_OK);
     }

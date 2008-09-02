@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/ficl/loader.c,v 1.12 2006/05/12 04:07:42 jhb Exp $
- * $DragonFly: src/sys/boot/ficl/loader.c,v 1.6 2008/03/29 23:31:07 swildner Exp $
+ * $DragonFly: src/sys/boot/ficl/loader.c,v 1.7 2008/09/02 17:21:14 dillon Exp $
  */
 
 /*******************************************************************
@@ -433,7 +433,7 @@ static void pfopen(FICL_VM *pVM)
     name[count] = 0;
 
     /* open the file */
-    fd = open(name, mode);
+    fd = rel_open(name, mode);
     free(name);
     stackPushINT(pVM->pStack, fd);
     return;

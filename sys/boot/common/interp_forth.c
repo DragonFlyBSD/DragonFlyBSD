@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/interp_forth.c,v 1.23 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/interp_forth.c,v 1.4 2004/01/25 22:50:20 drhodus Exp $
+ * $DragonFly: src/sys/boot/common/interp_forth.c,v 1.5 2008/09/02 17:21:12 dillon Exp $
  */
 
 #include <sys/param.h>		/* to pick up __DragonFly_version */
@@ -259,7 +259,7 @@ bf_init(void)
 	       (bootprog_rev[0] - '0') * 10 + (bootprog_rev[2] - '0'));
 
     /* try to load and run init file if present */
-    if ((fd = open("/boot/boot.4th", O_RDONLY)) != -1) {
+    if ((fd = rel_open("boot.4th", O_RDONLY)) != -1) {
 	(void)ficlExecFD(bf_vm, fd);
 	close(fd);
     }

@@ -24,12 +24,12 @@
 \ SUCH DAMAGE.
 \
 \ $FreeBSD: src/sys/boot/forth/beastie.4th,v 1.7 2003/10/28 17:18:42 scottl Exp $
-\ $DragonFly: src/sys/boot/forth/beastie.4th,v 1.8 2007/08/09 00:28:09 swildner Exp $
+\ $DragonFly: src/sys/boot/forth/beastie.4th,v 1.9 2008/09/02 17:21:15 dillon Exp $
 
 marker task-beastie.4th
 
-include /boot/screen.4th
-include /boot/frames.4th
+include screen.4th
+include frames.4th
 
 hide
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/bootstrap.h,v 1.38 2003/05/01 03:56:29 peter Exp $
- * $DragonFly: src/sys/boot/common/bootstrap.h,v 1.3 2003/11/10 06:08:31 dillon Exp $
+ * $DragonFly: src/sys/boot/common/bootstrap.h,v 1.4 2008/09/02 17:21:12 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -71,6 +71,8 @@ int	bf_run(char *line);
 int	autoboot(int timeout, char *prompt);
 void	autoboot_maybe(void);
 int	getrootmount(char *rootdev);
+int	rel_open(const char *path, int flags);
+int	chdir(const char *path);
 
 /* misc.c */
 char	*unargv(int argc, char *argv[]);

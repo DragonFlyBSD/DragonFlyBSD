@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/interp.c,v 1.29 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/interp.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
+ * $DragonFly: src/sys/boot/common/interp.c,v 1.4 2008/09/02 17:21:12 dillon Exp $
  */
 
 /*
@@ -103,10 +103,18 @@ interact(void)
 #endif
 
     /*
+     * We may be booting from the boot partition, or we may be booting
+     * from the root partition with a /boot sub-directory.  If the latter
+     * chdir into /boot.  Ignore any error.  Only rel_open() uses the chdir
+     * info.
+     */
+    chdir("/boot");
+
+    /*
      * Read our default configuration
      */
-    if(include("/boot/loader.rc")!=CMD_OK)
-	include("/boot/boot.conf");
+    if(include("loader.rc")!=CMD_OK)
+	include("boot.conf");
     printf("\n");
     /*
      * Before interacting, we might want to autoboot.
@@ -203,7 +211,7 @@ include(const char *filename)
     int			fd, flags, line;
 #endif
 
-    if (((fd = open(filename, O_RDONLY)) == -1)) {
+    if (((fd = rel_open(filename, O_RDONLY)) == -1)) {
 	sprintf(command_errbuf,"can't open '%s': %s\n", filename, strerror(errno));
 	return(CMD_ERROR);
     }

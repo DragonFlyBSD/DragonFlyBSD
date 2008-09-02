@@ -1,9 +1,9 @@
 # $FreeBSD: src/sys/boot/common/Makefile.inc,v 1.16 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/common/Makefile.inc,v 1.4 2005/02/20 16:30:39 swildner Exp $
+# $DragonFly: src/sys/boot/common/Makefile.inc,v 1.5 2008/09/02 17:21:12 dillon Exp $
 
 SRCS+=	bcache.c boot.c commands.c console.c devopen.c interp.c 
 SRCS+=	interp_backslash.c interp_parse.c ls.c misc.c 
-SRCS+=	module.c panic.c
+SRCS+=	module.c panic.c rel_open.c
 
 .if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "amd64"
 SRCS+=	load_elf32.c load_elf64.c

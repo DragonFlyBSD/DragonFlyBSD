@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/ls.c,v 1.11 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/ls.c,v 1.4 2003/11/10 06:08:31 dillon Exp $
+ * $DragonFly: src/sys/boot/common/ls.c,v 1.5 2008/09/02 17:21:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -158,7 +158,7 @@ ls_getdir(char **pathp)
     if (*cp == 0)
 	strcat(path, "/");
 
-    fd = open(path, O_RDONLY);
+    fd = rel_open(path, O_RDONLY);
     if (fd < 0) {
 	sprintf(command_errbuf, "open '%s' failed: %s", path, strerror(errno));
 	goto out;
