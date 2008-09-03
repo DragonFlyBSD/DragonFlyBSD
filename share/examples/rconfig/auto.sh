@@ -8,7 +8,7 @@
 #
 # WARNING!  THIS SCRIPT WILL COMPLETELY WIPE THE DISK!
 #
-# $DragonFly: src/share/examples/rconfig/auto.sh,v 1.1 2004/06/18 18:36:06 dillon Exp $
+# $DragonFly: src/share/examples/rconfig/auto.sh,v 1.2 2008/09/03 02:22:25 dillon Exp $
 
 set disk = ad0
 set slice = s1
@@ -87,7 +87,7 @@ cpdup / /mnt
 echo "CPDUP VAR"
 cpdup /var /mnt/var
 echo "CPDUP ETC"
-cpdup /etc /mnt/etc
+cpdup /etc.hdd /mnt/etc
 echo "CPDUP DEV"
 cpdup /dev /mnt/dev
 echo "CPDUP USR"
