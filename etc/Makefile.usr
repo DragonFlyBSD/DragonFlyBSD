@@ -2,7 +2,7 @@
 #
 # Provides simple targets to download and maintain /usr/pkgsrc.
 #
-# $DragonFly: src/etc/Makefile.usr,v 1.7 2008/08/19 11:55:40 matthias Exp $
+# $DragonFly: src/etc/Makefile.usr,v 1.8 2008/09/03 10:38:55 hasso Exp $
 
 all:
 	@echo "Install or update /usr/pkgsrc using NetBSDs anoncvs"
@@ -30,7 +30,7 @@ all:
 
 pkgsrc-checkout:
 	cd ${.CURDIR}; \
-	cvs -d anoncvs@anoncvs.NetBSD.org:/cvsroot checkout pkgsrc
+	cvs -d anoncvs@anoncvs.NetBSD.org:/cvsroot checkout -P pkgsrc
 
 pkgsrc-update:
 	cd ${.CURDIR}; \
@@ -40,7 +40,7 @@ pkgsrc-wip-checkout:
 	cd ${.CURDIR}; \
 	mkdir -p pkgsrc/wip; \
 	cd pkgsrc; \
-	cvs -d anoncvs@anoncvs.NetBSD.se:/cvsroot checkout wip
+	cvs -d anoncvs@anoncvs.NetBSD.se:/cvsroot checkout -P wip
 
 pkgsrc-wip-update:
 	cd ${.CURDIR}/pkgsrc; \
