@@ -1,6 +1,6 @@
 .\"	$NetBSD: hunt.6,v 1.3 1997/10/10 16:32:30 lukem Exp $
 .\"	$OpenBSD: hunt.6,v 1.19 2007/05/31 19:19:17 jmc Exp $
-.\"	$DragonFly: src/games/hunt/hunt/hunt.6,v 1.1 2008/09/02 21:50:20 dillon Exp $
+.\"	$DragonFly: src/games/hunt/hunt/hunt.6,v 1.2 2008/09/04 07:35:06 swildner Exp $
 .\"
 .\" Copyright (c) 1985 Conrad C. Huang, Gregory S. Couch, Kenneth C.R.C. Arnold
 .\" San Francisco, California
@@ -32,14 +32,14 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd $Mdocdate$
+.Dd September 2, 2008
 .Dt HUNT 6
 .Os
 .Sh NAME
 .Nm hunt
 .Nd a multi-player multi-terminal game
 .Sh SYNOPSIS
-.Nm hunt
+.Nm
 .Op Fl bcfmqSs
 .Op Fl n Ar name
 .Op Fl p Ar port
@@ -417,7 +417,7 @@ It's a boring game if you're the only one playing.
 Your score is the decayed average of the ratio of number of kills to number
 of times you entered the game and is only kept for the duration
 of a single session of
-.Nm hunt .
+.Nm .
 .\" .Pp
 .\" .Nm
 .\" normally drives up the load average to be approximately
