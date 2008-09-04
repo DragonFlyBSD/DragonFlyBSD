@@ -31,7 +31,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ping.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/ping6/ping6.c,v 1.4.2.10 2002/12/09 03:04:44 suz Exp $
- * $DragonFly: src/sbin/ping6/ping6.c,v 1.8 2005/03/05 22:27:08 cpressey Exp $
+ * $DragonFly: src/sbin/ping6/ping6.c,v 1.9 2008/09/04 09:08:22 hasso Exp $
  */
 
 /*	BSDI	ping.c,v 2.3 1996/01/21 17:56:50 jch Exp	*/
@@ -296,15 +296,17 @@ main(int argc, char **argv)
 	int sockbufsize = 0;
 	int usepktinfo = 0;
 	struct in6_pktinfo *pktinfo = NULL;
-#ifdef USE_RFC2292BIS
+#ifdef USE_RFC3542
 	struct ip6_rthdr *rthdr = NULL;
 #endif
 #ifdef IPSEC_POLICY_IPSEC
 	char *policy_in = NULL;
 	char *policy_out = NULL;
 #endif
+#ifdef IPV6_USE_MIN_MTU
+	int mflag = 0;
+#endif
 	double intval;
-	size_t rthlen;
 
 	/* just to be sure */
 	memset(&smsghdr, 0, sizeof(smsghdr));
@@ -440,7 +442,7 @@ main(int argc, char **argv)
 			break;
 		case 'm':
 #ifdef IPV6_USE_MIN_MTU
-			options |= F_NOMINMTU;
+			mflag++;
 			break;
 #else
 			errx(1, "-%c is not supported on this platform", ch);
@@ -532,19 +534,9 @@ main(int argc, char **argv)
 		usage();
 		/*NOTREACHED*/
 	}
-
 	if (argc > 1) {
-#ifdef IPV6_RECVRTHDR	/* 2292bis */
-		rthlen = CMSG_SPACE(inet6_rth_space(IPV6_RTHDR_TYPE_0,
-		    argc - 1));
-#else  /* RFC2292 */
-		rthlen = inet6_rthdr_space(IPV6_RTHDR_TYPE_0, argc - 1);
-#endif
-		if (rthlen == 0) {
-			errx(1, "too many intermediate hops");
-			/*NOTREACHED*/
-		}
-		ip6optlen += rthlen;
+		errx(1, "too many arguments");
+		/*NOTREACHED*/
 	}
 
 	if (options & F_NIGROUP) {
@@ -669,8 +661,8 @@ main(int argc, char **argv)
 		    &optval, sizeof(optval)) == -1)
 			err(1, "IPV6_MULTICAST_HOPS");
 #ifdef IPV6_USE_MIN_MTU
-	if ((options & F_NOMINMTU) == 0) {
-		optval = 1;
+	if (mflag != 1) {
+		optval = mflag > 1 ? 0 : 1;
 		if (setsockopt(s, IPPROTO_IPV6, IPV6_USE_MIN_MTU,
 		    &optval, sizeof(optval)) == -1)
 			err(1, "setsockopt(IPV6_USE_MIN_MTU)");
@@ -818,60 +810,6 @@ main(int argc, char **argv)
 		scmsgp = CMSG_NXTHDR(&smsghdr, scmsgp);
 	}
 #endif
-
-	if (argc > 1) {	/* some intermediate addrs are specified */
-		int hops, error;
-#ifdef USE_RFC2292BIS
-		int rthdrlen;
-#endif
-
-#ifdef USE_RFC2292BIS
-		rthdrlen = inet6_rth_space(IPV6_RTHDR_TYPE_0, argc - 1);
-		scmsgp->cmsg_len = CMSG_LEN(rthdrlen);
-		scmsgp->cmsg_level = IPPROTO_IPV6;
-		scmsgp->cmsg_type = IPV6_RTHDR;
-		rthdr = (struct ip6_rthdr *)CMSG_DATA(scmsgp);
-		rthdr = inet6_rth_init((void *)rthdr, rthdrlen,
-		    IPV6_RTHDR_TYPE_0, argc - 1);
-		if (rthdr == NULL)
-			errx(1, "can't initialize rthdr");
-#else  /* old advanced API */
-		if ((scmsgp = (struct cmsghdr *)inet6_rthdr_init(scmsgp,
-		    IPV6_RTHDR_TYPE_0)) == 0)
-			errx(1, "can't initialize rthdr");
-#endif /* USE_RFC2292BIS */
-
-		for (hops = 0; hops < argc - 1; hops++) {
-			struct addrinfo *iaip;
-
-			if ((error = getaddrinfo(argv[hops], NULL, &hints,
-			    &iaip)))
-				errx(1, "%s", gai_strerror(error));
-			if (SIN6(iaip->ai_addr)->sin6_family != AF_INET6)
-				errx(1,
-				    "bad addr family of an intermediate addr");
-
-#ifdef USE_RFC2292BIS
-			if (inet6_rth_add(rthdr,
-			    &(SIN6(iaip->ai_addr))->sin6_addr))
-				errx(1, "can't add an intermediate node");
-#else  /* old advanced API */
-			if (inet6_rthdr_add(scmsgp,
-			    &(SIN6(iaip->ai_addr))->sin6_addr,
-			    IPV6_RTHDR_LOOSE))
-				errx(1, "can't add an intermediate node");
-#endif /* USE_RFC2292BIS */
-			freeaddrinfo(iaip);
-		}
-
-#ifndef USE_RFC2292BIS
-		if (inet6_rthdr_lasthop(scmsgp, IPV6_RTHDR_LOOSE))
-			errx(1, "can't set the last flag");
-#endif
-
-		scmsgp = CMSG_NXTHDR(&smsghdr, scmsgp);
-	}
-
 	{
 		/*
 		 * source selection
@@ -886,17 +824,19 @@ main(int argc, char **argv)
 		src.sin6_port = ntohs(DUMMY_PORT);
 		src.sin6_scope_id = dst.sin6_scope_id;
 
-#ifdef USE_RFC2292BIS
+#ifdef USE_RFC3542
 		if (pktinfo &&
 		    setsockopt(dummy, IPPROTO_IPV6, IPV6_PKTINFO,
 		    (void *)pktinfo, sizeof(*pktinfo)))
 			err(1, "UDP setsockopt(IPV6_PKTINFO)");
-
 		if (hoplimit != -1 &&
-		    setsockopt(dummy, IPPROTO_IPV6, IPV6_HOPLIMIT,
+		    setsockopt(dummy, IPPROTO_IPV6, IPV6_UNICAST_HOPS,
 		    (void *)&hoplimit, sizeof(hoplimit)))
-			err(1, "UDP setsockopt(IPV6_HOPLIMIT)");
-
+			err(1, "UDP setsockopt(IPV6_UNICAST_HOPS)");
+		if (hoplimit != -1 &&
+		    setsockopt(dummy, IPPROTO_IPV6, IPV6_MULTICAST_HOPS,
+		    (void *)&hoplimit, sizeof(hoplimit)))
+			err(1, "UDP setsockopt(IPV6_MULTICAST_HOPS)");
 		if (rthdr &&
 		    setsockopt(dummy, IPPROTO_IPV6, IPV6_RTHDR,
 		    (void *)rthdr, (rthdr->ip6r_len + 1) << 3))
@@ -1664,7 +1604,7 @@ pr_exthdrs(struct msghdr *mhdr)
 	}
 }
 
-#ifdef USE_RFC2292BIS
+#ifdef USE_RFC3542
 void
 pr_ip6opt(void *extbuf)
 {
@@ -1715,7 +1655,7 @@ pr_ip6opt(void *extbuf)
 	}
 	return;
 }
-#else  /* !USE_RFC2292BIS */
+#else  /* !USE_RFC3542 */
 /* ARGSUSED */
 void
 pr_ip6opt(void *extbuf __unused)
@@ -1723,9 +1663,9 @@ pr_ip6opt(void *extbuf __unused)
 	putchar('\n');
 	return;
 }
-#endif /* USE_RFC2292BIS */
+#endif /* USE_RFC3542 */
 
-#ifdef USE_RFC2292BIS
+#ifdef USE_RFC3542
 void
 pr_rthdr(void *extbuf)
 {
@@ -1737,29 +1677,13 @@ pr_rthdr(void *extbuf)
 	/* print fixed part of the header */
 	printf("nxt %u, len %u (%d bytes), type %u, ", rh->ip6r_nxt,
 	    rh->ip6r_len, (rh->ip6r_len + 1) << 3, rh->ip6r_type);
-	if ((segments = inet6_rth_segments(extbuf)) >= 0)
-		printf("%d segments, ", segments);
-	else
-		printf("segments unknown, ");
+	printf("segments unknown, ");
 	printf("%d left\n", rh->ip6r_segleft);
-
-	for (i = 0; i < segments; i++) {
-		in6 = inet6_rth_getaddr(extbuf, i);
-		if (in6 == NULL)
-			printf("   [%d]<NULL>\n", i);
-		else {
-			if (!inet_ntop(AF_INET6, in6, ntopbuf,
-			    sizeof(ntopbuf)))
-				strncpy(ntopbuf, "?", sizeof(ntopbuf));
-			printf("   [%d]%s\n", i, ntopbuf);
-		}
-	}
-
 	return;
 
 }
 
-#else  /* !USE_RFC2292BIS */
+#else  /* !USE_RFC3542 */
 /* ARGSUSED */
 void
 pr_rthdr(void *extbuf __unused)
@@ -1767,7 +1691,7 @@ pr_rthdr(void *extbuf __unused)
 	putchar('\n');
 	return;
 }
-#endif /* USE_RFC2292BIS */
+#endif /* USE_RFC3542 */
 
 int
 pr_bitrange(u_int32_t v, int ss, int ii)

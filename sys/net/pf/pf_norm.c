@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_norm.c,v 1.10 2004/08/14 15:32:40 dwmalone Exp $	*/
 /*	$OpenBSD: pf_norm.c,v 1.80.2.1 2004/04/30 21:46:33 brad Exp $ */
 /* add	$OpenBSD: pf_norm.c,v 1.87 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_norm.c,v 1.9 2007/08/11 18:53:31 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_norm.c,v 1.10 2008/09/04 09:08:22 hasso Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -69,42 +69,6 @@
 /*
  * XXX: This should go to netinet/ip6.h (KAME)
  */
-/* IPv6 options: common part */
-struct ip6_opt {
-	u_int8_t ip6o_type;
-	u_int8_t ip6o_len;
-} __packed;
-
-/* Jumbo Payload Option */
-struct ip6_opt_jumbo {
-	u_int8_t ip6oj_type;
-	u_int8_t ip6oj_len;
-	u_int8_t ip6oj_jumbo_len[4];
-} __packed;
-
-/* NSAP Address Option */
-struct ip6_opt_nsap {
-	u_int8_t ip6on_type;
-	u_int8_t ip6on_len;
-	u_int8_t ip6on_src_nsap_len;
-	u_int8_t ip6on_dst_nsap_len;
-	/* followed by source NSAP */
-	/* followed by destination NSAP */
-} __packed;
-
-/* Tunnel Limit Option */
-struct ip6_opt_tunnel {
-	u_int8_t ip6ot_type;
-	u_int8_t ip6ot_len;
-	u_int8_t ip6ot_encap_limit;
-} __packed;
-
-/* Router Alert Option */
-struct ip6_opt_router {
-	u_int8_t ip6or_type;
-	u_int8_t ip6or_len;
-	u_int8_t ip6or_value[2];
-} __packed;
 #endif /* INET6 */
 
 #define PFFRAG_SEENLAST	0x0001		/* Seen the last fragment for this */

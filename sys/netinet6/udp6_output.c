@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_output.c,v 1.1.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_output.c,v 1.8 2006/12/29 18:02:56 victor Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_output.c,v 1.9 2008/09/04 09:08:22 hasso Exp $	*/
 /*	$KAME: udp6_output.c,v 1.31 2001/05/21 16:39:15 jinmei Exp $	*/
 
 /*
@@ -139,7 +139,9 @@ udp6_output(struct in6pcb *in6p, struct mbuf *m, struct sockaddr *addr6,
 
 	priv = !suser(td);	/* 1 if privilaged, 0 if not */
 	if (control) {
-		if ((error = ip6_setpktoptions(control, &opt, priv, 0)) != 0)
+		if ((error = ip6_setpktoptions(control, &opt,
+		    in6p->in6p_outputopts, 
+		    IPPROTO_UDP, priv)) != 0)
 			goto release;
 		in6p->in6p_outputopts = &opt;
 	}
@@ -304,7 +306,7 @@ release:
 
 releaseopt:
 	if (control) {
-		ip6_clearpktopts(in6p->in6p_outputopts, 0, -1);
+		ip6_clearpktopts(in6p->in6p_outputopts, -1);
 		in6p->in6p_outputopts = stickyopt;
 		m_freem(control);
 	}

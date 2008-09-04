@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.h,v 1.7.2.7 2002/08/01 19:38:50 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.h,v 1.10 2007/08/21 20:03:20 corecode Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.h,v 1.11 2008/09/04 09:08:22 hasso Exp $	*/
 /*	$KAME: in6.h,v 1.89 2001/05/27 13:28:35 itojun Exp $	*/
 
 /*
@@ -395,13 +395,15 @@ struct route_in6 {
 #define IPV6_PORTRANGE		14 /* int; range to choose for unspec port */
 #define ICMP6_FILTER		18 /* icmp6_filter; icmp6 filter */
 /* RFC2292 options */
-#define IPV6_PKTINFO		19 /* bool; send/recv if, src/dst addr */
-#define IPV6_HOPLIMIT		20 /* bool; hop limit */
-#define IPV6_NEXTHOP		21 /* bool; next hop addr */
-#define IPV6_HOPOPTS		22 /* bool; hop-by-hop option */
-#define IPV6_DSTOPTS		23 /* bool; destination option */
-#define IPV6_RTHDR		24 /* bool; routing header */
-#define IPV6_PKTOPTIONS		25 /* buf/cmsghdr; set/get IPv6 options */
+#ifdef _KERNEL
+#define IPV6_2292PKTINFO	19 /* bool; send/recv if, src/dst addr */
+#define IPV6_2292HOPLIMIT	20 /* bool; hop limit */
+#define IPV6_2292NEXTHOP	21 /* bool; next hop addr */
+#define IPV6_2292HOPOPTS	22 /* bool; hop-by-hop option */
+#define IPV6_2292DSTOPTS	23 /* bool; destinaion option */
+#define IPV6_2292RTHDR		24 /* bool; routing header */
+#define IPV6_2292PKTOPTIONS	25 /* buf/cmsghdr; set/get IPv6 options */
+#endif
 
 #define IPV6_CHECKSUM		26 /* int; checksum offset for raw socket */
 #define IPV6_V6ONLY		27 /* bool; only bind INET6 at wildcard bind */
@@ -422,11 +424,58 @@ struct route_in6 {
 #define IPV6_FW_GET		34 /* get entire firewall rule chain */
 #endif
 
+/* 
+ * new socket options introduced in RFC3542 
+ */
+#define IPV6_RTHDRDSTOPTS	35 /* ip6_dest; send dst option before rthdr */
+#define IPV6_RECVPKTINFO	36 /* bool; recv if, dst addr */
+#define IPV6_RECVHOPLIMIT	37 /* bool; recv hop limit */
+#define IPV6_RECVRTHDR		38 /* bool; recv routing header */
+#define IPV6_RECVHOPOPTS	39 /* bool; recv hop-by-hop option */
+#define IPV6_RECVDSTOPTS	40 /* bool; recv dst option after rthdr */
+#ifdef _KERNEL
+#define IPV6_RECVRTHDRDSTOPTS	41 /* bool; recv dst option before rthdr */
+#endif
+#define IPV6_USE_MIN_MTU	42 /* bool; send packets at the minimum MTU */
+#define IPV6_RECVPATHMTU	43 /* bool; notify an according MTU */
+
+/* mtuinfo; get the current path MTU (sopt),
+ * 4 bytes int; MTU notification (cmsg) 
+ */
+#define IPV6_PATHMTU		44 
+#if 0 /*obsoleted during 2292bis -> 3542*/
+#define IPV6_REACHCONF		45 /* no data; ND reachability confirm
+				      (cmsg only/not in of RFC3542) */
+#endif
+#define IPV6_PKTINFO		46 /* in6_pktinfo; send if, src addr */
+#define IPV6_HOPLIMIT		47 /* int; send hop limit */
+#define IPV6_NEXTHOP		48 /* sockaddr; next hop addr */
+#define IPV6_HOPOPTS		49 /* ip6_hbh; send hop-by-hop option */
+#define IPV6_DSTOPTS		50 /* ip6_dest; send dst option befor rthdr */
+#define IPV6_RTHDR		51 /* ip6_rthdr; send routing header */
+#define IPV6_PKTOPTIONS		52 /* buf/cmsghdr; set/get IPv6 options, this is obsoleted by RFC3542 */
+
+#define IPV6_RECVTCLASS		57 /* bool; recv traffic class values */
+
+#define IPV6_AUTOFLOWLABEL	59 /* bool; attach flowlabel automagically */
+
+#define IPV6_TCLASS		61 /* int; send traffic class value */
+#define IPV6_DONTFRAG		62 /* bool; disable IPv6 fragmentation */
+
+#define IPV6_PREFER_TEMPADDR	63 /* int; prefer temporary addresses as
+				    * the source address.
+				    */
+/*
+ * The following option is private; do not use it from user applications.
+ * It is deliberately defined to the same value as IP_MSFILTER.
+ */
+#define	IPV6_MSFILTER		74 /* struct __msfilterreq;
+				    * set/get multicast source filter list.
+				    */ 
 /* to define items, should talk with KAME guys first, for *BSD compatibility */
 
 #define IPV6_RTHDR_LOOSE     0 /* this hop need not be a neighbor. XXX old spec */
 #define IPV6_RTHDR_STRICT    1 /* this hop must be a neighbor. XXX old spec */
-#define IPV6_RTHDR_TYPE_0    0 /* IPv6 routing header type 0 */
 
 /*
  * Defaults and limits for options
@@ -448,6 +497,14 @@ struct ipv6_mreq {
 struct in6_pktinfo {
 	struct in6_addr	ipi6_addr;	/* src/dst IPv6 address */
 	unsigned int	ipi6_ifindex;	/* send/recv interface index */
+};
+
+/*
+ * New Control structure for IPV6_RECVPATHMTU socket option introduced in RFC3542.
+ */
+struct ip6_mtuinfo {
+	struct sockaddr_in6 ip6m_addr;	/* or sockaddr_storage? */
+	uint32_t ip6m_mtu;
 };
 
 /*

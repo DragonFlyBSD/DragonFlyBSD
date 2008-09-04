@@ -12,14 +12,14 @@
 # LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 # A PARTICULAR PURPOSE.
 # $FreeBSD: src/usr.sbin/traceroute6/Makefile,v 1.2.2.3 2002/07/23 07:48:27 ru Exp $
-# $DragonFly: src/usr.sbin/traceroute6/Makefile,v 1.2 2003/06/17 04:30:03 dillon Exp $
+# $DragonFly: src/usr.sbin/traceroute6/Makefile,v 1.3 2008/09/04 09:08:22 hasso Exp $
 
 PROG=	traceroute6
 MAN=	traceroute6.8
 BINOWN=	root
 BINMODE=4555
 
-CFLAGS+=-DINET6 -DIPSEC -DHAVE_POLL
+CFLAGS+=-DINET6 -DIPSEC -DHAVE_POLL -DUSE_RFC3542
 
 DPADD=	${LIBIPSEC}
 LDADD=	-lipsec

@@ -68,7 +68,7 @@
  *	The Regents of the University of California.  All rights reserved.
  *
  * $FreeBSD: src/usr.sbin/traceroute6/traceroute6.c,v 1.22 2008/02/10 21:06:38 dwmalone Exp $
- * $DragonFly: src/usr.sbin/traceroute6/traceroute6.c,v 1.8 2008/05/20 12:14:10 hasso Exp $
+ * $DragonFly: src/usr.sbin/traceroute6/traceroute6.c,v 1.9 2008/09/04 09:08:22 hasso Exp $
  */
 
 /*
@@ -331,10 +331,6 @@ u_long datalen;			/* How much data */
 #define	ICMP6ECHOLEN	8
 /* XXX: 2064 = 127(max hops in type 0 rthdr) * sizeof(ip6_hdr) + 16(margin) */
 char rtbuf[2064];
-#ifdef USE_RFC2292BIS
-struct ip6_rthdr *rth;
-#endif
-struct cmsghdr *cmsg;
 
 char *source = 0;
 char *hostname;
@@ -423,33 +419,6 @@ main(int argc, char **argv)
 				    "traceroute6: unknown host %s\n", optarg);
 				exit(1);
 			}
-#ifdef USE_RFC2292BIS
-			if (rth == NULL) {
-				/*
-				 * XXX: We can't detect the number of
-				 * intermediate nodes yet.
-				 */
-				if ((rth = inet6_rth_init((void *)rtbuf,
-				    sizeof(rtbuf), IPV6_RTHDR_TYPE_0,
-				    0)) == NULL) {
-					fprintf(stderr,
-					    "inet6_rth_init failed.\n");
-					exit(1);
-				}
-			}
-			if (inet6_rth_add((void *)rth,
-			    (struct in6_addr *)hp->h_addr)) {
-				fprintf(stderr,
-				    "inet6_rth_add failed for %s\n",
-				    optarg);
-				exit(1);
-			}
-#else  /* old advanced API */
-			if (cmsg == NULL)
-				cmsg = inet6_rthdr_init(rtbuf, IPV6_RTHDR_TYPE_0);
-			inet6_rthdr_add(cmsg, (struct in6_addr *)hp->h_addr,
-			    IPV6_RTHDR_LOOSE);
-#endif
 			freehostent(hp);
 			break;
 		case 'I':
@@ -729,27 +698,6 @@ main(int argc, char **argv)
 	if (options & SO_DONTROUTE)
 		(void) setsockopt(sndsock, SOL_SOCKET, SO_DONTROUTE,
 		    (char *)&on, sizeof(on));
-#ifdef USE_RFC2292BIS
-	if (rth) {/* XXX: there is no library to finalize the header... */
-		rth->ip6r_len = rth->ip6r_segleft * 2;
-		if (setsockopt(sndsock, IPPROTO_IPV6, IPV6_RTHDR,
-		    (void *)rth, (rth->ip6r_len + 1) << 3)) {
-			fprintf(stderr, "setsockopt(IPV6_RTHDR): %s\n",
-			    strerror(errno));
-			exit(1);
-		}
-	}
-#else  /* old advanced API */
-	if (cmsg != NULL) {
-		inet6_rthdr_lasthop(cmsg, IPV6_RTHDR_LOOSE);
-		if (setsockopt(sndsock, IPPROTO_IPV6, IPV6_PKTOPTIONS,
-		    rtbuf, cmsg->cmsg_len) < 0) {
-			fprintf(stderr, "setsockopt(IPV6_PKTOPTIONS): %s\n",
-			    strerror(errno));
-			exit(1);
-		}
-	}
-#endif /* USE_RFC2292BIS */
 #ifdef IPSEC
 #ifdef IPSEC_POLICY_IPSEC
 	/*
@@ -815,9 +763,6 @@ main(int argc, char **argv)
 
 		Nxt = Dst;
 		Nxt.sin6_port = htons(DUMMY_PORT);
-		if (cmsg != NULL)
-			bcopy(inet6_rthdr_getaddr(cmsg, 1), &Nxt.sin6_addr,
-			    sizeof(Nxt.sin6_addr));
 		if ((dummy = socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
 			perror("socket");
 			exit(1);

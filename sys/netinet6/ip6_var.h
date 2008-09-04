@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_var.h,v 1.2.2.4 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_var.h,v 1.12 2007/05/07 12:40:30 hasso Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_var.h,v 1.13 2008/09/04 09:08:22 hasso Exp $	*/
 /*	$KAME: ip6_var.h,v 1.62 2001/05/03 14:51:48 itojun Exp $	*/
 
 /*
@@ -138,6 +138,14 @@ struct	ip6po_rhinfo {
 #define ip6po_rthdr	ip6po_rhinfo.ip6po_rhi_rthdr
 #define ip6po_route	ip6po_rhinfo.ip6po_rhi_route
 
+/* Nexthop related info */
+struct	ip6po_nhinfo {
+	struct	sockaddr *ip6po_nhi_nexthop;
+	struct	route_in6 ip6po_nhi_route; /* Route to the nexthop */
+};
+#define ip6po_nexthop	ip6po_nhinfo.ip6po_nhi_nexthop
+#define ip6po_nextroute	ip6po_nhinfo.ip6po_nhi_route
+
 struct	ip6_pktopts {
 	struct	mbuf *ip6po_m;	/* Pointer to mbuf storing the data */
 	int	ip6po_hlim;	/* Hoplimit for outgoing packets */
@@ -145,7 +153,8 @@ struct	ip6_pktopts {
 	/* Outgoing IF/address information */
 	struct	in6_pktinfo *ip6po_pktinfo;
 
-	struct	sockaddr *ip6po_nexthop; /* Next-hop address */
+	/* Next-hop address information */
+	struct	ip6po_nhinfo ip6po_nhinfo;
 	
 	struct	ip6_hbh *ip6po_hbh; /* Hop-by-Hop options header */
 
@@ -157,12 +166,32 @@ struct	ip6_pktopts {
 
 	/* Destination options header (after a routing header) */
 	struct	ip6_dest *ip6po_dest2;
+	/*
+	 * below fields are introduced in RFC3542
+	 */
+	int	ip6po_tclass;	/* traffic class */
+	int	ip6po_minmtu;  /* fragment vs PMTU discovery policy */
+#define IP6PO_MINMTU_MCASTONLY	-1 /* default; send at min MTU for multicast*/
+#define IP6PO_MINMTU_DISABLE	 0 /* always perform pmtu disc */
+#define IP6PO_MINMTU_ALL	 1 /* always send at min MTU */
+	int	ip6po_prefer_tempaddr;  /* whether temporary addresses are
+					   preferred as source address */
+#define IP6PO_TEMPADDR_SYSTEM	-1 /* follow the system default */
+#define IP6PO_TEMPADDR_NOTPREFER 0 /* not prefer temporary address */
+#define IP6PO_TEMPADDR_PREFER	 1 /* prefer temporary address */
+
+	int ip6po_flags;
+#if 0	/* Parameters in this block are obsolete. Do not reuse the values. */
+#define IP6PO_REACHCONF	0x01	/* upper-layer reachability confirmation. */
+#define IP6PO_MINMTU	0x02	/* use minimum MTU (IPV6_USE_MIN_MTU) */
+#endif
+#define IP6PO_DONTFRAG	0x04	/* disable fragmentation (IPV6_DONTFRAG) */
+#define IP6PO_USECOA	0x08	/* use care of address */
 };
 
 /*
  * Control options for incoming packets
  */
-
 struct	ip6stat {
 	u_quad_t ip6s_total;		/* total packets received */
 	u_quad_t ip6s_tooshort;		/* packet too short */
@@ -341,9 +370,12 @@ int	ip6_output (struct mbuf *, struct ip6_pktopts *,
 			struct ip6_moptions *, struct ifnet **,
 			struct inpcb *);
 int	ip6_ctloutput (struct socket *, struct sockopt *sopt);
+int	ip6_raw_ctloutput (struct socket *, struct sockopt *);
 void	init_ip6pktopts (struct ip6_pktopts *);
-int	ip6_setpktoptions (struct mbuf *, struct ip6_pktopts *, int, int);
-void	ip6_clearpktopts (struct ip6_pktopts *, int, int);
+int
+ip6_setpktoptions(struct mbuf *, struct ip6_pktopts *,
+    struct ip6_pktopts *, int , int);
+void	ip6_clearpktopts (struct ip6_pktopts *, int);
 struct ip6_pktopts *ip6_copypktopts (struct ip6_pktopts *, int);
 int	ip6_optlen (struct inpcb *);
 

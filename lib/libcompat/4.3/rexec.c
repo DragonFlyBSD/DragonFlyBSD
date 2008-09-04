@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcompat/4.3/rexec.c,v 1.5.8.3 2000/11/22 13:36:00 ben Exp $
- * $DragonFly: src/lib/libcompat/4.3/rexec.c,v 1.3 2006/07/30 07:50:28 swildner Exp $
+ * $DragonFly: src/lib/libcompat/4.3/rexec.c,v 1.4 2008/09/04 09:08:22 hasso Exp $
  *
  * @(#)rexec.c	8.1 (Berkeley) 6/4/93
  */
@@ -293,6 +293,147 @@ bad:
 	(void) fclose(cfile);
 	return (-1);
 }
+
+int
+rexec_af(ahost, rport, name, pass, cmd, fd2p, af)
+	char **ahost;
+	int rport;
+	const char *name, *pass, *cmd;
+	int *fd2p;
+	sa_family_t af;
+{
+	struct sockaddr_storage sa2, from;
+	struct addrinfo hints, *res0;
+	const char *orig_name = name;
+	const char *orig_pass = pass;
+	static char *ahostbuf;
+	u_short port = 0;
+	int s, timo = 1, s3;
+	char c;
+	int gai;
+	char servbuff[NI_MAXSERV];
+
+	sprintf(servbuff, sizeof(servbuff), "%d", ntohs(rport));
+	servbuff[sizeof(servbuff) - 1] = '\0';
+
+	memset(&hints, '\0', sizeof(hints));
+	hints.ai_family = af;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_CANONNAME;
+	gai = getaddrinfo(*ahost, servbuff, &hints, &res0);
+	if (gai){
+		/* XXX: set errno? */
+		return -1;
+	}
+
+	if (res0->ai_canonname){
+		free (ahostbuf);
+		ahostbuf = strdup (res0->ai_canonname);
+		if (ahostbuf == NULL) {
+			perror ("rexec: strdup");
+			return (-1);
+		}
+		*ahost = ahostbuf;
+	} else {
+		*ahost = NULL;
+		__set_errno (ENOENT);
+		return -1;
+	}
+	ruserpass(res0->ai_canonname, &name, &pass);
+retry:
+	s = socket(res0->ai_family, res0->ai_socktype, 0);
+	if (s < 0) {
+		perror("rexec: socket");
+		return (-1);
+	}
+	if (connect(s, res0->ai_addr, res0->ai_addrlen) < 0) {
+		if (errno == ECONNREFUSED && timo <= 16) {
+			(void) close(s);
+			sleep(timo);
+			timo *= 2;
+			goto retry;
+		}
+		perror(res0->ai_canonname);
+		return (-1);
+	}
+	if (fd2p == 0) {
+		(void) write(s, "", 1);
+		port = 0;
+	} else {
+		char num[32];
+		int s2;
+		socklen_t sa2len;
+
+		s2 = socket(res0->ai_family, res0->ai_socktype, 0);
+		if (s2 < 0) {
+			(void) close(s);
+			return (-1);
+		}
+		listen(s2, 1);
+		sa2len = sizeof (sa2);
+		if (getsockname(s2, (struct sockaddr *)&sa2, &sa2len) < 0) {
+			perror("getsockname");
+			(void) close(s2);
+			goto bad;
+		} else if (sa2len != SA_LEN((struct sockaddr *)&sa2)) {
+			__set_errno(EINVAL);
+			(void) close(s2);
+			goto bad;
+		}
+		port = 0;
+		if (!getnameinfo((struct sockaddr *)&sa2, sa2len,
+				 NULL, 0, servbuff, sizeof(servbuff),
+				 NI_NUMERICSERV))
+			port = atoi(servbuff);
+		(void) sprintf(num, "%u", port);
+		(void) write(s, num, strlen(num)+1);
+		{ socklen_t len = sizeof (from);
+		  s3 = accept(s2, (struct sockaddr *)&from,
+						  &len);
+		  close(s2);
+		  if (s3 < 0) {
+			perror("accept");
+			port = 0;
+			goto bad;
+		  }
+		}
+		*fd2p = s3;
+	}
+
+	(void) write(s, name, strlen(name) + 1);
+	/* should public key encypt the password here */
+	(void) write(s, pass, strlen(pass) + 1);
+	(void) write(s, cmd, strlen(cmd) + 1);
+
+	/* We don't need the memory allocated for the name and the password
+	   in ruserpass anymore.  */
+	if (name != orig_name)
+	  free ((char *) name);
+	if (pass != orig_pass)
+	  free ((char *) pass);
+
+	if (read(s, &c, 1) != 1) {
+		perror(*ahost);
+		goto bad;
+	}
+	if (c != 0) {
+		while (read(s, &c, 1) == 1) {
+			(void) write(2, &c, 1);
+			if (c == '\n')
+				break;
+		}
+		goto bad;
+	}
+	freeaddrinfo(res0);
+	return (s);
+bad:
+	if (port)
+		(void) close(*fd2p);
+	(void) close(s);
+	freeaddrinfo(res0);
+	return (-1);
+}
+
 
 int
 rexec(ahost, rport, name, pass, cmd, fd2p)

@@ -32,7 +32,7 @@
  *
  * @(#)commands.c	8.4 (Berkeley) 5/30/95
  * $FreeBSD: src/usr.bin/telnet/commands.c,v 1.21.2.6 2002/11/30 05:35:13 eric Exp $
- * $DragonFly: src/usr.bin/telnet/commands.c,v 1.6 2007/05/18 17:05:12 dillon Exp $
+ * $DragonFly: src/usr.bin/telnet/commands.c,v 1.7 2008/09/04 09:08:22 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -2568,6 +2568,7 @@ sourceroute(struct addrinfo *ai, char *arg, char **cpp, int *lenp, int *protop, 
 #ifdef INET6
 	struct sockaddr_in6 *sin6;
 	struct cmsghdr *cmsg;
+	struct ip6_rthdr *rth;
 #endif
 	struct addrinfo hints, *res;
 	int error;
@@ -2610,11 +2611,18 @@ sourceroute(struct addrinfo *ai, char *arg, char **cpp, int *lenp, int *protop, 
 
 #ifdef INET6
 	if (ai->ai_family == AF_INET6) {
-		cmsg = inet6_rthdr_init(*cpp, IPV6_RTHDR_TYPE_0);
+	/* 
+	 *RFC3542 has obsoleted IPV6_PKTOPTIONS socket option. 
+	 */
+#ifdef COMPAT_RFC1883		/* XXX */
+		cmsg = NULL;
 		if (*cp != '@')
 			return -1;
 		*protop = IPPROTO_IPV6;
 		*optp = IPV6_PKTOPTIONS;
+#else
+		return -1;
+#endif /* COMPAT_RFC1883 */
 	} else
 #endif
       {
@@ -2685,9 +2693,7 @@ sourceroute(struct addrinfo *ai, char *arg, char **cpp, int *lenp, int *protop, 
 		}
 #ifdef INET6
 		if (res->ai_family == AF_INET6) {
-			sin6 = (struct sockaddr_in6 *)res->ai_addr;
-			inet6_rthdr_add(cmsg, &sin6->sin6_addr,
-					IPV6_RTHDR_LOOSE);
+			return(0);
 		} else
 #endif
 	      {
@@ -2703,13 +2709,13 @@ sourceroute(struct addrinfo *ai, char *arg, char **cpp, int *lenp, int *protop, 
 		 * Check to make sure there is space for next address
 		 */
 #ifdef INET6
+#ifdef COMPAT_RFC1883		/* XXX */
 		if (res->ai_family == AF_INET6) {
 			if (((char *)CMSG_DATA(cmsg) +
-			     sizeof(struct ip6_rthdr) +
-			     ((inet6_rthdr_segments(cmsg) + 1) *
-			      sizeof(struct in6_addr))) > ep)
+			     sizeof(struct ip6_rthdr)) > ep)
 			return -1;
 		} else
+#endif /* COMPAT_RFC1883 */
 #endif
 		if (lsrp + 4 > ep)
 			return -1;
@@ -2717,8 +2723,9 @@ sourceroute(struct addrinfo *ai, char *arg, char **cpp, int *lenp, int *protop, 
 	}
 #ifdef INET6
 	if (res->ai_family == AF_INET6) {
-		inet6_rthdr_lasthop(cmsg, IPV6_RTHDR_LOOSE);
-		*lenp = cmsg->cmsg_len;
+#ifdef COMPAT_RFC1883		/* XXX */
+		*lenp = 0;
+#endif /* COMPAT_RFC1883 */
 	} else
 #endif
       {

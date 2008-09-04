@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/icmp6.h,v 1.2.2.5 2002/06/29 18:31:11 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet/icmp6.h,v 1.7 2006/05/20 02:42:12 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/icmp6.h,v 1.8 2008/09/04 09:08:22 hasso Exp $	*/
 /*	$KAME: icmp6.h,v 1.46 2001/04/27 15:09:48 itojun Exp $	*/
 
 /*
@@ -115,6 +115,7 @@ struct icmp6_hdr {
 #define MLD_LISTENER_REPORT		131	/* multicast listener report */
 #define ICMP6_MEMBERSHIP_REDUCTION	132	/* group membership termination */
 #define MLD_LISTENER_DONE		132	/* multicast listener done */
+#define MLD_LISTENER_REDUCTION MLD_LISTENER_DONE /* defined in RFC3542 */
 
 #ifndef _KERNEL
 /* the followings are for backward compatibility to old KAME apps. */

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/raw_ip6.c,v 1.7.2.7 2003/01/24 05:11:35 sam Exp $
- * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.26 2008/05/17 20:33:36 dillon Exp $
+ * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.27 2008/09/04 09:08:22 hasso Exp $
  */
 
 /*
@@ -338,7 +338,9 @@ rip6_output(struct mbuf *m, struct socket *so, ...)
 		priv = 1;
 	dst = &dstsock->sin6_addr;
 	if (control) {
-		if ((error = ip6_setpktoptions(control, &opt, priv, 0)) != 0)
+		if ((error = ip6_setpktoptions(control, &opt,
+		    in6p->in6p_outputopts, 
+		    so->so_proto->pr_protocol, priv)) != 0)
 			goto bad;
 		optp = &opt;
 	} else
@@ -477,7 +479,7 @@ freectl:
 		RTFREE(optp->ip6po_route.ro_rt);
 	if (control) {
 		if (optp == &opt)
-			ip6_clearpktopts(optp, 0, -1);
+			ip6_clearpktopts(optp, -1);
 		m_freem(control);
 	}
 	return (error);
@@ -514,6 +516,9 @@ rip6_ctloutput(struct socket *so, struct sockopt *sopt)
 		case MRT6_PIM:
 			error = ip6_mrouter_get(so, sopt);
 			break;
+		case IPV6_CHECKSUM:
+			error = ip6_raw_ctloutput(so, sopt);
+			break;
 		default:
 			error = ip6_ctloutput(so, sopt);
 			break;
@@ -530,6 +535,9 @@ rip6_ctloutput(struct socket *so, struct sockopt *sopt)
 		case MRT6_DEL_MFC:
 		case MRT6_PIM:
 			error = ip6_mrouter_set(so, sopt);
+			break;
+		case IPV6_CHECKSUM:
+			error = ip6_raw_ctloutput(so, sopt);
 			break;
 		default:
 			error = ip6_ctloutput(so, sopt);

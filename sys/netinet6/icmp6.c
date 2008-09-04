@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/icmp6.c,v 1.6.2.13 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.29 2008/06/21 12:30:19 aggelos Exp $	*/
+/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.30 2008/09/04 09:08:22 hasso Exp $	*/
 /*	$KAME: icmp6.c,v 1.211 2001/04/04 05:56:20 itojun Exp $	*/
 
 /*
@@ -889,7 +889,6 @@ icmp6_notify_error(struct mbuf *m, int off, int icmp6len, int code)
 		int icmp6type = icmp6->icmp6_type;
 		struct ip6_frag *fh;
 		struct ip6_rthdr *rth;
-		struct ip6_rthdr0 *rth0;
 		int rthlen;
 
 		while (1) { /* XXX: should avoid infinite loop explicitly? */
@@ -943,36 +942,6 @@ icmp6_notify_error(struct mbuf *m, int off, int icmp6len, int code)
 				}
 #endif
 				rthlen = (rth->ip6r_len + 1) << 3;
-				/*
-				 * XXX: currently there is no
-				 * officially defined type other
-				 * than type-0.
-				 * Note that if the segment left field
-				 * is 0, all intermediate hops must
-				 * have been passed.
-				 */
-				if (rth->ip6r_segleft &&
-				    rth->ip6r_type == IPV6_RTHDR_TYPE_0) {
-					int hops;
-
-#ifndef PULLDOWN_TEST
-					IP6_EXTHDR_CHECK(m, 0, eoff + rthlen,
-							 -1);
-					rth0 = (struct ip6_rthdr0 *)(mtod(m, caddr_t) + eoff);
-#else
-					IP6_EXTHDR_GET(rth0,
-						       struct ip6_rthdr0 *, m,
-						       eoff, rthlen);
-					if (rth0 == NULL) {
-						icmp6stat.icp6s_tooshort++;
-						return (-1);
-					}
-#endif
-					/* just ignore a bogus header */
-					if ((rth0->ip6r0_len % 2) == 0 &&
-					    (hops = rth0->ip6r0_len/2))
-						finaldst = (struct in6_addr *)(rth0 + 1) + (hops - 1);
-				}
 				eoff += rthlen;
 				nxt = rth->ip6r_nxt;
 				break;

@@ -65,7 +65,7 @@
  *
  *	@(#)in_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_pcb.h,v 1.32.2.7 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.h,v 1.23 2007/04/04 06:13:26 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.h,v 1.24 2008/09/04 09:08:22 hasso Exp $
  */
 
 #ifndef _NETINET_IN_PCB_H_
@@ -327,16 +327,24 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 #define	IN6P_RTHDR		0x100000 /* receive routing header */
 #define	IN6P_RTHDRDSTOPTS	0x200000 /* receive dstoptions before rthdr */
 #define IN6P_AUTOFLOWLABEL	0x800000 /* attach flowlabel automatically */
+/* 
+ * RFC3542 Definition 
+ */
+#define	IN6P_TCLASS		0x400000 /* receive traffic class value */
+#define	IN6P_RFC2292		0x40000000 /* used RFC2292 API on the socket */
+#define	IN6P_MTU		0x80000000 /* receive path MTU */
 
 #define	INP_RECVTTL		0x80000000 /* receive incoming IP TTL */
 
 #define	INP_CONTROLOPTS		(INP_RECVOPTS|INP_RECVRETOPTS|INP_RECVDSTADDR|\
-					INP_RECVIF|INP_RECVTTL|\
+				 INP_RECVIF|INP_RECVTTL|\
 				 IN6P_PKTINFO|IN6P_HOPLIMIT|IN6P_HOPOPTS|\
 				 IN6P_DSTOPTS|IN6P_RTHDR|IN6P_RTHDRDSTOPTS|\
-				 IN6P_AUTOFLOWLABEL)
+				 IN6P_TCLASS|IN6P_AUTOFLOWLABEL|IN6P_RFC2292|\
+				 IN6P_MTU)
+				 
 #define	INP_UNMAPPABLEOPTS	(IN6P_HOPOPTS|IN6P_DSTOPTS|IN6P_RTHDR|\
-				 IN6P_AUTOFLOWLABEL)
+				 IN6P_TCLASS|IN6P_AUTOFLOWLABEL)
 
  /* for KAME src sync over BSD*'s */
 #define	IN6P_HIGHPORT		INP_HIGHPORT

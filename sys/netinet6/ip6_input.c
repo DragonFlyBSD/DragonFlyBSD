@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.35 2007/10/14 18:15:19 hasso Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.36 2008/09/04 09:08:22 hasso Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -1123,6 +1123,7 @@ void
 ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 		struct mbuf *m)
 {
+	#define IS2292(x, y)	((in6p->in6p_flags & IN6P_RFC2292) ? (x) : (y))
 	struct thread *td = curthread;	/* XXX */
 	int privileged = 0;
 	int rthdr_exist = 0;
@@ -1154,7 +1155,7 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 					? m->m_pkthdr.rcvif->if_index
 					: 0;
 		*mp = sbcreatecontrol((caddr_t) &pi6,
-			sizeof(struct in6_pktinfo), IPV6_PKTINFO,
+			sizeof(struct in6_pktinfo), IS2292(IPV6_2292PKTINFO, IPV6_PKTINFO),
 			IPPROTO_IPV6);
 		if (*mp)
 			mp = &(*mp)->m_next;
@@ -1163,7 +1164,21 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 	if (in6p->in6p_flags & IN6P_HOPLIMIT) {
 		int hlim = ip6->ip6_hlim & 0xff;
 		*mp = sbcreatecontrol((caddr_t) &hlim,
-			sizeof(int), IPV6_HOPLIMIT, IPPROTO_IPV6);
+			sizeof(int), IS2292(IPV6_2292HOPLIMIT, IPV6_HOPLIMIT), IPPROTO_IPV6);
+		if (*mp)
+			mp = &(*mp)->m_next;
+	}
+
+	if ((in6p->in6p_flags & IN6P_TCLASS) != 0) {
+		u_int32_t flowinfo;
+		int tclass;
+
+		flowinfo = (u_int32_t)ntohl(ip6->ip6_flow & IPV6_FLOWINFO_MASK);
+		flowinfo >>= 20;
+
+		tclass = flowinfo & 0xff;
+		*mp = sbcreatecontrol((caddr_t) &tclass, sizeof(tclass),
+		    IPV6_TCLASS, IPPROTO_IPV6);
 		if (*mp)
 			mp = &(*mp)->m_next;
 	}
@@ -1216,7 +1231,7 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 			 * Note: this constraint is removed in 2292bis.
 			 */
 			*mp = sbcreatecontrol((caddr_t)hbh, hbhlen,
-					      IPV6_HOPOPTS, IPPROTO_IPV6);
+				 IS2292(IPV6_2292HOPOPTS, IPV6_HOPOPTS), IPPROTO_IPV6);
 			if (*mp)
 				mp = &(*mp)->m_next;
 #ifdef PULLDOWN_TEST
@@ -1331,7 +1346,7 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 					break;
 
 				*mp = sbcreatecontrol((caddr_t)ip6e, elen,
-						      IPV6_DSTOPTS,
+						      IS2292(IPV6_2292DSTOPTS, IPV6_DSTOPTS),
 						      IPPROTO_IPV6);
 				if (*mp)
 					mp = &(*mp)->m_next;
@@ -1341,7 +1356,7 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 					break;
 
 				*mp = sbcreatecontrol((caddr_t)ip6e, elen,
-						      IPV6_RTHDR,
+						      IS2292(IPV6_2292RTHDR, IPV6_RTHDR),
 						      IPPROTO_IPV6);
 				if (*mp)
 					mp = &(*mp)->m_next;
@@ -1376,7 +1391,42 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 	  loopend:
 		;
 	}
+#undef IS2292
+}
 
+void
+ip6_notify_pmtu(struct inpcb *in6p, struct sockaddr_in6 *dst, u_int32_t *mtu)
+{
+	struct socket *so;
+	struct mbuf *m_mtu;
+	struct ip6_mtuinfo mtuctl;
+
+	so =  in6p->inp_socket;
+
+	if (mtu == NULL)
+		return;
+
+#ifdef DIAGNOSTIC
+	if (so == NULL)		/* I believe this is impossible */
+		panic("ip6_notify_pmtu: socket is NULL");
+#endif
+
+	bzero(&mtuctl, sizeof(mtuctl));	/* zero-clear for safety */
+	mtuctl.ip6m_mtu = *mtu;
+	mtuctl.ip6m_addr = *dst;
+
+	if ((m_mtu = sbcreatecontrol((caddr_t)&mtuctl, sizeof(mtuctl),
+	    IPV6_PATHMTU, IPPROTO_IPV6)) == NULL)
+		return;
+
+	if (sbappendaddr(&so->so_rcv, (struct sockaddr *)dst, NULL, m_mtu)
+	    == 0) {
+		m_freem(m_mtu);
+		/* XXX: should count statistics */
+	} else
+		sorwakeup(so);
+
+	return;
 }
 
 #ifdef PULLDOWN_TEST

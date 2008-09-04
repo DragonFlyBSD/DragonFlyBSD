@@ -1,6 +1,6 @@
 #	from @(#)Makefile.inc	8.2 (Berkeley) 9/5/93
 # $FreeBSD: src/lib/libc/net/Makefile.inc,v 1.36.2.5 2002/07/29 18:33:18 ume Exp $
-# $DragonFly: src/lib/libc/net/Makefile.inc,v 1.4 2005/08/05 23:43:19 swildner Exp $
+# $DragonFly: src/lib/libc/net/Makefile.inc,v 1.5 2008/09/04 09:08:21 hasso Exp $
 
 # machine-independent net sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/net ${.CURDIR}/../libc/net
@@ -33,7 +33,8 @@ MAN+=	addr2ascii.3 byteorder.3 ethers.3 eui64.3 \
 	getifaddrs.3 getipnodebyname.3 \
 	getnameinfo.3 getnetent.3 getprotoent.3 getservent.3 if_indextoname.3 \
 	inet.3 inet_net.3 \
-	inet6_option_space.3 inet6_rthdr_space.3 linkaddr.3 \
+	inet6_opt_init.3 inet6_option_space.3 inet6_rth_space.3 \
+	inet6_rthdr_space.3 linkaddr.3 \
 	rcmd.3 rcmdsh.3 resolver.3
 # not installed: iso_addr.3 ns.3
 
@@ -65,11 +66,22 @@ MLINKS+=inet.3 addr.3 inet.3 inet_addr.3 inet.3 inet_aton.3 \
 	inet.3 inet_ntop.3 inet.3 inet_pton.3 \
 	inet.3 network.3 inet.3 ntoa.3 
 MLINKS+=inet_net.3 inet_net_ntop.3 inet_net.3 inet_net_pton.3
-MLINKS+=inet6_option_space.3 inet6_option_alloc.3 \
+MLINKS+=inet6_opt_init.3 inet6_opt_append.3 \
+	inet6_opt_init.3 inet6_opt_find.3 \
+	inet6_opt_init.3 inet6_opt_finish.3 \
+	inet6_opt_init.3 inet6_opt_get_val.3 \
+	inet6_opt_init.3 inet6_opt_next.3 \
+	inet6_opt_init.3 inet6_opt_set_val.3 \
+	inet6_option_space.3 inet6_option_alloc.3 \
 	inet6_option_space.3 inet6_option_append.3 \
 	inet6_option_space.3 inet6_option_find.3 \
 	inet6_option_space.3 inet6_option_init.3 \
 	inet6_option_space.3 inet6_option_next.3 \
+	inet6_rth_space.3 inet6_rth_add.3 \
+	inet6_rth_space.3 inet6_rth_getaddr.3 \
+	inet6_rth_space.3 inet6_rth_init.3 \
+	inet6_rth_space.3 inet6_rth_reverse.3 \
+	inet6_rth_space.3 inet6_rth_segments.3 \
 	inet6_rthdr_space.3 inet6_rthdr_add.3 \
 	inet6_rthdr_space.3 inet6_rthdr_getaddr.3 \
 	inet6_rthdr_space.3 inet6_rthdr_getflags.3 \

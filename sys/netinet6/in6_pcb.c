@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.34 2008/01/05 14:02:40 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.35 2008/09/04 09:08:22 hasso Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -879,6 +879,20 @@ in6_pcbnotify(struct inpcbhead *head, struct sockaddr *dst, in_port_t fport,
 
  		if ((inp->inp_vflag & INP_IPV6) == 0)
 			continue;
+		/*
+		 * If the error designates a new path MTU for a destination
+		 * and the application (associated with this socket) wanted to
+		 * know the value, notify. Note that we notify for all
+		 * disconnected sockets if the corresponding application
+		 * wanted. This is because some UDP applications keep sending
+		 * sockets disconnected.
+		 * XXX: should we avoid to notify the value to TCP sockets?
+		 */
+		if (cmd == PRC_MSGSIZE && (inp->inp_flags & IN6P_MTU) != 0 &&
+		    (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_faddr) ||
+		     IN6_ARE_ADDR_EQUAL(&inp->in6p_faddr, &sa6_dst->sin6_addr))) {
+			ip6_notify_pmtu(inp, (struct sockaddr_in6 *)dst, arg);
+		}
 
 		/*
 		 * Detect if we should notify the error. If no source and
