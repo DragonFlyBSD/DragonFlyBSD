@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/download.shtml,v 1.24 2008/07/28 13:41:11 matthias Exp $ -->
+<!-- $DragonFly: site/data/community/download.shtml,v 1.25 2008/09/04 04:27:44 justin Exp $ -->
 
 <h1>Obtaining DragonFly for your system</h1>
 
@@ -168,6 +168,8 @@ rsync
 </TD>
 </TR>
 
+<!-- empty directory as of 2008-09-03
+
 <TR>
 <TD>Esat.net (IE)</TD>
 <TD>Daily snapshots, official ISOs</TD>
@@ -177,6 +179,7 @@ rsync
 <a href="rsync://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/">rsync</a> (IPv4 and IPv6)
 </TD>
 </TR>
+-->
 
 <!--
 <TR>
