@@ -32,7 +32,7 @@
  *
  * @(#)commands.c	8.4 (Berkeley) 5/30/95
  * $FreeBSD: src/crypto/telnet/telnet/commands.c,v 1.12.2.7 2003/04/23 07:16:32 ru Exp $
- * $DragonFly: src/crypto/telnet/telnet/commands.c,v 1.2 2003/06/17 04:24:37 dillon Exp $
+ * $DragonFly: src/crypto/telnet/telnet/commands.c,v 1.3 2008/09/04 11:54:24 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -77,7 +77,7 @@
 
 #ifndef       MAXHOSTNAMELEN
 #define       MAXHOSTNAMELEN 256
-#endif        MAXHOSTNAMELEN
+#endif        /* MAXHOSTNAMELEN */
 
 typedef int (*intrtn_t)(int, char **);
 
@@ -2885,7 +2885,7 @@ sourceroute(struct addrinfo *ai, char *arg, char **cpp, int *lenp, int *protop, 
 
 #ifdef INET6
 	if (ai->ai_family == AF_INET6) {
-		cmsg = inet6_rthdr_init(*cpp, IPV6_RTHDR_TYPE_0);
+		cmsg = NULL;
 		if (*cp != '@')
 			return -1;
 		*protop = IPPROTO_IPV6;
@@ -2961,8 +2961,6 @@ sourceroute(struct addrinfo *ai, char *arg, char **cpp, int *lenp, int *protop, 
 #ifdef INET6
 		if (res->ai_family == AF_INET6) {
 			sin6 = (struct sockaddr_in6 *)res->ai_addr;
-			inet6_rthdr_add(cmsg, &sin6->sin6_addr,
-					IPV6_RTHDR_LOOSE);
 		} else
 #endif
 	      {
@@ -2980,9 +2978,7 @@ sourceroute(struct addrinfo *ai, char *arg, char **cpp, int *lenp, int *protop, 
 #ifdef INET6
 		if (res->ai_family == AF_INET6) {
 			if (((char *)CMSG_DATA(cmsg) +
-			     sizeof(struct ip6_rthdr) +
-			     ((inet6_rthdr_segments(cmsg) + 1) *
-			      sizeof(struct in6_addr))) > ep)
+			     sizeof(struct ip6_rthdr)) > ep)
 			return -1;
 		} else
 #endif
@@ -2992,8 +2988,7 @@ sourceroute(struct addrinfo *ai, char *arg, char **cpp, int *lenp, int *protop, 
 	}
 #ifdef INET6
 	if (res->ai_family == AF_INET6) {
-		inet6_rthdr_lasthop(cmsg, IPV6_RTHDR_LOOSE);
-		*lenp = cmsg->cmsg_len;
+		*lenp = 0;
 	} else
 #endif
       {
