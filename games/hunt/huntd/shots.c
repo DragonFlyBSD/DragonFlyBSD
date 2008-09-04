@@ -30,7 +30,7 @@
  *
  * $OpenBSD: shots.c,v 1.9 2006/03/27 00:10:15 tedu Exp $
  * $NetBSD: shots.c,v 1.3 1997/10/11 08:13:50 lukem Exp $
- * $DragonFly: src/games/hunt/huntd/shots.c,v 1.1 2008/09/02 21:50:21 dillon Exp $
+ * $DragonFly: src/games/hunt/huntd/shots.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 
 #include <err.h>
@@ -60,7 +60,7 @@ static	void	zapshot(BULLET *, BULLET *);
 
 /* Return true if there is pending activity */
 int
-can_moveshots()
+can_moveshots(void)
 {
 	PLAYER *pp;
 
@@ -89,7 +89,7 @@ can_moveshots()
  *	Move the shots already in the air, taking explosions into account
  */
 void
-moveshots()
+moveshots(void)
 {
 	BULLET	*bp, *next;
 	PLAYER	*pp;
@@ -224,8 +224,7 @@ no_bullets:
  *	Returns false if the bullet no longer needs tracking.
  */
 static int
-move_normal_shot(bp)
-	BULLET	*bp;
+move_normal_shot(BULLET *bp)
 {
 	int	i, x, y;
 	PLAYER	*pp;
@@ -452,8 +451,7 @@ move_normal_shot(bp)
  *	Returns FALSE if the drone need no longer be tracked.
  */
 static int
-move_drone(bp)
-	BULLET	*bp;
+move_drone(BULLET *bp)
 {
 	int	mask, count;
 	int	n, dir = -1;
@@ -593,8 +591,7 @@ drone_move:
  *	Put a bullet back onto the bullet list
  */
 static void
-save_bullet(bp)
-	BULLET	*bp;
+save_bullet(BULLET *bp)
 {
 
 	/* Save what the bullet will be flying over: */
@@ -645,8 +642,7 @@ save_bullet(bp)
  *	Update the position of a player in flight
  */
 static void
-move_flyer(pp)
-	PLAYER	*pp;
+move_flyer(PLAYER *pp)
 {
 	int	x, y;
 
@@ -752,9 +748,7 @@ again:
  *	Handle explosions
  */
 static void
-chkshot(bp, next)
-	BULLET	*bp;
-	BULLET	*next;
+chkshot(BULLET *bp, BULLET *next)
 {
 	int	y, x;
 	int	dy, dx, absdy;
@@ -845,9 +839,7 @@ chkshot(bp, next)
  *	handle slime shot exploding
  */
 static void
-chkslime(bp, next)
-	BULLET	*bp;
-	BULLET	*next;
+chkslime(BULLET *bp, BULLET *next)
 {
 	BULLET	*nbp;
 
@@ -895,10 +887,7 @@ chkslime(bp, next)
  *	it hasn't fizzled yet
  */
 static void
-move_slime(bp, speed, next)
-	BULLET	*bp;
-	int	speed;
-	BULLET	*next;
+move_slime(BULLET *bp, int speed, BULLET *next)
 {
 	int	i, j, dirmask, count;
 	PLAYER	*pp;
@@ -1056,8 +1045,7 @@ move_slime(bp, speed, next)
  *	returns whether the given location is a wall
  */
 static int
-iswall(y, x)
-	int	y, x;
+iswall(int y, int x)
 {
 	if (y < 0 || x < 0 || y >= HEIGHT || x >= WIDTH)
 		return TRUE;
@@ -1080,8 +1068,7 @@ iswall(y, x)
  *	Take a shot out of the air.
  */
 static void
-zapshot(blist, obp)
-	BULLET	*blist, *obp;
+zapshot(BULLET *blist, BULLET *obp)
 {
 	BULLET	*bp;
 
@@ -1102,9 +1089,7 @@ zapshot(blist, obp)
  *	Make all shots at this location blow up
  */
 static void
-explshot(blist, y, x)
-	BULLET	*blist;
-	int	y, x;
+explshot(BULLET *blist, int y, int x)
 {
 	BULLET	*bp;
 
@@ -1121,8 +1106,7 @@ explshot(blist, y, x)
  *	Return a pointer to the player at the given location
  */
 PLAYER *
-play_at(y, x)
-	int	y, x;
+play_at(int y, int x)
 {
 	PLAYER	*pp;
 
@@ -1141,9 +1125,7 @@ play_at(y, x)
  *	of the player in the maze
  */
 int
-opposite(face, dir)
-	int	face;
-	char	dir;
+opposite(int face, char dir)
 {
 	switch (face) {
 	  case LEFTS:
@@ -1165,8 +1147,7 @@ opposite(face, dir)
  *	a pointer to the bullet, otherwise return NULL
  */
 BULLET *
-is_bullet(y, x)
-	int	y, x;
+is_bullet(int y, int x)
 {
 	BULLET	*bp;
 
@@ -1182,9 +1163,7 @@ is_bullet(y, x)
  *	to the given character.
  */
 void
-fixshots(y, x, over)
-	int	y, x;
-	char	over;
+fixshots(int y, int x, char over)
 {
 	BULLET	*bp;
 
@@ -1199,8 +1178,7 @@ fixshots(y, x, over)
  *	on another bullet.
  */
 static void
-find_under(blist, bp)
-	BULLET	*blist, *bp;
+find_under(BULLET *blist, BULLET *bp)
 {
 	BULLET	*nbp;
 
@@ -1216,8 +1194,7 @@ find_under(blist, bp)
  *	mark a player as under a shot
  */
 static void
-mark_player(bp)
-	BULLET	*bp;
+mark_player(BULLET *bp)
 {
 	PLAYER	*pp;
 
@@ -1233,8 +1210,7 @@ mark_player(bp)
  *	mark a boot as under a shot
  */
 static void
-mark_boot(bp)
-	BULLET	*bp;
+mark_boot(BULLET *bp)
 {
 	PLAYER	*pp;
 

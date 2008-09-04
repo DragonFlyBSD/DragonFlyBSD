@@ -30,7 +30,7 @@
  *
  * $OpenBSD: driver.c,v 1.17 2007/04/02 14:55:16 jmc Exp $
  * $NetBSD: driver.c,v 1.5 1997/10/20 00:37:16 lukem Exp $
- * $DragonFly: src/games/hunt/huntd/driver.c,v 1.1 2008/09/02 21:50:21 dillon Exp $
+ * $DragonFly: src/games/hunt/huntd/driver.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 
 #include <sys/ioctl.h>
@@ -82,9 +82,7 @@ static	void	handle_wkport(int);
  *	The main program.
  */
 int
-main(ac, av)
-	int	ac;
-	char	**av;
+main(int ac, char **av)
 {
 	PLAYER		*pp;
 	int		had_char;
@@ -322,7 +320,7 @@ again:
  *	Initialize the global parameters.
  */
 static void
-init()
+init(void)
 {
 	int	i;
 	struct sockaddr_in	test_port;
@@ -489,7 +487,7 @@ init()
  *	Put the boots in the maze
  */
 static void
-makeboots()
+makeboots(void)
 {
 	int	x, y;
 	PLAYER	*pp;
@@ -513,11 +511,8 @@ makeboots()
  *	If the victim dies as a result, give points to 'credit',
  */
 void
-checkdam(victim, attacker, credit, damage, stype)
-	PLAYER	*victim, *attacker;
-	IDENT	*credit;
-	int	damage;
-	char	stype;
+checkdam(PLAYER *victim, PLAYER *attacker, IDENT *credit, int damage,
+    char stype)
 {
 	const char	*cp;
 	int	y;
@@ -673,9 +668,7 @@ checkdam(victim, attacker, credit, damage, stype)
  *	a monitor and needs extra cleaning up.
  */
 static void
-zap(pp, was_player)
-	PLAYER	*pp;
-	FLAG	was_player;
+zap(PLAYER *pp, FLAG was_player)
 {
 	int	len;
 	BULLET	*bp;
@@ -909,8 +902,7 @@ zap(pp, was_player)
  *	Return a random number in a given range.
  */
 int
-rand_num(range)
-	int	range;
+rand_num(int range)
 {
 	if (range == 0)
 		return 0;
@@ -924,8 +916,7 @@ rand_num(range)
  *	FALSE.
  */
 static int
-havechar(pp)
-	PLAYER	*pp;
+havechar(PLAYER *pp)
 {
 	int ret;
 
@@ -971,8 +962,7 @@ check_again:
  *	Exit with the given value, cleaning up any droppings lying around
  */
 void
-cleanup(eval)
-	int	eval;
+cleanup(int eval)
 {
 	PLAYER	*pp;
 
@@ -1002,7 +992,7 @@ cleanup(eval)
  *	the stats.
  */
 static void
-send_stats()
+send_stats(void)
 {
 	FILE	*fp;
 	int	s;
@@ -1052,8 +1042,7 @@ send_stats()
  * 	emit the game statistics
  */
 void
-print_stats(fp)
-	FILE *fp;
+print_stats(FILE *fp)
 {
 	IDENT	*ip;
 	PLAYER  *pp;
@@ -1118,7 +1107,7 @@ siginfo(int sig __unused)
  *	Clear the Scores list.
  */
 static void
-clear_scores()
+clear_scores(void)
 {
 	IDENT	*ip, *nextip;
 
@@ -1135,7 +1124,7 @@ clear_scores()
  *	Publically announce the game
  */
 static void
-announce_game()
+announce_game(void)
 {
 
 	/* TODO: could use system() to do something user-configurable */
@@ -1145,8 +1134,7 @@ announce_game()
  * Handle a UDP packet sent to the well known port.
  */
 static void
-handle_wkport(fd)
-	int fd;
+handle_wkport(int fd)
 {
 	struct sockaddr		fromaddr;
 	socklen_t		fromlen;

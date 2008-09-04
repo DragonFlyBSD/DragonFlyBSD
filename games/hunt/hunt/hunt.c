@@ -30,7 +30,7 @@
  *
  * $OpenBSD: hunt.c,v 1.13 2008/03/17 09:17:56 sobrado Exp $
  * $NetBSD: hunt.c,v 1.8 1998/09/13 15:27:28 hubertf Exp $
- * $DragonFly: src/games/hunt/hunt/hunt.c,v 1.1 2008/09/02 21:50:20 dillon Exp $
+ * $DragonFly: src/games/hunt/hunt/hunt.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 
 #include <ctype.h>
@@ -271,7 +271,7 @@ main(int ac, char **av)
  * then we choose it. Otherwise we present a list of the found drivers.
  */
 static int
-find_driver()
+find_driver(void)
 {
 	int last_driver, numdrivers, waiting, is_current;
 	struct driver *driver;
@@ -369,7 +369,7 @@ find_driver()
 }
 
 static void
-dump_scores()
+dump_scores(void)
 {
 	struct	driver *driver;
 	int	s, cnt, i;
@@ -413,7 +413,7 @@ dump_scores()
  *	means the game is full.
  */
 void
-bad_con()
+bad_con(void)
 {
 	leave(1, "lost connection to huntd");
 }
@@ -423,7 +423,7 @@ bad_con()
  *	version number mismatch.
  */
 void
-bad_ver()
+bad_ver(void)
 {
 	errno = 0;
 	leave(1, "Version number mismatch. No go.");
@@ -528,8 +528,7 @@ leave(int eval, const char *mesg)
  *	initialise game parameters from the HUNT envvar
  */
 static long
-env_init(enter_status)
-	long	enter_status;
+env_init(long enter_status)
 {
 	int	i;
 	char	*envp, *envname, *s;
@@ -641,7 +640,7 @@ env_init(enter_status)
  *	quiz the user for the information they didn't provide earlier
  */
 static void
-fill_in_blanks()
+fill_in_blanks(void)
 {
 	int	i;
 	char	*cp;

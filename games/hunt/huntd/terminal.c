@@ -30,7 +30,7 @@
  *
  * $OpenBSD: terminal.c,v 1.10 2008/06/20 13:08:44 ragge Exp $
  * $NetBSD: terminal.c,v 1.2 1997/10/10 16:34:05 lukem Exp $
- * $DragonFly: src/games/hunt/huntd/terminal.c,v 1.1 2008/09/02 21:50:21 dillon Exp $
+ * $DragonFly: src/games/hunt/huntd/terminal.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 
 #include <stdarg.h>
@@ -50,9 +50,7 @@
  *	terminal.
  */
 void
-cgoto(pp, y, x)
-	PLAYER	*pp;
-	int	y, x;
+cgoto(PLAYER *pp, int y, int x)
 {
 
 	if (pp == ALL_PLAYERS) {
@@ -76,9 +74,7 @@ cgoto(pp, y, x)
  *	Put out a single character.
  */
 void
-outch(pp, ch)
-	PLAYER	*pp;
-	char	ch;
+outch(PLAYER *pp, char ch)
 {
 
 	if (pp == ALL_PLAYERS) {
@@ -148,8 +144,7 @@ outyx(PLAYER *pp, int y, int x, const char *fmt, ...)
  *	Clear the screen, and reset the current position on the screen.
  */
 void
-clrscr(pp)
-	PLAYER	*pp;
+clrscr(PLAYER *pp)
 {
 
 	if (pp == ALL_PLAYERS) {
@@ -170,8 +165,7 @@ clrscr(pp)
  *	Clear to the end of the line
  */
 void
-ce(pp)
-	PLAYER	*pp;
+ce(PLAYER *pp)
 {
 	sendcom(pp, CLRTOEOL);
 }
@@ -217,8 +211,7 @@ sendcom(PLAYER *pp, int command, ...)
  *	Flush the output buffer to the player
  */
 void
-flush(pp)
-	PLAYER	*pp;
+flush(PLAYER *pp)
 {
 	if (pp == ALL_PLAYERS) {
 		for (pp = Player; pp < End_player; pp++)

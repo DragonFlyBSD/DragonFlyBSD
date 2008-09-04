@@ -3,7 +3,7 @@
  * David Leonard <d@openbsd.org>, 1999. Public domain.
  *
  * $OpenBSD: display.c,v 1.4 2002/02/19 19:39:36 millert Exp $
- * $DragonFly: src/games/hunt/hunt/display.c,v 1.1 2008/09/02 21:50:20 dillon Exp $
+ * $DragonFly: src/games/hunt/hunt/display.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 
 #define USE_CURSES
@@ -34,8 +34,7 @@ int	cur_row, cur_col;
  *      Handle stop and start signals
  */
 static void
-tstp(dummy)
-        int dummy;
+tstp(int dummy)
 {
         int     y, x;
 
@@ -65,7 +64,7 @@ tstp(dummy)
  *	open the display
  */
 void
-display_open()
+display_open(void)
 {
 	char *term;
 
@@ -89,7 +88,7 @@ display_open()
  *	beep
  */
 void
-display_beep()
+display_beep(void)
 {
 	(void) putchar('\a');
 }
@@ -99,7 +98,7 @@ display_beep()
  *	sync the display
  */
 void
-display_refresh()
+display_refresh(void)
 {
 	(void) fflush(stdout);
 }
@@ -109,7 +108,7 @@ display_refresh()
  *	clear to end of line, without moving cursor
  */
 void
-display_clear_eol()
+display_clear_eol(void)
 {
         if (CE != NULL)
                 tputs(CE, 1, __cputchar);
@@ -131,8 +130,7 @@ display_clear_eol()
  *	with wraparound
  */
 void
-display_put_ch(ch)
-	char ch;
+display_put_ch(char ch)
 {
         if (!isprint(ch)) {
                 fprintf(stderr, "r,c,ch: %d,%d,%d", cur_row, cur_col, ch);
@@ -165,7 +163,7 @@ display_put_str(const char *s)
  *	clear the screen; move cursor to top left
  */
 void
-display_clear_the_screen()
+display_clear_the_screen(void)
 {
         int     i;
 
@@ -194,8 +192,7 @@ display_clear_the_screen()
  *	move the cursor
  */
 void
-display_move(y, x)
-	int y, x;
+display_move(int y, int x)
 {
 	mvcur(cur_row, cur_col, y, x);
 	cur_row = y;
@@ -207,8 +204,7 @@ display_move(y, x)
  *	locate the cursor
  */
 void
-display_getyx(yp, xp)
-	int *yp, *xp;
+display_getyx(int *yp, int *xp)
 {
 	*xp = cur_col;
 	*yp = cur_row;
@@ -219,7 +215,7 @@ display_getyx(yp, xp)
  *	close the display
  */
 void
-display_end()
+display_end(void)
 {
 	tcsetattr(0, TCSADRAIN, &__orig_termios);
 	_puts(VE);
@@ -231,8 +227,7 @@ display_end()
  *	return a character from the screen
  */
 char
-display_atyx(y, x)
-	int y, x;
+display_atyx(int y, int x)
 {
 	return screen[y][x];
 }
@@ -242,7 +237,7 @@ display_atyx(y, x)
  *	redraw the screen
  */
 void
-display_redraw_screen()
+display_redraw_screen(void)
 {
 	int i;
 
@@ -263,7 +258,7 @@ display_redraw_screen()
 #include "hunt.h"
 
 void
-display_open()
+display_open(void)
 {
         initscr();
         (void) noecho(); 
@@ -271,26 +266,25 @@ display_open()
 }
 
 void
-display_beep()
+display_beep(void)
 {
 	beep();
 }
 
 void
-display_refresh()
+display_refresh(void)
 {
 	refresh();
 }
 
 void
-display_clear_eol()
+display_clear_eol(void)
 {
 	clrtoeol();
 }
 
 void
-display_put_ch(c)
-	char c;
+display_put_ch(char c)
 {
 	addch(c);
 }
@@ -302,7 +296,7 @@ display_put_str(const char *s)
 }
 
 void
-display_clear_the_screen()
+display_clear_the_screen(void)
 {
         clear();
         move(0, 0);
@@ -310,28 +304,25 @@ display_clear_the_screen()
 }
 
 void
-display_move(y, x)
-	int y, x;
+display_move(int y, int x)
 {
 	move(y, x);
 }
 
 void
-display_getyx(yp, xp)
-	int *yp, *xp;
+display_getyx(int *yp, int *xp)
 {
 	getyx(stdscr, *yp, *xp);
 }
 
 void
-display_end()
+display_end(void)
 {
 	endwin();
 }
 
 char
-display_atyx(y, x)
-	int y, x;
+display_atyx(int y, int x)
 {
 	int oy, ox;
 	char c;
@@ -343,22 +334,20 @@ display_atyx(y, x)
 }
 
 void
-display_redraw_screen()
+display_redraw_screen(void)
 {
 	clearok(stdscr, TRUE);
 	touchwin(stdscr);
 }
 
 int
-display_iserasechar(ch)
-	char ch;
+display_iserasechar(char ch)
 {
 	return ch == erasechar();
 }
 
 int
-display_iskillchar(ch)
-	char ch;
+display_iskillchar(char ch)
 {
 	return ch == killchar();
 }

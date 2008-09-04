@@ -30,7 +30,7 @@
  *
  * $OpenBSD: playit.c,v 1.8 2003/06/11 08:45:25 pjanzen Exp $
  * $NetBSD: playit.c,v 1.4 1997/10/20 00:37:15 lukem Exp $
- * $DragonFly: src/games/hunt/hunt/playit.c,v 1.1 2008/09/02 21:50:20 dillon Exp $
+ * $DragonFly: src/games/hunt/hunt/playit.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -74,7 +74,7 @@ static	void		send_stuff(void);
  *	the driver.
  */
 void
-playit()
+playit(void)
 {
 	int		ch;
 	int		y, x;
@@ -187,7 +187,7 @@ out:
  *	no characters in the input buffer.
  */
 static unsigned char
-getchr()
+getchr(void)
 {
 	fd_set	readfds, s_readfds;
 	int	nfds, s_nfds;
@@ -225,7 +225,7 @@ one_more_time:
  *	Send standard input characters to the driver
  */
 static void
-send_stuff()
+send_stuff(void)
 {
 	int		count;
 	char		*sp, *nsp;
@@ -277,8 +277,7 @@ send_stuff()
  *	Handle the end of the game when the player dies
  */
 int
-quit(old_status)
-	int	old_status;
+quit(int old_status)
 {
 	int	explain, ch;
 
@@ -398,7 +397,7 @@ get_message:
  *	Send a message to the driver and return
  */
 void
-do_message()
+do_message(void)
 {
 	u_int32_t	version;
 

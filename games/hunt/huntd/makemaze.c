@@ -30,7 +30,7 @@
  *
  * $OpenBSD: makemaze.c,v 1.6 2003/06/11 08:45:33 pjanzen Exp $
  * $NetBSD: makemaze.c,v 1.2 1997/10/10 16:33:43 lukem Exp $
- * $DragonFly: src/games/hunt/huntd/makemaze.c,v 1.1 2008/09/02 21:50:21 dillon Exp $
+ * $DragonFly: src/games/hunt/huntd/makemaze.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 
 #include <string.h>
@@ -48,7 +48,7 @@ static	void	dig_maze(int, int);
 static	void	remap(void);
 
 void
-makemaze()
+makemaze(void)
 {
 	char	*sp;
 	int	y, x;
@@ -83,8 +83,7 @@ int	incr[NDIR][2] = {
 	};
 
 static void
-dig(y, x)
-	int	y, x;
+dig(int y, int x)
 {
 	int	*dp;
 	int	*ip;
@@ -108,8 +107,7 @@ dig(y, x)
  *	Is it legal to clear this spot?
  */
 static int
-candig(y, x)
-	int	y, x;
+candig(int y, int x)
 {
 	int	i;
 
@@ -139,8 +137,7 @@ candig(y, x)
 }
 
 static void
-dig_maze(x, y)
-	int	x, y;
+dig_maze(int x, int y)
 {
 	int	tx, ty;
 	int	i, j;
@@ -187,7 +184,7 @@ dig_maze(x, y)
 }
 
 static void
-remap()
+remap(void)
 {
 	int	y, x;
 	char	*sp;

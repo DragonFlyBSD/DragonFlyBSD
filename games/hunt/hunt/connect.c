@@ -30,7 +30,7 @@
  *
  * $OpenBSD: connect.c,v 1.6 2003/06/11 08:45:24 pjanzen Exp $
  * $NetBSD: connect.c,v 1.3 1997/10/11 08:13:40 lukem Exp $
- * $DragonFly: src/games/hunt/hunt/connect.c,v 1.1 2008/09/02 21:50:20 dillon Exp $
+ * $DragonFly: src/games/hunt/hunt/connect.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -43,10 +43,7 @@
 #include "client.h"
 
 void
-do_connect(name, team, enter_status)
-	char *		name;
-	u_int8_t	team;
-	u_int32_t	enter_status;
+do_connect(char *name, u_int8_t team, u_int32_t enter_status)
 {
 	u_int32_t	uid;
 	u_int32_t	mode;

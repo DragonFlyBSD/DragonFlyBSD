@@ -5,7 +5,7 @@
  * This software is provided ``as is'' without express or implied warranty.
  *
  * $OpenBSD: list.c,v 1.5 2007/09/04 22:39:31 hshoexer Exp $
- * $DragonFly: src/games/hunt/hunt/list.c,v 1.1 2008/09/02 21:50:20 dillon Exp $
+ * $DragonFly: src/games/hunt/hunt/list.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 
 #include <stdio.h>
@@ -43,15 +43,14 @@ static int probe_sock[64];
 static struct timeval probe_timeout;
 
 struct driver *
-next_driver()
+next_driver(void)
 {
 
 	return next_driver_fd(-1);
 }
 
 struct driver *
-next_driver_fd(fd)
-	int	fd;
+next_driver_fd(int fd)
 {
 	fd_set	r;
 	int	maxfd = -1;
@@ -134,8 +133,7 @@ next_driver_fd(fd)
 
 /* Return the hostname for a driver. */
 const char *
-driver_name(driver)
-	struct driver *driver;
+driver_name(struct driver *driver)
 {
 	const char *name;
 	static char buf[80];
@@ -197,7 +195,7 @@ start_probe(struct sockaddr *addr, u_int16_t req)
 }
 
 void
-probe_cleanup()
+probe_cleanup(void)
 {
 	int i;
 
@@ -211,9 +209,7 @@ probe_cleanup()
  * Otherwise, send the request message only to the preferred host.
  */
 void
-probe_drivers(req, preferred)
-	u_int16_t	req;
-	char 		*preferred;
+probe_drivers(u_int16_t req, char *preferred)
 {
 	struct sockaddr_in *target;
 	struct sockaddr_in localhost;

@@ -2,7 +2,7 @@
  * David Leonard <d@openbsd.org>, 1999. Public domain.
  *
  * $OpenBSD: conf.c,v 1.7 2007/03/20 03:43:50 tedu Exp $
- * $DragonFly: src/games/hunt/huntd/conf.c,v 1.1 2008/09/02 21:50:21 dillon Exp $
+ * $DragonFly: src/games/hunt/huntd/conf.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/types.h>
@@ -277,7 +277,7 @@ load_config(FILE *f, char *fnm)
  * overwrite earlier values
  */
 void
-config()
+config(void)
 {
 	const char *home;
 	char nm[MAXPATHLEN + 1];
@@ -309,8 +309,7 @@ config()
  * Parse a single configuration argument given on the command line
  */
 void
-config_arg(arg)
-	char *arg;
+config_arg(char *arg)
 {
 	int line = 0;
 

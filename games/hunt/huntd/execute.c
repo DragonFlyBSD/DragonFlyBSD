@@ -30,7 +30,7 @@
  *
  * $OpenBSD: execute.c,v 1.8 2004/01/16 00:13:19 espie Exp $
  * $NetBSD: execute.c,v 1.2 1997/10/10 16:33:13 lukem Exp $
- * $DragonFly: src/games/hunt/huntd/execute.c,v 1.1 2008/09/02 21:50:21 dillon Exp $
+ * $DragonFly: src/games/hunt/huntd/execute.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 
 #include <stdlib.h>
@@ -54,8 +54,7 @@ static void	scan(PLAYER *);
  *	Execute a single monitor command
  */
 void
-mon_execute(pp)
-	PLAYER	*pp;
+mon_execute(PLAYER *pp)
 {
 	char	ch;
 
@@ -81,8 +80,7 @@ mon_execute(pp)
  *	Execute a single command from a player
  */
 void
-execute(pp)
-	PLAYER	*pp;
+execute(PLAYER *pp)
 {
 	char	ch;
 
@@ -197,9 +195,7 @@ execute(pp)
  *	Try to move player 'pp' in direction 'dir'.
  */
 static void
-move_player(pp, dir)
-	PLAYER	*pp;
-	int	dir;
+move_player(PLAYER *pp, int dir)
 {
 	PLAYER	*newp;
 	int	x, y;
@@ -343,9 +339,7 @@ move_player(pp, dir)
  *	Change the direction the player is facing
  */
 static void
-face(pp, dir)
-	PLAYER	*pp;
-	int	dir;
+face(PLAYER *pp, int dir)
 {
 	if (pp->p_face != dir) {
 		pp->p_face = dir;
@@ -358,9 +352,7 @@ face(pp, dir)
  *	Fire a shot of the given type in the given direction
  */
 static void
-fire(pp, req_index)
-	PLAYER	*pp;
-	int	req_index;
+fire(PLAYER *pp, int req_index)
 {
 	if (pp == NULL)
 		return;
@@ -404,9 +396,7 @@ fire(pp, req_index)
  *	Fire a slime shot in the given direction
  */
 static void
-fire_slime(pp, req_index)
-	PLAYER	*pp;
-	int	req_index;
+fire_slime(PLAYER *pp, int req_index)
 {
 	if (pp == NULL)
 		return;
@@ -454,14 +444,8 @@ fire_slime(pp, req_index)
  *	Create a shot with the given properties
  */
 void
-add_shot(type, y, x, wface, charge, owner, expl, over)
-	int	type;
-	int	y, x;
-	char	wface;
-	int	charge;
-	PLAYER	*owner;
-	int	expl;
-	char	over;
+add_shot(int type, int y, int x, char wface, int charge, PLAYER *owner,
+    int expl, char over)
 {
 	BULLET	*bp;
 	int	size;
@@ -505,16 +489,8 @@ add_shot(type, y, x, wface, charge, owner, expl, over)
  *	initialize and return it
  */
 BULLET *
-create_shot(type, y, x, wface, charge, size, owner, score, expl, over)
-	int	type;
-	int	y, x;
-	char	wface;
-	int	charge;
-	int	size;
-	PLAYER	*owner;
-	IDENT	*score;
-	int	expl;
-	char	over;
+create_shot(int type, int y, int x, char wface, int charge, int size,
+    PLAYER *owner, IDENT *score, int expl, char over)
 {
 	BULLET	*bp;
 
@@ -546,8 +522,7 @@ create_shot(type, y, x, wface, charge, size, owner, score, expl, over)
  *	Turn on or increase length of a cloak
  */
 static void
-cloak(pp)
-	PLAYER	*pp;
+cloak(PLAYER *pp)
 {
 	/* Check configuration: */
 	if (!conf_cloak)
@@ -585,8 +560,7 @@ cloak(pp)
  *	Turn on or increase length of a scan
  */
 static void
-scan(pp)
-	PLAYER	*pp;
+scan(PLAYER *pp)
 {
 	/* Check configuration: */
 	if (!conf_scan)
@@ -618,11 +592,7 @@ scan(pp)
  *	pick up a mine or grenade, with some probability of it exploding
  */
 static void
-pickup(pp, y, x, prob, obj)
-	PLAYER	*pp;
-	int	y, x;
-	int	prob;
-	int	obj;
+pickup(PLAYER *pp, int y, int x, int prob, int obj)
 {
 	int	req;
 
@@ -654,8 +624,7 @@ pickup(pp, y, x, prob, obj)
 }
 
 void
-ammo_update(pp)
-	PLAYER *pp;
+ammo_update(PLAYER *pp)
 {
 	outyx(pp, STAT_AMMO_ROW, STAT_VALUE_COL - 1, "%4d", pp->p_ammo);
 }

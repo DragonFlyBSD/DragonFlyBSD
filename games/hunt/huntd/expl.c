@@ -30,7 +30,7 @@
  *
  * $OpenBSD: expl.c,v 1.9 2007/09/04 22:39:31 hshoexer Exp $
  * $NetBSD: expl.c,v 1.2 1997/10/10 16:33:18 lukem Exp $
- * $DragonFly: src/games/hunt/huntd/expl.c,v 1.1 2008/09/02 21:50:21 dillon Exp $
+ * $DragonFly: src/games/hunt/huntd/expl.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
  */
 
 #include <stdlib.h>
@@ -49,9 +49,7 @@ static	void	init_removed(void);
  *	Show the explosions as they currently are
  */
 void
-showexpl(y, x, type)
-	int	y, x;
-	char	type;
+showexpl(int y, int x, char type)
 {
 	PLAYER	*pp;
 	EXPL	*ep;
@@ -107,7 +105,7 @@ showexpl(y, x, type)
  *	top
  */
 void
-rollexpl()
+rollexpl(void)
 {
 	EXPL	*ep;
 	PLAYER	*pp;
@@ -140,7 +138,7 @@ rollexpl()
 }
 
 int
-can_rollexpl()
+can_rollexpl(void)
 {
 	int i;
 
@@ -154,7 +152,7 @@ static	REGEN	*removed = NULL;
 static	REGEN	*rem_index = NULL;
 
 static void
-init_removed()
+init_removed(void)
 {
 	rem_index = removed = calloc(conf_maxremove, sizeof(REGEN));
 	if (rem_index == NULL) {
@@ -169,8 +167,7 @@ init_removed()
  *		 the location currently pointed at.
  */
 static void
-remove_wall(y, x)
-	int	y, x;
+remove_wall(int y, int x)
 {
 	REGEN	*r;
 	PLAYER	*pp;
@@ -243,7 +240,7 @@ found:
  *	Clear out the walls array
  */
 void
-clearwalls()
+clearwalls(void)
 {
 	REGEN	*rp;
 
