@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/boot/common/rel_open.c,v 1.1 2008/09/02 17:21:13 dillon Exp $
+ * $DragonFly: src/sys/boot/common/rel_open.c,v 1.2 2008/09/04 17:30:52 swildner Exp $
  */
 
 #include <stand.h>
@@ -47,6 +47,7 @@ chdir(const char *path)
 
 	if (stat(path, &st) == 0 && S_ISDIR(st.st_mode))
 		DirBase = path;
+	return 0;
 }
 
 int
