@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/atacontrol/atacontrol.c,v 1.42 2006/03/15 19:32:43 sos Exp $
- * $DragonFly: src/sbin/natacontrol/natacontrol.c,v 1.2 2007/08/01 22:54:00 swildner Exp $
+ * $DragonFly: src/sbin/natacontrol/natacontrol.c,v 1.3 2008/09/04 21:00:28 swildner Exp $
  */
 
 #include <sys/nata.h>
@@ -95,7 +95,7 @@ str2mode(char *str)
 }
 
 void
-usage()
+usage(void)
 {
 	fprintf(stderr,
 		"usage:  natacontrol <command> args:\n"

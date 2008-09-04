@@ -32,7 +32,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ping.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/ping/ping.c,v 1.111 2007/05/21 14:38:45 cognet Exp $
- * $DragonFly: src/sbin/ping/ping.c,v 1.7 2007/05/29 10:21:41 hasso Exp $
+ * $DragonFly: src/sbin/ping/ping.c,v 1.8 2008/09/04 21:00:28 swildner Exp $
  */
 
 /*
@@ -1000,11 +1000,7 @@ pinger(void)
  * program to be run without having intermingled output (or statistics!).
  */
 static void
-pr_pack(buf, cc, from, tv)
-	char *buf;
-	int cc;
-	struct sockaddr_in *from;
-	struct timeval *tv;
+pr_pack(char *buf, int cc, struct sockaddr_in *from, struct timeval *tv)
 {
 	struct in_addr ina;
 	u_char *cp, *dp;
