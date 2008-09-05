@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.29 2006/10/27 04:56:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.30 2008/09/05 23:27:12 dillon Exp $
  */
 
 /*
@@ -121,8 +121,26 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	 * want to set it on the base directory being mounted to prevent
 	 * that directory from being destroyed out from under the nullfs
 	 * mount. 
+	 *
+	 * The forwarding mount pointer (xmp->nullm_vfs) must be set to
+	 * the actual target filesystem.  If the target filesystem was
+	 * resolved via a nullfs mount nd.nl_nch.mount will be pointing
+	 * to the nullfs mount structure instead of the target filesystem,
+	 * which would otherwise cause the mount VOPS and VFSOPS to recurse
+	 * endlessly.  If we are mounting via a nullfs mount we inherit
+	 * its read-only state, if set.
 	 */
 	xmp->nullm_vfs = nd.nl_nch.mount;
+	if (xmp->nullm_vfs != rootvp->v_mount) {
+		if (xmp->nullm_vfs->mnt_flag & MNT_RDONLY)
+			mp->mnt_flag |= MNT_RDONLY;
+		xmp->nullm_vfs = rootvp->v_mount;
+	}
+
+	/*
+	 * ncmountpt is the parent glue.  When mounting a nullfs via a nullfs
+	 * we retain the parent nullfs to create a unique chain tuple.
+	 */
 	mp->mnt_ncmountpt = nd.nl_nch;
 	cache_changemount(&mp->mnt_ncmountpt, mp);
 	mp->mnt_ncmountpt.ncp->nc_flag |= NCF_ISMOUNTPT;

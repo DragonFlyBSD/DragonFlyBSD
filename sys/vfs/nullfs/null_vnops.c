@@ -38,7 +38,7 @@
  * Ancestors:
  *	@(#)lofs_vnops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vnops.c,v 1.38.2.6 2002/07/31 00:32:28 semenu Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.28 2006/10/27 04:56:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.29 2008/09/05 23:27:12 dillon Exp $
  *	...and...
  *	@(#)null_vnodeops.c 1.20 92/07/07 UCLA Ficus project
  *
@@ -88,7 +88,7 @@
  * passed on operation to their underlying peer.
  *
  * However, with the current implementation nullfs doesn't have any private
- * vnodes, it rather relies on DragonFly's namecache API. That gives a much
+ * vnodes, rather it relies on DragonFly's namecache API. That gives a much
  * more lightweight null layer, as namecache structures are pure data, with
  * no private operations, so there is no need of subtle dispatching routines.
  *
