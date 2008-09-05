@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.40 2008/05/18 05:12:08 sephe Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.41 2008/09/05 17:03:15 dillon Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -291,7 +291,8 @@ tapopen(struct dev_open_args *ap)
 
 	bcopy(tp->arpcom.ac_enaddr, tp->ether_addr, sizeof(tp->ether_addr));
 
-	tp->tap_td = curthread;
+	if (curthread->td_proc)
+		fsetown(curthread->td_proc->p_pid, &tp->tap_sigtd);
 	tp->tap_flags |= TAP_OPEN;
 	taprefcnt ++;
 
@@ -343,10 +344,12 @@ tapclose(struct dev_close_args *ap)
 	rt_ifannouncemsg(ifp, IFAN_DEPARTURE);
 
 	funsetown(tp->tap_sigio);
+	tp->tap_sigio = NULL;
 	selwakeup(&tp->tap_rsel);
 
 	tp->tap_flags &= ~TAP_OPEN;
-	tp->tap_td = NULL;
+	funsetown(tp->tap_sigtd);
+	tp->tap_sigtd = NULL;
 
 	taprefcnt --;
 	if (taprefcnt < 0) {
@@ -434,16 +437,17 @@ tapifioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		case SIOCGIFSTATUS:
 			ifs = (struct ifstat *)data;
 			dummy = strlen(ifs->ascii);
-			if (tp->tap_td != NULL && dummy < sizeof(ifs->ascii)) {
-				if (tp->tap_td->td_proc) {
+			if ((tp->tap_flags & TAP_OPEN) &&
+			    dummy < sizeof(ifs->ascii)) {
+				if (tp->tap_sigtd && tp->tap_sigtd->sio_proc) {
 				    ksnprintf(ifs->ascii + dummy,
 					sizeof(ifs->ascii) - dummy,
 					"\tOpened by pid %d\n",
-					(int)tp->tap_td->td_proc->p_pid);
+					(int)tp->tap_sigtd->sio_proc->p_pid);
 				} else {
 				    ksnprintf(ifs->ascii + dummy,
 					sizeof(ifs->ascii) - dummy,
-					"\tOpened by td %p\n", tp->tap_td);
+					"\tOpened by <unknown>\n");
 				}
 			}
 			break;
