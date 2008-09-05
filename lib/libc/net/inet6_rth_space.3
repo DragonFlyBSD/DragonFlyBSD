@@ -28,9 +28,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/net/inet6_rth_space.3,v 1.10 2005/07/31 03:30:44 keramida Exp $
-.\" $DragonFly: src/lib/libc/net/inet6_rth_space.3,v 1.1 2008/09/04 09:08:21 hasso Exp $
+.\" $DragonFly: src/lib/libc/net/inet6_rth_space.3,v 1.2 2008/09/05 20:43:08 swildner Exp $
 .\"
-.Dd December 24, 2004
+.Dd September 4, 2008
 .Dt INET6_RTH_SPACE 3
 .Os
 .\"
@@ -43,6 +43,8 @@
 .Nm inet6_rth_getaddr
 .Nd IPv6 Routing Header Options manipulation
 .\"
+.Sh LIBRARY
+.Lb libc
 .Sh SYNOPSIS
 .In netinet/in.h
 .Ft socklen_t
@@ -218,7 +220,7 @@ functions return 0 on success, or \-1 upon an error.
 .%A S. Deering
 .%A R. Hinden
 .%T "Internet Protocol, Version 6 (IPv6) Specification"
-.%N RFC2460
+.%N RFC 2460
 .%D December 1998
 .Re
 .Sh HISTORY
