@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcibus.c,v 1.57.2.12 2003/08/07 06:19:26 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.20 2008/08/02 01:14:41 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.21 2008/09/05 10:39:36 hasso Exp $
  *
  */
 
@@ -432,7 +432,7 @@ nexus_legacypci_attach(device_t dev)
 
 #ifdef PCI_MAP_FIXUP
 
-SYSCTL_NODE(_hw, OID_AUTO, pci, CTLFLAG_RD, 0, "pci parameters");
+SYSCTL_DECL(_hw_pci);
 
 static unsigned long legacy_host_mem_start = 0x80000000;
 /* XXX need TUNABLE_ULONG? */

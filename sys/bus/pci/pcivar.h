@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcivar.h,v 1.48 2000/09/28 00:37:32 peter Exp $
- * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.15 2007/11/28 11:35:40 sephe Exp $
+ * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.16 2008/09/05 10:39:36 hasso Exp $
  *
  */
 
@@ -72,6 +72,9 @@ struct pcicfg_expr {
 typedef struct pcicfg {
     struct device *dev;		/* device which owns this */
     void	*hdrspec;	/* pointer to header type specific data */
+
+    uint32_t	bar[PCI_MAXMAPS_0]; /* BARs */
+    uint32_t	bios;		/* BIOS mapping */
 
     u_int16_t	subvendor;	/* card vendor ID */
     u_int16_t	subdevice;	/* card device ID, assigned by card vendor */

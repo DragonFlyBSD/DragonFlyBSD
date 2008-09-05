@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.53 2008/08/02 01:14:40 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.54 2008/09/05 10:39:36 hasso Exp $
  *
  */
 
@@ -42,6 +42,7 @@
 #include <sys/kernel.h>
 #include <sys/queue.h>
 #include <sys/types.h>
+#include <sys/sysctl.h>
 #include <sys/buf.h>
 
 #include <vm/vm.h>
@@ -94,6 +95,16 @@ struct pci_quirk pci_quirks[] = {
 static STAILQ_HEAD(devlist, pci_devinfo) pci_devq;
 u_int32_t pci_numdevs = 0;
 static u_int32_t pci_generation = 0;
+
+SYSCTL_NODE(_hw, OID_AUTO, pci, CTLFLAG_RD, 0, "pci parameters");
+static int pci_do_power_nodriver = 0;
+TUNABLE_INT("hw.pci.do_power_nodriver", &pci_do_power_nodriver);
+SYSCTL_INT(_hw_pci, OID_AUTO, do_power_nodriver, CTLFLAG_RW,
+    &pci_do_power_nodriver, 0,
+  "Place a function into D3 state when no driver attaches to it.  0 means\n\
+disable.  1 means conservatively place devices into D3 state.  2 means\n\
+agressively place devices into D3 state.  3 means put absolutely everything\n\
+in D3 state.");
 
 device_t
 pci_find_bsf(u_int8_t bus, u_int8_t slot, u_int8_t func)
@@ -1684,6 +1695,8 @@ pci_add_child(device_t bus, struct pci_devinfo *dinfo)
 	pcib = device_get_parent(bus);
 	dinfo->cfg.dev = device_add_child(bus, NULL, -1);
 	device_set_ivars(dinfo->cfg.dev, dinfo);
+	pci_cfg_save(dinfo->cfg.dev, dinfo, 0);
+	pci_cfg_restore(dinfo->cfg.dev, dinfo);
 	pci_add_resources(pcib, bus, dinfo->cfg.dev);
 	pci_print_verbose(dinfo);
 }
@@ -1817,6 +1830,7 @@ pci_probe_nomatch(device_t dev, device_t child)
 		kprintf(" irq %d", cfg->intline);
 	}
 	kprintf("\n");
+	pci_cfg_save(child, (struct pci_devinfo *)device_get_ivars(child), 1);
                                       
 	return;
 }
@@ -2252,6 +2266,142 @@ pci_modevent(module_t mod, int what, void *arg)
 	return 0;
 }
 
+void
+pci_cfg_restore(device_t dev, struct pci_devinfo *dinfo)
+{
+	int i;
+
+	/*
+	 * Only do header type 0 devices.  Type 1 devices are bridges,
+	 * which we know need special treatment.  Type 2 devices are
+	 * cardbus bridges which also require special treatment.
+	 * Other types are unknown, and we err on the side of safety
+	 * by ignoring them.
+	 */
+	if (dinfo->cfg.hdrtype != 0)
+		return;
+
+	/*
+	 * Restore the device to full power mode.  We must do this
+	 * before we restore the registers because moving from D3 to
+	 * D0 will cause the chip's BARs and some other registers to
+	 * be reset to some unknown power on reset values.  Cut down
+	 * the noise on boot by doing nothing if we are already in
+	 * state D0.
+	 */
+	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D0) {
+		pci_set_powerstate(dev, PCI_POWERSTATE_D0);
+	}
+	for (i = 0; i < dinfo->cfg.nummaps; i++)
+		pci_write_config(dev, PCIR_BAR(i), dinfo->cfg.bar[i], 4);
+	pci_write_config(dev, PCIR_BIOS, dinfo->cfg.bios, 4);
+	pci_write_config(dev, PCIR_COMMAND, dinfo->cfg.cmdreg, 2);
+	pci_write_config(dev, PCIR_INTLINE, dinfo->cfg.intline, 1);
+	pci_write_config(dev, PCIR_INTPIN, dinfo->cfg.intpin, 1);
+	pci_write_config(dev, PCIR_MINGNT, dinfo->cfg.mingnt, 1);
+	pci_write_config(dev, PCIR_MAXLAT, dinfo->cfg.maxlat, 1);
+	pci_write_config(dev, PCIR_CACHELNSZ, dinfo->cfg.cachelnsz, 1);
+	pci_write_config(dev, PCIR_LATTIMER, dinfo->cfg.lattimer, 1);
+	pci_write_config(dev, PCIR_PROGIF, dinfo->cfg.progif, 1);
+	pci_write_config(dev, PCIR_REVID, dinfo->cfg.revid, 1);
+#if 0
+	/* Restore MSI and MSI-X configurations if they are present. */
+	if (dinfo->cfg.msi.msi_location != 0)
+		pci_resume_msi(dev);
+	if (dinfo->cfg.msix.msix_location != 0)
+		pci_resume_msix(dev);
+#endif
+}
+
+void
+pci_cfg_save(device_t dev, struct pci_devinfo *dinfo, int setstate)
+{
+	int i;
+	uint32_t cls;
+	int ps;
+
+	/*
+	 * Only do header type 0 devices.  Type 1 devices are bridges, which
+	 * we know need special treatment.  Type 2 devices are cardbus bridges
+	 * which also require special treatment.  Other types are unknown, and
+	 * we err on the side of safety by ignoring them.  Powering down
+	 * bridges should not be undertaken lightly.
+	 */
+	if (dinfo->cfg.hdrtype != 0)
+		return;
+	for (i = 0; i < dinfo->cfg.nummaps; i++)
+		dinfo->cfg.bar[i] = pci_read_config(dev, PCIR_BAR(i), 4);
+	dinfo->cfg.bios = pci_read_config(dev, PCIR_BIOS, 4);
+
+	/*
+	 * Some drivers apparently write to these registers w/o updating our
+	 * cached copy.  No harm happens if we update the copy, so do so here
+	 * so we can restore them.  The COMMAND register is modified by the
+	 * bus w/o updating the cache.  This should represent the normally
+	 * writable portion of the 'defined' part of type 0 headers.  In
+	 * theory we also need to save/restore the PCI capability structures
+	 * we know about, but apart from power we don't know any that are
+	 * writable.
+	 */
+	dinfo->cfg.subvendor = pci_read_config(dev, PCIR_SUBVEND_0, 2);
+	dinfo->cfg.subdevice = pci_read_config(dev, PCIR_SUBDEV_0, 2);
+	dinfo->cfg.vendor = pci_read_config(dev, PCIR_VENDOR, 2);
+	dinfo->cfg.device = pci_read_config(dev, PCIR_DEVICE, 2);
+	dinfo->cfg.cmdreg = pci_read_config(dev, PCIR_COMMAND, 2);
+	dinfo->cfg.intline = pci_read_config(dev, PCIR_INTLINE, 1);
+	dinfo->cfg.intpin = pci_read_config(dev, PCIR_INTPIN, 1);
+	dinfo->cfg.mingnt = pci_read_config(dev, PCIR_MINGNT, 1);
+	dinfo->cfg.maxlat = pci_read_config(dev, PCIR_MAXLAT, 1);
+	dinfo->cfg.cachelnsz = pci_read_config(dev, PCIR_CACHELNSZ, 1);
+	dinfo->cfg.lattimer = pci_read_config(dev, PCIR_LATTIMER, 1);
+	dinfo->cfg.baseclass = pci_read_config(dev, PCIR_CLASS, 1);
+	dinfo->cfg.subclass = pci_read_config(dev, PCIR_SUBCLASS, 1);
+	dinfo->cfg.progif = pci_read_config(dev, PCIR_PROGIF, 1);
+	dinfo->cfg.revid = pci_read_config(dev, PCIR_REVID, 1);
+
+	/*
+	 * don't set the state for display devices, base peripherals and
+	 * memory devices since bad things happen when they are powered down.
+	 * We should (a) have drivers that can easily detach and (b) use
+	 * generic drivers for these devices so that some device actually
+	 * attaches.  We need to make sure that when we implement (a) we don't
+	 * power the device down on a reattach.
+	 */
+	cls = pci_get_class(dev);
+	if (!setstate)
+		return;
+
+	switch (pci_do_power_nodriver)
+	{
+		case 0:		/* NO powerdown at all */
+			return;
+		case 1:		/* Conservative about what to power down */
+			if (cls == PCIC_STORAGE)
+				return;
+			/*FALLTHROUGH*/
+		case 2:		/* Agressive about what to power down */
+			if (cls == PCIC_DISPLAY || cls == PCIC_MEMORY ||
+			    cls == PCIC_BASEPERIPH)
+				return;
+			/*FALLTHROUGH*/
+		case 3:		/* Power down everything */
+			break;
+	}
+
+	if (cls == PCIC_STORAGE)
+		return;
+
+	/*
+	 * PCI spec says we can only go into D3 state from D0 state.
+	 * Transition from D[12] into D0 before going to D3 state.
+	 */
+	ps = pci_get_powerstate(dev);
+	if (ps != PCI_POWERSTATE_D0 && ps != PCI_POWERSTATE_D3)
+		pci_set_powerstate(dev, PCI_POWERSTATE_D0);
+	if (pci_get_powerstate(dev) != PCI_POWERSTATE_D3)
+		pci_set_powerstate(dev, PCI_POWERSTATE_D3);
+}
+
 int
 pci_resume(device_t dev)
 {
@@ -2283,6 +2433,35 @@ pci_resume(device_t dev)
         return (bus_generic_resume(dev));
 }
 
+void
+pci_driver_added(device_t dev, driver_t *driver)
+{
+	int numdevs;
+	device_t *devlist;
+	device_t child;
+	struct pci_devinfo *dinfo;
+	int i;
+
+	if (bootverbose)
+		device_printf(dev, "driver added\n");
+	DEVICE_IDENTIFY(driver, dev);
+	device_get_children(dev, &devlist, &numdevs);
+	for (i = 0; i < numdevs; i++) {
+		child = devlist[i];
+		if (device_get_state(child) != DS_NOTPRESENT)
+			continue;
+		dinfo = device_get_ivars(child);
+		pci_print_verbose(dinfo);
+		if (bootverbose)
+			kprintf("pci%d:%d:%d: reprobing on driver added\n",
+			    dinfo->cfg.bus, dinfo->cfg.slot, dinfo->cfg.func);
+		pci_cfg_restore(child, dinfo);
+		if (device_probe_and_attach(child) != 0)
+			pci_cfg_save(child, dinfo, 1);
+	}
+	kfree(devlist, M_TEMP);
+}
+
 static device_method_t pci_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		pci_probe),
@@ -2296,7 +2475,7 @@ static device_method_t pci_methods[] = {
 	DEVMETHOD(bus_probe_nomatch,	pci_probe_nomatch),
 	DEVMETHOD(bus_read_ivar,	pci_read_ivar),
 	DEVMETHOD(bus_write_ivar,	pci_write_ivar),
-	DEVMETHOD(bus_driver_added,	bus_generic_driver_added),
+	DEVMETHOD(bus_driver_added,	pci_driver_added),
 	DEVMETHOD(bus_setup_intr,	bus_generic_setup_intr),
 	DEVMETHOD(bus_teardown_intr,	bus_generic_teardown_intr),
 

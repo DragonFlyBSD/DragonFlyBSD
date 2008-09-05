@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/bus/pci/pci_private.h,v 1.5 2005/02/04 02:52:15 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci_private.h,v 1.6 2008/09/05 10:39:36 hasso Exp $
  *
  */
 
@@ -47,6 +47,7 @@ void	pci_print_verbose(struct pci_devinfo *);
 void	pci_probe_nomatch(device_t dev, device_t child);
 void	pci_add_children(device_t dev, int busno, size_t dinfo_size);
 void	pci_add_child(device_t bus, struct pci_devinfo *dinfo);
+void	pci_driver_added(device_t dev, driver_t *driver);
 int	pci_freecfg(struct pci_devinfo *);
 int	pci_read_ivar(device_t, device_t, int, uintptr_t *);
 int	pci_write_ivar(device_t, device_t, int, uintptr_t);
@@ -65,4 +66,15 @@ int	pci_child_pnpinfo_str_method(device_t cbdev, device_t child,
 int	pci_child_location_str_method(device_t cbdev, device_t child,
 				    char *buf, size_t buflen);
 
+/** Restore the config register state.  The state must be previously
+ * saved with pci_cfg_save.  However, the pci bus driver takes care of
+ * that.  This function will also return the device to PCI_POWERSTATE_D0
+ * if it is currently in a lower power mode.
+ */
+void	pci_cfg_restore(device_t, struct pci_devinfo *);
+
+/** Save the config register state.  Optionally set the power state to D3
+ * if the third argument is non-zero.
+ */
+void	pci_cfg_save(device_t, struct pci_devinfo *, int);
 
