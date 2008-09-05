@@ -32,7 +32,7 @@
  *
  * @(#)utils.c	8.3 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/cp/utils.c,v 1.45 2005/02/09 17:37:37 ru Exp $
- * $DragonFly: src/bin/cp/utils.c,v 1.11 2007/06/15 07:02:51 corecode Exp $
+ * $DragonFly: src/bin/cp/utils.c,v 1.12 2008/09/05 03:16:55 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -320,7 +320,7 @@ setfile(struct stat *fs, int fd)
 	if (!gotstat || fs->st_flags != ts.st_flags)
 		if (fdval ?
 		    fchflags(fd, fs->st_flags) :
-		    (islink ? (errno = ENOSYS) :
+		    (islink ? (errno = 0) :
 		    chflags(to.p_path, fs->st_flags))) {
 			warn("chflags: %s", to.p_path);
 			rval = 1;
