@@ -23,7 +23,7 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $DragonFly: src/sys/dev/acpica5/acpi_if.m,v 1.1 2008/08/27 16:35:19 hasso Exp $
+# $DragonFly: src/sys/dev/acpica5/acpi_if.m,v 1.2 2008/09/05 10:28:35 hasso Exp $
 #
 
 #include <sys/bus.h>
@@ -60,6 +60,19 @@ METHOD char * id_probe {
 	device_t	dev;
 	char		**ids;
 } DEFAULT acpi_generic_id_probe;
+
+#
+# Query a given driver for its supported feature(s).  This should be
+# called by the parent bus before the driver is probed.
+#
+# driver_t *driver:  child driver
+#
+# u_int *features:  returned bitmask of all supported features
+#
+STATICMETHOD int get_features {
+	driver_t	*driver;
+	u_int		*features;
+};
 
 #
 # Read embedded controller (EC) address space

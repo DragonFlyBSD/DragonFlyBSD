@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.160 2004/06/14 03:52:19 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.35 2008/08/27 16:35:19 hasso Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.36 2008/09/05 10:28:35 hasso Exp $
  */
 
 #include "opt_acpi.h"
@@ -1010,7 +1010,8 @@ acpi_release_resource(device_t bus, device_t child, int type, int rid,
 
 /* Allocate an IO port or memory resource, given its GAS. */
 struct resource *
-acpi_bus_alloc_gas(device_t dev, int *rid, ACPI_GENERIC_ADDRESS *gas)
+acpi_bus_alloc_gas(device_t dev, int *rid, ACPI_GENERIC_ADDRESS *gas,
+    u_int flags)
 {
     int type;
 
@@ -1029,7 +1030,7 @@ acpi_bus_alloc_gas(device_t dev, int *rid, ACPI_GENERIC_ADDRESS *gas)
     }
 
     bus_set_resource(dev, type, *rid, gas->Address, gas->BitWidth / 8);
-    return (bus_alloc_resource_any(dev, type, rid, RF_ACTIVE));
+    return (bus_alloc_resource_any(dev, type, rid, RF_ACTIVE | flags));
 }
 
 /*

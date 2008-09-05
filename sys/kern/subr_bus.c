@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.42 2008/09/02 17:48:26 hasso Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.43 2008/09/05 10:28:35 hasso Exp $
  */
 
 #include "opt_bus.h"
@@ -355,6 +355,47 @@ devclass_get_devices(devclass_t dc, device_t **devlistp, int *devcountp)
 	*devcountp = count;
 
 	return(0);
+}
+
+/**
+ * @brief Get a list of drivers in the devclass
+ *
+ * An array containing a list of pointers to all the drivers in the
+ * given devclass is allocated and returned in @p *listp.  The number
+ * of drivers in the array is returned in @p *countp. The caller should
+ * free the array using @c free(p, M_TEMP).
+ *
+ * @param dc            the devclass to examine
+ * @param listp         gives location for array pointer return value
+ * @param countp        gives location for number of array elements
+ *                      return value
+ *
+ * @retval 0            success
+ * @retval ENOMEM       the array allocation failed
+ */
+int
+devclass_get_drivers(devclass_t dc, driver_t ***listp, int *countp)
+{
+        driverlink_t dl;
+        driver_t **list;
+        int count;
+
+        count = 0;
+        TAILQ_FOREACH(dl, &dc->drivers, link)
+                count++;
+        list = kmalloc(count * sizeof(driver_t *), M_TEMP, M_NOWAIT);
+        if (list == NULL)
+                return (ENOMEM);
+
+        count = 0;
+        TAILQ_FOREACH(dl, &dc->drivers, link) {
+                list[count] = dl->driver;
+                count++;
+        }
+        *listp = list;
+        *countp = count;
+
+        return (0);
 }
 
 int

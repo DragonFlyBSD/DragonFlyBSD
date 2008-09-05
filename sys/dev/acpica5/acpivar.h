@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpivar.h,v 1.71 2004/06/13 22:52:30 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.14 2008/08/28 16:46:54 hasso Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.15 2008/09/05 10:28:35 hasso Exp $
  */
 
 #include "acpi_if.h"
@@ -148,6 +148,20 @@ struct acpi_prw_data {
 #define	ACPI_INTR_SAPIC		2
 
 /*
+ * Various features and capabilities for the acpi_get_features() method.
+ * In particular, these are used for the ACPI 3.0 _PDC and _OSC methods.
+ */
+#define ACPI_CAP_PERF_MSRS	(1 << 0) /* Intel SpeedStep PERF_CTL MSRs */
+#define ACPI_CAP_C1_IO_HALT	(1 << 1) /* Intel C1 "IO then halt" sequence */
+#define ACPI_CAP_THR_MSRS	(1 << 2) /* Intel OnDemand throttling MSRs */
+#define ACPI_CAP_SMP_SAME	(1 << 3) /* MP C1, Px, and Tx (all the same) */
+#define ACPI_CAP_SMP_SAME_C3	(1 << 4) /* MP C2 and C3 (all the same) */
+#define ACPI_CAP_SMP_DIFF_PX	(1 << 5) /* MP Px (different, using _PSD) */
+#define ACPI_CAP_SMP_DIFF_CX	(1 << 6) /* MP Cx (different, using _CSD) */
+#define ACPI_CAP_SMP_DIFF_TX	(1 << 7) /* MP Tx (different, using _TSD) */
+#define ACPI_CAP_SMP_C1_NATIVE	(1 << 8) /* MP C1 support other than halt */
+
+/*
  * Note that the low ivar values are reserved to provide
  * interface compatibility with ISA drivers which can also
  * attach to ACPI.
@@ -252,7 +266,7 @@ ACPI_STATUS	acpi_Disable(struct acpi_softc *sc);
 void		acpi_UserNotify(const char *subsystem, ACPI_HANDLE h,
 		    uint8_t notify);
 struct resource *acpi_bus_alloc_gas(device_t dev, int *rid,
-		    ACPI_GENERIC_ADDRESS *gas);
+		    ACPI_GENERIC_ADDRESS *gas, u_int flags);
 
 struct acpi_parse_resource_set {
     void	(*set_init)(device_t dev, void *arg, void **context);
@@ -354,7 +368,7 @@ int		acpi_PkgInt(ACPI_OBJECT *res, int idx, ACPI_INTEGER *dst);
 int		acpi_PkgInt32(ACPI_OBJECT *res, int idx, uint32_t *dst);
 int		acpi_PkgStr(ACPI_OBJECT *res, int idx, void *dst, size_t size);
 int		acpi_PkgGas(device_t dev, ACPI_OBJECT *res, int idx, int *rid,
-			    struct resource **dst);
+			    struct resource **dst, u_int flags);
 ACPI_HANDLE	acpi_GetReference(ACPI_HANDLE scope, ACPI_OBJECT *obj);
 
 /* ACPI task kernel thread initialization. */

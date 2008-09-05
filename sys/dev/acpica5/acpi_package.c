@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_package.c,v 1.3 2004/04/09 06:40:03 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_package.c,v 1.3 2006/10/25 20:55:52 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_package.c,v 1.4 2008/09/05 10:28:35 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -101,7 +101,7 @@ acpi_PkgStr(ACPI_OBJECT *res, int idx, void *dst, size_t size)
 
 int
 acpi_PkgGas(device_t dev, ACPI_OBJECT *res, int idx, int *rid,
-	struct resource **dst)
+	struct resource **dst, u_int flags)
 {
     ACPI_GENERIC_ADDRESS gas;
     ACPI_OBJECT		*obj;
@@ -114,7 +114,7 @@ acpi_PkgGas(device_t dev, ACPI_OBJECT *res, int idx, int *rid,
     }
 
     memcpy(&gas, obj->Buffer.Pointer + 3, sizeof(gas));
-    *dst = acpi_bus_alloc_gas(dev, rid, &gas);
+    *dst = acpi_bus_alloc_gas(dev, rid, &gas, flags);
     if (*dst == NULL)
 	return (ENXIO);
 
