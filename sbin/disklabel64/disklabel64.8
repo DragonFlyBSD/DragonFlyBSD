@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel64/disklabel64.8,v 1.11 2008/08/22 21:00:01 swildner Exp $
+.\" $DragonFly: src/sbin/disklabel64/disklabel64.8,v 1.12 2008/09/06 10:18:21 thomas Exp $
 .\"
 .Dd August 21, 2008
 .Dt DISKLABEL64 8
@@ -938,15 +938,6 @@ partition.
 .Xr newfs_hammer 8 ,
 .Xr vinum 8
 .Sh BUGS
-Installing a
-.Xr disklabel 8
-label on a slice with a
-.Nm
-label installed requires reboot. First the existing label
-has to be overwritten, eg. by
-.Xr dd 1 ,
-see above, then a reboot is required before the new label can be installed.
-.Pp
 .\" For the i386 architecture, the primary bootstrap sector contains
 .\" an embedded
 .\" .Em fdisk
