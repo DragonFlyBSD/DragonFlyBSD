@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.9 2004/02/08 08:40:24 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.23 2008/09/06 05:36:05 sephe Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.24 2008/09/06 05:46:47 sephe Exp $
  */
 
 /*
@@ -140,16 +140,10 @@ loopattach(void *dummy)
 }
 
 int
-looutput(
-	struct ifnet *ifp,
-	struct mbuf *m,
-	struct sockaddr *dst,
-	struct rtentry *rt)
+looutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+	 struct rtentry *rt)
 {
-	int csum_flags = 0;
-
-	if ((m->m_flags & M_PKTHDR) == 0)
-		panic("looutput no HDR");
+	M_ASSERTPKTHDR(m);
 
 	if (rt && rt->rt_flags & (RTF_REJECT|RTF_BLACKHOLE)) {
 		m_freem(m);
@@ -175,6 +169,8 @@ looutput(
 #endif
 
 	if (ifp->if_capenable & IFCAP_RXCSUM) {
+		int csum_flags = 0;
+
 		if (m->m_pkthdr.csum_flags & CSUM_IP)
 			csum_flags |= (CSUM_IP_CHECKED | CSUM_IP_VALID);
 		if (m->m_pkthdr.csum_flags & CSUM_DELAY_DATA)
