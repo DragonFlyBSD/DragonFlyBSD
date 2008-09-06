@@ -13,7 +13,7 @@
 # WARNING: HAMMER filesystems (and pseudo-filesystems) must be
 # occassionally pruned and reblocked.  'man hammer' for more information.
 #
-# $DragonFly: src/share/examples/rconfig/hammer.sh,v 1.2 2008/09/06 01:36:24 dillon Exp $
+# $DragonFly: src/share/examples/rconfig/hammer.sh,v 1.3 2008/09/06 02:25:43 dillon Exp $
 
 set disk = "ad6"
 
@@ -29,6 +29,7 @@ endif
 echo "This program formats disk ${disk}!  Hit ^C now or its gone."
 foreach i ( 10 9 8 7 6 5 4 3 2 1 )
     echo -n " $i"
+    sleep 1
 end
 echo ""
 exit 1
