@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.54 2008/09/05 10:39:36 hasso Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.55 2008/09/06 21:18:39 hasso Exp $
  *
  */
 
@@ -642,43 +642,74 @@ pci_set_powerstate_method(device_t dev, device_t child, int state)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(child);
 	pcicfgregs *cfg = &dinfo->cfg;
-	struct pcicfg_pmgt *pmgt = &cfg->pmgt;
-	u_int16_t status;
-	int result;
+	uint16_t status;
+	int result, oldstate, highest, delay;
 
-	if (pmgt->pp_cap != 0) {
-		status = PCI_READ_CONFIG(dev, child, pmgt->pp_status, 2) & ~PCIM_PSTAT_DMASK;
-		result = 0;
-		switch (state) {
-		case PCI_POWERSTATE_D0:
-			status |= PCIM_PSTAT_D0;
-			break;
-		case PCI_POWERSTATE_D1:
-			if (pmgt->pp_cap & PCIM_PCAP_D1SUPP) {
-				status |= PCIM_PSTAT_D1;
-			} else {
-				result = EOPNOTSUPP;
-			}
-			break;
-		case PCI_POWERSTATE_D2:
-			if (pmgt->pp_cap & PCIM_PCAP_D2SUPP) {
-				status |= PCIM_PSTAT_D2;
-			} else {
-				result = EOPNOTSUPP;
-			}
-			break;
-		case PCI_POWERSTATE_D3:
-			status |= PCIM_PSTAT_D3;
-			break;
-		default:
-			result = EINVAL;
-		}
-		if (result == 0)
-			PCI_WRITE_CONFIG(dev, child, pmgt->pp_status, status, 2);
-	} else {
-		result = ENXIO;
+	if (cfg->pmgt.pp_cap == 0)
+		return (EOPNOTSUPP);
+
+	/*
+	 * Optimize a no state change request away.  While it would be OK to
+	 * write to the hardware in theory, some devices have shown odd
+	 * behavior when going from D3 -> D3.
+	 */
+	oldstate = pci_get_powerstate(child);
+	if (oldstate == state)
+		return (0);
+
+	/*
+	 * The PCI power management specification states that after a state
+	 * transition between PCI power states, system software must
+	 * guarantee a minimal delay before the function accesses the device.
+	 * Compute the worst case delay that we need to guarantee before we
+	 * access the device.  Many devices will be responsive much more
+	 * quickly than this delay, but there are some that don't respond
+	 * instantly to state changes.  Transitions to/from D3 state require
+	 * 10ms, while D2 requires 200us, and D0/1 require none.  The delay
+	 * is done below with DELAY rather than a sleeper function because
+	 * this function can be called from contexts where we cannot sleep.
+	 */
+	highest = (oldstate > state) ? oldstate : state;
+	if (highest == PCI_POWERSTATE_D3)
+	    delay = 10000;
+	else if (highest == PCI_POWERSTATE_D2)
+	    delay = 200;
+	else
+	    delay = 0;
+	status = PCI_READ_CONFIG(dev, child, cfg->pmgt.pp_status, 2)
+	    & ~PCIM_PSTAT_DMASK;
+	result = 0;
+	switch (state) {
+	case PCI_POWERSTATE_D0:
+		status |= PCIM_PSTAT_D0;
+		break;
+	case PCI_POWERSTATE_D1:
+		if ((cfg->pmgt.pp_cap & PCIM_PCAP_D1SUPP) == 0)
+			return (EOPNOTSUPP);
+		status |= PCIM_PSTAT_D1;
+		break;
+	case PCI_POWERSTATE_D2:
+		if ((cfg->pmgt.pp_cap & PCIM_PCAP_D2SUPP) == 0)
+			return (EOPNOTSUPP);
+		status |= PCIM_PSTAT_D2;
+		break;
+	case PCI_POWERSTATE_D3:
+		status |= PCIM_PSTAT_D3;
+		break;
+	default:
+		return (EINVAL);
 	}
-	return(result);
+
+	if (bootverbose)
+		kprintf(
+		    "pci%d:%d:%d: Transition from D%d to D%d\n",
+		    dinfo->cfg.bus, dinfo->cfg.slot, dinfo->cfg.func,
+		    oldstate, state);
+
+	PCI_WRITE_CONFIG(dev, child, cfg->pmgt.pp_status, status, 2);
+	if (delay)
+		DELAY(delay);
+	return (0);
 }
 
 int
@@ -686,12 +717,11 @@ pci_get_powerstate_method(device_t dev, device_t child)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(child);
 	pcicfgregs *cfg = &dinfo->cfg;
-	struct pcicfg_pmgt *pmgt = &cfg->pmgt;
-	u_int16_t status;
+	uint16_t status;
 	int result;
 
-	if (pmgt->pp_cap != 0) {
-		status = PCI_READ_CONFIG(dev, child, pmgt->pp_status, 2);
+	if (cfg->pmgt.pp_cap != 0) {
+		status = PCI_READ_CONFIG(dev, child, cfg->pmgt.pp_status, 2);
 		switch (status & PCIM_PSTAT_DMASK) {
 		case PCIM_PSTAT_D0:
 			result = PCI_POWERSTATE_D0;
@@ -713,7 +743,7 @@ pci_get_powerstate_method(device_t dev, device_t child)
 		/* No support, device is always at D0 */
 		result = PCI_POWERSTATE_D0;
 	}
-	return(result);
+	return (result);
 }
 
 /*
