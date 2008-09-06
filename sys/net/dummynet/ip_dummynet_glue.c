@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/net/dummynet/ip_dummynet_glue.c,v 1.9 2008/08/23 08:26:04 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet_glue.c,v 1.10 2008/09/06 14:07:30 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -317,15 +317,9 @@ ip_dn_ip_output(struct netmsg *nmsg)
 		return;
 	}
 
-	ip_output(pkt->dn_m, NULL, NULL, 0, NULL, NULL);
+	ip_output(pkt->dn_m, NULL, NULL, pkt->flags, NULL, NULL);
+	/* 'rt' will be freed in ip_output */
 
-	if (rt != NULL) {
-		if (rt->rt_refcnt <= 0) {	/* XXX assert? */
-			kprintf("-- warning, refcnt now %ld, decreasing\n",
-				rt->rt_refcnt);
-		}
-		RTFREE(rt);
-	}
 	if (unref_priv)
 		unref_priv(priv);
 }

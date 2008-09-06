@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.53 2008/08/28 14:24:59 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.54 2008/09/06 14:07:30 sephe Exp $
  */
 
 #define _IP_VHL
@@ -141,7 +141,7 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	int isbroadcast, sw_csum;
 	struct in_addr pkt_dst;
 	struct route iproute;
-	struct m_tag *dn_mtag = NULL, *mtag;
+	struct m_tag *mtag;
 #ifdef IPSEC
 	struct secpolicy *sp = NULL;
 	struct socket *so = inp ? inp->inp_socket : NULL;
@@ -150,15 +150,16 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	struct secpolicy *sp = NULL;
 	struct tdb_ident *tdbi;
 #endif /* FAST_IPSEC */
-	struct ip_fw_args args;
 	struct sockaddr_in *next_hop = NULL;
 	int src_was_INADDR_ANY = 0;	/* as the name says... */
 
-	args.eh = NULL;
-	args.rule = NULL;
-
 	m = m0;
 	M_ASSERTPKTHDR(m);
+
+	if (ro == NULL) {
+		ro = &iproute;
+		bzero(ro, sizeof *ro);
+	}
 
 	if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
 		/* Next hop */
@@ -171,41 +172,26 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 		struct dn_pkt *dn_pkt;
 
 		/* Extract info from dummynet tag */
-		dn_mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
-		KKASSERT(dn_mtag != NULL);
-		dn_pkt = m_tag_data(dn_mtag);
+		mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
+		KKASSERT(mtag != NULL);
+		dn_pkt = m_tag_data(mtag);
 
 		/*
 		 * The packet was already tagged, so part of the
 		 * processing was already done, and we need to go down.
-		 * Get parameters from the tag.
+		 * Get the calculated parameters from the tag.
 		 */
-		args.rule = dn_pkt->dn_priv;
-		KKASSERT(args.rule != NULL);
-		opt = NULL;
-		ro = &dn_pkt->ro;
-		imo = NULL;
-		dst = dn_pkt->dn_dst;
 		ifp = dn_pkt->ifp;
-		flags = dn_pkt->flags;
 
-		/*
-		 * Don't delete the dummynet tag here, just unlink it,
-		 * since some local variables (like 'ro' and 'dst') are
-		 * still referencing certain parts of it.
-		 * The dummynet tag will be freed at the end of the
-		 * output process.
-		 */
-		m_tag_unlink(m, dn_mtag);
-		m->m_pkthdr.fw_flags &= ~DUMMYNET_MBUF_TAGGED;
-	}
+		KKASSERT(ro == &iproute);
+		*ro = dn_pkt->ro; /* structure copy */
 
-	if (ro == NULL) {
-		ro = &iproute;
-		bzero(ro, sizeof *ro);
-	}
+		dst = dn_pkt->dn_dst;
+		if (dst == (struct sockaddr_in *)&(dn_pkt->ro.ro_dst)) {
+			/* If 'dst' points into dummynet tag, adjust it */
+			dst = (struct sockaddr_in *)&(ro->ro_dst);
+		}
 
-	if (args.rule != NULL) {	/* dummynet already saw us */
 		ip = mtod(m, struct ip *);
 		hlen = IP_VHL_HL(ip->ip_vhl) << 2 ;
 		if (ro->ro_rt)
@@ -734,7 +720,22 @@ spd_done:
 	 */
 	if (fw_enable && IPFW_LOADED && !next_hop) {
 		struct sockaddr_in *old = dst;
+		struct ip_fw_args args;
 
+		if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
+			/* Extract info from dummynet tag */
+			mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
+			KKASSERT(mtag != NULL);
+			args.rule = ((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
+			KKASSERT(args.rule != NULL);
+
+			m_tag_delete(m, mtag);
+			m->m_pkthdr.fw_flags &= ~DUMMYNET_MBUF_TAGGED;
+		} else {
+			args.rule = NULL;
+		}
+
+		args.eh = NULL;
 		args.m = m;
 		args.oif = ifp;
 		off = ip_fw_chk_ptr(&args);
@@ -1103,9 +1104,6 @@ done:
 	if (sp != NULL)
 		KEY_FREESP(&sp);
 #endif
-	if (dn_mtag != NULL)
-		m_tag_free(dn_mtag);
-
 	return (error);
 bad:
 	m_freem(m);
