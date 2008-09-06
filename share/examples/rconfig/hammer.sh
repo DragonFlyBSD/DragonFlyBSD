@@ -13,7 +13,7 @@
 # WARNING: HAMMER filesystems (and pseudo-filesystems) must be
 # occassionally pruned and reblocked.  'man hammer' for more information.
 #
-# $DragonFly: src/share/examples/rconfig/hammer.sh,v 1.1 2008/09/03 02:22:25 dillon Exp $
+# $DragonFly: src/share/examples/rconfig/hammer.sh,v 1.2 2008/09/06 01:36:24 dillon Exp $
 
 set disk = "ad6"
 
@@ -58,7 +58,7 @@ disklabel -r -w ${disk}s1 auto
 disklabel -B ${disk}s1
 disklabel ${disk}s1 > /tmp/label
 cat >> /tmp/label << EOF
-  a: 128m 32 4.2BSD
+  a: 256m 32 4.2BSD
   b: 2g * swap
   d: 123456 * HAMMER
 EOF
