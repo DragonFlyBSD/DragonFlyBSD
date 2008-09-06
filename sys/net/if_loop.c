@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.9 2004/02/08 08:40:24 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.24 2008/09/06 05:46:47 sephe Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.25 2008/09/06 06:09:42 sephe Exp $
  */
 
 /*
@@ -88,17 +88,15 @@
 #include <netproto/atalk/at_var.h>
 #endif
 
-int loioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
-static void lortrequest (int, struct rtentry *, struct rt_addrinfo *);
-
-static void loopattach (void *);
+static void	loopattach(void *);
+static int	looutput(struct ifnet *, struct mbuf *, struct sockaddr *,
+			 struct rtentry *);
+static int	loioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
+static void	lortrequest(int, struct rtentry *, struct rt_addrinfo *);
 #ifdef ALTQ
-static void lo_altqstart(struct ifnet *);
+static void	lo_altqstart(struct ifnet *);
 #endif
 PSEUDO_SET(loopattach, if_loop);
-
-int looutput (struct ifnet *ifp,
-		struct mbuf *m, struct sockaddr *dst, struct rtentry *rt);
 
 #ifdef TINY_LOMTU
 #define	LOMTU	(1024+512)
@@ -139,7 +137,7 @@ loopattach(void *dummy)
 	}
 }
 
-int
+static int
 looutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	 struct rtentry *rt)
 {
@@ -385,7 +383,7 @@ lortrequest(int cmd, struct rtentry *rt, struct rt_addrinfo *info)
  * Process an ioctl request.
  */
 /* ARGSUSED */
-int
+static int
 loioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct ifaddr *ifa;
