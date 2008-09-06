@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.54 2008/09/06 14:07:30 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.55 2008/09/06 14:12:50 sephe Exp $
  */
 
 #define _IP_VHL
@@ -726,7 +726,8 @@ spd_done:
 			/* Extract info from dummynet tag */
 			mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
 			KKASSERT(mtag != NULL);
-			args.rule = ((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
+			args.rule =
+			((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
 			KKASSERT(args.rule != NULL);
 
 			m_tag_delete(m, mtag);

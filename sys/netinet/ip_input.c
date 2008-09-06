@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.97 2008/09/06 12:04:03 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.98 2008/09/06 14:12:50 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -577,7 +577,8 @@ iphack:
 			/* Extract info from dummynet tag */
 			mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
 			KKASSERT(mtag != NULL);
-			args.rule = ((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
+			args.rule =
+			((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
 			KKASSERT(args.rule != NULL);
 
 			m_tag_delete(m, mtag);
