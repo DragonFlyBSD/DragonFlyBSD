@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/libexec/dma/dma.8,v 1.9 2008/09/02 15:16:59 matthias Exp $
+.\" $DragonFly: src/libexec/dma/dma.8,v 1.10 2008/09/06 14:17:56 swildner Exp $
 .\"
 .Dd September 2, 2008
 .Dt DMA 8
@@ -153,7 +153,8 @@ Only useful together with the
 .Sq SMARTHOST
 option, because
 .Nm
-will deliver all mails to this port, regardless if a smarthost is set or not.
+will deliver all mails to this port, regardless of whether a smarthost is set
+or not.
 .It Ic ALIASES Xo
 (string, default=/etc/mail/aliases)
 .Xc
@@ -222,7 +223,7 @@ file specifies a virtual user table.
 Each line has the format
 .Dq Li localuser:mail-address .
 Some smarthosts do not accept mails from unresolvable email address
-(e.g. user@localhost) so you have to rewrite your outgoing email
+(e.g.\& user@localhost) so you have to rewrite your outgoing email
 address to a valid address.
 .Sh SEE ALSO
 .Xr mailaddr 7 ,
