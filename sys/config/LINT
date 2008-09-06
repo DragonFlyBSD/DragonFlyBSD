@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.170 2008/07/27 10:06:55 sephe Exp $
+# $DragonFly: src/sys/config/LINT,v 1.171 2008/09/06 14:18:29 swildner Exp $
 #
 # See the kernconf(5) manual page for more information on the format of
 # this file.
@@ -772,7 +772,7 @@ options 	MD_NSECT=40000
 #
 # In order to manage swap, the system must reserve bitmap space that
 # scales with the largest mounted swap device multiplied by NSWAPDEV, 
-# irregardless of whether other swap devices exist or not.  So it
+# regardless of whether other swap devices exist or not.  So it
 # is not a good idea to make this value too large.
 options 	NSWAPDEV=5
 
