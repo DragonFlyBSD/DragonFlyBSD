@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.96 2008/08/28 14:15:47 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.97 2008/09/06 12:04:03 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -422,7 +422,6 @@ ip_input(struct mbuf *m)
 	int i, hlen, checkif;
 	u_short sum;
 	struct in_addr pkt_dst;
-	struct ip_fw_args args;
 	boolean_t using_srcrt = FALSE;		/* forward (by PFIL_HOOKS) */
 	boolean_t needredispatch = FALSE;
 	struct in_addr odst;			/* original dst address(NAT) */
@@ -434,10 +433,6 @@ ip_input(struct mbuf *m)
 	int error;
 #endif
 
-	args.eh = NULL;
-	args.oif = NULL;
-	args.rule = NULL;
-
 	M_ASSERTPKTHDR(m);
 
 	if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
@@ -448,15 +443,6 @@ ip_input(struct mbuf *m)
 	}
 
 	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
-		/* Extract info from dummynet tag */
-		mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
-		KKASSERT(mtag != NULL);
-		args.rule = ((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
-		KKASSERT(args.rule != NULL);
-
-		m_tag_delete(m, mtag);
-		m->m_pkthdr.fw_flags &= ~DUMMYNET_MBUF_TAGGED;
-
 		/* dummynet already filtered us */
 		ip = mtod(m, struct ip *);
 		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
@@ -578,6 +564,8 @@ iphack:
 	}
 
 	if (fw_enable && IPFW_LOADED) {
+		struct ip_fw_args args;
+
 		/*
 		 * If we've been forwarded from the output side, then
 		 * skip the firewall a second time
@@ -585,6 +573,21 @@ iphack:
 		if (next_hop != NULL)
 			goto ours;
 
+		if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
+			/* Extract info from dummynet tag */
+			mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
+			KKASSERT(mtag != NULL);
+			args.rule = ((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
+			KKASSERT(args.rule != NULL);
+
+			m_tag_delete(m, mtag);
+			m->m_pkthdr.fw_flags &= ~DUMMYNET_MBUF_TAGGED;
+		} else {
+			args.rule = NULL;
+		}
+
+		args.eh = NULL;
+		args.oif = NULL;
 		args.m = m;
 		i = ip_fw_chk_ptr(&args);
 		m = args.m;
