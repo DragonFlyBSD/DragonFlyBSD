@@ -3,7 +3,7 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/tuning.7,v 1.1.2.30 2002/12/17 19:32:08 dillon Exp $
-.\" $DragonFly: src/share/man/man7/tuning.7,v 1.19 2007/12/23 15:31:29 swildner Exp $
+.\" $DragonFly: src/share/man/man7/tuning.7,v 1.20 2008/09/06 10:36:27 thomas Exp $
 .\"
 .Dd March 4, 2007
 .Dt TUNING 7
@@ -786,7 +786,7 @@ on by setting the
 .Va hw.ata.wc
 loader tunable to 1.
 More information on tuning the ATA driver system may be found in the
-.Xr ata 4
+.Xr nata 4
 man page.
 .Pp
 There is a new experimental feature for IDE hard drives called
@@ -854,7 +854,7 @@ over services you export from your box (web services, email).
 .Sh SEE ALSO
 .Xr netstat 1 ,
 .Xr systat 1 ,
-.Xr ata 4 ,
+.Xr nata 4 ,
 .Xr dummynet 4 ,
 .Xr login.conf 5 ,
 .Xr rc.conf 5 ,
