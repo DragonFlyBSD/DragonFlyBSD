@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.9 2004/02/08 08:40:24 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.22 2008/09/06 05:07:35 sephe Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.23 2008/09/06 05:36:05 sephe Exp $
  */
 
 /*
@@ -108,6 +108,8 @@ int looutput (struct ifnet *ifp,
 #define LOMTU	16384
 #endif
 
+#define LO_CSUM_FEATURES	(CSUM_IP | CSUM_UDP | CSUM_TCP)
+
 struct	ifnet loif[NLOOP];
 
 /* ARGSUSED */
@@ -121,6 +123,9 @@ loopattach(void *dummy)
 		if_initname(ifp, "lo", i);
 		ifp->if_mtu = LOMTU;
 		ifp->if_flags = IFF_LOOPBACK | IFF_MULTICAST;
+		ifp->if_capabilities = IFCAP_HWCSUM;
+		ifp->if_hwassist = LO_CSUM_FEATURES;
+		ifp->if_capenable = ifp->if_capabilities;
 		ifp->if_ioctl = loioctl;
 		ifp->if_output = looutput;
 		ifp->if_type = IFT_LOOP;
@@ -141,6 +146,8 @@ looutput(
 	struct sockaddr *dst,
 	struct rtentry *rt)
 {
+	int csum_flags = 0;
+
 	if ((m->m_flags & M_PKTHDR) == 0)
 		panic("looutput no HDR");
 
@@ -166,6 +173,17 @@ looutput(
 		return (EAFNOSUPPORT);
 	}
 #endif
+
+	if (ifp->if_capenable & IFCAP_RXCSUM) {
+		if (m->m_pkthdr.csum_flags & CSUM_IP)
+			csum_flags |= (CSUM_IP_CHECKED | CSUM_IP_VALID);
+		if (m->m_pkthdr.csum_flags & CSUM_DELAY_DATA)
+			csum_flags |= (CSUM_DATA_VALID | CSUM_PSEUDO_HDR);
+
+		m->m_pkthdr.csum_flags |= csum_flags;
+		if (csum_flags & CSUM_DATA_VALID)
+			m->m_pkthdr.csum_data = 0xffff;
+	}
 	return (if_simloop(ifp, m, dst->sa_family, 0));
 }
 
@@ -376,10 +394,9 @@ loioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct ifaddr *ifa;
 	struct ifreq *ifr = (struct ifreq *)data;
-	int error = 0;
+	int error = 0, mask;
 
 	switch (cmd) {
-
 	case SIOCSIFADDR:
 		ifp->if_flags |= IFF_UP | IFF_RUNNING;
 		ifa = (struct ifaddr *)data;
@@ -417,6 +434,17 @@ loioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		break;
 
 	case SIOCSIFFLAGS:
+		break;
+
+	case SIOCSIFCAP:
+		mask = (ifr->ifr_reqcap ^ ifp->if_capenable) & IFCAP_HWCSUM;
+		if (mask) {
+			ifp->if_capenable ^= mask;
+			if (IFCAP_TXCSUM & ifp->if_capenable)
+				ifp->if_hwassist = LO_CSUM_FEATURES;
+			else
+				ifp->if_hwassist = 0;
+		}
 		break;
 
 	default:
