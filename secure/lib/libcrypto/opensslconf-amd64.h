@@ -1,4 +1,4 @@
-/* $DragonFly: src/secure/lib/libcrypto/opensslconf-amd64.h,v 1.6 2007/10/12 19:50:15 pavalos Exp $ */
+/* $DragonFly: src/secure/lib/libcrypto/opensslconf-amd64.h,v 1.7 2008/09/06 20:42:53 pavalos Exp $ */
 /* opensslconf.h */
 /* WARNING: Generated automatically from opensslconf.h.in by Configure. */
 
@@ -7,6 +7,9 @@
 
 #ifndef OPENSSL_NO_CAMELLIA
 # define OPENSSL_NO_CAMELLIA
+#endif
+#ifndef OPENSSL_NO_CMS
+# define OPENSSL_NO_CMS
 #endif
 #ifndef OPENSSL_NO_GMP
 # define OPENSSL_NO_GMP
@@ -48,6 +51,9 @@
 #ifdef OPENSSL_ALGORITHM_DEFINES
 # if defined(OPENSSL_NO_CAMELLIA) && !defined(NO_CAMELLIA)
 #  define NO_CAMELLIA
+# endif
+# if defined(OPENSSL_NO_CMS) && !defined(NO_CMS)
+#  define NO_CMS
 # endif
 # if defined(OPENSSL_NO_GMP) && !defined(NO_GMP)
 #  define NO_GMP

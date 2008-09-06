@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile,v 1.15.2.14 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/secure/lib/libcrypto/Makefile,v 1.10 2007/03/28 19:05:58 pavalos Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile,v 1.11 2008/09/06 20:42:53 pavalos Exp $
 
 LIB=		crypto
 SHLIB_MAJOR=	4
@@ -18,7 +18,7 @@ SRCS+=	cpt_err.c cryptlib.c cversion.c ebcdic.c ex_data.c mem.c mem_clr.c \
 
 # aes
 SRCS+=	aes_cbc.c aes_cfb.c aes_core.c aes_ctr.c aes_ecb.c aes_ige.c \
-	aes_misc.c aes_ofb.c
+	aes_misc.c aes_ofb.c aes_wrap.c
 
 # asn1
 SRCS+=	a_bitstr.c a_bool.c a_bytes.c a_d2i_fp.c a_digest.c \
@@ -26,7 +26,8 @@ SRCS+=	a_bitstr.c a_bool.c a_bytes.c a_d2i_fp.c a_digest.c \
 	a_mbstr.c a_meth.c a_object.c a_octet.c a_print.c \
 	a_set.c a_sign.c a_strex.c a_strnid.c a_time.c a_type.c \
 	a_utctm.c a_utf8.c a_verify.c asn1_err.c asn1_lib.c \
-	asn1_gen.c asn1_par.c asn_moid.c asn_pack.c d2i_pr.c d2i_pu.c \
+	asn1_gen.c asn1_par.c asn_mime.c \
+	asn_moid.c asn_pack.c d2i_pr.c d2i_pu.c \
 	evp_asn1.c f_enum.c f_int.c f_string.c i2d_pr.c i2d_pu.c \
 	n_pkey.c nsseq.c p5_pbe.c p5_pbev2.c p8_pkey.c t_bitst.c \
 	t_crl.c t_pkey.c t_req.c t_spki.c t_x509.c t_x509a.c \
@@ -61,6 +62,10 @@ SRCS+=	buf_err.c buffer.c
 
 # cast
 SRCS+=	c_cfb64.c c_ecb.c c_enc.c c_ofb64.c c_skey.c
+
+# cms
+#SRCS+=	cms_att.c cms_att.c cms_cd.c cms_dd.c cms_enc.c cms_env.c cms_err.c \
+#	cms_ess.c cms_io.c cms_lib.c cms_sd.c cms_smime.c
 
 # comp
 SRCS+=	c_rle.c c_zlib.c comp_err.c comp_lib.c
