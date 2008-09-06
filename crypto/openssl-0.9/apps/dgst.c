@@ -190,6 +190,8 @@ int MAIN(int argc, char **argv)
 			out_bin = 1;
 		else if (strcmp(*argv,"-d") == 0)
 			debug=1;
+		else if (!strcmp(*argv,"-fips-fingerprint"))
+			hmac_key = "etaonrishdlcupfm";
 		else if (!strcmp(*argv,"-hmac"))
 			{
 			if (--argc < 1)
@@ -227,6 +229,7 @@ int MAIN(int argc, char **argv)
 		BIO_printf(bio_err,"-keyform arg    key file format (PEM or ENGINE)\n");
 		BIO_printf(bio_err,"-signature file signature to verify\n");
 		BIO_printf(bio_err,"-binary         output in binary form\n");
+		BIO_printf(bio_err,"-hmac key       create hashed MAC with key\n");
 #ifndef OPENSSL_NO_ENGINE
 		BIO_printf(bio_err,"-engine e       use engine e, possibly a hardware device.\n");
 #endif

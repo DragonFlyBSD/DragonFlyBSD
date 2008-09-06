@@ -126,8 +126,12 @@ int RAND_load_file(const char *file, long bytes)
 			n = BUFSIZE;
 		i=fread(buf,1,n,in);
 		if (i <= 0) break;
+#ifdef PURIFY
+		RAND_add(buf,i,(double)i);
+#else
 		/* even if n != i, use the full array */
 		RAND_add(buf,n,(double)i);
+#endif
 		ret+=i;
 		if (bytes > 0)
 			{
