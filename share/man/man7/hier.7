@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)hier.7	8.1 (Berkeley) 6/5/93
 .\" $FreeBSD: src/share/man/man7/hier.7,v 1.29.2.17 2003/01/13 21:43:50 ceri Exp $
-.\" $DragonFly: src/share/man/man7/hier.7,v 1.24 2008/09/02 11:50:46 matthias Exp $
+.\" $DragonFly: src/share/man/man7/hier.7,v 1.25 2008/09/06 10:25:04 thomas Exp $
 .\"
 .Dd September 2, 2008
 .Dt HIER 7
@@ -365,7 +365,10 @@ the general layout sketched out by
 .Xr hier 7
 for
 .Pa /usr
-should be used.  Exceptions are the man directory (directly under
+should be used.
+Exceptions are the
+.Pa man/
+directory (directly under
 .Pa local/
 rather than under
 .Pa local/share/ ) ,
@@ -389,7 +392,8 @@ the general layout sketched out by
 .Xr hier 7
 for
 .Pa /usr
-should be used.  Exceptions are the man directory (directly under
+should be used.
+Exceptions are the man directory (directly under
 .Pa pkg/
 rather than under
 .Pa pkg/share/ ) ,
