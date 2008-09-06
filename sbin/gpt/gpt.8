@@ -23,7 +23,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/gpt/gpt.8,v 1.17 2006/06/22 22:22:32 marcel Exp $
-.\" $DragonFly: src/sbin/gpt/gpt.8,v 1.12 2008/09/04 05:37:24 thomas Exp $
+.\" $DragonFly: src/sbin/gpt/gpt.8,v 1.13 2008/09/06 10:03:45 thomas Exp $
 .\"
 .Dd September 3, 2008
 .Os
@@ -468,7 +468,7 @@ vi etc/fstab		# add `/dev/da8s1a / hammer rw',
 			# add `/dev/da8s0a /boot ufs rw 1 1',
 			# delete lines for file systems cpdup'ed above
 vi boot/loader.conf	# add `vfs.root.mountfrom="hammer:da8s1a"'
-sed -i .old -e 'X/boot/XXg' boot/loader.rc	# delete all occurrences of `/boot/'
+sed -i .old -e 'sX/boot/XXg' boot/loader.rc	# delete all occurrences of `/boot/'
 cd
 umount /mnt/boot
 umount /mnt
