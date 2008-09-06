@@ -23,9 +23,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/forth/loader.4th.8,v 1.14 2002/08/13 15:09:33 ru Exp $
-.\" $DragonFly: src/sys/boot/forth/loader.4th.8,v 1.5 2008/09/02 11:50:46 matthias Exp $
+.\" $DragonFly: src/sys/boot/forth/loader.4th.8,v 1.6 2008/09/06 12:14:08 thomas Exp $
 .\"
-.Dd September 2, 2008
+.Dd September 6, 2008
 .Dt LOADER.4TH 8
 .Os
 .Sh NAME
@@ -38,7 +38,7 @@ is a set of commands designed to manipulate
 .Xr loader.conf 5
 files.
 The default
-.Pa /boot/loader.rc
+.Pa loader.rc
 includes
 .Nm
 and uses one of its commands to automatically read and process
@@ -64,7 +64,7 @@ through the command:
 .Dl include loader.4th
 .Pp
 This line is present in the default
-.Pa /boot/loader.rc
+.Pa loader.rc
 file, so it isn't needed (and should not be re-issued) in a normal setup.
 .Pp
 The commands provided by it are:
@@ -92,13 +92,13 @@ so it can be stopped.
 .Pp
 .It Ic start
 Reads
-.Pa /boot/defaults/loader.conf ,
+.Pa defaults/loader.conf ,
 all other
 .Xr loader.conf 5
 files specified in it, and then proceeds to boot as specified in them.
 This
 is the command used in the default
-.Pa /boot/loader.rc
+.Pa loader.rc
 file, and it uses the
 .Pa autoboot
 command (see
@@ -114,7 +114,7 @@ first.
 Like
 .Ic start ,
 reads
-.Pa /boot/defaults/loader.conf
+.Pa defaults/loader.conf
 and all other
 .Xr loader.conf 5
 files specified in it.
@@ -174,17 +174,17 @@ command.
 .El
 .Sh EXAMPLES
 Standard
-.Pa /boot/loader.rc :
+.Pa loader.rc :
 .Pp
 .Bd -literal -offset indent -compact
-include /boot/loader.4th
+include loader.4th
 start
 .Ed
 .Pp
 Load a different kernel with the standard configuration:
 .Pp
 .Bd -literal -offset indent -compact
-set kernel="/boot/kernel.old"
+set kernel="kernel.old"
 unload
 boot-conf
 .Ed
@@ -193,7 +193,7 @@ Read an additional configuration file and then proceed to boot:
 .Pp
 .Bd -literal -offset indent -compact
 unload
-read-conf /boot/special.conf
+read-conf special.conf
 boot-conf
 .Ed
 .Pp

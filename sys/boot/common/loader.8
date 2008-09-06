@@ -23,11 +23,11 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
-.\" $DragonFly: src/sys/boot/common/loader.8,v 1.21 2008/09/02 11:50:46 matthias Exp $
+.\" $DragonFly: src/sys/boot/common/loader.8,v 1.22 2008/09/06 12:14:08 thomas Exp $
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
-.Dd September 2, 2008
+.Dd September 6, 2008
 .Dt LOADER 8
 .Os
 .Sh NAME
@@ -44,10 +44,39 @@ On IA32 (i386) architectures, it is a
 client.
 It is linked statically to
 .Xr libstand 3
-and usually located in the directory
-.Pa /boot .
+and located in the
+.Pa /boot
+or
+.Pa /
+directory.
 .Pp
-It provides a scripting language that can be used to
+If a
+.Pa /boot
+directory exist on the boot file system, then
+.Dq /boot/
+is prepended to all relative file names used by
+.Nm .
+This makes it possible to locate all files used by
+.Nm
+in either
+.Pa /
+or
+.Pa /boot
+directory on the boot file system.
+If boot and root are the same file systems, then files used by
+.Nm
+are located in
+.Pa /boot .
+If boot and root are different file systems, then files used by
+.Nm
+are located in
+.Pa /
+on the boot file system, which is mounted as
+.Pa /boot
+on the root file system when the kernel is running.
+.Pp
+.Nm
+provides a scripting language that can be used to
 automate tasks, do pre-configuration or assist in recovery
 procedures.
 This scripting language is roughly divided in
@@ -78,7 +107,7 @@ is set to 24.
 Next,
 .Tn FICL
 is initialized, the builtin words are added to its vocabulary, and
-.Pa /boot/boot.4th
+.Pa boot.4th
 is processed if it exists.
 No disk switching is possible while that file is being read.
 The inner interpreter
@@ -91,9 +120,9 @@ which is
 .Tn FICL Ns 's
 default.
 After that,
-.Pa /boot/loader.rc
+.Pa loader.rc
 is processed if available, and, failing that,
-.Pa /boot/boot.conf
+.Pa boot.conf
 is read for historical reasons.
 These files are processed through the
 .Ic include
@@ -177,7 +206,7 @@ For debugging purposes only.
 .Pp
 .It Ic help Op topic Op subtopic
 Shows help messages read from
-.Pa /boot/loader.help .
+.Pa loader.help .
 The special topic
 .Em index
 will list the topics available.
@@ -327,7 +356,7 @@ If set to
 no
 .Ic autoboot
 will be automatically attempted after processing
-.Pa /boot/loader.rc ,
+.Pa loader.rc ,
 though explicit
 .Ic autoboot Ns 's
 will be processed normally, defaulting to 10 seconds delay.
@@ -500,6 +529,11 @@ Overrides the compile-time set value of
 .Va TCBHASHSIZE
 or the preset default of 512.
 Must be a power of 2.
+.It Va vfs.root.mountfrom
+File system type and partition, separated by colon,
+for kernel root file system.
+For example
+.Dq hammer:da8s1a .
 .El
 .Ss BUILTIN PARSER
 When a builtin command is executed, the rest of the line is taken
@@ -690,7 +724,7 @@ The constants
 and
 .Dv O_RDWR
 are defined in
-.Pa /boot/support.4th ,
+.Pa support.4th ,
 indicating read only, write only, and read-write access, respectively.
 .It Xo
 .Ic fread
@@ -781,14 +815,14 @@ Notice that a kernel must be loaded before any other
 command is attempted.
 .Bd -literal -offset indent
 load kernel
-load -t userconfig_script /boot/kernel.conf
+load -t userconfig_script kernel.conf
 .Ed
 .Pp
 Load the kernel, a splash screen, and then autoboot in five seconds.
 .Bd -literal -offset indent
 load kernel
 load splash_bmp
-load -t splash_image_data /boot/chuckrulez.bmp
+load -t splash_image_data chuckrulez.bmp
 autoboot 5
 .Ed
 .Pp
@@ -797,14 +831,14 @@ This would be needed in a system with two IDE disks,
 with the second IDE disk hardwired to wd2 instead of wd1.
 .Bd -literal -offset indent
 set root_disk_unit=2
-boot /boot/kernel
+boot kernel
 .Ed
 .Pp
 See also:
 .Bl -tag -width /usr/share/examples/bootforth/X
-.It Pa /boot/loader.4th
+.It Pa loader.4th
 Extra builtin-like words.
-.It Pa /boot/support.4th
+.It Pa support.4th
 .Pa loader.conf
 processing words.
 .It Pa /usr/share/examples/bootforth/
