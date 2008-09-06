@@ -22,7 +22,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man5/devices.conf.5,v 1.3 2007/04/26 17:35:03 swildner Exp $
+.\" $DragonFly: src/share/man/man5/devices.conf.5,v 1.4 2008/09/06 10:23:39 thomas Exp $
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
@@ -54,10 +54,14 @@ This feature comes in handy if you're using (e.g.) tape backup software like
 .Pa bacula
 in conjunction with a tape autochanger device. In this case, the
 .Dq bacula-sd
-storage daemon needs read/write access to /dev/pass?, which is not granted by default
+storage daemon needs read/write access to
+.Pa /dev/pass? ,
+which is not granted by default
 when
 .Xr MAKEDEV 8
-creates the pass? device node.
+creates the
+.Pa pass?
+device node.
 .Pp
 So, instead of manually changing the permissions of /dev/pass? after each
 .Dq make upgrade ,
@@ -89,12 +93,12 @@ can create,
 the first field (the device node name) may contain the
 .Ql *
 wildcard character, if the new ownership/permissions should apply to an entire
-device family (see EXAMPLES).
+device family
+.Pq see Sx EXAMPLES .
 .Sh FILES
-.Bl -tag -width ".Pa devices.conf"
-.It Pa devices.conf
-The local device permissions override file lives in
-.Pa /etc .
+.Bl -tag -width ".Pa /etc/devices.conf"
+.It Pa /etc/devices.conf
+The local device permissions override file
 .El
 .Sh EXAMPLES
 The following is an example of how to set up local overrides for some
