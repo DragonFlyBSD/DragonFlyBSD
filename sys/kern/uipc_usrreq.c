@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.43 2008/08/15 21:39:04 nth Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.44 2008/09/06 05:44:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -502,12 +502,16 @@ uipc_ctloutput(struct socket *so, struct sockopt *sopt)
  * Both send and receive buffers are allocated PIPSIZ bytes of buffering
  * for stream sockets, although the total for sender and receiver is
  * actually only PIPSIZ.
+ *
  * Datagram sockets really use the sendspace as the maximum datagram size,
  * and don't really want to reserve the sendspace.  Their recvspace should
  * be large enough for at least one max-size datagram plus address.
+ *
+ * We want the local send/recv space to be significant larger then lo0's
+ * mtu of 16384.
  */
 #ifndef PIPSIZ
-#define	PIPSIZ	8192
+#define	PIPSIZ	57344
 #endif
 static u_long	unpst_sendspace = PIPSIZ;
 static u_long	unpst_recvspace = PIPSIZ;

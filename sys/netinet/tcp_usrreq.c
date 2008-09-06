@@ -65,7 +65,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.49 2008/06/17 20:50:11 aggelos Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.50 2008/09/06 05:44:59 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -1233,8 +1233,11 @@ tcp_ctloutput(struct socket *so, struct sockopt *sopt)
  * tcp_sendspace and tcp_recvspace are the default send and receive window
  * sizes, respectively.  These are obsolescent (this information should
  * be set by the route).
+ *
+ * Use a default that does not require tcp window scaling to be turned
+ * on.  Individual programs or the administrator can increase the default.
  */
-u_long	tcp_sendspace = 1024*32;
+u_long	tcp_sendspace = 57344;	/* largest multiple of PAGE_SIZE < 64k */
 SYSCTL_INT(_net_inet_tcp, TCPCTL_SENDSPACE, sendspace, CTLFLAG_RW,
     &tcp_sendspace , 0, "Maximum outgoing TCP datagram size");
 u_long	tcp_recvspace = 57344;	/* largest multiple of PAGE_SIZE < 64k */
