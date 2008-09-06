@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.27 2008/08/21 21:22:36 thomas Exp $
+.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.28 2008/09/06 10:15:29 thomas Exp $
 .\"
 .Dd August 21, 2008
 .Dt DISKLABEL 8
@@ -891,6 +891,20 @@ The
 commands are optional, but may be necessary for some BIOSes to properly
 recognize the disk.
 .Pp
+.Dl disklabel -W da0s1
+.Dl dd if=/dev/zero of=/dev/da0s1 bs=512 count=32
+.Dl disklabel64 -r -w da0s1 auto
+.Dl disklabel64 -N da0s1
+.Pp
+Completely wipe any prior information on the slice,
+changing label format to 64 bit.
+The wiping is needed as
+.Nm disklabel64
+and
+.Nm ,
+as a safety measure,
+won't do any operations if label with other format is already installed.
+.Pp
 This is an example disklabel that uses some of the new partition size types
 such as
 .Cm % , M , G ,
@@ -972,7 +986,8 @@ Due to
 storing sector numbers in 32 bit format
 .Nm
 is restricted to 2TB, using the prevalent sector size of 512B.
-.Xr disklabel64 5 labels should be used to partition larger disks.
+.Xr disklabel64 5
+labels should be used to partition larger disks.
 .Pp
 The various
 .Bx Ns s
@@ -996,15 +1011,6 @@ for read-only operation.
 .Xr gpt 8 ,
 .Xr vinum 8
 .Sh BUGS
-Installing a
-.Xr disklabel64 8
-label on a slice with a
-.Nm
-label installed requires reboot. First the existing label
-has to be overwritten, e.g.\& by
-.Xr dd 1 ,
-see above, then a reboot is required before the new label can be installed.
-.Pp
 For the i386 architecture, the primary bootstrap sector contains
 an embedded
 .Em fdisk
