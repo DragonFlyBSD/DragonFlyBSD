@@ -30,7 +30,7 @@
 .\"
 .\"	@(#)sed.1	8.2 (Berkeley) 12/30/93
 .\" $FreeBSD: src/usr.bin/sed/sed.1,v 1.46 2007/07/04 16:42:41 ssouhlal Exp $
-.\" $DragonFly: src/usr.bin/sed/sed.1,v 1.5 2008/04/11 20:22:18 swildner Exp $
+.\" $DragonFly: src/usr.bin/sed/sed.1,v 1.6 2008/09/06 09:38:33 thomas Exp $
 .\"
 .Dd April 8, 2008
 .Dt SED 1
@@ -245,9 +245,19 @@ has the following two additions to regular expressions:
 In a context address, any character other than a backslash
 .Pq Dq \e
 or newline character may be used to delimit the regular expression.
+The opening delimiter need to be preceede by a backslash
+unless it is a slash
+.Pq Dq / .
+For example the context address
+.Dq \exabcx
+is equivalent to
+.Dq /abc/ .
 Also, putting a backslash character before the delimiting character
+within the regular expression
 causes the character to be treated literally.
-For example, in the context address \exabc\exdefx, the RE delimiter
+For example, in the context address
+.Dq \exabc\exdefx ,
+the RE delimiter
 is an
 .Dq x
 and the second
