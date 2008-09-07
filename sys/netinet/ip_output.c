@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.55 2008/09/06 14:12:50 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.56 2008/09/07 08:15:25 sephe Exp $
  */
 
 #define _IP_VHL
@@ -742,6 +742,12 @@ spd_done:
 		off = ip_fw_chk_ptr(&args);
 		m = args.m;
 
+		if (m == NULL) {
+			error = EACCES;
+			goto done;
+		}
+		ip = mtod(m, struct ip *);
+
 		if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
 			mtag = m_tag_find(m, PACKET_TAG_IPFORWARD, NULL);
 			KKASSERT(mtag != NULL);
@@ -751,7 +757,6 @@ spd_done:
 
 		/*
 		 * On return we must do the following:
-		 * m == NULL	-> drop the pkt (old interface, deprecated)
 		 * (off & IP_FW_PORT_DENY_FLAG)	-> drop the pkt (new interface)
 		 * 1<=off<= 0xffff		-> DIVERT
 		 * (off & IP_FW_PORT_DYNT_FLAG)	-> send to a DUMMYNET pipe
@@ -764,13 +769,11 @@ spd_done:
 		 * unsupported rules), but better play safe and drop
 		 * packets in case of doubt.
 		 */
-		if ( (off & IP_FW_PORT_DENY_FLAG) || m == NULL) {
-			if (m)
-				m_freem(m);
+		if (off & IP_FW_PORT_DENY_FLAG) {
+			m_freem(m);
 			error = EACCES;
 			goto done;
 		}
-		ip = mtod(m, struct ip *);
 		if (off == 0 && dst == old)		/* common case */
 			goto pass;
 		if (off & IP_FW_PORT_DYNT_FLAG) {
