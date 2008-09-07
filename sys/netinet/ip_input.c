@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.99 2008/09/07 10:03:44 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.100 2008/09/07 11:12:15 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -651,6 +651,12 @@ ip_input(struct mbuf *m)
 	 */
 
 iphack:
+	/*
+	 * If we've been forwarded from the output side, then
+	 * skip the firewall a second time
+	 */
+	if (next_hop != NULL)
+		goto ours;
 
 	/*
 	 * Run through list of hooks for input packets.
@@ -674,13 +680,6 @@ iphack:
 	if (fw_enable && IPFW_LOADED) {
 		struct ip_fw_args args;
 		int tee = 0;
-
-		/*
-		 * If we've been forwarded from the output side, then
-		 * skip the firewall a second time
-		 */
-		if (next_hop != NULL)
-			goto ours;
 
 		if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
 			/* Extract info from dummynet tag */
@@ -708,12 +707,6 @@ iphack:
 
 		switch (i) {
 		case IP_FW_PASS:
-			if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
-				mtag = m_tag_find(m, PACKET_TAG_IPFORWARD,
-						  NULL);
-				KKASSERT(mtag != NULL);
-				next_hop = m_tag_data(mtag);
-			}
 			goto pass;
 
 		case IP_FW_DENY:
@@ -747,6 +740,11 @@ iphack:
 		}
 	}
 pass:
+	if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
+		mtag = m_tag_find(m, PACKET_TAG_IPFORWARD, NULL);
+		KKASSERT(mtag != NULL);
+		next_hop = m_tag_data(mtag);
+	}
 
 	/*
 	 * Process options and, if not destined for us,
