@@ -7,7 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
- * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.23 2008/08/02 01:14:42 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.24 2008/09/07 07:48:29 swildner Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)
@@ -175,7 +175,6 @@ el_attach(struct isa_device *idev)
 {
 	struct el_softc *sc;
 	struct ifnet *ifp;
-	u_short base;
 
 	dprintf(("Attaching el%d...\n",idev->id_unit));
 
@@ -183,7 +182,6 @@ el_attach(struct isa_device *idev)
 	idev->id_intr = (inthand2_t *)elintr;
 	sc = &el_softc[idev->id_unit];
 	ifp = &sc->arpcom.ac_if;
-	base = sc->el_base;
 
 	/* Now reset the board */
 	dprintf(("Resetting board...\n"));
