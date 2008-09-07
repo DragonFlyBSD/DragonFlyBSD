@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.85 2008/08/23 08:26:04 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.86 2008/09/07 10:03:44 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -469,9 +469,10 @@ static boolean_t
 ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst, struct ip_fw **rule,
 	       const struct ether_header *eh)
 {
-	struct ether_header save_eh = *eh;	/* might be a ptr in m */
+	struct ether_header save_eh = *eh;	/* might be a ptr in *m0 */
 	struct ip_fw_args args;
 	struct m_tag *mtag;
+	struct mbuf *m;
 	int i;
 
 	if (*rule != NULL && fw_one_pass)
@@ -507,18 +508,26 @@ ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst, struct ip_fw **rule,
 	*m0 = args.m;
 	*rule = args.rule;
 
-	if ((i & IP_FW_PORT_DENY_FLAG) || *m0 == NULL)	/* drop */
+	if (*m0 == NULL)
 		return FALSE;
 
-	if (i == 0)					/* a PASS rule.  */
+	switch (i) {
+	case IP_FW_PASS:
 		return TRUE;
 
-	if (i & IP_FW_PORT_DYNT_FLAG) {
+	case IP_FW_DIVERT:
+	case IP_FW_TEE:
+	case IP_FW_DENY:
+		/*
+		 * XXX at some point add support for divert/forward actions.
+		 * If none of the above matches, we have to drop the pkt.
+		 */
+		return FALSE;
+
+	case IP_FW_DUMMYNET:
 		/*
 		 * Pass the pkt to dummynet, which consumes it.
 		 */
-		struct mbuf *m;
-
 		m = *m0;	/* pass the original to dummynet */
 		*m0 = NULL;	/* and nothing back to the caller */
 
@@ -526,15 +535,13 @@ ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst, struct ip_fw **rule,
 		if (m == NULL)
 			return FALSE;
 
-		ip_fw_dn_io_ptr(m, (i & 0xffff),
-			dst ? DN_TO_ETH_OUT: DN_TO_ETH_DEMUX, &args);
+		ip_fw_dn_io_ptr(m, args.cookie,
+				dst ? DN_TO_ETH_OUT: DN_TO_ETH_DEMUX, &args);
 		return FALSE;
+
+	default:
+		panic("unknown ipfw return value: %d\n", i);
 	}
-	/*
-	 * XXX at some point add support for divert/forward actions.
-	 * If none of the above matches, we have to drop the pkt.
-	 */
-	return FALSE;
 }
 
 static void

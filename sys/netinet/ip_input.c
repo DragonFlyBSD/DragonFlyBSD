@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.98 2008/09/06 14:12:50 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.99 2008/09/07 10:03:44 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -409,6 +409,114 @@ ip_input_handler(struct netmsg *msg0)
 	/* msg0 was embedded in the mbuf, do not reply! */
 }
 
+#ifdef IPDIVERT
+static struct mbuf *
+ip_divert_in(struct mbuf *m, int tee, boolean_t *needredispatch)
+{
+	struct mbuf *clone = NULL;
+	struct ip *ip = mtod(m, struct ip *);
+	struct m_tag *mtag;
+
+	if (ip->ip_off & (IP_MF | IP_OFFMASK)) {
+		const struct divert_info *divinfo;
+		u_short frag_off;
+		int hlen;
+
+		/*
+		 * Only trust divert info in the fragment
+		 * at offset 0.
+		 */
+		frag_off = ip->ip_off << 3;
+		if (frag_off != 0) {
+			mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
+			m_tag_delete(m, mtag);
+		}
+
+		/*
+		 * Attempt reassembly; if it succeeds, proceed.
+		 * ip_reass() will return a different mbuf.
+		 */
+		m = ip_reass(m);
+		if (m == NULL)
+			return NULL;
+		ip = mtod(m, struct ip *);
+
+		*needredispatch = TRUE;
+
+		/*
+		 * Get the header length of the reassembled
+		 * packet
+		 */
+		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
+
+		/*
+		 * Restore original checksum before diverting
+		 * packet
+		 */
+		ip->ip_len += hlen;
+		ip->ip_len = htons(ip->ip_len);
+		ip->ip_off = htons(ip->ip_off);
+		ip->ip_sum = 0;
+		if (hlen == sizeof(struct ip))
+			ip->ip_sum = in_cksum_hdr(ip);
+		else
+			ip->ip_sum = in_cksum(m, hlen);
+		ip->ip_off = ntohs(ip->ip_off);
+		ip->ip_len = ntohs(ip->ip_len);
+
+		/*
+		 * Only use the saved divert info
+		 */
+		mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
+		if (mtag == NULL) {
+			/* Wrongly configured ipfw */
+			kprintf("ip_input no divert info\n");
+			m_freem(m);
+			return NULL;
+		}
+		divinfo = m_tag_data(mtag);
+		tee = divinfo->tee;
+	}
+
+	/*
+	 * Divert or tee packet to the divert protocol if
+	 * required.
+	 */
+
+	/* Clone packet if we're doing a 'tee' */
+	if (tee)
+		clone = m_dup(m, MB_DONTWAIT);
+
+	/*
+	 * Restore packet header fields to original
+	 * values
+	 */
+	ip->ip_len = htons(ip->ip_len);
+	ip->ip_off = htons(ip->ip_off);
+
+	/* Deliver packet to divert input routine */
+	divert_packet(m, 1);
+
+	/* Catch invalid reference */
+	m = NULL;
+	ip = NULL;
+
+	ipstat.ips_delivered++;
+
+	/* If 'tee', continue with original packet */
+	if (clone != NULL) {
+		/*
+		 * Complete processing of the packet.
+		 * XXX Better safe than sorry, remove the DIVERT tag.
+		 */
+		mtag = m_tag_find(clone, PACKET_TAG_IPFW_DIVERT, NULL);
+		KKASSERT(mtag != NULL);
+		m_tag_delete(clone, mtag);
+	}
+	return clone;
+}
+#endif	/* IPDIVERT */
+
 /*
  * IP input routine.  Checksum and byte swap header.  If fragmented
  * try to reassemble.  Process options.  Pass to next level.
@@ -565,6 +673,7 @@ iphack:
 
 	if (fw_enable && IPFW_LOADED) {
 		struct ip_fw_args args;
+		int tee = 0;
 
 		/*
 		 * If we've been forwarded from the output side, then
@@ -593,145 +702,49 @@ iphack:
 		i = ip_fw_chk_ptr(&args);
 		m = args.m;
 
-		if ((i & IP_FW_PORT_DENY_FLAG) || m == NULL) {	/* drop */
-			if (m != NULL)
-				m_freem(m);
+		if (m == NULL)
 			return;
-		}
 		ip = mtod(m, struct ip *);	/* just in case m changed */
 
-		if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
-			mtag = m_tag_find(m, PACKET_TAG_IPFORWARD, NULL);
-			KKASSERT(mtag != NULL);
-			next_hop = m_tag_data(mtag);
-		}
-
-		if (i == 0 && next_hop == NULL)	/* common case */
-			goto pass;
-		if (i & IP_FW_PORT_DYNT_FLAG) {
-			/* Send packet to the appropriate pipe */
-			ip_fw_dn_io_ptr(m, i&0xffff, DN_TO_IP_IN, &args);
-			return;
-		}
-#ifdef IPDIVERT
-		if (i != 0 && !(i & IP_FW_PORT_DYNT_FLAG)) {
-			struct mbuf *clone = NULL;
-			int tee = 0;
-
-			/* Divert or 'tee'? */
-			if (i & IP_FW_PORT_TEE_FLAG)
-				tee = 1;
-
-			if (ip->ip_off & (IP_MF | IP_OFFMASK)) {
-				const struct divert_info *divinfo;
-				u_short frag_off;
-
-				/*
-				 * Only trust divert info in the fragment
-				 * at offset 0.
-				 */
-				frag_off = ip->ip_off << 3;
-				if (frag_off != 0) {
-					mtag = m_tag_find(m,
-					PACKET_TAG_IPFW_DIVERT, NULL);
-					m_tag_delete(m, mtag);
-				}
-
-				/*
-				 * Attempt reassembly; if it succeeds, proceed.
-				 * ip_reass() will return a different mbuf.
-				 */
-				m = ip_reass(m);
-				if (m == NULL)
-					return;
-				ip = mtod(m, struct ip *);
-
-				needredispatch = TRUE;
-
-				/*
-				 * Get the header length of the reassembled
-				 * packet
-				 */
-				hlen = IP_VHL_HL(ip->ip_vhl) << 2;
-
-				/*
-				 * Restore original checksum before diverting
-				 * packet
-				 */
-				ip->ip_len += hlen;
-				ip->ip_len = htons(ip->ip_len);
-				ip->ip_off = htons(ip->ip_off);
-				ip->ip_sum = 0;
-				if (hlen == sizeof(struct ip))
-					ip->ip_sum = in_cksum_hdr(ip);
-				else
-					ip->ip_sum = in_cksum(m, hlen);
-				ip->ip_off = ntohs(ip->ip_off);
-				ip->ip_len = ntohs(ip->ip_len);
-
-				/*
-				 * Only use the saved divert info
-				 */
-				mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT,
+		switch (i) {
+		case IP_FW_PASS:
+			if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
+				mtag = m_tag_find(m, PACKET_TAG_IPFORWARD,
 						  NULL);
-				if (mtag == NULL) {
-					/* Wrongly configured ipfw */
-					kprintf("ip_input no divert info\n");
-					m_freem(m);
-					return;
-				}
-				divinfo = m_tag_data(mtag);
-				tee = divinfo->tee;
+				KKASSERT(mtag != NULL);
+				next_hop = m_tag_data(mtag);
 			}
+			goto pass;
 
-			/*
-			 * Divert or tee packet to the divert protocol if
-			 * required.
-			 */
+		case IP_FW_DENY:
+			m_freem(m);
+			return;
 
-			/* Clone packet if we're doing a 'tee' */
-			if (tee)
-				clone = m_dup(m, MB_DONTWAIT);
+		case IP_FW_DUMMYNET:
+			/* Send packet to the appropriate pipe */
+			ip_fw_dn_io_ptr(m, args.cookie, DN_TO_IP_IN, &args);
+			return;
 
-			/*
-			 * Restore packet header fields to original
-			 * values
-			 */
-			ip->ip_len = htons(ip->ip_len);
-			ip->ip_off = htons(ip->ip_off);
+		case IP_FW_TEE:
+			tee = 1;
+			/* FALL THROUGH */
 
-			/* Deliver packet to divert input routine */
-			divert_packet(m, 1);
-			ipstat.ips_delivered++;
-
-			/* If 'tee', continue with original packet */
-			if (clone == NULL)
+		case IP_FW_DIVERT:
+#ifdef IPDIVERT
+			m = ip_divert_in(m, tee, &needredispatch);
+			if (m == NULL)
 				return;
-			m = clone;
 			ip = mtod(m, struct ip *);
-
-			/*
-			 * Complete processing of the packet.
-			 *
-			 * XXX
-			 * Better safe than sorry, remove the DIVERT
-			 * tag.
-			 */
-			mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT,
-					  NULL);
-			KKASSERT(mtag != NULL);
-			m_tag_delete(m, mtag);
-
+			hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 			goto pass;
-		}
+#else
+			m_freem(m);
+			return;
 #endif
-		if (i == 0 && next_hop != NULL)
-			goto pass;
-		/*
-		 * if we get here, the packet must be dropped
-		 */
-		m_freem(m);
-		return;
+
+		default:
+			panic("unknown ipfw return value: %d\n", i);
+		}
 	}
 pass:
 

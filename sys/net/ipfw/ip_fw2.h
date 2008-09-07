@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.h,v 1.1.2.2 2002/08/16 11:03:11 luigi Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.14 2008/08/22 09:14:16 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.15 2008/09/07 10:03:45 sephe Exp $
  */
 
 #ifndef _IPFW2_H
@@ -356,9 +356,12 @@ struct _ipfw_dyn_rule {
  * Main firewall chains definitions and global var's definitions.
  */
 
-#define	IP_FW_PORT_DYNT_FLAG	0x10000
-#define	IP_FW_PORT_TEE_FLAG	0x20000
-#define	IP_FW_PORT_DENY_FLAG	0x40000
+/* ipfw_chk/ip_fw_chk_ptr return values */
+#define IP_FW_PASS	0
+#define IP_FW_DENY	1
+#define IP_FW_DIVERT	2
+#define IP_FW_TEE	3
+#define IP_FW_DUMMYNET	4
 
 /*
  * arguments for calling ipfw_chk() and dummynet_io(). We put them
@@ -376,7 +379,18 @@ struct ip_fw_args {
 	int flags;			/* for dummynet			*/
 
 	struct ipfw_flow_id f_id;	/* grabbed from IP header	*/
-	uint32_t	retval;
+
+	/*
+	 * Depend on the return value of ipfw_chk/ip_fw_chk_ptr
+	 * 'cookie' field may save following information:
+	 *
+	 * IP_FW_TEE or IP_FW_DIVERT
+	 *   The divert port number
+	 *
+	 * IP_FW_DUMMYNET
+	 *   The pipe or queue number
+	 */
+	uint32_t	cookie;
 };
 
 /*

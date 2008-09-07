@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.56 2008/09/07 08:15:25 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.57 2008/09/07 10:03:44 sephe Exp $
  */
 
 #define _IP_VHL
@@ -120,6 +120,39 @@ int	ip_optcopy(struct ip *, struct ip *);
 
 
 extern	struct protosw inetsw[];
+
+#ifdef IPDIVERT
+static struct mbuf *
+ip_divert_out(struct mbuf *m, int tee)
+{
+	struct mbuf *clone = NULL;
+	struct ip *ip = mtod(m, struct ip *);
+
+	/* Clone packet if we're doing a 'tee' */
+	if (tee)
+		clone = m_dup(m, MB_DONTWAIT);
+
+	/*
+	 * XXX
+	 * delayed checksums are not currently compatible
+	 * with divert sockets.
+	 */
+	if (m->m_pkthdr.csum_flags & CSUM_DELAY_DATA) {
+		in_delayed_cksum(m);
+		m->m_pkthdr.csum_flags &= ~CSUM_DELAY_DATA;
+	}
+
+	/* Restore packet header fields to original values */
+	ip->ip_len = htons(ip->ip_len);
+	ip->ip_off = htons(ip->ip_off);
+
+	/* Deliver packet to divert input routine */
+	divert_packet(m, 0);
+
+	/* If 'tee', continue with original packet */
+	return clone;
+}
+#endif	/* IPDIVERT */
 
 /*
  * IP output.  The packet in mbuf chain m contains a skeletal IP
@@ -721,6 +754,7 @@ spd_done:
 	if (fw_enable && IPFW_LOADED && !next_hop) {
 		struct sockaddr_in *old = dst;
 		struct ip_fw_args args;
+		int tee = 0;
 
 		if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
 			/* Extract info from dummynet tag */
@@ -748,35 +782,24 @@ spd_done:
 		}
 		ip = mtod(m, struct ip *);
 
-		if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
-			mtag = m_tag_find(m, PACKET_TAG_IPFORWARD, NULL);
-			KKASSERT(mtag != NULL);
-			next_hop = m_tag_data(mtag);
-			dst = next_hop;
-		}
+		switch (off) {
+		case IP_FW_PASS:
+			if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
+				mtag = m_tag_find(m, PACKET_TAG_IPFORWARD,
+						  NULL);
+				KKASSERT(mtag != NULL);
+				next_hop = m_tag_data(mtag);
+				dst = next_hop;
+				break;
+			}
+			goto pass;
 
-		/*
-		 * On return we must do the following:
-		 * (off & IP_FW_PORT_DENY_FLAG)	-> drop the pkt (new interface)
-		 * 1<=off<= 0xffff		-> DIVERT
-		 * (off & IP_FW_PORT_DYNT_FLAG)	-> send to a DUMMYNET pipe
-		 * (off & IP_FW_PORT_TEE_FLAG)	-> TEE the packet
-		 * dst != old			-> IPFIREWALL_FORWARD
-		 * off==0, dst==old		-> accept
-		 * If some of the above modules are not compiled in, then
-		 * we should't have to check the corresponding condition
-		 * (because the ipfw control socket should not accept
-		 * unsupported rules), but better play safe and drop
-		 * packets in case of doubt.
-		 */
-		if (off & IP_FW_PORT_DENY_FLAG) {
+		case IP_FW_DENY:
 			m_freem(m);
 			error = EACCES;
 			goto done;
-		}
-		if (off == 0 && dst == old)		/* common case */
-			goto pass;
-		if (off & IP_FW_PORT_DYNT_FLAG) {
+
+		case IP_FW_DUMMYNET:
 			/*
 			 * pass the pkt to dummynet. Need to include
 			 * pipe number, m, ifp, ro, dst because these are
@@ -791,45 +814,34 @@ spd_done:
 			args.flags = flags;
 
 			error = 0;
-			ip_fw_dn_io_ptr(m, off & 0xffff, DN_TO_IP_OUT, &args);
+			ip_fw_dn_io_ptr(m, args.cookie, DN_TO_IP_OUT, &args);
 			goto done;
-		}
+
+		case IP_FW_TEE:
+			tee = 1;
+			/* FALL THROUGH */
+
+		case IP_FW_DIVERT:
 #ifdef IPDIVERT
-		if (off != 0 && !(off & IP_FW_PORT_DYNT_FLAG)) {
-			struct mbuf *clone = NULL;
-
-			/* Clone packet if we're doing a 'tee' */
-			if ((off & IP_FW_PORT_TEE_FLAG))
-				clone = m_dup(m, MB_DONTWAIT);
-
-			/*
-			 * XXX
-			 * delayed checksums are not currently compatible
-			 * with divert sockets.
-			 */
-			if (m->m_pkthdr.csum_flags & CSUM_DELAY_DATA) {
-				in_delayed_cksum(m);
-				m->m_pkthdr.csum_flags &= ~CSUM_DELAY_DATA;
-			}
-
-			/* Restore packet header fields to original values */
-			ip->ip_len = htons(ip->ip_len);
-			ip->ip_off = htons(ip->ip_off);
-
-			/* Deliver packet to divert input routine */
-			divert_packet(m, 0);
-
-			/* If 'tee', continue with original packet */
-			if (clone != NULL) {
-				m = clone;
-				ip = mtod(m, struct ip *);
-				goto pass;
-			}
+			m = ip_divert_out(m, tee);
+			if (m == NULL)
+				goto done;
+			ip = mtod(m, struct ip *);
+			goto pass;
+#else
+			m_freem(m);
+			/* not sure this is the right error msg */
+			error = EACCES;
 			goto done;
-		}
 #endif
 
+		default:
+			panic("unknown ipfw return value: %d\n", off);
+		}
+
 		/* IPFIREWALL_FORWARD */
+		KKASSERT(off == IP_FW_PASS); /* only if PASS */
+
 		/*
 		 * Check dst to make sure it is directly reachable on the
 		 * interface we previously thought it was.
@@ -840,7 +852,7 @@ spd_done:
 		 * such control is nigh impossible. So we do it here.
 		 * And I'm babbling.
 		 */
-		if (off == 0 && old != dst) { /* FORWARD, dst has changed */
+		if (old != dst) { /* FORWARD, dst has changed */
 #if 0
 			/*
 			 * XXX To improve readability, this block should be
@@ -952,16 +964,7 @@ spd_done:
 			 */
 			if (src_was_INADDR_ANY)
 				ip->ip_src = IA_SIN(ia)->sin_addr;
-			goto pass ;
 		}
-
-		/*
-		 * if we get here, none of the above matches, and
-		 * we have to drop the pkt
-		 */
-		m_freem(m);
-		error = EACCES; /* not sure this is the right error msg */
-		goto done;
 	}
 
 pass:

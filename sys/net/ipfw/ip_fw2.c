@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.78 2008/08/27 14:00:45 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.79 2008/09/07 10:03:45 sephe Exp $
  */
 
 #define        DEB(x)
@@ -1626,7 +1626,7 @@ ipfw_chk(struct ip_fw_args *args)
 	struct ifnet *oif = args->oif;
 
 	struct ip_fw *f = NULL;		/* matching rule */
-	int retval = 0;
+	int retval = IP_FW_PASS;
 	struct m_tag *mtag;
 	struct divert_info *divinfo;
 
@@ -1673,7 +1673,7 @@ ipfw_chk(struct ip_fw_args *args)
 	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
 
 	if (m->m_pkthdr.fw_flags & IPFW_MBUF_GENERATED)
-		return 0;	/* accept */
+		return IP_FW_PASS;	/* accept */
 
 	if (args->eh == NULL ||		/* layer 3 packet */
 	    (m->m_pkthdr.len >= sizeof(struct ip) &&
@@ -1762,18 +1762,18 @@ after_ip_checks:
 		 * the caller.
 		 */
 		if (fw_one_pass)
-			return 0;
+			return IP_FW_PASS;
 
 		/* This rule is being/has been flushed */
 		if (ipfw_flushing)
-			return IP_FW_PORT_DENY_FLAG;
+			return IP_FW_DENY;
 
 		KASSERT(args->rule->cpuid == mycpuid,
 			("rule used on cpu%d\n", mycpuid));
 
 		/* This rule was deleted */
 		if (args->rule->rule_flags & IPFW_RULE_F_INVALID)
-			return IP_FW_PORT_DENY_FLAG;
+			return IP_FW_DENY;
 
 		f = args->rule->next_rule;
 		if (f == NULL)
@@ -1797,15 +1797,15 @@ after_ip_checks:
 		if (args->eh == NULL && skipto != 0) {
 			/* No skipto during rule flushing */
 			if (ipfw_flushing)
-				return IP_FW_PORT_DENY_FLAG;
+				return IP_FW_DENY;
 
 			if (skipto >= IPFW_DEFAULT_RULE)
-				return(IP_FW_PORT_DENY_FLAG); /* invalid */
+				return IP_FW_DENY; /* invalid */
 
 			while (f && f->rulenum <= skipto)
 				f = f->next;
 			if (f == NULL)	/* drop packet */
-				return(IP_FW_PORT_DENY_FLAG);
+				return IP_FW_DENY;
 		} else if (ipfw_flushing) {
 			/* Rules are being flushed; skip to default rule */
 			f = ctx->ipfw_default_rule;
@@ -2188,7 +2188,8 @@ check_body:
 			 *   the packet must be dropped ('goto done' after
 			 *   setting retval).  If static rules are changed
 			 *   during the state installation, the packet will
-			 *   be dropped ('return IP_FW_PORT_DENY_FLAG').
+			 *   be dropped and rule's stats will not beupdated
+			 *   ('return IP_FW_DENY').
 			 *
 			 * O_PROBE_STATE and O_CHECK_STATE: these opcodes
 			 *   cause a lookup of the state table, and a jump
@@ -2200,7 +2201,8 @@ check_body:
 			 *   further instances of these opcodes are
 			 *   effectively NOPs.  If static rules are changed
 			 *   during the state looking up, the packet will
-			 *   be dropped ('return IP_FW_PORT_DENY_FLAG').
+			 *   be dropped and rule's stats will not be updated
+			 *   ('return IP_FW_DENY').
 			 */
 			case O_LIMIT:
 			case O_KEEP_STATE:
@@ -2215,13 +2217,13 @@ check_body:
 				if (install_state(f,
 				    (ipfw_insn_limit *)cmd, args, &deny)) {
 					if (deny)
-						return IP_FW_PORT_DENY_FLAG;
+						return IP_FW_DENY;
 
-					retval = IP_FW_PORT_DENY_FLAG;
+					retval = IP_FW_DENY;
 					goto done; /* error/limit violation */
 				}
 				if (deny)
-					return IP_FW_PORT_DENY_FLAG;
+					return IP_FW_DENY;
 				match = 1;
 				break;
 
@@ -2243,7 +2245,7 @@ check_body:
 						L3HDR(struct tcphdr, ip) : NULL,
 						ip_len, &deny);
 					if (deny)
-						return IP_FW_PORT_DENY_FLAG;
+						return IP_FW_DENY;
 					if (dyn_f != NULL) {
 						/*
 						 * Found a rule from a dynamic
@@ -2269,13 +2271,14 @@ check_body:
 				break;
 
 			case O_ACCEPT:
-				retval = 0;	/* accept */
+				retval = IP_FW_PASS;	/* accept */
 				goto done;
 
 			case O_PIPE:
 			case O_QUEUE:
 				args->rule = f; /* report matching rule */
-				retval = cmd->arg1 | IP_FW_PORT_DYNT_FLAG;
+				args->cookie = cmd->arg1;
+				retval = IP_FW_DUMMYNET;
 				goto done;
 
 			case O_DIVERT:
@@ -2286,7 +2289,7 @@ check_body:
 				mtag = m_tag_get(PACKET_TAG_IPFW_DIVERT,
 						 sizeof(*divinfo), MB_DONTWAIT);
 				if (mtag == NULL) {
-					retval = IP_FW_PORT_DENY_FLAG;
+					retval = IP_FW_DENY;
 					goto done;
 				}
 				divinfo = m_tag_data(mtag);
@@ -2296,9 +2299,9 @@ check_body:
 				divinfo->tee = (cmd->opcode == O_TEE);
 				m_tag_prepend(m, mtag);
 
+				args->cookie = cmd->arg1;
 				retval = (cmd->opcode == O_DIVERT) ?
-				    cmd->arg1 :
-				    cmd->arg1 | IP_FW_PORT_TEE_FLAG;
+					 IP_FW_DIVERT : IP_FW_TEE;
 				goto done;
 
 			case O_COUNT:
@@ -2341,11 +2344,11 @@ check_body:
 					 * Return directly here, rule stats
 					 * have been updated above.
 					 */
-					return IP_FW_PORT_DENY_FLAG;
+					return IP_FW_DENY;
 				}
 				/* FALLTHROUGH */
 			case O_DENY:
-				retval = IP_FW_PORT_DENY_FLAG;
+				retval = IP_FW_DENY;
 				goto done;
 
 			case O_FORWARD_IP:
@@ -2357,7 +2360,7 @@ check_body:
 					mtag = m_tag_get(PACKET_TAG_IPFORWARD,
 					       sizeof(*sin), MB_DONTWAIT);
 					if (mtag == NULL) {
-						retval = IP_FW_PORT_DENY_FLAG;
+						retval = IP_FW_DENY;
 						goto done;
 					}
 					sin = m_tag_data(mtag);
@@ -2369,7 +2372,7 @@ check_body:
 					m->m_pkthdr.fw_flags |=
 						IPFORWARD_MBUF_TAGGED;
 				}
-				retval = 0;
+				retval = IP_FW_PASS;
 				goto done;
 
 			default:
@@ -2393,7 +2396,7 @@ next_rule:;		/* try next rule		*/
 
 	}		/* end of outer for, scan rules */
 	kprintf("+++ ipfw: ouch!, skip past end of rules, denying packet\n");
-	return(IP_FW_PORT_DENY_FLAG);
+	return IP_FW_DENY;
 
 done:
 	/* Update statistics */
@@ -2405,7 +2408,7 @@ done:
 pullup_failed:
 	if (fw_verbose)
 		kprintf("pullup failed\n");
-	return(IP_FW_PORT_DENY_FLAG);
+	return IP_FW_DENY;
 }
 
 static void
