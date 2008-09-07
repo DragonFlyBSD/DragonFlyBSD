@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/md/md.c,v 1.8.2.2 2002/08/19 17:43:34 jdp Exp $
- * $DragonFly: src/sys/dev/disk/md/md.c,v 1.19 2008/01/05 14:02:37 swildner Exp $
+ * $DragonFly: src/sys/dev/disk/md/md.c,v 1.20 2008/09/07 08:09:39 swildner Exp $
  *
  */
 
@@ -158,7 +158,6 @@ mdstrategy_malloc(struct dev_strategy_args *ap)
 	struct buf *bp = bio->bio_buf;
 	unsigned secno, nsec, secval, uc;
 	u_char *secp, **secpp, *dst;
-	devstat_trans_flags dop;
 	struct md_s *sc;
 	int i;
 
@@ -192,15 +191,10 @@ mdstrategy_malloc(struct dev_strategy_args *ap)
 
 		devstat_start_transaction(&sc->stats);
 
-		switch(bp->b_cmd) {
+		switch (bp->b_cmd) {
 		case BUF_CMD_FREEBLKS:
-			dop = DEVSTAT_NO_DATA;
-			break;
 		case BUF_CMD_READ:
-			dop = DEVSTAT_READ;
-			break;
 		case BUF_CMD_WRITE:
-			dop = DEVSTAT_WRITE;
 			break;
 		default:
 			panic("md: bad b_cmd %d", bp->b_cmd);
@@ -227,7 +221,7 @@ mdstrategy_malloc(struct dev_strategy_args *ap)
 			if (md_debug > 2)
 				kprintf("%08x %p %p %d\n", bp->b_flags, secpp, secp, secval);
 
-			switch(bp->b_cmd) {
+			switch (bp->b_cmd) {
 			case BUF_CMD_FREEBLKS:
 				if (secpp) {
 					if (secp)
@@ -300,7 +294,6 @@ mdstrategy_preload(struct dev_strategy_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
 	struct bio *bio = ap->a_bio;
 	struct buf *bp = bio->bio_buf;
-	devstat_trans_flags dop;
 	struct md_s *sc;
 
 	if (md_debug > 1)
@@ -331,17 +324,14 @@ mdstrategy_preload(struct dev_strategy_args *ap)
 
 		devstat_start_transaction(&sc->stats);
 
-		switch(bp->b_cmd) {
+		switch (bp->b_cmd) {
 		case BUF_CMD_FREEBLKS:
-			dop = DEVSTAT_NO_DATA;
 			break;
 		case BUF_CMD_READ:
-			dop = DEVSTAT_READ;
 			bcopy(sc->pl_ptr + bio->bio_offset, 
 			       bp->b_data, bp->b_bcount);
 			break;
 		case BUF_CMD_WRITE:
-			dop = DEVSTAT_WRITE;
 			bcopy(bp->b_data, sc->pl_ptr + bio->bio_offset,
 			      bp->b_bcount);
 			break;
