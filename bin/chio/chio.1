@@ -31,7 +31,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/bin/chio/chio.1,v 1.10.2.8 2003/05/16 22:43:15 keramida Exp $
-.\" $DragonFly: src/bin/chio/chio.1,v 1.3 2006/02/17 19:33:30 swildner Exp $
+.\" $DragonFly: src/bin/chio/chio.1,v 1.4 2008/09/07 07:51:39 swildner Exp $
 .\"
 .Dd May 14, 1998
 .Dt CHIO 1
@@ -192,8 +192,9 @@ because of buggy firmware or the like.
 .Xc
 Change volume tag for an element in the media changer.  This command
 is only supported by few media changers.  If it is not supported by a
-device, using this command will usually result in an "Invalid Field in
-CDB" error message on the console.
+device, using this command will usually result in an
+.Dq Invalid Field in CDB
+error message on the console.
 .Pp
 If the
 .Fl c
