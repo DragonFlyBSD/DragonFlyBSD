@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.57 2008/09/07 10:03:44 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.58 2008/09/08 12:41:39 sephe Exp $
  */
 
 #define _IP_VHL
@@ -154,6 +154,51 @@ ip_divert_out(struct mbuf *m, int tee)
 }
 #endif	/* IPDIVERT */
 
+static int
+ip_localforward(struct mbuf *m, const struct sockaddr_in *dst)
+{
+	struct in_ifaddr_container *iac;
+
+	/*
+	 * We need to figure out if we have been forwarded to a local
+	 * socket.  If so, then we should somehow "loop back" to
+	 * ip_input(), and get directed to the PCB as if we had received
+	 * this packet.  This is because it may be difficult to identify
+	 * the packets you want to forward until they are being output
+	 * and have selected an interface (e.g. locally initiated
+	 * packets).  If we used the loopback inteface, we would not be
+	 * able to control what happens as the packet runs through
+	 * ip_input() as it is done through a ISR.
+	 */
+	LIST_FOREACH(iac, INADDR_HASH(dst->sin_addr.s_addr), ia_hash) {
+		/*
+		 * If the addr to forward to is one of ours, we pretend
+		 * to be the destination for this packet.
+		 */
+		if (IA_SIN(iac->ia)->sin_addr.s_addr == dst->sin_addr.s_addr)
+			break;
+	}
+	if (iac != NULL) {
+		struct ip *ip = mtod(m, struct ip *);
+
+		if (m->m_pkthdr.rcvif == NULL)
+			m->m_pkthdr.rcvif = ifunit("lo0");
+		if (m->m_pkthdr.csum_flags & CSUM_DELAY_DATA) {
+			m->m_pkthdr.csum_flags |= CSUM_DATA_VALID |
+						  CSUM_PSEUDO_HDR;
+			m->m_pkthdr.csum_data = 0xffff;
+		}
+		m->m_pkthdr.csum_flags |= CSUM_IP_CHECKED | CSUM_IP_VALID;
+
+		ip->ip_len = htons(ip->ip_len);
+		ip->ip_off = htons(ip->ip_off);
+		ip_input(m);
+
+		return 1; /* Packet gets forwarded locally */
+	}
+	return 0;
+}
+
 /*
  * IP output.  The packet in mbuf chain m contains a skeletal IP
  * header (with len, off, ttl, proto, tos, src, dst).
@@ -239,7 +284,6 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 			hlen = len;
 	}
 	ip = mtod(m, struct ip *);
-	pkt_dst = next_hop ? next_hop->sin_addr : ip->ip_dst;
 
 	/*
 	 * Fill in IP header.
@@ -252,6 +296,9 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	} else {
 		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 	}
+
+reroute:
+	pkt_dst = next_hop ? next_hop->sin_addr : ip->ip_dst;
 
 	dst = (struct sockaddr_in *)&ro->ro_dst;
 	/*
@@ -423,21 +470,21 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	} else {
 		m->m_flags &= ~M_MCAST;
 	}
-#ifndef notdef
+
 	/*
 	 * If the source address is not specified yet, use the address
 	 * of the outoing interface. In case, keep note we did that, so
 	 * if the the firewall changes the next-hop causing the output
 	 * interface to change, we can fix that.
 	 */
-	if (ip->ip_src.s_addr == INADDR_ANY) {
+	if (ip->ip_src.s_addr == INADDR_ANY || src_was_INADDR_ANY) {
 		/* Interface may have no addresses. */
 		if (ia != NULL) {
 			ip->ip_src = IA_SIN(ia)->sin_addr;
 			src_was_INADDR_ANY = 1;
 		}
 	}
-#endif /* notdef */
+
 #ifdef ALTQ
 	/*
 	 * Disable packet drop hack.
@@ -729,6 +776,11 @@ skip_ipsec:
 	}
 spd_done:
 #endif /* FAST_IPSEC */
+
+	/* We are already being fwd'd from a firewall. */
+	if (next_hop != NULL)
+		goto pass;
+
 	/*
 	 * IpHack's section.
 	 * - Xlate: translate packet's addr/port (NAT).
@@ -749,10 +801,8 @@ spd_done:
 
 	/*
 	 * Check with the firewall...
-	 * but not if we are already being fwd'd from a firewall.
 	 */
-	if (fw_enable && IPFW_LOADED && !next_hop) {
-		struct sockaddr_in *old = dst;
+	if (fw_enable && IPFW_LOADED) {
 		struct ip_fw_args args;
 		int tee = 0;
 
@@ -784,15 +834,7 @@ spd_done:
 
 		switch (off) {
 		case IP_FW_PASS:
-			if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
-				mtag = m_tag_find(m, PACKET_TAG_IPFORWARD,
-						  NULL);
-				KKASSERT(mtag != NULL);
-				next_hop = m_tag_data(mtag);
-				dst = next_hop;
-				break;
-			}
-			goto pass;
+			break;
 
 		case IP_FW_DENY:
 			m_freem(m);
@@ -827,7 +869,7 @@ spd_done:
 			if (m == NULL)
 				goto done;
 			ip = mtod(m, struct ip *);
-			goto pass;
+			break;
 #else
 			m_freem(m);
 			/* not sure this is the right error msg */
@@ -838,10 +880,9 @@ spd_done:
 		default:
 			panic("unknown ipfw return value: %d\n", off);
 		}
+	}
 
-		/* IPFIREWALL_FORWARD */
-		KKASSERT(off == IP_FW_PASS); /* only if PASS */
-
+	if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
 		/*
 		 * Check dst to make sure it is directly reachable on the
 		 * interface we previously thought it was.
@@ -852,119 +893,37 @@ spd_done:
 		 * such control is nigh impossible. So we do it here.
 		 * And I'm babbling.
 		 */
-		if (old != dst) { /* FORWARD, dst has changed */
-#if 0
-			/*
-			 * XXX To improve readability, this block should be
-			 * changed into a function call as below:
-			 */
-			error = ip_ipforward(&m, &dst, &ifp);
-			if (error)
-				goto bad;
-			if (m == NULL) /* ip_input consumed the mbuf */
-				goto done;
-#else
-			struct in_ifaddr *ia;
-			struct in_ifaddr_container *iac;
+		mtag = m_tag_find(m, PACKET_TAG_IPFORWARD, NULL);
+		KKASSERT(mtag != NULL);
+		next_hop = m_tag_data(mtag);
 
-			/*
-			 * XXX sro_fwd below is static, and a pointer
-			 * to it gets passed to routines downstream.
-			 * This could have surprisingly bad results in
-			 * practice, because its content is overwritten
-			 * by subsequent packets.
-			 */
-			/* There must be a better way to do this next line... */
-			static struct route sro_fwd;
-			struct route *ro_fwd = &sro_fwd;
+		/*
+		 * Try local forwarding first
+		 */
+		if (ip_localforward(m, next_hop))
+			goto done;
 
-#if 0
-			print_ip("IPFIREWALL_FORWARD: New dst ip: ",
-			    dst->sin_addr, "\n");
-#endif
-
-			/*
-			 * We need to figure out if we have been forwarded
-			 * to a local socket. If so, then we should somehow
-			 * "loop back" to ip_input, and get directed to the
-			 * PCB as if we had received this packet. This is
-			 * because it may be dificult to identify the packets
-			 * you want to forward until they are being output
-			 * and have selected an interface. (e.g. locally
-			 * initiated packets) If we used the loopback inteface,
-			 * we would not be able to control what happens
-			 * as the packet runs through ip_input() as
-			 * it is done through a ISR.
-			 */
-			ia = NULL;
-			LIST_FOREACH(iac, INADDR_HASH(dst->sin_addr.s_addr),
-				     ia_hash) {
-				/*
-				 * If the addr to forward to is one
-				 * of ours, we pretend to
-				 * be the destination for this packet.
-				 */
-				if (IA_SIN(iac->ia)->sin_addr.s_addr ==
-				    dst->sin_addr.s_addr) {
-					ia = iac->ia;
-					break;
-				}
-			}
-			if (ia != NULL) {    /* tell ip_input "dont filter" */
-				if (m->m_pkthdr.rcvif == NULL)
-					m->m_pkthdr.rcvif = ifunit("lo0");
-				if (m->m_pkthdr.csum_flags & CSUM_DELAY_DATA) {
-					m->m_pkthdr.csum_flags |=
-					    CSUM_DATA_VALID | CSUM_PSEUDO_HDR;
-					m->m_pkthdr.csum_data = 0xffff;
-				}
-				m->m_pkthdr.csum_flags |=
-				    CSUM_IP_CHECKED | CSUM_IP_VALID;
-				ip->ip_len = htons(ip->ip_len);
-				ip->ip_off = htons(ip->ip_off);
-				ip_input(m);
-				goto done;
-			}
-			/* Some of the logic for this was nicked from above.
-			 *
-			 * This rewrites the cached route in a local PCB.
-			 * Is this what we want to do?
-			 */
-			bcopy(dst, &ro_fwd->ro_dst, sizeof *dst);
-			ro_fwd->ro_rt = NULL;
-
-			rtalloc_ign(ro_fwd, RTF_PRCLONING);
-			if (ro_fwd->ro_rt == NULL) {
-				ipstat.ips_noroute++;
-				error = EHOSTUNREACH;
-				goto bad;
-			}
-
-			ia = ifatoia(ro_fwd->ro_rt->rt_ifa);
-			ifp = ro_fwd->ro_rt->rt_ifp;
-			ro_fwd->ro_rt->rt_use++;
-			if (ro_fwd->ro_rt->rt_flags & RTF_GATEWAY)
-				dst = (struct sockaddr_in *)
-				    ro_fwd->ro_rt->rt_gateway;
-			if (ro_fwd->ro_rt->rt_flags & RTF_HOST)
-				isbroadcast =
-				    (ro_fwd->ro_rt->rt_flags & RTF_BROADCAST);
-			else
-				isbroadcast = in_broadcast(dst->sin_addr, ifp);
-			if (ro->ro_rt != NULL)
-				rtfree(ro->ro_rt);
-			ro->ro_rt = ro_fwd->ro_rt;
-			dst = (struct sockaddr_in *)&ro_fwd->ro_dst;
-
-#endif	/* ... block to be put into a function */
-			/*
-			 * If we added a default src ip earlier,
-			 * which would have been gotten from the-then
-			 * interface, do it again, from the new one.
-			 */
-			if (src_was_INADDR_ANY)
-				ip->ip_src = IA_SIN(ia)->sin_addr;
+		/*
+		 * Relocate the route based on next_hop.
+		 * If the current route is inp's cache, keep it untouched.
+		 */
+		if (ro == &iproute && ro->ro_rt != NULL) {
+			RTFREE(ro->ro_rt);
+			ro->ro_rt = NULL;
 		}
+		ro = &iproute;
+		bzero(ro, sizeof *ro);
+
+		/*
+		 * Forwarding to broadcast address is not allowed.
+		 * XXX Should we follow IP_ROUTETOIF?
+		 */
+		flags &= ~(IP_ALLOWBROADCAST | IP_ROUTETOIF);
+
+		/* We are doing forwarding now */
+		flags |= IP_FORWARDING;
+
+		goto reroute;
 	}
 
 pass:
