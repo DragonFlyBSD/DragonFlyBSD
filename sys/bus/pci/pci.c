@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.55 2008/09/06 21:18:39 hasso Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.56 2008/09/08 10:16:23 hasso Exp $
  *
  */
 
@@ -2492,6 +2492,12 @@ pci_driver_added(device_t dev, driver_t *driver)
 	kfree(devlist, M_TEMP);
 }
 
+static void
+pci_child_detached(device_t parent __unused, device_t child) {
+	/* Turn child's power off */
+	pci_cfg_save(child, device_get_ivars(child), 1);
+}
+
 static device_method_t pci_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		pci_probe),
@@ -2506,6 +2512,7 @@ static device_method_t pci_methods[] = {
 	DEVMETHOD(bus_read_ivar,	pci_read_ivar),
 	DEVMETHOD(bus_write_ivar,	pci_write_ivar),
 	DEVMETHOD(bus_driver_added,	pci_driver_added),
+	DEVMETHOD(bus_child_detached,	pci_child_detached),
 	DEVMETHOD(bus_setup_intr,	bus_generic_setup_intr),
 	DEVMETHOD(bus_teardown_intr,	bus_generic_teardown_intr),
 
