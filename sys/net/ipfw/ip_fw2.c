@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.79 2008/09/07 10:03:45 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.80 2008/09/09 11:37:08 sephe Exp $
  */
 
 #define        DEB(x)
@@ -33,15 +33,11 @@
  * Implement IP packet firewall (new version)
  */
 
-#ifndef KLD_MODULE
 #include "opt_ipfw.h"
-#include "opt_ipdn.h"
-#include "opt_ipdivert.h"
 #include "opt_inet.h"
 #ifndef INET
 #error IPFIREWALL requires INET.
 #endif /* INET */
-#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -4170,13 +4166,7 @@ ipfw_init_dispatch(struct netmsg *nmsg)
 	ip_fw_ctl_ptr = ipfw_ctl;
 	ip_fw_dn_io_ptr = ipfw_dummynet_io;
 
-	kprintf("ipfw2 initialized, divert %s, "
-		"rule-based forwarding enabled, default to %s, logging ",
-#ifdef IPDIVERT
-		"enabled",
-#else
-		"disabled",
-#endif
+	kprintf("ipfw2 initialized, default to %s, logging ",
 		ipfw_ctx[mycpuid]->ipfw_default_rule->cmd[0].opcode ==
 		O_ACCEPT ? "accept" : "deny");
 
