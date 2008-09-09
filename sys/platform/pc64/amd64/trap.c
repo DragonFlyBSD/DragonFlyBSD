@@ -38,7 +38,7 @@
  *
  * from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc64/amd64/trap.c,v 1.2 2008/08/29 17:07:10 dillon Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/trap.c,v 1.3 2008/09/09 04:06:18 dillon Exp $
  */
 
 /*
@@ -335,22 +335,15 @@ userexit(struct lwp *lp)
 	 * Reduce our priority in preparation for a return to userland.  If
 	 * our passive release function was still in place, our priority was
 	 * never raised and does not need to be reduced.
+	 *
+	 * Note that at this point there may be other LWKT thread at
+	 * TDPRI_KERN_USER (aka higher then our currenet priority).  We
+	 * do NOT want to run these threads yet.
 	 */
 	if (td->td_release == NULL)
 		lwkt_setpri_self(TDPRI_USER_NORM);
 	td->td_release = NULL;
-
-	/*
-	 * After reducing our priority there might be other kernel-level
-	 * LWKTs that now have a greater priority.  Run them as necessary.
-	 * We don't have to worry about losing cpu to userland because
-	 * we still control the current-process designation and we no longer
-	 * have a passive release function installed.
-	 */
-	if (lwkt_checkpri_self())
-		lwkt_switch();
 }
-
 
 /*
  * Exception, fault, and trap interface to the kernel.

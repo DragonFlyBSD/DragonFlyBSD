@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.90 2008/04/30 04:19:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.91 2008/09/09 04:06:13 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -437,8 +437,6 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 		 * the userland scheduler and initialize slptime to start
 		 * counting.
 		 */
-		if (flags & PNORESCHED)
-			td->td_flags |= TDF_NORESCHED;
 		p->p_usched->release_curproc(lp);
 		lp->lwp_slptime = 0;
 	}
@@ -496,7 +494,6 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	 * not supposed to happen.  Cleanup our temporary flags.
 	 */
 	KKASSERT(gd == td->td_gd);
-	td->td_flags &= ~TDF_NORESCHED;
 
 	/*
 	 * Cleanup the timeout.

@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.114 2008/07/13 10:28:51 nth Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.115 2008/09/09 04:06:17 dillon Exp $
  */
 
 /*
@@ -337,7 +337,10 @@ userexit(struct lwp *lp)
 
 	/*
 	 * Handle a LWKT reschedule request first.  Since our passive release
-	 * is still in place we do not have to do anything special.
+	 * is still in place we do not have to do anything special.  This
+	 * will also allow other kernel threads running on behalf of user
+	 * mode to force us to release and acquire the current process before
+	 * we do.
 	 */
 	while (lwkt_resched_wanted()) {
 		lwkt_switch();
@@ -355,6 +358,11 @@ userexit(struct lwp *lp)
 	/*
 	 * Acquire the current process designation for this user scheduler
 	 * on this cpu.  This will also handle any user-reschedule requests.
+	 *
+	 * If we never blocked we never released and this function is
+	 * typically a nop.  However, if a user reschedule was requested
+	 * this function may allow another user process to run before
+	 * returning.
 	 */
 	lp->lwp_proc->p_usched->acquire_curproc(lp);
 	/* We may have switched cpus on acquisition */
@@ -364,20 +372,14 @@ userexit(struct lwp *lp)
 	 * Reduce our priority in preparation for a return to userland.  If
 	 * our passive release function was still in place, our priority was
 	 * never raised and does not need to be reduced.
+	 *
+	 * Note that at this point there may be other LWKT thread at
+	 * TDPRI_KERN_USER (aka higher then our currenet priority).  We
+	 * do NOT want to run these threads yet.
 	 */
 	if (td->td_release == NULL)
 		lwkt_setpri_self(TDPRI_USER_NORM);
 	td->td_release = NULL;
-
-	/*
-	 * After reducing our priority there might be other kernel-level
-	 * LWKTs that now have a greater priority.  Run them as necessary.
-	 * We don't have to worry about losing cpu to userland because
-	 * we still control the current-process designation and we no longer
-	 * have a passive release function installed.
-	 */
-	if (lwkt_checkpri_self())
-		lwkt_switch();
 }
 
 #if !defined(KTR_KERNENTRY)

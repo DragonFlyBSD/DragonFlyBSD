@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.116 2008/06/16 02:00:05 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.117 2008/09/09 04:06:13 dillon Exp $
  */
 
 /*
@@ -966,13 +966,29 @@ static __inline
 void
 _lwkt_schedule_post(globaldata_t gd, thread_t ntd, int cpri)
 {
+    int mypri;
+
     if (ntd->td_flags & TDF_RUNQ) {
 	if (ntd->td_preemptable) {
 	    ntd->td_preemptable(ntd, cpri);	/* YYY +token */
-	} else if ((ntd->td_flags & TDF_NORESCHED) == 0 &&
-	    (ntd->td_pri & TDPRI_MASK) > (gd->gd_curthread->td_pri & TDPRI_MASK)
-	) {
-	    need_lwkt_resched();
+	} else {
+	    /*
+	     * This is a little sticky.  Due to the passive release function
+	     * the LWKT priority can wiggle around for threads acting in
+	     * the kernel on behalf of a user process.  We do not want this
+	     * to effect the comparison per-say.
+	     *
+	     * What will happen is that the current user process will be
+	     * allowed to run until the next hardclock at which time a
+	     * forced need_lwkt_resched() will allow the other kernel mode
+	     * threads to get in their two cents.  This prevents cavitation.
+	     */
+	    mypri = gd->gd_curthread->td_pri & TDPRI_MASK;
+	    if (mypri >= TDPRI_USER_IDLE && mypri <= TDPRI_USER_REAL)
+		mypri = TDPRI_KERN_USER;
+
+	    if ((ntd->td_pri & TDPRI_MASK) > mypri)
+		need_lwkt_resched();
 	}
     }
 }
@@ -1136,32 +1152,6 @@ lwkt_setpri_self(int pri)
 	td->td_pri = (td->td_pri & ~TDPRI_MASK) + pri;
     }
     crit_exit();
-}
-
-/*
- * Determine if there is a runnable thread at a higher priority then
- * the current thread.  lwkt_setpri() does not check this automatically.
- * Return 1 if there is, 0 if there isn't.
- *
- * Example: if bit 31 of runqmask is set and the current thread is priority
- * 30, then we wind up checking the mask: 0x80000000 against 0x7fffffff.  
- *
- * If nq reaches 31 the shift operation will overflow to 0 and we will wind
- * up comparing against 0xffffffff, a comparison that will always be false.
- */
-int
-lwkt_checkpri_self(void)
-{
-    globaldata_t gd = mycpu;
-    thread_t td = gd->gd_curthread;
-    int nq = td->td_pri & TDPRI_MASK;
-
-    while (gd->gd_runqmask > (__uint32_t)(2 << nq) - 1) {
-	if (TAILQ_FIRST(&gd->gd_tdrunq[nq + 1]))
-	    return(1);
-	++nq;
-    }
-    return(0);
 }
 
 /*

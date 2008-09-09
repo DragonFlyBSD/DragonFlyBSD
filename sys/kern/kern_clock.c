@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.61 2007/09/30 04:37:27 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.62 2008/09/09 04:06:13 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -506,6 +506,15 @@ hardclock(systimer_t info, struct intrframe *frame)
 	 * softticks are handled for all cpus
 	 */
 	hardclock_softtick(gd);
+
+	/*
+	 * The LWKT scheduler will generally allow the current process to
+	 * return to user mode even if there are other runnable LWKT threads
+	 * running in kernel mode on behalf of a user process.  This will
+	 * ensure that those other threads have an opportunity to run in
+	 * fairly short order (but not instantly).
+	 */
+	need_lwkt_resched();
 
 	/*
 	 * ITimer handling is per-tick, per-cpu.  I don't think ksignal()

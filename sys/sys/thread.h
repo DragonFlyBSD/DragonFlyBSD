@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.94 2008/07/01 02:02:55 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.95 2008/09/09 04:06:20 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -275,7 +275,7 @@ struct thread {
 #define TDF_WAKEREQ		0x4000	/* resume_kproc */
 #define TDF_TIMEOUT		0x8000	/* tsleep timeout */
 #define TDF_INTTHREAD		0x00010000	/* interrupt thread */
-#define TDF_NORESCHED		0x00020000	/* Do not reschedule on wake */
+#define TDF_UNUSED20000		0x00020000
 #define TDF_BLOCKED		0x00040000	/* Thread is blocked */
 #define TDF_PANICWARN		0x00080000	/* panic warning in switch */
 #define TDF_BLOCKQ		0x00100000	/* on block queue */
@@ -358,7 +358,6 @@ extern lwkt_token_t lwkt_token_pool_get(void *);
 
 extern void lwkt_setpri(thread_t, int);
 extern void lwkt_setpri_self(int);
-extern int  lwkt_checkpri_self(void);
 extern void lwkt_setcpu_self(struct globaldata *);
 extern void lwkt_migratecpu(int);
 
