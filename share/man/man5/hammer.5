@@ -29,9 +29,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man5/hammer.5,v 1.9 2008/08/21 23:38:03 thomas Exp $
+.\" $DragonFly: src/share/man/man5/hammer.5,v 1.10 2008/09/09 11:38:43 matthias Exp $
 .\"
-.Dd July 24, 2008
+.Dd September 9, 2008
 .Os
 .Dt HAMMER 5
 .Sh NAME
@@ -229,7 +229,7 @@ for example, to reblock the
 .Pa /home
 file system every night at 2:15 for up to 5 minutes:
 .Bd -literal
-15 2 * * * hammer -c /var/run/Home -t 300 reblock /home >/dev/null 2>&1
+15 2 * * * hammer -c /var/run/Home.reblock -t 300 reblock /home >/dev/null 2>&1
 .Ed
 .Ss Snapshots
 The
@@ -267,6 +267,12 @@ Unless the file system is mounted with the
 option, it might be advisable to also set up
 .Xr cron 8
 jobs for pruning no longer used historical data regularly.
+For example, to prune the
+.Pa /snaps
+directory every night at 3:15 for up to 5 minutes:
+.Bd -literal
+15 3 * * * hammer -c /var/run/snaps.prune -t 300 prune /snaps >/dev/null 2>&1
+.Ed
 .Ss Mirroring
 Mirroring can be set up using
 .Nm Ap s
