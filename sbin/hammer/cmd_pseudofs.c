@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.6.2.2 2008/08/04 19:41:25 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.6.2.3 2008/09/09 23:41:13 dillon Exp $
  */
 
 #include "hammer.h"
@@ -67,6 +67,10 @@ getpfs(struct hammer_ioc_pseudofs_rw *pfs, const char *path)
 	dirpath = strdup(path);
 	if (strrchr(dirpath, '/')) {
 		*strrchr(dirpath, '/') = 0;
+		if (strlen(dirpath) == 0) {
+			free(dirpath);
+			dirpath = strdup("/");
+		}
 	} else {
 		free(dirpath);
 		dirpath = strdup(".");
@@ -161,6 +165,9 @@ hammer_cmd_pseudofs_status(char **av, int ac)
 	struct hammer_ioc_pseudofs_rw pfs;
 	int i;
 	int fd;
+
+	if (ac == 0)
+		pseudofs_usage(1);
 
 	for (i = 0; i < ac; ++i) {
 		printf("%s\t", av[i]);
@@ -422,11 +429,14 @@ hammer_cmd_pseudofs_update(char **av, int ac)
 			if (ioctl(fd, HAMMERIOC_GET_PSEUDOFS, &pfs) == 0) {
 				dump_pfsd(pfs.ondisk);
 			} else {
-				printf("Unable to retrieve pfs configuration after successful update: %s\n", strerror(errno));
+				printf("Unable to retrieve pfs configuration "
+					"after successful update: %s\n",
+					strerror(errno));
 				exit(1);
 			}
 		} else {
-			printf("Unable to adjust pfs configuration: %s\n", strerror(errno));
+			printf("Unable to adjust pfs configuration: %s\n",
+				strerror(errno));
 			exit(1);
 		}
 	}
@@ -533,7 +543,7 @@ void
 pseudofs_usage(int code)
 {
 	fprintf(stderr, 
-		"hammer pfs-status <dirpath1>...<dirpathN>\n"
+		"hammer pfs-status <dirpath> ...\n"
 		"hammer pfs-master <dirpath> [options]\n"
 		"hammer pfs-slave <dirpath> [options]\n"
 		"hammer pfs-update <dirpath> [options]\n"

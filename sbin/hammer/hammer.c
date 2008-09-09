@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.33.2.2 2008/08/04 19:41:25 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.33.2.3 2008/09/09 23:41:13 dillon Exp $
  */
 
 #include "hammer.h"
@@ -308,13 +308,16 @@ usage(int exit_code)
 		"hammer bstats [interval]\n"
 		"hammer iostats [interval]\n"
 		"hammer mirror-read <filesystem> [begin-tid]\n"
-		"hammer mirror-write <filesystem> [file ...]\n"
+		"hammer mirror-read-stream <filesystem> [begin-tid]\n"
+		"hammer mirror-write <filesystem>\n"
 		"hammer mirror-dump\n"
 		"hammer mirror-copy [[user@]host:]<filesystem>"
 				  " [[user@]host:]<filesystem>\n"
+		"hammer mirror-stream [[user@]host:]<filesystem>"
+				    " [[user@]host:]<filesystem>\n"
 		"hammer reblock[-btree/inodes/dirs/data] "
 			"<filesystem> [fill_percentage]\n"
-		"hammer pfs-status <dirpath>\n"
+		"hammer pfs-status <dirpath> ...\n"
 		"hammer pfs-master <dirpath> [options]\n"
 		"hammer pfs-slave <dirpath> [options]\n"
 		"hammer pfs-update <dirpath> [options]\n"
