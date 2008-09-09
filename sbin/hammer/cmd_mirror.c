@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.14 2008/08/21 23:28:43 thomas Exp $
+ * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.15 2008/09/09 23:34:21 dillon Exp $
  */
 
 #include "hammer.h"
@@ -615,7 +615,7 @@ hammer_cmd_mirror_copy(char **av, int ac, int streaming)
 				xav[xac++] = tbuf;
 			}
 			if (streaming)
-				xav[xac++] = "mirror-read-streaming";
+				xav[xac++] = "mirror-read-stream";
 			else
 				xav[xac++] = "mirror-read";
 			xav[xac++] = ptr;
