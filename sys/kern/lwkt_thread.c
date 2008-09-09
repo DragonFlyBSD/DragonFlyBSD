@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.117 2008/09/09 04:06:13 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.118 2008/09/09 07:21:54 dillon Exp $
  */
 
 /*
@@ -961,17 +961,23 @@ lwkt_yield(void)
  * It is possible for this routine to be called after a failed _enqueue
  * (due to the target thread migrating, sleeping, or otherwise blocked).
  * We have to check that the thread is actually on the run queue!
+ *
+ * reschedok is an optimized constant propagated from lwkt_schedule() or
+ * lwkt_schedule_noresched().  By default it is non-zero, causing a
+ * reschedule to be requested if the target thread has a higher priority.
+ * The port messaging code will set MSG_NORESCHED and cause reschedok to
+ * be 0, prevented undesired reschedules.
  */
 static __inline
 void
-_lwkt_schedule_post(globaldata_t gd, thread_t ntd, int cpri)
+_lwkt_schedule_post(globaldata_t gd, thread_t ntd, int cpri, int reschedok)
 {
     int mypri;
 
     if (ntd->td_flags & TDF_RUNQ) {
-	if (ntd->td_preemptable) {
+	if (ntd->td_preemptable && reschedok) {
 	    ntd->td_preemptable(ntd, cpri);	/* YYY +token */
-	} else {
+	} else if (reschedok) {
 	    /*
 	     * This is a little sticky.  Due to the passive release function
 	     * the LWKT priority can wiggle around for threads acting in
@@ -993,8 +999,9 @@ _lwkt_schedule_post(globaldata_t gd, thread_t ntd, int cpri)
     }
 }
 
+static __inline
 void
-lwkt_schedule(thread_t td)
+_lwkt_schedule(thread_t td, int reschedok)
 {
     globaldata_t mygd = mycpu;
 
@@ -1012,16 +1019,28 @@ lwkt_schedule(thread_t td)
 #ifdef SMP
 	if (td->td_gd == mygd) {
 	    _lwkt_enqueue(td);
-	    _lwkt_schedule_post(mygd, td, TDPRI_CRIT);
+	    _lwkt_schedule_post(mygd, td, TDPRI_CRIT, reschedok);
 	} else {
 	    lwkt_send_ipiq(td->td_gd, (ipifunc1_t)lwkt_schedule, td);
 	}
 #else
 	_lwkt_enqueue(td);
-	_lwkt_schedule_post(mygd, td, TDPRI_CRIT);
+	_lwkt_schedule_post(mygd, td, TDPRI_CRIT, reschedok);
 #endif
     }
     crit_exit_gd(mygd);
+}
+
+void
+lwkt_schedule(thread_t td)
+{
+    _lwkt_schedule(td, 1);
+}
+
+void
+lwkt_schedule_noresched(thread_t td)
+{
+    _lwkt_schedule(td, 0);
 }
 
 #ifdef SMP

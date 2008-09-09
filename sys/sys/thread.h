@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.95 2008/09/09 04:06:20 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.96 2008/09/09 07:21:57 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -332,6 +332,7 @@ extern void lwkt_gdinit(struct globaldata *);
 extern void lwkt_switch(void);
 extern void lwkt_preempt(thread_t, int);
 extern void lwkt_schedule(thread_t);
+extern void lwkt_schedule_noresched(thread_t);
 extern void lwkt_schedule_self(thread_t);
 extern void lwkt_deschedule(thread_t);
 extern void lwkt_deschedule_self(thread_t);

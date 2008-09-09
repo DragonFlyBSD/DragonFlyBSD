@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.46 2008/05/18 20:57:56 nth Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.47 2008/09/09 07:21:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -230,6 +230,24 @@ _lwkt_initport(lwkt_port_t port,
 }
 
 /*
+ * Schedule the target thread.  If the message flags contains MSGF_NORESCHED
+ * we tell the scheduler not to reschedule if td is at a higher priority.
+ *
+ * This routine is called even if the thread is already scheduled so messages
+ * without NORESCHED will cause the target thread to be rescheduled even if
+ * prior messages did not.
+ */
+static __inline
+void
+_lwkt_schedule_msg(thread_t td, int flags)
+{
+	if (flags & MSGF_NORESCHED)
+	    lwkt_schedule_noresched(td);
+	else
+	    lwkt_schedule(td);
+}
+
+/*
  * lwkt_initport_thread()
  *
  *	Initialize a port for use by a particular thread.  The port may
@@ -367,6 +385,7 @@ void
 lwkt_thread_replyport_remote(lwkt_msg_t msg)
 {
     lwkt_port_t port = msg->ms_reply_port;
+    int flags;
 
     /*
      * Chase any thread migration that occurs
@@ -384,14 +403,16 @@ lwkt_thread_replyport_remote(lwkt_msg_t msg)
     KKASSERT(msg->ms_flags & MSGF_INTRANSIT);
     msg->ms_flags &= ~MSGF_INTRANSIT;
 #endif
+    flags = msg->ms_flags;
     if (msg->ms_flags & MSGF_SYNC) {
-	    msg->ms_flags |= MSGF_REPLY | MSGF_DONE;
+	cpu_sfence();
+	msg->ms_flags |= MSGF_REPLY | MSGF_DONE;
     } else {
-	    TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
-	    msg->ms_flags |= MSGF_REPLY | MSGF_DONE | MSGF_QUEUED;
+	TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
+	msg->ms_flags |= MSGF_REPLY | MSGF_DONE | MSGF_QUEUED;
     }
     if (port->mp_flags & MSGPORTF_WAITING)
-	lwkt_schedule(port->mpu_td);
+	_lwkt_schedule_msg(port->mpu_td, flags);
 }
 
 #endif
@@ -408,6 +429,8 @@ lwkt_thread_replyport_remote(lwkt_msg_t msg)
 void
 lwkt_thread_replyport(lwkt_port_t port, lwkt_msg_t msg)
 {
+    int flags;
+
     KKASSERT((msg->ms_flags & (MSGF_DONE|MSGF_QUEUED|MSGF_INTRANSIT)) == 0);
 
     if (msg->ms_flags & MSGF_SYNC) {
@@ -421,9 +444,11 @@ lwkt_thread_replyport(lwkt_port_t port, lwkt_msg_t msg)
 #ifdef SMP
 	if (port->mpu_td->td_gd == mycpu) {
 #endif
+	    flags = msg->ms_flags;
+	    cpu_sfence();
 	    msg->ms_flags |= MSGF_DONE | MSGF_REPLY;
 	    if (port->mp_flags & MSGPORTF_WAITING)
-		lwkt_schedule(port->mpu_td);
+		_lwkt_schedule_msg(port->mpu_td, flags);
 #ifdef SMP
 	} else {
 #ifdef INVARIANTS
@@ -448,7 +473,7 @@ lwkt_thread_replyport(lwkt_port_t port, lwkt_msg_t msg)
 	    TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
 	    msg->ms_flags |= MSGF_REPLY | MSGF_DONE | MSGF_QUEUED;
 	    if (port->mp_flags & MSGPORTF_WAITING)
-		lwkt_schedule(port->mpu_td);
+		_lwkt_schedule_msg(port->mpu_td, msg->ms_flags);
 	    crit_exit();
 #ifdef SMP
 	} else {
@@ -500,7 +525,7 @@ lwkt_thread_putport_remote(lwkt_msg_t msg)
     TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
     msg->ms_flags |= MSGF_QUEUED;
     if (port->mp_flags & MSGPORTF_WAITING)
-	lwkt_schedule(port->mpu_td);
+	_lwkt_schedule_msg(port->mpu_td, msg->ms_flags);
 }
 
 #endif
@@ -519,7 +544,7 @@ lwkt_thread_putport(lwkt_port_t port, lwkt_msg_t msg)
 	msg->ms_flags |= MSGF_QUEUED;
 	TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
 	if (port->mp_flags & MSGPORTF_WAITING)
-	    lwkt_schedule(port->mpu_td);
+	    _lwkt_schedule_msg(port->mpu_td, msg->ms_flags);
 	crit_exit();
 #ifdef SMP
     } else {

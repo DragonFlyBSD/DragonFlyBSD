@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.28 2008/08/25 23:34:34 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.29 2008/09/09 07:21:57 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -98,6 +98,7 @@ typedef struct lwkt_msg {
 #define MSGF_QUEUED	0x0004		/* message has been queued sanitychk */
 #define MSGF_SYNC	0x0008		/* synchronous message operation */
 #define MSGF_INTRANSIT	0x0010		/* in-transit (IPI) */
+#define MSGF_NORESCHED	0x0020		/* do not reschedule target lwkt */
 #define MSGF_ABORTABLE	0x0080		/* message supports abort */
 
 #define MSGF_USER0	0x00010000
