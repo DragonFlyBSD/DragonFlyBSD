@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.45 2008/08/13 10:30:20 swildner Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.46 2008/09/10 09:50:09 y0netan1 Exp $
  */
 
 /*-
@@ -2398,6 +2398,7 @@ ttyinfo(struct tty *tp)
 		if (lp == NULL) {
 			ttyprintf(tp, "foreground process without lwp\n");
 			tp->t_rocount = 0;
+			crit_exit();
 			return;
 		}
 
