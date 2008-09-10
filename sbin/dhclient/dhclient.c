@@ -1,5 +1,5 @@
 /*	$OpenBSD: dhclient.c,v 1.118 2008/05/09 05:19:14 reyk Exp $	*/
-/*	$DragonFly: src/sbin/dhclient/dhclient.c,v 1.1 2008/08/30 16:07:58 hasso Exp $	*/
+/*	$DragonFly: src/sbin/dhclient/dhclient.c,v 1.2 2008/09/10 10:01:18 matthias Exp $	*/
 
 /*
  * Copyright 2004 Henning Brauer <henning@openbsd.org>
@@ -337,9 +337,9 @@ main(int argc, char *argv[])
 			goto dispatch;
 		}
 		sleep(1);
-		if (i >= 0)
-			fprintf(stderr, " got link\n");
 	}
+	if (i >= 0)
+		fprintf(stderr, " got link\n");
 
  dispatch:
 	if ((nullfd = open(_PATH_DEVNULL, O_RDWR, 0)) == -1)
