@@ -64,7 +64,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.36 2008/07/20 18:43:12 nant Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.37 2008/09/11 11:23:29 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -127,6 +127,11 @@ static int route_debug = 1;
 SYSCTL_INT(_net_route, OID_AUTO, route_debug, CTLFLAG_RW,
            &route_debug, 0, "");
 #endif
+
+static int remote_free_panic = 0;
+SYSCTL_INT(_net_route, OID_AUTO, remote_free_panic, CTLFLAG_RW,
+           &remote_free_panic, 0, "");
+extern void	db_print_backtrace(void);
 
 /*
  * Initialize the route table(s) for protocol domains and
@@ -313,6 +318,16 @@ unreach:
 void
 rtfree(struct rtentry *rt)
 {
+	if (rt->rt_cpuid == mycpuid)
+		rtfree_oncpu(rt);
+	else
+		rtfree_remote(rt, 1);
+}
+
+void
+rtfree_oncpu(struct rtentry *rt)
+{
+	KKASSERT(rt->rt_cpuid == mycpuid);
 	KASSERT(rt->rt_refcnt > 0, ("rtfree: rt_refcnt %ld", rt->rt_refcnt));
 
 	--rt->rt_refcnt;
@@ -332,6 +347,40 @@ rtfree(struct rtentry *rt)
 			Free(rt);
 		}
 	}
+}
+
+static void
+rtfree_remote_dispatch(struct netmsg *nmsg)
+{
+	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
+	struct rtentry *rt = lmsg->u.ms_resultp;
+
+	rtfree_oncpu(rt);
+	lwkt_replymsg(lmsg, 0);
+}
+
+void
+rtfree_remote(struct rtentry *rt, int allow_panic)
+{
+	struct netmsg nmsg;
+	struct lwkt_msg *lmsg;
+
+	KKASSERT(rt->rt_cpuid != mycpuid);
+
+	if (remote_free_panic && allow_panic) {
+		panic("rt remote free rt_cpuid %d, mycpuid %d\n",
+		      rt->rt_cpuid, mycpuid);
+	} else {
+		kprintf("rt remote free rt_cpuid %d, mycpuid %d\n",
+			rt->rt_cpuid, mycpuid);
+		db_print_backtrace();
+	}
+
+	netmsg_init(&nmsg, &curthread->td_msgport, 0, rtfree_remote_dispatch);
+	lmsg = &nmsg.nm_lmsg;
+	lmsg->u.ms_resultp = rt;
+
+	lwkt_domsg(rtable_portfn(rt->rt_cpuid), lmsg, 0);
 }
 
 static int

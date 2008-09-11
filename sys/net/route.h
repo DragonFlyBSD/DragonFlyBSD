@@ -64,7 +64,7 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.23 2008/07/07 22:02:10 nant Exp $
+ * $DragonFly: src/sys/net/route.h,v 1.24 2008/09/11 11:23:29 sephe Exp $
  */
 
 #ifndef _NET_ROUTE_H_
@@ -389,17 +389,27 @@ int	 rtrequest_global (int, struct sockaddr *,
 int	 rtrequest1 (int, struct rt_addrinfo *, struct rtentry **);
 int	 rtrequest1_global (int, struct rt_addrinfo *, rtrequest1_callback_func_t, void *);
 
+void	rtfree_oncpu(struct rtentry *);
+void	rtfree_remote(struct rtentry *, int);
 void	rt_print(struct rt_addrinfo *, struct rtentry *);
 void	rt_addrinfo_print(int cmd, struct rt_addrinfo *);
 void	sockaddr_print(struct sockaddr *);
 
+#ifndef _SYS_GLOBALDATA_H_
+#include <sys/globaldata.h>
+#endif
+
 static __inline void
 RTFREE(struct rtentry *rt)
 {
-	if (rt->rt_refcnt <= 1)
-		rtfree(rt);
-	else
-		--rt->rt_refcnt;
+	if (rt->rt_cpuid == mycpuid) {
+		if (rt->rt_refcnt <= 1)
+			rtfree_oncpu(rt);
+		else
+			--rt->rt_refcnt;
+	} else {
+		rtfree_remote(rt, 1);
+	}
 }
 
 static __inline

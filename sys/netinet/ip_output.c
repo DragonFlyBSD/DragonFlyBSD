@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.58 2008/09/08 12:41:39 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.59 2008/09/11 11:23:29 sephe Exp $
  */
 
 #define _IP_VHL
@@ -237,6 +237,15 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	if (ro == NULL) {
 		ro = &iproute;
 		bzero(ro, sizeof *ro);
+	} else if (ro->ro_rt != NULL && ro->ro_rt->rt_cpuid != mycpuid) {
+		/*
+		 * XXX
+		 * If the cached rtentry's owner CPU is not the current CPU,
+		 * then don't touch the cached rtentry (remote free is too
+		 * expensive in this context); just relocate the route.
+		 */
+		ro = &iproute;
+		bzero(ro, sizeof *ro);
 	}
 
 	if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
@@ -263,6 +272,7 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 
 		KKASSERT(ro == &iproute);
 		*ro = dn_pkt->ro; /* structure copy */
+		KKASSERT(ro->ro_rt == NULL || ro->ro_rt->rt_cpuid == mycpuid);
 
 		dst = dn_pkt->dn_dst;
 		if (dst == (struct sockaddr_in *)&(dn_pkt->ro.ro_dst)) {
