@@ -1,6 +1,6 @@
 /* MD2C.C - RSA Data Security, Inc., MD2 message-digest algorithm
- * $FreeBSD: src/lib/libmd/md2c.c,v 1.7 1999/08/28 00:05:05 peter Exp $
- * $DragonFly: src/lib/libmd/md2c.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
+ * $FreeBSD: src/lib/libmd/md2c.c,v 1.11 2006/01/17 15:35:56 phk Exp $
+ * $DragonFly: src/lib/libmd/md2c.c,v 1.3 2008/09/11 20:25:34 swildner Exp $
  */
 
 /* Copyright (C) 1990-2, RSA Data Security, Inc. Created 1990. All
@@ -21,9 +21,9 @@
    documentation and/or software.
  */
 
-#include "md2.h"
-#include <string.h>
 #include <sys/types.h>
+#include <string.h>
+#include "md2.h"
 
 
 typedef unsigned char *POINTER;
@@ -98,37 +98,38 @@ MD2_CTX *context;                                        /* context */
      operation, processing another message block, and updating the
      context.
  */
-void MD2Update (context, input, inputLen)
+void MD2Update (context, in, inputLen)
 MD2_CTX *context;                                        /* context */
-const unsigned char *input;                                /* input block */
+const void *in;                                /* input block */
 unsigned int inputLen;                     /* length of input block */
 {
-  unsigned int i, index, partLen;
+  unsigned int i, idx, partLen;
+  const unsigned char *input = in;
 
   /* Update number of bytes mod 16 */
-  index = context->count;
-  context->count = (index + inputLen) & 0xf;
+  idx = context->count;
+  context->count = (idx + inputLen) & 0xf;
 
-  partLen = 16 - index;
+  partLen = 16 - idx;
 
   /* Transform as many times as possible.
     */
   if (inputLen >= partLen) {
     memcpy
-      ((POINTER)&context->buffer[index], (POINTER)input, partLen);
+      ((POINTER)&context->buffer[idx], (POINTER)input, partLen);
     MD2Transform (context->state, context->checksum, context->buffer);
 
     for (i = partLen; i + 15 < inputLen; i += 16)
       MD2Transform (context->state, context->checksum, &input[i]);
 
-    index = 0;
+    idx = 0;
   }
   else
     i = 0;
 
   /* Buffer remaining input */
   memcpy
-    ((POINTER)&context->buffer[index], (POINTER)&input[i],
+    ((POINTER)&context->buffer[idx], (POINTER)&input[i],
      inputLen-i);
 }
 
@@ -137,12 +138,12 @@ unsigned int inputLen;                     /* length of input block */
 void MD2Pad (context)
 MD2_CTX *context;                                        /* context */
 {
-  unsigned int index, padLen;
+  unsigned int idx, padLen;
 
   /* Pad out to multiple of 16.
    */
-  index = context->count;
-  padLen = 16 - index;
+  idx = context->count;
+  padLen = 16 - idx;
   MD2Update (context, PADDING[padLen], padLen);
 
   /* Extend with checksum */

@@ -1,6 +1,6 @@
 /* MD4.H - header file for MD4C.C
- * $FreeBSD: src/lib/libmd/md4.h,v 1.9 1999/08/28 00:05:05 peter Exp $
- * $DragonFly: src/lib/libmd/md4.h,v 1.2 2003/06/17 04:26:50 dillon Exp $
+ * $FreeBSD: src/lib/libmd/md4.h,v 1.11 2006/01/17 15:35:56 phk Exp $
+ * $DragonFly: src/lib/libmd/md4.h,v 1.3 2008/09/11 20:25:34 swildner Exp $
  */
 
 /* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
@@ -37,12 +37,13 @@ typedef struct MD4Context {
 
 __BEGIN_DECLS
 void   MD4Init(MD4_CTX *);
-void   MD4Update(MD4_CTX *, const unsigned char *, unsigned int);
+void   MD4Update(MD4_CTX *, const void *, unsigned int);
 void   MD4Pad(MD4_CTX *);
 void   MD4Final(unsigned char [16], MD4_CTX *);
 char * MD4End(MD4_CTX *, char *);
 char * MD4File(const char *, char *);
-char * MD4Data(const unsigned char *, unsigned int, char *);
+char * MD4FileChunk(const char *, char *, off_t, off_t);
+char * MD4Data(const void *, unsigned int, char *);
 __END_DECLS
 
 #endif /* _MD4_H_ */

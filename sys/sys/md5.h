@@ -1,9 +1,10 @@
 /* MD5.H - header file for MD5C.C
- * $FreeBSD: src/sys/sys/md5.h,v 1.13 1999/12/29 04:24:44 peter Exp $
- * $DragonFly: src/sys/sys/md5.h,v 1.4 2006/05/20 02:42:13 dillon Exp $
+ * $FreeBSD: src/sys/sys/md5.h,v 1.20 2006/03/15 19:47:12 andre Exp $
+ * $DragonFly: src/sys/sys/md5.h,v 1.5 2008/09/11 20:25:34 swildner Exp $
  */
 
-/* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
+/*-
+ Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
 rights reserved.
 
 License to copy and use this software is granted provided that it
@@ -32,6 +33,10 @@ documentation and/or software.
 #include <sys/types.h>
 #endif
 
+#define MD5_BLOCK_LENGTH		64
+#define MD5_DIGEST_LENGTH		16
+#define MD5_DIGEST_STRING_LENGTH	(MD5_DIGEST_LENGTH * 2 + 1)
+
 /* MD5 context. */
 typedef struct MD5Context {
   u_int32_t state[4];	/* state (ABCD) */
@@ -43,12 +48,13 @@ typedef struct MD5Context {
 
 __BEGIN_DECLS
 void   MD5Init (MD5_CTX *);
-void   MD5Update (MD5_CTX *, const unsigned char *, unsigned int);
+void   MD5Update (MD5_CTX *, const void *, unsigned int);
 void   MD5Pad (MD5_CTX *);
 void   MD5Final (unsigned char [16], MD5_CTX *);
 char * MD5End(MD5_CTX *, char *);
 char * MD5File(const char *, char *);
-char * MD5Data(const unsigned char *, unsigned int, char *);
+char * MD5FileChunk(const char *, char *, off_t, off_t);
+char * MD5Data(const void *, unsigned int, char *);
 #ifdef _KERNEL
 void MD5Transform (u_int32_t [4], const unsigned char [64]);
 #endif

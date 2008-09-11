@@ -1,6 +1,6 @@
 /* MD2.H - header file for MD2C.C
- * $FreeBSD: src/lib/libmd/md2.h,v 1.8 1999/08/28 00:05:04 peter Exp $
- * $DragonFly: src/lib/libmd/md2.h,v 1.2 2003/06/17 04:26:50 dillon Exp $
+ * $FreeBSD: src/lib/libmd/md2.h,v 1.10 2006/01/17 15:35:56 phk Exp $
+ * $DragonFly: src/lib/libmd/md2.h,v 1.3 2008/09/11 20:25:34 swildner Exp $
  */
 
 /* Copyright (C) 1990-2, RSA Data Security, Inc. Created 1990. All
@@ -35,12 +35,13 @@ typedef struct MD2Context {
 
 __BEGIN_DECLS
 void   MD2Init(MD2_CTX *);
-void   MD2Update(MD2_CTX *, const unsigned char *, unsigned int);
+void   MD2Update(MD2_CTX *, const void *, unsigned int);
 void   MD2Pad(MD2_CTX *);
 void   MD2Final(unsigned char [16], MD2_CTX *);
 char * MD2End(MD2_CTX *, char *);
 char * MD2File(const char *, char *);
-char * MD2Data(const unsigned char *, unsigned int, char *);
+char * MD2FileChunk(const char *, char *, off_t, off_t);
+char * MD2Data(const void *, unsigned int, char *);
 __END_DECLS
 
 #endif /* _MD2_H_ */

@@ -54,8 +54,8 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.]
  *
- * $FreeBSD: src/lib/libmd/sha.h,v 1.3 1999/08/28 00:05:08 peter Exp $
- * $DragonFly: src/lib/libmd/sha.h,v 1.3 2003/11/09 02:34:03 dillon Exp $
+ * $FreeBSD: src/lib/libmd/sha.h,v 1.5 2006/01/17 15:35:56 phk Exp $
+ * $DragonFly: src/lib/libmd/sha.h,v 1.4 2008/09/11 20:25:34 swildner Exp $
  */
 
 #ifndef _SHA_H_
@@ -81,17 +81,19 @@ typedef struct SHAstate_st {
 
 __BEGIN_DECLS
 void	SHA_Init(SHA_CTX *c);
-void	SHA_Update(SHA_CTX *c, const unsigned char *data, size_t len);
+void	SHA_Update(SHA_CTX *c, const void *data, size_t len);
 void	SHA_Final(unsigned char *md, SHA_CTX *c);
 char   *SHA_End(SHA_CTX *, char *);
 char   *SHA_File(const char *, char *);
-char   *SHA_Data(const unsigned char *, unsigned int, char *);
+char   *SHA_FileChunk(const char *, char *, off_t, off_t);
+char   *SHA_Data(const void *, unsigned int, char *);
 void	SHA1_Init(SHA_CTX *c);
-void	SHA1_Update(SHA_CTX *c, const unsigned char *data, size_t len);
+void	SHA1_Update(SHA_CTX *c, const void *data, size_t len);
 void	SHA1_Final(unsigned char *md, SHA_CTX *c);
 char   *SHA1_End(SHA_CTX *, char *);
 char   *SHA1_File(const char *, char *);
-char   *SHA1_Data(const unsigned char *, unsigned int, char *);
+char   *SHA1_FileChunk(const char *, char *, off_t, off_t);
+char   *SHA1_Data(const void *, unsigned int, char *);
 __END_DECLS
 
 #endif /* !_SHA_H_ */

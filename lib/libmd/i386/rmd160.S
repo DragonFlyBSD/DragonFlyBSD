@@ -1,3 +1,5 @@
+/* $FreeBSD: src/lib/libmd/i386/rmd160.S,v 1.4 2007/05/14 05:00:37 cperciva Exp $ */
+/* $DragonFly: src/lib/libmd/i386/rmd160.S,v 1.2 2008/09/11 20:25:34 swildner Exp $ */
 /* Run the C pre-processor over this file with one of the following defined
  * ELF - elf object files,
  * OUT - a.out object files,
@@ -2005,7 +2007,7 @@ ripemd160_block_x86:
 	movl	112(%esp),	%esi
 	cmpl	%esi,		%edi
 	movl	108(%esp),	%edi
-	jge	.L000start
+	jae	.L000start
 	addl	$88,		%esp
 	popl	%ebx
 	popl	%ebp

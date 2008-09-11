@@ -54,8 +54,11 @@
  * derivative of this code cannot be changed.  i.e. this code cannot simply be
  * copied and put under another distribution licence
  * [including the GNU Public Licence.]
- *
- * $DragonFly: src/lib/libmd/ripemd.h,v 1.2 2003/11/09 02:34:03 dillon Exp $
+ */
+
+/*
+ * $FreeBSD: src/lib/libmd/ripemd.h,v 1.3 2006/01/17 15:35:56 phk Exp $
+ * $DragonFly: src/lib/libmd/ripemd.h,v 1.3 2008/09/11 20:25:34 swildner Exp $
  */
 
 #ifndef HEADER_RIPEMD_H
@@ -80,12 +83,13 @@ typedef struct RIPEMD160state_st {
 
 __BEGIN_DECLS
 void	RIPEMD160_Init(RIPEMD160_CTX *c);
-void	RIPEMD160_Update(RIPEMD160_CTX *c, const unsigned char *data,
+void	RIPEMD160_Update(RIPEMD160_CTX *c, const void *data,
 			 size_t len);
 void	RIPEMD160_Final(unsigned char *md, RIPEMD160_CTX *c);
 char   *RIPEMD160_End(RIPEMD160_CTX *, char *);
 char   *RIPEMD160_File(const char *, char *);
-char   *RIPEMD160_Data(const unsigned char *, unsigned int, char *);
+char   *RIPEMD160_FileChunk(const char *, char *, off_t, off_t);
+char   *RIPEMD160_Data(const void *, unsigned int, char *);
 __END_DECLS
 
 #endif

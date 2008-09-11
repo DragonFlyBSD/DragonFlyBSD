@@ -22,8 +22,8 @@
  * These notices must be retained in any copies of any part of this
  * documentation and/or software.
  *
- * $FreeBSD: src/lib/libmd/md5c.c,v 1.11 1999/12/29 05:04:20 peter Exp $
- * $DragonFly: src/lib/libmd/md5c.c,v 1.3 2003/11/12 20:21:31 eirikn Exp $
+ * $FreeBSD: src/lib/libmd/md5c.c,v 1.17 2006/01/17 15:35:56 phk Exp $
+ * $DragonFly: src/lib/libmd/md5c.c,v 1.4 2008/09/11 20:25:34 swildner Exp $
  *
  * This code is the same as the code published by RSA Inc.  It has been
  * edited for clarity and style only.
@@ -37,19 +37,21 @@
 #include <string.h>
 #endif
 
+#include <machine/endian.h>
+#include <sys/endian.h>
 #include <sys/md5.h>
 
-static void MD5Transform (u_int32_t [4], const unsigned char [64]);
+static void MD5Transform(u_int32_t [4], const unsigned char [64]);
 
 #ifdef _KERNEL
 #define memset(x,y,z)	bzero(x,z);
 #define memcpy(x,y,z)	bcopy(y, x, z)
 #endif
 
-#ifdef i386
+#if (BYTE_ORDER == LITTLE_ENDIAN)
 #define Encode memcpy
 #define Decode memcpy
-#else /* i386 */
+#else 
 
 /*
  * Encodes input (u_int32_t) into output (unsigned char). Assumes len is
@@ -57,19 +59,13 @@ static void MD5Transform (u_int32_t [4], const unsigned char [64]);
  */
 
 static void
-Encode (output, input, len)
-	unsigned char *output;
-	u_int32_t *input;
-	unsigned int len;
+Encode (unsigned char *output, u_int32_t *input, unsigned int len)
 {
-	unsigned int i, j;
+	unsigned int i;
+	u_int32_t *op = (u_int32_t *)output;
 
-	for (i = 0, j = 0; j < len; i++, j += 4) {
-		output[j] = (unsigned char)(input[i] & 0xff);
-		output[j+1] = (unsigned char)((input[i] >> 8) & 0xff);
-		output[j+2] = (unsigned char)((input[i] >> 16) & 0xff);
-		output[j+3] = (unsigned char)((input[i] >> 24) & 0xff);
-	}
+	for (i = 0; i < len / 4; i++)
+		op[i] = htole32(input[i]);
 }
 
 /*
@@ -78,18 +74,15 @@ Encode (output, input, len)
  */
 
 static void
-Decode (output, input, len)
-	u_int32_t *output;
-	const unsigned char *input;
-	unsigned int len;
+Decode (u_int32_t *output, const unsigned char *input, unsigned int len)
 {
-	unsigned int i, j;
+	unsigned int i;
+	const u_int32_t *ip = (const u_int32_t *)input;
 
-	for (i = 0, j = 0; j < len; i++, j += 4)
-		output[i] = ((u_int32_t)input[j]) | (((u_int32_t)input[j+1]) << 8) |
-		    (((u_int32_t)input[j+2]) << 16) | (((u_int32_t)input[j+3]) << 24);
+	for (i = 0; i < len / 4; i++)
+		output[i] = le32toh(ip[i]);
 }
-#endif /* i386 */
+#endif
 
 static unsigned char PADDING[64] = {
   0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -154,15 +147,16 @@ MD5Init (context)
  */
 
 void
-MD5Update (context, input, inputLen)
+MD5Update (context, in, inputLen)
 	MD5_CTX *context;
-	const unsigned char *input;
+	const void *in;
 	unsigned int inputLen;
 {
-	unsigned int i, index, partLen;
+	unsigned int i, idx, partLen;
+	const unsigned char *input = in;
 
 	/* Compute number of bytes mod 64 */
-	index = (unsigned int)((context->count[0] >> 3) & 0x3F);
+	idx = (unsigned int)((context->count[0] >> 3) & 0x3F);
 
 	/* Update number of bits */
 	if ((context->count[0] += ((u_int32_t)inputLen << 3))
@@ -170,24 +164,24 @@ MD5Update (context, input, inputLen)
 		context->count[1]++;
 	context->count[1] += ((u_int32_t)inputLen >> 29);
 
-	partLen = 64 - index;
+	partLen = 64 - idx;
 
 	/* Transform as many times as possible. */
 	if (inputLen >= partLen) {
-		memcpy((void *)&context->buffer[index], (const void *)input,
+		memcpy((void *)&context->buffer[idx], (const void *)input,
 		    partLen);
 		MD5Transform (context->state, context->buffer);
 
 		for (i = partLen; i + 63 < inputLen; i += 64)
 			MD5Transform (context->state, &input[i]);
 
-		index = 0;
+		idx = 0;
 	}
 	else
 		i = 0;
 
 	/* Buffer remaining input */
-	memcpy ((void *)&context->buffer[index], (const void *)&input[i],
+	memcpy ((void *)&context->buffer[idx], (const void *)&input[i],
 	    inputLen-i);
 }
 
@@ -200,14 +194,14 @@ MD5Pad (context)
 	MD5_CTX *context;
 {
 	unsigned char bits[8];
-	unsigned int index, padLen;
+	unsigned int idx, padLen;
 
 	/* Save number of bits */
 	Encode (bits, context->count, 8);
 
 	/* Pad out to 56 mod 64. */
-	index = (unsigned int)((context->count[0] >> 3) & 0x3f);
-	padLen = (index < 56) ? (56 - index) : (120 - index);
+	idx = (unsigned int)((context->count[0] >> 3) & 0x3f);
+	padLen = (idx < 56) ? (56 - idx) : (120 - idx);
 	MD5Update (context, PADDING, padLen);
 
 	/* Append length (before padding) */

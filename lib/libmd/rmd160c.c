@@ -55,8 +55,8 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.]
  *
- * $FreeBSD: src/lib/libmd/rmd160c.c,v 1.4 1999/08/28 00:05:07 peter Exp $
- * $DragonFly: src/lib/libmd/rmd160c.c,v 1.4 2004/10/25 19:38:45 drhodus Exp $
+ * $FreeBSD: src/lib/libmd/rmd160c.c,v 1.7 2006/01/17 15:35:56 phk Exp $
+ * $DragonFly: src/lib/libmd/rmd160c.c,v 1.5 2008/09/11 20:25:34 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -98,14 +98,15 @@ RIPEMD160_CTX *c;
 	c->num=0;
 	}
 
-void RIPEMD160_Update(c, data, len)
+void RIPEMD160_Update(c, in, len)
 RIPEMD160_CTX *c;
-const unsigned char *data;
+const void *in;
 size_t len;
 	{
 	u_int32_t *p;
 	int sw,sc;
 	u_int32_t l;
+	const unsigned char *data = in;
 
 	if (len == 0) return;
 

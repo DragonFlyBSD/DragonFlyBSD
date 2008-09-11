@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libmd/sha256c.c,v 1.1 2005/03/09 19:23:04 cperciva Exp $
- * $DragonFly: src/lib/libmd/sha256c.c,v 1.1 2006/04/29 22:19:26 dillon Exp $
+ * $FreeBSD: src/lib/libmd/sha256c.c,v 1.2 2006/01/17 15:35:56 phk Exp $
+ * $DragonFly: src/lib/libmd/sha256c.c,v 1.2 2008/09/11 20:25:34 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -241,10 +241,11 @@ SHA256_Init(SHA256_CTX * ctx)
 
 /* Add bytes into the hash */
 void
-SHA256_Update(SHA256_CTX * ctx, const unsigned char *src, size_t len)
+SHA256_Update(SHA256_CTX * ctx, const void *in, size_t len)
 {
 	uint32_t bitlen[2];
 	uint32_t r;
+	const unsigned char *src = in;
 
 	/* Number of bytes left in the buffer from previous updates */
 	r = (ctx->count[1] >> 3) & 0x3f;

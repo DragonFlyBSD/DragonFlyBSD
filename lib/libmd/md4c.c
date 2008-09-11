@@ -1,6 +1,6 @@
 /* MD4C.C - RSA Data Security, Inc., MD4 message-digest algorithm
- * $FreeBSD: src/lib/libmd/md4c.c,v 1.7 1999/08/28 00:05:05 peter Exp $
- * $DragonFly: src/lib/libmd/md4c.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
+ * $FreeBSD: src/lib/libmd/md4c.c,v 1.10 2006/01/17 15:35:56 phk Exp $
+ * $DragonFly: src/lib/libmd/md4c.c,v 1.3 2008/09/11 20:25:34 swildner Exp $
  */
 
 /* Copyright (C) 1990-2, RSA Data Security, Inc. All rights reserved.
@@ -29,6 +29,7 @@
 #include "md4.h"
 
 typedef unsigned char *POINTER;
+typedef const unsigned char *CONST_POINTER;
 typedef u_int16_t UINT2;
 typedef u_int32_t UINT4;
 
@@ -105,40 +106,41 @@ MD4_CTX *context;                                        /* context */
      operation, processing another message block, and updating the
      context.
  */
-void MD4Update (context, input, inputLen)
+void MD4Update (context, in, inputLen)
 MD4_CTX *context;                                        /* context */
-const unsigned char *input;                                /* input block */
+const void *in;                                /* input block */
 unsigned int inputLen;                     /* length of input block */
 {
-  unsigned int i, index, partLen;
+  unsigned int i, idx, partLen;
+  const unsigned char *input = in;
 
   /* Compute number of bytes mod 64 */
-  index = (unsigned int)((context->count[0] >> 3) & 0x3F);
+  idx = (unsigned int)((context->count[0] >> 3) & 0x3F);
   /* Update number of bits */
   if ((context->count[0] += ((UINT4)inputLen << 3))
       < ((UINT4)inputLen << 3))
     context->count[1]++;
   context->count[1] += ((UINT4)inputLen >> 29);
 
-  partLen = 64 - index;
+  partLen = 64 - idx;
   /* Transform as many times as possible.
    */
   if (inputLen >= partLen) {
     memcpy
-      ((POINTER)&context->buffer[index], (POINTER)input, partLen);
+      ((POINTER)&context->buffer[idx], (CONST_POINTER)input, partLen);
     MD4Transform (context->state, context->buffer);
 
     for (i = partLen; i + 63 < inputLen; i += 64)
       MD4Transform (context->state, &input[i]);
 
-    index = 0;
+    idx = 0;
   }
   else
     i = 0;
 
   /* Buffer remaining input */
   memcpy
-    ((POINTER)&context->buffer[index], (POINTER)&input[i],
+    ((POINTER)&context->buffer[idx], (CONST_POINTER)&input[i],
      inputLen-i);
 }
 
@@ -147,15 +149,15 @@ void MD4Pad (context)
 MD4_CTX *context;                                        /* context */
 {
   unsigned char bits[8];
-  unsigned int index, padLen;
+  unsigned int idx, padLen;
 
   /* Save number of bits */
   Encode (bits, context->count, 8);
 
   /* Pad out to 56 mod 64.
    */
-  index = (unsigned int)((context->count[0] >> 3) & 0x3f);
-  padLen = (index < 56) ? (56 - index) : (120 - index);
+  idx = (unsigned int)((context->count[0] >> 3) & 0x3f);
+  padLen = (idx < 56) ? (56 - idx) : (120 - idx);
   MD4Update (context, PADDING, padLen);
 
   /* Append length (before padding) */

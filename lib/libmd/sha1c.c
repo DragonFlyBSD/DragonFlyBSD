@@ -55,7 +55,8 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.]
  *
- * $DragonFly: src/lib/libmd/sha1c.c,v 1.3 2004/10/25 19:38:45 drhodus Exp $
+ * $FreeBSD: src/lib/libmd/sha1c.c,v 1.5 2006/01/17 15:35:56 phk Exp $
+ * $DragonFly: src/lib/libmd/sha1c.c,v 1.4 2008/09/11 20:25:34 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -139,14 +140,15 @@ SHA_CTX *c;
 	}
 
 void
-SHA1_Update(c, data, len)
+SHA1_Update(c, in, len)
 	SHA_CTX *c;
-	const unsigned char *data;
+	const void *in;
 	size_t len;
 {
 	u_int32_t *p;
 	int ew,ec,sw,sc;
 	u_int32_t l;
+	const unsigned char *data = in;
 
 	if (len == 0) return;
 

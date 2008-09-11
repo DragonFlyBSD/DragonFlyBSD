@@ -1,6 +1,6 @@
 /* SHADRIVER.C - test driver for SHA-1 (and SHA-0)
- * $FreeBSD: src/lib/libmd/shadriver.c,v 1.2 1999/08/28 00:05:09 peter Exp $
- * $DragonFly: src/lib/libmd/shadriver.c,v 1.3 2006/04/29 22:19:26 dillon Exp $
+ * $FreeBSD: src/lib/libmd/shadriver.c,v 1.4 2005/03/09 19:23:04 cperciva Exp $
+ * $DragonFly: src/lib/libmd/shadriver.c,v 1.4 2008/09/11 20:25:34 swildner Exp $
  */
 
 /* Copyright (C) 1990-2, RSA Data Security, Inc. Created 1990. All
