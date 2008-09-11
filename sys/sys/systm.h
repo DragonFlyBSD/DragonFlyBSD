@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.80 2008/07/23 17:22:33 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.81 2008/09/11 00:35:49 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -103,8 +103,11 @@ extern int nfs_diskless_valid;	/* NFS diskless params were obtained */
 extern vm_paddr_t Maxmem;	/* Highest physical memory address in system */
 
 #ifdef	INVARIANTS		/* The option is always available */
-#define	KASSERT(exp,msg)	do { if (!(exp)) panic msg; } while (0)
-#define KKASSERT(exp)		if (!(exp)) panic("assertion: %s in %s", #exp, __func__)
+#define	KASSERT(exp,msg)	do { if (__predict_false(!(exp)))	\
+					panic msg; } while (0)
+#define KKASSERT(exp)		do { if (__predict_false(!(exp)))	\
+					panic("assertion: %s in %s",	\
+					      #exp, __func__); } while (0)
 #else
 #define	KASSERT(exp,msg)
 #define	KKASSERT(exp)
