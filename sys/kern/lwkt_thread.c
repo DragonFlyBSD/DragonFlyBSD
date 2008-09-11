@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.118 2008/09/09 07:21:54 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.119 2008/09/11 01:11:42 y0netan1 Exp $
  */
 
 /*
@@ -40,6 +40,7 @@
  * to use a critical section to avoid problems.  Foreign thread 
  * scheduling is queued via (async) IPIs.
  */
+#include "opt_ddb.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -69,6 +70,10 @@
 
 #include <machine/stdarg.h>
 #include <machine/smp.h>
+
+#ifdef DDB
+#include <ddb/ddb.h>
+#endif
 
 static MALLOC_DEFINE(M_THREAD, "thread", "lwkt threads");
 

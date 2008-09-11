@@ -29,8 +29,10 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.15 2008/06/04 04:34:54 nth Exp $
+ * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.16 2008/09/11 01:11:42 y0netan1 Exp $
  */
+
+#include "opt_ddb.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
