@@ -32,7 +32,7 @@
  *
  *	@(#)ip_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/ip_var.h,v 1.50.2.13 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/ip_var.h,v 1.25 2008/08/28 14:24:59 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_var.h,v 1.26 2008/09/12 11:37:41 sephe Exp $
  */
 
 #ifndef _NETINET_IP_VAR_H_
@@ -167,6 +167,7 @@ extern struct ip_stats	ipstats_percpu[MAXCPU];
 #define	IP_RAWOUTPUT		0x2		/* raw ip header exists */
 #define	IP_ROUTETOIF		SO_DONTROUTE	/* bypass routing tables */
 #define	IP_ALLOWBROADCAST	SO_BROADCAST	/* can send broadcast packets */
+#define	IP_DEBUGROUTE		0x10000		/* debug route */
 
 /* direction passed to ip_mport as last parameter */
 #define IP_MPORT_IN		0 /* Find lwkt port for incoming packets */

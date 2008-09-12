@@ -65,7 +65,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.44 2008/04/26 14:08:52 sephe Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.45 2008/09/12 11:37:41 sephe Exp $
  */
 
 #include "opt_ipsec.h"
@@ -780,7 +780,8 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 	udpstat.udps_opackets++;
 
 	error = ip_output(m, inp->inp_options, &inp->inp_route,
-	    (inp->inp_socket->so_options & (SO_DONTROUTE | SO_BROADCAST)),
+	    (inp->inp_socket->so_options & (SO_DONTROUTE | SO_BROADCAST)) |
+	    IP_DEBUGROUTE,
 	    inp->inp_moptions, inp);
 
 	/*
@@ -790,8 +791,8 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 	 * free the route entry allocated on the current CPU.
 	 */
 	if (lport_any) {
-		if (udp_addrcpu(inp->inp_faddr.s_addr, inp->inp_laddr.s_addr,
-				inp->inp_fport, inp->inp_lport) != mycpuid) {
+		if (udp_addrcpu(inp->inp_faddr.s_addr, inp->inp_fport,
+		    inp->inp_laddr.s_addr, inp->inp_lport) != mycpuid) {
 			struct route *ro = &inp->inp_route;
 
 			if (ro->ro_rt != NULL)
@@ -915,8 +916,8 @@ udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		 * if it is not, then we will have to free the route entry
 		 * allocated on the current CPU.
 		 */
-		if (udp_addrcpu(inp->inp_faddr.s_addr, inp->inp_laddr.s_addr,
-				inp->inp_fport, inp->inp_lport) != mycpuid) {
+		if (udp_addrcpu(inp->inp_faddr.s_addr, inp->inp_fport,
+		    inp->inp_laddr.s_addr, inp->inp_lport) != mycpuid) {
 			struct route *ro = &inp->inp_route;
 
 			if (ro->ro_rt != NULL)

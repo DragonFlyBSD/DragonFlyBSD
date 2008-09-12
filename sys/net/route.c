@@ -64,7 +64,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.37 2008/09/11 11:23:29 sephe Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.38 2008/09/12 11:37:41 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -128,9 +128,11 @@ SYSCTL_INT(_net_route, OID_AUTO, route_debug, CTLFLAG_RW,
            &route_debug, 0, "");
 #endif
 
-static int remote_free_panic = 0;
+int route_assert_owner_access = 0;
+SYSCTL_INT(_net_route, OID_AUTO, assert_owner_access, CTLFLAG_RW,
+           &route_assert_owner_access, 0, "");
 SYSCTL_INT(_net_route, OID_AUTO, remote_free_panic, CTLFLAG_RW,
-           &remote_free_panic, 0, "");
+           &route_assert_owner_access, 0, ""); /* alias */
 extern void	db_print_backtrace(void);
 
 /*
@@ -367,7 +369,7 @@ rtfree_remote(struct rtentry *rt, int allow_panic)
 
 	KKASSERT(rt->rt_cpuid != mycpuid);
 
-	if (remote_free_panic && allow_panic) {
+	if (route_assert_owner_access && allow_panic) {
 		panic("rt remote free rt_cpuid %d, mycpuid %d\n",
 		      rt->rt_cpuid, mycpuid);
 	} else {

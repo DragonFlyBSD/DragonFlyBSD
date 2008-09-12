@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.59 2008/09/11 11:23:29 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.60 2008/09/12 11:37:41 sephe Exp $
  */
 
 #define _IP_VHL
@@ -118,6 +118,8 @@ static int	ip_setmoptions
 
 int	ip_optcopy(struct ip *, struct ip *);
 
+extern	int route_assert_owner_access;
+extern	void db_print_backtrace(void);
 
 extern	struct protosw inetsw[];
 
@@ -238,6 +240,19 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 		ro = &iproute;
 		bzero(ro, sizeof *ro);
 	} else if (ro->ro_rt != NULL && ro->ro_rt->rt_cpuid != mycpuid) {
+		if (flags & IP_DEBUGROUTE) {
+			if (route_assert_owner_access) {
+				panic("ip_output: "
+				      "rt rt_cpuid %d accessed on cpu %d\n",
+				      ro->ro_rt->rt_cpuid, mycpuid);
+			} else {
+				kprintf("ip_output: "
+					"rt rt_cpuid %d accessed on cpu %d\n",
+					ro->ro_rt->rt_cpuid, mycpuid);
+				db_print_backtrace();
+			}
+		}
+
 		/*
 		 * XXX
 		 * If the cached rtentry's owner CPU is not the current CPU,
