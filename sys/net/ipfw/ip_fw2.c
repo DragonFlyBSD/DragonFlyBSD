@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.81 2008/09/13 05:49:08 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.82 2008/09/13 10:47:23 sephe Exp $
  */
 
 #define        DEB(x)
@@ -283,6 +283,7 @@ static int verbose_limit;
 static int fw_debug = 1;
 static int autoinc_step = IPFW_AUTOINC_STEP_DEF;
 
+static int	ipfw_sysctl_enable(SYSCTL_HANDLER_ARGS);
 static int	ipfw_sysctl_autoinc_step(SYSCTL_HANDLER_ARGS);
 static int	ipfw_sysctl_dyn_buckets(SYSCTL_HANDLER_ARGS);
 static int	ipfw_sysctl_dyn_fin(SYSCTL_HANDLER_ARGS);
@@ -290,8 +291,8 @@ static int	ipfw_sysctl_dyn_rst(SYSCTL_HANDLER_ARGS);
 
 #ifdef SYSCTL_NODE
 SYSCTL_NODE(_net_inet_ip, OID_AUTO, fw, CTLFLAG_RW, 0, "Firewall");
-SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, enable, CTLFLAG_RW,
-    &fw_enable, 0, "Enable ipfw");
+SYSCTL_PROC(_net_inet_ip_fw, OID_AUTO, enable, CTLTYPE_INT | CTLFLAG_RW,
+    &fw_enable, 0, ipfw_sysctl_enable, "I", "Enable ipfw");
 SYSCTL_PROC(_net_inet_ip_fw, OID_AUTO, autoinc_step, CTLTYPE_INT | CTLFLAG_RW,
     &autoinc_step, 0, ipfw_sysctl_autoinc_step, "I",
     "Rule number autincrement step");
@@ -4031,6 +4032,37 @@ next:
 done:
 	callout_reset(&ipfw_timeout_h, dyn_keepalive_period * hz,
 		      ipfw_tick, NULL);
+}
+
+static void
+ipfw_sysctl_enable_dispatch(struct netmsg *nmsg)
+{
+	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
+	int enable = lmsg->u.ms_result;
+
+	fw_enable = enable;
+
+	lwkt_replymsg(lmsg, 0);
+}
+
+static int
+ipfw_sysctl_enable(SYSCTL_HANDLER_ARGS)
+{
+	struct netmsg nmsg;
+	struct lwkt_msg *lmsg;
+	int enable, error;
+
+	enable = fw_enable;
+	error = sysctl_handle_int(oidp, &enable, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+
+	netmsg_init(&nmsg, &curthread->td_msgport, 0,
+		    ipfw_sysctl_enable_dispatch);
+	lmsg = &nmsg.nm_lmsg;
+	lmsg->u.ms_result = enable;
+
+	return lwkt_domsg(IPFW_CFGPORT, lmsg, 0);
 }
 
 static int
