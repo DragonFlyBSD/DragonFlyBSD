@@ -45,7 +45,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/boot2/boot1.s,v 1.23 2003/08/22 01:59:28 imp Exp $
- * $DragonFly: src/sys/boot/pc32/boot2/boot1.S,v 1.9 2004/09/30 18:31:58 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/boot2/boot1.S,v 1.10 2008/09/13 11:45:45 corecode Exp $
  */
 
 #include "../bootasm.h"
@@ -61,7 +61,9 @@
 // Misc. Constants
 		.set SIZ_PAG,0x1000		// Page size
 		.set SIZ_SEC,0x200		// Sector size
+#ifndef NSECT
 		.set NSECT,0x10
+#endif
 
 		.globl start
 		.globl xread

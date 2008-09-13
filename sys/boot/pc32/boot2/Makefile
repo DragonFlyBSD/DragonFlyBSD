@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/boot2/Makefile,v 1.47 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/pc32/boot2/Makefile,v 1.17 2006/08/12 05:42:26 swildner Exp $
+# $DragonFly: src/sys/boot/pc32/boot2/Makefile,v 1.18 2008/09/13 11:45:45 corecode Exp $
 
 PROG=		boot2
 NOMAN=
@@ -47,14 +47,18 @@ ORG2=	`${.OBJDIR}/bootasmdef.nx BOOT2_VORIGIN`
 # BOOT2_UFS?=	UFS2_ONLY
 #BOOT2_UFS?=	UFS1_AND_UFS2
 BOOT2_UFS?=	UFS1_ONLY
+#BOOT2_UFS?=	HAMMERFS
 
 # gcc3.x
 #	-fno-guess-branch-probability
 #	-mno-align-long-strings
 CFLAGS=	-elf -ffreestanding -Os -fno-builtin \
 	-fomit-frame-pointer \
+	-std=c99 \
+	-DBOOT2 \
 	-D${BOOT2_UFS} \
 	-I${.CURDIR}/../../common \
+	-I${.CURDIR}/../../../../lib/libstand \
 	-I${.CURDIR}/../btx/lib -I. \
 	-Wall -Waggregate-return -Wbad-function-cast -Wcast-align \
 	-Wmissing-declarations -Wmissing-prototypes -Wnested-externs \
@@ -73,6 +77,9 @@ CFLAGS+= -fno-unit-at-a-time
 CFLAGS+= -fno-stack-protector
 .endif
 
+NSECT?=	16
+CFLAGS+= -DNSECT=${NSECT}
+
 LDFLAGS=-nostdlib -static -N --gc-sections
 
 all: boot1 boot2 boot
@@ -90,7 +97,7 @@ boot1.o: boot1.S
 	${CC} ${CFLAGS} -DFLAGS=${B1FLAGS} ${AFLAGS} \
 		${.IMPSRC} -o ${.TARGET} -c
 
-boot2.o: boot2.c ${.CURDIR}/../../common/ufsread.c
+boot2.o: boot2.c ${.CURDIR}/../../common/ufsread.c ${.CURDIR}/../../../../lib/libstand/hammerread.c
 	${CC} ${CFLAGS} -S -o boot2.s.tmp ${.IMPSRC}
 	sed -e '/align/d' -e '/nop/d' < boot2.s.tmp > boot2.s
 	rm -f boot2.s.tmp
@@ -106,9 +113,9 @@ boot2.h: boot1.out bootasmdef.nx
 boot2: boot2.ldr boot2.bin ${BTX}/btx/btx
 	btxld -v -E ${ORG2} -f bin -b ${BTX}/btx/btx -l boot2.ldr \
 		-o boot2.ld -P 1 boot2.bin
-	@stat boot2.ld | awk '{ x = 7680 - $$8; \
+	stat boot2.ld | awk '{ x = (${NSECT} - 1) * 512 - $$8; \
 		print x " bytes available"; if (x < 0) exit 1 }'
-	dd if=boot2.ld of=${.TARGET} obs=7680 conv=osync 2>/dev/null
+	dd if=boot2.ld of=${.TARGET} obs=$$(( (${NSECT} - 1) * 512)) conv=osync 2>/dev/null
 
 boot2.ldr:
 	dd if=/dev/zero of=${.TARGET} bs=512 count=1 2>/dev/null

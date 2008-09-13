@@ -45,8 +45,12 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/boot2/boot2.c,v 1.64 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.17 2008/09/02 17:21:17 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.18 2008/09/13 11:45:45 corecode Exp $
  */
+#ifdef HAMMERFS
+#undef __BOOT2_HACK
+#endif
+
 #include <sys/param.h>
 #include <sys/disklabel32.h>
 #include <sys/diskslice.h>
@@ -149,6 +153,9 @@ static char kname[1024];
 static uint32_t opts;
 static struct bootinfo bootinfo;
 
+static int ls, dsk_meta;
+static uint32_t fs_off;
+
 void exit(int);
 static void load(void);
 static int parse(void);
@@ -189,7 +196,11 @@ strcmp(const char *s1, const char *s2)
     return (unsigned char)*s1 - (unsigned char)*s2;
 }
 
+#if HAMMERFS
+#include "hammerread.c"
+#else
 #include "ufsread.c"
+#endif
 
 static int
 xfsread(ino_t inode, void *buf, size_t nbyte)
