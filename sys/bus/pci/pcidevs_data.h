@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.34 2008/06/29 20:43:49 swildner Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.35 2008/09/13 02:22:40 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
@@ -6375,6 +6375,18 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "I. T. T.",
 	    "ITT3204 MPEG Decoder",
+	},
+	{
+	    PCI_VENDOR_JMICRON, PCI_PRODUCT_JMICRON_JMC250,
+	    0,
+	    "JMicron Technology Corporation",
+	    "JMC250 PCI Express Gigabit Ethernet",
+	},
+	{
+	    PCI_VENDOR_JMICRON, PCI_PRODUCT_JMICRON_JMC260,
+	    0,
+	    "JMicron Technology Corporation",
+	    "JMC260 PCI Express Fast Ethernet",
 	},
 	{
 	    PCI_VENDOR_KTI, PCI_PRODUCT_KTI_NE2KETHER,
@@ -15074,6 +15086,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    PCI_VENDOR_SILAN, 0,
 	    PCI_KNOWNDEV_NOPROD,
 	    "Hangzhou Silan Microelectronics",
+	    NULL,
+	},
+	{
+	    PCI_VENDOR_JMICRON, 0,
+	    PCI_KNOWNDEV_NOPROD,
+	    "JMicron Technology Corporation",
 	    NULL,
 	},
 	{

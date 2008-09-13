@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.34 2008/06/29 20:43:49 swildner Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.35 2008/09/13 02:22:40 sephe Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
@@ -586,6 +586,7 @@
 #define	PCI_VENDOR_SANDBURST	0x17ba		/* Sandburst, Inc. */
 #define	PCI_VENDOR_RALINK	0x1814		/* Ralink Technologies */
 #define	PCI_VENDOR_SILAN	0x1904		/* Hangzhou Silan Microelectronics */
+#define	PCI_VENDOR_JMICRON	0x197b		/* JMicron Technology Corporation */
 #define	PCI_VENDOR_SYMPHONY2	0x1c1c		/* Symphony Labs (2nd PCI Vendor ID) */
 #define	PCI_VENDOR_TEKRAM2	0x1de1		/* Tekram Technology (2nd PCI Vendor ID) */
 #define	PCI_VENDOR_HINT	0x3388		/* HiNT */
@@ -1912,6 +1913,10 @@
 /* I. T. T. products */
 #define	PCI_PRODUCT_ITT_AGX016	0x0001		/* AGX016 */
 #define	PCI_PRODUCT_ITT_ITT3204	0x0002		/* ITT3204 MPEG Decoder */
+
+/* JMicron Technology Corporation products */
+#define	PCI_PRODUCT_JMICRON_JMC250	0x0250		/* JMC250 PCI Express Gigabit Ethernet */
+#define	PCI_PRODUCT_JMICRON_JMC260	0x0260		/* JMC260 PCI Express Fast Ethernet */
 
 /* KTI products - XXX better descriptions */
 #define	PCI_PRODUCT_KTI_NE2KETHER	0x3000		/* Ethernet */
