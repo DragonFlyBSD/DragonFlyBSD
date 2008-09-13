@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.103 2008/09/13 08:48:42 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.104 2008/09/13 09:07:31 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -565,6 +565,7 @@ iphack:
 		if (m == NULL)			/* consumed by filter */
 			return;
 		ip = mtod(m, struct ip *);
+		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 		using_srcrt = (odst.s_addr != ip->ip_dst.s_addr);
 	}
 
