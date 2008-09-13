@@ -22,7 +22,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/common/ufsread.c,v 1.12 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/ufsread.c,v 1.4 2007/01/22 15:31:37 y0netan1 Exp $
+ * $DragonFly: src/sys/boot/common/ufsread.c,v 1.5 2008/09/13 11:46:28 corecode Exp $
  */
 
 #include <vfs/ufs/dir.h>
@@ -65,9 +65,6 @@ static struct dmadat *dmadat;
 
 static ino_t lookup(const char *);
 static ssize_t fsread(ino_t, void *, size_t);
-
-static int ls, dsk_meta;
-static uint32_t fs_off;
 
 static __inline__ int
 fsfind(const char *name, ino_t * ino)
