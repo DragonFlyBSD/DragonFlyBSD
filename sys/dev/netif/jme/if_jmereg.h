@@ -25,11 +25,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jmereg.h,v 1.1 2008/05/27 01:42:01 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jmereg.h,v 1.2 2008/09/13 02:30:37 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/jme/if_jmereg.h,v 1.3 2008/09/13 02:47:03 sephe Exp $
  */
 
 #ifndef	_IF_JMEREG_H
 #define	_IF_JMEREG_H
+
+#define JME_REV_JMC250_A1	0x01
+#define JME_REV_JMC250_A2	0x11
 
 /* JMC250 PCI configuration register. */
 #define JME_PCIR_BAR		PCIR_BAR(0)

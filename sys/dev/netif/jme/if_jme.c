@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jme.c,v 1.2 2008/07/18 04:20:48 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.3 2008/09/13 02:30:37 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.4 2008/09/13 02:47:03 sephe Exp $
  */
 
 #include "opt_ethernet.h"
@@ -59,8 +59,8 @@
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcidevs.h>
 
-#include "if_jmereg.h"
-#include "if_jmevar.h"
+#include <dev/netif/jme/if_jmereg.h>
+#include <dev/netif/jme/if_jmevar.h>
 
 #include "miibus_if.h"
 
