@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.52 2008/08/27 14:00:45 sephe Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.53 2008/09/13 07:15:14 sephe Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -248,6 +248,7 @@ struct mbuf {
 #define IPFORWARD_MBUF_TAGGED	0x00000040
 #define DUMMYNET_MBUF_TAGGED	0x00000080
 #define ALTQ_MBUF_STATE_HASHED	0x00000100
+#define FW_MBUF_REDISPATCH	0x00000200
 #define	PF_MBUF_GENERATED	FW_MBUF_GENERATED
 #define	IPFW_MBUF_GENERATED	FW_MBUF_GENERATED
 

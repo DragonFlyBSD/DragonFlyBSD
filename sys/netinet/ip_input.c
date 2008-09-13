@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.101 2008/09/13 05:49:08 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.102 2008/09/13 07:15:14 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -411,7 +411,7 @@ ip_input_handler(struct netmsg *msg0)
 
 #ifdef IPDIVERT
 static struct mbuf *
-ip_divert_in(struct mbuf *m, int tee, boolean_t *needredispatch)
+ip_divert_in(struct mbuf *m, int tee)
 {
 	struct mbuf *clone = NULL;
 	struct ip *ip = mtod(m, struct ip *);
@@ -441,7 +441,8 @@ ip_divert_in(struct mbuf *m, int tee, boolean_t *needredispatch)
 			return NULL;
 		ip = mtod(m, struct ip *);
 
-		*needredispatch = TRUE;
+		/* Caller need to redispatch the packet, if it is for us */
+		m->m_pkthdr.fw_flags |= FW_MBUF_REDISPATCH;
 
 		/*
 		 * Get the header length of the reassembled
@@ -724,7 +725,7 @@ iphack:
 
 		case IP_FW_DIVERT:
 #ifdef IPDIVERT
-			m = ip_divert_in(m, tee, &needredispatch);
+			m = ip_divert_in(m, tee);
 			if (m == NULL)
 				return;
 			ip = mtod(m, struct ip *);
@@ -748,6 +749,10 @@ pass:
 	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
 		ip_dn_queue(m);
 		return;
+	}
+	if (m->m_pkthdr.fw_flags & FW_MBUF_REDISPATCH) {
+		needredispatch = TRUE;
+		m->m_pkthdr.fw_flags &= ~FW_MBUF_REDISPATCH;
 	}
 
 	/*
