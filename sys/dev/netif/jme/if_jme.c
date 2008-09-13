@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jme.c,v 1.2 2008/07/18 04:20:48 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.5 2008/09/13 03:04:17 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.6 2008/09/13 03:12:23 sephe Exp $
  */
 
 #include "opt_ethernet.h"
@@ -131,13 +131,16 @@ static int	sysctl_hw_jme_rx_coal_pkt(SYSCTL_HANDLER_ARGS);
 static const struct jme_dev {
 	uint16_t	jme_vendorid;
 	uint16_t	jme_deviceid;
+	uint32_t	jme_caps;
 	const char	*jme_name;
 } jme_devs[] = {
 	{ PCI_VENDOR_JMICRON, PCI_PRODUCT_JMICRON_JMC250,
+	    JME_CAP_JUMBO,
 	    "JMicron Inc, JMC250 Gigabit Ethernet" },
 	{ PCI_VENDOR_JMICRON, PCI_PRODUCT_JMICRON_JMC260,
+	    JME_CAP_FASTETH,
 	    "JMicron Inc, JMC260 Fast Ethernet" },
-	{ 0, 0, NULL }
+	{ 0, 0, 0, NULL }
 };
 
 static device_method_t jme_methods[] = {
@@ -421,12 +424,10 @@ jme_probe(device_t dev)
 	did = pci_get_device(dev);
 	for (sp = jme_devs; sp->jme_name != NULL; ++sp) {
 		if (vid == sp->jme_vendorid && did == sp->jme_deviceid) {
+			struct jme_softc *sc = device_get_softc(dev);
+
+			sc->jme_caps = sp->jme_caps;
 			device_set_desc(dev, sp->jme_name);
-			if (vid == PCI_PRODUCT_JMICRON_JMC260) {
-				struct jme_softc *sc = device_get_softc(dev);
-				sc->jme_caps = JME_CAP_FASTETH |
-					       JME_CAP_NOJUMBO;
-			}
 			return (0);
 		}
 	}
@@ -1733,7 +1734,7 @@ jme_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	switch (cmd) {
 	case SIOCSIFMTU:
 		if (ifr->ifr_mtu < ETHERMIN || ifr->ifr_mtu > JME_JUMBO_MTU ||
-		    ((sc->jme_caps & JME_CAP_NOJUMBO) &&
+		    (!(sc->jme_caps & JME_CAP_JUMBO) &&
 		     ifr->ifr_mtu > JME_MAX_MTU)) {
 			error = EINVAL;
 			break;
