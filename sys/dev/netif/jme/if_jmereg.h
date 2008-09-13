@@ -25,28 +25,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jmereg.h,v 1.1 2008/05/27 01:42:01 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jmereg.h,v 1.1 2008/07/26 14:00:31 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/jme/if_jmereg.h,v 1.2 2008/09/13 02:30:37 sephe Exp $
  */
 
 #ifndef	_IF_JMEREG_H
 #define	_IF_JMEREG_H
-
-/*
- * JMicron Inc. PCI vendor ID
- */
-#define	VENDORID_JMICRON	0x197B
-
-/*
- * JMC250 PCI device ID
- */
-#define	DEVICEID_JMC250		0x0250
-#define	DEVICEREVID_JMC250	0x10
-
-/*
- * JMC260 PCI device ID
- */
-#define	DEVICEID_JMC260		0x0260
-#define	DEVICEREVID_JMC260	0x20
 
 /* JMC250 PCI configuration register. */
 #define JME_PCIR_BAR		PCIR_BAR(0)

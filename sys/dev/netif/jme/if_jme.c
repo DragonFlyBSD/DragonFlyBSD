@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jme.c,v 1.2 2008/07/18 04:20:48 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.2 2008/08/03 11:00:32 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.3 2008/09/13 02:30:37 sephe Exp $
  */
 
 #include "opt_ethernet.h"
@@ -133,9 +133,9 @@ static const struct jme_dev {
 	uint16_t	jme_deviceid;
 	const char	*jme_name;
 } jme_devs[] = {
-	{ VENDORID_JMICRON, DEVICEID_JMC250,
+	{ PCI_VENDOR_JMICRON, PCI_PRODUCT_JMICRON_JMC250,
 	    "JMicron Inc, JMC250 Gigabit Ethernet" },
-	{ VENDORID_JMICRON, DEVICEID_JMC260,
+	{ PCI_VENDOR_JMICRON, PCI_PRODUCT_JMICRON_JMC260,
 	    "JMicron Inc, JMC260 Fast Ethernet" },
 	{ 0, 0, NULL }
 };
@@ -422,7 +422,7 @@ jme_probe(device_t dev)
 	for (sp = jme_devs; sp->jme_name != NULL; ++sp) {
 		if (vid == sp->jme_vendorid && did == sp->jme_deviceid) {
 			device_set_desc(dev, sp->jme_name);
-			if (vid == DEVICEID_JMC260) {
+			if (vid == PCI_PRODUCT_JMICRON_JMC260) {
 				struct jme_softc *sc = device_get_softc(dev);
 				sc->jme_flags = JME_FLAG_FASTETH |
 						JME_FLAG_NOJUMBO;
