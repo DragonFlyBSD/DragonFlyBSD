@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jmevar.h,v 1.1 2008/05/27 01:42:01 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jmevar.h,v 1.1 2008/07/26 14:00:31 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/jme/if_jmevar.h,v 1.2 2008/09/13 03:04:17 sephe Exp $
  */
 
 #ifndef	_IF_JMEVAR_H
@@ -181,17 +181,19 @@ struct jme_softc {
 
 	uint32_t		jme_tx_dma_size;
 	uint32_t		jme_rx_dma_size;
-	int			jme_flags;
-#define	JME_FLAG_FPGA		0x0001
-#define	JME_FLAG_PCIE		0x0002
-#define	JME_FLAG_PCIX		0x0003
-#define	JME_FLAG_MSI		0x0004
-#define	JME_FLAG_MSIX		0x0010
-#define	JME_FLAG_PMCAP		0x0020
-#define	JME_FLAG_FASTETH	0x0040
-#define	JME_FLAG_NOJUMBO	0x0080
-#define	JME_FLAG_DETACH		0x4000
-#define	JME_FLAG_LINK		0x8000
+
+	uint32_t		jme_caps;
+#define	JME_CAP_FPGA		0x0001
+#define	JME_CAP_PCIE		0x0002
+#define	JME_CAP_PMCAP		0x0004
+#define	JME_CAP_FASTETH		0x0008
+#define	JME_CAP_NOJUMBO		0x0010
+
+	uint32_t		jme_flags;
+#define	JME_FLAG_MSI		0x0001
+#define	JME_FLAG_MSIX		0x0002
+#define	JME_FLAG_DETACH		0x0004
+#define	JME_FLAG_LINK		0x0008
 
 	struct callout		jme_tick_ch;
 	struct jme_chain_data	jme_cdata;

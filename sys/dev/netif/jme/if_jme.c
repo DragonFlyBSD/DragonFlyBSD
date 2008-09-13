@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jme.c,v 1.2 2008/07/18 04:20:48 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.4 2008/09/13 02:47:03 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.5 2008/09/13 03:04:17 sephe Exp $
  */
 
 #include "opt_ethernet.h"
@@ -185,7 +185,7 @@ jme_miibus_readreg(device_t dev, int phy, int reg)
 	int i;
 
 	/* For FPGA version, PHY address 0 should be ignored. */
-	if (sc->jme_flags & JME_FLAG_FPGA) {
+	if (sc->jme_caps & JME_CAP_FPGA) {
 		if (phy == 0)
 			return (0);
 	} else {
@@ -220,7 +220,7 @@ jme_miibus_writereg(device_t dev, int phy, int reg, int val)
 	int i;
 
 	/* For FPGA version, PHY address 0 should be ignored. */
-	if (sc->jme_flags & JME_FLAG_FPGA) {
+	if (sc->jme_caps & JME_CAP_FPGA) {
 		if (phy == 0)
 			return (0);
 	} else {
@@ -273,7 +273,7 @@ jme_miibus_statchg(device_t dev)
 			sc->jme_flags |= JME_FLAG_LINK;
 			break;
 		case IFM_1000_T:
-			if (sc->jme_flags & JME_FLAG_FASTETH)
+			if (sc->jme_caps & JME_CAP_FASTETH)
 				break;
 			sc->jme_flags |= JME_FLAG_LINK;
 			break;
@@ -424,8 +424,8 @@ jme_probe(device_t dev)
 			device_set_desc(dev, sp->jme_name);
 			if (vid == PCI_PRODUCT_JMICRON_JMC260) {
 				struct jme_softc *sc = device_get_softc(dev);
-				sc->jme_flags = JME_FLAG_FASTETH |
-						JME_FLAG_NOJUMBO;
+				sc->jme_caps = JME_CAP_FASTETH |
+					       JME_CAP_NOJUMBO;
 			}
 			return (0);
 		}
@@ -620,7 +620,7 @@ jme_attach(device_t dev)
 	reg = CSR_READ_4(sc, JME_CHIPMODE);
 	if (((reg & CHIPMODE_FPGA_REV_MASK) >> CHIPMODE_FPGA_REV_SHIFT) !=
 	    CHIPMODE_NOT_FPGA) {
-		sc->jme_flags |= JME_FLAG_FPGA;
+		sc->jme_caps |= JME_CAP_FPGA;
 		if (bootverbose) {
 			device_printf(dev, "FPGA revision : 0x%04x\n",
 				      (reg & CHIPMODE_FPGA_REV_MASK) >>
@@ -648,7 +648,7 @@ jme_attach(device_t dev)
 	 * Integrated JR0211 has fixed PHY address whereas FPGA version
 	 * requires PHY probing to get correct PHY address.
 	 */
-	if ((sc->jme_flags & JME_FLAG_FPGA) == 0) {
+	if ((sc->jme_caps & JME_CAP_FPGA) == 0) {
 		sc->jme_phyaddr = CSR_READ_4(sc, JME_GPREG0) &
 		    GPREG0_PHY_ADDR_MASK;
 		if (bootverbose) {
@@ -664,7 +664,7 @@ jme_attach(device_t dev)
 	if (pcie_ptr != 0) {
 		uint16_t ctrl;
 
-		sc->jme_flags |= JME_FLAG_PCIE;
+		sc->jme_caps |= JME_CAP_PCIE;
 		ctrl = pci_read_config(dev, pcie_ptr + PCIER_DEVCTRL, 2);
 		if (bootverbose) {
 			device_printf(dev, "Read request size : %d bytes.\n",
@@ -691,7 +691,7 @@ jme_attach(device_t dev)
 
 #ifdef notyet
 	if (pci_find_extcap(dev, PCIY_PMG, &pmc) == 0)
-		sc->jme_flags |= JME_FLAG_PMCAP;
+		sc->jme_caps |= JME_CAP_PMCAP;
 #endif
 
 	/*
@@ -731,7 +731,7 @@ jme_attach(device_t dev)
 	/*
 	 * Save PHYADDR for FPGA mode PHY.
 	 */
-	if (sc->jme_flags & JME_FLAG_FPGA) {
+	if (sc->jme_caps & JME_CAP_FPGA) {
 		struct mii_data *mii = device_get_softc(sc->jme_miibus);
 
 		if (mii->mii_instance != 0) {
@@ -1424,7 +1424,7 @@ jme_setwol(struct jme_softc *sc)
 		/* Enable PME message. */
 		gpr |= GPREG0_PME_ENB;
 		/* For gigabit controllers, reset link speed to 10/100. */
-		if ((sc->jme_flags & JME_FLAG_FASTETH) == 0)
+		if ((sc->jme_caps & JME_CAP_FASTETH) == 0)
 			jme_setlinkspeed(sc);
 	}
 
@@ -1733,7 +1733,7 @@ jme_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	switch (cmd) {
 	case SIOCSIFMTU:
 		if (ifr->ifr_mtu < ETHERMIN || ifr->ifr_mtu > JME_JUMBO_MTU ||
-		    ((sc->jme_flags & JME_FLAG_NOJUMBO) &&
+		    ((sc->jme_caps & JME_CAP_NOJUMBO) &&
 		     ifr->ifr_mtu > JME_MAX_MTU)) {
 			error = EINVAL;
 			break;
@@ -1871,7 +1871,7 @@ jme_mac_config(struct jme_softc *sc)
 		ghc |= GHC_SPEED_100;
 		break;
 	case IFM_1000_T:
-		if (sc->jme_flags & JME_FLAG_FASTETH)
+		if (sc->jme_caps & JME_CAP_FASTETH)
 			break;
 		ghc |= GHC_SPEED_1000;
 		if ((IFM_OPTIONS(mii->mii_media_active) & IFM_FDX) == 0)
