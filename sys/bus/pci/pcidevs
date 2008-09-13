@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/pci/pcidevs,v 1.34 2008/06/29 20:33:57 swildner Exp $
+$DragonFly: src/sys/bus/pci/pcidevs,v 1.35 2008/09/13 02:21:56 sephe Exp $
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
 /*
@@ -579,6 +579,7 @@ vendor BELKIN		0x1799	Belkin
 vendor SANDBURST	0x17ba	Sandburst, Inc.
 vendor RALINK		0x1814	Ralink Technologies
 vendor SILAN		0x1904	Hangzhou Silan Microelectronics
+vendor JMICRON		0x197b	JMicron Technology Corporation
 vendor SYMPHONY2	0x1c1c	Symphony Labs (2nd PCI Vendor ID)
 vendor TEKRAM2		0x1de1	Tekram Technology (2nd PCI Vendor ID)
 vendor HINT		0x3388	HiNT
@@ -1905,6 +1906,10 @@ product ITE IT8152		0x8152	IT8152 Host Bridge
 /* I. T. T. products */
 product ITT AGX016	0x0001	AGX016
 product ITT ITT3204	0x0002	ITT3204 MPEG Decoder
+
+/* JMicron Technology Corporation products */
+product JMICRON JMC250	0x0250	JMC250 PCI Express Gigabit Ethernet
+product JMICRON JMC260	0x0260	JMC260 PCI Express Fast Ethernet
 
 /* KTI products - XXX better descriptions */
 product KTI NE2KETHER	0x3000	Ethernet
