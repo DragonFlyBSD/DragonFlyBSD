@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.27 2008/08/10 17:03:29 swildner Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.28 2008/09/13 19:08:05 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -1061,6 +1061,14 @@ vesa_set_mode(video_adapter_t *adp, int mode)
 		case 8:
 		default: /* shouldn't happen */
 			vesa_adp->va_line_width = info.vi_width;
+			break;
+		case 15:
+		case 16:
+			vesa_adp->va_line_width = info.vi_width*2;
+			break;
+		case 24:
+		case 32:
+			vesa_adp->va_line_width = info.vi_width*4;
 			break;
 		}
 	} else {
