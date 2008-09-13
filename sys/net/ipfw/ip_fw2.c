@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.80 2008/09/09 11:37:08 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.81 2008/09/13 05:49:08 sephe Exp $
  */
 
 #define        DEB(x)
@@ -2456,26 +2456,7 @@ ipfw_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 	if (cmd->opcode == O_PIPE)
 		pkt->dn_flags |= DN_FLAGS_IS_PIPE;
 
-	if (dir == DN_TO_IP_OUT) {
-		/*
-		 * We need to copy *ro because for ICMP pkts (and maybe
-		 * others) the caller passed a pointer into the stack;
-		 * dst might also be a pointer into *ro so it needs to
-		 * be updated.
-		 */
-		pkt->ro = *(fwa->ro);
-		if (fwa->ro->ro_rt)
-			fwa->ro->ro_rt->rt_refcnt++;
-		if (fwa->dst == (struct sockaddr_in *)&fwa->ro->ro_dst) {
-			/* 'dst' points into 'ro' */
-			fwa->dst = (struct sockaddr_in *)&(pkt->ro.ro_dst);
-		}
-		pkt->dn_dst = fwa->dst;
-		pkt->flags = fwa->flags;
-	}
-
 	m->m_pkthdr.fw_flags |= DUMMYNET_MBUF_TAGGED;
-	ip_dn_queue(m);
 }
 
 /*

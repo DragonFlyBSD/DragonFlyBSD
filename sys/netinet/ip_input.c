@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.100 2008/09/07 11:12:15 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.101 2008/09/13 05:49:08 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -716,7 +716,7 @@ iphack:
 		case IP_FW_DUMMYNET:
 			/* Send packet to the appropriate pipe */
 			ip_fw_dn_io_ptr(m, args.cookie, DN_TO_IP_IN, &args);
-			return;
+			goto pass;
 
 		case IP_FW_TEE:
 			tee = 1;
@@ -744,6 +744,10 @@ pass:
 		mtag = m_tag_find(m, PACKET_TAG_IPFORWARD, NULL);
 		KKASSERT(mtag != NULL);
 		next_hop = m_tag_data(mtag);
+	}
+	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
+		ip_dn_queue(m);
+		return;
 	}
 
 	/*

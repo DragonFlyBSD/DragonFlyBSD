@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.60 2008/09/12 11:37:41 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.61 2008/09/13 05:49:08 sephe Exp $
  */
 
 #define _IP_VHL
@@ -867,22 +867,9 @@ spd_done:
 			goto done;
 
 		case IP_FW_DUMMYNET:
-			/*
-			 * pass the pkt to dummynet. Need to include
-			 * pipe number, m, ifp, ro, dst because these are
-			 * not recomputed in the next pass.
-			 * All other parameters have been already used and
-			 * so they are not needed anymore.
-			 * XXX note: if the ifp or ro entry are deleted
-			 * while a pkt is in dummynet, we are in trouble!
-			 */
-			args.ro = ro;
-			args.dst = dst;
-			args.flags = flags;
-
 			error = 0;
 			ip_fw_dn_io_ptr(m, args.cookie, DN_TO_IP_OUT, &args);
-			goto done;
+			break;
 
 		case IP_FW_TEE:
 			tee = 1;
@@ -951,6 +938,42 @@ spd_done:
 		goto reroute;
 	}
 
+	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
+		struct dn_pkt *dn_pkt;
+
+		mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
+		KKASSERT(mtag != NULL);
+		dn_pkt = m_tag_data(mtag);
+
+		/*
+		 * Under certain cases it is not possible to recalculate
+		 * 'ro' and 'dst', let alone 'flags', so just save them in
+		 * dummynet tag and avoid the possible wrong reculcalation
+		 * when we come back to ip_output() again.
+		 *
+		 * All other parameters have been already used and so they
+		 * are not needed anymore.
+		 * XXX if the ifp is deleted while a pkt is in dummynet,
+		 * we are in trouble! (TODO use ifnet_detach_event)
+		 *
+		 * We need to copy *ro because for ICMP pkts (and maybe
+		 * others) the caller passed a pointer into the stack;
+		 * dst might also be a pointer into *ro so it needs to
+		 * be updated.
+		 */
+		dn_pkt->ro = *ro;
+		if (ro->ro_rt)
+			ro->ro_rt->rt_refcnt++;
+		if (dst == (struct sockaddr_in *)&ro->ro_dst) {
+			/* 'dst' points into 'ro' */
+			dst = (struct sockaddr_in *)&(dn_pkt->ro.ro_dst);
+		}
+		dn_pkt->dn_dst = dst;
+		dn_pkt->flags = flags;
+
+		ip_dn_queue(m);
+		goto done;
+	}
 pass:
 	/* 127/8 must not appear on wire - RFC1122. */
 	if ((ntohl(ip->ip_dst.s_addr) >> IN_CLASSA_NSHIFT) == IN_LOOPBACKNET ||
