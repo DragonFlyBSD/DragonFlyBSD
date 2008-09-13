@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.105 2008/09/13 10:23:39 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.106 2008/09/13 12:57:07 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -410,7 +410,7 @@ ip_input(struct mbuf *m)
 	struct ip *ip;
 	struct in_ifaddr *ia = NULL;
 	struct in_ifaddr_container *iac;
-	int i, hlen, checkif;
+	int hlen, checkif;
 	u_short sum;
 	struct in_addr pkt_dst;
 	boolean_t using_srcrt = FALSE;		/* forward (by PFIL_HOOKS) */
@@ -561,69 +561,6 @@ iphack:
 		using_srcrt = (odst.s_addr != ip->ip_dst.s_addr);
 	}
 
-	if (fw_enable && IPFW_LOADED) {
-		struct ip_fw_args args;
-		int tee = 0;
-
-		if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
-			/* Extract info from dummynet tag */
-			mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
-			KKASSERT(mtag != NULL);
-			args.rule =
-			((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
-			KKASSERT(args.rule != NULL);
-
-			m_tag_delete(m, mtag);
-			m->m_pkthdr.fw_flags &= ~DUMMYNET_MBUF_TAGGED;
-		} else {
-			args.rule = NULL;
-		}
-
-		args.eh = NULL;
-		args.oif = NULL;
-		args.m = m;
-		i = ip_fw_chk_ptr(&args);
-		m = args.m;
-
-		if (m == NULL)
-			return;
-		ip = mtod(m, struct ip *);	/* just in case m changed */
-
-		switch (i) {
-		case IP_FW_PASS:
-			goto pass;
-
-		case IP_FW_DENY:
-			m_freem(m);
-			return;
-
-		case IP_FW_DUMMYNET:
-			/* Send packet to the appropriate pipe */
-			ip_fw_dn_io_ptr(m, args.cookie, DN_TO_IP_IN, &args);
-			goto pass;
-
-		case IP_FW_TEE:
-			tee = 1;
-			/* FALL THROUGH */
-
-		case IP_FW_DIVERT:
-			if (ip_divert_p != NULL) {
-				m = ip_divert_p(m, tee, 1);
-				if (m == NULL)
-					return;
-				ip = mtod(m, struct ip *);
-				hlen = IP_VHL_HL(ip->ip_vhl) << 2;
-				goto pass;
-			} else {
-				m_freem(m);
-				return;
-			}
-
-		default:
-			panic("unknown ipfw return value: %d\n", i);
-		}
-	}
-pass:
 	if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
 		mtag = m_tag_find(m, PACKET_TAG_IPFORWARD, NULL);
 		KKASSERT(mtag != NULL);
@@ -638,6 +575,9 @@ pass:
 		m->m_pkthdr.fw_flags &= ~FW_MBUF_REDISPATCH;
 	}
 
+#if defined(IPSEC) && !defined(IPSEC_FILTERGIF)
+pass:
+#endif
 	/*
 	 * Process options and, if not destined for us,
 	 * ship it on.  ip_dooptions returns 1 when an

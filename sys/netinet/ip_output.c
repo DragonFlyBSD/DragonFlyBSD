@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.62 2008/09/13 08:48:42 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.63 2008/09/13 12:57:07 sephe Exp $
  */
 
 #define _IP_VHL
@@ -65,7 +65,6 @@
 #include <netinet/in_pcb.h>
 #include <netinet/in_var.h>
 #include <netinet/ip_var.h>
-#include <netinet/ip_divert.h>
 
 #include <netproto/mpls/mpls_var.h>
 
@@ -180,7 +179,7 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	struct ifnet *ifp = NULL;	/* keep compiler happy */
 	struct mbuf *m;
 	int hlen = sizeof(struct ip);
-	int len, off, error = 0;
+	int len, error = 0;
 	struct sockaddr_in *dst = NULL;	/* keep compiler happy */
 	struct in_ifaddr *ia = NULL;
 	int isbroadcast, sw_csum;
@@ -787,76 +786,6 @@ spd_done:
 		if (error != 0 || m == NULL)
 			goto done;
 		ip = mtod(m, struct ip *);
-	}
-
-	/*
-	 * Check with the firewall...
-	 */
-	if (fw_enable && IPFW_LOADED) {
-		struct ip_fw_args args;
-		int tee = 0;
-
-		if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
-			/* Extract info from dummynet tag */
-			mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
-			KKASSERT(mtag != NULL);
-			args.rule =
-			((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
-			KKASSERT(args.rule != NULL);
-
-			m_tag_delete(m, mtag);
-			m->m_pkthdr.fw_flags &= ~DUMMYNET_MBUF_TAGGED;
-		} else {
-			args.rule = NULL;
-		}
-
-		args.eh = NULL;
-		args.m = m;
-		args.oif = ifp;
-		off = ip_fw_chk_ptr(&args);
-		m = args.m;
-
-		if (m == NULL) {
-			error = EACCES;
-			goto done;
-		}
-		ip = mtod(m, struct ip *);
-
-		switch (off) {
-		case IP_FW_PASS:
-			break;
-
-		case IP_FW_DENY:
-			m_freem(m);
-			error = EACCES;
-			goto done;
-
-		case IP_FW_DUMMYNET:
-			error = 0;
-			ip_fw_dn_io_ptr(m, args.cookie, DN_TO_IP_OUT, &args);
-			break;
-
-		case IP_FW_TEE:
-			tee = 1;
-			/* FALL THROUGH */
-
-		case IP_FW_DIVERT:
-			if (ip_divert_p != NULL) {
-				m = ip_divert_p(m, tee, 0);
-				if (m == NULL)
-					goto done;
-				ip = mtod(m, struct ip *);
-				break;
-			} else {
-				m_freem(m);
-				/* not sure this is the right error msg */
-				error = EACCES;
-				goto done;
-			}
-
-		default:
-			panic("unknown ipfw return value: %d\n", off);
-		}
 	}
 
 	if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {

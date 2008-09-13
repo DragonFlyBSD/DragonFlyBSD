@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.82 2008/09/13 10:47:23 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.83 2008/09/13 12:57:07 sephe Exp $
  */
 
 #define        DEB(x)
@@ -57,6 +57,7 @@
 #include <net/if.h>
 #include <net/route.h>
 #include <net/netmsg2.h>
+#include <net/pfil.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -4034,14 +4035,190 @@ done:
 		      ipfw_tick, NULL);
 }
 
+static int
+ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
+{
+	struct ip_fw_args args;
+	struct mbuf *m = *m0;
+	struct m_tag *mtag;
+	int tee = 0, error = 0, i;
+
+	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
+		/* Extract info from dummynet tag */
+		mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
+		KKASSERT(mtag != NULL);
+		args.rule = ((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
+		KKASSERT(args.rule != NULL);
+
+		m_tag_delete(m, mtag);
+		m->m_pkthdr.fw_flags &= ~DUMMYNET_MBUF_TAGGED;
+	} else {
+		args.rule = NULL;
+	}
+
+	args.eh = NULL;
+	args.oif = NULL;
+	args.m = m;
+	i = ipfw_chk(&args);
+	m = args.m;
+
+	if (m == NULL) {
+		error = EACCES;
+		goto back;
+	}
+
+	switch (i) {
+	case IP_FW_PASS:
+		break;
+
+	case IP_FW_DENY:
+		m_freem(m);
+		m = NULL;
+		error = EACCES;
+		break;
+
+	case IP_FW_DUMMYNET:
+		/* Send packet to the appropriate pipe */
+		ipfw_dummynet_io(m, args.cookie, DN_TO_IP_IN, &args);
+		break;
+
+	case IP_FW_TEE:
+		tee = 1;
+		/* FALL THROUGH */
+
+	case IP_FW_DIVERT:
+		if (ip_divert_p != NULL) {
+			m = ip_divert_p(m, tee, 1);
+		} else {
+			m_freem(m);
+			m = NULL;
+			/* not sure this is the right error msg */
+			error = EACCES;
+		}
+		break;
+
+	default:
+		panic("unknown ipfw return value: %d\n", i);
+	}
+back:
+	*m0 = m;
+	return error;
+}
+
+static int
+ipfw_check_out(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
+{
+	struct ip_fw_args args;
+	struct mbuf *m = *m0;
+	struct m_tag *mtag;
+	int tee = 0, error = 0, off;
+
+	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
+		/* Extract info from dummynet tag */
+		mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
+		KKASSERT(mtag != NULL);
+		args.rule = ((struct dn_pkt *)m_tag_data(mtag))->dn_priv;
+		KKASSERT(args.rule != NULL);
+
+		m_tag_delete(m, mtag);
+		m->m_pkthdr.fw_flags &= ~DUMMYNET_MBUF_TAGGED;
+	} else {
+		args.rule = NULL;
+	}
+
+	args.eh = NULL;
+	args.m = m;
+	args.oif = ifp;
+	off = ipfw_chk(&args);
+	m = args.m;
+
+	if (m == NULL) {
+		error = EACCES;
+		goto back;
+	}
+
+	switch (off) {
+	case IP_FW_PASS:
+		break;
+
+	case IP_FW_DENY:
+		m_freem(m);
+		m = NULL;
+		error = EACCES;
+		break;
+
+	case IP_FW_DUMMYNET:
+		ipfw_dummynet_io(m, args.cookie, DN_TO_IP_OUT, &args);
+		break;
+
+	case IP_FW_TEE:
+		tee = 1;
+		/* FALL THROUGH */
+
+	case IP_FW_DIVERT:
+		if (ip_divert_p != NULL) {
+			m = ip_divert_p(m, tee, 0);
+		} else {
+			m_freem(m);
+			m = NULL;
+			/* not sure this is the right error msg */
+			error = EACCES;
+		}
+		break;
+
+	default:
+		panic("unknown ipfw return value: %d\n", off);
+	}
+back:
+	*m0 = m;
+	return error;
+}
+
+static void
+ipfw_hook(void)
+{
+	struct pfil_head *pfh;
+
+	IPFW_ASSERT_CFGPORT(&curthread->td_msgport);
+
+	pfh = pfil_head_get(PFIL_TYPE_AF, AF_INET);
+	if (pfh == NULL)
+		return;
+
+	pfil_add_hook(ipfw_check_in, NULL, PFIL_IN | PFIL_WAITOK, pfh);
+	pfil_add_hook(ipfw_check_out, NULL, PFIL_OUT | PFIL_WAITOK, pfh);
+}
+
+static void
+ipfw_dehook(void)
+{
+	struct pfil_head *pfh;
+
+	IPFW_ASSERT_CFGPORT(&curthread->td_msgport);
+
+	pfh = pfil_head_get(PFIL_TYPE_AF, AF_INET);
+	if (pfh == NULL)
+		return;
+
+	pfil_remove_hook(ipfw_check_in, NULL, PFIL_IN | PFIL_WAITOK, pfh);
+	pfil_remove_hook(ipfw_check_out, NULL, PFIL_OUT | PFIL_WAITOK, pfh);
+}
+
 static void
 ipfw_sysctl_enable_dispatch(struct netmsg *nmsg)
 {
 	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
 	int enable = lmsg->u.ms_result;
 
-	fw_enable = enable;
+	if (fw_enable == enable)
+		goto reply;
 
+	fw_enable = enable;
+	if (fw_enable)
+		ipfw_hook();
+	else
+		ipfw_dehook();
+reply:
 	lwkt_replymsg(lmsg, 0);
 }
 
@@ -4203,6 +4380,9 @@ ipfw_init_dispatch(struct netmsg *nmsg)
 
 	ip_fw_loaded = 1;
 	callout_reset(&ipfw_timeout_h, hz, ipfw_tick, NULL);
+
+	if (fw_enable)
+		ipfw_hook();
 reply:
 	crit_exit();
 	lwkt_replymsg(&nmsg->nm_lmsg, error);
@@ -4230,6 +4410,8 @@ ipfw_fini_dispatch(struct netmsg *nmsg)
 		error = EBUSY;
 		goto reply;
 	}
+
+	ipfw_dehook();
 
 	callout_stop(&ipfw_timeout_h);
 
