@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.61 2008/09/13 05:49:08 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.62 2008/09/13 08:48:42 sephe Exp $
  */
 
 #define _IP_VHL
@@ -65,9 +65,7 @@
 #include <netinet/in_pcb.h>
 #include <netinet/in_var.h>
 #include <netinet/ip_var.h>
-#ifdef IPDIVERT
 #include <netinet/ip_divert.h>
-#endif
 
 #include <netproto/mpls/mpls_var.h>
 
@@ -122,39 +120,6 @@ extern	int route_assert_owner_access;
 extern	void db_print_backtrace(void);
 
 extern	struct protosw inetsw[];
-
-#ifdef IPDIVERT
-static struct mbuf *
-ip_divert_out(struct mbuf *m, int tee)
-{
-	struct mbuf *clone = NULL;
-	struct ip *ip = mtod(m, struct ip *);
-
-	/* Clone packet if we're doing a 'tee' */
-	if (tee)
-		clone = m_dup(m, MB_DONTWAIT);
-
-	/*
-	 * XXX
-	 * delayed checksums are not currently compatible
-	 * with divert sockets.
-	 */
-	if (m->m_pkthdr.csum_flags & CSUM_DELAY_DATA) {
-		in_delayed_cksum(m);
-		m->m_pkthdr.csum_flags &= ~CSUM_DELAY_DATA;
-	}
-
-	/* Restore packet header fields to original values */
-	ip->ip_len = htons(ip->ip_len);
-	ip->ip_off = htons(ip->ip_off);
-
-	/* Deliver packet to divert input routine */
-	divert_packet(m, 0);
-
-	/* If 'tee', continue with original packet */
-	return clone;
-}
-#endif	/* IPDIVERT */
 
 static int
 ip_localforward(struct mbuf *m, const struct sockaddr_in *dst)
@@ -876,18 +841,18 @@ spd_done:
 			/* FALL THROUGH */
 
 		case IP_FW_DIVERT:
-#ifdef IPDIVERT
-			m = ip_divert_out(m, tee);
-			if (m == NULL)
+			if (ip_divert_p != NULL) {
+				m = ip_divert_p(m, tee, 0);
+				if (m == NULL)
+					goto done;
+				ip = mtod(m, struct ip *);
+				break;
+			} else {
+				m_freem(m);
+				/* not sure this is the right error msg */
+				error = EACCES;
 				goto done;
-			ip = mtod(m, struct ip *);
-			break;
-#else
-			m_freem(m);
-			/* not sure this is the right error msg */
-			error = EACCES;
-			goto done;
-#endif
+			}
 
 		default:
 			panic("unknown ipfw return value: %d\n", off);

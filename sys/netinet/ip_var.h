@@ -32,7 +32,7 @@
  *
  *	@(#)ip_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/ip_var.h,v 1.50.2.13 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/ip_var.h,v 1.26 2008/09/12 11:37:41 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_var.h,v 1.27 2008/09/13 08:48:42 sephe Exp $
  */
 
 #ifndef _NETINET_IP_VAR_H_
@@ -195,6 +195,8 @@ int	 ip_ctloutput(struct socket *, struct sockopt *sopt);
 void	 ip_drain(void);
 int	 ip_fragment(struct ip *ip, struct mbuf **m_frag, int mtu,
 	    u_long if_hwassist_flags, int sw_csum);
+struct mbuf *
+	 ip_reass(struct mbuf *);
 void	 ip_freemoptions(struct ip_moptions *);
 void	 ip_init(void);
 extern int	 (*ip_mforward)(struct ip *, struct ifnet *, struct mbuf *,

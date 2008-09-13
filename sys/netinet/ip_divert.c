@@ -31,8 +31,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.38 2008/08/28 14:10:03 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.39 2008/09/13 08:48:42 sephe Exp $
  */
+
+#define	_IP_VHL
 
 #include "opt_inet.h"
 #include "opt_ipfw.h"
@@ -54,6 +56,7 @@
 #include <sys/systm.h>
 #include <sys/proc.h>
 #include <sys/thread2.h>
+#include <sys/in_cksum.h>
 #ifdef SMP
 #include <sys/msgport.h>
 #endif
@@ -119,6 +122,8 @@ static struct inpcbinfo divcbinfo;
 static u_long	div_sendspace = DIVSNDQ;	/* XXX sysctl ? */
 static u_long	div_recvspace = DIVRCVQ;	/* XXX sysctl ? */
 
+static struct mbuf *ip_divert(struct mbuf *, int, int);
+
 /*
  * Initialize divert connection block queue.
  */
@@ -137,6 +142,7 @@ div_init(void)
 					      &divcbinfo.wildcardhashmask);
 	divcbinfo.ipi_zone = zinit("divcb", sizeof(struct inpcb),
 				   maxsockets, ZONE_INTERRUPT, 0);
+	ip_divert_p = ip_divert;
 }
 
 /*
@@ -328,7 +334,7 @@ div_packet_handler(struct netmsg *nmsg)
 }
 #endif	/* SMP */
 
-void
+static void
 divert_packet(struct mbuf *m, int incoming)
 {
 	struct m_tag *mtag;
@@ -562,3 +568,153 @@ struct pr_usrreqs div_usrreqs = {
 	.pru_soreceive = soreceive,
 	.pru_sopoll = sopoll
 };
+
+static struct mbuf *
+ip_divert_out(struct mbuf *m, int tee)
+{
+	struct mbuf *clone = NULL;
+	struct ip *ip = mtod(m, struct ip *);
+
+	/* Clone packet if we're doing a 'tee' */
+	if (tee)
+		clone = m_dup(m, MB_DONTWAIT);
+
+	/*
+	 * XXX
+	 * delayed checksums are not currently compatible
+	 * with divert sockets.
+	 */
+	if (m->m_pkthdr.csum_flags & CSUM_DELAY_DATA) {
+		in_delayed_cksum(m);
+		m->m_pkthdr.csum_flags &= ~CSUM_DELAY_DATA;
+	}
+
+	/* Restore packet header fields to original values */
+	ip->ip_len = htons(ip->ip_len);
+	ip->ip_off = htons(ip->ip_off);
+
+	/* Deliver packet to divert input routine */
+	divert_packet(m, 0);
+
+	/* If 'tee', continue with original packet */
+	return clone;
+}
+
+static struct mbuf *
+ip_divert_in(struct mbuf *m, int tee)
+{
+	struct mbuf *clone = NULL;
+	struct ip *ip = mtod(m, struct ip *);
+	struct m_tag *mtag;
+
+	if (ip->ip_off & (IP_MF | IP_OFFMASK)) {
+		const struct divert_info *divinfo;
+		u_short frag_off;
+		int hlen;
+
+		/*
+		 * Only trust divert info in the fragment
+		 * at offset 0.
+		 */
+		frag_off = ip->ip_off << 3;
+		if (frag_off != 0) {
+			mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
+			m_tag_delete(m, mtag);
+		}
+
+		/*
+		 * Attempt reassembly; if it succeeds, proceed.
+		 * ip_reass() will return a different mbuf.
+		 */
+		m = ip_reass(m);
+		if (m == NULL)
+			return NULL;
+		ip = mtod(m, struct ip *);
+
+		/* Caller need to redispatch the packet, if it is for us */
+		m->m_pkthdr.fw_flags |= FW_MBUF_REDISPATCH;
+
+		/*
+		 * Get the header length of the reassembled
+		 * packet
+		 */
+		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
+
+		/*
+		 * Restore original checksum before diverting
+		 * packet
+		 */
+		ip->ip_len += hlen;
+		ip->ip_len = htons(ip->ip_len);
+		ip->ip_off = htons(ip->ip_off);
+		ip->ip_sum = 0;
+		if (hlen == sizeof(struct ip))
+			ip->ip_sum = in_cksum_hdr(ip);
+		else
+			ip->ip_sum = in_cksum(m, hlen);
+		ip->ip_off = ntohs(ip->ip_off);
+		ip->ip_len = ntohs(ip->ip_len);
+
+		/*
+		 * Only use the saved divert info
+		 */
+		mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
+		if (mtag == NULL) {
+			/* Wrongly configured ipfw */
+			kprintf("ip_input no divert info\n");
+			m_freem(m);
+			return NULL;
+		}
+		divinfo = m_tag_data(mtag);
+		tee = divinfo->tee;
+	}
+
+	/*
+	 * Divert or tee packet to the divert protocol if
+	 * required.
+	 */
+
+	/* Clone packet if we're doing a 'tee' */
+	if (tee)
+		clone = m_dup(m, MB_DONTWAIT);
+
+	/*
+	 * Restore packet header fields to original
+	 * values
+	 */
+	ip->ip_len = htons(ip->ip_len);
+	ip->ip_off = htons(ip->ip_off);
+
+	/* Deliver packet to divert input routine */
+	divert_packet(m, 1);
+
+	/* Catch invalid reference */
+	m = NULL;
+	ip = NULL;
+
+	ipstat.ips_delivered++;
+
+	/* If 'tee', continue with original packet */
+	if (clone != NULL) {
+		/*
+		 * Complete processing of the packet.
+		 * XXX Better safe than sorry, remove the DIVERT tag.
+		 */
+		mtag = m_tag_find(clone, PACKET_TAG_IPFW_DIVERT, NULL);
+		KKASSERT(mtag != NULL);
+		m_tag_delete(clone, mtag);
+	}
+	return clone;
+}
+
+static struct mbuf *
+ip_divert(struct mbuf *m, int tee, int incoming)
+{
+	struct mbuf *ret;
+
+	if (incoming)
+		ret = ip_divert_in(m, tee);
+	else
+		ret = ip_divert_out(m, tee);
+	return ret;
+}

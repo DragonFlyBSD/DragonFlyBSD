@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/ip_divert.h,v 1.2 2008/08/28 14:24:59 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.h,v 1.3 2008/09/13 08:48:42 sephe Exp $
  */
 
 #ifndef _NETINET_IP_DIVERT_H_
@@ -53,7 +53,8 @@ void	div_input(struct mbuf *, ...);
 struct lwkt_port *
 	div_soport(struct socket *, struct sockaddr *,
 		   struct mbuf **, int);
-void	divert_packet(struct mbuf *, int);
+
+extern struct mbuf *(*ip_divert_p)(struct mbuf *, int, int);
 
 extern struct pr_usrreqs div_usrreqs;
 

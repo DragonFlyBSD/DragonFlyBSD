@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.102 2008/09/13 07:15:14 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.103 2008/09/13 08:48:42 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -111,9 +111,7 @@
 #include <netinet/in_pcb.h>
 #include <netinet/ip_var.h>
 #include <netinet/ip_icmp.h>
-#ifdef IPDIVERT
 #include <netinet/ip_divert.h>
-#endif
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
@@ -267,6 +265,8 @@ int ip_fw_loaded;
 int fw_enable = 1;
 int fw_one_pass = 1;
 
+struct mbuf *(*ip_divert_p)(struct mbuf *, int, int);
+
 struct pfil_head inet_pfil_hook;
 
 /*
@@ -302,7 +302,6 @@ static void		save_rte(struct mbuf *, u_char *, struct in_addr);
 static int		ip_dooptions(struct mbuf *m, int, struct sockaddr_in *);
 static void		ip_freef(struct ipq *);
 static void		ip_input_handler(struct netmsg *);
-static struct mbuf	*ip_reass(struct mbuf *);
 
 /*
  * IP initialization: fill in IP protocol switch table.
@@ -408,115 +407,6 @@ ip_input_handler(struct netmsg *msg0)
 	ip_input(m);
 	/* msg0 was embedded in the mbuf, do not reply! */
 }
-
-#ifdef IPDIVERT
-static struct mbuf *
-ip_divert_in(struct mbuf *m, int tee)
-{
-	struct mbuf *clone = NULL;
-	struct ip *ip = mtod(m, struct ip *);
-	struct m_tag *mtag;
-
-	if (ip->ip_off & (IP_MF | IP_OFFMASK)) {
-		const struct divert_info *divinfo;
-		u_short frag_off;
-		int hlen;
-
-		/*
-		 * Only trust divert info in the fragment
-		 * at offset 0.
-		 */
-		frag_off = ip->ip_off << 3;
-		if (frag_off != 0) {
-			mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
-			m_tag_delete(m, mtag);
-		}
-
-		/*
-		 * Attempt reassembly; if it succeeds, proceed.
-		 * ip_reass() will return a different mbuf.
-		 */
-		m = ip_reass(m);
-		if (m == NULL)
-			return NULL;
-		ip = mtod(m, struct ip *);
-
-		/* Caller need to redispatch the packet, if it is for us */
-		m->m_pkthdr.fw_flags |= FW_MBUF_REDISPATCH;
-
-		/*
-		 * Get the header length of the reassembled
-		 * packet
-		 */
-		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
-
-		/*
-		 * Restore original checksum before diverting
-		 * packet
-		 */
-		ip->ip_len += hlen;
-		ip->ip_len = htons(ip->ip_len);
-		ip->ip_off = htons(ip->ip_off);
-		ip->ip_sum = 0;
-		if (hlen == sizeof(struct ip))
-			ip->ip_sum = in_cksum_hdr(ip);
-		else
-			ip->ip_sum = in_cksum(m, hlen);
-		ip->ip_off = ntohs(ip->ip_off);
-		ip->ip_len = ntohs(ip->ip_len);
-
-		/*
-		 * Only use the saved divert info
-		 */
-		mtag = m_tag_find(m, PACKET_TAG_IPFW_DIVERT, NULL);
-		if (mtag == NULL) {
-			/* Wrongly configured ipfw */
-			kprintf("ip_input no divert info\n");
-			m_freem(m);
-			return NULL;
-		}
-		divinfo = m_tag_data(mtag);
-		tee = divinfo->tee;
-	}
-
-	/*
-	 * Divert or tee packet to the divert protocol if
-	 * required.
-	 */
-
-	/* Clone packet if we're doing a 'tee' */
-	if (tee)
-		clone = m_dup(m, MB_DONTWAIT);
-
-	/*
-	 * Restore packet header fields to original
-	 * values
-	 */
-	ip->ip_len = htons(ip->ip_len);
-	ip->ip_off = htons(ip->ip_off);
-
-	/* Deliver packet to divert input routine */
-	divert_packet(m, 1);
-
-	/* Catch invalid reference */
-	m = NULL;
-	ip = NULL;
-
-	ipstat.ips_delivered++;
-
-	/* If 'tee', continue with original packet */
-	if (clone != NULL) {
-		/*
-		 * Complete processing of the packet.
-		 * XXX Better safe than sorry, remove the DIVERT tag.
-		 */
-		mtag = m_tag_find(clone, PACKET_TAG_IPFW_DIVERT, NULL);
-		KKASSERT(mtag != NULL);
-		m_tag_delete(clone, mtag);
-	}
-	return clone;
-}
-#endif	/* IPDIVERT */
 
 /*
  * IP input routine.  Checksum and byte swap header.  If fragmented
@@ -724,17 +614,17 @@ iphack:
 			/* FALL THROUGH */
 
 		case IP_FW_DIVERT:
-#ifdef IPDIVERT
-			m = ip_divert_in(m, tee);
-			if (m == NULL)
+			if (ip_divert_p != NULL) {
+				m = ip_divert_p(m, tee, 1);
+				if (m == NULL)
+					return;
+				ip = mtod(m, struct ip *);
+				hlen = IP_VHL_HL(ip->ip_vhl) << 2;
+				goto pass;
+			} else {
+				m_freem(m);
 				return;
-			ip = mtod(m, struct ip *);
-			hlen = IP_VHL_HL(ip->ip_vhl) << 2;
-			goto pass;
-#else
-			m_freem(m);
-			return;
-#endif
+			}
 
 		default:
 			panic("unknown ipfw return value: %d\n", i);
@@ -1091,7 +981,7 @@ bad:
  * whole datagram.  If a chain for reassembly of this datagram already
  * exists, then it is given as fp; otherwise have to make a chain.
  */
-static struct mbuf *
+struct mbuf *
 ip_reass(struct mbuf *m)
 {
 	struct ip *ip = mtod(m, struct ip *);
