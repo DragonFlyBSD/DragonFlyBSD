@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/net/ipfw/ip_fw2_glue.c,v 1.2 2008/08/02 03:32:38 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2_glue.c,v 1.3 2008/09/13 10:23:39 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -44,6 +44,12 @@
 #include <netinet/in.h>
 
 #include <net/ipfw/ip_fw2.h>
+
+ip_fw_chk_t *ip_fw_chk_ptr;
+ip_fw_dn_io_t *ip_fw_dn_io_ptr;
+int ip_fw_loaded;
+int fw_enable = 1;
+int fw_one_pass = 1;
 
 static void	ip_fw_sockopt_dispatch(struct netmsg *);
 
