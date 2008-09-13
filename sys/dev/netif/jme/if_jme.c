@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jme.c,v 1.2 2008/07/18 04:20:48 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.6 2008/09/13 03:12:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.7 2008/09/13 04:04:39 sephe Exp $
  */
 
 #include "opt_ethernet.h"
@@ -54,6 +54,7 @@
 #include <net/vlan/if_vlan_ether.h>
 
 #include <dev/netif/mii_layer/miivar.h>
+#include <dev/netif/mii_layer/jmphyreg.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
@@ -427,6 +428,10 @@ jme_probe(device_t dev)
 			struct jme_softc *sc = device_get_softc(dev);
 
 			sc->jme_caps = sp->jme_caps;
+			if (did == PCI_PRODUCT_JMICRON_JMC250 &&
+			    pci_get_revid(dev) == JME_REV_JMC250_A2)
+				sc->jme_caps |= JME_CAP_EXTFIFO;
+
 			device_set_desc(dev, sp->jme_name);
 			return (0);
 		}
@@ -748,8 +753,10 @@ jme_attach(device_t dev)
 				device_printf(sc->jme_dev,
 				    "FPGA PHY is at %d\n", sc->jme_phyaddr);
 				/* vendor magic. */
-				jme_miibus_writereg(dev, sc->jme_phyaddr, 27,
-				    0x0004);
+				jme_miibus_writereg(dev, sc->jme_phyaddr,
+				    JMPHY_CONF, JMPHY_CONF_DEFFIFO);
+
+				/* XXX should we clear JME_CAP_EXTFIFO */
 			}
 		}
 	}
@@ -1827,6 +1834,7 @@ jme_mac_config(struct jme_softc *sc)
 {
 	struct mii_data *mii;
 	uint32_t ghc, rxmac, txmac, txpause;
+	int phyconf = JMPHY_CONF_DEFFIFO;
 
 	mii = device_get_softc(sc->jme_miibus);
 
@@ -1868,16 +1876,26 @@ jme_mac_config(struct jme_softc *sc)
 	case IFM_10_T:
 		ghc |= GHC_SPEED_10;
 		break;
+
 	case IFM_100_TX:
 		ghc |= GHC_SPEED_100;
+
+		/*
+		 * Use extended FIFO depth to workaround CRC errors
+		 * emitted by chips before JMC250B
+		 */
+		phyconf = JMPHY_CONF_EXTFIFO;
 		break;
+
 	case IFM_1000_T:
 		if (sc->jme_caps & JME_CAP_FASTETH)
 			break;
+
 		ghc |= GHC_SPEED_1000;
 		if ((IFM_OPTIONS(mii->mii_media_active) & IFM_FDX) == 0)
 			txmac |= TXMAC_CARRIER_EXT | TXMAC_FRAME_BURST;
 		break;
+
 	default:
 		break;
 	}
@@ -1885,6 +1903,11 @@ jme_mac_config(struct jme_softc *sc)
 	CSR_WRITE_4(sc, JME_RXMAC, rxmac);
 	CSR_WRITE_4(sc, JME_TXMAC, txmac);
 	CSR_WRITE_4(sc, JME_TXPFC, txpause);
+
+	if (sc->jme_caps & JME_CAP_EXTFIFO) {
+		jme_miibus_writereg(sc->jme_dev, sc->jme_phyaddr,
+				    JMPHY_CONF, phyconf);
+	}
 }
 
 static void

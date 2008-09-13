@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jmevar.h,v 1.1 2008/05/27 01:42:01 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jmevar.h,v 1.3 2008/09/13 03:12:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/jme/if_jmevar.h,v 1.4 2008/09/13 04:04:39 sephe Exp $
  */
 
 #ifndef	_IF_JMEVAR_H
@@ -188,6 +188,7 @@ struct jme_softc {
 #define	JME_CAP_PMCAP		0x0004
 #define	JME_CAP_FASTETH		0x0008
 #define	JME_CAP_JUMBO		0x0010
+#define JME_CAP_EXTFIFO		0x0020
 
 	uint32_t		jme_flags;
 #define	JME_FLAG_MSI		0x0001

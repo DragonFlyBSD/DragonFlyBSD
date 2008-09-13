@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/jmphyreg.h,v 1.1 2008/05/27 01:16:40 yongari Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/jmphyreg.h,v 1.1 2008/07/22 11:28:49 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/jmphyreg.h,v 1.2 2008/09/13 04:04:39 sephe Exp $
  */
 
 #ifndef	_DEV_MII_JMPHYREG_H_
@@ -105,5 +105,10 @@
 /* PHY specific test mode control register. */
 #define	JMPHY_TMCTL			0x1A
 #define	JMPHY_TMCTL_SLEEP_ENB		0x1000
+
+/* PHY specific configuration */
+#define JMPHY_CONF			0x1B
+#define JMPHY_CONF_EXTFIFO		0x0000 /* use extended fifo */
+#define JMPHY_CONF_DEFFIFO		0x0004 /* use default fifo */
 
 #endif	/* _DEV_MII_JMPHYREG_H_ */
