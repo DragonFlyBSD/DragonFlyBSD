@@ -331,7 +331,7 @@ default_capacity(struct storage *s, int mtpt)
 static int
 check_capacity(struct i_fn_args *a)
 {
-	struct subpartition *sp;
+	struct subpartition *sp, *rsp = NULL;
 	unsigned long min_capacity[7] = {70, 0, 8, 0, 174, 0, 0};
 	unsigned long total_capacity = 0;
 	int mtpt;
@@ -341,7 +341,16 @@ check_capacity(struct i_fn_args *a)
 
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
-		total_capacity += subpartition_get_capacity(sp);
+		if (subpartition_get_capacity(sp) == -1)
+			rsp = sp;
+		else
+			total_capacity += subpartition_get_capacity(sp);
+	}
+	if (rsp)
+		total_capacity = slice_get_capacity(storage_get_selected_slice(a->s));
+
+	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
+	     sp != NULL; sp = subpartition_next(sp)) {
 		for (mtpt = 0; def_mountpt[mtpt] != NULL; mtpt++) {
 			if (strcmp(subpartition_get_mountpoint(sp), def_mountpt[mtpt]) == 0 &&
 			    min_capacity[mtpt] > 0 &&
