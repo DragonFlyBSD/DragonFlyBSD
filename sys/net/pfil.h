@@ -1,5 +1,5 @@
 /*	$NetBSD: pfil.h,v 1.22 2003/06/23 12:57:08 martin Exp $	*/
-/* $DragonFly: src/sys/net/pfil.h,v 1.7 2008/09/14 05:22:44 sephe Exp $ */
+/* $DragonFly: src/sys/net/pfil.h,v 1.8 2008/09/14 11:13:00 sephe Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
@@ -69,8 +69,8 @@ typedef	TAILQ_HEAD(pfil_list, packet_filter_hook) pfil_list_t;
 #define	PFIL_TYPE_IFNET		2	/* key is ifnet pointer */
 
 struct pfil_head {
-	pfil_list_t	ph_in;
-	pfil_list_t	ph_out;
+	pfil_list_t	*ph_in;
+	pfil_list_t	*ph_out;
 	int		ph_type;
 	int		ph_hashooks;	/* 0 if no hooks installed */
 	union {

@@ -1,5 +1,5 @@
 /*	$NetBSD: pfil.c,v 1.20 2001/11/12 23:49:46 lukem Exp $	*/
-/* $DragonFly: src/sys/net/pfil.c,v 1.10 2008/09/14 08:58:55 sephe Exp $ */
+/* $DragonFly: src/sys/net/pfil.c,v 1.11 2008/09/14 11:13:00 sephe Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
@@ -52,11 +52,20 @@ struct netmsg_pfil {
 	struct pfil_head	*pfil_ph;
 };
 
-static int pfil_list_add(struct pfil_head *, pfil_func_t, void *, int);
-static int pfil_list_remove(struct pfil_head *, pfil_func_t, void *, int);
+static LIST_HEAD(, pfil_head) pfil_head_list =
+	LIST_HEAD_INITIALIZER(&pfil_head_list);
 
-LIST_HEAD(, pfil_head) pfil_head_list =
-    LIST_HEAD_INITIALIZER(&pfil_head_list);
+static pfil_list_t	*pfil_list_alloc(void);
+static void		pfil_list_free(pfil_list_t *);
+static void 		pfil_list_dup(const pfil_list_t *, pfil_list_t *,
+				      const struct packet_filter_hook *);
+static void 		pfil_list_add(pfil_list_t *, pfil_func_t, void *, int);
+static struct packet_filter_hook *
+			pfil_list_find(const pfil_list_t *, pfil_func_t,
+				       const void *);
+
+static void		pfil_remove_hook_dispatch(struct netmsg *);
+static void		pfil_add_hook_dispatch(struct netmsg *);
 
 /*
  * pfil_run_hooks() runs the specified packet filter hooks.
@@ -71,9 +80,9 @@ pfil_run_hooks(struct pfil_head *ph, struct mbuf **mp, struct ifnet *ifp,
 	int rv = 0;
 
 	if (dir == PFIL_IN)
-		list = &ph->ph_in;
+		list = ph->ph_in;
 	else if (dir == PFIL_OUT)
-		list = &ph->ph_out;
+		list = ph->ph_out;
 	else
 		return 0; /* XXX panic? */
 
@@ -104,8 +113,8 @@ pfil_head_register(struct pfil_head *ph)
 			return EEXIST;
 	}
 
-	TAILQ_INIT(&ph->ph_in);
-	TAILQ_INIT(&ph->ph_out);
+	ph->ph_in = pfil_list_alloc();
+	ph->ph_out = pfil_list_alloc();
 	ph->ph_hashooks = 0;
 
 	LIST_INSERT_HEAD(&pfil_head_list, ph, ph_list);
@@ -147,20 +156,74 @@ pfil_add_hook_dispatch(struct netmsg *nmsg)
 	void *arg = pfilmsg->pfil_arg;
 	int flags = pfilmsg->pfil_flags;
 	struct pfil_head *ph = pfilmsg->pfil_ph;
+	const struct packet_filter_hook *pfh;
+	pfil_list_t *list_in = NULL, *list_out = NULL;
+	pfil_list_t *old_list_in = NULL, *old_list_out = NULL;
 	int err = 0;
 
+	/* This probably should not happen ... */
+	if ((flags & (PFIL_IN | PFIL_OUT)) == 0)
+		goto reply; /* XXX panic? */
+
+	/*
+	 * If pfil hooks exist on any of the requested lists,
+	 * then bail out.
+	 */
 	if (flags & PFIL_IN) {
-		err = pfil_list_add(ph, func, arg, flags & ~PFIL_OUT);
-		if (err)
+		pfh = pfil_list_find(ph->ph_in, func, arg);
+		if (pfh != NULL) {
+			err = EEXIST;
 			goto reply;
-	}
-	if (flags & PFIL_OUT) {
-		err = pfil_list_add(ph, func, arg, flags & ~PFIL_IN);
-		if (err) {
-			if (flags & PFIL_IN)
-				pfil_list_remove(ph, func, arg, PFIL_IN);
 		}
 	}
+	if (flags & PFIL_OUT) {
+		pfh = pfil_list_find(ph->ph_out, func, arg);
+		if (pfh != NULL) {
+			err = EEXIST;
+			goto reply;
+		}
+	}
+
+	/*
+	 * Duplicate the requested lists, install new hooks
+	 * on the duplication
+	 */
+	if (flags & PFIL_IN) {
+		list_in = pfil_list_alloc();
+		pfil_list_dup(ph->ph_in, list_in, NULL);
+		pfil_list_add(list_in, func, arg, flags & ~PFIL_OUT);
+	}
+	if (flags & PFIL_OUT) {
+		list_out = pfil_list_alloc();
+		pfil_list_dup(ph->ph_out, list_out, NULL);
+		pfil_list_add(list_out, func, arg, flags & ~PFIL_IN);
+	}
+
+	/*
+	 * Switch list pointers, but keep the old ones
+	 */
+	if (list_in != NULL) {
+		old_list_in = ph->ph_in;
+		ph->ph_in = list_in;
+	}
+	if (list_out != NULL) {
+		old_list_out = ph->ph_out;
+		ph->ph_out = list_out;
+	}
+
+	/*
+	 * Wait until everyone has finished the old lists iteration
+	 */
+	netmsg_service_sync();
+	ph->ph_hashooks = 1;
+
+	/*
+	 * Now it is safe to free the old lists, since no one sees it
+	 */
+	if (old_list_in != NULL)
+		pfil_list_free(old_list_in);
+	if (old_list_out != NULL)
+		pfil_list_free(old_list_out);
 reply:
 	lwkt_replymsg(&nmsg->nm_lmsg, err);
 }
@@ -171,7 +234,6 @@ reply:
  *	PFIL_IN		call me on incoming packets
  *	PFIL_OUT	call me on outgoing packets
  *	PFIL_ALL	call me on all of the above
- *	PFIL_WAITOK	OK to call kmalloc with M_WAITOK.
  */
 int
 pfil_add_hook(pfil_func_t func, void *arg, int flags, struct pfil_head *ph)
@@ -189,44 +251,6 @@ pfil_add_hook(pfil_func_t func, void *arg, int flags, struct pfil_head *ph)
 	return lwkt_domsg(PFIL_CFGPORT, &nmsg->nm_lmsg, 0);
 }
 
-static int
-pfil_list_add(struct pfil_head *ph, pfil_func_t func, void *arg, int flags)
-{
-	struct packet_filter_hook *pfh;
-	pfil_list_t *list;
-
-	KKASSERT(&curthread->td_msgport == PFIL_CFGPORT);
-
-	list = (flags & PFIL_IN) ? &ph->ph_in : &ph->ph_out;
-
-	/*
-	 * First make sure the hook is not already there.
-	 */
-	TAILQ_FOREACH(pfh, list, pfil_link) {
-		if (pfh->pfil_func == func && pfh->pfil_arg == arg)
-			return EEXIST;
-	}
-
-	pfh = (struct packet_filter_hook *)kmalloc(sizeof(*pfh), M_IFADDR,
-	    (flags & PFIL_WAITOK) ? M_WAITOK : M_NOWAIT);
-	if (pfh == NULL)
-		return ENOMEM;
-
-	pfh->pfil_func = func;
-	pfh->pfil_arg  = arg;
-
-	/*
-	 * insert the input list in reverse order of the output list
-	 * so that the same path is followed in or out of the kernel.
-	 */
-	if (flags & PFIL_IN)
-		TAILQ_INSERT_HEAD(list, pfh, pfil_link);
-	else
-		TAILQ_INSERT_TAIL(list, pfh, pfil_link);
-	ph->ph_hashooks = 1;
-	return (0);
-}
-
 static void
 pfil_remove_hook_dispatch(struct netmsg *nmsg)
 {
@@ -235,12 +259,76 @@ pfil_remove_hook_dispatch(struct netmsg *nmsg)
 	void *arg = pfilmsg->pfil_arg;
 	int flags = pfilmsg->pfil_flags;
 	struct pfil_head *ph = pfilmsg->pfil_ph;
+	struct packet_filter_hook *skip_in = NULL, *skip_out = NULL;
+	pfil_list_t *list_in = NULL, *list_out = NULL;
+	pfil_list_t *old_list_in = NULL, *old_list_out = NULL;
 	int err = 0;
 
-	if (flags & PFIL_IN)
-		err = pfil_list_remove(ph, func, arg, PFIL_IN);
-	if ((err == 0) && (flags & PFIL_OUT))
-		err = pfil_list_remove(ph, func, arg, PFIL_OUT);
+	/* This probably should not happen ... */
+	if ((flags & (PFIL_IN | PFIL_OUT)) == 0)
+		goto reply; /* XXX panic? */
+
+	/*
+	 * The pfil hook should exist on all requested lists,
+	 * if not just bail out
+	 */
+	if (flags & PFIL_IN) {
+		skip_in = pfil_list_find(ph->ph_in, func, arg);
+		if (!skip_in) {
+			err = ENOENT;
+			goto reply;
+		}
+	}
+	if (flags & PFIL_OUT) {
+		skip_out = pfil_list_find(ph->ph_out, func, arg);
+		if (!skip_out) {
+			err = ENOENT;
+			goto reply;
+		}
+	}
+
+	/*
+	 * Duplicate the requested lists, but the pfil hook to
+	 * be deleted is not copied
+	 */
+	if (flags & PFIL_IN) {
+		KKASSERT(skip_in != NULL);
+		list_in = pfil_list_alloc();
+		pfil_list_dup(ph->ph_in, list_in, skip_in);
+	}
+	if (flags & PFIL_OUT) {
+		KKASSERT(skip_out != NULL);
+		list_out = pfil_list_alloc();
+		pfil_list_dup(ph->ph_out, list_out, skip_out);
+	}
+
+	/*
+	 * Switch list pointers, but keep the old ones
+	 */
+	if (list_in != NULL) {
+		old_list_in = ph->ph_in;
+		ph->ph_in = list_in;
+	}
+	if (list_out != NULL) {
+		old_list_out = ph->ph_out;
+		ph->ph_out = list_out;
+	}
+
+	/*
+	 * Wait until everyone has finished the old lists iteration
+	 */
+	if (TAILQ_EMPTY(ph->ph_in) && TAILQ_EMPTY(ph->ph_out))
+		ph->ph_hashooks = 0;
+	netmsg_service_sync();
+
+	/*
+	 * Now it is safe to free the old lists, since no one sees it
+	 */
+	if (old_list_in != NULL)
+		pfil_list_free(old_list_in);
+	if (old_list_out != NULL)
+		pfil_list_free(old_list_out);
+reply:
 	lwkt_replymsg(&nmsg->nm_lmsg, err);
 }
 
@@ -264,28 +352,80 @@ pfil_remove_hook(pfil_func_t func, void *arg, int flags, struct pfil_head *ph)
 	return lwkt_domsg(PFIL_CFGPORT, &nmsg->nm_lmsg, 0);
 }
 
-/*
- * pfil_list_remove is an internal function that takes a function off the
- * specified list.  Clear ph_hashooks if no functions remain on any list.
- */
-static int
-pfil_list_remove(struct pfil_head *ph, pfil_func_t func, void *arg, int flags)
+static void
+pfil_list_add(pfil_list_t *list, pfil_func_t func, void *arg, int flags)
 {
 	struct packet_filter_hook *pfh;
-	pfil_list_t *list;
 
 	KKASSERT(&curthread->td_msgport == PFIL_CFGPORT);
 
-	list = (flags & PFIL_IN) ? &ph->ph_in : &ph->ph_out;
+	pfh = kmalloc(sizeof(*pfh), M_IFADDR, M_WAITOK);
+
+	pfh->pfil_func = func;
+	pfh->pfil_arg  = arg;
+
+	/*
+	 * Insert the input list in reverse order of the output list
+	 * so that the same path is followed in or out of the kernel.
+	 */
+	if (flags & PFIL_IN)
+		TAILQ_INSERT_HEAD(list, pfh, pfil_link);
+	else
+		TAILQ_INSERT_TAIL(list, pfh, pfil_link);
+}
+
+static void
+pfil_list_dup(const pfil_list_t *from, pfil_list_t *to,
+	      const struct packet_filter_hook *skip)
+{
+	struct packet_filter_hook *pfh_to, *pfh_from;
+
+	KKASSERT(&curthread->td_msgport == PFIL_CFGPORT);
+	KKASSERT(TAILQ_EMPTY(to));
+
+	TAILQ_FOREACH(pfh_from, from, pfil_link) {
+		if (pfh_from == skip)
+			continue;
+
+		pfh_to = kmalloc(sizeof(*pfh_to), M_IFADDR, M_WAITOK);
+		bcopy(pfh_from, pfh_to, sizeof(*pfh_to));
+
+		TAILQ_INSERT_TAIL(to, pfh_to, pfil_link);
+	}
+}
+
+static pfil_list_t *
+pfil_list_alloc(void)
+{
+	pfil_list_t *list;
+
+	list = kmalloc(sizeof(*list), M_IFADDR, M_WAITOK);
+	TAILQ_INIT(list);
+	return list;
+}
+
+static void
+pfil_list_free(pfil_list_t *list)
+{
+	struct packet_filter_hook *pfh;
+
+	while ((pfh = TAILQ_FIRST(list)) != NULL) {
+		TAILQ_REMOVE(list, pfh, pfil_link);
+		kfree(pfh, M_IFADDR);
+	}
+	kfree(list, M_IFADDR);
+}
+
+static struct packet_filter_hook *
+pfil_list_find(const pfil_list_t *list, pfil_func_t func, const void *arg)
+{
+	struct packet_filter_hook *pfh;
+
+	KKASSERT(&curthread->td_msgport == PFIL_CFGPORT);
 
 	TAILQ_FOREACH(pfh, list, pfil_link) {
-		if (pfh->pfil_func == func && pfh->pfil_arg == arg) {
-			TAILQ_REMOVE(list, pfh, pfil_link);
-			kfree(pfh, M_IFADDR);
-			if (TAILQ_EMPTY(&ph->ph_in) && TAILQ_EMPTY(&ph->ph_out))
-				ph->ph_hashooks = 0;
-			return 0;
-		}
+		if (pfh->pfil_func == func && pfh->pfil_arg == arg)
+			return pfh;
 	}
-	return ENOENT;
+	return NULL;
 }
