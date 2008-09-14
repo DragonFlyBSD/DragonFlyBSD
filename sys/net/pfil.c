@@ -1,5 +1,5 @@
 /*	$NetBSD: pfil.c,v 1.20 2001/11/12 23:49:46 lukem Exp $	*/
-/* $DragonFly: src/sys/net/pfil.c,v 1.8 2008/09/14 04:34:26 sephe Exp $ */
+/* $DragonFly: src/sys/net/pfil.c,v 1.9 2008/09/14 05:22:44 sephe Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
@@ -41,11 +41,8 @@
 #include <net/if.h>
 #include <net/pfil.h>
 
-static int pfil_list_add(struct pfil_head *,
-    int (*)(void *, struct mbuf **, struct ifnet *, int), void *, int);
-
-static int pfil_list_remove(struct pfil_head *,
-    int (*)(void *, struct mbuf **, struct ifnet *, int), void *, int);
+static int pfil_list_add(struct pfil_head *, pfil_func_t, void *, int);
+static int pfil_list_remove(struct pfil_head *, pfil_func_t, void *, int);
 
 LIST_HEAD(, pfil_head) pfil_head_list =
     LIST_HEAD_INITIALIZER(&pfil_head_list);
@@ -140,8 +137,7 @@ pfil_head_get(int type, u_long val)
  *	PFIL_WAITOK	OK to call kmalloc with M_WAITOK.
  */
 int
-pfil_add_hook(int (*func)(void *, struct mbuf **, struct ifnet *, int),
-    void *arg, int flags, struct pfil_head *ph)
+pfil_add_hook(pfil_func_t func, void *arg, int flags, struct pfil_head *ph)
 {
 	int err = 0;
 
@@ -162,9 +158,7 @@ pfil_add_hook(int (*func)(void *, struct mbuf **, struct ifnet *, int),
 }
 
 static int
-pfil_list_add(struct pfil_head *ph,
-    int (*func)(void *, struct mbuf **, struct ifnet *, int), void *arg,
-    int flags)
+pfil_list_add(struct pfil_head *ph, pfil_func_t func, void *arg, int flags)
 {
 	struct packet_filter_hook *pfh;
 	pfil_list_t *list;
@@ -204,8 +198,7 @@ pfil_list_add(struct pfil_head *ph,
  * hook list.
  */
 int
-pfil_remove_hook(int (*func)(void *, struct mbuf **, struct ifnet *, int),
-    void *arg, int flags, struct pfil_head *ph)
+pfil_remove_hook(pfil_func_t func, void *arg, int flags, struct pfil_head *ph)
 {
 	int err = 0;
 
@@ -221,9 +214,7 @@ pfil_remove_hook(int (*func)(void *, struct mbuf **, struct ifnet *, int),
  * specified list.  Clear ph_hashooks if no functions remain on any list.
  */
 static int
-pfil_list_remove(struct pfil_head *ph,
-    int (*func)(void *, struct mbuf **, struct ifnet *, int), void *arg,
-    int flags)
+pfil_list_remove(struct pfil_head *ph, pfil_func_t func, void *arg, int flags)
 {
 	struct packet_filter_hook *pfh;
 	pfil_list_t *list;
