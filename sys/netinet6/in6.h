@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.h,v 1.7.2.7 2002/08/01 19:38:50 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.h,v 1.11 2008/09/04 09:08:22 hasso Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.h,v 1.12 2008/09/14 08:58:33 hasso Exp $	*/
 /*	$KAME: in6.h,v 1.89 2001/05/27 13:28:35 itojun Exp $	*/
 
 /*
@@ -476,6 +476,7 @@ struct route_in6 {
 
 #define IPV6_RTHDR_LOOSE     0 /* this hop need not be a neighbor. XXX old spec */
 #define IPV6_RTHDR_STRICT    1 /* this hop must be a neighbor. XXX old spec */
+#define IPV6_RTHDR_TYPE_0    0 /* IPv6 routing header type 0 */
 
 /*
  * Defaults and limits for options
