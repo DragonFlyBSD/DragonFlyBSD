@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: bcode.c,v 1.29 2005/04/02 18:05:04 otto Exp $
- * $DragonFly: src/usr.bin/dc/bcode.c,v 1.2 2005/04/21 18:50:50 swildner Exp $
+ * $DragonFly: src/usr.bin/dc/bcode.c,v 1.3 2008/09/14 21:08:29 swildner Exp $
  */
 
 /*
@@ -1446,7 +1446,7 @@ compare_numbers(enum bcode_compare type, struct number *a, struct number *b)
 
 	if (scale > a->scale)
 		normalize(a, scale);
-	else if (scale > scale)
+	else if (scale > b->scale)
 		normalize(b, scale);
 
 	cmp = BN_cmp(a->number, b->number);
