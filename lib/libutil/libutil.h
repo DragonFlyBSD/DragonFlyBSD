@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libutil/libutil.h,v 1.26.2.3 2000/11/22 03:49:49 murray Exp $
- * $DragonFly: src/lib/libutil/libutil.h,v 1.7 2005/08/01 16:13:20 joerg Exp $
+ * $DragonFly: src/lib/libutil/libutil.h,v 1.8 2008/09/14 20:04:59 swildner Exp $
  */
 
 #ifndef _LIBUTIL_H_
@@ -62,6 +62,7 @@ void	logwtmp(const char *, const char *, const char *);
 void	trimdomain(char *, int);
 int	openpty(int *, int *, char *, struct termios *, struct winsize *);
 int	forkpty(int *, char *, struct termios *, struct winsize *);
+int	dehumanize_number(const char *, int64_t *);
 int	humanize_number(char *, size_t, int64_t, const char *, int, int);
 const char *uu_lockerr(int);
 int	uu_lock(const char *);
