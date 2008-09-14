@@ -1,5 +1,5 @@
 /*	$NetBSD: pfil.c,v 1.20 2001/11/12 23:49:46 lukem Exp $	*/
-/* $DragonFly: src/sys/net/pfil.c,v 1.9 2008/09/14 05:22:44 sephe Exp $ */
+/* $DragonFly: src/sys/net/pfil.c,v 1.10 2008/09/14 08:58:55 sephe Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
@@ -40,6 +40,17 @@
 
 #include <net/if.h>
 #include <net/pfil.h>
+#include <net/netmsg2.h>
+
+#define PFIL_CFGPORT	cpu_portfn(0)
+
+struct netmsg_pfil {
+	struct netmsg		pfil_nmsg;
+	pfil_func_t		pfil_func;
+	void			*pfil_arg;
+	int			pfil_flags;
+	struct pfil_head	*pfil_ph;
+};
 
 static int pfil_list_add(struct pfil_head *, pfil_func_t, void *, int);
 static int pfil_list_remove(struct pfil_head *, pfil_func_t, void *, int);
@@ -128,6 +139,32 @@ pfil_head_get(int type, u_long val)
 	return (ph);
 }
 
+static void
+pfil_add_hook_dispatch(struct netmsg *nmsg)
+{
+	struct netmsg_pfil *pfilmsg = (struct netmsg_pfil *)nmsg;
+	pfil_func_t func = pfilmsg->pfil_func;
+	void *arg = pfilmsg->pfil_arg;
+	int flags = pfilmsg->pfil_flags;
+	struct pfil_head *ph = pfilmsg->pfil_ph;
+	int err = 0;
+
+	if (flags & PFIL_IN) {
+		err = pfil_list_add(ph, func, arg, flags & ~PFIL_OUT);
+		if (err)
+			goto reply;
+	}
+	if (flags & PFIL_OUT) {
+		err = pfil_list_add(ph, func, arg, flags & ~PFIL_IN);
+		if (err) {
+			if (flags & PFIL_IN)
+				pfil_list_remove(ph, func, arg, PFIL_IN);
+		}
+	}
+reply:
+	lwkt_replymsg(&nmsg->nm_lmsg, err);
+}
+
 /*
  * pfil_add_hook() adds a function to the packet filter hook.  the
  * flags are:
@@ -139,22 +176,17 @@ pfil_head_get(int type, u_long val)
 int
 pfil_add_hook(pfil_func_t func, void *arg, int flags, struct pfil_head *ph)
 {
-	int err = 0;
+	struct netmsg_pfil pfilmsg;
+	struct netmsg *nmsg;
 
-	if (flags & PFIL_IN) {
-		err = pfil_list_add(ph, func, arg, flags & ~PFIL_OUT);
-		if (err)
-			return err;
-	}
-	if (flags & PFIL_OUT) {
-		err = pfil_list_add(ph, func, arg, flags & ~PFIL_IN);
-		if (err) {
-			if (flags & PFIL_IN)
-				pfil_list_remove(ph, func, arg, PFIL_IN);
-			return err;
-		}
-	}
-	return 0;
+	nmsg = &pfilmsg.pfil_nmsg;
+	netmsg_init(nmsg, &curthread->td_msgport, 0, pfil_add_hook_dispatch);
+	pfilmsg.pfil_func = func;
+	pfilmsg.pfil_arg = arg;
+	pfilmsg.pfil_flags = flags;
+	pfilmsg.pfil_ph = ph;
+
+	return lwkt_domsg(PFIL_CFGPORT, &nmsg->nm_lmsg, 0);
 }
 
 static int
@@ -162,6 +194,8 @@ pfil_list_add(struct pfil_head *ph, pfil_func_t func, void *arg, int flags)
 {
 	struct packet_filter_hook *pfh;
 	pfil_list_t *list;
+
+	KKASSERT(&curthread->td_msgport == PFIL_CFGPORT);
 
 	list = (flags & PFIL_IN) ? &ph->ph_in : &ph->ph_out;
 
@@ -193,6 +227,23 @@ pfil_list_add(struct pfil_head *ph, pfil_func_t func, void *arg, int flags)
 	return (0);
 }
 
+static void
+pfil_remove_hook_dispatch(struct netmsg *nmsg)
+{
+	struct netmsg_pfil *pfilmsg = (struct netmsg_pfil *)nmsg;
+	pfil_func_t func = pfilmsg->pfil_func;
+	void *arg = pfilmsg->pfil_arg;
+	int flags = pfilmsg->pfil_flags;
+	struct pfil_head *ph = pfilmsg->pfil_ph;
+	int err = 0;
+
+	if (flags & PFIL_IN)
+		err = pfil_list_remove(ph, func, arg, PFIL_IN);
+	if ((err == 0) && (flags & PFIL_OUT))
+		err = pfil_list_remove(ph, func, arg, PFIL_OUT);
+	lwkt_replymsg(&nmsg->nm_lmsg, err);
+}
+
 /*
  * pfil_remove_hook removes a specific function from the packet filter
  * hook list.
@@ -200,13 +251,17 @@ pfil_list_add(struct pfil_head *ph, pfil_func_t func, void *arg, int flags)
 int
 pfil_remove_hook(pfil_func_t func, void *arg, int flags, struct pfil_head *ph)
 {
-	int err = 0;
+	struct netmsg_pfil pfilmsg;
+	struct netmsg *nmsg;
 
-	if (flags & PFIL_IN)
-		err = pfil_list_remove(ph, func, arg, PFIL_IN);
-	if ((err == 0) && (flags & PFIL_OUT))
-		err = pfil_list_remove(ph, func, arg, PFIL_OUT);
-	return err;
+	nmsg = &pfilmsg.pfil_nmsg;
+	netmsg_init(nmsg, &curthread->td_msgport, 0, pfil_remove_hook_dispatch);
+	pfilmsg.pfil_func = func;
+	pfilmsg.pfil_arg = arg;
+	pfilmsg.pfil_flags = flags;
+	pfilmsg.pfil_ph = ph;
+
+	return lwkt_domsg(PFIL_CFGPORT, &nmsg->nm_lmsg, 0);
 }
 
 /*
@@ -218,6 +273,8 @@ pfil_list_remove(struct pfil_head *ph, pfil_func_t func, void *arg, int flags)
 {
 	struct packet_filter_hook *pfh;
 	pfil_list_t *list;
+
+	KKASSERT(&curthread->td_msgport == PFIL_CFGPORT);
 
 	list = (flags & PFIL_IN) ? &ph->ph_in : &ph->ph_out;
 
