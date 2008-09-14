@@ -1,5 +1,5 @@
 /*	$NetBSD: pfil.c,v 1.20 2001/11/12 23:49:46 lukem Exp $	*/
-/* $DragonFly: src/sys/net/pfil.c,v 1.7 2008/09/14 04:11:10 sephe Exp $ */
+/* $DragonFly: src/sys/net/pfil.c,v 1.8 2008/09/14 04:34:26 sephe Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
@@ -50,18 +50,6 @@ static int pfil_list_remove(struct pfil_head *,
 LIST_HEAD(, pfil_head) pfil_head_list =
     LIST_HEAD_INITIALIZER(&pfil_head_list);
 
-static __inline struct packet_filter_hook *
-pfil_hook_get(int dir, struct pfil_head *ph)
-{
-
-	if (dir == PFIL_IN)
-		return (TAILQ_FIRST(&ph->ph_in));
-	else if (dir == PFIL_OUT)
-		return (TAILQ_FIRST(&ph->ph_out));
-	else
-		return (NULL);
-}
-
 /*
  * pfil_run_hooks() runs the specified packet filter hooks.
  */
@@ -71,10 +59,17 @@ pfil_run_hooks(struct pfil_head *ph, struct mbuf **mp, struct ifnet *ifp,
 {
 	struct packet_filter_hook *pfh;
 	struct mbuf *m = *mp;
+	pfil_list_t *list;
 	int rv = 0;
 
-	for (pfh = pfil_hook_get(dir, ph); pfh != NULL;
-	     pfh = TAILQ_NEXT(pfh, pfil_link)) {
+	if (dir == PFIL_IN)
+		list = &ph->ph_in;
+	else if (dir == PFIL_OUT)
+		list = &ph->ph_out;
+	else
+		return 0; /* XXX panic? */
+
+	TAILQ_FOREACH(pfh, list, pfil_link) {
 		if (pfh->pfil_func != NULL) {
 			rv = (*pfh->pfil_func)(pfh->pfil_arg, &m, ifp, dir);
 			if (rv != 0 || m == NULL)
