@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)pathnames.h	8.1 (Berkeley) 6/6/93
+ *	$DragonFly: src/usr.sbin/sliplogin/pathnames.h,v 1.2 2008/09/14 22:04:36 swildner Exp $
  */
 
 #ifndef COMPAT
@@ -41,7 +42,7 @@
 
 #define	_PATH_ACCESS	"/etc/sliphome/slip.hosts"
 #define _PATH_SLPARMS   "/etc/sliphome/slip.slparms"
-#define	_PATH_LOGIN	"/etc/sliphome/slip.login"
-#define	_PATH_LOGOUT	"/etc/sliphome/slip.logout"
+#define	_PATH_SLOGIN	"/etc/sliphome/slip.login"
+#define	_PATH_SLOGOUT	"/etc/sliphome/slip.logout"
 #define	_PATH_DEBUG	"/tmp/sliplogin.XXXXXX"
 

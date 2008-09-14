@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)sliplogin.c        8.2 (Berkeley) 2/1/94
  * $FreeBSD: src/usr.sbin/sliplogin/sliplogin.c,v 1.9.6.2 2001/07/19 05:21:28 kris Exp $
- * $DragonFly: src/usr.sbin/sliplogin/sliplogin.c,v 1.4 2005/12/05 02:40:28 swildner Exp $
+ * $DragonFly: src/usr.sbin/sliplogin/sliplogin.c,v 1.5 2008/09/14 22:04:36 swildner Exp $
  */
 
 /*
@@ -195,14 +195,14 @@ findid(char *name)
 		 * one specific to this host.  If none found, try for
 		 * a generic one.
 		 */
-		snprintf(loginfile, sizeof(loginfile), "%s.%s", _PATH_LOGIN, name);
+		snprintf(loginfile, sizeof(loginfile), "%s.%s", _PATH_SLOGIN, name);
 		if (access(loginfile, R_OK|X_OK) != 0) {
-			strncpy(loginfile, _PATH_LOGIN, sizeof(loginfile)-1);
+			strncpy(loginfile, _PATH_SLOGIN, sizeof(loginfile)-1);
 			loginfile[sizeof(loginfile)-1] = '\0';
 			if (access(loginfile, R_OK|X_OK)) {
 				syslog(LOG_ERR,
 				       "access denied for %s - no %s\n",
-				       name, _PATH_LOGIN);
+				       name, _PATH_SLOGIN);
 				exit(5);
 			}
 		}
@@ -298,9 +298,9 @@ hup_handler(int s)
 
 	close(0);
 	seteuid(0);
-	snprintf(logoutfile, sizeof(logoutfile), "%s.%s", _PATH_LOGOUT, loginname);
+	snprintf(logoutfile, sizeof(logoutfile), "%s.%s", _PATH_SLOGOUT, loginname);
 	if (access(logoutfile, R_OK|X_OK) != 0) {
-		strncpy(logoutfile, _PATH_LOGOUT, sizeof(logoutfile)-1);
+		strncpy(logoutfile, _PATH_SLOGOUT, sizeof(logoutfile)-1);
 		logoutfile[sizeof(logoutfile)-1] = '\0';
 	}
 	if (access(logoutfile, R_OK|X_OK) == 0) {
