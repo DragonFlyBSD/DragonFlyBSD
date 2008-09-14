@@ -1,5 +1,5 @@
 /*	$NetBSD: pfil.h,v 1.22 2003/06/23 12:57:08 martin Exp $	*/
-/* $DragonFly: src/sys/net/pfil.h,v 1.5 2006/05/20 02:42:08 dillon Exp $ */
+/* $DragonFly: src/sys/net/pfil.h,v 1.6 2008/09/14 02:05:07 sephe Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
@@ -92,18 +92,6 @@ int	pfil_head_register(struct pfil_head *);
 int	pfil_head_unregister(struct pfil_head *);
 
 struct pfil_head *pfil_head_get(int, u_long);
-
-static __inline struct packet_filter_hook *
-pfil_hook_get(int dir, struct pfil_head *ph)
-{
-
-	if (dir == PFIL_IN)
-		return (TAILQ_FIRST(&ph->ph_in));
-	else if (dir == PFIL_OUT)
-		return (TAILQ_FIRST(&ph->ph_out));
-	else
-		return (NULL);
-}
 
 /*
  * Used for a quick shortcut around the pfil routines if no hooks have been

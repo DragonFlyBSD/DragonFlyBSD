@@ -1,5 +1,5 @@
 /*	$NetBSD: pfil.c,v 1.20 2001/11/12 23:49:46 lukem Exp $	*/
-/* $DragonFly: src/sys/net/pfil.c,v 1.5 2006/10/19 18:44:00 swildner Exp $ */
+/* $DragonFly: src/sys/net/pfil.c,v 1.6 2008/09/14 02:05:07 sephe Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
@@ -49,6 +49,18 @@ static int pfil_list_remove(struct pfil_head *,
 
 LIST_HEAD(, pfil_head) pfil_head_list =
     LIST_HEAD_INITIALIZER(&pfil_head_list);
+
+static __inline struct packet_filter_hook *
+pfil_hook_get(int dir, struct pfil_head *ph)
+{
+
+	if (dir == PFIL_IN)
+		return (TAILQ_FIRST(&ph->ph_in));
+	else if (dir == PFIL_OUT)
+		return (TAILQ_FIRST(&ph->ph_out));
+	else
+		return (NULL);
+}
 
 /*
  * pfil_run_hooks() runs the specified packet filter hooks.
