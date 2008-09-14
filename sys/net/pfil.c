@@ -1,5 +1,5 @@
 /*	$NetBSD: pfil.c,v 1.20 2001/11/12 23:49:46 lukem Exp $	*/
-/* $DragonFly: src/sys/net/pfil.c,v 1.6 2008/09/14 02:05:07 sephe Exp $ */
+/* $DragonFly: src/sys/net/pfil.c,v 1.7 2008/09/14 04:11:10 sephe Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
@@ -95,8 +95,7 @@ pfil_head_register(struct pfil_head *ph)
 {
 	struct pfil_head *lph;
 
-	for (lph = LIST_FIRST(&pfil_head_list); lph != NULL;
-	     lph = LIST_NEXT(lph, ph_list)) {
+	LIST_FOREACH(lph, &pfil_head_list, ph_list) {
 		if (ph->ph_type == lph->ph_type &&
 		    ph->ph_un.phu_val == lph->ph_un.phu_val)
 			return EEXIST;
@@ -118,7 +117,6 @@ pfil_head_register(struct pfil_head *ph)
 int
 pfil_head_unregister(struct pfil_head *pfh)
 {
-
 	LIST_REMOVE(pfh, ph_list);
 	return (0);
 }
@@ -131,13 +129,10 @@ pfil_head_get(int type, u_long val)
 {
 	struct pfil_head *ph;
 
-	for (ph = LIST_FIRST(&pfil_head_list); ph != NULL;
-	     ph = LIST_NEXT(ph, ph_list)) {
-		if (ph->ph_type == type &&
-		    ph->ph_un.phu_val == val)
+	LIST_FOREACH(ph, &pfil_head_list, ph_list) {
+		if (ph->ph_type == type && ph->ph_un.phu_val == val)
 			break;
 	}
-
 	return (ph);
 }
 
@@ -184,10 +179,8 @@ pfil_list_add(struct pfil_head *ph,
 	/*
 	 * First make sure the hook is not already there.
 	 */
-	for (pfh = TAILQ_FIRST(list); pfh != NULL;
-	     pfh = TAILQ_NEXT(pfh, pfil_link)) {
-		if (pfh->pfil_func == func &&
-		    pfh->pfil_arg == arg)
+	TAILQ_FOREACH(pfh, list, pfil_link) {
+		if (pfh->pfil_func == func && pfh->pfil_arg == arg)
 			return EEXIST;
 	}
 
@@ -242,8 +235,7 @@ pfil_list_remove(struct pfil_head *ph,
 
 	list = (flags & PFIL_IN) ? &ph->ph_in : &ph->ph_out;
 
-	for (pfh = TAILQ_FIRST(list); pfh != NULL;
-	     pfh = TAILQ_NEXT(pfh, pfil_link)) {
+	TAILQ_FOREACH(pfh, list, pfil_link) {
 		if (pfh->pfil_func == func && pfh->pfil_arg == arg) {
 			TAILQ_REMOVE(list, pfh, pfil_link);
 			kfree(pfh, M_IFADDR);
