@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 #	$FreeBSD: src/lib/libutil/Makefile,v 1.33.2.4 2001/04/25 10:04:42 ru Exp $
-#	$DragonFly: src/lib/libutil/Makefile,v 1.8 2008/09/14 20:04:59 swildner Exp $
+#	$DragonFly: src/lib/libutil/Makefile,v 1.9 2008/09/14 20:18:17 swildner Exp $
 
 LIB=	util
 SHLIB_MAJOR= 4
@@ -24,6 +24,7 @@ MLINKS+= property.3 properties_read.3  property.3 properties_free.3
 MLINKS+= property.3 property_find.3
 MLINKS+= auth.3 auth_getval.3
 MLINKS+= pty.3 openpty.3  pty.3 forkpty.3
+MLINKS+=humanize_number.3 dehumanize_number.3
 MLINKS+=login_cap.3 login_getclassbyname.3 login_cap.3 login_close.3 \
 	login_cap.3 login_getclass.3 login_cap.3 login_getuserclass.3 \
 	login_cap.3 login_getcapstr.3 login_cap.3 login_getcaplist.3 \
