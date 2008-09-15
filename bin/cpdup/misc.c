@@ -1,7 +1,7 @@
 /*
  * MISC.C
  *
- * $DragonFly: src/bin/cpdup/misc.c,v 1.15 2008/05/24 17:22:39 dillon Exp $
+ * $DragonFly: src/bin/cpdup/misc.c,v 1.16 2008/09/15 20:13:16 thomas Exp $
  */
 
 #include "cpdup.h"
@@ -175,7 +175,7 @@ fatal(const char *ctl, ...)
 	     "                copy if md5 check fails\n"
 	     "    -H path     hardlink from path to target instead of copying\n"
 	     "                source to target, if source matches path.\n"
-	     "	  -V          verify file contents even if they appear\n"
+	     "    -V          verify file contents even if they appear\n"
 	     "                to be the same.\n"
 #endif
 	     "    -x          use .cpignore as exclusion file\n"
