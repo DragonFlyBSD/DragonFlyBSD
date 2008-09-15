@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
-.\" $DragonFly: src/sys/boot/common/loader.8,v 1.22 2008/09/06 12:14:08 thomas Exp $
+.\" $DragonFly: src/sys/boot/common/loader.8,v 1.23 2008/09/15 20:32:53 thomas Exp $
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
@@ -828,7 +828,7 @@ autoboot 5
 .Pp
 Set the disk unit of the root device to 2, and then boot.
 This would be needed in a system with two IDE disks,
-with the second IDE disk hardwired to wd2 instead of wd1.
+with the second IDE disk hardwired to ad2 instead of ad1.
 .Bd -literal -offset indent
 set root_disk_unit=2
 boot kernel
