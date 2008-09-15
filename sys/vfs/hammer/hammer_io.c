@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.54 2008/08/29 20:19:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_io.c,v 1.55 2008/09/15 17:02:49 dillon Exp $
  */
 /*
  * IO Primitives and buffer cache management
@@ -277,17 +277,19 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 		hammer_ref(&iou->io.lock);
 		hammer_io_clear_modify(&iou->io, 1);
 		bundirty(bp);
+		iou->io.released = 0;
+		BUF_KERNPROC(bp);
 		iou->io.reclaim = 1;
 		iou->io.waitdep = 1;
-		KKASSERT(iou->io.lock.refs == 0);
+		KKASSERT(iou->io.lock.refs == 1);
 		hammer_rel_buffer(&iou->buffer, 0);
 		/*hammer_io_deallocate(bp);*/
 	} else {
 		KKASSERT((bp->b_flags & B_LOCKED) == 0);
 		bundirty(bp);
 		bp->b_flags |= B_NOCACHE|B_RELBUF;
+		brelse(bp);
 	}
-	brelse(bp);
 	crit_exit();
 }
 
