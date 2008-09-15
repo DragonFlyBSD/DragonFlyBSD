@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/forth/loader.conf.5,v 1.18 2002/08/27 01:02:56 trhodes Exp $
-.\" $DragonFly: src/sys/boot/forth/loader.conf.5,v 1.12 2008/09/15 20:41:59 thomas Exp $
+.\" $DragonFly: src/sys/boot/forth/loader.conf.5,v 1.13 2008/09/15 21:23:44 thomas Exp $
 .Dd September 6, 2008
 .Dt LOADER.CONF 5
 .Os
@@ -102,17 +102,6 @@ than
 so its use should be avoided.
 Multiple instances of it will be processed
 independently.
-.It Ar hw.usb.hack_defer_exploration=1
-The USB keyboard will sometimes not attach properly unless you set this
-kernel environment variable to 1.
-.It Ar vfs.root.mountfrom="hammer:da0s1d"
-When booting from a boot-only partition this variable tells the kernel
-where the root filesystem is.
-The boot-only partition is then typically
-mounted under the root filesystem as
-.Pa /boot .
-The assignment is an example
-of how to specify the filesystem and block device.
 .It Ar loader_conf_files
 Defines additional configuration files to be processed right after the
 present file.

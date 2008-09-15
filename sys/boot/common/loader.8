@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/common/loader.8,v 1.57 2003/06/29 20:57:55 brueffer Exp $
-.\" $DragonFly: src/sys/boot/common/loader.8,v 1.23 2008/09/15 20:32:53 thomas Exp $
+.\" $DragonFly: src/sys/boot/common/loader.8,v 1.24 2008/09/15 21:23:44 thomas Exp $
 .\"
 .\" Note: The date here should be updated whenever a non-trivial
 .\" change is made to the manual page.
@@ -452,6 +452,9 @@ are also accepted and indicate kilobytes, megabytes and gigabytes
 respectively.
 An invalid suffix will result in the variable being ignored by the
 kernel.
+.It Va hw.usb.hack_defer_exploration
+The USB keyboard will sometimes not attach properly unless you set this
+variable to 1.
 .It Va kern.emergency_intr_enable
 Setting this to 1 enables emergency interrupt polling.  All interrupt
 handlers are executed periodically.  This mode is very expensive and should
@@ -532,8 +535,9 @@ Must be a power of 2.
 .It Va vfs.root.mountfrom
 File system type and partition, separated by colon,
 for kernel root file system.
-For example
-.Dq hammer:da8s1a .
+Used with boot-only partition, which is typically mounted on root file system as
+.Pa /boot .
+Example: "hammer:da8s1a"
 .El
 .Ss BUILTIN PARSER
 When a builtin command is executed, the rest of the line is taken
