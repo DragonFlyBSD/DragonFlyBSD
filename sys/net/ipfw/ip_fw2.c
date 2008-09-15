@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.83 2008/09/13 12:57:07 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.84 2008/09/15 05:11:02 sephe Exp $
  */
 
 #define        DEB(x)
@@ -4185,8 +4185,8 @@ ipfw_hook(void)
 	if (pfh == NULL)
 		return;
 
-	pfil_add_hook(ipfw_check_in, NULL, PFIL_IN | PFIL_WAITOK, pfh);
-	pfil_add_hook(ipfw_check_out, NULL, PFIL_OUT | PFIL_WAITOK, pfh);
+	pfil_add_hook(ipfw_check_in, NULL, PFIL_IN, pfh);
+	pfil_add_hook(ipfw_check_out, NULL, PFIL_OUT, pfh);
 }
 
 static void
@@ -4200,8 +4200,8 @@ ipfw_dehook(void)
 	if (pfh == NULL)
 		return;
 
-	pfil_remove_hook(ipfw_check_in, NULL, PFIL_IN | PFIL_WAITOK, pfh);
-	pfil_remove_hook(ipfw_check_out, NULL, PFIL_OUT | PFIL_WAITOK, pfh);
+	pfil_remove_hook(ipfw_check_in, NULL, PFIL_IN, pfh);
+	pfil_remove_hook(ipfw_check_out, NULL, PFIL_OUT, pfh);
 }
 
 static void

@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_ioctl.c,v 1.12 2004/08/12 14:15:42 mlaier Exp $	*/
 /*	$OpenBSD: pf_ioctl.c,v 1.112.2.2 2004/07/24 18:28:12 brad Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.14 2008/04/11 18:21:48 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.15 2008/09/15 05:11:02 sephe Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -3012,19 +3012,17 @@ hook_pf(void)
 	pfh_inet = pfil_head_get(PFIL_TYPE_AF, AF_INET);
 	if (pfh_inet == NULL)
 		return (ENODEV);
-	pfil_add_hook(pf_check_in, NULL, PFIL_IN | PFIL_WAITOK, pfh_inet);
-	pfil_add_hook(pf_check_out, NULL, PFIL_OUT | PFIL_WAITOK, pfh_inet);
+	pfil_add_hook(pf_check_in, NULL, PFIL_IN, pfh_inet);
+	pfil_add_hook(pf_check_out, NULL, PFIL_OUT, pfh_inet);
 #ifdef INET6
 	pfh_inet6 = pfil_head_get(PFIL_TYPE_AF, AF_INET6);
 	if (pfh_inet6 == NULL) {
-		pfil_remove_hook(pf_check_in, NULL, PFIL_IN | PFIL_WAITOK,
-		    pfh_inet);
-		pfil_remove_hook(pf_check_out, NULL, PFIL_OUT | PFIL_WAITOK,
-		    pfh_inet);
+		pfil_remove_hook(pf_check_in, NULL, PFIL_IN, pfh_inet);
+		pfil_remove_hook(pf_check_out, NULL, PFIL_OUT, pfh_inet);
 		return (ENODEV);
 	}
-	pfil_add_hook(pf_check6_in, NULL, PFIL_IN | PFIL_WAITOK, pfh_inet6);
-	pfil_add_hook(pf_check6_out, NULL, PFIL_OUT | PFIL_WAITOK, pfh_inet6);
+	pfil_add_hook(pf_check6_in, NULL, PFIL_IN, pfh_inet6);
+	pfil_add_hook(pf_check6_out, NULL, PFIL_OUT, pfh_inet6);
 #endif
 
 	pf_pfil_hooked = 1;
@@ -3045,18 +3043,14 @@ dehook_pf(void)
 	pfh_inet = pfil_head_get(PFIL_TYPE_AF, AF_INET);
 	if (pfh_inet == NULL)
 		return (ENODEV);
-	pfil_remove_hook(pf_check_in, NULL, PFIL_IN | PFIL_WAITOK,
-	    pfh_inet);
-	pfil_remove_hook(pf_check_out, NULL, PFIL_OUT | PFIL_WAITOK,
-	    pfh_inet);
+	pfil_remove_hook(pf_check_in, NULL, PFIL_IN, pfh_inet);
+	pfil_remove_hook(pf_check_out, NULL, PFIL_OUT, pfh_inet);
 #ifdef INET6
 	pfh_inet6 = pfil_head_get(PFIL_TYPE_AF, AF_INET6);
 	if (pfh_inet6 == NULL)
 		return (ENODEV);
-	pfil_remove_hook(pf_check6_in, NULL, PFIL_IN | PFIL_WAITOK,
-	    pfh_inet6);
-	pfil_remove_hook(pf_check6_out, NULL, PFIL_OUT | PFIL_WAITOK,
-	    pfh_inet6);
+	pfil_remove_hook(pf_check6_in, NULL, PFIL_IN, pfh_inet6);
+	pfil_remove_hook(pf_check6_out, NULL, PFIL_OUT, pfh_inet6);
 #endif
 
 	pf_pfil_hooked = 0;
