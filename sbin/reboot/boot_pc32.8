@@ -39,7 +39,7 @@
 .\"     @(#)boot_i386.8	8.2 (Berkeley) 4/19/94
 .\"
 .\" $FreeBSD: src/sbin/reboot/boot_i386.8,v 1.23.2.11 2002/04/24 17:47:58 rnordier Exp $
-.\" $DragonFly: src/sbin/reboot/boot_pc32.8,v 1.10 2008/09/02 11:50:45 matthias Exp $
+.\" $DragonFly: src/sbin/reboot/boot_pc32.8,v 1.11 2008/09/15 20:28:56 thomas Exp $
 .\"
 .Dd September 2, 2008
 .Dt BOOT 8 i386
@@ -98,6 +98,8 @@ DragonFly boot
 .Pp
 The automatic boot will attempt to load
 .Pa /boot/loader
+and if that fails
+.Pa /loader
 from partition
 .Ql a
 of either the floppy or the hard disk.
@@ -117,7 +119,7 @@ the listing will be of the relevant subdirectory.)
 .Ar bios_drive : Ns Ar interface Ns Po
 .Ar unit , Ns Ar part Pc
 .Ar filename
-.Op Fl aCcDdghmnPprsvV
+.Op Fl aCcDdghmnPprsVv
 .Xc
 Specify boot file and flags.
 .Bl -tag -width indent
@@ -163,7 +165,7 @@ The pathname of the file to boot (relative to the root directory
 on the specified partition).  Defaults to
 .Pa /boot/kernel .
 Symbolic links are not supported (hard links are).
-.It Fl acCdDghnPrsv
+.It Fl aCcDdghmnPprsVv
 Boot flags:
 .Pp
 .Bl -tag -width "-CXX" -compact
