@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sys/boot/forth/loader.conf.5,v 1.18 2002/08/27 01:02:56 trhodes Exp $
-.\" $DragonFly: src/sys/boot/forth/loader.conf.5,v 1.11 2008/09/10 18:17:01 dillon Exp $
+.\" $DragonFly: src/sys/boot/forth/loader.conf.5,v 1.12 2008/09/15 20:41:59 thomas Exp $
 .Dd September 6, 2008
 .Dt LOADER.CONF 5
 .Os
@@ -33,7 +33,8 @@
 .Sh DESCRIPTION
 The file
 .Nm
-contains descriptive information on bootstrapping the system. Through
+contains descriptive information on bootstrapping the system.
+Through
 it you can specify the kernel to be booted, parameters to be passed to
 it, and additional modules to be loaded; and generally set all variables
 described in
@@ -58,7 +59,8 @@ format was defined explicitly to resemble
 .Xr rc.conf 5 ,
 and can be sourced by
 .Xr sh 1 ,
-some settings are treated in a special fashion. Also, the
+some settings are treated in a special fashion.
+Also, the
 behavior of some settings is defined by the setting's suffix;
 the prefix identifies which module the setting controls.
 .Pp
@@ -67,7 +69,9 @@ The general parsing rules are:
 .It
 Spaces and empty lines are ignored.
 .It
-A # sign will mark the remainder of the line as a comment.
+A
+.Ql #
+sign will mark the remainder of the line as a comment.
 .It
 Only one setting can be present on each line.
 .El
@@ -79,35 +83,42 @@ All settings have the following format:
 Unless it belongs to one of the classes of settings that receive special
 treatment, a setting will set the value of a
 .Xr loader 8
-environment variable. The settings that receive special
-treatment are listed below. Settings beginning with
-.Qq *
-below define the modules to be loaded and
-may have any prefix; the prefix identifies a module.
+environment variable.
+The settings that receive special
+treatment are listed below.
+Settings beginning with
+.Aq Ar module
+below define the modules to be loaded.
 All such settings sharing a common
 prefix refer to the same module.
 .Bl -tag -width Ar
 .It Ar exec
 Immediately executes a
 .Xr loader 8
-command. This type of setting cannot be processed by programs other
+command.
+This type of setting cannot be processed by programs other
 than
 .Xr loader 8 ,
-so its use should be avoided. Multiple instances of it will be processed
+so its use should be avoided.
+Multiple instances of it will be processed
 independently.
 .It Ar hw.usb.hack_defer_exploration=1
 The USB keyboard will sometimes not attach properly unless you set this
 kernel environment variable to 1.
 .It Ar vfs.root.mountfrom="hammer:da0s1d"
 When booting from a boot-only partition this variable tells the kernel
-where the root filesystem is.  The boot-only partition is then typically
-mounted under the root filesystem as /boot.  The assignment is an example
+where the root filesystem is.
+The boot-only partition is then typically
+mounted under the root filesystem as
+.Pa /boot .
+The assignment is an example
 of how to specify the filesystem and block device.
 .It Ar loader_conf_files
 Defines additional configuration files to be processed right after the
 present file.
 .It Ar kernel
-Name of the kernel to be loaded. If no kernel name is set, no additional
+Name of the kernel to be loaded.
+If no kernel name is set, no additional
 modules will be loaded.
 .It Ar kernel_options
 Flags to be passed to the kernel (see
@@ -119,25 +130,33 @@ allowed to continue.
 If set to
 .Dq YES ,
 module names will be displayed as they are loaded.
-.It Ar *_load
+.It Ao Ar module Ac Ns Ar _load
 If set to
 .Dq YES ,
-that module will be loaded. If no name is defined (see below), the
-module's name is taken to be the same as the prefix.
-.It Ar *_name
+that module will be loaded.
+If no
+.Ao Ar module Ac Ns Ar _name
+is defined (see below), the
+module's name is taken to be
+.Aq Ar module .
+.It Ao Ar module Ac Ns Ar _name
 Defines the name of the module.
-.It Ar *_type
-Defines the module's type. If none is given, it defaults to a kld module.
-.It Ar *_flags
+.It Ao Ar module Ac Ns Ar _type
+Defines the module's type.
+If none is given, it defaults to a kld module.
+.It Ao Ar module Ac Ns Ar _flags
 Flags and parameters to be passed to the module.
-.It Ar *_before
-Commands to be executed before the module is loaded. Use of this setting
+.It Ao Ar module Ac Ns Ar _before
+Commands to be executed before the module is loaded.
+Use of this setting
 should be avoided.
-.It Ar *_after
-Commands to be executed after the module is loaded. Use of this setting
+.It Ao Ar module Ac Ns Ar _after
+Commands to be executed after the module is loaded.
+Use of this setting
 should be avoided.
-.It Ar *_error
-Commands to be executed if the loading of a module fails. Except for the
+.It Ao Ar module Ac Ns Ar _error
+Commands to be executed if the loading of a module fails.
+Except for the
 special value
 .Dq abort ,
 which aborts the bootstrap process, use of this setting should be avoided.
@@ -145,7 +164,8 @@ which aborts the bootstrap process, use of this setting should be avoided.
 .Sh DEFAULT SETTINGS
 Most of
 .Nm Ns 's
-default settings can be ignored. The few of them which are important
+default settings can be ignored.
+The few of them which are important
 or useful are:
 .Bl -tag -width bootfile -offset indent
 .It Va bitmap_load
@@ -155,7 +175,8 @@ If set to
 a bitmap will be loaded to be displayed on screen while booting.
 .It Va bitmap_name
 .Pq Dq splash.bmp
-Name of the bitmap to be loaded. Any other name can be used.
+Name of the bitmap to be loaded.
+Any other name can be used.
 .It Va console
 .Pq Dq vidconsole
 .Dq comconsole
@@ -170,7 +191,8 @@ selects a mute console
 Shows a monochrome version of Fred, the official
 .Dx
 mascot, when the
-boot menu appears. To make his life a bit more colorful, consider setting
+boot menu appears.
+To make his life a bit more colorful, consider setting
 .Pa loader_color
 to
 .Dq YES .
