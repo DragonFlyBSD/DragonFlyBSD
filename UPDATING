@@ -8,7 +8,7 @@
 # If you discover any problem, please contact the bugs@lists.dragonflybsd.org
 # mailing list with the details.
 #
-# $DragonFly: src/UPDATING,v 1.25 2008/03/03 20:24:51 swildner Exp $
+# $DragonFly: src/UPDATING,v 1.26 2008/09/15 20:03:36 thomas Exp $
 
 +-----------------------------------------------------------------------+
 +         UPGRADING DRAGONFLY ON AN EXISTING DRAGONFLY SYSTEM		+
@@ -60,6 +60,31 @@ upgrades of either by using the 'quickworld' and 'quickkernel' targets
 instead of 'buildworld' and 'buildkernel'.  If you have any problems with
 the quick targets, try doing a cvsup, cvs update, and then a full buildworld
 and buildkernel as shown above, before asking for help.
+See also build(7) and development(7) manual pages.
+
++-----------------------------------------------------------------------+
++         UPGRADING FROM DRAGONFLY <= 2.0 TO DRAGONFLY >= 2.1		+
++-----------------------------------------------------------------------+
+
+In 2.1 kernel and modules has moved to boot directory.  For most cases
+this is handled automatically by 'make upgrade'.  A few cases needs manual
+intervention:
+
+ * When installing a kernel without first doing a make buildworld,
+   installworld and upgrade to the same DESTDIR as kernel:
+   make DESTDIR/boot directory and move kernel and modules into this boot
+   directory; also move kernel.old and modules.old.
+   Typical example is vkernel(7), use (no modules used):
+
+	cd /var/vkernel
+	mkdir boot
+	chflags noschg kernel
+	mv kernel kernel.old boot
+	chflags schg boot/kernel
+	
+ * When using a boot-only partition, /boot/loader.rc needs to be edited:
+   delete occurrences of '/boot/'.
+   These occurences can normally be deleted in any case, see loader(8).
 
 +-----------------------------------------------------------------------+
 +         UPGRADING FROM DRAGONFLY <= 1.8 TO DRAGONFLY >= 1.9		+
