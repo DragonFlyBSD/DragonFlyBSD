@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/kern.pre.mk,v 1.6 2008/09/01 19:39:47 dillon Exp $
+# $DragonFly: src/sys/conf/kern.pre.mk,v 1.7 2008/09/15 20:09:03 thomas Exp $
 #
 # This Makefile covers the top part of the MI kernel build instructions
 #
@@ -103,8 +103,7 @@ SELECTEDKERNEL= ${KERNEL}.debug
 FULLKERNEL=	${KERNEL}.nodebug
 SELECTEDKERNEL= ${KERNEL}.stripped
 .endif
-DESTKERNNAME?=	boot/${KERNEL}
-CHECKKERNNAME?=	${KERNEL}
+DESTKERNNAME?=	${KERNEL}
 
 
 MKMODULESENV=	MAKEOBJDIRPREFIX=${.OBJDIR} BUILDING_WITH_KERNEL=${.OBJDIR}

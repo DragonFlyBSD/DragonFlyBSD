@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/kern.post.mk,v 1.14 2008/09/01 19:39:47 dillon Exp $
+# $DragonFly: src/sys/conf/kern.post.mk,v 1.15 2008/09/15 20:09:03 thomas Exp $
 # 
 # This Makefile covers the bottom part of the MI build instructions
 #
@@ -111,31 +111,31 @@ kernel-install: kernel-installable
 		echo "You must build a kernel first." ; \
 		exit 1 ; \
 	fi
-.  if exists(${DESTDIR}/${DESTKERNNAME})
+.  if exists(${DESTDIR}/boot/${DESTKERNNAME})
 .ifndef NOFSCHG
-	-chflags noschg ${DESTDIR}/${DESTKERNNAME}
+	-chflags noschg ${DESTDIR}/boot/${DESTKERNNAME}
 .endif
 .    ifdef NO_KERNEL_OLD_STRIP
-	cp -p ${DESTDIR}/${DESTKERNNAME} ${DESTDIR}/${DESTKERNNAME}.old
+	cp -p ${DESTDIR}/boot/${DESTKERNNAME} ${DESTDIR}/boot/${DESTKERNNAME}.old
 .    else
-	${OBJCOPY} --strip-debug ${DESTDIR}/${DESTKERNNAME} ${DESTDIR}/${DESTKERNNAME}.old
+	${OBJCOPY} --strip-debug ${DESTDIR}/boot/${DESTKERNNAME} ${DESTDIR}/boot/${DESTKERNNAME}.old
 .    endif
 .  endif
 .ifdef NOFSCHG
 	${INSTALL} -m 555 -o root -g wheel \
-		${SELECTEDKERNEL} ${DESTDIR}/${DESTKERNNAME}
+		${SELECTEDKERNEL} ${DESTDIR}/boot/${DESTKERNNAME}
 .else
 	${INSTALL} -m 555 -o root -g wheel -fschg \
-		${SELECTEDKERNEL} ${DESTDIR}/${DESTKERNNAME}
+		${SELECTEDKERNEL} ${DESTDIR}/boot/${DESTKERNNAME}
 .endif
 
 kernel-reinstall: kernel-installable
 .ifdef NOFSCHG
 	${INSTALL} -m 555 -o root -g wheel \
-		${SELECTEDKERNEL} ${DESTDIR}/${DESTKERNNAME}
+		${SELECTEDKERNEL} ${DESTDIR}/boot/${DESTKERNNAME}
 .else
 	${INSTALL} -m 555 -o root -g wheel -fschg \
-		${SELECTEDKERNEL} ${DESTDIR}/${DESTKERNNAME}
+		${SELECTEDKERNEL} ${DESTDIR}/boot/${DESTKERNNAME}
 .endif
 
 # Require DESTDIR to be manually specified when installing a
@@ -148,7 +148,7 @@ kernel-installable:
 	@exit 1
 .endif
 .endif
-	@if [ -f ${DESTDIR}/${CHECKKERNNAME} ]; then \
+	@if [ -f ${DESTDIR}/${DESTKERNNAME} ]; then \
 		echo "You need to make buildworld, installworld, and upgrade"; \
 		echo "before you can install a new kernel, because the"; \
 		echo "kernel and modules have moved to /boot"; \
