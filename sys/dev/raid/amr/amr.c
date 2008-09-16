@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.27 2008/09/16 12:39:15 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.28 2008/09/16 14:08:48 swildner Exp $
  */
 
 /*
@@ -868,8 +868,7 @@ amr_bio_command(struct amr_softc *sc, struct amr_command **acp)
     ac->ac_data = bio->bio_buf->b_data;
     ac->ac_length = bio->bio_buf->b_bcount;
 
-    cmd = 0;
-    switch(bio->bio_buf->b_cmd) {
+    switch (bio->bio_buf->b_cmd) {
     case BUF_CMD_READ:
 	ac->ac_flags |= AMR_CMD_DATAIN;
 	cmd = AMR_CMD_LREAD;
@@ -881,6 +880,9 @@ amr_bio_command(struct amr_softc *sc, struct amr_command **acp)
     case BUF_CMD_FLUSH:
 	ac->ac_flags |= AMR_CMD_PRIORITY | AMR_CMD_DATAOUT;
 	cmd = AMR_CMD_FLUSH;
+	break;
+    default:
+	cmd = 0;
 	break;
     }
     amrd = (struct amrd_softc *)bio->bio_driver_info;
