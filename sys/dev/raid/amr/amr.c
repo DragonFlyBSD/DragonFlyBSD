@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.26 2008/08/30 02:56:12 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.27 2008/09/16 12:39:15 swildner Exp $
  */
 
 /*
@@ -1748,7 +1748,8 @@ amr_describe_controller(struct amr_softc *sc)
 	    break;
 	}
     } else {
-	prod = "unsupported controller";
+	device_printf(sc->amr_dev, "<unsupported controller>\n");
+	return;
     }
 
     /*
