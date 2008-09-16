@@ -35,7 +35,7 @@
 .\"
 .\"	from: @(#)sh.1	8.6 (Berkeley) 5/4/95
 .\" $FreeBSD: src/bin/sh/sh.1,v 1.124 2006/10/07 16:51:16 stefanf Exp $
-.\" $DragonFly: src/bin/sh/sh.1,v 1.13 2008/01/26 15:14:41 swildner Exp $
+.\" $DragonFly: src/bin/sh/sh.1,v 1.13.4.1 2008/09/16 22:05:36 thomas Exp $
 .\"
 .Dd October 7, 2006
 .Dt SH 1
@@ -185,7 +185,7 @@ disables the option.
 A
 .Dq Li --
 or plain
-.Dq Ql -
+.Ql -
 will stop option processing and will force the remaining
 words on the command line to be treated as arguments.
 The
@@ -203,7 +203,7 @@ completion.
 (UNIMPLEMENTED)
 .It Fl C Li noclobber
 Do not overwrite existing files with
-.Dq Li > .
+.Ql > .
 .It Fl E Li emacs
 Enable the built-in
 .Xr emacs 1
@@ -717,14 +717,14 @@ to the standard input of
 .Ql command2 .
 .Pp
 A
-.Dq Li \&;
+.Ql \&;
 or newline terminator causes the preceding
 AND-OR-list
 (described below in the section called
 .Sx Short-Circuit List Operators )
 to be executed sequentially;
 an
-.Dq Li &
+.Ql &
 causes asynchronous execution of the preceding AND-OR-list.
 .Pp
 Note that unlike some other shells,
@@ -825,9 +825,9 @@ The
 and
 .Ic done
 commands may be replaced with
-.Dq Li {
+.Ql {
 and
-.Dq Li } .
+.Ql } .
 .Pp
 The syntax of the
 .Ic break
@@ -864,7 +864,7 @@ The pattern can actually be one or more patterns
 .Sx Shell Patterns
 described later),
 separated by
-.Dq Li \&|
+.Ql \&|
 characters.
 .Ss Grouping Commands Together
 Commands may be grouped by writing either
@@ -897,9 +897,9 @@ executed it installs a function named name and returns an
 exit status of zero.
 The command is normally a list
 enclosed between
-.Dq Li {
+.Ql {
 and
-.Dq Li } .
+.Ql } .
 .Pp
 Variables may be declared to be local to a function by
 using the
@@ -941,9 +941,9 @@ not to the global variable named
 .Em x .
 .Pp
 The only special parameter that can be made local is
-.Dq Li - .
+.Ql - .
 Making
-.Dq Li -
+.Ql -
 local causes any shell options that are
 changed via the set command inside the function to be
 restored to their original values when the function
@@ -1088,7 +1088,7 @@ Quote Removal.
 .El
 .Pp
 The
-.Dq Li $
+.Ql $
 character is used to introduce parameter expansion, command
 substitution, or arithmetic evaluation.
 .Ss Tilde Expansion (substituting a user's home directory)
@@ -1111,13 +1111,13 @@ ${expression}
 .Ed
 .Pp
 where expression consists of all characters until the matching
-.Dq Li } .
+.Ql } .
 Any
-.Dq Li }
+.Ql }
 escaped by a backslash or within a quoted string, and characters in
 embedded arithmetic expansions, command substitutions, and variable
 expansions, are not examined in determining the matching
-.Dq Li } .
+.Ql } .
 .Pp
 The simplest form for parameter expansion is:
 .Bd -literal -offset indent
@@ -1314,11 +1314,11 @@ command.
 A pattern consists of normal characters, which match themselves,
 and meta-characters.
 The meta-characters are
-.Dq Li \&! ,
-.Dq Li * ,
-.Dq Li \&? ,
+.Ql \&! ,
+.Ql * ,
+.Ql \&? ,
 and
-.Dq Li [ .
+.Ql \&[ .
 These characters lose their special meanings if they are quoted.
 When command or variable substitution is performed and the dollar sign
 or back quotes are not double-quoted, the value of the
@@ -1332,16 +1332,16 @@ A question mark
 .Pq Ql \&?
 matches any single character.
 A left bracket
-.Pq Ql [
+.Pq Ql \&[
 introduces a character class.
 The end of the character class is indicated by a
-.Dq Li \&] ;
+.Ql \&] ;
 if the
-.Dq Li \&]
+.Ql \&]
 is missing then the
-.Dq Li [
+.Ql \&[
 matches a
-.Dq Li [
+.Ql \&[
 rather than introducing a character class.
 A character class matches any of the characters between the square brackets.
 A range of characters may be specified using a minus sign.
@@ -1352,15 +1352,15 @@ or the caret
 the first character of the character class.
 .Pp
 To include a
-.Dq Li \&]
+.Ql \&]
 in a character class, make it the first character listed
 (after the
-.Dq Li \&!
+.Ql \&!
 or
-.Dq Li \&^ ,
+.Ql \&^ ,
 if any).
 To include a
-.Dq Li - ,
+.Ql - ,
 make it the first or last character listed.
 .Ss Built-in Commands
 This section lists the commands which
@@ -1382,7 +1382,7 @@ command's caller.
 If
 .Ar file
 contains any
-.Dq /
+.Ql /
 characters, it is used as is.
 Otherwise, the shell searches the
 .Ev PATH
@@ -1750,7 +1750,7 @@ If an option takes an argument, it is placed into the shell variable
 If an invalid option is encountered,
 .Ev var
 is set to
-.Dq Li \&? .
+.Ql \&? .
 It returns a false value (1) when it encounters the end of the options.
 .It Ic hash Oo Fl rv Oc Op Ar command ...
 The shell maintains a hash table which remembers the locations of commands.
@@ -1873,13 +1873,13 @@ command will return an exit status of 1 without assigning any values.
 The
 .Ar timeout
 value may optionally be followed by one of
-.Dq s ,
-.Dq m
+.Ql s ,
+.Ql m
 or
-.Dq h
+.Ql h
 to explicitly specify seconds, minutes or hours.
 If none is supplied,
-.Dq s
+.Ql s
 is assumed.
 .Pp
 The
