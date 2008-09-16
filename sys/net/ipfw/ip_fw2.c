@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.89 2008/09/16 12:16:08 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.90 2008/09/16 13:36:12 sephe Exp $
  */
 
 /*
@@ -4050,7 +4050,7 @@ ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 	struct ip_fw_args args;
 	struct mbuf *m = *m0;
 	struct m_tag *mtag;
-	int tee = 0, error = 0, i;
+	int tee = 0, error = 0, ret;
 
 	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
 		/* Extract info from dummynet tag */
@@ -4068,7 +4068,7 @@ ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 	args.eh = NULL;
 	args.oif = NULL;
 	args.m = m;
-	i = ipfw_chk(&args);
+	ret = ipfw_chk(&args);
 	m = args.m;
 
 	if (m == NULL) {
@@ -4076,7 +4076,7 @@ ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 		goto back;
 	}
 
-	switch (i) {
+	switch (ret) {
 	case IP_FW_PASS:
 		break;
 
@@ -4107,7 +4107,7 @@ ipfw_check_in(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 		break;
 
 	default:
-		panic("unknown ipfw return value: %d\n", i);
+		panic("unknown ipfw return value: %d\n", ret);
 	}
 back:
 	*m0 = m;
@@ -4120,7 +4120,7 @@ ipfw_check_out(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 	struct ip_fw_args args;
 	struct mbuf *m = *m0;
 	struct m_tag *mtag;
-	int tee = 0, error = 0, off;
+	int tee = 0, error = 0, ret;
 
 	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
 		/* Extract info from dummynet tag */
@@ -4138,7 +4138,7 @@ ipfw_check_out(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 	args.eh = NULL;
 	args.m = m;
 	args.oif = ifp;
-	off = ipfw_chk(&args);
+	ret = ipfw_chk(&args);
 	m = args.m;
 
 	if (m == NULL) {
@@ -4146,7 +4146,7 @@ ipfw_check_out(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 		goto back;
 	}
 
-	switch (off) {
+	switch (ret) {
 	case IP_FW_PASS:
 		break;
 
@@ -4176,7 +4176,7 @@ ipfw_check_out(void *arg, struct mbuf **m0, struct ifnet *ifp, int dir)
 		break;
 
 	default:
-		panic("unknown ipfw return value: %d\n", off);
+		panic("unknown ipfw return value: %d\n", ret);
 	}
 back:
 	*m0 = m;
