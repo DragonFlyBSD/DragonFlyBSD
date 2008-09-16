@@ -23,11 +23,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.88 2008/09/16 11:40:38 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.89 2008/09/16 12:16:08 sephe Exp $
  */
-
-#define        DEB(x)
-#define        DDB(x) x
 
 /*
  * Implement IP packet firewall (new version)
@@ -77,6 +74,16 @@
 #include <netinet/if_ether.h> /* XXX for ETHERTYPE_IP */
 
 #include <net/ipfw/ip_fw2.h>
+
+#ifdef IPFIREWALL_DEBUG
+#define DPRINTF(fmt, ...) \
+do { \
+	if (fw_debug > 0) \
+		kprintf(fmt, __VA_ARGS__); \
+} while (0)
+#else
+#define DPRINTF(fmt, ...)	((void)0)
+#endif
 
 /*
  * Description about per-CPU rule duplication:
@@ -281,7 +288,7 @@ static int ipfw_flushing;
 static int fw_verbose;
 static int verbose_limit;
 
-static int fw_debug = 1;
+static int fw_debug;
 static int autoinc_step = IPFW_AUTOINC_STEP_DEF;
 
 static int	ipfw_sysctl_enable(SYSCTL_HANDLER_ARGS);
@@ -872,9 +879,9 @@ do {									\
 	/* remove a refcount to the parent */				\
 	if (q->dyn_type == O_LIMIT)					\
 		q->parent->count--;					\
-	DEB(kprintf("-- unlink entry 0x%08x %d -> 0x%08x %d, %d left\n", \
-		(q->id.src_ip), (q->id.src_port),			\
-		(q->id.dst_ip), (q->id.dst_port), dyn_count-1 ); )	\
+	DPRINTF("-- unlink entry 0x%08x %d -> 0x%08x %d, %d left\n",	\
+		q->id.src_ip, q->id.src_port,				\
+		q->id.dst_ip, q->id.dst_port, dyn_count - 1);		\
 	if (prev != NULL)						\
 		prev->next = q = q->next;				\
 	else								\
@@ -1229,11 +1236,10 @@ add_dyn_rule(struct ipfw_flow_id *id, uint8_t dyn_type, struct ip_fw *rule)
 	ipfw_dyn_v[i] = r;
 	dyn_count++;
 	dyn_buckets_gen++;
-	DEB(kprintf("-- add dyn entry ty %d 0x%08x %d -> 0x%08x %d, total %d\n",
-	   dyn_type,
-	   (r->id.src_ip), (r->id.src_port),
-	   (r->id.dst_ip), (r->id.dst_port),
-	   dyn_count );)
+	DPRINTF("-- add dyn entry ty %d 0x%08x %d -> 0x%08x %d, total %d\n",
+		dyn_type,
+		r->id.src_ip, r->id.src_port,
+		r->id.dst_ip, r->id.dst_port, dyn_count);
 	return r;
 }
 
@@ -1258,7 +1264,7 @@ lookup_dyn_parent(struct ipfw_flow_id *pkt, struct ip_fw *rule)
 			    pkt->src_port == q->id.src_port &&
 			    pkt->dst_port == q->id.dst_port) {
 				q->expire = time_second + dyn_short_lifetime;
-				DEB(kprintf("lookup_dyn_parent found 0x%p\n",q);)
+				DPRINTF("lookup_dyn_parent found 0x%p\n", q);
 				return q;
 			}
 		}
@@ -1280,10 +1286,10 @@ install_state_locked(struct ip_fw *rule, ipfw_insn_limit *cmd,
 
 	ipfw_dyn_rule *q;
 
-	DEB(kprintf("-- install state type %d 0x%08x %u -> 0x%08x %u\n",
-	    cmd->o.opcode,
-	    (args->f_id.src_ip), (args->f_id.src_port),
-	    (args->f_id.dst_ip), (args->f_id.dst_port) );)
+	DPRINTF("-- install state type %d 0x%08x %u -> 0x%08x %u\n",
+		cmd->o.opcode,
+		args->f_id.src_ip, args->f_id.src_port,
+		args->f_id.dst_ip, args->f_id.dst_port);
 
 	q = lookup_dyn_rule(&args->f_id, NULL, NULL);
 	if (q != NULL) { /* should never occur */
@@ -1321,8 +1327,8 @@ install_state_locked(struct ip_fw *rule, ipfw_insn_limit *cmd,
 			struct ipfw_flow_id id;
 			ipfw_dyn_rule *parent;
 
-			DEB(kprintf("installing dyn-limit rule %d\n",
-			    cmd->conn_limit);)
+			DPRINTF("installing dyn-limit rule %d\n",
+				cmd->conn_limit);
 
 			id.dst_ip = id.src_ip = 0;
 			id.dst_port = id.src_port = 0;
@@ -2711,8 +2717,8 @@ ipfw_add_rule(struct ipfw_ioc_rule *ioc_rule, uint32_t rule_flags)
 
 	crit_exit();
 
-	DEB(kprintf("++ installed rule %d, static count now %d\n",
-		rule->rulenum, static_count);)
+	DPRINTF("++ installed rule %d, static count now %d\n",
+		rule->rulenum, static_count);
 }
 
 /**
@@ -3474,7 +3480,7 @@ ipfw_check_ioc_rule(struct ipfw_ioc_rule *rule, int size, uint32_t *rule_flags)
 			return EINVAL;
 		}
 
-		DEB(kprintf("ipfw: opcode %d\n", cmd->opcode);)
+		DPRINTF("ipfw: opcode %d\n", cmd->opcode);
 
 		if (cmd->opcode == O_KEEP_STATE || cmd->opcode == O_LIMIT) {
 			/* This rule will create states */
