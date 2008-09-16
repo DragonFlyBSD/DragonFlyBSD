@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.87 2008/09/16 11:32:02 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.88 2008/09/16 11:40:38 sephe Exp $
  */
 
 #define        DEB(x)
@@ -58,6 +58,7 @@
 #include <net/route.h>
 #include <net/netmsg2.h>
 #include <net/pfil.h>
+#include <net/dummynet/ip_dummynet.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -66,8 +67,6 @@
 #include <netinet/ip.h>
 #include <netinet/ip_var.h>
 #include <netinet/ip_icmp.h>
-#include "ip_fw.h"
-#include <net/dummynet/ip_dummynet.h>
 #include <netinet/tcp.h>
 #include <netinet/tcp_timer.h>
 #include <netinet/tcp_var.h>
@@ -75,8 +74,9 @@
 #include <netinet/udp.h>
 #include <netinet/udp_var.h>
 #include <netinet/ip_divert.h>
-
 #include <netinet/if_ether.h> /* XXX for ETHERTYPE_IP */
+
+#include <net/ipfw/ip_fw2.h>
 
 /*
  * Description about per-CPU rule duplication:
