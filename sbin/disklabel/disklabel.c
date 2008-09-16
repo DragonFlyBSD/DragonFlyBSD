@@ -37,7 +37,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.27 2008/04/23 21:59:22 thomas Exp $
+ * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.27.2.1 2008/09/16 21:54:32 thomas Exp $
  */
 
 #include <sys/param.h>
@@ -1779,5 +1779,8 @@ usage(void)
 		"       disklabel [-NW] disk",
 		"\t\t(to write disable/enable label)");
 #endif
+	fprintf(stderr, "%s\n%s\n",
+		"       disklabel [-f slice_start_lba] [options]",
+		"\t\t(to force using manual offset)");
 	exit(1);
 }

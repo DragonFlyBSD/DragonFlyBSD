@@ -34,14 +34,14 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.22.2.1 2008/08/04 20:31:36 thomas Exp $
+.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.22.2.2 2008/09/16 21:54:32 thomas Exp $
 .\"
-.Dd July 27, 2008
+.Dd August 21, 2008
 .Dt DISKLABEL 8
 .Os
 .Sh NAME
 .Nm disklabel
-.Nd read and write disk pack label
+.Nd read and write 32 bit disk pack label
 .Sh SYNOPSIS
 .Nm
 .Op Fl r
@@ -50,7 +50,7 @@
 .Fl w
 .Op Fl r
 .Op Fl n
-.Ar disk Ar disktype/auto
+.Ar disk Ar disktype Ns / Ns Cm auto
 .Oo Ar packid Oc
 .Nm
 .Fl e
@@ -73,7 +73,7 @@
 .Fl s Ar boot2
 .Oc
 .Ar disk
-.Oo Ar disktype/auto Oc
+.Oo Ar disktype Ns / Ns Cm auto Oc
 .Nm
 .Fl w
 .Fl B
@@ -82,7 +82,7 @@
 .Fl b Ar boot1
 .Fl s Ar boot2
 .Oc
-.Ar disk Ar disktype/auto
+.Ar disk Ar disktype Ns / Ns Cm auto
 .Oo Ar packid Oc
 .Nm
 .Fl R
@@ -93,7 +93,7 @@
 .Fl s Ar boot2
 .Oc
 .Ar disk Ar protofile
-.Oo Ar disktype/auto Oc
+.Oo Ar disktype Ns / Ns Cm auto Oc
 .Nm
 .Fl f Ar slice_start_lba
 .Oo Ar options Oc
@@ -135,22 +135,20 @@ forms require a disk device name, which should always be the raw
 device name representing the disk or slice.
 .Dx
 uses the following scheme for slice numbering:
-If the disk doesn't use
-.Xr gpt 8 ,
-but e.g. MBR (typically laid out by
-.Xr fdisk 8 ) ,
-then slice 0, e.g.
-.Pa da0s0 ,
-represents the entire disk regardless of any DOS partitioning,
-this is called the compatibility slice,
-and slice 1 and onward, e.g.
-.Pa da0s1 ,
-represents a
-.Bx
-slice.
-If the disk does use GPT (typically laid out by
+If the disk doesn't use GPT (typically laid out by
 .Xr gpt 8 ) ,
-then all slices are
+but e.g.\& MBR (typically laid out by
+.Xr fdisk 8 ) ,
+then slice 0, e.g.\&
+.Pa da0s0 ,
+represents the entire disk regardless of any DOS partitioning.
+Slice 0 is called the compatibility slice,
+and slice 1 and onward, e.g.\&
+.Pa da0s1 ,
+represent
+.Bx
+slices.
+If the disk does use GPT, then all slices are
 .Bx
 slices, slice 0 isn't special, it is just the first slice on the disk.
 You do not have to include the
@@ -196,15 +194,8 @@ To write a standard label, use the form
 .Fl w
 .Op Fl r
 .Op Fl n
-.Ar disk Ar disktype/auto
+.Ar disk Ar disktype Ns / Ns Cm auto
 .Oo Ar packid Oc
-.Pp
-.Nm
-.Fl w
-.Op Fl r
-.Op Fl n
-.Ar disk
-auto
 .Pp
 The required arguments to
 .Nm
@@ -248,7 +239,7 @@ For a virgin disk that is not known to
 .Xr disktab 5 ,
 .Ar disktype
 can be specified as
-.Dq auto .
+.Cm auto .
 In this case, the driver is requested to produce a virgin label for the
 disk.
 This might or might not be successful, depending on whether the
@@ -334,7 +325,7 @@ in ASCII format.
 The prototype file used to create the label should be in the same format
 as that produced when reading or editing a label.
 Comments are delimited by
-.Ar \&#
+.Ql #
 and newline.
 As when writing a new label, any existing bootstrap code will be
 clobbered if
@@ -419,7 +410,7 @@ slice such as
 .Fl b Ar boot1
 .Fl s Ar boot2
 .Oc
-.Ar disk Ar disktype
+.Ar disk Ar disktype Ns / Ns Cm auto
 .Oo Ar packid Oc
 .Pp
 This form corresponds to the
@@ -447,7 +438,7 @@ disklabel that would have been written will be printed to stdout.
 .Fl s Ar boot2
 .Oc
 .Ar disk Ar protofile
-.Oo Ar disktype Oc
+.Oo Ar disktype Ns / Ns Cm auto Oc
 .Pp
 This form corresponds to the
 .Dq restore label
@@ -571,6 +562,25 @@ Your mileage may vary.
 .Nm
 .Fl e
 .Pa da0s1
+.Ss Manual offset
+.Dx
+no longer snoop-adjusts the on-disk label when reading or writing
+raw labels.
+.Nm
+is now responsible for adjusting the label when operating in raw mode.
+Traditional (32 bit
+.Bx )
+disklabels store offsets as absolute block numbers
+rather than slice-relative block numbers.
+If
+.Nm
+is unable to issue the
+.Dv DIOCGPART
+ioctl to get slice information it will
+refuse to read or write the label in raw mode.
+The
+.Fl f
+option may be used to force the operation by supplying a manual offset.
 .Sh FILES
 .Bl -tag -width ".Pa /etc/disktab" -compact
 .It Pa /boot/boot1
@@ -756,25 +766,6 @@ for more details).
 .Pp
 The remainder of the line is a comment and shows the size of the partition
 in MB.
-.Pp
-.Dx
-no longer snoop-adjusts the on-disklabel when reading or writing
-raw labels.
-.Nm
-is now responsible for adjusting the label when operating in raw mode.
-Traditional (32 bit
-.Bx )
-disklabels store offsets as absolute block numbers
-rather than slice-relative block numbers.
-If
-.Nm
-is unable to issue the
-.Dv DIOCGPART
-ioctl to get slice information it will
-refuse to read or write the label in raw mode.
-The
-.Fl f
-option may be used to force the operation by supplying a manual offset.
 .Sh EXAMPLES
 .Dl "disklabel da0s1"
 .Pp
@@ -893,6 +884,20 @@ The
 commands are optional, but may be necessary for some BIOSes to properly
 recognize the disk.
 .Pp
+.Dl disklabel -W da0s1
+.Dl dd if=/dev/zero of=/dev/da0s1 bs=512 count=32
+.Dl disklabel64 -r -w da0s1 auto
+.Dl disklabel64 -N da0s1
+.Pp
+Completely wipe any prior information on the slice,
+changing label format to 64 bit.
+The wiping is needed as
+.Nm disklabel64
+and
+.Nm ,
+as a safety measure,
+won't do any operations if label with other format is already installed.
+.Pp
 This is an example disklabel that uses some of the new partition size types
 such as
 .Cm % , M , G ,
@@ -935,13 +940,13 @@ The kernel device drivers will not allow the size of a disk partition
 to be decreased or the offset of a partition to be changed while it is open.
 Some device drivers create a label containing only a single large partition
 if a disk is unlabeled; thus, the label must be written to the
-.Dq a
+.Ql a
 partition of the disk while it is open.
 This sometimes requires the desired
 label to be set in two steps, the first one creating at least one other
 partition, and the second setting the label on the new partition while
 shrinking the
-.Dq a
+.Ql a
 partition.
 .Pp
 On some machines the bootstrap code may not fit entirely in the area
@@ -974,7 +979,8 @@ Due to
 storing sector numbers in 32 bit format
 .Nm
 is restricted to 2TB, using the prevalent sector size of 512B.
-.Xr disklabel64 5 labels should be used to partition larger disks.
+.Xr disklabel64 5
+labels should be used to partition larger disks.
 .Pp
 The various
 .Bx Ns s
@@ -998,15 +1004,6 @@ for read-only operation.
 .Xr gpt 8 ,
 .Xr vinum 8
 .Sh BUGS
-Installing a
-.Xr disklabel64 8
-label on a slice with a
-.Nm
-label installed requires reboot. First the existing label
-has to be overwritten, e.g. by
-.Xr dd 1 ,
-see above, then a reboot is required before the new label can be installed.
-.Pp
 For the i386 architecture, the primary bootstrap sector contains
 an embedded
 .Em fdisk
@@ -1039,7 +1036,7 @@ Warning
 .Em is
 given if partitions
 overlap; if an absolute offset does not match the expected offset; if the
-.Dq c
+.Ql c
 partition does not start at 0 or does not cover the entire slice; if a
 partition runs past the end of the device; and a number of other errors; but
 no warning is given if space remains unused.
