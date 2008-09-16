@@ -1,5 +1,5 @@
 /*	$NetBSD: pfil.h,v 1.22 2003/06/23 12:57:08 martin Exp $	*/
-/* $DragonFly: src/sys/net/pfil.h,v 1.9 2008/09/15 05:11:02 sephe Exp $ */
+/* $DragonFly: src/sys/net/pfil.h,v 1.10 2008/09/16 11:53:33 sephe Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
@@ -44,19 +44,9 @@
 
 struct mbuf;
 struct ifnet;
+struct packet_filter_hook;
 
 typedef int	(*pfil_func_t)(void *, struct mbuf **, struct ifnet *, int);
-
-/*
- * The packet filter hooks are designed for anything to call them to
- * possibly intercept the packet.
- */
-struct packet_filter_hook {
-        TAILQ_ENTRY(packet_filter_hook) pfil_link;
-	pfil_func_t	pfil_func;
-	void		*pfil_arg;
-	int		pfil_flags;
-};
 
 #define PFIL_IN		0x00000001
 #define PFIL_OUT	0x00000002

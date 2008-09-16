@@ -1,5 +1,5 @@
 /*	$NetBSD: pfil.c,v 1.20 2001/11/12 23:49:46 lukem Exp $	*/
-/* $DragonFly: src/sys/net/pfil.c,v 1.11 2008/09/14 11:13:00 sephe Exp $ */
+/* $DragonFly: src/sys/net/pfil.c,v 1.12 2008/09/16 11:53:33 sephe Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
@@ -41,6 +41,17 @@
 #include <net/if.h>
 #include <net/pfil.h>
 #include <net/netmsg2.h>
+
+/*
+ * The packet filter hooks are designed for anything to call them to
+ * possibly intercept the packet.
+ */
+struct packet_filter_hook {
+        TAILQ_ENTRY(packet_filter_hook) pfil_link;
+	pfil_func_t	pfil_func;
+	void		*pfil_arg;
+	int		pfil_flags;
+};
 
 #define PFIL_CFGPORT	cpu_portfn(0)
 
