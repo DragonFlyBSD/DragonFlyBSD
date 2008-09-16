@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/key_debug.c,v 1.10.2.5 2002/04/28 05:40:28 suz Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/key_debug.c,v 1.8 2006/12/22 23:57:54 swildner Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/key_debug.c,v 1.8.8.1 2008/09/16 09:26:20 swildner Exp $	*/
 /*	$KAME: key_debug.c,v 1.26 2001/06/27 10:46:50 sakane Exp $	*/
 
 /*
@@ -292,7 +292,7 @@ kdebug_sadb_lifetime(struct sadb_ext *ext)
 
 	/* sanity check */
 	if (ext == NULL)
-		kprintf("kdebug_sadb_lifetime: NULL pointer was passed.\n");
+		panic("kdebug_sadb_lifetime: NULL pointer was passed.\n");
 
 	kprintf("sadb_lifetime{ alloc=%u, bytes=%u\n",
 		lft->sadb_lifetime_allocations,
