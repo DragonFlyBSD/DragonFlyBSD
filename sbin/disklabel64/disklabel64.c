@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.6 2008/07/10 03:15:56 thomas Exp $
+ * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.6.2.1 2008/09/16 21:58:06 thomas Exp $
  */
 /*
  * Copyright (c) 1987, 1993
@@ -71,7 +71,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.6 2008/07/10 03:15:56 thomas Exp $
+ * $DragonFly: src/sbin/disklabel64/disklabel64.c,v 1.6.2.1 2008/09/16 21:58:06 thomas Exp $
  */
 
 #include <sys/param.h>
@@ -1511,7 +1511,7 @@ Warning(const char *fmt, ...)
 void
 usage(void)
 {
-	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 		"usage: disklabel64 [-r] disk",
 		"\t\t(to read label)",
 		"       disklabel64 -w [-r] [-n] disk type [ packid ]",
@@ -1520,12 +1520,14 @@ usage(void)
 		"\t\t(to edit label)",
 		"       disklabel64 -R [-r] [-n] disk protofile",
 		"\t\t(to restore label with existing boot program)",
+#if 0
 		"       disklabel64 -B [-n] [ -b boot1 [ -s boot2 ] ] disk [ type ]",
 		"\t\t(to install boot program with existing label)",
 		"       disklabel64 -w -B [-n] [ -b boot1 [ -s boot2 ] ] disk type [ packid ]",
 		"\t\t(to write label and boot program)",
 		"       disklabel64 -R -B [-n] [ -b boot1 [ -s boot2 ] ] disk protofile [ type ]",
 		"\t\t(to restore label and boot program)",
+#endif
 		"       disklabel64 [-NW] disk",
 		"\t\t(to write disable/enable label)");
 	exit(1);
