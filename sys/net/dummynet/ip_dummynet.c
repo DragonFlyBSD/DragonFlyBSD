@@ -25,14 +25,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.54 2008/09/16 11:48:01 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.55 2008/09/16 12:30:57 sephe Exp $
  */
 
-#ifdef DUMMYNET_DEBUG
-#define DPRINTF(fmt, ...)	kprintf(fmt, __VA_ARGS__)
-#else
-#define DPRINTF(fmt, ...)	((void)0)
-#endif
+#include "opt_ipdn.h"
 
 /*
  * This module implements IP dummynet, a bandwidth limiter/delay emulator.
@@ -70,6 +66,12 @@
 #include <netinet/ip_var.h>
 
 #include <net/dummynet/ip_dummynet.h>
+
+#ifdef DUMMYNET_DEBUG
+#define DPRINTF(fmt, ...)	kprintf(fmt, __VA_ARGS__)
+#else
+#define DPRINTF(fmt, ...)	((void)0)
+#endif
 
 #ifndef DN_CALLOUT_FREQ_MAX
 #define DN_CALLOUT_FREQ_MAX	10000
