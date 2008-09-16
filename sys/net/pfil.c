@@ -1,5 +1,5 @@
 /*	$NetBSD: pfil.c,v 1.20 2001/11/12 23:49:46 lukem Exp $	*/
-/* $DragonFly: src/sys/net/pfil.c,v 1.12 2008/09/16 11:53:33 sephe Exp $ */
+/* $DragonFly: src/sys/net/pfil.c,v 1.13 2008/09/16 11:57:30 sephe Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
@@ -374,6 +374,7 @@ pfil_list_add(pfil_list_t *list, pfil_func_t func, void *arg, int flags)
 
 	pfh->pfil_func = func;
 	pfh->pfil_arg  = arg;
+	pfh->pfil_flags = flags;
 
 	/*
 	 * Insert the input list in reverse order of the output list
