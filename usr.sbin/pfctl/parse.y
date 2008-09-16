@@ -1,5 +1,5 @@
 /*	$OpenBSD: parse.y,v 1.449 2004/03/20 23:20:20 david Exp $	*/
-/*	$DragonFly: src/usr.sbin/pfctl/parse.y,v 1.5 2008/04/11 18:21:49 dillon Exp $ */
+/*	$DragonFly: src/usr.sbin/pfctl/parse.y,v 1.5.2.1 2008/09/16 21:46:59 thomas Exp $ */
 
 /*
  * Copyright (c) 2001 Markus Friedl.  All rights reserved.
@@ -519,7 +519,7 @@ option		: SET OPTIMIZATION STRING		{
 				YYERROR;
 			}
 			if (pfctl_set_hostid(pf, $3) != 0) {
-				yyerror("error setting loginterface %08x", $3);
+				yyerror("error setting hostid %08x", $3);
 				YYERROR;
 			}
 		}
