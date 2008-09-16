@@ -1,4 +1,4 @@
-# $DragonFly: src/libexec/dma/Makefile,v 1.3 2008/02/04 08:58:54 matthias Exp $
+# $DragonFly: src/libexec/dma/Makefile,v 1.4 2008/09/16 17:57:22 matthias Exp $
 #
 
 CFLAGS+= -DHAVE_CRYPTO
@@ -13,7 +13,7 @@ MAN=	dma.8
 
 BINOWN= root
 BINGRP= mail
-BINMODE=2555
+BINMODE=4555
 WARNS?=	1
 
 .include <bsd.prog.mk>
