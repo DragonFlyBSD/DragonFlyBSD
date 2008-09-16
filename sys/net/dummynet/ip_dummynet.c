@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.53 2007/12/08 04:33:58 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.54 2008/09/16 11:48:01 sephe Exp $
  */
 
 #ifdef DUMMYNET_DEBUG
@@ -1945,22 +1945,6 @@ back:
     lwkt_replymsg(&msg->nm_lmsg, error);
 }
 
-static void
-ip_dn_stop_dispatch(struct netmsg *msg)
-{
-    crit_enter();
-
-    dummynet_flush();
-
-    ip_dn_ctl_ptr = NULL;
-    ip_dn_io_ptr = NULL;
-
-    systimer_del(&dn_clock);
-
-    crit_exit();
-    lwkt_replymsg(&msg->nm_lmsg, 0);
-}
-
 static int
 ip_dn_init(void)
 {
@@ -1977,6 +1961,25 @@ ip_dn_init(void)
     return smsg.nm_lmsg.ms_error;
 }
 
+#ifdef KLD_MODULE
+
+static void
+ip_dn_stop_dispatch(struct netmsg *msg)
+{
+    crit_enter();
+
+    dummynet_flush();
+
+    ip_dn_ctl_ptr = NULL;
+    ip_dn_io_ptr = NULL;
+
+    systimer_del(&dn_clock);
+
+    crit_exit();
+    lwkt_replymsg(&msg->nm_lmsg, 0);
+}
+
+
 static void
 ip_dn_stop(void)
 {
@@ -1987,6 +1990,8 @@ ip_dn_stop(void)
 
     netmsg_service_sync();
 }
+
+#endif	/* KLD_MODULE */
 
 static int
 dummynet_modevent(module_t mod, int type, void *data)
