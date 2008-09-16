@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.85 2008/09/16 11:24:57 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.86 2008/09/16 11:28:31 sephe Exp $
  */
 
 #define        DEB(x)
@@ -290,7 +290,6 @@ static int	ipfw_sysctl_dyn_buckets(SYSCTL_HANDLER_ARGS);
 static int	ipfw_sysctl_dyn_fin(SYSCTL_HANDLER_ARGS);
 static int	ipfw_sysctl_dyn_rst(SYSCTL_HANDLER_ARGS);
 
-#ifdef SYSCTL_NODE
 SYSCTL_NODE(_net_inet_ip, OID_AUTO, fw, CTLFLAG_RW, 0, "Firewall");
 SYSCTL_PROC(_net_inet_ip_fw, OID_AUTO, enable, CTLTYPE_INT | CTLFLAG_RW,
     &fw_enable, 0, ipfw_sysctl_enable, "I", "Enable ipfw");
@@ -414,8 +413,6 @@ SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, dyn_short_lifetime, CTLFLAG_RW,
     &dyn_short_lifetime, 0, "Lifetime of dyn. rules for other situations");
 SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, dyn_keepalive, CTLFLAG_RW,
     &dyn_keepalive, 0, "Enable keepalives for dyn. rules");
-
-#endif /* SYSCTL_NODE */
 
 static ip_fw_chk_t	ipfw_chk;
 
