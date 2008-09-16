@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.84 2008/09/15 05:11:02 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.85 2008/09/16 11:24:57 sephe Exp $
  */
 
 #define        DEB(x)
@@ -2597,6 +2597,9 @@ ipfw_enable_state_dispatch(struct netmsg *nmsg)
 {
 	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
 	struct ip_fw *rule = lmsg->u.ms_resultp;
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+
+	ctx->ipfw_gen++;
 
 	KKASSERT(rule->cpuid == mycpuid);
 	KKASSERT(rule->stub != NULL && rule->stub->rule[mycpuid] == rule);
@@ -2789,7 +2792,10 @@ static void
 ipfw_disable_rule_state_dispatch(struct netmsg *nmsg)
 {
 	struct netmsg_del *dmsg = (struct netmsg_del *)nmsg;
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
 	struct ip_fw *rule;
+
+	ctx->ipfw_gen++;
 
 	rule = dmsg->start_rule;
 	if (rule != NULL) {
@@ -2801,8 +2807,6 @@ ipfw_disable_rule_state_dispatch(struct netmsg *nmsg)
 		 */
 		dmsg->start_rule = rule->sibling;
 	} else {
-		struct ipfw_context *ctx = ipfw_ctx[mycpuid];
-
 		KKASSERT(dmsg->rulenum == 0);
 		rule = ctx->ipfw_layer3_chain;
 	}
@@ -3061,6 +3065,8 @@ ipfw_disable_ruleset_state_dispatch(struct netmsg *nmsg)
 #ifdef INVARIANTS
 	int cleared = 0;
 #endif
+
+	ctx->ipfw_gen++;
 
 	for (rule = ctx->ipfw_layer3_chain; rule; rule = rule->next) {
 		if (rule->set == dmsg->from_set) {
