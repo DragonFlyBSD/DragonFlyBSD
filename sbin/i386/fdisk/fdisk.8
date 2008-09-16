@@ -1,12 +1,12 @@
 .\" $FreeBSD: src/sbin/i386/fdisk/fdisk.8,v 1.17.2.11 2002/04/25 16:25:12 trhodes Exp $
-.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.13.2.1 2008/08/04 20:54:18 thomas Exp $
+.\" $DragonFly: src/sbin/i386/fdisk/fdisk.8,v 1.13.2.2 2008/09/16 22:09:44 thomas Exp $
 .\"
-.Dd October 4, 1996
+.Dd September 1, 2008
 .Dt FDISK 8
 .Os
 .Sh NAME
 .Nm fdisk
-.Nd PC slice table maintenance program
+.Nd PC slice table (MBR) maintenance program
 .Sh SYNOPSIS
 .Nm
 .Op Fl BCIaistu
@@ -21,11 +21,22 @@
 .Sh PROLOGUE
 In order for the BIOS to boot the kernel,
 certain conventions must be adhered to.
-Sector 0 of the disk must contain boot code,
+Sector 0 of the disk must contain an MBR, which contain boot code,
 a slice table,
 and a magic number.
 BIOS slices can be used to break the disk up into several pieces.
-The BIOS brings in sector 0 and verifies the magic number.  The sector
+.Dx
+slices are called partitions under DOS
+.Dq ( partition
+has another meaning under
+.Dx ,
+see
+.Xr disklabel 8 ) .
+.Dx
+supports 30 MBR slices, s1-s4 will be DOS primary partitions,
+s5-s30 will be DOS partitions in extended DOS partitions.
+The BIOS brings in sector 0 and verifies the magic number.
+The sector
 0 boot code then searches the slice table to determine which
 slice is marked
 .Em active .
@@ -44,16 +55,18 @@ The
 .Dx
 program,
 .Nm ,
-serves a similar purpose to the DOS program.  The first form is used to
-display slice information or to interactively edit the slice
-table.  The second is used to write a slice table using a
+serves a similar purpose to the DOS program.
+The first form is used to
+display slice information or to interactively edit the slice table.
+The second is used to write a slice table using a
 .Ar configfile
 and is designed to be used by other scripts/programs.
 .Pp
 Options are:
 .Bl -tag -width indent
 .It Fl a
-Change the active slice only.  Ignored if
+Change the active slice only.
+Ignored if
 .Fl f
 is given.
 .It Fl b Ar bootcode
@@ -63,16 +76,17 @@ Default is
 .Pa /boot/mbr .
 .It Fl p Ar diskimage
 The disk image is specified as a normal file instead of as a device,
-which is useful when building emulated disks for vmware, bochs, etc.
+which is useful when building emulated disks for vmware, bochs, etc.\&
 .It Fl B
-Reinitialize the boot code contained in sector 0 of the disk.  Ignored
-if
+Reinitialize the boot code contained in sector 0 of the disk.
+Ignored if
 .Fl f
 is given.
 .It Fl C
 Set CHS fields to wrapped values.
-Normally the CHS fields for a partition are set to all 1's if they
-would otherwise wrap.  This typically causes BIOSes to properly detect
+Normally the CHS fields for a slice are set to all 1's if they
+would otherwise wrap.
+This typically causes BIOSes to properly detect
 that the disk should be put in Large mode.
 This option may be needed on very old PCs.
 .It Fl f Ar configfile
@@ -83,13 +97,19 @@ The
 always modifies existing slices, unless
 .Fl i
 is also given, in which case all existing slices are deleted (marked
-as "unused") before the
+as
+.Dq unused )
+before the
 .Ar configfile
-is read.  The
+is read.
+The
 .Ar configfile
-can be "-", in which case
+can be
+.Sq - ,
+in which case
 .Ar stdin
-is read.  See
+is read.
+See
 .Sx CONFIGURATION FILE ,
 below, for file syntax.
 .Pp
@@ -97,9 +117,11 @@ below, for file syntax.
 when
 .Fl f
 is used, you are not asked if you really want to write the slices
-table (as you are in the interactive mode).  Use with caution!
+table (as you are in the interactive mode).
+Use with caution!
 .It Fl i
-Initialize sector 0 of the disk.  This implies
+Initialize sector 0 of the disk.
+This implies
 .Fl u ,
 unless
 .Fl f
@@ -113,22 +135,27 @@ slice covering the entire disk.
 Print a summary of all slices on the disk and exit.
 All other options will be ignored.
 .It Fl t
-Test mode; do not write slice values.  Generally used with the
+Test mode; do not write slice values.
+Generally used with the
 .Fl f
-option to see what would be written to the slice table.  Implies
+option to see what would be written to the slice table.
+Implies
 .Fl v .
 .It Fl u
-Is used for updating (editing) sector 0 of the disk.  Ignored if
+Is used for updating (editing) sector 0 of the disk.
+Ignored if
 .Fl f
 is given.
 .It Fl v
-Be verbose.  When
+Be verbose.
+When
 .Fl f
 is used,
 .Nm
 prints out the slice table that is written to the disk.
 .It Fl 1234
-Operate on a single fdisk entry only.  Ignored if
+Operate on a single fdisk entry only.
+Ignored if
 .Fl f
 is given.
 .El
@@ -136,14 +163,14 @@ is given.
 The final disk name can be provided as a
 .Sq bare
 disk name only, e.g.\&
-.Ql da0 ,
+.Pa da0 ,
 or as a fully qualified device node under
 .Pa /dev .
 If omitted, the disks
-.Ql ad0 ,
-.Ql da0
+.Pa ad0 ,
+.Pa da0
 and
-.Ql vkd0
+.Pa vkd0
 are searched in that order, until one is found to respond.
 .Pp
 When called without options,
@@ -251,12 +278,14 @@ the
 flag just edits (updates) the fields as they appear on the disk,
 while the
 .Fl i
-flag is used to "initialize" sector 0;
+flag is used to
+.Dq initialize
+sector 0;
 it will set up the last BIOS slice to use the whole disk for
 .Dx
 and make it active.
 .Sh NOTES
-The automatic calculation of starting cylinder etc. uses
+The automatic calculation of starting cylinder etc.\& uses
 a set of figures that represent what the BIOS thinks the
 geometry of the drive is.
 These figures are taken from the in-core disklabel by default,
@@ -280,7 +309,8 @@ You should run
 .Nm
 interactively once or twice to see how it works.
 This is completely safe as long as you answer the last question
-in the negative.  There are subtleties that
+in the negative.
+There are subtleties that
 .Nm
 detects that are not fully explained in this manual page.
 .Sh CONFIGURATION FILE
@@ -296,14 +326,17 @@ each line is either a comment or a specification, as follows:
 .Ic #
 .Ar comment ...
 .Xc
-Lines beginning with a "#" are comments and are ignored.
+Lines beginning with a
+.Sq #
+are comments and are ignored.
 .It Xo
 .Ic g
 .Ar spec1
 .Ar spec2
 .Ar spec3
 .Xc
-Set the BIOS geometry used in slice calculations.  There must be
+Set the BIOS geometry used in slice calculations.
+There must be
 three values specified, with a letter preceding each number:
 .Bl -tag -width Ds
 .Sm off
@@ -337,10 +370,17 @@ It is an error if the following is not true:
 .Ed
 .Pp
 The number of cylinders should be less than or equal to 1024, but this
-is not enforced, although a warning will be printed.  Note that bootable
+is not enforced, although a warning will be printed.
+Note that a bootable
 .Dx
-slices (the "/" filesystem) must lie completely within the
-first 1024 cylinders; if this is not true, booting may fail.
+slice (the
+.Dq Pa /
+file system) must lie completely within the
+first 1024 cylinders, if
+.Dq packet
+mode isn't used, see
+.Xr boot0cfg 8 ;
+if this is not true, booting may fail.
 Non-bootable slices do not have this restriction.
 .Pp
 Example (all of these are equivalent), for a disk with 1019 cylinders,
@@ -368,13 +408,20 @@ for
 sectors.
 .Pp
 Only those slices explicitly mentioned by these lines are modified;
-any slice not referenced by a "p" line will not be modified.
+any slice not referenced by a
+.Cm p
+line will not be modified.
 However, if an invalid slice table is present, or the
 .Fl i
 option is specified, all existing slice entries will be cleared
-(marked as unused), and these "p" lines will have to be used to
-explicitly set slice information.  If multiple slices need to be
-set, multiple "p" lines must be specified; one for each slice.
+(marked as unused), and these
+.Cm p
+lines will have to be used to
+explicitly set slice information.
+If multiple slices need to be
+set, multiple
+.Cm p
+lines must be specified; one for each slice.
 .Pp
 These slice lines must occur after any geometry specification lines,
 if one is present.
@@ -383,9 +430,12 @@ The
 .Ar type
 is 165 for
 .Dx
-slices.  Specifying a slice type of zero is
+slices.
+Specifying a slice type of zero is
 the same as clearing the slice and marking it as unused; however,
-dummy values (such as "0") must still be specified for
+dummy values (such as
+.Sq 0 )
+must still be specified for
 .Ar start
 and
 .Ar length .
@@ -414,7 +464,8 @@ p       1       165     1       2503871
 .Xc
 Make
 .Ar slice
-the active slice.  Can occur anywhere in the config file, but only
+the active slice.
+Can occur anywhere in the config file, but only
 one must be present.
 If no
 .Cm a
@@ -449,6 +500,15 @@ Some OSs will require that slices are located at cylinder boundaries.
 .Xr gpt 8 ,
 .Xr newfs 8
 .Sh BUGS
+Only slices s1-s4
+.Pq primary DOS partitions
+can be changed by
+.Nm ,
+s5-s30
+.Pq slices in extended DOS partitions
+can't be changed by
+.Nm .
+.Pp
 The default boot code will not necessarily handle all slice types
 correctly, in particular those introduced since MS-DOS 6.x.
 .Pp
