@@ -970,7 +970,7 @@ fn_assign_ip(struct i_fn_args *a)
 		cmd = command_add(cmds, "%s%s dhclient",
 		    a->os_root, cmd_name(a, "KILLALL"));
 		command_set_failure_mode(cmd, COMMAND_FAILURE_IGNORE);
-		command_add(cmds, "%s%s %s",
+		command_add(cmds, "%s%s -1 %s",
 		    a->os_root, cmd_name(a, "DHCLIENT"),
 		    interface);
 		if (commands_execute(a, cmds)) {
