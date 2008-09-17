@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.47 2008/08/17 03:44:48 sephe Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.48 2008/09/17 11:46:43 sephe Exp $
  */
 
 #include "use_bpf.h"
@@ -505,7 +505,7 @@ bpfwrite(struct dev_write_args *ap)
 	struct ifnet *ifp;
 	struct mbuf *m;
 	int error;
-	static struct sockaddr dst;
+	struct sockaddr dst;
 	int datlen;
 
 	if (d->bd_bif == NULL)
