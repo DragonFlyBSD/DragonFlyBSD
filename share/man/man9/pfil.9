@@ -1,5 +1,5 @@
 .\"	$NetBSD: pfil.9,v 1.24 2004/01/01 15:24:35 wiz Exp $
-.\" $DragonFly: src/share/man/man9/pfil.9,v 1.7 2008/09/15 18:22:48 swildner Exp $
+.\" $DragonFly: src/share/man/man9/pfil.9,v 1.8 2008/09/17 08:58:33 sephe Exp $
 .\"
 .\" Copyright (c) 1996 Matthew R. Green
 .\" All rights reserved.
@@ -53,9 +53,9 @@
 .Ft struct pfil_head *
 .Fn pfil_head_get "int type" "u_long val"
 .Ft void
-.Fn pfil_add_hook "int (*func)()" "void *arg" "int flags" "struct pfil_head *ph"
+.Fn pfil_add_hook "pfil_func_t func" "void *arg" "int flags" "struct pfil_head *ph"
 .Ft void
-.Fn pfil_remove_hook "int (*func)()" "void *arg" "int flags" "struct pfil_head *ph"
+.Fn pfil_remove_hook "pfil_func_t func" "void *arg" "int flags" "struct pfil_head *ph"
 .Ft int
 .Fn pfil_run_hooks "struct pfil_head *ph" "struct mbuf **mp" "struct ifnet *ifp" "int dir"
 .Sh DESCRIPTION
