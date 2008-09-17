@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.91 2008/09/17 02:53:51 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.92 2008/09/17 03:08:27 sephe Exp $
  */
 
 /*
@@ -2654,8 +2654,6 @@ ipfw_add_rule(struct ipfw_ioc_rule *ioc_rule, uint32_t rule_flags)
 
 	IPFW_ASSERT_CFGPORT(&curthread->td_msgport);
 
-	crit_enter();
-
 	/*
 	 * If rulenum is 0, find highest numbered rule before the
 	 * default rule, and add rule number incremental step.
@@ -2738,8 +2736,6 @@ ipfw_add_rule(struct ipfw_ioc_rule *ioc_rule, uint32_t rule_flags)
 		ifnet_domsg(&nmsg->nm_lmsg, 0);
 		KKASSERT(nmsg->nm_lmsg.u.ms_resultp == NULL);
 	}
-
-	crit_exit();
 
 	DPRINTF("++ installed rule %d, static count now %d\n",
 		rule->rulenum, static_count);
@@ -3788,7 +3784,6 @@ ipfw_ctl_get_rules(struct sockopt *sopt)
 	 * come first (the last of which has number IPFW_DEFAULT_RULE),
 	 * followed by a possibly empty list of dynamic rule.
 	 */
-	crit_enter();
 
 	size = static_ioc_len;	/* size of static rules */
 	if (ipfw_dyn_v) {	/* add size of dyn.rules */
@@ -3849,8 +3844,6 @@ skip:
 		KKASSERT(size <= old_size);
 	}
 
-	crit_exit();
-
 	sopt->sopt_valsize = size;
 	return 0;
 }
@@ -3904,22 +3897,7 @@ ipfw_ctl(struct sockopt *sopt)
 		break;
 
 	case IP_FW_FLUSH:
-		/*
-		 * Normally we cannot release the lock on each iteration.
-		 * We could do it here only because we start from the head all
-		 * the times so there is no risk of missing some entries.
-		 * On the other hand, the risk is that we end up with
-		 * a very inconsistent ruleset, so better keep the lock
-		 * around the whole cycle.
-		 *
-		 * XXX this code can be improved by resetting the head of
-		 * the list to point to the default rule, and then freeing
-		 * the old list without the need for a lock.
-		 */
-
-		crit_enter();
 		ipfw_flush(0 /* keep default rule */);
-		crit_exit();
 		break;
 
 	case IP_FW_ADD:
@@ -4372,8 +4350,6 @@ ipfw_init_dispatch(struct netmsg *nmsg)
 	struct netmsg_ipfw fwmsg;
 	int error = 0;
 
-	crit_enter();
-
 	if (IPFW_LOADED) {
 		kprintf("IP firewall already loaded\n");
 		error = EEXIST;
@@ -4417,7 +4393,6 @@ ipfw_init_dispatch(struct netmsg *nmsg)
 	if (fw_enable)
 		ipfw_hook();
 reply:
-	crit_exit();
 	lwkt_replymsg(&nmsg->nm_lmsg, error);
 }
 
@@ -4436,8 +4411,6 @@ static void
 ipfw_fini_dispatch(struct netmsg *nmsg)
 {
 	int error = 0, cpu;
-
-	crit_enter();
 
 	if (ipfw_refcnt != 0) {
 		error = EBUSY;
@@ -4462,7 +4435,6 @@ ipfw_fini_dispatch(struct netmsg *nmsg)
 
 	kprintf("IP firewall unloaded\n");
 reply:
-	crit_exit();
 	lwkt_replymsg(&nmsg->nm_lmsg, error);
 }
 
