@@ -65,7 +65,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.34 2008/07/07 22:02:10 nant Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.35 2008/09/17 07:24:18 sephe Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -215,7 +215,6 @@ extern lwkt_port netisr_apanic_rport;
 
 lwkt_port_t	cpu0_portfn(struct mbuf **mptr);
 lwkt_port_t	cpu_portfn(int cpu);
-lwkt_port_t	netisr_mport(int, struct mbuf **);
 lwkt_port_t	netisr_find_port(int, struct mbuf **);
 void		netisr_dispatch(int, struct mbuf *);
 void		netisr_run(int, struct mbuf *);
