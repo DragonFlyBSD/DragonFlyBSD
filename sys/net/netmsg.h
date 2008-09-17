@@ -27,7 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netmsg.h,v 1.7 2008/06/17 20:50:11 aggelos Exp $
+ * $DragonFly: src/sys/net/netmsg.h,v 1.8 2008/09/17 11:22:13 sephe Exp $
  */
 
 #ifndef _NET_NETMSG_H_
@@ -51,6 +51,8 @@ typedef struct netmsg {
     struct lwkt_msg     nm_lmsg;
     netisr_fn_t		nm_dispatch;
 } *netmsg_t;
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 /*
  * User protocol requests messages.
@@ -220,4 +222,6 @@ struct netmsg_pru_ctloutput {
     struct sockopt	*nm_sopt;
 };
 
-#endif
+#endif	/* _KERNEL || _KERNEL_STRUCTURES */
+
+#endif	/* !_NET_NETMSG_H_ */
