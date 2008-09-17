@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.67 2008/09/17 08:51:29 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.68 2008/09/17 11:25:16 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -363,6 +363,16 @@ if_handoff(struct ifqueue *_ifq, struct mbuf *_m, struct ifnet *_ifp,
 
 #endif /* _KERNEL */
 
+#ifndef _NET_NETMSG_H_
+#include <net/netmsg.h>
+#endif
+
+struct netmsg_ifaddr_free {
+	struct netmsg	nm_netmsg;
+	struct ifaddr	*nm_ifaddr;
+	int		nm_cpuid;
+};
+
 struct in_ifaddr;
 
 struct in_ifaddr_container {
@@ -382,6 +392,7 @@ struct ifaddr_container {
 	TAILQ_ENTRY(ifaddr_container)	ifa_link;   /* queue macro glue */
 	u_int			ifa_refcnt; /* references to this structure */
 	uint32_t		ifa_listmask;	/* IFA_LIST_ */
+	struct netmsg_ifaddr_free ifa_freemsg;	/* Used by IFAFREE */
 
 	/*
 	 * Protocol specific states
@@ -520,12 +531,19 @@ IFAFREE(struct ifaddr *_ifa)
 
 struct lwkt_port *ifnet_portfn(int);
 void	ifnet_domsg(struct lwkt_msg *, int);
+void	ifnet_sendmsg(struct lwkt_msg *, int);
 void	ifnet_forwardmsg(struct lwkt_msg *, int);
 
 static __inline void
 ifa_domsg(struct lwkt_msg *_lmsg, int _cpu)
 {
 	ifnet_domsg(_lmsg, _cpu);
+}
+
+static __inline void
+ifa_sendmsg(struct lwkt_msg *_lmsg, int _cpu)
+{
+	ifnet_sendmsg(_lmsg, _cpu);
 }
 
 static __inline void

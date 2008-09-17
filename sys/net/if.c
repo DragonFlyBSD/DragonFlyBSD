@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.77 2008/08/17 06:01:50 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.78 2008/09/17 11:25:16 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -2179,19 +2179,14 @@ ifa_create(int size, int flags)
 	return ifa;
 }
 
-struct ifac_free_arg {
-	struct ifaddr	*ifa;
-	int		cpuid;
-};
-
 static void
 ifac_free_dispatch(struct netmsg *nmsg)
 {
-	struct lwkt_msg *msg = &nmsg->nm_lmsg;
-	struct ifac_free_arg *arg = msg->u.ms_resultp;
-	struct ifaddr *ifa = arg->ifa;
+	struct netmsg_ifaddr_free *fmsg = (struct netmsg_ifaddr_free *)nmsg;
+	struct ifaddr *ifa = fmsg->nm_ifaddr;
 
-	ifa->ifa_cpumask &= ~(1 << arg->cpuid);
+	KKASSERT(ifa->ifa_cpumask & (1 << fmsg->nm_cpuid));
+	ifa->ifa_cpumask &= ~(1 << fmsg->nm_cpuid);
 	if (ifa->ifa_cpumask == 0) {
 #ifdef IFADDR_DEBUG
 		kprintf("free ifa %p\n", ifa);
@@ -2199,15 +2194,13 @@ ifac_free_dispatch(struct netmsg *nmsg)
 		kfree(ifa->ifa_containers, M_IFADDR);
 		kfree(ifa, M_IFADDR);
 	}
-	lwkt_replymsg(msg, 0);
+	/* Don't reply, 'nmsg' is embedded in ifaddr_container */
 }
 
 void
 ifac_free(struct ifaddr_container *ifac, int cpu_id)
 {
-	struct ifac_free_arg arg;
-	struct netmsg nmsg;
-	struct lwkt_msg *msg;
+	struct netmsg_ifaddr_free *fmsg;
 
 	KKASSERT(ifac->ifa_magic == IFA_CONTAINER_MAGIC);
 	KKASSERT(ifac->ifa_refcnt == 0);
@@ -2216,18 +2209,17 @@ ifac_free(struct ifaddr_container *ifac, int cpu_id)
 
 	ifac->ifa_magic = IFA_CONTAINER_DEAD;
 
-	bzero(&arg, sizeof(arg));
-	arg.ifa = ifac->ifa;
-	arg.cpuid = cpu_id;
 #ifdef IFADDR_DEBUG_VERBOSE
-	kprintf("try free ifa %p cpu_id %d\n", ifac->ifa, arg.cpuid);
+	kprintf("try free ifa %p cpu_id %d\n", ifac->ifa, cpu_id);
 #endif
 
-	netmsg_init(&nmsg, &curthread->td_msgport, 0, ifac_free_dispatch);
-	msg = &nmsg.nm_lmsg;
-	msg->u.ms_resultp = &arg;
+	fmsg = &ifac->ifa_freemsg;
+	netmsg_init(&fmsg->nm_netmsg, &netisr_apanic_rport, 0,
+		    ifac_free_dispatch);
+	fmsg->nm_ifaddr = ifac->ifa;
+	fmsg->nm_cpuid = cpu_id;
 
-	ifa_domsg(msg, 0);
+	ifa_sendmsg(&fmsg->nm_netmsg.nm_lmsg, 0);
 }
 
 static void
@@ -2351,6 +2343,13 @@ ifnet_domsg(struct lwkt_msg *lmsg, int cpu)
 {
 	KKASSERT(cpu < ncpus);
 	lwkt_domsg(ifnet_portfn(cpu), lmsg, 0);
+}
+
+void
+ifnet_sendmsg(struct lwkt_msg *lmsg, int cpu)
+{
+	KKASSERT(cpu < ncpus);
+	lwkt_sendmsg(ifnet_portfn(cpu), lmsg);
 }
 
 static void
