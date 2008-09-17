@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.48 2008/08/17 04:32:34 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.49 2008/09/17 07:51:59 sephe Exp $
  */
 
 /*
@@ -1624,7 +1624,7 @@ re_rxeof(struct re_softc *sc)
 				be16toh((rxvlan & RE_RDESC_VLANCTL_DATA));
 		}
 #ifdef ETHER_INPUT_CHAIN
-		ether_input_chain2(ifp, m, chain);
+		ether_input_chain(ifp, m, chain);
 #else
 		ifp->if_input(ifp, m);
 #endif

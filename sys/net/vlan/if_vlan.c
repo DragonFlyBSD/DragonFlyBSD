@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.38 2008/08/17 06:26:45 sephe Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.39 2008/09/17 07:51:59 sephe Exp $
  */
 
 /*
@@ -134,7 +134,7 @@ static void	vlan_ifdetach(void *, struct ifnet *);
 static void	vlan_init(void *);
 static void	vlan_start(struct ifnet *);
 static int	vlan_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-static void	vlan_input2(struct mbuf *);
+static void	vlan_input(struct mbuf *);
 
 static void	vlan_clrmulti(struct ifvlan *, struct ifnet *);
 static int	vlan_setmulti(struct ifvlan *, struct ifnet *);
@@ -241,7 +241,7 @@ vlan_modevent(module_t mod, int type, void *data)
 	switch (type) {
 	case MOD_LOAD:
 		LIST_INIT(&ifv_list);
-		vlan_input2_p = vlan_input2;
+		vlan_input_p = vlan_input;
 		vlan_ifdetach_cookie =
 		EVENTHANDLER_REGISTER(ifnet_detach_event,
 				      vlan_ifdetach, NULL,
@@ -251,7 +251,7 @@ vlan_modevent(module_t mod, int type, void *data)
 
 	case MOD_UNLOAD:
 		if_clone_detach(&vlan_cloner);
-		vlan_input2_p = NULL;
+		vlan_input_p = NULL;
 		EVENTHANDLER_DEREGISTER(ifnet_detach_event,
 					vlan_ifdetach_cookie);
 		while (!LIST_EMPTY(&ifv_list))
@@ -435,7 +435,7 @@ vlan_start(struct ifnet *ifp)
 }
 
 static void
-vlan_input2(struct mbuf *m)
+vlan_input(struct mbuf *m)
 {
 	struct ifvlan *ifv = NULL;
 	struct ifnet *rcvif, *ifp;

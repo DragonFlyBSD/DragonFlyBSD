@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.87 2008/09/13 05:49:08 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.88 2008/09/17 07:51:59 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -124,7 +124,7 @@ int	(*ng_ether_output_p)(struct ifnet *ifp, struct mbuf **mp);
 void	(*ng_ether_attach_p)(struct ifnet *ifp);
 void	(*ng_ether_detach_p)(struct ifnet *ifp);
 
-void	(*vlan_input2_p)(struct mbuf *);
+void	(*vlan_input_p)(struct mbuf *);
 
 static int ether_output(struct ifnet *, struct mbuf *, struct sockaddr *,
 			struct rtentry *);
@@ -548,7 +548,7 @@ ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst, struct ip_fw **rule,
 static void
 ether_input(struct ifnet *ifp, struct mbuf *m)
 {
-	ether_input_chain2(ifp, m, NULL);
+	ether_input_chain(ifp, m, NULL);
 }
 
 /*
@@ -1097,8 +1097,8 @@ post_stats:
 	KKASSERT(ether_type != ETHERTYPE_VLAN);
 
 	if (m->m_flags & M_VLANTAG) {
-		if (vlan_input2_p != NULL) {
-			vlan_input2_p(m);
+		if (vlan_input_p != NULL) {
+			vlan_input_p(m);
 		} else {
 			m->m_pkthdr.rcvif->if_noproto++;
 			m_freem(m);
@@ -1160,7 +1160,7 @@ post_stats:
 #ifdef MPLS
 	case ETHERTYPE_MPLS:
 	case ETHERTYPE_MPLS_MCAST:
-		/* Should have been set by ether_input_chain2(). */
+		/* Should have been set by ether_input_chain(). */
 		KKASSERT(m->m_flags & M_MPLSLABELED);
 		isr = NETISR_MPLS;
 		break;
@@ -1331,17 +1331,17 @@ ether_mport(int num, struct mbuf **m)
  * else we do following processing according to whether 'chain' is
  * NULL or not:
  * - If 'chain' is NULL, this ether frame is sent to the target msgport
- *   immediately.  This situation happens when ether_input_chain2 is
+ *   immediately.  This situation happens when ether_input_chain is
  *   accessed through ifnet.if_input.
  * - If 'chain' is not NULL, this ether frame is queued to the 'chain'
  *   bucket indexed by the target msgport's cpuid and the target msgport
- *   is saved in mbuf's m_pkthdr.m_head.  Caller of ether_input_chain2
+ *   is saved in mbuf's m_pkthdr.m_head.  Caller of ether_input_chain
  *   must initialize 'chain' by calling ether_input_chain_init().
  *   ether_input_dispatch must be called later to send ether frames
  *   queued on 'chain' to their target msgport.
  */
 void
-ether_input_chain2(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
+ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 {
 	struct ether_header *eh, *save_eh, save_eh0;
 	struct lwkt_port *port;

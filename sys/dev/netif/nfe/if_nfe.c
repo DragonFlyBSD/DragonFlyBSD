@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.43 2008/07/27 10:06:56 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.44 2008/09/17 07:51:59 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -1081,7 +1081,7 @@ nfe_rxeof(struct nfe_softc *sc)
 
 		ifp->if_ipackets++;
 #ifdef ETHER_INPUT_CHAIN
-		ether_input_chain2(ifp, m, chain);
+		ether_input_chain(ifp, m, chain);
 #else
 		ifp->if_input(ifp, m);
 #endif

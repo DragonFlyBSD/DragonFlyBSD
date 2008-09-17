@@ -28,7 +28,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bce.c,v 1.31 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.17 2008/08/17 04:32:32 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.18 2008/09/17 07:51:58 sephe Exp $
  */
 
 /*
@@ -3988,7 +3988,7 @@ bce_rx_int_next_rx:
 					l2fhdr->l2_fhdr_vlan_tag;
 			}
 #ifdef ETHER_INPUT_CHAIN
-			ether_input_chain2(ifp, m, chain);
+			ether_input_chain(ifp, m, chain);
 #else
 			ifp->if_input(ifp, m);
 #endif

@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.78 2008/08/17 04:32:33 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.79 2008/09/17 07:51:58 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -3100,7 +3100,7 @@ em_rxeof(struct adapter *adapter, int count)
 						 E1000_RXD_SPC_VLAN_MASK);
 				}
 #ifdef ETHER_INPUT_CHAIN
-				ether_input_chain2(ifp, adapter->fmp, chain);
+				ether_input_chain(ifp, adapter->fmp, chain);
 #else
 				ifp->if_input(ifp, adapter->fmp);
 #endif
