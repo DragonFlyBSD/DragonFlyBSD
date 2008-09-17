@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.48 2008/09/17 11:46:43 sephe Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.49 2008/09/17 13:38:28 sephe Exp $
  */
 
 #include "use_bpf.h"
@@ -67,11 +67,19 @@
 #include <net/if.h>
 #include <net/bpf.h>
 #include <net/bpfdesc.h>
+#include <net/netmsg2.h>
 
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
+
+struct netmsg_bpf_output {
+	struct netmsg	nm_netmsg;
+	struct mbuf	*nm_mbuf;
+	struct ifnet	*nm_ifp;
+	struct sockaddr	*nm_dst;
+};
 
 MALLOC_DEFINE(M_BPF, "BPF", "BPF data");
 
@@ -497,6 +505,20 @@ bpf_timed_out(void *arg)
 	crit_exit();
 }
 
+static void
+bpf_output_dispatch(struct netmsg *nmsg)
+{
+	struct netmsg_bpf_output *bmsg = (struct netmsg_bpf_output *)nmsg;
+	struct ifnet *ifp = bmsg->nm_ifp;
+	int error;
+
+	/*
+	 * The driver frees the mbuf.
+	 */
+	error = ifp->if_output(ifp, bmsg->nm_mbuf, bmsg->nm_dst, NULL);
+	lwkt_replymsg(&nmsg->nm_lmsg, error);
+}
+
 static int
 bpfwrite(struct dev_write_args *ap)
 {
@@ -507,6 +529,7 @@ bpfwrite(struct dev_write_args *ap)
 	int error;
 	struct sockaddr dst;
 	int datlen;
+	struct netmsg_bpf_output bmsg;
 
 	if (d->bd_bif == NULL)
 		return(ENXIO);
@@ -529,13 +552,13 @@ bpfwrite(struct dev_write_args *ap)
 	if (d->bd_hdrcmplt)
 		dst.sa_family = pseudo_AF_HDRCMPLT;
 
-	crit_enter();
-	error = ifp->if_output(ifp, m, &dst, NULL);
-	crit_exit();
-	/*
-	 * The driver frees the mbuf.
-	 */
-	return(error);
+	netmsg_init(&bmsg.nm_netmsg, &curthread->td_msgport, 0,
+		    bpf_output_dispatch);
+	bmsg.nm_mbuf = m;
+	bmsg.nm_ifp = ifp;
+	bmsg.nm_dst = &dst;
+
+	return lwkt_domsg(cpu_portfn(0), &bmsg.nm_netmsg.nm_lmsg, 0);
 }
 
 /*
