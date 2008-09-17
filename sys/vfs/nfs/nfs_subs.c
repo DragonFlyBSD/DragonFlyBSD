@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.47 2007/11/02 19:52:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.48 2008/09/17 21:44:24 dillon Exp $
  */
 
 /*
@@ -1457,6 +1457,7 @@ nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nameiop,
 	char *namebuf;
 	struct nchandle nch;
 	struct vnode *dp;
+	struct mount *mp;
 	int error, rdonly;
 
 	namebuf = objcache_get(namei_oc, M_WAITOK);
@@ -1502,7 +1503,7 @@ nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nameiop,
 	 * Extract and set starting directory.  The returned dp is refd
 	 * but not locked.
 	 */
-	error = nfsrv_fhtovp(fhp, FALSE, &dp, cred, slp,
+	error = nfsrv_fhtovp(fhp, FALSE, &mp, &dp, cred, slp,
 				nam, &rdonly, kerbflag, pubflag);
 	if (error)
 		goto out;
@@ -1805,7 +1806,8 @@ nfsm_srvfattr(struct nfsrv_descript *nfsd, struct vattr *vap,
  *	- if not lockflag unlock it with vn_unlock()
  */
 int
-nfsrv_fhtovp(fhandle_t *fhp, int lockflag, struct vnode **vpp,
+nfsrv_fhtovp(fhandle_t *fhp, int lockflag,
+	     struct mount **mpp, struct vnode **vpp,
 	     struct ucred *cred, struct nfssvc_sock *slp, struct sockaddr *nam,
 	     int *rdonlyp, int kerbflag, int pubflag)
 {
@@ -1817,7 +1819,8 @@ nfsrv_fhtovp(fhandle_t *fhp, int lockflag, struct vnode **vpp,
 	struct sockaddr_int *saddr;
 #endif
 
-	*vpp = (struct vnode *)0;
+	*vpp = NULL;
+	*mpp = NULL;
 
 	if (nfs_ispublicfh(fhp)) {
 		if (!pubflag || !nfs_pub.np_valid)
@@ -1825,13 +1828,13 @@ nfsrv_fhtovp(fhandle_t *fhp, int lockflag, struct vnode **vpp,
 		fhp = &nfs_pub.np_handle;
 	}
 
-	mp = vfs_getvfs(&fhp->fh_fsid);
-	if (!mp)
+	mp = *mpp = vfs_getvfs(&fhp->fh_fsid);
+	if (mp == NULL)
 		return (ESTALE);
 	error = VFS_CHECKEXP(mp, nam, &exflags, &credanon);
 	if (error)
 		return (error); 
-	error = VFS_FHTOVP(mp, &fhp->fh_fid, vpp);
+	error = VFS_FHTOVP(mp, NULL, &fhp->fh_fid, vpp);
 	if (error)
 		return (error);
 #ifdef MNT_EXNORESPORT

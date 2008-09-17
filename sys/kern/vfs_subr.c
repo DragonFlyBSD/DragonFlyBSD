@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.117 2008/07/27 17:37:52 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.118 2008/09/17 21:44:18 dillon Exp $
  */
 
 /*
@@ -1450,6 +1450,8 @@ vprint(char *label, struct vnode *vp)
 	buf[0] = '\0';
 	if (vp->v_flag & VROOT)
 		strcat(buf, "|VROOT");
+	if (vp->v_flag & VPFSROOT)
+		strcat(buf, "|VPFSROOT");
 	if (vp->v_flag & VTEXT)
 		strcat(buf, "|VTEXT");
 	if (vp->v_flag & VSYSTEM)

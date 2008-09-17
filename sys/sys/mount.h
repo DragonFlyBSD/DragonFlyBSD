@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.46 2008/07/07 22:02:10 nant Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.47 2008/09/17 21:44:19 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -424,8 +424,8 @@ typedef int vfs_statvfs_t(struct mount *mp, struct statvfs *sbp,
 				    struct ucred *cred);
 typedef int vfs_sync_t(struct mount *mp, int waitfor);
 typedef int vfs_vget_t(struct mount *mp, ino_t ino, struct vnode **vpp);
-typedef int vfs_fhtovp_t(struct mount *mp, struct fid *fhp,
-				    struct vnode **vpp);
+typedef int vfs_fhtovp_t(struct mount *mp, struct vnode *rootvp,
+				    struct fid *fhp, struct vnode **vpp);
 typedef int vfs_checkexp_t(struct mount *mp, struct sockaddr *nam,
 				    int *extflagsp, struct ucred **credanonp);
 typedef int vfs_vptofh_t(struct vnode *vp, struct fid *fhp);
@@ -463,8 +463,8 @@ struct vfsops {
 #define VFS_STATVFS(MP, SBP, CRED) (*(MP)->mnt_op->vfs_statvfs)(MP, SBP, CRED)
 #define VFS_SYNC(MP, WAIT)	  (*(MP)->mnt_op->vfs_sync)(MP, WAIT)
 #define VFS_VGET(MP, INO, VPP)	  (*(MP)->mnt_op->vfs_vget)(MP, INO, VPP)
-#define VFS_FHTOVP(MP, FIDP, VPP) 	\
-	(*(MP)->mnt_op->vfs_fhtovp)(MP, FIDP, VPP)
+#define VFS_FHTOVP(MP, ROOTVP, FIDP, VPP) 	\
+	(*(MP)->mnt_op->vfs_fhtovp)(MP, ROOTVP, FIDP, VPP)
 #define	VFS_VPTOFH(VP, FIDP)	  (*(VP)->v_mount->mnt_op->vfs_vptofh)(VP, FIDP)
 #define VFS_CHECKEXP(MP, NAM, EXFLG, CRED) \
 	(*(MP)->mnt_op->vfs_checkexp)(MP, NAM, EXFLG, CRED)
@@ -541,6 +541,7 @@ struct	netcred *vfs_export_lookup	    /* lookup host in fs export list */
 	  (struct mount *, struct netexport *, struct sockaddr *);
 int	vfs_allocate_syncvnode (struct mount *);
 void	vfs_getnewfsid (struct mount *);
+int	vfs_setfsid(struct mount *mp, fsid_t *template);
 cdev_t	vfs_getrootfsid (struct mount *);
 struct	mount *vfs_getvfs (fsid_t *);      /* return vfs given fsid */
 int	vfs_modevent (module_t, int, void *);

@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.51 2008/05/20 19:14:38 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.52 2008/09/17 21:44:24 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -91,8 +91,8 @@ static MALLOC_DEFINE(M_MSDOSFSFAT, "MSDOSFS FAT", "MSDOSFS file allocation table
 static int	update_mp (struct mount *mp, struct msdosfs_args *argp);
 static int	mountmsdosfs (struct vnode *devvp, struct mount *mp,
 				  struct msdosfs_args *argp);
-static int	msdosfs_fhtovp (struct mount *, struct fid *,
-				    struct vnode **);
+static int	msdosfs_fhtovp (struct mount *, struct vnode *,
+				struct fid *, struct vnode **);
 static int	msdosfs_checkexp (struct mount *, struct sockaddr *, 
 				    int *, struct ucred **);
 static int	msdosfs_mount (struct mount *, char *, caddr_t,
@@ -793,7 +793,8 @@ msdosfs_sync_scan(struct mount *mp, struct vnode *vp, void *data)
 }
 
 static int
-msdosfs_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
+msdosfs_fhtovp(struct mount *mp, struct vnode *rootvp,
+	       struct fid *fhp, struct vnode **vpp)
 {
 	struct msdosfsmount *pmp = VFSTOMSDOSFS(mp);
 	struct defid *defhp = (struct defid *) fhp;

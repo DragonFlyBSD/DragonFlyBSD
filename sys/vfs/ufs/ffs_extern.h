@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_extern.h	8.6 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_extern.h,v 1.30 2000/01/09 22:40:02 mckusick Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_extern.h,v 1.14 2006/05/26 19:57:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_extern.h,v 1.15 2008/09/17 21:44:25 dillon Exp $
  */
 
 #ifndef _VFS_UFS_EXTERN_H
@@ -79,7 +79,8 @@ void	ffs_blkfree(struct inode *, ufs_daddr_t, long);
 ufs_daddr_t ffs_blkpref(struct inode *, ufs_daddr_t, int, ufs_daddr_t *);
 int	ffs_bmap(struct vop_bmap_args *);
 void	ffs_clrblock(struct fs *, u_char *, ufs_daddr_t);
-int	ffs_fhtovp(struct mount *, struct fid *, struct vnode **);
+int	ffs_fhtovp(struct mount *, struct vnode *,
+		   struct fid *, struct vnode **);
 int	ffs_flushfiles(struct mount *, int);
 void	ffs_fragacct(struct fs *, int, int32_t [], int);
 int	ffs_freefile( struct vnode *, ino_t, int );

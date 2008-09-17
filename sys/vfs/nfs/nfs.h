@@ -35,7 +35,7 @@
  *
  *	@(#)nfs.h	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sys/nfs/nfs.h,v 1.53.2.5 2002/02/20 01:35:34 iedowse Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.20 2008/07/14 17:45:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.21 2008/09/17 21:44:24 dillon Exp $
  */
 
 #ifndef _NFS_NFS_H_
@@ -674,9 +674,9 @@ int	nfsrv_commit (struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			  struct thread *td, struct mbuf **mrq);
 int	nfsrv_create (struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			  struct thread *td, struct mbuf **mrq);
-int	nfsrv_fhtovp (fhandle_t *, int, struct vnode **, struct ucred *,
-			  struct nfssvc_sock *, struct sockaddr *, int *, 
-			  int, int);
+int	nfsrv_fhtovp (fhandle_t *, int, struct mount **, struct vnode **,
+			  struct ucred *, struct nfssvc_sock *,
+			  struct sockaddr *, int *, int, int);
 int	nfsrv_setpublicfs (struct mount *, struct netexport *,
 			       struct export_args *);
 int	nfs_ispublicfh (fhandle_t *);

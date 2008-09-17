@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.30 2008/09/05 23:27:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.31 2008/09/17 21:44:25 dillon Exp $
  */
 
 /*
@@ -53,6 +53,7 @@
 #include <sys/vnode.h>
 #include <sys/mount.h>
 #include <sys/nlookup.h>
+#include <sys/mountctl.h>
 #include "null.h"
 
 extern struct vop_ops null_vnode_vops;
@@ -75,6 +76,7 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	struct null_mount *xmp;
 	u_int size;
 	struct nlookupdata nd;
+	fhandle_t fh;
 
 	NULLFSDEBUG("nullfs_mount(mp = %p)\n", (void *)mp);
 
@@ -107,7 +109,7 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 		goto fail2;
 
 	xmp = (struct null_mount *) kmalloc(sizeof(struct null_mount),
-				M_NULLFSMNT, M_WAITOK);	/* XXX */
+				M_NULLFSMNT, M_WAITOK | M_ZERO);
 
 	/*
 	 * Save reference to underlying FS
@@ -165,7 +167,19 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	if (xmp->nullm_vfs->mnt_flag & MNT_LOCAL)
 		mp->mnt_flag |= MNT_LOCAL;
 	mp->mnt_data = (qaddr_t) xmp;
-	vfs_getnewfsid(mp);
+
+	/*
+	 * Try to create a unique but non-random fsid for the nullfs to
+	 * allow it to be exported via NFS.
+	 */
+	bzero(&fh, sizeof(fh));
+	fh.fh_fsid = rootvp->v_mount->mnt_stat.f_fsid;
+	if (VFS_VPTOFH(rootvp, &fh.fh_fid) == 0) {
+		fh.fh_fsid.val[1] ^= crc32(&fh.fh_fid, sizeof(fh.fh_fid));
+		vfs_setfsid(mp, &fh.fh_fsid);
+	} else {
+		vfs_getnewfsid(mp);
+	}
 
 	(void) copyinstr(args.target, mp->mnt_stat.f_mntfromname, MNAMELEN - 1,
 	    &size);
@@ -270,13 +284,71 @@ nullfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 	return (0);
 }
 
+/*
+ * Implement NFS export tracking
+ */
 static int
 nullfs_checkexp(struct mount *mp, struct sockaddr *nam, int *extflagsp,
 		struct ucred **credanonp)
 {
+	struct null_mount *xmp = (void *)mp->mnt_data;
+	struct netcred *np;
+	int error;
 
+	np = vfs_export_lookup(mp, &xmp->export, nam);
+	if (np) {
+		*extflagsp = np->netc_exflags;
+		*credanonp = &np->netc_anon;
+		error = 0;
+	} else {
+		error = EACCES;
+	}
+	return(error);
+#if 0
 	return VFS_CHECKEXP(MOUNTTONULLMOUNT(mp)->nullm_vfs, nam, 
 		extflagsp, credanonp);
+#endif
+}
+
+int
+nullfs_export(struct mount *mp, int op, const struct export_args *export)
+{
+	struct null_mount *xmp = (void *)mp->mnt_data;
+	int error;
+
+	switch(op) {
+	case MOUNTCTL_SET_EXPORT:
+		error = vfs_export(mp, &xmp->export, export);
+		break;
+	default:
+		error = EOPNOTSUPP;
+		break;
+	}
+	return(error);
+}
+
+/*
+ * Pass through file handle conversion functions.
+ */
+static int
+nullfs_vptofh(struct vnode *vp, struct fid *fhp)
+{
+	return VFS_VPTOFH(vp, fhp);
+}
+
+/*
+ * Pass through file handle conversion functions.
+ *
+ * NOTE: currently only HAMMER uses rootvp.  HAMMER uses rootvp only
+ * to enforce PFS isolation.
+ */
+static int
+nullfs_fhtovp(struct mount *mp, struct vnode *rootvp,
+              struct fid *fhp, struct vnode **vpp)
+{
+	struct null_mount *xmp = MOUNTTONULLMOUNT(mp);
+
+	return VFS_FHTOVP(xmp->nullm_vfs, xmp->nullm_rootvp, fhp, vpp);
 }
 
 static int                        
@@ -295,8 +367,10 @@ static struct vfsops null_vfsops = {
 	.vfs_quotactl =   	nullfs_quotactl,
 	.vfs_statfs =    	nullfs_statfs,
 	.vfs_sync =     	vfs_stdsync,
-	.vfs_checkexp =  	nullfs_checkexp,
-	.vfs_extattrctl =  	nullfs_extattrctl
+	.vfs_extattrctl =  	nullfs_extattrctl,
+	.vfs_fhtovp =		nullfs_fhtovp,
+	.vfs_vptofh =		nullfs_vptofh,
+	.vfs_checkexp =  	nullfs_checkexp
 };
 
 VFS_SET(null_vfsops, null, VFCF_LOOPBACK);

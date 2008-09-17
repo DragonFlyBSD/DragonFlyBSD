@@ -36,7 +36,7 @@
  *	@(#)null.h	8.3 (Berkeley) 8/20/94
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null.h,v 1.11.2.3 2001/06/26 04:20:09 bp Exp $
- * $DragonFly: src/sys/vfs/nullfs/null.h,v 1.8 2006/12/23 00:41:30 swildner Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null.h,v 1.9 2008/09/17 21:44:25 dillon Exp $
  */
 
 struct null_args {
@@ -46,6 +46,7 @@ struct null_args {
 struct null_mount {
 	struct mount	*nullm_vfs;
 	struct vnode	*nullm_rootvp;	/* Reference to root null_node */
+	struct netexport export;
 };
 
 #ifdef _KERNEL
@@ -56,5 +57,8 @@ struct null_mount {
 #else
 #define NULLFSDEBUG(format, args...)
 #endif /* NULLFS_DEBUG */
+
+int nullfs_export(struct mount *mp, int op,
+	      const struct export_args *export);
 
 #endif /* _KERNEL */

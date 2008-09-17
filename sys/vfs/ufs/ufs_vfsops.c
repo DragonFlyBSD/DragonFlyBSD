@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vfsops.c	8.8 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vfsops.c,v 1.17.2.3 2001/10/14 19:08:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.16 2006/08/03 16:40:48 swildner Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.17 2008/09/17 21:44:25 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -177,7 +177,8 @@ ufs_init(struct vfsconf *vfsp)
  * Call the VFS_CHECKEXP beforehand to verify access.
  */
 int
-ufs_fhtovp(struct mount *mp, struct ufid *ufhp, struct vnode **vpp)
+ufs_fhtovp(struct mount *mp, struct vnode *rootpv,
+	   struct ufid *ufhp, struct vnode **vpp)
 {
 	struct inode *ip;
 	struct vnode *nvp;

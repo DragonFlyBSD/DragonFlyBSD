@@ -38,7 +38,7 @@
  * Ancestors:
  *	@(#)lofs_vnops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vnops.c,v 1.38.2.6 2002/07/31 00:32:28 semenu Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.29 2008/09/05 23:27:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.30 2008/09/17 21:44:25 dillon Exp $
  *	...and...
  *	@(#)null_vnodeops.c 1.20 92/07/07 UCLA Ficus project
  *
@@ -105,6 +105,7 @@
 #include <sys/sysctl.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
+#include <sys/mountctl.h>
 #include <sys/proc.h>
 #include <sys/namei.h>
 #include <sys/malloc.h>
@@ -121,6 +122,7 @@ static int	null_nwhiteout(struct vop_nwhiteout_args *ap);
 static int	null_nremove(struct vop_nremove_args *ap);
 static int	null_nrmdir(struct vop_nrmdir_args *ap);
 static int	null_nrename(struct vop_nrename_args *ap);
+static int	null_mountctl(struct vop_mountctl_args *ap);
 
 static int
 null_nresolve(struct vop_nresolve_args *ap)
@@ -208,6 +210,33 @@ null_nrename(struct vop_nrename_args *ap)
 	return vop_nrename_ap(ap);
 }
 
+static int
+null_mountctl(struct vop_mountctl_args *ap)
+{
+	struct mount *mp;
+	int error;
+
+	mp = ap->a_head.a_ops->head.vv_mount;
+
+	switch(ap->a_op) {
+	case MOUNTCTL_SET_EXPORT:
+		if (ap->a_ctllen != sizeof(struct export_args))
+			error = EINVAL;
+		else
+			error = nullfs_export(mp, ap->a_op, (const void *)ap->a_ctl);
+		break;
+	default:
+		error = EOPNOTSUPP;
+		break;
+	}
+	return (error);
+#if 0
+	ap->a_head.a_ops = MOUNTTONULLMOUNT(ap->a_nch->mount)->nullm_vfs->mnt_vn_norm_ops;
+
+	return vop_mountctl_ap(ap);
+#endif
+}
+
 /*
  * Global vfs data structures
  */
@@ -221,6 +250,7 @@ struct vop_ops null_vnode_vops = {
 	.vop_nwhiteout =	null_nwhiteout,
 	.vop_nremove =		null_nremove,
 	.vop_nrmdir =		null_nrmdir,
-	.vop_nrename =		null_nrename
+	.vop_nrename =		null_nrename,
+	.vop_mountctl =		null_mountctl
 };
 

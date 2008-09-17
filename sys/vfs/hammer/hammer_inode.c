@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.110 2008/08/09 07:04:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.111 2008/09/17 21:44:20 dillon Exp $
  */
 
 #include "hammer.h"
@@ -293,12 +293,16 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			 * confused.  The other half of the special handling
 			 * is in hammer_vop_nlookupdotdot().
 			 *
-			 * Pseudo-filesystem roots also do not count.
+			 * Pseudo-filesystem roots can be accessed via
+			 * non-root filesystem paths and setting VROOT may
+			 * confuse the namecache.  Set VPFSROOT instead.
 			 */
 			if (ip->obj_id == HAMMER_OBJID_ROOT &&
-			    ip->obj_asof == hmp->asof &&
-			    ip->obj_localization == 0) {
-				vp->v_flag |= VROOT;
+			    ip->obj_asof == hmp->asof) {
+				if (ip->obj_localization == 0)
+					vp->v_flag |= VROOT;
+				else
+					vp->v_flag |= VPFSROOT;
 			}
 
 			vp->v_data = (void *)ip;

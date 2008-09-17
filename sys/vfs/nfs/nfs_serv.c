@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.47 2008/07/14 17:45:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.48 2008/09/17 21:44:24 dillon Exp $
  */
 
 /*
@@ -141,8 +141,8 @@ static int nfs_commit_miss;
 SYSCTL_INT(_vfs_nfs, OID_AUTO, commit_blks, CTLFLAG_RW, &nfs_commit_blks, 0, "");
 SYSCTL_INT(_vfs_nfs, OID_AUTO, commit_miss, CTLFLAG_RW, &nfs_commit_miss, 0, "");
 
-static int nfsrv_access (struct vnode *,int,struct ucred *,int,
-		struct thread *, int);
+static int nfsrv_access (struct mount *, struct vnode *, int,
+			struct ucred *, int, struct thread *, int);
 static void nfsrvw_coalesce (struct nfsrv_descript *,
 		struct nfsrv_descript *);
 
@@ -158,6 +158,7 @@ nfsrv3_access(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	caddr_t dpos = nfsd->nd_dpos;
 	struct ucred *cred = &nfsd->nd_cr;
 	struct vnode *vp = NULL;
+	struct mount *mp = NULL;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
 	u_int32_t *tl;
@@ -173,7 +174,7 @@ nfsrv3_access(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	fhp = &nfh.fh_generic;
 	nfsm_srvmtofh(fhp);
 	nfsm_dissect(tl, u_int32_t *, NFSX_UNSIGNED);
-	error = nfsrv_fhtovp(fhp, 1, &vp, cred, slp, nam, &rdonly,
+	error = nfsrv_fhtovp(fhp, 1, &mp, &vp, cred, slp, nam, &rdonly,
 	    (nfsd->nd_flag & ND_KERBAUTH), TRUE);
 	if (error) {
 		nfsm_reply(NFSX_UNSIGNED);
@@ -183,7 +184,7 @@ nfsrv3_access(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	}
 	nfsmode = fxdr_unsigned(u_int32_t, *tl);
 	if ((nfsmode & NFSV3ACCESS_READ) &&
-		nfsrv_access(vp, VREAD, cred, rdonly, td, 0))
+		nfsrv_access(mp, vp, VREAD, cred, rdonly, td, 0))
 		nfsmode &= ~NFSV3ACCESS_READ;
 	if (vp->v_type == VDIR)
 		testmode = (NFSV3ACCESS_MODIFY | NFSV3ACCESS_EXTEND |
@@ -191,14 +192,14 @@ nfsrv3_access(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	else
 		testmode = (NFSV3ACCESS_MODIFY | NFSV3ACCESS_EXTEND);
 	if ((nfsmode & testmode) &&
-		nfsrv_access(vp, VWRITE, cred, rdonly, td, 0))
+		nfsrv_access(mp, vp, VWRITE, cred, rdonly, td, 0))
 		nfsmode &= ~testmode;
 	if (vp->v_type == VDIR)
 		testmode = NFSV3ACCESS_LOOKUP;
 	else
 		testmode = NFSV3ACCESS_EXECUTE;
 	if ((nfsmode & testmode) &&
-		nfsrv_access(vp, VEXEC, cred, rdonly, td, 0))
+		nfsrv_access(mp, vp, VEXEC, cred, rdonly, td, 0))
 		nfsmode &= ~testmode;
 	getret = VOP_GETATTR(vp, vap);
 	vput(vp);
@@ -228,6 +229,7 @@ nfsrv_getattr(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct vattr va;
 	struct vattr *vap = &va;
 	struct vnode *vp = NULL;
+	struct mount *mp = NULL;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
 	u_int32_t *tl;
@@ -240,7 +242,7 @@ nfsrv_getattr(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 	fhp = &nfh.fh_generic;
 	nfsm_srvmtofh(fhp);
-	error = nfsrv_fhtovp(fhp, 1, &vp, cred, slp, nam,
+	error = nfsrv_fhtovp(fhp, 1, &mp, &vp, cred, slp, nam,
 		 &rdonly, (nfsd->nd_flag & ND_KERBAUTH), TRUE);
 	if (error) {
 		nfsm_reply(0);
@@ -281,6 +283,7 @@ nfsrv_setattr(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct nfsv2_sattr *sp;
 	struct nfs_fattr *fp;
 	struct vnode *vp = NULL;
+	struct mount *mp = NULL;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
 	u_int32_t *tl;
@@ -338,7 +341,7 @@ nfsrv_setattr(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	/*
 	 * Now that we have all the fields, lets do it.
 	 */
-	error = nfsrv_fhtovp(fhp, 1, &vp, cred, slp, nam, &rdonly,
+	error = nfsrv_fhtovp(fhp, 1, &mp, &vp, cred, slp, nam, &rdonly,
 		(nfsd->nd_flag & ND_KERBAUTH), TRUE);
 	if (error) {
 		nfsm_reply(2 * NFSX_UNSIGNED);
@@ -372,7 +375,7 @@ nfsrv_setattr(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 * just check for a read only file system.
 	 */
 	if (vap->va_size == ((u_quad_t)((quad_t) -1))) {
-		if (rdonly || (vp->v_mount->mnt_flag & MNT_RDONLY)) {
+		if (rdonly || (mp->mnt_flag & MNT_RDONLY)) {
 			error = EROFS;
 			goto out;
 		}
@@ -380,7 +383,7 @@ nfsrv_setattr(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		if (vp->v_type == VDIR) {
 			error = EISDIR;
 			goto out;
-		} else if ((error = nfsrv_access(vp, VWRITE, cred, rdonly,
+		} else if ((error = nfsrv_access(mp, vp, VWRITE, cred, rdonly,
 			    td, 0)) != 0){ 
 			goto out;
 		}
@@ -563,8 +566,7 @@ nfsrv_lookup(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 * Get underlying attribute, then release remaining resources ( for
 	 * the same potential blocking reason ) and reply.
 	 */
-	bzero((caddr_t)fhp, sizeof(nfh));
-	fhp->fh_fsid = vp->v_mount->mnt_stat.f_fsid;
+	bzero(&fhp->fh_fid, sizeof(fhp->fh_fid));
 	error = VFS_VPTOFH(vp, &fhp->fh_fid);
 	if (!error)
 		error = VOP_GETATTR(vp, vap);
@@ -608,15 +610,15 @@ nfsrv_readlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct ucred *cred = &nfsd->nd_cr;
 	struct iovec iv[(NFS_MAXPATHLEN+MLEN-1)/MLEN];
 	struct iovec *ivp = iv;
-	struct mbuf *mp;
 	u_int32_t *tl;
 	int32_t t1;
 	caddr_t bpos;
 	int error = 0, rdonly, i, tlen, len, getret;
 	int v3 = (nfsd->nd_flag & ND_NFSV3);
 	char *cp2;
-	struct mbuf *mb, *mb2, *mp2, *mp3, *mreq;
+	struct mbuf *mb, *mb2, *mp1, *mp2, *mp3, *mreq;
 	struct vnode *vp = NULL;
+	struct mount *mp = NULL;
 	struct vattr attr;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
@@ -632,21 +634,21 @@ nfsrv_readlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	len = 0;
 	i = 0;
 	while (len < NFS_MAXPATHLEN) {
-		mp = m_getcl(MB_WAIT, MT_DATA, 0);
-		mp->m_len = MCLBYTES;
+		mp1 = m_getcl(MB_WAIT, MT_DATA, 0);
+		mp1->m_len = MCLBYTES;
 		if (len == 0)
-			mp3 = mp2 = mp;
+			mp3 = mp2 = mp1;
 		else {
-			mp2->m_next = mp;
-			mp2 = mp;
+			mp2->m_next = mp1;
+			mp2 = mp1;
 		}
-		if ((len+mp->m_len) > NFS_MAXPATHLEN) {
-			mp->m_len = NFS_MAXPATHLEN-len;
+		if ((len + mp1->m_len) > NFS_MAXPATHLEN) {
+			mp1->m_len = NFS_MAXPATHLEN-len;
 			len = NFS_MAXPATHLEN;
 		} else
-			len += mp->m_len;
-		ivp->iov_base = mtod(mp, caddr_t);
-		ivp->iov_len = mp->m_len;
+			len += mp1->m_len;
+		ivp->iov_base = mtod(mp1, caddr_t);
+		ivp->iov_len = mp1->m_len;
 		i++;
 		ivp++;
 	}
@@ -657,7 +659,7 @@ nfsrv_readlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	uiop->uio_rw = UIO_READ;
 	uiop->uio_segflg = UIO_SYSSPACE;
 	uiop->uio_td = NULL;
-	error = nfsrv_fhtovp(fhp, 1, &vp, cred, slp, nam,
+	error = nfsrv_fhtovp(fhp, 1, &mp, &vp, cred, slp, nam,
 		 &rdonly, (nfsd->nd_flag & ND_KERBAUTH), TRUE);
 	if (error) {
 		nfsm_reply(2 * NFSX_UNSIGNED);
@@ -727,6 +729,7 @@ nfsrv_read(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct mbuf *mb, *mb2, *mreq;
 	struct mbuf *m2;
 	struct vnode *vp = NULL;
+	struct mount *mp = NULL;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
 	struct uio io, *uiop = &io;
@@ -753,7 +756,7 @@ nfsrv_read(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 * as well.
 	 */
 
-	error = nfsrv_fhtovp(fhp, 1, &vp, cred, slp, nam,
+	error = nfsrv_fhtovp(fhp, 1, &mp, &vp, cred, slp, nam,
 		 &rdonly, (nfsd->nd_flag & ND_KERBAUTH), TRUE);
 	if (error) {
 		vp = NULL;
@@ -770,8 +773,8 @@ nfsrv_read(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			error = (vp->v_type == VDIR) ? EISDIR : EACCES;
 	}
 	if (!error) {
-	    if ((error = nfsrv_access(vp, VREAD, cred, rdonly, td, 1)) != 0)
-		error = nfsrv_access(vp, VEXEC, cred, rdonly, td, 1);
+	    if ((error = nfsrv_access(mp, vp, VREAD, cred, rdonly, td, 1)) != 0)
+		error = nfsrv_access(mp, vp, VEXEC, cred, rdonly, td, 1);
 	}
 	getret = VOP_GETATTR(vp, vap);
 	if (!error)
@@ -960,7 +963,7 @@ nfsrv_write(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct ucred *cred = &nfsd->nd_cr;
 	struct iovec *ivp;
 	int i, cnt;
-	struct mbuf *mp;
+	struct mbuf *mp1;
 	struct nfs_fattr *fp;
 	struct iovec *iv;
 	struct vattr va, forat;
@@ -975,6 +978,7 @@ nfsrv_write(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	char *cp2;
 	struct mbuf *mb, *mb2, *mreq;
 	struct vnode *vp = NULL;
+	struct mount *mp = NULL;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
 	struct uio io, *uiop = &io;
@@ -1010,27 +1014,27 @@ nfsrv_write(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 */
 	if (len > 0) {
 	    zeroing = 1;
-	    mp = mrep;
-	    while (mp) {
-		if (mp == md) {
+	    mp1 = mrep;
+	    while (mp1) {
+		if (mp1 == md) {
 			zeroing = 0;
-			adjust = dpos - mtod(mp, caddr_t);
-			mp->m_len -= adjust;
-			if (mp->m_len > 0 && adjust > 0)
-				NFSMADV(mp, adjust);
+			adjust = dpos - mtod(mp1, caddr_t);
+			mp1->m_len -= adjust;
+			if (mp1->m_len > 0 && adjust > 0)
+				NFSMADV(mp1, adjust);
 		}
 		if (zeroing)
-			mp->m_len = 0;
-		else if (mp->m_len > 0) {
-			i += mp->m_len;
+			mp1->m_len = 0;
+		else if (mp1->m_len > 0) {
+			i += mp1->m_len;
 			if (i > len) {
-				mp->m_len -= (i - len);
+				mp1->m_len -= (i - len);
 				zeroing	= 1;
 			}
-			if (mp->m_len > 0)
+			if (mp1->m_len > 0)
 				cnt++;
 		}
-		mp = mp->m_next;
+		mp1 = mp1->m_next;
 	    }
 	}
 	if (len > NFS_MAXDATA || len < 0 || i < len) {
@@ -1040,7 +1044,7 @@ nfsrv_write(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		error = 0;
 		goto nfsmout;
 	}
-	error = nfsrv_fhtovp(fhp, 1, &vp, cred, slp, nam,
+	error = nfsrv_fhtovp(fhp, 1, &mp, &vp, cred, slp, nam,
 		 &rdonly, (nfsd->nd_flag & ND_KERBAUTH), TRUE);
 	if (error) {
 		vp = NULL;
@@ -1058,7 +1062,7 @@ nfsrv_write(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			error = (vp->v_type == VDIR) ? EISDIR : EACCES;
 	}
 	if (!error) {
-		error = nfsrv_access(vp, VWRITE, cred, rdonly, td, 1);
+		error = nfsrv_access(mp, vp, VWRITE, cred, rdonly, td, 1);
 	}
 	if (error) {
 		vput(vp);
@@ -1074,14 +1078,14 @@ nfsrv_write(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		M_WAITOK);
 	    uiop->uio_iov = iv = ivp;
 	    uiop->uio_iovcnt = cnt;
-	    mp = mrep;
-	    while (mp) {
-		if (mp->m_len > 0) {
-			ivp->iov_base = mtod(mp, caddr_t);
-			ivp->iov_len = mp->m_len;
+	    mp1 = mrep;
+	    while (mp1) {
+		if (mp1->m_len > 0) {
+			ivp->iov_base = mtod(mp1, caddr_t);
+			ivp->iov_len = mp1->m_len;
 			ivp++;
 		}
-		mp = mp->m_next;
+		mp1 = mp1->m_next;
 	    }
 
 	    /*
@@ -1159,7 +1163,6 @@ nfsrv_writegather(struct nfsrv_descript **ndp, struct nfssvc_sock *slp,
 		  struct thread *td, struct mbuf **mrq)
 {
 	struct iovec *ivp;
-	struct mbuf *mp;
 	struct nfsrv_descript *wp, *nfsd, *owp, *swp;
 	struct nfs_fattr *fp;
 	int i;
@@ -1173,8 +1176,9 @@ nfsrv_writegather(struct nfsrv_descript **ndp, struct nfssvc_sock *slp,
 	int error = 0, rdonly, len, forat_ret = 1;
 	int ioflags, aftat_ret = 1, adjust, v3, zeroing;
 	char *cp2;
-	struct mbuf *mb, *mb2, *mreq, *mrep, *md;
+	struct mbuf *mb, *mb2, *mreq, *mrep, *md, *mp1;
 	struct vnode *vp = NULL;
+	struct mount *mp = NULL;
 	struct uio io, *uiop = &io;
 	u_quad_t cur_usec;
 
@@ -1225,25 +1229,25 @@ nfsrv_writegather(struct nfsrv_descript **ndp, struct nfssvc_sock *slp,
 	     */
 	    zeroing = 1;
 	    i = 0;
-	    mp = mrep;
-	    while (mp) {
-		if (mp == md) {
+	    mp1 = mrep;
+	    while (mp1) {
+		if (mp1 == md) {
 		    zeroing = 0;
-		    adjust = dpos - mtod(mp, caddr_t);
-		    mp->m_len -= adjust;
-		    if (mp->m_len > 0 && adjust > 0)
-			NFSMADV(mp, adjust);
+		    adjust = dpos - mtod(mp1, caddr_t);
+		    mp1->m_len -= adjust;
+		    if (mp1->m_len > 0 && adjust > 0)
+			NFSMADV(mp1, adjust);
 		}
 		if (zeroing)
-		    mp->m_len = 0;
+		    mp1->m_len = 0;
 		else {
-		    i += mp->m_len;
+		    i += mp1->m_len;
 		    if (i > len) {
-			mp->m_len -= (i - len);
+			mp1->m_len -= (i - len);
 			zeroing = 1;
 		    }
 		}
-		mp = mp->m_next;
+		mp1 = mp1->m_next;
 	    }
 	    if (len > NFS_MAXDATA || len < 0  || i < len) {
 nfsmout:
@@ -1328,7 +1332,7 @@ loop1:
 		cred = &nfsd->nd_cr;
 		v3 = (nfsd->nd_flag & ND_NFSV3);
 		forat_ret = aftat_ret = 1;
-		error = nfsrv_fhtovp(&nfsd->nd_fh, 1, &vp, cred, slp, 
+		error = nfsrv_fhtovp(&nfsd->nd_fh, 1, &mp, &vp, cred, slp, 
 		    nfsd->nd_nam, &rdonly, (nfsd->nd_flag & ND_KERBAUTH), TRUE);
 		if (!error) {
 		    if (v3)
@@ -1343,7 +1347,7 @@ loop1:
 		    vp = NULL;
 		}
 		if (!error) {
-		    error = nfsrv_access(vp, VWRITE, cred, rdonly, td, 1);
+		    error = nfsrv_access(mp, vp, VWRITE, cred, rdonly, td, 1);
 		}
     
 		if (nfsd->nd_stable == NFSV3WRITE_UNSTABLE)
@@ -1358,25 +1362,25 @@ loop1:
 		uiop->uio_offset = nfsd->nd_off;
 		uiop->uio_resid = nfsd->nd_eoff - nfsd->nd_off;
 		if (uiop->uio_resid > 0) {
-		    mp = mrep;
+		    mp1 = mrep;
 		    i = 0;
-		    while (mp) {
-			if (mp->m_len > 0)
+		    while (mp1) {
+			if (mp1->m_len > 0)
 			    i++;
-			mp = mp->m_next;
+			mp1 = mp1->m_next;
 		    }
 		    uiop->uio_iovcnt = i;
 		    MALLOC(iov, struct iovec *, i * sizeof (struct iovec), 
 			M_TEMP, M_WAITOK);
 		    uiop->uio_iov = ivp = iov;
-		    mp = mrep;
-		    while (mp) {
-			if (mp->m_len > 0) {
-			    ivp->iov_base = mtod(mp, caddr_t);
-			    ivp->iov_len = mp->m_len;
+		    mp1 = mrep;
+		    while (mp1) {
+			if (mp1->m_len > 0) {
+			    ivp->iov_base = mtod(mp1, caddr_t);
+			    ivp->iov_len = mp1->m_len;
 			    ivp++;
 			}
-			mp = mp->m_next;
+			mp1 = mp1->m_next;
 		    }
 		    if (!error) {
 			error = VOP_WRITE(vp, uiop, ioflags, cred);
@@ -1481,7 +1485,7 @@ static void
 nfsrvw_coalesce(struct nfsrv_descript *owp, struct nfsrv_descript *nfsd)
 {
         int overlap;
-        struct mbuf *mp;
+        struct mbuf *mp1;
 	struct nfsrv_descript *p;
 
 	NFS_DPF(WG, ("C%03x-%03x",
@@ -1494,10 +1498,10 @@ nfsrvw_coalesce(struct nfsrv_descript *owp, struct nfsrv_descript *nfsd)
                 panic("nfsrv_coalesce: bad off");
             if (overlap > 0)
                 m_adj(nfsd->nd_mrep, overlap);
-            mp = owp->nd_mrep;
-            while (mp->m_next)
-                mp = mp->m_next;
-            mp->m_next = nfsd->nd_mrep;
+            mp1 = owp->nd_mrep;
+            while (mp1->m_next)
+                mp1 = mp1->m_next;
+            mp1->m_next = nfsd->nd_mrep;
             owp->nd_eoff = nfsd->nd_eoff;
         } else
             m_freem(nfsd->nd_mrep);
@@ -1549,6 +1553,7 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct vnode *dirp;
 	struct vnode *dvp;
 	struct vnode *vp;
+	struct mount *mp;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
 	u_quad_t tempsize;
@@ -1576,6 +1581,8 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	error = nfs_namei(&nd, cred, NAMEI_CREATE, &dvp, &vp,
 			  fhp, len, slp, nam, &md, &dpos, &dirp,
 			  td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
+	mp = vfs_getvfs(&fhp->fh_fsid);
+
 	if (dirp) {
 		if (v3) {
 			dirfor_ret = VOP_GETATTR(dirp, &dirfor);
@@ -1740,7 +1747,7 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		}
 	} else {
 		if (vap->va_size != -1) {
-			error = nfsrv_access(vp, VWRITE, cred,
+			error = nfsrv_access(mp, vp, VWRITE, cred,
 			    (nd.nl_flags & NLC_NFS_RDONLY), td, 0);
 			if (!error) {
 				tempsize = vap->va_size;
@@ -1752,8 +1759,7 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	}
 
 	if (!error) {
-		bzero((caddr_t)fhp, sizeof(nfh));
-		fhp->fh_fsid = vp->v_mount->mnt_stat.f_fsid;
+		bzero(&fhp->fh_fid, sizeof(fhp->fh_fid));
 		error = VFS_VPTOFH(vp, &fhp->fh_fid);
 		if (!error)
 			error = VOP_GETATTR(vp, vap);
@@ -1909,8 +1915,7 @@ out:
 		dvp = NULL;
 	}
 	if (!error) {
-		bzero((caddr_t)fhp, sizeof(nfh));
-		fhp->fh_fsid = vp->v_mount->mnt_stat.f_fsid;
+		bzero(&fhp->fh_fid, sizeof(fhp->fh_fid));
 		error = VFS_VPTOFH(vp, &fhp->fh_fid);
 		if (!error)
 			error = VOP_GETATTR(vp, vap);
@@ -2286,6 +2291,8 @@ nfsrv_link(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct vnode *dvp;
 	struct vnode *vp;
 	struct vnode *xp;
+	struct mount *mp;
+	struct mount *xmp;
 	struct vattr dirfor, diraft, at;
 	nfsfh_t nfh, dnfh;
 	fhandle_t *fhp, *dfhp;
@@ -2293,6 +2300,7 @@ nfsrv_link(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 	nlookup_zero(&nd);
 	dirp = dvp = vp = xp = NULL;
+	mp = xmp = NULL;
 
 	fhp = &nfh.fh_generic;
 	dfhp = &dnfh.fh_generic;
@@ -2300,7 +2308,7 @@ nfsrv_link(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	nfsm_srvmtofh(dfhp);
 	nfsm_srvnamesiz(len);
 
-	error = nfsrv_fhtovp(fhp, FALSE, &xp, cred, slp, nam,
+	error = nfsrv_fhtovp(fhp, FALSE, &xmp, &xp, cred, slp, nam,
 		 &rdonly, (nfsd->nd_flag & ND_KERBAUTH), TRUE);
 	if (error) {
 		nfsm_reply(NFSX_POSTOPATTR(v3) + NFSX_WCCDATA(v3));
@@ -2452,8 +2460,7 @@ nfsrv_symlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	vrele(dvp);
 	dvp = NULL;
 	if (error == 0) {
-		bzero((caddr_t)fhp, sizeof(nfh));
-		fhp->fh_fsid = vp->v_mount->mnt_stat.f_fsid;
+		bzero(&fhp->fh_fid, sizeof(fhp->fh_fid));
 		error = VFS_VPTOFH(vp, &fhp->fh_fid);
 		if (!error)
 			error = VOP_GETATTR(vp, vap);
@@ -2585,8 +2592,7 @@ nfsrv_mkdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	dvp = NULL;
 
 	if (error == 0) {
-		bzero((caddr_t)fhp, sizeof(nfh));
-		fhp->fh_fsid = vp->v_mount->mnt_stat.f_fsid;
+		bzero(&fhp->fh_fid, sizeof(fhp->fh_fid));
 		error = VFS_VPTOFH(vp, &fhp->fh_fid);
 		if (error == 0)
 			error = VOP_GETATTR(vp, vap);
@@ -2770,15 +2776,15 @@ nfsrv_readdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	caddr_t dpos = nfsd->nd_dpos;
 	struct ucred *cred = &nfsd->nd_cr;
 	char *bp, *be;
-	struct mbuf *mp;
 	struct dirent *dp;
 	caddr_t cp;
 	u_int32_t *tl;
 	int32_t t1;
 	caddr_t bpos;
-	struct mbuf *mb, *mb2, *mreq, *mp2;
+	struct mbuf *mb, *mb2, *mreq, *mp1, *mp2;
 	char *cpos, *cend, *cp2, *rbuf;
 	struct vnode *vp = NULL;
+	struct mount *mp = NULL;
 	struct vattr at;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
@@ -2813,7 +2819,7 @@ nfsrv_readdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	if (siz > xfer)
 		siz = xfer;
 	fullsiz = siz;
-	error = nfsrv_fhtovp(fhp, 1, &vp, cred, slp, nam,
+	error = nfsrv_fhtovp(fhp, 1, &mp, &vp, cred, slp, nam,
 		 &rdonly, (nfsd->nd_flag & ND_KERBAUTH), TRUE);
 	if (!error && vp->v_type != VDIR) {
 		error = ENOTDIR;
@@ -2842,7 +2848,7 @@ nfsrv_readdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 #endif
 	}
 	if (!error)
-		error = nfsrv_access(vp, VEXEC, cred, rdonly, td, 0);
+		error = nfsrv_access(mp, vp, VEXEC, cred, rdonly, td, 0);
 	if (error) {
 		vput(vp);
 		vp = NULL;
@@ -2956,9 +2962,9 @@ again:
 		nfsm_build(tl, u_int32_t *, 2 * NFSX_UNSIGNED);
 		txdr_hyper(at.va_filerev, tl);
 	}
-	mp = mp2 = mb;
+	mp1 = mp2 = mb;
 	bp = bpos;
-	be = bp + M_TRAILINGSPACE(mp);
+	be = bp + M_TRAILINGSPACE(mp1);
 
 	/* Loop through the records and build reply */
 	while (cpos < cend && ncookies > 0) {
@@ -2976,18 +2982,18 @@ again:
 			 * Build the directory record xdr from
 			 * the dirent entry.
 			 */
-			nfsm_clget;
+			nfsm_clget(mp1, mp2, mb, bp, be, tl);
 			*tl = nfs_true;
 			bp += NFSX_UNSIGNED;
 			if (v3) {
-				nfsm_clget;
+				nfsm_clget(mp1, mp2, mb, bp, be, tl);
 				*tl = 0;
 				bp += NFSX_UNSIGNED;
 			}
-			nfsm_clget;
+			nfsm_clget(mp1, mp2, mb, bp, be, tl);
 			*tl = txdr_unsigned(dp->d_ino);
 			bp += NFSX_UNSIGNED;
-			nfsm_clget;
+			nfsm_clget(mp1, mp2, mb, bp, be, tl);
 			*tl = txdr_unsigned(nlen);
 			bp += NFSX_UNSIGNED;
 
@@ -2995,7 +3001,7 @@ again:
 			xfer = nlen;
 			cp = dp->d_name;
 			while (xfer > 0) {
-				nfsm_clget;
+				nfsm_clget(mp1, mp2, mb, bp, be, tl);
 				if ((bp+xfer) > be)
 					tsiz = be-bp;
 				else
@@ -3009,13 +3015,13 @@ again:
 			/* And null pad to a int32_t boundary */
 			for (i = 0; i < rem; i++)
 				*bp++ = '\0';
-			nfsm_clget;
+			nfsm_clget(mp1, mp2, mb, bp, be, tl);
 
 			/* Finish off the record */
 			if (v3) {
 				*tl = txdr_unsigned(*cookiep >> 32);
 				bp += NFSX_UNSIGNED;
-				nfsm_clget;
+				nfsm_clget(mp1, mp2, mb, bp, be, tl);
 			}
 			*tl = txdr_unsigned(*cookiep);
 			bp += NFSX_UNSIGNED;
@@ -3027,20 +3033,20 @@ again:
 	}
 	vrele(vp);
 	vp = NULL;
-	nfsm_clget;
+	nfsm_clget(mp1, mp2, mb, bp, be, tl);
 	*tl = nfs_false;
 	bp += NFSX_UNSIGNED;
-	nfsm_clget;
+	nfsm_clget(mp1, mp2, mb, bp, be, tl);
 	if (eofflag)
 		*tl = nfs_true;
 	else
 		*tl = nfs_false;
 	bp += NFSX_UNSIGNED;
-	if (mp != mb) {
+	if (mp1 != mb) {
 		if (bp < be)
-			mp->m_len = bp - mtod(mp, caddr_t);
+			mp1->m_len = bp - mtod(mp1, caddr_t);
 	} else
-		mp->m_len += bp - bpos;
+		mp1->m_len += bp - bpos;
 	FREE((caddr_t)rbuf, M_TEMP);
 	FREE((caddr_t)cookies, M_TEMP);
 
@@ -3059,15 +3065,15 @@ nfsrv_readdirplus(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	caddr_t dpos = nfsd->nd_dpos;
 	struct ucred *cred = &nfsd->nd_cr;
 	char *bp, *be;
-	struct mbuf *mp;
 	struct dirent *dp;
 	caddr_t cp;
 	u_int32_t *tl;
 	int32_t t1;
 	caddr_t bpos;
-	struct mbuf *mb, *mb2, *mreq, *mp2;
+	struct mbuf *mb, *mb2, *mreq, *mp1, *mp2;
 	char *cpos, *cend, *cp2, *rbuf;
 	struct vnode *vp = NULL, *nvp;
+	struct mount *mp = NULL;
 	struct flrep fl;
 	nfsfh_t nfh;
 	fhandle_t *fhp, *nfhp = (fhandle_t *)fl.fl_nfh;
@@ -3098,7 +3104,7 @@ nfsrv_readdirplus(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	if (siz > xfer)
 		siz = xfer;
 	fullsiz = siz;
-	error = nfsrv_fhtovp(fhp, 1, &vp, cred, slp, nam,
+	error = nfsrv_fhtovp(fhp, 1, &mp, &vp, cred, slp, nam,
 		 &rdonly, (nfsd->nd_flag & ND_KERBAUTH), TRUE);
 	if (!error && vp->v_type != VDIR) {
 		error = ENOTDIR;
@@ -3120,7 +3126,7 @@ nfsrv_readdirplus(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		error = NFSERR_BAD_COOKIE;
 #endif
 	if (!error) {
-		error = nfsrv_access(vp, VEXEC, cred, rdonly, td, 0);
+		error = nfsrv_access(mp, vp, VEXEC, cred, rdonly, td, 0);
 	}
 	if (error) {
 		vput(vp);
@@ -3244,9 +3250,9 @@ again:
 	nfsm_srvpostop_attr(getret, &at);
 	nfsm_build(tl, u_int32_t *, 2 * NFSX_UNSIGNED);
 	txdr_hyper(at.va_filerev, tl);
-	mp = mp2 = mb;
+	mp1 = mp2 = mb;
 	bp = bpos;
-	be = bp + M_TRAILINGSPACE(mp);
+	be = bp + M_TRAILINGSPACE(mp1);
 
 	/* Loop through the records and build reply */
 	while (cpos < cend && ncookies > 0) {
@@ -3261,8 +3267,7 @@ again:
 			if (VFS_VGET(vp->v_mount, dp->d_ino, &nvp))
 				goto invalid;
 			bzero((caddr_t)nfhp, NFSX_V3FH);
-			nfhp->fh_fsid =
-				nvp->v_mount->mnt_stat.f_fsid;
+			nfhp->fh_fsid = fhp->fh_fsid;
 			if (VFS_VPTOFH(nvp, &nfhp->fh_fid)) {
 				vput(nvp);
 				nvp = NULL;
@@ -3302,16 +3307,16 @@ again:
 			fl.fl_off.nfsuquad[0] = txdr_unsigned(*cookiep >> 32);
 			fl.fl_off.nfsuquad[1] = txdr_unsigned(*cookiep);
 
-			nfsm_clget;
+			nfsm_clget(mp1, mp2, mb, bp, be, tl);
 			*tl = nfs_true;
 			bp += NFSX_UNSIGNED;
-			nfsm_clget;
+			nfsm_clget(mp1, mp2, mb, bp, be, tl);
 			*tl = 0;
 			bp += NFSX_UNSIGNED;
-			nfsm_clget;
+			nfsm_clget(mp1, mp2, mb, bp, be, tl);
 			*tl = txdr_unsigned(dp->d_ino);
 			bp += NFSX_UNSIGNED;
-			nfsm_clget;
+			nfsm_clget(mp1, mp2, mb, bp, be, tl);
 			*tl = txdr_unsigned(nlen);
 			bp += NFSX_UNSIGNED;
 
@@ -3319,7 +3324,7 @@ again:
 			xfer = nlen;
 			cp = dp->d_name;
 			while (xfer > 0) {
-				nfsm_clget;
+				nfsm_clget(mp1, mp2, mb, bp, be, tl);
 				if ((bp + xfer) > be)
 					tsiz = be - bp;
 				else
@@ -3340,7 +3345,7 @@ again:
 			xfer = sizeof (struct flrep);
 			cp = (caddr_t)&fl;
 			while (xfer > 0) {
-				nfsm_clget;
+				nfsm_clget(mp1, mp2, mb, bp, be, tl);
 				if ((bp + xfer) > be)
 					tsiz = be - bp;
 				else
@@ -3360,20 +3365,20 @@ invalid:
 	}
 	vrele(vp);
 	vp = NULL;
-	nfsm_clget;
+	nfsm_clget(mp1, mp2, mb, bp, be, tl);
 	*tl = nfs_false;
 	bp += NFSX_UNSIGNED;
-	nfsm_clget;
+	nfsm_clget(mp1, mp2, mb, bp, be, tl);
 	if (eofflag)
 		*tl = nfs_true;
 	else
 		*tl = nfs_false;
 	bp += NFSX_UNSIGNED;
-	if (mp != mb) {
+	if (mp1 != mb) {
 		if (bp < be)
-			mp->m_len = bp - mtod(mp, caddr_t);
+			mp1->m_len = bp - mtod(mp1, caddr_t);
 	} else
-		mp->m_len += bp - bpos;
+		mp1->m_len += bp - bpos;
 	FREE((caddr_t)cookies, M_TEMP);
 	FREE((caddr_t)rbuf, M_TEMP);
 nfsmout:
@@ -3395,6 +3400,7 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct ucred *cred = &nfsd->nd_cr;
 	struct vattr bfor, aft;
 	struct vnode *vp = NULL;
+	struct mount *mp = NULL;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
 	u_int32_t *tl;
@@ -3417,7 +3423,7 @@ nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	off = fxdr_hyper(tl);
 	tl += 2;
 	cnt = fxdr_unsigned(int, *tl);
-	error = nfsrv_fhtovp(fhp, 1, &vp, cred, slp, nam,
+	error = nfsrv_fhtovp(fhp, 1, &mp, &vp, cred, slp, nam,
 		 &rdonly, (nfsd->nd_flag & ND_KERBAUTH), TRUE);
 	if (error) {
 		nfsm_reply(2 * NFSX_UNSIGNED);
@@ -3534,6 +3540,7 @@ nfsrv_statfs(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	char *cp2;
 	struct mbuf *mb, *mb2, *mreq;
 	struct vnode *vp = NULL;
+	struct mount *mp = NULL;
 	struct vattr at;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
@@ -3543,7 +3550,7 @@ nfsrv_statfs(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 	fhp = &nfh.fh_generic;
 	nfsm_srvmtofh(fhp);
-	error = nfsrv_fhtovp(fhp, 1, &vp, cred, slp, nam,
+	error = nfsrv_fhtovp(fhp, 1, &mp, &vp, cred, slp, nam,
 		 &rdonly, (nfsd->nd_flag & ND_KERBAUTH), TRUE);
 	if (error) {
 		nfsm_reply(NFSX_UNSIGNED);
@@ -3613,6 +3620,7 @@ nfsrv_fsinfo(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	char *cp2;
 	struct mbuf *mb, *mb2, *mreq;
 	struct vnode *vp = NULL;
+	struct mount *mp = NULL;
 	struct vattr at;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
@@ -3622,7 +3630,7 @@ nfsrv_fsinfo(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 	fhp = &nfh.fh_generic;
 	nfsm_srvmtofh(fhp);
-	error = nfsrv_fhtovp(fhp, 1, &vp, cred, slp, nam,
+	error = nfsrv_fhtovp(fhp, 1, &mp, &vp, cred, slp, nam,
 		 &rdonly, (nfsd->nd_flag & ND_KERBAUTH), TRUE);
 	if (error) {
 		nfsm_reply(NFSX_UNSIGNED);
@@ -3690,6 +3698,7 @@ nfsrv_pathconf(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	char *cp2;
 	struct mbuf *mb, *mb2, *mreq;
 	struct vnode *vp = NULL;
+	struct mount *mp = NULL;
 	struct vattr at;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
@@ -3697,7 +3706,7 @@ nfsrv_pathconf(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 	fhp = &nfh.fh_generic;
 	nfsm_srvmtofh(fhp);
-	error = nfsrv_fhtovp(fhp, 1, &vp, cred, slp, nam,
+	error = nfsrv_fhtovp(fhp, 1, &mp, &vp, cred, slp, nam,
 		 &rdonly, (nfsd->nd_flag & ND_KERBAUTH), TRUE);
 	if (error) {
 		nfsm_reply(NFSX_UNSIGNED);
@@ -3797,7 +3806,7 @@ nfsrv_noop(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
  * will return EPERM instead of EACCESS. EPERM is always an error.
  */
 static int
-nfsrv_access(struct vnode *vp, int flags, struct ucred *cred,
+nfsrv_access(struct mount *mp, struct vnode *vp, int flags, struct ucred *cred,
 	     int rdonly, struct thread *td, int override)
 {
 	struct vattr vattr;
@@ -3811,7 +3820,8 @@ nfsrv_access(struct vnode *vp, int flags, struct ucred *cred,
 		 * unless the file is a socket or a block or character
 		 * device resident on the file system.
 		 */
-		if (rdonly || (vp->v_mount->mnt_flag & MNT_RDONLY)) {
+		if (rdonly || 
+		    ((mp->mnt_flag | vp->v_mount->mnt_flag) & MNT_RDONLY)) {
 			switch (vp->v_type) {
 			case VREG:
 			case VDIR:

@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_extern.h	8.10 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_extern.h,v 1.27.2.1 2000/12/28 11:01:46 ps Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_extern.h,v 1.15 2006/09/10 01:26:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_extern.h,v 1.16 2008/09/17 21:44:25 dillon Exp $
  */
 
 #ifndef _VFS_UFS_EXTERN_H_
@@ -64,7 +64,8 @@ int	 ufs_bmaparray(struct vnode *, daddr_t, daddr_t *, struct indir *,
 		int *, int *, int *);
 int	 ufs_check_export(struct mount *, struct sockaddr *, 
 			       int *, struct ucred **);
-int	 ufs_fhtovp(struct mount *, struct ufid *, struct vnode **);
+int	 ufs_fhtovp(struct mount *, struct vnode *,
+				struct ufid *, struct vnode **);
 int	 ufs_checkpath(struct inode *, struct inode *, struct ucred *);
 void	 ufs_dirbad(struct inode *, doff_t, char *);
 int	 ufs_dirbadentry(struct vnode *, struct direct *, int);

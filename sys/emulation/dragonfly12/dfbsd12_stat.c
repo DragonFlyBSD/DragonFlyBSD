@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/dragonfly12/dfbsd12_stat.c,v 1.3 2006/06/05 07:26:08 dillon Exp $
+ * $DragonFly: src/sys/emulation/dragonfly12/dfbsd12_stat.c,v 1.4 2008/09/17 21:44:16 dillon Exp $
  */
 
 #include "opt_compatdf12.h"
@@ -147,7 +147,7 @@ sys_dfbsd12_fhstat(struct dfbsd12_fhstat_args *uap)
 
 	if ((mp = vfs_getvfs(&fh.fh_fsid)) == NULL)
 		return (ESTALE);
-	if ((error = VFS_FHTOVP(mp, &fh.fh_fid, &vp)))
+	if ((error = VFS_FHTOVP(mp, NULL, &fh.fh_fid, &vp)))
 		return (error);
 	error = vn_stat(vp, &sb, td->td_proc->p_ucred);
 	vput(vp);

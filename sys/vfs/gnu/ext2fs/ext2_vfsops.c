@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.56 2008/01/05 14:02:41 swildner Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.57 2008/09/17 21:44:21 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -75,7 +75,8 @@ extern struct vop_ops ext2_vnode_vops;
 extern struct vop_ops ext2_spec_vops;
 extern struct vop_ops ext2_fifo_vops;
 
-static int ext2_fhtovp (struct mount *, struct fid *, struct vnode **);
+static int ext2_fhtovp (struct mount *, struct vnode *,
+				struct fid *, struct vnode **);
 static int ext2_flushfiles (struct mount *mp, int flags);
 static int ext2_mount (struct mount *, char *, caddr_t, struct ucred *);
 static int ext2_mountfs (struct vnode *, struct mount *, struct ucred *);
@@ -1203,7 +1204,8 @@ kprintf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
  *   those rights via. exflagsp and credanonp
  */
 static int
-ext2_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
+ext2_fhtovp(struct mount *mp, struct vnode *rootvp,
+	    struct fid *fhp, struct vnode **vpp)
 {
 	struct ufid *ufhp;
 	struct ext2_sb_info *fs;

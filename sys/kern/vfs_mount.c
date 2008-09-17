@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.36 2008/07/14 22:16:35 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.37 2008/09/17 21:44:18 dillon Exp $
  */
 
 /*
@@ -361,6 +361,26 @@ vfs_getnewfsid(struct mount *mp)
 	mp->mnt_stat.f_fsid.val[0] = tfsid.val[0];
 	mp->mnt_stat.f_fsid.val[1] = tfsid.val[1];
 	lwkt_reltoken(&ilock);
+}
+
+/*
+ * Set the FSID for a new mount point to the template.  Adjust
+ * the FSID to avoid collisions.
+ */
+int
+vfs_setfsid(struct mount *mp, fsid_t *template)
+{
+	int didmunge = 0;
+
+	bzero(&mp->mnt_stat.f_fsid, sizeof(mp->mnt_stat.f_fsid));
+	for (;;) {
+		if (vfs_getvfs(template) == NULL)
+			break;
+		didmunge = 1;
+		++template->val[1];
+	}
+	mp->mnt_stat.f_fsid = *template;
+	return(didmunge);
 }
 
 /*
