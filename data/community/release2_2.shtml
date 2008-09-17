@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - Release 2.2.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/release2_2.shtml,v 1.1 2008/09/03 08:44:32 matthias Exp $ -->
+<!-- $DragonFly: site/data/community/release2_2.shtml,v 1.2 2008/09/17 07:18:47 matthias Exp $ -->
 
 <h1>Obtaining DragonFly 2.2.x for your system</h1>
 
@@ -158,6 +158,11 @@ Google Summer of Code 2008).
     <li><i>intr_mpsafe</i> is enabled by default.
     <li>Move <tt>/kernel</tt> to <tt>/boot/kernel</tt> and <tt>/modules</tt> to
 <tt>/boot/modules</tt>.
+    <li>Add RFC3542 support (done by Dashu Huang during the Google Summer of Code
+2008).
+    <li>acpi_cpu(4) update. It's now possible to use higher (lower power usage) C
+states than C1 in modern (multicore) CPUs.
+    <li>Add HAMMER read support to the boot loader.
 </ul>
 <h3>Hardware changes</h3>
 <ul>
@@ -176,8 +181,14 @@ Google Summer of Code 2008).
 <ul>
     <li>Add LiveDVD support to our nrelease framework. (done by Louisa Luciani
 during the Google Summer of Code 2008).
-    <li>Add CRAM-MD5 authentication support to the DragonFly Mail Agent (done
+    <li>Enhance the DragonFly Mail Agent (done
 by Max Lindner during the Google Summer of Code 2008).
+	<ul>
+	<li>Add CRAM-MD5 authentication support.
+	<li>Add support for handling <i>.forward</i> files.
+	<li>Enhance the mail send mechanism.
+	</ul>
+     <li>Add a new multi-player terminal game: hunt.
 </ul>
 <h3>Removals</h3>
 <ul>
@@ -189,6 +200,8 @@ the pkgsrc version manually.
 <h3>Contributed Software</h3>
 <ul>
     <li>Bring in the privilege separation ready DHCP client from OpenBSD.
+    <li>Update OpenSSL to version 0.9.8h.
+    <li>Sync zoneinfo database with tzdata2008f.
 </ul>
 
 <!--#include virtual="/includes/footer.shtml" -->
