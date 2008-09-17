@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.90 2008/09/16 13:36:12 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.91 2008/09/17 02:53:51 sephe Exp $
  */
 
 /*
@@ -1559,6 +1559,65 @@ lookup_next_rule(struct ip_fw *me)
 	return rule;
 }
 
+static int
+_ipfw_match_uid(const struct ipfw_flow_id *fid, struct ifnet *oif,
+		enum ipfw_opcodes opcode, uid_t uid)
+{
+	struct in_addr src_ip, dst_ip;
+	struct inpcbinfo *pi;
+	int wildcard;
+	struct inpcb *pcb;
+
+	if (fid->proto == IPPROTO_TCP) {
+		wildcard = 0;
+		pi = &tcbinfo[mycpuid];
+	} else if (fid->proto == IPPROTO_UDP) {
+		wildcard = 1;
+		pi = &udbinfo;
+	} else {
+		return 0;
+	}
+
+	/*
+	 * Values in 'fid' are in host byte order
+	 */
+	dst_ip.s_addr = htonl(fid->dst_ip);
+	src_ip.s_addr = htonl(fid->src_ip);
+	if (oif) {
+		pcb = in_pcblookup_hash(pi,
+			dst_ip, htons(fid->dst_port),
+			src_ip, htons(fid->src_port),
+			wildcard, oif);
+	} else {
+		pcb = in_pcblookup_hash(pi,
+			src_ip, htons(fid->src_port),
+			dst_ip, htons(fid->dst_port),
+			wildcard, NULL);
+	}
+	if (pcb == NULL || pcb->inp_socket == NULL)
+		return 0;
+
+	if (opcode == O_UID) {
+#define socheckuid(a,b)	((a)->so_cred->cr_uid != (b))
+		return !socheckuid(pcb->inp_socket, uid);
+#undef socheckuid
+	} else  {
+		return groupmember(uid, pcb->inp_socket->so_cred);
+	}
+}
+
+static int
+ipfw_match_uid(const struct ipfw_flow_id *fid, struct ifnet *oif,
+	       enum ipfw_opcodes opcode, uid_t uid)
+{
+	int match;
+
+	get_mplock();
+	match = _ipfw_match_uid(fid, oif, opcode, uid);
+	rel_mplock();
+	return match;
+}
+
 /*
  * The main check routine for the firewall.
  *
@@ -1880,45 +1939,10 @@ check_body:
 				 */
 				if (offset!=0)
 					break;
-			    {
-				struct inpcbinfo *pi;
-				int wildcard;
-				struct inpcb *pcb;
 
-				if (proto == IPPROTO_TCP) {
-					wildcard = 0;
-					pi = &tcbinfo[mycpuid];
-				} else if (proto == IPPROTO_UDP) {
-					wildcard = 1;
-					pi = &udbinfo;
-				} else
-					break;
-
-				pcb =  (oif) ?
-					in_pcblookup_hash(pi,
-					    dst_ip, htons(dst_port),
-					    src_ip, htons(src_port),
-					    wildcard, oif) :
-					in_pcblookup_hash(pi,
-					    src_ip, htons(src_port),
-					    dst_ip, htons(dst_port),
-					    wildcard, NULL);
-
-				if (pcb == NULL || pcb->inp_socket == NULL)
-					break;
-
-				if (cmd->opcode == O_UID) {
-#define socheckuid(a,b)	((a)->so_cred->cr_uid != (b))
-					match =
-					  !socheckuid(pcb->inp_socket,
-					   (uid_t)((ipfw_insn_u32 *)cmd)->d[0]);
-#undef socheckuid
-				} else  {
-					match = groupmember(
-					    (uid_t)((ipfw_insn_u32 *)cmd)->d[0],
-					    pcb->inp_socket->so_cred);
-				}
-			    }
+				match = ipfw_match_uid(&args->f_id, oif,
+					cmd->opcode,
+					(uid_t)((ipfw_insn_u32 *)cmd)->d[0]);
 				break;
 
 			case O_RECV:
