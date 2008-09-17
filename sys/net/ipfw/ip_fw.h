@@ -12,12 +12,12 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.h,v 1.47.2.11 2002/07/09 09:11:42 luigi Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw.h,v 1.8 2007/09/02 13:27:23 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw.h,v 1.9 2008/09/17 09:56:49 sephe Exp $
  */
 
 #ifndef _IP_FW_H
 #define _IP_FW_H
 
-#include "ip_fw2.h"
+#include <net/ipfw/ip_fw2.h>
 
 #endif /* _IP_FW_H */
