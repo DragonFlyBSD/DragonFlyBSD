@@ -25,10 +25,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jme.c,v 1.2 2008/07/18 04:20:48 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.7 2008/09/13 04:04:39 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.8 2008/09/17 08:51:29 sephe Exp $
  */
-
-#include "opt_ethernet.h"
 
 #include <sys/param.h>
 #include <sys/endian.h>

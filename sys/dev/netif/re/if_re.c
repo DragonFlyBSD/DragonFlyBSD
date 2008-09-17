@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.49 2008/09/17 07:51:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.50 2008/09/17 08:51:29 sephe Exp $
  */
 
 /*
@@ -112,7 +112,6 @@
  */
 
 #include "opt_polling.h"
-#include "opt_ethernet.h"
 
 #include <sys/param.h>
 #include <sys/bus.h>
@@ -1481,18 +1480,14 @@ re_rxeof(struct re_softc *sc)
 	struct re_desc 	*cur_rx;
 	uint32_t rxstat, rxvlan;
 	int i, total_len;
-#ifdef ETHER_INPUT_CHAIN
 	struct mbuf_chain chain[MAXCPU];
-#endif
 
 	/* Invalidate the descriptor memory */
 
 	bus_dmamap_sync(sc->re_ldata.re_rx_list_tag,
 			sc->re_ldata.re_rx_list_map, BUS_DMASYNC_POSTREAD);
 
-#ifdef ETHER_INPUT_CHAIN
 	ether_input_chain_init(chain);
-#endif
 
 	for (i = sc->re_ldata.re_rx_prodidx;
 	     RE_OWN(&sc->re_ldata.re_rx_list[i]) == 0 ; RE_DESC_INC(i)) {
@@ -1623,16 +1618,10 @@ re_rxeof(struct re_softc *sc)
 			m->m_pkthdr.ether_vlantag =
 				be16toh((rxvlan & RE_RDESC_VLANCTL_DATA));
 		}
-#ifdef ETHER_INPUT_CHAIN
 		ether_input_chain(ifp, m, chain);
-#else
-		ifp->if_input(ifp, m);
-#endif
 	}
 
-#ifdef ETHER_INPUT_CHAIN
 	ether_input_dispatch(chain);
-#endif
 
 	/* Flush the RX DMA ring */
 

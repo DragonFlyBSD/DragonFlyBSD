@@ -64,7 +64,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.79 2008/09/17 07:51:58 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/em/if_em.c,v 1.80 2008/09/17 08:51:29 sephe Exp $
  * $FreeBSD$
  */
 /*
@@ -96,7 +96,6 @@
 #include "opt_polling.h"
 #include "opt_inet.h"
 #include "opt_serializer.h"
-#include "opt_ethernet.h"
 
 #include <sys/param.h>
 #include <sys/bus.h>
@@ -2984,9 +2983,7 @@ em_rxeof(struct adapter *adapter, int count)
 	uint8_t eop = 0;
 	uint16_t len, desc_len, prev_len_adj;
 	int i;
-#ifdef ETHER_INPUT_CHAIN
 	struct mbuf_chain chain[MAXCPU];
-#endif
 
 	/* Pointer to the receive descriptor being examined. */
 	struct em_rx_desc *current_desc;
@@ -3001,9 +2998,7 @@ em_rxeof(struct adapter *adapter, int count)
 	if (!(current_desc->status & E1000_RXD_STAT_DD))
 		return;
 
-#ifdef ETHER_INPUT_CHAIN
 	ether_input_chain_init(chain);
-#endif
 
 	while ((current_desc->status & E1000_RXD_STAT_DD) && count != 0) {
 		logif(pkt_receive);
@@ -3099,11 +3094,7 @@ em_rxeof(struct adapter *adapter, int count)
 						(current_desc->special &
 						 E1000_RXD_SPC_VLAN_MASK);
 				}
-#ifdef ETHER_INPUT_CHAIN
 				ether_input_chain(ifp, adapter->fmp, chain);
-#else
-				ifp->if_input(ifp, adapter->fmp);
-#endif
 				adapter->fmp = NULL;
 				adapter->lmp = NULL;
 			}
@@ -3129,9 +3120,7 @@ skip:
 		}
 	}
 
-#ifdef ETHER_INPUT_CHAIN
 	ether_input_dispatch(chain);
-#endif
 
 	bus_dmamap_sync(adapter->rxdma.dma_tag, adapter->rxdma.dma_map,
 			BUS_DMASYNC_PREWRITE);

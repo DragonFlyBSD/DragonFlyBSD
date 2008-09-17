@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.55 2008/09/17 07:51:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.56 2008/09/17 08:51:29 sephe Exp $
  */
 
 /*
@@ -100,7 +100,6 @@
  */
 
 #include "opt_polling.h"
-#include "opt_ethernet.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -2036,16 +2035,11 @@ xl_rxeof(struct xl_softc *sc, int count)
 	struct xl_chain_onefrag	*cur_rx;
 	int			total_len = 0;
 	u_int32_t		rxstat;
-#ifdef ETHER_INPUT_CHAIN
 	struct mbuf_chain chain[MAXCPU];
-#endif
 
 	ifp = &sc->arpcom.ac_if;
 
-#ifdef ETHER_INPUT_CHAIN
 	ether_input_chain_init(chain);
-#endif
-
 again:
 
 	bus_dmamap_sync(sc->xl_ldata.xl_rx_tag, sc->xl_ldata.xl_rx_dmamap,
@@ -2140,11 +2134,7 @@ again:
 			}
 		}
 
-#ifdef ETHER_INPUT_CHAIN
 		ether_input_chain(ifp, m, chain);
-#else
-		ifp->if_input(ifp, m);
-#endif
 	}
 
 	if (sc->xl_type != XL_TYPE_905B) {
@@ -2172,9 +2162,7 @@ again:
 		}
 	}
 
-#ifdef ETHER_INPUT_CHAIN
 	ether_input_dispatch(chain);
-#endif
 }
 
 /*

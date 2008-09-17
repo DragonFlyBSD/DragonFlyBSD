@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.88 2008/09/17 07:51:59 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.89 2008/09/17 08:51:29 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -42,7 +42,6 @@
 #include "opt_mpls.h"
 #include "opt_netgraph.h"
 #include "opt_carp.h"
-#include "opt_ethernet.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -956,8 +955,6 @@ ether_restore_header(struct mbuf **m0, const struct ether_header *eh,
 	*m0 = m;
 }
 
-#ifdef ETHER_INPUT_CHAIN
-
 static void
 ether_input_ipifunc(void *arg)
 {
@@ -1009,8 +1006,6 @@ ether_input_chain_init(struct mbuf_chain *chain)
 	chain->mc_head = chain->mc_tail = NULL;
 #endif
 }
-
-#endif	/* ETHER_INPUT_CHAIN */
 
 /*
  * Upper layer processing for a received Ethernet packet.
@@ -1518,7 +1513,6 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 	 */
 	ether_init_netpacket(isr, m);
 
-#ifdef ETHER_INPUT_CHAIN
 	if (chain != NULL) {
 		struct mbuf_chain *c;
 		int cpuid;
@@ -1534,7 +1528,7 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 			c->mc_tail = m;
 		}
 		m->m_nextpkt = NULL;
-	} else
-#endif	/* ETHER_INPUT_CHAIN */
+	} else {
 		lwkt_sendmsg(port, &m->m_hdr.mh_netmsg.nm_netmsg.nm_lmsg);
+	}
 }

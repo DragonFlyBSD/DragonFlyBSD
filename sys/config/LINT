@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.173 2008/09/16 12:30:57 sephe Exp $
+# $DragonFly: src/sys/config/LINT,v 1.174 2008/09/17 08:51:28 sephe Exp $
 #
 # See the kernconf(5) manual page for more information on the format of
 # this file.
@@ -2786,6 +2786,3 @@ options		SCTP_MAP_LOGGING
 
 # Serializer profiling
 options		PROFILE_SERIALIZER
-
-# Chain ethernet inputs
-options		ETHER_INPUT_CHAIN

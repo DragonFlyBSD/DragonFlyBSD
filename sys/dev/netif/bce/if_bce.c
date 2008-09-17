@@ -28,7 +28,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bce.c,v 1.31 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.18 2008/09/17 07:51:58 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.19 2008/09/17 08:51:29 sephe Exp $
  */
 
 /*
@@ -45,7 +45,6 @@
 
 #include "opt_bce.h"
 #include "opt_polling.h"
-#include "opt_ethernet.h"
 
 #include <sys/param.h>
 #include <sys/bus.h>
@@ -3731,15 +3730,11 @@ bce_rx_intr(struct bce_softc *sc, int count)
 	uint16_t hw_cons, sw_cons, sw_chain_cons, sw_prod, sw_chain_prod;
 	uint32_t sw_prod_bseq;
 	int i;
-#ifdef ETHER_INPUT_CHAIN
 	struct mbuf_chain chain[MAXCPU];
-#endif
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-#ifdef ETHER_INPUT_CHAIN
 	ether_input_chain_init(chain);
-#endif
 
 	DBRUNIF(1, sc->rx_interrupts++);
 
@@ -3987,11 +3982,7 @@ bce_rx_int_next_rx:
 				m->m_pkthdr.ether_vlantag =
 					l2fhdr->l2_fhdr_vlan_tag;
 			}
-#ifdef ETHER_INPUT_CHAIN
 			ether_input_chain(ifp, m, chain);
-#else
-			ifp->if_input(ifp, m);
-#endif
 
 			DBRUNIF(1, sc->rx_mbuf_alloc--);
 		}
@@ -4015,9 +4006,7 @@ bce_rx_int_next_rx:
 				  BUS_SPACE_BARRIER_READ);
 	}
 
-#ifdef ETHER_INPUT_CHAIN
 	ether_input_dispatch(chain);
-#endif
 
 	for (i = 0; i < RX_PAGES; i++) {
 		bus_dmamap_sync(sc->rx_bd_chain_tag,

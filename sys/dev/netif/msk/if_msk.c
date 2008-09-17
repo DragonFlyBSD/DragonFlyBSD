@@ -93,14 +93,13 @@
  */
 
 /* $FreeBSD: src/sys/dev/msk/if_msk.c,v 1.26 2007/12/05 09:41:58 remko Exp $ */
-/* $DragonFly: src/sys/dev/netif/msk/if_msk.c,v 1.8 2008/09/17 07:51:59 sephe Exp $ */
+/* $DragonFly: src/sys/dev/netif/msk/if_msk.c,v 1.9 2008/09/17 08:51:29 sephe Exp $ */
 
 /*
  * Device driver for the Marvell Yukon II Ethernet controller.
  * Due to lack of documentation, this driver is based on the code from
  * sk(4) and Marvell's myk(4) driver for FreeBSD 5.x.
  */
-#include "opt_ethernet.h"
 
 #include <sys/param.h>
 #include <sys/endian.h>
@@ -2853,11 +2852,7 @@ msk_rxeof(struct msk_if_softc *sc_if, uint32_t status, int len,
 		}
 #endif
 
-#ifdef ETHER_INPUT_CHAIN
 		ether_input_chain(ifp, m, chain);
-#else
-		ifp->if_input(ifp, m);
-#endif
 	} while (0);
 
 	MSK_INC(sc_if->msk_cdata.msk_rx_cons, MSK_RX_RING_CNT);
@@ -3190,21 +3185,13 @@ mskc_handle_events(struct msk_softc *sc)
 	struct msk_stat_desc *sd;
 	uint32_t control, status;
 	int cons, idx, len, port, rxprog;
-#ifdef ETHER_INPUT_CHAIN
-	struct mbuf_chain chain0[MAXCPU];
-#endif
-	struct mbuf_chain *chain;
+	struct mbuf_chain chain[MAXCPU];
 
 	idx = CSR_READ_2(sc, STAT_PUT_IDX);
 	if (idx == sc->msk_stat_cons)
 		return (0);
 
-#ifdef ETHER_INPUT_CHAIN
-	chain = chain0;
 	ether_input_chain_init(chain);
-#else
-	chain = NULL;
-#endif
 
 	/* Sync status LEs. */
 	bus_dmamap_sync(sc->msk_stat_tag, sc->msk_stat_map,
@@ -3288,10 +3275,8 @@ mskc_handle_events(struct msk_softc *sc)
 			break;
 	}
 
-#ifdef ETHER_INPUT_CHAIN
 	if (rxprog > 0)
 		ether_input_dispatch(chain);
-#endif
 
 	sc->msk_stat_cons = cons;
 	/* XXX We should sync status LEs here. See above notes. */

@@ -31,10 +31,8 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.16 2008/09/17 07:51:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/et/if_et.c,v 1.17 2008/09/17 08:51:29 sephe Exp $
  */
-
-#include "opt_ethernet.h"
 
 #include <sys/param.h>
 #include <sys/bitops.h>
@@ -1909,9 +1907,7 @@ et_rxeof(struct et_softc *sc)
 	struct et_rxstat_ring *rxst_ring = &sc->sc_rxstat_ring;
 	uint32_t rxs_stat_ring;
 	int rxst_wrap, rxst_index;
-#ifdef ETHER_INPUT_CHAIN
 	struct mbuf_chain chain[MAXCPU];
-#endif
 
 	if ((sc->sc_flags & ET_FLAG_TXRX_ENABLED) == 0)
 		return;
@@ -1925,9 +1921,7 @@ et_rxeof(struct et_softc *sc)
 	rxst_wrap = (rxs_stat_ring & ET_RXS_STATRING_WRAP) ? 1 : 0;
 	rxst_index = __SHIFTOUT(rxs_stat_ring, ET_RXS_STATRING_INDEX);
 
-#ifdef ETHER_INPUT_CHAIN
 	ether_input_chain_init(chain);
-#endif
 
 	while (rxst_index != rxst_ring->rsr_index ||
 	       rxst_wrap != rxst_ring->rsr_wrap) {
@@ -1980,11 +1974,7 @@ et_rxeof(struct et_softc *sc)
 				m_adj(m, -ETHER_CRC_LEN);
 
 				ifp->if_ipackets++;
-#ifdef ETHER_INPUT_CHAIN
 				ether_input_chain(ifp, m, chain);
-#else
-				ifp->if_input(ifp, m);
-#endif
 			}
 		} else {
 			ifp->if_ierrors++;
@@ -2010,9 +2000,7 @@ et_rxeof(struct et_softc *sc)
 		CSR_WRITE_4(sc, rx_ring->rr_posreg, rxring_pos);
 	}
 
-#ifdef ETHER_INPUT_CHAIN
 	ether_input_dispatch(chain);
-#endif
 }
 
 static int

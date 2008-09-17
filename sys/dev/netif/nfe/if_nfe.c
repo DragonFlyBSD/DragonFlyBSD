@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.44 2008/09/17 07:51:59 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.45 2008/09/17 08:51:29 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -56,7 +56,6 @@
 /* Driver for NVIDIA nForce MCP Fast Ethernet and Gigabit Ethernet */
 
 #include "opt_polling.h"
-#include "opt_ethernet.h"
 
 #include <sys/param.h>
 #include <sys/endian.h>
@@ -991,16 +990,12 @@ nfe_rxeof(struct nfe_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct nfe_rx_ring *ring = &sc->rxq;
 	int reap;
-#ifdef ETHER_INPUT_CHAIN
 	struct mbuf_chain chain[MAXCPU];
-#endif
 
 	reap = 0;
 	bus_dmamap_sync(ring->tag, ring->map, BUS_DMASYNC_POSTREAD);
 
-#ifdef ETHER_INPUT_CHAIN
 	ether_input_chain_init(chain);
-#endif
 
 	for (;;) {
 		struct nfe_rx_data *data = &ring->data[ring->cur];
@@ -1080,11 +1075,7 @@ nfe_rxeof(struct nfe_softc *sc)
 		}
 
 		ifp->if_ipackets++;
-#ifdef ETHER_INPUT_CHAIN
 		ether_input_chain(ifp, m, chain);
-#else
-		ifp->if_input(ifp, m);
-#endif
 skip:
 		nfe_set_ready_rxdesc(sc, ring, ring->cur);
 		sc->rxq.cur = (sc->rxq.cur + 1) % sc->sc_rx_ring_count;
@@ -1092,9 +1083,7 @@ skip:
 
 	if (reap) {
 		bus_dmamap_sync(ring->tag, ring->map, BUS_DMASYNC_PREWRITE);
-#ifdef ETHER_INPUT_CHAIN
 		ether_input_dispatch(chain);
-#endif
 	}
 	return reap;
 }

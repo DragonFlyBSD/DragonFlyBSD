@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.39 2008/09/17 07:51:59 sephe Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.40 2008/09/17 08:51:30 sephe Exp $
  */
 
 /*
@@ -46,7 +46,6 @@
 #include "use_vlan.h"
 #endif
 #include "opt_inet.h"
-#include "opt_ethernet.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
