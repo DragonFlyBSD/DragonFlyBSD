@@ -36,10 +36,9 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_null.c	8.6 (Berkeley) 4/26/95
  * $FreeBSD: src/sbin/mount_null/mount_null.c,v 1.13 1999/10/09 11:54:11 phk Exp $
- * $DragonFly: src/sbin/mount_null/mount_null.c,v 1.10 2008/09/18 11:54:25 swildner Exp $
+ * $DragonFly: src/sbin/mount_null/mount_null.c,v 1.11 2008/09/18 16:08:31 dillon Exp $
  */
 
-#define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <vfs/nullfs/null.h>

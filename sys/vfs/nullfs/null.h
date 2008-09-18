@@ -36,18 +36,22 @@
  *	@(#)null.h	8.3 (Berkeley) 8/20/94
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null.h,v 1.11.2.3 2001/06/26 04:20:09 bp Exp $
- * $DragonFly: src/sys/vfs/nullfs/null.h,v 1.9 2008/09/17 21:44:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null.h,v 1.10 2008/09/18 16:08:32 dillon Exp $
  */
 
 struct null_args {
 	char		*target;	/* Target of loopback  */
 };
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
 struct null_mount {
 	struct mount	*nullm_vfs;
 	struct vnode	*nullm_rootvp;	/* Reference to root null_node */
 	struct netexport export;
 };
+
+#endif
 
 #ifdef _KERNEL
 #define	MOUNTTONULLMOUNT(mp) ((struct null_mount *)((mp)->mnt_data))
