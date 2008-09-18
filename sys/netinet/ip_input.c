@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.106 2008/09/13 12:57:07 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.107 2008/09/18 11:19:42 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -541,6 +541,20 @@ iphack:
 	if (next_hop != NULL)
 		goto ours;
 
+	/* No pfil hooks */
+	if (!pfil_has_hooks(&inet_pfil_hook)) {
+		if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
+			/*
+			 * Strip dummynet tags from stranded packets
+			 */
+			mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
+			KKASSERT(mtag != NULL);
+			m_tag_delete(m, mtag);
+			m->m_pkthdr.fw_flags &= ~DUMMYNET_MBUF_TAGGED;
+		}
+		goto pass;
+	}
+
 	/*
 	 * Run through list of hooks for input packets.
 	 *
@@ -548,18 +562,14 @@ iphack:
 	 *     by NAT rewriting). When this happens, tell
 	 *     ip_forward to do the right thing.
 	 */
-	if (pfil_has_hooks(&inet_pfil_hook)) {
-		odst = ip->ip_dst;
-		if (pfil_run_hooks(&inet_pfil_hook, &m,
-		    m->m_pkthdr.rcvif, PFIL_IN)) {
-			return;
-		}
-		if (m == NULL)			/* consumed by filter */
-			return;
-		ip = mtod(m, struct ip *);
-		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
-		using_srcrt = (odst.s_addr != ip->ip_dst.s_addr);
-	}
+	odst = ip->ip_dst;
+	if (pfil_run_hooks(&inet_pfil_hook, &m, m->m_pkthdr.rcvif, PFIL_IN))
+		return;
+	if (m == NULL)	/* consumed by filter */
+		return;
+	ip = mtod(m, struct ip *);
+	hlen = IP_VHL_HL(ip->ip_vhl) << 2;
+	using_srcrt = (odst.s_addr != ip->ip_dst.s_addr);
 
 	if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
 		mtag = m_tag_find(m, PACKET_TAG_IPFORWARD, NULL);
@@ -574,10 +584,7 @@ iphack:
 		needredispatch = TRUE;
 		m->m_pkthdr.fw_flags &= ~FW_MBUF_REDISPATCH;
 	}
-
-#if defined(IPSEC) && !defined(IPSEC_FILTERGIF)
 pass:
-#endif
 	/*
 	 * Process options and, if not destined for us,
 	 * ship it on.  ip_dooptions returns 1 when an

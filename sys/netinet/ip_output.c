@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.63 2008/09/13 12:57:07 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.64 2008/09/18 11:19:42 sephe Exp $
  */
 
 #define _IP_VHL
@@ -770,6 +770,20 @@ spd_done:
 	if (next_hop != NULL)
 		goto pass;
 
+	/* No pfil hooks */
+	if (!pfil_has_hooks(&inet_pfil_hook)) {
+		if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED) {
+			/*
+			 * Strip dummynet tags from stranded packets
+			 */
+			mtag = m_tag_find(m, PACKET_TAG_DUMMYNET, NULL);
+			KKASSERT(mtag != NULL);
+			m_tag_delete(m, mtag);
+			m->m_pkthdr.fw_flags &= ~DUMMYNET_MBUF_TAGGED;
+		}
+		goto pass;
+	}
+
 	/*
 	 * IpHack's section.
 	 * - Xlate: translate packet's addr/port (NAT).
@@ -781,12 +795,10 @@ spd_done:
 	/*
 	 * Run through list of hooks for output packets.
 	 */
-	if (pfil_has_hooks(&inet_pfil_hook)) {
-		error = pfil_run_hooks(&inet_pfil_hook, &m, ifp, PFIL_OUT);
-		if (error != 0 || m == NULL)
-			goto done;
-		ip = mtod(m, struct ip *);
-	}
+	error = pfil_run_hooks(&inet_pfil_hook, &m, ifp, PFIL_OUT);
+	if (error != 0 || m == NULL)
+		goto done;
+	ip = mtod(m, struct ip *);
 
 	if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED) {
 		/*
