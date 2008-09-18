@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.43 2008/08/22 09:14:17 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.44 2008/09/18 11:55:20 sephe Exp $
  */
 
 /*
@@ -2454,6 +2454,19 @@ bridge_rtnode_destroy(struct bridge_softc *sc, struct bridge_rtnode *brt)
 	kfree(brt, M_DEVBUF);
 }
 
+static __inline int
+bridge_post_pfil(struct mbuf *m)
+{
+	if (m->m_pkthdr.fw_flags & IPFORWARD_MBUF_TAGGED)
+		return EOPNOTSUPP;
+
+	/* Not yet */
+	if (m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED)
+		return EOPNOTSUPP;
+
+	return 0;
+}
+
 /*
  * Send bridge packets through pfil if they are one of the types pfil can deal
  * with, or if they are ARP or REVARP.  (pfil will pass ARP and REVARP without
@@ -2584,26 +2597,32 @@ bridge_pfil(struct mbuf **mp, struct ifnet *bifp, struct ifnet *ifp, int dir)
 		 * Keep the order:
 		 *   in_if -> bridge_if -> out_if
 		 */
-		if (pfil_bridge && dir == PFIL_OUT && bifp != NULL)
-			error = pfil_run_hooks(&inet_pfil_hook, mp, bifp,
-					dir);
+		if (pfil_bridge && dir == PFIL_OUT && bifp != NULL) {
+			error = pfil_run_hooks(&inet_pfil_hook, mp, bifp, dir);
+			if (*mp == NULL || error != 0) /* filter may consume */
+				break;
+			error = bridge_post_pfil(*mp);
+			if (error)
+				break;
+		}
 
-		if (*mp == NULL || error != 0) /* filter may consume */
-			break;
+		if (pfil_member && ifp != NULL) {
+			error = pfil_run_hooks(&inet_pfil_hook, mp, ifp, dir);
+			if (*mp == NULL || error != 0) /* filter may consume */
+				break;
+			error = bridge_post_pfil(*mp);
+			if (error)
+				break;
+		}
 
-		if (pfil_member && ifp != NULL)
-			error = pfil_run_hooks(&inet_pfil_hook, mp, ifp,
-					dir);
-
-		if (*mp == NULL || error != 0) /* filter may consume */
-			break;
-
-		if (pfil_bridge && dir == PFIL_IN && bifp != NULL)
-			error = pfil_run_hooks(&inet_pfil_hook, mp, bifp,
-					dir);
-
-		if (*mp == NULL || error != 0) /* filter may consume */
-			break;
+		if (pfil_bridge && dir == PFIL_IN && bifp != NULL) {
+			error = pfil_run_hooks(&inet_pfil_hook, mp, bifp, dir);
+			if (*mp == NULL || error != 0) /* filter may consume */
+				break;
+			error = bridge_post_pfil(*mp);
+			if (error)
+				break;
+		}
 
 		/* check if we need to fragment the packet */
 		if (pfil_member && ifp != NULL && dir == PFIL_OUT) {
