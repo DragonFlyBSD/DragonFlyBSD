@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.92 2008/09/17 03:08:27 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.93 2008/09/19 12:04:09 sephe Exp $
  */
 
 /*
@@ -1608,12 +1608,22 @@ _ipfw_match_uid(const struct ipfw_flow_id *fid, struct ifnet *oif,
 
 static int
 ipfw_match_uid(const struct ipfw_flow_id *fid, struct ifnet *oif,
-	       enum ipfw_opcodes opcode, uid_t uid)
+	       enum ipfw_opcodes opcode, uid_t uid, int *deny)
 {
-	int match;
+	struct ipfw_context *ctx = ipfw_ctx[mycpuid];
+	uint32_t gen;
+	int match = 0;
+
+	*deny = 0;
+	gen = ctx->ipfw_gen;
 
 	get_mplock();
-	match = _ipfw_match_uid(fid, oif, opcode, uid);
+	if (gen != ctx->ipfw_gen) {
+		/* See the comment in lookup_rule() */
+		*deny = 1;
+	} else {
+		match = _ipfw_match_uid(fid, oif, opcode, uid);
+	}
 	rel_mplock();
 	return match;
 }
@@ -1942,7 +1952,10 @@ check_body:
 
 				match = ipfw_match_uid(&args->f_id, oif,
 					cmd->opcode,
-					(uid_t)((ipfw_insn_u32 *)cmd)->d[0]);
+					(uid_t)((ipfw_insn_u32 *)cmd)->d[0],
+					&deny);
+				if (deny)
+					return IP_FW_DENY;
 				break;
 
 			case O_RECV:
