@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.93 2008/09/19 12:04:09 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.94 2008/09/19 12:23:56 sephe Exp $
  */
 
 /*
@@ -1647,17 +1647,14 @@ ipfw_match_uid(const struct ipfw_flow_id *fid, struct ifnet *oif,
  *
  * Return value:
  *
- *	IP_FW_PORT_DENY_FLAG	the packet must be dropped.
- *	0	The packet is to be accepted and routed normally OR
- *      	the packet was denied/rejected and has been dropped;
- *		in the latter case, *m is equal to NULL upon return.
- *	port	Divert the packet to port, with these caveats:
+ *	If the packet was denied/rejected and has been dropped, *m is equal
+ *	to NULL upon return.
  *
- *		- If IP_FW_PORT_TEE_FLAG is set, tee the packet instead
- *		  of diverting it (ie, 'ipfw tee').
- *
- *		- If IP_FW_PORT_DYNT_FLAG is set, interpret the lower
- *		  16 bits as a dummynet pipe number instead of diverting
+ *	IP_FW_DENY	the packet must be dropped.
+ *	IP_FW_PASS	The packet is to be accepted and routed normally.
+ *	IP_FW_DIVERT	Divert the packet to port (args->cookie)
+ *	IP_FW_TEE	Tee the packet to port (args->cookie)
+ *	IP_FW_DUMMYNET	Send the packet to pipe/queue (args->cookie)
  */
 
 static int
