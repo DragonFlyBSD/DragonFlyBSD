@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jme.c,v 1.2 2008/07/18 04:20:48 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.9 2008/09/19 11:12:33 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.10 2008/09/19 11:36:40 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -427,8 +427,10 @@ jme_probe(device_t dev)
 
 			sc->jme_caps = sp->jme_caps;
 			if (did == PCI_PRODUCT_JMICRON_JMC250 &&
-			    pci_get_revid(dev) == JME_REV_JMC250_A2)
-				sc->jme_workaround |= JME_WA_EXTFIFO;
+			    pci_get_revid(dev) == JME_REV_JMC250_A2) {
+				sc->jme_workaround |= JME_WA_EXTFIFO |
+						      JME_WA_HDX;
+			}
 
 			device_set_desc(dev, sp->jme_name);
 			return (0);
@@ -1831,8 +1833,8 @@ static void
 jme_mac_config(struct jme_softc *sc)
 {
 	struct mii_data *mii;
-	uint32_t ghc, rxmac, txmac, txpause;
-	int phyconf = JMPHY_CONF_DEFFIFO;
+	uint32_t ghc, rxmac, txmac, txpause, gp1;
+	int phyconf = JMPHY_CONF_DEFFIFO, hdx = 0;
 
 	mii = device_get_softc(sc->jme_miibus);
 
@@ -1869,14 +1871,26 @@ jme_mac_config(struct jme_softc *sc)
 		    TXTRHD_RT_PERIOD_ENB | TXTRHD_RT_LIMIT_ENB);
 	}
 
-	/* Reprogram Tx/Rx MACs with resolved speed/duplex. */
+	/*
+	 * Reprogram Tx/Rx MACs with resolved speed/duplex.
+	 */
+	gp1 = CSR_READ_4(sc, JME_GPREG1);
+	gp1 &= ~GPREG1_WA_HDX;
+
+	if ((IFM_OPTIONS(mii->mii_media_active) & IFM_FDX) == 0)
+		hdx = 1;
+
 	switch (IFM_SUBTYPE(mii->mii_media_active)) {
 	case IFM_10_T:
 		ghc |= GHC_SPEED_10;
+		if (hdx)
+			gp1 |= GPREG1_WA_HDX;
 		break;
 
 	case IFM_100_TX:
 		ghc |= GHC_SPEED_100;
+		if (hdx)
+			gp1 |= GPREG1_WA_HDX;
 
 		/*
 		 * Use extended FIFO depth to workaround CRC errors
@@ -1890,7 +1904,7 @@ jme_mac_config(struct jme_softc *sc)
 			break;
 
 		ghc |= GHC_SPEED_1000;
-		if ((IFM_OPTIONS(mii->mii_media_active) & IFM_FDX) == 0)
+		if (hdx)
 			txmac |= TXMAC_CARRIER_EXT | TXMAC_FRAME_BURST;
 		break;
 
@@ -1906,6 +1920,8 @@ jme_mac_config(struct jme_softc *sc)
 		jme_miibus_writereg(sc->jme_dev, sc->jme_phyaddr,
 				    JMPHY_CONF, phyconf);
 	}
+	if (sc->jme_workaround & JME_WA_HDX)
+		CSR_WRITE_4(sc, JME_GPREG1, gp1);
 }
 
 static void

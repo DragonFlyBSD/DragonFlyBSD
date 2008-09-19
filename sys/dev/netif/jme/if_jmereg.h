@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jmereg.h,v 1.1 2008/05/27 01:42:01 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jmereg.h,v 1.3 2008/09/13 02:47:03 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/jme/if_jmereg.h,v 1.4 2008/09/19 11:36:40 sephe Exp $
  */
 
 #ifndef	_IF_JMEREG_H
@@ -554,8 +554,10 @@
 #define	GPREG0_PHY_ADDR_SHIFT	0
 #define	GPREG0_PHY_ADDR		1
 
-/* General purpose register 1. reserved for future use. */
+/* General purpose register 1. */
 #define	JME_GPREG1		0x080C
+#define GPREG1_WA_HDX		0x00000020 /* 250A2 only, for 10/100 mode */
+#define GPREG1_WA_IP6RSS	0x00000040 /* 250A2 only, for 10/100 mode */
 
 /* MSIX entry number of interrupt source. */
 #define	JME_MSINUM_BASE		0x0810
