@@ -25,7 +25,7 @@
  */
 /* $Id: asf.c,v 1.6 2003/11/04 06:38:37 green Exp $ */
 /* $FreeBSD: src/usr.sbin/asf/asf.c,v 1.6 2003/11/04 06:38:37 green Exp $ */
-/* $DragonFly: src/usr.sbin/asf/asf.c,v 1.6 2008/07/14 00:09:42 dillon Exp $ */
+/* $DragonFly: src/usr.sbin/asf/asf.c,v 1.6.2.1 2008/09/19 17:51:11 swildner Exp $ */
 
 #define MAXLINE 1024
 #include <ctype.h>
@@ -180,7 +180,7 @@ main(int argc, char *argv[])
     FILE *out;				/* output file */
     char ocbuf[MAXLINE];
     int tokens;				/* number of tokens on line */
-    int i, ch;
+    int ch;
     const char *filemode = "w";		/* mode for outfile */
     char cwd[MAXPATHLEN];		/* current directory */
     char *token[MAXTOKEN];
@@ -203,9 +203,6 @@ main(int argc, char *argv[])
 	    dofind = 1;
 	    break;
 	default:
-	    fprintf(stderr,
-		    "Invalid option: %s, aborting\n",
-		    argv[i]);
 	    usage(argv[0]);
 	    return 1;
 	}
