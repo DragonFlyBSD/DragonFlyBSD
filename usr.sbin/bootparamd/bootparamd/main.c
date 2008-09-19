@@ -9,7 +9,7 @@ use and modify. Please send modifications and/or suggestions + bug fixes to
 
 /*
  * $FreeBSD: src/usr.sbin/bootparamd/bootparamd/main.c,v 1.9 1999/08/28 01:15:39 peter Exp $
- * $DragonFly: src/usr.sbin/bootparamd/bootparamd/main.c,v 1.5 2004/12/18 22:48:02 swildner Exp $
+ * $DragonFly: src/usr.sbin/bootparamd/bootparamd/main.c,v 1.5.14.1 2008/09/19 18:49:09 swildner Exp $
  */
 #include <ctype.h>
 #include <err.h>
@@ -42,7 +42,6 @@ int
 main(int argc, char **argv)
 {
 	SVCXPRT *transp;
-	int i;
 	struct hostent *he;
 	struct stat buf;
 	char c;
@@ -62,7 +61,7 @@ main(int argc, char **argv)
 		   bcopy(he->h_addr, (char *)&route_addr, sizeof(route_addr));
 		   break;
 		} else {
-		   errx(1, "no such host %s", argv[i]);
+		   errx(1, "no such host %s", optarg);
 		}
 	      }
 	  case 'f':
