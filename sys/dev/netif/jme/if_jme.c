@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jme.c,v 1.2 2008/07/18 04:20:48 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.8 2008/09/17 08:51:29 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.9 2008/09/19 11:12:33 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -428,7 +428,7 @@ jme_probe(device_t dev)
 			sc->jme_caps = sp->jme_caps;
 			if (did == PCI_PRODUCT_JMICRON_JMC250 &&
 			    pci_get_revid(dev) == JME_REV_JMC250_A2)
-				sc->jme_caps |= JME_CAP_EXTFIFO;
+				sc->jme_workaround |= JME_WA_EXTFIFO;
 
 			device_set_desc(dev, sp->jme_name);
 			return (0);
@@ -754,7 +754,7 @@ jme_attach(device_t dev)
 				jme_miibus_writereg(dev, sc->jme_phyaddr,
 				    JMPHY_CONF, JMPHY_CONF_DEFFIFO);
 
-				/* XXX should we clear JME_CAP_EXTFIFO */
+				/* XXX should we clear JME_WA_EXTFIFO */
 			}
 		}
 	}
@@ -1902,7 +1902,7 @@ jme_mac_config(struct jme_softc *sc)
 	CSR_WRITE_4(sc, JME_TXMAC, txmac);
 	CSR_WRITE_4(sc, JME_TXPFC, txpause);
 
-	if (sc->jme_caps & JME_CAP_EXTFIFO) {
+	if (sc->jme_workaround & JME_WA_EXTFIFO) {
 		jme_miibus_writereg(sc->jme_dev, sc->jme_phyaddr,
 				    JMPHY_CONF, phyconf);
 	}
