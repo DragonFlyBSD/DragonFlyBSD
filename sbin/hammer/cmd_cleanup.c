@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_cleanup.c,v 1.1 2008/09/20 04:23:21 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_cleanup.c,v 1.2 2008/09/20 06:46:22 dillon Exp $
  */
 /*
  * Clean up a specific HAMMER filesystem or all HAMMER filesystems.
@@ -63,11 +63,12 @@ static int check_period(const char *snapshots_path, const char *cmd, int arg1,
 			time_t *savep);
 static void save_period(const char *snapshots_path, const char *cmd,
 			time_t savet);
+static int check_softlinks(const char *snapshots_path);
 
 static int cleanup_snapshots(const char *path, const char *snapshots_path,
 			      int arg1, int arg2);
 static int cleanup_prune(const char *path, const char *snapshots_path,
-			      int arg1, int arg2);
+			      int arg1, int arg2, int snapshots_disabled);
 static int cleanup_reblock(const char *path, const char *snapshots_path,
 			      int arg1, int arg2);
 static int cleanup_recopy(const char *path, const char *snapshots_path,
@@ -138,6 +139,8 @@ do_cleanup(const char *path)
 	time_t savet;
 	char buf[256];
 	FILE *fp;
+	int snapshots_disabled = 0;
+	int prune_warning = 0;
 	int fd;
 	int r;
 
@@ -239,6 +242,12 @@ do_cleanup(const char *path)
 
 		if (arg1 == 0) {
 			printf("disabled\n");
+			if (strcmp(cmd, "snapshots") == 0) {
+				if (check_softlinks(snapshots_path))
+					prune_warning = 1;
+				else
+					snapshots_disabled = 1;
+			}
 			continue;
 		}
 
@@ -253,8 +262,12 @@ do_cleanup(const char *path)
 			}
 		} else if (strcmp(cmd, "prune") == 0) {
 			if (check_period(snapshots_path, cmd, arg1, &savet)) {
+				if (prune_warning)
+					printf("run - WARNING snapshot softlinks present but snapshots disabled\n");
+				else
+					printf("run\n");
 				r = cleanup_prune(path, snapshots_path,
-					      arg1, arg2);
+					      arg1, arg2, snapshots_disabled);
 			} else {
 				printf("skip\n");
 			}
@@ -418,6 +431,33 @@ save_period(const char *snapshots_path, const char *cmd,
 	remove(ncheck_path);
 }
 
+static int
+check_softlinks(const char *snapshots_path)
+{
+	struct dirent *den;
+	struct stat st;
+	DIR *dir;
+	char *fpath;
+	int res = 0;
+
+	/*
+	 * Force snapshots_disabled to 0 if the snapshots directory
+	 * contains softlinks.
+	 */
+	if ((dir = opendir(snapshots_path)) != NULL) {
+		while ((den = readdir(dir)) != NULL) {
+			if (den->d_name[0] == '.')
+				continue;
+			asprintf(&fpath, "%s/%s", snapshots_path, den->d_name);
+			if (lstat(fpath, &st) == 0 && S_ISLNK(st.st_mode))
+				++res;
+			free(fpath);
+		}
+		closedir(dir);
+	}
+	return(res);
+}
+
 /*
  * Issue a snapshot.
  */
@@ -433,9 +473,18 @@ cleanup_snapshots(const char *path __unused, const char *snapshots_path,
 
 static int
 cleanup_prune(const char *path __unused, const char *snapshots_path,
-		  int arg1 __unused, int arg2)
+		  int arg1 __unused, int arg2, int snapshots_disabled)
 {
-	if (arg2) {
+	/*
+	 * If snapshots have been disabled run prune-everything instead
+	 * of prune.
+	 */
+	if (snapshots_disabled && arg2) {
+		runcmd(NULL, "hammer -c %s/.prune.cycle -t %d prune-everything %s",
+			snapshots_path, arg2, path);
+	} else if (snapshots_disabled) {
+		runcmd(NULL, "hammer prune-everything %s", path);
+	} else if (arg2) {
 		runcmd(NULL, "hammer -c %s/.prune.cycle -t %d prune %s",
 			snapshots_path, arg2, snapshots_path);
 	} else {
