@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_cleanup.c,v 1.2 2008/09/20 06:46:22 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_cleanup.c,v 1.3 2008/09/20 07:08:06 dillon Exp $
  */
 /*
  * Clean up a specific HAMMER filesystem or all HAMMER filesystems.
@@ -56,6 +56,11 @@
 
 #include "hammer.h"
 
+struct didpfs {
+	struct didpfs *next;
+	uuid_t		uuid;
+};
+
 static void do_cleanup(const char *path);
 static int strtosecs(char *ptr);
 static const char *dividing_slash(const char *path);
@@ -77,10 +82,8 @@ static int cleanup_recopy(const char *path, const char *snapshots_path,
 static void runcmd(int *resp, const char *ctl, ...);
 
 #define WS	" \t\r\n"
-#define MAXPFS	65536
-#define DIDBITS	(sizeof(int) * 8)
 
-static int DidPFS[MAXPFS/DIDBITS];
+struct didpfs *FirstPFS;
 
 void
 hammer_cmd_cleanup(char **av, int ac)
@@ -139,6 +142,7 @@ do_cleanup(const char *path)
 	time_t savet;
 	char buf[256];
 	FILE *fp;
+	struct didpfs *didpfs;
 	int snapshots_disabled = 0;
 	int prune_warning = 0;
 	int fd;
@@ -170,16 +174,16 @@ do_cleanup(const char *path)
 	 * Make sure we have not already handled this PFS.  Several nullfs
 	 * mounts might alias the same PFS.
 	 */
-	if (pfs.pfs_id < 0 || pfs.pfs_id >= MAXPFS) {
-		printf(" pfs_id %d illegal\n", pfs.pfs_id);
-		return;
+	for (didpfs = FirstPFS; didpfs; didpfs = didpfs->next) {
+		if (bcmp(&didpfs->uuid, &mrec_tmp.pfs.pfsd.unique_uuid, sizeof(uuid_t)) == 0) {
+			printf(" pfs_id %d already handled\n", pfs.pfs_id);
+			return;
+		}
 	}
-
-	if (DidPFS[pfs.pfs_id / DIDBITS] & (1 << (pfs.pfs_id % DIDBITS))) {
-		printf(" pfs_id %d already handled\n", pfs.pfs_id);
-		return;
-	}
-	DidPFS[pfs.pfs_id / DIDBITS] |= (1 << (pfs.pfs_id % DIDBITS));
+	didpfs = malloc(sizeof(*didpfs));
+	didpfs->next = FirstPFS;
+	FirstPFS = didpfs;
+	didpfs->uuid = mrec_tmp.pfs.pfsd.unique_uuid;
 
 	/*
 	 * Create a snapshot directory if necessary, and a config file if
@@ -584,12 +588,13 @@ runcmd(int *resp, const char *ctl, ...)
 	av = malloc(sizeof(char *) * nmax);
 
 	for (arg = strtok(cmd, WS); arg; arg = strtok(NULL, WS)) {
-		if (n == nmax) {
+		if (n == nmax - 1) {
 			nmax += 16;
 			av = realloc(av, sizeof(char *) * nmax);
 		}
 		av[n++] = arg;
 	}
+	av[n++] = NULL;
 
 	/*
 	 * Run the command.
