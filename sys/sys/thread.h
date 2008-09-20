@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.96 2008/09/09 07:21:57 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.97 2008/09/20 04:31:02 sephe Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -283,6 +283,7 @@ struct thread {
 #define TDF_EXITING		0x00400000	/* thread exiting */
 #define TDF_USINGFP		0x00800000	/* thread using fp coproc */
 #define TDF_KERNELFP		0x01000000	/* kernel using fp coproc */
+#define TDF_NETWORK		0x02000000	/* network proto thread */
 
 /*
  * Thread priorities.  Typically only one thread from any given

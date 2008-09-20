@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.39 2008/03/29 04:45:47 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.40 2008/09/20 04:31:02 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -377,7 +377,8 @@ tcp_thread_init(void)
 
 	for (cpu = 0; cpu < ncpus2; cpu++) {
 		lwkt_create(tcpmsg_service_loop, NULL, NULL,
-			&tcp_thread[cpu], 0, cpu, "tcp_thread %d", cpu);
+			    &tcp_thread[cpu], TDF_NETWORK, cpu,
+			    "tcp_thread %d", cpu);
 		netmsg_service_port_init(&tcp_thread[cpu].td_msgport);
 	}
 }
@@ -390,7 +391,7 @@ udp_thread_init(void)
 	for (cpu = 0; cpu < ncpus2; cpu++) {
 		lwkt_create(udp_mpsafe_thread ?
 			    netmsg_service_loop_mpsafe : netmsg_service_loop,
-			    NULL, NULL, &udp_thread[cpu], 0, cpu,
+			    NULL, NULL, &udp_thread[cpu], TDF_NETWORK, cpu,
 			    "udp_thread %d", cpu);
 		netmsg_service_port_init(&udp_thread[cpu].td_msgport);
 	}

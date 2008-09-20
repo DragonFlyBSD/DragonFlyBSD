@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.44 2008/09/17 07:24:18 sephe Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.45 2008/09/20 04:31:02 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -150,7 +150,7 @@ netisr_init(void)
 	lwkt_create(netisr_mpsafe_thread ?
 		    netmsg_service_loop_mpsafe : netmsg_service_loop,
 		    NULL, NULL, &netisr_cpu[i],
-		    0, i, "netisr_cpu %d", i);
+		    TDF_NETWORK, i, "netisr_cpu %d", i);
 	netmsg_service_port_init(&netisr_cpu[i].td_msgport);
     }
 
