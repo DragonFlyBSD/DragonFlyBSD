@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.h,v 1.10.2.9 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.18 2007/11/18 13:00:28 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.19 2008/09/20 04:36:51 sephe Exp $
  */
 
 #ifndef _IP_DUMMYNET_H
@@ -114,6 +114,7 @@ struct dn_flow_id {
 };
 
 typedef void	(*ip_dn_unref_priv_t)(void *);
+struct lwkt_port;
 
 /*
  * struct dn_pkt identifies a packet in the dummynet queue, but is also used
@@ -148,7 +149,8 @@ struct dn_pkt {
     u_short pad;
 
     struct dn_flow_id id;	/* flow id */
-    int cpuid;			/* target cpu, for IP_OUT/ETH_DEMUX/ETH_OUT */
+    int cpuid;			/* target cpuid, for assertion */
+    struct lwkt_port *msgport;	/* target msgport */
 };
 TAILQ_HEAD(dn_pkt_queue, dn_pkt);
 

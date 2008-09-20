@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.94 2008/09/19 12:23:56 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.95 2008/09/20 04:36:51 sephe Exp $
  */
 
 /*
@@ -2476,8 +2476,12 @@ ipfw_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 	pkt->dn_m = m;
 	pkt->dn_flags = (dir & DN_FLAGS_DIR_MASK);
 	pkt->ifp = fwa->oif;
-	pkt->cpuid = mycpuid;
 	pkt->pipe_nr = pipe_nr;
+
+	KASSERT(curthread->td_flags & TDF_NETWORK,
+		("not in network thread!\n"));
+	pkt->msgport = &curthread->td_msgport;
+	pkt->cpuid = mycpuid;
 
 	id = &fwa->f_id;
 	fid = &pkt->id;

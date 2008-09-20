@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/net/dummynet/ip_dummynet_glue.c,v 1.10 2008/09/06 14:07:30 sephe Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet_glue.c,v 1.11 2008/09/20 04:36:51 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -102,25 +102,18 @@ void
 ip_dn_packet_free(struct dn_pkt *pkt)
 {
 	struct netmsg_packet *nmp;
-	lwkt_port_t port;
 	struct mbuf *m = pkt->dn_m;
 
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_pkthdr.fw_flags & DUMMYNET_MBUF_TAGGED,
 		("mbuf is not tagged for dummynet!\n"));
 
-	if (pkt->cpuid == mycpuid) {
-		ip_dn_freepkt(pkt);
-		return;
-	}
-
 	nmp = &m->m_hdr.mh_netmsg;
 	netmsg_init(&nmp->nm_netmsg, &netisr_apanic_rport, 0,
 		    ip_dn_freepkt_dispatch);
 	nmp->nm_packet = m;
 
-	port = cpu_portfn(pkt->cpuid);
-	lwkt_sendmsg(port, &nmp->nm_netmsg.nm_lmsg);
+	lwkt_sendmsg(pkt->msgport, &nmp->nm_netmsg.nm_lmsg);
 }
 
 void
@@ -136,7 +129,6 @@ ip_dn_packet_redispatch(struct dn_pkt *pkt)
 	struct netmsg_packet *nmp;
 	struct mbuf *m;
 	netisr_fn_t dispatch;
-	lwkt_port_t port;
 	int dir;
 
 	dir = (pkt->dn_flags & DN_FLAGS_DIR_MASK);
@@ -156,8 +148,7 @@ ip_dn_packet_redispatch(struct dn_pkt *pkt)
 	netmsg_init(&nmp->nm_netmsg, &netisr_apanic_rport, 0, dispatch);
 	nmp->nm_packet = m;
 
-	port = cpu_portfn(pkt->cpuid);
-	lwkt_sendmsg(port, &nmp->nm_netmsg.nm_lmsg);
+	lwkt_sendmsg(pkt->msgport, &nmp->nm_netmsg.nm_lmsg);
 }
 
 int
