@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.46 2008/08/21 23:28:43 thomas Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.47 2008/09/20 04:23:21 dillon Exp $
 .Dd July 27, 2008
 .Dt HAMMER 8
 .Os
@@ -181,6 +181,42 @@ Generate the top 32 bits of a
 .Nm HAMMER
 64 bit directory hash for the specified
 file name.
+.\" ==== cleanup ====
+.It Ar cleanup Op Ar filesystem
+This is a meta-command which executes snapshot, pruning, and reblocking
+commands on the specified HAMMER filesystem.
+If no filesystem is specified this command will scan all HAMMER and nullfs
+mounts, extract PFS id's, and clean-up each PFS found.
+.Pp
+This command will access a
+.Ar snapshots
+subdirectory and a
+.Ar snapshots/config
+file for each filesystem, creating them if necessary.
+The default configuration file will create a daily snapshot, do a daily
+pruning and reblocking run with a fragmentation level of 95%, and
+a monthly unconditional reblocking run.
+.Pp
+All operations are limited to 5 minutes per function by default.
+Reblocking runs are broken down into three separate functions and
+take 15 minutes.  
+Also note that this directive will disable snapshots on
+.Pa /tmp ,
+.Pa /var/tmp ,
+and
+.Pa /usr/obj
+by default.
+.Pp
+The defaults may be adjusted by modifying the config file.
+The pruning and reblocking commands automatically maintain a cyclefile
+for incremental operation.
+If you ^C the program the cyclefile will be updated, but a sub-command
+may continue to run in the background for a few seconds until the HAMMER
+ioctl detects the interrupt.
+.Pp
+Work on this command is still in progress.
+Expected additions:  Limit the number of snapshots to 60 days by default
+and remove snapshots as the filesystem becomes full.
 .\" ==== prune ====
 .It Ar prune Ar softlink-dir
 Prune the file system based on previously created snapshot softlinks.

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.38 2008/08/21 23:28:43 thomas Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.39 2008/09/20 04:23:21 dillon Exp $
  */
 
 #include "hammer.h"
@@ -187,6 +187,10 @@ main(int ac, char **av)
 		hammer_cmd_softprune(av + 1, ac - 1, 0);
 		exit(0);
 	}
+	if (strcmp(av[0], "cleanup") == 0) {
+		hammer_cmd_cleanup(av + 1, ac - 1);
+		exit(0);
+	}
 	if (strcmp(av[0], "prune-everything") == 0) {
 		hammer_cmd_softprune(av + 1, ac - 1, 1);
 		exit(0);
@@ -209,6 +213,7 @@ main(int ac, char **av)
 		exit(0);
 	}
 	if (strncmp(av[0], "reblock", 7) == 0) {
+		signal(SIGINT, sigalrm);
 		if (strcmp(av[0], "reblock") == 0)
 			hammer_cmd_reblock(av + 1, ac - 1, -1);
 		else if (strcmp(av[0], "reblock-btree") == 0)
@@ -300,6 +305,7 @@ usage(int exit_code)
 	fprintf(stderr, 
 		"hammer -h\n"
 		"hammer [-v] [-t seconds] [-c cyclefile] command [argument ...]\n"
+		"hammer cleanup [<filesystem>]\n"
 		"hammer synctid <filesystem> [quick]\n"
 		"hammer namekey[32] <path>\n"
 		"hammer prune <softlink-dir>\n"
