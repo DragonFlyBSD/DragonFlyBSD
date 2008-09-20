@@ -1,5 +1,5 @@
 /*	$NetBSD: pfil.c,v 1.20 2001/11/12 23:49:46 lukem Exp $	*/
-/* $DragonFly: src/sys/net/pfil.c,v 1.13 2008/09/16 11:57:30 sephe Exp $ */
+/* $DragonFly: src/sys/net/pfil.c,v 1.14 2008/09/20 06:08:13 sephe Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
@@ -42,6 +42,20 @@
 #include <net/pfil.h>
 #include <net/netmsg2.h>
 
+#define PFIL_CFGPORT	cpu_portfn(0)
+
+#define PFIL_GETMPLOCK(pfh) \
+do { \
+	if (((pfh)->pfil_flags & PFIL_MPSAFE) == 0) \
+		get_mplock(); \
+} while (0)
+
+#define PFIL_RELMPLOCK(pfh) \
+do { \
+	if (((pfh)->pfil_flags & PFIL_MPSAFE) == 0) \
+		rel_mplock(); \
+} while (0)
+
 /*
  * The packet filter hooks are designed for anything to call them to
  * possibly intercept the packet.
@@ -52,8 +66,6 @@ struct packet_filter_hook {
 	void		*pfil_arg;
 	int		pfil_flags;
 };
-
-#define PFIL_CFGPORT	cpu_portfn(0)
 
 struct netmsg_pfil {
 	struct netmsg		pfil_nmsg;
@@ -99,7 +111,10 @@ pfil_run_hooks(struct pfil_head *ph, struct mbuf **mp, struct ifnet *ifp,
 
 	TAILQ_FOREACH(pfh, list, pfil_link) {
 		if (pfh->pfil_func != NULL) {
-			rv = (*pfh->pfil_func)(pfh->pfil_arg, &m, ifp, dir);
+			PFIL_GETMPLOCK(pfh);
+			rv = pfh->pfil_func(pfh->pfil_arg, &m, ifp, dir);
+			PFIL_RELMPLOCK(pfh);
+
 			if (rv != 0 || m == NULL)
 				break;
 		}
@@ -245,6 +260,7 @@ reply:
  *	PFIL_IN		call me on incoming packets
  *	PFIL_OUT	call me on outgoing packets
  *	PFIL_ALL	call me on all of the above
+ *	PFIL_MPSAFE	call me without BGL
  */
 int
 pfil_add_hook(pfil_func_t func, void *arg, int flags, struct pfil_head *ph)

@@ -1,5 +1,5 @@
 /*	$NetBSD: pfil.h,v 1.22 2003/06/23 12:57:08 martin Exp $	*/
-/* $DragonFly: src/sys/net/pfil.h,v 1.10 2008/09/16 11:53:33 sephe Exp $ */
+/* $DragonFly: src/sys/net/pfil.h,v 1.11 2008/09/20 06:08:13 sephe Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
@@ -50,6 +50,7 @@ typedef int	(*pfil_func_t)(void *, struct mbuf **, struct ifnet *, int);
 
 #define PFIL_IN		0x00000001
 #define PFIL_OUT	0x00000002
+#define PFIL_MPSAFE	0x00000004
 #define PFIL_ALL	(PFIL_IN|PFIL_OUT)
 
 typedef	TAILQ_HEAD(pfil_list, packet_filter_hook) pfil_list_t;

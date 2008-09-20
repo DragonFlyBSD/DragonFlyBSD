@@ -1,5 +1,5 @@
 .\"	$NetBSD: pfil.9,v 1.24 2004/01/01 15:24:35 wiz Exp $
-.\" $DragonFly: src/share/man/man9/pfil.9,v 1.8 2008/09/17 08:58:33 sephe Exp $
+.\" $DragonFly: src/share/man/man9/pfil.9,v 1.9 2008/09/20 06:08:13 sephe Exp $
 .\"
 .\" Copyright (c) 1996 Matthew R. Green
 .\" All rights reserved.
@@ -121,13 +121,15 @@ and
 .Fn pfil_remove_hook
 functions, indicates when the filter should be called.
 The flags are:
-.Bl -tag -offset indent -width PFIL_ALL -compact
+.Bl -tag -offset indent -width PFIL_MPSAFE -compact
 .It PFIL_IN
 call me on incoming packets
 .It PFIL_OUT
 call me on outgoing packets
 .It PFIL_ALL
 call me on all of the above
+.It PFIL_MPSAFE
+call me without BGL
 .El
 .Sh SEE ALSO
 .Xr bpf 4
