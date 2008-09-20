@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.89 2008/09/17 08:51:29 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.90 2008/09/20 10:53:16 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -47,6 +47,7 @@
 #include <sys/systm.h>
 #include <sys/globaldata.h>
 #include <sys/kernel.h>
+#include <sys/ktr.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/msgport.h>
@@ -164,6 +165,18 @@ SYSCTL_UINT(_net_link_ether, OID_AUTO, restore_hdr, CTLFLAG_RW,
 SYSCTL_UINT(_net_link_ether, OID_AUTO, prepend_hdr, CTLFLAG_RW,
 	    &ether_prepend_hdr, 0,
 	    "# of ether header restoration which prepends mbuf");
+
+#define ETHER_KTR_STR		"ifp=%p"
+#define ETHER_KTR_ARG_SIZE	(sizeof(void *))
+#ifndef KTR_ETHERNET
+#define KTR_ETHERNET		KTR_ALL
+#endif
+KTR_INFO_MASTER(ether);
+KTR_INFO(KTR_ETHERNET, ether, chain_beg, 0, ETHER_KTR_STR, ETHER_KTR_ARG_SIZE);
+KTR_INFO(KTR_ETHERNET, ether, chain_end, 1, ETHER_KTR_STR, ETHER_KTR_ARG_SIZE);
+KTR_INFO(KTR_ETHERNET, ether, disp_beg, 2, ETHER_KTR_STR, ETHER_KTR_ARG_SIZE);
+KTR_INFO(KTR_ETHERNET, ether, disp_end, 3, ETHER_KTR_STR, ETHER_KTR_ARG_SIZE);
+#define logether(name, arg)	KTR_LOG(ether_ ## name, arg)
 
 /*
  * Ethernet output routine.
@@ -982,6 +995,7 @@ ether_input_dispatch(struct mbuf_chain *chain)
 #ifdef SMP
 	int i;
 
+	logether(disp_beg, NULL);
 	for (i = 0; i < ncpus; ++i) {
 		if (chain[i].mc_head != NULL) {
 			lwkt_send_ipiq(globaldata_find(i),
@@ -989,9 +1003,11 @@ ether_input_dispatch(struct mbuf_chain *chain)
 		}
 	}
 #else
+	logether(disp_beg, NULL);
 	if (chain->mc_head != NULL)
 		ether_input_ipifunc(chain->mc_head);
 #endif
+	logether(disp_end, NULL);
 }
 
 void
@@ -1361,6 +1377,8 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 
 	m->m_pkthdr.rcvif = ifp;
 
+	logether(chain_beg, ifp);
+
 	if (ETHER_IS_MULTICAST(eh->ether_dhost)) {
 		if (bcmp(ifp->if_broadcastaddr, eh->ether_dhost,
 			 ifp->if_addrlen) == 0)
@@ -1379,6 +1397,8 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 		 * Interface marked for monitoring; discard packet.
 		 */
 		m_freem(m);
+
+		logether(chain_end, ifp);
 		return;
 	}
 
@@ -1531,4 +1551,5 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 	} else {
 		lwkt_sendmsg(port, &m->m_hdr.mh_netmsg.nm_netmsg.nm_lmsg);
 	}
+	logether(chain_end, ifp);
 }
