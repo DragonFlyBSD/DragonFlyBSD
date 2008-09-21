@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.96 2008/08/09 07:04:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.97 2008/09/21 02:58:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -186,8 +186,11 @@ hammer_vop_fsync(struct vop_fsync_args *ap)
 	++hammer_count_fsyncs;
 	vfsync(ap->a_vp, ap->a_waitfor, 1, NULL, NULL);
 	hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-	if (ap->a_waitfor == MNT_WAIT)
+	if (ap->a_waitfor == MNT_WAIT) {
+		vn_unlock(ap->a_vp);
 		hammer_wait_inode(ip);
+		vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY);
+	}
 	return (ip->error);
 }
 
@@ -1038,6 +1041,7 @@ hammer_vop_nlink(struct vop_nlink_args *ap)
 		cache_setvp(nch, ap->a_vp);
 	}
 	hammer_done_transaction(&trans);
+	hammer_inode_waitreclaims(dip->hmp);
 	return (error);
 }
 
@@ -1108,6 +1112,7 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 		}
 	}
 	hammer_done_transaction(&trans);
+	hammer_inode_waitreclaims(dip->hmp);
 	return (error);
 }
 
@@ -1873,6 +1878,8 @@ done:
 	if (error == 0)
 		hammer_modify_inode(ip, modflags);
 	hammer_done_transaction(&trans);
+	if (ap->a_vp->v_opencount == 0)
+		hammer_inode_waitreclaims(ip->hmp);
 	return (error);
 }
 
@@ -2027,7 +2034,8 @@ hammer_vop_mountctl(struct vop_mountctl_args *ap)
 	case MOUNTCTL_SET_EXPORT:
 		if (ap->a_ctllen != sizeof(struct export_args))
 			error = EINVAL;
-		error = hammer_vfs_export(mp, ap->a_op,
+		else
+			error = hammer_vfs_export(mp, ap->a_op,
 				      (const struct export_args *)ap->a_ctl);
 		break;
 	default:
