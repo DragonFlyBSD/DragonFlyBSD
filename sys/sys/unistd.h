@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sys/sys/unistd.h,v 1.22.2.2 2000/08/22 01:46:30 jhb Exp $
- * $DragonFly: src/sys/sys/unistd.h,v 1.9 2008/02/21 12:47:54 hasso Exp $
+ * $DragonFly: src/sys/sys/unistd.h,v 1.10 2008/09/22 09:13:21 hasso Exp $
  */
 
 #ifndef _SYS_UNISTD_H_
@@ -188,6 +188,7 @@
 #define _SC_DELAYTIMER_MAX	45
 #define _SC_MQ_OPEN_MAX		46
 #define _SC_PAGESIZE		47
+#define _SC_PAGE_SIZE		_SC_PAGESIZE
 #define _SC_RTSIG_MAX		48
 #define _SC_SEM_NSEMS_MAX	49
 #define _SC_SEM_VALUE_MAX	50
