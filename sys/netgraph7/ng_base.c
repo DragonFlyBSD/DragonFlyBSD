@@ -39,7 +39,7 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.159 2008/04/19 05:30:49 mav Exp $
- * $DragonFly: src/sys/netgraph7/ng_base.c,v 1.2 2008/06/26 23:05:35 dillon Exp $
+ * $DragonFly: src/sys/netgraph7/ng_base.c,v 1.3 2008/09/23 11:28:49 sephe Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -3068,8 +3068,7 @@ ngb_mod_event(module_t mod, int event, void *data)
 		ng_qdzone = uma_zcreate("NetGraph data items", sizeof(struct ng_item),
 		    NULL, NULL, NULL, NULL, UMA_ALIGN_CACHE, 0);
 		uma_zone_set_max(ng_qdzone, maxdata);
-		netisr_register(NETISR_NETGRAPH, (netisr_t *)ngintr, NULL,
-		    NETISR_MPSAFE);
+		netisr_register(NETISR_NETGRAPH, (netisr_t *)ngintr, NULL, 0);
 		break;
 	case MOD_UNLOAD:
 		/* You can't unload it because an interface may be using it. */

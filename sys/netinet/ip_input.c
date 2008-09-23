@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.107 2008/09/18 11:19:42 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.108 2008/09/23 11:28:49 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -203,6 +203,9 @@ SYSCTL_INT(_net_inet_ip, OID_AUTO, check_interface, CTLFLAG_RW,
 static int ipprintfs = 0;
 #endif
 
+extern	int udp_mpsafe_proto;
+extern	int tcp_mpsafe_proto;
+
 extern	struct domain inetdomain;
 extern	struct protosw inetsw[];
 u_char	ip_protox[IPPROTO_MAX];
@@ -325,10 +328,25 @@ ip_init(void)
 	for (i = 0; i < IPPROTO_MAX; i++)
 		ip_protox[i] = pr - inetsw;
 	for (pr = inetdomain.dom_protosw;
-	     pr < inetdomain.dom_protoswNPROTOSW; pr++)
-		if (pr->pr_domain->dom_family == PF_INET &&
-		    pr->pr_protocol && pr->pr_protocol != IPPROTO_RAW)
-			ip_protox[pr->pr_protocol] = pr - inetsw;
+	     pr < inetdomain.dom_protoswNPROTOSW; pr++) {
+		if (pr->pr_domain->dom_family == PF_INET && pr->pr_protocol) {
+			if (pr->pr_protocol != IPPROTO_RAW)
+				ip_protox[pr->pr_protocol] = pr - inetsw;
+
+			/* XXX */
+			switch (pr->pr_protocol) {
+			case IPPROTO_TCP:
+				if (tcp_mpsafe_proto)
+					pr->pr_flags |= PR_MPSAFE;
+				break;
+
+			case IPPROTO_UDP:
+				if (udp_mpsafe_proto)
+					pr->pr_flags |= PR_MPSAFE;
+				break;
+			}
+		}
+	}
 
 	inet_pfil_hook.ph_type = PFIL_TYPE_AF;
 	inet_pfil_hook.ph_af = AF_INET;
@@ -357,7 +375,7 @@ ip_init(void)
 	bzero(&ipstat, sizeof(struct ip_stats));
 #endif
 
-	netisr_register(NETISR_IP, ip_mport_in, ip_input_handler);
+	netisr_register(NETISR_IP, ip_mport_in, ip_input_handler, 0);
 }
 
 /*
@@ -371,10 +389,14 @@ struct route ipforward_rt[MAXCPU];
 static void
 transport_processing_oncpu(struct mbuf *m, int hlen, struct ip *ip)
 {
+	const struct protosw *pr = &inetsw[ip_protox[ip->ip_p]];
+
 	/*
 	 * Switch out to protocol's input routine.
 	 */
-	(*inetsw[ip_protox[ip->ip_p]].pr_input)(m, hlen, ip->ip_p);
+	PR_GET_MPLOCK(pr);
+	pr->pr_input(m, hlen, ip->ip_p);
+	PR_REL_MPLOCK(pr);
 }
 
 static void
@@ -898,7 +920,7 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 			return;
 
 		pmsg = &m->m_hdr.mh_netmsg;
-		netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, 0,
+		netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, MSGF_MPSAFE,
 			    transport_processing_handler);
 		pmsg->nm_packet = m;
 		pmsg->nm_netmsg.nm_lmsg.u.ms_result = hlen;

@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.79 2008/09/20 04:31:02 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.80 2008/09/23 11:28:49 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -163,6 +163,7 @@ struct callout		if_slowtimo_timer;
 int			if_index = 0;
 struct ifnet		**ifindex2ifnet = NULL;
 static struct thread	ifnet_threads[MAXCPU];
+static int		ifnet_mpsafe_thread = NETMSG_SERVICE_MPSAFE;
 
 #define IFQ_KTR_STRING		"ifq=%p"
 #define IFQ_KTR_ARG_SIZE	(sizeof(void *))
@@ -2360,8 +2361,8 @@ ifnetinit(void *dummy __unused)
 	for (i = 0; i < ncpus; ++i) {
 		struct thread *thr = &ifnet_threads[i];
 
-		lwkt_create(netmsg_service_loop, NULL, NULL, thr,
-			    TDF_NETWORK | TDF_MPSAFE, i, "ifnet %d", i);
+		lwkt_create(netmsg_service_loop, &ifnet_mpsafe_thread, NULL,
+			    thr, TDF_NETWORK | TDF_MPSAFE, i, "ifnet %d", i);
 		netmsg_service_port_init(&thr->td_msgport);
 	}
 }

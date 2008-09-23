@@ -32,7 +32,7 @@
  *
  *	@(#)protosw.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/protosw.h,v 1.28.2.2 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/protosw.h,v 1.22 2008/06/17 20:50:11 aggelos Exp $
+ * $DragonFly: src/sys/sys/protosw.h,v 1.23 2008/09/23 11:28:50 sephe Exp $
  */
 
 #ifndef _SYS_PROTOSW_H_
@@ -127,6 +127,7 @@ struct protosw {
 #define	PR_IMPLOPCL	0x20		/* implied open/close */
 #define	PR_LASTHDR	0x40		/* enforce ipsec policy; last header */
 #define	PR_ADDR_OPT	0x80		/* allow addresses during delivery */
+#define PR_MPSAFE	0x0100		/* protocal is MPSAFE */
 
 /*
  * The arguments to usrreq are:
@@ -390,6 +391,18 @@ void	kpfctlinput (int, struct sockaddr *);
 void	kpfctlinput2 (int, struct sockaddr *, void *);
 struct protosw *pffindproto (int family, int protocol, int type);
 struct protosw *pffindtype (int family, int type);
+
+#define PR_GET_MPLOCK(_pr) \
+do { \
+	if (((_pr)->pr_flags & PR_MPSAFE) == 0) \
+		get_mplock(); \
+} while (0)
+
+#define PR_REL_MPLOCK(_pr) \
+do { \
+	if (((_pr)->pr_flags & PR_MPSAFE) == 0) \
+		rel_mplock(); \
+} while (0)
 
 #endif	/* _KERNEL */
 

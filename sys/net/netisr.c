@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.45 2008/09/20 04:31:02 sephe Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.46 2008/09/23 11:28:49 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -55,6 +55,18 @@
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
 #include <net/netmsg2.h>
+
+#define NETISR_GET_MPLOCK(ni) \
+do { \
+    if (((ni)->ni_flags & NETISR_FLAG_MPSAFE) == 0) \
+	get_mplock(); \
+} while (0)
+
+#define NETISR_REL_MPLOCK(ni) \
+do { \
+    if (((ni)->ni_flags & NETISR_FLAG_MPSAFE) == 0) \
+	rel_mplock(); \
+} while (0)
 
 static void netmsg_sync_func(struct netmsg *msg);
 
@@ -76,7 +88,12 @@ lwkt_port netisr_sync_port;
 static int (*netmsg_fwd_port_fn)(lwkt_port_t, lwkt_msg_t);
 
 static int netisr_mpsafe_thread = 0;
-TUNABLE_INT("netisr.mpsafe_thread", &netisr_mpsafe_thread);
+TUNABLE_INT("net.netisr.mpsafe_thread", &netisr_mpsafe_thread);
+
+SYSCTL_NODE(_net, OID_AUTO, netisr, CTLFLAG_RW, 0, "netisr");
+SYSCTL_INT(_net_netisr, OID_AUTO, mpsafe_thread, CTLFLAG_RW,
+	   &netisr_mpsafe_thread, 0,
+	   "0:BGL, 1:Adaptive BGL, 2:No BGL(experimental)");
 
 /*
  * netisr_afree_rport replymsg function, only used to handle async
@@ -147,10 +164,9 @@ netisr_init(void)
      * Create default per-cpu threads for generic protocol handling.
      */
     for (i = 0; i < ncpus; ++i) {
-	lwkt_create(netisr_mpsafe_thread ?
-		    netmsg_service_loop_mpsafe : netmsg_service_loop,
-		    NULL, NULL, &netisr_cpu[i],
-		    TDF_NETWORK, i, "netisr_cpu %d", i);
+	lwkt_create(netmsg_service_loop, &netisr_mpsafe_thread, NULL,
+		    &netisr_cpu[i], TDF_NETWORK | TDF_MPSAFE, i,
+		    "netisr_cpu %d", i);
 	netmsg_service_port_init(&netisr_cpu[i].td_msgport);
     }
 
@@ -235,6 +251,57 @@ netmsg_sync_func(struct netmsg *msg)
 }
 
 /*
+ * Return current BGL lock state (1:locked, 0: unlocked)
+ */
+int
+netmsg_service(struct netmsg *msg, int mpsafe_mode, int mplocked)
+{
+    /*
+     * Adjust the mplock dynamically.
+     */
+    switch (mpsafe_mode) {
+    case NETMSG_SERVICE_ADAPTIVE: /* Adaptive BGL */
+	if (msg->nm_lmsg.ms_flags & MSGF_MPSAFE) {
+	    if (mplocked) {
+		rel_mplock();
+		mplocked = 0;
+	    }
+	    msg->nm_dispatch(msg);
+	    /* Leave mpunlocked */
+	} else {
+	    if (!mplocked) {
+		get_mplock();
+		/* mplocked = 1; not needed */
+	    }
+	    msg->nm_dispatch(msg);
+	    rel_mplock();
+	    mplocked = 0;
+	    /* Leave mpunlocked, next msg might be mpsafe */
+	}
+	break;
+
+    case NETMSG_SERVICE_MPSAFE: /* No BGL */
+	if (mplocked) {
+	    rel_mplock();
+	    mplocked = 0;
+	}
+	msg->nm_dispatch(msg);
+	/* Leave mpunlocked */
+	break;
+
+    default: /* BGL */
+	if (!mplocked) {
+	    get_mplock();
+	    mplocked = 1;
+	}
+	msg->nm_dispatch(msg);
+	/* Leave mplocked */
+	break;
+    }
+    return mplocked;
+}
+
+/*
  * Generic netmsg service loop.  Some protocols may roll their own but all
  * must do the basic command dispatch function call done here.
  */
@@ -242,20 +309,19 @@ void
 netmsg_service_loop(void *arg)
 {
     struct netmsg *msg;
+    int mplocked, *mpsafe_mode = arg;
 
+    /*
+     * Thread was started with TDF_MPSAFE
+     */
+    mplocked = 0;
+
+    /*
+     * Loop on netmsgs
+     */
     while ((msg = lwkt_waitport(&curthread->td_msgport, 0))) {
-	msg->nm_dispatch(msg);
+	mplocked = netmsg_service(msg, *mpsafe_mode, mplocked);
     }
-}
-
-/*
- * MPSAFE version of netmsg_service_loop()
- */
-void
-netmsg_service_loop_mpsafe(void *arg)
-{
-    rel_mplock();
-    netmsg_service_loop(arg);
 }
 
 /*
@@ -296,7 +362,9 @@ netisr_queue(int num, struct mbuf *m)
 
     pmsg = &m->m_hdr.mh_netmsg;
 
-    netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, 0, ni->ni_handler);
+    netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport,
+    		(ni->ni_flags & NETISR_FLAG_MPSAFE) ? MSGF_MPSAFE : 0,
+		ni->ni_handler);
     pmsg->nm_packet = m;
     pmsg->nm_netmsg.nm_lmsg.u.ms_result = num;
     lwkt_sendmsg(port, &pmsg->nm_netmsg.nm_lmsg);
@@ -304,13 +372,16 @@ netisr_queue(int num, struct mbuf *m)
 }
 
 void
-netisr_register(int num, lwkt_portfn_t mportfn, netisr_fn_t handler)
+netisr_register(int num, lwkt_portfn_t mportfn, netisr_fn_t handler,
+		uint32_t flags)
 {
     KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
 	("netisr_register: bad isr %d", num));
-    netmsg_init(&netisrs[num].ni_netmsg, &netisr_adone_rport, 0, NULL);
+    netmsg_init(&netisrs[num].ni_netmsg, &netisr_adone_rport,
+    		(flags & NETISR_FLAG_MPSAFE) ? MSGF_MPSAFE : 0, NULL);
     netisrs[num].ni_mport = mportfn;
     netisrs[num].ni_handler = handler;
+    netisrs[num].ni_flags = flags;
 }
 
 int
@@ -446,5 +517,7 @@ netisr_run(int num, struct mbuf *m)
     pmsg->nm_packet = m;
     pmsg->nm_netmsg.nm_lmsg.u.ms_result = num;
 
+    NETISR_GET_MPLOCK(ni);
     ni->ni_handler(&pmsg->nm_netmsg);
+    NETISR_REL_MPLOCK(ni);
 }

@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.49 2008/06/09 11:24:24 sephe Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.50 2008/09/23 11:28:49 sephe Exp $
  */
 
 /*
@@ -987,7 +987,7 @@ arp_init(void)
 
 	for (cpu = 0; cpu < ncpus2; cpu++)
 		LIST_INIT(&llinfo_arp_list[cpu]);
-	netisr_register(NETISR_ARP, cpu0_portfn, arpintr);
+	netisr_register(NETISR_ARP, cpu0_portfn, arpintr, 0);
 }
 
 SYSINIT(arp, SI_SUB_PROTO_DOMAIN, SI_ORDER_ANY, arp_init, 0);

@@ -27,7 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netmsg.h,v 1.8 2008/09/17 11:22:13 sephe Exp $
+ * $DragonFly: src/sys/net/netmsg.h,v 1.9 2008/09/23 11:28:49 sephe Exp $
  */
 
 #ifndef _NET_NETMSG_H_
@@ -51,6 +51,8 @@ typedef struct netmsg {
     struct lwkt_msg     nm_lmsg;
     netisr_fn_t		nm_dispatch;
 } *netmsg_t;
+
+#define MSGF_MPSAFE	MSGF_USER0
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 

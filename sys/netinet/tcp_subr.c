@@ -65,7 +65,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.60 2008/08/15 21:37:16 nth Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.61 2008/09/23 11:28:49 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -157,6 +157,15 @@ KTR_INFO(KTR_TCP, tcp, delayed, 2, "tcp execute delayed ops", 0);
 struct inpcbinfo tcbinfo[MAXCPU];
 struct tcpcbackqhead tcpcbackq[MAXCPU];
 
+int tcp_mpsafe_proto = 0;
+TUNABLE_INT("net.inet.tcp.mpsafe_proto", &tcp_mpsafe_proto);
+
+static int tcp_mpsafe_thread = 0;
+TUNABLE_INT("net.inet.tcp.mpsafe_thread", &tcp_mpsafe_thread);
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, mpsafe_thread, CTLFLAG_RW,
+	   &tcp_mpsafe_thread, 0,
+	   "0:BGL, 1:Adaptive BGL, 2:No BGL(experimental)");
+
 int tcp_mssdflt = TCP_MSS;
 SYSCTL_INT(_net_inet_tcp, TCPCTL_MSSDFLT, mssdflt, CTLFLAG_RW,
     &tcp_mssdflt, 0, "Default TCP Maximum Segment Size");
@@ -229,7 +238,7 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, inflight_stab, CTLFLAG_RW,
 static MALLOC_DEFINE(M_TCPTEMP, "tcptemp", "TCP Templates for Keepalives");
 static struct malloc_pipe tcptemp_mpipe;
 
-static void tcp_willblock(void);
+static void tcp_willblock(int);
 static void tcp_cleartaocache (void);
 static void tcp_notify (struct inpcb *, int);
 
@@ -377,23 +386,41 @@ void
 tcpmsg_service_loop(void *dummy)
 {
 	struct netmsg *msg;
+	int mplocked;
+
+	/*
+	 * Thread was started with TDF_MPSAFE
+	 */
+	mplocked = 0;
 
 	while ((msg = lwkt_waitport(&curthread->td_msgport, 0))) {
 		do {
 			logtcp(rxmsg);
-			msg->nm_dispatch(msg);
+			mplocked = netmsg_service(msg, tcp_mpsafe_thread,
+						  mplocked);
 		} while ((msg = lwkt_getport(&curthread->td_msgport)) != NULL);
+
 		logtcp(delayed);
-		tcp_willblock();
+		tcp_willblock(mplocked);
 		logtcp(wait);
 	}
 }
 
 static void
-tcp_willblock(void)
+tcp_willblock(int mplocked)
 {
 	struct tcpcb *tp;
 	int cpu = mycpu->gd_cpuid;
+	int unlock = 0;
+
+	if (!mplocked && !tcp_mpsafe_proto) {
+		if (TAILQ_EMPTY(&tcpcbackq[cpu]))
+			return;
+
+		get_mplock();
+		mplocked = 1;
+		unlock = 1;
+	}
 
 	while ((tp = TAILQ_FIRST(&tcpcbackq[cpu])) != NULL) {
 		KKASSERT(tp->t_flags & TF_ONOUTPUTQ);
@@ -401,6 +428,9 @@ tcp_willblock(void)
 		TAILQ_REMOVE(&tcpcbackq[cpu], tp, t_outputq);
 		tcp_output(tp);
 	}
+
+	if (unlock)
+		rel_mplock();
 }
 
 

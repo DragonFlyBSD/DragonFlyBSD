@@ -65,7 +65,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.35 2008/09/17 07:24:18 sephe Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.36 2008/09/23 11:28:49 sephe Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -203,11 +203,17 @@ struct netisr {
 	lwkt_portfn_t	ni_mport;
 	netisr_fn_t	ni_handler;
 	struct netmsg	ni_netmsg;	/* for sched_netisr() (no-data) */
+	uint32_t	ni_flags;	/* NETISR_FLAG_ */
 };
+
+#define NETISR_FLAG_MPSAFE	0x1
 
 #endif
 
 #ifdef _KERNEL
+
+#define NETMSG_SERVICE_ADAPTIVE	1
+#define NETMSG_SERVICE_MPSAFE	2
 
 extern lwkt_port netisr_adone_rport;
 extern lwkt_port netisr_afree_rport;
@@ -219,11 +225,11 @@ lwkt_port_t	netisr_find_port(int, struct mbuf **);
 void		netisr_dispatch(int, struct mbuf *);
 void		netisr_run(int, struct mbuf *);
 int		netisr_queue(int, struct mbuf *);
-void		netisr_register(int, lwkt_portfn_t, netisr_fn_t);
+void		netisr_register(int, lwkt_portfn_t, netisr_fn_t, uint32_t);
 int		netisr_unregister(int);
 void		netmsg_service_port_init(lwkt_port_t);
 void		netmsg_service_loop(void *arg);
-void		netmsg_service_loop_mpsafe(void *arg);
+int		netmsg_service(struct netmsg *, int, int);
 void		netmsg_service_sync(void);
 void		schednetisr(int);
 

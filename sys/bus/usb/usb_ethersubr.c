@@ -31,7 +31,7 @@
  *
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.17 2003/11/14 11:09:45 johan Exp $
- * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.19 2007/06/28 06:32:31 hasso Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.20 2008/09/23 11:28:49 sephe Exp $
  */
 
 /*
@@ -91,7 +91,7 @@ usb_register_netisr(void)
 {
 	if (netisr_inited == 0) {
 		netisr_inited = 1;
-		netisr_register(NETISR_USB, cpu0_portfn, usbintr);
+		netisr_register(NETISR_USB, cpu0_portfn, usbintr, 0);
 	}
 }
 

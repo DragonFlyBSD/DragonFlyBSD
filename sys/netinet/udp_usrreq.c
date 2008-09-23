@@ -65,7 +65,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.45 2008/09/12 11:37:41 sephe Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.46 2008/09/23 11:28:49 sephe Exp $
  */
 
 #include "opt_ipsec.h"
@@ -117,6 +117,15 @@
 #ifdef IPSEC
 #include <netinet6/ipsec.h>
 #endif
+
+int	udp_mpsafe_proto = 0;
+TUNABLE_INT("net.inet.udp.mpsafe_proto", &udp_mpsafe_proto);
+
+int	udp_mpsafe_thread = 0;
+TUNABLE_INT("net.inet.udp.mpsafe_thread", &udp_mpsafe_thread);
+SYSCTL_INT(_net_inet_udp, OID_AUTO, mpsafe_thread, CTLFLAG_RW,
+	   &udp_mpsafe_thread, 0,
+	   "0:BGL, 1:Adaptive BGL, 2:No BGL(experimental)");
 
 /*
  * UDP protocol implementation.

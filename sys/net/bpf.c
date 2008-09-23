@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.49 2008/09/17 13:38:28 sephe Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.50 2008/09/23 11:28:49 sephe Exp $
  */
 
 #include "use_bpf.h"
@@ -552,7 +552,7 @@ bpfwrite(struct dev_write_args *ap)
 	if (d->bd_hdrcmplt)
 		dst.sa_family = pseudo_AF_HDRCMPLT;
 
-	netmsg_init(&bmsg.nm_netmsg, &curthread->td_msgport, 0,
+	netmsg_init(&bmsg.nm_netmsg, &curthread->td_msgport, MSGF_MPSAFE,
 		    bpf_output_dispatch);
 	bmsg.nm_mbuf = m;
 	bmsg.nm_ifp = ifp;
