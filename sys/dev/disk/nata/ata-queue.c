@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-queue.c,v 1.67 2007/01/27 21:15:58 remko Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.10 2008/06/28 01:41:32 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-queue.c,v 1.11 2008/09/23 17:43:41 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -595,7 +595,20 @@ ata_sort_queue(struct ata_channel *ch, struct ata_request *request)
     this = TAILQ_FIRST(&ch->ata_queue);
 
     /* if the queue is empty just insert */
-    if (!this) {
+    if (this == NULL) {
+	if (request->composite)
+	    ch->freezepoint = request;
+	TAILQ_INSERT_TAIL(&ch->ata_queue, request, chain);
+	return;
+    }
+
+    /*
+     * disk devices have write caches, sorting writes just interferes
+     * with read performance.
+     *
+     * (Added by DragonFly)
+     */
+    if (request->flags & ATA_R_WRITE) {
 	if (request->composite)
 	    ch->freezepoint = request;
 	TAILQ_INSERT_TAIL(&ch->ata_queue, request, chain);
@@ -639,14 +652,12 @@ ata_sort_queue(struct ata_channel *ch, struct ata_request *request)
 	ch->freezepoint = request;
 
     /*
-     * Do not let linear I/O hog the queue, otherwise other requests can
-     * get delayed indefinitely.  This typically occurs with large continuous
-     * writing but HAMMER's log-like linear writing really seems to make
-     * it happen.
+     * We really do not want to allow large amounts of linear I/O to
+     * indefinitely delay previously queued I/O.
      *
      * (Added by DragonFly)
      */
-    if (next && ++next->sortq_lost > 128) {
+    if (next && ++next->sortq_lost > 16) {
 	ch->freezepoint = request;
 	TAILQ_INSERT_TAIL(&ch->ata_queue, request, chain);
     } else {
