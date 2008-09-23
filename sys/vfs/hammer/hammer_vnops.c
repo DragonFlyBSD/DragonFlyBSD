@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.98 2008/09/23 21:03:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.99 2008/09/23 22:28:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -2578,8 +2578,13 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	 * topology visibility).  If we queue new IO while trying to
 	 * destroy the inode we can deadlock the vtrunc call in
 	 * hammer_inode_unloadable_check().
+	 *
+	 * Besides, there's no point flushing a bp associated with an
+	 * inode that is being destroyed on-media and has no kernel
+	 * references.
 	 */
-	if (ip->flags & (HAMMER_INODE_DELETING|HAMMER_INODE_DELETED)) {
+	if ((ip->flags | ip->sync_flags) &
+	    (HAMMER_INODE_DELETING|HAMMER_INODE_DELETED)) {
 		bp->b_resid = 0;
 		biodone(ap->a_bio);
 		return(0);

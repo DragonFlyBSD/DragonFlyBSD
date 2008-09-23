@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.96 2008/08/09 07:04:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_object.c,v 1.97 2008/09/23 22:28:56 dillon Exp $
  */
 
 #include "hammer.h"
@@ -778,6 +778,8 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 	 */
 	if (error == 0) {
 		--ip->ino_data.nlinks;
+		dip->ino_data.mtime = trans->time;
+		hammer_modify_inode(dip, HAMMER_INODE_MTIME);
 		hammer_modify_inode(ip, HAMMER_INODE_DDIRTY);
 		if (ip->ino_data.nlinks == 0 &&
 		    (ip->vp == NULL || (ip->vp->v_flag & VINACTIVE))) {
@@ -785,8 +787,6 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 			hammer_inode_unloadable_check(ip, 1);
 			hammer_flush_inode(ip, 0);
 		}
-		dip->ino_data.mtime = trans->time;
-		hammer_modify_inode(dip, HAMMER_INODE_MTIME);
 
 	}
 	return(error);

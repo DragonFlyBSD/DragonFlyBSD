@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.112 2008/09/23 21:03:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.113 2008/09/23 22:28:56 dillon Exp $
  */
 
 #include "hammer.h"
@@ -1159,7 +1159,7 @@ retry:
 void
 hammer_rel_inode(struct hammer_inode *ip, int flush)
 {
-	hammer_mount_t hmp = ip->hmp;
+	/*hammer_mount_t hmp = ip->hmp;*/
 
 	/*
 	 * Handle disposition when dropping the last ref.
@@ -1173,12 +1173,7 @@ hammer_rel_inode(struct hammer_inode *ip, int flush)
 			KKASSERT(ip->vp == NULL);
 			hammer_inode_unloadable_check(ip, 0);
 			if (ip->flags & HAMMER_INODE_MODMASK) {
-				if (hmp->rsv_inodes > desiredvnodes) {
-					hammer_flush_inode(ip,
-							   HAMMER_FLUSH_SIGNAL);
-				} else {
-					hammer_flush_inode(ip, 0);
-				}
+				hammer_flush_inode(ip, 0);
 			} else if (ip->lock.refs == 1) {
 				hammer_unload_inode(ip);
 				break;
@@ -2062,9 +2057,17 @@ hammer_flush_inode_done(hammer_inode_t ip, int error)
 	/*
 	 * Do not lose track of inodes which no longer have vnode
 	 * assocations, otherwise they may never get flushed again.
+	 *
+	 * The reflush flag can be set superfluously, causing extra pain
+	 * for no reason.  If the inode is no longer modified it no longer
+	 * needs to be flushed.
 	 */
-	if ((ip->flags & HAMMER_INODE_MODMASK) && ip->vp == NULL)
-		ip->flags |= HAMMER_INODE_REFLUSH;
+	if (ip->flags & HAMMER_INODE_MODMASK) {
+		if (ip->vp == NULL)
+			ip->flags |= HAMMER_INODE_REFLUSH;
+	} else {
+		ip->flags &= ~HAMMER_INODE_REFLUSH;
+	}
 
 	/*
 	 * Adjust the flush state.
@@ -2644,9 +2647,14 @@ hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 	 * The backend will clear DELETING (a mod flag) and set DELETED
 	 * (a state flag) when it is actually able to perform the
 	 * operation.
+	 *
+	 * Don't reflag the deletion if the flusher is currently syncing
+	 * one that was already flagged.  A previously set DELETING flag
+	 * may bounce around flags and sync_flags until the operation is
+	 * completely done.
 	 */
 	if (ip->ino_data.nlinks == 0 &&
-	    (ip->flags & (HAMMER_INODE_DELETING|HAMMER_INODE_DELETED)) == 0) {
+	    ((ip->flags | ip->sync_flags) & (HAMMER_INODE_DELETING|HAMMER_INODE_DELETED)) == 0) {
 		ip->flags |= HAMMER_INODE_DELETING;
 		ip->flags |= HAMMER_INODE_TRUNCATED;
 		ip->trunc_off = 0;
