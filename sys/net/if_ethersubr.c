@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.91 2008/09/23 11:50:11 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.92 2008/09/23 13:12:06 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -1069,8 +1069,17 @@ ether_demux_oncpu(struct ifnet *ifp, struct mbuf *m)
 	 * evaluation, to see if the carp ether_dhost values break any
 	 * of these checks!
 	 */
-	if (ifp->if_carp && carp_forus(ifp->if_carp, eh->ether_dhost))
-		goto post_stats;
+	if (ifp->if_carp) {
+		/*
+		 * Hold BGL and recheck ifp->if_carp
+		 */
+		get_mplock();
+		if (ifp->if_carp && carp_forus(ifp->if_carp, eh->ether_dhost)) {
+			rel_mplock();
+			goto post_stats;
+		}
+		rel_mplock();
+	}
 #endif
 
 	/*
@@ -1149,8 +1158,17 @@ post_stats:
 
 #ifdef IPX
 	case ETHERTYPE_IPX:
-		if (ef_inputp && ef_inputp(ifp, eh, m) == 0)
-			return;
+		if (ef_inputp) {
+			/*
+			 * Hold BGL and recheck ef_inputp
+			 */
+			get_mplock();
+			if (ef_inputp && ef_inputp(ifp, eh, m) == 0) {
+				rel_mplock();
+				return;
+			}
+			rel_mplock();
+		}
 		isr = NETISR_IPX;
 		break;
 #endif
@@ -1187,8 +1205,17 @@ post_stats:
 		 */
 		redispatch = 1;
 #ifdef IPX
-		if (ef_inputp && ef_inputp(ifp, eh, m) == 0)
-			return;
+		if (ef_inputp) {
+			/*
+			 * Hold BGL and recheck ef_inputp
+			 */
+			get_mplock();
+			if (ef_inputp && ef_inputp(ifp, eh, m) == 0) {
+				rel_mplock();
+				return;
+			}
+			rel_mplock();
+		}
 #endif
 #ifdef NS
 		checksum = mtod(m, ushort *);
@@ -1228,10 +1255,19 @@ post_stats:
 		}
 dropanyway:
 #endif
-		if (ng_ether_input_orphan_p != NULL)
-			ng_ether_input_orphan_p(ifp, m, eh);
-		else
-			m_freem(m);
+		if (ng_ether_input_orphan_p != NULL) {
+			/*
+			 * Hold BGL and recheck ng_ether_input_orphan_p
+			 */
+			get_mplock();
+			if (ng_ether_input_orphan_p != NULL) {
+				ng_ether_input_orphan_p(ifp, m, eh);
+				rel_mplock();
+				return;
+			}
+			rel_mplock();
+		}
+		m_freem(m);
 		return;
 	}
 
@@ -1284,7 +1320,14 @@ ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
 
 	/* Handle ng_ether(4) processing, if any */
 	if (ng_ether_input_p != NULL) {
-		ng_ether_input_p(ifp, &m);
+		/*
+		 * Hold BGL and recheck ng_ether_input_p
+		 */
+		get_mplock();
+		if (ng_ether_input_p != NULL)
+			ng_ether_input_p(ifp, &m);
+		rel_mplock();
+
 		if (m == NULL)
 			return;
 	}
@@ -1313,7 +1356,7 @@ ether_init_netpacket(int num, struct mbuf *m)
 	struct netmsg_packet *pmsg;
 
 	pmsg = &m->m_hdr.mh_netmsg;
-	netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, 0,
+	netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, MSGF_MPSAFE,
 		    ether_input_handler);
 	pmsg->nm_packet = m;
 	pmsg->nm_netmsg.nm_lmsg.u.ms_result = num;
