@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.46 2008/05/01 02:03:28 sephe Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.47 2008/09/23 14:14:20 sephe Exp $
  */
 
 #include "opt_polling.h"
@@ -191,7 +191,7 @@ static int	sysctl_eachburst(SYSCTL_HANDLER_ARGS);
 static void	poll_add_sysctl(struct sysctl_ctx_list *,
 				struct sysctl_oid_list *, struct pollctx *);
 
-static void	schedpoll_oncpu(struct pollctx *, struct netmsg *, netisr_fn_t);
+static void	schedpoll_oncpu(struct netmsg *);
 
 void		init_device_poll_pcpu(int);	/* per-cpu init routine */
 
@@ -255,9 +255,19 @@ init_device_poll_pcpu(int cpuid)
 	pctx->polling_enabled = polling_enabled;
 	pctx->pollhz = pollhz;
 	pctx->poll_cpuid = cpuid;
-	netmsg_init(&pctx->poll_netmsg, &netisr_adone_rport, 0, NULL);
-	netmsg_init(&pctx->poll_more_netmsg, &netisr_adone_rport, 0, NULL);
 	poll_reset_state(pctx);
+
+	netmsg_init(&pctx->poll_netmsg, &netisr_adone_rport, 0,
+		    netisr_poll);
+#ifdef INVARIANTS
+	pctx->poll_netmsg.nm_lmsg.u.ms_resultp = pctx;
+#endif
+
+	netmsg_init(&pctx->poll_more_netmsg, &netisr_adone_rport, 0,
+		    netisr_pollmore);
+#ifdef INVARIANTS
+	pctx->poll_more_netmsg.nm_lmsg.u.ms_resultp = pctx;
+#endif
 
 	KASSERT(cpuid < POLLCTX_MAX, ("cpu id must < %d", cpuid));
 	poll_context[cpuid] = pctx;
@@ -290,18 +300,25 @@ init_device_poll_pcpu(int cpuid)
 	systimer_init_periodic_nq(&pctx->pollclock, pollclock, pctx, 1);
 }
 
+static void
+schedpoll_oncpu(struct netmsg *msg)
+{
+	if (msg->nm_lmsg.ms_flags & MSGF_DONE)
+		lwkt_sendmsg(cpu_portfn(mycpuid), &msg->nm_lmsg);
+}
+
 static __inline void
 schedpoll(struct pollctx *pctx)
 {
 	crit_enter();
-	schedpoll_oncpu(pctx, &pctx->poll_netmsg, netisr_poll);
+	schedpoll_oncpu(&pctx->poll_netmsg);
 	crit_exit();
 }
 
 static __inline void
 schedpollmore(struct pollctx *pctx)
 {
-	schedpoll_oncpu(pctx, &pctx->poll_more_netmsg, netisr_pollmore);
+	schedpoll_oncpu(&pctx->poll_more_netmsg);
 }
 
 /*
@@ -915,21 +932,6 @@ poll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "handlers", CTLFLAG_RD,
 			&pctx->poll_handlers, 0,
 			"Number of registered poll handlers");
-}
-
-static void
-schedpoll_oncpu(struct pollctx *pctx, struct netmsg *msg, netisr_fn_t handler)
-{
-	if (msg->nm_lmsg.ms_flags & MSGF_DONE) {
-		lwkt_port_t port;
-
-		netmsg_init(msg, &netisr_adone_rport, 0, handler);
-#ifdef INVARIANTS
-		msg->nm_lmsg.u.ms_resultp = pctx;
-#endif
-		port = cpu_portfn(mycpu->gd_cpuid);
-		lwkt_sendmsg(port, &msg->nm_lmsg);
-	}
 }
 
 static void
