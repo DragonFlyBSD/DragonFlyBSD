@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.127 2008/08/29 20:19:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.128 2008/09/23 21:03:52 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -110,10 +110,13 @@ struct hammer_transaction {
 	u_int64_t	time;
 	u_int32_t	time32;
 	int		sync_lock_refs;
+	int		flags;
 	struct hammer_volume *rootvol;
 };
 
 typedef struct hammer_transaction *hammer_transaction_t;
+
+#define HAMMER_TRANSF_NEWINODE	0x0001
 
 /*
  * HAMMER locks
@@ -821,6 +824,7 @@ extern int hammer_bio_count;
 extern int hammer_verify_zone;
 extern int hammer_verify_data;
 extern int hammer_write_mode;
+extern int hammer_autoflush;
 extern int64_t hammer_contention_count;
 
 void	hammer_critical_error(hammer_mount_t hmp, hammer_inode_t ip,

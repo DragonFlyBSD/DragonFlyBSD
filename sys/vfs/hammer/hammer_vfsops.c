@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.71 2008/09/17 21:44:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.72 2008/09/23 21:03:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -94,6 +94,7 @@ int hammer_count_io_locked;
 int hammer_limit_dirtybufspace;		/* per-mount */
 int hammer_limit_recs;			/* as a whole XXX */
 int hammer_limit_iqueued;		/* per-mount */
+int hammer_autoflush = 2000;		/* auto flush */
 int hammer_bio_count;
 int hammer_verify_zone;
 int hammer_verify_data = 1;
@@ -201,6 +202,8 @@ SYSCTL_QUAD(_vfs_hammer, OID_AUTO, zone_limit, CTLFLAG_RW,
 	   &hammer_zone_limit, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, contention_count, CTLFLAG_RW,
 	   &hammer_contention_count, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, autoflush, CTLFLAG_RW,
+	   &hammer_autoflush, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, verify_zone, CTLFLAG_RW,
 	   &hammer_verify_zone, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, verify_data, CTLFLAG_RW,

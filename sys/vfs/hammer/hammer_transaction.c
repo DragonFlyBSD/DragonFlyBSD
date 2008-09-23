@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.24 2008/07/19 18:44:49 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_transaction.c,v 1.25 2008/09/23 21:03:52 dillon Exp $
  */
 
 #include "hammer.h"
@@ -55,6 +55,7 @@ hammer_start_transaction(struct hammer_transaction *trans,
 	KKASSERT(error == 0);
 	trans->tid = 0;
 	trans->sync_lock_refs = 0;
+	trans->flags = 0;
 
 	getmicrotime(&tv);
 	trans->time = (unsigned long)tv.tv_sec * 1000000ULL + tv.tv_usec;
@@ -77,6 +78,7 @@ hammer_simple_transaction(struct hammer_transaction *trans,
 	KKASSERT(error == 0);
 	trans->tid = 0;
 	trans->sync_lock_refs = 0;
+	trans->flags = 0;
 
 	getmicrotime(&tv);
 	trans->time = (unsigned long)tv.tv_sec * 1000000ULL + tv.tv_usec;
@@ -106,6 +108,7 @@ hammer_start_transaction_fls(struct hammer_transaction *trans,
 	KKASSERT(error == 0);
 	trans->tid = hammer_alloc_tid(hmp, 1);
 	trans->sync_lock_refs = 1;
+	trans->flags = 0;
 
 	getmicrotime(&tv);
 	trans->time = (unsigned long)tv.tv_sec * 1000000ULL + tv.tv_usec;
@@ -122,6 +125,8 @@ hammer_done_transaction(struct hammer_transaction *trans)
 	expected_lock_refs = (trans->type == HAMMER_TRANS_FLS) ? 1 : 0;
 	KKASSERT(trans->sync_lock_refs == expected_lock_refs);
 	trans->sync_lock_refs = 0;
+	if (trans->flags & HAMMER_TRANSF_NEWINODE)
+		hammer_inode_waitreclaims(trans->hmp);
 }
 
 /*

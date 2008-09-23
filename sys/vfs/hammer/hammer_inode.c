@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.111 2008/09/17 21:44:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.112 2008/09/23 21:03:52 dillon Exp $
  */
 
 #include "hammer.h"
@@ -220,15 +220,6 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 			++hammer_count_reclaiming;
 			++hmp->inode_reclaims;
 			ip->flags |= HAMMER_INODE_RECLAIM;
-
-			/*
-			 * Poke the flusher.  If we don't do this programs
-			 * will start to stall on the reclaiming count.
-			 */
-			if (hmp->inode_reclaims > HAMMER_RECLAIM_FLUSH &&
-			   (hmp->inode_reclaims & 255) == 0) {
-			       hammer_flusher_async(hmp, NULL);
-			}
 		}
 		hammer_rel_inode(ip, 1);
 	}
@@ -493,6 +484,7 @@ retry:
 		ip = NULL;
 	}
 	hammer_done_cursor(&cursor);
+	trans->flags |= HAMMER_TRANSF_NEWINODE;
 	return (ip);
 }
 
@@ -1664,6 +1656,13 @@ hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 	++ip->hmp->count_iqueued;
 	++hammer_count_iqueued;
 	++flg->total_count;
+
+	/*
+	 * If the flush group reaches the autoflush limit we want to signal
+	 * the flusher.  This is particularly important for remove()s.
+	 */
+	if (flg->total_count == hammer_autoflush)
+		flags |= HAMMER_FLUSH_SIGNAL;
 
 	/*
 	 * We need to be able to vfsync/truncate from the backend.

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.97 2008/09/21 02:58:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.98 2008/09/23 21:03:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -568,10 +568,7 @@ static
 int
 hammer_vop_close(struct vop_close_args *ap)
 {
-	hammer_inode_t ip = VTOI(ap->a_vp);
-
-	if ((ip->flags | ip->sync_flags) & HAMMER_INODE_MODMASK)
-		hammer_inode_waitreclaims(ip->hmp);
+	/*hammer_inode_t ip = VTOI(ap->a_vp);*/
 	return (vop_stdclose(ap));
 }
 
@@ -1041,7 +1038,6 @@ hammer_vop_nlink(struct vop_nlink_args *ap)
 		cache_setvp(nch, ap->a_vp);
 	}
 	hammer_done_transaction(&trans);
-	hammer_inode_waitreclaims(dip->hmp);
 	return (error);
 }
 
@@ -1112,7 +1108,6 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 		}
 	}
 	hammer_done_transaction(&trans);
-	hammer_inode_waitreclaims(dip->hmp);
 	return (error);
 }
 
@@ -1878,8 +1873,6 @@ done:
 	if (error == 0)
 		hammer_modify_inode(ip, modflags);
 	hammer_done_transaction(&trans);
-	if (ap->a_vp->v_opencount == 0)
-		hammer_inode_waitreclaims(ip->hmp);
 	return (error);
 }
 
@@ -2772,7 +2765,6 @@ retry:
 	} else {
 		hammer_done_cursor(&cursor);
 	}
-	hammer_inode_waitreclaims(dip->hmp);
 	if (error == EDEADLK)
 		goto retry;
 
