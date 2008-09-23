@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.40 2008/09/17 08:51:30 sephe Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.41 2008/09/23 11:50:11 sephe Exp $
  */
 
 /*
@@ -250,7 +250,13 @@ vlan_modevent(module_t mod, int type, void *data)
 
 	case MOD_UNLOAD:
 		if_clone_detach(&vlan_cloner);
+
 		vlan_input_p = NULL;
+		/*
+		 * Make that all protocol threads see vlan_input_p change.
+		 */
+		netmsg_service_sync();
+
 		EVENTHANDLER_DEREGISTER(ifnet_detach_event,
 					vlan_ifdetach_cookie);
 		while (!LIST_EMPTY(&ifv_list))

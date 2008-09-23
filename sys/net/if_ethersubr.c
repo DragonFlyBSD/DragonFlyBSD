@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.90 2008/09/20 10:53:16 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.91 2008/09/23 11:50:11 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -1108,8 +1108,11 @@ post_stats:
 	KKASSERT(ether_type != ETHERTYPE_VLAN);
 
 	if (m->m_flags & M_VLANTAG) {
-		if (vlan_input_p != NULL) {
-			vlan_input_p(m);
+		void (*vlan_input_func)(struct mbuf *);
+
+		vlan_input_func = vlan_input_p;
+		if (vlan_input_func != NULL) {
+			vlan_input_func(m);
 		} else {
 			m->m_pkthdr.rcvif->if_noproto++;
 			m_freem(m);
