@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.113 2008/09/23 22:28:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.114 2008/09/24 00:53:51 dillon Exp $
  */
 
 #include "hammer.h"
@@ -2749,7 +2749,7 @@ hammer_inode_waitreclaims(hammer_mount_t hmp)
 
 	if (reclaim.okydoky == 0) {
 		delay = (hmp->inode_reclaims - HAMMER_RECLAIM_WAIT) * hz /
-			HAMMER_RECLAIM_WAIT;
+			(HAMMER_RECLAIM_WAIT * 5);
 		if (delay >= 0)
 			tsleep(&reclaim, 0, "hmrrcm", delay + 1);
 		if (reclaim.okydoky == 0)
