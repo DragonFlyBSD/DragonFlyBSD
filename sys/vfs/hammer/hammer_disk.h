@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.53 2008/08/29 20:19:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.54 2008/09/24 00:53:16 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -685,7 +685,7 @@ struct hammer_pseudofs_data {
 	int32_t		reserved01;	/* reserved for future master_id */
 	int32_t		mirror_flags;	/* misc flags */
 	char		label[64];	/* filesystem space label */
-	char		prune_path[64];	/* softlink dir for pruning */
+	char		snapshots[64];	/* softlink dir for pruning */
 	int16_t		prune_time;	/* how long to spend pruning */
 	int16_t		prune_freq;	/* how often we prune */
 	int16_t		reblock_time;	/* how long to spend reblocking */
