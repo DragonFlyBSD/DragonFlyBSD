@@ -65,7 +65,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.36 2008/09/23 11:28:49 sephe Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.37 2008/09/24 14:26:38 sephe Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -206,7 +206,8 @@ struct netisr {
 	uint32_t	ni_flags;	/* NETISR_FLAG_ */
 };
 
-#define NETISR_FLAG_MPSAFE	0x1
+#define NETISR_FLAG_NOTMPSAFE	0x0	/* ni_handler is not MPSAFE */
+#define NETISR_FLAG_MPSAFE	0x1	/* ni_handler is MPSAFE */
 
 #endif
 

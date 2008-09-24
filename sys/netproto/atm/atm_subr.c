@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_subr.c,v 1.7 2000/02/13 03:31:59 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.22 2008/09/23 11:28:50 sephe Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.23 2008/09/24 14:26:39 sephe Exp $
  */
 
 /*
@@ -112,7 +112,8 @@ atm_initialize(void)
 	atm_init = 1;
 
 	atm_intrq.ifq_maxlen = ATM_INTRQ_MAX;
-	netisr_register(NETISR_ATM, cpu0_portfn, atm_intr, 0);
+	netisr_register(NETISR_ATM, cpu0_portfn, atm_intr,
+			NETISR_FLAG_NOTMPSAFE);
 
 	/*
 	 * Initialize subsystems

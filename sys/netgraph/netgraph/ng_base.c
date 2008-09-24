@@ -38,7 +38,7 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.11.2.17 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.27 2008/09/23 11:28:49 sephe Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.28 2008/09/24 14:26:39 sephe Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -1839,7 +1839,8 @@ ngb_mod_event(module_t mod, int event, void *data)
 			crit_exit();
 			break;
 		}
-		netisr_register(NETISR_NETGRAPH, cpu0_portfn, ngintr, 0);
+		netisr_register(NETISR_NETGRAPH, cpu0_portfn, ngintr,
+				NETISR_FLAG_NOTMPSAFE);
 		error = 0;
 		crit_exit();
 		break;

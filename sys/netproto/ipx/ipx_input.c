@@ -34,7 +34,7 @@
  *	@(#)ipx_input.c
  *
  * $FreeBSD: src/sys/netipx/ipx_input.c,v 1.22.2.2 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.19 2008/09/23 11:28:50 sephe Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.20 2008/09/24 14:26:39 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -117,7 +117,8 @@ ipx_init(void)
 	ipx_hostmask.sipx_addr.x_net = ipx_broadnet;
 	ipx_hostmask.sipx_addr.x_host = ipx_broadhost;
 
-	netisr_register(NETISR_IPX, cpu0_portfn, ipxintr, 0);
+	netisr_register(NETISR_IPX, cpu0_portfn, ipxintr,
+			NETISR_FLAG_NOTMPSAFE);
 }
 
 /*

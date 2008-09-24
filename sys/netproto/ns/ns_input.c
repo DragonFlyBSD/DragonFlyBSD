@@ -32,7 +32,7 @@
  *
  *	@(#)ns_input.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_input.c,v 1.13 2000/02/13 03:32:04 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.22 2008/09/23 11:28:50 sephe Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.23 2008/09/24 14:26:39 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -96,7 +96,7 @@ ns_init(void)
 	ns_hostmask.sns_len = 12;
 	ns_hostmask.sns_addr.x_net = ns_broadnet;
 	ns_hostmask.sns_addr.x_host = ns_broadhost;
-	netisr_register(NETISR_NS, cpu0_portfn, nsintr, 0);
+	netisr_register(NETISR_NS, cpu0_portfn, nsintr, NETISR_FLAG_NOTMPSAFE);
 }
 
 /*

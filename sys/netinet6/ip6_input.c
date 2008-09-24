@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.37 2008/09/23 11:28:50 sephe Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.38 2008/09/24 14:26:39 sephe Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -197,7 +197,8 @@ ip6_init(void)
 			"error %d\n", __func__, i);
 	}
 
-	netisr_register(NETISR_IPV6, cpu0_portfn, ip6_input, 0);
+	netisr_register(NETISR_IPV6, cpu0_portfn, ip6_input,
+			NETISR_FLAG_NOTMPSAFE);
 	scope6_init();
 	nd6_init();
 	frag6_init();

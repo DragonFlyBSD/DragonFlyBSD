@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.109 2008/09/24 11:14:43 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.110 2008/09/24 14:26:39 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -376,7 +376,8 @@ ip_init(void)
 	bzero(&ipstat, sizeof(struct ip_stats));
 #endif
 
-	netisr_register(NETISR_IP, ip_mport_in, ip_input_handler, 0);
+	netisr_register(NETISR_IP, ip_mport_in, ip_input_handler,
+			NETISR_FLAG_NOTMPSAFE);
 }
 
 /*

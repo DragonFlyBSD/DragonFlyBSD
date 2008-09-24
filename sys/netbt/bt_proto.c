@@ -1,4 +1,4 @@
-/* $DragonFly: src/sys/netbt/bt_proto.c,v 1.5 2008/09/23 11:28:49 sephe Exp $ */
+/* $DragonFly: src/sys/netbt/bt_proto.c,v 1.6 2008/09/24 14:26:39 sephe Exp $ */
 /* $OpenBSD: bt_proto.c,v 1.4 2007/06/24 20:55:27 uwe Exp $ */
 
 /*
@@ -234,7 +234,8 @@ SYSCTL_INT(_net_bluetooth_sco, OID_AUTO, recvspace, CTLFLAG_RW, &sco_recvspace,
 static void
 netisr_netbt_setup(void *dummy __unused)
 {
-	netisr_register(NETISR_BLUETOOTH, cpu0_portfn, btintr, 0);
+	netisr_register(NETISR_BLUETOOTH, cpu0_portfn, btintr,
+			NETISR_FLAG_NOTMPSAFE);
 }
 
 SYSINIT(netbt_setup, SI_BOOT2_KLD, SI_ORDER_ANY, netisr_netbt_setup, NULL);

@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netproto/mpls/mpls_input.c,v 1.3 2008/09/23 11:28:50 sephe Exp $
+ * $DragonFly: src/sys/netproto/mpls/mpls_input.c,v 1.4 2008/09/24 14:26:39 sephe Exp $
  */
 
 #include <sys/globaldata.h>
@@ -76,7 +76,8 @@ mpls_init(void)
 	bzero(&mplsstat, sizeof(struct mpls_stats));
 #endif
 
-	netisr_register(NETISR_MPLS, mpls_mport, mpls_input_handler, 0);
+	netisr_register(NETISR_MPLS, mpls_mport, mpls_input_handler,
+			NETISR_FLAG_NOTMPSAFE);
 }
 
 static void
