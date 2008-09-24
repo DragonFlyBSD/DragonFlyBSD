@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.96 2008/09/20 06:08:13 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.97 2008/09/24 15:06:45 sephe Exp $
  */
 
 /*
@@ -2478,10 +2478,21 @@ ipfw_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 	pkt->ifp = fwa->oif;
 	pkt->pipe_nr = pipe_nr;
 
-	KASSERT(curthread->td_flags & TDF_NETWORK,
-		("not in network thread!\n"));
-	pkt->msgport = &curthread->td_msgport;
 	pkt->cpuid = mycpuid;
+	if (curthread->td_flags & TDF_NETWORK) {
+		pkt->msgport = &curthread->td_msgport;
+	} else {
+		/*
+		 * This could happen:
+		 * - If a gratuitous arp request sent by us is going to
+		 *   be added to dummynet(4) pipe/queue.
+		 * - Other conditions ...
+		 *
+		 * We can't use current thread's msgport (since its
+		 * behaviour is unknown), so netisrX's msgport is used.
+		 */
+		pkt->msgport = cpu_portfn(pkt->cpuid);
+	}
 
 	id = &fwa->f_id;
 	fid = &pkt->id;
