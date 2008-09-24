@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_cleanup.c,v 1.3 2008/09/20 07:08:06 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_cleanup.c,v 1.4 2008/09/24 01:42:50 dillon Exp $
  */
 /*
  * Clean up a specific HAMMER filesystem or all HAMMER filesystems.
@@ -69,6 +69,9 @@ static int check_period(const char *snapshots_path, const char *cmd, int arg1,
 static void save_period(const char *snapshots_path, const char *cmd,
 			time_t savet);
 static int check_softlinks(const char *snapshots_path);
+static void cleanup_softlinks(const char *path, const char *snapshots_path,
+			int arg2);
+static int check_expired(const char *fpath, int arg2);
 
 static int cleanup_snapshots(const char *path, const char *snapshots_path,
 			      int arg1, int arg2);
@@ -186,15 +189,33 @@ do_cleanup(const char *path)
 	didpfs->uuid = mrec_tmp.pfs.pfsd.unique_uuid;
 
 	/*
+	 * Figure out where the snapshot directory is.
+	 */
+	if (mrec_tmp.pfs.pfsd.snapshots[0] == '/') {
+		asprintf(&snapshots_path, "%s", mrec_tmp.pfs.pfsd.snapshots);
+	} else if (mrec_tmp.pfs.pfsd.snapshots[0]) {
+		printf(" WARNING: pfs-slave's snapshots dir is not absolute\n");
+		return;
+	} else if (mrec_tmp.pfs.pfsd.mirror_flags & HAMMER_PFSD_SLAVE) {
+		printf(" WARNING: must configure snapshot dir for PFS slave\n");
+		printf("\tWe suggest <fs>/var/slaves/<name> where "
+		       "<fs> is the base HAMMER fs\n");
+		printf("\tContaining the slave\n");
+		return;
+	} else {
+		asprintf(&snapshots_path,
+			 "%s%ssnapshots", path, dividing_slash(path));
+	}
+
+	/*
 	 * Create a snapshot directory if necessary, and a config file if
 	 * necessary.
 	 */
-	asprintf(&snapshots_path, "%s%ssnapshots", path, dividing_slash(path));
 	if (stat(snapshots_path, &st) < 0) {
 		if (mkdir(snapshots_path, 0755) != 0) {
 			free(snapshots_path);
-			printf(" unable to create snapshot dir: %s\n",
-				strerror(errno));
+			printf(" unable to create snapshot dir \"%s\": %s\n",
+				snapshots_path, strerror(errno));
 			return;
 		}
 	}
@@ -226,7 +247,7 @@ do_cleanup(const char *path)
 		return;
 	}
 
-	printf(" processing PFS #%d\n", pfs.pfs_id);
+	printf(" handle PFS #%d using %s\n", pfs.pfs_id, snapshots_path);
 
 	/*
 	 * Process the config file
@@ -259,6 +280,7 @@ do_cleanup(const char *path)
 		if (strcmp(cmd, "snapshots") == 0) {
 			if (check_period(snapshots_path, cmd, arg1, &savet)) {
 				printf("run\n");
+				cleanup_softlinks(path, snapshots_path, arg2);
 				r = cleanup_snapshots(path, snapshots_path,
 						  arg1, arg2);
 			} else {
@@ -435,6 +457,9 @@ save_period(const char *snapshots_path, const char *cmd,
 	remove(ncheck_path);
 }
 
+/*
+ * Simply count the number of softlinks in the snapshots dir
+ */
 static int
 check_softlinks(const char *snapshots_path)
 {
@@ -444,10 +469,6 @@ check_softlinks(const char *snapshots_path)
 	char *fpath;
 	int res = 0;
 
-	/*
-	 * Force snapshots_disabled to 0 if the snapshots directory
-	 * contains softlinks.
-	 */
 	if ((dir = opendir(snapshots_path)) != NULL) {
 		while ((den = readdir(dir)) != NULL) {
 			if (den->d_name[0] == '.')
@@ -463,6 +484,72 @@ check_softlinks(const char *snapshots_path)
 }
 
 /*
+ * Clean up expired softlinks in the snapshots dir
+ */
+static void
+cleanup_softlinks(const char *path __unused, const char *snapshots_path, int arg2)
+{
+	struct dirent *den;
+	struct stat st;
+	DIR *dir;
+	char *fpath;
+
+	if ((dir = opendir(snapshots_path)) != NULL) {
+		while ((den = readdir(dir)) != NULL) {
+			if (den->d_name[0] == '.')
+				continue;
+			asprintf(&fpath, "%s/%s", snapshots_path, den->d_name);
+			if (lstat(fpath, &st) == 0 && S_ISLNK(st.st_mode) &&
+			    strncmp(den->d_name, "snap-", 5) == 0) {
+				if (check_expired(den->d_name, arg2)) {
+					if (VerboseOpt) {
+						printf("    expire %s\n",
+							fpath);
+					}
+					remove(fpath);
+				}
+			}
+			free(fpath);
+		}
+		closedir(dir);
+	}
+}
+
+/*
+ * Take a softlink path in the form snap-yyyymmdd-hhmm and the
+ * expiration in seconds (arg2) and return non-zero if the softlink
+ * has expired.
+ */
+static int
+check_expired(const char *fpath, int arg2)
+{
+	struct tm tm;
+	time_t t;
+	int year;
+	int month;
+	int day;
+	int hour;
+	int minute;
+	int r;
+
+	r = sscanf(fpath, "snap-%4d%2d%2d-%2d%2d",
+		   &year, &month, &day, &hour, &minute);
+	if (r == 5) {
+		bzero(&tm, sizeof(tm));
+		tm.tm_isdst = -1;
+		tm.tm_min = minute;
+		tm.tm_hour = hour;
+		tm.tm_mday = day;
+		tm.tm_mon = month - 1;
+		tm.tm_year = year - 1900;
+		t = time(NULL) - mktime(&tm);
+		if ((int)t > arg2)
+			return(1);
+	}
+	return(0);
+}
+
+/*
  * Issue a snapshot.
  */
 static int
@@ -471,7 +558,7 @@ cleanup_snapshots(const char *path __unused, const char *snapshots_path,
 {
 	int r;
 
-	runcmd(&r, "hammer snapshot %s", snapshots_path);
+	runcmd(&r, "hammer snapshot %s %s", path, snapshots_path);
 	return(r);
 }
 

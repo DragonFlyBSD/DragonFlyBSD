@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.10 2008/08/21 23:28:43 thomas Exp $
+ * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.11 2008/09/24 01:42:50 dillon Exp $
  */
 
 #include "hammer.h"
@@ -474,10 +474,19 @@ dump_pfsd(hammer_pseudofs_data_t pfsd)
 		printf("    slave\n");
 	}
 	printf("    label=\"%s\"\n", pfsd->label);
-	if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE)
+	if (pfsd->snapshots[0])
+		printf("    snapshots=\"%s\"\n", pfsd->snapshots);
+	if (pfsd->mirror_flags & HAMMER_PFSD_SLAVE) {
 		printf("    operating as a SLAVE\n");
-	else
+		if (pfsd->snapshots[0] == 0)
+			printf("    snapshots directory not set for slave\n");
+	} else {
 		printf("    operating as a MASTER\n");
+		if (pfsd->snapshots[0] == 0) {
+			printf("    snapshots dir for master "
+			       "defaults to <fs>/snapshots\n");
+		}
+	}
 }
 
 static void
@@ -524,6 +533,29 @@ parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd)
 				exit(1);
 			}
 			snprintf(pfsd->label, sizeof(pfsd->label), "%s", ptr);
+		} else if (strcmp(cmd, "snapshots") == 0) {
+			len = strlen(ptr);
+			if (ptr[0] != '/') {
+				fprintf(stderr,
+					"option %s: '%s' must be an "
+					"absolute path\n", cmd, ptr);
+				if (ptr[0] == 0) {
+					fprintf(stderr, 
+						"use 'snapshots-clear' "
+						"to unset snapshots dir\n");
+				}
+				exit(1);
+			}
+			if (len >= (int)sizeof(pfsd->snapshots)) {
+				fprintf(stderr,
+					"option %s: path too long, %d "
+					"character limit\n", cmd, len);
+				exit(1);
+			}
+			snprintf(pfsd->snapshots, sizeof(pfsd->snapshots),
+				 "%s", ptr);
+		} else if (strcmp(cmd, "snapshots-clear") == 0) {
+			pfsd->snapshots[0] = 0;
 		} else {
 			fprintf(stderr, "invalid option: %s\n", cmd);
 			exit(1);
@@ -557,6 +589,8 @@ pseudofs_usage(int code)
 		"    shared-uuid=0x16llx\n"
 		"    unique-uuid=0x16llx\n"
 		"    label=\"string\"\n"
+		"    snapshots=\"/path\"\n"
+		"    snapshots-clear\n"
 	);
 	exit(code);
 }

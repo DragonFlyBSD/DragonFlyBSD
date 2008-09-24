@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.47 2008/09/20 04:23:21 dillon Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.48 2008/09/24 01:42:50 dillon Exp $
 .Dd July 27, 2008
 .Dt HAMMER 8
 .Os
@@ -215,8 +215,8 @@ may continue to run in the background for a few seconds until the HAMMER
 ioctl detects the interrupt.
 .Pp
 Work on this command is still in progress.
-Expected additions:  Limit the number of snapshots to 60 days by default
-and remove snapshots as the filesystem becomes full.
+Expected additions:  An ability to remove snapshots dynamically as the
+filesystem becomes full.
 .\" ==== prune ====
 .It Ar prune Ar softlink-dir
 Prune the file system based on previously created snapshot softlinks.
@@ -463,6 +463,23 @@ Set the unique UUID for this file system.  This UUID should not be used
 anywhere else, even on exact copies of the file system.
 .It label=<string>
 Set a descriptive label for this file system.
+.It snapshots=<string>
+Specify the snapshots directory which 'hammer cleanup' will use to manage
+this PFS.  The snapshots directory does not need to be configured for 
+PFS masters and will default to "<fs>/snapshots".
+.Pp
+PFS slaves are mirroring slaves so you cannot configure a snapshots
+directory on the slave itself to be managed by the slave's machine.
+In fact, the slave will likely have a 'snapshots' sub-directory mirrored
+from the master, but that directory contains the configuration the master
+is using for its copy of the filesystem, not the configuration that we
+want to use for our slave.
+.Pp
+It is recommended that "/var/slaves/<name>" be configured for a PFS
+slave, where <name> is an appropriate label.  You can control snapshot
+retention on your slave independant of the master. 
+.It snapshots-clear
+Zero out the snapshots directory path for this PFS.
 .El
 .\" ==== pfs-upgrade ====
 .It Ar pfs-upgrade Ar dirpath
