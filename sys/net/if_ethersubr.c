@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.92 2008/09/23 13:12:06 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.93 2008/09/24 11:14:43 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -48,6 +48,7 @@
 #include <sys/globaldata.h>
 #include <sys/kernel.h>
 #include <sys/ktr.h>
+#include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/msgport.h>

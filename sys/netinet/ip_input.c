@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.108 2008/09/23 11:28:49 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.109 2008/09/24 11:14:43 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -93,6 +93,7 @@
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
 #include <sys/in_cksum.h>
+#include <sys/lock.h>
 
 #include <machine/stdarg.h>
 
