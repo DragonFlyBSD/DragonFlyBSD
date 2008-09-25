@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.57.2.1 2008/07/18 00:08:23 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.57.2.2 2008/09/25 02:10:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1470,6 +1470,7 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 		/* Pull a buffer from the queue and get going on it */		
 		struct bio *bio;
 		struct buf *bp;
+		u_int8_t tag_code;
 
 		/*
 		 * See if there is a buf with work for us to do..
@@ -1483,66 +1484,102 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 					  periph_links.sle);
 			periph->immediate_priority = CAM_PRIORITY_NONE;
 			wakeup(&periph->ccb_list);
-		} else if (bio == NULL) {
-			xpt_release_ccb(start_ccb);
-		} else {
-			u_int8_t tag_code;
-
-			bioq_remove(&softc->bio_queue, bio);
-			bp = bio->bio_buf;
-
-			devstat_start_transaction(&softc->device_stats);
-
-			if ((bp->b_flags & B_ORDERED) != 0
-			 || (softc->flags & DA_FLAG_NEED_OTAG) != 0) {
-				softc->flags &= ~DA_FLAG_NEED_OTAG;
-				softc->ordered_tag_count++;
-				tag_code = MSG_ORDERED_Q_TAG;
-			} else {
-				tag_code = MSG_SIMPLE_Q_TAG;
+			if (bio != NULL) {
+				/*
+				 * Have more work to do, so ensure we stay
+				 * scheduled
+				 */
+				xpt_schedule(periph, /* XXX priority */1);
 			}
+			break;
+		}
+		if (bio == NULL) {
+			xpt_release_ccb(start_ccb);
+			break;
+		}
 
+		/*
+		 * We can queue new work.
+		 */
+		bioq_remove(&softc->bio_queue, bio);
+		bp = bio->bio_buf;
+
+		devstat_start_transaction(&softc->device_stats);
+
+		if ((bp->b_flags & B_ORDERED) != 0 ||
+		    (softc->flags & DA_FLAG_NEED_OTAG) != 0) {
+			softc->flags &= ~DA_FLAG_NEED_OTAG;
+			softc->ordered_tag_count++;
+			tag_code = MSG_ORDERED_Q_TAG;
+		} else {
+			tag_code = MSG_SIMPLE_Q_TAG;
+		}
+
+		switch(bp->b_cmd) {
+		case BUF_CMD_READ:
+		case BUF_CMD_WRITE:
+			/*
+			 * Block read/write op
+			 */
 			KKASSERT(bio->bio_offset % softc->params.secsize == 0);
 
-			scsi_read_write(&start_ccb->csio,
-					/*retries*/da_retry_count,
-					dadone,
-					tag_code,
-					(bp->b_cmd == BUF_CMD_READ),
-					/*byte2*/0,
-					softc->minimum_cmd_size,
-					bio->bio_offset / softc->params.secsize,
-					bp->b_bcount / softc->params.secsize,
-					bp->b_data,
-					bp->b_bcount,
-					/*sense_len*/SSD_FULL_SIZE,
-					da_default_timeout * 1000);
-			start_ccb->ccb_h.ccb_state = DA_CCB_BUFFER_IO;
-
-			/*
-			 * Block out any asyncronous callbacks
-			 * while we touch the pending ccb list.
-			 */
-			LIST_INSERT_HEAD(&softc->pending_ccbs,
-					 &start_ccb->ccb_h, periph_links.le);
-
-			softc->outstanding_cmds++;
-			/* We expect a unit attention from this device */
-			if ((softc->flags & DA_FLAG_RETRY_UA) != 0) {
-				start_ccb->ccb_h.ccb_state |= DA_CCB_RETRY_UA;
-				softc->flags &= ~DA_FLAG_RETRY_UA;
-			}
-
-			start_ccb->ccb_h.ccb_bio = bio;
-			bio = bioq_first(&softc->bio_queue);
-
-			xpt_action(start_ccb);
+			scsi_read_write(
+				&start_ccb->csio,
+				da_retry_count,		/* retries */
+				dadone,
+				tag_code,
+				(bp->b_cmd == BUF_CMD_READ),
+				0,			/* byte2 */
+				softc->minimum_cmd_size,
+				bio->bio_offset / softc->params.secsize,
+				bp->b_bcount / softc->params.secsize,
+				bp->b_data,
+				bp->b_bcount,
+				SSD_FULL_SIZE,		/* sense_len */
+				da_default_timeout * 1000
+			);
+			break;
+		case BUF_CMD_FLUSH:
+			scsi_synchronize_cache(
+				&start_ccb->csio,
+				1,			/* retries */
+				dadone,			/* cbfcnp */
+				MSG_SIMPLE_Q_TAG,
+				0,			/* lba */
+				0,			/* count (whole disk) */
+				SSD_FULL_SIZE,
+				da_default_timeout*1000	/* timeout */
+			);
+			break;
+		default:
+			panic("dastart: unrecognized bio cmd %d", bp->b_cmd);
+			break; /* NOT REACHED */
 		}
+
+		/*
+		 * Block out any asyncronous callbacks
+		 * while we touch the pending ccb list.
+		 */
+		start_ccb->ccb_h.ccb_state = DA_CCB_BUFFER_IO;
+		LIST_INSERT_HEAD(&softc->pending_ccbs,
+				 &start_ccb->ccb_h, periph_links.le);
+		softc->outstanding_cmds++;
+
+		/* We expect a unit attention from this device */
+		if ((softc->flags & DA_FLAG_RETRY_UA) != 0) {
+			start_ccb->ccb_h.ccb_state |= DA_CCB_RETRY_UA;
+			softc->flags &= ~DA_FLAG_RETRY_UA;
+		}
+
+		start_ccb->ccb_h.ccb_bio = bio;
+		xpt_action(start_ccb);
 		
-		if (bio != NULL) {
-			/* Have more work to do, so ensure we stay scheduled */
-			xpt_schedule(periph, /* XXX priority */1);
-		}
+		/*
+		 * Be sure we stay scheduled if we have more work to do.
+		 */
+		bio = bioq_first(&softc->bio_queue);
+		if (bio != NULL)
+			xpt_schedule(periph, 1);
 		break;
 	}
 	case DA_STATE_PROBE:
