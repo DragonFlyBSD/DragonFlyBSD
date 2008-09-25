@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.51 2008/09/24 14:26:39 sephe Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.52 2008/09/25 14:08:06 sephe Exp $
  */
 
 /*
@@ -100,7 +100,6 @@
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
 #include <net/netmsg2.h>
-
 
 #ifdef CARP
 #include <netinet/ip_carp.h>
@@ -147,17 +146,16 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, useloopback, CTLFLAG_RW,
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, proxyall, CTLFLAG_RW,
 	   &arp_proxyall, 0, "");
 
-void 		arprequest_acces(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,  u_char *enaddr);
-static void	arp_rtrequest (int, struct rtentry *, struct rt_addrinfo *);
-static void	arprequest (struct ifnet *,
-			struct in_addr *, struct in_addr *, u_char *);
+static void	arp_rtrequest(int, struct rtentry *, struct rt_addrinfo *);
+static void	arprequest(struct ifnet *, struct in_addr *, struct in_addr *,
+			   u_char *);
 static void	arpintr(struct netmsg *);
-static void	arptfree (struct llinfo_arp *);
-static void	arptimer (void *);
-static struct llinfo_arp
-		*arplookup (in_addr_t addr, boolean_t create, boolean_t proxy);
+static void	arptfree(struct llinfo_arp *);
+static void	arptimer(void *);
+static struct llinfo_arp *
+		arplookup(in_addr_t, boolean_t, boolean_t);
 #ifdef INET
-static void	in_arpinput (struct mbuf *);
+static void	in_arpinput(struct mbuf *);
 #endif
 
 static struct callout	arptimer_ch[MAXCPU];
@@ -174,7 +172,7 @@ arptimer(void *ignored_arg)
 	crit_enter();
 	LIST_FOREACH_MUTABLE(la, &llinfo_arp_list[mycpuid], la_le, nla) {
 		if (la->la_rt->rt_expire && la->la_rt->rt_expire <= time_second)
-			arptfree(la);	
+			arptfree(la);
 	}
 	callout_reset(&arptimer_ch[mycpuid], arpt_prune * hz, arptimer, NULL);
 	crit_exit();
@@ -306,6 +304,7 @@ arp_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
 		if (la->la_hold != NULL)
 			m_freem(la->la_hold);
 		Free(la);
+		break;
 	}
 }
 
@@ -363,7 +362,7 @@ arprequest(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
 
 	sa.sa_family = AF_UNSPEC;
 	sa.sa_len = sizeof sa;
-	ifp->if_output(ifp, m, &sa, (struct rtentry *)NULL);
+	ifp->if_output(ifp, m, &sa, NULL);
 }
 
 /*
@@ -377,12 +376,8 @@ arprequest(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
  * taken over here, either now or for later transmission.
  */
 int
-arpresolve(
-	struct ifnet *ifp,
-	struct rtentry *rt0,
-	struct mbuf *m,
-	struct sockaddr *dst,
-	u_char *desten)
+arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
+	   struct sockaddr *dst, u_char *desten)
 {
 	struct rtentry *rt;
 	struct llinfo_arp *la = NULL;
@@ -472,7 +467,6 @@ arpresolve(
 				la->la_asked = 0;
 				la->la_preempt = arp_maxtries;
 			}
-
 		}
 	}
 	return (0);
@@ -540,8 +534,8 @@ arpintr(struct netmsg *msg)
  */
 static int log_arp_wrong_iface = 1;
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, log_arp_wrong_iface, CTLFLAG_RW,
-	&log_arp_wrong_iface, 0,
-	"log arp packets arriving on the wrong interface");
+	   &log_arp_wrong_iface, 0,
+	   "log arp packets arriving on the wrong interface");
 
 static void
 arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
@@ -586,9 +580,10 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 			} else {
 				if (dologging && cpu == 0) {
 					log(LOG_ERR,
-					"arp: %*D attempts to modify permanent entry for %s on %s\n",
-					ifp->if_addrlen, (u_char *)ar_sha(ah), ":",
-					inet_ntoa(isaddr), ifp->if_xname);
+					"arp: %*D attempts to modify "
+					"permanent entry for %s on %s\n",
+					ifp->if_addrlen, (u_char *)ar_sha(ah),
+					":", inet_ntoa(isaddr), ifp->if_xname);
 				}
 				return;
 			}
@@ -599,8 +594,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 		 * length. -is
 		 */
 		if (dologging && sdl->sdl_alen && sdl->sdl_alen != ah->ar_hln &&
-		    cpu == 0)
-		{
+		    cpu == 0) {
 			log(LOG_WARNING,
 			    "arp from %*D: new addr len %d, was %d",
 			    ifp->if_addrlen, (u_char *) ar_sha(ah), ":",
@@ -609,7 +603,8 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 		if (ifp->if_addrlen != ah->ar_hln) {
 			if (dologging && cpu == 0) {
 				log(LOG_WARNING,
-				"arp from %*D: addr len: new %d, i/f %d (ignored)",
+				"arp from %*D: addr len: new %d, i/f %d "
+				"(ignored)",
 				ifp->if_addrlen, (u_char *) ar_sha(ah), ":",
 				ah->ar_hln, ifp->if_addrlen);
 			}
@@ -643,7 +638,7 @@ struct netmsg_arp_update {
 	boolean_t	create;
 };
 
-static void arp_update_msghandler(struct netmsg *netmsg);
+static void arp_update_msghandler(struct netmsg *);
 
 #endif
 
@@ -704,16 +699,16 @@ in_arpinput(struct mbuf *m)
 			goto match;
 		
 #ifdef CARP
-	/*
-	 * If the interface does not match, but the recieving interface
-	 * is part of carp, we call carp_iamatch to see if this is a
-	 * request for the virtual host ip.
-	 * XXX: This is really ugly!
-	 */
-        	if (ifp->if_carp != NULL &&
+		/*
+		 * If the interface does not match, but the recieving interface
+		 * is part of carp, we call carp_iamatch to see if this is a
+		 * request for the virtual host ip.
+		 * XXX: This is really ugly!
+		 */
+		if (ifp->if_carp != NULL &&
 		    carp_iamatch(ifp->if_carp, ia, &isaddr, &enaddr) &&
 		    itaddr.s_addr == ia->ia_addr.sin_addr.s_addr)
-                        goto match;
+			goto match;
 #endif
 	}
 	LIST_FOREACH(iac, INADDR_HASH(isaddr.s_addr), ia_hash) {
@@ -856,14 +851,12 @@ reply:
 	}
 	sa.sa_family = AF_UNSPEC;
 	sa.sa_len = sizeof sa;
-	ifp->if_output(ifp, m, &sa, (struct rtentry *)0);
-	return;
+	ifp->if_output(ifp, m, &sa, NULL);
 }
 
 #ifdef SMP
 
-static
-void
+static void
 arp_update_msghandler(struct netmsg *netmsg)
 {
 	struct netmsg_arp_update *msg = (struct netmsg_arp_update *)netmsg;
@@ -872,16 +865,15 @@ arp_update_msghandler(struct netmsg *netmsg)
 	arp_update_oncpu(msg->m, msg->saddr, msg->create, FALSE);
 
 	nextcpu = mycpuid + 1;
-	if (nextcpu < ncpus) {
+	if (nextcpu < ncpus)
 		lwkt_forwardmsg(rtable_portfn(nextcpu), &msg->netmsg.nm_lmsg);
-	} else {
+	else
 		lwkt_replymsg(&msg->netmsg.nm_lmsg, 0);
-	}
 }
 
-#endif
+#endif	/* SMP */
 
-#endif
+#endif	/* INET */
 
 /*
  * Free an arp entry.  If the arp entry is actively referenced or represents
