@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.117.2.6 2008/08/02 21:24:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.117.2.7 2008/09/25 01:42:52 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -110,10 +110,13 @@ struct hammer_transaction {
 	u_int64_t	time;
 	u_int32_t	time32;
 	int		sync_lock_refs;
+	int		flags;
 	struct hammer_volume *rootvol;
 };
 
 typedef struct hammer_transaction *hammer_transaction_t;
+
+#define HAMMER_TRANSF_NEWINODE	0x0001
 
 /*
  * HAMMER locks
@@ -484,6 +487,7 @@ struct hammer_io {
 	struct hammer_lock	lock;
 	enum hammer_io_type	type;
 	struct hammer_mount	*hmp;
+	struct hammer_volume	*volume;
 	TAILQ_ENTRY(hammer_io)	mod_entry; /* list entry if modified */
 	hammer_io_list_t	mod_list;
 	struct buf		*bp;
@@ -541,7 +545,6 @@ struct hammer_buffer {
 	struct hammer_io io;
 	RB_ENTRY(hammer_buffer) rb_node;
 	void *ondisk;
-	struct hammer_volume *volume;
 	hammer_off_t zoneX_offset;
 	hammer_off_t zone2_offset;
 	struct hammer_reserve *resv;
@@ -821,6 +824,7 @@ extern int hammer_bio_count;
 extern int hammer_verify_zone;
 extern int hammer_verify_data;
 extern int hammer_write_mode;
+extern int hammer_autoflush;
 extern int64_t hammer_contention_count;
 
 void	hammer_critical_error(hammer_mount_t hmp, hammer_inode_t ip,
@@ -1099,7 +1103,7 @@ void hammer_rel_pseudofs(hammer_mount_t hmp, hammer_pseudofs_inmem_t pfsm);
 int hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 			struct ucred *cred);
 
-void hammer_io_init(hammer_io_t io, hammer_mount_t hmp,
+void hammer_io_init(hammer_io_t io, hammer_volume_t volume,
 			enum hammer_io_type type);
 int hammer_io_read(struct vnode *devvp, struct hammer_io *io,
 			hammer_off_t limit);
@@ -1120,6 +1124,8 @@ void hammer_io_write_interlock(hammer_io_t io);
 void hammer_io_done_interlock(hammer_io_t io);
 void hammer_io_clear_modify(struct hammer_io *io, int inval);
 void hammer_io_clear_modlist(struct hammer_io *io);
+void hammer_io_flush_sync(hammer_mount_t hmp);
+
 void hammer_modify_volume(hammer_transaction_t trans, hammer_volume_t volume,
 			void *base, int len);
 void hammer_modify_buffer(hammer_transaction_t trans, hammer_buffer_t buffer,

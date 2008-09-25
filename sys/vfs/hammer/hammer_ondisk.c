@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.69.2.5 2008/08/06 15:41:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ondisk.c,v 1.69.2.6 2008/09/25 01:42:52 dillon Exp $
  */
 /*
  * Manage HAMMER's on-disk structures.  These routines are primarily
@@ -119,7 +119,8 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname,
 	++hammer_count_volumes;
 	volume = kmalloc(sizeof(*volume), M_HAMMER, M_WAITOK|M_ZERO);
 	volume->vol_name = kstrdup(volname, M_HAMMER);
-	hammer_io_init(&volume->io, hmp, HAMMER_STRUCTURE_VOLUME);
+	volume->io.hmp = hmp;	/* bootstrap */
+	hammer_io_init(&volume->io, volume, HAMMER_STRUCTURE_VOLUME);
 	volume->io.offset = 0LL;
 	volume->io.bytes = HAMMER_BUFSIZE;
 
@@ -614,9 +615,8 @@ again:
 			 M_WAITOK|M_ZERO|M_USE_RESERVE);
 	buffer->zone2_offset = zone2_offset;
 	buffer->zoneX_offset = buf_offset;
-	buffer->volume = volume;
 
-	hammer_io_init(&buffer->io, hmp, iotype);
+	hammer_io_init(&buffer->io, volume, iotype);
 	buffer->io.offset = volume->ondisk->vol_buf_beg +
 			    (zone2_offset & HAMMER_OFF_SHORT_MASK);
 	buffer->io.bytes = bytes;
@@ -723,7 +723,7 @@ hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
 				hammer_io_clear_modify(&buffer->io, 1);
 				buffer->io.reclaim = 1;
 				buffer->io.waitdep = 1;
-				KKASSERT(buffer->volume == volume);
+				KKASSERT(buffer->io.volume == volume);
 				hammer_rel_buffer(buffer, 0);
 			}
 		} else {
@@ -745,7 +745,7 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 	/*
 	 * Load the buffer's on-disk info
 	 */
-	volume = buffer->volume;
+	volume = buffer->io.volume;
 	++buffer->io.loading;
 	hammer_lock_ex(&buffer->io.lock);
 
@@ -885,8 +885,8 @@ hammer_rel_buffer(hammer_buffer_t buffer, int flush)
 				RB_REMOVE(hammer_buf_rb_tree,
 					  &buffer->io.hmp->rb_bufs_root,
 					  buffer);
-				volume = buffer->volume;
-				buffer->volume = NULL; /* sanity */
+				volume = buffer->io.volume;
+				buffer->io.volume = NULL; /* sanity */
 				hammer_rel_volume(volume, 0);
 				hammer_io_clear_modlist(&buffer->io);
 				hammer_flush_buffer_nodes(buffer);

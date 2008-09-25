@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.103.2.5 2008/08/10 17:01:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_inode.c,v 1.103.2.6 2008/09/25 01:42:52 dillon Exp $
  */
 
 #include "hammer.h"
@@ -220,15 +220,6 @@ hammer_vop_reclaim(struct vop_reclaim_args *ap)
 			++hammer_count_reclaiming;
 			++hmp->inode_reclaims;
 			ip->flags |= HAMMER_INODE_RECLAIM;
-
-			/*
-			 * Poke the flusher.  If we don't do this programs
-			 * will start to stall on the reclaiming count.
-			 */
-			if (hmp->inode_reclaims > HAMMER_RECLAIM_FLUSH &&
-			   (hmp->inode_reclaims & 255) == 0) {
-			       hammer_flusher_async(hmp, NULL);
-			}
 		}
 		hammer_rel_inode(ip, 1);
 	}
@@ -293,12 +284,16 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			 * confused.  The other half of the special handling
 			 * is in hammer_vop_nlookupdotdot().
 			 *
-			 * Pseudo-filesystem roots also do not count.
+			 * Pseudo-filesystem roots can be accessed via
+			 * non-root filesystem paths and setting VROOT may
+			 * confuse the namecache.  Set VPFSROOT instead.
 			 */
 			if (ip->obj_id == HAMMER_OBJID_ROOT &&
-			    ip->obj_asof == hmp->asof &&
-			    ip->obj_localization == 0) {
-				vp->v_flag |= VROOT;
+			    ip->obj_asof == hmp->asof) {
+				if (ip->obj_localization == 0)
+					vp->v_flag |= VROOT;
+				else
+					vp->v_flag |= VPFSROOT;
 			}
 
 			vp->v_data = (void *)ip;
@@ -489,6 +484,7 @@ retry:
 		ip = NULL;
 	}
 	hammer_done_cursor(&cursor);
+	trans->flags |= HAMMER_TRANSF_NEWINODE;
 	return (ip);
 }
 
@@ -1163,7 +1159,7 @@ retry:
 void
 hammer_rel_inode(struct hammer_inode *ip, int flush)
 {
-	hammer_mount_t hmp = ip->hmp;
+	/*hammer_mount_t hmp = ip->hmp;*/
 
 	/*
 	 * Handle disposition when dropping the last ref.
@@ -1177,12 +1173,7 @@ hammer_rel_inode(struct hammer_inode *ip, int flush)
 			KKASSERT(ip->vp == NULL);
 			hammer_inode_unloadable_check(ip, 0);
 			if (ip->flags & HAMMER_INODE_MODMASK) {
-				if (hmp->rsv_inodes > desiredvnodes) {
-					hammer_flush_inode(ip,
-							   HAMMER_FLUSH_SIGNAL);
-				} else {
-					hammer_flush_inode(ip, 0);
-				}
+				hammer_flush_inode(ip, 0);
 			} else if (ip->lock.refs == 1) {
 				hammer_unload_inode(ip);
 				break;
@@ -1662,6 +1653,13 @@ hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 	++flg->total_count;
 
 	/*
+	 * If the flush group reaches the autoflush limit we want to signal
+	 * the flusher.  This is particularly important for remove()s.
+	 */
+	if (flg->total_count == hammer_autoflush)
+		flags |= HAMMER_FLUSH_SIGNAL;
+
+	/*
 	 * We need to be able to vfsync/truncate from the backend.
 	 */
 	KKASSERT((ip->flags & HAMMER_INODE_VHELD) == 0);
@@ -2059,9 +2057,17 @@ hammer_flush_inode_done(hammer_inode_t ip, int error)
 	/*
 	 * Do not lose track of inodes which no longer have vnode
 	 * assocations, otherwise they may never get flushed again.
+	 *
+	 * The reflush flag can be set superfluously, causing extra pain
+	 * for no reason.  If the inode is no longer modified it no longer
+	 * needs to be flushed.
 	 */
-	if ((ip->flags & HAMMER_INODE_MODMASK) && ip->vp == NULL)
-		ip->flags |= HAMMER_INODE_REFLUSH;
+	if (ip->flags & HAMMER_INODE_MODMASK) {
+		if (ip->vp == NULL)
+			ip->flags |= HAMMER_INODE_REFLUSH;
+	} else {
+		ip->flags &= ~HAMMER_INODE_REFLUSH;
+	}
 
 	/*
 	 * Adjust the flush state.
@@ -2641,9 +2647,14 @@ hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 	 * The backend will clear DELETING (a mod flag) and set DELETED
 	 * (a state flag) when it is actually able to perform the
 	 * operation.
+	 *
+	 * Don't reflag the deletion if the flusher is currently syncing
+	 * one that was already flagged.  A previously set DELETING flag
+	 * may bounce around flags and sync_flags until the operation is
+	 * completely done.
 	 */
 	if (ip->ino_data.nlinks == 0 &&
-	    (ip->flags & (HAMMER_INODE_DELETING|HAMMER_INODE_DELETED)) == 0) {
+	    ((ip->flags | ip->sync_flags) & (HAMMER_INODE_DELETING|HAMMER_INODE_DELETED)) == 0) {
 		ip->flags |= HAMMER_INODE_DELETING;
 		ip->flags |= HAMMER_INODE_TRUNCATED;
 		ip->trunc_off = 0;
@@ -2738,7 +2749,7 @@ hammer_inode_waitreclaims(hammer_mount_t hmp)
 
 	if (reclaim.okydoky == 0) {
 		delay = (hmp->inode_reclaims - HAMMER_RECLAIM_WAIT) * hz /
-			HAMMER_RECLAIM_WAIT;
+			(HAMMER_RECLAIM_WAIT * 5);
 		if (delay >= 0)
 			tsleep(&reclaim, 0, "hmrrcm", delay + 1);
 		if (reclaim.okydoky == 0)

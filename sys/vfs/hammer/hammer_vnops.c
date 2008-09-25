@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.91.2.5 2008/08/10 17:01:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.91.2.6 2008/09/25 01:42:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -186,8 +186,11 @@ hammer_vop_fsync(struct vop_fsync_args *ap)
 	++hammer_count_fsyncs;
 	vfsync(ap->a_vp, ap->a_waitfor, 1, NULL, NULL);
 	hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
-	if (ap->a_waitfor == MNT_WAIT)
+	if (ap->a_waitfor == MNT_WAIT) {
+		vn_unlock(ap->a_vp);
 		hammer_wait_inode(ip);
+		vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY);
+	}
 	return (ip->error);
 }
 
@@ -565,10 +568,7 @@ static
 int
 hammer_vop_close(struct vop_close_args *ap)
 {
-	hammer_inode_t ip = VTOI(ap->a_vp);
-
-	if ((ip->flags | ip->sync_flags) & HAMMER_INODE_MODMASK)
-		hammer_inode_waitreclaims(ip->hmp);
+	/*hammer_inode_t ip = VTOI(ap->a_vp);*/
 	return (vop_stdclose(ap));
 }
 
@@ -2027,7 +2027,8 @@ hammer_vop_mountctl(struct vop_mountctl_args *ap)
 	case MOUNTCTL_SET_EXPORT:
 		if (ap->a_ctllen != sizeof(struct export_args))
 			error = EINVAL;
-		error = hammer_vfs_export(mp, ap->a_op,
+		else
+			error = hammer_vfs_export(mp, ap->a_op,
 				      (const struct export_args *)ap->a_ctl);
 		break;
 	default:
@@ -2577,8 +2578,13 @@ hammer_vop_strategy_write(struct vop_strategy_args *ap)
 	 * topology visibility).  If we queue new IO while trying to
 	 * destroy the inode we can deadlock the vtrunc call in
 	 * hammer_inode_unloadable_check().
+	 *
+	 * Besides, there's no point flushing a bp associated with an
+	 * inode that is being destroyed on-media and has no kernel
+	 * references.
 	 */
-	if (ip->flags & (HAMMER_INODE_DELETING|HAMMER_INODE_DELETED)) {
+	if ((ip->flags | ip->sync_flags) &
+	    (HAMMER_INODE_DELETING|HAMMER_INODE_DELETED)) {
 		bp->b_resid = 0;
 		biodone(ap->a_bio);
 		return(0);
@@ -2764,7 +2770,6 @@ retry:
 	} else {
 		hammer_done_cursor(&cursor);
 	}
-	hammer_inode_waitreclaims(dip->hmp);
 	if (error == EDEADLK)
 		goto retry;
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.63.2.6 2008/08/02 21:24:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.63.2.7 2008/09/25 01:42:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -94,6 +94,7 @@ int hammer_count_io_locked;
 int hammer_limit_dirtybufspace;		/* per-mount */
 int hammer_limit_recs;			/* as a whole XXX */
 int hammer_limit_iqueued;		/* per-mount */
+int hammer_autoflush = 2000;		/* auto flush */
 int hammer_bio_count;
 int hammer_verify_zone;
 int hammer_verify_data = 1;
@@ -201,6 +202,8 @@ SYSCTL_QUAD(_vfs_hammer, OID_AUTO, zone_limit, CTLFLAG_RW,
 	   &hammer_zone_limit, 0, "");
 SYSCTL_QUAD(_vfs_hammer, OID_AUTO, contention_count, CTLFLAG_RW,
 	   &hammer_contention_count, 0, "");
+SYSCTL_INT(_vfs_hammer, OID_AUTO, autoflush, CTLFLAG_RW,
+	   &hammer_autoflush, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, verify_zone, CTLFLAG_RW,
 	   &hammer_verify_zone, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, verify_data, CTLFLAG_RW,
@@ -227,8 +230,8 @@ static int	hammer_vfs_sync(struct mount *mp, int waitfor);
 static int	hammer_vfs_vget(struct mount *mp, ino_t ino,
 				struct vnode **vpp);
 static int	hammer_vfs_init(struct vfsconf *conf);
-static int	hammer_vfs_fhtovp(struct mount *mp, struct fid *fhp,
-				struct vnode **vpp);
+static int	hammer_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
+				struct fid *fhp, struct vnode **vpp);
 static int	hammer_vfs_vptofh(struct vnode *vp, struct fid *fhp);
 static int	hammer_vfs_checkexp(struct mount *mp, struct sockaddr *nam,
 				int *exflagsp, struct ucred **credanonp);
@@ -900,9 +903,13 @@ hammer_vfs_vptofh(struct vnode *vp, struct fid *fhp)
 
 /*
  * Convert a file handle back to a vnode.
+ *
+ * Use rootvp to enforce PFS isolation when a PFS is exported via a
+ * null mount.
  */
 static int
-hammer_vfs_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
+hammer_vfs_fhtovp(struct mount *mp, struct vnode *rootvp,
+		  struct fid *fhp, struct vnode **vpp)
 {
 	struct hammer_transaction trans;
 	struct hammer_inode *ip;
@@ -912,7 +919,10 @@ hammer_vfs_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
 
 	bcopy(fhp->fid_data + 0, &info.obj_id, sizeof(info.obj_id));
 	bcopy(fhp->fid_data + 8, &info.obj_asof, sizeof(info.obj_asof));
-	localization = (u_int32_t)fhp->fid_ext << 16;
+	if (rootvp)
+		localization = VTOI(rootvp)->obj_localization;
+	else
+		localization = (u_int32_t)fhp->fid_ext << 16;
 
 	hammer_simple_transaction(&trans, (void *)mp->mnt_data);
 

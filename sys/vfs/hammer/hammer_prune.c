@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.18.2.1 2008/08/02 21:24:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_prune.c,v 1.18.2.2 2008/09/25 01:42:52 dillon Exp $
  */
 
 #include "hammer.h"
@@ -319,6 +319,7 @@ prune_check_nlinks(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm)
 				elm->base.obj_id);
 		}
 		hammer_rel_inode(ip, 0);
+		hammer_inode_waitreclaims(cursor->trans->hmp);
 	} else {
 		kprintf("unable to prune disconnected inode %016llx\n",
 			elm->base.obj_id);

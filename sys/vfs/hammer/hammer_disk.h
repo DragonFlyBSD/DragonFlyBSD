@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.50.2.2 2008/08/02 21:24:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.50.2.3 2008/09/25 01:42:52 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -518,6 +518,7 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 
 #define HAMMER_VOLF_VALID		0x0001	/* valid entry */
 #define HAMMER_VOLF_OPEN		0x0002	/* volume is open */
+#define HAMMER_VOLF_NEEDFLUSH		0x0004	/* volume needs flush */
 
 #define HAMMER_VOL_CRCSIZE1	\
 	offsetof(struct hammer_volume_ondisk, vol_crc)
@@ -684,7 +685,7 @@ struct hammer_pseudofs_data {
 	int32_t		reserved01;	/* reserved for future master_id */
 	int32_t		mirror_flags;	/* misc flags */
 	char		label[64];	/* filesystem space label */
-	char		prune_path[64];	/* softlink dir for pruning */
+	char		snapshots[64];	/* softlink dir for pruning */
 	int16_t		prune_time;	/* how long to spend pruning */
 	int16_t		prune_freq;	/* how often we prune */
 	int16_t		reblock_time;	/* how long to spend reblocking */
