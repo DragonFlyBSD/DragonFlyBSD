@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.19 2007/06/29 23:40:00 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.19.6.1 2008/09/25 02:20:46 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -496,7 +496,7 @@ ckpt_fhtovp(fhandle_t *fh, struct vnode **vpp)
 	        TRACE_EXIT;
 		return ESTALE;
 	}
-	error = VFS_FHTOVP(mp, &fh->fh_fid, vpp);
+	error = VFS_FHTOVP(mp, NULL, &fh->fh_fid, vpp);
 	if (error) {
 		PRINTF(("failed with: %d\n", error));
 		TRACE_ERR;

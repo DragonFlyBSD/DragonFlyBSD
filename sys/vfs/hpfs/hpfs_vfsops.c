@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.42 2008/01/05 14:02:41 swildner Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.42.4.1 2008/09/25 02:20:50 dillon Exp $
  */
 
 
@@ -69,12 +69,12 @@ static int	hpfs_root (struct mount *, struct vnode **);
 static int	hpfs_statfs (struct mount *, struct statfs *, struct ucred *);
 static int	hpfs_unmount (struct mount *, int);
 static int	hpfs_vget (struct mount *mp, ino_t ino,
-			       struct vnode **vpp);
+				struct vnode **vpp);
 static int	hpfs_mountfs (struct vnode *, struct mount *, 
-				  struct hpfs_args *);
+				struct hpfs_args *);
 static int	hpfs_vptofh (struct vnode *, struct fid *);
-static int	hpfs_fhtovp (struct mount *, struct fid *,
-				 struct vnode **);
+static int	hpfs_fhtovp (struct mount *, struct vnode *,
+				struct fid *, struct vnode **);
 
 
 struct sockaddr;
@@ -419,7 +419,8 @@ hpfs_statfs(struct mount *mp, struct statfs *sbp, struct ucred *cred)
 
 /*ARGSUSED*/
 static int
-hpfs_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
+hpfs_fhtovp(struct mount *mp, struct vnode *rootvp,
+	    struct fid *fhp, struct vnode **vpp)
 {
 	struct vnode *nvp;
 	struct hpfid *hpfhp = (struct hpfid *)fhp;

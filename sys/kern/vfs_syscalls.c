@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.133 2008/06/28 17:59:49 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.133.2.1 2008/09/25 02:20:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -185,7 +185,7 @@ sys_mount(struct mount_args *uap)
 	 * Now we have an unlocked ref'd nch and a locked ref'd vp
 	 */
 	if (uap->flags & MNT_UPDATE) {
-		if ((vp->v_flag & VROOT) == 0) {
+		if ((vp->v_flag & (VROOT|VPFSROOT)) == 0) {
 			cache_drop(&nch);
 			vput(vp);
 			return (EINVAL);
@@ -975,6 +975,9 @@ done:
 /*
  * Execute a mount control operation by resolving the path to a mount point
  * and calling vop_mountctl().  
+ *
+ * Use the mount point from the nch instead of the vnode so nullfs mounts
+ * can properly spike the VOP.
  */
 int
 kern_mountctl(const char *path, int op, struct file *fp, 
@@ -993,16 +996,15 @@ kern_mountctl(const char *path, int op, struct file *fp,
 		error = nlookup(&nd);
 	if (error == 0)
 		error = cache_vget(&nd.nl_nch, nd.nl_cred, LK_EXCLUSIVE, &vp);
+	mp = nd.nl_nch.mount;
 	nlookup_done(&nd);
 	if (error)
 		return (error);
 
-	mp = vp->v_mount;
-
 	/*
 	 * Must be the root of the filesystem
 	 */
-	if ((vp->v_flag & VROOT) == 0) {
+	if ((vp->v_flag & (VROOT|VPFSROOT)) == 0) {
 		vput(vp);
 		return (EINVAL);
 	}
@@ -3552,6 +3554,15 @@ sys_revoke(struct revoke_args *uap)
  * getfh_args(char *fname, fhandle_t *fhp)
  *
  * Get (NFS) file handle
+ *
+ * NOTE: We use the fsid of the covering mount, even if it is a nullfs
+ * mount.  This allows nullfs mounts to be explicitly exported. 
+ *
+ * WARNING: nullfs mounts of HAMMER PFS ROOTs are safe.
+ *
+ * 	    nullfs mounts of subdirectories are not safe.  That is, it will
+ *	    work, but you do not really have protection against access to
+ *	    the related parent directories.
  */
 int
 sys_getfh(struct getfh_args *uap)
@@ -3560,6 +3571,7 @@ sys_getfh(struct getfh_args *uap)
 	struct nlookupdata nd;
 	fhandle_t fh;
 	struct vnode *vp;
+	struct mount *mp;
 	int error;
 
 	/*
@@ -3574,10 +3586,11 @@ sys_getfh(struct getfh_args *uap)
 		error = nlookup(&nd);
 	if (error == 0)
 		error = cache_vget(&nd.nl_nch, nd.nl_cred, LK_EXCLUSIVE, &vp);
+	mp = nd.nl_nch.mount;
 	nlookup_done(&nd);
 	if (error == 0) {
 		bzero(&fh, sizeof(fh));
-		fh.fh_fsid = vp->v_mount->mnt_stat.f_fsid;
+		fh.fh_fsid = mp->mnt_stat.f_fsid;
 		error = VFS_VPTOFH(vp, &fh.fh_fid);
 		vput(vp);
 		if (error == 0)
@@ -3630,7 +3643,7 @@ sys_fhopen(struct fhopen_args *uap)
 	if (mp == NULL)
 		return (ESTALE);
 	/* now give me my vnode, it gets returned to me locked */
-	error = VFS_FHTOVP(mp, &fhp.fh_fid, &vp);
+	error = VFS_FHTOVP(mp, NULL, &fhp.fh_fid, &vp);
 	if (error)
 		return (error);
  	/*
@@ -3785,7 +3798,7 @@ sys_fhstat(struct fhstat_args *uap)
 
 	if ((mp = vfs_getvfs(&fh.fh_fsid)) == NULL)
 		return (ESTALE);
-	if ((error = VFS_FHTOVP(mp, &fh.fh_fid, &vp)))
+	if ((error = VFS_FHTOVP(mp, NULL, &fh.fh_fid, &vp)))
 		return (error);
 	error = vn_stat(vp, &sb, td->td_proc->p_ucred);
 	vput(vp);
@@ -3826,7 +3839,7 @@ sys_fhstatfs(struct fhstatfs_args *uap)
 	if (p != NULL && !chroot_visible_mnt(mp, p))
 		return (ESTALE);
 
-	if ((error = VFS_FHTOVP(mp, &fh.fh_fid, &vp)))
+	if ((error = VFS_FHTOVP(mp, NULL, &fh.fh_fid, &vp)))
 		return (error);
 	mp = vp->v_mount;
 	sp = &mp->mnt_stat;
@@ -3879,7 +3892,7 @@ sys_fhstatvfs(struct fhstatvfs_args *uap)
 	if (p != NULL && !chroot_visible_mnt(mp, p))
 		return (ESTALE);
 
-	if ((error = VFS_FHTOVP(mp, &fh.fh_fid, &vp)))
+	if ((error = VFS_FHTOVP(mp, NULL, &fh.fh_fid, &vp)))
 		return (error);
 	mp = vp->v_mount;
 	sp = &mp->mnt_vstat;

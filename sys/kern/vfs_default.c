@@ -38,7 +38,7 @@
  *
  * Source: * @(#)i405_init.c 2.10 92/04/27 UCLA Ficus project
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.53 2008/06/01 19:27:35 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.53.2.1 2008/09/25 02:20:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1393,7 +1393,8 @@ vfs_stdvget(struct mount *mp, ino_t ino, struct vnode **vpp)
 }
 
 int	
-vfs_stdfhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
+vfs_stdfhtovp(struct mount *mp, struct vnode *rootvp,
+	      struct fid *fhp, struct vnode **vpp)
 {
 	return (EOPNOTSUPP);
 }

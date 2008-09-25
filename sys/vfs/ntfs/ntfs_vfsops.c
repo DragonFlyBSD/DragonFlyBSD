@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.47 2008/01/05 14:02:41 swildner Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.47.4.1 2008/09/25 02:20:54 dillon Exp $
  */
 
 
@@ -86,8 +86,8 @@ static int	ntfs_vget (struct mount *mp, ino_t ino, struct vnode **vpp);
 static int	ntfs_mountfs (struct vnode *, struct mount *, 
 				  struct ntfs_args *, struct ucred *);
 static int	ntfs_vptofh (struct vnode *, struct fid *);
-static int	ntfs_fhtovp (struct mount *, struct fid *,
-				 struct vnode **);
+static int	ntfs_fhtovp (struct mount *, struct vnode *rootvp,
+				struct fid *, struct vnode **);
 
 #if !defined (__DragonFly__)
 static int	ntfs_quotactl (struct mount *, int, uid_t, caddr_t,
@@ -778,7 +778,8 @@ ntfs_sync(struct mount *mp, int waitfor, struct ucred *cred, struct thread *td)
 
 /*ARGSUSED*/
 static int
-ntfs_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
+ntfs_fhtovp(struct mount *mp, struct vnode *rootvp,
+	    struct fid *fhp, struct vnode **vpp)
 {
 	struct vnode *nvp;
 	struct ntfid *ntfhp = (struct ntfid *)fhp;

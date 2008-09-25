@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.45 2008/01/05 14:02:41 swildner Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.45.4.1 2008/09/25 02:20:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -74,7 +74,8 @@ static int cd9660_unmount (struct mount *, int);
 static int cd9660_root (struct mount *, struct vnode **);
 static int cd9660_statfs (struct mount *, struct statfs *, struct ucred *);
 static int cd9660_vget (struct mount *, ino_t, struct vnode **);
-static int cd9660_fhtovp (struct mount *, struct fid *, struct vnode **);
+static int cd9660_fhtovp (struct mount *, struct vnode *rootvp,
+				struct fid *, struct vnode **);
 static int cd9660_checkexp (struct mount *, struct sockaddr *,
 	    int *, struct ucred **);
 static int cd9660_vptofh (struct vnode *, struct fid *);
@@ -616,7 +617,8 @@ struct ifid {
 
 /* ARGSUSED */
 int
-cd9660_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
+cd9660_fhtovp(struct mount *mp, struct vnode *rootvp,
+	      struct fid *fhp, struct vnode **vpp)
 {
 	struct ifid *ifhp = (struct ifid *)fhp;
 	struct iso_node *ip;

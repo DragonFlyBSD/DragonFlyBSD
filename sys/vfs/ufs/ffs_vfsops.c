@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.58 2008/01/05 14:02:41 swildner Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.58.4.1 2008/09/25 02:20:57 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1210,7 +1210,8 @@ restart:
  *   those rights via. exflagsp and credanonp
  */
 int
-ffs_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
+ffs_fhtovp(struct mount *mp, struct vnode *rootvp,
+	   struct fid *fhp, struct vnode **vpp)
 {
 	struct ufid *ufhp;
 	struct fs *fs;
@@ -1220,7 +1221,7 @@ ffs_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
 	if (ufhp->ufid_ino < ROOTINO ||
 	    ufhp->ufid_ino >= fs->fs_ncg * fs->fs_ipg)
 		return (ESTALE);
-	return (ufs_fhtovp(mp, ufhp, vpp));
+	return (ufs_fhtovp(mp, rootvp, ufhp, vpp));
 }
 
 /*
