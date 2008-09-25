@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_output.c,v 1.26 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_output.c,v 1.8 2006/12/18 20:41:01 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_output.c,v 1.9 2008/09/25 13:30:15 sephe Exp $
  */
 
 /*
@@ -100,6 +100,19 @@ db_force_whitespace(void)
 static void
 db_putchar(int c, void *arg)
 {
+	/*
+	 * If not in the debugger, output data to both the console and
+	 * the message buffer.
+	 */
+	if (!db_active) {
+		kprintf("%c", c);
+		if (!db_active)
+			return;
+		if (c == '\r' || c == '\n')
+			db_check_interrupt();
+		return;
+	}
+
 	if (c > ' ' && c <= '~') {
 	    /*
 	     * Printing character.
