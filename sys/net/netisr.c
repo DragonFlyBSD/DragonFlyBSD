@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.46 2008/09/23 11:28:49 sephe Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.47 2008/09/25 12:08:51 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -94,6 +94,16 @@ SYSCTL_NODE(_net, OID_AUTO, netisr, CTLFLAG_RW, 0, "netisr");
 SYSCTL_INT(_net_netisr, OID_AUTO, mpsafe_thread, CTLFLAG_RW,
 	   &netisr_mpsafe_thread, 0,
 	   "0:BGL, 1:Adaptive BGL, 2:No BGL(experimental)");
+
+static __inline int
+NETISR_TO_MSGF(const struct netisr *ni)
+{
+	int msg_flags = 0;
+
+	if (ni->ni_flags & NETISR_FLAG_MPSAFE)
+		msg_flags |= MSGF_MPSAFE;
+	return msg_flags;
+}
 
 /*
  * netisr_afree_rport replymsg function, only used to handle async
@@ -233,7 +243,7 @@ netmsg_service_sync(void)
     struct netmsg_port_registration *reg;
     struct netmsg smsg;
 
-    netmsg_init(&smsg, &curthread->td_msgport, 0, netmsg_sync_func);
+    netmsg_init(&smsg, &curthread->td_msgport, MSGF_MPSAFE, netmsg_sync_func);
 
     TAILQ_FOREACH(reg, &netreglist, npr_entry) {
 	lwkt_domsg(reg->npr_port, &smsg.nm_lmsg, 0);
@@ -362,9 +372,8 @@ netisr_queue(int num, struct mbuf *m)
 
     pmsg = &m->m_hdr.mh_netmsg;
 
-    netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport,
-    		(ni->ni_flags & NETISR_FLAG_MPSAFE) ? MSGF_MPSAFE : 0,
-		ni->ni_handler);
+    netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, NETISR_TO_MSGF(ni),
+    		ni->ni_handler);
     pmsg->nm_packet = m;
     pmsg->nm_netmsg.nm_lmsg.u.ms_result = num;
     lwkt_sendmsg(port, &pmsg->nm_netmsg.nm_lmsg);
@@ -375,13 +384,16 @@ void
 netisr_register(int num, lwkt_portfn_t mportfn, netisr_fn_t handler,
 		uint32_t flags)
 {
+    struct netisr *ni;
+
     KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
 	("netisr_register: bad isr %d", num));
-    netmsg_init(&netisrs[num].ni_netmsg, &netisr_adone_rport,
-    		(flags & NETISR_FLAG_MPSAFE) ? MSGF_MPSAFE : 0, NULL);
-    netisrs[num].ni_mport = mportfn;
-    netisrs[num].ni_handler = handler;
-    netisrs[num].ni_flags = flags;
+    ni = &netisrs[num];
+
+    ni->ni_mport = mportfn;
+    ni->ni_handler = handler;
+    ni->ni_flags = flags;
+    netmsg_init(&ni->ni_netmsg, &netisr_adone_rport, NETISR_TO_MSGF(ni), NULL);
 }
 
 int
@@ -447,7 +459,8 @@ schednetisr_remote(void *data)
     pmsg = &netisrs[num].ni_netmsg;
     crit_enter();
     if (pmsg->nm_lmsg.ms_flags & MSGF_DONE) {
-	netmsg_init(pmsg, &netisr_adone_rport, 0, ni->ni_handler);
+	netmsg_init(pmsg, &netisr_adone_rport, NETISR_TO_MSGF(ni),
+		    ni->ni_handler);
 	pmsg->nm_lmsg.u.ms_result = num;
 	lwkt_sendmsg(port, &pmsg->nm_lmsg);
     }
