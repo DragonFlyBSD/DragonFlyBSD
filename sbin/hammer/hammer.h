@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.h,v 1.23.2.1 2008/08/04 19:41:25 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.h,v 1.23.2.2 2008/09/25 01:39:33 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -91,6 +91,7 @@ void hammer_cmd_pseudofs_upgrade(char **av, int ac);
 void hammer_cmd_pseudofs_downgrade(char **av, int ac);
 void hammer_cmd_status(char **av, int ac);
 void hammer_cmd_snapshot(char **av, int ac);
+void hammer_cmd_cleanup(char **av, int ac);
 
 void hammer_get_cycle(hammer_base_elm_t base, hammer_tid_t *tidp);
 void hammer_set_cycle(hammer_base_elm_t base, hammer_tid_t tid);

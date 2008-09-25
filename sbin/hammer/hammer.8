@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.38.2.5 2008/09/09 23:41:13 dillon Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.38.2.6 2008/09/25 01:39:33 dillon Exp $
 .Dd July 27, 2008
 .Dt HAMMER 8
 .Os
@@ -181,6 +181,42 @@ Generate the top 32 bits of a
 .Nm HAMMER
 64 bit directory hash for the specified
 file name.
+.\" ==== cleanup ====
+.It Ar cleanup Op Ar filesystem
+This is a meta-command which executes snapshot, pruning, and reblocking
+commands on the specified HAMMER filesystem.
+If no filesystem is specified this command will scan all HAMMER and nullfs
+mounts, extract PFS id's, and clean-up each PFS found.
+.Pp
+This command will access a
+.Ar snapshots
+subdirectory and a
+.Ar snapshots/config
+file for each filesystem, creating them if necessary.
+The default configuration file will create a daily snapshot, do a daily
+pruning and reblocking run with a fragmentation level of 95%, and
+a monthly unconditional reblocking run.
+.Pp
+All operations are limited to 5 minutes per function by default.
+Reblocking runs are broken down into three separate functions and
+take 15 minutes.  
+Also note that this directive will disable snapshots on
+.Pa /tmp ,
+.Pa /var/tmp ,
+and
+.Pa /usr/obj
+by default.
+.Pp
+The defaults may be adjusted by modifying the config file.
+The pruning and reblocking commands automatically maintain a cyclefile
+for incremental operation.
+If you ^C the program the cyclefile will be updated, but a sub-command
+may continue to run in the background for a few seconds until the HAMMER
+ioctl detects the interrupt.
+.Pp
+Work on this command is still in progress.
+Expected additions:  An ability to remove snapshots dynamically as the
+filesystem becomes full.
 .\" ==== prune ====
 .It Ar prune Ar softlink-dir
 Prune the file system based on previously created snapshot softlinks.
@@ -427,6 +463,23 @@ Set the unique UUID for this file system.  This UUID should not be used
 anywhere else, even on exact copies of the file system.
 .It label=<string>
 Set a descriptive label for this file system.
+.It snapshots=<string>
+Specify the snapshots directory which 'hammer cleanup' will use to manage
+this PFS.  The snapshots directory does not need to be configured for 
+PFS masters and will default to "<fs>/snapshots".
+.Pp
+PFS slaves are mirroring slaves so you cannot configure a snapshots
+directory on the slave itself to be managed by the slave's machine.
+In fact, the slave will likely have a 'snapshots' sub-directory mirrored
+from the master, but that directory contains the configuration the master
+is using for its copy of the filesystem, not the configuration that we
+want to use for our slave.
+.Pp
+It is recommended that "/var/slaves/<name>" be configured for a PFS
+slave, where <name> is an appropriate label.  You can control snapshot
+retention on your slave independant of the master. 
+.It snapshots-clear
+Zero out the snapshots directory path for this PFS.
 .El
 .\" ==== pfs-upgrade ====
 .It Ar pfs-upgrade Ar dirpath
