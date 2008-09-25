@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-tape.c,v 1.101 2006/01/05 21:27:19 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-tape.c,v 1.3 2007/06/03 04:48:29 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-tape.c,v 1.3.6.1 2008/09/25 01:44:55 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -398,9 +398,15 @@ ast_strategy(struct dev_strategy_args *ap)
 	biodone(bp);
 	return 0;
     }
-    if (!(bbp->b_cmd == BUF_CMD_READ) && stp->flags & F_WRITEPROTECT) {
+    if (!(bbp->b_cmd == BUF_CMD_READ) && (stp->flags & F_WRITEPROTECT)) {
 	bbp->b_flags |= B_ERROR;
 	bbp->b_error = EPERM;
+	biodone(bp);
+	return 0;
+    }
+    if (bbp->b_cmd != BUF_CMD_READ && bbp->b_cmd != BUF_CMD_WRITE) {
+	bbp->b_flags |= B_ERROR;
+	bbp->b_error = EIO;
 	biodone(bp);
 	return 0;
     }
@@ -454,6 +460,7 @@ ast_strategy(struct dev_strategy_args *ap)
     request->timeout = (ccb[0] == ATAPI_WRITE_BIG) ? 180 : 120;
     request->retries = 2;
     request->callback = ast_done;
+
     switch (bbp->b_cmd) {
     case BUF_CMD_READ:
 	request->flags |= (ATA_R_ATAPI | ATA_R_READ);
@@ -462,12 +469,7 @@ ast_strategy(struct dev_strategy_args *ap)
 	request->flags |= (ATA_R_ATAPI | ATA_R_WRITE);
 	break;
     default:
-	device_printf(dev, "unknown BUF operation\n");
-	ata_free_request(request);
-	bbp->b_flags |= B_ERROR;
-	bbp->b_error = EIO;
-	biodone(bp);
-	return 0;
+	panic("bbp->b_cmd");
     }
     devstat_start_transaction(&stp->stats);
     ata_queue_request(request);

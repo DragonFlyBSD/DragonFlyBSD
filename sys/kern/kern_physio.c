@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.4 2003/11/14 09:51:47 simokawa Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.25 2007/08/21 17:26:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.25.4.1 2008/09/25 01:44:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,10 +44,11 @@ physio(cdev_t dev, struct uio *uio, int ioflag)
 {
 	int i;
 	int error;
-	int chk_blockno;
 	int saflags;
 	int iolen;
 	int bcount;
+	int bounceit;
+	caddr_t ubase;
 	struct buf *bp;
 
 	bp = getpbuf(NULL);
@@ -55,7 +56,7 @@ physio(cdev_t dev, struct uio *uio, int ioflag)
 	error = 0;
 
 	/* XXX: sanity check */
-	if(dev->si_iosize_max < PAGE_SIZE) {
+	if (dev->si_iosize_max < PAGE_SIZE) {
 		kprintf("WARNING: %s si_iosize_max=%d, using DFLTPHYS.\n",
 		    devtoname(dev), dev->si_iosize_max);
 		dev->si_iosize_max = DFLTPHYS;
@@ -63,12 +64,6 @@ physio(cdev_t dev, struct uio *uio, int ioflag)
 
 	/* Must be a real uio */
 	KKASSERT(uio->uio_segflg != UIO_NOCOPY);
-
-	/* Don't check block number overflow for D_MEM */
-	if ((dev_dflags(dev) & D_TYPEMASK) == D_MEM)
-		chk_blockno = 0;
-	else
-		chk_blockno = 1;
 
 	for (i = 0; i < uio->uio_iovcnt; i++) {
 		while (uio->uio_iov[i].iov_len) {
@@ -83,25 +78,53 @@ physio(cdev_t dev, struct uio *uio, int ioflag)
 			bp->b_bio1.bio_offset = uio->uio_offset;
 			bp->b_bio1.bio_done = physwakeup;
 
-			/* Don't exceed drivers iosize limit */
+			/* 
+			 * Setup for mapping the request into kernel memory.
+			 *
+			 * We can only write as much as fits in a pbuf,
+			 * which is MAXPHYS, and no larger then the device's
+			 * ability.
+			 *
+			 * If not using bounce pages the base address of the
+			 * user mapping into the pbuf may be offset, further
+			 * reducing how much will actually fit in the pbuf.
+			 */
 			if (bcount > dev->si_iosize_max)
 				bcount = dev->si_iosize_max;
 
-			/* 
-			 * Make sure the pbuf can map the request
-			 * XXX: The pbuf has kvasize = MAXPHYS so a request
-			 * XXX: larger than MAXPHYS - PAGE_SIZE must be
-			 * XXX: page aligned or it will be fragmented.
-			 */
-			iolen = ((vm_offset_t) uio->uio_iov[i].iov_base) &
-				PAGE_MASK;
-			if ((bcount + iolen) > bp->b_kvasize) {
-				bcount = bp->b_kvasize;
-				if (iolen != 0)
-					bcount -= PAGE_SIZE;
+			ubase = uio->uio_iov[i].iov_base;
+			bounceit = (int)(((vm_offset_t)ubase) & 15);
+			iolen = ((vm_offset_t)ubase) & PAGE_MASK;
+			if (bounceit) {
+				if (bcount > bp->b_kvasize)
+					bcount = bp->b_kvasize;
+			} else {
+				if ((bcount + iolen) > bp->b_kvasize) {
+					bcount = bp->b_kvasize;
+					if (iolen != 0)
+						bcount -= PAGE_SIZE;
+				}
 			}
+
+			/*
+			 * If we have to use a bounce buffer allocate kernel
+			 * memory and copyin/copyout.  Otherwise map the
+			 * user buffer directly into kernel memory without
+			 * copying.
+			 */
 			if (uio->uio_segflg == UIO_USERSPACE) {
-				if (vmapbuf(bp, uio->uio_iov[i].iov_base, bcount) < 0) {
+				if (bounceit) {
+					bp->b_data = bp->b_kvabase;
+					bp->b_bcount = bcount;
+					vm_hold_load_pages(bp, (vm_offset_t)bp->b_data, (vm_offset_t)bp->b_data + bcount);
+					if (uio->uio_rw == UIO_WRITE) {
+						error = copyin(ubase, bp->b_data, bcount);
+						if (error) {
+							vm_hold_free_pages(bp, (vm_offset_t)bp->b_data, (vm_offset_t)bp->b_data + bcount);
+							goto doerror;
+						}
+					}
+				} else if (vmapbuf(bp, ubase, bcount) < 0) {
 					error = EFAULT;
 					goto doerror;
 				}
@@ -115,16 +138,28 @@ physio(cdev_t dev, struct uio *uio, int ioflag)
 				tsleep(&bp->b_bio1, 0, "physstr", 0);
 			crit_exit();
 
-			if (uio->uio_segflg == UIO_USERSPACE)
-				vunmapbuf(bp);
 			iolen = bp->b_bcount - bp->b_resid;
+			if (uio->uio_segflg == UIO_USERSPACE) {
+				if (bounceit) {
+					if (uio->uio_rw == UIO_READ && iolen) {
+						error = copyout(bp->b_data, ubase, iolen);
+						if (error) {
+							bp->b_flags |= B_ERROR;
+							bp->b_error = error;
+						}
+					}
+					vm_hold_free_pages(bp, (vm_offset_t)bp->b_data, (vm_offset_t)bp->b_data + bcount);
+				} else {
+					vunmapbuf(bp);
+				}
+			}
 			if (iolen == 0 && !(bp->b_flags & B_ERROR))
 				goto doerror;	/* EOF */
 			uio->uio_iov[i].iov_len -= iolen;
 			uio->uio_iov[i].iov_base += iolen;
 			uio->uio_resid -= iolen;
 			uio->uio_offset += iolen;
-			if( bp->b_flags & B_ERROR) {
+			if (bp->b_flags & B_ERROR) {
 				error = bp->b_error;
 				goto doerror;
 			}

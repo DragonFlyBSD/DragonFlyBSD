@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.25.4.2 2008/09/16 12:51:21 swildner Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.25.4.3 2008/09/25 01:44:57 dillon Exp $
  */
 
 /*
@@ -867,16 +867,28 @@ amr_bio_command(struct amr_softc *sc, struct amr_command **acp)
     ac->ac_bio = bio;
     ac->ac_data = bio->bio_buf->b_data;
     ac->ac_length = bio->bio_buf->b_bcount;
-    if (bio->bio_buf->b_cmd == BUF_CMD_READ) {
+
+    switch (bio->bio_buf->b_cmd) {
+    case BUF_CMD_READ:
 	ac->ac_flags |= AMR_CMD_DATAIN;
 	cmd = AMR_CMD_LREAD;
-    } else {
+	break;
+    case BUF_CMD_WRITE:
 	ac->ac_flags |= AMR_CMD_DATAOUT;
 	cmd = AMR_CMD_LWRITE;
+	break;
+    case BUF_CMD_FLUSH:
+	ac->ac_flags |= AMR_CMD_PRIORITY | AMR_CMD_DATAOUT;
+	cmd = AMR_CMD_FLUSH;
+	break;
+    default:
+	cmd = 0;
+	break;
     }
     amrd = (struct amrd_softc *)bio->bio_driver_info;
     driveno = amrd->amrd_drive - sc->amr_drive;
     blkcount = (bio->bio_buf->b_bcount + AMR_BLKSIZE - 1) / AMR_BLKSIZE;
+
     lba = bio->bio_offset / AMR_BLKSIZE;
     KKASSERT(lba < 0x100000000ULL);
 

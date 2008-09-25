@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.51 2008/07/14 03:08:58 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.51.2.1 2008/09/25 01:44:54 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -93,7 +93,8 @@ typedef enum buf_cmd {
 	BUF_CMD_READ,
 	BUF_CMD_WRITE,
 	BUF_CMD_FREEBLKS,
-	BUF_CMD_FORMAT
+	BUF_CMD_FORMAT,
+	BUF_CMD_FLUSH
 } buf_cmd_t;
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
@@ -271,6 +272,10 @@ struct buf {
  *			Setting B_AGE on a dirty buffer will not cause it
  *			to be flushed more quickly but will cause it to be
  *			reallocated more quickly after having been flushed.
+ *
+ *	B_NOCACHE	Request that the buffer and backing store be
+ *			destroyed on completion.  If B_DELWRI is set and the
+ *			write fails, the buffer remains intact.
  */
 
 #define	B_AGE		0x00000001	/* Reuse more quickly */
@@ -428,6 +433,8 @@ int	scan_all_buffers (int (*)(struct buf *, void *), void *);
 void	reassignbuf (struct buf *);
 struct	buf *trypbuf (int *);
 void	bio_ops_sync(struct mount *mp);
+void	vm_hold_free_pages(struct buf *bp, vm_offset_t from, vm_offset_t to);
+void	vm_hold_load_pages(struct buf *bp, vm_offset_t from, vm_offset_t to);
 
 #endif	/* _KERNEL */
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */

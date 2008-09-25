@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.c,v 1.109 2006/03/30 05:29:57 marcel Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-fd.c,v 1.4 2007/06/03 04:48:29 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-fd.c,v 1.4.6.1 2008/09/25 01:44:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -257,10 +257,20 @@ afd_strategy(struct dev_strategy_args *ap)
 
     bzero(ccb, sizeof(ccb));
 
-    if (bbp->b_cmd == BUF_CMD_READ)
+    switch(bbp->b_cmd) {
+    case BUF_CMD_READ:
 	ccb[0] = ATAPI_READ_BIG;
-    else
+	break;
+    case BUF_CMD_WRITE:
 	ccb[0] = ATAPI_WRITE_BIG;
+	break;
+    default:
+	device_printf(dev, "unknown BUF operation\n");
+	bbp->b_flags |= B_ERROR;
+	bbp->b_error = EIO;
+	biodone(bp);
+	return 0;
+    }
 
     ccb[2] = lba >> 24;
     ccb[3] = lba >> 16;
@@ -286,6 +296,7 @@ afd_strategy(struct dev_strategy_args *ap)
     request->timeout = (ccb[0] == ATAPI_WRITE_BIG) ? 60 : 30;
     request->retries = 2;
     request->callback = afd_done;
+
     switch (bbp->b_cmd) {
     case BUF_CMD_READ:
 	request->flags = (ATA_R_ATAPI | ATA_R_READ);
@@ -294,12 +305,7 @@ afd_strategy(struct dev_strategy_args *ap)
 	request->flags = (ATA_R_ATAPI | ATA_R_WRITE);
 	break;
     default:
-	device_printf(dev, "unknown BUF operation\n");
-	ata_free_request(request);
-	bbp->b_flags |= B_ERROR;
-	bbp->b_error = EIO;
-	biodone(bp);
-	return 0;
+	panic("bbp->b_cmd");
     }
     if (atadev->mode >= ATA_DMA)
 	request->flags |= ATA_R_DMA;

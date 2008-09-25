@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.120 2006/04/15 10:27:41 maxim Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-raid.c,v 1.10 2008/06/27 01:24:46 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-raid.c,v 1.10.2.1 2008/09/25 01:44:55 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -253,6 +253,38 @@ ata_raid_ioctl(u_long cmd, caddr_t data)
     return error;
 }
 
+static int
+ata_raid_flush(struct ar_softc *rdp, struct bio *bp)
+{
+    struct ata_request *request;
+    device_t dev;
+    int disk, error;
+
+    error = 0;
+    bp->bio_driver_info = (void *)0;
+
+    for (disk = 0; disk < rdp->total_disks; disk++) {
+	if ((dev = rdp->disks[disk].dev) != NULL)
+	    bp->bio_driver_info = (void *)((intptr_t)bp->bio_driver_info + 1);
+    }
+    for (disk = 0; disk < rdp->total_disks; disk++) {
+	if ((dev = rdp->disks[disk].dev) == NULL)
+	    continue;
+	if (!(request = ata_raid_init_request(rdp, bp)))
+	    return ENOMEM;
+	request->dev = dev;
+	request->u.ata.command = ATA_FLUSHCACHE;
+	request->u.ata.lba = 0;
+	request->u.ata.count = 0;
+	request->u.ata.feature = 0;
+	request->timeout = 1;
+	request->retries = 0;
+	request->flags |= ATA_R_ORDERED | ATA_R_DIRECT;
+	ata_queue_request(request);
+    }
+    return 0;
+}
+
 /*
  * XXX TGEN there are a lot of offset -> block number conversions going on
  * here, which is suboptimal.
@@ -267,6 +299,18 @@ ata_raid_strategy(struct dev_strategy_args *ap)
     caddr_t data;
     u_int64_t blkno, lba, blk = 0;
     int count, chunk, drv, par = 0, change = 0;
+
+    if (bbp->b_cmd == BUF_CMD_FLUSH) {
+	int error;
+
+	error = ata_raid_flush(rdp, bp);
+	if (error != 0) {
+		bbp->b_flags |= B_ERROR;
+		bbp->b_error = error;
+		biodone(bp);
+	}
+	return(0);
+    }
 
     if (!(rdp->status & AR_S_READY) ||
 	(bbp->b_cmd != BUF_CMD_READ && bbp->b_cmd != BUF_CMD_WRITE)) {
@@ -601,6 +645,19 @@ ata_raid_done(struct ata_request *request)
     struct bio *bp = request->bio;
     struct buf *bbp = bp->bio_buf;
     int i, mirror, finished = 0;
+
+    if (bbp->b_cmd == BUF_CMD_FLUSH) {
+	if (bbp->b_error == 0)
+		bbp->b_error = request->result;
+	ata_free_request(request);
+	bp->bio_driver_info = (void *)((intptr_t)bp->bio_driver_info - 1);
+	if ((intptr_t)bp->bio_driver_info == 0) {
+		if (bbp->b_error)
+			bbp->b_flags |= B_ERROR;
+		biodone(bp);
+	}
+	return;
+    }
 
     switch (rdp->type) {
     case AR_T_JBOD:
@@ -3965,6 +4022,9 @@ ata_raid_init_request(struct ar_softc *rdp, struct bio *bio)
 	break;
     case BUF_CMD_WRITE:
 	request->flags = ATA_R_WRITE;
+	break;
+    case BUF_CMD_FLUSH:
+	request->flags = ATA_R_CONTROL;
 	break;
     default:
 	kprintf("ar%d: FAILURE - unknown BUF operation\n", rdp->lun);
