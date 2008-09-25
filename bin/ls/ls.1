@@ -30,9 +30,9 @@
 .\"
 .\"     @(#)ls.1	8.7 (Berkeley) 7/29/94
 .\" $FreeBSD: src/bin/ls/ls.1,v 1.86 2005/02/13 22:25:09 ru Exp $
-.\" $DragonFly: src/bin/ls/ls.1,v 1.8 2008/01/26 15:14:41 swildner Exp $
+.\" $DragonFly: src/bin/ls/ls.1,v 1.9 2008/09/25 09:09:06 matthias Exp $
 .\"
-.Dd January 19, 2008
+.Dd September 25, 2008
 .Dt LS 1
 .Os
 .Sh NAME
@@ -607,21 +607,6 @@ See
 .Xr environ 7
 for more information.
 .El
-.Sh EXAMPLES
-The following is how to do an
-.Nm
-listing sorted by size (and shows why
-.Nm
-does not need a separate option for this):
-.Pp
-.Dl "ls -l | sort -n +4"
-.Pp
-Additionally, the
-.Fl r
-flag to
-.Xr sort 1
-may be used
-to get the results sorted from largest to smallest (a reverse sort).
 .Sh COMPATIBILITY
 The group field is now automatically included in the long listing for
 files in order to be compatible with the
