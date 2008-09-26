@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.106 2005/03/27 15:31:23 iedowse Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.49 2008/05/27 12:00:47 mneumann Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.50 2008/09/26 08:21:22 hasso Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -881,11 +881,14 @@ usb_detach(device_t self)
 		DPRINTF(("usb_detach: event thread dead\n"));
 	}
 
-	destroy_dev(sc->sc_usbdev);
+	release_dev(sc->sc_usbdev);
+	dev_ops_add(&usb_ops, -1, device_get_unit(self));
+
 	if (--usb_ndevs == 0) {
 		int i;
 
-		destroy_dev(usb_dev);
+		release_dev(usb_dev);
+		dev_ops_remove(&usb_ops, -1, USB_DEV_MINOR);
 		usb_dev = NULL;
 
 		for (i = 0; i < USB_NUM_TASKQS; i++) {
