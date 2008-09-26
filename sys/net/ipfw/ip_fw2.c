@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.97 2008/09/24 15:06:45 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.98 2008/09/26 12:12:36 sephe Exp $
  */
 
 /*
@@ -367,6 +367,8 @@ static uint32_t dyn_buckets = 256; /* must be power of 2 */
 static uint32_t curr_dyn_buckets = 256; /* must be power of 2 */
 static uint32_t dyn_buckets_gen; /* generation of dyn buckets array */
 static struct lock dyn_lock; /* dynamic rules' hash table lock */
+
+static struct netmsg ipfw_timeout_netmsg; /* schedule ipfw timeout */
 static struct callout ipfw_timeout_h;
 
 /*
@@ -422,6 +424,7 @@ SYSCTL_INT(_net_inet_ip_fw, OID_AUTO, dyn_keepalive, CTLFLAG_RW,
     &dyn_keepalive, 0, "Enable keepalives for dyn. rules");
 
 static ip_fw_chk_t	ipfw_chk;
+static void		ipfw_tick(void *);
 
 static __inline int
 ipfw_free_rule(struct ip_fw *rule)
@@ -2530,6 +2533,7 @@ ipfw_flush_rule_ptrs(struct ipfw_context *ctx)
 static __inline void
 ipfw_inc_static_count(struct ip_fw *rule)
 {
+	/* Static rule's counts are updated only on CPU0 */
 	KKASSERT(mycpuid == 0);
 
 	static_count++;
@@ -2541,6 +2545,7 @@ ipfw_dec_static_count(struct ip_fw *rule)
 {
 	int l = IOC_RULESIZE(rule);
 
+	/* Static rule's counts are updated only on CPU0 */
 	KKASSERT(mycpuid == 0);
 
 	KASSERT(static_count > 0, ("invalid static count %u\n", static_count));
@@ -3729,7 +3734,7 @@ ipfw_copy_rule(const struct ip_fw *rule, struct ipfw_ioc_rule *ioc_rule)
 	int i;
 #endif
 
-	KKASSERT(rule->cpuid == 0);
+	KKASSERT(rule->cpuid == IPFW_CFGCPUID);
 
 	ioc_rule->act_ofs = rule->act_ofs;
 	ioc_rule->cmd_len = rule->cmd_len;
@@ -3985,13 +3990,20 @@ ipfw_ctl(struct sockopt *sopt)
  * every dyn_keepalive_period
  */
 static void
-ipfw_tick(void *dummy __unused)
+ipfw_tick_dispatch(struct netmsg *nmsg)
 {
 	time_t keep_alive;
 	uint32_t gen;
 	int i;
 
-	if (ipfw_dyn_v == NULL || dyn_count == 0)
+	IPFW_ASSERT_CFGPORT(&curthread->td_msgport);
+
+	/* Reply ASAP */
+	crit_enter();
+	lwkt_replymsg(&nmsg->nm_lmsg, 0);
+	crit_exit();
+
+	if (!IPFW_LOADED || ipfw_dyn_v == NULL || dyn_count == 0)
 		goto done;
 
 	keep_alive = time_second;
@@ -4067,8 +4079,32 @@ next:
 	}
 	lockmgr(&dyn_lock, LK_RELEASE);
 done:
-	callout_reset(&ipfw_timeout_h, dyn_keepalive_period * hz,
-		      ipfw_tick, NULL);
+	if (IPFW_LOADED) {
+		callout_reset(&ipfw_timeout_h, dyn_keepalive_period * hz,
+			      ipfw_tick, NULL);
+	}
+}
+
+/*
+ * This procedure is only used to handle keepalives. It is invoked
+ * every dyn_keepalive_period
+ */
+static void
+ipfw_tick(void *dummy __unused)
+{
+	struct lwkt_msg *lmsg = &ipfw_timeout_netmsg.nm_lmsg;
+
+	KKASSERT(mycpuid == IPFW_CFGCPUID);
+
+	crit_enter();
+
+	KKASSERT(lmsg->ms_flags & MSGF_DONE);
+	if (IPFW_LOADED) {
+		lwkt_sendmsg(IPFW_CFGPORT, lmsg);
+		/* ipfw_timeout_netmsg's handler reset this callout */
+	}
+
+	crit_exit();
 }
 
 static int
@@ -4409,7 +4445,9 @@ ipfw_init_dispatch(struct netmsg *nmsg)
 			verbose_limit);
 	}
 
-	callout_init(&ipfw_timeout_h);
+	callout_init_mp(&ipfw_timeout_h);
+	netmsg_init(&ipfw_timeout_netmsg, &netisr_adone_rport, MSGF_MPSAFE,
+		    ipfw_tick_dispatch);
 	lockinit(&dyn_lock, "ipfw_dyn", 0, 0);
 
 	ip_fw_loaded = 1;
@@ -4442,11 +4480,11 @@ ipfw_fini_dispatch(struct netmsg *nmsg)
 		goto reply;
 	}
 
-	ipfw_dehook();
+	ip_fw_loaded = 0;
 
+	ipfw_dehook();
 	callout_stop(&ipfw_timeout_h);
 
-	ip_fw_loaded = 0;
 	netmsg_service_sync();
 
 	ip_fw_chk_ptr = NULL;
@@ -4490,6 +4528,10 @@ ipfw_modevent(module_t mod, int type, void *unused)
 		err = EBUSY;
 #else
 		err = ipfw_fini();
+		if (!err) {
+			/* Sync IPFW_CFGPORT */
+			netmsg_service_sync();
+		}
 #endif
 		break;
 	default:

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.h,v 1.1.2.2 2002/08/16 11:03:11 luigi Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.16 2008/09/13 05:49:08 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.17 2008/09/26 12:12:36 sephe Exp $
  */
 
 #ifndef _IPFW2_H
@@ -412,7 +412,8 @@ extern int fw_enable;
 extern int ip_fw_loaded;
 #define	IPFW_LOADED	(ip_fw_loaded)
 
-#define IPFW_CFGPORT	cpu_portfn(0)
+#define IPFW_CFGCPUID	0
+#define IPFW_CFGPORT	cpu_portfn(IPFW_CFGCPUID)
 #define IPFW_ASSERT_CFGPORT(msgport)	\
 	KASSERT((msgport) == IPFW_CFGPORT, ("not IPFW CFGPORT"))
 
