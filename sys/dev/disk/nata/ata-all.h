@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.h,v 1.123 2007/04/08 19:18:51 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/ata-all.h,v 1.11 2008/06/28 01:06:40 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/nata/ata-all.h,v 1.12 2008/09/27 11:45:30 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -319,7 +319,7 @@ struct ata_ahci_cmd_list {
 #define ATAPI_P_DONEDRQ                 (ATA_S_DRQ | ATA_I_CMD | ATA_I_IN)
 #define ATAPI_P_DONE                    (ATA_I_CMD | ATA_I_IN)
 #define ATAPI_P_ABORT                   0
-#define ATA_INTR_FLAGS                  (INTR_MPSAFE|INTR_NOPOLL)
+#define ATA_INTR_FLAGS                  (INTR_NOPOLL)
 #define ATA_OP_CONTINUES                0
 #define ATA_OP_FINISHED                 1
 #define ATA_MAX_28BIT_LBA               268435455UL
