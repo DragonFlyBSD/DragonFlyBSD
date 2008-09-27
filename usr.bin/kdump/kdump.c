@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)kdump.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/kdump/kdump.c,v 1.29 2006/05/20 14:27:22 netchild Exp $
- * $DragonFly: src/usr.bin/kdump/kdump.c,v 1.10 2008/01/07 01:35:43 corecode Exp $
+ * $DragonFly: src/usr.bin/kdump/kdump.c,v 1.11 2008/09/27 20:29:52 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -648,7 +648,7 @@ ktrsyscall(register struct ktr_syscall *ktr)
 				narg--;
 			}
 		}
-		while (narg) {
+		while (narg > 0) {
 			print_number(ip,narg,c);
 		}
 		(void)putchar(')');
