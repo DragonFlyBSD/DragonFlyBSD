@@ -1,6 +1,4 @@
 CHANGES.SSLeay
-ChangeLog.0_9_7-stable_not-in-head
-ChangeLog.0_9_7-stable_not-in-head_FIPS
 Configure
 INSTALL
 INSTALL.DJGPP
@@ -13,7 +11,6 @@ INSTALL.W64
 INSTALL.WCE
 MacOS/
 Makefile
-Makefile.bak
 Makefile.org
 Makefile.shared
 Netware/
@@ -292,6 +289,10 @@ engines/e_aep.ec
 engines/e_atalla.ec
 engines/e_chil.ec
 engines/e_cswift.ec
+engines/e_capi.c
+engines/e_capi.ec
+engines/e_capi_err.c
+engines/e_capi_err.h
 engines/e_gmp.ec
 engines/e_nuron.ec
 engines/e_sureware.ec
