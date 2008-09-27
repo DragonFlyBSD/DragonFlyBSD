@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.52 2008/09/25 14:08:06 sephe Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.53 2008/09/27 11:29:47 sephe Exp $
  */
 
 /*
@@ -546,7 +546,6 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 	struct llinfo_arp *la;
 	struct sockaddr_dl *sdl;
 	struct rtentry *rt;
-	int cpu = mycpuid;
 
 	la = arplookup(saddr, create, FALSE);
 	if (la && (rt = la->la_rt) && (sdl = SDL(rt->rt_gateway))) {
@@ -554,7 +553,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 
 		/* the following is not an error when doing bridging */
 		if (rt->rt_ifp != ifp) {
-			if (dologging && log_arp_wrong_iface && cpu == 0) {
+			if (dologging && log_arp_wrong_iface) {
 				log(LOG_ERR,
 				    "arp: %s is on %s "
 				    "but got reply from %*D on %s\n",
@@ -568,7 +567,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 		if (sdl->sdl_alen &&
 		    bcmp(ar_sha(ah), LLADDR(sdl), sdl->sdl_alen)) {
 			if (rt->rt_expire != 0) {
-				if (dologging && cpu == 0) {
+				if (dologging) {
 			    		log(LOG_INFO,
 			    		"arp: %s moved from %*D to %*D on %s\n",
 			    		inet_ntoa(isaddr),
@@ -578,7 +577,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 			    		ifp->if_xname);
 				}
 			} else {
-				if (dologging && cpu == 0) {
+				if (dologging) {
 					log(LOG_ERR,
 					"arp: %*D attempts to modify "
 					"permanent entry for %s on %s\n",
@@ -593,15 +592,14 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 		 * XXX this does not work for protocols with variable address
 		 * length. -is
 		 */
-		if (dologging && sdl->sdl_alen && sdl->sdl_alen != ah->ar_hln &&
-		    cpu == 0) {
+		if (dologging && sdl->sdl_alen && sdl->sdl_alen != ah->ar_hln) {
 			log(LOG_WARNING,
 			    "arp from %*D: new addr len %d, was %d",
 			    ifp->if_addrlen, (u_char *) ar_sha(ah), ":",
 			    ah->ar_hln, sdl->sdl_alen);
 		}
 		if (ifp->if_addrlen != ah->ar_hln) {
-			if (dologging && cpu == 0) {
+			if (dologging) {
 				log(LOG_WARNING,
 				"arp from %*D: addr len: new %d, i/f %d "
 				"(ignored)",
@@ -774,9 +772,10 @@ match:
 	msg.saddr = isaddr.s_addr;
 	msg.create = (itaddr.s_addr == myaddr.s_addr);
 	lwkt_domsg(rtable_portfn(0), &msg.netmsg.nm_lmsg, 0);
-#endif
+#else
 	arp_update_oncpu(m, isaddr.s_addr, (itaddr.s_addr == myaddr.s_addr),
 			 TRUE);
+#endif
 reply:
 	if (op != ARPOP_REQUEST) {
 		m_freem(m);
@@ -862,7 +861,7 @@ arp_update_msghandler(struct netmsg *netmsg)
 	struct netmsg_arp_update *msg = (struct netmsg_arp_update *)netmsg;
 	int nextcpu;
 
-	arp_update_oncpu(msg->m, msg->saddr, msg->create, FALSE);
+	arp_update_oncpu(msg->m, msg->saddr, msg->create, mycpuid == 0);
 
 	nextcpu = mycpuid + 1;
 	if (nextcpu < ncpus)
