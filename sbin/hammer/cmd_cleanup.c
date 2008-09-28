@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_cleanup.c,v 1.4.2.2 2008/09/25 01:39:33 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_cleanup.c,v 1.4.2.3 2008/09/28 22:10:15 thomas Exp $
  */
 /*
  * Clean up a specific HAMMER filesystem or all HAMMER filesystems.
@@ -289,7 +289,8 @@ do_cleanup(const char *path)
 		} else if (strcmp(cmd, "prune") == 0) {
 			if (check_period(snapshots_path, cmd, arg1, &savet)) {
 				if (prune_warning)
-					printf("run - WARNING snapshot softlinks present but snapshots disabled\n");
+					printf("run - WARNING snapshot softlinks present "
+						"but snapshots disabled\n");
 				else
 					printf("run\n");
 				r = cleanup_prune(path, snapshots_path,
