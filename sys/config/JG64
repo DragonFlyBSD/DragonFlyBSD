@@ -1,10 +1,10 @@
 #
-# JG64 -- Generic kernel configuration file for DragonFly/i386
+# JG64 -- Generic kernel configuration file for DragonFly/amd64
 #
 # Check the LINT configuration file in sys/config, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/config/JG64,v 1.1 2008/08/29 22:14:18 dillon Exp $
+# $DragonFly: src/sys/config/JG64,v 1.2 2008/09/28 20:58:11 victor Exp $
 
 platform	pc64
 machine		amd64
