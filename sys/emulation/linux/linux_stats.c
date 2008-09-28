@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.26 2007/05/08 02:31:42 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.27 2008/09/28 05:08:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -59,7 +59,7 @@ newstat_copyout(struct stat *buf, void *ubuf)
 	int error;
 
 	tbuf.st_dev = uminor(buf->st_dev) | (umajor(buf->st_dev) << 8);
-	tbuf.st_ino = buf->st_ino;
+	tbuf.st_ino = INO64TO32(buf->st_ino);
 	tbuf.st_mode = buf->st_mode;
 	tbuf.st_nlink = buf->st_nlink;
 	tbuf.st_uid = buf->st_uid;
@@ -364,7 +364,7 @@ stat64_copyout(struct stat *buf, void *ubuf)
 	 * but without the assignment to __st_ino the runtime linker refuses
 	 * to mmap(2) any shared libraries. I guess it's broken alright :-)
 	 */
-	lbuf.__st_ino = buf->st_ino;
+	lbuf.__st_ino = INO64TO32(buf->st_ino);
 
 	error = copyout(&lbuf, ubuf, sizeof(lbuf));
 	return (error);

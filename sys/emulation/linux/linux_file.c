@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.38 2007/11/20 21:36:07 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.39 2008/09/28 05:08:16 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -201,7 +201,7 @@ sys_linux_readdir(struct linux_readdir_args *args)
 
 	lda.fd = args->fd;
 	lda.dent = args->dent;
-	lda.count = 1;
+	lda.count = -1;
 	lda.sysmsg_result = 0;
 	error = sys_linux_getdents(&lda);
 	args->sysmsg_result = lda.sysmsg_result;
@@ -279,7 +279,7 @@ getdents_common(struct linux_getdents64_args *args, int is64bit)
 		goto done;
 
 	nbytes = args->count;
-	if (nbytes == 1) {
+	if (nbytes == -1) {
 		/* readdir(2) case. Always struct dirent. */
 		if (is64bit) {
 			error = EINVAL;
@@ -290,6 +290,8 @@ getdents_common(struct linux_getdents64_args *args, int is64bit)
 	} else {
 		justone = 0;
 	}
+	if (nbytes < 0)
+		nbytes = 0;
 
 	off = fp->f_offset;
 
@@ -313,6 +315,8 @@ again:
 		cookies = NULL;
 	}
 
+	eofflag = 0;
+	ncookies = 0;
 	if ((error = VOP_READDIR(vp, &auio, fp->f_cred, &eofflag, &ncookies,
 		 &cookies)))
 		goto out;
@@ -333,7 +337,7 @@ again:
 		 * partway through a directory entry, even if the directory
 		 * has been compacted).
 		 */
-		while (len > 0 && ncookies > 0 && *cookiep <= off) {
+		while (len > 0 && ncookies > 0 && *cookiep < off) {
 			bdp = (struct dirent *) inp;
 			len -= _DIRENT_DIRSIZ(bdp);
 			inp += _DIRENT_DIRSIZ(bdp);
@@ -356,10 +360,11 @@ again:
 			inp += reclen;
 			if (cookiep) {
 				off = *cookiep++;
+				++off;
 				ncookies--;
-			} else
+			} else {
 				off += reclen;
-
+			}
 			len -= reclen;
 			continue;
 		}
@@ -373,9 +378,11 @@ again:
 			break;
 		}
 
+		bzero(&linux_dirent, sizeof(linux_dirent));
+		bzero(&linux_dirent64, sizeof(linux_dirent64));
 		if (justone) {
 			/* readdir(2) case. */
-			linux_dirent.d_ino = (l_long)bdp->d_ino;
+			linux_dirent.d_ino = (l_long)INO64TO32(bdp->d_ino);
 			linux_dirent.d_off = (l_off_t)linuxreclen;
 			linux_dirent.d_reclen = (l_ushort)bdp->d_namlen;
 			strcpy(linux_dirent.d_name, bdp->d_name);
@@ -393,7 +400,7 @@ again:
 				error = copyout(&linux_dirent64, outp,
 				    linuxreclen);
 			} else {
-				linux_dirent.d_ino = bdp->d_ino;
+				linux_dirent.d_ino = INO64TO32(bdp->d_ino);
 				linux_dirent.d_off = (cookiep)
 				    ? (l_off_t)*cookiep
 				    : (l_off_t)(off + reclen);
@@ -409,9 +416,11 @@ again:
 		inp += reclen;
 		if (cookiep) {
 			off = *cookiep++;
+			++off;
 			ncookies--;
-		} else
+		} else {
 			off += reclen;
+		}
 
 		outp += linuxreclen;
 		resid -= linuxreclen;
