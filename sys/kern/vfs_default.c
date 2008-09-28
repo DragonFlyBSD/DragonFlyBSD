@@ -38,7 +38,7 @@
  *
  * Source: * @(#)i405_init.c 2.10 92/04/27 UCLA Ficus project
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.54 2008/09/17 21:44:18 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.55 2008/09/28 04:31:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -84,7 +84,7 @@ struct vop_ops default_vnode_vops = {
 	.vop_old_lookup		= vop_nolookup,
 	.vop_open		= vop_stdopen,
 	.vop_close		= vop_stdclose,
-	.vop_pathconf		= (void *)vop_einval,
+	.vop_pathconf		= vop_stdpathconf,
 	.vop_poll		= vop_nopoll,
 	.vop_readlink		= (void *)vop_einval,
 	.vop_reallocblks	= (void *)vop_eopnotsupp,
@@ -1113,30 +1113,41 @@ vop_nostrategy (struct vop_strategy_args *ap)
 int
 vop_stdpathconf(struct vop_pathconf_args *ap)
 {
+	int error = 0;
 
 	switch (ap->a_name) {
-		case _PC_LINK_MAX:
-			*ap->a_retval = LINK_MAX;
-			return (0);
-		case _PC_MAX_CANON:
-			*ap->a_retval = MAX_CANON;
-			return (0);
-		case _PC_MAX_INPUT:
-			*ap->a_retval = MAX_INPUT;
-			return (0);
-		case _PC_PIPE_BUF:
-			*ap->a_retval = PIPE_BUF;
-			return (0);
-		case _PC_CHOWN_RESTRICTED:
-			*ap->a_retval = 1;
-			return (0);
-		case _PC_VDISABLE:
-			*ap->a_retval = _POSIX_VDISABLE;
-			return (0);
-		default:
-			return (EINVAL);
+	case _PC_LINK_MAX:
+		*ap->a_retval = LINK_MAX;
+		break;
+	case _PC_NAME_MAX:
+		*ap->a_retval = NAME_MAX;
+		break;
+	case _PC_PATH_MAX:
+		*ap->a_retval = PATH_MAX;
+		break;
+	case _PC_MAX_CANON:
+		*ap->a_retval = MAX_CANON;
+		break;
+	case _PC_MAX_INPUT:
+		*ap->a_retval = MAX_INPUT;
+		break;
+	case _PC_PIPE_BUF:
+		*ap->a_retval = PIPE_BUF;
+		break;
+	case _PC_CHOWN_RESTRICTED:
+		*ap->a_retval = 1;
+		break;
+	case _PC_NO_TRUNC:
+		*ap->a_retval = 1;
+		break;
+	case _PC_VDISABLE:
+		*ap->a_retval = _POSIX_VDISABLE;
+		break;
+	default:
+		error = EINVAL;
+		break;
 	}
-	/* NOTREACHED */
+	return (error);
 }
 
 /*
