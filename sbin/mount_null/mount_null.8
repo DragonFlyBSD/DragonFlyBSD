@@ -36,9 +36,9 @@
 .\"
 .\"     @(#)mount_null.8	8.6 (Berkeley) 5/1/95
 .\" $FreeBSD: src/sbin/mount_null/mount_null.8,v 1.11.2.6 2001/12/20 16:40:00 ru Exp $
-.\" $DragonFly: src/sbin/mount_null/mount_null.8,v 1.6 2007/01/21 10:07:50 swildner Exp $
+.\" $DragonFly: src/sbin/mount_null/mount_null.8,v 1.7 2008/09/28 21:19:58 thomas Exp $
 .\"
-.Dd January 21, 2007
+.Dd September 28, 2008
 .Dt MOUNT_NULL 8
 .Os
 .Sh NAME
@@ -68,7 +68,7 @@ A different device number for the virtual copy is returned by
 but in other respects it is indistinguishable from the original.
 .Pp
 The
-.Nm
+.Nm null
 filesystem differs from a traditional
 loopback file system in two respects: it is implemented using
 a stackable layers techniques, and it's
@@ -87,12 +87,15 @@ See the
 man page for possible options and their meanings.
 .El
 .Pp
-The null layer has two purposes.
+The null layer has three purposes.
 First, it serves as a demonstration of layering by providing a layer
 which does nothing.
 (It actually does everything the loopback file system does,
 which is slightly more than nothing.)
-Second, the null layer can serve as a prototype layer.
+Second, it is used for NFS exporting
+.Nm HAMMER
+PFSs.
+Third, the null layer can serve as a prototype layer.
 Since it provides all necessary layer framework,
 new file system layers can be created very easily by starting
 with a null layer.
@@ -165,17 +168,21 @@ For example, imagine mounting a null layer with
 .Bd -literal -offset indent
 mount_null /usr/include /dev/layer/null
 .Ed
+.Pp
 Changing directory to
 .Pa /dev/layer/null
 will assign
 the root null-node (which was created when the null layer was mounted).
 Now consider opening
 .Pa sys .
-A vop_lookup would be
+A
+.Em vop_lookup
+would be
 done on the root null-node.  This operation would bypass through
 to the lower layer which would return a vnode representing
 the UFS
-.Pa sys .
+.Pa sys
+(assuming that the lower layer is an UFS file system).
 Null_bypass then builds a null-node
 aliasing the UFS
 .Pa sys
@@ -222,6 +229,7 @@ is that vnode arguments must be manually mapped.
 .\"
 .\"
 .Sh SEE ALSO
+.Xr HAMMER 5 ,
 .Xr mount 8
 .Pp
 UCLA Technical Report CSD-910056,
