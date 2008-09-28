@@ -1,6 +1,6 @@
 <!--#set var="title" value="DragonFly - End of Year Summary for 2003" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/status/report-2003.shtml,v 1.1 2006/11/17 03:41:06 justin Exp $ -->
+<!-- $DragonFly: site/data/status/report-2003.shtml,v 1.2 2008/09/28 06:15:38 dillon Exp $ -->
 
 
 
@@ -132,7 +132,7 @@ libcaps has been created.  This is a library that allows userland threading, sim
 <blockquote>
 	Quoted from the committ log: "This subsystem is used for 'pipelining' fixed-size
   allocations.  Pipelining is used to avoid lack-of-resource deadlocks by
-  still allowing resource allocations to 'block' by guarenteeing that an
+  still allowing resource allocations to 'block' by guaranteeing that an
   already in-progress operation will soon free memory that will be immediately
   used to satisfy the blocked resource."  Added by Matt Dillon.
 </blockquote>

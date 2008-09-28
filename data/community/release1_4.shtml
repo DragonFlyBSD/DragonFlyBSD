@@ -1,6 +1,6 @@
 <!--#set var="title" value="DragonFly - January 2006 Release 1.4.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/community/release1_4.shtml,v 1.3 2007/03/18 19:35:17 dillon Exp $ -->
+<!-- $DragonFly: site/data/community/release1_4.shtml,v 1.4 2008/09/28 06:15:36 dillon Exp $ -->
 
 
 <h1>Obtaining DragonFly 1.4.x for your system</h1>
@@ -352,7 +352,7 @@ best release to date!
 	    or directory occurs, and for directories this identifier also
 	    changes if anything in the sub-tree under the directory is
 	    modified (recursively).  The FSMID is synthesized for filesystems
-	    which do not implement it directly in order to guarentee its 
+	    which do not implement it directly in order to guarantee its 
 	    usefulness for at least a subset of operations.
 	<li>Implement pesistent storage of the FSMID for UFS.
 	<li>Implement shutdown() support for pipes.

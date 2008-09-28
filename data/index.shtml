@@ -1,6 +1,6 @@
 <!--#set var="title" value="Welcome to DragonFlyBSD.org" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/index.shtml,v 1.10 2008/07/21 20:22:06 dillon Exp $ -->
+<!-- $DragonFly: site/data/index.shtml,v 1.11 2008/09/28 06:15:34 dillon Exp $ -->
 
 <h1>Ongoing DragonFly News</h1>
 <p>
@@ -10,13 +10,23 @@ Check the
 </p>
 
 <p>
-DragonFly is participating in Google's Summer of Code.  
+DragonFly participated in Google's Summer of Code 2008.
 For more information, check the <a href="http://wiki.dragonflybsd.org/index.cgi/GoogleSoC2008">SoC page on our wiki</a>.
 </p>
-    <h1>DragonFly-2.0 RELEASED!!</h1>
-	<h1>21 July 2008</h1>
 <p>
-The <a href="/community/release2_0.shtml"><b>DragonFly-2.0.0 Release</b></a> is ready!
+DragonFly's new HAMMER filesystem is fast becoming a mainstay of the
+system, with numerous people now using it on production machines!
+The release of the new filesystem in 2.0 has gone very smoothly with
+only minor bugs reported to date!
+</p>
+    <h1>DragonFly-2.0 RELEASED July 2008!!</h1>
+	<h1>2.0.1 - 27 September 2008</h1>
+<p>
+The <a href="/community/release2_0.shtml"><b>DragonFly-2.0.1 Release</b></a>
+is ready!
+This September release contains numerous driver updates, minor HAMMER
+bug fixes, and a new hammer meta command to ease daily maintainance of
+your HAMMER filesystems.
 </p>
 
 <h1>What is DragonFly BSD?</h1>
@@ -41,7 +51,7 @@ In the 2007-2008 time-frame a new filesystem called HAMMER was developed
 for DragonFly.  HAMMER sees its first light of day in the July 2008
 2.0 release.  This filesystem has been designed to solve numerous issues
 and to add many new capabilities to DragonFly, such as fine-grained
-snapshot access, instant crash recovery, and near real-time mirroring.
+snapshots, instant crash recovery, and near real-time mirroring.
 The filesytem is also intended to serve as a basis for the clustering
 work that makes up the second phase of the project.
 </p>
@@ -51,7 +61,7 @@ ultimate goal is to provide native clustering support in the kernel.
 This involves the creation of a sophisticated cache management
 framework for filesystem namespaces, file spaces, and VM spaces, which
 allows heavily interactive programs to run across multiple machines with
-cache coherency fully guarenteed in all respects.  This also involves being
+cache coherency fully guaranteed in all respects.  This also involves being
 able to chop up resources, including the cpu by way of a controlled VM
 context, for safe assignment to unsecured third-party clusters over the
 internet (though the security of such clusters itself might be in doubt,

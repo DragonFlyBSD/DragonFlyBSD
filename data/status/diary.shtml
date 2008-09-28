@@ -1,6 +1,6 @@
 <!--#set var="title" value="DragonFly - Big-Picture Status" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/status/diary.shtml,v 1.6 2007/08/06 15:54:53 hmp Exp $ -->
+<!-- $DragonFly: site/data/status/diary.shtml,v 1.7 2008/09/28 06:15:38 dillon Exp $ -->
 
 <h2>Fri 03 August 2007</h2>
 <ul>
@@ -569,7 +569,7 @@
 	    or directory occurs, and for directories this identifier also
 	    changes if anything in the sub-tree under the directory is
 	    modified (recursively).  The FSMID is synthesized for filesystems
-	    which do not implement it directly in order to guarentee its 
+	    which do not implement it directly in order to guarantee its 
 	    usefulness for at least a subset of operations.
 	<li>Implement pesistent storage of the FSMID for UFS.
 	<li>Implement shutdown() support for pipes.
@@ -825,7 +825,7 @@
 	<li>Rewrite the callout_*() core infrastructure and rip out the old
 	    [un]timeout() API (saving ~800K+ of KVM in the process).  The new
 	    callout infrastructure uses a DragonFly-friendly per-cpu 
-	    implementation and is able to guarentee that callouts will occur
+	    implementation and is able to guarantee that callouts will occur
 	    on the same cpu they were registered on, a feature that the TCP
 	    protocol stack threads are going to soon take major advantage of.
 	<li>Cleanup the link layer broadcast address, consolidating many 
@@ -1153,7 +1153,7 @@
 	    the default.</li>
 	<li>RCNG from FreeBSD-5 has been ported and is now the default.</li>
 	<li>Work is proceeding on bringing in ATAng from FreeBSD-4, with
-	    additional modifications required to guarentee I/O in low
+	    additional modifications required to guarantee I/O in low
 	    memory situations.  That is, it isn't going to be a straight
 	    port.  The original ATA code from FreeBSD-4.8, which we call
 	    ATAold, has been given interim fixes to deal with the low memory

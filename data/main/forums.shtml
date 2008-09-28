@@ -1,6 +1,6 @@
 <!--#set var="title" value="DragonFly - Mailing Lists - Forums" -->
 <!--#include virtual="/includes/header.shtml" -->
-<!-- $DragonFly: site/data/main/forums.shtml,v 1.1 2006/11/17 03:41:06 justin Exp $ -->
+<!-- $DragonFly: site/data/main/forums.shtml,v 1.2 2008/09/28 06:15:37 dillon Exp $ -->
 
 
 <p>
@@ -23,6 +23,7 @@ include HTML sent to any of the lists will be blocked as spam.</p>
     <li>Patch Submissions - <A HREF=mailto:submit-request@lists.dragonflybsd.org>submit-request@lists.dragonflybsd.org</A></li>
     <li>Commit Messages - <A HREF=mailto:commits-request@lists.dragonflybsd.org>commits-request@lists.dragonflybsd.org</A></li>
     <li>Documentation Related - <A HREF=mailto:docs-request@lists.dragonflybsd.org>docs-request@lists.dragonflybsd.org</A></li>
+    <li>HAMMER Filesystem Ports - <A HREF=mailto:hammer-request@lists.dragonflybsd.org>hammer-request@lists.dragonflybsd.org</A> (NEW LIST)</li>
     <li>Test Postings - <A HREF=mailto:test-request@lists.dragonflybsd.org>test-request@lists.dragonflybsd.org</A></li>
 </ul>
 
@@ -51,6 +52,9 @@ experimentation.</p>
     <li>Documentation Related -
 	<a href="news://nntp.dragonflybsd.org/dragonfly.docs">
 		news://nntp.dragonflybsd.org/dragonfly.docs</a></li>
+    <li>HAMMER Filesystem Ports -
+	<a href="news://nntp.dragonflybsd.org/dragonfly.hammer">
+		news://nntp.dragonflybsd.org/dragonfly.hammer</a></li>
     <li>Test Postings -
 	<a href="news://nntp.dragonflybsd.org/dragonfly.test">
 		news://nntp.dragonflybsd.org/dragonfly.test</a></li>

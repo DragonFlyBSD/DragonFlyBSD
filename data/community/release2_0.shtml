@@ -1,7 +1,7 @@
-<!--#set var="title" value="DragonFly - July 2008 Release 2.0.x Download" -->
+<!--#set var="title" value="DragonFly - September 2008 Release 2.0.1 Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/release2_0.shtml,v 1.8 2008/07/22 03:51:45 justin Exp $ -->
+<!-- $DragonFly: site/data/community/release2_0.shtml,v 1.9 2008/09/28 06:15:36 dillon Exp $ -->
 
 <h1>Obtaining DragonFly 2.0.x for your system</h1>
 
@@ -33,9 +33,11 @@ See the 'Download Site' list below for a list of download locations.
 </p>
 
 <p>
-<b>The MD5 for the release is:
+<b>The MD5s for the 2.0 release series are:
 <br/>MD5 (dfly-2.0.0_REL.iso) = f85a9a50424e7d6407383364f8c4c605
 <br/>MD5 (dfly-2.0.0_REL.iso.gz) = e1e320a0dbc9c9b94c49012d5b096b5e
+<br/>MD5 (dfly-2.0.1_REL.iso) = 34b59cac09f00db56cbb486aa6ca8308
+<br/>MD5 (dfly-2.0.1_REL.iso.gz) = 363ffa0162f92400fd2a64bec5e7406b
 </b><br /> </p>
 
 <h2>2.0.x Release Errata</h2>
@@ -64,6 +66,12 @@ See the 'Download Site' list below for a list of download locations.
 <TD>RELEASE CD</TD>
 <TD><A HREF="errata2_0.shtml">Errata</A></TD>
 </TR>
+<TR>
+<TD>2.0.1</TD>
+<TD>27-September-2008</TD>
+<TD>RELEASE CD</TD>
+<TD><A HREF="errata2_0.shtml">Errata</A></TD>
+</TR>
 </TABLE>
 
 <p>
@@ -84,11 +92,12 @@ See the 'Download Site' list below for a list of download locations.
 <TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-2.0.0_REL.iso.gz">HTTP</A></TD></TR>
 -->
 
-<TR><TD>Chlamydia.fs.ei.tum.de (Germany)</TD>
-<TD>2.0.0_REL image</TD>
+<TR><TD><A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/">
+	Chlamydia.fs.ei.tum.de</A>(Germany)</TD>
+<TD>2.0.1_REL image</TD>
 <TD>
-    <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-2.0.0_REL.iso.gz">HTTP</A>
-    <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-2.0.0_REL.iso.gz">FTP</A>
+    <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-2.0.1_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-2.0.1_REL.iso.gz">FTP</A>
 </TD>
 </TR>
 
@@ -101,11 +110,12 @@ See the 'Download Site' list below for a list of download locations.
 </TD></TR>
 -->
 
-<TR><TD>TheShell.com</TD>
-<TD>2.0.0_REL image</TD>
+<TR><TD><A HREF="http://www.theshell.com/pub/DragonFly/iso-images/">
+	TheShell.com</A></TD>
+<TD>2.0.1_REL image</TD>
 <TD>
-    <A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-2.0.0_REL.iso.gz">HTTP</A>
-    <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-2.0.0_REL.iso.gz">FTP</A>
+    <A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-2.0.1_REL.iso.gz">HTTP</A>
+    <A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-2.0.1_REL.iso.gz">FTP</A>
 </TD></TR>
 
 <!--
@@ -115,23 +125,27 @@ See the 'Download Site' list below for a list of download locations.
     <A HREF="http://high5.net/mirrors/DragonFly/iso-images/dfly-2.0.0_REL.iso.gz">HTTP</A>
 </TD></TR>
 
-<TR><TD>dragonflybsd.kiev.ua (Ukraine)</TD>
-<TD>2.0.0_REL image</TD>
-<TD>
-    <A HREF="ftp://ftp.dragonflybsd.kiev.ua/pub/DragonFlyBSD/iso-images/dfly-2.0.0_REL.iso.gz">FTP</A>
-</TD></TR>
-
-<TR><TD>University of Marburg (Germany)</TD>
-<TD>2.0.0_REL image</TD>
-<TD>
-    <A HREF="ftp://ftp.mathematik.uni-marburg.de/pub/mirror/dragonfly/iso-images/dfly-2.0.0_REL.iso.gz">FTP</A>
-</TD></TR>
 -->
 
+<TR><TD><A HREF="ftp://ftp.dragonflybsd.kiev.ua/pub/DragonFlyBSD/">
+	dragonflybsd.kiev.ua (Ukraine)</TD>
+<TD>2.0.1_REL image</TD>
+<TD>
+    <A HREF="ftp://ftp.dragonflybsd.kiev.ua/pub/DragonFlyBSD/iso-images/dfly-2.0.1_REL.iso.gz">FTP</A>
+</TD></TR>
 
-<TR><TD>Dragonflybsd.org (USA)</TD>
-<TD>2.0.0_REL image</TD>
-<TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-2.0.0_REL.iso.gz">FTP</A>
+<TR><TD><A HREF="ftp://ftp.mathematik.uni-marburg.de/pub/mirror/dragonfly/">
+	University of Marburg (Germany)</TD>
+<TD>2.0.1_REL image</TD>
+<TD>
+    <A HREF="ftp://ftp.mathematik.uni-marburg.de/pub/mirror/dragonfly/iso-images/dfly-2.0.1_REL.iso.gz">FTP</A>
+</TD></TR>
+
+
+<TR><TD><A HREF="ftp://ftp.dragonflybsd.org/">
+	Dragonflybsd.org (USA)</TD>
+<TD>2.0.1_REL image</TD>
+<TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-2.0.1_REL.iso.gz">FTP</A>
 (<I>try to find another site first</I>)</TD></TR>
 
 </TABLE>
@@ -168,7 +182,7 @@ only commit bug fixes to release branches.
     <li><b>Add native connection state recovery to PF</b> - so router
 	reboots do not drop active TCP connections.  New 'pickups' 
 	directives, and a 'set' directive to set default keep policy.
-    <li>Incorporate the 'probability' keyword into PDF from NetBSD.
+    <li>Incorporate the 'probability' keyword into PF from NetBSD.
     <li>Miscellaneous bug fixes to the LWP (Light Weight Process) code.
 	Fixes issues with kill -9 on vkernels.
     <li>Significant work on the buffer cache and VM system relating to
@@ -282,7 +296,7 @@ only commit bug fixes to release branches.
 <h3>Contributed Software</h3>
 <ul>
     <li>Sync zoneinfo database with tzdata2008d from elsie.
-    <li>BIND was updated to version 9.3.5-P1 fixing a security issue.
+    <li>BIND was updated to version 9.3.4-P2 fixing a serious security issue.
     <li>bzip was updated to version 1.0.5.
     <li>less was updated to version 418.
     <li>libarchive was updated to version 2.5.5.
@@ -291,7 +305,6 @@ only commit bug fixes to release branches.
 	keys.
     <li>tnftpd was synced with NetBSD as of May 2008.
     <li>Sync Citrus iconv support from NetBSD.
-    <li>BIND updated to 9.3.5P1 w/ port randomization security fixes.
     <li>GCC updated to 4.1.2.
 </ul>
 
