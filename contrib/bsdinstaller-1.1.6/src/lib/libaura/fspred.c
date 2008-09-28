@@ -51,12 +51,6 @@
 
 #include "fspred.h"
 
-#if (__NetBSD_Version__ >= 200040000)
-#define STATFS statvfs
-#else
-#define STATFS statfs
-#endif
-
 /** PREDICATES **/
 
 int
@@ -168,7 +162,7 @@ is_named_pipe(const char *fmt, ...)
 int
 is_mountpoint_mounted(const char *mtpt)
 {
-	struct STATFS *mt_array, *mt_ptr;
+	struct statfs *mt_array, *mt_ptr;
 	int count;
 
 	count = getmntinfo(&mt_array, MNT_WAIT);
@@ -182,7 +176,7 @@ is_mountpoint_mounted(const char *mtpt)
 int
 is_device_mounted(const char *device)
 {
-	struct STATFS *mt_array, *mt_ptr;
+	struct statfs *mt_array, *mt_ptr;
 	int count;
 
 	count = getmntinfo(&mt_array, MNT_WAIT);
@@ -196,7 +190,7 @@ is_device_mounted(const char *device)
 int
 is_any_slice_mounted(const char *diskdev)
 {
-	struct STATFS *mt_array, *mt_ptr;
+	struct statfs *mt_array, *mt_ptr;
 	int count;
 
 	count = getmntinfo(&mt_array, MNT_WAIT);

@@ -52,20 +52,14 @@
 #include "commands.h"
 #include "functions.h"
 
-#if (__NetBSD_Version__ >= 200040000)
-#define STATFS statvfs
-#else
-#define STATFS statfs
-#endif
-
 static void	unmount_all_under_r(struct i_fn_args *, struct commands *,
-				    const char *, struct STATFS *, int);
+				    const char *, struct statfs *, int);
 
 static void
 unmount_all_under_r(struct i_fn_args *a, struct commands *cmds,
-		    const char *mtpt, struct STATFS *mt_array, int count)
+		    const char *mtpt, struct statfs *mt_array, int count)
 {
-	struct STATFS *mt_ptr;
+	struct statfs *mt_ptr;
 	int k = count;
 	int unmount_me = 0;
 
@@ -94,7 +88,7 @@ unmount_all_under_r(struct i_fn_args *a, struct commands *cmds,
 void
 unmount_all_under(struct i_fn_args *a, struct commands *cmds, const char *fmt, ...)
 {
-	struct STATFS *mt_array;
+	struct statfs *mt_array;
 	int count;
 	char *mtpt;
 	va_list args;

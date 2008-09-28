@@ -38,9 +38,6 @@
  */
 
 #include <sys/types.h>
-#if defined(__OpenBSD__) || defined (__NetBSD__)
-#include <sys/param.h>
-#endif
 #include <sys/sysctl.h>
 
 #include <stdio.h>
@@ -51,11 +48,6 @@
 #include "commands.h"
 #include "diskutil.h"
 #include "functions.h"
-
-#if defined(__OpenBSD__) || defined(__NetBSD__)
-int mib[2];
-int i;
-#endif
 
 static int	fgets_chomp(char *, int, FILE *);
 static int	parse_geometry_info(char *, int *, int *, int *);
@@ -166,33 +158,15 @@ survey_storage(struct i_fn_args *a)
 	disks_free(a->s);
 
 	len = sizeof(mem);
-#if defined(__OpenBSD__) || defined(__NetBSD__)
-	mib[0] = CTL_HW;
-	mib[1] = HW_PHYSMEM;
-	if (sysctl(mib, 2, &mem, &len, NULL, 0) < 0 ) {
-#else
 	if (sysctlbyname("hw.physmem", &mem, &len, NULL, 0) < 0) {
-#endif
 		failure |= 1;
 	} else {
 		storage_set_memsize(a->s, next_power_of_two(mem >> 20));
 	}
 	len = 256;
-#if defined(__OpenBSD__) || defined(__NetBSD__)
-	mib[0] = CTL_HW;
-	mib[1] = HW_DISKNAMES;
-	if (sysctl(mib, 2, disks, &len, NULL, 0) < 0) {
-#else
 	if (sysctlbyname("kern.disks", disks, &len, NULL, 0) < 0) {
-#endif
 		failure |= 1;
 	}
-#if defined(__OpenBSD__) || defined(__NetBSD__)
-	for (i = 0; i < strlen(disks); i++) {
-		if (disks[i] == ',')
-			disks[i] = ' ';
-	}
-#endif
 	disk_ptr = disks;
 
 	di = aura_dict_new(1, AURA_DICT_SORTED_LIST);

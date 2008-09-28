@@ -39,40 +39,12 @@
 #ifndef __SYSTEM_H_
 #define __SYSTEM_H_
 
-#if (__FreeBSD__ || __DragonFly__ || __OpenBSD__ || __NetBSD__)
-#  define HAS_TCP
-#  define HAS_NPIPE
-#endif
+#define HAS_TCP
+#define HAS_NPIPE
+#define HAS_CAPS
 
-#if (__DragonFly__)
-#  define HAS_CAPS
-#endif
-
-#ifndef HAS_TCP
-#ifndef HAS_NPIPE
-#ifndef HAS_CAPS
-#error "Your OS must support at least one IPC mechanism: TCP/IP sockets, named pipes, or CAPS."
-#endif
-#endif
-#endif
-
-#if defined(__DragonFly__)
 #define OPERATING_SYSTEM_NAME	"DragonFly BSD"
 #define OPERATING_SYSTEM_URL	"http://www.dragonflybsd.org"
-
-#elif defined(__FreeBSD__)
-#define OPERATING_SYSTEM_NAME   "FreeBSD"
-#define OPERATING_SYSTEM_URL    "http://www.freebsd.org"
-
-#elif defined(__OpenBSD__)
-#define OPERATING_SYSTEM_NAME   "OpenBSD"
-#define OPERATING_SYSTEM_URL    "http://www.openbsd.org"
-
-#elif defined(__NetBSD__)
-#define OPERATING_SYSTEM_NAME   "NetBSD"
-#define OPERATING_SYSTEM_URL    "http://www.netbsd.org"
-
-#endif
 
 char *ostype(void);
 int has_tcp(void);

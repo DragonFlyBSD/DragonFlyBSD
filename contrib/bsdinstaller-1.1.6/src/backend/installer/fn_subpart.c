@@ -132,10 +132,6 @@ create_subpartitions(struct i_fn_args *a)
 	 *   c:   16383969          0    unused	#    7999.985MB
 	 */
 
-#if defined(__FreeBSD__) && !defined(__DragonFly__)
-	num_partitions = 8;
-#endif
-
 	command_add(cmds, "%s%s '%d partitions:' >>%sinstall.disklabel",
 	    a->os_root, cmd_name(a, "ECHO"), num_partitions ,a->tmp);
 	command_add(cmds, "%s%s '%s' >>%sinstall.disklabel",

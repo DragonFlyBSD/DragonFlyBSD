@@ -123,13 +123,7 @@ pkg_copy(struct i_fn_args *a, struct commands *cmds, const char *pkg_name,
 		}
 	}
 	aura_pclose(pipe);
-#if defined(__DragonFly__)
 	snprintf(pkg_suffix, 256, "tgz");
-#elif defined(__FreeBSD__)
-	snprintf(pkg_suffix, 256, "tbz");
-#else /* anything else */
-	snprintf(pkg_suffix, 256, "tgz");
-#endif
 	if (!pkg_exists(a, pkg_name) &&
 	    !aura_dict_exists(seen, pkg_name, strlen(pkg_name))) {
 		aura_dict_store(seen,
