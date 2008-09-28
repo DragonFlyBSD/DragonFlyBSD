@@ -117,7 +117,7 @@ create_subpartitions(struct i_fn_args *a)
 
 	/*
 	 * Take everything from the 'virgin' disklabel up until the
-	 * '8 or 16 partitions' line.
+	 * '16 partitions' line.
 	 */
 	num_partitions = 16;
 	command_add(cmds, "%s%s '$2==\"partitions:\" || cut { cut = 1 } !cut { print $0 }' <%sinstall.disklabel.%s >%sinstall.disklabel",
@@ -127,9 +127,9 @@ create_subpartitions(struct i_fn_args *a)
 	    a->tmp);
 
 	/*
-	 * 8 or 16 partitions:
-	 * #        size   offset    fstype   [fsize bsize bps/cpg]
-	 *   c:  2128833        0    unused        0     0       	# (Cyl.    0 - 2111*)
+	 * 16 partitions:
+	 * #          size     offset    fstype
+	 *   c:   16383969          0    unused	#    7999.985MB
 	 */
 
 #if defined(__FreeBSD__) && !defined(__DragonFly__)
@@ -140,7 +140,7 @@ create_subpartitions(struct i_fn_args *a)
 	    a->os_root, cmd_name(a, "ECHO"), num_partitions ,a->tmp);
 	command_add(cmds, "%s%s '%s' >>%sinstall.disklabel",
 	    a->os_root, cmd_name(a, "ECHO"),
-	    "#        size   offset    fstype   [fsize bsize bps/cpg]",
+	    "#          size     offset    fstype",
 	    a->tmp);
 
 #ifdef DEBUG
@@ -179,13 +179,11 @@ create_subpartitions(struct i_fn_args *a)
 			    capacity_to_string(subpartition_get_capacity(sp)),
 			    a->tmp);
 		} else {
-			command_add(cmds, "%s%s '  %c:\t%s\t%s\t4.2BSD\t%ld\t%ld\t99' >>%sinstall.disklabel",
+			command_add(cmds, "%s%s '  %c:\t%s\t%s\t4.2BSD' >>%sinstall.disklabel",
 			    a->os_root, cmd_name(a, "ECHO"),
 			    subpartition_get_letter(sp),
 			    capacity_to_string(subpartition_get_capacity(sp)),
 			    subpartition_get_letter(sp) == 'a' ? "0" : "*",
-			    subpartition_get_fsize(sp),
-			    subpartition_get_bsize(sp),
 			    a->tmp);
 		}
 	}
@@ -236,9 +234,11 @@ create_subpartitions(struct i_fn_args *a)
 		command_add_ensure_dev(a, cmds,
 		    subpartition_get_device_name(sp));
 
-		command_add(cmds, "%s%s%s %sdev/%s",
+		command_add(cmds, "%s%s%s -b %ld -f %ld %sdev/%s",
 		    a->os_root, cmd_name(a, "NEWFS"),
 		    subpartition_is_softupdated(sp) ? " -U" : "",
+		    subpartition_get_bsize(sp),
+		    subpartition_get_fsize(sp),
 		    a->os_root,
 		    subpartition_get_device_name(sp));
 	}
