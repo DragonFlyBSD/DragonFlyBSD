@@ -1,4 +1,4 @@
-/* $DragonFly: src/secure/lib/libssh/config.h,v 1.11 2008/04/07 01:20:18 pavalos Exp $ */
+/* $DragonFly: src/secure/lib/libssh/config.h,v 1.12 2008/09/28 03:19:46 pavalos Exp $ */
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
@@ -39,6 +39,9 @@
 /* Define if your struct dirent expects you to allocate extra space for d_name
    */
 /* #undef BROKEN_ONE_BYTE_DIRENT_D_NAME */
+
+/* Can't do comparisons on readv */
+/* #undef BROKEN_READV_COMPARISON */
 
 /* Define if you have a broken realpath. */
 /* #undef BROKEN_REALPATH */
@@ -118,11 +121,11 @@
 /* Define if you don't want to use wtmpx */
 #define DISABLE_WTMPX 1
 
-/* Workaround more Linux IPv6 quirks */
-/* #undef DONT_TRY_OTHER_AF */
-
 /* Builtin PRNG command timeout */
 #define ENTROPY_TIMEOUT_MSEC 200
+
+/* f_fsid has members */
+/* #undef FSID_HAS_VAL */
 
 /* Define to 1 if the `getpgrp' function requires zero arguments. */
 #define GETPGRP_VOID 1
@@ -159,6 +162,12 @@
 
 /* Define to 1 if you have the `arc4random' function. */
 #define HAVE_ARC4RANDOM 1
+
+/* Define to 1 if you have the `arc4random_buf' function. */
+/* #undef HAVE_ARC4RANDOM_BUF */
+
+/* Define to 1 if you have the `arc4random_uniform' function. */
+/* #undef HAVE_ARC4RANDOM_UNIFORM */
 
 /* Define to 1 if you have the `asprintf' function. */
 #define HAVE_ASPRINTF 1
@@ -334,8 +343,20 @@
 /* Define to 1 if you have the <floatingpoint.h> header file. */
 #define HAVE_FLOATINGPOINT_H 1
 
+/* Define to 1 if you have the `fmt_scaled' function. */
+/* #undef HAVE_FMT_SCALED */
+
 /* Define to 1 if you have the `freeaddrinfo' function. */
 #define HAVE_FREEADDRINFO 1
+
+/* Define to 1 if the system has the type `fsblkcnt_t'. */
+#define HAVE_FSBLKCNT_T 1
+
+/* Define to 1 if the system has the type `fsfilcnt_t'. */
+#define HAVE_FSFILCNT_T 1
+
+/* Define to 1 if you have the `fstatvfs' function. */
+#define HAVE_FSTATVFS 1
 
 /* Define to 1 if you have the `futimes' function. */
 #define HAVE_FUTIMES 1
@@ -812,6 +833,12 @@
 /* Fields in struct sockaddr_storage */
 #define HAVE_SS_FAMILY_IN_SS 1
 
+/* Define to 1 if you have the `statfs' function. */
+#define HAVE_STATFS 1
+
+/* Define to 1 if you have the `statvfs' function. */
+#define HAVE_STATVFS 1
+
 /* Define to 1 if you have the <stddef.h> header file. */
 #define HAVE_STDDEF_H 1
 
@@ -914,6 +941,9 @@
 /* Define to 1 if you have the <sys/mman.h> header file. */
 #define HAVE_SYS_MMAN_H 1
 
+/* Define to 1 if you have the <sys/mount.h> header file. */
+#define HAVE_SYS_MOUNT_H 1
+
 /* Define to 1 if you have the <sys/ndir.h> header file. */
 /* #undef HAVE_SYS_NDIR_H */
 
@@ -934,6 +964,9 @@
 
 /* Define to 1 if you have the <sys/select.h> header file. */
 #define HAVE_SYS_SELECT_H 1
+
+/* Define to 1 if you have the <sys/statvfs.h> header file. */
+#define HAVE_SYS_STATVFS_H 1
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #define HAVE_SYS_STAT_H 1

@@ -1,11 +1,16 @@
 # $FreeBSD: src/secure/usr.bin/sftp/Makefile,v 1.1.2.3 2002/07/03 22:20:30 des Exp $
-# $DragonFly: src/secure/usr.bin/sftp/Makefile,v 1.4 2005/11/13 11:58:30 corecode Exp $
+# $DragonFly: src/secure/usr.bin/sftp/Makefile,v 1.5 2008/09/28 03:19:46 pavalos Exp $
 
 PROG=	sftp
 SRCS=   sftp.c sftp-client.c sftp-common.c sftp-glob.c
+
+# Portability layer
+SRCS+=	fmt_scaled.c
 
 DPADD+=	${LIBEDIT}
 LDADD+=	-ledit
 
 .include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>
+
+.PATH:	${SSHDIR}/openbsd-compat

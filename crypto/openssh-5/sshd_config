@@ -1,5 +1,5 @@
-#	$OpenBSD: sshd_config,v 1.77 2008/02/08 23:24:07 djm Exp $
-#	$DragonFly: src/crypto/openssh-5/sshd_config,v 1.3 2008/05/16 10:48:44 corecode Exp $
+#	$OpenBSD: sshd_config,v 1.80 2008/07/02 02:24:18 djm Exp $
+#	$DragonFly: src/crypto/openssh-5/sshd_config,v 1.4 2008/09/28 03:19:46 pavalos Exp $
 
 # This is the sshd server system-wide configuration file.  See
 # sshd_config(5) for more information.
@@ -14,7 +14,7 @@
 # Note that some of DragonFly's defaults differ from OpenBSD's, and
 # DragonFly has a few additional options.
 
-#VersionAddendum DragonFly-20080406
+#VersionAddendum DragonFly-20080927
 
 #Port 22
 #AddressFamily any
@@ -29,11 +29,12 @@ Protocol 2
 # HostKey for protocol version 1
 #HostKey /etc/ssh/ssh_host_key
 # HostKeys for protocol version 2
+#HostKey /etc/ssh/ssh_host_rsa_key
 #HostKey /etc/ssh/ssh_host_dsa_key
 
 # Lifetime and size of ephemeral version 1 server key
 #KeyRegenerationInterval 1h
-#ServerKeyBits 768
+#ServerKeyBits 1024
 
 # Logging
 # obsoletes QuietMode and FascistLogging
@@ -46,6 +47,7 @@ Protocol 2
 #PermitRootLogin no
 #StrictModes yes
 #MaxAuthTries 6
+#MaxSessions 10
 
 #RSAAuthentication yes
 #PubkeyAuthentication yes
@@ -66,7 +68,7 @@ Protocol 2
 #PasswordAuthentication yes
 #PermitEmptyPasswords no
 
-# Change to no to disable OPIE and PAM authentication
+# Change to no to disable PAM authentication
 #ChallengeResponseAuthentication yes
 
 # Kerberos options
@@ -90,6 +92,7 @@ Protocol 2
 # and ChallengeResponseAuthentication to 'no'.
 #UsePAM no
 
+#AllowAgentForwarding yes
 #AllowTcpForwarding yes
 #GatewayPorts no
 #X11Forwarding yes

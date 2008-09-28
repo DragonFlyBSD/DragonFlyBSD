@@ -1,9 +1,10 @@
 # $FreeBSD: src/secure/lib/libssh/Makefile,v 1.2.2.7 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/lib/libssh/Makefile,v 1.11 2008/04/07 01:20:18 pavalos Exp $
+# $DragonFly: src/secure/lib/libssh/Makefile,v 1.12 2008/09/28 03:19:46 pavalos Exp $
 
 LIB=	ssh
 SHLIB_MAJOR= 4
-SRCS=	acss.c authfd.c authfile.c bufaux.c bufbn.c buffer.c canohost.c \
+SRCS=	acss.c addrmatch.c authfd.c authfile.c \
+	bufaux.c bufbn.c buffer.c canohost.c \
 	channels.c cipher.c cipher-acss.c cipher-aes.c cipher-bf1.c \
 	cipher-ctr.c cipher-3des1.c cleanup.c compat.c compress.c crc32.c \
 	deattack.c fatal.c hostfile.c log.c match.c moduli.c nchan.c packet.c \
@@ -12,7 +13,7 @@ SRCS=	acss.c authfd.c authfile.c bufaux.c bufbn.c buffer.c canohost.c \
 	ssh-rsa.c dh.c kexdh.c kexgex.c kexdhc.c kexgexc.c scard.c msg.c \
 	progressmeter.c dns.c scard-opensc.c getrrsetbyname.c uidswap.c umac.c
 # Portability layer
-SRCS+=	bsd-misc.c entropy.c port-tun.c
+SRCS+=	bsd-arc4random.c bsd-misc.c entropy.c port-tun.c
 # FreeBSD additions
 SRCS+=	version.c
 

@@ -5,7 +5,6 @@ OVERVIEW
 README.platform
 README.privsep
 README.smartcard
-RFC.nroff
 TODO
 WARNING.RNG
 aclocal.m4
@@ -26,13 +25,13 @@ logintest.c
 md-sha256.c
 mdoc2man.awk
 mkinstalldirs
+moduli.0
 nchan.ms
 nchan2.ms
 openbsd-compat/Makefile.in
 openbsd-compat/base64.c
 openbsd-compat/basename.c
 openbsd-compat/bindresvport.c
-openbsd-compat/bsd-arc4random.c
 openbsd-compat/bsd-asprintf.c
 openbsd-compat/bsd-closefrom.c
 openbsd-compat/bsd-cray.c
@@ -42,6 +41,7 @@ openbsd-compat/bsd-nextstep.c
 openbsd-compat/bsd-openpty.c
 openbsd-compat/bsd-poll.c
 openbsd-compat/bsd-snprintf.c
+openbsd-compat/bsd-statvfs.c
 openbsd-compat/bsd-waitpid.c
 openbsd-compat/daemon.c
 openbsd-compat/dirname.c

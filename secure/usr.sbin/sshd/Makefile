@@ -1,9 +1,9 @@
 # $FreeBSD: src/secure/usr.sbin/sshd/Makefile,v 1.5.2.9 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.14 2008/04/07 01:20:18 pavalos Exp $
+# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.15 2008/09/28 03:19:46 pavalos Exp $
 #
 
 PROG=	sshd
-SRCS=	sshd.c auth-rhosts.c auth-pam.c auth-passwd.c auth-rsa.c \
+SRCS=	sshd.c addrmatch.c auth-rhosts.c auth-pam.c auth-passwd.c auth-rsa.c \
 	auth-rh-rsa.c sshpty.c sshlogin.c servconf.c serverloop.c uidswap.c \
 	auth.c auth1.c auth2.c auth-options.c session.c packet.c \
 	auth-chall.c auth2-chall.c groupaccess.c auth-skey.c \
@@ -13,7 +13,7 @@ SRCS=	sshd.c auth-rhosts.c auth-pam.c auth-passwd.c auth-rsa.c \
 	kexdhs.c kexgexs.c misc.c dh.c kex.c channels.c platform.c
 
 # Portability layer
-SRCS+=	loginrec.c xmmap.c
+SRCS+=	bsd-arc4random.c loginrec.c xmmap.c
 MAN=	sshd.8 sshd_config.5
 
 # Passwd routine

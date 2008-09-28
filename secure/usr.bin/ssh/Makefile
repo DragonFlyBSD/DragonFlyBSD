@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/usr.bin/ssh/Makefile,v 1.4.2.8 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/usr.bin/ssh/Makefile,v 1.8 2008/04/07 01:20:18 pavalos Exp $
+# $DragonFly: src/secure/usr.bin/ssh/Makefile,v 1.9 2008/09/28 03:19:46 pavalos Exp $
 #
 
 PROG=	ssh
@@ -7,8 +7,9 @@ LINKS=	${BINDIR}/ssh ${BINDIR}/slogin
 MAN=	ssh.1 ssh_config.5
 MLINKS=	ssh.1 slogin.1
 
-SRCS=	ssh.c clientloop.c sshtty.c sshconnect.c sshconnect1.c sshconnect2.c
-SRCS+=	readconf.c channels.c kex.c uidswap.c monitor_fdpass.c packet.c misc.c
+SRCS=	channels.c clientloop.c kex.c misc.c monitor_fdpass.c mux.c packet.c \
+	readconf.c ssh.c sshconnect.c sshconnect1.c sshconnect2.c sshtty.c \
+	uidswap.c
 
 .if defined(WANT_KERBEROS)
 DISTRIBUTION=krb5
