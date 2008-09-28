@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.35 2008/08/09 18:33:39 swildner Exp $
+# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.36 2008/09/28 16:33:35 swildner Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
@@ -88,7 +88,7 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
 	setuid.2 shmat.2 shmctl.2 shmget.2 shutdown.2 \
 	sigaction.2 sigaltstack.2 sigpending.2 sigprocmask.2 sigreturn.2 \
 	sigstack.2 sigsuspend.2 socket.2 socketpair.2 stat.2 statfs.2 \
-	swapon.2 symlink.2 sync.2 sysarch.2 syscall.2 syslink.2 \
+	statvfs.2 swapon.2 symlink.2 sync.2 sysarch.2 syscall.2 syslink.2 \
 	truncate.2 tls.2 umask.2 umtx.2 undelete.2 \
 	unlink.2 utimes.2 upc_register.2 usched_set.2 uuidgen.2 \
 	varsym.2 vfork.2 wait.2 write.2
@@ -106,7 +106,7 @@ MLINKS+=chmod.2 fchmod.2 chmod.2 lchmod.2
 MLINKS+=chown.2 fchown.2 chown.2 lchown.2
 MLINKS+=clock_gettime.2 clock_getres.2 clock_gettime.2 clock_settime.2
 MLINKS+=dup.2 dup2.2
-MLINKS+=fhopen.2 fhstat.2 fhopen.2 fhstatfs.2
+MLINKS+=fhopen.2 fhstat.2 fhopen.2 fhstatfs.2 fhopen.2 fhstatvfs.2
 MLINKS+=getdirentries.2 _DIRENT_DIRSIZ.2 \
 	getdirentries.2 _DIRENT_NEXT.2 \
 	getdirentries.2 getdents.2
@@ -151,6 +151,7 @@ MLINKS+=setuid.2 setegid.2 setuid.2 seteuid.2 setuid.2 setgid.2
 MLINKS+=shmat.2 shmdt.2
 MLINKS+=stat.2 fstat.2 stat.2 lstat.2
 MLINKS+=statfs.2 fstatfs.2
+MLINKS+=statvfs.2 fstatvfs.2
 MLINKS+=syscall.2 __syscall.2
 MLINKS+=tls.2 set_tls_area.2 tls.2 get_tls_area.2
 MLINKS+=truncate.2 ftruncate.2
