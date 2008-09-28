@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.66 2008/06/26 18:53:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.67 2008/09/28 05:04:22 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -93,7 +93,6 @@ static int ufs_mkdir (struct vop_old_mkdir_args *);
 static int ufs_mknod (struct vop_old_mknod_args *);
 static int ufs_mmap (struct vop_mmap_args *);
 static int ufs_open (struct vop_open_args *);
-static int ufs_pathconf (struct vop_pathconf_args *);
 static int ufs_print (struct vop_print_args *);
 static int ufs_readdir (struct vop_readdir_args *);
 static int ufs_readlink (struct vop_readlink_args *);
@@ -2034,40 +2033,6 @@ ufsfifo_kqfilter(struct vop_kqfilter_args *ap)
 }
 
 /*
- * Return POSIX pathconf information applicable to ufs filesystems.
- *
- * ufs_pathconf(struct vnode *a_vp, int a_name, int *a_retval)
- */
-static
-int
-ufs_pathconf(struct vop_pathconf_args *ap)
-{
-	switch (ap->a_name) {
-	case _PC_LINK_MAX:
-		*ap->a_retval = LINK_MAX;
-		return (0);
-	case _PC_NAME_MAX:
-		*ap->a_retval = NAME_MAX;
-		return (0);
-	case _PC_PATH_MAX:
-		*ap->a_retval = PATH_MAX;
-		return (0);
-	case _PC_PIPE_BUF:
-		*ap->a_retval = PIPE_BUF;
-		return (0);
-	case _PC_CHOWN_RESTRICTED:
-		*ap->a_retval = 1;
-		return (0);
-	case _PC_NO_TRUNC:
-		*ap->a_retval = 1;
-		return (0);
-	default:
-		return (EINVAL);
-	}
-	/* NOTREACHED */
-}
-
-/*
  * Advisory record locking support
  *
  * ufs_advlock(struct vnode *a_vp, caddr_t a_id, int a_op, struct flock *a_fl,
@@ -2387,11 +2352,11 @@ static struct vop_ops ufs_vnode_vops = {
 	.vop_getattr =		ufs_getattr,
 	.vop_inactive =		ufs_inactive,
 	.vop_old_link =		ufs_link,
-	.vop_old_mkdir =		ufs_mkdir,
-	.vop_old_mknod =		ufs_mknod,
+	.vop_old_mkdir =	ufs_mkdir,
+	.vop_old_mknod =	ufs_mknod,
 	.vop_mmap =		ufs_mmap,
 	.vop_open =		ufs_open,
-	.vop_pathconf =		ufs_pathconf,
+	.vop_pathconf =		vop_stdpathconf,
 	.vop_poll =		vop_stdpoll,
 	.vop_kqfilter =		ufs_kqfilter,
 	.vop_print =		ufs_print,

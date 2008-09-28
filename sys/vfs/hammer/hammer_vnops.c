@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.99 2008/09/23 22:28:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.100 2008/09/28 05:04:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -66,7 +66,6 @@ static int hammer_vop_nlink(struct vop_nlink_args *);
 static int hammer_vop_nmkdir(struct vop_nmkdir_args *);
 static int hammer_vop_nmknod(struct vop_nmknod_args *);
 static int hammer_vop_open(struct vop_open_args *);
-static int hammer_vop_pathconf(struct vop_pathconf_args *);
 static int hammer_vop_print(struct vop_print_args *);
 static int hammer_vop_readdir(struct vop_readdir_args *);
 static int hammer_vop_readlink(struct vop_readlink_args *);
@@ -109,7 +108,7 @@ struct vop_ops hammer_vnode_vops = {
 	.vop_nmkdir =		hammer_vop_nmkdir,
 	.vop_nmknod =		hammer_vop_nmknod,
 	.vop_open =		hammer_vop_open,
-	.vop_pathconf =		hammer_vop_pathconf,
+	.vop_pathconf =		vop_stdpathconf,
 	.vop_print =		hammer_vop_print,
 	.vop_readdir =		hammer_vop_readdir,
 	.vop_readlink =		hammer_vop_readlink,
@@ -725,6 +724,7 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	} else {
 		vap->va_bytes = (ip->ino_data.size + 15) & ~15;
 	}
+
 	vap->va_type = hammer_get_vnode_type(ip->ino_data.obj_type);
 	vap->va_filerev = 0; 	/* XXX */
 	/* mtime uniquely identifies any adjustments made to the file XXX */
@@ -1196,16 +1196,6 @@ hammer_vop_open(struct vop_open_args *ap)
 	if ((ap->a_mode & FWRITE) && (ip->flags & HAMMER_INODE_RO))
 		return (EROFS);
 	return(vop_stdopen(ap));
-}
-
-/*
- * hammer_vop_pathconf { vp, name, retval }
- */
-static
-int
-hammer_vop_pathconf(struct vop_pathconf_args *ap)
-{
-	return EOPNOTSUPP;
 }
 
 /*
