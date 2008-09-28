@@ -1,6 +1,6 @@
 .\"	$OpenBSD: statvfs.3,v 1.5 2008/03/26 09:37:59 jmc Exp $
 .\"	$NetBSD: statfs.2,v 1.10 1995/06/29 11:40:48 cgd Exp $
-.\"	$DragonFly: src/lib/libc/sys/statvfs.2,v 1.1 2008/09/28 16:33:35 swildner Exp $
+.\"	$DragonFly: src/lib/libc/sys/statvfs.2,v 1.2 2008/09/28 16:40:05 swildner Exp $
 .\"
 .\" Copyright (c) 1989, 1991, 1993
 .\"	The Regents of the University of California.  All rights reserved.
@@ -38,6 +38,8 @@
 .Nm statvfs ,
 .Nm fstatvfs
 .Nd get file system statistics
+.Sh LIBRARY
+.Lb libc
 .Sh SYNOPSIS
 .Fd #include <sys/statvfs.h>
 .Ft int
