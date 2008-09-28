@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/lib/libssh/Makefile,v 1.2.2.7 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/lib/libssh/Makefile,v 1.12 2008/09/28 03:19:46 pavalos Exp $
+# $DragonFly: src/secure/lib/libssh/Makefile,v 1.13 2008/09/28 17:18:02 pavalos Exp $
 
 LIB=	ssh
 SHLIB_MAJOR= 4
@@ -16,6 +16,8 @@ SRCS=	acss.c addrmatch.c authfd.c authfile.c \
 SRCS+=	bsd-arc4random.c bsd-misc.c entropy.c port-tun.c
 # FreeBSD additions
 SRCS+=	version.c
+
+MAN=	moduli.5
 
 .if defined(WANT_KERBEROS)
 CFLAGS+= -DKRB5 -DHEIMDAL

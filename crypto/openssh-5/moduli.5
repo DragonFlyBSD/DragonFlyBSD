@@ -21,7 +21,7 @@
 .Nd Diffie Hellman moduli
 .Sh DESCRIPTION
 The
-.Pa /etc/moduli
+.Pa /etc/ssh/moduli
 file contains prime numbers and generators for use by 
 .Xr sshd 8
 in the Diffie-Hellman Group Exchange key exchange method.
@@ -111,7 +111,7 @@ first estimates the size of the modulus required to produce enough
 Diffie Hellman output to sufficiently key the selected symmetric cipher.
 .Xr sshd 8
 then randomly selects a modulus from
-.Fa /etc/moduli
+.Fa /etc/ssh/moduli
 that best meets the size requirement.
 .Pp
 .Sh SEE ALSO
