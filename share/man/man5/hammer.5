@@ -29,9 +29,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man5/hammer.5,v 1.11 2008/09/16 15:26:17 thomas Exp $
+.\" $DragonFly: src/share/man/man5/hammer.5,v 1.12 2008/09/28 21:15:46 thomas Exp $
 .\"
-.Dd September 9, 2008
+.Dd September 28, 2008
 .Os
 .Dt HAMMER 5
 .Sh NAME
@@ -65,6 +65,7 @@ and is intended to replace UFS as the default file system for
 .Dx .
 Among its features are instant crash recovery,
 large file systems spanning multiple volumes,
+data integrity checking,
 fine grained history retention,
 mirroring capability, and pseudo file systems.
 For a more detailed introduction refer to the paper listed in the
@@ -103,6 +104,24 @@ For volumes over 2 TB in size
 and
 .Xr disklabel64 8
 normally need to be used.
+.Ss Data Integrity Checking
+.Nm
+has high focus on data integrity,
+CRC checks are made for all major structures and data.
+.Nm
+snapshots implements features to make data integrity checking easier:
+The atime and mtime fields are locked to the ctime for files accessed via a snapshot.
+The
+.Fa st_dev
+field is based on the PFS
+.Ar shared-uuid
+and not on any real device.
+This means that archiving the contents of a snaphot with e.g.\&
+.Xr tar 1
+and piping it to something like
+.Xr md5 1
+will yield a consistent result.
+The consistency is also retained on mirroring targets.
 .Ss Transaction IDs
 The
 .Nm
@@ -147,6 +166,10 @@ All other history is deleted.
 Reblocking will reorder all elements and thus defragment the file system and
 free space for reuse.
 After pruning a file system must be reblocked to recover all available space.
+Reblocking is needed even when using the
+.Ar nohistory
+.Xr mount_hammer 8
+option.
 .Pp
 Related
 .Xr hammer 8
@@ -172,11 +195,20 @@ are not.
 Slaves are always read-only.
 Upgrading slaves to masters and downgrading masters to slaves are supported.
 .Pp
+It is recommended to use a
+.Nm null
+mount to access a PFS;
+this way no tools are confused by the PFS root being a symlink
+and inodes not being unique across a
+.Nm
+file system.
+.Pp
 Related
 .Xr hammer 8
 commands:
 .Ar pfs-master ,
 .Ar pfs-slave ,
+.Ar pfs-cleanup ,
 .Ar pfs-status ,
 .Ar pfs-update ,
 .Ar pfs-destroy ,
@@ -188,6 +220,27 @@ commands:
 .Ar mirror-read-stream ,
 .Ar mirror-write ,
 .Ar mirror-dump
+.Ss NFS Export
+.Nm
+file systems support NFS export.
+NFS export of PFSs is done using null mounts, e.g.\&
+to export the PFS
+.Pa /hammer/pfs/data ,
+make a null mount, e.g.\& to
+.Pa /hammer/data
+and export the latter path.
+.Pp
+Don't export a directory containing a PFS (e.g.\&
+.Pa /hammer/pfs
+above).
+Only
+.Nm null
+mount for PFS root
+(e.g.\&
+.Pa /hammer/data
+above)
+should be exported
+(subdirectory may be escaped if exported).
 .Sh EXAMPLES
 .Ss Preparing the File System
 To create and mount a
@@ -200,36 +253,42 @@ commands.
 Note that all
 .Nm
 file systems must have a unique name on a per-machine basis.
-.Bd -literal
+.Bd -literal -offset indent
 newfs_hammer -L Home /dev/ad0s1d
 mount_hammer /dev/ad0s1d /home
 .Ed
 .Pp
 Similarly, multi volume file systems can be created and mounted by
 specifying additional arguments.
-.Bd -literal
+.Bd -literal -offset indent
 newfs_hammer -L MultiHome /dev/ad0s1d /dev/ad1s1d
 mount_hammer /dev/ad0s1d /dev/ad1s1d /home
 .Ed
 .Pp
 Once created and mounted,
 .Nm
-file systems need to be reblocked periodically in order not to fill up
-over time, either manually or with a
+file systems need periodic clean-up making snapshots, pruning and reblocking,
+in order to have access to history and file system not to fill up.
+For this it is recommended to use the
+.Xr hammer 8
+.Ar cleanup
+utility either manually or with a
 .Xr cron 8
 job.
-It is recommended that the
-.Xr hammer 8
-utility's
-.Fl c
-and
-.Fl t
-options be used for this job;
-for example, to reblock the
+For example, to clean-up all
+.Nm
+file systems in use, including PFSs, every night at 2:15:
+.Bd -literal -offset indent
+15 2 * * * hammer cleanup >>/var/log/hammer.log 2>&1
+.Ed
+.Pp
+It is also possible to make these operations individually.
+For example, to reblock the
 .Pa /home
 file system every night at 2:15 for up to 5 minutes:
-.Bd -literal
-15 2 * * * hammer -c /var/run/Home.reblock -t 300 reblock /home >/dev/null 2>&1
+.Bd -literal -offset indent
+15 2 * * * hammer -c /var/run/Home.reblock -t 300 reblock /home \e
+	>/dev/null 2>&1
 .Ed
 .Ss Snapshots
 The
@@ -238,7 +297,7 @@ utility's
 .Ar snapshot
 command provides several ways of taking snapshots.
 They all assume a directory where snapshots are kept.
-.Bd -literal
+.Bd -literal -offset indent
 mkdir /snaps
 hammer snapshot /home /snaps/snap1
 (...after some changes in /home...)
@@ -257,7 +316,7 @@ A snapshot directory is also the argument to the
 .Ar prune
 command which frees historical data from the file system that is not
 pointed to by any snapshot link and is not from after the latest snapshot.
-.Bd -literal
+.Bd -literal -offset indent
 rm /snaps/snap1
 hammer prune /snaps
 .Ed
@@ -270,8 +329,9 @@ jobs for pruning no longer used historical data regularly.
 For example, to prune the
 .Pa /snaps
 directory every night at 3:15 for up to 5 minutes:
-.Bd -literal
-15 3 * * * hammer -c /var/run/snaps.prune -t 300 prune /snaps >/dev/null 2>&1
+.Bd -literal -offset indent
+15 3 * * * hammer -c /var/run/snaps.prune -t 300 prune /snaps \e
+	>/dev/null 2>&1
 .Ed
 .Ss Mirroring
 Mirroring can be set up using
@@ -281,9 +341,12 @@ To associate the slave with the master its shared UUID should be set to
 the master's shared UUID as output by the
 .Nm hammer Ar pfs-master
 command.
-.Bd -literal
-hammer pfs-master /home/master
-hammer pfs-slave /home/slave shared-uuid=<master's shared uuid>
+.Bd -literal -offset indent
+hammer pfs-master /home/pfs/master
+hammer pfs-slave /home/pfs/slave shared-uuid=<master's shared uuid>
+
+mount_null /home/pfs/master /home/master
+mount_null /home/pfs/slave /home/slave
 .Ed
 .Pp
 The
@@ -299,15 +362,46 @@ or, as a short-cut, use the
 command (which works across a
 .Xr ssh 1
 connection as well).
-.Bd -literal
+.Bd -literal -offset indent
 hammer mirror-copy /home/master /home/slave
 .Ed
+.Ss NFS Export
+To NFS export from the
+.Nm
+file system
+.Pa /hammer
+the directory
+.Pa /hammer/non-pfs
+without PFSs, and the PFS
+.Pa /hammer/pfs/data ,
+the latter is null mounted to
+.Pa /hammer/data .
+.Pp
+Add to
+.Pa /etc/fstab
+(see
+.Xr fstab 5 ) :
+.Bd -literal -offset indent
+/hammer/pfs/data /hammer/data null rw
+.Ed
+.Pp
+Add to
+.Pa /etc/exports
+(see
+.Xr exports 5 ) :
+.Bd -literal -offset indent
+/hammer/non-pfs
+/hammer/data
+.Ed
 .Sh SEE ALSO
+.Xr md5 1 ,
+.Xr tar 1 ,
 .Xr undo 1 ,
 .Xr disklabel64 8 ,
 .Xr gpt 8 ,
 .Xr hammer 8 ,
 .Xr mount_hammer 8 ,
+.Xr mount_null 8 ,
 .Xr newfs_hammer 8
 .Rs
 .%A Matthew Dillon
@@ -327,12 +421,3 @@ file system was designed and implemented by
 .An Matthew Dillon Aq dillon@backplane.com .
 This manual page was written by
 .An Sascha Wildner .
-.Sh BUGS
-NFS exporting
-.Nm
-PFSs
-isn't supported yet.
-A
-.Nm
-file system with PFSs defined can be NFS exported,
-but don't export directories which contains PFSs.
