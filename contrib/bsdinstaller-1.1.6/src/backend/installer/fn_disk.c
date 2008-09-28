@@ -208,6 +208,9 @@ fn_format_disk(struct i_fn_args *a)
 		 */
 		command_add_ensure_dev(a, cmds,
 		    disk_get_device_name(storage_get_selected_disk(a->s)));
+		command_add(cmds, "%s%s -BI %s",
+		    a->os_root, cmd_name(a, "FDISK"),
+		    disk_get_raw_device_name(storage_get_selected_disk(a->s)));
 
 		if (!commands_execute(a, cmds)) {
 			inform(a->c, _("The disk\n\n%s\n\nwas "
