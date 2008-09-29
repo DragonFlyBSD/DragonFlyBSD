@@ -65,7 +65,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.50 2008/09/06 05:44:59 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.51 2008/09/29 20:52:23 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -203,9 +203,14 @@ tcp_usr_detach(struct socket *so)
 
 	crit_enter();
 	inp = so->so_pcb;
+
+	/*
+	 * If the inp is already detached it may have been due to an async
+	 * close.  Just return as if no error occured.
+	 */
 	if (inp == NULL) {
 		crit_exit();
-		return EINVAL;	/* XXX */
+		return 0;
 	}
 
 	/*
@@ -222,19 +227,24 @@ tcp_usr_detach(struct socket *so)
 	return error;
 }
 
-#define	COMMON_START(so, inp)		\
-			TCPDEBUG0; 	\
-					\
-			crit_enter();	\
-			inp = so->so_pcb; \
-			do { \
-				     if (inp == 0) { \
-					     crit_exit(); \
-					     return EINVAL; \
-				     } \
-				     tp = intotcpcb(inp); \
-				     TCPDEBUG1(); \
-		     } while(0)
+/*
+ * Note: ignore_error is non-zero for certain disconnection races
+ * which we want to silently allow, otherwise close() may return
+ * an unexpected error.
+ */
+#define	COMMON_START(so, inp, ignore_error)			\
+	TCPDEBUG0; 		\
+				\
+	crit_enter();		\
+	inp = so->so_pcb; 	\
+	do {			\
+		 if (inp == NULL) {				\
+			 crit_exit();				\
+			 return (ignore_error ? 0 : EINVAL);	\
+		 }						\
+		 tp = intotcpcb(inp);				\
+		 TCPDEBUG1();					\
+	} while(0)
 
 #define COMMON_END(req)	out: TCPDEBUG2(req); crit_exit(); return error; goto out
 
@@ -250,7 +260,7 @@ tcp_usr_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	struct tcpcb *tp;
 	struct sockaddr_in *sinp;
 
-	COMMON_START(so, inp);
+	COMMON_START(so, inp, 0);
 
 	/*
 	 * Must check for multicast addresses and disallow binding
@@ -278,7 +288,7 @@ tcp6_usr_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	struct tcpcb *tp;
 	struct sockaddr_in6 *sin6p;
 
-	COMMON_START(so, inp);
+	COMMON_START(so, inp, 0);
 
 	/*
 	 * Must check for multicast addresses and disallow binding
@@ -342,7 +352,7 @@ tcp_usr_listen(struct socket *so, struct thread *td)
 	int cpu;
 #endif
 
-	COMMON_START(so, inp);
+	COMMON_START(so, inp, 0);
 	if (inp->inp_lport == 0) {
 		error = in_pcbbind(inp, NULL, td);
 		if (error != 0)
@@ -389,7 +399,7 @@ tcp6_usr_listen(struct socket *so, struct thread *td)
 	int cpu;
 #endif
 
-	COMMON_START(so, inp);
+	COMMON_START(so, inp, 0);
 	if (inp->inp_lport == 0) {
 		if (!(inp->inp_flags & IN6P_IPV6_V6ONLY))
 			inp->inp_vflag |= INP_IPV4;
@@ -459,7 +469,7 @@ tcp_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	lwkt_port_t port;
 #endif
 
-	COMMON_START(so, inp);
+	COMMON_START(so, inp, 0);
 
 	/*
 	 * Must disallow TCP ``connections'' to multicast addresses.
@@ -507,7 +517,7 @@ tcp6_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	struct tcpcb *tp;
 	struct sockaddr_in6 *sin6p;
 
-	COMMON_START(so, inp);
+	COMMON_START(so, inp, 0);
 
 	/*
 	 * Must disallow TCP ``connections'' to multicast addresses.
@@ -568,7 +578,7 @@ tcp_usr_disconnect(struct socket *so)
 	struct inpcb *inp;
 	struct tcpcb *tp;
 
-	COMMON_START(so, inp);
+	COMMON_START(so, inp, 1);
 	tp = tcp_disconnect(tp);
 	COMMON_END(PRU_DISCONNECT);
 }
@@ -638,7 +648,7 @@ tcp_usr_shutdown(struct socket *so)
 	struct inpcb *inp;
 	struct tcpcb *tp;
 
-	COMMON_START(so, inp);
+	COMMON_START(so, inp, 0);
 	socantsendmore(so);
 	tp = tcp_usrclosed(tp);
 	if (tp)
@@ -656,7 +666,7 @@ tcp_usr_rcvd(struct socket *so, int flags)
 	struct inpcb *inp;
 	struct tcpcb *tp;
 
-	COMMON_START(so, inp);
+	COMMON_START(so, inp, 0);
 	tcp_output(tp);
 	COMMON_END(PRU_RCVD);
 }
@@ -802,7 +812,7 @@ tcp_usr_abort(struct socket *so)
 	struct inpcb *inp;
 	struct tcpcb *tp;
 
-	COMMON_START(so, inp);
+	COMMON_START(so, inp, 1);
 	tp = tcp_drop(tp, ECONNABORTED);
 	COMMON_END(PRU_ABORT);
 }
@@ -817,7 +827,7 @@ tcp_usr_rcvoob(struct socket *so, struct mbuf *m, int flags)
 	struct inpcb *inp;
 	struct tcpcb *tp;
 
-	COMMON_START(so, inp);
+	COMMON_START(so, inp, 0);
 	if ((so->so_oobmark == 0 &&
 	     (so->so_state & SS_RCVATMARK) == 0) ||
 	    so->so_options & SO_OOBINLINE ||
