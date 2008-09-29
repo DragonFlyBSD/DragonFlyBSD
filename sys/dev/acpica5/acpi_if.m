@@ -23,7 +23,7 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $DragonFly: src/sys/dev/acpica5/acpi_if.m,v 1.2 2008/09/05 10:28:35 hasso Exp $
+# $DragonFly: src/sys/dev/acpica5/acpi_if.m,v 1.3 2008/09/29 06:59:45 hasso Exp $
 #
 
 #include <sys/bus.h>
@@ -31,6 +31,30 @@
 #include "acpi.h"
 
 INTERFACE acpi;
+
+#
+# Callback function for each child handle traversed in acpi_scan_children().
+#
+# ACPI_HANDLE h:  current child device being considered
+#
+# device_t *dev:  pointer to the child's original device_t or NULL if there
+#   was none.  The callback should store a new device in *dev if it has
+#   created one.  The method implementation will automatically clean up the
+#   previous device and properly associate the current ACPI_HANDLE with it.
+#
+# level:  current level being scanned
+#
+# void *arg:  argument passed in original call to acpi_scan_children()
+#
+# Returns:  AE_OK if the scan should continue, otherwise an error
+#
+HEADER {
+	typedef ACPI_STATUS (*acpi_scan_cb_t)(ACPI_HANDLE h, device_t *dev,
+	    int level, void *arg);
+
+	struct acpi_bif;
+	struct acpi_bst;
+};
 
 #
 # Default implementation for acpi_id_probe().
@@ -103,3 +127,26 @@ METHOD int ec_write {
 	ACPI_INTEGER	val;
 	int		width;
 };
+
+#
+# Get battery information (_BIF format)
+#
+# device_t dev:  Battery device
+# struct acpi_bif *bif:  Pointer to storage for _BIF results
+#
+METHOD int batt_get_info {
+	device_t	dev;
+	struct acpi_bif	*bif;
+};
+
+#
+# Get battery status (_BST format)
+#
+# device_t dev:  Battery device
+# struct acpi_bst *bst:  Pointer to storage for _BST results
+#
+METHOD int batt_get_status {
+	device_t	dev;
+	struct acpi_bst	*bst;
+};
+

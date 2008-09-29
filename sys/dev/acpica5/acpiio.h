@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpiio.h,v 1.9 2003/09/13 20:13:01 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpiio.h,v 1.1 2004/02/21 06:48:08 dillon Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpiio.h,v 1.2 2008/09/29 06:59:45 hasso Exp $
  */
 
 /*
@@ -35,31 +35,26 @@
 #define ACPIIO_DISABLE		_IO('P', 2)
 #define ACPIIO_SETSLPSTATE	_IOW('P', 3, int)
 
-struct acpi_battdesc {
-    int	 type;				/* battery type: e.g. CMBAT */
-    int	 phys_unit;			/* physical unit of devclass */
-};
-
-#define ACPI_BATT_TYPE_CMBAT		0x0000
-#define ACPI_BATT_TYPE_SMBAT		0x0001
-
 struct acpi_battinfo {
-    int	 cap;				/* percent */
-    int	 min;				/* remianing time */
-    int	 state;				/* battery state */
+    int  cap;				/* percent */
+    int  min;				/* remaining time (in minutes) */
+    int  state;				/* battery state */
+    int  rate;				/* emptying rate */
 };
 
 #define ACPI_CMBAT_MAXSTRLEN 32
 struct acpi_bif {
-    u_int32_t units;			/* 0 for mWh, 1 for mAh */
-    u_int32_t dcap;			/* Design Capacity */
-    u_int32_t lfcap;			/* Last Full capacity */
-    u_int32_t btech;			/* Battery Technology */
-    u_int32_t dvol;			/* Design voltage (mV) */
-    u_int32_t wcap;			/* WARN capacity */
-    u_int32_t lcap;			/* Low capacity */
-    u_int32_t gra1;			/* Granulity 1(Warn to Low) */
-    u_int32_t gra2;			/* Granulity 2(Full to Warn) */
+    uint32_t units;			/* Units (mW or mA). */
+#define ACPI_BIF_UNITS_MW       0	/* Capacity in mWh, rate in mW. */
+#define ACPI_BIF_UNITS_MA       1	/* Capacity in mAh, rate in mA. */
+    uint32_t dcap;			/* Design Capacity */
+    uint32_t lfcap;			/* Last Full capacity */
+    uint32_t btech;			/* Battery Technology */
+    uint32_t dvol;			/* Design voltage (mV) */
+    uint32_t wcap;			/* WARN capacity */
+    uint32_t lcap;			/* Low capacity */
+    uint32_t gra1;			/* Granularity 1 (Warn to Low) */
+    uint32_t gra2;			/* Granularity 2 (Full to Warn) */
     char model[ACPI_CMBAT_MAXSTRLEN];	/* model identifier */
     char serial[ACPI_CMBAT_MAXSTRLEN];	/* Serial number */
     char type[ACPI_CMBAT_MAXSTRLEN];	/* Type */
@@ -67,10 +62,10 @@ struct acpi_bif {
 };
 
 struct acpi_bst {
-    u_int32_t state;			/* Battery State */
-    u_int32_t rate;			/* Present Rate */
-    u_int32_t cap;			/* Remaining Capacity */
-    u_int32_t volt;			/* Present Voltage */
+    uint32_t state;			/* Battery State */
+    uint32_t rate;			/* Present Rate */
+    uint32_t cap;			/* Remaining Capacity */
+    uint32_t volt;			/* Present Voltage */
 };
 
 #define ACPI_BATT_STAT_DISCHARG		0x0001
@@ -80,25 +75,28 @@ struct acpi_bst {
 #define ACPI_BATT_STAT_MAX		0x0007
 
 union acpi_battery_ioctl_arg {
-    int	 unit;			/* argument: logical unit (-1 = overall) */
+    int			 unit;  /* Device unit or ACPI_BATTERY_ALL_UNITS. */
 
-    struct acpi_battdesc	battdesc; 
-    struct acpi_battinfo	battinfo; 
+    struct acpi_battinfo battinfo;
 
-    struct acpi_bif	bif;	/* for acpi_cmbat */
-    struct acpi_bst	bst;	/* for acpi_cmbat */
+    struct acpi_bif	 bif;
+    struct acpi_bst	 bst;
 };
 
-/* Common battery ioctl */
-#define ACPIIO_BATT_GET_UNITS	  _IOR('B', 0x01, int)
-#define ACPIIO_BATT_GET_TYPE	  _IOR('B', 0x02, union acpi_battery_ioctl_arg)
+#define ACPI_BATTERY_ALL_UNITS  (-1)
+#define ACPI_BATT_UNKNOWN       0xffffffff /* _BST or _BIF value unknown. */
+
+/* Common battery ioctls */
+#define ACPIIO_BATT_GET_UNITS     _IOR('B', 0x01, int)
 #define ACPIIO_BATT_GET_BATTINFO _IOWR('B', 0x03, union acpi_battery_ioctl_arg)
-#define ACPIIO_BATT_GET_BATTDESC _IOWR('B', 0x04, union acpi_battery_ioctl_arg)
+#define ACPIIO_BATT_GET_BIF      _IOWR('B', 0x10, union acpi_battery_ioctl_arg)
+#define ACPIIO_BATT_GET_BST      _IOWR('B', 0x11, union acpi_battery_ioctl_arg)
 
-/* Cotrol Method battery ioctl */
-#define ACPIIO_CMBAT_GET_BIF	 _IOWR('B', 0x10, union acpi_battery_ioctl_arg)
-#define ACPIIO_CMBAT_GET_BST	 _IOWR('B', 0x11, union acpi_battery_ioctl_arg)
+/* Control Method battery ioctls (deprecated) */
+#define ACPIIO_CMBAT_GET_BIF     ACPIIO_BATT_GET_BIF
+#define ACPIIO_CMBAT_GET_BST     ACPIIO_BATT_GET_BST
 
+/* Get AC adapter status. */
 #define ACPIIO_ACAD_GET_STATUS	  _IOR('A', 1, int)
 
 #ifdef _KERNEL

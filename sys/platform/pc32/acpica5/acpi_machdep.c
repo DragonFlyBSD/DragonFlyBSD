@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_machdep.c,v 1.20 2004/05/05 19:51:15 njl Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/acpi_machdep.c,v 1.13 2007/01/17 17:31:19 y0netan1 Exp $
+ * $DragonFly: src/sys/platform/pc32/acpica5/acpi_machdep.c,v 1.14 2008/09/29 06:59:45 hasso Exp $
  */
 
 #include <sys/param.h>
@@ -143,7 +143,7 @@ acpi_capm_get_info(apm_info_t aip)
 	else
 		aip->ai_acline = acline;	/* on/off */
 
-	if (acpi_battery_get_battinfo(-1, &batt)) {
+	if (acpi_battery_get_battinfo(NULL, &batt)) {
 		aip->ai_batt_stat = 0xff;	/* unknown */
 		aip->ai_batt_life = 0xff;	/* unknown */
 		aip->ai_batt_time = -1;		/* unknown */
@@ -161,8 +161,8 @@ acpi_capm_get_info(apm_info_t aip)
 static int
 acpi_capm_get_pwstatus(apm_pwstatus_t app)
 {
-	int	batt_unit;
-	int	acline;
+	device_t dev;
+	int	acline, unit, error;
 	struct	acpi_battinfo batt;
 
 	if (app->ap_device != PMDV_ALLDEV &&
@@ -170,11 +170,16 @@ acpi_capm_get_pwstatus(apm_pwstatus_t app)
 		return (1);
 
 	if (app->ap_device == PMDV_ALLDEV)
-		batt_unit = -1;			/* all units */
-	else
-		batt_unit = app->ap_device - PMDV_BATT0;
-
-	if (acpi_battery_get_battinfo(batt_unit, &batt))
+		error = acpi_battery_get_battinfo(NULL, &batt);
+	else {
+		unit = app->ap_device - PMDV_BATT0;
+		dev = devclass_get_device(devclass_find("battery"), unit);
+		if (dev != NULL)
+			error = acpi_battery_get_battinfo(dev, &batt);
+		else
+			error = ENXIO;
+	}
+	if (error)
 		return (1);
 
 	app->ap_batt_stat = acpi_capm_convert_battstate(&batt);

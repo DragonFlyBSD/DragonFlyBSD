@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpivar.h,v 1.71 2004/06/13 22:52:30 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.15 2008/09/05 10:28:35 hasso Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.16 2008/09/29 06:59:45 hasso Exp $
  */
 
 #include "acpi_if.h"
@@ -344,15 +344,15 @@ int		acpi_sleep_machdep(struct acpi_softc *sc, int state);
 
 /* Battery Abstraction. */
 struct acpi_battinfo;
-struct acpi_battdesc;
 
-int		acpi_battery_register(int, int);
-int		acpi_battery_get_battinfo(int, struct acpi_battinfo *);
+int		acpi_battery_register(device_t dev);
+int		acpi_battery_remove(device_t dev);
 int		acpi_battery_get_units(void);
 int		acpi_battery_get_info_expire(void);
-int		acpi_battery_get_battdesc(int, struct acpi_battdesc *);
-
-int		acpi_cmbat_get_battinfo(int, struct acpi_battinfo *);
+int		acpi_battery_bst_valid(struct acpi_bst *bst);
+int		acpi_battery_bif_valid(struct acpi_bif *bif);
+int		acpi_battery_get_battinfo(device_t dev,
+		    struct acpi_battinfo *info);
 
 /* Embedded controller. */
 void		acpi_ec_ecdt_probe(device_t);

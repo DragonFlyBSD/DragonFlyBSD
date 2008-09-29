@@ -1,4 +1,5 @@
 /*-
+ * Copyright (c) 2005 Nate Lawson
  * Copyright (c) 2000 Munehiro Matsuda
  * Copyright (c) 2000 Takanori Watanabe
  * Copyright (c) 2000 Mitsuru IWASAKI <iwasaki@FreeBSD.org>
@@ -25,8 +26,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_cmbat.c,v 1.30 2004/06/13 22:52:30 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cmbat.c,v 1.11 2007/10/23 03:04:48 y0netan1 Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_cmbat.c,v 1.46 2007/03/22 18:16:40 jkim Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_cmbat.c,v 1.12 2008/09/29 06:59:45 hasso Exp $
  */
 
 #include "opt_acpi.h"
@@ -37,6 +38,7 @@
 #include <sys/ioccom.h>
 #include <sys/rman.h>
 #include <sys/malloc.h>
+#include <sys/thread2.h>
 
 #include "acpi.h"
 #include <dev/acpica5/acpivar.h>
@@ -48,62 +50,55 @@ MALLOC_DEFINE(M_ACPICMBAT, "acpicmbat", "ACPI control method battery data");
 #define ACPI_CMBAT_RETRY_MAX	6
 
 /* Check the battery once a minute. */
-#define	CMBAT_POLLRATE	(60 * hz)
+#define	CMBAT_POLLRATE		(60 * hz)
 
 /* Hooks for the ACPI CA debugging infrastructure */
 #define	_COMPONENT	ACPI_BATTERY
 ACPI_MODULE_NAME("BATTERY")
 
-#define	ACPI_BATTERY_BST_CHANGE 0x80
-#define	ACPI_BATTERY_BIF_CHANGE 0x81
+#define	ACPI_BATTERY_BST_CHANGE	0x80
+#define	ACPI_BATTERY_BIF_CHANGE	0x81
 
 struct acpi_cmbat_softc {
     device_t	    dev;
+    int		    flags;
 
     struct acpi_bif bif;
     struct acpi_bst bst;
-    struct timespec bif_lastupdated;
     struct timespec bst_lastupdated;
-    int		    bif_updating;
-    int		    bst_updating;
-
-    int		    present;
-    int		    cap;
-    int		    min;
-    int		    full_charge_time;
-    int		    initializing;
 };
 
-static struct timespec	acpi_cmbat_info_lastupdated;
-
-/* XXX: devclass_get_maxunit() don't give us the current allocated units. */
-static int		acpi_cmbat_units = 0;
-
-static int		acpi_cmbat_info_expired(struct timespec *);
-static void		acpi_cmbat_info_updated(struct timespec *);
-static void		acpi_cmbat_get_bst(void *);
-static void		acpi_cmbat_get_bif(void *);
-static void		acpi_cmbat_notify_handler(ACPI_HANDLE, UINT32, void *);
-static int		acpi_cmbat_probe(device_t);
-static int		acpi_cmbat_attach(device_t);
-static int		acpi_cmbat_resume(device_t);
-static int		acpi_cmbat_ioctl(u_long, caddr_t, void *);
-static int		acpi_cmbat_is_bst_valid(struct acpi_bst*);
-static int		acpi_cmbat_is_bif_valid(struct acpi_bif*);
-static int		acpi_cmbat_get_total_battinfo(struct acpi_battinfo *);
-static void		acpi_cmbat_init_battery(void *);
+static int		acpi_cmbat_probe(device_t dev);
+static int		acpi_cmbat_attach(device_t dev);
+static int		acpi_cmbat_detach(device_t dev);
+static int		acpi_cmbat_resume(device_t dev);
+static void		acpi_cmbat_notify_handler(ACPI_HANDLE h, UINT32 notify,
+			    void *context);
+static int		acpi_cmbat_info_expired(struct timespec *lastupdated);
+static void		acpi_cmbat_info_updated(struct timespec *lastupdated);
+static void		acpi_cmbat_get_bst(void *arg);
+static void		acpi_cmbat_get_bif_task(void *arg);
+static void		acpi_cmbat_get_bif(void *arg);
+static int		acpi_cmbat_bst(device_t dev, struct acpi_bst *bstp);
+static int		acpi_cmbat_bif(device_t dev, struct acpi_bif *bifp);
+static void		acpi_cmbat_init_battery(void *arg);
 
 static device_method_t acpi_cmbat_methods[] = {
     /* Device interface */
     DEVMETHOD(device_probe,	acpi_cmbat_probe),
     DEVMETHOD(device_attach,	acpi_cmbat_attach),
+    DEVMETHOD(device_detach,	acpi_cmbat_detach),
     DEVMETHOD(device_resume,	acpi_cmbat_resume),
+
+    /* ACPI battery interface */
+    DEVMETHOD(acpi_batt_get_info, acpi_cmbat_bif),
+    DEVMETHOD(acpi_batt_get_status, acpi_cmbat_bst),
 
     {0, 0}
 };
 
 static driver_t acpi_cmbat_driver = {
-    "acpi_cmbat",
+    "battery",
     acpi_cmbat_methods,
     sizeof(struct acpi_cmbat_softc),
 };
@@ -113,21 +108,114 @@ DRIVER_MODULE(acpi_cmbat, acpi, acpi_cmbat_driver, acpi_cmbat_devclass, 0, 0);
 MODULE_DEPEND(acpi_cmbat, acpi, 1, 1, 1);
 
 static int
+acpi_cmbat_probe(device_t dev)
+{
+    static char *cmbat_ids[] = { "PNP0C0A", NULL };
+
+    if (acpi_disabled("cmbat") ||
+	ACPI_ID_PROBE(device_get_parent(dev), dev, cmbat_ids) == NULL)
+	return (ENXIO);
+
+    device_set_desc(dev, "ACPI Control Method Battery");
+    return (0);
+}
+
+static int
+acpi_cmbat_attach(device_t dev)
+{
+    int		error;
+    ACPI_HANDLE	handle;
+    struct acpi_cmbat_softc *sc;
+
+    sc = device_get_softc(dev);
+    handle = acpi_get_handle(dev);
+    sc->dev = dev;
+
+    timespecclear(&sc->bst_lastupdated);
+
+    error = acpi_battery_register(dev);
+    if (error != 0) {
+    	device_printf(dev, "registering battery failed\n");
+	return (error);
+    }
+
+    /*
+     * Install a system notify handler in addition to the device notify.
+     * Toshiba notebook uses this alternate notify for its battery.
+     */
+    AcpiInstallNotifyHandler(handle, ACPI_ALL_NOTIFY,
+	acpi_cmbat_notify_handler, dev);
+
+    AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_cmbat_init_battery, dev);
+
+    return (0);
+}
+
+static int
+acpi_cmbat_detach(device_t dev)
+{
+    ACPI_HANDLE	handle;
+
+    handle = acpi_get_handle(dev);
+    AcpiRemoveNotifyHandler(handle, ACPI_ALL_NOTIFY, acpi_cmbat_notify_handler);
+    acpi_battery_remove(dev);
+    return (0);
+}
+
+static int
+acpi_cmbat_resume(device_t dev)
+{
+
+    AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_cmbat_init_battery, dev);
+    return (0);
+}
+
+static void
+acpi_cmbat_notify_handler(ACPI_HANDLE h, UINT32 notify, void *context)
+{
+    struct acpi_cmbat_softc *sc;
+    device_t dev;
+
+    dev = (device_t)context;
+    sc = device_get_softc(dev);
+
+    switch (notify) {
+    case ACPI_NOTIFY_DEVICE_CHECK:
+    case ACPI_BATTERY_BST_CHANGE:
+	/*
+	 * Clear the last updated time.  The next call to retrieve the
+	 * battery status will get the new value for us.
+	 */
+	timespecclear(&sc->bst_lastupdated);
+	break;
+    case ACPI_NOTIFY_BUS_CHECK:
+    case ACPI_BATTERY_BIF_CHANGE:
+	/*
+	 * Queue a callback to get the current battery info from thread
+	 * context.  It's not safe to block in a notify handler.
+	 */
+	AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_cmbat_get_bif_task, dev);
+	break;
+    }
+
+    acpi_UserNotify("CMBAT", h, notify);
+}
+
+static int
 acpi_cmbat_info_expired(struct timespec *lastupdated)
 {
     struct timespec	curtime;
 
     if (lastupdated == NULL)
-	return (1);
+	return (TRUE);
     if (!timespecisset(lastupdated))
-	return (1);
+	return (TRUE);
 
     getnanotime(&curtime);
     timespecsub(&curtime, lastupdated);
     return (curtime.tv_sec < 0 ||
 	    curtime.tv_sec > acpi_battery_get_info_expire());
 }
-
 
 static void
 acpi_cmbat_info_updated(struct timespec *lastupdated)
@@ -137,27 +225,24 @@ acpi_cmbat_info_updated(struct timespec *lastupdated)
 }
 
 static void
-acpi_cmbat_get_bst(void *context)
+acpi_cmbat_get_bst(void *arg)
 {
-    device_t	dev;
     struct acpi_cmbat_softc *sc;
     ACPI_STATUS	as;
     ACPI_OBJECT	*res;
     ACPI_HANDLE	h;
     ACPI_BUFFER	bst_buffer;
+    device_t dev;
 
-    dev = context;
+    dev = arg;
     sc = device_get_softc(dev);
     h = acpi_get_handle(dev);
-
-    if (!acpi_cmbat_info_expired(&sc->bst_lastupdated))
-	return;
-    if (sc->bst_updating)
-	return;
-    sc->bst_updating = 1;
-
     bst_buffer.Pointer = NULL;
     bst_buffer.Length = ACPI_ALLOCATE_BUFFER;
+
+    if (!acpi_cmbat_info_expired(&sc->bst_lastupdated))
+	goto end;
+
     as = AcpiEvaluateObject(h, "_BST", NULL, &bst_buffer);
     if (ACPI_FAILURE(as)) {
 	ACPI_VPRINT(dev, acpi_device_get_parent_softc(dev),
@@ -183,34 +268,45 @@ acpi_cmbat_get_bst(void *context)
 	goto end;
     acpi_cmbat_info_updated(&sc->bst_lastupdated);
 
+    /* XXX If all batteries are critical, perhaps we should suspend. */
+    if (sc->bst.state & ACPI_BATT_STAT_CRITICAL) {
+    	if ((sc->flags & ACPI_BATT_STAT_CRITICAL) == 0) {
+	    sc->flags |= ACPI_BATT_STAT_CRITICAL;
+	    device_printf(dev, "critically low charge!\n");
+	}
+    } else
+	sc->flags &= ~ACPI_BATT_STAT_CRITICAL;
+
 end:
     if (bst_buffer.Pointer != NULL)
 	AcpiOsFree(bst_buffer.Pointer);
-    sc->bst_updating = 0;
+}
+
+/* XXX There should be a cleaner way to do this locking. */
+static void
+acpi_cmbat_get_bif_task(void *arg)
+{
+    crit_enter();
+    acpi_cmbat_get_bif(arg);
+    crit_exit();
 }
 
 static void
-acpi_cmbat_get_bif(void *context)
+acpi_cmbat_get_bif(void *arg)
 {
-    device_t	dev;
     struct acpi_cmbat_softc *sc;
     ACPI_STATUS	as;
     ACPI_OBJECT	*res;
     ACPI_HANDLE	h;
     ACPI_BUFFER	bif_buffer;
+    device_t dev;
 
-    dev = context;
+    dev = arg;
     sc = device_get_softc(dev);
     h = acpi_get_handle(dev);
-
-    if (!acpi_cmbat_info_expired(&sc->bif_lastupdated))
-	return;
-    if (sc->bif_updating)
-	return;
-    sc->bif_updating = 1;
-
     bif_buffer.Pointer = NULL;
     bif_buffer.Length = ACPI_ALLOCATE_BUFFER;
+
     as = AcpiEvaluateObject(h, "_BIF", NULL, &bif_buffer);
     if (ACPI_FAILURE(as)) {
 	ACPI_VPRINT(dev, acpi_device_get_parent_softc(dev),
@@ -226,23 +322,23 @@ acpi_cmbat_get_bif(void *context)
 	goto end;
     }
 
-    if (acpi_PkgInt32(res,  0, &sc->bif.units) != 0)
+    if (acpi_PkgInt32(res, 0, &sc->bif.units) != 0)
 	goto end;
-    if (acpi_PkgInt32(res,  1, &sc->bif.dcap) != 0)
+    if (acpi_PkgInt32(res, 1, &sc->bif.dcap) != 0)
 	goto end;
-    if (acpi_PkgInt32(res,  2, &sc->bif.lfcap) != 0)
+    if (acpi_PkgInt32(res, 2, &sc->bif.lfcap) != 0)
 	goto end;
-    if (acpi_PkgInt32(res,  3, &sc->bif.btech) != 0)
+    if (acpi_PkgInt32(res, 3, &sc->bif.btech) != 0)
 	goto end;
-    if (acpi_PkgInt32(res,  4, &sc->bif.dvol) != 0)
+    if (acpi_PkgInt32(res, 4, &sc->bif.dvol) != 0)
 	goto end;
-    if (acpi_PkgInt32(res,  5, &sc->bif.wcap) != 0)
+    if (acpi_PkgInt32(res, 5, &sc->bif.wcap) != 0)
 	goto end;
-    if (acpi_PkgInt32(res,  6, &sc->bif.lcap) != 0)
+    if (acpi_PkgInt32(res, 6, &sc->bif.lcap) != 0)
 	goto end;
-    if (acpi_PkgInt32(res,  7, &sc->bif.gra1) != 0)
+    if (acpi_PkgInt32(res, 7, &sc->bif.gra1) != 0)
 	goto end;
-    if (acpi_PkgInt32(res,  8, &sc->bif.gra2) != 0)
+    if (acpi_PkgInt32(res, 8, &sc->bif.gra2) != 0)
 	goto end;
     if (acpi_PkgStr(res,  9, sc->bif.model, ACPI_CMBAT_MAXSTRLEN) != 0)
 	goto end;
@@ -252,354 +348,110 @@ acpi_cmbat_get_bif(void *context)
 	goto end;
     if (acpi_PkgStr(res, 12, sc->bif.oeminfo, ACPI_CMBAT_MAXSTRLEN) != 0)
 	goto end;
-    acpi_cmbat_info_updated(&sc->bif_lastupdated);
 
 end:
     if (bif_buffer.Pointer != NULL)
 	AcpiOsFree(bif_buffer.Pointer);
-    sc->bif_updating = 0;
-}
-
-static void
-acpi_cmbat_notify_handler(ACPI_HANDLE h, UINT32 notify, void *context)
-{
-    device_t dev;
-    struct acpi_cmbat_softc	*sc;
-
-    dev = (device_t)context;
-    if ((sc = device_get_softc(dev)) == NULL)
-	return;
-
-    acpi_UserNotify("CMBAT", h, notify);
-
-    switch (notify) {
-    case ACPI_NOTIFY_DEVICE_CHECK:
-    case ACPI_BATTERY_BST_CHANGE:
-	timespecclear(&sc->bst_lastupdated);
-	break;
-    case ACPI_NOTIFY_BUS_CHECK:
-    case ACPI_BATTERY_BIF_CHANGE:
-	timespecclear(&sc->bif_lastupdated);
-	AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_cmbat_get_bif, dev);
-	break;
-    default:
-	break;
-    }
 }
 
 static int
-acpi_cmbat_probe(device_t dev)
+acpi_cmbat_bif(device_t dev, struct acpi_bif *bifp)
 {
-    if (acpi_get_type(dev) == ACPI_TYPE_DEVICE && !acpi_disabled("cmbat")
-	&& acpi_MatchHid(acpi_get_handle(dev), "PNP0C0A")) {
-
-	device_set_desc(dev, "Control Method Battery");
-	return (0);
-    }
-    return (ENXIO);
-}
-
-static int
-acpi_cmbat_attach(device_t dev)
-{
-    int		error;
-    ACPI_HANDLE	handle;
     struct acpi_cmbat_softc *sc;
 
-    if ((sc = device_get_softc(dev)) == NULL)
-	return (ENXIO);
-
-    handle = acpi_get_handle(dev);
-
-    /*
-     * Install a system notify handler in addition to the device notify.
-     * Toshiba notebook uses this alternate notify for its battery.
-     */
-    AcpiInstallNotifyHandler(handle, ACPI_SYSTEM_NOTIFY,
-			     acpi_cmbat_notify_handler, dev);
-    AcpiInstallNotifyHandler(handle, ACPI_DEVICE_NOTIFY,
-			     acpi_cmbat_notify_handler, dev);
-
-    sc->bif_updating = sc->bst_updating = 0;
-    sc->dev = dev;
-
-    timespecclear(&sc->bif_lastupdated);
-    timespecclear(&sc->bst_lastupdated);
-
-    if (acpi_cmbat_units == 0) {
-	error = acpi_register_ioctl(ACPIIO_CMBAT_GET_BIF,
-				    acpi_cmbat_ioctl, NULL);
-	if (error != 0)
-	    return (error);
-	error = acpi_register_ioctl(ACPIIO_CMBAT_GET_BST,
-				    acpi_cmbat_ioctl, NULL);
-	if (error != 0)
-		return (error);
-    }
-
-    error = acpi_battery_register(ACPI_BATT_TYPE_CMBAT, acpi_cmbat_units);
-    if (error != 0)
-	return (error);
-
-    acpi_cmbat_units++;
-    timespecclear(&acpi_cmbat_info_lastupdated);
-    sc->initializing = 0;
-    AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_cmbat_init_battery, dev);
-
-    return (0);
-}
-
-static int
-acpi_cmbat_resume(device_t dev)
-{
-    AcpiOsExecute(OSL_NOTIFY_HANDLER, acpi_cmbat_init_battery, dev);
-    return (0);
-}
-
-static int
-acpi_cmbat_ioctl(u_long cmd, caddr_t addr, void *arg)
-{
-    device_t	dev;
-    union acpi_battery_ioctl_arg *ioctl_arg;
-    struct acpi_cmbat_softc *sc;
-    struct acpi_bif	*bifp;
-    struct acpi_bst	*bstp;
-
-    ioctl_arg = (union acpi_battery_ioctl_arg *)addr;
-    dev = devclass_get_device(acpi_cmbat_devclass, ioctl_arg->unit);
-    if (dev == NULL)
-	return (ENXIO);
     sc = device_get_softc(dev);
-    if (sc == NULL)
-	return (ENXIO);
 
     /*
-     * No security check required: information retrieval only.  If
-     * new functions are added here, a check might be required.
+     * Just copy the data.  The only value that should change is the
+     * last-full capacity, so we only update when we get a notify that says
+     * the info has changed.  Many systems apparently take a long time to
+     * process a _BIF call so we avoid it if possible.
      */
-    switch (cmd) {
-    case ACPIIO_CMBAT_GET_BIF:
-	acpi_cmbat_get_bif(dev);
-	bifp = &ioctl_arg->bif;
-	bifp->units = sc->bif.units;
-	bifp->dcap = sc->bif.dcap;
-	bifp->lfcap = sc->bif.lfcap;
-	bifp->btech = sc->bif.btech;
-	bifp->dvol = sc->bif.dvol;
-	bifp->wcap = sc->bif.wcap;
-	bifp->lcap = sc->bif.lcap;
-	bifp->gra1 = sc->bif.gra1;
-	bifp->gra2 = sc->bif.gra2;
-	strncpy(bifp->model, sc->bif.model, sizeof(sc->bif.model));
-	strncpy(bifp->serial, sc->bif.serial, sizeof(sc->bif.serial));
-	strncpy(bifp->type, sc->bif.type, sizeof(sc->bif.type));
-	strncpy(bifp->oeminfo, sc->bif.oeminfo, sizeof(sc->bif.oeminfo));
-	break;
-    case ACPIIO_CMBAT_GET_BST:
-	bstp = &ioctl_arg->bst;
-	if (acpi_BatteryIsPresent(dev)) {
-	    acpi_cmbat_get_bst(dev);
-	    bstp->state = sc->bst.state;
-	    bstp->rate = sc->bst.rate;
-	    bstp->cap = sc->bst.cap;
-	    bstp->volt = sc->bst.volt;
-	} else {
-	    bstp->state = ACPI_BATT_STAT_NOT_PRESENT;
-	}
-	break;
-    default:
-	break;
-    }
+    crit_enter();
+    bifp->units = sc->bif.units;
+    bifp->dcap = sc->bif.dcap;
+    bifp->lfcap = sc->bif.lfcap;
+    bifp->btech = sc->bif.btech;
+    bifp->dvol = sc->bif.dvol;
+    bifp->wcap = sc->bif.wcap;
+    bifp->lcap = sc->bif.lcap;
+    bifp->gra1 = sc->bif.gra1;
+    bifp->gra2 = sc->bif.gra2;
+    strncpy(bifp->model, sc->bif.model, sizeof(sc->bif.model));
+    strncpy(bifp->serial, sc->bif.serial, sizeof(sc->bif.serial));
+    strncpy(bifp->type, sc->bif.type, sizeof(sc->bif.type));
+    strncpy(bifp->oeminfo, sc->bif.oeminfo, sizeof(sc->bif.oeminfo));
+    crit_exit();
 
     return (0);
 }
 
 static int
-acpi_cmbat_is_bst_valid(struct acpi_bst *bst)
+acpi_cmbat_bst(device_t dev, struct acpi_bst *bstp)
 {
-    if (bst->state >= ACPI_BATT_STAT_MAX || bst->cap == 0xffffffff ||
-	bst->volt == 0xffffffff)
-
-	return (0);
-    else
-	return (1);
-}
-
-static int
-acpi_cmbat_is_bif_valid(struct acpi_bif *bif)
-{
-    if (bif->lfcap == 0)
-	return (0);
-    else
-	return (1);
-}
-
-static int
-acpi_cmbat_get_total_battinfo(struct acpi_battinfo *battinfo)
-{
-    int		i;
-    int		error;
-    int		batt_stat;
-    int		valid_rate, valid_units;
-    int		cap, min;
-    int		total_cap, total_min, total_full;
-    device_t	dev;
     struct acpi_cmbat_softc *sc;
-    static int	bat_units = 0;
-    static struct acpi_cmbat_softc **bat = NULL;
 
-    cap = min = -1;
-    batt_stat = ACPI_BATT_STAT_NOT_PRESENT;
-    error = 0;
+    sc = device_get_softc(dev);
 
-    /* Allocate array of softc pointers */
-    if (bat_units != acpi_cmbat_units) {
-	if (bat != NULL) {
-	    kfree(bat, M_ACPICMBAT);
-	    bat = NULL;
-	}
-	bat_units = 0;
-    }
-    if (bat == NULL) {
-	bat_units = acpi_cmbat_units;
-	bat = kmalloc(sizeof(struct acpi_cmbat_softc *) * bat_units,
-		     M_ACPICMBAT, M_INTWAIT);
+    crit_enter();
+    if (acpi_BatteryIsPresent(dev)) {
+	acpi_cmbat_get_bst(dev);
+	bstp->state = sc->bst.state;
+	bstp->rate = sc->bst.rate;
+	bstp->cap = sc->bst.cap;
+	bstp->volt = sc->bst.volt;
+    } else
+	bstp->state = ACPI_BATT_STAT_NOT_PRESENT;
+    crit_exit();
 
-	/* Collect softc pointers */
-	for (i = 0; i < acpi_cmbat_units; i++) {
-	    if ((dev = devclass_get_device(acpi_cmbat_devclass, i)) == NULL) {
-		error = ENXIO;
-		goto out;
-	    }
-	    if ((sc = device_get_softc(dev)) == NULL) {
-		error = ENXIO;
-		goto out;
-	    }
-	    bat[i] = sc;
-	}
-    }
-
-    /* Get battery status, valid rate and valid units */
-    batt_stat = valid_rate = valid_units = 0;
-    for (i = 0; i < acpi_cmbat_units; i++) {
-	bat[i]->present = acpi_BatteryIsPresent(bat[i]->dev);
-	if (!bat[i]->present)
-	    continue;
-
-	acpi_cmbat_get_bst(bat[i]->dev);
-
-	/* If battery not installed, we get strange values */
-	if (!acpi_cmbat_is_bst_valid(&(bat[i]->bst)) ||
-	    !acpi_cmbat_is_bif_valid(&(bat[i]->bif))) {
-
-	    bat[i]->present = 0;
-	    continue;
-	}
-
-	valid_units++;
-	bat[i]->cap = 100 * bat[i]->bst.cap / bat[i]->bif.lfcap;
-	batt_stat |= bat[i]->bst.state;
-
-	if (bat[i]->bst.rate > 0) {
-	    /*
-	     * XXX Hack to calculate total battery time.
-	     * Systems with 2 or more battries, they may get used
-	     * one by one, thus bst.rate is set only to the one
-	     * in use. For remaining batteries bst.rate = 0, which
-	     * makes it impossible to calculate remaining time.
-	     * Some other systems may need sum of bst.rate in
-	     * dis-charging state.
-	     * There for we sum up the bst.rate that is valid
-	     * (in dis-charging state), and use the sum to
-	     * calcutate remaining batteries' time.
-	     */
-	    if (bat[i]->bst.state & ACPI_BATT_STAT_DISCHARG)
-		valid_rate += bat[i]->bst.rate;
-	}
-    }
-
-    /* Calculate total battery capacity and time */
-    total_cap = total_min = total_full = 0;
-    for (i = 0; i < acpi_cmbat_units; i++) {
-	if (!bat[i]->present)
-	    continue;
-
-	if (valid_rate > 0) {
-	    /* Use the sum of bst.rate */
-	    bat[i]->min = 60 * bat[i]->bst.cap / valid_rate;
-	} else if (bat[i]->full_charge_time > 0) {
-	    bat[i]->min = (bat[i]->full_charge_time * bat[i]->cap) / 100;
-	} else {
-	    /* Couldn't find valid rate and full battery time */
-	    bat[i]->min = 0;
-	}
-	total_min += bat[i]->min;
-	total_cap += bat[i]->cap;
-	total_full += bat[i]->full_charge_time;
-    }
-
-    /* Battery life */
-    if (valid_units == 0) {
-	cap = -1;
-	batt_stat = ACPI_BATT_STAT_NOT_PRESENT;
-    } else {
-	cap = total_cap / valid_units;
-    }
-
-    /* Battery time */
-    if (valid_units == 0) {
-	min = -1;
-    } else if (valid_rate == 0 || (batt_stat & ACPI_BATT_STAT_CHARGING)) {
-	if (total_full == 0)
-	    min = -1;
-	else
-	    min = (total_full * cap) / 100;
-    } else {
-	min = total_min;
-    }
-    acpi_cmbat_info_updated(&acpi_cmbat_info_lastupdated);
-
-out:
-    battinfo->cap = cap;
-    battinfo->min = min;
-    battinfo->state = batt_stat;
-
-    return (error);
+    return (0);
 }
 
 static void
 acpi_cmbat_init_battery(void *arg)
 {
-    int		retry;
-    device_t	dev = (device_t)arg;
-    struct acpi_cmbat_softc *sc = device_get_softc(dev);
+    struct acpi_cmbat_softc *sc;
+    int		retry, valid;
+    device_t	dev;
 
-    if (sc->initializing)
-	return;
-
-    sc->initializing = 1;
+    dev = (device_t)arg;
+    sc = device_get_softc(dev);
     ACPI_VPRINT(dev, acpi_device_get_parent_softc(dev),
 		"battery initialization start\n");
 
-    for (retry = 0; retry < ACPI_CMBAT_RETRY_MAX; retry++, AcpiOsSleep(10)) {
-	sc->present = acpi_BatteryIsPresent(dev);
-	if (!sc->present)
+    /*
+     * Try repeatedly to get valid data from the battery.  Since the
+     * embedded controller isn't always ready just after boot, we may have
+     * to wait a while.
+     */
+    for (retry = 0; retry < ACPI_CMBAT_RETRY_MAX; retry++, AcpiOsSleep(10000)) {
+	/* batteries on DOCK can be ejected w/ DOCK during retrying */
+	if (!device_is_attached(dev))
+	    return;
+
+	if (!acpi_BatteryIsPresent(dev))
 	    continue;
 
-	timespecclear(&sc->bst_lastupdated);
-	timespecclear(&sc->bif_lastupdated);
+	/*
+	 * Only query the battery if this is the first try or the specific
+	 * type of info is still invalid.
+	 */
+	crit_enter();
+	if (retry == 0 || !acpi_battery_bst_valid(&sc->bst)) {
+	    timespecclear(&sc->bst_lastupdated);
+	    acpi_cmbat_get_bst(dev);
+	}
+	if (retry == 0 || !acpi_battery_bif_valid(&sc->bif))
+	    acpi_cmbat_get_bif(dev);
 
-	acpi_cmbat_get_bst(dev);
-	if (!acpi_cmbat_is_bst_valid(&sc->bst))
-	    continue;
+	valid = acpi_battery_bst_valid(&sc->bst) &&
+	    acpi_battery_bif_valid(&sc->bif);
+	crit_exit();
 
-	acpi_cmbat_get_bif(dev);
-	if (!acpi_cmbat_is_bif_valid(&sc->bif))
-	    continue;
-	break;
+	if (valid)
+	    break;
     }
 
-    sc->initializing = 0;
     if (retry == ACPI_CMBAT_RETRY_MAX) {
 	ACPI_VPRINT(dev, acpi_device_get_parent_softc(dev),
 		    "battery initialization failed, giving up\n");
@@ -607,52 +459,4 @@ acpi_cmbat_init_battery(void *arg)
 	ACPI_VPRINT(dev, acpi_device_get_parent_softc(dev),
 		    "battery initialization done, tried %d times\n", retry + 1);
     }
-}
-
-/*
- * Public interfaces.
- */
-int
-acpi_cmbat_get_battinfo(int unit, struct acpi_battinfo *battinfo)
-{
-    int		error;
-    device_t	dev;
-    struct acpi_cmbat_softc *sc;
-
-    if (unit == -1)
-	return (acpi_cmbat_get_total_battinfo(battinfo));
-
-    if (acpi_cmbat_info_expired(&acpi_cmbat_info_lastupdated)) {
-	error = acpi_cmbat_get_total_battinfo(battinfo);
-	if (error)
-	    goto out;
-    }
-
-    error = 0;
-    if (unit >= acpi_cmbat_units) {
-	error = ENXIO;
-	goto out;
-    }
-
-    if ((dev = devclass_get_device(acpi_cmbat_devclass, unit)) == NULL) {
-	error = ENXIO;
-	goto out;
-    }
-    if ((sc = device_get_softc(dev)) == NULL) {
-	error = ENXIO;
-	goto out;
-    }
-
-    if (!sc->present) {
-	battinfo->cap = -1;
-	battinfo->min = -1;
-	battinfo->state = ACPI_BATT_STAT_NOT_PRESENT;
-    } else {
-	battinfo->cap = sc->cap;
-	battinfo->min = sc->min;
-	battinfo->state = sc->bst.state;
-    }
-
-out:
-    return (error);
 }

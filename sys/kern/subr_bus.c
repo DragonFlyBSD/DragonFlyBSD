@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.43 2008/09/05 10:28:35 hasso Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.44 2008/09/29 06:59:45 hasso Exp $
  */
 
 #include "opt_bus.h"
@@ -396,6 +396,23 @@ devclass_get_drivers(devclass_t dc, driver_t ***listp, int *countp)
         *countp = count;
 
         return (0);
+}
+
+/**
+ * @brief Get the number of devices in a devclass
+ *
+ * @param dc		the devclass to examine
+ */
+int
+devclass_get_count(devclass_t dc)
+{
+	int count, i;
+
+	count = 0;
+	for (i = 0; i < dc->maxunit; i++)
+		if (dc->devices[i])
+			count++;
+	return (count);
 }
 
 int

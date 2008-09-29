@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.5 2004/03/17 17:54:25 njl Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.28 2008/09/05 10:28:35 hasso Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.29 2008/09/29 06:59:45 hasso Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -353,6 +353,7 @@ device_t	devclass_get_device(devclass_t dc, int unit);
 void	*devclass_get_softc(devclass_t dc, int unit);
 int	devclass_get_devices(devclass_t dc, device_t **listp, int *countp);
 int	devclass_get_drivers(devclass_t dc, driver_t ***listp, int *countp);
+int	devclass_get_count(devclass_t dc);
 int	devclass_get_maxunit(devclass_t dc);
 void	devclass_set_parent(devclass_t dc, devclass_t pdc);
 devclass_t	devclass_get_parent(devclass_t dc);
