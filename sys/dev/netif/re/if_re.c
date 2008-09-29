@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.50 2008/09/17 08:51:29 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.51 2008/09/29 20:27:38 dillon Exp $
  */
 
 /*
@@ -165,6 +165,8 @@ static const struct re_type re_devs[] = {
 		"RealTek 8139C+ 10/100BaseTX" },
 	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8101E, RE_HWREV_8101E,
 		"RealTek 8101E PCIe 10/100baseTX" },
+	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8101E, RE_HWREV_8102EL,
+		"RealTek 8102EL PCIe 10/100baseTX" },
 	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8168, RE_HWREV_8168_SPIN1,
 		"RealTek 8168/8111B PCIe Gigabit Ethernet" },
 	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8168, RE_HWREV_8168_SPIN2,
@@ -207,6 +209,7 @@ static const struct re_hwrev re_hwrevs[] = {
 	{ RE_HWREV_8169_8110SC,	RE_8169,	0,		"8169SC" },
 	{ RE_HWREV_8100E,	RE_8169,	RE_F_HASMPC,	"8100E" },
 	{ RE_HWREV_8101E,	RE_8169,	RE_F_PCIE,	"8101E" },
+	{ RE_HWREV_8102EL,      RE_8169,        RE_F_PCIE,      "8102EL" },
 	{ 0, 0, 0, NULL }
 };
 
@@ -1226,8 +1229,20 @@ re_attach(device_t dev)
 	ifp->if_ioctl = re_ioctl;
 	ifp->if_start = re_start;
 	ifp->if_capabilities = IFCAP_VLAN_MTU | IFCAP_VLAN_HWTAGGING;
-	if (hwrev != RE_HWREV_8168C)	/* XXX does not work yet */
+
+	switch (hwrev) {
+	case RE_HWREV_8168C:
+	case RE_HWREV_8102EL:
+		/*
+		 * XXX Hardware checksum does not work yet on 8168C
+		 * and 8102EL. Disble it.
+		 */
+		ifp->if_capabilities &= ~IFCAP_HWCSUM;
+		break;
+	default:
 		ifp->if_capabilities |= IFCAP_HWCSUM;
+		break;
+	}
 #ifdef DEVICE_POLLING
 	ifp->if_poll = re_poll;
 #endif
