@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - Release 2.2.x Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/release2_2.shtml,v 1.2 2008/09/17 07:18:47 matthias Exp $ -->
+<!-- $DragonFly: site/data/community/release2_2.shtml,v 1.3 2008/09/30 13:36:46 matthias Exp $ -->
 
 <h1>Obtaining DragonFly 2.2.x for your system</h1>
 
@@ -168,6 +168,7 @@ states than C1 in modern (multicore) CPUs.
 <ul>
     <li>Add ACPI support module for IBM/Lenovo Thinkpad laptops (from FreeBSD).
     <li>Add acpi_video(4) - a driver for ACPI video extensions (from FreeBSD).
+    <li>Update acpi_battery(4) related code to the latest one from FreeBSD HEAD.
 </ul>
 <h3>Hardware changes (Networking)</h3>
 <ul>
@@ -188,7 +189,9 @@ by Max Lindner during the Google Summer of Code 2008).
 	<li>Add support for handling <i>.forward</i> files.
 	<li>Enhance the mail send mechanism.
 	</ul>
-     <li>Add a new multi-player terminal game: hunt.
+    <li>Add a new multi-player terminal game: hunt.
+    <li>Bring in the devinfo(3) library and devinfo(8) utility from FreeBSD. The utility and
+library can be used to view the internal device hierarchy.
 </ul>
 <h3>Removals</h3>
 <ul>
@@ -200,7 +203,8 @@ the pkgsrc version manually.
 <h3>Contributed Software</h3>
 <ul>
     <li>Bring in the privilege separation ready DHCP client from OpenBSD.
-    <li>Update OpenSSL to version 0.9.8h.
+    <li>Update OpenSSH to version 5.1p1.
+    <li>Update OpenSSL to version 0.9.8i.
     <li>Sync zoneinfo database with tzdata2008f.
 </ul>
 
