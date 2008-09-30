@@ -35,7 +35,7 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.28 2008/08/03 11:00:32 sephe Exp $
+ * $DragonFly: src/sys/sys/sysctl.h,v 1.29 2008/09/30 12:20:29 hasso Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
@@ -602,6 +602,7 @@ SYSCTL_DECL(_net);
 SYSCTL_DECL(_debug);
 SYSCTL_DECL(_debug_sizeof);
 SYSCTL_DECL(_hw);
+SYSCTL_DECL(_hw_bus);
 SYSCTL_DECL(_machdep);
 SYSCTL_DECL(_user);
 SYSCTL_DECL(_compat);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus_private.h,v 1.11.2.2 2000/08/03 00:25:22 peter Exp $
- * $DragonFly: src/sys/sys/bus_private.h,v 1.9 2007/05/01 00:05:18 dillon Exp $
+ * $DragonFly: src/sys/sys/bus_private.h,v 1.10 2008/09/30 12:20:29 hasso Exp $
  */
 
 #ifndef _SYS_BUS_PRIVATE_H_
@@ -103,6 +103,7 @@ struct device {
 	 * Device hierarchy.
 	 */
 	TAILQ_ENTRY(device)	link;		/* list of devices in parent */
+	TAILQ_ENTRY(device)	devlink;	/* global device list membership */
 	device_t		parent;
 	device_list_t		children;	/* list of subordinate devices */
 
@@ -128,10 +129,6 @@ struct device {
 #define DF_ASYNCPROBE	0x0080		/* can be probed with its own thread */
 	u_char		order;		/* order from device_add_child_ordered() */
 	u_char		pad;
-#ifdef DEVICE_SYSCTLS
-	struct sysctl_oid	oid[4];
-	struct sysctl_oid_list oidlist[1];
-#endif
 	void		*ivars;
 	void		*softc;
 };

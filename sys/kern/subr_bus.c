@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.44 2008/09/29 06:59:45 hasso Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.45 2008/09/30 12:20:29 hasso Exp $
  */
 
 #include "opt_bus.h"
@@ -34,11 +34,9 @@
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
-#ifdef DEVICE_SYSCTLS
-#include <sys/sysctl.h>
-#endif
 #include <sys/kobj.h>
 #include <sys/bus_private.h>
+#include <sys/sysctl.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
@@ -46,6 +44,8 @@
 #include <machine/stdarg.h>	/* for device_printf() */
 
 #include <sys/thread2.h>
+
+SYSCTL_NODE(_hw, OID_AUTO, bus, CTLFLAG_RW, NULL, NULL);
 
 MALLOC_DEFINE(M_BUS, "bus", "Bus data structures");
 
@@ -92,10 +92,6 @@ void		print_devclass_list(void);
 #define print_devclass_list()		/* nop */
 #endif
 
-#ifdef DEVICE_SYSCTLS
-static void	device_register_oids(device_t dev);
-static void	device_unregister_oids(device_t dev);
-#endif
 static void	device_attach_async(device_t dev);
 static void	device_attach_thread(void *arg);
 static int	device_doattach(device_t dev);
@@ -103,6 +99,9 @@ static int	device_doattach(device_t dev);
 static int do_async_attach = 0;
 static int numasyncthreads;
 TUNABLE_INT("kern.do_async_attach", &do_async_attach);
+
+TAILQ_HEAD(,device)	bus_data_devices;
+static int bus_data_generation = 1;
 
 kobj_method_t null_methods[] = {
 	{ 0, 0 }
@@ -143,6 +142,9 @@ devclass_find_internal(const char *classname, const char *parentname,
 		dc->maxunit = 0;
 		TAILQ_INIT(&dc->drivers);
 		TAILQ_INSERT_TAIL(&devclasses, dc, link);
+
+		bus_data_generation_update();
+
 	}
 	if (parentname && dc && !dc->parent)
 		dc->parent = devclass_find_internal(parentname, NULL, FALSE);
@@ -217,6 +219,7 @@ devclass_add_driver(devclass_t dc, driver_t *driver)
 		}
 	}
 
+	bus_data_generation_update();
 	return(0);
 }
 
@@ -272,6 +275,7 @@ devclass_delete_driver(devclass_t busclass, driver_t *driver)
 
 	kobj_class_uninstantiate(driver);
 
+	bus_data_generation_update();
 	return(0);
 }
 
@@ -505,10 +509,6 @@ devclass_add_device(devclass_t dc, device_t dev)
 	dev->devclass = dc;
 	ksnprintf(dev->nameunit, buflen, "%s%d", dc->name, dev->unit);
 
-#ifdef DEVICE_SYSCTLS
-	device_register_oids(dev);
-#endif
-
 	return(0);
 }
 
@@ -528,10 +528,6 @@ devclass_delete_device(devclass_t dc, device_t dev)
 	dev->devclass = NULL;
 	kfree(dev->nameunit, M_BUS);
 	dev->nameunit = NULL;
-
-#ifdef DEVICE_SYSCTLS
-	device_unregister_oids(dev);
-#endif
 
 	return(0);
 }
@@ -582,6 +578,9 @@ make_device(device_t parent, const char *name, int unit)
 	dev->softc = NULL;
 
 	dev->state = DS_NOTPRESENT;
+
+	TAILQ_INSERT_TAIL(&bus_data_devices, dev, devlink);
+	bus_data_generation_update();
 
 	return(dev);
 }
@@ -637,6 +636,7 @@ device_add_child_ordered(device_t dev, int order, const char *name, int unit)
 		TAILQ_INSERT_TAIL(&dev->children, child, link);
     	}
 
+	bus_data_generation_update();
 	return(child);
 }
 
@@ -660,9 +660,11 @@ device_delete_child(device_t dev, device_t child)
 	if (child->devclass)
 		devclass_delete_device(child->devclass, child);
 	TAILQ_REMOVE(&dev->children, child, link);
+	TAILQ_REMOVE(&bus_data_devices, child, devlink);
 	device_set_desc(child, NULL);
 	kobj_delete((kobj_t)child, M_BUS);
 
+	bus_data_generation_update();
 	return(0);
 }
 
@@ -805,6 +807,8 @@ device_probe_child(device_t dev, device_t child)
 			 */
 			DEVICE_PROBE(child);
 		}
+
+		bus_data_generation_update();
 		child->state = DS_ALIVE;
 		return(0);
 	}
@@ -928,17 +932,12 @@ device_set_desc_internal(device_t dev, const char* desc, int copy)
 			strcpy(dev->desc, desc);
 			dev->flags |= DF_DESCMALLOCED;
 		}
-	} else
+	} else {
 		/* Avoid a -Wcast-qual warning */
 		dev->desc = (char *)(uintptr_t) desc;
-
-#ifdef DEVICE_SYSCTLS
-	{
-		struct sysctl_oid *oid = &dev->oid[1];
-		oid->oid_arg1 = dev->desc ? dev->desc : "";
-		oid->oid_arg2 = dev->desc ? strlen(dev->desc) : 0;
 	}
-#endif
+
+	bus_data_generation_update();
 }
 
 void
@@ -1089,6 +1088,7 @@ int
 device_set_devclass(device_t dev, const char *classname)
 {
 	devclass_t dc;
+	int error;
 
 	if (!classname) {
 		if (dev->devclass)
@@ -1105,7 +1105,10 @@ device_set_devclass(device_t dev, const char *classname)
 	if (!dc)
 		return(ENOMEM);
 
-	return(devclass_add_device(dc, dev));
+	error = devclass_add_device(dc, dev);
+
+	bus_data_generation_update();
+	return(error);
 }
 
 int
@@ -1135,8 +1138,11 @@ device_set_driver(device_t dev, driver_t *driver)
 				return(ENOMEM);
 	    		}
 		}
-	} else
+	} else {
 		kobj_init((kobj_t) dev, &null_class);
+	}
+
+	bus_data_generation_update();
 	return(0);
 }
 
@@ -1294,128 +1300,12 @@ device_set_unit(device_t dev, int unit)
 		return(err);
 	dev->unit = unit;
 	err = devclass_add_device(dc, dev);
-	return(err);
+	if (err)
+		return(err);
+
+	bus_data_generation_update();
+	return(0);
 }
-
-#ifdef DEVICE_SYSCTLS
-
-/*
- * Sysctl nodes for devices.
- */
-
-SYSCTL_NODE(_hw, OID_AUTO, devices, CTLFLAG_RW, 0, "A list of all devices");
-
-static int
-sysctl_handle_children(SYSCTL_HANDLER_ARGS)
-{
-	device_t dev = arg1;
-	device_t child;
-	int first = 1, error = 0;
-
-	TAILQ_FOREACH(child, &dev->children, link)
-		if (child->nameunit) {
-			if (!first) {
-				error = SYSCTL_OUT(req, ",", 1);
-				if (error)
-					return error;
-			} else
-				first = 0;
-			error = SYSCTL_OUT(req, child->nameunit,
-					   strlen(child->nameunit));
-			if (error)
-				return(error);
-		}
-
-	error = SYSCTL_OUT(req, "", 1);
-
-	return(error);
-}
-
-static int
-sysctl_handle_state(SYSCTL_HANDLER_ARGS)
-{
-	device_t dev = arg1;
-
-	switch (dev->state) {
-	case DS_NOTPRESENT:
-		return SYSCTL_OUT(req, "notpresent", sizeof("notpresent"));
-	case DS_ALIVE:
-		return SYSCTL_OUT(req, "alive", sizeof("alive"));
-	case DS_INPROGRESS:
-		return SYSCTL_OUT(req, "in-progress", sizeof("in-progress"));
-	case DS_ATTACHED:
-		return SYSCTL_OUT(req, "attached", sizeof("attached"));
-	case DS_BUSY:
-		return SYSCTL_OUT(req, "busy", sizeof("busy"));
-	default:
-		return (0);
-	}
-}
-
-static void
-device_register_oids(device_t dev)
-{
-	struct sysctl_oid* oid;
-
-	oid = &dev->oid[0];
-	bzero(oid, sizeof(*oid));
-	oid->oid_parent = &sysctl__hw_devices_children;
-	oid->oid_number = OID_AUTO;
-	oid->oid_kind = CTLTYPE_NODE | CTLFLAG_RW;
-	oid->oid_arg1 = &dev->oidlist[0];
-	oid->oid_arg2 = 0;
-	oid->oid_name = dev->nameunit;
-	oid->oid_handler = 0;
-	oid->oid_fmt = "N";
-	SLIST_INIT(&dev->oidlist[0]);
-	sysctl_register_oid(oid);
-
-	oid = &dev->oid[1];
-	bzero(oid, sizeof(*oid));
-	oid->oid_parent = &dev->oidlist[0];
-	oid->oid_number = OID_AUTO;
-	oid->oid_kind = CTLTYPE_STRING | CTLFLAG_RD;
-	oid->oid_arg1 = dev->desc ? dev->desc : "";
-	oid->oid_arg2 = dev->desc ? strlen(dev->desc) : 0;
-	oid->oid_name = "desc";
-	oid->oid_handler = sysctl_handle_string;
-	oid->oid_fmt = "A";
-	sysctl_register_oid(oid);
-
-	oid = &dev->oid[2];
-	bzero(oid, sizeof(*oid));
-	oid->oid_parent = &dev->oidlist[0];
-	oid->oid_number = OID_AUTO;
-	oid->oid_kind = CTLTYPE_INT | CTLFLAG_RD;
-	oid->oid_arg1 = dev;
-	oid->oid_arg2 = 0;
-	oid->oid_name = "children";
-	oid->oid_handler = sysctl_handle_children;
-	oid->oid_fmt = "A";
-	sysctl_register_oid(oid);
-
-	oid = &dev->oid[3];
-	bzero(oid, sizeof(*oid));
-	oid->oid_parent = &dev->oidlist[0];
-	oid->oid_number = OID_AUTO;
-	oid->oid_kind = CTLTYPE_INT | CTLFLAG_RD;
-	oid->oid_arg1 = dev;
-	oid->oid_arg2 = 0;
-	oid->oid_name = "state";
-	oid->oid_handler = sysctl_handle_state;
-	oid->oid_fmt = "A";
-	sysctl_register_oid(oid);
-}
-
-static void
-device_unregister_oids(device_t dev)
-{
-	sysctl_unregister_oid(&dev->oid[0]);
-	sysctl_unregister_oid(&dev->oid[1]);
-	sysctl_unregister_oid(&dev->oid[2]);
-}
-
-#endif
 
 /*======================================*/
 /*
@@ -1837,6 +1727,8 @@ resource_list_delete(struct resource_list *rl,
 	struct resource_list_entry *rle = resource_list_find(rl, type, rid);
 
 	if (rle) {
+		if (rle->res != NULL)
+			panic("resource_list_delete: resource has not been released");
 		SLIST_REMOVE(rl, rle, resource_list_entry, link);
 		kfree(rle, M_BUS);
 	}
@@ -1863,6 +1755,7 @@ resource_list_alloc(struct resource_list *rl,
 
 	if (!rle)
 		return(0);		/* no resource of that type/rid */
+
 	if (rle->res)
 		panic("resource_list_alloc: resource entry is busy");
 
@@ -2641,6 +2534,7 @@ root_bus_module_handler(module_t mod, int what, void* arg)
 {
 	switch (what) {
 	case MOD_LOAD:
+		TAILQ_INIT(&bus_data_devices);
 		root_bus = make_device(NULL, "root", 0);
 		root_bus->desc = "System root bus";
 		kobj_init((kobj_t) root_bus, (kobj_class_t) &root_driver);
@@ -2929,4 +2823,100 @@ resource_disabled(const char *name, int unit)
 	if (error)
 	       return(0);
 	return(value);
+}
+
+/*
+ * User-space access to the device tree.
+ *
+ * We implement a small set of nodes:
+ *
+ * hw.bus			Single integer read method to obtain the
+ *				current generation count.
+ * hw.bus.devices		Reads the entire device tree in flat space.
+ * hw.bus.rman			Resource manager interface
+ *
+ * We might like to add the ability to scan devclasses and/or drivers to
+ * determine what else is currently loaded/available.
+ */
+
+static int
+sysctl_bus(SYSCTL_HANDLER_ARGS)
+{
+	struct u_businfo	ubus;
+
+	ubus.ub_version = BUS_USER_VERSION;
+	ubus.ub_generation = bus_data_generation;
+
+	return (SYSCTL_OUT(req, &ubus, sizeof(ubus)));
+}
+SYSCTL_NODE(_hw_bus, OID_AUTO, info, CTLFLAG_RW, sysctl_bus,
+    "bus-related data");
+
+static int
+sysctl_devices(SYSCTL_HANDLER_ARGS)
+{
+	int			*name = (int *)arg1;
+	u_int			namelen = arg2;
+	int			index;
+	struct device		*dev;
+	struct u_device		udev;	/* XXX this is a bit big */
+	int			error;
+
+	if (namelen != 2)
+		return (EINVAL);
+
+	if (bus_data_generation_check(name[0]))
+		return (EINVAL);
+
+	index = name[1];
+
+	/*
+	 * Scan the list of devices, looking for the requested index.
+	 */
+	TAILQ_FOREACH(dev, &bus_data_devices, devlink) {
+		if (index-- == 0)
+			break;
+	}
+	if (dev == NULL)
+		return (ENOENT);
+
+	/*
+	 * Populate the return array.
+	 */
+	bzero(&udev, sizeof(udev));
+	udev.dv_handle = (uintptr_t)dev;
+	udev.dv_parent = (uintptr_t)dev->parent;
+	if (dev->nameunit != NULL)
+		strlcpy(udev.dv_name, dev->nameunit, sizeof(udev.dv_name));
+	if (dev->desc != NULL)
+		strlcpy(udev.dv_desc, dev->desc, sizeof(udev.dv_desc));
+	if (dev->driver != NULL && dev->driver->name != NULL)
+		strlcpy(udev.dv_drivername, dev->driver->name,
+		    sizeof(udev.dv_drivername));
+	bus_child_pnpinfo_str(dev, udev.dv_pnpinfo, sizeof(udev.dv_pnpinfo));
+	bus_child_location_str(dev, udev.dv_location, sizeof(udev.dv_location));
+	udev.dv_devflags = dev->devflags;
+	udev.dv_flags = dev->flags;
+	udev.dv_state = dev->state;
+	error = SYSCTL_OUT(req, &udev, sizeof(udev));
+	return (error);
+}
+
+SYSCTL_NODE(_hw_bus, OID_AUTO, devices, CTLFLAG_RD, sysctl_devices,
+    "system device tree");
+
+int
+bus_data_generation_check(int generation)
+{
+	if (generation != bus_data_generation)
+		return (1);
+
+	/* XXX generate optimised lists here? */
+	return (0);
+}
+
+void
+bus_data_generation_update(void)
+{
+	bus_data_generation++;
 }

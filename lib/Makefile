@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/Makefile,v 1.107.2.16 2002/10/10 19:24:35 kbyanc Exp $
-# $DragonFly: src/lib/Makefile,v 1.34 2008/07/23 14:09:05 swildner Exp $
+# $DragonFly: src/lib/Makefile,v 1.35 2008/09/30 12:20:29 hasso Exp $
 
 # To satisfy shared library or ELF linkage when only the libraries being
 # built are visible:
@@ -23,7 +23,7 @@
 SUBDIR=	libarchive libbluetooth libcom_err libcrypt libm libmd \
 	libncurses libradius libskey libtacplus libutil libsbuf \
 	libalias libatm ${_libbind} ${_libbind9} libbz2 libc ${_libc_r} \
-	libcalendar libcam libcompat libdevstat libedit libevent libfetch \
+	libcalendar libcam libcompat libdevinfo libdevstat libedit libevent libfetch \
 	libftpio libipsec libipx libisc libkcore libkinfo libkvm libmagic \
 	${_libmilter} ${_libncp} libnetgraph libopie libpam \
 	libpcap libposix1e libsdp libthread_xu libpthread librpcsvc ${_libsm} \

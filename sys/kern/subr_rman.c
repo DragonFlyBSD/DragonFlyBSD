@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_rman.c,v 1.10.2.1 2001/06/05 08:06:08 imp Exp $
- * $DragonFly: src/sys/kern/subr_rman.c,v 1.14 2008/01/05 14:02:38 swildner Exp $
+ * $DragonFly: src/sys/kern/subr_rman.c,v 1.15 2008/09/30 12:20:29 hasso Exp $
  */
 
 /*
@@ -623,3 +623,89 @@ rman_make_alignment_flags(uint32_t size)
 
 	return(RF_ALIGNMENT_LOG2(i));
 }
+
+/*
+ * Sysctl interface for scanning the resource lists.
+ *
+ * We take two input parameters; the index into the list of resource
+ * managers, and the resource offset into the list.
+ */
+static int
+sysctl_rman(SYSCTL_HANDLER_ARGS)
+{
+	int			*name = (int *)arg1;
+	u_int			namelen = arg2;
+	int			rman_idx, res_idx;
+	struct rman		*rm;
+	struct resource		*res;
+	struct u_rman		urm;
+	struct u_resource	ures;
+	int			error;
+
+	if (namelen != 3)
+		return (EINVAL);
+
+	if (bus_data_generation_check(name[0]))
+		return (EINVAL);
+	rman_idx = name[1];
+	res_idx = name[2];
+
+	/*
+	 * Find the indexed resource manager
+	 */
+	TAILQ_FOREACH(rm, &rman_head, rm_link) {
+		if (rman_idx-- == 0)
+			break;
+	}
+	if (rm == NULL)
+		return (ENOENT);
+
+	/*
+	 * If the resource index is -1, we want details on the
+	 * resource manager.
+	 */
+	if (res_idx == -1) {
+		urm.rm_handle = (uintptr_t)rm;
+		strlcpy(urm.rm_descr, rm->rm_descr, RM_TEXTLEN);
+		urm.rm_start = rm->rm_start;
+		urm.rm_size = rm->rm_end - rm->rm_start + 1;
+		urm.rm_type = rm->rm_type;
+
+		error = SYSCTL_OUT(req, &urm, sizeof(urm));
+		return (error);
+	}
+
+	/*
+	 * Find the indexed resource and return it.
+	 */
+	CIRCLEQ_FOREACH(res, &rm->rm_list, r_link) {
+		if (res_idx-- == 0) {
+			ures.r_handle = (uintptr_t)res;
+			ures.r_parent = (uintptr_t)res->r_rm;
+			ures.r_device = (uintptr_t)res->r_dev;
+			if (res->r_dev != NULL) {
+				if (device_get_name(res->r_dev) != NULL) {
+					ksnprintf(ures.r_devname, RM_TEXTLEN,
+					    "%s%d",
+					    device_get_name(res->r_dev),
+					    device_get_unit(res->r_dev));
+				} else {
+					strlcpy(ures.r_devname, "nomatch",
+					    RM_TEXTLEN);
+				}
+			} else {
+				ures.r_devname[0] = '\0';
+			}
+			ures.r_start = res->r_start;
+			ures.r_size = res->r_end - res->r_start + 1;
+			ures.r_flags = res->r_flags;
+
+			error = SYSCTL_OUT(req, &ures, sizeof(ures));
+			return (error);
+		}
+	}
+	return (ENOENT);
+}
+
+SYSCTL_NODE(_hw_bus, OID_AUTO, rman, CTLFLAG_RD, sysctl_rman,
+    "kernel resource manager");

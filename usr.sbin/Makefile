@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	5.20 (Berkeley) 6/12/93
 # $FreeBSD: src/usr.sbin/Makefile,v 1.183.2.14 2003/04/16 11:01:51 ru Exp $
-# $DragonFly: src/usr.sbin/Makefile,v 1.48 2008/08/30 16:07:59 hasso Exp $
+# $DragonFly: src/usr.sbin/Makefile,v 1.49 2008/09/30 12:20:29 hasso Exp $
 
 .include "../sys/platform/${MACHINE_PLATFORM}/Makefile.inc"
 
@@ -32,6 +32,7 @@ SUBDIR= 802_11 \
 	crunch \
 	daemon \
 	dconschat \
+	devinfo \
 	dev_mkdb \
 	dntpd \
 	edquota \

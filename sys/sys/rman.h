@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/rman.h,v 1.5.2.1 2001/06/05 08:06:07 imp Exp $
- * $DragonFly: src/sys/sys/rman.h,v 1.10 2006/10/25 20:56:03 dillon Exp $
+ * $DragonFly: src/sys/sys/rman.h,v 1.11 2008/09/30 12:20:29 hasso Exp $
  */
 
 #ifndef _SYS_RMAN_H_
@@ -43,6 +43,52 @@
 #include <sys/bus.h>	/* bus_space_tag_t */
 #endif
 
+#define	RF_ALLOCATED	0x0001	/* resource has been reserved */
+#define	RF_ACTIVE	0x0002	/* resource allocation has been activated */
+#define	RF_SHAREABLE	0x0004	/* resource permits contemporaneous sharing */
+#define	RF_TIMESHARE	0x0008	/* resource permits time-division sharing */
+#define	RF_WANTED	0x0010	/* somebody is waiting for this resource */
+#define	RF_FIRSTSHARE	0x0020	/* first in sharing list */
+#define	RF_PREFETCHABLE	0x0040	/* resource is prefetchable */
+#define	RF_OPTIONAL	0x0080	/* for bus_alloc_resources() */
+
+#define	RF_ALIGNMENT_SHIFT	10 /* alignment size bit starts bit 10 */
+#define	RF_ALIGNMENT_MASK	(0x003F << RF_ALIGNMENT_SHIFT)
+				/* resource address alignemnt size bit mask */
+#define	RF_ALIGNMENT_LOG2(x)	((x) << RF_ALIGNMENT_SHIFT)
+#define	RF_ALIGNMENT(x)		(((x) & RF_ALIGNMENT_MASK) >> RF_ALIGNMENT_SHIFT)
+
+enum	rman_type { RMAN_UNINIT = 0, RMAN_GAUGE, RMAN_ARRAY };
+
+/*
+ * String length exported to userspace for resource names, etc.
+ */
+#define RM_TEXTLEN	32
+
+/*
+ * Userspace-exported structures.
+ */
+struct u_resource {
+	uintptr_t	r_handle;		/* resource uniquifier */
+	uintptr_t	r_parent;		/* parent rman */
+	uintptr_t	r_device;		/* device owning this resource */
+	char		r_devname[RM_TEXTLEN];	/* device name XXX obsolete */
+
+	u_long		r_start;		/* offset in resource space */
+	u_long		r_size;			/* size in resource space */
+	u_int		r_flags;		/* RF_* flags */
+};
+
+struct u_rman {
+	uintptr_t	rm_handle;		/* rman uniquifier */
+	char		rm_descr[RM_TEXTLEN];	/* rman description */
+
+	u_long		rm_start;		/* base of managed region */
+	u_long		rm_size;		/* size of managed region */
+	enum rman_type	rm_type;		/* region type */
+};
+
+#ifdef _KERNEL
 /*
  * We use a linked list rather than a bitmap because we need to be able to
  * represent potentially huge objects (like all of a processor's physical
@@ -64,22 +110,6 @@ struct	resource {
 	struct	rman *r_rm;	/* resource manager from whence this came */
 };
 
-#define	RF_ALLOCATED	0x0001	/* resource has been reserved */
-#define	RF_ACTIVE	0x0002	/* resource allocation has been activated */
-#define	RF_SHAREABLE	0x0004	/* resource permits contemporaneous sharing */
-#define	RF_TIMESHARE	0x0008	/* resource permits time-division sharing */
-#define	RF_WANTED	0x0010	/* somebody is waiting for this resource */
-#define	RF_FIRSTSHARE	0x0020	/* first in sharing list */
-#define	RF_PREFETCHABLE	0x0040	/* resource is prefetchable */
-
-#define	RF_ALIGNMENT_SHIFT	10 /* alignment size bit starts bit 10 */
-#define	RF_ALIGNMENT_MASK	(0x003F << RF_ALIGNMENT_SHIFT)
-				/* resource address alignemnt size bit mask */
-#define	RF_ALIGNMENT_LOG2(x)	((x) << RF_ALIGNMENT_SHIFT)
-#define	RF_ALIGNMENT(x)		(((x) & RF_ALIGNMENT_MASK) >> RF_ALIGNMENT_SHIFT)
-
-enum	rman_type { RMAN_UNINIT = 0, RMAN_GAUGE, RMAN_ARRAY };
-
 struct lwkt_token;
 struct lwkt_tokref;
 
@@ -93,8 +123,6 @@ struct	rman {
 	const	char *rm_descr;	/* text descripion of this resource */
 };
 TAILQ_HEAD(rman_head, rman);
-
-#ifdef _KERNEL
 
 int	rman_activate_resource(struct resource *r);
 int	rman_await_resource(struct resource *r, struct lwkt_tokref *ilock, int slpflags, int timo);

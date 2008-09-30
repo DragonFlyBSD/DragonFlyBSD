@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.5 2004/03/17 17:54:25 njl Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.29 2008/09/29 06:59:45 hasso Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.30 2008/09/30 12:20:29 hasso Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -62,6 +62,44 @@ typedef struct devclass		*devclass_t;
 typedef void driver_intr_t(void*);
 
 /*
+ * Interface information structure.
+ */
+struct u_businfo {
+	int	ub_version;		/* interface version */
+#define BUS_USER_VERSION	1
+	int	ub_generation;		/* generation count */
+};
+
+/*
+ * State of the device.
+ */
+typedef enum device_state {
+	DS_NOTPRESENT,			/* not probed or probe failed */
+	DS_ALIVE,			/* probe succeeded */
+	DS_INPROGRESS,			/* attach in progress */
+	DS_ATTACHED,			/* attach method called */
+	DS_BUSY				/* device is open */
+} device_state_t;
+
+/*
+ * Device information exported to userspace.
+ */
+struct u_device {
+	uintptr_t	dv_handle;
+	uintptr_t	dv_parent;
+
+	char		dv_name[32];		/* Name of device in tree. */
+	char		dv_desc[32];		/* Driver description */
+	char		dv_drivername[32];	/* Driver name */
+	char		dv_pnpinfo[128];	/* Plug and play info */
+	char		dv_location[128];	/* Where is the device? */
+	uint32_t	dv_devflags;		/* API Flags for device */
+	uint16_t	dv_flags;		/* flags for dev date */
+	device_state_t	dv_state;		/* State of attachment */
+	/* XXX more driver info? */
+};
+
+/*
  * Interrupt features mask.  Note that DragonFly no longer implements
  * INTR_TYPE_* flags.
  */
@@ -84,14 +122,6 @@ enum intr_polarity {
 };
 
 typedef int (*devop_t)(void);
-
-typedef enum device_state {
-    DS_NOTPRESENT,			/* not probed or probe failed */
-    DS_ALIVE,				/* probe succeeded */
-    DS_INPROGRESS,			/* attach in progress */
-    DS_ATTACHED,			/* attach method called */
-    DS_BUSY				/* device is open */
-} device_state_t;
 
 /*
  * Definitions for drivers which need to keep simple lists of resources
@@ -380,6 +410,13 @@ int	resource_set_long(const char *name, int unit, const char *resname,
 int	resource_set_string(const char *name, int unit, const char *resname,
 			    const char *value);
 int	resource_count(void);
+
+/*
+ * Functions for maintaining and checking consistency of
+ * bus information exported to userspace.
+ */
+int	bus_data_generation_check(int generation);
+void	bus_data_generation_update(void);
 
 /**
  * Some convenience defines for probe routines to return.  These are just
