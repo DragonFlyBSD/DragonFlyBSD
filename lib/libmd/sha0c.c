@@ -56,7 +56,7 @@
  * [including the GNU Public Licence.]
  *
  * $FreeBSD: src/lib/libmd/sha0c.c,v 1.6 2006/01/17 15:35:56 phk Exp $
- * $DragonFly: src/lib/libmd/sha0c.c,v 1.5 2008/09/11 20:25:34 swildner Exp $
+ * $DragonFly: src/lib/libmd/sha0c.c,v 1.6 2008/09/30 16:57:05 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -99,8 +99,8 @@ char *SHA_version="SHA part of SSLeay 0.9.0b 11-Oct-1998";
 #define	M_p_c2nl_p	p_c2nl_p
 #define	M_nl2c		nl2c
 
-void SHA_Init(c)
-SHA_CTX *c;
+void
+SHA_Init(SHA_CTX *c)
 	{
 	c->h0=INIT_DATA_h0;
 	c->h1=INIT_DATA_h1;
@@ -112,10 +112,8 @@ SHA_CTX *c;
 	c->num=0;
 	}
 
-void SHA_Update(c, in, len)
-SHA_CTX *c;
-const void *in;
-size_t len;
+void
+SHA_Update(SHA_CTX *c, const void *in, size_t len)
 	{
 	u_int32_t *p;
 	int ew,ec,sw,sc;
@@ -246,9 +244,8 @@ size_t len;
 	p[sw]=l;
 	}
 
-void SHA_Transform(c,b)
-SHA_CTX *c;
-unsigned char *b;
+void
+SHA_Transform(SHA_CTX *c, unsigned char *b)
 	{
 	u_int32_t p[16];
 #if BYTE_ORDER == LITTLE_ENDIAN
@@ -283,10 +280,8 @@ unsigned char *b;
 	sha_block(c,p,64);
 	}
 
-void sha_block(c, W, num)
-SHA_CTX *c;
-const u_int32_t *W;
-int num;
+void
+sha_block(SHA_CTX *c, const u_int32_t *W, int num)
 	{
 	u_int32_t A,B,C,D,E,T;
 	u_int32_t X[16];
@@ -402,9 +397,8 @@ int num;
 		}
 	}
 
-void SHA_Final(md, c)
-unsigned char *md;
-SHA_CTX *c;
+void
+SHA_Final(unsigned char *md, SHA_CTX *c)
 	{
 	int i,j;
 	u_int32_t l;

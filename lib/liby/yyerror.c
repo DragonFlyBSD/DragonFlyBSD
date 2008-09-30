@@ -31,13 +31,14 @@
  * SUCH DAMAGE.
  *
  * @(#)yyerror.c	8.1 (Berkeley) 6/4/93
+ *
+ * $DragonFly: src/lib/liby/yyerror.c,v 1.3 2008/09/30 16:57:06 swildner Exp $
  */
 
 #include <stdio.h>
 
 int
-yyerror(msg)
-char *msg;
+yyerror(char *msg)
 {
 	(void)fprintf(stderr, "%s\n", msg);
 	return(0);

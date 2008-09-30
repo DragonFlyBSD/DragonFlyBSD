@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/lib/libatm/timer.c,v 1.3.2.1 2001/09/28 16:52:10 dillon Exp $
- *	@(#) $DragonFly: src/lib/libatm/timer.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ *	@(#) $DragonFly: src/lib/libatm/timer.c,v 1.3 2008/09/30 16:57:04 swildner Exp $
  *
  */
 
@@ -75,7 +75,7 @@ int		harp_timer_exec;
  *
  */
 static void
-timer_tick()
+timer_tick(void)
 {
 	/*
 	 * Bump the timer flag
@@ -99,7 +99,7 @@ timer_tick()
  *
  */
 void
-timer_proc()
+timer_proc(void)
 {
 	Harp_timer	*htp;
 	void		(*f)();
@@ -178,7 +178,7 @@ timer_cont:
  *
  */
 int
-init_timer()
+init_timer(void)
 {
 	int			rc = 0;
 	struct itimerval	timeval;
@@ -226,7 +226,7 @@ init_timer()
  *
  */
 int
-block_timer()
+block_timer(void)
 {
 	/*
 	 * Block the SIGALRM signal
@@ -249,8 +249,7 @@ block_timer()
  *
  */
 void
-enable_timer(mask)
-	int	mask;
+enable_timer(int mask)
 {
 	/*
 	 * Set the signal mask

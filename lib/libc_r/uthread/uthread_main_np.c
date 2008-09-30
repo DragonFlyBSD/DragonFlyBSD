@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libc_r/uthread/uthread_main_np.c,v 1.4.2.2 2002/10/22 14:44:03 fjoe Exp $
- *	$DragonFly: src/lib/libc_r/uthread/uthread_main_np.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
+ *	$DragonFly: src/lib/libc_r/uthread/uthread_main_np.c,v 1.4 2008/09/30 16:57:04 swildner Exp $
  */
 
 #include <pthread.h>
@@ -36,7 +36,7 @@
  * Provide the equivalent to Solaris thr_main() function
  */
 int
-_pthread_main_np()
+_pthread_main_np(void)
 {
 
 	if (!_thread_initial)

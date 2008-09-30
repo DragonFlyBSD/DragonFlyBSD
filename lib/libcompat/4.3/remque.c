@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)remque.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libcompat/4.3/remque.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libcompat/4.3/remque.c,v 1.4 2008/09/30 16:57:04 swildner Exp $
  */
 
 /*
@@ -46,8 +46,7 @@ struct vaxque {		/* queue format expected by VAX queue instructions */
 };
 
 void
-remque(e)
-	struct vaxque *e;
+remque(struct vaxque *e)
 {
 	e->vq_prev->vq_next = e->vq_next;
 	e->vq_next->vq_prev = e->vq_prev;

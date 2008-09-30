@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)cuserid.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libcompat/4.4/cuserid.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
+ * $DragonFly: src/lib/libcompat/4.4/cuserid.c,v 1.4 2008/09/30 16:57:04 swildner Exp $
  */
 
 #include <pwd.h>
@@ -40,8 +40,7 @@
 #include <unistd.h>
 
 char *
-cuserid(s)
-	char *s;
+cuserid(char *s)
 {
 	struct passwd *pwd;
 

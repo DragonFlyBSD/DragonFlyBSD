@@ -1,5 +1,5 @@
 /* $FreeBSD: src/lib/libskey/skeysubr.c,v 1.9.6.1 2000/07/20 20:13:42 obrien Exp $ */
-/* $DragonFly: src/lib/libskey/skeysubr.c,v 1.3 2003/11/12 20:21:31 eirikn Exp $ */
+/* $DragonFly: src/lib/libskey/skeysubr.c,v 1.4 2008/09/30 16:57:06 swildner Exp $ */
 
 #include <err.h>
 #include <stdio.h>
@@ -15,12 +15,13 @@
 /* Crunch a key:
  * concatenate the seed and the password, run through MDX and
  * collapse to 64 bits. This is defined as the user's starting key.
+ *
+ * result  8-byte result
+ * seed    Seed, any length
+ * passwd  Password, any length
  */
 int
-keycrunch(result,seed,passwd)
-char *result;   /* 8-byte result */
-const char *seed;     /* Seed, any length */
-const char *passwd;   /* Password, any length */
+keycrunch(char *result, const char *seed, const char *passwd)
 {
 	char *buf;
 	MDX_CTX md;
@@ -50,8 +51,7 @@ const char *passwd;   /* Password, any length */
 
 /* The one-way function f(). Takes 8 bytes and returns 8 bytes in place */
 void
-f(x)
-char *x;
+f(char *x)
 {
 	MDX_CTX md;
 	u_int32_t results[4];
@@ -68,8 +68,7 @@ char *x;
 
 /* Strip trailing cr/lf from a line of text */
 void
-rip(buf)
-char *buf;
+rip(char *buf)
 {
 	buf[strcspn(buf, "\r\n")] = 0;
 }
@@ -78,17 +77,15 @@ static struct termios saved_ttymode;
 
 static void interrupt (int);
 
-static void interrupt(sig)
-int sig;
+static void
+interrupt(int sig)
 {
 	tcsetattr(0, TCSANOW, &saved_ttymode);
 	err(1, "interrupted by signal %s", sys_siglist[sig]);
 }
 
 char *
-readpass(buf,n)
-char *buf;
-int n;
+readpass(char *buf, int n)
 {
 	struct termios noecho_ttymode;
 	void (*oldsig) (int);
@@ -125,8 +122,7 @@ int n;
 }
 
 void
-sevenbit(s)
-char *s;
+sevenbit(char *s)
 {
 	/* make sure there are only 7 bit code in the line*/
 	while(*s){

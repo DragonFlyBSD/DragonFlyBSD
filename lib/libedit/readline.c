@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: readline.c,v 1.75 2008/04/29 06:53:01 martin Exp $
- * $DragonFly: src/lib/libedit/readline.c,v 1.4 2008/05/17 22:48:04 pavalos Exp $
+ * $DragonFly: src/lib/libedit/readline.c,v 1.5 2008/09/30 16:57:05 swildner Exp $
  */
 
 #include "config.h"
@@ -1661,7 +1661,7 @@ rl_add_defun(const char *name, Function *fun, int c)
 }
 
 void
-rl_callback_read_char()
+rl_callback_read_char(void)
 {
 	int count = 0, done = 0;
 	const char *buf = el_gets(e, &count);

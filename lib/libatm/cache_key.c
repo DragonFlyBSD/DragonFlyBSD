@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  * $FreeBSD: src/lib/libatm/cache_key.c,v 1.3.2.1 2001/09/28 16:52:10 dillon Exp $
- * $DragonFly: src/lib/libatm/cache_key.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ * $DragonFly: src/lib/libatm/cache_key.c,v 1.3 2008/09/30 16:57:04 swildner Exp $
  */
 
 /*
@@ -66,11 +66,7 @@
  *
  */
 void
-scsp_cache_key(ap, ip, ol, op)
-	Atm_addr	*ap;
-	struct in_addr	*ip;
-	int		ol;
-	char 		*op;
+scsp_cache_key(Atm_addr *ap, struct in_addr *ip, int ol, char *op)
 {
 	int	i, len;
 	char	buff[32], digest[16];

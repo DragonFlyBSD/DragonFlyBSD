@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libipsec/ipsec_dump_policy.c,v 1.1.2.1 2000/07/15 07:24:04 kris Exp $	*/
-/*	$DragonFly: src/lib/libipsec/ipsec_dump_policy.c,v 1.3 2003/11/12 20:21:30 eirikn Exp $	*/
+/*	$DragonFly: src/lib/libipsec/ipsec_dump_policy.c,v 1.4 2008/09/30 16:57:05 swildner Exp $	*/
 /*	$KAME: ipsec_dump_policy.c,v 1.11 2000/05/07 05:29:47 itojun Exp $	*/
 
 /*
@@ -68,9 +68,7 @@ static char *set_address (char *, size_t, struct sockaddr *);
  * When delimiter == NULL, alternatively ' '(space) is applied.
  */
 char *
-ipsec_dump_policy(policy, delimiter)
-	caddr_t policy;
-	char *delimiter;
+ipsec_dump_policy(caddr_t policy, char *delimiter)
 {
 	struct sadb_x_policy *xpl = (struct sadb_x_policy *)policy;
 	struct sadb_x_ipsecrequest *xisr;
@@ -172,11 +170,8 @@ ipsec_dump_policy(policy, delimiter)
 }
 
 static char *
-ipsec_dump_ipsecrequest(buf, len, xisr, bound)
-	char *buf;
-	size_t len;
-	struct sadb_x_ipsecrequest *xisr;
-	size_t bound;	/* boundary */
+ipsec_dump_ipsecrequest(char *buf, size_t len,
+    struct sadb_x_ipsecrequest *xisr, size_t bound)
 {
 	const char *proto, *mode, *level;
 	char abuf[NI_MAXHOST * 2 + 2];
@@ -270,11 +265,7 @@ ipsec_dump_ipsecrequest(buf, len, xisr, bound)
 }
 
 static int
-set_addresses(buf, len, sa1, sa2)
-	char *buf;
-	size_t len;
-	struct sockaddr *sa1;
-	struct sockaddr *sa2;
+set_addresses(char *buf, size_t len, struct sockaddr *sa1, struct sockaddr *sa2)
 {
 	char tmp1[NI_MAXHOST], tmp2[NI_MAXHOST];
 
@@ -288,10 +279,7 @@ set_addresses(buf, len, sa1, sa2)
 }
 
 static char *
-set_address(buf, len, sa)
-	char *buf;
-	size_t len;
-	struct sockaddr *sa;
+set_address(char *buf, size_t len, struct sockaddr *sa)
 {
 #ifdef NI_WITHSCOPEID
 	const int niflags = NI_NUMERICHOST | NI_WITHSCOPEID;

@@ -31,13 +31,14 @@
  * SUCH DAMAGE.
  *
  * @(#)cfree.c	8.1 (Berkeley) 6/4/93
+ *
+ * $DragonFly: src/lib/libcompat/4.3/cfree.c,v 1.3 2008/09/30 16:57:04 swildner Exp $
  */
 
 #include <stdlib.h>
 
 void
-cfree(p)
-	void *p;
+cfree(void *p)
 {
 	free(p);
 }

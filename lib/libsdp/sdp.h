@@ -1,5 +1,5 @@
 /* $NetBSD: sdp.h,v 1.2 2006/08/17 20:13:31 plunky Exp $ */
-/* $DragonFly: src/lib/libsdp/sdp.h,v 1.1 2008/01/03 11:47:53 hasso Exp $ */
+/* $DragonFly: src/lib/libsdp/sdp.h,v 1.2 2008/09/30 16:57:05 swildner Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.
@@ -361,7 +361,7 @@ typedef struct sdp_attr *	sdp_attr_p;
 
 #if BYTE_ORDER == LITTLE_ENDIAN
 #define SDP_GET128(l, cp)	do {			\
-	register const uint8_t *t_cp = (const uint8_t *)(cp);	\
+	const uint8_t *t_cp = (const uint8_t *)(cp);	\
 	(l)->b[15] = *t_cp++;				\
 	(l)->b[14] = *t_cp++;				\
 	(l)->b[13] = *t_cp++;				\
@@ -418,7 +418,7 @@ typedef struct sdp_attr *	sdp_attr_p;
 
 #if BYTE_ORDER == LITTLE_ENDIAN
 #define SDP_PUT128(l, cp)	do {			\
-	register const uint8_t *t_cp = (const uint8_t *)(cp);	\
+	const uint8_t *t_cp = (const uint8_t *)(cp);	\
 	*t_cp++ = (l)->b[15];				\
 	*t_cp++ = (l)->b[14];				\
 	*t_cp++ = (l)->b[13];				\

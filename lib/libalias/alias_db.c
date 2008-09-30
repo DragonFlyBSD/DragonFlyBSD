@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libalias/alias_db.c,v 1.21.2.14 2002/07/24 03:21:24 luigi Exp $
- * $DragonFly: src/lib/libalias/alias_db.c,v 1.6 2007/11/05 08:58:35 sephe Exp $
+ * $DragonFly: src/lib/libalias/alias_db.c,v 1.7 2008/09/30 16:57:04 swildner Exp $
  */
 
 /*
@@ -1976,7 +1976,7 @@ GetAliasAddress(struct alias_link *link)
 
 
 struct in_addr
-GetDefaultAliasAddress()
+GetDefaultAliasAddress(void)
 {
     return aliasAddress;
 }

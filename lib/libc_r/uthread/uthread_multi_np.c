@@ -30,13 +30,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_multi_np.c,v 1.4.2.1 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_multi_np.c,v 1.3 2005/05/30 20:50:53 joerg Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_multi_np.c,v 1.4 2008/09/30 16:57:04 swildner Exp $
  */
 #include <pthread.h>
 #include <pthread_np.h>
 
 int
-_pthread_multi_np()
+_pthread_multi_np(void)
 {
 
 	/* Return to multi-threaded scheduling mode: */

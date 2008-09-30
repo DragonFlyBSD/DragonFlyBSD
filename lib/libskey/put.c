@@ -1,5 +1,5 @@
 /*
- * $DragonFly: src/lib/libskey/put.c,v 1.4 2004/10/25 19:38:45 drhodus Exp $
+ * $DragonFly: src/lib/libskey/put.c,v 1.5 2008/09/30 16:57:05 swildner Exp $
  */
 
 #include <stdio.h>
@@ -2069,8 +2069,7 @@ static char Wp[2048][4] = {
  * Returns a pointer to a static buffer
  */
 char *
-btoe(engout,c)
-char *c, *engout;
+btoe(char *engout, char *c)
 {
 	char cp[9];	/* add in room for the parity 2 bits*/
 	int p,i ;
@@ -2106,9 +2105,7 @@ char *c, *engout;
  *        -2 words OK but parity is wrong
  */
 int
-etob(out, e)
-char *out;
-char *e;
+etob(char *out, char *e)
 {
 	char *word, *cp;
 	int i, v,l, low,high;
@@ -2157,9 +2154,7 @@ char *e;
 }
 /* Display 8 bytes as a series of 16-bit hex digits */
 char *
-put8(out,s)
-char *out;
-char *s;
+put8(char *out, char *s)
 {
 	sprintf(out,"%02X%02X %02X%02X %02X%02X %02X%02X",
 		s[0] & 0xff,s[1] & 0xff,s[2] & 0xff,
@@ -2172,8 +2167,7 @@ char *s;
  * Provided as a possible alternative to btoe()
  */
 char *
-btoc(cp)
-char *cp;
+btoc(char *cp)
 {
 	int i;
 	static char out[31];
@@ -2192,9 +2186,7 @@ char *cp;
 
 /* Dictionary binary search */
 static int
-wsrch(w,low,high)
-char *w;
-int low, high;
+wsrch(char *w, int low, int high)
 {
 	int i,j;
 
@@ -2218,10 +2210,7 @@ int low, high;
 	}
 }
 static void
-insert(s, x, start, length)
-char *s;
-int x;
-int  start, length;
+insert(char *s, int x, int start, int length)
 {
 	unsigned char cl;
 	unsigned char cc;
@@ -2252,8 +2241,7 @@ int  start, length;
 }
 
 static void
-standard(word)
-char *word;
+standard(char *word)
 {
 	while(*word){
 		if(!isascii(*word))
@@ -2272,9 +2260,7 @@ char *word;
 
 /* Extract 'length' bits from the char array 's' starting with bit 'start' */
 static unsigned long
-extract(s, start, length)
-char *s;
-int start, length;
+extract(char *s, int start, int length)
 {
 	unsigned char cl;
 	unsigned char cc;

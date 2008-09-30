@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcompat/4.3/rexec.c,v 1.5.8.3 2000/11/22 13:36:00 ben Exp $
- * $DragonFly: src/lib/libcompat/4.3/rexec.c,v 1.4 2008/09/04 09:08:22 hasso Exp $
+ * $DragonFly: src/lib/libcompat/4.3/rexec.c,v 1.5 2008/09/30 16:57:04 swildner Exp $
  *
  * @(#)rexec.c	8.1 (Berkeley) 6/4/93
  */
@@ -97,7 +97,7 @@ static struct toktab {
 };
 
 static int
-token()
+token(void)
 {
 	char *cp;
 	int c;
@@ -136,8 +136,7 @@ token()
 }
 
 static int
-ruserpass(host, aname, apass, aacct)
-	char *host, **aname, **apass, **aacct;
+ruserpass(char *host, char **aname, char **apass, char **aacct)
 {
 	char *hdir, buf[BUFSIZ], *tmp;
 	char myname[MAXHOSTNAMELEN], *mydomain;
@@ -295,12 +294,8 @@ bad:
 }
 
 int
-rexec_af(ahost, rport, name, pass, cmd, fd2p, af)
-	char **ahost;
-	int rport;
-	const char *name, *pass, *cmd;
-	int *fd2p;
-	sa_family_t af;
+rexec_af(char **ahost, int rport, const char *name, const char *pass,
+    const char *cmd, int *fd2p, sa_family_t *af)
 {
 	struct sockaddr_storage sa2, from;
 	struct addrinfo hints, *res0;
@@ -339,7 +334,7 @@ rexec_af(ahost, rport, name, pass, cmd, fd2p, af)
 		__set_errno (ENOENT);
 		return -1;
 	}
-	ruserpass(res0->ai_canonname, &name, &pass);
+	ruserpass(res0->ai_canonname, &name, &pass, 0);
 retry:
 	s = socket(res0->ai_family, res0->ai_socktype, 0);
 	if (s < 0) {
@@ -436,11 +431,7 @@ bad:
 
 
 int
-rexec(ahost, rport, name, pass, cmd, fd2p)
-	char **ahost;
-	int rport;
-	char *name, *pass, *cmd;
-	int *fd2p;
+rexec(char **ahost, int rport, char *name, char *pass, char *cmd, int *fd2p)
 {
 	struct sockaddr_in sin, sin2, from;
 	struct hostent *hp;

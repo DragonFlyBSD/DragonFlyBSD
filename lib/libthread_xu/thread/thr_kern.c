@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_kern.c,v 1.4 2008/01/05 13:38:08 corecode Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_kern.c,v 1.5 2008/09/30 16:57:06 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -88,7 +88,7 @@ _thr_signal_unblock(struct pthread *curthread)
 }
 
 void
-_thr_assert_lock_level()
+_thr_assert_lock_level(void)
 {
 	PANIC("locklevel <= 0");
 }
@@ -100,7 +100,7 @@ _thr_send_sig(struct pthread *thread, int sig)
 }
 
 int
-_thr_get_tid()
+_thr_get_tid(void)
 {
 	return (lwp_gettid());
 }

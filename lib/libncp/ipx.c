@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libncp/ipx.c,v 1.1 1999/10/12 11:56:37 bp Exp $
- * $DragonFly: src/lib/libncp/ipx.c,v 1.3 2003/11/12 20:21:31 eirikn Exp $
+ * $DragonFly: src/lib/libncp/ipx.c,v 1.4 2008/09/30 16:57:05 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/ioctl.h>
@@ -288,12 +288,8 @@ ipx_iffind(char *ifname,struct ipx_addr *addr){
 
 
 int
-if_ipxscan(addrcount, sdl, ifm, ifam, addr)
-	int addrcount;
-	struct	sockaddr_dl *sdl;
-	struct if_msghdr *ifm;
-	struct ifa_msghdr *ifam;
-	struct ipx_addr *addr;
+if_ipxscan(int addrcount, struct sockaddr_dl *sdl, struct if_msghdr *ifm,
+    struct ifa_msghdr *ifam, struct ipx_addr *addr)
 {
 	struct	rt_addrinfo info;
 	struct sockaddr_ipx *sipx;
@@ -334,9 +330,7 @@ if_ipxscan(addrcount, sdl, ifm, ifam, addr)
 #define ADVANCE(x, n) (x += ROUNDUP((n)->sa_len))
 
 static void
-rt_xaddrs(cp, cplim, rtinfo)
-	caddr_t cp, cplim;
-	struct rt_addrinfo *rtinfo;
+rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
 {
 	struct sockaddr *sa;
 	int i;

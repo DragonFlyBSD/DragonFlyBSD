@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libncp/ncpl_subr.c,v 1.3 2000/01/01 14:21:31 bp Exp $
- * $DragonFly: src/lib/libncp/ncpl_subr.c,v 1.4 2005/02/17 13:59:35 joerg Exp $
+ * $DragonFly: src/lib/libncp/ncpl_subr.c,v 1.5 2008/09/30 16:57:05 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -259,10 +259,7 @@ char	*ncp_optarg;		/* argument associated with option */
 #define	EMSG	""
 
 int
-ncp_getopt(nargc, nargv, ostr)
-	int nargc;
-	char * const *nargv;
-	const char *ostr;
+ncp_getopt(int nargc, char * const *nargv, const char *ostr)
 {
 	static char *place = EMSG;		/* option letter processing */
 	char *oli;				/* option letter list index */

@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcompat/4.1/ftime.c,v 1.5 1999/08/28 00:04:12 peter Exp $
- * $DragonFly: src/lib/libcompat/4.1/ftime.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libcompat/4.1/ftime.c,v 1.3 2008/09/30 16:57:04 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -36,8 +36,7 @@
 #include <sys/timeb.h>
 
 int
-ftime(tbp)
-        struct timeb *tbp;
+ftime(struct timeb *tbp)
 {
         struct timezone tz;
         struct timeval t;

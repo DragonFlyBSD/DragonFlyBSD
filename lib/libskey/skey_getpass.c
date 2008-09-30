@@ -1,13 +1,13 @@
+/* $DragonFly: src/lib/libskey/skey_getpass.c,v 1.2 2008/09/30 16:57:05 swildner Exp $ */
+
 #include <unistd.h>
 #include <stdio.h>
 #include <skey.h>
 
 /* skey_getpass - read regular or s/key password */
 
-char *skey_getpass(prompt, pwd, pwok)
-const char *prompt;
-struct passwd *pwd;
-int     pwok;
+char *
+skey_getpass(const char *prompt, struct passwd *pwd, int pwok)
 {
     static char buf[128];
     struct skey skey;

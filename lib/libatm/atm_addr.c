@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  * $FreeBSD: src/lib/libatm/atm_addr.c,v 1.4.2.1 2001/09/28 16:52:10 dillon Exp $
- * $DragonFly: src/lib/libatm/atm_addr.c,v 1.3 2004/09/23 21:39:08 geekgod Exp $
+ * $DragonFly: src/lib/libatm/atm_addr.c,v 1.4 2008/09/30 16:57:04 swildner Exp $
  */
 
 /*
@@ -69,10 +69,7 @@ extern char	*prog;
  *
  */
 int
-get_hex_atm_addr(in, out, len)
-	char	*in;
-	u_char	*out;
-	int	len;
+get_hex_atm_addr(char *in, u_char *out, int len)
 {
 	int	c_type, c_value, i, out_len, state, val = 0;
 
@@ -211,8 +208,7 @@ get_hex_atm_addr(in, out, len)
  *
  */
 char *
-format_atm_addr(addr)
-	Atm_addr *addr;
+format_atm_addr(Atm_addr *addr)
 {
 	int		i;
 	char		*nsap_format;

@@ -5,7 +5,7 @@
  *   Many references for mink  may still be found in this program.
  *
  * $FreeBSD: src/lib/libskey/skeylogin.c,v 1.14.6.1 2000/07/18 11:38:24 sheldonh Exp $
- * $DragonFly: src/lib/libskey/skeylogin.c,v 1.4 2004/10/25 19:38:45 drhodus Exp $
+ * $DragonFly: src/lib/libskey/skeylogin.c,v 1.5 2008/09/30 16:57:06 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -40,10 +40,7 @@ static const char *month[12] = {
  * record.
  */
 int
-skeyinfo(mp,name,ss)
-struct skey *mp;
-const char *name;
-char *ss;
+skeyinfo(struct skey *mp, const char *name, char *ss)
 {
 	int rval;
 
@@ -72,10 +69,7 @@ char *ss;
  * record.
  */
 int
-skeychallenge(mp,name, ss)
-struct skey *mp;
-const char *name;
-char *ss;
+skeychallenge(struct skey *mp, const char *name, char *ss)
 {
 	int rval;
 
@@ -100,9 +94,7 @@ char *ss;
  *  1: entry not found, file R/W pointer positioned at EOF
  */
 int
-skeylookup(mp,name)
-struct skey *mp;
-const char *name;
+skeylookup(struct skey *mp, const char *name)
 {
 	int found;
 	size_t len;
@@ -177,9 +169,7 @@ const char *name;
  * The database file is always closed by this call.
  */
 int
-skeyverify(mp,response)
-struct skey *mp;
-char *response;
+skeyverify(struct skey *mp, char *response)
 {
 	char key[8];
 	char fkey[8];
@@ -272,8 +262,7 @@ char *response;
  * Returns 0 on success, -1 on error
  */
 int
-atob8(out,in)
-char *out,*in;
+atob8(char *out, char *in)
 {
 	int i;
 	int val;
@@ -299,8 +288,7 @@ char *out,*in;
 
 static
 char *
-skipspace(cp)
-char *cp;
+skipspace(char *cp)
 {
 	while(*cp == ' ' || *cp == '\t')
 		cp++;
@@ -313,8 +301,7 @@ char *cp;
 
 /* Convert 8-byte binary array to hex-ascii string */
 int
-btoa8(out,in)
-char *out,*in;
+btoa8(char *out, char *in)
 {
 	int i;
 
@@ -331,8 +318,7 @@ char *out,*in;
 
 /* Convert hex digit to binary integer */
 int
-htoi(c)
-char c;
+htoi(char c)
 {
 	if('0' <= c && c <= '9')
 		return c - '0';

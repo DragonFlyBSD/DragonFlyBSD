@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libvgl/main.c,v 1.6.2.2 2001/07/30 14:31:30 yokota Exp $
- * $DragonFly: src/lib/libvgl/main.c,v 1.3 2007/08/19 11:39:11 swildner Exp $
+ * $DragonFly: src/lib/libvgl/main.c,v 1.4 2008/09/30 16:57:06 swildner Exp $
  */
 
 #include <stdio.h>
@@ -58,7 +58,7 @@ static int VGLInitDone = 0;
 static struct winsize VGLOldWSize;
 
 void
-VGLEnd()
+VGLEnd(void)
 {
 struct vt_mode smode;
 
@@ -101,7 +101,7 @@ struct vt_mode smode;
 }
 
 static void 
-VGLAbort()
+VGLAbort(int signo __unused)
 {
   VGLAbortPending = 1;
   signal(SIGINT, SIG_IGN);
@@ -112,7 +112,7 @@ VGLAbort()
 }
 
 static void
-VGLSwitch()
+VGLSwitch(int signo __unused)
 {
   if (!VGLOnDisplay)
     VGLOnDisplay = 1;
@@ -284,7 +284,7 @@ VGLInit(int mode)
 }
 
 void
-VGLCheckSwitch()
+VGLCheckSwitch(void)
 {
   if (VGLAbortPending) {
     VGLEnd();

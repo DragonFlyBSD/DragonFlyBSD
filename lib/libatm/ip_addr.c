@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/lib/libatm/ip_addr.c,v 1.3.2.1 2001/09/28 16:52:10 dillon Exp $
- *	@(#) $DragonFly: src/lib/libatm/ip_addr.c,v 1.4 2007/11/25 01:28:22 swildner Exp $
+ *	@(#) $DragonFly: src/lib/libatm/ip_addr.c,v 1.5 2008/09/30 16:57:04 swildner Exp $
  *
  */
 
@@ -73,8 +73,7 @@
  *
  */
 struct sockaddr_in *
-get_ip_addr(p)
-	char	*p;
+get_ip_addr(char *p)
 {
 	struct hostent			*ip_host;
 	static struct sockaddr_in	sin;
@@ -120,8 +119,7 @@ get_ip_addr(p)
  *
  */
 char *
-format_ip_addr(addr)
-	struct in_addr	*addr;
+format_ip_addr(struct in_addr *addr)
 {
 	static char	host_name[MAXHOSTNAMELEN + 18];
 	char		*ip_num;

@@ -1,4 +1,4 @@
-/* $DragonFly: src/lib/libcompat/regexp/regexp.c,v 1.2 2004/10/25 19:38:02 drhodus Exp $								*/
+/* $DragonFly: src/lib/libcompat/regexp/regexp.c,v 1.3 2008/09/30 16:57:04 swildner Exp $								*/
 /*
  * regcomp and regexec -- regsub and regerror are elsewhere
  *
@@ -173,18 +173,18 @@ static long regsize;		/* Code size. */
 #ifndef STATIC
 #define	STATIC	static
 #endif
-STATIC char *reg();
-STATIC char *regbranch();
-STATIC char *regpiece();
-STATIC char *regatom();
-STATIC char *regnode();
-STATIC char *regnext();
-STATIC void regc();
-STATIC void reginsert();
-STATIC void regtail();
-STATIC void regoptail();
+STATIC char *reg(int, int *);
+STATIC char *regbranch(int *);
+STATIC char *regpiece(int *);
+STATIC char *regatom(int *);
+STATIC char *regnode(char);
+STATIC char *regnext(char *);
+STATIC void regc(char);
+STATIC void reginsert(char, char *);
+STATIC void regtail(char *, char *);
+STATIC void regoptail(char *, char *);
 #ifdef STRCSPN
-STATIC int strcspn();
+STATIC int strcspn(char *, char *);
 #endif
 
 /*
@@ -203,8 +203,7 @@ STATIC int strcspn();
  * of the structure of the compiled regexp.
  */
 regexp *
-regcomp(exp)
-const char *exp;
+regcomp(const char *exp)
 {
 	regexp *r;
 	char *scan;
@@ -293,9 +292,7 @@ const char *exp;
  * follows makes it hard to avoid.
  */
 static char *
-reg(paren, flagp)
-int paren;			/* Parenthesized? */
-int *flagp;
+reg(int paren, int *flagp)
 {
 	char *ret;
 	char *br;
@@ -365,8 +362,7 @@ int *flagp;
  * Implements the concatenation operator.
  */
 static char *
-regbranch(flagp)
-int *flagp;
+regbranch(int *flagp)
 {
 	char *ret;
 	char *chain;
@@ -405,8 +401,7 @@ int *flagp;
  * endmarker role is not redundant.
  */
 static char *
-regpiece(flagp)
-int *flagp;
+regpiece(int *flagp)
 {
 	char *ret;
 	char op;
@@ -469,8 +464,7 @@ int *flagp;
  * separate node; the code is simpler that way and it's not worth fixing.
  */
 static char *
-regatom(flagp)
-int *flagp;
+regatom(int *flagp)
 {
 	char *ret;
 	int flags;
@@ -659,8 +653,7 @@ int *flagp;
  - regnode - emit a node
  */
 static char *			/* Location. */
-regnode(op)
-char op;
+regnode(char op)
 {
 	char *ret;
 	char *ptr;
@@ -684,8 +677,7 @@ char op;
  - regc - emit (if appropriate) a byte of code
  */
 static void
-regc(b)
-char b;
+regc(char b)
 {
 	if (regcode != &regdummy)
 		*regcode++ = b;
@@ -699,9 +691,7 @@ char b;
  * Means relocating the operand.
  */
 static void
-reginsert(op, opnd)
-char op;
-char *opnd;
+reginsert(char op, char *opnd)
 {
 	char *src;
 	char *dst;
@@ -728,9 +718,7 @@ char *opnd;
  - regtail - set the next-pointer at the end of a node chain
  */
 static void
-regtail(p, val)
-char *p;
-char *val;
+regtail(char *p, char *val)
 {
 	char *scan;
 	char *temp;
@@ -760,9 +748,7 @@ char *val;
  - regoptail - regtail on operand of first argument; nop if operandless
  */
 static void
-regoptail(p, val)
-char *p;
-char *val;
+regoptail(char *p, char *val)
 {
 	/* "Operandless" and "op != BRANCH" are synonymous in practice. */
 	if (p == NULL || p == &regdummy || OP(p) != BRANCH)
@@ -799,9 +785,7 @@ STATIC char *regprop();
  - regexec - match a regexp against a string
  */
 int
-regexec(prog, string)
-const regexp *prog;
-const char *string;
+regexec(const regexp *prog, const char *string)
 {
 	char *s;
 	extern char *strchr();
@@ -861,9 +845,7 @@ const char *string;
  - regtry - try match at specific point
  */
 static int			/* 0 failure, 1 success */
-regtry(prog, string)
-regexp *prog;
-char *string;
+regtry(regexp *prog, char *string)
 {
 	int i;
 	char **sp;
@@ -898,8 +880,7 @@ char *string;
  * by recursion.
  */
 static int			/* 0 failure, 1 success */
-regmatch(prog)
-char *prog;
+regmatch(char *prog)
 {
 	char *scan;	/* Current node. */
 	char *next;		/* Next node. */
@@ -1100,8 +1081,7 @@ char *prog;
  - regrepeat - repeatedly match something simple, report how many
  */
 static int
-regrepeat(p)
-char *p;
+regrepeat(char *p)
 {
 	int count = 0;
 	char *scan;
@@ -1146,8 +1126,7 @@ char *p;
  - regnext - dig the "next" pointer out of a node
  */
 static char *
-regnext(p)
-char *p;
+regnext(char *p)
 {
 	int offset;
 
@@ -1172,8 +1151,7 @@ STATIC char *regprop();
  - regdump - dump a regexp onto stdout in vaguely comprehensible form
  */
 void
-regdump(r)
-regexp *r;
+regdump(regexp *r)
 {
 	char *s;
 	char op = EXACTLY;	/* Arbitrary non-END op. */
@@ -1216,8 +1194,7 @@ regexp *r;
  - regprop - printable representation of opcode
  */
 static char *
-regprop(op)
-char *op;
+regprop(char *op)
 {
 	char *p;
 	static char buf[50];
@@ -1314,9 +1291,7 @@ char *op;
  */
 
 static int
-strcspn(s1, s2)
-char *s1;
-char *s2;
+strcspn(char *s1, char *s2)
 {
 	char *scan1;
 	char *scan2;

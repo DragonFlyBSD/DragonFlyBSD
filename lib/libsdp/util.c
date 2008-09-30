@@ -1,5 +1,5 @@
 /* $NetBSD: util.c,v 1.1 2006/06/19 15:44:36 gdamore Exp $ */
-/* $DragonFly: src/lib/libsdp/util.c,v 1.1 2008/01/03 11:47:53 hasso Exp $ */
+/* $DragonFly: src/lib/libsdp/util.c,v 1.2 2008/09/30 16:57:05 swildner Exp $ */
 
 /*-
  * Copyright (c) 2006 Itronix Inc.
@@ -280,7 +280,7 @@ static sdp_attr_desc_t	sdp_attrs_desc[] = {
 char const *
 sdp_attr2desc(uint16_t attr)
 {
-	register sdp_attr_desc_p	a = sdp_attrs_desc;
+	sdp_attr_desc_p	a = sdp_attrs_desc;
 
 	for (; a->desc != NULL; a++)
 		if (attr == a->attr)
@@ -292,7 +292,7 @@ sdp_attr2desc(uint16_t attr)
 char const *
 sdp_uuid2desc(uint16_t uuid)
 {
-	register sdp_attr_desc_p	a = sdp_uuids_desc;
+	sdp_attr_desc_p	a = sdp_uuids_desc;
 
 	for (; a->desc != NULL; a++)
 		if (uuid == a->attr)

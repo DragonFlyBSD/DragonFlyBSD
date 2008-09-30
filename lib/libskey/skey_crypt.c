@@ -1,4 +1,5 @@
 /* Author: Wietse Venema, Eindhoven University of Technology. */
+/* $DragonFly: src/lib/libskey/skey_crypt.c,v 1.2 2008/09/30 16:57:05 swildner Exp $ */
 
 #include <string.h>
 #include <stdio.h>
@@ -9,11 +10,8 @@
 
 /* skey_crypt - return encrypted UNIX passwd if s/key or regular password ok */
 
-const char *skey_crypt(pp, salt, pwd, pwok)
-char *pp;
-char *salt;
-struct passwd *pwd;
-int     pwok;
+const char *
+skey_crypt(char *pp, char *salt, struct passwd *pwd, int pwok)
 {
     struct skey skey;
     char   *p;

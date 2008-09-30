@@ -1,5 +1,5 @@
 /*	$KAME: sctp_sys_calls.c,v 1.9 2004/08/17 06:08:53 itojun Exp $ */
-/*	$DragonFly: src/lib/libsctp/sctp_sys_calls.c,v 1.2 2006/06/28 23:14:43 corecode Exp $	*/
+/*	$DragonFly: src/lib/libsctp/sctp_sys_calls.c,v 1.3 2008/09/30 16:57:05 swildner Exp $	*/
 
 /*
  * Copyright (C) 2002, 2003, 2004 Cisco Systems Inc,
@@ -652,9 +652,7 @@ sctp_recvmsg (int s,
 
 #ifdef SYS_sctp_peeloff
 int
-sctp_peeloff(sd, assoc_id)
-      int sd;
-      sctp_assoc_t assoc_id;
+sctp_peeloff(int sd, sctp_assoc_t assoc_id)
 {
 	return (syscall(SYS_sctp_peeloff, sd, assoc_id));
 }

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/lib/libatm/ip_checksum.c,v 1.3.2.1 2001/09/28 16:52:10 dillon Exp $
- *	@(#) $DragonFly: src/lib/libatm/ip_checksum.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
+ *	@(#) $DragonFly: src/lib/libatm/ip_checksum.c,v 1.4 2008/09/30 16:57:04 swildner Exp $
  *
  */
 
@@ -69,9 +69,7 @@
  *
  */
 short
-ip_checksum(addr, count)
-	char 	*addr;
-	int	count;
+ip_checksum(char *addr, int count)
 {
 	/* Compute Internet Checksum for "count" bytes
 	 * beginning at location "addr".

@@ -56,7 +56,7 @@
  * [including the GNU Public Licence.]
  *
  * $FreeBSD: src/lib/libmd/rmd160c.c,v 1.7 2006/01/17 15:35:56 phk Exp $
- * $DragonFly: src/lib/libmd/rmd160c.c,v 1.5 2008/09/11 20:25:34 swildner Exp $
+ * $DragonFly: src/lib/libmd/rmd160c.c,v 1.6 2008/09/30 16:57:05 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -85,8 +85,8 @@ void ripemd160_block_x86(RIPEMD160_CTX *c, const u_int32_t *p,int num);
 void ripemd160_block(RIPEMD160_CTX *c, const u_int32_t *p,int num);
 #endif
 
-void RIPEMD160_Init(c)
-RIPEMD160_CTX *c;
+void
+RIPEMD160_Init(RIPEMD160_CTX *c)
 	{
 	c->A=RIPEMD160_A;
 	c->B=RIPEMD160_B;
@@ -98,10 +98,8 @@ RIPEMD160_CTX *c;
 	c->num=0;
 	}
 
-void RIPEMD160_Update(c, in, len)
-RIPEMD160_CTX *c;
-const void *in;
-size_t len;
+void
+RIPEMD160_Update(RIPEMD160_CTX *c, const void *in, size_t len)
 	{
 	u_int32_t *p;
 	int sw,sc;
@@ -230,9 +228,8 @@ size_t len;
 		}
 	}
 
-void RIPEMD160_Transform(c,b)
-RIPEMD160_CTX *c;
-unsigned char *b;
+void
+RIPEMD160_Transform(RIPEMD160_CTX *c, unsigned char *b)
 	{
 	u_int32_t p[16];
 #if BYTE_ORDER != LITTLE_ENDIAN
@@ -269,10 +266,8 @@ unsigned char *b;
 
 #ifndef RMD160_ASM
 
-void ripemd160_block(ctx, X, num)
-RIPEMD160_CTX *ctx;
-const u_int32_t *X;
-int num;
+void
+ripemd160_block(RIPEMD160_CTX *ctx, const u_int32_t *X, int num)
 	{
 	u_int32_t A,B,C,D,E;
 	u_int32_t a,b,c,d,e;
@@ -469,9 +464,8 @@ int num;
 	}
 #endif
 
-void RIPEMD160_Final(md, c)
-unsigned char *md;
-RIPEMD160_CTX *c;
+void
+RIPEMD160_Final(unsigned char *md, RIPEMD160_CTX *c)
 	{
 	int i,j;
 	u_int32_t l;
@@ -527,8 +521,8 @@ RIPEMD160_CTX *c;
 	}
 
 #ifdef undef
-int printit(l)
-unsigned long *l;
+int
+printit(unsigned long *l)
 	{
 	int i,ii;
 

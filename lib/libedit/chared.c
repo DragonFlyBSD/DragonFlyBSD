@@ -31,7 +31,7 @@
  *
  * @(#)chared.c 8.1 (Berkeley) 6/4/93
  * $NetBSD: chared.c,v 1.25 2005/08/08 01:41:30 christos Exp $
- * $DragonFly: src/lib/libedit/chared.c,v 1.8 2007/05/05 00:27:39 pavalos Exp $
+ * $DragonFly: src/lib/libedit/chared.c,v 1.9 2008/09/30 16:57:05 swildner Exp $
  */
 
 #include "config.h"
@@ -525,8 +525,7 @@ ch_reset(EditLine *el, int mclear)
 }
 
 private void
-ch__clearmacro(el)
-	EditLine *el;
+ch__clearmacro(EditLine *el)
 {
 	c_macro_t *ma = &el->el_chared.c_macro;
 	while (ma->level >= 0)
@@ -538,9 +537,7 @@ ch__clearmacro(el)
  *	Returns 1 if successful, 0 if not.
  */
 protected int
-ch_enlargebufs(el, addlen)
-	EditLine *el;
-	size_t addlen;
+ch_enlargebufs(EditLine *el, size_t addlen)
 {
 	size_t sz, newsz;
 	char *newbuffer, *oldbuf, *oldkbuf;

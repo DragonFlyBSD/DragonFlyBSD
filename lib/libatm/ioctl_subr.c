@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  * $FreeBSD: src/lib/libatm/ioctl_subr.c,v 1.3.2.1 2001/09/28 16:52:10 dillon Exp $
- * $DragonFly: src/lib/libatm/ioctl_subr.c,v 1.4 2004/09/23 21:39:08 geekgod Exp $
+ * $DragonFly: src/lib/libatm/ioctl_subr.c,v 1.5 2008/09/30 16:57:04 swildner Exp $
  */
 
 /*
@@ -85,9 +85,7 @@ extern char	*prog;
  *
  */
 int
-do_info_ioctl(req, buf_len)
-	struct atminfreq	*req;
-	int 			buf_len;
+do_info_ioctl(struct atminfreq *req, int buf_len)
 {
 	int	rc, s;
 	caddr_t	buf;
@@ -151,9 +149,7 @@ mem_retry:
  *
  */
 int
-get_vcc_info(intf, vccp)
-	char			*intf;
-	struct air_vcc_rsp	**vccp;
+get_vcc_info(char *intf, struct air_vcc_rsp **vccp)
 {
 	int	buf_len = sizeof(struct air_vcc_rsp) * 100;
 	struct atminfreq	air;
@@ -189,9 +185,7 @@ get_vcc_info(intf, vccp)
  *
  */
 int
-get_subnet_mask(intf, mask)
-	char			*intf;
-	struct sockaddr_in	*mask;
+get_subnet_mask(char *intf, struct sockaddr_in *mask)
 {
 	int			rc, s;
 	struct ifreq		req;
@@ -246,8 +240,7 @@ get_subnet_mask(intf, mask)
  *
  */
 int
-get_mtu(intf)
-	char	*intf;
+get_mtu(char *intf)
 {
 	int			rc, s;
 	struct ifreq		req;
@@ -300,8 +293,7 @@ get_mtu(intf)
  *
  */
 int
-verify_nif_name(name)
-	char *name;
+verify_nif_name(char *name)
 {
 	int	rc, s;
 	struct atminfreq	air;
@@ -371,9 +363,7 @@ verify_nif_name(name)
  *
  */
 int
-get_cfg_info ( intf, cfgp )
-        char                    *intf;
-        struct air_cfg_rsp      **cfgp;
+get_cfg_info(char *intf, struct air_cfg_rsp **cfgp)
 {
         int     buf_len = sizeof(struct air_cfg_rsp) * 4;
         struct atminfreq air;
@@ -409,9 +399,7 @@ get_cfg_info ( intf, cfgp )
  *
  */
 int
-get_intf_info ( intf, intp )
-        char                    *intf;
-        struct air_int_rsp      **intp;
+get_intf_info(char *intf, struct air_int_rsp **intp)
 {
         int     buf_len = sizeof(struct air_int_rsp) * 4;
         struct atminfreq air;
@@ -448,9 +436,7 @@ get_intf_info ( intf, intp )
  *
  */
 int
-get_netif_info ( intf, netp )
-        char                    *intf;
-        struct air_netif_rsp    **netp;
+get_netif_info(char *intf, struct air_netif_rsp **netp)
 {
         int     buf_len = sizeof(struct air_netif_rsp) * 10;
         struct atminfreq air;
@@ -472,5 +458,3 @@ get_netif_info ( intf, netp )
         return ( buf_len );
 
 }
-
-

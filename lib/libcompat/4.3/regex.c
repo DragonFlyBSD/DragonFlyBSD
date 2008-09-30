@@ -34,6 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)regex.c	5.1 (Berkeley) 3/29/92
+ *
+ * $DragonFly: src/lib/libcompat/4.3/regex.c,v 1.3 2008/09/30 16:57:04 swildner Exp $
  */
 
 /*
@@ -55,8 +57,7 @@ static int re_goterr;
 static char *re_errstr;
 
 char *
-re_comp(s)
-	char *s;
+re_comp(char *s)
 {
 	if (s == NULL || *s == '\0') {
 		if (re_regexp == NULL)
@@ -73,8 +74,7 @@ re_comp(s)
 }
 
 int
-re_exec(s)
-	char *s;
+re_exec(char *s)
 {
 	int rc;
 
@@ -84,8 +84,7 @@ re_exec(s)
 }
 
 void
-regerror(s)
-	const char *s;
+regerror(const char *s)
 {
 	re_goterr = 1;
 	if (re_errstr)

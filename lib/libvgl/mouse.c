@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libvgl/mouse.c,v 1.3 1999/11/08 11:37:39 yokota Exp $
- * $DragonFly: src/lib/libvgl/mouse.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/libvgl/mouse.c,v 1.3 2008/09/30 16:57:06 swildner Exp $
  */
 
 #include <stdio.h>
@@ -90,7 +90,7 @@ static int VGLMouseYpos = 0;
 static int VGLMouseButtons = 0;
 
 void
-VGLMousePointerShow()
+VGLMousePointerShow(void)
 {
   byte buf[MOUSE_IMG_SIZE*MOUSE_IMG_SIZE];
   VGLBitmap buffer =
@@ -120,7 +120,7 @@ VGLMousePointerShow()
 }
 
 void
-VGLMousePointerHide()
+VGLMousePointerHide(void)
 {
   byte crtcidx, crtcval, gdcidx, gdcval;
 
@@ -188,7 +188,7 @@ VGLMouseSetImage(VGLBitmap *AndMask, VGLBitmap *OrMask)
 }
 
 void
-VGLMouseSetStdImage()
+VGLMouseSetStdImage(void)
 {
   if (VGLMouseShown == VGL_MOUSESHOW)
     VGLMousePointerHide();
@@ -270,7 +270,7 @@ VGLMouseFreeze(int x, int y, int width, int hight, byte color)
 }
 
 void
-VGLMouseUnFreeze()
+VGLMouseUnFreeze(void)
 {
   if (VGLMouseFrozen > 1) {
     VGLMouseFrozen = 0;

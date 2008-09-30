@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libipsec/policy_token.l,v 1.2.2.2 2001/07/03 11:01:15 ume Exp $	*/
-/*	$DragonFly: src/lib/libipsec/policy_token.l,v 1.3 2003/11/12 20:21:30 eirikn Exp $	*/
+/*	$DragonFly: src/lib/libipsec/policy_token.l,v 1.4 2008/09/30 16:57:05 swildner Exp $	*/
 /*	$KAME: policy_token.l,v 1.11 2000/12/01 10:08:29 sakane Exp $	*/
 
 /*
@@ -136,8 +136,7 @@ unique		{ yylval.num = IPSEC_LEVEL_UNIQUE; return(LEVEL); }
 void __policy__strbuffer__init__ (char *);
 
 void
-__policy__strbuffer__init__(msg)
-	char *msg;
+__policy__strbuffer__init__(char *msg)
 {
 	YY_BUFFER_STATE yyb;
 

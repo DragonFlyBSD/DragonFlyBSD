@@ -1,4 +1,4 @@
-/* $DragonFly: src/lib/libcompat/regexp/regsub.c,v 1.2 2004/10/25 19:38:02 drhodus Exp $								*/
+/* $DragonFly: src/lib/libcompat/regexp/regsub.c,v 1.3 2008/09/30 16:57:04 swildner Exp $								*/
 /*
  * regsub
  *
@@ -34,10 +34,7 @@
  - regsub - perform substitutions after a regexp match
  */
 void
-regsub(prog, source, dest)
-const regexp *prog;
-const char *source;
-char *dest;
+regsub(const regexp *prog, const char *source, char *dest)
 {
 	char *src;
 	char *dst;

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libipsec/ipsec_get_policylen.c,v 1.1.2.1 2000/07/15 07:24:04 kris Exp $	*/
-/*	$DragonFly: src/lib/libipsec/ipsec_get_policylen.c,v 1.2 2003/06/17 04:26:49 dillon Exp $	*/
+/*	$DragonFly: src/lib/libipsec/ipsec_get_policylen.c,v 1.3 2008/09/30 16:57:05 swildner Exp $	*/
 /*	$KAME: ipsec_get_policylen.c,v 1.5 2000/05/07 05:25:03 itojun Exp $	*/
 
 /*
@@ -41,8 +41,7 @@
 #include "ipsec_strerror.h"
 
 int
-ipsec_get_policylen(policy)
-	caddr_t policy;
+ipsec_get_policylen(caddr_t policy)
 {
 	return policy ? PFKEY_EXTLEN(policy) : -1;
 }

@@ -1,6 +1,6 @@
 /* MD2C.C - RSA Data Security, Inc., MD2 message-digest algorithm
  * $FreeBSD: src/lib/libmd/md2c.c,v 1.11 2006/01/17 15:35:56 phk Exp $
- * $DragonFly: src/lib/libmd/md2c.c,v 1.3 2008/09/11 20:25:34 swildner Exp $
+ * $DragonFly: src/lib/libmd/md2c.c,v 1.4 2008/09/30 16:57:05 swildner Exp $
  */
 
 /* Copyright (C) 1990-2, RSA Data Security, Inc. Created 1990. All
@@ -85,8 +85,8 @@ static unsigned char *PADDING[] = {
 
 /* MD2 initialization. Begins an MD2 operation, writing a new context.
  */
-void MD2Init (context)
-MD2_CTX *context;                                        /* context */
+void
+MD2Init (MD2_CTX *context)
 {
   context->count = 0;
   memset ((POINTER)context->state, 0, sizeof (context->state));
@@ -98,10 +98,8 @@ MD2_CTX *context;                                        /* context */
      operation, processing another message block, and updating the
      context.
  */
-void MD2Update (context, in, inputLen)
-MD2_CTX *context;                                        /* context */
-const void *in;                                /* input block */
-unsigned int inputLen;                     /* length of input block */
+void
+MD2Update (MD2_CTX *context, const void *in, unsigned int inputLen)
 {
   unsigned int i, idx, partLen;
   const unsigned char *input = in;
@@ -135,8 +133,8 @@ unsigned int inputLen;                     /* length of input block */
 
 /* MD2 padding.
  */
-void MD2Pad (context)
-MD2_CTX *context;                                        /* context */
+void
+MD2Pad (MD2_CTX *context)
 {
   unsigned int idx, padLen;
 
@@ -153,9 +151,8 @@ MD2_CTX *context;                                        /* context */
 /* MD2 finalization. Ends an MD2 message-digest operation, writing the
      message digest and zeroizing the context.
  */
-void MD2Final (digest, context)
-unsigned char digest[16];                         /* message digest */
-MD2_CTX *context;                                        /* context */
+void
+MD2Final (unsigned char digest[16], MD2_CTX *context)
 {
   /* Do padding */
   MD2Pad (context);
@@ -171,10 +168,9 @@ MD2_CTX *context;                                        /* context */
 /* MD2 basic transformation. Transforms state and updates checksum
      based on block.
  */
-static void MD2Transform (state, checksum, block)
-unsigned char state[16];
-unsigned char checksum[16];
-const unsigned char block[16];
+static void
+MD2Transform (unsigned char state[16], unsigned char checksum[16],
+    const unsigned char block[16])
 {
   unsigned int i, j, t;
   unsigned char x[48];

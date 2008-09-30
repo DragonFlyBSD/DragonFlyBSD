@@ -24,7 +24,7 @@
   * Author: Wietse Venema, Eindhoven University of Technology.
   *
   * $FreeBSD: src/lib/libskey/skeyaccess.c,v 1.9.6.2 2002/08/12 19:42:24 iedowse Exp $
-  * $DragonFly: src/lib/libskey/skeyaccess.c,v 1.4 2005/02/28 13:14:08 joerg Exp $
+  * $DragonFly: src/lib/libskey/skeyaccess.c,v 1.5 2008/09/30 16:57:05 swildner Exp $
   */
 
 #include <sys/types.h>
@@ -93,11 +93,8 @@ int skeyaccess (char *, char *, char *, char *);
 
 /* skeyaccess - find out if UNIX passwords are permitted */
 
-int     skeyaccess(user, port, host, addr)
-char   *user;
-char   *port;
-char   *host;
-char   *addr;
+int
+skeyaccess(char *user, char *port, char *host, char *addr)
 {
     FILE   *fp;
     struct login_info login_info;
@@ -172,9 +169,8 @@ char   *addr;
 
 /* _skeyaccess - find out if UNIX passwords are permitted */
 
-static int _skeyaccess(fp, login_info)
-FILE   *fp;
-struct login_info *login_info;
+static int
+_skeyaccess(FILE *fp, struct login_info *login_info)
 {
     char    buf[BUFSIZ];
     char   *tok;
@@ -263,8 +259,8 @@ ai_unmapped(struct addrinfo *ai)
 
 /* match_internet_addr - match internet network address */
 
-static int match_internet_addr(login_info)
-struct login_info *login_info;
+static int
+match_internet_addr(struct login_info *login_info)
 {
     char *tok;
     struct addrinfo *res;
@@ -332,8 +328,8 @@ struct login_info *login_info;
 
 /* match_group - match username against group */
 
-static int match_group(login_info)
-struct login_info *login_info;
+static int
+match_group(struct login_info *login_info)
 {
     struct passwd *passwd;
     struct group *group;
@@ -353,8 +349,8 @@ struct login_info *login_info;
 
 /* match_token - get and match token */
 
-static int match_token(str)
-char   *str;
+static int
+match_token(char *str)
 {
     char   *tok;
 
@@ -363,10 +359,8 @@ char   *str;
 
 /* first_token - read line and return first token */
 
-static char *first_token(buf, len, fp)
-char   *buf;
-int     len;
-FILE   *fp;
+static char *
+first_token(char *buf, int len, FILE *fp)
 {
     char   *cp;
 
@@ -390,15 +384,16 @@ FILE   *fp;
 
 /* unget_token - push back last token */
 
-static void unget_token(cp)
-char   *cp;
+static void
+unget_token(char *cp)
 {
     prev_token = cp;
 }
 
 /* get_token - retrieve next token from buffer */
 
-static char *get_token()
+static char *
+get_token(void)
 {
     char   *cp;
 
@@ -413,7 +408,8 @@ static char *get_token()
 
 /* need_token - complain if next token is not available */
 
-static char *need_token()
+static char *
+need_token(void)
 {
     char   *cp;
 
@@ -425,7 +421,8 @@ static char *need_token()
 
 /* need_internet_addr - complain if next token is not an internet address */
 
-static char *need_internet_addr()
+static char *
+need_internet_addr(void)
 {
     char   *cp;
 
@@ -444,8 +441,8 @@ static char *need_internet_addr()
 
 /* is_internet_addr - determine if string is a dotted quad decimal address */
 
-static int is_internet_addr(str)
-char   *str;
+static int
+is_internet_addr(char *str)
 {
     struct addrinfo *res;
 
@@ -535,8 +532,8 @@ lookup_internet_addr(char *host)
 
 /* convert_internet_addr - convert string to internet address */
 
-static struct addrinfo *convert_internet_addr(string)
-char   *string;
+static struct addrinfo *
+convert_internet_addr(char *string)
 {
     struct addrinfo hints, *res;
 
@@ -551,9 +548,8 @@ char   *string;
 
 #ifdef TEST
 
-main(argc, argv)
-int     argc;
-char  **argv;
+int
+main(int argc, char **argv)
 {
     struct addrinfo hints, *res;
     char    host[MAXHOSTNAMELEN + 1];

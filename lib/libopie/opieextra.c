@@ -4,7 +4,7 @@
  * and possibly others.
  *
  * $FreeBSD: src/lib/libopie/opieextra.c,v 1.1.2.2 2002/07/15 14:17:08 des Exp $
- * $DragonFly: src/lib/libopie/opieextra.c,v 1.3 2005/08/04 17:27:09 drhodus Exp $
+ * $DragonFly: src/lib/libopie/opieextra.c,v 1.4 2008/09/30 16:57:05 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -86,7 +86,7 @@ static struct opie_algorithm_table opie_algorithm_table[] = {
 
 /* Get current hash type */
 const char *
-opie_get_algorithm()
+opie_get_algorithm(void)
 {
 	return(opie_algorithm_table[opie_hash_type].name);
 }
