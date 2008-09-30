@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.40 2008/09/28 21:27:56 thomas Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.41 2008/09/30 23:13:08 dillon Exp $
  */
 
 #include "hammer.h"
@@ -44,6 +44,7 @@ static void usage(int exit_code);
 
 int RecurseOpt;
 int VerboseOpt;
+int QuietOpt;
 int NoSyncOpt;
 int TwoWayPipeOpt;
 int TimeoutOpt;
@@ -60,7 +61,7 @@ main(int ac, char **av)
 	u_int32_t status;
 	int ch;
 
-	while ((ch = getopt(ac, av, "b:c:dhf:i:rs:t:v2")) != -1) {
+	while ((ch = getopt(ac, av, "b:c:dhf:i:qrs:t:v2")) != -1) {
 		switch(ch) {
 		case '2':
 			TwoWayPipeOpt = 1;
@@ -109,7 +110,16 @@ main(int ac, char **av)
 			TimeoutOpt = strtol(optarg, NULL, 0);
 			break;
 		case 'v':
-			++VerboseOpt;
+			if (QuietOpt > 0)
+				--QuietOpt;
+			else
+				++VerboseOpt;
+			break;
+		case 'q':
+			if (VerboseOpt > 0)
+				--VerboseOpt;
+			else
+				++QuietOpt;
 			break;
 		default:
 			usage(1);

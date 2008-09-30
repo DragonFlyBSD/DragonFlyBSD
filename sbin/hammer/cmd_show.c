@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.16 2008/07/14 03:21:34 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.17 2008/09/30 23:13:08 dillon Exp $
  */
 
 #include "hammer.h"
@@ -62,7 +62,7 @@ hammer_cmd_show(hammer_off_t node_offset, int depth,
 	if (node_offset == (hammer_off_t)-1) {
 		volume = get_volume(RootVolNo);
 		node_offset = volume->ondisk->vol0_btree_root;
-		if (VerboseOpt) {
+		if (QuietOpt < 3) {
 			printf("Volume header\trecords=%lld next_tid=%016llx\n",
 			       volume->ondisk->vol0_stat_records,
 			       volume->ondisk->vol0_next_tid);
@@ -100,7 +100,7 @@ print_btree_node(hammer_off_t node_offset, int depth, int spike,
 		       node_offset, node->count, node->parent,
 		       (node->type ? node->type : '?'), depth);
 		printf(" mirror %016llx", node->mirror_tid);
-		if (VerboseOpt) {
+		if (QuietOpt < 3) {
 			printf(" fill=");
 			print_bigblock_fill(node_offset);
 		}
@@ -178,7 +178,7 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 	switch(type) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
 		printf("suboff=%016llx", elm->internal.subtree_offset);
-		if (VerboseOpt)
+		if (QuietOpt < 3)
 			printf(" mirror %016llx", elm->internal.mirror_tid);
 		break;
 	case HAMMER_BTREE_TYPE_LEAF:
@@ -187,12 +187,12 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 			printf("\n\t         ");
 			printf("dataoff=%016llx/%d",
 				elm->leaf.data_offset, elm->leaf.data_len);
-			if (VerboseOpt) {
+			if (QuietOpt < 3) {
 				printf(" crc=%04x", elm->leaf.data_crc);
 				printf("\n\t         fills=");
 				print_bigblock_fill(elm->leaf.data_offset);
 			}
-			if (VerboseOpt > 1)
+			if (QuietOpt < 2)
 				print_record(elm);
 			break;
 		}
@@ -310,7 +310,7 @@ print_record(hammer_btree_elm_t elm)
 		printf("\n%17s", "");
 		printf("size=%lld nlinks=%lld",
 		       data->inode.size, data->inode.nlinks);
-		if (VerboseOpt > 2) {
+		if (QuietOpt < 1) {
 			printf(" mode=%05o uflags=%08x\n",
 				data->inode.mode,
 				data->inode.uflags);

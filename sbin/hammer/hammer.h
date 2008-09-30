@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.h,v 1.25 2008/09/20 04:23:21 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.h,v 1.26 2008/09/30 23:13:08 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -62,6 +62,7 @@
 
 extern int RecurseOpt;
 extern int VerboseOpt;
+extern int QuietOpt;
 extern int TwoWayPipeOpt;
 extern int TimeoutOpt;
 extern int DelayOpt;

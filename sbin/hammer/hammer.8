@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.50 2008/09/30 08:28:59 swildner Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.51 2008/09/30 23:13:08 dillon Exp $
 .Dd September 28, 2008
 .Dt HAMMER 8
 .Os
@@ -109,6 +109,8 @@ When maintaining a streaming mirroring this option specifies the
 minimum delay after a batch ends before the next batch is allowed
 to start.
 The default is five seconds.
+.It Fl q
+Decrease verbosement.  May be specified multiple times.
 .It Fl t Ar seconds
 When pruning and reblocking you can tell the utility to stop after a
 certain period of time.  This option is used along with the cycle file
