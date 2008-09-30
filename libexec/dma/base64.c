@@ -30,13 +30,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/libexec/dma/base64.c,v 1.2 2008/09/02 15:11:49 matthias Exp $
+ * $DragonFly: src/libexec/dma/base64.c,v 1.3 2008/09/30 17:47:21 swildner Exp $
  */
 
 #include <stdlib.h>
 #include <string.h>
 
-int base64_encode(const void *data, int size, char **str);
+#include "dma.h"
 
 static char base64_chars[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";

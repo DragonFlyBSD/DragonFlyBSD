@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/libexec/dma/dma.c,v 1.4 2008/09/16 17:57:22 matthias Exp $
+ * $DragonFly: src/libexec/dma/dma.c,v 1.5 2008/09/30 17:47:21 swildner Exp $
  */
 
 #include <sys/ipc.h>
@@ -41,6 +41,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #ifdef HAVE_CRYPTO
 #include <openssl/ssl.h>
@@ -79,8 +80,8 @@ static int daemonize = 1;
 struct config *config;
 int controlsocket_df, clientsocket_df, controlsocket_wl, clientsocket_wl, semkey;
 
-static void *
-release_children()
+static void
+release_children(void)
 {
 	struct sembuf sema;
 	int null = 0;
@@ -254,8 +255,8 @@ add_recp(struct queue *queue, const char *str, const char *sender, int expand)
 				FD_SET(controlsocket_df, &rfds);
 
 				/* wait for incoming redirects and pipes */
-				while (ret =select(controlsocket_df + 1,
-				    &rfds, NULL, NULL, NULL)) {
+				while ((ret = select(controlsocket_df + 1,
+				    &rfds, NULL, NULL, NULL))) {
 					/*
 					 * Receive back list of mailboxnames
 					 * and/or emailadresses
@@ -781,9 +782,9 @@ deliver_local(struct qitem *it, const char **errmsg)
 	char fn[PATH_MAX+1];
 	int len;
 	uint8_t mode = 0, fail = 0;
-	size_t linelen;
+	ssize_t linelen;
 	time_t now = time(NULL);
-	char *username;
+	char *username = NULL;
 	struct sembuf sema;
 
 
@@ -1474,7 +1475,6 @@ fail:
 static void
 run_queue(struct queue *queue)
 {
-	struct qitem *it;
 	if (LIST_EMPTY(&queue->queue))
 		return;
 
@@ -1513,12 +1513,10 @@ parseandexecute(int argc, char **argv)
 {
 	char *sender = NULL;
 	char tag[255];
-	struct qitem *it;
 	struct queue queue;
 	struct queue lqueue;
 	int i, ch;
 	int nodot = 0, doqueue = 0, showq = 0;
-	uint8_t null = 0, recipient_add_success = 0;
 
 	atexit(deltmp);
 	LIST_INIT(&queue.queue);
@@ -1679,7 +1677,7 @@ parseandexecute(int argc, char **argv)
  * with dotforwardhandler()
  */
 static int
-dotforwardhandler()
+dotforwardhandler(void)
 {
 	pid_t pid;
 	fd_set rfds;
@@ -1740,8 +1738,8 @@ dotforwardhandler()
 				memset(line, 0, 2048);
 				fgets(line, sizeof(line), forward);
 				/* FIXME allow comments? */
-				if ((target = strtok(line, "\t\n")) != NULL)
-				if (strncmp(target, "|", 1) == 0) {
+				if (((target = strtok(line, "\t\n")) != NULL) &&
+				    (strncmp(target, "|", 1) == 0)) {
 					/* if first char is a '|', the line is a pipe */
 					stmt = ISPIPE;
 					write(clientsocket_df, &stmt, 1);
@@ -1772,6 +1770,7 @@ dotforwardhandler()
 			waitpid(-1, NULL, 0);
 		}
 	}
+	return(0);
 }
 
 /*
@@ -1779,7 +1778,8 @@ dotforwardhandler()
  * to a pipe in a user context and communicates with deliver_local()
  */
 static int
-write_to_local_user() {
+write_to_local_user(void)
+{
 	pid_t pid;
 	int length;
 	size_t linelen;
@@ -1788,13 +1788,10 @@ write_to_local_user() {
 	while (read(clientsocket_wl, &length, sizeof(length))) {
 		char *target;
 		uint8_t mode, fail = 0;
-		char fn[PATH_MAX+1];
 		char line[1000];
-		int mbox;
-		off_t mboxlen;
-		FILE *pipe;
-		int error;
-		pid_t pid;
+		int mbox = 0;
+		off_t mboxlen = 0;
+		FILE *mypipe = NULL;
 		struct passwd *userentry;
 
 		target = calloc(1, length + 1);
@@ -1916,7 +1913,7 @@ write_to_local_user() {
 		} else if (mode & ISPIPE) {
 			/* if mode is mailbox, popen pipe */
 			fflush(NULL);
-			if ((pipe = popen(target, "w")) == NULL) {
+			if ((mypipe = popen(target, "w")) == NULL) {
 				fail = errno;
 				write(clientsocket_wl, &fail, sizeof(fail));
 				fail = 0;
@@ -1947,7 +1944,7 @@ write_to_local_user() {
 					goto failure;
 				}
 			} else if (mode & ISPIPE) { /* pipe delivery */
-				if (fwrite(line, 1, linelen, pipe) != linelen) {
+				if (fwrite(line, 1, linelen, mypipe) != linelen) {
 					goto failure;
 				}
 			}
@@ -1959,7 +1956,7 @@ write_to_local_user() {
 		if (mode & ISMAILBOX) { /* mailbox delivery */
 			close(mbox);
 		} else if (mode & ISPIPE) { /* pipe delivery */
-			pclose(pipe);
+			pclose(mypipe);
 		}
 		/* send ack and exit */
 		write(clientsocket_wl, &fail, sizeof(fail));
@@ -1977,7 +1974,7 @@ chop:
 		if (mode & ISMAILBOX) { /* mailbox delivery */
 			close(mbox);
 		} else if (mode & ISPIPE) { /* pipe delivery */
-			pclose(pipe);
+			pclose(mypipe);
 		}
 		_exit(1);
 	}

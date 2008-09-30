@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/libexec/dma/dma.h,v 1.7 2008/09/16 17:57:23 matthias Exp $
+ * $DragonFly: src/libexec/dma/dma.h,v 1.8 2008/09/30 17:47:21 swildner Exp $
  */
 
 #ifndef DMA_H
@@ -154,6 +154,8 @@ extern int parse_authfile(const char *);
 
 /* crypto.c */
 #ifdef HAVE_CRYPTO
+extern void hmac_md5(unsigned char *, int, unsigned char *, int, caddr_t);
+extern int smtp_auth_md5(struct qitem *, int, char *, char *);
 extern int smtp_init_crypto(struct qitem *, int, int);
 #endif /* HAVE_CRYPTO */
 

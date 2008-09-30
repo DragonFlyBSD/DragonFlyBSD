@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/libexec/dma/crypto.c,v 1.3 2008/09/02 15:11:49 matthias Exp $
+ * $DragonFly: src/libexec/dma/crypto.c,v 1.4 2008/09/30 17:47:21 swildner Exp $
  */
 
 #ifdef HAVE_CRYPTO
@@ -91,7 +91,6 @@ smtp_init_crypto(struct qitem *it, int fd, int feature)
 	SSL_CTX *ctx = NULL;
 	SSL_METHOD *meth = NULL;
 	X509 *cert;
-	char buf[2048];
 	int error;
 
 	/* Init SSL library */
@@ -173,15 +172,16 @@ smtp_init_crypto(struct qitem *it, int fd, int feature)
 /*
  * hmac_md5() taken out of RFC 2104.  This RFC was written by H. Krawczyk,
  * M. Bellare and R. Canetti.
- */ 
+ *
+ * text      pointer to data stream
+ * text_len  length of data stream
+ * key       pointer to authentication key
+ * key_len   length of authentication key
+ * digest    caller digest to be filled int
+ */
 void
-hmac_md5(text, text_len, key, key_len, digest)
-unsigned char*  text;                /* pointer to data stream */
-int             text_len;            /* length of data stream */
-unsigned char*  key;                 /* pointer to authentication key */
-int             key_len;             /* length of authentication key */
-caddr_t         digest;              /* caller digest to be filled in */
-
+hmac_md5(unsigned char *text, int text_len, unsigned char *key, int key_len,
+    caddr_t digest)
 {
         MD5_CTX context;
         unsigned char k_ipad[65];    /* inner padding -
