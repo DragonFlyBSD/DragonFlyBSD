@@ -23,9 +23,9 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ktr.4,v 1.9 2003/09/08 19:57:19 ru Exp $
-.\" $DragonFly: src/share/man/man4/ktr.4,v 1.10 2008/05/22 04:00:43 swildner Exp $
+.\" $DragonFly: src/share/man/man4/ktr.4,v 1.11 2008/10/01 10:53:48 swildner Exp $
 .\"
-.Dd May 22, 2008
+.Dd October 1, 2008
 .Dt KTR 4
 .Os
 .Sh NAME
@@ -36,6 +36,7 @@
 .Cd options KTR_ENTRIES=8192
 .Cd options KTR_VERBOSE=1
 .Cd options KTR_ALL
+.Cd options KTR_ETHERNET
 .Cd options KTR_GIANT_CONTENTION
 .Cd options KTR_IF_BGE
 .Cd options KTR_IF_EM
@@ -77,6 +78,11 @@ related kernel options exist:
 .Bl -tag -width ".Dv KTR_GIANT_CONTENTION"
 .It Dv KTR_ALL
 turns on all options
+.It Dv KTR_ETHERNET
+cost of
+.Fn ether_input_chain
+and
+.Fn ether_input_dispatch
 .It Dv KTR_GIANT_CONTENTION
 contention of the giant lock
 .It Dv KTR_IF_BGE
