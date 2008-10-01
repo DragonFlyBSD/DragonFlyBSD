@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.53 2008/09/27 11:29:47 sephe Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.54 2008/10/01 07:29:16 sephe Exp $
  */
 
 /*
@@ -148,7 +148,7 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, proxyall, CTLFLAG_RW,
 
 static void	arp_rtrequest(int, struct rtentry *, struct rt_addrinfo *);
 static void	arprequest(struct ifnet *, struct in_addr *, struct in_addr *,
-			   u_char *);
+			   const u_char *);
 static void	arpintr(struct netmsg *);
 static void	arptfree(struct llinfo_arp *);
 static void	arptimer(void *);
@@ -316,7 +316,7 @@ arp_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
  */
 static void
 arprequest(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
-	   u_char *enaddr)
+	   const u_char *enaddr)
 {
 	struct mbuf *m;
 	struct ether_header *eh;
@@ -326,7 +326,7 @@ arprequest(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
 
 	if ((m = m_gethdr(MB_DONTWAIT, MT_DATA)) == NULL)
 		return;
-	m->m_pkthdr.rcvif = (struct ifnet *)NULL;
+	m->m_pkthdr.rcvif = NULL;
 
 	switch (ifp->if_type) {
 	case IFT_ETHER:
