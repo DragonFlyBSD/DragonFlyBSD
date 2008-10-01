@@ -18,7 +18,7 @@
 .\"    conditions are met.
 .\"
 .\" $FreeBSD: src/lib/libutil/login_cap.3,v 1.17.2.8 2002/12/29 16:35:36 schweikh Exp $
-.\" $DragonFly: src/lib/libutil/login_cap.3,v 1.5 2007/02/11 00:47:01 swildner Exp $
+.\" $DragonFly: src/lib/libutil/login_cap.3,v 1.6 2008/10/01 11:01:02 swildner Exp $
 .\"
 .Dd December 27, 1996
 .Os
@@ -167,7 +167,7 @@ field is used internally by the library to contain the
 expanded login capabilities record.
 Programs with unusual requirements may wish to use this
 with the lower-level
-.Fn getcap
+.Xr getcap 3
 style functions to access the record directly.
 .Pp
 The
