@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.54 2008/10/01 07:29:16 sephe Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.55 2008/10/01 09:16:18 sephe Exp $
  */
 
 /*
@@ -149,6 +149,8 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, proxyall, CTLFLAG_RW,
 static void	arp_rtrequest(int, struct rtentry *, struct rt_addrinfo *);
 static void	arprequest(struct ifnet *, struct in_addr *, struct in_addr *,
 			   const u_char *);
+static void	arprequest_async(struct ifnet *, struct in_addr *,
+				 struct in_addr *, const u_char *);
 static void	arpintr(struct netmsg *);
 static void	arptfree(struct llinfo_arp *);
 static void	arptimer(void *);
@@ -222,7 +224,7 @@ arp_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
 		}
 		/* Announce a new entry if requested. */
 		if (rt->rt_flags & RTF_ANNOUNCE) {
-			arprequest(rt->rt_ifp,
+			arprequest_async(rt->rt_ifp,
 			    &SIN(rt_key(rt))->sin_addr,
 			    &SIN(rt_key(rt))->sin_addr,
 			    LLADDR(SDL(gate)));
@@ -308,24 +310,16 @@ arp_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
 	}
 }
 
-/*
- * Broadcast an ARP request. Caller specifies:
- *	- arp header source ip address
- *	- arp header target ip address
- *	- arp header source ethernet address
- */
-static void
-arprequest(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
-	   const u_char *enaddr)
+static struct mbuf *
+arpreq_alloc(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
+	     const u_char *enaddr)
 {
 	struct mbuf *m;
-	struct ether_header *eh;
 	struct arphdr *ah;
-	struct sockaddr sa;
 	u_short ar_hrd;
 
 	if ((m = m_gethdr(MB_DONTWAIT, MT_DATA)) == NULL)
-		return;
+		return NULL;
 	m->m_pkthdr.rcvif = NULL;
 
 	switch (ifp->if_type) {
@@ -341,11 +335,6 @@ arprequest(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
 		m->m_pkthdr.len = m->m_len;
 		MH_ALIGN(m, m->m_len);
 
-		eh = (struct ether_header *)sa.sa_data;
-		/* if_output() will not swap */
-		eh->ether_type = htons(ETHERTYPE_ARP);
-		memcpy(eh->ether_dhost, ifp->if_broadcastaddr, ifp->if_addrlen);
-
 		ah = mtod(m, struct arphdr *);
 		break;
 	}
@@ -360,9 +349,87 @@ arprequest(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
 	memcpy(ar_spa(ah), sip, ah->ar_pln);
 	memcpy(ar_tpa(ah), tip, ah->ar_pln);
 
+	return m;
+}
+
+static void
+arpreq_send(struct ifnet *ifp, struct mbuf *m)
+{
+	struct sockaddr sa;
+	struct ether_header *eh;
+
+	switch (ifp->if_type) {
+	case IFT_ETHER:
+		/*
+		 * This may not be correct for types not explicitly
+		 * listed, but this is our best guess
+		 */
+	default:
+		eh = (struct ether_header *)sa.sa_data;
+		/* if_output() will not swap */
+		eh->ether_type = htons(ETHERTYPE_ARP);
+		memcpy(eh->ether_dhost, ifp->if_broadcastaddr, ifp->if_addrlen);
+		break;
+	}
+
 	sa.sa_family = AF_UNSPEC;
-	sa.sa_len = sizeof sa;
+	sa.sa_len = sizeof(sa);
 	ifp->if_output(ifp, m, &sa, NULL);
+}
+
+static void
+arpreq_send_handler(struct netmsg *nmsg)
+{
+	struct mbuf *m = ((struct netmsg_packet *)nmsg)->nm_packet;
+	struct ifnet *ifp = nmsg->nm_lmsg.u.ms_resultp;
+
+	arpreq_send(ifp, m);
+	/* nmsg was embedded in the mbuf, do not reply! */
+}
+
+/*
+ * Broadcast an ARP request. Caller specifies:
+ *	- arp header source ip address
+ *	- arp header target ip address
+ *	- arp header source ethernet address
+ *
+ * NOTE: Caller MUST NOT hold ifp's serializer
+ */
+static void
+arprequest(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
+	   const u_char *enaddr)
+{
+	struct mbuf *m;
+
+	m = arpreq_alloc(ifp, sip, tip, enaddr);
+	if (m == NULL)
+		return;
+	arpreq_send(ifp, m);
+}
+
+/*
+ * Same as arprequest(), except:
+ * - Caller is allowed to hold ifp's serializer
+ * - Network output is done in TDF_NETWORK kernel thread
+ */
+static void
+arprequest_async(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
+		 const u_char *enaddr)
+{
+	struct mbuf *m;
+	struct netmsg_packet *pmsg;
+
+	m = arpreq_alloc(ifp, sip, tip, enaddr);
+	if (m == NULL)
+		return;
+
+	pmsg = &m->m_hdr.mh_netmsg;
+	netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, 0,
+		    arpreq_send_handler);
+	pmsg->nm_packet = m;
+	pmsg->nm_netmsg.nm_lmsg.u.ms_resultp = ifp;
+
+	lwkt_sendmsg(cpu_portfn(mycpuid), &pmsg->nm_netmsg.nm_lmsg);
 }
 
 /*
@@ -947,13 +1014,9 @@ arplookup(in_addr_t addr, boolean_t create, boolean_t proxy)
 void
 arp_ifinit(struct ifnet *ifp, struct ifaddr *ifa)
 {
-	ASSERT_SERIALIZED(ifp->if_serializer);
-
 	if (IA_SIN(ifa)->sin_addr.s_addr != INADDR_ANY) {
-		lwkt_serialize_exit(ifp->if_serializer);
-		arprequest(ifp, &IA_SIN(ifa)->sin_addr, &IA_SIN(ifa)->sin_addr,
-			   IF_LLADDR(ifp));
-		lwkt_serialize_enter(ifp->if_serializer);
+		arprequest_async(ifp, &IA_SIN(ifa)->sin_addr,
+				 &IA_SIN(ifa)->sin_addr, IF_LLADDR(ifp));
 	}
 	ifa->ifa_rtrequest = arp_rtrequest;
 	ifa->ifa_flags |= RTF_CLONING;
@@ -962,11 +1025,10 @@ arp_ifinit(struct ifnet *ifp, struct ifaddr *ifa)
 void
 arp_ifinit2(struct ifnet *ifp, struct ifaddr *ifa, u_char *enaddr)
 {
-	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
-
-	if (IA_SIN(ifa)->sin_addr.s_addr != INADDR_ANY)
-		arprequest(ifp, &IA_SIN(ifa)->sin_addr, &IA_SIN(ifa)->sin_addr,
-			   enaddr);
+	if (IA_SIN(ifa)->sin_addr.s_addr != INADDR_ANY) {
+		arprequest_async(ifp, &IA_SIN(ifa)->sin_addr,
+				 &IA_SIN(ifa)->sin_addr, enaddr);
+	}
 	ifa->ifa_rtrequest = arp_rtrequest;
 	ifa->ifa_flags |= RTF_CLONING;
 }
