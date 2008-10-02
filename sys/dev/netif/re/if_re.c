@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.51 2008/09/29 20:27:38 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.52 2008/10/02 04:14:13 sephe Exp $
  */
 
 /*
@@ -1687,13 +1687,11 @@ re_txeof(struct re_softc *sc)
 		}
 		sc->re_ldata.re_tx_free++;
 	}
+	sc->re_ldata.re_tx_considx = idx;
 
-	/* No changes made to the TX ring, so no flush needed */
-	if (sc->re_ldata.re_tx_free) {
-		sc->re_ldata.re_tx_considx = idx;
+	/* There is enough free TX descs */
+	if (sc->re_ldata.re_tx_free > RE_TXDESC_SPARE)
 		ifp->if_flags &= ~IFF_OACTIVE;
-		ifp->if_timer = 0;
-	}
 
 	/*
 	 * Some chips will ignore a second TX request issued while an
@@ -1704,6 +1702,8 @@ re_txeof(struct re_softc *sc)
 	 */
 	if (sc->re_ldata.re_tx_free < RE_TX_DESC_CNT)
 		CSR_WRITE_1(sc, sc->re_txstart, RE_TXSTART_START);
+	else
+		ifp->if_timer = 0;
 
 	/*
 	 * If not all descriptors have been released reaped yet,
@@ -1856,7 +1856,8 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx, int *called_defrag
 	bus_dmamap_t		map;
 	int			error;
 
-	KASSERT(sc->re_ldata.re_tx_free > 4, ("not enough free TX desc\n"));
+	KASSERT(sc->re_ldata.re_tx_free > RE_TXDESC_SPARE,
+		("not enough free TX desc\n"));
 
 	*called_defrag = 0;
 	m = *m_head;
@@ -1879,9 +1880,7 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx, int *called_defrag
 
 	arg.sc = sc;
 	arg.re_idx = *idx;
-	arg.re_maxsegs = sc->re_ldata.re_tx_free;
-	if (arg.re_maxsegs > 4)
-		arg.re_maxsegs -= 4;
+	arg.re_maxsegs = sc->re_ldata.re_tx_free - RE_TXDESC_SPARE;
 	arg.re_ring = sc->re_ldata.re_tx_list;
 
 	map = sc->re_ldata.re_tx_dmamap[*idx];
@@ -2018,7 +2017,7 @@ re_start(struct ifnet *ifp)
 
 	need_trans = 0;
 	while (sc->re_ldata.re_tx_mbuf[idx] == NULL) {
-		if (sc->re_ldata.re_tx_free <= 4) {
+		if (sc->re_ldata.re_tx_free <= RE_TXDESC_SPARE) {
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}

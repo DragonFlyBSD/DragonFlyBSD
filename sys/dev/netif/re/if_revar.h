@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.3 2007/01/15 12:53:26 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.4 2008/10/02 04:14:13 sephe Exp $
  */
 
 struct re_chain_data {
@@ -195,3 +195,5 @@ struct re_softc {
 	CSR_WRITE_1(sc, reg, CSR_READ_1(sc, reg) | (val))
 #define CSR_CLRBIT_1(sc, reg, val)	\
 	CSR_WRITE_1(sc, reg, CSR_READ_1(sc, reg) & ~(val))
+
+#define RE_TXDESC_SPARE		4
