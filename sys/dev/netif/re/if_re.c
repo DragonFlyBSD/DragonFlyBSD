@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.54 2008/10/03 05:47:07 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.55 2008/10/03 07:52:26 sephe Exp $
  */
 
 /*
@@ -223,7 +223,9 @@ static void	re_shutdown(device_t);
 static void	re_dma_map_addr(void *, bus_dma_segment_t *, int, int);
 static void	re_dma_map_desc(void *, bus_dma_segment_t *, int,
 				bus_size_t, int);
-static int	re_allocmem(device_t, struct re_softc *);
+static int	re_allocmem(device_t);
+static void	re_freemem(device_t);
+static void	re_freebufmem(struct re_softc *, int, int);
 static int	re_encap(struct re_softc *, struct mbuf **, int *);
 static int	re_newbuf(struct re_softc *, int, int);
 static void	re_setup_rxdesc(struct re_softc *, int);
@@ -905,118 +907,218 @@ re_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 }
 
 static int
-re_allocmem(device_t dev, struct re_softc *sc)
+re_allocmem(device_t dev)
 {
+	struct re_softc *sc = device_get_softc(dev);
 	int error, i;
 
 	/*
-	 * Allocate map for RX mbufs.
+	 * Allocate the parent bus DMA tag appropriate for PCI.
 	 */
-	error = bus_dma_tag_create(sc->re_parent_tag, ETHER_ALIGN, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL,
-	    NULL, MCLBYTES, RE_MAXSEGS, MCLBYTES, BUS_DMA_ALLOCNOW,
-	    &sc->re_ldata.re_mtag);
+	error = bus_dma_tag_create(NULL,	/* parent */
+			1, 0,			/* alignment, boundary */
+			BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
+			BUS_SPACE_MAXADDR,	/* highaddr */
+			NULL, NULL,		/* filter, filterarg */
+			MAXBSIZE, RE_MAXSEGS,	/* maxsize, nsegments */
+			BUS_SPACE_MAXSIZE_32BIT,/* maxsegsize */
+			BUS_DMA_ALLOCNOW,	/* flags */
+			&sc->re_parent_tag);
 	if (error) {
-		device_printf(dev, "could not allocate dma tag\n");
-		return(error);
+		device_printf(dev, "could not allocate parent dma tag\n");
+		return error;
 	}
 
-	/*
-	 * Allocate map for TX descriptor list.
-	 */
-	error = bus_dma_tag_create(sc->re_parent_tag, RE_RING_ALIGN,
-	    0, BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL,
-            NULL, RE_TX_LIST_SZ, 1, RE_TX_LIST_SZ, BUS_DMA_ALLOCNOW,
-	    &sc->re_ldata.re_tx_list_tag);
+	/* Allocate tag for TX descriptor list. */
+	error = bus_dma_tag_create(sc->re_parent_tag,
+			RE_RING_ALIGN, 0,
+			BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+			NULL, NULL,
+			RE_TX_LIST_SZ, 1, RE_TX_LIST_SZ,
+			BUS_DMA_ALLOCNOW,
+			&sc->re_ldata.re_tx_list_tag);
 	if (error) {
-		device_printf(dev, "could not allocate dma tag\n");
+		device_printf(dev, "could not allocate TX ring dma tag\n");
 		return(error);
 	}
 
 	/* Allocate DMA'able memory for the TX ring */
-
         error = bus_dmamem_alloc(sc->re_ldata.re_tx_list_tag,
-	    (void **)&sc->re_ldata.re_tx_list, BUS_DMA_WAITOK | BUS_DMA_ZERO,
-            &sc->re_ldata.re_tx_list_map);
+			(void **)&sc->re_ldata.re_tx_list,
+			BUS_DMA_WAITOK | BUS_DMA_ZERO,
+			&sc->re_ldata.re_tx_list_map);
         if (error) {
 		device_printf(dev, "could not allocate TX ring\n");
+		bus_dma_tag_destroy(sc->re_ldata.re_tx_list_tag);
+		sc->re_ldata.re_tx_list_tag = NULL;
                 return(error);
 	}
 
 	/* Load the map for the TX ring. */
-
 	error = bus_dmamap_load(sc->re_ldata.re_tx_list_tag,
-	     sc->re_ldata.re_tx_list_map, sc->re_ldata.re_tx_list,
-	     RE_TX_LIST_SZ, re_dma_map_addr,
-	     &sc->re_ldata.re_tx_list_addr, BUS_DMA_NOWAIT);
+			sc->re_ldata.re_tx_list_map,
+			sc->re_ldata.re_tx_list, RE_TX_LIST_SZ,
+			re_dma_map_addr, &sc->re_ldata.re_tx_list_addr,
+			BUS_DMA_NOWAIT);
 	if (error) {
 		device_printf(dev, "could not get address of TX ring\n");
+		bus_dmamem_free(sc->re_ldata.re_tx_list_tag,
+				sc->re_ldata.re_tx_list,
+				sc->re_ldata.re_tx_list_map);
+		bus_dma_tag_destroy(sc->re_ldata.re_tx_list_tag);
+		sc->re_ldata.re_tx_list_tag = NULL;
 		return(error);
 	}
 
-	/* Create DMA maps for TX buffers */
-
-	for (i = 0; i < RE_TX_DESC_CNT; i++) {
-		error = bus_dmamap_create(sc->re_ldata.re_mtag, 0,
-			    &sc->re_ldata.re_tx_dmamap[i]);
-		if (error) {
-			device_printf(dev, "can't create DMA map for TX\n");
-			return(error);
-		}
-	}
-
-	/*
-	 * Allocate map for RX descriptor list.
-	 */
-	error = bus_dma_tag_create(sc->re_parent_tag, RE_RING_ALIGN,
-	    0, BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL,
-            NULL, RE_RX_LIST_SZ, 1, RE_RX_LIST_SZ, BUS_DMA_ALLOCNOW,
-	    &sc->re_ldata.re_rx_list_tag);
+	/* Allocate tag for RX descriptor list. */
+	error = bus_dma_tag_create(sc->re_parent_tag,
+			RE_RING_ALIGN, 0,
+			BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+			NULL, NULL,
+			RE_RX_LIST_SZ, 1, RE_RX_LIST_SZ,
+			BUS_DMA_ALLOCNOW,
+			&sc->re_ldata.re_rx_list_tag);
 	if (error) {
-		device_printf(dev, "could not allocate dma tag\n");
+		device_printf(dev, "could not allocate RX ring dma tag\n");
 		return(error);
 	}
 
 	/* Allocate DMA'able memory for the RX ring */
-
         error = bus_dmamem_alloc(sc->re_ldata.re_rx_list_tag,
-	    (void **)&sc->re_ldata.re_rx_list, BUS_DMA_WAITOK | BUS_DMA_ZERO,
-            &sc->re_ldata.re_rx_list_map);
+			(void **)&sc->re_ldata.re_rx_list,
+			BUS_DMA_WAITOK | BUS_DMA_ZERO,
+			&sc->re_ldata.re_rx_list_map);
         if (error) {
 		device_printf(dev, "could not allocate RX ring\n");
+		bus_dma_tag_destroy(sc->re_ldata.re_rx_list_tag);
+		sc->re_ldata.re_rx_list_tag = NULL;
                 return(error);
 	}
 
 	/* Load the map for the RX ring. */
-
 	error = bus_dmamap_load(sc->re_ldata.re_rx_list_tag,
-	     sc->re_ldata.re_rx_list_map, sc->re_ldata.re_rx_list,
-	     RE_RX_LIST_SZ, re_dma_map_addr,
-	     &sc->re_ldata.re_rx_list_addr, BUS_DMA_NOWAIT);
+			sc->re_ldata.re_rx_list_map,
+			sc->re_ldata.re_rx_list, RE_RX_LIST_SZ,
+			re_dma_map_addr, &sc->re_ldata.re_rx_list_addr,
+			BUS_DMA_NOWAIT);
 	if (error) {
 		device_printf(dev, "could not get address of RX ring\n");
+		bus_dmamem_free(sc->re_ldata.re_rx_list_tag,
+				sc->re_ldata.re_rx_list,
+				sc->re_ldata.re_rx_list_map);
+		bus_dma_tag_destroy(sc->re_ldata.re_rx_list_tag);
+		sc->re_ldata.re_rx_list_tag = NULL;
 		return(error);
 	}
 
-	/* Create DMA maps for RX buffers */
-
-	for (i = 0; i < RE_RX_DESC_CNT; i++) {
-		error = bus_dmamap_create(sc->re_ldata.re_mtag, 0,
-			    &sc->re_ldata.re_rx_dmamap[i]);
-		if (error) {
-			device_printf(dev, "can't create DMA map for RX\n");
-			return(ENOMEM);
-		}
+	/* Allocate map for RX/TX mbufs. */
+	error = bus_dma_tag_create(sc->re_parent_tag,
+			ETHER_ALIGN, 0,
+			BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+			NULL, NULL,
+			RE_JUMBO_FRAMELEN, RE_MAXSEGS, MCLBYTES,
+			BUS_DMA_ALLOCNOW,
+			&sc->re_ldata.re_mtag);
+	if (error) {
+		device_printf(dev, "could not allocate buf dma tag\n");
+		return(error);
 	}
 
+	/* Create spare DMA map for RX */
 	error = bus_dmamap_create(sc->re_ldata.re_mtag, 0,
-		    &sc->re_ldata.re_rx_spare);
+			&sc->re_ldata.re_rx_spare);
 	if (error) {
 		device_printf(dev, "can't create spare DMA map for RX\n");
+		bus_dma_tag_destroy(sc->re_ldata.re_mtag);
+		sc->re_ldata.re_mtag = NULL;
 		return error;
 	}
 
+	/* Create DMA maps for TX buffers */
+	for (i = 0; i < RE_TX_DESC_CNT; i++) {
+		error = bus_dmamap_create(sc->re_ldata.re_mtag, 0,
+				&sc->re_ldata.re_tx_dmamap[i]);
+		if (error) {
+			device_printf(dev, "can't create DMA map for TX buf\n");
+			re_freebufmem(sc, i, 0);
+			return(error);
+		}
+	}
+
+	/* Create DMA maps for RX buffers */
+	for (i = 0; i < RE_RX_DESC_CNT; i++) {
+		error = bus_dmamap_create(sc->re_ldata.re_mtag, 0,
+				&sc->re_ldata.re_rx_dmamap[i]);
+		if (error) {
+			device_printf(dev, "can't create DMA map for RX buf\n");
+			re_freebufmem(sc, RE_TX_DESC_CNT, i);
+			return(error);
+		}
+	}
 	return(0);
+}
+
+static void
+re_freebufmem(struct re_softc *sc, int tx_cnt, int rx_cnt)
+{
+	int i;
+
+	/* Destroy all the RX and TX buffer maps */
+	if (sc->re_ldata.re_mtag) {
+		for (i = 0; i < tx_cnt; i++) {
+			bus_dmamap_destroy(sc->re_ldata.re_mtag,
+					   sc->re_ldata.re_tx_dmamap[i]);
+		}
+		for (i = 0; i < rx_cnt; i++) {
+			bus_dmamap_destroy(sc->re_ldata.re_mtag,
+					   sc->re_ldata.re_rx_dmamap[i]);
+		}
+		bus_dmamap_destroy(sc->re_ldata.re_mtag,
+				   sc->re_ldata.re_rx_spare);
+		bus_dma_tag_destroy(sc->re_ldata.re_mtag);
+	}
+}
+
+static void
+re_freemem(device_t dev)
+{
+	struct re_softc *sc = device_get_softc(dev);
+
+	/* Unload and free the RX DMA ring memory and map */
+	if (sc->re_ldata.re_rx_list_tag) {
+		bus_dmamap_unload(sc->re_ldata.re_rx_list_tag,
+				  sc->re_ldata.re_rx_list_map);
+		bus_dmamem_free(sc->re_ldata.re_rx_list_tag,
+				sc->re_ldata.re_rx_list,
+				sc->re_ldata.re_rx_list_map);
+		bus_dma_tag_destroy(sc->re_ldata.re_rx_list_tag);
+	}
+
+	/* Unload and free the TX DMA ring memory and map */
+	if (sc->re_ldata.re_tx_list_tag) {
+		bus_dmamap_unload(sc->re_ldata.re_tx_list_tag,
+				  sc->re_ldata.re_tx_list_map);
+		bus_dmamem_free(sc->re_ldata.re_tx_list_tag,
+				sc->re_ldata.re_tx_list,
+				sc->re_ldata.re_tx_list_map);
+		bus_dma_tag_destroy(sc->re_ldata.re_tx_list_tag);
+	}
+
+	/* Free RX/TX buf DMA stuffs */
+	re_freebufmem(sc, RE_TX_DESC_CNT, RE_RX_DESC_CNT);
+
+	/* Unload and free the stats buffer and map */
+	if (sc->re_ldata.re_stag) {
+		bus_dmamap_unload(sc->re_ldata.re_stag,
+				  sc->re_ldata.re_rx_list_map);
+		bus_dmamem_free(sc->re_ldata.re_stag,
+				sc->re_ldata.re_stats,
+				sc->re_ldata.re_smap);
+		bus_dma_tag_destroy(sc->re_ldata.re_stag);
+	}
+
+	if (sc->re_parent_tag)
+		bus_dma_tag_destroy(sc->re_parent_tag);
 }
 
 /*
@@ -1147,22 +1249,8 @@ re_attach(device_t dev)
 		sc->re_txstart = RE_TXSTART;
 	}
 
-	/*
-	 * Allocate the parent bus DMA tag appropriate for PCI.
-	 */
-	error = bus_dma_tag_create(NULL,	/* parent */
-			1, 0,			/* alignment, boundary */
-			BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
-			BUS_SPACE_MAXADDR,	/* highaddr */
-			NULL, NULL,		/* filter, filterarg */
-			MAXBSIZE, RE_MAXSEGS,	/* maxsize, nsegments */
-			BUS_SPACE_MAXSIZE_32BIT,/* maxsegsize */
-			BUS_DMA_ALLOCNOW,	/* flags */
-			&sc->re_parent_tag);
-	if (error)
-		goto fail;
-
-	error = re_allocmem(dev, sc);
+	/* Allocate DMA stuffs */
+	error = re_allocmem(dev);
 	if (error)
 		goto fail;
 
@@ -1275,7 +1363,6 @@ re_detach(device_t dev)
 {
 	struct re_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int i;
 
 	/* These should only be active if attach succeeded */
 	if (device_is_attached(dev)) {
@@ -1297,55 +1384,8 @@ re_detach(device_t dev)
 				     sc->re_res);
 	}
 
-	/* Unload and free the RX DMA ring memory and map */
-
-	if (sc->re_ldata.re_rx_list_tag) {
-		bus_dmamap_unload(sc->re_ldata.re_rx_list_tag,
-		    sc->re_ldata.re_rx_list_map);
-		bus_dmamem_free(sc->re_ldata.re_rx_list_tag,
-		    sc->re_ldata.re_rx_list,
-		    sc->re_ldata.re_rx_list_map);
-		bus_dma_tag_destroy(sc->re_ldata.re_rx_list_tag);
-	}
-
-	/* Unload and free the TX DMA ring memory and map */
-
-	if (sc->re_ldata.re_tx_list_tag) {
-		bus_dmamap_unload(sc->re_ldata.re_tx_list_tag,
-		    sc->re_ldata.re_tx_list_map);
-		bus_dmamem_free(sc->re_ldata.re_tx_list_tag,
-		    sc->re_ldata.re_tx_list,
-		    sc->re_ldata.re_tx_list_map);
-		bus_dma_tag_destroy(sc->re_ldata.re_tx_list_tag);
-	}
-
-	/* Destroy all the RX and TX buffer maps */
-
-	if (sc->re_ldata.re_mtag) {
-		for (i = 0; i < RE_TX_DESC_CNT; i++)
-			bus_dmamap_destroy(sc->re_ldata.re_mtag,
-			    sc->re_ldata.re_tx_dmamap[i]);
-		for (i = 0; i < RE_RX_DESC_CNT; i++)
-			bus_dmamap_destroy(sc->re_ldata.re_mtag,
-			    sc->re_ldata.re_rx_dmamap[i]);
-		bus_dmamap_destroy(sc->re_ldata.re_mtag,
-				   sc->re_ldata.re_rx_spare);
-		bus_dma_tag_destroy(sc->re_ldata.re_mtag);
-	}
-
-	/* Unload and free the stats buffer and map */
-
-	if (sc->re_ldata.re_stag) {
-		bus_dmamap_unload(sc->re_ldata.re_stag,
-		    sc->re_ldata.re_rx_list_map);
-		bus_dmamem_free(sc->re_ldata.re_stag,
-		    sc->re_ldata.re_stats,
-		    sc->re_ldata.re_smap);
-		bus_dma_tag_destroy(sc->re_ldata.re_stag);
-	}
-
-	if (sc->re_parent_tag)
-		bus_dma_tag_destroy(sc->re_parent_tag);
+	/* Free DMA stuffs */
+	re_freemem(dev);
 
 	return(0);
 }
