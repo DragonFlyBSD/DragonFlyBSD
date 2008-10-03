@@ -1,8 +1,8 @@
 .\"
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
-.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.18 2008/09/02 11:50:45 matthias Exp $
+.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.19 2008/10/03 10:46:41 swildner Exp $
 .\"
-.Dd September 2, 2008
+.Dd October 3, 2008
 .Dt IPFW 8
 .Os
 .Sh NAME
@@ -321,16 +321,16 @@ in the protocol stack, under control of several sysctl variables.
 These places and variables are shown below, and it is important to
 have this picture in mind in order to design a correct ruleset.
 .Bd -literal -offset indent
-      ^	    to upper layers   V
-      |                       |
-      +----------->-----------+
-      ^                       V
- [ip_input]              [ip_output]   net.inet.ip.fw.enable=1
-      |                       |
-      ^                       V
-[ether_demux]    [ether_output_frame]  net.link.ether.ipfw=1
-      ^                       V
-      |      to devices       |
+         ^     to upper layers     V
+         |                         |
+         +------------>------------+
+         ^                         V
+    [ip_input]                [ip_output]   net.inet.ip.fw.enable=1
+         |                         |
+         ^                         V
+[ether_demux_oncpu]   [ether_output_frame]  net.link.ether.ipfw=1
+         ^                         V
+         |       to devices        |
 .Ed
 .Pp
 As can be noted from the above picture, the number of
@@ -344,7 +344,7 @@ for inspection.
 E.g., incoming packets will include the MAC header when
 .Nm
 is invoked from
-.Fn ether_demux ,
+.Fn ether_demux_oncpu ,
 but the same packets will have the MAC header stripped off when
 .Nm
 is invoked from
@@ -368,7 +368,7 @@ differentiate among the possible places.
 .Cm skipto
 rules can be useful here, as an example:
 .Bd -literal -offset indent
-# packets from ether_demux
+# packets from ether_demux_oncpu
 ipfw add 10 skipto 1000 all from any to any layer2 in
 # packets from ip_input
 ipfw add 10 skipto 2000 all from any to any not layer2 in
@@ -942,7 +942,10 @@ packet is found.
 .It Cm layer2
 Matches only layer2 packets, i.e. those passed to
 .Nm
-from ether_demux() and ether_output_frame().
+from
+.Fn ether_demux_oncpu
+and
+.Fn ether_output_frame .
 .It Cm limit Bro Cm src-addr | src-port | dst-addr | dst-port Brc Ar N
 The firewall will only allow
 .Ar N
@@ -1687,7 +1690,7 @@ does not implement sets of rules.
 .Nm ipfw1
 does not implement filtering on MAC header fields, nor is it
 invoked on packets from
-.Fn ether_demux
+.Fn ether_demux_oncpu
 and
 .Fn ether_output_frame .
 The sysctl variable
