@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.57 2008/10/03 10:12:35 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.58 2008/10/03 11:35:25 sephe Exp $
  */
 
 /*
@@ -1234,6 +1234,7 @@ re_attach(device_t dev)
 			break;
 		}
 	}
+	device_printf(dev, "hardware rev. 0x%08x\n", hwrev);
 
 	sc->re_eewidth = 6;
 	re_read_eeprom(sc, (caddr_t)&re_did, 0, 1);
