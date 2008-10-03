@@ -23,9 +23,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/gpt/gpt.8,v 1.17 2006/06/22 22:22:32 marcel Exp $
-.\" $DragonFly: src/sbin/gpt/gpt.8,v 1.13 2008/09/06 10:03:45 thomas Exp $
+.\" $DragonFly: src/sbin/gpt/gpt.8,v 1.14 2008/10/03 21:26:28 thomas Exp $
 .\"
-.Dd September 3, 2008
+.Dd October 3, 2008
 .Os
 .Dt GPT 8
 .Sh NAME
@@ -169,19 +169,17 @@ and hacks in a special
 .Sq slice 1
 in the PMBR which aliases it.
 The PMBR is further modified to add the necessary boot code.
-You can then disklabel GPT partition #0 and mount it, placing the boot
-directory and kernel within.
-The boot directory must be a sub-directory, e.g.\&
-.Pa /mnt/boot
-in
-.Pa da8s0a .
-You must also add a
-.Dq vfs.root.mountfrom="filesystem:device"
-line to
-.Pa /mnt/boot/loader.conf
-to point to the actual root mount.
-For example,
-.Dq ufs:da8s1a .
+You can then disklabel GPT partition #0 and mount it, placing the contents of
+.Pa /boot
+directory within.
+You must add a line to
+.Pa loader.conf ,
+like
+.Bd -literal -offset indent
+vfs.root.mountfrom="ufs:da8s1a"
+.Ed
+.Pp
+which point to the actual root mount.
 .Pp
 Your root partition may be another GPT partition and you may use a 64 bit
 disklabel within that partition if you desire.
@@ -391,7 +389,7 @@ which is assumed in the examples below, it can be found using:
 .Pp
 To add a dummy GPT partition 0:
 .Pp
-.Dl "gpt add -i0 -s1 ad6"
+.Dl "gpt add -i0 -s16 ad6"
 .Pp
 You might want to do this to not use slice 0 for data;
 when GPT is not used on a disk, slice 0 is the compatibility slice,
