@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.29 2008/04/20 13:44:26 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.30 2008/10/03 07:59:20 hasso Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -1781,6 +1781,34 @@ in6ifa_ifpwithaddr(struct ifnet *ifp, struct in6_addr *addr)
 		return ((struct in6_ifaddr *)(ifac->ifa));
 	else
 		return (NULL);
+}
+
+/*
+ * find the internet address on a given interface corresponding to a neighbor's
+ * address.
+ */
+struct in6_ifaddr *
+in6ifa_ifplocaladdr(const struct ifnet *ifp, const struct in6_addr *addr)
+{
+	struct ifaddr *ifa;
+	struct in6_ifaddr *ia;
+	struct ifaddr_container *ifac;
+
+	TAILQ_FOREACH(ifac, &ifp->if_addrheads[mycpuid], ifa_link) {
+		ifa = ifac->ifa;
+
+		if (ifa->ifa_addr == NULL)
+			continue;	/* just for safety */
+		if (ifa->ifa_addr->sa_family != AF_INET6)
+			continue;
+		ia = (struct in6_ifaddr *)ifa;
+		if (IN6_ARE_MASKED_ADDR_EQUAL(addr,
+				&ia->ia_addr.sin6_addr,
+				&ia->ia_prefixmask.sin6_addr))
+			return ia;
+	}
+
+	return NULL;
 }
 
 /*

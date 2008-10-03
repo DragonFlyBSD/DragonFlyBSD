@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_var.h,v 1.3.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_var.h,v 1.9 2008/03/07 11:34:21 sephe Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_var.h,v 1.10 2008/10/03 07:59:20 hasso Exp $	*/
 /*	$KAME: in6_var.h,v 1.56 2001/03/29 05:34:31 itojun Exp $	*/
 
 /*
@@ -607,6 +607,8 @@ void	in6_purgemkludge (struct ifnet *);
 struct in6_ifaddr *in6ifa_ifpforlinklocal (struct ifnet *, int);
 struct in6_ifaddr *in6ifa_ifpwithaddr (struct ifnet *,
 					     struct in6_addr *);
+struct in6_ifaddr *in6ifa_ifplocaladdr(const struct ifnet *,
+					const struct in6_addr *);
 char	*ip6_sprintf (const struct in6_addr *);
 int	in6_addr2scopeid (struct ifnet *, struct in6_addr *);
 int	in6_matchlen (struct in6_addr *, struct in6_addr *);
