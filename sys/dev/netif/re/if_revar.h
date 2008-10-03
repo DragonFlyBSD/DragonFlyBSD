@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.5 2008/10/03 05:09:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.6 2008/10/03 10:12:35 sephe Exp $
  */
 
 struct re_chain_data {
@@ -132,6 +132,7 @@ struct re_softc {
 	struct callout		re_timer;
 	struct mbuf		*re_head;
 	struct mbuf		*re_tail;
+	int			re_drop_rxfrag;
 	uint32_t		re_flags;	/* see RE_F_ */
 	uint32_t		re_rxlenmask;
 	int			re_txstart;

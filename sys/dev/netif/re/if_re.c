@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.56 2008/10/03 08:00:06 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.57 2008/10/03 10:12:35 sephe Exp $
  */
 
 /*
@@ -1557,18 +1557,35 @@ re_rxeof(struct re_softc *sc)
 		rxvlan = le32toh(cur_rx->re_vlanctl);
 
 		if ((rxstat & RE_RDESC_STAT_EOF) == 0) {
-			if (re_newbuf(sc, i, 0)) {
-				/* TODO: Drop upcoming fragments */
+			if (sc->re_drop_rxfrag) {
+				re_setup_rxdesc(sc, i);
 				continue;
 			}
 
-			m->m_len = MCLBYTES - ETHER_ALIGN;
+			if (re_newbuf(sc, i, 0)) {
+				/* Drop upcoming fragments */
+				sc->re_drop_rxfrag = 1;
+				continue;
+			}
+
+			m->m_len = MCLBYTES;
 			if (sc->re_head == NULL) {
 				sc->re_head = sc->re_tail = m;
 			} else {
 				sc->re_tail->m_next = m;
 				sc->re_tail = m;
 			}
+			continue;
+		} else if (sc->re_drop_rxfrag) {
+			/*
+			 * Last fragment of a multi-fragment packet.
+			 *
+			 * Since error already happened, this fragment
+			 * must be dropped as well as the fragment chain.
+			 */
+			re_setup_rxdesc(sc, i);
+			re_free_rxchain(sc);
+			sc->re_drop_rxfrag = 0;
 			continue;
 		}
 
@@ -1614,7 +1631,7 @@ re_rxeof(struct re_softc *sc)
 		}
 
 		if (sc->re_head != NULL) {
-			m->m_len = total_len % (MCLBYTES - ETHER_ALIGN);
+			m->m_len = total_len % MCLBYTES;
 			/* 
 			 * Special case: if there's 4 bytes or less
 			 * in this buffer, the mbuf can be discarded:
@@ -1936,7 +1953,7 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 			goto back;
 	}
 
-	maxsegs = sc->re_ldata.re_tx_free - RE_TXDESC_SPARE;
+	maxsegs = sc->re_ldata.re_tx_free;
 	if (maxsegs > RE_MAXSEGS)
 		maxsegs = RE_MAXSEGS;
 
@@ -2449,6 +2466,7 @@ re_stop(struct re_softc *sc)
 	CSR_WRITE_2(sc, RE_ISR, 0xFFFF);
 
 	re_free_rxchain(sc);
+	sc->re_drop_rxfrag = 0;
 
 	/* Free the TX list buffers. */
 	for (i = 0; i < RE_TX_DESC_CNT; i++) {
