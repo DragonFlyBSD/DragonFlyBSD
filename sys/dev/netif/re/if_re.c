@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.55 2008/10/03 07:52:26 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.56 2008/10/03 08:00:06 sephe Exp $
  */
 
 /*
@@ -308,6 +308,15 @@ DRIVER_MODULE(miibus, re, miibus_driver, miibus_devclass, 0, 0);
 
 #define EE_CLR(x)	\
 	CSR_WRITE_1(sc, RE_EECMD, CSR_READ_1(sc, RE_EECMD) & ~(x))
+
+static __inline void
+re_free_rxchain(struct re_softc *sc)
+{
+	if (sc->re_head != NULL) {
+		m_freem(sc->re_head);
+		sc->re_head = sc->re_tail = NULL;
+	}
+}
 
 /*
  * Send a read command and address to the EEPROM, check for ACK.
@@ -1588,10 +1597,7 @@ re_rxeof(struct re_softc *sc)
 			 * If this is part of a multi-fragment packet,
 			 * discard all the pieces.
 			 */
-			if (sc->re_head != NULL) {
-				m_freem(sc->re_head);
-				sc->re_head = sc->re_tail = NULL;
-			}
+			re_free_rxchain(sc);
 			re_setup_rxdesc(sc, i);
 			continue;
 		}
@@ -1603,10 +1609,7 @@ re_rxeof(struct re_softc *sc)
 
 		if (re_newbuf(sc, i, 0)) {
 			ifp->if_ierrors++;
-			if (sc->re_head != NULL) {
-				m_freem(sc->re_head);
-				sc->re_head = sc->re_tail = NULL;
-			}
+			re_free_rxchain(sc);
 			continue;
 		}
 
@@ -2445,10 +2448,7 @@ re_stop(struct re_softc *sc)
 	CSR_WRITE_2(sc, RE_IMR, 0x0000);
 	CSR_WRITE_2(sc, RE_ISR, 0xFFFF);
 
-	if (sc->re_head != NULL) {
-		m_freem(sc->re_head);
-		sc->re_head = sc->re_tail = NULL;
-	}
+	re_free_rxchain(sc);
 
 	/* Free the TX list buffers. */
 	for (i = 0; i < RE_TX_DESC_CNT; i++) {
