@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.28 2008/09/13 19:08:05 swildner Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.29 2008/10/03 09:25:18 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -665,7 +665,7 @@ vesa_bios_init(void)
 		if ((vmode.v_modeattr & (V_MODESUPP | V_MODEOPTINFO)) !=
 		    (V_MODESUPP | V_MODEOPTINFO)) {
 #if VESA_DEBUG > 1
-			kprintf("Rejecting VESA %s mode: %d x %d x %d bpp  attr = %x\n",
+			kprintf("Rejecting VESA %s mode: %d x %d x %d bpp  attr = 0x%x\n",
 			       vmode.v_modeattr & V_MODEGRAPHICS ? "graphics" : "text",
 			       vmode.v_width, vmode.v_height, vmode.v_bpp,
 			       vmode.v_modeattr);
@@ -792,7 +792,7 @@ vesa_map_buffer(u_int paddr, size_t size)
 	off = paddr - trunc_page(paddr);
 	vaddr = (vm_offset_t)pmap_mapdev(paddr - off, size + off);
 #if VESA_DEBUG > 1
-	kprintf("vesa_map_buffer: paddr:%x vaddr:%x size:%x off:%x\n",
+	kprintf("vesa_map_buffer: paddr:0x%x vaddr:0x%x size:0x%x off:0x%x\n",
 	       paddr, vaddr, size, off);
 #endif
 	return (vaddr + off);
@@ -802,7 +802,7 @@ static void
 vesa_unmap_buffer(vm_offset_t vaddr, size_t size)
 {
 #if VESA_DEBUG > 1
-	kprintf("vesa_unmap_buffer: vaddr:%x size:%x\n", vaddr, size);
+	kprintf("vesa_unmap_buffer: vaddr:0x%x size:0x%x\n", vaddr, size);
 #endif
 	pmap_unmapdev(vaddr, size);
 }
@@ -974,7 +974,7 @@ vesa_set_mode(video_adapter_t *adp, int mode)
 		return (*prevvidsw->set_mode)(adp, mode);
 
 #if VESA_DEBUG > 0
-	kprintf("VESA: set_mode(): %d(%x) -> %d(%x)\n",
+	kprintf("VESA: set_mode(): %d(0x%x) -> %d(0x%x)\n",
 		adp->va_mode, adp->va_mode, mode, mode);
 #endif
 	/* 
@@ -1518,7 +1518,7 @@ vesa_bios_info(int level)
 
 	if (bootverbose) {
 		/* general adapter information */
-		kprintf("VESA: v%d.%d, %dk memory, flags:0x%x, mode table:%p (%x)\n", 
+		kprintf("VESA: v%d.%d, %dk memory, flags:0x%x, mode table:%p (0x%x)\n", 
 		       bcd2bin((vesa_adp_info->v_version & 0xff00) >> 8),
 		       bcd2bin(vesa_adp_info->v_version & 0x00ff),
 		       vesa_adp_info->v_memsize * 64, vesa_adp_info->v_flags,
@@ -1571,7 +1571,7 @@ vesa_bios_info(int level)
 			       vmode.v_offscreensize*1024);
 		}
 		kprintf("\n");
-		kprintf("VESA: window A:0x%x (%x), window B:0x%x (%x), ",
+		kprintf("VESA: window A:0x%x (0x%x), window B:0x%x (0x%x), ",
 		       vmode.v_waseg, vmode.v_waattr,
 		       vmode.v_wbseg, vmode.v_wbattr);
 		kprintf("size:%dk, gran:%dk\n",
