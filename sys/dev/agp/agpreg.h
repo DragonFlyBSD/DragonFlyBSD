@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agpreg.h,v 1.19 2007/07/13 16:28:12 anholt Exp $
- *	$DragonFly: src/sys/dev/agp/agpreg.h,v 1.6 2007/09/12 08:31:43 hasso Exp $
+ *	$DragonFly: src/sys/dev/agp/agpreg.h,v 1.7 2008/10/03 08:56:58 hasso Exp $
  */
 
 #ifndef _PCI_AGPREG_H_
@@ -222,7 +222,7 @@
 #define AGP_I855_GCC1_DEV2		0x08
 #define AGP_I855_GCC1_DEV2_ENABLED	0x00
 #define AGP_I855_GCC1_DEV2_DISABLED	0x08
-#define AGP_I855_GCC1_GMS		0x70
+#define AGP_I855_GCC1_GMS		0xf0 /* Top bit reserved pre-G33 */
 #define AGP_I855_GCC1_GMS_STOLEN_0M	0x00
 #define AGP_I855_GCC1_GMS_STOLEN_1M	0x10
 #define AGP_I855_GCC1_GMS_STOLEN_4M	0x20
@@ -266,12 +266,26 @@
 #define AGP_I965_MSAC_GMASIZE_128	0x00
 #define AGP_I965_MSAC_GMASIZE_256	0x02
 #define AGP_I965_MSAC_GMASIZE_512	0x06
+#define AGP_I965_PGTBL_SIZE_1MB		(3 << 1)
+#define AGP_I965_PGTBL_SIZE_2MB		(4 << 1)
+#define AGP_I965_PGTBL_SIZE_1_5MB	(5 << 1)
 
 /*
  * G33 registers
  */
+#define AGP_G33_MGGC_GGMS_MASK		(3 << 8)
+#define AGP_G33_MGGC_GGMS_SIZE_1M	(1 << 8)
+#define AGP_G33_MGGC_GGMS_SIZE_2M	(2 << 8)
 #define AGP_G33_GCC1_GMS_STOLEN_128M	0x80
 #define AGP_G33_GCC1_GMS_STOLEN_256M	0x90
+
+/*
+ * G4X registers
+ */
+#define AGP_G4X_GCC1_GMS_STOLEN_96M	0xa0
+#define AGP_G4X_GCC1_GMS_STOLEN_160M	0xb0
+#define AGP_G4X_GCC1_GMS_STOLEN_224M	0xc0
+#define AGP_G4X_GCC1_GMS_STOLEN_352M	0xd0
 
 /*
  * NVIDIA nForce/nForce2 registers
