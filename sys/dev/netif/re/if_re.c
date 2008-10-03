@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.52 2008/10/02 04:14:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.53 2008/10/03 05:09:18 sephe Exp $
  */
 
 /*
@@ -220,13 +220,13 @@ static int	re_suspend(device_t);
 static int	re_resume(device_t);
 static void	re_shutdown(device_t);
 
-static int	re_encap(struct re_softc *, struct mbuf **, int *, int *);
-
 static void	re_dma_map_addr(void *, bus_dma_segment_t *, int, int);
 static void	re_dma_map_desc(void *, bus_dma_segment_t *, int,
 				bus_size_t, int);
 static int	re_allocmem(device_t, struct re_softc *);
-static int	re_newbuf(struct re_softc *, int, struct mbuf *);
+static int	re_encap(struct re_softc *, struct mbuf **, int *);
+static int	re_newbuf(struct re_softc *, int, int);
+static void	re_setup_rxdesc(struct re_softc *, int);
 static int	re_rx_list_init(struct re_softc *);
 static int	re_tx_list_init(struct re_softc *);
 static void	re_rxeof(struct re_softc *);
@@ -255,6 +255,7 @@ static void	re_miibus_statchg(device_t);
 
 static void	re_setmulti(struct re_softc *);
 static void	re_reset(struct re_softc *);
+static int	re_pad_frame(struct mbuf *);
 
 #ifdef RE_DIAG
 static int	re_diag(struct re_softc *);
@@ -866,76 +867,24 @@ re_probe(device_t dev)
 	return(ENXIO);
 }
 
-/*
- * This routine takes the segment list provided as the result of
- * a bus_dma_map_load() operation and assigns the addresses/lengths
- * to RealTek DMA descriptors. This can be called either by the RX
- * code or the TX code. In the RX case, we'll probably wind up mapping
- * at most one segment. For the TX case, there could be any number of
- * segments since TX packets may span multiple mbufs. In either case,
- * if the number of segments is larger than the re_maxsegs limit
- * specified by the caller, we abort the mapping operation. Sadly,
- * whoever designed the buffer mapping API did not provide a way to
- * return an error from here, so we have to fake it a bit.
- */
-
 static void
-re_dma_map_desc(void *arg, bus_dma_segment_t *segs, int nseg,
+re_dma_map_desc(void *xarg, bus_dma_segment_t *segs, int nsegs,
 		bus_size_t mapsize, int error)
 {
-	struct re_dmaload_arg *ctx;
-	struct re_desc *d = NULL;
-	int i = 0, idx;
-	uint32_t cmdstat;
+	struct re_dmaload_arg *arg = xarg;
+	int i;
 
 	if (error)
 		return;
 
-	ctx = arg;
-
-	/* Signal error to caller if there's too many segments */
-	if (nseg > ctx->re_maxsegs) {
-		ctx->re_maxsegs = 0;
+	if (nsegs > arg->re_nsegs) {
+		arg->re_nsegs = 0;
 		return;
 	}
 
-	/*
-	 * Map the segment array into descriptors. Note that we set the
-	 * start-of-frame and end-of-frame markers for either TX or RX, but
-	 * they really only have meaning in the TX case. (In the RX case,
-	 * it's the chip that tells us where packets begin and end.)
-	 * We also keep track of the end of the ring and set the
-	 * end-of-ring bits as needed, and we set the ownership bits
-	 * in all except the very first descriptor. (The caller will
-	 * set this descriptor later when it start transmission or
-	 * reception.)
-	 */
-	idx = ctx->re_idx;
-	for (;;) {
-		d = &ctx->re_ring[idx];
-		if (le32toh(d->re_cmdstat) & RE_RDESC_STAT_OWN) {
-			ctx->re_maxsegs = 0;
-			return;
-		}
-		cmdstat = segs[i].ds_len;
-		d->re_bufaddr_lo = htole32(RE_ADDR_LO(segs[i].ds_addr));
-		d->re_bufaddr_hi = htole32(RE_ADDR_HI(segs[i].ds_addr));
-		if (i == 0)
-			cmdstat |= RE_TDESC_CMD_SOF;
-		else
-			cmdstat |= RE_TDESC_CMD_OWN;
-		if (idx == (RE_RX_DESC_CNT - 1))
-			cmdstat |= RE_TDESC_CMD_EOR;
-		d->re_cmdstat = htole32(cmdstat | ctx->re_flags);
-		i++;
-		if (i == nseg)
-			break;
-		RE_DESC_INC(idx);
-	}
-
-	d->re_cmdstat |= htole32(RE_TDESC_CMD_EOF);
-	ctx->re_maxsegs = nseg;
-	ctx->re_idx = idx;
+	arg->re_nsegs = nsegs;
+	for (i = 0; i < nsegs; ++i)
+		arg->re_segs[i] = segs[i];
 }
 
 /*
@@ -958,15 +907,14 @@ re_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 static int
 re_allocmem(device_t dev, struct re_softc *sc)
 {
-	int error, i, nseg;
+	int error, i;
 
 	/*
 	 * Allocate map for RX mbufs.
 	 */
-	nseg = 32;
 	error = bus_dma_tag_create(sc->re_parent_tag, ETHER_ALIGN, 0,
 	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL,
-	    NULL, MCLBYTES * nseg, nseg, MCLBYTES, BUS_DMA_ALLOCNOW,
+	    NULL, MCLBYTES, RE_MAXSEGS, MCLBYTES, BUS_DMA_ALLOCNOW,
 	    &sc->re_ldata.re_mtag);
 	if (error) {
 		device_printf(dev, "could not allocate dma tag\n");
@@ -1059,6 +1007,13 @@ re_allocmem(device_t dev, struct re_softc *sc)
 			device_printf(dev, "can't create DMA map for RX\n");
 			return(ENOMEM);
 		}
+	}
+
+	error = bus_dmamap_create(sc->re_ldata.re_mtag, 0,
+		    &sc->re_ldata.re_rx_spare);
+	if (error) {
+		device_printf(dev, "can't create spare DMA map for RX\n");
+		return error;
 	}
 
 	return(0);
@@ -1195,13 +1150,12 @@ re_attach(device_t dev)
 	/*
 	 * Allocate the parent bus DMA tag appropriate for PCI.
 	 */
-#define RE_NSEG_NEW 32
 	error = bus_dma_tag_create(NULL,	/* parent */
 			1, 0,			/* alignment, boundary */
 			BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
 			BUS_SPACE_MAXADDR,	/* highaddr */
 			NULL, NULL,		/* filter, filterarg */
-			MAXBSIZE, RE_NSEG_NEW,	/* maxsize, nsegments */
+			MAXBSIZE, RE_MAXSEGS,	/* maxsize, nsegments */
 			BUS_SPACE_MAXSIZE_32BIT,/* maxsegsize */
 			BUS_DMA_ALLOCNOW,	/* flags */
 			&sc->re_parent_tag);
@@ -1209,7 +1163,6 @@ re_attach(device_t dev)
 		goto fail;
 
 	error = re_allocmem(dev, sc);
-
 	if (error)
 		goto fail;
 
@@ -1375,6 +1328,8 @@ re_detach(device_t dev)
 		for (i = 0; i < RE_RX_DESC_CNT; i++)
 			bus_dmamap_destroy(sc->re_ldata.re_mtag,
 			    sc->re_ldata.re_rx_dmamap[i]);
+		bus_dmamap_destroy(sc->re_ldata.re_mtag,
+				   sc->re_ldata.re_rx_spare);
 		bus_dma_tag_destroy(sc->re_ldata.re_mtag);
 	}
 
@@ -1395,21 +1350,45 @@ re_detach(device_t dev)
 	return(0);
 }
 
+static void
+re_setup_rxdesc(struct re_softc *sc, int idx)
+{
+	bus_addr_t paddr;
+	uint32_t cmdstat;
+	struct re_desc *d;
+
+	paddr = sc->re_ldata.re_rx_paddr[idx];
+	d = &sc->re_ldata.re_rx_list[idx];
+
+	d->re_bufaddr_lo = htole32(RE_ADDR_LO(paddr));
+	d->re_bufaddr_hi = htole32(RE_ADDR_HI(paddr));
+
+	cmdstat = MCLBYTES | RE_RDESC_CMD_OWN;
+	if (idx == (RE_RX_DESC_CNT - 1))
+		cmdstat |= RE_TDESC_CMD_EOR;
+	d->re_cmdstat = htole32(cmdstat);
+}
+
 static int
-re_newbuf(struct re_softc *sc, int idx, struct mbuf *m)
+re_newbuf(struct re_softc *sc, int idx, int init)
 {
 	struct re_dmaload_arg arg;
-	struct mbuf *n = NULL;
+	bus_dma_segment_t seg;
+	bus_dmamap_t map;
+	struct mbuf *m;
 	int error;
 
+	m = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL) {
-		n = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
-		if (n == NULL)
-			return(ENOBUFS);
-		m = n;
-	} else
-		m->m_data = m->m_ext.ext_buf;
+		error = ENOBUFS;
 
+		if (init) {
+			if_printf(&sc->arpcom.ac_if, "m_getcl failed\n");
+			return error;
+		} else {
+			goto back;
+		}
+	}
 	m->m_len = m->m_pkthdr.len = MCLBYTES;
 
 	/*
@@ -1418,28 +1397,44 @@ re_newbuf(struct re_softc *sc, int idx, struct mbuf *m)
 	 * to be 8-byte aligned, so don't call m_adj(m, ETHER_ALIGN) here.
 	 */
 
-	arg.sc = sc;
-	arg.re_idx = idx;
-	arg.re_maxsegs = 1;
-	arg.re_flags = 0;
-	arg.re_ring = sc->re_ldata.re_rx_list;
-
+	arg.re_nsegs = 1;
+	arg.re_segs = &seg;
         error = bus_dmamap_load_mbuf(sc->re_ldata.re_mtag,
-	    sc->re_ldata.re_rx_dmamap[idx], m, re_dma_map_desc,
-	    &arg, BUS_DMA_NOWAIT);
-	if (error || arg.re_maxsegs != 1) {
-		if (n != NULL)
-			m_freem(n);
-		return (ENOMEM);
+				     sc->re_ldata.re_rx_spare, m,
+				     re_dma_map_desc, &arg, BUS_DMA_NOWAIT);
+	if (error || arg.re_nsegs == 0) {
+		if (!error) {
+			if_printf(&sc->arpcom.ac_if, "too many segments?!\n");
+			bus_dmamap_unload(sc->re_ldata.re_mtag,
+					  sc->re_ldata.re_rx_spare);
+			error = EFBIG;
+		}
+		m_freem(m);
+
+		if (init) {
+			if_printf(&sc->arpcom.ac_if, "can't load RX mbuf\n");
+			return error;
+		} else {
+			goto back;
+		}
 	}
 
-	sc->re_ldata.re_rx_list[idx].re_cmdstat |= htole32(RE_RDESC_CMD_OWN);
+	if (!init) {
+		bus_dmamap_sync(sc->re_ldata.re_mtag,
+				sc->re_ldata.re_rx_dmamap[idx],
+				BUS_DMASYNC_POSTREAD);
+		bus_dmamap_unload(sc->re_ldata.re_mtag,
+				  sc->re_ldata.re_rx_dmamap[idx]);
+	}
 	sc->re_ldata.re_rx_mbuf[idx] = m;
+	sc->re_ldata.re_rx_paddr[idx] = seg.ds_addr;
 
-        bus_dmamap_sync(sc->re_ldata.re_mtag, sc->re_ldata.re_rx_dmamap[idx],
-		        BUS_DMASYNC_PREREAD);
-
-	return(0);
+	map = sc->re_ldata.re_rx_dmamap[idx];
+	sc->re_ldata.re_rx_dmamap[idx] = sc->re_ldata.re_rx_spare;
+	sc->re_ldata.re_rx_spare = map;
+back:
+	re_setup_rxdesc(sc, idx);
+	return error;
 }
 
 static int
@@ -1466,7 +1461,7 @@ re_rx_list_init(struct re_softc *sc)
 	bzero(&sc->re_ldata.re_rx_mbuf, RE_RX_DESC_CNT * sizeof(struct mbuf *));
 
 	for (i = 0; i < RE_RX_DESC_CNT; i++) {
-		error = re_newbuf(sc, i, NULL);
+		error = re_newbuf(sc, i, 1);
 		if (error)
 			return(error);
 	}
@@ -1505,22 +1500,19 @@ re_rxeof(struct re_softc *sc)
 	ether_input_chain_init(chain);
 
 	for (i = sc->re_ldata.re_rx_prodidx;
-	     RE_OWN(&sc->re_ldata.re_rx_list[i]) == 0 ; RE_DESC_INC(i)) {
+	     RE_OWN(&sc->re_ldata.re_rx_list[i]) == 0; RE_DESC_INC(i)) {
 		cur_rx = &sc->re_ldata.re_rx_list[i];
 		m = sc->re_ldata.re_rx_mbuf[i];
 		total_len = RE_RXBYTES(cur_rx);
 		rxstat = le32toh(cur_rx->re_cmdstat);
 		rxvlan = le32toh(cur_rx->re_vlanctl);
 
-		/* Invalidate the RX mbuf and unload its map */
-
-		bus_dmamap_sync(sc->re_ldata.re_mtag,
-				sc->re_ldata.re_rx_dmamap[i],
-				BUS_DMASYNC_POSTWRITE);
-		bus_dmamap_unload(sc->re_ldata.re_mtag,
-				  sc->re_ldata.re_rx_dmamap[i]);
-
 		if ((rxstat & RE_RDESC_STAT_EOF) == 0) {
+			if (re_newbuf(sc, i, 0)) {
+				/* TODO: Drop upcoming fragments */
+				continue;
+			}
+
 			m->m_len = MCLBYTES - ETHER_ALIGN;
 			if (sc->re_head == NULL) {
 				sc->re_head = sc->re_tail = m;
@@ -1528,7 +1520,6 @@ re_rxeof(struct re_softc *sc)
 				sc->re_tail->m_next = m;
 				sc->re_tail = m;
 			}
-			re_newbuf(sc, i, NULL);
 			continue;
 		}
 
@@ -1561,7 +1552,7 @@ re_rxeof(struct re_softc *sc)
 				m_freem(sc->re_head);
 				sc->re_head = sc->re_tail = NULL;
 			}
-			re_newbuf(sc, i, m);
+			re_setup_rxdesc(sc, i);
 			continue;
 		}
 
@@ -1570,13 +1561,12 @@ re_rxeof(struct re_softc *sc)
 		 * reload the current one.
 		 */
 
-		if (re_newbuf(sc, i, NULL)) {
+		if (re_newbuf(sc, i, 0)) {
 			ifp->if_ierrors++;
 			if (sc->re_head != NULL) {
 				m_freem(sc->re_head);
 				sc->re_head = sc->re_tail = NULL;
 			}
-			re_newbuf(sc, i, m);
 			continue;
 		}
 
@@ -1599,9 +1589,10 @@ re_rxeof(struct re_softc *sc)
 			m = sc->re_head;
 			sc->re_head = sc->re_tail = NULL;
 			m->m_pkthdr.len = total_len - ETHER_CRC_LEN;
-		} else
+		} else {
 			m->m_pkthdr.len = m->m_len =
 			    (total_len - ETHER_CRC_LEN);
+		}
 
 		ifp->if_ipackets++;
 		m->m_pkthdr.rcvif = ifp;
@@ -1609,7 +1600,6 @@ re_rxeof(struct re_softc *sc)
 		/* Do RX checksumming if enabled */
 
 		if (ifp->if_capenable & IFCAP_RXCSUM) {
-
 			/* Check IP header checksum */
 			if (rxstat & RE_RDESC_STAT_PROTOID)
 				m->m_pkthdr.csum_flags |= CSUM_IP_CHECKED;
@@ -1848,19 +1838,22 @@ re_intr(void *arg)
 }
 
 static int
-re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx, int *called_defrag)
+re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct mbuf *m, *m_new = NULL;
-	struct re_dmaload_arg	arg;
-	bus_dmamap_t		map;
-	int			error;
+	struct mbuf *m;
+	struct re_dmaload_arg arg;
+	bus_dma_segment_t segs[RE_MAXSEGS];
+	bus_dmamap_t map;
+	int error, maxsegs, idx, i;
+	struct re_desc *d, *tx_ring;
+	uint32_t csum_flags;
 
 	KASSERT(sc->re_ldata.re_tx_free > RE_TXDESC_SPARE,
 		("not enough free TX desc\n"));
 
-	*called_defrag = 0;
 	m = *m_head;
+	map = sc->re_ldata.re_tx_dmamap[*idx0];
 
 	/*
 	 * Set up checksum offload. Note: checksum offload bits must
@@ -1868,22 +1861,13 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx, int *called_defrag
 	 * attempt. (This is according to testing done with an 8169
 	 * chip. I'm not sure if this is a requirement or a bug.)
 	 */
-
-	arg.re_flags = 0;
-
+	csum_flags = 0;
 	if (m->m_pkthdr.csum_flags & CSUM_IP)
-		arg.re_flags |= RE_TDESC_CMD_IPCSUM;
+		csum_flags |= RE_TDESC_CMD_IPCSUM;
 	if (m->m_pkthdr.csum_flags & CSUM_TCP)
-		arg.re_flags |= RE_TDESC_CMD_TCPCSUM;
+		csum_flags |= RE_TDESC_CMD_TCPCSUM;
 	if (m->m_pkthdr.csum_flags & CSUM_UDP)
-		arg.re_flags |= RE_TDESC_CMD_UDPCSUM;
-
-	arg.sc = sc;
-	arg.re_idx = *idx;
-	arg.re_maxsegs = sc->re_ldata.re_tx_free - RE_TXDESC_SPARE;
-	arg.re_ring = sc->re_ldata.re_tx_list;
-
-	map = sc->re_ldata.re_tx_dmamap[*idx];
+		csum_flags |= RE_TDESC_CMD_UDPCSUM;
 
 	/*
 	 * With some of the RealTek chips, using the checksum offload
@@ -1902,93 +1886,128 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx, int *called_defrag
 	 * Note: this appears unnecessary for TCP, and doing it for TCP
 	 * with PCIe adapters seems to result in bad checksums.
 	 */
-	if (arg.re_flags && !(arg.re_flags & RE_TDESC_CMD_TCPCSUM) &&
+	if (csum_flags && !(csum_flags & RE_TDESC_CMD_TCPCSUM) &&
 	    m->m_pkthdr.len < RE_MIN_FRAMELEN) {
-		error = EFBIG;
-	} else {
-		error = bus_dmamap_load_mbuf(sc->re_ldata.re_mtag, map,
-		    m, re_dma_map_desc, &arg, BUS_DMA_NOWAIT);
+		error = re_pad_frame(m);
+		if (error)
+			goto back;
 	}
 
+	maxsegs = sc->re_ldata.re_tx_free - RE_TXDESC_SPARE;
+	if (maxsegs > RE_MAXSEGS)
+		maxsegs = RE_MAXSEGS;
+
+	arg.re_nsegs = maxsegs;
+	arg.re_segs = segs;
+	error = bus_dmamap_load_mbuf(sc->re_ldata.re_mtag, map, m,
+				     re_dma_map_desc, &arg, BUS_DMA_NOWAIT);
 	if (error && error != EFBIG) {
 		if_printf(ifp, "can't map mbuf (error %d)\n", error);
-		return(ENOBUFS);
-	}
-
-	/* Too many segments to map, coalesce into a single mbuf */
-
-	if (error || arg.re_maxsegs == 0) {
-		m_new = m_defrag_nofree(m, MB_DONTWAIT);
-		if (m_new == NULL) {
-			return(1);
-		} else {
-			m = m_new;
-			*m_head = m;
-		}
-
-		/*
-		 * Manually pad short frames, and zero the pad space
-		 * to avoid leaking data.
-		 */
-		if (m_new->m_pkthdr.len < RE_MIN_FRAMELEN) {
-			bzero(mtod(m_new, char *) + m_new->m_pkthdr.len,
-			    RE_MIN_FRAMELEN - m_new->m_pkthdr.len);
-			m_new->m_pkthdr.len += RE_MIN_FRAMELEN -
-			    m_new->m_pkthdr.len;
-			m_new->m_len = m_new->m_pkthdr.len;
-		}
-
-		*called_defrag = 1;
-		arg.sc = sc;
-		arg.re_idx = *idx;
-		arg.re_maxsegs = sc->re_ldata.re_tx_free;
-		arg.re_ring = sc->re_ldata.re_tx_list;
-
-		error = bus_dmamap_load_mbuf(sc->re_ldata.re_mtag, map,
-		    m, re_dma_map_desc, &arg, BUS_DMA_NOWAIT);
-		if (error) {
-			m_freem(m);
-			if_printf(ifp, "can't map mbuf (error %d)\n", error);
-			return(EFBIG);
-		}
+		goto back;
 	}
 
 	/*
-	 * Insure that the map for this transmission
-	 * is placed at the array index of the last descriptor
-	 * in this chain.
+	 * Too many segments to map, coalesce into a single mbuf
 	 */
-	sc->re_ldata.re_tx_dmamap[*idx] =
-	    sc->re_ldata.re_tx_dmamap[arg.re_idx];
-	sc->re_ldata.re_tx_dmamap[arg.re_idx] = map;
+	if (!error && arg.re_nsegs == 0) {
+		bus_dmamap_unload(sc->re_ldata.re_mtag, map);
+		error = EFBIG;
+	}
+	if (error) {
+		struct mbuf *m_new;
 
-	sc->re_ldata.re_tx_mbuf[arg.re_idx] = m;
-	sc->re_ldata.re_tx_free -= arg.re_maxsegs;
+		m_new = m_defrag(m, MB_DONTWAIT);
+		if (m_new == NULL) {
+			if_printf(ifp, "can't defrag TX mbuf\n");
+			error = ENOBUFS;
+			goto back;
+		} else {
+			*m_head = m = m_new;
+		}
+
+		arg.re_nsegs = maxsegs;
+		arg.re_segs = segs;
+		error = bus_dmamap_load_mbuf(sc->re_ldata.re_mtag, map, m,
+					     re_dma_map_desc, &arg,
+					     BUS_DMA_NOWAIT);
+		if (error || arg.re_nsegs == 0) {
+			if (!error) {
+				bus_dmamap_unload(sc->re_ldata.re_mtag, map);
+				error = EFBIG;
+			}
+			if_printf(ifp, "can't map mbuf (error %d)\n", error);
+			goto back;
+		}
+	}
+	bus_dmamap_sync(sc->re_ldata.re_mtag, map, BUS_DMASYNC_PREWRITE);
+
+	/*
+	 * Map the segment array into descriptors.  We also keep track
+	 * of the end of the ring and set the end-of-ring bits as needed,
+	 * and we set the ownership bits in all except the very first
+	 * descriptor, whose ownership bits will be turned on later.
+	 */
+	tx_ring = sc->re_ldata.re_tx_list;
+	idx = *idx0;
+	i = 0;
+	for (;;) {
+		uint32_t cmdstat;
+
+		d = &tx_ring[idx];
+
+		cmdstat = segs[i].ds_len;
+		d->re_bufaddr_lo = htole32(RE_ADDR_LO(segs[i].ds_addr));
+		d->re_bufaddr_hi = htole32(RE_ADDR_HI(segs[i].ds_addr));
+		if (i == 0)
+			cmdstat |= RE_TDESC_CMD_SOF;
+		else
+			cmdstat |= RE_TDESC_CMD_OWN;
+		if (idx == (RE_TX_DESC_CNT - 1))
+			cmdstat |= RE_TDESC_CMD_EOR;
+		d->re_cmdstat = htole32(cmdstat | csum_flags);
+
+		i++;
+		if (i == arg.re_nsegs)
+			break;
+		RE_DESC_INC(idx);
+	}
+	d->re_cmdstat |= htole32(RE_TDESC_CMD_EOF);
 
 	/*
 	 * Set up hardware VLAN tagging. Note: vlan tag info must
 	 * appear in the first descriptor of a multi-descriptor
 	 * transmission attempt.
 	 */
-
 	if (m->m_flags & M_VLANTAG) {
-		sc->re_ldata.re_tx_list[*idx].re_vlanctl =
+		tx_ring[*idx0].re_vlanctl =
 		    htole32(htobe16(m->m_pkthdr.ether_vlantag) |
 		    	    RE_TDESC_VLANCTL_TAG);
 	}
 
 	/* Transfer ownership of packet to the chip. */
+	d->re_cmdstat |= htole32(RE_TDESC_CMD_OWN);
+	if (*idx0 != idx)
+		tx_ring[*idx0].re_cmdstat |= htole32(RE_TDESC_CMD_OWN);
 
-	sc->re_ldata.re_tx_list[arg.re_idx].re_cmdstat |=
-	    htole32(RE_TDESC_CMD_OWN);
-	if (*idx != arg.re_idx)
-		sc->re_ldata.re_tx_list[*idx].re_cmdstat |=
-		    htole32(RE_TDESC_CMD_OWN);
+	/*
+	 * Insure that the map for this transmission
+	 * is placed at the array index of the last descriptor
+	 * in this chain.
+	 */
+	sc->re_ldata.re_tx_dmamap[*idx0] = sc->re_ldata.re_tx_dmamap[idx];
+	sc->re_ldata.re_tx_dmamap[idx] = map;
 
-	RE_DESC_INC(arg.re_idx);
-	*idx = arg.re_idx;
+	sc->re_ldata.re_tx_mbuf[idx] = m;
+	sc->re_ldata.re_tx_free -= arg.re_nsegs;
 
-	return(0);
+	RE_DESC_INC(idx);
+	*idx0 = idx;
+back:
+	if (error) {
+		m_freem(m);
+		*m_head = NULL;
+	}
+	return error;
 }
 
 /*
@@ -2000,8 +2019,7 @@ re_start(struct ifnet *ifp)
 {
 	struct re_softc	*sc = ifp->if_softc;
 	struct mbuf *m_head;
-	struct mbuf *m_head2;
-	int called_defrag, idx, need_trans;
+	int idx, need_trans;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -2026,34 +2044,20 @@ re_start(struct ifnet *ifp)
 		if (m_head == NULL)
 			break;
 
-		m_head2 = m_head;
-		if (re_encap(sc, &m_head2, &idx, &called_defrag)) {
-			/*
-			 * If we could not encapsulate the defragged packet,
-			 * the returned m_head2 is garbage and we must dequeue
-			 * and throw away the original packet.
-			 */
-			if (called_defrag)
-				m_freem(m_head);
+		if (re_encap(sc, &m_head, &idx)) {
+			/* m_head is freed by re_encap(), if we reach here */
+			ifp->if_oerrors++;
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
 
-		/*
-		 * Clean out the packet we encapsulated.  If we defragged
-		 * the packet the m_head2 is the one that got encapsulated
-		 * and the original must be thrown away.  Otherwise m_head2
-		 * *IS* the original.
-		 */
-		if (called_defrag)
-			m_freem(m_head);
 		need_trans = 1;
 
 		/*
 		 * If there's a BPF listener, bounce a copy of this frame
 		 * to him.
 		 */
-		ETHER_BPF_MTAP(ifp, m_head2);
+		ETHER_BPF_MTAP(ifp, m_head);
 	}
 
 	if (!need_trans) {
@@ -2537,4 +2541,47 @@ re_sysctl_tx_moderation(SYSCTL_HANDLER_ARGS)
 back:
 	lwkt_serialize_exit(ifp->if_serializer);
 	return error;
+}
+
+static int
+re_pad_frame(struct mbuf *pkt)
+{
+	struct mbuf *last = NULL;
+	int padlen;
+
+	padlen = RE_MIN_FRAMELEN - pkt->m_pkthdr.len;
+
+	/* if there's only the packet-header and we can pad there, use it. */
+	if (pkt->m_pkthdr.len == pkt->m_len &&
+	    M_TRAILINGSPACE(pkt) >= padlen) {
+		last = pkt;
+	} else {
+		/*
+		 * Walk packet chain to find last mbuf. We will either
+		 * pad there, or append a new mbuf and pad it
+		 */
+		for (last = pkt; last->m_next != NULL; last = last->m_next)
+			; /* EMPTY */
+
+		/* `last' now points to last in chain. */
+		if (M_TRAILINGSPACE(last) < padlen) {
+			struct mbuf *n;
+
+			/* Allocate new empty mbuf, pad it.  Compact later. */
+			MGET(n, MB_DONTWAIT, MT_DATA);
+			if (n == NULL)
+				return ENOBUFS;
+			n->m_len = 0;
+			last->m_next = n;
+			last = n;
+		}
+	}
+	KKASSERT(M_TRAILINGSPACE(last) >= padlen);
+	KKASSERT(M_WRITABLE(last));
+
+	/* Now zero the pad area, to avoid the re cksum-assist bug */
+	bzero(mtod(last, char *) + last->m_len, padlen);
+	last->m_len += padlen;
+	pkt->m_pkthdr.len += padlen;
+	return 0;
 }

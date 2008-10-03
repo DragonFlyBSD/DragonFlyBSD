@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.4 2008/10/02 04:14:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.5 2008/10/03 05:09:18 sephe Exp $
  */
 
 struct re_chain_data {
@@ -77,23 +77,24 @@ struct re_hwrev {
 
 struct re_softc;
 
+#define RE_MAXSEGS		16
+
 struct re_dmaload_arg {
-	struct re_softc		*sc;
-	int			re_idx;
-	int			re_maxsegs;
-	uint32_t		re_flags;
-	struct re_desc		*re_ring;
+	int			re_nsegs;
+	bus_dma_segment_t	*re_segs;
 };
 
 struct re_list_data {
 	struct mbuf		*re_tx_mbuf[RE_TX_DESC_CNT];
-	struct mbuf		*re_rx_mbuf[RE_TX_DESC_CNT];
+	struct mbuf		*re_rx_mbuf[RE_RX_DESC_CNT];
+	bus_addr_t		re_rx_paddr[RE_RX_DESC_CNT];
 	int			re_tx_prodidx;
 	int			re_rx_prodidx;
 	int			re_tx_considx;
 	int			re_tx_free;
 	bus_dmamap_t		re_tx_dmamap[RE_TX_DESC_CNT];
 	bus_dmamap_t		re_rx_dmamap[RE_RX_DESC_CNT];
+	bus_dmamap_t		re_rx_spare;
 	bus_dma_tag_t		re_mtag;	/* mbuf mapping tag */
 	bus_dma_tag_t		re_stag;	/* stats mapping tag */
 	bus_dmamap_t		re_smap;	/* stats map */
