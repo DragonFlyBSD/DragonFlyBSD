@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.51 2008/09/30 23:13:08 dillon Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.52 2008/10/03 18:55:57 thomas Exp $
 .Dd September 28, 2008
 .Dt HAMMER 8
 .Os
@@ -99,7 +99,8 @@ write out the current object id so the next run can pick up where it left
 off.
 If
 .Nm
-runs to completion it will delete the cyclefile.
+runs to completion it will delete
+.Ar cyclefile .
 .It Fl f Ar blkdev[:blkdev]*
 Specify the volumes making up a
 .Nm HAMMER
@@ -113,7 +114,8 @@ The default is five seconds.
 Decrease verbosement.  May be specified multiple times.
 .It Fl t Ar seconds
 When pruning and reblocking you can tell the utility to stop after a
-certain period of time.  This option is used along with the cycle file
+certain period of time.  This option is used along with the
+.Fl c Ar cyclefile
 option to prune or reblock a portion of the file system incrementally.
 .It Fl v
 Increase verboseness.  May be specified multiple times.
@@ -211,17 +213,17 @@ reblock    <period> <1/3 max-runtime>
 recopy     <period> <1/3 max-runtime>
 
 Defaults are:
-snapshots  1d 60d  # 0 60d  for PFS /tmp, /var/tmp, /usr/obj
+snapshots  1d 60d  # 0d 60d  for PFS /tmp, /var/tmp, /usr/obj
 prune      1d 5m
 reblock    1d 5m
 recopy     30d 10m
 .Ed
 .Pp
-Time is in seconds, it can be given with a suffix of
+Time is given with a suffix of
 .Cm d ,
 .Cm h ,
 .Cm m
-and
+or
 .Cm s
 meaning day, hour, minute and second.
 A snapshots period of 0 disables snapshot generation and prunes using
@@ -229,6 +231,10 @@ A snapshots period of 0 disables snapshot generation and prunes using
 if no snapshots exists.
 A prune max-runtime of 0 means unlimited.
 .Pp
+If period hasn't passed since previous
+.Ar cleanup
+run nothing is done.
+For example a day has passed when midnight is passed (localtime).
 It is recommended to run
 .Ar cleanup
 once a day, depending on the configured period,
@@ -625,7 +631,7 @@ The source may be a master or slave PFS, and the target must be a slave PFS.
 .Pp
 This command also established full duplex communication and turns on
 the two-way protocol feature which automatically negotiates transaction id ranges
-without having to use a cycle file.
+without having to use a cyclefile.
 If the operation completes successfully the target PFS's
 .Ar sync-end-tid
 will
