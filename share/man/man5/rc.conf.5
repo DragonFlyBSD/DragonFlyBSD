@@ -23,8 +23,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.59 2008/08/30 17:50:43 swildner Exp $
-.Dd January 30, 2008
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.60 2008/10/03 10:27:42 swildner Exp $
+.Dd October 3, 2008
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -148,6 +148,20 @@ is set to
 .Dq Li YES ,
 these are the flags to pass to the
 .Xr battd 8
+daemon.
+.It Va devd_enable
+.Pq Vt bool
+Run
+.Xr devd 8
+to handle device added, removed or unknown events from the kernel.
+.It Va devd_flags
+.Pq Vt str
+If
+.Va devd_enable
+is set to
+.Dq Li YES ,
+these are the flags to pass to the
+.Xr devd 8
 daemon.
 .It Va sensorsd_enable
 .Pq Vt bool
@@ -2838,6 +2852,7 @@ has not completed within the specified time (in seconds).
 .Xr btconfig 8 ,
 .Xr bthcid 8 ,
 .Xr cron 8 ,
+.Xr devd 8 ,
 .Xr dhclient 8 ,
 .Xr dntpd 8 ,
 .Xr ftpd 8 ,
