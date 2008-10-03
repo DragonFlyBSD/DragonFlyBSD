@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.53 2008/10/03 05:09:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.54 2008/10/03 05:47:07 sephe Exp $
  */
 
 /*
@@ -2104,6 +2104,7 @@ re_init(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
 	uint32_t rxcfg = 0;
+	int error;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -2139,8 +2140,16 @@ re_init(void *xsc)
 	/*
 	 * For C+ mode, initialize the RX descriptors and mbufs.
 	 */
-	re_rx_list_init(sc);
-	re_tx_list_init(sc);
+	error = re_rx_list_init(sc);
+	if (error) {
+		re_stop(sc);
+		return;
+	}
+	error = re_tx_list_init(sc);
+	if (error) {
+		re_stop(sc);
+		return;
+	}
 
 	/*
 	 * Load the addresses of the RX and TX lists into the chip.
