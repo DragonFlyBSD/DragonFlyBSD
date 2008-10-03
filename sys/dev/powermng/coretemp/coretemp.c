@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/coretemp/coretemp.c,v 1.2 2007/08/23 10:53:03 des Exp $
- * $DragonFly: src/sys/dev/powermng/coretemp/coretemp.c,v 1.2 2008/09/02 18:12:48 hasso Exp $
+ * $DragonFly: src/sys/dev/powermng/coretemp/coretemp.c,v 1.3 2008/10/03 00:26:21 hasso Exp $
  */
 
 /*
@@ -269,9 +269,7 @@ coretemp_get_temp(device_t dev)
 		device_printf(dev, "critical temperature detected, "
 		    "suggest system shutdown\n");
 		ksnprintf(stemp, sizeof(stemp), "%d", temp);
-#if 0
 		devctl_notify("coretemp", "Thermal", stemp, "notify=0xcc");
-#endif
 	}
 
 	return (temp);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.45 2008/09/30 12:20:29 hasso Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.46 2008/10/03 00:26:21 hasso Exp $
  */
 
 #include "opt_bus.h"
@@ -40,6 +40,14 @@
 #include <sys/systm.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
+#include <sys/device.h>
+#include <sys/lock.h>
+#include <sys/conf.h>
+#include <sys/selinfo.h>
+#include <sys/uio.h>
+#include <sys/filio.h>
+#include <sys/poll.h>
+#include <sys/signalvar.h>
 
 #include <machine/stdarg.h>	/* for device_printf() */
 
@@ -99,6 +107,424 @@ static int	device_doattach(device_t dev);
 static int do_async_attach = 0;
 static int numasyncthreads;
 TUNABLE_INT("kern.do_async_attach", &do_async_attach);
+
+/*
+ * /dev/devctl implementation
+ */
+
+/*
+ * This design allows only one reader for /dev/devctl.  This is not desirable
+ * in the long run, but will get a lot of hair out of this implementation.
+ * Maybe we should make this device a clonable device.
+ *
+ * Also note: we specifically do not attach a device to the device_t tree
+ * to avoid potential chicken and egg problems.  One could argue that all
+ * of this belongs to the root node.  One could also further argue that the
+ * sysctl interface that we have not might more properly be an ioctl
+ * interface, but at this stage of the game, I'm not inclined to rock that
+ * boat.
+ *
+ * I'm also not sure that the SIGIO support is done correctly or not, as
+ * I copied it from a driver that had SIGIO support that likely hasn't been
+ * tested since 3.4 or 2.2.8!
+ */
+
+static int sysctl_devctl_disable(SYSCTL_HANDLER_ARGS);
+static int devctl_disable = 0;
+TUNABLE_INT("hw.bus.devctl_disable", &devctl_disable);
+SYSCTL_PROC(_hw_bus, OID_AUTO, devctl_disable, CTLTYPE_INT | CTLFLAG_RW, 0, 0,
+    sysctl_devctl_disable, "I", "devctl disable");
+
+#define	CDEV_MAJOR	188
+
+static d_open_t		devopen;
+static d_close_t	devclose;
+static d_read_t		devread;
+static d_ioctl_t	devioctl;
+static d_poll_t		devpoll;
+
+static struct dev_ops devctl_ops = {
+	{ "devctl", CDEV_MAJOR, 0 },
+	.d_open =	devopen,
+	.d_close =	devclose,
+	.d_read =	devread,
+	.d_ioctl =	devioctl,
+	.d_poll =	devpoll,
+};
+
+struct dev_event_info
+{
+	char *dei_data;
+	TAILQ_ENTRY(dev_event_info) dei_link;
+};
+
+TAILQ_HEAD(devq, dev_event_info);
+
+static struct dev_softc
+{
+	int	inuse;
+	int	nonblock;
+	struct lock lock;
+	struct selinfo sel;
+	struct devq devq;
+	struct proc *async_proc;
+} devsoftc;
+
+static void
+devinit(void)
+{
+	dev_ops_add(&devctl_ops, -1, 0);
+	make_dev(&devctl_ops, 0, UID_ROOT, GID_WHEEL, 0600, "devctl");
+	lockinit(&devsoftc.lock, "dev mtx", 0, 0);
+	TAILQ_INIT(&devsoftc.devq);
+}
+
+static int
+devopen(struct dev_open_args *ap)
+{
+	if (devsoftc.inuse)
+		return (EBUSY);
+	/* move to init */
+	devsoftc.inuse = 1;
+	devsoftc.nonblock = 0;
+	devsoftc.async_proc = NULL;
+	return (0);
+}
+
+static int
+devclose(struct dev_close_args *ap)
+{
+	devsoftc.inuse = 0;
+	lockmgr(&devsoftc.lock, LK_EXCLUSIVE);
+	wakeup(&devsoftc);
+	lockmgr(&devsoftc.lock, LK_RELEASE);
+
+	return (0);
+}
+
+/*
+ * The read channel for this device is used to report changes to
+ * userland in realtime.  We are required to free the data as well as
+ * the n1 object because we allocate them separately.  Also note that
+ * we return one record at a time.  If you try to read this device a
+ * character at a time, you will lose the rest of the data.  Listening
+ * programs are expected to cope.
+ */
+static int
+devread(struct dev_read_args *ap)
+{
+	struct uio *uio = ap->a_uio;
+	struct dev_event_info *n1;
+	int rv;
+
+	lockmgr(&devsoftc.lock, LK_EXCLUSIVE);
+	while (TAILQ_EMPTY(&devsoftc.devq)) {
+		if (devsoftc.nonblock) {
+			lockmgr(&devsoftc.lock, LK_RELEASE);
+			return (EAGAIN);
+		}
+		crit_enter();
+		tsleep_interlock(&devsoftc);
+		lockmgr(&devsoftc.lock, LK_RELEASE);
+		rv = tsleep(&devsoftc, PCATCH, "devctl", 0);
+		crit_exit();
+		lockmgr(&devsoftc.lock, LK_EXCLUSIVE);
+		if (rv) {
+			/*
+			 * Need to translate ERESTART to EINTR here? -- jake
+			 */
+			lockmgr(&devsoftc.lock, LK_RELEASE);
+			return (rv);
+		}
+	}
+	n1 = TAILQ_FIRST(&devsoftc.devq);
+	TAILQ_REMOVE(&devsoftc.devq, n1, dei_link);
+	lockmgr(&devsoftc.lock, LK_RELEASE);
+	rv = uiomove(n1->dei_data, strlen(n1->dei_data), uio);
+	kfree(n1->dei_data, M_BUS);
+	kfree(n1, M_BUS);
+	return (rv);
+}
+
+static	int
+devioctl(struct dev_ioctl_args *ap)
+{
+	switch (ap->a_cmd) {
+
+	case FIONBIO:
+		if (*(int*)ap->a_data)
+			devsoftc.nonblock = 1;
+		else
+			devsoftc.nonblock = 0;
+		return (0);
+	case FIOASYNC:
+		if (*(int*)ap->a_data)
+			devsoftc.async_proc = curproc;
+		else
+			devsoftc.async_proc = NULL;
+		return (0);
+
+		/* (un)Support for other fcntl() calls. */
+	case FIOCLEX:
+	case FIONCLEX:
+	case FIONREAD:
+	case FIOSETOWN:
+	case FIOGETOWN:
+	default:
+		break;
+	}
+	return (ENOTTY);
+}
+
+static	int
+devpoll(struct dev_poll_args *ap)
+{
+	int	revents = 0;
+
+	lockmgr(&devsoftc.lock, LK_EXCLUSIVE);
+	if (ap->a_events & (POLLIN | POLLRDNORM)) {
+		if (!TAILQ_EMPTY(&devsoftc.devq))
+			revents = ap->a_events & (POLLIN | POLLRDNORM);
+		else
+			selrecord(curthread, &devsoftc.sel);
+	}
+	lockmgr(&devsoftc.lock, LK_RELEASE);
+
+	ap->a_events = revents;
+	return (0);
+}
+
+/**
+ * @brief Return whether the userland process is running
+ */
+boolean_t
+devctl_process_running(void)
+{
+	return (devsoftc.inuse == 1);
+}
+
+/**
+ * @brief Queue data to be read from the devctl device
+ *
+ * Generic interface to queue data to the devctl device.  It is
+ * assumed that @p data is properly formatted.  It is further assumed
+ * that @p data is allocated using the M_BUS malloc type.
+ */
+void
+devctl_queue_data(char *data)
+{
+	struct dev_event_info *n1 = NULL;
+	struct proc *p;
+
+	n1 = kmalloc(sizeof(*n1), M_BUS, M_NOWAIT);
+	if (n1 == NULL)
+		return;
+	n1->dei_data = data;
+	lockmgr(&devsoftc.lock, LK_EXCLUSIVE);
+	TAILQ_INSERT_TAIL(&devsoftc.devq, n1, dei_link);
+	wakeup(&devsoftc);
+	lockmgr(&devsoftc.lock, LK_RELEASE);
+	get_mplock();	/* XXX */
+	selwakeup(&devsoftc.sel);
+	rel_mplock();	/* XXX */
+	p = devsoftc.async_proc;
+	if (p != NULL)
+		ksignal(p, SIGIO);
+}
+
+/**
+ * @brief Send a 'notification' to userland, using standard ways
+ */
+void
+devctl_notify(const char *system, const char *subsystem, const char *type,
+    const char *data)
+{
+	int len = 0;
+	char *msg;
+
+	if (system == NULL)
+		return;		/* BOGUS!  Must specify system. */
+	if (subsystem == NULL)
+		return;		/* BOGUS!  Must specify subsystem. */
+	if (type == NULL)
+		return;		/* BOGUS!  Must specify type. */
+	len += strlen(" system=") + strlen(system);
+	len += strlen(" subsystem=") + strlen(subsystem);
+	len += strlen(" type=") + strlen(type);
+	/* add in the data message plus newline. */
+	if (data != NULL)
+		len += strlen(data);
+	len += 3;	/* '!', '\n', and NUL */
+	msg = kmalloc(len, M_BUS, M_NOWAIT);
+	if (msg == NULL)
+		return;		/* Drop it on the floor */
+	if (data != NULL)
+		ksnprintf(msg, len, "!system=%s subsystem=%s type=%s %s\n",
+		    system, subsystem, type, data);
+	else
+		ksnprintf(msg, len, "!system=%s subsystem=%s type=%s\n",
+		    system, subsystem, type);
+	devctl_queue_data(msg);
+}
+
+/*
+ * Common routine that tries to make sending messages as easy as possible.
+ * We allocate memory for the data, copy strings into that, but do not
+ * free it unless there's an error.  The dequeue part of the driver should
+ * free the data.  We don't send data when the device is disabled.  We do
+ * send data, even when we have no listeners, because we wish to avoid
+ * races relating to startup and restart of listening applications.
+ *
+ * devaddq is designed to string together the type of event, with the
+ * object of that event, plus the plug and play info and location info
+ * for that event.  This is likely most useful for devices, but less
+ * useful for other consumers of this interface.  Those should use
+ * the devctl_queue_data() interface instead.
+ */
+static void
+devaddq(const char *type, const char *what, device_t dev)
+{
+	char *data = NULL;
+	char *loc = NULL;
+	char *pnp = NULL;
+	const char *parstr;
+
+	if (devctl_disable)
+		return;
+	data = kmalloc(1024, M_BUS, M_NOWAIT);
+	if (data == NULL)
+		goto bad;
+
+	/* get the bus specific location of this device */
+	loc = kmalloc(1024, M_BUS, M_NOWAIT);
+	if (loc == NULL)
+		goto bad;
+	*loc = '\0';
+	bus_child_location_str(dev, loc, 1024);
+
+	/* Get the bus specific pnp info of this device */
+	pnp = kmalloc(1024, M_BUS, M_NOWAIT);
+	if (pnp == NULL)
+		goto bad;
+	*pnp = '\0';
+	bus_child_pnpinfo_str(dev, pnp, 1024);
+
+	/* Get the parent of this device, or / if high enough in the tree. */
+	if (device_get_parent(dev) == NULL)
+		parstr = ".";	/* Or '/' ? */
+	else
+		parstr = device_get_nameunit(device_get_parent(dev));
+	/* String it all together. */
+	ksnprintf(data, 1024, "%s%s at %s %s on %s\n", type, what, loc, pnp,
+	  parstr);
+	kfree(loc, M_BUS);
+	kfree(pnp, M_BUS);
+	devctl_queue_data(data);
+	return;
+bad:
+	kfree(pnp, M_BUS);
+	kfree(loc, M_BUS);
+	kfree(data, M_BUS);
+	return;
+}
+
+/*
+ * A device was added to the tree.  We are called just after it successfully
+ * attaches (that is, probe and attach success for this device).  No call
+ * is made if a device is merely parented into the tree.  See devnomatch
+ * if probe fails.  If attach fails, no notification is sent (but maybe
+ * we should have a different message for this).
+ */
+static void
+devadded(device_t dev)
+{
+	char *pnp = NULL;
+	char *tmp = NULL;
+
+	pnp = kmalloc(1024, M_BUS, M_NOWAIT);
+	if (pnp == NULL)
+		goto fail;
+	tmp = kmalloc(1024, M_BUS, M_NOWAIT);
+	if (tmp == NULL)
+		goto fail;
+	*pnp = '\0';
+	bus_child_pnpinfo_str(dev, pnp, 1024);
+	ksnprintf(tmp, 1024, "%s %s", device_get_nameunit(dev), pnp);
+	devaddq("+", tmp, dev);
+fail:
+	if (pnp != NULL)
+		kfree(pnp, M_BUS);
+	if (tmp != NULL)
+		kfree(tmp, M_BUS);
+	return;
+}
+
+/*
+ * A device was removed from the tree.  We are called just before this
+ * happens.
+ */
+static void
+devremoved(device_t dev)
+{
+	char *pnp = NULL;
+	char *tmp = NULL;
+
+	pnp = kmalloc(1024, M_BUS, M_NOWAIT);
+	if (pnp == NULL)
+		goto fail;
+	tmp = kmalloc(1024, M_BUS, M_NOWAIT);
+	if (tmp == NULL)
+		goto fail;
+	*pnp = '\0';
+	bus_child_pnpinfo_str(dev, pnp, 1024);
+	ksnprintf(tmp, 1024, "%s %s", device_get_nameunit(dev), pnp);
+	devaddq("-", tmp, dev);
+fail:
+	if (pnp != NULL)
+		kfree(pnp, M_BUS);
+	if (tmp != NULL)
+		kfree(tmp, M_BUS);
+	return;
+}
+
+/*
+ * Called when there's no match for this device.  This is only called
+ * the first time that no match happens, so we don't keep getitng this
+ * message.  Should that prove to be undesirable, we can change it.
+ * This is called when all drivers that can attach to a given bus
+ * decline to accept this device.  Other errrors may not be detected.
+ */
+static void
+devnomatch(device_t dev)
+{
+	devaddq("?", "", dev);
+}
+
+static int
+sysctl_devctl_disable(SYSCTL_HANDLER_ARGS)
+{
+	struct dev_event_info *n1;
+	int dis, error;
+
+	dis = devctl_disable;
+	error = sysctl_handle_int(oidp, &dis, 0, req);
+	if (error || !req->newptr)
+		return (error);
+	lockmgr(&devsoftc.lock, LK_EXCLUSIVE);
+	devctl_disable = dis;
+	if (dis) {
+		while (!TAILQ_EMPTY(&devsoftc.devq)) {
+			n1 = TAILQ_FIRST(&devsoftc.devq);
+			TAILQ_REMOVE(&devsoftc.devq, n1, dei_link);
+			kfree(n1->dei_data, M_BUS);
+			kfree(n1, M_BUS);
+		}
+	}
+	lockmgr(&devsoftc.lock, LK_RELEASE);
+	return (0);
+}
+
+/* End of /dev/devctl code */
 
 TAILQ_HEAD(,device)	bus_data_devices;
 static int bus_data_generation = 1;
@@ -1167,6 +1593,7 @@ device_probe_and_attach(device_t dev)
 	if (error) {
 		if (!(dev->flags & DF_DONENOMATCH)) {
 			BUS_PROBE_NOMATCH(bus, dev);
+			devnomatch(dev);
 			dev->flags |= DF_DONENOMATCH;
 		}
 		return(error);
@@ -1239,6 +1666,7 @@ device_doattach(device_t dev)
 		dev->state = DS_ATTACHED;
 		if (bootverbose && !device_is_quiet(dev))
 			device_print_child(bus, dev);
+		devadded(dev);
 	} else {
 		kprintf("device_probe_and_attach: %s%d attach returned %d\n",
 		       dev->driver->name, dev->unit, error);
@@ -1264,6 +1692,7 @@ device_detach(device_t dev)
 
 	if ((error = DEVICE_DETACH(dev)) != 0)
 		return(error);
+	devremoved(dev);
 	device_printf(dev, "detached\n");
 	if (dev->parent)
 		BUS_CHILD_DETACHED(dev->parent, dev);
@@ -2541,6 +2970,7 @@ root_bus_module_handler(module_t mod, int what, void* arg)
 		root_bus->driver = &root_driver;
 		root_bus->state = DS_ALIVE;
 		root_devclass = devclass_find_internal("root", NULL, FALSE);
+		devinit();
 		return(0);
 
 	case MOD_SHUTDOWN:

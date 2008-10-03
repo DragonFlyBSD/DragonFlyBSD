@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.80 2008/09/23 11:28:49 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.81 2008/10/03 00:26:21 hasso Exp $
  */
 
 #include "opt_compat.h"
@@ -60,6 +60,7 @@
 #include <sys/thread2.h>
 #include <sys/serialize.h>
 #include <sys/msgport2.h>
+#include <sys/bus.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -523,6 +524,7 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 	ifa_iflink(ifa, ifp, 0 /* Insert head */);
 
 	EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
+	devctl_notify("IFNET", ifp->if_xname, "ATTACH", NULL);
 
 	ifq = &ifp->if_snd;
 	ifq->altq_type = 0;
@@ -713,6 +715,7 @@ if_detach(struct ifnet *ifp)
 
 	/* Announce that the interface is gone. */
 	rt_ifannouncemsg(ifp, IFAN_DEPARTURE);
+	devctl_notify("IFNET", ifp->if_xname, "DETACH", NULL);
 
 	SLIST_FOREACH(dp, &domains, dom_next)
 		if (dp->dom_ifdetach && ifp->if_afdata[dp->dom_family])
@@ -1077,7 +1080,11 @@ if_up(struct ifnet *ifp)
 void
 if_link_state_change(struct ifnet *ifp)
 {
+	int link_state = ifp->if_link_state;
+
 	rt_ifmsg(ifp);
+	devctl_notify("IFNET", ifp->if_xname,
+	    (link_state == LINK_STATE_UP) ? "LINK_UP" : "LINK_DOWN", NULL);
 }
 
 /*

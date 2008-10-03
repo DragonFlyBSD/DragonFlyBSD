@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.160 2004/06/14 03:52:19 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.36 2008/09/05 10:28:35 hasso Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.37 2008/10/03 00:26:21 hasso Exp $
  */
 
 #include "opt_acpi.h"
@@ -2758,9 +2758,7 @@ acpi_UserNotify(const char *subsystem, ACPI_HANDLE h, uint8_t notify)
     if (ACPI_FAILURE(status))
 	return;
     ksnprintf(notify_buf, sizeof(notify_buf), "notify=0x%02x", notify);
-#if 0
     devctl_notify("ACPI", subsystem, handle_buf.Pointer, notify_buf);
-#endif
     AcpiOsFree(handle_buf.Pointer);
 }
 

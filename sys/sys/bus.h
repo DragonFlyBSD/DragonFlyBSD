@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.5 2004/03/17 17:54:25 njl Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.30 2008/09/30 12:20:29 hasso Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.31 2008/10/03 00:26:21 hasso Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -142,6 +142,16 @@ SLIST_HEAD(resource_list, resource_list_entry);
 
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */
 #ifdef _KERNEL
+
+/**
+ * devctl hooks.  Typically one should use the devctl_notify
+ * hook to send the message.  However, devctl_queue_data is also
+ * included in case devctl_notify isn't sufficiently general.
+ */
+boolean_t devctl_process_running(void);
+void devctl_notify(const char *__system, const char *__subsystem,
+    const char *__type, const char *__data);
+void devctl_queue_data(char *__data);
 
 /*
  * Initialise a resource list.
