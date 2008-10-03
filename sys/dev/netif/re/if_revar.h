@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.6 2008/10/03 10:12:35 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.7 2008/10/03 14:07:02 sephe Exp $
  */
 
 struct re_chain_data {
@@ -69,6 +69,7 @@ struct re_hwrev {
 	uint32_t		re_rev;
 	int			re_type;	/* RE_{8139CPLUS,8169} */
 	uint32_t		re_flags;	/* see RE_F_ */
+	int			re_swcsum_lim;
 	const char		*re_desc;
 };
 
@@ -140,6 +141,7 @@ struct re_softc {
 	int			suspended;	/* 0 = normal  1 = suspended */
 	int			re_link;
 	int			re_eewidth;
+	int			re_swcsum_lim;
 #ifdef DEVICE_POLLING
 	int			rxcycles;
 #endif
@@ -160,6 +162,10 @@ struct re_softc {
 
 #define RE_F_HASMPC		0x1
 #define RE_F_PCIE		0x2
+#define RE_F_JUMBO_SWCSUM	0x4
+
+#define RE_SWCSUM_LIM_8169	2038
+#define RE_SWCSUM_LIM_8168B	2082
 
 #define RE_TX_MODERATION_IS_ENABLED(sc)			\
 	((sc)->re_tx_ack == RE_ISR_TIMEOUT_EXPIRED)

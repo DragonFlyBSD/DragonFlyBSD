@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.58 2008/10/03 11:35:25 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.59 2008/10/03 14:07:02 sephe Exp $
  */
 
 /*
@@ -111,12 +111,15 @@
  * driver is 7422 bytes.
  */
 
+#define _IP_VHL
+
 #include "opt_polling.h"
 
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/endian.h>
 #include <sys/kernel.h>
+#include <sys/in_cksum.h>
 #include <sys/interrupt.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
@@ -136,6 +139,8 @@
 #include <net/if_types.h>
 #include <net/vlan/if_vlan_var.h>
 #include <net/vlan/if_vlan_ether.h>
+
+#include <netinet/ip.h>
 
 #include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
@@ -197,20 +202,22 @@ static const struct re_type re_devs[] = {
 };
 
 static const struct re_hwrev re_hwrevs[] = {
-	{ RE_HWREV_8139CPLUS,	RE_8139CPLUS,	RE_F_HASMPC,	"C+" },
-	{ RE_HWREV_8168_SPIN1,	RE_8169,	RE_F_PCIE,	"8168" },
-	{ RE_HWREV_8168_SPIN2,	RE_8169,	RE_F_PCIE,	"8168" },
-	{ RE_HWREV_8168_SPIN3,	RE_8169,	RE_F_PCIE,	"8168" },
-	{ RE_HWREV_8168C,	RE_8169,	RE_F_PCIE,	"8168C" },
-	{ RE_HWREV_8169,	RE_8169,	RE_F_HASMPC,	"8169" },
-	{ RE_HWREV_8169S,	RE_8169,	RE_F_HASMPC,	"8169S" },
-	{ RE_HWREV_8110S,	RE_8169,	RE_F_HASMPC,	"8110S" },
-	{ RE_HWREV_8169_8110SB,	RE_8169,	RE_F_HASMPC,	"8169SB" },
-	{ RE_HWREV_8169_8110SC,	RE_8169,	0,		"8169SC" },
-	{ RE_HWREV_8100E,	RE_8169,	RE_F_HASMPC,	"8100E" },
-	{ RE_HWREV_8101E,	RE_8169,	RE_F_PCIE,	"8101E" },
-	{ RE_HWREV_8102EL,      RE_8169,        RE_F_PCIE,      "8102EL" },
-	{ 0, 0, 0, NULL }
+	{ RE_HWREV_8139CPLUS,	RE_8139CPLUS,	RE_F_HASMPC,	0, "C+" },
+	{ RE_HWREV_8168_SPIN1,	RE_8169,	RE_F_PCIE,	0, "8168" },
+	{ RE_HWREV_8168_SPIN2,	RE_8169,
+	  RE_F_PCIE | RE_F_JUMBO_SWCSUM, RE_SWCSUM_LIM_8168B, "8168" },
+	{ RE_HWREV_8168_SPIN3,	RE_8169,	RE_F_PCIE,	0, "8168" },
+	{ RE_HWREV_8168C,	RE_8169,	RE_F_PCIE,	0, "8168C" },
+	{ RE_HWREV_8169,	RE_8169,
+	  RE_F_HASMPC | RE_F_JUMBO_SWCSUM, RE_SWCSUM_LIM_8169, "8169" },
+	{ RE_HWREV_8169S,	RE_8169,	RE_F_HASMPC,	0, "8169S" },
+	{ RE_HWREV_8110S,	RE_8169,	RE_F_HASMPC,	0, "8110S" },
+	{ RE_HWREV_8169_8110SB,	RE_8169,	RE_F_HASMPC,	0, "8169SB" },
+	{ RE_HWREV_8169_8110SC,	RE_8169,	0,		0, "8169SC" },
+	{ RE_HWREV_8100E,	RE_8169,	RE_F_HASMPC,	0, "8100E" },
+	{ RE_HWREV_8101E,	RE_8169,	RE_F_PCIE,	0, "8101E" },
+	{ RE_HWREV_8102EL,      RE_8169,        RE_F_PCIE,      0, "8102EL" },
+	{ 0, 0, 0, 0, NULL }
 };
 
 static int	re_probe(device_t);
@@ -1231,6 +1238,7 @@ re_attach(device_t dev)
 		if (hw_rev->re_rev == hwrev) {
 			sc->re_type = hw_rev->re_type;
 			sc->re_flags = hw_rev->re_flags;
+			sc->re_swcsum_lim = hw_rev->re_swcsum_lim;
 			break;
 		}
 	}
@@ -1929,6 +1937,58 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 		csum_flags |= RE_TDESC_CMD_TCPCSUM;
 	if (m->m_pkthdr.csum_flags & CSUM_UDP)
 		csum_flags |= RE_TDESC_CMD_UDPCSUM;
+
+	if (m->m_pkthdr.len > sc->re_swcsum_lim &&
+	    (m->m_pkthdr.csum_flags & (CSUM_DELAY_IP | CSUM_DELAY_DATA)) &&
+	    (sc->re_flags & RE_F_JUMBO_SWCSUM)) {
+		struct ether_header *eh;
+		struct ip *ip;
+		u_short offset;
+
+		m = m_pullup(m, sizeof(struct ether_header *));
+		if (m == NULL) {
+			*m_head = NULL;
+			return ENOBUFS;
+		}
+		eh = mtod(m, struct ether_header *);
+
+		/* XXX */
+		if (eh->ether_type == ETHERTYPE_VLAN)
+			offset = sizeof(struct ether_vlan_header);
+		else
+			offset = sizeof(struct ether_header);
+
+		m = m_pullup(m, offset + sizeof(struct ip *));
+		if (m == NULL) {
+			*m_head = NULL;
+			return ENOBUFS;
+		}
+		ip = (struct ip *)(mtod(m, uint8_t *) + offset);
+
+		if (m->m_pkthdr.csum_flags & CSUM_DELAY_DATA) {
+			u_short csum;
+
+			offset += IP_VHL_HL(ip->ip_vhl) << 2;
+			csum = in_cksum_skip(m, ntohs(ip->ip_len), offset);
+			if (m->m_pkthdr.csum_flags & CSUM_UDP && csum == 0)
+				csum = 0xffff;
+			offset += m->m_pkthdr.csum_data;        /* checksum offset */
+			*(u_short *)(m->m_data + offset) = csum;
+
+			m->m_pkthdr.csum_flags &= ~CSUM_DELAY_DATA;
+		}
+		if (m->m_pkthdr.csum_flags & CSUM_DELAY_IP) {
+			ip->ip_sum = 0;
+			if (ip->ip_vhl == IP_VHL_BORING) {
+				ip->ip_sum = in_cksum_hdr(ip);
+			} else {
+				ip->ip_sum =
+				in_cksum(m, IP_VHL_HL(ip->ip_vhl) << 2);
+			}
+			m->m_pkthdr.csum_flags &= ~CSUM_DELAY_IP;
+		}
+		*m_head = m; /* 'm' may be changed by above two m_pullup() */
+	}
 
 	/*
 	 * With some of the RealTek chips, using the checksum offload
