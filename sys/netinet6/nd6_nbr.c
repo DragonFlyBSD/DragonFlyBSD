@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_nbr.c,v 1.4.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.23 2008/03/07 11:34:21 sephe Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.23.2.1 2008/10/03 08:02:23 hasso Exp $	*/
 /*	$KAME: nd6_nbr.c,v 1.86 2002/01/21 02:33:04 jinmei Exp $	*/
 
 /*
@@ -147,6 +147,15 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 		} else {
 			nd6log((LOG_INFO, "nd6_ns_input: bad DAD packet "
 				"(wrong ip6 dst)\n"));
+			goto bad;
+		}
+	} else {
+		/*
+		 * Make sure the source address is from a neighbor's address.
+		 */
+		if (in6ifa_ifplocaladdr(ifp, &saddr6) == NULL) {
+			nd6log((LOG_INFO, "nd6_ns_input: "
+			    "NS packet from non-neighbor\n"));
 			goto bad;
 		}
 	}
@@ -532,9 +541,7 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 	struct ifnet *ifp = m->m_pkthdr.rcvif;
 	struct ip6_hdr *ip6 = mtod(m, struct ip6_hdr *);
 	struct nd_neighbor_advert *nd_na;
-#if 0
 	struct in6_addr saddr6 = ip6->ip6_src;
-#endif
 	struct in6_addr daddr6 = ip6->ip6_dst;
 	struct in6_addr taddr6;
 	int flags;
@@ -626,6 +633,15 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 		    "nd6_na_input: duplicate IP6 address %s\n",
 		    ip6_sprintf(&taddr6));
 		goto freeit;
+	}
+
+	/*
+	 * Make sure the source address is from a neighbor's address.
+	 */
+	if (in6ifa_ifplocaladdr(ifp, &saddr6) == NULL) {
+		nd6log((LOG_INFO, "nd6_na_input: "
+		    "NA packet from non-neighbor\n"));
+		goto bad;
 	}
 
 	if (lladdr && ((ifp->if_addrlen + 2 + 7) & ~7) != lladdrlen) {
