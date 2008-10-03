@@ -383,7 +383,7 @@ input_userauth_banner(int type, u_int32_t seq, void *ctxt)
 	debug3("input_userauth_banner");
 	raw = packet_get_string(&len);
 	lang = packet_get_string(NULL);
-	if (options.log_level >= SYSLOG_LEVEL_INFO) {
+	if (len > 0 && options.log_level >= SYSLOG_LEVEL_INFO) {
 		if (len > 65536)
 			len = 65536;
 		msg = xmalloc(len * 4); /* max expansion from strnvis() */
