@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpi_support/acpi_ibm.c,v 1.15 2007/10/25 17:30:18 jhb Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_thinkpad/acpi_thinkpad.c,v 1.1 2008/08/28 07:10:05 hasso Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_thinkpad/acpi_thinkpad.c,v 1.2 2008/10/03 00:47:36 hasso Exp $
  */
 
 /*
@@ -949,8 +949,6 @@ acpi_thinkpad_notify(ACPI_HANDLE h, UINT32 notify, void *context)
 			}
 
 			/* Notify devd(8) */
-			device_printf(dev, "THINKPAD event: %u\n",
-			    (arg & 0xff));
 			acpi_UserNotify("THINKPAD", h, (arg & 0xff));
 			break;
 		default:
