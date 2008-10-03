@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.59 2008/10/03 14:07:02 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.60 2008/10/03 14:14:10 sephe Exp $
  */
 
 /*
@@ -1394,6 +1394,9 @@ re_detach(device_t dev)
 	if (sc->re_miibus)
 		device_delete_child(dev, sc->re_miibus);
 	bus_generic_detach(dev);
+
+	if (sc->re_sysctl_tree != NULL)
+		sysctl_ctx_free(&sc->re_sysctl_ctx);
 
 	if (sc->re_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->re_irq);
