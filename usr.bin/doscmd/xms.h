@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/doscmd/xms.h,v 1.2 1999/08/28 01:00:27 peter Exp $
- * $DragonFly: src/usr.bin/doscmd/xms.h,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/doscmd/xms.h,v 1.3 2008/10/03 19:56:11 swildner Exp $
  */
 
 #ifndef XMS_H
@@ -113,10 +113,10 @@ struct EMM {
 
 struct XMSinfo {
    u_char handle;				/* the handle */
-   u_char num_locks __attribute__ ((packed));   /* number of locks */
-   u_long size __attribute__ ((packed));	/* size of memory */
-   u_long phys_addr __attribute__ ((packed));   /* "physical" address */
-};
+   u_char num_locks;				/* number of locks */
+   u_long size;					/* size of memory */
+   u_long phys_addr;				/* "physical" address */
+} __packed;
 
 /*
  * Handle management inside the emulator for extendend memory pages, 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/biospnp.c,v 1.9 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/biospnp.c,v 1.4 2003/11/10 06:08:36 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/libi386/biospnp.c,v 1.5 2008/10/03 19:56:10 swildner Exp $
  */
 
 /*
@@ -37,8 +37,6 @@
 #include <isapnp.h>
 #include <btxv86.h>
 
-#define __packed __attribute__((__packed__))
-
 static int	biospnp_init(void);
 static void	biospnp_enumerate(void);
 
@@ -50,38 +48,38 @@ struct pnphandler biospnphandler =
 
 struct pnp_ICstructure
 {
-    u_int8_t	pnp_signature[4]	 __packed;
-    u_int8_t	pnp_version		 __packed;
-    u_int8_t	pnp_length		 __packed;
-    u_int16_t	pnp_BIOScontrol		 __packed;
-    u_int8_t	pnp_checksum		 __packed;
-    u_int32_t	pnp_eventflag		 __packed;
-    u_int16_t	pnp_rmip		 __packed;
-    u_int16_t	pnp_rmcs		 __packed;
-    u_int16_t	pnp_pmip		 __packed;
-    u_int32_t	pnp_pmcs		 __packed;
-    u_int8_t	pnp_OEMdev[4]		 __packed;
-    u_int16_t	pnp_rmds		 __packed;
-    u_int32_t	pnp_pmds		 __packed;
-};
+    u_int8_t	pnp_signature[4];
+    u_int8_t	pnp_version;
+    u_int8_t	pnp_length;
+    u_int16_t	pnp_BIOScontrol;
+    u_int8_t	pnp_checksum;
+    u_int32_t	pnp_eventflag;
+    u_int16_t	pnp_rmip;
+    u_int16_t	pnp_rmcs;
+    u_int16_t	pnp_pmip;
+    u_int32_t	pnp_pmcs;
+    u_int8_t	pnp_OEMdev[4];
+    u_int16_t	pnp_rmds;
+    u_int32_t	pnp_pmds;
+} __packed;
 
 struct pnp_devNode 
 {
-    u_int16_t	dn_size		__packed;
-    u_int8_t	dn_handle	__packed;
-    u_int8_t	dn_id[4]	__packed;
-    u_int8_t	dn_type[3]	__packed;
-    u_int16_t	dn_attrib	__packed;
-    u_int8_t	dn_data[1]	__packed;
-};
+    u_int16_t	dn_size;
+    u_int8_t	dn_handle;
+    u_int8_t	dn_id[4];
+    u_int8_t	dn_type[3];
+    u_int16_t	dn_attrib;
+    u_int8_t	dn_data[1];
+} __packed;
 
 struct pnp_isaConfiguration
 {
-    u_int8_t	ic_revision	__packed;
-    u_int8_t	ic_nCSN		__packed;
-    u_int16_t	ic_rdport	__packed;
-    u_int16_t	ic_reserved	__packed;
-};
+    u_int8_t	ic_revision;
+    u_int8_t	ic_nCSN;
+    u_int16_t	ic_rdport;
+    u_int16_t	ic_reserved;
+} __packed;
 
 static struct pnp_ICstructure	*pnp_Icheck = NULL;
 static u_int16_t		pnp_NumNodes;

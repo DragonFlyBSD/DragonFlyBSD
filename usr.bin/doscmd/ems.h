@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/doscmd/ems.h,v 1.3 1999/08/28 01:00:13 peter Exp $
- * $DragonFly: src/usr.bin/doscmd/ems.h,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/doscmd/ems.h,v 1.3 2008/10/03 19:56:11 swildner Exp $
  */
 
 #ifndef EMS_H
@@ -243,9 +243,9 @@ typedef union {
  */
 
 typedef struct {
-    u_short handle __attribute__ ((packed));   /* handle */
-    u_short npages __attribute__ ((packed));   /* pages allocated */
-} EMShandlepage;
+    u_short handle;             /* handle */
+    u_short npages;             /* pages allocated */
+} __packed EMShandlepage;
 
 /*
  * EMS map/unmap multiple, only used to pass information to and from
@@ -253,10 +253,10 @@ typedef struct {
  */
 
 typedef struct {
-    u_short log __attribute__ ((packed));   /* logical page number */
-    u_short phys __attribute__ ((packed));  /* physical page (position) or
-					      segment address inside frame */
-} EMSmapunmap;
+    u_short log;                /* logical page number */
+    u_short phys;               /* physical page (position) or
+				  segment address inside frame */
+} __packed EMSmapunmap;
 
 /*
  * EMS handle directory, only used to pass information to and from
@@ -264,10 +264,10 @@ typedef struct {
  */
 
 typedef struct {
-   u_short log  __attribute__ ((packed));   /* logical page number */
-   Hname   name __attribute__ ((packed));   /* Handle name */
+   u_short log;                 /* logical page number */
+   Hname   name;                /* Handle name */
 
-} EMShandledir;
+} __packed EMShandledir;
 
 /*
  * Structure for get/set page map: This structure is used to save and
@@ -288,9 +288,9 @@ typedef struct {
  */
 
 typedef struct {
-   u_short segm __attribute__ ((packed));  /* segment address inside frame */
-   u_short phys __attribute__ ((packed));  /* physical page (position) */
-} EMSaddrarray;
+   u_short segm;                /* segment address inside frame */
+   u_short phys;                /* physical page (position) */
+} __packed EMSaddrarray;
 
 /*
  * EMS move memory call structure, only used to pass information to and from
@@ -298,17 +298,17 @@ typedef struct {
  */
 
 typedef struct {
-   u_long  length __attribute__ ((packed));      /* length of region */
+   u_long  length;              /* length of region */
 #define EMS_MOVE_CONV 0
 #define EMS_MOVE_EMS  1
-   u_char  src_type __attribute__ ((packed));    /* source type (0,1) */
-   u_short src_handle __attribute__ ((packed));  /* source handle */
-   u_short src_offset __attribute__ ((packed));  /* source offset */
-   u_short src_seg __attribute__ ((packed));     /* source type  */
-   u_char  dst_type __attribute__ ((packed));    /* destination type (0,1) */
-   u_short dst_handle __attribute__ ((packed));  /* destination handle */
-   u_short dst_offset __attribute__ ((packed));  /* destination offset */
-   u_short dst_seg __attribute__ ((packed));     /* destination type  */
-} EMSmovemem;
+   u_char  src_type;            /* source type (0,1) */
+   u_short src_handle;          /* source handle */
+   u_short src_offset;          /* source offset */
+   u_short src_seg;             /* source type  */
+   u_char  dst_type;            /* destination type (0,1) */
+   u_short dst_handle;          /* destination handle */
+   u_short dst_offset;          /* destination offset */
+   u_short dst_seg;             /* destination type  */
+} __packed EMSmovemem;
 
 #endif /* EMS_H */
