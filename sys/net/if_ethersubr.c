@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.93 2008/09/24 11:14:43 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.94 2008/10/04 11:24:37 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -236,23 +236,38 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 #ifdef IPX
 	case AF_IPX:
 		if (ef_outputp != NULL) {
-			error = ef_outputp(ifp, &m, dst, &eh->ether_type,
-					   &hlen);
-			if (error)
-				goto bad;
-		} else {
-			eh->ether_type = htons(ETHERTYPE_IPX);
-			bcopy(&(((struct sockaddr_ipx *)dst)->sipx_addr.x_host),
-			      edst, ETHER_ADDR_LEN);
+			/*
+			 * Hold BGL and recheck ef_outputp
+			 */
+			get_mplock();
+			if (ef_outputp != NULL) {
+				error = ef_outputp(ifp, &m, dst,
+						   &eh->ether_type, &hlen);
+				rel_mplock();
+				if (error)
+					goto bad;
+				else
+					break;
+			}
+			rel_mplock();
 		}
+		eh->ether_type = htons(ETHERTYPE_IPX);
+		bcopy(&(((struct sockaddr_ipx *)dst)->sipx_addr.x_host),
+		      edst, ETHER_ADDR_LEN);
 		break;
 #endif
 #ifdef NETATALK
 	case AF_APPLETALK: {
 		struct at_ifaddr *aa;
 
+		/*
+		 * Hold BGL
+		 */
+		get_mplock();
+
 		if ((aa = at_ifawithnet((struct sockaddr_at *)dst)) == NULL) {
 			error = 0;	/* XXX */
+			rel_mplock();
 			goto bad;
 		}
 		/*
@@ -280,8 +295,12 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		} else {
 			eh->ether_type = htons(ETHERTYPE_AT);
 		}
-		if (!aarpresolve(ac, m, (struct sockaddr_at *)dst, edst))
+		if (!aarpresolve(ac, m, (struct sockaddr_at *)dst, edst)) {
+			rel_mplock();
 			return (0);
+		}
+
+		rel_mplock();
 		break;
 	  }
 #endif
@@ -389,17 +408,37 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	}
 
 #ifdef CARP
-	if (ifp->if_carp && (error = carp_output(ifp, m, dst, NULL)))
-		goto bad;
+	if (ifp->if_carp) {
+		/*
+		 * Hold BGL and recheck ifp->if_carp
+		 */
+		get_mplock();
+		if (ifp->if_carp && (error = carp_output(ifp, m, dst, NULL))) {
+			rel_mplock();
+			goto bad;
+		}
+		rel_mplock();
+	}
 #endif
  
 
 	/* Handle ng_ether(4) processing, if any */
 	if (ng_ether_output_p != NULL) {
-		if ((error = (*ng_ether_output_p)(ifp, &m)) != 0)
-			goto bad;
-		if (m == NULL)
-			return (0);
+		/*
+		 * Hold BGL and recheck ng_ether_output_p
+		 */
+		get_mplock();
+		if (ng_ether_output_p != NULL) {
+			if ((error = ng_ether_output_p(ifp, &m)) != 0) {
+				rel_mplock();
+				goto bad;
+			}
+			if (m == NULL) {
+				rel_mplock();
+				return (0);
+			}
+		}
+		rel_mplock();
 	}
 
 	/* Continue with link-layer output */
