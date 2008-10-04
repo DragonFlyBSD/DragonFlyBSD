@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.9 2004/02/08 08:40:24 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.25 2008/09/06 06:09:42 sephe Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.26 2008/10/04 11:21:10 sephe Exp $
  */
 
 /*
@@ -48,6 +48,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/lock.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
@@ -209,13 +210,20 @@ if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen)
 	}
 
 	if (ifp->if_bpf) {
+		get_mplock();
+
+		/* Re-check */
+		if (ifp->if_bpf == NULL)
+			goto rel;
+
 		if (ifp->if_bpf->bif_dlt == DLT_NULL) {
 			uint32_t bpf_af = (uint32_t)af;
 			bpf_ptap(ifp->if_bpf, m, &bpf_af, 4);
-		}
-		else {
+		} else {
 			bpf_mtap(ifp->if_bpf, m);
 		}
+rel:
+		rel_mplock();
 	}
 
 	/* Strip away media header */
