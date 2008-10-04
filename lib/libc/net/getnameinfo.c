@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/getnameinfo.c,v 1.4.2.5 2002/07/31 10:11:09 ume Exp $	*/
-/*	$DragonFly: src/lib/libc/net/getnameinfo.c,v 1.4 2005/11/13 02:04:47 swildner Exp $	*/
+/*	$DragonFly: src/lib/libc/net/getnameinfo.c,v 1.5 2008/10/04 22:09:17 swildner Exp $	*/
 /*	$KAME: getnameinfo.c,v 1.61 2002/06/27 09:25:47 itojun Exp $	*/
 
 /*
@@ -281,7 +281,7 @@ ip6_parsenumeric(const struct sockaddr *sa, const char *addr, char *host,
 
 	numaddrlen = strlen(numaddr);
 	if (numaddrlen + 1 > hostlen) /* don't forget terminator */
-		return EAI_MEMORY;
+		return EAI_OVERFLOW;
 	strlcpy(host, numaddr, hostlen);
 
 	if (((const struct sockaddr_in6 *)sa)->sin6_scope_id) {
@@ -292,9 +292,9 @@ ip6_parsenumeric(const struct sockaddr *sa, const char *addr, char *host,
 		    (const struct sockaddr_in6 *)(const void *)sa,
 		    zonebuf, sizeof(zonebuf), flags);
 		if (zonelen < 0)
-			return EAI_MEMORY;
+			return EAI_OVERFLOW;
 		if (zonelen + 1 + numaddrlen + 1 > hostlen)
-			return EAI_MEMORY;
+			return EAI_OVERFLOW;
 
 		/* construct <numeric-addr><delim><zoneid> */
 		memcpy(host + numaddrlen + 1, zonebuf,

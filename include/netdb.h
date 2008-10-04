@@ -56,7 +56,7 @@
  *      @(#)netdb.h	8.1 (Berkeley) 6/2/93
  *      From: Id: netdb.h,v 8.9 1996/11/19 08:39:29 vixie Exp $
  * $FreeBSD: src/include/netdb.h,v 1.14.2.5 2001/08/29 08:46:51 alfred Exp $
- * $DragonFly: src/include/netdb.h,v 1.6 2008/05/22 06:50:14 hasso Exp $
+ * $DragonFly: src/include/netdb.h,v 1.7 2008/10/04 22:09:16 swildner Exp $
  */
 
 #ifndef _NETDB_H_
@@ -163,9 +163,10 @@ struct addrinfo {
 #define	EAI_SERVICE	 9	/* servname not supported for ai_socktype */
 #define	EAI_SOCKTYPE	10	/* ai_socktype not supported */
 #define	EAI_SYSTEM	11	/* system error returned in errno */
-#define	EAI_BADHINTS	12
-#define	EAI_PROTOCOL	13
-#define	EAI_MAX		14
+#define	EAI_BADHINTS	12	/* invalid value for hints */
+#define	EAI_PROTOCOL	13	/* resolved protocol is unknown */
+#define	EAI_OVERFLOW	14	/* argument buffer overflow */
+#define	EAI_MAX		15
 
 /*
  * Flag values for getaddrinfo()
@@ -247,7 +248,7 @@ int		getaddrinfo (const char *, const char *,
 int		getnameinfo (const struct sockaddr *, socklen_t, char *,
 				 size_t, char *, size_t, int);
 void		freeaddrinfo (struct addrinfo *);
-char		*gai_strerror (int);
+const char	*gai_strerror (int);
 void		setnetgrent (const char *);
 void		setservent (int);
 

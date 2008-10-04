@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/getaddrinfo.c,v 1.9.2.14 2002/11/08 17:49:31 ume Exp $	*/
-/*	$DragonFly: src/lib/libc/net/getaddrinfo.c,v 1.7 2008/05/22 06:50:14 hasso Exp $	*/
+/*	$DragonFly: src/lib/libc/net/getaddrinfo.c,v 1.8 2008/10/04 22:09:17 swildner Exp $	*/
 /*	$KAME: getaddrinfo.c,v 1.15 2000/07/09 04:37:24 itojun Exp $	*/
 
 /*
@@ -225,7 +225,7 @@ static int res_searchN (const char *, struct res_target *);
 static int res_querydomainN (const char *, const char *,
 	struct res_target *);
 
-static char *ai_errlist[] = {
+static const char *ai_errlist[] = {
 	"Success",
 	"Address family for hostname not supported",	/* EAI_ADDRFAMILY */
 	"Temporary failure in name resolution",		/* EAI_AGAIN      */
@@ -240,6 +240,7 @@ static char *ai_errlist[] = {
 	"System error returned in errno", 		/* EAI_SYSTEM     */
 	"Invalid value for hints",			/* EAI_BADHINTS	  */
 	"Resolved protocol is unknown",			/* EAI_PROTOCOL   */
+	"Argument buffer overflow",			/* EAI_OVERFLOW */
 	"Unknown error", 				/* EAI_MAX        */
 };
 
@@ -325,7 +326,7 @@ do { \
 #define MATCH(x, y, w) \
 	((x) == (y) || (/*CONSTCOND*/(w) && ((x) == ANY || (y) == ANY)))
 
-char *
+const char *
 gai_strerror(int ecode)
 {
 	if (ecode < 0 || ecode > EAI_MAX)

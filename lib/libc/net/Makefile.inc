@@ -1,6 +1,6 @@
 #	from @(#)Makefile.inc	8.2 (Berkeley) 9/5/93
 # $FreeBSD: src/lib/libc/net/Makefile.inc,v 1.36.2.5 2002/07/29 18:33:18 ume Exp $
-# $DragonFly: src/lib/libc/net/Makefile.inc,v 1.5 2008/09/04 09:08:21 hasso Exp $
+# $DragonFly: src/lib/libc/net/Makefile.inc,v 1.6 2008/10/04 22:09:17 swildner Exp $
 
 # machine-independent net sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/net ${.CURDIR}/../libc/net
@@ -29,7 +29,7 @@ CFLAGS+=-DINET6
 
 .if ${LIB} == "c"
 MAN+=	addr2ascii.3 byteorder.3 ethers.3 eui64.3 \
-	getaddrinfo.3 gethostbyname.3 \
+	gai_strerror.3 getaddrinfo.3 gethostbyname.3 \
 	getifaddrs.3 getipnodebyname.3 \
 	getnameinfo.3 getnetent.3 getprotoent.3 getservent.3 if_indextoname.3 \
 	inet.3 inet_net.3 \
@@ -45,7 +45,7 @@ MLINKS+=ethers.3 ether_aton.3 ethers.3 ether_hostton.3 ethers.3 ether_line.3 \
 	ethers.3 ether_ntoa.3 ethers.3 ether_ntohost.3
 MLINKS+=eui64.3 eui64_aton.3 eui64.3 eui64_hostton.3 eui64.3 eui64_ntoa.3 \
 	eui64.3 eui64_ntohost.3
-MLINKS+=getaddrinfo.3 freeaddrinfo.3 getaddrinfo.3 gai_strerror.3
+MLINKS+=getaddrinfo.3 freeaddrinfo.3
 MLINKS+=gethostbyname.3 endhostent.3 gethostbyname.3 gethostbyaddr.3 \
 	gethostbyname.3 gethostbyname2.3 gethostbyname.3 gethostent.3 \
 	gethostbyname.3 herror.3 gethostbyname.3 hstrerror.3 \
