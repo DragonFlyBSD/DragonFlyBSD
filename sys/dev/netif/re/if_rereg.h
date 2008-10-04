@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.10 2008/09/29 20:27:38 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.11 2008/10/04 10:36:21 sephe Exp $
  */
 
 /*
@@ -563,8 +563,10 @@ struct re_stats {
 #define RE_ADDR_LO(y)		((uint64_t) (y) & 0xFFFFFFFF)
 #define RE_ADDR_HI(y)		((uint64_t) (y) >> 32)
 
-#define RE_JUMBO_FRAMELEN	9018
+#define RE_JUMBO_FRAMELEN	7440
 #define RE_JUMBO_MTU		(RE_JUMBO_FRAMELEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
+#define RE_FRAMELEN_2K		2048
+#define RE_FRAMELEN(mtu)	(mtu + ETHER_HDR_LEN + ETHER_CRC_LEN)
 
 #define	RE_TIMEOUT		1000
 

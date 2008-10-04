@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.60 2008/10/03 14:14:10 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.61 2008/10/04 10:36:21 sephe Exp $
  */
 
 /*
@@ -202,22 +202,46 @@ static const struct re_type re_devs[] = {
 };
 
 static const struct re_hwrev re_hwrevs[] = {
-	{ RE_HWREV_8139CPLUS,	RE_8139CPLUS,	RE_F_HASMPC,	0, "C+" },
-	{ RE_HWREV_8168_SPIN1,	RE_8169,	RE_F_PCIE,	0, "8168" },
-	{ RE_HWREV_8168_SPIN2,	RE_8169,
-	  RE_F_PCIE | RE_F_JUMBO_SWCSUM, RE_SWCSUM_LIM_8168B, "8168" },
-	{ RE_HWREV_8168_SPIN3,	RE_8169,	RE_F_PCIE,	0, "8168" },
-	{ RE_HWREV_8168C,	RE_8169,	RE_F_PCIE,	0, "8168C" },
-	{ RE_HWREV_8169,	RE_8169,
-	  RE_F_HASMPC | RE_F_JUMBO_SWCSUM, RE_SWCSUM_LIM_8169, "8169" },
-	{ RE_HWREV_8169S,	RE_8169,	RE_F_HASMPC,	0, "8169S" },
-	{ RE_HWREV_8110S,	RE_8169,	RE_F_HASMPC,	0, "8110S" },
-	{ RE_HWREV_8169_8110SB,	RE_8169,	RE_F_HASMPC,	0, "8169SB" },
-	{ RE_HWREV_8169_8110SC,	RE_8169,	0,		0, "8169SC" },
-	{ RE_HWREV_8100E,	RE_8169,	RE_F_HASMPC,	0, "8100E" },
-	{ RE_HWREV_8101E,	RE_8169,	RE_F_PCIE,	0, "8101E" },
-	{ RE_HWREV_8102EL,      RE_8169,        RE_F_PCIE,      0, "8102EL" },
-	{ 0, 0, 0, 0, NULL }
+	{ RE_HWREV_8139CPLUS,	RE_8139CPLUS,	RE_F_HASMPC,
+	  ETHERMTU, ETHERMTU },
+
+	{ RE_HWREV_8168_SPIN1,	RE_8169,	RE_F_PCIE,
+	  RE_JUMBO_MTU, RE_JUMBO_MTU },
+
+	{ RE_HWREV_8168_SPIN2,	RE_8169,	RE_F_PCIE,
+	  RE_JUMBO_MTU, RE_JUMBO_MTU },
+
+	{ RE_HWREV_8168_SPIN3,	RE_8169,	RE_F_PCIE,
+	  RE_JUMBO_MTU, RE_JUMBO_MTU },
+
+	{ RE_HWREV_8168C,	RE_8169,	RE_F_PCIE,
+	  RE_JUMBO_MTU, RE_JUMBO_MTU },
+
+	{ RE_HWREV_8169,	RE_8169,	RE_F_HASMPC,
+	  RE_SWCSUM_LIM_8169, RE_JUMBO_MTU },
+
+	{ RE_HWREV_8169S,	RE_8169,	RE_F_HASMPC,
+	  RE_JUMBO_MTU, RE_JUMBO_MTU },
+
+	{ RE_HWREV_8110S,	RE_8169,	RE_F_HASMPC,
+	  RE_JUMBO_MTU, RE_JUMBO_MTU },
+
+	{ RE_HWREV_8169_8110SB,	RE_8169,	RE_F_HASMPC,
+	  RE_JUMBO_MTU, RE_JUMBO_MTU },
+
+	{ RE_HWREV_8169_8110SC,	RE_8169,	0,
+	  RE_JUMBO_MTU, RE_JUMBO_MTU },
+
+	{ RE_HWREV_8100E,	RE_8169,	RE_F_HASMPC,
+	  ETHERMTU, ETHERMTU },
+
+	{ RE_HWREV_8101E,	RE_8169,	RE_F_PCIE,
+	  ETHERMTU, ETHERMTU },
+
+	{ RE_HWREV_8102EL,      RE_8169,	RE_F_PCIE,
+	  ETHERMTU, ETHERMTU },
+
+	{ 0, 0, 0, 0, 0 }
 };
 
 static int	re_probe(device_t);
@@ -1234,11 +1258,13 @@ re_attach(device_t dev)
 	re_reset(sc);
 
 	hwrev = CSR_READ_4(sc, RE_TXCFG) & RE_TXCFG_HWREV;
-	for (hw_rev = re_hwrevs; hw_rev->re_desc != NULL; hw_rev++) {
+	for (hw_rev = re_hwrevs; hw_rev->re_type != 0; hw_rev++) {
 		if (hw_rev->re_rev == hwrev) {
+			sc->re_hwrev = hwrev;
 			sc->re_type = hw_rev->re_type;
 			sc->re_flags = hw_rev->re_flags;
 			sc->re_swcsum_lim = hw_rev->re_swcsum_lim;
+			sc->re_maxmtu = hw_rev->re_maxmtu;
 			break;
 		}
 	}
@@ -1283,7 +1309,6 @@ re_attach(device_t dev)
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
-	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = re_ioctl;
 	ifp->if_start = re_start;
@@ -1942,8 +1967,7 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 		csum_flags |= RE_TDESC_CMD_UDPCSUM;
 
 	if (m->m_pkthdr.len > sc->re_swcsum_lim &&
-	    (m->m_pkthdr.csum_flags & (CSUM_DELAY_IP | CSUM_DELAY_DATA)) &&
-	    (sc->re_flags & RE_F_JUMBO_SWCSUM)) {
+	    (m->m_pkthdr.csum_flags & (CSUM_DELAY_IP | CSUM_DELAY_DATA))) {
 		struct ether_header *eh;
 		struct ip *ip;
 		u_short offset;
@@ -2228,7 +2252,7 @@ re_init(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
 	uint32_t rxcfg = 0;
-	int error;
+	int error, framelen;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -2306,7 +2330,13 @@ re_init(void *xsc)
 	} else
 		CSR_WRITE_4(sc, RE_TXCFG, RE_TXCFG_CONFIG);
 
-	CSR_WRITE_1(sc, RE_EARLY_TX_THRESH, 16);
+	framelen = RE_FRAMELEN(ifp->if_mtu);
+	if (framelen < RE_FRAMELEN_2K) {
+		CSR_WRITE_1(sc, RE_EARLY_TX_THRESH,
+			    howmany(RE_FRAMELEN_2K, 128));
+	} else {
+		CSR_WRITE_1(sc, RE_EARLY_TX_THRESH, howmany(framelen, 128));
+	}
 
 	CSR_WRITE_4(sc, RE_RXCFG, RE_RXCFG_CONFIG);
 
@@ -2450,10 +2480,15 @@ re_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 
 	switch(command) {
 	case SIOCSIFMTU:
-		if (ifr->ifr_mtu > RE_JUMBO_MTU)
+		if (ifr->ifr_mtu > sc->re_maxmtu) {
 			error = EINVAL;
-		ifp->if_mtu = ifr->ifr_mtu;
+		} else if (ifp->if_mtu != ifr->ifr_mtu) {
+			ifp->if_mtu = ifr->ifr_mtu;
+			if (ifp->if_flags & IFF_RUNNING)
+				ifp->if_init(sc);
+		}
 		break;
+
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP)
 			re_init(sc);
