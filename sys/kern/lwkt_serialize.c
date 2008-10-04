@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.17 2008/05/24 12:52:49 sephe Exp $
+ * $DragonFly: src/sys/kern/lwkt_serialize.c,v 1.18 2008/10/04 14:22:44 swildner Exp $
  */
 /*
  * This API provides a fast locked-bus-cycle-based serializer.  It's
@@ -86,13 +86,17 @@ KTR_INFO(KTR_SERIALIZER, slz, wakeup_end, 5, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
 KTR_INFO(KTR_SERIALIZER, slz, try, 6, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
 KTR_INFO(KTR_SERIALIZER, slz, tryfail, 7, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
 KTR_INFO(KTR_SERIALIZER, slz, tryok, 8, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
+#ifdef SMP
 KTR_INFO(KTR_SERIALIZER, slz, spinbo, 9,
 	 "slz=%p bo1=%d bo=%d", (sizeof(void *) + (2 * sizeof(int))));
+#endif
 KTR_INFO(KTR_SERIALIZER, slz, enter_end, 10, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
 KTR_INFO(KTR_SERIALIZER, slz, exit_beg, 11, SLZ_KTR_STRING, SLZ_KTR_ARG_SIZE);
 
 #define logslz(name, slz)		KTR_LOG(slz_ ## name, slz)
+#ifdef SMP
 #define logslz_spinbo(slz, bo1, bo)	KTR_LOG(slz_spinbo, slz, bo1, bo)
+#endif
 
 static void lwkt_serialize_sleep(void *info);
 static void lwkt_serialize_wakeup(void *info);
