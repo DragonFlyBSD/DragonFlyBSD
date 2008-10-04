@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.55 2008/10/01 09:16:18 sephe Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.56 2008/10/04 11:26:09 sephe Exp $
  */
 
 /*
@@ -145,6 +145,9 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, useloopback, CTLFLAG_RW,
 	   &useloopback, 0, "");
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, proxyall, CTLFLAG_RW,
 	   &arp_proxyall, 0, "");
+
+static int	arp_mpsafe = 0;
+TUNABLE_INT("net.link.ether.inet.arp_mpsafe", &arp_mpsafe);
 
 static void	arp_rtrequest(int, struct rtentry *, struct rt_addrinfo *);
 static void	arprequest(struct ifnet *, struct in_addr *, struct in_addr *,
@@ -770,10 +773,15 @@ in_arpinput(struct mbuf *m)
 		 * request for the virtual host ip.
 		 * XXX: This is really ugly!
 		 */
-		if (ifp->if_carp != NULL &&
-		    carp_iamatch(ifp->if_carp, ia, &isaddr, &enaddr) &&
-		    itaddr.s_addr == ia->ia_addr.sin_addr.s_addr)
-			goto match;
+		if (ifp->if_carp != NULL) {
+			get_mplock();
+			if (ifp->if_carp != NULL &&
+			    carp_iamatch(ifp->if_carp, ia, &isaddr, &enaddr)) {
+				rel_mplock();
+				goto match;
+			}
+			rel_mplock();
+		}
 #endif
 	}
 	LIST_FOREACH(iac, INADDR_HASH(isaddr.s_addr), ia_hash) {
@@ -1036,12 +1044,19 @@ arp_ifinit2(struct ifnet *ifp, struct ifaddr *ifa, u_char *enaddr)
 static void
 arp_init(void)
 {
+	uint32_t flags;
 	int cpu;
 
 	for (cpu = 0; cpu < ncpus2; cpu++)
 		LIST_INIT(&llinfo_arp_list[cpu]);
-	netisr_register(NETISR_ARP, cpu0_portfn, arpintr,
-			NETISR_FLAG_NOTMPSAFE);
+
+	if (arp_mpsafe) {
+		flags = NETISR_FLAG_MPSAFE;
+		kprintf("arp: MPSAFE\n");
+	} else {
+		flags = NETISR_FLAG_NOTMPSAFE;
+	}
+	netisr_register(NETISR_ARP, cpu0_portfn, arpintr, flags);
 }
 
 SYSINIT(arp, SI_SUB_PROTO_DOMAIN, SI_ORDER_ANY, arp_init, 0);
