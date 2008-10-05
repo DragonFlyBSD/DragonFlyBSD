@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.12 2008/10/05 04:54:51 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.13 2008/10/05 06:15:36 sephe Exp $
  */
 
 #define RE_RX_DESC_CNT_DEF	64
@@ -148,6 +148,7 @@ struct re_softc {
 	int			re_maxmtu;
 	int			re_rx_desc_cnt;
 	int			re_tx_desc_cnt;
+	int			re_bus_speed;
 #ifdef DEVICE_POLLING
 	int			rxcycles;
 #endif
@@ -168,6 +169,7 @@ struct re_softc {
 
 #define RE_F_HASMPC		0x1
 #define RE_F_PCIE		0x2
+#define RE_F_PCI64		0x4
 
 #define RE_TX_MODERATION_IS_ENABLED(sc)			\
 	((sc)->re_tx_ack == RE_ISR_TIMEOUT_EXPIRED)

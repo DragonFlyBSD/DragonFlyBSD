@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.64 2008/10/05 05:00:58 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.65 2008/10/05 06:15:36 sephe Exp $
  */
 
 /*
@@ -1328,7 +1328,35 @@ re_attach(device_t dev)
 			break;
 		}
 	}
-	device_printf(dev, "hardware rev. 0x%08x\n", hwrev);
+
+	if (sc->re_type == RE_8139CPLUS) {
+		sc->re_bus_speed = 33; /* XXX */
+	} else if (sc->re_flags & RE_F_PCIE) {
+		sc->re_bus_speed = 125;
+	} else {
+		uint8_t cfg2;
+
+		cfg2 = CSR_READ_1(sc, RE_CFG2);
+		switch (cfg2 & RE_CFG2_PCICLK_MASK) {
+		case RE_CFG2_PCICLK_33MHZ:
+			sc->re_bus_speed = 33;
+			break;
+		case RE_CFG2_PCICLK_66MHZ:
+			sc->re_bus_speed = 66;
+			break;
+		default:
+			device_printf(dev, "unknown bus speed, assume 33MHz\n");
+			sc->re_bus_speed = 33;
+			break;
+		}
+		if (cfg2 & RE_CFG2_PCI64)
+			sc->re_flags |= RE_F_PCI64;
+	}
+	device_printf(dev, "Hardware rev. 0x%08x; PCI%s %dMHz\n",
+		      sc->re_hwrev,
+		      (sc->re_flags & RE_F_PCIE) ?
+		      "-E" : ((sc->re_flags & RE_F_PCI64) ? "64" : "32"),
+		      sc->re_bus_speed);
 
 	sc->re_eewidth = 6;
 	re_read_eeprom(sc, (caddr_t)&re_did, 0, 1);

@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.12 2008/10/05 01:53:41 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.13 2008/10/05 06:15:36 sephe Exp $
  */
 
 /*
@@ -70,7 +70,8 @@
 #define RE_EECMD	0x0050		/* EEPROM command register */
 #define RE_CFG0		0x0051		/* config register #0 */
 #define RE_CFG1		0x0052		/* config register #1 */
-                                        /* 0053-0057 reserved */   
+#define RE_CFG2		0x0053		/* config register #2 */
+                                        /* 0054-0057 reserved */   
 #define RE_MEDIASTAT	0x0058		/* media status register (8139) */
 					/* 0059-005A reserved */
 #define RE_MII		0x005A		/* 8129 chip only */
@@ -134,6 +135,14 @@
 #define RE_TXCFG_IFG2		0x00080000	/* 8169 only */
 #define RE_TXCFG_IFG		0x03000000	/* interframe gap */
 #define RE_TXCFG_HWREV		0x7CC00000
+
+/*
+ * Config 2 register bits
+ */
+#define RE_CFG2_PCICLK_MASK	0x07
+#define RE_CFG2_PCICLK_33MHZ	0x00
+#define RE_CFG2_PCICLK_66MHZ	0x01
+#define RE_CFG2_PCI64		0x08
 
 #define RE_LOOPTEST_OFF		0x00000000
 #define RE_LOOPTEST_ON		0x00020000
