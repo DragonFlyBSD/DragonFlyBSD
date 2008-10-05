@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.63 2008/10/05 04:54:51 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.64 2008/10/05 05:00:58 sephe Exp $
  */
 
 /*
@@ -1215,7 +1215,7 @@ re_attach(device_t dev)
 	uint16_t as[ETHER_ADDR_LEN / 2];
 	uint16_t re_did = 0;
 	uint32_t hwrev;
-	int error = 0, rid, i;
+	int error = 0, rid, i, qlen;
 
 	callout_init(&sc->re_timer);
 #ifdef RE_DIAG
@@ -1229,6 +1229,10 @@ re_attach(device_t dev)
 	sc->re_tx_desc_cnt = re_tx_desc_count;
 	if (sc->re_tx_desc_cnt > RE_TX_DESC_CNT_MAX)
 		sc->re_tx_desc_cnt = RE_TX_DESC_CNT_MAX;
+
+	qlen = RE_IFQ_MAXLEN;
+	if (sc->re_tx_desc_cnt > RE_IFQ_MAXLEN)
+		qlen = sc->re_tx_desc_cnt;
 
 	RE_ENABLE_TX_MODERATION(sc);
 
@@ -1392,7 +1396,7 @@ re_attach(device_t dev)
 		ifp->if_baudrate = 1000000000;
 	else
 		ifp->if_baudrate = 100000000;
-	ifq_set_maxlen(&ifp->if_snd, RE_IFQ_MAXLEN);
+	ifq_set_maxlen(&ifp->if_snd, qlen);
 	ifq_set_ready(&ifp->if_snd);
 
 #ifdef RE_DISABLE_HWCSUM
