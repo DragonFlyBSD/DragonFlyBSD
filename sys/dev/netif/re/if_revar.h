@@ -33,30 +33,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.8 2008/10/04 10:36:21 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.9 2008/10/05 01:43:09 sephe Exp $
  */
-
-struct re_chain_data {
-	uint16_t		cur_rx;
-	caddr_t			re_rx_buf;
-	caddr_t			re_rx_buf_ptr;
-	bus_dmamap_t		re_rx_dmamap;
-
-	struct mbuf		*re_tx_chain[RE_TX_LIST_CNT];
-	bus_dmamap_t		re_tx_dmamap[RE_TX_LIST_CNT];
-	uint8_t			last_tx;
-	uint8_t			cur_tx;
-};
-
-#define RE_INC(x)		(x = (x + 1) % RE_TX_LIST_CNT)
-#define RE_CUR_TXADDR(x)	((x->re_cdata.cur_tx * 4) + RE_TXADDR0)
-#define RE_CUR_TXSTAT(x)	((x->re_cdata.cur_tx * 4) + RE_TXSTAT0)
-#define RE_CUR_TXMBUF(x)	(x->re_cdata.re_tx_chain[x->re_cdata.cur_tx])
-#define RE_CUR_DMAMAP(x)	(x->re_cdata.re_tx_dmamap[x->re_cdata.cur_tx])
-#define RE_LAST_TXADDR(x)	((x->re_cdata.last_tx * 4) + RE_TXADDR0)
-#define RE_LAST_TXSTAT(x)	((x->re_cdata.last_tx * 4) + RE_TXSTAT0)
-#define RE_LAST_TXMBUF(x)	(x->re_cdata.re_tx_chain[x->re_cdata.last_tx])
-#define RE_LAST_DMAMAP(x)	(x->re_cdata.re_tx_dmamap[x->re_cdata.last_tx])
 
 struct re_type {
 	uint16_t		re_vid;
@@ -129,7 +107,6 @@ struct re_softc {
 	uint8_t			re_stats_no_timeout;
 	int			re_txthresh;
 	uint32_t		re_hwrev;
-	struct re_chain_data	re_cdata;
 	struct re_list_data	re_ldata;
 	struct callout		re_timer;
 	struct mbuf		*re_head;
