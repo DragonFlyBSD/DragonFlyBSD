@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.62 2008/10/05 02:13:06 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.63 2008/10/05 04:54:51 sephe Exp $
  */
 
 /*
@@ -333,6 +333,12 @@ DECLARE_DUMMY_MODULE(if_re);
 DRIVER_MODULE(if_re, pci, re_driver, re_devclass, 0, 0);
 DRIVER_MODULE(if_re, cardbus, re_driver, re_devclass, 0, 0);
 DRIVER_MODULE(miibus, re, miibus_driver, miibus_devclass, 0, 0);
+
+static int	re_rx_desc_count = RE_RX_DESC_CNT_DEF;
+static int	re_tx_desc_count = RE_TX_DESC_CNT_DEF;
+
+TUNABLE_INT("hw.re.rx_desc_count", &re_rx_desc_count);
+TUNABLE_INT("hw.re.tx_desc_count", &re_tx_desc_count);
 
 #define EE_SET(x)	\
 	CSR_WRITE_1(sc, RE_EECMD, CSR_READ_1(sc, RE_EECMD) | (x))
@@ -953,6 +959,29 @@ re_allocmem(device_t dev)
 	int error, i;
 
 	/*
+	 * Allocate list data
+	 */
+	sc->re_ldata.re_tx_mbuf =
+	kmalloc(sc->re_tx_desc_cnt * sizeof(struct mbuf *),
+		M_DEVBUF, M_ZERO | M_WAITOK);
+
+	sc->re_ldata.re_rx_mbuf =
+	kmalloc(sc->re_rx_desc_cnt * sizeof(struct mbuf *),
+		M_DEVBUF, M_ZERO | M_WAITOK);
+
+	sc->re_ldata.re_rx_paddr =
+	kmalloc(sc->re_rx_desc_cnt * sizeof(bus_addr_t),
+		M_DEVBUF, M_ZERO | M_WAITOK);
+
+	sc->re_ldata.re_tx_dmamap =
+	kmalloc(sc->re_tx_desc_cnt * sizeof(bus_dmamap_t),
+		M_DEVBUF, M_ZERO | M_WAITOK);
+
+	sc->re_ldata.re_rx_dmamap =
+	kmalloc(sc->re_rx_desc_cnt * sizeof(bus_dmamap_t),
+		M_DEVBUF, M_ZERO | M_WAITOK);
+
+	/*
 	 * Allocate the parent bus DMA tag appropriate for PCI.
 	 */
 	error = bus_dma_tag_create(NULL,	/* parent */
@@ -974,7 +1003,7 @@ re_allocmem(device_t dev)
 			RE_RING_ALIGN, 0,
 			BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 			NULL, NULL,
-			RE_TX_LIST_SZ, 1, RE_TX_LIST_SZ,
+			RE_TX_LIST_SZ(sc), 1, RE_TX_LIST_SZ(sc),
 			BUS_DMA_ALLOCNOW,
 			&sc->re_ldata.re_tx_list_tag);
 	if (error) {
@@ -997,7 +1026,7 @@ re_allocmem(device_t dev)
 	/* Load the map for the TX ring. */
 	error = bus_dmamap_load(sc->re_ldata.re_tx_list_tag,
 			sc->re_ldata.re_tx_list_map,
-			sc->re_ldata.re_tx_list, RE_TX_LIST_SZ,
+			sc->re_ldata.re_tx_list, RE_TX_LIST_SZ(sc),
 			re_dma_map_addr, &sc->re_ldata.re_tx_list_addr,
 			BUS_DMA_NOWAIT);
 	if (error) {
@@ -1015,7 +1044,7 @@ re_allocmem(device_t dev)
 			RE_RING_ALIGN, 0,
 			BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 			NULL, NULL,
-			RE_RX_LIST_SZ, 1, RE_RX_LIST_SZ,
+			RE_RX_LIST_SZ(sc), 1, RE_RX_LIST_SZ(sc),
 			BUS_DMA_ALLOCNOW,
 			&sc->re_ldata.re_rx_list_tag);
 	if (error) {
@@ -1038,7 +1067,7 @@ re_allocmem(device_t dev)
 	/* Load the map for the RX ring. */
 	error = bus_dmamap_load(sc->re_ldata.re_rx_list_tag,
 			sc->re_ldata.re_rx_list_map,
-			sc->re_ldata.re_rx_list, RE_RX_LIST_SZ,
+			sc->re_ldata.re_rx_list, RE_RX_LIST_SZ(sc),
 			re_dma_map_addr, &sc->re_ldata.re_rx_list_addr,
 			BUS_DMA_NOWAIT);
 	if (error) {
@@ -1075,7 +1104,7 @@ re_allocmem(device_t dev)
 	}
 
 	/* Create DMA maps for TX buffers */
-	for (i = 0; i < RE_TX_DESC_CNT; i++) {
+	for (i = 0; i < sc->re_tx_desc_cnt; i++) {
 		error = bus_dmamap_create(sc->re_ldata.re_mtag, 0,
 				&sc->re_ldata.re_tx_dmamap[i]);
 		if (error) {
@@ -1086,12 +1115,12 @@ re_allocmem(device_t dev)
 	}
 
 	/* Create DMA maps for RX buffers */
-	for (i = 0; i < RE_RX_DESC_CNT; i++) {
+	for (i = 0; i < sc->re_rx_desc_cnt; i++) {
 		error = bus_dmamap_create(sc->re_ldata.re_mtag, 0,
 				&sc->re_ldata.re_rx_dmamap[i]);
 		if (error) {
 			device_printf(dev, "can't create DMA map for RX buf\n");
-			re_freebufmem(sc, RE_TX_DESC_CNT, i);
+			re_freebufmem(sc, sc->re_tx_desc_cnt, i);
 			return(error);
 		}
 	}
@@ -1145,7 +1174,7 @@ re_freemem(device_t dev)
 	}
 
 	/* Free RX/TX buf DMA stuffs */
-	re_freebufmem(sc, RE_TX_DESC_CNT, RE_RX_DESC_CNT);
+	re_freebufmem(sc, sc->re_tx_desc_cnt, sc->re_rx_desc_cnt);
 
 	/* Unload and free the stats buffer and map */
 	if (sc->re_ldata.re_stag) {
@@ -1159,6 +1188,17 @@ re_freemem(device_t dev)
 
 	if (sc->re_parent_tag)
 		bus_dma_tag_destroy(sc->re_parent_tag);
+
+	if (sc->re_ldata.re_tx_mbuf != NULL)
+		kfree(sc->re_ldata.re_tx_mbuf, M_DEVBUF);
+	if (sc->re_ldata.re_rx_mbuf != NULL)
+		kfree(sc->re_ldata.re_rx_mbuf, M_DEVBUF);
+	if (sc->re_ldata.re_rx_paddr != NULL)
+		kfree(sc->re_ldata.re_rx_paddr, M_DEVBUF);
+	if (sc->re_ldata.re_tx_dmamap != NULL)
+		kfree(sc->re_ldata.re_tx_dmamap, M_DEVBUF);
+	if (sc->re_ldata.re_rx_dmamap != NULL)
+		kfree(sc->re_ldata.re_rx_dmamap, M_DEVBUF);
 }
 
 /*
@@ -1182,6 +1222,14 @@ re_attach(device_t dev)
 	sc->re_dev = dev;
 #endif
 
+	sc->re_rx_desc_cnt = re_rx_desc_count;
+	if (sc->re_rx_desc_cnt > RE_RX_DESC_CNT_MAX)
+		sc->re_rx_desc_cnt = RE_RX_DESC_CNT_MAX;
+
+	sc->re_tx_desc_cnt = re_tx_desc_count;
+	if (sc->re_tx_desc_cnt > RE_TX_DESC_CNT_MAX)
+		sc->re_tx_desc_cnt = RE_TX_DESC_CNT_MAX;
+
 	RE_ENABLE_TX_MODERATION(sc);
 
 	sysctl_ctx_init(&sc->re_sysctl_ctx);
@@ -1201,6 +1249,14 @@ re_attach(device_t dev)
 			CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, re_sysctl_tx_moderation, "I",
 			"Enable/Disable TX moderation");
+	SYSCTL_ADD_INT(&sc->re_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->re_sysctl_tree), OID_AUTO,
+		       "rx_desc_count", CTLFLAG_RD, &sc->re_rx_desc_cnt,
+		       0, "RX desc count");
+	SYSCTL_ADD_INT(&sc->re_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->re_sysctl_tree), OID_AUTO,
+		       "tx_desc_count", CTLFLAG_RD, &sc->re_tx_desc_cnt,
+		       0, "TX desc count");
 
 #ifndef BURN_BRIDGES
 	/*
@@ -1450,7 +1506,7 @@ re_setup_rxdesc(struct re_softc *sc, int idx)
 	d->re_bufaddr_hi = htole32(RE_ADDR_HI(paddr));
 
 	cmdstat = MCLBYTES | RE_RDESC_CMD_OWN;
-	if (idx == (RE_RX_DESC_CNT - 1))
+	if (idx == (sc->re_rx_desc_cnt - 1))
 		cmdstat |= RE_TDESC_CMD_EOR;
 	d->re_cmdstat = htole32(cmdstat);
 }
@@ -1526,14 +1582,15 @@ back:
 static int
 re_tx_list_init(struct re_softc *sc)
 {
-	bzero(sc->re_ldata.re_tx_list, RE_TX_LIST_SZ);
-	bzero(&sc->re_ldata.re_tx_mbuf, RE_TX_DESC_CNT * sizeof(struct mbuf *));
+	bzero(sc->re_ldata.re_tx_list, RE_TX_LIST_SZ(sc));
 
+	/* Flush the TX descriptors */
 	bus_dmamap_sync(sc->re_ldata.re_tx_list_tag,
 			sc->re_ldata.re_tx_list_map, BUS_DMASYNC_PREWRITE);
+
 	sc->re_ldata.re_tx_prodidx = 0;
 	sc->re_ldata.re_tx_considx = 0;
-	sc->re_ldata.re_tx_free = RE_TX_DESC_CNT;
+	sc->re_ldata.re_tx_free = sc->re_tx_desc_cnt;
 
 	return(0);
 }
@@ -1543,17 +1600,15 @@ re_rx_list_init(struct re_softc *sc)
 {
 	int i, error;
 
-	bzero(sc->re_ldata.re_rx_list, RE_RX_LIST_SZ);
-	bzero(&sc->re_ldata.re_rx_mbuf, RE_RX_DESC_CNT * sizeof(struct mbuf *));
+	bzero(sc->re_ldata.re_rx_list, RE_RX_LIST_SZ(sc));
 
-	for (i = 0; i < RE_RX_DESC_CNT; i++) {
+	for (i = 0; i < sc->re_rx_desc_cnt; i++) {
 		error = re_newbuf(sc, i, 1);
 		if (error)
 			return(error);
 	}
 
 	/* Flush the RX descriptors */
-
 	bus_dmamap_sync(sc->re_ldata.re_rx_list_tag,
 			sc->re_ldata.re_rx_list_map, BUS_DMASYNC_PREWRITE);
 
@@ -1586,7 +1641,7 @@ re_rxeof(struct re_softc *sc)
 	ether_input_chain_init(chain);
 
 	for (i = sc->re_ldata.re_rx_prodidx;
-	     RE_OWN(&sc->re_ldata.re_rx_list[i]) == 0; RE_RXDESC_INC(i)) {
+	     RE_OWN(&sc->re_ldata.re_rx_list[i]) == 0; RE_RXDESC_INC(sc, i)) {
 		cur_rx = &sc->re_ldata.re_rx_list[i];
 		m = sc->re_ldata.re_rx_mbuf[i];
 		total_len = RE_RXBYTES(cur_rx);
@@ -1746,7 +1801,8 @@ re_txeof(struct re_softc *sc)
 			sc->re_ldata.re_tx_list_map, BUS_DMASYNC_POSTREAD);
 
 	for (idx = sc->re_ldata.re_tx_considx;
-	     sc->re_ldata.re_tx_free < RE_TX_DESC_CNT; RE_TXDESC_INC(idx)) {
+	     sc->re_ldata.re_tx_free < sc->re_tx_desc_cnt;
+	     RE_TXDESC_INC(sc, idx)) {
 		txstat = le32toh(sc->re_ldata.re_tx_list[idx].re_cmdstat);
 		if (txstat & RE_TDESC_CMD_OWN)
 			break;
@@ -1787,7 +1843,7 @@ re_txeof(struct re_softc *sc)
 	 * to restart the channel here to flush them out. This only seems
 	 * to be required with the PCIe devices.
 	 */
-	if (sc->re_ldata.re_tx_free < RE_TX_DESC_CNT)
+	if (sc->re_ldata.re_tx_free < sc->re_tx_desc_cnt)
 		CSR_WRITE_1(sc, sc->re_txstart, RE_TXSTART_START);
 	else
 		ifp->if_timer = 0;
@@ -1799,7 +1855,7 @@ re_txeof(struct re_softc *sc)
 	 * This is done in case the transmitter has gone idle.
 	 */
 	if (RE_TX_MODERATION_IS_ENABLED(sc) &&
-	    sc->re_ldata.re_tx_free < RE_TX_DESC_CNT)
+	    sc->re_ldata.re_tx_free < sc->re_tx_desc_cnt)
                 CSR_WRITE_4(sc, RE_TIMERCNT, 1);
 }
 
@@ -2110,14 +2166,14 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 			cmdstat |= RE_TDESC_CMD_SOF;
 		else
 			cmdstat |= RE_TDESC_CMD_OWN;
-		if (idx == (RE_TX_DESC_CNT - 1))
+		if (idx == (sc->re_tx_desc_cnt - 1))
 			cmdstat |= RE_TDESC_CMD_EOR;
 		d->re_cmdstat = htole32(cmdstat | csum_flags);
 
 		i++;
 		if (i == arg.re_nsegs)
 			break;
-		RE_TXDESC_INC(idx);
+		RE_TXDESC_INC(sc, idx);
 	}
 	d->re_cmdstat |= htole32(RE_TDESC_CMD_EOF);
 
@@ -2148,7 +2204,7 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 	sc->re_ldata.re_tx_mbuf[idx] = m;
 	sc->re_ldata.re_tx_free -= arg.re_nsegs;
 
-	RE_TXDESC_INC(idx);
+	RE_TXDESC_INC(sc, idx);
 	*idx0 = idx;
 back:
 	if (error) {
@@ -2210,7 +2266,7 @@ re_start(struct ifnet *ifp)
 
 	if (!need_trans) {
 		if (RE_TX_MODERATION_IS_ENABLED(sc) &&
-		    sc->re_ldata.re_tx_free != RE_TX_DESC_CNT)
+		    sc->re_ldata.re_tx_free != sc->re_tx_desc_cnt)
 			CSR_WRITE_4(sc, RE_TIMERCNT, 1);
 		return;
 	}
@@ -2568,7 +2624,7 @@ re_stop(struct re_softc *sc)
 	sc->re_drop_rxfrag = 0;
 
 	/* Free the TX list buffers. */
-	for (i = 0; i < RE_TX_DESC_CNT; i++) {
+	for (i = 0; i < sc->re_tx_desc_cnt; i++) {
 		if (sc->re_ldata.re_tx_mbuf[i] != NULL) {
 			bus_dmamap_unload(sc->re_ldata.re_mtag,
 					  sc->re_ldata.re_tx_dmamap[i]);
@@ -2578,7 +2634,7 @@ re_stop(struct re_softc *sc)
 	}
 
 	/* Free the RX list buffers. */
-	for (i = 0; i < RE_RX_DESC_CNT; i++) {
+	for (i = 0; i < sc->re_rx_desc_cnt; i++) {
 		if (sc->re_ldata.re_rx_mbuf[i] != NULL) {
 			bus_dmamap_unload(sc->re_ldata.re_mtag,
 					  sc->re_ldata.re_rx_dmamap[i]);

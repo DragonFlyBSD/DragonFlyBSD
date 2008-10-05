@@ -33,20 +33,23 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.11 2008/10/05 02:13:06 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.12 2008/10/05 04:54:51 sephe Exp $
  */
 
-#define RE_RX_DESC_CNT		64
-#define RE_TX_DESC_CNT		64
-#define RE_RX_LIST_SZ		(RE_RX_DESC_CNT * sizeof(struct re_desc))
-#define RE_TX_LIST_SZ		(RE_TX_DESC_CNT * sizeof(struct re_desc))
+#define RE_RX_DESC_CNT_DEF	64
+#define RE_TX_DESC_CNT_DEF	64
+#define RE_RX_DESC_CNT_MAX	1024
+#define RE_TX_DESC_CNT_MAX	1024
+
+#define RE_RX_LIST_SZ(sc)	((sc)->re_rx_desc_cnt * sizeof(struct re_desc))
+#define RE_TX_LIST_SZ(sc)	((sc)->re_tx_desc_cnt * sizeof(struct re_desc))
 #define RE_RING_ALIGN		256
 #define RE_IFQ_MAXLEN		512
 #define RE_MAXSEGS		16
 #define RE_TXDESC_SPARE		4
 
-#define RE_RXDESC_INC(x)	(x = (x + 1) % RE_RX_DESC_CNT)
-#define RE_TXDESC_INC(x)	(x = (x + 1) % RE_TX_DESC_CNT)
+#define RE_RXDESC_INC(sc, x)	(x = (x + 1) % (sc)->re_rx_desc_cnt)
+#define RE_TXDESC_INC(sc, x)	(x = (x + 1) % (sc)->re_tx_desc_cnt)
 #define RE_OWN(x)		(le32toh((x)->re_cmdstat) & RE_RDESC_STAT_OWN)
 #define RE_RXBYTES(x)		(le32toh((x)->re_cmdstat) & sc->re_rxlenmask)
 #define RE_PKTSZ(x)		((x)/* >> 3*/)
@@ -86,15 +89,15 @@ struct re_dmaload_arg {
 };
 
 struct re_list_data {
-	struct mbuf		*re_tx_mbuf[RE_TX_DESC_CNT];
-	struct mbuf		*re_rx_mbuf[RE_RX_DESC_CNT];
-	bus_addr_t		re_rx_paddr[RE_RX_DESC_CNT];
+	struct mbuf		**re_tx_mbuf;
+	struct mbuf		**re_rx_mbuf;
+	bus_addr_t		*re_rx_paddr;
 	int			re_tx_prodidx;
 	int			re_rx_prodidx;
 	int			re_tx_considx;
 	int			re_tx_free;
-	bus_dmamap_t		re_tx_dmamap[RE_TX_DESC_CNT];
-	bus_dmamap_t		re_rx_dmamap[RE_RX_DESC_CNT];
+	bus_dmamap_t		*re_tx_dmamap;
+	bus_dmamap_t		*re_rx_dmamap;
 	bus_dmamap_t		re_rx_spare;
 	bus_dma_tag_t		re_mtag;	/* mbuf mapping tag */
 	bus_dma_tag_t		re_stag;	/* stats mapping tag */
@@ -143,6 +146,8 @@ struct re_softc {
 	int			re_eewidth;
 	int			re_swcsum_lim;
 	int			re_maxmtu;
+	int			re_rx_desc_cnt;
+	int			re_tx_desc_cnt;
 #ifdef DEVICE_POLLING
 	int			rxcycles;
 #endif
