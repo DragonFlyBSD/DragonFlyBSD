@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.66 2008/10/05 07:57:45 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.67 2008/10/05 08:28:32 sephe Exp $
  */
 
 /*
@@ -1145,6 +1145,7 @@ re_freebufmem(struct re_softc *sc, int tx_cnt, int rx_cnt)
 		bus_dmamap_destroy(sc->re_ldata.re_mtag,
 				   sc->re_ldata.re_rx_spare);
 		bus_dma_tag_destroy(sc->re_ldata.re_mtag);
+		sc->re_ldata.re_mtag = NULL;
 	}
 }
 
