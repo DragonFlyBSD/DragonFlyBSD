@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcompat/4.3/rexec.c,v 1.5.8.3 2000/11/22 13:36:00 ben Exp $
- * $DragonFly: src/lib/libcompat/4.3/rexec.c,v 1.5 2008/09/30 16:57:04 swildner Exp $
+ * $DragonFly: src/lib/libcompat/4.3/rexec.c,v 1.6 2008/10/05 18:26:41 swildner Exp $
  *
  * @(#)rexec.c	8.1 (Berkeley) 6/4/93
  */
@@ -308,7 +308,7 @@ rexec_af(char **ahost, int rport, const char *name, const char *pass,
 	int gai;
 	char servbuff[NI_MAXSERV];
 
-	sprintf(servbuff, sizeof(servbuff), "%d", ntohs(rport));
+	snprintf(servbuff, sizeof(servbuff), "%d", ntohs(rport));
 	servbuff[sizeof(servbuff) - 1] = '\0';
 
 	memset(&hints, '\0', sizeof(hints));
