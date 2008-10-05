@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.96 2008/09/20 10:53:16 sephe Exp $
+# $DragonFly: src/sys/conf/options,v 1.97 2008/10/05 10:45:28 swildner Exp $
 #
 #        On the handling of kernel options
 #
@@ -549,7 +549,6 @@ ALT_BREAK_TO_DEBUGGER	opt_comconsole.h
 
 # options for bus/device framework
 BUS_DEBUG		opt_bus.h
-DEVICE_SYSCTLS		opt_bus.h
 
 # options for USB support
 OHCI_DEBUG		opt_usb.h

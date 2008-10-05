@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.175 2008/09/20 10:53:16 sephe Exp $
+# $DragonFly: src/sys/config/LINT,v 1.176 2008/10/05 10:45:28 swildner Exp $
 #
 # See the kernconf(5) manual page for more information on the format of
 # this file.
@@ -2699,7 +2699,6 @@ options 	COMPAT_SUNOS
 options 	DEBUG
 options 	DEBUG_CRIT_SECTIONS
 options 	DEBUG_INTERRUPTS
-options 	DEVICE_SYSCTLS
 #options 	DISABLE_PSE
 options		BCE_DEBUG
 options		BCE_NVRAM_WRITE_SUPPORT
