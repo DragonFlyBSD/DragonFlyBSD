@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.10 2008/10/05 01:53:41 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.11 2008/10/05 02:13:06 sephe Exp $
  */
 
 #define RE_RX_DESC_CNT		64
@@ -45,7 +45,8 @@
 #define RE_MAXSEGS		16
 #define RE_TXDESC_SPARE		4
 
-#define RE_DESC_INC(x)		(x = (x + 1) % RE_TX_DESC_CNT)
+#define RE_RXDESC_INC(x)	(x = (x + 1) % RE_RX_DESC_CNT)
+#define RE_TXDESC_INC(x)	(x = (x + 1) % RE_TX_DESC_CNT)
 #define RE_OWN(x)		(le32toh((x)->re_cmdstat) & RE_RDESC_STAT_OWN)
 #define RE_RXBYTES(x)		(le32toh((x)->re_cmdstat) & sc->re_rxlenmask)
 #define RE_PKTSZ(x)		((x)/* >> 3*/)

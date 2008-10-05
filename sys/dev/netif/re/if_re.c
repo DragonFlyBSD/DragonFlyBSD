@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.61 2008/10/04 10:36:21 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.62 2008/10/05 02:13:06 sephe Exp $
  */
 
 /*
@@ -1586,7 +1586,7 @@ re_rxeof(struct re_softc *sc)
 	ether_input_chain_init(chain);
 
 	for (i = sc->re_ldata.re_rx_prodidx;
-	     RE_OWN(&sc->re_ldata.re_rx_list[i]) == 0; RE_DESC_INC(i)) {
+	     RE_OWN(&sc->re_ldata.re_rx_list[i]) == 0; RE_RXDESC_INC(i)) {
 		cur_rx = &sc->re_ldata.re_rx_list[i];
 		m = sc->re_ldata.re_rx_mbuf[i];
 		total_len = RE_RXBYTES(cur_rx);
@@ -1746,7 +1746,7 @@ re_txeof(struct re_softc *sc)
 			sc->re_ldata.re_tx_list_map, BUS_DMASYNC_POSTREAD);
 
 	for (idx = sc->re_ldata.re_tx_considx;
-	     sc->re_ldata.re_tx_free < RE_TX_DESC_CNT; RE_DESC_INC(idx)) {
+	     sc->re_ldata.re_tx_free < RE_TX_DESC_CNT; RE_TXDESC_INC(idx)) {
 		txstat = le32toh(sc->re_ldata.re_tx_list[idx].re_cmdstat);
 		if (txstat & RE_TDESC_CMD_OWN)
 			break;
@@ -2117,7 +2117,7 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 		i++;
 		if (i == arg.re_nsegs)
 			break;
-		RE_DESC_INC(idx);
+		RE_TXDESC_INC(idx);
 	}
 	d->re_cmdstat |= htole32(RE_TDESC_CMD_EOF);
 
@@ -2148,7 +2148,7 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 	sc->re_ldata.re_tx_mbuf[idx] = m;
 	sc->re_ldata.re_tx_free -= arg.re_nsegs;
 
-	RE_DESC_INC(idx);
+	RE_TXDESC_INC(idx);
 	*idx0 = idx;
 back:
 	if (error) {
