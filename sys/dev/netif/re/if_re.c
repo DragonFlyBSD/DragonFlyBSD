@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.65 2008/10/05 06:15:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.66 2008/10/05 07:57:45 sephe Exp $
  */
 
 /*
@@ -1332,6 +1332,33 @@ re_attach(device_t dev)
 	if (sc->re_type == RE_8139CPLUS) {
 		sc->re_bus_speed = 33; /* XXX */
 	} else if (sc->re_flags & RE_F_PCIE) {
+		uint16_t val;
+		uint8_t expr_ptr;
+
+		expr_ptr = pci_get_pciecap_ptr(dev);
+		if (expr_ptr != 0) {
+			/*
+			 * We will set TX DMA burst to "unlimited" in
+			 * re_init(), so push "max read request size"
+			 * to the limit.
+			 */
+			val = pci_read_config(dev, expr_ptr + PCIER_DEVCTRL, 2);
+			if ((val & PCIEM_DEVCTL_MAX_READRQ_MASK) !=
+			    PCIEM_DEVCTL_MAX_READRQ_4096) {
+				device_printf(dev, "adjust device control "
+					      "0x%04x ", val);
+
+				val &= ~PCIEM_DEVCTL_MAX_READRQ_MASK;
+				val |= PCIEM_DEVCTL_MAX_READRQ_4096;
+				pci_write_config(dev, expr_ptr + PCIER_DEVCTRL,
+						 val, 2);
+
+				kprintf("-> 0x%04x\n", val);
+			}
+		} else {
+			device_printf(dev, "not PCI-E device\n");
+			/* XXX clear RE_F_PCIE and read RE_CFG2? */
+		}
 		sc->re_bus_speed = 125;
 	} else {
 		uint8_t cfg2;
@@ -2493,10 +2520,19 @@ re_init(void *xsc)
 		 * reloaded on each transmit. This gives us TX interrupt
 		 * moderation, which dramatically improves TX frame rate.
 		 */
-		if (sc->re_type == RE_8169)
-			CSR_WRITE_4(sc, RE_TIMERINT_8169, 0x800);
-		else
+		if (sc->re_type == RE_8169) {
+			/*
+			 * Set hardare timer to 125us
+			 * XXX measurement showed me the actual value is ~76us,
+			 * which is ~2/3 of the desired value
+			 *
+			 * TODO: sysctl variable.
+			 */
+			CSR_WRITE_4(sc, RE_TIMERINT_8169,
+				    125 * sc->re_bus_speed);
+		} else {
 			CSR_WRITE_4(sc, RE_TIMERINT, 0x400);
+		}
 	}
 
 	/*
