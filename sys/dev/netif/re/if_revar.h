@@ -33,8 +33,33 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.9 2008/10/05 01:43:09 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.10 2008/10/05 01:53:41 sephe Exp $
  */
+
+#define RE_RX_DESC_CNT		64
+#define RE_TX_DESC_CNT		64
+#define RE_RX_LIST_SZ		(RE_RX_DESC_CNT * sizeof(struct re_desc))
+#define RE_TX_LIST_SZ		(RE_TX_DESC_CNT * sizeof(struct re_desc))
+#define RE_RING_ALIGN		256
+#define RE_IFQ_MAXLEN		512
+#define RE_MAXSEGS		16
+#define RE_TXDESC_SPARE		4
+
+#define RE_DESC_INC(x)		(x = (x + 1) % RE_TX_DESC_CNT)
+#define RE_OWN(x)		(le32toh((x)->re_cmdstat) & RE_RDESC_STAT_OWN)
+#define RE_RXBYTES(x)		(le32toh((x)->re_cmdstat) & sc->re_rxlenmask)
+#define RE_PKTSZ(x)		((x)/* >> 3*/)
+
+#define RE_ADDR_LO(y)		((uint64_t) (y) & 0xFFFFFFFF)
+#define RE_ADDR_HI(y)		((uint64_t) (y) >> 32)
+
+#define RE_JUMBO_FRAMELEN	7440
+#define RE_JUMBO_MTU		(RE_JUMBO_FRAMELEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
+#define RE_FRAMELEN_2K		2048
+#define RE_FRAMELEN(mtu)	(mtu + ETHER_HDR_LEN + ETHER_CRC_LEN)
+#define RE_SWCSUM_LIM_8169	2038
+
+#define	RE_TIMEOUT		1000
 
 struct re_type {
 	uint16_t		re_vid;
@@ -53,10 +78,6 @@ struct re_hwrev {
 
 #define RE_8139CPLUS		3
 #define RE_8169			4
-
-struct re_softc;
-
-#define RE_MAXSEGS		16
 
 struct re_dmaload_arg {
 	int			re_nsegs;
@@ -142,8 +163,6 @@ struct re_softc {
 #define RE_F_HASMPC		0x1
 #define RE_F_PCIE		0x2
 
-#define RE_SWCSUM_LIM_8169	2038
-
 #define RE_TX_MODERATION_IS_ENABLED(sc)			\
 	((sc)->re_tx_ack == RE_ISR_TIMEOUT_EXPIRED)
 
@@ -180,5 +199,3 @@ struct re_softc {
 	CSR_WRITE_1(sc, reg, CSR_READ_1(sc, reg) | (val))
 #define CSR_CLRBIT_1(sc, reg, val)	\
 	CSR_WRITE_1(sc, reg, CSR_READ_1(sc, reg) & ~(val))
-
-#define RE_TXDESC_SPARE		4

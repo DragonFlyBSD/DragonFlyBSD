@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.11 2008/10/04 10:36:21 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.12 2008/10/05 01:53:41 sephe Exp $
  */
 
 /*
@@ -548,27 +548,6 @@ struct re_stats {
 	uint16_t		re_tx_aborts;
 	uint16_t		re_rx_underruns;
 };
-
-#define RE_RX_DESC_CNT		64
-#define RE_TX_DESC_CNT		64
-#define RE_RX_LIST_SZ		(RE_RX_DESC_CNT * sizeof(struct re_desc))
-#define RE_TX_LIST_SZ		(RE_TX_DESC_CNT * sizeof(struct re_desc))
-#define RE_RING_ALIGN		256
-#define RE_IFQ_MAXLEN		512
-#define RE_DESC_INC(x)		(x = (x + 1) % RE_TX_DESC_CNT)
-#define RE_OWN(x)		(le32toh((x)->re_cmdstat) & RE_RDESC_STAT_OWN)
-#define RE_RXBYTES(x)		(le32toh((x)->re_cmdstat) & sc->re_rxlenmask)
-#define RE_PKTSZ(x)		((x)/* >> 3*/)
-
-#define RE_ADDR_LO(y)		((uint64_t) (y) & 0xFFFFFFFF)
-#define RE_ADDR_HI(y)		((uint64_t) (y) >> 32)
-
-#define RE_JUMBO_FRAMELEN	7440
-#define RE_JUMBO_MTU		(RE_JUMBO_FRAMELEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
-#define RE_FRAMELEN_2K		2048
-#define RE_FRAMELEN(mtu)	(mtu + ETHER_HDR_LEN + ETHER_CRC_LEN)
-
-#define	RE_TIMEOUT		1000
 
 /*
  * General constants that are fun to know.
