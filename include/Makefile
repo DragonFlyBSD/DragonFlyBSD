@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.39 2008/07/07 22:02:09 nant Exp $
+# $DragonFly: src/include/Makefile,v 1.40 2008/10/06 21:01:37 swildner Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -11,18 +11,18 @@ CLEANFILES= osreldate.h version vers.c
 SUBDIR= arpa protocols rpc rpcsvc
 INCS=	a.out.h ar.h assert.h bitstring.h complex.h cpio.h ctype.h db.h \
 	dirent.h disktab.h \
-	dlfcn.h elf.h elf-hints.h err.h fnmatch.h fstab.h \
+	dlfcn.h elf.h elf-hints.h err.h fmtmsg.h fnmatch.h fstab.h \
 	fts.h getopt.h glob.h grp.h histedit.h iconv.h ieeefp.h ifaddrs.h \
 	iso646.h inttypes.h \
 	langinfo.h libgen.h limits.h link.h locale.h malloc.h math.h memory.h \
-	mpool.h ndbm.h netdb.h nl_types.h nlist.h objformat.h \
+	mpool.h monetary.h ndbm.h netdb.h nl_types.h nlist.h objformat.h \
 	paths.h pthread.h pthread_np.h pwd.h \
 	ranlib.h readpassphrase.h regex.h regexp.h resolv.h re_comp.h rmd160.h \
 	search.h setjmp.h sgtty.h \
 	signal.h stab.h stdarg.h stdbool.h stddef.h stdint.h stdio.h stdlib.h \
 	string.h stringlist.h strings.h struct.h sysexits.h tar.h time.h \
 	timers.h ttyent.h unistd.h ulimit.h utime.h utmp.h uuid.h vis.h \
-	wchar.h wctype.h
+	wchar.h wctype.h wordexp.h
 
 MHDRS=	float.h floatingpoint.h varargs.h
 

@@ -32,7 +32,7 @@
  *
  *	@(#)mman.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/mman.h,v 1.29.2.1 2001/08/25 07:25:43 dillon Exp $
- * $DragonFly: src/sys/sys/mman.h,v 1.9 2008/07/23 17:22:33 dillon Exp $
+ * $DragonFly: src/sys/sys/mman.h,v 1.10 2008/10/06 21:01:37 swildner Exp $
  */
 
 #ifndef _SYS_MMAN_H_
@@ -40,6 +40,12 @@
 
 #ifndef _SYS__POSIX_H_
 #include <sys/_posix.h>
+#endif
+#ifndef _SYS_TYPES_H_
+#include <sys/types.h>
+#endif
+#ifndef _SYS_CDEFS_H_
+#include <sys/cdefs.h>
 #endif
 
 /*
@@ -128,6 +134,17 @@
 #define MADV_SETMAP	11	/* set page table directory page for map */
 
 /*
+ * Advice to posix_madvise()
+ */
+#if __POSIX_VISIBLE >= 200112
+#define	POSIX_MADV_NORMAL	MADV_NORMAL
+#define	POSIX_MADV_RANDOM	MADV_RANDOM
+#define	POSIX_MADV_SEQUENTIAL	MADV_SEQUENTIAL
+#define	POSIX_MADV_WILLNEED	MADV_WILLNEED
+#define	POSIX_MADV_DONTNEED	MADV_DONTNEED
+#endif
+
+/*
  * mcontrol() must be used for these functions instead of madvise()
  */
 #define MADV_CONTROL_START	MADV_INVAL
@@ -142,13 +159,6 @@
 #define	MINCORE_REFERENCED_OTHER 0x8 /* Page has been referenced */
 #define	MINCORE_MODIFIED_OTHER	0x10 /* Page has been modified */
 #define	MINCORE_SUPER		0x20 /* Page is a "super" page */
-
-#ifndef _SYS_TYPES_H_
-#include <sys/types.h>
-#endif
-#ifndef _SYS_CDEFS_H_
-#include <sys/cdefs.h>
-#endif
 
 __BEGIN_DECLS
 #ifdef _P1003_1B_VISIBLE
@@ -166,6 +176,9 @@ int	mprotect (const void *, size_t, int);
 int	msync (void *, size_t, int);
 int	munlock (const void *, size_t);
 int	munmap (void *, size_t);
+#if __POSIX_VISIBLE >= 200112
+int	posix_madvise(void *, size_t, int);
+#endif
 #ifndef _POSIX_SOURCE
 int	madvise (void *, size_t, int);
 int	mcontrol (void *, size_t, int, off_t);

@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.6 (Berkeley) 5/4/95
 # $FreeBSD: src/lib/libc/gen/Makefile.inc,v 1.62.2.19 2003/02/21 13:46:16 phantom Exp $
-# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.28 2008/08/09 20:12:20 swildner Exp $
+# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.29 2008/10/06 21:01:37 swildner Exp $
 
 # machine-independent gen sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/gen ${.CURDIR}/../libc/gen
@@ -10,8 +10,8 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	clock.c closedir.c confstr.c \
 	ctermid.c ctype.c daemon.c devname.c dirname.c disklabel.c disktab.c \
 	dlfcn.c drand48.c erand48.c err.c errlst.c \
-	exec.c fmtcheck.c fnmatch.c fpclassifyd.c fpclassifyf.c fstab.c \
-	ftok.c fts.c getbootfile.c getbsize.c \
+	exec.c fmtcheck.c fmtmsg.c fnmatch.c fpclassifyd.c fpclassifyf.c \
+	fstab.c ftok.c fts.c getbootfile.c getbsize.c \
 	getcap.c getcwd.c getdomainname.c getgrent.c getgrouplist.c \
 	gethostname.c getloadavg.c getlogin.c getmntinfo.c getmntvinfo.c \
 	getnetgrent.c getobjformat.c getosreldate.c getpagesize.c \
@@ -23,7 +23,8 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	lockf.c lrand48.c mrand48.c msgctl.c \
 	msgget.c msgrcv.c msgsnd.c nice.c \
 	nlist.c nrand48.c ntp_gettime.c opendir.c \
-	pause.c popen.c posixshm.c psignal.c pthread_fake.c pwcache.c \
+	pause.c pmadvise.c popen.c posixshm.c \
+	psignal.c pthread_fake.c pwcache.c \
 	raise.c readdir.c readpassphrase.c rewinddir.c \
 	scandir.c seed48.c seekdir.c semconfig.c semctl.c semget.c semop.c \
 	setdomainname.c sethostname.c setjmperr.c setmode.c setprogname.c \
@@ -34,7 +35,7 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	sysctlnametomib.c syslog.c telldir.c termios.c time.c times.c \
 	timezone.c toascii.c tolower.c toupper.c ttyname.c ttyslot.c \
 	ualarm.c ucontext.c ulimit.c uname.c unvis.c usleep.c utime.c \
-	valloc.c vis.c wait.c wait3.c waitpid.c
+	valloc.c vis.c wait.c wait3.c waitpid.c wordexp.c
 
 .if ${LIB} != {c_rtld}
 SRCS+=	tls.c
@@ -49,7 +50,8 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	confstr.3 ctermid.3 ctype.3 daemon.3 \
 	devname.3 directory.3 dirname.3 \
 	dladdr.3 dlinfo.3 dlopen.3 \
-	err.3 exec.3 fmtcheck.3 fnmatch.3 fpclassify.3 frexp.3 ftok.3 fts.3 \
+	err.3 exec.3 \
+	fmtcheck.3 fmtmsg.3 fnmatch.3 fpclassify.3 frexp.3 ftok.3 fts.3 \
 	getbootfile.3 getbsize.3 getcap.3 getcontext.3 getcwd.3 \
 	getdiskbyname.3 getdisktabbyname.3 getdomainname.3 getfsent.3 \
 	getgrent.3 getgrouplist.3 gethostname.3 getloadavg.3 \
@@ -68,7 +70,7 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	tcsendbreak.3 tcsetattr.3 tcsetpgrp.3 time.3 times.3 timezone.3 \
 	toascii.3 tolower.3 toupper.3 ttyname.3 tzset.3 ualarm.3 \
 	ucontext.3 ulimit.3 uname.3 unvis.3 usleep.3 utime.3 \
-	valloc.3 vis.3
+	valloc.3 vis.3 wordexp.3
 
 MLINKS+=arc4random.3 arc4random_addrandom.3 arc4random.3 arc4random_stir.3
 MLINKS+=ctermid.3 ctermid_r.3
@@ -143,4 +145,5 @@ MLINKS+=ttyname.3 isatty.3 ttyname.3 ttyslot.3 ttyname.3 ttyname_r.3
 MLINKS+=tzset.3 tzsetwall.3
 MLINKS+=unvis.3 strunvis.3 unvis.3 strunvisx.3
 MLINKS+=vis.3 strnvis.3 vis.3 strvis.3 vis.3 strvisx.3
+MLINKS+=wordexp.3 wordfree.3
 .endif

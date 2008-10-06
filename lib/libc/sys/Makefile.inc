@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.36 2008/09/28 16:33:35 swildner Exp $
+# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.37 2008/10/06 21:01:37 swildner Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
@@ -126,7 +126,8 @@ MLINKS+=intro.2 errno.2
 MLINKS+=kqueue.2 EV_SET.2 \
 	kqueue.2 kevent.2
 MLINKS+=lseek.2 seek.2
-MLINKS+=madvise.2 mcontrol.2
+MLINKS+=madvise.2 mcontrol.2 \
+	madvise.2 posix_madvise.3
 MLINKS+=mlock.2 munlock.2
 MLINKS+=modnext.2 modfnext.2
 MLINKS+=mount.2 unmount.2
