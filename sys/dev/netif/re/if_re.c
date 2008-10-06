@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.67 2008/10/05 08:28:32 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.68 2008/10/06 14:22:32 sephe Exp $
  */
 
 /*
@@ -205,16 +205,16 @@ static const struct re_hwrev re_hwrevs[] = {
 	{ RE_HWREV_8139CPLUS,	RE_8139CPLUS,	RE_F_HASMPC,
 	  ETHERMTU, ETHERMTU },
 
-	{ RE_HWREV_8168_SPIN1,	RE_8169,	RE_F_PCIE,
+	{ RE_HWREV_8168_SPIN1,	RE_8169,	RE_F_PCIE | RE_F_HASIM,
 	  RE_JUMBO_MTU, RE_JUMBO_MTU },
 
-	{ RE_HWREV_8168_SPIN2,	RE_8169,	RE_F_PCIE,
+	{ RE_HWREV_8168_SPIN2,	RE_8169,	RE_F_PCIE | RE_F_HASIM,
 	  RE_JUMBO_MTU, RE_JUMBO_MTU },
 
-	{ RE_HWREV_8168_SPIN3,	RE_8169,	RE_F_PCIE,
+	{ RE_HWREV_8168_SPIN3,	RE_8169,	RE_F_PCIE | RE_F_HASIM,
 	  RE_JUMBO_MTU, RE_JUMBO_MTU },
 
-	{ RE_HWREV_8168C,	RE_8169,	RE_F_PCIE,
+	{ RE_HWREV_8168C,	RE_8169,	RE_F_PCIE | RE_F_HASIM,
 	  RE_JUMBO_MTU, RE_JUMBO_MTU },
 
 	{ RE_HWREV_8169,	RE_8169,	RE_F_HASMPC,
@@ -2388,6 +2388,36 @@ re_init(void *xsc)
 		    RE_CPLUSCMD_PCI_MRW | RE_CPLUSCMD_VLANSTRIP |
 		    (ifp->if_capenable & IFCAP_RXCSUM ?
 		     RE_CPLUSCMD_RXCSUM_ENB : 0));
+
+	if (sc->re_flags & RE_F_HASIM) {
+		/*
+		 * Interrupt moderation
+		 *
+		 * 0xUUuD
+		 * U - unknown (maybe TX related)
+		 * u - unknown (maybe RX related)
+		 * D - RX timer (unit: 25us)
+		 *
+		 * Set RX timer to 125us
+		 * TODO: sysctl variable
+		 *
+		 *
+		 * re(4)'s interrupt moderation is actually controlled by
+		 * two variables, like most other NICs (bge, bce etc.)
+		 * o  timer
+		 * o  number of packets [P]
+		 *
+		 * The logic relationship between these two variables is
+		 * similar to other NICs too:
+		 * if (timer expire || packets > [P])
+		 *     Interrupt is delivered
+		 *
+		 * Currently we only know how to set 'timer', but not
+		 * 'number of packets', which should be ~30, as far as I
+		 * tested (sink ~900Kpps, interrupt rate is 30KHz)
+		 */
+		CSR_WRITE_2(sc, RE_IM, 0x5155);
+	}
 
 	/*
 	 * Init our MAC address.  Even though the chipset

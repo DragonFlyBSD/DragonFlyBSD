@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.13 2008/10/05 06:15:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.14 2008/10/06 14:22:32 sephe Exp $
  */
 
 /*
@@ -109,6 +109,7 @@
 #define RE_TIMERINT		0x0054	/* interrupt on timer expire */
 #define RE_TXSTART		0x00D9	/* 8 bits */
 #define RE_CPLUS_CMD		0x00E0	/* 16 bits */
+#define RE_IM			0x00E2	/* 16 bits */
 #define RE_RXLIST_ADDR_LO	0x00E4	/* 64 bits, 256 byte alignment */
 #define RE_RXLIST_ADDR_HI	0x00E8	/* 64 bits, 256 byte alignment */
 #define RE_EARLY_TX_THRESH	0x00EC	/* 8 bits */
