@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.68 2008/10/06 14:22:32 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.69 2008/10/06 14:51:10 sephe Exp $
  */
 
 /*
@@ -2398,7 +2398,7 @@ re_init(void *xsc)
 		 * u - unknown (maybe RX related)
 		 * D - RX timer (unit: 25us)
 		 *
-		 * Set RX timer to 125us
+		 * Set RX timer to 50us
 		 * TODO: sysctl variable
 		 *
 		 *
@@ -2416,7 +2416,7 @@ re_init(void *xsc)
 		 * 'number of packets', which should be ~30, as far as I
 		 * tested (sink ~900Kpps, interrupt rate is 30KHz)
 		 */
-		CSR_WRITE_2(sc, RE_IM, 0x5155);
+		CSR_WRITE_2(sc, RE_IM, 0x5152);
 	}
 
 	/*
@@ -2554,8 +2554,8 @@ re_init(void *xsc)
 		if (sc->re_type == RE_8169) {
 			/*
 			 * Set hardare timer to 125us
-			 * XXX measurement showed me the actual value is ~76us,
-			 * which is ~2/3 of the desired value
+			 * XXX measurement showed me the actual value is
+			 * ~2/3 of the desired value
 			 *
 			 * TODO: sysctl variable.
 			 */
