@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.69 2008/10/06 14:51:10 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.70 2008/10/07 11:39:36 sephe Exp $
  */
 
 /*
@@ -2030,9 +2030,7 @@ re_intr(void *arg)
 		if (status & (RE_ISR_RX_OK | RE_ISR_RX_ERR | RE_ISR_FIFO_OFLOW))
 			re_rxeof(sc);
 
-		if ((status & sc->re_tx_ack) ||
-		    (status & RE_ISR_TX_ERR) ||
-		    (status & RE_ISR_TX_DESC_UNAVAIL))
+		if (status & (sc->re_tx_ack | RE_ISR_TX_ERR))
 			re_txeof(sc);
 
 		if (status & RE_ISR_SYSTEM_ERR) {
