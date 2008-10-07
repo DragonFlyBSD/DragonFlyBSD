@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_cleanup.c,v 1.5 2008/09/28 21:27:56 thomas Exp $
+ * $DragonFly: src/sbin/hammer/cmd_cleanup.c,v 1.6 2008/10/07 22:28:41 thomas Exp $
  */
 /*
  * Clean up a specific HAMMER filesystem or all HAMMER filesystems.
@@ -179,7 +179,7 @@ do_cleanup(const char *path)
 	 */
 	for (didpfs = FirstPFS; didpfs; didpfs = didpfs->next) {
 		if (bcmp(&didpfs->uuid, &mrec_tmp.pfs.pfsd.unique_uuid, sizeof(uuid_t)) == 0) {
-			printf(" pfs_id %d already handled\n", pfs.pfs_id);
+			printf(" PFS #%d already handled\n", pfs.pfs_id);
 			return;
 		}
 	}
@@ -200,7 +200,7 @@ do_cleanup(const char *path)
 		printf(" WARNING: must configure snapshot dir for PFS slave\n");
 		printf("\tWe suggest <fs>/var/slaves/<name> where "
 		       "<fs> is the base HAMMER fs\n");
-		printf("\tContaining the slave\n");
+		printf("\tcontaining the slave\n");
 		return;
 	} else {
 		asprintf(&snapshots_path,

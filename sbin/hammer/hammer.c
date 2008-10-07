@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.41 2008/09/30 23:13:08 dillon Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.42 2008/10/07 22:28:41 thomas Exp $
  */
 
 #include "hammer.h"
@@ -314,23 +314,21 @@ usage(int exit_code)
 {
 	fprintf(stderr, 
 		"hammer -h\n"
-		"hammer [-v] [-t seconds] [-c cyclefile] command [argument ...]\n"
-		"hammer cleanup [<filesystem> ...]\n"
+		"hammer [-2rv] [-b bandwidth] [-c cyclefile] [-f blkdev[:blkdev]*]\n"
+		"       [-i delay ] [-t seconds] command [argument ...]\n"
 		"hammer synctid <filesystem> [quick]\n"
-		"hammer namekey[32] <path>\n"
-		"hammer prune <softlink-dir>\n"
-		"hammer prune-everything <filesystem>\n"
-		"hammer snapshot [filesystem] <snapshot-dir>\n"
 		"hammer bstats [interval]\n"
 		"hammer iostats [interval]\n"
-		"hammer mirror-read <filesystem> [begin-tid]\n"
-		"hammer mirror-read-stream <filesystem> [begin-tid]\n"
-		"hammer mirror-write <filesystem>\n"
-		"hammer mirror-dump\n"
-		"hammer mirror-copy [[user@]host:]<filesystem>"
-				  " [[user@]host:]<filesystem>\n"
-		"hammer mirror-stream [[user@]host:]<filesystem>"
-				    " [[user@]host:]<filesystem>\n"
+		"hammer history[@offset[,len]] <file> ...\n"
+		"hammer -f blkdev[:blkdev]* [-r] show [offset]\n"
+#if 0
+		"hammer -f blkdev[:blkdev]* blockmap\n"
+#endif
+		"hammer namekey[32] <path>\n"
+		"hammer cleanup [<filesystem> ...]\n"
+		"hammer snapshot [<filesystem>] <snapshot-dir>\n"
+		"hammer prune <softlink-dir>\n"
+		"hammer prune-everything <filesystem>\n"
 		"hammer reblock[-btree/inodes/dirs/data] "
 			"<filesystem> [fill_percentage]\n"
 		"hammer pfs-status <dirpath> ...\n"
@@ -340,11 +338,14 @@ usage(int exit_code)
 		"hammer pfs-upgrade <dirpath>\n"
 		"hammer pfs-downgrade <dirpath>\n"
 		"hammer pfs-destroy <dirpath>\n"
-		"hammer history[@offset[,len]] <file> ...\n"
-		"hammer -f blkdev[:blkdev]* [-r] show [offset]\n"
-#if 0
-		"hammer -f blkdev[:blkdev]* blockmap\n"
-#endif
+		"hammer mirror-read <filesystem> [begin-tid]\n"
+		"hammer mirror-read-stream <filesystem> [begin-tid]\n"
+		"hammer mirror-write <filesystem>\n"
+		"hammer mirror-dump\n"
+		"hammer mirror-copy [[user@]host:]<filesystem>"
+				  " [[user@]host:]<filesystem>\n"
+		"hammer mirror-stream [[user@]host:]<filesystem>"
+				    " [[user@]host:]<filesystem>\n"
 	);
 	exit(exit_code);
 }

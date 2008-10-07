@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.53 2008/10/03 20:09:12 thomas Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.54 2008/10/07 22:28:41 thomas Exp $
 .Dd September 28, 2008
 .Dt HAMMER 8
 .Os
@@ -39,7 +39,7 @@
 .Nd HAMMER file system utility
 .Sh SYNOPSIS
 .Nm
-.Op Fl h2rv
+.Op Fl h2qrv
 .Op Fl b Ar bandwidth
 .Op Fl c Ar cyclefile
 .Op Fl f Ar blkdev[:blkdev]*
@@ -70,8 +70,6 @@ automatic negotiation of transaction id ranges.
 This option is automatically enabled by the
 .Ar mirror-copy
 command.
-.It Fl r
-Specify recursion for those commands which support it.
 .It Fl b Ar bandwidth
 Specify a bandwidth limit in bytes per second for mirroring streams.
 This option is typically used to prevent batch mirroring operations from
@@ -110,6 +108,8 @@ The default is five seconds.
 .It Fl q
 Decrease verbosement.
 May be specified multiple times.
+.It Fl r
+Specify recursion for those commands which support it.
 .It Fl t Ar seconds
 When pruning and reblocking you can tell the utility to stop after a
 certain period of time.
@@ -459,6 +459,11 @@ The
 .Ar pfs-master
 directive creates a PFS that you can read, write, and use as a mirroring
 source.
+.Pp
+It is recommended to use a
+.Nm null
+mount to access a PFS, for more information see
+.Xr HAMMER 5 .
 .\" ==== pfs-slave ====
 .It Ar pfs-slave Ar dirpath Op options
 Create a pseudo-filesystem (PFS) inside a
@@ -490,6 +495,11 @@ A PFS can only be truly destroyed with the
 .Ar pfs-destroy
 directive.
 Removing the softlink will not destroy the underlying PFS.
+.Pp
+It is recommended to use a
+.Nm null
+mount to access a PFS, for more information see
+.Xr HAMMER 5 .
 .\" ==== pfs-update ====
 .It Ar pfs-update Ar dirpath Op options
 Update the configuration parameters for an existing
@@ -705,6 +715,7 @@ recommended slave PFS snapshots directory
 .Xr undo 1 ,
 .Xr HAMMER 5 ,
 .Xr mount_hammer 8 ,
+.Xr mount_null 8 ,
 .Xr newfs_hammer 8
 .Sh HISTORY
 The
