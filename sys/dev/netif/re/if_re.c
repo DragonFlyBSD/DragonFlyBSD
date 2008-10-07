@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.70 2008/10/07 11:39:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.71 2008/10/07 11:57:18 sephe Exp $
  */
 
 /*
@@ -297,8 +297,6 @@ static int	re_diag(struct re_softc *);
 #ifdef DEVICE_POLLING
 static void	re_poll(struct ifnet *ifp, enum poll_cmd cmd, int count);
 #endif
-
-static int	re_sysctl_tx_moderation(SYSCTL_HANDLER_ARGS);
 
 static device_method_t re_methods[] = {
 	/* Device interface */
@@ -1235,7 +1233,9 @@ re_attach(device_t dev)
 	if (sc->re_tx_desc_cnt > RE_IFQ_MAXLEN)
 		qlen = sc->re_tx_desc_cnt;
 
-	RE_ENABLE_TX_MODERATION(sc);
+	sc->re_intrs = RE_INTRS;
+	sc->re_tx_ack = RE_ISR_TIMEOUT_EXPIRED;
+	sc->re_rx_ack = RE_ISR_RX_OK | RE_ISR_FIFO_OFLOW;
 
 	sysctl_ctx_init(&sc->re_sysctl_ctx);
 	sc->re_sysctl_tree = SYSCTL_ADD_NODE(&sc->re_sysctl_ctx,
@@ -1248,12 +1248,6 @@ re_attach(device_t dev)
 		error = ENXIO;
 		goto fail;
 	}
-	SYSCTL_ADD_PROC(&sc->re_sysctl_ctx,
-			SYSCTL_CHILDREN(sc->re_sysctl_tree),
-			OID_AUTO, "tx_moderation",
-			CTLTYPE_INT | CTLFLAG_RW,
-			sc, 0, re_sysctl_tx_moderation, "I",
-			"Enable/Disable TX moderation");
 	SYSCTL_ADD_INT(&sc->re_sysctl_ctx,
 		       SYSCTL_CHILDREN(sc->re_sysctl_tree), OID_AUTO,
 		       "rx_desc_count", CTLFLAG_RD, &sc->re_rx_desc_cnt,
@@ -1914,8 +1908,7 @@ re_txeof(struct re_softc *sc)
 	 * interrupt that will cause us to re-enter this routine.
 	 * This is done in case the transmitter has gone idle.
 	 */
-	if (RE_TX_MODERATION_IS_ENABLED(sc) &&
-	    sc->re_ldata.re_tx_free < sc->re_tx_desc_cnt)
+	if (sc->re_ldata.re_tx_free < sc->re_tx_desc_cnt)
                 CSR_WRITE_4(sc, RE_TIMERCNT, 1);
 }
 
@@ -2027,7 +2020,7 @@ re_intr(void *arg)
 		if ((status & sc->re_intrs) == 0)
 			break;
 
-		if (status & (RE_ISR_RX_OK | RE_ISR_RX_ERR | RE_ISR_FIFO_OFLOW))
+		if (status & (sc->re_rx_ack | RE_ISR_RX_ERR))
 			re_rxeof(sc);
 
 		if (status & (sc->re_tx_ack | RE_ISR_TX_ERR))
@@ -2323,8 +2316,7 @@ re_start(struct ifnet *ifp)
 	}
 
 	if (!need_trans) {
-		if (RE_TX_MODERATION_IS_ENABLED(sc) &&
-		    sc->re_ldata.re_tx_free != sc->re_tx_desc_cnt)
+		if (sc->re_ldata.re_tx_free != sc->re_tx_desc_cnt)
 			CSR_WRITE_4(sc, RE_TIMERCNT, 1);
 		return;
 	}
@@ -2341,17 +2333,15 @@ re_start(struct ifnet *ifp)
 	 */
 	CSR_WRITE_1(sc, sc->re_txstart, RE_TXSTART_START);
 
-	if (RE_TX_MODERATION_IS_ENABLED(sc)) {
-		/*
-		 * Use the countdown timer for interrupt moderation.
-		 * 'TX done' interrupts are disabled. Instead, we reset the
-		 * countdown timer, which will begin counting until it hits
-		 * the value in the TIMERINT register, and then trigger an
-		 * interrupt. Each time we write to the TIMERCNT register,
-		 * the timer count is reset to 0.
-		 */
-		CSR_WRITE_4(sc, RE_TIMERCNT, 1);
-	}
+	/*
+	 * Use the countdown timer for interrupt moderation.
+	 * 'TX done' interrupts are disabled. Instead, we reset the
+	 * countdown timer, which will begin counting until it hits
+	 * the value in the TIMERINT register, and then trigger an
+	 * interrupt. Each time we write to the TIMERCNT register,
+	 * the timer count is reset to 0.
+	 */
+	CSR_WRITE_4(sc, RE_TIMERCNT, 1);
 
 	/*
 	 * Set a timeout in case the chip goes out to lunch.
@@ -2541,27 +2531,24 @@ re_init(void *xsc)
 	CSR_WRITE_1(sc, RE_COMMAND, RE_CMD_TX_ENB|RE_CMD_RX_ENB);
 #endif
 
-	if (RE_TX_MODERATION_IS_ENABLED(sc)) {
+	/*
+	 * Initialize the timer interrupt register so that
+	 * a timer interrupt will be generated once the timer
+	 * reaches a certain number of ticks. The timer is
+	 * reloaded on each transmit. This gives us TX interrupt
+	 * moderation, which dramatically improves TX frame rate.
+	 */
+	if (sc->re_type == RE_8169) {
 		/*
-		 * Initialize the timer interrupt register so that
-		 * a timer interrupt will be generated once the timer
-		 * reaches a certain number of ticks. The timer is
-		 * reloaded on each transmit. This gives us TX interrupt
-		 * moderation, which dramatically improves TX frame rate.
+		 * Set hardare timer to 125us
+		 * XXX measurement showed me the actual value is
+		 * ~2/3 of the desired value
+		 *
+		 * TODO: sysctl variable.
 		 */
-		if (sc->re_type == RE_8169) {
-			/*
-			 * Set hardare timer to 125us
-			 * XXX measurement showed me the actual value is
-			 * ~2/3 of the desired value
-			 *
-			 * TODO: sysctl variable.
-			 */
-			CSR_WRITE_4(sc, RE_TIMERINT_8169,
-				    125 * sc->re_bus_speed);
-		} else {
-			CSR_WRITE_4(sc, RE_TIMERINT, 0x400);
-		}
+		CSR_WRITE_4(sc, RE_TIMERINT_8169, 125 * sc->re_bus_speed);
+	} else {
+		CSR_WRITE_4(sc, RE_TIMERINT, 0x400);
 	}
 
 	/*
@@ -2571,9 +2558,8 @@ re_init(void *xsc)
 	if (sc->re_type == RE_8169)
 		CSR_WRITE_2(sc, RE_MAXRXPKTLEN, 16383);
 
-	if (sc->re_testmode) {
+	if (sc->re_testmode)
 		return;
-	}
 
 	mii_mediachg(mii);
 
@@ -2829,37 +2815,6 @@ re_shutdown(device_t dev)
 	lwkt_serialize_enter(ifp->if_serializer);
 	re_stop(sc);
 	lwkt_serialize_exit(ifp->if_serializer);
-}
-
-static int
-re_sysctl_tx_moderation(SYSCTL_HANDLER_ARGS)
-{
-	struct re_softc *sc = arg1;
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int error = 0, mod, mod_old;
-
-	lwkt_serialize_enter(ifp->if_serializer);
-
-	mod_old = mod = RE_TX_MODERATION_IS_ENABLED(sc);
-
-	error = sysctl_handle_int(oidp, &mod, 0, req);
-	if (error || req->newptr == NULL || mod == mod_old)
-		goto back;
-	if (mod != 0 && mod != 1) {
-		error = EINVAL;
-		goto back;
-	}
-
-	if (mod)
-		RE_ENABLE_TX_MODERATION(sc);
-	else
-		RE_DISABLE_TX_MODERATION(sc);
-
-	if ((ifp->if_flags & (IFF_RUNNING | IFF_UP)) == (IFF_RUNNING | IFF_UP))
-		re_init(sc);
-back:
-	lwkt_serialize_exit(ifp->if_serializer);
-	return error;
 }
 
 static int

@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.14 2008/10/06 14:22:32 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.15 2008/10/07 11:57:18 sephe Exp $
  */
 
 #define RE_RX_DESC_CNT_DEF	64
@@ -157,6 +157,7 @@ struct re_softc {
 	struct sysctl_oid	*re_sysctl_tree;
 	uint16_t		re_intrs;
 	uint16_t		re_tx_ack;
+	uint16_t		re_rx_ack;
 
 #ifndef BURN_BRIDGES
 	uint32_t		saved_maps[5];	/* pci data */
@@ -171,19 +172,6 @@ struct re_softc {
 #define RE_F_PCIE		0x2
 #define RE_F_PCI64		0x4
 #define RE_F_HASIM		0x8
-
-#define RE_TX_MODERATION_IS_ENABLED(sc)			\
-	((sc)->re_tx_ack == RE_ISR_TIMEOUT_EXPIRED)
-
-#define RE_DISABLE_TX_MODERATION(sc) do {		\
-	(sc)->re_tx_ack = RE_ISR_TX_OK;			\
-	(sc)->re_intrs = RE_INTRS | RE_ISR_TX_OK;	\
-} while (0)
-
-#define RE_ENABLE_TX_MODERATION(sc) do {		\
-	(sc)->re_tx_ack = RE_ISR_TIMEOUT_EXPIRED;	\
-	(sc)->re_intrs = RE_INTRS;			\
-} while (0)
 
 /*
  * register space access macros
