@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.71 2008/10/07 11:57:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.72 2008/10/07 12:49:05 sephe Exp $
  */
 
 /*
@@ -202,43 +202,43 @@ static const struct re_type re_devs[] = {
 };
 
 static const struct re_hwrev re_hwrevs[] = {
-	{ RE_HWREV_8139CPLUS,	RE_8139CPLUS,	RE_F_HASMPC,
+	{ RE_HWREV_8139CPLUS,	RE_8139CPLUS,	0,
 	  ETHERMTU, ETHERMTU },
 
-	{ RE_HWREV_8168_SPIN1,	RE_8169,	RE_F_PCIE | RE_F_HASIM,
+	{ RE_HWREV_8168_SPIN1,	RE_8169,	RE_C_HWIM,
 	  RE_JUMBO_MTU, RE_JUMBO_MTU },
 
-	{ RE_HWREV_8168_SPIN2,	RE_8169,	RE_F_PCIE | RE_F_HASIM,
+	{ RE_HWREV_8168_SPIN2,	RE_8169,	RE_C_HWIM,
 	  RE_JUMBO_MTU, RE_JUMBO_MTU },
 
-	{ RE_HWREV_8168_SPIN3,	RE_8169,	RE_F_PCIE | RE_F_HASIM,
+	{ RE_HWREV_8168_SPIN3,	RE_8169,	RE_C_HWIM,
 	  RE_JUMBO_MTU, RE_JUMBO_MTU },
 
-	{ RE_HWREV_8168C,	RE_8169,	RE_F_PCIE | RE_F_HASIM,
+	{ RE_HWREV_8168C,	RE_8169,	RE_C_HWIM,
 	  RE_JUMBO_MTU, RE_JUMBO_MTU },
 
-	{ RE_HWREV_8169,	RE_8169,	RE_F_HASMPC,
+	{ RE_HWREV_8169,	RE_8169,	0,
 	  RE_SWCSUM_LIM_8169, RE_JUMBO_MTU },
 
-	{ RE_HWREV_8169S,	RE_8169,	RE_F_HASMPC,
+	{ RE_HWREV_8169S,	RE_8169,	0,
 	  RE_JUMBO_MTU, RE_JUMBO_MTU },
 
-	{ RE_HWREV_8110S,	RE_8169,	RE_F_HASMPC,
+	{ RE_HWREV_8110S,	RE_8169,	0,
 	  RE_JUMBO_MTU, RE_JUMBO_MTU },
 
-	{ RE_HWREV_8169_8110SB,	RE_8169,	RE_F_HASMPC,
+	{ RE_HWREV_8169_8110SB,	RE_8169,	0,
 	  RE_JUMBO_MTU, RE_JUMBO_MTU },
 
 	{ RE_HWREV_8169_8110SC,	RE_8169,	0,
 	  RE_JUMBO_MTU, RE_JUMBO_MTU },
 
-	{ RE_HWREV_8100E,	RE_8169,	RE_F_HASMPC,
+	{ RE_HWREV_8100E,	RE_8169,	0,
 	  ETHERMTU, ETHERMTU },
 
-	{ RE_HWREV_8101E,	RE_8169,	RE_F_PCIE,
+	{ RE_HWREV_8101E,	RE_8169,	0,
 	  ETHERMTU, ETHERMTU },
 
-	{ RE_HWREV_8102EL,      RE_8169,	RE_F_PCIE,
+	{ RE_HWREV_8102EL,      RE_8169,	0,
 	  ETHERMTU, ETHERMTU },
 
 	{ 0, 0, 0, 0, 0 }
@@ -645,7 +645,7 @@ re_setmulti(struct re_softc *sc)
 	 * parts. This means we have to write the hash pattern in reverse
 	 * order for those devices.
 	 */
-	if (sc->re_flags & RE_F_PCIE) {
+	if (sc->re_caps & RE_C_PCIE) {
 		CSR_WRITE_4(sc, RE_MAR0, bswap32(hashes[0]));
 		CSR_WRITE_4(sc, RE_MAR4, bswap32(hashes[1]));
 	} else {
@@ -1215,6 +1215,8 @@ re_attach(device_t dev)
 	uint16_t re_did = 0;
 	uint32_t hwrev;
 	int error = 0, rid, i, qlen;
+	uint16_t val;
+	uint8_t expr_ptr;
 
 	callout_init(&sc->re_timer);
 #ifdef RE_DIAG
@@ -1317,43 +1319,39 @@ re_attach(device_t dev)
 		if (hw_rev->re_rev == hwrev) {
 			sc->re_hwrev = hwrev;
 			sc->re_type = hw_rev->re_type;
-			sc->re_flags = hw_rev->re_flags;
+			sc->re_caps = hw_rev->re_caps;
 			sc->re_swcsum_lim = hw_rev->re_swcsum_lim;
 			sc->re_maxmtu = hw_rev->re_maxmtu;
 			break;
 		}
 	}
 
+	expr_ptr = pci_get_pciecap_ptr(dev);
+	if (expr_ptr != 0) {
+		/*
+		 * We will set TX DMA burst to "unlimited" in
+		 * re_init(), so push "max read request size"
+		 * to the limit.
+		 */
+		val = pci_read_config(dev, expr_ptr + PCIER_DEVCTRL, 2);
+		if ((val & PCIEM_DEVCTL_MAX_READRQ_MASK) !=
+		    PCIEM_DEVCTL_MAX_READRQ_4096) {
+			device_printf(dev, "adjust device control "
+				      "0x%04x ", val);
+
+			val &= ~PCIEM_DEVCTL_MAX_READRQ_MASK;
+			val |= PCIEM_DEVCTL_MAX_READRQ_4096;
+			pci_write_config(dev, expr_ptr + PCIER_DEVCTRL,
+					 val, 2);
+
+			kprintf("-> 0x%04x\n", val);
+		}
+		sc->re_caps |= RE_C_PCIE;
+	}
+
 	if (sc->re_type == RE_8139CPLUS) {
 		sc->re_bus_speed = 33; /* XXX */
-	} else if (sc->re_flags & RE_F_PCIE) {
-		uint16_t val;
-		uint8_t expr_ptr;
-
-		expr_ptr = pci_get_pciecap_ptr(dev);
-		if (expr_ptr != 0) {
-			/*
-			 * We will set TX DMA burst to "unlimited" in
-			 * re_init(), so push "max read request size"
-			 * to the limit.
-			 */
-			val = pci_read_config(dev, expr_ptr + PCIER_DEVCTRL, 2);
-			if ((val & PCIEM_DEVCTL_MAX_READRQ_MASK) !=
-			    PCIEM_DEVCTL_MAX_READRQ_4096) {
-				device_printf(dev, "adjust device control "
-					      "0x%04x ", val);
-
-				val &= ~PCIEM_DEVCTL_MAX_READRQ_MASK;
-				val |= PCIEM_DEVCTL_MAX_READRQ_4096;
-				pci_write_config(dev, expr_ptr + PCIER_DEVCTRL,
-						 val, 2);
-
-				kprintf("-> 0x%04x\n", val);
-			}
-		} else {
-			device_printf(dev, "not PCI-E device\n");
-			/* XXX clear RE_F_PCIE and read RE_CFG2? */
-		}
+	} else if (sc->re_caps & RE_C_PCIE) {
 		sc->re_bus_speed = 125;
 	} else {
 		uint8_t cfg2;
@@ -1372,12 +1370,12 @@ re_attach(device_t dev)
 			break;
 		}
 		if (cfg2 & RE_CFG2_PCI64)
-			sc->re_flags |= RE_F_PCI64;
+			sc->re_caps |= RE_C_PCI64;
 	}
 	device_printf(dev, "Hardware rev. 0x%08x; PCI%s %dMHz\n",
 		      sc->re_hwrev,
-		      (sc->re_flags & RE_F_PCIE) ?
-		      "-E" : ((sc->re_flags & RE_F_PCI64) ? "64" : "32"),
+		      (sc->re_caps & RE_C_PCIE) ?
+		      "-E" : ((sc->re_caps & RE_C_PCI64) ? "64" : "32"),
 		      sc->re_bus_speed);
 
 	sc->re_eewidth = 6;
@@ -2377,7 +2375,7 @@ re_init(void *xsc)
 		    (ifp->if_capenable & IFCAP_RXCSUM ?
 		     RE_CPLUSCMD_RXCSUM_ENB : 0));
 
-	if (sc->re_flags & RE_F_HASIM) {
+	if (sc->re_caps & RE_C_HWIM) {
 		/*
 		 * Interrupt moderation
 		 *
@@ -2524,8 +2522,8 @@ re_init(void *xsc)
 	sc->re_txthresh = RE_TX_THRESH_INIT;
 
 	/* Start RX/TX process. */
-	if (sc->re_flags & RE_F_HASMPC)
-		CSR_WRITE_4(sc, RE_MISSEDPKT, 0);
+	CSR_WRITE_4(sc, RE_MISSEDPKT, 0);
+
 #ifdef notdef
 	/* Enable receiver and transmitter. */
 	CSR_WRITE_1(sc, RE_COMMAND, RE_CMD_TX_ENB|RE_CMD_RX_ENB);

@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.15 2008/10/07 11:57:18 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.16 2008/10/07 12:49:05 sephe Exp $
  */
 
 #define RE_RX_DESC_CNT_DEF	64
@@ -75,7 +75,7 @@ struct re_type {
 struct re_hwrev {
 	uint32_t		re_rev;
 	int			re_type;	/* RE_{8139CPLUS,8169} */
-	uint32_t		re_flags;	/* see RE_F_ */
+	uint32_t		re_caps;	/* see RE_C_ */
 	int			re_swcsum_lim;
 	int			re_maxmtu;
 };
@@ -137,7 +137,7 @@ struct re_softc {
 	struct mbuf		*re_head;
 	struct mbuf		*re_tail;
 	int			re_drop_rxfrag;
-	uint32_t		re_flags;	/* see RE_F_ */
+	uint32_t		re_caps;	/* see RE_C_ */
 	uint32_t		re_rxlenmask;
 	int			re_txstart;
 	int			re_testmode;
@@ -168,10 +168,9 @@ struct re_softc {
 #endif
 };
 
-#define RE_F_HASMPC		0x1
-#define RE_F_PCIE		0x2
-#define RE_F_PCI64		0x4
-#define RE_F_HASIM		0x8
+#define RE_C_PCIE		0x1
+#define RE_C_PCI64		0x2
+#define RE_C_HWIM		0x4	/* hardware interrupt moderation */
 
 /*
  * register space access macros
