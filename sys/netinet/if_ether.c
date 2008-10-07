@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.56 2008/10/04 11:26:09 sephe Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.57 2008/10/07 22:30:31 thomas Exp $
  */
 
 /*
@@ -85,6 +85,7 @@
 #include <sys/malloc.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>
+#include <sys/lock.h>
 
 #include <net/if.h>
 #include <net/if_dl.h>
