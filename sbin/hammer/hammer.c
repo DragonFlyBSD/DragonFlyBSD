@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.42 2008/10/07 22:28:41 thomas Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.43 2008/10/08 21:01:54 thomas Exp $
  */
 
 #include "hammer.h"
@@ -314,7 +314,7 @@ usage(int exit_code)
 {
 	fprintf(stderr, 
 		"hammer -h\n"
-		"hammer [-2rv] [-b bandwidth] [-c cyclefile] [-f blkdev[:blkdev]*]\n"
+		"hammer [-2qrv] [-b bandwidth] [-c cyclefile] [-f blkdev[:blkdev]*]\n"
 		"       [-i delay ] [-t seconds] command [argument ...]\n"
 		"hammer synctid <filesystem> [quick]\n"
 		"hammer bstats [interval]\n"

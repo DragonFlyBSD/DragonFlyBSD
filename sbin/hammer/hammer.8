@@ -30,8 +30,8 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.54 2008/10/07 22:28:41 thomas Exp $
-.Dd September 28, 2008
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.55 2008/10/08 21:01:54 thomas Exp $
+.Dd October 8, 2008
 .Dt HAMMER 8
 .Os
 .Sh NAME
@@ -278,6 +278,52 @@ PFS option can be set to use another location for the snapshots directory.
 Work on this command is still in progress.
 Expected additions:  An ability to remove snapshots dynamically as the
 file system becomes full.
+.\" ==== snapshot ====
+.It Ar snapshot Oo Ar filesystem Oc Ar snapshot-dir
+Takes a snapshot of the file system either explicitly given by
+.Ar filesystem
+or implicitly derived from the
+.Ar snapshot-dir
+argument and creates a symlink in the directory provided by
+.Ar snapshot-dir
+pointing to the snapshot.
+If
+.Ar snapshot-dir
+is not a directory, it is assumed to be a format string passed to
+.Xr strftime 3
+with the current time as parameter.
+If
+.Ar snapshot-dir
+refers to an existing directory, a default format string of "snap-%Y%d%m-%H%M"
+is assumed and used as name for the newly created symlink.
+.Pp
+Snapshot is a per PFS operation, so a
+.Nm HAMMER
+file system and each PFS in it have to be snapshot separately.
+.Pp
+Example, assuming that
+.Pa /mysnapshots
+is on file system
+.Pa /
+and that
+.Pa /obj
+is a file system on its own, the following invocations:
+.Bd -literal -offset indent
+hammer snapshot /mysnapshots
+
+hammer snapshot /mysnapshots/%Y-%m-%d
+
+hammer snapshot /obj /mysnapshots/obj-%Y-%m-%d
+.Ed
+.Pp
+would create symlinks similar to:
+.Bd -literal -offset indent
+/mysnapshots/snap-20080627-1210 -> /@@0x10d2cd05b7270d16
+
+/mysnapshots/2008-06-27 -> /@@0x10d2cd05b7270d16
+
+/mysnapshots/obj-2008-06-27 -> /obj@@0x10d2cd05b7270d16
+.Ed
 .\" ==== prune ====
 .It Ar prune Ar softlink-dir
 Prune the file system based on previously created snapshot softlinks.
@@ -353,53 +399,6 @@ history for modifications pertaining to that snapshot would be destroyed.
 .It Ar prune-everything Ar filesystem
 This command will remove all historical records from the file system.
 This directive is not normally used on a production system.
-.\" ==== snapshot ====
-.It Ar snapshot Ar snapshot-dir
-.It Ar snapshot Ar filesystem snapshot-dir
-Takes a snapshot of the file system either explicitly given by
-.Ar filesystem
-or implicitly derived from the
-.Ar snapshot-dir
-argument and creates a symlink in the directory provided by
-.Ar snapshot-dir
-pointing to the snapshot.
-If
-.Ar snapshot-dir
-is not a directory, it is assumed to be a format string passed to
-.Xr strftime 3
-with the current time as parameter.
-If
-.Ar snapshot-dir
-refers to an existing directory, a default format string of "snap-%Y%d%m-%H%M"
-is assumed and used as name for the newly created symlink.
-.Pp
-Snapshot is a per PFS operation, so a
-.Nm HAMMER
-file system and each PFS in it have to be snapshot separately.
-.Pp
-Example, assuming that
-.Pa /mysnapshots
-is on file system
-.Pa /
-and that
-.Pa /obj
-is a file system on its own, the following invocations:
-.Bd -literal -offset indent
-hammer snapshot /mysnapshots
-
-hammer snapshot /mysnapshots/%Y-%m-%d
-
-hammer snapshot /obj /mysnapshots/obj-%Y-%m-%d
-.Ed
-.Pp
-would create symlinks similar to:
-.Bd -literal -offset indent
-/mysnapshots/snap-20080627-1210 -> /@@0x10d2cd05b7270d16
-
-/mysnapshots/2008-06-27 -> /@@0x10d2cd05b7270d16
-
-/mysnapshots/obj-2008-06-27 -> /obj@@0x10d2cd05b7270d16
-.Ed
 .\" ==== reblock ====
 .It Ar reblock Ar filesystem Op Ar fill_percentage
 .It Ar reblock-btree Ar filesystem Op Ar fill_percentage

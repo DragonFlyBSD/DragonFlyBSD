@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.11 2008/09/24 01:42:50 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_pseudofs.c,v 1.12 2008/10/08 21:01:54 thomas Exp $
  */
 
 #include "hammer.h"
@@ -203,7 +203,7 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 		pseudofs_usage(1);
 	path = av[0];
 	if (lstat(path, &st) == 0) {
-		fprintf(stderr, "cannot create %s, file exists!\n", path);
+		fprintf(stderr, "Cannot create %s, file exists!\n", path);
 		exit(1);
 	}
 
