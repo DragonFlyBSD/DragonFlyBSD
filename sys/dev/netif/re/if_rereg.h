@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.15 2008/10/07 11:39:36 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.16 2008/10/08 13:09:22 sephe Exp $
  */
 
 /*
@@ -204,13 +204,13 @@
 
 #define RE_INTRS \
 	(RE_ISR_RX_OK|RE_ISR_RX_ERR|RE_ISR_TX_ERR| \
-	RE_ISR_RX_OVERRUN|RE_ISR_FIFO_OFLOW| \
+	RE_ISR_RX_OVERRUN|RE_ISR_FIFO_OFLOW|RE_ISR_LINKCHG| \
 	RE_ISR_SYSTEM_ERR|RE_ISR_TIMEOUT_EXPIRED)
 
 #ifdef RE_DIAG
 #define RE_INTRS_DIAG \
 	(RE_ISR_TX_OK|RE_ISR_RX_OK|RE_ISR_RX_ERR|RE_ISR_TX_ERR| \
-	RE_ISR_RX_OVERRUN|RE_ISR_FIFO_OFLOW| \
+	RE_ISR_RX_OVERRUN|RE_ISR_FIFO_OFLOW|RE_ISR_LINKCHG| \
 	RE_ISR_SYSTEM_ERR)
 #endif
 
