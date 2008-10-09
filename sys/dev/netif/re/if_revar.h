@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.16 2008/10/07 12:49:05 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.17 2008/10/09 12:41:02 sephe Exp $
  */
 
 #define RE_RX_DESC_CNT_DEF	64
@@ -153,11 +153,17 @@ struct re_softc {
 	int			rxcycles;
 #endif
 
+	uint32_t		re_flags;	/* see RE_F_ */
+
 	struct sysctl_ctx_list	re_sysctl_ctx;
 	struct sysctl_oid	*re_sysctl_tree;
 	uint16_t		re_intrs;
 	uint16_t		re_tx_ack;
 	uint16_t		re_rx_ack;
+	int			re_tx_time;
+	int			re_rx_time;
+	int			re_sim_time;
+	int			re_imtype;	/* see RE_IMTYPE_ */
 
 #ifndef BURN_BRIDGES
 	uint32_t		saved_maps[5];	/* pci data */
@@ -171,6 +177,13 @@ struct re_softc {
 #define RE_C_PCIE		0x1
 #define RE_C_PCI64		0x2
 #define RE_C_HWIM		0x4	/* hardware interrupt moderation */
+
+/* Interrupt moderation types */
+#define RE_IMTYPE_NONE		0
+#define RE_IMTYPE_SIM		1	/* simulated */
+#define RE_IMTYPE_HW		2	/* hardware based */
+
+#define RE_F_TIMER_INTR		0x1
 
 /*
  * register space access macros

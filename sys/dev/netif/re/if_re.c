@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.72 2008/10/07 12:49:05 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.73 2008/10/09 12:41:02 sephe Exp $
  */
 
 /*
@@ -262,8 +262,8 @@ static int	re_newbuf(struct re_softc *, int, int);
 static void	re_setup_rxdesc(struct re_softc *, int);
 static int	re_rx_list_init(struct re_softc *);
 static int	re_tx_list_init(struct re_softc *);
-static void	re_rxeof(struct re_softc *);
-static void	re_txeof(struct re_softc *);
+static int	re_rxeof(struct re_softc *);
+static int	re_txeof(struct re_softc *);
 static void	re_intr(void *);
 static void	re_tick(void *);
 static void	re_tick_serialized(void *);
@@ -289,6 +289,19 @@ static void	re_miibus_statchg(device_t);
 static void	re_setmulti(struct re_softc *);
 static void	re_reset(struct re_softc *);
 static int	re_pad_frame(struct mbuf *);
+
+static void	re_setup_hw_im(struct re_softc *);
+static void	re_setup_sim_im(struct re_softc *);
+static void	re_disable_hw_im(struct re_softc *);
+static void	re_disable_sim_im(struct re_softc *);
+static void	re_config_imtype(struct re_softc *, int);
+static void	re_setup_intr(struct re_softc *, int, int);
+
+static int	re_sysctl_hwtime(SYSCTL_HANDLER_ARGS, int *);
+static int	re_sysctl_rxtime(SYSCTL_HANDLER_ARGS);
+static int	re_sysctl_txtime(SYSCTL_HANDLER_ARGS);
+static int	re_sysctl_simtime(SYSCTL_HANDLER_ARGS);
+static int	re_sysctl_imtype(SYSCTL_HANDLER_ARGS);
 
 #ifdef RE_DIAG
 static int	re_diag(struct re_softc *);
@@ -1235,9 +1248,11 @@ re_attach(device_t dev)
 	if (sc->re_tx_desc_cnt > RE_IFQ_MAXLEN)
 		qlen = sc->re_tx_desc_cnt;
 
-	sc->re_intrs = RE_INTRS;
-	sc->re_tx_ack = RE_ISR_TIMEOUT_EXPIRED;
-	sc->re_rx_ack = RE_ISR_RX_OK | RE_ISR_FIFO_OFLOW;
+	sc->re_tx_time = 5;		/* 125us */
+	sc->re_rx_time = 2;		/* 50us */
+	sc->re_sim_time = 125;		/* 125us */
+	sc->re_imtype = RE_IMTYPE_SIM;	/* simulated interrupt moderation */
+	re_config_imtype(sc, sc->re_imtype);
 
 	sysctl_ctx_init(&sc->re_sysctl_ctx);
 	sc->re_sysctl_tree = SYSCTL_ADD_NODE(&sc->re_sysctl_ctx,
@@ -1258,6 +1273,20 @@ re_attach(device_t dev)
 		       SYSCTL_CHILDREN(sc->re_sysctl_tree), OID_AUTO,
 		       "tx_desc_count", CTLFLAG_RD, &sc->re_tx_desc_cnt,
 		       0, "TX desc count");
+	SYSCTL_ADD_PROC(&sc->re_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->re_sysctl_tree),
+			OID_AUTO, "sim_time",
+			CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, re_sysctl_simtime, "I",
+			"Simulated interrupt moderation time (usec).");
+	SYSCTL_ADD_PROC(&sc->re_sysctl_ctx,
+			SYSCTL_CHILDREN(sc->re_sysctl_tree),
+			OID_AUTO, "imtype",
+			CTLTYPE_INT | CTLFLAG_RW,
+			sc, 0, re_sysctl_imtype, "I",
+			"Interrupt moderation type -- "
+			"0:disable, 1:simulated, "
+			"2:hardware(if supported)");
 
 #ifndef BURN_BRIDGES
 	/*
@@ -1347,6 +1376,9 @@ re_attach(device_t dev)
 			kprintf("-> 0x%04x\n", val);
 		}
 		sc->re_caps |= RE_C_PCIE;
+
+		/* Reduce the simulated interrupt moderation timer a bit */
+		sc->re_sim_time = 75; /* 75us */
 	}
 
 	if (sc->re_type == RE_8139CPLUS) {
@@ -1377,6 +1409,23 @@ re_attach(device_t dev)
 		      (sc->re_caps & RE_C_PCIE) ?
 		      "-E" : ((sc->re_caps & RE_C_PCI64) ? "64" : "32"),
 		      sc->re_bus_speed);
+
+	if (sc->re_caps & RE_C_HWIM) {
+		SYSCTL_ADD_PROC(&sc->re_sysctl_ctx,
+				SYSCTL_CHILDREN(sc->re_sysctl_tree),
+				OID_AUTO, "hw_rxtime",
+				CTLTYPE_INT | CTLFLAG_RW,
+				sc, 0, re_sysctl_rxtime, "I",
+				"Hardware interrupt moderation time "
+				"(unit: 25usec).");
+		SYSCTL_ADD_PROC(&sc->re_sysctl_ctx,
+				SYSCTL_CHILDREN(sc->re_sysctl_tree),
+				OID_AUTO, "hw_txtime",
+				CTLTYPE_INT | CTLFLAG_RW,
+				sc, 0, re_sysctl_txtime, "I",
+				"Hardware interrupt moderation time "
+				"(unit: 25usec).");
+	}
 
 	sc->re_eewidth = 6;
 	re_read_eeprom(sc, (caddr_t)&re_did, 0, 1);
@@ -1675,14 +1724,14 @@ re_rx_list_init(struct re_softc *sc)
  * the reception of jumbo frames that have been fragmented
  * across multiple 2K mbuf cluster buffers.
  */
-static void
+static int
 re_rxeof(struct re_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mbuf *m;
 	struct re_desc 	*cur_rx;
 	uint32_t rxstat, rxvlan;
-	int i, total_len;
+	int i, total_len, rx = 0;
 	struct mbuf_chain chain[MAXCPU];
 
 	/* Invalidate the descriptor memory */
@@ -1699,6 +1748,8 @@ re_rxeof(struct re_softc *sc)
 		total_len = RE_RXBYTES(cur_rx);
 		rxstat = le32toh(cur_rx->re_cmdstat);
 		rxvlan = le32toh(cur_rx->re_vlanctl);
+
+		rx = 1;
 
 		if ((rxstat & RE_RDESC_STAT_EOF) == 0) {
 			if (sc->re_drop_rxfrag) {
@@ -1838,14 +1889,16 @@ re_rxeof(struct re_softc *sc)
 			sc->re_ldata.re_rx_list_map, BUS_DMASYNC_PREWRITE);
 
 	sc->re_ldata.re_rx_prodidx = i;
+
+	return rx;
 }
 
-static void
+static int
 re_txeof(struct re_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t txstat;
-	int idx;
+	int idx, tx = 0;
 
 	/* Invalidate the TX descriptor list */
 
@@ -1858,6 +1911,8 @@ re_txeof(struct re_softc *sc)
 		txstat = le32toh(sc->re_ldata.re_tx_list[idx].re_cmdstat);
 		if (txstat & RE_TDESC_CMD_OWN)
 			break;
+
+		tx = 1;
 
 		sc->re_ldata.re_tx_list[idx].re_bufaddr_lo = 0;
 
@@ -1900,14 +1955,7 @@ re_txeof(struct re_softc *sc)
 	else
 		ifp->if_timer = 0;
 
-	/*
-	 * If not all descriptors have been released reaped yet,
-	 * reload the timer so that we will eventually get another
-	 * interrupt that will cause us to re-enter this routine.
-	 * This is done in case the transmitter has gone idle.
-	 */
-	if (sc->re_ldata.re_tx_free < sc->re_tx_desc_cnt)
-                CSR_WRITE_4(sc, RE_TIMERCNT, 1);
+	return tx;
 }
 
 static void
@@ -1958,12 +2006,14 @@ re_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	switch(cmd) {
 	case POLL_REGISTER:
 		/* disable interrupts */
-		CSR_WRITE_2(sc, RE_IMR, 0x0000);
+		re_setup_intr(sc, 0, RE_IMTYPE_NONE);
 		break;
+
 	case POLL_DEREGISTER:
 		/* enable interrupts */
-		CSR_WRITE_2(sc, RE_IMR, sc->re_intrs);
+		re_setup_intr(sc, 1, sc->re_imtype);
 		break;
+
 	default:
 		sc->rxcycles = count;
 		re_rxeof(sc);
@@ -2001,12 +2051,14 @@ re_intr(void *arg)
 	struct re_softc	*sc = arg;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint16_t status;
+	int rx, tx;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if (sc->suspended || (ifp->if_flags & IFF_UP) == 0)
+	if (sc->suspended || (ifp->if_flags & IFF_RUNNING) == 0)
 		return;
 
+	rx = tx = 0;
 	for (;;) {
 		status = CSR_READ_2(sc, RE_ISR);
 		/* If the card has gone away the read returns 0xffff. */
@@ -2019,10 +2071,10 @@ re_intr(void *arg)
 			break;
 
 		if (status & (sc->re_rx_ack | RE_ISR_RX_ERR))
-			re_rxeof(sc);
+			rx |= re_rxeof(sc);
 
 		if (status & (sc->re_tx_ack | RE_ISR_TX_ERR))
-			re_txeof(sc);
+			tx |= re_txeof(sc);
 
 		if (status & RE_ISR_SYSTEM_ERR) {
 			re_reset(sc);
@@ -2035,7 +2087,18 @@ re_intr(void *arg)
 		}
 	}
 
-	if (!ifq_is_empty(&ifp->if_snd))
+	if (sc->re_imtype == RE_IMTYPE_SIM) {
+		if ((sc->re_flags & RE_F_TIMER_INTR)) {
+			if ((tx | rx) == 0)
+				re_setup_intr(sc, 1, RE_IMTYPE_NONE);
+			else
+				CSR_WRITE_4(sc, RE_TIMERCNT, 1); /* reload */
+		} else if (tx | rx) {
+			re_setup_intr(sc, 1, RE_IMTYPE_SIM);
+		}
+	}
+
+	if (tx && !ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
 }
 
@@ -2313,11 +2376,8 @@ re_start(struct ifnet *ifp)
 		ETHER_BPF_MTAP(ifp, m_head);
 	}
 
-	if (!need_trans) {
-		if (sc->re_ldata.re_tx_free != sc->re_tx_desc_cnt)
-			CSR_WRITE_4(sc, RE_TIMERCNT, 1);
+	if (!need_trans)
 		return;
-	}
 
 	/* Flush the TX descriptors */
 	bus_dmamap_sync(sc->re_ldata.re_tx_list_tag,
@@ -2330,16 +2390,6 @@ re_start(struct ifnet *ifp)
 	 * location on the 8169 gigE chip. I don't know why.
 	 */
 	CSR_WRITE_1(sc, sc->re_txstart, RE_TXSTART_START);
-
-	/*
-	 * Use the countdown timer for interrupt moderation.
-	 * 'TX done' interrupts are disabled. Instead, we reset the
-	 * countdown timer, which will begin counting until it hits
-	 * the value in the TIMERINT register, and then trigger an
-	 * interrupt. Each time we write to the TIMERCNT register,
-	 * the timer count is reset to 0.
-	 */
-	CSR_WRITE_4(sc, RE_TIMERCNT, 1);
 
 	/*
 	 * Set a timeout in case the chip goes out to lunch.
@@ -2374,36 +2424,6 @@ re_init(void *xsc)
 		    RE_CPLUSCMD_PCI_MRW | RE_CPLUSCMD_VLANSTRIP |
 		    (ifp->if_capenable & IFCAP_RXCSUM ?
 		     RE_CPLUSCMD_RXCSUM_ENB : 0));
-
-	if (sc->re_caps & RE_C_HWIM) {
-		/*
-		 * Interrupt moderation
-		 *
-		 * 0xUUuD
-		 * U - unknown (maybe TX related)
-		 * u - unknown (maybe RX related)
-		 * D - RX timer (unit: 25us)
-		 *
-		 * Set RX timer to 50us
-		 * TODO: sysctl variable
-		 *
-		 *
-		 * re(4)'s interrupt moderation is actually controlled by
-		 * two variables, like most other NICs (bge, bce etc.)
-		 * o  timer
-		 * o  number of packets [P]
-		 *
-		 * The logic relationship between these two variables is
-		 * similar to other NICs too:
-		 * if (timer expire || packets > [P])
-		 *     Interrupt is delivered
-		 *
-		 * Currently we only know how to set 'timer', but not
-		 * 'number of packets', which should be ~30, as far as I
-		 * tested (sink ~900Kpps, interrupt rate is 30KHz)
-		 */
-		CSR_WRITE_2(sc, RE_IM, 0x5152);
-	}
 
 	/*
 	 * Init our MAC address.  Even though the chipset
@@ -2506,7 +2526,7 @@ re_init(void *xsc)
 	 * Disable interrupts if we are polling.
 	 */
 	if (ifp->if_flags & IFF_POLLING)
-		CSR_WRITE_2(sc, RE_IMR, 0);
+		re_setup_intr(sc, 0, RE_IMTYPE_NONE);
 	else	/* otherwise ... */
 #endif /* DEVICE_POLLING */
 	/*
@@ -2515,7 +2535,7 @@ re_init(void *xsc)
 	if (sc->re_testmode)
 		CSR_WRITE_2(sc, RE_IMR, 0);
 	else
-		CSR_WRITE_2(sc, RE_IMR, sc->re_intrs);
+		re_setup_intr(sc, 1, sc->re_imtype);
 	CSR_WRITE_2(sc, RE_ISR, sc->re_intrs);
 
 	/* Set initial TX threshold */
@@ -2528,26 +2548,6 @@ re_init(void *xsc)
 	/* Enable receiver and transmitter. */
 	CSR_WRITE_1(sc, RE_COMMAND, RE_CMD_TX_ENB|RE_CMD_RX_ENB);
 #endif
-
-	/*
-	 * Initialize the timer interrupt register so that
-	 * a timer interrupt will be generated once the timer
-	 * reaches a certain number of ticks. The timer is
-	 * reloaded on each transmit. This gives us TX interrupt
-	 * moderation, which dramatically improves TX frame rate.
-	 */
-	if (sc->re_type == RE_8169) {
-		/*
-		 * Set hardare timer to 125us
-		 * XXX measurement showed me the actual value is
-		 * ~2/3 of the desired value
-		 *
-		 * TODO: sysctl variable.
-		 */
-		CSR_WRITE_4(sc, RE_TIMERINT_8169, 125 * sc->re_bus_speed);
-	} else {
-		CSR_WRITE_4(sc, RE_TIMERINT, 0x400);
-	}
 
 	/*
 	 * For 8169 gigE NICs, set the max allowed RX packet
@@ -2696,6 +2696,7 @@ re_stop(struct re_softc *sc)
 	callout_stop(&sc->re_timer);
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	sc->re_flags &= ~RE_F_TIMER_INTR;
 
 	CSR_WRITE_1(sc, RE_COMMAND, 0x00);
 	CSR_WRITE_2(sc, RE_IMR, 0x0000);
@@ -2856,4 +2857,270 @@ re_pad_frame(struct mbuf *pkt)
 	last->m_len += padlen;
 	pkt->m_pkthdr.len += padlen;
 	return 0;
+}
+
+static int
+re_sysctl_rxtime(SYSCTL_HANDLER_ARGS)
+{
+	struct re_softc *sc = arg1;
+
+	return re_sysctl_hwtime(oidp, arg1, arg2, req, &sc->re_rx_time);
+}
+
+static int
+re_sysctl_txtime(SYSCTL_HANDLER_ARGS)
+{
+	struct re_softc *sc = arg1;
+
+	return re_sysctl_hwtime(oidp, arg1, arg2, req, &sc->re_tx_time);
+}
+
+static int
+re_sysctl_hwtime(SYSCTL_HANDLER_ARGS, int *hwtime)
+{
+	struct re_softc *sc = arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, v;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	v = *hwtime;
+	error = sysctl_handle_int(oidp, &v, 0, req);
+	if (error || req->newptr == NULL)
+		goto back;
+
+	if (v <= 0) {
+		error = EINVAL;
+		goto back;
+	}
+
+	if (v != *hwtime) {
+		*hwtime = v;
+
+		if ((ifp->if_flags & (IFF_RUNNING | IFF_POLLING)) ==
+		    IFF_RUNNING && sc->re_imtype == RE_IMTYPE_HW)
+			re_setup_hw_im(sc);
+	}
+back:
+	lwkt_serialize_exit(ifp->if_serializer);
+	return error;
+}
+
+static int
+re_sysctl_simtime(SYSCTL_HANDLER_ARGS)
+{
+	struct re_softc *sc = arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, v;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	v = sc->re_sim_time;
+	error = sysctl_handle_int(oidp, &v, 0, req);
+	if (error || req->newptr == NULL)
+		goto back;
+
+	if (v <= 0) {
+		error = EINVAL;
+		goto back;
+	}
+
+	if (v != sc->re_sim_time) {
+		sc->re_sim_time = v;
+
+		if ((ifp->if_flags & (IFF_RUNNING | IFF_POLLING)) ==
+		    IFF_RUNNING && sc->re_imtype == RE_IMTYPE_SIM) {
+#ifdef foo
+			int reg;
+
+			/*
+			 * Following code causes various strange
+			 * performance problems.  Hmm ...
+			 */
+			CSR_WRITE_2(sc, RE_IMR, 0);
+			if (sc->re_type == RE_8169)
+				reg = RE_TIMERINT_8169;
+			else
+				reg = RE_TIMERINT;
+			CSR_WRITE_4(sc, reg, 0);
+			CSR_READ_4(sc, reg); /* flush */
+
+			CSR_WRITE_2(sc, RE_IMR, sc->re_intrs);
+			re_setup_sim_im(sc);
+#else
+			re_setup_intr(sc, 0, RE_IMTYPE_NONE);
+			DELAY(10);
+			re_setup_intr(sc, 1, RE_IMTYPE_SIM);
+#endif
+		}
+	}
+back:
+	lwkt_serialize_exit(ifp->if_serializer);
+	return error;
+}
+
+static int
+re_sysctl_imtype(SYSCTL_HANDLER_ARGS)
+{
+	struct re_softc *sc = arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, v;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	v = sc->re_imtype;
+	error = sysctl_handle_int(oidp, &v, 0, req);
+	if (error || req->newptr == NULL)
+		goto back;
+
+	if (v != RE_IMTYPE_HW && v != RE_IMTYPE_SIM && v != RE_IMTYPE_NONE) {
+		error = EINVAL;
+		goto back;
+	}
+	if (v == RE_IMTYPE_HW && (sc->re_caps & RE_C_HWIM) == 0) {
+		/* Can't do hardware interrupt moderation */
+		error = EOPNOTSUPP;
+		goto back;
+	}
+
+	if (v != sc->re_imtype) {
+		sc->re_imtype = v;
+		if ((ifp->if_flags & (IFF_RUNNING | IFF_POLLING)) ==
+		    IFF_RUNNING)
+			re_setup_intr(sc, 1, sc->re_imtype);
+	}
+back:
+	lwkt_serialize_exit(ifp->if_serializer);
+	return error;
+}
+
+static void
+re_setup_hw_im(struct re_softc *sc)
+{
+	KKASSERT(sc->re_caps & RE_C_HWIM);
+
+	/*
+	 * Interrupt moderation
+	 *
+	 * 0xABCD
+	 * A - unknown (maybe TX related)
+	 * B - TX timer (unit: 25us)
+	 * C - unknown (maybe RX related)
+	 * D - RX timer (unit: 25us)
+	 *
+	 *
+	 * re(4)'s interrupt moderation is actually controlled by
+	 * two variables, like most other NICs (bge, bce etc.)
+	 * o  timer
+	 * o  number of packets [P]
+	 *
+	 * The logic relationship between these two variables is
+	 * similar to other NICs too:
+	 * if (timer expire || packets > [P])
+	 *     Interrupt is delivered
+	 *
+	 * Currently we only know how to set 'timer', but not
+	 * 'number of packets', which should be ~30, as far as I
+	 * tested (sink ~900Kpps, interrupt rate is 30KHz)
+	 */
+	CSR_WRITE_2(sc, RE_IM,
+		    RE_IM_RXTIME(sc->re_rx_time) |
+		    RE_IM_TXTIME(sc->re_tx_time) |
+		    RE_IM_MAGIC);
+}
+
+static void
+re_disable_hw_im(struct re_softc *sc)
+{
+	if (sc->re_caps & RE_C_HWIM)
+		CSR_WRITE_2(sc, RE_IM, 0);
+}
+
+static void
+re_setup_sim_im(struct re_softc *sc)
+{
+	if (sc->re_type == RE_8169) {
+		uint32_t ticks;
+
+		/*
+		 * Datasheet says tick decreases at bus speed,
+		 * but it seems the clock runs a little bit
+		 * faster, so we do some compensation here.
+		 */
+		ticks = (sc->re_sim_time * sc->re_bus_speed * 8) / 5;
+		CSR_WRITE_4(sc, RE_TIMERINT_8169, ticks);
+	} else {
+		CSR_WRITE_4(sc, RE_TIMERINT, 0x400); /* XXX */
+	}
+	CSR_WRITE_4(sc, RE_TIMERCNT, 1); /* reload */
+	sc->re_flags |= RE_F_TIMER_INTR;
+}
+
+static void
+re_disable_sim_im(struct re_softc *sc)
+{
+	if (sc->re_type == RE_8169)
+		CSR_WRITE_4(sc, RE_TIMERINT_8169, 0);
+	else
+		CSR_WRITE_4(sc, RE_TIMERINT, 0);
+	sc->re_flags &= ~RE_F_TIMER_INTR;
+}
+
+static void
+re_config_imtype(struct re_softc *sc, int imtype)
+{
+	switch (imtype) {
+	case RE_IMTYPE_HW:
+		KKASSERT(sc->re_caps & RE_C_HWIM);
+		/* FALL THROUGH */
+	case RE_IMTYPE_NONE:
+		sc->re_intrs = RE_INTRS;
+		sc->re_rx_ack = RE_ISR_RX_OK | RE_ISR_FIFO_OFLOW |
+				RE_ISR_RX_OVERRUN;
+		sc->re_tx_ack = RE_ISR_TX_OK;
+		break;
+
+	case RE_IMTYPE_SIM:
+		sc->re_intrs = RE_INTRS_TIMER;
+		sc->re_rx_ack = RE_ISR_TIMEOUT_EXPIRED;
+		sc->re_tx_ack = RE_ISR_TIMEOUT_EXPIRED;
+		break;
+
+	default:
+		panic("%s: unknown imtype %d\n",
+		      sc->arpcom.ac_if.if_xname, imtype);
+	}
+}
+
+static void
+re_setup_intr(struct re_softc *sc, int enable_intrs, int imtype)
+{
+	re_config_imtype(sc, imtype);
+
+	if (enable_intrs)
+		CSR_WRITE_2(sc, RE_IMR, sc->re_intrs);
+	else
+		CSR_WRITE_2(sc, RE_IMR, 0); 
+
+	switch (imtype) {
+	case RE_IMTYPE_NONE:
+		re_disable_sim_im(sc);
+		re_disable_hw_im(sc);
+		break;
+
+	case RE_IMTYPE_HW:
+		KKASSERT(sc->re_caps & RE_C_HWIM);
+		re_disable_sim_im(sc);
+		re_setup_hw_im(sc);
+		break;
+
+	case RE_IMTYPE_SIM:
+		re_disable_hw_im(sc);
+		re_setup_sim_im(sc);
+		break;
+
+	default:
+		panic("%s: unknown imtype %d\n",
+		      sc->arpcom.ac_if.if_xname, imtype);
+	}
 }

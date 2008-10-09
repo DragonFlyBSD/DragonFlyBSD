@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.16 2008/10/08 13:09:22 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.17 2008/10/09 12:41:02 sephe Exp $
  */
 
 /*
@@ -205,7 +205,12 @@
 #define RE_INTRS \
 	(RE_ISR_RX_OK|RE_ISR_RX_ERR|RE_ISR_TX_ERR| \
 	RE_ISR_RX_OVERRUN|RE_ISR_FIFO_OFLOW|RE_ISR_LINKCHG| \
-	RE_ISR_SYSTEM_ERR|RE_ISR_TIMEOUT_EXPIRED)
+	RE_ISR_SYSTEM_ERR|RE_ISR_TX_OK)
+
+#define RE_INTRS_TIMER \
+	(RE_ISR_RX_ERR|RE_ISR_TX_ERR| \
+	RE_ISR_LINKCHG|RE_ISR_SYSTEM_ERR| \
+	RE_ISR_TIMEOUT_EXPIRED)
 
 #ifdef RE_DIAG
 #define RE_INTRS_DIAG \
@@ -425,6 +430,10 @@
 
 #define RE_RXCFG_CONFIG (RE_RX_FIFOTHRESH|RE_RX_MAXDMA|RE_RX_BUF_SZ)
 #define RE_TXCFG_CONFIG	(RE_TXCFG_IFG|RE_TX_MAXDMA)
+
+#define RE_IM_MAGIC		0x5050
+#define RE_IM_RXTIME(t)		((t) & 0xf)
+#define RE_IM_TXTIME(t)		(((t) & 0xf) << 8)
 
 #if 0
 struct re_mii_frame {
