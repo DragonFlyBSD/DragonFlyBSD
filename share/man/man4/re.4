@@ -29,7 +29,7 @@
 .\" THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD$
-.\" $DragonFly: src/share/man/man4/re.4,v 1.7 2008/07/11 10:38:50 thomas Exp $
+.\" $DragonFly: src/share/man/man4/re.4,v 1.8 2008/10/09 13:45:16 sephe Exp $
 .\"
 .Dd November 2, 2006
 .Dt RE 4
@@ -79,6 +79,8 @@ via the interface MTU setting.
 Selecting an MTU larger than 1500 bytes with the
 .Xr ifconfig 8
 utility configures the adapter to receive and transmit jumbo frames.
+The maximum MTU setting for Jumbo Frames is 7426.
+This value coincides with the maximum Jumbo Frames size of 7440.
 .Pp
 The
 .Nm
@@ -145,9 +147,60 @@ A number of per-interface variables are implemented in the
 branch of the
 .Xr sysctl 3
 MIB.
-.Bl -tag -width ".Va tx_moderation"
-.It Va tx_moderation
-Turn on (default) or off TX moderation.
+.Bl -tag -width ".Va rx_desc_count"
+.It Va rx_desc_count
+Number of RX descriptor (read-only).
+Use tunable hw.re.rx_desc_count to configure it.
+.It Va tx_desc_count
+Number of TX descriptor (read-only).
+Use tunable hw.re.tx_desc_count to configure it.
+.It Va imtype
+Interrupt moderation type.
+0 means disable interrupt moderation.
+1 means using simulated interrupt moderation (default).
+2 means using hardware interrupt moderation,
+if hardware supports it.
+Due to lack of proper document,
+hardware interrupt moderation (2) may not work as expected.
+.It Va sim_time
+If
+.Va imtype
+is set to 1,
+it controls interrupt moderation time (unit: 1us).
+It will not have any effect,
+if
+.Va imtype
+is 0 or 2.
+By default, it is set to 75us for PCIe controllers and
+125us for PCI controllers.
+.It Va hw_txtime
+If the controller does not support hardware interrupt moderation,
+then this sysctl node will not exist.
+If
+.Va imtype
+is set to 2,
+it controls TX interrupt moderation time (unit: 25us).
+It will not have any effect,
+if
+.Va imtype
+is 0 or 1.
+It is set to 5 (125us) by default.
+Due to lack of chip document,
+it may not work reliably.
+.It Va hw_rxtime
+If the controller does not support hardware interrupt moderation,
+then this sysctl node will not exist.
+If
+.Va imtype
+is set to 2,
+it controls RX interrupt moderation time (unit: 25us).
+It will not have any effect,
+if
+.Va imtype
+is 0 or 1.
+It is set to 2 (50us) by default.
+Due to lack of chip document,
+it may not work reliably.
 .El
 .Sh HARDWARE
 The
@@ -230,6 +283,3 @@ be echoed back unmodified. If the echoed data is corrupt, the driver
 will print an error message on the console and abort the device attach. The
 user should insure the NIC is installed in a 32-bit PCI slot to
 avoid this problem.
-.Pp
-The RealTek 8169, 8169S and 8110S chips appear to only be capable of
-transmitting jumbo frames up to 7440 bytes in size.
