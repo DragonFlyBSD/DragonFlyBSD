@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.17 2008/09/30 23:13:08 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_show.c,v 1.18 2008/10/09 04:20:59 dillon Exp $
  */
 
 #include "hammer.h"
@@ -44,6 +44,7 @@
 static void print_btree_node(hammer_off_t node_offset, int depth, int spike,
 			hammer_base_elm_t left_bound,
 			hammer_base_elm_t right_bound);
+static const char *check_data_crc(hammer_btree_elm_t elm);
 static void print_record(hammer_btree_elm_t elm);
 static void print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 			int flags, const char *label);
@@ -184,7 +185,7 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 	case HAMMER_BTREE_TYPE_LEAF:
 		switch(elm->base.btype) {
 		case HAMMER_BTREE_TYPE_RECORD:
-			printf("\n\t         ");
+			printf("\n%s\t         ", check_data_crc(elm));
 			printf("dataoff=%016llx/%d",
 				elm->leaf.data_offset, elm->leaf.data_len);
 			if (QuietOpt < 3) {
@@ -285,6 +286,49 @@ print_bigblock_fill(hammer_off_t offset)
 		(offset & ~HAMMER_OFF_ZONE_MASK) / HAMMER_LARGEBLOCK_SIZE,
 		fill
 	);
+}
+
+/*
+ * Check the generic crc on a data element.  Inodes record types are
+ * special in that some of their fields are not CRCed.
+ */
+static
+const char *
+check_data_crc(hammer_btree_elm_t elm)
+{
+	struct buffer_info *data_buffer;
+	hammer_off_t data_offset;
+	int32_t data_len;
+	int32_t len;
+	u_int32_t crc;
+	char *ptr;
+
+	data_offset = elm->leaf.data_offset;
+	data_len = elm->leaf.data_len;
+	data_buffer = NULL;
+	if (data_offset == 0 || data_len == 0)
+		return("Z");
+
+	crc = 0;
+	while (data_len) {
+		ptr = get_buffer_data(data_offset, &data_buffer, 0);
+		len = HAMMER_BUFSIZE - ((int)data_offset & HAMMER_BUFMASK);
+		if (len > data_len)
+			len = (int)data_len;
+		if (elm->leaf.base.rec_type == HAMMER_RECTYPE_INODE &&
+		    data_len == sizeof(struct hammer_inode_data)) {
+			crc = crc32_ext(ptr, HAMMER_INODE_CRCSIZE, crc);
+		} else {
+			crc = crc32_ext(ptr, len, crc);
+		}
+		data_len -= len;
+		data_offset += len;
+	}
+	if (data_buffer)
+		rel_buffer(data_buffer);
+	if (crc == elm->leaf.data_crc)
+		return("");
+	return("B");
 }
 
 static
