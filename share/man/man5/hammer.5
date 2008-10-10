@@ -29,7 +29,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man5/hammer.5,v 1.2.2.5 2008/09/28 22:06:39 thomas Exp $
+.\" $DragonFly: src/share/man/man5/hammer.5,v 1.2.2.6 2008/10/10 18:18:12 thomas Exp $
 .\"
 .Dd September 28, 2008
 .Os
@@ -223,10 +223,14 @@ commands:
 .Ss NFS Export
 .Nm
 file systems support NFS export.
-NFS export of PFSs is done using null mounts, e.g.\&
+NFS export of PFSs is done using
+.Nm null
+mounts, e.g.\&
 to export the PFS
 .Pa /hammer/pfs/data ,
-make a null mount, e.g.\& to
+make a
+.Nm null
+mount, e.g.\& to
 .Pa /hammer/data
 and export the latter path.
 .Pp
@@ -344,13 +348,10 @@ command.
 .Bd -literal -offset indent
 hammer pfs-master /home/pfs/master
 hammer pfs-slave /home/pfs/slave shared-uuid=<master's shared uuid>
-
-mount_null /home/pfs/master /home/master
-mount_null /home/pfs/slave /home/slave
 .Ed
 .Pp
 The
-.Pa /home/slave
+.Pa /home/pfs/slave
 link is unusable for as long as no mirroring operation has taken place.
 .Pp
 To mirror the master's data, either pipe a
@@ -362,7 +363,24 @@ or, as a short-cut, use the
 command (which works across a
 .Xr ssh 1
 connection as well).
+Initial mirroring operation has to be done to the PFS path (as
+.Xr mount_null 8
+can't access it yet).
 .Bd -literal -offset indent
+hammer mirror-copy /home/pfs/master /home/pfs/slave
+.Ed
+.Pp
+After this initial step
+.Nm null
+mount can be setup for
+.Pa /home/pfs/slave .
+Further operations can use
+.Nm null
+mounts.
+.Bd -literal -offset indent
+mount_null /home/pfs/master /home/master
+mount_null /home/pfs/slave /home/slave
+
 hammer mirror-copy /home/master /home/slave
 .Ed
 .Ss NFS Export
