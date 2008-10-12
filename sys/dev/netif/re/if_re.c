@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.74 2008/10/09 14:30:48 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.75 2008/10/12 04:08:59 sephe Exp $
  */
 
 /*
@@ -163,79 +163,76 @@
 /*
  * Various supported device vendors/types and their names.
  */
-static const struct re_type re_devs[] = {
-	{ PCI_VENDOR_DLINK, PCI_PRODUCT_DLINK_DGE528T, RE_HWREV_8169S,
-		"D-Link DGE-528(T) Gigabit Ethernet Adapter" },
-	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8139, RE_HWREV_8139CPLUS,
-		"RealTek 8139C+ 10/100BaseTX" },
-	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8101E, RE_HWREV_8101E,
-		"RealTek 8101E PCIe 10/100baseTX" },
-	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8101E, RE_HWREV_8102EL,
-		"RealTek 8102EL PCIe 10/100baseTX" },
-	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8168, RE_HWREV_8168_8111B1,
-		"RealTek 8168B/8111B PCIe Gigabit Ethernet" },
-	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8168, RE_HWREV_8168_8111B2,
-		"RealTek 8168B/8111B PCIe Gigabit Ethernet" },
-	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8168, RE_HWREV_8168_8111B3,
-		"RealTek 8168B/8111B PCIe Gigabit Ethernet" },
-	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8168, RE_HWREV_8168_8111C,
-		"RealTek 8168C/8111C PCIe Gigabit Ethernet" },
-	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8169, RE_HWREV_8169,
-		"RealTek 8169 Gigabit Ethernet" },
-	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8169, RE_HWREV_8169S,
-		"RealTek 8169S Single-chip Gigabit Ethernet" },
-	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8169, RE_HWREV_8169_8110SB,
-		"RealTek 8169SB/8110SB Single-chip Gigabit Ethernet" },
-	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8169, RE_HWREV_8169_8110SC,
-		"RealTek 8169SC/8110SC Single-chip Gigabit Ethernet" },
-	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8169SC, RE_HWREV_8169_8110SC,
-		"RealTek 8169SC/8110SC Single-chip Gigabit Ethernet" },
-	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8169, RE_HWREV_8110S,
-		"RealTek 8110S Single-chip Gigabit Ethernet" },
-	{ PCI_VENDOR_COREGA, PCI_PRODUCT_COREGA_CG_LAPCIGT, RE_HWREV_8169S,
+static const struct re_type {
+	uint16_t	re_vid;
+	uint16_t	re_did;
+	const char	*re_name;
+} re_devs[] = {
+	{ PCI_VENDOR_DLINK, PCI_PRODUCT_DLINK_DGE528T,
+	  "D-Link DGE-528(T) Gigabit Ethernet Adapter" },
+
+	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8139,
+	  "RealTek 8139C+ 10/100BaseTX" },
+
+	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8101E,
+	  "RealTek 810x PCIe 10/100baseTX" },
+
+	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8168,
+	  "RealTek 8111/8168 PCIe Gigabit Ethernet" },
+
+	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8169,
+	  "RealTek 8110/8169 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_REALTEK, PCI_PRODUCT_REALTEK_RT8169SC,
+	  "RealTek 8169SC/8110SC Single-chip Gigabit Ethernet" },
+
+	{ PCI_VENDOR_COREGA, PCI_PRODUCT_COREGA_CG_LAPCIGT,
 		"Corega CG-LAPCIGT Gigabit Ethernet" },
-	{ PCI_VENDOR_LINKSYS, PCI_PRODUCT_LINKSYS_EG1032, RE_HWREV_8169S,
-		"Linksys EG1032 Gigabit Ethernet" },
-	{ PCI_VENDOR_USR2, PCI_PRODUCT_USR2_997902, RE_HWREV_8169S,
-		"US Robotics 997902 Gigabit Ethernet" },
-	{ 0, 0, 0, NULL }
+
+	{ PCI_VENDOR_LINKSYS, PCI_PRODUCT_LINKSYS_EG1032,
+	  "Linksys EG1032 Gigabit Ethernet" },
+
+	{ PCI_VENDOR_USR2, PCI_PRODUCT_USR2_997902,
+	  "US Robotics 997902 Gigabit Ethernet" },
+
+	{ 0, 0, NULL }
 };
 
 static const struct re_hwrev re_hwrevs[] = {
-	{ RE_HWREV_8139CPLUS,	RE_8139CPLUS,	0,
+	{ RE_HWREV_8139CPLUS,	RE_8139CPLUS,	RE_C_HWCSUM,
 	  ETHERMTU, ETHERMTU },
 
-	{ RE_HWREV_8168_8111B1,	RE_8169,	RE_C_HWIM,
+	{ RE_HWREV_8168_8111B1,	RE_8169,	RE_C_HWIM | RE_C_HWCSUM,
 	  RE_JUMBO_MTU, RE_JUMBO_MTU },
 
-	{ RE_HWREV_8168_8111B2,	RE_8169,	RE_C_HWIM,
+	{ RE_HWREV_8168_8111B2,	RE_8169,	RE_C_HWIM | RE_C_HWCSUM,
 	  RE_JUMBO_MTU, RE_JUMBO_MTU },
 
-	{ RE_HWREV_8168_8111B3,	RE_8169,	RE_C_HWIM,
+	{ RE_HWREV_8168_8111B3,	RE_8169,	RE_C_HWIM | RE_C_HWCSUM,
 	  RE_JUMBO_MTU, RE_JUMBO_MTU },
 
 	{ RE_HWREV_8168_8111C,	RE_8169,	RE_C_HWIM,
 	  RE_JUMBO_MTU, RE_JUMBO_MTU },
 
-	{ RE_HWREV_8169,	RE_8169,	0,
+	{ RE_HWREV_8169,	RE_8169,	RE_C_HWCSUM,
 	  RE_SWCSUM_LIM_8169, RE_JUMBO_MTU },
 
-	{ RE_HWREV_8169S,	RE_8169,	0,
+	{ RE_HWREV_8169S,	RE_8169,	RE_C_HWCSUM,
 	  RE_JUMBO_MTU, RE_JUMBO_MTU },
 
-	{ RE_HWREV_8110S,	RE_8169,	0,
+	{ RE_HWREV_8110S,	RE_8169,	RE_C_HWCSUM,
 	  RE_JUMBO_MTU, RE_JUMBO_MTU },
 
-	{ RE_HWREV_8169_8110SB,	RE_8169,	0,
+	{ RE_HWREV_8169_8110SB,	RE_8169,	RE_C_HWCSUM,
 	  RE_JUMBO_MTU, RE_JUMBO_MTU },
 
-	{ RE_HWREV_8169_8110SC,	RE_8169,	0,
+	{ RE_HWREV_8169_8110SC,	RE_8169,	RE_C_HWCSUM,
 	  RE_JUMBO_MTU, RE_JUMBO_MTU },
 
-	{ RE_HWREV_8100E,	RE_8169,	0,
+	{ RE_HWREV_8100E,	RE_8169,	RE_C_HWCSUM,
 	  ETHERMTU, ETHERMTU },
 
-	{ RE_HWREV_8101E,	RE_8169,	0,
+	{ RE_HWREV_8101E,	RE_8169,	RE_C_HWCSUM,
 	  ETHERMTU, ETHERMTU },
 
 	{ RE_HWREV_8102EL,      RE_8169,	0,
@@ -862,6 +859,7 @@ static int
 re_probe(device_t dev)
 {
 	const struct re_type *t;
+	const struct re_hwrev *hw_rev;
 	struct re_softc *sc;
 	int rid;
 	uint32_t hwrev;
@@ -877,7 +875,7 @@ re_probe(device_t dev)
 	if (vendor == PCI_VENDOR_LINKSYS &&
 	    product == PCI_PRODUCT_LINKSYS_EG1032 &&
 	    pci_get_subdevice(dev) != PCI_SUBDEVICE_LINKSYS_EG1032_REV3)
-			return ENXIO;
+		return ENXIO;
 
 	for (t = re_devs; t->re_name != NULL; t++) {
 		if (product == t->re_did && vendor == t->re_vid)
@@ -888,7 +886,7 @@ re_probe(device_t dev)
 	 * Check if we found a RealTek device.
 	 */
 	if (t->re_name == NULL)
-		return(ENXIO);
+		return ENXIO;
 
 	/*
 	 * Temporarily map the I/O space so we can read the chip ID register.
@@ -900,7 +898,7 @@ re_probe(device_t dev)
 	if (sc->re_res == NULL) {
 		device_printf(dev, "couldn't map ports/memory\n");
 		kfree(sc, M_TEMP);
-		return(ENXIO);
+		return ENXIO;
 	}
 
 	sc->re_btag = rman_get_bustag(sc->re_res);
@@ -913,17 +911,22 @@ re_probe(device_t dev)
 	/*
 	 * and continue matching for the specific chip...
 	 */
-	for (; t->re_name != NULL; t++) {
-		if (product == t->re_did && vendor == t->re_vid &&
-		    t->re_basetype == hwrev) {
+	for (hw_rev = re_hwrevs; hw_rev->re_type != 0; hw_rev++) {
+		if (hw_rev->re_rev == hwrev) {
+			sc = device_get_softc(dev);
+
+			sc->re_hwrev = hwrev;
+			sc->re_type = hw_rev->re_type;
+			sc->re_caps = hw_rev->re_caps;
+			sc->re_swcsum_lim = hw_rev->re_swcsum_lim;
+			sc->re_maxmtu = hw_rev->re_maxmtu;
+
 			device_set_desc(dev, t->re_name);
-			return(0);
+			return 0;
 		}
 	}
-
-	if (bootverbose)
-		kprintf("re: unknown hwrev %#x\n", hwrev);
-	return(ENXIO);
+	device_printf(dev, "unknown hwrev 0x%08x\n", hwrev);
+	return ENXIO;
 }
 
 static void
@@ -1222,11 +1225,9 @@ re_attach(device_t dev)
 {
 	struct re_softc	*sc = device_get_softc(dev);
 	struct ifnet *ifp;
-	const struct re_hwrev *hw_rev;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 	uint16_t as[ETHER_ADDR_LEN / 2];
 	uint16_t re_did = 0;
-	uint32_t hwrev;
 	int error = 0, rid, i, qlen;
 	uint16_t val;
 	uint8_t expr_ptr;
@@ -1245,7 +1246,7 @@ re_attach(device_t dev)
 		sc->re_tx_desc_cnt = RE_TX_DESC_CNT_MAX;
 
 	qlen = RE_IFQ_MAXLEN;
-	if (sc->re_tx_desc_cnt > RE_IFQ_MAXLEN)
+	if (sc->re_tx_desc_cnt > qlen)
 		qlen = sc->re_tx_desc_cnt;
 
 	sc->re_tx_time = 5;		/* 125us */
@@ -1287,6 +1288,22 @@ re_attach(device_t dev)
 			"Interrupt moderation type -- "
 			"0:disable, 1:simulated, "
 			"2:hardware(if supported)");
+	if (sc->re_caps & RE_C_HWIM) {
+		SYSCTL_ADD_PROC(&sc->re_sysctl_ctx,
+				SYSCTL_CHILDREN(sc->re_sysctl_tree),
+				OID_AUTO, "hw_rxtime",
+				CTLTYPE_INT | CTLFLAG_RW,
+				sc, 0, re_sysctl_rxtime, "I",
+				"Hardware interrupt moderation time "
+				"(unit: 25usec).");
+		SYSCTL_ADD_PROC(&sc->re_sysctl_ctx,
+				SYSCTL_CHILDREN(sc->re_sysctl_tree),
+				OID_AUTO, "hw_txtime",
+				CTLTYPE_INT | CTLFLAG_RW,
+				sc, 0, re_sysctl_txtime, "I",
+				"Hardware interrupt moderation time "
+				"(unit: 25usec).");
+	}
 
 #ifndef BURN_BRIDGES
 	/*
@@ -1343,18 +1360,6 @@ re_attach(device_t dev)
 	/* Reset the adapter. */
 	re_reset(sc);
 
-	hwrev = CSR_READ_4(sc, RE_TXCFG) & RE_TXCFG_HWREV;
-	for (hw_rev = re_hwrevs; hw_rev->re_type != 0; hw_rev++) {
-		if (hw_rev->re_rev == hwrev) {
-			sc->re_hwrev = hwrev;
-			sc->re_type = hw_rev->re_type;
-			sc->re_caps = hw_rev->re_caps;
-			sc->re_swcsum_lim = hw_rev->re_swcsum_lim;
-			sc->re_maxmtu = hw_rev->re_maxmtu;
-			break;
-		}
-	}
-
 	expr_ptr = pci_get_pciecap_ptr(dev);
 	if (expr_ptr != 0) {
 		/*
@@ -1410,23 +1415,6 @@ re_attach(device_t dev)
 		      "-E" : ((sc->re_caps & RE_C_PCI64) ? "64" : "32"),
 		      sc->re_bus_speed);
 
-	if (sc->re_caps & RE_C_HWIM) {
-		SYSCTL_ADD_PROC(&sc->re_sysctl_ctx,
-				SYSCTL_CHILDREN(sc->re_sysctl_tree),
-				OID_AUTO, "hw_rxtime",
-				CTLTYPE_INT | CTLFLAG_RW,
-				sc, 0, re_sysctl_rxtime, "I",
-				"Hardware interrupt moderation time "
-				"(unit: 25usec).");
-		SYSCTL_ADD_PROC(&sc->re_sysctl_ctx,
-				SYSCTL_CHILDREN(sc->re_sysctl_tree),
-				OID_AUTO, "hw_txtime",
-				CTLTYPE_INT | CTLFLAG_RW,
-				sc, 0, re_sysctl_txtime, "I",
-				"Hardware interrupt moderation time "
-				"(unit: 25usec).");
-	}
-
 	sc->re_eewidth = 6;
 	re_read_eeprom(sc, (caddr_t)&re_did, 0, 1);
 	if (re_did != 0x8129)
@@ -1469,21 +1457,6 @@ re_attach(device_t dev)
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = re_ioctl;
 	ifp->if_start = re_start;
-	ifp->if_capabilities = IFCAP_VLAN_MTU | IFCAP_VLAN_HWTAGGING;
-
-	switch (hwrev) {
-	case RE_HWREV_8168_8111C:
-	case RE_HWREV_8102EL:
-		/*
-		 * XXX Hardware checksum does not work yet on 8168C
-		 * and 8102EL. Disble it.
-		 */
-		ifp->if_capabilities &= ~IFCAP_HWCSUM;
-		break;
-	default:
-		ifp->if_capabilities |= IFCAP_HWCSUM;
-		break;
-	}
 #ifdef DEVICE_POLLING
 	ifp->if_poll = re_poll;
 #endif
@@ -1495,6 +1468,10 @@ re_attach(device_t dev)
 		ifp->if_baudrate = 100000000;
 	ifq_set_maxlen(&ifp->if_snd, qlen);
 	ifq_set_ready(&ifp->if_snd);
+
+	ifp->if_capabilities = IFCAP_VLAN_MTU | IFCAP_VLAN_HWTAGGING;
+	if (sc->re_caps & RE_C_HWCSUM)
+		ifp->if_capabilities |= IFCAP_HWCSUM;
 
 #ifdef RE_DISABLE_HWCSUM
 	ifp->if_capenable = ifp->if_capabilities & ~IFCAP_HWCSUM;
@@ -1518,7 +1495,7 @@ re_attach(device_t dev)
 	 * Some 32-bit cards were incorrectly wired and would
 	 * malfunction if plugged into a 64-bit slot.
 	 */
-	if (hwrev == RE_HWREV_8169) {
+	if (sc->re_hwrev == RE_HWREV_8169) {
 		lwkt_serialize_enter(ifp->if_serializer);
 		error = re_diag(sc);
 		lwkt_serialize_exit(ifp->if_serializer);

@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.18 2008/10/09 12:46:40 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.19 2008/10/12 04:08:59 sephe Exp $
  */
 
 #define RE_RX_DESC_CNT_DEF	256
@@ -64,13 +64,6 @@
 #define RE_SWCSUM_LIM_8169	2038
 
 #define	RE_TIMEOUT		1000
-
-struct re_type {
-	uint16_t		re_vid;
-	uint16_t		re_did;
-	int			re_basetype;
-	const char		*re_name;
-};
 
 struct re_hwrev {
 	uint32_t		re_rev;
@@ -177,6 +170,7 @@ struct re_softc {
 #define RE_C_PCIE		0x1
 #define RE_C_PCI64		0x2
 #define RE_C_HWIM		0x4	/* hardware interrupt moderation */
+#define RE_C_HWCSUM		0x8
 
 /* Interrupt moderation types */
 #define RE_IMTYPE_NONE		0
