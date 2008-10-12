@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.19 2008/10/12 04:08:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.20 2008/10/12 10:19:31 sephe Exp $
  */
 
 #define RE_RX_DESC_CNT_DEF	256
@@ -66,15 +66,33 @@
 #define	RE_TIMEOUT		1000
 
 struct re_hwrev {
-	uint32_t		re_rev;
-	int			re_type;	/* RE_{8139CPLUS,8169} */
+	uint32_t		re_hwrev;
+	uint32_t		re_macver;	/* see RE_MACVER_ */
 	uint32_t		re_caps;	/* see RE_C_ */
-	int			re_swcsum_lim;
-	int			re_maxmtu;
 };
 
-#define RE_8139CPLUS		3
-#define RE_8169			4
+#define RE_MACVER_UNKN		0
+#define RE_MACVER_03		0x03
+#define RE_MACVER_04		0x04
+#define RE_MACVER_05		0x05
+#define RE_MACVER_06		0x06
+#define RE_MACVER_11		0x11
+#define RE_MACVER_12		0x12
+#define RE_MACVER_13		0x13
+#define RE_MACVER_14		0x14
+#define RE_MACVER_15		0x15
+#define RE_MACVER_16		0x16
+#define RE_MACVER_21		0x21
+#define RE_MACVER_22		0x22
+#define RE_MACVER_23		0x23
+#define RE_MACVER_24		0x24
+#define RE_MACVER_25		0x25
+#define RE_MACVER_26		0x26
+#define RE_MACVER_27		0x27
+#define RE_MACVER_28		0x28
+#define RE_MACVER_29		0x29
+#define RE_MACVER_2A		0x2a
+#define RE_MACVER_2B		0x2b
 
 struct re_dmaload_arg {
 	int			re_nsegs;
@@ -120,7 +138,6 @@ struct re_softc {
 	device_t		re_miibus;
 	bus_dma_tag_t		re_parent_tag;
 	bus_dma_tag_t		re_tag;
-	uint8_t			re_type;
 	int			re_eecmd_read;
 	uint8_t			re_stats_no_timeout;
 	int			re_txthresh;
@@ -131,6 +148,7 @@ struct re_softc {
 	struct mbuf		*re_tail;
 	int			re_drop_rxfrag;
 	uint32_t		re_caps;	/* see RE_C_ */
+	uint32_t		re_macver;	/* see RE_MACVER_ */
 	uint32_t		re_rxlenmask;
 	int			re_txstart;
 	int			re_testmode;
@@ -171,6 +189,10 @@ struct re_softc {
 #define RE_C_PCI64		0x2
 #define RE_C_HWIM		0x4	/* hardware interrupt moderation */
 #define RE_C_HWCSUM		0x8
+#define RE_C_JUMBO		0x10
+#define RE_C_8139CP		0x20	/* is 8139C+ */
+
+#define RE_IS_8139CP(sc)	((sc)->re_caps & RE_C_8139CP)
 
 /* Interrupt moderation types */
 #define RE_IMTYPE_NONE		0

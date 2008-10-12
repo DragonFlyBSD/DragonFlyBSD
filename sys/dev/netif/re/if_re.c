@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.75 2008/10/12 04:08:59 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.76 2008/10/12 10:19:31 sephe Exp $
  */
 
 /*
@@ -199,46 +199,61 @@ static const struct re_type {
 };
 
 static const struct re_hwrev re_hwrevs[] = {
-	{ RE_HWREV_8139CPLUS,	RE_8139CPLUS,	RE_C_HWCSUM,
-	  ETHERMTU, ETHERMTU },
+	{ RE_HWREV_8139CPLUS,	RE_MACVER_UNKN,
+	  RE_C_HWCSUM | RE_C_8139CP },
 
-	{ RE_HWREV_8168_8111B1,	RE_8169,	RE_C_HWIM | RE_C_HWCSUM,
-	  RE_JUMBO_MTU, RE_JUMBO_MTU },
+	{ RE_HWREV_8169,	RE_MACVER_UNKN,
+	  RE_C_HWCSUM | RE_C_JUMBO },
 
-	{ RE_HWREV_8168_8111B2,	RE_8169,	RE_C_HWIM | RE_C_HWCSUM,
-	  RE_JUMBO_MTU, RE_JUMBO_MTU },
+	{ RE_HWREV_8110S,	RE_MACVER_03,
+	  RE_C_HWCSUM | RE_C_JUMBO },
 
-	{ RE_HWREV_8168_8111B3,	RE_8169,	RE_C_HWIM | RE_C_HWCSUM,
-	  RE_JUMBO_MTU, RE_JUMBO_MTU },
+	{ RE_HWREV_8169S,	RE_MACVER_03,
+	  RE_C_HWCSUM | RE_C_JUMBO },
 
-	{ RE_HWREV_8168_8111C,	RE_8169,	RE_C_HWIM,
-	  RE_JUMBO_MTU, RE_JUMBO_MTU },
+	{ RE_HWREV_8169SB,	RE_MACVER_04,
+	  RE_C_HWCSUM | RE_C_JUMBO },
 
-	{ RE_HWREV_8169,	RE_8169,	RE_C_HWCSUM,
-	  RE_SWCSUM_LIM_8169, RE_JUMBO_MTU },
+	{ RE_HWREV_8169SC1,	RE_MACVER_05,
+	  RE_C_HWCSUM | RE_C_JUMBO },
 
-	{ RE_HWREV_8169S,	RE_8169,	RE_C_HWCSUM,
-	  RE_JUMBO_MTU, RE_JUMBO_MTU },
+	{ RE_HWREV_8169SC2,	RE_MACVER_06,
+	  RE_C_HWCSUM | RE_C_JUMBO },
 
-	{ RE_HWREV_8110S,	RE_8169,	RE_C_HWCSUM,
-	  RE_JUMBO_MTU, RE_JUMBO_MTU },
+	{ RE_HWREV_8168B1,	RE_MACVER_21,
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO },
 
-	{ RE_HWREV_8169_8110SB,	RE_8169,	RE_C_HWCSUM,
-	  RE_JUMBO_MTU, RE_JUMBO_MTU },
+	{ RE_HWREV_8168B2,	RE_MACVER_23,
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO },
 
-	{ RE_HWREV_8169_8110SC,	RE_8169,	RE_C_HWCSUM,
-	  RE_JUMBO_MTU, RE_JUMBO_MTU },
+	{ RE_HWREV_8168B3,	RE_MACVER_23,
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO },
 
-	{ RE_HWREV_8100E,	RE_8169,	RE_C_HWCSUM,
-	  ETHERMTU, ETHERMTU },
+	{ RE_HWREV_8168C,	RE_MACVER_29,
+	  RE_C_HWIM | RE_C_JUMBO },
 
-	{ RE_HWREV_8101E,	RE_8169,	RE_C_HWCSUM,
-	  ETHERMTU, ETHERMTU },
+	{ RE_HWREV_8168CP,	RE_MACVER_2B,
+	  RE_C_HWIM | RE_C_JUMBO },
 
-	{ RE_HWREV_8102EL,      RE_8169,	0,
-	  ETHERMTU, ETHERMTU },
+	{ RE_HWREV_8100E,	RE_MACVER_UNKN,
+	  RE_C_HWCSUM },
 
-	{ 0, 0, 0, 0, 0 }
+	{ RE_HWREV_8101E1,	RE_MACVER_16,
+	  RE_C_HWCSUM },
+
+	{ RE_HWREV_8101E2,	RE_MACVER_16,
+	  RE_C_HWCSUM },
+
+	{ RE_HWREV_8102E,	RE_MACVER_15,
+	  0 },
+
+	{ RE_HWREV_8102EL,	RE_MACVER_15,
+	  0 },
+
+	{ RE_HWREV_UNKN1,	RE_MACVER_2A,
+	  0 },
+
+	{ RE_HWREV_NULL, 0, 0 }
 };
 
 static int	re_probe(device_t);
@@ -505,7 +520,7 @@ re_miibus_readreg(device_t dev, int phy, int reg)
 	uint16_t rval = 0;
 	uint16_t re8139_reg = 0;
 
-	if (sc->re_type == RE_8169) {
+	if (!RE_IS_8139CP(sc)) {
 		rval = re_gmii_readreg(dev, phy, reg);
 		return(rval);
 	}
@@ -546,7 +561,7 @@ re_miibus_readreg(device_t dev, int phy, int reg)
 		return(0);
 	}
 	rval = CSR_READ_2(sc, re8139_reg);
-	if (sc->re_type == RE_8139CPLUS && re8139_reg == RE_BMCR) {
+	if (re8139_reg == RE_BMCR) {
 		/* 8139C+ has different bit layout. */
 		rval &= ~(BMCR_LOOP | BMCR_ISO);
 	}
@@ -559,7 +574,7 @@ re_miibus_writereg(device_t dev, int phy, int reg, int data)
 	struct re_softc *sc= device_get_softc(dev);
 	u_int16_t re8139_reg = 0;
 
-	if (sc->re_type == RE_8169)
+	if (!RE_IS_8139CP(sc))
 		return(re_gmii_writereg(dev, phy, reg, data));
 
 	/* Pretend the internal PHY is only at address 0 */
@@ -569,10 +584,8 @@ re_miibus_writereg(device_t dev, int phy, int reg, int data)
 	switch(reg) {
 	case MII_BMCR:
 		re8139_reg = RE_BMCR;
-		if (sc->re_type == RE_8139CPLUS) {
-			/* 8139C+ has different bit layout. */
-			data &= ~(BMCR_LOOP | BMCR_ISO);
-		}
+		/* 8139C+ has different bit layout. */
+		data &= ~(BMCR_LOOP | BMCR_ISO);
 		break;
 	case MII_BMSR:
 		re8139_reg = RE_BMSR;
@@ -736,7 +749,7 @@ re_diag(struct re_softc *sc)
 	re_reset(sc);
 	re_init(sc);
 	sc->re_link = 1;
-	if (sc->re_type == RE_8169)
+	if (!RE_IS_8139CP(sc))
 		phyaddr = 1;
 	else
 		phyaddr = 0;
@@ -862,7 +875,7 @@ re_probe(device_t dev)
 	const struct re_hwrev *hw_rev;
 	struct re_softc *sc;
 	int rid;
-	uint32_t hwrev;
+	uint32_t hwrev, macmode, txcfg;
 	uint16_t vendor, product;
 
 	vendor = pci_get_vendor(dev);
@@ -904,28 +917,78 @@ re_probe(device_t dev)
 	sc->re_btag = rman_get_bustag(sc->re_res);
 	sc->re_bhandle = rman_get_bushandle(sc->re_res);
 
-	hwrev = CSR_READ_4(sc, RE_TXCFG) & RE_TXCFG_HWREV;
+	txcfg = CSR_READ_4(sc, RE_TXCFG);
+	hwrev = txcfg & RE_TXCFG_HWREV;
+	macmode = txcfg & RE_TXCFG_MACMODE;
 	bus_release_resource(dev, SYS_RES_IOPORT, RE_PCI_LOIO, sc->re_res);
 	kfree(sc, M_TEMP);
 
 	/*
 	 * and continue matching for the specific chip...
 	 */
-	for (hw_rev = re_hwrevs; hw_rev->re_type != 0; hw_rev++) {
-		if (hw_rev->re_rev == hwrev) {
+	for (hw_rev = re_hwrevs; hw_rev->re_hwrev != RE_HWREV_NULL; hw_rev++) {
+		if (hw_rev->re_hwrev == hwrev) {
 			sc = device_get_softc(dev);
 
-			sc->re_hwrev = hwrev;
-			sc->re_type = hw_rev->re_type;
+			sc->re_hwrev = hw_rev->re_hwrev;
+			sc->re_macver = hw_rev->re_macver;
 			sc->re_caps = hw_rev->re_caps;
-			sc->re_swcsum_lim = hw_rev->re_swcsum_lim;
-			sc->re_maxmtu = hw_rev->re_maxmtu;
 
+			if (sc->re_caps & RE_C_JUMBO) {
+				sc->re_swcsum_lim = RE_JUMBO_MTU;
+				sc->re_maxmtu = RE_JUMBO_MTU;
+			} else {
+				sc->re_swcsum_lim = ETHERMTU;
+				sc->re_maxmtu = ETHERMTU;
+			}
+
+			/*
+			 * Apply chip property fixup
+			 */
+			switch (sc->re_hwrev) {
+			case RE_HWREV_8169:
+				sc->re_swcsum_lim = RE_SWCSUM_LIM_8169;
+				break;
+			case RE_HWREV_8101E1:
+			case RE_HWREV_8101E2:
+				if (macmode == 0)
+					sc->re_macver = RE_MACVER_11;
+				else if (macmode == 0x200000)
+					sc->re_macver = RE_MACVER_12;
+				break;
+			case RE_HWREV_8102E:
+			case RE_HWREV_8102EL:
+				if (macmode == 0)
+					sc->re_macver = RE_MACVER_13;
+				else if (macmode == 0x100000)
+					sc->re_macver = RE_MACVER_14;
+				break;
+			case RE_HWREV_8168B2:
+			case RE_HWREV_8168B3:
+				if (macmode == 0)
+					sc->re_macver = RE_MACVER_22;
+				break;
+			case RE_HWREV_8168C:
+				if (macmode == 0)
+					sc->re_macver = RE_MACVER_24;
+				else if (macmode == 0x200000)
+					sc->re_macver = RE_MACVER_25;
+				else if (macmode == 0x300000)
+					sc->re_macver = RE_MACVER_27;
+				break;
+			case RE_HWREV_8168CP:
+				if (macmode == 0)
+					sc->re_macver = RE_MACVER_26;
+				else if (macmode == 0x100000)
+					sc->re_macver = RE_MACVER_28;
+				break;
+			}
 			device_set_desc(dev, t->re_name);
 			return 0;
 		}
 	}
-	device_printf(dev, "unknown hwrev 0x%08x\n", hwrev);
+	device_printf(dev, "unknown hwrev 0x%08x, macmode 0x%08x\n",
+		      hwrev, macmode);
 	return ENXIO;
 }
 
@@ -1386,7 +1449,7 @@ re_attach(device_t dev)
 		sc->re_sim_time = 75; /* 75us */
 	}
 
-	if (sc->re_type == RE_8139CPLUS) {
+	if (RE_IS_8139CP(sc)) {
 		sc->re_bus_speed = 33; /* XXX */
 	} else if (sc->re_caps & RE_C_PCIE) {
 		sc->re_bus_speed = 125;
@@ -1409,8 +1472,9 @@ re_attach(device_t dev)
 		if (cfg2 & RE_CFG2_PCI64)
 			sc->re_caps |= RE_C_PCI64;
 	}
-	device_printf(dev, "Hardware rev. 0x%08x; PCI%s %dMHz\n",
-		      sc->re_hwrev,
+	device_printf(dev, "Hardware rev. 0x%08x; MAC ver. 0x%02x; "
+		      "PCI%s %dMHz\n",
+		      sc->re_hwrev, sc->re_macver,
 		      (sc->re_caps & RE_C_PCIE) ?
 		      "-E" : ((sc->re_caps & RE_C_PCI64) ? "64" : "32"),
 		      sc->re_bus_speed);
@@ -1428,7 +1492,7 @@ re_attach(device_t dev)
 		as[i] = le16toh(as[i]);
 	bcopy(as, eaddr, sizeof(eaddr));
 
-	if (sc->re_type == RE_8169) {
+	if (!RE_IS_8139CP(sc)) {
 		/* Set RX length mask */
 		sc->re_rxlenmask = RE_RDESC_STAT_GFRAGLEN;
 		sc->re_txstart = RE_GTXSTART;
@@ -1462,7 +1526,7 @@ re_attach(device_t dev)
 #endif
 	ifp->if_watchdog = re_watchdog;
 	ifp->if_init = re_init;
-	if (sc->re_type == RE_8169)
+	if (!RE_IS_8139CP(sc)) /* XXX */
 		ifp->if_baudrate = 1000000000;
 	else
 		ifp->if_baudrate = 100000000;
@@ -1777,7 +1841,7 @@ re_rxeof(struct re_softc *sc)
 		 * them using the 8169 status as though it was in the
 		 * same format as that of the 8139C+.
 		 */
-		if (sc->re_type == RE_8169)
+		if (!RE_IS_8139CP(sc))
 			rxstat >>= 1;
 
 		if (rxstat & RE_RDESC_STAT_RXERRSUM) {
@@ -2450,7 +2514,7 @@ re_init(void *xsc)
 	 * Set the initial TX and RX configuration.
 	 */
 	if (sc->re_testmode) {
-		if (sc->re_type == RE_8169)
+		if (!RE_IS_8139CP(sc))
 			CSR_WRITE_4(sc, RE_TXCFG,
 				    RE_TXCFG_CONFIG | RE_LOOPTEST_ON);
 		else
@@ -2530,7 +2594,7 @@ re_init(void *xsc)
 	 * For 8169 gigE NICs, set the max allowed RX packet
 	 * size so we can receive jumbo frames.
 	 */
-	if (sc->re_type == RE_8169)
+	if (!RE_IS_8139CP(sc))
 		CSR_WRITE_2(sc, RE_MAXRXPKTLEN, 16383);
 
 	if (sc->re_testmode)
@@ -2915,7 +2979,7 @@ re_sysctl_simtime(SYSCTL_HANDLER_ARGS)
 			 * performance problems.  Hmm ...
 			 */
 			CSR_WRITE_2(sc, RE_IMR, 0);
-			if (sc->re_type == RE_8169)
+			if (!RE_IS_8139CP(sc))
 				reg = RE_TIMERINT_8169;
 			else
 				reg = RE_TIMERINT;
@@ -3016,7 +3080,7 @@ re_disable_hw_im(struct re_softc *sc)
 static void
 re_setup_sim_im(struct re_softc *sc)
 {
-	if (sc->re_type == RE_8169) {
+	if (!RE_IS_8139CP(sc)) {
 		uint32_t ticks;
 
 		/*
@@ -3036,7 +3100,7 @@ re_setup_sim_im(struct re_softc *sc)
 static void
 re_disable_sim_im(struct re_softc *sc)
 {
-	if (sc->re_type == RE_8169)
+	if (!RE_IS_8139CP(sc))
 		CSR_WRITE_4(sc, RE_TIMERINT_8169, 0);
 	else
 		CSR_WRITE_4(sc, RE_TIMERINT, 0);
