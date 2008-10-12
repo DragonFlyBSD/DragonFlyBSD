@@ -31,7 +31,7 @@
  *
  * $OpenBSD: if_sk.c,v 1.129 2006/10/16 12:30:08 tom Exp $
  * $FreeBSD: /c/ncvs/src/sys/pci/if_sk.c,v 1.20 2000/04/22 02:16:37 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.57 2008/08/17 04:32:34 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.58 2008/10/12 11:17:08 sephe Exp $
  */
 
 /*
@@ -1899,10 +1899,15 @@ sk_rxeof(struct sk_if_softc *sc_if)
 		if (sk_newbuf(sc_if, cur, 0)) {
 			struct mbuf *m0;
 
-			cur_desc->sk_ctl = htole32(m->m_pkthdr.len | SK_RXSTAT);
-
 			m0 = m_devget(mtod(m, char *) - ETHER_ALIGN,
 			    total_len + ETHER_ALIGN, 0, ifp, NULL);
+
+			/*
+			 * Set up the RX descriptor's control word
+			 * _after_ the mbuf is duplicated.
+			 */
+			cur_desc->sk_ctl = htole32(m->m_pkthdr.len | SK_RXSTAT);
+
 			if (m0 == NULL) {
 				ifp->if_ierrors++;
 				continue;
