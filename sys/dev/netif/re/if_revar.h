@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.20 2008/10/12 10:19:31 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.21 2008/10/13 11:35:02 sephe Exp $
  */
 
 #define RE_RX_DESC_CNT_DEF	256
@@ -127,9 +127,7 @@ struct re_list_data {
 
 struct re_softc {
 	struct arpcom		arpcom;		/* interface info */
-#ifdef RE_DIAG
 	device_t		re_dev;
-#endif
 	bus_space_handle_t	re_bhandle;	/* bus space handle */
 	bus_space_tag_t		re_btag;	/* bus space tag */
 	struct resource		*re_res;
@@ -160,9 +158,7 @@ struct re_softc {
 	int			re_rx_desc_cnt;
 	int			re_tx_desc_cnt;
 	int			re_bus_speed;
-#ifdef DEVICE_POLLING
 	int			rxcycles;
-#endif
 
 	uint32_t		re_flags;	/* see RE_F_ */
 
@@ -176,13 +172,11 @@ struct re_softc {
 	int			re_sim_time;
 	int			re_imtype;	/* see RE_IMTYPE_ */
 
-#ifndef BURN_BRIDGES
 	uint32_t		saved_maps[5];	/* pci data */
 	uint32_t		saved_biosaddr;
 	uint8_t			saved_intline;
 	uint8_t			saved_cachelnsz;
 	uint8_t			saved_lattimer;
-#endif
 };
 
 #define RE_C_PCIE		0x1

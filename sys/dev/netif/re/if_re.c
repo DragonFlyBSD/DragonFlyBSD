@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.77 2008/10/13 10:52:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.78 2008/10/13 11:35:02 sephe Exp $
  */
 
 /*
@@ -156,9 +156,6 @@
 #include <dev/netif/re/if_revar.h>
 
 #define RE_CSUM_FEATURES    (CSUM_IP | CSUM_TCP | CSUM_UDP)
-#if 0
-#define RE_DISABLE_HWCSUM
-#endif
 
 /*
  * Various supported device vendors/types and their names.
@@ -288,9 +285,12 @@ static void	re_watchdog(struct ifnet *);
 static int	re_ifmedia_upd(struct ifnet *);
 static void	re_ifmedia_sts(struct ifnet *, struct ifmediareq *);
 
+#ifdef RE_USE_EEPROM
 static void	re_eeprom_putbyte(struct re_softc *, int);
 static void	re_eeprom_getword(struct re_softc *, int, u_int16_t *);
 static void	re_read_eeprom(struct re_softc *, caddr_t, int, int);
+static void	re_get_eewidth(struct re_softc *);
+#endif
 static int	re_gmii_readreg(device_t, int, int);
 static int	re_gmii_writereg(device_t, int, int, int);
 
@@ -300,6 +300,7 @@ static void	re_miibus_statchg(device_t);
 
 static void	re_setmulti(struct re_softc *);
 static void	re_reset(struct re_softc *);
+static void	re_get_eaddr(struct re_softc *, uint8_t *);
 static int	re_pad_frame(struct mbuf *);
 
 static void	re_setup_hw_im(struct re_softc *);
@@ -378,6 +379,8 @@ re_free_rxchain(struct re_softc *sc)
 	}
 }
 
+#ifdef RE_USE_EEPROM
+
 /*
  * Send a read command and address to the EEPROM, check for ACK.
  */
@@ -455,6 +458,19 @@ re_read_eeprom(struct re_softc *sc, caddr_t dest, int off, int cnt)
 
 	CSR_CLRBIT_1(sc, RE_EECMD, RE_EEMODE_PROGRAM);
 }
+
+static void
+re_get_eewidth(struct re_softc *sc)
+{
+	uint16_t re_did = 0;
+
+	sc->re_eewidth = 6;
+	re_read_eeprom(sc, (caddr_t)&re_did, 0, 1);
+	if (re_did != 0x8129) /* XXX will this ever happen */
+	        sc->re_eewidth = 8;
+}
+
+#endif	/* RE_USE_EEPROM */
 
 static int
 re_gmii_readreg(device_t dev, int phy, int reg)
@@ -1290,9 +1306,7 @@ re_attach(device_t dev)
 	struct re_softc	*sc = device_get_softc(dev);
 	struct ifnet *ifp;
 	uint8_t eaddr[ETHER_ADDR_LEN];
-	uint16_t as[ETHER_ADDR_LEN / 2];
-	uint16_t re_did = 0;
-	int error = 0, rid, i, qlen;
+	int error = 0, rid, qlen;
 	uint16_t val;
 	uint8_t expr_ptr;
 
@@ -1480,18 +1494,10 @@ re_attach(device_t dev)
 		      "-E" : ((sc->re_caps & RE_C_PCI64) ? "64" : "32"),
 		      sc->re_bus_speed);
 
-	sc->re_eewidth = 6;
-	re_read_eeprom(sc, (caddr_t)&re_did, 0, 1);
-	if (re_did != 0x8129)
-	        sc->re_eewidth = 8;
-
-	/*
-	 * Get station address from the EEPROM.
-	 */
-	re_read_eeprom(sc, (caddr_t)as, RE_EE_EADDR, 3);
-	for (i = 0; i < ETHER_ADDR_LEN / 2; i++)
-		as[i] = le16toh(as[i]);
-	bcopy(as, eaddr, sizeof(eaddr));
+#ifdef RE_USE_EEPROM
+	re_get_eewidth(sc);
+#endif
+	re_get_eaddr(sc, eaddr);
 
 	if (!RE_IS_8139CP(sc)) {
 		/* Set RX length mask */
@@ -1538,16 +1544,11 @@ re_attach(device_t dev)
 	if (sc->re_caps & RE_C_HWCSUM)
 		ifp->if_capabilities |= IFCAP_HWCSUM;
 
-#ifdef RE_DISABLE_HWCSUM
-	ifp->if_capenable = ifp->if_capabilities & ~IFCAP_HWCSUM;
-	ifp->if_hwassist = 0;
-#else
 	ifp->if_capenable = ifp->if_capabilities;
 	if (ifp->if_capabilities & IFCAP_HWCSUM)
 		ifp->if_hwassist = RE_CSUM_FEATURES;
 	else
 		ifp->if_hwassist = 0;
-#endif	/* RE_DISABLE_HWCSUM */
 
 	/*
 	 * Call MI attach routine.
@@ -3165,4 +3166,25 @@ re_setup_intr(struct re_softc *sc, int enable_intrs, int imtype)
 		panic("%s: unknown imtype %d\n",
 		      sc->arpcom.ac_if.if_xname, imtype);
 	}
+}
+
+static void
+re_get_eaddr(struct re_softc *sc, uint8_t *eaddr)
+{
+	int i;
+
+#ifdef RE_USE_EEPROM
+	uint16_t as[ETHER_ADDR_LEN / 2];
+
+	/*
+	 * Get station address from the EEPROM.
+	 */
+	re_read_eeprom(sc, (caddr_t)as, RE_EE_EADDR, 3);
+	for (i = 0; i < ETHER_ADDR_LEN / 2; i++)
+		as[i] = le16toh(as[i]);
+	bcopy(as, eaddr, sizeof(eaddr));
+#else
+	for (i = 0; i < ETHER_ADDR_LEN; ++i)
+		eaddr[i] = CSR_READ_1(sc, RE_IDR0 + i);
+#endif
 }
