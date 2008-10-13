@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.19 2008/10/12 10:19:31 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.20 2008/10/13 13:04:41 sephe Exp $
  */
 
 /*
@@ -580,6 +580,7 @@ struct re_stats {
  * other PCI registers.
  */
 
+#define RE_PCI_LATENCY_TIMER	0x0D
 #define RE_PCI_LOMEM		0x14
 #define RE_PCI_LOIO		0x10
 

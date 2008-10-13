@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.78 2008/10/13 11:35:02 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.79 2008/10/13 13:04:41 sephe Exp $
  */
 
 /*
@@ -227,10 +227,10 @@ static const struct re_hwrev re_hwrevs[] = {
 	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO },
 
 	{ RE_HWREV_8168C,	RE_MACVER_29,
-	  RE_C_HWIM | RE_C_JUMBO },
+	  RE_C_HWIM | RE_C_JUMBO | RE_C_MAC2 },
 
 	{ RE_HWREV_8168CP,	RE_MACVER_2B,
-	  RE_C_HWIM | RE_C_JUMBO },
+	  RE_C_HWIM | RE_C_JUMBO | RE_C_MAC2 },
 
 	{ RE_HWREV_8100E,	RE_MACVER_UNKN,
 	  RE_C_HWCSUM },
@@ -242,13 +242,13 @@ static const struct re_hwrev re_hwrevs[] = {
 	  RE_C_HWCSUM },
 
 	{ RE_HWREV_8102E,	RE_MACVER_15,
-	  0 },
+	  RE_C_MAC2 },
 
 	{ RE_HWREV_8102EL,	RE_MACVER_15,
-	  0 },
+	  RE_C_MAC2 },
 
 	{ RE_HWREV_UNKN1,	RE_MACVER_2A,
-	  0 },
+	  RE_C_MAC2 },
 
 	{ RE_HWREV_NULL, 0, 0 }
 };
@@ -1307,7 +1307,6 @@ re_attach(device_t dev)
 	struct ifnet *ifp;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 	int error = 0, rid, qlen;
-	uint16_t val;
 	uint8_t expr_ptr;
 
 	callout_init(&sc->re_timer);
@@ -1440,6 +1439,8 @@ re_attach(device_t dev)
 
 	expr_ptr = pci_get_pciecap_ptr(dev);
 	if (expr_ptr != 0) {
+		uint16_t val;
+
 		/*
 		 * We will set TX DMA burst to "unlimited" in
 		 * re_init(), so push "max read request size"
@@ -1513,6 +1514,36 @@ re_attach(device_t dev)
 	error = re_allocmem(dev);
 	if (error)
 		goto fail;
+
+	/*
+	 * Apply some magic PCI settings from Realtek ...
+	 */
+	if (sc->re_macver == RE_MACVER_03)
+		pci_write_config(dev, RE_PCI_LATENCY_TIMER, 0x40, 1);
+
+	if (sc->re_caps & RE_C_MAC2) {
+		/*
+		 * Following part is extracted from Realtek BSD driver v176.
+		 * However, this does _not_ make much/any sense:
+		 * 8168C's PCI Express device control is located at 0x78,
+		 * so the reading from 0x79 (higher part of 0x78) and setting
+		 * the 4~6bits intend to enlarge the "max read request size"
+		 * (we have done it).  The content of the rest part of this
+		 * register is not meaningful to other PCI registers, so
+		 * writing the value to 0x54 could be completely wrong.
+		 * 0x80 is the lower part of PCI Express device status, non-
+		 * reserved bits are RW1C, writing 0 to them will not have
+		 * any effect at all.
+		 */
+#ifdef foo
+		uint8_t val;
+
+		val = pci_read_config(dev, 0x79, 1);
+		val = (val & ~0x70) | 0x50;
+		pci_write_config(dev, 0x54, val, 1);
+		pci_write_config(dev, 0x80, 0, 1);
+#endif
+	}
 
 	/* Do MII setup */
 	if (mii_phy_probe(dev, &sc->re_miibus,
