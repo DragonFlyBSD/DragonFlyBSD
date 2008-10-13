@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.76 2008/10/12 10:19:31 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.77 2008/10/13 10:52:23 sephe Exp $
  */
 
 /*
@@ -941,6 +941,7 @@ re_probe(device_t dev)
 				sc->re_swcsum_lim = ETHERMTU;
 				sc->re_maxmtu = ETHERMTU;
 			}
+			sc->re_swcsum_lim += ETHER_HDR_LEN;
 
 			/*
 			 * Apply chip property fixup
