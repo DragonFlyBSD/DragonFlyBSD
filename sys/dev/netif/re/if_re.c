@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.79 2008/10/13 13:04:41 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.80 2008/10/13 14:10:42 sephe Exp $
  */
 
 /*
@@ -209,28 +209,28 @@ static const struct re_hwrev re_hwrevs[] = {
 	  RE_C_HWCSUM | RE_C_JUMBO },
 
 	{ RE_HWREV_8169SB,	RE_MACVER_04,
-	  RE_C_HWCSUM | RE_C_JUMBO },
+	  RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT },
 
 	{ RE_HWREV_8169SC1,	RE_MACVER_05,
-	  RE_C_HWCSUM | RE_C_JUMBO },
+	  RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT },
 
 	{ RE_HWREV_8169SC2,	RE_MACVER_06,
-	  RE_C_HWCSUM | RE_C_JUMBO },
+	  RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT },
 
 	{ RE_HWREV_8168B1,	RE_MACVER_21,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO },
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT },
 
 	{ RE_HWREV_8168B2,	RE_MACVER_23,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO },
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT },
 
 	{ RE_HWREV_8168B3,	RE_MACVER_23,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO },
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT },
 
 	{ RE_HWREV_8168C,	RE_MACVER_29,
-	  RE_C_HWIM | RE_C_JUMBO | RE_C_MAC2 },
+	  RE_C_HWIM | RE_C_JUMBO | RE_C_MAC2 | RE_C_PHYPMGT },
 
 	{ RE_HWREV_8168CP,	RE_MACVER_2B,
-	  RE_C_HWIM | RE_C_JUMBO | RE_C_MAC2 },
+	  RE_C_HWIM | RE_C_JUMBO | RE_C_MAC2 | RE_C_PHYPMGT },
 
 	{ RE_HWREV_8100E,	RE_MACVER_UNKN,
 	  RE_C_HWCSUM },
@@ -248,7 +248,7 @@ static const struct re_hwrev re_hwrevs[] = {
 	  RE_C_MAC2 },
 
 	{ RE_HWREV_UNKN1,	RE_MACVER_2A,
-	  RE_C_MAC2 },
+	  RE_C_MAC2 | RE_C_PHYPMGT },
 
 	{ RE_HWREV_NULL, 0, 0 }
 };
@@ -1543,6 +1543,19 @@ re_attach(device_t dev)
 		pci_write_config(dev, 0x54, val, 1);
 		pci_write_config(dev, 0x80, 0, 1);
 #endif
+	}
+
+	/*
+	 * Apply some PHY fixup from Realtek ...
+	 */
+	if (sc->re_hwrev == RE_HWREV_8110S) {
+		CSR_WRITE_1(sc, 0x82, 1);
+		re_miibus_writereg(dev, 1, 0xb, 0);
+	}
+	if (sc->re_caps & RE_C_PHYPMGT) {
+		/* Power up PHY */
+		re_miibus_writereg(dev, 1, 0x1f, 0);
+		re_miibus_writereg(dev, 1, 0xe, 0);
 	}
 
 	/* Do MII setup */

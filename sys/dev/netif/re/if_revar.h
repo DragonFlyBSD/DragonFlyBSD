@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.22 2008/10/13 13:04:41 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.23 2008/10/13 14:10:42 sephe Exp $
  */
 
 #define RE_RX_DESC_CNT_DEF	256
@@ -186,6 +186,7 @@ struct re_softc {
 #define RE_C_JUMBO		0x10
 #define RE_C_8139CP		0x20	/* is 8139C+ */
 #define RE_C_MAC2		0x40	/* MAC style 2? */
+#define RE_C_PHYPMGT		0x80	/* PHY supports power mgmt */
 
 #define RE_IS_8139CP(sc)	((sc)->re_caps & RE_C_8139CP)
 
