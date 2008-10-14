@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.81 2008/10/14 10:42:35 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.82 2008/10/14 15:11:38 sephe Exp $
  */
 
 /*
@@ -200,22 +200,22 @@ static const struct re_hwrev re_hwrevs[] = {
 	  RE_C_HWCSUM | RE_C_8139CP },
 
 	{ RE_HWREV_8169,	RE_MACVER_UNKN,
-	  RE_C_HWCSUM | RE_C_JUMBO },
+	  RE_C_HWCSUM | RE_C_JUMBO | RE_C_8169 },
 
 	{ RE_HWREV_8110S,	RE_MACVER_03,
-	  RE_C_HWCSUM | RE_C_JUMBO },
+	  RE_C_HWCSUM | RE_C_JUMBO | RE_C_8169 },
 
 	{ RE_HWREV_8169S,	RE_MACVER_03,
-	  RE_C_HWCSUM | RE_C_JUMBO },
+	  RE_C_HWCSUM | RE_C_JUMBO | RE_C_8169 },
 
 	{ RE_HWREV_8169SB,	RE_MACVER_04,
-	  RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT },
+	  RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT | RE_C_8169 },
 
 	{ RE_HWREV_8169SC1,	RE_MACVER_05,
-	  RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT },
+	  RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT | RE_C_8169 },
 
 	{ RE_HWREV_8169SC2,	RE_MACVER_06,
-	  RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT },
+	  RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT | RE_C_8169 },
 
 	{ RE_HWREV_8168B1,	RE_MACVER_21,
 	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT },
@@ -285,12 +285,11 @@ static void	re_watchdog(struct ifnet *);
 static int	re_ifmedia_upd(struct ifnet *);
 static void	re_ifmedia_sts(struct ifnet *, struct ifmediareq *);
 
-#ifdef RE_USE_EEPROM
 static void	re_eeprom_putbyte(struct re_softc *, int);
 static void	re_eeprom_getword(struct re_softc *, int, u_int16_t *);
 static void	re_read_eeprom(struct re_softc *, caddr_t, int, int);
 static void	re_get_eewidth(struct re_softc *);
-#endif
+
 static int	re_gmii_readreg(device_t, int, int);
 static int	re_gmii_writereg(device_t, int, int, int);
 
@@ -379,8 +378,6 @@ re_free_rxchain(struct re_softc *sc)
 	}
 }
 
-#ifdef RE_USE_EEPROM
-
 /*
  * Send a read command and address to the EEPROM, check for ACK.
  */
@@ -466,11 +463,9 @@ re_get_eewidth(struct re_softc *sc)
 
 	sc->re_eewidth = 6;
 	re_read_eeprom(sc, (caddr_t)&re_did, 0, 1);
-	if (re_did != 0x8129) /* XXX will this ever happen */
-	        sc->re_eewidth = 8;
+	if (re_did != 0x8129)
+		sc->re_eewidth = 8;
 }
-
-#endif	/* RE_USE_EEPROM */
 
 static int
 re_gmii_readreg(device_t dev, int phy, int reg)
@@ -1495,9 +1490,13 @@ re_attach(device_t dev)
 		      "-E" : ((sc->re_caps & RE_C_PCI64) ? "64" : "32"),
 		      sc->re_bus_speed);
 
-#ifdef RE_USE_EEPROM
-	re_get_eewidth(sc);
-#endif
+	/*
+	 * NOTE:
+	 * DO NOT try to adjust config1 and config5 which was spotted in
+	 * Realtek's Linux drivers.  It will _permanently_ damage certain
+	 * cards EEPROM, e.g. one of my 8168B (0x38000000) card ...
+	 */
+
 	re_get_eaddr(sc, eaddr);
 
 	if (!RE_IS_8139CP(sc)) {
@@ -1518,8 +1517,9 @@ re_attach(device_t dev)
 	/*
 	 * Apply some magic PCI settings from Realtek ...
 	 */
-	if (sc->re_macver == RE_MACVER_03)
-		pci_write_config(dev, RE_PCI_LATENCY_TIMER, 0x40, 1);
+	if (sc->re_caps & RE_C_8169)
+		pci_write_config(dev, PCIR_CACHELNSZ, 0x8, 1);
+	pci_write_config(dev, PCIR_LATTIMER, 0x40, 1);
 
 	if (sc->re_caps & RE_C_MAC2) {
 		/*
@@ -3217,18 +3217,28 @@ re_get_eaddr(struct re_softc *sc, uint8_t *eaddr)
 {
 	int i;
 
-#ifdef RE_USE_EEPROM
-	uint16_t as[ETHER_ADDR_LEN / 2];
+	if (sc->re_macver == RE_MACVER_11 || sc->re_macver == RE_MACVER_12) {
+		uint16_t re_did;
+
+		re_get_eewidth(sc);
+		re_read_eeprom(sc, (caddr_t)&re_did, 0, 1);
+		if (re_did == 0x8128) {
+			uint16_t as[ETHER_ADDR_LEN / 2];
+
+			/*
+			 * Get station address from the EEPROM.
+			 */
+			re_read_eeprom(sc, (caddr_t)as, RE_EE_EADDR, 3);
+			for (i = 0; i < ETHER_ADDR_LEN / 2; i++)
+				as[i] = le16toh(as[i]);
+			bcopy(as, eaddr, sizeof(eaddr));
+			return;
+		}
+	}
 
 	/*
-	 * Get station address from the EEPROM.
+	 * Get station address from IDRx.
 	 */
-	re_read_eeprom(sc, (caddr_t)as, RE_EE_EADDR, 3);
-	for (i = 0; i < ETHER_ADDR_LEN / 2; i++)
-		as[i] = le16toh(as[i]);
-	bcopy(as, eaddr, sizeof(eaddr));
-#else
 	for (i = 0; i < ETHER_ADDR_LEN; ++i)
 		eaddr[i] = CSR_READ_1(sc, RE_IDR0 + i);
-#endif
 }
