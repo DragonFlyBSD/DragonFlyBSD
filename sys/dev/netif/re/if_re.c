@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.80 2008/10/13 14:10:42 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.81 2008/10/14 10:42:35 sephe Exp $
  */
 
 /*
@@ -232,6 +232,9 @@ static const struct re_hwrev re_hwrevs[] = {
 	{ RE_HWREV_8168CP,	RE_MACVER_2B,
 	  RE_C_HWIM | RE_C_JUMBO | RE_C_MAC2 | RE_C_PHYPMGT },
 
+	{ RE_HWREV_8168D,	RE_MACVER_2A,
+	  RE_C_HWIM | RE_C_JUMBO | RE_C_MAC2 | RE_C_PHYPMGT },
+
 	{ RE_HWREV_8100E,	RE_MACVER_UNKN,
 	  RE_C_HWCSUM },
 
@@ -246,9 +249,6 @@ static const struct re_hwrev re_hwrevs[] = {
 
 	{ RE_HWREV_8102EL,	RE_MACVER_15,
 	  RE_C_MAC2 },
-
-	{ RE_HWREV_UNKN1,	RE_MACVER_2A,
-	  RE_C_MAC2 | RE_C_PHYPMGT },
 
 	{ RE_HWREV_NULL, 0, 0 }
 };
