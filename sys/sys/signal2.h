@@ -32,7 +32,7 @@
  *
  *	@(#)signalvar.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/signalvar.h,v 1.34.2.1 2000/05/16 06:58:05 dillon Exp $
- * $DragonFly: src/sys/sys/signal2.h,v 1.2 2008/01/24 22:35:14 nant Exp $
+ * $DragonFly: src/sys/sys/signal2.h,v 1.3 2008/10/14 21:25:14 swildner Exp $
  */
 
 #ifndef _SYS_SIGNAL2_H
@@ -97,10 +97,8 @@ static __inline
 int
 __cursignb(struct lwp *lp)
 {
-	struct proc *p;
 	sigset_t tmpset;
 
-	p = lp->lwp_proc;
 	tmpset = lwp_sigpend(lp);
 	SIGSETNAND(tmpset, lp->lwp_sigmask);
 	if (SIGISEMPTY(tmpset))
