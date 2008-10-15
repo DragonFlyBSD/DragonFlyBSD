@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.100 2008/09/28 05:04:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.101 2008/10/15 22:38:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -780,6 +780,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	dip = VTOI(ap->a_dvp);
 	ncp = ap->a_nch->ncp;
 	asof = dip->obj_asof;
+	localization = dip->obj_localization;	/* for code consistency */
 	nlen = ncp->nc_nlen;
 	flags = dip->flags & HAMMER_INODE_RO;
 	ispfs = 0;
@@ -789,8 +790,12 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 
 	for (i = 0; i < nlen; ++i) {
 		if (ncp->nc_name[i] == '@' && ncp->nc_name[i+1] == '@') {
-			asof = hammer_str_to_tid(ncp->nc_name + i + 2,
-						 &ispfs, &localization);
+			error = hammer_str_to_tid(ncp->nc_name + i + 2,
+						  &ispfs, &asof, &localization);
+			if (error != 0) {
+				i = nlen;
+				break;
+			}
 			if (asof != HAMMER_MAX_TID)
 				flags |= HAMMER_INODE_RO;
 			break;

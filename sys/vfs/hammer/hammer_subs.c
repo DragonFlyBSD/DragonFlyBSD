@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.34 2008/07/11 01:22:29 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_subs.c,v 1.35 2008/10/15 22:38:37 dillon Exp $
  */
 /*
  * HAMMER structural locking
@@ -435,21 +435,61 @@ hammer_directory_namekey(const void *name, int len)
 	return(key);
 }
 
-hammer_tid_t
-hammer_str_to_tid(const char *str, int *ispfs, u_int32_t *localizationp)
-
+/*
+ * Convert string after @@ (@@ not included) to TID.  Returns 0 on success,
+ * EINVAL on failure.
+ *
+ * If this function fails *ispfs, *tidp, and *localizationp will not
+ * be modified.
+ */
+int
+hammer_str_to_tid(const char *str, int *ispfsp,
+		  hammer_tid_t *tidp, u_int32_t *localizationp)
 {
 	hammer_tid_t tid;
+	u_int32_t localization;
 	char *ptr;
+	int ispfs;
+	int n;
 
+	/*
+	 * Forms allowed for TID:  "0x%016llx"
+	 *			   "-1"
+	 */
 	tid = strtouq(str, &ptr, 0);
-	if (*ptr == ':') {
-		*ispfs = 1;
-		*localizationp = strtoul(ptr + 1, NULL, 10) << 16;
+	n = ptr - str;
+	if (n == 2 && str[0] == '-' && str[1] == '1') {
+		/* ok */
+	} else if (n == 18 && str[0] == '0' && (str[1] | 0x20) == 'x') {
+		/* ok */
 	} else {
-		*ispfs = 0;
+		return(EINVAL);
 	}
-	return(tid);
+
+	/*
+	 * Forms allowed for PFS:  ":%05d"  (i.e. "...:0" would be illegal).
+	 */
+	str = ptr;
+	if (*str == ':') {
+		localization = strtoul(str + 1, &ptr, 10) << 16;
+		if (ptr - str != 6)
+			return(EINVAL);
+		str = ptr;
+		ispfs = 1;
+	} else {
+		localization = *localizationp;
+		ispfs = 0;
+	}
+
+	/*
+	 * Any trailing junk invalidates special extension handling.
+	 */
+	if (*str)
+		return(EINVAL);
+	*tidp = tid;
+	*localizationp = localization;
+	*ispfsp = ispfs;
+	return(0);
 }
 
 void

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.128 2008/09/23 21:03:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer.h,v 1.129 2008/10/15 22:38:37 dillon Exp $
  */
 /*
  * This header file contains structures used internally by the HAMMERFS
@@ -901,8 +901,9 @@ u_int32_t hammer_to_unix_xid(uuid_t *uuid);
 void hammer_guid_to_uuid(uuid_t *uuid, u_int32_t guid);
 void	hammer_time_to_timespec(u_int64_t xtime, struct timespec *ts);
 u_int64_t hammer_timespec_to_time(struct timespec *ts);
-hammer_tid_t hammer_str_to_tid(const char *str, int *ispfs,
-			u_int32_t *localizationp);
+int	hammer_str_to_tid(const char *str, int *ispfsp,
+			hammer_tid_t *tidp, u_int32_t *localizationp);
+int	hammer_is_atatext(const char *name, int len);
 hammer_tid_t hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip);
 void hammer_clear_objid(hammer_inode_t dip);
 void hammer_destroy_objid_cache(hammer_mount_t hmp);
