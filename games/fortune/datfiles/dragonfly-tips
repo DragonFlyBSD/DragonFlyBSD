@@ -1,6 +1,6 @@
 This fortune brought to you by:
 $FreeBSD: src/games/fortune/datfiles/freebsd-tips,v 1.14.2.11 2003/03/15 08:48:29 dougb Exp $
-$DragonFly: src/games/fortune/datfiles/dragonfly-tips,v 1.3 2007/11/19 18:49:06 swildner Exp $
+$DragonFly: src/games/fortune/datfiles/dragonfly-tips,v 1.4 2008/10/15 09:56:22 matthias Exp $
 %
 Having trouble using fetch through a firewall? Try setting the environment
 variable FTP_PASSIVE_MODE to yes, and see fetch(3) for more details.
@@ -461,3 +461,108 @@ And you'll get a backup of the original in a file named 'foo.bak', but if you
 want no backup:
 
 	sed -i '' s/e/o/g foo
+%
+You can automatically install binary packages from a random DragonFly BSD
+mirror with the following command:
+
+	pkg_radd <package>
+
+This command also takes care about possible dependencies.  See the man page
+for further information.
+%
+By default pkg_radd(1) downloads all packages from a random DragonFly BSD mirror.
+To use a particular mirror set the BINPKG_SITES environment variable
+accordingly.
+
+Example:
+
+	setenv BINPKG_SITES ftp://<mirror>/pub/DragonFly/packages/<rel>/stable/
+
+or if you use a bourne compatible shell:
+
+	export BINPKG_SITES=ftp://<mirror>/pub/DragonFly/packages/<rel>/stable/
+
+%
+If you want to search for a particular package, use pkg_search(1):
+
+	pkg_search <package>
+
+If you do not have a pkgsrc tree installed, pkg_search(1) will automatically
+fetch a list of available binary packages for you.
+%
+To get a detailed description of a particular pkgsrc package:
+
+	pkg_search -s <package>
+
+Note: You need a full installation of the pkgsrc tree to make this work.
+%
+Getting the latest pkgsrc tree in DragonFly BSD is fairly simple:
+
+	cd /usr
+	make pkgsrc-checkout
+
+If you want to update your pkgsrc installation issue:
+
+	cd /usr
+	make pkgsrc-update
+%
+To download the DragonFly BSD cvs repository into /home/dcvs issue:
+
+	cd /usr
+	make cvs-cvsup
+
+To download the latest DragonFly BSD release cvs repository, issue:
+
+	cd /usr
+	make release-src-cvsup
+
+The following target will first synchronize /home/dcvs then issue an
+update into /usr/src.
+
+	cd /usr
+	make head-src-cvsup
+%
+Getting the latest pkgsrc WIP tree in DragonFly BSD is fairly simple:
+
+	cd /usr
+	make pkgsrc-wip-checkout
+
+If you want to update your pkgsrc WIP installation issue:
+
+	cd /usr
+	make pkgsrc-wip-update
+%
+After enabling a service in rc.conf(5), you can use the rc* commands to
+start/stop/reload the service.  If you e.g. enabled dntpd(8) in /etc/rc.conf
+you can start it with:
+
+	rcstart dntpd
+
+To stop it:
+
+	rcstop dntpd
+
+All available commands are listed in rcrun(8).
+%
+If you look for a small Mail Transfer Agent suited for home and office
+use, have a look at the DragonFly Mail Agent (dma):
+
+	man dma
+%
+dntpd(8) synchronizes your local system clock to one or more external NTP time
+sources.  To enable dntpd add the following line to your /etc/rc.conf:
+
+	dntpd_enable="YES"
+
+To start the daemon type:
+
+	rcstart dntpd
+%
+DragonFly BSD supports variant symlinks.  To get more information about this
+topic see varsym(1) and varsym(2).
+%
+"man build" gives very good advice on how to build the DragonFly BSD system.
+%
+Use wmake(1) to build any element within the DragonFly BSD source tree using
+a buildworld environment.  The wmake utility will accept all options and
+arguments that make(1) accepts.
