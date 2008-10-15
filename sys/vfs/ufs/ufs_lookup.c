@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lookup.c	8.15 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_lookup.c,v 1.33.2.7 2001/09/22 19:22:13 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.28 2006/12/23 00:41:30 swildner Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.29 2008/10/15 12:12:51 aggelos Exp $
  */
 
 #include "opt_ufs.h"
@@ -692,7 +692,6 @@ ufs_direnter(struct vnode *dvp, struct vnode *tvp, struct direct *dirp,
 	     struct componentname *cnp, struct buf *newdirbp)
 {
 	struct ucred *cred;
-	struct thread *td = curthread;	/* XXX */
 	int newentrysize;
 	struct inode *dp;
 	struct buf *bp;
@@ -701,8 +700,8 @@ ufs_direnter(struct vnode *dvp, struct vnode *tvp, struct direct *dirp,
 	int error, ret, blkoff, loc, spacefree, flags;
 	char *dirbuf;
 
-	KKASSERT(td->td_proc);	/* YYY use/require cred passed in cnp? */
-	cred = td->td_proc->p_ucred;
+	cred = cnp->cn_cred;
+	KKASSERT(cred != NULL);
 
 	dp = VTOI(dvp);
 	newentrysize = DIRSIZ(OFSFMT(dvp), dirp);
