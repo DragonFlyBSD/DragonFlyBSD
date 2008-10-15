@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)kdump.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/kdump/kdump.c,v 1.29 2006/05/20 14:27:22 netchild Exp $
- * $DragonFly: src/usr.bin/kdump/kdump.c,v 1.11 2008/09/27 20:29:52 dillon Exp $
+ * $DragonFly: src/usr.bin/kdump/kdump.c,v 1.12 2008/10/15 16:04:11 hasso Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -782,13 +782,41 @@ ktrcsw(struct ktr_csw *cs)
 		cs->user ? "user" : "kernel");
 }
 
+struct utrace_malloc {
+	void *p;
+	size_t s;
+	void *r;
+};
+
+void
+ktruser_malloc(int len, unsigned char *p)
+{
+	struct utrace_malloc *ut = (struct utrace_malloc *)p;
+
+	if (ut->p == NULL) {
+		if (ut->s == 0 && ut->r == NULL)
+			printf("malloc_init()\n");
+		else
+			printf("%p = malloc(%zu)\n", ut->r, ut->s);
+	} else {
+		if (ut->s == 0)
+			printf("free(%p)\n", ut->p);
+		else
+			printf("%p = realloc(%p, %zu)\n", ut->r, ut->p, ut->s);
+	}
+}
+
 ktruser(int len, unsigned char *p)
 {
+	if (len == sizeof(struct utrace_malloc)) {
+		ktruser_malloc(len, p);
+		return;
+	}
+
 	(void)printf("%d ", len);
 	while (len--)
 		(void)printf(" %02x", *p++);
 	(void)printf("\n");
-		
 }
 
 usage(void)
