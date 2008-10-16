@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.84 2008/10/16 12:46:40 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.85 2008/10/16 14:58:50 sephe Exp $
  */
 
 /*
@@ -184,7 +184,7 @@ static const struct re_type {
 	  "RealTek 8169SC/8110SC Single-chip Gigabit Ethernet" },
 
 	{ PCI_VENDOR_COREGA, PCI_PRODUCT_COREGA_CG_LAPCIGT,
-		"Corega CG-LAPCIGT Gigabit Ethernet" },
+	  "Corega CG-LAPCIGT Gigabit Ethernet" },
 
 	{ PCI_VENDOR_LINKSYS, PCI_PRODUCT_LINKSYS_EG1032,
 	  "Linksys EG1032 Gigabit Ethernet" },
@@ -304,6 +304,7 @@ static void	re_setmulti(struct re_softc *);
 static void	re_reset(struct re_softc *);
 static void	re_get_eaddr(struct re_softc *, uint8_t *);
 static int	re_pad_frame(struct mbuf *);
+static void	re_set_max_readrq(struct re_softc *, uint16_t);
 
 static void	re_setup_hw_im(struct re_softc *);
 static void	re_setup_sim_im(struct re_softc *);
@@ -1305,12 +1306,9 @@ re_attach(device_t dev)
 	struct ifnet *ifp;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 	int error = 0, rid, qlen;
-	uint8_t expr_ptr;
 
 	callout_init(&sc->re_timer);
-#ifdef RE_DIAG
 	sc->re_dev = dev;
-#endif
 
 	if (RE_IS_8139CP(sc)) {
 		sc->re_rx_desc_cnt = RE_RX_DESC_CNT_8139CP;
@@ -1440,28 +1438,7 @@ re_attach(device_t dev)
 	/* Reset the adapter. */
 	re_reset(sc);
 
-	expr_ptr = pci_get_pciecap_ptr(dev);
-	if (expr_ptr != 0) {
-		uint16_t val;
-
-		/*
-		 * We will set TX DMA burst to "unlimited" in
-		 * re_init(), so push "max read request size"
-		 * to the limit.
-		 */
-		val = pci_read_config(dev, expr_ptr + PCIER_DEVCTRL, 2);
-		if ((val & PCIEM_DEVCTL_MAX_READRQ_MASK) !=
-		    PCIEM_DEVCTL_MAX_READRQ_4096) {
-			device_printf(dev, "adjust device control "
-				      "0x%04x ", val);
-
-			val &= ~PCIEM_DEVCTL_MAX_READRQ_MASK;
-			val |= PCIEM_DEVCTL_MAX_READRQ_4096;
-			pci_write_config(dev, expr_ptr + PCIER_DEVCTRL,
-					 val, 2);
-
-			kprintf("-> 0x%04x\n", val);
-		}
+	if (pci_get_pciecap_ptr(dev) != 0) {
 		sc->re_caps |= RE_C_PCIE;
 
 		/* Reduce the simulated interrupt moderation timer a bit */
@@ -1536,7 +1513,7 @@ re_attach(device_t dev)
 		 * 8168C's PCI Express device control is located at 0x78,
 		 * so the reading from 0x79 (higher part of 0x78) and setting
 		 * the 4~6bits intend to enlarge the "max read request size"
-		 * (we have done it).  The content of the rest part of this
+		 * (we will do it).  The content of the rest part of this
 		 * register is not meaningful to other PCI registers, so
 		 * writing the value to 0x54 could be completely wrong.
 		 * 0x80 is the lower part of PCI Express device status, non-
@@ -2560,6 +2537,22 @@ re_init(void *xsc)
 	re_stop(sc);
 
 	/*
+	 * Adjust max read request size according to MTU.
+	 * Mainly to improve TX performance for common case (ETHERMTU).
+	 */
+	if (sc->re_caps & RE_C_PCIE) {
+		if (ifp->if_mtu > ETHERMTU) {
+			/*
+			 * 512 seems to be the only value that works
+			 * reliably with jumbo frame
+			 */
+			re_set_max_readrq(sc, PCIEM_DEVCTL_MAX_READRQ_512);
+		} else {
+			re_set_max_readrq(sc, PCIEM_DEVCTL_MAX_READRQ_4096);
+		}
+	}
+
+	/*
 	 * Enable C+ RX and TX mode, as well as VLAN stripping and
 	 * RX checksum offload. We must configure the C+ register
 	 * before all others.
@@ -3298,4 +3291,29 @@ re_get_eaddr(struct re_softc *sc, uint8_t *eaddr)
 	 */
 	for (i = 0; i < ETHER_ADDR_LEN; ++i)
 		eaddr[i] = CSR_READ_1(sc, RE_IDR0 + i);
+}
+
+static void
+re_set_max_readrq(struct re_softc *sc, uint16_t size)
+{
+	device_t dev = sc->re_dev;
+	uint8_t expr_ptr;
+	uint16_t val, rqsize;
+
+	rqsize = size & PCIEM_DEVCTL_MAX_READRQ_MASK;
+
+	expr_ptr = pci_get_pciecap_ptr(dev);
+	KKASSERT(expr_ptr != 0);
+
+	val = pci_read_config(dev, expr_ptr + PCIER_DEVCTRL, 2);
+	if ((val & PCIEM_DEVCTL_MAX_READRQ_MASK) != rqsize) {
+		device_printf(dev, "adjust device control "
+			      "0x%04x ", val);
+
+		val &= ~PCIEM_DEVCTL_MAX_READRQ_MASK;
+		val |= rqsize;
+		pci_write_config(dev, expr_ptr + PCIER_DEVCTRL, val, 2);
+
+		kprintf("-> 0x%04x\n", val);
+	}
 }
