@@ -3,7 +3,7 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/firewall.7,v 1.1.2.8 2003/04/29 07:57:22 brueffer Exp $
-.\" $DragonFly: src/share/man/man7/firewall.7,v 1.15 2008/05/02 02:05:06 swildner Exp $
+.\" $DragonFly: src/share/man/man7/firewall.7,v 1.16 2008/10/16 23:08:29 swildner Exp $
 .\"
 .Dd May 26, 2001
 .Dt FIREWALL 7
@@ -47,7 +47,7 @@ get them wrong.  The most common mistake is to create an exclusive
 firewall rather than an inclusive firewall.  An exclusive firewall
 allows all packets through except for those matching a set of rules.
 An inclusive firewall allows only packets matching the ruleset
-through.  Inclusive firewalls are much, much safer then exclusive
+through.  Inclusive firewalls are much, much safer than exclusive
 firewalls but a tad more difficult to build properly.  The
 second most common mistake is to blackhole everything except the
 particular port you want to let through.  TCP/IP needs to be able

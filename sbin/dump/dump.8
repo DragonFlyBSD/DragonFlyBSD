@@ -32,7 +32,7 @@
 .\"
 .\"     @(#)dump.8	8.3 (Berkeley) 5/1/95
 .\" $FreeBSD: src/sbin/dump/dump.8,v 1.27.2.18 2003/02/23 19:58:23 trhodes Exp $
-.\" $DragonFly: src/sbin/dump/dump.8,v 1.5 2006/04/17 18:01:37 swildner Exp $
+.\" $DragonFly: src/sbin/dump/dump.8,v 1.6 2008/10/16 23:08:30 swildner Exp $
 .\"
 .Dd March 1, 2002
 .Dt DUMP 8
@@ -153,7 +153,7 @@ at the cost of
 possibly not noticing changes in the filesystem between passes.
 Beware that
 .Nm
-forks, and the actual memory use may be larger then the specified cache
+forks, and the actual memory use may be larger than the specified cache
 size.  The recommended cache size is between 8 and 32 (megabytes).
 .It Fl d Ar density
 Set tape density to
