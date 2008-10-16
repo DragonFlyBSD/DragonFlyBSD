@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.82 2008/10/14 15:11:38 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.83 2008/10/16 12:29:13 sephe Exp $
  */
 
 /*
@@ -221,19 +221,22 @@ static const struct re_hwrev re_hwrevs[] = {
 	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT },
 
 	{ RE_HWREV_8168B2,	RE_MACVER_23,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT },
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT | RE_C_AUTOPAD },
 
 	{ RE_HWREV_8168B3,	RE_MACVER_23,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT },
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT | RE_C_AUTOPAD },
 
 	{ RE_HWREV_8168C,	RE_MACVER_29,
-	  RE_C_HWIM | RE_C_JUMBO | RE_C_MAC2 | RE_C_PHYPMGT },
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_MAC2 | RE_C_PHYPMGT |
+	  RE_C_AUTOPAD },
 
 	{ RE_HWREV_8168CP,	RE_MACVER_2B,
-	  RE_C_HWIM | RE_C_JUMBO | RE_C_MAC2 | RE_C_PHYPMGT },
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_MAC2 | RE_C_PHYPMGT |
+	  RE_C_AUTOPAD },
 
 	{ RE_HWREV_8168D,	RE_MACVER_2A,
-	  RE_C_HWIM | RE_C_JUMBO | RE_C_MAC2 | RE_C_PHYPMGT },
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_MAC2 | RE_C_PHYPMGT |
+	  RE_C_AUTOPAD },
 
 	{ RE_HWREV_8100E,	RE_MACVER_UNKN,
 	  RE_C_HWCSUM },
@@ -245,10 +248,10 @@ static const struct re_hwrev re_hwrevs[] = {
 	  RE_C_HWCSUM },
 
 	{ RE_HWREV_8102E,	RE_MACVER_15,
-	  RE_C_MAC2 },
+	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_AUTOPAD },
 
 	{ RE_HWREV_8102EL,	RE_MACVER_15,
-	  RE_C_MAC2 },
+	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_AUTOPAD },
 
 	{ RE_HWREV_NULL, 0, 0 }
 };
@@ -1806,6 +1809,29 @@ re_rx_list_init(struct re_softc *sc)
 	return(0);
 }
 
+#define RE_IP4_PACKET	0x1
+#define RE_TCP_PACKET	0x2
+#define RE_UDP_PACKET	0x4
+
+static __inline uint8_t
+re_packet_type(struct re_softc *sc, uint32_t rxstat, uint32_t rxctrl)
+{
+	uint8_t packet_type = 0;
+
+	if (sc->re_caps & RE_C_MAC2) {
+		if (rxctrl & RE_RDESC_CTL_PROTOIP4)
+			packet_type |= RE_IP4_PACKET;
+	} else {
+		if (rxstat & RE_RDESC_STAT_PROTOID)
+			packet_type |= RE_IP4_PACKET;
+	}
+	if (RE_TCPPKT(rxstat))
+		packet_type |= RE_TCP_PACKET;
+	else if (RE_UDPPKT(rxstat))
+		packet_type |= RE_UDP_PACKET;
+	return packet_type;
+}
+
 /*
  * RX handler for C+ and 8169. For the gigE chips, we support
  * the reception of jumbo frames that have been fragmented
@@ -1817,7 +1843,7 @@ re_rxeof(struct re_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mbuf *m;
 	struct re_desc 	*cur_rx;
-	uint32_t rxstat, rxvlan;
+	uint32_t rxstat, rxctrl;
 	int i, total_len, rx = 0;
 	struct mbuf_chain chain[MAXCPU];
 
@@ -1834,7 +1860,7 @@ re_rxeof(struct re_softc *sc)
 		m = sc->re_ldata.re_rx_mbuf[i];
 		total_len = RE_RXBYTES(cur_rx);
 		rxstat = le32toh(cur_rx->re_cmdstat);
-		rxvlan = le32toh(cur_rx->re_vlanctl);
+		rxctrl = le32toh(cur_rx->re_control);
 
 		rx = 1;
 
@@ -1942,17 +1968,22 @@ re_rxeof(struct re_softc *sc)
 		/* Do RX checksumming if enabled */
 
 		if (ifp->if_capenable & IFCAP_RXCSUM) {
+			uint8_t packet_type;
+
+			packet_type = re_packet_type(sc, rxstat, rxctrl);
+
 			/* Check IP header checksum */
-			if (rxstat & RE_RDESC_STAT_PROTOID)
+			if (packet_type & RE_IP4_PACKET) {
 				m->m_pkthdr.csum_flags |= CSUM_IP_CHECKED;
-			if ((rxstat & RE_RDESC_STAT_IPSUMBAD) == 0)
-				m->m_pkthdr.csum_flags |= CSUM_IP_VALID;
+				if ((rxstat & RE_RDESC_STAT_IPSUMBAD) == 0)
+					m->m_pkthdr.csum_flags |= CSUM_IP_VALID;
+			}
 
 			/* Check TCP/UDP checksum */
-			if ((RE_TCPPKT(rxstat) &&
-			    (rxstat & RE_RDESC_STAT_TCPSUMBAD) == 0) ||
-			    (RE_UDPPKT(rxstat) &&
-			    (rxstat & RE_RDESC_STAT_UDPSUMBAD)) == 0) {
+			if (((packet_type & RE_TCP_PACKET) &&
+			     (rxstat & RE_RDESC_STAT_TCPSUMBAD) == 0) ||
+			    ((packet_type & RE_UDP_PACKET) &&
+			     (rxstat & RE_RDESC_STAT_UDPSUMBAD) == 0)) {
 				m->m_pkthdr.csum_flags |=
 				    CSUM_DATA_VALID|CSUM_PSEUDO_HDR|
 				    CSUM_FRAG_NOT_CHECKED;
@@ -1960,10 +1991,10 @@ re_rxeof(struct re_softc *sc)
 			}
 		}
 
-		if (rxvlan & RE_RDESC_VLANCTL_TAG) {
+		if (rxctrl & RE_RDESC_CTL_HASTAG) {
 			m->m_flags |= M_VLANTAG;
 			m->m_pkthdr.ether_vlantag =
-				be16toh((rxvlan & RE_RDESC_VLANCTL_DATA));
+				be16toh((rxctrl & RE_RDESC_CTL_TAGDATA));
 		}
 		ether_input_chain(ifp, m, chain);
 	}
@@ -1979,6 +2010,10 @@ re_rxeof(struct re_softc *sc)
 
 	return rx;
 }
+
+#undef RE_IP4_PACKET
+#undef RE_TCP_PACKET
+#undef RE_UDP_PACKET
 
 static int
 re_txeof(struct re_softc *sc)
@@ -2199,7 +2234,7 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 	bus_dmamap_t map;
 	int error, maxsegs, idx, i;
 	struct re_desc *d, *tx_ring;
-	uint32_t csum_flags;
+	uint32_t cmd_csum, ctl_csum;
 
 	KASSERT(sc->re_ldata.re_tx_free > RE_TXDESC_SPARE,
 		("not enough free TX desc\n"));
@@ -2213,13 +2248,25 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 	 * attempt. (This is according to testing done with an 8169
 	 * chip. I'm not sure if this is a requirement or a bug.)
 	 */
-	csum_flags = 0;
-	if (m->m_pkthdr.csum_flags & CSUM_IP)
-		csum_flags |= RE_TDESC_CMD_IPCSUM;
-	if (m->m_pkthdr.csum_flags & CSUM_TCP)
-		csum_flags |= RE_TDESC_CMD_TCPCSUM;
-	if (m->m_pkthdr.csum_flags & CSUM_UDP)
-		csum_flags |= RE_TDESC_CMD_UDPCSUM;
+	cmd_csum = ctl_csum = 0;
+	if (m->m_pkthdr.csum_flags & CSUM_IP) {
+		cmd_csum |= RE_TDESC_CMD_IPCSUM;
+		ctl_csum |= RE_TDESC_CTL_IPCSUM;
+	}
+	if (m->m_pkthdr.csum_flags & CSUM_TCP) {
+		cmd_csum |= RE_TDESC_CMD_TCPCSUM;
+		ctl_csum |= RE_TDESC_CTL_TCPCSUM;
+	}
+	if (m->m_pkthdr.csum_flags & CSUM_UDP) {
+		cmd_csum |= RE_TDESC_CMD_UDPCSUM;
+		ctl_csum |= RE_TDESC_CTL_UDPCSUM;
+	}
+
+	/* For MAC2 chips, csum flags are set on re_control */
+	if (sc->re_caps & RE_C_MAC2)
+		cmd_csum = 0;
+	else
+		ctl_csum = 0;
 
 	if (m->m_pkthdr.len > sc->re_swcsum_lim &&
 	    (m->m_pkthdr.csum_flags & (CSUM_DELAY_IP | CSUM_DELAY_DATA))) {
@@ -2270,30 +2317,34 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 			m->m_pkthdr.csum_flags &= ~CSUM_DELAY_IP;
 		}
 		*m_head = m; /* 'm' may be changed by above two m_pullup() */
+
+		/* Clear hardware CSUM flags */
+		cmd_csum = ctl_csum = 0;
 	}
 
-	/*
-	 * With some of the RealTek chips, using the checksum offload
-	 * support in conjunction with the autopadding feature results
-	 * in the transmission of corrupt frames. For example, if we
-	 * need to send a really small IP fragment that's less than 60
-	 * bytes in size, and IP header checksumming is enabled, the
-	 * resulting ethernet frame that appears on the wire will
-	 * have garbled payload. To work around this, if TX checksum
-	 * offload is enabled, we always manually pad short frames out
-	 * to the minimum ethernet frame size. We do this by pretending
-	 * the mbuf chain has too many fragments so the coalescing code
-	 * below can assemble the packet into a single buffer that's
-	 * padded out to the mininum frame size.
-	 *
-	 * Note: this appears unnecessary for TCP, and doing it for TCP
-	 * with PCIe adapters seems to result in bad checksums.
-	 */
-	if (csum_flags && !(csum_flags & RE_TDESC_CMD_TCPCSUM) &&
-	    m->m_pkthdr.len < RE_MIN_FRAMELEN) {
-		error = re_pad_frame(m);
-		if (error)
-			goto back;
+	if ((sc->re_caps & RE_C_AUTOPAD) == 0) {
+		/*
+		 * With some of the RealTek chips, using the checksum offload
+		 * support in conjunction with the autopadding feature results
+		 * in the transmission of corrupt frames. For example, if we
+		 * need to send a really small IP fragment that's less than 60
+		 * bytes in size, and IP header checksumming is enabled, the
+		 * resulting ethernet frame that appears on the wire will
+		 * have garbled payload. To work around this, if TX checksum
+		 * offload is enabled, we always manually pad short frames out
+		 * to the minimum ethernet frame size.
+		 *
+		 * Note: this appears unnecessary for TCP, and doing it for TCP
+		 * with PCIe adapters seems to result in bad checksums.
+		 */
+		if ((m->m_pkthdr.csum_flags &
+		     (CSUM_DELAY_IP | CSUM_DELAY_DATA)) &&
+		    (m->m_pkthdr.csum_flags & CSUM_TCP) == 0 &&
+		    m->m_pkthdr.len < RE_MIN_FRAMELEN) {
+			error = re_pad_frame(m);
+			if (error)
+				goto back;
+		}
 	}
 
 	maxsegs = sc->re_ldata.re_tx_free;
@@ -2367,7 +2418,8 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 			cmdstat |= RE_TDESC_CMD_OWN;
 		if (idx == (sc->re_tx_desc_cnt - 1))
 			cmdstat |= RE_TDESC_CMD_EOR;
-		d->re_cmdstat = htole32(cmdstat | csum_flags);
+		d->re_cmdstat = htole32(cmdstat | cmd_csum);
+		d->re_control = htole32(ctl_csum);
 
 		i++;
 		if (i == arg.re_nsegs)
@@ -2382,9 +2434,9 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 	 * transmission attempt.
 	 */
 	if (m->m_flags & M_VLANTAG) {
-		tx_ring[*idx0].re_vlanctl =
+		tx_ring[*idx0].re_control |=
 		    htole32(htobe16(m->m_pkthdr.ether_vlantag) |
-		    	    RE_TDESC_VLANCTL_TAG);
+			    RE_TDESC_CTL_INSTAG);
 	}
 
 	/* Transfer ownership of packet to the chip. */

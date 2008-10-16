@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.22 2008/10/14 15:11:38 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.23 2008/10/16 12:29:13 sephe Exp $
  */
 
 /*
@@ -477,7 +477,7 @@ struct re_mii_frame {
 
 struct re_desc {
 	uint32_t		re_cmdstat;
-	uint32_t		re_vlanctl;
+	uint32_t		re_control;
 	uint32_t		re_bufaddr_lo;
 	uint32_t		re_bufaddr_hi;
 };
@@ -493,8 +493,11 @@ struct re_desc {
 #define RE_TDESC_CMD_EOR	0x40000000	/* end of ring marker */
 #define RE_TDESC_CMD_OWN	0x80000000	/* chip owns descriptor */
 
-#define RE_TDESC_VLANCTL_TAG	0x00020000	/* Insert VLAN tag */
-#define RE_TDESC_VLANCTL_DATA	0x0000FFFF	/* TAG data */
+#define RE_TDESC_CTL_INSTAG	0x00020000	/* Insert VLAN tag */
+#define RE_TDESC_CTL_TAGDATA	0x0000FFFF	/* TAG data */
+#define RE_TDESC_CTL_IPCSUM	0x20000000	/* IP header csum, MAC2 only */
+#define RE_TDESC_CTL_TCPCSUM	0x60000000	/* TCP csum, MAC2 only */
+#define RE_TDESC_CTL_UDPCSUM	0xa0000000	/* UDP csum, MAC2 only */
 
 /*
  * Error bits are valid only on the last descriptor of a frame
@@ -538,9 +541,11 @@ struct re_desc {
 #define RE_RDESC_STAT_FRAGLEN	0x00001FFF	/* RX'ed frame/frag len */
 #define RE_RDESC_STAT_GFRAGLEN	0x00003FFF	/* RX'ed frame/frag len */
 
-#define RE_RDESC_VLANCTL_TAG	0x00010000	/* VLAN tag available
-						   (re_vlandata valid)*/
-#define RE_RDESC_VLANCTL_DATA	0x0000FFFF	/* TAG data */
+#define RE_RDESC_CTL_HASTAG	0x00010000	/* VLAN tag available
+						   (TAG data valid) */
+#define RE_RDESC_CTL_TAGDATA	0x0000FFFF	/* TAG data */
+#define RE_RDESC_CTL_PROTOIP4	0x40000000	/* IPv4 packet, MAC2 only */
+#define RE_RDESC_CTL_PROTOIP6	0x80000000	/* IPv6 packet, MAC2 only */
 
 #define RE_PROTOID_NONIP	0x00000000
 #define RE_PROTOID_TCPIP	0x00010000
