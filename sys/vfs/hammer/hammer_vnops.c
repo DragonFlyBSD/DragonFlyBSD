@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.101 2008/10/15 22:38:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vnops.c,v 1.102 2008/10/16 17:24:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,6 +44,7 @@
 #include <sys/event.h>
 #include <sys/stat.h>
 #include <sys/dirent.h>
+#include <sys/file.h>
 #include <vm/vm_extern.h>
 #include <vfs/fifofs/fifo.h>
 #include "hammer.h"
@@ -79,10 +80,12 @@ static int hammer_vop_nsymlink(struct vop_nsymlink_args *);
 static int hammer_vop_nwhiteout(struct vop_nwhiteout_args *);
 static int hammer_vop_ioctl(struct vop_ioctl_args *);
 static int hammer_vop_mountctl(struct vop_mountctl_args *);
+static int hammer_vop_kqfilter (struct vop_kqfilter_args *);
 
 static int hammer_vop_fifoclose (struct vop_close_args *);
 static int hammer_vop_fiforead (struct vop_read_args *);
 static int hammer_vop_fifowrite (struct vop_write_args *);
+static int hammer_vop_fifokqfilter (struct vop_kqfilter_args *);
 
 static int hammer_vop_specclose (struct vop_close_args *);
 static int hammer_vop_specread (struct vop_read_args *);
@@ -121,7 +124,8 @@ struct vop_ops hammer_vnode_vops = {
 	.vop_nsymlink =		hammer_vop_nsymlink,
 	.vop_nwhiteout =	hammer_vop_nwhiteout,
 	.vop_ioctl =		hammer_vop_ioctl,
-	.vop_mountctl =		hammer_vop_mountctl
+	.vop_mountctl =		hammer_vop_mountctl,
+	.vop_kqfilter =		hammer_vop_kqfilter
 };
 
 struct vop_ops hammer_spec_vops = {
@@ -147,8 +151,17 @@ struct vop_ops hammer_fifo_vops = {
 	.vop_getattr =		hammer_vop_getattr,
 	.vop_inactive =		hammer_vop_inactive,
 	.vop_reclaim =		hammer_vop_reclaim,
-	.vop_setattr =		hammer_vop_setattr
+	.vop_setattr =		hammer_vop_setattr,
+	.vop_kqfilter =		hammer_vop_fifokqfilter
 };
+
+static __inline
+void
+hammer_knote(struct vnode *vp, int flags)
+{
+	if (flags)
+		KNOTE(&vp->v_pollinfo.vpi_selinfo.si_note, flags);
+}
 
 #ifdef DEBUG_TRUNCATE
 struct hammer_inode *HammerTruncIp;
@@ -303,6 +316,7 @@ hammer_vop_write(struct vop_write_args *ap)
 	int offset;
 	off_t base_offset;
 	struct buf *bp;
+	int kflags;
 	int error;
 	int n;
 	int flags;
@@ -314,6 +328,7 @@ hammer_vop_write(struct vop_write_args *ap)
 	ip = VTOI(ap->a_vp);
 	hmp = ip->hmp;
 	error = 0;
+	kflags = 0;
 	seqcount = ap->a_ioflag >> 16;
 
 	if (ip->flags & HAMMER_INODE_RO)
@@ -430,6 +445,7 @@ hammer_vop_write(struct vop_write_args *ap)
 		if (uio->uio_offset + n > ip->ino_data.size) {
 			vnode_pager_setsize(ap->a_vp, uio->uio_offset + n);
 			fixsize = 1;
+			kflags |= NOTE_EXTEND;
 		}
 
 		if (uio->uio_segflg == UIO_NOCOPY) {
@@ -490,6 +506,7 @@ hammer_vop_write(struct vop_write_args *ap)
 			}
 			break;
 		}
+		kflags |= NOTE_WRITE;
 		hammer_stats_file_write += n;
 		/* bp->b_flags |= B_CLUSTEROK; temporarily disabled */
 		if (ip->ino_data.size < uio->uio_offset) {
@@ -524,6 +541,7 @@ hammer_vop_write(struct vop_write_args *ap)
 		}
 	}
 	hammer_done_transaction(&trans);
+	hammer_knote(ap->a_vp, kflags);
 	return (error);
 }
 
@@ -641,6 +659,7 @@ hammer_vop_ncreate(struct vop_ncreate_args *ap)
 			cache_setunresolved(ap->a_nch);
 			cache_setvp(ap->a_nch, *ap->a_vpp);
 		}
+		hammer_knote(ap->a_dvp, NOTE_WRITE);
 	}
 	return (error);
 }
@@ -1043,6 +1062,8 @@ hammer_vop_nlink(struct vop_nlink_args *ap)
 		cache_setvp(nch, ap->a_vp);
 	}
 	hammer_done_transaction(&trans);
+	hammer_knote(ap->a_vp, NOTE_LINK);
+	hammer_knote(ap->a_dvp, NOTE_WRITE);
 	return (error);
 }
 
@@ -1113,6 +1134,8 @@ hammer_vop_nmkdir(struct vop_nmkdir_args *ap)
 		}
 	}
 	hammer_done_transaction(&trans);
+	if (error == 0)
+		hammer_knote(ap->a_dvp, NOTE_WRITE | NOTE_LINK);
 	return (error);
 }
 
@@ -1183,6 +1206,8 @@ hammer_vop_nmknod(struct vop_nmknod_args *ap)
 		}
 	}
 	hammer_done_transaction(&trans);
+	if (error == 0)
+		hammer_knote(ap->a_dvp, NOTE_WRITE);
 	return (error);
 }
 
@@ -1489,7 +1514,8 @@ hammer_vop_nremove(struct vop_nremove_args *ap)
 	++hammer_stats_file_iopsw;
 	error = hammer_dounlink(&trans, ap->a_nch, ap->a_dvp, ap->a_cred, 0, 0);
 	hammer_done_transaction(&trans);
-
+	if (error == 0)
+		hammer_knote(ap->a_dvp, NOTE_WRITE);
 	return (error);
 }
 
@@ -1629,8 +1655,13 @@ retry:
 	 * Cleanup and tell the kernel that the rename succeeded.
 	 */
         hammer_done_cursor(&cursor);
-	if (error == 0)
+	if (error == 0) {
 		cache_rename(ap->a_fnch, ap->a_tnch);
+		hammer_knote(ap->a_fdvp, NOTE_WRITE);
+		hammer_knote(ap->a_tdvp, NOTE_WRITE);
+		if (ip->vp)
+			hammer_knote(ip->vp, NOTE_RENAME);
+	}
 
 failed:
 	hammer_done_transaction(&trans);
@@ -1659,7 +1690,8 @@ hammer_vop_nrmdir(struct vop_nrmdir_args *ap)
 	++hammer_stats_file_iopsw;
 	error = hammer_dounlink(&trans, ap->a_nch, ap->a_dvp, ap->a_cred, 0, 1);
 	hammer_done_transaction(&trans);
-
+	if (error == 0)
+		hammer_knote(ap->a_dvp, NOTE_WRITE | NOTE_LINK);
 	return (error);
 }
 
@@ -1677,12 +1709,14 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 	int error;
 	int truncating;
 	int blksize;
+	int kflags;
 	int64_t aligned_size;
 	u_int32_t flags;
 
 	vap = ap->a_vap;
 	ip = ap->a_vp->v_data;
 	modflags = 0;
+	kflags = 0;
 
 	if (ap->a_vp->v_mount->mnt_flag & MNT_RDONLY)
 		return(EROFS);
@@ -1706,6 +1740,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			if (ip->ino_data.uflags != flags) {
 				ip->ino_data.uflags = flags;
 				modflags |= HAMMER_INODE_DDIRTY;
+				kflags |= NOTE_ATTRIB;
 			}
 			if (ip->ino_data.uflags & (IMMUTABLE | APPEND)) {
 				error = 0;
@@ -1742,6 +1777,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 				ip->ino_data.mode = cur_mode;
 			}
 			modflags |= HAMMER_INODE_DDIRTY;
+			kflags |= NOTE_ATTRIB;
 		}
 	}
 	while (vap->va_size != VNOVAL && ip->ino_data.size != vap->va_size) {
@@ -1758,9 +1794,11 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			if (vap->va_size < ip->ino_data.size) {
 				vtruncbuf(ap->a_vp, vap->va_size, blksize);
 				truncating = 1;
+				kflags |= NOTE_WRITE;
 			} else {
 				vnode_pager_setsize(ap->a_vp, vap->va_size);
 				truncating = 0;
+				kflags |= NOTE_WRITE | NOTE_EXTEND;
 			}
 			ip->ino_data.size = vap->va_size;
 			modflags |= HAMMER_INODE_DDIRTY;
@@ -1835,6 +1873,7 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 			hammer_ip_frontend_trunc(ip, vap->va_size);
 			ip->ino_data.size = vap->va_size;
 			modflags |= HAMMER_INODE_DDIRTY;
+			kflags |= NOTE_ATTRIB;
 			break;
 		default:
 			error = EINVAL;
@@ -1846,11 +1885,13 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 		ip->ino_data.atime =
 			hammer_timespec_to_time(&vap->va_atime);
 		modflags |= HAMMER_INODE_ATIME;
+		kflags |= NOTE_ATTRIB;
 	}
 	if (vap->va_mtime.tv_sec != VNOVAL) {
 		ip->ino_data.mtime =
 			hammer_timespec_to_time(&vap->va_mtime);
 		modflags |= HAMMER_INODE_MTIME;
+		kflags |= NOTE_ATTRIB;
 	}
 	if (vap->va_mode != (mode_t)VNOVAL) {
 		mode_t   cur_mode = ip->ino_data.mode;
@@ -1862,12 +1903,14 @@ hammer_vop_setattr(struct vop_setattr_args *ap)
 		if (error == 0 && ip->ino_data.mode != cur_mode) {
 			ip->ino_data.mode = cur_mode;
 			modflags |= HAMMER_INODE_DDIRTY;
+			kflags |= NOTE_ATTRIB;
 		}
 	}
 done:
 	if (error == 0)
 		hammer_modify_inode(ip, modflags);
 	hammer_done_transaction(&trans);
+	hammer_knote(ap->a_vp, kflags);
 	return (error);
 }
 
@@ -1962,6 +2005,7 @@ hammer_vop_nsymlink(struct vop_nsymlink_args *ap)
 		if (error == 0) {
 			cache_setunresolved(ap->a_nch);
 			cache_setvp(ap->a_nch, *ap->a_vpp);
+			hammer_knote(ap->a_dvp, NOTE_WRITE);
 		}
 	}
 	hammer_done_transaction(&trans);
@@ -2757,8 +2801,10 @@ retry:
 			cache_setunresolved(nch);
 			cache_setvp(nch, NULL);
 			/* XXX locking */
-			if (ip->vp)
+			if (ip->vp) {
+				hammer_knote(ip->vp, NOTE_DELETE);
 				cache_inval_vp(ip->vp, CINV_DESTROY);
+			}
 		}
 		if (ip)
 			hammer_rel_inode(ip, 0);
@@ -2804,6 +2850,18 @@ hammer_vop_fifowrite (struct vop_write_args *ap)
 	return (error);
 }
 
+static
+int
+hammer_vop_fifokqfilter(struct vop_kqfilter_args *ap)
+{
+	int error;
+
+	error = VOCALL(&fifo_vnode_vops, &ap->a_head);
+	if (error)
+		error = hammer_vop_kqfilter(ap);
+	return(error);
+}
+
 static int
 hammer_vop_specclose (struct vop_close_args *ap)
 {
@@ -2823,5 +2881,100 @@ hammer_vop_specwrite (struct vop_write_args *ap)
 {
 	/* XXX update last change time */
 	return (VOCALL(&spec_vnode_vops, &ap->a_head));
+}
+
+/************************************************************************
+ *			    KQFILTER OPS				*
+ ************************************************************************
+ *
+ */
+static void filt_hammerdetach(struct knote *kn);
+static int filt_hammerread(struct knote *kn, long hint);
+static int filt_hammerwrite(struct knote *kn, long hint);
+static int filt_hammervnode(struct knote *kn, long hint);
+
+static struct filterops hammerread_filtops =
+	{ 1, NULL, filt_hammerdetach, filt_hammerread };
+static struct filterops hammerwrite_filtops =
+	{ 1, NULL, filt_hammerdetach, filt_hammerwrite };
+static struct filterops hammervnode_filtops =
+	{ 1, NULL, filt_hammerdetach, filt_hammervnode };
+
+static
+int
+hammer_vop_kqfilter(struct vop_kqfilter_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+	struct knote *kn = ap->a_kn;
+	lwkt_tokref ilock;
+
+	switch (kn->kn_filter) {
+	case EVFILT_READ:
+		kn->kn_fop = &hammerread_filtops;
+		break;
+	case EVFILT_WRITE:
+		kn->kn_fop = &hammerwrite_filtops;
+		break;
+	case EVFILT_VNODE:
+		kn->kn_fop = &hammervnode_filtops;
+		break;
+	default:
+		return (1);
+	}
+
+	kn->kn_hook = (caddr_t)vp;
+
+	lwkt_gettoken(&ilock, &vp->v_pollinfo.vpi_token);
+	SLIST_INSERT_HEAD(&vp->v_pollinfo.vpi_selinfo.si_note, kn, kn_selnext);
+	lwkt_reltoken(&ilock);
+
+	return(0);
+}
+
+static void
+filt_hammerdetach(struct knote *kn)
+{
+	struct vnode *vp = (void *)kn->kn_hook;
+	lwkt_tokref ilock;
+
+	lwkt_gettoken(&ilock, &vp->v_pollinfo.vpi_token);
+	SLIST_REMOVE(&vp->v_pollinfo.vpi_selinfo.si_note,
+		     kn, knote, kn_selnext);
+	lwkt_reltoken(&ilock);
+}
+
+static int
+filt_hammerread(struct knote *kn, long hint)
+{
+	struct vnode *vp = (void *)kn->kn_hook;
+	hammer_inode_t ip = VTOI(vp);
+
+	if (hint == NOTE_REVOKE) {
+		kn->kn_flags |= (EV_EOF | EV_ONESHOT);
+		return(1);
+	}
+	kn->kn_data = ip->ino_data.size - kn->kn_fp->f_offset;
+	return (kn->kn_data != 0);
+}
+
+static int
+filt_hammerwrite(struct knote *kn, long hint)
+{
+	if (hint == NOTE_REVOKE)
+		kn->kn_flags |= (EV_EOF | EV_ONESHOT);
+	kn->kn_data = 0;
+	return (1);
+}
+
+static int
+filt_hammervnode(struct knote *kn, long hint)
+{
+	if (kn->kn_sfflags & hint)
+		kn->kn_fflags |= hint;
+	if (hint == NOTE_REVOKE) {
+		kn->kn_flags |= EV_EOF;
+		return (1);
+	}
+	return (kn->kn_fflags != 0);
 }
 
