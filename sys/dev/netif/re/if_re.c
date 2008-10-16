@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.83 2008/10/16 12:29:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.84 2008/10/16 12:46:40 sephe Exp $
  */
 
 /*
@@ -1312,13 +1312,18 @@ re_attach(device_t dev)
 	sc->re_dev = dev;
 #endif
 
-	sc->re_rx_desc_cnt = re_rx_desc_count;
-	if (sc->re_rx_desc_cnt > RE_RX_DESC_CNT_MAX)
-		sc->re_rx_desc_cnt = RE_RX_DESC_CNT_MAX;
+	if (RE_IS_8139CP(sc)) {
+		sc->re_rx_desc_cnt = RE_RX_DESC_CNT_8139CP;
+		sc->re_tx_desc_cnt = RE_TX_DESC_CNT_8139CP;
+	} else {
+		sc->re_rx_desc_cnt = re_rx_desc_count;
+		if (sc->re_rx_desc_cnt > RE_RX_DESC_CNT_MAX)
+			sc->re_rx_desc_cnt = RE_RX_DESC_CNT_MAX;
 
-	sc->re_tx_desc_cnt = re_tx_desc_count;
-	if (sc->re_tx_desc_cnt > RE_TX_DESC_CNT_MAX)
-		sc->re_tx_desc_cnt = RE_TX_DESC_CNT_MAX;
+		sc->re_tx_desc_cnt = re_tx_desc_count;
+		if (sc->re_tx_desc_cnt > RE_TX_DESC_CNT_MAX)
+			sc->re_tx_desc_cnt = RE_TX_DESC_CNT_MAX;
+	}
 
 	qlen = RE_IFQ_MAXLEN;
 	if (sc->re_tx_desc_cnt > qlen)

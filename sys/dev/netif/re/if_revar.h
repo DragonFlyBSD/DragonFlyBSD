@@ -33,8 +33,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.25 2008/10/16 12:29:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.26 2008/10/16 12:46:40 sephe Exp $
  */
+
+#define RE_RX_DESC_CNT_8139CP	64
+#define RE_TX_DESC_CNT_8139CP	64
 
 #define RE_RX_DESC_CNT_DEF	256
 #define RE_TX_DESC_CNT_DEF	256
