@@ -1057,7 +1057,7 @@ int
 main(int argc, char **argv)
 {
 	char *sender = NULL;
-	char tag[255];
+	const char *tag = "dma";
 	struct qitem *it;
 	struct queue queue;
 	struct queue lqueue;
@@ -1066,7 +1066,6 @@ main(int argc, char **argv)
 
 	atexit(deltmp);
 	LIST_INIT(&queue.queue);
-	snprintf(tag, 254, "dma");
 
 	if (strcmp(argv[0], "mailq") == 0) {
 		argv++; argc--;
@@ -1096,8 +1095,7 @@ main(int argc, char **argv)
 			daemonize = 0;
 			break;
 		case 'L':
-			if (optarg != NULL)
-				snprintf(tag, 254, "%s", optarg);
+			tag = optarg;
 			break;
 		case 'f':
 		case 'r':
