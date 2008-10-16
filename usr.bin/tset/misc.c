@@ -32,7 +32,7 @@
  *
  * @(#)misc.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/tset/misc.c,v 1.4 1999/08/28 01:06:58 peter Exp $
- * $DragonFly: src/usr.bin/tset/misc.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
+ * $DragonFly: src/usr.bin/tset/misc.c,v 1.4 2008/10/16 01:52:34 swildner Exp $
  */
 
 #include <fcntl.h>
@@ -46,7 +46,7 @@
 void
 cat(char *file)
 {
-	register int fd, nr, nw;
+	int fd, nr, nw;
 	char buf[1024];
 
 	if ((fd = open(file, O_RDONLY, 0)) < 0)

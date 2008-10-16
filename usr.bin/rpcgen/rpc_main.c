@@ -28,7 +28,7 @@
  *
  * @(#)rpc_main.c 1.30 89/03/30 (C) 1987 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_main.c,v 1.11 1999/08/28 01:05:16 peter Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_main.c,v 1.11 2007/08/25 08:55:26 corecode Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_main.c,v 1.12 2008/10/16 01:52:33 swildner Exp $
  */
 
 
@@ -352,9 +352,8 @@ static char* valid_i_nettypes[] =
 	NULL
 };
 
-static int check_nettype(name, list_to_check)
-char* name;
-char* list_to_check[];
+static int
+check_nettype(char *name, char *list_to_check[])
 {
 	int i;
 	for (i = 0; list_to_check[i] != NULL; i++) {
@@ -425,7 +424,8 @@ char rpcgen_table_dcl[] = "struct rpcgen_table {\n\
 	unsigned	len_res; \n\
 }; \n";
 
-char *generate_guard(char *pathname)
+char *
+generate_guard(char *pathname)
 {
 	char* filename, *guard, *tmp;
 
@@ -760,8 +760,8 @@ clnt_output(char *infile, char *define, int extend, char *outfile)
 }
 
 
-static void mkfile_output(cmd)
-struct commandline *cmd;
+static void
+mkfile_output(struct commandline *cmd)
 {
 	char *mkfilename, *clientname, *clntname, *xdrname, *hdrname;
 	char *servername, *svcname, *servprogname, *clntprogname;
@@ -898,9 +898,7 @@ addarg(char *cp)
 }
 
 static void
-putarg(where, cp)
-	char *cp;
-	int where;
+putarg(int where, char *cp)
 {
 	if (where >= ARGLISTLEN) {
 		warnx("arglist coding error");

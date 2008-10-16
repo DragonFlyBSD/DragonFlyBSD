@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/iostat.c,v 1.9.2.1 2000/07/02 10:03:17 ps Exp $
- * $DragonFly: src/usr.bin/systat/iostat.c,v 1.5 2005/01/13 12:45:39 y0netan1 Exp $
+ * $DragonFly: src/usr.bin/systat/iostat.c,v 1.6 2008/10/16 01:52:33 swildner Exp $
  *
  * @(#)iostat.c	8.1 (Berkeley) 6/6/93
  */
@@ -251,8 +251,8 @@ barlabels(int row)
 void
 showiostat(void)
 {
-	register long t;
-	register int i, row, col;
+	long t;
+	int i, row, col;
 	struct kinfo_cputime diff_cp_time;
 	uint64_t cp_total;
 
@@ -342,7 +342,7 @@ devstats(int row, int col, int dn)
 static void
 stat1(int row, uint64_t difference, uint64_t total)
 {
-	register int i;
+	int i;
 	double time;
 
 	if (total > 0)
@@ -358,8 +358,8 @@ static void
 histogram(long double val, int colwidth, double scale)
 {
 	char buf[10];
-	register int k;
-	register int v = (int)(val * scale) + 0.5;
+	int k;
+	int v = (int)(val * scale) + 0.5;
 
 	if (val <= 0)
 		v = 0;

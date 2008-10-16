@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)regexp.c	8.1 (Berkeley) 6/6/93
  *
- * $DragonFly: src/usr.bin/vgrind/regexp.c,v 1.3 2003/10/04 20:36:54 hmp Exp $
+ * $DragonFly: src/usr.bin/vgrind/regexp.c,v 1.4 2008/10/16 01:52:34 swildner Exp $
  */
 
 #include <ctype.h>
@@ -60,7 +60,7 @@ boolean	 l_onecase;	/* true if upper and lower equivalent */
  */
 
 int
-STRNCMP(register char *s1, register char *s2, register int len)
+STRNCMP(char *s1, char *s2, int len)
 {
 	if (l_onecase) {
 	    do
@@ -143,7 +143,7 @@ static char *ure;	/* pointer current position in unconverted exp */
 char *
 convexp(char *re)
 {
-    register char *cre;		/* pointer to converted regular expression */
+    char *cre;			/* pointer to converted regular expression */
 
     /* allocate room for the converted expression */
     if (re == NIL)
@@ -168,10 +168,10 @@ convexp(char *re)
 static void
 expconv(void)
 {
-    register char *cs;		/* pointer to current symbol in converted exp */
-    register char c;		/* character being processed */
-    register char *acs;		/* pinter to last alternate */
-    register int temp;
+    char *cs;			/* pointer to current symbol in converted exp */
+    char c;			/* character being processed */
+    char *acs;			/* pinter to last alternate */
+    int temp;
 
     /* let the conversion begin */
     acs = NIL;
@@ -342,10 +342,10 @@ re: a converted irregular expression
 mstring: where to put whatever matches a \p
 */
 char *
-expmatch(register char *s, register char *re, register char *mstring)
+expmatch(char *s, char *re, char *mstring)
 {
-    register char *cs;		/* the current symbol */
-    register char *ptr,*s1;	/* temporary pointer */
+    char *cs;			/* the current symbol */
+    char *ptr,*s1;		/* temporary pointer */
     boolean matched;		/* a temporary boolean */
 
     /* initial conditions */

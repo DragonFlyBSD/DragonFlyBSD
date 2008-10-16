@@ -32,7 +32,7 @@
  *
  * @(#)expand.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/expand.c,v 1.8 1999/08/28 01:05:06 peter Exp $
- * $DragonFly: src/usr.bin/rdist/expand.c,v 1.5 2007/11/25 18:10:07 swildner Exp $
+ * $DragonFly: src/usr.bin/rdist/expand.c,v 1.6 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include "defs.h"
@@ -83,8 +83,8 @@ static int	smatch(char *, char *);
 struct namelist *
 expand(struct namelist *list, int wh)
 {
-	register struct namelist *nl, *prev;
-	register int n;
+	struct namelist *nl, *prev;
+	int n;
 	char pathbuf[BUFSIZ];
 	char *argvbuf[GAVSIZ];
 
@@ -94,7 +94,7 @@ expand(struct namelist *list, int wh)
 	}
 
 	if (wh == 0) {
-		register char *cp;
+		char *cp;
 
 		for (nl = list; nl != NULL; nl = nl->n_next)
 			for (cp = nl->n_name; *cp; cp++)
@@ -140,8 +140,8 @@ expand(struct namelist *list, int wh)
 static void
 expstr(char *s)
 {
-	register char *cp, *cp1;
-	register struct namelist *tp;
+	char *cp, *cp1;
+	struct namelist *tp;
 	char *tail;
 	char buf[BUFSIZ];
 	int savec, oeargc;
@@ -252,8 +252,8 @@ argcmp(const void *a1, const void *a2)
 static void
 expsh(char *s)
 {
-	register char *cp;
-	register char *spathp, *oldcp;
+	char *cp;
+	char *spathp, *oldcp;
 	struct stat stb;
 
 	spathp = pathp;
@@ -290,7 +290,7 @@ static void
 matchdir(char *pattern)
 {
 	struct stat stb;
-	register struct dirent *dp;
+	struct dirent *dp;
 	DIR *dirp;
 
 	dirp = opendir(path);
@@ -330,7 +330,7 @@ static int
 execbrc(char *p, char *s)
 {
 	char restbuf[BUFSIZ + 2];
-	register char *pe, *pm, *pl;
+	char *pe, *pm, *pl;
 	int brclev;
 	char *lm, savec, *spathp;
 
@@ -410,8 +410,8 @@ doit:
 static int
 match(char *s, char *p)
 {
-	register int c;
-	register char *sentp;
+	int c;
+	char *sentp;
 	char sexpany;
 
 	sexpany = expany;
@@ -426,9 +426,9 @@ match(char *s, char *p)
 }
 
 static int
-amatch(register char *s, register char *p)
+amatch(char *s, char *p)
 {
-	register int scc;
+	int scc;
 	int ok, lc, c, cc;
 	char *spathp;
 	struct stat stb;
@@ -514,9 +514,9 @@ slash:
 }
 
 static int
-smatch(register char *s, register char *p)
+smatch(char *s, char *p)
 {
-	register int scc;
+	int scc;
 	int ok, lc, c, cc;
 
 	for (;;) {
@@ -571,10 +571,10 @@ smatch(register char *s, register char *p)
 }
 
 static void
-Cat(register char *s1, register char *s2)
+Cat(char *s1, char *s2)
 {
 	int len;
-	register char *s;
+	char *s;
 
 	len = strlen(s1) + strlen(s2) + 1;
 	nleft -= len;
@@ -609,9 +609,9 @@ addpath(int c)
  * part corresponding to `file'.
  */
 char *
-exptilde(char buf[], register char *file, int maxlen)
+exptilde(char buf[], char *file, int maxlen)
 {
-	register char *s1, *s2, *s3;
+	char *s1, *s2, *s3;
 	extern char homedir[];
 
 	if (strlen(file) >= maxlen)

@@ -32,7 +32,7 @@
  *
  * @(#)netstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/netstat.c,v 1.13 1999/08/30 08:18:08 peter Exp $
- * $DragonFly: src/usr.bin/systat/netstat.c,v 1.9 2007/05/31 11:38:36 hasso Exp $
+ * $DragonFly: src/usr.bin/systat/netstat.c,v 1.10 2008/10/16 01:52:33 swildner Exp $
  */
 
 /*
@@ -121,7 +121,7 @@ static	int lastrow = 1;
 void
 closenetstat(WINDOW *w)
 {
-	register struct netinfo *p;
+	struct netinfo *p;
 
 	endhostent();
 	endnetent();
@@ -224,7 +224,7 @@ fetchnetstat_proto(void (*enter_proto)(void *),
 void
 fetchnetstat(void)
 {
-	register struct netinfo *p;
+	struct netinfo *p;
 
 	for (p = netcb.ni_forw; p != (struct netinfo *)&netcb; p = p->ni_forw)
 		p->ni_seen = 0;
@@ -237,7 +237,7 @@ fetchnetstat(void)
 static void
 enter(struct inpcb *inp, struct xsocket *so, int state, const char *proto)
 {
-	register struct netinfo *p;
+	struct netinfo *p;
 
 	if (!aflag && inet_lnaof(inp->inp_laddr) == INADDR_ANY)
 		return;
@@ -316,7 +316,7 @@ labelnetstat(void)
 void
 shownetstat(void)
 {
-	register struct netinfo *p, *q;
+	struct netinfo *p, *q;
 
 	/*
 	 * First, delete any connections that have gone
@@ -390,7 +390,7 @@ shownetstat(void)
  * If the nflag was specified, use numbers instead of names.
  */
 static void
-inetprint(register struct in_addr *in, int port, const char *proto)
+inetprint(struct in_addr *in, int port, const char *proto)
 {
 	struct servent *sp = 0;
 	char line[80], *cp;
@@ -457,7 +457,7 @@ inetname(struct in_addr in)
 int
 cmdnetstat(char *cmd, char *args)
 {
-	register struct netinfo *p;
+	struct netinfo *p;
 
 	if (prefix(cmd, "all")) {
 		aflag = !aflag;

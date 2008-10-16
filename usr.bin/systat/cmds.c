@@ -32,7 +32,7 @@
  *
  * @(#)cmds.c	8.2 (Berkeley) 4/29/95
  * $FreeBSD: src/usr.bin/systat/cmds.c,v 1.3 1999/08/28 01:05:58 peter Exp $
- * $DragonFly: src/usr.bin/systat/cmds.c,v 1.4 2003/10/04 20:36:51 hmp Exp $
+ * $DragonFly: src/usr.bin/systat/cmds.c,v 1.5 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include <stdlib.h>
@@ -46,8 +46,8 @@
 void
 command(char *cmd)
 {
-        register struct cmdtab *p;
-        register char *cp;
+        struct cmdtab *p;
+        char *cp;
 	int omask;
 	double interval;
 
@@ -142,11 +142,11 @@ done:
 }
 
 struct cmdtab *
-lookup(register char *name)
+lookup(char *name)
 {
-	register char *p, *q;
-	register struct cmdtab *c, *found;
-	register int nmatches, longest;
+	char *p, *q;
+	struct cmdtab *c, *found;
+	int nmatches, longest;
 
 	longest = 0;
 	nmatches = 0;
@@ -178,7 +178,7 @@ status(void)
 }
 
 int
-prefix(register char *s1, register char *s2)
+prefix(char *s1, char *s2)
 {
 
         while (*s1 == *s2) {

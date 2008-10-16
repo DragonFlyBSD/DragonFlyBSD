@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/main.c,v 1.5 1999/08/28 01:05:07 peter Exp $
- * $DragonFly: src/usr.bin/rdist/main.c,v 1.4 2004/07/24 19:45:10 eirikn Exp $
+ * $DragonFly: src/usr.bin/rdist/main.c,v 1.5 2008/10/16 01:52:33 swildner Exp $
  */
 /*
  * Remote distribution program.
@@ -75,7 +75,7 @@ static void docmdargs(int, char *[]);
 int
 main(int argc, char **argv)
 {
-	register char *arg;
+	char *arg;
 	int cmdargs;
 	char *dhosts[NHOSTS], **hp = dhosts;
 
@@ -238,8 +238,8 @@ usage(void)
 static void
 docmdargs(int nargs, char **args)
 {
-	register struct namelist *nl, *prev;
-	register char *cp;
+	struct namelist *nl, *prev;
+	char *cp;
 	struct namelist *files, *hosts;
 	struct subcmd *cmds;
 	char *dest;
@@ -292,7 +292,7 @@ docmdargs(int nargs, char **args)
  * Print a list of NAME blocks (mostly for debugging).
  */
 void
-prnames(register struct namelist *nl)
+prnames(struct namelist *nl)
 {
 	printf("( ");
 	while (nl != NULL) {

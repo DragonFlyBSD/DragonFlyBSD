@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1985, 1987, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tcopy.c	8.2 (Berkeley) 4/17/94
  * $FreeBSD: src/usr.bin/tcopy/tcopy.c,v 1.7.2.1 2002/11/07 17:54:42 imp Exp $
- * $DragonFly: src/usr.bin/tcopy/tcopy.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
+ * $DragonFly: src/usr.bin/tcopy/tcopy.c,v 1.4 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -69,7 +69,7 @@ void	rewind_tape(int);
 int
 main(int argc, char **argv)
 {
-	register int lastnread, nread, nw, inp, outp;
+	int lastnread, nread, nw, inp, outp;
 	enum {READ, VERIFY, COPY, COPYVERIFY} op = READ;
 	sig_t oldsig;
 	int ch, needeof;
@@ -215,10 +215,10 @@ r1:		guesslen = 0;
 }
 
 void
-verify(register int inp, register int outp, register char *outb)
+verify(int inp, int outp, char *outb)
 {
-	register int eot, inmaxblk, inn, outmaxblk, outn;
-	register char *inb;
+	int eot, inmaxblk, inn, outmaxblk, outn;
+	char *inb;
 
 	inb = getspace(maxblk);
 	inmaxblk = outmaxblk = maxblk;

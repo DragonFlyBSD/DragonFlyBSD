@@ -32,7 +32,7 @@
  *
  * @(#)lookup.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/lookup.c,v 1.6 1999/08/28 01:05:07 peter Exp $
- * $DragonFly: src/usr.bin/rdist/lookup.c,v 1.3 2004/07/24 19:45:10 eirikn Exp $
+ * $DragonFly: src/usr.bin/rdist/lookup.c,v 1.4 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include "defs.h"
@@ -56,8 +56,8 @@ static struct syment *hashtab[HASHSIZE];
 void
 define(char *name)
 {
-	register char *cp, *s;
-	register struct namelist *nl;
+	char *cp, *s;
+	struct namelist *nl;
 	struct namelist *value;
 
 	value = NULL;
@@ -120,9 +120,9 @@ define(char *name)
 struct namelist *
 lookup(char *name, int action, struct namelist *value)
 {
-	register unsigned n;
-	register char *cp;
-	register struct syment *s;
+	unsigned n;
+	char *cp;
+	struct syment *s;
 	char buf[BUFSIZ];
 
 	if (debug)

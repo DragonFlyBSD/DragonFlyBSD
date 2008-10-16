@@ -27,7 +27,7 @@
  * Mountain View, California  94043
  *
  * $FreeBSD: src/usr.bin/rpcgen/rpc_scan.c,v 1.4.8.1 2001/03/04 08:59:50 kris Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_scan.c,v 1.4 2004/06/19 16:40:36 joerg Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_scan.c,v 1.5 2008/10/16 01:52:33 swildner Exp $
  *
  * @(#)rpc_scan.c 1.11 89/02/22 (C) 1987 SMI
  */
@@ -353,9 +353,7 @@ findchrconst(char **str, char **val)
 }
 
 static void
-findconst(str, val)
-	char **str;
-	char **val;
+findconst(char **str, char **val)
 {
 	char *p;
 	int size;

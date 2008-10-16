@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)kdump.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/kdump/kdump.c,v 1.29 2006/05/20 14:27:22 netchild Exp $
- * $DragonFly: src/usr.bin/kdump/kdump.c,v 1.12 2008/10/15 16:04:11 hasso Exp $
+ * $DragonFly: src/usr.bin/kdump/kdump.c,v 1.13 2008/10/16 01:52:32 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -67,7 +67,7 @@ main(int argc, char **argv)
 {
 	int ch, col, ktrlen, size;
 	pid_t do_pid = -1;
-	register void *m;
+	void *m;
 	int trpoints = ALL_POINTS;
 	char *cp;
 
@@ -244,10 +244,10 @@ static char *ptrace_ops[] = {
 	"PT_KILL",	"PT_STEP",	"PT_ATTACH",	"PT_DETACH",
 };
 
-ktrsyscall(register struct ktr_syscall *ktr)
+ktrsyscall(struct ktr_syscall *ktr)
 {
-	register narg = ktr->ktr_narg;
-	register register_t *ip;
+	int narg = ktr->ktr_narg;
+	register_t *ip;
 	char *ioctlname();
 
 	if (ktr->ktr_code >= nsyscalls || ktr->ktr_code < 0)
@@ -658,9 +658,9 @@ ktrsyscall(register struct ktr_syscall *ktr)
 
 ktrsysret(struct ktr_sysret *ktr)
 {
-	register register_t ret = ktr->ktr_retval;
-	register int error = ktr->ktr_error;
-	register int code = ktr->ktr_code;
+	register_t ret = ktr->ktr_retval;
+	int error = ktr->ktr_error;
+	int code = ktr->ktr_code;
 
 	if (code >= nsyscalls || code < 0)
 		(void)printf("[%d] ", code);
@@ -697,11 +697,11 @@ ktrnamei(char *cp, int len)
 
 ktrgenio(struct ktr_genio *ktr, int len)
 {
-	register int datalen = len - sizeof (struct ktr_genio);
-	register char *dp = (char *)ktr + sizeof (struct ktr_genio);
-	register char *cp;
-	register int col = 0;
-	register width;
+	int datalen = len - sizeof (struct ktr_genio);
+	char *dp = (char *)ktr + sizeof (struct ktr_genio);
+	char *cp;
+	int col = 0;
+	int width;
 	char visbuf[5];
 	static screenwidth = 0;
 

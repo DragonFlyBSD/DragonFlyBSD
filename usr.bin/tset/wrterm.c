@@ -32,7 +32,7 @@
  *
  * @(#)wrterm.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/tset/wrterm.c,v 1.3 1999/08/28 01:06:59 peter Exp $
- * $DragonFly: src/usr.bin/tset/wrterm.c,v 1.4 2004/08/30 18:06:50 eirikn Exp $
+ * $DragonFly: src/usr.bin/tset/wrterm.c,v 1.5 2008/10/16 01:52:34 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -49,8 +49,8 @@
 void
 wrtermcap(char *bp)
 {
-	register int ch;
-	register char *p;
+	int ch;
+	char *p;
 	char *t, *sep;
 
 	/* Find the end of the terminal names. */

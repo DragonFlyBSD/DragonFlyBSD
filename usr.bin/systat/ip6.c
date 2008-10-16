@@ -32,7 +32,7 @@
  *
  * @(#)mbufs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/ip6.c,v 1.3 2006/04/30 04:47:23 bde Exp $
- * $DragonFly: src/usr.bin/systat/ip6.c,v 1.1 2007/05/31 11:38:36 hasso Exp $
+ * $DragonFly: src/usr.bin/systat/ip6.c,v 1.2 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -92,8 +92,7 @@ openip6(void)
 }
 
 void
-closeip6(w)
-	WINDOW *w;
+closeip6(WINDOW *w)
 {
 	if (w == NULL)
 		return;

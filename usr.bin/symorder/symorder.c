@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980 The Regents of the University of California. All rights reserved.
  * @(#)symorder.c	5.8 (Berkeley) 4/1/91
  * $FreeBSD: src/usr.bin/symorder/symorder.c,v 1.15 1999/08/28 01:05:57 peter Exp $
- * $DragonFly: src/usr.bin/symorder/symorder.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
+ * $DragonFly: src/usr.bin/symorder/symorder.c,v 1.4 2008/10/16 01:52:33 swildner Exp $
  */
 
 /*
@@ -78,10 +78,10 @@ static void usage(void);
 int
 main(int argc, char **argv)
 {
-	register struct nlist *p, *symp;
-	register FILE *f, *xfile;
-	register int i;
-	register char *start, *t, *xfilename;
+	struct nlist *p, *symp;
+	FILE *f, *xfile;
+	int i;
+	char *start, *t, *xfilename;
 	int ch, n, o;
 
 	xfilename = NULL;
@@ -254,7 +254,7 @@ main(int argc, char **argv)
 }
 
 int
-savesymb(register struct nlist *s)
+savesymb(struct nlist *s)
 {
 	if ((s->n_type & N_EXT) != N_EXT)
 		return 0;
@@ -268,10 +268,10 @@ savesymb(register struct nlist *s)
 }
 
 void
-reorder(register struct nlist *st1, register struct nlist *st2, int entries)
+reorder(struct nlist *st1, struct nlist *st2, int entries)
 {
-	register struct nlist *p;
-	register int i, n;
+	struct nlist *p;
+	int i, n;
 
 	for (p = st1, n = entries; --n >= 0; ++p)
 		if (inlist(p) != -1)
@@ -289,10 +289,10 @@ reorder(register struct nlist *st1, register struct nlist *st2, int entries)
 }
 
 int
-inlist(register struct nlist *p)
+inlist(struct nlist *p)
 {
-	register char *nam;
-	register struct nlist *op;
+	char *nam;
+	struct nlist *op;
 
 	if (p->n_type & N_STAB || p->n_un.n_strx == 0)
 		return (-1);
@@ -309,10 +309,10 @@ inlist(register struct nlist *p)
 }
 
 int
-excluded(register struct nlist *p)
+excluded(struct nlist *p)
 {
-	register char *nam;
-	register int x;
+	char *nam;
+	int x;
 
 	if (p->n_type & N_STAB || p->n_un.n_strx == 0)
 		return (0);

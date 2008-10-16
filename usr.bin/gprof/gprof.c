@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)gprof.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/gprof/gprof.c,v 1.11 1999/08/28 01:01:55 peter Exp $
- * $DragonFly: src/usr.bin/gprof/gprof.c,v 1.5 2006/01/22 03:43:37 swildner Exp $
+ * $DragonFly: src/usr.bin/gprof/gprof.c,v 1.6 2008/10/16 01:52:32 swildner Exp $
  */
 
 #include <err.h>
@@ -399,7 +399,7 @@ valcmp(const void *v1, const void *v2)
 
 readsamples(FILE *pfile)
 {
-    register i;
+    int		i;
     UNIT	sample;
 
     if (samples == 0) {

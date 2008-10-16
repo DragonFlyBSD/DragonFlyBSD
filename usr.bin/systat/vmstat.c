@@ -32,7 +32,7 @@
  *
  * @(#)vmstat.c	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/usr.bin/systat/vmstat.c,v 1.38.2.4 2002/03/12 19:50:23 phantom Exp $
- * $DragonFly: src/usr.bin/systat/vmstat.c,v 1.10 2008/06/28 23:45:20 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/vmstat.c,v 1.11 2008/10/16 01:52:33 swildner Exp $
  */
 
 /*
@@ -273,7 +273,7 @@ fetchkre(void)
 void
 labelkre(void)
 {
-	register int i, j;
+	int i, j;
 
 	clear();
 	mvprintw(STATROW, STATCOL + 4, "users    Load");
@@ -646,7 +646,7 @@ cmdkre(char *cmd, char *args)
 static int
 ucount(void)
 {
-	register int nusers = 0;
+	int nusers = 0;
 
 	if (ut < 0)
 		return (0);
@@ -810,7 +810,7 @@ allocinfo(struct Info *s)
 }
 
 static void
-copyinfo(register struct Info *from, register struct Info *to)
+copyinfo(struct Info *from, struct Info *to)
 {
 	long *intrcnt;
 

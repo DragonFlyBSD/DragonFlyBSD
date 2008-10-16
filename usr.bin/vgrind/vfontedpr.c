@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vfontedpr.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vgrind/vfontedpr.c,v 1.12 1999/08/28 01:07:21 peter Exp $
- * $DragonFly: src/usr.bin/vgrind/vfontedpr.c,v 1.3 2003/10/04 20:36:54 hmp Exp $
+ * $DragonFly: src/usr.bin/vgrind/vfontedpr.c,v 1.4 2008/10/16 01:52:34 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -344,7 +344,7 @@ main(int argc, char **argv)
 static void
 putScp(char *os)
 {
-    register char *s = os;		/* pointer to unmatched string */
+    char *s = os;			/* pointer to unmatched string */
     char dummy[BUFSIZ];			/* dummy to be used by expmatch */
     char *comptr;			/* end of a comment delimiter */
     char *acmptr;			/* end of a comment delimiter */
@@ -590,9 +590,9 @@ tabs(char *s, char *os)
 }
 
 static int
-width(register char *s, register char *os)
+width(char *s, char *os)
 {
-	register int i = 0;
+	int i = 0;
 
 	while (s < os) {
 		if (*s == '\t') {
@@ -610,7 +610,7 @@ width(register char *s, register char *os)
 }
 
 static void
-putcp(register int c)
+putcp(int c)
 {
 
 	switch(c) {
@@ -692,11 +692,11 @@ isproc(char *s)
  */
 
 static int
-iskw(register char *s)
+iskw(char *s)
 {
-	register char **ss = l_keywds;
-	register int i = 1;
-	register char *cp = s;
+	char **ss = l_keywds;
+	int i = 1;
+	char *cp = s;
 
 	while (++cp, isidchr(*cp))
 		i++;

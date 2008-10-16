@@ -32,7 +32,7 @@
  *	BSDI int21.c,v 2.2 1996/04/08 19:32:51 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/dos.c,v 1.7.2.5 2002/04/25 11:04:50 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/dos.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/doscmd/dos.c,v 1.3 2008/10/16 01:52:32 swildner Exp $
  */
 
 #include <sys/ioctl.h>
@@ -2054,9 +2054,7 @@ setfcb_rec(struct fcb *fcbp, int n)
 }
 
 static void
-fcb_to_string(fcbp, buf)
-	struct fcb *fcbp;
-	u_char *buf;
+fcb_to_string(struct fcb *fcbp, u_char *buf)
 {
 
 	if (fcbp->fcbDriveID != 0x00) {

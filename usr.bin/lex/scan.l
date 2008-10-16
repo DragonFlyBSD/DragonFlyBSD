@@ -29,7 +29,7 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/scan.l,v 2.56 95/04/24 12:17:19 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/scan.l,v 1.5 1999/10/27 07:56:46 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/scan.l,v 1.3 2008/06/21 19:29:21 swildner Exp $ */
+/* $DragonFly: src/usr.bin/lex/scan.l,v 1.4 2008/10/16 01:52:32 swildner Exp $ */
 
 #include "flexdef.h"
 #include "parse.h"
@@ -435,7 +435,7 @@ LEXOPT		[aceknopr]
 			}
 
 	"{"{NAME}"}"	{
-			register Char *nmdefptr;
+			Char *nmdefptr;
 			Char *ndlookup();
 
 			strcpy( nmstr, yytext + 1 );

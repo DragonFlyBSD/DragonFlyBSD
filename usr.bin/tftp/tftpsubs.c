@@ -32,7 +32,7 @@
  *
  * @(#)tftpsubs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tftp/tftpsubs.c,v 1.3.2.1 2002/04/26 17:22:43 ume Exp $
- * $DragonFly: src/usr.bin/tftp/tftpsubs.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
+ * $DragonFly: src/usr.bin/tftp/tftpsubs.c,v 1.4 2008/10/16 01:52:33 swildner Exp $
  */
 
 /* Simple minded read-ahead/write-behind subroutines for tftp user and
@@ -78,8 +78,8 @@ int prevchar = -1;		/* putbuf: previous char (cr check) */
 
 static struct tftphdr *rw_init();
 
-struct tftphdr *w_init() { return rw_init(0); }         /* write-behind */
-struct tftphdr *r_init() { return rw_init(1); }         /* read-ahead */
+struct tftphdr *w_init(void) { return rw_init(0); }         /* write-behind */
+struct tftphdr *r_init(void) { return rw_init(1); }         /* read-ahead */
 
 static struct tftphdr *
 rw_init(int x		/* zero for write-behind, one for read-head */
@@ -124,9 +124,9 @@ readit(FILE *file, /* file opened for read */
 void
 read_ahead(FILE *file, int convert)
 {
-	register int i;
-	register char *p;
-	register int c;
+	int i;
+	char *p;
+	int c;
 	struct bf *b;
 	struct tftphdr *dp;
 
@@ -191,9 +191,9 @@ write_behind(FILE *file, int convert)
 {
 	char *buf;
 	int count;
-	register int ct;
-	register char *p;
-	register int c;                 /* current character */
+	int ct;
+	char *p;
+	int c;                          /* current character */
 	struct bf *b;
 	struct tftphdr *dp;
 

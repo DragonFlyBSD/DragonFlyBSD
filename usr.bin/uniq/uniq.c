@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)uniq.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/uniq/uniq.c,v 1.11.2.3 2002/06/28 08:02:19 tjr Exp $
- * $DragonFly: src/usr.bin/uniq/uniq.c,v 1.4 2005/01/12 01:36:50 cpressey Exp $
+ * $DragonFly: src/usr.bin/uniq/uniq.c,v 1.5 2008/10/16 01:52:34 swildner Exp $
  */
 
 #include <ctype.h>
@@ -64,7 +64,7 @@ int      stricoll(char *, char*);
 int
 main(int argc, char **argv)
 {
-	register char *t1, *t2;
+	char *t1, *t2;
 	FILE *ifp, *ofp;
 	int ch;
 	char *prevline, *thisline, *p;
@@ -192,9 +192,9 @@ show(FILE *ofp, char *str)
 }
 
 char *
-skip(register char *str)
+skip(char *str)
 {
-	register int nchars, nfields;
+	int nchars, nfields;
 
 	for (nfields = 0; *str != '\0' && nfields++ != numfields; ) {
 		while (isblank((unsigned char)*str))

@@ -28,7 +28,7 @@
  *
  * @(#)rpc_svcout.c 1.29 89/03/30 (C) 1987 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_svcout.c,v 1.6.6.1 2001/07/19 01:38:22 kris Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_svcout.c,v 1.4 2004/06/19 16:40:36 joerg Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_svcout.c,v 1.5 2008/10/16 01:52:33 swildner Exp $
  */
 
 #ident	"@(#)rpc_svcout.c	1.4	90/04/13 SMI"
@@ -645,8 +645,7 @@ write_inetmost(char *infile)
 }
 
 static void
-print_return(space)
-	char *space;
+print_return(char *space)
 {
 	if (exitnow)
 		f_print(fout, "%sexit(0);\n", space);

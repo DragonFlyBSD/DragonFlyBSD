@@ -32,7 +32,7 @@
  *
  * @(#)server.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/server.c,v 1.10 1999/08/28 01:05:09 peter Exp $
- * $DragonFly: src/usr.bin/rdist/server.c,v 1.6 2006/08/03 16:40:48 swildner Exp $
+ * $DragonFly: src/usr.bin/rdist/server.c,v 1.7 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include <sys/wait.h>
@@ -82,10 +82,10 @@ static int	update(char *, int, struct stat *);
  *	Qname	- Query if file exists. Return mtime & size if it does.
  */
 void
-server()
+server(void)
 {
 	char cmdbuf[BUFSIZ];
-	register char *cp;
+	char *cp;
 
 	signal(SIGHUP, cleanup);
 	signal(SIGINT, cleanup);
@@ -346,7 +346,7 @@ installlink(struct linkbuf *lp, char *rname, int opts)
 static void
 sendf(char *rname, int opts)
 {
-	register struct subcmd *sc;
+	struct subcmd *sc;
 	struct stat stb;
 	int sizerr, f, u, len;
 	off_t i;
@@ -580,9 +580,9 @@ savelink(struct stat *stp)
 static int
 update(char *rname, int opts, struct stat *stp)
 {
-	register char *cp, *s;
-	register off_t size;
-	register time_t mtime;
+	char *cp, *s;
+	off_t size;
+	time_t mtime;
 
 	if (debug)
 		printf("update(%s, %x, %p)\n", rname, opts, stp);
@@ -714,7 +714,7 @@ query(char *name)
 static void
 recvf(char *cmd, int type)
 {
-	register char *cp;
+	char *cp;
 	int f, mode, opts, wrerr, olderrno;
 	off_t i, size;
 	time_t mtime;
@@ -970,7 +970,7 @@ badtarget:	error("%s:%s: %s\n", host, target, strerror(errno));
 static void
 hardlink(char *cmd)
 {
-	register char *cp;
+	char *cp;
 	struct stat stb;
 	char *oldname;
 	int opts, exists;
@@ -1028,7 +1028,7 @@ hardlink(char *cmd)
 static int
 chkparent(char *name)
 {
-	register char *cp;
+	char *cp;
 	struct stat stb;
 
 	cp = rindex(name, '/');
@@ -1055,7 +1055,7 @@ chkparent(char *name)
 static int
 fchog(int fd, char *file, char *owner, char *group, int mode)
 {
-	register int i;
+	int i;
 	int uid, gid;
 	extern char user[];
 	extern int userid;
@@ -1116,7 +1116,7 @@ ok:	if ((fd != -1 && fchown(fd, uid, gid) < 0) || chown(file, uid, gid) < 0)
 static void
 rmchk(int opts)
 {
-	register char *cp, *s;
+	char *cp, *s;
 	struct stat stb;
 
 	if (debug)
@@ -1195,10 +1195,10 @@ rmchk(int opts)
  * for extraneous files and remove them.
  */
 static void
-clean(register char *cp)
+clean(char *cp)
 {
 	DIR *d;
-	register struct dirent *dp;
+	struct dirent *dp;
 	struct stat stb;
 	char *otp;
 	int len, opts;
@@ -1271,7 +1271,7 @@ removeit(struct stat *stp)
 {
 	DIR *d;
 	struct dirent *dp;
-	register char *cp;
+	char *cp;
 	struct stat stb;
 	char *otp;
 	int len;
@@ -1338,7 +1338,7 @@ static void
 dospecial(char *cmd)
 {
 	int fd[2], status, pid, i;
-	register char *cp, *s;
+	char *cp, *s;
 	char sbuf[BUFSIZ];
 	extern int userid, groupid;
 

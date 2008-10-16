@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/truss/i386-fbsd.c,v 1.7.2.2 2001/10/29 20:12:56 des Exp $
- * $DragonFly: src/usr.bin/truss/i386-fbsd.c,v 1.4 2007/12/27 00:59:25 nth Exp $
+ * $DragonFly: src/usr.bin/truss/i386-fbsd.c,v 1.5 2008/10/16 01:52:33 swildner Exp $
  */
 
 /*
@@ -88,7 +88,7 @@ static struct freebsd_syscall {
 
 /* Clear up and free parts of the fsc structure. */
 static inline void
-clear_fsc() {
+clear_fsc(void) {
   if (fsc.args) {
     free(fsc.args);
   }

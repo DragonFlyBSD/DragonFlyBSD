@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/devs.c,v 1.4 1999/08/28 01:05:59 peter Exp $
- * $DragonFly: src/usr.bin/systat/devs.c,v 1.6 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/usr.bin/systat/devs.c,v 1.7 2008/10/16 01:52:33 swildner Exp $
  */
 /*
  * Some code and ideas taken from the old disks.c.
@@ -176,7 +176,7 @@ dscmd(char *cmd, char *args, int maxshowdevs, struct statinfo *s1)
 			return(2);
 	}
 	if (prefix(cmd, "drives")) {
-		register int i;
+		int i;
 		move(CMDLINE, 0);
 		clrtoeol();
 		for (i = 0; i < num_devices; i++) {
@@ -195,7 +195,7 @@ dsmatchselect(char *args, devstat_select_mode select_mode, int maxshowdevs,
 	char **tempstr;
 	char *tstr[100];
 	int num_args = 0;
-	register int i;
+	int i;
 	int retval = 0;
 
 	/*
@@ -251,8 +251,8 @@ static int
 dsselect(char *args, devstat_select_mode select_mode, int maxshowdevs,
 	 struct statinfo *s1)
 {
-	register char *cp;
-	register int i;
+	char *cp;
+	int i;
 	int retval = 0;
 
 	/*

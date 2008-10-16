@@ -28,7 +28,7 @@
  *
  * @(#)rpc_cout.c 1.13 89/02/22 (C) 1987 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_cout.c,v 1.7 1999/08/28 01:05:16 peter Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_cout.c,v 1.4 2004/06/19 16:40:36 joerg Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_cout.c,v 1.5 2008/10/16 01:52:33 swildner Exp $
  */
 
 #ident	"@(#)rpc_cout.c	1.14	93/07/05 SMI" 
@@ -126,14 +126,14 @@ print_generic_header(char *procname, int pointerp)
 	f_print(fout, "bool_t\n");
 	if (Cflag) {
 	    f_print(fout, "xdr_%s(", procname);
-	    f_print(fout, "register XDR *xdrs, ");
+	    f_print(fout, "XDR *xdrs, ");
 	    f_print(fout, "%s ", procname);
 	    if (pointerp)
 		    f_print(fout, "*");
 	    f_print(fout, "objp)\n{\n\n");
 	} else {
 	    f_print(fout, "xdr_%s(xdrs, objp)\n", procname);
-	    f_print(fout, "\tregister XDR *xdrs;\n");
+	    f_print(fout, "\tXDR *xdrs;\n");
 	    f_print(fout, "\t%s ", procname);
 	    if (pointerp)
 		    f_print(fout, "*");
@@ -152,7 +152,7 @@ print_header(definition *def)
 	if (rpcgen_inline == 0)
 		return;
 	/* May cause lint to complain. but  ... */
-	f_print(fout, "\tregister long *buf;\n\n");
+	f_print(fout, "\tlong *buf;\n\n");
 }
 
 static void
@@ -531,8 +531,7 @@ inline_struct(definition *def, int flag)
 }
 
 static void
-emit_struct(def)
-	definition *def;
+emit_struct(definition *def)
 {
 	decl_list *dl;
 	int j, size, flag;
@@ -642,7 +641,7 @@ emit_inline(int indent, declaration *decl, int flag)
 		tabify(fout, indent);
 		f_print(fout, "{\n");
 		tabify(fout, indent + 1);
-		f_print(fout, "register %s *genp;\n\n", decl->type);
+		f_print(fout, "%s *genp;\n\n", decl->type);
 		tabify(fout, indent + 1);
 		f_print(fout, "for (i = 0, genp = objp->%s;\n", decl->name);
 		tabify(fout, indent + 2);

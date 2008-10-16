@@ -32,7 +32,7 @@
  *
  * @(#) Copyright (c) 1987, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rev.c	8.3 (Berkeley) 5/4/95
- * $DragonFly: src/usr.bin/rev/rev.c,v 1.7 2006/07/30 06:49:39 dillon Exp $
+ * $DragonFly: src/usr.bin/rev/rev.c,v 1.8 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -80,7 +80,7 @@ main(int argc, char **argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: rev [file ...]\n");
 	exit(1);

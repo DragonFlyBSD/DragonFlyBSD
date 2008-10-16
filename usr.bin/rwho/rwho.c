@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwho.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/rwho/rwho.c,v 1.13.2.1 2002/03/12 19:49:09 phantom Exp $
- * $DragonFly: src/usr.bin/rwho/rwho.c,v 1.4 2005/01/09 16:20:54 liamfoy Exp $
+ * $DragonFly: src/usr.bin/rwho/rwho.c,v 1.5 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -184,7 +184,7 @@ main(int argc, char **argv)
 
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: rwho [-a]\n");
 	exit(1);

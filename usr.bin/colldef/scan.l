@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/colldef/scan.l,v 1.11.2.2 2002/10/11 10:43:45 ache Exp $
- * $DragonFly: src/usr.bin/colldef/scan.l,v 1.3 2005/03/02 07:16:23 joerg Exp $
+ * $DragonFly: src/usr.bin/colldef/scan.l,v 1.4 2008/10/16 01:52:32 swildner Exp $
  */
 
 #include <ctype.h>
@@ -278,7 +278,7 @@ int yylex(void);
 }
 %%
 #ifdef FLEX_DEBUG
-main()
+main(void)
 {
 	while(yylex())
 		;

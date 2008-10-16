@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/usr.bin/doscmd/i386-pinsn.c,v 1.1.6.1 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/i386-pinsn.c,v 1.3 2003/10/04 20:36:43 hmp Exp $
+ * $DragonFly: src/usr.bin/doscmd/i386-pinsn.c,v 1.4 2008/10/16 01:52:32 swildner Exp $
  */
 #ifdef DISASSEMBLER
 
@@ -1522,7 +1522,7 @@ oappend(const char *s)
 }
 
 static void
-append_prefix()
+append_prefix(void)
 {
   if (prefixes & PREFIX_CS)
     oappend ("%cs:");

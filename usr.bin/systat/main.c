@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/main.c,v 1.11.2.1 2001/06/06 20:26:01 tmm Exp $
- * $DragonFly: src/usr.bin/systat/main.c,v 1.5 2003/11/08 09:30:32 asmodai Exp $
+ * $DragonFly: src/usr.bin/systat/main.c,v 1.6 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -172,7 +172,7 @@ labels(void)
 void
 display(int signo)
 {
-	register int i, j;
+	int i, j;
 	struct itimerval ctv;
 
 	/* Get the load average over the last minute. */

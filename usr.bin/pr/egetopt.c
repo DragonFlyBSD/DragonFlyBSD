@@ -36,7 +36,7 @@
  *
  * @(#)egetopt.c	8.1 (Berkeley) 6/6/93
  *
- * $DragonFly: src/usr.bin/pr/egetopt.c,v 1.3 2003/10/04 20:36:50 hmp Exp $
+ * $DragonFly: src/usr.bin/pr/egetopt.c,v 1.4 2008/10/16 01:52:32 swildner Exp $
  */
 
 #include <ctype.h>
@@ -70,9 +70,9 @@ int
 egetopt(int nargc, char * const *nargv, const char *ostr)
 {
 	static char *place = EMSG;	/* option letter processing */
-	register char *oli;		/* option letter list index */
+	char *oli;			/* option letter list index */
 	static int delim;		/* which option delimeter */
-	register char *p;
+	char *p;
 	static char savec = '\0';
 
 	if (savec != '\0') {

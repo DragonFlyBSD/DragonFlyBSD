@@ -32,7 +32,7 @@
  *
  * @(#)vgrindefs.c	8.1 (Berkeley) 6/6/93
  *
- * $DragonFly: src/usr.bin/vgrind/vgrindefs.c,v 1.4 2004/09/03 20:38:01 dillon Exp $
+ * $DragonFly: src/usr.bin/vgrind/vgrindefs.c,v 1.5 2008/10/16 01:52:34 swildner Exp $
  */
 
 #define	BUFSIZ	1024
@@ -69,9 +69,9 @@ char	*tdecode();
 int
 tgetent(char *bp, char *name, char *file)
 {
-	register char *cp;
-	register int c;
-	register int i = 0, cnt = 0;
+	char *cp;
+	int c;
+	int i = 0, cnt = 0;
 	char ibuf[BUFSIZ];
 	char *cp2;
 	int tf;
@@ -129,7 +129,7 @@ tgetent(char *bp, char *name, char *file)
 int
 tnchktc(void)
 {
-	register char *p, *q;
+	char *p, *q;
 	char tcname[16];	/* name of similar terminal */
 	char tcbuf[BUFSIZ];
 	char *holdtbuf = tbuf;
@@ -177,7 +177,7 @@ tnchktc(void)
 int
 tnamatch(char *np)
 {
-	register char *Np, *Bp;
+	char *Np, *Bp;
 
 	Bp = tbuf;
 	if (*Bp == '#')
@@ -201,7 +201,7 @@ tnamatch(char *np)
  * into the termcap file in octal.
  */
 static char *
-tskip(register char *bp)
+tskip(char *bp)
 {
 
 	while (*bp && *bp != ':')
@@ -222,8 +222,8 @@ tskip(register char *bp)
 int
 tgetnum(char *id)
 {
-	register int i, base;
-	register char *bp = tbuf;
+	int i, base;
+	char *bp = tbuf;
 
 	for (;;) {
 		bp = tskip(bp);
@@ -255,7 +255,7 @@ tgetnum(char *id)
 int
 tgetflag(char *id)
 {
-	register char *bp = tbuf;
+	char *bp = tbuf;
 
 	for (;;) {
 		bp = tskip(bp);
@@ -281,7 +281,7 @@ tgetflag(char *id)
 char *
 tgetstr(char *id, char **area)
 {
-	register char *bp = tbuf;
+	char *bp = tbuf;
 
 	for (;;) {
 		bp = tskip(bp);
@@ -303,10 +303,10 @@ tgetstr(char *id, char **area)
  * string capability escapes.
  */
 static char *
-tdecode(register char *str, char **area)
+tdecode(char *str, char **area)
 {
-	register char *cp;
-	register int c;
+	char *cp;
+	int c;
 	int i;
 
 	cp = *area;

@@ -30,7 +30,7 @@
  *	BSDI AsyncIO.c,v 2.2 1996/04/08 19:32:10 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/AsyncIO.c,v 1.3.2.3 2002/05/21 11:49:47 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/AsyncIO.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/doscmd/AsyncIO.c,v 1.3 2008/10/16 01:52:32 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -126,7 +126,7 @@ printf("%d: Invalid FD\n", fd);
 }
 
 static void
-CleanIO()
+CleanIO(void)
 {
 	int x;
 	static struct timeval tv;

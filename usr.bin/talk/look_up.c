@@ -32,7 +32,7 @@
  *
  * @(#)look_up.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/talk/look_up.c,v 1.5 1999/08/28 01:06:14 peter Exp $
- * $DragonFly: src/usr.bin/talk/look_up.c,v 1.4 2004/08/19 23:32:02 joerg Exp $
+ * $DragonFly: src/usr.bin/talk/look_up.c,v 1.5 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -49,7 +49,7 @@ int
 check_local(void)
 {
 	CTL_RESPONSE response;
-	register CTL_RESPONSE *rp = &response;
+	CTL_RESPONSE *rp = &response;
 
 	/* the rest of msg was set up in get_names */
 #ifdef MSG_EOR

@@ -1,5 +1,5 @@
 /*	$NetBSD: src/usr.bin/gencat/gencat.c,v 1.19 2004/01/05 23:23:34 jmmv Exp $	*/
-/*	$DragonFly: src/usr.bin/gencat/gencat.c,v 1.4 2005/08/31 18:11:05 swildner Exp $ */
+/*	$DragonFly: src/usr.bin/gencat/gencat.c,v 1.5 2008/10/16 01:52:32 swildner Exp $ */
 
 /*
  * Copyright (c) 1996 The NetBSD Foundation, Inc.
@@ -122,28 +122,26 @@ static char	*xstrdup(const char *);
 static void	*xmalloc(size_t);
 static void	*xrealloc(void *, size_t);
 
-void	MCParse __P((int fd));
-void	MCReadCat __P((int fd));
-void	MCWriteCat __P((int fd));
-void	MCDelMsg __P((int msgId));
-void	MCAddMsg __P((int msgId, const char *msg));
-void	MCAddSet __P((int setId));
-void	MCDelSet __P((int setId));
-int	main __P((int, char **));
-void	usage __P((void));
+void	MCParse(int fd);
+void	MCReadCat(int fd);
+void	MCWriteCat(int fd);
+void	MCDelMsg(int msgId);
+void	MCAddMsg(int msgId, const char *msg);
+void	MCAddSet(int setId);
+void	MCDelSet(int setId);
+int	main(int, char **);
+void	usage(void);
 
 
 void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: %s catfile msgfile ...\n", getprogname());
 	exit(1);
 }
 
 int
-main(argc, argv)
-	int     argc;
-	char   *argv[];
+main(int argc, char *argv[])
 {
 	int     ofd, ifd;
 	char   *catfile = NULL;
@@ -179,9 +177,7 @@ main(argc, argv)
 }
 
 static void
-warning(cptr, msg)
-	char   *cptr;
-	char   *msg;
+warning(char *cptr, char *msg)
 {
 	fprintf(stderr, "%s: %s on line %ld\n", getprogname(), msg, lineno);
 	fprintf(stderr, "%s\n", curline);
@@ -194,9 +190,7 @@ warning(cptr, msg)
 }
 
 static void
-error(cptr, msg)
-	char   *cptr;
-	char   *msg;
+error(char *cptr, char *msg)
 {
 	warning(cptr, msg);
 	exit(1);
@@ -204,21 +198,20 @@ error(cptr, msg)
 
 #if 0	/* XXX unused */
 static void
-corrupt()
+corrupt(void)
 {
 	error(NULL, "corrupt message catalog");
 }
 #endif
 
 static void
-nomem()
+nomem(void)
 {
 	error(NULL, "out of memory");
 }
 
 static void *
-xmalloc(len)
-	size_t  len;
+xmalloc(size_t len)
 {
 	void   *p;
 
@@ -228,9 +221,7 @@ xmalloc(len)
 }
 
 static void *
-xrealloc(ptr, size)
-	void   *ptr;
-	size_t  size;
+xrealloc(void *ptr, size_t size)
 {
 	if ((ptr = realloc(ptr, size)) == NULL)
 		nomem();
@@ -238,8 +229,7 @@ xrealloc(ptr, size)
 }
 
 static char *
-xstrdup(str)
-	const char   *str;
+xstrdup(const char *str)
 {
 	char *nstr;
 
@@ -249,8 +239,7 @@ xstrdup(str)
 }
 
 static char *
-getline(fd)
-	int     fd;
+getline(int fd)
 {
 	static long curlen = BUFSIZ;
 	static char buf[BUFSIZ], *bptr = buf, *bend = buf;
@@ -293,8 +282,7 @@ getline(fd)
 }
 
 static char *
-wskip(cptr)
-	char   *cptr;
+wskip(char *cptr)
 {
 	if (!*cptr || !isspace((unsigned char) *cptr)) {
 		warning(cptr, "expected a space");
@@ -306,8 +294,7 @@ wskip(cptr)
 }
 
 static char *
-cskip(cptr)
-	char   *cptr;
+cskip(char *cptr)
 {
 	if (!*cptr || isspace((unsigned char) *cptr)) {
 		warning(cptr, "wasn't expecting a space");
@@ -319,10 +306,7 @@ cskip(cptr)
 }
 
 static char *
-getmsg(fd, cptr, quote)
-	int     fd;
-	char   *cptr;
-	char    quote;
+getmsg(int fd, char *cptr, char quote)
 {
 	static char *msg = NULL;
 	static long msglen = 0;
@@ -422,8 +406,7 @@ getmsg(fd, cptr, quote)
 }
 
 void
-MCParse(fd)
-	int     fd;
+MCParse(int fd)
 {
 	char   *cptr, *str;
 	int     setid, msgid = 0;
@@ -500,8 +483,7 @@ MCParse(fd)
 }
 
 void
-MCReadCat(fd)
-	int     fd;
+MCReadCat(int fd)
 {
 #if 0
 	MCHeaderT mcHead;
@@ -592,8 +574,7 @@ MCReadCat(fd)
  * that would otherwise be required.
  */
 void
-MCWriteCat(fd)
-	int     fd;
+MCWriteCat(int fd)
 {
 	int     nsets;		/* number of sets */
 	int     nmsgs;		/* number of msgs */
@@ -698,8 +679,7 @@ MCWriteCat(fd)
 }
 
 void
-MCAddSet(setId)
-	int     setId;
+MCAddSet(int setId)
 {
 	struct _setT *p, *q;
 
@@ -736,9 +716,7 @@ MCAddSet(setId)
 }
 
 void
-MCAddMsg(msgId, str)
-	int     msgId;
-	const char *str;
+MCAddMsg(int msgId, const char *str)
 {
 	struct _msgT *p, *q;
 
@@ -776,8 +754,7 @@ MCAddMsg(msgId, str)
 }
 
 void
-MCDelSet(setId)
-	int     setId;
+MCDelSet(int setId)
 {
 	struct _setT *set;
 	struct _msgT *msg;
@@ -800,8 +777,7 @@ MCDelSet(setId)
 }
 
 void
-MCDelMsg(msgId)
-	int     msgId;
+MCDelMsg(int msgId)
 {
 	struct _msgT *msg;
 

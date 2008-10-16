@@ -32,7 +32,7 @@
  *
  *	@(#)externs.h	8.3 (Berkeley) 5/30/95
  *	$FreeBSD: src/usr.bin/telnet/externs.h,v 1.5.2.2 2002/04/13 11:07:13 markm Exp $
- *	$DragonFly: src/usr.bin/telnet/externs.h,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ *	$DragonFly: src/usr.bin/telnet/externs.h,v 1.3 2008/10/16 01:52:33 swildner Exp $
  */
 
 #ifndef	BSD
@@ -92,14 +92,6 @@ extern char *ipsec_policy_out;
 #endif
 
 #define	SUBBUFSIZE	256
-
-#if	!defined(P)
-# ifdef	__STDC__
-#  define	P(x)	x
-# else
-#  define	P(x)	()
-# endif
-#endif
 
 extern int
     autologin,		/* Autologin enabled */

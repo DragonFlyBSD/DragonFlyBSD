@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)renice.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/renice/renice.c,v 1.4.2.3 2002/06/17 23:58:46 tjr Exp $
- * $DragonFly: src/usr.bin/renice/renice.c,v 1.4 2005/02/10 21:06:36 liamfoy Exp $
+ * $DragonFly: src/usr.bin/renice/renice.c,v 1.5 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include <sys/time.h>
@@ -166,7 +166,7 @@ getnum(const char *com, const char *str, int *val)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
 "usage: renice [priority | [-n incr]] [[-p] pid ...] [[-g] pgrp ...]",

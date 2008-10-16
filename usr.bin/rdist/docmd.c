@@ -32,7 +32,7 @@
  *
  * @(#)docmd.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/docmd.c,v 1.12 1999/08/28 01:05:06 peter Exp $
- * $DragonFly: src/usr.bin/rdist/docmd.c,v 1.4 2004/07/24 19:45:10 eirikn Exp $
+ * $DragonFly: src/usr.bin/rdist/docmd.c,v 1.5 2008/10/16 01:52:32 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -65,9 +65,9 @@ static int	 remotecmd(char *, char *, char *, char *);
 void
 docmds(char **dhosts, int argc, char **argv)
 {
-	register struct cmd *c;
-	register struct namelist *f;
-	register char **cpp;
+	struct cmd *c;
+	struct namelist *f;
+	char **cpp;
 	extern struct cmd *cmds;
 
 	signal(SIGHUP, cleanup);
@@ -118,9 +118,9 @@ docmds(char **dhosts, int argc, char **argv)
 static void
 doarrow(char **filev, struct namelist *files, char *rhost, struct subcmd *cmds)
 {
-	register struct namelist *f;
-	register struct subcmd *sc;
-	register char **cpp;
+	struct namelist *f;
+	struct subcmd *sc;
+	char **cpp;
 	int n, ddir, opts = options;
 
 	if (debug)
@@ -244,7 +244,7 @@ static int remotecmd(char *rhost, char *luser, char *ruser, char *cmd)
 static int
 makeconn(char *rhost)
 {
-	register char *ruser, *cp;
+	char *ruser, *cp;
 	static char *cur_host = NULL;
 	static int port = -1;
 	char tuser[20];
@@ -335,7 +335,7 @@ makeconn(char *rhost)
  * Signal end of previous connection.
  */
 static void
-closeconn()
+closeconn(void)
 {
 	if (debug)
 		printf("closeconn()\n");
@@ -357,10 +357,10 @@ lostconn(int signo)
 }
 
 static int
-okname(register char *name)
+okname(char *name)
 {
-	register char *cp;
-	register int c;
+	char *cp;
+	int c;
 
 	cp = name;
 
@@ -388,9 +388,9 @@ extern	char target[], *tp;
 static void
 dodcolon(char **filev, struct namelist *files, char *stamp, struct subcmd *cmds)
 {
-	register struct subcmd *sc;
-	register struct namelist *f;
-	register char **cpp;
+	struct subcmd *sc;
+	struct namelist *f;
+	char **cpp;
 	struct timeval tv[2];
 	struct timezone tz;
 	struct stat stb;
@@ -498,9 +498,9 @@ cmptime(char *name)
 static void
 rcmptime(struct stat *st)
 {
-	register DIR *d;
-	register struct dirent *dp;
-	register char *cp;
+	DIR *d;
+	struct dirent *dp;
+	char *cp;
 	char *otp;
 	int len;
 
@@ -539,9 +539,9 @@ rcmptime(struct stat *st)
  * stamp file.
  */
 static void
-notify(char *file, char *rhost, register struct namelist *to, time_t lmod)
+notify(char *file, char *rhost, struct namelist *to, time_t lmod)
 {
-	register int fd, len;
+	int fd, len;
 	struct stat stb;
 	FILE *pf;
 
@@ -617,7 +617,7 @@ notify(char *file, char *rhost, register struct namelist *to, time_t lmod)
 int
 inlist(struct namelist *list, char *file)
 {
-	register struct namelist *nl;
+	struct namelist *nl;
 
 	for (nl = list; nl != NULL; nl = nl->n_next)
 		if (!strcmp(file, nl->n_name))
@@ -631,8 +631,8 @@ inlist(struct namelist *list, char *file)
 int
 except(char *file)
 {
-	register struct	subcmd *sc;
-	register struct	namelist *nl;
+	struct	subcmd *sc;
+	struct	namelist *nl;
 	regex_t rx;
 	int val;
 
@@ -661,7 +661,7 @@ except(char *file)
 }
 
 char *
-colon(register char *cp)
+colon(char *cp)
 {
 
 	while (*cp) {

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tftp/main.c,v 1.8.2.3 2002/05/14 22:08:07 bsd Exp $
- * $DragonFly: src/usr.bin/tftp/main.c,v 1.5 2004/08/30 18:06:50 eirikn Exp $
+ * $DragonFly: src/usr.bin/tftp/main.c,v 1.6 2008/10/16 01:52:33 swildner Exp $
  */
 
 /* Many bug fixes are from Jim Guyton <guyton@rand-unix> */
@@ -266,7 +266,7 @@ struct	modes {
 void
 modecmd(int argc, char **argv)
 {
-	register struct modes *p;
+	struct modes *p;
 	char *sep;
 
 	if (argc < 2) {
@@ -326,8 +326,8 @@ void
 put(int argc, char **argv)
 {
 	int fd;
-	register int n;
-	register char *cp, *targ;
+	int n;
+	char *cp, *targ;
 
 	if (argc < 2) {
 		strcpy(line, "send ");
@@ -408,8 +408,8 @@ void
 get(int argc, char **argv)
 {
 	int fd;
-	register int n;
-	register char *cp;
+	int n;
+	char *cp;
 	char *src;
 
 	if (argc < 2) {
@@ -557,7 +557,7 @@ intr(void)
 char *
 tail(char *filename)
 {
-	register char *s;
+	char *s;
 
 	while (*filename) {
 		s = strrchr(filename, '/');
@@ -576,7 +576,7 @@ tail(char *filename)
 static void
 command(void)
 {
-	register struct cmd *c;
+	struct cmd *c;
 	char *cp;
 
 	for (;;) {
@@ -609,11 +609,11 @@ command(void)
 }
 
 struct cmd *
-getcmd(register char *name)
+getcmd(char *name)
 {
-	register char *p, *q;
-	register struct cmd *c, *found;
-	register int nmatches, longest;
+	char *p, *q;
+	struct cmd *c, *found;
+	int nmatches, longest;
 
 	longest = 0;
 	nmatches = 0;
@@ -642,8 +642,8 @@ getcmd(register char *name)
 static void
 makeargv(void)
 {
-	register char *cp;
-	register char **argp = margv;
+	char *cp;
+	char **argp = margv;
 
 	margc = 0;
 	if ((cp = strchr(line, '\n')))
@@ -677,7 +677,7 @@ quit(int argc, char **argv)
 void
 help(int argc, char **argv)
 {
-	register struct cmd *c;
+	struct cmd *c;
 
 	if (argc == 1) {
 		printf("Commands may be abbreviated.  Commands are:\n\n");
@@ -686,7 +686,7 @@ help(int argc, char **argv)
 		return;
 	}
 	while (--argc > 0) {
-		register char *arg;
+		char *arg;
 		arg = *++argv;
 		c = getcmd(arg);
 		if (c == (struct cmd *)-1)

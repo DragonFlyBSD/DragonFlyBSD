@@ -33,7 +33,7 @@
  *
  * @(#)gram.y	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/gram.y,v 1.6 1999/08/28 01:05:07 peter Exp $
- * $DragonFly: src/usr.bin/rdist/gram.y,v 1.4 2004/07/24 19:45:10 eirikn Exp $
+ * $DragonFly: src/usr.bin/rdist/gram.y,v 1.5 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -141,7 +141,7 @@ cmdlist:	  /* VOID */ {
 		;
 
 cmd:		  INSTALL options opt_namelist SM = {
-			register struct namelist *nl;
+			struct namelist *nl;
 
 			$1->sc_options = $2 | options;
 			if ($3 != NULL) {
@@ -214,11 +214,11 @@ int	yylineno = 1;
 extern	FILE *fin;
 
 int
-yylex()
+yylex(void)
 {
 	static char yytext[INMAX];
-	register int c;
-	register char *cp1, *cp2;
+	int c;
+	char *cp1, *cp2;
 	static char quotechars[] = "[]{}*?$";
 	
 again:
@@ -365,7 +365,7 @@ again:
 }
 
 int
-any(register int c, register char *str)
+any(int c, char *str)
 {
 	while (*str)
 		if (c == *str++)
@@ -379,8 +379,8 @@ any(register int c, register char *str)
 void
 insert(char *label, struct namelist *files, struct namelist *hosts, struct subcmd *subcmds)
 {
-	register struct cmd *c, *prev, *nc;
-	register struct namelist *h, *next_h;
+	struct cmd *c, *prev, *nc;
+	struct namelist *h, *next_h;
 
 	files = expand(files, E_VARS|E_SHELL);
 	hosts = expand(hosts, E_ALL);
@@ -427,7 +427,7 @@ insert(char *label, struct namelist *files, struct namelist *hosts, struct subcm
 void
 append(char *label, struct namelist *files, char *stamp, struct subcmd *subcmds)
 {
-	register struct cmd *c;
+	struct cmd *c;
 
 	c = ALLOC(cmd);
 	if (c == NULL)
@@ -450,8 +450,7 @@ append(char *label, struct namelist *files, char *stamp, struct subcmd *subcmds)
  * Error printing routine in parser.
  */
 void
-yyerror(s)
-	char *s;
+yyerror(char *s)
 {
 	++nerrs;
 	fflush(stdout);
@@ -464,7 +463,7 @@ yyerror(s)
 static char *
 makestr(char *str)
 {
-	register char *cp, *s;
+	char *cp, *s;
 
 	str = cp = malloc(strlen(s = str) + 1);
 	if (cp == NULL)
@@ -480,7 +479,7 @@ makestr(char *str)
 struct namelist *
 makenl(char *name)
 {
-	register struct namelist *nl;
+	struct namelist *nl;
 
 	nl = ALLOC(namelist);
 	if (nl == NULL)
@@ -496,7 +495,7 @@ makenl(char *name)
 struct subcmd *
 makesubcmd(int type)
 {
-	register struct subcmd *sc;
+	struct subcmd *sc;
 
 	sc = ALLOC(subcmd);
 	if (sc == NULL)

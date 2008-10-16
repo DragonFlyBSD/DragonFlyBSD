@@ -32,7 +32,7 @@
  *
  * @(#)netcmds.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/netcmds.c,v 1.9 1999/08/28 01:06:04 peter Exp $
- * $DragonFly: src/usr.bin/systat/netcmds.c,v 1.5 2004/09/03 20:38:01 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/netcmds.c,v 1.6 2008/10/16 01:52:33 swildner Exp $
  */
 
 /*
@@ -124,7 +124,7 @@ netcmd(char *cmd, char *args)
 static void
 changeitems(char *args, int onoff)
 {
-	register char *cp;
+	char *cp;
 	struct servent *sp;
 	struct hostent *hp;
 	struct in_addr in;
@@ -197,7 +197,7 @@ static	struct pitem {
 static int
 selectport(long port, int onoff)
 {
-	register struct pitem *p;
+	struct pitem *p;
 
 	if (port == -1) {
 		if (ports == 0)
@@ -222,9 +222,9 @@ selectport(long port, int onoff)
 }
 
 int
-checkport(register struct inpcb *inp)
+checkport(struct inpcb *inp)
 {
-	register struct pitem *p;
+	struct pitem *p;
 
 	if (ports)
 	for (p = ports; p < ports+nports; p++)
@@ -236,7 +236,7 @@ checkport(register struct inpcb *inp)
 static void
 showports(void)
 {
-	register struct pitem *p;
+	struct pitem *p;
 	struct servent *sp;
 
 	for (p = ports; p < ports+nports; p++) {
@@ -254,7 +254,7 @@ showports(void)
 static int
 selecthost(struct in_addr *in, int onoff)
 {
-	register struct hitem *p;
+	struct hitem *p;
 
 	if (in == 0) {
 		if (hosts == 0)
@@ -279,9 +279,9 @@ selecthost(struct in_addr *in, int onoff)
 }
 
 int
-checkhost(register struct inpcb *inp)
+checkhost(struct inpcb *inp)
 {
-	register struct hitem *p;
+	struct hitem *p;
 
 	if (hosts)
 	for (p = hosts; p < hosts+nhosts; p++)
@@ -294,7 +294,7 @@ checkhost(register struct inpcb *inp)
 static void
 showhosts(void)
 {
-	register struct hitem *p;
+	struct hitem *p;
 	struct hostent *hp;
 
 	for (p = hosts; p < hosts+nhosts; p++) {

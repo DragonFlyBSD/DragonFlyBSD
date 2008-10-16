@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vis.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vis/vis.c,v 1.6 1999/08/28 01:07:25 peter Exp $
- * $DragonFly: src/usr.bin/vis/vis.c,v 1.3 2003/10/04 20:36:54 hmp Exp $
+ * $DragonFly: src/usr.bin/vis/vis.c,v 1.4 2008/10/16 01:52:34 swildner Exp $
  */
 
 #include <err.h>
@@ -131,8 +131,8 @@ void
 process(FILE *fp, char *filename)
 {
 	static int col = 0;
-	register char *cp = "\0"+1;	/* so *(cp-1) starts out != '\n' */
-	register int c, rachar;
+	char *cp = "\0"+1;		/* so *(cp-1) starts out != '\n' */
+	int c, rachar;
 	char buff[5];
 
 	c = getc(fp);

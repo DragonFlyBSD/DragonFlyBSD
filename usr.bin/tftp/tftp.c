@@ -32,7 +32,7 @@
  *
  * @(#)tftp.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tftp/tftp.c,v 1.5.2.3 2002/05/14 22:08:07 bsd Exp $
- * $DragonFly: src/usr.bin/tftp/tftp.c,v 1.5 2004/09/03 20:38:01 dillon Exp $
+ * $DragonFly: src/usr.bin/tftp/tftp.c,v 1.6 2008/10/16 01:52:33 swildner Exp $
  */
 
 /* Many bug fixes are from Jim Guyton <guyton@rand-unix> */
@@ -89,9 +89,9 @@ static int cmpport(struct sockaddr *, struct sockaddr *);
 void
 xmitfile(int fd, char *name, char *mode)
 {
-	register struct tftphdr *ap;	   /* data and ack packets */
+	struct tftphdr *ap;	   	/* data and ack packets */
 	struct tftphdr *r_init(), *dp;
-	register int n;
+	int n;
 	volatile unsigned short block;
 	volatile int size, convert;
 	volatile unsigned long amount;
@@ -204,9 +204,9 @@ abort:
 void
 recvfile(int fd, char *name, char *mode)
 {
-	register struct tftphdr *ap;
+	struct tftphdr *ap;
 	struct tftphdr *dp, *w_init();
-	register int n;
+	int n;
 	volatile unsigned short block;
 	volatile int size, firsttrip;
 	volatile unsigned long amount;
@@ -323,7 +323,7 @@ abort:						/* ok to ack, since user */
 static int
 makerequest(int request, const char *name, struct tftphdr *tp, const char *mode)
 {
-	register char *cp;
+	char *cp;
 
 	tp->th_opcode = htons((u_short)request);
 	cp = tp->th_stuff;
@@ -360,8 +360,8 @@ struct errmsg {
 static void
 nak(int error, struct sockaddr *peer)
 {
-	register struct errmsg *pe;
-	register struct tftphdr *tp;
+	struct errmsg *pe;
+	struct tftphdr *tp;
 	int length;
 	char *strerror();
 
@@ -388,7 +388,7 @@ tpacket(const char *s, struct tftphdr *tp, int n)
 {
 	static char *opcodes[] =
 	   { "#0", "RRQ", "WRQ", "DATA", "ACK", "ERROR" };
-	register char *cp, *file;
+	char *cp, *file;
 	u_short op = ntohs(tp->th_opcode);
 
 	if (op < RRQ || op > ERROR)

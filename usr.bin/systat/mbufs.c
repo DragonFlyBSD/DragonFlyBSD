@@ -32,7 +32,7 @@
  *
  * @(#)mbufs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/mbufs.c,v 1.10.2.1 2000/08/26 09:36:55 ps Exp $
- * $DragonFly: src/usr.bin/systat/mbufs.c,v 1.6 2006/05/21 03:43:47 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/mbufs.c,v 1.7 2008/10/16 01:52:33 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -92,7 +92,7 @@ labelmbufs(void)
 void
 showmbufs(void)
 {
-	register int i, j, max, index;
+	int i, j, max, index;
 	char buf[10];
 	char *mtname;
 

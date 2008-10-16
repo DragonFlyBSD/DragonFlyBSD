@@ -32,7 +32,7 @@
  *
  * @(#)swap.c	8.3 (Berkeley) 4/29/95
  * $FreeBSD: src/usr.bin/systat/swap.c,v 1.12.2.2 2001/07/04 22:54:14 kris Exp $
- * $DragonFly: src/usr.bin/systat/swap.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
+ * $DragonFly: src/usr.bin/systat/swap.c,v 1.4 2008/10/16 01:52:33 swildner Exp $
  */
 
 /*
@@ -118,7 +118,7 @@ fetchswap(void)
 }
 
 void
-labelswap()
+labelswap(void)
 {
 	char *header, *p;
 	int row, i;

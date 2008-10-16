@@ -28,7 +28,7 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/gen.c,v 2.56 96/05/25 20:43:38 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/gen.c,v 1.5 1999/10/27 07:56:44 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/gen.c,v 1.5 2008/02/03 13:14:12 corecode Exp $ */
+/* $DragonFly: src/usr.bin/lex/gen.c,v 1.6 2008/10/16 01:52:32 swildner Exp $ */
 
 #include "flexdef.h"
 
@@ -446,7 +446,7 @@ void genftbl(void)
 
 void gen_next_compressed_state(char *char_map)
 	{
-	indent_put2s( "register YY_CHAR yy_c = %s;", char_map );
+	indent_put2s( "YY_CHAR yy_c = %s;", char_map );
 
 	/* Save the backing-up info \before/ computing the next state
 	 * because we always compute one more state than needed - we
@@ -533,8 +533,8 @@ void gen_next_match(void)
 		{
 		indent_puts( "{" );	/* } for vi */
 		indent_puts(
-		"register yyconst struct yy_trans_info *yy_trans_info;\n" );
-		indent_puts( "register YY_CHAR yy_c;\n" );
+		"yyconst struct yy_trans_info *yy_trans_info;\n" );
+		indent_puts( "YY_CHAR yy_c;\n" );
 		indent_put2s( "for ( yy_c = %s;", char_map );
 		indent_puts(
 	"      (yy_trans_info = &yy_current_state[(unsigned int) yy_c])->" );
@@ -674,7 +674,7 @@ void gen_NUL_trans(void)
 		/* We're going to need yy_cp lying around for the call
 		 * below to gen_backing_up().
 		 */
-		indent_puts( "register char *yy_cp = yy_c_buf_p;" );
+		indent_puts( "char *yy_cp = yy_c_buf_p;" );
 
 	outc( '\n' );
 
@@ -696,10 +696,10 @@ void gen_NUL_trans(void)
 	else if ( fullspd )
 		{
 		do_indent();
-		out_dec( "register int yy_c = %d;\n", NUL_ec );
+		out_dec( "int yy_c = %d;\n", NUL_ec );
 
 		indent_puts(
-		"register yyconst struct yy_trans_info *yy_trans_info;\n" );
+		"yyconst struct yy_trans_info *yy_trans_info;\n" );
 		indent_puts(
 		"yy_trans_info = &yy_current_state[(unsigned int) yy_c];" );
 		indent_puts( "yy_current_state += yy_trans_info->yy_nxt;" );

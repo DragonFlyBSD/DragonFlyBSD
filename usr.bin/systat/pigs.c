@@ -32,7 +32,7 @@
  *
  * @(#)pigs.c	8.2 (Berkeley) 9/23/93
  *
- * $DragonFly: src/usr.bin/systat/pigs.c,v 1.14 2007/02/16 23:11:40 corecode Exp $
+ * $DragonFly: src/usr.bin/systat/pigs.c,v 1.15 2008/10/16 01:52:33 swildner Exp $
  */
 
 /*
@@ -87,7 +87,7 @@ closepigs(WINDOW *w)
 void
 showpigs(void)
 {
-	register int i, j, y, k;
+	int i, j, y, k;
 	float total;
 	int factor;
 	char *uname, *pname, pidname[30];

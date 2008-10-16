@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/pr/pr.c,v 1.9.2.4 2002/04/15 17:16:57 jmallett Exp $
- * $DragonFly: src/usr.bin/pr/pr.c,v 1.3 2003/10/04 20:36:50 hmp Exp $
+ * $DragonFly: src/usr.bin/pr/pr.c,v 1.4 2008/10/16 01:52:32 swildner Exp $
  *
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)pr.c	8.2 (Berkeley) 4/16/94
@@ -160,11 +160,11 @@ ttypause(int pagecnt)
 int
 onecol(int argc, char **argv)
 {
-	register int cnt = -1;
-	register int off;
-	register int lrgln;
-	register int linecnt;
-	register int num;
+	int cnt = -1;
+	int off;
+	int lrgln;
+	int linecnt;
+	int num;
 	int lncnt;
 	int pagecnt;
 	int ips;
@@ -305,13 +305,13 @@ onecol(int argc, char **argv)
 int
 vertcol(int argc, char **argv)
 {
-	register char *ptbf;
-	register char **lstdat;
-	register int i;
-	register int j;
-	register int cnt = -1;
-	register int pln;
-	register int *indy;
+	char *ptbf;
+	char **lstdat;
+	int i;
+	int j;
+	int cnt = -1;
+	int pln;
+	int *indy;
 	int cvc;
 	int *lindy;
 	int lncnt;
@@ -626,13 +626,13 @@ vertcol(int argc, char **argv)
 int
 horzcol(int argc, char **argv)
 {
-	register char *ptbf;
-	register int pln;
-	register int cnt = -1;
-	register char *lstdat;
-	register int col = colwd + 1;
-	register int j;
-	register int i;
+	char *ptbf;
+	int pln;
+	int cnt = -1;
+	char *lstdat;
+	int col = colwd + 1;
+	int j;
+	int i;
 	int lncnt;
 	int pagecnt;
 	char *buf;
@@ -769,12 +769,12 @@ horzcol(int argc, char **argv)
 int
 mulfile(int argc, char **argv)
 {
-	register char *ptbf;
-	register int j;
-	register int pln;
-	register int cnt;
-	register char *lstdat;
-	register int i;
+	char *ptbf;
+	int j;
+	int pln;
+	int cnt;
+	char *lstdat;
+	int i;
 	FILE **fbuf;
 	int actf;
 	int lncnt;
@@ -981,13 +981,13 @@ mulfile(int argc, char **argv)
  *	mor:	set if more data in line (not truncated)
  */
 int
-inln(FILE *inf, char *buf, register int lim, int *cps, int trnc, int *mor)
+inln(FILE *inf, char *buf, int lim, int *cps, int trnc, int *mor)
 {
-	register int col;
-	register int gap = ingap;
-	register int ch = EOF;
-	register char *ptbuf;
-	register int chk = (int)inchar;
+	int col;
+	int gap = ingap;
+	int ch = EOF;
+	char *ptbuf;
+	int chk = (int)inchar;
 
 	ptbuf = buf;
 
@@ -1086,13 +1086,13 @@ inln(FILE *inf, char *buf, register int lim, int *cps, int trnc, int *mor)
  *		1 is more, 0 is complete, -1 is no \n's
  */
 int
-otln(register char *buf, int cnt, int *svips, int *svops, int mor)
+otln(char *buf, int cnt, int *svips, int *svops, int mor)
 {
-	register int ops;		/* last col output */
-	register int ips;		/* last col in buf examined */
-	register int gap = ogap;
-	register int tbps;
-	register char *endbuf;
+	int ops;			/* last col output */
+	int ips;			/* last col in buf examined */
+	int gap = ogap;
+	int tbps;
+	char *endbuf;
 
 	if (ogap) {
 		/*
@@ -1223,10 +1223,10 @@ otln(register char *buf, int cnt, int *svips, int *svops, int mor)
  *	lncnt	number of lines per page
  */
 int
-inskip(FILE *inf, register int pgcnt, register int lncnt)
+inskip(FILE *inf, int pgcnt, int lncnt)
 {
-	register int c;
-	register int cnt;
+	int c;
+	int cnt;
 
 	while(--pgcnt > 0) {
 		cnt = lncnt;
@@ -1387,9 +1387,9 @@ nxtfile(int argc, char **argv, char **fname, char *buf, int dt)
  *		numbers as part of the column so spaces may be replaced.
  */
 void
-addnum(register char *buf, register int wdth, register int line)
+addnum(char *buf, int wdth, int line)
 {
-	register char *pt = buf + wdth;
+	char *pt = buf + wdth;
 
 	do {
 		*--pt = digs[line % 10];
@@ -1447,7 +1447,7 @@ prhead(char *buf, char *fname, int pagcnt)
  *	incomp	was a '\n' missing from last line output
  */
 int
-prtail(register int cnt, int incomp)
+prtail(int cnt, int incomp)
 {
 	if (nohead) {
 		/*
@@ -1561,9 +1561,9 @@ usage(void)
  *		checks on options
  */
 int
-setup(register int argc, register char **argv)
+setup(int argc, char **argv)
 {
-	register int c;
+	int c;
 	int d_first;
 	int eflag = 0;
 	int iflag = 0;

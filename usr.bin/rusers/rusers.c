@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/rusers/rusers.c,v 1.8.2.1 2001/07/02 23:43:05 mikeh Exp $
- * $DragonFly: src/usr.bin/rusers/rusers.c,v 1.3 2004/07/17 21:10:42 hmp Exp $
+ * $DragonFly: src/usr.bin/rusers/rusers.c,v 1.4 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -193,7 +193,7 @@ onehost(char *host)
 }
 
 void
-allhosts()
+allhosts(void)
 {
 	utmpidlearr up;
 	enum clnt_stat clnt_stat;
@@ -207,7 +207,7 @@ allhosts()
 }
 
 static void
-usage()
+usage(void)
 {
 
 	fprintf(stderr, "usage: rusers [-la] [hosts ...]\n");

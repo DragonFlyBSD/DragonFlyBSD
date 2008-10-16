@@ -1,3 +1,5 @@
+/* $DragonFly: src/usr.bin/ctags/test/ctags.test,v 1.2 2008/10/16 01:52:32 swildner Exp $ */
+
 int	bar = (1 + 5);
 
 FOO("here is a #define test: ) {");
@@ -55,7 +57,7 @@ routine1(one,two)	/* comments here are fun... */
 	char two[10];
 {
 typedef unsigned char	u_char;
-	register struct buf *bp;
+	struct buf *bp;
 	five(one,two);
 }
  routine2 (one,two) { puts("hello\n"); }

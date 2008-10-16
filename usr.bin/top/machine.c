@@ -21,7 +21,7 @@
  *          Hiten Pandya <hmp@backplane.com>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.25 2008/03/01 18:49:00 nant Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.26 2008/10/16 01:52:33 swildner Exp $
  */
 
 
@@ -229,8 +229,8 @@ cputime_percentages(int out[CPU_STATES], struct kinfo_cputime *new,
 int
 machine_init(struct statics *statics)
 {
-    register int i = 0;
-    register int pagesize;
+    int i = 0;
+    int pagesize;
     size_t modelen;
     struct passwd *pw;
 
@@ -295,9 +295,9 @@ machine_init(struct statics *statics)
     return(0);
 }
 
-char *format_header(register char *uname_field)
+char *format_header(char *uname_field)
 {
-    register char *ptr;
+    char *ptr;
     static char Header[128];
 
     snprintf(Header, sizeof(Header), smpmode ? smp_header : up_header,
@@ -447,11 +447,11 @@ static struct handle handle;
 caddr_t get_process_info(struct system_info *si, struct process_select *sel,
                          int (*compare)())
 {
-    register int i;
-    register int total_procs;
-    register int active_procs;
-    register struct kinfo_proc **prefp;
-    register struct kinfo_proc *pp;
+    int i;
+    int total_procs;
+    int active_procs;
+    struct kinfo_proc **prefp;
+    struct kinfo_proc *pp;
 
     /* these are copied out of sel for speed */
     int show_idle;
@@ -661,9 +661,9 @@ char *format_next_process(caddr_t handle, char *(*get_userid)())
  *		number of symbols NOT found.
  */
 
-static int check_nlist(register struct nlist *nlst)
+static int check_nlist(struct nlist *nlst)
 {
-    register int i;
+    int i;
 
     /* check to see if we got ALL the symbols we requested */
     /* this will write one line to stderr for every symbol not found */
@@ -747,10 +747,10 @@ compare_cpu(struct proc **pp1, struct proc **pp2)
 proc_compare(struct proc **pp1, struct proc **pp2)
 #endif
 {
-    register struct kinfo_proc *p1;
-    register struct kinfo_proc *p2;
-    register int result;
-    register pctcpu lresult;
+    struct kinfo_proc *p1;
+    struct kinfo_proc *p2;
+    int result;
+    pctcpu lresult;
 
     /* remove one level of indirection */
     p1 = *(struct kinfo_proc **) pp1;
@@ -786,10 +786,10 @@ int (*proc_compares[])() = {
 int
 compare_size(struct proc **pp1, struct proc **pp2)
 {
-    register struct kinfo_proc *p1;
-    register struct kinfo_proc *p2;
-    register int result;
-    register pctcpu lresult;
+    struct kinfo_proc *p1;
+    struct kinfo_proc *p2;
+    int result;
+    pctcpu lresult;
 
     /* remove one level of indirection */
     p1 = *(struct kinfo_proc **) pp1;
@@ -811,10 +811,10 @@ compare_size(struct proc **pp1, struct proc **pp2)
 int
 compare_res(struct proc **pp1, struct proc **pp2)
 {
-    register struct kinfo_proc *p1;
-    register struct kinfo_proc *p2;
-    register int result;
-    register pctcpu lresult;
+    struct kinfo_proc *p1;
+    struct kinfo_proc *p2;
+    int result;
+    pctcpu lresult;
 
     /* remove one level of indirection */
     p1 = *(struct kinfo_proc **) pp1;
@@ -836,10 +836,10 @@ compare_res(struct proc **pp1, struct proc **pp2)
 int
 compare_time(struct proc **pp1, struct proc **pp2)
 {
-    register struct kinfo_proc *p1;
-    register struct kinfo_proc *p2;
-    register int result;
-    register pctcpu lresult;
+    struct kinfo_proc *p1;
+    struct kinfo_proc *p2;
+    int result;
+    pctcpu lresult;
   
     /* remove one level of indirection */
     p1 = *(struct kinfo_proc **) pp1;
@@ -863,10 +863,10 @@ compare_time(struct proc **pp1, struct proc **pp2)
 int
 compare_prio(struct proc **pp1, struct proc **pp2)
 {
-    register struct kinfo_proc *p1;
-    register struct kinfo_proc *p2;
-    register int result;
-    register pctcpu lresult;
+    struct kinfo_proc *p1;
+    struct kinfo_proc *p2;
+    int result;
+    pctcpu lresult;
 
     /* remove one level of indirection */
     p1 = *(struct kinfo_proc **) pp1;
@@ -888,10 +888,10 @@ compare_prio(struct proc **pp1, struct proc **pp2)
 int
 compare_thr(struct proc **pp1, struct proc **pp2)
 {
-    register struct kinfo_proc *p1;
-    register struct kinfo_proc *p2;
-    register int result;
-    register pctcpu lresult;
+    struct kinfo_proc *p1;
+    struct kinfo_proc *p2;
+    int result;
+    pctcpu lresult;
 
     /* remove one level of indirection */
     p1 = *(struct kinfo_proc **) pp1;
@@ -924,9 +924,9 @@ compare_thr(struct proc **pp1, struct proc **pp2)
 
 int proc_owner(int pid)
 {
-    register int cnt;
-    register struct kinfo_proc **prefp;
-    register struct kinfo_proc *pp;
+    int cnt;
+    struct kinfo_proc **prefp;
+    struct kinfo_proc *pp;
 
     prefp = pref;
     cnt = pref_len;
