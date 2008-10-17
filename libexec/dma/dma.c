@@ -256,6 +256,7 @@ add_recp(struct queue *queue, const char *str, const char *sender, int expand)
 				pw = getpwnam(it->addr);
 				if (pw == NULL)
 					goto out;
+				/* XXX read .forward */
 				endpwent();
 			}
 		}
@@ -1140,15 +1141,22 @@ main(int argc, char **argv)
 	argv += optind;
 	opterr = 1;
 
+	if (argc != 0 && (showq || doqueue))
+		errx(1, "sending mail and queue operations are mutually exclusive");
+
+	if (showq + doqueue > 1)
+		errx(1, "conflicting queue operations");
+
+	/* XXX fork root here */
+
 skipopts:
 	openlog(tag, LOG_PID, LOG_MAIL);
 	set_username();
 
-	config = malloc(sizeof(struct config));
+	config = calloc(1, sizeof(*config));
 	if (config == NULL)
 		err(1, NULL);
 
-	memset(config, 0, sizeof(struct config));
 	if (parse_conf(CONF_PATH, config) < 0) {
 		free(config);
 		err(1, "can not read config file");
@@ -1163,17 +1171,12 @@ skipopts:
 		err(1, "can not read SMTP authentication file");
 
 	if (showq) {
-		if (argc != 0)
-			errx(1, "sending mail and displaying queue is"
-				" mutually exclusive");
 		load_queue(&lqueue, 1);
 		show_queue(&lqueue);
 		return (0);
 	}
 
 	if (doqueue) {
-		if (argc != 0)
-			errx(1, "sending mail and queue pickup is mutually exclusive");
 		load_queue(&lqueue, 0);
 		run_queue(&lqueue);
 		return (0);
