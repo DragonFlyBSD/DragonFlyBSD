@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.26 2008/10/16 12:46:40 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.27 2008/10/17 14:12:23 sephe Exp $
  */
 
 #define RE_RX_DESC_CNT_8139CP	64
@@ -50,6 +50,7 @@
 #define RE_IFQ_MAXLEN		512
 #define RE_MAXSEGS		16
 #define RE_TXDESC_SPARE		4
+#define RE_JBUF_COUNT(sc)	(((sc)->re_rx_desc_cnt * 3) / 2)
 
 #define RE_RXDESC_INC(sc, x)	(x = (x + 1) % (sc)->re_rx_desc_cnt)
 #define RE_TXDESC_INC(sc, x)	(x = (x + 1) % (sc)->re_tx_desc_cnt)
@@ -65,6 +66,10 @@
 #define RE_FRAMELEN_2K		2048
 #define RE_FRAMELEN(mtu)	(mtu + ETHER_HDR_LEN + ETHER_CRC_LEN)
 #define RE_SWCSUM_LIM_8169	2038
+
+#define RE_BUF_ALIGN		8
+#define RE_JUMBO_FRAME_9K	9022
+#define RE_JBUF_SIZE		roundup2(RE_JUMBO_FRAME_9K, RE_BUF_ALIGN)
 
 #define	RE_TIMEOUT		1000
 
@@ -102,6 +107,16 @@ struct re_dmaload_arg {
 	bus_dma_segment_t	*re_segs;
 };
 
+struct re_softc;
+struct re_jbuf {
+	struct re_softc 	*re_sc;
+	int			re_inuse;
+	int			re_slot;
+	caddr_t			re_buf;
+	bus_addr_t		re_paddr;
+	SLIST_ENTRY(re_jbuf)	re_link;
+};
+
 struct re_list_data {
 	struct mbuf		**re_tx_mbuf;
 	struct mbuf		**re_rx_mbuf;
@@ -126,6 +141,13 @@ struct re_list_data {
 	bus_dmamap_t		re_tx_list_map;
 	struct re_desc		*re_tx_list;
 	bus_addr_t		re_tx_list_addr;
+
+	bus_dma_tag_t		re_jpool_tag;
+	bus_dmamap_t		re_jpool_map;
+	caddr_t			re_jpool;
+	struct re_jbuf		*re_jbuf;
+	struct lwkt_serialize	re_jbuf_serializer;
+	SLIST_HEAD(, re_jbuf)	re_jbuf_free;
 };
 
 struct re_softc {
@@ -162,6 +184,8 @@ struct re_softc {
 	int			re_tx_desc_cnt;
 	int			re_bus_speed;
 	int			rxcycles;
+	int			re_rxbuf_size;
+	int			(*re_newbuf)(struct re_softc *, int, int);
 
 	uint32_t		re_flags;	/* see RE_F_ */
 
@@ -192,6 +216,7 @@ struct re_softc {
 #define RE_C_PHYPMGT		0x80	/* PHY supports power mgmt */
 #define RE_C_8169		0x100	/* is 8110/8169 */
 #define RE_C_AUTOPAD		0x200	/* hardware auto-pad short frames */
+#define RE_C_CONTIGRX		0x400	/* need contig buf to RX jumbo frames */
 
 #define RE_IS_8139CP(sc)	((sc)->re_caps & RE_C_8139CP)
 
@@ -201,6 +226,7 @@ struct re_softc {
 #define RE_IMTYPE_HW		2	/* hardware based */
 
 #define RE_F_TIMER_INTR		0x1
+#define RE_F_USE_JPOOL		0x2
 
 /*
  * register space access macros

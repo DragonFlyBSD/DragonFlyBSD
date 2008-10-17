@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.85 2008/10/16 14:58:50 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.86 2008/10/17 14:12:23 sephe Exp $
  */
 
 /*
@@ -228,15 +228,15 @@ static const struct re_hwrev re_hwrevs[] = {
 
 	{ RE_HWREV_8168C,	RE_MACVER_29,
 	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD },
+	  RE_C_AUTOPAD | RE_C_CONTIGRX },
 
 	{ RE_HWREV_8168CP,	RE_MACVER_2B,
 	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD },
+	  RE_C_AUTOPAD | RE_C_CONTIGRX },
 
 	{ RE_HWREV_8168D,	RE_MACVER_2A,
 	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD },
+	  RE_C_AUTOPAD | RE_C_CONTIGRX },
 
 	{ RE_HWREV_8100E,	RE_MACVER_UNKN,
 	  RE_C_HWCSUM },
@@ -270,7 +270,8 @@ static int	re_allocmem(device_t);
 static void	re_freemem(device_t);
 static void	re_freebufmem(struct re_softc *, int, int);
 static int	re_encap(struct re_softc *, struct mbuf **, int *);
-static int	re_newbuf(struct re_softc *, int, int);
+static int	re_newbuf_std(struct re_softc *, int, int);
+static int	re_newbuf_jumbo(struct re_softc *, int, int);
 static void	re_setup_rxdesc(struct re_softc *, int);
 static int	re_rx_list_init(struct re_softc *);
 static int	re_tx_list_init(struct re_softc *);
@@ -318,6 +319,12 @@ static int	re_sysctl_rxtime(SYSCTL_HANDLER_ARGS);
 static int	re_sysctl_txtime(SYSCTL_HANDLER_ARGS);
 static int	re_sysctl_simtime(SYSCTL_HANDLER_ARGS);
 static int	re_sysctl_imtype(SYSCTL_HANDLER_ARGS);
+
+static int	re_jpool_alloc(struct re_softc *);
+static void	re_jpool_free(struct re_softc *);
+static struct re_jbuf *re_jbuf_alloc(struct re_softc *);
+static void	re_jbuf_free(void *);
+static void	re_jbuf_ref(void *);
 
 #ifdef RE_DIAG
 static int	re_diag(struct re_softc *);
@@ -1217,6 +1224,15 @@ re_allocmem(device_t dev)
 			return(error);
 		}
 	}
+
+	/* Create jumbo buffer pool for RX if required */
+	if (sc->re_caps & RE_C_CONTIGRX) {
+		error = re_jpool_alloc(sc);
+		if (error) {
+			re_jpool_free(sc);
+			sc->re_maxmtu = ETHERMTU;
+		}
+	}
 	return(0);
 }
 
@@ -1280,6 +1296,9 @@ re_freemem(device_t dev)
 		bus_dma_tag_destroy(sc->re_ldata.re_stag);
 	}
 
+	if (sc->re_caps & RE_C_CONTIGRX)
+		re_jpool_free(sc);
+
 	if (sc->re_parent_tag)
 		bus_dma_tag_destroy(sc->re_parent_tag);
 
@@ -1326,6 +1345,9 @@ re_attach(device_t dev)
 	qlen = RE_IFQ_MAXLEN;
 	if (sc->re_tx_desc_cnt > qlen)
 		qlen = sc->re_tx_desc_cnt;
+
+	sc->re_rxbuf_size = MCLBYTES;
+	sc->re_newbuf = re_newbuf_std;
 
 	sc->re_tx_time = 5;		/* 125us */
 	sc->re_rx_time = 2;		/* 50us */
@@ -1678,14 +1700,14 @@ re_setup_rxdesc(struct re_softc *sc, int idx)
 	d->re_bufaddr_lo = htole32(RE_ADDR_LO(paddr));
 	d->re_bufaddr_hi = htole32(RE_ADDR_HI(paddr));
 
-	cmdstat = MCLBYTES | RE_RDESC_CMD_OWN;
+	cmdstat = sc->re_rxbuf_size | RE_RDESC_CMD_OWN;
 	if (idx == (sc->re_rx_desc_cnt - 1))
-		cmdstat |= RE_TDESC_CMD_EOR;
+		cmdstat |= RE_RDESC_CMD_EOR;
 	d->re_cmdstat = htole32(cmdstat);
 }
 
 static int
-re_newbuf(struct re_softc *sc, int idx, int init)
+re_newbuf_std(struct re_softc *sc, int idx, int init)
 {
 	struct re_dmaload_arg arg;
 	bus_dma_segment_t seg;
@@ -1753,6 +1775,60 @@ back:
 }
 
 static int
+re_newbuf_jumbo(struct re_softc *sc, int idx, int init)
+{
+	struct mbuf *m;
+	struct re_jbuf *jbuf;
+	int error = 0;
+
+	MGETHDR(m, init ? MB_WAIT : MB_DONTWAIT, MT_DATA);
+	if (m == NULL) {
+		error = ENOBUFS;
+		if (init) {
+			if_printf(&sc->arpcom.ac_if, "MGETHDR failed\n");
+			return error;
+		} else {
+			goto back;
+		}
+	}
+
+	jbuf = re_jbuf_alloc(sc);
+	if (jbuf == NULL) {
+		m_freem(m);
+
+		error = ENOBUFS;
+		if (init) {
+			if_printf(&sc->arpcom.ac_if, "jpool is empty\n");
+			return error;
+		} else {
+			goto back;
+		}
+	}
+
+	m->m_ext.ext_arg = jbuf;
+	m->m_ext.ext_buf = jbuf->re_buf;
+	m->m_ext.ext_free = re_jbuf_free;
+	m->m_ext.ext_ref = re_jbuf_ref;
+	m->m_ext.ext_size = sc->re_rxbuf_size;
+
+	m->m_data = m->m_ext.ext_buf;
+	m->m_flags |= M_EXT;
+	m->m_len = m->m_pkthdr.len = m->m_ext.ext_size;
+
+	/*
+	 * NOTE:
+	 * Some re(4) chips(e.g. RTL8101E) need address of the receive buffer
+	 * to be 8-byte aligned, so don't call m_adj(m, ETHER_ALIGN) here.
+	 */
+
+	sc->re_ldata.re_rx_mbuf[idx] = m;
+	sc->re_ldata.re_rx_paddr[idx] = jbuf->re_paddr;
+back:
+	re_setup_rxdesc(sc, idx);
+	return error;
+}
+
+static int
 re_tx_list_init(struct re_softc *sc)
 {
 	bzero(sc->re_ldata.re_tx_list, RE_TX_LIST_SZ(sc));
@@ -1776,7 +1852,7 @@ re_rx_list_init(struct re_softc *sc)
 	bzero(sc->re_ldata.re_rx_list, RE_RX_LIST_SZ(sc));
 
 	for (i = 0; i < sc->re_rx_desc_cnt; i++) {
-		error = re_newbuf(sc, i, 1);
+		error = sc->re_newbuf(sc, i, 1);
 		if (error)
 			return(error);
 	}
@@ -1846,13 +1922,18 @@ re_rxeof(struct re_softc *sc)
 
 		rx = 1;
 
+#ifdef INVARIANTS
+		if (sc->re_flags & RE_F_USE_JPOOL)
+			KKASSERT(rxstat & RE_RDESC_STAT_EOF);
+#endif
+
 		if ((rxstat & RE_RDESC_STAT_EOF) == 0) {
 			if (sc->re_drop_rxfrag) {
 				re_setup_rxdesc(sc, i);
 				continue;
 			}
 
-			if (re_newbuf(sc, i, 0)) {
+			if (sc->re_newbuf(sc, i, 0)) {
 				/* Drop upcoming fragments */
 				sc->re_drop_rxfrag = 1;
 				continue;
@@ -1914,9 +1995,8 @@ re_rxeof(struct re_softc *sc)
 		 * reload the current one.
 		 */
 
-		if (re_newbuf(sc, i, 0)) {
+		if (sc->re_newbuf(sc, i, 0)) {
 			ifp->if_ierrors++;
-			re_free_rxchain(sc);
 			continue;
 		}
 
@@ -2536,6 +2616,19 @@ re_init(void *xsc)
 	 */
 	re_stop(sc);
 
+	if (sc->re_caps & RE_C_CONTIGRX) {
+		if (ifp->if_mtu > ETHERMTU) {
+			KKASSERT(sc->re_ldata.re_jbuf != NULL);
+			sc->re_flags |= RE_F_USE_JPOOL;
+			sc->re_rxbuf_size = RE_JUMBO_FRAME_9K;
+			sc->re_newbuf = re_newbuf_jumbo;
+		} else {
+			sc->re_flags &= ~RE_F_USE_JPOOL;
+			sc->re_rxbuf_size = MCLBYTES;
+			sc->re_newbuf = re_newbuf_std;
+		}
+	}
+
 	/*
 	 * Adjust max read request size according to MTU.
 	 * Mainly to improve TX performance for common case (ETHERMTU).
@@ -2690,8 +2783,12 @@ re_init(void *xsc)
 	 * For 8169 gigE NICs, set the max allowed RX packet
 	 * size so we can receive jumbo frames.
 	 */
-	if (!RE_IS_8139CP(sc))
-		CSR_WRITE_2(sc, RE_MAXRXPKTLEN, 16383);
+	if (!RE_IS_8139CP(sc)) {
+		if (sc->re_caps & RE_C_CONTIGRX)
+			CSR_WRITE_2(sc, RE_MAXRXPKTLEN, sc->re_rxbuf_size);
+		else
+			CSR_WRITE_2(sc, RE_MAXRXPKTLEN, 16383);
+	}
 
 	if (sc->re_testmode)
 		return;
@@ -2855,8 +2952,10 @@ re_stop(struct re_softc *sc)
 	/* Free the RX list buffers. */
 	for (i = 0; i < sc->re_rx_desc_cnt; i++) {
 		if (sc->re_ldata.re_rx_mbuf[i] != NULL) {
-			bus_dmamap_unload(sc->re_ldata.re_mtag,
-					  sc->re_ldata.re_rx_dmamap[i]);
+			if ((sc->re_flags & RE_F_USE_JPOOL) == 0) {
+				bus_dmamap_unload(sc->re_ldata.re_mtag,
+						  sc->re_ldata.re_rx_dmamap[i]);
+			}
 			m_freem(sc->re_ldata.re_rx_mbuf[i]);
 			sc->re_ldata.re_rx_mbuf[i] = NULL;
 		}
@@ -3316,4 +3415,155 @@ re_set_max_readrq(struct re_softc *sc, uint16_t size)
 
 		kprintf("-> 0x%04x\n", val);
 	}
+}
+
+static int
+re_jpool_alloc(struct re_softc *sc)
+{
+	struct re_list_data *ldata = &sc->re_ldata;
+	struct re_jbuf *jbuf;
+	bus_addr_t paddr;
+	bus_size_t jpool_size;
+	caddr_t buf;
+	int i, error;
+
+	lwkt_serialize_init(&ldata->re_jbuf_serializer);
+
+	ldata->re_jbuf = kmalloc(sizeof(struct re_jbuf) * RE_JBUF_COUNT(sc),
+				 M_DEVBUF, M_WAITOK | M_ZERO);
+
+	jpool_size = RE_JBUF_COUNT(sc) * RE_JBUF_SIZE;
+
+	error = bus_dma_tag_create(sc->re_parent_tag,
+			RE_BUF_ALIGN, 0,	/* alignment, boundary */
+			BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
+			BUS_SPACE_MAXADDR,	/* highaddr */
+			NULL, NULL,		/* filter, filterarg */
+			jpool_size, 1,		/* nsegments, maxsize */
+			BUS_SPACE_MAXSIZE_32BIT,/* maxsegsize */
+			BUS_DMA_ALLOCNOW,	/* flags */
+			&ldata->re_jpool_tag);
+	if (error) {
+		device_printf(sc->re_dev, "could not allocate jumbo dma tag\n");
+		return error;
+	}
+
+	error = bus_dmamem_alloc(ldata->re_jpool_tag, (void **)&ldata->re_jpool,
+				 BUS_DMA_WAITOK, &ldata->re_jpool_map);
+	if (error) {
+		device_printf(sc->re_dev,
+			      "could not allocate jumbo dma memory\n");
+		bus_dma_tag_destroy(ldata->re_jpool_tag);
+		ldata->re_jpool_tag = NULL;
+		return error;
+	}
+
+	error = bus_dmamap_load(ldata->re_jpool_tag, ldata->re_jpool_map,
+				ldata->re_jpool, jpool_size,
+				re_dma_map_addr, &paddr, BUS_DMA_WAITOK);
+	if (error) {
+		device_printf(sc->re_dev, "could not load jumbo dma map\n");
+		bus_dmamem_free(ldata->re_jpool_tag, ldata->re_jpool,
+				ldata->re_jpool_map);
+		bus_dma_tag_destroy(ldata->re_jpool_tag);
+		ldata->re_jpool_tag = NULL;
+		return error;
+	}
+
+	/* ..and split it into 9KB chunks */
+	SLIST_INIT(&ldata->re_jbuf_free);
+
+	buf = ldata->re_jpool;
+	for (i = 0; i < RE_JBUF_COUNT(sc); i++) {
+		jbuf = &ldata->re_jbuf[i];
+
+		jbuf->re_sc = sc;
+		jbuf->re_inuse = 0;
+		jbuf->re_slot = i;
+		jbuf->re_buf = buf;
+		jbuf->re_paddr = paddr;
+
+		SLIST_INSERT_HEAD(&ldata->re_jbuf_free, jbuf, re_link);
+
+		buf += RE_JBUF_SIZE;
+		paddr += RE_JBUF_SIZE;
+	}
+	return 0;
+}
+
+static void
+re_jpool_free(struct re_softc *sc)
+{
+	struct re_list_data *ldata = &sc->re_ldata;
+
+	if (ldata->re_jpool_tag != NULL) {
+		bus_dmamap_unload(ldata->re_jpool_tag, ldata->re_jpool_map);
+		bus_dmamem_free(ldata->re_jpool_tag, ldata->re_jpool,
+				ldata->re_jpool_map);
+		bus_dma_tag_destroy(ldata->re_jpool_tag);
+		ldata->re_jpool_tag = NULL;
+	}
+
+	if (ldata->re_jbuf != NULL) {
+		kfree(ldata->re_jbuf, M_DEVBUF);
+		ldata->re_jbuf = NULL;
+	}
+}
+
+static struct re_jbuf *
+re_jbuf_alloc(struct re_softc *sc)
+{
+	struct re_list_data *ldata = &sc->re_ldata;
+	struct re_jbuf *jbuf;
+
+	lwkt_serialize_enter(&ldata->re_jbuf_serializer);
+
+	jbuf = SLIST_FIRST(&ldata->re_jbuf_free);
+	if (jbuf != NULL) {
+		SLIST_REMOVE_HEAD(&ldata->re_jbuf_free, re_link);
+		jbuf->re_inuse = 1;
+	}
+
+	lwkt_serialize_exit(&ldata->re_jbuf_serializer);
+
+	return jbuf;
+}
+
+static void
+re_jbuf_free(void *arg)
+{
+	struct re_jbuf *jbuf = arg;
+	struct re_softc *sc = jbuf->re_sc;
+	struct re_list_data *ldata = &sc->re_ldata;
+
+	if (&ldata->re_jbuf[jbuf->re_slot] != jbuf) {
+		panic("%s: free wrong jumbo buffer\n",
+		      sc->arpcom.ac_if.if_xname);
+	} else if (jbuf->re_inuse == 0) {
+		panic("%s: jumbo buffer already freed\n",
+		      sc->arpcom.ac_if.if_xname);
+	}
+
+	lwkt_serialize_enter(&ldata->re_jbuf_serializer);
+	atomic_subtract_int(&jbuf->re_inuse, 1);
+	if (jbuf->re_inuse == 0)
+		SLIST_INSERT_HEAD(&ldata->re_jbuf_free, jbuf, re_link);
+	lwkt_serialize_exit(&ldata->re_jbuf_serializer);
+}
+
+static void
+re_jbuf_ref(void *arg)
+{
+	struct re_jbuf *jbuf = arg;
+	struct re_softc *sc = jbuf->re_sc;
+	struct re_list_data *ldata = &sc->re_ldata;
+
+	if (&ldata->re_jbuf[jbuf->re_slot] != jbuf) {
+		panic("%s: ref wrong jumbo buffer\n",
+		      sc->arpcom.ac_if.if_xname);
+	} else if (jbuf->re_inuse == 0) {
+		panic("%s: jumbo buffer already freed\n",
+		      sc->arpcom.ac_if.if_xname);
+	}
+	atomic_add_int(&jbuf->re_inuse, 1);
 }
