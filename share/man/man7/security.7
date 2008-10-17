@@ -3,7 +3,7 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/security.7,v 1.13.2.11 2002/04/13 02:04:44 keramida Exp $
-.\" $DragonFly: src/share/man/man7/security.7,v 1.14 2008/02/19 21:46:33 thomas Exp $
+.\" $DragonFly: src/share/man/man7/security.7,v 1.15 2008/10/17 11:30:24 swildner Exp $
 .\"
 .Dd September 18, 1999
 .Dt SECURITY 7
@@ -75,7 +75,7 @@ nearly impossible to stop short of cutting your system off from the Internet.
 It may not be able to take your machine down, but it can fill up Internet
 pipe.
 .Pp
-A user account compromise is even more common then a D.O.S. attack.  Many
+A user account compromise is even more common than a D.O.S. attack.  Many
 sysadmins still run standard telnetd, rlogind, rshd, and ftpd servers on their
 machines.  These servers, by default, do not operate over encrypted
 connections.  The result is that if you have any moderate-sized user base,
@@ -175,7 +175,7 @@ to root without having to place anyone at all in the wheel group.  This
 may be the better solution since the wheel mechanism still allows an
 intruder to break root if the intruder has gotten hold of your password
 file and can break into a staff account.  While having the wheel mechanism
-is better then having nothing at all, it isn't necessarily the safest
+is better than having nothing at all, it isn't necessarily the safest
 option.
 .Pp
 An indirect way to secure the root account is to secure your staff accounts
@@ -277,7 +277,7 @@ Still, root holes are occasionally found in these binaries.  A root hole
 was found in Xlib in 1998 that made xterm
 (which is typically suid)
 vulnerable.
-It is better to be safe then sorry and the prudent sysadmin will restrict suid
+It is better to be safe than sorry and the prudent sysadmin will restrict suid
 binaries that only staff should run to a special group that only staff can
 access, and get rid of
 .Pq Li "chmod 000"
@@ -617,7 +617,7 @@ with
 These routes typically timeout in 1600
 seconds or so.  If the kernel detects that the cached route table has gotten
 too big it will dynamically reduce the rtexpire but will never decrease it to
-less then rtminexpire.  There are two problems:  (1) The kernel does not react
+less than rtminexpire.  There are two problems:  (1) The kernel does not react
 quickly enough when a lightly loaded server is suddenly attacked, and (2) The
 rtminexpire is not low enough for the kernel to survive a sustained attack.
 If your servers are connected to the internet via a T3 or better it may be

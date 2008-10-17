@@ -3,7 +3,7 @@
 .\" the source tree.
 .\"
 .\" $FreeBSD: src/share/man/man7/tuning.7,v 1.1.2.30 2002/12/17 19:32:08 dillon Exp $
-.\" $DragonFly: src/share/man/man7/tuning.7,v 1.20 2008/09/06 10:36:27 thomas Exp $
+.\" $DragonFly: src/share/man/man7/tuning.7,v 1.21 2008/10/17 11:30:24 swildner Exp $
 .\"
 .Dd March 4, 2007
 .Dt TUNING 7
@@ -467,7 +467,7 @@ Many people also enforce artificial
 bandwidth limitations in order to ensure that they are not charged for
 using too much bandwidth.
 .Pp
-Setting the send or receive TCP buffer to values larger then 65535 will result
+Setting the send or receive TCP buffer to values larger than 65535 will result
 in a marginal performance improvement unless both hosts support the window
 scaling extension of the TCP protocol, which is controlled by the
 .Va net.inet.tcp.rfc1323
@@ -546,7 +546,7 @@ This parameter defaults to 20, representing 2 maximal packets added
 to the bandwidth delay product window calculation.  The additional
 window is required to stabilize the algorithm and improve responsiveness
 to changing conditions, but it can also result in higher ping times
-over slow links (though still much lower then you would get without
+over slow links (though still much lower than you would get without
 the inflight algorithm).  In such cases you may
 wish to try reducing this parameter to 15, 10, or 5, and you may also
 have to reduce
@@ -618,7 +618,7 @@ seconds) via
 and
 .Va vm.swap_idle_threshold2
 allows you to depress the priority of pages associated with idle processes
-more quickly then the normal pageout algorithm.
+more quickly than the normal pageout algorithm.
 This gives a helping hand
 to the pageout daemon.
 Do not turn this option on unless you need it,

@@ -37,7 +37,7 @@
 .\" OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/rndcontrol/random.4,v 1.9.2.2 2001/11/24 16:14:18 dd Exp $
-.\" $DragonFly: src/usr.sbin/rndcontrol/random.4,v 1.12 2008/06/23 06:22:15 swildner Exp $
+.\" $DragonFly: src/usr.sbin/rndcontrol/random.4,v 1.13 2008/10/17 11:30:24 swildner Exp $
 .\"
 .Dd October 21, 1995
 .Dt RANDOM 4 i386
@@ -102,7 +102,7 @@ is good enough).
 .Pp
 Root may write entropy to
 .Pa /dev/random
-to seed the random number generator only if the securelevel is less then
+to seed the random number generator only if the securelevel is less than
 or equal to zero and the
 .Va kern.seedenable
 sysctl is non-zero.  A certain
