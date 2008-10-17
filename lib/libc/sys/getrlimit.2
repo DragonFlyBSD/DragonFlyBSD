@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)getrlimit.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/getrlimit.2,v 1.10.2.5 2001/12/14 18:34:00 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/getrlimit.2,v 1.4 2004/06/06 13:33:28 hmp Exp $
+.\" $DragonFly: src/lib/libc/sys/getrlimit.2,v 1.5 2008/10/17 12:41:38 swildner Exp $
 .\"
 .Dd June 4, 1993
 .Dt GETRLIMIT 2
@@ -149,7 +149,7 @@ if this signal is not
 caught by a handler using the signal stack, this signal
 will kill the process.
 .Pp
-A file I/O operation that would create a file larger that the process'
+A file I/O operation that would create a file larger than the process'
 soft limit will cause the write to fail and a signal
 .Dv SIGXFSZ
 to be
