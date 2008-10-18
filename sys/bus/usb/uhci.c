@@ -1,6 +1,6 @@
 /*	$NetBSD: uhci.c,v 1.170 2003/02/19 01:35:04 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhci.c,v 1.162.2.1 2006/03/01 01:59:04 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.29 2008/08/13 00:55:55 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.30 2008/10/18 01:17:53 dillon Exp $	*/
 
 /*	Also already incorporated from NetBSD:
  *	$NetBSD: uhci.c,v 1.172 2003/02/23 04:19:26 simonb Exp $
@@ -1192,11 +1192,7 @@ uhci_softintr(void *v)
 	DPRINTFN(10,("%s: uhci_softintr (%d)\n", device_get_nameunit(sc->sc_bus.bdev),
 		     sc->sc_bus.intr_context));
 
-	/*
-	 * this is a software interrupt, not a real interrupt,
-	 * do not bump intr_context
-	 */
-	/* sc->sc_bus.intr_context++; */
+	sc->sc_bus.intr_context++;
 
 	/*
 	 * Interrupts on UHCI really suck.  When the host controller
@@ -1219,7 +1215,7 @@ uhci_softintr(void *v)
 	}
 #endif /* USB_USE_SOFTINTR */
 
-	/* sc->sc_bus.intr_context--; */
+	sc->sc_bus.intr_context--;
 }
 
 /* Check for an interrupt. */
@@ -1859,14 +1855,18 @@ uhci_abort_xfer(usbd_xfer_handle xfer, usbd_status status)
 		return;
 	}
 
+#if 0
 	if (xfer->device->bus->intr_context /* || !curproc REMOVED DFly */)
 		panic("uhci_abort_xfer: not in process context");
+#endif
 
 	/*
 	 * If an abort is already in progress then just wait for it to
 	 * complete and return.
 	 */
+	crit_enter();
 	if (uxfer->uhci_xfer_flags & UHCI_XFER_ABORTING) {
+		crit_exit();
 		DPRINTFN(2, ("uhci_abort_xfer: already aborting\n"));
 		/* No need to wait if we're aborting from a timeout. */
 		if (status == USBD_TIMEOUT)
@@ -1875,15 +1875,16 @@ uhci_abort_xfer(usbd_xfer_handle xfer, usbd_status status)
 		xfer->status = status;
 		DPRINTFN(2, ("uhci_abort_xfer: waiting for abort to finish\n"));
 		uxfer->uhci_xfer_flags |= UHCI_XFER_ABORTWAIT;
+		crit_enter();
 		while (uxfer->uhci_xfer_flags & UHCI_XFER_ABORTING)
 			tsleep(&uxfer->uhci_xfer_flags, 0, "uhciaw", 0);
+		crit_exit();
 		return;
 	}
 
 	/*
 	 * Step 1: Make interrupt routine and hardware ignore xfer.
 	 */
-	crit_enter();
 	uxfer->uhci_xfer_flags |= UHCI_XFER_ABORTING;
 	xfer->status = status;	/* make software ignore it */
 	callout_stop(&xfer->timeout_handle);
