@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.88 2008/10/18 04:44:41 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.89 2008/10/18 11:26:52 sephe Exp $
  */
 
 /*
@@ -196,61 +196,61 @@ static const struct re_type {
 };
 
 static const struct re_hwrev re_hwrevs[] = {
-	{ RE_HWREV_8139CPLUS,	RE_MACVER_UNKN,
+	{ RE_HWREV_8139CPLUS,	RE_MACVER_UNKN,		ETHERMTU,
 	  RE_C_HWCSUM | RE_C_8139CP },
 
-	{ RE_HWREV_8169,	RE_MACVER_UNKN,
-	  RE_C_HWCSUM | RE_C_JUMBO | RE_C_8169 },
+	{ RE_HWREV_8169,	RE_MACVER_UNKN,		RE_MTU_6K,
+	  RE_C_HWCSUM | RE_C_8169 },
 
-	{ RE_HWREV_8110S,	RE_MACVER_03,
-	  RE_C_HWCSUM | RE_C_JUMBO | RE_C_8169 },
+	{ RE_HWREV_8110S,	RE_MACVER_03,		RE_MTU_6K,
+	  RE_C_HWCSUM | RE_C_8169 },
 
-	{ RE_HWREV_8169S,	RE_MACVER_03,
-	  RE_C_HWCSUM | RE_C_JUMBO | RE_C_8169 },
+	{ RE_HWREV_8169S,	RE_MACVER_03,		RE_MTU_6K,
+	  RE_C_HWCSUM | RE_C_8169 },
 
-	{ RE_HWREV_8169SB,	RE_MACVER_04,
-	  RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT | RE_C_8169 },
+	{ RE_HWREV_8169SB,	RE_MACVER_04,		RE_MTU_6K,
+	  RE_C_HWCSUM | RE_C_PHYPMGT | RE_C_8169 },
 
-	{ RE_HWREV_8169SC1,	RE_MACVER_05,
-	  RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT | RE_C_8169 },
+	{ RE_HWREV_8169SC1,	RE_MACVER_05,		RE_MTU_6K,
+	  RE_C_HWCSUM | RE_C_PHYPMGT | RE_C_8169 },
 
-	{ RE_HWREV_8169SC2,	RE_MACVER_06,
-	  RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT | RE_C_8169 },
+	{ RE_HWREV_8169SC2,	RE_MACVER_06,		RE_MTU_6K,
+	  RE_C_HWCSUM | RE_C_PHYPMGT | RE_C_8169 },
 
-	{ RE_HWREV_8168B1,	RE_MACVER_21,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT },
+	{ RE_HWREV_8168B1,	RE_MACVER_21,		RE_MTU_6K,
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_PHYPMGT },
 
-	{ RE_HWREV_8168B2,	RE_MACVER_23,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT | RE_C_AUTOPAD },
+	{ RE_HWREV_8168B2,	RE_MACVER_23,		RE_MTU_6K,
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_PHYPMGT | RE_C_AUTOPAD },
 
-	{ RE_HWREV_8168B3,	RE_MACVER_23,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_PHYPMGT | RE_C_AUTOPAD },
+	{ RE_HWREV_8168B3,	RE_MACVER_23,		RE_MTU_6K,
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_PHYPMGT | RE_C_AUTOPAD },
 
-	{ RE_HWREV_8168C,	RE_MACVER_29,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_MAC2 | RE_C_PHYPMGT |
+	{ RE_HWREV_8168C,	RE_MACVER_29,		RE_MTU_6K,
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
 	  RE_C_AUTOPAD | RE_C_CONTIGRX },
 
-	{ RE_HWREV_8168CP,	RE_MACVER_2B,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_MAC2 | RE_C_PHYPMGT |
+	{ RE_HWREV_8168CP,	RE_MACVER_2B,		RE_MTU_6K,
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
 	  RE_C_AUTOPAD | RE_C_CONTIGRX },
 
-	{ RE_HWREV_8168D,	RE_MACVER_2A,
-	  RE_C_HWIM | RE_C_HWCSUM | RE_C_JUMBO | RE_C_MAC2 | RE_C_PHYPMGT |
+	{ RE_HWREV_8168D,	RE_MACVER_2A,		RE_MTU_9K,
+	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
 	  RE_C_AUTOPAD | RE_C_CONTIGRX },
 
-	{ RE_HWREV_8100E,	RE_MACVER_UNKN,
+	{ RE_HWREV_8100E,	RE_MACVER_UNKN,		ETHERMTU,
 	  RE_C_HWCSUM },
 
-	{ RE_HWREV_8101E1,	RE_MACVER_16,
+	{ RE_HWREV_8101E1,	RE_MACVER_16,		ETHERMTU,
 	  RE_C_HWCSUM },
 
-	{ RE_HWREV_8101E2,	RE_MACVER_16,
+	{ RE_HWREV_8101E2,	RE_MACVER_16,		ETHERMTU,
 	  RE_C_HWCSUM },
 
-	{ RE_HWREV_8102E,	RE_MACVER_15,
+	{ RE_HWREV_8102E,	RE_MACVER_15,		ETHERMTU,
 	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_AUTOPAD },
 
-	{ RE_HWREV_8102EL,	RE_MACVER_15,
+	{ RE_HWREV_8102EL,	RE_MACVER_15,		ETHERMTU,
 	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_AUTOPAD },
 
 	{ RE_HWREV_NULL, 0, 0 }
@@ -955,15 +955,8 @@ re_probe(device_t dev)
 			sc->re_hwrev = hw_rev->re_hwrev;
 			sc->re_macver = hw_rev->re_macver;
 			sc->re_caps = hw_rev->re_caps;
-
-			if (sc->re_caps & RE_C_JUMBO) {
-				sc->re_swcsum_lim = RE_JUMBO_MTU;
-				sc->re_maxmtu = RE_JUMBO_MTU;
-			} else {
-				sc->re_swcsum_lim = ETHERMTU;
-				sc->re_maxmtu = ETHERMTU;
-			}
-			sc->re_swcsum_lim += ETHER_HDR_LEN;
+			sc->re_maxmtu = hw_rev->re_maxmtu;
+			sc->re_swcsum_lim = RE_SWCSUM_UNLIMITED;
 
 			/*
 			 * Apply chip property fixup
@@ -1185,7 +1178,7 @@ re_allocmem(device_t dev)
 			ETHER_ALIGN, 0,
 			BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 			NULL, NULL,
-			RE_JUMBO_FRAMELEN, RE_MAXSEGS, MCLBYTES,
+			RE_FRAMELEN_MAX, RE_MAXSEGS, MCLBYTES,
 			BUS_DMA_ALLOCNOW,
 			&sc->re_ldata.re_mtag);
 	if (error) {
@@ -1230,6 +1223,7 @@ re_allocmem(device_t dev)
 		error = re_jpool_alloc(sc);
 		if (error) {
 			re_jpool_free(sc);
+			/* Disable jumbo frame support */
 			sc->re_maxmtu = ETHERMTU;
 		}
 	}
@@ -2615,7 +2609,7 @@ re_init(void *xsc)
 		if (ifp->if_mtu > ETHERMTU) {
 			KKASSERT(sc->re_ldata.re_jbuf != NULL);
 			sc->re_flags |= RE_F_USE_JPOOL;
-			sc->re_rxbuf_size = RE_JUMBO_FRAME_9K;
+			sc->re_rxbuf_size = RE_FRAMELEN_MAX;
 			sc->re_newbuf = re_newbuf_jumbo;
 		} else {
 			sc->re_flags &= ~RE_F_USE_JPOOL;
@@ -2710,12 +2704,10 @@ re_init(void *xsc)
 		CSR_WRITE_4(sc, RE_TXCFG, RE_TXCFG_CONFIG);
 
 	framelen = RE_FRAMELEN(ifp->if_mtu);
-	if (framelen < RE_FRAMELEN_2K) {
-		CSR_WRITE_1(sc, RE_EARLY_TX_THRESH,
-			    howmany(RE_FRAMELEN_2K, 128));
-	} else {
+	if (framelen < MCLBYTES)
+		CSR_WRITE_1(sc, RE_EARLY_TX_THRESH, howmany(MCLBYTES, 128));
+	else
 		CSR_WRITE_1(sc, RE_EARLY_TX_THRESH, howmany(framelen, 128));
-	}
 
 	CSR_WRITE_4(sc, RE_RXCFG, RE_RXCFG_CONFIG);
 

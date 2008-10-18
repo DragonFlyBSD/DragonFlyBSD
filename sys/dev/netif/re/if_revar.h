@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.27 2008/10/17 14:12:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.28 2008/10/18 11:26:52 sephe Exp $
  */
 
 #define RE_RX_DESC_CNT_8139CP	64
@@ -61,21 +61,28 @@
 #define RE_ADDR_LO(y)		((uint64_t) (y) & 0xFFFFFFFF)
 #define RE_ADDR_HI(y)		((uint64_t) (y) >> 32)
 
-#define RE_JUMBO_FRAMELEN	7440
-#define RE_JUMBO_MTU		(RE_JUMBO_FRAMELEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
-#define RE_FRAMELEN_2K		2048
-#define RE_FRAMELEN(mtu)	(mtu + ETHER_HDR_LEN + ETHER_CRC_LEN)
+#define RE_MTU_6K		(6 * 1024)
+#define RE_MTU_9K		(9 * 1024)
+
+#define RE_ETHER_EXTRA		(ETHER_HDR_LEN + ETHER_CRC_LEN + EVL_ENCAPLEN)
+#define RE_FRAMELEN(mtu)	((mtu) + RE_ETHER_EXTRA)
+
+#define RE_FRAMELEN_6K		RE_FRAMELEN(RE_MTU_6K)
+#define RE_FRAMELEN_9K		RE_FRAMELEN(RE_MTU_9K)
+#define RE_FRAMELEN_MAX		RE_FRAMELEN_9K
+
 #define RE_SWCSUM_LIM_8169	2038
+#define RE_SWCSUM_UNLIMITED	65536	/* XXX should be enough */
 
 #define RE_BUF_ALIGN		8
-#define RE_JUMBO_FRAME_9K	9022
-#define RE_JBUF_SIZE		roundup2(RE_JUMBO_FRAME_9K, RE_BUF_ALIGN)
+#define RE_JBUF_SIZE		roundup2(RE_FRAMELEN_MAX, RE_BUF_ALIGN)
 
 #define	RE_TIMEOUT		1000
 
 struct re_hwrev {
 	uint32_t		re_hwrev;
 	uint32_t		re_macver;	/* see RE_MACVER_ */
+	int			re_maxmtu;
 	uint32_t		re_caps;	/* see RE_C_ */
 };
 
@@ -210,7 +217,6 @@ struct re_softc {
 #define RE_C_PCI64		0x2	/* PCI-X */
 #define RE_C_HWIM		0x4	/* hardware interrupt moderation */
 #define RE_C_HWCSUM		0x8	/* hardware csum offload */
-#define RE_C_JUMBO		0x10	/* jumbo frame */
 #define RE_C_8139CP		0x20	/* is 8139C+ */
 #define RE_C_MAC2		0x40	/* MAC style 2 */
 #define RE_C_PHYPMGT		0x80	/* PHY supports power mgmt */
