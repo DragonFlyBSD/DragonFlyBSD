@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/dev/netif/et/if_etreg.h,v 1.3 2007/10/23 14:28:42 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/et/if_etreg.h,v 1.4 2008/10/18 11:36:37 sephe Exp $
  */
 
 #ifndef _IF_ETREG_H
@@ -225,7 +225,7 @@
 #define ET_RXMAC_MC_SEGSZ_FC		__BIT(1)
 #define ET_RXMAC_MC_SEGSZ_MAX		__BITS(9, 2)
 #define ET_RXMAC_SEGSZ(segsz)		((segsz) / ET_MEM_UNIT)
-#define ET_RXMAC_CUT_THRU_FRMLEN	8074
+#define ET_RXMAC_CUT_THRU_FRMLEN	6122
 
 #define ET_RXMAC_MC_WATERMARK		0x408c
 #define ET_RXMAC_SPACE_AVL		0x4094
