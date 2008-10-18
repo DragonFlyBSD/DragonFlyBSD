@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.86 2008/10/17 14:12:23 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.87 2008/10/18 03:00:29 sephe Exp $
  */
 
 /*
@@ -2651,7 +2651,9 @@ re_init(void *xsc)
 	 * before all others.
 	 */
 	CSR_WRITE_2(sc, RE_CPLUS_CMD, RE_CPLUSCMD_RXENB | RE_CPLUSCMD_TXENB |
-		    RE_CPLUSCMD_PCI_MRW | RE_CPLUSCMD_VLANSTRIP |
+		    RE_CPLUSCMD_PCI_MRW |
+		    (ifp->if_capenable & IFCAP_VLAN_HWTAGGING ?
+		     RE_CPLUSCMD_VLANSTRIP : 0) |
 		    (ifp->if_capenable & IFCAP_RXCSUM ?
 		     RE_CPLUSCMD_RXCSUM_ENB : 0));
 
@@ -2845,7 +2847,7 @@ re_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	struct re_softc *sc = ifp->if_softc;
 	struct ifreq *ifr = (struct ifreq *) data;
 	struct mii_data *mii;
-	int error = 0;
+	int error = 0, mask;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -2877,14 +2879,17 @@ re_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = ifmedia_ioctl(ifp, ifr, &mii->mii_media, command);
 		break;
 	case SIOCSIFCAP:
-		ifp->if_capenable &= ~(IFCAP_HWCSUM);
-		ifp->if_capenable |=
-		    ifr->ifr_reqcap & (IFCAP_HWCSUM);
-		if (ifp->if_capenable & IFCAP_TXCSUM)
-			ifp->if_hwassist = RE_CSUM_FEATURES;
-		else
-			ifp->if_hwassist = 0;
-		if (ifp->if_flags & IFF_RUNNING)
+		mask = (ifr->ifr_reqcap ^ ifp->if_capenable) &
+		       ifp->if_capabilities;
+		ifp->if_capenable ^= mask;
+
+		if (mask & IFCAP_HWCSUM) {
+			if (ifp->if_capenable & IFCAP_TXCSUM)
+				ifp->if_hwassist = RE_CSUM_FEATURES;
+			else
+				ifp->if_hwassist = 0;
+		}
+		if (mask && (ifp->if_flags & IFF_RUNNING))
 			re_init(sc);
 		break;
 	default:
