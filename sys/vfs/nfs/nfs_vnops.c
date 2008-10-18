@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.79 2008/07/16 18:20:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.80 2008/10/18 01:13:54 dillon Exp $
  */
 
 
@@ -229,6 +229,9 @@ SYSCTL_DECL(_vfs_nfs);
 static int nfs_flush_on_rename = 1;
 SYSCTL_INT(_vfs_nfs, OID_AUTO, flush_on_rename, CTLFLAG_RW, 
 	   &nfs_flush_on_rename, 0, "flush fvp prior to rename");
+static int nfs_flush_on_hlink = 0;
+SYSCTL_INT(_vfs_nfs, OID_AUTO, flush_on_hlink, CTLFLAG_RW, 
+	   &nfs_flush_on_hlink, 0, "flush fvp prior to hard link");
 
 static int	nfsaccess_cache_timeout = NFS_DEFATTRTIMO;
 SYSCTL_INT(_vfs_nfs, OID_AUTO, access_cache_timeout, CTLFLAG_RW, 
@@ -1723,8 +1726,12 @@ nfs_rename(struct vop_old_rename_args *ap)
 	}
 
 	/*
-	 * We shouldn't have to flush fvp on rename as the file handle should
-	 * not change, but the default is to do so.
+	 * We shouldn't have to flush fvp on rename for most server-side
+	 * filesystems as the file handle should not change.  Unfortunately
+	 * the inode for some filesystems (msdosfs) might be tied to the
+	 * file name or directory position so to be completely safe
+	 * vfs.nfs.flush_on_rename is set by default.  Clear to improve
+	 * performance.
 	 *
 	 * We must flush tvp on rename because it might become stale on the
 	 * server after the rename.
@@ -1849,11 +1856,13 @@ nfs_link(struct vop_old_link_args *ap)
 	}
 
 	/*
-	 * Push all writes to the server, so that the attribute cache
-	 * doesn't get "out of sync" with the server.
-	 * XXX There should be a better way!
+	 * The attribute cache may get out of sync with the server on link.
+	 * Pushing writes to the server before handle was inherited from
+	 * long long ago and it is unclear if we still need to do this.
+	 * Defaults to off.
 	 */
-	VOP_FSYNC(vp, MNT_WAIT);
+	if (nfs_flush_on_hlink)
+		VOP_FSYNC(vp, MNT_WAIT);
 
 	v3 = NFS_ISV3(vp);
 	nfsstats.rpccnt[NFSPROC_LINK]++;
