@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isa_common.c,v 1.16.2.1 2000/09/16 15:49:52 roger Exp $
- * $DragonFly: src/sys/bus/isa/isa_common.c,v 1.13 2006/12/22 23:12:16 swildner Exp $
+ * $DragonFly: src/sys/bus/isa/isa_common.c,v 1.14 2008/10/18 01:15:33 dillon Exp $
  */
 /*
  * Modifications for Intel architecture by Garrett A. Wollman.
@@ -133,7 +133,7 @@ isa_find_memory(device_t child,
 			     size = config->ic_mem[i].ir_size,
 			     align = config->ic_mem[i].ir_align;
 		     start + size - 1 <= end;
-		     start += align) {
+		     start += MAX(align, 1)) {
 			bus_set_resource(child, SYS_RES_MEMORY, i,
 					 start, size);
 			res[i] = bus_alloc_resource(child,
