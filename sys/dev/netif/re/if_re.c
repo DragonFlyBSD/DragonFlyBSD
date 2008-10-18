@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.87 2008/10/18 03:00:29 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.88 2008/10/18 04:44:41 sephe Exp $
  */
 
 /*
@@ -2296,7 +2296,7 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 	bus_dmamap_t map;
 	int error, maxsegs, idx, i;
 	struct re_desc *d, *tx_ring;
-	uint32_t cmd_csum, ctl_csum;
+	uint32_t cmd_csum, ctl_csum, vlantag;
 
 	KASSERT(sc->re_ldata.re_tx_free > RE_TXDESC_SPARE,
 		("not enough free TX desc\n"));
@@ -2409,6 +2409,12 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 		}
 	}
 
+	vlantag = 0;
+	if (m->m_flags & M_VLANTAG) {
+		vlantag = htobe16(m->m_pkthdr.ether_vlantag) |
+			  RE_TDESC_CTL_INSTAG;
+	}
+
 	maxsegs = sc->re_ldata.re_tx_free;
 	if (maxsegs > RE_MAXSEGS)
 		maxsegs = RE_MAXSEGS;
@@ -2481,7 +2487,7 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 		if (idx == (sc->re_tx_desc_cnt - 1))
 			cmdstat |= RE_TDESC_CMD_EOR;
 		d->re_cmdstat = htole32(cmdstat | cmd_csum);
-		d->re_control = htole32(ctl_csum);
+		d->re_control = htole32(ctl_csum | vlantag);
 
 		i++;
 		if (i == arg.re_nsegs)
@@ -2489,17 +2495,6 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 		RE_TXDESC_INC(sc, idx);
 	}
 	d->re_cmdstat |= htole32(RE_TDESC_CMD_EOF);
-
-	/*
-	 * Set up hardware VLAN tagging. Note: vlan tag info must
-	 * appear in the first descriptor of a multi-descriptor
-	 * transmission attempt.
-	 */
-	if (m->m_flags & M_VLANTAG) {
-		tx_ring[*idx0].re_control |=
-		    htole32(htobe16(m->m_pkthdr.ether_vlantag) |
-			    RE_TDESC_CTL_INSTAG);
-	}
 
 	/* Transfer ownership of packet to the chip. */
 	d->re_cmdstat |= htole32(RE_TDESC_CMD_OWN);
