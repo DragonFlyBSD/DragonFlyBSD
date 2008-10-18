@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.89 2008/10/18 11:26:52 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.90 2008/10/18 11:49:34 sephe Exp $
  */
 
 /*
@@ -253,7 +253,7 @@ static const struct re_hwrev re_hwrevs[] = {
 	{ RE_HWREV_8102EL,	RE_MACVER_15,		ETHERMTU,
 	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_AUTOPAD },
 
-	{ RE_HWREV_NULL, 0, 0 }
+	{ RE_HWREV_NULL, 0, 0, 0 }
 };
 
 static int	re_probe(device_t);
