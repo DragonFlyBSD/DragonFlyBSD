@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.90 2008/10/18 11:49:34 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.91 2008/10/18 14:56:31 sephe Exp $
  */
 
 /*
@@ -277,6 +277,7 @@ static int	re_rx_list_init(struct re_softc *);
 static int	re_tx_list_init(struct re_softc *);
 static int	re_rxeof(struct re_softc *);
 static int	re_txeof(struct re_softc *);
+static int	re_tx_collect(struct re_softc *);
 static void	re_intr(void *);
 static void	re_tick(void *);
 static void	re_tick_serialized(void *);
@@ -2072,14 +2073,13 @@ re_rxeof(struct re_softc *sc)
 #undef RE_UDP_PACKET
 
 static int
-re_txeof(struct re_softc *sc)
+re_tx_collect(struct re_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t txstat;
 	int idx, tx = 0;
 
 	/* Invalidate the TX descriptor list */
-
 	bus_dmamap_sync(sc->re_ldata.re_tx_list_tag,
 			sc->re_ldata.re_tx_list_map, BUS_DMASYNC_POSTREAD);
 
@@ -2116,6 +2116,17 @@ re_txeof(struct re_softc *sc)
 		sc->re_ldata.re_tx_free++;
 	}
 	sc->re_ldata.re_tx_considx = idx;
+
+	return tx;
+}
+
+static int
+re_txeof(struct re_softc *sc)
+{
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int tx;
+
+	tx = re_tx_collect(sc);
 
 	/* There is enough free TX descs */
 	if (sc->re_ldata.re_tx_free > RE_TXDESC_SPARE)
@@ -2525,7 +2536,7 @@ re_start(struct ifnet *ifp)
 {
 	struct re_softc	*sc = ifp->if_softc;
 	struct mbuf *m_head;
-	int idx, need_trans;
+	int idx, need_trans, oactive, error;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -2540,8 +2551,15 @@ re_start(struct ifnet *ifp)
 	idx = sc->re_ldata.re_tx_prodidx;
 
 	need_trans = 0;
+	oactive = 0;
 	while (sc->re_ldata.re_tx_mbuf[idx] == NULL) {
 		if (sc->re_ldata.re_tx_free <= RE_TXDESC_SPARE) {
+			if (!oactive) {
+				if (re_tx_collect(sc)) {
+					oactive = 1;
+					continue;
+				}
+			}
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
@@ -2550,13 +2568,22 @@ re_start(struct ifnet *ifp)
 		if (m_head == NULL)
 			break;
 
-		if (re_encap(sc, &m_head, &idx)) {
+		error = re_encap(sc, &m_head, &idx);
+		if (error) {
 			/* m_head is freed by re_encap(), if we reach here */
 			ifp->if_oerrors++;
+
+			if (error == EFBIG && !oactive) {
+				if (re_tx_collect(sc)) {
+					oactive = 1;
+					continue;
+				}
+			}
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
 
+		oactive = 0;
 		need_trans = 1;
 
 		/*
