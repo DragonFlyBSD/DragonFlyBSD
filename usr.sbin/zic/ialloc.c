@@ -1,13 +1,12 @@
-#ifndef lint
-#ifndef NOID
-static char	elsieid[] = "@(#)ialloc.c	8.29";
-#endif /* !defined NOID */
-#endif /* !defined lint */
+/*
+** This file is in the public domain, so clarified as of
+** 2006-07-17 by Arthur David Olson.
+*/
 
 /*
- * @(#)ialloc.c	8.29
+ * @(#)ialloc.c	8.30
  * $FreeBSD: src/usr.sbin/zic/ialloc.c,v 1.5 1999/08/28 01:21:18 peter Exp $
- * $DragonFly: src/usr.sbin/zic/ialloc.c,v 1.4 2004/12/18 22:48:15 swildner Exp $
+ * $DragonFly: src/usr.sbin/zic/ialloc.c,v 1.5 2008/10/19 20:15:58 swildner Exp $
  */
 /*LINTLIBRARY*/
 

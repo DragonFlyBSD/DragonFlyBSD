@@ -31,11 +31,11 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     From: @(#)ctime.3	8.1 (Berkeley) 6/4/93
+.\" @(#)newctime.3	8.2
 .\" $FreeBSD: src/lib/libc/stdtime/ctime.3,v 1.11.2.7 2003/05/23 23:53:40 keramida Exp $
-.\" $DragonFly: src/lib/libc/stdtime/ctime.3,v 1.3 2006/05/26 19:39:37 swildner Exp $
+.\" $DragonFly: src/lib/libc/stdtime/ctime.3,v 1.4 2008/10/19 20:15:58 swildner Exp $
 .\"
-.Dd January 2, 1999
+.Dd October 19, 2008
 .Dt CTIME 3
 .Os
 .Sh NAME
@@ -87,7 +87,7 @@ and
 all take as an argument a time value representing the time in seconds since
 the Epoch (00:00:00
 .Tn UTC ,
-January 1, 1970; see
+1970-01-01; see
 .Xr time 3 ) .
 .Pp
 The function
@@ -98,18 +98,11 @@ and returns a pointer to a
 .Dq Fa struct tm
 (described below) which contains
 the broken-out time information for the value after adjusting for the current
-time zone (and any other factors such as Daylight Saving Time).
+time zone and any time zone adjustments.
 Time zone adjustments are performed as specified by the
 .Ev TZ
 environment variable (see
 .Xr tzset 3 ) .
-The function
-.Fn localtime
-uses
-.Xr tzset 3
-to initialize time conversion information if
-.Xr tzset 3
-has not already been called by the process.
 .Pp
 After filling in the tm structure,
 .Fn localtime
@@ -134,12 +127,21 @@ The
 function
 adjusts the time value for the current time zone in the same manner as
 .Fn localtime ,
-and returns a pointer to a 26-character string of the form:
+and returns a pointer to a string of the form:
 .Bd -literal -offset indent
 Thu Nov 24 18:22:48 1986\en\e0
 .Ed
 .Pp
-All the fields have constant width.
+Years requiring fewer than four characters are padded with leading zeroes.
+For years longer than four characters, the string is of the form
+.Bd -literal -offset indent
+Thu Nov 24 18:22:48     81986\en\e0
+.Ed
+.Pp
+with five spaces before the year.
+These unusual formats are designed to make it less likely that older
+software that expects exactly 26 bytes of output will mistakenly output
+misleading values for out-of-range years.
 .Pp
 The
 .Fn ctime_r
@@ -230,7 +232,9 @@ A negative value for
 causes the
 .Fn mktime
 function to attempt to divine whether summer time is in effect for the
-specified time.
+specified time; in this case it does not use a consistent
+rule and may give a different answer when later
+presented with the same argument.
 The
 .Fa tm_isdst
 and
@@ -295,10 +299,27 @@ is the offset (in seconds) of the time represented from
 .Tn UTC ,
 with positive
 values indicating east of the Prime Meridian.
+.Sh COMPATIBILITY
+The
+.Fn asctime
+and
+.Fn ctime
+functions
+behave strangely for years before 1000 or after 9999.
+The 1989 and 1999 editions of the C Standard say
+that years from -99 through 999 are converted without
+extra spaces, but this conflicts with longstanding
+tradition and with this implementation.
+Traditional implementations of these two functions are
+restricted to years in the range 1900 through 2099.
+To avoid this portability mess, new programs should use
+.Xr strftime 3
+instead.
 .Sh SEE ALSO
 .Xr date 1 ,
 .Xr gettimeofday 2 ,
 .Xr getenv 3 ,
+.Xr strftime 3 ,
 .Xr time 3 ,
 .Xr tzset 3 ,
 .Xr tzfile 5

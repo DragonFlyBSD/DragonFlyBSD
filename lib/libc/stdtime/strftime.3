@@ -33,11 +33,11 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     @(#)strftime.3	8.1 (Berkeley) 6/4/93
+.\" @(#)newstrftime.3	8.1
 .\" $FreeBSD: src/lib/libc/stdtime/strftime.3,v 1.18.2.10 2003/05/24 00:01:31 keramida Exp $
-.\" $DragonFly: src/lib/libc/stdtime/strftime.3,v 1.3 2007/05/17 08:19:00 swildner Exp $
+.\" $DragonFly: src/lib/libc/stdtime/strftime.3,v 1.4 2008/10/19 20:15:58 swildner Exp $
 .\"
-.Dd January 4, 2003
+.Dd October 19, 2008
 .Dt STRFTIME 3
 .Os
 .Sh NAME
@@ -123,7 +123,7 @@ to represent alternative months names
 is replaced by the day of month as a decimal number (1-31); single
 digits are preceded by a blank.
 .It Cm \&%F
-is equivalent to
++is replaced by the date in the format
 .Dq Li %Y-%m-%d .
 .It Cm \&%G
 is replaced by a year as a decimal number with century.
@@ -206,12 +206,16 @@ is replaced by the year with century as a decimal number.
 .It Cm %y
 is replaced by the year without century as a decimal number (00-99).
 .It Cm \&%Z
-is replaced by the time zone name.
+is replaced by the time zone name,
+or by the empty string if this is not determinable.
 .It Cm \&%z
-is replaced by the time zone offset from UTC; a leading plus sign stands for
-east of UTC, a minus sign for west of UTC, hours and minutes follow
-with two digits each and no delimiter between them (common form for
-RFC 822 date headers).
+is replaced by the offset from UTC in the format
+.Li ++HHMM
+or
+.Li --HHMM
+as appropriate,
+with positive values representing locations east of Greenwich,
+or by the empty string if this is not determinable.
 .It Cm %+
 is replaced by national representation of the date and time
 (the format is similar to that produced by

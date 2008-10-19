@@ -1,5 +1,8 @@
-/*	$NetBSD: src/lib/libc/time/strftime.c,v 1.16 2004/05/12 23:03:11 kleink Exp $	*/
-/*	$DragonFly: src/lib/libc/stdtime/strftime.c,v 1.6 2005/12/04 23:25:40 swildner Exp $ */
+/*
+ * @(#)strftime.c	8.2
+ * $NetBSD: src/lib/libc/time/strftime.c,v 1.16 2004/05/12 23:03:11 kleink Exp $
+ * $DragonFly: src/lib/libc/stdtime/strftime.c,v 1.7 2008/10/19 20:15:58 swildner Exp $
+ */
 
 /*
 ** Based on the UCB version with the ID appearing below.
@@ -64,13 +67,13 @@ static char *	_add(const char *, char *, const char *);
 static char *	_conv(int, const char *, char *, const char *);
 static char *	_fmt(const char *, const struct tm *, char *,
 		     const char *, int *);
+static char *	_yconv(int, int, int, int, char *, const char *);
 
 #define NO_RUN_TIME_WARNINGS_ABOUT_YEAR_2000_PROBLEMS_THANK_YOU
 
 #ifndef YEAR_2000_NAME
 #define YEAR_2000_NAME	"CHECK_STRFTIME_FORMATS_FOR_TWO_DIGIT_YEARS"
 #endif /* !defined YEAR_2000_NAME */
-
 
 #define IN_NONE	0
 #define IN_SOME	1
@@ -153,8 +156,8 @@ label:
 				** something completely different.
 				** (ado, 1993-05-24)
 				*/
-				pt = _conv((t->tm_year + TM_YEAR_BASE) / 100,
-					"%02d", pt, ptlim);
+				pt = _yconv(t->tm_year, TM_YEAR_BASE, 1, 0,
+					pt, ptlim);
 				continue;
 			case 'c':
 				{
@@ -209,7 +212,7 @@ label:
 				**		t->tm_hour % 12 : 12, 2, ' ');
 				** ...and has been changed to the below to
 				** match SunOS 4.1.1 and Arnold Robbins'
-				** strftime version 3.0.  That is, "%k" and
+				** strftime version 3.0. That is, "%k" and
 				** "%l" have been swapped.
 				** (ado, 1993-05-24)
 				*/
@@ -229,7 +232,7 @@ label:
 				**	_conv(t->tm_hour, 2, ' ');
 				** ...and has been changed to the below to
 				** match SunOS 4.1.1 and Arnold Robbin's
-				** strftime version 3.0.  That is, "%k" and
+				** strftime version 3.0. That is, "%k" and
 				** "%l" have been swapped.
 				** (ado, 1993-05-24)
 				*/
@@ -305,7 +308,7 @@ label:
 			case 'G':	/* ISO 8601 year (four digits) */
 			case 'g':	/* ISO 8601 year (two digits) */
 /*
-** From Arnold Robbins' strftime version 3.0:  "the week number of the
+** From Arnold Robbins' strftime version 3.0: "the week number of the
 ** year (the first Monday as the first day of week 1) as a decimal number
 ** (01-53)."
 ** (ado, 1993-05-24)
@@ -318,17 +321,19 @@ label:
 ** might also contain days from the previous year and the week before week
 ** 01 of a year is the last week (52 or 53) of the previous year even if
 ** it contains days from the new year. A week starts with Monday (day 1)
-** and ends with Sunday (day 7).  For example, the first week of the year
+** and ends with Sunday (day 7). For example, the first week of the year
 ** 1997 lasts from 1996-12-30 to 1997-01-05..."
 ** (ado, 1996-01-02)
 */
 				{
 					int	year;
+					int	base;
 					int	yday;
 					int	wday;
 					int	w;
 
-					year = t->tm_year + TM_YEAR_BASE;
+					year = t->tm_year;
+					base = TM_YEAR_BASE;
 					yday = t->tm_yday;
 					wday = t->tm_wday;
 					for ( ; ; ) {
@@ -336,7 +341,7 @@ label:
 						int	bot;
 						int	top;
 
-						len = isleap(year) ?
+						len = isleap_sum(year, base) ?
 							DAYSPERLYEAR :
 							DAYSPERNYEAR;
 						/*
@@ -355,7 +360,7 @@ label:
 							top += DAYSPERWEEK;
 						top += len;
 						if (yday >= top) {
-							++year;
+							++base;
 							w = 1;
 							break;
 						}
@@ -364,26 +369,26 @@ label:
 								DAYSPERWEEK);
 							break;
 						}
-						--year;
-						yday += isleap(year) ?
+						--base;
+						yday += isleap_sum(year, base) ?
 							DAYSPERLYEAR :
 							DAYSPERNYEAR;
 					}
 #ifdef XPG4_1994_04_09
-					if ((w == 52
-					     && t->tm_mon == TM_JANUARY)
-					    || (w == 1
-						&& t->tm_mon == TM_DECEMBER))
-						w = 53;
+					if ((w == 52 &&
+						t->tm_mon == TM_JANUARY) ||
+						(w == 1 &&
+						t->tm_mon == TM_DECEMBER))
+							w = 53;
 #endif /* defined XPG4_1994_04_09 */
 					if (*format == 'V')
 						pt = _conv(w, "%02d",
 							pt, ptlim);
 					else if (*format == 'g') {
 						*warnp = IN_ALL;
-						pt = _conv(year % 100, "%02d",
+						pt = _yconv(year, base, 0, 1,
 							pt, ptlim);
-					} else	pt = _conv(year, "%04d",
+					} else	pt = _yconv(year, base, 1, 1,
 							pt, ptlim);
 				}
 				continue;
@@ -421,11 +426,11 @@ label:
 				continue;
 			case 'y':
 				*warnp = IN_ALL;
-				pt = _conv((t->tm_year + TM_YEAR_BASE) % 100,
-					"%02d", pt, ptlim);
+				pt = _yconv(t->tm_year, TM_YEAR_BASE, 0, 1,
+					pt, ptlim);
 				continue;
 			case 'Y':
-				pt = _conv(t->tm_year + TM_YEAR_BASE, "%04d",
+				pt = _yconv(t->tm_year, TM_YEAR_BASE, 1, 1,
 					pt, ptlim);
 				continue;
 			case 'Z':
@@ -456,12 +461,12 @@ label:
 				/*
 				** C99 says that the UTC offset must
 				** be computed by looking only at
-				** tm_isdst.  This requirement is
+				** tm_isdst. This requirement is
 				** incorrect, since it means the code
 				** must rely on magic (in this case
 				** altzone and timezone), and the
 				** magic might not have the correct
-				** offset.  Doing things correctly is
+				** offset. Doing things correctly is
 				** tricky and requires disobeying C99;
 				** see GNU C strftime for details.
 				** For now, punt and conform to the
@@ -520,9 +525,10 @@ label:
 					diff = -diff;
 				} else	sign = "+";
 				pt = _add(sign, pt, ptlim);
-				diff /= 60;
-				pt = _conv((diff/60)*100 + diff%60,
-					"%04d", pt, ptlim);
+				diff /= SECSPERMIN;
+				diff = (diff / MINSPERHOUR) * 100 +
+					(diff % MINSPERHOUR);
+				pt = _conv(diff, "%04d", pt, ptlim);
 				}
 				continue;
 			case '+':
@@ -532,7 +538,7 @@ label:
 			case '%':
 			/*
 			** X311J/88-090 (4.12.3.5): if conversion char is
-			** undefined, behavior is undefined.  Print out the
+			** undefined, behavior is undefined. Print out the
 			** character itself as printf(3) also does.
 			*/
 			default:
@@ -561,5 +567,41 @@ _add(const char *str, char *pt, const char * const ptlim)
 {
 	while (pt < ptlim && (*pt = *str++) != '\0')
 		++pt;
+	return pt;
+}
+
+/*
+** POSIX and the C Standard are unclear or inconsistent about
+** what %C and %y do if the year is negative or exceeds 9999.
+** Use the convention that %C concatenated with %y yields the
+** same output as %Y, and that %Y contains at least 4 bytes,
+** with more only if necessary.
+*/
+
+static char *
+_yconv(const int a, const int b, const int convert_top, const int convert_yy,
+       char *pt, const char * const ptlim)
+{
+	int	lead;
+	int	trail;
+
+#define DIVISOR	100
+	trail = a % DIVISOR + b % DIVISOR;
+	lead = a / DIVISOR + b / DIVISOR + trail / DIVISOR;
+	trail %= DIVISOR;
+	if (trail < 0 && lead > 0) {
+		trail += DIVISOR;
+		--lead;
+	} else if (lead < 0 && trail > 0) {
+		trail -= DIVISOR;
+		++lead;
+	}
+	if (convert_top) {
+		if (lead == 0 && trail < 0)
+			pt = _add("-0", pt, ptlim);
+		else	pt = _conv(lead, "%02d", pt, ptlim);
+	}
+	if (convert_yy)
+		pt = _conv(((trail < 0) ? -trail : trail), "%02d", pt, ptlim);
 	return pt;
 }
