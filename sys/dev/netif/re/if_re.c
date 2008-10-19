@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.91 2008/10/18 14:56:31 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.92 2008/10/19 03:17:52 sephe Exp $
  */
 
 /*
@@ -1000,6 +1000,9 @@ re_probe(device_t dev)
 					sc->re_macver = RE_MACVER_28;
 				break;
 			}
+			if (pci_get_pciecap_ptr(dev) != 0)
+				sc->re_caps |= RE_C_PCIE;
+
 			device_set_desc(dev, t->re_name);
 			return 0;
 		}
@@ -1346,7 +1349,10 @@ re_attach(device_t dev)
 
 	sc->re_tx_time = 5;		/* 125us */
 	sc->re_rx_time = 2;		/* 50us */
-	sc->re_sim_time = 125;		/* 125us */
+	if (sc->re_caps & RE_C_PCIE)
+		sc->re_sim_time = 75;	/* 75us */
+	else
+		sc->re_sim_time = 125;	/* 125us */
 	sc->re_imtype = RE_IMTYPE_SIM;	/* simulated interrupt moderation */
 	re_config_imtype(sc, sc->re_imtype);
 
@@ -1454,13 +1460,6 @@ re_attach(device_t dev)
 
 	/* Reset the adapter. */
 	re_reset(sc);
-
-	if (pci_get_pciecap_ptr(dev) != 0) {
-		sc->re_caps |= RE_C_PCIE;
-
-		/* Reduce the simulated interrupt moderation timer a bit */
-		sc->re_sim_time = 75; /* 75us */
-	}
 
 	if (RE_IS_8139CP(sc)) {
 		sc->re_bus_speed = 33; /* XXX */
@@ -3419,6 +3418,8 @@ re_set_max_readrq(struct re_softc *sc, uint16_t size)
 	uint16_t val, rqsize;
 
 	rqsize = size & PCIEM_DEVCTL_MAX_READRQ_MASK;
+	if (rqsize > PCIEM_DEVCTL_MAX_READRQ_4096)
+		panic("invalid read request size %02x\n", rqsize);
 
 	expr_ptr = pci_get_pciecap_ptr(dev);
 	KKASSERT(expr_ptr != 0);
