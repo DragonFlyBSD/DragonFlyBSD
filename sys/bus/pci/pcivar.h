@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcivar.h,v 1.48 2000/09/28 00:37:32 peter Exp $
- * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.16 2008/09/05 10:39:36 hasso Exp $
+ * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.17 2008/10/19 09:13:58 sephe Exp $
  *
  */
 
@@ -382,6 +382,7 @@ PCIB_ACCESSOR(bus,		BUS,		u_int32_t)
 device_t pci_find_bsf(u_int8_t, u_int8_t, u_int8_t);
 device_t pci_find_device(u_int16_t, u_int16_t);
 int pcie_slot_implemented(device_t);
+void pcie_set_max_readrq(device_t, uint16_t);
 #endif
 
 /* for compatibility to FreeBSD-2.2 and 3.x versions of PCI code */

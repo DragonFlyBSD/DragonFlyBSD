@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.56 2008/09/08 10:16:23 hasso Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.57 2008/10/19 09:13:58 sephe Exp $
  *
  */
 
@@ -143,6 +143,36 @@ pcie_slot_implemented(device_t dev)
 	struct pci_devinfo *dinfo = device_get_ivars(dev);
 
 	return pcie_slotimpl(&dinfo->cfg);
+}
+
+void
+pcie_set_max_readrq(device_t dev, uint16_t rqsize)
+{
+	uint8_t expr_ptr;
+	uint16_t val;
+
+	rqsize &= PCIEM_DEVCTL_MAX_READRQ_MASK;
+	if (rqsize > PCIEM_DEVCTL_MAX_READRQ_4096) {
+		panic("%s: invalid max read request size 0x%02x\n",
+		      device_get_nameunit(dev), rqsize);
+	}
+
+	expr_ptr = pci_get_pciecap_ptr(dev);
+	if (!expr_ptr)
+		panic("%s: not PCIe device\n", device_get_nameunit(dev));
+
+	val = pci_read_config(dev, expr_ptr + PCIER_DEVCTRL, 2);
+	if ((val & PCIEM_DEVCTL_MAX_READRQ_MASK) != rqsize) {
+		if (bootverbose)
+			device_printf(dev, "adjust device control 0x%04x", val);
+
+		val &= ~PCIEM_DEVCTL_MAX_READRQ_MASK;
+		val |= rqsize;
+		pci_write_config(dev, expr_ptr + PCIER_DEVCTRL, val, 2);
+
+		if (bootverbose)
+			kprintf(" -> 0x%04x\n", val);
+	}
 }
 
 /* return base address of memory or port map */

@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.95 2008/10/19 08:39:55 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.96 2008/10/19 09:13:58 sephe Exp $
  */
 
 /*
@@ -305,7 +305,6 @@ static void	re_miibus_statchg(device_t);
 static void	re_setmulti(struct re_softc *);
 static void	re_reset(struct re_softc *, int);
 static void	re_get_eaddr(struct re_softc *, uint8_t *);
-static void	re_set_max_readrq(struct re_softc *, uint16_t);
 
 static void	re_setup_hw_im(struct re_softc *);
 static void	re_setup_sim_im(struct re_softc *);
@@ -2654,9 +2653,11 @@ re_init(void *xsc)
 			 * 512 seems to be the only value that works
 			 * reliably with jumbo frame
 			 */
-			re_set_max_readrq(sc, PCIEM_DEVCTL_MAX_READRQ_512);
+			pcie_set_max_readrq(sc->re_dev,
+				PCIEM_DEVCTL_MAX_READRQ_512);
 		} else {
-			re_set_max_readrq(sc, PCIEM_DEVCTL_MAX_READRQ_4096);
+			pcie_set_max_readrq(sc->re_dev,
+				PCIEM_DEVCTL_MAX_READRQ_4096);
 		}
 	}
 
@@ -3363,33 +3364,6 @@ re_get_eaddr(struct re_softc *sc, uint8_t *eaddr)
 	 */
 	for (i = 0; i < ETHER_ADDR_LEN; ++i)
 		eaddr[i] = CSR_READ_1(sc, RE_IDR0 + i);
-}
-
-static void
-re_set_max_readrq(struct re_softc *sc, uint16_t size)
-{
-	device_t dev = sc->re_dev;
-	uint8_t expr_ptr;
-	uint16_t val, rqsize;
-
-	rqsize = size & PCIEM_DEVCTL_MAX_READRQ_MASK;
-	if (rqsize > PCIEM_DEVCTL_MAX_READRQ_4096)
-		panic("invalid read request size %02x\n", rqsize);
-
-	expr_ptr = pci_get_pciecap_ptr(dev);
-	KKASSERT(expr_ptr != 0);
-
-	val = pci_read_config(dev, expr_ptr + PCIER_DEVCTRL, 2);
-	if ((val & PCIEM_DEVCTL_MAX_READRQ_MASK) != rqsize) {
-		device_printf(dev, "adjust device control "
-			      "0x%04x ", val);
-
-		val &= ~PCIEM_DEVCTL_MAX_READRQ_MASK;
-		val |= rqsize;
-		pci_write_config(dev, expr_ptr + PCIER_DEVCTRL, val, 2);
-
-		kprintf("-> 0x%04x\n", val);
-	}
 }
 
 static int
