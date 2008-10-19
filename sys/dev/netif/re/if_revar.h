@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.28 2008/10/18 11:26:52 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.29 2008/10/19 04:40:16 sephe Exp $
  */
 
 #define RE_RX_DESC_CNT_8139CP	64
@@ -168,22 +168,15 @@ struct re_softc {
 	device_t		re_miibus;
 	bus_dma_tag_t		re_parent_tag;
 	bus_dma_tag_t		re_tag;
-	int			re_eecmd_read;
-	uint8_t			re_stats_no_timeout;
-	int			re_txthresh;
 	uint32_t		re_hwrev;
 	struct re_list_data	re_ldata;
 	struct callout		re_timer;
 	struct mbuf		*re_head;
 	struct mbuf		*re_tail;
-	int			re_drop_rxfrag;
 	uint32_t		re_caps;	/* see RE_C_ */
 	uint32_t		re_macver;	/* see RE_MACVER_ */
 	uint32_t		re_rxlenmask;
 	int			re_txstart;
-	int			re_testmode;
-	int			suspended;	/* 0 = normal  1 = suspended */
-	int			re_link;
 	int			re_eewidth;
 	int			re_swcsum_lim;
 	int			re_maxmtu;
@@ -233,6 +226,10 @@ struct re_softc {
 
 #define RE_F_TIMER_INTR		0x1
 #define RE_F_USE_JPOOL		0x2
+#define RE_F_DROP_RXFRAG	0x4
+#define RE_F_LINKED		0x8
+#define RE_F_SUSPENDED		0x10
+#define RE_F_TESTMODE		0x20
 
 /*
  * register space access macros
