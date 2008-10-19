@@ -64,7 +64,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.38 2008/09/12 11:37:41 sephe Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.39 2008/10/19 03:25:31 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -143,36 +143,44 @@ extern void	db_print_backtrace(void);
 void
 route_init(void)
 {
-	int cpu, origcpu;
+	int cpu;
 	thread_t rtd;
 
 	for (cpu = 0; cpu < ncpus; ++cpu)
 		bzero(&rtstatistics_percpu[cpu], sizeof(struct rtstatistics));
 	rn_init();      /* initialize all zeroes, all ones, mask table */
-	origcpu = mycpuid;
+	rtable_init();	/* call dom_rtattach() on each cpu */
+
 	for (cpu = 0; cpu < ncpus; cpu++) {
-		lwkt_migratecpu(cpu);
-		rtable_init();
 		lwkt_create(rtable_service_loop, NULL, &rtd, NULL,
-			    TDF_STOPREQ, cpu, "rtable_cpu %d", cpu);
+			    0, cpu, "rtable_cpu %d", cpu);
 		rt_ports[cpu] = &rtd->td_msgport;
-		lwkt_schedule(rtd);
 	}
-	lwkt_migratecpu(origcpu);
+}
+
+static void
+rtable_init_oncpu(struct netmsg *nmsg)
+{
+	struct domain *dom;
+	int cpu = mycpuid;
+
+	SLIST_FOREACH(dom, &domains, dom_next) {
+		if (dom->dom_rtattach) {
+			dom->dom_rtattach(
+				(void **)&rt_tables[cpu][dom->dom_family],
+			        dom->dom_rtoffset);
+		}
+	}
+	ifnet_forwardmsg(&nmsg->nm_lmsg, cpu + 1);
 }
 
 static void
 rtable_init(void)
 {
-	struct domain *dom;
+	struct netmsg nmsg;
 
-	SLIST_FOREACH(dom, &domains, dom_next) {
-		if (dom->dom_rtattach) {
-			dom->dom_rtattach(
-				(void **)&rt_tables[mycpuid][dom->dom_family],
-			        dom->dom_rtoffset);
-		}
-	}
+	netmsg_init(&nmsg, &curthread->td_msgport, 0, rtable_init_oncpu);
+	ifnet_domsg(&nmsg.nm_lmsg, 0);
 }
 
 /*
