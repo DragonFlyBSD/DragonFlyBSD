@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.94 2008/10/19 06:00:24 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.95 2008/10/19 08:39:55 sephe Exp $
  */
 
 /*
@@ -305,7 +305,6 @@ static void	re_miibus_statchg(device_t);
 static void	re_setmulti(struct re_softc *);
 static void	re_reset(struct re_softc *, int);
 static void	re_get_eaddr(struct re_softc *, uint8_t *);
-static int	re_pad_frame(struct mbuf *);
 static void	re_set_max_readrq(struct re_softc *, uint16_t);
 
 static void	re_setup_hw_im(struct re_softc *);
@@ -2408,7 +2407,7 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 		     (CSUM_DELAY_IP | CSUM_DELAY_DATA)) &&
 		    (m->m_pkthdr.csum_flags & CSUM_TCP) == 0 &&
 		    m->m_pkthdr.len < RE_MIN_FRAMELEN) {
-			error = re_pad_frame(m);
+			error = m_devpad(m, RE_MIN_FRAMELEN);
 			if (error)
 				goto back;
 		}
@@ -3067,49 +3066,6 @@ re_shutdown(device_t dev)
 	lwkt_serialize_enter(ifp->if_serializer);
 	re_stop(sc);
 	lwkt_serialize_exit(ifp->if_serializer);
-}
-
-static int
-re_pad_frame(struct mbuf *pkt)
-{
-	struct mbuf *last = NULL;
-	int padlen;
-
-	padlen = RE_MIN_FRAMELEN - pkt->m_pkthdr.len;
-
-	/* if there's only the packet-header and we can pad there, use it. */
-	if (pkt->m_pkthdr.len == pkt->m_len &&
-	    M_TRAILINGSPACE(pkt) >= padlen) {
-		last = pkt;
-	} else {
-		/*
-		 * Walk packet chain to find last mbuf. We will either
-		 * pad there, or append a new mbuf and pad it
-		 */
-		for (last = pkt; last->m_next != NULL; last = last->m_next)
-			; /* EMPTY */
-
-		/* `last' now points to last in chain. */
-		if (M_TRAILINGSPACE(last) < padlen) {
-			struct mbuf *n;
-
-			/* Allocate new empty mbuf, pad it.  Compact later. */
-			MGET(n, MB_DONTWAIT, MT_DATA);
-			if (n == NULL)
-				return ENOBUFS;
-			n->m_len = 0;
-			last->m_next = n;
-			last = n;
-		}
-	}
-	KKASSERT(M_TRAILINGSPACE(last) >= padlen);
-	KKASSERT(M_WRITABLE(last));
-
-	/* Now zero the pad area, to avoid the re cksum-assist bug */
-	bzero(mtod(last, char *) + last->m_len, padlen);
-	last->m_len += padlen;
-	pkt->m_pkthdr.len += padlen;
-	return 0;
 }
 
 static int

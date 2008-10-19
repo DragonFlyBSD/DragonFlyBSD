@@ -65,7 +65,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.66 2008/06/05 18:06:32 swildner Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.67 2008/10/19 08:39:55 sephe Exp $
  */
 
 #include "opt_param.h"
@@ -1550,6 +1550,54 @@ m_devget(char *buf, int len, int offset, struct ifnet *ifp,
 	}
 
 	return (mfirst);
+}
+
+/*
+ * Routine to pad mbuf to the specified length 'padto'.
+ */
+int
+m_devpad(struct mbuf *m, int padto)
+{
+	struct mbuf *last = NULL;
+	int padlen;
+
+	if (padto <= m->m_pkthdr.len)
+		return 0;
+
+	padlen = padto - m->m_pkthdr.len;
+
+	/* if there's only the packet-header and we can pad there, use it. */
+	if (m->m_pkthdr.len == m->m_len && M_TRAILINGSPACE(m) >= padlen) {
+		last = m;
+	} else {
+		/*
+		 * Walk packet chain to find last mbuf. We will either
+		 * pad there, or append a new mbuf and pad it
+		 */
+		for (last = m; last->m_next != NULL; last = last->m_next)
+			; /* EMPTY */
+
+		/* `last' now points to last in chain. */
+		if (M_TRAILINGSPACE(last) < padlen) {
+			struct mbuf *n;
+
+			/* Allocate new empty mbuf, pad it.  Compact later. */
+			MGET(n, MB_DONTWAIT, MT_DATA);
+			if (n == NULL)
+				return ENOBUFS;
+			n->m_len = 0;
+			last->m_next = n;
+			last = n;
+		}
+	}
+	KKASSERT(M_TRAILINGSPACE(last) >= padlen);
+	KKASSERT(M_WRITABLE(last));
+
+	/* Now zero the pad area */
+	bzero(mtod(last, char *) + last->m_len, padlen);
+	last->m_len += padlen;
+	m->m_pkthdr.len += padlen;
+	return 0;
 }
 
 /*

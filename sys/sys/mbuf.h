@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.53 2008/09/13 07:15:14 sephe Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.54 2008/10/19 08:39:55 sephe Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -473,6 +473,7 @@ struct	mbuf 	*m_uiomove(struct uio *);
 void		m_mclget(struct mbuf *m, int how);
 int		m_sharecount(struct mbuf *m);
 void		m_chtype(struct mbuf *m, int type);
+int		m_devpad(struct mbuf *m, int padto);
 
 #ifdef MBUF_DEBUG
 void		mbuftrackid(struct mbuf *, int);
