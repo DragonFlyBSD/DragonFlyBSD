@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.92 2008/10/19 03:17:52 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.93 2008/10/19 04:38:40 sephe Exp $
  */
 
 /*
@@ -768,10 +768,10 @@ re_diag(struct re_softc *sc)
 	 */
 
 	ifp->if_flags |= IFF_PROMISC;
-	sc->re_testmode = 1;
+	sc->re_flags |= RE_F_TESTMODE;
 	re_reset(sc);
 	re_init(sc);
-	sc->re_link = 1;
+	sc->re_flags |= RE_F_LINKED;
 	if (!RE_IS_8139CP(sc))
 		phyaddr = 1;
 	else
@@ -876,8 +876,7 @@ re_diag(struct re_softc *sc)
 done:
 	/* Turn interface off, release resources */
 
-	sc->re_testmode = 0;
-	sc->re_link = 0;
+	sc->re_flags &= ~(RE_F_LINKED | RE_F_TESTMODE);
 	ifp->if_flags &= ~IFF_PROMISC;
 	re_stop(sc);
 	if (m0 != NULL)
@@ -1922,14 +1921,14 @@ re_rxeof(struct re_softc *sc)
 #endif
 
 		if ((rxstat & RE_RDESC_STAT_EOF) == 0) {
-			if (sc->re_drop_rxfrag) {
+			if (sc->re_flags & RE_F_DROP_RXFRAG) {
 				re_setup_rxdesc(sc, i);
 				continue;
 			}
 
 			if (sc->re_newbuf(sc, i, 0)) {
 				/* Drop upcoming fragments */
-				sc->re_drop_rxfrag = 1;
+				sc->re_flags |= RE_F_DROP_RXFRAG;
 				continue;
 			}
 
@@ -1941,7 +1940,7 @@ re_rxeof(struct re_softc *sc)
 				sc->re_tail = m;
 			}
 			continue;
-		} else if (sc->re_drop_rxfrag) {
+		} else if (sc->re_flags & RE_F_DROP_RXFRAG) {
 			/*
 			 * Last fragment of a multi-fragment packet.
 			 *
@@ -1950,7 +1949,7 @@ re_rxeof(struct re_softc *sc)
 			 */
 			re_setup_rxdesc(sc, i);
 			re_free_rxchain(sc);
-			sc->re_drop_rxfrag = 0;
+			sc->re_flags &= ~RE_F_DROP_RXFRAG;
 			continue;
 		}
 
@@ -2167,13 +2166,13 @@ re_tick_serialized(void *xsc)
 
 	mii = device_get_softc(sc->re_miibus);
 	mii_tick(mii);
-	if (sc->re_link) {
+	if (sc->re_flags & RE_F_LINKED) {
 		if (!(mii->mii_media_status & IFM_ACTIVE))
-			sc->re_link = 0;
+			sc->re_flags &= ~RE_F_LINKED;
 	} else {
 		if (mii->mii_media_status & IFM_ACTIVE &&
 		    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
-			sc->re_link = 1;
+			sc->re_flags |= RE_F_LINKED;
 			if (!ifq_is_empty(&ifp->if_snd))
 				if_devstart(ifp);
 		}
@@ -2243,7 +2242,8 @@ re_intr(void *arg)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if (sc->suspended || (ifp->if_flags & IFF_RUNNING) == 0)
+	if ((sc->re_flags & RE_F_SUSPENDED) ||
+	    (ifp->if_flags & IFF_RUNNING) == 0)
 		return;
 
 	rx = tx = 0;
@@ -2539,7 +2539,7 @@ re_start(struct ifnet *ifp)
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
-	if (!sc->re_link) {
+	if ((sc->re_flags & RE_F_LINKED) == 0) {
 		ifq_purge(&ifp->if_snd);
 		return;
 	}
@@ -2719,7 +2719,7 @@ re_init(void *xsc)
 	/*
 	 * Set the initial TX and RX configuration.
 	 */
-	if (sc->re_testmode) {
+	if (sc->re_flags & RE_F_TESTMODE) {
 		if (!RE_IS_8139CP(sc))
 			CSR_WRITE_4(sc, RE_TXCFG,
 				    RE_TXCFG_CONFIG | RE_LOOPTEST_ON);
@@ -2777,14 +2777,11 @@ re_init(void *xsc)
 	/*
 	 * Enable interrupts.
 	 */
-	if (sc->re_testmode)
+	if (sc->re_flags & RE_F_TESTMODE)
 		CSR_WRITE_2(sc, RE_IMR, 0);
 	else
 		re_setup_intr(sc, 1, sc->re_imtype);
 	CSR_WRITE_2(sc, RE_ISR, sc->re_intrs);
-
-	/* Set initial TX threshold */
-	sc->re_txthresh = RE_TX_THRESH_INIT;
 
 	/* Start RX/TX process. */
 	CSR_WRITE_4(sc, RE_MISSEDPKT, 0);
@@ -2805,7 +2802,7 @@ re_init(void *xsc)
 			CSR_WRITE_2(sc, RE_MAXRXPKTLEN, 16383);
 	}
 
-	if (sc->re_testmode)
+	if (sc->re_flags & RE_F_TESTMODE)
 		return;
 
 	mii_mediachg(mii);
@@ -2815,7 +2812,6 @@ re_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	sc->re_link = 0;
 	callout_reset(&sc->re_timer, hz, re_tick, sc);
 }
 
@@ -2948,14 +2944,13 @@ re_stop(struct re_softc *sc)
 	callout_stop(&sc->re_timer);
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-	sc->re_flags &= ~RE_F_TIMER_INTR;
+	sc->re_flags &= ~(RE_F_TIMER_INTR | RE_F_DROP_RXFRAG | RE_F_LINKED);
 
 	CSR_WRITE_1(sc, RE_COMMAND, 0x00);
 	CSR_WRITE_2(sc, RE_IMR, 0x0000);
 	CSR_WRITE_2(sc, RE_ISR, 0xFFFF);
 
 	re_free_rxchain(sc);
-	sc->re_drop_rxfrag = 0;
 
 	/* Free the TX list buffers. */
 	for (i = 0; i < sc->re_tx_desc_cnt; i++) {
@@ -3007,7 +3002,7 @@ re_suspend(device_t dev)
 	sc->saved_lattimer = pci_read_config(dev, PCIR_LATTIMER, 1);
 #endif
 
-	sc->suspended = 1;
+	sc->re_flags |= RE_F_SUSPENDED;
 
 	lwkt_serialize_exit(ifp->if_serializer);
 
@@ -3048,7 +3043,7 @@ re_resume(device_t dev)
 	if (ifp->if_flags & IFF_UP)
 		re_init(sc);
 
-	sc->suspended = 0;
+	sc->re_flags &= ~RE_F_SUSPENDED;
 
 	lwkt_serialize_exit(ifp->if_serializer);
 
