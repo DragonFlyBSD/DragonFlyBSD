@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.93 2008/10/19 04:38:40 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.94 2008/10/19 06:00:24 sephe Exp $
  */
 
 /*
@@ -228,15 +228,15 @@ static const struct re_hwrev re_hwrevs[] = {
 
 	{ RE_HWREV_8168C,	RE_MACVER_29,		RE_MTU_6K,
 	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD | RE_C_CONTIGRX },
+	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
 
 	{ RE_HWREV_8168CP,	RE_MACVER_2B,		RE_MTU_6K,
 	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD | RE_C_CONTIGRX },
+	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
 
 	{ RE_HWREV_8168D,	RE_MACVER_2A,		RE_MTU_9K,
 	  RE_C_HWIM | RE_C_HWCSUM | RE_C_MAC2 | RE_C_PHYPMGT |
-	  RE_C_AUTOPAD | RE_C_CONTIGRX },
+	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
 
 	{ RE_HWREV_8100E,	RE_MACVER_UNKN,		ETHERMTU,
 	  RE_C_HWCSUM },
@@ -248,10 +248,10 @@ static const struct re_hwrev re_hwrevs[] = {
 	  RE_C_HWCSUM },
 
 	{ RE_HWREV_8102E,	RE_MACVER_15,		ETHERMTU,
-	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_AUTOPAD },
+	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_AUTOPAD | RE_C_STOP_RXTX },
 
 	{ RE_HWREV_8102EL,	RE_MACVER_15,		ETHERMTU,
-	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_AUTOPAD },
+	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_AUTOPAD | RE_C_STOP_RXTX },
 
 	{ RE_HWREV_NULL, 0, 0, 0 }
 };
@@ -303,7 +303,7 @@ static int	re_miibus_writereg(device_t, int, int, int);
 static void	re_miibus_statchg(device_t);
 
 static void	re_setmulti(struct re_softc *);
-static void	re_reset(struct re_softc *);
+static void	re_reset(struct re_softc *, int);
 static void	re_get_eaddr(struct re_softc *, uint8_t *);
 static int	re_pad_frame(struct mbuf *);
 static void	re_set_max_readrq(struct re_softc *, uint16_t);
@@ -701,9 +701,15 @@ re_setmulti(struct re_softc *sc)
 }
 
 static void
-re_reset(struct re_softc *sc)
+re_reset(struct re_softc *sc, int running)
 {
 	int i;
+
+	if ((sc->re_caps & RE_C_STOP_RXTX) && running) {
+		CSR_WRITE_1(sc, RE_COMMAND,
+			    RE_CMD_STOPREQ | RE_CMD_TX_ENB | RE_CMD_RX_ENB);
+		DELAY(100);
+	}
 
 	CSR_WRITE_1(sc, RE_COMMAND, RE_CMD_RESET);
 
@@ -714,8 +720,6 @@ re_reset(struct re_softc *sc)
 	}
 	if (i == RE_TIMEOUT)
 		if_printf(&sc->arpcom.ac_if, "reset never completed!\n");
-
-	CSR_WRITE_1(sc, 0x82, 1);
 }
 
 #ifdef RE_DIAG
@@ -769,7 +773,6 @@ re_diag(struct re_softc *sc)
 
 	ifp->if_flags |= IFF_PROMISC;
 	sc->re_flags |= RE_F_TESTMODE;
-	re_reset(sc);
 	re_init(sc);
 	sc->re_flags |= RE_F_LINKED;
 	if (!RE_IS_8139CP(sc))
@@ -1458,7 +1461,7 @@ re_attach(device_t dev)
 	}
 
 	/* Reset the adapter. */
-	re_reset(sc);
+	re_reset(sc, 0);
 
 	if (RE_IS_8139CP(sc)) {
 		sc->re_bus_speed = 33; /* XXX */
@@ -1517,8 +1520,10 @@ re_attach(device_t dev)
 	/*
 	 * Apply some magic PCI settings from Realtek ...
 	 */
-	if (sc->re_caps & RE_C_8169)
+	if (RE_IS_8169(sc)) {
+		CSR_WRITE_1(sc, 0x82, 1);
 		pci_write_config(dev, PCIR_CACHELNSZ, 0x8, 1);
+	}
 	pci_write_config(dev, PCIR_LATTIMER, 0x40, 1);
 
 	if (sc->re_caps & RE_C_MAC2) {
@@ -2222,10 +2227,8 @@ re_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 			 * XXX check behaviour on receiver stalls.
 			 */
 
-			if (status & RE_ISR_SYSTEM_ERR) {
-				re_reset(sc);
+			if (status & RE_ISR_SYSTEM_ERR)
 				re_init(sc);
-			}
 		}
 		break;
 	}
@@ -2264,10 +2267,8 @@ re_intr(void *arg)
 		if (status & (sc->re_tx_ack | RE_ISR_TX_ERR))
 			tx |= re_txeof(sc);
 
-		if (status & RE_ISR_SYSTEM_ERR) {
-			re_reset(sc);
+		if (status & RE_ISR_SYSTEM_ERR)
 			re_init(sc);
-		}
 
 		if (status & RE_ISR_LINKCHG) {
 			callout_stop(&sc->re_timer);
@@ -2939,6 +2940,9 @@ re_stop(struct re_softc *sc)
 	int i;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	/* Reset the adapter. */
+	re_reset(sc, ifp->if_flags & IFF_RUNNING);
 
 	ifp->if_timer = 0;
 	callout_stop(&sc->re_timer);

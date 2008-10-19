@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.29 2008/10/19 04:40:16 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_revar.h,v 1.30 2008/10/19 06:00:24 sephe Exp $
  */
 
 #define RE_RX_DESC_CNT_8139CP	64
@@ -216,8 +216,10 @@ struct re_softc {
 #define RE_C_8169		0x100	/* is 8110/8169 */
 #define RE_C_AUTOPAD		0x200	/* hardware auto-pad short frames */
 #define RE_C_CONTIGRX		0x400	/* need contig buf to RX jumbo frames */
+#define RE_C_STOP_RXTX		0x800	/* could stop RX/TX engine */
 
 #define RE_IS_8139CP(sc)	((sc)->re_caps & RE_C_8139CP)
+#define RE_IS_8169(sc)		((sc)->re_caps & RE_C_8169)
 
 /* Interrupt moderation types */
 #define RE_IMTYPE_NONE		0

@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rlreg.h,v 1.42 2004/05/24 19:39:23 jhb Exp $
- * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.23 2008/10/16 12:29:13 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_rereg.h,v 1.24 2008/10/19 06:00:24 sephe Exp $
  */
 
 /*
@@ -297,6 +297,7 @@
 #define RE_CMD_TX_ENB		0x0004
 #define RE_CMD_RX_ENB		0x0008
 #define RE_CMD_RESET		0x0010
+#define RE_CMD_STOPREQ		0x0080
 
 /*
  * EEPROM control register
