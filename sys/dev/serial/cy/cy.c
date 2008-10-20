@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.29 2008/08/02 01:14:42 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.30 2008/10/20 13:16:58 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -93,6 +93,9 @@
 #ifdef SMP
 #define disable_intr()	com_lock()
 #define enable_intr()	com_unlock()
+#else
+#define disable_intr()	((void)0)
+#define enable_intr()	((void)0)
 #endif /* SMP */
 
 /*
