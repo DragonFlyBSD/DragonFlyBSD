@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.96 2008/10/19 09:13:58 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.97 2008/10/21 12:31:00 sephe Exp $
  */
 
 /*
@@ -651,8 +651,19 @@ re_setmulti(struct re_softc *sc)
 
 	rxfilt = CSR_READ_4(sc, RE_RXCFG);
 
-	if (ifp->if_flags & IFF_ALLMULTI || ifp->if_flags & IFF_PROMISC) {
+	/* Set the individual bit to receive frames for this host only. */
+	rxfilt |= RE_RXCFG_RX_INDIV;
+	/* Set capture broadcast bit to capture broadcast frames. */
+	rxfilt |= RE_RXCFG_RX_BROAD;
+
+	rxfilt &= ~(RE_RXCFG_RX_ALLPHYS | RE_RXCFG_RX_MULTI);
+	if ((ifp->if_flags & IFF_ALLMULTI) || (ifp->if_flags & IFF_PROMISC)) {
 		rxfilt |= RE_RXCFG_RX_MULTI;
+
+		/* If we want promiscuous mode, set the allframes bit. */
+		if (ifp->if_flags & IFF_PROMISC)
+			rxfilt |= RE_RXCFG_RX_ALLPHYS;
+
 		CSR_WRITE_4(sc, RE_RXCFG, rxfilt);
 		CSR_WRITE_4(sc, RE_MAR0, 0xFFFFFFFF);
 		CSR_WRITE_4(sc, RE_MAR4, 0xFFFFFFFF);
@@ -2618,7 +2629,6 @@ re_init(void *xsc)
 	struct re_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct mii_data *mii;
-	uint32_t rxcfg = 0;
 	int error, framelen;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
@@ -2738,30 +2748,6 @@ re_init(void *xsc)
 
 	CSR_WRITE_4(sc, RE_RXCFG, RE_RXCFG_CONFIG);
 
-	/* Set the individual bit to receive frames for this host only. */
-	rxcfg = CSR_READ_4(sc, RE_RXCFG);
-	rxcfg |= RE_RXCFG_RX_INDIV;
-
-	/* If we want promiscuous mode, set the allframes bit. */
-	if (ifp->if_flags & IFF_PROMISC) {
-		rxcfg |= RE_RXCFG_RX_ALLPHYS;
-		CSR_WRITE_4(sc, RE_RXCFG, rxcfg);
-	} else {
-		rxcfg &= ~RE_RXCFG_RX_ALLPHYS;
-		CSR_WRITE_4(sc, RE_RXCFG, rxcfg);
-	}
-
-	/*
-	 * Set capture broadcast bit to capture broadcast frames.
-	 */
-	if (ifp->if_flags & IFF_BROADCAST) {
-		rxcfg |= RE_RXCFG_RX_BROAD;
-		CSR_WRITE_4(sc, RE_RXCFG, rxcfg);
-	} else {
-		rxcfg &= ~RE_RXCFG_RX_BROAD;
-		CSR_WRITE_4(sc, RE_RXCFG, rxcfg);
-	}
-
 	/*
 	 * Program the multicast filter, if necessary.
 	 */
@@ -2873,21 +2859,31 @@ re_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 
 	case SIOCSIFFLAGS:
-		if (ifp->if_flags & IFF_UP)
-			re_init(sc);
-		else if (ifp->if_flags & IFF_RUNNING)
+		if (ifp->if_flags & IFF_UP) {
+			if (ifp->if_flags & IFF_RUNNING) {
+				if ((ifp->if_flags ^ sc->re_if_flags) &
+				    (IFF_PROMISC | IFF_ALLMULTI))
+					re_setmulti(sc);
+			} else {
+				re_init(sc);
+			}
+		} else if (ifp->if_flags & IFF_RUNNING) {
 			re_stop(sc);
+		}
+		sc->re_if_flags = ifp->if_flags;
 		break;
+
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
 		re_setmulti(sc);
-		error = 0;
 		break;
+
 	case SIOCGIFMEDIA:
 	case SIOCSIFMEDIA:
 		mii = device_get_softc(sc->re_miibus);
 		error = ifmedia_ioctl(ifp, ifr, &mii->mii_media, command);
 		break;
+
 	case SIOCSIFCAP:
 		mask = (ifr->ifr_reqcap ^ ifp->if_capenable) &
 		       ifp->if_capabilities;
@@ -2902,6 +2898,7 @@ re_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		if (mask && (ifp->if_flags & IFF_RUNNING))
 			re_init(sc);
 		break;
+
 	default:
 		error = ether_ioctl(ifp, command, data);
 		break;
