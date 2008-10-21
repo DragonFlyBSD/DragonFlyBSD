@@ -13,7 +13,7 @@
 # WARNING: HAMMER filesystems (and pseudo-filesystems) must be
 # occassionally pruned and reblocked.  'man hammer' for more information.
 #
-# $DragonFly: src/share/examples/rconfig/hammer.sh,v 1.3 2008/09/06 02:25:43 dillon Exp $
+# $DragonFly: src/share/examples/rconfig/hammer.sh,v 1.4 2008/10/21 14:02:48 swildner Exp $
 
 set disk = "ad6"
 
@@ -32,7 +32,6 @@ foreach i ( 10 9 8 7 6 5 4 3 2 1 )
     sleep 1
 end
 echo ""
-exit 1
 
 # Unmount any prior mounts on /mnt, reverse order to unwind
 # sub-directory mounts.
@@ -136,6 +135,7 @@ cat > /mnt/etc/fstab << EOF
 # Device		Mountpoint	FStype	Options		Dump	Pass#
 /dev/${disk}s1d		/		hammer	rw		1	1
 /dev/${disk}s1a		/boot		ufs	rw		1	1
+/dev/${disk}s1b		none		swap	sw		0	0
 /pfs/usr		/usr		null	rw		0	0
 /pfs/var		/var		null	rw		0	0
 /pfs/tmp		/tmp		null	rw		0	0
@@ -187,14 +187,6 @@ cat >> /mnt/usr/pkg/etc/mk.conf << EOF
 .ifdef BSD_PKG_MK       # begin pkgsrc settings
 WRKOBJDIR=		/usr/obj/pkgsrc
 .endif                  # end pkgsrc settings
-EOF
-
-# Setup dntpd
-#
-cat >> /mnt/etc/dntpd.conf << EOF
-server 0.pool.ntp.org
-server 1.pool.ntp.org
-server 2.pool.ntp.org
 EOF
 
 # Allow sshd root logins via dsa key only
