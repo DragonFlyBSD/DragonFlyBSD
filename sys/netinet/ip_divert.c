@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.39 2008/09/13 08:48:42 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.40 2008/10/21 13:51:01 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -57,6 +57,7 @@
 #include <sys/proc.h>
 #include <sys/thread2.h>
 #include <sys/in_cksum.h>
+#include <sys/lock.h>
 #ifdef SMP
 #include <sys/msgport.h>
 #endif
@@ -288,12 +289,21 @@ div_packet(struct mbuf *m, int incoming, int port)
 		 * (see div_output for the other half of this.)
 		 */
 		ksnprintf(divsrc.sin_zero, sizeof divsrc.sin_zero,
-			 m->m_pkthdr.rcvif->if_xname);
+			  m->m_pkthdr.rcvif->if_xname);
 	}
 
 	/* Put packet on socket queue, if any */
 	sa = NULL;
 	nport = htons((u_int16_t)port);
+
+	/*
+	 * XXX
+	 * Following loop to locate the inpcb is MPSAFE since the inpcb
+	 * insertion/removal happens on the same CPU (CPU0), however,
+	 * saving/testing the socket pointer is not MPSAFE.  So we still
+	 * need to hold BGL here.
+	 */
+	get_mplock();
 	LIST_FOREACH(inp, &divcbinfo.pcblisthead, inp_list) {
 		if (inp->inp_flags & INP_PLACEMARKER)
 			continue;
@@ -306,7 +316,9 @@ div_packet(struct mbuf *m, int incoming, int port)
 			m_freem(m);
 		else
 			sorwakeup(sa);
+		rel_mplock();
 	} else {
+		rel_mplock();
 		m_freem(m);
 		ipstat.ips_noproto++;
 		ipstat.ips_delivered--;
@@ -361,7 +373,7 @@ divert_packet(struct mbuf *m, int incoming)
 		struct lwkt_msg *msg;
 
 		nmp = &m->m_hdr.mh_netmsg;
-		netmsg_init(&nmp->nm_netmsg, &netisr_apanic_rport, 0,
+		netmsg_init(&nmp->nm_netmsg, &netisr_apanic_rport, MSGF_MPSAFE,
 			    div_packet_handler);
 		nmp->nm_packet = m;
 

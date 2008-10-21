@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.110 2008/09/24 14:26:39 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.111 2008/10/21 13:51:01 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -136,6 +136,9 @@
 int rsvp_on = 0;
 static int ip_rsvp_on;
 struct socket *ip_rsvpd;
+
+int ip_mpsafe = 0;
+TUNABLE_INT("net.inet.ip.mpsafe", &ip_mpsafe);
 
 int ipforwarding = 0;
 SYSCTL_INT(_net_inet_ip, IPCTL_FORWARDING, forwarding, CTLFLAG_RW,
@@ -307,6 +310,7 @@ void
 ip_init(void)
 {
 	struct protosw *pr;
+	uint32_t flags;
 	int i;
 #ifdef SMP
 	int cpu;
@@ -376,8 +380,18 @@ ip_init(void)
 	bzero(&ipstat, sizeof(struct ip_stats));
 #endif
 
-	netisr_register(NETISR_IP, ip_mport_in, ip_input_handler,
-			NETISR_FLAG_NOTMPSAFE);
+#if defined(IPSEC) || defined(FAST_IPSEC)
+	/* XXX IPSEC is not MPSAFE yet */
+	flags = NETISR_FLAG_NOTMPSAFE;
+#else
+	if (ip_mpsafe) {
+		kprintf("ip: MPSAFE\n");
+		flags = NETISR_FLAG_MPSAFE;
+	} else {
+		flags = NETISR_FLAG_NOTMPSAFE;
+	}
+#endif
+	netisr_register(NETISR_IP, ip_mport_in, ip_input_handler, flags);
 }
 
 /*
@@ -714,6 +728,9 @@ pass:
 	if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr))) {
 		struct in_multi *inm;
 
+		/* XXX Multicast is not MPSAFE yet */
+		get_mplock();
+
 		if (ip_mrouter != NULL) {
 			/*
 			 * If we are acting as a multicast router, all
@@ -725,6 +742,7 @@ pass:
 			 */
 			if (ip_mforward != NULL &&
 			    ip_mforward(ip, m->m_pkthdr.rcvif, m, NULL) != 0) {
+				rel_mplock();
 				ipstat.ips_cantforward++;
 				m_freem(m);
 				return;
@@ -735,8 +753,10 @@ pass:
 			 * all multicast IGMP packets, whether or not this
 			 * host belongs to their destination groups.
 			 */
-			if (ip->ip_p == IPPROTO_IGMP)
+			if (ip->ip_p == IPPROTO_IGMP) {
+				rel_mplock();
 				goto ours;
+			}
 			ipstat.ips_forward++;
 		}
 		/*
@@ -745,10 +765,13 @@ pass:
 		 */
 		IN_LOOKUP_MULTI(ip->ip_dst, m->m_pkthdr.rcvif, inm);
 		if (inm == NULL) {
+			rel_mplock();
 			ipstat.ips_notmember++;
 			m_freem(m);
 			return;
 		}
+
+		rel_mplock();
 		goto ours;
 	}
 	if (ip->ip_dst.s_addr == INADDR_BROADCAST)

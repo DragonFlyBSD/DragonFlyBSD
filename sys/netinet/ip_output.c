@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.64 2008/09/18 11:19:42 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.65 2008/10/21 13:51:01 sephe Exp $
  */
 
 #define _IP_VHL
@@ -53,6 +53,7 @@
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 #include <sys/in_cksum.h>
+#include <sys/lock.h>
 
 #include <net/if.h>
 #include <net/netisr.h>
@@ -288,6 +289,17 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 
 reroute:
 	pkt_dst = next_hop ? next_hop->sin_addr : ip->ip_dst;
+
+#ifdef INVARIANTS
+	if (IN_MULTICAST(ntohl(pkt_dst.s_addr))) {
+		/*
+		 * XXX
+		 * Multicast is not MPSAFE yet.  Caller must hold
+		 * BGL when output a multicast IP packet.
+		 */
+		ASSERT_MP_LOCK_HELD(curthread);
+	}
+#endif
 
 	dst = (struct sockaddr_in *)&ro->ro_dst;
 	/*
