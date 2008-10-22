@@ -1,7 +1,7 @@
 <!--#set var="title" value="DragonFly - Download" -->
 <!--#include virtual="/includes/header.shtml" -->
 
-<!-- $DragonFly: site/data/community/download.shtml,v 1.25 2008/09/04 04:27:44 justin Exp $ -->
+<!-- $DragonFly: site/data/community/download.shtml,v 1.26 2008/10/22 13:08:29 matthias Exp $ -->
 
 <h1>Obtaining DragonFly for your system</h1>
 
@@ -353,6 +353,15 @@ rsync
 </TR>
 
 <TR>
+<TD>Flixn, Inc. (Texas, United States)</TD>
+<TD>Daily Snapshots, Official ISOs</TD>
+<TD>
+<a href="http://mirror.evilprojects.net/pub/DragonFlyBSD/">HTTP</a>
+<a href="ftp://mirror.evilprojects.net/pub/DragonFlyBSD/">FTP</a>
+</TD>
+</TR>
+
+<TR>
 <TD>Internet Systems Consortium, Inc. (California)</TD>
 <TD>Official ISOs</TD>
 <TD>
@@ -449,6 +458,14 @@ packages</a>
 </TD>
 </TR>
 
+<TR>
+<TD>Flixn, Inc. (Texas, United States)</TD>
+<TD>binary pkgsrc packages</TD>
+<TD>
+<a href="http://mirror.evilprojects.net/pub/DragonFlyBSD/packages/">HTTP</a>
+<a href="ftp://mirror.evilprojects.net/pub/DragonFlyBSD/packages/">FTP</a>
+</TD>
+</TR>
 <!-- source only after this -->
 
 <TR>
