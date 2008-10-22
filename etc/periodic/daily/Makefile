@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/periodic/daily/Makefile,v 1.4.2.4 2002/07/18 12:36:07 ru Exp $
-# $DragonFly: src/etc/periodic/daily/Makefile,v 1.3 2003/06/17 05:15:01 dillon Exp $
+# $DragonFly: src/etc/periodic/daily/Makefile,v 1.4 2008/10/22 20:15:55 swildner Exp $
 
 FILES=	100.clean-disks \
 	110.clean-tmps \
@@ -7,6 +7,7 @@ FILES=	100.clean-disks \
 	130.clean-msgs \
 	140.clean-rwho \
 	150.clean-hoststat \
+	160.clean-hammer \
 	200.backup-passwd \
 	210.backup-aliases \
 	220.backup-distfile \

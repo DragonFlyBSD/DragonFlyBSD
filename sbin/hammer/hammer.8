@@ -30,8 +30,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.55 2008/10/08 21:01:54 thomas Exp $
-.Dd October 8, 2008
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.56 2008/10/22 20:15:55 swildner Exp $
+.\"
+.Dd October 22, 2008
 .Dt HAMMER 8
 .Os
 .Sh NAME
@@ -231,19 +232,16 @@ A snapshots period of 0 disables snapshot generation and prunes using
 if no snapshots exists.
 A prune max-runtime of 0 means unlimited.
 .Pp
-If period hasn't passed since previous
+If period hasn't passed since the previous
 .Ar cleanup
 run nothing is done.
 For example a day has passed when midnight is passed (localtime).
-It is recommended to run
-.Ar cleanup
-once a day, depending on the configured period, from a
-.Xr cron 8
-job.
-For example:
-.Bd -literal -offset indent
-15 2 * * * hammer cleanup >>/var/log/hammer.log 2>&1
-.Ed
+By default,
+.Dx
+is set up to run
+.Nm Ar cleanup
+nightly via
+.Xr periodic 8 .
 .Pp
 The default configuration file will create a daily snapshot, do a daily
 pruning and reblocking run and a monthly recopy run.
@@ -713,6 +711,7 @@ recommended slave PFS snapshots directory
 .Sh SEE ALSO
 .Xr undo 1 ,
 .Xr HAMMER 5 ,
+.Xr periodic.conf 5 ,
 .Xr mount_hammer 8 ,
 .Xr mount_null 8 ,
 .Xr newfs_hammer 8

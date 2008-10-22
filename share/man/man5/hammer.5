@@ -29,9 +29,9 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man5/hammer.5,v 1.13 2008/10/07 22:23:12 thomas Exp $
+.\" $DragonFly: src/share/man/man5/hammer.5,v 1.14 2008/10/22 20:15:55 swildner Exp $
 .\"
-.Dd September 28, 2008
+.Dd October 22, 2008
 .Os
 .Dt HAMMER 5
 .Sh NAME
@@ -271,20 +271,18 @@ mount_hammer /dev/ad0s1d /dev/ad1s1d /home
 .Pp
 Once created and mounted,
 .Nm
-file systems need periodic clean-up making snapshots, pruning and reblocking,
+file systems need periodic clean up making snapshots, pruning and reblocking,
 in order to have access to history and file system not to fill up.
 For this it is recommended to use the
 .Xr hammer 8
 .Ar cleanup
-utility either manually or with a
-.Xr cron 8
-job.
-For example, to clean-up all
-.Nm
-file systems in use, including PFSs, every night at 2:15:
-.Bd -literal -offset indent
-15 2 * * * hammer cleanup >>/var/log/hammer.log 2>&1
-.Ed
+metacommand.
+By default,
+.Dx
+is set up to run
+.Nm hammer Ar cleanup
+nightly via
+.Xr periodic 8 .
 .Pp
 It is also possible to make these operations individually.
 For example, to reblock the
@@ -323,19 +321,6 @@ pointed to by any snapshot link and is not from after the latest snapshot.
 .Bd -literal -offset indent
 rm /snaps/snap1
 hammer prune /snaps
-.Ed
-.Pp
-Unless the file system is mounted with the
-.Ar nohistory
-option, it might be advisable to also set up
-.Xr cron 8
-jobs for pruning no longer used historical data regularly.
-For example, to prune the
-.Pa /snaps
-directory every night at 3:15 for up to 5 minutes:
-.Bd -literal -offset indent
-15 3 * * * hammer -c /var/run/snaps.prune -t 300 prune /snaps \e
-	>/dev/null 2>&1
 .Ed
 .Ss Mirroring
 Mirroring can be set up using
