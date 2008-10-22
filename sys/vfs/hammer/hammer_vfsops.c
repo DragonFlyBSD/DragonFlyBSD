@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.72 2008/09/23 21:03:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.73 2008/10/22 01:43:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -292,10 +292,27 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	int error;
 	int i;
 	int master_id;
+
+	/*
+	 * Make sure kmalloc type limits are set appropriately.  If root
+	 * increases the vnode limit you may have to do a dummy remount
+	 * to adjust the HAMMER inode limit.
+	 */
+	{
+		int maxinodes;
+
+		maxinodes = desiredvnodes + desiredvnodes / 5 + 
+			    HAMMER_RECLAIM_WAIT;
+
+		kmalloc_raise_limit(M_HAMMER_INO,
+				    maxinodes * sizeof(struct hammer_inode));
+	}
+
+
+	/*
+	 * Accept hammer_mount_info.  mntpt is NULL for root mounts at boot.
+	 */
 	if (mntpt == NULL) {
-		/*
-		 * Root mount
-		 */
 		if ((error = bdevvp(rootdev, &devvp))) {
 			kprintf("hammer_mountroot: can't find devvp\n");
 			return (error);
