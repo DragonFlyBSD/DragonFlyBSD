@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.21 2008/07/22 10:59:16 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.22 2008/10/22 14:24:24 sephe Exp $
  */
 
 /*
@@ -86,6 +86,8 @@ static const struct mii_phydesc brgphys[] = {
 
 	MII_PHYDESC(xxBROADCOM,	BCM5706C),
 	MII_PHYDESC(xxBROADCOM,	BCM5708C),
+
+	MII_PHYDESC(BROADCOM2, BCM5906),
 
 	MII_PHYDESC_NULL
 };
@@ -521,6 +523,10 @@ brgphy_reset(struct mii_softc *sc)
 			PHY_READ(sc, BRGPHY_MII_PHY_EXTCTL)
 				& ~BRGPHY_PHY_EXTCTL_3_LED);
 		}
+
+		/* Adjust output voltage (From Linux driver) */
+		if (bge_sc->bge_asicrev == BGE_ASICREV_BCM5906)
+			PHY_WRITE(sc, BRGPHY_MII_EPHY_PTEST, 0x12);
 	} else if (strncmp(ifp->if_xname, "bce", 3) == 0) {
 		brgphy_ber_bug(sc);
 		brgphy_jumbo_settings(sc, ifp->if_mtu);
