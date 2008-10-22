@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.54 2008/07/01 02:02:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.55 2008/10/22 01:42:17 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -323,6 +323,19 @@ malloc_uninit(void *data)
     }
     type->ks_next = NULL;
     type->ks_limit = 0;
+}
+
+/*
+ * Increase the kmalloc pool limit for the specified pool.  No changes
+ * are the made if the pool would shrink.
+ */
+void
+kmalloc_raise_limit(struct malloc_type *type, size_t bytes)
+{
+    if (type->ks_limit == 0)
+	malloc_init(type);
+    if (type->ks_limit < bytes)
+	type->ks_limit = bytes;
 }
 
 /*

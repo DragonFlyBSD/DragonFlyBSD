@@ -32,7 +32,7 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.29 2008/06/30 03:00:34 dillon Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.30 2008/10/22 01:42:15 dillon Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
@@ -199,6 +199,7 @@ void	*contigmalloc (unsigned long size, struct malloc_type *type,
 			   unsigned long alignment, unsigned long boundary);
 void	malloc_init (void *);
 void	malloc_uninit (void *);
+void	kmalloc_raise_limit(struct malloc_type *type, size_t bytes);
 
 void	*kmalloc (unsigned long size, struct malloc_type *type, int flags);
 void	*krealloc (void *addr, unsigned long size,
