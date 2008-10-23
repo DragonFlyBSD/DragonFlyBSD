@@ -2,17 +2,7 @@
 
 # installer - start installer frontend and backend as per pfi config.
 # $Id: installer,v 1.20 2005/04/13 03:32:16 cpressey Exp $
-# $DragonFly: src/nrelease/gui/usr/local/bin/installer,v 1.1 2008/09/01 21:20:31 swildner Exp $
-
-### CONFIG ###
-# Pick up the correct installer target, use local first if we have it
-if [ -f /usr/sbin/dfuife_curses ]; then
-    FRONTEND=/usr/sbin/dfuife_curses
-    FRED=/usr/share/installer/fred.txt
-else
-    FRONTEND=/usr/pkg/sbin/dfuife_curses
-    FRED=/usr/pkg/share/dfuife_curses/fred.txt
-fi
+# $DragonFly: src/nrelease/gui/usr/local/bin/installer,v 1.2 2008/10/23 16:45:36 swildner Exp $
 
 ### SUBS ###
 
@@ -82,10 +72,10 @@ installer_start()
 		background_backend $RENDEZVOUS $pfi_dfui_transport &
 		sleep 1
 		ESCDELAY=$pfi_curses_escdelay \
-		    ${FRONTEND} \
+		    /usr/sbin/dfuife_curses \
 			-r $RENDEZVOUS \
 			-t $pfi_dfui_transport \
-			-b /usr/share/dfuife_curses/fred.txt \
+			-b /usr/share/installer/fred.txt \
 		    2>/dev/null
 		pfi_frontend=none
 	fi
@@ -105,10 +95,10 @@ installer_start()
 			# Frontend is already running.
 		else
 			ESCDELAY=$pfi_curses_escdelay \
-			    $FRONTEND \
+			    /usr/sbin/dfuife_curses \
 				-r $RENDEZVOUS \
 				-t $pfi_dfui_transport \
-				-b $FRED \
+				-b /usr/share/installer/fred.txt \
 			    2>/dev/ttyv0 </dev/ttyv1 >/dev/ttyv1 &
 		fi
 		rm -f /tmp/ps.txt
@@ -126,10 +116,10 @@ installer_start()
 			echo "Frontend is already running"
 		else
 			ESCDELAY=$pfi_curses_escdelay \
-			$FRONTEND \
+			/usr/sbin/dfuife_curses \
 			-r $RENDEZVOUS \
 			-t $pfi_dfui_transport \
-			-b $FRED \
+			-b /usr/share/installer/fred.txt \
 			>$TTY_INST <$TTY_INST 2>&1 &
 		fi
 		rm -f /tmp/ps.txt
