@@ -65,7 +65,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.67 2008/10/19 08:39:55 sephe Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.68 2008/10/24 11:15:07 sephe Exp $
  */
 
 #include "opt_param.h"
@@ -835,18 +835,14 @@ m_mclref(void *arg)
 /*
  * When dereferencing a cluster we have to deal with a N->0 race, where
  * N entities free their references simultaniously.  To do this we use
- * atomic_cmpset_int().
+ * atomic_fetchadd_int().
  */
 static void
 m_mclfree(void *arg)
 {
 	struct mbcluster *mcl = arg;
-	int refs;
 
-	do {
-		refs = mcl->mcl_refs;
-	} while (atomic_cmpset_int(&mcl->mcl_refs, refs, refs - 1) == 0);
-	if (refs == 1)
+	if (atomic_fetchadd_int(&mcl->mcl_refs, -1) == 1)
 		objcache_put(mclmeta_cache, mcl);
 }
 
