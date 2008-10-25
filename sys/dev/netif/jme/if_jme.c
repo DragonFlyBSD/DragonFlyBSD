@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jme.c,v 1.2 2008/07/18 04:20:48 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.10 2008/09/19 11:36:40 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.11 2008/10/25 10:46:55 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -117,12 +117,14 @@ static int	jme_eeprom_read_byte(struct jme_softc *, uint8_t, uint8_t *);
 static void	jme_setwol(struct jme_softc *);
 static void	jme_setlinkspeed(struct jme_softc *);
 #endif
+static void	jme_set_tx_coal(struct jme_softc *);
+static void	jme_set_rx_coal(struct jme_softc *);
 
 static void	jme_sysctl_node(struct jme_softc *);
-static int	sysctl_hw_jme_tx_coal_to(SYSCTL_HANDLER_ARGS);
-static int	sysctl_hw_jme_tx_coal_pkt(SYSCTL_HANDLER_ARGS);
-static int	sysctl_hw_jme_rx_coal_to(SYSCTL_HANDLER_ARGS);
-static int	sysctl_hw_jme_rx_coal_pkt(SYSCTL_HANDLER_ARGS);
+static int	jme_sysctl_tx_coal_to(SYSCTL_HANDLER_ARGS);
+static int	jme_sysctl_tx_coal_pkt(SYSCTL_HANDLER_ARGS);
+static int	jme_sysctl_rx_coal_to(SYSCTL_HANDLER_ARGS);
+static int	jme_sysctl_rx_coal_pkt(SYSCTL_HANDLER_ARGS);
 
 /*
  * Devices supported by this driver.
@@ -823,8 +825,6 @@ jme_detach(device_t dev)
 static void
 jme_sysctl_node(struct jme_softc *sc)
 {
-	int error;
-
 	sysctl_ctx_init(&sc->jme_sysctl_ctx);
 	sc->jme_sysctl_tree = SYSCTL_ADD_NODE(&sc->jme_sysctl_ctx,
 				SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
@@ -837,78 +837,28 @@ jme_sysctl_node(struct jme_softc *sc)
 
 	SYSCTL_ADD_PROC(&sc->jme_sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
-	    "tx_coal_to", CTLTYPE_INT | CTLFLAG_RW, &sc->jme_tx_coal_to,
-	    0, sysctl_hw_jme_tx_coal_to, "I", "jme tx coalescing timeout");
+	    "tx_coal_to", CTLTYPE_INT | CTLFLAG_RW,
+	    sc, 0, jme_sysctl_tx_coal_to, "I", "jme tx coalescing timeout");
 
 	SYSCTL_ADD_PROC(&sc->jme_sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
-	    "tx_coal_pkt", CTLTYPE_INT | CTLFLAG_RW, &sc->jme_tx_coal_pkt,
-	    0, sysctl_hw_jme_tx_coal_pkt, "I", "jme tx coalescing packet");
+	    "tx_coal_pkt", CTLTYPE_INT | CTLFLAG_RW,
+	    sc, 0, jme_sysctl_tx_coal_pkt, "I", "jme tx coalescing packet");
 
 	SYSCTL_ADD_PROC(&sc->jme_sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
-	    "rx_coal_to", CTLTYPE_INT | CTLFLAG_RW, &sc->jme_rx_coal_to,
-	    0, sysctl_hw_jme_rx_coal_to, "I", "jme rx coalescing timeout");
+	    "rx_coal_to", CTLTYPE_INT | CTLFLAG_RW,
+	    sc, 0, jme_sysctl_rx_coal_to, "I", "jme rx coalescing timeout");
 
 	SYSCTL_ADD_PROC(&sc->jme_sysctl_ctx,
 	    SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
-	    "rx_coal_pkt", CTLTYPE_INT | CTLFLAG_RW, &sc->jme_rx_coal_pkt,
-	    0, sysctl_hw_jme_rx_coal_pkt, "I", "jme rx coalescing packet");
-
-	/* Pull in device tunables. */
-	sc->jme_process_limit = JME_PROC_DEFAULT;
+	    "rx_coal_pkt", CTLTYPE_INT | CTLFLAG_RW,
+	    sc, 0, jme_sysctl_rx_coal_pkt, "I", "jme rx coalescing packet");
 
 	sc->jme_tx_coal_to = PCCTX_COAL_TO_DEFAULT;
-	error = resource_int_value(device_get_name(sc->jme_dev),
-	    device_get_unit(sc->jme_dev), "tx_coal_to", &sc->jme_tx_coal_to);
-	if (error == 0) {
-		if (sc->jme_tx_coal_to < PCCTX_COAL_TO_MIN ||
-		    sc->jme_tx_coal_to > PCCTX_COAL_TO_MAX) {
-			device_printf(sc->jme_dev,
-			    "tx_coal_to value out of range; "
-			    "using default: %d\n", PCCTX_COAL_TO_DEFAULT);
-			sc->jme_tx_coal_to = PCCTX_COAL_TO_DEFAULT;
-		}
-	}
-
 	sc->jme_tx_coal_pkt = PCCTX_COAL_PKT_DEFAULT;
-	error = resource_int_value(device_get_name(sc->jme_dev),
-	    device_get_unit(sc->jme_dev), "tx_coal_pkt", &sc->jme_tx_coal_to);
-	if (error == 0) {
-		if (sc->jme_tx_coal_pkt < PCCTX_COAL_PKT_MIN ||
-		    sc->jme_tx_coal_pkt > PCCTX_COAL_PKT_MAX) {
-			device_printf(sc->jme_dev,
-			    "tx_coal_pkt value out of range; "
-			    "using default: %d\n", PCCTX_COAL_PKT_DEFAULT);
-			sc->jme_tx_coal_pkt = PCCTX_COAL_PKT_DEFAULT;
-		}
-	}
-
 	sc->jme_rx_coal_to = PCCRX_COAL_TO_DEFAULT;
-	error = resource_int_value(device_get_name(sc->jme_dev),
-	    device_get_unit(sc->jme_dev), "rx_coal_to", &sc->jme_rx_coal_to);
-	if (error == 0) {
-		if (sc->jme_rx_coal_to < PCCRX_COAL_TO_MIN ||
-		    sc->jme_rx_coal_to > PCCRX_COAL_TO_MAX) {
-			device_printf(sc->jme_dev,
-			    "rx_coal_to value out of range; "
-			    "using default: %d\n", PCCRX_COAL_TO_DEFAULT);
-			sc->jme_rx_coal_to = PCCRX_COAL_TO_DEFAULT;
-		}
-	}
-
 	sc->jme_rx_coal_pkt = PCCRX_COAL_PKT_DEFAULT;
-	error = resource_int_value(device_get_name(sc->jme_dev),
-	    device_get_unit(sc->jme_dev), "rx_coal_pkt", &sc->jme_rx_coal_to);
-	if (error == 0) {
-		if (sc->jme_rx_coal_pkt < PCCRX_COAL_PKT_MIN ||
-		    sc->jme_rx_coal_pkt > PCCRX_COAL_PKT_MAX) {
-			device_printf(sc->jme_dev,
-			    "tx_coal_pkt value out of range; "
-			    "using default: %d\n", PCCRX_COAL_PKT_DEFAULT);
-			sc->jme_rx_coal_pkt = PCCRX_COAL_PKT_DEFAULT;
-		}
-	}
 }
 
 static void
@@ -2443,19 +2393,10 @@ jme_init(void *xsc)
 	CSR_WRITE_4(sc, JME_GPREG0, reg);
 
 	/* Configure Tx queue 0 packet completion coalescing. */
-	reg = (sc->jme_tx_coal_to << PCCTX_COAL_TO_SHIFT) &
-	    PCCTX_COAL_TO_MASK;
-	reg |= (sc->jme_tx_coal_pkt << PCCTX_COAL_PKT_SHIFT) &
-	    PCCTX_COAL_PKT_MASK;
-	reg |= PCCTX_COAL_TXQ0;
-	CSR_WRITE_4(sc, JME_PCCTX, reg);
+	jme_set_tx_coal(sc);
 
 	/* Configure Rx queue 0 packet completion coalescing. */
-	reg = (sc->jme_rx_coal_to << PCCRX_COAL_TO_SHIFT) &
-	    PCCRX_COAL_TO_MASK;
-	reg |= (sc->jme_rx_coal_pkt << PCCRX_COAL_PKT_SHIFT) &
-	    PCCRX_COAL_PKT_MASK;
-	CSR_WRITE_4(sc, JME_PCCRX0, reg);
+	jme_set_rx_coal(sc);
 
 	/* Configure shadow status block but don't enable posting. */
 	paddr = sc->jme_rdata.jme_ssb_block_paddr;
@@ -2812,29 +2753,142 @@ jme_set_filter(struct jme_softc *sc)
 }
 
 static int
-sysctl_hw_jme_tx_coal_to(SYSCTL_HANDLER_ARGS)
+jme_sysctl_tx_coal_to(SYSCTL_HANDLER_ARGS)
 {
-	return (sysctl_int_range(oidp, arg1, arg2, req,
-	    PCCTX_COAL_TO_MIN, PCCTX_COAL_TO_MAX));
+	struct jme_softc *sc = arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, v;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	v = sc->jme_tx_coal_to;
+	error = sysctl_handle_int(oidp, &v, 0, req);
+	if (error || req->newptr == NULL)
+		goto back;
+
+	if (v < PCCTX_COAL_TO_MIN || v > PCCTX_COAL_TO_MAX) {
+		error = EINVAL;
+		goto back;
+	}
+
+	if (v != sc->jme_tx_coal_to) {
+		sc->jme_tx_coal_to = v;
+		if (ifp->if_flags & IFF_RUNNING)
+			jme_set_tx_coal(sc);
+	}
+back:
+	lwkt_serialize_exit(ifp->if_serializer);
+	return error;
 }
 
 static int
-sysctl_hw_jme_tx_coal_pkt(SYSCTL_HANDLER_ARGS)
+jme_sysctl_tx_coal_pkt(SYSCTL_HANDLER_ARGS)
 {
-	return (sysctl_int_range(oidp, arg1, arg2, req,
-	    PCCTX_COAL_PKT_MIN, PCCTX_COAL_PKT_MAX));
+	struct jme_softc *sc = arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, v;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	v = sc->jme_tx_coal_pkt;
+	error = sysctl_handle_int(oidp, &v, 0, req);
+	if (error || req->newptr == NULL)
+		goto back;
+
+	if (v < PCCTX_COAL_PKT_MIN || v > PCCTX_COAL_PKT_MAX) {
+		error = EINVAL;
+		goto back;
+	}
+
+	if (v != sc->jme_tx_coal_pkt) {
+		sc->jme_tx_coal_pkt = v;
+		if (ifp->if_flags & IFF_RUNNING)
+			jme_set_tx_coal(sc);
+	}
+back:
+	lwkt_serialize_exit(ifp->if_serializer);
+	return error;
 }
 
 static int
-sysctl_hw_jme_rx_coal_to(SYSCTL_HANDLER_ARGS)
+jme_sysctl_rx_coal_to(SYSCTL_HANDLER_ARGS)
 {
-	return (sysctl_int_range(oidp, arg1, arg2, req,
-	    PCCRX_COAL_TO_MIN, PCCRX_COAL_TO_MAX));
+	struct jme_softc *sc = arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, v;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	v = sc->jme_rx_coal_to;
+	error = sysctl_handle_int(oidp, &v, 0, req);
+	if (error || req->newptr == NULL)
+		goto back;
+
+	if (v < PCCRX_COAL_TO_MIN || v > PCCRX_COAL_TO_MAX) {
+		error = EINVAL;
+		goto back;
+	}
+
+	if (v != sc->jme_rx_coal_to) {
+		sc->jme_rx_coal_to = v;
+		if (ifp->if_flags & IFF_RUNNING)
+			jme_set_rx_coal(sc);
+	}
+back:
+	lwkt_serialize_exit(ifp->if_serializer);
+	return error;
 }
 
 static int
-sysctl_hw_jme_rx_coal_pkt(SYSCTL_HANDLER_ARGS)
+jme_sysctl_rx_coal_pkt(SYSCTL_HANDLER_ARGS)
 {
-	return (sysctl_int_range(oidp, arg1, arg2, req,
-	    PCCRX_COAL_PKT_MIN, PCCRX_COAL_PKT_MAX));
+	struct jme_softc *sc = arg1;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	int error, v;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	v = sc->jme_rx_coal_pkt;
+	error = sysctl_handle_int(oidp, &v, 0, req);
+	if (error || req->newptr == NULL)
+		goto back;
+
+	if (v < PCCRX_COAL_PKT_MIN || v > PCCRX_COAL_PKT_MAX) {
+		error = EINVAL;
+		goto back;
+	}
+
+	if (v != sc->jme_rx_coal_pkt) {
+		sc->jme_rx_coal_pkt = v;
+		if (ifp->if_flags & IFF_RUNNING)
+			jme_set_rx_coal(sc);
+	}
+back:
+	lwkt_serialize_exit(ifp->if_serializer);
+	return error;
+}
+
+static void
+jme_set_tx_coal(struct jme_softc *sc)
+{
+	uint32_t reg;
+
+	reg = (sc->jme_tx_coal_to << PCCTX_COAL_TO_SHIFT) &
+	    PCCTX_COAL_TO_MASK;
+	reg |= (sc->jme_tx_coal_pkt << PCCTX_COAL_PKT_SHIFT) &
+	    PCCTX_COAL_PKT_MASK;
+	reg |= PCCTX_COAL_TXQ0;
+	CSR_WRITE_4(sc, JME_PCCTX, reg);
+}
+
+static void
+jme_set_rx_coal(struct jme_softc *sc)
+{
+	uint32_t reg;
+
+	reg = (sc->jme_rx_coal_to << PCCRX_COAL_TO_SHIFT) &
+	    PCCRX_COAL_TO_MASK;
+	reg |= (sc->jme_rx_coal_pkt << PCCRX_COAL_PKT_SHIFT) &
+	    PCCRX_COAL_PKT_MASK;
+	CSR_WRITE_4(sc, JME_PCCRX0, reg);
 }

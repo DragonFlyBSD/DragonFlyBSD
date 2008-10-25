@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jmereg.h,v 1.1 2008/05/27 01:42:01 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jmereg.h,v 1.4 2008/09/19 11:36:40 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/jme/if_jmereg.h,v 1.5 2008/10/25 10:46:55 sephe Exp $
  */
 
 #ifndef	_IF_JMEREG_H
@@ -690,7 +690,7 @@
 #define	PCCRX_COAL_TO_MAX	65535
 
 #define	PCCRX_COAL_PKT_MIN	1
-#define	PCCRX_COAL_PKT_DEFAULT	2
+#define	PCCRX_COAL_PKT_DEFAULT	64
 #define	PCCRX_COAL_PKT_MAX	255
 
 /* Packet completion coalescing control of Tx queue. */
@@ -709,11 +709,11 @@
 #define	PCCTX_COAL_TXQ0		0x00000001
 
 #define	PCCTX_COAL_TO_MIN	1
-#define	PCCTX_COAL_TO_DEFAULT	100
+#define	PCCTX_COAL_TO_DEFAULT	65535
 #define	PCCTX_COAL_TO_MAX	65535
 
 #define	PCCTX_COAL_PKT_MIN	1
-#define	PCCTX_COAL_PKT_DEFAULT	8
+#define	PCCTX_COAL_PKT_DEFAULT	64
 #define	PCCTX_COAL_PKT_MAX	255
 
 /* Chip mode and FPGA version. */

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jmevar.h,v 1.1 2008/05/27 01:42:01 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jmevar.h,v 1.6 2008/09/19 11:36:40 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/jme/if_jmevar.h,v 1.7 2008/10/25 10:46:55 sephe Exp $
  */
 
 #ifndef	_IF_JMEVAR_H
@@ -214,7 +214,6 @@ struct jme_softc {
 	/*
 	 * Sysctl variables
 	 */
-	int			jme_process_limit;
 	int			jme_tx_coal_to;
 	int			jme_tx_coal_pkt;
 	int			jme_rx_coal_to;
