@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.20 2008/10/26 09:37:50 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.21 2008/10/26 09:50:15 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -261,6 +261,7 @@ ipflow_addstats(struct ipflow *ipf)
 {
 	ipf->ipf_ro.ro_rt->rt_use += ipf->ipf_uses;
 	ipstat.ips_cantforward += ipf->ipf_errors + ipf->ipf_dropped;
+	ipstat.ips_total += ipf->ipf_uses;
 	ipstat.ips_forward += ipf->ipf_uses;
 	ipstat.ips_fastforward += ipf->ipf_uses;
 }
@@ -348,6 +349,7 @@ ipflow_timo_dispatch(struct netmsg *nmsg)
 			} else {
 				ipf->ipf_last_uses = ipf->ipf_uses;
 				ipf->ipf_ro.ro_rt->rt_use += ipf->ipf_uses;
+				ipstat.ips_total += ipf->ipf_uses;
 				ipstat.ips_forward += ipf->ipf_uses;
 				ipstat.ips_fastforward += ipf->ipf_uses;
 				ipf->ipf_uses = 0;
