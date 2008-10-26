@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.19 2008/10/26 09:15:33 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.20 2008/10/26 09:37:50 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -141,9 +141,16 @@ ipflow_fastforward(struct mbuf *m)
 	int error, iplen;
 
 	/*
-	 * Are we forwarding packets?  Big enough for an IP packet?
+	 * Are we forwarding packets?
 	 */
 	if (!ipforwarding || !ipflow_active)
+		return 0;
+
+	/*
+	 * Was packet received as a link-level multicast or broadcast?
+	 * If so, don't try to fast forward..
+	 */
+	if (m->m_flags & (M_BCAST | M_MCAST))
 		return 0;
 
 	/* length checks already done in ip_mport() */
