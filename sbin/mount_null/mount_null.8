@@ -36,7 +36,7 @@
 .\"
 .\"     @(#)mount_null.8	8.6 (Berkeley) 5/1/95
 .\" $FreeBSD: src/sbin/mount_null/mount_null.8,v 1.11.2.6 2001/12/20 16:40:00 ru Exp $
-.\" $DragonFly: src/sbin/mount_null/mount_null.8,v 1.7 2008/09/28 21:19:58 thomas Exp $
+.\" $DragonFly: src/sbin/mount_null/mount_null.8,v 1.8 2008/10/26 00:05:24 swildner Exp $
 .\"
 .Dd September 28, 2008
 .Dt MOUNT_NULL 8
@@ -71,7 +71,7 @@ The
 .Nm null
 filesystem differs from a traditional
 loopback file system in two respects: it is implemented using
-a stackable layers techniques, and it's
+a stackable layers techniques, and its
 .Do null-node Dc Ns s
 stack above
 all lower-layer vnodes, not just over directory vnodes.
