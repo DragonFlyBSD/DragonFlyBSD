@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_syslink.c,v 1.15 2007/08/13 17:47:19 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_syslink.c,v 1.16 2008/10/26 04:29:19 sephe Exp $
  */
 /*
  * This module implements the core syslink() system call and provides
@@ -148,13 +148,13 @@ syslinkinit(void *dummy __unused)
 {
 	size_t n = sizeof(struct slmsg);
 
-	sl_objcache_none = objcache_create_mbacked(M_SYSLINK, n, 0, 64,
+	sl_objcache_none = objcache_create_mbacked(M_SYSLINK, n, NULL, 64,
 						   slmsg_ctor, slmsg_dtor,
 						   &sl_objcache_none);
-	sl_objcache_small= objcache_create_mbacked(M_SYSLINK, n, 0, 64,
+	sl_objcache_small= objcache_create_mbacked(M_SYSLINK, n, NULL, 64,
 						   slmsg_ctor, slmsg_dtor,
 						   &sl_objcache_small);
-	sl_objcache_big  = objcache_create_mbacked(M_SYSLINK, n, 0, 16,
+	sl_objcache_big  = objcache_create_mbacked(M_SYSLINK, n, NULL, 16,
 						   slmsg_ctor, slmsg_dtor,
 						   &sl_objcache_big);
 }

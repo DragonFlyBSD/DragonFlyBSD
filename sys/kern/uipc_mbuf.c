@@ -65,7 +65,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.68 2008/10/24 11:15:07 sephe Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.69 2008/10/26 04:29:19 sephe Exp $
  */
 
 #include "opt_param.h"
@@ -528,10 +528,14 @@ struct objcache_malloc_args mclmeta_malloc_args =
 static void
 mbinit(void *dummy)
 {
+	int mb_limit, cl_limit, mbcl_limit;
+	int limit;
 	int i;
 
-	for (i = 0; i < ncpus; i++)
-	{
+	/*
+	 * Initialize statistics
+	 */
+	for (i = 0; i < ncpus; i++) {
 		atomic_set_long_nonlocked(&mbstat[i].m_msize, MSIZE);
 		atomic_set_long_nonlocked(&mbstat[i].m_mclbytes, MCLBYTES);
 		atomic_set_long_nonlocked(&mbstat[i].m_minclsize, MINCLSIZE);
@@ -539,22 +543,57 @@ mbinit(void *dummy)
 		atomic_set_long_nonlocked(&mbstat[i].m_mhlen, MHLEN);
 	}
 
-	mbuf_cache = objcache_create("mbuf", nmbufs, 0,
+	/*
+	 * Create objtect caches and save cluster limits, which will
+	 * be used to adjust backing kmalloc pools' limit later.
+	 */
+
+	mb_limit = cl_limit = mbcl_limit = 0;
+
+	limit = nmbufs;
+	mbuf_cache = objcache_create("mbuf", &limit, 0,
 	    mbuf_ctor, NULL, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
-	mbufphdr_cache = objcache_create("mbuf pkt hdr", nmbufs, 64,
+	if (limit > mb_limit)
+		mb_limit = limit;
+
+	limit = nmbufs;
+	mbufphdr_cache = objcache_create("mbuf pkt hdr", &limit, 64,
 	    mbufphdr_ctor, NULL, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
-	mclmeta_cache = objcache_create("cluster mbuf", nmbclusters , 0,
+	if (limit > mb_limit)
+		mb_limit = limit;
+
+	cl_limit = nmbclusters;
+	mclmeta_cache = objcache_create("cluster mbuf", &cl_limit, 0,
 	    mclmeta_ctor, mclmeta_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mclmeta_malloc_args);
-	mbufcluster_cache = objcache_create("mbuf + cluster", nmbclusters, 0,
+
+	limit = nmbclusters;
+	mbufcluster_cache = objcache_create("mbuf + cluster", &limit, 0,
 	    mbufcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
+	if (limit > mbcl_limit)
+		mbcl_limit = limit;
+
+	limit = nmbclusters;
 	mbufphdrcluster_cache = objcache_create("mbuf pkt hdr + cluster",
-	    nmbclusters, 64, mbufphdrcluster_ctor, mbufcluster_dtor, NULL,
+	    &limit, 64, mbufphdrcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
-	return;
+	if (limit > mbcl_limit)
+		mbcl_limit = limit;
+
+	/*
+	 * Adjust backing kmalloc pools' limit
+	 */
+	kmalloc_raise_limit(mclmeta_malloc_args.mtype,
+			    mclmeta_malloc_args.objsize * cl_limit);
+	kmalloc_raise_limit(M_MBUFCL, MCLBYTES * cl_limit);
+
+	mb_limit += mbcl_limit;
+	mb_limit += mb_limit / 4; /* save some space for non-pkthdr mbufs */
+	kmalloc_raise_limit(mbuf_malloc_args.mtype,
+			    mbuf_malloc_args.objsize * mb_limit);
 }
 
 /*

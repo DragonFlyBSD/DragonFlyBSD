@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.63 2008/01/06 16:55:51 swildner Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.64 2008/10/26 04:29:19 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -106,9 +106,12 @@ static
 void
 exec_objcache_init(void *arg __unused)
 {
+	int cluster_limit;
+
+	cluster_limit = 16;	/* up to this many objects */
 	exec_objcache = objcache_create_mbacked(
 					M_EXECARGS, PATH_MAX + ARG_MAX,
-					16,	/* up to this many objects */
+					&cluster_limit,
 					2,	/* minimal magazine capacity */
 					NULL, NULL, NULL);
 }

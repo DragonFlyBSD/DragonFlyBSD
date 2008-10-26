@@ -29,7 +29,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_objcache.c,v 1.22 2008/02/03 13:37:56 nth Exp $
+ * $DragonFly: src/sys/kern/kern_objcache.c,v 1.23 2008/10/26 04:29:19 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -175,7 +175,7 @@ null_ctor(void *obj, void *privdata, int ocflags)
  * Create an object cache.
  */
 struct objcache *
-objcache_create(const char *name, int cluster_limit, int mag_capacity,
+objcache_create(const char *name, int *cluster_limit0, int mag_capacity,
 		objcache_ctor_fn *ctor, objcache_dtor_fn *dtor, void *privdata,
 		objcache_alloc_fn *alloc, objcache_free_fn *free,
 		void *allocator_args)
@@ -187,6 +187,12 @@ objcache_create(const char *name, int cluster_limit, int mag_capacity,
 	int factor;
 	int nmagdepot;
 	int i;
+	int cluster_limit;
+
+	if (cluster_limit0 == NULL)
+		cluster_limit = 0;
+	else
+		cluster_limit = *cluster_limit0;
 
 	/* allocate object cache structure */
 	oc = kmalloc(__offsetof(struct objcache, cache_percpu[ncpus]),
@@ -278,6 +284,8 @@ objcache_create(const char *name, int cluster_limit, int mag_capacity,
 	LIST_INSERT_HEAD(&allobjcaches, oc, oc_next);
 	spin_unlock_wr(&objcachelist_spin);
 
+	if (cluster_limit0 != NULL)
+		*cluster_limit0 = cluster_limit;
 	return (oc);
 }
 
@@ -290,7 +298,7 @@ objcache_create_simple(malloc_type_t mtype, size_t objsize)
 	margs = kmalloc(sizeof(*margs), M_OBJCACHE, M_WAITOK|M_ZERO);
 	margs->objsize = objsize;
 	margs->mtype = mtype;
-	oc = objcache_create(mtype->ks_shortdesc, 0, 0,
+	oc = objcache_create(mtype->ks_shortdesc, NULL, 0,
 			     NULL, NULL, NULL,
 			     objcache_malloc_alloc, objcache_malloc_free,
 			     margs);
@@ -299,7 +307,7 @@ objcache_create_simple(malloc_type_t mtype, size_t objsize)
 
 struct objcache *
 objcache_create_mbacked(malloc_type_t mtype, size_t objsize,
-			int cluster_limit, int mag_capacity,
+			int *cluster_limit, int mag_capacity,
 			objcache_ctor_fn *ctor, objcache_dtor_fn *dtor,
 			void *privdata)
 {

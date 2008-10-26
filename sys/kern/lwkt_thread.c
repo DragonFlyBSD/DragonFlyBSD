@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.119 2008/09/11 01:11:42 y0netan1 Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.120 2008/10/26 04:29:19 sephe Exp $
  */
 
 /*
@@ -192,9 +192,9 @@ void
 lwkt_init(void)
 {
     /* An objcache has 2 magazines per CPU so divide cache size by 2. */
-    thread_cache = objcache_create_mbacked(M_THREAD, sizeof(struct thread), 0,
-			CACHE_NTHREADS/2, _lwkt_thread_ctor, _lwkt_thread_dtor,
-			NULL);
+    thread_cache = objcache_create_mbacked(M_THREAD, sizeof(struct thread),
+			NULL, CACHE_NTHREADS/2,
+			_lwkt_thread_ctor, _lwkt_thread_dtor, NULL);
 }
 
 /*
