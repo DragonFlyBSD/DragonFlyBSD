@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.16 2008/10/26 07:11:28 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.17 2008/10/26 08:02:43 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -45,6 +45,7 @@
 #include <sys/socket.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
+#include <sys/in_cksum.h>
 
 #include <machine/smp.h>
 
@@ -161,6 +162,18 @@ ipflow_fastforward(struct mbuf *m)
 		return 0;
 
 	/*
+	 * Verify the IP header checksum.
+	 */
+	if (m->m_pkthdr.csum_flags & CSUM_IP_CHECKED) {
+		if (!(m->m_pkthdr.csum_flags & CSUM_IP_VALID))
+			return 0;
+	} else {
+		/* Must compute it ourselves. */
+		if (in_cksum_hdr(ip) != 0)
+			return 0;
+	}
+
+	/*
 	 * Route and interface still up?
 	 */
 	rt = ipf->ipf_ro.ro_rt;
@@ -175,12 +188,24 @@ ipflow_fastforward(struct mbuf *m)
 		return 0;
 
 	/*
+	 * Clear any in-bound checksum flags for this packet.
+	 */
+	m->m_pkthdr.csum_flags = 0;
+
+	/*
 	 * Everything checks out and so we can forward this packet.
 	 * Modify the TTL and incrementally change the checksum.
+	 * 
+	 * This method of adding the checksum works on either endian CPU.
+	 * If htons() is inlined, all the arithmetic is folded; otherwise
+	 * the htons()s are combined by CSE due to the __const__ attribute.
+	 *
+	 * Don't bother using HW checksumming here -- the incremental
+	 * update is pretty fast.
 	 */
 	ip->ip_ttl -= IPTTLDEC;
-	if (ip->ip_sum >= htons(0xffff - (IPTTLDEC << 8)))
-		ip->ip_sum += htons(IPTTLDEC << 8) + 1;
+	if (ip->ip_sum >= (uint16_t)~htons(IPTTLDEC << 8))
+		ip->ip_sum -= ~htons(IPTTLDEC << 8);
 	else
 		ip->ip_sum += htons(IPTTLDEC << 8);
 
