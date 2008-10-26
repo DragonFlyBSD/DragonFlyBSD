@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.18 2008/10/26 08:32:10 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.19 2008/10/26 09:15:33 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -138,21 +138,28 @@ ipflow_fastforward(struct mbuf *m)
 	struct rtentry *rt;
 	struct sockaddr *dst;
 	struct ifnet *ifp;
-	int error;
+	int error, iplen;
 
 	/*
 	 * Are we forwarding packets?  Big enough for an IP packet?
 	 */
-	if (!ipforwarding || !ipflow_active || m->m_len < sizeof(struct ip))
+	if (!ipforwarding || !ipflow_active)
 		return 0;
+
+	/* length checks already done in ip_mport() */
+	KASSERT(m->m_len >= sizeof(struct ip), ("IP header not in one mbuf"));
 
 	/*
 	 * IP header with no option and valid version and length
 	 */
 	ip = mtod(m, struct ip *);
+	iplen = ntohs(ip->ip_len);
 	if (ip->ip_v != IPVERSION || ip->ip_hl != (sizeof(struct ip) >> 2) ||
-	    ntohs(ip->ip_len) > m->m_pkthdr.len)
+	    iplen > m->m_pkthdr.len)
 		return 0;
+
+	/* length checks already done in ip_mport() */
+	KKASSERT(iplen >= sizeof(struct ip));
 
 	/*
 	 * Find a flow.
@@ -208,6 +215,18 @@ ipflow_fastforward(struct mbuf *m)
 		ip->ip_sum -= ~htons(IPTTLDEC << 8);
 	else
 		ip->ip_sum += htons(IPTTLDEC << 8);
+
+	/*
+	 * Trim the packet in case it's too long.. 
+	 */
+	if (m->m_pkthdr.len > iplen) {
+		if (m->m_len == m->m_pkthdr.len) {
+			m->m_len = iplen;
+			m->m_pkthdr.len = iplen;
+		} else {
+			m_adj(m, iplen - m->m_pkthdr.len);
+		}
+	}
 
 	/*
 	 * Send the packet on its way.  All we can get back is ENOBUFS
