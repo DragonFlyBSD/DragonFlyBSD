@@ -34,38 +34,21 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.h,v 1.2 1999/08/28 00:49:22 peter Exp $
- * $DragonFly: src/sys/netinet/ip_flow.h,v 1.3 2006/05/20 02:42:12 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.h,v 1.4 2008/10/26 07:11:28 sephe Exp $
  */
 
 #ifndef _NETINET_IP_FLOW_H
 #define _NETINET_IP_FLOW_H
 
-#ifndef _SYS_TYPES_H_
-#include <sys/types.h>
-#endif
-#ifndef _SYS_QUEUE_H_
-#include <sys/queue.h>
-#endif
-#ifndef _NETINET_IN_H_
-#include <netinet/in.h>
-#endif
-#ifndef _NET_ROUTE_H_
-#include <net/route.h>
-#endif
+#ifdef _KERNEL
 
-struct ipflow {
-	LIST_ENTRY(ipflow) ipf_next;	/* next ipflow in bucket */
-	struct in_addr ipf_dst;		/* destination address */
-	struct in_addr ipf_src;		/* source address */
+struct mbuf;
+struct route;
 
-	u_int8_t ipf_tos;		/* type-of-service */
-	struct route ipf_ro;		/* associated route entry */
-	u_long ipf_uses;		/* number of uses in this period */
+int	ipflow_fastforward(struct mbuf *);
+void	ipflow_create(const struct route *, struct mbuf *);
+void	ipflow_slowtimo(void);
 
-	int ipf_timer;			/* remaining lifetime of this entry */
-	u_long ipf_dropped;		/* ENOBUFS returned by if_output */
-	u_long ipf_errors;		/* other errors returned by if_output */
-	u_long ipf_last_uses;		/* number of uses in last period */
-};
+#endif	/* _KERNEL */
 
-#endif
+#endif	/* !_NETINET_IP_FLOW_H */

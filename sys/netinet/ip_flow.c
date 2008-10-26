@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.15 2008/07/27 10:06:57 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.16 2008/10/26 07:11:28 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -66,6 +66,21 @@
 
 #define IPFLOW_RTENTRY_ISDOWN(rt) \
 	(((rt)->rt_flags & RTF_UP) == 0 || ((rt)->rt_ifp->if_flags & IFF_UP) == 0)
+
+struct ipflow {
+	LIST_ENTRY(ipflow) ipf_next;	/* next ipflow in bucket */
+	struct in_addr ipf_dst;		/* destination address */
+	struct in_addr ipf_src;		/* source address */
+
+	uint8_t ipf_tos;		/* type-of-service */
+	struct route ipf_ro;		/* associated route entry */
+	u_long ipf_uses;		/* number of uses in this period */
+
+	int ipf_timer;			/* remaining lifetime of this entry */
+	u_long ipf_dropped;		/* ENOBUFS returned by if_output */
+	u_long ipf_errors;		/* other errors returned by if_output */
+	u_long ipf_last_uses;		/* number of uses in last period */
+};
 
 #define ipflow_inuse		ipflow_inuse_pcpu[mycpuid]
 #define ipflows			ipflows_pcpu[mycpuid]
