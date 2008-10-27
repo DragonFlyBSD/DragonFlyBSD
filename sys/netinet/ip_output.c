@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.65 2008/10/21 13:51:01 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.66 2008/10/27 10:51:09 sephe Exp $
  */
 
 #define _IP_VHL
@@ -387,13 +387,15 @@ reroute:
 		 */
 		if (imo != NULL) {
 			ip->ip_ttl = imo->imo_multicast_ttl;
-			if (imo->imo_multicast_vif != -1)
+			if (imo->imo_multicast_vif != -1) {
 				ip->ip_src.s_addr =
 				    ip_mcast_src ?
 				    ip_mcast_src(imo->imo_multicast_vif) :
 				    INADDR_ANY;
-		} else
+			}
+		} else {
 			ip->ip_ttl = IP_DEFAULT_MULTICAST_TTL;
+		}
 		/*
 		 * Confirm that the outgoing interface supports multicast.
 		 */
@@ -416,15 +418,14 @@ reroute:
 
 		IN_LOOKUP_MULTI(pkt_dst, ifp, inm);
 		if (inm != NULL &&
-		   (imo == NULL || imo->imo_multicast_loop)) {
+		    (imo == NULL || imo->imo_multicast_loop)) {
 			/*
 			 * If we belong to the destination multicast group
 			 * on the outgoing interface, and the caller did not
 			 * forbid loopback, loop back a copy.
 			 */
 			ip_mloopback(ifp, m, dst, hlen);
-		}
-		else {
+		} else {
 			/*
 			 * If we are acting as a multicast router, perform
 			 * multicast forwarding as if the packet had just
@@ -497,10 +498,10 @@ reroute:
 	 *      the packet or packet fragments
 	 */
 	if ((ifp->if_snd.ifq_len + ip->ip_len / ifp->if_mtu + 1) >=
-		ifp->if_snd.ifq_maxlen) {
-			error = ENOBUFS;
-			ipstat.ips_odropped++;
-			goto bad;
+	    ifp->if_snd.ifq_maxlen) {
+		error = ENOBUFS;
+		ipstat.ips_odropped++;
+		goto bad;
 	}
 #endif /* !ALTQ */
 
@@ -921,11 +922,10 @@ pass:
 		ip->ip_off = htons(ip->ip_off);
 		ip->ip_sum = 0;
 		if (sw_csum & CSUM_DELAY_IP) {
-			if (ip->ip_vhl == IP_VHL_BORING) {
+			if (ip->ip_vhl == IP_VHL_BORING)
 				ip->ip_sum = in_cksum_hdr(ip);
-			} else {
+			else
 				ip->ip_sum = in_cksum(m, hlen);
-			}
 		}
 
 		/* Record statistics for this interface address. */

@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.112 2008/10/26 07:11:28 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.113 2008/10/27 10:51:09 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -508,11 +508,10 @@ ip_input(struct mbuf *m)
 	if (m->m_pkthdr.csum_flags & CSUM_IP_CHECKED) {
 		sum = !(m->m_pkthdr.csum_flags & CSUM_IP_VALID);
 	} else {
-		if (hlen == sizeof(struct ip)) {
+		if (hlen == sizeof(struct ip))
 			sum = in_cksum_hdr(ip);
-		} else {
+		else
 			sum = in_cksum(m, hlen);
-		}
 	}
 	if (sum != 0) {
 		ipstat.ips_badsum++;
@@ -549,8 +548,9 @@ ip_input(struct mbuf *m)
 		if (m->m_len == m->m_pkthdr.len) {
 			m->m_len = ip->ip_len;
 			m->m_pkthdr.len = ip->ip_len;
-		} else
+		} else {
 			m_adj(m, ip->ip_len - m->m_pkthdr.len);
+		}
 	}
 #if defined(IPSEC) && !defined(IPSEC_FILTERGIF)
 	/*
