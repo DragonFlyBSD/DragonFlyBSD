@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.24 2008/10/27 04:16:25 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.25 2008/10/27 04:38:29 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -132,16 +132,12 @@ ipflow_lookup(const struct ip *ip)
 	struct ipflow *ipf;
 
 	hash = ipflow_hash(ip->ip_dst, ip->ip_src, ip->ip_tos);
-
-	crit_enter();
 	LIST_FOREACH(ipf, &ipflowtable[hash], ipf_hash) {
 		if (ip->ip_dst.s_addr == ipf->ipf_dst.s_addr &&
 		    ip->ip_src.s_addr == ipf->ipf_src.s_addr &&
 		    ip->ip_tos == ipf->ipf_tos)
 			break;
 	}
-	crit_exit();
-
 	return ipf;
 }
 
@@ -289,12 +285,10 @@ ipflow_free(struct ipflow *ipf)
 	 * Once it's off the list, we can deal with it at normal
 	 * network IPL.
 	 */
-	crit_enter();
 	IPFLOW_REMOVE(ipf);
 
 	KKASSERT(ipflow_inuse > 0);
 	ipflow_inuse--;
-	crit_exit();
 
 	ipflow_addstats(ipf);
 	RTFREE(ipf->ipf_ro.ro_rt);
@@ -306,7 +300,6 @@ ipflow_reap(void)
 {
 	struct ipflow *ipf, *maybe_ipf = NULL;
 
-	crit_enter();
 	LIST_FOREACH(ipf, &ipflowlist, ipf_list) {
 		/*
 		 * If this no longer points to a valid route
@@ -333,7 +326,6 @@ done:
 	 * Remove the entry from the flow table.
 	 */
 	IPFLOW_REMOVE(ipf);
-	crit_exit();
 
 	ipflow_addstats(ipf);
 	RTFREE(ipf->ipf_ro.ro_rt);
@@ -347,6 +339,7 @@ ipflow_timo_dispatch(struct netmsg *nmsg)
 
 	crit_enter();
 	lwkt_replymsg(&nmsg->nm_lmsg, 0);	/* reply ASAP */
+	crit_exit();
 
 	LIST_FOREACH_MUTABLE(ipf, &ipflowlist, ipf_list, next_ipf) {
 		if (--ipf->ipf_timer == 0) {
@@ -360,7 +353,6 @@ ipflow_timo_dispatch(struct netmsg *nmsg)
 			ipf->ipf_uses = 0;
 		}
 	}
-	crit_exit();
 }
 
 static void
@@ -385,6 +377,7 @@ ipflow_slowtimo(void)
 		if (ipflow_inuse_pcpu[i])
 			mask |= 1 << i;
 	}
+	mask &= smp_active_mask;
 	if (mask != 0)
 		lwkt_send_ipiq_mask(mask, ipflow_timo_ipi, NULL);
 #else
@@ -423,9 +416,7 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 		}
 		bzero(ipf, sizeof(*ipf));
 	} else {
-		crit_enter();
 		IPFLOW_REMOVE(ipf);
-		crit_exit();
 
 		ipflow_addstats(ipf);
 		RTFREE(ipf->ipf_ro.ro_rt);
@@ -447,9 +438,7 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 	 * Insert into the approriate bucket of the flow table.
 	 */
 	hash = ipflow_hash(ip->ip_dst, ip->ip_src, ip->ip_tos);
-	crit_enter();
 	IPFLOW_INSERT(&ipflowtable[hash], ipf);
-	crit_exit();
 }
 
 static void
@@ -459,8 +448,8 @@ ipflow_init(void)
 	int i;
 
 	for (i = 0; i < ncpus; ++i) {
-		netmsg_init(&ipflow_timo_netmsgs[i], &netisr_adone_rport, 0,
-			    ipflow_timo_dispatch);
+		netmsg_init(&ipflow_timo_netmsgs[i], &netisr_adone_rport,
+			    MSGF_MPSAFE, ipflow_timo_dispatch);
 
 		ksnprintf(oid_name, sizeof(oid_name), "inuse%d", i);
 
