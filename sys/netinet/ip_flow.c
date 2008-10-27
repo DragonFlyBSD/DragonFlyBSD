@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.21 2008/10/26 09:50:15 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.22 2008/10/27 03:55:29 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -69,7 +69,7 @@
 	(((rt)->rt_flags & RTF_UP) == 0 || ((rt)->rt_ifp->if_flags & IFF_UP) == 0)
 
 struct ipflow {
-	LIST_ENTRY(ipflow) ipf_next;	/* next ipflow in bucket */
+	LIST_ENTRY(ipflow) ipf_hash;	/* next ipflow in hash bucket */
 	struct in_addr ipf_dst;		/* destination address */
 	struct in_addr ipf_src;		/* source address */
 
@@ -81,15 +81,31 @@ struct ipflow {
 	u_long ipf_dropped;		/* ENOBUFS returned by if_output */
 	u_long ipf_errors;		/* other errors returned by if_output */
 	u_long ipf_last_uses;		/* number of uses in last period */
+	LIST_ENTRY(ipflow) ipf_list;	/* next ipflow in list */
 };
+LIST_HEAD(ipflowhead, ipflow);
 
 #define ipflow_inuse		ipflow_inuse_pcpu[mycpuid]
-#define ipflows			ipflows_pcpu[mycpuid]
+#define ipflowtable		ipflowtable_pcpu[mycpuid]
+#define ipflowlist		ipflowlist_pcpu[mycpuid]
 
-static LIST_HEAD(ipflowhead, ipflow) ipflows_pcpu[MAXCPU][IPFLOW_HASHSIZE];
-static int		ipflow_inuse_pcpu[MAXCPU];
-static struct netmsg	ipflow_timo_netmsgs[MAXCPU];
-static int		ipflow_active = 0;
+static struct ipflowhead	ipflowtable_pcpu[MAXCPU][IPFLOW_HASHSIZE];
+static struct ipflowhead	ipflowlist_pcpu[MAXCPU];
+static int			ipflow_inuse_pcpu[MAXCPU];
+static struct netmsg		ipflow_timo_netmsgs[MAXCPU];
+static int			ipflow_active = 0;
+
+#define IPFLOW_INSERT(bucket, ipf) \
+do { \
+	LIST_INSERT_HEAD((bucket), (ipf), ipf_hash); \
+	LIST_INSERT_HEAD(&ipflowlist, (ipf), ipf_list); \
+} while (0)
+
+#define IPFLOW_REMOVE(ipf) \
+do { \
+	LIST_REMOVE((ipf), ipf_hash); \
+	LIST_REMOVE((ipf), ipf_list); \
+} while (0)
 
 SYSCTL_NODE(_net_inet_ip, OID_AUTO, ipflow, CTLFLAG_RW, 0, "ip flow");
 SYSCTL_INT(_net_inet_ip, IPCTL_FASTFORWARDING, fastforwarding, CTLFLAG_RW,
@@ -117,13 +133,11 @@ ipflow_lookup(const struct ip *ip)
 	hash = ipflow_hash(ip->ip_dst, ip->ip_src, ip->ip_tos);
 
 	crit_enter();
-	ipf = LIST_FIRST(&ipflows[hash]);
-	while (ipf != NULL) {
+	LIST_FOREACH(ipf, &ipflowtable[hash], ipf_hash) {
 		if (ip->ip_dst.s_addr == ipf->ipf_dst.s_addr &&
 		    ip->ip_src.s_addr == ipf->ipf_src.s_addr &&
 		    ip->ip_tos == ipf->ipf_tos)
 			break;
-		ipf = LIST_NEXT(ipf, ipf_next);
 	}
 	crit_exit();
 
@@ -275,7 +289,7 @@ ipflow_free(struct ipflow *ipf)
 	 * network IPL.
 	 */
 	crit_enter();
-	LIST_REMOVE(ipf, ipf_next);
+	IPFLOW_REMOVE(ipf);
 
 	KKASSERT(ipflow_inuse > 0);
 	ipflow_inuse--;
@@ -290,39 +304,34 @@ static struct ipflow *
 ipflow_reap(void)
 {
 	struct ipflow *ipf, *maybe_ipf = NULL;
-	int idx;
 
 	crit_enter();
-	for (idx = 0; idx < IPFLOW_HASHSIZE; idx++) {
-		ipf = LIST_FIRST(&ipflows[idx]);
-		while (ipf != NULL) {
-			/*
-			 * If this no longer points to a valid route
-			 * reclaim it.
-			 */
-			if ((ipf->ipf_ro.ro_rt->rt_flags & RTF_UP) == 0)
-				goto done;
+	LIST_FOREACH(ipf, &ipflowlist, ipf_list) {
+		/*
+		 * If this no longer points to a valid route
+		 * reclaim it.
+		 */
+		if ((ipf->ipf_ro.ro_rt->rt_flags & RTF_UP) == 0)
+			goto done;
 
-			/*
-			 * choose the one that's been least recently used
-			 * or has had the least uses in the last 1.5
-			 * intervals.
-			 */
-			if (maybe_ipf == NULL ||
-			    ipf->ipf_timer < maybe_ipf->ipf_timer ||
-			    (ipf->ipf_timer == maybe_ipf->ipf_timer &&
-			     ipf->ipf_last_uses + ipf->ipf_uses <
-			     maybe_ipf->ipf_last_uses + maybe_ipf->ipf_uses))
-				maybe_ipf = ipf;
-			ipf = LIST_NEXT(ipf, ipf_next);
-		}
+		/*
+		 * choose the one that's been least recently used
+		 * or has had the least uses in the last 1.5
+		 * intervals.
+		 */
+		if (maybe_ipf == NULL ||
+		    ipf->ipf_timer < maybe_ipf->ipf_timer ||
+		    (ipf->ipf_timer == maybe_ipf->ipf_timer &&
+		     ipf->ipf_last_uses + ipf->ipf_uses <
+		     maybe_ipf->ipf_last_uses + maybe_ipf->ipf_uses))
+			maybe_ipf = ipf;
 	}
 	ipf = maybe_ipf;
 done:
 	/*
 	 * Remove the entry from the flow table.
 	 */
-	LIST_REMOVE(ipf, ipf_next);
+	IPFLOW_REMOVE(ipf);
 	crit_exit();
 
 	ipflow_addstats(ipf);
@@ -333,28 +342,21 @@ done:
 static void
 ipflow_timo_dispatch(struct netmsg *nmsg)
 {
-	struct ipflow *ipf;
-	int idx;
+	struct ipflow *ipf, *next_ipf;
 
 	crit_enter();
 	lwkt_replymsg(&nmsg->nm_lmsg, 0);	/* reply ASAP */
 
-	for (idx = 0; idx < IPFLOW_HASHSIZE; idx++) {
-		ipf = LIST_FIRST(&ipflows[idx]);
-		while (ipf != NULL) {
-			struct ipflow *next_ipf = LIST_NEXT(ipf, ipf_next);
-
-			if (--ipf->ipf_timer == 0) {
-				ipflow_free(ipf);
-			} else {
-				ipf->ipf_last_uses = ipf->ipf_uses;
-				ipf->ipf_ro.ro_rt->rt_use += ipf->ipf_uses;
-				ipstat.ips_total += ipf->ipf_uses;
-				ipstat.ips_forward += ipf->ipf_uses;
-				ipstat.ips_fastforward += ipf->ipf_uses;
-				ipf->ipf_uses = 0;
-			}
-			ipf = next_ipf;
+	LIST_FOREACH_MUTABLE(ipf, &ipflowlist, ipf_list, next_ipf) {
+		if (--ipf->ipf_timer == 0) {
+			ipflow_free(ipf);
+		} else {
+			ipf->ipf_last_uses = ipf->ipf_uses;
+			ipf->ipf_ro.ro_rt->rt_use += ipf->ipf_uses;
+			ipstat.ips_total += ipf->ipf_uses;
+			ipstat.ips_forward += ipf->ipf_uses;
+			ipstat.ips_fastforward += ipf->ipf_uses;
+			ipf->ipf_uses = 0;
 		}
 	}
 	crit_exit();
@@ -422,7 +424,7 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 		bzero(ipf, sizeof(*ipf));
 	} else {
 		crit_enter();
-		LIST_REMOVE(ipf, ipf_next);
+		IPFLOW_REMOVE(ipf);
 		crit_exit();
 
 		ipflow_addstats(ipf);
@@ -446,7 +448,7 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 	 */
 	hash = ipflow_hash(ip->ip_dst, ip->ip_src, ip->ip_tos);
 	crit_enter();
-	LIST_INSERT_HEAD(&ipflows[hash], ipf, ipf_next);
+	IPFLOW_INSERT(&ipflowtable[hash], ipf);
 	crit_exit();
 }
 
