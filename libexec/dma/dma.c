@@ -1147,11 +1147,11 @@ main(int argc, char **argv)
 	if (showq + doqueue > 1)
 		errx(1, "conflicting queue operations");
 
-	/* XXX fork root here */
-
 skipopts:
 	openlog(tag, LOG_PID, LOG_MAIL);
 	set_username();
+
+	/* XXX fork root here */
 
 	config = calloc(1, sizeof(*config));
 	if (config == NULL)
