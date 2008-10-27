@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.22 2008/10/27 03:55:29 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.23 2008/10/27 04:03:53 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -66,7 +66,8 @@
 #define	IPFLOW_MAX		256
 
 #define IPFLOW_RTENTRY_ISDOWN(rt) \
-	(((rt)->rt_flags & RTF_UP) == 0 || ((rt)->rt_ifp->if_flags & IFF_UP) == 0)
+	(((rt)->rt_flags & RTF_UP) == 0 || \
+	 ((rt)->rt_ifp->if_flags & IFF_UP) == 0)
 
 struct ipflow {
 	LIST_ENTRY(ipflow) ipf_hash;	/* next ipflow in hash bucket */
