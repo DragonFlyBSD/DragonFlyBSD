@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.25 2008/10/27 04:38:29 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.26 2008/10/27 09:57:11 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -71,10 +71,16 @@
 
 struct ipflow {
 	LIST_ENTRY(ipflow) ipf_hash;	/* next ipflow in hash bucket */
+	LIST_ENTRY(ipflow) ipf_list;	/* next ipflow in list */
+
 	struct in_addr ipf_dst;		/* destination address */
 	struct in_addr ipf_src;		/* source address */
-
 	uint8_t ipf_tos;		/* type-of-service */
+
+	uint8_t ipf_flags;		/* see IPFLOW_FLAG_ */
+	uint8_t ipf_pad[2];		/* explicit pad */
+	int ipf_refcnt;			/* reference count */
+
 	struct route ipf_ro;		/* associated route entry */
 	u_long ipf_uses;		/* number of uses in this period */
 
@@ -82,9 +88,10 @@ struct ipflow {
 	u_long ipf_dropped;		/* ENOBUFS returned by if_output */
 	u_long ipf_errors;		/* other errors returned by if_output */
 	u_long ipf_last_uses;		/* number of uses in last period */
-	LIST_ENTRY(ipflow) ipf_list;	/* next ipflow in list */
 };
 LIST_HEAD(ipflowhead, ipflow);
+
+#define IPFLOW_FLAG_ONLIST	0x1
 
 #define ipflow_inuse		ipflow_inuse_pcpu[mycpuid]
 #define ipflowtable		ipflowtable_pcpu[mycpuid]
@@ -96,14 +103,32 @@ static int			ipflow_inuse_pcpu[MAXCPU];
 static struct netmsg		ipflow_timo_netmsgs[MAXCPU];
 static int			ipflow_active = 0;
 
+#define IPFLOW_REF(ipf) \
+do { \
+	KKASSERT((ipf)->ipf_refcnt > 0); \
+	(ipf)->ipf_refcnt++; \
+} while (0)
+
+#define IPFLOW_FREE(ipf) \
+do { \
+	KKASSERT((ipf)->ipf_refcnt > 0); \
+	(ipf)->ipf_refcnt--; \
+	if ((ipf)->ipf_refcnt == 0) \
+		ipflow_free((ipf)); \
+} while (0)
+
 #define IPFLOW_INSERT(bucket, ipf) \
 do { \
+	KKASSERT(((ipf)->ipf_flags & IPFLOW_FLAG_ONLIST) == 0); \
+	(ipf)->ipf_flags |= IPFLOW_FLAG_ONLIST; \
 	LIST_INSERT_HEAD((bucket), (ipf), ipf_hash); \
 	LIST_INSERT_HEAD(&ipflowlist, (ipf), ipf_list); \
 } while (0)
 
 #define IPFLOW_REMOVE(ipf) \
 do { \
+	KKASSERT((ipf)->ipf_flags & IPFLOW_FLAG_ONLIST); \
+	(ipf)->ipf_flags &= ~IPFLOW_FLAG_ONLIST; \
 	LIST_REMOVE((ipf), ipf_hash); \
 	LIST_REMOVE((ipf), ipf_list); \
 } while (0)
@@ -113,6 +138,8 @@ SYSCTL_INT(_net_inet_ip, IPCTL_FASTFORWARDING, fastforwarding, CTLFLAG_RW,
 	   &ipflow_active, 0, "Enable flow-based IP forwarding");
 
 static MALLOC_DEFINE(M_IPFLOW, "ip_flow", "IP flow");
+
+static void	ipflow_free(struct ipflow *);
 
 static unsigned
 ipflow_hash(struct in_addr dst, struct in_addr src, unsigned tos)
@@ -257,6 +284,13 @@ ipflow_fastforward(struct mbuf *m)
 	else
 		dst = &ipf->ipf_ro.ro_dst;
 
+	/*
+	 * Reference count this ipflow, before the possible blocking
+	 * ifnet.if_output(), so this ipflow will not be changed or
+	 * reaped behind our back.
+	 */
+	IPFLOW_REF(ipf);
+
 	error = ifp->if_output(ifp, m, dst, rt);
 	if (error) {
 		if (error == ENOBUFS)
@@ -264,6 +298,8 @@ ipflow_fastforward(struct mbuf *m)
 		else
 			ipf->ipf_errors++;
 	}
+
+	IPFLOW_FREE(ipf);
 	return 1;
 }
 
@@ -280,12 +316,8 @@ ipflow_addstats(struct ipflow *ipf)
 static void
 ipflow_free(struct ipflow *ipf)
 {
-	/*
-	 * Remove the flow from the hash table (at elevated IPL).
-	 * Once it's off the list, we can deal with it at normal
-	 * network IPL.
-	 */
-	IPFLOW_REMOVE(ipf);
+	KKASSERT(ipf->ipf_refcnt == 0);
+	KKASSERT((ipf->ipf_flags & IPFLOW_FLAG_ONLIST) == 0);
 
 	KKASSERT(ipflow_inuse > 0);
 	ipflow_inuse--;
@@ -295,12 +327,27 @@ ipflow_free(struct ipflow *ipf)
 	kfree(ipf, M_IPFLOW);
 }
 
+static void
+ipflow_reset(struct ipflow *ipf)
+{
+	ipflow_addstats(ipf);
+	RTFREE(ipf->ipf_ro.ro_rt);
+	ipf->ipf_uses = ipf->ipf_last_uses = 0;
+	ipf->ipf_errors = ipf->ipf_dropped = 0;
+}
+
 static struct ipflow *
 ipflow_reap(void)
 {
 	struct ipflow *ipf, *maybe_ipf = NULL;
 
 	LIST_FOREACH(ipf, &ipflowlist, ipf_list) {
+		/*
+		 * Skip actively used ipflow
+		 */
+		if (ipf->ipf_refcnt > 1)
+			continue;
+
 		/*
 		 * If this no longer points to a valid route
 		 * reclaim it.
@@ -320,15 +367,16 @@ ipflow_reap(void)
 		     maybe_ipf->ipf_last_uses + maybe_ipf->ipf_uses))
 			maybe_ipf = ipf;
 	}
+	if (maybe_ipf == NULL)
+		return NULL;
+
 	ipf = maybe_ipf;
 done:
 	/*
-	 * Remove the entry from the flow table.
+	 * Remove the entry from the flow table and reset its states
 	 */
 	IPFLOW_REMOVE(ipf);
-
-	ipflow_addstats(ipf);
-	RTFREE(ipf->ipf_ro.ro_rt);
+	ipflow_reset(ipf);
 	return ipf;
 }
 
@@ -343,7 +391,8 @@ ipflow_timo_dispatch(struct netmsg *nmsg)
 
 	LIST_FOREACH_MUTABLE(ipf, &ipflowlist, ipf_list, next_ipf) {
 		if (--ipf->ipf_timer == 0) {
-			ipflow_free(ipf);
+			IPFLOW_REMOVE(ipf);
+			IPFLOW_FREE(ipf);
 		} else {
 			ipf->ipf_last_uses = ipf->ipf_uses;
 			ipf->ipf_ro.ro_rt->rt_use += ipf->ipf_uses;
@@ -408,21 +457,29 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 	if (ipf == NULL) {
 		if (ipflow_inuse == IPFLOW_MAX) {
 			ipf = ipflow_reap();
-		} else {
-			ipf = kmalloc(sizeof(*ipf), M_IPFLOW, M_NOWAIT);
 			if (ipf == NULL)
 				return;
+		} else {
+			ipf = kmalloc(sizeof(*ipf), M_IPFLOW,
+				      M_NOWAIT | M_ZERO);
+			if (ipf == NULL)
+				return;
+			ipf->ipf_refcnt = 1;
+
 			ipflow_inuse++;
 		}
-		bzero(ipf, sizeof(*ipf));
 	} else {
-		IPFLOW_REMOVE(ipf);
-
-		ipflow_addstats(ipf);
-		RTFREE(ipf->ipf_ro.ro_rt);
-		ipf->ipf_uses = ipf->ipf_last_uses = 0;
-		ipf->ipf_errors = ipf->ipf_dropped = 0;
+		if (ipf->ipf_refcnt == 1) {
+			IPFLOW_REMOVE(ipf);
+			ipflow_reset(ipf);
+		} else {
+			/* This ipflow is being used; don't change it */
+			KKASSERT(ipf->ipf_refcnt > 1);
+			return;
+		}
 	}
+	/* This ipflow should not be actively used */
+	KKASSERT(ipf->ipf_refcnt == 1);
 
 	/*
 	 * Fill in the updated information.
