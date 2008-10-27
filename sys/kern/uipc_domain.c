@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_domain.c	8.2 (Berkeley) 10/18/93
  * $FreeBSD: src/sys/kern/uipc_domain.c,v 1.22.2.1 2001/07/03 11:01:37 ume Exp $
- * $DragonFly: src/sys/kern/uipc_domain.c,v 1.12 2008/08/15 17:37:29 nth Exp $
+ * $DragonFly: src/sys/kern/uipc_domain.c,v 1.13 2008/10/27 02:56:30 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -42,6 +42,7 @@
 #include <sys/mbuf.h>
 #include <sys/kernel.h>
 #include <sys/socketvar.h>
+#include <sys/socketops.h>
 #include <sys/systm.h>
 #include <vm/vm_zone.h>
 
@@ -180,10 +181,10 @@ kpfctlinput(int cmd, struct sockaddr *sa)
 	struct domain *dp;
 	struct protosw *pr;
 
-	SLIST_FOREACH(dp, &domains, dom_next)
+	SLIST_FOREACH(dp, &domains, dom_next) {
 		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
-			if (pr->pr_ctlinput)
-				(*pr->pr_ctlinput)(cmd, sa, NULL);
+			so_pru_ctlinput(pr, cmd, sa, NULL);
+	}
 }
 
 void
@@ -204,8 +205,7 @@ kpfctlinput2(int cmd, struct sockaddr *sa, void *ctlparam)
 			continue;
 
 		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
-			if (pr->pr_ctlinput)
-				(*pr->pr_ctlinput)(cmd, sa, ctlparam);
+			so_pru_ctlinput(pr, cmd, sa, ctlparam);
 	}
 }
 

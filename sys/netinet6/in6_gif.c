@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_gif.c,v 1.2.2.7 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_gif.c,v 1.17 2006/12/22 23:57:53 swildner Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_gif.c,v 1.18 2008/10/27 02:56:30 sephe Exp $	*/
 /*	$KAME: in6_gif.c,v 1.49 2001/05/14 14:02:17 itojun Exp $	*/
 
 /*
@@ -79,7 +79,7 @@ extern  struct domain inet6domain;
 struct ip6protosw in6_gif_protosw =
 { SOCK_RAW,	&inet6domain,	0/*IPPROTO_IPV[46]*/,	PR_ATOMIC|PR_ADDR,
   in6_gif_input, rip6_output,	0,		rip6_ctloutput,
-  cpu0_soport,
+  cpu0_soport,	NULL,
   0,		0,		0,		0,
   &rip6_usrreqs
 };

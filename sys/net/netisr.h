@@ -65,7 +65,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.37 2008/09/24 14:26:38 sephe Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.38 2008/10/27 02:56:30 sephe Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -185,6 +185,7 @@ void netmsg_pru_sockaddr(netmsg_t);
 
 void netmsg_pru_sopoll(netmsg_t);
 void netmsg_pru_ctloutput(netmsg_t);
+void netmsg_pru_ctlinput(netmsg_t);
 
 void netmsg_pr_timeout(netmsg_t);
 

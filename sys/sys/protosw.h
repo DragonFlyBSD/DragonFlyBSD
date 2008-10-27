@@ -32,7 +32,7 @@
  *
  *	@(#)protosw.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/protosw.h,v 1.28.2.2 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/protosw.h,v 1.23 2008/09/23 11:28:50 sephe Exp $
+ * $DragonFly: src/sys/sys/protosw.h,v 1.24 2008/10/27 02:56:30 sephe Exp $
  */
 
 #ifndef _SYS_PROTOSW_H_
@@ -91,9 +91,11 @@ struct protosw {
 					/* control input (from below) */
 	int	(*pr_ctloutput)(struct socket *, struct sockopt *);
 					/* control output (from above) */
-/* user-protocol hook */
+/* user-protocol hooks */
 	struct lwkt_port *(*pr_mport)(struct socket *, struct sockaddr *,
 				      struct mbuf **, int);
+	struct lwkt_port *(*pr_ctlport)(int, struct sockaddr *, void *);
+
 /* utility hooks */
 	void	(*pr_init) (void);	/* initialization hook */
 	void	(*pr_fasttimo) (void);
@@ -294,6 +296,7 @@ typedef int (*pru_sopoll_fn_t) (struct socket *so, int events,
 					struct ucred *cred,
 					struct thread *td);
 typedef	int	(*pru_ctloutput_fn_t) (struct socket *so, struct sockopt *sopt);
+typedef	void (*pru_ctlinput_fn_t) (int cmd, struct sockaddr *arg, void *extra);
 
 int	pru_accept_notsupp (struct socket *so, struct sockaddr **nam);
 int	pru_connect_notsupp (struct socket *so, struct sockaddr *nam,
@@ -308,6 +311,7 @@ int	pru_sense_null (struct socket *so, struct stat *sb);
 
 struct lwkt_port *cpu0_soport(struct socket *, struct sockaddr *,
 			      struct mbuf **, int);
+struct lwkt_port *cpu0_ctlport(int, struct sockaddr *, void *);
 struct lwkt_port *sync_soport(struct socket *, struct sockaddr *,
 			      struct mbuf **, int);
 

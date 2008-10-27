@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.24 2008/06/09 11:24:24 sephe Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.25 2008/10/27 02:56:30 sephe Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -137,7 +137,7 @@ extern  struct domain inetdomain;
 struct protosw in_stf_protosw =
 { SOCK_RAW,	&inetdomain,	IPPROTO_IPV6,	PR_ATOMIC|PR_ADDR,
   in_stf_input, rip_output,	0,		rip_ctloutput,
-  0,
+  NULL,		NULL,
   0,            0,              0,              0,
   &rip_usrreqs
 };

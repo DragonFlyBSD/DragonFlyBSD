@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.31 2008/08/23 06:56:22 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.32 2008/10/27 02:56:30 sephe Exp $
  */
 
 #include "opt_ipsec.h"
@@ -42,6 +42,7 @@
 #include <sys/mbuf.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
+#include <sys/socketops.h>
 #include <sys/time.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
@@ -251,7 +252,6 @@ icmp_input(struct mbuf *m, ...)
 	struct icmp *icp;
 	struct in_ifaddr *ia;
 	struct ip *ip = mtod(m, struct ip *);
-	void (*ctlfunc) (int, struct sockaddr *, void *);
 	int icmplen = ip->ip_len;
 	int i, hlen;
 	int code, off, proto;
@@ -444,10 +444,9 @@ deliver:
 		 * XXX if the packet contains [IPv4 AH TCP], we can't make a
 		 * notification to TCP layer.
 		 */
-		ctlfunc = inetsw[ip_protox[icp->icmp_ip.ip_p]].pr_ctlinput;
-		if (ctlfunc)
-			(*ctlfunc)(code, (struct sockaddr *)&icmpsrc,
-				   &icp->icmp_ip);
+		so_pru_ctlinput(
+			&inetsw[ip_protox[icp->icmp_ip.ip_p]],
+			code, (struct sockaddr *)&icmpsrc, &icp->icmp_ip);
 		break;
 
 badcode:

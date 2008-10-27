@@ -64,7 +64,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.44 2008/07/07 22:02:10 nant Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.45 2008/10/27 02:56:30 sephe Exp $
  */
 
 #include "opt_sctp.h"
@@ -1366,7 +1366,7 @@ static struct domain routedomain;		/* or at least forward */
 static struct protosw routesw[] = {
 { SOCK_RAW,	&routedomain,	0,		PR_ATOMIC|PR_ADDR,
   0,		route_output,	raw_ctlinput,	0,
-  cpu0_soport,
+  cpu0_soport,	cpu0_ctlport,
   raw_init,	0,		0,		0,
   &route_usrreqs
 }

@@ -27,7 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netmsg.h,v 1.9 2008/09/23 11:28:49 sephe Exp $
+ * $DragonFly: src/sys/net/netmsg.h,v 1.10 2008/10/27 02:56:30 sephe Exp $
  */
 
 #ifndef _NET_NETMSG_H_
@@ -222,6 +222,14 @@ struct netmsg_pru_ctloutput {
     pru_ctloutput_fn_t	nm_prufn;
     struct socket	*nm_so;
     struct sockopt	*nm_sopt;
+};
+
+struct netmsg_pru_ctlinput {
+    struct netmsg	nm_netmsg;
+    pru_ctlinput_fn_t	nm_prufn;
+    int			nm_cmd;
+    struct sockaddr	*nm_arg;
+    void		*nm_extra;
 };
 
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */

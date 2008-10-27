@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.25 2008/09/02 16:17:52 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.26 2008/10/27 02:56:30 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -427,6 +427,37 @@ so_pru_ctloutput(struct socket *so, struct sockopt *sopt)
 }
 
 /*
+ * Protocol control input, typically via icmp.
+ *
+ * If the protocol pr_ctlport is not NULL we call it to figure out the
+ * protocol port.  If NULL is returned we can just return, otherwise
+ * we issue a netmsg to call pr_ctlinput in the proper thread.
+ *
+ * This must be done synchronously as arg and/or extra may point to
+ * temporary data.
+ */
+void
+so_pru_ctlinput(struct protosw *pr, int cmd, struct sockaddr *arg, void *extra)
+{
+	struct netmsg_pru_ctlinput msg;
+	lwkt_port_t port;
+
+	if (pr->pr_ctlport == NULL)
+		return;
+	KKASSERT(pr->pr_ctlinput != NULL);
+	port = pr->pr_ctlport(cmd, arg, extra);
+	if (port == NULL)
+		return;
+	netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
+		    netmsg_pru_ctlinput);
+	msg.nm_prufn = pr->pr_ctlinput;
+	msg.nm_cmd = cmd;
+	msg.nm_arg = arg;
+	msg.nm_extra = extra;
+	lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
+}
+
+/*
  * If we convert all the protosw pr_ functions for all the protocols
  * to take a message directly, this layer can go away.  For the moment
  * our dispatcher ignores the return value, but since we are handling
@@ -607,6 +638,15 @@ netmsg_pru_ctloutput(netmsg_t msg)
 	struct netmsg_pru_ctloutput *nm = (void *)msg;
 
 	lwkt_replymsg(&msg->nm_lmsg, nm->nm_prufn(nm->nm_so, nm->nm_sopt));
+}
+
+void
+netmsg_pru_ctlinput(netmsg_t msg)
+{
+	struct netmsg_pru_ctlinput *nm = (void *)msg;
+
+	nm->nm_prufn(nm->nm_cmd, nm->nm_arg, nm->nm_extra);
+	lwkt_replymsg(&nm->nm_netmsg.nm_lmsg, 0);
 }
 
 void

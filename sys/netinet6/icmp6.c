@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/icmp6.c,v 1.6.2.13 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.30 2008/09/04 09:08:22 hasso Exp $	*/
+/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.31 2008/10/27 02:56:30 sephe Exp $	*/
 /*	$KAME: icmp6.c,v 1.211 2001/04/04 05:56:20 itojun Exp $	*/
 
 /*
@@ -77,6 +77,7 @@
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/socketops.h>
 #include <sys/time.h>
 #include <sys/kernel.h>
 #include <sys/syslog.h>
@@ -880,7 +881,6 @@ icmp6_notify_error(struct mbuf *m, int off, int icmp6len, int code)
 
 	/* Detect the upper level protocol */
 	{
-		void (*ctlfunc) (int, struct sockaddr *, void *);
 		u_int8_t nxt = eip6->ip6_nxt;
 		int eoff = off + sizeof(struct icmp6_hdr) +
 			sizeof(struct ip6_hdr);
@@ -977,7 +977,7 @@ icmp6_notify_error(struct mbuf *m, int off, int icmp6len, int code)
 				 * This case includes ESP and the No Next
 				 * Header.  In such cases going to the notify
 				 * label does not have any meaning
-				 * (i.e. ctlfunc will be NULL), but we go
+				 * (i.e. pr_ctlinput will be NULL), but we go
 				 * anyway since we might have to update
 				 * path MTU information.
 				 */
@@ -1050,11 +1050,9 @@ icmp6_notify_error(struct mbuf *m, int off, int icmp6len, int code)
 			icmp6_mtudisc_update(&ip6cp, 1);	/*XXX*/
 		}
 
-		ctlfunc = (void (*) (int, struct sockaddr *, void *))
-			(inet6sw[ip6_protox[nxt]].pr_ctlinput);
-		if (ctlfunc) {
-			(*ctlfunc)(code, (struct sockaddr *)&icmp6dst, &ip6cp);
-		}
+		so_pru_ctlinput(
+			(struct protosw *)&inet6sw[ip6_protox[nxt]],
+			code, (struct sockaddr *)&icmp6dst, &ip6cp);
 	}
 	return (0);
 

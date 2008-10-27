@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.41 2008/09/23 11:28:49 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.42 2008/10/27 02:56:30 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -302,6 +302,31 @@ tcp_soport(struct socket *so, struct sockaddr *nam __unused,
 	    inp->inp_laddr.s_addr, inp->inp_fport, inp->inp_lport)].td_msgport);
 }
 
+/*
+ * Used to route icmp messages to the proper protocol thread for ctlinput
+ * operation.
+ */
+lwkt_port_t
+tcp_ctlport(int cmd, struct sockaddr *sa, void *vip)
+{
+	struct ip *ip = vip;
+	struct tcphdr *th;
+	struct in_addr faddr;
+	int cpu;
+
+	faddr = ((struct sockaddr_in *)sa)->sin_addr;
+	if (sa->sa_family != AF_INET || faddr.s_addr == INADDR_ANY)
+		return(NULL);
+	if (ip == NULL) {
+		cpu = 0;
+	} else {
+		th = (struct tcphdr *)((caddr_t)ip + (ip->ip_hl << 2));
+		cpu = tcp_addrcpu(faddr.s_addr, th->th_dport,
+				  ip->ip_src.s_addr, th->th_sport);
+	}
+	return(&tcp_thread[cpu].td_msgport);
+}
+
 lwkt_port_t
 tcp_addrport(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 {
@@ -339,6 +364,32 @@ udp_soport(struct socket *so, struct sockaddr *nam __unused,
 
 	return (&udp_thread[INP_MPORT_HASH(inp->inp_faddr.s_addr,
 	    inp->inp_laddr.s_addr, inp->inp_fport, inp->inp_lport)].td_msgport);
+}
+
+/*
+ * Used to route icmp messages to the proper protocol thread for ctlinput
+ * operation.
+ */
+lwkt_port_t
+udp_ctlport(int cmd, struct sockaddr *sa, void *vip)
+{
+	struct ip *ip = vip;
+	struct udphdr *uh;
+	struct in_addr faddr;
+	int cpu;
+
+	faddr = ((struct sockaddr_in *)sa)->sin_addr;
+	if (sa->sa_family != AF_INET || faddr.s_addr == INADDR_ANY)
+		return(NULL);
+	if (ip == NULL) {
+		cpu = 0;
+	} else {
+		uh = (struct udphdr *)((caddr_t)ip + (ip->ip_hl << 2));
+
+		cpu = INP_MPORT_HASH(faddr.s_addr, ip->ip_src.s_addr,
+				     uh->uh_dport, uh->uh_sport);
+	}
+	return (&udp_thread[cpu].td_msgport);
 }
 
 /*
