@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.26 2008/10/27 09:57:11 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.27 2008/10/28 07:09:26 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -193,18 +193,19 @@ ipflow_fastforward(struct mbuf *m)
 
 	/* length checks already done in ip_mport() */
 	KASSERT(m->m_len >= sizeof(struct ip), ("IP header not in one mbuf"));
+	ip = mtod(m, struct ip *);
 
 	/*
-	 * IP header with no option and valid version and length
+	 * IP header with no option and valid version
 	 */
-	ip = mtod(m, struct ip *);
-	iplen = ntohs(ip->ip_len);
-	if (ip->ip_v != IPVERSION || ip->ip_hl != (sizeof(struct ip) >> 2) ||
-	    iplen > m->m_pkthdr.len)
+	if (ip->ip_v != IPVERSION || ip->ip_hl != (sizeof(struct ip) >> 2))
 		return 0;
 
+	iplen = ntohs(ip->ip_len);
 	/* length checks already done in ip_mport() */
-	KKASSERT(iplen >= sizeof(struct ip));
+	KASSERT(iplen >= sizeof(struct ip),
+		("total length less then header length"));
+	KASSERT(m->m_pkthdr.len >= iplen, ("mbuf too short"));
 
 	/*
 	 * Find a flow.

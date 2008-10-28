@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.114 2008/10/28 03:07:28 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.115 2008/10/28 07:09:26 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -493,7 +493,7 @@ ip_input(struct mbuf *m)
 	hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 	/* length checks already done in ip_mport() */
 	KASSERT(hlen >= sizeof(struct ip), ("IP header len too small"));
-	KASSERT(m->m_len >= hlen, ("packet shorter than IP header length"));
+	KASSERT(m->m_len >= hlen, ("complete IP header not in one mbuf"));
 
 	/* 127/8 must not appear on wire - RFC1122 */
 	if ((ntohl(ip->ip_dst.s_addr) >> IN_CLASSA_NSHIFT) == IN_LOOPBACKNET ||
@@ -527,22 +527,15 @@ ip_input(struct mbuf *m)
 	 * Convert fields to host representation.
 	 */
 	ip->ip_len = ntohs(ip->ip_len);
-	if (ip->ip_len < hlen) {
-		ipstat.ips_badlen++;
-		goto bad;
-	}
 	ip->ip_off = ntohs(ip->ip_off);
 
+	/* length checks already done in ip_mport() */
+	KASSERT(ip->ip_len >= hlen, ("total length less then header length"));
+	KASSERT(m->m_pkthdr.len >= ip->ip_len, ("mbuf too short"));
+
 	/*
-	 * Check that the amount of data in the buffers
-	 * is as at least much as the IP header would have us expect.
-	 * Trim mbufs if longer than we expect.
-	 * Drop packet if shorter than we expect.
+	 * Trim mbufs if longer than the IP header would have us expect.
 	 */
-	if (m->m_pkthdr.len < ip->ip_len) {
-		ipstat.ips_tooshort++;
-		goto bad;
-	}
 	if (m->m_pkthdr.len > ip->ip_len) {
 		if (m->m_len == m->m_pkthdr.len) {
 			m->m_len = ip->ip_len;
