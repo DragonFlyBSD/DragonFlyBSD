@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.32 2008/07/28 15:07:28 sephe Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.33 2008/10/28 03:07:28 sephe Exp $
  */
 
 #include "opt_inet6.h"
@@ -286,29 +286,45 @@ rip_output(struct mbuf *m, struct socket *so, ...)
 		ip->ip_dst.s_addr = dst;
 		ip->ip_ttl = inp->inp_ip_ttl;
 	} else {
+		int hlen;
+
 		if (m->m_pkthdr.len > IP_MAXPACKET) {
 			m_freem(m);
 			return(EMSGSIZE);
 		}
+		if (m->m_len < sizeof(struct ip)) {
+			m = m_pullup(m, sizeof(struct ip));
+			if (m == NULL)
+				return ENOBUFS;
+		}
 		ip = mtod(m, struct ip *);
-		/* don't allow both user specified and setsockopt options,
-		   and don't allow packet length sizes that will crash */
-		if (((IP_VHL_HL(ip->ip_vhl) != (sizeof (*ip) >> 2)) &&
-		     inp->inp_options) ||
-		    (ip->ip_len > m->m_pkthdr.len) ||
-		    (ip->ip_len < (IP_VHL_HL(ip->ip_vhl) << 2))) {
+		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
+
+		/* Don't allow header length less than the minimum. */
+		if (hlen < sizeof(struct ip)) {
+			m_freem(m);
+			return EINVAL;
+		}
+
+		/*
+		 * Don't allow both user specified and setsockopt options.
+		 * Don't allow packet length sizes that will crash.
+		 */
+		if ((hlen != sizeof(struct ip) && inp->inp_options) ||
+		    ip->ip_len > m->m_pkthdr.len || ip->ip_len < hlen) {
 			m_freem(m);
 			return EINVAL;
 		}
 		if (ip->ip_id == 0)
 			ip->ip_id = ip_newid();
-		/* XXX prevent ip_output from overwriting header fields */
+
+		/* Prevent ip_output from overwriting header fields */
 		flags |= IP_RAWOUTPUT;
 		ipstat.ips_rawout++;
 	}
 
-	return (ip_output(m, inp->inp_options, &inp->inp_route, flags,
-			  inp->inp_moptions, inp));
+	return ip_output(m, inp->inp_options, &inp->inp_route, flags,
+			 inp->inp_moptions, inp);
 }
 
 /*

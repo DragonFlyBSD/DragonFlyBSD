@@ -65,7 +65,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.113 2008/10/27 10:51:09 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.114 2008/10/28 03:07:28 sephe Exp $
  */
 
 #define	_IP_VHL
@@ -481,9 +481,8 @@ ip_input(struct mbuf *m)
 
 	ipstat.ips_total++;
 
-	/* length checks already done in ip_demux() */
-	KASSERT(m->m_len >= sizeof(ip), ("IP header not in one mbuf"));
-
+	/* length checks already done in ip_mport() */
+	KASSERT(m->m_len >= sizeof(struct ip), ("IP header not in one mbuf"));
 	ip = mtod(m, struct ip *);
 
 	if (IP_VHL_V(ip->ip_vhl) != IPVERSION) {
@@ -492,7 +491,7 @@ ip_input(struct mbuf *m)
 	}
 
 	hlen = IP_VHL_HL(ip->ip_vhl) << 2;
-	/* length checks already done in ip_demux() */
+	/* length checks already done in ip_mport() */
 	KASSERT(hlen >= sizeof(struct ip), ("IP header len too small"));
 	KASSERT(m->m_len >= hlen, ("packet shorter than IP header length"));
 

@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.66 2008/10/27 10:51:09 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.67 2008/10/28 03:07:28 sephe Exp $
  */
 
 #define _IP_VHL
@@ -122,7 +122,7 @@ extern	void db_print_backtrace(void);
 extern	struct protosw inetsw[];
 
 static int
-ip_localforward(struct mbuf *m, const struct sockaddr_in *dst)
+ip_localforward(struct mbuf *m, const struct sockaddr_in *dst, int hlen)
 {
 	struct in_ifaddr_container *iac;
 
@@ -146,7 +146,7 @@ ip_localforward(struct mbuf *m, const struct sockaddr_in *dst)
 			break;
 	}
 	if (iac != NULL) {
-		struct ip *ip = mtod(m, struct ip *);
+		struct ip *ip;
 
 		if (m->m_pkthdr.rcvif == NULL)
 			m->m_pkthdr.rcvif = ifunit("lo0");
@@ -157,11 +157,24 @@ ip_localforward(struct mbuf *m, const struct sockaddr_in *dst)
 		}
 		m->m_pkthdr.csum_flags |= CSUM_IP_CHECKED | CSUM_IP_VALID;
 
+		/*
+		 * Make sure that the IP header is in one mbuf,
+		 * required by ip_input
+		 */
+		if (m->m_len < hlen) {
+			m = m_pullup(m, hlen);
+			if (m == NULL) {
+				/* The packet was freed; we are done */
+				return 1;
+			}
+		}
+		ip = mtod(m, struct ip *);
+
 		ip->ip_len = htons(ip->ip_len);
 		ip->ip_off = htons(ip->ip_off);
 		ip_input(m);
 
-		return 1; /* Packet gets forwarded locally */
+		return 1; /* The packet gets forwarded locally */
 	}
 	return 0;
 }
@@ -831,7 +844,7 @@ spd_done:
 		/*
 		 * Try local forwarding first
 		 */
-		if (ip_localforward(m, next_hop))
+		if (ip_localforward(m, next_hop, hlen))
 			goto done;
 
 		/*
@@ -2164,12 +2177,6 @@ ip_mloopback(struct ifnet *ifp, struct mbuf *m, struct sockaddr_in *dst,
 			dst->sin_family = AF_INET;
 		}
 #endif
-
-#ifdef notdef
-		copym->m_pkthdr.rcvif = ifp;
-		ip_input(copym);
-#else
 		if_simloop(ifp, copym, dst->sin_family, 0);
-#endif
 	}
 }
