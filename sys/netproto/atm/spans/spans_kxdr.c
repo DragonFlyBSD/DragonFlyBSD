@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_kxdr.c,v 1.3 1999/08/28 00:48:50 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_kxdr.c,v 1.8 2006/12/22 23:57:54 swildner Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_kxdr.c,v 1.9 2008/10/28 17:23:46 swildner Exp $
  */
 
 /*
@@ -75,12 +75,6 @@
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-/*static char *sccsid = "from: @(#)xdr.c 1.35 87/08/12";*/
-/*static char *sccsid = "from: @(#)xdr.c	2.1 88/07/29 4.0 RPCSRC";*/
-/*static char *rcsid = "Id: xdr.c,v 1.2.4.2 1996/06/05 02:52:02 jkh Exp";*/
-#endif
 
 /*
  * xdr.c, Generic XDR routines implementation.
@@ -374,12 +368,6 @@ xdr_opaque(XDR *xdrs, caddr_t cp, u_int cnt)
 /*
  * XDR implementation using kernel buffers
  */
-
-#if defined(LIBC_SCCS) && !defined(lint)
-/*static char *sccsid = "from: @(#)xdr_mem.c 1.19 87/08/11 Copyr 1984 Sun Micro";*/
-/*static char *sccsid = "from: @(#)xdr_mem.c	2.1 88/07/29 4.0 RPCSRC";*/
-/*static char *rcsid = "Id: xdr_mem.c,v 1.2.4.2 1996/06/05 02:52:04 jkh Exp";*/
-#endif
 
 /*
  * xdr_mem.h, XDR implementation using memory buffers.

@@ -1,9 +1,9 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libcompat/Makefile,v 1.19.2.1 2001/04/25 10:04:23 ru Exp $
-# $DragonFly: src/lib/libcompat/Makefile,v 1.3 2008/05/19 10:05:18 corecode Exp $
+# $DragonFly: src/lib/libcompat/Makefile,v 1.4 2008/10/28 17:23:45 swildner Exp $
 
 LIB=compat
-CFLAGS+=-DLIBC_SCCS -DSYSLIBC_SCCS -I${.CURDIR}/../libc/locale
+CFLAGS+=-I${.CURDIR}/../libc/locale
 AINC=	-I${.CURDIR}/../libc/${MACHINE_ARCH}
 NOPIC=
 

@@ -1,8 +1,8 @@
 # $FreeBSD: src/lib/libipx/Makefile,v 1.3.6.1 2001/04/25 10:04:31 ru Exp $
-# $DragonFly: src/lib/libipx/Makefile,v 1.2 2003/06/17 04:26:49 dillon Exp $
+# $DragonFly: src/lib/libipx/Makefile,v 1.3 2008/10/28 17:23:45 swildner Exp $
 
 LIB=	ipx
-#CFLAGS+=-DLIBC_SCCS -I${.CURDIR}/../../sys
+#CFLAGS+=-I${.CURDIR}/../../sys
 SRCS=	ipx_addr.c ipx_ntoa.c
 
 MAN=	ipx.3
