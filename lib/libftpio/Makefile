@@ -1,12 +1,12 @@
 # $FreeBSD: src/lib/libftpio/Makefile,v 1.9.2.2 2001/04/25 10:04:30 ru Exp $
-# $DragonFly: src/lib/libftpio/Makefile,v 1.6 2008/05/04 00:55:01 swildner Exp $
+# $DragonFly: src/lib/libftpio/Makefile,v 1.7 2008/10/28 16:54:09 swildner Exp $
 
 LIB=		ftpio
 SHLIB_MAJOR=	7
 
 SRCS=		ftpio.c ftperr.c
 INCS=		ftpio.h
-CFLAGS+=	-I${.CURDIR} -Wall
+CFLAGS+=	-I${.CURDIR}
 CFLAGS+=	-DINET6
 MAN=		ftpio.3
 MLINKS+=	ftpio.3 ftpAscii.3

@@ -1,10 +1,11 @@
 # $FreeBSD: src/lib/libvgl/Makefile,v 1.6.2.1 2001/04/25 10:04:43 ru Exp $
-# $DragonFly: src/lib/libvgl/Makefile,v 1.5 2007/08/19 11:39:11 swildner Exp $
+# $DragonFly: src/lib/libvgl/Makefile,v 1.6 2008/10/28 16:54:09 swildner Exp $
 LIB=	vgl
 SHLIB_MAJOR=	4
-CFLAGS+=-Wall -I${.CURDIR}
+CFLAGS+=-I${.CURDIR}
 SRCS=	main.c simple.c bitmap.c text.c mouse.c keyboard.c
 INCS=	vgl.h
+WARNS?=	2
 MAN=	vgl.3
 MLINKS+=	vgl.3 VGLBitmapAllocateBits.3 \
 		vgl.3 VGLBitmapCopy.3 \

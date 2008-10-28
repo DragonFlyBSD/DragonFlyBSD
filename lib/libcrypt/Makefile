@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/lib/libcrypt/Makefile,v 1.24.2.4 2001/07/16 03:28:26 peter Exp $
-# $DragonFly: src/lib/libcrypt/Makefile,v 1.6 2005/09/06 18:55:19 dillon Exp $
+# $DragonFly: src/lib/libcrypt/Makefile,v 1.7 2008/10/28 16:54:09 swildner Exp $
 #
 
 SHLIB_MAJOR=	3
@@ -8,10 +8,11 @@ LIB=		crypt
 
 .PATH:		${.CURDIR}/../libmd
 SRCS=		crypt.c crypt-md5.c md5c.c misc.c
+WARNS?=		2
 MAN=		crypt.3
 MLINKS=		crypt.3 crypt_get_format.3 crypt.3 crypt_set_format.3
 CFLAGS+=	-I${.CURDIR}/../libmd -I${.CURDIR}/../libutil
-CFLAGS+=	-DLIBC_SCCS -Wall
+CFLAGS+=	-DLIBC_SCCS
 CFLAGS+=	-D_CTYPE_H_DISABLE_MACROS_ 
 # Pull in the crypt-des.c source, assuming it is present.
 .if exists(${.CURDIR}/../../secure/lib/libcrypt/crypt-des.c) && \

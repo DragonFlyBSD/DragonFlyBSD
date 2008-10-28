@@ -1,6 +1,6 @@
 #	@(#)Makefile	5.4 (Berkeley) 5/7/91
 #	$FreeBSD: src/lib/libskey/Makefile,v 1.15.2.1 2001/04/25 10:04:40 ru Exp $
-#	$DragonFly: src/lib/libskey/Makefile,v 1.4 2005/06/27 20:27:37 dillon Exp $
+#	$DragonFly: src/lib/libskey/Makefile,v 1.5 2008/10/28 16:54:09 swildner Exp $
 
 LIB=	skey
 SRCS=	skeyaccess.c put.c skey_crypt.c skey_getpass.c skeylogin.c skeysubr.c
@@ -14,7 +14,6 @@ MAN+=	skey.access.5
 
 CFLAGS+=-DPERMIT_CONSOLE -D_SKEY_INTERNAL -I${.CURDIR}
 CFLAGS+=-D_CTYPE_H_DISABLE_MACROS_
-CFLAGS+=-W -Wall
 
 DPADD+= ${LIBCRYPT} ${LIBMD}
 LDADD+=	-lcrypt -lmd

@@ -23,15 +23,15 @@
 # SUCH DAMAGE.
 #
 #	$FreeBSD: src/lib/libtacplus/Makefile,v 1.2.2.2 2002/10/09 08:50:42 pst Exp $
-#	$DragonFly: src/lib/libtacplus/Makefile,v 1.4 2006/10/27 18:15:28 swildner Exp $
+#	$DragonFly: src/lib/libtacplus/Makefile,v 1.5 2008/10/28 16:54:09 swildner Exp $
 
 LIB=		tacplus
 SRCS=		taclib.c
 INCS=		taclib.h
-CFLAGS+=	-Wall
 DPADD+=		${LIBMD}
 LDADD+=		-lmd
 SHLIB_MAJOR=	2
+WARNS?=		2
 MAN=		libtacplus.3 tacplus.conf.5
 MLINKS=		libtacplus.3 tac_add_server.3 libtacplus.3 tac_clear_avs.3
 MLINKS+=	libtacplus.3 tac_close.3 libtacplus.3 tac_config.3

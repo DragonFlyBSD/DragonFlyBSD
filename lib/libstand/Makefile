@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libstand/Makefile,v 1.14.2.10 2002/07/22 14:21:50 ru Exp $
-# $DragonFly: src/lib/libstand/Makefile,v 1.11 2008/09/13 11:38:58 corecode Exp $
+# $DragonFly: src/lib/libstand/Makefile,v 1.12 2008/10/28 16:54:09 swildner Exp $
 #
 # Originally from	$NetBSD: Makefile,v 1.21 1997/10/26 22:08:38 lukem Exp $
 #
@@ -15,7 +15,7 @@ INCS=		stand.h
 MAN=		libstand.3
 
 # Mostly OK, some of the libc imports are a bit noisy
-CFLAGS+=	-Wall -ffreestanding -std=c99
+CFLAGS+=	-ffreestanding -std=c99
 
 .if ${MACHINE_ARCH} == "amd64"
 CFLAGS+=	-m32 -mpreferred-stack-boundary=2
