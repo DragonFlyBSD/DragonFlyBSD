@@ -1,5 +1,5 @@
 /*	$OpenBSD: if_nfe.c,v 1.63 2006/06/17 18:00:43 brad Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.45 2008/09/17 08:51:29 sephe Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/nfe/if_nfe.c,v 1.46 2008/10/28 07:30:49 sephe Exp $	*/
 
 /*
  * Copyright (c) 2006 The DragonFly Project.  All rights reserved.
@@ -902,6 +902,13 @@ nfe_intr(void *arg)
 				 */
 				NFE_WRITE(sc, NFE_IRQ_MASK, NFE_IRQ_NOIMTIMER);
 				sc->sc_flags &= ~NFE_F_IRQ_TIMER;
+
+				/*
+				 * Recollect, mainly to avoid the possible race
+				 * introduced by changing interrupt masks.
+				 */
+				nfe_rxeof(sc);
+				nfe_txeof(sc, 1);
 			}
 		}
 	}
