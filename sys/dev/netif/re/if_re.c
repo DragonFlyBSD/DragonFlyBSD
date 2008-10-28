@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.97 2008/10/21 12:31:00 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.98 2008/10/28 07:23:28 sephe Exp $
  */
 
 /*
@@ -2287,11 +2287,29 @@ re_intr(void *arg)
 
 	if (sc->re_imtype == RE_IMTYPE_SIM) {
 		if ((sc->re_flags & RE_F_TIMER_INTR)) {
-			if ((tx | rx) == 0)
+			if ((tx | rx) == 0) {
+				/*
+				 * Nothing needs to be processed, fallback
+				 * to use TX/RX interrupts.
+				 */
 				re_setup_intr(sc, 1, RE_IMTYPE_NONE);
-			else
+
+				/*
+				 * Recollect, mainly to avoid the possible
+				 * race introduced by changing interrupt
+				 * masks.
+				 */
+				re_rxeof(sc);
+				tx = re_txeof(sc);
+			} else {
 				CSR_WRITE_4(sc, RE_TIMERCNT, 1); /* reload */
+			}
 		} else if (tx | rx) {
+			/*
+			 * Assume that using simulated interrupt moderation
+			 * (hardware timer based) could reduce the interript
+			 * rate.
+			 */
 			re_setup_intr(sc, 1, RE_IMTYPE_SIM);
 		}
 	}
