@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.42 2008/10/27 02:56:30 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.43 2008/10/28 04:35:12 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -82,6 +82,25 @@ INP_MPORT_HASH(in_addr_t faddr, in_addr_t laddr,
 #endif
 }
 
+/*
+ * If the packet is a valid IP datagram, upon returning of this function
+ * following things are promised:
+ *
+ * o  IP header (including any possible IP options) is in one mbuf (m_len).
+ * o  IP header length is not less than the minimum (sizeof(struct ip)).
+ * o  IP total length is not less than IP header length.
+ *
+ * If the packet is a UDP datagram,
+ * o  IP header (including any possible IP options) and UDP header are in
+ *    one mbuf (m_len).
+ * o  IP total length is not less than (IP header length + UDP header length).
+ *
+ * If the packet is a TCP segment,
+ * o  IP header (including any possible IP options) and TCP header (including
+ *    any possible TCP options) are in one mbuf (m_len).
+ * o  TCP header length is not less than the minimum (sizeof(struct tcphdr)).
+ * o  IP total length is not less than (IP header length + TCP header length).
+ */
 boolean_t
 ip_lengthcheck(struct mbuf **mp)
 {
