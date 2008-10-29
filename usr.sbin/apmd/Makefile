@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/apmd/Makefile,v 1.2.2.2 2001/04/25 12:09:18 ru Exp $
-# $DragonFly: src/usr.sbin/apmd/Makefile,v 1.3 2005/08/28 20:55:07 liamfoy Exp $
+# $DragonFly: src/usr.sbin/apmd/Makefile,v 1.4 2008/10/29 18:18:04 swildner Exp $
 
 PROG=	apmd
 SRCS=	apmd.c apmdlex.l apmdparse.y y.tab.h
@@ -10,7 +10,7 @@ LDADD=	-ll -lutil
 MAN=	apmd.8
 
 YFLAGS+=-v
-CFLAGS+=-I. -I${.CURDIR} -Wall #-DYY_STACK_USED
+CFLAGS+=-I. -I${.CURDIR} #-DYY_STACK_USED
 # for debug:
 #CFLAGS+= -g -DDEBUG
 
