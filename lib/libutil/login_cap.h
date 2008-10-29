@@ -23,7 +23,7 @@
  *
  *	Was login_cap.h,v 1.9 1997/05/07 20:00:01 eivind Exp
  * $FreeBSD: src/lib/libutil/login_cap.h,v 1.3.2.1 2000/09/20 11:19:54 green Exp $
- * $DragonFly: src/lib/libutil/login_cap.h,v 1.4 2006/01/12 13:43:10 corecode Exp $
+ * $DragonFly: src/lib/libutil/login_cap.h,v 1.5 2008/10/29 22:03:12 swildner Exp $
  */
 
 #ifndef _LOGIN_CAP_H_
@@ -142,8 +142,10 @@ int auth_timeok (login_cap_t*, time_t);
 struct tm;
 
 login_time_t parse_lt (const char *);
+int in_lt(const login_time_t *, time_t *);
 int in_ltm (const login_time_t *, struct tm *, time_t *);
 int in_ltms (const login_time_t *, struct tm *, time_t *);
+int in_lts(const login_time_t *, time_t *);
 
 /* helper functions */
 

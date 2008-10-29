@@ -1,5 +1,5 @@
 /*	$NetBSD: dehumanize_number.c,v 1.3 2008/04/28 20:22:59 martin Exp $	*/
-/*	$DragonFly: src/lib/libutil/dehumanize_number.c,v 1.1 2008/09/14 20:04:59 swildner Exp $	*/
+/*	$DragonFly: src/lib/libutil/dehumanize_number.c,v 1.2 2008/10/29 22:03:12 swildner Exp $	*/
 
 /*
  * Copyright (c) 2005, 2006 The NetBSD Foundation, Inc.
@@ -37,6 +37,8 @@
 #include <string.h>
 #include <errno.h>
 #include <limits.h>
+
+#include "libutil.h"
 
 /*
  * Converts the number given in 'str', which may be given in a humanized

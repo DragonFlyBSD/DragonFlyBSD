@@ -19,7 +19,7 @@
  *    conditions are met.
  *
  * $FreeBSD: src/lib/libutil/_secure_path.c,v 1.5 1999/08/28 00:05:42 peter Exp $
- * $DragonFly: src/lib/libutil/_secure_path.c,v 1.3 2005/03/04 04:31:11 cpressey Exp $
+ * $DragonFly: src/lib/libutil/_secure_path.c,v 1.4 2008/10/29 22:03:12 swildner Exp $
  */
 
 
@@ -60,12 +60,12 @@ _secure_path(const char *path, uid_t uid, gid_t gid)
     	msg = "%s: %s is not a regular file";
     else if (sb.st_mode & S_IWOTH)
     	msg = "%s: %s is world writable";
-    else if (uid != -1 && sb.st_uid != uid && sb.st_uid != 0) {
+    else if ((int)uid != -1 && sb.st_uid != uid && sb.st_uid != 0) {
     	if (uid == 0)
     		msg = "%s: %s is not owned by root";
     	else
     		msg = "%s: %s is not owned by uid %d";
-    } else if (gid != -1 && sb.st_gid != gid && (sb.st_mode & S_IWGRP))
+    } else if ((int)gid != -1 && sb.st_gid != gid && (sb.st_mode & S_IWGRP))
     	msg = "%s: %s is group writeable by non-authorised groups";
     else
     	r = 0;

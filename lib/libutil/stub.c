@@ -24,11 +24,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libutil/stub.c,v 1.1.2.1 2000/10/27 01:50:31 green Exp $
- * $DragonFly: src/lib/libutil/stub.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/libutil/stub.c,v 1.3 2008/10/29 22:03:12 swildner Exp $
  */
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 /*
  * Stub out what's in -lcrypt.
@@ -36,7 +37,7 @@
 
 #pragma weak crypt_set_format
 int
-crypt_set_format(const char *f) {
+crypt_set_format(const char *f __unused) {
 
 	if (getenv("CRYPT_DEBUG") != NULL)
 		fprintf(stderr, "crypt_set_format: eek, stub called!\n");

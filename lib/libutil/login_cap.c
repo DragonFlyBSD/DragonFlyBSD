@@ -26,7 +26,7 @@
  * Low-level routines relating to the user capabilities database
  *
  * $FreeBSD: src/lib/libutil/login_cap.c,v 1.17.2.4 2001/10/21 19:42:13 ache Exp $
- * $DragonFly: src/lib/libutil/login_cap.c,v 1.3 2005/03/04 04:31:11 cpressey Exp $
+ * $DragonFly: src/lib/libutil/login_cap.c,v 1.4 2008/10/29 22:03:12 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -776,7 +776,7 @@ login_getstyle(login_cap_t *lc, char *style, const char *auth)
     static char *defauthtypes[] = { LOGIN_DEFSTYLE, NULL };
 
     if (auth != NULL && *auth != '\0') {
-	if (snprintf(realauth, sizeof realauth, "auth-%s", auth) < sizeof realauth)
+	if (snprintf(realauth, sizeof realauth, "auth-%s", auth) < (int)sizeof(realauth))
 	    authtypes = login_getcaplist(lc, realauth, NULL);
     }
 
