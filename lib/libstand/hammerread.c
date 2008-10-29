@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libstand/hammerread.c,v 1.1 2008/09/13 11:38:58 corecode Exp $
+ * $DragonFly: src/lib/libstand/hammerread.c,v 1.2 2008/10/29 22:14:25 swildner Exp $
  */
 
 /*
@@ -378,6 +378,7 @@ hammer_get_mode(u_int8_t obj_type)
 	/* not reached */
 }
 
+#if DEBUG > 1
 static void
 hprintb(hammer_base_elm_t e)
 {
@@ -399,7 +400,8 @@ hprintb(hammer_base_elm_t e)
 	printf("/%llx/%llx", e->create_tid, e->delete_tid);
 #endif
 }
-#endif
+#endif /* DEBUG > 1 */
+#endif /* !BOOT2 */
 
 static hammer_btree_leaf_elm_t
 hfind(struct hfs *hfs, hammer_base_elm_t key, hammer_base_elm_t end)
@@ -416,7 +418,7 @@ hfind(struct hfs *hfs, hammer_base_elm_t key, hammer_base_elm_t end)
 	struct hammer_base_elm backtrack;
 	hammer_off_t nodeoff = hfs->root;
 	hammer_node_ondisk_t node;
-	hammer_btree_elm_t e;
+	hammer_btree_elm_t e = NULL;
 
 loop:
 	node = hread(hfs, nodeoff);
