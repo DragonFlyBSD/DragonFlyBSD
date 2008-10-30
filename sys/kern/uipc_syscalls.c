@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.89 2008/07/26 15:36:28 sephe Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.90 2008/10/30 11:03:29 sephe Exp $
  */
 
 #include "opt_ktrace.h"
@@ -88,7 +88,6 @@
 struct sfbuf_mref {
 	struct sf_buf	*sf;
 	int		mref_count;
-	struct lwkt_serialize serializer;
 };
 
 static MALLOC_DEFINE(M_SENDFILE, "sendfile", "sendfile sfbuf ref structures");
@@ -1357,40 +1356,20 @@ sf_buf_mfree(void *arg)
 	vm_page_t m;
 
 	KKASSERT(sfm->mref_count > 0);
-	if (sfm->mref_count == 1) {
+	if (atomic_fetchadd_int(&sfm->mref_count, -1) == 1) {
 		/*
-		 * We are the only holder so no further locking is required,
-		 * the sfbuf can simply be freed.
-		 */
-		sfm->mref_count = 0;
-		goto freeit;
-	} else {
-		/*
-		 * There may be other holders, we must obtain the serializer
-		 * to protect against a sf_buf_mfree() race to 0.  An atomic
-		 * operation is still required for races against 
-		 * sf_buf_mref().
-		 *
 		 * XXX vm_page_*() and SFBUF routines not MPSAFE yet.
 		 */
-		lwkt_serialize_enter(&sfm->serializer);
-		atomic_subtract_int(&sfm->mref_count, 1);
-		if (sfm->mref_count == 0) {
-			lwkt_serialize_exit(&sfm->serializer);
-freeit:
-			get_mplock();
-			crit_enter();
-			m = sf_buf_page(sfm->sf);
-			sf_buf_free(sfm->sf);
-			vm_page_unwire(m, 0);
-			if (m->wire_count == 0 && m->object == NULL)
-				vm_page_try_to_free(m);
-			crit_exit();
-			rel_mplock();
-			kfree(sfm, M_SENDFILE);
-		} else {
-			lwkt_serialize_exit(&sfm->serializer);
-		}
+		get_mplock();
+		crit_enter();
+		m = sf_buf_page(sfm->sf);
+		sf_buf_free(sfm->sf);
+		vm_page_unwire(m, 0);
+		if (m->wire_count == 0 && m->object == NULL)
+			vm_page_try_to_free(m);
+		crit_exit();
+		rel_mplock();
+		kfree(sfm, M_SENDFILE);
 	}
 }
 
@@ -1700,7 +1679,6 @@ retry_lookup:
 		sfm = kmalloc(sizeof(struct sfbuf_mref), M_SENDFILE, M_WAITOK);
 		sfm->sf = sf;
 		sfm->mref_count = 1;
-		lwkt_serialize_init(&sfm->serializer);
 
 		m->m_ext.ext_free = sf_buf_mfree;
 		m->m_ext.ext_ref = sf_buf_mref;
