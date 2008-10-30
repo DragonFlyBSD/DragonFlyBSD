@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.98 2008/10/28 07:23:28 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.99 2008/10/30 11:27:40 sephe Exp $
  */
 
 /*
@@ -1018,8 +1018,11 @@ re_probe(device_t dev)
 			return 0;
 		}
 	}
-	device_printf(dev, "unknown hwrev 0x%08x, macmode 0x%08x\n",
-		      hwrev, macmode);
+
+	if (bootverbose) {
+		device_printf(dev, "unknown hwrev 0x%08x, macmode 0x%08x\n",
+			      hwrev, macmode);
+	}
 	return ENXIO;
 }
 
