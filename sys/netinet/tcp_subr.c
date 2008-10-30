@@ -65,7 +65,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.61 2008/09/23 11:28:49 sephe Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.62 2008/10/30 10:50:18 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -540,6 +540,7 @@ tcp_respond(struct tcpcb *tp, void *ipgen, struct tcphdr *th, struct mbuf *m,
 	struct route_in6 *ro6 = NULL;
 	struct route_in6 sro6;
 	struct ip6_hdr *ip6 = ipgen;
+	boolean_t use_tmpro = TRUE;
 #ifdef INET6
 	boolean_t isipv6 = (IP_VHL_V(ip->ip_vhl) == 6);
 #else
@@ -552,11 +553,19 @@ tcp_respond(struct tcpcb *tp, void *ipgen, struct tcphdr *th, struct mbuf *m,
 			if (win > (long)TCP_MAXWIN << tp->rcv_scale)
 				win = (long)TCP_MAXWIN << tp->rcv_scale;
 		}
-		if (isipv6)
-			ro6 = &tp->t_inpcb->in6p_route;
-		else
-			ro = &tp->t_inpcb->inp_route;
-	} else {
+		/*
+		 * Don't use the route cache of a listen socket,
+		 * it is not MPSAFE; use temporary route cache.
+		 */
+		if (tp->t_state != TCPS_LISTEN) {
+			if (isipv6)
+				ro6 = &tp->t_inpcb->in6p_route;
+			else
+				ro = &tp->t_inpcb->inp_route;
+			use_tmpro = FALSE;
+		}
+	}
+	if (use_tmpro) {
 		if (isipv6) {
 			ro6 = &sro6;
 			bzero(ro6, sizeof *ro6);
