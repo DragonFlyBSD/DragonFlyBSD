@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.50 2008/11/01 11:43:40 sephe Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.51 2008/11/01 12:30:23 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -360,6 +360,22 @@ _lwkt_pullmsg(lwkt_port_t port, lwkt_msg_t msg)
     msg->ms_flags &= ~MSGF_QUEUED;
 }
 
+static __inline
+void
+_lwkt_pushmsg(lwkt_port_t port, lwkt_msg_t msg)
+{
+    msg->ms_flags |= MSGF_QUEUED;
+    TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
+}
+
+static __inline
+void
+_lwkt_enqueue_reply(lwkt_port_t port, lwkt_msg_t msg)
+{
+    TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
+    msg->ms_flags |= MSGF_REPLY | MSGF_DONE | MSGF_QUEUED;
+}
+
 /************************************************************************
  *			THREAD PORT BACKEND				*
  ************************************************************************
@@ -405,8 +421,7 @@ lwkt_thread_replyport_remote(lwkt_msg_t msg)
 	cpu_sfence();
 	msg->ms_flags |= MSGF_REPLY | MSGF_DONE;
     } else {
-	TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
-	msg->ms_flags |= MSGF_REPLY | MSGF_DONE | MSGF_QUEUED;
+	_lwkt_enqueue_reply(port, msg);
     }
     if (port->mp_flags & MSGPORTF_WAITING)
 	_lwkt_schedule_msg(port->mpu_td, flags);
@@ -468,8 +483,7 @@ lwkt_thread_replyport(lwkt_port_t port, lwkt_msg_t msg)
 	if (port->mpu_td->td_gd == mycpu) {
 #endif
 	    crit_enter();
-	    TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
-	    msg->ms_flags |= MSGF_REPLY | MSGF_DONE | MSGF_QUEUED;
+	    _lwkt_enqueue_reply(port, msg);
 	    if (port->mp_flags & MSGPORTF_WAITING)
 		_lwkt_schedule_msg(port->mpu_td, msg->ms_flags);
 	    crit_exit();
@@ -520,8 +534,7 @@ lwkt_thread_putport_remote(lwkt_msg_t msg)
     KKASSERT(msg->ms_flags & MSGF_INTRANSIT);
     msg->ms_flags &= ~MSGF_INTRANSIT;
 #endif
-    TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
-    msg->ms_flags |= MSGF_QUEUED;
+    _lwkt_pushmsg(port, msg);
     if (port->mp_flags & MSGPORTF_WAITING)
 	_lwkt_schedule_msg(port->mpu_td, msg->ms_flags);
 }
@@ -539,8 +552,7 @@ lwkt_thread_putport(lwkt_port_t port, lwkt_msg_t msg)
     if (port->mpu_td->td_gd == mycpu) {
 #endif
 	crit_enter();
-	msg->ms_flags |= MSGF_QUEUED;
-	TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
+	_lwkt_pushmsg(port, msg);
 	if (port->mp_flags & MSGPORTF_WAITING)
 	    _lwkt_schedule_msg(port->mpu_td, msg->ms_flags);
 	crit_exit();
@@ -695,8 +707,7 @@ lwkt_spin_putport(lwkt_port_t port, lwkt_msg_t msg)
 
     msg->ms_target_port = port;
     spin_lock_wr(&port->mpu_spin);
-    msg->ms_flags |= MSGF_QUEUED;
-    TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
+    _lwkt_pushmsg(port, msg);
     dowakeup = 0;
     if (port->mp_flags & MSGPORTF_WAITING) {
 	port->mp_flags &= ~MSGPORTF_WAITING;
@@ -814,8 +825,7 @@ lwkt_spin_replyport(lwkt_port_t port, lwkt_msg_t msg)
 	 * must be queued to the reply port.
 	 */
 	spin_lock_wr(&port->mpu_spin);
-	TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
-	msg->ms_flags |= MSGF_REPLY | MSGF_DONE | MSGF_QUEUED;
+	_lwkt_enqueue_reply(port, msg);
 	dowakeup = 0;
 	if (port->mp_flags & MSGPORTF_WAITING) {
 	    port->mp_flags &= ~MSGPORTF_WAITING;
@@ -860,8 +870,7 @@ lwkt_serialize_putport(lwkt_port_t port, lwkt_msg_t msg)
     ASSERT_SERIALIZED(port->mpu_serialize);
 
     msg->ms_target_port = port;
-    msg->ms_flags |= MSGF_QUEUED;
-    TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
+    _lwkt_pushmsg(port, msg);
     if (port->mp_flags & MSGPORTF_WAITING) {
 	port->mp_flags &= ~MSGPORTF_WAITING;
 	wakeup(port);
@@ -975,8 +984,7 @@ lwkt_serialize_replyport(lwkt_port_t port, lwkt_msg_t msg)
 	 * If an asynchronous completion has been requested the message
 	 * must be queued to the reply port.
 	 */
-	TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
-	msg->ms_flags |= MSGF_REPLY | MSGF_DONE | MSGF_QUEUED;
+	_lwkt_enqueue_reply(port, msg);
 	if (port->mp_flags & MSGPORTF_WAITING) {
 	    port->mp_flags &= ~MSGPORTF_WAITING;
 	    wakeup(port);
