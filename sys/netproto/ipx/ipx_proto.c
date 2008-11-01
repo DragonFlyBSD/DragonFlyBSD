@@ -34,7 +34,7 @@
  *	@(#)ipx_proto.c
  *
  * $FreeBSD: src/sys/netipx/ipx_proto.c,v 1.15 1999/08/28 00:49:41 peter Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_proto.c,v 1.7 2006/10/23 09:27:37 swildner Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_proto.c,v 1.8 2008/11/01 04:22:15 sephe Exp $
  */
 
 #include "opt_ipx.h"
@@ -63,31 +63,31 @@ static	struct pr_usrreqs nousrreqs;
 static struct protosw ipxsw[] = {
 { 0,		&ipxdomain,	0,		0,
   0,		0,		0,		0,
-  cpu0_soport,
+  cpu0_soport,	NULL,
   ipx_init,	0,		0,		0,
   &nousrreqs
 },
 { SOCK_DGRAM,	&ipxdomain,	0,		PR_ATOMIC|PR_ADDR,
   0,		0,		ipx_ctlinput,	ipx_ctloutput,
-  cpu0_soport,
+  cpu0_soport,	cpu0_ctlport,
   0,		0,		0,		0,
   &ipx_usrreqs
 },
 { SOCK_STREAM,	&ipxdomain,	IPXPROTO_SPX,	PR_CONNREQUIRED|PR_WANTRCVD,
   0,		0,		spx_ctlinput,	spx_ctloutput,
-  cpu0_soport,
+  cpu0_soport,	cpu0_ctlport,
   spx_init,	spx_fasttimo,	spx_slowtimo,	0,
   &spx_usrreqs
 },
 { SOCK_SEQPACKET,&ipxdomain,	IPXPROTO_SPX,	PR_CONNREQUIRED|PR_WANTRCVD|PR_ATOMIC,
   0,		0,		spx_ctlinput,	spx_ctloutput,
-  cpu0_soport,
+  cpu0_soport,	cpu0_ctlport,
   0,		0,		0,		0,
   &spx_usrreq_sps
 },
 { SOCK_RAW,	&ipxdomain,	IPXPROTO_RAW,	PR_ATOMIC|PR_ADDR,
   0,		0,		0,		ipx_ctloutput,
-  cpu0_soport,
+  cpu0_soport,	NULL,
   0,		0,		0,		0,
   &ripx_usrreqs
 },
@@ -95,7 +95,7 @@ static struct protosw ipxsw[] = {
 #if 0
 { SOCK_RAW,	&ipxdomain,	IPPROTO_IPX,	PR_ATOMIC|PR_ADDR,
   iptun_input,	rip_output,	iptun_ctlinput,	0,
-  cpu0_soport,
+  cpu0_soport,	cpu0_ctlport,
   0,		0,		0,		0,
   &rip_usrreqs
 },

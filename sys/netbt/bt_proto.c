@@ -1,4 +1,4 @@
-/* $DragonFly: src/sys/netbt/bt_proto.c,v 1.6 2008/09/24 14:26:39 sephe Exp $ */
+/* $DragonFly: src/sys/netbt/bt_proto.c,v 1.7 2008/11/01 04:22:15 sephe Exp $ */
 /* $OpenBSD: bt_proto.c,v 1.4 2007/06/24 20:55:27 uwe Exp $ */
 
 /*
@@ -77,6 +77,7 @@ struct protosw btsw[] = {
 		.pr_ctlinput = 0,
 		.pr_ctloutput = hci_ctloutput,
 		.pr_mport = cpu0_soport,
+		.pr_ctlport = NULL,
 		.pr_init = 0,
 		.pr_fasttimo =	0,
 		.pr_slowtimo = 0,
@@ -93,6 +94,7 @@ struct protosw btsw[] = {
 		.pr_ctlinput = 0,
 		.pr_ctloutput = sco_ctloutput,
 		.pr_mport = cpu0_soport,
+		.pr_ctlport = NULL,
 		.pr_init = 0,
 		.pr_fasttimo =	0,
 		.pr_slowtimo = 0,
@@ -110,6 +112,7 @@ struct protosw btsw[] = {
 		.pr_ctlinput = 0,
 		.pr_ctloutput = l2cap_ctloutput,
 		.pr_mport = cpu0_soport,
+		.pr_ctlport = NULL,
 		.pr_init = 0,
 		.pr_fasttimo =	0,
 		.pr_slowtimo = 0,
@@ -126,6 +129,7 @@ struct protosw btsw[] = {
 		.pr_ctlinput = 0,
 		.pr_ctloutput = rfcomm_ctloutput,
 		.pr_mport = cpu0_soport,
+		.pr_ctlport = NULL,
 		.pr_init = 0,
 		.pr_fasttimo =	0,
 		.pr_slowtimo = 0,

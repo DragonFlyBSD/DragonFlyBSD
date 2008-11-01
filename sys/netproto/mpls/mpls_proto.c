@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netproto/mpls/mpls_proto.c,v 1.1 2008/07/07 22:02:10 nant Exp $
+ * $DragonFly: src/sys/netproto/mpls/mpls_proto.c,v 1.2 2008/11/01 04:22:16 sephe Exp $
  */
 
 #include <sys/domain.h>
@@ -48,13 +48,13 @@ static struct pr_usrreqs nousrreqs;  /* XXX use this for something */
 struct protosw mplssw[] = {
 { 0,		&mplsdomain,	0,	0,
   0,		0,		0,	0,
-  cpu0_soport,
+  cpu0_soport,	NULL,
   mpls_init,	0,		0,	0,
   &nousrreqs
 },
 { SOCK_RAW,	&mplsdomain,	0,	PR_ATOMIC|PR_ADDR,
   0,		0,		0,	0,
-  cpu0_soport,
+  cpu0_soport,	NULL,
   0,		0,		0,	0,
   &nousrreqs
 },

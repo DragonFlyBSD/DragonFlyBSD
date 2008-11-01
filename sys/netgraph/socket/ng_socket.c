@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_socket.c,v 1.11.2.6 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.16 2008/01/06 16:55:52 swildner Exp $
+ * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.17 2008/11/01 04:22:15 sephe Exp $
  * $Whistle: ng_socket.c,v 1.28 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -931,7 +931,7 @@ static struct protosw ngsw[] = {
 		NG_CONTROL,
 		PR_ATOMIC | PR_ADDR /* | PR_RIGHTS */,
 		0, 0, 0, 0,
-		cpu0_soport,
+		cpu0_soport, NULL,
 		0, 0, 0, 0,
 		&ngc_usrreqs
 	},
@@ -941,7 +941,7 @@ static struct protosw ngsw[] = {
 		NG_DATA,
 		PR_ATOMIC | PR_ADDR,
 		0, 0, 0, 0,
-		cpu0_soport,
+		cpu0_soport, NULL,
 		0, 0, 0, 0,
 		&ngd_usrreqs
 	}

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipip.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.14 2006/12/22 23:57:54 swildner Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.15 2008/11/01 04:22:15 sephe Exp $	*/
 /*	$OpenBSD: ip_ipip.c,v 1.25 2002/06/10 18:04:55 itojun Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -640,9 +640,8 @@ static struct xformsw ipe4_xformsw = {
 extern struct domain inetdomain;
 static struct protosw ipe4_protosw[] = {
 { SOCK_RAW,	&inetdomain,	IPPROTO_IPV4,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
-  ip4_input,
-		0, 		0,		rip_ctloutput,
-  cpu0_soport,
+  ip4_input,	0, 		0,		rip_ctloutput,
+  cpu0_soport,	NULL,
   0,		0,		0,		0,
   &rip_usrreqs
 },

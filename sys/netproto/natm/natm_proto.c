@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netnatm/natm_proto.c,v 1.4.2.2 2000/08/03 18:56:28 peter Exp $
- * $DragonFly: src/sys/netproto/natm/natm_proto.c,v 1.10 2006/10/23 09:27:37 swildner Exp $
+ * $DragonFly: src/sys/netproto/natm/natm_proto.c,v 1.11 2008/11/01 04:22:16 sephe Exp $
  */
 
 /*
@@ -59,7 +59,7 @@ static struct protosw natmsw[] = {
 { SOCK_STREAM,	&natmdomain,	PROTO_NATMAAL5, PR_CONNREQUIRED,
   0,	0,	0,	0,
 #ifdef FREEBSD_USRREQS
-  cpu0_soport,
+  cpu0_soport,	NULL,
 #else
   natm_usrreq,
 #endif
@@ -73,7 +73,7 @@ static struct protosw natmsw[] = {
 { SOCK_DGRAM,	&natmdomain,	PROTO_NATMAAL5,	PR_CONNREQUIRED | PR_ATOMIC,
   0,	0,	0,	0,
 #ifdef FREEBSD_USRREQS
-  cpu0_soport,
+  cpu0_soport,	NULL,
 #else
   natm_usrreq,
 #endif
@@ -87,7 +87,7 @@ static struct protosw natmsw[] = {
 { SOCK_STREAM,	&natmdomain,	PROTO_NATMAAL0, PR_CONNREQUIRED,
   0,	0,	0,	0,
 #ifdef FREEBSD_USRREQS
-  cpu0_soport,
+  cpu0_soport,	NULL,
 #else
   natm_usrreq,
 #endif
