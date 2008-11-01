@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.25 2008/09/09 04:06:13 dillon Exp $
+ * $DragonFly: src/sys/kern/usched_bsd4.c,v 1.26 2008/11/01 23:31:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -504,7 +504,7 @@ bsd4_setrunqueue(struct lwp *lp)
 	 * its target cpu, reschedule on that cpu.
 	 */
 	{
-		if ((dd->upri & ~PRIMASK) > (lp->lwp_priority & ~PRIMASK)) {
+		if ((dd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK)) {
 			dd->upri = lp->lwp_priority;
 			spin_unlock_wr(&bsd4_spin);
 #ifdef SMP
