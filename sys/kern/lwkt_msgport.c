@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.48 2008/11/01 10:38:21 sephe Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.49 2008/11/01 11:17:52 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -284,6 +284,13 @@ lwkt_initport_spin(lwkt_port_t port)
     spin_init(&port->mpu_spin);
 }
 
+/*
+ * lwkt_initport_serialize()
+ *
+ *	Initialize a port for use with descriptors that might be accessed
+ *	via multiple LWPs, processes, or threads.  Callers are assumed to
+ *	have held the serializer (slz).
+ */
 void
 lwkt_initport_serialize(lwkt_port_t port, struct lwkt_serialize *slz)
 {
@@ -341,16 +348,6 @@ lwkt_initport_panic(lwkt_port_t port)
 		   lwkt_panic_waitmsg, lwkt_panic_waitport,
 		   lwkt_panic_replyport);
 }
-
-/*
- * lwkt_getport()
- *
- *	Retrieve the next message from the port's message queue, return NULL
- *	if no messages are pending.  The retrieved message will either be a
- *	request or a reply based on the MSGF_REPLY bit.
- *
- *	The calling thread MUST own the port.
- */
 
 static __inline
 void

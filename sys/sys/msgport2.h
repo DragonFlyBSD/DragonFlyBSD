@@ -3,7 +3,7 @@
  *
  *	Implements Inlines for LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport2.h,v 1.15 2007/05/24 20:51:19 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport2.h,v 1.16 2008/11/01 11:17:52 sephe Exp $
  */
 
 #ifndef _SYS_MSGPORT2_H_
@@ -63,6 +63,14 @@ lwkt_replymsg(lwkt_msg_t msg, int error)
     port->mp_replyport(port, msg);
 }
 
+/*
+ * Retrieve the next message from the port's message queue, return NULL
+ * if no messages are pending.  The retrieved message will either be a
+ * request or a reply based on the MSGF_REPLY bit.
+ * 
+ * If the backend port is a thread port, the the calling thread MUST
+ * own the port.
+ */
 static __inline
 void *
 lwkt_getport(lwkt_port_t port)
