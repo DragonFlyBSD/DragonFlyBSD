@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.48 2008/10/27 02:56:30 sephe Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.49 2008/11/01 10:29:31 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -98,11 +98,11 @@ SYSCTL_INT(_net_netisr, OID_AUTO, mpsafe_thread, CTLFLAG_RW,
 static __inline int
 NETISR_TO_MSGF(const struct netisr *ni)
 {
-	int msg_flags = 0;
-
-	if (ni->ni_flags & NETISR_FLAG_MPSAFE)
-		msg_flags |= MSGF_MPSAFE;
-	return msg_flags;
+    int msg_flags = 0;
+    
+    if (ni->ni_flags & NETISR_FLAG_MPSAFE)
+    	msg_flags |= MSGF_MPSAFE;
+    return msg_flags;
 }
 
 /*
