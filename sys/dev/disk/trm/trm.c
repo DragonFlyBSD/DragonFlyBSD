@@ -49,7 +49,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/trm/trm.c,v 1.2.2.2 2002/12/19 20:34:45 cognet Exp $
- * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.18 2008/05/18 20:30:22 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.19 2008/11/01 23:19:08 swildner Exp $
  */
 
 /*
@@ -3617,7 +3617,7 @@ trm_attach(device_t dev)
 	    1,
 	    TRM_MAX_TAGS_CMD_QUEUE,
 	    device_Q);
-	cam_simq_release(device_Q);  /* SIM allocate fault*/
+	cam_simq_release(device_Q);  /* device queues are refcounted */
 	if (pACB->psim == NULL) {
 		kprintf("trm%d: SIM allocate fault !\n",unit);
 		goto bad;
