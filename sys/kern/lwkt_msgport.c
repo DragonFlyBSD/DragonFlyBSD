@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.49 2008/11/01 11:17:52 sephe Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.50 2008/11/01 11:43:40 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -423,6 +423,7 @@ lwkt_thread_replyport_remote(lwkt_msg_t msg)
  *
  * The critical section protects us from IPIs on the this CPU.
  */
+static
 void
 lwkt_thread_replyport(lwkt_port_t port, lwkt_msg_t msg)
 {
@@ -561,6 +562,7 @@ lwkt_thread_putport(lwkt_port_t port, lwkt_msg_t msg)
  *	Retrieve the next message from the port or NULL if no messages
  *	are ready.
  */
+static
 void *
 lwkt_thread_getport(lwkt_port_t port)
 {
@@ -582,6 +584,7 @@ lwkt_thread_getport(lwkt_port_t port)
  *	thread waiting on the message.  The port must be owned by the
  *	caller.
  */
+static
 int
 lwkt_thread_waitmsg(lwkt_msg_t msg, int flags)
 {
@@ -629,6 +632,7 @@ lwkt_thread_waitmsg(lwkt_msg_t msg, int flags)
     return(msg->ms_error);
 }
 
+static
 void *
 lwkt_thread_waitport(lwkt_port_t port, int flags)
 {
