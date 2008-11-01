@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.47 2008/09/09 07:21:54 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.48 2008/11/01 10:38:21 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -241,10 +241,10 @@ static __inline
 void
 _lwkt_schedule_msg(thread_t td, int flags)
 {
-	if (flags & MSGF_NORESCHED)
-	    lwkt_schedule_noresched(td);
-	else
-	    lwkt_schedule(td);
+    if (flags & MSGF_NORESCHED)
+	lwkt_schedule_noresched(td);
+    else
+	lwkt_schedule(td);
 }
 
 /*
@@ -646,7 +646,7 @@ lwkt_thread_waitport(lwkt_port_t port, int flags)
 	error = lwkt_sleep("waitport", flags);
 	port->mp_flags &= ~MSGPORTF_WAITING;
 	if (error)
-		goto done;
+	    goto done;
     }
     _lwkt_pullmsg(port, msg);
 done:
@@ -757,7 +757,7 @@ lwkt_spin_waitmsg(lwkt_msg_t msg, int flags)
 	if (sentabort && msg->ms_error == EINTR)
 	    msg->ms_error = sentabort;
 	if (msg->ms_flags & MSGF_QUEUED)
-		_lwkt_pullmsg(port, msg);
+	    _lwkt_pullmsg(port, msg);
 	spin_unlock_wr(&port->mpu_spin);
     } else {
 	if (msg->ms_flags & MSGF_QUEUED) {
@@ -922,7 +922,7 @@ lwkt_serialize_waitmsg(lwkt_msg_t msg, int flags)
 	if (sentabort && msg->ms_error == EINTR)
 	    msg->ms_error = sentabort;
 	if (msg->ms_flags & MSGF_QUEUED)
-		_lwkt_pullmsg(port, msg);
+	    _lwkt_pullmsg(port, msg);
     } else {
 	if (msg->ms_flags & MSGF_QUEUED) {
 	    port = msg->ms_reply_port;
