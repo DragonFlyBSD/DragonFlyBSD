@@ -56,8 +56,6 @@
 
 #include "dma.h"
 
-extern struct config *config;
-extern struct authusers authusers;
 static jmp_buf timeout_alarm;
 char neterr[BUF_SIZE];
 
@@ -460,15 +458,15 @@ deliver_remote(struct qitem *it, const char **errmsg)
 	send_remote_command(fd, "DATA");
 	READ_REMOTE_CHECK("DATA", 3);
 
-	if (fseek(it->queuef, it->hdrlen, SEEK_SET) != 0) {
+	if (fseek(it->mailf, it->hdrlen, SEEK_SET) != 0) {
 		syslog(LOG_ERR, "%s: remote delivery deferred: cannot seek: %s",
 		       it->queueid, neterr);
 		return (1);
 	}
 
 	error = 0;
-	while (!feof(it->queuef)) {
-		if (fgets(line, sizeof(line), it->queuef) == NULL)
+	while (!feof(it->mailf)) {
+		if (fgets(line, sizeof(line), it->mailf) == NULL)
 			break;
 		linelen = strlen(line);
 		if (linelen == 0 || line[linelen - 1] != '\n') {

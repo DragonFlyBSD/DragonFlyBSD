@@ -41,8 +41,6 @@
 #include <openssl/ssl.h>
 
 #include <sys/queue.h>
-#include <stdint.h>
-#include <stdio.h>
 
 #ifndef __unused
 #ifdef __GNUC__
@@ -72,7 +70,9 @@
 #define INSECURE	0x020		/* Allow plain login w/o encryption */
 #define FULLBOUNCE	0x040		/* Bounce the full message */
 
+#ifndef CONF_PATH
 #define CONF_PATH	"/etc/dma/dma.conf"	/* Default path to dma.conf */
+#endif
 
 struct stritem {
 	SLIST_ENTRY(stritem) next;
@@ -92,8 +92,10 @@ struct qitem {
 	const char *sender;
 	char *addr;
 	char *queuefn;
+	char *mailfn;
 	char *queueid;
-	FILE *queuef;
+	FILE *mailf;
+	int queuefd;
 	off_t hdrlen;
 	int remote;
 	int locked;
@@ -137,35 +139,52 @@ struct authuser {
 };
 SLIST_HEAD(authusers, authuser);
 
+
+/* global variables */
 extern struct aliases aliases;
+extern struct config *config;
+extern struct strlist tmpfs;
+extern struct virtusers virtusers;
+extern struct authusers authusers;
 
 extern char neterr[BUF_SIZE];
 
 /* aliases_parse.y */
-extern int yyparse(void);
+int yyparse(void);
 extern FILE *yyin;
 
 /* conf.c */
-extern void trim_line(char *);
-extern int parse_conf(const char *, struct config *);
-extern int parse_virtuser(const char *);
-extern int parse_authfile(const char *);
+void trim_line(char *);
+int parse_conf(const char *);
+int parse_virtuser(const char *);
+int parse_authfile(const char *);
 
 /* crypto.c */
-extern void hmac_md5(unsigned char *, int, unsigned char *, int, caddr_t);
-extern int smtp_auth_md5(struct qitem *, int, char *, char *);
-extern int smtp_init_crypto(struct qitem *, int, int);
+void hmac_md5(unsigned char *, int, unsigned char *, int, caddr_t);
+int smtp_auth_md5(struct qitem *, int, char *, char *);
+int smtp_init_crypto(struct qitem *, int, int);
 
 /* net.c */
-extern char *ssl_errstr(void);
-extern int read_remote(int, int, char *);
-extern ssize_t send_remote_command(int, const char*, ...);
-extern int deliver_remote(struct qitem *, const char **);
+char *ssl_errstr(void);
+int read_remote(int, int, char *);
+ssize_t send_remote_command(int, const char*, ...);
+int deliver_remote(struct qitem *, const char **);
 
 /* base64.c */
-extern int base64_encode(const void *, int, char **);
-extern int base64_decode(const char *, void *);
+int base64_encode(const void *, int, char **);
+int base64_decode(const char *, void *);
 
 /* dma.c */
-extern char * hostname(void);
+int open_locked(const char *, int, ...);
+int add_recp(struct queue *, const char *, const char *, int);
+const char *hostname(void);
+
+/* spool.c */
+int newspoolf(struct queue *, const char *);
+int linkspool(struct queue *);
+void load_queue(struct queue *, int);
+void delqueue(struct qitem *);
+
+/* local.c */
+int deliver_local(struct qitem *, const char **errmsg);
 #endif

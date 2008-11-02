@@ -61,20 +61,18 @@
 
 
 static void deliver(struct qitem *);
-static int add_recp(struct queue *, const char *, const char *, int);
 
 struct aliases aliases = LIST_HEAD_INITIALIZER(aliases);
-static struct strlist tmpfs = SLIST_HEAD_INITIALIZER(tmpfs);
+struct strlist tmpfs = SLIST_HEAD_INITIALIZER(tmpfs);
 struct virtusers virtusers = LIST_HEAD_INITIALIZER(virtusers);
 struct authusers authusers = LIST_HEAD_INITIALIZER(authusers);
 static int daemonize = 1;
 struct config *config;
 static const char *username;
 static uid_t uid;
-static struct strlist seenmsg[16][16];
 
 
-char *
+const char *
 hostname(void)
 {
 	static char name[MAXHOSTNAMELEN+1];
@@ -204,7 +202,7 @@ read_aliases(void)
 	return (0);
 }
 
-static int
+int
 add_recp(struct queue *queue, const char *str, const char *sender, int expand)
 {
 	struct qitem *it, *tit;
@@ -282,41 +280,22 @@ deltmp(void)
 	}
 }
 
-static int
-gentempf(struct queue *queue)
+int
+open_locked(const char *fname, int flags, ...)
 {
-	char fn[PATH_MAX+1];
-	struct stritem *t;
-	int fd;
+	int mode = 0;
 
-	if (snprintf(fn, sizeof(fn), "%s/%s", config->spooldir, "tmp_XXXXXXXXXX") <= 0)
-		return (-1);
-	fd = mkstemp(fn);
-	if (fd < 0)
-		return (-1);
-	if (flock(fd, LOCK_EX) == -1)
-		return (-1);
-	queue->mailfd = fd;
-	queue->tmpf = strdup(fn);
-	if (queue->tmpf == NULL) {
-		unlink(fn);
-		return (-1);
+	if (flags & O_CREAT) {
+		va_list ap;
+		va_start(ap, flags);
+		mode = va_arg(ap, int);
+		va_end(ap);
 	}
-	t = malloc(sizeof(*t));
-	if (t != NULL) {
-		t->str = queue->tmpf;
-		SLIST_INSERT_HEAD(&tmpfs, t, next);
-	}
-	return (0);
-}
 
-static int
-open_locked(const char *fname, int flags)
-{
 #ifndef O_EXLOCK
 	int fd, save_errno;
 
-	fd = open(fname, flags, 0);
+	fd = open(fname, flags, mode);
 	if (fd < 0)
 		return(fd);
 	if (flock(fd, LOCK_EX|((flags & O_NONBLOCK)? LOCK_NB: 0)) < 0) {
@@ -327,85 +306,8 @@ open_locked(const char *fname, int flags)
 	}
 	return(fd);
 #else
-	return(open(fname, flags|O_EXLOCK));
+	return(open(fname, flags|O_EXLOCK, mode));
 #endif
-}
-
-/*
- * spool file format:
- *
- * envelope-from
- * queue-id1 envelope-to1
- * queue-id2 envelope-to2
- * ...
- * <empty line>
- * mail data
- *
- * queue ids are unique, formed from the inode of the spool file
- * and a unique identifier.
- */
-static int
-preparespool(struct queue *queue, const char *sender)
-{
-	char line[1000];	/* by RFC2822 */
-	struct stat st;
-	int error;
-	struct qitem *it;
-	FILE *queuef;
-	off_t hdrlen;
-
-	error = snprintf(line, sizeof(line), "%s\n", sender);
-	if (error < 0 || (size_t)error >= sizeof(line)) {
-		errno = E2BIG;
-		return (-1);
-	}
-	if (write(queue->mailfd, line, error) != error)
-		return (-1);
-
-	queuef = fdopen(queue->mailfd, "r+");
-	if (queuef == NULL)
-		return (-1);
-
-	/*
-	 * Assign queue id to each dest.
-	 */
-	if (fstat(queue->mailfd, &st) != 0)
-		return (-1);
-	queue->id = st.st_ino;
-
-	syslog(LOG_INFO, "%"PRIxMAX": new mail from user=%s uid=%d envelope_from=<%s>",
-	       queue->id, username, uid, sender);
-
-	LIST_FOREACH(it, &queue->queue, next) {
-		if (asprintf(&it->queueid, "%"PRIxMAX".%"PRIxPTR,
-			     queue->id, (uintptr_t)it) <= 0)
-			return (-1);
-		if (asprintf(&it->queuefn, "%s/%s",
-			     config->spooldir, it->queueid) <= 0)
-			return (-1);
-		/* File may not exist yet */
-		if (stat(it->queuefn, &st) == 0)
-			return (-1);
-		it->queuef = queuef;
-		error = snprintf(line, sizeof(line), "%s %s\n",
-			       it->queueid, it->addr);
-		if (error < 0 || (size_t)error >= sizeof(line))
-			return (-1);
-		if (write(queue->mailfd, line, error) != error)
-			return (-1);
-
-		syslog(LOG_INFO, "%"PRIxMAX": mail to=<%s> queued as %s",
-		       queue->id, it->addr, it->queueid);
-	}
-	line[0] = '\n';
-	if (write(queue->mailfd, line, 1) != 1)
-		return (-1);
-
-	hdrlen = lseek(queue->mailfd, 0, SEEK_CUR);
-	LIST_FOREACH(it, &queue->queue, next) {
-		it->hdrlen = hdrlen;
-	}
-	return (0);
 }
 
 static char *
@@ -502,31 +404,11 @@ readmail(struct queue *queue, const char *sender, int nodot)
 	return (0);
 }
 
-static int
-linkspool(struct queue *queue)
-{
-	struct qitem *it;
-
-	LIST_FOREACH(it, &queue->queue, next) {
-		if (link(queue->tmpf, it->queuefn) != 0)
-			goto delfiles;
-	}
-	unlink(queue->tmpf);
-	return (0);
-
-delfiles:
-	LIST_FOREACH(it, &queue->queue, next) {
-		unlink(it->queuefn);
-	}
-	return (-1);
-}
-
 static struct qitem *
 go_background(struct queue *queue)
 {
 	struct sigaction sa;
 	struct qitem *it;
-	FILE *newqf;
 	pid_t pid;
 
 	if (daemonize && daemon(0, 0) != 0) {
@@ -558,18 +440,6 @@ go_background(struct queue *queue)
 			 *
 			 * return and deliver mail
 			 */
-			/*
-			 * We have to prevent sharing of fds between children, so
-			 * we have to re-open the queue file.
-			 */
-			newqf = fopen(it->queuefn, "r");
-			if (newqf == NULL) {
-				syslog(LOG_ERR, "can not re-open queue file `%s': %m",
-				       it->queuefn);
-				exit(1);
-			}
-			fclose(it->queuef);
-			it->queuef = newqf;
 			return (it);
 
 		default:
@@ -608,13 +478,10 @@ bounce(struct qitem *it, const char *reason)
 	LIST_INIT(&bounceq.queue);
 	if (add_recp(&bounceq, it->sender, "", 1) != 0)
 		goto fail;
-	if (gentempf(&bounceq) != 0)
+	if (newspoolf(&bounceq, "") != 0)
 		goto fail;
-	if (preparespool(&bounceq, "") != 0)
-		goto fail;
-
 	bit = LIST_FIRST(&bounceq.queue);
-	error = fprintf(bit->queuef,
+	error = fprintf(bit->mailf,
 		"Received: from MAILER-DAEMON\n"
 		"\tid %"PRIxMAX"\n"
 		"\tby %s (%s)\n"
@@ -649,19 +516,19 @@ bounce(struct qitem *it, const char *reason)
 		    "Message headers follow.");
 	if (error < 0)
 		goto fail;
-	if (fflush(bit->queuef) != 0)
+	if (fflush(bit->mailf) != 0)
 		goto fail;
 
-	if (fseek(it->queuef, it->hdrlen, SEEK_SET) != 0)
+	if (fseek(it->mailf, it->hdrlen, SEEK_SET) != 0)
 		goto fail;
 	if (config->features & FULLBOUNCE) {
-		while ((pos = fread(line, 1, sizeof(line), it->queuef)) > 0) {
+		while ((pos = fread(line, 1, sizeof(line), it->mailf)) > 0) {
 			if ((size_t)write(bounceq.mailfd, line, pos) != pos)
 				goto fail;
 		}
 	} else {
-		while (!feof(it->queuef)) {
-			if (fgets(line, sizeof(line), it->queuef) == NULL)
+		while (!feof(it->mailf)) {
+			if (fgets(line, sizeof(line), it->mailf) == NULL)
 				break;
 			if (line[0] == '\n')
 				break;
@@ -675,8 +542,7 @@ bounce(struct qitem *it, const char *reason)
 		goto fail;
 	/* bounce is safe */
 
-	unlink(it->queuefn);
-	fclose(it->queuef);
+	delqueue(it);
 
 	bit = go_background(&bounceq);
 	deliver(bit);
@@ -684,89 +550,8 @@ bounce(struct qitem *it, const char *reason)
 
 fail:
 	syslog(LOG_CRIT, "%s: error creating bounce: %m", it->queueid);
-	unlink(it->queuefn);
+	delqueue(it);
 	exit(1);
-}
-
-static int
-deliver_local(struct qitem *it, const char **errmsg)
-{
-	char fn[PATH_MAX+1];
-	char line[1000];
-	size_t linelen;
-	int mbox;
-	int error;
-	off_t mboxlen;
-	time_t now = time(NULL);
-
-	error = snprintf(fn, sizeof(fn), "%s/%s", _PATH_MAILDIR, it->addr);
-	if (error < 0 || (size_t)error >= sizeof(fn)) {
-		syslog(LOG_NOTICE, "%s: local delivery deferred: %m",
-		       it->queueid);
-		return (1);
-	}
-
-	/* mailx removes users mailspool file if empty, so open with O_CREAT */
-	mbox = open_locked(fn, O_WRONLY | O_APPEND | O_CREAT);
-	if (mbox < 0) {
-		syslog(LOG_NOTICE, "%s: local delivery deferred: can not open `%s': %m",
-		       it->queueid, fn);
-		return (1);
-	}
-	mboxlen = lseek(mbox, 0, SEEK_CUR);
-
-	if (fseek(it->queuef, it->hdrlen, SEEK_SET) != 0) {
-		syslog(LOG_NOTICE, "%s: local delivery deferred: can not seek: %m",
-		       it->queueid);
-		return (1);
-	}
-
-	error = snprintf(line, sizeof(line), "From %s\t%s", it->sender, ctime(&now));
-	if (error < 0 || (size_t)error >= sizeof(line)) {
-		syslog(LOG_NOTICE, "%s: local delivery deferred: can not write header: %m",
-		       it->queueid);
-		return (1);
-	}
-	if (write(mbox, line, error) != error)
-		goto wrerror;
-
-	while (!feof(it->queuef)) {
-		if (fgets(line, sizeof(line), it->queuef) == NULL)
-			break;
-		linelen = strlen(line);
-		if (linelen == 0 || line[linelen - 1] != '\n') {
-			syslog(LOG_CRIT, "%s: local delivery failed: corrupted queue file",
-			       it->queueid);
-			*errmsg = "corrupted queue file";
-			error = -1;
-			goto chop;
-		}
-
-		if (strncmp(line, "From ", 5) == 0) {
-			const char *gt = ">";
-
-			if (write(mbox, gt, 1) != 1)
-				goto wrerror;
-		}
-		if ((size_t)write(mbox, line, linelen) != linelen)
-			goto wrerror;
-	}
-	line[0] = '\n';
-	if (write(mbox, line, 1) != 1)
-		goto wrerror;
-	close(mbox);
-	return (0);
-
-wrerror:
-	syslog(LOG_ERR, "%s: local delivery failed: write error: %m",
-	       it->queueid);
-	error = 1;
-chop:
-	if (ftruncate(mbox, mboxlen) != 0)
-		syslog(LOG_WARNING, "%s: error recovering mbox `%s': %m",
-		       it->queueid, fn);
-	close(mbox);
-	return (error);
 }
 
 static void
@@ -792,7 +577,7 @@ retry:
 
 	switch (error) {
 	case 0:
-		unlink(it->queuefn);
+		delqueue(it);
 		syslog(LOG_INFO, "%s: delivery successful",
 		       it->queueid);
 		exit(0);
@@ -824,192 +609,6 @@ retry:
 bounce:
 	bounce(it, errmsg);
 	/* NOTREACHED */
-}
-
-static int
-c2x(char c)
-{
-	if (c <= '9')
-		return (c - '0');
-	else if (c <= 'F')
-		return (c - 'A' + 10);
-	else
-		return (c - 'a' + 10);
-}
-
-static void
-seen_init(void)
-{
-	int i, j;
-
-	for (i = 0; i < 16; i++)
-		for (j = 0; j < 16; j++)
-			SLIST_INIT(&seenmsg[i][j]);
-}
-
-static int
-seen(const char *msgid)
-{
-	const char *p;
-	size_t len;
-	int i, j;
-	struct stritem *t;
-
-	p = strchr(msgid, '.');
-	if (p == NULL)
-		return (0);
-	len = p - msgid;
-	if (len >= 2) {
-		i = c2x(msgid[len - 2]);
-		j = c2x(msgid[len - 1]);
-	} else if (len == 1) {
-		i = c2x(msgid[0]);
-		j = 0;
-	} else {
-		i = j = 0;
-	}
-	if (i < 0 || i >= 16 || j < 0 || j >= 16)
-		errx(1, "INTERNAL ERROR: bad seen code for msgid %s", msgid);
-	SLIST_FOREACH(t, &seenmsg[i][j], next)
-		if (!strncmp(t->str, msgid, len))
-			return (1);
-	t = malloc(sizeof(*t));
-	if (t == NULL)
-		errx(1, "Could not allocate %lu bytes",
-		    (unsigned long)(sizeof(*t)));
-	t->str = strdup(msgid);
-	if (t->str == NULL)
-		errx(1, "Could not duplicate msgid %s", msgid);
-	SLIST_INSERT_HEAD(&seenmsg[i][j], t, next);
-	return (0);
-}
-
-static void
-load_queue(struct queue *queue, int ignorelock)
-{
-	struct stat st;
-	struct qitem *it;
-	//struct queue queue, itmqueue;
-	struct queue itmqueue;
-	DIR *spooldir;
-	struct dirent *de;
-	char line[1000];
-	char *fn;
-	FILE *queuef;
-	char *sender;
-	char *addr;
-	char *queueid;
-	char *queuefn;
-	off_t hdrlen;
-	int fd, locked, seenit;
-
-	LIST_INIT(&queue->queue);
-
-	spooldir = opendir(config->spooldir);
-	if (spooldir == NULL)
-		err(1, "reading queue");
-
-	seen_init();
-	while ((de = readdir(spooldir)) != NULL) {
-		sender = NULL;
-		queuef = NULL;
-		queueid = NULL;
-		queuefn = NULL;
-		fn = NULL;
-		LIST_INIT(&itmqueue.queue);
-
-		/* ignore temp files */
-		if (strncmp(de->d_name, "tmp_", 4) == 0 ||
-		    de->d_type != DT_REG)
-			continue;
-		if (asprintf(&queuefn, "%s/%s", config->spooldir, de->d_name) < 0)
-			goto fail;
-		seenit = seen(de->d_name);
-		locked = 0;
-		fd = open_locked(queuefn, O_RDONLY|O_NONBLOCK);
-		if (fd < 0) {
-			/* Ignore locked files */
-			if (errno != EWOULDBLOCK)
-				goto skip_item;
-			if (!ignorelock || seenit)
-				continue;
-			fd = open(queuefn, O_RDONLY);
-			if (fd < 0)
-				goto skip_item;
-			locked = 1;
-		}
-
-		queuef = fdopen(fd, "r");
-		if (queuef == NULL)
-			goto skip_item;
-		if (fgets(line, sizeof(line), queuef) == NULL ||
-		    line[0] == 0)
-			goto skip_item;
-		line[strlen(line) - 1] = 0;	/* chop newline */
-		sender = strdup(line);
-		if (sender == NULL)
-			goto skip_item;
-
-		for (;;) {
-			if (fgets(line, sizeof(line), queuef) == NULL ||
-			    line[0] == 0)
-				goto skip_item;
-			if (line[0] == '\n')
-				break;
-			line[strlen(line) - 1] = 0;
-			queueid = strdup(line);
-			if (queueid == NULL)
-				goto skip_item;
-			addr = strchr(queueid, ' ');
-			if (addr == NULL)
-				goto skip_item;
-			*addr++ = 0;
-			if (fn != NULL)
-				free(fn);
-			if (asprintf(&fn, "%s/%s", config->spooldir, queueid) < 0)
-				goto skip_item;
-			/* Item has already been delivered? */
-			if (stat(fn, &st) != 0)
-				continue;
-			if (add_recp(&itmqueue, addr, sender, 0) != 0)
-				goto skip_item;
-			it = LIST_FIRST(&itmqueue.queue);
-			it->queuef = queuef;
-			it->queueid = queueid;
-			it->queuefn = fn;
-			it->locked = locked;
-			fn = NULL;
-		}
-		if (LIST_EMPTY(&itmqueue.queue)) {
-			warnx("queue file without items: `%s'", queuefn);
-			goto skip_item2;
-		}
-		hdrlen = ftell(queuef);
-		while ((it = LIST_FIRST(&itmqueue.queue)) != NULL) {
-			it->hdrlen = hdrlen;
-			LIST_REMOVE(it, next);
-			LIST_INSERT_HEAD(&queue->queue, it, next);
-		}
-		continue;
-
-skip_item:
-		warn("reading queue: `%s'", queuefn);
-skip_item2:
-		if (sender != NULL)
-			free(sender);
-		if (queuefn != NULL)
-			free(queuefn);
-		if (fn != NULL)
-			free(fn);
-		if (queueid != NULL)
-			free(queueid);
-		close(fd);
-	}
-	closedir(spooldir);
-	return;
-
-fail:
-	err(1, "reading queue");
 }
 
 static void
@@ -1157,7 +756,7 @@ skipopts:
 	if (config == NULL)
 		err(1, NULL);
 
-	if (parse_conf(CONF_PATH, config) < 0) {
+	if (parse_conf(CONF_PATH) < 0) {
 		free(config);
 		err(1, "can not read config file");
 	}
@@ -1196,17 +795,14 @@ skipopts:
 	if (LIST_EMPTY(&queue.queue))
 		errx(1, "no recipients");
 
-	if (gentempf(&queue) != 0)
+	if (newspoolf(&queue, sender) != 0)
 		err(1, "can not create temp file");
-
-	if (preparespool(&queue, sender) != 0)
-		err(1, "can not create spools (1)");
 
 	if (readmail(&queue, sender, nodot) != 0)
 		err(1, "can not read mail");
 
 	if (linkspool(&queue) != 0)
-		err(1, "can not create spools (2)");
+		err(1, "can not create spools");
 
 	/* From here on the mail is safe. */
 

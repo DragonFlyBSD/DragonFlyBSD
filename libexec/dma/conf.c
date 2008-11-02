@@ -48,8 +48,6 @@
 #define DP	": \t\n"
 #define EQS	" \t\n"
 
-extern struct virtusers virtusers;
-extern struct authusers authusers;
 
 /*
  * Remove trailing \n's
@@ -188,7 +186,7 @@ parse_authfile(const char *path)
  * Check for bad things[TM]
  */
 int
-parse_conf(const char *config_path, struct config *config)
+parse_conf(const char *config_path)
 {
 	char *word;
 	char *data;

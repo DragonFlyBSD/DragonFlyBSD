@@ -46,8 +46,6 @@
 
 #include "dma.h"
 
-extern struct config *config;
-
 static int
 init_cert_file(struct qitem *it, SSL_CTX *ctx, const char *path)
 {
