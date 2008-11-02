@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_ntfs/mount_ntfs.c,v 1.3.2.2 2001/10/12 22:08:43 semenu Exp $
- * $DragonFly: src/sbin/mount_ntfs/mount_ntfs.c,v 1.8 2005/04/03 15:52:40 joerg Exp $
+ * $DragonFly: src/sbin/mount_ntfs/mount_ntfs.c,v 1.9 2008/11/02 21:52:46 swildner Exp $
  *
  */
 
@@ -263,13 +263,13 @@ load_u2wtable (struct ntfs_args *pargs, char *name)
 		do {
 			if (p != NULL) free(p);
 			if ((p = s = fparseln(f, NULL, &line, NULL, 0)) == NULL)
-				errx(EX_DATAERR, "can't read u2w table row %d near line %d", i, line);
+				errx(EX_DATAERR, "can't read u2w table row %d near line %zu", i, line);
 			while (isspace((unsigned char)*s))
 				s++;
 		} while (*s == '\0');
 		if (sscanf(s, "%i%i%i%i%i%i%i%i",
 code, code + 1, code + 2, code + 3, code + 4, code + 5, code + 6, code + 7) != 8)
-			errx(EX_DATAERR, "u2w table: missing item(s) in row %d, line %d", i, line);
+			errx(EX_DATAERR, "u2w table: missing item(s) in row %d, line %zu", i, line);
 		for (j = 0; j < 8; j++)
 			pargs->u2w[i * 8 + j] = code[j];
 	}
@@ -277,13 +277,13 @@ code, code + 1, code + 2, code + 3, code + 4, code + 5, code + 6, code + 7) != 8
 		do {
 			free(p);
 			if ((p = s = fparseln(f, NULL, &line, NULL, 0)) == NULL)
-				errx(EX_DATAERR, "can't read d2u table row %d near line %d", i, line);
+				errx(EX_DATAERR, "can't read d2u table row %d near line %zu", i, line);
 			while (isspace((unsigned char)*s))
 				s++;
 		} while (*s == '\0');
 		if (sscanf(s, "%i%i%i%i%i%i%i%i",
 code, code + 1, code + 2, code + 3, code + 4, code + 5, code + 6, code + 7) != 8)
-			errx(EX_DATAERR, "d2u table: missing item(s) in row %d, line %d", i, line);
+			errx(EX_DATAERR, "d2u table: missing item(s) in row %d, line %zu", i, line);
 		for (j = 0; j < 8; j++)
 			/* pargs->d2u[i * 8 + j] = code[j] */;
 	}
@@ -291,13 +291,13 @@ code, code + 1, code + 2, code + 3, code + 4, code + 5, code + 6, code + 7) != 8
 		do {
 			free(p);
 			if ((p = s = fparseln(f, NULL, &line, NULL, 0)) == NULL)
-				errx(EX_DATAERR, "can't read u2d table row %d near line %d", i, line);
+				errx(EX_DATAERR, "can't read u2d table row %d near line %zu", i, line);
 			while (isspace((unsigned char)*s))
 				s++;
 		} while (*s == '\0');
 		if (sscanf(s, "%i%i%i%i%i%i%i%i",
 code, code + 1, code + 2, code + 3, code + 4, code + 5, code + 6, code + 7) != 8)
-			errx(EX_DATAERR, "u2d table: missing item(s) in row %d, line %d", i, line);
+			errx(EX_DATAERR, "u2d table: missing item(s) in row %d, line %zu", i, line);
 		for (j = 0; j < 8; j++)
 			/* pargs->u2d[i * 8 + j] = code[j] */;
 	}

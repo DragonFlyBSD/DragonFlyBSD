@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.32.2.7 2002/09/15 22:31:50 dd Exp $
- * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.14 2008/07/07 23:03:25 swildner Exp $
+ * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.15 2008/11/02 21:52:46 swildner Exp $
  */
 
 #include <machine/console.h>
@@ -888,9 +888,9 @@ show_adapter_info(void)
 	       adapter_name(ad.va_type), ad.va_type, ad.va_flags);
 	printf("    initial mode:%d, current mode:%d, BIOS mode:%d\n",
 	       ad.va_initial_mode, ad.va_mode, ad.va_initial_bios_mode);
-	printf("    frame buffer window:0x%x, buffer size:0x%x\n",
+	printf("    frame buffer window:0x%x, buffer size:0x%zx\n",
 	       ad.va_window, ad.va_buffer_size);
-	printf("    window size:0x%x, origin:0x%x\n",
+	printf("    window size:0x%zx, origin:0x%x\n",
 	       ad.va_window_size, ad.va_window_orig);
 	printf("    display start address (%d, %d), scan line width:%d\n",
 	       ad.va_disp_start.x, ad.va_disp_start.y, ad.va_line_width);

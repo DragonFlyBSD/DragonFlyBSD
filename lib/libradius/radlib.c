@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libradius/radlib.c,v 1.4.2.3 2002/06/17 02:24:57 brian Exp $
- *	$DragonFly: src/lib/libradius/radlib.c,v 1.4 2005/04/20 20:45:57 joerg Exp $
+ *	$DragonFly: src/lib/libradius/radlib.c,v 1.5 2008/11/02 21:52:46 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -901,7 +901,7 @@ rad_put_vendor_attr(struct rad_handle *h, int vendor, int type,
 	int res;
 
 	if ((attr = malloc(len + 6)) == NULL) {
-		generr(h, "malloc failure (%d bytes)", len + 6);
+		generr(h, "malloc failure (%zu bytes)", len + 6);
 		return -1;
 	}
 

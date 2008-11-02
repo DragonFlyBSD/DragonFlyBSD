@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtsold/rtsol.c,v 1.1.2.4 2002/04/24 10:22:30 suz Exp $
- * $DragonFly: src/usr.sbin/rtsold/rtsol.c,v 1.6 2006/10/17 19:20:49 pavalos Exp $
+ * $DragonFly: src/usr.sbin/rtsold/rtsol.c,v 1.7 2008/11/02 21:52:46 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -278,7 +278,7 @@ rtsol_input(int s)
 
 	if ((size_t)i < sizeof(struct nd_router_advert)) {
 		warnmsg(LOG_ERR,
-		       __func__, "packet size(%d) is too short", i);
+		       __func__, "packet size(%zd) is too short", i);
 		return;
 	}
 
