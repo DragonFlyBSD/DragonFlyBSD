@@ -1,5 +1,5 @@
 # $OpenBSD: Makefile,v 1.12 2005/07/17 19:33:55 krw Exp $
-# $DragonFly: src/sbin/dhclient/Makefile,v 1.4 2008/08/30 16:07:58 hasso Exp $
+# $DragonFly: src/sbin/dhclient/Makefile,v 1.5 2008/11/03 00:25:44 pavalos Exp $
 #
 # Copyright (c) 1996, 1997 The Internet Software Consortium.
 # All rights reserved.
@@ -40,7 +40,7 @@ SRCS=	dhclient.c clparse.c dispatch.c bpf.c options.c \
 PROG=	dhclient
 MAN=	dhclient.8 dhclient.conf.5 dhclient.leases.5 dhclient-script.8
 
-WARNS?=	3
+WARNS?=	0
 
 beforeinstall:
 	${INSTALL} ${INSTALL_COPY} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \

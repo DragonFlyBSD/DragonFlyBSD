@@ -1,5 +1,5 @@
 /*	$OpenBSD: pfctl_altq.c,v 1.83 2004/03/14 21:51:44 dhartmei Exp $	*/
-/*	$DragonFly: src/usr.sbin/pfctl/pfctl_altq.c,v 1.3 2008/04/06 18:58:14 dillon Exp $ */
+/*	$DragonFly: src/usr.sbin/pfctl/pfctl_altq.c,v 1.4 2008/11/03 00:25:45 pavalos Exp $ */
 
 /*
  * Copyright (c) 2002
@@ -1042,7 +1042,9 @@ print_fairq_opts(const struct pf_altq *a, const struct node_queue_opt *qopts)
 /*
  * admission control using generalized service curve
  */
+#ifndef	INFINITY
 #define	INFINITY	HUGE_VAL  /* positive infinity defined in <math.h> */
+#endif
 
 /* add a new service curve to a generalized service curve */
 static void

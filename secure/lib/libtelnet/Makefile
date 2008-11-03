@@ -1,5 +1,5 @@
 #	$FreeBSD: src/secure/lib/libtelnet/Makefile,v 1.17.2.7 2002/07/22 14:21:51 ru Exp $
-#	$DragonFly: src/secure/lib/libtelnet/Makefile,v 1.3 2005/07/28 19:48:40 joerg Exp $
+#	$DragonFly: src/secure/lib/libtelnet/Makefile,v 1.4 2008/11/03 00:25:45 pavalos Exp $
 
 LIB=		telnet
 
@@ -11,7 +11,7 @@ SRCS=		genget.c getent.c misc.c encrypt.c auth.c \
 CFLAGS+=	-DENCRYPTION -DAUTHENTICATION -DSRA \
 		-I${TELNETDIR} -I${TELNETDIR}/libtelnet
 
-WARNS?=		2
+WARNS?=		0
 
 INCS=		${TELNETDIR}/arpa/telnet.h
 INCSDIR=	${INCLUDEDIR}/arpa

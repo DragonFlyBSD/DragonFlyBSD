@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/usr.bin/telnet/Makefile,v 1.21.2.4 2002/07/03 22:20:33 des Exp $
-# $DragonFly: src/secure/usr.bin/telnet/Makefile,v 1.3 2005/01/11 13:22:41 joerg Exp $
+# $DragonFly: src/secure/usr.bin/telnet/Makefile,v 1.4 2008/11/03 00:25:45 pavalos Exp $
 
 PROG=		telnet
 
@@ -10,7 +10,7 @@ CFLAGS+=	-DKLUDGELINEMODE -DUSE_TERMIO -DENV_HACK -DOPIE \
 		-DENCRYPTION -DAUTHENTICATION -DIPSEC -DINET6 \
 		-I${TELNETDIR} -I${TELNETDIR}/libtelnet/
 
-WARNS?=		2
+WARNS?=		0
 
 DPADD=		${LIBTERMCAP} ${LIBTELNET} \
 		${LIBCRYPTO} ${LIBCRYPT} ${LIBIPSEC} ${LIBPAM}

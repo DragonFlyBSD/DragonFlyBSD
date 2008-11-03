@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 # $FreeBSD: src/sbin/route/Makefile,v 1.11.2.3 2002/12/04 14:05:42 ru Exp $
-# $DragonFly: src/sbin/route/Makefile,v 1.6 2006/10/17 00:55:43 pavalos Exp $
+# $DragonFly: src/sbin/route/Makefile,v 1.7 2008/11/03 00:25:45 pavalos Exp $
 
 PROG=	route
 MAN=	route.8
@@ -8,6 +8,7 @@ SRCS=	route.c show.c keywords.h keywords.c
 CFLAGS+=-I. -DNS
 CFLAGS+=-DINET6
 CLEANFILES+=keywords.h keywords.c _keywords.tmp
+WARNS?=	3
 
 keywords.h:
 	echo -e "extern struct keytab {\n\tconst char\t*kt_cp;\n\tint\t\t kt_i;\n} keywords[];\n\n" > ${.TARGET}

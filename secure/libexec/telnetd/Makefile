@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/libexec/telnetd/Makefile,v 1.19.2.4 2002/07/03 22:20:25 des Exp $
-# $DragonFly: src/secure/libexec/telnetd/Makefile,v 1.3 2005/01/11 13:22:40 joerg Exp $
+# $DragonFly: src/secure/libexec/telnetd/Makefile,v 1.4 2008/11/03 00:25:45 pavalos Exp $
 
 # Do not define -DKLUDGELINEMODE, as it does not interact well with many
 # telnet implementations.
@@ -14,7 +14,7 @@ CFLAGS+=	-DLINEMODE -DUSE_TERMIO -DDIAGNOSTICS -DOLD_ENVIRON \
 		-DENV_HACK -DAUTHENTICATION -DENCRYPTION \
 		-I${TELNETDIR} -DINET6
 
-WARNS?=		2
+WARNS?=		0
 WFORMAT?=	0
 
 DPADD=		${LIBUTIL} ${LIBTERMCAP} ${LIBTELNET} ${LIBCRYPTO} \

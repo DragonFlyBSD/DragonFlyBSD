@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.sys.mk,v 1.3.2.5 2002/07/03 16:59:14 des Exp $
-# $DragonFly: src/share/mk/bsd.sys.mk,v 1.10 2007/09/07 00:09:02 pavalos Exp $
+# $DragonFly: src/share/mk/bsd.sys.mk,v 1.11 2008/11/03 00:25:45 pavalos Exp $
 #
 # This file contains common settings used for building DragonFly
 # sources.
@@ -8,29 +8,44 @@
 # overridden (e.g. if using a non-gcc compiler) by defining NO_WARNS.
 
 .if !defined(NO_WARNS)
+. if defined(CSTD)
+.  if ${CSTD} == "k&r"
+CFLAGS		+= -traditional
+.  elif ${CSTD} == "c89" || ${CSTD} == "c90"
+CFLAGS		+= -std=iso9899:1990
+.  elif ${CSTD} == "c94" || ${CSTD} == "c95"
+CFLAGS		+= -std=iso9899:199409
+.  elif ${CSTD} == "c99"
+CFLAGS		+= -std=iso9899:1999
+.  else
+CFLAGS		+= -std=${CSTD}
+.  endif
+. endif
 . if defined(WARNS)
-# XXX Delete -Wuninitialized by default for now -- the compiler doesn't
-# XXX always get it right.
-.  if ${WARNS} <= 4
-CFLAGS		+=	-Wno-uninitialized
-.  endif
-.  if defined(WARNS_WERROR) && !defined(NO_WERROR)
-CFLAGS		+=	-Werror
-.  endif
 .  if ${WARNS} >= 1
-CFLAGS		+=	-Wunknown-pragmas -Wsystem-headers
-.endif
+CWARNFLAGS	+=	-Wsystem-headers
+.   if !defined(NO_WERROR) && ${CCVER} == "gcc41" && ${MACHINE_ARCH} == "i386"
+CWARNFLAGS	+=	-Werror
+.   endif
+.  endif
 .  if ${WARNS} >= 2
-CFLAGS		+=	-Wall
+CWARNFLAGS	+=	-Wall
 .  endif
 .  if ${WARNS} >= 3
-CFLAGS		+=	-W -Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith
+CWARNFLAGS	+=	-W -Wno-unused-parameter -Wstrict-prototypes\
+			-Wmissing-prototypes -Wpointer-arith
 .  endif
 .  if ${WARNS} >= 4
-CFLAGS		+=	-Wreturn-type -Wcast-qual -Wwrite-strings -Wswitch -Wshadow -Wcast-align
+CWARNFLAGS	+=	-Wreturn-type -Wcast-qual -Wwrite-strings -Wswitch\
+			-Wshadow -Wcast-align -Wunused-parameter
 .  endif
 .  if ${WARNS} >= 6
-CFLAGS		+=	-Wchar-subscripts -Winline -Wnested-externs -Wredundant-decls
+CWARNFLAGS	+=	-Wchar-subscripts -Winline -Wnested-externs -Wredundant-decls
+.  endif
+.  if ${WARNS} >= 2 && ${WARNS} <= 4
+# XXX Delete -Wuninitialized by default for now -- the compiler doesn't
+# XXX always get it right.
+CWARNFLAGS	+=	-Wno-uninitialized
 .  endif
 . endif
 
@@ -39,16 +54,12 @@ WFORMAT		=	1
 . endif
 . if defined(WFORMAT)
 .  if ${WFORMAT} > 0
-CFLAGS		+=	-Wno-format-extra-args
-.   if defined(WARNS_WERROR) && !defined(NO_WERROR)
-CFLAGS		+=	-Werror
+CWARNFLAGS	+=	-Wformat=2 -Wno-format-extra-args
+.   if !defined(NO_WERROR) && ${CCVER} == "gcc41" && ${MACHINE_ARCH} == "i386"
+CWARNFLAGS	+=	-Werror
 .   endif
 .  endif
 . endif
-.endif
-
-.if defined(WARNS_NO_UNUSED_PARAMETERS)
-CFLAGS+=	-Wno-unused-parameters
 .endif
 
 # Allow user-specified additional warning flags

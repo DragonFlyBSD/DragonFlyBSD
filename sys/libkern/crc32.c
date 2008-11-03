@@ -39,7 +39,7 @@
  * CRC32 code derived from work by Gary S. Brown.
  *
  * $FreeBSD: src/sys/libkern/crc32.c,v 1.1.2.1 2002/07/31 09:08:34 imp Exp $
- * $DragonFly: src/sys/libkern/crc32.c,v 1.5 2008/07/10 17:42:18 dillon Exp $
+ * $DragonFly: src/sys/libkern/crc32.c,v 1.6 2008/11/03 00:25:45 pavalos Exp $
  */
 
 /*
@@ -56,6 +56,7 @@
 #endif
 
 uint32_t crc32(const void *buf, size_t size);
+uint32_t crc32_ext(const void *buf, size_t size, uint32_t ocrc);
 
 uint32_t crc32_tab[] = {
 	0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f,

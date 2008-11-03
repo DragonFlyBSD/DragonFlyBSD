@@ -26,10 +26,12 @@
  * CRC32 code derived from work by Gary S. Brown.
  *
  * $FreeBSD: src/sbin/gpt/gpt.c,v 1.16 2006/07/07 02:44:23 marcel Exp $
- * $DragonFly: src/sbin/disklabel64/crc32.c,v 1.1 2007/06/19 02:53:55 dillon Exp $
+ * $DragonFly: src/sbin/disklabel64/crc32.c,v 1.2 2008/11/03 00:25:45 pavalos Exp $
  */
 
 #include <sys/types.h>
+
+uint32_t	crc32(const void *, size_t);
 
 static uint32_t crc32_tab[] = {
 	0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f,
@@ -91,4 +93,3 @@ crc32(const void *buf, size_t size)
 
 	return crc ^ ~0U;
 }
-

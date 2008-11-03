@@ -1,8 +1,8 @@
-# $DragonFly: src/lib/libm/Makefile,v 1.7 2007/06/17 17:46:01 pavalos Exp $
+# $DragonFly: src/lib/libm/Makefile,v 1.8 2008/11/03 00:25:44 pavalos Exp $
 
 LIB=		m
 SHLIB_MAJOR=	3
-WARNS?=		6
+WARNS?=		2
 
 # Don't MD fragment must be included before MI fragment.
 ARCHDIR?= ${MACHINE_ARCH}

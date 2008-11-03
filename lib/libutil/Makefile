@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 #	$FreeBSD: src/lib/libutil/Makefile,v 1.33.2.4 2001/04/25 10:04:42 ru Exp $
-#	$DragonFly: src/lib/libutil/Makefile,v 1.11 2008/10/28 17:23:46 swildner Exp $
+#	$DragonFly: src/lib/libutil/Makefile,v 1.12 2008/11/03 00:25:44 pavalos Exp $
 
 LIB=	util
 SHLIB_MAJOR= 4
@@ -13,7 +13,7 @@ SRCS=	login.c login_tty.c logout.c logwtmp.c pty.c \
 	realhostname.c fparseln.c stub.c pidfile.c trimdomain.c \
 	dehumanize_number.c humanize_number.c pw_scan.c pw_util.c
 INCS=	libutil.h login_cap.h
-WARNS?=	3
+WARNS?=	2
 
 MAN+=	login.3 login_auth.3 login_tty.3 logout.3 logwtmp.3 pty.3 \
 	login_cap.3 login_class.3 login_times.3 login_ok.3 \
