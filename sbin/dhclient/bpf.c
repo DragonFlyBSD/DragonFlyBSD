@@ -1,5 +1,5 @@
 /*	$OpenBSD: bpf.c,v 1.20 2007/01/08 02:51:13 krw Exp $	*/
-/*	$DragonFly: src/sbin/dhclient/bpf.c,v 1.1 2008/08/30 16:07:58 hasso Exp $	*/
+/*	$DragonFly: src/sbin/dhclient/bpf.c,v 1.2 2008/11/05 14:08:41 sephe Exp $	*/
 
 /* BPF socket interface code, originally contributed by Archie Cobbs. */
 
@@ -278,6 +278,15 @@ send_packet(struct in_addr from, struct sockaddr_in *to,
 	if (to->sin_addr.s_addr == INADDR_BROADCAST) {
 		result = writev(ifi->wfdesc, iov, IOVCNT);
 	} else {
+		struct ip *ip = (struct ip *)buf;
+
+		/*
+		 * DragonFly's raw socket expects ip_len/ip_off
+		 * in host byte order.
+		 */
+		ip->ip_len = ntohs(ip->ip_len);
+		ip->ip_off = ntohs(ip->ip_off);
+
 		memset(&msg, 0, sizeof(msg));
 		msg.msg_name = (struct sockaddr *)to;
 		msg.msg_namelen = sizeof(*to);
