@@ -65,7 +65,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.47 2008/09/11 11:23:29 sephe Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.48 2008/11/08 03:38:23 sephe Exp $
  */
 
 #include "opt_ipsec.h"
@@ -658,20 +658,8 @@ in_pcbdetach(struct inpcb *inp)
 	sofree(so);
 	if (inp->inp_options)
 		m_free(inp->inp_options);
-	if (inp->inp_route.ro_rt) {
-		/*
-		 * XXX DIRTY WORKAROUND
-		 * It is known that closing TCP listen socket _may_
-		 * free cached rtentry on the CPU, which is _not_
-		 * the owner of the rtentry.  Before we work out a
-		 * proper solution, just disallow panic and prints
-		 * backtrace (in rtfree_remote())
-		 */
-		if (inp->inp_route.ro_rt->rt_cpuid == mycpuid)
-			rtfree(inp->inp_route.ro_rt);
-		else
-			rtfree_remote(inp->inp_route.ro_rt, 0 /* no panic */);
-	}
+	if (inp->inp_route.ro_rt)
+		rtfree(inp->inp_route.ro_rt);
 	ip_freemoptions(inp->inp_moptions);
 	inp->inp_vflag = 0;
 	zfree(ipi->ipi_zone, inp);
