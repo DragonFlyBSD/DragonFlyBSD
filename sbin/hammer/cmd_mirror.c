@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.15 2008/09/09 23:34:21 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_mirror.c,v 1.16 2008/11/09 05:22:56 dillon Exp $
  */
 
 #include "hammer.h"
@@ -52,6 +52,7 @@ static int validate_mrec_header(int fd, int fdin, int is_target, int pfs_id,
 static void update_pfs_snapshot(int fd, hammer_tid_t snapshot_tid, int pfs_id);
 static ssize_t writebw(int fd, const void *buf, size_t nbytes,
 			u_int64_t *bwcount, struct timeval *tv1);
+static int getyn(void);
 static void mirror_usage(int code);
 
 /*
@@ -104,6 +105,11 @@ again:
 	total_bytes = 0;
 	gettimeofday(&bwtv, NULL);
 	bwcount = 0;
+
+	/*
+	 * Send initial header for the purpose of determining shared-uuid.
+	 */
+	generate_mrec_header(fd, 1, pfs.pfs_id, NULL, NULL);
 
 	/*
 	 * In 2-way mode the target will send us a PFS info packet
@@ -298,6 +304,37 @@ done:
 	fprintf(stderr, "Mirror-read %s succeeded\n", filesystem);
 }
 
+static void
+create_pfs(const char *filesystem, uuid_t *s_uuid)
+{
+	fprintf(stderr, "PFS slave %s does not exist.\n"
+			"Do you want to create a new slave PFS? (yes|no) ",
+			filesystem);
+	fflush(stderr);
+	if (getyn() != 1) {
+		fprintf(stderr, "Aborting operation\n");
+		exit(1);
+	}
+
+	u_int32_t status;
+	char *shared_uuid = NULL;
+	uuid_to_string(s_uuid, &shared_uuid, &status);
+
+	char *cmd = NULL;
+	asprintf(&cmd, "/sbin/hammer pfs-slave '%s' shared-uuid=%s 1>&2",
+		 filesystem, shared_uuid); 
+	free(shared_uuid);
+
+	if (cmd == NULL) {
+		fprintf(stderr, "Failed to alloc memory\n");
+		exit(1);
+	}
+	if (system(cmd) != 0) {
+		fprintf(stderr, "Failed to create PFS\n");
+	}
+	free(cmd);
+}
+
 /*
  * Pipe the mirroring data stream on stdin to the HAMMER VFS, adding
  * some additional packet types to negotiate TID ranges and to verify
@@ -334,6 +371,7 @@ hammer_cmd_mirror_write(char **av, int ac)
 	struct hammer_ioc_synctid synctid;
 	union hammer_ioc_mrecord_any mrec_tmp;
 	hammer_ioc_mrecord_any_t mrec;
+	struct stat st;
 	int error;
 	int fd;
 	int n;
@@ -350,6 +388,41 @@ again:
 	hammer_key_beg_init(&mirror.key_beg);
 	hammer_key_end_init(&mirror.key_end);
 	mirror.key_end = mirror.key_beg;
+
+	/*
+	 * Read initial packet
+	 */
+	mrec = read_mrecord(0, &error, &pickup);
+	if (mrec == NULL) {
+		if (error == 0)
+			fprintf(stderr, "validate_mrec_header: short read\n");
+		exit(1);
+	}
+	/*
+	 * Validate packet
+	 */
+	if (mrec->head.type == HAMMER_MREC_TYPE_TERM) {
+		return;
+	}
+	if (mrec->head.type != HAMMER_MREC_TYPE_PFSD) {
+		fprintf(stderr, "validate_mrec_header: did not get expected "
+				"PFSD record type\n");
+		exit(1);
+	}
+	if (mrec->head.rec_size != sizeof(mrec->pfs)) {
+		fprintf(stderr, "validate_mrec_header: unexpected payload "
+				"size\n");
+		exit(1);
+	}
+
+	/*
+	 * Create slave PFS if it doesn't yet exist
+	 */
+	if (lstat(filesystem, &st) != 0) {
+		create_pfs(filesystem, &mrec->pfs.pfsd.shared_uuid);
+	}
+	free(mrec);
+	mrec = NULL;
 
 	fd = getpfs(&pfs, filesystem);
 
@@ -1097,6 +1170,39 @@ writebw(int fd, const void *buf, size_t nbytes,
 	return(a ? a : r);
 }
 
+/*
+ * Get a yes or no answer from the terminal.  The program may be run as
+ * part of a two-way pipe so we cannot use stdin for this operation.
+ */
+static int
+getyn(void)
+{
+	char buf[256];
+	FILE *fp;
+	int result;
+
+	fp = fopen("/dev/tty", "r");
+	if (fp == NULL) {
+		fprintf(stderr, "No terminal for response\n");
+		return(-1);
+	}
+	result = -1;
+	while (fgets(buf, sizeof(buf), fp) != NULL) {
+		if (buf[0] == 'y' || buf[0] == 'Y') {
+			result = 1;
+			break;
+		}
+		if (buf[0] == 'n' || buf[0] == 'N') {
+			result = 0;
+			break;
+		}
+		fprintf(stderr, "Response not understood\n");
+		break;
+	}
+	fclose(fp);
+	return(result);
+}
+
 static void
 mirror_usage(int code)
 {
@@ -1112,3 +1218,4 @@ mirror_usage(int code)
 	);
 	exit(code);
 }
+

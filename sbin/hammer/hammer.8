@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.56 2008/10/22 20:15:55 swildner Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.57 2008/11/09 05:22:56 dillon Exp $
 .\"
 .Dd October 22, 2008
 .Dt HAMMER 8
@@ -618,6 +618,9 @@ Take a mirroring stream on stdin.
 This command will fail if the
 .Ar shared-uuid
 configuration field for the two file systems do not match.
+.Pp
+If the target PFS does not exist this command will ask you whether
+you want to create a compatible PFS slave for the target or not.
 .\" ==== mirror-dump ====
 .It Ar mirror-dump
 A
@@ -649,6 +652,9 @@ If the operation completes successfully the target PFS's
 will be updated.
 Note that you must re-chdir into the target PFS to see the updated information.
 If you do not you will still be in the previous snapshot.
+.Pp
+If the target PFS does not exist this command will ask you whether
+you want to create a compatible PFS slave for the target or not.
 .\" ==== mirror-stream ====
 .It Ar mirror-stream Ar [[user@]host:]filesystem Ar [[user@]host:]filesystem
 This command works similarly to
