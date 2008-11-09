@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.79 2008/11/09 09:48:41 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.80 2008/11/09 10:59:14 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -466,6 +466,8 @@ MLINKS+=pfil.9 pfil_add_hook.9 \
 	pfil.9 pfil_hook_get.9 \
 	pfil.9 pfil_remove_hook.9 \
 	pfil.9 pfil_run_hooks.9
+MLINKS+=physio.9 physread.9 \
+	physio.9 physwrite.9
 MLINKS+=posix4.9 p1003_1b.9
 MLINKS+=rman.9 rman_activate_resource.9 \
 	rman.9 rman_await_resource.9 \

@@ -68,35 +68,40 @@
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/physio.9,v 1.6.2.4 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/physio.9,v 1.4 2007/06/30 19:03:52 swildner Exp $
+.\" $DragonFly: src/share/man/man9/physio.9,v 1.5 2008/11/09 10:59:14 swildner Exp $
 .\"
-.Dd July 31, 2005
+.Dd November 9, 2008
 .Dt PHYSIO 9
 .Os
 .Sh NAME
-.Nm physio
+.Nm physread ,
+.Nm physwrite
 .Nd initiate I/O on raw devices
 .Sh SYNOPSIS
-.In sys/param.h
-.In sys/systm.h
 .In sys/buf.h
+.In sys/device.h
 .Ft int
-.Fn physio "dev_t dev" "struct uio *uio" "int ioflag"
+.Fn physread "struct dev_read_args *ap"
+.Ft int
+.Fn physwrite "struct dev_write_args *ap"
 .Sh DESCRIPTION
-The
-.Fn physio
-is a helper function typically called from character device read and write
+.Fn Physread
+and
+.Fn physwrite
+are helper functions typically called from character device read and write
 routines to start I/O on a user process buffer.
-It will call the
-.Xr BUF_STRATEGY 9
+They will call the
+.Fn dev_dstrategy
 routine one or more times depending on the size of transfer which is
 described by the
-.Fa uio
+.Fa ap
 argument.
 .Pp
 The maximum amount of data transferable in one iteration of the
-.Nm
-function is determined by the maximum I/O size supported by the device
+.Fn physread
+and
+.Fn physwrite
+functions is determined by the maximum I/O size supported by the device
 .Fa dev ,
 otherwise the value of
 .Dv DFLTPHYS
@@ -106,27 +111,27 @@ put to sleep with the wait message set to
 .Ql "physstr" .
 .Pp
 The
-.Nm
-function always awaits the completion of the entire requested transfer
+.Fn physread
+and
+.Fn physwrite
+functions always await the completion of the entire requested transfer
 before returning, unless an error condition is detected earlier.
 .Pp
-A break-down of the arguments follow:
-.Bl -tag -width indent
-.It Fa dev
-The device to interact with by using it as with the
-.Xr BUF_STRATEGY 9
-routine in order to initiate I/O.
-.It Fa uio
-The description of the entire transfer as requested by the user process.
-.It Fa ioflag
-Direction of transfer; the only valid settings are
-.Dv B_READ
+The
+.Fa ap
+argument is a pointer to a
+.Vt dev_read_args
 or
-.Dv B_WRITE .
-.El
+.Vt dev_write_args
+structure, as passed to
+.Nm d_read
+or
+.Nm d_write .
 .Sh RETURN VALUES
 If successful
-.Nm
+.Fn physread
+and
+.Fn physwrite
 will return 0.
 .Pp
 The
@@ -138,10 +143,11 @@ will be returned if the address range described by
 is not accessible by the calling process or thread.
 .Pp
 Note that the actual transfer size may be less than requested by
-.Fa uio
+.Fa ap
 if the device signals an
 .Dq end of file
 condition.
 .Sh SEE ALSO
 .Xr read 2 ,
-.Xr write 2
+.Xr write 2 ,
+.Xr uio 9
