@@ -69,7 +69,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.33 2008/09/02 16:17:54 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.34 2008/11/09 10:32:16 sephe Exp $
  */
 
 #include "opt_inet6.h"
@@ -336,7 +336,7 @@ syncache_init(void)
 			syncache_percpu->mrec[i].msg.nm_mrec =
 			    &syncache_percpu->mrec[i];
 			netmsg_init(&syncache_percpu->mrec[i].msg.nm_netmsg,
-				    &syncache_null_rport, 0,
+				    &syncache_null_rport, MSGF_PRIORITY,
 				    syncache_timer_handler);
 		}
 	}
