@@ -64,7 +64,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.40 2008/10/20 12:22:24 sephe Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.41 2008/11/09 10:50:15 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -155,7 +155,6 @@ route_init(void)
 		lwkt_create(rtable_service_loop, NULL, &rtd, NULL,
 			    0, cpu, "rtable_cpu %d", cpu);
 		rt_ports[cpu] = &rtd->td_msgport;
-		netmsg_service_port_init(rt_ports[cpu]);
 	}
 }
 
