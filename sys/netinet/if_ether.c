@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.57 2008/10/07 22:30:31 thomas Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.58 2008/11/09 10:18:42 sephe Exp $
  */
 
 /*
@@ -130,6 +130,7 @@ struct llinfo_arp {
 	LIST_ENTRY(llinfo_arp) la_le;
 	struct	rtentry *la_rt;
 	struct	mbuf *la_hold;	/* last packet until resolved/timeout */
+	struct	lwkt_port *la_msgport; /* last packet's msgport */
 	u_short	la_preempt;	/* countdown for pre-expiry arps */
 	u_short	la_asked;	/* #times we QUERIED following expiration */
 };
@@ -523,6 +524,10 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 	if (la->la_hold != NULL)
 		m_freem(la->la_hold);
 	la->la_hold = m;
+	if (curthread->td_flags & TDF_NETWORK)
+		la->la_msgport = &curthread->td_msgport;
+	else
+		la->la_msgport = cpu_portfn(mycpuid);
 	if (rt->rt_expire || ((rt->rt_flags & RTF_STATIC) && !sdl->sdl_alen)) {
 		rt->rt_flags &= ~RTF_REJECT;
 		if (la->la_asked == 0 || rt->rt_expire != time_second) {
@@ -609,6 +614,25 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, log_arp_wrong_iface, CTLFLAG_RW,
 	   "log arp packets arriving on the wrong interface");
 
 static void
+arp_hold_output(struct netmsg *nmsg)
+{
+	struct mbuf *m = ((struct netmsg_packet *)nmsg)->nm_packet;
+	struct rtentry *rt;
+	struct ifnet *ifp;
+
+	rt = nmsg->nm_lmsg.u.ms_resultp;
+	ifp = m->m_pkthdr.rcvif;
+	m->m_pkthdr.rcvif = NULL;
+
+	ifp->if_output(ifp, m, rt_key(rt), rt);
+
+	/* Drop the reference count bumped by the sender */
+	RTFREE(rt);
+
+	/* nmsg was embedded in the mbuf, do not reply! */
+}
+
+static void
 arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 		 boolean_t dologging)
 {
@@ -691,9 +715,34 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 		 * pending ARP resolution.  If so, transmit the mbuf now.
 		 */
 		if (la->la_hold != NULL) {
-			m_adj(la->la_hold, sizeof(struct ether_header));
-			ifp->if_output(ifp, la->la_hold, rt_key(rt), rt);
+			struct mbuf *m = la->la_hold;
+			struct lwkt_port *port = la->la_msgport;
+			struct netmsg_packet *pmsg;
+
 			la->la_hold = NULL;
+			la->la_msgport = NULL;
+
+			m_adj(m, sizeof(struct ether_header));
+
+			/*
+			 * Make sure that this rtentry will not be freed
+			 * before the packet is processed on the target
+			 * msgport.  The reference count will be dropped
+			 * in the handler associated with this packet.
+			 */
+			rt->rt_refcnt++;
+
+			pmsg = &m->m_hdr.mh_netmsg;
+			netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport,
+				    MSGF_PRIORITY | MSGF_MPSAFE,
+				    arp_hold_output);
+			pmsg->nm_packet = m;
+
+			/* Record necessary information */
+			m->m_pkthdr.rcvif = ifp;
+			pmsg->nm_netmsg.nm_lmsg.u.ms_resultp = rt;
+
+			lwkt_sendmsg(port, &pmsg->nm_netmsg.nm_lmsg);
 		}
 	}
 }
