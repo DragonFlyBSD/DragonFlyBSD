@@ -3,7 +3,7 @@
  *
  *	Implements Inlines for LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport2.h,v 1.16 2008/11/01 11:17:52 sephe Exp $
+ * $DragonFly: src/sys/sys/msgport2.h,v 1.17 2008/11/09 09:20:09 sephe Exp $
  */
 
 #ifndef _SYS_MSGPORT2_H_
@@ -98,6 +98,18 @@ int
 lwkt_checkmsg(lwkt_msg_t msg)
 {
     return(msg->ms_flags & MSGF_DONE);
+}
+
+static __inline
+void
+lwkt_dropmsg(lwkt_msg_t msg)
+{
+    lwkt_port_t port;
+
+    KKASSERT((msg->ms_flags & (MSGF_DROPABLE | MSGF_DONE | MSGF_QUEUED)) ==
+    	     (MSGF_DROPABLE | MSGF_QUEUED));
+    port = msg->ms_target_port;
+    port->mp_dropmsg(port, msg);
 }
 
 #endif	/* _KERNEL */

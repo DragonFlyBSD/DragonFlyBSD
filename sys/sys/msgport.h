@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.29 2008/09/09 07:21:57 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.30 2008/11/09 09:20:09 sephe Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -99,7 +99,9 @@ typedef struct lwkt_msg {
 #define MSGF_SYNC	0x0008		/* synchronous message operation */
 #define MSGF_INTRANSIT	0x0010		/* in-transit (IPI) */
 #define MSGF_NORESCHED	0x0020		/* do not reschedule target lwkt */
+#define MSGF_DROPABLE	0x0040		/* message supports drop */
 #define MSGF_ABORTABLE	0x0080		/* message supports abort */
+#define MSGF_PRIORITY	0x0100		/* priority message */
 
 #define MSGF_USER0	0x00010000
 #define MSGF_USER1	0x00020000
@@ -146,6 +148,7 @@ MALLOC_DECLARE(M_LWKTMSG);
  */
 typedef struct lwkt_port {
     lwkt_msg_queue	mp_msgq;
+    lwkt_msg_queue	mp_msgq_prio;
     int			mp_flags;
     union {
 	struct spinlock	spin;
@@ -158,6 +161,7 @@ typedef struct lwkt_port {
     int			(*mp_waitmsg)(lwkt_msg_t, int flags);
     void *		(*mp_waitport)(lwkt_port_t, int flags);
     void		(*mp_replyport)(lwkt_port_t, lwkt_msg_t);
+    void		(*mp_dropmsg)(lwkt_port_t, lwkt_msg_t);
 } lwkt_port;
 
 #ifdef _KERNEL
