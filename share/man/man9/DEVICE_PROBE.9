@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/DEVICE_PROBE.9,v 1.4.2.6 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/DEVICE_PROBE.9,v 1.4 2007/06/30 19:03:52 swildner Exp $
+.\" $DragonFly: src/share/man/man9/DEVICE_PROBE.9,v 1.5 2008/11/09 10:27:47 swildner Exp $
 .\"
 .Dd June 16, 1998
 .Dt DEVICE_PROBE 9
@@ -74,7 +74,7 @@ zero indicates an error
 .Va ( errno ) .
 For values equal to or less than
 zero: zero indicates highest priority, no further probing is done;
-for a value less then zero, the lower the value the lower the
+for a value less than zero, the lower the value the lower the
 priority, e.g. -100 indicates a lower priority than -50.
 .Sh SEE ALSO
 .Xr device 9 ,
