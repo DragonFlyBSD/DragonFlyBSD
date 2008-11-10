@@ -26,9 +26,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/ifstat.c,v 1.1 2003/01/04 22:07:24 phk Exp $
- * $DragonFly: src/usr.bin/systat/ifstat.c,v 1.4 2008/06/05 18:06:33 swildner Exp $
+ * $DragonFly: src/usr.bin/systat/ifstat.c,v 1.5 2008/11/10 04:59:45 swildner Exp $
  */
 
+#include <sys/cdefs.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
@@ -59,12 +60,11 @@
 #define C4	60		/* 60-80 */
 #define C5	80		/* Used for label positioning. */
 
-static	int col0 = 0;
-static	int col1 = C1;
-static	int col2 = C2;
-static	int col3 = C3;
-static	int col4 = C4;
-static	int col5 = C5;
+static const int col1 = C1;
+static const int col2 = C2;
+static const int col3 = C3;
+static const int col4 = C4;
+static const int col5 = C5;
 
 
 SLIST_HEAD(, if_stat)		curlist;	
@@ -248,7 +248,6 @@ fetchifstat(void)
 	struct	timeval tv, new_tv, old_tv;
 	double	elapsed = 0.0;
 	u_int	new_inb, new_outb, old_inb, old_outb = 0;
-	u_int	error = 0;
 	u_int	we_need_to_sort_interface_list = 0;
 
 	SLIST_FOREACH(ifp, &curlist, link) {
@@ -260,8 +259,7 @@ fetchifstat(void)
 		old_outb = ifp->if_mib.ifmd_data.ifi_obytes;
 		ifp->tv_lastchanged = ifp->if_mib.ifmd_data.ifi_lastchange;
 
-		error = gettimeofday(&new_tv, (struct timezone *)0);
-		if (error) 
+		if (gettimeofday(&new_tv, (struct timezone *)0) != 0)
 			IFSTAT_ERR(2, "error getting time of day");
 		(void)getifmibdata(ifp->if_row, &ifp->if_mib);
 
@@ -329,7 +327,7 @@ right_align_string(const struct if_stat *ifp)
 		str_len = strlen(ifp->if_mib.ifmd_name)+1;
 		pad_len = IF_NAMESIZE-(str_len);
 
-		newstr = (char *)ifp->if_name;
+		newstr = __DECONST(char *, ifp->if_name);
 		ptr = newstr + pad_len;
 		(void)memset((void *)newstr, (int)' ', IF_NAMESIZE);
 		(void)strncpy(ptr, (const char *)&ifp->if_mib.ifmd_name,
@@ -367,7 +365,6 @@ static
 unsigned int
 getifnum(void)
 {
-	int	error   = 0;
 	u_int	data    = 0;
 	size_t	datalen = 0;
 	static	int name[] = { CTL_NET,
@@ -377,13 +374,8 @@ getifnum(void)
 			       IFMIB_IFCOUNT };
 
 	datalen = sizeof(data);
-	error = sysctl(name, 
-		       5,
-		       (void *)&data,
-		       (size_t *)&datalen,
-		       NULL,
-		       (size_t)0);
-	if (error)
+	if (sysctl(name, 5, (void *)&data, (size_t *)&datalen, NULL,
+	    (size_t)0) != 0)
 		IFSTAT_ERR(1, "sysctl error");
 	return data;
 }
@@ -391,7 +383,6 @@ getifnum(void)
 static void 
 getifmibdata(int row, struct ifmibdata *data)
 {
-	int	error   = 0;
 	size_t	datalen = 0;
 	static	int name[] = { CTL_NET,
 			       PF_LINK,
@@ -402,19 +393,13 @@ getifmibdata(int row, struct ifmibdata *data)
 	datalen = sizeof(*data);
 	name[4] = row;
 
-	errno = 0;
-	error = sysctl(name,
-		       6,
-		       (void *)data,
-		       (size_t *)&datalen,
-		       NULL,
-		       (size_t)0);
-	if (error != 0 && errno != ENOENT)
+	if ((sysctl(name, 6, (void *)data, (size_t *)&datalen, NULL,
+	    (size_t)0) != 0) && (errno != ENOENT))
 		IFSTAT_ERR(2, "sysctl error getting interface data");
 }
 
 int
-cmdifstat(char *cmd, char *args)
+cmdifstat(const char *cmd, char *args)
 {
 	int	retval = 0;
 

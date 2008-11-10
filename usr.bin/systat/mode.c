@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/mode.c,v 1.2 1999/08/28 01:06:03 peter Exp $
- * $DragonFly: src/usr.bin/systat/mode.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/mode.c,v 1.3 2008/11/10 04:59:45 swildner Exp $
  */
 
 /*
@@ -70,7 +70,7 @@ enum mode currentmode = display_RATE;
 static const char *const modes[] = { "rate", "delta", "since", "absolute" };
 
 int
-cmdmode(char *cmd, char *args)
+cmdmode(const char *cmd, char *args)
 {
 	if (prefix(cmd, "mode")) {
 		if (args[0] == '\0') {

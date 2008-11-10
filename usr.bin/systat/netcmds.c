@@ -32,7 +32,7 @@
  *
  * @(#)netcmds.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/netcmds.c,v 1.9 1999/08/28 01:06:04 peter Exp $
- * $DragonFly: src/usr.bin/systat/netcmds.c,v 1.6 2008/10/16 01:52:33 swildner Exp $
+ * $DragonFly: src/usr.bin/systat/netcmds.c,v 1.7 2008/11/10 04:59:45 swildner Exp $
  */
 
 /*
@@ -76,7 +76,7 @@ static int selecthost(struct in_addr *, int);
 static void showhosts(void);
 
 int
-netcmd(char *cmd, char *args)
+netcmd(const char *cmd, char *args)
 {
 
 	if (prefix(cmd, "proto")) {
@@ -151,7 +151,7 @@ changeitems(char *args, int onoff)
 		hp = gethostbyname(args);
 		if (hp == 0) {
 			in.s_addr = inet_addr(args);
-			if (in.s_addr == -1) {
+			if ((int)in.s_addr == -1) {
 				error("%s: unknown host or port", args);
 				continue;
 			}
@@ -241,7 +241,7 @@ showports(void)
 
 	for (p = ports; p < ports+nports; p++) {
 		sp = getservbyport(p->port,
-		    protos == TCP|UDP ? 0 : protos == TCP ? "tcp" : "udp");
+		    protos == (TCP|UDP) ? 0 : protos == TCP ? "tcp" : "udp");
 		if (!p->onoff)
 			addch('!');
 		if (sp)

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/convtbl.c,v 1.1 2003/01/04 22:07:24 phk Exp $
- * $DragonFly: src/usr.bin/systat/convtbl.c,v 1.1 2003/11/08 09:30:32 asmodai Exp $
+ * $DragonFly: src/usr.bin/systat/convtbl.c,v 1.2 2008/11/10 04:59:45 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -88,7 +88,7 @@ convert(const u_long size, const u_int scale)
 
 }
 
-char *
+const char *
 get_string(const u_long size, const u_int scale)
 {
 	struct	convtbl *tp = NULL;

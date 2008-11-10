@@ -32,7 +32,7 @@
  *
  * @(#)vmstat.c	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/usr.bin/systat/vmstat.c,v 1.38.2.4 2002/03/12 19:50:23 phantom Exp $
- * $DragonFly: src/usr.bin/systat/vmstat.c,v 1.11 2008/10/16 01:52:33 swildner Exp $
+ * $DragonFly: src/usr.bin/systat/vmstat.c,v 1.12 2008/11/10 04:59:45 swildner Exp $
  */
 
 /*
@@ -101,7 +101,7 @@ static	enum state { BOOT, TIME, RUN } state = TIME;
 static void allocinfo(struct Info *);
 static void copyinfo(struct Info *, struct Info *);
 static void dinfo(int, int, struct statinfo *, struct statinfo *);
-static void getinfo(struct Info *, enum state);
+static void getinfo(struct Info *);
 static void putint(int, int, int, int);
 static void putfloat(double, int, int, int, int, int);
 static void putlongdouble(long double, int, int, int, int, int);
@@ -145,18 +145,18 @@ closekre(WINDOW *w)
 
 static struct nlist namelist[] = {
 #define	X_BUFFERSPACE	0
-	{ "_bufspace" },
+	{ .n_name = "_bufspace" },
 #define	X_NCHSTATS	1
-	{ "_nchstats" },
+	{ .n_name = "_nchstats" },
 #define	X_DESIREDVNODES	2
-	{ "_desiredvnodes" },
+	{ .n_name = "_desiredvnodes" },
 #define	X_NUMVNODES	3
-	{ "_numvnodes" },
+	{ .n_name = "_numvnodes" },
 #define	X_FREEVNODES	4
-	{ "_freevnodes" },
+	{ .n_name = "_freevnodes" },
 #define X_NUMDIRTYBUFFERS 5
-	{ "_dirtybufspace" },
-	{ "" },
+	{ .n_name = "_dirtybufspace" },
+	{ .n_name = "" },
 };
 
 /*
@@ -248,7 +248,7 @@ initkre(void)
 		allocinfo(&s2);
 		allocinfo(&z);
 	}
-	getinfo(&s2, RUN);
+	getinfo(&s2);
 	copyinfo(&s2, &s1);
 	return(1);
 }
@@ -267,7 +267,7 @@ fetchkre(void)
 	tp = localtime(&now);
 	(void) strftime(buf, sizeof(buf),
 			d_first ? "%e %b %R" : "%b %e %R", tp);
-	getinfo(&s, state);
+	getinfo(&s);
 }
 
 void
@@ -366,15 +366,15 @@ labelkre(void)
 }
 
 #define CP_UPDATE(fld)	do {	\
-	uint64_t t;		\
-	t=s.fld;		\
+	uint64_t lt;		\
+	lt=s.fld;		\
 	s.fld-=s1.fld;		\
 	if(state==TIME)		\
-		s1.fld=t;	\
-	t=fld;			\
+		s1.fld=lt;	\
+	lt=fld;			\
 	fld-=old_##fld;		\
 	if(state==TIME)		\
-		old_##fld=t;	\
+		old_##fld=lt;	\
 	etime += s.fld;		\
 } while(0)
 #define X(fld)	{t=s.fld[i]; s.fld[i]-=s1.fld[i]; if(state==TIME) s1.fld[i]=t;}
@@ -402,7 +402,7 @@ showkre(void)
 {
 	float f1, f2;
 	int psiz, inttotal;
-	int i, l, c;
+	int i, l, lc;
 	static int failcnt = 0;
 	double total_time;
 
@@ -461,19 +461,19 @@ showkre(void)
 
 	psiz = 0;
 	f2 = 0.0;
-	for (c = 0; c < CPUSTATES; c++) {
+	for (lc = 0; lc < CPUSTATES; lc++) {
 		uint64_t val = *(uint64_t *)(((uint8_t *)&s.cp_time) +
-		    cpuoffsets[c]);
+		    cpuoffsets[lc]);
 		f1 = 100.0 * val / total_time;
 		f2 += f1;
 		l = (int) ((f2 + 1.0) / 2.0) - psiz;
 		if (f1 > 99.9)
 			f1 = 99.9;	/* no room to display 100.0 */
-		putfloat(f1, GRAPHROW, GRAPHCOL + 10 * c, 4, 1, 0);
+		putfloat(f1, GRAPHROW, GRAPHCOL + 10 * lc, 4, 1, 0);
 		move(GRAPHROW + 2, psiz);
 		psiz += l;
 		while (l-- > 0)
-			addch(cpuchar[c]);
+			addch(cpuchar[lc]);
 	}
 
 	putint(ucount(), STATROW, STATCOL, 3);
@@ -547,22 +547,22 @@ showkre(void)
 	PUTRATE(Vmm.v_soft, GENSTATROW + 1, GENSTATCOL + 20, 5);
 	PUTRATE(Vmm.v_vm_faults, GENSTATROW + 1, GENSTATCOL + 25, 5);
 	mvprintw(DISKROW, DISKCOL + 5, "                              ");
-	for (i = 0, c = 0; i < num_devices && c < MAXDRIVES; i++)
+	for (i = 0, lc = 0; i < num_devices && lc < MAXDRIVES; i++)
 		if (dev_select[i].selected) {
 			char tmpstr[80];
 			sprintf(tmpstr, "%s%d", dev_select[i].device_name,
 				dev_select[i].unit_number);
-			mvprintw(DISKROW, DISKCOL + 5 + 6 * c,
+			mvprintw(DISKROW, DISKCOL + 5 + 6 * lc,
 				" %5.5s", tmpstr);
 			switch(state) {
 			case TIME:
-				dinfo(i, ++c, &cur, &last);
+				dinfo(i, ++lc, &cur, &last);
 				break;
 			case RUN:
-				dinfo(i, ++c, &cur, &run);
+				dinfo(i, ++lc, &cur, &run);
 				break;
 			case BOOT:
-				dinfo(i, ++c, &cur, NULL);
+				dinfo(i, ++lc, &cur, NULL);
 				break;
 			}
 		}
@@ -580,7 +580,7 @@ showkre(void)
 }
 
 int
-cmdkre(char *cmd, char *args)
+cmdkre(const char *cmd, char *args)
 {
 	int retval;
 
@@ -616,7 +616,7 @@ cmdkre(char *cmd, char *args)
 	if (prefix(cmd, "zero")) {
 		retval = 1;
 		if (state == RUN) {
-			getinfo(&s1, RUN);
+			getinfo(&s1);
 			switch (getdevs(&run)) {
 			case -1:
 				errx(1, "%s", devstat_errbuf);
@@ -659,18 +659,18 @@ ucount(void)
 }
 
 static void
-putint(int n, int l, int c, int w)
+putint(int n, int l, int lc, int w)
 {
 	char b[128];
 
-	move(l, c);
+	move(l, lc);
 	if (n == 0) {
 		while (w-- > 0)
 			addch(' ');
 		return;
 	}
 	snprintf(b, sizeof(b), "%*d", w, n);
-	if (strlen(b) > w) {
+	if (strlen(b) > (size_t)w) {
 		while (w-- > 0)
 			addch('*');
 		return;
@@ -679,20 +679,20 @@ putint(int n, int l, int c, int w)
 }
 
 static void
-putfloat(double f, int l, int c, int w, int d, int nz)
+putfloat(double f, int l, int lc, int w, int d, int nz)
 {
 	char b[128];
 
-	move(l, c);
+	move(l, lc);
 	if (nz && f == 0.0) {
 		while (--w >= 0)
 			addch(' ');
 		return;
 	}
 	snprintf(b, sizeof(b), "%*.*f", w, d, f);
-	if (strlen(b) > w)
+	if (strlen(b) > (size_t)w)
 		snprintf(b, sizeof(b), "%*.0f", w, f);
-	if (strlen(b) > w) {
+	if (strlen(b) > (size_t)w) {
 		while (--w >= 0)
 			addch('*');
 		return;
@@ -701,20 +701,20 @@ putfloat(double f, int l, int c, int w, int d, int nz)
 }
 
 static void
-putlongdouble(long double f, int l, int c, int w, int d, int nz)
+putlongdouble(long double f, int l, int lc, int w, int d, int nz)
 {
 	char b[128];
 
-	move(l, c);
+	move(l, lc);
 	if (nz && f == 0.0) {
 		while (--w >= 0)
 			addch(' ');
 		return;
 	}
 	sprintf(b, "%*.*Lf", w, d, f);
-	if (strlen(b) > w)
+	if (strlen(b) > (size_t)w)
 		sprintf(b, "%*.0Lf", w, f);
-	if (strlen(b) > w) {
+	if (strlen(b) > (size_t)w) {
 		while (--w >= 0)
 			addch('*');
 		return;
@@ -723,42 +723,42 @@ putlongdouble(long double f, int l, int c, int w, int d, int nz)
 }
 
 static void
-getinfo(struct Info *s, enum state st)
+getinfo(struct Info *ls)
 {
 	struct devinfo *tmp_dinfo;
 	struct nchstats *nch_tmp;
 	size_t size;
-	int vms_size = sizeof(s->Vms);
-	int vmm_size = sizeof(s->Vmm);
-	size_t nch_size = sizeof(s->nchstats) * SMP_MAXCPU;
+	size_t vms_size = sizeof(ls->Vms);
+	size_t vmm_size = sizeof(ls->Vmm);
+	size_t nch_size = sizeof(ls->nchstats) * SMP_MAXCPU;
 
-        if (sysctlbyname("vm.vmstats", &s->Vms, &vms_size, NULL, 0)) {
+        if (sysctlbyname("vm.vmstats", &ls->Vms, &vms_size, NULL, 0)) {
                 perror("sysctlbyname: vm.vmstats");
                 exit(1);
         }
-        if (sysctlbyname("vm.vmmeter", &s->Vmm, &vmm_size, NULL, 0)) {
+        if (sysctlbyname("vm.vmmeter", &ls->Vmm, &vmm_size, NULL, 0)) {
                 perror("sysctlbyname: vm.vmstats");
                 exit(1);
         }
 
-	if (kinfo_get_sched_cputime(&s->cp_time))
+	if (kinfo_get_sched_cputime(&ls->cp_time))
 		err(1, "kinfo_get_sched_cputime");
 	if (kinfo_get_sched_cputime(&cp_time))
 		err(1, "kinfo_get_sched_cputime");
-	NREAD(X_BUFFERSPACE, &s->bufspace, sizeof(s->bufspace));
-	NREAD(X_DESIREDVNODES, &s->desiredvnodes, sizeof(s->desiredvnodes));
-	NREAD(X_NUMVNODES, &s->numvnodes, LONG);
-	NREAD(X_FREEVNODES, &s->freevnodes, LONG);
-	NREAD(X_NUMDIRTYBUFFERS, &s->dirtybufspace, sizeof(s->dirtybufspace));
+	NREAD(X_BUFFERSPACE, &ls->bufspace, sizeof(ls->bufspace));
+	NREAD(X_DESIREDVNODES, &ls->desiredvnodes, sizeof(ls->desiredvnodes));
+	NREAD(X_NUMVNODES, &ls->numvnodes, LONG);
+	NREAD(X_FREEVNODES, &ls->freevnodes, LONG);
+	NREAD(X_NUMDIRTYBUFFERS, &ls->dirtybufspace, sizeof(ls->dirtybufspace));
 
 	if (nintr) {
-		size = nintr * sizeof(s->intrcnt[0]);
-		sysctlbyname("hw.intrcnt", s->intrcnt, &size, NULL, 0);
+		size = nintr * sizeof(ls->intrcnt[0]);
+		sysctlbyname("hw.intrcnt", ls->intrcnt, &size, NULL, 0);
 	}
-	size = sizeof(s->Total);
-	if (sysctlbyname("vm.vmtotal", &s->Total, &size, NULL, 0) < 0) {
+	size = sizeof(ls->Total);
+	if (sysctlbyname("vm.vmtotal", &ls->Total, &size, NULL, 0) < 0) {
 		error("Can't get kernel info: %s\n", strerror(errno));
-		bzero(&s->Total, sizeof(s->Total));
+		bzero(&ls->Total, sizeof(ls->Total));
 	}
 	
 	if ((nch_tmp = malloc(nch_size)) == NULL) {
@@ -779,7 +779,7 @@ getinfo(struct Info *s, enum state st)
 
 	if (kinfo_get_cpus(&ncpu))
 		err(1, "kinfo_get_cpus");
-	kvm_nch_cpuagg(nch_tmp, &s->nchstats, ncpu);
+	kvm_nch_cpuagg(nch_tmp, &ls->nchstats, ncpu);
 	free(nch_tmp);
 
 	tmp_dinfo = last.dinfo;
@@ -802,10 +802,10 @@ getinfo(struct Info *s, enum state st)
 }
 
 static void
-allocinfo(struct Info *s)
+allocinfo(struct Info *ls)
 {
-	s->intrcnt = (long *) calloc(nintr, sizeof(long));
-	if (s->intrcnt == NULL)
+	ls->intrcnt = (long *) calloc(nintr, sizeof(long));
+	if (ls->intrcnt == NULL)
 		errx(2, "out of memory");
 }
 
@@ -826,7 +826,7 @@ copyinfo(struct Info *from, struct Info *to)
 }
 
 static void
-dinfo(int dn, int c, struct statinfo *now, struct statinfo *then)
+dinfo(int dn, int lc, struct statinfo *now, struct statinfo *then)
 {
 	long double transfers_per_second;
 	long double kb_per_transfer, mb_per_second;
@@ -860,9 +860,9 @@ dinfo(int dn, int c, struct statinfo *now, struct statinfo *then)
 		 * where the device has been 100% busy, correct it */
 		device_busy = elapsed_time;
 
-	c = DISKCOL + c * 6;
-	putlongdouble(kb_per_transfer, DISKROW + 1, c, 5, 2, 0);
-	putlongdouble(transfers_per_second, DISKROW + 2, c, 5, 0, 0);
-	putlongdouble(mb_per_second, DISKROW + 3, c, 5, 2, 0);
-	putlongdouble(device_busy * 100 / elapsed_time, DISKROW + 4, c, 5, 0, 0);
+	lc = DISKCOL + lc * 6;
+	putlongdouble(kb_per_transfer, DISKROW + 1, lc, 5, 2, 0);
+	putlongdouble(transfers_per_second, DISKROW + 2, lc, 5, 0, 0);
+	putlongdouble(mb_per_second, DISKROW + 3, lc, 5, 2, 0);
+	putlongdouble(device_busy * 100 / elapsed_time, DISKROW + 4, lc, 5, 0, 0);
 }

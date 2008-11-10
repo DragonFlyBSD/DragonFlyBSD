@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/main.c,v 1.11.2.1 2001/06/06 20:26:01 tmm Exp $
- * $DragonFly: src/usr.bin/systat/main.c,v 1.6 2008/10/16 01:52:33 swildner Exp $
+ * $DragonFly: src/usr.bin/systat/main.c,v 1.7 2008/11/10 04:59:45 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -53,10 +53,10 @@
 static struct nlist namelist[] = {
 #define X_FIRST		0
 #define	X_HZ		0
-	{ "_hz" },
+	{ .n_name = "_hz" },
 #define	X_STATHZ		1
-	{ "_stathz" },
-	{ "" }
+	{ .n_name = "_stathz" },
+	{ .n_name = "" }
 };
 static int     dellave;
 
@@ -170,7 +170,7 @@ labels(void)
 }
 
 void
-display(int signo)
+display(int signo __unused)
 {
 	int i, j;
 	struct itimerval ctv;
@@ -212,7 +212,7 @@ load(void)
 }
 
 void
-die(int signo)
+die(int signo __unused)
 {
 	move(CMDLINE, 0);
 	clrtoeol();
@@ -248,7 +248,7 @@ error(const char *fmt, ...)
 }
 
 void
-nlisterr(struct nlist *namelist)
+nlisterr(struct nlist *n_list)
 {
 	int i, n;
 
@@ -256,9 +256,9 @@ nlisterr(struct nlist *namelist)
 	clear();
 	mvprintw(2, 10, "systat: nlist: can't find following symbols:");
 	for (i = 0;
-	    namelist[i].n_name != NULL && *namelist[i].n_name != '\0'; i++)
-		if (namelist[i].n_value == 0)
-			mvprintw(2 + ++n, 10, "%s", namelist[i].n_name);
+	    n_list[i].n_name != NULL && *n_list[i].n_name != '\0'; i++)
+		if (n_list[i].n_value == 0)
+			mvprintw(2 + ++n, 10, "%s", n_list[i].n_name);
 	move(CMDLINE, 0);
 	clrtoeol();
 	refresh();

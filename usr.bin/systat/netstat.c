@@ -32,7 +32,7 @@
  *
  * @(#)netstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/netstat.c,v 1.13 1999/08/30 08:18:08 peter Exp $
- * $DragonFly: src/usr.bin/systat/netstat.c,v 1.10 2008/10/16 01:52:33 swildner Exp $
+ * $DragonFly: src/usr.bin/systat/netstat.c,v 1.11 2008/11/10 04:59:45 swildner Exp $
  */
 
 /*
@@ -370,13 +370,14 @@ shownetstat(void)
 		mvwaddstr(wnd, p->ni_line, PROTO, p->ni_proto);
 		mvwprintw(wnd, p->ni_line, RCVCC, "%6d", p->ni_rcvcc);
 		mvwprintw(wnd, p->ni_line, SNDCC, "%6d", p->ni_sndcc);
-		if (streq(p->ni_proto, "tcp"))
+		if (streq(p->ni_proto, "tcp")) {
 			if (p->ni_state < 0 || p->ni_state >= TCP_NSTATES)
 				mvwprintw(wnd, p->ni_line, STATE, "%d",
 				    p->ni_state);
 			else
 				mvwaddstr(wnd, p->ni_line, STATE,
 				    tcpstates[p->ni_state]);
+		}
 		wclrtoeol(wnd);
 	}
 	if (lastrow < YMAX(wnd)) {
@@ -455,7 +456,7 @@ inetname(struct in_addr in)
 }
 
 int
-cmdnetstat(char *cmd, char *args)
+cmdnetstat(const char *cmd, char *args)
 {
 	struct netinfo *p;
 

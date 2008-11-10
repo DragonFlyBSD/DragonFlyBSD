@@ -1,5 +1,5 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
-#	$DragonFly: src/usr.bin/systat/Makefile,v 1.6 2007/10/02 12:57:01 hasso Exp $
+#	$DragonFly: src/usr.bin/systat/Makefile,v 1.7 2008/11/10 04:59:45 swildner Exp $
 
 PROG=	systat
 CFLAGS+=-DINET6 -I${.CURDIR}/../../sys
@@ -10,6 +10,6 @@ DPADD=	${LIBCURSES} ${LIBTERMCAP} ${LIBM} ${LIBKVM} ${LIBDEVSTAT} ${LIBKINFO}
 LDADD=	-lcurses -ltermcap -lm -lkvm -ldevstat -lkinfo
 BINGRP=	kmem
 BINMODE=2555
-WARNS?=	0
+WARNS?=	6
 
 .include <bsd.prog.mk>

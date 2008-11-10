@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *      @(#)extern.h	8.1 (Berkeley) 6/6/93
- * $DragonFly: src/usr.bin/systat/extern.h,v 1.7 2007/10/02 12:57:01 hasso Exp $
+ * $DragonFly: src/usr.bin/systat/extern.h,v 1.8 2008/11/10 04:59:45 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -84,12 +84,12 @@ void	 closepigs(WINDOW *);
 void	 closesensors(WINDOW *);
 void	 closeswap(WINDOW *);
 void	 closetcp(WINDOW *);
-int	 cmdiostat(char *, char *);
-int	 cmdifstat(char *, char *);
-int	 cmdkre(char *, char *);
-int	 cmdnetstat(char *, char *);
-struct	 cmdtab *lookup(char *);
-void	 command(char *);
+int	 cmdiostat(const char *, char *);
+int	 cmdifstat(const char *, char *);
+int	 cmdkre(const char *, char *);
+int	 cmdnetstat(const char *, char *);
+struct	 cmdtab *lookup(const char *);
+void	 command(const char *);
 void	 die(int);
 void	 display(int);
 int	 dkinit(void);
@@ -108,6 +108,7 @@ void	 fetchpigs(void);
 void	 fetchsensors(void);
 void	 fetchswap(void);
 void	 fetchtcp(void);
+int	 ifcmd(const char *, const char *);
 int	 initicmp(void);
 int	 initicmp6(void);
 int      initifstat(void);
@@ -138,7 +139,7 @@ void	 labelsensors(void);
 void	 labelswap(void);
 void	 labeltcp(void);
 void	 load(void);
-int	 netcmd(char *, char *);
+int	 netcmd(const char *, char *);
 void	 nlisterr(struct nlist []);
 WINDOW	*openicmp(void);
 WINDOW	*openicmp6(void);
@@ -153,7 +154,7 @@ WINDOW	*openpigs(void);
 WINDOW	*opensensors(void);
 WINDOW	*openswap(void);
 WINDOW	*opentcp(void);
-int	 prefix(char *, char *);
+int	 prefix(const char *, const char *);
 void	 reseticmp(void);
 void	 reseticmp6(void);
 void	 resetip(void);

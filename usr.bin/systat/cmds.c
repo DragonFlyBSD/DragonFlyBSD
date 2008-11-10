@@ -32,7 +32,7 @@
  *
  * @(#)cmds.c	8.2 (Berkeley) 4/29/95
  * $FreeBSD: src/usr.bin/systat/cmds.c,v 1.3 1999/08/28 01:05:58 peter Exp $
- * $DragonFly: src/usr.bin/systat/cmds.c,v 1.5 2008/10/16 01:52:33 swildner Exp $
+ * $DragonFly: src/usr.bin/systat/cmds.c,v 1.6 2008/11/10 04:59:45 swildner Exp $
  */
 
 #include <stdlib.h>
@@ -44,7 +44,7 @@
 #include "extern.h"
 
 void
-command(char *cmd)
+command(const char *cmd)
 {
         struct cmdtab *p;
         char *cp;
@@ -52,7 +52,7 @@ command(char *cmd)
 	double interval;
 
 	omask = sigblock(sigmask(SIGALRM));
-        for (cp = cmd; *cp && !isspace(*cp); cp++)
+        for (cp = __DECONST(char *, cmd); *cp && !isspace(*cp); cp++)
                 ;
         if (*cp)
                 *cp++ = '\0';
@@ -73,15 +73,15 @@ command(char *cmd)
 		goto done;
         }
 	if (strcmp(cmd, "help") == 0) {
-		int col, len;
+		int _col, _len;
 
-		move(CMDLINE, col = 0);
+		move(CMDLINE, _col = 0);
 		for (p = cmdtab; p->c_name; p++) {
-			len = strlen(p->c_name);
-			if (col + len > COLS)
+			_len = strlen(p->c_name);
+			if (_col + _len > COLS)
 				break;
-			addstr(p->c_name); col += len;
-			if (col + 1 < COLS)
+			addstr(p->c_name); _col += _len;
+			if (_col + 1 < COLS)
 				addch(' ');
 		}
 		clrtoeol();
@@ -142,24 +142,24 @@ done:
 }
 
 struct cmdtab *
-lookup(char *name)
+lookup(const char *name)
 {
-	char *p, *q;
-	struct cmdtab *c, *found;
+	const char *p, *q;
+	struct cmdtab *ct, *found;
 	int nmatches, longest;
 
 	longest = 0;
 	nmatches = 0;
 	found = (struct cmdtab *) 0;
-	for (c = cmdtab; p = c->c_name; c++) {
+	for (ct = cmdtab; (p = ct->c_name); ct++) {
 		for (q = name; *q == *p++; q++)
 			if (*q == 0)		/* exact match? */
-				return (c);
+				return (ct);
 		if (!*q) {			/* the name was a prefix */
 			if (q - name > longest) {
 				longest = q - name;
 				nmatches = 1;
-				found = c;
+				found = ct;
 			} else if (q - name == longest)
 				nmatches++;
 		}
@@ -178,7 +178,7 @@ status(void)
 }
 
 int
-prefix(char *s1, char *s2)
+prefix(const char *s1, const char *s2)
 {
 
         while (*s1 == *s2) {

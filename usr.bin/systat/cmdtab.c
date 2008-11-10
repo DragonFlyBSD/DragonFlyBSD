@@ -32,7 +32,7 @@
  *
  * @(#)cmdtab.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/cmdtab.c,v 1.5 1999/08/28 01:05:59 peter Exp $
- * $DragonFly: src/usr.bin/systat/cmdtab.c,v 1.5 2007/10/02 12:57:01 hasso Exp $
+ * $DragonFly: src/usr.bin/systat/cmdtab.c,v 1.6 2008/11/10 04:59:45 swildner Exp $
  */
 
 #include "systat.h"
@@ -41,23 +41,23 @@
 
 struct	cmdtab cmdtab[] = {
         { "pigs",	showpigs,	fetchpigs,	labelpigs,
-	  initpigs,	openpigs,	closepigs,	0,
-	  0,		CF_LOADAV },
+	  initpigs,	openpigs,	closepigs,	NULL,
+	  NULL,		CF_LOADAV },
         { "swap",	showswap,	fetchswap,	labelswap,
-	  initswap,	openswap,	closeswap,	0,
-	  0,		CF_LOADAV },
+	  initswap,	openswap,	closeswap,	NULL,
+	  NULL,		CF_LOADAV },
         { "mbufs",	showmbufs,	fetchmbufs,	labelmbufs,
-	  initmbufs,	openmbufs,	closembufs,	0,
-	  0,		CF_LOADAV },
+	  initmbufs,	openmbufs,	closembufs,	NULL,
+	  NULL,		CF_LOADAV },
         { "iostat",	showiostat,	fetchiostat,	labeliostat,
 	  initiostat,	openiostat,	closeiostat,	cmdiostat,
-	  0,		CF_LOADAV },
+	  NULL,		CF_LOADAV },
         { "vmstat",	showkre,	fetchkre,	labelkre,
 	  initkre,	openkre,	closekre,	cmdkre,
-	  0,		0 },
+	  NULL,		0 },
         { "netstat",	shownetstat,	fetchnetstat,	labelnetstat,
 	  initnetstat,	opennetstat,	closenetstat,	cmdnetstat,
-	  0,		CF_LOADAV },
+	  NULL,		CF_LOADAV },
 	{ "icmp",	showicmp,	fetchicmp,	labelicmp,
 	  initicmp,	openicmp,	closeicmp,	cmdmode,
 	  reseticmp,	CF_LOADAV },
@@ -69,7 +69,7 @@ struct	cmdtab cmdtab[] = {
 	  resettcp,	CF_LOADAV },
 	{ "ifstat",     showifstat,     fetchifstat,    labelifstat,
           initifstat,   openifstat,     closeifstat,    cmdifstat,
-          0,            CF_LOADAV },
+          NULL,		CF_LOADAV },
 	{ "ip6",	showip6,	fetchip6,	labelip6,
 	  initip6,	openip6,	closeip6,	cmdmode,
 	  resetip6,	CF_LOADAV },
@@ -77,8 +77,8 @@ struct	cmdtab cmdtab[] = {
 	  initicmp6,	openicmp6,	closeicmp6,	cmdmode,
 	  reseticmp6,	CF_LOADAV },
 	{ "sensors",	showsensors,	fetchsensors,	labelsensors,
-	  initsensors,	opensensors,	closesensors,	0,
-	  0,		CF_LOADAV },
-        { 0 }
+	  initsensors,	opensensors,	closesensors,	NULL,
+	  NULL,		CF_LOADAV },
+        { .c_name = NULL }
 };
 struct  cmdtab *curcmd = &cmdtab[0];

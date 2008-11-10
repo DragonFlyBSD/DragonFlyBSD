@@ -32,7 +32,7 @@
  *
  * @(#)mbufs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/mbufs.c,v 1.10.2.1 2000/08/26 09:36:55 ps Exp $
- * $DragonFly: src/usr.bin/systat/mbufs.c,v 1.7 2008/10/16 01:52:33 swildner Exp $
+ * $DragonFly: src/usr.bin/systat/mbufs.c,v 1.8 2008/11/10 04:59:45 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -54,7 +54,7 @@ static int nmbtypes;
 
 static struct mtnames {
 	int mt_type;
-	char *mt_name;
+	const char *mt_name;
 } mtnames[] = {
 	{ MT_DATA, 	"data"},
 	{ MT_HEADER,	"headers"},
@@ -92,14 +92,15 @@ labelmbufs(void)
 void
 showmbufs(void)
 {
-	int i, j, max, index;
+	int i, j, idx;
+	u_long max;
 	char buf[10];
-	char *mtname;
+	const char *mtname;
 
 	if (mb == 0)
 		return;
 	for (j = 0; j < wnd->_maxy; j++) {
-		max = 0, index = -1;
+		max = 0, idx = -1;
 		for (i = 0; i < wnd->_maxy; i++) {
 			if (i == MT_FREE)
 				continue;
@@ -107,23 +108,23 @@ showmbufs(void)
 				break;
 			if (m_mbtypes[i] > max) {
 				max = m_mbtypes[i];
-				index = i;
+				idx = i;
 			}
 		}
 		if (max == 0)
 			break;
 
 		mtname = NULL;
-		for (i = 0; i < NNAMES; i++)
-			if (mtnames[i].mt_type == index)
+		for (i = 0; i < (int)NNAMES; i++)
+			if (mtnames[i].mt_type == idx)
 				mtname = mtnames[i].mt_name;
 		if (mtname == NULL)
-			mvwprintw(wnd, 1+j, 0, "%10d", index);
+			mvwprintw(wnd, 1+j, 0, "%10d", idx);
 		else
 			mvwprintw(wnd, 1+j, 0, "%-10.10s", mtname);
 		wmove(wnd, 1 + j, 10);
 		if (max > 60) {
-			snprintf(buf, sizeof(buf), " %d", max);
+			snprintf(buf, sizeof(buf), " %lu", max);
 			max = 60;
 			while (max--)
 				waddch(wnd, 'X');
@@ -132,8 +133,8 @@ showmbufs(void)
 			while (max--)
 				waddch(wnd, 'X');
 		wclrtoeol(wnd);
-		mb->m_mbufs -= m_mbtypes[index];
-		m_mbtypes[index] = 0;
+		mb->m_mbufs -= m_mbtypes[idx];
+		m_mbtypes[idx] = 0;
 	}
 	if (mb->m_mbufs) {
 		mvwprintw(wnd, 1+j, 0, "%-10.10s", "free");

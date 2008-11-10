@@ -32,7 +32,7 @@
  *
  * @(#)pigs.c	8.2 (Berkeley) 9/23/93
  *
- * $DragonFly: src/usr.bin/systat/pigs.c,v 1.15 2008/10/16 01:52:33 swildner Exp $
+ * $DragonFly: src/usr.bin/systat/pigs.c,v 1.16 2008/11/10 04:59:45 swildner Exp $
  */
 
 /*
@@ -46,6 +46,7 @@
 #include <sys/sysctl.h>
 
 #include <curses.h>
+#include <err.h>
 #include <kinfo.h>
 #include <math.h>
 #include <nlist.h>
@@ -90,7 +91,8 @@ showpigs(void)
 	int i, j, y, k;
 	float total;
 	int factor;
-	char *uname, *pname, pidname[30];
+	const char *uname, *pname;
+	char pidname[30];
 
 	if (pt == NULL)
 		return;
@@ -111,7 +113,6 @@ showpigs(void)
 	if (i > wnd->_maxy-1)
 		i = wnd->_maxy-1;
 	for (k = 0; i > 0; i--, y++, k++) {
-		char buf[256];
 		if (pt[k].pt_pctcpu <= 0.01 &&
 		    (pt[k].pt_kp == NULL ||
 		    pt[k].pt_kp->kp_lwp.kl_slptime > 1)
@@ -141,9 +142,9 @@ showpigs(void)
 static struct nlist namelist[] = {
 #define X_FIRST		0
 #define X_FSCALE        0
-	{ "_fscale" },
+	{ .n_name = "_fscale" },
 
-	{ "" }
+	{ .n_name = "" }
 };
 
 int
@@ -176,7 +177,7 @@ void
 fetchpigs(void)
 {
 	int i;
-	float time;
+	float ftime;
 	float *pctp;
 	struct kinfo_proc *kpp, *pp;
 	struct kinfo_cputime cp_time, diff_cp_time;
@@ -207,12 +208,12 @@ fetchpigs(void)
 		pt[i].pt_kp = &kpp[i];
 		pp = &kpp[i];
 		pctp = &pt[i].pt_pctcpu;
-		time = pp->kp_swtime;
-		if (time == 0 || (pp->kp_flags & P_SWAPPEDOUT))
+		ftime = pp->kp_swtime;
+		if (ftime == 0 || (pp->kp_flags & P_SWAPPEDOUT))
 			*pctp = 0;
 		else
 			*pctp = ((double) pp->kp_lwp.kl_pctcpu /
-					fscale) / (1.0 - exp(time * lccpu));
+					fscale) / (1.0 - exp(ftime * lccpu));
 	}
 	/*
 	 * and for the imaginary "idle" process
@@ -246,8 +247,8 @@ labelpigs(void)
 int
 compar(const void *a, const void *b)
 {
-	struct p_times *pta = (struct p_times *)a;
-	struct p_times *ptb = (struct p_times *)b;
+	const struct p_times *pta = (const struct p_times *)a;
+	const struct p_times *ptb = (const struct p_times *)b;
 	float d;
 
 	/*
@@ -284,5 +285,3 @@ compar(const void *a, const void *b)
 	}
 	return(0);
 }
-
-

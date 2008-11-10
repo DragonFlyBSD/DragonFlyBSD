@@ -32,7 +32,7 @@
  *
  * @(#)swap.c	8.3 (Berkeley) 4/29/95
  * $FreeBSD: src/usr.bin/systat/swap.c,v 1.12.2.2 2001/07/04 22:54:14 kris Exp $
- * $DragonFly: src/usr.bin/systat/swap.c,v 1.4 2008/10/16 01:52:33 swildner Exp $
+ * $DragonFly: src/usr.bin/systat/swap.c,v 1.5 2008/11/10 04:59:45 swildner Exp $
  */
 
 /*
@@ -55,7 +55,6 @@
 #include "systat.h"
 #include "extern.h"
 
-extern char *getbsize(int *headerlenp, long *blocksizep);
 void showspace(char *header, int hlen, long blocksize);
 
 kvm_t	*kd;
@@ -88,11 +87,8 @@ closeswap(WINDOW *w)
 int
 initswap(void)
 {
-	int i;
 	char msgbuf[BUFSIZ];
-	char *cp;
 	static int once = 0;
-	u_long ptr;
 	struct kvm_swap dummy;
 
 	if (once)
@@ -120,7 +116,7 @@ fetchswap(void)
 void
 labelswap(void)
 {
-	char *header, *p;
+	char *header;
 	int row, i;
 
 	fetchswap();
@@ -146,7 +142,7 @@ showswap(void)
 #define CONVERT(v)      ((int)((quad_t)(v) * pagesize / blocksize))
 
 	for (i = 0; i <= kvnsw; ++i) {
-		int col = 5;
+		int _col = 5;
 		int count;
 
 		if (i == kvnsw) {
@@ -155,17 +151,17 @@ showswap(void)
 			mvwprintw(
 			    wnd,
 			    i + 1,
-			    col,
+			    _col,
 			    "%-5s",
 			    "Total"
 			);
-			col += 5;
+			_col += 5;
 		}
 		if (kvmsw[i].ksw_total == 0) {
 			mvwprintw(
 			    wnd,
 			    i + 1,
-			    col + 5,
+			    _col + 5,
 			    "(swap not configured)"
 			);
 			continue;
@@ -174,17 +170,17 @@ showswap(void)
 		mvwprintw(
 		    wnd, 
 		    i + 1, 
-		    col,
+		    _col,
 		    "%*d",
 		    hlen, 
 		    CONVERT(kvmsw[i].ksw_total)
 		);
-		col += hlen;
+		_col += hlen;
 
 		mvwprintw(
 		    wnd,
 		    i + 1,
-		    col, 
+		    _col, 
 		    "%9d  ",
 		    CONVERT(kvmsw[i].ksw_used)
 		);

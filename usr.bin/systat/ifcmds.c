@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/ifcmds.c,v 1.1 2003/01/04 22:07:24 phk Exp $
- * $DragonFly: src/usr.bin/systat/ifcmds.c,v 1.1 2003/11/08 09:30:32 asmodai Exp $
+ * $DragonFly: src/usr.bin/systat/ifcmds.c,v 1.2 2008/11/10 04:59:45 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -40,6 +40,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <float.h>
 #include <err.h>
@@ -56,7 +57,7 @@ static	int selectscale(const char *);
 int
 ifcmd(const char *cmd, const char *args)
 {
-	if (prefix((char *)cmd, (char *)"scale")) {
+	if (prefix(cmd, "scale")) {
 		if (*args != '\0' && selectscale(args) != -1)
 			;
 		else {

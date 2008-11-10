@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/devs.c,v 1.4 1999/08/28 01:05:59 peter Exp $
- * $DragonFly: src/usr.bin/systat/devs.c,v 1.7 2008/10/16 01:52:33 swildner Exp $
+ * $DragonFly: src/usr.bin/systat/devs.c,v 1.8 2008/11/10 04:59:45 swildner Exp $
  */
 /*
  * Some code and ideas taken from the old disks.c.
@@ -100,8 +100,8 @@ static int dsselect(char *args, devstat_select_mode select_mode,
 		    int maxshowdevs, struct statinfo *s1);
 
 int
-dsinit(int maxshowdevs, struct statinfo *s1, struct statinfo *s2,
-       struct statinfo *s3)
+dsinit(int maxshowdevs, struct statinfo *s1, struct statinfo *s2 __unused,
+       struct statinfo *s3 __unused)
 {
 
 	/*
@@ -142,7 +142,7 @@ dsinit(int maxshowdevs, struct statinfo *s1, struct statinfo *s2,
 }
 
 int
-dscmd(char *cmd, char *args, int maxshowdevs, struct statinfo *s1)
+dscmd(const char *cmd, char *args, int maxshowdevs, struct statinfo *s1)
 {
 	int retval;
 

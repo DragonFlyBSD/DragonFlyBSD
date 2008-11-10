@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/mode.h,v 1.2 1999/08/28 01:06:03 peter Exp $
- * $DragonFly: src/usr.bin/systat/mode.h,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/mode.h,v 1.3 2008/11/10 04:59:45 swildner Exp $
  */
 
 /*
@@ -39,7 +39,7 @@
 
 enum mode { display_RATE, display_DELTA, display_SINCE, display_ABS };
 
-extern	int		cmdmode(char *cmd, char *args);
+extern	int		cmdmode(const char *cmd, char *args);
 extern	enum mode	currentmode;
 
 #endif /* MODE_H */

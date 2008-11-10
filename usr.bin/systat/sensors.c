@@ -1,5 +1,5 @@
 /* $OpenBSD: sensors.c,v 1.11 2007/03/23 14:48:22 ckuethe Exp $ */
-/* $DragonFly: src/usr.bin/systat/sensors.c,v 1.1 2007/10/02 12:57:01 hasso Exp $ */
+/* $DragonFly: src/usr.bin/systat/sensors.c,v 1.2 2008/11/10 04:59:45 swildner Exp $ */
 
 /*
  * Copyright (c) 2007 Deanna Phillips <deanna@openbsd.org>
@@ -162,7 +162,7 @@ printline(void)
 		break;
 	case SENSOR_DRIVE:
 		if (0 < sensor.value &&
-		    sensor.value < sizeof(drvstat)/sizeof(drvstat[0])) {
+		    (size_t)sensor.value < sizeof(drvstat)/sizeof(drvstat[0])) {
 			mvwprintw(wnd, row, 24, "%15s", drvstat[sensor.value]);
 			break;
 		}
@@ -211,7 +211,7 @@ fmttime(double in)
 {
 	int signbit = 1;
 	int tiny = 0;
-	char *unit;
+	const char *unit;
 #define LEN 32
 	static char outbuf[LEN];
 

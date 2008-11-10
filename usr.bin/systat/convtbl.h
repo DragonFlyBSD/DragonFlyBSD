@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/convtbl.h,v 1.1 2003/01/04 22:07:24 phk Exp $
- * $DragonFly: src/usr.bin/systat/convtbl.h,v 1.1 2003/11/08 09:30:32 asmodai Exp $
+ * $DragonFly: src/usr.bin/systat/convtbl.h,v 1.2 2008/11/10 04:59:45 swildner Exp $
  */
 
 #ifndef _CONVTBL_H_
@@ -56,13 +56,13 @@
 struct convtbl {
 	u_int	 mul;
 	u_int	 scale;
-	char	*str;
+	const char *str;
 };
 
 extern	struct convtbl convtbl[];
 
 extern	double 	 convert(const u_long, const u_int);
-extern	char	*get_string(const u_long, const u_int);
+extern	const char *get_string(const u_long, const u_int);
 
 #endif		/* ! _CONVTBL_H_ */
 /*

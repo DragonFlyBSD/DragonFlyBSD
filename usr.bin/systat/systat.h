@@ -32,20 +32,20 @@
  *
  *	From: @(#)systat.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/systat.h,v 1.3 1999/08/28 01:06:05 peter Exp $
- * $DragonFly: src/usr.bin/systat/systat.h,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/systat.h,v 1.3 2008/11/10 04:59:45 swildner Exp $
  */
 
 #include <curses.h>
 
 struct  cmdtab {
-        char    *c_name;		/* command name */
+        const char *c_name;		/* command name */
         void    (*c_refresh)(void);	/* display refresh */
         void    (*c_fetch)(void);	/* sets up data structures */
         void    (*c_label)(void);	/* label display */
 	int	(*c_init)(void);	/* initialize namelist, etc. */
 	WINDOW	*(*c_open)(void);	/* open display */
 	void	(*c_close)(WINDOW *);	/* close display */
-	int	(*c_cmd)(char *, char *); /* display command interpreter */
+	int	(*c_cmd)(const char *, char *); /* display command interpreter */
 	void	(*c_reset)(void);	/* reset ``mode since'' display */
 	char	c_flags;		/* see below */
 };
