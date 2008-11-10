@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/lib/libatm/timer.c,v 1.3.2.1 2001/09/28 16:52:10 dillon Exp $
- *	@(#) $DragonFly: src/lib/libatm/timer.c,v 1.3 2008/09/30 16:57:04 swildner Exp $
+ *	@(#) $DragonFly: src/lib/libatm/timer.c,v 1.4 2008/11/10 15:58:20 swildner Exp $
  *
  */
 
@@ -75,7 +75,7 @@ int		harp_timer_exec;
  *
  */
 static void
-timer_tick(void)
+timer_tick(int signo __unused)
 {
 	/*
 	 * Bump the timer flag
@@ -191,7 +191,7 @@ init_timer(void)
 	/*
 	 * Set up signal handler
 	 */
-	if ((int)signal(SIGALRM, timer_tick) == -1) {
+	if (signal(SIGALRM, timer_tick) == SIG_ERR) {
 		return(errno);
 	}
 
