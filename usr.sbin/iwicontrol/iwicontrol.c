@@ -28,7 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/iwicontrol/iwicontrol.c,v 1.3 2006/05/18 13:51:45 sephe Exp $
+ * $DragonFly: src/usr.sbin/iwicontrol/iwicontrol.c,v 1.4 2008/11/10 05:00:12 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -56,11 +56,11 @@
 
 struct firmware {
 	char	*boot;
-	int	boot_size;
+	size_t	boot_size;
 	char	*ucode;
-	int	ucode_size;
+	size_t	ucode_size;
 	char	*main;
-	int	main_size;
+	size_t	main_size;
 };
 
 struct header {
@@ -246,7 +246,8 @@ dump_debug(const char *iface)
 static void
 get_radio_state(const char *iface)
 {
-	int radio, len;
+	int radio;
+	size_t len;
 	char oid_name[128];
 
 	snprintf(oid_name, sizeof oid_name, "hw.%s.radio", iface );
@@ -325,7 +326,7 @@ get_statistics(const char *iface)
 	static u_int32_t stats[256];
 	char oid_name[128];
 	const struct statistic *stt;
-	int len;
+	size_t len;
 
 	snprintf(oid_name, sizeof oid_name, "hw.%s.stats", iface );
 	len = sizeof stats;
