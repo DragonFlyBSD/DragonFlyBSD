@@ -30,7 +30,7 @@
  *
  * $OpenBSD: driver.c,v 1.17 2007/04/02 14:55:16 jmc Exp $
  * $NetBSD: driver.c,v 1.5 1997/10/20 00:37:16 lukem Exp $
- * $DragonFly: src/games/hunt/huntd/driver.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
+ * $DragonFly: src/games/hunt/huntd/driver.c,v 1.3 2008/11/10 15:28:13 swildner Exp $
  */
 
 #include <sys/ioctl.h>
@@ -725,7 +725,7 @@ zap(PLAYER *pp, FLAG was_player)
 		expl_charge = rand_num(ammo_exploding + 1);
 		if (pp->p_ammo == 0)
 			/* Ignore the no-ammo case: */
-			expl_charge = 0;
+			expl_charge = expl_type = 0;
 		else if (ammo_exploding >= pp->p_ammo - 1) {
 			/* Maximal explosions always appear as slime: */
 			expl_charge = pp->p_ammo;

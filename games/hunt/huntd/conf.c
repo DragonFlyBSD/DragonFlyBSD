@@ -2,7 +2,7 @@
  * David Leonard <d@openbsd.org>, 1999. Public domain.
  *
  * $OpenBSD: conf.c,v 1.7 2007/03/20 03:43:50 tedu Exp $
- * $DragonFly: src/games/hunt/huntd/conf.c,v 1.2 2008/09/04 16:12:51 swildner Exp $
+ * $DragonFly: src/games/hunt/huntd/conf.c,v 1.3 2008/11/10 15:28:13 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/types.h>
@@ -216,7 +216,7 @@ parse_line(char *buf, const char *fnm, int *line)
 	if (kvp->kw == NULL) {
 		logx(LOG_ERR, 
 		    "%s:%d: unrecognised variable \"%.*s\"", 
-		    fnm, *line, endword - word, word);
+		    fnm, *line, (int)(endword - word), word);
 		return;
 	}
 
