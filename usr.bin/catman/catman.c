@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/catman/catman.c,v 1.9 2003/06/10 02:18:00 ache Exp $
- * $DragonFly: src/usr.bin/catman/catman.c,v 1.3 2008/11/01 02:49:15 pavalos Exp $
+ * $DragonFly: src/usr.bin/catman/catman.c,v 1.4 2008/11/10 16:10:34 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -711,7 +711,8 @@ determine_locale(void)
 	}
 	sep = strchr(locale, '_');
 	if (sep != NULL && isupper(sep[1]) && isupper(sep[2]))
-		asprintf(&lang_locale, "%.*s%s", sep - locale, locale, &sep[3]);
+		asprintf(&lang_locale, "%.*s%s", (int)(sep - locale), locale,
+		    &sep[3]);
 	sep = nl_langinfo(CODESET);
 	if (sep != NULL && *sep != '\0' && strcmp(sep, "US-ASCII") != 0) {
 		int i;
