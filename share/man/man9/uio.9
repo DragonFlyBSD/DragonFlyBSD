@@ -24,9 +24,9 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/uio.9,v 1.5.2.4 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/uio.9,v 1.5 2008/05/02 02:05:06 swildner Exp $
+.\" $DragonFly: src/share/man/man9/uio.9,v 1.6 2008/11/10 22:59:00 swildner Exp $
 .\"
-.Dd February 2, 1997
+.Dd November 10, 2008
 .Os
 .Dt UIO 9
 .Sh NAME
@@ -44,7 +44,7 @@ struct uio {
 	int	uio_resid;
 	enum	uio_seg uio_segflg;
 	enum	uio_rw uio_rw;
-	struct	proc *uio_procp;
+	struct	thread *uio_td;
 };
 .Ed
 .Ft int
@@ -63,12 +63,16 @@ or
 .Xr writev 2
 system call that is being passed to a character-device driver, the
 appropriate driver
-.Va d_read
+.Nm d_read
 or
-.Va d_write
+.Nm d_write
 entry will be called with a pointer to a
-.Vt "struct uio"
-being passed.
+.Vt "struct dev_read_args"
+or
+.Vt "struct dev_write_args"
+being passed,
+a member of which is a pointer to a
+.Vt "struct uio" .
 The transfer request is encoded in this structure.
 The driver itself should use
 .Fn uiomove
@@ -139,14 +143,15 @@ static char buffer[BUFSIZE];
 static int data_available;	/* amount of data that can be read */
 
 static int
-fooread(dev_t dev, struct uio *uio, int flag)
+fooread(struct dev_read_args *ap)
 {
+	cdev_t dev = ap->a_head.a_dev;
 	int rv, amnt;
 
-	while (uio->uio_resid > 0) {
+	while (ap->a_uio->uio_resid > 0) {
 		if (data_available > 0) {
-			amnt = MIN(uio->uio_resid, data_available);
-			if ((rv = uiomove((caddr_t)buffer, amnt, uio))
+			amnt = MIN(ap->a_uio->uio_resid, data_available);
+			if ((rv = uiomove((caddr_t)buffer, amnt, ap->a_uio))
 			    != 0)
 				goto error;
 			data_available -= amnt;
@@ -167,6 +172,7 @@ error:
 .Xr writev 2 ,
 .Xr copyin 9 ,
 .Xr copyout 9 ,
+.Xr physio 9 ,
 .Xr sleep 9
 .Sh HISTORY
 The
