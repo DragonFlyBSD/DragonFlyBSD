@@ -3,7 +3,7 @@
  *
  * This module implements a simple remote control protocol
  *
- * $DragonFly: src/bin/cpdup/hcproto.c,v 1.6 2008/04/16 17:38:19 dillon Exp $
+ * $DragonFly: src/bin/cpdup/hcproto.c,v 1.7 2008/11/10 14:30:02 swildner Exp $
  */
 
 #include "cpdup.h"
@@ -336,7 +336,7 @@ hc_opendir(struct HostConf *hc, const char *path)
     struct HCHead *head;
     struct HCLeaf *item;
     struct dirent *den;
-    int desc = 0;
+    intptr_t desc = 0;
 
     if (hc == NULL || hc->host == NULL)
 	return(opendir(path));
@@ -355,8 +355,8 @@ hc_opendir(struct HostConf *hc, const char *path)
 	}
     }
     if (hcc_get_descriptor(hc, desc, HC_DESC_DIR)) {
-	fprintf(stderr, "hc_opendir: remote reused active descriptor %d\n",
-		desc);
+	    fprintf(stderr, "hc_opendir: remote reused active descriptor %jd\n",
+		(intmax_t)desc);
 	return(NULL);
     }
     den = malloc(sizeof(*den));
@@ -406,12 +406,12 @@ hc_readdir(struct HostConf *hc, DIR *dir)
 	return(readdir(dir));
 
     trans = hcc_start_command(hc, HC_READDIR);
-    hcc_leaf_int32(trans, LC_DESCRIPTOR, (int)dir);
+    hcc_leaf_int32(trans, LC_DESCRIPTOR, (intptr_t)dir);
     if ((head = hcc_finish_command(trans)) == NULL)
 	return(NULL);
     if (head->error)
 	return(NULL);	/* XXX errno */
-    den = hcc_get_descriptor(hc, (int)dir, HC_DESC_DIR);
+    den = hcc_get_descriptor(hc, (intptr_t)dir, HC_DESC_DIR);
     if (den == NULL)
 	return(NULL);	/* XXX errno */
     if (den->d_name)
@@ -476,13 +476,13 @@ hc_closedir(struct HostConf *hc, DIR *dir)
 
     if (hc == NULL || hc->host == NULL)
 	return(closedir(dir));
-    den = hcc_get_descriptor(hc, (int)dir, HC_DESC_DIR);
+    den = hcc_get_descriptor(hc, (intptr_t)dir, HC_DESC_DIR);
     if (den) {
 	free(den);
-	hcc_set_descriptor(hc, (int)dir, NULL, HC_DESC_DIR);
+	hcc_set_descriptor(hc, (intptr_t)dir, NULL, HC_DESC_DIR);
 
 	trans = hcc_start_command(hc, HC_CLOSEDIR);
-	hcc_leaf_int32(trans, LC_DESCRIPTOR, (int)dir);
+	hcc_leaf_int32(trans, LC_DESCRIPTOR, (intptr_t)dir);
 	if ((head = hcc_finish_command(trans)) == NULL)
 	    return(-1);
 	if (head->error)

@@ -45,7 +45,7 @@
  *	- Is able to do incremental mirroring/backups via hardlinks from
  *	  the 'previous' version (supplied with -H path).
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.30 2008/06/27 01:15:39 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.31 2008/11/10 14:30:02 swildner Exp $
  */
 
 /*-
@@ -304,7 +304,7 @@ main(int ac, char **av)
      * make any required connections.
      */
     if (src && (ptr = strchr(src, ':')) != NULL) {
-	asprintf(&SrcHost.host, "%*.*s", ptr - src, ptr - src, src);
+	asprintf(&SrcHost.host, "%*.*s", (int)(ptr - src), (int)(ptr - src), src);
 	src = ptr + 1;
 	if (UseCpFile) {
 	    fprintf(stderr, "The cpignore options are not currently supported for remote sources\n");
@@ -318,7 +318,7 @@ main(int ac, char **av)
 	    exit(1);
     }
     if (dst && (ptr = strchr(dst, ':')) != NULL) {
-	asprintf(&DstHost.host, "%*.*s", ptr - dst, ptr - dst, dst);
+	asprintf(&DstHost.host, "%*.*s", (int)(ptr - dst), (int)(ptr - dst), dst);
 	dst = ptr + 1;
 	if (UseFSMIDOpt) {
 	    fprintf(stderr, "The FSMID options are not currently supported for remote targets\n");

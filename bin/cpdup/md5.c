@@ -5,7 +5,7 @@
  *     use and distribute based on the FreeBSD copyright.  Supplied as-is,
  *     USE WITH EXTREME CAUTION.
  *
- * $DragonFly: src/bin/cpdup/md5.c,v 1.2 2008/03/22 18:09:16 dillon Exp $
+ * $DragonFly: src/bin/cpdup/md5.c,v 1.3 2008/11/10 14:30:02 swildner Exp $
  */
 
 #include "cpdup.h"
@@ -37,7 +37,7 @@ md5_flush(void)
 
 	    for (node = MD5Base; node; node = node->md_Next) {
 		if (node->md_Accessed && node->md_Code) {
-		    fprintf(fo, "%s %d %s\n", 
+		    fprintf(fo, "%s %zu %s\n", 
 			node->md_Code, 
 			strlen(node->md_Name),
 			node->md_Name
