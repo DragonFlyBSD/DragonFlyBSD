@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.33 2007/05/24 20:32:02 dillon Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.34 2008/11/10 14:56:33 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -403,7 +403,7 @@ wchan(const KINFO *k, const struct varent *vent)
 void
 vsize(const KINFO *k, const struct varent *vent)
 {
-	printf("%*d", vent->width, (KI_PROC(k, vm_map_size)/1024));
+	printf("%*ju", vent->width, (uintmax_t)(KI_PROC(k, vm_map_size)/1024));
 }
 
 void

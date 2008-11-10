@@ -32,7 +32,7 @@
  *
  * @(#)netdate.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/date/netdate.c,v 1.18 2004/04/06 20:06:45 markm Exp $
- * $DragonFly: src/bin/date/netdate.c,v 1.7 2005/07/20 06:25:20 cpressey Exp $
+ * $DragonFly: src/bin/date/netdate.c,v 1.8 2008/11/10 14:56:33 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -73,7 +73,7 @@ netsettime(time_t tval)
 	fd_set ready;
 	long waittime;
 	int s, port, timed_ack, found, errn;
-	size_t length;
+	socklen_t length;
 	char hostname[MAXHOSTNAMELEN];
 
 	if ((sp = getservbyname("timed", "udp")) == NULL) {
