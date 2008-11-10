@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)chflags.c	8.5 (Berkeley) 4/1/94
  * $FreeBSD: src/usr.bin/chflags/chflags.c,v 1.7.2.3 2001/08/01 23:09:18 obrien Exp $
- * $DragonFly: src/usr.bin/chflags/chflags.c,v 1.4 2004/11/29 20:27:30 liamfoy Exp $
+ * $DragonFly: src/usr.bin/chflags/chflags.c,v 1.5 2008/11/10 21:37:25 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -85,15 +85,16 @@ main(int argc, char **argv)
 	if (argc < 2)
 		usage();
 
-	fts_options = FTS_PHYSICAL;
 	if (Rflag) {
+		fts_options = FTS_PHYSICAL;
 		if (Hflag)
 			fts_options |= FTS_COMFOLLOW;
 		if (Lflag) {
 			fts_options &= ~FTS_PHYSICAL;
 			fts_options |= FTS_LOGICAL;
 		}
-	}
+	} else
+		fts_options = FTS_LOGICAL;
 
 	flags = *argv;
 	if (*flags >= '0' && *flags <= '7') {
