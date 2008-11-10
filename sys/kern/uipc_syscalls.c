@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.90 2008/10/30 11:03:29 sephe Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.91 2008/11/10 18:16:52 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -979,8 +979,9 @@ sys_recvmsg(struct recvmsg_args *uap)
 		if (sa != NULL) {
 			fromlen = MIN(msg.msg_namelen, sa->sa_len);
 			error = copyout(sa, msg.msg_name, fromlen);
-		} else
+		} else {
 			fromlen = 0;
+		}
 		if (error == 0)
 			error = copyout(&fromlen, ufromlenp,
 			    sizeof(*ufromlenp));
@@ -1042,7 +1043,7 @@ kern_setsockopt(int s, struct sockopt *sopt)
 	struct file *fp;
 	int error;
 
-	if (sopt->sopt_val == 0 && sopt->sopt_valsize != 0)
+	if (sopt->sopt_val == NULL && sopt->sopt_valsize != 0)
 		return (EFAULT);
 	if (sopt->sopt_valsize < 0)
 		return (EINVAL);
@@ -1070,6 +1071,11 @@ sys_setsockopt(struct setsockopt_args *uap)
 	sopt.sopt_name = uap->name;
 	sopt.sopt_valsize = uap->valsize;
 	sopt.sopt_td = td;
+
+	if (sopt.sopt_valsize < 0 || sopt.sopt_valsize > SOMAXOPT_SIZE)
+		return (EINVAL);
+	if (sopt.sopt_val == NULL && sopt.sopt_valsize)
+		return (EINVAL);
 
 	if (uap->val) {
 		sopt.sopt_val = kmalloc(sopt.sopt_valsize, M_TEMP, M_WAITOK);
@@ -1103,9 +1109,9 @@ kern_getsockopt(int s, struct sockopt *sopt)
 	struct file *fp;
 	int error;
 
-	if (sopt->sopt_val == 0 && sopt->sopt_valsize != 0)
+	if (sopt->sopt_val == NULL && sopt->sopt_valsize != 0)
 		return (EFAULT);
-	if (sopt->sopt_valsize < 0)
+	if (sopt->sopt_valsize < 0 || sopt->sopt_valsize > SOMAXOPT_SIZE)
 		return (EINVAL);
 
 	error = holdsock(p->p_fd, s, &fp);
@@ -1141,6 +1147,9 @@ sys_getsockopt(struct getsockopt_args *uap)
 	sopt.sopt_name = uap->name;
 	sopt.sopt_valsize = valsize;
 	sopt.sopt_td = td;
+
+	if (valsize < 0 || valsize > SOMAXOPT_SIZE)
+		return (EINVAL);
 
 	if (uap->val) {
 		sopt.sopt_val = kmalloc(sopt.sopt_valsize, M_TEMP, M_WAITOK);
@@ -1191,7 +1200,7 @@ kern_getsockname(int s, struct sockaddr **name, int *namelen)
 	so = (struct socket *)fp->f_data;
 	error = so_pru_sockaddr(so, &sa);
 	if (error == 0) {
-		if (sa == 0) {
+		if (sa == NULL) {
 			*namelen = 0;
 		} else {
 			*namelen = MIN(*namelen, sa->sa_len);
@@ -1259,7 +1268,7 @@ kern_getpeername(int s, struct sockaddr **name, int *namelen)
 	}
 	error = so_pru_peeraddr(so, &sa);
 	if (error == 0) {
-		if (sa == 0) {
+		if (sa == NULL) {
 			*namelen = 0;
 		} else {
 			*namelen = MIN(*namelen, sa->sa_len);
