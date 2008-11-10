@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ktrdump/ktrdump.c,v 1.10 2005/05/21 09:55:06 ru Exp $
- * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.12 2008/09/02 11:50:45 matthias Exp $
+ * $DragonFly: src/usr.bin/ktrdump/ktrdump.c,v 1.13 2008/11/10 02:05:31 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -49,9 +49,6 @@
 
 #define	SBUFLEN	128
 
-extern char *optarg;
-extern int optind;
-
 struct ktr_buffer {
 	struct ktr_entry *ents;
 	int modified;
@@ -61,16 +58,16 @@ struct ktr_buffer {
 };
 
 static struct nlist nl[] = {
-	{ "_ktr_version" },
-	{ "_ktr_entries" },
-	{ "_ktr_idx" },
-	{ "_ktr_buf" },
-	{ "_ncpus" },
-	{ NULL }
+	{ .n_name = "_ktr_version" },
+	{ .n_name = "_ktr_entries" },
+	{ .n_name = "_ktr_idx" },
+	{ .n_name = "_ktr_buf" },
+	{ .n_name = "_ncpus" },
+	{ .n_name = NULL }
 };
 static struct nlist nl2[] = {
-	{ "_tsc_frequency" },
-	{ NULL }
+	{ .n_name = "_tsc_frequency" },
+	{ .n_name = NULL }
 };
 
 static int cflag;
@@ -99,15 +96,16 @@ static int entries_per_buf;
 static int fifo_mask;
 
 static void usage(void);
-static int earliest_ts(struct ktr_buffer *buf);
-static void print_header(FILE *fo, int row);
-static void print_entry(FILE *fo, kvm_t *kd, int n, int i, struct ktr_entry *entry, u_int64_t *last_timestamp);
-static struct ktr_info *kvm_ktrinfo(kvm_t *kd, void *kptr);
-static const char *kvm_string(kvm_t *kd, const char *kptr);
-static const char *trunc_path(const char *str, int maxlen);
-static void read_symbols(const char *execfile);
-static const char *address_to_symbol(void *kptr);
-static struct ktr_buffer *ktr_bufs_init(int);
+static int earliest_ts(struct ktr_buffer *);
+static void print_header(FILE *, int);
+static void print_entry(FILE *, int, int, struct ktr_entry *, u_int64_t *);
+static struct ktr_info *kvm_ktrinfo(void *);
+static const char *kvm_string(const char *);
+static const char *trunc_path(const char *, int);
+static void read_symbols(const char *);
+static const char *address_to_symbol(void *);
+static struct ktr_buffer *ktr_bufs_init(void);
+static void get_indices(int *);
 static void load_bufs(struct ktr_buffer *, struct ktr_entry **);
 static void print_buf(FILE *, struct ktr_buffer *, int, u_int64_t *);
 static void print_bufs_timesorted(FILE *, struct ktr_buffer *, u_int64_t *);
@@ -251,7 +249,7 @@ main(int ac, char **av)
 	if (kvm_read(kd, nl[3].n_value, ktr_kbuf, sizeof(*ktr_kbuf) * ncpus) == -1)
 		errx(1, "%s", kvm_geterr(kd));
 
-	ktr_bufs = ktr_bufs_init(ncpus);
+	ktr_bufs = ktr_bufs_init();
 
 	if (sflag) {
 		u_int64_t last_timestamp = 0;
@@ -300,7 +298,7 @@ print_header(FILE *fo, int row)
 }
 
 static void
-print_entry(FILE *fo, kvm_t *kd, int n, int row, struct ktr_entry *entry,
+print_entry(FILE *fo, int n, int row, struct ktr_entry *entry,
 	    u_int64_t *last_timestamp)
 {
 	struct ktr_info *info = NULL;
@@ -313,10 +311,11 @@ print_entry(FILE *fo, kvm_t *kd, int n, int row, struct ktr_entry *entry,
 			fprintf(fo, "%13.3f uS ",
 				(double)(entry->ktr_timestamp - *last_timestamp) * 1000000.0 / tsc_frequency - correction_factor);
 		} else if (rflag) {
-			fprintf(fo, "%-16lld ", entry->ktr_timestamp -
-						*last_timestamp);
+			fprintf(fo, "%-16ju ",
+			    (uintmax_t)(entry->ktr_timestamp - *last_timestamp));
 		} else {
-			fprintf(fo, "%-16lld ", entry->ktr_timestamp);
+			fprintf(fo, "%-16ju ",
+			    (uintmax_t)entry->ktr_timestamp);
 		}
 	}
 	if (xflag) {
@@ -331,26 +330,24 @@ print_entry(FILE *fo, kvm_t *kd, int n, int row, struct ktr_entry *entry,
 		}
 	}
 	if (iflag) {
-		info = kvm_ktrinfo(kd, entry->ktr_info);
+		info = kvm_ktrinfo(entry->ktr_info);
 		if (info)
-			fprintf(fo, "%-20s ", kvm_string(kd, info->kf_name));
+			fprintf(fo, "%-20s ", kvm_string(info->kf_name));
 		else
 			fprintf(fo, "%-20s ", "<empty>");
 	}
 	if (fflag)
-		fprintf(fo, "%34s:%-4d ", trunc_path(kvm_string(kd, entry->ktr_file), 34), entry->ktr_line);
+		fprintf(fo, "%34s:%-4d ", trunc_path(kvm_string(entry->ktr_file), 34), entry->ktr_line);
 	if (pflag) {
 		if (info == NULL)
-			info = kvm_ktrinfo(kd, entry->ktr_info);
+			info = kvm_ktrinfo(entry->ktr_info);
 		if (info) {
-			fprintf(fo, kvm_string(kd, info->kf_format),
+			fprintf(fo, kvm_string(info->kf_format),
 				entry->ktr_data[0], entry->ktr_data[1],
 				entry->ktr_data[2], entry->ktr_data[3],
 				entry->ktr_data[4], entry->ktr_data[5],
 				entry->ktr_data[6], entry->ktr_data[7],
 				entry->ktr_data[8], entry->ktr_data[9]);
-		} else {
-			fprintf(fo, "");
 		}
 	}
 	fprintf(fo, "\n");
@@ -359,7 +356,7 @@ print_entry(FILE *fo, kvm_t *kd, int n, int row, struct ktr_entry *entry,
 
 static
 struct ktr_info *
-kvm_ktrinfo(kvm_t *kd, void *kptr)
+kvm_ktrinfo(void *kptr)
 {
 	static struct ktr_info save_info;
 	static void *save_kptr;
@@ -378,12 +375,12 @@ kvm_ktrinfo(kvm_t *kd, void *kptr)
 
 static
 const char *
-kvm_string(kvm_t *kd, const char *kptr)
+kvm_string(const char *kptr)
 {
 	static char save_str[128];
 	static const char *save_kptr;
-	int l;
-	int n;
+	u_int l;
+	u_int n;
 
 	if (kptr == NULL)
 		return("?");
@@ -436,11 +433,11 @@ static char *symend;
 
 static
 void
-read_symbols(const char *execfile)
+read_symbols(const char *file)
 {
 	char buf[256];
 	char cmd[256];
-	int buflen = sizeof(buf);
+	size_t buflen = sizeof(buf);
 	FILE *fp;
 	struct symdata *sym;
 	char *s1;
@@ -449,13 +446,13 @@ read_symbols(const char *execfile)
 
 	TAILQ_INIT(&symlist);
 
-	if (execfile == NULL) {
+	if (file == NULL) {
 		if (sysctlbyname("kern.bootfile", buf, &buflen, NULL, 0) < 0)
-			execfile = "/boot/kernel";
+			file = "/boot/kernel";
 		else
-			execfile = buf;
+			file = buf;
 	}
-	snprintf(cmd, sizeof(cmd), "nm -n %s", execfile);
+	snprintf(cmd, sizeof(cmd), "nm -n %s", file);
 	if ((fp = popen(cmd, "r")) != NULL) {
 		while (fgets(buf, sizeof(buf), fp) != NULL) {
 		    s1 = strtok(buf, " \t\n");
@@ -506,7 +503,7 @@ address_to_symbol(void *kptr)
 
 static
 struct ktr_buffer *
-ktr_bufs_init(int ncpus)
+ktr_bufs_init(void)
 {
 	struct ktr_buffer *ktr_bufs, *it;
 	int i;
@@ -528,7 +525,7 @@ ktr_bufs_init(int ncpus)
 
 static
 void
-get_indices(kvm_t *kd, int *idx)
+get_indices(int *idx)
 {
 	if (kvm_read(kd, nl[2].n_value, idx, sizeof(*idx) * ncpus) == -1)
 		errx(1, "%s", kvm_geterr(kd));
@@ -552,7 +549,7 @@ load_bufs(struct ktr_buffer *ktr_bufs, struct ktr_entry **kbufs)
 		}
 	}
 
-	get_indices(kd, kern_idx);
+	get_indices(kern_idx);
 	for (i = 0; i < ncpus; ++i) {
 		kbuf = &ktr_bufs[i];
 		if (kern_idx[i] == kbuf->end_idx)
@@ -613,7 +610,6 @@ void
 print_buf(FILE *fo, struct ktr_buffer *ktr_bufs, int cpu,
 	  u_int64_t *last_timestamp)
 {
-	int first, last;
 	struct ktr_buffer *buf = ktr_bufs + cpu;
 
 	if (buf->modified == 0)
@@ -624,7 +620,7 @@ print_buf(FILE *fo, struct ktr_buffer *ktr_bufs, int cpu,
 	}
 	while (buf->beg_idx != buf->end_idx) {
 		print_header(fo, buf->beg_idx);
-		print_entry(fo, kd, cpu, buf->beg_idx,
+		print_entry(fo, cpu, buf->beg_idx,
 			    &buf->ents[buf->beg_idx & fifo_mask],
 			    last_timestamp);
 		++buf->beg_idx;
@@ -660,7 +656,7 @@ print_bufs_timesorted(FILE *fo, struct ktr_buffer *ktr_bufs,
 			break;
 		buf = ktr_bufs + bestn;
 		print_header(fo, row);
-		print_entry(fo, kd, bestn, row,
+		print_entry(fo, bestn, row,
 			    &buf->ents[buf->beg_idx & fifo_mask],
 			    last_timestamp);
 		++buf->beg_idx;
@@ -672,7 +668,7 @@ print_bufs_timesorted(FILE *fo, struct ktr_buffer *ktr_bufs,
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: ktrdump [-acfilnpqrtx] [-N execfile] "
+	fprintf(stderr, "usage: ktrdump [-acfilnpqrstx] [-A factor] [-N execfile] "
 			"[-M corefile] [-o outfile]\n");
 	exit(1);
 }
