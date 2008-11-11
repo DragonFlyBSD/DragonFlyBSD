@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.44 2008/10/28 07:09:26 sephe Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.45 2008/11/11 10:46:58 sephe Exp $
  */
 
 #include "opt_inet.h"
@@ -347,8 +347,22 @@ tcp_ctlport(int cmd, struct sockaddr *sa, void *vip)
 	faddr = ((struct sockaddr_in *)sa)->sin_addr;
 	if (sa->sa_family != AF_INET || faddr.s_addr == INADDR_ANY)
 		return(NULL);
-	if (ip == NULL) {
-		cpu = 0;
+	if (ip == NULL || PRC_IS_REDIRECT(cmd) || cmd == PRC_HOSTDEAD) {
+		/*
+		 * Message will be forwarded to all TCP protocol threads
+		 * in following way:
+		 *
+		 * netisr0 (the msgport we return here)
+		 *    |
+		 *    |
+		 *    | domsg <----------------------------+
+		 *    |                                    |
+		 *    |                                    | replymsg
+		 *    |                                    |
+		 *    V   forwardmsg         forwardmsg    |
+		 *  tcp0 ------------> tcp1 ------------> tcpN
+		 */
+		return cpu0_ctlport(cmd, sa, vip);
 	} else {
 		th = (struct tcphdr *)((caddr_t)ip + (ip->ip_hl << 2));
 		cpu = tcp_addrcpu(faddr.s_addr, th->th_dport,
@@ -411,7 +425,18 @@ udp_ctlport(int cmd, struct sockaddr *sa, void *vip)
 	faddr = ((struct sockaddr_in *)sa)->sin_addr;
 	if (sa->sa_family != AF_INET || faddr.s_addr == INADDR_ANY)
 		return(NULL);
-	if (ip == NULL) {
+	if (PRC_IS_REDIRECT(cmd)) {
+		/*
+		 * See the comment in tcp_ctlport; the only difference
+		 * is that message is forwarded to UDP protocol theads.
+		 */
+		return cpu0_ctlport(cmd, sa, vip);
+	} else if (ip == NULL || cmd == PRC_HOSTDEAD) {
+		/*
+		 * XXX
+		 * Once UDP inpcbs are CPU localized, we should do
+		 * the same forwarding as PRC_IS_REDIRECT(cmd)
+		 */
 		cpu = 0;
 	} else {
 		uh = (struct udphdr *)((caddr_t)ip + (ip->ip_hl << 2));
@@ -447,6 +472,12 @@ lwkt_port_t
 tcp_cport(int cpu)
 {
 	return (&tcp_thread[cpu].td_msgport);
+}
+
+lwkt_port_t
+udp_cport(int cpu)
+{
+	return (&udp_thread[cpu].td_msgport);
 }
 
 void

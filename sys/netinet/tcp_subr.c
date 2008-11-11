@@ -65,7 +65,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.62 2008/10/30 10:50:18 sephe Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.63 2008/11/11 10:46:58 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -1312,6 +1312,29 @@ SYSCTL_PROC(_net_inet6_tcp6, OID_AUTO, getcred, (CTLTYPE_OPAQUE | CTLFLAG_RW),
 	    tcp6_getcred, "S,ucred", "Get the ucred of a TCP6 connection");
 #endif
 
+struct netmsg_tcp_notify {
+	struct netmsg	nm_nmsg;
+	void		(*nm_notify)(struct inpcb *, int);
+	struct in_addr	nm_faddr;
+	int		nm_arg;
+};
+
+static void
+tcp_notifyall_oncpu(struct netmsg *netmsg)
+{
+	struct netmsg_tcp_notify *nmsg = (struct netmsg_tcp_notify *)netmsg;
+	int nextcpu;
+
+	in_pcbnotifyall(&tcbinfo[mycpuid].pcblisthead, nmsg->nm_faddr,
+			nmsg->nm_arg, nmsg->nm_notify);
+
+	nextcpu = mycpuid + 1;
+	if (nextcpu < ncpus2)
+		lwkt_forwardmsg(tcp_cport(nextcpu), &netmsg->nm_lmsg);
+	else
+		lwkt_replymsg(&netmsg->nm_lmsg, 0);
+}
+
 void
 tcp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 {
@@ -1382,10 +1405,16 @@ tcp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 		}
 		crit_exit();
 	} else {
-		for (cpu = 0; cpu < ncpus2; cpu++) {
-			in_pcbnotifyall(&tcbinfo[cpu].pcblisthead, faddr, arg,
-					notify);
-		}
+		struct netmsg_tcp_notify nmsg;
+
+		KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+		netmsg_init(&nmsg.nm_nmsg, &curthread->td_msgport, 0,
+			    tcp_notifyall_oncpu);
+		nmsg.nm_faddr = faddr;
+		nmsg.nm_arg = arg;
+		nmsg.nm_notify = notify;
+
+		lwkt_domsg(tcp_cport(0), &nmsg.nm_nmsg.nm_lmsg, 0);
 	}
 }
 

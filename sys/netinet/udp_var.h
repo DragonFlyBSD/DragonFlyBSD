@@ -65,7 +65,7 @@
  *
  *	@(#)udp_var.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/udp_var.h,v 1.22.2.1 2001/02/18 07:12:25 luigi Exp $
- * $DragonFly: src/sys/netinet/udp_var.h,v 1.18 2008/10/27 02:56:30 sephe Exp $
+ * $DragonFly: src/sys/netinet/udp_var.h,v 1.19 2008/11/11 10:46:58 sephe Exp $
  */
 
 #ifndef _NETINET_UDP_VAR_H_
@@ -156,6 +156,7 @@ int			udp_shutdown (struct socket *so);
 struct lwkt_port	*udp_soport (struct socket *, struct sockaddr *,
 				     struct mbuf **, int);
 struct lwkt_port	*udp_ctlport (int, struct sockaddr *, void *);
+struct lwkt_port	*udp_cport (int);
 
 #endif
 

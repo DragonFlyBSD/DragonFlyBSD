@@ -65,7 +65,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.46 2008/09/23 11:28:49 sephe Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.47 2008/11/11 10:46:58 sephe Exp $
  */
 
 #include "opt_ipsec.h"
@@ -92,6 +92,7 @@
 
 #include <net/if.h>
 #include <net/route.h>
+#include <net/netmsg2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -608,6 +609,47 @@ udp_notify(struct inpcb *inp, int error)
 	sowwakeup(inp->inp_socket);
 }
 
+struct netmsg_udp_notify {
+	struct netmsg	nm_nmsg;
+	void		(*nm_notify)(struct inpcb *, int);
+	struct in_addr	nm_faddr;
+	int		nm_arg;
+};
+
+static void
+udp_notifyall_oncpu(struct netmsg *netmsg)
+{
+	struct netmsg_udp_notify *nmsg = (struct netmsg_udp_notify *)netmsg;
+	int nextcpu;
+
+	in_pcbnotifyall(&udbinfo.pcblisthead, nmsg->nm_faddr, nmsg->nm_arg,
+			nmsg->nm_notify);
+
+	nextcpu = mycpuid + 1;
+	if (nextcpu < ncpus2)
+		lwkt_forwardmsg(udp_cport(nextcpu), &netmsg->nm_lmsg);
+	else
+		lwkt_replymsg(&netmsg->nm_lmsg, 0);
+}
+
+static void
+udp_rtchange(struct inpcb *inp, int err)
+{
+#ifdef SMP
+	/* XXX Nuke this, once UDP inpcbs are CPU localized */
+	if (inp->inp_route.ro_rt && inp->inp_route.ro_rt->rt_cpuid == mycpuid) {
+		rtfree(inp->inp_route.ro_rt);
+		inp->inp_route.ro_rt = NULL;
+		/*
+		 * A new route can be allocated the next time
+		 * output is attempted.
+		 */
+	}
+#else
+	in_rtchange(inp, err);
+#endif
+}
+
 void
 udp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 {
@@ -623,7 +665,7 @@ udp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 
 	if (PRC_IS_REDIRECT(cmd)) {
 		ip = NULL;
-		notify = in_rtchange;
+		notify = udp_rtchange;
 	} else if (cmd == PRC_HOSTDEAD)
 		ip = NULL;
 	else if ((unsigned)cmd >= PRC_NCMDS || inetctlerrmap[cmd] == 0)
@@ -636,9 +678,26 @@ udp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 		if (inp != NULL && inp->inp_socket != NULL)
 			(*notify)(inp, inetctlerrmap[cmd]);
 		crit_exit();
-	} else
+	} else if (PRC_IS_REDIRECT(cmd)) {
+		struct netmsg_udp_notify nmsg;
+
+		KKASSERT(&curthread->td_msgport == cpu_portfn(0));
+		netmsg_init(&nmsg.nm_nmsg, &curthread->td_msgport, 0,
+			    udp_notifyall_oncpu);
+		nmsg.nm_faddr = faddr;
+		nmsg.nm_arg = inetctlerrmap[cmd];
+		nmsg.nm_notify = notify;
+
+		lwkt_domsg(udp_cport(0), &nmsg.nm_nmsg.nm_lmsg, 0);
+	} else {
+		/*
+		 * XXX We should forward msg upon PRC_HOSTHEAD and ip == NULL,
+		 * once UDP inpcbs are CPU localized
+		 */
+		KKASSERT(&curthread->td_msgport == udp_cport(0));
 		in_pcbnotifyall(&udbinfo.pcblisthead, faddr, inetctlerrmap[cmd],
 				notify);
+	}
 }
 
 SYSCTL_PROC(_net_inet_udp, UDPCTL_PCBLIST, pcblist, CTLFLAG_RD, &udbinfo, 0,
