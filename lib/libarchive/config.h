@@ -1,4 +1,4 @@
-/* $DragonFly: src/lib/libarchive/config.h,v 1.13 2008/07/12 14:57:33 pavalos Exp $ */
+/* $DragonFly: src/lib/libarchive/config.h,v 1.14 2008/11/11 00:55:48 pavalos Exp $ */
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
@@ -174,7 +174,7 @@
 #define HAVE_LANGINFO_H 1
 
 /* Define to 1 if you have the `lchflags' function. */
-/* #undef HAVE_LCHFLAGS */
+#define HAVE_LCHFLAGS 1
 
 /* Define to 1 if you have the `lchmod' function. */
 #define HAVE_LCHMOD 1

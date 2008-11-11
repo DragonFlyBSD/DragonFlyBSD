@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.134 2008/09/17 21:44:18 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.135 2008/11/11 00:55:49 pavalos Exp $
  */
 
 #include <sys/param.h>
@@ -2568,6 +2568,36 @@ sys_chflags(struct chflags_args *uap)
 
 	vp = NULL;
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	/* XXX Add NLC flag indicating modifying operation? */
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = ncp_writechk(&nd.nl_nch);
+	if (error == 0)
+		error = cache_vref(&nd.nl_nch, nd.nl_cred, &vp);
+	nlookup_done(&nd);
+	if (error == 0) {
+		error = setfflags(vp, uap->flags);
+		vrele(vp);
+	}
+	return (error);
+}
+
+/*
+ * lchflags(char *path, int flags)
+ *
+ * Change flags of a file given a path name, but don't follow symlinks.
+ */
+/* ARGSUSED */
+int
+sys_lchflags(struct lchflags_args *uap)
+{
+	struct nlookupdata nd;
+	struct vnode *vp;
+	int error;
+
+	vp = NULL;
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	/* XXX Add NLC flag indicating modifying operation? */
 	if (error == 0)
 		error = nlookup(&nd);

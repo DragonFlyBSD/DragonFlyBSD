@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.52 2008/09/09 04:06:20 dillon Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.53 2008/11/11 00:55:49 pavalos Exp $
  */
 
 #ifndef _SYS_PARAM_H_
@@ -61,9 +61,10 @@
  * 199900 - base development version before 2.0 branch
  * 200000 - 2.0 branch
  * 200100 - base development version after 2.0 branch
+ * 200101 - lchflags syscall
  */
 #undef __DragonFly_version
-#define __DragonFly_version 200100	/* Master, propagated to newvers */
+#define __DragonFly_version 200101	/* Master, propagated to newvers */
 
 #ifdef __FreeBSD__
 /* 

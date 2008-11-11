@@ -33,7 +33,7 @@
  *
  *	@(#)stat.h	8.12 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/sys/stat.h,v 1.20 1999/12/29 04:24:47 peter Exp $
- * $DragonFly: src/sys/sys/stat.h,v 1.13 2008/06/02 20:13:37 dillon Exp $
+ * $DragonFly: src/sys/sys/stat.h,v 1.14 2008/11/11 00:55:49 pavalos Exp $
  */
 
 #ifndef _SYS_STAT_H_
@@ -217,6 +217,7 @@ mode_t	umask (mode_t);
 #ifndef _POSIX_SOURCE
 int	chflags (const char *, u_long);
 int	fchflags (int, u_long);
+int	lchflags (const char *, u_long);
 int	fchmod (int, mode_t);
 int	lchmod (const char *, mode_t);
 int	lstat (const char *, struct stat *);
