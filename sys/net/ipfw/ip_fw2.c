@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.98 2008/09/26 12:12:36 sephe Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.99 2008/11/11 12:59:11 sephe Exp $
  */
 
 /*
@@ -3997,13 +3997,14 @@ ipfw_tick_dispatch(struct netmsg *nmsg)
 	int i;
 
 	IPFW_ASSERT_CFGPORT(&curthread->td_msgport);
+	KKASSERT(IPFW_LOADED);
 
 	/* Reply ASAP */
 	crit_enter();
 	lwkt_replymsg(&nmsg->nm_lmsg, 0);
 	crit_exit();
 
-	if (!IPFW_LOADED || ipfw_dyn_v == NULL || dyn_count == 0)
+	if (ipfw_dyn_v == NULL || dyn_count == 0)
 		goto done;
 
 	keep_alive = time_second;
@@ -4079,10 +4080,8 @@ next:
 	}
 	lockmgr(&dyn_lock, LK_RELEASE);
 done:
-	if (IPFW_LOADED) {
-		callout_reset(&ipfw_timeout_h, dyn_keepalive_period * hz,
-			      ipfw_tick, NULL);
-	}
+	callout_reset(&ipfw_timeout_h, dyn_keepalive_period * hz,
+		      ipfw_tick, NULL);
 }
 
 /*
@@ -4446,7 +4445,8 @@ ipfw_init_dispatch(struct netmsg *nmsg)
 	}
 
 	callout_init_mp(&ipfw_timeout_h);
-	netmsg_init(&ipfw_timeout_netmsg, &netisr_adone_rport, MSGF_MPSAFE,
+	netmsg_init(&ipfw_timeout_netmsg, &netisr_adone_rport,
+		    MSGF_MPSAFE | MSGF_PRIORITY | MSGF_DROPABLE,
 		    ipfw_tick_dispatch);
 	lockinit(&dyn_lock, "ipfw_dyn", 0, 0);
 
@@ -4486,6 +4486,15 @@ ipfw_fini_dispatch(struct netmsg *nmsg)
 	callout_stop(&ipfw_timeout_h);
 
 	netmsg_service_sync();
+
+	crit_enter();
+	if ((ipfw_timeout_netmsg.nm_lmsg.ms_flags & MSGF_DONE) == 0) {
+		/*
+		 * Callout message is pending; drop it
+		 */
+		lwkt_dropmsg(&ipfw_timeout_netmsg.nm_lmsg);
+	}
+	crit_exit();
 
 	ip_fw_chk_ptr = NULL;
 	ip_fw_ctl_ptr = NULL;
@@ -4528,10 +4537,6 @@ ipfw_modevent(module_t mod, int type, void *unused)
 		err = EBUSY;
 #else
 		err = ipfw_fini();
-		if (!err) {
-			/* Sync IPFW_CFGPORT */
-			netmsg_service_sync();
-		}
 #endif
 		break;
 	default:
