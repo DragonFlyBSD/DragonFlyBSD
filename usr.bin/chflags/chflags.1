@@ -1,3 +1,4 @@
+.\"-
 .\" Copyright (c) 1989, 1990, 1993, 1994
 .\"	The Regents of the University of California.  All rights reserved.
 .\"
@@ -34,7 +35,7 @@
 .\"
 .\"	@(#)chflags.1	8.4 (Berkeley) 5/2/95
 .\" $FreeBSD: src/usr.bin/chflags/chflags.1,v 1.9.2.6 2003/04/08 19:16:16 johan Exp $
-.\" $DragonFly: src/usr.bin/chflags/chflags.1,v 1.5 2008/11/11 02:55:13 pavalos Exp $
+.\" $DragonFly: src/usr.bin/chflags/chflags.1,v 1.6 2008/11/11 06:28:19 pavalos Exp $
 .\"
 .Dd June 24, 2008
 .Dt CHFLAGS 1
@@ -70,7 +71,7 @@ option is specified, symbolic links on the command line are followed.
 If the
 .Ar file
 is a symbolic link,
-change the mode of the link itself rather than the file to which it points.
+change the file flags of the link itself rather than the file to which it points.
 .It Fl L
 If the
 .Fl R
@@ -89,52 +90,77 @@ The flags are specified as an octal number or a comma separated list
 of keywords.
 The following keywords are currently defined:
 .Pp
-.Bl -tag -offset indent -width "nouhistory" -compact
-.It Ar arch
+.Bl -tag -offset indent -width ".Cm nouhistory"
+.It Cm arch , archived
 set the archived flag (super-user only)
-.It Ar opaque
+.It Cm opaque
 set the opaque flag (owner or super-user only)
-.It Ar nodump
+.It Cm nodump
 set the nodump flag (owner or super-user only)
-.It Ar noshistory
+.It Cm noshistory
 set the system nohistory flag (super-user only)
-.It Ar nouhistory
+.It Cm nouhistory , nohistory
 set the user nohistory flag (owner or super-user only)
-.It Ar sappnd
+.It Cm sappnd , sappend
 set the system append-only flag (super-user only)
-.It Ar schg
+.It Cm schg , schange , simmutable
 set the system immutable flag (super-user only)
-.It Ar sunlnk
+.It Cm sunlnk , sunlink
 set the system undeletable flag (super-user only)
-.It Ar uappnd
+.It Cm uappnd , uappend
 set the user append-only flag (owner or super-user only)
-.It Ar uchg
+.It Cm uchg , uchange , uimmutable
 set the user immutable flag (owner or super-user only)
-.It Ar uunlnk
+.It Cm uunlnk , uunlink
 set the user undeletable flag (owner or super-user only)
-.It Ar archived , sappend , schange , Xo
-.Ar simmutable , uappend , uchange , uimmutable ,
-.Ar sunlink , uunlink
-.Xc
-aliases for the above
-.It Ar nohistory
-alias for
-.Ar nouhistory
 .El
 .Pp
 Putting the letters
-.Dq Ar no
+.Dq Cm no
 before or removing the letters
-.Dq Ar no
+.Dq Cm no
 from a keyword causes the flag to be cleared.
 For example:
 .Pp
 .Bl -tag -offset indent -width "nouchg" -compact
-.It Ar nouchg
+.It Cm nouchg
 clear the user immutable flag (owner or super-user only)
-.It Ar dump
+.It Cm dump
 clear the nodump flag (owner or super-user only)
 .El
+.Pp
+A few of the octal values include:
+.Bl -tag -offset indent -width ".Li 10"
+.It Li 0
+Clear all file flags.
+.It Li 1
+Translates to the
+.Cm nodump
+keyword.
+.It Li 2
+Translates to the
+.Cm uchg
+keyword.
+.It Li 3
+Translates to the
+.Cm uchg , nodump
+keywords.
+.It Li 4
+Translates to the
+.Cm uappnd
+keyword.
+.It Li 10
+Translates to the
+.Cm opaque
+keyword.
+.It Li 20
+translates to the
+.Cm uunlnk
+keyword.
+.El
+.Pp
+Other combinations of keywords may be placed by using
+the octets assigned; however, these are the most notable.
 .Pp
 Unless the
 .Fl H ,
@@ -156,16 +182,42 @@ In addition, these options override each other and the
 command's actions are determined by the last one specified.
 .Pp
 You can use "ls -lo" to see the flags of existing files.
-.Sh DIAGNOSTICS
+.Pp
+Note that the ability to change certain flags is dependent
+on the current kernel
+.Va securelevel
+setting.
+See
+.Xr security 7
+for more information on this setting.
+.Sh EXIT STATUS
 .Ex -std
 .Sh SEE ALSO
 .Xr ls 1 ,
 .Xr chflags 2 ,
 .Xr stat 2 ,
 .Xr fts 3 ,
+.Xr security 7 ,
 .Xr symlink 7
 .Sh HISTORY
 The
 .Nm
 command first appeared in
 .Bx 4.4 .
+.Sh BUGS
+Only a limited number of utilities are
+.Nm
+aware.
+Some of these tools include
+.Xr ls 1 ,
+.Xr cp 1 ,
+.Xr find 1 ,
+.Xr install 1 ,
+.Xr dump 8 ,
+and
+.Xr restore 8 .
+In particular a tool which is not currently
+.Nm
+aware is the
+.Xr pax 1
+utility.
