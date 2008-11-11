@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)checknr.c	8.1 (Berkeley) 6/6/93
  *
- * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.12 2006/01/19 03:14:06 corecode Exp $
+ * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.13 2008/11/11 01:02:40 pavalos Exp $
  */
 
 #include <err.h>
@@ -66,7 +66,7 @@ struct stkstr {
 	int opno;	/* number of opening bracket */
 	int pl;		/* '+', '-', ' ' for \s, 1 for \f, 0 for .ft */
 	int parm;	/* parm to size, font, etc */
-	int lno;	/* line number the thing came in in */
+	int lno;	/* line number the thing came in on */
 } stk[MAXSTK];
 int stktop;
 
@@ -255,9 +255,11 @@ main(int argc, char **argv)
 			cfilename = argv[i];
 			f = fopen(cfilename, "r");
 			if (f == NULL)
-				perror(cfilename);
-			else
+				warn("%s", cfilename);
+			else {
 				process(f);
+				fclose(f);
+			}
 		}
 	} else {
 		cfilename = "stdin";
