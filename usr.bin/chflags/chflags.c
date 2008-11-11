@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)chflags.c	8.5 (Berkeley) 4/1/94
  * $FreeBSD: src/usr.bin/chflags/chflags.c,v 1.7.2.3 2001/08/01 23:09:18 obrien Exp $
- * $DragonFly: src/usr.bin/chflags/chflags.c,v 1.5 2008/11/10 21:37:25 pavalos Exp $
+ * $DragonFly: src/usr.bin/chflags/chflags.c,v 1.6 2008/11/11 02:55:13 pavalos Exp $
  */
 
 #include <sys/types.h>
@@ -56,11 +56,12 @@ main(int argc, char **argv)
 	FTSENT *p;
 	u_long clear, set;
 	long val;
-	int Hflag, Lflag, Rflag, ch, fts_options, oct, rval;
+	int Hflag, Lflag, Rflag, hflag, ch, fts_options, oct, rval;
 	char *flags, *ep;
+	int (*change_flags)(const char *, unsigned long);
 
-	Hflag = Lflag = Rflag = 0;
-	while ((ch = getopt(argc, argv, "HLPR")) != -1)
+	Hflag = Lflag = Rflag = hflag = 0;
+	while ((ch = getopt(argc, argv, "HLPRh")) != -1)
 		switch (ch) {
 		case 'H':
 			Hflag = 1;
@@ -76,6 +77,9 @@ main(int argc, char **argv)
 		case 'R':
 			Rflag = 1;
 			break;
+		case 'h':
+			hflag = 1;
+			break;
 		default:
 			usage();
 		}
@@ -87,6 +91,10 @@ main(int argc, char **argv)
 
 	if (Rflag) {
 		fts_options = FTS_PHYSICAL;
+		if (hflag) {
+			errx(1, "the -R and -h options "
+				"may not be specified together");
+		}
 		if (Hflag)
 			fts_options |= FTS_COMFOLLOW;
 		if (Lflag) {
@@ -95,6 +103,11 @@ main(int argc, char **argv)
 		}
 	} else
 		fts_options = FTS_LOGICAL;
+
+	if (hflag)
+		change_flags = lchflags;
+	else
+		change_flags = chflags;
 
 	flags = *argv;
 	if (*flags >= '0' && *flags <= '7') {
@@ -140,17 +153,20 @@ main(int argc, char **argv)
 			 * don't point to anything and ones that we found
 			 * doing a physical walk.
 			 */
-			continue;
+			if (!hflag)
+				continue;
+			/* FALLTHROUGH */
 		default:
 			break;
 		}
 		if (oct) {
-			if (!chflags(p->fts_accpath, set))
+			if (!(*change_flags)(p->fts_accpath, set))
 				continue;
 		} else {
 			p->fts_statp->st_flags |= set;
 			p->fts_statp->st_flags &= clear;
-			if (!chflags(p->fts_accpath, (u_long)p->fts_statp->st_flags))
+			if (!(*change_flags)(p->fts_accpath,
+				    (u_long)p->fts_statp->st_flags))
 				continue;
 		}
 		warn("%s", p->fts_path);
@@ -165,6 +181,6 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: chflags [-R [-H | -L | -P]] flags file ...\n");
+	    "usage: chflags [-h] [-R [-H | -L | -P]] flags file ...\n");
 	exit(1);
 }
