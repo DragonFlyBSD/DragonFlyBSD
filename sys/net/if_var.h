@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.68 2008/09/17 11:25:16 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.69 2008/11/11 13:48:01 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -363,16 +363,6 @@ if_handoff(struct ifqueue *_ifq, struct mbuf *_m, struct ifnet *_ifp,
 
 #endif /* _KERNEL */
 
-#ifndef _NET_NETMSG_H_
-#include <net/netmsg.h>
-#endif
-
-struct netmsg_ifaddr_free {
-	struct netmsg	nm_netmsg;
-	struct ifaddr	*nm_ifaddr;
-	int		nm_cpuid;
-};
-
 struct in_ifaddr;
 
 struct in_ifaddr_container {
@@ -392,7 +382,6 @@ struct ifaddr_container {
 	TAILQ_ENTRY(ifaddr_container)	ifa_link;   /* queue macro glue */
 	u_int			ifa_refcnt; /* references to this structure */
 	uint32_t		ifa_listmask;	/* IFA_LIST_ */
-	struct netmsg_ifaddr_free ifa_freemsg;	/* Used by IFAFREE */
 
 	/*
 	 * Protocol specific states
@@ -424,7 +413,7 @@ struct ifaddr {
 	void	(*ifa_rtrequest)	/* check or clean routes (+ or -)'d */
 		(int, struct rtentry *, struct rt_addrinfo *);
 	u_short	ifa_flags;		/* mostly rt_flags for cloning */
-	cpumask_t ifa_cpumask;
+	int	ifa_ncnt;		/* # of valid ifaddr_container */
 	int	ifa_metric;		/* cost of going out this interface */
 #ifdef notdef
 	struct	rtentry *ifa_rt;	/* XXXX for ROUTETOIF ????? */

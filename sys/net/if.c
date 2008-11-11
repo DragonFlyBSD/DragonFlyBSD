@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.81 2008/10/03 00:26:21 hasso Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.82 2008/11/11 13:48:01 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -74,6 +74,7 @@
 #include <net/netisr.h>
 #include <net/netmsg2.h>
 
+#include <machine/atomic.h>
 #include <machine/stdarg.h>
 #include <machine/smp.h>
 
@@ -2173,7 +2174,7 @@ ifa_create(int size, int flags)
 
 	ifa->ifa_containers = kmalloc(ncpus * sizeof(struct ifaddr_container),
 				      M_IFADDR, M_WAITOK | M_ZERO);
-	ifa->ifa_cpumask = smp_active_mask;
+	ifa->ifa_ncnt = ncpus;
 	for (i = 0; i < ncpus; ++i) {
 		struct ifaddr_container *ifac = &ifa->ifa_containers[i];
 
@@ -2187,28 +2188,10 @@ ifa_create(int size, int flags)
 	return ifa;
 }
 
-static void
-ifac_free_dispatch(struct netmsg *nmsg)
-{
-	struct netmsg_ifaddr_free *fmsg = (struct netmsg_ifaddr_free *)nmsg;
-	struct ifaddr *ifa = fmsg->nm_ifaddr;
-
-	KKASSERT(ifa->ifa_cpumask & (1 << fmsg->nm_cpuid));
-	ifa->ifa_cpumask &= ~(1 << fmsg->nm_cpuid);
-	if (ifa->ifa_cpumask == 0) {
-#ifdef IFADDR_DEBUG
-		kprintf("free ifa %p\n", ifa);
-#endif
-		kfree(ifa->ifa_containers, M_IFADDR);
-		kfree(ifa, M_IFADDR);
-	}
-	/* Don't reply, 'nmsg' is embedded in ifaddr_container */
-}
-
 void
 ifac_free(struct ifaddr_container *ifac, int cpu_id)
 {
-	struct netmsg_ifaddr_free *fmsg;
+	struct ifaddr *ifa = ifac->ifa;
 
 	KKASSERT(ifac->ifa_magic == IFA_CONTAINER_MAGIC);
 	KKASSERT(ifac->ifa_refcnt == 0);
@@ -2221,13 +2204,15 @@ ifac_free(struct ifaddr_container *ifac, int cpu_id)
 	kprintf("try free ifa %p cpu_id %d\n", ifac->ifa, cpu_id);
 #endif
 
-	fmsg = &ifac->ifa_freemsg;
-	netmsg_init(&fmsg->nm_netmsg, &netisr_apanic_rport, 0,
-		    ifac_free_dispatch);
-	fmsg->nm_ifaddr = ifac->ifa;
-	fmsg->nm_cpuid = cpu_id;
-
-	ifa_sendmsg(&fmsg->nm_netmsg.nm_lmsg, 0);
+	KASSERT(ifa->ifa_ncnt > 0 && ifa->ifa_ncnt <= ncpus,
+		("invalid # of ifac, %d\n", ifa->ifa_ncnt));
+	if (atomic_fetchadd_int(&ifa->ifa_ncnt, -1) == 1) {
+#ifdef IFADDR_DEBUG
+		kprintf("free ifa %p\n", ifa);
+#endif
+		kfree(ifa->ifa_containers, M_IFADDR);
+		kfree(ifa, M_IFADDR);
+	}
 }
 
 static void
