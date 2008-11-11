@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)xinstall.c	8.1 (Berkeley) 7/21/93
  * $FreeBSD: src/usr.bin/xinstall/xinstall.c,v 1.38.2.8 2002/08/07 16:29:48 ru Exp $
- * $DragonFly: src/usr.bin/xinstall/xinstall.c,v 1.5 2004/09/23 19:13:51 dillon Exp $
+ * $DragonFly: src/usr.bin/xinstall/xinstall.c,v 1.6 2008/11/11 01:51:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -85,7 +85,7 @@ void	copy(int, const char *, int, const char *, off_t);
 int	compare(int, const char *, size_t, int, const char *, size_t);
 int	create_newfile(const char *, int, struct stat *);
 int	create_tempfile(const char *, char *, size_t);
-void	install(const char *, const char *, u_long, u_int);
+void	install(const char *, const char *, u_long, u_long, u_int);
 void	install_dir(char *);
 u_long	numeric_id(const char *, const char *);
 void	strip(const char *);
@@ -98,6 +98,7 @@ main(int argc, char **argv)
 	struct stat from_sb, to_sb;
 	mode_t *set;
 	u_long fset;
+	u_long fclr;
 	int ch, no_target;
 	int trysys;
 	u_int iflags;
@@ -133,7 +134,7 @@ main(int argc, char **argv)
 			break;
 		case 'f':
 			flags = optarg;
-			if (strtofflags(&flags, &fset, NULL))
+			if (strtofflags(&flags, &fset, &fclr))
 				errx(EX_USAGE, "%s: invalid flag", flags);
 			iflags |= SETFLAGS;
 			break;
@@ -224,7 +225,7 @@ main(int argc, char **argv)
 	no_target = stat(to_name = argv[argc - 1], &to_sb);
 	if (!no_target && S_ISDIR(to_sb.st_mode)) {
 		for (; *argv != to_name; ++argv)
-			install(*argv, to_name, fset, iflags | DIRECTORY);
+			install(*argv, to_name, fset, fclr, iflags | DIRECTORY);
 		exit(EX_OK);
 		/* NOTREACHED */
 	}
@@ -245,7 +246,7 @@ main(int argc, char **argv)
 			errx(EX_USAGE, 
 			    "%s and %s are the same file", *argv, to_name);
 	}
-	install(*argv, to_name, fset, iflags);
+	install(*argv, to_name, fset, fclr, iflags);
 	exit(EX_OK);
 	/* NOTREACHED */
 }
@@ -344,12 +345,14 @@ file_getowner(const char *etcdir, const char *owner, uid_t *uid)
  *	build a path name and install the file
  */
 void
-install(const char *from_name, const char *to_name, u_long fset, u_int flags)
+install(const char *from_name, const char *to_name, u_long fset, u_long fclr,
+	u_int flags)
 {
 	struct stat from_sb, temp_sb, to_sb;
 	struct utimbuf utb;
 	int devnull, files_match, from_fd, serrno, target;
 	int tempcopy, temp_fd, to_fd;
+	u_long nfset;
 	char backup[MAXPATHLEN], *p, pathbuf[MAXPATHLEN], tempfile[MAXPATHLEN];
 
 	files_match = 0;
@@ -561,13 +564,24 @@ install(const char *from_name, const char *to_name, u_long fset, u_int flags)
 
 	/*
 	 * If provided a set of flags, set them, otherwise, preserve the
-	 * flags, except for the dump flag.
+	 * flags, except for the dump and history flags.  The dump flag
+	 * is left clear on the target while the history flag from when
+	 * the target was created (which is inherited from the target's
+	 * parent directory) is retained.
+	 */
+	if (flags & SETFLAGS) {
+		nfset = (to_sb.st_flags | fset) & ~fclr;
+	} else {
+		nfset = from_sb.st_flags & ~(UF_NODUMP | UF_NOHISTORY) |
+			(to_sb.st_flags & UF_NOHISTORY);
+	}
+
+	/*
 	 * NFS does not support flags.  Ignore EOPNOTSUPP flags if we're just
 	 * trying to turn off UF_NODUMP.  If we're trying to set real flags,
 	 * then warn if the the fs doesn't support it, otherwise fail.
 	 */
-	if (!devnull && fchflags(to_fd,
-	    flags & SETFLAGS ? fset : from_sb.st_flags & ~UF_NODUMP)) {
+	if (!devnull && fchflags(to_fd, nfset)) {
 		if (flags & SETFLAGS) {
 			if (errno == EOPNOTSUPP)
 				warn("%s: chflags", to_name);
