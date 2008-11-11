@@ -3,7 +3,7 @@
  *
  * This module implements a simple remote control protocol
  *
- * $DragonFly: src/bin/cpdup/hcproto.c,v 1.7 2008/11/10 14:30:02 swildner Exp $
+ * $DragonFly: src/bin/cpdup/hcproto.c,v 1.8 2008/11/11 04:36:00 dillon Exp $
  */
 
 #include "cpdup.h"
@@ -859,22 +859,29 @@ rc_write(hctransaction_t trans, struct HCHead *head)
 
 /*
  * REMOVE
+ *
+ * NOTE: This function returns -errno if an error occured.
  */
 int
 hc_remove(struct HostConf *hc, const char *path)
 {
     hctransaction_t trans;
     struct HCHead *head;
+    int res;
 
-    if (hc == NULL || hc->host == NULL)
-	return(remove(path));
+    if (hc == NULL || hc->host == NULL) {
+	res = remove(path);
+	if (res < 0)
+		res = -errno;
+	return(res);
+    }
 
     trans = hcc_start_command(hc, HC_REMOVE);
     hcc_leaf_string(trans, LC_PATH1, path);
     if ((head = hcc_finish_command(trans)) == NULL)
-	return(-1);
+	return(-EIO);
     if (head->error)
-	return(-1);
+	return(-(int)head->error);
     return(0);
 }
 

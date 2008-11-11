@@ -45,7 +45,7 @@
  *	- Is able to do incremental mirroring/backups via hardlinks from
  *	  the 'previous' version (supplied with -H path).
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.31 2008/11/10 14:30:02 swildner Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.32 2008/11/11 04:36:00 dillon Exp $
  */
 
 /*-
@@ -125,6 +125,7 @@ static void hltsetdino(struct hlink *, ino_t);
 int YesNo(const char *path);
 static int xrename(const char *src, const char *dst, u_long flags);
 static int xlink(const char *src, const char *dst, u_long flags);
+static int xremove(struct HostConf *host, const char *path);
 int WildCmp(const char *s1, const char *s2);
 static int DoCopy(copy_info_t info, int depth);
 
@@ -674,7 +675,7 @@ DoCopy(copy_info_t info, int depth)
 		    /*
 		     * hard link is not correct, attempt to unlink it
 		     */
-                    if (hc_remove(&DstHost, dpath) < 0) {
+                    if (xremove(&DstHost, dpath) < 0) {
 			logerr("%-32s hardlink: unable to unlink: %s\n", 
 			    ((dpath) ? dpath : spath), strerror(errno));
                         hltdelete(hln);
@@ -829,7 +830,7 @@ relink:
 
 	    if (dpath) {
 		if (S_ISDIR(st2.st_mode) == 0) {
-		    hc_remove(&DstHost, dpath);
+		    xremove(&DstHost, dpath);
 		    if (hc_mkdir(&DstHost, dpath, st1.st_mode | 0700) != 0) {
 			logerr("%s: mkdir failed: %s\n", 
 			    (dpath ? dpath : spath), strerror(errno));
@@ -1087,7 +1088,7 @@ relink:
 	 */
 	if (UseHLPath && (hpath = checkHLPath(&st1, spath, dpath)) != NULL) {
 		if (st2Valid)
-			hc_remove(&DstHost, dpath);
+			xremove(&DstHost, dpath);
 		if (hc_link(&DstHost, hpath, dpath) == 0) {
 			++CountLinkedItems;
 			if (VerboseOpt) {
@@ -1207,7 +1208,7 @@ skip_copy:
 	if (n1 >= 0) {
 	    if (ForceOpt || n1 != n2 || bcmp(link1, link2, n1) != 0) {
 		hc_umask(&DstHost, ~st1.st_mode);
-		hc_remove(&DstHost, path);
+		xremove(&DstHost, path);
 		link1[n1] = 0;
 		if (hc_symlink(&DstHost, link1, path) < 0) {
                       logerr("%-32s symlink (%s->%s) failed: %s\n",
@@ -1260,11 +1261,11 @@ skip_copy:
 	) {
 	    snprintf(path, GETPATHSIZE, "%s.tmp%d", dpath, (int)getpid());
 
-	    hc_remove(&DstHost, path);
+	    xremove(&DstHost, path);
 	    if (hc_mknod(&DstHost, path, st1.st_mode, st1.st_rdev) == 0) {
 		hc_chmod(&DstHost, path, st1.st_mode);
 		hc_chown(&DstHost, path, st1.st_uid, st1.st_gid);
-		hc_remove(&DstHost, dpath);
+		xremove(&DstHost, dpath);
 		if (xrename(path, dpath, st2.st_flags) != 0) {
 		    logerr("%-32s dev-rename-after-create failed: %s\n",
 			(dpath ? dpath : spath),
@@ -1358,7 +1359,7 @@ RemoveRecur(const char *dpath, dev_t devNo)
 	    } else {
 		if (AskConfirmation && NoRemoveOpt == 0) {
 		    if (YesNo(dpath)) {
-			if (hc_remove(&DstHost, dpath) < 0) {
+			if (xremove(&DstHost, dpath) < 0) {
 			    logerr("%-32s remove failed: %s\n",
 				dpath, strerror(errno)
 			    );
@@ -1369,7 +1370,7 @@ RemoveRecur(const char *dpath, dev_t devNo)
 		    if (NoRemoveOpt) {
 			if (VerboseOpt)
 			    logstd("%-32s not-removed\n", dpath);
-		    } else if (hc_remove(&DstHost, dpath) == 0) {
+		    } else if (xremove(&DstHost, dpath) == 0) {
 			if (VerboseOpt)
 			    logstd("%-32s remove-ok\n", dpath);
 			CountRemovedItems++;
@@ -1581,5 +1582,20 @@ xlink(const char *src, const char *dst, u_long flags)
     if (r == 0)
 	    ++CountLinkedItems;
     return(r);
+}
+
+static int
+xremove(struct HostConf *host, const char *path)
+{
+    int res;
+
+    res = hc_remove(host, path);
+#ifdef _ST_FLAGS_PRESENT_
+    if (res == -EPERM) {
+	hc_chflags(host, path, 0);
+	res = hc_remove(host, path);
+    }
+#endif
+    return(res);
 }
 
