@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.44 2008/09/18 11:55:20 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.45 2008/11/12 13:46:04 sephe Exp $
  */
 
 /*
@@ -2099,7 +2099,6 @@ bridge_span(struct bridge_softc *sc, struct mbuf *m)
  * bridge_rtupdate:
  *
  *	Add a bridge routing entry.
- *	Can be called from interrupt context.
  */
 static int
 bridge_rtupdate(struct bridge_softc *sc, const uint8_t *dst,
@@ -2122,9 +2121,7 @@ bridge_rtupdate(struct bridge_softc *sc, const uint8_t *dst,
 		 * address.
 		 */
 		brt = kmalloc(sizeof(struct bridge_rtnode), M_DEVBUF,
-			      M_INTNOWAIT|M_ZERO);
-		if (brt == NULL)
-			return (ENOMEM);
+			      M_WAITOK | M_ZERO);
 
 		brt->brt_flags = IFBAF_DYNAMIC;
 		memcpy(brt->brt_addr, dst, ETHER_ADDR_LEN);
