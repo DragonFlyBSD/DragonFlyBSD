@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.82 2008/11/11 13:48:01 sephe Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.83 2008/11/12 11:03:28 sephe Exp $
  */
 
 #include "opt_compat.h"
@@ -450,7 +450,7 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 #endif
 
 	ifp->if_start_nmsg = kmalloc(ncpus * sizeof(struct netmsg),
-				     M_IFADDR /* XXX */, M_WAITOK);
+				     M_LWKTMSG, M_WAITOK);
 	for (i = 0; i < ncpus; ++i) {
 		netmsg_init(&ifp->if_start_nmsg[i], &netisr_adone_rport, 0,
 			    if_start_dispatch);
@@ -732,7 +732,7 @@ if_detach(struct ifnet *ifp)
 
 	TAILQ_REMOVE(&ifnet, ifp, if_link);
 	kfree(ifp->if_addrheads, M_IFADDR);
-	kfree(ifp->if_start_nmsg, M_IFADDR);
+	kfree(ifp->if_start_nmsg, M_LWKTMSG);
 	crit_exit();
 }
 
