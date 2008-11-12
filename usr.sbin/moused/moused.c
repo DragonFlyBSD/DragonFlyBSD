@@ -46,7 +46,7 @@
 
 /*
  * $FreeBSD: src/usr.sbin/moused/moused.c,v 1.69 2005/01/06 08:38:29 philip Exp $
- * $DragonFly: src/usr.sbin/moused/moused.c,v 1.6 2008/02/08 10:17:40 matthias Exp $
+ * $DragonFly: src/usr.sbin/moused/moused.c,v 1.7 2008/11/12 21:44:59 swildner Exp $
  */
 #include <machine/console.h>
 #include <machine/mouse.h>
@@ -3069,7 +3069,7 @@ kidspad(u_char rxc, mousestatus_t *act)
 }
 
 static void
-mremote_serversetup()
+mremote_serversetup(void)
 {
     struct sockaddr_un ad;
 

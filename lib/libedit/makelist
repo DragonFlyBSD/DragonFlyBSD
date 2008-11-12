@@ -32,7 +32,7 @@
 #
 # @(#)makelist	5.3 (Berkeley) 6/4/93
 # $NetBSD: makelist,v 1.11 2005/10/22 16:45:03 christos Exp $
-# $DragonFly: src/lib/libedit/makelist,v 1.5 2007/05/05 00:27:39 pavalos Exp $
+# $DragonFly: src/lib/libedit/makelist,v 1.6 2008/11/12 21:44:59 swildner Exp $
 
 # makelist.sh: Automatically generate header files...
 
@@ -120,7 +120,7 @@ case $FLAG in
 	}
 	END {
 	    printf("};\n");
-	    printf("\nprotected const el_bindings_t* help__get()");
+	    printf("\nprotected const el_bindings_t* help__get(void)");
 	    printf("{ return el_func_help; }\n");
 	}'
 	;;
@@ -186,7 +186,7 @@ case $FLAG in
 	}
 	END {
 	    printf("\n};\n");
-	    printf("\nprotected const el_func_t* func__get() { return el_func; }\n");
+	    printf("\nprotected const el_func_t* func__get(void) { return el_func; }\n");
 	}'
 	;;
 

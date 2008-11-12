@@ -25,7 +25,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_config_parse.y,v 1.3 1999/08/28 01:15:32 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_config_parse.y,v 1.3 2003/11/03 19:31:35 eirikn Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_config_parse.y,v 1.4 2008/11/12 21:44:59 swildner Exp $
  */
 
 
@@ -400,8 +400,7 @@ parse_error(fmt, va_alist)
 
 
 void
-yyerror(s)
-	char	*s;
+yyerror(char *s)
 {
 	parse_error(s);
 }

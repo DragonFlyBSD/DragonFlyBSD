@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.umntall/mounttab.c,v 1.2.2.1 2001/12/13 01:27:20 iedowse Exp $
- * $DragonFly: src/usr.sbin/rpc.umntall/mounttab.c,v 1.3 2005/04/02 20:49:56 joerg Exp $
+ * $DragonFly: src/usr.sbin/rpc.umntall/mounttab.c,v 1.4 2008/11/12 21:44:59 swildner Exp $
  */
 
 #include <sys/syslog.h>
@@ -68,7 +68,7 @@ add_mtab(char *hostp, char *dirp) {
  * Read mounttab line for line and return struct mtablist.
  */
 int
-read_mtab() {
+read_mtab(void) {
 	struct mtablist **mtabpp, *mtabp;
 	char *hostp, *dirp, *cp;
 	char str[STRSIZ];
@@ -204,7 +204,7 @@ clean_mtab(char *hostp, char *dirp, int verbose) {
  * Free struct mtablist mtab.
  */
 void
-free_mtab() {
+free_mtab(void) {
 	struct mtablist *mtabp;
 
 	while ((mtabp = mtabhead) != NULL) {
