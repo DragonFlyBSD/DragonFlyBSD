@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)xinstall.c	8.1 (Berkeley) 7/21/93
  * $FreeBSD: src/usr.bin/xinstall/xinstall.c,v 1.38.2.8 2002/08/07 16:29:48 ru Exp $
- * $DragonFly: src/usr.bin/xinstall/xinstall.c,v 1.6 2008/11/11 01:51:24 dillon Exp $
+ * $DragonFly: src/usr.bin/xinstall/xinstall.c,v 1.7 2008/11/12 00:16:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -61,6 +61,9 @@
 /* Bootstrap aid - this doesn't exist in most older releases */
 #ifndef MAP_FAILED
 #define MAP_FAILED ((void *)-1)	/* from <sys/mman.h> */
+#endif
+#ifndef UF_NOHISTORY
+#define UF_NOHISTORY	0
 #endif
 
 #define MAX_CMP_SIZE	(16 * 1024 * 1024)
