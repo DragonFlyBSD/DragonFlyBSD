@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.45 2008/11/12 13:46:04 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.46 2008/11/13 10:56:40 sephe Exp $
  */
 
 /*
@@ -274,7 +274,6 @@ static void	bridge_enqueue_internal(struct ifnet *, struct mbuf *m,
 static void	bridge_enqueue_handler(struct netmsg *);
 static void	bridge_pfil_enqueue_handler(struct netmsg *);
 static void	bridge_pfil_enqueue(struct ifnet *, struct mbuf *, int);
-static void	bridge_handoff_notags(struct ifnet *, struct mbuf *);
 static void	bridge_handoff(struct ifnet *, struct mbuf *);
 
 SYSCTL_DECL(_net_link);
@@ -2938,7 +2937,7 @@ bridge_enqueue_handler(struct netmsg *nmsg)
 	m = nmp->nm_packet;
 	dst_ifp = nmp->nm_netmsg.nm_lmsg.u.ms_resultp;
 
-	bridge_handoff_notags(dst_ifp, m);
+	bridge_handoff(dst_ifp, m);
 }
 
 static void
@@ -2967,17 +2966,11 @@ bridge_pfil_enqueue_handler(struct netmsg *nmsg)
 		if (m == NULL)
 			return;
 	}
-	bridge_handoff_notags(dst_ifp, m);
+	bridge_handoff(dst_ifp, m);
 }
 
 static void
 bridge_handoff(struct ifnet *dst_ifp, struct mbuf *m)
-{
-	bridge_handoff_notags(dst_ifp, m);
-}
-
-static void
-bridge_handoff_notags(struct ifnet *dst_ifp, struct mbuf *m)
 {
 	struct mbuf *m0;
 
