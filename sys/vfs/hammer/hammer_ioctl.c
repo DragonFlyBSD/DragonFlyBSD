@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.31 2008/11/13 02:18:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.32 2008/11/13 02:23:29 dillon Exp $
  */
 
 #include "hammer.h"
@@ -458,10 +458,8 @@ hammer_ioc_set_version(hammer_transaction_t trans, hammer_inode_t ip,
 	hammer_volume_t volume;
 	int error;
 
-#if 0
 	if (ver->cur_version < trans->hmp->version)
 		return(EINVAL);
-#endif
 	if (ver->cur_version == trans->hmp->version)
 		return(0);
 	if (ver->cur_version > HAMMER_VOL_VERSION_MAX)
