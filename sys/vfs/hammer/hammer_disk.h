@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.54 2008/09/24 00:53:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_disk.h,v 1.55 2008/11/13 02:18:43 dillon Exp $
  */
 
 #ifndef VFS_HAMMER_DISK_H_
@@ -525,6 +525,11 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 #define HAMMER_VOL_CRCSIZE2	\
 	(sizeof(struct hammer_volume_ondisk) - HAMMER_VOL_CRCSIZE1 -	\
 	 sizeof(hammer_crc_t))
+
+#define HAMMER_VOL_VERSION_MIN		1	/* minimum supported version */
+#define HAMMER_VOL_VERSION_DEFAULT	1	/* newfs default version */
+#define HAMMER_VOL_VERSION_WIP		2	/* version >= this is WIP */
+#define HAMMER_VOL_VERSION_MAX		2	/* maximum supported version */
 
 /*
  * Record types are fairly straightforward.  The B-Tree includes the record

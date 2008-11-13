@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.73 2008/10/22 01:43:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_vfsops.c,v 1.74 2008/11/13 02:18:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -557,6 +557,18 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	 */
 	bcopy(rootvol->ondisk->vol0_blockmap, hmp->blockmap,
 	      sizeof(hmp->blockmap));
+
+	/*
+	 * Check filesystem version
+	 */
+	hmp->version = rootvol->ondisk->vol_version;
+	if (hmp->version < HAMMER_VOL_VERSION_MIN ||
+	    hmp->version > HAMMER_VOL_VERSION_MAX) {
+		kprintf("HAMMER: mount unsupported fs version %d\n",
+			hmp->version);
+		error = ERANGE;
+		goto done;
+	}
 
 	/*
 	 * The undo_rec_limit limits the size of flush groups to avoid

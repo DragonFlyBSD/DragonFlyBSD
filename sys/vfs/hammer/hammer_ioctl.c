@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.30 2008/07/31 04:42:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.c,v 1.31 2008/11/13 02:18:43 dillon Exp $
  */
 
 #include "hammer.h"
@@ -40,6 +40,12 @@ static int hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 				struct hammer_ioc_history *hist);
 static int hammer_ioc_synctid(hammer_transaction_t trans, hammer_inode_t ip,
 				struct hammer_ioc_synctid *std);
+static int hammer_ioc_get_version(hammer_transaction_t trans,
+				hammer_inode_t ip,
+				struct hammer_ioc_version *ver);
+static int hammer_ioc_set_version(hammer_transaction_t trans,
+				hammer_inode_t ip,
+				struct hammer_ioc_version *ver);
 
 int
 hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
@@ -117,6 +123,16 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 		if (error == 0) {
 			error = hammer_ioc_mirror_write(&trans, ip,
 				    (struct hammer_ioc_mirror_rw *)data);
+		}
+		break;
+	case HAMMERIOC_GET_VERSION:
+		error = hammer_ioc_get_version(&trans, ip, 
+				    (struct hammer_ioc_version *)data);
+		break;
+	case HAMMERIOC_SET_VERSION:
+		if (error == 0) {
+			error = hammer_ioc_set_version(&trans, ip, 
+					    (struct hammer_ioc_version *)data);
 		}
 		break;
 	default:
@@ -389,4 +405,93 @@ hammer_ioc_synctid(hammer_transaction_t trans, hammer_inode_t ip,
 	}
 	return(error);
 }
+
+/*
+ * Retrieve version info.
+ *
+ * Load min_version, wip_version, and max_versino.  If cur_version is passed
+ * as 0 then load the current version into cur_version.  Load the description
+ * for cur_version into the description array.
+ *
+ * Returns 0 on success, EINVAL if cur_version is non-zero and set to an
+ * unsupported value.
+ */
+static
+int
+hammer_ioc_get_version(hammer_transaction_t trans, hammer_inode_t ip,
+		   struct hammer_ioc_version *ver)
+{
+	int error = 0;
+
+	ver->min_version = HAMMER_VOL_VERSION_MIN;
+	ver->wip_version = HAMMER_VOL_VERSION_WIP;
+	ver->max_version = HAMMER_VOL_VERSION_MAX;
+	if (ver->cur_version == 0)
+		ver->cur_version = trans->hmp->version;
+	switch(ver->cur_version) {
+	case 1:
+		ksnprintf(ver->description, sizeof(ver->description),
+			 "2.0 - First HAMMER release");
+		break;
+	case 2:
+		ksnprintf(ver->description, sizeof(ver->description),
+			 "2.2 - New directory hash");
+		break;
+	default:
+		ksnprintf(ver->description, sizeof(ver->description),
+			 "Unknown");
+		error = EINVAL;
+		break;
+	}
+	return(error);
+};
+
+/*
+ * Set version info
+ */
+static
+int
+hammer_ioc_set_version(hammer_transaction_t trans, hammer_inode_t ip,
+		   struct hammer_ioc_version *ver)
+{
+	struct hammer_cursor cursor;
+	hammer_volume_t volume;
+	int error;
+
+#if 0
+	if (ver->cur_version < trans->hmp->version)
+		return(EINVAL);
+#endif
+	if (ver->cur_version == trans->hmp->version)
+		return(0);
+	if (ver->cur_version > HAMMER_VOL_VERSION_MAX)
+		return(EINVAL);
+	if (trans->hmp->ronly)
+		return(EROFS);
+
+	/*
+	 * Update the root volume header and the version cached in
+	 * the hammer_mount structure.
+	 */
+	error = hammer_init_cursor(trans, &cursor, NULL, NULL);
+	if (error)
+		goto failed;
+	hammer_sync_lock_sh(trans);
+
+	volume = hammer_get_root_volume(cursor.trans->hmp, &error);
+	KKASSERT(error == 0);
+	hammer_modify_volume_field(cursor.trans, volume, vol_version);
+	volume->ondisk->vol_version = ver->cur_version;
+	cursor.trans->hmp->version = ver->cur_version;
+	hammer_modify_volume_done(volume);
+	hammer_rel_volume(volume, 0);
+
+	hammer_sync_unlock(trans);
+failed:
+	ver->head.error = error;
+	hammer_done_cursor(&cursor);
+	return(0);
+}
+
+
 

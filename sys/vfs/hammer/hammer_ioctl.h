@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.22 2008/07/31 04:42:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_ioctl.h,v 1.23 2008/11/13 02:18:43 dillon Exp $
  */
 /*
  * HAMMER ioctl's.  This file can be #included from userland
@@ -281,6 +281,15 @@ struct hammer_ioc_mrecord_pfs {
 	struct hammer_pseudofs_data	pfsd;
 };
 
+struct hammer_ioc_version {
+	struct hammer_ioc_head head;
+	u_int32_t		cur_version;
+	u_int32_t		min_version;
+	u_int32_t		wip_version;
+	u_int32_t		max_version;
+	char			description[64];
+};
+
 union hammer_ioc_mrecord_any {
 	struct hammer_ioc_mrecord_head	head;
 	struct hammer_ioc_mrecord_rec	rec;
@@ -288,6 +297,7 @@ union hammer_ioc_mrecord_any {
 	struct hammer_ioc_mrecord_update update;
 	struct hammer_ioc_mrecord_update sync;
 	struct hammer_ioc_mrecord_pfs	pfs;
+	struct hammer_ioc_version	version;
 };
 
 typedef union hammer_ioc_mrecord_any *hammer_ioc_mrecord_any_t;
@@ -324,6 +334,8 @@ typedef union hammer_ioc_mrecord_any *hammer_ioc_mrecord_any_t;
 #define HAMMERIOC_DGD_PSEUDOFS	_IOWR('h',10,struct hammer_ioc_pseudofs_rw)
 #define HAMMERIOC_RMR_PSEUDOFS	_IOWR('h',11,struct hammer_ioc_pseudofs_rw)
 #define HAMMERIOC_WAI_PSEUDOFS	_IOWR('h',12,struct hammer_ioc_pseudofs_rw)
+#define HAMMERIOC_GET_VERSION	_IOWR('h',13,struct hammer_ioc_version)
+#define HAMMERIOC_SET_VERSION	_IOWR('h',14,struct hammer_ioc_version)
 
 #endif
 

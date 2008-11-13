@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.33 2008/07/16 18:30:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/hammer/hammer_reblock.c,v 1.34 2008/11/13 02:18:43 dillon Exp $
  */
 /*
  * HAMMER reblocker - This code frees up fragmented physical space
@@ -229,6 +229,7 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 {
 	hammer_mount_t hmp;
 	hammer_off_t tmp_offset;
+	struct hammer_btree_leaf_elm leaf;
 	int error;
 	int bytes;
 	int cur;
@@ -282,8 +283,23 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 			kprintf("D %6d/%d\n", bytes, reblock->free_level);
 		if (error == 0 && (cur == 0 || reblock->free_level == 0) &&
 		    bytes >= reblock->free_level) {
-			hammer_io_direct_uncache(hmp, &elm->leaf);
-			error = hammer_cursor_upgrade(cursor);
+			/*
+			 * This is nasty, the uncache code may have to get
+			 * vnode locks and because of that we can't hold
+			 * the cursor locked.
+			 */
+			leaf = elm->leaf;
+			hammer_unlock_cursor(cursor, 0);
+			hammer_io_direct_uncache(hmp, &leaf);
+			hammer_lock_cursor(cursor, 0);
+			if (cursor->flags & HAMMER_CURSOR_RETEST) {
+				kprintf("hammer: retest after uncache\n");
+				error = EDEADLK;
+			} else {
+				KKASSERT(bcmp(&elm->leaf, &leaf, sizeof(leaf)) == 0);
+			}
+			if (error == 0)
+				error = hammer_cursor_upgrade(cursor);
 			if (error == 0) {
 				error = hammer_reblock_data(reblock,
 							    cursor, elm);
