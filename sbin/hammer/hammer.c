@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/hammer.c,v 1.43 2008/10/08 21:01:54 thomas Exp $
+ * $DragonFly: src/sbin/hammer/hammer.c,v 1.44 2008/11/13 02:04:27 dillon Exp $
  */
 
 #include "hammer.h"
@@ -253,6 +253,14 @@ main(int ac, char **av)
 			hammer_cmd_mirror_dump();
 		else
 			usage(1);
+		exit(0);
+	}
+	if (strcmp(av[0], "version") == 0) {
+		hammer_cmd_get_version(av + 1, ac - 1);
+		exit(0);
+	}
+	if (strcmp(av[0], "version-upgrade") == 0) {
+		hammer_cmd_set_version(av + 1, ac - 1);
 		exit(0);
 	}
 

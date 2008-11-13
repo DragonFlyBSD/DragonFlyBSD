@@ -30,7 +30,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\" 
-.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.57 2008/11/09 05:22:56 dillon Exp $
+.\" $DragonFly: src/sbin/hammer/hammer.8,v 1.58 2008/11/13 02:04:27 dillon Exp $
 .\"
 .Dd October 22, 2008
 .Dt HAMMER 8
@@ -667,6 +667,34 @@ and
 .Fl b Ar bandwidth
 options to keep the mirroring target in sync with the source on a continuing
 basis.
+.\" ==== version ====
+.It Ar version Ar filesystem
+This command returns the HAMMER filesystem version for the specified
+filesystem as well as the range of versions supported in the kernel.
+The
+.Fl q
+option may be used to remove the summary at the end.
+.\" ==== version-upgrade ====
+.It Ar version-upgrade Ar filesystem Ar version Op Ar force
+This command upgrades the HAMMER filesystem to the specified version.
+Once upgraded a filesystem may not be downgraded.
+If you wish to upgrade a filesystem to a version greater or equal to the
+work-in-progress version number you must specify the
+.Ar force
+directive.
+Use of WIP versions should be relegated to testing and may require wiping
+the filesystem as development progresses, even though the WIP version might
+not change.
+.Pp
+NOTE!  This command operates on the entire HAMMER filesystem and is not a
+per-PFS operation.  All PFS's will be affected.
+.Bl -tag -width indent
+.It 1
+DragonFly-2.0 default version, first HAMMER release.
+.It 2
+Work-in-progress version.
+This version is developing a new directory hash key.
+.El
 .El
 .\".Sh EXAMPLES
 .Sh PSEUDO FILESYSTEM (PFS) NOTES
