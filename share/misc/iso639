@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/misc/iso639,v 1.2.2.1 2002/02/06 20:59:18 wollman Exp $
-# $DragonFly: src/share/misc/iso639,v 1.3 2008/02/20 21:44:24 swildner Exp $
+# $DragonFly: src/share/misc/iso639,v 1.4 2008/11/13 21:09:48 swildner Exp $
 #
 # ISO 639-2 language codes
 #
@@ -213,6 +213,7 @@ hi	hin	hin	Hindi
 	hit	hit	Hittite
 	hmn	hmn	Hmong
 ho	hmo	hmo	Hiri Motu
+hr	hrv	hrv	Croatian
 	hsb	hsb	Upper Sorbian
 hu	hun	hun	Hungarian
 	hup	hup	Hupa
@@ -320,7 +321,6 @@ mt	mlt	mlt	Maltese
 	mni	mni	Manipuri
 	mno	mno	Manobo languages
 	moh	moh	Mohawk
-mo	mol	mol	Moldavian
 mn	mon	mon	Mongolian
 	mos	mos	Mossi
 	mul	mul	Multiple languages
@@ -345,7 +345,7 @@ ne	nep	nep	Nepali
 	nic	nic	Niger-Kordofanian (Other)
 	niu	niu	Niuean
 nn	nno	nno	Norwegian Nynorsk
-nb	nob	nob	Bokmål, Norwegian
+nb	nob	nob	BokmÃ¥l, Norwegian
 	nog	nog	Nogai
 	non	non	Norse, Old
 no	nor	nor	Norwegian
@@ -382,7 +382,7 @@ pl	pol	pol	Polish
 	pon	pon	Pohnpeian
 pt	por	por	Portuguese
 	pra	pra	Prakrit languages
-	pro	pro	Provençal, Old (to 1500)
+	pro	pro	ProvenÃ§al, Old (to 1500)
 ps	pus	pus	Pushto
 	qaa-qtz	qaa-qtz	Reserved for local use
 qu	que	que	Quechua
@@ -405,10 +405,8 @@ sg	sag	sag	Sango
 sa	san	san	Sanskrit
 	sas	sas	Sasak
 	sat	sat	Santali
-sr	scc	srp	Serbian
 	scn	scn	Sicilian
 	sco	sco	Scots
-hr	scr	hrv	Croatian
 	sel	sel	Selkup
 	sem	sem	Semitic (Other)
 	sga	sga	Irish, Old (to 900)
@@ -438,6 +436,7 @@ st	sot	sot	Sotho, Southern
 es	spa	spa	Spanish
 sc	srd	srd	Sardinian
 	srn	srn	Sranan Tongo
+sr	srp	srp	Serbian
 	srr	srr	Serer
 	ssa	ssa	Nilo-Saharan (Other)
 ss	ssw	ssw	Swati
@@ -493,7 +492,7 @@ uz	uzb	uzb	Uzbek
 	vai	vai	Vai
 ve	ven	ven	Venda
 vi	vie	vie	Vietnamese
-vo	vol	vol	Volapük
+vo	vol	vol	VolapÃ¼k
 	vot	vot	Votic
 	wak	wak	Wakashan languages
 	wal	wal	Walamo
