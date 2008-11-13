@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/hammer/cmd_version.c,v 1.1 2008/11/13 02:04:27 dillon Exp $
+ * $DragonFly: src/sbin/hammer/cmd_version.c,v 1.2 2008/11/13 02:23:53 dillon Exp $
  */
 /*
  * Get and set the HAMMER filesystem version.
@@ -131,6 +131,11 @@ hammer_cmd_set_version(char **av, int ac)
 	if (ioctl(fd, HAMMERIOC_SET_VERSION, &version) < 0) {
 		fprintf(stderr, "hammer version-upgrade ioctl: %s\n",
 			strerror(errno));
+		exit(1);
+	}
+	if (version.head.error) {
+		fprintf(stderr, "hammer version-upgrade ioctl: %s\n",
+			strerror(version.head.error));
 		exit(1);
 	}
 	close(fd);
