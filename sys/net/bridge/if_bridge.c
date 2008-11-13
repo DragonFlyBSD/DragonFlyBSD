@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.46 2008/11/13 10:56:40 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.47 2008/11/13 11:30:25 sephe Exp $
  */
 
 /*
@@ -176,6 +176,8 @@
  */
 #define	BRIDGE_IFCAPS_MASK		IFCAP_TXCSUM
 
+#define BRIDGE_CFGPORT			cpu_portfn(0)
+
 eventhandler_tag	bridge_detach_cookie = NULL;
 
 extern	struct mbuf *(*bridge_input_p)(struct ifnet *, struct mbuf *);
@@ -236,6 +238,8 @@ static void	bridge_delete_span(struct bridge_softc *,
 
 static int	bridge_control(struct bridge_softc *, u_long,
 			       bridge_ctl_t, void *);
+static int	bridge_ioctl_init(struct bridge_softc *, void *);
+static int	bridge_ioctl_stop(struct bridge_softc *, void *);
 static int	bridge_ioctl_add(struct bridge_softc *, void *);
 static int	bridge_ioctl_del(struct bridge_softc *, void *);
 static int	bridge_ioctl_gifflags(struct bridge_softc *, void *);
@@ -533,7 +537,7 @@ bridge_clone_destroy(struct ifnet *ifp)
 	netmsg_init(&nmsg, &curthread->td_msgport, 0, bridge_delete_dispatch);
 	lmsg = &nmsg.nm_lmsg;
 	lmsg->u.ms_resultp = sc;
-	lwkt_domsg(cpu_portfn(0), lmsg, 0);
+	lwkt_domsg(BRIDGE_CFGPORT, lmsg, 0);
 
 	crit_enter();	/* XXX MP */
 	LIST_REMOVE(sc, sc_list);
@@ -795,6 +799,39 @@ bridge_delete_span(struct bridge_softc *sc, struct bridge_iflist *bif)
 
 	LIST_REMOVE(bif, bif_next);
 	kfree(bif, M_DEVBUF);
+}
+
+static int
+bridge_ioctl_init(struct bridge_softc *sc, void *arg __unused)
+{
+	struct ifnet *ifp = sc->sc_ifp;
+
+	if (ifp->if_flags & IFF_RUNNING)
+		return 0;
+
+	callout_reset(&sc->sc_brcallout, bridge_rtable_prune_period * hz,
+	    bridge_timer, sc);
+
+	ifp->if_flags |= IFF_RUNNING;
+	bstp_initialization(sc);
+	return 0;
+}
+
+static int
+bridge_ioctl_stop(struct bridge_softc *sc, void *arg __unused)
+{
+	struct ifnet *ifp = sc->sc_ifp;
+
+	if ((ifp->if_flags & IFF_RUNNING) == 0)
+		return 0;
+
+	callout_stop(&sc->sc_brcallout);
+	bstp_stop(sc);
+
+	ifp->if_flags &= ~IFF_RUNNING;
+
+	bridge_rtflush(sc, IFBF_FLUSHDYN);
+	return 0;
 }
 
 static int
@@ -1393,7 +1430,7 @@ bridge_ifdetach(void *arg __unused, struct ifnet *ifp)
 	lmsg = &nmsg.nm_lmsg;
 	lmsg->u.ms_resultp = ifp;
 
-	lwkt_domsg(cpu_portfn(0), lmsg, 0);
+	lwkt_domsg(BRIDGE_CFGPORT, lmsg, 0);
 }
 
 /*
@@ -1404,20 +1441,7 @@ bridge_ifdetach(void *arg __unused, struct ifnet *ifp)
 static void
 bridge_init(void *xsc)
 {
-	struct bridge_softc *sc = (struct bridge_softc *)xsc;
-	struct ifnet *ifp = sc->sc_ifp;
-
-	ASSERT_SERIALIZED(ifp->if_serializer);
-
-	if (ifp->if_flags & IFF_RUNNING)
-		return;
-
-	callout_reset(&sc->sc_brcallout, bridge_rtable_prune_period * hz,
-	    bridge_timer, sc);
-
-	ifp->if_flags |= IFF_RUNNING;
-	bstp_initialization(sc);
-	return;
+	bridge_control(xsc, SIOCSIFFLAGS, bridge_ioctl_init, NULL);
 }
 
 /*
@@ -1428,19 +1452,7 @@ bridge_init(void *xsc)
 static void
 bridge_stop(struct ifnet *ifp)
 {
-	struct bridge_softc *sc = ifp->if_softc;
-
-	ASSERT_SERIALIZED(ifp->if_serializer);
-
-	if ((ifp->if_flags & IFF_RUNNING) == 0)
-		return;
-
-	callout_stop(&sc->sc_brcallout);
-	bstp_stop(sc);
-
-	bridge_rtflush(sc, IFBF_FLUSHDYN);
-
-	ifp->if_flags &= ~IFF_RUNNING;
+	bridge_control(ifp->if_softc, SIOCSIFFLAGS, bridge_ioctl_stop, NULL);
 }
 
 static void
@@ -3042,7 +3054,7 @@ bridge_control(struct bridge_softc *sc, u_long cmd,
 	bc_msg.bc_arg = bc_arg;
 
 	lwkt_serialize_exit(bifp->if_serializer);
-	error = lwkt_domsg(cpu_portfn(0), &nmsg->nm_lmsg, 0);
+	error = lwkt_domsg(BRIDGE_CFGPORT, &nmsg->nm_lmsg, 0);
 	lwkt_serialize_enter(bifp->if_serializer);
 	return error;
 }
