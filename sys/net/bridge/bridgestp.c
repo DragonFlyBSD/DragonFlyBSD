@@ -31,7 +31,7 @@
  * $OpenBSD: bridgestp.c,v 1.5 2001/03/22 03:48:29 jason Exp $
  * $NetBSD: bridgestp.c,v 1.5 2003/11/28 08:56:48 keihan Exp $
  * $FreeBSD: src/sys/net/bridgestp.c,v 1.7 2005/10/11 02:58:32 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/bridgestp.c,v 1.5 2008/06/14 07:58:46 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/bridgestp.c,v 1.6 2008/11/14 12:48:06 sephe Exp $
  */
 
 /*
@@ -53,6 +53,7 @@
 #include <sys/lock.h>
 #include <sys/thread.h>
 #include <sys/thread2.h>
+#include <sys/msgport2.h>
 
 #include <net/if.h>
 #include <net/if_dl.h>
@@ -825,6 +826,8 @@ bstp_initialization(struct bridge_softc *sc)
 	struct bridge_iflist *bif, *mif;
 	u_char *e_addr;
 
+	KKASSERT(&curthread->td_msgport == BRIDGE_CFGPORT);
+
 	mif = NULL;
 	LIST_FOREACH(bif, &sc->sc_iflist, bif_next) {
 		if ((bif->bif_flags & IFBIF_STP) == 0)
@@ -891,6 +894,9 @@ void
 bstp_stop(struct bridge_softc *sc)
 {
 	struct bridge_iflist *bif;
+	struct lwkt_msg *lmsg;
+
+	KKASSERT(&curthread->td_msgport == BRIDGE_CFGPORT);
 
 	LIST_FOREACH(bif, &sc->sc_iflist, bif_next) {
 		bstp_set_port_state(bif, BSTP_IFSTATE_DISABLED);
@@ -905,6 +911,13 @@ bstp_stop(struct bridge_softc *sc)
 	bstp_timer_stop(&sc->sc_tcn_timer);
 	bstp_timer_stop(&sc->sc_hello_timer);
 
+	crit_enter();
+	lmsg = &sc->sc_bstptimemsg.nm_lmsg;
+	if ((lmsg->ms_flags & MSGF_DONE) == 0) {
+		/* Pending to be processed; drop it */
+		lwkt_dropmsg(lmsg);
+	}
+	crit_exit();
 }
 
 static void
@@ -1079,7 +1092,37 @@ static void
 bstp_tick(void *arg)
 {
 	struct bridge_softc *sc = arg;
+	struct lwkt_msg *lmsg;
+
+	KKASSERT(mycpuid == BRIDGE_CFGCPU);
+
+	crit_enter();
+
+	if (callout_pending(&sc->sc_bstpcallout) ||
+	    !callout_active(&sc->sc_bstpcallout)) {
+		crit_exit();
+		return;
+	}
+	callout_deactivate(&sc->sc_bstpcallout);
+
+	lmsg = &sc->sc_bstptimemsg.nm_lmsg;
+	KKASSERT(lmsg->ms_flags & MSGF_DONE);
+	lwkt_sendmsg(BRIDGE_CFGPORT, lmsg);
+
+	crit_exit();
+}
+
+void
+bstp_tick_handler(struct netmsg *nmsg)
+{
+	struct bridge_softc *sc = nmsg->nm_lmsg.u.ms_resultp;
 	struct bridge_iflist *bif;
+
+	KKASSERT(&curthread->td_msgport == BRIDGE_CFGPORT);
+	crit_enter();
+	/* Reply ASAP */
+	lwkt_replymsg(&nmsg->nm_lmsg, 0);
+	crit_exit();
 
 	lwkt_serialize_enter(sc->sc_ifp->if_serializer);
 

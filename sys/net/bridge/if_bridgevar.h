@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.h,v 1.14 2001/03/22 03:48:29 jason Exp $
  * $NetBSD: if_bridgevar.h,v 1.4 2003/07/08 07:13:50 itojun Exp $
  * $FreeBSD: src/sys/net/if_bridgevar.h,v 1.4 2005/07/06 01:24:45 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridgevar.h,v 1.4 2008/06/14 07:58:46 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridgevar.h,v 1.5 2008/11/14 12:48:06 sephe Exp $
  */
 
 /*
@@ -290,7 +290,9 @@ struct bridge_softc {
 	uint32_t		sc_brtcnt;	/* cur. # of addresses */
 	uint32_t		sc_brttimeout;	/* rt timeout in seconds */
 	struct callout		sc_brcallout;	/* bridge callout */
+	struct netmsg		sc_brtimemsg;	/* bridge callout msg */
 	struct callout		sc_bstpcallout;	/* STP callout */
+	struct netmsg		sc_bstptimemsg;	/* STP callout msg */
 	LIST_HEAD(, bridge_iflist) sc_iflist;	/* member interface list */
 	LIST_HEAD(, bridge_rtnode) *sc_rthash;	/* our forwarding table */
 	LIST_HEAD(, bridge_rtnode) sc_rtlist;	/* list version of above */
@@ -299,6 +301,9 @@ struct bridge_softc {
 	struct bridge_timer	sc_link_timer;
 };
 #define sc_if                   sc_arp.ac_if
+
+#define BRIDGE_CFGCPU		0
+#define BRIDGE_CFGPORT		cpu_portfn(BRIDGE_CFGCPU)
 
 extern const uint8_t bstp_etheraddr[];
 
@@ -311,6 +316,7 @@ void	bstp_linkstate(struct ifnet *, int);
 void	bstp_stop(struct bridge_softc *);
 struct mbuf *bstp_input(struct bridge_softc *, struct bridge_iflist *,
 	    struct mbuf *);
+void	bstp_tick_handler(struct netmsg *);
 
 void	bridge_enqueue(struct ifnet *, struct mbuf *);
 

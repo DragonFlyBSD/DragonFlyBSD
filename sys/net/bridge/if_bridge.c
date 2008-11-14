@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.47 2008/11/13 11:30:25 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.48 2008/11/14 12:48:06 sephe Exp $
  */
 
 /*
@@ -176,8 +176,6 @@
  */
 #define	BRIDGE_IFCAPS_MASK		IFCAP_TXCSUM
 
-#define BRIDGE_CFGPORT			cpu_portfn(0)
-
 eventhandler_tag	bridge_detach_cookie = NULL;
 
 extern	struct mbuf *(*bridge_input_p)(struct ifnet *, struct mbuf *);
@@ -202,6 +200,7 @@ static int	bridge_output(struct ifnet *, struct mbuf *);
 
 static void	bridge_forward(struct bridge_softc *, struct mbuf *m);
 
+static void	bridge_timer_handler(struct netmsg *);
 static void	bridge_timer(void *);
 
 static void	bridge_broadcast(struct bridge_softc *, struct ifnet *,
@@ -448,7 +447,14 @@ bridge_clone_create(struct if_clone *ifc, int unit)
 	bridge_rtable_init(sc);
 
 	callout_init(&sc->sc_brcallout);
+	netmsg_init(&sc->sc_brtimemsg, &netisr_adone_rport,
+		    MSGF_DROPABLE | MSGF_PRIORITY, bridge_timer_handler);
+	sc->sc_brtimemsg.nm_lmsg.u.ms_resultp = sc;
+
 	callout_init(&sc->sc_bstpcallout);
+	netmsg_init(&sc->sc_bstptimemsg, &netisr_adone_rport,
+		    MSGF_DROPABLE | MSGF_PRIORITY, bstp_tick_handler);
+	sc->sc_bstptimemsg.nm_lmsg.u.ms_resultp = sc;
 
 	LIST_INIT(&sc->sc_iflist);
 	LIST_INIT(&sc->sc_spanlist);
@@ -528,9 +534,6 @@ bridge_clone_destroy(struct ifnet *ifp)
 
 	bridge_stop(ifp);
 	ifp->if_flags &= ~IFF_UP;
-
-	callout_stop(&sc->sc_brcallout);
-	callout_stop(&sc->sc_bstpcallout);
 
 	lwkt_serialize_exit(ifp->if_serializer);
 
@@ -821,11 +824,21 @@ static int
 bridge_ioctl_stop(struct bridge_softc *sc, void *arg __unused)
 {
 	struct ifnet *ifp = sc->sc_ifp;
+	struct lwkt_msg *lmsg;
 
 	if ((ifp->if_flags & IFF_RUNNING) == 0)
 		return 0;
 
 	callout_stop(&sc->sc_brcallout);
+
+	crit_enter();
+	lmsg = &sc->sc_brtimemsg.nm_lmsg;
+	if ((lmsg->ms_flags & MSGF_DONE) == 0) {
+		/* Pending to be processed; drop it */
+		lwkt_dropmsg(lmsg);
+	}
+	crit_exit();
+
 	bstp_stop(sc);
 
 	ifp->if_flags &= ~IFF_RUNNING;
@@ -2209,14 +2222,46 @@ static void
 bridge_timer(void *arg)
 {
 	struct bridge_softc *sc = arg;
+	struct lwkt_msg *lmsg;
+
+	KKASSERT(mycpuid == BRIDGE_CFGCPU);
+
+	crit_enter();
+
+	if (callout_pending(&sc->sc_brcallout) ||
+	    !callout_active(&sc->sc_brcallout)) {
+		crit_exit();
+		return;
+	}
+	callout_deactivate(&sc->sc_brcallout);
+
+	lmsg = &sc->sc_brtimemsg.nm_lmsg;
+	KKASSERT(lmsg->ms_flags & MSGF_DONE);
+	lwkt_sendmsg(BRIDGE_CFGPORT, lmsg);
+
+	crit_exit();
+}
+
+static void
+bridge_timer_handler(struct netmsg *nmsg)
+{
+	struct bridge_softc *sc = nmsg->nm_lmsg.u.ms_resultp;
+
+	KKASSERT(&curthread->td_msgport == BRIDGE_CFGPORT);
+
+	crit_enter();
+	/* Reply ASAP */
+	lwkt_replymsg(&nmsg->nm_lmsg, 0);
+	crit_exit();
 
 	lwkt_serialize_enter(sc->sc_ifp->if_serializer);
 
 	bridge_rtage(sc);
 
-	if (sc->sc_ifp->if_flags & IFF_RUNNING)
+	if (sc->sc_ifp->if_flags & IFF_RUNNING) {
 		callout_reset(&sc->sc_brcallout,
 		    bridge_rtable_prune_period * hz, bridge_timer, sc);
+	}
 
 	lwkt_serialize_exit(sc->sc_ifp->if_serializer);
 }
