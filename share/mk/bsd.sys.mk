@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.sys.mk,v 1.3.2.5 2002/07/03 16:59:14 des Exp $
-# $DragonFly: src/share/mk/bsd.sys.mk,v 1.11 2008/11/03 00:25:45 pavalos Exp $
+# $DragonFly: src/share/mk/bsd.sys.mk,v 1.12 2008/11/14 15:04:42 swildner Exp $
 #
 # This file contains common settings used for building DragonFly
 # sources.
@@ -24,9 +24,9 @@ CFLAGS		+= -std=${CSTD}
 . if defined(WARNS)
 .  if ${WARNS} >= 1
 CWARNFLAGS	+=	-Wsystem-headers
-.   if !defined(NO_WERROR) && ${CCVER} == "gcc41" && ${MACHINE_ARCH} == "i386"
-CWARNFLAGS	+=	-Werror
-.   endif
+#.   if !defined(NO_WERROR) && ${CCVER} == "gcc41" && ${MACHINE_ARCH} == "i386"
+#CWARNFLAGS	+=	-Werror
+#.   endif
 .  endif
 .  if ${WARNS} >= 2
 CWARNFLAGS	+=	-Wall
@@ -55,9 +55,9 @@ WFORMAT		=	1
 . if defined(WFORMAT)
 .  if ${WFORMAT} > 0
 CWARNFLAGS	+=	-Wformat=2 -Wno-format-extra-args
-.   if !defined(NO_WERROR) && ${CCVER} == "gcc41" && ${MACHINE_ARCH} == "i386"
-CWARNFLAGS	+=	-Werror
-.   endif
+#.   if !defined(NO_WERROR) && ${CCVER} == "gcc41" && ${MACHINE_ARCH} == "i386"
+#CWARNFLAGS	+=	-Werror
+#.   endif
 .  endif
 . endif
 .endif
