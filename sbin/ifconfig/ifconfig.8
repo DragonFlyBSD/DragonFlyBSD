@@ -27,7 +27,7 @@
 .\"
 .\"     From: @(#)ifconfig.8	8.3 (Berkeley) 1/5/94
 .\" $FreeBSD: src/sbin/ifconfig/ifconfig.8,v 1.124 2006/10/10 09:44:08 ru Exp $
-.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.24 2007/12/16 20:10:21 thomas Exp $
+.\" $DragonFly: src/sbin/ifconfig/ifconfig.8,v 1.25 2008/11/14 12:52:04 sephe Exp $
 
 .\"
 .Dd September 30, 2007
@@ -1199,7 +1199,7 @@ seconds.
 If
 .Ar seconds
 is zero, then address cache entries will not be expired.
-The default is 240 seconds.
+The default is 1200 seconds.
 .It Cm addr
 Display the addresses that have been learned by the bridge.
 .It Cm static Ar interface-name Ar address
