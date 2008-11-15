@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.48 2008/11/14 12:48:06 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.49 2008/11/15 04:50:23 sephe Exp $
  */
 
 /*
@@ -292,6 +292,19 @@ SYSCTL_INT(_net_link_bridge, OID_AUTO, pfil_bridge, CTLFLAG_RW,
 SYSCTL_INT(_net_link_bridge, OID_AUTO, pfil_member, CTLFLAG_RW,
     &pfil_member, 0, "Packet filter on the member interface");
 
+struct bridge_control_arg {
+	union {
+		struct ifbreq ifbreq;
+		struct ifbifconf ifbifconf;
+		struct ifbareq ifbareq;
+		struct ifbaconf ifbaconf;
+		struct ifbrparam ifbrparam;
+	} bca_u;
+	int	bca_len;
+	void	*bca_uptr;
+	void	*bca_kptr;
+};
+
 struct bridge_control {
 	bridge_ctl_t	bc_func;
 	int		bc_argsize;
@@ -368,7 +381,7 @@ const struct bridge_control bridge_control_table[] = {
 	{ bridge_ioctl_delspan,		sizeof(struct ifbreq),
 	  BC_F_COPYIN|BC_F_SUSER },
 };
-const int bridge_control_table_size =
+static const int bridge_control_table_size =
     sizeof(bridge_control_table) / sizeof(bridge_control_table[0]);
 
 LIST_HEAD(, bridge_softc) bridge_list;
@@ -563,13 +576,7 @@ static int
 bridge_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct bridge_softc *sc = ifp->if_softc;
-	union {
-		struct ifbreq ifbreq;
-		struct ifbifconf ifbifconf;
-		struct ifbareq ifbareq;
-		struct ifbaconf ifbaconf;
-		struct ifbrparam ifbrparam;
-	} args;
+	struct bridge_control_arg args;
 	struct ifdrv *ifd = (struct ifdrv *) data;
 	const struct bridge_control *bc;
 	int error = 0;
@@ -594,7 +601,7 @@ bridge_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			error = EINVAL;
 			break;
 		} else if (cmd == SIOCSDRVSPEC &&
-		    (bc->bc_flags & BC_F_COPYOUT) != 0) {
+			   (bc->bc_flags & BC_F_COPYOUT)) {
 			error = EINVAL;
 			break;
 		}
@@ -606,24 +613,40 @@ bridge_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		}
 
 		if (ifd->ifd_len != bc->bc_argsize ||
-		    ifd->ifd_len > sizeof(args)) {
+		    ifd->ifd_len > sizeof(args.bca_u)) {
 			error = EINVAL;
 			break;
 		}
 
 		memset(&args, 0, sizeof(args));
 		if (bc->bc_flags & BC_F_COPYIN) {
-			error = copyin(ifd->ifd_data, &args, ifd->ifd_len);
+			error = copyin(ifd->ifd_data, &args.bca_u,
+				       ifd->ifd_len);
 			if (error)
 				break;
 		}
 
 		error = bridge_control(sc, cmd, bc->bc_func, &args);
-		if (error)
+		if (error) {
+			KKASSERT(args.bca_len == 0 && args.bca_kptr == NULL);
 			break;
+		}
 
-		if (bc->bc_flags & BC_F_COPYOUT)
+		if (bc->bc_flags & BC_F_COPYOUT) {
 			error = copyout(&args, ifd->ifd_data, ifd->ifd_len);
+			if (args.bca_len != 0) {
+				KKASSERT(args.bca_kptr != NULL);
+				if (!error) {
+					error = copyout(args.bca_kptr,
+						args.bca_uptr, args.bca_len);
+				}
+				kfree(args.bca_kptr, M_TEMP);
+			} else {
+				KKASSERT(args.bca_kptr == NULL);
+			}
+		} else {
+			KKASSERT(args.bca_len == 0 && args.bca_kptr == NULL);
+		}
 		break;
 
 	case SIOCSIFFLAGS:
@@ -1032,10 +1055,11 @@ bridge_ioctl_gcache(struct bridge_softc *sc, void *arg)
 static int
 bridge_ioctl_gifs(struct bridge_softc *sc, void *arg)
 {
+	struct bridge_control_arg *bc_arg = arg;
 	struct ifbifconf *bifc = arg;
 	struct bridge_iflist *bif;
-	struct ifbreq breq;
-	int count, len, error = 0;
+	struct ifbreq *breq;
+	int count, len;
 
 	count = 0;
 	LIST_FOREACH(bif, &sc->sc_iflist, bif_next)
@@ -1044,87 +1068,119 @@ bridge_ioctl_gifs(struct bridge_softc *sc, void *arg)
 		count++;
 
 	if (bifc->ifbic_len == 0) {
-		bifc->ifbic_len = sizeof(breq) * count;
-		return (0);
+		bifc->ifbic_len = sizeof(*breq) * count;
+		return 0;
+	} else if (count == 0 || bifc->ifbic_len < sizeof(*breq)) {
+		bifc->ifbic_len = 0;
+		return 0;
 	}
+
+	len = min(bifc->ifbic_len, sizeof(*breq) * count);
+	KKASSERT(len >= sizeof(*breq));
+
+	breq = kmalloc(len, M_TEMP, M_INTWAIT | M_NULLOK);
+	if (breq == NULL) {
+		bifc->ifbic_len = 0;
+		return ENOMEM;
+	}
+	bc_arg->bca_kptr = breq;
 
 	count = 0;
-	len = bifc->ifbic_len;
-	memset(&breq, 0, sizeof breq);
 	LIST_FOREACH(bif, &sc->sc_iflist, bif_next) {
-		if (len < sizeof(breq))
+		if (len < sizeof(*breq))
 			break;
 
-		strlcpy(breq.ifbr_ifsname, bif->bif_ifp->if_xname,
-		    sizeof(breq.ifbr_ifsname));
-		breq.ifbr_ifsflags = bif->bif_flags;
-		breq.ifbr_state = bif->bif_state;
-		breq.ifbr_priority = bif->bif_priority;
-		breq.ifbr_path_cost = bif->bif_path_cost;
-		breq.ifbr_portno = bif->bif_ifp->if_index & 0xff;
-		error = copyout(&breq, bifc->ifbic_req + count, sizeof(breq));
-		if (error)
-			break;
+		strlcpy(breq->ifbr_ifsname, bif->bif_ifp->if_xname,
+			sizeof(breq->ifbr_ifsname));
+		breq->ifbr_ifsflags = bif->bif_flags;
+		breq->ifbr_state = bif->bif_state;
+		breq->ifbr_priority = bif->bif_priority;
+		breq->ifbr_path_cost = bif->bif_path_cost;
+		breq->ifbr_portno = bif->bif_ifp->if_index & 0xff;
+		breq++;
 		count++;
-		len -= sizeof(breq);
+		len -= sizeof(*breq);
 	}
 	LIST_FOREACH(bif, &sc->sc_spanlist, bif_next) {
-		if (len < sizeof(breq))
+		if (len < sizeof(*breq))
 			break;
 
-		strlcpy(breq.ifbr_ifsname, bif->bif_ifp->if_xname,
-		    sizeof(breq.ifbr_ifsname));
-		breq.ifbr_ifsflags = bif->bif_flags;
-		breq.ifbr_state = bif->bif_state;
-		breq.ifbr_priority = bif->bif_priority;
-		breq.ifbr_path_cost = bif->bif_path_cost;
-		breq.ifbr_portno = bif->bif_ifp->if_index & 0xff;
-		error = copyout(&breq, bifc->ifbic_req + count, sizeof(breq));
-		if (error)
-			break;
+		strlcpy(breq->ifbr_ifsname, bif->bif_ifp->if_xname,
+			sizeof(breq->ifbr_ifsname));
+		breq->ifbr_ifsflags = bif->bif_flags;
+		breq->ifbr_state = bif->bif_state;
+		breq->ifbr_priority = bif->bif_priority;
+		breq->ifbr_path_cost = bif->bif_path_cost;
+		breq->ifbr_portno = bif->bif_ifp->if_index & 0xff;
+		breq++;
 		count++;
-		len -= sizeof(breq);
+		len -= sizeof(*breq);
 	}
 
-	bifc->ifbic_len = sizeof(breq) * count;
-	return (error);
+	bifc->ifbic_len = sizeof(*breq) * count;
+	KKASSERT(bifc->ifbic_len > 0);
+
+	bc_arg->bca_len = bifc->ifbic_len;
+	bc_arg->bca_uptr = bifc->ifbic_req;
+	return 0;
 }
 
 static int
 bridge_ioctl_rts(struct bridge_softc *sc, void *arg)
 {
+	struct bridge_control_arg *bc_arg = arg;
 	struct ifbaconf *bac = arg;
 	struct bridge_rtnode *brt;
-	struct ifbareq bareq;
-	int count = 0, error = 0, len;
+	struct ifbareq *bareq;
+	int count, len;
 
-	if (bac->ifbac_len == 0)
-		return (0);
-
-	len = bac->ifbac_len;
-	memset(&bareq, 0, sizeof(bareq));
-	LIST_FOREACH(brt, &sc->sc_rtlist, brt_list) {
-		if (len < sizeof(bareq))
-			goto out;
-		strlcpy(bareq.ifba_ifsname, brt->brt_ifp->if_xname,
-		    sizeof(bareq.ifba_ifsname));
-		memcpy(bareq.ifba_dst, brt->brt_addr, sizeof(brt->brt_addr));
-		if ((brt->brt_flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC &&
-				time_second < brt->brt_expire)
-			bareq.ifba_expire = brt->brt_expire - time_second;
-		else
-			bareq.ifba_expire = 0;
-		bareq.ifba_flags = brt->brt_flags;
-
-		error = copyout(&bareq, bac->ifbac_req + count, sizeof(bareq));
-		if (error)
-			goto out;
+	count = 0;
+	LIST_FOREACH(brt, &sc->sc_rtlist, brt_list)
 		count++;
-		len -= sizeof(bareq);
+
+	if (bac->ifbac_len == 0) {
+		bac->ifbac_len = sizeof(*bareq) * count;
+		return 0;
+	} else if (count == 0 || bac->ifbac_len < sizeof(*bareq)) {
+		bac->ifbac_len = 0;
+		return 0;
 	}
-out:
-	bac->ifbac_len = sizeof(bareq) * count;
-	return (error);
+
+	len = min(bac->ifbac_len, sizeof(*bareq) * count);
+	KKASSERT(len >= sizeof(*bareq));
+
+	bareq = kmalloc(len, M_TEMP, M_INTWAIT | M_NULLOK);
+	if (bareq == NULL) {
+		bac->ifbac_len = 0;
+		return ENOMEM;
+	}
+	bc_arg->bca_kptr = bareq;
+
+	count = 0;
+	LIST_FOREACH(brt, &sc->sc_rtlist, brt_list) {
+		if (len < sizeof(*bareq))
+			break;
+
+		strlcpy(bareq->ifba_ifsname, brt->brt_ifp->if_xname,
+			sizeof(bareq->ifba_ifsname));
+		memcpy(bareq->ifba_dst, brt->brt_addr, sizeof(brt->brt_addr));
+		if ((brt->brt_flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC &&
+		    time_second < brt->brt_expire)
+			bareq->ifba_expire = brt->brt_expire - time_second;
+		else
+			bareq->ifba_expire = 0;
+		bareq->ifba_flags = brt->brt_flags;
+		bareq++;
+		count++;
+		len -= sizeof(*bareq);
+	}
+
+	bac->ifbac_len = sizeof(*bareq) * count;
+	KKASSERT(bac->ifbac_len > 0);
+
+	bc_arg->bca_len = bac->ifbac_len;
+	bc_arg->bca_uptr = bac->ifbac_req;
+	return 0;
 }
 
 static int
@@ -3080,15 +3136,6 @@ bridge_control(struct bridge_softc *sc, u_long cmd,
 	int error;
 
 	ASSERT_SERIALIZED(bifp->if_serializer);
-
-	if (cmd == SIOCGDRVSPEC) {
-		/*
-		 * Don't dispatch 'get' ioctl to netisr0;
-		 * there are copyouts down deep inside
-		 * specific bridge ioctl functions.
-		 */
-		return bc_func(sc, bc_arg);
-	}
 
 	bzero(&bc_msg, sizeof(bc_msg));
 	nmsg = &bc_msg.bc_nmsg;
