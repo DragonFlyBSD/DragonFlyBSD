@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.49 2008/11/15 04:50:23 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.50 2008/11/15 11:46:37 sephe Exp $
  */
 
 /*
@@ -78,9 +78,115 @@
  *	  802.11, VLANs on Ethernet, etc.)  Figure out a nice way
  *	  to bridge other types of interfaces (FDDI-FDDI, and maybe
  *	  consider heterogenous bridges).
+ *
+ *
+ * Bridge's route information is duplicated to each CPUs:
+ *
+ *      CPU0          CPU1          CPU2          CPU3
+ * +-----------+ +-----------+ +-----------+ +-----------+
+ * |  rtnode   | |  rtnode   | |  rtnode   | |  rtnode   |
+ * |           | |           | |           | |           |
+ * | dst eaddr | | dst eaddr | | dst eaddr | | dst eaddr |
+ * +-----------+ +-----------+ +-----------+ +-----------+
+ *       |         |                     |         |
+ *       |         |                     |         |
+ *       |         |     +----------+    |         |
+ *       |         |     |  rtinfo  |    |         |
+ *       |         +---->|          |<---+         |
+ *       |               |  flags   |              |
+ *       +-------------->|  timeout |<-------------+
+ *                       |  dst_ifp |
+ *                       +----------+
+ *
+ * We choose to put timeout and dst_ifp into shared part, so updating
+ * them will be cheaper than using message forwarding.  Also there is
+ * not need to use spinlock to protect the updating: timeout and dst_ifp
+ * is not related and specific field's updating order has no importance.
+ * The cache pollution by the share part should not be heavy: in a stable
+ * setup, dst_ifp probably will be not changed in rtnode's life time,
+ * while timeout is refreshed once per second; most of the time, timeout
+ * and dst_ifp are read-only accessed.
+ *
+ *
+ * Bridge route information installation on bridge_input path:
+ *
+ *      CPU0           CPU1         CPU2          CPU3
+ *
+ *                               tcp_thread2
+ *                                    |
+ *                                alloc nmsg
+ *                    snd nmsg        |
+ *                    w/o rtinfo      |
+ *      ifnet0<-----------------------+
+ *        |                           :
+ *    lookup dst                      :
+ *   rtnode exists?(Y)free nmsg       :
+ *        |(N)                        :
+ *        |
+ *  alloc rtinfo
+ *  alloc rtnode
+ * install rtnode
+ *        |
+ *        +---------->ifnet1
+ *        : fwd nmsg    |
+ *        : w/ rtinfo   |
+ *        :             |
+ *        :             |
+ *                 alloc rtnode
+ *               (w/ nmsg's rtinfo)
+ *                install rtnode
+ *                      |
+ *                      +---------->ifnet2
+ *                      : fwd nmsg    |
+ *                      : w/ rtinfo   |
+ *                      :             |
+ *                      :         same as ifnet1
+ *                                    |
+ *                                    +---------->ifnet3
+ *                                    : fwd nmsg    |
+ *                                    : w/ rtinfo   |
+ *                                    :             |
+ *                                    :         same as ifnet1
+ *                                               free nmsg
+ *                                                  :
+ *                                                  :
+ *
+ * The netmsgs forwarded between protocol threads and ifnet threads are
+ * allocated with (M_WAITOK|M_NULLOK), so it will not fail under most
+ * cases (route information is too precious to be not installed :).
+ * Since multiple threads may try to install route information for the
+ * same dst eaddr, we look up route information in ifnet0.  However, this
+ * looking up only need to be performed on ifnet0, which is the start
+ * point of the route information installation process.
+ *
+ *
+ * Bridge route information deleting/flushing:
+ *
+ *  CPU0            CPU1             CPU2             CPU3
+ *
+ * netisr0
+ *   |
+ * find suitable rtnodes,
+ * mark their rtinfo dead
+ *   |
+ *   | domsg <------------------------------------------+
+ *   |                                                  | replymsg
+ *   |                                                  |
+ *   V     fwdmsg           fwdmsg           fwdmsg     |
+ * ifnet0 --------> ifnet1 --------> ifnet2 --------> ifnet3
+ * delete rtnodes   delete rtnodes   delete rtnodes   delete rtnodes
+ * w/ dead rtinfo   w/ dead rtinfo   w/ dead rtinfo   w/ dead rtinfo
+ *                                                    free dead rtinfos
+ *
+ * All deleting/flushing operations are serialized by netisr0, so each
+ * operation only reaps the route information marked dead by itself.
+ *
+ *
+ * Bridge route information adding/deleting/flushing:
+ * Since all operation is serialized by the fixed message flow between
+ * ifnet threads, it is not possible to create corrupted per-cpu route
+ * information.
  */
-
-#include <sys/cdefs.h>
 
 #include "opt_inet.h"
 #include "opt_inet6.h"
@@ -176,13 +282,30 @@
  */
 #define	BRIDGE_IFCAPS_MASK		IFCAP_TXCSUM
 
+typedef int	(*bridge_ctl_t)(struct bridge_softc *, void *);
+
+struct netmsg_brctl {
+	struct netmsg		bc_nmsg;
+	bridge_ctl_t		bc_func;
+	struct bridge_softc	*bc_sc;
+	void			*bc_arg;
+};
+
+struct netmsg_brsaddr {
+	struct netmsg		br_nmsg;
+	struct bridge_softc	*br_softc;
+	struct ifnet		*br_dst_if;
+	struct bridge_rtinfo	*br_rtinfo;
+	int			br_setflags;
+	uint8_t			br_dst[ETHER_ADDR_LEN];
+	uint8_t			br_flags;
+};
+
 eventhandler_tag	bridge_detach_cookie = NULL;
 
 extern	struct mbuf *(*bridge_input_p)(struct ifnet *, struct mbuf *);
 extern	int (*bridge_output_p)(struct ifnet *, struct mbuf *);
 extern	void (*bridge_dn_p)(struct mbuf *, struct ifnet *);
-
-typedef int	(*bridge_ctl_t)(struct bridge_softc *, void *);
 
 static int	bridge_rtable_prune_period = BRIDGE_RTABLE_PRUNE_PERIOD;
 
@@ -208,20 +331,29 @@ static void	bridge_broadcast(struct bridge_softc *, struct ifnet *,
 static void	bridge_span(struct bridge_softc *, struct mbuf *);
 
 static int	bridge_rtupdate(struct bridge_softc *, const uint8_t *,
-		    struct ifnet *, int, uint8_t);
+		    struct ifnet *, uint8_t);
 static struct ifnet *bridge_rtlookup(struct bridge_softc *, const uint8_t *);
+static void	bridge_rtreap(struct bridge_softc *);
 static void	bridge_rttrim(struct bridge_softc *);
+static int	bridge_rtage_finddead(struct bridge_softc *);
 static void	bridge_rtage(struct bridge_softc *);
 static void	bridge_rtflush(struct bridge_softc *, int);
 static int	bridge_rtdaddr(struct bridge_softc *, const uint8_t *);
+static int	bridge_rtsaddr(struct bridge_softc *, const uint8_t *,
+		    struct ifnet *, uint8_t);
+static void	bridge_rtmsg_sync(struct bridge_softc *sc);
+static void	bridge_rtreap_handler(struct netmsg *);
+static void	bridge_rtinstall_handler(struct netmsg *);
+static int	bridge_rtinstall_oncpu(struct bridge_softc *, const uint8_t *,
+		    struct ifnet *, int, uint8_t, struct bridge_rtinfo **);
 
-static int	bridge_rtable_init(struct bridge_softc *);
+static void	bridge_rtable_init(struct bridge_softc *);
 static void	bridge_rtable_fini(struct bridge_softc *);
 
 static int	bridge_rtnode_addr_cmp(const uint8_t *, const uint8_t *);
 static struct bridge_rtnode *bridge_rtnode_lookup(struct bridge_softc *,
 		    const uint8_t *);
-static int	bridge_rtnode_insert(struct bridge_softc *,
+static void	bridge_rtnode_insert(struct bridge_softc *,
 		    struct bridge_rtnode *);
 static void	bridge_rtnode_destroy(struct bridge_softc *,
 		    struct bridge_rtnode *);
@@ -800,11 +932,14 @@ bridge_delete_member(struct bridge_softc *sc, struct bridge_iflist *bif,
 		}
 	}
 
+	/* See the comment in bridge_ioctl_stop() */
+	bridge_rtmsg_sync(sc);
+
+	bridge_rtdelete(sc, ifs, IFBF_FLUSHALL);
+
 	lwkt_serialize_enter(bifp->if_serializer);
 
 	LIST_REMOVE(bif, bif_next);
-
-	bridge_rtdelete(sc, ifs, IFBF_FLUSHALL);
 
 	kfree(bif, M_DEVBUF);
 
@@ -866,7 +1001,22 @@ bridge_ioctl_stop(struct bridge_softc *sc, void *arg __unused)
 
 	ifp->if_flags &= ~IFF_RUNNING;
 
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	/* Let everyone know that we are stopped */
+	netmsg_service_sync();
+
+	/*
+	 * Sync ifnetX msgports in the order we forward rtnode
+	 * installation message.  This is used to make sure that
+	 * all rtnode installation messages sent by bridge_rtupdate()
+	 * during above netmsg_service_sync() are flushed.
+	 */
+	bridge_rtmsg_sync(sc);
+
 	bridge_rtflush(sc, IFBF_FLUSHDYN);
+
+	lwkt_serialize_enter(ifp->if_serializer);
 	return 0;
 }
 
@@ -1035,9 +1185,13 @@ static int
 bridge_ioctl_scache(struct bridge_softc *sc, void *arg)
 {
 	struct ifbrparam *param = arg;
+	struct ifnet *ifp = sc->sc_ifp;
 
 	sc->sc_brtmax = param->ifbrp_csize;
+
+	lwkt_serialize_exit(ifp->if_serializer);
 	bridge_rttrim(sc);
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	return (0);
 }
@@ -1135,7 +1289,7 @@ bridge_ioctl_rts(struct bridge_softc *sc, void *arg)
 	int count, len;
 
 	count = 0;
-	LIST_FOREACH(brt, &sc->sc_rtlist, brt_list)
+	LIST_FOREACH(brt, &sc->sc_rtlists[mycpuid], brt_list)
 		count++;
 
 	if (bac->ifbac_len == 0) {
@@ -1157,19 +1311,23 @@ bridge_ioctl_rts(struct bridge_softc *sc, void *arg)
 	bc_arg->bca_kptr = bareq;
 
 	count = 0;
-	LIST_FOREACH(brt, &sc->sc_rtlist, brt_list) {
+	LIST_FOREACH(brt, &sc->sc_rtlists[mycpuid], brt_list) {
+		struct bridge_rtinfo *bri = brt->brt_info;
+		unsigned long expire;
+
 		if (len < sizeof(*bareq))
 			break;
 
-		strlcpy(bareq->ifba_ifsname, brt->brt_ifp->if_xname,
+		strlcpy(bareq->ifba_ifsname, bri->bri_ifp->if_xname,
 			sizeof(bareq->ifba_ifsname));
 		memcpy(bareq->ifba_dst, brt->brt_addr, sizeof(brt->brt_addr));
-		if ((brt->brt_flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC &&
-		    time_second < brt->brt_expire)
-			bareq->ifba_expire = brt->brt_expire - time_second;
+		expire = bri->bri_expire;
+		if ((bri->bri_flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC &&
+		    time_second < expire)
+			bareq->ifba_expire = expire - time_second;
 		else
 			bareq->ifba_expire = 0;
-		bareq->ifba_flags = brt->brt_flags;
+		bareq->ifba_flags = bri->bri_flags;
 		bareq++;
 		count++;
 		len -= sizeof(*bareq);
@@ -1188,15 +1346,19 @@ bridge_ioctl_saddr(struct bridge_softc *sc, void *arg)
 {
 	struct ifbareq *req = arg;
 	struct bridge_iflist *bif;
+	struct ifnet *ifp = sc->sc_ifp;
 	int error;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
 
 	bif = bridge_lookup_member(sc, req->ifba_ifsname);
 	if (bif == NULL)
 		return (ENOENT);
 
-	error = bridge_rtupdate(sc, req->ifba_dst, bif->bif_ifp, 1,
-	    req->ifba_flags);
-
+	lwkt_serialize_exit(ifp->if_serializer);
+	error = bridge_rtsaddr(sc, req->ifba_dst, bif->bif_ifp,
+			       req->ifba_flags);
+	lwkt_serialize_enter(ifp->if_serializer);
 	return (error);
 }
 
@@ -1224,16 +1386,24 @@ static int
 bridge_ioctl_daddr(struct bridge_softc *sc, void *arg)
 {
 	struct ifbareq *req = arg;
+	struct ifnet *ifp = sc->sc_ifp;
+	int error;
 
-	return (bridge_rtdaddr(sc, req->ifba_dst));
+	lwkt_serialize_exit(ifp->if_serializer);
+	error = bridge_rtdaddr(sc, req->ifba_dst);
+	lwkt_serialize_enter(ifp->if_serializer);
+	return error;
 }
 
 static int
 bridge_ioctl_flush(struct bridge_softc *sc, void *arg)
 {
 	struct ifbreq *req = arg;
+	struct ifnet *ifp = sc->sc_ifp;
 
+	lwkt_serialize_exit(ifp->if_serializer);
 	bridge_rtflush(sc, req->ifbr_ifsflags);
+	lwkt_serialize_enter(ifp->if_serializer);
 
 	return (0);
 }
@@ -1787,9 +1957,8 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 	     eh->ether_shost[2] == 0 &&
 	     eh->ether_shost[3] == 0 &&
 	     eh->ether_shost[4] == 0 &&
-	     eh->ether_shost[5] == 0) == 0) {
-		bridge_rtupdate(sc, eh->ether_shost, src_if, 0, IFBAF_DYNAMIC);
-	}
+	     eh->ether_shost[5] == 0) == 0)
+		bridge_rtupdate(sc, eh->ether_shost, src_if, IFBAF_DYNAMIC);
 
 	if ((bif->bif_flags & IFBIF_STP) != 0 &&
 	    bif->bif_state == BSTP_IFSTATE_LEARNING) {
@@ -2024,8 +2193,8 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		if (memcmp(IF_LLADDR(bif->bif_ifp), eh->ether_dhost,
 		    ETHER_ADDR_LEN) == 0) {
 			if (bif->bif_flags & IFBIF_LEARNING) {
-				bridge_rtupdate(sc,
-				    eh->ether_shost, ifp, 0, IFBAF_DYNAMIC);
+				bridge_rtupdate(sc, eh->ether_shost,
+						ifp, IFBAF_DYNAMIC);
 			}
 
 			if (bif->bif_ifp != ifp) {
@@ -2175,51 +2344,178 @@ bridge_span(struct bridge_softc *sc, struct mbuf *m)
 	}
 }
 
+static void
+bridge_rtmsg_sync_handler(struct netmsg *nmsg)
+{
+	ifnet_forwardmsg(&nmsg->nm_lmsg, mycpuid + 1);
+}
+
+static void
+bridge_rtmsg_sync(struct bridge_softc *sc)
+{
+	struct netmsg nmsg;
+
+	ASSERT_NOT_SERIALIZED(sc->sc_ifp->if_serializer);
+
+	netmsg_init(&nmsg, &curthread->td_msgport, 0,
+		    bridge_rtmsg_sync_handler);
+	ifnet_domsg(&nmsg.nm_lmsg, 0);
+}
+
+static __inline void
+bridge_rtinfo_update(struct bridge_rtinfo *bri, struct ifnet *dst_if,
+		     int setflags, uint8_t flags, uint32_t timeo)
+{
+	if ((bri->bri_flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC &&
+	    bri->bri_ifp != dst_if)
+		bri->bri_ifp = dst_if;
+	if ((flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC &&
+	    bri->bri_expire != time_second + timeo)
+		bri->bri_expire = time_second + timeo;
+	if (setflags)
+		bri->bri_flags = flags;
+}
+
+static int
+bridge_rtinstall_oncpu(struct bridge_softc *sc, const uint8_t *dst,
+		       struct ifnet *dst_if, int setflags, uint8_t flags,
+		       struct bridge_rtinfo **bri0)
+{
+	struct bridge_rtnode *brt;
+	struct bridge_rtinfo *bri;
+
+	if (mycpuid == 0) {
+		brt = bridge_rtnode_lookup(sc, dst);
+		if (brt != NULL) {
+			/*
+			 * rtnode for 'dst' already exists.  We inform the
+			 * caller about this by leaving bri0 as NULL.  The
+			 * caller will terminate the intallation upon getting
+			 * NULL bri0.  However, we still need to update the
+			 * rtinfo.
+			 */
+			KKASSERT(*bri0 == NULL);
+
+			/* Update rtinfo */
+			bridge_rtinfo_update(brt->brt_info, dst_if, setflags,
+					     flags, sc->sc_brttimeout);
+			return 0;
+		}
+
+		/*
+		 * We only need to check brtcnt on CPU0, since if limit
+		 * is to be exceeded, ENOSPC is returned.  Caller knows
+		 * this and will terminate the installation.
+		 */
+		if (sc->sc_brtcnt >= sc->sc_brtmax)
+			return ENOSPC;
+
+		KKASSERT(*bri0 == NULL);
+		bri = kmalloc(sizeof(struct bridge_rtinfo), M_DEVBUF,
+				  M_WAITOK | M_ZERO);
+		*bri0 = bri;
+
+		/* Setup rtinfo */
+		bri->bri_flags = IFBAF_DYNAMIC;
+		bridge_rtinfo_update(bri, dst_if, setflags, flags,
+				     sc->sc_brttimeout);
+	} else {
+		bri = *bri0;
+		KKASSERT(bri != NULL);
+	}
+
+	brt = kmalloc(sizeof(struct bridge_rtnode), M_DEVBUF,
+		      M_WAITOK | M_ZERO);
+	memcpy(brt->brt_addr, dst, ETHER_ADDR_LEN);
+	brt->brt_info = bri;
+
+	bridge_rtnode_insert(sc, brt);
+	return 0;
+}
+
+static void
+bridge_rtinstall_handler(struct netmsg *nmsg)
+{
+	struct netmsg_brsaddr *brmsg = (struct netmsg_brsaddr *)nmsg;
+	int error;
+
+	error = bridge_rtinstall_oncpu(brmsg->br_softc,
+				       brmsg->br_dst, brmsg->br_dst_if,
+				       brmsg->br_setflags, brmsg->br_flags,
+				       &brmsg->br_rtinfo);
+	if (error) {
+		KKASSERT(mycpuid == 0 && brmsg->br_rtinfo == NULL);
+		lwkt_replymsg(&nmsg->nm_lmsg, error);
+		return;
+	} else if (brmsg->br_rtinfo == NULL) {
+		/* rtnode already exists for 'dst' */
+		KKASSERT(mycpuid == 0);
+		lwkt_replymsg(&nmsg->nm_lmsg, 0);
+		return;
+	}
+	ifnet_forwardmsg(&nmsg->nm_lmsg, mycpuid + 1);
+}
+
 /*
  * bridge_rtupdate:
  *
- *	Add a bridge routing entry.
+ *	Add/Update a bridge routing entry.
  */
 static int
 bridge_rtupdate(struct bridge_softc *sc, const uint8_t *dst,
-    struct ifnet *dst_if, int setflags, uint8_t flags)
+		struct ifnet *dst_if, uint8_t flags)
 {
 	struct bridge_rtnode *brt;
-	int error;
 
 	/*
 	 * A route for this destination might already exist.  If so,
 	 * update it, otherwise create a new one.
 	 */
 	if ((brt = bridge_rtnode_lookup(sc, dst)) == NULL) {
+		struct netmsg_brsaddr *brmsg;
+
 		if (sc->sc_brtcnt >= sc->sc_brtmax)
-			return (ENOSPC);
+			return ENOSPC;
 
-		/*
-		 * Allocate a new bridge forwarding node, and
-		 * initialize the expiration time and Ethernet
-		 * address.
-		 */
-		brt = kmalloc(sizeof(struct bridge_rtnode), M_DEVBUF,
-			      M_WAITOK | M_ZERO);
+		brmsg = kmalloc(sizeof(*brmsg), M_LWKTMSG, M_WAITOK | M_NULLOK);
+		if (brmsg == NULL)
+			return ENOMEM;
 
-		brt->brt_flags = IFBAF_DYNAMIC;
-		memcpy(brt->brt_addr, dst, ETHER_ADDR_LEN);
+		netmsg_init(&brmsg->br_nmsg, &netisr_afree_rport, 0,
+			    bridge_rtinstall_handler);
+		memcpy(brmsg->br_dst, dst, ETHER_ADDR_LEN);
+		brmsg->br_dst_if = dst_if;
+		brmsg->br_flags = flags;
+		brmsg->br_setflags = 0;
+		brmsg->br_softc = sc;
+		brmsg->br_rtinfo = NULL;
 
-		if ((error = bridge_rtnode_insert(sc, brt)) != 0) {
-			kfree(brt, M_DEVBUF);
-			return (error);
-		}
+		ifnet_sendmsg(&brmsg->br_nmsg.nm_lmsg, 0);
+		return 0;
 	}
+	bridge_rtinfo_update(brt->brt_info, dst_if, 0, flags,
+			     sc->sc_brttimeout);
+	return 0;
+}
 
-	if ((brt->brt_flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC)
-		brt->brt_ifp = dst_if;
-	if ((flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC)
-		brt->brt_expire = time_second + sc->sc_brttimeout;
-	if (setflags)
-		brt->brt_flags = flags;
+static int
+bridge_rtsaddr(struct bridge_softc *sc, const uint8_t *dst,
+	       struct ifnet *dst_if, uint8_t flags)
+{
+	struct netmsg_brsaddr brmsg;
 
-	return (0);
+	ASSERT_NOT_SERIALIZED(sc->sc_ifp->if_serializer);
+
+	netmsg_init(&brmsg.br_nmsg, &curthread->td_msgport, MSGF_PRIORITY,
+		    bridge_rtinstall_handler);
+	memcpy(brmsg.br_dst, dst, ETHER_ADDR_LEN);
+	brmsg.br_dst_if = dst_if;
+	brmsg.br_flags = flags;
+	brmsg.br_setflags = 1;
+	brmsg.br_softc = sc;
+	brmsg.br_rtinfo = NULL;
+
+	return ifnet_domsg(&brmsg.br_nmsg.nm_lmsg, 0);
 }
 
 /*
@@ -2233,9 +2529,34 @@ bridge_rtlookup(struct bridge_softc *sc, const uint8_t *addr)
 	struct bridge_rtnode *brt;
 
 	if ((brt = bridge_rtnode_lookup(sc, addr)) == NULL)
-		return (NULL);
+		return NULL;
+	return brt->brt_info->bri_ifp;
+}
 
-	return (brt->brt_ifp);
+static void
+bridge_rtreap_handler(struct netmsg *nmsg)
+{
+	struct bridge_softc *sc = nmsg->nm_lmsg.u.ms_resultp;
+	struct bridge_rtnode *brt, *nbrt;
+
+	LIST_FOREACH_MUTABLE(brt, &sc->sc_rtlists[mycpuid], brt_list, nbrt) {
+		if (brt->brt_info->bri_dead)
+			bridge_rtnode_destroy(sc, brt);
+	}
+	ifnet_forwardmsg(&nmsg->nm_lmsg, mycpuid + 1);
+}
+
+static void
+bridge_rtreap(struct bridge_softc *sc)
+{
+	struct netmsg nmsg;
+
+	ASSERT_NOT_SERIALIZED(sc->sc_ifp->if_serializer);
+
+	netmsg_init(&nmsg, &curthread->td_msgport, 0, bridge_rtreap_handler);
+	nmsg.nm_lmsg.u.ms_resultp = sc;
+
+	ifnet_domsg(&nmsg.nm_lmsg, 0);
 }
 
 /*
@@ -2248,25 +2569,54 @@ bridge_rtlookup(struct bridge_softc *sc, const uint8_t *addr)
 static void
 bridge_rttrim(struct bridge_softc *sc)
 {
-	struct bridge_rtnode *brt, *nbrt;
+	struct bridge_rtnode *brt;
+	int dead;
+
+	ASSERT_NOT_SERIALIZED(sc->sc_ifp->if_serializer);
 
 	/* Make sure we actually need to do this. */
 	if (sc->sc_brtcnt <= sc->sc_brtmax)
 		return;
 
-	/* Force an aging cycle; this might trim enough addresses. */
-	bridge_rtage(sc);
-	if (sc->sc_brtcnt <= sc->sc_brtmax)
-		return;
+	/*
+	 * Find out how many rtnodes are dead
+	 */
+	dead = bridge_rtage_finddead(sc);
+	KKASSERT(dead <= sc->sc_brtcnt);
 
-	for (brt = LIST_FIRST(&sc->sc_rtlist); brt != NULL; brt = nbrt) {
-		nbrt = LIST_NEXT(brt, brt_list);
-		if ((brt->brt_flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC) {
-			bridge_rtnode_destroy(sc, brt);
-			if (sc->sc_brtcnt <= sc->sc_brtmax)
-				return;
+	if (sc->sc_brtcnt - dead <= sc->sc_brtmax) {
+		/* Enough dead rtnodes are found */
+		bridge_rtreap(sc);
+		return;
+	}
+
+	/*
+	 * Kill some dynamic rtnodes to meet the brtmax
+	 */
+	LIST_FOREACH(brt, &sc->sc_rtlists[mycpuid], brt_list) {
+		struct bridge_rtinfo *bri = brt->brt_info;
+
+		if (bri->bri_dead) {
+			/*
+			 * We have counted this rtnode in
+			 * bridge_rtage_finddead()
+			 */
+			continue;
+		}
+
+		if ((bri->bri_flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC) {
+			bri->bri_dead = 1;
+			++dead;
+			KKASSERT(dead <= sc->sc_brtcnt);
+
+			if (sc->sc_brtcnt - dead <= sc->sc_brtmax) {
+				/* Enough rtnodes are collected */
+				break;
+			}
 		}
 	}
+	if (dead)
+		bridge_rtreap(sc);
 }
 
 /*
@@ -2310,16 +2660,30 @@ bridge_timer_handler(struct netmsg *nmsg)
 	lwkt_replymsg(&nmsg->nm_lmsg, 0);
 	crit_exit();
 
-	lwkt_serialize_enter(sc->sc_ifp->if_serializer);
-
 	bridge_rtage(sc);
-
 	if (sc->sc_ifp->if_flags & IFF_RUNNING) {
 		callout_reset(&sc->sc_brcallout,
 		    bridge_rtable_prune_period * hz, bridge_timer, sc);
 	}
+}
 
-	lwkt_serialize_exit(sc->sc_ifp->if_serializer);
+static int
+bridge_rtage_finddead(struct bridge_softc *sc)
+{
+	struct bridge_rtnode *brt;
+	int dead = 0;
+
+	LIST_FOREACH(brt, &sc->sc_rtlists[mycpuid], brt_list) {
+		struct bridge_rtinfo *bri = brt->brt_info;
+
+		if ((bri->bri_flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC &&
+		    time_second >= bri->bri_expire) {
+			bri->bri_dead = 1;
+			++dead;
+			KKASSERT(dead <= sc->sc_brtcnt);
+		}
+	}
+	return dead;
 }
 
 /*
@@ -2330,15 +2694,10 @@ bridge_timer_handler(struct netmsg *nmsg)
 static void
 bridge_rtage(struct bridge_softc *sc)
 {
-	struct bridge_rtnode *brt, *nbrt;
+	ASSERT_NOT_SERIALIZED(sc->sc_ifp->if_serializer);
 
-	for (brt = LIST_FIRST(&sc->sc_rtlist); brt != NULL; brt = nbrt) {
-		nbrt = LIST_NEXT(brt, brt_list);
-		if ((brt->brt_flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC) {
-			if (time_second >= brt->brt_expire)
-				bridge_rtnode_destroy(sc, brt);
-		}
-	}
+	if (bridge_rtage_finddead(sc))
+		bridge_rtreap(sc);
 }
 
 /*
@@ -2349,13 +2708,23 @@ bridge_rtage(struct bridge_softc *sc)
 static void
 bridge_rtflush(struct bridge_softc *sc, int full)
 {
-	struct bridge_rtnode *brt, *nbrt;
+	struct bridge_rtnode *brt;
+	int reap;
 
-	for (brt = LIST_FIRST(&sc->sc_rtlist); brt != NULL; brt = nbrt) {
-		nbrt = LIST_NEXT(brt, brt_list);
-		if (full || (brt->brt_flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC)
-			bridge_rtnode_destroy(sc, brt);
+	ASSERT_NOT_SERIALIZED(sc->sc_ifp->if_serializer);
+
+	reap = 0;
+	LIST_FOREACH(brt, &sc->sc_rtlists[mycpuid], brt_list) {
+		struct bridge_rtinfo *bri = brt->brt_info;
+
+		if (full ||
+		    (bri->bri_flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC) {
+			bri->bri_dead = 1;
+			reap = 1;
+		}
 	}
+	if (reap)
+		bridge_rtreap(sc);
 }
 
 /*
@@ -2368,10 +2737,14 @@ bridge_rtdaddr(struct bridge_softc *sc, const uint8_t *addr)
 {
 	struct bridge_rtnode *brt;
 
+	ASSERT_NOT_SERIALIZED(sc->sc_ifp->if_serializer);
+
 	if ((brt = bridge_rtnode_lookup(sc, addr)) == NULL)
 		return (ENOENT);
 
-	bridge_rtnode_destroy(sc, brt);
+	/* TODO: add a cheaper delete operation */
+	brt->brt_info->bri_dead = 1;
+	bridge_rtreap(sc);
 	return (0);
 }
 
@@ -2383,14 +2756,24 @@ bridge_rtdaddr(struct bridge_softc *sc, const uint8_t *addr)
 void
 bridge_rtdelete(struct bridge_softc *sc, struct ifnet *ifp, int full)
 {
-	struct bridge_rtnode *brt, *nbrt;
+	struct bridge_rtnode *brt;
+	int reap;
 
-	for (brt = LIST_FIRST(&sc->sc_rtlist); brt != NULL; brt = nbrt) {
-		nbrt = LIST_NEXT(brt, brt_list);
-		if (brt->brt_ifp == ifp && (full ||
-			    (brt->brt_flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC))
-			bridge_rtnode_destroy(sc, brt);
+	ASSERT_NOT_SERIALIZED(sc->sc_ifp->if_serializer);
+
+	reap = 0;
+	LIST_FOREACH(brt, &sc->sc_rtlists[mycpuid], brt_list) {
+		struct bridge_rtinfo *bri = brt->brt_info;
+
+		if (bri->bri_ifp == ifp &&
+		    (full ||
+		     (bri->bri_flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC)) {
+			bri->bri_dead = 1;
+			reap = 1;
+		}
 	}
+	if (reap)
+		bridge_rtreap(sc);
 }
 
 /*
@@ -2398,22 +2781,35 @@ bridge_rtdelete(struct bridge_softc *sc, struct ifnet *ifp, int full)
  *
  *	Initialize the route table for this bridge.
  */
-static int
+static void
 bridge_rtable_init(struct bridge_softc *sc)
 {
-	int i;
+	int cpu;
 
-	sc->sc_rthash = kmalloc(sizeof(*sc->sc_rthash) * BRIDGE_RTHASH_SIZE,
-	    M_DEVBUF, M_WAITOK);
+	/*
+	 * Initialize per-cpu hash tables
+	 */
+	sc->sc_rthashs = kmalloc(sizeof(*sc->sc_rthashs) * ncpus,
+				 M_DEVBUF, M_WAITOK);
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		int i;
 
-	for (i = 0; i < BRIDGE_RTHASH_SIZE; i++)
-		LIST_INIT(&sc->sc_rthash[i]);
+		sc->sc_rthashs[cpu] =
+		kmalloc(sizeof(struct bridge_rtnode_head) * BRIDGE_RTHASH_SIZE,
+			M_DEVBUF, M_WAITOK);
 
+		for (i = 0; i < BRIDGE_RTHASH_SIZE; i++)
+			LIST_INIT(&sc->sc_rthashs[cpu][i]);
+	}
 	sc->sc_rthash_key = karc4random();
 
-	LIST_INIT(&sc->sc_rtlist);
-
-	return (0);
+	/*
+	 * Initialize per-cpu lists
+	 */
+	sc->sc_rtlists = kmalloc(sizeof(struct bridge_rtnode_head) * ncpus,
+				 M_DEVBUF, M_WAITOK);
+	for (cpu = 0; cpu < ncpus; ++cpu)
+		LIST_INIT(&sc->sc_rtlists[cpu]);
 }
 
 /*
@@ -2424,8 +2820,19 @@ bridge_rtable_init(struct bridge_softc *sc)
 static void
 bridge_rtable_fini(struct bridge_softc *sc)
 {
+	int cpu;
 
-	kfree(sc->sc_rthash, M_DEVBUF);
+	/*
+	 * Free per-cpu hash tables
+	 */
+	for (cpu = 0; cpu < ncpus; ++cpu)
+		kfree(sc->sc_rthashs[cpu], M_DEVBUF);
+	kfree(sc->sc_rthashs, M_DEVBUF);
+
+	/*
+	 * Free per-cpu lists
+	 */
+	kfree(sc->sc_rtlists, M_DEVBUF);
 }
 
 /*
@@ -2489,7 +2896,7 @@ bridge_rtnode_lookup(struct bridge_softc *sc, const uint8_t *addr)
 	int dir;
 
 	hash = bridge_rthash(sc, addr);
-	LIST_FOREACH(brt, &sc->sc_rthash[hash], brt_hash) {
+	LIST_FOREACH(brt, &sc->sc_rthashs[mycpuid][hash], brt_hash) {
 		dir = bridge_rtnode_addr_cmp(addr, brt->brt_addr);
 		if (dir == 0)
 			return (brt);
@@ -2503,10 +2910,10 @@ bridge_rtnode_lookup(struct bridge_softc *sc, const uint8_t *addr)
 /*
  * bridge_rtnode_insert:
  *
- *	Insert the specified bridge node into the route table.  We
- *	assume the entry is not already in the table.
+ *	Insert the specified bridge node into the route table.
+ *	Caller has to make sure that rtnode does not exist.
  */
-static int
+static void
 bridge_rtnode_insert(struct bridge_softc *sc, struct bridge_rtnode *brt)
 {
 	struct bridge_rtnode *lbrt;
@@ -2515,16 +2922,16 @@ bridge_rtnode_insert(struct bridge_softc *sc, struct bridge_rtnode *brt)
 
 	hash = bridge_rthash(sc, brt->brt_addr);
 
-	lbrt = LIST_FIRST(&sc->sc_rthash[hash]);
+	lbrt = LIST_FIRST(&sc->sc_rthashs[mycpuid][hash]);
 	if (lbrt == NULL) {
-		LIST_INSERT_HEAD(&sc->sc_rthash[hash], brt, brt_hash);
+		LIST_INSERT_HEAD(&sc->sc_rthashs[mycpuid][hash], brt, brt_hash);
 		goto out;
 	}
 
 	do {
 		dir = bridge_rtnode_addr_cmp(brt->brt_addr, lbrt->brt_addr);
-		if (dir == 0)
-			return (EEXIST);
+		KASSERT(dir != 0, ("rtnode already exist\n"));
+
 		if (dir > 0) {
 			LIST_INSERT_BEFORE(lbrt, brt, brt_hash);
 			goto out;
@@ -2536,15 +2943,16 @@ bridge_rtnode_insert(struct bridge_softc *sc, struct bridge_rtnode *brt)
 		lbrt = LIST_NEXT(lbrt, brt_hash);
 	} while (lbrt != NULL);
 
-#ifdef DIAGNOSTIC
-	panic("bridge_rtnode_insert: impossible");
-#endif
-
+	panic("no suitable position found for rtnode\n");
 out:
-	LIST_INSERT_HEAD(&sc->sc_rtlist, brt, brt_list);
-	sc->sc_brtcnt++;
-
-	return (0);
+	LIST_INSERT_HEAD(&sc->sc_rtlists[mycpuid], brt, brt_list);
+	if (mycpuid == 0) {
+		/*
+		 * Update the brtcnt.
+		 * We only need to do it once and we do it on CPU0.
+		 */
+		sc->sc_brtcnt++;
+	}
 }
 
 /*
@@ -2555,12 +2963,19 @@ out:
 static void
 bridge_rtnode_destroy(struct bridge_softc *sc, struct bridge_rtnode *brt)
 {
-
 	LIST_REMOVE(brt, brt_hash);
-
 	LIST_REMOVE(brt, brt_list);
-	sc->sc_brtcnt--;
+
+	if (mycpuid + 1 == ncpus) {
+		/* Free rtinfo associated with rtnode on the last cpu */
+		kfree(brt->brt_info, M_DEVBUF);
+	}
 	kfree(brt, M_DEVBUF);
+
+	if (mycpuid == 0) {
+		/* Update brtcnt only on CPU0 */
+		sc->sc_brtcnt--;
+	}
 }
 
 static __inline int
@@ -3105,17 +3520,10 @@ bridge_handoff(struct ifnet *dst_ifp, struct mbuf *m)
 	lwkt_serialize_exit(dst_ifp->if_serializer);
 }
 
-struct netmsg_brgctl {
-	struct netmsg		bc_nmsg;
-	bridge_ctl_t		bc_func;
-	struct bridge_softc	*bc_sc;
-	void			*bc_arg;
-};
-
 static void
 bridge_control_dispatch(struct netmsg *nmsg)
 {
-	struct netmsg_brgctl *bc_msg = (struct netmsg_brgctl *)nmsg;
+	struct netmsg_brctl *bc_msg = (struct netmsg_brctl *)nmsg;
 	struct ifnet *bifp = bc_msg->bc_sc->sc_ifp;
 	int error;
 
@@ -3131,7 +3539,7 @@ bridge_control(struct bridge_softc *sc, u_long cmd,
 	       bridge_ctl_t bc_func, void *bc_arg)
 {
 	struct ifnet *bifp = sc->sc_ifp;
-	struct netmsg_brgctl bc_msg;
+	struct netmsg_brctl bc_msg;
 	struct netmsg *nmsg;
 	int error;
 

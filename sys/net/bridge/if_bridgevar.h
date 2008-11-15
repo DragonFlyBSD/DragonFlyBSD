@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.h,v 1.14 2001/03/22 03:48:29 jason Exp $
  * $NetBSD: if_bridgevar.h,v 1.4 2003/07/08 07:13:50 itojun Exp $
  * $FreeBSD: src/sys/net/if_bridgevar.h,v 1.4 2005/07/06 01:24:45 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridgevar.h,v 1.5 2008/11/14 12:48:06 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridgevar.h,v 1.6 2008/11/15 11:46:37 sephe Exp $
  */
 
 /*
@@ -250,16 +250,27 @@ struct bridge_iflist {
 };
 
 /*
+ * Bridge route info.
+ */
+struct bridge_rtinfo {
+	struct ifnet		*bri_ifp;	/* destination if */
+	unsigned long		bri_expire;	/* expiration time */
+	uint8_t			bri_flags;	/* address flags */
+	uint8_t			bri_dead;
+	uint8_t			bri_pad[2];
+};
+
+/*
  * Bridge route node.
  */
 struct bridge_rtnode {
 	LIST_ENTRY(bridge_rtnode) brt_hash;	/* hash table linkage */
 	LIST_ENTRY(bridge_rtnode) brt_list;	/* list linkage */
-	struct ifnet		*brt_ifp;	/* destination if */
-	unsigned long		brt_expire;	/* expiration time */
-	uint8_t			brt_flags;	/* address flags */
 	uint8_t			brt_addr[ETHER_ADDR_LEN];
+	uint8_t			brt_pad[2];
+	struct bridge_rtinfo	*brt_info;
 };
+LIST_HEAD(bridge_rtnode_head, bridge_rtnode);
 
 /*
  * Software state for each bridge.
@@ -294,8 +305,8 @@ struct bridge_softc {
 	struct callout		sc_bstpcallout;	/* STP callout */
 	struct netmsg		sc_bstptimemsg;	/* STP callout msg */
 	LIST_HEAD(, bridge_iflist) sc_iflist;	/* member interface list */
-	LIST_HEAD(, bridge_rtnode) *sc_rthash;	/* our forwarding table */
-	LIST_HEAD(, bridge_rtnode) sc_rtlist;	/* list version of above */
+	struct bridge_rtnode_head **sc_rthashs;	/* percpu forwarding table */
+	struct bridge_rtnode_head *sc_rtlists;	/* percpu list of the above */
 	uint32_t		sc_rthash_key;	/* key for hash */
 	LIST_HEAD(, bridge_iflist) sc_spanlist;	/* span ports list */
 	struct bridge_timer	sc_link_timer;
