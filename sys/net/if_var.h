@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.69 2008/11/11 13:48:01 sephe Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.70 2008/11/15 11:58:16 sephe Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -519,14 +519,14 @@ IFAFREE(struct ifaddr *_ifa)
 }
 
 struct lwkt_port *ifnet_portfn(int);
-void	ifnet_domsg(struct lwkt_msg *, int);
+int	ifnet_domsg(struct lwkt_msg *, int);
 void	ifnet_sendmsg(struct lwkt_msg *, int);
 void	ifnet_forwardmsg(struct lwkt_msg *, int);
 
-static __inline void
+static __inline int
 ifa_domsg(struct lwkt_msg *_lmsg, int _cpu)
 {
-	ifnet_domsg(_lmsg, _cpu);
+	return ifnet_domsg(_lmsg, _cpu);
 }
 
 static __inline void
