@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.50 2008/11/15 11:46:37 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.51 2008/11/15 12:34:38 sephe Exp $
  */
 
 /*
@@ -1232,7 +1232,7 @@ bridge_ioctl_gifs(struct bridge_softc *sc, void *arg)
 	len = min(bifc->ifbic_len, sizeof(*breq) * count);
 	KKASSERT(len >= sizeof(*breq));
 
-	breq = kmalloc(len, M_TEMP, M_INTWAIT | M_NULLOK);
+	breq = kmalloc(len, M_TEMP, M_INTWAIT | M_NULLOK | M_ZERO);
 	if (breq == NULL) {
 		bifc->ifbic_len = 0;
 		return ENOMEM;
@@ -1303,7 +1303,7 @@ bridge_ioctl_rts(struct bridge_softc *sc, void *arg)
 	len = min(bac->ifbac_len, sizeof(*bareq) * count);
 	KKASSERT(len >= sizeof(*bareq));
 
-	bareq = kmalloc(len, M_TEMP, M_INTWAIT | M_NULLOK);
+	bareq = kmalloc(len, M_TEMP, M_INTWAIT | M_NULLOK | M_ZERO);
 	if (bareq == NULL) {
 		bac->ifbac_len = 0;
 		return ENOMEM;
