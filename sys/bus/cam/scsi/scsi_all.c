@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_all.c,v 1.53 2008/08/16 21:26:58 ken Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.28 2008/08/23 22:27:27 pavalos Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.29 2008/11/16 18:43:59 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -2582,7 +2582,7 @@ static struct asc_table_entry asc_table[] = {
 	    "Unknown signature verification key") },
 	/*  T             */
 	{ SST(0x74, 0x07, SS_RDEF,	/* XXX TBD */
-	    "Encryption parameters not useable") },
+	    "Encryption parameters not usable") },
 	/* DT   R M E  VF */
 	{ SST(0x74, 0x08, SS_RDEF,	/* XXX TBD */
 	    "Digital signature validation failure") },

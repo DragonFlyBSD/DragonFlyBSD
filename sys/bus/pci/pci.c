@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.57 2008/10/19 09:13:58 sephe Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.58 2008/11/16 18:44:00 swildner Exp $
  *
  */
 
@@ -103,7 +103,7 @@ SYSCTL_INT(_hw_pci, OID_AUTO, do_power_nodriver, CTLFLAG_RW,
     &pci_do_power_nodriver, 0,
   "Place a function into D3 state when no driver attaches to it.  0 means\n\
 disable.  1 means conservatively place devices into D3 state.  2 means\n\
-agressively place devices into D3 state.  3 means put absolutely everything\n\
+aggressively place devices into D3 state.  3 means put absolutely everything\n\
 in D3 state.");
 
 device_t

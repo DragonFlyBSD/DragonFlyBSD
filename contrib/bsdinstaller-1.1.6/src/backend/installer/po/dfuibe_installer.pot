@@ -36,7 +36,7 @@ msgid "A capacity must be specified."
 msgstr ""
 
 msgid ""
-"A failure occured while provisioning the NetBoot environment.  Please check "
+"A failure occurred while provisioning the NetBoot environment.  Please check "
 "the logs."
 msgstr ""
 

@@ -35,7 +35,7 @@ msgid "A capacity must be specified."
 msgstr "Должен быть задан размер."
 
 msgid ""
-"A failure occured while provisioning the NetBoot environment.  Please check "
+"A failure occurred while provisioning the NetBoot environment.  Please check "
 "the logs."
 msgstr "При включении NetBoot произошли ошибки. Просмотрите протокол."
 
