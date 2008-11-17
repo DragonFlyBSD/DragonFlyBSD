@@ -1,4 +1,4 @@
-# $DragonFly: src/sys/conf/kern.pre.mk,v 1.7 2008/09/15 20:09:03 thomas Exp $
+# $DragonFly: src/sys/conf/kern.pre.mk,v 1.8 2008/11/17 11:55:19 swildner Exp $
 #
 # This Makefile covers the top part of the MI kernel build instructions
 #
@@ -49,6 +49,9 @@ INCLUDES+= -I${.OBJDIR} -I"$S/${OSACPI_MI_DIR}" -I"$S/${ACPICA_DIR}/include"
 # This hack lets us use the ipfilter code without spamming a new
 # include path into 100+ source files.
 INCLUDES+= -I$S/contrib/ipfilter
+
+# ... and the same for Atheros HAL
+INCLUDES+= -I$S/dev/netif/ath/hal
 
 COPTS=	${INCLUDES} ${IDENT} -D_KERNEL -include opt_global.h
 CFLAGS=	${COPTFLAGS} ${CWARNFLAGS} ${DEBUG} ${COPTS}

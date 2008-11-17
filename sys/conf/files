@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.233 2008/08/28 09:25:42 hasso Exp $
+# $DragonFly: src/sys/conf/files,v 1.234 2008/11/17 11:55:19 swildner Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -180,6 +180,18 @@ dev/disk/aic7xxx/ahd_pci.c		optional ahd pci
 dev/disk/aic7xxx/aic79xx.c		optional ahd pci
 dev/disk/aic7xxx/aic79xx_osm.c		optional ahd pci
 dev/disk/aic7xxx/aic79xx_pci.c		optional ahd pci
+dev/netif/ath/hal/ah_osdep.c		optional ath_hal \
+	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath"
+dev/netif/ath/rate_amrr/amrr.c		optional ath_rate_amrr \
+	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath"
+dev/netif/ath/rate_onoe/onoe.c		optional ath_rate_onoe \
+	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath"
+dev/netif/ath/rate_sample/sample.c	optional ath_rate_sample \
+	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath"
+dev/netif/ath/ath/if_ath.c		optional ath \
+	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath"
+dev/netif/ath/ath/if_ath_pci.c		optional ath pci \
+	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath"
 dev/netif/bce/if_bce.c			optional bce
 dev/netif/bfe/if_bfe.c			optional bfe
 dev/netif/bge/if_bge.c			optional bge
