@@ -4,7 +4,7 @@
  * There is no copyright, you can use it as you want.
  *
  * $FreeBSD: src/libexec/rpc.rquotad/rquotad.c,v 1.3.2.1 2001/07/02 23:46:27 mikeh Exp $
- * $DragonFly: src/libexec/rpc.rquotad/rquotad.c,v 1.5 2006/04/03 01:59:27 dillon Exp $
+ * $DragonFly: src/libexec/rpc.rquotad/rquotad.c,v 1.6 2008/11/19 18:41:30 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -34,12 +34,12 @@
 #include <rpcsvc/rquota.h>
 #include <arpa/inet.h>
 
-void rquota_service (struct svc_req *request, SVCXPRT *transp);
-void sendquota (struct svc_req *request, SVCXPRT *transp);
-void printerr_reply (SVCXPRT *transp);
-void initfs (void);
-int getfsquota (long id, char *path, struct ufs_dqblk *dqblk);
-int hasquota (struct fstab *fs, char **qfnamep);
+static void cleanup(int);
+static void rquota_service(struct svc_req *request, SVCXPRT *transp);
+static void sendquota(struct svc_req *request, SVCXPRT *transp);
+static void initfs(void);
+static int getfsquota(long id, char *path, struct ufs_dqblk *dqblk);
+static int hasquota(struct fstab *fs, char **qfnamep);
 
 /*
  * structure containing informations about ufs filesystems
@@ -56,16 +56,14 @@ struct fs_stat *fs_begin = NULL;
 int from_inetd = 1;
 
 void 
-cleanup()
+cleanup(int signo __unused)
 {
 	(void) pmap_unset(RQUOTAPROG, RQUOTAVERS);
 	exit(0);
 }
 
 int
-main(argc, argv)
-	int     argc;
-	char   *argv[];
+main(void)
 {
 	SVCXPRT *transp;
 	int sock = 0;
@@ -110,9 +108,7 @@ main(argc, argv)
 }
 
 void 
-rquota_service(request, transp)
-	struct svc_req *request;
-	SVCXPRT *transp;
+rquota_service(struct svc_req *request, SVCXPRT *transp)
 {
 	switch (request->rq_proc) {
 	case NULLPROC:
@@ -134,9 +130,7 @@ rquota_service(request, transp)
 
 /* read quota for the specified id, and send it */
 void 
-sendquota(request, transp)
-	struct svc_req *request;
-	SVCXPRT *transp;
+sendquota(struct svc_req *request, SVCXPRT *transp)
 {
 	struct getquota_args getq_args;
 	struct getquota_rslt getq_rslt;
@@ -185,28 +179,9 @@ sendquota(request, transp)
 	}
 }
 
-void 
-printerr_reply(transp)	/* when a reply to a request failed */
-	SVCXPRT *transp;
-{
-	char   *name;
-	struct sockaddr_in *caller;
-	int     save_errno;
-
-	save_errno = errno;
-
-	caller = svc_getcaller(transp);
-	name = (char *)inet_ntoa(caller->sin_addr);
-	errno = save_errno;
-	if (errno == 0)
-		syslog(LOG_ERR, "couldn't send reply to %s", name);
-	else
-		syslog(LOG_ERR, "couldn't send reply to %s: %m", name);
-}
-
 /* initialise the fs_tab list from entries in /etc/fstab */
 void 
-initfs()
+initfs(void)
 {
 	struct fs_stat *fs_current = NULL;
 	struct fs_stat *fs_next = NULL;
@@ -244,10 +219,7 @@ initfs()
  * Return 0 if fail, 1 otherwise
  */
 int
-getfsquota(id, path, dqblk)
-	long id;
-	char   *path;
-	struct ufs_dqblk *dqblk;
+getfsquota(long id, char *path, struct ufs_dqblk *dqblk)
 {
 	struct stat st_path;
 	struct fs_stat *fs;
@@ -302,14 +274,12 @@ getfsquota(id, path, dqblk)
  * Comes from quota.c, NetBSD 0.9
  */
 int
-hasquota(fs, qfnamep)
-	struct fstab *fs;
-	char  **qfnamep;
+hasquota(struct fstab *fs, char **qfnamep)
 {
 	static char initname, usrname[100];
 	static char buf[BUFSIZ];
 	char	*opt, *cp;
-	char	*qfextension[] = INITQFNAMES;
+	const char *qfextension[] = INITQFNAMES;
 
 	if (!initname) {
 		sprintf(usrname, "%s%s", qfextension[USRQUOTA], QUOTAFILENAME);
