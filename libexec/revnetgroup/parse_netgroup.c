@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/revnetgroup/parse_netgroup.c,v 1.7 1999/08/28 00:09:48 peter Exp $
- * $DragonFly: src/libexec/revnetgroup/parse_netgroup.c,v 1.3 2004/08/25 01:53:39 dillon Exp $
+ * $DragonFly: src/libexec/revnetgroup/parse_netgroup.c,v 1.4 2008/11/19 17:46:55 swildner Exp $
  */
 
 /*
@@ -82,10 +82,8 @@ static struct {
 	(struct netgrp *)0,
 	(char *)0,
 };
-static int parse_netgrp();
-static struct linelist *read_for_group();
-void __setnetgrent(), __endnetgrent();
-int __getnetgrent();
+static int parse_netgrp(char *);
+static struct linelist *read_for_group(char *);
 extern struct group_entry *gtable[];
 
 /*
@@ -95,8 +93,7 @@ extern struct group_entry *gtable[];
  * most of the work.
  */
 void
-__setnetgrent(group)
-	char *group;
+__setnetgrent(char *group)
 {
 	/* Sanity check */
 
@@ -121,8 +118,7 @@ __setnetgrent(group)
  * Get the next netgroup off the list.
  */
 int
-__getnetgrent(hostp, userp, domp)
-	char **hostp, **userp, **domp;
+__getnetgrent(char **hostp, char **userp, char **domp)
 {
 	if (nextgrp) {
 		*hostp = nextgrp->ng_str[NG_HOST];
@@ -138,10 +134,10 @@ __getnetgrent(hostp, userp, domp)
  * __endnetgrent() - cleanup
  */
 void
-__endnetgrent()
+__endnetgrent(void)
 {
-	register struct linelist *lp, *olp;
-	register struct netgrp *gp, *ogp;
+	struct linelist *lp, *olp;
+	struct netgrp *gp, *ogp;
 
 	lp = linehead;
 	while (lp) {
@@ -175,13 +171,12 @@ __endnetgrent()
  * Parse the netgroup file setting up the linked lists.
  */
 static int
-parse_netgrp(group)
-	char *group;
+parse_netgrp(char *group)
 {
-	register char *spos, *epos;
-	register int len, strpos;
+	char *spos, *epos;
+	int len, strpos;
 #ifdef DEBUG
-	register int fields;
+	int fields;
 #endif
 	char *pos, *gpos;
 	struct netgrp *grp;
@@ -286,11 +281,10 @@ parse_netgrp(group)
  * is found. Return 1 if eof is encountered.
  */
 static struct linelist *
-read_for_group(group)
-	char *group;
+read_for_group(char *group)
 {
-	register char *pos, *spos, *linep = NULL, *olinep = NULL;
-	register int len, olen;
+	char *pos, *spos, *linep = NULL, *olinep = NULL;
+	int len, olen;
 	int cont;
 	struct linelist *lp;
 	char line[LINSIZ + 1];

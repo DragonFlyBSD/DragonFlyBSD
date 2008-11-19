@@ -36,7 +36,7 @@
  * Columbia University, New York City
  *
  * $FreeBSD: src/libexec/revnetgroup/revnetgroup.c,v 1.10.2.1 2000/07/20 10:35:08 kris Exp $
- * $DragonFly: src/libexec/revnetgroup/revnetgroup.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/revnetgroup/revnetgroup.c,v 1.3 2008/11/19 17:46:55 swildner Exp $
  */
 
 #include <err.h>
@@ -47,7 +47,7 @@
 #include "hash.h"
 
 /* Default location of netgroup file. */
-char *netgroup = "/etc/netgroup";
+const char *netgroup = "/etc/netgroup";
 
 /* Stored hash table version of 'forward' netgroup database. */
 struct group_entry *gtable[TABLESIZE];
@@ -59,16 +59,14 @@ struct group_entry *gtable[TABLESIZE];
 struct member_entry *mtable[TABLESIZE];
 
 static void
-usage()
+usage(void)
 {
 	fprintf (stderr,"usage: revnetgroup -u|-h [-f netgroup file]\n");
 	exit(1);
 }
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	FILE *fp;
 	char readbuf[LINSIZ];

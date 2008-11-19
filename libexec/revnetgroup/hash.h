@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/revnetgroup/hash.h,v 1.6 1999/08/28 00:09:48 peter Exp $
- * $DragonFly: src/libexec/revnetgroup/hash.h,v 1.3 2003/11/14 03:54:30 dillon Exp $
+ * $DragonFly: src/libexec/revnetgroup/hash.h,v 1.4 2008/11/19 17:46:55 swildner Exp $
  */
 
 /* Groupname entry hung off a member_entry node. */
@@ -42,7 +42,7 @@ struct grouplist {
 /* Entry in the cooked member list hash table. */
 struct member_entry {
 	char *key;
-	char *domain;
+	const char *domain;
 	struct grouplist *groups;
 	struct member_entry *next;
 };
