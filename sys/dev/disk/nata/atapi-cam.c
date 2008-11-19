@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cam.c,v 1.44 2006/03/31 08:09:05 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cam.c,v 1.10 2008/05/18 20:30:22 pavalos Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cam.c,v 1.10.2.1 2008/11/19 08:31:26 hasso Exp $
  */
 
 #include "opt_ata.h"
@@ -273,15 +273,17 @@ atapi_cam_reinit(device_t dev) {
 
 static void
 reinit_bus(struct atapi_xpt_softc *scp, enum reinit_reason reason) {
-    struct ata_device *atadev;
+    struct ata_device *old_atadev[2], *atadev;
     device_t *children;
-    int nchildren, i;
+    int nchildren, i, dev_changed;
 
     if (device_get_children(scp->parent, &children, &nchildren) != 0) {
 	return;
     }
 
     spin_lock_wr(&scp->state_lock);
+    old_atadev[0] = scp->atadev[0];
+    old_atadev[1] = scp->atadev[1];
     scp->atadev[0] = NULL;
     scp->atadev[1] = NULL;
 
@@ -297,12 +299,18 @@ reinit_bus(struct atapi_xpt_softc *scp, enum reinit_reason reason) {
 		scp->atadev[1] = atadev;
 	}
     }
+    dev_changed = (old_atadev[0] != scp->atadev[0])
+	    || (old_atadev[1] != scp->atadev[1]);
     spin_unlock_wr(&scp->state_lock);
     kfree(children, M_TEMP);
 
     switch (reason) {
 	case RESET:
 	    xpt_async(AC_BUS_RESET, scp->path, NULL);
+
+	    if (!dev_changed)
+		    break;
+
 	    /*FALLTHROUGH*/
 	case ATTACH:
 	    cam_rescan(scp->sim);
@@ -459,7 +467,7 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
     case XPT_SCSI_IO: {
 	struct ccb_scsiio *csio = &ccb->csio;
 	int tid = ccb_h->target_id, lid = ccb_h->target_lun;
-	int request_flags = ATA_R_QUIET | ATA_R_ATAPI;
+	int request_flags = ATA_R_ATAPI;
 
 	CAM_DEBUG(ccb_h->path, CAM_DEBUG_SUBTRACE, ("XPT_SCSI_IO\n"));
 
@@ -504,10 +512,10 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 
 	switch (ccb_h->flags & CAM_DIR_MASK) {
 	case CAM_DIR_IN:
-	     request_flags |= ATA_R_READ|ATA_R_DMA;
+	     request_flags |= ATA_R_READ;
 	     break;
 	case CAM_DIR_OUT:
-	     request_flags |= ATA_R_WRITE|ATA_R_DMA;
+	     request_flags |= ATA_R_WRITE;
 	     break;
 	case CAM_DIR_NONE:
 	     /* No flags need to be set */
@@ -516,8 +524,6 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	     device_printf(softc->dev, "unknown IO operation\n");
 	     goto action_invalid;
 	}
-	if (softc->atadev[tid]->mode < ATA_DMA)
-	    request_flags &= ~ATA_R_DMA;
 
 	if ((hcb = allocate_hcb(softc, unit, bus, ccb)) == NULL) {
 	    kprintf("cannot allocate ATAPI/CAM hcb\n");
@@ -537,6 +543,9 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 
 		kprintf("atapi_action: hcb@%p: %s\n", hcb,
 		       scsi_cdb_string(request->u.atapi.ccb, cdb_str, sizeof(cdb_str)));
+	}
+	if (CAM_DEBUGGED(ccb_h->path, CAM_DEBUG_SUBTRACE)) {
+		request_flags |= ATA_R_DEBUG;
 	}
 #endif
 
@@ -587,6 +596,14 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	    buf = hcb->dxfer_alloc =
 		kmalloc(++len, M_ATACAM, M_INTWAIT | M_ZERO);
 	}
+
+	/*
+	 * Don't allow DMA for requests with length not multiple of 16 bytes.
+	 * Some ATAPI devices don't like it.
+	 */
+	if ((softc->atadev[tid]->mode >= ATA_DMA) && len > 0 && !(len & 15))
+		request_flags |= ATA_R_DMA;
+
 	request->dev = softc->atadev[tid]->dev;
 	request->driver = hcb;
 	request->data = buf;
@@ -594,9 +611,14 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	request->transfersize = min(request->bytecount,
 				min(softc->ata_ch->dma->max_iosize, 65534));
 	request->timeout = ccb_h->timeout / 1000; /* XXX lost granularity */
-	request->retries = 2;
 	request->callback = &atapi_cb;
 	request->flags = request_flags;
+
+	/*
+	 * no retries are to be performed at the ATA level; any retries
+	 * will be done by CAM .
+	 */
+	request->retries = 0;
 
 	TAILQ_INSERT_TAIL(&softc->pending_hcbs, hcb, chain);
 	hcb->flags |= QUEUED;
@@ -660,14 +682,15 @@ atapi_cb(struct ata_request *request)
 #ifdef CAMDEBUG
 # define err (request->u.atapi.sense.key)
     if (CAM_DEBUGGED(csio->ccb_h.path, CAM_DEBUG_CDB)) {
-	kprintf("atapi_cb: hcb@%p error = %02x: (sk = %02x%s%s%s)\n",
-	       hcb, err, err >> 4,
-	       (err & 4) ? " ABRT" : "",
-	       (err & 2) ? " EOM" : "",
-	       (err & 1) ? " ILI" : "");
-	kprintf("dev %s: cmd %02x status %02x result %02x\n",
-	    device_get_nameunit(request->dev), request->u.atapi.ccb[0],
-	    request->status, request->result);
+	kprintf("atapi_cb: hcb@%p sense = %02x: sk = %01x%s%s%s\n",
+		hcb, err, err & 0x0f,
+		(err & 0x80) ? ", Filemark" : "",
+		(err & 0x40) ? ", EOM" : "",
+		(err & 0x20) ? ", ILI" : "");
+	device_printf(request->dev,
+	    "cmd %s status %02x result %02x error %02x\n",
+	    ata_cmd2str(request),
+	    request->status, request->result, request->error);
     }
 #endif
 
@@ -677,32 +700,39 @@ atapi_cb(struct ata_request *request)
 	    csio->ccb_h.status |= CAM_AUTOSNS_VALID;
 	}
     } else if (request->result != 0) {
-	rc = CAM_SCSI_STATUS_ERROR;
-	csio->scsi_status = SCSI_STATUS_CHECK_COND;
+	if ((request->flags & ATA_R_TIMEOUT) != 0) {
+	    rc = CAM_CMD_TIMEOUT;
+	} else {
+	    rc = CAM_SCSI_STATUS_ERROR;
+	    csio->scsi_status = SCSI_STATUS_CHECK_COND;
 
-	if ((csio->ccb_h.flags & CAM_DIS_AUTOSENSE) == 0) {
+	    if ((csio->ccb_h.flags & CAM_DIS_AUTOSENSE) == 0) {
 #if 0
-	    static const int8_t ccb[16] = { ATAPI_REQUEST_SENSE, 0, 0, 0,
-		sizeof(struct atapi_sense), 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0 };
+		static const int8_t ccb[16] = { ATAPI_REQUEST_SENSE, 0, 0, 0,
+		    sizeof(struct atapi_sense), 0, 0, 0, 0, 0, 0,
+		    0, 0, 0, 0, 0 };
 
-	    bcopy (ccb, request->u.atapi.ccb, sizeof ccb);
-	    request->data = (caddr_t)&csio->sense_data;
-	    request->bytecount = sizeof(struct atapi_sense);
-	    request->transfersize = min(request->bytecount, 65534);
-	    request->timeout = csio->ccb_h.timeout / 1000;
-	    request->retries = 2;
-	    request->flags = ATA_R_QUIET|ATA_R_ATAPI|ATA_R_IMMEDIATE;
-	    hcb->flags |= AUTOSENSE;
+		bcopy (ccb, request->u.atapi.ccb, sizeof ccb);
+		request->data = (caddr_t)&csio->sense_data;
+		request->bytecount = sizeof(struct atapi_sense);
+		request->transfersize = min(request->bytecount, 65534);
+		request->timeout = csio->ccb_h.timeout / 1000;
+		request->retries = 2;
+		request->flags = ATA_R_QUIET|ATA_R_ATAPI|ATA_R_IMMEDIATE;
+		hcb->flags |= AUTOSENSE;
 
-	    ata_queue_request(request);
-	    return;
+		ata_queue_request(request);
+		return;
 #else
-	    /* The ATA driver has already requested sense for us. */
-	    if (request->error == 0) {
-		/* The ATA autosense suceeded. */
-		bcopy (&request->u.atapi.sense, &csio->sense_data, sizeof(struct atapi_sense));
-		csio->ccb_h.status |= CAM_AUTOSNS_VALID;
+		/*
+		 * Use auto-sense data from the ATA layer, if it has
+		 * issued a REQUEST SENSE automatically and that operation
+		 * returned without error.
+		 */
+		if (request->u.atapi.sense.key != 0 && request->error == 0) {
+		    bcopy (&request->u.atapi.sense, &csio->sense_data, sizeof(struct atapi_sense));
+		    csio->ccb_h.status |= CAM_AUTOSNS_VALID;
+		}
 	    }
 #endif
 	}
@@ -803,7 +833,7 @@ cam_rescan(struct cam_sim *sim)
 	return;
     }
 
-    CAM_DEBUG(ccb->ccb_h.path, CAM_DEBUG_TRACE, ("Rescanning ATAPI bus.\n"));
+    CAM_DEBUG(path, CAM_DEBUG_TRACE, ("Rescanning ATAPI bus.\n"));
     xpt_setup_ccb(&ccb->ccb_h, path, 5/*priority (low)*/);
     ccb->ccb_h.func_code = XPT_SCAN_BUS;
     ccb->ccb_h.cbfcnp = cam_rescan_callback;
