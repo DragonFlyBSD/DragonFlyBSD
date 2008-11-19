@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cam.c,v 1.44 2006/03/31 08:09:05 sos Exp $
- * $DragonFly: src/sys/dev/disk/nata/atapi-cam.c,v 1.11 2008/11/17 07:45:48 hasso Exp $
+ * $DragonFly: src/sys/dev/disk/nata/atapi-cam.c,v 1.12 2008/11/19 08:12:16 hasso Exp $
  */
 
 #include "opt_ata.h"
@@ -588,22 +588,6 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	    request->u.atapi.ccb[3] = request->u.atapi.ccb[1] & 0x1f;
 	    request->u.atapi.ccb[2] = 0;
 	    request->u.atapi.ccb[1] = 0;
-            /* FALLTHROUGH */
-
-	case READ_10:
-	    /* FALLTHROUGH */
-	case WRITE_10:
-	    /* FALLTHROUGH */
-	case READ_12:
-	    /* FALLTHROUGH */
-	case WRITE_12:
-	    /*
-	     * Enable DMA (if target supports it) for READ and WRITE commands
-	     * only, as some combinations of drive, controller and chipset do
-	     * not behave correctly when DMA is enabled for other commands.
-	     */
-	    if (softc->atadev[tid]->mode >= ATA_DMA)
-		request_flags |= ATA_R_DMA;
 	    break;
 	}
 
@@ -612,6 +596,14 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	    buf = hcb->dxfer_alloc =
 		kmalloc(++len, M_ATACAM, M_INTWAIT | M_ZERO);
 	}
+
+	/*
+	 * Don't allow DMA for requests with length not multiple of 16 bytes.
+	 * Some ATAPI devices don't like it.
+	 */
+	if ((softc->atadev[tid]->mode >= ATA_DMA) && len > 0 && !(len & 15))
+		request_flags |= ATA_R_DMA;
+
 	request->dev = softc->atadev[tid]->dev;
 	request->driver = hcb;
 	request->data = buf;
