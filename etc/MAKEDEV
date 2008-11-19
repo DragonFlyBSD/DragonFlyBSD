@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.42 2008/09/01 20:19:56 thomas Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.43 2008/11/19 07:46:05 hasso Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -1859,13 +1859,14 @@ snd*)
 	ln -fs mixer$unit mixer
 	ln -fs sequencer$unit sequencer
 	ln -fs dsp$unit dsp
-	ln -fs audio$unit audio
 	ln -fs dspW$unit dspW
 	ln -fs music$unit music
 	ln -fs pss$unit pss
 	ln -fs dsp$unit.0 dsp$unit
-	ln -fs audio$unit.0 audio$unit
 	ln -fs dspW$unit.0 dspW$unit
+
+	ln -fs dsp audio
+	ln -fs dsp$unit audio$unit
 
 	mknod mixer $unit c $chr `unit2minor $(($unit * 16 + 0))` \
 		root:wheel 666
@@ -1879,8 +1880,8 @@ snd*)
 		minor=$(($chn * 65536 + $unit * 16))
 
 		mknod dsp $unit.$chn   c $chr $(($minor + 3)) root:wheel 666
-		mknod audio $unit.$chn c $chr $(($minor + 4)) root:wheel 666
 		mknod dspW $unit.$chn  c $chr $(($minor + 5)) root:wheel 666
+		ln -fs dsp$unit.$chn audio$unit.$chn
 	done
 
 	mknod sndstat "" c $chr 6 root:wheel 666
