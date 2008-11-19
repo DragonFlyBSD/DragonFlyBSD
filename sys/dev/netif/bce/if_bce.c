@@ -28,7 +28,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bce/if_bce.c,v 1.31 2007/05/16 23:34:11 davidch Exp $
- * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.20 2008/11/10 14:05:03 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/bce/if_bce.c,v 1.21 2008/11/19 13:57:49 sephe Exp $
  */
 
 /*
@@ -395,20 +395,15 @@ static int	bce_sysctl_coal_change(SYSCTL_HANDLER_ARGS,
  * takes 1023 as the TX ticks limit.  However, using 1023 will
  * cause 5708(B2) to generate extra interrupts (~2000/s) even when
  * there is _no_ network activity on the NIC.
- *
- * NOTE:
- * On 5706/5708 setting bce_rx_ticks/bce_rx_ticks_int to any value
- * above 13 will let RX bds take over RX HC completely, i.e. RX ticks
- * will _not_ have any effect at all.
  */
 static uint32_t	bce_tx_bds_int = 255;		/* bcm: 20 */
 static uint32_t	bce_tx_bds = 255;		/* bcm: 20 */
 static uint32_t	bce_tx_ticks_int = 1022;	/* bcm: 80 */
 static uint32_t	bce_tx_ticks = 1022;		/* bcm: 80 */
-static uint32_t	bce_rx_bds_int = 12;		/* bcm: 6 */
-static uint32_t	bce_rx_bds = 12;		/* bcm: 6 */
-static uint32_t	bce_rx_ticks_int = 18;		/* bcm: 18 */
-static uint32_t	bce_rx_ticks = 18;		/* bcm: 18 */
+static uint32_t	bce_rx_bds_int = 128;		/* bcm: 6 */
+static uint32_t	bce_rx_bds = 128;		/* bcm: 6 */
+static uint32_t	bce_rx_ticks_int = 125;		/* bcm: 18 */
+static uint32_t	bce_rx_ticks = 125;		/* bcm: 18 */
 
 TUNABLE_INT("hw.bce.tx_bds_int", &bce_tx_bds_int);
 TUNABLE_INT("hw.bce.tx_bds", &bce_tx_bds);
@@ -3203,7 +3198,6 @@ bce_blockinit(struct bce_softc *sc)
 	REG_WR(sc, BCE_HC_STATS_TICKS, (sc->bce_stats_ticks & 0xffff00));
 	REG_WR(sc, BCE_HC_STAT_COLLECT_TICKS, 0xbb8);	/* 3ms */
 	REG_WR(sc, BCE_HC_CONFIG,
-	       BCE_HC_CONFIG_RX_TMR_MODE |
 	       BCE_HC_CONFIG_TX_TMR_MODE |
 	       BCE_HC_CONFIG_COLLECT_STATS);
 
