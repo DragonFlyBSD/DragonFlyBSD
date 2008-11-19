@@ -1,5 +1,5 @@
 .\"	$OpenBSD: pf.conf.5,v 1.291 2004/02/04 19:38:30 jmc Exp $
-.\"	$DragonFly: src/usr.sbin/pfctl/pf.conf.5,v 1.16 2008/10/17 11:30:24 swildner Exp $
+.\"	$DragonFly: src/usr.sbin/pfctl/pf.conf.5,v 1.17 2008/11/19 19:30:02 swildner Exp $
 .\"
 .\" Copyright (c) 2002, Daniel Hartmeier
 .\" All rights reserved.
@@ -670,7 +670,7 @@ sent out immediately.
 There are four
 .Ar schedulers
 currently supported.
-.Bl -tag -width xxxx
+.Bl -tag -width ".Ar fairq"
 .It Ar cbq
 Class Based Queueing.
 .Ar Queues
