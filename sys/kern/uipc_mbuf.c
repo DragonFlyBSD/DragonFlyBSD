@@ -65,7 +65,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.69 2008/10/26 04:29:19 sephe Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.70 2008/11/20 14:21:01 sephe Exp $
  */
 
 #include "opt_param.h"
@@ -585,13 +585,18 @@ mbinit(void *dummy)
 
 	/*
 	 * Adjust backing kmalloc pools' limit
+	 *
+	 * NOTE: We raise the limit by another 1/8 to take the effect
+	 * of loosememuse into account.
 	 */
+	cl_limit += cl_limit / 8;
 	kmalloc_raise_limit(mclmeta_malloc_args.mtype,
 			    mclmeta_malloc_args.objsize * cl_limit);
 	kmalloc_raise_limit(M_MBUFCL, MCLBYTES * cl_limit);
 
 	mb_limit += mbcl_limit;
 	mb_limit += mb_limit / 4; /* save some space for non-pkthdr mbufs */
+	mb_limit += mb_limit / 8;
 	kmalloc_raise_limit(mbuf_malloc_args.mtype,
 			    mbuf_malloc_args.objsize * mb_limit);
 }
