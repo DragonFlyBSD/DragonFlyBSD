@@ -35,7 +35,7 @@
  *
  *	@(#)cdefs.h	8.8 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/cdefs.h,v 1.28.2.8 2002/09/18 04:05:13 mikeh Exp $
- * $DragonFly: src/sys/sys/cdefs.h,v 1.19 2006/04/07 14:09:59 davidxu Exp $
+ * $DragonFly: src/sys/sys/cdefs.h,v 1.19.10.1 2008/11/20 11:56:50 hasso Exp $
  */
 
 #ifndef	_SYS_CDEFS_H_
@@ -394,21 +394,17 @@
 #define __DF_VISIBLE	0
 #endif
 
-#if defined(_POSIX_C_SOURCE)
-
 /* Deal with IEEE Std. 1003.1-1990, in which _POSIX_C_SOURCE == 1. */
-#if _POSIX_C_SOURCE == 1
+#if defined(_POSIX_C_SOURCE) && (_POSIX_C_SOURCE - 0) == 1
 #undef _POSIX_C_SOURCE		/* Probably illegal, but beyond caring now. */
 #define	_POSIX_C_SOURCE		199009
 #endif
 
 /* Deal with IEEE Std. 1003.2-1992, in which _POSIX_C_SOURCE == 2. */
-#if _POSIX_C_SOURCE == 2
+#if defined(_POSIX_C_SOURCE) && (_POSIX_C_SOURCE - 0) == 2
 #undef _POSIX_C_SOURCE
 #define	_POSIX_C_SOURCE		199209
 #endif
-
-#endif	/* _POSIX_C_SOURCE */
 
 /* Deal with various X/Open Portability Guides and Single UNIX Spec. */
 #ifdef _XOPEN_SOURCE
@@ -431,19 +427,19 @@
 #define	_POSIX_C_SOURCE		198808
 #endif
 #ifdef _POSIX_C_SOURCE
-#if _POSIX_C_SOURCE >= 200112
+#if (_POSIX_C_SOURCE - 0) >= 200112
 #define	__POSIX_VISIBLE		200112
 #define	__ISO_C_VISIBLE		1999
-#elif _POSIX_C_SOURCE >= 199506
+#elif (_POSIX_C_SOURCE - 0) >= 199506
 #define	__POSIX_VISIBLE		199506
 #define	__ISO_C_VISIBLE		1990
-#elif _POSIX_C_SOURCE >= 199309
+#elif (_POSIX_C_SOURCE - 0) >= 199309
 #define	__POSIX_VISIBLE		199309
 #define	__ISO_C_VISIBLE		1990
-#elif _POSIX_C_SOURCE >= 199209
+#elif (_POSIX_C_SOURCE - 0) >= 199209
 #define	__POSIX_VISIBLE		199209
 #define	__ISO_C_VISIBLE		1990
-#elif _POSIX_C_SOURCE >= 199009
+#elif (_POSIX_C_SOURCE - 0) >= 199009
 #define	__POSIX_VISIBLE		199009
 #define	__ISO_C_VISIBLE		1990
 #else

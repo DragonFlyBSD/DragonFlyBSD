@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/_posix.h,v 1.6 1999/12/29 04:24:36 peter Exp $
- * $DragonFly: src/sys/sys/_posix.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/_posix.h,v 1.2.14.1 2008/11/20 11:56:50 hasso Exp $
  */
 
 /*
@@ -89,7 +89,7 @@
 
 #if (!defined(_POSIX_SOURCE) && !defined(_POSIX_C_SOURCE)) || \
  (_POSIX_VERSION  >= 199309L && defined(_POSIX_C_SOURCE) && \
-  _POSIX_C_SOURCE >= 199309L)
+  (_POSIX_C_SOURCE - 0) >= 199309L)
 #define _P1003_1B_VISIBLE
 #define _P1003_1B_VISIBLE_HISTORICALLY
 #endif
