@@ -31,7 +31,7 @@
  * $OpenBSD: bridgestp.c,v 1.5 2001/03/22 03:48:29 jason Exp $
  * $NetBSD: bridgestp.c,v 1.5 2003/11/28 08:56:48 keihan Exp $
  * $FreeBSD: src/sys/net/bridgestp.c,v 1.7 2005/10/11 02:58:32 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/bridgestp.c,v 1.7 2008/11/15 11:46:37 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/bridgestp.c,v 1.8 2008/11/21 11:11:03 sephe Exp $
  */
 
 /*
@@ -206,12 +206,13 @@ bstp_transmit_config(struct bridge_softc *sc, struct bridge_iflist *bif)
 	bif->bif_config_bpdu.cu_bridge_id = sc->sc_bridge_id;
 	bif->bif_config_bpdu.cu_port_id = bif->bif_port_id;
 
-	if (bstp_root_bridge(sc))
+	if (bstp_root_bridge(sc)) {
 		bif->bif_config_bpdu.cu_message_age = 0;
-	else
+	} else {
 		bif->bif_config_bpdu.cu_message_age =
-		    sc->sc_root_port->bif_message_age_timer.value +
+		    sc->sc_root_port->bifi_message_age_timer.value +
 		    BSTP_MESSAGE_AGE_INCR;
+	}
 
 	bif->bif_config_bpdu.cu_max_age = sc->sc_max_age;
 	bif->bif_config_bpdu.cu_hello_time = sc->sc_hello_time;
@@ -349,14 +350,19 @@ bstp_record_config_timeout_values(struct bridge_softc *sc,
 static void
 bstp_config_bpdu_generation(struct bridge_softc *sc)
 {
-	struct bridge_iflist *bif;
+	struct bridge_iflist *bif, *nbif;
 
-	LIST_FOREACH(bif, &sc->sc_iflist, bif_next) {
+	LIST_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid], bif_next, nbif) {
 		if ((bif->bif_flags & IFBIF_STP) == 0)
 			continue;
 		if (bstp_designated_port(sc, bif) &&
 		    (bif->bif_state != BSTP_IFSTATE_DISABLED))
 			bstp_transmit_config(sc, bif);
+
+		if (nbif != NULL && !nbif->bif_onlist) {
+			KKASSERT(bif->bif_onlist);
+			nbif = LIST_NEXT(bif, bif_next);
+		}
 	}
 }
 
@@ -371,8 +377,7 @@ static void
 bstp_transmit_tcn(struct bridge_softc *sc)
 {
 	struct bstp_tbpdu bpdu;
-	struct bridge_iflist *bif = sc->sc_root_port;
-	struct ifnet *ifp = bif->bif_ifp;
+	struct ifnet *ifp = sc->sc_root_port->bifi_ifp;
 	struct ether_header *eh;
 	struct mbuf *m;
 
@@ -416,7 +421,7 @@ bstp_root_selection(struct bridge_softc *sc)
 {
 	struct bridge_iflist *root_port = NULL, *bif;
 
-	LIST_FOREACH(bif, &sc->sc_iflist, bif_next) {
+	LIST_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
 		if ((bif->bif_flags & IFBIF_STP) == 0)
 			continue;
 		if (bstp_designated_port(sc, bif))
@@ -458,11 +463,12 @@ set_port:
 		root_port = bif;
 	}
 
-	sc->sc_root_port = root_port;
 	if (root_port == NULL) {
+		sc->sc_root_port = NULL;
 		sc->sc_designated_root = sc->sc_bridge_id;
 		sc->sc_root_path_cost = 0;
 	} else {
+		sc->sc_root_port = root_port->bif_info;
 		sc->sc_designated_root = root_port->bif_designated_root;
 		sc->sc_root_path_cost = root_port->bif_designated_cost +
 		    root_port->bif_path_cost;
@@ -474,7 +480,7 @@ bstp_designated_port_selection(struct bridge_softc *sc)
 {
 	struct bridge_iflist *bif;
 
-	LIST_FOREACH(bif, &sc->sc_iflist, bif_next) {
+	LIST_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
 		if ((bif->bif_flags & IFBIF_STP) == 0)
 			continue;
 		if (bstp_designated_port(sc, bif))
@@ -511,12 +517,12 @@ bstp_become_designated_port(struct bridge_softc *sc, struct bridge_iflist *bif)
 static void
 bstp_port_state_selection(struct bridge_softc *sc)
 {
-	struct bridge_iflist *bif;
+	struct bridge_iflist *bif, *nbif;
 
-	LIST_FOREACH(bif, &sc->sc_iflist, bif_next) {
+	LIST_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid], bif_next, nbif) {
 		if ((bif->bif_flags & IFBIF_STP) == 0)
 			continue;
-		if (bif == sc->sc_root_port) {
+		if (bif->bif_info == sc->sc_root_port) {
 			bif->bif_config_pending = 0;
 			bif->bif_topology_change_acknowledge = 0;
 			bstp_make_forwarding(sc, bif);
@@ -527,6 +533,11 @@ bstp_port_state_selection(struct bridge_softc *sc)
 			bif->bif_config_pending = 0;
 			bif->bif_topology_change_acknowledge = 0;
 			bstp_make_blocking(sc, bif);
+		}
+
+		if (nbif != NULL && !nbif->bif_onlist) {
+			KKASSERT(bif->bif_onlist);
+			nbif = LIST_NEXT(bif, bif_next);
 		}
 	}
 }
@@ -711,7 +722,7 @@ bstp_received_config_bpdu(struct bridge_softc *sc, struct bridge_iflist *bif,
 				}
 			}
 
-			if (bif == sc->sc_root_port) {
+			if (bif->bif_info == sc->sc_root_port) {
 				bstp_record_config_timeout_values(sc, cu);
 				bstp_config_bpdu_generation(sc);
 
@@ -785,7 +796,7 @@ bstp_designated_for_some_port(struct bridge_softc *sc)
 
 	struct bridge_iflist *bif;
 
-	LIST_FOREACH(bif, &sc->sc_iflist, bif_next) {
+	LIST_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
 		if ((bif->bif_flags & IFBIF_STP) == 0)
 			continue;
 		if (bif->bif_designated_bridge == sc->sc_bridge_id)
@@ -830,13 +841,13 @@ bstp_addr_cmp(const uint8_t *a, const uint8_t *b)
 void
 bstp_initialization(struct bridge_softc *sc)
 {
-	struct bridge_iflist *bif, *mif;
+	struct bridge_iflist *bif, *mif, *nbif;
 	u_char *e_addr;
 
 	KKASSERT(&curthread->td_msgport == BRIDGE_CFGPORT);
 
 	mif = NULL;
-	LIST_FOREACH(bif, &sc->sc_iflist, bif_next) {
+	LIST_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
 		if ((bif->bif_flags & IFBIF_STP) == 0)
 			continue;
 		if (bif->bif_ifp->if_type != IFT_ETHER)
@@ -885,11 +896,16 @@ bstp_initialization(struct bridge_softc *sc)
 		callout_reset(&sc->sc_bstpcallout, hz,
 		    bstp_tick, sc);
 
-	LIST_FOREACH(bif, &sc->sc_iflist, bif_next) {
+	LIST_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid], bif_next, nbif) {
 		if (bif->bif_flags & IFBIF_STP)
 			bstp_ifupdstatus(sc, bif);
 		else
 			bstp_disable_port(sc, bif);
+
+		if (nbif != NULL && !nbif->bif_onlist) {
+			KKASSERT(bif->bif_onlist);
+			nbif = LIST_NEXT(bif, bif_next);
+		}
 	}
 
 	bstp_port_state_selection(sc);
@@ -905,7 +921,7 @@ bstp_stop(struct bridge_softc *sc)
 
 	KKASSERT(&curthread->td_msgport == BRIDGE_CFGPORT);
 
-	LIST_FOREACH(bif, &sc->sc_iflist, bif_next) {
+	LIST_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
 		bstp_set_port_state(bif, BSTP_IFSTATE_DISABLED);
 		bstp_timer_stop(&bif->bif_hold_timer);
 		bstp_timer_stop(&bif->bif_message_age_timer);
@@ -989,7 +1005,7 @@ bstp_set_bridge_priority(struct bridge_softc *sc, uint64_t new_bridge_id)
 
 	root = bstp_root_bridge(sc);
 
-	LIST_FOREACH(bif, &sc->sc_iflist, bif_next) {
+	LIST_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
 		if ((bif->bif_flags & IFBIF_STP) == 0)
 			continue;
 		if (bstp_designated_port(sc, bif))
@@ -1060,7 +1076,13 @@ bstp_linkstate(struct ifnet *ifp, int state)
 	sc = ifp->if_bridge;
 	lwkt_serialize_enter(sc->sc_ifp->if_serializer);
 
-	LIST_FOREACH(bif, &sc->sc_iflist, bif_next) {
+	/*
+	 * bstp_ifupdstatus() may block, but it is the last
+	 * operation of the member iface iteration, so we
+	 * don't need to use LIST_FOREACH_MUTABLE()+bif_onlist
+	 * check here.
+	 */
+	LIST_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
 		if ((bif->bif_flags & IFBIF_STP) == 0)
 			continue;
 
@@ -1138,7 +1160,15 @@ bstp_tick_handler(struct netmsg *nmsg)
 
 	lwkt_serialize_enter(sc->sc_ifp->if_serializer);
 
-	LIST_FOREACH(bif, &sc->sc_iflist, bif_next) {
+	/*
+	 * NOTE:
+	 * We don't need to worry that member iface is ripped
+	 * from the per-cpu list during the blocking operation
+	 * in the loop body, since deletion is serialized by
+	 * BRIDGE_CFGPORT
+	 */
+
+	LIST_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
 		if ((bif->bif_flags & IFBIF_STP) == 0)
 			continue;
 		/*
@@ -1161,7 +1191,7 @@ bstp_tick_handler(struct netmsg *nmsg)
 	    sc->sc_topology_change_time))
 		bstp_topology_change_timer_expiry(sc);
 
-	LIST_FOREACH(bif, &sc->sc_iflist, bif_next) {
+	LIST_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
 		if ((bif->bif_flags & IFBIF_STP) == 0)
 			continue;
 		if (bstp_timer_expired(&bif->bif_message_age_timer,
@@ -1169,7 +1199,7 @@ bstp_tick_handler(struct netmsg *nmsg)
 			bstp_message_age_timer_expiry(sc, bif);
 	}
 
-	LIST_FOREACH(bif, &sc->sc_iflist, bif_next) {
+	LIST_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
 		if ((bif->bif_flags & IFBIF_STP) == 0)
 			continue;
 		if (bstp_timer_expired(&bif->bif_forward_delay_timer,

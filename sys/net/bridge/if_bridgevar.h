@@ -66,8 +66,11 @@
  * $OpenBSD: if_bridge.h,v 1.14 2001/03/22 03:48:29 jason Exp $
  * $NetBSD: if_bridgevar.h,v 1.4 2003/07/08 07:13:50 itojun Exp $
  * $FreeBSD: src/sys/net/if_bridgevar.h,v 1.4 2005/07/06 01:24:45 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridgevar.h,v 1.6 2008/11/15 11:46:37 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridgevar.h,v 1.7 2008/11/21 11:11:03 sephe Exp $
  */
+
+#ifndef _NET_IF_BRIDGEVAR_H
+#define _NET_IF_BRIDGEVAR_H
 
 /*
  * Data structure and control definitions for bridge interfaces.
@@ -225,29 +228,56 @@ struct bstp_tcn_unit {
 };
 
 /*
+ * Bridge interface entry.
+ */
+struct bridge_ifinfo {
+	uint64_t		bifi_designated_root;
+	uint64_t		bifi_designated_bridge;
+	uint32_t		bifi_path_cost;
+	uint32_t		bifi_designated_cost;
+	struct bridge_timer	bifi_hold_timer;
+	struct bridge_timer	bifi_message_age_timer;
+	struct bridge_timer	bifi_forward_delay_timer;
+	struct bstp_config_unit	bifi_config_bpdu;
+	uint16_t		bifi_port_id;
+	uint16_t		bifi_designated_port;
+	uint8_t			bifi_state;
+	uint8_t			bifi_topology_change_acknowledge;
+	uint8_t			bifi_config_pending;
+	uint8_t			bifi_change_detection_enabled;
+	uint8_t			bifi_priority;
+	struct ifnet		*bifi_ifp;	/* member if */
+	int			bifi_mutecap;	/* member muted caps */
+};
+
+#define bif_designated_root		bif_info->bifi_designated_root
+#define bif_designated_bridge		bif_info->bifi_designated_bridge
+#define bif_path_cost			bif_info->bifi_path_cost
+#define bif_designated_cost		bif_info->bifi_designated_cost
+#define bif_hold_timer			bif_info->bifi_hold_timer
+#define bif_message_age_timer		bif_info->bifi_message_age_timer
+#define bif_forward_delay_timer		bif_info->bifi_forward_delay_timer
+#define bif_config_bpdu			bif_info->bifi_config_bpdu
+#define bif_port_id			bif_info->bifi_port_id
+#define bif_designated_port		bif_info->bifi_designated_port
+#define bif_state			bif_info->bifi_state
+#define bif_topology_change_acknowledge	\
+	bif_info->bifi_topology_change_acknowledge
+#define bif_config_pending		bif_info->bifi_config_pending
+#define bif_change_detection_enabled	bif_info->bifi_change_detection_enabled
+#define bif_priority			bif_info->bifi_priority
+
+/*
  * Bridge interface list entry.
  */
 struct bridge_iflist {
 	LIST_ENTRY(bridge_iflist) bif_next;
-	uint64_t		bif_designated_root;
-	uint64_t		bif_designated_bridge;
-	uint32_t		bif_path_cost;
-	uint32_t		bif_designated_cost;
-	struct bridge_timer	bif_hold_timer;
-	struct bridge_timer	bif_message_age_timer;
-	struct bridge_timer	bif_forward_delay_timer;
-	struct bstp_config_unit	bif_config_bpdu;
-	uint16_t		bif_port_id;
-	uint16_t		bif_designated_port;
-	uint8_t			bif_state;
-	uint8_t			bif_topology_change_acknowledge;
-	uint8_t			bif_config_pending;
-	uint8_t			bif_change_detection_enabled;
-	uint8_t			bif_priority;
 	struct ifnet		*bif_ifp;	/* member if */
 	uint32_t		bif_flags;	/* member if flags */
-	int			bif_mutecap;	/* member muted caps */
+	int			bif_onlist;
+	struct bridge_ifinfo	*bif_info;
 };
+LIST_HEAD(bridge_iflist_head, bridge_iflist);
 
 /*
  * Bridge route info.
@@ -281,7 +311,7 @@ struct bridge_softc {
 	LIST_ENTRY(bridge_softc) sc_list;
 	uint64_t		sc_designated_root;
 	uint64_t		sc_bridge_id;
-	struct bridge_iflist	*sc_root_port;
+	struct bridge_ifinfo	*sc_root_port;
 	uint32_t		sc_root_path_cost;
 	uint16_t		sc_max_age;
 	uint16_t		sc_hello_time;
@@ -304,11 +334,11 @@ struct bridge_softc {
 	struct netmsg		sc_brtimemsg;	/* bridge callout msg */
 	struct callout		sc_bstpcallout;	/* STP callout */
 	struct netmsg		sc_bstptimemsg;	/* STP callout msg */
-	LIST_HEAD(, bridge_iflist) sc_iflist;	/* member interface list */
-	struct bridge_rtnode_head **sc_rthashs;	/* percpu forwarding table */
-	struct bridge_rtnode_head *sc_rtlists;	/* percpu list of the above */
+	struct bridge_iflist_head *sc_iflists;	/* percpu member if lists */
+	struct bridge_rtnode_head **sc_rthashs;	/* percpu forwarding tables */
+	struct bridge_rtnode_head *sc_rtlists;	/* percpu lists of the above */
 	uint32_t		sc_rthash_key;	/* key for hash */
-	LIST_HEAD(, bridge_iflist) sc_spanlist;	/* span ports list */
+	struct bridge_iflist_head sc_spanlist;	/* span ports list */
 	struct bridge_timer	sc_link_timer;
 };
 #define sc_if                   sc_arp.ac_if
@@ -332,3 +362,5 @@ void	bstp_tick_handler(struct netmsg *);
 void	bridge_enqueue(struct ifnet *, struct mbuf *);
 
 #endif /* _KERNEL */
+
+#endif	/* !_NET_IF_BRIDGEVAR_H */
