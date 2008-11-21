@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.52 2008/11/21 11:11:03 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.53 2008/11/21 12:13:02 sephe Exp $
  */
 
 /*
@@ -2164,16 +2164,23 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		goto out;
 
 	/*
-	 * Implement support for bridge monitoring. If this flag has been
+	 * Implement support for bridge monitoring.  If this flag has been
 	 * set on this interface, discard the packet once we push it through
-	 * the bpf(4) machinery, but before we do, increment the byte and
-	 * packet counters associated with this interface.
+	 * the bpf(4) machinery, but before we do, increment various counters
+	 * associated with this bridge.
 	 */
-	 if ((bifp->if_flags & IFF_MONITOR) != 0) {
-	 	m->m_pkthdr.rcvif = bifp;
+	if (bifp->if_flags & IFF_MONITOR) {
+	 	/* Change input interface to this bridge */
+		m->m_pkthdr.rcvif = bifp;
+
 		BPF_MTAP(bifp, m);
+
+		/* Update bridge's ifnet statistics */
 		bifp->if_ipackets++;
 		bifp->if_ibytes += m->m_pkthdr.len;
+		if (m->m_flags & (M_MCAST | M_BCAST))
+			bifp->if_imcasts++;
+
 		m_freem(m);
 		m = NULL;
 		goto out;
