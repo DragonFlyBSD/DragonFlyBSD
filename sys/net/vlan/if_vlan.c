@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.41 2008/09/23 11:50:11 sephe Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.42 2008/11/21 13:37:02 sephe Exp $
  */
 
 /*
@@ -472,10 +472,8 @@ vlan_input(struct mbuf *m)
 	 * - no corresponding vlan(4) interface
 	 * - vlan(4) interface has not been completely set up yet,
 	 *   or is being destroyed (ifv->ifv_p != rcvif)
-	 * - vlan(4) interface is not brought up
 	 */
-	if (ifv == NULL || ifv->ifv_p != rcvif ||
-	    (ifv->ifv_if.if_flags & IFF_UP) == 0) {
+	if (ifv == NULL || ifv->ifv_p != rcvif) {
 		rcvif->if_noproto++;
 		m_freem(m);
 		return;
@@ -488,6 +486,12 @@ vlan_input(struct mbuf *m)
 	 */
 	m->m_flags &= ~M_VLANTAG;
 
+	/* Discard packet if interface is not up */
+	if (!(ifp->if_flags & IFF_UP)) {
+		m_freem(m);
+		return;
+	}
+
 	/* Change receiving interface */
 	m->m_pkthdr.rcvif = ifp;
 
@@ -499,13 +503,6 @@ vlan_input(struct mbuf *m)
 
 	BPF_MTAP(ifp, m);
 
-	if (ifp->if_flags & IFF_MONITOR) {
-		/*
-		 * Interface marked for monitoring; discard packet.
-		 */
-		m_freem(m);
-		return;
-	}
 	ether_input_oncpu(ifp, m);
 }
 
