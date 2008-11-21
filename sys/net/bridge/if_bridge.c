@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.53 2008/11/21 12:13:02 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.54 2008/11/21 12:43:42 sephe Exp $
  */
 
 /*
@@ -609,7 +609,7 @@ bridge_clone_create(struct if_clone *ifc, int unit)
 	struct bridge_softc *sc;
 	struct ifnet *ifp;
 	u_char eaddr[6];
-	int cpu;
+	int cpu, rnd;
 
 	sc = kmalloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
 	ifp = sc->sc_ifp = &sc->sc_if;
@@ -660,14 +660,13 @@ bridge_clone_create(struct if_clone *ifc, int unit)
 	 * Generate a random ethernet address and use the private AC:DE:48
 	 * OUI code.
 	 */
-	{
-		int rnd = karc4random();
-		bcopy(&rnd, &eaddr[0], 4); /* ETHER_ADDR_LEN == 6 */
-		rnd = karc4random();
-		bcopy(&rnd, &eaddr[2], 4); /* ETHER_ADDR_LEN == 6 */
-	}
-	eaddr[0] &= ~1;		/* clear multicast bit */
-	eaddr[0] |= 2;		/* set the LAA bit */
+	rnd = karc4random();
+	bcopy(&rnd, &eaddr[0], 4); /* ETHER_ADDR_LEN == 6 */
+	rnd = karc4random();
+	bcopy(&rnd, &eaddr[2], 4); /* ETHER_ADDR_LEN == 6 */
+
+	eaddr[0] &= ~1;	/* clear multicast bit */
+	eaddr[0] |= 2;	/* set the LAA bit */
 
 	ether_ifattach(ifp, eaddr, NULL);
 	/* Now undo some of the damage... */
@@ -1647,12 +1646,13 @@ bridge_ioctl_addspan(struct bridge_softc *sc, void *arg)
 		return (EBUSY);
 
 	switch (ifs->if_type) {
-		case IFT_ETHER:
-		case IFT_GIF:
-		case IFT_L2VLAN:
-			break;
-		default:
-			return (EINVAL);
+	case IFT_ETHER:
+	case IFT_GIF:
+	case IFT_L2VLAN:
+		break;
+
+	default:
+		return (EINVAL);
 	}
 
 	bif = kmalloc(sizeof(*bif), M_DEVBUF, M_WAITOK | M_ZERO);
@@ -3117,11 +3117,11 @@ bridge_pfil(struct mbuf **mp, struct ifnet *bifp, struct ifnet *ifp, int dir)
 
 	i = min((*mp)->m_pkthdr.len, max_protohdr);
 	if ((*mp)->m_len < i) {
-	    *mp = m_pullup(*mp, i);
-	    if (*mp == NULL) {
-		kprintf("%s: m_pullup failed\n", __func__);
-		return (-1);
-	    }
+		*mp = m_pullup(*mp, i);
+		if (*mp == NULL) {
+			kprintf("%s: m_pullup failed\n", __func__);
+			return (-1);
+		}
 	}
 
 	eh1 = mtod(*mp, struct ether_header *);
@@ -3152,22 +3152,24 @@ bridge_pfil(struct mbuf **mp, struct ifnet *bifp, struct ifnet *ifp, int dir)
 	 * ARP traffic.)
 	 */
 	switch (ether_type) {
-		case ETHERTYPE_ARP:
-		case ETHERTYPE_REVARP:
-			return (0); /* Automatically pass */
-		case ETHERTYPE_IP:
+	case ETHERTYPE_ARP:
+	case ETHERTYPE_REVARP:
+		return (0); /* Automatically pass */
+
+	case ETHERTYPE_IP:
 #ifdef INET6
-		case ETHERTYPE_IPV6:
+	case ETHERTYPE_IPV6:
 #endif /* INET6 */
-			break;
-		default:
-			/*
-			 * Check to see if the user wants to pass non-ip
-			 * packets, these will not be checked by pfil(9) and
-			 * passed unconditionally so the default is to drop.
-			 */
-			if (pfil_onlyip)
-				goto bad;
+		break;
+
+	default:
+		/*
+		 * Check to see if the user wants to pass non-ip
+		 * packets, these will not be checked by pfil(9)
+		 * and passed unconditionally so the default is to drop.
+		 */
+		if (pfil_onlyip)
+			goto bad;
 	}
 
 	/* Strip off the Ethernet header and keep a copy. */
@@ -3185,16 +3187,16 @@ bridge_pfil(struct mbuf **mp, struct ifnet *bifp, struct ifnet *ifp, int dir)
 	 */
 	if (dir == PFIL_IN) {
 		switch (ether_type) {
-			case ETHERTYPE_IP:
-				error = bridge_ip_checkbasic(mp);
-				break;
+		case ETHERTYPE_IP:
+			error = bridge_ip_checkbasic(mp);
+			break;
 #ifdef INET6
-			case ETHERTYPE_IPV6:
-				error = bridge_ip6_checkbasic(mp);
-				break;
+		case ETHERTYPE_IPV6:
+			error = bridge_ip6_checkbasic(mp);
+			break;
 #endif /* INET6 */
-			default:
-				error = 0;
+		default:
+			error = 0;
 		}
 		if (error)
 			goto bad;
@@ -3205,9 +3207,8 @@ bridge_pfil(struct mbuf **mp, struct ifnet *bifp, struct ifnet *ifp, int dir)
 	/*
 	 * Run the packet through pfil
 	 */
-	switch (ether_type)
-	{
-	case ETHERTYPE_IP :
+	switch (ether_type) {
+	case ETHERTYPE_IP:
 		/*
 		 * before calling the firewall, swap fields the same as
 		 * IP does. here we assume the header is contiguous
@@ -3283,7 +3284,7 @@ bridge_pfil(struct mbuf **mp, struct ifnet *bifp, struct ifnet *ifp, int dir)
 
 		break;
 #ifdef INET6
-	case ETHERTYPE_IPV6 :
+	case ETHERTYPE_IPV6:
 		if (pfil_bridge && dir == PFIL_OUT && bifp != NULL)
 			error = pfil_run_hooks(&inet6_pfil_hook, mp, bifp,
 					dir);
@@ -3303,7 +3304,7 @@ bridge_pfil(struct mbuf **mp, struct ifnet *bifp, struct ifnet *ifp, int dir)
 					dir);
 		break;
 #endif
-	default :
+	default:
 		error = 0;
 		break;
 	}
