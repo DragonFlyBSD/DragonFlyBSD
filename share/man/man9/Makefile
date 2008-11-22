@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.80 2008/11/09 10:59:14 swildner Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.81 2008/11/22 20:08:35 swildner Exp $
 
 MAN=	accept_filter.9 \
 	accf_data.9 \
@@ -37,6 +37,7 @@ MAN=	accept_filter.9 \
 	devclass.9 \
 	devclass_add_driver.9 \
 	devclass_find.9 \
+	devclass_get_count.9 \
 	devclass_get_device.9 \
 	devclass_get_devices.9 \
 	devclass_get_maxunit.9 \
