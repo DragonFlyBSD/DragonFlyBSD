@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.95 2008/10/26 07:11:28 sephe Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.96 2008/11/22 04:00:53 sephe Exp $
  */
 
 #include "opt_atalk.h"
@@ -1375,6 +1375,40 @@ ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
 
 	/* Continue with upper layer processing */
 	ether_demux_oncpu(ifp, m);
+}
+
+/*
+ * Perform certain functions of ether_input_chain():
+ * - Test IFF_UP
+ * - Update statistics
+ * - Run bpf(4) tap if requested
+ * Then pass the packet to ether_input_oncpu().
+ *
+ * This function should be used by pseudo interface (e.g. vlan(4)),
+ * when it tries to claim that the packet is received by it.
+ */
+void
+ether_reinput_oncpu(struct ifnet *ifp, struct mbuf *m, int run_bpf)
+{
+	/* Discard packet if interface is not up */
+	if (!(ifp->if_flags & IFF_UP)) {
+		m_freem(m);
+		return;
+	}
+
+	/* Change receiving interface */
+	m->m_pkthdr.rcvif = ifp;
+
+	/* Update statistics */
+	ifp->if_ipackets++;
+	ifp->if_ibytes += m->m_pkthdr.len;
+	if (m->m_flags & (M_MCAST | M_BCAST))
+		ifp->if_imcasts++;
+
+	if (run_bpf)
+		BPF_MTAP(ifp, m);
+
+	ether_input_oncpu(ifp, m);
 }
 
 static void

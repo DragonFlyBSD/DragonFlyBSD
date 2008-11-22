@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.42 2008/11/21 13:37:02 sephe Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.43 2008/11/22 04:00:53 sephe Exp $
  */
 
 /*
@@ -443,7 +443,7 @@ static void
 vlan_input(struct mbuf *m)
 {
 	struct ifvlan *ifv = NULL;
-	struct ifnet *rcvif, *ifp;
+	struct ifnet *rcvif;
 	struct vlan_trunk *vlantrunks;
 	struct vlan_entry *entry;
 
@@ -478,7 +478,6 @@ vlan_input(struct mbuf *m)
 		m_freem(m);
 		return;
 	}
-	ifp = &ifv->ifv_if;
 
 	/*
 	 * Clear M_VLANTAG, before the packet is handed to
@@ -486,24 +485,7 @@ vlan_input(struct mbuf *m)
 	 */
 	m->m_flags &= ~M_VLANTAG;
 
-	/* Discard packet if interface is not up */
-	if (!(ifp->if_flags & IFF_UP)) {
-		m_freem(m);
-		return;
-	}
-
-	/* Change receiving interface */
-	m->m_pkthdr.rcvif = ifp;
-
-	/* Update statistics */
-	ifp->if_ipackets++;
-	ifp->if_ibytes += m->m_pkthdr.len;
-	if (m->m_flags & (M_MCAST | M_BCAST))
-		ifp->if_imcasts++;
-
-	BPF_MTAP(ifp, m);
-
-	ether_input_oncpu(ifp, m);
+	ether_reinput_oncpu(&ifv->ifv_if, m, 1);
 }
 
 static void
