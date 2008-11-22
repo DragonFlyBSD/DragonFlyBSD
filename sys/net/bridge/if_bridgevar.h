@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.h,v 1.14 2001/03/22 03:48:29 jason Exp $
  * $NetBSD: if_bridgevar.h,v 1.4 2003/07/08 07:13:50 itojun Exp $
  * $FreeBSD: src/sys/net/if_bridgevar.h,v 1.4 2005/07/06 01:24:45 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridgevar.h,v 1.7 2008/11/21 11:11:03 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridgevar.h,v 1.8 2008/11/22 04:30:28 sephe Exp $
  */
 
 #ifndef _NET_IF_BRIDGEVAR_H
@@ -355,8 +355,8 @@ extern	void	(*bstp_linkstate_p)(struct ifnet *ifp, int state);
 void	bstp_initialization(struct bridge_softc *);
 void	bstp_linkstate(struct ifnet *, int);
 void	bstp_stop(struct bridge_softc *);
-struct mbuf *bstp_input(struct bridge_softc *, struct bridge_iflist *,
-	    struct mbuf *);
+void	bstp_input(struct bridge_softc *, struct bridge_iflist *,
+		   struct mbuf *);
 void	bstp_tick_handler(struct netmsg *);
 
 void	bridge_enqueue(struct ifnet *, struct mbuf *);

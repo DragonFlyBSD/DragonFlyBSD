@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.54 2008/11/21 12:43:42 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.55 2008/11/22 04:30:28 sephe Exp $
  */
 
 /*
@@ -2218,9 +2218,9 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		/* Tap off 802.1D packets; they do not get forwarded. */
 		if (memcmp(eh->ether_dhost, bstp_etheraddr,
 		    ETHER_ADDR_LEN) == 0) {
-			m = bstp_input(sc, bif, m);
-			KASSERT(m == NULL,
-				("attempt to deliver 802.1D packet\n"));
+			bstp_input(sc, bif, m);
+			/* m is freed by bstp_input */
+			m = NULL;
 			goto out;
 		}
 

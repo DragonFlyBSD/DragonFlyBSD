@@ -31,7 +31,7 @@
  * $OpenBSD: bridgestp.c,v 1.5 2001/03/22 03:48:29 jason Exp $
  * $NetBSD: bridgestp.c,v 1.5 2003/11/28 08:56:48 keihan Exp $
  * $FreeBSD: src/sys/net/bridgestp.c,v 1.7 2005/10/11 02:58:32 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/bridgestp.c,v 1.8 2008/11/21 11:11:03 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/bridgestp.c,v 1.9 2008/11/22 04:30:28 sephe Exp $
  */
 
 /*
@@ -609,7 +609,7 @@ bstp_acknowledge_topology_change(struct bridge_softc *sc,
 	bstp_transmit_config(sc, bif);
 }
 
-struct mbuf *
+void
 bstp_input(struct bridge_softc *sc, struct bridge_iflist *bif, struct mbuf *m)
 {
 	struct ether_header *eh;
@@ -690,11 +690,9 @@ bstp_input(struct bridge_softc *sc, struct bridge_iflist *bif, struct mbuf *m)
 	default:
 		goto out;
 	}
-
 out:
 	if (m)
 		m_freem(m);
-	return (NULL);
 }
 
 static void
