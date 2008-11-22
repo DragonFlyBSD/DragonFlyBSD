@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.56 2008/11/22 05:57:31 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.57 2008/11/22 09:54:28 sephe Exp $
  */
 
 /*
@@ -347,8 +347,9 @@ static void	bridge_forward(struct bridge_softc *, struct mbuf *m);
 static void	bridge_timer_handler(struct netmsg *);
 static void	bridge_timer(void *);
 
+static void	bridge_start_bcast(struct bridge_softc *, struct mbuf *);
 static void	bridge_broadcast(struct bridge_softc *, struct ifnet *,
-		    struct mbuf *, int);
+		    struct mbuf *);
 static void	bridge_span(struct bridge_softc *, struct mbuf *);
 
 static int	bridge_rtupdate(struct bridge_softc *, const uint8_t *,
@@ -427,11 +428,7 @@ static int	bridge_ip6_checkbasic(struct mbuf **mp);
 #endif /* INET6 */
 static int	bridge_fragment(struct ifnet *, struct mbuf *,
 		    struct ether_header *, int, struct llc *);
-static void	bridge_enqueue_internal(struct ifnet *, struct mbuf *m,
-					netisr_fn_t);
 static void	bridge_enqueue_handler(struct netmsg *);
-static void	bridge_pfil_enqueue_handler(struct netmsg *);
-static void	bridge_pfil_enqueue(struct ifnet *, struct mbuf *, int);
 static void	bridge_handoff(struct ifnet *, struct mbuf *);
 
 static void	bridge_del_bif_handler(struct netmsg *);
@@ -1785,41 +1782,6 @@ bridge_stop(struct ifnet *ifp)
 	bridge_control(ifp->if_softc, SIOCSIFFLAGS, bridge_ioctl_stop, NULL);
 }
 
-static void
-bridge_enqueue_internal(struct ifnet *dst_ifp, struct mbuf *m,
-			netisr_fn_t handler)
-{
-	struct netmsg_packet *nmp;
-	lwkt_port_t port;
-	int cpu = mycpu->gd_cpuid;
-
-	nmp = &m->m_hdr.mh_netmsg;
-	netmsg_init(&nmp->nm_netmsg, &netisr_apanic_rport, 0, handler);
-	nmp->nm_packet = m;
-	nmp->nm_netmsg.nm_lmsg.u.ms_resultp = dst_ifp;
-
-	port = cpu_portfn(cpu);
-	lwkt_sendmsg(port, &nmp->nm_netmsg.nm_lmsg);
-}
-
-static void
-bridge_pfil_enqueue(struct ifnet *dst_ifp, struct mbuf *m,
-		    int runfilt)
-{
-	netisr_fn_t handler;
-
-	if (runfilt && (inet_pfil_hook.ph_hashooks > 0
-#ifdef INET6
-	    || inet6_pfil_hook.ph_hashooks > 0
-#endif
-	    )) {
-		handler = bridge_pfil_enqueue_handler;
-	} else {
-		handler = bridge_enqueue_handler;
-	}
-	bridge_enqueue_internal(dst_ifp, m, handler);
-}
-
 /*
  * bridge_enqueue:
  *
@@ -1829,7 +1791,20 @@ bridge_pfil_enqueue(struct ifnet *dst_ifp, struct mbuf *m,
 void
 bridge_enqueue(struct ifnet *dst_ifp, struct mbuf *m)
 {
-	bridge_enqueue_internal(dst_ifp, m, bridge_enqueue_handler);
+	struct netmsg_packet *nmp;
+	lwkt_port_t port;
+
+	nmp = &m->m_hdr.mh_netmsg;
+	netmsg_init(&nmp->nm_netmsg, &netisr_apanic_rport, 0,
+		    bridge_enqueue_handler);
+	nmp->nm_packet = m;
+	nmp->nm_netmsg.nm_lmsg.u.ms_resultp = dst_ifp;
+
+	if (curthread->td_flags & TDF_NETWORK)
+		port = &curthread->td_msgport;
+	else
+		port = cpu_portfn(mycpuid);
+	lwkt_sendmsg(port, &nmp->nm_netmsg.nm_lmsg);
 }
 
 /*
@@ -1847,7 +1822,7 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 {
 	struct bridge_softc *sc = ifp->if_bridge;
 	struct ether_header *eh;
-	struct ifnet *dst_if;
+	struct ifnet *dst_if, *bifp;
 
 	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
 
@@ -1858,16 +1833,13 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 		m_freem(m);
 		return (0);
 	}
+	bifp = sc->sc_ifp;
 
 	if (m->m_len < ETHER_HDR_LEN) {
 		m = m_pullup(m, ETHER_HDR_LEN);
 		if (m == NULL)
 			return (0);
 	}
-
-	/* Serialize our bridge interface. */
-	lwkt_serialize_enter(sc->sc_ifp->if_serializer);
-
 	eh = mtod(m, struct ether_header *);
 
 	/*
@@ -1875,7 +1847,7 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 	 * go ahead and send out that interface.  Otherwise, the packet
 	 * is dropped below.
 	 */
-	if ((sc->sc_ifp->if_flags & IFF_RUNNING) == 0) {
+	if ((bifp->if_flags & IFF_RUNNING) == 0) {
 		dst_if = ifp;
 		goto sendunicast;
 	}
@@ -1889,18 +1861,15 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 	else
 		dst_if = bridge_rtlookup(sc, eh->ether_dhost);
 	if (dst_if == NULL) {
-		struct bridge_iflist *bif;
+		struct bridge_iflist *bif, *nbif;
 		struct mbuf *mc;
 		int used = 0;
 
 		if (sc->sc_span)
 			bridge_span(sc, m);
 
-		/*
-		 * Following loop is MPSAFE; nothing is blocking
-		 * in the loop body.
-		 */
-		LIST_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
+		LIST_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid],
+				     bif_next, nbif) {
 			dst_if = bif->bif_ifp;
 			if ((dst_if->if_flags & IFF_RUNNING) == 0)
 				continue;
@@ -1927,15 +1896,19 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 			} else {
 				mc = m_copypacket(m, MB_DONTWAIT);
 				if (mc == NULL) {
-					sc->sc_ifp->if_oerrors++;
+					bifp->if_oerrors++;
 					continue;
 				}
 			}
-			bridge_enqueue(dst_if, mc);
+			bridge_handoff(dst_if, mc);
+
+			if (nbif != NULL && !nbif->bif_onlist) {
+				KKASSERT(bif->bif_onlist);
+				nbif = LIST_NEXT(bif, bif_next);
+			}
 		}
 		if (used == 0)
 			m_freem(m);
-		lwkt_serialize_exit(sc->sc_ifp->if_serializer);
 		return (0);
 	}
 
@@ -1945,11 +1918,10 @@ sendunicast:
 	 */
 	if (sc->sc_span)
 		bridge_span(sc, m);
-	lwkt_serialize_exit(sc->sc_ifp->if_serializer);
 	if ((dst_if->if_flags & IFF_RUNNING) == 0)
 		m_freem(m);
 	else
-		bridge_enqueue(dst_if, m);
+		bridge_handoff(dst_if, m);
 	return (0);
 }
 
@@ -1992,7 +1964,7 @@ bridge_start(struct ifnet *ifp)
 			dst_if = bridge_rtlookup(sc, eh->ether_dhost);
 
 		if (dst_if == NULL)
-			bridge_broadcast(sc, ifp, m, 0);
+			bridge_start_bcast(sc, m);
 		else
 			bridge_enqueue(dst_if, m);
 	}
@@ -2014,7 +1986,7 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 	src_if = m->m_pkthdr.rcvif;
 	ifp = sc->sc_ifp;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
 
 	ifp->if_ipackets++;
 	ifp->if_ibytes += m->m_pkthdr.len;
@@ -2079,12 +2051,12 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 		}
 	} else {
 		/* ...forward it to all interfaces. */
-		sc->sc_ifp->if_imcasts++;
+		ifp->if_imcasts++;
 		dst_if = NULL;
 	}
 
 	if (dst_if == NULL) {
-		bridge_broadcast(sc, src_if, m, 1);
+		bridge_broadcast(sc, src_if, m);
 		return;
 	}
 
@@ -2112,32 +2084,22 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 		}
 	}
 
-	lwkt_serialize_exit(ifp->if_serializer);
-
-	/* run the packet filter */
 	if (inet_pfil_hook.ph_hashooks > 0
 #ifdef INET6
 	    || inet6_pfil_hook.ph_hashooks > 0
 #endif
 	    ) {
 		if (bridge_pfil(&m, ifp, src_if, PFIL_IN) != 0)
-			goto done;
+			return;
 		if (m == NULL)
-			goto done;
+			return;
 
 		if (bridge_pfil(&m, ifp, dst_if, PFIL_OUT) != 0)
-			goto done;
+			return;
 		if (m == NULL)
-			goto done;
+			return;
 	}
 	bridge_handoff(dst_if, m);
-
-	/*
-	 * ifp's serializer was held on entry and is expected to be held
-	 * on return.
-	 */
-done:
-	lwkt_serialize_enter(ifp->if_serializer);
 }
 
 /*
@@ -2155,6 +2117,8 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	struct ether_header *eh;
 	struct mbuf *mc, *mc2;
 
+	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
+
 	/*
 	 * Make sure that we are still a member of a bridge interface.
 	 */
@@ -2163,8 +2127,6 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 
 	new_ifp = NULL;
 	bifp = sc->sc_ifp;
-
-	lwkt_serialize_enter(bifp->if_serializer);
 
 	if ((bifp->if_flags & IFF_RUNNING) == 0)
 		goto out;
@@ -2225,7 +2187,10 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		/* Tap off 802.1D packets; they do not get forwarded. */
 		if (memcmp(eh->ether_dhost, bstp_etheraddr,
 		    ETHER_ADDR_LEN) == 0) {
+			lwkt_serialize_enter(bifp->if_serializer);
 			bstp_input(sc, bif, m);
+			lwkt_serialize_exit(bifp->if_serializer);
+
 			/* m is freed by bstp_input */
 			m = NULL;
 			goto out;
@@ -2268,9 +2233,11 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		}
 #endif
 		if (mc2 != NULL) {
-			mc2->m_pkthdr.rcvif = bifp;
-			bifp->if_ipackets++;
-			bifp->if_input(bifp, mc2);
+			/*
+			 * Don't tap to bpf(4) again; we have
+			 * already done the tapping.
+			 */
+			ether_reinput_oncpu(bifp, mc2, 0);
 		}
 
 		/* Return the original packet for local processing. */
@@ -2324,19 +2291,68 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	bridge_forward(sc, m);
 	m = NULL;
 out:
-	lwkt_serialize_exit(bifp->if_serializer);
-
 	if (new_ifp != NULL) {
-		lwkt_serialize_enter(new_ifp->if_serializer);
-
-		m->m_pkthdr.rcvif = new_ifp;
-		new_ifp->if_ipackets++;
-		new_ifp->if_input(new_ifp, m);
+		ether_reinput_oncpu(new_ifp, m, 1);
 		m = NULL;
-
-		lwkt_serialize_exit(new_ifp->if_serializer);
 	}
 	return (m);
+}
+
+/*
+ * bridge_start_bcast:
+ *
+ *	Broadcast the packet sent from bridge to all member
+ *	interfaces.
+ *	This is a simplified version of bridge_broadcast(), however,
+ *	this function expects caller to hold bridge's serializer.
+ */
+static void
+bridge_start_bcast(struct bridge_softc *sc, struct mbuf *m)
+{
+	struct bridge_iflist *bif;
+	struct mbuf *mc;
+	struct ifnet *dst_if, *bifp;
+	int used = 0;
+
+	bifp = sc->sc_ifp;
+	ASSERT_SERIALIZED(bifp->if_serializer);
+
+	/*
+	 * Following loop is MPSAFE; nothing is blocking
+	 * in the loop body.
+	 */
+	LIST_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
+		dst_if = bif->bif_ifp;
+
+		if (bif->bif_flags & IFBIF_STP) {
+			switch (bif->bif_state) {
+			case BSTP_IFSTATE_BLOCKING:
+			case BSTP_IFSTATE_DISABLED:
+				continue;
+			}
+		}
+
+		if ((bif->bif_flags & IFBIF_DISCOVER) == 0 &&
+		    (m->m_flags & (M_BCAST|M_MCAST)) == 0)
+			continue;
+
+		if ((dst_if->if_flags & IFF_RUNNING) == 0)
+			continue;
+
+		if (LIST_NEXT(bif, bif_next) == NULL) {
+			mc = m;
+			used = 1;
+		} else {
+			mc = m_copypacket(m, MB_DONTWAIT);
+			if (mc == NULL) {
+				bifp->if_oerrors++;
+				continue;
+			}
+		}
+		bridge_enqueue(dst_if, mc);
+	}
+	if (used == 0)
+		m_freem(m);
 }
 
 /*
@@ -2348,45 +2364,34 @@ out:
  */
 static void
 bridge_broadcast(struct bridge_softc *sc, struct ifnet *src_if,
-    struct mbuf *m, int runfilt)
+    struct mbuf *m)
 {
-	struct bridge_iflist *bif;
+	struct bridge_iflist *bif, *nbif;
 	struct mbuf *mc;
 	struct ifnet *dst_if, *bifp;
 	int used = 0;
 
 	bifp = sc->sc_ifp;
+	ASSERT_NOT_SERIALIZED(bifp->if_serializer);
 
-	ASSERT_SERIALIZED(bifp->if_serializer);
-
-	/* run the packet filter */
-	if (runfilt && (inet_pfil_hook.ph_hashooks > 0
+	if (inet_pfil_hook.ph_hashooks > 0
 #ifdef INET6
 	    || inet6_pfil_hook.ph_hashooks > 0
 #endif
-	    )) {
-		lwkt_serialize_exit(bifp->if_serializer);
+	    ) {
+		if (bridge_pfil(&m, bifp, src_if, PFIL_IN) != 0)
+			return;
+		if (m == NULL)
+			return;
 
 		/* Filter on the bridge interface before broadcasting */
-
-		if (bridge_pfil(&m, bifp, src_if, PFIL_IN) != 0)
-			goto filt;
-		if (m == NULL)
-			goto filt;
-
 		if (bridge_pfil(&m, bifp, NULL, PFIL_OUT) != 0)
-			m = NULL;
-filt:
-		lwkt_serialize_enter(bifp->if_serializer);
+			return;
 		if (m == NULL)
 			return;
 	}
 
-	/*
-	 * Following loop is MPSAFE; nothing is blocking
-	 * in the loop body.
-	 */
-	LIST_FOREACH(bif, &sc->sc_iflists[mycpuid], bif_next) {
+	LIST_FOREACH_MUTABLE(bif, &sc->sc_iflists[mycpuid], bif_next, nbif) {
 		dst_if = bif->bif_ifp;
 		if (dst_if == src_if)
 			continue;
@@ -2416,7 +2421,28 @@ filt:
 				continue;
 			}
 		}
-		bridge_pfil_enqueue(dst_if, mc, runfilt);
+
+		/*
+		 * Filter on the output interface.  Pass a NULL bridge
+		 * interface pointer so we do not redundantly filter on
+		 * the bridge for each interface we broadcast on.
+		 */
+		if (inet_pfil_hook.ph_hashooks > 0
+#ifdef INET6
+		    || inet6_pfil_hook.ph_hashooks > 0
+#endif
+		    ) {
+			if (bridge_pfil(&mc, NULL, dst_if, PFIL_OUT) != 0)
+				continue;
+			if (mc == NULL)
+				continue;
+		}
+		bridge_handoff(dst_if, mc);
+
+		if (nbif != NULL && !nbif->bif_onlist) {
+			KKASSERT(bif->bif_onlist);
+			nbif = LIST_NEXT(bif, bif_next);
+		}
 	}
 	if (used == 0)
 		m_freem(m);
@@ -2432,8 +2458,11 @@ static void
 bridge_span(struct bridge_softc *sc, struct mbuf *m)
 {
 	struct bridge_iflist *bif;
-	struct ifnet *dst_if;
+	struct ifnet *dst_if, *bifp;
 	struct mbuf *mc;
+
+	bifp = sc->sc_ifp;
+	lwkt_serialize_enter(bifp->if_serializer);
 
 	LIST_FOREACH(bif, &sc->sc_spanlist, bif_next) {
 		dst_if = bif->bif_ifp;
@@ -2446,9 +2475,10 @@ bridge_span(struct bridge_softc *sc, struct mbuf *m)
 			sc->sc_ifp->if_oerrors++;
 			continue;
 		}
-
 		bridge_enqueue(dst_if, mc);
 	}
+
+	lwkt_serialize_exit(bifp->if_serializer);
 }
 
 static void
@@ -3577,40 +3607,9 @@ bridge_enqueue_handler(struct netmsg *nmsg)
 }
 
 static void
-bridge_pfil_enqueue_handler(struct netmsg *nmsg)
-{
-	struct netmsg_packet *nmp;
-	struct ifnet *dst_ifp;
-	struct mbuf *m;
-
-	nmp = (struct netmsg_packet *)nmsg;
-	m = nmp->nm_packet;
-	dst_ifp = nmp->nm_netmsg.nm_lmsg.u.ms_resultp;
-
-	/*
-	 * Filter on the output interface. Pass a NULL bridge interface
-	 * pointer so we do not redundantly filter on the bridge for
-	 * each interface we broadcast on.
-	 */
-	if (inet_pfil_hook.ph_hashooks > 0
-#ifdef INET6
-	    || inet6_pfil_hook.ph_hashooks > 0
-#endif
-	    ) {
-		if (bridge_pfil(&m, NULL, dst_ifp, PFIL_OUT) != 0)
-			return;
-		if (m == NULL)
-			return;
-	}
-	bridge_handoff(dst_ifp, m);
-}
-
-static void
 bridge_handoff(struct ifnet *dst_ifp, struct mbuf *m)
 {
 	struct mbuf *m0;
-
-	lwkt_serialize_enter(dst_ifp->if_serializer);
 
 	/* We may be sending a fragment so traverse the mbuf */
 	for (; m; m = m0) {
@@ -3622,10 +3621,8 @@ bridge_handoff(struct ifnet *dst_ifp, struct mbuf *m)
 		if (ifq_is_enabled(&dst_ifp->if_snd))
 			altq_etherclassify(&dst_ifp->if_snd, m, &pktattr);
 
-		ifq_handoff(dst_ifp, m, &pktattr);
+		ifq_dispatch(dst_ifp, m, &pktattr);
 	}
-
-	lwkt_serialize_exit(dst_ifp->if_serializer);
 }
 
 static void
