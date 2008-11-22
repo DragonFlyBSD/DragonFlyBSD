@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.52 2008/11/09 09:20:09 sephe Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.53 2008/11/22 11:03:35 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -225,7 +225,6 @@ _lwkt_initport(lwkt_port_t port,
 {
     bzero(port, sizeof(*port));
     TAILQ_INIT(&port->mp_msgq);
-    TAILQ_INIT(&port->mp_msgq_prio);
     port->mp_getport = gportfn;
     port->mp_putport = pportfn;
     port->mp_waitmsg =  wmsgfn;
@@ -362,16 +361,10 @@ static __inline
 void
 _lwkt_pullmsg(lwkt_port_t port, lwkt_msg_t msg)
 {
-    lwkt_msg_queue *queue;
-
     /*
      * normal case, remove and return the message.
      */
-    if (__predict_false(msg->ms_flags & MSGF_PRIORITY))
-	queue = &port->mp_msgq_prio;
-    else
-	queue = &port->mp_msgq;
-    TAILQ_REMOVE(queue, msg, ms_node);
+    TAILQ_REMOVE(&port->mp_msgq, msg, ms_node);
     msg->ms_flags &= ~MSGF_QUEUED;
 }
 
@@ -379,29 +372,14 @@ static __inline
 void
 _lwkt_pushmsg(lwkt_port_t port, lwkt_msg_t msg)
 {
-    lwkt_msg_queue *queue;
-
     msg->ms_flags |= MSGF_QUEUED;
-    if (__predict_false(msg->ms_flags & MSGF_PRIORITY))
-	queue = &port->mp_msgq_prio;
-    else
-    	queue = &port->mp_msgq;
-    TAILQ_INSERT_TAIL(queue, msg, ms_node);
+    TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
 }
 
 static __inline
 lwkt_msg_t
 _lwkt_pollmsg(lwkt_port_t port)
 {
-    lwkt_msg_t msg;
-
-    msg = TAILQ_FIRST(&port->mp_msgq_prio);
-    if (__predict_false(msg != NULL))
-	return msg;
-
-    /*
-     * Priority queue has no message, fallback to non-priority queue.
-     */
     return TAILQ_FIRST(&port->mp_msgq);
 }
 

@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.30 2008/11/09 09:20:09 sephe Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.31 2008/11/22 11:03:35 sephe Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -101,7 +101,6 @@ typedef struct lwkt_msg {
 #define MSGF_NORESCHED	0x0020		/* do not reschedule target lwkt */
 #define MSGF_DROPABLE	0x0040		/* message supports drop */
 #define MSGF_ABORTABLE	0x0080		/* message supports abort */
-#define MSGF_PRIORITY	0x0100		/* priority message */
 
 #define MSGF_USER0	0x00010000
 #define MSGF_USER1	0x00020000
@@ -148,7 +147,6 @@ MALLOC_DECLARE(M_LWKTMSG);
  */
 typedef struct lwkt_port {
     lwkt_msg_queue	mp_msgq;
-    lwkt_msg_queue	mp_msgq_prio;
     int			mp_flags;
     union {
 	struct spinlock	spin;

@@ -64,7 +64,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.58 2008/11/09 10:18:42 sephe Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.59 2008/11/22 11:03:35 sephe Exp $
  */
 
 /*
@@ -734,8 +734,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 
 			pmsg = &m->m_hdr.mh_netmsg;
 			netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport,
-				    MSGF_PRIORITY | MSGF_MPSAFE,
-				    arp_hold_output);
+				    MSGF_MPSAFE, arp_hold_output);
 			pmsg->nm_packet = m;
 
 			/* Record necessary information */

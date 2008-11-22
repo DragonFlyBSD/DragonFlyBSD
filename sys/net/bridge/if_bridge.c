@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.57 2008/11/22 09:54:28 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.58 2008/11/22 11:03:35 sephe Exp $
  */
 
 /*
@@ -624,12 +624,12 @@ bridge_clone_create(struct if_clone *ifc, int unit)
 
 	callout_init(&sc->sc_brcallout);
 	netmsg_init(&sc->sc_brtimemsg, &netisr_adone_rport,
-		    MSGF_DROPABLE | MSGF_PRIORITY, bridge_timer_handler);
+		    MSGF_DROPABLE, bridge_timer_handler);
 	sc->sc_brtimemsg.nm_lmsg.u.ms_resultp = sc;
 
 	callout_init(&sc->sc_bstpcallout);
 	netmsg_init(&sc->sc_bstptimemsg, &netisr_adone_rport,
-		    MSGF_DROPABLE | MSGF_PRIORITY, bstp_tick_handler);
+		    MSGF_DROPABLE, bstp_tick_handler);
 	sc->sc_bstptimemsg.nm_lmsg.u.ms_resultp = sc;
 
 	/* Initialize per-cpu member iface lists */
@@ -2643,7 +2643,7 @@ bridge_rtsaddr(struct bridge_softc *sc, const uint8_t *dst,
 
 	ASSERT_NOT_SERIALIZED(sc->sc_ifp->if_serializer);
 
-	netmsg_init(&brmsg.br_nmsg, &curthread->td_msgport, MSGF_PRIORITY,
+	netmsg_init(&brmsg.br_nmsg, &curthread->td_msgport, 0,
 		    bridge_rtinstall_handler);
 	memcpy(brmsg.br_dst, dst, ETHER_ADDR_LEN);
 	brmsg.br_dst_if = dst_if;
