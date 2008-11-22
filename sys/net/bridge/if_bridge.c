@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.55 2008/11/22 04:30:28 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.56 2008/11/22 05:57:31 sephe Exp $
  */
 
 /*
@@ -1662,6 +1662,8 @@ bridge_ioctl_addspan(struct bridge_softc *sc, void *arg)
 
 	LIST_INSERT_HEAD(&sc->sc_spanlist, bif, bif_next);
 
+	sc->sc_span = 1;
+
 	return (0);
 }
 
@@ -1684,6 +1686,9 @@ bridge_ioctl_delspan(struct bridge_softc *sc, void *arg)
 		return (ENOENT);
 
 	bridge_delete_span(sc, bif);
+
+	if (LIST_EMPTY(&sc->sc_spanlist))
+		sc->sc_span = 0;
 
 	return (0);
 }
@@ -1888,7 +1893,8 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 		struct mbuf *mc;
 		int used = 0;
 
-		bridge_span(sc, m);
+		if (sc->sc_span)
+			bridge_span(sc, m);
 
 		/*
 		 * Following loop is MPSAFE; nothing is blocking
@@ -1937,8 +1943,8 @@ sendunicast:
 	/*
 	 * XXX Spanning tree consideration here?
 	 */
-
-	bridge_span(sc, m);
+	if (sc->sc_span)
+		bridge_span(sc, m);
 	lwkt_serialize_exit(sc->sc_ifp->if_serializer);
 	if ((dst_if->if_flags & IFF_RUNNING) == 0)
 		m_freem(m);
@@ -2212,7 +2218,8 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	if (bif == NULL)
 		goto out;
 
-	bridge_span(sc, m);
+	if (sc->sc_span)
+		bridge_span(sc, m);
 
 	if (m->m_flags & (M_BCAST | M_MCAST)) {
 		/* Tap off 802.1D packets; they do not get forwarded. */
@@ -2427,9 +2434,6 @@ bridge_span(struct bridge_softc *sc, struct mbuf *m)
 	struct bridge_iflist *bif;
 	struct ifnet *dst_if;
 	struct mbuf *mc;
-
-	if (LIST_EMPTY(&sc->sc_spanlist))
-		return;
 
 	LIST_FOREACH(bif, &sc->sc_spanlist, bif_next) {
 		dst_if = bif->bif_ifp;

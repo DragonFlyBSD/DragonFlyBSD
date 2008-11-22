@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.h,v 1.14 2001/03/22 03:48:29 jason Exp $
  * $NetBSD: if_bridgevar.h,v 1.4 2003/07/08 07:13:50 itojun Exp $
  * $FreeBSD: src/sys/net/if_bridgevar.h,v 1.4 2005/07/06 01:24:45 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridgevar.h,v 1.8 2008/11/22 04:30:28 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridgevar.h,v 1.9 2008/11/22 05:57:31 sephe Exp $
  */
 
 #ifndef _NET_IF_BRIDGEVAR_H
@@ -339,6 +339,7 @@ struct bridge_softc {
 	struct bridge_rtnode_head *sc_rtlists;	/* percpu lists of the above */
 	uint32_t		sc_rthash_key;	/* key for hash */
 	struct bridge_iflist_head sc_spanlist;	/* span ports list */
+	int			sc_span;	/* has span ports */
 	struct bridge_timer	sc_link_timer;
 };
 #define sc_if                   sc_arp.ac_if
