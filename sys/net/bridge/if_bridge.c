@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.58 2008/11/22 11:03:35 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.59 2008/11/23 02:58:26 sephe Exp $
  */
 
 /*
@@ -186,6 +186,34 @@
  * Since all operation is serialized by the fixed message flow between
  * ifnet threads, it is not possible to create corrupted per-cpu route
  * information.
+ *
+ *
+ *
+ * Percpu member interface list iteration with blocking operation:
+ * Since one bridge could only delete one member interface at a time and
+ * the deleted member interface is not freed after netmsg_service_sync(),
+ * following way is used to make sure that even if the certain member
+ * interface is ripped from the percpu list during the blocking operation,
+ * the iteration still could keep going:
+ *
+ * LIST_FOREACH_MUTABLE(bif, sc->sc_iflists[mycpuid], bif_next, nbif) {
+ *     blocking operation;
+ *     blocking operation;
+ *     ...
+ *     ...
+ *     if (nbif != NULL && !nbif->bif_onlist) {
+ *         KKASSERT(bif->bif_onlist);
+ *         nbif = LIST_NEXT(bif, bif_next);
+ *     }
+ * }
+ *
+ * As mentioned above only one member interface could be unlinked from the
+ * percpu member interface list, so either bif or nbif may be not on the list,
+ * but _not_ both.  To keep the list iteration, we don't care about bif, but
+ * only nbif.  Since removed member interface will only be freed after we
+ * finish our work, it is safe to access any field in an unlinked bif (here
+ * bif_onlist).  If nbif is no longer on the list, then bif must be on the
+ * list, so we change nbif to the next element of bif and keep going.
  */
 
 #include "opt_inet.h"
