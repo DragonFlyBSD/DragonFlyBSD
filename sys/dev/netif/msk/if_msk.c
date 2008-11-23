@@ -93,7 +93,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/msk/if_msk.c,v 1.26 2007/12/05 09:41:58 remko Exp $ */
-/* $DragonFly: src/sys/dev/netif/msk/if_msk.c,v 1.9 2008/09/17 08:51:29 sephe Exp $ */
+/* $DragonFly: src/sys/dev/netif/msk/if_msk.c,v 1.10 2008/11/23 04:28:27 sephe Exp $ */
 
 /*
  * Device driver for the Marvell Yukon II Ethernet controller.
@@ -3704,7 +3704,7 @@ msk_stop(struct msk_if_softc *sc_if)
 		if ((val & (BMU_STOP | BMU_IDLE)) == 0) {
 			CSR_WRITE_4(sc, Q_ADDR(sc_if->msk_txq, Q_CSR),
 			    BMU_STOP);
-			CSR_READ_4(sc, Q_ADDR(sc_if->msk_txq, Q_CSR));
+			val = CSR_READ_4(sc, Q_ADDR(sc_if->msk_txq, Q_CSR));
 		} else
 			break;
 		DELAY(1);
