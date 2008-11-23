@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/sbin/ipfw/ipfw.8,v 1.63.2.33 2003/02/04 01:36:02 brueffer Exp $
-.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.19 2008/10/03 10:46:41 swildner Exp $
+.\" $DragonFly: src/sbin/ipfw/ipfw.8,v 1.20 2008/11/23 21:55:52 swildner Exp $
 .\"
 .Dd October 3, 2008
 .Dt IPFW 8
@@ -553,7 +553,10 @@ the local routing table for that IP.
 A
 .Ar fwd
 rule will not match layer-2 packets (those received
-on ether_input or ether_output).
+on
+.Fn ether_input
+or
+.Fn ether_output ) .
 .br
 The
 .Cm fwd

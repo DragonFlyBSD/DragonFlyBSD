@@ -18,7 +18,7 @@
 .\"    conditions are met.
 .\"
 .\" $FreeBSD: src/lib/libutil/login_cap.3,v 1.17.2.8 2002/12/29 16:35:36 schweikh Exp $
-.\" $DragonFly: src/lib/libutil/login_cap.3,v 1.6 2008/10/01 11:01:02 swildner Exp $
+.\" $DragonFly: src/lib/libutil/login_cap.3,v 1.7 2008/11/23 21:55:52 swildner Exp $
 .\"
 .Dd December 27, 1996
 .Os
@@ -282,7 +282,7 @@ Memory allocated during retrieval or processing of capability
 tags is automatically reused by subsequent calls to functions
 in this group, or deallocated on calling
 .Fn login_close .
-.Bl -tag -width "login_getcaplist()"
+.Bl -tag -width ".Fn login_setcryptfmt"
 .It Fn login_getcapstr
 This function returns a simple string capability.
 If the string is not found, then the value in

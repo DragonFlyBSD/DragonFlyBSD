@@ -1,5 +1,5 @@
 .\"	$NetBSD: getopt_long.3,v 1.14 2003/08/07 16:43:40 agc Exp $
-.\"	$DragonFly: src/lib/libc/stdlib/getopt_long.3,v 1.6 2007/05/12 21:22:10 swildner Exp $
+.\"	$DragonFly: src/lib/libc/stdlib/getopt_long.3,v 1.7 2008/11/23 21:55:52 swildner Exp $
 .\"
 .\" Copyright (c) 1988, 1991, 1993
 .\"	The Regents of the University of California.  All rights reserved.
@@ -205,16 +205,20 @@ returns '?'
 .It NetBSD
 returns ':' (since
 .Nx Ap s
-getopt does).
+.Fn getopt
+does).
 .El
 .It Li o
-handling of --a in getopt:
+handling of --a in
+.Fn getopt :
 .Bl -tag -width "NetBSD"
 .It Li GNU
 parses this as option '-', option 'a'.
 .It Li NetBSD
 parses this as '--', and returns \-1 (ignoring the a).
-(Because the original getopt does.)
+(Because the original
+.Fn getopt
+does.)
 .El
 .It Li o
 setting of optopt for long options with flag !=
@@ -226,7 +230,10 @@ sets optopt to val.
 sets optopt to 0 (since val would never be returned).
 .El
 .It Li o
-handling of -W with W; in option string in getopt (not getopt_long):
+handling of -W with W; in option string in
+.Fn getopt
+(not
+.Fn getopt_long ) :
 .Bl -tag -width "NetBSD"
 .It Li GNU
 causes a segfault.

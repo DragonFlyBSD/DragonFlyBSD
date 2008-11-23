@@ -25,7 +25,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/bus_generic_print_child.9,v 1.5.2.4 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/bus_generic_print_child.9,v 1.4 2006/02/17 19:37:10 swildner Exp $
+.\" $DragonFly: src/share/man/man9/bus_generic_print_child.9,v 1.5 2008/11/23 21:55:52 swildner Exp $
 .\"
 .Dd June 16, 1998
 .Dt BUS_GENERIC_PRINT_CHILD 9
@@ -47,10 +47,11 @@ following would be printed:
 .Pp
 foo0: <FooCard 1234> on bar0
 .Pp
-bus_generic_print_child itself calls two functions
+.Fn bus_generic_print_child
+itself calls two functions ,
 .Fn bus_print_child_header
 and
-.Fn bus_print_child_footer
+.Fn bus_print_child_footer .
 The former prints "foo0: <FooCard 1234>" and the latter "on bar0".
 These routines should be used if possible in your own code if
 .Fn bus_generic_print_child

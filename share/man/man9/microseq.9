@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/microseq.9,v 1.9.2.6 2002/12/29 16:35:39 schweikh Exp $
-.\" $DragonFly: src/share/man/man9/microseq.9,v 1.4 2006/10/14 23:46:23 swildner Exp $
+.\" $DragonFly: src/share/man/man9/microseq.9,v 1.5 2008/11/23 21:55:52 swildner Exp $
 .\"
 .Dd June 6, 1998
 .Dt MICROSEQ 9
@@ -263,7 +263,9 @@ This instruction is mandatory.
 This
 is the only way for the microsequencer to detect the end of the microsequence.
 The return code is returned in the integer pointed by the (int *) parameter
-of the ppb_MS_microseq().
+of the
+.Fn ppb_MS_microseq
+function.
 .Pp
 Parameter:
 .Bl -enum -offset indent
@@ -457,7 +459,9 @@ For example,
 Here, some parameters are undefined and must be filled before executing
 the microsequence.
 In order to initialize each microsequence, one
-should use the ppb_MS_init_msq() function like this:
+should use the
+.Fn ppb_MS_init_msq
+function like this:
 .Bd -literal
      ppb_MS_init_msq(select_microseq, 2,
 		     SELECT_TARGET, 1 << target,

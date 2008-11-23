@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libstand/libstand.3,v 1.5.2.11 2002/06/26 19:14:43 schweikh Exp $
-.\" $DragonFly: src/lib/libstand/libstand.3,v 1.8 2008/05/02 02:05:04 swildner Exp $
+.\" $DragonFly: src/lib/libstand/libstand.3,v 1.9 2008/11/23 21:55:52 swildner Exp $
 .\"
 .Dd September 13, 2004
 .Dt LIBSTAND 3
@@ -147,7 +147,7 @@ may be specified to refuse all attempts to set a variable.
 The unset hook is invoked when an attempt is made to unset a variable.
 If it
 returns zero, the  variable will be unset.  The predefined function
-.Fa env_nounset
+.Fn env_nounset
 may be used to prevent a variable being unset.
 .El
 .Sh STANDARD LIBRARY SUPPORT

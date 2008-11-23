@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libc/i386/sys/i386_get_ioperm.2,v 1.3.2.6 2001/12/14 18:33:54 ru Exp $
-.\" $DragonFly: src/lib/libc/i386/sys/i386_get_ioperm.2,v 1.2 2003/06/17 04:26:43 dillon Exp $
+.\" $DragonFly: src/lib/libc/i386/sys/i386_get_ioperm.2,v 1.3 2008/11/23 21:55:52 swildner Exp $
 .\"
 .Dd July 27, 1998
 .Os
@@ -72,7 +72,9 @@ or
 .Fa length
 arguments.
 .It Bq Er EPERM
-The caller of i386_set_ioperm was not the superuser.
+The caller of
+.Fn i386_set_ioperm
+was not the superuser.
 .El
 .Sh SEE ALSO
 .Xr io 4
