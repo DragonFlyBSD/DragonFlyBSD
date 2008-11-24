@@ -1,6 +1,6 @@
-/*	$NetBSD: usbhid.c,v 1.14 2000/07/03 02:51:37 matt Exp $	*/
-/*	$FreeBSD: src/usr.bin/usbhidctl/usbhid.c,v 1.6.2.1 2002/04/03 16:48:25 joe Exp $ */
-/*	$DragonFly: src/usr.bin/usbhidctl/usbhid.c,v 1.3 2003/08/08 04:18:44 dillon Exp $ */
+/* $NetBSD: usbhid.c,v 1.14 2000/07/03 02:51:37 matt Exp $ */
+/* $FreeBSD: src/usr.bin/usbhidctl/usbhid.c,v 1.12 2007/12/21 03:40:36 imp Exp $ */
+/* $DragonFly: src/usr.bin/usbhidctl/usbhid.c,v 1.4 2008/11/24 17:15:17 hasso Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -48,13 +48,15 @@
 #include <err.h>
 #include <ctype.h>
 #include <errno.h>
-#include <libusbhid.h>
+#include <usbhid.h>
 #include <bus/usb/usb.h>
 #include <bus/usb/usbhid.h>
 
 int verbose = 0;
 int all = 0;
 int noname = 0;
+int hexdump = 0;
+static int reportid;
 
 char **names;
 int nnames;
@@ -94,8 +96,14 @@ usage(void)
 {
 	extern char *__progname;
 
-	fprintf(stderr, "Usage: %s -f device [-l] [-n] [-r] [-t tablefile] [-v] name ...\n", __progname);
-	fprintf(stderr, "       %s -f device [-l] [-n] [-r] [-t tablefile] [-v] -a\n", __progname);
+	fprintf(stderr,
+                "usage: %s -f device "
+                "[-l] [-n] [-r] [-t tablefile] [-v] [-x] name ...\n",
+                __progname);
+	fprintf(stderr,
+                "       %s -f device "
+                "[-l] [-n] [-r] [-t tablefile] [-v] [-x] -a\n",
+                __progname);
 	exit(1);
 }
 
@@ -105,8 +113,8 @@ dumpitem(const char *label, struct hid_item *h)
 	if ((h->flags & HIO_CONST) && !verbose)
 		return;
 	printf("%s size=%d count=%d page=%s usage=%s%s", label,
-	       h->report_size, h->report_count, 
-	       hid_usage_page(HID_PAGE(h->usage)), 
+	       h->report_size, h->report_count,
+	       hid_usage_page(HID_PAGE(h->usage)),
 	       hid_usage_in_page(h->usage),
 	       h->flags & HIO_CONST ? " Const" : "");
 	printf(", logical range %d..%d",
@@ -126,11 +134,11 @@ dumpitems(report_desc_t r)
 	struct hid_item h;
 	int size;
 
-	for (d = hid_start_parse(r, ~0); hid_get_item(d, &h); ) {
+	for (d = hid_start_parse(r, ~0, reportid); hid_get_item(d, &h); ) {
 		switch (h.kind) {
 		case hid_collection:
 			printf("Collection page=%s usage=%s\n",
-			       hid_usage_page(HID_PAGE(h.usage)), 
+			       hid_usage_page(HID_PAGE(h.usage)),
 			       hid_usage_in_page(h.usage));
 			break;
 		case hid_endcollection:
@@ -148,13 +156,13 @@ dumpitems(report_desc_t r)
 		}
 	}
 	hid_end_parse(d);
-	size = hid_report_size(r, 0, hid_input);
+	size = hid_report_size(r, hid_input, 0);
 	printf("Total   input size %d bytes\n", size);
 
-	size = hid_report_size(r, 0, hid_output);
+	size = hid_report_size(r, hid_output, 0);
 	printf("Total  output size %d bytes\n", size);
 
-	size = hid_report_size(r, 0, hid_feature);
+	size = hid_report_size(r, hid_feature, 0);
 	printf("Total feature size %d bytes\n", size);
 }
 
@@ -187,6 +195,8 @@ prdata(u_char *buf, struct hid_item *h)
 			printf("%d", (int)data);
 		else
 			printf("%u", data);
+                if (hexdump)
+			printf(" [0x%x]", data);
 		pos += h->report_size;
 	}
 }
@@ -201,11 +211,10 @@ dumpdata(int f, report_desc_t rd, int loop)
 	static int one = 1;
 	u_int32_t colls[100];
 	int sp = 0;
-	int report_id;
 	char namebuf[10000], *namep;
 
 	hids = 0;
-	for (d = hid_start_parse(rd, 1<<hid_input); 
+	for (d = hid_start_parse(rd, 1<<hid_input, reportid);
 	     hid_get_item(d, &h); ) {
 		if (h.kind == hid_collection)
 			colls[++sp] = h.usage;
@@ -220,7 +229,7 @@ dumpdata(int f, report_desc_t rd, int loop)
 	}
 	hid_end_parse(d);
 	rev(&hids);
-	dlen = hid_report_size(rd, 0, hid_input);
+	dlen = hid_report_size(rd, hid_input, 0);
 	dbuf = malloc(dlen);
 	if (!loop)
 		if (ioctl(f, USB_SET_IMMED, &one) < 0) {
@@ -245,7 +254,7 @@ dumpdata(int f, report_desc_t rd, int loop)
 			if (all || gotname(namebuf)) {
 				if (!noname)
 					printf("%s=", namebuf);
-				prdata(dbuf + (report_id != 0), n);
+				prdata(dbuf + (reportid != 0), n);
 				printf("\n");
 			}
 		}
@@ -266,7 +275,7 @@ main(int argc, char **argv)
 	int loop = 0;
 	char *table = 0;
 
-	while ((ch = getopt(argc, argv, "af:lnrt:v")) != -1) {
+	while ((ch = getopt(argc, argv, "af:lnrt:vx")) != -1) {
 		switch(ch) {
 		case 'a':
 			all++;
@@ -288,6 +297,9 @@ main(int argc, char **argv)
 			break;
 		case 'v':
 			verbose++;
+			break;
+		case 'x':
+			hexdump = 1;
 			break;
 		case '?':
 		default:
@@ -319,9 +331,9 @@ main(int argc, char **argv)
 		err(1, "%s", dev);
 
 	r = hid_get_report_desc(f);
-	if (r == 0) 
+	if (r == 0)
 		errx(1, "USB_GET_REPORT_DESC");
-	       
+
 	if (repdump) {
 		printf("Report descriptor:\n");
 		dumpitems(r);

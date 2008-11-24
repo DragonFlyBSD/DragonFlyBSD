@@ -1,4 +1,4 @@
-/*	$NetBSD: usage.c,v 1.8 2000/10/10 19:23:58 is Exp $	*/
+/* $NetBSD: usage.c,v 1.8 2000/10/10 19:23:58 is Exp $ */
 
 /*
  * Copyright (c) 1999 Lennart Augustsson <augustss@netbsd.org>
@@ -25,17 +25,18 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libusbhid/usage.c,v 1.6.2.1 2002/04/03 15:54:00 joe Exp $
- * $DragonFly: src/lib/libusbhid/usage.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $FreeBSD: src/lib/libusbhid/usage.c,v 1.8 2003/04/09 01:52:48 mdodd Exp $
+ * $DragonFly: src/lib/libusbhid/usage.c,v 1.3 2008/11/24 17:15:17 hasso Exp $
  */
 
+#include <assert.h>
 #include <ctype.h>
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "libusbhid.h"
+#include "usbhid.h"
 
 #define _PATH_HIDTABLE "/usr/share/misc/usb_hid_usages"
 
@@ -96,7 +97,7 @@ hid_init(const char *hidname)
 			no = -1;
 		else if (sscanf(line, " 0x%x %[^\n]", &no, name) != 2 &&
 			 sscanf(line, " %d %[^\n]", &no, name) != 2)
-			errx(1, "file %s, line %d, syntax error\n",
+			errx(1, "file %s, line %d, syntax error",
 			     hidname, lineno);
 		for (p = name; *p; p++)
 			if (isspace(*p) || *p == '.')
@@ -106,7 +107,7 @@ hid_init(const char *hidname)
 			err(1, "strdup");
 		if (isspace(line[0])) {
 			if (!curpage)
-				errx(1, "file %s, line %d, syntax error\n",
+				errx(1, "file %s, line %d, syntax error",
 				     hidname, lineno);
 			if (curpage->pagesize >= curpage->pagesizemax) {
 				curpage->pagesizemax += 10;
@@ -160,7 +161,7 @@ hid_usage_page(int i)
 	int k;
 
 	if (!pages)
-		errx(1, "no hid table\n");
+		errx(1, "no hid table");
 
 	for (k = 0; k < npages; k++)
 		if (pages[k].usage == i)
@@ -185,8 +186,9 @@ hid_usage_in_page(unsigned int u)
 	for (j = 0; j < pages[k].pagesize; j++) {
 		us = pages[k].page_contents[j].usage;
 		if (us == -1) {
-			sprintf(b, "%s %d",
-			    pages[k].page_contents[j].name, i);
+			sprintf(b,
+			    fmtcheck(pages[k].page_contents[j].name, "%d"),
+			    i);
 			return b;
 		}
 		if (us == i)
@@ -203,7 +205,7 @@ hid_parse_usage_page(const char *name)
 	int k;
 
 	if (!pages)
-		errx(1, "no hid table\n");
+		errx(1, "no hid table");
 
 	for (k = 0; k < npages; k++)
 		if (strcmp(pages[k].name, name) == 0)
@@ -215,10 +217,11 @@ hid_parse_usage_page(const char *name)
 int
 hid_parse_usage_in_page(const char *name)
 {
-	const char *sep = strchr(name, ':');
+	const char *sep;
 	int k, j;
 	unsigned int l;
 
+	sep = strchr(name, ':');
 	if (sep == NULL)
 		return -1;
 	l = sep - name;

@@ -1,4 +1,4 @@
-/*	$NetBSD: descr.c,v 1.9 2000/09/24 02:13:24 augustss Exp $	*/
+/* $NetBSD: descr.c,v 1.9 2000/09/24 02:13:24 augustss Exp $ */
 
 /*
  * Copyright (c) 1999 Lennart Augustsson <augustss@netbsd.org>
@@ -25,8 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libusbhid/descr.c,v 1.7.2.1 2002/04/03 15:54:00 joe Exp $
- * $DragonFly: src/lib/libusbhid/descr.c,v 1.4 2004/02/03 06:26:31 dillon Exp $
+ * $FreeBSD: src/lib/libusbhid/descr.c,v 1.8 2003/04/09 01:52:48 mdodd Exp $
+ * $DragonFly: src/lib/libusbhid/descr.c,v 1.5 2008/11/24 17:15:17 hasso Exp $
  */
 
 #include <sys/types.h>
@@ -41,7 +41,7 @@
 
 #include <bus/usb/usb.h>
 
-#include "libusbhid.h"
+#include "usbhid.h"
 #include "usbvar.h"
 
 report_desc_t

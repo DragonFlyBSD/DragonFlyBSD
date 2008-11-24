@@ -25,9 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libusbhid/libusbhid.h,v 1.7.2.1 2002/04/03 15:54:00 joe Exp $
- * $DragonFly: src/lib/libusbhid/Attic/libusbhid.h,v 1.2 2003/06/17 04:26:51 dillon Exp $
- *
+ * $FreeBSD: src/lib/libusbhid/usbhid.h,v 1.11 2004/06/03 15:04:24 des Exp $
+ * $DragonFly: src/lib/libusbhid/usbhid.h,v 1.1 2008/11/24 17:15:17 hasso Exp $
  */
 
 #include <sys/cdefs.h>
@@ -37,12 +36,16 @@ typedef struct report_desc *report_desc_t;
 typedef struct hid_data *hid_data_t;
 
 typedef enum hid_kind {
-	hid_input, hid_output, hid_feature, hid_collection, hid_endcollection
+	hid_input = 0,
+	hid_output = 1,
+	hid_feature = 2,
+	hid_collection,
+	hid_endcollection
 } hid_kind_t;
 
 typedef struct hid_item {
 	/* Global */
-	int _usage_page;
+	unsigned int _usage_page;
 	int logical_minimum;
 	int logical_maximum;
 	int physical_minimum;
@@ -78,25 +81,29 @@ typedef struct hid_item {
 #define HID_PAGE(u) (((u) >> 16) & 0xffff)
 #define HID_USAGE(u) ((u) & 0xffff)
 
+__BEGIN_DECLS
+
 /* Obtaining a report descriptor, descr.c: */
 report_desc_t hid_get_report_desc(int file);
 report_desc_t hid_use_report_desc(unsigned char *data, unsigned int size);
 void hid_dispose_report_desc(report_desc_t);
 
 /* Parsing of a HID report descriptor, parse.c: */
-hid_data_t hid_start_parse(report_desc_t d, int kindset);
+hid_data_t hid_start_parse(report_desc_t d, int kindset, int id);
 void hid_end_parse(hid_data_t s);
 int hid_get_item(hid_data_t s, hid_item_t *h);
-int hid_report_size(report_desc_t d, unsigned int id, enum hid_kind k);
-int hid_locate(report_desc_t d, unsigned int usage, enum hid_kind k, hid_item_t *h);
+int hid_report_size(report_desc_t d, enum hid_kind k, int id);
+int hid_locate(report_desc_t d, unsigned int usage, enum hid_kind k, hid_item_t *h, int id);
 
 /* Conversion to/from usage names, usage.c: */
-int hid_parse_usage_page(const char *name);
-int hid_parse_usage_in_page(const char *name);
 const char *hid_usage_page(int i);
 const char *hid_usage_in_page(unsigned int u);
 void hid_init(const char *file);
+int hid_parse_usage_in_page(const char *name);
+int hid_parse_usage_page(const char *name);
 
 /* Extracting/insertion of data, data.c: */
 int hid_get_data(const void *p, const hid_item_t *h);
 void hid_set_data(void *p, const hid_item_t *h, int data);
+
+__END_DECLS

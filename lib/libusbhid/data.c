@@ -1,4 +1,4 @@
-/*	$NetBSD: data.c,v 1.8 2000/04/02 11:10:53 augustss Exp $	*/
+/* $NetBSD: data.c,v 1.8 2000/04/02 11:10:53 augustss Exp $ */
 
 /*
  * Copyright (c) 1999 Lennart Augustsson <augustss@netbsd.org>
@@ -25,13 +25,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libusbhid/data.c,v 1.5.2.1 2002/04/03 15:54:00 joe Exp $
- * $DragonFly: src/lib/libusbhid/data.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $FreeBSD: src/lib/libusbhid/data.c,v 1.6 2003/04/09 01:52:48 mdodd Exp $
+ * $DragonFly: src/lib/libusbhid/data.c,v 1.3 2008/11/24 17:15:17 hasso Exp $
  */
 
 #include <assert.h>
 #include <stdlib.h>
-#include "libusbhid.h"
+#include "usbhid.h"
 
 int
 hid_get_data(const void *p, const hid_item_t *h)
