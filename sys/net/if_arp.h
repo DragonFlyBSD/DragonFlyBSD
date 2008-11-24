@@ -32,7 +32,7 @@
  *
  *	@(#)if_arp.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_arp.h,v 1.14.2.3 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/if_arp.h,v 1.8 2006/07/31 12:17:39 corecode Exp $
+ * $DragonFly: src/sys/net/if_arp.h,v 1.9 2008/11/24 12:19:14 hasso Exp $
  */
 
 #ifndef _NET_IF_ARP_H_
@@ -61,6 +61,7 @@ struct	arphdr {
 #define ARPHRD_IEEE802	6	/* token-ring hardware format */
 #define ARPHRD_ARCNET	7	/* arcnet hardware format */
 #define ARPHRD_FRELAY	15	/* frame relay hardware format */
+#define ARPHRD_IEEE1394	24	/* firewire hardware format */
 	u_short	ar_pro;		/* format of protocol address */
 	u_char	ar_hln;		/* length of hardware address */
 	u_char	ar_pln;		/* length of protocol address */
