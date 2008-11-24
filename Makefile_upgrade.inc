@@ -1,4 +1,4 @@
-# $DragonFly: src/Makefile_upgrade.inc,v 1.35 2008/08/31 18:19:33 swildner Exp $
+# $DragonFly: src/Makefile_upgrade.inc,v 1.36 2008/11/24 17:40:02 hasso Exp $
 #
 # Append all obsolete files to this file
 # Avoid constructs like {foo,bar}.  It is parsed by /bin/sh
@@ -984,3 +984,4 @@ TO_REMOVE+=/usr/share/man/man8/dhcpd.8.gz
 TO_REMOVE+=/usr/share/man/cat8/dhcrelay.8.gz
 TO_REMOVE+=/usr/share/man/man8/dhcrelay.8.gz
 TO_REMOVE+=/usr/include/machine/pci_cfgreg.h
+TO_REMOVE+=/usr/include/libusbhid.h
