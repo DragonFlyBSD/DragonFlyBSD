@@ -39,7 +39,7 @@
  *
  *	from: Id: machdep.c,v 1.193 1996/06/18 01:22:04 bde Exp
  * $FreeBSD: src/sys/i386/i386/identcpu.c,v 1.80.2.15 2003/04/11 17:06:41 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.23 2008/05/23 15:36:59 sephe Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.24 2008/11/24 13:14:21 swildner Exp $
  */
 
 #include "opt_cpu.h"
@@ -691,32 +691,32 @@ printcpuinfo(void)
 				"\020"
 				"\001SSE3"	/* SSE3 */
 				"\002<b1>"
-				"\003RSVD2"	/* "Reserved" bit 2 */
+				"\003DTES64"	/* 64-bit Debug Trace */
 				"\004MON"	/* MONITOR/MWAIT Instructions */
 				"\005DS_CPL"	/* CPL Qualified Debug Store */
 				"\006VMX"	/* Virtual Machine Extensions */
-				"\007<b6>"
+				"\007SMX"	/* Safer Mode Extensions */
 				"\010EST"	/* Enhanced SpeedStep */
 				"\011TM2"	/* Thermal Monitor 2 */
-				"\012SSSE3"	/* Supplemental SSE3 */
-				"\013CNTX-ID"	/* L1 context ID available */
+				"\012SSSE3"	/* SSSE3 */
+				"\013CNXT-ID"	/* L1 context ID available */
 				"\014<b11>"
 				"\015<b12>"
 				"\016CX16"	/* CMPXCHG16B Instruction */
-				"\017XTPR"	/* Send Task Priority Messages*/
-				"\020RSVD15"	/* "Reserved" bit 15 */
+				"\017xTPR"	/* Send Task Priority Messages*/
+				"\020PDCM"	/* Perf/Debug Capability MSR */
 				"\021<b16>"
 				"\022<b17>"
-				"\023<b18>"
-				"\024<b19>"
-				"\025<b20>"
-				"\026<b21>"
+				"\023DCA"	/* Direct Cache Access */
+				"\024SSE4.1"
+				"\025SSE4.2"
+				"\026x2APIC"	/* xAPIC Extensions */
 				"\027<b22>"
-				"\030<b23>"
+				"\030POPCNT"
 				"\031<b24>"
 				"\032<b25>"
-				"\033<b26>"
-				"\034<b27>"
+				"\033XSAVE"
+				"\034OSXSAVE"
 				"\035<b28>"
 				"\036<b29>"
 				"\037<b30>"

@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * from: Id: machdep.c,v 1.193 1996/06/18 01:22:04 bde Exp
- * $DragonFly: src/sys/platform/pc64/amd64/identcpu.c,v 1.1 2008/08/29 17:07:10 dillon Exp $
+ * $DragonFly: src/sys/platform/pc64/amd64/identcpu.c,v 1.2 2008/11/24 13:14:21 swildner Exp $
  */
 
 #include "opt_cpu.h"
@@ -254,8 +254,8 @@ printcpuinfo(void)
 				"\030POPCNT"
 				"\031<b24>"
 				"\032<b25>"
-				"\033<b26>"
-				"\034<b27>"
+				"\033XSAVE"
+				"\034OSXSAVE"
 				"\035<b28>"
 				"\036<b29>"
 				"\037<b30>"
