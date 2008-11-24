@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.40 2008/10/06 21:01:37 swildner Exp $
+# $DragonFly: src/include/Makefile,v 1.41 2008/11/24 10:27:25 hasso Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -45,6 +45,7 @@ LDIRS=	net netbt netgraph netinet netinet6 sys vm
 # when buildworld is run.
 #
 LSUBDIRS=	bus/cam bus/cam/scsi \
+	dev/acpica \
 	emulation/linux \
 	vfs/msdosfs vfs/nfs vfs/ntfs vfs/nwfs \
 	vfs/smbfs vfs/udf vfs/ufs vfs/hammer \
@@ -159,6 +160,9 @@ copies:		mtree_setup
 	cd ${.CURDIR}/../sys; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 opencrypto/*.h \
 		${DESTDIR}/usr/include/crypto
+	cd ${.CURDIR}/../sys/dev/acpica5; \
+		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 acpiio.h \
+		${DESTDIR}/usr/include/dev/acpica
 .if exists(${.CURDIR}/../sys/cpu/${MACHINE_ARCH}/include)
 	cd ${.CURDIR}/../sys/cpu/${MACHINE_ARCH}/include; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 *.h \
