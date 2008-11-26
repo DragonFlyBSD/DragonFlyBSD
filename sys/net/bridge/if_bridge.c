@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.c,v 1.60 2001/06/15 03:38:33 itojun Exp $
  * $NetBSD: if_bridge.c,v 1.31 2005/06/01 19:45:34 jdc Exp $
  * $FreeBSD: src/sys/net/if_bridge.c,v 1.26 2005/10/13 23:05:55 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.59 2008/11/23 02:58:26 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridge.c,v 1.60 2008/11/26 12:49:43 sephe Exp $
  */
 
 /*
@@ -384,6 +384,7 @@ static int	bridge_rtupdate(struct bridge_softc *, const uint8_t *,
 		    struct ifnet *, uint8_t);
 static struct ifnet *bridge_rtlookup(struct bridge_softc *, const uint8_t *);
 static void	bridge_rtreap(struct bridge_softc *);
+static void	bridge_rtreap_async(struct bridge_softc *);
 static void	bridge_rttrim(struct bridge_softc *);
 static int	bridge_rtage_finddead(struct bridge_softc *);
 static void	bridge_rtage(struct bridge_softc *);
@@ -1038,7 +1039,7 @@ bridge_delete_member(struct bridge_softc *sc, struct bridge_iflist *bif,
 
 	/* See the comment in bridge_ioctl_stop() */
 	bridge_rtmsg_sync(sc);
-	bridge_rtdelete(sc, ifs, IFBF_FLUSHALL);
+	bridge_rtdelete(sc, ifs, IFBF_FLUSHALL | IFBF_FLUSHSYNC);
 
 	lwkt_serialize_enter(bifp->if_serializer);
 
@@ -1119,7 +1120,7 @@ bridge_ioctl_stop(struct bridge_softc *sc, void *arg __unused)
 	 * during above netmsg_service_sync() are flushed.
 	 */
 	bridge_rtmsg_sync(sc);
-	bridge_rtflush(sc, IFBF_FLUSHDYN);
+	bridge_rtflush(sc, IFBF_FLUSHDYN | IFBF_FLUSHSYNC);
 
 	lwkt_serialize_enter(ifp->if_serializer);
 	return 0;
@@ -1512,7 +1513,7 @@ bridge_ioctl_flush(struct bridge_softc *sc, void *arg)
 	struct ifnet *ifp = sc->sc_ifp;
 
 	lwkt_serialize_exit(ifp->if_serializer);
-	bridge_rtflush(sc, req->ifbr_ifsflags);
+	bridge_rtflush(sc, req->ifbr_ifsflags | IFBF_FLUSHSYNC);
 	lwkt_serialize_enter(ifp->if_serializer);
 
 	return (0);
@@ -2724,6 +2725,19 @@ bridge_rtreap(struct bridge_softc *sc)
 	ifnet_domsg(&nmsg.nm_lmsg, 0);
 }
 
+static void
+bridge_rtreap_async(struct bridge_softc *sc)
+{
+	struct netmsg *nmsg;
+
+	nmsg = kmalloc(sizeof(*nmsg), M_LWKTMSG, M_WAITOK);
+
+	netmsg_init(nmsg, &netisr_afree_rport, 0, bridge_rtreap_handler);
+	nmsg->nm_lmsg.u.ms_resultp = sc;
+
+	ifnet_sendmsg(&nmsg->nm_lmsg, 0);
+}
+
 /*
  * bridge_rttrim:
  *
@@ -2871,25 +2885,27 @@ bridge_rtage(struct bridge_softc *sc)
  *	Remove all dynamic addresses from the bridge.
  */
 static void
-bridge_rtflush(struct bridge_softc *sc, int full)
+bridge_rtflush(struct bridge_softc *sc, int bf)
 {
 	struct bridge_rtnode *brt;
 	int reap;
-
-	ASSERT_NOT_SERIALIZED(sc->sc_ifp->if_serializer);
 
 	reap = 0;
 	LIST_FOREACH(brt, &sc->sc_rtlists[mycpuid], brt_list) {
 		struct bridge_rtinfo *bri = brt->brt_info;
 
-		if (full ||
+		if ((bf & IFBF_FLUSHALL) ||
 		    (bri->bri_flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC) {
 			bri->bri_dead = 1;
 			reap = 1;
 		}
 	}
-	if (reap)
-		bridge_rtreap(sc);
+	if (reap) {
+		if (bf & IFBF_FLUSHSYNC)
+			bridge_rtreap(sc);
+		else
+			bridge_rtreap_async(sc);
+	}
 }
 
 /*
@@ -2919,26 +2935,28 @@ bridge_rtdaddr(struct bridge_softc *sc, const uint8_t *addr)
  *	Delete routes to a speicifc member interface.
  */
 void
-bridge_rtdelete(struct bridge_softc *sc, struct ifnet *ifp, int full)
+bridge_rtdelete(struct bridge_softc *sc, struct ifnet *ifp, int bf)
 {
 	struct bridge_rtnode *brt;
 	int reap;
-
-	ASSERT_NOT_SERIALIZED(sc->sc_ifp->if_serializer);
 
 	reap = 0;
 	LIST_FOREACH(brt, &sc->sc_rtlists[mycpuid], brt_list) {
 		struct bridge_rtinfo *bri = brt->brt_info;
 
 		if (bri->bri_ifp == ifp &&
-		    (full ||
+		    ((bf & IFBF_FLUSHALL) ||
 		     (bri->bri_flags & IFBAF_TYPEMASK) == IFBAF_DYNAMIC)) {
 			bri->bri_dead = 1;
 			reap = 1;
 		}
 	}
-	if (reap)
-		bridge_rtreap(sc);
+	if (reap) {
+		if (bf & IFBF_FLUSHSYNC)
+			bridge_rtreap(sc);
+		else
+			bridge_rtreap_async(sc);
+	}
 }
 
 /*

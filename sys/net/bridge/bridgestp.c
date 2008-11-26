@@ -31,7 +31,7 @@
  * $OpenBSD: bridgestp.c,v 1.5 2001/03/22 03:48:29 jason Exp $
  * $NetBSD: bridgestp.c,v 1.5 2003/11/28 08:56:48 keihan Exp $
  * $FreeBSD: src/sys/net/bridgestp.c,v 1.7 2005/10/11 02:58:32 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/bridgestp.c,v 1.9 2008/11/22 04:30:28 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/bridgestp.c,v 1.10 2008/11/26 12:49:43 sephe Exp $
  */
 
 /*
@@ -554,8 +554,6 @@ bstp_make_forwarding(struct bridge_softc *sc, struct bridge_iflist *bif)
 static void
 bstp_make_blocking(struct bridge_softc *sc, struct bridge_iflist *bif)
 {
-	struct ifnet *ifp, *bifp = sc->sc_ifp;
-
 	if ((bif->bif_state != BSTP_IFSTATE_DISABLED) &&
 	    (bif->bif_state != BSTP_IFSTATE_BLOCKING)) {
 		if ((bif->bif_state == BSTP_IFSTATE_FORWARDING) ||
@@ -565,12 +563,7 @@ bstp_make_blocking(struct bridge_softc *sc, struct bridge_iflist *bif)
 			}
 		}
 		bstp_set_port_state(bif, BSTP_IFSTATE_BLOCKING);
-
-		ifp = bif->bif_ifp;
-		lwkt_serialize_exit(bifp->if_serializer);
-		bridge_rtdelete(sc, ifp, IFBF_FLUSHDYN);
-		lwkt_serialize_enter(bifp->if_serializer);
-
+		bridge_rtdelete(sc, bif->bif_ifp, IFBF_FLUSHDYN);
 		bstp_timer_stop(&bif->bif_forward_delay_timer);
 	}
 }
@@ -964,7 +957,6 @@ bstp_enable_port(struct bridge_softc *sc, struct bridge_iflist *bif)
 static void
 bstp_disable_port(struct bridge_softc *sc, struct bridge_iflist *bif)
 {
-	struct ifnet *ifp, *bifp = sc->sc_ifp;
 	int root;
 
 	root = bstp_root_bridge(sc);
@@ -976,11 +968,7 @@ bstp_disable_port(struct bridge_softc *sc, struct bridge_iflist *bif)
 	bstp_timer_stop(&bif->bif_forward_delay_timer);
 	bstp_configuration_update(sc);
 	bstp_port_state_selection(sc);
-
-	ifp = bif->bif_ifp;
-	lwkt_serialize_exit(bifp->if_serializer);
-	bridge_rtdelete(sc, ifp, IFBF_FLUSHDYN);
-	lwkt_serialize_enter(bifp->if_serializer);
+	bridge_rtdelete(sc, bif->bif_ifp, IFBF_FLUSHDYN);
 
 	if (bstp_root_bridge(sc) && (root == 0)) {
 		sc->sc_max_age = sc->sc_bridge_max_age;

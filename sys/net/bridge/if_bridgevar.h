@@ -66,7 +66,7 @@
  * $OpenBSD: if_bridge.h,v 1.14 2001/03/22 03:48:29 jason Exp $
  * $NetBSD: if_bridgevar.h,v 1.4 2003/07/08 07:13:50 itojun Exp $
  * $FreeBSD: src/sys/net/if_bridgevar.h,v 1.4 2005/07/06 01:24:45 thompsa Exp $
- * $DragonFly: src/sys/net/bridge/if_bridgevar.h,v 1.9 2008/11/22 05:57:31 sephe Exp $
+ * $DragonFly: src/sys/net/bridge/if_bridgevar.h,v 1.10 2008/11/26 12:49:43 sephe Exp $
  */
 
 #ifndef _NET_IF_BRIDGEVAR_H
@@ -133,6 +133,7 @@ struct ifbreq {
 /* BRDGFLUSH */
 #define	IFBF_FLUSHDYN		0x00	/* flush learned addresses only */
 #define	IFBF_FLUSHALL		0x01	/* flush all addresses */
+#define IFBF_FLUSHSYNC		0x02	/* synchronized flush */
 
 /* STP port states */
 #define	BSTP_IFSTATE_DISABLED	0
