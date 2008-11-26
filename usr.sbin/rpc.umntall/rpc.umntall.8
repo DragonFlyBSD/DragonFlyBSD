@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.sbin/rpc.umntall/rpc.umntall.8,v 1.6.2.3 2003/03/11 22:31:32 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/rpc.umntall/rpc.umntall.8,v 1.5 2008/11/23 21:55:52 swildner Exp $
+.\" $DragonFly: src/usr.sbin/rpc.umntall/rpc.umntall.8,v 1.6 2008/11/26 15:27:24 swildner Exp $
 .\"
 .Dd November 17, 1999
 .Dt RPC.UMNTALL 8
@@ -112,7 +112,7 @@ entry.
 .It Fl f
 Fast mode.
 The resolver timeout is reduced to 4 seconds and the
-.Fn pmap_getport()
+.Fn pmap_getport
 timeout is reduced from 60 seconds to 3.
 This option is used when
 .Nm
