@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.91 2008/11/10 18:16:52 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.92 2008/11/26 13:10:56 sephe Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1071,25 +1071,18 @@ sys_setsockopt(struct setsockopt_args *uap)
 	sopt.sopt_name = uap->name;
 	sopt.sopt_valsize = uap->valsize;
 	sopt.sopt_td = td;
+	sopt.sopt_val = NULL;
 
 	if (sopt.sopt_valsize < 0 || sopt.sopt_valsize > SOMAXOPT_SIZE)
 		return (EINVAL);
-	if (sopt.sopt_val == NULL && sopt.sopt_valsize)
-		return (EINVAL);
-
 	if (uap->val) {
 		sopt.sopt_val = kmalloc(sopt.sopt_valsize, M_TEMP, M_WAITOK);
 		error = copyin(uap->val, sopt.sopt_val, sopt.sopt_valsize);
 		if (error)
 			goto out;
-	} else {
-		sopt.sopt_val = NULL;
 	}
+
 	error = kern_setsockopt(uap->s, &sopt);
-	if (error)
-		goto out;
-	if (uap->val)
-		error = copyout(sopt.sopt_val, uap->val, sopt.sopt_valsize);
 out:
 	if (uap->val)
 		kfree(sopt.sopt_val, M_TEMP);
@@ -1137,8 +1130,6 @@ sys_getsockopt(struct getsockopt_args *uap)
 		error = copyin(uap->avalsize, &valsize, sizeof(valsize));
 		if (error)
 			return (error);
-		if (valsize < 0)
-			return (EINVAL);
 	} else {
 		valsize = 0;
 	}
@@ -1147,18 +1138,17 @@ sys_getsockopt(struct getsockopt_args *uap)
 	sopt.sopt_name = uap->name;
 	sopt.sopt_valsize = valsize;
 	sopt.sopt_td = td;
+	sopt.sopt_val = NULL;
 
-	if (valsize < 0 || valsize > SOMAXOPT_SIZE)
+	if (sopt.sopt_valsize < 0 || sopt.sopt_valsize > SOMAXOPT_SIZE)
 		return (EINVAL);
-
 	if (uap->val) {
 		sopt.sopt_val = kmalloc(sopt.sopt_valsize, M_TEMP, M_WAITOK);
 		error = copyin(uap->val, sopt.sopt_val, sopt.sopt_valsize);
 		if (error)
 			goto out;
-	} else {
-		sopt.sopt_val = NULL;
 	}
+
 	error = kern_getsockopt(uap->s, &sopt);
 	if (error)
 		goto out;
