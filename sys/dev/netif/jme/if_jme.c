@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jme.c,v 1.2 2008/07/18 04:20:48 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.11 2008/10/25 10:46:55 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.12 2008/11/26 11:55:18 sephe Exp $
  */
 
 #include <sys/param.h>
@@ -428,12 +428,6 @@ jme_probe(device_t dev)
 			struct jme_softc *sc = device_get_softc(dev);
 
 			sc->jme_caps = sp->jme_caps;
-			if (did == PCI_PRODUCT_JMICRON_JMC250 &&
-			    pci_get_revid(dev) == JME_REV_JMC250_A2) {
-				sc->jme_workaround |= JME_WA_EXTFIFO |
-						      JME_WA_HDX;
-			}
-
 			device_set_desc(dev, sp->jme_name);
 			return (0);
 		}
@@ -560,11 +554,14 @@ jme_attach(device_t dev)
 	struct jme_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t reg;
-	uint8_t pcie_ptr;
+	uint16_t did;
+	uint8_t pcie_ptr, rev;
 	int error = 0;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 
 	sc->jme_dev = dev;
+	sc->jme_lowaddr = BUS_SPACE_MAXADDR;
+
 	ifp = &sc->arpcom.ac_if;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
@@ -623,17 +620,44 @@ jme_attach(device_t dev)
 	}
 
 	/*
-	 * Extract FPGA revision
+	 * Extract revisions
 	 */
 	reg = CSR_READ_4(sc, JME_CHIPMODE);
 	if (((reg & CHIPMODE_FPGA_REV_MASK) >> CHIPMODE_FPGA_REV_SHIFT) !=
 	    CHIPMODE_NOT_FPGA) {
 		sc->jme_caps |= JME_CAP_FPGA;
 		if (bootverbose) {
-			device_printf(dev, "FPGA revision : 0x%04x\n",
+			device_printf(dev, "FPGA revision: 0x%04x\n",
 				      (reg & CHIPMODE_FPGA_REV_MASK) >>
 				      CHIPMODE_FPGA_REV_SHIFT);
 		}
+	}
+
+	/* NOTE: FM revision is put in the upper 4 bits */
+	rev = ((reg & CHIPMODE_REVFM_MASK) >> CHIPMODE_REVFM_SHIFT) << 4;
+	rev |= (reg & CHIPMODE_REVECO_MASK) >> CHIPMODE_REVECO_SHIFT;
+	if (bootverbose)
+		device_printf(dev, "Revision (FM/ECO): 0x%02x\n", rev);
+
+	did = pci_get_device(dev);
+	switch (did) {
+	case PCI_PRODUCT_JMICRON_JMC250:
+		if (rev == JME_REV1_A2)
+			sc->jme_workaround |= JME_WA_EXTFIFO | JME_WA_HDX;
+		break;
+
+	case PCI_PRODUCT_JMICRON_JMC260:
+		if (rev == JME_REV2)
+			sc->jme_lowaddr = BUS_SPACE_MAXADDR_32BIT;
+		break;
+
+	default:
+		panic("unknown device id 0x%04x\n", did);
+	}
+	if (rev >= JME_REV2) {
+		sc->jme_clksrc = GHC_TXOFL_CLKSRC | GHC_TXMAC_CLKSRC;
+		sc->jme_clksrc_1000 = GHC_TXOFL_CLKSRC_1000 |
+				      GHC_TXMAC_CLKSRC_1000;
 	}
 
 	/* Reset the ethernet controller. */
@@ -896,11 +920,10 @@ jme_dma_alloc(struct jme_softc *sc)
 {
 	struct jme_txdesc *txd;
 	struct jme_rxdesc *rxd;
-	bus_addr_t busaddr, lowaddr, rx_ring_end, tx_ring_end;
+	bus_addr_t busaddr, lowaddr;
 	int error, i;
 
-	lowaddr = BUS_SPACE_MAXADDR;
-
+	lowaddr = sc->jme_lowaddr;
 again:
 	/* Create parent ring tag. */
 	error = bus_dma_tag_create(NULL,/* parent */
@@ -926,7 +949,7 @@ again:
 	/* Create tag for Tx ring. */
 	error = bus_dma_tag_create(sc->jme_cdata.jme_ring_tag,/* parent */
 	    JME_TX_RING_ALIGN, 0,	/* algnmnt, boundary */
-	    BUS_SPACE_MAXADDR,		/* lowaddr */
+	    lowaddr,			/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
 	    NULL, NULL,			/* filter, filterarg */
 	    JME_TX_RING_SIZE,		/* maxsize */
@@ -1019,25 +1042,31 @@ again:
 	}
 	sc->jme_rdata.jme_rx_ring_paddr = busaddr;
 
-	/* Tx/Rx descriptor queue should reside within 4GB boundary. */
-	tx_ring_end = sc->jme_rdata.jme_tx_ring_paddr + JME_TX_RING_SIZE;
-	rx_ring_end = sc->jme_rdata.jme_rx_ring_paddr + JME_RX_RING_SIZE;
-	if ((JME_ADDR_HI(tx_ring_end) !=
-	     JME_ADDR_HI(sc->jme_rdata.jme_tx_ring_paddr)) ||
-	    (JME_ADDR_HI(rx_ring_end) !=
-	     JME_ADDR_HI(sc->jme_rdata.jme_rx_ring_paddr))) {
-		device_printf(sc->jme_dev, "4GB boundary crossed, "
-		    "switching to 32bit DMA address mode.\n");
-		jme_dma_free(sc);
-		/* Limit DMA address space to 32bit and try again. */
-		lowaddr = BUS_SPACE_MAXADDR_32BIT;
-		goto again;
+	if (lowaddr != BUS_SPACE_MAXADDR_32BIT) {
+		bus_addr_t rx_ring_end, tx_ring_end;
+
+		/* Tx/Rx descriptor queue should reside within 4GB boundary. */
+		tx_ring_end = sc->jme_rdata.jme_tx_ring_paddr +
+			      JME_TX_RING_SIZE;
+		rx_ring_end = sc->jme_rdata.jme_rx_ring_paddr +
+			      JME_RX_RING_SIZE;
+		if ((JME_ADDR_HI(tx_ring_end) !=
+		     JME_ADDR_HI(sc->jme_rdata.jme_tx_ring_paddr)) ||
+		    (JME_ADDR_HI(rx_ring_end) !=
+		     JME_ADDR_HI(sc->jme_rdata.jme_rx_ring_paddr))) {
+			device_printf(sc->jme_dev, "4GB boundary crossed, "
+			    "switching to 32bit DMA address mode.\n");
+			jme_dma_free(sc);
+			/* Limit DMA address space to 32bit and try again. */
+			lowaddr = BUS_SPACE_MAXADDR_32BIT;
+			goto again;
+		}
 	}
 
 	/* Create parent buffer tag. */
 	error = bus_dma_tag_create(NULL,/* parent */
 	    1, 0,			/* algnmnt, boundary */
-	    BUS_SPACE_MAXADDR,		/* lowaddr */
+	    sc->jme_lowaddr,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
 	    NULL, NULL,			/* filter, filterarg */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsize */
@@ -1058,7 +1087,7 @@ again:
 	/* Create shadow status block tag. */
 	error = bus_dma_tag_create(sc->jme_cdata.jme_buffer_tag,/* parent */
 	    JME_SSB_ALIGN, 0,		/* algnmnt, boundary */
-	    BUS_SPACE_MAXADDR,		/* lowaddr */
+	    sc->jme_lowaddr,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
 	    NULL, NULL,			/* filter, filterarg */
 	    JME_SSB_SIZE,		/* maxsize */
@@ -1108,7 +1137,7 @@ again:
 	/* Create tag for Tx buffers. */
 	error = bus_dma_tag_create(sc->jme_cdata.jme_buffer_tag,/* parent */
 	    1, 0,			/* algnmnt, boundary */
-	    BUS_SPACE_MAXADDR,		/* lowaddr */
+	    sc->jme_lowaddr,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
 	    NULL, NULL,			/* filter, filterarg */
 	    JME_TSO_MAXSIZE,		/* maxsize */
@@ -1150,7 +1179,7 @@ again:
 	/* Create tag for Rx buffers. */
 	error = bus_dma_tag_create(sc->jme_cdata.jme_buffer_tag,/* parent */
 	    JME_RX_BUF_ALIGN, 0,	/* algnmnt, boundary */
-	    BUS_SPACE_MAXADDR,		/* lowaddr */
+	    sc->jme_lowaddr,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
 	    NULL, NULL,			/* filter, filterarg */
 	    MCLBYTES,			/* maxsize */
@@ -1832,13 +1861,13 @@ jme_mac_config(struct jme_softc *sc)
 
 	switch (IFM_SUBTYPE(mii->mii_media_active)) {
 	case IFM_10_T:
-		ghc |= GHC_SPEED_10;
+		ghc |= GHC_SPEED_10 | sc->jme_clksrc;
 		if (hdx)
 			gp1 |= GPREG1_WA_HDX;
 		break;
 
 	case IFM_100_TX:
-		ghc |= GHC_SPEED_100;
+		ghc |= GHC_SPEED_100 | sc->jme_clksrc;
 		if (hdx)
 			gp1 |= GPREG1_WA_HDX;
 
@@ -1853,7 +1882,7 @@ jme_mac_config(struct jme_softc *sc)
 		if (sc->jme_caps & JME_CAP_FASTETH)
 			break;
 
-		ghc |= GHC_SPEED_1000;
+		ghc |= GHC_SPEED_1000 | sc->jme_clksrc_1000;
 		if (hdx)
 			txmac |= TXMAC_CARRIER_EXT | TXMAC_FRAME_BURST;
 		break;

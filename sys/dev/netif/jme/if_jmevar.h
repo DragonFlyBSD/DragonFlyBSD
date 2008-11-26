@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jmevar.h,v 1.1 2008/05/27 01:42:01 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jmevar.h,v 1.7 2008/10/25 10:46:55 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/jme/if_jmevar.h,v 1.8 2008/11/26 11:55:18 sephe Exp $
  */
 
 #ifndef	_IF_JMEVAR_H
@@ -178,7 +178,10 @@ struct jme_softc {
 
 	device_t		jme_miibus;
 	int			jme_phyaddr;
+	bus_addr_t		jme_lowaddr;
 
+	uint32_t		jme_clksrc;
+	uint32_t		jme_clksrc_1000;
 	uint32_t		jme_tx_dma_size;
 	uint32_t		jme_rx_dma_size;
 

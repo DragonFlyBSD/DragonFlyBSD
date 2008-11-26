@@ -25,14 +25,16 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/jme/if_jmereg.h,v 1.1 2008/05/27 01:42:01 yongari Exp $
- * $DragonFly: src/sys/dev/netif/jme/if_jmereg.h,v 1.5 2008/10/25 10:46:55 sephe Exp $
+ * $DragonFly: src/sys/dev/netif/jme/if_jmereg.h,v 1.6 2008/11/26 11:55:18 sephe Exp $
  */
 
 #ifndef	_IF_JMEREG_H
 #define	_IF_JMEREG_H
 
-#define JME_REV_JMC250_A1	0x01
-#define JME_REV_JMC250_A2	0x11
+/* FM/ECO revision.  FM revision is in the upper 4bits. */
+#define JME_REV1_A1		0x10
+#define JME_REV1_A2		0x11	/* JMC250A2 */
+#define JME_REV2		0x20
 
 /* JMC250 PCI configuration register. */
 #define JME_PCIR_BAR		PCIR_BAR(0)
@@ -335,6 +337,10 @@
 #define	JME_GHC			0x0054
 #define	GHC_LOOPBACK		0x80000000
 #define	GHC_RESET		0x40000000
+#define GHC_TXOFL_CLKSRC	0x00800000
+#define GHC_TXOFL_CLKSRC_1000	0x00400000
+#define GHC_TXMAC_CLKSRC	0x00200000
+#define GHC_TXMAC_CLKSRC_1000	0x00100000
 #define	GHC_FULL_DUPLEX		0x00000040
 #define	GHC_SPEED_UNKNOWN	0x00000000
 #define	GHC_SPEED_10		0x00000010
@@ -721,8 +727,10 @@
 #define	CHIPMODE_FPGA_REV_MASK	0xFFFF0000
 #define	CHIPMODE_FPGA_REV_SHIFT	16
 #define	CHIPMODE_NOT_FPGA	0
-#define	CHIPMODE_REV_MASK	0x0000FF00
-#define	CHIPMODE_REV_SHIFT	8
+#define CHIPMODE_REVECO_MASK	0x0000F000
+#define CHIPMODE_REVECO_SHIFT	12
+#define	CHIPMODE_REVFM_MASK	0x00000F00
+#define	CHIPMODE_REVFM_SHIFT	8
 #define	CHIPMODE_MODE_48P	0x0000000C
 #define	CHIPMODE_MODE_64P	0x00000004
 #define	CHIPMODE_MODE_128P_MAC	0x00000003
