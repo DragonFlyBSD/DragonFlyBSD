@@ -1166,6 +1166,11 @@ getasciipartspec(char *tp, struct disklabel32 *lp, int part, int lineno)
 	/*
 	 * fstype
 	 */
+	if (tp == NULL) {
+		fprintf(stderr,
+		    "line %d: no filesystem type was specified\n", lineno);
+	       return(1);
+	}
 	cp = tp;
 	tp = word(cp);
 	for (cpp = fstypenames; cpp < &fstypenames[FSMAXTYPES]; cpp++)
