@@ -433,14 +433,14 @@ alloc_soundbuf(struct tone_data *tone, double len, int on)
 			/*
 			 * Gauss window
 			 */
-#if 0
+#ifdef GAUSS_FILTER
 			int fi = i;
 
 			if (i > FILTER_SAMPLES)
 				fi = samples - i;
-			filter = exp(-0.5 *
-				     pow((double)(fi - FILTER_SAMPLES) /
-					 (0.4 * FILTER_SAMPLES), 2));
+			filter = exp(-4.0 *
+				     pow((double)(FILTER_SAMPLES - fi) /
+					 FILTER_SAMPLES, 2));
 #else
 			/*
 			 * Triangle window
