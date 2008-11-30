@@ -924,6 +924,13 @@ re_probe(device_t dev)
 	    pci_get_subdevice(dev) != PCI_SUBDEVICE_LINKSYS_EG1032_REV3)
 		return ENXIO;
 
+	if (vendor == PCI_VENDOR_REALTEK &&
+	    product == PCI_PRODUCT_REALTEK_RT8139 &&
+	    pci_get_revid(dev) != PCI_REVID_REALTEK_RT8139CP) {
+		/* Poor 8139 */
+		return ENXIO;
+	}
+
 	for (t = re_devs; t->re_name != NULL; t++) {
 		if (product == t->re_did && vendor == t->re_vid)
 			break;
