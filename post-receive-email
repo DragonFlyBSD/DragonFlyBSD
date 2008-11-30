@@ -238,9 +238,16 @@ generate_email_header()
 		;;
 	esac
 
+	print_refname="$refname_type "
+	case "$refname_type" in
+	"branch")
+		print_refname=""
+		;;
+	esac
+
 	cat <<-EOF
 	To: $recipients
-	Subject: ${emailprefix}$projectdesc $refname_type $short_refname${print_change_type}: $detail$describe
+	Subject: ${emailprefix}$print_refname$short_refname${print_change_type}: $detail$describe
 	X-Git-Refname: $refname
 	X-Git-Reftype: $refname_type
 	X-Git-Oldrev: $oldrev
