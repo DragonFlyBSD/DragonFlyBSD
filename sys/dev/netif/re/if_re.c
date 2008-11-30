@@ -192,6 +192,9 @@ static const struct re_type {
 	{ PCI_VENDOR_USR2, PCI_PRODUCT_USR2_997902,
 	  "US Robotics 997902 Gigabit Ethernet" },
 
+	{ PCI_VENDOR_TTTECH, PCI_PRODUCT_TTTECH_MC322,
+	  "TTTech MC322 Gigabit Ethernet" },
+
 	{ 0, 0, NULL }
 };
 
