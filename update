@@ -40,6 +40,7 @@ fi
 allowunannotated=$(git config --bool hooks.allowunannotated)
 allowdeletebranch=$(git config --bool hooks.allowdeletebranch)
 allowdeletetag=$(git config --bool hooks.allowdeletetag)
+allownonfastfwd=$(git config --bool hooks.allownonfastfwd)
 
 # check for no description
 projectdesc=$(sed -e '1q' "$GIT_DIR/description")
@@ -78,6 +79,10 @@ case "$refname","$newrev_type" in
 		;;
 	refs/heads/*,commit)
 		# branch
+		if [ -n "$(git rev-list $newrev..$oldrev)" -a "$allownonfastfwd" != "true" ]; then
+			echo "*** Non fast forward pushes are not allowed in this repository" >&2
+			exit 1
+		fi
 		;;
 	refs/heads/*,delete)
 		# delete branch
