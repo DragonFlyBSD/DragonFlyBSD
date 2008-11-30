@@ -254,7 +254,6 @@ generate_email_footer()
 	SPACE=" "
 	cat <<-EOF
 
-
 	--${SPACE}
 	$projectdesc
 	EOF
@@ -315,6 +314,12 @@ summarize_branch_revs()
 {
 	echo "Summary of changes:"
 	git diff-tree --stat --summary --find-copies-harder $oldrev..$newrev
+
+	if [ -n "$gitweburl" ]
+	then
+		echo ""
+		echo "$gitweburl?p=$reponame;a=commitdiff;h=$newrev;hp=$oldrev"
+	fi
 }
 
 print_change_info()
@@ -535,6 +540,8 @@ recipients=$(git config hooks.mailinglist)
 announcerecipients=$(git config hooks.announcelist)
 envelopesender=$(git config hooks.envelopesender)
 emailprefix=$(git config hooks.emailprefix || echo '[SCM] ')
+gitweburl=$(git config hooks.gitweburl)
+reponame=$(git config hooks.reponame || basename $(realpath $GIT_DIR))
 
 # --- Main loop
 # Allow dual mode: run from the command line just like the update hook, or
