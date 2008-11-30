@@ -1190,16 +1190,6 @@ bge_chipinit(struct bge_softc *sc)
 	/* Set endian type before we access any non-PCI registers. */
 	pci_write_config(sc->bge_dev, BGE_PCI_MISC_CTL, BGE_INIT, 4);
 
-	/*
-	 * Check the 'ROM failed' bit on the RX CPU to see if
-	 * self-tests passed.
-	 */
-	if (CSR_READ_4(sc, BGE_RXCPU_MODE) & BGE_RXCPUMODE_ROMFAIL) {
-		if_printf(&sc->arpcom.ac_if,
-			  "RX CPU self-diagnostics failed!\n");
-		return(ENODEV);
-	}
-
 	/* Clear the MAC control register */
 	CSR_WRITE_4(sc, BGE_MAC_MODE, 0);
 
@@ -2271,13 +2261,13 @@ bge_reset(struct bge_softc *sc)
 		 * This indicates that the firmware initialization
 		 * is complete.
 		 */
-		for (i = 0; i < BGE_TIMEOUT; i++) {
+		for (i = 0; i < BGE_FIRMWARE_TIMEOUT; i++) {
 			val = bge_readmem_ind(sc, BGE_SOFTWARE_GENCOMM);
 			if (val == ~BGE_MAGIC_NUMBER)
 				break;
 			DELAY(10);
 		}
-		if (i == BGE_TIMEOUT) {
+		if (i == BGE_FIRMWARE_TIMEOUT) {
 			if_printf(&sc->arpcom.ac_if, "firmware handshake "
 				  "timed out, found 0x%08x\n", val);
 			return;
