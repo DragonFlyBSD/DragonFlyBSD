@@ -183,38 +183,34 @@ generate_email()
 			split=1
 		fi
 
-		if [ -z "$split" -a "$change_type" = "update" ]
+		if [ "$change_type" != "update" ]
 		then
-			{
 			set_update_branch_subject
-			generate_email_header
-			print_change_info $newrev
-			summarize_branch_revs
-			generate_email_footer
-			} | $send_mail
-		else
 			{
-			set_update_branch_subject
 			generate_email_header
 			generate_${change_type}_branch_email
 			summarize_branch_revs
 			generate_email_footer
 			} | $send_mail
-
-			for rev in $revs
-			do
-				newrev=$rev
-				{
-				set_update_branch_subject
-				generate_email_header
-				print_change_info $newrev
-				summarize_branch_revs
-				generate_email_footer
-				} | $send_mail
-				oldrev=$rev
-			done
 		fi
 
+		for rev in $revs
+		do
+			
+			oldrev=
+			newrev=$rev
+
+			# set_update_branch_subject will return false if the
+			# commit is boring (no change).  Then we don't even
+			# send a mail.
+			set_update_branch_subject || continue
+			{
+			generate_email_header
+			print_change_info $newrev
+			summarize_branch_revs
+			generate_email_footer
+			} | $send_mail
+		done
 		;;
 
 	*)
@@ -250,7 +246,6 @@ generate_email_header()
 	Subject: ${emailprefix}$print_refname$short_refname${print_change_type}: $detail$describe
 	X-Git-Refname: $refname
 	X-Git-Reftype: $refname_type
-	X-Git-Oldrev: $oldrev
 	X-Git-Newrev: $newrev
 
 	EOF
@@ -306,9 +301,22 @@ generate_update_branch_email()
 	echo ""
 }
 
+skip_diff_tree_parent()
+{
+	if [ -n "$oldrev" ]
+	then
+		cat
+	else
+		tail +2
+	fi
+}
+
 set_update_branch_subject()
 {
-	detail="$(git diff-tree -r --name-only $oldrev..$newrev | tr '\n' ' ') "
+	detail="$(git diff-tree -r --name-only $oldrev${oldrev:+..}$newrev |
+			skip_diff_tree_parent | tr '\n' ' ') "
+	[ -n "$(git diff-tree -r --name-only --cc $oldrev${oldrev:+..}$newrev |
+		skip_diff_tree_parent)" ]
 }
 
 list_update_branch_revs()
@@ -320,12 +328,12 @@ list_update_branch_revs()
 summarize_branch_revs()
 {
 	echo "Summary of changes:"
-	git diff-tree --stat --summary --find-copies-harder $oldrev..$newrev
+	git diff-tree --stat --summary --find-copies-harder $oldrev${oldrev:+..}$newrev | skip_diff_tree_parent
 
 	if [ -n "$gitweburl" ]
 	then
 		echo ""
-		echo "$gitweburl?p=$reponame;a=commitdiff;h=$newrev;hp=$oldrev"
+		echo "$gitweburl?p=$reponame;a=commitdiff;h=$newrev${oldrev:+;hp=}$oldrev"
 	fi
 }
 
