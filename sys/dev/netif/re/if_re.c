@@ -199,7 +199,7 @@ static const struct re_hwrev re_hwrevs[] = {
 	{ RE_HWREV_8139CPLUS,	RE_MACVER_UNKN,		ETHERMTU,
 	  RE_C_HWCSUM | RE_C_8139CP },
 
-	{ RE_HWREV_8169,	RE_MACVER_UNKN,		RE_MTU_6K,
+	{ RE_HWREV_8169,	RE_MACVER_UNKN,		ETHERMTU,
 	  RE_C_HWCSUM | RE_C_8169 },
 
 	{ RE_HWREV_8110S,	RE_MACVER_03,		RE_MTU_6K,
@@ -968,15 +968,11 @@ re_probe(device_t dev)
 			sc->re_macver = hw_rev->re_macver;
 			sc->re_caps = hw_rev->re_caps;
 			sc->re_maxmtu = hw_rev->re_maxmtu;
-			sc->re_swcsum_lim = RE_SWCSUM_UNLIMITED;
 
 			/*
 			 * Apply chip property fixup
 			 */
 			switch (sc->re_hwrev) {
-			case RE_HWREV_8169:
-				sc->re_swcsum_lim = RE_SWCSUM_LIM_8169;
-				break;
 			case RE_HWREV_8101E1:
 			case RE_HWREV_8101E2:
 				if (macmode == 0)
@@ -2364,60 +2360,6 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 		cmd_csum = 0;
 	else
 		ctl_csum = 0;
-
-	if (m->m_pkthdr.len > sc->re_swcsum_lim &&
-	    (m->m_pkthdr.csum_flags & (CSUM_DELAY_IP | CSUM_DELAY_DATA))) {
-		struct ether_header *eh;
-		struct ip *ip;
-		u_short offset;
-
-		m = m_pullup(m, sizeof(struct ether_header *));
-		if (m == NULL) {
-			*m_head = NULL;
-			return ENOBUFS;
-		}
-		eh = mtod(m, struct ether_header *);
-
-		/* XXX */
-		if (eh->ether_type == ETHERTYPE_VLAN)
-			offset = sizeof(struct ether_vlan_header);
-		else
-			offset = sizeof(struct ether_header);
-
-		m = m_pullup(m, offset + sizeof(struct ip *));
-		if (m == NULL) {
-			*m_head = NULL;
-			return ENOBUFS;
-		}
-		ip = (struct ip *)(mtod(m, uint8_t *) + offset);
-
-		if (m->m_pkthdr.csum_flags & CSUM_DELAY_DATA) {
-			u_short csum;
-
-			offset += IP_VHL_HL(ip->ip_vhl) << 2;
-			csum = in_cksum_skip(m, ntohs(ip->ip_len), offset);
-			if (m->m_pkthdr.csum_flags & CSUM_UDP && csum == 0)
-				csum = 0xffff;
-			offset += m->m_pkthdr.csum_data;        /* checksum offset */
-			*(u_short *)(m->m_data + offset) = csum;
-
-			m->m_pkthdr.csum_flags &= ~CSUM_DELAY_DATA;
-		}
-		if (m->m_pkthdr.csum_flags & CSUM_DELAY_IP) {
-			ip->ip_sum = 0;
-			if (ip->ip_vhl == IP_VHL_BORING) {
-				ip->ip_sum = in_cksum_hdr(ip);
-			} else {
-				ip->ip_sum =
-				in_cksum(m, IP_VHL_HL(ip->ip_vhl) << 2);
-			}
-			m->m_pkthdr.csum_flags &= ~CSUM_DELAY_IP;
-		}
-		*m_head = m; /* 'm' may be changed by above two m_pullup() */
-
-		/* Clear hardware CSUM flags */
-		cmd_csum = ctl_csum = 0;
-	}
 
 	if ((sc->re_caps & RE_C_AUTOPAD) == 0) {
 		/*
