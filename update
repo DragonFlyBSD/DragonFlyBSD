@@ -54,7 +54,7 @@ fi
 if [ "$newrev" = "0000000000000000000000000000000000000000" ]; then
 	newrev_type=delete
 else
-	newrev_type=$(git-cat-file -t $newrev)
+	newrev_type=$(git cat-file -t $newrev)
 fi
 
 case "$refname","$newrev_type" in
