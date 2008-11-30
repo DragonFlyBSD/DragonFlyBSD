@@ -360,6 +360,7 @@ tcp_usr_listen(struct socket *so, struct thread *td)
 	}
 
 	tp->t_state = TCPS_LISTEN;
+	tp->tt_msg = NULL; /* Catch any invalid timer usage */
 #ifdef SMP
 	/*
 	 * We have to set the flag because we can't have other cpus
@@ -925,6 +926,8 @@ tcp_connect_oncpu(struct tcpcb *tp, struct sockaddr_in *sin,
 	inp->inp_fport = sin->sin_port;
 	inp->inp_cpcbinfo = &tcbinfo[mycpu->gd_cpuid];
 	in_pcbinsconnhash(inp);
+
+	tcp_create_timermsg(tp);
 
 	/* Compute window scaling to request.  */
 	while (tp->request_r_scale < TCP_MAX_WINSHIFT &&
