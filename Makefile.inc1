@@ -439,7 +439,7 @@ installcheck:
 #
 distributeworld installworld: installcheck
 	cd ${.CURDIR}; ${IMAKE} re${.TARGET:S/world$//}
-	install -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc ${DESTDIR}/etc/upgrade/
+	${INSTALL} -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc ${DESTDIR}/etc/upgrade/
 
 #
 # reinstall
