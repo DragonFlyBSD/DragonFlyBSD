@@ -163,8 +163,6 @@ generate_email()
 		describe=$rev
 	fi
 
-	generate_email_header
-
 	# Call the correct body generation function
 	fn_name=general
 	case "$refname_type" in
@@ -175,28 +173,79 @@ generate_email()
 		fn_name=atag
 		;;
 	esac
-	generate_${change_type}_${fn_name}_email
 
-	generate_email_footer
+	case "$fn_name" in
+	branch)
+		split=""
+		revs=$(list_${change_type}_branch_revs 2>/dev/null)
+		if [ "$(echo "$revs" | wc -l)" -gt 1 ]
+		then
+			split=1
+		fi
+
+		if [ -z "$split" -a "$change_type" = "update" ]
+		then
+			{
+			set_update_branch_subject
+			generate_email_header
+			print_change_info $newrev
+			summarize_branch_revs
+			generate_email_footer
+			} | $send_mail
+		else
+			{
+			set_update_branch_subject
+			generate_email_header
+			generate_${change_type}_branch_email
+			summarize_branch_revs
+			generate_email_footer
+			} | $send_mail
+
+			for rev in $revs
+			do
+				newrev=$rev
+				{
+				set_update_branch_subject
+				generate_email_header
+				print_change_info $newrev
+				summarize_branch_revs
+				generate_email_footer
+				} | $send_mail
+				oldrev=$rev
+			done
+		fi
+
+		;;
+
+	*)
+		{
+		generate_email_header
+		generate_${change_type}_${fn_name}_email
+		generate_email_footer
+		} | $send_mail
+		;;
+	esac
 }
 
 generate_email_header()
 {
 	# --- Email (all stdout will be the email)
 	# Generate header
+	print_change_type=" ${change_type}d"
+	case "$change_type" in
+	"update")
+		print_change_type=""
+		;;
+	esac
+
 	cat <<-EOF
 	To: $recipients
-	Subject: ${emailprefix}$projectdesc $refname_type, $short_refname, ${change_type}d. $describe
+	Subject: ${emailprefix}$projectdesc $refname_type $short_refname${print_change_type}: $detail$describe
 	X-Git-Refname: $refname
 	X-Git-Reftype: $refname_type
 	X-Git-Oldrev: $oldrev
 	X-Git-Newrev: $newrev
 
-	This is an automated email from the git hooks/post-receive script. It was
-	generated because a ref change was pushed to the repository containing
-	the project "$projectdesc".
-
-	The $refname_type, $short_refname has been ${change_type}d
 	EOF
 }
 
@@ -206,7 +255,6 @@ generate_email_footer()
 	cat <<-EOF
 
 
-	hooks/post-receive
 	--${SPACE}
 	$projectdesc
 	EOF
@@ -221,17 +269,12 @@ generate_create_branch_email()
 {
 	# This is a new branch and so oldrev is not valid
 	echo "        at  $newrev ($newrev_type)"
-	echo ""
+}
 
-	echo $LOGBEGIN
-	# This shows all log entries that are not already covered by
-	# another ref - i.e. commits that are now accessible from this
-	# ref that were previously not accessible
-	# (see generate_update_branch_email for the explanation of this
-	# command)
+list_create_branch_revs()
+{
 	git rev-parse --not --branches | grep -v $(git rev-parse $refname) |
-	git rev-list --pretty --stdin $newrev
-	echo $LOGEND
+	git rev-list --reverse --stdin $newrev
 }
 
 #
@@ -239,91 +282,7 @@ generate_create_branch_email()
 #
 generate_update_branch_email()
 {
-	# Consider this:
-	#   1 --- 2 --- O --- X --- 3 --- 4 --- N
-	#
-	# O is $oldrev for $refname
-	# N is $newrev for $refname
-	# X is a revision pointed to by some other ref, for which we may
-	#   assume that an email has already been generated.
-	# In this case we want to issue an email containing only revisions
-	# 3, 4, and N.  Given (almost) by
-	#
-	#  git rev-list N ^O --not --all
-	#
-	# The reason for the "almost", is that the "--not --all" will take
-	# precedence over the "N", and effectively will translate to
-	#
-	#  git rev-list N ^O ^X ^N
-	#
-	# So, we need to build up the list more carefully.  git rev-parse
-	# will generate a list of revs that may be fed into git rev-list.
-	# We can get it to make the "--not --all" part and then filter out
-	# the "^N" with:
-	#
-	#  git rev-parse --not --all | grep -v N
-	#
-	# Then, using the --stdin switch to git rev-list we have effectively
-	# manufactured
-	#
-	#  git rev-list N ^O ^X
-	#
-	# This leaves a problem when someone else updates the repository
-	# while this script is running.  Their new value of the ref we're
-	# working on would be included in the "--not --all" output; and as
-	# our $newrev would be an ancestor of that commit, it would exclude
-	# all of our commits.  What we really want is to exclude the current
-	# value of $refname from the --not list, rather than N itself.  So:
-	#
-	#  git rev-parse --not --all | grep -v $(git rev-parse $refname)
-	#
-	# Get's us to something pretty safe (apart from the small time
-	# between refname being read, and git rev-parse running - for that,
-	# I give up)
-	#
-	#
-	# Next problem, consider this:
-	#   * --- B --- * --- O ($oldrev)
-	#          \
-	#           * --- X --- * --- N ($newrev)
-	#
-	# That is to say, there is no guarantee that oldrev is a strict
-	# subset of newrev (it would have required a --force, but that's
-	# allowed).  So, we can't simply say rev-list $oldrev..$newrev.
-	# Instead we find the common base of the two revs and list from
-	# there.
-	#
-	# As above, we need to take into account the presence of X; if
-	# another branch is already in the repository and points at some of
-	# the revisions that we are about to output - we don't want them.
-	# The solution is as before: git rev-parse output filtered.
-	#
-	# Finally, tags: 1 --- 2 --- O --- T --- 3 --- 4 --- N
-	#
-	# Tags pushed into the repository generate nice shortlog emails that
-	# summarise the commits between them and the previous tag.  However,
-	# those emails don't include the full commit messages that we output
-	# for a branch update.  Therefore we still want to output revisions
-	# that have been output on a tag email.
-	#
-	# Luckily, git rev-parse includes just the tool.  Instead of using
-	# "--all" we use "--branches"; this has the added benefit that
-	# "remotes/" will be ignored as well.
-
-	# List all of the revisions that were removed by this update, in a
-	# fast forward update, this list will be empty, because rev-list O
-	# ^N is empty.  For a non fast forward, O ^N is the list of removed
-	# revisions
-	fast_forward=""
-	rev=""
-	for rev in $(git rev-list $newrev..$oldrev)
-	do
-		revtype=$(git cat-file -t "$rev")
-		echo "  discards  $rev ($revtype)"
-	done
-	if [ -z "$rev" ]; then
-		fast_forward=1
-	fi
+	# XXX only valid for fast forwards
 
 	# List all the revisions from baserev to newrev in a kind of
 	# "table-of-contents"; note this list can include revisions that
@@ -336,82 +295,31 @@ generate_update_branch_email()
 		echo "       via  $rev ($revtype)"
 	done
 
-	if [ "$fast_forward" ]; then
-		echo "      from  $oldrev ($oldrev_type)"
-	else
-		#  1. Existing revisions were removed.  In this case newrev
-		#     is a subset of oldrev - this is the reverse of a
-		#     fast-forward, a rewind
-		#  2. New revisions were added on top of an old revision,
-		#     this is a rewind and addition.
-
-		# (1) certainly happened, (2) possibly.  When (2) hasn't
-		# happened, we set a flag to indicate that no log printout
-		# is required.
-
-		echo ""
-
-		# Find the common ancestor of the old and new revisions and
-		# compare it with newrev
-		baserev=$(git merge-base $oldrev $newrev)
-		rewind_only=""
-		if [ "$baserev" = "$newrev" ]; then
-			echo "This update discarded existing revisions and left the branch pointing at"
-			echo "a previous point in the repository history."
-			echo ""
-			echo " * -- * -- N ($newrev)"
-			echo "            \\"
-			echo "             O -- O -- O ($oldrev)"
-			echo ""
-			echo "The removed revisions are not necessarilly gone - if another reference"
-			echo "still refers to them they will stay in the repository."
-			rewind_only=1
-		else
-			echo "This update added new revisions after undoing existing revisions.  That is"
-			echo "to say, the old revision is not a strict subset of the new revision.  This"
-			echo "situation occurs when you --force push a change and generate a repository"
-			echo "containing something like this:"
-			echo ""
-			echo " * -- * -- B -- O -- O -- O ($oldrev)"
-			echo "            \\"
-			echo "             N -- N -- N ($newrev)"
-			echo ""
-			echo "When this happens we assume that you've already had alert emails for all"
-			echo "of the O revisions, and so we here report only the revisions in the N"
-			echo "branch from the common base, B."
-		fi
-	fi
+	echo "      from  $oldrev ($oldrev_type)"
 
 	echo ""
-	if [ -z "$rewind_only" ]; then
-		echo "Those revisions listed above that are new to this repository have"
-		echo "not appeared on any other notification email; so we list those"
-		echo "revisions in full, below."
+}
 
-		echo ""
-		echo $LOGBEGIN
-		git rev-parse --not --branches | grep -v $(git rev-parse $refname) |
-		git rev-list --pretty --stdin $oldrev..$newrev
+set_update_branch_subject()
+{
+	detail="$(git diff-tree -r --name-only $oldrev..$newrev | tr '\n' ' ') "
+}
 
-		# XXX: Need a way of detecting whether git rev-list actually
-		# outputted anything, so that we can issue a "no new
-		# revisions added by this update" message
+list_update_branch_revs()
+{
+	git rev-parse --not --branches | grep -v $(git rev-parse $refname) |
+	git rev-list --reverse --stdin $oldrev..$newrev
+}
 
-		echo $LOGEND
-	else
-		echo "No new revisions were added by this update."
-	fi
-
-	# The diffstat is shown from the old revision to the new revision.
-	# This is to show the truth of what happened in this change.
-	# There's no point showing the stat from the base to the new
-	# revision because the base is effectively a random revision at this
-	# point - the user will be interested in what this revision changed
-	# - including the undoing of previous revisions in the case of
-	# non-fast forward updates.
-	echo ""
+summarize_branch_revs()
+{
 	echo "Summary of changes:"
 	git diff-tree --stat --summary --find-copies-harder $oldrev..$newrev
+}
+
+print_change_info()
+{
+	git rev-list -n 1 --pretty $1
 }
 
 #
@@ -635,10 +543,12 @@ if [ -n "$1" -a -n "$2" -a -n "$3" ]; then
 	# Output to the terminal in command line mode - if someone wanted to
 	# resend an email; they could redirect the output to sendmail
 	# themselves
-	PAGER= generate_email $2 $3 $1
+	send_mail=cat
+	generate_email $2 $3 $1
 else
 	while read oldrev newrev refname
 	do
-		generate_email $oldrev $newrev $refname | send_mail
+		send_mail=send_mail
+		generate_email $oldrev $newrev $refname
 	done
 fi
