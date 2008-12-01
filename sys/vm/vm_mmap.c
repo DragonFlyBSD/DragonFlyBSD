@@ -229,19 +229,20 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 			return (EINVAL);
 		if (addr + size < addr)
 			return (EINVAL);
+	} else if ((flags & MAP_TRYFIXED) == 0) {
+		/*
+		 * XXX for non-fixed mappings where no hint is provided or
+		 * the hint would fall in the potential heap space,
+		 * place it after the end of the largest possible heap.
+		 *
+		 * There should really be a pmap call to determine a reasonable
+		 * location.
+		 */
+		if (addr == 0 ||
+		    (addr >= round_page((vm_offset_t)vms->vm_taddr) &&
+		     addr < round_page((vm_offset_t)vms->vm_daddr + maxdsiz)))
+			addr = round_page((vm_offset_t)vms->vm_daddr + maxdsiz);
 	}
-	/*
-	 * XXX for non-fixed mappings where no hint is provided or
-	 * the hint would fall in the potential heap space,
-	 * place it after the end of the largest possible heap.
-	 *
-	 * There should really be a pmap call to determine a reasonable
-	 * location.
-	 */
-	else if (addr == 0 ||
-	    (addr >= round_page((vm_offset_t)vms->vm_taddr) &&
-	     addr < round_page((vm_offset_t)vms->vm_daddr + maxdsiz)))
-		addr = round_page((vm_offset_t)vms->vm_daddr + maxdsiz);
 
 	if (flags & MAP_ANON) {
 		/*

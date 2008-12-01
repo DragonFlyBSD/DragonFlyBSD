@@ -82,6 +82,7 @@
 #define	MAP_HASSEMAPHORE 0x0200	/* region may contain semaphores */
 #define	MAP_STACK	 0x0400	/* region grows down, like a stack */
 #define	MAP_NOSYNC	 0x0800 /* page to but do not sync underlying file */
+#define	MAP_TRYFIXED	0x10000 /* attempt hint address, even within heap */
 
 #ifdef _P1003_1B_VISIBLE
 /*
