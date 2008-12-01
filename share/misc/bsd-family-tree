@@ -217,11 +217,13 @@ FreeBSD 5.2           |      |                 |                       |
  |     |              |      |             OpenBSD 4.2                 |
  |     |              |   NetBSD 4.0           |                       |
  | FreeBSD 6.3        |      |                 |                       |
- |                    |      |                 |                       |
- *--FreeBSD           |      |                 |                DragonFly 1.12.0
- |    7.0             |      |                 |                       |
- |     |              |      |             OpenBSD 4.3                 |
- |     V              |      |                 |                DragonFly 2.0.0
+ |            \       |      |                 |                       |
+ *--FreeBSD    |      |      |                 |                DragonFly 1.12.0
+ |    7.0      |      |      |                 |                       |
+ |     |       |      |      |             OpenBSD 4.3                 |
+ |     V       |      |      |                 |                DragonFly 2.0.0
+ |          FreeBSD   |      |             OpenBSD 4.4                 |
+ |            6.4     |      |                 |                       |
  |                    |      |                 |                       |
 FreeBSD 8 -current    |  NetBSD -current  OpenBSD -current             |
  |                    |      |                 |                       |
@@ -486,6 +488,8 @@ DragonFly 1.12.0	2008-02-26 [DFB]
 FreeBSD 7.0		2008-02-27 [FBD]
 OpenBSD 4.3		2008-05-01 [OBD]
 DragonFly 2.0.0		2008-07-21 [DFB]
+OpenBSD 4.4		2008-11-01 [OBD]
+FreeBSD 6.4		2008-11-28 [FBD]
 
 Bibliography
 ------------------------
@@ -546,5 +550,4 @@ Steven M. Schultz for providing 2.8BSD, 2.10BSD, 2.11BSD manual pages.
 Copyright (c) 1997-2007 Wolfram Schneider <wosch@FreeBSD.ORG>
 URL: http://cvsweb.freebsd.org/src/share/misc/bsd-family-tree
 
-$FreeBSD: src/share/misc/bsd-family-tree,v 1.121 2008/07/23 14:25:39 maxim Exp $
-$DragonFly: src/share/misc/bsd-family-tree,v 1.18 2008/07/24 00:17:29 swildner Exp $
+$FreeBSD: src/share/misc/bsd-family-tree,v 1.123 2008/11/28 19:35:48 maxim Exp $
