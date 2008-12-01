@@ -52,7 +52,8 @@ git-clone:
 		echo "Please install devel/scmgit from pkgsrc"; \
 		exit 1; \
 	fi; \
-	git clone -o crater -n git://crater.dragonflybsd.org/dragonfly.git src
+	git clone -o crater -n git://crater.dragonflybsd.org/dragonfly.git src; \
+	cd src && git checkout master
 
 git-update:
 	@cd ${.CURDIR}/src; \
