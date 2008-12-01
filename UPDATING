@@ -15,31 +15,8 @@
 +				GENERAL					+
 +-----------------------------------------------------------------------+
 
-The best way to upgrade DragonFly is to maintain a copy of the DragonFly
-CVS repository via cvsup and to checkout the source base via this repository.
-The repository is stored in /home/dcvs by default and requires about 800MB
-of disk space.  The checked out source tree (/usr/src) requires about 400MB
-of disk space, and the build will eat around 800MB of space out of /usr/obj.
-To maintain the build you should reserve at least 2.5GB of disk space, and
-3.5GB if you have the space.
-
-Note: most people run cvsup via a root cron job to keep the repository up to
-date.  Please limit such automatic updates to once a day and try to randomize
-the hour and minute in the cron job a bit to avoid pileups.
-
-	# get the CVS repository (it is placed in /home/dcvs)
-	cvsup /usr/share/examples/cvsup/DragonFly-cvs-supfile
-	# install the source from the CVS hierarchy
-	cd /usr
-	cvs -R -d /home/dcvs checkout -P src
-
-Once you have the repository and broken out sources you can decide whether to
-update your sources from the repository automatically or manually.  Since
-you are tracking changes made to DragonFly, it is usually a good idea to
-update the sources manually:
-
-	cd /usr/src
-	cvs update -dP
+Instructions on how to obtain and maintain DragonFly source code using git
+are in the development(7) manual page.
 
 To upgrade a DragonFly system from sources you run the following sequence:
 
@@ -55,12 +32,13 @@ older DragonFly installations and should delete them automatically.
 
 	make upgrade
 
+See the build(7) manual page for further information.
+
 Once you've done a full build of the world and kernel you can do incremental
 upgrades of either by using the 'quickworld' and 'quickkernel' targets
 instead of 'buildworld' and 'buildkernel'.  If you have any problems with
-the quick targets, try doing a cvsup, cvs update, and then a full buildworld
+the quick targets, try updating your repo first, and then a full buildworld
 and buildkernel as shown above, before asking for help.
-See also build(7) and development(7) manual pages.
 
 +-----------------------------------------------------------------------+
 +         UPGRADING FROM DRAGONFLY <= 2.0 TO DRAGONFLY >= 2.1		+
