@@ -320,7 +320,7 @@ set_update_branch_subject()
 	set_describe $newrev
 
 	describe="$(git diff-tree -r --name-only $oldrev${oldrev:+..}$newrev |
-			skip_diff_tree_parent | sed -e 's/^/	/') $describe"
+			skip_diff_tree_parent | sed -e '2,$s/^/ /') $describe"
 	[ -n "$(git diff-tree -r --name-only --cc $oldrev${oldrev:+..}$newrev |
 		skip_diff_tree_parent)" ]
 }
