@@ -32,57 +32,31 @@
 .\" 
 .\" $DragonFly: src/share/man/man7/committer.7,v 1.11 2008/05/02 02:05:06 swildner Exp $
 .\" 
-.Dd March 16, 2008
+.Dd December 1, 2008
 .Dt COMMITTER 7
 .Os
 .Sh NAME
 .Nm committer
 .Nd rules for DragonFly committers
-.Sh CVS REPOSITORY ON YOUR LOCAL MACHINE
-Use
-.Xr cvsup 1
-to mirror the
+.Sh GIT REPOSITORY ON YOUR LOCAL MACHINE
+See
+.Xr development 7
+how to obtain a fresh copy of the
 .Dx
-CVS repository itself onto your local box
-(if you haven't already).  See the file
-.Pa /usr/share/examples/cvsup/DragonFly-cvs-supfile .
-.Pp
-You basically want to do all CVS operations not related to commits
-via your local repository, and do commit operations directly to
-the master site.
-.Pp
-We strongly recommend that you set up a
-.Xr cron 8
-job to automatically
-cvsup at least once a day, so your local CVS repository is always
-in sync.
-.Sh CHECKING OUT THE SOURCES
+git repository on your machine.
+Note that all developers have to pull/push through
+.Xr ssh 1 .
 Your
-.Pa ~/.cvsrc
-should contain:
+.Pa ~/.gitconfig
+should contain at least:
 .Bd -literal -offset indent
-cvs -q
-diff -u
-update -Pd
-checkout -P
+[user]
+	name = Your Name
+	email = <login>@dragonflybsd.org
 .Ed
 .Pp
-Checking out and updating a checked out source tree:
-.Bd -literal -offset indent
-cd /usr
-cvs -d /home/dcvs checkout src
-cvs -d /home/dcvs update src
-.Ed
-.Pp
-We do
-.Em NOT
-recommend that you use a cron job to
-.Nm cvs Cm update
-your
-checked out source.  Automatic updates can interfere with
-any work-in-progress that you have.
 .Sh SSH DSA KEYS:
-The CVS repository machine is
+The git repository machine is
 .Pa crater.dragonflybsd.org ,
 and the
 .Dx
@@ -94,11 +68,11 @@ key to give you access.
 .Pp
 Your
 .Pa crater
-account is set up for CVS repository only. It can
-only operate as a CVS slave and cannot be logged into.  That is,
+account is set up for git repository only. It can
+only operate as a git slave and cannot be logged into.  That is,
 .Pa crater.dragonflybsd.org
 is only used as part of
-.Nm cvs Fl d Ar ...
+.Nm git Cm push
 operations.
 .Pp
 Your
@@ -137,90 +111,61 @@ There is a directory called
 To test your commit
 access, try making a modification and committing a file in this
 directory.
+Try to push the commit to
+.Pa crater
+afterwards.
 .Bd -literal -offset indent
 cd /usr/src/test/test
 (edit something)
-cvs -d you@crater.dragonflybsd.org:/cvs commit file_you_edited
+git commit file_you_edited
+git push crater
 .Ed
 .Sh COMMITTING REAL WORK
 Make modifications as needed.  For example, edit files.  If adding
-new files make CVS aware of them like this.  Files can just be
-added locally, but directories have to run through
-.Pa crater .
+new files make git aware of them like this.  Files and directories can just be
+added locally.
 These
-operations do not actually affect the repository (except directories
-being added are mkdir'd in the repository).  Instead they are
-stored in the checkout source's
-.Pa CVS/
-subdirectory and then
+operations do not actually affect the master repository.
+Instead they are
+stored in your local copy of the repository and then
 synchronized to the repository when you
-.Nm cvs Cm commit .
+.Nm git Cm push .
 .Bd -literal -offset indent
-cvs add filename
-cvs -d you@crater.dragonflybsd.org:/cvs add directory
+git add filename
+git commit filename
 .Ed
 .Pp
-To commit to the repository, use:
+To actually push your changes to the the repository on
+.Pa crater ,
+use:
 .Bd -literal -offset indent
-cvs -d you@crater.dragonflybsd.org:/cvs commit files_or_directories
+git push crater
 .Ed
 .Pp
-The recommended way for committing to a specific branch (to merge bug fixes,
-for example) is to
-.Nm cvs Cm checkout
-the branch in a different directory, modify there, and commit normally:
-.Bd -literal -offset indent
-cvs checkout -r DragonFly_RELEASE_1_12 src
-.Ed
+See
+.Xr development 7
+how to commit to a specific branch (to merge bug fixes, for example).
 .Pp
-Do not set
-.Ev CVSROOT
-to
-.Pa you@crater.dragonflybsd.org:/cvs .
-The reason is that you want the default
-.Ev CVSROOT
-in your checked out
-sources to point at your local CVS repository, not at
-.Pa crater .
+Do not set the default remote tag to
+.Pa origin .
+It is set to
+.Pa crater
+by default.
 This reduces instances where accidental commits or repository
-operations are made on
-.Pa crater .
+operations are made on the master repository.
 .Pp
-It is best to avoid
-.Nm cvs Cm update Ap ing
-directly from the repository.
-e.g. try to avoid doing
-.Nm cvs Fl d Ar ... Cm update
-directly from
-.Pa crater .
-Instead, use
-.Xr cvsup 1
-to resync your local copy of the repository
-and use
-.Nm cvs Cm update
-or
-.Nm cvs Fl d Ar /home/dcvs Cm update
-to update from
-your local copy of the repository.
+The best way to resynchronize your local git repository after
+making a commit is to pull again.
+.Sh STRUCTURE OF COMMIT MESSAGES
+Please structure your commit messages like this:
+.Bd -literal -offset indent
+One line summary of your change
+
+Maybe more text here describing your changes in detail (including
+issue tracker id's etc).
+.Ed
 .Pp
-The idea here is to try to avoid having CVS set its
-.Pa CVS/Root
-file in any given checked out CVS directory to point at
-.Pa crater .
-You really want it to just point at your local copy of the CVS
-repository.
-.Pp
-Never do
-.Nm cvs Cm tag
-or
-.Cm rtag
-operations.  Such operations can be
-very dangerous and only highly experienced CVS admins should
-do them.  That's basically just two or three people (Matt and Joerg
-primarily).
-.Pp
-The best way to resynchronize your local CVS repository after
-making a commit is to cvsup again.
+The reason is that many git tools display the first line as summary.
 .Sh DISCUSSING COMMITTABLE WORK BEFORE HAND
 Discussion prior to commit usually occurs on the kernel@, submit@, or bugs@
 mailing lists.  It depends on the work involved.  Simple and obvious work,
@@ -254,7 +199,7 @@ last step after they've stabilized it.  Examples of this include
 new versions of GCC, updates to vendor packages such as bind,
 sendmail, etc.
 .Sh DEVELOPER LOCKS
-Areas within the CVS repository are never explicitly locked.
+Areas within the repository are never explicitly locked.
 Often situations will arise where one developer commits work and
 another developer finds an issue with it that needs to be corrected.
 .Pp
@@ -297,6 +242,5 @@ This isn't usually an issue with any work.  At best if something
 doesn't look right architecturally he'll chip in with adjustments to
 make it fit in.  Nothing ever really gets vetoed.
 .Sh SEE ALSO
-.Xr cvs 1 ,
-.Xr cvsup 1 ,
+.Xr git 1 Pq Pa pkgsrc/devel/gitscm ,
 .Xr development 7
