@@ -388,7 +388,7 @@ carp_clone_destroy(struct ifnet *ifp)
 {
 	struct carp_softc *sc = ifp->if_softc;
 
-	carpdetach(sc, 1);	/* Returns unlocked. */
+	carpdetach(sc, 1);
 
 	crit_enter();
 	LIST_REMOVE(sc, sc_next);
@@ -405,10 +405,7 @@ carp_clone_destroy(struct ifnet *ifp)
  * and in case of the removal of the underlying interface as
  * well. We differentiate these two cases. In the latter case
  * we do not cleanup our multicast memberships, since they
- * are already freed. Also, in the latter case we do not
- * release the lock on return, because the function will be
- * called once more, for another CARP instance on the same
- * interface.
+ * are already freed.
  */
 static void
 carpdetach(struct carp_softc *sc, int unlock)
@@ -458,9 +455,6 @@ carp_ifdetach(void *arg __unused, struct ifnet *ifp)
 	if (cif == NULL)
 		return;
 
-	/*
-	 * XXX: At the end of for() cycle the lock will be destroyed.
-	 */
 	for (sc = TAILQ_FIRST(&cif->vhif_vrs); sc; sc = nextsc) {
 		nextsc = TAILQ_NEXT(sc, sc_list);
 		carpdetach(sc, 0);
@@ -1703,7 +1697,7 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *creds)
 	struct ifaddr *ifa;
 	struct ifreq *ifr;
 	struct ifaliasreq *ifra;
-	int locked = 0, error = 0;
+	int error = 0;
 
 	ifa = (struct ifaddr *)addr;
 	ifra = (struct ifaliasreq *)addr;
@@ -1774,9 +1768,6 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *creds)
 		break;
 
 	case SIOCSIFFLAGS:
-		if (sc->sc_carpdev) {
-			locked = 1;
-		}
 		if (sc->sc_state != INIT && !(ifr->ifr_flags & IFF_UP)) {
  			callout_stop(&sc->sc_ad_tmo);
  			callout_stop(&sc->sc_md_tmo);
@@ -1798,9 +1789,6 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *creds)
 		if ((error = copyin(ifr->ifr_data, &carpr, sizeof carpr)))
 			break;
 		error = 1;
-		if (sc->sc_carpdev) {
-			locked = 1;
-		}
 		if (sc->sc_state != INIT && carpr.carpr_state != sc->sc_state) {
 			switch (carpr.carpr_state) {
 			case BACKUP:
@@ -1861,7 +1849,6 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *creds)
 		break;
 
 	case SIOCGVH:
-		/* XXX: lockless read */
 		bzero(&carpr, sizeof(carpr));
 		carpr.carpr_state = sc->sc_state;
 		carpr.carpr_vhid = sc->sc_vhid;
