@@ -296,7 +296,6 @@ carp_hmac_verify(struct carp_softc *sc, uint32_t counter[2],
 	unsigned char md2[20];
 
 	carp_hmac_generate(sc, counter, md2);
-
 	return (bcmp(md, md2, sizeof(md2)));
 }
 
@@ -329,18 +328,17 @@ carp_setroute(struct carp_softc *sc, int cmd)
 #endif /* INET6 */
 	}
 	crit_exit();
-
 }
 
 static int
 carp_clone_create(struct if_clone *ifc, int unit)
 {
-
 	struct carp_softc *sc;
 	struct ifnet *ifp;
-	
-        MALLOC(sc, struct carp_softc *, sizeof(*sc), M_CARP, M_WAITOK|M_ZERO); 
-	ifp = SC2IFP(sc) = kmalloc(sizeof(struct ifnet), M_IFNET, M_WAITOK|M_ZERO); 
+
+	MALLOC(sc, struct carp_softc *, sizeof(*sc), M_CARP, M_WAITOK|M_ZERO);
+	ifp = SC2IFP(sc) = kmalloc(sizeof(struct ifnet), M_IFNET,
+				   M_WAITOK|M_ZERO);
 
 	sc->sc_flags_backup = 0;
 	sc->sc_suppress = 0;
@@ -354,11 +352,6 @@ carp_clone_create(struct if_clone *ifc, int unit)
 	sc->sc_im6o.im6o_multicast_hlim = CARP_DFLTTL;
 #endif
 
-/*	sc->sc_imo.imo_membership = kmalloc((sizeof(struct in_multi) * IP_MAX_MEMBERSHIPS), M_CARP,M_WAITOK);*/
-/*
-	sc->sc_imo.imo_max_memberships = IP_MAX_MEMBERSHIPS;
-	sc->sc_imo.imo_multicast_vif = -1;
-*/
 	callout_init(&sc->sc_ad_tmo);
 	callout_init(&sc->sc_md_tmo);
 	callout_init(&sc->sc_md6_tmo);
@@ -395,8 +388,6 @@ carp_clone_destroy(struct ifnet *ifp)
 	crit_exit();
 	bpfdetach(ifp);
 	if_detach(ifp);
-/*	if_free_type(ifp, IFT_ETHER);*/
-/*	kfree(sc->sc_imo.imo_membership, M_CARP); */
 	kfree(sc, M_CARP);
 }
 
@@ -606,7 +597,6 @@ carp6_input(struct mbuf **mp, int *offp, int proto)
 		return (IPPROTO_DONE);
 	}
 
-
 	/* verify the CARP checksum */
 	m->m_data += *offp;
 	if (carp_cksum(m, sizeof(*ch))) {
@@ -636,7 +626,9 @@ carp_input_c(struct mbuf *m, struct carp_header *ch, sa_family_t af)
 		if (sc->sc_vhid == ch->carp_vhid)
 			break;
 
-	if (!sc || !((SC2IFP(sc)->if_flags & IFF_UP) && (SC2IFP(sc)->if_flags & IFF_RUNNING))) {
+	if (!sc ||
+	    !((SC2IFP(sc)->if_flags & IFF_UP) &&
+	      (SC2IFP(sc)->if_flags & IFF_RUNNING))) {
 		carpstats.carps_badvhid++;
 		m_freem(m);
 		return;
@@ -695,6 +687,7 @@ carp_input_c(struct mbuf *m, struct carp_header *ch, sa_family_t af)
 	switch (sc->sc_state) {
 	case INIT:
 		break;
+
 	case MASTER:
 		/*
 		 * If we receive an advertisement from a master who's going to
@@ -711,6 +704,7 @@ carp_input_c(struct mbuf *m, struct carp_header *ch, sa_family_t af)
 			carp_setroute(sc, RTM_DELETE);
 		}
 		break;
+
 	case BACKUP:
 		/*
 		 * If we're pre-empting masters who advertise slower than us,
@@ -747,7 +741,6 @@ carp_input_c(struct mbuf *m, struct carp_header *ch, sa_family_t af)
 		break;
 	}
 	m_freem(m);
-	return;
 }
 
 static int
@@ -761,8 +754,9 @@ carp_prepare_ad(struct mbuf *m, struct carp_softc *sc, struct carp_header *ch)
 		sc->sc_counter = karc4random();
 		sc->sc_counter = sc->sc_counter << 32;
 		sc->sc_counter += karc4random();
-	} else
+	} else {
 		sc->sc_counter++;
+	}
 
 	ch->carp_counter[0] = htonl((sc->sc_counter>>32)&0xffffffff);
 	ch->carp_counter[1] = htonl(sc->sc_counter&0xffffffff);
@@ -790,8 +784,10 @@ carp_send_ad_all(void)
 	LIST_FOREACH(sc, &carpif_list, sc_next) {
 		if (sc->sc_carpdev == NULL)
 			continue;
-		if ((SC2IFP(sc)->if_flags & IFF_UP) && (SC2IFP(sc)->if_flags & IFF_RUNNING) &&
-		     sc->sc_state == MASTER)
+
+		if ((SC2IFP(sc)->if_flags & IFF_UP) &&
+		    (SC2IFP(sc)->if_flags & IFF_RUNNING) &&
+		    sc->sc_state == MASTER)
 			carp_send_ad_locked(sc);
 	}
 }
@@ -813,9 +809,9 @@ carp_send_ad_locked(struct carp_softc *sc)
 	struct mbuf *m;
 	int len, advbase, advskew;
 
-
 	/* bow out if we've lost our UPness or RUNNINGuiness */
-	if (!((SC2IFP(sc)->if_flags & IFF_UP) && (SC2IFP(sc)->if_flags & IFF_RUNNING))) {
+	if (!((SC2IFP(sc)->if_flags & IFF_UP) &&
+	      (SC2IFP(sc)->if_flags & IFF_RUNNING))) {
 		advbase = 255;
 		advskew = 255;
 	} else {
@@ -902,8 +898,9 @@ carp_send_ad_locked(struct carp_softc *sc)
 					carp_suppress_preempt--;
 					sc->sc_sendad_errors = 0;
 				}
-			} else
+			} else {
 				sc->sc_sendad_errors = 0;
+			}
 		}
 	}
 #endif /* INET */
@@ -977,8 +974,9 @@ carp_send_ad_locked(struct carp_softc *sc)
 					carp_suppress_preempt--;
 					sc->sc_sendad_errors = 0;
 				}
-			} else
+			} else {
 				sc->sc_sendad_errors = 0;
+			}
 		}
 	}
 #endif /* INET6 */
@@ -986,7 +984,6 @@ carp_send_ad_locked(struct carp_softc *sc)
 	if (advbase != 255 || advskew != 255)
 		callout_reset(&sc->sc_ad_tmo, tvtohz_high(&tv),
 		    carp_send_ad, sc);
-
 }
 
 /*
@@ -1040,7 +1037,8 @@ carp_addrcount(struct carp_if *cif, struct in_ifaddr *ia, int type)
 
 	TAILQ_FOREACH(vh, &cif->vhif_vrs, sc_list) {
 		if ((type == CARP_COUNT_RUNNING &&
-		    (SC2IFP(vh)->if_flags & IFF_UP) && (SC2IFP(vh)->if_flags & IFF_RUNNING)) ||
+		     (SC2IFP(vh)->if_flags & IFF_UP) &&
+		     (SC2IFP(vh)->if_flags & IFF_RUNNING)) ||
 		    (type == CARP_COUNT_MASTER && vh->sc_state == MASTER)) {
 			struct ifaddr_container *ifac;
 
@@ -1085,10 +1083,12 @@ carp_iamatch(void *v, struct in_ifaddr *ia,
 		count = 0;
 
 		TAILQ_FOREACH(vh, &cif->vhif_vrs, sc_list) {
-			if ((SC2IFP(vh)->if_flags & IFF_UP) && (SC2IFP(vh)->if_flags & IFF_RUNNING)) {
+			if ((SC2IFP(vh)->if_flags & IFF_UP) &&
+			    (SC2IFP(vh)->if_flags & IFF_RUNNING)) {
 				struct ifaddr_container *ifac;
 
-				TAILQ_FOREACH(ifac, &SC2IFP(vh)->if_addrheads[mycpuid], ifa_link) {
+				TAILQ_FOREACH(ifac,
+				&SC2IFP(vh)->if_addrheads[mycpuid], ifa_link) {
 					struct ifaddr *ifa = ifac->ifa;
 
 					if (ifa->ifa_addr->sa_family ==
@@ -1096,8 +1096,7 @@ carp_iamatch(void *v, struct in_ifaddr *ia,
 					    ia->ia_addr.sin_addr.s_addr ==
 					    ifatoia(ifa)->ia_addr.sin_addr.s_addr) {
 						if (count == index) {
-							if (vh->sc_state ==
-							    MASTER) {
+							if (vh->sc_state == MASTER) {
 								*enaddr = IF_LLADDR(vh->sc_ifp);
 								return (1);
 							} else {
@@ -1111,7 +1110,8 @@ carp_iamatch(void *v, struct in_ifaddr *ia,
 		}
 	} else {
 		TAILQ_FOREACH(vh, &cif->vhif_vrs, sc_list) {
-			if ((SC2IFP(vh)->if_flags & IFF_UP) && (SC2IFP(vh)->if_flags & IFF_RUNNING) &&
+			if ((SC2IFP(vh)->if_flags & IFF_UP) &&
+			    (SC2IFP(vh)->if_flags & IFF_RUNNING) &&
 			    vh->sc_state == MASTER) {
 				*enaddr = IF_LLADDR(vh->sc_ifp);
 				return (1);
@@ -1131,18 +1131,19 @@ carp_iamatch6(void *v, struct in6_addr *taddr)
 	TAILQ_FOREACH(vh, &cif->vhif_vrs, sc_list) {
 		struct ifaddr_container *ifac;
 
-		TAILQ_FOREACH(ifac, &SC2IFP(vh)->if_addrheads[mycpuid], ifa_link) {
+		TAILQ_FOREACH(ifac, &SC2IFP(vh)->if_addrheads[mycpuid],
+			      ifa_link) {
 			struct ifaddr *ifa = ifac->ifa;
 
 			if (IN6_ARE_ADDR_EQUAL(taddr,
 			    &ifatoia6(ifa)->ia_addr.sin6_addr) &&
- 			    (SC2IFP(vh)->if_flags & IFF_UP) && (SC2IFP(vh)->if_flags & IFF_RUNNING) &&
+			    (SC2IFP(vh)->if_flags & IFF_UP) &&
+			    (SC2IFP(vh)->if_flags & IFF_RUNNING) &&
 			    vh->sc_state == MASTER) {
 				return (ifa);
 			}
 		}
 	}
-	
 	return (NULL);
 }
 
@@ -1156,12 +1157,14 @@ carp_macmatch6(void *v, struct mbuf *m, const struct in6_addr *taddr)
 	TAILQ_FOREACH(sc, &cif->vhif_vrs, sc_list) {
 		struct ifaddr_container *ifac;
 
-		TAILQ_FOREACH(ifac, &SC2IFP(sc)->if_addrheads[mycpuid], ifa_link) {
+		TAILQ_FOREACH(ifac, &SC2IFP(sc)->if_addrheads[mycpuid],
+			      ifa_link) {
 			struct ifaddr *ifa = ifac->ifa;
 
 			if (IN6_ARE_ADDR_EQUAL(taddr,
 			    &ifatoia6(ifa)->ia_addr.sin6_addr) &&
- 			    (SC2IFP(sc)->if_flags & IFF_UP) && (SC2IFP(sc)->if_flags & IFF_RUNNING)) {
+			    (SC2IFP(sc)->if_flags & IFF_UP) &&
+			    (SC2IFP(sc)->if_flags & IFF_RUNNING)) {
 				struct ifnet *ifp = SC2IFP(sc);
 				mtag = m_tag_get(PACKET_TAG_CARP,
 				    sizeof(struct ifnet *), MB_DONTWAIT);
@@ -1194,16 +1197,16 @@ carp_forus(void *v, void *dhost)
          **/
 
 	if (ena[0] || ena[1] || ena[2] != 0x5e || ena[3] || ena[4] != 1)
-	{
 		return (NULL);
-	}
 
-	TAILQ_FOREACH(vh, &cif->vhif_vrs, sc_list)
-		if ((SC2IFP(vh)->if_flags & IFF_UP) && (SC2IFP(vh)->if_flags & IFF_RUNNING) &&
+	TAILQ_FOREACH(vh, &cif->vhif_vrs, sc_list) {
+		if ((SC2IFP(vh)->if_flags & IFF_UP) &&
+		    (SC2IFP(vh)->if_flags & IFF_RUNNING) &&
 		    vh->sc_state == MASTER &&
 		    !bcmp(dhost, IF_LLADDR(vh->sc_ifp), ETHER_ADDR_LEN)) {
 			return (SC2IFP(vh));
 		}
+	}
 	return (NULL);
 }
 
@@ -1225,8 +1228,10 @@ carp_master_down_locked(struct carp_softc *sc)
 		kprintf("%s: master_down event in INIT state\n",
 		    SC2IFP(sc)->if_xname);
 		break;
+
 	case MASTER:
 		break;
+
 	case BACKUP:
 		carp_set_state(sc, MASTER);
 		carp_send_ad_locked(sc);
@@ -1256,9 +1261,9 @@ carp_setrun(struct carp_softc *sc, sa_family_t af)
 	}
 
 	if (SC2IFP(sc)->if_flags & IFF_UP &&
-	    sc->sc_vhid > 0 && (sc->sc_naddrs || sc->sc_naddrs6))
+	    sc->sc_vhid > 0 && (sc->sc_naddrs || sc->sc_naddrs6)) {
 		SC2IFP(sc)->if_flags |= IFF_RUNNING;
-	else {
+	} else {
 		SC2IFP(sc)->if_flags &= ~IFF_RUNNING;
 		carp_setroute(sc, RTM_DELETE);
 		return;
@@ -1273,16 +1278,18 @@ carp_setrun(struct carp_softc *sc, sa_family_t af)
 			carp_send_na(sc);
 #endif /* INET6 */
 			CARP_DEBUG("%s: INIT -> MASTER (preempting)\n",
-			    SC2IFP(sc)->if_xname);
+				   SC2IFP(sc)->if_xname);
 			carp_set_state(sc, MASTER);
 			carp_setroute(sc, RTM_ADD);
 		} else {
-			CARP_DEBUG("%s: INIT -> BACKUP\n", SC2IFP(sc)->if_xname);
+			CARP_DEBUG("%s: INIT -> BACKUP\n",
+				   SC2IFP(sc)->if_xname);
 			carp_set_state(sc, BACKUP);
 			carp_setroute(sc, RTM_DELETE);
 			carp_setrun(sc, 0);
 		}
 		break;
+
 	case BACKUP:
 		callout_stop(&sc->sc_ad_tmo);
 		tv.tv_sec = 3 * sc->sc_advbase;
@@ -1310,6 +1317,7 @@ carp_setrun(struct carp_softc *sc, sa_family_t af)
 			break;
 		}
 		break;
+
 	case MASTER:
 		tv.tv_sec = sc->sc_advbase;
 		tv.tv_usec = sc->sc_advskew * 1000000 / 256;
@@ -1365,16 +1373,11 @@ carp_set_addr(struct carp_softc *sc, struct sockaddr_in *sin)
 	u_long iaddr = htonl(sin->sin_addr.s_addr);
 	int own, error;
 	
-	if (sin->sin_addr.s_addr == 0) 
-	{
+	if (sin->sin_addr.s_addr == 0) {
 		if (!(SC2IFP(sc)->if_flags & IFF_UP))
-		{
 			carp_set_state(sc, INIT);
-		}
 		if (sc->sc_naddrs)
-		{
 			SC2IFP(sc)->if_flags |= IFF_UP;
-		}
 		carp_setrun(sc, 0);
 		return (0);
 	}
@@ -1394,8 +1397,7 @@ carp_set_addr(struct carp_softc *sc, struct sockaddr_in *sin)
 				own++;
 		}
 	}
-	
-	
+
 	if (!ia_if)
 		return (EADDRNOTAVAIL);
 
@@ -1417,7 +1419,6 @@ carp_set_addr(struct carp_softc *sc, struct sockaddr_in *sin)
 	}
 
 	if (!ifp->if_carp) {
-
 		MALLOC(cif, struct carp_if *, sizeof(*cif), M_CARP,
 		    M_WAITOK|M_ZERO);
 		if ((error = ifpromisc(ifp, 1))) {
@@ -1428,16 +1429,16 @@ carp_set_addr(struct carp_softc *sc, struct sockaddr_in *sin)
 		cif->vhif_ifp = ifp;
 		TAILQ_INIT(&cif->vhif_vrs);
 		ifp->if_carp = cif;
-
 	} else {
 		struct carp_softc *vr;
 
 		cif = (struct carp_if *)ifp->if_carp;
-		TAILQ_FOREACH(vr, &cif->vhif_vrs, sc_list)
+		TAILQ_FOREACH(vr, &cif->vhif_vrs, sc_list) {
 			if (vr != sc && vr->sc_vhid == sc->sc_vhid) {
 				error = EINVAL;
 				goto cleanup;
 			}
+		}
 	}
 	sc->sc_ia = ia;
 	sc->sc_carpdev = ifp;
@@ -1456,11 +1457,10 @@ carp_set_addr(struct carp_softc *sc, struct sockaddr_in *sin)
 
 	if (!myself) {
 		/* We're trying to keep things in order */
-		if (after == NULL) {
+		if (after == NULL)
 			TAILQ_INSERT_TAIL(&cif->vhif_vrs, sc, sc_list);
-		} else {
+		else
 			TAILQ_INSERT_AFTER(&cif->vhif_vrs, after, sc, sc_list);
-		}
 		cif->vhif_nvrs++;
 	}
 	}
@@ -1470,7 +1470,6 @@ carp_set_addr(struct carp_softc *sc, struct sockaddr_in *sin)
 	if (own)
 		sc->sc_advskew = 0;
 
-
 	carp_sc_state_locked(sc);
 	carp_setrun(sc, 0);
 
@@ -1479,7 +1478,6 @@ carp_set_addr(struct carp_softc *sc, struct sockaddr_in *sin)
 cleanup:
 	in_delmulti(imo->imo_membership[--imo->imo_num_memberships]);
 	return (error);
-
 }
 
 static int
@@ -1503,7 +1501,6 @@ carp_del_addr(struct carp_softc *sc, struct sockaddr_in *sin)
 			FREE(cif, M_IFADDR);
 		}
 	}
-
 	return (error);
 }
 
@@ -1599,16 +1596,16 @@ carp_set_addr6(struct carp_softc *sc, struct sockaddr_in6 *sin6)
 		cif->vhif_ifp = ifp;
 		TAILQ_INIT(&cif->vhif_vrs);
 		ifp->if_carp = cif;
-
 	} else {
 		struct carp_softc *vr;
 
 		cif = (struct carp_if *)ifp->if_carp;
-		TAILQ_FOREACH(vr, &cif->vhif_vrs, sc_list)
+		TAILQ_FOREACH(vr, &cif->vhif_vrs, sc_list) {
 			if (vr != sc && vr->sc_vhid == sc->sc_vhid) {
 				error = EINVAL;
 				goto cleanup;
 			}
+		}
 	}
 	sc->sc_ia6 = ia;
 	sc->sc_carpdev = ifp;
@@ -1627,11 +1624,10 @@ carp_set_addr6(struct carp_softc *sc, struct sockaddr_in6 *sin6)
 
 	if (!myself) {
 		/* We're trying to keep things in order */
-		if (after == NULL) {
+		if (after == NULL)
 			TAILQ_INSERT_TAIL(&cif->vhif_vrs, sc, sc_list);
-		} else {
+		else
 			TAILQ_INSERT_AFTER(&cif->vhif_vrs, after, sc, sc_list);
-		}
 		cif->vhif_nvrs++;
 	}
 	}
@@ -1684,13 +1680,12 @@ carp_del_addr6(struct carp_softc *sc, struct sockaddr_in6 *sin6)
 			FREE(cif, M_IFADDR);
 		}
 	}
-
 	return (error);
 }
 #endif /* INET6 */
 
 static int
-carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *creds)
+carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *cr)
 {
 	struct carp_softc *sc = ifp->if_softc, *vr;
 	struct carpreq carpr;
@@ -1702,7 +1697,6 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *creds)
 	ifa = (struct ifaddr *)addr;
 	ifra = (struct ifaliasreq *)addr;
 	ifr = (struct ifreq *)addr;
-
 
 	switch (cmd) {
 	case SIOCSIFADDR:
@@ -1797,9 +1791,11 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *creds)
 				carp_setrun(sc, 0);
 				carp_setroute(sc, RTM_DELETE);
 				break;
+
 			case MASTER:
 				carp_master_down_locked(sc);
 				break;
+
 			default:
 				break;
 			}
@@ -1812,10 +1808,11 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *creds)
 			if (sc->sc_carpdev) {
 				struct carp_if *cif;
 				cif = (struct carp_if *)sc->sc_carpdev->if_carp;
-				TAILQ_FOREACH(vr, &cif->vhif_vrs, sc_list)
+				TAILQ_FOREACH(vr, &cif->vhif_vrs, sc_list) {
 					if (vr != sc &&
 					    vr->sc_vhid == carpr.carpr_vhid)
 						return EEXIST;
+				}
 			}
 			sc->sc_vhid = carpr.carpr_vhid;
 			IF_LLADDR(sc->sc_ifp)[0] = 0;
@@ -1840,9 +1837,9 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *creds)
 			error--;
 		}
 		bcopy(carpr.carpr_key, sc->sc_key, sizeof(sc->sc_key));
-		if (error > 0)
+		if (error > 0) {
 			error = EINVAL;
-		else {
+		} else {
 			error = 0;
 			carp_setrun(sc, 0);
 		}
@@ -1855,18 +1852,17 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *creds)
 		carpr.carpr_advbase = sc->sc_advbase;
 		carpr.carpr_advskew = sc->sc_advskew;
 		error = suser(curthread);
-		if (error == 0)
+		if (error == 0) {
 			bcopy(sc->sc_key, carpr.carpr_key,
 			    sizeof(carpr.carpr_key));
+		}
 		error = copyout(&carpr, ifr->ifr_data, sizeof(carpr));
 		break;
 
 	default:
 		error = EINVAL;
 	}
-
 	carp_hmac_prepare(sc);
-
 	return (error);
 }
 
@@ -1903,12 +1899,13 @@ carp_looutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	case AF_IPX:
 	case AF_APPLETALK:
 		break;
+
 	default:
 		m_freem(m);
 		return (EAFNOSUPPORT);
 	}
 #endif
-	return(if_simloop(ifp, m, dst->sa_family, 0));
+	return (if_simloop(ifp, m, dst->sa_family, 0));
 }
 
 /*
@@ -1929,6 +1926,7 @@ carp_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *sa,
 	struct m_tag *mtag;
 	struct carp_softc *sc;
 	struct ifnet *carp_ifp;
+	struct ether_header *eh;
 
 	if (!sa)
 		return (0);
@@ -1956,26 +1954,22 @@ carp_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *sa,
 	/* Set the source MAC address to Virtual Router MAC Address */
 	switch (ifp->if_type) {
 	case IFT_ETHER:
-	case IFT_L2VLAN: {
-			struct ether_header *eh;
-
-			eh = mtod(m, struct ether_header *);
-			eh->ether_shost[0] = 0;
-			eh->ether_shost[1] = 0;
-			eh->ether_shost[2] = 0x5e;
-			eh->ether_shost[3] = 0;
-			eh->ether_shost[4] = 1;
-			eh->ether_shost[5] = sc->sc_vhid;
-		}
+	case IFT_L2VLAN:
+		eh = mtod(m, struct ether_header *);
+		eh->ether_shost[0] = 0;
+		eh->ether_shost[1] = 0;
+		eh->ether_shost[2] = 0x5e;
+		eh->ether_shost[3] = 0;
+		eh->ether_shost[4] = 1;
+		eh->ether_shost[5] = sc->sc_vhid;
 		break;
+
 	default:
-		kprintf("%s: carp is not supported for this interface type\n",
-		    ifp->if_xname);
+		if_printf(ifp, "carp is not supported for this "
+			  "interface type\n");
 		return (EOPNOTSUPP);
 	}
-
 	return (0);
-
 }
 
 static void
@@ -1989,9 +1983,11 @@ carp_set_state(struct carp_softc *sc, int state)
 	case BACKUP:
 		SC2IFP(sc)->if_link_state = LINK_STATE_DOWN;
 		break;
+
 	case MASTER:
 		SC2IFP(sc)->if_link_state = LINK_STATE_UP;
 		break;
+
 	default:
 		SC2IFP(sc)->if_link_state = LINK_STATE_UNKNOWN;
 		break;
@@ -2019,7 +2015,7 @@ carp_carpdev_state_locked(struct carp_if *cif)
 static void
 carp_sc_state_locked(struct carp_softc *sc)
 {
-	if ( !(sc->sc_carpdev->if_flags & IFF_UP)) {
+	if (!(sc->sc_carpdev->if_flags & IFF_UP)) {
 		sc->sc_flags_backup = SC2IFP(sc)->if_flags;
 		SC2IFP(sc)->if_flags &= ~IFF_UP;
 		SC2IFP(sc)->if_flags &= ~IFF_RUNNING;
@@ -2030,9 +2026,8 @@ carp_sc_state_locked(struct carp_softc *sc)
 		carp_setrun(sc, 0);
 		if (!sc->sc_suppress) {
 			carp_suppress_preempt++;
-			if (carp_suppress_preempt == 1) {
+			if (carp_suppress_preempt == 1)
 				carp_send_ad_all();
-			}
 		}
 		sc->sc_suppress = 1;
 	} else {
@@ -2043,8 +2038,6 @@ carp_sc_state_locked(struct carp_softc *sc)
 			carp_suppress_preempt--;
 		sc->sc_suppress = 0;
 	}
-
-	return;
 }
 
 static int
@@ -2068,7 +2061,6 @@ carp_modevent(module_t mod, int type, void *data)
 	default:
 		return (EINVAL);
 	}
-
 	return (0);
 }
 
