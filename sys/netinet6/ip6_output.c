@@ -2917,11 +2917,12 @@ ip6_setpktoption(int optname, u_char *buf, int len, struct ip6_pktopts *opt,
 			 return (ENXIO);
 		}
 		/*
-			* Check if the requested source address is indeed a
-			* unicast address assigned to the node, and can be
-			* used as the packet's source address.
-		*/
-		if (!IN6_IS_ADDR_UNSPECIFIED(&opt->ip6po_pktinfo->ipi6_addr)) {
+		 * Check if the requested source address is indeed a
+		 * unicast address assigned to the node, and can be
+		 * used as the packet's source address.
+		 */
+		if (opt->ip6po_pktinfo != NULL &&
+		    !IN6_IS_ADDR_UNSPECIFIED(&opt->ip6po_pktinfo->ipi6_addr)) {
 			struct in6_ifaddr *ia6;
 			struct sockaddr_in6 sin6;
 
