@@ -116,7 +116,7 @@ struct carp_softc {
 	int			 sc_naddrs6;
 	int			 sc_advbase;	/* seconds */
 	int			 sc_init_counter;
-	u_int64_t		 sc_counter;
+	uint64_t		 sc_counter;
 
 	/* authentication */
 #define CARP_HMAC_PAD	64
@@ -182,9 +182,9 @@ struct carp_if {
 } while (0)
 
 static void	carp_hmac_prepare(struct carp_softc *);
-static void	carp_hmac_generate(struct carp_softc *, u_int32_t *,
+static void	carp_hmac_generate(struct carp_softc *, uint32_t *,
 		    unsigned char *);
-static int	carp_hmac_verify(struct carp_softc *, u_int32_t *,
+static int	carp_hmac_verify(struct carp_softc *, uint32_t *,
 		    unsigned char *);
 static void	carp_setroute(struct carp_softc *, int);
 static void	carp_input_c(struct mbuf *, struct carp_header *, sa_family_t);
@@ -226,7 +226,7 @@ struct if_clone carp_cloner = IF_CLONE_INITIALIZER(CARP_IFNAME, carp_clone_creat
 
 static eventhandler_tag if_detach_event_tag;
 
-static __inline u_int16_t
+static __inline uint16_t
 carp_cksum(struct mbuf *m, int len)
 {
 	return (in_cksum(m, len));
@@ -235,8 +235,8 @@ carp_cksum(struct mbuf *m, int len)
 static void
 carp_hmac_prepare(struct carp_softc *sc)
 {
-	u_int8_t version = CARP_VERSION, type = CARP_ADVERTISEMENT;
-	u_int8_t vhid = sc->sc_vhid & 0xff;
+	uint8_t version = CARP_VERSION, type = CARP_ADVERTISEMENT;
+	uint8_t vhid = sc->sc_vhid & 0xff;
 	struct ifaddr_container *ifac;
 	int i;
 #ifdef INET6
@@ -291,7 +291,7 @@ carp_hmac_prepare(struct carp_softc *sc)
 }
 
 static void
-carp_hmac_generate(struct carp_softc *sc, u_int32_t counter[2],
+carp_hmac_generate(struct carp_softc *sc, uint32_t counter[2],
     unsigned char md[20])
 {
 	SHA1_CTX sha1ctx;
@@ -310,7 +310,7 @@ carp_hmac_generate(struct carp_softc *sc, u_int32_t counter[2],
 }
 
 static int
-carp_hmac_verify(struct carp_softc *sc, u_int32_t counter[2],
+carp_hmac_verify(struct carp_softc *sc, uint32_t counter[2],
     unsigned char md[20])
 {
 	unsigned char md2[20];
@@ -666,7 +666,7 @@ carp_input_c(struct mbuf *m, struct carp_header *ch, sa_family_t af)
 {
 	struct ifnet *ifp = m->m_pkthdr.rcvif;
 	struct carp_softc *sc;
-	u_int64_t tmp_counter;
+	uint64_t tmp_counter;
 	struct timeval sc_tv, ch_tv;
 
 	/* verify that the VHID is valid on the receiving interface */
@@ -1115,7 +1115,7 @@ carp_addrcount(struct carp_if *cif, struct in_ifaddr *ia, int type)
 
 int
 carp_iamatch(void *v, struct in_ifaddr *ia,
-    struct in_addr *isaddr, u_int8_t **enaddr)
+    struct in_addr *isaddr, uint8_t **enaddr)
 {
 	struct carp_if *cif = v;
 	struct carp_softc *vh;
@@ -1256,7 +1256,7 @@ carp_forus(void *v, void *dhost)
 {
 	struct carp_if *cif = v;
 	struct carp_softc *vh;
-	u_int8_t *ena = dhost;
+	uint8_t *ena = dhost;
 	
 	/**
          * XXX: See here for check on MAC adr is not for virtual use
@@ -1400,7 +1400,7 @@ static void
 carp_multicast_cleanup(struct carp_softc *sc)
 {
 	struct ip_moptions *imo = &sc->sc_imo;
-	u_int16_t n = imo->imo_num_memberships;
+	uint16_t n = imo->imo_num_memberships;
 
 	/* Clean up our own multicast memberships */
 	while (n-- > 0) {
@@ -1989,7 +1989,7 @@ static int
 carp_looutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
     struct rtentry *rt)
 {
-	u_int32_t af;
+	uint32_t af;
 
 	M_ASSERTPKTHDR(m); /* check if we have the packet header */
 
