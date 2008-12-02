@@ -101,6 +101,7 @@ static int ata_intel_allocate(device_t dev);
 static void ata_intel_reset(device_t dev);
 static void ata_intel_old_setmode(device_t dev, int mode);
 static void ata_intel_new_setmode(device_t dev, int mode);
+static void ata_intel_sata_setmode(device_t dev, int mode);
 static int ata_intel_31244_allocate(device_t dev);
 static int ata_intel_31244_status(device_t dev);
 static int ata_intel_31244_command(struct ata_request *request);
@@ -1905,7 +1906,14 @@ ata_intel_chipinit(device_t dev)
 	    (ata_ahci_chipinit(dev) != ENXIO))
 	    return 0;
 
-	ctlr->setmode = ata_sata_setmode;
+	/* if BAR(5) is IO it should point to SATA interface registers */
+	ctlr->r_type2 = SYS_RES_IOPORT;
+	ctlr->r_rid2 = PCIR_BAR(5);
+	if ((ctlr->r_res2 = bus_alloc_resource_any(dev, ctlr->r_type2,
+						   &ctlr->r_rid2, RF_ACTIVE)))
+	    ctlr->setmode = ata_intel_sata_setmode;
+	else
+	    ctlr->setmode = ata_sata_setmode;
 
 	/* enable PCI interrupt */
 	pci_write_config(dev, PCIR_COMMAND,
@@ -1917,11 +1925,20 @@ ata_intel_chipinit(device_t dev)
 static int
 ata_intel_allocate(device_t dev)
 {
+    struct ata_pci_controller *ctlr = device_get_softc(device_get_parent(dev));
     struct ata_channel *ch = device_get_softc(dev);
 
     /* setup the usual register normal pci style */
     if (ata_pci_allocate(dev))
 	return ENXIO;
+
+    /* if r_res2 is valid it points to SATA interface registers */
+    if (ctlr->r_res2) {
+	ch->r_io[ATA_IDX_ADDR].res = ctlr->r_res2;
+	ch->r_io[ATA_IDX_ADDR].offset = 0x00;
+	ch->r_io[ATA_IDX_DATA].res = ctlr->r_res2;
+	ch->r_io[ATA_IDX_DATA].offset = 0x04;
+    }
 
     ch->flags |= ATA_ALWAYS_DMASTAT;
     return 0;
@@ -2203,6 +2220,38 @@ ata_intel_new_setmode(device_t dev, int mode)
 #endif
 
     atadev->mode = mode;
+}
+
+static void
+ata_intel_sata_setmode(device_t dev, int mode)
+{
+    struct ata_device *atadev = device_get_softc(dev);
+
+    if (atadev->param.satacapabilities != 0x0000 &&
+	atadev->param.satacapabilities != 0xffff) {
+
+	struct ata_channel *ch = device_get_softc(device_get_parent(dev));
+	int devno = (ch->unit << 1) + ATA_DEV(atadev->unit);
+
+	/* on some drives we need to set the transfer mode */
+	ata_controlcmd(dev, ATA_SETFEATURES, ATA_SF_SETXFER, 0,
+		       ata_limit_mode(dev, mode, ATA_UDMA6));
+
+	/* set ATA_SSTATUS register offset */
+	ATA_IDX_OUTL(ch, ATA_IDX_ADDR, devno * 0x100);
+
+	/* query SATA STATUS for the speed */
+	if ((ATA_IDX_INL(ch, ATA_IDX_DATA) & ATA_SS_CONWELL_MASK) ==
+	    ATA_SS_CONWELL_GEN2)
+	    atadev->mode = ATA_SA300;
+	else
+	    atadev->mode = ATA_SA150;
+    }
+    else {
+	mode = ata_limit_mode(dev, mode, ATA_UDMA5);
+	if (!ata_controlcmd(dev, ATA_SETFEATURES, ATA_SF_SETXFER, 0, mode))
+	    atadev->mode = mode;
+    }
 }
 
 static int
