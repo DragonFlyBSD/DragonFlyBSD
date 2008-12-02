@@ -84,7 +84,7 @@ SYSCTL_DECL(_net_inet_carp);
 
 struct carp_softc {
 	struct ifnet	 	*sc_ifp;	/* Interface clue */
-	struct ifnet		*sc_carpdev;	/* Pointer to parent interface */
+	struct ifnet		*sc_carpdev;	/* parent interface */
 	struct in_ifaddr 	*sc_ia;		/* primary iface address */
 	struct ip_moptions 	 sc_imo;
 #ifdef INET6
@@ -93,7 +93,8 @@ struct carp_softc {
 #endif /* INET6 */
 	TAILQ_ENTRY(carp_softc)	 sc_list;
 
-	enum { INIT = 0, BACKUP, MASTER }	sc_state;
+	enum { INIT = 0, BACKUP, MASTER }
+				 sc_state;
 
 	int			 sc_flags_backup;
 	int			 sc_suppress;
@@ -113,17 +114,27 @@ struct carp_softc {
 
 	/* authentication */
 #define CARP_HMAC_PAD	64
-	unsigned char sc_key[CARP_KEY_LEN];
-	unsigned char sc_pad[CARP_HMAC_PAD];
-	SHA1_CTX sc_sha1;
+	unsigned char		 sc_key[CARP_KEY_LEN];
+	unsigned char		 sc_pad[CARP_HMAC_PAD];
+	SHA1_CTX		 sc_sha1;
 
 	struct callout		 sc_ad_tmo;	/* advertisement timeout */
 	struct callout		 sc_md_tmo;	/* master down timeout */
 	struct callout 		 sc_md6_tmo;	/* master down timeout */
-	
+
 	LIST_ENTRY(carp_softc)	 sc_next;	/* Interface clue */
 };
 #define	SC2IFP(sc)	((sc)->sc_ifp)
+
+struct carp_if {
+	TAILQ_HEAD(, carp_softc) vhif_vrs;
+	int		vhif_nvrs;
+
+	struct ifnet 	*vhif_ifp;
+	struct lock	vhif_lock;
+};
+
+enum	{ CARP_COUNT_MASTER, CARP_COUNT_RUNNING };
 
 int carp_suppress_preempt = 0;
 int carp_opts[CARPCTL_MAXID] = { 0, 1, 0, 1, 0, 0 };	/* XXX for now */
@@ -142,14 +153,6 @@ struct carpstats carpstats;
 SYSCTL_STRUCT(_net_inet_carp, CARPCTL_STATS, stats, CTLFLAG_RW,
     &carpstats, carpstats,
     "CARP statistics (struct carpstats, netinet/ip_carp.h)");
-
-struct carp_if {
-	TAILQ_HEAD(, carp_softc) vhif_vrs;
-	int vhif_nvrs;
-
-	struct ifnet 	*vhif_ifp;
-	struct lock	vhif_lock;
-};
 
 /* Get carp_if from softc. Valid after carp_set_addr{,6}. */
 #define	SC2CIF(sc)		((struct carp_if *)(sc)->sc_carpdev->if_carp)
@@ -199,7 +202,6 @@ static void	carp_start(struct ifnet *);
 static void	carp_setrun(struct carp_softc *, sa_family_t);
 static void	carp_set_state(struct carp_softc *, int);
 static int	carp_addrcount(struct carp_if *, struct in_ifaddr *, int);
-enum	{ CARP_COUNT_MASTER, CARP_COUNT_RUNNING };
 
 static void	carp_multicast_cleanup(struct carp_softc *);
 static int	carp_set_addr(struct carp_softc *, struct sockaddr_in *);
@@ -215,9 +217,11 @@ static void	carp_multicast6_cleanup(struct carp_softc *);
 
 static LIST_HEAD(, carp_softc) carpif_list;
 
-struct if_clone carp_cloner = IF_CLONE_INITIALIZER(CARP_IFNAME, carp_clone_create, carp_clone_destroy, 0, IF_MAXUNIT);
+static struct if_clone carp_cloner =
+IF_CLONE_INITIALIZER(CARP_IFNAME, carp_clone_create, carp_clone_destroy,
+		     0, IF_MAXUNIT);
 
-static eventhandler_tag if_detach_event_tag;
+static eventhandler_tag carp_ifdetach_event;
 
 static __inline uint16_t
 carp_cksum(struct mbuf *m, int len)
@@ -2167,17 +2171,16 @@ carp_modevent(module_t mod, int type, void *data)
 {
 	switch (type) {
 	case MOD_LOAD:
-		if_detach_event_tag = EVENTHANDLER_REGISTER(ifnet_departure_event,
-		    carp_ifdetach, NULL, EVENTHANDLER_PRI_ANY);
-		if (if_detach_event_tag == NULL)
-			return (ENOMEM);
-		
 		LIST_INIT(&carpif_list);
+		carp_ifdetach_event =
+		EVENTHANDLER_REGISTER(ifnet_detach_event, carp_ifdetach, NULL,
+				      EVENTHANDLER_PRI_ANY);
 		if_clone_attach(&carp_cloner);
 		break;
 
 	case MOD_UNLOAD:
-		EVENTHANDLER_DEREGISTER(ifnet_departure_event, if_detach_event_tag);
+		EVENTHANDLER_DEREGISTER(ifnet_detach_event,
+					carp_ifdetach_event);
 		if_clone_detach(&carp_cloner);
 		break;
 
@@ -2193,5 +2196,4 @@ static moduledata_t carp_mod = {
 	carp_modevent,
 	0
 };
-
 DECLARE_MODULE(carp, carp_mod, SI_SUB_PSEUDO, SI_ORDER_ANY);
