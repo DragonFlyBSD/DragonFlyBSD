@@ -29,31 +29,26 @@
  */
 
 #include "opt_carp.h"
-/*#include "opt_bpf.h"*/
 #include "opt_inet.h"
 #include "opt_inet6.h"
 
-#include <sys/types.h>
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/conf.h>
 #include <sys/kernel.h>
-#include <machine/limits.h>
+#include <sys/in_cksum.h>
+#include <sys/limits.h>
+#include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <sys/module.h>
 #include <sys/time.h>
 #include <sys/proc.h>
+#include <sys/sockio.h>
+#include <sys/socket.h>
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
-#include <sys/signalvar.h>
-#include <sys/filio.h>
-#include <sys/sockio.h>
-#include <sys/in_cksum.h>
-#include <sys/socket.h>
-#include <sys/vnode.h>
 
 #include <machine/stdarg.h>
+#include <crypto/sha1.h>
 
 #include <net/bpf.h>
 #include <net/ethernet.h>
@@ -80,9 +75,7 @@
 #include <netinet6/nd6.h>
 #endif
 
-#include <crypto/sha1.h>
 #include <netinet/ip_carp.h>
-#include <sys/lock.h>
 
 #define	CARP_IFNAME	"carp"
 static MALLOC_DEFINE(M_CARP, "CARP", "CARP interfaces");
