@@ -32,7 +32,7 @@
 .\" 
 .\" $DragonFly: src/share/man/man7/committer.7,v 1.11 2008/05/02 02:05:06 swildner Exp $
 .\" 
-.Dd December 1, 2008
+.Dd December 3, 2008
 .Dt COMMITTER 7
 .Os
 .Sh NAME
@@ -55,7 +55,13 @@ should contain at least:
 	email = <login>@dragonflybsd.org
 .Ed
 .Pp
-.Sh SSH DSA KEYS:
+Alternatively, see the
+.Va user.name
+and
+.Va user.email
+variables in
+.Xr git-config 1 .
+.Sh SSH DSA KEYS
 The git repository machine is
 .Pa crater.dragonflybsd.org ,
 and the
@@ -93,8 +99,9 @@ developers can look at them.
 You log into your
 .Pa leaf
 account with:
-.Pp
-.Li ssh you@leaf.dragonflybsd.org
+.Bd -literal -offset indent
+ssh you@leaf.dragonflybsd.org
+.Ed
 .Pp
 The rules for account use are in
 .Pa leaf Ap s
@@ -105,10 +112,9 @@ key pair on
 to use to access other machines.
 Because non-committers can have
 .Pa leaf
-accounts, since
+accounts,
 .Pa leaf
-is not considered
-a secure machine.
+is not considered a secure machine.
 .Sh TESTING COMMIT ACCESS
 There is a directory called
 .Pa /usr/src/test/test .
@@ -156,27 +162,28 @@ It is set to
 by default.
 This reduces instances where accidental commits or repository
 operations are made on the master repository.
-.Pp
-The best way to resynchronize your local git repository after
-making a commit is to pull again.
 .Sh STRUCTURE OF COMMIT MESSAGES
-Please structure your commit messages like this:
+As many
+.Xr git 1
+tools display the first line of a commit message as a summary,
+structure your commit messages like this, if possible:
 .Bd -literal -offset indent
-One line summary of your change
+One line summary of your change.
 
 Maybe more text here describing your changes in detail (including
 issue tracker id's etc).
 .Ed
+.Sh DISCUSSING COMMITTABLE WORK BEFOREHAND
+Discussion prior to committing usually occurs on the
+.Pa kernel@ ,
+.Pa submit@ ,
+or
+.Pa bugs@
+mailing lists and depends on the work involved.
+Simple and obvious work such as documentation edits or additions,
+doesn't really need a heads up.
 .Pp
-The reason is that many git tools display the first line as summary.
-.Sh DISCUSSING COMMITTABLE WORK BEFORE HAND
-Discussion prior to commit usually occurs on the kernel@, submit@, or bugs@
-mailing lists.
-It depends on the work involved.
-Simple and obvious work,
-such as documentation edits or additions, don't really need a head's up.
-.Pp
-Simple and obvious bug fixes don't need a head's up, other than to
+Simple and obvious bug fixes don't need a heads up either, other than to
 say that you will (or just have) committed the fix, so you don't
 race other committers trying to do the same thing.
 Usually the developer most active in a discussion about a bug commits the
@@ -204,26 +211,30 @@ last step after they've stabilized it.
 Examples of this include
 new versions of GCC, updates to vendor packages such as bind,
 sendmail, etc.
-.Sh DEVELOPER LOCKS
-Areas within the repository are never explicitly locked.
+.Sh SOURCE OWNERSHIP
+Areas within the repository do not
+.Dq belong
+to any committer.
 Often situations will arise where one developer commits work and
 another developer finds an issue with it that needs to be corrected.
 .Pp
 All committed work becomes community property.
 No developer has a
-.Sq lock
+.Dq lock
 on any part of the source tree.
 However, if a developer is
 actively working on a portion of the source tree and you find a bug
-or other issue, courtesy dictates that you post to kernel@ and/or
-email the developer.
+or other issue, courtesy dictates that you post to
+.Pa kernel@
+and/or email the developer.
 .Pp
 This means that, generally, if you do not see a commit to an area
 of the source tree in the last few weeks, it isn't considered active and
 you don't really need to confer with the developer that made the
-commit, though you should still post to the kernel@ mailing list
-and, of course, confer with developers when their expertise is
-needed.
+commit, though you should still post to the
+.Pa kernel@
+mailing list and, of course, confer with developers when their expertise
+is needed.
 .Pp
 One exception to this rule is documentation.
 If any developer commits
@@ -232,8 +243,9 @@ new work, the documentation guys have free reign to go in and correct
 errors.
 This is really a convenience as most developers are not
 .Xr mdoc 7
-gurus and it's a waste of time for the doc guys to post
-to kernel@ for all the little corrections they make.
+gurus and it's a waste of time for the doc guys to post to
+.Pa kernel@
+for all the little corrections they make.
 .Sh CONFLICTS
 On the occasion that a major code conflict occurs, for example if two
 people are doing major work in the same area of the source tree and forgot
@@ -243,10 +255,12 @@ Again, the repository is considered community
 property and it must be acceptable for any developer to be able to work on
 any area of the tree that he or she has an interest in.
 .Sh MAJOR ARCHITECTURAL CHANGES
-This is generally Matt Dillon's area of expertise.
-All major architectural
-changes must be discussed on the kernel@ mailing list and he retains
-veto power.
+This is generally
+.An Matt Dillon Ap s
+area of expertise.
+All major architectural changes must be discussed on the
+.Pa kernel@
+mailing list and he retains veto power.
 .Pp
 This isn't usually an issue with any work.
 At best if something
