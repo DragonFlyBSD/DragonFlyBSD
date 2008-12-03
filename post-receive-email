@@ -221,10 +221,8 @@ generate_email()
 
 set_describe()
 {
-	describe=$(git describe $1 2>/dev/null)
-	if [ -z "$describe" ]; then
-		describe=$1
-	fi
+	describe=$(git describe --abbrev=4 $1 2>/dev/null || git rev-parse --short $1)
+	describe=$(echo "$describe" | sed -e 's/-/./g;s/^v//;')
 }
 
 generate_email_header()
@@ -247,7 +245,7 @@ generate_email_header()
 
 	cat <<-EOF
 	To: $recipients
-	Subject: ${emailprefix}$print_refname$short_refname${print_change_type}: $describe
+	Subject: ${emailprefix}$describe $print_refname$short_refname${print_change_type}$detail
 	X-Git-Refname: $refname
 	X-Git-Reftype: $refname_type
 	X-Git-Newrev: $newrev
@@ -319,8 +317,22 @@ set_update_branch_subject()
 {
 	set_describe $newrev
 
-	describe="$(git diff-tree -r -c --name-only $oldrev${oldrev:+..}$newrev |
-			skip_diff_tree_parent | sed -e '2,$s/^/ /') $describe"
+	detail=$(git diff-tree -r -c --name-only $oldrev${oldrev:+..}$newrev |
+			skip_diff_tree_parent |
+			sed -E -e 's#/([^/]*)$# \1#' |
+			awk 'pos > 74 {
+				printf "\n";
+				pos = 0;
+			}
+			$1 != lastdir {
+				printf " %s", $1;
+				pos += length($1) + 1;
+				lastdir = $1;
+			}
+			$2 != "" {
+				printf " %s", $2;
+				pos += length($2) + 1;
+			}')
 	[ -n "$(git diff-tree -r --name-only --cc $oldrev${oldrev:+..}$newrev |
 		skip_diff_tree_parent)" ]
 }
