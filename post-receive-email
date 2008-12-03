@@ -301,6 +301,7 @@ generate_update_branch_email()
 	echo "      from  $oldrev ($oldrev_type)"
 
 	echo ""
+	echo $LOGBEGIN
 }
 
 skip_diff_tree_parent()
@@ -353,10 +354,12 @@ summarize_branch_revs()
 		echo ""
 		echo "$gitweburl?p=$reponame;a=commitdiff;h=$newrev${oldrev:+;hp=}$oldrev"
 	fi
+	echo $LOGEND
 }
 
 print_change_info()
 {
+	echo $LOGBEGIN
 	git rev-list -n 1 --pretty $1
 }
 
@@ -447,8 +450,8 @@ generate_atag_email()
 			git rev-list --pretty=short "$prevtag..$newrev" | git shortlog
 		else
 			# No previous tag, show all the changes since time
-			# began
-			git rev-list --pretty=short $newrev | git shortlog
+			# began, but only summarize due to the possibly large size.
+			git rev-list --pretty=short $newrev | git shortlog -s
 		fi
 		;;
 	*)
@@ -549,8 +552,8 @@ send_mail()
 # ---------------------------- main()
 
 # --- Constants
-LOGBEGIN="- Log -----------------------------------------------------------------"
-LOGEND="-----------------------------------------------------------------------"
+LOGBEGIN=""
+LOGEND=""
 
 # --- Config
 # Set GIT_DIR either from the working directory, or from the environment
