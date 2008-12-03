@@ -36,25 +36,14 @@ BEGIN {
 	hfile="pcidevs.h"
 }
 NR == 1 {
-	VERSION = $0
-	gsub("\\$", "", VERSION)
-
-	printf("/*\t$DragonFly" "$\t*/\n\n") > dfile
 	printf("/*\n") > dfile
 	printf(" * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.\n") \
 	    > dfile
-	printf(" *\n") > dfile
-	printf(" * generated from:\n") > dfile
-	printf(" *\t%s\n", VERSION) > dfile
 	printf(" */\n") > dfile
 
-	printf("/*\t$DragonFly" "$\t*/\n\n") > hfile
 	printf("/*\n") > hfile
 	printf(" * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.\n") \
 	    > hfile
-	printf(" *\n") > hfile
-	printf(" * generated from:\n") > hfile
-	printf(" *\t%s\n", VERSION) > hfile
 	printf(" */\n") > hfile
 
 	next

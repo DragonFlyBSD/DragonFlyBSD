@@ -31,7 +31,7 @@
 .\" $FreeBSD: src/share/man/man7/release.7,v 1.3.2.6 2003/04/12 20:42:30 murray Exp $
 .\" $DragonFly: src/share/man/man7/release.7,v 1.12 2008/04/01 21:10:26 swildner Exp $
 .\"
-.Dd April 1, 2008
+.Dd December 1, 2008
 .Dt NRELEASE 7
 .Os
 .Sh NAME
@@ -44,7 +44,7 @@ full releases of the
 .Dx
 operating system.
 All of the tools necessary to build releases are available from the
-CVS repository in
+git repository in
 .Pa src/nrelease .
 A complete release (that is, a live CD) can actually be built with
 only a single command.
@@ -167,30 +167,31 @@ on the ISO image.
 .El
 .Sh EXAMPLES
 The following sequence of commands is used to build a standard
-.Dx 1.12
-installation CD image (assuming that a local CVS repository is
+.Dx 2.0
+installation CD image (assuming that a local git repository is
 available):
 .Bd -literal -offset indent
-cd /usr
-cvs co -rDragonFly_RELEASE_1_12_Slip src
-cd src/nrelease
+cd /usr/src
+git checkout -b rel2_0 crater/DragonFly_RELEASE_2_0
+cd nrelease
 make installer release
 .Ed
 .Pp
 After running these commands, the image will be available in the
 .Pa /usr/release
 directory.
-.Pp
-The steps required for engineering a release are documented in (CVS)
-.Pa doc/notes/release.txt
-(how to branch the CVS tree etc.)
-They were put in an out of the way place so normal developers would not
-accidentally try to run the commands in question.
+.\".Pp
+.\"The steps required for engineering a release are documented in (CVS)
+.\".Pa doc/notes/release.txt
+.\"(how to branch the CVS tree etc.)
+.\"They were put in an out of the way place so normal developers would not
+.\"accidentally try to run the commands in question.
 .Sh SEE ALSO
-.Xr cvs 1 ,
+.Xr git 1 ,
 .Xr make 1 ,
 .Xr make.conf 5 ,
 .Xr build 7 ,
+.Xr development 7 ,
 .Xr pkgsrc 7
 .Sh HISTORY
 The

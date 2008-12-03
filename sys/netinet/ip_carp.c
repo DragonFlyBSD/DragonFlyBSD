@@ -505,11 +505,16 @@ carp_ifdetach(void *arg __unused, struct ifnet *ifp)
  * but it seems more efficient this way or not possible otherwise.
  */
 void
-carp_input(struct mbuf *m, int hlen)
+carp_input(struct mbuf *m, ...)
 {
 	struct ip *ip = mtod(m, struct ip *);
 	struct carp_header *ch;
-	int iplen, len;
+	int iplen, len, hlen;
+	__va_list ap;
+
+	__va_start(ap, m);
+	hlen = __va_arg(ap, int);
+	__va_end(ap);
 
 	carpstats.carps_ipackets++;
 

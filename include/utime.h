@@ -37,6 +37,15 @@
 #ifndef	_UTIME_H_
 #define	_UTIME_H_
 
+#ifndef _MACHINE_STDINT_H_
+#include <machine/stdint.h>
+#endif
+
+#ifndef _TIME_T_DECLARED
+#define	_TIME_T_DECLARED
+typedef __time_t	time_t;
+#endif
+
 struct utimbuf {
 	time_t actime;		/* Access time */
 	time_t modtime;		/* Modification time */

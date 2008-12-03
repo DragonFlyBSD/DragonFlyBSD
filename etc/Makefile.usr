@@ -9,13 +9,10 @@ all:
 	@echo "    make pkgsrc-checkout"
 	@echo "    make pkgsrc-update"
 	@echo ""
-	@echo "These targets download/update the DragonFly cvs repository into"
-	@echo "/home/dcvs.  The release-src-cvsup and head-src-cvsup will"
-	@echo "first synchronize /home/dcvs then issue an update into /usr/src."
-	@echo "    make cvs-cvsup"
-	@echo "    make release-src-cvsup     (suggested)"
-	@echo "    make preview-src-cvsup"
-	@echo "    make head-src-cvsup"
+	@echo "These targets download/update the DragonFly git repository into"
+	@echo "/usr/src."
+	@echo "    make git-clone"
+	@echo "    make git-update"
 	@echo ""
 	@echo "Install or update /usr/pkgsrc/wip using NetBSD.se anoncvs"
 	@echo "    make pkgsrc-wip-checkout"
@@ -25,7 +22,7 @@ all:
 	@echo "    make release-sys-extract"
 	@echo ""
 	@echo "If automating please restrict updates from the NetBSD anoncvs"
-	@echo "server to no more than once a week and run cvsups no more often"
+	@echo "server to no more than once a week and run gits no more often"
 	@echo "than daily."
 
 pkgsrc-checkout:
@@ -49,28 +46,20 @@ pkgsrc-wip-update:
 release-sys-extract:
 	bunzip2 < src-sys.tar.bz2 | tar xvpf -
 
-cvs-cvsup:
-	if [ ! -d /home/dcvs ]; then mkdir /home/dcvs; fi
-	cvsup -g -L 4 /usr/share/examples/cvsup/DragonFly-cvs-supfile
+git-clone:
+	@cd ${.CURDIR}; \
+	if [ -z "`which git`" ]; then \
+		echo "Please install devel/scmgit from pkgsrc"; \
+		exit 1; \
+	fi; \
+	git clone -o crater -n git://crater.dragonflybsd.org/dragonfly.git src; \
+	cd src && git checkout master
 
-release-src-cvsup: cvs-cvsup
-	cd ${.CURDIR}; if [ -d src/CVS ]; then \
-	    cvs -R -d /home/dcvs update -PAd -rDragonFly_RELEASE_2_0_Slip src; \
-	else \
-	    cvs -R -d /home/dcvs checkout -PA -rDragonFly_RELEASE_2_0_Slip src; \
-	fi
-
-preview-src-cvsup: cvs-cvsup
-	cd ${.CURDIR}; if [ -d src/CVS ]; then \
-	    cvs -R -d /home/dcvs update -PAd -rDragonFly_Preview src; \
-	else \
-	    cvs -R -d /home/dcvs checkout -PA -rDragonFly_Preview src; \
-	fi
-
-head-src-cvsup: cvs-cvsup
-	cd ${.CURDIR}; if [ -d src/CVS ]; then \
-	    cvs -R -d /home/dcvs update -PAd -rHEAD src; \
-	else \
-	    cvs -R -d /home/dcvs checkout -PA -rHEAD src; \
-	fi
+git-update:
+	@cd ${.CURDIR}/src; \
+	if [ -z "`which git`" ]; then \
+		echo "Please install devel/scmgit from pkgsrc"; \
+		exit 1; \
+	fi; \
+	git pull crater
 

@@ -229,19 +229,20 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 			return (EINVAL);
 		if (addr + size < addr)
 			return (EINVAL);
+	} else if ((flags & MAP_TRYFIXED) == 0) {
+		/*
+		 * XXX for non-fixed mappings where no hint is provided or
+		 * the hint would fall in the potential heap space,
+		 * place it after the end of the largest possible heap.
+		 *
+		 * There should really be a pmap call to determine a reasonable
+		 * location.
+		 */
+		if (addr == 0 ||
+		    (addr >= round_page((vm_offset_t)vms->vm_taddr) &&
+		     addr < round_page((vm_offset_t)vms->vm_daddr + maxdsiz)))
+			addr = round_page((vm_offset_t)vms->vm_daddr + maxdsiz);
 	}
-	/*
-	 * XXX for non-fixed mappings where no hint is provided or
-	 * the hint would fall in the potential heap space,
-	 * place it after the end of the largest possible heap.
-	 *
-	 * There should really be a pmap call to determine a reasonable
-	 * location.
-	 */
-	else if (addr == 0 ||
-	    (addr >= round_page((vm_offset_t)vms->vm_taddr) &&
-	     addr < round_page((vm_offset_t)vms->vm_daddr + maxdsiz)))
-		addr = round_page((vm_offset_t)vms->vm_daddr + maxdsiz);
 
 	if (flags & MAP_ANON) {
 		/*
@@ -1039,12 +1040,18 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 			type = OBJT_DEVICE;
 			handle = (void *)(intptr_t)vp->v_rdev;
 		} else {
-			struct vattr vat;
+			struct vattr vat, tsvat;
 			int error;
 
 			error = VOP_GETATTR(vp, &vat);
 			if (error)
 				return (error);
+
+			/* Update access time */
+			VATTR_NULL(&tsvat);
+			vfs_timestamp(&tsvat.va_atime);
+			VOP_SETATTR(vp, &tsvat, curproc != NULL ? curproc->p_ucred : NULL);
+
 			objsize = vat.va_size;
 			type = OBJT_VNODE;
 			/*

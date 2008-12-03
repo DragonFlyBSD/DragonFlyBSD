@@ -258,42 +258,35 @@
     the network.
 
 
-	    USING CVSUP TO OBTAIN A CVS TREE AND DOING BUILDWORLDS
+	    USING GIT TO OBTAIN A SOURCE TREE AND DOING BUILDWORLDS
 
-    cvsup can be used to obtain the DragonFly cvs repository.  'man cvsup'
-    for more information on its capabilities.  cvsup is a package (not part
-    of the base system), but it IS included on the CD.  The cvsup example
-    files are in /usr/share/examples/cvsup.  You will primarily be interested
-    in the DragonFly CVS repository, DragonFly-cvs-supfile.  Once you have
-    done the initial cvsup of the blocks of data that you want you may wish
-    to create a cron job to keep it all up to date.  However, please do not
-    run an unattended cvsup more than once a day.
+    Instructions on how to obtain and maintain DragonFly source code using
+    git are in the development(7) manual page.
 
-    # get the CVS repository (it is placed in /home/dcvs)
-    cvsup /usr/share/examples/cvsup/DragonFly-cvs-supfile
-    # install the source from the CVS hierarchy
-    cd /usr
-    cvs -R -d /home/dcvs checkout src
+    To upgrade a DragonFly system from sources you run the following
+    sequence:
 
-    # buildworld and installworld examples
-    #
     cd /usr/src
     make buildworld
+    make buildkernel KERNCONF=<KERNELNAME>
+    make installkernel KERNCONF=<KERNELNAME>
     make installworld
 
-    # buildkernel and installkernel examples.  Create your own custom kernel
-    # config in /usr/src/sys/config/<YOURKERNEL> and you can build and
-    # install custom kernels.
-    #
-    # WARNING!  Always keep a fully working backup kernel in / in case
-    # you blow it.  Remember that /kernel.old is overwritten when you 
-    # make installkernel.  It is usually a good idea to maintain an emergency
-    # kernel as /kernel.GENERIC or /kernel.bak.  If all else fails you can
-    # still fall back to booting the CD.
-    #
-    cd /usr/src
-    make buildkernel KERNCONF=GENERIC
-    make installkernel KERNCONF=GENERIC
+    You will also want to run the 'upgrade' target to upgrade your /etc
+    and the rest of your system.  The upgrade target is aware of stale
+    files created by older DragonFly installations and should delete them
+    automatically.
+
+    make upgrade
+
+    See the build(7) manual page for further information.
+
+    Once you've done a full build of the world and kernel you can do
+    incremental upgrades of either by using the 'quickworld' and
+    'quickkernel' targets instead of 'buildworld' and 'buildkernel'.  If
+    you have any problems with the quick targets, try updating your repo
+    first, and then a full buildworld and buildkernel as shown above, before
+    asking for help.
 
 
 		OBTAINING A PKGSRC TREE TO BUILD/INSTALL PACKAGES

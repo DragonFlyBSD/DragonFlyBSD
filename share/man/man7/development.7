@@ -1,546 +1,136 @@
-.\" Copyright (c) 1998 Matthew Dillon.  Terms and conditions are those of
-.\" the BSD Copyright as specified in the file "/usr/src/COPYRIGHT" in
-.\" the DragonFly source tree.
 .\"
-.\" $FreeBSD: src/share/man/man7/development.7,v 1.4.2.2 2003/05/23 07:48:35 brueffer Exp $
+.\" Copyright (c) 2008
+.\"	The DragonFly Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
 .\" $DragonFly: src/share/man/man7/development.7,v 1.12 2008/07/27 22:23:42 thomas Exp $
 .\"
-.Dd December 15, 2007
+.Dd December 1, 2008
 .Dt DEVELOPMENT 7
 .Os
 .Sh NAME
 .Nm development
-.Nd introduction to development with the DragonFly codebase
+.Nd quick starter for development with the DragonFly codebase
 .Sh DESCRIPTION
-This manual page describes how an ordinary sysop,
-.Ux admin, or developer
-can, without any special permission, obtain, maintain, and modify the
 .Dx
-codebase as well as how to maintaining a master build which can
-then be exported to other machines in your network.
-This manual page
-is targeted to system operators, programmers, and developers.
-.Pp
-Please note that what is being described here is based on a complete
-.Dx
-environment, not just the
-.Dx
-kernel.
-The methods described
-here are as applicable to production installations as it is to development
-environments.
-You need a good 12-17GB of disk space on one machine to make this work
-conveniently.
-.Sh SETTING UP THE ENVIRONMENT ON THE MASTER SERVER
-Your master server should always run a stable, production version of the
-.Dx
-operating system.
-This does not prevent you from doing -PREVIEW or -DEVELOPMENT
-builds or development.
-The last thing you want to do is to run an
-unstable environment on your master server which could lead to a situation
-where you lose the environment and/or cannot recover from a mistake.
-.Pp
-Create a partition called
-.Pa /DragonFly .
-8-12GB is recommended.
-This partition will contain nearly all the development environment,
-including the CVS tree, broken-out source, and possibly even object files.
-You are going to export this partition to your other machines via a
-.Sy read-only
-NFS export so do not mix it with other more security-sensitive
-partitions.
-.Pp
-You have to make a choice in regards to
-.Pa /usr/obj .
-You can put
-.Pa /usr/obj
-in
-.Pa /DragonFly
-or you can make
-.Pa /usr/obj
-its own partition.
-I recommend making it a separate partition for several reasons.
-First,
-as a safety measure since this partition is written to a great deal.
-Second, because you typically do not have to back it up.
-Third, because it makes it far easier to mix and match the development
-environments which are described later in this document.
-I recommend a
-.Pa /usr/obj
-partition of at least 5GB.
-.Pp
-On the master server, use cvsup to automatically pull down and maintain
-the
-.Dx
-CVS archive once a day.
-The first pull will take a long time,
-it is several gigabytes, but once you have it the daily syncs will be quite
-small.
-.Bd -literal -offset 4n
-mkdir /DragonFly/DragonFly-CVS
-rm -rf /home/dcvs
-ln -s /DragonFly/DragonFly-CVS /home/dcvs
-.Ed
-.Pp
-The cron job should look something like this (please randomize the time of
-day!).
-Note that you can use the cvsup file example directly from
-.Pa /usr/share/examples
-without modification by supplying appropriate arguments
-to cvsup. Please use a cvsup mirror, see the
-.Dx
-site.
-.Bd -literal -offset 4n
-33 6 * * * /usr/local/bin/cvsup -gr 20 -L 2 -h cvsup.dragonflybsd.org \\
-  /usr/share/examples/cvsup/DragonFly-cvs-supfile
-.Ed
-.Pp
-Run the cvsup manually the first time to pull down the archive.
-It could take
-all day depending on how fast your connection is!
-You will run all cvsup and cvs operations as root and you need to set
-up a
-.Pa ~/.cvsrc
-.Pa ( /root/.cvsrc )
-file, as shown below, for proper cvs operation.
-Using
-.Pa ~/.cvsrc
-to specify cvs defaults is an excellent way
-to "file and forget", but you should never forget that you put them in there.
-.Bd -literal -offset 4n
-# cvs -q
-diff -u
-update -Pd
-checkout -P
-.Ed
-.Pp
-Now use cvs to checkout a -RELEASE source tree and a -DEVELOPMENT source tree,
-as well as docs, to create your initial source environment.
-Keeping the broken-out source in
-.Pa /DragonFly
-allows you to export
-it to other machines via read-only NFS.
-This also means you only need to edit/maintain files in one place and all
-your clients automatically pick up the changes.
-.Bd -literal -offset 4n
-mkdir /DragonFly/DragonFly-RELEASE
-mkdir /DragonFly/DragonFly-DEVELOPMENT
-
-cd /DragonFly/DragonFly-RELEASE
-cvs -d /home/dcvs checkout -r DragonFly_RELEASE_1_10_Slip src
-
-cd /DragonFly/DragonFly-DEVELOPMENT
-cvs -d /home/dcvs checkout src
-cvs -d /home/dcvs checkout doc
-.Ed
-.Pp
-Now create a softlink for
-.Pa /usr/src
-and
-.Pa /usr/src2 .
-On the main server I always point
-.Pa /usr/src
-at -RELEASE and
-.Pa /usr/src2
-at
--DEVELOPMENT.
-On client machines I usually do not have a
-.Pa /usr/src2
-and I make
-.Pa /usr/src
-point at whatever version of
-.Dx
-the client box is intended to
-run.
-.Bd -literal -offset 4n
-cd /usr
-rm -rf src src2
-ln -s /DragonFly/DragonFly-RELEASE/src src	(could be -DEVELOPMENT on a client)
-ln -s /DragonFly/DragonFly-DEVELOPMENT/src src2	(MASTER SERVER ONLY)
-.Ed
-.Pp
-Now you have to make a choice for
-.Pa /usr/obj .
-Well, hopefully you made it already and chose the partition method.
-If you
-chose poorly you probably intend to put it in
-.Pa /DragonFly
-and, if so, this is
-what you want to do:
-.Bd -literal -offset 4n
-(ONLY IF YOU MADE A POOR CHOICE AND PUT /usr/obj in /DragonFly!)
-mkdir /DragonFly/obj
-cd /usr
-rm -rf obj
-ln -s /DragonFly/obj obj
-.Ed
-.Pp
-Alternatively you may chose simply to leave
-.Pa /usr/obj
-in
-.Pa /usr .
-If your
-.Pa /usr
-is large enough this will work, but I do not recommend it for
-safety reasons
-.Pa ( /usr/obj
-is constantly being modified,
-.Pa /usr
-is not).
-.Pp
-Note that exporting
-.Pa /usr/obj
-via read-only NFS to your other boxes will
-allow you to build on your main server and install from your other boxes.
-If you also want to do builds on some or all of the clients you can simply
-have
-.Pa /usr/obj
-be a local directory on those clients.
-You should never export
-.Pa /usr/obj
-read-write, it will lead to all sorts of
-problems and issues down the line and presents a security problem as well.
-It is far easier to do builds on the master server and then only do installs
-on the clients.
-.Sh EXPORTING VIA NFS FROM THE MASTER SERVER
-The master server needs to export
-.Pa /DragonFly
-and
-.Pa /usr/obj
-via NFS so all the
-rest of your machines can get at them.
-I strongly recommend using a read-only export for both security and safety.
-The environment I am describing in this manual page is designed primarily
-around read-only NFS exports.
-Your
-.Pa /etc/exports
-file on the master server should contain the following lines:
-.Bd -literal -offset 4n
-/DragonFly -ro -alldirs -maproot=root: -network YOURLAN -mask YOURLANMASK
-/usr/obj   -ro -alldirs -maproot=root: -network YOURLAN -mask YOURLANMASK
-.Ed
-.Pp
-Of course, NFS server operations must also be configured on that machine.
-This is typically done via your
-.Pa /etc/rc.conf :
-.Bd -literal -offset 4n
-nfs_server_enable="YES"
-.Ed
-.Sh THE CLIENT ENVIRONMENT
-All of your client machines can import the development/build environment
-directory simply by NFS mounting
-.Pa /DragonFly
-and
-.Pa /usr/obj
-from the master
-server.
-A typical
-.Pa /etc/fstab
-entry on your client machines will be something like this:
-.Bd -literal -offset 4n
-masterserver:/DragonFly   /DragonFly      nfs     ro,bg    0       0
-masterserver:/usr/obj     /usr/obj        nfs     ro,bg    0       0
-.Ed
-.Pp
-And, of course, you should configure the client for NFS client operations
-via
-.Pa /etc/rc.conf .
-In particular, this will turn on nfsiod which will improve client-side NFS
-performance:
-.Bd -literal -offset 4n
-nfs_client_enable="YES"
-.Ed
-.Pp
-Each client should create softlink for
-.Pa /usr/src
-that point
-into the NFS-mounted environment.
-If a particular client is running -DEVELOPMENT,
-.Pa /usr/src
-should be a softlink to
-.Pa /DragonFly/DragonFly-DEVELOPMENT/src .
-If it is running -RELEASE,
-.Pa /usr/src
-should be a softlink to
-.Pa /DragonFly/DragonFly-RELEASE/src .
-I do not usually create a
-.Pa /usr/src2
-softlink on
-clients, that is used as a convenient shortcut when working on the source
-code on the master server only and could create massive confusion (of the
-human variety) on a client.
-.Bd -literal -offset 4n
-(ON EACH CLIENT)
-cd /usr
-ln -s /DragonFly/DragonFly-XXX/src src
-.Ed
-.Sh BUILDING KERNELS
-Here is how you build a -RELEASE kernel (on your main development box).
-If you want to create a custom kernel, copy
-.Pa GENERIC
-to
-.Pa YOURKERNEL
-and then
-edit it before configuring and building.
-The kernel configuration file lives in
-.Pa /sys/config/KERNELNAME .
-.Bd -literal -offset 4n
-cd /usr/src
-make buildkernel KERNCONF=KERNELNAME
-.Ed
-.Pp
-Building a -DEVELOPMENT kernel
-.Bd -literal -offset 4n
-cd /usr/src2		(on the master server)
-make buildkernel KERNCONF=KERNELNAME
-.Ed
-.Sh INSTALLING KERNELS
-Installing a -RELEASE kernel (typically done on a client.
-Only do this on your main development server if you want to install a new
-kernel for your main development server):
-.Bd -literal -offset 4n
-cd /usr/src
-make installkernel KERNCONF=KERNELNAME
-.Ed
-.Pp
-Installing a -DEVELOPMENT kernel (typically done only on a client)
-.Bd -literal -offset 4n
-(remember /usr/src is pointing to the client's specific environment)
-cd /usr/src
-make installkernel KERNCONF=KERNELNAME
-.Ed
-.Sh BUILDING THE WORLD
-This environment is designed such that you do all builds on the master server,
-and then install from each client.
-You can do builds on a client only if
-.Pa /usr/obj
-is local to that client.
-Building the world is easy:
-.Bd -literal -offset 4n
-cd /usr/src
-make buildworld
-.Ed
-.Pp
-If you are on the master server you are running in a -RELEASE environment, but
-that does not prevent you from building the -DEVELOPMENT world.
-Just cd into the appropriate source directory and you are set.
-Do not
-accidentally install it on your master server though!
-.Bd -literal -offset 4n
-cd /usr/src2
-make buildworld
-.Ed
-.Sh INSTALLING THE WORLD
-You can build on your main development server and install on clients.
-The main development server must export
-.Pa /DragonFly
-and
-.Pa /usr/obj
-via
-read-only NFS to the clients.
-.Pp
-.Em NOTE!!!
-If
-.Pa /usr/obj
-is a softlink on the master server, it must also be the EXACT
-SAME softlink on each client.
-If
-.Pa /usr/obj
-is a directory in
-.Pa /usr
-or a mount point on the master server,
-then it must be (interchangeably) a directory in
-.Pa /usr
-or a mount point on
-each client.
-This is because the
-absolute paths are expected to be the same when building the world as when
-installing it, and you generally build it on your main development box
-and install it from a client.
-If you do not setup
-.Pa /usr/obj
-properly you will not be able to build on
-machine and install on another.
-.Bd -literal -offset 4n
-(ON THE CLIENT)
-(remember
-.Pa /usr/src
-is pointing to the client's specific environment)
-cd /usr/src
-make installworld
-.Ed
-.Pp
-.Sy WARNING!
-If builds work on the master server but installs do not work from the
-clients, for example you try to install and the client complains that
-the install tried to write into the read-only
-.Pa /usr/obj ,
-then it is likely
-that the
-.Pa /etc/make.conf
-file on the client does not match the one on the
-master server closely enough and the install is trying to install something
-that was not built.
-.Sh DOING DEVELOPMENT ON A CLIENT (NOT JUST INSTALLING)
-Developers often want to run buildkernel's or buildworld's on client
-boxes simply to life-test the box.
-You do this in the same manner that you buildkernel and buildworld on your
-master server.
-All you have to do is make sure that
-.Pa /usr/obj
-is pointing to local storage.
-If you followed my advise and made
-.Pa /usr/obj
-its own partition on the master
-server,
-then it is typically going to be an NFS mount on the client.
-Simply unmounting
-.Pa /usr/obj
-will leave you with a
-.Pa /usr/obj
-that is a
-subdirectory in
-.Pa /usr
-which is typically local to the client.
-You can then do builds to your heart's content!
-.Sh MAINTAINING A LOCAL BRANCH
-I have described how to maintain two versions of the source tree, a stable
-version in
-.Pa /DragonFly/DragonFly-RELEASE
-and a current version
-in
-.Pa /DragonFly/DragonFly-DEVELOPMENT .
-There is absolutely nothing preventing you
-from breaking out other versions of the source tree
-into
-.Pa /DragonFly/XXX .
-In fact, my
-.Pa /DragonFly
-partition also contains
-.Fx ,
-.Ox ,
-.Nx ,
-and various flavors of Linux.
-You may not necessarily be able to build
-.Pf non- Dx
-operating systems on your master server, but being able
-to collect and manage source distributions from a central server is a very
-useful thing to be able to do and you can certainly export to machines
-which can build those other operating systems.
-.Pp
-Many developers choose to maintain a local branch of
-.Dx
-to test patches or build a custom distribution.
-This can be done with CVS or another source code management system
-(SubVersion, Perforce, BitKeeper) with its own repository.
-Since the main
-.Dx
-tree is based on CVS, the former is convenient.
-.Pp
-First, you need to modify your cvsup environment to avoid it modifying
-the local changes you have committed to the repository.
-It is important to remove the "delete" keyword from your supfile and to
-add the CVSROOT subdirectory to your refuse file.
-For more information, see
-.Xr cvsup 1 .
+uses the
+.Xr git 1
+distributed revision control system.
+If it is not already on the system, it needs to be installed via
+.Xr pkgsrc 7
+.Pa ( /usr/pkgsrc/devel/scmgit ) .
 .Pp
 The
-.Dx
-version of CVS examines a custom environmental variable,
-CVS_LOCAL_BRANCH_NUM, which specifies an integer to use when doing a cvs
-tag/rtag.
-Set this number to something high (say 1000) to avoid colliding
-with potential future branches of the main repository.
-For example,
-branching a file with version 1.4 produces 1.4.1000.
-Future commits to this branch will produce revisions 1.4.1000.1,
-1.4.1000.2, etc.
+.Sx EXAMPLES
+section gives initial information to get going with development on
+.Dx .
+Please refer to the
+.Xr git 1
+manual pages and other related documents for further information on git's
+capabilities and how to use them.
 .Pp
-To fork your local branch, do:
+For information on how to build the
+.Dx
+system from source code, see
+.Xr build 7 .
+For information on how to build a LiveCD, see
+.Xr release 7 .
+.Sh EXAMPLES
+A fresh copy of the repository can be cloned anywhere.
+Note that the directory to clone into
+.Pa ( /usr/src
+in the following example) must not exist, so all previous work in this
+directory has to be saved and the directory be removed prior to cloning.
+.Pp
+To clone the repository and check out the master branch (this will take
+some time):
 .Bd -literal -offset 4n
-cvs rtag -r DragonFly_RELEASE_1_10_Slip -b LOCAL_DragonFly_RELEASE_1_10 src
+cd /usr
+git clone -o crater git://crater.dragonflybsd.org/dragonfly.git src
+cd src
 .Ed
 .Pp
-After this, you can check out a copy from your local repository using the
-new tag and begin making changes and committing them.
-For more information on using cvs, see
-.Xr cvs 1 .
-.Pp
-.Sy WARNING!
-The cvsup utility may blow away changes made on a local branch in
-some situations.
-This has been reported to occur when the master CVS repository is
-directly manipulated or an RCS file is changed.
-At this point, cvsup notices that the client and server have entirely
-different RCS files, so it does a full replace instead of trying to
-send just deltas.
-Ideally this situation should never arise, but in the real world it
-happens all the time.
-.Pp
-While this is the only scenario where the problem should crop up,
-there have been some suspicious-sounding reports of
-CVS_LOCAL_BRANCH_NUM lossage that can't be explained by this alone.
-Bottom line is, if you value your local branch then you
-should back it up before every update.
-.Sh UPDATING VIA CVS
-The advantage of using cvsup to maintain an updated copy of the CVS
-repository instead of using it to maintain source trees directly is that you
-can then pick and choose when you bring your source tree (or pieces of your
-source tree) up to date.
-By using a cron job to maintain an updated CVS repository, you can update
-your source tree at any time without any network cost as follows:
+The repository can be held up to date by pulling frequently (to set up a
+.Xr cron 8
+job,
+.Xr git 1 Ap s
+.Fl Fl git-dir
+option can be used):
 .Bd -literal -offset 4n
-(on the main development server)
 cd /usr/src
-cvs -d /home/dcvs update
-cd /usr/src2
-cvs -d /home/dcvs update
+git pull
 .Ed
 .Pp
-It is that simple, and since you are exporting the whole lot to your
-clients, your clients have immediately visibility into the updated
-source.
-This is a good time to also remind you that most of the cvs operations
-you do will be done as root, and that certain options are
-required for CVS to operate properly on the
-.Dx
-repository.
-For example,
-.Fl Pd
-is necessary when running "cvs update".
-These options are typically placed in your
-.Pa ~/.cvsrc
-(as already described)
-so you do not have to respecify them every time you run a CVS command.
-Maintaining the CVS repository also gives you far more flexibility
-in regards to breaking out multiple versions of the source tree.
-It is a good idea to give your
-.Pa /DragonFly
-partition a lot of space (I recommend
-8-12GB) precisely for that reason.
-If you can make it 15GB I would do it.
+It is not recommended to work directly in the master branch.
+To create and checkout a working branch:
+.Bd -literal -offset 4n
+git checkout -b work
+.Ed
 .Pp
-I generally do not cvs update via a cron job.
-This is because I generally want the source to not change out from under me
-when I am developing code.
-Instead I manually update the source every so often...\& when I feel it is
-a good time.
-My recommendation is to only keep the cvs repository synchronized via cron.
+To create and checkout a branch of the
+.Dx 2.0
+release (called
+.Sy rel2_0 ) :
+.Bd -literal -offset 4n
+git checkout -b rel2_0 crater/DragonFly_RELEASE_2_0
+.Ed
+.Pp
+Branches can be deleted just as easy:
+.Bd -literal -offset 4n
+git branch -d work
+.Ed
+.Pp
+After changes have been made to a branch, they can be committed:
+.Bd -literal -offset 4n
+git commit -a
+.Ed
+.Pp
+.Xr git-commit 1 Ap s
+.Fl m
+and
+.Fl F
+options can be used to specify a commit message on the command line or read
+it from a file, respectively.
+.Pp
+Finally, branches can be merged with the (updated) master by using
+.Cm rebase :
+.Bd -literal -offset 4n
+git checkout master
+git pull
+git checkout work
+git rebase master
+.Ed
 .Sh SEE ALSO
-.Xr crontab 1 ,
-.Xr cvs 1 ,
-.Xr cvsup 1 ,
-.Xr crontab 5 ,
-.Xr exports 5 ,
-.Xr kernconf 5 ,
-.Xr make.conf 5 ,
+.Xr git 1 Pq Pa pkgsrc/devel/scmgit ,
 .Xr build 7 ,
 .Xr committer 7 ,
-.Xr firewall 7 ,
-.Xr release 7 ,
-.Xr tuning 7 ,
-.Xr diskless 8
+.Xr release 7
 .Sh HISTORY
 The
 .Nm
@@ -550,3 +140,7 @@ and first appeared
 in
 .Fx 5.0 ,
 December 2002.
+It was rewritten when
+.Dx
+switched to
+.Xr git 1 .

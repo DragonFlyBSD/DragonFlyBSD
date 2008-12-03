@@ -65,7 +65,7 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	netproto/atm/uni netproto/802_11 netproto/mpls
 
 LSUBDIRS3= vfs/isofs/cd9660 net/i4b/include \
-	dev/misc/lpt dev/netif/wi dev/video/bktr dev/video/meteor
+	dev/misc/lpt dev/misc/ppi dev/netif/wi dev/video/bktr dev/video/meteor
 
 # For SHARED=symlinks, bus/cam and netproto/atm are symlinks, so cam/scsi
 # and netproto/atm/* are taken care of

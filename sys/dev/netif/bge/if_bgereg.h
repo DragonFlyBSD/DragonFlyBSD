@@ -2396,6 +2396,7 @@ struct bge_type {
 #define BGE_HWREV_TIGON		0x01
 #define BGE_HWREV_TIGON_II	0x02
 #define BGE_TIMEOUT		5000
+#define BGE_FIRMWARE_TIMEOUT	20000
 #define BGE_TXCONS_UNSET	0xFFFF	/* impossible value */
 
 struct bge_bcom_hack {

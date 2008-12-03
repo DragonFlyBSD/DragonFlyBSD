@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.35 2008/09/13 02:22:40 sephe Exp $	*/
+/*	$DragonFly$	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.34 2008/06/29 20:33:57 swildner Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.35 2008/09/13 02:21:56 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -54,6 +54,7 @@
 #define	PCI_VENDOR_PEAK	0x001c		/* Peak System Technik */
 #define	PCI_VENDOR_MARTINMARIETTA	0x003d		/* Martin-Marietta Corporation */
 #define	PCI_VENDOR_HAUPPAUGE	0x0070		/* Hauppauge Computer Works */
+#define	PCI_VENDOR_TTTECH	0x0357		/* TTTech */
 #define	PCI_VENDOR_DYNALINK	0x0675		/* Dynalink */
 #define	PCI_VENDOR_COMPAQ	0x0e11		/* Compaq */
 #define	PCI_VENDOR_SYMBIOS	0x1000		/* Symbios Logic */
@@ -2695,6 +2696,9 @@
 /* These next two are are really subsystem IDs */
 #define	PCI_PRODUCT_SCHNEIDERKOCH_SK_9D21	0x4421		/* SK-9D21 1000BASE-T */
 #define	PCI_PRODUCT_SCHNEIDERKOCH_SK_9D41	0x4441		/* SK-9D41 1000BASE-X */
+
+/* TTTech */
+#define	PCI_PRODUCT_TTTECH_MC322	0x000a		/* MC322 */
 
 /* Tamarack Microelectronics, Inc. */
 #define	PCI_PRODUCT_TAMARACK_TC9021	0x1021		/* Tamarack TC9021 Gigabit Ethernet */

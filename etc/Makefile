@@ -147,6 +147,11 @@ upgrade_etc:	preupgrade remove-obsolete-files
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 		${BINUPDATE} ${DESTDIR}/etc; \
 	    cap_mkdb ${DESTDIR}/etc/login.conf; \
+	    for f in ${BIN1}; do \
+		[ -e "${DESTDIR}/etc/$${f##*/}" ] || \
+		    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
+			$$f ${DESTDIR}/etc; \
+	    done; \
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
 		${BIN2} ${DESTDIR}/etc;
 	cd ${UPGRADE_SRCDIR}/defaults; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \

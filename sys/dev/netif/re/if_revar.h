@@ -71,9 +71,6 @@
 #define RE_FRAMELEN_9K		RE_FRAMELEN(RE_MTU_9K)
 #define RE_FRAMELEN_MAX		RE_FRAMELEN_9K
 
-#define RE_SWCSUM_LIM_8169	2038
-#define RE_SWCSUM_UNLIMITED	65536	/* XXX should be enough */
-
 #define RE_BUF_ALIGN		8
 #define RE_JBUF_SIZE		roundup2(RE_FRAMELEN_MAX, RE_BUF_ALIGN)
 
@@ -178,7 +175,6 @@ struct re_softc {
 	uint32_t		re_rxlenmask;
 	int			re_txstart;
 	int			re_eewidth;
-	int			re_swcsum_lim;
 	int			re_maxmtu;
 	int			re_rx_desc_cnt;
 	int			re_tx_desc_cnt;

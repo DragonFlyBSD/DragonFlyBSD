@@ -32,57 +32,37 @@
 .\" 
 .\" $DragonFly: src/share/man/man7/committer.7,v 1.11 2008/05/02 02:05:06 swildner Exp $
 .\" 
-.Dd March 16, 2008
+.Dd December 3, 2008
 .Dt COMMITTER 7
 .Os
 .Sh NAME
 .Nm committer
 .Nd rules for DragonFly committers
-.Sh CVS REPOSITORY ON YOUR LOCAL MACHINE
-Use
-.Xr cvsup 1
-to mirror the
+.Sh GIT REPOSITORY ON YOUR LOCAL MACHINE
+See
+.Xr development 7
+how to obtain a fresh copy of the
 .Dx
-CVS repository itself onto your local box
-(if you haven't already).  See the file
-.Pa /usr/share/examples/cvsup/DragonFly-cvs-supfile .
-.Pp
-You basically want to do all CVS operations not related to commits
-via your local repository, and do commit operations directly to
-the master site.
-.Pp
-We strongly recommend that you set up a
-.Xr cron 8
-job to automatically
-cvsup at least once a day, so your local CVS repository is always
-in sync.
-.Sh CHECKING OUT THE SOURCES
+git repository on your machine.
+Note that all developers have to pull/push through
+.Xr ssh 1 .
 Your
-.Pa ~/.cvsrc
-should contain:
+.Pa ~/.gitconfig
+should contain at least:
 .Bd -literal -offset indent
-cvs -q
-diff -u
-update -Pd
-checkout -P
+[user]
+	name = Your Name
+	email = <login>@dragonflybsd.org
 .Ed
 .Pp
-Checking out and updating a checked out source tree:
-.Bd -literal -offset indent
-cd /usr
-cvs -d /home/dcvs checkout src
-cvs -d /home/dcvs update src
-.Ed
-.Pp
-We do
-.Em NOT
-recommend that you use a cron job to
-.Nm cvs Cm update
-your
-checked out source.  Automatic updates can interfere with
-any work-in-progress that you have.
-.Sh SSH DSA KEYS:
-The CVS repository machine is
+Alternatively, see the
+.Va user.name
+and
+.Va user.email
+variables in
+.Xr git-config 1 .
+.Sh SSH DSA KEYS
+The git repository machine is
 .Pa crater.dragonflybsd.org ,
 and the
 .Dx
@@ -94,29 +74,34 @@ key to give you access.
 .Pp
 Your
 .Pa crater
-account is set up for CVS repository only. It can
-only operate as a CVS slave and cannot be logged into.  That is,
+account is set up for git repository only.
+It can only operate as a git slave and cannot be logged into.
+That is,
 .Pa crater.dragonflybsd.org
 is only used as part of
-.Nm cvs Fl d Ar ...
+.Nm git Cm push
 operations.
 .Pp
 Your
 .Pa leaf
-account is a general developer account.  Any
+account is a general developer account.
+Any
 .Dx
 developer can have a
 .Pa leaf
 account, whether a committer or not.
 It can be useful as a developer rendezvous,
-however.  For example, people upload kernel cores to
+however.
+For example, people upload kernel cores to
 .Pa leaf
 so other
-developers can look at them.  You log into your
+developers can look at them.
+You log into your
 .Pa leaf
 account with:
-.Pp
-.Li ssh you@leaf.dragonflybsd.org
+.Bd -literal -offset indent
+ssh you@leaf.dragonflybsd.org
+.Ed
 .Pp
 The rules for account use are in
 .Pa leaf Ap s
@@ -127,109 +112,81 @@ key pair on
 to use to access other machines.
 Because non-committers can have
 .Pa leaf
-accounts, since
+accounts,
 .Pa leaf
-is not considered
-a secure machine.
+is not considered a secure machine.
 .Sh TESTING COMMIT ACCESS
 There is a directory called
 .Pa /usr/src/test/test .
 To test your commit
 access, try making a modification and committing a file in this
 directory.
+Try to push the commit to
+.Pa crater
+afterwards.
 .Bd -literal -offset indent
 cd /usr/src/test/test
 (edit something)
-cvs -d you@crater.dragonflybsd.org:/cvs commit file_you_edited
+git commit file_you_edited
+git push crater
 .Ed
 .Sh COMMITTING REAL WORK
-Make modifications as needed.  For example, edit files.  If adding
-new files make CVS aware of them like this.  Files can just be
-added locally, but directories have to run through
-.Pa crater .
-These
-operations do not actually affect the repository (except directories
-being added are mkdir'd in the repository).  Instead they are
-stored in the checkout source's
-.Pa CVS/
-subdirectory and then
+Make modifications as needed.
+For example, edit files.
+If adding new files make git aware of them like this.
+Files and directories can just be added locally.
+These operations do not actually affect the master repository.
+Instead they are stored in your local copy of the repository and then
 synchronized to the repository when you
-.Nm cvs Cm commit .
+.Nm git Cm push .
 .Bd -literal -offset indent
-cvs add filename
-cvs -d you@crater.dragonflybsd.org:/cvs add directory
+git add filename
+git commit filename
 .Ed
 .Pp
-To commit to the repository, use:
+To actually push your changes to the the repository on
+.Pa crater ,
+use:
 .Bd -literal -offset indent
-cvs -d you@crater.dragonflybsd.org:/cvs commit files_or_directories
+git push crater
 .Ed
 .Pp
-The recommended way for committing to a specific branch (to merge bug fixes,
-for example) is to
-.Nm cvs Cm checkout
-the branch in a different directory, modify there, and commit normally:
-.Bd -literal -offset indent
-cvs checkout -r DragonFly_RELEASE_1_12 src
-.Ed
+See
+.Xr development 7
+how to commit to a specific branch (to merge bug fixes, for example).
 .Pp
-Do not set
-.Ev CVSROOT
-to
-.Pa you@crater.dragonflybsd.org:/cvs .
-The reason is that you want the default
-.Ev CVSROOT
-in your checked out
-sources to point at your local CVS repository, not at
-.Pa crater .
+Do not set the default remote tag to
+.Pa origin .
+It is set to
+.Pa crater
+by default.
 This reduces instances where accidental commits or repository
-operations are made on
-.Pa crater .
-.Pp
-It is best to avoid
-.Nm cvs Cm update Ap ing
-directly from the repository.
-e.g. try to avoid doing
-.Nm cvs Fl d Ar ... Cm update
-directly from
-.Pa crater .
-Instead, use
-.Xr cvsup 1
-to resync your local copy of the repository
-and use
-.Nm cvs Cm update
+operations are made on the master repository.
+.Sh STRUCTURE OF COMMIT MESSAGES
+As many
+.Xr git 1
+tools display the first line of a commit message as a summary,
+structure your commit messages like this, if possible:
+.Bd -literal -offset indent
+One line summary of your change.
+
+Maybe more text here describing your changes in detail (including
+issue tracker id's etc).
+.Ed
+.Sh DISCUSSING COMMITTABLE WORK BEFOREHAND
+Discussion prior to committing usually occurs on the
+.Pa kernel@ ,
+.Pa submit@ ,
 or
-.Nm cvs Fl d Ar /home/dcvs Cm update
-to update from
-your local copy of the repository.
+.Pa bugs@
+mailing lists and depends on the work involved.
+Simple and obvious work such as documentation edits or additions,
+doesn't really need a heads up.
 .Pp
-The idea here is to try to avoid having CVS set its
-.Pa CVS/Root
-file in any given checked out CVS directory to point at
-.Pa crater .
-You really want it to just point at your local copy of the CVS
-repository.
-.Pp
-Never do
-.Nm cvs Cm tag
-or
-.Cm rtag
-operations.  Such operations can be
-very dangerous and only highly experienced CVS admins should
-do them.  That's basically just two or three people (Matt and Joerg
-primarily).
-.Pp
-The best way to resynchronize your local CVS repository after
-making a commit is to cvsup again.
-.Sh DISCUSSING COMMITTABLE WORK BEFORE HAND
-Discussion prior to commit usually occurs on the kernel@, submit@, or bugs@
-mailing lists.  It depends on the work involved.  Simple and obvious work,
-such as documentation edits or additions, don't really need a head's up.
-.Pp
-Simple and obvious bug fixes don't need a head's up, other than to
+Simple and obvious bug fixes don't need a heads up either, other than to
 say that you will (or just have) committed the fix, so you don't
-race other committers trying to do the same thing.  Usually the
-developer most active in a discussion about a bug commits the
+race other committers trying to do the same thing.
+Usually the developer most active in a discussion about a bug commits the
 fix, but it isn't considered a big deal.
 .Pp
 More complex issues are usually discussed on the lists first.
@@ -237,66 +194,79 @@ Non-trivial but straight forward bug fixes usually go through
 a testing period, where you say something like:
 .Do
 Here is a patch
-to driver BLAH that fixes A, B, and C, please test it.  If there
-are no objections I will commit it next Tuesday.
+to driver BLAH that fixes A, B, and C, please test it.
+If there are no objections I will commit it next Tuesday.
 .Dc
 (usually a week,
 or more depending on the complexity of the patch).
 .Pp
-New drivers or utilities are usually discussed.  Committers will
-often commit new work
+New drivers or utilities are usually discussed.
+Committers will often commit new work
 .Em without
 hooking it into the buildworld or
 buildkernel infrastructure in order to be able to continue
 development on it in piecemeal without having to worry about it
 breaking buildworld or buildkernel, and then they hook it in as a
-last step after they've stabilized it.  Examples of this include
+last step after they've stabilized it.
+Examples of this include
 new versions of GCC, updates to vendor packages such as bind,
 sendmail, etc.
-.Sh DEVELOPER LOCKS
-Areas within the CVS repository are never explicitly locked.
+.Sh SOURCE OWNERSHIP
+Areas within the repository do not
+.Dq belong
+to any committer.
 Often situations will arise where one developer commits work and
 another developer finds an issue with it that needs to be corrected.
 .Pp
-All committed work becomes community property.  No developer has a
-.Sq lock
-on any part of the source tree.  However, if a developer is
+All committed work becomes community property.
+No developer has a
+.Dq lock
+on any part of the source tree.
+However, if a developer is
 actively working on a portion of the source tree and you find a bug
-or other issue, courtesy dictates that you post to kernel@ and/or
-email the developer.
+or other issue, courtesy dictates that you post to
+.Pa kernel@
+and/or email the developer.
 .Pp
 This means that, generally, if you do not see a commit to an area
 of the source tree in the last few weeks, it isn't considered active and
 you don't really need to confer with the developer that made the
-commit, though you should still post to the kernel@ mailing list
-and, of course, confer with developers when their expertise is
-needed.
+commit, though you should still post to the
+.Pa kernel@
+mailing list and, of course, confer with developers when their expertise
+is needed.
 .Pp
-One exception to this rule is documentation.  If any developer commits
-new work, the documentation guys have free reign to go in and
-correct
+One exception to this rule is documentation.
+If any developer commits
+new work, the documentation guys have free reign to go in and correct
 .Xr mdoc 7
-errors.  This is really a convenience as most developers
-are not
+errors.
+This is really a convenience as most developers are not
 .Xr mdoc 7
-gurus and it's a waste of time for the doc guys to post
-to kernel@ for all the little corrections they make.
+gurus and it's a waste of time for the doc guys to post to
+.Pa kernel@
+for all the little corrections they make.
 .Sh CONFLICTS
 On the occasion that a major code conflict occurs, for example if two
 people are doing major work in the same area of the source tree and forgot
 to collaborate with each other, the project leader will be responsible for
-resolving the conflict.  Again, the repository is considered community
+resolving the conflict.
+Again, the repository is considered community
 property and it must be acceptable for any developer to be able to work on
 any area of the tree that he or she has an interest in.
 .Sh MAJOR ARCHITECTURAL CHANGES
-This is generally Matt Dillon's area of expertise.  All major architectural
-changes must be discussed on the kernel@ mailing list and he retains
-veto power.
+This is generally
+.An Matt Dillon Ap s
+area of expertise.
+All major architectural changes must be discussed on the
+.Pa kernel@
+mailing list and he retains veto power.
 .Pp
-This isn't usually an issue with any work.  At best if something
+This isn't usually an issue with any work.
+At best if something
 doesn't look right architecturally he'll chip in with adjustments to
-make it fit in.  Nothing ever really gets vetoed.
+make it fit in.
+Nothing ever really gets vetoed.
 .Sh SEE ALSO
-.Xr cvs 1 ,
-.Xr cvsup 1 ,
+.Xr git 1 Pq Pa pkgsrc/devel/scmgit ,
 .Xr development 7

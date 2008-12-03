@@ -47,6 +47,7 @@ $DragonFly: src/sys/bus/pci/pcidevs,v 1.35 2008/09/13 02:21:56 sephe Exp $
 vendor PEAK		0x001c	Peak System Technik
 vendor MARTINMARIETTA	0x003d	Martin-Marietta Corporation
 vendor HAUPPAUGE	0x0070	Hauppauge Computer Works
+vendor TTTECH		0x0357	TTTech
 vendor DYNALINK		0x0675	Dynalink
 vendor COMPAQ		0x0e11	Compaq
 vendor SYMBIOS		0x1000	Symbios Logic
@@ -2688,6 +2689,9 @@ product SCHNEIDERKOCH	SK9Exx		0x9e00	SK-9Exx
 /* These next two are are really subsystem IDs */
 product SCHNEIDERKOCH	SK_9D21		0x4421	SK-9D21 1000BASE-T
 product SCHNEIDERKOCH	SK_9D41		0x4441	SK-9D41 1000BASE-X
+
+/* TTTech */
+product TTTECH		MC322		0x000a	MC322
 
 /* Tamarack Microelectronics, Inc. */
 product TAMARACK	TC9021		0x1021	Tamarack TC9021 Gigabit Ethernet

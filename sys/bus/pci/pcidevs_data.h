@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.35 2008/09/13 02:22:40 sephe Exp $	*/
+/*	$DragonFly$	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.34 2008/06/29 20:33:57 swildner Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.35 2008/09/13 02:21:56 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -10091,6 +10091,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "SK-9D41 1000BASE-X",
 	},
 	{
+	    PCI_VENDOR_TTTECH, PCI_PRODUCT_TTTECH_MC322,
+	    0,
+	    "TTTech",
+	    "MC322",
+	},
+	{
 	    PCI_VENDOR_TAMARACK, PCI_PRODUCT_TAMARACK_TC9021,
 	    0,
 	    "Tamarack Microelectronics, Inc.",
@@ -11894,6 +11900,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    PCI_VENDOR_HAUPPAUGE, 0,
 	    PCI_KNOWNDEV_NOPROD,
 	    "Hauppauge Computer Works",
+	    NULL,
+	},
+	{
+	    PCI_VENDOR_TTTECH, 0,
+	    PCI_KNOWNDEV_NOPROD,
+	    "TTTech",
 	    NULL,
 	},
 	{

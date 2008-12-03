@@ -25,7 +25,7 @@
 .\" $FreeBSD: src/share/man/man7/build.7,v 1.19.2.1 2002/03/18 08:33:02 murray Exp $
 .\" $DragonFly: src/share/man/man7/build.7,v 1.18 2008/11/14 15:04:42 swildner Exp $
 .\"
-.Dd May 12, 2008
+.Dd December 1, 2008
 .Dt BUILD 7
 .Os
 .Sh NAME
@@ -66,9 +66,6 @@ The following list provides the names and actions for other targets:
 Removes any files created during the build process.
 .It Cm install
 Installs the results of the build for this directory.
-.It Cm update
-Gets updated sources as configured in
-.Pa /etc/make.conf .
 .El
 .Pp
 The other
@@ -209,6 +206,7 @@ will tell you to do so.
 .Xr make 1 ,
 .Xr wmake 1 ,
 .Xr make.conf 5 ,
+.Xr development 7 ,
 .Xr pkgsrc 7 ,
 .Xr release 7 ,
 .Xr config 8 ,

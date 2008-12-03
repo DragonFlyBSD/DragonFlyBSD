@@ -11,7 +11,6 @@
 # realquickworld - skip the glue and depend stages and just build the meat
 # crossworld  - only build the glue (particularly the cross-build environment)
 # installworld- install everything built by "buildworld"
-# update      - convenient way to update your source tree (eg: sup/cvs)
 # most        - build user commands, no libraries or include files
 # installmost - install user commands, no libraries or include files
 #
@@ -103,12 +102,6 @@ SUBDIR=		${SUBDIR_OVERRIDE}
 CLEANDIR=	clean cleandepend
 .else
 CLEANDIR=	cleandir
-.endif
-
-SUP?=		/usr/local/bin/cvsup
-SUPFLAGS?=	-g -L 2 -P -
-.if defined(SUPHOST)
-SUPFLAGS+=	-h ${SUPHOST}
 .endif
 
 .if defined(NO_CLEAN)
@@ -439,7 +432,7 @@ installcheck:
 #
 distributeworld installworld: installcheck
 	cd ${.CURDIR}; ${IMAKE} re${.TARGET:S/world$//}
-	install -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc ${DESTDIR}/etc/upgrade/
+	${INSTALL} -o root -g wheel -m 644 ${.CURDIR}/Makefile_upgrade.inc ${DESTDIR}/etc/upgrade/
 
 #
 # reinstall
@@ -695,38 +688,6 @@ installkernel reinstallkernel:
 .else
 	cd ${KRNLOBJDIR}/${INSTALLKERNEL}; \
 	    ${MAKE} KERNEL=${INSTKERNNAME} ${.TARGET:S/kernel$//}
-.endif
-
-#
-# update
-#
-# Update the source tree, by running sup and/or running cvs to update to the
-# latest copy.
-#
-update:
-.if defined(SUP_UPDATE)
-	@echo "--------------------------------------------------------------"
-	@echo ">>> Running ${SUP}"
-	@echo "--------------------------------------------------------------"
-.if defined(SUPFILE)
-	@${SUP} ${SUPFLAGS} ${SUPFILE}
-.endif
-.if defined(SUPFILE1)
-	@${SUP} ${SUPFLAGS} ${SUPFILE1}
-.endif
-.if defined(SUPFILE2)
-	@${SUP} ${SUPFLAGS} ${SUPFILE2}
-.endif
-.if defined(DOCSUPFILE) && !defined(NO_DOCUPDATE)
-	@${SUP} ${SUPFLAGS} ${DOCSUPFILE}
-.endif
-.endif
-.if defined(CVS_UPDATE)
-	@echo "--------------------------------------------------------------"
-	@echo ">>> Updating ${.CURDIR} from cvs repository `cat ${.CURDIR}/CVS/Root`"
-	@echo "--------------------------------------------------------------"
-	@sleep 2
-	cd ${.CURDIR}; cvs -q update -P -d
 .endif
 
 #
