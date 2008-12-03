@@ -566,6 +566,16 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	ip->ino_data.ctime = trans->time;
 
 	/*
+	 * If we are running version 2 or greater we use dirhash algorithm #1
+	 * which is semi-sorted.  Algorithm #0 was just a pure crc.
+	 */
+	if (trans->hmp->version >= HAMMER_VOL_VERSION_TWO) {
+		if (ip->ino_leaf.base.obj_type == HAMMER_OBJTYPE_DIRECTORY) {
+			ip->ino_data.cap_flags |= HAMMER_INODE_CAP_DIRHASH_ALG1;
+		}
+	}
+
+	/*
 	 * Setup the ".." pointer.  This only needs to be done for directories
 	 * but we do it for all objects as a recovery aid.
 	 */

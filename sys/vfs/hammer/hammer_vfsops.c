@@ -366,7 +366,6 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		hmp = kmalloc(sizeof(*hmp), M_HAMMER, M_WAITOK | M_ZERO);
 		mp->mnt_data = (qaddr_t)hmp;
 		hmp->mp = mp;
-		hmp->namekey_iterator = mycpu->gd_time_seconds;
 		/*TAILQ_INIT(&hmp->recycle_list);*/
 
 		hmp->root_btree_beg.localization = 0x00000000U;

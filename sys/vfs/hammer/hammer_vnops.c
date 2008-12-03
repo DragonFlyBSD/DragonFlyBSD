@@ -790,6 +790,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	int ispfs;
 	int64_t obj_id;
 	u_int32_t localization;
+	u_int32_t max_iterations;
 
 	/*
 	 * Misc initialization, plus handle as-of name extensions.  Look for
@@ -872,7 +873,8 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	 *
 	 * The key range is inclusive of both key_beg and key_end.
 	 */
-	namekey = hammer_directory_namekey(ncp->nc_name, nlen);
+	namekey = hammer_directory_namekey(dip, ncp->nc_name, nlen,
+					   &max_iterations);
 
 	error = hammer_init_cursor(&trans, &cursor, &dip->cache[1], dip);
 	cursor.key_beg.localization = dip->obj_localization +
@@ -885,7 +887,7 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
         cursor.key_beg.obj_type = 0;
 
 	cursor.key_end = cursor.key_beg;
-	cursor.key_end.key |= 0xFFFFFFFFULL;
+	cursor.key_end.key += max_iterations;
 	cursor.asof = asof;
 	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE | HAMMER_CURSOR_ASOF;
 
@@ -1534,6 +1536,7 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 	struct hammer_inode *ip;
 	struct hammer_cursor cursor;
 	int64_t namekey;
+	u_int32_t max_iterations;
 	int nlen, error;
 
 	if (ap->a_fdvp->v_mount != ap->a_tdvp->v_mount)	
@@ -1595,7 +1598,8 @@ hammer_vop_nrename(struct vop_nrename_args *ap)
 	 *
 	 * The key range is inclusive of both key_beg and key_end.
 	 */
-	namekey = hammer_directory_namekey(fncp->nc_name, fncp->nc_nlen);
+	namekey = hammer_directory_namekey(fdip, fncp->nc_name, fncp->nc_nlen,
+					   &max_iterations);
 retry:
 	hammer_init_cursor(&trans, &cursor, &fdip->cache[1], fdip);
 	cursor.key_beg.localization = fdip->obj_localization +
@@ -1608,7 +1612,7 @@ retry:
         cursor.key_beg.obj_type = 0;
 
 	cursor.key_end = cursor.key_beg;
-	cursor.key_end.key |= 0xFFFFFFFFULL;
+	cursor.key_end.key += max_iterations;
 	cursor.asof = fdip->obj_asof;
 	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE | HAMMER_CURSOR_ASOF;
 
@@ -2683,6 +2687,7 @@ hammer_dounlink(hammer_transaction_t trans, struct nchandle *nch,
 	hammer_inode_t ip;
 	struct hammer_cursor cursor;
 	int64_t namekey;
+	u_int32_t max_iterations;
 	int nlen, error;
 
 	/*
@@ -2698,7 +2703,8 @@ hammer_dounlink(hammer_transaction_t trans, struct nchandle *nch,
 	if (dip->flags & HAMMER_INODE_RO)
 		return (EROFS);
 
-	namekey = hammer_directory_namekey(ncp->nc_name, ncp->nc_nlen);
+	namekey = hammer_directory_namekey(dip, ncp->nc_name, ncp->nc_nlen,
+					   &max_iterations);
 retry:
 	hammer_init_cursor(trans, &cursor, &dip->cache[1], dip);
 	cursor.key_beg.localization = dip->obj_localization +
@@ -2711,7 +2717,7 @@ retry:
         cursor.key_beg.obj_type = 0;
 
 	cursor.key_end = cursor.key_beg;
-	cursor.key_end.key |= 0xFFFFFFFFULL;
+	cursor.key_end.key += max_iterations;
 	cursor.asof = dip->obj_asof;
 	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE | HAMMER_CURSOR_ASOF;
 

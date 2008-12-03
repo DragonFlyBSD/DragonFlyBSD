@@ -627,7 +627,6 @@ struct hammer_reserve {
 	int		flags;
 	int		refs;
 	int		zone;
-	int		bytes_freed;
 	int		append_off;
 	hammer_off_t	zone_offset;
 };
@@ -635,6 +634,7 @@ struct hammer_reserve {
 typedef struct hammer_reserve *hammer_reserve_t;
 
 #define HAMMER_RESF_ONDELAY	0x0001
+#define HAMMER_RESF_LAYER2FREE	0x0002
 
 #include "hammer_cursor.h"
 
@@ -731,7 +731,6 @@ struct hammer_mount {
 	hammer_tid_t	flush_tid2;		/* flusher tid sequencing */
 	int64_t copy_stat_freebigblocks;	/* number of free bigblocks */
 
-	u_int32_t namekey_iterator;
 	struct netexport export;
 	struct hammer_lock sync_lock;
 	struct hammer_lock free_lock;
@@ -915,7 +914,8 @@ void hammer_clear_undo_history(hammer_mount_t hmp);
 enum vtype hammer_get_vnode_type(u_int8_t obj_type);
 int hammer_get_dtype(u_int8_t obj_type);
 u_int8_t hammer_get_obj_type(enum vtype vtype);
-int64_t hammer_directory_namekey(const void *name, int len);
+int64_t hammer_directory_namekey(hammer_inode_t dip, const void *name, int len,
+			u_int32_t *max_iterationsp);
 int	hammer_nohistory(hammer_inode_t ip);
 
 int	hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
@@ -1030,7 +1030,7 @@ hammer_off_t hammer_blockmap_alloc(hammer_transaction_t trans, int zone,
 			int bytes, int *errorp);
 hammer_reserve_t hammer_blockmap_reserve(hammer_mount_t hmp, int zone,
 			int bytes, hammer_off_t *zone_offp, int *errorp);
-void hammer_blockmap_reserve_undo(hammer_reserve_t resv,
+void hammer_blockmap_reserve_undo(hammer_mount_t hmp, hammer_reserve_t resv,
 			hammer_off_t zone_offset, int bytes);
 void hammer_blockmap_reserve_complete(hammer_mount_t hmp,
 			hammer_reserve_t resv);
@@ -1038,6 +1038,7 @@ void hammer_reserve_clrdelay(hammer_mount_t hmp, hammer_reserve_t resv);
 void hammer_blockmap_free(hammer_transaction_t trans,
 			hammer_off_t bmap_off, int bytes);
 int hammer_blockmap_finalize(hammer_transaction_t trans,
+			hammer_reserve_t resv,
 			hammer_off_t bmap_off, int bytes);
 int hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t bmap_off,
 			int *curp, int *errorp);

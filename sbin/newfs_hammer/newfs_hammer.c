@@ -420,7 +420,7 @@ format_volume(struct volume_info *vol, int nvols, const char *label,
 	snprintf(ondisk->vol_name, sizeof(ondisk->vol_name), "%s", label);
 	ondisk->vol_no = vol->vol_no;
 	ondisk->vol_count = nvols;
-	ondisk->vol_version = 1;
+	ondisk->vol_version = HAMMER_VOL_VERSION_DEFAULT;
 
 	ondisk->vol_bot_beg = vol->vol_alloc;
 	vol->vol_alloc += BootAreaSize;

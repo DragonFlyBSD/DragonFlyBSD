@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2008 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Matthew Dillon <dillon@backplane.com>
  * 
@@ -30,7 +30,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  * $DragonFly: src/sbin/hammer/cmd_cleanup.c,v 1.6 2008/10/07 22:28:41 thomas Exp $
  */
 /*
@@ -45,7 +45,7 @@
  * no config file is present one will be created with the following
  * defaults:
  *
- *	snapshots 1d 60d	(0d 60d for /tmp, /var/tmp, /usr/obj)
+ *	snapshots 1d 60d	(0d 0d for /tmp, /var/tmp, /usr/obj)
  *	prune     1d 5m
  *	reblock   1d 5m
  *	recopy    30d 5m
@@ -70,7 +70,7 @@ static void save_period(const char *snapshots_path, const char *cmd,
 			time_t savet);
 static int check_softlinks(const char *snapshots_path);
 static void cleanup_softlinks(const char *path, const char *snapshots_path,
-			int arg2);
+			int arg2, char *arg3);
 static int check_expired(const char *fpath, int arg2);
 
 static int cleanup_snapshots(const char *path, const char *snapshots_path,
@@ -142,6 +142,7 @@ do_cleanup(const char *path)
 	char *ptr;
 	int arg1;
 	int arg2;
+	char *arg3;
 	time_t savet;
 	char buf[256];
 	FILE *fp;
@@ -230,7 +231,7 @@ do_cleanup(const char *path)
 		if (strcmp(path, "/tmp") == 0 ||
 		    strcmp(path, "/var/tmp") == 0 ||
 		    strcmp(path, "/usr/obj") == 0) {
-			fprintf(fp, "snapshots 0d 60d\n");
+			fprintf(fp, "snapshots 0d 0d\n");
 		} else {
 			fprintf(fp, "snapshots 1d 60d\n");
 		}
@@ -256,43 +257,56 @@ do_cleanup(const char *path)
 		cmd = strtok(buf, WS);
 		arg1 = 0;
 		arg2 = 0;
+		arg3 = NULL;
 		if ((ptr = strtok(NULL, WS)) != NULL) {
 			arg1 = strtosecs(ptr);
-			if ((ptr = strtok(NULL, WS)) != NULL)
+			if ((ptr = strtok(NULL, WS)) != NULL) {
 				arg2 = strtosecs(ptr);
+				arg3 = strtok(NULL, WS);
+			}
 		}
 
 		printf("%20s - ", cmd);
 		fflush(stdout);
 
-		if (arg1 == 0) {
-			printf("disabled\n");
-			if (strcmp(cmd, "snapshots") == 0) {
-				if (check_softlinks(snapshots_path))
-					prune_warning = 1;
-				else
-					snapshots_disabled = 1;
-			}
-			continue;
-		}
-
 		r = 1;
 		if (strcmp(cmd, "snapshots") == 0) {
+			if (arg1 == 0) {
+				if (arg2 && check_softlinks(snapshots_path)) {
+					printf("only removing old snapshots\n");
+					prune_warning = 1;
+					cleanup_softlinks(path, snapshots_path,
+							  arg2, arg3);
+				} else {
+					printf("disabled\n");
+					snapshots_disabled = 1;
+				}
+			} else
 			if (check_period(snapshots_path, cmd, arg1, &savet)) {
 				printf("run\n");
-				cleanup_softlinks(path, snapshots_path, arg2);
+				cleanup_softlinks(path, snapshots_path,
+						  arg2, arg3);
 				r = cleanup_snapshots(path, snapshots_path,
 						  arg1, arg2);
 			} else {
 				printf("skip\n");
 			}
+		} else if (arg1 == 0) {
+			/*
+			 * The commands following this check can't handle
+			 * a period of 0, so call the feature disabled and
+			 * ignore the directive.
+			 */
+			printf("disabled\n");
 		} else if (strcmp(cmd, "prune") == 0) {
 			if (check_period(snapshots_path, cmd, arg1, &savet)) {
-				if (prune_warning)
-					printf("run - WARNING snapshot softlinks present "
-						"but snapshots disabled\n");
-				else
+				if (prune_warning) {
+					printf("run - WARNING snapshot "
+					       "softlinks present "
+					       "but snapshots disabled\n");
+				} else {
 					printf("run\n");
+				}
 				r = cleanup_prune(path, snapshots_path,
 					      arg1, arg2, snapshots_disabled);
 			} else {
@@ -488,12 +502,17 @@ check_softlinks(const char *snapshots_path)
  * Clean up expired softlinks in the snapshots dir
  */
 static void
-cleanup_softlinks(const char *path __unused, const char *snapshots_path, int arg2)
+cleanup_softlinks(const char *path __unused, const char *snapshots_path,
+		  int arg2, char *arg3)
 {
 	struct dirent *den;
 	struct stat st;
 	DIR *dir;
 	char *fpath;
+	int anylink = 0;
+
+	if (strstr(arg3, "any") != NULL)
+		anylink = 1;
 
 	if ((dir = opendir(snapshots_path)) != NULL) {
 		while ((den = readdir(dir)) != NULL) {
@@ -501,7 +520,8 @@ cleanup_softlinks(const char *path __unused, const char *snapshots_path, int arg
 				continue;
 			asprintf(&fpath, "%s/%s", snapshots_path, den->d_name);
 			if (lstat(fpath, &st) == 0 && S_ISLNK(st.st_mode) &&
-			    strncmp(den->d_name, "snap-", 5) == 0) {
+			    (anylink || strncmp(den->d_name, "snap-", 5) == 0)
+			) {
 				if (check_expired(den->d_name, arg2)) {
 					if (VerboseOpt) {
 						printf("    expire %s\n",
@@ -528,14 +548,20 @@ check_expired(const char *fpath, int arg2)
 	time_t t;
 	int year;
 	int month;
-	int day;
-	int hour;
-	int minute;
+	int day = 0;
+	int hour = 0;
+	int minute = 0;
 	int r;
 
-	r = sscanf(fpath, "snap-%4d%2d%2d-%2d%2d",
+	while (*fpath && *fpath != '-' && *fpath != '.')
+		++fpath;
+	if (*fpath)
+		++fpath;
+
+	r = sscanf(fpath, "%4d%2d%2d-%2d%2d",
 		   &year, &month, &day, &hour, &minute);
-	if (r == 5) {
+
+	if (r >= 3) {
 		bzero(&tm, sizeof(tm));
 		tm.tm_isdst = -1;
 		tm.tm_min = minute;
@@ -543,7 +569,10 @@ check_expired(const char *fpath, int arg2)
 		tm.tm_mday = day;
 		tm.tm_mon = month - 1;
 		tm.tm_year = year - 1900;
-		t = time(NULL) - mktime(&tm);
+		t = mktime(&tm);
+		if (t == (time_t)-1)
+			return(0);
+		t = time(NULL) - t;
 		if ((int)t > arg2)
 			return(1);
 	}

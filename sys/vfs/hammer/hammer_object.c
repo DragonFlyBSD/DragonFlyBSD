@@ -425,12 +425,14 @@ hammer_rel_mem_record(struct hammer_record *record)
 			 * releasing it.
 			 */
 			if ((resv = record->resv) != NULL) {
+#if 0
 				if ((record->flags & HAMMER_RECF_COMMITTED) == 0) {
 					hammer_blockmap_reserve_undo(
-						resv,
+						hmp, resv,
 						record->leaf.data_offset,
 						record->leaf.data_len);
 				}
+#endif
 				hammer_blockmap_reserve_complete(hmp, resv);
 				record->resv = NULL;
 			}
@@ -447,11 +449,18 @@ hammer_rel_mem_record(struct hammer_record *record)
  *
  * Return non-zero if the record is visible, zero if it isn't or if it is
  * deleted.
+ *
+ * If HAMMER_CURSOR_DELETE_VISIBILITY is set we allow deleted memory
+ * records to be returned.  This is so pending deletions are detected
+ * when using an iterator to locate an unused hash key, or when we need
+ * to locate historical records on-disk to destroy.
  */
 static __inline
 int
 hammer_ip_iterate_mem_good(hammer_cursor_t cursor, hammer_record_t record)
 {
+	if (cursor->flags & HAMMER_CURSOR_DELETE_VISIBILITY)
+		return(1);
 	if (cursor->flags & HAMMER_CURSOR_BACKEND) {
 		if (record->flags & HAMMER_RECF_DELETED_BE)
 			return(0);
@@ -607,19 +616,16 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 	struct hammer_cursor cursor;
 	hammer_record_t record;
 	int error;
-	int count;
-	u_int32_t iterator;
+	u_int32_t max_iterations;
 
 	record = hammer_alloc_mem_record(dip, HAMMER_ENTRY_SIZE(bytes));
-	if (++trans->hmp->namekey_iterator == 0)
-		++trans->hmp->namekey_iterator;
 
 	record->type = HAMMER_MEM_RECORD_ADD;
 	record->leaf.base.localization = dip->obj_localization +
 					 HAMMER_LOCALIZE_MISC;
 	record->leaf.base.obj_id = dip->obj_id;
-	record->leaf.base.key = hammer_directory_namekey(name, bytes);
-	record->leaf.base.key += trans->hmp->namekey_iterator;
+	record->leaf.base.key = hammer_directory_namekey(dip, name, bytes,
+							 &max_iterations);
 	record->leaf.base.rec_type = HAMMER_RECTYPE_DIRENTRY;
 	record->leaf.base.obj_type = ip->ino_leaf.base.obj_type;
 	record->data->entry.obj_id = ip->obj_id;
@@ -631,11 +637,16 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 
 	/*
 	 * Find an unused namekey.  Both the in-memory record tree and
-	 * the B-Tree are checked.  Exact matches also match create_tid
-	 * so use an ASOF search to (mostly) ignore it.
+	 * the B-Tree are checked.  We do not want historically deleted
+	 * names to create a collision as our iteration space may be limited,
+	 * and since create_tid wouldn't match anyway an ASOF search
+	 * must be used to locate collisions.
 	 *
 	 * delete-visibility is set so pending deletions do not give us
 	 * a false-negative on our ability to use an iterator.
+	 *
+	 * The iterator must not rollover the key.  Directory keys only
+	 * use the positive key space.
 	 */
 	hammer_init_cursor(trans, &cursor, &dip->cache[1], dip);
 	cursor.key_beg = record->leaf.base;
@@ -643,15 +654,11 @@ hammer_ip_add_directory(struct hammer_transaction *trans,
 	cursor.flags |= HAMMER_CURSOR_DELETE_VISIBILITY;
 	cursor.asof = ip->obj_asof;
 
-	count = 0;
 	while (hammer_ip_lookup(&cursor) == 0) {
-		iterator = (u_int32_t)record->leaf.base.key + 1;
-		if (iterator == 0)
-			iterator = 1;
-		record->leaf.base.key &= ~0xFFFFFFFFLL;
-		record->leaf.base.key |= iterator;
+		++record->leaf.base.key;
+		KKASSERT(record->leaf.base.key > 0);
 		cursor.key_beg.key = record->leaf.base.key;
-		if (++count == 1000000000) {
+		if (--max_iterations == 0) {
 			hammer_rel_mem_record(record);
 			error = ENOSPC;
 			goto failed;
@@ -1155,6 +1162,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 		 */
 		KKASSERT(record->leaf.data_offset != 0);
 		error = hammer_blockmap_finalize(trans,
+						 record->resv,
 						 record->leaf.data_offset,
 						 record->leaf.data_len);
 	} else if (record->data && record->leaf.data_len) {

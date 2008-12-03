@@ -170,13 +170,22 @@ flag.
 .\" .It Ar blockmap
 .\" Dump the B-tree, record, large-data, and small-data blockmaps, showing
 .\" physical block assignments and free space percentages.
-.\" ==== namekey ====
-.It Ar namekey Ar filename
+.\" ==== namekey1 ====
+.It Ar namekey1 Ar filename
 Generate a
 .Nm HAMMER
-64 bit directory hash for the specified file name.
+64 bit directory hash for the specified file name, using
+the original directory hash algorithm in version 1 of the filesystem.
 The low 32 bits are used as an iterator for hash collisions and will be
 output as 0.
+.\" ==== namekey2 ====
+.It Ar namekey2 Ar filename
+Generate a
+.Nm HAMMER
+64 bit directory hash for the specified file name, using
+the new directory hash algorithm in version 2 of the filesystem.
+The low 32 bits are still used as an iterator but will start out containing
+part of the hash key.
 .\" ==== namekey32 ====
 .It Ar namekey32 Ar filename
 Generate the top 32 bits of a
@@ -208,7 +217,7 @@ file for each
 creating them if necessary.
 The format of the configuration file is:
 .Bd -literal -offset indent
-snapshots  <period> <retensiontime>
+snapshots  <period> <retention-time> [any]
 prune      <period> <max-runtime>
 reblock    <period> <1/3 max-runtime>
 recopy     <period> <1/3 max-runtime>
@@ -227,9 +236,21 @@ Time is given with a suffix of
 or
 .Cm s
 meaning day, hour, minute and second.
-A snapshots period of 0 disables snapshot generation and prunes using
-.Ar prune-everything ,
-if no snapshots exists.
+.Pp
+If the snapshots directive has a period of 0 and a retention time of 0
+then snapshot generation is disabled, removal of old snapshots are
+disabled, and prunes will use
+.Ar prune-everything .
+If the snapshots directive has a period of 0 but a non-zero retention time
+then this command will not create any new snapshots but will remove old
+snapshots it finds based on the retention time.
+.Pp
+By default only snapshots in the form:  snap-yyyymmdd[-hhmm] are processed.
+If the
+.Ar any
+directive is specified as a third argument on the snapshots config line
+then any softlink of the form *[- or .]yyyymmdd[-hhmm] will be processed.
+.Pp
 A prune max-runtime of 0 means unlimited.
 .Pp
 If period hasn't passed since the previous

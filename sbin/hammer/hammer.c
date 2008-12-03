@@ -139,7 +139,46 @@ main(int ac, char **av)
 		hammer_cmd_synctid(av + 1, ac - 1);
 		exit(0);
 	}
-	if (strcmp(av[0], "namekey") == 0) {
+	if (strcmp(av[0], "namekey2") == 0) {
+		int64_t key;
+		int32_t crcx;
+		int len;
+		const char *aname = av[1];
+
+		if (aname == NULL)
+			usage(1);
+		len = strlen(aname);
+		key = (u_int32_t)crc32(aname, len) & 0xFFFFFFFEU;
+
+		switch(len) {
+		default:
+			crcx = crc32(aname + 3, len - 5);
+			crcx = crcx ^ (crcx >> 6) ^ (crcx >> 12);
+			key |= (int64_t)(crcx & 0x3F) << 42;
+			/* fall through */
+		case 5:
+		case 4:
+			/* fall through */
+		case 3:
+			key |= ((int64_t)(aname[2] & 0x1F) << 48);
+			/* fall through */
+		case 2:
+			key |= ((int64_t)(aname[1] & 0x1F) << 53) |
+			       ((int64_t)(aname[len-2] & 0x1F) << 37);
+			/* fall through */
+		case 1:
+			key |= ((int64_t)(aname[0] & 0x1F) << 58) |
+			       ((int64_t)(aname[len-1] & 0x1F) << 32);
+			/* fall through */
+		case 0:
+			break;
+		}
+		if (key == 0)
+			key |= 0x100000000LL;
+		printf("0x%016llx\n", key);
+		exit(0);
+	}
+	if (strcmp(av[0], "namekey1") == 0) {
 		int64_t key;
 
 		if (av[1] == NULL)
@@ -332,7 +371,8 @@ usage(int exit_code)
 #if 0
 		"hammer -f blkdev[:blkdev]* blockmap\n"
 #endif
-		"hammer namekey[32] <path>\n"
+		"hammer namekey1 <path>\n"
+		"hammer namekey2 <path>\n"
 		"hammer cleanup [<filesystem> ...]\n"
 		"hammer snapshot [<filesystem>] <snapshot-dir>\n"
 		"hammer prune <softlink-dir>\n"
@@ -354,6 +394,8 @@ usage(int exit_code)
 				  " [[user@]host:]<filesystem>\n"
 		"hammer mirror-stream [[user@]host:]<filesystem>"
 				    " [[user@]host:]<filesystem>\n"
+		"hammer version <filesystem>\n"
+		"hammer version-upgrade <filesystem> version# [force]\n"
 	);
 	exit(exit_code);
 }

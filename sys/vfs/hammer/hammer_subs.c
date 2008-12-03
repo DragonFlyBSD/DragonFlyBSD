@@ -413,10 +413,35 @@ hammer_nohistory(hammer_inode_t ip)
 }
 
 /*
- * Return a namekey hash.   The 64 bit namekey hash consists of a 32 bit
- * crc in the MSB and 0 in the LSB.  The caller will use the low bits to
- * generate a unique key and will scan all entries with the same upper
- * 32 bits when issuing a lookup.
+ * ALGORITHM VERSION 1:
+ *	Return a namekey hash.   The 64 bit namekey hash consists of a 32 bit
+ *	crc in the MSB and 0 in the LSB.  The caller will use the low 32 bits
+ *	to generate a unique key and will scan all entries with the same upper
+ *	32 bits when issuing a lookup.
+ *
+ *	0hhhhhhhhhhhhhhh hhhhhhhhhhhhhhhh 0000000000000000 0000000000000000
+ *
+ * ALGORITHM VERSION 2:
+ *
+ *	The 64 bit hash key is generated from the following components.  The
+ *	first three characters are encoded as 5-bit quantities, the middle
+ *	N characters are hashed into a 6 bit quantity, and the last two
+ *	characters are encoded as 5-bit quantities.  A 32 bit hash of the
+ *	entire filename is encoded in the low 32 bits.  Bit 0 is set to
+ *	0 to guarantee us a 2^24 bit iteration space.
+ *
+ *	0aaaaabbbbbccccc mmmmmmyyyyyzzzzz hhhhhhhhhhhhhhhh hhhhhhhhhhhhhhh0
+ *
+ *	This gives us a domain sort for the first three characters, the last
+ *	two characters, and breaks the middle space into 64 random domains.
+ *	The domain sort folds upper case, lower case, digits, and punctuation
+ *	spaces together, the idea being the filenames tend to not be a mix
+ *	of those domains.
+ *
+ *	The 64 random domains act as a sub-sort for the middle characters
+ *	but may cause a random seek.  If the filesystem is being accessed
+ *	in sorted order we should tend to get very good linearity for most
+ *	filenames and devolve into more random seeks otherwise.
  *
  * We strip bit 63 in order to provide a positive key, this way a seek
  * offset of 0 will represent the base of the directory.
@@ -425,13 +450,62 @@ hammer_nohistory(hammer_inode_t ip)
  * artificial directory entries such as "." and "..".
  */
 int64_t
-hammer_directory_namekey(const void *name, int len)
+hammer_directory_namekey(hammer_inode_t dip, const void *name, int len,
+			 u_int32_t *max_iterationsp)
 {
 	int64_t key;
+	int32_t crcx;
+	const char *aname = name;
 
-	key = (int64_t)(crc32(name, len) & 0x7FFFFFFF) << 32;
-	if (key == 0)
-		key |= 0x100000000LL;
+	switch (dip->ino_data.cap_flags & HAMMER_INODE_CAP_DIRHASH_MASK) {
+	case HAMMER_INODE_CAP_DIRHASH_ALG0:
+		key = (int64_t)(crc32(aname, len) & 0x7FFFFFFF) << 32;
+		if (key == 0)
+			key |= 0x100000000LL;
+		*max_iterationsp = 0xFFFFFFFFU;
+		break;
+	case HAMMER_INODE_CAP_DIRHASH_ALG1:
+		key = (u_int32_t)crc32(aname, len) & 0xFFFFFFFEU;
+
+		switch(len) {
+		default:
+			crcx = crc32(aname + 3, len - 5);
+			crcx = crcx ^ (crcx >> 6) ^ (crcx >> 12);
+			key |=  (int64_t)(crcx & 0x3F) << 42;
+			/* fall through */
+		case 5:
+		case 4:
+			/* fall through */
+		case 3:
+			key |= ((int64_t)(aname[2] & 0x1F) << 48);
+			/* fall through */
+		case 2:
+			key |= ((int64_t)(aname[1] & 0x1F) << 53) |
+			       ((int64_t)(aname[len-2] & 0x1F) << 37);
+			/* fall through */
+		case 1:
+			key |= ((int64_t)(aname[0] & 0x1F) << 58) |
+			       ((int64_t)(aname[len-1] & 0x1F) << 32);
+			/* fall through */
+		case 0:
+			break;
+		}
+		if ((key & 0xFFFFFFFF00000000LL) == 0)
+			key |= 0x100000000LL;
+		if (hammer_debug_general & 0x0400) {
+			kprintf("namekey2: 0x%016llx %*.*s\n",
+				key, len, len, aname);
+		}
+		*max_iterationsp = 0x00FFFFFF;
+		break;
+	case HAMMER_INODE_CAP_DIRHASH_ALG2:
+	case HAMMER_INODE_CAP_DIRHASH_ALG3:
+	default:
+		key = 0;			/* compiler warning */
+		*max_iterationsp = 1;		/* sanity */
+		panic("hammer_directory_namekey: bad algorithm %p\n", dip);
+		break;
+	}
 	return(key);
 }
 

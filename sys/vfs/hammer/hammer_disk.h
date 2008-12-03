@@ -531,6 +531,8 @@ typedef struct hammer_volume_ondisk *hammer_volume_ondisk_t;
 #define HAMMER_VOL_VERSION_WIP		2	/* version >= this is WIP */
 #define HAMMER_VOL_VERSION_MAX		2	/* maximum supported version */
 
+#define HAMMER_VOL_VERSION_ONE		1
+#define HAMMER_VOL_VERSION_TWO		2
 /*
  * Record types are fairly straightforward.  The B-Tree includes the record
  * type in its index sort.
@@ -626,6 +628,15 @@ struct hammer_inode_data {
 #define HAMMER_INODE_DATA_VERSION	1
 #define HAMMER_OBJID_ROOT		1
 #define HAMMER_INODE_BASESYMLEN		24	/* see ext.symlink */
+
+/*
+ * Capability & implementation flags.
+ */
+#define HAMMER_INODE_CAP_DIRHASH_MASK	0x03	/* directory: hash algorithm */
+#define HAMMER_INODE_CAP_DIRHASH_ALG0	0x00
+#define HAMMER_INODE_CAP_DIRHASH_ALG1	0x01
+#define HAMMER_INODE_CAP_DIRHASH_ALG2	0x02
+#define HAMMER_INODE_CAP_DIRHASH_ALG3	0x03
 
 /*
  * A HAMMER directory entry associates a HAMMER filesystem object with a

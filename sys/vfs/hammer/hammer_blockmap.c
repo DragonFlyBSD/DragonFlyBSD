@@ -40,8 +40,9 @@
 #include "hammer.h"
 
 static int hammer_res_rb_compare(hammer_reserve_t res1, hammer_reserve_t res2);
-static int hammer_reserve_setdelay(hammer_mount_t hmp, hammer_reserve_t resv,
-                        hammer_off_t zone2_offset);
+static void hammer_reserve_setdelay(hammer_mount_t hmp,
+				    hammer_off_t base_offset,
+				    struct hammer_blockmap_layer2 *layer2);
 
 
 /*
@@ -280,6 +281,7 @@ again:
 	if (resv) {
 		KKASSERT(resv->append_off <= offset);
 		resv->append_off = offset + bytes;
+		resv->flags &= ~HAMMER_RESF_LAYER2FREE;
 	}
 
 	/*
@@ -501,6 +503,8 @@ again:
 		resx->refs = 1;
 		resx->zone = zone;
 		resx->zone_offset = base_off;
+		if (layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE)
+			resx->flags |= HAMMER_RESF_LAYER2FREE;
 		resv = RB_INSERT(hammer_res_rb_tree, &hmp->rb_resv_root, resx);
 		KKASSERT(resv == NULL);
 		resv = resx;
@@ -540,61 +544,49 @@ failed:
 	return(resv);
 }
 
+#if 0
 /*
  * Backend function - undo a portion of a reservation.
  */
 void
-hammer_blockmap_reserve_undo(hammer_reserve_t resv,
+hammer_blockmap_reserve_undo(hammer_mount_t hmp, hammer_reserve_t resv,
 			 hammer_off_t zone_offset, int bytes)
 {
 	resv->bytes_freed += bytes;
 }
 
+#endif
 
 /*
- * A record with a storage reservation calls this function when it is
- * being freed.  The storage may or may not have actually been allocated.
- *
- * This function removes the lock that prevented other entities from
- * allocating out of the storage or removing the zone assignment.
+ * Dereference a reservation structure.  Upon the final release the
+ * underlying big-block is checked and if it is entirely free we delete
+ * any related HAMMER buffers to avoid potential conflicts with future
+ * reuse of the big-block.
  */
 void
 hammer_blockmap_reserve_complete(hammer_mount_t hmp, hammer_reserve_t resv)
 {
-	hammer_off_t zone2_offset;
+	hammer_off_t base_offset;
 
 	KKASSERT(resv->refs > 0);
+	KKASSERT((resv->zone_offset & HAMMER_OFF_ZONE_MASK) ==
+		 HAMMER_ZONE_RAW_BUFFER);
+
+	/*
+	 * Setting append_off to the max prevents any new allocations
+	 * from occuring while we are trying to dispose of the reservation,
+	 * allowing us to safely delete any related HAMMER buffers.
+	 */
+	if (resv->refs == 1 && (resv->flags & HAMMER_RESF_LAYER2FREE)) {
+		resv->append_off = HAMMER_LARGEBLOCK_SIZE;
+		resv->flags &= ~HAMMER_RESF_LAYER2FREE;
+		base_offset = resv->zone_offset & ~HAMMER_ZONE_RAW_BUFFER;
+		base_offset = HAMMER_ZONE_ENCODE(base_offset, resv->zone);
+		hammer_del_buffers(hmp, base_offset, resv->zone_offset,
+				   HAMMER_LARGEBLOCK_SIZE);
+	}
 	if (--resv->refs == 0) {
 		KKASSERT((resv->flags & HAMMER_RESF_ONDELAY) == 0);
-
-		zone2_offset = (resv->zone_offset & ~HAMMER_OFF_ZONE_MASK) |
-				HAMMER_ZONE_RAW_BUFFER;
-
-		/*
-		 * If we are releasing a zone and all of its reservations
-		 * were undone we have to clean out all hammer and device
-		 * buffers associated with the big block.  We do this
-		 * primarily because the large-block may be reallocated
-		 * from non-large-data to large-data or vise-versa, resulting
-		 * in a different mix of 16K and 64K buffer cache buffers.
-		 * XXX - this isn't fun and needs to be redone.
-		 *
-		 * Any direct allocations will cause this test to fail
-		 * (bytes_freed will never reach append_off), which is
-		 * the behavior we desire.  Once the zone has been assigned
-		 * to the big-block the only way to allocate from it in the
-		 * future is if the reblocker can completely clean it out,
-		 * and that will also properly call hammer_del_buffers().
-		 *
-		 * If we don't we risk all sorts of buffer cache aliasing
-		 * effects, including overlapping buffers with different
-		 * sizes.
-		 */
-		if (resv->bytes_freed == resv->append_off) {
-			hammer_del_buffers(hmp, resv->zone_offset,
-					   zone2_offset,
-					   HAMMER_LARGEBLOCK_SIZE);
-		}
 		RB_REMOVE(hammer_res_rb_tree, &hmp->rb_resv_root, resv);
 		kfree(resv, M_HAMMER);
 		--hammer_count_reservations;
@@ -602,47 +594,54 @@ hammer_blockmap_reserve_complete(hammer_mount_t hmp, hammer_reserve_t resv)
 }
 
 /*
- * This ensures that no data reallocations will take place at the specified
- * zone2_offset (pointing to the base of a bigblock) for 2 flush cycles,
- * preventing deleted data space, which has no UNDO, from being reallocated 
- * too quickly.
+ * Prevent a potentially free big-block from being reused until after
+ * the related flushes have completely cycled, otherwise crash recovery
+ * could resurrect a data block that was already reused and overwritten.
+ *
+ * Return 0 if the layer2 entry is still completely free after the
+ * reservation has been allocated.
  */
-static int
-hammer_reserve_setdelay(hammer_mount_t hmp, hammer_reserve_t resv,
-			hammer_off_t zone2_offset)
+static void
+hammer_reserve_setdelay(hammer_mount_t hmp, hammer_off_t base_offset,
+			struct hammer_blockmap_layer2 *layer2)
 {
-	int error;
+	hammer_reserve_t resv;
 
+	/*
+	 * Allocate the reservation if necessary.
+	 */
+again:
+	resv = RB_LOOKUP(hammer_res_rb_tree, &hmp->rb_resv_root, base_offset);
 	if (resv == NULL) {
 		resv = kmalloc(sizeof(*resv), M_HAMMER,
 			       M_WAITOK | M_ZERO | M_USE_RESERVE);
-		resv->refs = 1;	/* ref for on-delay list */
-		resv->zone_offset = zone2_offset;
-		resv->append_off = HAMMER_LARGEBLOCK_SIZE;
+		resv->zone_offset = base_offset;
+		resv->refs = 0;
+		/* XXX inherent lock until refs bumped later on */
+		if (layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE)
+			resv->flags |= HAMMER_RESF_LAYER2FREE;
 		if (RB_INSERT(hammer_res_rb_tree, &hmp->rb_resv_root, resv)) {
-			error = EAGAIN;
 			kfree(resv, M_HAMMER);
-		} else {
-			error = 0;
-			++hammer_count_reservations;
+			goto again;
 		}
-	} else if (resv->flags & HAMMER_RESF_ONDELAY) {
-		--hmp->rsv_fromdelay;
-		resv->flags &= ~HAMMER_RESF_ONDELAY;
+		++hammer_count_reservations;
+	}
+
+	/*
+	 * Enter the reservation on the on-delay list, or move it if it
+	 * is already on the list.
+	 */
+	if (resv->flags & HAMMER_RESF_ONDELAY) {
 		TAILQ_REMOVE(&hmp->delay_list, resv, delay_entry);
 		resv->flush_group = hmp->flusher.next + 1;
-		error = 0;
+		TAILQ_INSERT_TAIL(&hmp->delay_list, resv, delay_entry);
 	} else {
-		++resv->refs;	/* ref for on-delay list */
-		error = 0;
-	}
-	if (error == 0) {
+		++resv->refs;
 		++hmp->rsv_fromdelay;
 		resv->flags |= HAMMER_RESF_ONDELAY;
 		resv->flush_group = hmp->flusher.next + 1;
 		TAILQ_INSERT_TAIL(&hmp->delay_list, resv, delay_entry);
 	}
-	return(error);
 }
 
 void
@@ -666,7 +665,6 @@ hammer_blockmap_free(hammer_transaction_t trans,
 {
 	hammer_mount_t hmp;
 	hammer_volume_t root_volume;
-	hammer_reserve_t resv;
 	hammer_blockmap_t blockmap;
 	hammer_blockmap_t freemap;
 	struct hammer_blockmap_layer1 *layer1;
@@ -733,50 +731,34 @@ hammer_blockmap_free(hammer_transaction_t trans,
 	hammer_modify_buffer(trans, buffer2, layer2, sizeof(*layer2));
 
 	/*
-	 * Freeing previously allocated space
+	 * Free space previously allocated via blockmap_alloc().
 	 */
 	KKASSERT(layer2->zone == zone);
 	layer2->bytes_free += bytes;
 	KKASSERT(layer2->bytes_free <= HAMMER_LARGEBLOCK_SIZE);
+
+	/*
+	 * If a big-block becomes entirely free we must create a covering
+	 * reservation to prevent premature reuse.  Note, however, that
+	 * the big-block and/or reservation may still have an append_off
+	 * that allows further (non-reused) allocations.
+	 *
+	 * Once the reservation has been made we re-check layer2 and if
+	 * the big-block is still entirely free we reset the layer2 entry.
+	 * The reservation will prevent premature reuse.
+	 *
+	 * NOTE: hammer_buffer's are only invalidated when the reservation
+	 * is completed, if the layer2 entry is still completely free at
+	 * that time.  Any allocations from the reservation that may have
+	 * occured in the mean time, or active references on the reservation
+	 * from new pending allocations, will prevent the invalidation from
+	 * occuring.
+	 */
 	if (layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE) {
 		base_off = (zone_offset & (~HAMMER_LARGEBLOCK_MASK64 & ~HAMMER_OFF_ZONE_MASK)) | HAMMER_ZONE_RAW_BUFFER;
-again:
-		resv = RB_LOOKUP(hammer_res_rb_tree, &hmp->rb_resv_root,
-				 base_off);
-		if (resv) {
-			/*
-			 * Portions of this block have been reserved, do
-			 * not free it.
-			 *
-			 * Make sure the reservation remains through
-			 * the next flush cycle so potentially undoable
-			 * data is not overwritten.
-			 */
-			KKASSERT(resv->zone == zone);
-			hammer_reserve_setdelay(hmp, resv, base_off);
-		} else if ((blockmap->next_offset ^ zone_offset) &
-			    ~HAMMER_LARGEBLOCK_MASK64) {
-			/*
-			 * Our iterator is not in the now-free big-block
-			 * and we can release it.
-			 *
-			 * Make sure the reservation remains through
-			 * the next flush cycle so potentially undoable
-			 * data is not overwritten.
-			 */
-			if (hammer_reserve_setdelay(hmp, NULL, base_off))
-				goto again;
-			KKASSERT(layer2->zone == zone);
-			/*
-			 * XXX maybe incorporate this del call in the
-			 * release code by setting base_offset, bytes_freed,
-			 * etc.
-			 */
-			hammer_del_buffers(hmp,
-					   zone_offset &
-					      ~HAMMER_LARGEBLOCK_MASK64,
-					   base_off,
-					   HAMMER_LARGEBLOCK_SIZE);
+
+		hammer_reserve_setdelay(hmp, base_off, layer2);
+		if (layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE) {
 			layer2->zone = 0;
 			layer2->append_off = 0;
 			hammer_modify_buffer(trans, buffer1,
@@ -794,7 +776,6 @@ again:
 			hammer_modify_volume_done(trans->rootvol);
 		}
 	}
-
 	layer2->entry_crc = crc32(layer2, HAMMER_LAYER2_CRCSIZE);
 	hammer_modify_buffer_done(buffer2);
 	hammer_unlock(&hmp->blkmap_lock);
@@ -813,6 +794,7 @@ failed:
  */
 int
 hammer_blockmap_finalize(hammer_transaction_t trans,
+			 hammer_reserve_t resv,
 			 hammer_off_t zone_offset, int bytes)
 {
 	hammer_mount_t hmp;
@@ -907,6 +889,8 @@ hammer_blockmap_finalize(hammer_transaction_t trans,
 		kprintf("layer2 zone mismatch %d %d\n", layer2->zone, zone);
 	KKASSERT(layer2->zone == zone);
 	layer2->bytes_free -= bytes;
+	if (resv)
+		resv->flags &= ~HAMMER_RESF_LAYER2FREE;
 
 	/*
 	 * Finalizations can occur out of order, or combined with allocations.
