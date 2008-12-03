@@ -463,11 +463,11 @@ carp_input(struct mbuf *m, ...)
 {
 	struct ip *ip = mtod(m, struct ip *);
 	struct carp_header *ch;
-	int iplen, len, hlen;
+	int len, iphlen;
 	__va_list ap;
 
 	__va_start(ap, m);
-	hlen = __va_arg(ap, int);
+	iphlen = __va_arg(ap, int);
 	__va_end(ap);
 
 	carpstats.carps_ipackets++;
@@ -477,7 +477,7 @@ carp_input(struct mbuf *m, ...)
 		return;
 	}
 
-	/* check if received on a valid carp interface */
+	/* Check if received on a valid carp interface */
 	if (m->m_pkthdr.rcvif->if_carp == NULL) {
 		carpstats.carps_badif++;
 		CARP_LOG("carp_input: packet received on non-carp "
@@ -487,69 +487,51 @@ carp_input(struct mbuf *m, ...)
 		return;
 	}
 
-	/* verify that the IP TTL is 255.  */
+	/* Verify that the IP TTL is CARP_DFLTTL. */
 	if (ip->ip_ttl != CARP_DFLTTL) {
 		carpstats.carps_badttl++;
-		CARP_LOG("carp_input: received ttl %d != 255i on %s\n",
-		    ip->ip_ttl,
+		CARP_LOG("carp_input: received ttl %d != %d on %s\n",
+		    ip->ip_ttl, CARP_DFLTTL,
 		    m->m_pkthdr.rcvif->if_xname);
 		m_freem(m);
 		return;
 	}
 
-	iplen = ip->ip_hl << 2;
+	/* Minimal CARP packet size */
+	len = iphlen + sizeof(*ch);
 
-	if (m->m_pkthdr.len < iplen + sizeof(*ch)) {
+	/*
+	 * Verify that the received packet length is
+	 * not less than the CARP header
+	 */
+	if (m->m_pkthdr.len < len) {
 		carpstats.carps_badlen++;
-		CARP_LOG("carp_input: received len %zd < "
-		    "sizeof(struct carp_header)\n",
-		    m->m_len - sizeof(struct ip));
+		CARP_LOG("packet too short %d on %s\n", m->m_pkthdr.len,
+			 m->m_pkthdr.rcvif->if_xname);
 		m_freem(m);
 		return;
 	}
 
-	if (iplen + sizeof(*ch) < m->m_len) {
-		if ((m = m_pullup(m, iplen + sizeof(*ch))) == NULL) {
+	/* Make sure that CARP header is contiguous */
+	if (len < m->m_len) {
+		m = m_pullup(m, len);
+		if (m == NULL) {
 			carpstats.carps_hdrops++;
-			CARP_LOG("carp_input: pullup failed\n");
+			CARP_LOG("carp_input: m_pullup failed\n");
 			return;
 		}
 		ip = mtod(m, struct ip *);
 	}
-	ch = (struct carp_header *)((char *)ip + iplen);
+	ch = (struct carp_header *)((uint8_t *)ip + iphlen);
 
-	/*
-	 * verify that the received packet length is
-	 * equal to the CARP header
-	 */
-	len = iplen + sizeof(*ch);
-	if (len > m->m_pkthdr.len) {
-		carpstats.carps_badlen++;
-		CARP_LOG("carp_input: packet too short %d on %s\n",
-		    m->m_pkthdr.len,
-		    m->m_pkthdr.rcvif->if_xname);
-		m_freem(m);
-		return;
-	}
-
-	if ((m = m_pullup(m, len)) == NULL) {
-		carpstats.carps_hdrops++;
-		return;
-	}
-	ip = mtod(m, struct ip *);
-	ch = (struct carp_header *)((char *)ip + iplen);
-
-	/* verify the CARP checksum */
-	m->m_data += iplen;
-	if (carp_cksum(m, len - iplen)) {
+	/* Verify the CARP checksum */
+	if (in_cksum_skip(m, len, iphlen)) {
 		carpstats.carps_badsum++;
 		CARP_LOG("carp_input: checksum failed on %s\n",
 		    m->m_pkthdr.rcvif->if_xname);
 		m_freem(m);
 		return;
 	}
-	m->m_data -= iplen;
-
 	carp_input_c(m, ch, AF_INET);
 }
 
