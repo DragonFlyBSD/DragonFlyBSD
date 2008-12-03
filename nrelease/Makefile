@@ -133,9 +133,6 @@ ISOFILE ?= ${ISODIR}/dfly.iso
 #
 NRLOBJDIR?= /usr/obj
 
-WORLD_CCVER ?= ${CCVER}
-KERNEL_CCVER ?= ${CCVER}
-
 #########################################################################
 #				BASE ISO TARGETS 			#
 #########################################################################
@@ -188,20 +185,22 @@ check:
 .endif
 
 buildworld1 buildworld2:
-	cd ${.CURDIR}/..; CCVER=${WORLD_CCVER} make ${WITH_INSTALLER:C/^/-DWANT_INSTALLER/} ${.TARGET:C/build(.*)2/quick\1/:C/1//}
+	cd ${.CURDIR}/..; ${WORLD_CCVER:C/^..*$/CCVER=/}${WORLD_CCVER} make ${WITH_INSTALLER:C/^/-DWANT_INSTALLER/} ${.TARGET:C/build(.*)2/quick\1/:C/1//}
 
 buildkernel1 buildkernel2:
 .if make(gui)
 	cd ${.CURDIR}/..; \
 	for kernconf in ${KERNCONF}; do \
-		CCVER=${KERNEL_CCVER} make ${.TARGET:C/build(.*)2/quick\1/:C/1//} \
+		${KERNEL_CCVER:C/^..*$/CCVER=/}${KERNEL_CCVER} \
+		make ${.TARGET:C/build(.*)2/quick\1/:C/1//} \
 			KERNCONF=$${kernconf} KERNCONFDIR=${.CURDIR}/gui/root; \
 	done
 .else
 	cd ${.CURDIR}/..; \
 	first=; \
 	for kernconf in ${KERNCONF}; do \
-		CCVER=${KERNEL_CCVER} make ${.TARGET:C/build(.*)2/quick\1/:C/1//} \
+		${KERNEL_CCVER:C/^..*$/CCVER=/}${KERNEL_CCVER} \
+		make ${.TARGET:C/build(.*)2/quick\1/:C/1//} \
 			KERNCONF=$${kernconf} \
 			$${first:+-DNO_MODULES}; \
 		first=done; \
