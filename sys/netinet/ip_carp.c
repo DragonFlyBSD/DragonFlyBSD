@@ -77,12 +77,10 @@
 #include <netinet/ip_carp.h>
 
 #define	CARP_IFNAME	"carp"
-static MALLOC_DEFINE(M_CARP, "CARP", "CARP interfaces");
-static MALLOC_DEFINE(M_IFNET, "IFNET", "IFNET CARP?");
-SYSCTL_DECL(_net_inet_carp);
 
 struct carp_softc {
-	struct ifnet	 	*sc_ifp;	/* Interface clue */
+	struct ifnet		 sc_if;
+	struct ifnet	 	*sc_ifp;	/* compat shim */
 	struct ifnet		*sc_carpdev;	/* parent interface */
 	struct in_ifaddr 	*sc_ia;		/* primary iface address */
 	struct ip_moptions 	 sc_imo;
@@ -133,6 +131,8 @@ struct carp_if {
 };
 
 enum	{ CARP_COUNT_MASTER, CARP_COUNT_RUNNING };
+
+SYSCTL_DECL(_net_inet_carp);
 
 static int carp_opts[CARPCTL_MAXID] = { 0, 1, 0, 1, 0, 0 }; /* XXX for now */
 SYSCTL_INT(_net_inet_carp, CARPCTL_ALLOW, allow, CTLFLAG_RW,
@@ -203,6 +203,8 @@ static int	carp_set_addr6(struct carp_softc *, struct sockaddr_in6 *);
 static int	carp_del_addr6(struct carp_softc *, struct sockaddr_in6 *);
 static void	carp_multicast6_cleanup(struct carp_softc *);
 #endif
+
+static MALLOC_DEFINE(M_CARP, "CARP", "CARP interfaces");
 
 static LIST_HEAD(, carp_softc) carpif_list;
 
@@ -336,9 +338,8 @@ carp_clone_create(struct if_clone *ifc, int unit)
 	struct carp_softc *sc;
 	struct ifnet *ifp;
 
-	MALLOC(sc, struct carp_softc *, sizeof(*sc), M_CARP, M_WAITOK|M_ZERO);
-	ifp = SC2IFP(sc) = kmalloc(sizeof(struct ifnet), M_IFNET,
-				   M_WAITOK|M_ZERO);
+	sc = kmalloc(sizeof(*sc), M_CARP, M_WAITOK | M_ZERO);
+	ifp = sc->sc_ifp = &sc->sc_if;
 
 	sc->sc_flags_backup = 0;
 	sc->sc_suppress = 0;
@@ -346,7 +347,7 @@ carp_clone_create(struct if_clone *ifc, int unit)
 	sc->sc_vhid = -1;	/* required setting */
 	sc->sc_advskew = 0;
 	sc->sc_init_counter = 1;
-	sc->sc_naddrs = sc->sc_naddrs6 = 0; /* M_ZERO? */
+	sc->sc_naddrs = sc->sc_naddrs6 = 0;
 
 #ifdef INET6
 	sc->sc_im6o.im6o_multicast_hlim = CARP_DFLTTL;
