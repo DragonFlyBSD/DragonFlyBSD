@@ -14,7 +14,7 @@
  * I would appreciate (though I do not require) receiving a copy of any
  * improvements you might make to this program.
  *
- * $FreeBSD: src/usr.bin/units/units.c,v 1.6.2.2 2001/03/04 09:22:35 kris Exp $
+ * $FreeBSD: src/usr.bin/units/units.c,v 1.11 2008/08/16 16:27:41 dwmalone Exp $
  * $DragonFly: src/usr.bin/units/units.c,v 1.4 2006/08/13 19:19:44 swildner Exp $
  */
 
@@ -51,6 +51,8 @@ struct unittype {
 	char *numerator[MAXSUBUNITS];
 	char *denominator[MAXSUBUNITS];
 	double factor;
+	double offset;
+	int quantity;
 };
 
 struct {
@@ -72,7 +74,7 @@ int prefixcount;
 
 
 static int	 addsubunit(char *[], char *);
-static int	 addunit(struct unittype *, char *, int);
+static int	 addunit(struct unittype *, char *, int, int);
 static void	 cancelunit(struct unittype *);
 static int	 compare(const void *, const void *);
 static int	 compareproducts(char **, char **);
@@ -207,8 +209,10 @@ readunits(const char *userfile)
 void 
 initializeunit(struct unittype * theunit)
 {
-	theunit->factor = 1.0;
 	theunit->numerator[0] = theunit->denominator[0] = NULL;
+	theunit->factor = 1.0;
+	theunit->offset = 0.0;
+	theunit->quantity = 0;
 }
 
 
@@ -237,6 +241,8 @@ showunit(struct unittype * theunit)
 	int counter = 1;
 
 	printf("\t%.8g", theunit->factor);
+	if (theunit->offset)
+		printf("&%.8g", theunit->offset);
 	for (ptr = theunit->numerator; *ptr; ptr++) {
 		if (ptr > theunit->numerator && **ptr &&
 		    !strcmp(*ptr, *(ptr - 1)))
@@ -284,16 +290,17 @@ zeroerror(void)
 /*
    Adds the specified string to the unit.
    Flip is 0 for adding normally, 1 for adding reciprocal.
+   Quantity is 1 if this is a quantity to be converted rather than a pure unit.
 
    Returns 0 for successful addition, nonzero on error.
 */
 
 int 
-addunit(struct unittype * theunit, char *toadd, int flip)
+addunit(struct unittype * theunit, char *toadd, int flip, int quantity)
 {
 	char *scratch, *savescr;
 	char *item;
-	char *divider, *slash;
+	char *divider, *slash, *offset;
 	int doingtop;
 
 	if (!strlen(toadd))
@@ -313,7 +320,17 @@ addunit(struct unittype * theunit, char *toadd, int flip)
 		item = strtok(scratch, " *\t\n/");
 		while (item) {
 			if (strchr("0123456789.", *item)) { /* item is a number */
-				double num;
+				double num, offsetnum;
+
+				if (quantity)
+					theunit->quantity = 1;
+
+				offset = strchr(item, '&');
+				if (offset) {
+					*offset = 0;
+					offsetnum = atof(offset+1);
+				} else
+					offsetnum = 0.0;
 
 				divider = strchr(item, '|');
 				if (divider) {
@@ -323,19 +340,25 @@ addunit(struct unittype * theunit, char *toadd, int flip)
 						zeroerror();
 						return 1;
 					}
-					if (doingtop ^ flip)
+					if (doingtop ^ flip) {
 						theunit->factor *= num;
-					else
+						theunit->offset *= num;
+					} else {
 						theunit->factor /= num;
+						theunit->offset /= num;
+					}
 					num = atof(divider + 1);
 					if (!num) {
 						zeroerror();
 						return 1;
 					}
-					if (doingtop ^ flip)
+					if (doingtop ^ flip) {
 						theunit->factor /= num;
-					else
+						theunit->offset /= num;
+					} else {
 						theunit->factor *= num;
+						theunit->offset *= num;
+					}
 				}
 				else {
 					num = atof(item);
@@ -343,12 +366,16 @@ addunit(struct unittype * theunit, char *toadd, int flip)
 						zeroerror();
 						return 1;
 					}
-					if (doingtop ^ flip)
+					if (doingtop ^ flip) {
 						theunit->factor *= num;
-					else
+						theunit->offset *= num;
+					} else {
 						theunit->factor /= num;
-
+						theunit->offset /= num;
+					}
 				}
+				if (doingtop ^ flip)
+					theunit->offset += offsetnum;
 			}
 			else {	/* item is not a number */
 				int repeat = 1;
@@ -534,7 +561,7 @@ reduceproduct(struct unittype * theunit, int flip)
 				free(*product);
 				*product = NULLUNIT;
 			}
-			if (addunit(theunit, toadd, flip))
+			if (addunit(theunit, toadd, flip, 0))
 				return ERROR;
 		}
 	}
@@ -613,6 +640,20 @@ showanswer(struct unittype * have, struct unittype * want)
 		showunit(have);
 		showunit(want);
 	}
+	else if (have->offset != want->offset) {
+		if (want->quantity)
+			printf("WARNING: conversion of non-proportional quantities.\n");
+		printf("\t");
+		if (have->quantity)
+			printf("%.8g\n",
+			    (have->factor + have->offset-want->offset)/want->factor);
+		else
+			printf(" (-> x*%.8g %+.8g)\n\t (<- y*%.8g %+.8g)\n",
+			    have->factor / want->factor,
+			    (have->offset-want->offset)/want->factor,
+			    want->factor / have->factor,
+			    (want->offset - have->offset)/have->factor);
+	}
 	else
 		printf("\t* %.8g\n\t/ %.8g\n", have->factor / want->factor,
 		    want->factor / have->factor);
@@ -666,10 +707,10 @@ main(int argc, char **argv)
 		strlcpy(havestr, argv[optind], sizeof(havestr));
 		strlcpy(wantstr, argv[optind + 1], sizeof(wantstr));
 		initializeunit(&have);
-		addunit(&have, havestr, 0);
+		addunit(&have, havestr, 0, 1);
 		completereduce(&have);
 		initializeunit(&want);
-		addunit(&want, wantstr, 0);
+		addunit(&want, wantstr, 0, 1);
 		completereduce(&want);
 		showanswer(&have, &want);
 	}
@@ -687,7 +728,7 @@ main(int argc, char **argv)
 						putchar('\n');
 					exit(0);
 				}
-			} while (addunit(&have, havestr, 0) ||
+			} while (addunit(&have, havestr, 0, 1) ||
 			    completereduce(&have));
 			do {
 				initializeunit(&want);
@@ -698,7 +739,7 @@ main(int argc, char **argv)
 						putchar('\n');
 					exit(0);
 				}
-			} while (addunit(&want, wantstr, 0) ||
+			} while (addunit(&want, wantstr, 0, 1) ||
 			    completereduce(&want));
 			showanswer(&have, &want);
 		}

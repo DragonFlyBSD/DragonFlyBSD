@@ -1,6 +1,6 @@
 .\" $FreeBSD: src/usr.bin/units/units.1,v 1.18 2005/02/13 22:25:25 ru Exp $
 .\" $DragonFly: src/usr.bin/units/units.1,v 1.4 2008/08/12 09:28:22 matthias Exp $
-.Dd August 12, 2008
+.Dd December 4, 2008
 .Dt UNITS 1
 .Os
 .Sh NAME
@@ -37,8 +37,7 @@ The
 .Nm
 program can only
 handle multiplicative scale changes.
-It cannot convert Celsius
-to Fahrenheit, for example.
+Experimental support is available to convert Celsius to Fahrenheit.
 It works interactively by prompting
 the user for input:
 .Bd -literal
@@ -61,6 +60,10 @@ the user for input:
     You want: cm
             * 1.27
             / 0.78740157
+
+    You have: 20 degC
+    You want: degF
+            68
 .Ed
 .Pp
 Powers of units can be specified using the '^' character as shown in
