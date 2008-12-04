@@ -214,12 +214,6 @@ IF_CLONE_INITIALIZER(CARP_IFNAME, carp_clone_create, carp_clone_destroy,
 
 static eventhandler_tag carp_ifdetach_event;
 
-static __inline uint16_t
-carp_cksum(struct mbuf *m, int len)
-{
-	return (in_cksum(m, len));
-}
-
 static void
 carp_hmac_prepare(struct carp_softc *sc)
 {
@@ -581,15 +575,13 @@ carp6_input(struct mbuf **mp, int *offp, int proto)
 	}
 
 	/* verify the CARP checksum */
-	m->m_data += *offp;
-	if (carp_cksum(m, sizeof(*ch))) {
+	if (in_cksum_range(m, 0, *offp, sizeof(*ch))) {
 		carpstats.carps_badsum++;
 		CARP_LOG("carp6_input: checksum failed, on %s\n",
 		    m->m_pkthdr.rcvif->if_xname);
 		m_freem(m);
 		return (IPPROTO_DONE);
 	}
-	m->m_data -= *offp;
 
 	carp_input_c(m, ch, AF_INET6);
 	return (IPPROTO_DONE);
@@ -853,10 +845,7 @@ carp_send_ad_locked(struct carp_softc *sc)
 		bcopy(&ch, ch_ptr, sizeof(ch));
 		if (carp_prepare_ad(m, sc, ch_ptr))
 			return;
-
-		m->m_data += sizeof(*ip);
-		ch_ptr->carp_cksum = carp_cksum(m, len - sizeof(*ip));
-		m->m_data -= sizeof(*ip);
+		ch_ptr->carp_cksum = in_cksum_skip(m, len, sizeof(*ip));
 
 		getmicrotime(&SC2IFP(sc)->if_lastchange);
 		SC2IFP(sc)->if_opackets++;
@@ -929,10 +918,7 @@ carp_send_ad_locked(struct carp_softc *sc)
 		bcopy(&ch, ch_ptr, sizeof(ch));
 		if (carp_prepare_ad(m, sc, ch_ptr))
 			return;
-
-		m->m_data += sizeof(*ip6);
-		ch_ptr->carp_cksum = carp_cksum(m, len - sizeof(*ip6));
-		m->m_data -= sizeof(*ip6);
+		ch_ptr->carp_cksum = in_cksum_skip(m, len, sizeof(*ip6));
 
 		getmicrotime(&SC2IFP(sc)->if_lastchange);
 		SC2IFP(sc)->if_opackets++;
