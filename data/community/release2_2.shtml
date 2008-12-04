@@ -147,7 +147,6 @@ only commit bug fixes to release branches.
 </p>
 
 <h1>DragonFly 2.2 Release Notes</h1>
-<h3>HAMMER filesystem released!</h3>
 <ul>
     <li>
 </ul>
@@ -167,6 +166,7 @@ states than C1 in modern (multicore) CPUs.
     <li>First steps to use network threads without the Big Giant Lock (this feature
 is considered experimental).
     <li>Fixed CVE-2008-2476 IPv6 security issue with modified patches from NetBSD.
+    <li><tt>bridge_input</tt> works now in parallel.
 </ul>
 <h3>Hardware changes</h3>
 <ul>
@@ -177,6 +177,7 @@ some power when using mobile devices (from FreeBSD).
     <li>Update acpi_battery(4) related code to the latest one from FreeBSD HEAD.
     <li>Correctly handle Intel G33 chips and add support for G45 chips to the agp(4) driver
 (from FreeBSD).
+    <li>Fixed CVE-2008-3831. Affects the Intel G33 series and newer only.
 </ul>
 <h3>Hardware changes (Networking)</h3>
 <ul>
@@ -188,6 +189,11 @@ some power when using mobile devices (from FreeBSD).
 </ul>
 <h3>Userland changes</h3>
 <ul>
+    <li>The DragonFly source repositories are now maintained with
+<a href="http://git.or.cz/">git</a> instead of CVS. See
+<a href="http://leaf.dragonflybsd.org/cgi/web-man?command=development&section=ANY">development(7)</a>
+for instructions how to clone the repository.
+    <li>A lot of man pages were updated due to the switch to git.
     <li>Add LiveDVD support to our nrelease framework. (done by Louisa Luciani
 during the Google Summer of Code 2008).
     <li>Enhance the DragonFly Mail Agent (done
@@ -201,6 +207,12 @@ by Max Lindner during the Google Summer of Code 2008).
     <li>Bring in the devinfo(3) library and devinfo(8) utility from FreeBSD. The utility and
 library can be used to view the internal device hierarchy.
     <li>Add devctl(4) and devd(8) from FreeBSD and enable related support in acpi_thinkpad(4).
+    <li>Update sensorsd(8) to the latest version from OpenBSD (October 2008).
+    <li>Sync libc/stdtime and zdump(8)/zic(8) with tzcode2008h from elsie.
+    <li>Symlink <tt>/dev/dsp</tt> to <tt>/dev/audio</tt> to preserve compatibility with older
+programs (all pkgsrc apps by default up to 2008Q3).
+    <li>A new daily periodic script cleans up all HAMMER volumes at night.
+    <li> Sync libusbhid with other BSDs. Sync usbhidctl with FreeBSD.
 </ul>
 <h3>Removals</h3>
 <ul>
