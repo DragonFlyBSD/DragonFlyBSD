@@ -48,7 +48,7 @@
 <li class="major">Docs
 
 <ul class="minor">
-<li><a href="http://www.dragonflybsd.org/cvsweb">CVSWeb</a>
+<li><a href="http://gitweb.dragonflybsd.org/?p=dragonfly.git;a=summary">GitWeb</a>
 <li><a href="/docs/FAQ.shtml">FAQ</a>
 <li><a href="/docs/goals.shtml">Goals</a>
 <li><a href="/docs/guides.shtml">Guides</a>

@@ -19,58 +19,12 @@ file for more information.   To activate the installer, boot the CD and
 login as 'installer'.
 See the 'Download Site' list below for a list of download locations. </p>
 
-<h2>Obtaining source via CVS</h2>
-
+<h2>Obtaining source via git</h2>
 <p>
-If you prefer to obtain the source via cvsup, you can use 
-<a href="dragonfly-cvs-supfile">this cvsup config file</a> to 
-pull the source into /home/dcvs, no more than once a day. 
-A <a href="dragonfly-cvs-sys-supfile">sys hierarchy only</a> cvsup 
-file is available.  See below for suitable cvsup locations.
+Since DragonFly 2.1 the source repository is maintained with git instead of CVS. See
+<a href="http://leaf.dragonflybsd.org/cgi/web-man?command=development&section=ANY">development(7)</a>
+for instructions how to clone the repository.
 </p>
-
-<p>
-You typically extract sources from the repository into /usr/src using
-something like this:
-</p>
-<ul>
-<pre>
-cd /usr
-rm -rf src
-cvs -d /home/dcvs checkout -rDragonFly_Preview src</pre>
-</ul>
-
-<p>
-When extracting sources from the cvs repository please note the meaning of
-the following tags:
-<ul>
-    <table BORDER="1">
-    <tr><td><b>CVS Tag</b></td><td><b>Description</b></td></tr>
-    <tr>
-	<td>HEAD</td>
-	<td>Represents the bleeding edge of DragonFly development.  Kernels
-	    compiled from these sources will be marked DEVELOPMENT.</td>
-    </tr>
-    <tr>
-	<td>DragonFly_Preview</td>
-	<td>Represents a recent snapshot of the development tree.  Kernels
-	    compiled from these sources are still highly developmental and
-	    may be unstable, but are likely a lot more stable then HEAD.</td>
-    </tr>
-    <tr>
-	<td>DragonFly_RELEASE_X_Y_Slip</td>
-	<td>Represents code tracking a particular DragonFly release.  The
-	    actual branch tag is the same tag without the '_Slip' suffix,
-	    but since the subversion is only bumped once a day you should
-	    use the full tag to extract sources so the subversion reported
-	    by the kernel matches the actual subversion of the code and so
-	    you do not catch the codebase in the middle of a commit.
-	</td>
-    </tr>
-    </table>
-</ul>
-</p>
-
 <h2>Other Sites</h2>
 
 <p>
@@ -94,7 +48,7 @@ DragonFly systems based on current development are labeled PREVIEW or
 DEVELOPMENT.  People who want to keep up with recent developments but who
 do not want the absolute bleeding-edge-likely-to-crash-in-bad-ways work
 should use PREVIEW.  People who want the bleeding edge should use the
-HEAD of the CVS tree which are marked DEVELOPMENT.  <i>We used to have
+HEAD of the git tree which are marked DEVELOPMENT.  <i>We used to have
 something called STABLE and CURRENT.  Those no longer exist.  STABLE has
 been renamed to PREVIEW and CURRENT has been renamed to DEVELOPMENT.</i>
 </p>
@@ -472,13 +426,14 @@ packages</a>
 <TD COLSPAN="3">&nbsp;</TD>
 </TR>
 
-<TR><TD CLASS="mirrorsection" COLSPAN="3">Source mirrors</TD></TR>
+<TR><TD CLASS="mirrorsection" COLSPAN="3">Git source mirrors</TD></TR>
 
 <TR>
 <TD>DragonFlyBSD.org (California)</TD>
 <TD>Code master site (<B>NOTE: Use other sites if possible!</B>)</TD>
 <TD> 
-<a href="http://www.dragonflybsd.org/cgi-bin/cvsweb.cgi">cvsweb</a>
+<a href="git://crater.dragonflybsd.org/dragonfly.git">git repo</a>
+<a href="http://gitweb.dragonflybsd.org/">gitweb</a>
 </TD>
 </TR>
 
@@ -486,71 +441,9 @@ packages</a>
 <TD>chlamydia.fs.ei.tum.de (Germany)</TD>
 <TD>Code</TD>
 <TD>
-<a href="http://chlamydia.fs.ei.tum.de/services/#anoncvs">anoncvs</a>,
-<a href="http://chlamydia.fs.ei.tum.de/services/#cvsup">cvsup</a>
+<a href="git://chlamydia.fs.ei.tum.de/dragonfly.git">git repo</a>,
 </TD>
 </TR>
-
-<TR>
-<TD>AllBSD.org (Japan)</TD>
-<TD>Code</TD>
-<TD>
-<a href="http://www.allbsd.org/#pub-anoncvs">anoncvs</a>,
-rsync, cvsup, cvsync, cvsweb
-</TD>
-</TR>
-
-<TR>
-<TD>mirror.isp.net.au (Australia)</TD>
-<TD>Code</TD>
-<TD>
-cvsup, rsync, <a href="http://mirror.isp.net.au/cgi-bin/cvsweb.cgi/?cvsroot=dragonfly">cvsweb</a>
-</TD>
-</TR>
-
-<TR>
-<TD>TheShell.com (Ashburn, VA, USA)</TD>
-<TD>Code</TD>
-<TD>
-<a href="http://cvsweb.theshell.com/">cvsweb</a>,
-cvsup, cvsync, rsync
-</TD>
-</TR>
-
-<!--
-<TR>
-<TD>alxl.info (Riga, Latvia)</TD>
-<TD>Code</TD>
-<TD>
-cvsup, <a href="http://alxl.info/cgi-bin/cvsweb.cgi/">cvsweb</a>
-</TD>
-</TR>
--->
-
-<TR>
-<TD>dragonflybsd.delphij.net (China)</TD>
-<TD>Code (<B>NOTE: China mirror only</B>)</TD>
-<TD>
-cvsup
-</TD>
-</TR>
-
-<TR>
-<TD>fred.acm.cs.rpi.edu (Troy, New York)</TD>
-<TD>Code</TD>
-<TD>
-cvsup
-</TD>
-</TR>
-
-<TR>
-<TD>dragonflybsd.kiev.ua (Ukraine)</TD>
-<TD>Code</TD>
-<TD>
-cvsup
-</TD>
-</TR>
-
 
 </TABLE>
 
