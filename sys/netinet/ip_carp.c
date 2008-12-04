@@ -76,7 +76,9 @@
 
 #include <netinet/ip_carp.h>
 
-#define	CARP_IFNAME	"carp"
+#define	CARP_IFNAME		"carp"
+#define CARP_IS_RUNNING(ifp)	\
+	(((ifp)->if_flags & (IFF_UP | IFF_RUNNING)) == (IFF_UP | IFF_RUNNING))
 
 struct carp_softc {
 	struct ifnet		 sc_if;
@@ -598,9 +600,7 @@ carp_input_c(struct mbuf *m, struct carp_header *ch, sa_family_t af)
 		if (sc->sc_vhid == ch->carp_vhid)
 			break;
 
-	if (!sc ||
-	    !((SC2IFP(sc)->if_flags & IFF_UP) &&
-	      (SC2IFP(sc)->if_flags & IFF_RUNNING))) {
+	if (!sc || !CARP_IS_RUNNING(SC2IFP(sc))) {
 		carpstats.carps_badvhid++;
 		m_freem(m);
 		return;
@@ -757,9 +757,7 @@ carp_send_ad_all(void)
 		if (sc->sc_carpdev == NULL)
 			continue;
 
-		if ((SC2IFP(sc)->if_flags & IFF_UP) &&
-		    (SC2IFP(sc)->if_flags & IFF_RUNNING) &&
-		    sc->sc_state == MASTER)
+		if (CARP_IS_RUNNING(SC2IFP(sc)) && sc->sc_state == MASTER)
 			carp_send_ad_locked(sc);
 	}
 }
@@ -782,8 +780,7 @@ carp_send_ad_locked(struct carp_softc *sc)
 	int len, advbase, advskew;
 
 	/* bow out if we've lost our UPness or RUNNINGuiness */
-	if (!((SC2IFP(sc)->if_flags & IFF_UP) &&
-	      (SC2IFP(sc)->if_flags & IFF_RUNNING))) {
+	if (!CARP_IS_RUNNING(SC2IFP(sc))) {
 		advbase = 255;
 		advskew = 255;
 	} else {
@@ -1003,8 +1000,7 @@ carp_addrcount(struct carp_if *cif, struct in_ifaddr *ia, int type)
 
 	TAILQ_FOREACH(vh, &cif->vhif_vrs, sc_list) {
 		if ((type == CARP_COUNT_RUNNING &&
-		     (SC2IFP(vh)->if_flags & IFF_UP) &&
-		     (SC2IFP(vh)->if_flags & IFF_RUNNING)) ||
+		     CARP_IS_RUNNING(SC2IFP(vh))) ||
 		    (type == CARP_COUNT_MASTER && vh->sc_state == MASTER)) {
 			struct ifaddr_container *ifac;
 
@@ -1049,8 +1045,7 @@ carp_iamatch(void *v, struct in_ifaddr *ia,
 		count = 0;
 
 		TAILQ_FOREACH(vh, &cif->vhif_vrs, sc_list) {
-			if ((SC2IFP(vh)->if_flags & IFF_UP) &&
-			    (SC2IFP(vh)->if_flags & IFF_RUNNING)) {
+			if (CARP_IS_RUNNING(SC2IFP(vh))) {
 				struct ifaddr_container *ifac;
 
 				TAILQ_FOREACH(ifac,
@@ -1076,8 +1071,7 @@ carp_iamatch(void *v, struct in_ifaddr *ia,
 		}
 	} else {
 		TAILQ_FOREACH(vh, &cif->vhif_vrs, sc_list) {
-			if ((SC2IFP(vh)->if_flags & IFF_UP) &&
-			    (SC2IFP(vh)->if_flags & IFF_RUNNING) &&
+			if (CARP_IS_RUNNING(SC2IFP(vh)) &&
 			    vh->sc_state == MASTER) {
 				*enaddr = IF_LLADDR(vh->sc_ifp);
 				return (1);
@@ -1103,8 +1097,7 @@ carp_iamatch6(void *v, struct in6_addr *taddr)
 
 			if (IN6_ARE_ADDR_EQUAL(taddr,
 			    &ifatoia6(ifa)->ia_addr.sin6_addr) &&
-			    (SC2IFP(vh)->if_flags & IFF_UP) &&
-			    (SC2IFP(vh)->if_flags & IFF_RUNNING) &&
+			    CARP_IS_RUNNING(SC2IFP(vh)) &&
 			    vh->sc_state == MASTER) {
 				return (ifa);
 			}
@@ -1129,8 +1122,7 @@ carp_macmatch6(void *v, struct mbuf *m, const struct in6_addr *taddr)
 
 			if (IN6_ARE_ADDR_EQUAL(taddr,
 			    &ifatoia6(ifa)->ia_addr.sin6_addr) &&
-			    (SC2IFP(sc)->if_flags & IFF_UP) &&
-			    (SC2IFP(sc)->if_flags & IFF_RUNNING)) {
+			    CARP_IS_RUNNING(SC2IFP(sc))) {
 				struct ifnet *ifp = SC2IFP(sc);
 				mtag = m_tag_get(PACKET_TAG_CARP,
 				    sizeof(struct ifnet *), MB_DONTWAIT);
@@ -1166,9 +1158,7 @@ carp_forus(void *v, void *dhost)
 		return (NULL);
 
 	TAILQ_FOREACH(vh, &cif->vhif_vrs, sc_list) {
-		if ((SC2IFP(vh)->if_flags & IFF_UP) &&
-		    (SC2IFP(vh)->if_flags & IFF_RUNNING) &&
-		    vh->sc_state == MASTER &&
+		if (CARP_IS_RUNNING(SC2IFP(vh)) && vh->sc_state == MASTER &&
 		    !bcmp(dhost, IF_LLADDR(vh->sc_ifp), ETHER_ADDR_LEN)) {
 			return (SC2IFP(vh));
 		}
