@@ -1459,8 +1459,7 @@ carp_del_addr(struct carp_softc *sc, struct sockaddr_in *sin)
 		struct ip_moptions *imo = &sc->sc_imo;
 
 		callout_stop(&sc->sc_ad_tmo);
-		SC2IFP(sc)->if_flags &= ~IFF_UP;
-		SC2IFP(sc)->if_flags &= ~IFF_RUNNING;
+		SC2IFP(sc)->if_flags &= ~(IFF_UP | IFF_RUNNING);
 		sc->sc_vhid = -1;
 		in_delmulti(imo->imo_membership[--imo->imo_num_memberships]);
 		imo->imo_multicast_ifp = NULL;
@@ -1632,8 +1631,7 @@ carp_del_addr6(struct carp_softc *sc, struct sockaddr_in6 *sin6)
 		struct ip6_moptions *im6o = &sc->sc_im6o;
 
 		callout_stop(&sc->sc_ad_tmo);
-		SC2IFP(sc)->if_flags &= ~IFF_UP;
-		SC2IFP(sc)->if_flags &= ~IFF_RUNNING;
+		SC2IFP(sc)->if_flags &= ~(IFF_UP | IFF_RUNNING);
 		sc->sc_vhid = -1;
 		while (!LIST_EMPTY(&im6o->im6o_memberships)) {
 			struct in6_multi_mship *imm =
@@ -1986,8 +1984,7 @@ carp_sc_state_locked(struct carp_softc *sc)
 {
 	if (!(sc->sc_carpdev->if_flags & IFF_UP)) {
 		sc->sc_flags_backup = SC2IFP(sc)->if_flags;
-		SC2IFP(sc)->if_flags &= ~IFF_UP;
-		SC2IFP(sc)->if_flags &= ~IFF_RUNNING;
+		SC2IFP(sc)->if_flags &= ~(IFF_UP | IFF_RUNNING);
 		callout_stop(&sc->sc_ad_tmo);
 		callout_stop(&sc->sc_md_tmo);
 		callout_stop(&sc->sc_md6_tmo);
