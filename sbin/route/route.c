@@ -939,7 +939,6 @@ inet_makenetandmask(u_long net, struct sockaddr_in *in, u_long bits)
 			} else
 				mask = 0xffffffff;
 		}
-		addr &= mask;
 	}
 	in->sin_addr.s_addr = htonl(addr);
 	in = &so_mask.sin;
