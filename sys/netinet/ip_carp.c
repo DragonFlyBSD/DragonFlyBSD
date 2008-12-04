@@ -153,9 +153,6 @@ SYSCTL_STRUCT(_net_inet_carp, CARPCTL_STATS, stats, CTLFLAG_RW,
     &carpstats, carpstats,
     "CARP statistics (struct carpstats, netinet/ip_carp.h)");
 
-/* Get carp_if from softc. Valid after carp_set_addr{,6}. */
-#define	SC2CIF(sc)		((struct carp_if *)(sc)->sc_carpdev->if_carp)
-
 #define	CARP_LOG(...)	do {				\
 	if (carp_opts[CARPCTL_LOG] > 0)			\
 		log(LOG_INFO, __VA_ARGS__);		\
