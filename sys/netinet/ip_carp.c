@@ -424,7 +424,7 @@ carpdetach(struct carp_softc *sc, int unlock)
 		if (!--cif->vhif_nvrs) {
 			ifpromisc(sc->sc_carpdev, 0);
 			sc->sc_carpdev->if_carp = NULL;
-			FREE(cif, M_IFADDR);
+			kfree(cif, M_IFADDR);
 		}
 		sc->sc_carpdev = NULL;
 	}
@@ -1375,10 +1375,9 @@ carp_set_addr(struct carp_softc *sc, struct sockaddr_in *sin)
 	}
 
 	if (!ifp->if_carp) {
-		MALLOC(cif, struct carp_if *, sizeof(*cif), M_CARP,
-		    M_WAITOK|M_ZERO);
+		cif = kmalloc(sizeof(*cif), M_CARP, M_WAITOK | M_ZERO);
 		if ((error = ifpromisc(ifp, 1))) {
-			FREE(cif, M_CARP);
+			kfree(cif, M_CARP);
 			goto cleanup;
 		}
 		
@@ -1453,7 +1452,7 @@ carp_del_addr(struct carp_softc *sc, struct sockaddr_in *sin)
 		TAILQ_REMOVE(&cif->vhif_vrs, sc, sc_list);
 		if (!--cif->vhif_nvrs) {
 			sc->sc_carpdev->if_carp = NULL;
-			FREE(cif, M_IFADDR);
+			kfree(cif, M_IFADDR);
 		}
 	}
 	return (error);
@@ -1541,10 +1540,9 @@ carp_set_addr6(struct carp_softc *sc, struct sockaddr_in6 *sin6)
 	}
 
 	if (!ifp->if_carp) {
-		MALLOC(cif, struct carp_if *, sizeof(*cif), M_CARP,
-		    M_WAITOK|M_ZERO);
+		cif = kmalloc(sizeof(*cif), M_CARP, M_WAITOK | M_ZERO);
 		if ((error = ifpromisc(ifp, 1))) {
-			FREE(cif, M_CARP);
+			kfree(cif, M_CARP);
 			goto cleanup;
 		}
 
@@ -1631,7 +1629,7 @@ carp_del_addr6(struct carp_softc *sc, struct sockaddr_in6 *sin6)
 		TAILQ_REMOVE(&cif->vhif_vrs, sc, sc_list);
 		if (!--cif->vhif_nvrs) {
 			sc->sc_carpdev->if_carp = NULL;
-			FREE(cif, M_IFADDR);
+			kfree(cif, M_IFADDR);
 		}
 	}
 	return (error);
