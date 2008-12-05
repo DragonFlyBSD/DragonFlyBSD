@@ -506,7 +506,7 @@ carp_input(struct mbuf *m, ...)
 	}
 
 	/* Make sure that CARP header is contiguous */
-	if (len < m->m_len) {
+	if (len > m->m_len) {
 		m = m_pullup(m, len);
 		if (m == NULL) {
 			carpstats.carps_hdrops++;
