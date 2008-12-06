@@ -152,10 +152,10 @@ static int	arp_mpsafe = 0;
 TUNABLE_INT("net.link.ether.inet.arp_mpsafe", &arp_mpsafe);
 
 static void	arp_rtrequest(int, struct rtentry *, struct rt_addrinfo *);
-static void	arprequest(struct ifnet *, struct in_addr *, struct in_addr *,
-			   const u_char *);
-static void	arprequest_async(struct ifnet *, struct in_addr *,
-				 struct in_addr *, const u_char *);
+static void	arprequest(struct ifnet *, const struct in_addr *,
+			   const struct in_addr *, const u_char *);
+static void	arprequest_async(struct ifnet *, const struct in_addr *,
+				 const struct in_addr *, const u_char *);
 static void	arpintr(struct netmsg *);
 static void	arptfree(struct llinfo_arp *);
 static void	arptimer(void *);
@@ -316,8 +316,8 @@ arp_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
 }
 
 static struct mbuf *
-arpreq_alloc(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
-	     const u_char *enaddr)
+arpreq_alloc(struct ifnet *ifp, const struct in_addr *sip,
+	     const struct in_addr *tip, const u_char *enaddr)
 {
 	struct mbuf *m;
 	struct arphdr *ah;
@@ -401,8 +401,8 @@ arpreq_send_handler(struct netmsg *nmsg)
  * NOTE: Caller MUST NOT hold ifp's serializer
  */
 static void
-arprequest(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
-	   const u_char *enaddr)
+arprequest(struct ifnet *ifp, const struct in_addr *sip,
+	   const struct in_addr *tip, const u_char *enaddr)
 {
 	struct mbuf *m;
 
@@ -418,8 +418,8 @@ arprequest(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
  * - Network output is done in TDF_NETWORK kernel thread
  */
 static void
-arprequest_async(struct ifnet *ifp, struct in_addr *sip, struct in_addr *tip,
-		 const u_char *enaddr)
+arprequest_async(struct ifnet *ifp, const struct in_addr *sip,
+		 const struct in_addr *tip, const u_char *enaddr)
 {
 	struct mbuf *m;
 	struct netmsg_packet *pmsg;
