@@ -66,11 +66,6 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 </tr>
 
 <tr>
-<td valign="top"><a href="hammer.pdf">hammer.pdf</a></td>
-<td valign="top">Hammer Major feature document</td>
-</tr>
-
-<tr>
 <td valign="top"><a href="http://leaf.dragonflybsd.org/cgi/web-man?command=hammer&section=5">hammer(5)</a></td>
 <td valign="top">Hammer starter manual page</td>
 </tr>
@@ -78,6 +73,16 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 <tr>
 <td valign="top"><a href="http://leaf.dragonflybsd.org/cgi/web-man?command=hammer&section=8">hammer(8)</a></td>
 <td valign="top">Hammer utility manual page</td>
+</tr>
+
+<tr>
+<td valign="top"><a href="hammer.pdf">hammer.pdf</a></td>
+<td valign="top">Hammer major feature document</td>
+</tr>
+
+<tr>
+<td valign="top"><a href="nycbsdcon08">NYCBSDCon</a></td>
+<td valign="top">Slideshow from NYCBSDCon 11 Oct 2008</td>
 </tr>
 
 </table>
