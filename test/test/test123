@@ -12,3 +12,5 @@ testing
 test git
 demultiplex 2/2
 test
+test cherry-pick
+moo

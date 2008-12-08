@@ -180,11 +180,15 @@ A
 would be
 done on the root null-node.  This operation would bypass through
 to the lower layer which would return a vnode representing
-the UFS
+the
+.Xr UFS 5
 .Pa sys
-(assuming that the lower layer is an UFS file system).
+(assuming that the lower layer is an
+.Xr UFS 5
+file system).
 Null_bypass then builds a null-node
-aliasing the UFS
+aliasing the
+.Xr UFS 5
 .Pa sys
 and returns this to the caller.
 Later operations on the null-node

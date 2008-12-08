@@ -204,7 +204,7 @@ struct re_softc {
 };
 
 #define RE_C_PCIE		0x1	/* PCI-E */
-#define RE_C_PCI64		0x2	/* PCI-X */
+#define RE_C_PCI64		0x2	/* PCI64 */
 #define RE_C_HWIM		0x4	/* hardware interrupt moderation */
 #define RE_C_HWCSUM		0x8	/* hardware csum offload */
 #define RE_C_8139CP		0x20	/* is 8139C+ */
@@ -214,6 +214,7 @@ struct re_softc {
 #define RE_C_AUTOPAD		0x200	/* hardware auto-pad short frames */
 #define RE_C_CONTIGRX		0x400	/* need contig buf to RX jumbo frames */
 #define RE_C_STOP_RXTX		0x800	/* could stop RX/TX engine */
+#define RE_C_FASTE		0x1000	/* 10/100 only NIC */
 
 #define RE_IS_8139CP(sc)	((sc)->re_caps & RE_C_8139CP)
 #define RE_IS_8169(sc)		((sc)->re_caps & RE_C_8169)

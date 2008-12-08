@@ -83,10 +83,12 @@
 #include <sys/thread.h>
 #include <sys/globaldata.h>
 #include <sys/thread2.h>
+#include <sys/msgport2.h>
 
 #include <machine/cpu.h>	/* before tcp_seq.h, for tcp_random18() */
 
 #include <net/route.h>
+#include <net/netmsg2.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -104,6 +106,30 @@
 #ifdef TCPDEBUG
 #include <netinet/tcp_debug.h>
 #endif
+
+#define TCP_TIMER_REXMT		0x01
+#define TCP_TIMER_PERSIST	0x02
+#define TCP_TIMER_KEEP		0x04
+#define TCP_TIMER_2MSL		0x08
+#define TCP_TIMER_DELACK	0x10
+
+static struct tcpcb	*tcp_timer_rexmt_handler(struct tcpcb *);
+static struct tcpcb	*tcp_timer_persist_handler(struct tcpcb *);
+static struct tcpcb	*tcp_timer_keep_handler(struct tcpcb *);
+static struct tcpcb	*tcp_timer_2msl_handler(struct tcpcb *);
+static struct tcpcb	*tcp_timer_delack_handler(struct tcpcb *);
+
+static const struct tcp_timer {
+	uint32_t	tt_task;
+	struct tcpcb	*(*tt_handler)(struct tcpcb *);
+} tcp_timer_handlers[] = {
+	{ TCP_TIMER_DELACK,	tcp_timer_delack_handler },
+	{ TCP_TIMER_PERSIST,	tcp_timer_persist_handler },
+	{ TCP_TIMER_REXMT,	tcp_timer_rexmt_handler },
+	{ TCP_TIMER_KEEP,	tcp_timer_keep_handler },
+	{ TCP_TIMER_2MSL,	tcp_timer_2msl_handler },
+	{ 0, NULL }
+};
 
 static int
 sysctl_msec_to_ticks(SYSCTL_HANDLER_ARGS)
@@ -190,6 +216,22 @@ tcp_canceltimers(struct tcpcb *tp)
 	callout_stop(tp->tt_rexmt);
 }
 
+/*
+ * Caller should be in critical section
+ */
+static void
+tcp_send_timermsg(struct tcpcb *tp, uint32_t task)
+{
+	struct netmsg_tcp_timer *tmsg = tp->tt_msg;
+
+	KKASSERT(tmsg != NULL && tmsg->tt_cpuid == mycpuid &&
+		 tmsg->tt_tcb != NULL);
+
+	tmsg->tt_tasks |= task;
+	if (tmsg->tt_nmsg.nm_lmsg.ms_flags & MSGF_DONE)
+		lwkt_sendmsg(tcp_cport(mycpuid), &tmsg->tt_nmsg.nm_lmsg);
+}
+
 int	tcp_syn_backoff[TCP_MAXRXTSHIFT + 1] =
     { 1, 1, 1, 1, 1, 2, 4, 8, 16, 32, 64, 64, 64 };
 
@@ -197,6 +239,16 @@ int	tcp_backoff[TCP_MAXRXTSHIFT + 1] =
     { 1, 2, 4, 8, 16, 32, 64, 64, 64, 64, 64, 64, 64 };
 
 static int tcp_totbackoff = 511;	/* sum of tcp_backoff[] */
+
+/* Caller should be in critical section */
+static struct tcpcb *
+tcp_timer_delack_handler(struct tcpcb *tp)
+{
+	tp->t_flags |= TF_ACKNOW;
+	tcpstat.tcps_delack++;
+	tcp_output(tp);
+	return tp;
+}
 
 /*
  * TCP timer processing.
@@ -212,28 +264,21 @@ tcp_timer_delack(void *xtp)
 		return;
 	}
 	callout_deactivate(tp->tt_delack);
-
-	tp->t_flags |= TF_ACKNOW;
-	tcpstat.tcps_delack++;
-	tcp_output(tp);
+	tcp_send_timermsg(tp, TCP_TIMER_DELACK);
 	crit_exit();
 }
 
-void
-tcp_timer_2msl(void *xtp)
+/* Caller should be in critical section */
+static struct tcpcb *
+tcp_timer_2msl_handler(struct tcpcb *tp)
 {
-	struct tcpcb *tp = xtp;
 #ifdef TCPDEBUG
 	int ostate;
+#endif
 
+#ifdef TCPDEBUG
 	ostate = tp->t_state;
 #endif
-	crit_enter();
-	if (callout_pending(tp->tt_2msl) || !callout_active(tp->tt_2msl)) {
-		crit_exit();
-		return;
-	}
-	callout_deactivate(tp->tt_2msl);
 	/*
 	 * 2 MSL timeout in shutdown went off.  If we're closed but
 	 * still waiting for peer to close and connection has been idle
@@ -251,25 +296,36 @@ tcp_timer_2msl(void *xtp)
 	if (tp && (tp->t_inpcb->inp_socket->so_options & SO_DEBUG))
 		tcp_trace(TA_USER, ostate, tp, NULL, NULL, PRU_SLOWTIMO);
 #endif
-	crit_exit();
+	return tp;
 }
 
 void
-tcp_timer_keep(void *xtp)
+tcp_timer_2msl(void *xtp)
 {
 	struct tcpcb *tp = xtp;
-	struct tcptemp *t_template;
-#ifdef TCPDEBUG
-	int ostate;
 
-	ostate = tp->t_state;
-#endif
 	crit_enter();
-	if (callout_pending(tp->tt_keep) || !callout_active(tp->tt_keep)) {
+	if (callout_pending(tp->tt_2msl) || !callout_active(tp->tt_2msl)) {
 		crit_exit();
 		return;
 	}
-	callout_deactivate(tp->tt_keep);
+	callout_deactivate(tp->tt_2msl);
+	tcp_send_timermsg(tp, TCP_TIMER_2MSL);
+	crit_exit();
+}
+
+/* Caller should be in critical section */
+static struct tcpcb *
+tcp_timer_keep_handler(struct tcpcb *tp)
+{
+	struct tcptemp *t_template;
+#ifdef TCPDEBUG
+	int ostate;
+#endif
+
+#ifdef TCPDEBUG
+	ostate = tp->t_state;
+#endif
 	/*
 	 * Keep-alive timer went off; send something
 	 * or drop connection if idle for too long.
@@ -310,8 +366,7 @@ tcp_timer_keep(void *xtp)
 	if (tp->t_inpcb->inp_socket->so_options & SO_DEBUG)
 		tcp_trace(TA_USER, ostate, tp, NULL, NULL, PRU_SLOWTIMO);
 #endif
-	crit_exit();
-	return;
+	return tp;
 
 dropit:
 	tcpstat.tcps_keepdrops++;
@@ -321,24 +376,35 @@ dropit:
 	if (tp && (tp->t_inpcb->inp_socket->so_options & SO_DEBUG))
 		tcp_trace(TA_USER, ostate, tp, NULL, NULL, PRU_SLOWTIMO);
 #endif
-	crit_exit();
+	return tp;
 }
 
 void
-tcp_timer_persist(void *xtp)
+tcp_timer_keep(void *xtp)
 {
 	struct tcpcb *tp = xtp;
-#ifdef TCPDEBUG
-	int ostate;
 
-	ostate = tp->t_state;
-#endif
 	crit_enter();
-	if (callout_pending(tp->tt_persist) || !callout_active(tp->tt_persist)){
+	if (callout_pending(tp->tt_keep) || !callout_active(tp->tt_keep)) {
 		crit_exit();
 		return;
 	}
-	callout_deactivate(tp->tt_persist);
+	callout_deactivate(tp->tt_keep);
+	tcp_send_timermsg(tp, TCP_TIMER_KEEP);
+	crit_exit();
+}
+
+/* Caller should be in critical section */
+static struct tcpcb *
+tcp_timer_persist_handler(struct tcpcb *tp)
+{
+#ifdef TCPDEBUG
+	int ostate;
+#endif
+
+#ifdef TCPDEBUG
+	ostate = tp->t_state;
+#endif
 	/*
 	 * Persistance timer into zero window.
 	 * Force a byte to be output, if possible.
@@ -368,6 +434,21 @@ out:
 	if (tp && tp->t_inpcb->inp_socket->so_options & SO_DEBUG)
 		tcp_trace(TA_USER, ostate, tp, NULL, NULL, PRU_SLOWTIMO);
 #endif
+	return tp;
+}
+
+void
+tcp_timer_persist(void *xtp)
+{
+	struct tcpcb *tp = xtp;
+
+	crit_enter();
+	if (callout_pending(tp->tt_persist) || !callout_active(tp->tt_persist)){
+		crit_exit();
+		return;
+	}
+	callout_deactivate(tp->tt_persist);
+	tcp_send_timermsg(tp, TCP_TIMER_PERSIST);
 	crit_exit();
 }
 
@@ -414,22 +495,18 @@ tcp_revert_congestion_state(struct tcpcb *tp)
 #endif
 }
 
-void
-tcp_timer_rexmt(void *xtp)
+/* Caller should be in critical section */
+static struct tcpcb *
+tcp_timer_rexmt_handler(struct tcpcb *tp)
 {
-	struct tcpcb *tp = xtp;
 	int rexmt;
 #ifdef TCPDEBUG
 	int ostate;
+#endif
 
+#ifdef TCPDEBUG
 	ostate = tp->t_state;
 #endif
-	crit_enter();
-	if (callout_pending(tp->tt_rexmt) || !callout_active(tp->tt_rexmt)) {
-		crit_exit();
-		return;
-	}
-	callout_deactivate(tp->tt_rexmt);
 	/*
 	 * Retransmission timer went off.  Message has not
 	 * been acked within retransmit interval.  Back off
@@ -545,5 +622,89 @@ out:
 	if (tp && (tp->t_inpcb->inp_socket->so_options & SO_DEBUG))
 		tcp_trace(TA_USER, ostate, tp, NULL, NULL, PRU_SLOWTIMO);
 #endif
+	return tp;
+}
+
+void
+tcp_timer_rexmt(void *xtp)
+{
+	struct tcpcb *tp = xtp;
+
+	crit_enter();
+	if (callout_pending(tp->tt_rexmt) || !callout_active(tp->tt_rexmt)) {
+		crit_exit();
+		return;
+	}
+	callout_deactivate(tp->tt_rexmt);
+	tcp_send_timermsg(tp, TCP_TIMER_REXMT);
+	crit_exit();
+}
+
+static void
+tcp_timer_handler(struct netmsg *nmsg)
+{
+	struct netmsg_tcp_timer *tmsg = (struct netmsg_tcp_timer *)nmsg;
+	const struct tcp_timer *tt;
+	struct tcpcb *tp;
+	uint32_t tasks;
+
+	crit_enter();
+
+	KKASSERT(tmsg->tt_cpuid == mycpuid && tmsg->tt_tcb != NULL);
+	tp = tmsg->tt_tcb;
+
+	/* Save pending tasks and reset the tasks in message */
+	tasks = tmsg->tt_tasks;
+	tmsg->tt_tasks = 0;
+
+	/* Reply ASAP */
+	lwkt_replymsg(&tmsg->tt_nmsg.nm_lmsg, 0);
+
+	for (tt = tcp_timer_handlers; tt->tt_handler != NULL; ++tt) {
+		if ((tasks & tt->tt_task) == 0)
+			continue;
+
+		tp = tt->tt_handler(tp);
+		if (tp == NULL)
+			break;
+
+		tasks &= ~tt->tt_task;
+		if (tasks == 0) /* nothing left to do */
+			break;
+	}
+
+	crit_exit();
+}
+
+void
+tcp_create_timermsg(struct tcpcb *tp)
+{
+	struct netmsg_tcp_timer *tmsg = tp->tt_msg;
+
+	netmsg_init(&tmsg->tt_nmsg, &netisr_adone_rport, MSGF_DROPABLE,
+		    tcp_timer_handler);
+	tmsg->tt_cpuid = mycpuid;
+	tmsg->tt_tcb = tp;
+	tmsg->tt_tasks = 0;
+}
+
+void
+tcp_destroy_timermsg(struct tcpcb *tp)
+{
+	struct netmsg_tcp_timer *tmsg = tp->tt_msg;
+
+	if (tmsg == NULL ||		/* listen socket */
+	    tmsg->tt_tcb == NULL)	/* only tcp_attach() is called */
+		return;
+
+	KKASSERT(tmsg->tt_cpuid == mycpuid);
+	crit_enter();
+	if ((tmsg->tt_nmsg.nm_lmsg.ms_flags & MSGF_DONE) == 0) {
+		/*
+		 * This message is still pending to be processed;
+		 * drop it.
+		 */
+		lwkt_dropmsg(&tmsg->tt_nmsg.nm_lmsg);
+	}
 	crit_exit();
 }

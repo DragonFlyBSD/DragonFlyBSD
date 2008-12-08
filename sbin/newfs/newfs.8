@@ -238,7 +238,8 @@ See
 .Xr tunefs 8
 for more details on how to set this option.
 .It Fl n Ar number of distinguished rotational positions
-UFS has the ability to keep track of the availability of blocks at different
+.Xr UFS 5
+has the ability to keep track of the availability of blocks at different
 rotational positions, so that it could lay out the data to be picked up with
 minimum rotational latency.  This parameter specifies the default number of
 rotational positions to distinguish.
@@ -368,7 +369,9 @@ man page for possible options and their meanings.
 .Sh EXAMPLES
 .Dl newfs /dev/ad3s1a
 .Pp
-Creates a new ufs file system on
+Creates a new
+.Xr UFS 5
+file system on
 .Pa ad3s1a .
 .Nm
 will use a block size of 16384 bytes, a fragment size of 2048 bytes

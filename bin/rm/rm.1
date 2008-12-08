@@ -223,7 +223,8 @@ The
 .Fl P
 option assumes that the underlying file system is a fixed-block file
 system.
-UFS is a fixed-block file system, LFS is not.
+.Xr UFS 5
+is a fixed-block file system, LFS is not.
 In addition, only regular files are overwritten, other types of files
 are not.  Hardlinked regular files will not be overwritten or removed,
 possibly leading to unintended behavior.  It is arguable which is the MORE

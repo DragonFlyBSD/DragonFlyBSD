@@ -242,19 +242,21 @@ static const struct re_hwrev re_hwrevs[] = {
 	  RE_C_AUTOPAD | RE_C_CONTIGRX | RE_C_STOP_RXTX },
 
 	{ RE_HWREV_8100E,	RE_MACVER_UNKN,		ETHERMTU,
-	  RE_C_HWCSUM },
+	  RE_C_HWCSUM | RE_C_FASTE },
 
 	{ RE_HWREV_8101E1,	RE_MACVER_16,		ETHERMTU,
-	  RE_C_HWCSUM },
+	  RE_C_HWCSUM | RE_C_FASTE },
 
 	{ RE_HWREV_8101E2,	RE_MACVER_16,		ETHERMTU,
-	  RE_C_HWCSUM },
+	  RE_C_HWCSUM | RE_C_FASTE },
 
 	{ RE_HWREV_8102E,	RE_MACVER_15,		ETHERMTU,
-	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_AUTOPAD | RE_C_STOP_RXTX },
+	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_AUTOPAD | RE_C_STOP_RXTX |
+	  RE_C_FASTE },
 
 	{ RE_HWREV_8102EL,	RE_MACVER_15,		ETHERMTU,
-	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_AUTOPAD | RE_C_STOP_RXTX },
+	  RE_C_HWCSUM | RE_C_MAC2 | RE_C_AUTOPAD | RE_C_STOP_RXTX |
+	  RE_C_FASTE },
 
 	{ RE_HWREV_NULL, 0, 0, 0 }
 };
@@ -2627,10 +2629,13 @@ re_init(void *xsc)
 	}
 
 	/*
-	 * Adjust max read request size according to MTU.
-	 * Mainly to improve TX performance for common case (ETHERMTU).
+	 * Adjust max read request size according to MTU; mainly to
+	 * improve TX performance for common case (ETHERMTU) on GigE
+	 * NICs.  However, this could _not_ be done on 10/100 only
+	 * NICs; their DMA engines will malfunction using non-default
+	 * max read request size.
 	 */
-	if (sc->re_caps & RE_C_PCIE) {
+	if ((sc->re_caps & (RE_C_PCIE | RE_C_FASTE)) == RE_C_PCIE) {
 		if (ifp->if_mtu > ETHERMTU) {
 			/*
 			 * 512 seems to be the only value that works

@@ -295,6 +295,7 @@ struct	inp_tp {
 	struct	tcpcb tcb;
 	struct	callout inp_tp_rexmt, inp_tp_persist, inp_tp_keep, inp_tp_2msl;
 	struct	callout inp_tp_delack;
+	struct	netmsg_tcp_timer inp_tp_timermsg;
 };
 #undef ALIGNMENT
 #undef ALIGNM1
@@ -705,6 +706,19 @@ tcp_newtcpcb(struct inpcb *inp)
 	callout_init(tp->tt_2msl = &it->inp_tp_2msl);
 	callout_init(tp->tt_delack = &it->inp_tp_delack);
 
+	tp->tt_msg = &it->inp_tp_timermsg;
+	if (isipv6) {
+		/* Don't mess with IPv6; always create timer message */
+		tcp_create_timermsg(tp);
+	} else {
+		/*
+		 * Zero out timer message.  We don't create it here,
+		 * since the current CPU may not be the owner of this
+		 * inpcb.
+		 */
+		bzero(tp->tt_msg, sizeof(*tp->tt_msg));
+	}
+
 	if (tcp_do_rfc1323)
 		tp->t_flags = (TF_REQ_SCALE | TF_REQ_TSTMP);
 	if (tcp_do_rfc1644)
@@ -965,6 +979,9 @@ no_valid_rt:
 
 	inp->inp_ppcb = NULL;
 	soisdisconnected(so);
+
+	tcp_destroy_timermsg(tp);
+
 	/*
 	 * Discard the inp.  In the SMP case a wildcard inp's hash (created
 	 * by a listen socket or an INADDR_ANY udp socket) is replicated

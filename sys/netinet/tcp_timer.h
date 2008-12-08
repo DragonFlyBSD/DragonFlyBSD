@@ -129,6 +129,15 @@ static char *tcptimers[] =
 } while(0)
 
 #ifdef _KERNEL
+
+struct tcpcb;
+struct netmsg_tcp_timer {
+	struct netmsg	tt_nmsg;
+	struct tcpcb	*tt_tcb;
+	int		tt_cpuid;
+	uint32_t	tt_tasks;
+};
+
 extern int tcp_keepinit;		/* time to establish connection */
 extern int tcp_keepidle;		/* time before keepalive probes begin */
 extern int tcp_keepintvl;		/* time between keepalive probes */
@@ -146,6 +155,9 @@ void	tcp_timer_keep (void *xtp);
 void	tcp_timer_persist (void *xtp);
 void	tcp_timer_rexmt (void *xtp);
 void	tcp_timer_delack (void *xtp);
+
+void	tcp_create_timermsg(struct tcpcb *);
+void	tcp_destroy_timermsg(struct tcpcb *);
 
 #endif /* _KERNEL */
 
