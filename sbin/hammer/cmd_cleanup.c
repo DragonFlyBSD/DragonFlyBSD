@@ -511,7 +511,7 @@ cleanup_softlinks(const char *path __unused, const char *snapshots_path,
 	char *fpath;
 	int anylink = 0;
 
-	if (strstr(arg3, "any") != NULL)
+	if (arg3 != NULL && strstr(arg3, "any") != NULL)
 		anylink = 1;
 
 	if ((dir = opendir(snapshots_path)) != NULL) {
