@@ -339,6 +339,38 @@ kmalloc_raise_limit(struct malloc_type *type, size_t bytes)
 }
 
 /*
+ * Dynamically create a malloc pool.  This function is a NOP if *typep is
+ * already non-NULL.
+ */
+void
+kmalloc_create(struct malloc_type **typep, const char *descr)
+{
+	struct malloc_type *type;
+
+	if (*typep == NULL) {
+		type = kmalloc(sizeof(*type), M_TEMP, M_WAITOK | M_ZERO);
+		type->ks_magic = M_MAGIC;
+		type->ks_shortdesc = descr;
+		malloc_init(type);
+		*typep = type;
+	}
+}
+
+/*
+ * Destroy a dynamically created malloc pool.  This function is a NOP if
+ * the pool has already been destroyed.
+ */
+void
+kmalloc_destroy(struct malloc_type **typep)
+{
+	if (*typep != NULL) {
+		malloc_uninit(*typep);
+		kfree(*typep, M_TEMP);
+		*typep = NULL;
+	}
+}
+
+/*
  * Calculate the zone index for the allocation request size and set the
  * allocation request size to that particular zone's chunk size.
  */

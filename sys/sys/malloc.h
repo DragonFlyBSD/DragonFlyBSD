@@ -200,6 +200,8 @@ void	*contigmalloc (unsigned long size, struct malloc_type *type,
 void	malloc_init (void *);
 void	malloc_uninit (void *);
 void	kmalloc_raise_limit(struct malloc_type *type, size_t bytes);
+void	kmalloc_create(struct malloc_type **typep, const char *descr);
+void	kmalloc_destroy(struct malloc_type **typep);
 
 void	*kmalloc (unsigned long size, struct malloc_type *type, int flags);
 void	*krealloc (void *addr, unsigned long size,
