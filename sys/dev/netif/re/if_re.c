@@ -200,7 +200,7 @@ static const struct re_type {
 
 static const struct re_hwrev re_hwrevs[] = {
 	{ RE_HWREV_8139CPLUS,	RE_MACVER_UNKN,		ETHERMTU,
-	  RE_C_HWCSUM | RE_C_8139CP },
+	  RE_C_HWCSUM | RE_C_8139CP | RE_C_FASTE },
 
 	{ RE_HWREV_8169,	RE_MACVER_UNKN,		ETHERMTU,
 	  RE_C_HWCSUM | RE_C_8169 },
@@ -1375,7 +1375,12 @@ re_attach(device_t dev)
 		sc->re_sim_time = 75;	/* 75us */
 	else
 		sc->re_sim_time = 125;	/* 125us */
-	sc->re_imtype = RE_IMTYPE_SIM;	/* simulated interrupt moderation */
+	if (!RE_IS_8139CP(sc)) {
+		/* simulated interrupt moderation */
+		sc->re_imtype = RE_IMTYPE_SIM;
+	} else {
+		sc->re_imtype = RE_IMTYPE_NONE;
+	}
 	re_config_imtype(sc, sc->re_imtype);
 
 	sysctl_ctx_init(&sc->re_sysctl_ctx);
