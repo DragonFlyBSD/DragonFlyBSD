@@ -391,9 +391,9 @@ vnstrategy(struct dev_strategy_args *ap)
 		auio.uio_td = curthread;
 		vn_lock(vn->sc_vp, LK_EXCLUSIVE | LK_RETRY);
 		if (bp->b_cmd == BUF_CMD_READ)
-			error = VOP_READ(vn->sc_vp, &auio, IO_DIRECT, vn->sc_cred);
+			error = VOP_READ(vn->sc_vp, &auio, IO_DIRECT | IO_RECURSE, vn->sc_cred);
 		else
-			error = VOP_WRITE(vn->sc_vp, &auio, IO_DIRECT, vn->sc_cred);
+			error = VOP_WRITE(vn->sc_vp, &auio, IO_DIRECT | IO_RECURSE, vn->sc_cred);
 		vn_unlock(vn->sc_vp);
 		bp->b_resid = auio.uio_resid;
 		if (error) {

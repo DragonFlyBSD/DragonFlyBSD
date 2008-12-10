@@ -388,9 +388,12 @@ hammer_vop_write(struct vop_write_args *ap)
 		 * with the buffer cache.  Even so, we cannot afford to
 		 * allow the pageout daemon to build up too many dirty buffer
 		 * cache buffers.
+		 *
+		 * Only call this if we aren't being recursively called from
+		 * a virtual disk device (vn), else we may deadlock.
 		 */
-		/*if (((int)uio->uio_offset & (blksize - 1)) == 0)*/
-		bwillwrite(blksize);
+		if ((ap->a_ioflag & IO_RECURSE) == 0)
+			bwillwrite(blksize);
 
 		/*
 		 * Do not allow HAMMER to blow out system memory by

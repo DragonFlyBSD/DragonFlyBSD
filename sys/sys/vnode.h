@@ -305,7 +305,7 @@ struct vnode {
 #define	IO_INVAL	0x0040		/* invalidate after I/O */
 #define IO_ASYNC	0x0080		/* bawrite rather then bdwrite */
 #define	IO_DIRECT	0x0100		/* attempt to bypass buffer cache */
-#define	IO_UNUSED0200	0x0200
+#define	IO_RECURSE	0x0200		/* possibly device-recursive (vn) */
 #define	IO_CORE		0x0400		/* I/O is part of core dump */
 
 #define	IO_SEQMAX	0x7F		/* seq heuristic max value */
