@@ -554,7 +554,7 @@ hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 	hammer_rel_node(onode);
 
 done:
-	hammer_btree_unlock_children(&locklist);
+	hammer_btree_unlock_children(cursor, &locklist);
 	return (error);
 }
 

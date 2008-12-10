@@ -498,7 +498,7 @@ again:
 		++resv->refs;
 		resx = NULL;
 	} else {
-		resx = kmalloc(sizeof(*resv), M_HAMMER,
+		resx = kmalloc(sizeof(*resv), hmp->m_misc,
 			       M_WAITOK | M_ZERO | M_USE_RESERVE);
 		resx->refs = 1;
 		resx->zone = zone;
@@ -588,7 +588,7 @@ hammer_blockmap_reserve_complete(hammer_mount_t hmp, hammer_reserve_t resv)
 	if (--resv->refs == 0) {
 		KKASSERT((resv->flags & HAMMER_RESF_ONDELAY) == 0);
 		RB_REMOVE(hammer_res_rb_tree, &hmp->rb_resv_root, resv);
-		kfree(resv, M_HAMMER);
+		kfree(resv, hmp->m_misc);
 		--hammer_count_reservations;
 	}
 }
@@ -613,7 +613,7 @@ hammer_reserve_setdelay(hammer_mount_t hmp, hammer_off_t base_offset,
 again:
 	resv = RB_LOOKUP(hammer_res_rb_tree, &hmp->rb_resv_root, base_offset);
 	if (resv == NULL) {
-		resv = kmalloc(sizeof(*resv), M_HAMMER,
+		resv = kmalloc(sizeof(*resv), hmp->m_misc,
 			       M_WAITOK | M_ZERO | M_USE_RESERVE);
 		resv->zone_offset = base_offset;
 		resv->refs = 0;
@@ -621,7 +621,7 @@ again:
 		if (layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE)
 			resv->flags |= HAMMER_RESF_LAYER2FREE;
 		if (RB_INSERT(hammer_res_rb_tree, &hmp->rb_resv_root, resv)) {
-			kfree(resv, M_HAMMER);
+			kfree(resv, hmp->m_misc);
 			goto again;
 		}
 		++hammer_count_reservations;

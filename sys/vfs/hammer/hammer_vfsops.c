@@ -251,8 +251,7 @@ static struct vfsops hammer_vfsops = {
 	.vfs_checkexp	= hammer_vfs_checkexp
 };
 
-MALLOC_DEFINE(M_HAMMER, "hammer-general", "hammer general");
-MALLOC_DEFINE(M_HAMMER_INO, "hammer-inodes", "hammer inodes");
+MALLOC_DEFINE(M_HAMMER, "HAMMER-mount", "");
 
 VFS_SET(hammer_vfsops, hammer, 0);
 MODULE_VERSION(hammer, 1);
@@ -292,22 +291,7 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 	int error;
 	int i;
 	int master_id;
-
-	/*
-	 * Make sure kmalloc type limits are set appropriately.  If root
-	 * increases the vnode limit you may have to do a dummy remount
-	 * to adjust the HAMMER inode limit.
-	 */
-	{
-		int maxinodes;
-
-		maxinodes = desiredvnodes + desiredvnodes / 5 + 
-			    HAMMER_RECLAIM_WAIT;
-
-		kmalloc_raise_limit(M_HAMMER_INO,
-				    maxinodes * sizeof(struct hammer_inode));
-	}
-
+	int maxinodes;
 
 	/*
 	 * Accept hammer_mount_info.  mntpt is NULL for root mounts at boot.
@@ -367,6 +351,19 @@ hammer_vfs_mount(struct mount *mp, char *mntpt, caddr_t data,
 		mp->mnt_data = (qaddr_t)hmp;
 		hmp->mp = mp;
 		/*TAILQ_INIT(&hmp->recycle_list);*/
+
+		/*
+		 * Make sure kmalloc type limits are set appropriately.  If root
+		 * increases the vnode limit you may have to do a dummy remount
+		 * to adjust the HAMMER inode limit.
+		 */
+		kmalloc_create(&hmp->m_misc, "HAMMER-others");
+		kmalloc_create(&hmp->m_inodes, "HAMMER-inodes");
+
+		maxinodes = desiredvnodes + desiredvnodes / 5 +
+			    HAMMER_RECLAIM_WAIT;
+		kmalloc_raise_limit(hmp->m_inodes,
+				    maxinodes * sizeof(struct hammer_inode));
 
 		hmp->root_btree_beg.localization = 0x00000000U;
 		hmp->root_btree_beg.obj_id = -0x8000000000000000LL;
@@ -727,7 +724,7 @@ hammer_free_hmp(struct mount *mp)
 			kprintf("HAMMER: Warning, flush_group %p was "
 				"not empty on umount!\n", flg);
 		}
-		kfree(flg, M_HAMMER);
+		kfree(flg, hmp->m_misc);
 	}
 
 	/*
@@ -754,6 +751,8 @@ hammer_free_hmp(struct mount *mp)
 	mp->mnt_flag &= ~MNT_LOCAL;
 	hmp->mp = NULL;
 	hammer_destroy_objid_cache(hmp);
+	kmalloc_destroy(&hmp->m_misc);
+	kmalloc_destroy(&hmp->m_inodes);
 	kfree(hmp, M_HAMMER);
 }
 

@@ -624,8 +624,10 @@ hammer_push_cursor(hammer_cursor_t ocursor)
 	hammer_cursor_t ncursor;
 	hammer_inode_t ip;
 	hammer_node_t node;
+	hammer_mount_t hmp;
 
-	ncursor = kmalloc(sizeof(*ncursor), M_HAMMER, M_WAITOK | M_ZERO);
+	hmp = ocursor->trans->hmp;
+	ncursor = kmalloc(sizeof(*ncursor), hmp->m_misc, M_WAITOK | M_ZERO);
 	bcopy(ocursor, ncursor, sizeof(*ocursor));
 
 	node = ocursor->node;
@@ -659,14 +661,16 @@ hammer_push_cursor(hammer_cursor_t ocursor)
 void
 hammer_pop_cursor(hammer_cursor_t ocursor, hammer_cursor_t ncursor)
 {
+	hammer_mount_t hmp;
 	hammer_inode_t ip;
 
+	hmp = ncursor->trans->hmp;
 	ip = ncursor->ip;
 	ncursor->ip = NULL;
 	if (ip)
                 --ip->cursor_ip_refs;
 	hammer_done_cursor(ncursor);
-	kfree(ncursor, M_HAMMER);
+	kfree(ncursor, hmp->m_misc);
 	KKASSERT(ocursor->ip == ip);
 	hammer_lock_cursor(ocursor, 0);
 }

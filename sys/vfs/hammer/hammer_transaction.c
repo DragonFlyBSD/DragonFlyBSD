@@ -174,7 +174,8 @@ hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip)
 
 	while ((ocp = dip->objid_cache) == NULL) {
 		if (hmp->objid_cache_count < OBJID_CACHE_SIZE) {
-			ocp = kmalloc(sizeof(*ocp), M_HAMMER, M_WAITOK|M_ZERO);
+			ocp = kmalloc(sizeof(*ocp), hmp->m_misc,
+				      M_WAITOK|M_ZERO);
 			ocp->next_tid = hammer_alloc_tid(hmp, OBJID_CACHE_BULK);
 			ocp->count = OBJID_CACHE_BULK;
 			TAILQ_INSERT_HEAD(&hmp->objid_cache_list, ocp, entry);
@@ -205,7 +206,7 @@ hammer_alloc_objid(hammer_mount_t hmp, hammer_inode_t dip)
 		dip->objid_cache = NULL;
 		--hmp->objid_cache_count;
 		ocp->dip = NULL;
-		kfree(ocp, M_HAMMER);
+		kfree(ocp, hmp->m_misc);
 	} else {
 		TAILQ_INSERT_TAIL(&hmp->objid_cache_list, ocp, entry);
 	}
@@ -234,7 +235,7 @@ hammer_destroy_objid_cache(hammer_mount_t hmp)
 		TAILQ_REMOVE(&hmp->objid_cache_list, ocp, entry);
 		if (ocp->dip)
 			ocp->dip->objid_cache = NULL;
-		kfree(ocp, M_HAMMER);
+		kfree(ocp, hmp->m_misc);
 	}
 }
 

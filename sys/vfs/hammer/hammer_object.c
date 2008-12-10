@@ -249,9 +249,11 @@ hammer_record_t
 hammer_alloc_mem_record(hammer_inode_t ip, int data_len)
 {
 	hammer_record_t record;
+	hammer_mount_t hmp;
 
+	hmp = ip->hmp;
 	++hammer_count_records;
-	record = kmalloc(sizeof(*record), M_HAMMER,
+	record = kmalloc(sizeof(*record), hmp->m_misc,
 			 M_WAITOK | M_ZERO | M_USE_RESERVE);
 	record->flush_state = HAMMER_FST_IDLE;
 	record->ip = ip;
@@ -260,7 +262,7 @@ hammer_alloc_mem_record(hammer_inode_t ip, int data_len)
 	hammer_ref(&record->lock);
 
 	if (data_len) {
-		record->data = kmalloc(data_len, M_HAMMER, M_WAITOK | M_ZERO);
+		record->data = kmalloc(data_len, hmp->m_misc, M_WAITOK | M_ZERO);
 		record->flags |= HAMMER_RECF_ALLOCDATA;
 		++hammer_count_record_datas;
 	}
@@ -415,7 +417,7 @@ hammer_rel_mem_record(struct hammer_record *record)
 
 			if (record->flags & HAMMER_RECF_ALLOCDATA) {
 				--hammer_count_record_datas;
-				kfree(record->data, M_HAMMER);
+				kfree(record->data, hmp->m_misc);
 				record->flags &= ~HAMMER_RECF_ALLOCDATA;
 			}
 
@@ -438,7 +440,7 @@ hammer_rel_mem_record(struct hammer_record *record)
 			}
 			record->data = NULL;
 			--hammer_count_records;
-			kfree(record, M_HAMMER);
+			kfree(record, hmp->m_misc);
 		}
 	}
 }

@@ -373,7 +373,7 @@ loop:
 	/*
 	 * Allocate a new inode structure and deal with races later.
 	 */
-	ip = kmalloc(sizeof(*ip), M_HAMMER_INO, M_WAITOK|M_ZERO);
+	ip = kmalloc(sizeof(*ip), hmp->m_inodes, M_WAITOK|M_ZERO);
 	++hammer_count_inodes;
 	++hmp->count_inodes;
 	ip->obj_id = obj_id;
@@ -507,7 +507,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 
 	hmp = trans->hmp;
 
-	ip = kmalloc(sizeof(*ip), M_HAMMER_INO, M_WAITOK|M_ZERO);
+	ip = kmalloc(sizeof(*ip), hmp->m_inodes, M_WAITOK|M_ZERO);
 	++hammer_count_inodes;
 	++hmp->count_inodes;
 
@@ -666,6 +666,9 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 static void
 hammer_free_inode(hammer_inode_t ip)
 {
+	struct hammer_mount *hmp;
+
+	hmp = ip->hmp;
 	KKASSERT(ip->lock.refs == 1);
 	hammer_uncache_node(&ip->cache[0]);
 	hammer_uncache_node(&ip->cache[1]);
@@ -673,12 +676,12 @@ hammer_free_inode(hammer_inode_t ip)
 	if (ip->objid_cache)
 		hammer_clear_objid(ip);
 	--hammer_count_inodes;
-	--ip->hmp->count_inodes;
+	--hmp->count_inodes;
 	if (ip->pfsm) {
-		hammer_rel_pseudofs(ip->hmp, ip->pfsm);
+		hammer_rel_pseudofs(hmp, ip->pfsm);
 		ip->pfsm = NULL;
 	}
-	kfree(ip, M_HAMMER_INO);
+	kfree(ip, hmp->m_inodes);
 	ip = NULL;
 }
 
@@ -720,7 +723,7 @@ retry:
 		ip = NULL;
 	}
 
-	pfsm = kmalloc(sizeof(*pfsm), M_HAMMER, M_WAITOK | M_ZERO);
+	pfsm = kmalloc(sizeof(*pfsm), hmp->m_misc, M_WAITOK | M_ZERO);
 	pfsm->localization = localization;
 	pfsm->pfsd.unique_uuid = trans->rootvol->ondisk->vol_fsid;
 	pfsm->pfsd.shared_uuid = pfsm->pfsd.unique_uuid;
@@ -762,7 +765,7 @@ retry:
 	if (ip)
 		hammer_rel_inode(ip, 0);
 	if (RB_INSERT(hammer_pfs_rb_tree, &hmp->rb_pfsm_root, pfsm)) {
-		kfree(pfsm, M_HAMMER);
+		kfree(pfsm, hmp->m_misc);
 		goto retry;
 	}
 	return(pfsm);
@@ -910,7 +913,7 @@ hammer_rel_pseudofs(hammer_mount_t hmp, hammer_pseudofs_inmem_t pfsm)
 	hammer_unref(&pfsm->lock);
 	if (pfsm->lock.refs == 0) {
 		RB_REMOVE(hammer_pfs_rb_tree, &hmp->rb_pfsm_root, pfsm);
-		kfree(pfsm, M_HAMMER);
+		kfree(pfsm, hmp->m_misc);
 	}
 }
 
@@ -1386,7 +1389,7 @@ hammer_flush_inode(hammer_inode_t ip, int flags)
 		hammer_flusher_async(ip->hmp, flg);
 	}
 	if (flg == NULL) {
-		flg = kmalloc(sizeof(*flg), M_HAMMER, M_WAITOK|M_ZERO);
+		flg = kmalloc(sizeof(*flg), hmp->m_misc, M_WAITOK|M_ZERO);
 		hmp->next_flush_group = flg;
 		TAILQ_INIT(&flg->flush_list);
 		TAILQ_INSERT_TAIL(&hmp->flush_group_list, flg, flush_entry);

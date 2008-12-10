@@ -117,8 +117,8 @@ hammer_install_volume(struct hammer_mount *hmp, const char *volname,
 	 * Allocate a volume structure
 	 */
 	++hammer_count_volumes;
-	volume = kmalloc(sizeof(*volume), M_HAMMER, M_WAITOK|M_ZERO);
-	volume->vol_name = kstrdup(volname, M_HAMMER);
+	volume = kmalloc(sizeof(*volume), hmp->m_misc, M_WAITOK|M_ZERO);
+	volume->vol_name = kstrdup(volname, hmp->m_misc);
 	volume->io.hmp = hmp;	/* bootstrap */
 	hammer_io_init(&volume->io, volume, HAMMER_STRUCTURE_VOLUME);
 	volume->io.offset = 0LL;
@@ -265,7 +265,7 @@ hammer_adjust_volume_mode(hammer_volume_t volume, void *data __unused)
 int
 hammer_unload_volume(hammer_volume_t volume, void *data __unused)
 {
-	struct hammer_mount *hmp = volume->io.hmp;
+	hammer_mount_t hmp = volume->io.hmp;
 	int ronly = ((hmp->mp->mnt_flag & MNT_RDONLY) ? 1 : 0);
 	struct buf *bp;
 
@@ -338,8 +338,10 @@ static
 void
 hammer_free_volume(hammer_volume_t volume)
 {
+	hammer_mount_t hmp = volume->io.hmp;
+
 	if (volume->vol_name) {
-		kfree(volume->vol_name, M_HAMMER);
+		kfree(volume->vol_name, hmp->m_misc);
 		volume->vol_name = NULL;
 	}
 	if (volume->devvp) {
@@ -347,7 +349,7 @@ hammer_free_volume(hammer_volume_t volume)
 		volume->devvp = NULL;
 	}
 	--hammer_count_volumes;
-	kfree(volume, M_HAMMER);
+	kfree(volume, hmp->m_misc);
 }
 
 /*
@@ -611,7 +613,7 @@ again:
 	 * Allocate a new buffer structure.  We will check for races later.
 	 */
 	++hammer_count_buffers;
-	buffer = kmalloc(sizeof(*buffer), M_HAMMER,
+	buffer = kmalloc(sizeof(*buffer), hmp->m_misc,
 			 M_WAITOK|M_ZERO|M_USE_RESERVE);
 	buffer->zone2_offset = zone2_offset;
 	buffer->zoneX_offset = buf_offset;
@@ -629,7 +631,7 @@ again:
 	if (RB_INSERT(hammer_buf_rb_tree, &hmp->rb_bufs_root, buffer)) {
 		hammer_unref(&buffer->io.lock);
 		--hammer_count_buffers;
-		kfree(buffer, M_HAMMER);
+		kfree(buffer, hmp->m_misc);
 		goto again;
 	}
 	++hammer_count_refedbufs;
@@ -860,8 +862,11 @@ void
 hammer_rel_buffer(hammer_buffer_t buffer, int flush)
 {
 	hammer_volume_t volume;
+	hammer_mount_t hmp;
 	struct buf *bp = NULL;
 	int freeme = 0;
+
+	hmp = buffer->io.hmp;
 
 	crit_enter();
 	if (buffer->io.lock.refs == 1) {
@@ -903,7 +908,7 @@ hammer_rel_buffer(hammer_buffer_t buffer, int flush)
 		brelse(bp);
 	if (freeme) {
 		--hammer_count_buffers;
-		kfree(buffer, M_HAMMER);
+		kfree(buffer, hmp->m_misc);
 	}
 }
 
@@ -1057,14 +1062,14 @@ again:
 	node = RB_LOOKUP(hammer_nod_rb_tree, &hmp->rb_nods_root, node_offset);
 	if (node == NULL) {
 		++hammer_count_nodes;
-		node = kmalloc(sizeof(*node), M_HAMMER, M_WAITOK|M_ZERO|M_USE_RESERVE);
+		node = kmalloc(sizeof(*node), hmp->m_misc, M_WAITOK|M_ZERO|M_USE_RESERVE);
 		node->node_offset = node_offset;
 		node->hmp = hmp;
 		TAILQ_INIT(&node->cursor_list);
 		TAILQ_INIT(&node->cache_list);
 		if (RB_INSERT(hammer_nod_rb_tree, &hmp->rb_nods_root, node)) {
 			--hammer_count_nodes;
-			kfree(node, M_HAMMER);
+			kfree(node, hmp->m_misc);
 			goto again;
 		}
 	}
@@ -1290,6 +1295,7 @@ hammer_flush_node(hammer_node_t node)
 {
 	hammer_node_cache_t cache;
 	hammer_buffer_t buffer;
+	hammer_mount_t hmp = node->hmp;
 
 	while ((cache = TAILQ_FIRST(&node->cache_list)) != NULL) {
 		TAILQ_REMOVE(&node->cache_list, cache, entry);
@@ -1304,7 +1310,7 @@ hammer_flush_node(hammer_node_t node)
 			/* buffer is unreferenced because ondisk is NULL */
 		}
 		--hammer_count_nodes;
-		kfree(node, M_HAMMER);
+		kfree(node, hmp->m_misc);
 	}
 }
 

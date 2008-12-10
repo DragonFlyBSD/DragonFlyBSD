@@ -661,10 +661,10 @@ hammer_btree_last(hammer_cursor_t cursor)
 int
 hammer_btree_extract(hammer_cursor_t cursor, int flags)
 {
-	hammer_mount_t hmp;
 	hammer_node_ondisk_t node;
 	hammer_btree_elm_t elm;
 	hammer_off_t data_off;
+	hammer_mount_t hmp;
 	int32_t data_len;
 	int error;
 
@@ -1611,7 +1611,7 @@ btree_split_internal(hammer_cursor_t cursor)
 		 &cursor->node->ondisk->elms[cursor->node->ondisk->count].internal.base) >= 0);
 
 done:
-	hammer_btree_unlock_children(&locklist);
+	hammer_btree_unlock_children(cursor, &locklist);
 	hammer_cursor_downgrade(cursor);
 	return (error);
 }
@@ -1868,6 +1868,7 @@ TAILQ_HEAD(hammer_rhb_list, hammer_rhb);
 int
 hammer_btree_correct_rhb(hammer_cursor_t cursor, hammer_tid_t tid)
 {
+	struct hammer_mount *hmp;
 	struct hammer_rhb_list rhb_list;
 	hammer_base_elm_t elm;
 	hammer_node_t orig_node;
@@ -1876,6 +1877,7 @@ hammer_btree_correct_rhb(hammer_cursor_t cursor, hammer_tid_t tid)
 	int error;
 
 	TAILQ_INIT(&rhb_list);
+	hmp = cursor->trans->hmp;
 
 	/*
 	 * Save our position so we can restore it on return.  This also
@@ -1908,7 +1910,7 @@ hammer_btree_correct_rhb(hammer_cursor_t cursor, hammer_tid_t tid)
 		if (cursor->right_bound->create_tid >= tid)
 			break;
 
-		rhb = kmalloc(sizeof(*rhb), M_HAMMER, M_WAITOK|M_ZERO);
+		rhb = kmalloc(sizeof(*rhb), hmp->m_misc, M_WAITOK|M_ZERO);
 		rhb->node = cursor->parent;
 		rhb->index = cursor->parent_index;
 		hammer_ref_node(rhb->node);
@@ -1931,7 +1933,7 @@ hammer_btree_correct_rhb(hammer_cursor_t cursor, hammer_tid_t tid)
 		TAILQ_REMOVE(&rhb_list, rhb, entry);
 		hammer_unlock(&rhb->node->lock);
 		hammer_rel_node(rhb->node);
-		kfree(rhb, M_HAMMER);
+		kfree(rhb, hmp->m_misc);
 
 		switch (cursor->node->ondisk->type) {
 		case HAMMER_BTREE_TYPE_INTERNAL:
@@ -1959,7 +1961,7 @@ hammer_btree_correct_rhb(hammer_cursor_t cursor, hammer_tid_t tid)
 		TAILQ_REMOVE(&rhb_list, rhb, entry);
 		hammer_unlock(&rhb->node->lock);
 		hammer_rel_node(rhb->node);
-		kfree(rhb, M_HAMMER);
+		kfree(rhb, hmp->m_misc);
 	}
 	error = hammer_cursor_seek(cursor, orig_node, orig_index);
 	hammer_unlock(&orig_node->lock);
@@ -1980,9 +1982,11 @@ hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid)
 	hammer_base_elm_t elm;
 	hammer_base_elm_t cmp;
 	struct hammer_rhb *rhb;
+	struct hammer_mount *hmp;
 	int error;
 
 	TAILQ_INIT(&rhb_list);
+	hmp = cursor->trans->hmp;
 
 	cmp = &cursor->node->ondisk->elms[cursor->index].base;
 
@@ -1992,7 +1996,7 @@ hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid)
 	 */
 	error = 0;
 	for (;;) {
-		rhb = kmalloc(sizeof(*rhb), M_HAMMER, M_WAITOK|M_ZERO);
+		rhb = kmalloc(sizeof(*rhb), hmp->m_misc, M_WAITOK|M_ZERO);
 		rhb->node = cursor->node;
 		rhb->index = cursor->index;
 		hammer_ref_node(rhb->node);
@@ -2039,7 +2043,7 @@ hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid)
 		TAILQ_REMOVE(&rhb_list, rhb, entry);
 		hammer_unlock(&rhb->node->lock);
 		hammer_rel_node(rhb->node);
-		kfree(rhb, M_HAMMER);
+		kfree(rhb, hmp->m_misc);
 
 		elm = &cursor->node->ondisk->elms[cursor->index].base;
 		if (cursor->node->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL) {
@@ -2060,7 +2064,7 @@ hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid)
 		TAILQ_REMOVE(&rhb_list, rhb, entry);
 		hammer_unlock(&rhb->node->lock);
 		hammer_rel_node(rhb->node);
-		kfree(rhb, M_HAMMER);
+		kfree(rhb, hmp->m_misc);
 	}
 	return (error);
 }
@@ -2437,12 +2441,14 @@ hammer_btree_lock_children(hammer_cursor_t cursor,
 	hammer_node_ondisk_t ondisk;
 	hammer_btree_elm_t elm;
 	hammer_node_t child;
+	struct hammer_mount *hmp;
 	int error;
 	int i;
 
 	node = cursor->node;
 	ondisk = node->ondisk;
 	error = 0;
+	hmp = cursor->trans->hmp;
 
 	/*
 	 * We really do not want to block on I/O with exclusive locks held,
@@ -2455,7 +2461,7 @@ hammer_btree_lock_children(hammer_cursor_t cursor,
 		    elm->base.btype != HAMMER_BTREE_TYPE_INTERNAL) {
 			continue;
 		}
-		child = hammer_get_node(node->hmp,
+		child = hammer_get_node(hmp,
 					elm->internal.subtree_offset,
 					0, &error);
 		if (child)
@@ -2473,7 +2479,7 @@ hammer_btree_lock_children(hammer_cursor_t cursor,
 		case HAMMER_BTREE_TYPE_INTERNAL:
 		case HAMMER_BTREE_TYPE_LEAF:
 			KKASSERT(elm->internal.subtree_offset != 0);
-			child = hammer_get_node(node->hmp,
+			child = hammer_get_node(hmp,
 						elm->internal.subtree_offset,
 						0, &error);
 			break;
@@ -2491,7 +2497,7 @@ hammer_btree_lock_children(hammer_cursor_t cursor,
 				hammer_rel_node(child);
 			} else {
 				item = kmalloc(sizeof(*item),
-						M_HAMMER, M_WAITOK);
+						hmp->m_misc, M_WAITOK);
 				item->next = *locklistp;
 				item->node = child;
 				*locklistp = item;
@@ -2499,7 +2505,7 @@ hammer_btree_lock_children(hammer_cursor_t cursor,
 		}
 	}
 	if (error)
-		hammer_btree_unlock_children(locklistp);
+		hammer_btree_unlock_children(cursor, locklistp);
 	return(error);
 }
 
@@ -2508,7 +2514,8 @@ hammer_btree_lock_children(hammer_cursor_t cursor,
  * Release previously obtained node locks.
  */
 void
-hammer_btree_unlock_children(struct hammer_node_locklist **locklistp)
+hammer_btree_unlock_children(hammer_cursor_t cursor,
+			     struct hammer_node_locklist **locklistp)
 {
 	hammer_node_locklist_t item;
 
@@ -2516,7 +2523,7 @@ hammer_btree_unlock_children(struct hammer_node_locklist **locklistp)
 		*locklistp = item->next;
 		hammer_unlock(&item->node->lock);
 		hammer_rel_node(item->node);
-		kfree(item, M_HAMMER);
+		kfree(item, cursor->trans->hmp->m_misc);
 	}
 }
 

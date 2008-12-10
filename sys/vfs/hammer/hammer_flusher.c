@@ -153,7 +153,7 @@ hammer_flusher_create(hammer_mount_t hmp)
 	lwkt_create(hammer_flusher_master_thread, hmp,
 		    &hmp->flusher.td, NULL, 0, -1, "hammer-M");
 	for (i = 0; i < HAMMER_MAX_FLUSHERS; ++i) {
-		info = kmalloc(sizeof(*info), M_HAMMER, M_WAITOK|M_ZERO);
+		info = kmalloc(sizeof(*info), hmp->m_misc, M_WAITOK|M_ZERO);
 		info->hmp = hmp;
 		TAILQ_INSERT_TAIL(&hmp->flusher.ready_list, info, entry);
 		lwkt_create(hammer_flusher_slave_thread, info,
@@ -187,7 +187,7 @@ hammer_flusher_destroy(hammer_mount_t hmp)
 		while (info->td)
 			tsleep(&info->td, 0, "hmrwwc", 0);
 		TAILQ_REMOVE(&hmp->flusher.ready_list, info, entry);
-		kfree(info, M_HAMMER);
+		kfree(info, hmp->m_misc);
 	}
 }
 
@@ -370,7 +370,7 @@ hammer_flusher_flush(hammer_mount_t hmp)
 			KKASSERT(TAILQ_EMPTY(&flg->flush_list));
 			KKASSERT(flg->refs == 0);
 			TAILQ_REMOVE(&hmp->flush_group_list, flg, flush_entry);
-			kfree(flg, M_HAMMER);
+			kfree(flg, hmp->m_misc);
 			break;
 		}
 	}

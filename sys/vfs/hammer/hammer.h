@@ -66,7 +66,6 @@
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 MALLOC_DECLARE(M_HAMMER);
-MALLOC_DECLARE(M_HAMMER_INO);
 
 /*
  * Kernel trace
@@ -691,6 +690,10 @@ struct hammer_mount {
 	struct hammer_volume *rootvol;
 	struct hammer_base_elm root_btree_beg;
 	struct hammer_base_elm root_btree_end;
+
+	struct malloc_type	*m_misc;
+	struct malloc_type	*m_inodes;
+
 	int	flags;		/* HAMMER_MOUNT_xxx flags */
 	int	hflags;
 	int	ronly;
@@ -957,7 +960,8 @@ int	btree_set_parent(hammer_transaction_t trans, hammer_node_t node,
                         hammer_btree_elm_t elm);
 int	hammer_btree_lock_children(hammer_cursor_t cursor,
                         struct hammer_node_locklist **locklistp);
-void	hammer_btree_unlock_children(struct hammer_node_locklist **locklistp);
+void	hammer_btree_unlock_children(hammer_cursor_t cursor,
+			struct hammer_node_locklist **locklistp);
 int	hammer_btree_search_node(hammer_base_elm_t elm, hammer_node_ondisk_t node);
 hammer_node_t hammer_btree_get_parent(hammer_node_t node, int *parent_indexp,
 			int *errorp, int try_exclusive);
