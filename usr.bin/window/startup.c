@@ -38,6 +38,8 @@
  * $DragonFly: src/usr.bin/window/startup.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
 
+#include <stdio.h>
+
 #include "defs.h"
 #include "value.h"
 #include "var.h"

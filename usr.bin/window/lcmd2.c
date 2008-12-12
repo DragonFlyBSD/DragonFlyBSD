@@ -38,15 +38,18 @@
  * $DragonFly: src/usr.bin/window/lcmd2.c,v 1.4 2005/04/15 17:55:29 drhodus Exp $
  */
 
-#include "defs.h"
+#include <sys/types.h>
+#include <sys/resource.h>
+
+#include <stdio.h>
 #include <string.h> /* System string definitions. */
+
+#include "defs.h"
 #include "mystring.h" /* Local string definitions. */
 #include "value.h"
 #include "var.h"
 #include "lcmd.h"
 #include "alias.h"
-#include <sys/types.h>
-#include <sys/resource.h>
 
 /*ARGSUSED*/
 l_iostat(v, a)

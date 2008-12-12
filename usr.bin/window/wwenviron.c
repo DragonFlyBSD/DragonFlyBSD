@@ -38,7 +38,10 @@
  * $DragonFly: src/usr.bin/window/wwenviron.c,v 1.3 2006/01/12 13:43:11 corecode Exp $
  */
 
+#include <stdio.h>
+
 #include "ww.h"
+
 #if !defined(OLD_TTY) && !defined(TIOCSCTTY) && !defined(TIOCNOTTY)
 #include <sys/ioctl.h>
 #endif

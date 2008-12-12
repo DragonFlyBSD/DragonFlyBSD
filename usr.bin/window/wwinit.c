@@ -38,11 +38,13 @@
  * $DragonFly: src/usr.bin/window/wwinit.c,v 1.3 2006/01/12 13:43:11 corecode Exp $
  */
 
-#include "ww.h"
-#include "tt.h"
 #include <signal.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <termcap.h>
+
+#include "ww.h"
+#include "tt.h"
 #include "char.h"
 
 wwinit()

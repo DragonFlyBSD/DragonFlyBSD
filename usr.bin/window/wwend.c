@@ -39,6 +39,8 @@
  */
 
 #include <signal.h>
+#include <stdlib.h>
+
 #include "ww.h"
 #include "tt.h"
 

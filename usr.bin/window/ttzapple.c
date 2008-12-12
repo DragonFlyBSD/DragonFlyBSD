@@ -38,6 +38,8 @@
  * $DragonFly: src/usr.bin/window/ttzapple.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
 
+#include <stdio.h>
+
 #include "ww.h"
 #include "tt.h"
 #include "char.h"

@@ -38,9 +38,11 @@
  * $DragonFly: src/usr.bin/window/wwflush.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
 
+#include <signal.h>
+#include <string.h>
+
 #include "ww.h"
 #include "tt.h"
-#include <signal.h>
 
 wwflush()
 {
