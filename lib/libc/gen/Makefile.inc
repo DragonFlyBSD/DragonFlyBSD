@@ -11,7 +11,7 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	ctermid.c ctype.c daemon.c devname.c dirname.c disklabel.c disktab.c \
 	dlfcn.c drand48.c erand48.c err.c errlst.c \
 	exec.c fmtcheck.c fmtmsg.c fnmatch.c fpclassifyd.c fpclassifyf.c \
-	fstab.c ftok.c fts.c getbootfile.c getbsize.c \
+	fstab.c ftok.c fts.c ftw.c getbootfile.c getbsize.c \
 	getcap.c getcwd.c getdomainname.c getgrent.c getgrouplist.c \
 	gethostname.c getloadavg.c getlogin.c getmntinfo.c getmntvinfo.c \
 	getnetgrent.c getobjformat.c getosreldate.c getpagesize.c \
@@ -21,7 +21,7 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	isatty.c isctype.c isfinited.c isfinitef.c isinfd.c isinff.c \
 	isnand.c isnanf.c jrand48.c lcong48.c \
 	lockf.c lrand48.c mrand48.c msgctl.c \
-	msgget.c msgrcv.c msgsnd.c nice.c \
+	msgget.c msgrcv.c msgsnd.c nftw.c nice.c \
 	nlist.c nrand48.c ntp_gettime.c opendir.c \
 	pause.c pmadvise.c popen.c posixshm.c \
 	psignal.c pthread_fake.c pwcache.c \
@@ -51,7 +51,7 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	devname.3 directory.3 dirname.3 \
 	dladdr.3 dlinfo.3 dlopen.3 \
 	err.3 exec.3 \
-	fmtcheck.3 fmtmsg.3 fnmatch.3 fpclassify.3 frexp.3 ftok.3 fts.3 \
+	fmtcheck.3 fmtmsg.3 fnmatch.3 fpclassify.3 frexp.3 ftok.3 fts.3 ftw.3 \
 	getbootfile.3 getbsize.3 getcap.3 getcontext.3 getcwd.3 \
 	getdiskbyname.3 getdisktabbyname.3 getdomainname.3 getfsent.3 \
 	getgrent.3 getgrouplist.3 gethostname.3 getloadavg.3 \
@@ -86,6 +86,7 @@ MLINKS+=exec.3 execl.3 exec.3 execle.3 exec.3 execlp.3 exec.3 exect.3 \
 	exec.3 execv.3 exec.3 execvp.3
 MLINKS+=fts.3 fts_children.3 fts.3 fts_close.3 fts.3 fts_open.3 \
 	fts.3 fts_read.3 fts.3 fts_set.3
+MLINKS+=ftw.3 nftw.3
 MLINKS+=getcap.3 cgetcap.3 getcap.3 cgetclose.3 getcap.3 cgetent.3 \
 	getcap.3 cgetfirst.3 getcap.3 cgetmatch.3 getcap.3 cgetnext.3 \
 	getcap.3 cgetnum.3 getcap.3 cgetset.3 getcap.3 cgetstr.3 \
