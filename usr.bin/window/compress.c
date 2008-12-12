@@ -38,13 +38,15 @@
  * $DragonFly: src/usr.bin/window/compress.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
  */
 
-#include "ww.h"
-#include "tt.h"
-
 	/* special */
 #include <stdio.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <string.h>
+
+#include "ww.h"
+#include "tt.h"
+
 int cc_trace = 0;
 FILE *cc_trace_fp;
 

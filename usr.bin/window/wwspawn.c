@@ -38,8 +38,10 @@
  * $DragonFly: src/usr.bin/window/wwspawn.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
 
-#include "ww.h"
 #include <signal.h>
+#include <unistd.h>
+
+#include "ww.h"
 
 /*
  * There is a dead lock with vfork and closing of pseudo-ports.

@@ -38,7 +38,10 @@
  * $DragonFly: src/usr.bin/window/string.c,v 1.3 2005/02/28 13:57:05 joerg Exp $
  */
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h> /* System string definitions. */
+
 #include "mystring.h" /* Local string definitions. */
 
 char *

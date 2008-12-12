@@ -39,6 +39,8 @@
  */
 
 #include <ctype.h>
+#include <stdlib.h>
+
 #include "value.h"
 #include "token.h"
 #include "context.h"

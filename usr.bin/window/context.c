@@ -38,10 +38,12 @@
  * $DragonFly: src/usr.bin/window/context.c,v 1.4 2005/04/15 17:55:29 drhodus Exp $
  */
 
+#include <fcntl.h>
+#include <stdlib.h>
+
 #include "value.h"
 #include "mystring.h"
 #include "context.h"
-#include <fcntl.h>
 
 /*
  * Context push/pop for nested command files.

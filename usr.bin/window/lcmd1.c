@@ -38,8 +38,10 @@
  * $DragonFly: src/usr.bin/window/lcmd1.c,v 1.4 2005/04/15 17:55:29 drhodus Exp $
  */
 
-#include "defs.h"
+#include <stdio.h>
 #include <string.h> /* System string definitions. */
+
+#include "defs.h"
 #include "mystring.h" /* Local string definitions. */
 #include "value.h"
 #include "lcmd.h"
