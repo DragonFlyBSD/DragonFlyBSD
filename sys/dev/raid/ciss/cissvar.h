@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/ciss/cissvar.h,v 1.3.2.2 2003/02/06 21:42:59 ps Exp $
+ *	$FreeBSD: src/sys/dev/ciss/cissvar.h,v 1.3.2.4 2004/06/23 20:48:36 scottl Exp $
  *	$DragonFly: src/sys/dev/raid/ciss/cissvar.h,v 1.7 2006/12/22 23:26:23 swildner Exp $
  */
 
@@ -50,6 +50,11 @@
 #define CISS_MAX_LOGICAL	15
 
 /*
+ * Maximum number of physical devices we support.
+ */
+#define CISS_MAX_PHYSICAL	1024
+
+/*
  * Interrupt reduction can be controlled by tuning the interrupt
  * coalesce delay and count paramters.  The delay (in microseconds)
  * defers delivery of interrupts to increase the chance of there being
@@ -69,11 +74,6 @@
  */
 #define CISS_HEARTBEAT_RATE		10
 
-/*
- * Maximum number of events we will queue for a monitoring utility.
- */
-#define CISS_MAX_EVENTS		32
-
 /************************************************************************
  * Compatibility with older versions of FreeBSD
  */
@@ -89,9 +89,10 @@ typedef struct proc	d_thread_t;
 #define CISSQ_FREE	0
 #define CISSQ_BUSY	1
 #define CISSQ_COMPLETE	2
-#define CISSQ_COUNT	3
+#define CISSQ_NOTIFY	3
+#define CISSQ_COUNT	4
 
-struct ciss_qstat 
+struct ciss_qstat
 {
     u_int32_t	q_length;
     u_int32_t	q_max;
@@ -126,7 +127,7 @@ struct ciss_request
 #define CISS_REQ_POLL		(1<<2)		/* submitter polling */
 #define CISS_REQ_DATAOUT	(1<<3)		/* data host->adapter */
 #define CISS_REQ_DATAIN		(1<<4)		/* data adapter->host */
-    
+
     void			(* cr_complete)(struct ciss_request *);
     void			*cr_private;
 };
@@ -143,21 +144,23 @@ struct ciss_request
  * too small.
  */
 
-#define CISS_COMMAND_ALLOC_SIZE		512	/* XXX tune to get sensible s/g list length */
+#define CISS_COMMAND_ALLOC_SIZE		1024	/* XXX tune to get sensible s/g list length */
 #define CISS_COMMAND_SG_LENGTH	((CISS_COMMAND_ALLOC_SIZE - sizeof(struct ciss_command)) \
 				 / sizeof(struct ciss_sg_entry))
 
 /*
  * Per-logical-drive data.
  */
-struct ciss_ldrive 
+struct ciss_ldrive
 {
     union ciss_device_address	cl_address;
-    
+    union ciss_device_address	*cl_controller;
     int				cl_status;
 #define CISS_LD_NONEXISTENT	0
 #define CISS_LD_ONLINE		1
 #define CISS_LD_OFFLINE		2
+
+    int				cl_update;
 
     struct ciss_bmic_id_ldrive	*cl_ldrive;
     struct ciss_bmic_id_lstatus	*cl_lstatus;
@@ -167,9 +170,25 @@ struct ciss_ldrive
 };
 
 /*
+ * Per-physical-drive data
+ */
+struct ciss_pdrive
+{
+    union ciss_device_address	cp_address;
+    int				cp_online;
+};
+
+#define CISS_PHYSICAL_SHIFT	5
+#define CISS_PHYSICAL_BASE	(1 << CISS_PHYSICAL_SHIFT)
+#define CISS_MAX_PHYSTGT	15
+
+#define CISS_IS_PHYSICAL(bus)	(bus >= CISS_PHYSICAL_BASE)
+#define CISS_CAM_TO_PBUS(bus)	(bus - CISS_PHYSICAL_BASE)
+
+/*
  * Per-adapter data
  */
-struct ciss_softc 
+struct ciss_softc
 {
     /* bus connections */
     device_t			ciss_dev;		/* bus attachment */
@@ -205,19 +224,21 @@ struct ciss_softc
     TAILQ_HEAD(,ciss_request)	ciss_free;		/* requests available for reuse */
     TAILQ_HEAD(,ciss_request)	ciss_busy;		/* requests in the adapter */
     TAILQ_HEAD(,ciss_request)	ciss_complete;		/* requests which have been returned by the adapter */
+    TAILQ_HEAD(,ciss_request)	ciss_notify;		/* requests which are defered for processing */
+    struct thread		*ciss_notify_thread;
 
     struct callout		ciss_periodic;		/* periodic event handling */
     struct ciss_request		*ciss_periodic_notify;	/* notify callback request */
 
-    struct ciss_notify		ciss_notify[CISS_MAX_EVENTS];
-    int				ciss_notify_head;	/* saved-event ringbuffer */
-    int				ciss_notify_tail;
-
-    struct ciss_ldrive		ciss_logical[CISS_MAX_LOGICAL];
+    struct ciss_ldrive		**ciss_logical;
+    struct ciss_pdrive		**ciss_physical;
+    union ciss_device_address	*ciss_controllers;	/* controller address */
+    int				ciss_max_bus_number;	/* maximum bus number */
+    int				ciss_max_logical_bus;
+    int				ciss_max_physical_bus;
 
     struct cam_devq		*ciss_cam_devq;
-    struct cam_sim		*ciss_cam_sim;
-    struct cam_path		*ciss_cam_path;
+    struct cam_sim		**ciss_cam_sim;
 
     int				ciss_flags;
 #define CISS_FLAG_NOTIFY_OK	(1<<0)		/* notify command running OK */
@@ -227,6 +248,7 @@ struct ciss_softc
 
 #define CISS_FLAG_FAKE_SYNCH	(1<<16)		/* needs SYNCHRONISE_CACHE faked */
 #define CISS_FLAG_BMIC_ABORT	(1<<17)		/* use BMIC command to abort Notify on Event */
+#define CISS_FLAG_THREAD_SHUT	(1<<20)		/* shutdown the kthread */
 
     struct ciss_qstat		ciss_qstat[CISSQ_COUNT];	/* queue statistics */
 };
@@ -365,6 +387,7 @@ struct hack
 CISSQ_REQUEST_QUEUE(free, CISSQ_FREE);
 CISSQ_REQUEST_QUEUE(busy, CISSQ_BUSY);
 CISSQ_REQUEST_QUEUE(complete, CISSQ_COMPLETE);
+CISSQ_REQUEST_QUEUE(notify, CISSQ_NOTIFY);
 
 /********************************************************************************
  * space-fill a character string
