@@ -681,8 +681,8 @@ tcp_create_timermsg(struct tcpcb *tp)
 {
 	struct netmsg_tcp_timer *tmsg = tp->tt_msg;
 
-	netmsg_init(&tmsg->tt_nmsg, &netisr_adone_rport, MSGF_DROPABLE,
-		    tcp_timer_handler);
+	netmsg_init(&tmsg->tt_nmsg, &netisr_adone_rport,
+		    MSGF_DROPABLE | MSGF_PRIORITY, tcp_timer_handler);
 	tmsg->tt_cpuid = mycpuid;
 	tmsg->tt_tcb = tp;
 	tmsg->tt_tasks = 0;
