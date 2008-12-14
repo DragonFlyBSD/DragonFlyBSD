@@ -1087,7 +1087,7 @@ inet6name(struct in6_addr *in6p)
 	}
 	cp = 0;
 	if (!numeric_addr && !IN6_IS_ADDR_UNSPECIFIED(in6p)) {
-		hp = gethostbyaddr((char *)in6p, sizeof(*in6p), AF_INET6);
+		hp = gethostbyaddr(in6p, sizeof(*in6p), AF_INET6);
 		if (hp) {
 			if ((cp = strchr(hp->h_name, '.')) &&
 			    !strcmp(cp + 1, domain))

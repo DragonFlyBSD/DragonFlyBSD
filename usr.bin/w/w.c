@@ -357,7 +357,7 @@ main(int argc, char **argv)
 		if ((x = strchr(p, ':')) != NULL)
 			*x++ = '\0';
 		if (!nflag && isdigit(*p) && (l = inet_addr(p)) != -1 &&
-		    (hp = gethostbyaddr((char *)&l, sizeof(l), AF_INET))) {
+		    (hp = gethostbyaddr(&l, sizeof(l), AF_INET))) {
 			if (domain[0] != '\0') {
 				p = hp->h_name;
 				p += strlen(hp->h_name);

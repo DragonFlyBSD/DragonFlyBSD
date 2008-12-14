@@ -58,7 +58,7 @@ realhostname(char *host, size_t hsize, const struct in_addr *ip)
 	struct hostent *hp;
 
 	result = HOSTNAME_INVALIDADDR;
-	hp = gethostbyaddr((char *)ip, sizeof(*ip), AF_INET);
+	hp = gethostbyaddr(ip, sizeof(*ip), AF_INET);
 
 	if (hp != NULL) {
 		strlcpy(trimmed, hp->h_name, sizeof(trimmed));

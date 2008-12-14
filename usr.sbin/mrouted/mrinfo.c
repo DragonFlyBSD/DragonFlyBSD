@@ -104,7 +104,7 @@ inet_name(u_int32 addr)
 		return "local";
 
 	if (nflag ||
-	    (e = gethostbyaddr((char *)&addr, sizeof(addr), AF_INET)) == NULL) {
+	    (e = gethostbyaddr(&addr, sizeof(addr), AF_INET)) == NULL) {
 		in.s_addr = addr;
 		return (inet_ntoa(in));
 	}

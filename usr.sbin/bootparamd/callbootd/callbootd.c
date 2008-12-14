@@ -41,7 +41,7 @@ eachres_whoami(bp_whoami_res *resultp, struct sockaddr_in *raddr)
 {
   struct hostent *he;
 
-  he = gethostbyaddr((char *)&raddr->sin_addr.s_addr,4,AF_INET);
+  he = gethostbyaddr(&raddr->sin_addr.s_addr,4,AF_INET);
   printf("%s answered:\n", he ? he->h_name : inet_ntoa(raddr->sin_addr));
   printwhoami(resultp);
   printf("\n");
@@ -52,7 +52,7 @@ eachres_getfile(bp_getfile_res *resultp, struct sockaddr_in *raddr)
 {
   struct hostent *he;
 
-  he = gethostbyaddr((char *)&raddr->sin_addr.s_addr,4,AF_INET);
+  he = gethostbyaddr(&raddr->sin_addr.s_addr,4,AF_INET);
   printf("%s answered:\n", he ? he->h_name : inet_ntoa(raddr->sin_addr));
   printgetfile(resultp);
   printf("\n");

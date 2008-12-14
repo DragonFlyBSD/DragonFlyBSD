@@ -433,8 +433,8 @@ mntsrv(struct svc_req *rqstp, SVCXPRT *transp)
 			if (!svc_sendreply(transp, xdr_fhs, (caddr_t)&fhr))
 				syslog(LOG_ERR, "can't send reply");
 			if (hp == NULL)
-				hp = gethostbyaddr((caddr_t)&saddr,
-				    sizeof(saddr), AF_INET);
+				hp = gethostbyaddr(&saddr, sizeof(saddr),
+				    AF_INET);
 			if (hp)
 				add_mlist(hp->h_name, dirpath);
 			else
@@ -486,7 +486,7 @@ mntsrv(struct svc_req *rqstp, SVCXPRT *transp)
 		}
 		if (!svc_sendreply(transp, xdr_void, (caddr_t)NULL))
 			syslog(LOG_ERR, "can't send reply");
-		hp = gethostbyaddr((caddr_t)&saddr, sizeof(saddr), AF_INET);
+		hp = gethostbyaddr(&saddr, sizeof(saddr), AF_INET);
 		if (hp)
 			del_mlist(hp->h_name, dirpath);
 		del_mlist(inet_ntoa(saddrin), dirpath);
@@ -505,7 +505,7 @@ mntsrv(struct svc_req *rqstp, SVCXPRT *transp)
 		}
 		if (!svc_sendreply(transp, xdr_void, (caddr_t)NULL))
 			syslog(LOG_ERR, "can't send reply");
-		hp = gethostbyaddr((caddr_t)&saddr, sizeof(saddr), AF_INET);
+		hp = gethostbyaddr(&saddr, sizeof(saddr), AF_INET);
 		if (hp)
 			del_mlist(hp->h_name, (char *)NULL);
 		del_mlist(inet_ntoa(saddrin), (char *)NULL);
@@ -1408,7 +1408,7 @@ get_host(char *cp, struct grouplist *grp, struct grouplist *tgrp)
  				syslog(LOG_ERR, "inet_addr failed for %s", cp);
 				return (1);
 			}
-			if ((hp = gethostbyaddr((caddr_t)&saddr, sizeof (saddr),
+			if ((hp = gethostbyaddr(&saddr, sizeof (saddr),
 				AF_INET)) == NULL) {
 				hp = &t_host;
 				hp->h_name = cp;

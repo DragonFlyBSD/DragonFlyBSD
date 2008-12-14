@@ -576,7 +576,7 @@ monitor_handle_connect(int sockfd, int is_local)
 		s = sizeof ia;
 		fd = accept(sockfd, (struct sockaddr *)&ia, &s);
 
-		hp = gethostbyaddr((char *)&ia.sin_addr, 4, AF_INET);
+		hp = gethostbyaddr(&ia.sin_addr, 4, AF_INET);
 
 		if(hp == NULL)
 			snprintf(source, sizeof source, "%s (%s)", inet_ntoa(ia.sin_addr), inet_ntoa(ia.sin_addr));

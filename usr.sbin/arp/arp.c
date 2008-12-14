@@ -510,8 +510,8 @@ print_entry(struct sockaddr_dl *sdl,
 	char ifname[IF_NAMESIZE];
 
 	if (nflag == 0)
-		hp = gethostbyaddr((caddr_t)&(addr->sin_addr),
-		    sizeof(addr->sin_addr), AF_INET);
+		hp = gethostbyaddr(&(addr->sin_addr), sizeof(addr->sin_addr),
+		    AF_INET);
 	else
 		hp = 0;
 	if (hp)

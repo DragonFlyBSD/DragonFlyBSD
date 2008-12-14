@@ -930,7 +930,7 @@ inetname(struct in_addr *inp)
 				cp = np->n_name;
 		}
 		if (cp == 0) {
-			hp = gethostbyaddr((char *)inp, sizeof (*inp), AF_INET);
+			hp = gethostbyaddr(inp, sizeof (*inp), AF_INET);
 			if (hp) {
 				cp = hp->h_name;
 				trimdomain(cp, strlen(cp));

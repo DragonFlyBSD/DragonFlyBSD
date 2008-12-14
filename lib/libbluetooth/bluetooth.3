@@ -222,8 +222,8 @@ struct hostent *hp;
 if (!bt_aton(bdstr, \*[Am]bd))
 	errx(1, "can't parse BD_ADDR %s", bdstr);
 
-if ((hp = bt_gethostbyaddr((const char *)\*[Am]bd,
-    sizeof(bd), AF_BLUETOOTH)) == NULL)
+if ((hp = bt_gethostbyaddr(\*[Am]bd, sizeof(bd),
+    AF_BLUETOOTH)) == NULL)
 	errx(1, "no name associated with %s", bdstr);
 
 printf("name associated with %s is %s\en", bdstr, hp-\*[Gt]h_name);

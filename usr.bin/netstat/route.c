@@ -821,8 +821,7 @@ routename(u_long in)
 
 	cp = 0;
 	if (!numeric_addr) {
-		hp = gethostbyaddr((char *)&in, sizeof (struct in_addr),
-			AF_INET);
+		hp = gethostbyaddr(&in, sizeof (struct in_addr), AF_INET);
 		if (hp) {
 			cp = hp->h_name;
 			trimdomain(cp, strlen(cp));

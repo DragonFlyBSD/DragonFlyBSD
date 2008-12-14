@@ -60,7 +60,7 @@ bootparamproc_whoami_1(bp_whoami_arg *whoami)
 
   bcopy((char *)&whoami->client_address.bp_address_u.ip_addr, (char *)&haddr,
 	sizeof(haddr));
-  he = gethostbyaddr((char *)&haddr,sizeof(haddr),AF_INET);
+  he = gethostbyaddr(&haddr,sizeof(haddr),AF_INET);
   if ( ! he ) goto failed;
 
   if (debug) warnx("this is host %s", he->h_name);

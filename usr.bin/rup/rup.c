@@ -100,8 +100,8 @@ rstat_reply(char *replyp, struct sockaddr_in *raddrp)
 	if (search_host(raddrp->sin_addr))
 		return(0);
 
-	hp = gethostbyaddr((char *)&raddrp->sin_addr.s_addr,
-			   sizeof(struct in_addr), AF_INET);
+	hp = gethostbyaddr(&raddrp->sin_addr.s_addr, sizeof(struct in_addr),
+			   AF_INET);
 	if (hp)
 		host = hp->h_name;
 	else

@@ -677,8 +677,8 @@ print_ip(ipfw_insn_ip *cmd, char *s)
 	else
 		mb = contigmask((u_char *)&(cmd->mask.s_addr), 32);
 	if (mb == 32 && do_resolv)
-		he = gethostbyaddr((char *)&(cmd->addr.s_addr),
-		    sizeof(u_long), AF_INET);
+		he = gethostbyaddr(&(cmd->addr.s_addr), sizeof(u_long),
+		    AF_INET);
 	if (he != NULL)		/* resolved to name */
 		printf("%s", he->h_name);
 	else if (mb == 0)	/* any */

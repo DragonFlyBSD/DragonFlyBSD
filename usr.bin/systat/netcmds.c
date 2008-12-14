@@ -298,7 +298,7 @@ showhosts(void)
 	struct hostent *hp;
 
 	for (p = hosts; p < hosts+nhosts; p++) {
-		hp = gethostbyaddr((char *)&p->addr, sizeof (p->addr), AF_INET);
+		hp = gethostbyaddr(&p->addr, sizeof (p->addr), AF_INET);
 		if (!p->onoff)
 			addch('!');
 		printw("%s ", hp ? hp->h_name : (char *)inet_ntoa(p->addr));
