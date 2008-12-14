@@ -140,21 +140,21 @@
 #define DLT_JUNIPER_MONITOR	164	/* Juniper private */
 #define DLT_BACNET_MS_TP	165	/* BACnet MS/TP */
 #define DLT_PPP_PPPD		166	/* Linux PPP variant */
-#define DLT_JUNIPER_PPPOE       167	/* Juniper private */
-#define DLT_JUNIPER_PPPOE_ATM   168	/* Juniper private */
+#define DLT_JUNIPER_PPPOE	167	/* Juniper private */
+#define DLT_JUNIPER_PPPOE_ATM	168	/* Juniper private */
 #define DLT_GPRS_LLC		169	/* GPRS LLC */
 #define DLT_GPF_T		170	/* GPF-T (ITU-T G.7041/Y.1303) */
 #define DLT_GPF_F		171	/* GPF-F (ITU-T G.7041/Y.1303) */
 #define DLT_GCOM_T1E1		172	/* Gcom's T1/E1 */
 #define DLT_GCOM_SERIAL		173	/* Gcom's T1/E1 */
-#define DLT_JUNIPER_PIC_PEER    174	/* Juniper private */
+#define DLT_JUNIPER_PIC_PEER	174	/* Juniper private */
 #define DLT_ERF_ETH		175	/* Ethernet plus ERF header */
 #define DLT_ERF_POS		176	/* Packet-over-SONET plus ERF header */
 #define DLT_LINUX_LAPD		177	/* raw LAPD plus addition info */
-#define DLT_JUNIPER_ETHER       178	/* Juniper private */
-#define DLT_JUNIPER_PPP         179	/* Juniper private */
-#define DLT_JUNIPER_FRELAY      180	/* Juniper private */
-#define DLT_JUNIPER_CHDLC       181	/* Juniper private */
+#define DLT_JUNIPER_ETHER	178	/* Juniper private */
+#define DLT_JUNIPER_PPP		179	/* Juniper private */
+#define DLT_JUNIPER_FRELAY	180	/* Juniper private */
+#define DLT_JUNIPER_CHDLC	181	/* Juniper private */
 #define DLT_MFR                 182	/* Multi Link Frame Relay (FRF.16) */
 #define DLT_JUNIPER_VP          183	/* Juniper private */
 #define DLT_A429                184	/* Arinc 429 frames */
@@ -166,7 +166,7 @@
 #define DLT_IEEE802_16_MAC_CPS	188	/* IEEE 802.16 MAC Common Part
 					 * Sublayer */
 #define DLT_USB_LINUX		189	/* USB packets plus Linux USB header */
-#define DLT_CAN20B              190	/* Controller Area Network (CAN)
+#define DLT_CAN20B		190	/* Controller Area Network (CAN)
 					 * v. 2.0B */
 #define DLT_IEEE802_15_4_LINUX	191	/* IEEE 802.15.4, with address fields
 					 * padded */
@@ -181,7 +181,7 @@
 					 * pseudo-header */
 #define DLT_RAIF1		198	/* Ethernet plus special header */
 #define DLT_IPMB		199	/* IPMB packet for IPMI */
-#define DLT_JUNIPER_ST          200	/* Juniper private */
+#define DLT_JUNIPER_ST		200	/* Juniper private */
 #define DLT_BLUETOOTH_HCI_H4_WITH_PHDR 201 /* Bluetooth HCI UART transport
 					    * layer (part H:4) plus
 					    * pseudo-header */
