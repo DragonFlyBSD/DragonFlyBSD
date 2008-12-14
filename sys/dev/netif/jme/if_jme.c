@@ -1490,7 +1490,7 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 	bus_dma_segment_t txsegs[JME_MAXTXSEGS];
 	int maxsegs;
 	int error, i, prod;
-	uint32_t cflags;
+	uint32_t cflags, flag64;
 
 	M_ASSERTPKTHDR((*m_head));
 
@@ -1566,15 +1566,43 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 
 	desc = &sc->jme_rdata.jme_tx_ring[prod];
 	desc->flags = htole32(cflags);
-	desc->buflen = 0;
 	desc->addr_hi = htole32(m->m_pkthdr.len);
-	desc->addr_lo = 0;
+	if (sc->jme_lowaddr != BUS_SPACE_MAXADDR_32BIT) {
+		/*
+		 * Use 64bits TX desc chain format.
+		 *
+		 * The first TX desc of the chain, which is setup here,
+		 * is just a symbol TX desc carrying no payload.
+		 */
+		flag64 = JME_TD_64BIT;
+		desc->buflen = 0;
+		desc->addr_lo = 0;
+
+		/* No effective TX desc is consumed */
+		i = 0;
+	} else {
+		/*
+		 * Use 32bits TX desc chain format.
+		 *
+		 * The first TX desc of the chain, which is setup here,
+		 * is an effective TX desc carrying the first segment of
+		 * the mbuf chain.
+		 */
+		flag64 = 0;
+		desc->buflen = htole32(txsegs[0].ds_len);
+		desc->addr_lo = htole32(JME_ADDR_LO(txsegs[0].ds_addr));
+
+		/* One effective TX desc is consumed */
+		i = 1;
+	}
 	sc->jme_cdata.jme_tx_cnt++;
 	KKASSERT(sc->jme_cdata.jme_tx_cnt < JME_TX_RING_CNT - JME_TXD_RSVD);
 	JME_DESC_INC(prod, JME_TX_RING_CNT);
-	for (i = 0; i < ctx.nsegs; i++) {
+
+	txd->tx_ndesc = 1 - i;
+	for (; i < ctx.nsegs; i++) {
 		desc = &sc->jme_rdata.jme_tx_ring[prod];
-		desc->flags = htole32(JME_TD_OWN | JME_TD_64BIT);
+		desc->flags = htole32(JME_TD_OWN | flag64);
 		desc->buflen = htole32(txsegs[i].ds_len);
 		desc->addr_hi = htole32(JME_ADDR_HI(txsegs[i].ds_addr));
 		desc->addr_lo = htole32(JME_ADDR_LO(txsegs[i].ds_addr));
@@ -1595,7 +1623,7 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 	desc->flags |= htole32(JME_TD_OWN | JME_TD_INTR);
 
 	txd->tx_m = m;
-	txd->tx_ndesc = ctx.nsegs + 1;
+	txd->tx_ndesc += ctx.nsegs;
 
 	/* Sync descriptors. */
 	bus_dmamap_sync(sc->jme_cdata.jme_tx_tag, txd->tx_dmamap,
