@@ -54,7 +54,7 @@
 .Ft struct hostent *
 .Fn bt_gethostbyname "const char *name"
 .Ft struct hostent *
-.Fn bt_gethostbyaddr "const char *addr" "int len" "int type"
+.Fn bt_gethostbyaddr "const void *addr" "socklen_t len" "int type"
 .Ft struct hostent *
 .Fn bt_gethostent void
 .Ft void

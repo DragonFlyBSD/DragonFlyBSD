@@ -51,7 +51,7 @@ __BEGIN_DECLS
  */
 
 struct hostent *  bt_gethostbyname    (char const *);
-struct hostent *  bt_gethostbyaddr    (char const *, socklen_t, int);
+struct hostent *  bt_gethostbyaddr    (void const *, socklen_t, int);
 struct hostent *  bt_gethostent       (void);
 void              bt_sethostent       (int);
 void              bt_endhostent       (void);
