@@ -53,6 +53,7 @@
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/malloc.h>
 #include <sys/pioctl.h>
 #include <sys/resourcevar.h>
