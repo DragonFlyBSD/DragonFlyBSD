@@ -930,8 +930,6 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 		 * stat() call, aka v_rdev == NULL), how are we supposed
 		 * to get a valid block size out of it?
 		 */
-		cdev_t dev;
-
 		dev = vp->v_rdev;
 		if (dev == NULL && vp->v_type == VCHR) {
 			dev = get_dev(vp->v_umajor, vp->v_uminor);
