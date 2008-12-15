@@ -861,6 +861,28 @@ suser_cred(struct ucred *cred, int flag)
 }
 
 /*
+ * Check for privilege.
+ *
+ * YYY: For now this is just a wrapper calling suser().
+ */
+int
+priv_check(struct thread *td, int priv)
+{
+  return suser(td);
+}
+
+/*
+ * Check a credential for privilege.
+ *
+ * YYY: For now this is just a wrapper calling suser_cred().
+ */
+int
+priv_check_cred(struct ucred *cred, int priv, int flags)
+{
+  return suser_cred(cred, flags);
+}
+
+/*
  * Return zero if p1 can fondle p2, return errno (EPERM/ESRCH) otherwise.
  */
 int
