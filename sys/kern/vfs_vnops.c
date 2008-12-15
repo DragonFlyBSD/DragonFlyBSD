@@ -409,7 +409,8 @@ vn_close(struct vnode *vp, int flags)
 {
 	int error;
 
-	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY)) == 0) {
+	error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY);
+	if (error == 0) {
 		error = VOP_CLOSE(vp, flags);
 		vn_unlock(vp);
 	}
@@ -880,7 +881,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 		break;
 	default:
 		return (EBADF);
-	};
+	}
 	sb->st_mode = mode;
 	if (vap->va_nlink > (nlink_t)-1)
 		sb->st_nlink = (nlink_t)-1;
@@ -900,7 +901,8 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 	 * because device read and write calls may bypass the filesystem.
 	 */
 	if (vp->v_type == VCHR || vp->v_type == VBLK) {
-		if ((dev = vp->v_rdev) != NULL) {
+		dev = vp->v_rdev;
+		if (dev != NULL) {
 			if (dev->si_lastread) {
 				sb->st_atimespec.tv_sec = dev->si_lastread;
 				sb->st_atimespec.tv_nsec = 0;
@@ -930,9 +932,9 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 		 */
 		cdev_t dev;
 
-		if ((dev = vp->v_rdev) == NULL) {
-			if (vp->v_type == VCHR)
-				dev = get_dev(vp->v_umajor, vp->v_uminor);
+		dev = vp->v_rdev;
+		if (dev == NULL && vp->v_type == VCHR) {
+			dev = get_dev(vp->v_umajor, vp->v_uminor);
 		}
 		sb->st_blksize = dev->si_bsize_best;
 		if (sb->st_blksize < dev->si_bsize_phys)
@@ -971,7 +973,8 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct ucred *ucred)
 	case VREG:
 	case VDIR:
 		if (com == FIONREAD) {
-			if ((error = VOP_GETATTR(vp, &vattr)) != 0)
+			error = VOP_GETATTR(vp, &vattr);
+			if (error)
 				break;
 			*(int *)data = vattr.va_size - fp->f_offset;
 			error = 0;
@@ -1104,7 +1107,7 @@ vn_closefile(struct file *fp)
 	fp->f_ops = &badfileops;
 	error = vn_close(((struct vnode *)fp->f_data), fp->f_flag);
 	rel_mplock();
-	return(error);
+	return (error);
 }
 
 /*
