@@ -115,6 +115,7 @@
 #include <netinet/tcp_fsm.h>
 #include <netinet/tcp_seq.h>
 #include <netinet/tcp_timer.h>
+#include <netinet/tcp_timer2.h>
 #include <netinet/tcp_var.h>
 #include <netinet/tcpip.h>
 #ifdef TCPDEBUG
@@ -937,7 +938,7 @@ tcp_connect_oncpu(struct tcpcb *tp, struct sockaddr_in *sin,
 	soisconnecting(so);
 	tcpstat.tcps_connattempt++;
 	tp->t_state = TCPS_SYN_SENT;
-	callout_reset(tp->tt_keep, tcp_keepinit, tcp_timer_keep, tp);
+	tcp_callout_reset(tp, tp->tt_keep, tcp_keepinit, tcp_timer_keep);
 	tp->iss = tcp_new_isn(tp);
 	tcp_sendseqinit(tp);
 
@@ -1108,7 +1109,7 @@ tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	soisconnecting(so);
 	tcpstat.tcps_connattempt++;
 	tp->t_state = TCPS_SYN_SENT;
-	callout_reset(tp->tt_keep, tcp_keepinit, tcp_timer_keep, tp);
+	tcp_callout_reset(tp, tp->tt_keep, tcp_keepinit, tcp_timer_keep);
 	tp->iss = tcp_new_isn(tp);
 	tcp_sendseqinit(tp);
 
@@ -1375,9 +1376,10 @@ tcp_usrclosed(struct tcpcb *tp)
 	if (tp && tp->t_state >= TCPS_FIN_WAIT_2) {
 		soisdisconnected(tp->t_inpcb->inp_socket);
 		/* To prevent the connection hanging in FIN_WAIT_2 forever. */
-		if (tp->t_state == TCPS_FIN_WAIT_2)
-			callout_reset(tp->tt_2msl, tcp_maxidle,
-				      tcp_timer_2msl, tp);
+		if (tp->t_state == TCPS_FIN_WAIT_2) {
+			tcp_callout_reset(tp, tp->tt_2msl, tcp_maxidle,
+			    tcp_timer_2msl);
+		}
 	}
 	return (tp);
 }

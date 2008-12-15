@@ -137,11 +137,11 @@ struct tcpcb {
 	int	t_dupacks;		/* consecutive dup acks recd */
 	int	tt_cpu;			/* sanity check the cpu */
 
-	struct	callout *tt_rexmt;	/* retransmit timer */
-	struct	callout *tt_persist;	/* retransmit persistence */
-	struct	callout *tt_keep;	/* keepalive */
-	struct	callout *tt_2msl;	/* 2*msl TIME_WAIT timer */
-	struct	callout *tt_delack;	/* delayed ACK timer */
+	struct	tcp_callout *tt_rexmt;	/* retransmit timer */
+	struct	tcp_callout *tt_persist;/* retransmit persistence */
+	struct	tcp_callout *tt_keep;	/* keepalive */
+	struct	tcp_callout *tt_2msl;	/* 2*msl TIME_WAIT timer */
+	struct	tcp_callout *tt_delack;	/* delayed ACK timer */
 	struct	netmsg_tcp_timer *tt_msg; /* timer message */
 
 	struct	inpcb *t_inpcb;		/* back pointer to internet pcb */

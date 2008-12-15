@@ -100,6 +100,7 @@
 #include <netinet/tcp_fsm.h>
 #include <netinet/tcp_seq.h>
 #include <netinet/tcp_timer.h>
+#include <netinet/tcp_timer2.h>
 #include <netinet/tcp_var.h>
 #include <netinet/tcpip.h>
 #ifdef TCPDEBUG
@@ -247,7 +248,7 @@ again:
 				flags &= ~TH_FIN;
 			sendwin = 1;
 		} else {
-			callout_stop(tp->tt_persist);
+			tcp_callout_stop(tp, tp->tt_persist);
 			tp->t_rxtshift = 0;
 		}
 	}
@@ -306,10 +307,10 @@ again:
 		 */
 		len = 0;
 		if (sendwin == 0) {
-			callout_stop(tp->tt_rexmt);
+			tcp_callout_stop(tp, tp->tt_rexmt);
 			tp->t_rxtshift = 0;
 			tp->snd_nxt = tp->snd_una;
-			if (!callout_active(tp->tt_persist))
+			if (!tcp_callout_active(tp, tp->tt_persist))
 				tcp_setpersist(tp);
 		}
 	}
@@ -430,11 +431,11 @@ again:
 	 *	persisting		to move a small or zero window
 	 *	(re)transmitting	and thereby not persisting
 	 *
-	 * callout_active(tp->tt_persist)
+	 * tcp_callout_active(tp, tp->tt_persist)
 	 *	is true when we are in persist state.
 	 * The TF_FORCE flag in tp->t_flags
 	 *	is set when we are called to send a persist packet.
-	 * callout_active(tp->tt_rexmt)
+	 * tcp_callout_active(tp, tp->tt_rexmt)
 	 *	is set when we are retransmitting
 	 * The output side is idle when both timers are zero.
 	 *
@@ -445,7 +446,8 @@ again:
 	 * otherwise force out a byte.
 	 */
 	if (so->so_snd.ssb_cc > 0 &&
-	    !callout_active(tp->tt_rexmt) && !callout_active(tp->tt_persist)) {
+	    !tcp_callout_active(tp, tp->tt_rexmt) &&
+	    !tcp_callout_active(tp, tp->tt_persist)) {
 		tp->t_rxtshift = 0;
 		tcp_setpersist(tp);
 	}
@@ -763,7 +765,8 @@ send:
 	 * case, since we know we aren't doing a retransmission.
 	 * (retransmit and persist are mutually exclusive...)
 	 */
-	if (len || (flags & (TH_SYN|TH_FIN)) || callout_active(tp->tt_persist))
+	if (len || (flags & (TH_SYN|TH_FIN)) ||
+	    tcp_callout_active(tp, tp->tt_persist))
 		th->th_seq = htonl(tp->snd_nxt);
 	else
 		th->th_seq = htonl(tp->snd_max);
@@ -840,7 +843,8 @@ send:
 	 * In transmit state, time the transmission and arrange for
 	 * the retransmit.  In persist state, just set snd_max.
 	 */
-	if (!(tp->t_flags & TF_FORCE) || !callout_active(tp->tt_persist)) {
+	if (!(tp->t_flags & TF_FORCE) ||
+	    !tcp_callout_active(tp, tp->tt_persist)) {
 		tcp_seq startseq = tp->snd_nxt;
 
 		/*
@@ -876,14 +880,14 @@ send:
 		 * Initialize shift counter which is used for backoff
 		 * of retransmit time.
 		 */
-		if (!callout_active(tp->tt_rexmt) &&
+		if (!tcp_callout_active(tp, tp->tt_rexmt) &&
 		    tp->snd_nxt != tp->snd_una) {
-			if (callout_active(tp->tt_persist)) {
-				callout_stop(tp->tt_persist);
+			if (tcp_callout_active(tp, tp->tt_persist)) {
+				tcp_callout_stop(tp, tp->tt_persist);
 				tp->t_rxtshift = 0;
 			}
-			callout_reset(tp->tt_rexmt, tp->t_rxtcur,
-				      tcp_timer_rexmt, tp);
+			tcp_callout_reset(tp, tp->tt_rexmt, tp->t_rxtcur,
+			    tcp_timer_rexmt);
 		}
 	} else {
 		/*
@@ -969,7 +973,7 @@ send:
 		 * sequence number advance, if any.
 		 */
 		if (!(tp->t_flags & TF_FORCE) ||
-		    !callout_active(tp->tt_persist)) {
+		    !tcp_callout_active(tp, tp->tt_persist)) {
 			/*
 			 * No need to check for TH_FIN here because
 			 * the TF_SENTFIN flag handles that case.
@@ -985,8 +989,8 @@ out:
 			 * to get us going again later.  Persist state
 			 * is not necessarily right, but it is close enough.
 			 */
-			if (!callout_active(tp->tt_rexmt) &&
-			    !callout_active(tp->tt_persist)) {
+			if (!tcp_callout_active(tp, tp->tt_rexmt) &&
+			    !tcp_callout_active(tp, tp->tt_persist)) {
 				tp->t_rxtshift = 0;
 				tcp_setpersist(tp);
 			}
@@ -1023,7 +1027,7 @@ out:
 	tp->last_ack_sent = tp->rcv_nxt;
 	tp->t_flags &= ~TF_ACKNOW;
 	if (tcp_delack_enabled)
-		callout_stop(tp->tt_delack);
+		tcp_callout_stop(tp, tp->tt_delack);
 	if (sendalot)
 		goto again;
 	return (0);
@@ -1035,14 +1039,14 @@ tcp_setpersist(struct tcpcb *tp)
 	int t = ((tp->t_srtt >> 2) + tp->t_rttvar) >> 1;
 	int tt;
 
-	if (callout_active(tp->tt_rexmt))
+	if (tcp_callout_active(tp, tp->tt_rexmt))
 		panic("tcp_setpersist: retransmit pending");
 	/*
 	 * Start/restart persistance timer.
 	 */
 	TCPT_RANGESET(tt, t * tcp_backoff[tp->t_rxtshift], TCPTV_PERSMIN,
 		      TCPTV_PERSMAX);
-	callout_reset(tp->tt_persist, tt, tcp_timer_persist, tp);
+	tcp_callout_reset(tp, tp->tt_persist, tt, tcp_timer_persist);
 	if (tp->t_rxtshift < TCP_MAXRXTSHIFT)
 		tp->t_rxtshift++;
 }

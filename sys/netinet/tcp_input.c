@@ -110,6 +110,7 @@
 #include <netinet/tcp_fsm.h>
 #include <netinet/tcp_seq.h>
 #include <netinet/tcp_timer.h>
+#include <netinet/tcp_timer2.h>
 #include <netinet/tcp_var.h>
 #include <netinet6/tcp6_var.h>
 #include <netinet/tcpip.h>
@@ -241,7 +242,7 @@ do { \
  *	  the ack that opens up a 0-sized window.
  */
 #define DELAY_ACK(tp) \
-	(tcp_delack_enabled && !callout_pending(tp->tt_delack) && \
+	(tcp_delack_enabled && !tcp_callout_pending(tp, tp->tt_delack) && \
 	!(tp->t_flags & TF_RXWIN0SENT))
 
 #define acceptable_window_update(tp, th, tiwin)				\
@@ -1037,11 +1038,12 @@ findpcb:
 			     (tlen != 0 &&
 			      ((isipv6 && in6_localaddr(&inp->in6p_faddr)) ||
 			       (!isipv6 && in_localaddr(inp->inp_faddr)))))) {
-				callout_reset(tp->tt_delack, tcp_delacktime,
-						tcp_timer_delack, tp);
+				tcp_callout_reset(tp, tp->tt_delack,
+				    tcp_delacktime, tcp_timer_delack);
 				tp->t_flags |= TF_NEEDSYN;
-			} else
+			} else {
 				tp->t_flags |= (TF_ACKNOW | TF_NEEDSYN);
+			}
 
 			tcpstat.tcps_connects++;
 			soisconnected(so);
@@ -1059,8 +1061,10 @@ after_listen:
 	 * Reset idle time and keep-alive timer.
 	 */
 	tp->t_rcvtime = ticks;
-	if (TCPS_HAVEESTABLISHED(tp->t_state))
-		callout_reset(tp->tt_keep, tcp_keepidle, tcp_timer_keep, tp);
+	if (TCPS_HAVEESTABLISHED(tp->t_state)) {
+		tcp_callout_reset(tp, tp->tt_keep, tcp_keepidle,
+		    tcp_timer_keep);
+	}
 
 	/*
 	 * Process options.
@@ -1215,12 +1219,13 @@ after_listen:
 				 * are ready to send, let tcp_output
 				 * decide between more output or persist.
 				 */
-				if (tp->snd_una == tp->snd_max)
-					callout_stop(tp->tt_rexmt);
-				else if (!callout_active(tp->tt_persist))
-					callout_reset(tp->tt_rexmt,
-						      tp->t_rxtcur,
-						      tcp_timer_rexmt, tp);
+				if (tp->snd_una == tp->snd_max) {
+					tcp_callout_stop(tp, tp->tt_rexmt);
+				} else if (!tcp_callout_active(tp,
+					    tp->tt_persist)) {
+					tcp_callout_reset(tp, tp->tt_rexmt,
+					    tp->t_rxtcur, tcp_timer_rexmt);
+				}
 				sowwakeup(so);
 				if (so->so_snd.ssb_cc > 0)
 					tcp_output(tp);
@@ -1274,8 +1279,8 @@ after_listen:
 			 * to turn the feature off.
 			 */
 			if (DELAY_ACK(tp)) {
-				callout_reset(tp->tt_delack, tcp_delacktime,
-				    tcp_timer_delack, tp);
+				tcp_callout_reset(tp, tp->tt_delack,
+				    tcp_delacktime, tcp_timer_delack);
 			} else if (tcp_aggregate_acks) {
 				tp->t_flags |= TF_ACKNOW;
 				if (!(tp->t_flags & TF_ONOUTPUTQ)) {
@@ -1400,16 +1405,17 @@ after_listen:
 
 			tp->rcv_adv += tp->rcv_wnd;
 			tp->snd_una++;		/* SYN is acked */
-			callout_stop(tp->tt_rexmt);
+			tcp_callout_stop(tp, tp->tt_rexmt);
 			/*
 			 * If there's data, delay ACK; if there's also a FIN
 			 * ACKNOW will be turned on later.
 			 */
-			if (DELAY_ACK(tp) && tlen != 0)
-				callout_reset(tp->tt_delack, tcp_delacktime,
-				    tcp_timer_delack, tp);
-			else
+			if (DELAY_ACK(tp) && tlen != 0) {
+				tcp_callout_reset(tp, tp->tt_delack,
+				    tcp_delacktime, tcp_timer_delack);
+			} else {
 				tp->t_flags |= TF_ACKNOW;
+			}
 			/*
 			 * Received <SYN,ACK> in SYN_SENT[*] state.
 			 * Transitions:
@@ -1423,8 +1429,8 @@ after_listen:
 				thflags &= ~TH_SYN;
 			} else {
 				tp->t_state = TCPS_ESTABLISHED;
-				callout_reset(tp->tt_keep, tcp_keepidle,
-					      tcp_timer_keep, tp);
+				tcp_callout_reset(tp, tp->tt_keep, tcp_keepidle,
+				    tcp_timer_keep);
 			}
 		} else {
 			/*
@@ -1438,7 +1444,7 @@ after_listen:
 			 * If there was no CC option, clear cached CC value.
 			 */
 			tp->t_flags |= TF_ACKNOW;
-			callout_stop(tp->tt_rexmt);
+			tcp_callout_stop(tp, tp->tt_rexmt);
 			if (to.to_flags & TOF_CC) {
 				if (taop->tao_cc != 0 &&
 				    CC_GT(to.to_cc, taop->tao_cc)) {
@@ -1454,10 +1460,9 @@ after_listen:
 						tp->t_flags &= ~TF_NEEDFIN;
 					} else {
 						tp->t_state = TCPS_ESTABLISHED;
-						callout_reset(tp->tt_keep,
-							      tcp_keepidle,
-							      tcp_timer_keep,
-							      tp);
+						tcp_callout_reset(tp,
+						    tp->tt_keep, tcp_keepidle,
+						    tcp_timer_keep);
 					}
 					tp->t_flags |= TF_NEEDSYN;
 				} else
@@ -1869,8 +1874,8 @@ trimthenstep6:
 			tp->t_flags &= ~TF_NEEDFIN;
 		} else {
 			tp->t_state = TCPS_ESTABLISHED;
-			callout_reset(tp->tt_keep, tcp_keepidle,
-				      tcp_timer_keep, tp);
+			tcp_callout_reset(tp, tp->tt_keep, tcp_keepidle,
+			    tcp_timer_keep);
 		}
 		/*
 		 * If segment contains data or ACK, will call tcp_reass()
@@ -1904,7 +1909,7 @@ trimthenstep6:
 				break;
 			}
 			tcpstat.tcps_rcvdupack++;
-			if (!callout_active(tp->tt_rexmt) ||
+			if (!tcp_callout_active(tp, tp->tt_rexmt) ||
 			    th->th_ack != tp->snd_una) {
 				tp->t_dupacks = 0;
 				break;
@@ -1965,7 +1970,7 @@ fastretransmit:
 				tp->snd_ssthresh = win * tp->t_maxseg;
 				ENTER_FASTRECOVERY(tp);
 				tp->snd_recover = tp->snd_max;
-				callout_stop(tp->tt_rexmt);
+				tcp_callout_stop(tp, tp->tt_rexmt);
 				tp->t_rtttime = 0;
 				old_snd_nxt = tp->snd_nxt;
 				tp->snd_nxt = th->th_ack;
@@ -2248,11 +2253,12 @@ process_ACK:
 		 * timer, using current (possibly backed-off) value.
 		 */
 		if (th->th_ack == tp->snd_max) {
-			callout_stop(tp->tt_rexmt);
+			tcp_callout_stop(tp, tp->tt_rexmt);
 			needoutput = TRUE;
-		} else if (!callout_active(tp->tt_persist))
-			callout_reset(tp->tt_rexmt, tp->t_rxtcur,
-				      tcp_timer_rexmt, tp);
+		} else if (!tcp_callout_active(tp, tp->tt_persist)) {
+			tcp_callout_reset(tp, tp->tt_rexmt, tp->t_rxtcur,
+			    tcp_timer_rexmt);
+		}
 
 		switch (tp->t_state) {
 		/*
@@ -2271,8 +2277,8 @@ process_ACK:
 				 */
 				if (so->so_state & SS_CANTRCVMORE) {
 					soisdisconnected(so);
-					callout_reset(tp->tt_2msl, tcp_maxidle,
-						      tcp_timer_2msl, tp);
+					tcp_callout_reset(tp, tp->tt_2msl,
+					    tcp_maxidle, tcp_timer_2msl);
 				}
 				tp->t_state = TCPS_FIN_WAIT_2;
 			}
@@ -2290,13 +2296,14 @@ process_ACK:
 				tcp_canceltimers(tp);
 				/* Shorten TIME_WAIT [RFC-1644, p.28] */
 				if (tp->cc_recv != 0 &&
-				    (ticks - tp->t_starttime) < tcp_msl)
-					callout_reset(tp->tt_2msl,
+				    (ticks - tp->t_starttime) < tcp_msl) {
+					tcp_callout_reset(tp, tp->tt_2msl,
 					    tp->t_rxtcur * TCPTV_TWTRUNC,
-					    tcp_timer_2msl, tp);
-				else
-					callout_reset(tp->tt_2msl, 2 * tcp_msl,
-					    tcp_timer_2msl, tp);
+					    tcp_timer_2msl);
+				} else {
+					tcp_callout_reset(tp, tp->tt_2msl,
+					    2 * tcp_msl, tcp_timer_2msl);
+				}
 				soisdisconnected(so);
 			}
 			break;
@@ -2320,8 +2327,8 @@ process_ACK:
 		 * it and restart the finack timer.
 		 */
 		case TCPS_TIME_WAIT:
-			callout_reset(tp->tt_2msl, 2 * tcp_msl,
-				      tcp_timer_2msl, tp);
+			tcp_callout_reset(tp, tp->tt_2msl, 2 * tcp_msl,
+			    tcp_timer_2msl);
 			goto dropafterack;
 		}
 	}
@@ -2431,11 +2438,12 @@ dodata:							/* XXX */
 		if (th->th_seq == tp->rcv_nxt &&
 		    LIST_EMPTY(&tp->t_segq) &&
 		    TCPS_HAVEESTABLISHED(tp->t_state)) {
-			if (DELAY_ACK(tp))
-				callout_reset(tp->tt_delack, tcp_delacktime,
-					      tcp_timer_delack, tp);
-			else
+			if (DELAY_ACK(tp)) {
+				tcp_callout_reset(tp, tp->tt_delack,
+				    tcp_delacktime, tcp_timer_delack);
+			} else {
 				tp->t_flags |= TF_ACKNOW;
+			}
 			tp->rcv_nxt += tlen;
 			thflags = th->th_flags & TH_FIN;
 			tcpstat.tcps_rcvpack++;
@@ -2482,11 +2490,12 @@ dodata:							/* XXX */
 			 * Otherwise, since we received a FIN then no
 			 * more input can be expected, send ACK now.
 			 */
-			if (DELAY_ACK(tp) && (tp->t_flags & TF_NEEDSYN))
-				callout_reset(tp->tt_delack, tcp_delacktime,
-				    tcp_timer_delack, tp);
-			else
+			if (DELAY_ACK(tp) && (tp->t_flags & TF_NEEDSYN)) {
+				tcp_callout_reset(tp, tp->tt_delack,
+				    tcp_delacktime, tcp_timer_delack);
+			} else {
 				tp->t_flags |= TF_ACKNOW;
+			}
 			tp->rcv_nxt++;
 		}
 
@@ -2521,15 +2530,15 @@ dodata:							/* XXX */
 			/* Shorten TIME_WAIT [RFC-1644, p.28] */
 			if (tp->cc_recv != 0 &&
 			    (ticks - tp->t_starttime) < tcp_msl) {
-				callout_reset(tp->tt_2msl,
-					      tp->t_rxtcur * TCPTV_TWTRUNC,
-					      tcp_timer_2msl, tp);
+				tcp_callout_reset(tp, tp->tt_2msl,
+				    tp->t_rxtcur * TCPTV_TWTRUNC,
+				    tcp_timer_2msl);
 				/* For transaction client, force ACK now. */
 				tp->t_flags |= TF_ACKNOW;
+			} else {
+				tcp_callout_reset(tp, tp->tt_2msl, 2 * tcp_msl,
+				    tcp_timer_2msl);
 			}
-			else
-				callout_reset(tp->tt_2msl, 2 * tcp_msl,
-					      tcp_timer_2msl, tp);
 			soisdisconnected(so);
 			break;
 
@@ -2537,8 +2546,8 @@ dodata:							/* XXX */
 		 * In TIME_WAIT state restart the 2 MSL time_wait timer.
 		 */
 		case TCPS_TIME_WAIT:
-			callout_reset(tp->tt_2msl, 2 * tcp_msl,
-				      tcp_timer_2msl, tp);
+			tcp_callout_reset(tp, tp->tt_2msl, 2 * tcp_msl,
+			    tcp_timer_2msl);
 			break;
 		}
 	}
@@ -3118,7 +3127,7 @@ tcp_newreno_partial_ack(struct tcpcb *tp, struct tcphdr *th, int acked)
 	tcp_seq old_snd_nxt = tp->snd_nxt;
 	u_long ocwnd = tp->snd_cwnd;
 
-	callout_stop(tp->tt_rexmt);
+	tcp_callout_stop(tp, tp->tt_rexmt);
 	tp->t_rtttime = 0;
 	tp->snd_nxt = th->th_ack;
 	/* Set snd_cwnd to one segment beyond acknowledged offset. */
@@ -3165,7 +3174,7 @@ tcp_sack_rexmt(struct tcpcb *tp, struct tcphdr *th)
 		tp->snd_cwnd = nextrexmt - tp->snd_una + seglen;
 		old_snd_max = tp->snd_max;
 		if (nextrexmt == tp->snd_una)
-			callout_stop(tp->tt_rexmt);
+			tcp_callout_stop(tp, tp->tt_rexmt);
 		error = tcp_output(tp);
 		if (error != 0)
 			break;
