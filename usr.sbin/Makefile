@@ -76,7 +76,6 @@ SUBDIR= 802_11 \
 	pfctl \
 	pflogd \
 	pnpinfo \
-	portmap \
 	ppp \
 	pppctl \
 	pppd \
@@ -101,6 +100,7 @@ SUBDIR= 802_11 \
 	rpc.yppasswdd \
 	rpc.ypupdated \
 	rpc.ypxfrd \
+	rpcbind \
 	rrenumd \
 	rtadvd \
 	rtprio \

@@ -31,15 +31,8 @@
  *
  * @(#)from: clnt_udp.c 1.39 87/08/11 Copyr 1984 Sun Micro
  * @(#)from: clnt_udp.c	2.2 88/08/01 4.0 RPCSRC
- * $FreeBSD: src/usr.sbin/ypbind/yp_ping.c,v 1.6.2.1 2002/02/15 00:46:59 des Exp $
+ * $FreeBSD: src/usr.sbin/ypbind/yp_ping.c,v 1.17 2008/09/15 14:01:40 dfr Exp $
  * $DragonFly: src/usr.sbin/ypbind/yp_ping.c,v 1.7 2005/11/24 22:23:02 swildner Exp $
- */
-
-/*
- * What follows is a special version of clntudp_call() that has been
- * hacked to send requests and receive replies asynchronously. Similar
- * magic is used inside rpc.nisd(8) for the special non-blocking,
- * non-fork()ing, non-threading callback support.
  */
 
 /*
@@ -83,242 +76,20 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
 #include <rpc/rpc.h>
 #include <rpc/pmap_clnt.h>
 #include <rpc/pmap_prot.h>
 #include <rpcsvc/yp.h>
+#include <sys/types.h>
+#include <sys/poll.h>
 #include <sys/socket.h>
+#include <sys/signal.h>
 #include <sys/ioctl.h>
+#include <arpa/inet.h>
 #include <net/if.h>
+
 #include "yp_ping.h"
-
-#ifndef timeradd
-#ifndef _KERNEL		/* use timevaladd/timevalsub in kernel */
-/* NetBSD/OpenBSD compatible interfaces */
-#define timeradd(tvp, uvp, vvp)						\
-	do {								\
-		(vvp)->tv_sec = (tvp)->tv_sec + (uvp)->tv_sec;		\
-		(vvp)->tv_usec = (tvp)->tv_usec + (uvp)->tv_usec;	\
-		if ((vvp)->tv_usec >= 1000000) {			\
-			(vvp)->tv_sec++;				\
-			(vvp)->tv_usec -= 1000000;			\
-		}							\
-	} while (0)
-#define timersub(tvp, uvp, vvp)						\
-	do {								\
-		(vvp)->tv_sec = (tvp)->tv_sec - (uvp)->tv_sec;		\
-		(vvp)->tv_usec = (tvp)->tv_usec - (uvp)->tv_usec;	\
-		if ((vvp)->tv_usec < 0) {				\
-			(vvp)->tv_sec--;				\
-			(vvp)->tv_usec += 1000000;			\
-		}							\
-	} while (0)
-#endif
-#endif
-
-/*
- * Private data kept per client handle
- */
-struct cu_data {
-	int		   cu_sock;
-	bool_t		   cu_closeit;
-	struct sockaddr_in cu_raddr;
-	int		   cu_rlen;
-	struct timeval	   cu_wait;
-	struct timeval     cu_total;
-	struct rpc_err	   cu_error;
-	XDR		   cu_outxdrs;
-	u_int		   cu_xdrpos;
-	u_int		   cu_sendsz;
-	char		   *cu_outbuf;
-	u_int		   cu_recvsz;
-	char		   cu_inbuf[1];
-};
-
-static enum clnt_stat
-clntudp_a_call(CLIENT *cl,		/* client handle */
-	       u_long proc,		/* procedure number */
-	       xdrproc_t xargs,		/* xdr routine for args */
-	       caddr_t argsp,		/* pointer to args */
-	       xdrproc_t xresults,	/* xdr routine for results */
-	       caddr_t resultsp,	/* pointer to results */
-	       struct timeval utimeout)	/* seconds to wait before giving up */
-{
-	struct cu_data *cu = (struct cu_data *)cl->cl_private;
-	XDR *xdrs;
-	int outlen = 0;
-	int inlen;
-	int fromlen;
-	fd_set *fds, readfds;
-	struct sockaddr_in from;
-	struct rpc_msg reply_msg;
-	XDR reply_xdrs;
-	struct timeval time_waited, start, after, tmp1, tmp2, tv;
-	bool_t ok;
-	int nrefreshes = 2;	/* number of times to refresh cred */
-	struct timeval timeout;
-
-	if (cu->cu_total.tv_usec == -1)
-		timeout = utimeout;     /* use supplied timeout */
-	else
-		timeout = cu->cu_total; /* use default timeout */
-
-	if (cu->cu_sock + 1 > FD_SETSIZE) {
-		int bytes = howmany(cu->cu_sock + 1, NFDBITS) * sizeof(fd_mask);
-		fds = (fd_set *)malloc(bytes);
-		if (fds == NULL)
-			return (cu->cu_error.re_status = RPC_CANTSEND);
-		memset(fds, 0, bytes);
-	} else {
-		fds = &readfds;
-		FD_ZERO(fds);
-	}
-
-	timerclear(&time_waited);
-
-call_again:
-	xdrs = &(cu->cu_outxdrs);
-	if (xargs == NULL)
-		goto get_reply;
-	xdrs->x_op = XDR_ENCODE;
-	XDR_SETPOS(xdrs, cu->cu_xdrpos);
-	/*
-	 * the transaction is the first thing in the out buffer
-	 */
-	(*(u_short *)(cu->cu_outbuf))++;
-	if ((! XDR_PUTLONG(xdrs, (long *)&proc)) ||
-	    (! AUTH_MARSHALL(cl->cl_auth, xdrs)) ||
-	    (! (*xargs)(xdrs, argsp))) {
-		if (fds != &readfds)
-			free(fds);
-		return (cu->cu_error.re_status = RPC_CANTENCODEARGS);
-	}
-	outlen = (int)XDR_GETPOS(xdrs);
-
-send_again:
-	if (sendto(cu->cu_sock, cu->cu_outbuf, outlen, 0,
-	    (struct sockaddr *)&(cu->cu_raddr), cu->cu_rlen) != outlen) {
-		cu->cu_error.re_errno = errno;
-		if (fds != &readfds)
-			free(fds);
-		return (cu->cu_error.re_status = RPC_CANTSEND);
-	}
-
-	/*
-	 * Hack to provide rpc-based message passing
-	 */
-	if (!timerisset(&timeout)) {
-		if (fds != &readfds)
-			free(fds);
-		return (cu->cu_error.re_status = RPC_TIMEDOUT);
-	}
-
-get_reply:
-
-	/*
-	 * sub-optimal code appears here because we have
-	 * some clock time to spare while the packets are in flight.
-	 * (We assume that this is actually only executed once.)
-	 */
-	reply_msg.acpted_rply.ar_verf = _null_auth;
-	reply_msg.acpted_rply.ar_results.where = resultsp;
-	reply_msg.acpted_rply.ar_results.proc = xresults;
-
-	gettimeofday(&start, NULL);
-	for (;;) {
-		/* XXX we know the other bits are still clear */
-		FD_SET(cu->cu_sock, fds);
-		tv = cu->cu_wait;
-		switch (select(cu->cu_sock+1, fds, NULL, NULL, &tv)) {
-
-		case 0:
-			timeradd(&time_waited, &cu->cu_wait, &tmp1);
-			time_waited = tmp1;
-			if (timercmp(&time_waited, &timeout, <))
-				goto send_again;
-			if (fds != &readfds)
-				free(fds);
-			return (cu->cu_error.re_status = RPC_TIMEDOUT);
-
-		case -1:
-			if (errno == EINTR) {
-				gettimeofday(&after, NULL);
-				timersub(&after, &start, &tmp1);
-				timeradd(&time_waited, &tmp1, &tmp2);
-				time_waited = tmp2;
-				if (timercmp(&time_waited, &timeout, <))
-					continue;
-				if (fds != &readfds)
-					free(fds);
-				return (cu->cu_error.re_status = RPC_TIMEDOUT);
-			}
-			cu->cu_error.re_errno = errno;
-			if (fds != &readfds)
-				free(fds);
-			return (cu->cu_error.re_status = RPC_CANTRECV);
-		}
-
-		do {
-			fromlen = sizeof(struct sockaddr);
-			inlen = recvfrom(cu->cu_sock, cu->cu_inbuf,
-				(int) cu->cu_recvsz, 0,
-				(struct sockaddr *)&from, &fromlen);
-		} while (inlen < 0 && errno == EINTR);
-		if (inlen < 0) {
-			if (errno == EWOULDBLOCK)
-				continue;
-			cu->cu_error.re_errno = errno;
-			if (fds != &readfds)
-				free(fds);
-			return (cu->cu_error.re_status = RPC_CANTRECV);
-		}
-		if (inlen < sizeof(u_int32_t))
-			continue;
-#ifdef dont_check_xid
-		/* see if reply transaction id matches sent id */
-		if (*((u_int32_t *)(cu->cu_inbuf)) != *((u_int32_t *)(cu->cu_outbuf)))
-			continue;
-#endif
-		/* we now assume we have the proper reply */
-		break;
-	}
-
-	/*
-	 * now decode and validate the response
-	 */
-	xdrmem_create(&reply_xdrs, cu->cu_inbuf, (u_int)inlen, XDR_DECODE);
-	ok = xdr_replymsg(&reply_xdrs, &reply_msg);
-	/* XDR_DESTROY(&reply_xdrs);  save a few cycles on noop destroy */
-	if (ok) {
-		_seterr_reply(&reply_msg, &(cu->cu_error));
-		if (cu->cu_error.re_status == RPC_SUCCESS) {
-			if (! AUTH_VALIDATE(cl->cl_auth,
-				&reply_msg.acpted_rply.ar_verf)) {
-				cu->cu_error.re_status = RPC_AUTHERROR;
-				cu->cu_error.re_why = AUTH_INVALIDRESP;
-			}
-			if (reply_msg.acpted_rply.ar_verf.oa_base != NULL) {
-				xdrs->x_op = XDR_FREE;
-				xdr_opaque_auth(xdrs,
-				    &(reply_msg.acpted_rply.ar_verf));
-			}
-		}  /* end successful completion */
-		else {
-			/* maybe our credentials need to be refreshed ... */
-			if (nrefreshes > 0 && AUTH_REFRESH(cl->cl_auth)) {
-				nrefreshes--;
-				goto call_again;
-			}
-		}  /* end of unsuccessful completion */
-	}  /* end of valid reply message */
-	else {
-		cu->cu_error.re_status = RPC_CANTDECODERES;
-	}
-	if (fds != &readfds)
-		free(fds);
-	return (cu->cu_error.re_status);
-}
-
 
 /*
  * pmap_getport.c
@@ -337,8 +108,8 @@ static struct timeval tottimeout = { 1, 0 };
  * Returns 0 if no map exists.
  */
 static u_short
-__pmap_getport(struct sockaddr_in *address,
-	       u_long program, u_long version, u_int protocol)
+__pmap_getport(struct sockaddr_in *address, u_long program, u_long version,
+	       u_int protocol)
 {
 	u_short port = 0;
 	int sock = -1;
@@ -354,8 +125,10 @@ __pmap_getport(struct sockaddr_in *address,
 		parms.pm_vers = version;
 		parms.pm_prot = protocol;
 		parms.pm_port = 0;  /* not needed or used */
-		if (CLNT_CALL(client, PMAPPROC_GETPORT, xdr_pmap, &parms,
-		    xdr_u_short, &port, tottimeout) != RPC_SUCCESS){
+		if (CLNT_CALL(client, PMAPPROC_GETPORT,
+			(xdrproc_t)xdr_pmap, &parms,
+			(xdrproc_t)xdr_u_short, &port,
+			tottimeout) != RPC_SUCCESS){
 			rpc_createerr.cf_stat = RPC_PMAPFAILURE;
 			clnt_geterr(client, &rpc_createerr.cf_error);
 		} else if (port == 0) {
@@ -431,24 +204,23 @@ ypproc_domain_nonack_2_recv(domainname *argp, CLIENT *clnt)
 
 struct ping_req {
 	struct sockaddr_in	sin;
-	unsigned long		xid;
+	u_int32_t		xid;
 };
 
 int
-__yp_ping(struct in_addr *restricted_addrs, int cnt,
-	  char *dom, short int *port)
+__yp_ping(struct in_addr *restricted_addrs, int cnt, char *dom, short *port)
 {
 	struct timeval		tv = { 5, 0 };
 	struct ping_req		**reqs;
 	unsigned long		i;
+	int			async;
 	struct sockaddr_in	sin, *any = NULL;
+	struct netbuf		addr;
 	int			winner = -1;
-	time_t			xid_seed, xid_lookup;
+	u_int32_t		xid_seed, xid_lookup;
 	int			sock, dontblock = 1;
 	CLIENT			*clnt;
 	char			*foo = dom;
-	struct cu_data		*cu;
-	enum clnt_stat		(*oldfunc)();
 	int			validsrvs = 0;
 
 	/* Set up handles. */
@@ -490,20 +262,20 @@ __yp_ping(struct in_addr *restricted_addrs, int cnt,
 		return(-1);
 	}
 	clnt->cl_auth = authunix_create_default();
-	cu = (struct cu_data *)clnt->cl_private;
 	tv.tv_sec = 0;
-	clnt_control(clnt, CLSET_TIMEOUT, &tv);
+
+	clnt_control(clnt, CLSET_TIMEOUT, (char *)&tv);
+	async = TRUE;
+	clnt_control(clnt, CLSET_ASYNC, (char *)&async);
 	ioctl(sock, FIONBIO, &dontblock);
-	oldfunc = clnt->cl_ops->cl_call;
-	clnt->cl_ops->cl_call = clntudp_a_call;
 
 	/* Transmit */
 	for (i = 0; i < cnt; i++) {
 		if (reqs[i] != NULL) {
-			/* subtract one; clntudp_call() will increment */
-			*((u_int32_t *)(cu->cu_outbuf)) = reqs[i]->xid - 1;
-			bcopy((char *)&reqs[i]->sin, (char *)&cu->cu_raddr,
-				sizeof(struct sockaddr_in));
+			clnt_control(clnt, CLSET_XID, (char *)&reqs[i]->xid);
+			addr.len = sizeof(reqs[i]->sin);
+			addr.buf = (char *) &reqs[i]->sin;
+			clnt_control(clnt, CLSET_SVC_ADDR, &addr);
 			ypproc_domain_nonack_2_send(&foo, clnt);
 		}
 	}
@@ -512,7 +284,7 @@ __yp_ping(struct in_addr *restricted_addrs, int cnt,
 	ypproc_domain_nonack_2_recv(&foo, clnt);
 
 	/* Got a winner -- look him up. */
-	xid_lookup = *((u_int32_t *)(cu->cu_inbuf));
+	clnt_control(clnt, CLGET_XID, (char *)&xid_lookup);
 	for (i = 0; i < cnt; i++) {
 		if (reqs[i] != NULL && reqs[i]->xid == xid_lookup) {
 			winner = i;
@@ -521,7 +293,6 @@ __yp_ping(struct in_addr *restricted_addrs, int cnt,
 	}
 
 	/* Shut everything down */
-	clnt->cl_ops->cl_call = oldfunc;
 	auth_destroy(clnt->cl_auth);
 	clnt_destroy(clnt);
 	close(sock);

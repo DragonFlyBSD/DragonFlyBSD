@@ -86,8 +86,7 @@
  * xdr.
  */
 
-#include <rpc/types.h>
-#include <rpc/xdr.h>
+#include <netproto/atm/spans/spans_kxdr.h>
 
 /*
  * constants specific to the xdr "protocol"

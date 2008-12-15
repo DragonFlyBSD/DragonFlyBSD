@@ -28,7 +28,7 @@
  *
  * @(#)svc_auth_unix.c 1.28 88/02/08 Copyr 1984 Sun Micro
  * @(#)svc_auth_unix.c	2.3 88/08/01 4.0 RPCSRC
- * $FreeBSD: src/lib/libc/rpc/svc_auth_unix.c,v 1.8 1999/08/28 00:00:49 peter Exp $
+ * $FreeBSD: src/lib/libc/rpc/svc_auth_unix.c,v 1.11 2004/10/16 06:11:35 obrien Exp $
  * $DragonFly: src/lib/libc/rpc/svc_auth_unix.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
@@ -43,9 +43,13 @@
  * Copyright (C) 1984, Sun Microsystems, Inc.
  */
 
+#include "namespace.h"
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
+
 #include <rpc/rpc.h>
+#include "un-namespace.h"
 
 /*
  * Unix longhand authenticator
@@ -63,8 +67,11 @@ _svcauth_unix(struct svc_req *rqst, struct rpc_msg *msg)
 		int area_gids[NGRPS];
 	} *area;
 	u_int auth_len;
-	int str_len, gid_len;
-	int i;
+	size_t str_len, gid_len;
+	u_int i;
+
+	assert(rqst != NULL);
+	assert(msg != NULL);
 
 	area = (struct area *) rqst->rq_clntcred;
 	aup = &area->area_aup;
@@ -74,34 +81,34 @@ _svcauth_unix(struct svc_req *rqst, struct rpc_msg *msg)
 	xdrmem_create(&xdrs, msg->rm_call.cb_cred.oa_base, auth_len,XDR_DECODE);
 	buf = XDR_INLINE(&xdrs, auth_len);
 	if (buf != NULL) {
-		aup->aup_time = IXDR_GET_LONG(buf);
-		str_len = IXDR_GET_U_LONG(buf);
+		aup->aup_time = IXDR_GET_INT32(buf);
+		str_len = (size_t)IXDR_GET_U_INT32(buf);
 		if (str_len > MAX_MACHINE_NAME) {
 			stat = AUTH_BADCRED;
 			goto done;
 		}
-		memcpy(aup->aup_machname, (caddr_t)buf, (u_int)str_len);
+		memmove(aup->aup_machname, buf, str_len);
 		aup->aup_machname[str_len] = 0;
 		str_len = RNDUP(str_len);
 		buf += str_len / sizeof (int32_t);
-		aup->aup_uid = IXDR_GET_LONG(buf);
-		aup->aup_gid = IXDR_GET_LONG(buf);
-		gid_len = IXDR_GET_U_LONG(buf);
+		aup->aup_uid = (int)IXDR_GET_INT32(buf);
+		aup->aup_gid = (int)IXDR_GET_INT32(buf);
+		gid_len = (size_t)IXDR_GET_U_INT32(buf);
 		if (gid_len > NGRPS) {
 			stat = AUTH_BADCRED;
 			goto done;
 		}
 		aup->aup_len = gid_len;
 		for (i = 0; i < gid_len; i++) {
-			aup->aup_gids[i] = IXDR_GET_LONG(buf);
+			aup->aup_gids[i] = (int)IXDR_GET_INT32(buf);
 		}
 		/*
 		 * five is the smallest unix credentials structure -
 		 * timestamp, hostname len (0), uid, gid, and gids len (0).
 		 */
 		if ((5 + gid_len) * BYTES_PER_XDR_UNIT + str_len > auth_len) {
-			printf("bad auth_len gid %d str %d auth %d\n",
-			    gid_len, str_len, auth_len);
+			printf("bad auth_len gid %ld str %ld auth %u\n",
+			    (long)gid_len, (long)str_len, auth_len);
 			stat = AUTH_BADCRED;
 			goto done;
 		}
@@ -112,13 +119,13 @@ _svcauth_unix(struct svc_req *rqst, struct rpc_msg *msg)
 		goto done;
 	}
 
-	/* get the verifier */
+       /* get the verifier */
 	if ((u_int)msg->rm_call.cb_verf.oa_length) {
-		rqst->rq_xprt->xp_verf.oa_flavor = 
+		rqst->rq_xprt->xp_verf.oa_flavor =
 			msg->rm_call.cb_verf.oa_flavor;
-		rqst->rq_xprt->xp_verf.oa_base = 
+		rqst->rq_xprt->xp_verf.oa_base =
 			msg->rm_call.cb_verf.oa_base;
-		rqst->rq_xprt->xp_verf.oa_length = 
+		rqst->rq_xprt->xp_verf.oa_length =
 			msg->rm_call.cb_verf.oa_length;
 	} else {
 		rqst->rq_xprt->xp_verf.oa_flavor = AUTH_NULL;

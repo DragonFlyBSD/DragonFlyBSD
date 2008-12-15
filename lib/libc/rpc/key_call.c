@@ -5,35 +5,34 @@
  * may copy or modify Sun RPC without charge, but are not authorized
  * to license or distribute it to anyone else except as part of a product or
  * program developed by the user.
- * 
+ *
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
  * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
- * 
+ *
  * Sun RPC is provided with no support and without any obligation on the
  * part of Sun Microsystems, Inc. to assist in its use, correction,
  * modification or enhancement.
- * 
+ *
  * SUN MICROSYSTEMS, INC. SHALL HAVE NO LIABILITY WITH RESPECT TO THE
  * INFRINGEMENT OF COPYRIGHTS, TRADE SECRETS OR ANY PATENTS BY SUN RPC
  * OR ANY PART THEREOF.
- * 
+ *
  * In no event will Sun Microsystems, Inc. be liable for any lost revenue
  * or profits or other special, indirect and consequential damages, even if
  * Sun has been advised of the possibility of such damages.
- * 
+ *
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  */
 /*
- * Copyright (c) 1986-1991 by Sun Microsystems Inc. 
+ * Copyright (c) 1986-1991 by Sun Microsystems Inc.
  *
- * $FreeBSD: src/lib/libc/rpc/key_call.c,v 1.3 2000/01/27 23:06:39 jasone Exp $
+ * @(#)key_call.c	1.25	94/04/24 SMI
+ * $FreeBSD: src/lib/libc/rpc/key_call.c,v 1.16 2006/02/27 22:10:59 deischen Exp $
  * $DragonFly: src/lib/libc/rpc/key_call.c,v 1.6 2005/11/13 12:27:04 swildner Exp $
  */
-
-#ident	"@(#)key_call.c	1.25	94/04/24 SMI"
 
 /*
  * key_call.c, Interface to keyserver
@@ -45,6 +44,7 @@
  */
 
 #include "namespace.h"
+#include "reentrant.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -54,12 +54,14 @@
 #include <rpc/auth_unix.h>
 #include <rpc/key_prot.h>
 #include <string.h>
+#include <netconfig.h>
 #include <sys/utsname.h>
 #include <stdlib.h>
 #include <signal.h>
 #include <sys/wait.h>
 #include <sys/fcntl.h>
 #include "un-namespace.h"
+#include "mt_misc.h"
 
 
 #define	KEY_TIMEOUT	5	/* per-try timeout in seconds */
@@ -84,15 +86,16 @@ cryptkeyres *(*__key_encryptsession_pk_LOCAL)() = 0;
 cryptkeyres *(*__key_decryptsession_pk_LOCAL)() = 0;
 des_block *(*__key_gendes_LOCAL)() = 0;
 
-static int key_call ( u_long, xdrproc_t, char *, xdrproc_t, char * );
+static int key_call( u_long, xdrproc_t, void *, xdrproc_t, void *);
 
 int
 key_setsecret(const char *secretkey)
 {
 	keystatus status;
 
-	if (!key_call((u_long) KEY_SET, xdr_keybuf, (char *) secretkey,
-			xdr_keystatus, (char *)&status)) {
+	if (!key_call((u_long) KEY_SET, (xdrproc_t)xdr_keybuf,
+			(void *)secretkey,
+			(xdrproc_t)xdr_keystatus, &status)) {
 		return (-1);
 	}
 	if (status != KEY_SUCCESS) {
@@ -116,8 +119,8 @@ key_secretkey_is_set(void)
 	struct key_netstres 	kres;
 
 	memset((void*)&kres, 0, sizeof (kres));
-	if (key_call((u_long) KEY_NET_GET, xdr_void, (char *)NULL,
-			xdr_key_netstres, (char *) &kres) &&
+	if (key_call((u_long) KEY_NET_GET, (xdrproc_t)xdr_void, NULL,
+			(xdrproc_t)xdr_key_netstres, &kres) &&
 	    (kres.status == KEY_SUCCESS) &&
 	    (kres.key_netstres_u.knet.st_priv_key[0] != 0)) {
 		/* avoid leaving secret key in memory */
@@ -136,8 +139,8 @@ key_encryptsession_pk(char *remotename, netobj *remotekey, des_block *deskey)
 	arg.remotename = remotename;
 	arg.remotekey = *remotekey;
 	arg.deskey = *deskey;
-	if (!key_call((u_long)KEY_ENCRYPT_PK, xdr_cryptkeyarg2, (char *)&arg,
-			xdr_cryptkeyres, (char *)&res)) {
+	if (!key_call((u_long)KEY_ENCRYPT_PK, (xdrproc_t)xdr_cryptkeyarg2, &arg,
+			(xdrproc_t)xdr_cryptkeyres, &res)) {
 		return (-1);
 	}
 	if (res.status != KEY_SUCCESS) {
@@ -157,8 +160,8 @@ key_decryptsession_pk(char *remotename, netobj *remotekey, des_block *deskey)
 	arg.remotename = remotename;
 	arg.remotekey = *remotekey;
 	arg.deskey = *deskey;
-	if (!key_call((u_long)KEY_DECRYPT_PK, xdr_cryptkeyarg2, (char *)&arg,
-			xdr_cryptkeyres, (char *)&res)) {
+	if (!key_call((u_long)KEY_DECRYPT_PK, (xdrproc_t)xdr_cryptkeyarg2, &arg,
+			(xdrproc_t)xdr_cryptkeyres, &res)) {
 		return (-1);
 	}
 	if (res.status != KEY_SUCCESS) {
@@ -177,8 +180,8 @@ key_encryptsession(const char *remotename, des_block *deskey)
 
 	arg.remotename = (char *) remotename;
 	arg.deskey = *deskey;
-	if (!key_call((u_long)KEY_ENCRYPT, xdr_cryptkeyarg, (char *)&arg,
-			xdr_cryptkeyres, (char *)&res)) {
+	if (!key_call((u_long)KEY_ENCRYPT, (xdrproc_t)xdr_cryptkeyarg, &arg,
+			(xdrproc_t)xdr_cryptkeyres, &res)) {
 		return (-1);
 	}
 	if (res.status != KEY_SUCCESS) {
@@ -197,8 +200,8 @@ key_decryptsession(const char *remotename, des_block *deskey)
 
 	arg.remotename = (char *) remotename;
 	arg.deskey = *deskey;
-	if (!key_call((u_long)KEY_DECRYPT, xdr_cryptkeyarg, (char *)&arg,
-			xdr_cryptkeyres, (char *)&res)) {
+	if (!key_call((u_long)KEY_DECRYPT, (xdrproc_t)xdr_cryptkeyarg, &arg,
+			(xdrproc_t)xdr_cryptkeyres, &res)) {
 		return (-1);
 	}
 	if (res.status != KEY_SUCCESS) {
@@ -212,21 +215,21 @@ key_decryptsession(const char *remotename, des_block *deskey)
 int
 key_gendes(des_block *key)
 {
-	if (!key_call((u_long)KEY_GEN, xdr_void, (char *)NULL,
-			xdr_des_block, (char *)key)) {
+	if (!key_call((u_long)KEY_GEN, (xdrproc_t)xdr_void, NULL,
+			(xdrproc_t)xdr_des_block, key)) {
 		return (-1);
 	}
 	return (0);
 }
 
 int
-key_setnet(struct netstarg *arg)
+key_setnet(struct key_netstarg *arg)
 {
 	keystatus status;
 
 
-	if (!key_call((u_long) KEY_NET_PUT, xdr_key_netstarg, (char *) arg,
-		xdr_keystatus, (char *) &status)){
+	if (!key_call((u_long) KEY_NET_PUT, (xdrproc_t)xdr_key_netstarg, arg,
+			(xdrproc_t)xdr_keystatus, &status)){
 		return (-1);
 	}
 
@@ -243,8 +246,8 @@ key_get_conv(char *pkey, des_block *deskey)
 {
 	cryptkeyres res;
 
-	if (!key_call((u_long) KEY_GET_CONV, xdr_keybuf, pkey,
-		xdr_cryptkeyres, (char *)&res)) {
+	if (!key_call((u_long) KEY_GET_CONV, (xdrproc_t)xdr_keybuf, pkey,
+			(xdrproc_t)xdr_cryptkeyres, &res)) {
 		return (-1);
 	}
 	if (res.status != KEY_SUCCESS) {
@@ -262,7 +265,6 @@ struct  key_call_private {
 };
 static struct key_call_private *key_call_private_main = NULL;
 
-#ifdef foo
 static void
 key_call_destroy(void *vp)
 {
@@ -274,7 +276,6 @@ key_call_destroy(void *vp)
 		free(kcp);
 	}
 }
-#endif
 
 /*
  * Keep the handle cached.  This call may be made quite often.
@@ -282,21 +283,39 @@ key_call_destroy(void *vp)
 static CLIENT *
 getkeyserv_handle(int vers)
 {
+	void *localhandle;
+	struct netconfig *nconf;
+	struct netconfig *tpconf;
 	struct key_call_private *kcp = key_call_private_main;
 	struct timeval wait_time;
+	struct utsname u;
+	int main_thread;
 	int fd;
-	struct sockaddr_un name;
-	int namelen = sizeof(struct sockaddr_un);
+	static thread_key_t key_call_key;
 
 #define	TOTAL_TIMEOUT	30	/* total timeout talking to keyserver */
 #define	TOTAL_TRIES	5	/* Number of tries */
 
+	if ((main_thread = thr_main())) {
+		kcp = key_call_private_main;
+	} else {
+		if (key_call_key == 0) {
+			mutex_lock(&tsd_lock);
+			if (key_call_key == 0)
+				thr_keycreate(&key_call_key, key_call_destroy);
+			mutex_unlock(&tsd_lock);
+		}
+		kcp = (struct key_call_private *)thr_getspecific(key_call_key);
+	}
 	if (kcp == (struct key_call_private *)NULL) {
 		kcp = (struct key_call_private *)malloc(sizeof (*kcp));
 		if (kcp == (struct key_call_private *)NULL) {
 			return ((CLIENT *) NULL);
 		}
-		key_call_private_main = kcp;
+		if (main_thread)
+			key_call_private_main = kcp;
+		else
+			thr_setspecific(key_call_key, (void *) kcp);
 		kcp->client = NULL;
 	}
 
@@ -304,16 +323,6 @@ getkeyserv_handle(int vers)
 	if (kcp->client != NULL && kcp->pid != getpid()) {
 		clnt_destroy(kcp->client);
 		kcp->client = NULL;
-	}
-
-	if (kcp->client != NULL) {
-		/* if other side closed socket, build handle again */
-		clnt_control(kcp->client, CLGET_FD, (char *)&fd);
-		if (_getpeername(fd,(struct sockaddr *)&name,&namelen) == -1) {
-			auth_destroy(kcp->client->cl_auth);
-			clnt_destroy(kcp->client);
-			kcp->client = NULL;
-		}
 	}
 
 	if (kcp->client != NULL) {
@@ -333,11 +342,36 @@ getkeyserv_handle(int vers)
 		clnt_control(kcp->client, CLSET_VERS, (void *)&vers);
 		return (kcp->client);
 	}
-
-	if ((kcp->client == (CLIENT *) NULL))
-		/* Use the AF_UNIX transport */
-		kcp->client = clnt_create("/var/run/keyservsock", KEY_PROG,
-							vers, "unix");
+	if (!(localhandle = setnetconfig())) {
+		return ((CLIENT *) NULL);
+	}
+	tpconf = NULL;
+	if (uname(&u) == -1)
+	{
+		endnetconfig(localhandle);
+		return ((CLIENT *) NULL);
+	}
+	while ((nconf = getnetconfig(localhandle)) != NULL) {
+		if (strcmp(nconf->nc_protofmly, NC_LOOPBACK) == 0) {
+			/*
+			 * We use COTS_ORD here so that the caller can
+			 * find out immediately if the server is dead.
+			 */
+			if (nconf->nc_semantics == NC_TPI_COTS_ORD) {
+				kcp->client = clnt_tp_create(u.nodename,
+					KEY_PROG, vers, nconf);
+				if (kcp->client)
+					break;
+			} else {
+				tpconf = nconf;
+			}
+		}
+	}
+	if ((kcp->client == (CLIENT *) NULL) && (tpconf))
+		/* Now, try the CLTS or COTS loopback transport */
+		kcp->client = clnt_tp_create(u.nodename,
+			KEY_PROG, vers, tpconf);
+	endnetconfig(localhandle);
 
 	if (kcp->client == (CLIENT *) NULL) {
 		return ((CLIENT *) NULL);
@@ -364,8 +398,8 @@ getkeyserv_handle(int vers)
 /* returns  0 on failure, 1 on success */
 
 static int
-key_call(u_long proc, xdrproc_t xdr_arg, char *arg, xdrproc_t xdr_rslt,
-	 char *rslt)
+key_call(u_long proc, xdrproc_t xdr_arg, void *arg, xdrproc_t xdr_rslt,
+	 void *rslt)
 {
 	CLIENT *clnt;
 	struct timeval wait_time;

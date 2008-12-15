@@ -26,12 +26,14 @@
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  *
- *	@(#)auth_des.h	2.2 88/07/29 4.0 RPCSRC; from 1.3 88/02/08 SMI
+ *	from: @(#)auth_des.h 2.2 88/07/29 4.0 RPCSRC
+ *	from: @(#)auth_des.h 1.14    94/04/25 SMI
+ *	$FreeBSD: src/include/rpc/auth_des.h,v 1.3 2002/03/23 17:24:55 imp Exp $
  *	$DragonFly: src/include/rpc/auth_des.h,v 1.2 2003/11/14 01:01:50 dillon Exp $
  */
 
 /*
- * Copyright (c) 1988 by Sun Microsystems, Inc.
+ * Copyright (c) 1986 - 1991 by Sun Microsystems, Inc.
  */
 
 /*
@@ -104,8 +106,20 @@ struct authdes_verf {
 #define adv_xtimeverf	adv_time_u.adv_xtime
 #define adv_nickname	adv_int_u
 
+/*
+ * Map a des credential into a unix cred.
+ *
+ */
 __BEGIN_DECLS
-extern int authdes_getucred ( struct authdes_cred *, uid_t *, gid_t *, int *, gid_t * );
+int authdes_getucred(struct authdes_cred *, uid_t *, gid_t *, int *, gid_t *);
+__END_DECLS
+
+__BEGIN_DECLS
+bool_t	xdr_authdes_cred(XDR *, struct authdes_cred *);
+bool_t	xdr_authdes_verf(XDR *, struct authdes_verf *);
+int	rtime(dev_t, struct netbuf *, int, struct timeval *, struct timeval *);
+void	kgetnetname(char *);
+enum auth_stat _svcauth_des(struct svc_req *, struct rpc_msg *);
 __END_DECLS
 
 #endif /* ndef _AUTH_DES_ */

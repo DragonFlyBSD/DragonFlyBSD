@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/ypserv/yp_dnslookup.c,v 1.16.2.1 2002/02/15 00:47:00 des Exp $
+ * $FreeBSD: src/usr.sbin/ypserv/yp_dnslookup.c,v 1.27 2005/05/20 13:04:10 charnier Exp $
  * $DragonFly: src/usr.sbin/ypserv/yp_dnslookup.c,v 1.4 2005/11/24 22:23:02 swildner Exp $
  */
 
@@ -68,13 +68,17 @@ static char *
 parse(struct hostent *hp)
 {
 	static char result[MAXHOSTNAMELEN * 2];
-	int len,i;
-	struct in_addr addr;
+	int i;
+	size_t len;
+	char addr[46];
 
 	if (hp == NULL)
 		return(NULL);
 
-	len = 16 + strlen(hp->h_name);
+	if (inet_ntop(hp->h_addrtype, hp->h_addr, addr, sizeof(addr)) == NULL)
+		return(NULL);
+
+	len = strlen(addr) + 1 + strlen(hp->h_name);
 	for (i = 0; hp->h_aliases[i]; i++)
 		len += strlen(hp->h_aliases[i]) + 1;
 	len++;
@@ -83,10 +87,7 @@ parse(struct hostent *hp)
 		return(NULL);
 
 	bzero(result, sizeof(result));
-
-	bcopy(hp->h_addr, &addr, sizeof(struct in_addr));
-	snprintf(result, sizeof(result), "%s %s", inet_ntoa(addr), hp->h_name);
-
+	snprintf(result, sizeof(result), "%s %s", addr, hp->h_name);
 	for (i = 0; hp->h_aliases[i]; i++) {
 		strcat(result, " ");
 		strcat(result, hp->h_aliases[i]);
@@ -95,7 +96,7 @@ parse(struct hostent *hp)
 	return ((char *)&result);
 }
 
-#define MAXPACKET 1024
+#define MAXPACKET (64*1024)
 #define DEF_TTL 50
 
 #define BY_DNS_ID 1
@@ -103,7 +104,7 @@ parse(struct hostent *hp)
 
 extern struct hostent *__dns_getanswer(char *, int, char *, int);
 
-static CIRCLEQ_HEAD(dns_qhead, circleq_dnsentry) qhead;
+static TAILQ_HEAD(dns_qhead, circleq_dnsentry) qhead;
 
 struct circleq_dnsentry {
 	SVCXPRT *xprt;
@@ -116,8 +117,10 @@ struct circleq_dnsentry {
 	unsigned short prot_type;
 	char **domain;
 	char *name;
-	struct in_addr addr;
-	CIRCLEQ_ENTRY(circleq_dnsentry) links;
+	int addrtype;
+	int addrlen;
+	uint32_t addr[4];	/* IPv4 or IPv6 */
+	TAILQ_ENTRY(circleq_dnsentry) links;
 };
 
 static int pending = 0;
@@ -125,7 +128,7 @@ static int pending = 0;
 int
 yp_init_resolver(void)
 {
-	CIRCLEQ_INIT(&qhead);
+	TAILQ_INIT(&qhead);
 	if (!(_res.options & RES_INIT) && res_init() == -1) {
 		yp_error("res_init failed");
 		return(1);
@@ -174,7 +177,7 @@ yp_send_dns_query(char *name, int type)
 	n = res_mkquery(QUERY,name,C_IN,type,NULL,0,NULL,buf,sizeof(buf));
 
 	if (n <= 0) {
-		yp_error("res_mkquery failed");
+		yp_error("res_mkquery failed for %s type %d", name, type);
 		return(0);
 	}
 
@@ -199,7 +202,7 @@ yp_find_dnsqent(unsigned long id, int type)
 {
 	struct circleq_dnsentry *q;
 
-	for (q = qhead.cqh_first; q != (void *)&qhead; q = q->links.cqe_next) {
+	TAILQ_FOREACH(q, &qhead, links) {
 		switch (type) {
 		case BY_RPC_XID:
 			if (id == q->xid)
@@ -251,8 +254,8 @@ yp_send_dns_reply(struct circleq_dnsentry *q, char *buf)
 		 */
 		bzero((char *)&result_v1, sizeof(result_v1));
 		result_v1.yp_resptype = YPRESP_VAL;
-#		define YPVAL ypresponse_u.yp_resp_valtype
 
+#define YPVAL ypresponse_u.yp_resp_valtype
 		if (buf == NULL)
 			result_v1.YPVAL.stat = YP_NOKEY;
 		else {
@@ -316,12 +319,12 @@ yp_prune_dnsq(void)
 {
 	struct circleq_dnsentry *q, *n;
 
-	q = qhead.cqh_first;
-	while (q != (void *)&qhead) {
+	q = TAILQ_FIRST(&qhead);
+	while (q != NULL) {
 		q->ttl--;
-		n = q->links.cqe_next;
+		n = TAILQ_NEXT(q, links);
 		if (!q->ttl) {
-			CIRCLEQ_REMOVE(&qhead, q, links);
+			TAILQ_REMOVE(&qhead, q, links);
 			free(q->name);
 			free(q);
 			pending--;
@@ -344,10 +347,9 @@ yp_run_dnsq(void)
 {
 	struct circleq_dnsentry *q;
 	char buf[sizeof(HEADER) + MAXPACKET];
-	char retrybuf[MAXHOSTNAMELEN];
 	struct sockaddr_in sin;
+	socklen_t len;
 	int rval;
-	int len;
 	HEADER *hptr;
 	struct hostent *hent;
 
@@ -384,34 +386,18 @@ yp_run_dnsq(void)
 
 	hent = __dns_getanswer(buf, rval, q->name, q->type);
 
-	/*
-	 * If the lookup failed, try appending one of the domains
-	 * from resolv.conf. If we have no domains to test, the
-	 * query has failed.
-	 */
-	if (hent == NULL) {
-		if ((h_errno == TRY_AGAIN || h_errno == NO_RECOVERY)
-					&& q->domain && *q->domain) {
-			snprintf(retrybuf, sizeof(retrybuf), "%s.%s",
-						q->name, *q->domain);
-			if (debug)
-				yp_error("retrying with: %s", retrybuf);
-			q->id = yp_send_dns_query(retrybuf, q->type);
-			q->ttl = DEF_TTL;
-			q->domain++;
-			return;
-		}
-	} else {
+	if (hent != NULL) {
 		if (q->type == T_PTR) {
-			hent->h_addr = (char *)&q->addr.s_addr;
-			hent->h_length = sizeof(struct in_addr);
+			hent->h_addr = (char *)q->addr;
+			hent->h_addrtype = q->addrtype;
+			hent->h_length = q->addrlen;
 		}
 	}
 
 	/* Got an answer ready for a client -- send it off. */
 	yp_send_dns_reply(q, parse(hent));
 	pending--;
-	CIRCLEQ_REMOVE(&qhead, q, links);
+	TAILQ_REMOVE(&qhead, q, links);
 	free(q->name);
 	free(q);
 
@@ -425,14 +411,16 @@ yp_run_dnsq(void)
  * Queue and transmit an asynchronous DNS hostname lookup.
  */
 ypstat
-yp_async_lookup_name(struct svc_req *rqstp, char *name)
+yp_async_lookup_name(struct svc_req *rqstp, char *name, int af)
 {
 	struct circleq_dnsentry *q;
-	int type, len;
+	socklen_t len;
+	int type;
 
 	/* Check for SOCK_DGRAM or SOCK_STREAM -- we need to know later */
-	type = -1; len = sizeof(type);
-	if (getsockopt(rqstp->rq_xprt->xp_sock, SOL_SOCKET,
+	type = -1;
+	len = sizeof(type);
+	if (getsockopt(rqstp->rq_xprt->xp_fd, SOL_SOCKET,
 					SO_TYPE, &type, &len) == -1) {
 		yp_error("getsockopt failed: %s", strerror(errno));
 		return(YP_YPERR);
@@ -446,7 +434,7 @@ yp_async_lookup_name(struct svc_req *rqstp, char *name)
 	if ((q = yp_malloc_dnsent()) == NULL)
 		return(YP_YPERR);
 
-	q->type = T_A;
+	q->type = (af == AF_INET) ? T_A : T_AAAA;
 	q->ttl = DEF_TTL;
 	q->xprt = rqstp->rq_xprt;
 	q->ypvers = rqstp->rq_vers;
@@ -464,7 +452,7 @@ yp_async_lookup_name(struct svc_req *rqstp, char *name)
 	}
 
 	q->name = strdup(name);
-	CIRCLEQ_INSERT_HEAD(&qhead, q, links);
+	TAILQ_INSERT_HEAD(&qhead, q, links);
 	pending++;
 
 	if (debug)
@@ -478,16 +466,19 @@ yp_async_lookup_name(struct svc_req *rqstp, char *name)
  * Queue and transmit an asynchronous DNS IP address lookup.
  */
 ypstat
-yp_async_lookup_addr(struct svc_req *rqstp, char *addr)
+yp_async_lookup_addr(struct svc_req *rqstp, char *addr, int af)
 {
 	struct circleq_dnsentry *q;
-	char buf[MAXHOSTNAMELEN];
-	int a, b, c, d;
-	int type, len;
+	char buf[MAXHOSTNAMELEN], *qp;
+	uint32_t abuf[4];	/* IPv4 or IPv6 */
+	u_char *uaddr = (u_char *)abuf;
+	socklen_t len;
+	int type, n;
 
 	/* Check for SOCK_DGRAM or SOCK_STREAM -- we need to know later */
-	type = -1; len = sizeof(type);
-	if (getsockopt(rqstp->rq_xprt->xp_sock, SOL_SOCKET,
+	type = -1;
+	len = sizeof(type);
+	if (getsockopt(rqstp->rq_xprt->xp_fd, SOL_SOCKET,
 					SO_TYPE, &type, &len) == -1) {
 		yp_error("getsockopt failed: %s", strerror(errno));
 		return(YP_YPERR);
@@ -501,10 +492,29 @@ yp_async_lookup_addr(struct svc_req *rqstp, char *addr)
 	if ((q = yp_malloc_dnsent()) == NULL)
 		return(YP_YPERR);
 
-	if (sscanf(addr, "%d.%d.%d.%d", &a, &b, &c, &d) != 4)
-		return(YP_NOKEY);
-
-	snprintf(buf, sizeof(buf), "%d.%d.%d.%d.in-addr.arpa", d, c, b, a);
+	switch (af) {
+	case AF_INET:
+		if (inet_aton(addr, (struct in_addr *)uaddr) != 1)
+			return(YP_NOKEY);
+		snprintf(buf, sizeof(buf), "%u.%u.%u.%u.in-addr.arpa",
+		    (uaddr[3] & 0xff), (uaddr[2] & 0xff),
+		    (uaddr[1] & 0xff), (uaddr[0] & 0xff));
+		len = INADDRSZ;
+		break;
+	case AF_INET6:
+		if (inet_pton(af, addr, uaddr) != 1)
+			return(YP_NOKEY);
+		qp = buf;
+		for (n = IN6ADDRSZ - 1; n >= 0; n--) {
+			qp += (size_t)sprintf(qp, "%x.%x.", uaddr[n] & 0xf,
+			    (uaddr[n] >> 4) & 0xf);
+		}
+		strlcat(buf, "ip6.arpa", sizeof(buf));
+		len = IN6ADDRSZ;
+		break;
+	default:
+		return(YP_YPERR);
+	}
 
 	if (debug)
 		yp_error("DNS address is: %s", buf);
@@ -526,9 +536,11 @@ yp_async_lookup_addr(struct svc_req *rqstp, char *addr)
 		return(YP_YPERR);
 	}
 
-	inet_aton(addr, &q->addr);
+	memcpy(q->addr, uaddr, len);
+	q->addrlen = len;
+	q->addrtype = af;
 	q->name = strdup(buf);
-	CIRCLEQ_INSERT_HEAD(&qhead, q, links);
+	TAILQ_INSERT_HEAD(&qhead, q, links);
 	pending++;
 
 	if (debug)

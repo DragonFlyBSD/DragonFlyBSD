@@ -80,7 +80,7 @@ yppasswd_private_clnt.c: ${RPCSRC_PRIV}
 BINMODE=4555
 LINKS=${BINDIR}/passwd ${BINDIR}/yppasswd
 MLINKS=passwd.1 yppasswd.1
-WARNS?=	1
+WARNS?=	0
 
 beforeinstall:
 .for i in passwd yppasswd

@@ -28,7 +28,8 @@
  * Mountain View, California  94043
  *
  * @(#)getrpcent.c 1.14 91/03/11 Copyr 1984 Sun Micro
- * $FreeBSD: src/lib/libc/rpc/getrpcent.c,v 1.10 1999/08/28 00:00:39 peter Exp $
+ * $NetBSD: getrpcent.c,v 1.17 2000/01/22 22:19:17 mycroft Exp $
+ * $FreeBSD: src/lib/libc/rpc/getrpcent.c,v 1.14 2003/02/27 13:40:01 nectar Exp $
  * $DragonFly: src/lib/libc/rpc/getrpcent.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
@@ -36,20 +37,30 @@
  * Copyright (c) 1984 by Sun Microsystems, Inc.
  */
 
+#include "namespace.h"
+#include <sys/types.h>
+
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+#include <assert.h>
+#include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/types.h>
 #include <string.h>
+
 #include <rpc/rpc.h>
 #ifdef YP
 #include <rpcsvc/yp_prot.h>
 #include <rpcsvc/ypclnt.h>
 #endif
+#include "un-namespace.h"
+#include "libc_private.h"
 
 /*
  * Internet version.
  */
-struct rpcdata {
+static struct rpcdata {
 	FILE	*rpcf;
 	int	stayopen;
 #define	MAXALIASES	35
@@ -63,16 +74,15 @@ struct rpcdata {
 #endif
 } *rpcdata;
 
+static	struct rpcent *interpret(char *val, size_t len);
+
 #ifdef	YP
 static int	__yp_nomap = 0;
-extern int _yp_check(char **);
 #endif	/* YP */
 
-static	struct rpcent *interpret();
-struct	hostent *gethostent();
-char	*inet_ntoa();
+#define	RPCDB	"/etc/rpc"
 
-static char RPCDB[] = "/etc/rpc";
+static struct rpcdata *_rpcdata(void);
 
 static struct rpcdata *
 _rpcdata(void)
@@ -89,12 +99,12 @@ _rpcdata(void)
 struct rpcent *
 getrpcbynumber(int number)
 {
-	struct rpcdata *d = _rpcdata();
-	struct rpcent *p;
 #ifdef	YP
 	int reason;
 	char adrstr[16];
 #endif
+	struct rpcent *p;
+	struct rpcdata *d = _rpcdata();
 
 	if (d == 0)
 		return (0);
@@ -121,8 +131,9 @@ getrpcbynumber(int number)
         }
 no_yp:
 #endif	/* YP */
+
 	setrpcent(0);
-	while ((p = getrpcent())) {
+	while ((p = getrpcent()) != NULL) {
 		if (p->r_number == number)
 			break;
 	}
@@ -136,8 +147,10 @@ getrpcbyname(char *name)
 	struct rpcent *rpc = NULL;
 	char **rp;
 
+	assert(name != NULL);
+
 	setrpcent(0);
-	while ((rpc = getrpcent())) {
+	while ((rpc = getrpcent()) != NULL) {
 		if (strcmp(rpc->r_name, name) == 0)
 			goto done;
 		for (rp = rpc->r_aliases; *rp != NULL; rp++) {
@@ -249,11 +262,13 @@ no_yp:
 }
 
 static struct rpcent *
-interpret(char *val, int len)
+interpret(char *val, size_t len)
 {
 	struct rpcdata *d = _rpcdata();
 	char *p;
 	char *cp, **q;
+
+	assert(val != NULL);
 
 	if (d == 0)
 		return (0);

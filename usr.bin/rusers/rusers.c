@@ -30,21 +30,24 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/rusers/rusers.c,v 1.8.2.1 2001/07/02 23:43:05 mikeh Exp $
+ * $FreeBSD: src/usr.bin/rusers/rusers.c,v 1.17 2005/05/21 09:55:08 ru Exp $
  * $DragonFly: src/usr.bin/rusers/rusers.c,v 1.4 2008/10/16 01:52:33 swildner Exp $
  */
 
 #include <sys/types.h>
 #include <sys/socket.h>
+
 #include <rpc/rpc.h>
 #include <rpc/pmap_clnt.h>
 #include <rpcsvc/rnusers.h>
+
 #include <arpa/inet.h>
+
 #include <err.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <strings.h>
+#include <string.h>
 #include <unistd.h>
 
 #define MAX_INT		0x7fffffff
@@ -59,7 +62,7 @@ struct host_list {
 	struct	in_addr addr;
 } *hosts;
 
-int
+static int
 search_host(struct in_addr addr)
 {
 	struct host_list *hp;
@@ -74,7 +77,7 @@ search_host(struct in_addr addr)
 	return (0);
 }
 
-void
+static void
 remember_host(struct in_addr addr)
 {
 	struct host_list *hp;
@@ -86,16 +89,19 @@ remember_host(struct in_addr addr)
 	hosts = hp;
 }
 
-int
-rusers_reply(char *replyp, struct sockaddr_in *raddrp)
+static int
+rusers_reply(caddr_t replyp, struct sockaddr_in *raddrp)
 {
-	int x, idle;
+	u_int x;
+	int idle;
 	char date[32], idle_time[64], remote[64];
 	struct hostent *hp;
-	utmpidlearr *up, u;	
+	utmpidlearr *up, u;
 	char *host;
 	int days, hours, minutes, seconds;
 
+	up = &u;
+	memcpy(up, replyp, sizeof(*up));
 	if (search_host(raddrp->sin_addr))
 		return (0);
 
@@ -164,7 +170,7 @@ rusers_reply(char *replyp, struct sockaddr_in *raddrp)
 	return (0);
 }
 
-void
+static void
 onehost(char *host)
 {
 	utmpidlearr up;
@@ -184,15 +190,15 @@ onehost(char *host)
 	bzero((char *)&up, sizeof(up));
 	tv.tv_sec = 15;	/* XXX ?? */
 	tv.tv_usec = 0;
-	if (clnt_call(rusers_clnt, RUSERSPROC_NAMES, xdr_void, NULL,
-	    xdr_utmpidlearr, &up, tv) != RPC_SUCCESS)
+	if (clnt_call(rusers_clnt, RUSERSPROC_NAMES, (xdrproc_t)xdr_void, NULL,
+	    (xdrproc_t)xdr_utmpidlearr, &up, tv) != RPC_SUCCESS)
 		errx(1, "%s", clnt_sperror(rusers_clnt, ""));
-	memcpy(&addr.sin_addr.s_addr, hp->h_addr, sizeof(addr.sin_addr.s_addr));	
-	rusers_reply((char *)&up, &addr);
+	memcpy(&addr.sin_addr.s_addr, hp->h_addr, sizeof(addr.sin_addr.s_addr));
+	rusers_reply((caddr_t)&up, &addr);
 	clnt_destroy(rusers_clnt);
 }
 
-void
+static void
 allhosts(void)
 {
 	utmpidlearr up;
@@ -200,8 +206,9 @@ allhosts(void)
 
 	bzero((char *)&up, sizeof(up));
 	clnt_stat = clnt_broadcast(RUSERSPROG, RUSERSVERS_IDLE,
-	    RUSERSPROC_NAMES, xdr_void, NULL, xdr_utmpidlearr, (char *)&up,
-	    rusers_reply);
+	    RUSERSPROC_NAMES, (xdrproc_t)xdr_void, NULL,
+	    (xdrproc_t)xdr_utmpidlearr, (char *)&up,
+	    (resultproc_t)rusers_reply);
 	if (clnt_stat != RPC_SUCCESS && clnt_stat != RPC_TIMEDOUT)
 		errx(1, "%s", clnt_sperrno(clnt_stat));
 }
@@ -210,7 +217,7 @@ static void
 usage(void)
 {
 
-	fprintf(stderr, "usage: rusers [-la] [hosts ...]\n");
+	fprintf(stderr, "usage: rusers [-al] [host ...]\n");
 	exit(1);
 }
 
@@ -237,7 +244,7 @@ main(int argc, char *argv[])
 		allhosts();
 	else {
 		for (; optind < argc; optind++)
-			(void)onehost(argv[optind]);
+			onehost(argv[optind]);
 	}
 	exit(0);
 }

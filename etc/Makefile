@@ -30,7 +30,7 @@ BIN1=	amd.map auth.conf \
 	ftpusers group \
 	hosts hosts.allow host.conf hosts.equiv hosts.lpd \
 	inetd.conf login.access login.conf \
-	motd modems networks newsyslog.conf \
+	motd modems netconfig networks newsyslog.conf \
 	pf.conf phones printcap profile \
 	remote sensorsd.conf \
 	shells sysctl.conf syslog.conf usbd.conf \

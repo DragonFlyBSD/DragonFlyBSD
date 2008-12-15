@@ -54,6 +54,7 @@
 #undef		listen
 #undef		nanosleep
 #undef		open
+#undef		poll
 #undef		pthread_atfork
 #undef		pthread_attr_destroy
 #undef		pthread_attr_get_np
@@ -207,7 +208,6 @@
 #undef		msync
 #undef		nfssvc
 #undef		pause
-#undef		poll
 #undef		pthread_rwlock_destroy
 #undef		pthread_rwlock_init
 #undef		pthread_rwlock_rdlock

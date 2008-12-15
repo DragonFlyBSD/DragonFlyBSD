@@ -15,7 +15,8 @@ INCS=	a.out.h ar.h assert.h bitstring.h complex.h cpio.h ctype.h db.h \
 	fts.h ftw.h getopt.h glob.h grp.h histedit.h \
 	iconv.h ieeefp.h ifaddrs.h iso646.h inttypes.h \
 	langinfo.h libgen.h limits.h link.h locale.h malloc.h math.h memory.h \
-	mpool.h monetary.h ndbm.h netdb.h nl_types.h nlist.h objformat.h \
+	mpool.h monetary.h ndbm.h netconfig.h \
+	netdb.h nl_types.h nlist.h objformat.h \
 	paths.h pthread.h pthread_np.h pwd.h \
 	ranlib.h readpassphrase.h regex.h regexp.h resolv.h re_comp.h rmd160.h \
 	search.h setjmp.h sgtty.h \

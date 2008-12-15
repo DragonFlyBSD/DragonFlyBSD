@@ -28,6 +28,7 @@
  * Mountain View, California  94043
  *
  * @(#)rpcdname.c 1.7 91/03/11 Copyr 1989 Sun Micro
+ * $FreeBSD: src/lib/libc/rpc/rpcdname.c,v 1.5 2004/10/16 06:11:35 obrien Exp $
  * $DragonFly: src/lib/libc/rpc/rpcdname.c,v 1.3 2005/11/13 12:27:04 swildner Exp $
  */
 
@@ -36,9 +37,11 @@
  * Gets the default domain name
  */
 
+#include "namespace.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include "un-namespace.h"
 
 static char *default_domain = 0;
 
@@ -68,7 +71,7 @@ get_default_domain(void)
  * get rejected elsewhere in the NIS client package.
  */
 int
-_rpc_get_default_domain(char **domain)
+__rpc_get_default_domain(char **domain)
 {
 	if ((*domain = get_default_domain()) != 0)
 		return (0);

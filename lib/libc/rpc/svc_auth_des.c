@@ -3,7 +3,7 @@
  * Copyright (c) 1988 by Sun Microsystems, Inc.
  *
  * @(#)svcauth_des.c	2.3 89/07/11 4.0 RPCSRC; from 1.15 88/02/08 SMI
- * $FreeBSD: src/lib/libc/rpc/svc_auth_des.c,v 1.3 1999/08/28 00:00:48 peter Exp $
+ * $FreeBSD: src/lib/libc/rpc/svc_auth_des.c,v 1.9 2002/03/22 23:18:37 obrien Exp $
  * $DragonFly: src/lib/libc/rpc/svc_auth_des.c,v 1.6 2005/11/13 12:27:04 swildner Exp $
  */
 
@@ -50,6 +50,8 @@
  *
  */
 
+#include "namespace.h"
+#include "reentrant.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -64,6 +66,9 @@
 #include <rpc/svc.h>
 #include <rpc/rpc_msg.h>
 #include <rpc/svc_auth.h>
+#include "libc_private.h"
+
+extern int key_decryptsession_pk(const char *, netobj *, des_block *);
 
 #define debug(msg)	 printf("svcauth_des: %s\n", msg) 
 
@@ -187,7 +192,7 @@ _svcauth_des(struct svc_req *rqst, struct rpc_msg *msg)
 		}
 	} else { /* ADN_NICKNAME */	
 		sid = (short)cred->adc_nickname;
-		if (sid >= AUTHDES_CACHESZ) {
+		if (sid < 0 || sid >= AUTHDES_CACHESZ) {
 			debug("bad nickname");
 			return (AUTH_BADCRED);	/* garbled credential */
 		}

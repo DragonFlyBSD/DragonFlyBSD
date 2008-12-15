@@ -35,7 +35,7 @@
  *
  * @(#) Copyright (c) 1989, 1993, 1995 The Regents of the University of California.  All rights reserved.
  * @(#)showmount.c	8.3 (Berkeley) 3/29/95
- * $FreeBSD: src/usr.bin/showmount/showmount.c,v 1.8 1999/08/28 01:05:43 peter Exp $
+ * $FreeBSD: src/usr.bin/showmount/showmount.c,v 1.16 2005/05/21 09:55:08 ru Exp $
  * $DragonFly: src/usr.bin/showmount/showmount.c,v 1.5 2005/09/05 04:22:07 swildner Exp $
  */
 
@@ -90,10 +90,8 @@ void print_dump(struct mountlist *);
 static void usage(void);
 int xdr_mntdump(XDR *, struct mountlist **);
 int xdr_exports(XDR *, struct exportslist **);
-int tcp_callrpc(const char *host,
-                int prognum, int versnum, int procnum,
-                xdrproc_t inproc, char *in,
-                xdrproc_t outproc, char *out);
+int tcp_callrpc(const char *, int, int, int, xdrproc_t, char *, xdrproc_t,
+		char *);
 
 /*
  * This command queries the NFS mount daemon for it's mount list and/or
@@ -108,12 +106,11 @@ main(int argc, char **argv)
 	struct exportslist *exp;
 	struct grouplist *grp;
 	int rpcs = 0, mntvers = 1;
-	char ch;
 	const char *host;
-	int estat;
+	int ch, estat;
 
 	while ((ch = getopt(argc, argv, "ade3")) != -1)
-		switch((char)ch) {
+		switch (ch) {
 		case 'a':
 			if (type == 0) {
 				type = ALL;
@@ -151,15 +148,15 @@ main(int argc, char **argv)
 
 	if (rpcs & DODUMP)
 		if ((estat = tcp_callrpc(host, RPCPROG_MNT, mntvers,
-			RPCMNT_DUMP, xdr_void, (char *)0,
-			xdr_mntdump, (char *)&mntdump)) != 0) {
+			RPCMNT_DUMP, (xdrproc_t)xdr_void, NULL,
+			(xdrproc_t)xdr_mntdump, (char *)&mntdump)) != 0) {
 			clnt_perrno(estat);
 			errx(1, "can't do mountdump rpc");
 		}
 	if (rpcs & DOEXPORTS)
 		if ((estat = tcp_callrpc(host, RPCPROG_MNT, mntvers,
-			RPCMNT_EXPORT, xdr_void, (char *)0,
-			xdr_exports, (char *)&exports)) != 0) {
+			RPCMNT_EXPORT, (xdrproc_t)xdr_void, NULL,
+			(xdrproc_t)xdr_exports, (char *)&exports)) != 0) {
 			clnt_perrno(estat);
 			errx(1, "can't do exports rpc");
 		}
@@ -204,58 +201,26 @@ main(int argc, char **argv)
  * tcp_callrpc has the same interface as callrpc, but tries to
  * use tcp as transport method in order to handle large replies.
  */
-
-int 
+int
 tcp_callrpc(const char *host, int prognum, int versnum, int procnum,
 	    xdrproc_t inproc, char *in, xdrproc_t outproc, char *out)
 {
-	struct hostent *hp;
-	struct sockaddr_in server_addr;
 	CLIENT *client;
-	int sock;	
 	struct timeval timeout;
 	int rval;
-	
-	hp = gethostbyname(host);
 
-	if (!hp)
-		return ((int) RPC_UNKNOWNHOST);
-
-	memset(&server_addr,0,sizeof(server_addr));
-	memcpy((char *) &server_addr.sin_addr,
-	       hp->h_addr,
-	       hp->h_length);
-	server_addr.sin_len = sizeof(struct sockaddr_in);
-	server_addr.sin_family =AF_INET;
-	server_addr.sin_port = 0;
-			
-	sock = RPC_ANYSOCK;
-			
-	client = clnttcp_create(&server_addr,
-				(u_long) prognum,
-				(u_long) versnum, &sock, 0, 0);
-	if (!client) {
-		timeout.tv_sec = 5;
-		timeout.tv_usec = 0;
-		server_addr.sin_port = 0;
-		sock = RPC_ANYSOCK;
-		client = clntudp_create(&server_addr,
-					(u_long) prognum,
-					(u_long) versnum,
-					timeout,
-					&sock);
-	}
-	if (!client)
+	if ((client = clnt_create(host, prognum, versnum, "tcp")) == NULL &&
+	    (client = clnt_create(host, prognum, versnum, "udp")) == NULL)
 		return ((int) rpc_createerr.cf_stat);
 
 	timeout.tv_sec = 25;
 	timeout.tv_usec = 0;
-	rval = (int) clnt_call(client, procnum, 
+	rval = (int) clnt_call(client, procnum,
 			       inproc, in,
 			       outproc, out,
 			       timeout);
 	clnt_destroy(client);
- 	return rval;
+	return rval;
 }
 
 /*
@@ -271,14 +236,14 @@ xdr_mntdump(XDR *xdrsp, struct mountlist **mlp)
 	int bool;
 	char *strp;
 
-	*mlp = (struct mountlist *)0;
+	*mlp = NULL;
 	if (!xdr_bool(xdrsp, &bool))
 		return (0);
 	while (bool) {
 		mp = (struct mountlist *)malloc(sizeof(struct mountlist));
 		if (mp == NULL)
 			return (0);
-		mp->ml_left = mp->ml_right = (struct mountlist *)0;
+		mp->ml_left = mp->ml_right = NULL;
 		strp = mp->ml_host;
 		if (!xdr_string(xdrsp, &strp, RPCMNT_NAMELEN))
 			return (0);
@@ -349,14 +314,14 @@ xdr_exports(XDR *xdrsp, struct exportslist **exp)
 	int bool, grpbool;
 	char *strp;
 
-	*exp = (struct exportslist *)0;
+	*exp = NULL;
 	if (!xdr_bool(xdrsp, &bool))
 		return (0);
 	while (bool) {
 		ep = (struct exportslist *)malloc(sizeof(struct exportslist));
 		if (ep == NULL)
 			return (0);
-		ep->ex_groups = (struct grouplist *)0;
+		ep->ex_groups = NULL;
 		strp = ep->ex_dirp;
 		if (!xdr_string(xdrsp, &strp, RPCMNT_PATHLEN))
 			return (0);
@@ -385,7 +350,7 @@ xdr_exports(XDR *xdrsp, struct exportslist **exp)
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: showmount [-ade3] host\n");
+	fprintf(stderr, "usage: showmount [-a | -d] [-e3] [host]\n");
 	exit(1);
 }
 
@@ -395,6 +360,7 @@ usage(void)
 void
 print_dump(struct mountlist *mp)
 {
+
 	if (mp == NULL)
 		return;
 	if (mp->ml_left)

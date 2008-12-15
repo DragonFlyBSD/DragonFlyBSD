@@ -1,27 +1,23 @@
-# $FreeBSD: src/usr.sbin/rpc.ypupdated/Makefile,v 1.6 1999/08/28 01:19:43 peter Exp $
+# $FreeBSD: src/usr.sbin/rpc.ypupdated/Makefile,v 1.10 2004/12/21 08:47:34 ru Exp $
 # $DragonFly: src/usr.sbin/rpc.ypupdated/Makefile,v 1.2 2003/06/17 04:30:02 dillon Exp $
 
+.PATH: ${.CURDIR}/../ypserv ${.CURDIR}/../../libexec/ypxfr
+
 PROG=	rpc.ypupdated
+NOMAN=
 SRCS=	ypupdate_prot_svc.c ypupdate_prot.h ypupdated_main.c \
 	yp_error.c update.c ypupdated_server.c \
 	yp_dblookup.c yp_dbwrite.c yp_dbdelete.c yp_dbupdate.c
 
-.PATH: ${.CURDIR}/../ypserv ${.CURDIR}/../../libexec/ypxfr
-
-RPCDIR=	${DESTDIR}/usr/include/rpcsvc
-
-NOMAN= yes
-
-CFLAGS+= -I${.CURDIR}/../ypserv -I.
-CFLAGS+= -I${.CURDIR}/../../libexec/ypxfr
-
 #CFLAGS+= -DYP
+CFLAGS+= -I${.CURDIR}/../ypserv -I. -I${.CURDIR}/../../libexec/ypxfr
 
 DPADD=	${LIBRPCSVC}
 LDADD=	-lrpcsvc
 
 CLEANFILES= ypupdate_prot_svc.c ypupdate_prot.h
 
+RPCDIR=	${DESTDIR}/usr/include/rpcsvc
 RPCGEN= rpcgen -I -C
 
 # We need to remove the 'static' keyword from _rpcsvcstate so that

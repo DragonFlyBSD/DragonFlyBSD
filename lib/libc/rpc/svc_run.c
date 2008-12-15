@@ -28,7 +28,8 @@
  *
  * @(#)svc_run.c 1.1 87/10/13 Copyr 1984 Sun Micro
  * @(#)svc_run.c	2.1 88/07/29 4.0 RPCSRC
- * $FreeBSD: src/lib/libc/rpc/svc_run.c,v 1.10 1999/08/28 00:00:49 peter Exp $
+ * $NetBSD: svc_run.c,v 1.17 2000/07/06 03:10:35 christos Exp $
+ * $FreeBSD: src/lib/libc/rpc/svc_run.c,v 1.20 2006/02/27 22:10:59 deischen Exp $
  * $DragonFly: src/lib/libc/rpc/svc_run.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
@@ -37,52 +38,58 @@
  * Wait for input, call server program.
  */
 #include "namespace.h"
+#include "reentrant.h"
+#include <err.h>
+#include <errno.h>
 #include <rpc/rpc.h>
 #include <stdio.h>
-#include <sys/errno.h>
-#include <sys/types.h>
-#include <sys/time.h>
-#include <unistd.h>
-#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "un-namespace.h"
 
-extern int __svc_fdsetsize;
-extern fd_set *__svc_fdset;
+#include <rpc/rpc.h>
+#include "rpc_com.h"
+#include "mt_misc.h"
 
 void
 svc_run(void)
 {
-	fd_set *fds;
+	fd_set readfds, cleanfds;
+	struct timeval timeout;
+
+	timeout.tv_sec = 30;
+	timeout.tv_usec = 0;
 
 	for (;;) {
-		if (__svc_fdset) {
-			int bytes = howmany(__svc_fdsetsize, NFDBITS) *
-				sizeof(fd_mask);
-			fds = (fd_set *)malloc(bytes);
-			memcpy(fds, __svc_fdset, bytes);
-		} else
-			fds = NULL;
-		switch (_select(svc_maxfd + 1, fds, NULL, NULL,
-				(struct timeval *)0)) {
+		rwlock_rdlock(&svc_fd_lock);
+		readfds = svc_fdset;
+		cleanfds = svc_fdset;
+		rwlock_unlock(&svc_fd_lock);
+		switch (_select(svc_maxfd+1, &readfds, NULL, NULL, &timeout)) {
 		case -1:
+			FD_ZERO(&readfds);
 			if (errno == EINTR) {
-				if (fds)
-					free(fds);
 				continue;
 			}
-			perror("svc_run: - select failed");
-			if (fds)
-				free(fds);
+			_warn("svc_run: - select failed");
 			return;
 		case 0:
-			if (fds)
-				free(fds);
+			__svc_clean_idle(&cleanfds, 30, FALSE);
 			continue;
 		default:
-			/* if fds == NULL, _select() can't return a result */
-			svc_getreqset2(fds, svc_maxfd + 1);
-			free(fds);
+			svc_getreqset(&readfds);
 		}
 	}
+}
+
+/*
+ *      This function causes svc_run() to exit by telling it that it has no
+ *      more work to do.
+ */
+void
+svc_exit(void)
+{
+	rwlock_wrlock(&svc_fd_lock);
+	FD_ZERO(&svc_fdset);
+	rwlock_unlock(&svc_fd_lock);
 }

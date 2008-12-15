@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/rup/rup.c,v 1.11.2.2 2001/07/02 23:43:04 mikeh Exp $
+ * $FreeBSD: src/usr.bin/rup/rup.c,v 1.19 2005/12/04 18:25:26 philip Exp $
  * $DragonFly: src/usr.bin/rup/rup.c,v 1.5 2005/08/04 18:21:25 liamfoy Exp $
  */
 #include <sys/param.h>
@@ -85,8 +85,8 @@ remember_host(struct in_addr addr)
 	hosts = hp;
 }
 
-static int
-rstat_reply(char *replyp, struct sockaddr_in *raddrp)
+static bool_t
+rstat_reply(caddr_t replyp, struct sockaddr_in *raddrp)
 {
 	struct tm *tmp_time;
 	struct tm host_time;
@@ -96,6 +96,7 @@ rstat_reply(char *replyp, struct sockaddr_in *raddrp)
 	struct hostent *hp;
 	char *host;
 	statstime *host_stat = (statstime *)replyp;
+	time_t tmp_time_t;
 
 	if (search_host(raddrp->sin_addr))
 		return(0);
@@ -113,13 +114,26 @@ rstat_reply(char *replyp, struct sockaddr_in *raddrp)
 
 	printf("%-*s\t", HOST_WIDTH, host);
 
-	tmp_time = localtime((time_t *)&host_stat->curtime.tv_sec);
-	host_time = *tmp_time;
+	if (sizeof(time_t) == sizeof(host_stat->curtime.tv_sec)) {
+		tmp_time = localtime((time_t *)&host_stat->curtime.tv_sec);
+		host_time = *tmp_time;
 
-	host_stat->curtime.tv_sec -= host_stat->boottime.tv_sec;
+		host_stat->curtime.tv_sec -= host_stat->boottime.tv_sec;
 
-	tmp_time = gmtime((time_t *)&host_stat->curtime.tv_sec);
-	host_uptime = *tmp_time;
+		tmp_time = gmtime((time_t *)&host_stat->curtime.tv_sec);
+		host_uptime = *tmp_time;
+	}
+	else {			/* non-32-bit time_t */
+		tmp_time_t = host_stat->curtime.tv_sec;
+		tmp_time = localtime(&tmp_time_t);
+		host_time = *tmp_time;
+
+		host_stat->curtime.tv_sec -= host_stat->boottime.tv_sec;
+
+		tmp_time_t = host_stat->curtime.tv_sec;
+		tmp_time = gmtime(&tmp_time_t);
+		host_uptime = *tmp_time;
+	}
 
 	#define updays (host_stat->curtime.tv_sec  / 86400)
 	if (host_uptime.tm_yday != 0)
@@ -178,14 +192,15 @@ onehost(const char *host)
 	bzero(&host_stat, sizeof(host_stat));
 	tv.tv_sec = 15;	/* XXX ??? */
 	tv.tv_usec = 0;
-	if (clnt_call(rstat_clnt, RSTATPROC_STATS, xdr_void, NULL, (xdrproc_t)xdr_statstime, &host_stat, tv) != RPC_SUCCESS) {
+	if (clnt_call(rstat_clnt, RSTATPROC_STATS, (xdrproc_t)xdr_void, NULL,
+	    (xdrproc_t)xdr_statstime, &host_stat, tv) != RPC_SUCCESS) {
 		clnt_perror(rstat_clnt, host);
 		clnt_destroy(rstat_clnt);
 		return(1);
 	}
 
 	addr.sin_addr.s_addr = *(int *)hp->h_addr;
-	rstat_reply((char *)&host_stat, &addr);
+	rstat_reply((caddr_t)&host_stat, &addr);
 	clnt_destroy(rstat_clnt);
 	return (0);
 }
@@ -197,8 +212,9 @@ allhosts(void)
 	enum clnt_stat clnt_stat;
 
 	clnt_stat = clnt_broadcast(RSTATPROG, RSTATVERS_TIME, RSTATPROC_STATS,
-				   xdr_void, NULL,
-				   (xdrproc_t)xdr_statstime, (char *)&host_stat, rstat_reply);
+				   (xdrproc_t)xdr_void, NULL,
+				   (xdrproc_t)xdr_statstime, &host_stat,
+				   (resultproc_t)rstat_reply);
 	if (clnt_stat != RPC_SUCCESS && clnt_stat != RPC_TIMEDOUT)
 		errx(1, "%s", clnt_sperrno(clnt_stat));
 }
@@ -206,7 +222,7 @@ allhosts(void)
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: rup [hosts ...]\n");
+	fprintf(stderr, "usage: rup [host ...]\n");
 	exit(1);
 }
 

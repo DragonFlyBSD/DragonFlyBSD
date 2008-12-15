@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/rpc.ypupdated/yp_dbupdate.c,v 1.3.2.1 2002/02/15 00:46:57 des Exp $
+ * $FreeBSD: src/usr.sbin/rpc.ypupdated/yp_dbupdate.c,v 1.9 2004/10/17 19:33:32 stefanf Exp $
  * $DragonFly: src/usr.sbin/rpc.ypupdated/yp_dbupdate.c,v 1.5 2007/11/25 01:28:24 swildner Exp $
  */
 
@@ -42,7 +42,6 @@
 #include <limits.h>
 #include <db.h>
 #include <unistd.h>
-struct dom_binding {};
 #include <rpcsvc/ypclnt.h>
 #include <rpcsvc/ypupdate_prot.h>
 #include "ypxfr_extern.h"

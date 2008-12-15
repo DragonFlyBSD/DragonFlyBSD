@@ -28,10 +28,10 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.sbin/ypserv/ypserv.8,v 1.22.2.8 2002/12/29 16:35:44 schweikh Exp $
+.\" $FreeBSD: src/usr.sbin/ypserv/ypserv.8,v 1.42 2008/02/03 17:39:37 matteo Exp $
 .\" $DragonFly: src/usr.sbin/ypserv/ypserv.8,v 1.8 2007/12/16 02:55:38 thomas Exp $
 .\"
-.Dd February 4, 1995
+.Dd February 3, 2008
 .Dt YPSERV 8
 .Os
 .Sh NAME
@@ -41,6 +41,7 @@
 .Nm
 .Op Fl n
 .Op Fl d
+.Op Fl P Ar port
 .Op Fl p Ar path
 .Sh DESCRIPTION
 .Tn NIS
@@ -61,7 +62,7 @@ updated from a single location.
 .Pp
 The
 .Nm
-program is the server that distributes
+utility is the server that distributes
 .Tn NIS
 databases to client systems within an
 .Tn NIS
@@ -108,21 +109,21 @@ the maps are always readable and writable only by root for security
 reasons.
 Technically this is only necessary for the password
 maps, but since the data in the other maps can be found in
-other world-readable files anyway, it doesn't hurt and it's considered
+other world-readable files anyway, it does not hurt and it is considered
 good general practice.
 .Pp
 The
 .Nm
-program is started at boot time by setting the
-.Va yp_server_enable
-variable in
+utility is started by
+.Pa /etc/rc.d/ypserv
+if it has been enabled in
 .Pa /etc/rc.conf .
 .Sh SPECIAL FEATURES
 There are some problems associated with distributing a
 .Dx
 password
 database via
-.Tn NIS Ns :
+.Tn NIS :
 .Dx
 normally only stores encrypted passwords
 in
@@ -274,20 +275,9 @@ will allow connections from any host.
 .Pp
 The
 .Nm
-program also has support for Wietse Venema's
+utility also has support for Wietse Venema's
 .Em tcpwrapper
-package, though it is not compiled in by default since
-the
-.Em tcpwrapper
-package is not distributed with
-.Dx .
-However, if you have
-.Pa libwrap.a
-and
-.In tcpd.h ,
-you can easily recompile
-.Nm
-with them.
+package.
 This allows the administrator to use the tcpwrapper
 configuration files
 .Pa ( /etc/hosts.allow
@@ -322,7 +312,8 @@ to an
 .Tn NIS
 v1 server even though they may never actually need it (and they may
 persist in broadcasting in search of one even after they receive a
-response from a v2 server). Note that while
+response from a v2 server).
+Note that while
 support for normal client calls is provided, this version of
 .Nm
 does not handle v1 map transfer requests; consequently, it cannot
@@ -330,7 +321,7 @@ be used as a master or slave in conjunction with older
 .Tn NIS
 servers that
 only support the v1 protocol.
-Fortunately, there probably aren't any
+Fortunately, there probably are not any
 such servers still in use today.
 .Ss NIS servers that are also NIS clients
 Care must be taken when running
@@ -366,7 +357,7 @@ and
 maps.
 By default, if
 .Nm
-can't find an entry for a given host in its hosts maps, it will
+cannot find an entry for a given host in its hosts maps, it will
 return an error and perform no further processing.
 With the
 .Fl n
@@ -415,6 +406,9 @@ in subprocesses, allowing the parent server process to go on handling
 other requests.)
 This makes it easier to trace the server with
 a debugging tool.
+.It Fl P Ar port
+Force ypserv to bind to a specific TCP/UDP port, rather than selecting
+its own.
 .It Fl p Ar path
 Normally,
 .Nm
@@ -428,7 +422,7 @@ flag may be used to specify an alternate
 .Tn NIS
 root path, allowing
 the system administrator to move the map files to a different place
-within the filesystem.
+within the file system.
 .El
 .Sh FILES
 .Bl -tag -width Pa -compact
@@ -444,6 +438,7 @@ host access control file
 .Sh SEE ALSO
 .Xr ypcat 1 ,
 .Xr db 3 ,
+.Xr hosts_access 5 ,
 .Xr rc.conf 5 ,
 .Xr rpc.yppasswdd 8 ,
 .Xr tcpd 8 ,

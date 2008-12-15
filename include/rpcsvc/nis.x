@@ -27,7 +27,7 @@
 % * 2550 Garcia Avenue
 % * Mountain View, California  94043
 % *
-% * $FreeBSD: src/include/rpcsvc/nis.x,v 1.3.2.1 2001/03/05 12:47:48 obrien Exp $
+% * $FreeBSD: src/include/rpcsvc/nis.x,v 1.6 2003/05/04 02:51:42 obrien Exp $
 % * $DragonFly: src/include/rpcsvc/nis.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
 % */
 
@@ -188,7 +188,7 @@ struct ping_args {
 /* 
  * These are the type of entries that are stored in the transaction log, 
  * note that modifications will appear as two entries, for names, they have
- * a "OLD" entry followed by a "NEW" entry. For entries in tables, there
+ * an "OLD" entry followed by a "NEW" entry. For entries in tables, there
  * is a remove followed by an add. It is done this way so that we can read
  * the log backwards to back out transactions and forwards to propogate
  * updated.

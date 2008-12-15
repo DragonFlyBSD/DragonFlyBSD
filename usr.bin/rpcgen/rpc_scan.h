@@ -5,28 +5,31 @@
  * may copy or modify Sun RPC without charge, but are not authorized
  * to license or distribute it to anyone else except as part of a product or
  * program developed by the user.
- * 
+ *
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
  * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
- * 
+ *
  * Sun RPC is provided with no support and without any obligation on the
  * part of Sun Microsystems, Inc. to assist in its use, correction,
  * modification or enhancement.
- * 
+ *
  * SUN MICROSYSTEMS, INC. SHALL HAVE NO LIABILITY WITH RESPECT TO THE
  * INFRINGEMENT OF COPYRIGHTS, TRADE SECRETS OR ANY PATENTS BY SUN RPC
  * OR ANY PART THEREOF.
- * 
+ *
  * In no event will Sun Microsystems, Inc. be liable for any lost revenue
  * or profits or other special, indirect and consequential damages, even if
  * Sun has been advised of the possibility of such damages.
- * 
+ *
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)rpc_scan.h 1.11     94/05/15 SMI; 1.3  90/08/29  (C) 1987 SMI
+ * $FreeBSD: src/usr.bin/rpcgen/rpc_scan.h,v 1.7 2005/11/13 21:17:24 dwmalone Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_scan.h,v 1.2 2004/06/19 16:40:36 joerg Exp $
  */
-#pragma ident   "@(#)rpc_scan.h 1.11     94/05/15 SMI"
 
 /*	Copyright (c) 1984, 1986, 1987, 1988, 1989 AT&T	*/
 /*	  All Rights Reserved  	*/
@@ -48,28 +51,25 @@
 *
 *
 *
-*	Copyright Notice 
+*	Copyright Notice
 *
-* Notice of copyright on this source code product does not indicate 
+* Notice of copyright on this source code product does not indicate
 *  publication.
 *
 *	(c) 1986,1987,1988.1989  Sun Microsystems, Inc
 *	(c) 1983,1984,1985,1986,1987,1988,1989  AT&T.
 *          All rights reserved.
-*/ 
-
-/*      @(#)rpc_scan.h  1.3  90/08/29  (C) 1987 SMI   */
-/* $DragonFly: src/usr.bin/rpcgen/rpc_scan.h,v 1.2 2004/06/19 16:40:36 joerg Exp $ */
+*/
 
 /*
- * rpc_scan.h, Definitions for the RPCL scanner 
+ * rpc_scan.h, Definitions for the RPCL scanner
  */
 
-#ifndef	RPC_SCAN
-#define	RPC_SCAN
+#ifndef _RPC_SCAN_H_
+#define _RPC_SCAN_H_
 
 /*
- * kinds of tokens 
+ * kinds of tokens
  */
 enum tok_kind {
 	TOK_IDENT,
@@ -116,24 +116,24 @@ enum tok_kind {
 typedef enum tok_kind tok_kind;
 
 /*
- * a token 
+ * a token
  */
 struct token {
 	tok_kind kind;
-	char *str;
+	const char *str;
 };
 typedef struct token token;
 
 
 /*
- * routine interface 
+ * routine interface
  */
-void scan();
-void scan2();
-void scan3();
-void scan_num();
-void peek();
-int peekscan();
-void get_token();
+void	scan(tok_kind, token *);
+void	scan2(tok_kind, tok_kind, token *);
+void	scan3(tok_kind, tok_kind, tok_kind, token *);
+void	scan_num(token *);
+void	peek(token *);
+int	peekscan(tok_kind, token *);
+void	get_token(token *);
 
-#endif
+#endif /* _RPC_SCAN_H_ */

@@ -5,29 +5,29 @@
  * may copy or modify Sun RPC without charge, but are not authorized
  * to license or distribute it to anyone else except as part of a product or
  * program developed by the user.
- * 
+ *
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
  * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
- * 
+ *
  * Sun RPC is provided with no support and without any obligation on the
  * part of Sun Microsystems, Inc. to assist in its use, correction,
  * modification or enhancement.
- * 
+ *
  * SUN MICROSYSTEMS, INC. SHALL HAVE NO LIABILITY WITH RESPECT TO THE
  * INFRINGEMENT OF COPYRIGHTS, TRADE SECRETS OR ANY PATENTS BY SUN RPC
  * OR ANY PART THEREOF.
- * 
+ *
  * In no event will Sun Microsystems, Inc. be liable for any lost revenue
  * or profits or other special, indirect and consequential damages, even if
  * Sun has been advised of the possibility of such damages.
- * 
+ *
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  *
  * @(#)keyserv.c	1.15	94/04/25 SMI
- * $FreeBSD: src/usr.sbin/keyserv/keyserv.c,v 1.3.2.2 2001/07/19 10:58:22 roam Exp $
+ * $FreeBSD: src/usr.sbin/keyserv/keyserv.c,v 1.12 2007/11/07 10:53:35 kevlo Exp $
  * $DragonFly: src/usr.sbin/keyserv/keyserv.c,v 1.6 2004/12/18 22:48:03 swildner Exp $
  */
 
@@ -52,7 +52,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <rpc/rpc.h>
-#include <rpc/pmap_clnt.h>
 #include <sys/param.h>
 #include <sys/file.h>
 #include <rpc/des_crypt.h>
@@ -108,10 +107,11 @@ main(int argc, char **argv)
 {
 	int nflag = 0;
 	int c;
-	SVCXPRT *transp;
-	int sock = RPC_ANYSOCK;
 	int warn = 0;
 	char *path = NULL;
+	void *localhandle;
+	SVCXPRT *transp;
+	struct netconfig *nconf = NULL;
 
 	__key_encryptsession_pk_LOCAL = &key_encrypt_pk_2_svc_prog;
 	__key_decryptsession_pk_LOCAL = &key_decrypt_pk_2_svc_prog;
@@ -150,45 +150,52 @@ main(int argc, char **argv)
 	/*
 	 * Initialize
 	 */
-	umask(066);	/* paranoia */
+	umask(S_IXUSR|S_IXGRP|S_IXOTH);
 	if (geteuid() != 0)
 		errx(1, "keyserv must be run as root");
 	setmodulus(HEXMODULUS);
 	getrootkey(&masterkey, nflag);
 
+	rpcb_unset(KEY_PROG, KEY_VERS, NULL);
+	rpcb_unset(KEY_PROG, KEY_VERS2, NULL);
 
-	/* Create services. */
+	if (svc_create(keyprogram, KEY_PROG, KEY_VERS,
+		"netpath") == 0) {
+		fprintf(stderr, "%s: unable to create service\n", argv[0]);
+		exit(1);
+	}
 
-	pmap_unset(KEY_PROG, KEY_VERS);
-	pmap_unset(KEY_PROG, KEY_VERS2);
+	if (svc_create(keyprogram, KEY_PROG, KEY_VERS2,
+	"netpath") == 0) {
+		fprintf(stderr, "%s: unable to create service\n", argv[0]);
+		exit(1);
+	}
+
+	localhandle = setnetconfig();
+	while ((nconf = getnetconfig(localhandle)) != NULL) {
+		if (nconf->nc_protofmly != NULL &&
+		    strcmp(nconf->nc_protofmly, NC_LOOPBACK) == 0)
+			break;
+	}
+
+	if (nconf == NULL)
+		errx(1, "getnetconfig: %s", nc_sperror());
+
 	unlink(KEYSERVSOCK);
-
-	transp = svcudp_create(RPC_ANYSOCK);
+	rpcb_unset(CRYPT_PROG, CRYPT_VERS, nconf);
+	transp = svcunix_create(RPC_ANYSOCK, 0, 0, KEYSERVSOCK);
 	if (transp == NULL)
-		errx(1, "cannot create udp service");
-	if (!svc_register(transp, KEY_PROG, KEY_VERS, keyprogram, IPPROTO_UDP))
-		errx(1, "unable to register (KEY_PROG, KEY_VERS, udp)");
-	if (!svc_register(transp, KEY_PROG, KEY_VERS2, keyprogram, IPPROTO_UDP))
-		errx(1, "unable to register (KEY_PROG, KEY_VERS2, udp)");
-
-	transp = svctcp_create(RPC_ANYSOCK, 0, 0);
-	if (transp == NULL)
-		errx(1, "cannot create tcp service");
-	if (!svc_register(transp, KEY_PROG, KEY_VERS, keyprogram, IPPROTO_TCP))
-		errx(1, "unable to register (KEY_PROG, KEY_VERS, tcp)");
-	if (!svc_register(transp, KEY_PROG, KEY_VERS2, keyprogram, IPPROTO_TCP))
-		errx(1, "unable to register (KEY_PROG, KEY_VERS2, tcp)");
-
-	transp = svcunix_create(sock, 0, 0, KEYSERVSOCK);
-	chmod(KEYSERVSOCK, 0666);
-	if (transp == NULL)
-		errx(1, "cannot create AF_UNIX service");
-	if (!svc_register(transp, KEY_PROG, KEY_VERS, keyprogram, 0))
+		errx(1, "cannot create AF_LOCAL service");
+	if (!svc_reg(transp, KEY_PROG, KEY_VERS, keyprogram, nconf))
 		errx(1, "unable to register (KEY_PROG, KEY_VERS, unix)");
-	if (!svc_register(transp, KEY_PROG, KEY_VERS2, keyprogram, 0))
+	if (!svc_reg(transp, KEY_PROG, KEY_VERS2, keyprogram, nconf))
 		errx(1, "unable to register (KEY_PROG, KEY_VERS2, unix)");
-	if (!svc_register(transp, CRYPT_PROG, CRYPT_VERS, crypt_prog_1, 0))
+	if (!svc_reg(transp, CRYPT_PROG, CRYPT_VERS, crypt_prog_1, nconf))
 		errx(1, "unable to register (CRYPT_PROG, CRYPT_VERS, unix)");
+
+	endnetconfig(localhandle);
+
+	umask(066);	/* paranoia */
 
 	if (!debugging) {
 		daemon(0,0);
@@ -208,28 +215,14 @@ main(int argc, char **argv)
 static void
 randomize(des_block *master)
 {
-	int i;
-	int seed;
-	struct timeval tv;
-	int shift;
-
-	seed = 0;
-	for (i = 0; i < 1024; i++) {
-		gettimeofday(&tv, (struct timezone *) NULL);
-		shift = i % 8 * sizeof (int);
-		seed ^= (tv.tv_usec << shift) | (tv.tv_usec >> (32 - shift));
-	}
 #ifdef KEYSERV_RANDOM
-	srandom(seed);
-	master->key.low = random();
-	master->key.high = random();
-	srandom(seed);
+	master->key.low = arc4random();
+	master->key.high = arc4random();
 #else
 	/* use stupid dangerous bad rand() */
-	srand(seed);
+	sranddev();
 	master->key.low = rand();
 	master->key.high = rand();
-	srand(seed);
 #endif
 }
 
@@ -592,83 +585,83 @@ keyprogram(struct svc_req *rqstp, SVCXPRT *transp)
 		netobj  key_get_conv_2_arg;
 	} argument;
 	char *result;
-	bool_t(*xdr_argument)(), (*xdr_result)();
+	xdrproc_t xdr_argument, xdr_result;
 	char *(*local) ();
 	uid_t uid = -1;
 	int check_auth;
 
 	switch (rqstp->rq_proc) {
 	case NULLPROC:
-		svc_sendreply(transp, xdr_void, (char *)NULL);
+		svc_sendreply(transp, (xdrproc_t)xdr_void, NULL);
 		return;
 
 	case KEY_SET:
-		xdr_argument = xdr_keybuf;
-		xdr_result = xdr_int;
+		xdr_argument = (xdrproc_t)xdr_keybuf;
+		xdr_result = (xdrproc_t)xdr_int;
 		local = (char *(*)()) key_set_1_svc_prog;
 		check_auth = 1;
 		break;
 
 	case KEY_ENCRYPT:
-		xdr_argument = xdr_cryptkeyarg;
-		xdr_result = xdr_cryptkeyres;
+		xdr_argument = (xdrproc_t)xdr_cryptkeyarg;
+		xdr_result = (xdrproc_t)xdr_cryptkeyres;
 		local = (char *(*)()) key_encrypt_1_svc_prog;
 		check_auth = 1;
 		break;
 
 	case KEY_DECRYPT:
-		xdr_argument = xdr_cryptkeyarg;
-		xdr_result = xdr_cryptkeyres;
+		xdr_argument = (xdrproc_t)xdr_cryptkeyarg;
+		xdr_result = (xdrproc_t)xdr_cryptkeyres;
 		local = (char *(*)()) key_decrypt_1_svc_prog;
 		check_auth = 1;
 		break;
 
 	case KEY_GEN:
-		xdr_argument = xdr_void;
-		xdr_result = xdr_des_block;
+		xdr_argument = (xdrproc_t)xdr_void;
+		xdr_result = (xdrproc_t)xdr_des_block;
 		local = (char *(*)()) key_gen_1_svc_prog;
 		check_auth = 0;
 		break;
 
 	case KEY_GETCRED:
-		xdr_argument = xdr_netnamestr;
-		xdr_result = xdr_getcredres;
+		xdr_argument = (xdrproc_t)xdr_netnamestr;
+		xdr_result = (xdrproc_t)xdr_getcredres;
 		local = (char *(*)()) key_getcred_1_svc_prog;
 		check_auth = 0;
 		break;
 
 	case KEY_ENCRYPT_PK:
-		xdr_argument = xdr_cryptkeyarg2;
-		xdr_result = xdr_cryptkeyres;
+		xdr_argument = (xdrproc_t)xdr_cryptkeyarg2;
+		xdr_result = (xdrproc_t)xdr_cryptkeyres;
 		local = (char *(*)()) key_encrypt_pk_2_svc_prog;
 		check_auth = 1;
 		break;
 
 	case KEY_DECRYPT_PK:
-		xdr_argument = xdr_cryptkeyarg2;
-		xdr_result = xdr_cryptkeyres;
+		xdr_argument = (xdrproc_t)xdr_cryptkeyarg2;
+		xdr_result = (xdrproc_t)xdr_cryptkeyres;
 		local = (char *(*)()) key_decrypt_pk_2_svc_prog;
 		check_auth = 1;
 		break;
 
 
 	case KEY_NET_PUT:
-		xdr_argument = xdr_key_netstarg;
-		xdr_result = xdr_keystatus;
+		xdr_argument = (xdrproc_t)xdr_key_netstarg;
+		xdr_result = (xdrproc_t)xdr_keystatus;
 		local = (char *(*)()) key_net_put_2_svc_prog;
 		check_auth = 1;
 		break;
 
 	case KEY_NET_GET:
 		xdr_argument = (xdrproc_t) xdr_void;
-		xdr_result = xdr_key_netstres;
+		xdr_result = (xdrproc_t)xdr_key_netstres;
 		local = (char *(*)()) key_net_get_2_svc_prog;
 		check_auth = 1;
 		break;
 
 	case KEY_GET_CONV:
 		xdr_argument = (xdrproc_t) xdr_keybuf;
-		xdr_result = xdr_cryptkeyres;
+		xdr_result = (xdrproc_t)xdr_cryptkeyres;
 		local = (char *(*)()) key_get_conv_2_svc_prog;
 		check_auth = 1;
 		break;
@@ -696,18 +689,18 @@ keyprogram(struct svc_req *rqstp, SVCXPRT *transp)
 		uid = ((struct authsys_parms *)rqstp->rq_clntcred)->aup_uid;
 	}
 
-	memset((char *) &argument, 0, sizeof (argument));
-	if (!svc_getargs(transp, xdr_argument, (caddr_t)&argument)) {
+	memset(&argument, 0, sizeof (argument));
+	if (!svc_getargs(transp, xdr_argument, &argument)) {
 		svcerr_decode(transp);
 		return;
 	}
 	result = (*local) (uid, &argument);
-	if (!svc_sendreply(transp, xdr_result, (char *) result)) {
+	if (!svc_sendreply(transp, xdr_result, result)) {
 		if (debugging)
 			fprintf(stderr, "unable to reply\n");
 		svcerr_systemerr(transp);
 	}
-	if (!svc_freeargs(transp, xdr_argument, (caddr_t)&argument)) {
+	if (!svc_freeargs(transp, xdr_argument, &argument)) {
 		if (debugging)
 			fprintf(stderr, "unable to free arguments\n");
 		exit(1);
@@ -719,16 +712,16 @@ static int
 root_auth(SVCXPRT *trans, struct svc_req *rqstp)
 {
 	uid_t uid;
-	struct sockaddr_in *remote;
+	struct sockaddr *remote;
 
-	remote = svc_getcaller(trans);
-	if (remote->sin_family == AF_INET) {
+	remote = svc_getrpccaller(trans)->buf;
+	if (remote->sa_family != AF_UNIX) {
 		if (debugging)
 			fprintf(stderr, "client didn't use AF_UNIX\n");
 		return (0);
 	}
 
-	if (__rpc_get_local_uid(&uid, trans) < 0) {
+	if (__rpc_get_local_uid(trans, &uid) < 0) {
 		if (debugging)
 			fprintf(stderr, "__rpc_get_local_uid failed\n");
 		return (0);

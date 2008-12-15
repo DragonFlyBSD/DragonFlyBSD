@@ -31,7 +31,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.bin/rup/rup.1,v 1.7.2.7 2002/06/21 15:29:00 charnier Exp $
+.\" $FreeBSD: src/usr.bin/rup/rup.1,v 1.20 2007/02/28 10:22:19 ru Exp $
 .\" $DragonFly: src/usr.bin/rup/rup.1,v 1.2 2003/06/17 04:29:31 dillon Exp $
 .\"
 .Dd June 7, 1993
@@ -62,7 +62,7 @@ work.
 The
 .Nm
 utility uses an RPC protocol defined in
-.Pa /usr/include/rpcsvc/rstat.x .
+.In rpcsvc/rstat.x .
 .Sh EXAMPLES
 .Bd -literal
 example% rup otherhost
@@ -76,23 +76,25 @@ The
 .Xr rpc.rstatd 8
 daemon has not been started on the remote host.
 .It rup: RPC: Timed out
-A communication error occurred.  Either the network is
+A communication error occurred.
+Either the network is
 excessively congested, or the
 .Xr rpc.rstatd 8
 daemon has terminated on the remote host.
 .It rup: RPC: Port mapper failure - RPC: Timed out
 The remote host is not running the portmapper (see
-.Xr portmap 8 ) ,
-and cannot accommodate any RPC-based services.  The host may be down.
+.Xr rpcbind 8 ) ,
+and cannot accommodate any RPC-based services.
+The host may be down.
 .El
 .Sh SEE ALSO
-.Xr portmap 8 ,
+.Xr rpcbind 8 ,
 .Xr rpc.rstatd 8
 .Sh HISTORY
 The
 .Nm
 command
 appeared in
-.Em Sun-OS .
+.Tn Sun-OS .
 .Sh BUGS
 The sorting options are not implemented.

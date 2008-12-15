@@ -1,12 +1,49 @@
 .\" @(#)xdr.3n	2.2 88/08/03 4.0 RPCSRC; from 1.16 88/03/14 SMI
-.\" $FreeBSD: src/lib/libc/xdr/xdr.3,v 1.8.2.4 2001/12/14 18:34:06 ru Exp $
+.\" $FreeBSD: src/lib/libc/xdr/xdr.3,v 1.17 2005/11/24 07:12:01 ru Exp $
 .\" $DragonFly: src/lib/libc/xdr/xdr.3,v 1.3 2007/11/23 23:16:36 swildner Exp $
 .\"
 .Dd February 16, 1988
 .Dt XDR 3
 .Os
 .Sh NAME
-.Nm xdr
+.Nm xdr ,
+.Nm xdr_array ,
+.Nm xdr_bool ,
+.Nm xdr_bytes ,
+.Nm xdr_char ,
+.Nm xdr_destroy ,
+.Nm xdr_double ,
+.Nm xdr_enum ,
+.Nm xdr_float ,
+.Nm xdr_free ,
+.Nm xdr_getpos ,
+.Nm xdr_hyper ,
+.Nm xdr_inline ,
+.Nm xdr_int ,
+.Nm xdr_long ,
+.Nm xdr_longlong_t ,
+.Nm xdrmem_create ,
+.Nm xdr_opaque ,
+.Nm xdr_pointer ,
+.Nm xdrrec_create ,
+.Nm xdrrec_endofrecord ,
+.Nm xdrrec_eof ,
+.Nm xdrrec_skiprecord ,
+.Nm xdr_reference ,
+.Nm xdr_setpos ,
+.Nm xdr_short ,
+.Nm xdrstdio_create ,
+.Nm xdr_string ,
+.Nm xdr_u_char ,
+.Nm xdr_u_hyper ,
+.Nm xdr_u_int ,
+.Nm xdr_u_long ,
+.Nm xdr_u_longlong_t ,
+.Nm xdr_u_short ,
+.Nm xdr_union ,
+.Nm xdr_vector ,
+.Nm xdr_void ,
+.Nm xdr_wrapstring
 .Nd "library routines for external data representation"
 .Sh LIBRARY
 .Lb libc
@@ -42,15 +79,16 @@ A filter primitive that translates between variable-length
 arrays
 and their corresponding external representations.
 The
-parameter
 .Fa arrp
+argument
 is the address of the pointer to the array, while
 .Fa sizep
 is the address of the element count of the array;
 this element count cannot exceed
 .Fa maxsize .
-The parameter
+The
 .Fa elsize
+argument
 is the
 .Ic sizeof
 each of the array's elements, and
@@ -85,8 +123,9 @@ This routine returns one if it succeeds, zero otherwise.
 .Pp
 A filter primitive that translates between counted byte
 strings and their external representations.
-The parameter
+The
 .Fa sp
+argument
 is the address of the string pointer.
 The length of the
 string is located at address
@@ -173,7 +212,7 @@ This routine returns one if it succeeds, zero otherwise.
 .Ft void
 .Xc
 .It Xo
-.Fn xdr_free "xdrproc_t proc" "char *objp"
+.Fn xdr_free "xdrproc_t proc" "void *objp"
 .Xc
 .Pp
 Generic freeing routine.
@@ -211,6 +250,17 @@ streams is that simple arithmetic works with this number,
 although the
 .Tn XDR
 stream instances need not guarantee this.
+.Pp
+.It Xo
+.Ft int
+.Xc
+.It Xo
+.Fn xdr_hyper "XDR *xdrs" "quad_t *llp"
+.Xc
+A filter primitive that translates between ANSI C
+.Vt "long long"
+integers and their external representations.
+This routine returns one if it succeeds, zero otherwise.
 .Pp
 .It Xo
 .Ft "long *"
@@ -263,6 +313,17 @@ integers and their external representations.
 This routine returns one if it succeeds, zero otherwise.
 .Pp
 .It Xo
+.Ft int
+.Xc
+.It Xo
+.Fn xdr_longlong_t "XDR *xdrs" "quad_t *llp"
+.Xc
+A filter primitive that translates between ANSI C
+.Vt "long long"
+integers and their external representations.
+This routine returns one if it succeeds, zero otherwise.
+.Pp
+.It Xo
 .Ft void
 .Xc
 .It Xo
@@ -281,6 +342,7 @@ whose length is no more than
 bytes long.
 The
 .Fa op
+argument
 determines the direction of the
 .Tn XDR
 stream
@@ -300,8 +362,9 @@ or
 A filter primitive that translates between fixed size opaque
 data
 and its external representation.
-The parameter
+The
 .Fa cp
+argument
 is the address of the opaque object, and
 .Fa cnt
 is its size in bytes.
@@ -335,7 +398,7 @@ linked lists.
 .Fa "XDR *xdrs"
 .Fa "u_int sendsize"
 .Fa "u_int recvsize"
-.Fa "char *handle"
+.Fa "void *handle"
 .Fa "int \*(lp*readit\*(rp\*(lp\*(rp"
 .Fa "int \*(lp*writeit\*(rp\*(lp\*(rp"
 .Fc
@@ -367,7 +430,7 @@ and
 .Xr write 2 ,
 except that
 .Fa handle
-is passed to the former routines as the first parameter.
+is passed to the former routines as the first argument.
 Note: the
 .Tn XDR
 stream's
@@ -436,8 +499,9 @@ This routine returns one if it succeeds, zero otherwise.
 .Xc
 .Pp
 A primitive that provides pointer chasing within structures.
-The parameter
+The
 .Fa pp
+argument
 is the address of the pointer;
 .Fa size
 is the
@@ -471,8 +535,9 @@ the
 .Tn XDR
 stream
 .Fa xdrs .
-The parameter
+The
 .Fa pos
+argument
 is a position value obtained from
 .Fn xdr_getpos .
 This routine returns one if the
@@ -517,8 +582,9 @@ stream data is written to, or read from, the Standard
 .Tn I/O
 stream
 .Fa file .
-The parameter
+The
 .Fa op
+argument
 determines the direction of the
 .Tn XDR
 stream (either
@@ -569,6 +635,19 @@ This routine returns one if it succeeds, zero otherwise.
 .Ft int
 .Xc
 .It Xo
+.Fn xdr_u_hyper "XDR *xdrs" "u_quad_t *ullp"
+.Xc
+A filter primitive that translates between
+.Vt unsigned
+ANSI C
+.Vt long long
+integers and their external representations.
+This routine returns one if it succeeds, zero otherwise.
+.Pp
+.It Xo
+.Ft int
+.Xc
+.It Xo
 .Fn xdr_u_int "XDR *xdrs" "unsigned *up"
 .Xc
 .Pp
@@ -593,6 +672,19 @@ This routine returns one if it succeeds, zero otherwise.
 .Ft int
 .Xc
 .It Xo
+.Fn xdr_u_longlong_t "XDR *xdrs" "u_quad_t *ullp"
+.Xc
+A filter primitive that translates between
+.Vt unsigned
+ANSI C
+.Vt "long long"
+integers and their external representations.
+This routine returns one if it succeeds, zero otherwise.
+.Pp
+.It Xo
+.Ft int
+.Xc
+.It Xo
 .Fn xdr_u_short "XDR *xdrs" "unsigned short *usp"
 .Xc
 .Pp
@@ -607,10 +699,10 @@ This routine returns one if it succeeds, zero otherwise.
 .It Xo
 .Fo xdr_union
 .Fa "XDR *xdrs"
-.Fa "int *dscmp"
+.Fa "enum_t *dscmp"
 .Fa "char *unp"
-.Fa "struct xdr_discrim *choices"
-.Fa "bool_t \*(lp*defaultarm\*(rp\*(lp\*(rp"
+.Fa "const struct xdr_discrim *choices"
+.Fa "xdrproc_t defaultarm"
 .Fc
 .Xc
 .Pp
@@ -625,8 +717,9 @@ This discriminant is always an
 Next the union located at
 .Fa unp
 is translated.
-The parameter
+The
 .Fa choices
+argument
 is a pointer to an array of
 .Vt xdr_discrim
 structures.
@@ -666,13 +759,14 @@ A filter primitive that translates between fixed-length
 arrays
 and their corresponding external representations.
 The
-parameter
 .Fa arrp
+argument
 is the address of the pointer to the array, while
 .Fa size
 is the element count of the array.
-The parameter
+The
 .Fa elsize
+argument
 is the
 .Ic sizeof
 each of the array's elements, and
@@ -694,7 +788,7 @@ This routine returns one if it succeeds, zero otherwise.
 This routine always returns one.
 It may be passed to
 .Tn RPC
-routines that require a function parameter,
+routines that require a function argument,
 where nothing is to be done.
 .Pp
 .It Xo
@@ -709,12 +803,14 @@ A primitive that calls
 where
 .Dv MAXUN.UNSIGNED
 is the maximum value of an unsigned integer.
+The
 .Fn xdr_wrapstring
+function
 is handy because the
 .Tn RPC
 package passes a maximum of two
 .Tn XDR
-routines as parameters, and
+routines as arguments, and
 .Fn xdr_string ,
 one of the most frequently used primitives, requires three.
 Returns one if it succeeds, zero otherwise.

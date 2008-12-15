@@ -27,6 +27,7 @@
 % * Mountain View, California  94043
 % *
 % * @(#)pmap_prot.x	1.6	94/04/29 SMI
+% * $FreeBSD: src/include/rpcsvc/pmap_prot.x,v 1.3 2003/05/04 02:51:42 obrien Exp $
 % * $DragonFly: src/include/rpcsvc/pmap_prot.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
 % */
 %/*
@@ -143,11 +144,7 @@ typedef pm__list *pmaplist_ptr;		/* results of PMAPPROC_DUMP */
 %#ifdef __cplusplus
 %extern "C" {
 %#endif
-%#ifdef __STDC__
 %extern  bool_t xdr_pmaplist(XDR *, pmaplist**);
-%#else /* K&R C */
-%bool_t xdr_pmaplist();
-%#endif
 %#ifdef	__cplusplus
 %}
 %#endif
@@ -263,11 +260,7 @@ program PMAPPROG {
 %	long unsigned pm_port;
 %};
 %typedef struct pmap PMAP;
-%#ifdef __STDC__
 %extern bool_t xdr_pmap (XDR *, struct pmap *);
-%#else
-%extern bool_t xdr_pmap ();
-%#endif
 %
 %struct pmaplist {
 %	struct pmap pml_map;

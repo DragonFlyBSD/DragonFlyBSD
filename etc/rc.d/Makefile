@@ -14,15 +14,15 @@ FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
 	inetd initdiskless initrandom ip6fw ipfilter ipfs ipfw ipmon \
 	ipnat ipsec ipxrouted isdnd jail \
 	kadmind kerberos keyserv kpasswdd \
-	ldconfig local localdaemons lpd \
+	ldconfig local localdaemons lockd lpd \
 	mixer motd mountcritlocal mountcritremote \
 	mountd moused mroute6d mrouted msgs \
 	named netif netoptions newsyslog \
-	network_ipv6 nfsclient nfsd nfslocking nfsserver nisdomain \
+	network_ipv6 nfsclient nfsd nfsserver nisdomain \
 	dntpd othermta pf pflog ppp ppp-user pppoed pwcheck \
 	quota random rarpd rcconf.sh resident rndcontrol root route6d routed \
 	routing rpcbind rtadvd rtsold rwho sysdb savecore sdpd securelevel \
-	sendmail sensorsd serial sppp sshd swap1 syscons sysctl syslogd \
+	sendmail sensorsd serial sppp sshd statd swap1 syscons sysctl syslogd \
 	timed ttys usbd varsym vinum virecover watchdogd wpa_supplicant \
 	ypbind yppasswdd ypserv ypset ypupdated ypxfrd
 FILESDIR=	/etc/rc.d

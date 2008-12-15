@@ -5,32 +5,31 @@
  * may copy or modify Sun RPC without charge, but are not authorized
  * to license or distribute it to anyone else except as part of a product or
  * program developed by the user.
- * 
+ *
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
  * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
- * 
+ *
  * Sun RPC is provided with no support and without any obligation on the
  * part of Sun Microsystems, Inc. to assist in its use, correction,
  * modification or enhancement.
- * 
+ *
  * SUN MICROSYSTEMS, INC. SHALL HAVE NO LIABILITY WITH RESPECT TO THE
  * INFRINGEMENT OF COPYRIGHTS, TRADE SECRETS OR ANY PATENTS BY SUN RPC
  * OR ANY PART THEREOF.
- * 
+ *
  * In no event will Sun Microsystems, Inc. be liable for any lost revenue
  * or profits or other special, indirect and consequential damages, even if
  * Sun has been advised of the possibility of such damages.
- * 
+ *
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  *
- * @(#)rpc_parse.c 1.8 89/02/22 (C) 1987 SMI
+ * @(#)rpc_parse.c	1.12	93/07/05 SMI; 1.8 89/02/22 (C) 1987 SMI
+ * $FreeBSD: src/usr.bin/rpcgen/rpc_parse.c,v 1.12 2005/11/13 21:17:24 dwmalone Exp $
  * $DragonFly: src/usr.bin/rpcgen/rpc_parse.c,v 1.7 2004/06/19 16:40:36 joerg Exp $
  */
-
-#ident	"@(#)rpc_parse.c	1.12	93/07/05 SMI"
 
 /*
  * rpc_parse.c, Parser for the RPC protocol compiler
@@ -39,24 +38,23 @@
 #include <stdio.h>
 #include <string.h>
 #include "rpc/types.h"
-#include "rpc_scan.h"
 #include "rpc_parse.h"
+#include "rpc_scan.h"
 #include "rpc_util.h"
 
 #define ARGNAME "arg"
 
-extern char	*make_argname(char *, char *);
 static void	isdefined(definition *);
 static void	def_struct(definition *);
 static void	def_program(definition *);
 static void	def_enum(definition *);
 static void	def_const(definition *);
 static void	def_union(definition *);
-static void	def_typedef( definition *);
-static void	get_declaration( declaration *, defkind);
-static void	get_prog_declaration( declaration *, defkind, int);
-static void	get_type(char **, char **, defkind);
-static void	unsigned_dec(char **);
+static void	def_typedef(definition *);
+static void	get_declaration(declaration *, defkind);
+static void	get_prog_declaration(declaration *, defkind, int);
+static void	get_type(const char **, const char **, defkind);
+static void	unsigned_dec(const char **);
 
 /*
  * return the next definition you see
@@ -67,7 +65,7 @@ get_definition(void)
 	definition *defp;
 	token tok;
 
-	defp = ALLOC(definition);
+	defp = XALLOC(definition);
 	get_token(&tok);
 	switch (tok.kind) {
 	case TOK_STRUCT:
@@ -120,7 +118,7 @@ def_struct(definition *defp)
 	tailp = &defp->def.st.decls;
 	do {
 		get_declaration(&dec, DEF_STRUCT);
-		decls = ALLOC(decl_list);
+		decls = XALLOC(decl_list);
 		decls->decl = dec;
 		*tailp = decls;
 		tailp = &decls->next;
@@ -153,13 +151,13 @@ def_program(definition *defp)
 	scan(TOK_VERSION, &tok);
 	do {
 		scan(TOK_IDENT, &tok);
-		vlist = ALLOC(version_list);
+		vlist = XALLOC(version_list);
 		vlist->vers_name = tok.str;
 		scan(TOK_LBRACE, &tok);
 		ptailp = &vlist->procs;
 		do {
 			/* get result type */
-			plist = ALLOC(proc_list);
+			plist = XALLOC(proc_list);
 			get_type(&plist->res_prefix, &plist->res_type,
 				 DEF_PROGRAM);
 			if (streq(plist->res_type, "opaque"))
@@ -178,7 +176,7 @@ def_program(definition *defp)
 			get_prog_declaration(&dec, DEF_PROGRAM, num_args);
 			if (streq(dec.type, "void"))
 				isvoid = TRUE;
-			decls = ALLOC(decl_list);
+			decls = XALLOC(decl_list);
 			plist->args.decls = decls;
 			decls->decl = dec;
 			tailp = &decls->next;
@@ -187,7 +185,7 @@ def_program(definition *defp)
 				num_args++;
 				get_prog_declaration(&dec, DEF_STRUCT,
 						     num_args);
-				decls = ALLOC(decl_list);
+				decls = XALLOC(decl_list);
 				decls->decl = dec;
 				*tailp = decls;
 				if (streq(dec.type, "void"))
@@ -247,7 +245,7 @@ def_enum(definition *defp)
 	tailp = &defp->def.en.vals;
 	do {
 		scan(TOK_IDENT, &tok);
-		elist = ALLOC(enumval_list);
+		elist = XALLOC(enumval_list);
 		elist->name = tok.str;
 		elist->assignment = NULL;
 		scan3(TOK_COMMA, TOK_RBRACE, TOK_EQUAL, &tok);
@@ -297,7 +295,7 @@ def_union(definition *defp)
 	scan(TOK_CASE, &tok);
 	while (tok.kind == TOK_CASE) {
 		scan2(TOK_IDENT, TOK_CHARCONST, &tok);
-		cases = ALLOC(case_list);
+		cases = XALLOC(case_list);
 		cases->case_name = tok.str;
 		scan(TOK_COLON, &tok);
 		/* now peek at next token */
@@ -309,7 +307,7 @@ def_union(definition *defp)
 				/* continued case statement */
 				*tailp = cases;
 				tailp = &cases->next;
-				cases = ALLOC(case_list);
+				cases = XALLOC(case_list);
 				cases->case_name = tok.str;
 				scan(TOK_COLON, &tok);
 			} while (peekscan(TOK_CASE, &tok));
@@ -317,7 +315,7 @@ def_union(definition *defp)
 		else if (flag) {
 			*tailp = cases;
 			tailp = &cases->next;
-			cases = ALLOC(case_list);
+			cases = XALLOC(case_list);
 		}
 
 		get_declaration(&dec, DEF_UNION);
@@ -333,7 +331,7 @@ def_union(definition *defp)
 	if (tok.kind == TOK_DEFAULT) {
 		scan(TOK_COLON, &tok);
 		get_declaration(&dec, DEF_UNION);
-		defp->def.un.default_decl = ALLOC(declaration);
+		defp->def.un.default_decl = XALLOC(declaration);
 		*defp->def.un.default_decl = dec;
 		scan(TOK_SEMICOLON, &tok);
 		scan(TOK_RBRACE, &tok);
@@ -342,7 +340,7 @@ def_union(definition *defp)
 	}
 }
 
-static char* reserved_words[] =
+static const char *reserved_words[] =
 {
 	"array",
 	"bytes",
@@ -357,9 +355,9 @@ static char* reserved_words[] =
 	"union",
 	"vector",
 	NULL
-	};
+};
 
-static char* reserved_types[] =
+static const char *reserved_types[] =
 {
 	"opaque",
 	"string",
@@ -371,7 +369,7 @@ static char* reserved_types[] =
  * xdr routines that would conflict with internal XDR routines.
  */
 static void
-check_type_name(char* name, int new_type)
+check_type_name(const char *name, int new_type)
 {
 	int i;
 	char tmp[100];
@@ -485,7 +483,7 @@ get_prog_declaration(declaration *dec, defkind dkind, int num)
 		sprintf(name, "%s%d", ARGNAME, num);
 	/* default name of argument */
 
-	dec->name = (char *) strdup(name);
+	dec->name = (char *) xstrdup(name);
 	if (streq(dec->type, "void")) {
 		return;
 	}
@@ -494,11 +492,11 @@ get_prog_declaration(declaration *dec, defkind dkind, int num)
 		error("opaque -- illegal argument type");
 	if (peekscan(TOK_STAR, &tok)) {
 		if (streq(dec->type, "string"))
-			error("pointer to string not allowed in program arguments\n");
+			error("pointer to string not allowed in program arguments");
 		dec->rel = REL_POINTER;
 		if (peekscan(TOK_IDENT, &tok)) {
 			/* optional name of argument */
-			dec->name = strdup(tok.str);
+			dec->name = xstrdup(tok.str);
 		}
 	}
 	if (peekscan(TOK_LANGLE, &tok)) {
@@ -528,7 +526,7 @@ get_prog_declaration(declaration *dec, defkind dkind, int num)
 }
 
 static void
-get_type(char **prefixp, char **typep, defkind dkind)
+get_type(const char **prefixp, const char **typep, defkind dkind)
 {
 	token tok;
 
@@ -582,7 +580,7 @@ get_type(char **prefixp, char **typep, defkind dkind)
 }
 
 static void
-unsigned_dec(char **typep)
+unsigned_dec(const char **typep)
 {
 	token tok;
 

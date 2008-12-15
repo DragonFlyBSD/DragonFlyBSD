@@ -5,33 +5,31 @@
  * may copy or modify Sun RPC without charge, but are not authorized
  * to license or distribute it to anyone else except as part of a product or
  * program developed by the user.
- * 
+ *
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
  * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
- * 
+ *
  * Sun RPC is provided with no support and without any obligation on the
  * part of Sun Microsystems, Inc. to assist in its use, correction,
  * modification or enhancement.
- * 
+ *
  * SUN MICROSYSTEMS, INC. SHALL HAVE NO LIABILITY WITH RESPECT TO THE
  * INFRINGEMENT OF COPYRIGHTS, TRADE SECRETS OR ANY PATENTS BY SUN RPC
  * OR ANY PART THEREOF.
- * 
+ *
  * In no event will Sun Microsystems, Inc. be liable for any lost revenue
  * or profits or other special, indirect and consequential damages, even if
  * Sun has been advised of the possibility of such damages.
- * 
+ *
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  *
- * @(#)rpc_util.c 1.11 89/02/22 (C) 1987 SMI
- * $FreeBSD: src/usr.bin/rpcgen/rpc_util.c,v 1.6 1999/08/28 01:05:17 peter Exp $
+ * @(#)rpc_util.c	1.14	93/07/05 SMI; 1.11 89/02/22 (C) 1987 SMI
+ * $FreeBSD: src/usr.bin/rpcgen/rpc_util.c,v 1.10 2005/11/13 21:17:24 dwmalone Exp $
  * $DragonFly: src/usr.bin/rpcgen/rpc_util.c,v 1.4 2004/06/19 16:40:36 joerg Exp $
  */
-
-#ident	"@(#)rpc_util.c	1.14	93/07/05 SMI"
 
 /*
  * rpc_util.c, Utility routines for the RPC protocol compiler
@@ -42,8 +40,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include "rpc_scan.h"
 #include "rpc_parse.h"
+#include "rpc_scan.h"
 #include "rpc_util.h"
 
 #define	ARGEXT "argument"
@@ -52,10 +50,10 @@ char curline[MAXLINESIZE];	/* current read line */
 char *where = curline;		/* current point in line */
 int linenum = 0;		/* current line number */
 
-char *infilename;		/* input filename */
+const char *infilename;		/* input filename */
 
 #define	NFILES   7
-char *outfiles[NFILES];		/* output file names */
+const char *outfiles[NFILES];	/* output file names */
 int nfiles;
 
 FILE *fout;			/* file pointer of current output */
@@ -81,7 +79,7 @@ reinitialize(void)
  * string equality
  */
 int
-streq(char *a, char *b)
+streq(const char *a, const char *b)
 {
 	return(strcmp(a, b) == 0);
 }
@@ -90,7 +88,7 @@ streq(char *a, char *b)
  * find a value in a list
  */
 definition *
-findval(list *lst, char *val, int (*cmp) (definition *, char *))
+findval(list *lst, const char *val, int (*cmp)(definition *, const char *))
 {
 	for (; lst != NULL; lst = lst->next) {
 		if ((*cmp) (lst->val, val))
@@ -110,20 +108,20 @@ storeval(list **lstp, definition *val)
 
 	for (l = lstp; *l != NULL; l = (list **) & (*l)->next)
 		;
-	lst = ALLOC(list);
+	lst = XALLOC(list);
 	lst->val = val;
 	lst->next = NULL;
 	*l = lst;
 }
 
 static int
-findit(definition *def, char *type)
+findit(definition *def, const char *type)
 {
 	return(streq(def->def_name, type));
 }
 
-static char *
-fixit(char *type, char *orig)
+static const char *
+fixit(const char *type, const char *orig)
 {
 	definition *def;
 
@@ -144,14 +142,14 @@ fixit(char *type, char *orig)
 	}
 }
 
-char *
-fixtype(char *type)
+const char *
+fixtype(const char *type)
 {
 	return(fixit(type, type));
 }
 
-char *
-stringfix(char *type)
+const char *
+stringfix(const char *type)
 {
 	if (streq(type, "string"))
 		return("wrapstring");
@@ -160,7 +158,7 @@ stringfix(char *type)
 }
 
 void
-ptype(char *prefix, char *type, int follow)
+ptype(const char *prefix, const char *type, int follow)
 {
 	if (prefix != NULL) {
 		if (streq(prefix, "enum"))
@@ -177,7 +175,7 @@ ptype(char *prefix, char *type, int follow)
 }
 
 static int
-typedefed(definition *def, char *type)
+typedefed(definition *def, const char *type)
 {
 	if (def->def_kind != DEF_TYPEDEF || def->def.ty.old_prefix != NULL)
 		return(0);
@@ -186,7 +184,7 @@ typedefed(definition *def, char *type)
 }
 
 int
-isvectordef(char *type, relation rel)
+isvectordef(const char *type, relation rel)
 {
 	definition *def;
 
@@ -212,7 +210,7 @@ isvectordef(char *type, relation rel)
 }
 
 char *
-locase(char *str)
+locase(const char *str)
 {
 	char c;
 	static char buf[100];
@@ -225,13 +223,13 @@ locase(char *str)
 }
 
 void
-pvname_svc(char *pname, char *vnum)
+pvname_svc(const char *pname, const char *vnum)
 {
 	f_print(fout, "%s_%s_svc", locase(pname), vnum);
 }
 
 void
-pvname(char *pname, char *vnum)
+pvname(const char *pname, const char *vnum)
 {
 	f_print(fout, "%s_%s", locase(pname), vnum);
 }
@@ -240,7 +238,7 @@ pvname(char *pname, char *vnum)
  * print a useful (?) error message, and then die
  */
 void
-error(char *msg)
+error(const char *msg)
 {
 	printwhere();
 	warnx("%s, line %d: %s", infilename, linenum, msg);
@@ -262,7 +260,7 @@ crash(void)
 }
 
 void
-record_open(char *file)
+record_open(const char *file)
 {
 	if (nfiles < NFILES) {
 		outfiles[nfiles++] = file;
@@ -273,7 +271,7 @@ record_open(char *file)
 }
 
 static char expectbuf[100];
-static char *toktostr();
+static const char *toktostr(tok_kind);
 
 /*
  * error, token encountered was not the expected one
@@ -352,7 +350,7 @@ static token tokstrings[] = {
 			{TOK_EOF, "??????"}
 };
 
-static char *
+static const char *
 toktostr(tok_kind kind)
 {
 	token *sp;
@@ -405,13 +403,11 @@ printwhere(void)
 }
 
 char *
-make_argname(char *pname, char *vname)
+make_argname(const char *pname, const char *vname)
 {
 	char *name;
 
-	name = malloc(strlen(pname) + strlen(vname) + strlen(ARGEXT) + 3);
-	if (!name)
-		errx(1, "failed in malloc");
+	name = xmalloc(strlen(pname) + strlen(vname) + strlen(ARGEXT) + 3);
 	sprintf(name, "%s_%s_%s", locase(pname), vname, ARGEXT);
 	return(name);
 }
@@ -420,12 +416,11 @@ bas_type *typ_list_h;
 bas_type *typ_list_t;
 
 void
-add_type(int len, char *type)
+add_type(int len, const char *type)
 {
 	bas_type *ptr;
 
-	if ((ptr = (bas_type *) malloc(sizeof (bas_type))) == NULL)
-		errx(1, "failed in malloc");
+	ptr = XALLOC(bas_type);
 
 	ptr->name = type;
 	ptr->length = len;
@@ -441,7 +436,7 @@ add_type(int len, char *type)
 
 
 bas_type *
-find_type(char *type)
+find_type(const char *type)
 {
 	bas_type * ptr;
 
@@ -454,4 +449,40 @@ find_type(char *type)
 			ptr = ptr->next;
 	}
 	return(NULL);
+}
+
+void *
+xmalloc(size_t size)
+{
+	void *p;
+
+	if ((p = malloc(size)) == NULL) {
+		warnx("malloc failed");
+		crash();
+	}
+	return (p);
+}
+
+void *
+xrealloc(void *ptr, size_t size)
+{
+	void *p;
+
+	if ((p = realloc(ptr, size)) == NULL) {
+		warnx("realloc failed");
+		crash();
+	}
+	return (p);
+}
+
+char *
+xstrdup(const char *str)
+{
+	char *p;
+
+	if ((p = strdup(str)) == NULL) {
+		warnx("strdup failed");
+		crash();
+	}
+	return (p);
 }

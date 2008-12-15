@@ -5,6 +5,5 @@ PROG = rusers
 
 DPADD=	${LIBRPCSVC}
 LDADD=	-lrpcsvc
-WARNS?=	1
 
 .include <bsd.prog.mk>

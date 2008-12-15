@@ -137,7 +137,8 @@ main(int argc, char *argv[])
 
 
 	/* Clear server statistics */
-	if (clnt_call(cl, SPRAYPROC_CLEAR, xdr_void, NULL, xdr_void, NULL, TIMEOUT) != RPC_SUCCESS) {
+	if (clnt_call(cl, SPRAYPROC_CLEAR, (xdrproc_t)xdr_void, NULL,
+	    (xdrproc_t)xdr_void, NULL, TIMEOUT) != RPC_SUCCESS) {
 		clnt_perror(cl, getprogname());
 		exit(1);
 	}
@@ -148,7 +149,8 @@ main(int argc, char *argv[])
 	fflush (stdout);
 
 	for (i = 0; i < count; i++) {
-		clnt_call(cl, SPRAYPROC_SPRAY, (xdrproc_t)xdr_sprayarr, &host_array, xdr_void, NULL, ONE_WAY);
+		clnt_call(cl, SPRAYPROC_SPRAY, (xdrproc_t)xdr_sprayarr,
+		    &host_array, (xdrproc_t)xdr_void, NULL, ONE_WAY);
 
 		if (delay) {
 			usleep(delay);
@@ -157,7 +159,8 @@ main(int argc, char *argv[])
 
 
 	/* Collect statistics from server */
-	if (clnt_call(cl, SPRAYPROC_GET, xdr_void, NULL, (xdrproc_t)xdr_spraycumul, &host_stats, TIMEOUT) != RPC_SUCCESS) {
+	if (clnt_call(cl, SPRAYPROC_GET, (xdrproc_t)xdr_void, NULL,
+	    (xdrproc_t)xdr_spraycumul, &host_stats, TIMEOUT) != RPC_SUCCESS) {
 		clnt_perror(cl, getprogname());
 		exit(1);
 	}

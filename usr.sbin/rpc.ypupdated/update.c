@@ -28,7 +28,7 @@
  * Mountain View, California  94043
  *
  * @(#)update.c 1.2 91/03/11 Copyr 1986 Sun Micro
- * $FreeBSD: src/usr.sbin/rpc.ypupdated/update.c,v 1.4.2.1 2002/02/15 00:46:57 des Exp $
+ * $FreeBSD: src/usr.sbin/rpc.ypupdated/update.c,v 1.8 2007/02/15 02:45:14 trhodes Exp $
  * $DragonFly: src/usr.sbin/rpc.ypupdated/update.c,v 1.4 2005/11/25 00:32:49 swildner Exp $
  */
 
@@ -81,6 +81,7 @@ static int _openchild(char *, FILE **, FILE **);
  * and update it if so. Returns the yp status, which is zero
  * if there is no access violation.
  */
+int
 mapupdate(char *requester, char *mapname, u_int op, u_int keylen, char *key,
 	  u_int datalen, char *data)
 {
@@ -100,7 +101,7 @@ mapupdate(char *requester, char *mapname, u_int op, u_int keylen, char *key,
 	printf("%s %s\n", key, data);
 #endif
 	sprintf(updater, "make -s -f %s/%s %s", YPDBPATH, /* !!! */
-		UPDATEFILE, mapname);
+					UPDATEFILE, mapname);
 	pid = _openchild(updater, &childargs, &childrslt);
 	if (pid < 0) {
 		return (YPERR_YPERR);
@@ -127,19 +128,18 @@ mapupdate(char *requester, char *mapname, u_int op, u_int keylen, char *key,
 
 	wait(&status);
 #ifdef WEXITSTATUS
-	if (WEXITSTATUS(status) != 0) {
+	if (WEXITSTATUS(status) != 0)
 #else
-	if (status.w_retcode != 0) {
+	if (status.w_retcode != 0)
 #endif
 		return (YPERR_YPERR);
-	}
 	return (yperrno);
 }
 
 /*
  * returns pid, or -1 for failure
  */
-static
+static int
 _openchild(char *command, FILE **fto, FILE **ffrom)
 {
 	int i;
@@ -155,11 +155,7 @@ _openchild(char *command, FILE **fto, FILE **ffrom)
 	if (pipe(pdfrom) < 0) {
 		goto error2;
 	}
-#ifdef VFORK
-	switch (pid = vfork()) {
-#else
 	switch (pid = fork()) {
-#endif
 	case -1:
 		goto error3;
 
@@ -223,16 +219,6 @@ basename(char *path)
 
 #else /* YP */
 
-#ifdef foo
-#define	ERR_ACCESS	1
-#define	ERR_MALLOC	2
-#define	ERR_READ	3
-#define	ERR_WRITE	4
-#define	ERR_DBASE	5
-#define	ERR_KEY		6
-extern char *malloc();
-#endif
-
 static int match(char *, char *);
 
 /*
@@ -240,15 +226,10 @@ static int match(char *, char *);
  * and update it if so. Returns the status, which is zero
  * if there is no access violation. This function updates
  * the local file and then shuts up.
- *
- * Parameters:
- *	name:		Name of the requestor
- *	keylen:		Not used
- *	datalen:	Not used
  */
 int
-localupdate(char *name,	char *filename, u_int op, u_int keylen, char *key,
-	    u_int datalen, char *data)
+localupdate(char *name, char *filename, u_int op, u_int keylen __unused,
+	    char *key, u_int datalen __unused, char *data)
 {
 	char line[256];
 	FILE *rf;
@@ -343,4 +324,3 @@ match(char *line, char *name)
 		(line[len] == ' ' || line[len] == '\t'));
 }
 #endif /* !YP */
-

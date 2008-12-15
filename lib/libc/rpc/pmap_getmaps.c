@@ -28,7 +28,8 @@
  *
  * @(#)pmap_getmaps.c 1.10 87/08/11 Copyr 1984 Sun Micro
  * @(#)pmap_getmaps.c	2.2 88/08/01 4.0 RPCSRC
- * $FreeBSD: src/lib/libc/rpc/pmap_getmaps.c,v 1.11 2000/01/27 23:06:39 jasone Exp $
+ * $NetBSD: pmap_getmaps.c,v 1.16 2000/07/06 03:10:34 christos Exp $
+ * $FreeBSD: src/lib/libc/rpc/pmap_getmaps.c,v 1.16 2004/10/16 06:11:35 obrien Exp $
  * $DragonFly: src/lib/libc/rpc/pmap_getmaps.c,v 1.5 2005/11/13 12:27:04 swildner Exp $
  */
 
@@ -41,16 +42,22 @@
  */
 
 #include "namespace.h"
-#include <rpc/rpc.h>
-#include <rpc/pmap_prot.h>
-#include <rpc/pmap_clnt.h>
+#include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
+
+#include <arpa/inet.h>
+#include <net/if.h>
+
+#include <assert.h>
+#include <errno.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <errno.h>
-#include <net/if.h>
-#include <sys/ioctl.h>
+
+#include <rpc/rpc.h>
+#include <rpc/pmap_prot.h>
+#include <rpc/pmap_clnt.h>
 #include "un-namespace.h"
 
 #define NAMELEN 255
@@ -63,25 +70,27 @@
 struct pmaplist *
 pmap_getmaps(struct sockaddr_in *address)
 {
-	struct pmaplist *head = (struct pmaplist *)NULL;
-	int socket = -1;
+	struct pmaplist *head = NULL;
+	int sock = -1;
 	struct timeval minutetimeout;
 	CLIENT *client;
+
+	assert(address != NULL);
 
 	minutetimeout.tv_sec = 60;
 	minutetimeout.tv_usec = 0;
 	address->sin_port = htons(PMAPPORT);
 	client = clnttcp_create(address, PMAPPROG,
-	    PMAPVERS, &socket, 50, 500);
-	if (client != (CLIENT *)NULL) {
-		if (CLNT_CALL(client, PMAPPROC_DUMP, xdr_void, NULL, xdr_pmaplist,
-		    &head, minutetimeout) != RPC_SUCCESS) {
+	    PMAPVERS, &sock, 50, 500);
+	if (client != NULL) {
+		if (CLNT_CALL(client, (rpcproc_t)PMAPPROC_DUMP,
+		    (xdrproc_t)xdr_void, NULL,
+		    (xdrproc_t)xdr_pmaplist, &head, minutetimeout) !=
+		    RPC_SUCCESS) {
 			clnt_perror(client, "pmap_getmaps rpc problem");
 		}
 		CLNT_DESTROY(client);
 	}
-	if (socket != -1)
-		_close(socket);
 	address->sin_port = 0;
 	return (head);
 }

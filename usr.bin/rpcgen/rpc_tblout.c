@@ -5,33 +5,31 @@
  * may copy or modify Sun RPC without charge, but are not authorized
  * to license or distribute it to anyone else except as part of a product or
  * program developed by the user.
- * 
+ *
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
  * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
- * 
+ *
  * Sun RPC is provided with no support and without any obligation on the
  * part of Sun Microsystems, Inc. to assist in its use, correction,
  * modification or enhancement.
- * 
+ *
  * SUN MICROSYSTEMS, INC. SHALL HAVE NO LIABILITY WITH RESPECT TO THE
  * INFRINGEMENT OF COPYRIGHTS, TRADE SECRETS OR ANY PATENTS BY SUN RPC
  * OR ANY PART THEREOF.
- * 
+ *
  * In no event will Sun Microsystems, Inc. be liable for any lost revenue
  * or profits or other special, indirect and consequential damages, even if
  * Sun has been advised of the possibility of such damages.
- * 
+ *
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  *
- * @(#)rpc_tblout.c 1.4 89/02/22 (C) 1988 SMI
- * $FreeBSD: src/usr.bin/rpcgen/rpc_tblout.c,v 1.4 1999/08/28 01:05:17 peter Exp $
+ * @(#)rpc_tblout.c	1.11	93/07/05 SMI; 1.4 89/02/22 (C) 1988 SMI
+ * $FreeBSD: src/usr.bin/rpcgen/rpc_tblout.c,v 1.12 2005/11/13 21:17:24 dwmalone Exp $
  * $DragonFly: src/usr.bin/rpcgen/rpc_tblout.c,v 1.4 2004/06/19 16:40:36 joerg Exp $
  */
-
-#ident	"@(#)rpc_tblout.c	1.11	93/07/05 SMI" 
 
 /*
  * rpc_tblout.c, Dispatch table outputter for the RPC protocol compiler
@@ -41,6 +39,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "rpc_parse.h"
+#include "rpc_scan.h"
 #include "rpc_util.h"
 
 #define	TABSIZE		8
@@ -59,9 +58,8 @@ static char null_entry[] = "\n\t(char *(*)())0,\n\
 
 static char tbl_nproc[] = "int %s_nproc =\n\tsizeof(%s_table)/sizeof(%s_table[0]);\n\n";
 
-extern int	nullproc(proc_list *);
 static void	write_table(definition *);
-static void	printit(char *, char *);
+static void	printit(const  char *, const char *);
 
 void
 write_tables(void)
@@ -116,11 +114,11 @@ write_table(definition *def)
 			f_print(fout, "\n\t(char *(*)())RPCGEN_ACTION(");
 
 			/* routine to invoke */
-			if (Cflag && !newstyle)
+			if(!newstyle)
 				pvname_svc(proc->proc_name, vp->vers_num);
 			else {
 				if (newstyle)
-					f_print( fout, "_");   /* calls internal func */
+					f_print(fout, "_");   /* calls internal func */
 				pvname(proc->proc_name, vp->vers_num);
 			}
 			f_print(fout, "),\n");
@@ -147,7 +145,7 @@ write_table(definition *def)
 }
 
 static void
-printit(char *prefix, char *type)
+printit(const char *prefix, const char *type)
 {
 	int len;
 	int tabs;

@@ -5,28 +5,31 @@
  * may copy or modify Sun RPC without charge, but are not authorized
  * to license or distribute it to anyone else except as part of a product or
  * program developed by the user.
- * 
+ *
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
  * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
- * 
+ *
  * Sun RPC is provided with no support and without any obligation on the
  * part of Sun Microsystems, Inc. to assist in its use, correction,
  * modification or enhancement.
- * 
+ *
  * SUN MICROSYSTEMS, INC. SHALL HAVE NO LIABILITY WITH RESPECT TO THE
  * INFRINGEMENT OF COPYRIGHTS, TRADE SECRETS OR ANY PATENTS BY SUN RPC
  * OR ANY PART THEREOF.
- * 
+ *
  * In no event will Sun Microsystems, Inc. be liable for any lost revenue
  * or profits or other special, indirect and consequential damages, even if
  * Sun has been advised of the possibility of such damages.
- * 
+ *
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * @(#)rpc_util.h 1.16     94/05/15 SMI; 1.5  90/08/29  (C) 1987 SMI
+ * $FreeBSD: src/usr.bin/rpcgen/rpc_util.h,v 1.12 2005/11/13 21:17:24 dwmalone Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_util.h,v 1.2 2004/06/19 16:40:36 joerg Exp $
  */
-#pragma ident   "@(#)rpc_util.h 1.16     94/05/15 SMI"
 
 /*	Copyright (c) 1984, 1986, 1987, 1988, 1989 AT&T	*/
 /*	  All Rights Reserved  	*/
@@ -47,29 +50,23 @@
 *
 *
 *
-*	Copyright Notice 
+*	Copyright Notice
 *
-* Notice of copyright on this source code product does not indicate 
+* Notice of copyright on this source code product does not indicate
 *  publication.
 *
 *	(c) 1986,1987,1988.1989  Sun Microsystems, Inc
 *	(c) 1983,1984,1985,1986,1987,1988,1989  AT&T.
 *          All rights reserved.
-*/ 
-
-/*      @(#)rpc_util.h  1.5  90/08/29  (C) 1987 SMI   */
-/* $DragonFly: src/usr.bin/rpcgen/rpc_util.h,v 1.2 2004/06/19 16:40:36 joerg Exp $ */
+*/
 
 /*
- * rpc_util.h, Useful definitions for the RPC protocol compiler 
+ * rpc_util.h, Useful definitions for the RPC protocol compiler
  */
 #include <sys/types.h>
 #include <stdlib.h>
 
-#include "rpc_scan.h"
-
-#define	alloc(size)		malloc((unsigned)(size))
-#define	ALLOC(object)   (object *) malloc(sizeof(object))
+#define	XALLOC(object)   (object *) xmalloc(sizeof(object))
 
 #define	s_print	(void) sprintf
 #define	f_print (void) fprintf
@@ -81,7 +78,7 @@ struct list {
 typedef struct list list;
 
 struct xdrfunc {
-	char *name;
+	const char *name;
 	int pointerp;
 	struct xdrfunc *next;
 };
@@ -98,22 +95,23 @@ struct commandline {
 	int Ssflag;		/* produce server sample code */
 	int Scflag;		/* produce client sample code */
 	int makefileflag;       /* Generate a template Makefile */
-	char *infile;		/* input module name */
-	char *outfile;		/* output module name */
+	const char *infile;	/* input module name */
+	const char *outfile;	/* output module name */
 };
 
 #define	PUT 1
 #define	GET 2
 
 /*
- * Global variables 
+ * Global variables
  */
 #define	MAXLINESIZE 1024
 extern char curline[MAXLINESIZE];
 extern char *where;
 extern int linenum;
+extern int tirpc_socket;
 
-extern char *infilename;
+extern const char *infilename;
 extern FILE *fout;
 extern FILE *fin;
 
@@ -128,14 +126,13 @@ extern xdrfunc *xdrfunc_head, *xdrfunc_tail;
  * All the option flags
  */
 extern int inetdflag;
-extern int pmflag;   
+extern int pmflag;
 extern int tblflag;
 extern int logflag;
 extern int newstyle;
-extern int Cflag;     /* ANSI-C/C++ flag */
 extern int CCflag;     /* C++ flag */
 extern int tirpcflag; /* flag for generating tirpc code */
-extern int rpcgen_inline; /* if this is 0, then do not generate inline code */
+extern int inline_size; /* if this is 0, then do not generate inline code */
 extern int mtflag;
 
 /*
@@ -150,66 +147,82 @@ extern int nonfatalerrors;
 extern pid_t childpid;
 
 /*
- * rpc_util routines 
+ * rpc_util routines
  */
 void		reinitialize(void);
-void		crash(void );
-void		add_type(int len, char *type);
-
+void		crash(void);
+void		add_type(int, const char *);
 void		storeval(list **, definition *);
+void		*xmalloc(size_t);
+void		*xrealloc(void *, size_t);
+char		*xstrdup(const char *);
+char		*make_argname(const char *, const char *);
 
 #define	STOREVAL(list,item)	\
 	storeval(list,item)
 
-definition	*findval(list *, char *, int (*)(definition *, char *));
+definition	*findval(list *, const char *, int (*)(definition *, const char *));
 
 #define	FINDVAL(list,item,finder) \
 	findval(list, item, finder)
 
-char 		*fixtype(char *);
-char		*stringfix(char *);
-char		*locase(char *);
-void		pvname_svc(char *, char *);
-void		pvname(char *, char *);
-void		ptype(char *, char *, int);
-int		isvectordef(char *, relation);
-int		streq(char *, char *);
-void		error(char *);
+const char	*fixtype(const char *);
+const char	*stringfix(const char *);
+char		*locase(const char *);
+void		pvname_svc(const char *, const char *);
+void		pvname(const char *, const char *);
+void		ptype(const char *, const char *, int);
+int		isvectordef(const char *, relation);
+int		streq(const char *, const char *);
+void		error(const char *);
 void		expected1(tok_kind);
 void		expected2(tok_kind, tok_kind);
 void		expected3(tok_kind, tok_kind, tok_kind);
 void		tabify(FILE *, int);
-void		record_open(char *);
-bas_type	*find_type(char *);
+void		record_open(const char *);
+bas_type	*find_type(const char *);
+
 /*
- * rpc_cout routines 
+ * rpc_cout routines
  */
-void		cprint(void);
 void		emit(definition *);
 
 /*
- * rpc_hout routines 
+ * rpc_hout routines
  */
-void		print_datadef(definition *);
-void		print_funcdef(definition *);
-void		print_xdr_func_def(char *, int, int);
+void		pdeclaration(const char *, declaration *, int, const char *);
+void		print_datadef(definition *, int);
+void		print_funcdef(definition *, int);
+void		print_xdr_func_def(const char *, int);
 
 /*
- * rpc_svcout routines 
+ * rpc_svcout routines
  */
-void		write_most(char *, int, int);
+void		write_most(const char *, int, int);
 void		write_rest(void);
-void		write_programs(char *);
+void		write_programs(const char *);
 void		write_svc_aux(int);
-void		write_inetd_register(char *);
-void		write_netid_register(char *);
-void		write_nettype_register(char *);
+void		write_inetd_register(const char *);
+void		write_netid_register(const char *);
+void		write_nettype_register(const char *);
+int		nullproc(proc_list *);
+
 /*
  * rpc_clntout routines
  */
 void		write_stubs(void);
+void		printarglist(proc_list *, const char *, const char *,
+			     const char *);
 
 /*
  * rpc_tblout routines
  */
 void		write_tables(void);
+
+/*
+ * rpc_sample routines
+ */
+void		write_sample_svc(definition *);
+int		write_sample_clnt(definition *);
+void		write_sample_clnt_main(void);
+void		add_sample_msg(void);
