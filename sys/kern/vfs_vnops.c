@@ -949,12 +949,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 	else
 		sb->st_gen = (u_int32_t)vap->va_gen;
 
-#if (S_BLKSIZE == 512)
-	/* Optimize this case */
-	sb->st_blocks = vap->va_bytes >> 9;
-#else
 	sb->st_blocks = vap->va_bytes / S_BLKSIZE;
-#endif
 	sb->st_fsmid = vap->va_fsmid;
 	return (0);
 }
