@@ -817,69 +817,73 @@ groupmember(gid_t gid, struct ucred *cred)
 
 /*
  * Test whether the specified credentials imply "super-user"
- * privilege; if so, and we have accounting info, set the flag
- * indicating use of super-powers.  A kernel thread without a process
- * context is assumed to have super user capabilities.  In situations
- * where the caller always expect a cred to exist, the cred should be
- * passed separately and suser_cred()should be used instead of suser().
- *
- * Returns 0 or error.
+ * privilege.
+ * 
+ * Depreciated! Use priv_check() instead. 
  */
 int
 suser(struct thread *td)
 {
+	return priv_check(td, PRIV_ROOT);
+}
+
+/*
+ * Depreciated! Use priv_check_cred() instead. 
+ */
+int
+suser_cred(struct ucred *cred, int flag)
+{
+	return priv_check_cred(cred, PRIV_ROOT, flag);
+}
+
+/*
+ * Test whether the specified credentials have the privilege
+ * in question.
+ *
+ * A kernel thread without a process context is assumed to have 
+ * the privilege in question.  In situations where the caller always 
+ * expect a cred to exist, the cred should be passed separately and 
+ * priv_check_cred() should be used instead of priv_check().
+ *
+ * Returns 0 or error.
+ */
+int
+priv_check(struct thread *td, int priv)
+{
 	struct proc *p = td->td_proc;
 
 	if (p != NULL) {
-		return suser_cred(p->p_ucred, 0);
+		return priv_check_cred(p->p_ucred, priv, 0);
 	} else {
 		return (0);
 	}
 }
 
 /*
+ * Check a credential for privilege.
+ *
  * A non-null credential is expected unless NULL_CRED_OKAY is set.
  */
 int
-suser_cred(struct ucred *cred, int flag)
+priv_check_cred(struct ucred *cred, int priv, int flags)
 {
-	KASSERT(cred != NULL || flag & NULL_CRED_OKAY,
-		("suser_cred: NULL cred!"));
+	KASSERT(PRIV_VALID(priv), ("priv_check_cred: invalid privilege"));
+
+	KASSERT(cred != NULL || flags & NULL_CRED_OKAY,
+		("priv_check_cred: NULL cred!"));
 
 	if (cred == NULL) {
-		if (flag & NULL_CRED_OKAY)
+		if (flags & NULL_CRED_OKAY)
 			return (0);
 		else
 			return (EPERM);
 	}
 	if (cred->cr_uid != 0) 
 		return (EPERM);
-	if (cred->cr_prison && !(flag & PRISON_ROOT))
+	if (cred->cr_prison && !(flags & PRISON_ROOT))
 		return (EPERM);
 	/* NOTE: accounting for suser access (p_acflag/ASU) removed */
 	return (0);
-}
-
-/*
- * Check for privilege.
- *
- * YYY: For now this is just a wrapper calling suser().
- */
-int
-priv_check(struct thread *td, int priv)
-{
-  return suser(td);
-}
-
-/*
- * Check a credential for privilege.
- *
- * YYY: For now this is just a wrapper calling suser_cred().
- */
-int
-priv_check_cred(struct ucred *cred, int priv, int flags)
-{
-  return suser_cred(cred, flags);
 }
 
 /*
