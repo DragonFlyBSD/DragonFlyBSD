@@ -200,6 +200,7 @@ WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <sys/socket.h>
 #include <sys/syslog.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/serialize.h>
 #include <sys/sysctl.h>
 #include <sys/bus.h>
@@ -1341,7 +1342,7 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 	/* pointer to buffer in user space */
 	up = (void *)ifr->ifr_data;
 	/* work out if they're root */
-	isroot = (suser(td) == 0);
+	isroot = (priv_check(td, PRIV_ROOT) == 0);
 	
 	for (i = 0; i < 0x40; i++) {
 	    /* don't hand the DES key out to non-root users */
@@ -1356,7 +1357,7 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 	/* copy the PSA in from the caller; we only copy _some_ values */
     case SIOCSWLPSA:
 	/* root only */
-	if ((error = suser(td)))
+	if ((error = priv_check(td, PRIV_ROOT)))
 	    break;
 	error = EINVAL;	/* assume the worst */
 	/* pointer to buffer in user space containing data */
@@ -1410,7 +1411,7 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 	 */
     case SIOCSWLCNWID:
 	/* root only */
-	if ((error = suser(td)))
+	if ((error = priv_check(td, PRIV_ROOT)))
 	    break;
 	if (!(ifp->if_flags & IFF_UP)) {
 	    error = EIO;	/* only allowed while up */
@@ -1428,7 +1429,7 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 	/* copy the EEPROM in 2.4 Gz WaveMODEM  out to the caller */
     case SIOCGWLEEPROM:
 	/* root only */
-	if ((error = suser(td)))
+	if ((error = priv_check(td; PRIV_ROOT)))
 	    break;
 	/* pointer to buffer in user space */
 	up = (void *)ifr->ifr_data;
@@ -1451,7 +1452,7 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 	/* zero (Delete) the wl cache */
     case SIOCDWLCACHE:
 	/* root only */
-	if ((error = suser(td)))
+	if ((error = priv_check(td, PRIV_ROOT)))
 	    break;
 	wl_cache_zero(sc);
 	break;

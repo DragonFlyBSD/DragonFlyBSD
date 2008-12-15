@@ -83,6 +83,7 @@
 #include <sys/errno.h>
 #include <sys/time.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/jail.h>
 #include <sys/thread2.h>
 
@@ -201,7 +202,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 			/* GROSS */
 			if (ntohs(lport) < IPV6PORT_RESERVED && cred &&
-			    suser_cred(cred, PRISON_ROOT))
+			    priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT))
 				return (EACCES);
 			if (so->so_cred->cr_uid != 0 &&
 			    !IN6_IS_ADDR_MULTICAST(&sin6->sin6_addr)) {

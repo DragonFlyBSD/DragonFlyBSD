@@ -88,6 +88,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/filio.h>
@@ -402,7 +403,7 @@ pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
 	break;
 
     case PPPIOCSFLAGS:
-	if ((error = suser_cred(cred, 0)) != 0)
+	if ((error = priv_check_cred(cred, PRIV_ROOT, 0)) != 0)
 	    return (error);
 	flags = *(int *)data & SC_MASK;
 	crit_enter();
@@ -415,7 +416,7 @@ pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
 	break;
 
     case PPPIOCSMRU:
-	if ((error = suser_cred(cred, 0)) != 0)
+	if ((error = priv_check_cred(cred, PRIV_ROOT, 0)) != 0)
 	    return (error);
 	mru = *(int *)data;
 	if (mru >= PPP_MRU && mru <= PPP_MAXMRU)
@@ -428,7 +429,7 @@ pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
 
 #ifdef VJC
     case PPPIOCSMAXCID:
-	if ((error = suser_cred(cred, 0)) != 0)
+	if ((error = priv_check_cred(cred, PRIV_ROOT, 0)) != 0)
 	    return (error);
 	if (sc->sc_comp) {
 	    crit_enter();
@@ -439,14 +440,14 @@ pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
 #endif
 
     case PPPIOCXFERUNIT:
-	if ((error = suser_cred(cred, 0)) != 0)
+	if ((error = priv_check_cred(cred, PRIV_ROOT, 0)) != 0)
 	    return (error);
 	sc->sc_xfer = curthread;
 	break;
 
 #ifdef PPP_COMPRESS
     case PPPIOCSCOMPRESS:
-	if ((error = suser_cred(cred, 0)) != 0)
+	if ((error = priv_check_cred(cred, PRIV_ROOT, 0)) != 0)
 	    return (error);
 	odp = (struct ppp_option_data *) data;
 	nb = odp->length;
@@ -514,7 +515,7 @@ pppioctl(struct ppp_softc *sc, u_long cmd, caddr_t data,
 	if (cmd == PPPIOCGNPMODE) {
 	    npi->mode = sc->sc_npmode[npx];
 	} else {
-	    if ((error = suser_cred(cred, 0)) != 0)
+	    if ((error = priv_check_cred(cred, PRIV_ROOT, 0)) != 0)
 		return (error);
 	    if (npi->mode != sc->sc_npmode[npx]) {
 		crit_enter();
@@ -630,7 +631,7 @@ pppsioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	break;
 
     case SIOCSIFMTU:
-	if ((error = suser_cred(cr, 0)) != 0)
+	if ((error = priv_check_cred(cr, PRIV_ROOT, 0)) != 0)
 	    break;
 	if (ifr->ifr_mtu > PPP_MAXMTU)
 	    error = EINVAL;

@@ -50,6 +50,7 @@
 #include <sys/errno.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/sockio.h>
 #include <sys/time.h>
 #include <sys/kernel.h>

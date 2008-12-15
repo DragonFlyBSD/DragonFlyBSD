@@ -49,6 +49,7 @@
 #include <sys/mountctl.h>
 #include <sys/vnode.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/stat.h>
 #include <sys/globaldata.h>
 #include <sys/lockf.h>

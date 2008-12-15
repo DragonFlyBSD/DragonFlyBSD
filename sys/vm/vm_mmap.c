@@ -53,6 +53,7 @@
 #include <sys/filedesc.h>
 #include <sys/kern_syscall.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/resource.h>
 #include <sys/resourcevar.h>
 #include <sys/vnode.h>
@@ -332,7 +333,7 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 			if (securelevel >= 1)
 				disablexworkaround = 1;
 			else
-				disablexworkaround = suser(td);
+				disablexworkaround = priv_check(td, PRIV_ROOT);
 			if (vp->v_type == VCHR && disablexworkaround &&
 			    (flags & (MAP_PRIVATE|MAP_COPY))) {
 				error = EINVAL;
@@ -909,7 +910,7 @@ sys_mlock(struct mlock_args *uap)
 	    p->p_rlimit[RLIMIT_MEMLOCK].rlim_cur)
 		return (ENOMEM);
 #else
-	error = suser_cred(p->p_ucred, 0);
+	error = priv_check_cred(p->p_ucred, PRIV_ROOT, 0);
 	if (error)
 		return (error);
 #endif
@@ -961,7 +962,7 @@ sys_munlock(struct munlock_args *uap)
 		return (EINVAL);
 
 #ifndef pmap_wired_count
-	error = suser(td);
+	error = priv_check(td, PRIV_ROOT);
 	if (error)
 		return (error);
 #endif

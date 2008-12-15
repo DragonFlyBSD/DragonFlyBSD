@@ -33,6 +33,7 @@
 #include <sys/systm.h>
 #include <sys/conf.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/tty.h>
 #include <sys/kernel.h>
 #include <sys/thread2.h>
@@ -97,7 +98,7 @@ smopen(struct dev_open_args *ap)
 		tp->t_ispeed = tp->t_ospeed = TTYDEF_SPEED;
 		smparam(tp, &tp->t_termios);
 		(*linesw[tp->t_line].l_modem)(tp, 1);
-	} else if (tp->t_state & TS_XCLUDE && suser_cred(ap->a_cred, 0)) {
+	} else if (tp->t_state & TS_XCLUDE && priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
 		return EBUSY;
 	}
 

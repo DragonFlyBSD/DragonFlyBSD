@@ -39,6 +39,7 @@
 #include <sys/systm.h>
 #include <sys/mbuf.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -152,7 +153,7 @@ raw_uattach(struct socket *so, int proto, struct pru_attach_info *ai)
 
 	if (rp == NULL)
 		return EINVAL;
-	if ((error = suser_cred(ai->p_ucred, NULL_CRED_OKAY)) != 0)
+	if ((error = priv_check_cred(ai->p_ucred, PRIV_ROOT, NULL_CRED_OKAY)) != 0)
 		return error;
 	return raw_attach(so, proto, ai->sb_rlimit);
 }

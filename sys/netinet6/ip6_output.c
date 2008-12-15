@@ -81,6 +81,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -1395,7 +1396,7 @@ ip6_ctloutput(struct socket *so, struct sockopt *sopt)
 	error = optval = 0;
 
 	uproto = (int)so->so_proto->pr_protocol;
-	privileged = (td == NULL || suser(td)) ? 0 : 1;
+	privileged = (td == NULL || priv_check(td, PRIV_ROOT)) ? 0 : 1;
 
 	if (level == IPPROTO_IPV6) {
 		switch (op) {
@@ -2592,7 +2593,7 @@ ip6_setmoptions(int optname, struct ip6_moptions **im6op, struct mbuf *m)
 			 * all multicast addresses. Only super user is allowed
 			 * to do this.
 			 */
-			if (suser(td))
+			if (priv_check(td, PRIV_ROOT))
 			{
 				error = EACCES;
 				break;
@@ -2695,7 +2696,7 @@ ip6_setmoptions(int optname, struct ip6_moptions **im6op, struct mbuf *m)
 		}
 		mreq = mtod(m, struct ipv6_mreq *);
 		if (IN6_IS_ADDR_UNSPECIFIED(&mreq->ipv6mr_multiaddr)) {
-			if (suser(td)) {
+			if (priv_check(td, PRIV_ROOT)) {
 				error = EACCES;
 				break;
 			}

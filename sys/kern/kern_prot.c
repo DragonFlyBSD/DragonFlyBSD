@@ -352,7 +352,7 @@ sys_setuid(struct setuid_args *uap)
 #ifdef POSIX_APPENDIX_B_4_2_2	/* Use BSD-compat clause from B.4.2.2 */
 	    uid != cr->cr_uid &&	/* allow setuid(geteuid()) */
 #endif
-	    (error = suser_cred(cr, PRISON_ROOT)))
+	    (error = priv_check_cred(cr, PRIV_ROOT, PRISON_ROOT)))
 		return (error);
 
 #ifdef _POSIX_SAVED_IDS
@@ -364,7 +364,7 @@ sys_setuid(struct setuid_args *uap)
 #ifdef POSIX_APPENDIX_B_4_2_2	/* Use the clause from B.4.2.2 */
 	    uid == cr->cr_uid ||
 #endif
-	    suser_cred(cr, PRISON_ROOT) == 0) /* we are using privs */
+	    priv_check_cred(cr, PRIV_ROOT, PRISON_ROOT) == 0) /* we are using privs */
 #endif
 	{
 		/*
@@ -415,7 +415,7 @@ sys_seteuid(struct seteuid_args *uap)
 	euid = uap->euid;
 	if (euid != cr->cr_ruid &&		/* allow seteuid(getuid()) */
 	    euid != cr->cr_svuid &&		/* allow seteuid(saved uid) */
-	    (error = suser_cred(cr, PRISON_ROOT)))
+	    (error = priv_check_cred(cr, PRIV_ROOT, PRISON_ROOT)))
 		return (error);
 	/*
 	 * Everything's okay, do it.  Copy credentials so other references do
@@ -460,7 +460,7 @@ sys_setgid(struct setgid_args *uap)
 #ifdef POSIX_APPENDIX_B_4_2_2	/* Use BSD-compat clause from B.4.2.2 */
 	    gid != cr->cr_groups[0] && /* allow setgid(getegid()) */
 #endif
-	    (error = suser_cred(cr, PRISON_ROOT)))
+	    (error = priv_check_cred(cr, PRIV_ROOT, PRISON_ROOT)))
 		return (error);
 
 #ifdef _POSIX_SAVED_IDS
@@ -472,7 +472,7 @@ sys_setgid(struct setgid_args *uap)
 #ifdef POSIX_APPENDIX_B_4_2_2	/* use the clause from B.4.2.2 */
 	    gid == cr->cr_groups[0] ||
 #endif
-	    suser_cred(cr, PRISON_ROOT) == 0) /* we are using privs */
+	    priv_check_cred(cr, PRIV_ROOT, PRISON_ROOT) == 0) /* we are using privs */
 #endif
 	{
 		/*
@@ -524,7 +524,7 @@ sys_setegid(struct setegid_args *uap)
 	egid = uap->egid;
 	if (egid != cr->cr_rgid &&		/* allow setegid(getgid()) */
 	    egid != cr->cr_svgid &&		/* allow setegid(saved gid) */
-	    (error = suser_cred(cr, PRISON_ROOT)))
+	    (error = priv_check_cred(cr, PRIV_ROOT, PRISON_ROOT)))
 		return (error);
 	if (cr->cr_groups[0] != egid) {
 		cr = cratom(&p->p_ucred);
@@ -547,7 +547,7 @@ sys_setgroups(struct setgroups_args *uap)
 		return(EPERM);
 	cr = p->p_ucred;
 
-	if ((error = suser_cred(cr, PRISON_ROOT)))
+	if ((error = priv_check_cred(cr, PRIV_ROOT, PRISON_ROOT)))
 		return (error);
 	ngrp = uap->gidsetsize;
 	if (ngrp > NGROUPS)
@@ -593,7 +593,7 @@ sys_setreuid(struct setreuid_args *uap)
 	if (((ruid != (uid_t)-1 && ruid != cr->cr_ruid && ruid != cr->cr_svuid) ||
 	     (euid != (uid_t)-1 && euid != cr->cr_uid &&
 	     euid != cr->cr_ruid && euid != cr->cr_svuid)) &&
-	    (error = suser_cred(cr, PRISON_ROOT)) != 0)
+	    (error = priv_check_cred(cr, PRIV_ROOT, PRISON_ROOT)) != 0)
 		return (error);
 
 	if (euid != (uid_t)-1 && cr->cr_uid != euid) {
@@ -631,7 +631,7 @@ sys_setregid(struct setregid_args *uap)
 	if (((rgid != (gid_t)-1 && rgid != cr->cr_rgid && rgid != cr->cr_svgid) ||
 	     (egid != (gid_t)-1 && egid != cr->cr_groups[0] &&
 	     egid != cr->cr_rgid && egid != cr->cr_svgid)) &&
-	    (error = suser_cred(cr, PRISON_ROOT)) != 0)
+	    (error = priv_check_cred(cr, PRIV_ROOT, PRISON_ROOT)) != 0)
 		return (error);
 
 	if (egid != (gid_t)-1 && cr->cr_groups[0] != egid) {
@@ -677,7 +677,7 @@ sys_setresuid(struct setresuid_args *uap)
 	      euid != cr->cr_uid) ||
 	     (suid != (uid_t)-1 && suid != cr->cr_ruid && suid != cr->cr_svuid &&
 	      suid != cr->cr_uid)) &&
-	    (error = suser_cred(cr, PRISON_ROOT)) != 0)
+	    (error = priv_check_cred(cr, PRIV_ROOT, PRISON_ROOT)) != 0)
 		return (error);
 	if (euid != (uid_t)-1 && cr->cr_uid != euid) {
 		cr = change_euid(euid);
@@ -719,7 +719,7 @@ sys_setresgid(struct setresgid_args *uap)
 	      egid != cr->cr_groups[0]) ||
 	     (sgid != (gid_t)-1 && sgid != cr->cr_rgid && sgid != cr->cr_svgid &&
 	      sgid != cr->cr_groups[0])) &&
-	    (error = suser_cred(cr, PRISON_ROOT)) != 0)
+	    (error = priv_check_cred(cr, PRIV_ROOT, PRISON_ROOT)) != 0)
 		return (error);
 
 	if (egid != (gid_t)-1 && cr->cr_groups[0] != egid) {
@@ -900,7 +900,7 @@ p_trespass(struct ucred *cr1, struct ucred *cr2)
 		return (0);
 	if (cr1->cr_uid == cr2->cr_uid)
 		return (0);
-	if (suser_cred(cr1, PRISON_ROOT) == 0)
+	if (priv_check_cred(cr1, PRIV_ROOT, PRISON_ROOT) == 0)
 		return (0);
 	return (EPERM);
 }
@@ -1118,7 +1118,7 @@ sys_setlogin(struct setlogin_args *uap)
 	char logintmp[MAXLOGNAME];
 
 	KKASSERT(p != NULL);
-	if ((error = suser_cred(p->p_ucred, PRISON_ROOT)))
+	if ((error = priv_check_cred(p->p_ucred, PRIV_ROOT, PRISON_ROOT)))
 		return (error);
 	error = copyinstr((caddr_t) uap->namebuf, (caddr_t) logintmp,
 	    sizeof(logintmp), (size_t *)0);

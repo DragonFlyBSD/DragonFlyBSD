@@ -38,6 +38,7 @@
 #include <sys/mbuf.h>   
 #include <sys/module.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/sysctl.h>
 
 #include <sys/socket.h>
@@ -321,7 +322,7 @@ ieee80211_load_module(const char *modname)
 #ifdef notyet
 	struct thread *td = curthread;
 
-	if (suser(td) == 0 && securelevel_gt(td->td_ucred, 0) == 0) {
+	if (priv_check(td, PRIV_ROOT) == 0 && securelevel_gt(td->td_ucred, 0) == 0) {
 		crit_enter();	/* NB: need BGL here */
 		linker_load_module(modname, NULL, NULL, NULL, NULL);
 		crit_exit();

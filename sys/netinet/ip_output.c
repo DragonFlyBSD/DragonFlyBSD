@@ -50,6 +50,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 #include <sys/in_cksum.h>
@@ -1489,7 +1490,7 @@ ip_ctloutput(struct socket *so, struct sockopt *sopt)
 				break;
 			soopt_to_mbuf(sopt, m);
 			priv = (sopt->sopt_td != NULL &&
-				suser(sopt->sopt_td) != 0) ? 0 : 1;
+				priv_check(sopt->sopt_td, PRIV_ROOT) != 0) ? 0 : 1;
 			req = mtod(m, caddr_t);
 			len = m->m_len;
 			optname = sopt->sopt_name;

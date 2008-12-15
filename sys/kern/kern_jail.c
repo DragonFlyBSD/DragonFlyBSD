@@ -51,6 +51,7 @@
 #include <sys/nlookup.h>
 #include <sys/namecache.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/jail.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
@@ -142,7 +143,7 @@ sys_jail(struct jail_args *uap)
 	struct jail_ip_storage *jip;
 	/* Multiip */
 
-	error = suser(td);
+	error = priv_check(td, PRIV_ROOT);
 	if (error) {
 		uap->sysmsg_result = -1;
 		return(error);
@@ -256,7 +257,7 @@ sys_jail_attach(struct jail_attach_args *uap)
 	struct thread *td = curthread;
 	int error;
 
-	error = suser(td);
+	error = priv_check(td, PRIV_ROOT);
 	if (error)
 		return(error);
 

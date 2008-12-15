@@ -80,6 +80,7 @@
 #include <sys/file.h>
 #include <sys/select.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/poll.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
@@ -264,7 +265,7 @@ ucomopen(struct dev_open_args *ap)
 
 	if (ISSET(tp->t_state, TS_ISOPEN) &&
 	    ISSET(tp->t_state, TS_XCLUDE) &&
-	    suser_cred(ap->a_cred, 0)
+	    priv_check_cred(ap->a_cred, PRIV_ROOT, 0)
 	) {
 		return (EBUSY);
 	}

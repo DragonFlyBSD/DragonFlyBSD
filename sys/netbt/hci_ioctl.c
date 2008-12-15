@@ -38,6 +38,7 @@
 #include <sys/kernel.h>
 #include <sys/mbuf.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/systm.h>
 #include <sys/thread2.h>
 #include <sys/bus.h>
@@ -224,7 +225,7 @@ hci_ioctl(unsigned long cmd, void *data, struct proc *p)
 		break;
 
 	case SIOCSBTFLAGS:	/* set unit flags (privileged) */
-		err = suser(td);
+		err = priv_check(td, PRIV_ROOT);
 		if (err)
 			break;
 
@@ -249,7 +250,7 @@ hci_ioctl(unsigned long cmd, void *data, struct proc *p)
 		break;
 
 	case SIOCSBTPOLICY:	/* set unit link policy (privileged) */
-		err = suser(td);
+		err = priv_check(td, PRIV_ROOT);
 		if (err)
 			break;
 
@@ -259,7 +260,7 @@ hci_ioctl(unsigned long cmd, void *data, struct proc *p)
 		break;
 
 	case SIOCSBTPTYPE:	/* set unit packet types (privileged) */
-		err = suser(td);
+		err = priv_check(td, PRIV_ROOT);
 		if (err)
 			break;
 
@@ -273,7 +274,7 @@ hci_ioctl(unsigned long cmd, void *data, struct proc *p)
 		break;
 
 	case SIOCZBTSTATS:	/* get & reset unit statistics */
-		err = suser(td);
+		err = priv_check(td, PRIV_ROOT);
 		if (err)
 			break;
 
@@ -287,7 +288,7 @@ hci_ioctl(unsigned long cmd, void *data, struct proc *p)
 		 * sent to USB bluetooth controllers that are not an
 		 * integer number of frame sizes, the USB bus locks up.
 		 */
-		err = suser(td);
+		err = priv_check(td, PRIV_ROOT);
 		if (err)
 			break;
 

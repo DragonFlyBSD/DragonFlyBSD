@@ -49,6 +49,7 @@
 #include <sys/malloc.h>
 #include <sys/tty.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
 #include <sys/uio.h>
@@ -942,7 +943,7 @@ stliopen_restart:
 			}
 		}
 		if ((tp->t_state & TS_XCLUDE) &&
-		    suser_cred(ap->a_cred, 0)) {
+		    priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
 			error = EBUSY;
 			goto stliopen_end;
 		}
@@ -1132,7 +1133,7 @@ STATIC int stliioctl(struct dev_ioctl_args *ap)
 
 		switch (cmd) {
 		case TIOCSETA:
-			if ((error = suser_cred(ap->a_cred, 0)) == 0)
+			if ((error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) == 0)
 				*localtios = *((struct termios *) data);
 			break;
 		case TIOCGETA:
@@ -1269,7 +1270,7 @@ STATIC int stliioctl(struct dev_ioctl_args *ap)
 		*((int *) data) = (portp->sigs | TIOCM_LE);
 		break;
 	case TIOCMSDTRWAIT:
-		if ((error = suser_cred(ap->a_cred, 0)) == 0)
+		if ((error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) == 0)
 			portp->dtrwait = *((int *) data) * hz / 100;
 		break;
 	case TIOCMGDTRWAIT:

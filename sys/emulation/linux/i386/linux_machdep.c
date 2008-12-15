@@ -37,6 +37,7 @@
 #include <sys/mman.h>
 #include <sys/nlookup.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/resource.h>
 #include <sys/resourcevar.h>
 #include <sys/sysproto.h>
@@ -677,7 +678,7 @@ sys_linux_iopl(struct linux_iopl_args *args)
 
 	if (args->level < 0 || args->level > 3)
 		return (EINVAL);
-	if ((error = suser(td)) != 0)
+	if ((error = priv_check(td, PRIV_ROOT)) != 0)
 		return (error);
 	if (securelevel > 0)
 		return (EPERM);

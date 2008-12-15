@@ -49,6 +49,7 @@
 #include <sys/malloc.h>
 #include <sys/mount.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/buf.h>
 #include <sys/mbuf.h>
 #include <sys/resourcevar.h>
@@ -152,7 +153,7 @@ sys_nfssvc(struct nfssvc_args *uap)
 	/*
 	 * Must be super user
 	 */
-	error = suser(td);
+	error = priv_check(td, PRIV_ROOT);
 	if(error)
 		return (error);
 	KKASSERT(td->td_proc);	/* for ucred and p_fd */

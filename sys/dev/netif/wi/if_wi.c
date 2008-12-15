@@ -75,6 +75,7 @@
 #include <sys/sockio.h>
 #include <sys/mbuf.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/module.h>
@@ -1110,7 +1111,7 @@ wi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		error = wi_get_cfg(ifp, cmd, data, cr);
 		break;
 	case SIOCSIFGENERIC:
-		error = suser_cred(cr, NULL_CRED_OKAY);
+		error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
 		if (error)
 			break;
 		error = wi_set_cfg(ifp, cmd, data);
@@ -1129,7 +1130,7 @@ wi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			error = copyout(&wreq, ifr->ifr_data, sizeof(wreq));
 		break;
 	case SIOCSPRISM2DEBUG:
-		if ((error = suser_cred(cr, NULL_CRED_OKAY)))
+		if ((error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY)))
 			goto out;
 		error = copyin(ifr->ifr_data, &wreq, sizeof(wreq));
 		if (error)
@@ -1150,7 +1151,7 @@ wi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		}
 		break;
 	case SIOCS80211:
-		error = suser_cred(cr, NULL_CRED_OKAY);
+		error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
 		if (error)
 			break;
 		ireq = (struct ieee80211req *) data;

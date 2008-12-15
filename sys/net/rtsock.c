@@ -74,6 +74,7 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/protosw.h>
@@ -513,7 +514,7 @@ route_output(struct mbuf *m, struct socket *so, ...)
 	 * Verify that the caller has the appropriate privilege; RTM_GET
 	 * is the only operation the non-superuser is allowed.
 	 */
-	if (rtm->rtm_type != RTM_GET && suser_cred(so->so_cred, 0) != 0)
+	if (rtm->rtm_type != RTM_GET && priv_check_cred(so->so_cred, PRIV_ROOT, 0) != 0)
 		gotoerr(EPERM);
 
 	switch (rtm->rtm_type) {

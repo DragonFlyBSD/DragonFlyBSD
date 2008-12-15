@@ -32,6 +32,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/sysctl.h>
@@ -772,7 +773,7 @@ vm86_sysarch(struct lwp *lp, char *args)
 	case VM86_INTCALL: {
 		struct vm86_intcall_args sa;
 
-		if ((error = suser_cred(lp->lwp_proc->p_ucred, 0)))
+		if ((error = priv_check_cred(lp->lwp_proc->p_ucred, PRIV_ROOT, 0)))
 			return (error);
 		if ((error = copyin(ua.sub_args, &sa, sizeof(sa))))
 			return (error);

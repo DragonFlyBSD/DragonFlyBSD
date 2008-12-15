@@ -46,6 +46,7 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/mount.h>
 #include <sys/nlookup.h>
 #include <sys/vnode.h>
@@ -944,7 +945,7 @@ vn_stat(struct vnode *vp, struct stat *sb, struct ucred *cred)
 	}
 	
 	sb->st_flags = vap->va_flags;
-	if (suser_cred(cred, 0))
+	if (priv_check_cred(cred, PRIV_ROOT, 0))
 		sb->st_gen = 0;
 	else
 		sb->st_gen = (u_int32_t)vap->va_gen;

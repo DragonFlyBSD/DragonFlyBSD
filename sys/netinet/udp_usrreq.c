@@ -78,6 +78,7 @@
 #include <sys/mbuf.h>
 #include <sys/domain.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -710,7 +711,7 @@ udp_getcred(SYSCTL_HANDLER_ARGS)
 	struct inpcb *inp;
 	int error;
 
-	error = suser(req->td);
+	error = priv_check(req->td, PRIV_ROOT);
 	if (error)
 		return (error);
 	error = SYSCTL_IN(req, addrs, sizeof addrs);

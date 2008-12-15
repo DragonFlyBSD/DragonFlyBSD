@@ -42,6 +42,7 @@
 #include <sys/sysproto.h>
 #include <sys/buf.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/nlookup.h>
 #include <sys/dmap.h>		/* XXX */
 #include <sys/vnode.h>
@@ -183,7 +184,7 @@ sys_swapon(struct swapon_args *uap)
 	KKASSERT(td->td_proc);
 	cred = td->td_proc->p_ucred;
 
-	error = suser(td);
+	error = priv_check(td, PRIV_ROOT);
 	if (error)
 		return (error);
 

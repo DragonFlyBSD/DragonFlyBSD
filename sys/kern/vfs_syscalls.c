@@ -58,6 +58,7 @@
 #include <sys/unistd.h>
 #include <sys/vnode.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/namei.h>
 #include <sys/nlookup.h>
 #include <sys/dirent.h>
@@ -127,20 +128,20 @@ sys_mount(struct mount_args *uap)
 	KKASSERT(p);
 	if (cred->cr_prison != NULL)
 		return (EPERM);
-	if (usermount == 0 && (error = suser(td)))
+	if (usermount == 0 && (error = priv_check(td, PRIV_ROOT)))
 		return (error);
 	/*
 	 * Do not allow NFS export by non-root users.
 	 */
 	if (uap->flags & MNT_EXPORTED) {
-		error = suser(td);
+		error = priv_check(td, PRIV_ROOT);
 		if (error)
 			return (error);
 	}
 	/*
 	 * Silently enforce MNT_NOSUID and MNT_NODEV for non-root users
 	 */
-	if (suser(td)) 
+	if (priv_check(td, PRIV_ROOT)) 
 		uap->flags |= MNT_NOSUID | MNT_NODEV;
 
 	/*
@@ -208,7 +209,7 @@ sys_mount(struct mount_args *uap)
 		 * permitted to update it.
 		 */
 		if (mp->mnt_stat.f_owner != cred->cr_uid &&
-		    (error = suser(td))) {
+		    (error = priv_check(td, PRIV_ROOT))) {
 			cache_drop(&nch);
 			vput(vp);
 			return (error);
@@ -235,7 +236,7 @@ sys_mount(struct mount_args *uap)
 	 * onto which we are attempting to mount.
 	 */
 	if ((error = VOP_GETATTR(vp, &va)) ||
-	    (va.va_uid != cred->cr_uid && (error = suser(td)))) {
+	    (va.va_uid != cred->cr_uid && (error = priv_check(td, PRIV_ROOT)))) {
 		cache_drop(&nch);
 		vput(vp);
 		return (error);
@@ -268,7 +269,7 @@ sys_mount(struct mount_args *uap)
 		linker_file_t lf;
 
 		/* Only load modules for root (very important!) */
-		if ((error = suser(td)) != 0) {
+		if ((error = priv_check(td, PRIV_ROOT)) != 0) {
 			cache_drop(&nch);
 			vput(vp);
 			return error;
@@ -548,7 +549,7 @@ sys_unmount(struct unmount_args *uap)
 	KKASSERT(p);
 	if (p->p_ucred->cr_prison != NULL)
 		return (EPERM);
-	if (usermount == 0 && (error = suser(td)))
+	if (usermount == 0 && (error = priv_check(td, PRIV_ROOT)))
 		return (error);
 
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
@@ -564,7 +565,7 @@ sys_unmount(struct unmount_args *uap)
 	 * permitted to unmount this filesystem.
 	 */
 	if ((mp->mnt_stat.f_owner != p->p_ucred->cr_uid) &&
-	    (error = suser(td)))
+	    (error = priv_check(td, PRIV_ROOT)))
 		goto out;
 
 	/*
@@ -911,7 +912,7 @@ sys_mountctl(struct mountctl_args *uap)
 	KKASSERT(p);
 	if (p->p_ucred->cr_prison != NULL)
 		return (EPERM);
-	if ((error = suser(td)) != 0)
+	if ((error = priv_check(td, PRIV_ROOT)) != 0)
 		return (error);
 
 	/*
@@ -1041,7 +1042,7 @@ kern_statfs(struct nlookupdata *nd, struct statfs *buf)
 	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 	bcopy(sp, buf, sizeof(*buf));
 	/* Only root should have access to the fsid's. */
-	if (suser(td))
+	if (priv_check(td, PRIV_ROOT))
 		buf->f_fsid.val[0] = buf->f_fsid.val[1] = 0;
 	return (0);
 }
@@ -1104,7 +1105,7 @@ kern_fstatfs(int fd, struct statfs *buf)
 	bcopy(sp, buf, sizeof(*buf));
 
 	/* Only root should have access to the fsid's. */
-	if (suser(td))
+	if (priv_check(td, PRIV_ROOT))
 		buf->f_fsid.val[0] = buf->f_fsid.val[1] = 0;
 	error = 0;
 done:
@@ -1602,7 +1603,7 @@ kern_chroot(struct nchandle *nch)
 	/*
 	 * Only root can chroot
 	 */
-	if ((error = suser_cred(p->p_ucred, PRISON_ROOT)) != 0)
+	if ((error = priv_check_cred(p->p_ucred, PRIV_ROOT, PRISON_ROOT)) != 0)
 		return (error);
 
 	/*
@@ -1853,10 +1854,10 @@ kern_mknod(struct nlookupdata *nd, int mode, int rmajor, int rminor)
 	switch (mode & S_IFMT) {
 	case S_IFCHR:
 	case S_IFBLK:
-		error = suser(td);
+		error = priv_check(td, PRIV_ROOT);
 		break;
 	default:
-		error = suser_cred(p->p_ucred, PRISON_ROOT);
+		error = priv_check_cred(p->p_ucred, PRIV_ROOT, PRISON_ROOT);
 		break;
 	}
 	if (error)
@@ -2006,7 +2007,7 @@ can_hardlink(struct vnode *vp, struct thread *td, struct ucred *cred)
 	/*
 	 * root cred can always hardlink
 	 */
-	if (suser_cred(cred, PRISON_ROOT) == 0)
+	if (priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT) == 0)
 		return (0);
 
 	/*
@@ -2537,7 +2538,7 @@ setfflags(struct vnode *vp, int flags)
 	 * chown can't fail when done as root.
 	 */
 	if ((vp->v_type == VCHR || vp->v_type == VBLK) && 
-	    ((error = suser_cred(p->p_ucred, PRISON_ROOT)) != 0))
+	    ((error = priv_check_cred(p->p_ucred, PRIV_ROOT, PRISON_ROOT)) != 0))
 		return (error);
 
 	/*
@@ -3566,7 +3567,7 @@ sys_revoke(struct revoke_args *uap)
 		if (error == 0)
 			error = VOP_GETATTR(vp, &vattr);
 		if (error == 0 && cred->cr_uid != vattr.va_uid)
-			error = suser_cred(cred, PRISON_ROOT);
+			error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT);
 		if (error == 0 && count_udev(vp->v_umajor, vp->v_uminor) > 0) {
 			error = 0;
 			vx_lock(vp);
@@ -3607,7 +3608,7 @@ sys_getfh(struct getfh_args *uap)
 	/*
 	 * Must be super user
 	 */
-	if ((error = suser(td)) != 0)
+	if ((error = priv_check(td, PRIV_ROOT)) != 0)
 		return (error);
 
 	vp = NULL;
@@ -3635,7 +3636,7 @@ sys_getfh(struct getfh_args *uap)
  * syscall for the rpc.lockd to use to translate a NFS file handle into
  * an open descriptor.
  *
- * warning: do not remove the suser() call or this becomes one giant
+ * warning: do not remove the priv_check() call or this becomes one giant
  * security hole.
  */
 int
@@ -3657,7 +3658,7 @@ sys_fhopen(struct fhopen_args *uap)
 	/*
 	 * Must be super user
 	 */
-	error = suser(td);
+	error = priv_check(td, PRIV_ROOT);
 	if (error)
 		return (error);
 
@@ -3818,7 +3819,7 @@ sys_fhstat(struct fhstat_args *uap)
 	/*
 	 * Must be super user
 	 */
-	error = suser(td);
+	error = priv_check(td, PRIV_ROOT);
 	if (error)
 		return (error);
 	
@@ -3857,7 +3858,7 @@ sys_fhstatfs(struct fhstatfs_args *uap)
 	/*
 	 * Must be super user
 	 */
-	if ((error = suser(td)))
+	if ((error = priv_check(td, PRIV_ROOT)))
 		return (error);
 
 	if ((error = copyin(uap->u_fhp, &fh, sizeof(fhandle_t))) != 0)
@@ -3885,7 +3886,7 @@ sys_fhstatfs(struct fhstatfs_args *uap)
 	kfree(freepath, M_TEMP);
 
 	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
-	if (suser(td)) {
+	if (priv_check(td, PRIV_ROOT)) {
 		bcopy(sp, &sb, sizeof(sb));
 		sb.f_fsid.val[0] = sb.f_fsid.val[1] = 0;
 		sp = &sb;
@@ -3910,7 +3911,7 @@ sys_fhstatvfs(struct fhstatvfs_args *uap)
 	/*
 	 * Must be super user
 	 */
-	if ((error = suser(td)))
+	if ((error = priv_check(td, PRIV_ROOT)))
 		return (error);
 
 	if ((error = copyin(uap->u_fhp, &fh, sizeof(fhandle_t))) != 0)

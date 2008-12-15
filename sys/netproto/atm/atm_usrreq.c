@@ -163,7 +163,7 @@ atm_dgram_control(struct socket *so, u_long cmd, caddr_t data,
 		struct atmcfgreq	*acp = (struct atmcfgreq *)data;
 		struct atm_pif		*pip;
 
-		if (suser(td))
+		if (priv_check(td, PRIV_ROOT))
 			ATM_RETERR(EPERM);
 
 		switch (acp->acr_opcode) {
@@ -196,7 +196,7 @@ atm_dgram_control(struct socket *so, u_long cmd, caddr_t data,
 		struct atmaddreq	*aap = (struct atmaddreq *)data;
 		Atm_endpoint		*epp;
 
-		if (suser(td))
+		if (priv_check(td, PRIV_ROOT))
 			ATM_RETERR(EPERM);
 
 		switch (aap->aar_opcode) {
@@ -246,7 +246,7 @@ atm_dgram_control(struct socket *so, u_long cmd, caddr_t data,
 		struct sigmgr		*smp;
 		Atm_endpoint		*epp;
 
-		if (suser(td))
+		if (priv_check(td, PRIV_ROOT))
 			ATM_RETERR(EPERM);
 
 		switch (adp->adr_opcode) {
@@ -299,7 +299,7 @@ atm_dgram_control(struct socket *so, u_long cmd, caddr_t data,
 		struct sigmgr		*smp;
 		struct ifnet		*ifp2;
 
-		if (suser(td))
+		if (priv_check(td, PRIV_ROOT))
 			ATM_RETERR(EPERM);
 
 		switch (asp->asr_opcode) {
