@@ -69,7 +69,7 @@
 #undef if_collisions
 #include <rpcsvc/rstat.h>
 
-int havedisk (void);
+int haveadisk (void);
 void updatexfers (int, int *);
 void setup (void);
 int stats_service();
@@ -144,7 +144,7 @@ rstatproc_havedisk_3_svc(argp, rqstp)
     if (! stat_is_init)
         stat_init();
     sincelastreq = 0;
-    have = havedisk();
+    have = haveadisk();
 	return(&have);
 }
 
@@ -295,7 +295,7 @@ updatestat()
  * returns true if have a disk
  */
 int
-havedisk()
+haveadisk()
 {
 	register int i;
 	struct statinfo stats;
