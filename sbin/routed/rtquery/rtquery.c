@@ -610,8 +610,8 @@ rip_input(struct sockaddr_in *from,
 	if (nflag) {
 		printf("%s:", inet_ntoa(from->sin_addr));
 	} else {
-		hp = gethostbyaddr((char*)&from->sin_addr,
-				   sizeof(struct in_addr), AF_INET);
+		hp = gethostbyaddr(&from->sin_addr, sizeof(struct in_addr),
+				   AF_INET);
 		if (hp == 0) {
 			printf("%s:",
 			       inet_ntoa(from->sin_addr));
@@ -692,8 +692,7 @@ rip_input(struct sockaddr_in *from,
 				if (name[0] == '\0'
 				    && ((in.s_addr & ~mask) != 0
 					|| mask == 0xffffffff)) {
-					hp = gethostbyaddr((char*)&in,
-							   sizeof(in),
+					hp = gethostbyaddr(&in, sizeof(in),
 							   AF_INET);
 					if (hp != 0)
 						name = hp->h_name;
@@ -760,8 +759,7 @@ rip_input(struct sockaddr_in *from,
 			if (nflag)
 				hp = 0;
 			else
-				hp = gethostbyaddr((char*)&in, sizeof(in),
-						   AF_INET);
+				hp = gethostbyaddr(&in, sizeof(in), AF_INET);
 			printf(" nhop=%-15s%s",
 			       (hp != 0) ? hp->h_name : inet_ntoa(in),
 			       (IMSG.rip_vers == RIPv1) ? " ?" : "");

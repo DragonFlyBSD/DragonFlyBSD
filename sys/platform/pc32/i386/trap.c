@@ -374,7 +374,7 @@ userexit(struct lwp *lp)
 	 * never raised and does not need to be reduced.
 	 *
 	 * Note that at this point there may be other LWKT thread at
-	 * TDPRI_KERN_USER (aka higher then our currenet priority).  We
+	 * TDPRI_KERN_USER (aka higher then our current priority).  We
 	 * do NOT want to run these threads yet.
 	 */
 	if (td->td_release == NULL)

@@ -38,6 +38,8 @@
  * $DragonFly: src/usr.bin/window/var.c,v 1.3 2005/02/28 13:57:05 joerg Exp $
  */
 
+#include <stdlib.h>
+
 #include "value.h"
 #include "var.h"
 #include "mystring.h"

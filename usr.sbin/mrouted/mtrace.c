@@ -734,7 +734,7 @@ inet_name(u_int32 addr)
 {
     struct hostent *e;
 
-    e = gethostbyaddr((char *)&addr, sizeof(addr), AF_INET);
+    e = gethostbyaddr(&addr, sizeof(addr), AF_INET);
 
     return e ? e->h_name : "?";
 }

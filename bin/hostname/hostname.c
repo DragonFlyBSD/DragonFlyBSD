@@ -220,7 +220,7 @@ main(int argc, char **argv)
 					if (iflag & HST_IF_V6) {
 						if (sai->sin_family == AF_INET6) {
 							sai6 = (struct sockaddr_in6 *)info.rti_info[RTAX_IFA];
-							hst = gethostbyaddr((const char*)&sai6->sin6_addr,
+							hst = gethostbyaddr(&sai6->sin6_addr,
 									sizeof(sai6->sin6_addr),AF_INET6);
 
 							if (h_errno == NETDB_SUCCESS) {
@@ -231,7 +231,7 @@ main(int argc, char **argv)
 					} else {
 						if ((sai->sin_family == AF_INET)) {
 
-							hst = gethostbyaddr((const char*)&sai->sin_addr,
+							hst = gethostbyaddr(&sai->sin_addr,
 									sizeof(sai->sin_addr),AF_INET);
 
 							if (h_errno == NETDB_SUCCESS) {
@@ -275,9 +275,9 @@ main(int argc, char **argv)
 		}
 		
 		if (flag6 == 1) 
-			hst = gethostbyaddr((const char*)&ia6, sizeof(ia6), AF_INET6);
+			hst = gethostbyaddr(&ia6, sizeof(ia6), AF_INET6);
 		else
-			hst = gethostbyaddr((const char*)&ia, sizeof(ia), AF_INET);
+			hst = gethostbyaddr(&ia, sizeof(ia), AF_INET);
 		if (!hst) {
 			if (h_errno == HOST_NOT_FOUND) 
 				errx(1,"host not found\n");

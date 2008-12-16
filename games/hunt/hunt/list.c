@@ -144,8 +144,8 @@ driver_name(struct driver *driver)
 
 	if (driver->addr.sa_family == AF_INET) {
 		sin = (struct sockaddr_in *)&driver->addr;
-		hp = gethostbyaddr((char *)&sin->sin_addr, 
-		    sizeof sin->sin_addr, AF_INET);
+		hp = gethostbyaddr(&sin->sin_addr, sizeof sin->sin_addr,
+		    AF_INET);
 		if (hp != NULL)
 			name = hp->h_name;
 		else {

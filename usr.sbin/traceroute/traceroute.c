@@ -1160,7 +1160,7 @@ inetname(struct in_addr in)
 		}
 	}
 	if (!nflag && in.s_addr != INADDR_ANY) {
-		hp = gethostbyaddr((char *)&in, sizeof(in), AF_INET);
+		hp = gethostbyaddr(&in, sizeof(in), AF_INET);
 		if (hp != NULL) {
 			if ((cp = strchr(hp->h_name, '.')) != NULL &&
 			    strcmp(cp + 1, domain) == 0)

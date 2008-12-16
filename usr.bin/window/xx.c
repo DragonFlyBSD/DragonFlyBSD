@@ -38,10 +38,12 @@
  * $DragonFly: src/usr.bin/window/xx.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
 
+#include <stdlib.h>
+#include <string.h>
+
 #include "ww.h"
 #include "xx.h"
 #include "tt.h"
-#include <stdlib.h>
 
 xxinit()
 {

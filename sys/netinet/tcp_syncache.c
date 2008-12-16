@@ -111,6 +111,7 @@
 #include <netinet/tcp_fsm.h>
 #include <netinet/tcp_seq.h>
 #include <netinet/tcp_timer.h>
+#include <netinet/tcp_timer2.h>
 #include <netinet/tcp_var.h>
 #include <netinet6/tcp6_var.h>
 
@@ -792,7 +793,7 @@ syncache_socket(struct syncache *sc, struct socket *lso, struct mbuf *m)
 	if (sc->sc_rxtslot != 0)
 		tp->snd_cwnd = tp->t_maxseg;
 	tcp_create_timermsg(tp);
-	callout_reset(tp->tt_keep, tcp_keepinit, tcp_timer_keep, tp);
+	tcp_callout_reset(tp, tp->tt_keep, tcp_keepinit, tcp_timer_keep);
 
 	tcpstat.tcps_accepts++;
 	return (so);

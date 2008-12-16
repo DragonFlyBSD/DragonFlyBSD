@@ -1,9 +1,6 @@
 /*
- * Copyright (c) 1983, 1993
+ * Copyright (c) 1982, 1986, 1993
  *	The Regents of the University of California.  All rights reserved.
- *
- * This code is derived from software contributed to Berkeley by
- * Edward Wang at The University of California, Berkeley.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,78 +30,74 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#)wwflush.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/window/wwflush.c,v 1.2.6.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwflush.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ *	@(#)tcp_timer.h	8.1 (Berkeley) 6/10/93
+ * $FreeBSD: src/sys/netinet/tcp_timer.h,v 1.18.2.1 2002/08/16 22:16:39 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_timer.h,v 1.3 2003/08/23 11:18:00 rob Exp $
  */
 
-#include <signal.h>
-#include <string.h>
+#ifndef _NETINET_TCP_TIMER2_H_
+#define _NETINET_TCP_TIMER2_H_
 
-#include "ww.h"
-#include "tt.h"
+#ifdef _KERNEL
 
-wwflush()
-{
-	register row, col;
-
-	if ((row = wwcursorrow) < 0)
-		row = 0;
-	else if (row >= wwnrow)
-		row = wwnrow - 1;
-	if ((col = wwcursorcol) < 0)
-		col = 0;
-	else if (col >= wwncol)
-		col = wwncol - 1;
-	xxmove(row, col);
-	if (wwdocheckpoint) {
-		xxflush(0);
-		wwcheckpoint();
-	} else
-		xxflush(1);
-}
-
-wwcheckpoint()
-{
-	int s = sigblock(sigmask(SIGALRM) | sigmask(SIGIO));
-
-	tt.tt_ack = 0;
-	do {
-		(*tt.tt_checkpoint)();
-#ifndef OLD_TTY
-		(void) tcdrain(1);
+#ifndef _SYS_THREAD2_H_
+#include <sys/thread2.h>
 #endif
-		(void) alarm(3);
-		for (wwdocheckpoint = 0; !wwdocheckpoint && tt.tt_ack == 0;)
-			(void) sigpause(s);
-	} while (tt.tt_ack == 0);
-	(void) alarm(0);
-	wwdocheckpoint = 0;
-	if (tt.tt_ack < 0) {
-		wwcopyscreen(wwcs, wwos);
-		(void) alarm(1);
-		wwreset();
-		wwupdate();
-		wwflush();
-	} else {
-		wwcopyscreen(wwos, wwcs);
-		(void) alarm(3);
+
+#ifndef _SYS_CALLOUT_H_
+#include <sys/callout.h>
+#endif
+
+#ifndef _NETINET_TCP_VAR_H_
+#include <netinet/tcp_var.h>
+#endif
+
+#ifndef _NETINET_TCP_TIMER_H_
+#include <netinet/tcp_timer.h>
+#endif
+
+static __inline void
+tcp_callout_stop(struct tcpcb *_tp, struct tcp_callout *_tc)
+{
+	crit_enter();
+	callout_stop(&_tc->tc_callout);
+	_tp->tt_msg->tt_tasks &= ~_tc->tc_task;
+	_tp->tt_msg->tt_running_tasks &= ~_tc->tc_task;
+	crit_exit();
+}
+
+static __inline void
+tcp_callout_reset(struct tcpcb *_tp, struct tcp_callout *_tc, int _to_ticks,
+		  void (*_func)(void *))
+{
+	crit_enter();
+	callout_reset(&_tc->tc_callout, _to_ticks, _func, _tp);
+	_tp->tt_msg->tt_tasks &= ~_tc->tc_task;
+	_tp->tt_msg->tt_running_tasks &= ~_tc->tc_task;
+	crit_exit();
+}
+
+static __inline int
+tcp_callout_active(struct tcpcb *_tp, struct tcp_callout *_tc)
+{
+	int _act;
+
+	crit_enter();
+	_act = callout_active(&_tc->tc_callout);
+	if (!_act) {
+		_act = (_tp->tt_msg->tt_tasks |
+			_tp->tt_msg->tt_running_tasks) & _tc->tc_task;
 	}
-	(void) sigsetmask(s);
+	crit_exit();
+	return _act;
 }
 
-wwcopyscreen(s1, s2)
-	register union ww_char **s1, **s2;
+static __inline int
+tcp_callout_pending(struct tcpcb *_tp __unused, struct tcp_callout *_tc)
 {
-	register i;
-	register s = wwncol * sizeof **s1;
-
-	for (i = wwnrow; --i >= 0;)
-		bcopy((char *) *s1++, (char *) *s2++, s);
+	return callout_pending(&_tc->tc_callout);
 }
 
-void
-wwalarm()
-{
-	wwdocheckpoint = 1;
-}
+#endif	/* !_KERNEL */
+
+#endif	/* _NETINET_TCP_TIMER2_H_ */

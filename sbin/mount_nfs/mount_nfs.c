@@ -643,7 +643,7 @@ getnfsargs(char *spec, struct nfs_args *nfsargsp)
 		}
 #ifdef NFSKERB
 		if (haserror == 0 && (nfsargsp->flags & NFSMNT_KERB)) {
-			if ((hp = gethostbyaddr((char *)&saddr.sin_addr.s_addr,
+			if ((hp = gethostbyaddr(&saddr.sin_addr.s_addr,
 			    sizeof (u_long), AF_INET)) == NULL) {
 				warnx("can't reverse resolve net address");
 				opflags |= DIDWARN;

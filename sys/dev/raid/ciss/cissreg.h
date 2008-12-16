@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/ciss/cissreg.h,v 1.1.2.2 2003/02/06 21:42:59 ps Exp $
+ *	$FreeBSD: src/sys/dev/ciss/cissreg.h,v 1.1.2.9 2005/12/31 06:28:57 ps Exp $
  *	$DragonFly: src/sys/dev/raid/ciss/cissreg.h,v 1.2 2003/06/17 04:28:23 dillon Exp $
  */
 
@@ -34,7 +34,7 @@
  * This header only supports little-endian hosts at this time.
  */
 
-union ciss_device_address 
+union ciss_device_address
 {
     struct 				/* MODE_PERIPHERAL and MODE_MASK_PERIPHERAL */
     {
@@ -59,8 +59,15 @@ union ciss_device_address
 #define CISS_HDR_ADDRESS_MODE_PERIPHERAL	0x0
 #define CISS_HDR_ADDRESS_MODE_LOGICAL		0x1
 #define CISS_HDR_ADDRESS_MODE_MASK_PERIPHERAL	0x3
-    
-struct ciss_header 
+
+#define CISS_EXTRA_MODE2(extra)		((extra & 0xc0000000) >> 30)
+#define CISS_EXTRA_BUS2(extra)		((extra & 0x3f000000) >> 24)
+#define CISS_EXTRA_TARGET2(extra)	((extra & 0x00ff0000) >> 16)
+#define CISS_EXTRA_MODE3(extra)		((extra & 0x0000c000) >> 14)
+#define CISS_EXTRA_BUS3(extra)		((extra & 0x00003f00) >> 8)
+#define CISS_EXTRA_TARGET3(extra)	((extra & 0x000000ff))
+
+struct ciss_header
 {
     u_int8_t	:8;			/* reserved */
     u_int8_t	sg_in_list;		/* SG's in the command structure */
@@ -85,8 +92,8 @@ struct ciss_cdb
 #define CISS_CDB_ATTRIBUTE_AUTO_CONTINGENT	7
     u_int8_t	direction:2;
 #define CISS_CDB_DIRECTION_NONE			0
-#define CISS_CDB_DIRECTION_READ			1
-#define CISS_CDB_DIRECTION_WRITE		2
+#define CISS_CDB_DIRECTION_WRITE		1
+#define CISS_CDB_DIRECTION_READ			2
     u_int16_t	timeout;		/* seconds */
 #define CISS_CDB_BUFFER_SIZE	16
     u_int8_t	cdb[CISS_CDB_BUFFER_SIZE];
@@ -163,7 +170,7 @@ struct ciss_command
 #define CISS_OPCODE_REPORT_LOGICAL_LUNS		0xc2
 #define CISS_OPCODE_REPORT_PHYSICAL_LUNS	0xc3
 
-struct ciss_lun_report 
+struct ciss_lun_report
 {
     u_int32_t	list_size;		/* big-endian */
     u_int32_t	:32;
@@ -185,7 +192,7 @@ struct ciss_ldrive_geometry
     u_int8_t	res2[3];
 } __attribute__ ((packed));
 
-struct ciss_report_cdb 
+struct ciss_report_cdb
 {
     u_int8_t	opcode;
     u_int8_t	reserved[5];
@@ -201,7 +208,7 @@ struct ciss_report_cdb
  */
 #define CISS_OPCODE_MESSAGE_ABORT		0x00
 #define CISS_MESSAGE_ABORT_TASK			0x00
-#define CISS_MESSAGE_ABORT_TASK_SET		0x01	
+#define CISS_MESSAGE_ABORT_TASK_SET		0x01
 #define CISS_MESSAGE_ABORT_CLEAR_ACA		0x02
 #define CISS_MESSAGE_ABORT_CLEAR_TASK_SET	0x03
 
@@ -219,7 +226,7 @@ struct ciss_report_cdb
 
 #define CISS_OPCODE_MESSAGE_NOP			0x03
 
-struct ciss_message_cdb 
+struct ciss_message_cdb
 {
     u_int8_t	opcode;
     u_int8_t	type;
@@ -241,7 +248,7 @@ struct ciss_message_cdb
 #define CISS_COMMAND_NOTIFY_ON_EVENT	0xd0
 #define CISS_COMMAND_ABORT_NOTIFY	0xd1
 
-struct ciss_notify_cdb 
+struct ciss_notify_cdb
 {
     u_int8_t	opcode;
     u_int8_t	command;
@@ -268,6 +275,7 @@ struct ciss_notify_cdb
 #define CISS_NOTIFY_HOTPLUG_FAN			2
 #define CISS_NOTIFY_HOTPLUG_POWER		3
 #define CISS_NOTIFY_HOTPLUG_REDUNDANT		4
+#define CISS_NOTIFY_HOTPLUG_NONDISK		5
 
 #define CISS_NOTIFY_HARDWARE		2
 #define CISS_NOTIFY_HARDWARE_CABLES		0
@@ -336,7 +344,7 @@ struct ciss_notify_rebuild_aborted
     u_int8_t	big_error_drive;
 } __attribute__ ((packed));
 
-struct ciss_notify_io_error 
+struct ciss_notify_io_error
 {
     u_int16_t	logical_drive;
     u_int32_t	lba;
@@ -352,13 +360,13 @@ struct ciss_notify_consistency_completed
     u_int16_t	logical_drive;
 } __attribute__ ((packed));
 
-struct ciss_notify 
+struct ciss_notify
 {
     u_int32_t	timestamp;		/* seconds since controller power-on */
     u_int16_t	class;
     u_int16_t	subclass;
     u_int16_t	detail;
-    union 
+    union
     {
 	struct ciss_notify_drive		drive;
 	struct ciss_notify_locator		location;
@@ -380,20 +388,18 @@ struct ciss_notify
 } __attribute__ ((packed));
 
 /*
- * CISS config table, which describes the controller's 
+ * CISS config table, which describes the controller's
  * supported interface(s) and capabilities.
  *
  * This is mapped directly via PCI.
  */
-struct ciss_config_table 
+struct ciss_config_table
 {
     char	signature[4];		/* "CISS" */
     u_int32_t	valence;
-#define CISS_MIN_VALENCE	1	/* only value currently supported */
-#define CISS_MAX_VALENCE	1
     u_int32_t	supported_methods;
 #define CISS_TRANSPORT_METHOD_READY	(1<<0)
-#define CISS_TRANSPORT_METHOD_SIMPLE	(1<<1)    
+#define CISS_TRANSPORT_METHOD_SIMPLE	(1<<1)
     u_int32_t	active_method;
     u_int32_t	requested_method;
     u_int32_t	command_physlimit;
@@ -405,14 +411,20 @@ struct ciss_config_table
 #define CISS_TRANSPORT_BUS_TYPE_ULTRA3	(1<<1)
 #define CISS_TRANSPORT_BUS_TYPE_FIBRE1	(1<<8)
 #define CISS_TRANSPORT_BUS_TYPE_FIBRE2	(1<<9)
+    u_int32_t	transport_offset;
+    char	server_name[16];
+    u_int32_t	heartbeat;
     u_int32_t	host_driver;
 #define CISS_DRIVER_SUPPORT_UNIT_ATTENTION	(1<<0)
 #define CISS_DRIVER_QUICK_INIT			(1<<1)
 #define CISS_DRIVER_INTERRUPT_ON_LOCKUP		(1<<2)
 #define CISS_DRIVER_SUPPORT_MIXED_Q_TAGS	(1<<3)
 #define CISS_DRIVER_HOST_IS_ALPHA		(1<<4)
-    char	server_name[16];
-    u_int32_t	heartbeat;
+#define CISS_DRIVER_MULTI_LUN_SUPPORT		(1<<5)
+#define CISS_DRIVER_MESSAGE_REQUESTS_SUPPORTED	(1<<7)
+#define CISS_DRIVER_DAUGHTER_ATTACHED		(1<<8)
+#define CISS_DRIVER_SCSI_PREFETCH		(1<<9)
+    u_int32_t	max_sg_length;		/* 31 in older firmware */
 } __attribute__ ((packed));
 
 /*
@@ -464,11 +476,20 @@ struct ciss_config_table
 #define CISS_BIG_MAP_ENTRIES	128	/* number of entries in a BIG_MAP */
 
 /*
+ * In the device address of a logical volume, the bus number
+ * is encoded into the logical lun volume number starting
+ * at the second byte, with the first byte defining the
+ * logical drive number.
+ */
+#define CISS_LUN_TO_BUS(x)    (((x) >> 16) & 0xFF)
+#define CISS_LUN_TO_TARGET(x) ((x) & 0xFF)
+
+/*
  * BMIC CDB
  *
  * Note that the phys_drive/res1 field is nominally the 32-bit
  * "block number" field, but the only BMIC command(s) of interest
- * implemented overload the MSB (note big-endian format here) 
+ * implemented overload the MSB (note big-endian format here)
  * to be the physical drive ID, so we define accordingly.
  */
 struct ciss_bmic_cdb {
@@ -495,11 +516,15 @@ struct ciss_bmic_id_ldrive {
 #define CISS_LDRIVE_RAID4	1
 #define CISS_LDRIVE_RAID1	2
 #define CISS_LDRIVE_RAID5	3
-    u_int8_t	res1[2];
-#if 0	/* only for identify logical drive extended (0x18) */
+#define CISS_LDRIVE_RAID51	4
+#define CISS_LDRIVE_RAIDADG	5
+    u_int8_t	res1;
+    u_int8_t	bios_disable_flag;
+    u_int8_t	res2;
     u_int32_t	logical_drive_identifier;
     char	logical_drive_label[64];
-#endif
+    u_int64_t	big_blocks_available;
+    u_int8_t	res3[410];
 } __attribute__ ((packed));
 
 /* CISS_BMIC_ID_LSTATUS */
@@ -545,6 +570,8 @@ struct ciss_bmic_id_lstatus {
     u_int8_t	spare_to_replace_map[CISS_BIG_MAP_ENTRIES];
     u_int8_t	replaced_marked_ok_map[CISS_BIG_MAP_ENTRIES / 8];
     u_int8_t	drive_rebuilding;
+    u_int64_t	big_blocks_to_recover;
+    u_int8_t	res4[28];
 } __attribute__ ((packed));
 
 /* CISS_BMIC_ID_CTLR */
@@ -612,6 +639,9 @@ struct ciss_bmic_id_pdrive {
     char	connector[2];
     u_int8_t	res5;
     u_int8_t	bay;
+    u_int16_t	rpm;
+    u_int8_t	drive_type;
+    u_int8_t	res6[393];
 } __attribute__ ((packed));
 
 /* CISS_BMIC_BLINK_PDRIVE */

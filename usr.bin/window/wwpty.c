@@ -38,8 +38,11 @@
  * $DragonFly: src/usr.bin/window/wwpty.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
 
-#include "ww.h"
 #include <fcntl.h>
+#include <string.h>
+
+#include "ww.h"
+
 #if !defined(OLD_TTY) && !defined(TIOCPKT)
 #include <sys/ioctl.h>
 #endif

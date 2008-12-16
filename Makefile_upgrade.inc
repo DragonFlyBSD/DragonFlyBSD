@@ -995,3 +995,4 @@ TO_REMOVE+=/usr/share/examples/cvsup/DragonFly-release1_10-supfile
 TO_REMOVE+=/usr/share/examples/cvsup/DragonFly-release1_12-supfile
 TO_REMOVE+=/usr/share/examples/cvsup/DragonFly-release2_0-supfile
 TO_REMOVE+=/usr/share/examples/cvsup/DragonFly-src-supfile
+TO_REMOVE+=/usr/include/pcap-bpf.h

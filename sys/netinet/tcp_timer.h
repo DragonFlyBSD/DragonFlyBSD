@@ -134,8 +134,15 @@ struct tcpcb;
 struct netmsg_tcp_timer {
 	struct netmsg	tt_nmsg;
 	struct tcpcb	*tt_tcb;
-	int		tt_cpuid;
-	uint32_t	tt_tasks;
+	int		tt_cpuid;		/* owner cpuid */
+	uint32_t	tt_tasks;		/* pending tasks */
+	uint32_t	tt_running_tasks;	/* running tasks */
+	uint32_t	tt_prev_tasks;		/* prev pending tasks (debug) */
+};
+
+struct tcp_callout {
+	struct callout	tc_callout;
+	uint32_t	tc_task;		/* callout's task id */
 };
 
 extern int tcp_keepinit;		/* time to establish connection */
@@ -150,11 +157,12 @@ extern int tcp_msl;
 extern int tcp_ttl;			/* time to live for TCP segs */
 extern int tcp_backoff[];
 
-void	tcp_timer_2msl (void *xtp);
-void	tcp_timer_keep (void *xtp);
-void	tcp_timer_persist (void *xtp);
-void	tcp_timer_rexmt (void *xtp);
-void	tcp_timer_delack (void *xtp);
+void	tcp_timer_2msl(void *xtp);
+void	tcp_timer_keep(void *xtp);
+void	tcp_timer_persist(void *xtp);
+void	tcp_timer_rexmt(void *xtp);
+void	tcp_timer_delack(void *xtp);
+void	tcp_inittimers(struct tcpcb *);
 
 void	tcp_create_timermsg(struct tcpcb *);
 void	tcp_destroy_timermsg(struct tcpcb *);

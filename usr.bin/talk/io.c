@@ -64,7 +64,7 @@ talk(void)
 	struct timeval wait;
 
 	his_machine_name = NULL;
-	hp = gethostbyaddr((const char *)&his_machine_addr.s_addr,
+	hp = gethostbyaddr(&his_machine_addr.s_addr,
 	    sizeof(his_machine_addr.s_addr), AF_INET);
 	if (hp != NULL) {
 		hp2 = gethostbyname(hp->h_name);

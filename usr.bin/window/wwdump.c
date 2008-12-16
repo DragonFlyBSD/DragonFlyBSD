@@ -38,7 +38,9 @@
  * $DragonFly: src/usr.bin/window/wwdump.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
  */
 
+#include <stdio.h>
 #include <string.h>
+
 #include "ww.h"
 #include "tt.h"
 

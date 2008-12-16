@@ -551,8 +551,7 @@ reply_proc(res, who)
 {
 	register struct hostent *hp;
 
-	hp = gethostbyaddr((char *) &who->sin_addr, sizeof who->sin_addr,
-	    AF_INET);
+	hp = gethostbyaddr(&who->sin_addr, sizeof who->sin_addr, AF_INET);
 	printf("%s %s\n", inet_ntoa(who->sin_addr),
 	    (hp == NULL) ? "(unknown)" : hp->h_name);
 	return(FALSE);

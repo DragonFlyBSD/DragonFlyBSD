@@ -102,8 +102,8 @@ rusers_reply(char *replyp, struct sockaddr_in *raddrp)
 	if (!allopt && up->utmpidlearr_len == 0)
 		return (0);
 
-	hp = gethostbyaddr((char *)&raddrp->sin_addr.s_addr,
-	    sizeof(struct in_addr), AF_INET);
+	hp = gethostbyaddr(&raddrp->sin_addr.s_addr, sizeof(struct in_addr),
+	    AF_INET);
 	if (hp != NULL)
 		host = hp->h_name;
 	else

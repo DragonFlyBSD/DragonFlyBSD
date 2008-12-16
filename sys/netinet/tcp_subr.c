@@ -116,6 +116,7 @@
 #include <netinet/tcp_fsm.h>
 #include <netinet/tcp_seq.h>
 #include <netinet/tcp_timer.h>
+#include <netinet/tcp_timer2.h>
 #include <netinet/tcp_var.h>
 #include <netinet6/tcp6_var.h>
 #include <netinet/tcpip.h>
@@ -293,8 +294,11 @@ struct	inp_tp {
 		char	align[(sizeof(struct inpcb) + ALIGNM1) & ~ALIGNM1];
 	} inp_tp_u;
 	struct	tcpcb tcb;
-	struct	callout inp_tp_rexmt, inp_tp_persist, inp_tp_keep, inp_tp_2msl;
-	struct	callout inp_tp_delack;
+	struct	tcp_callout inp_tp_rexmt;
+	struct	tcp_callout inp_tp_persist;
+	struct	tcp_callout inp_tp_keep;
+	struct	tcp_callout inp_tp_2msl;
+	struct	tcp_callout inp_tp_delack;
 	struct	netmsg_tcp_timer inp_tp_timermsg;
 };
 #undef ALIGNMENT
@@ -700,11 +704,12 @@ tcp_newtcpcb(struct inpcb *inp)
 	tp->t_maxseg = tp->t_maxopd = isipv6 ? tcp_v6mssdflt : tcp_mssdflt;
 
 	/* Set up our timeouts. */
-	callout_init(tp->tt_rexmt = &it->inp_tp_rexmt);
-	callout_init(tp->tt_persist = &it->inp_tp_persist);
-	callout_init(tp->tt_keep = &it->inp_tp_keep);
-	callout_init(tp->tt_2msl = &it->inp_tp_2msl);
-	callout_init(tp->tt_delack = &it->inp_tp_delack);
+	tp->tt_rexmt = &it->inp_tp_rexmt;
+	tp->tt_persist = &it->inp_tp_persist;
+	tp->tt_keep = &it->inp_tp_keep;
+	tp->tt_2msl = &it->inp_tp_2msl;
+	tp->tt_delack = &it->inp_tp_delack;
+	tcp_inittimers(tp);
 
 	tp->tt_msg = &it->inp_tp_timermsg;
 	if (isipv6) {
@@ -856,13 +861,16 @@ tcp_close(struct tcpcb *tp)
 
 	/*
 	 * Make sure that all of our timers are stopped before we
-	 * delete the PCB.
+	 * delete the PCB.  For listen TCP socket (tp->tt_msg == NULL),
+	 * timers are never used.
 	 */
-	callout_stop(tp->tt_rexmt);
-	callout_stop(tp->tt_persist);
-	callout_stop(tp->tt_keep);
-	callout_stop(tp->tt_2msl);
-	callout_stop(tp->tt_delack);
+	if (tp->tt_msg != NULL) {
+		tcp_callout_stop(tp, tp->tt_rexmt);
+		tcp_callout_stop(tp, tp->tt_persist);
+		tcp_callout_stop(tp, tp->tt_keep);
+		tcp_callout_stop(tp, tp->tt_2msl);
+		tcp_callout_stop(tp, tp->tt_delack);
+	}
 
 	if (tp->t_flags & TF_ONOUTPUTQ) {
 		KKASSERT(tp->tt_cpu == mycpu->gd_cpuid);

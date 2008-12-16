@@ -437,7 +437,7 @@ inetname(struct in_addr in)
 				cp = np->n_name;
 		}
 		if (cp == 0) {
-			hp = gethostbyaddr((char *)&in, sizeof (in), AF_INET);
+			hp = gethostbyaddr(&in, sizeof (in), AF_INET);
 			if (hp)
 				cp = hp->h_name;
 		}

@@ -122,7 +122,7 @@ bind_host(char *dom, struct sockaddr_in *sin)
 
 	ss_addr = *(struct in_addr *)ypbr.ypbind_resp_u.ypbind_bindinfo.ypbind_binding_addr;
 	/*printf("%08x\n", ss_addr);*/
-	hent = gethostbyaddr((char *)&ss_addr, sizeof(ss_addr), AF_INET);
+	hent = gethostbyaddr(&ss_addr, sizeof(ss_addr), AF_INET);
 	if (hent)
 		printf("%s\n", hent->h_name);
 	else

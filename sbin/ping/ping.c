@@ -1592,7 +1592,7 @@ pr_addr(struct in_addr ina)
 	static char buf[16 + 3 + MAXHOSTNAMELEN];
 
 	if ((options & F_NUMERIC) ||
-	    !(hp = gethostbyaddr((char *)&ina, 4, AF_INET)))
+	    !(hp = gethostbyaddr(&ina, 4, AF_INET)))
 		return inet_ntoa(ina);
 	else
 		snprintf(buf, sizeof(buf), "%s (%s)", hp->h_name,

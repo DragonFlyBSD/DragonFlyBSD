@@ -69,7 +69,7 @@ main(int ac, char **av)
 	assert(sizeof(struct hammer_blockmap_layer2) == 16);
 
 	/*
-	 * Generate a filesysem id and lookup the filesystem type
+	 * Generate a filesystem id and lookup the filesystem type
 	 */
 	uuidgen(&Hammer_FSId, 1);
 	uuid_name_lookup(&Hammer_FSType, "DragonFly HAMMER", &status);

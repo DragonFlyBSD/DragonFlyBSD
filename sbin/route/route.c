@@ -368,7 +368,7 @@ routename(struct sockaddr *sa)
 		if (in.s_addr == INADDR_ANY || sa->sa_len < 4)
 			cp = "default";
 		if (cp == NULL && !nflag) {
-			hp = gethostbyaddr((char *)&in, sizeof(struct in_addr),
+			hp = gethostbyaddr(&in, sizeof(struct in_addr),
 				AF_INET);
 			if (hp != NULL) {
 				char *cptr;

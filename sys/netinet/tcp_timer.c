@@ -101,6 +101,7 @@
 #include <netinet/tcp_fsm.h>
 #include <netinet/tcp_seq.h>
 #include <netinet/tcp_timer.h>
+#include <netinet/tcp_timer2.h>
 #include <netinet/tcp_var.h>
 #include <netinet/tcpip.h>
 #ifdef TCPDEBUG
@@ -124,8 +125,8 @@ static const struct tcp_timer {
 	struct tcpcb	*(*tt_handler)(struct tcpcb *);
 } tcp_timer_handlers[] = {
 	{ TCP_TIMER_DELACK,	tcp_timer_delack_handler },
-	{ TCP_TIMER_PERSIST,	tcp_timer_persist_handler },
 	{ TCP_TIMER_REXMT,	tcp_timer_rexmt_handler },
+	{ TCP_TIMER_PERSIST,	tcp_timer_persist_handler },
 	{ TCP_TIMER_KEEP,	tcp_timer_keep_handler },
 	{ TCP_TIMER_2MSL,	tcp_timer_2msl_handler },
 	{ 0, NULL }
@@ -210,10 +211,10 @@ tcp_slowtimo(void)
 void
 tcp_canceltimers(struct tcpcb *tp)
 {
-	callout_stop(tp->tt_2msl);
-	callout_stop(tp->tt_persist);
-	callout_stop(tp->tt_keep);
-	callout_stop(tp->tt_rexmt);
+	tcp_callout_stop(tp, tp->tt_2msl);
+	tcp_callout_stop(tp, tp->tt_persist);
+	tcp_callout_stop(tp, tp->tt_keep);
+	tcp_callout_stop(tp, tp->tt_rexmt);
 }
 
 /*
@@ -257,13 +258,14 @@ void
 tcp_timer_delack(void *xtp)
 {
 	struct tcpcb *tp = xtp;
+	struct callout *co = &tp->tt_delack->tc_callout;
 
 	crit_enter();
-	if (callout_pending(tp->tt_delack) || !callout_active(tp->tt_delack)) {
+	if (callout_pending(co) || !callout_active(co)) {
 		crit_exit();
 		return;
 	}
-	callout_deactivate(tp->tt_delack);
+	callout_deactivate(co);
 	tcp_send_timermsg(tp, TCP_TIMER_DELACK);
 	crit_exit();
 }
@@ -286,11 +288,12 @@ tcp_timer_2msl_handler(struct tcpcb *tp)
 	 * control block.  Otherwise, check again in a bit.
 	 */
 	if (tp->t_state != TCPS_TIME_WAIT &&
-	    (ticks - tp->t_rcvtime) <= tcp_maxidle)
-		callout_reset(tp->tt_2msl, tcp_keepintvl,
-			      tcp_timer_2msl, tp);
-	else
+	    (ticks - tp->t_rcvtime) <= tcp_maxidle) {
+		tcp_callout_reset(tp, tp->tt_2msl, tcp_keepintvl,
+				  tcp_timer_2msl);
+	} else {
 		tp = tcp_close(tp);
+	}
 
 #ifdef TCPDEBUG
 	if (tp && (tp->t_inpcb->inp_socket->so_options & SO_DEBUG))
@@ -303,13 +306,14 @@ void
 tcp_timer_2msl(void *xtp)
 {
 	struct tcpcb *tp = xtp;
+	struct callout *co = &tp->tt_2msl->tc_callout;
 
 	crit_enter();
-	if (callout_pending(tp->tt_2msl) || !callout_active(tp->tt_2msl)) {
+	if (callout_pending(co) || !callout_active(co)) {
 		crit_exit();
 		return;
 	}
-	callout_deactivate(tp->tt_2msl);
+	callout_deactivate(co);
 	tcp_send_timermsg(tp, TCP_TIMER_2MSL);
 	crit_exit();
 }
@@ -358,9 +362,12 @@ tcp_timer_keep_handler(struct tcpcb *tp)
 				    tp->rcv_nxt, tp->snd_una - 1, 0);
 			tcp_freetemplate(t_template);
 		}
-		callout_reset(tp->tt_keep, tcp_keepintvl, tcp_timer_keep, tp);
-	} else
-		callout_reset(tp->tt_keep, tcp_keepidle, tcp_timer_keep, tp);
+		tcp_callout_reset(tp, tp->tt_keep, tcp_keepintvl,
+				  tcp_timer_keep);
+	} else {
+		tcp_callout_reset(tp, tp->tt_keep, tcp_keepidle,
+				  tcp_timer_keep);
+	}
 
 #ifdef TCPDEBUG
 	if (tp->t_inpcb->inp_socket->so_options & SO_DEBUG)
@@ -383,13 +390,14 @@ void
 tcp_timer_keep(void *xtp)
 {
 	struct tcpcb *tp = xtp;
+	struct callout *co = &tp->tt_keep->tc_callout;
 
 	crit_enter();
-	if (callout_pending(tp->tt_keep) || !callout_active(tp->tt_keep)) {
+	if (callout_pending(co) || !callout_active(co)) {
 		crit_exit();
 		return;
 	}
-	callout_deactivate(tp->tt_keep);
+	callout_deactivate(co);
 	tcp_send_timermsg(tp, TCP_TIMER_KEEP);
 	crit_exit();
 }
@@ -441,13 +449,14 @@ void
 tcp_timer_persist(void *xtp)
 {
 	struct tcpcb *tp = xtp;
+	struct callout *co = &tp->tt_persist->tc_callout;
 
 	crit_enter();
-	if (callout_pending(tp->tt_persist) || !callout_active(tp->tt_persist)){
+	if (callout_pending(co) || !callout_active(co)){
 		crit_exit();
 		return;
 	}
-	callout_deactivate(tp->tt_persist);
+	callout_deactivate(co);
 	tcp_send_timermsg(tp, TCP_TIMER_PERSIST);
 	crit_exit();
 }
@@ -629,13 +638,14 @@ void
 tcp_timer_rexmt(void *xtp)
 {
 	struct tcpcb *tp = xtp;
+	struct callout *co = &tp->tt_rexmt->tc_callout;
 
 	crit_enter();
-	if (callout_pending(tp->tt_rexmt) || !callout_active(tp->tt_rexmt)) {
+	if (callout_pending(co) || !callout_active(co)) {
 		crit_exit();
 		return;
 	}
-	callout_deactivate(tp->tt_rexmt);
+	callout_deactivate(co);
 	tcp_send_timermsg(tp, TCP_TIMER_REXMT);
 	crit_exit();
 }
@@ -646,7 +656,6 @@ tcp_timer_handler(struct netmsg *nmsg)
 	struct netmsg_tcp_timer *tmsg = (struct netmsg_tcp_timer *)nmsg;
 	const struct tcp_timer *tt;
 	struct tcpcb *tp;
-	uint32_t tasks;
 
 	crit_enter();
 
@@ -654,22 +663,32 @@ tcp_timer_handler(struct netmsg *nmsg)
 	tp = tmsg->tt_tcb;
 
 	/* Save pending tasks and reset the tasks in message */
-	tasks = tmsg->tt_tasks;
+	tmsg->tt_running_tasks = tmsg->tt_tasks;
+	tmsg->tt_prev_tasks = tmsg->tt_tasks;
 	tmsg->tt_tasks = 0;
 
 	/* Reply ASAP */
 	lwkt_replymsg(&tmsg->tt_nmsg.nm_lmsg, 0);
 
+	if (tmsg->tt_running_tasks == 0) {
+		/*
+		 * All of the timers are cancelled when the message
+		 * is pending; bail out.
+		 */
+		crit_exit();
+		return;
+	}
+
 	for (tt = tcp_timer_handlers; tt->tt_handler != NULL; ++tt) {
-		if ((tasks & tt->tt_task) == 0)
+		if ((tmsg->tt_running_tasks & tt->tt_task) == 0)
 			continue;
 
+		tmsg->tt_running_tasks &= ~tt->tt_task;
 		tp = tt->tt_handler(tp);
 		if (tp == NULL)
 			break;
 
-		tasks &= ~tt->tt_task;
-		if (tasks == 0) /* nothing left to do */
+		if (tmsg->tt_running_tasks == 0) /* nothing left to do */
 			break;
 	}
 
@@ -681,8 +700,8 @@ tcp_create_timermsg(struct tcpcb *tp)
 {
 	struct netmsg_tcp_timer *tmsg = tp->tt_msg;
 
-	netmsg_init(&tmsg->tt_nmsg, &netisr_adone_rport, MSGF_DROPABLE,
-		    tcp_timer_handler);
+	netmsg_init(&tmsg->tt_nmsg, &netisr_adone_rport,
+		    MSGF_DROPABLE | MSGF_PRIORITY, tcp_timer_handler);
 	tmsg->tt_cpuid = mycpuid;
 	tmsg->tt_tcb = tp;
 	tmsg->tt_tasks = 0;
@@ -707,4 +726,21 @@ tcp_destroy_timermsg(struct tcpcb *tp)
 		lwkt_dropmsg(&tmsg->tt_nmsg.nm_lmsg);
 	}
 	crit_exit();
+}
+
+static __inline void
+tcp_callout_init(struct tcp_callout *tc, uint32_t task)
+{
+	callout_init(&tc->tc_callout);
+	tc->tc_task = task;
+}
+
+void
+tcp_inittimers(struct tcpcb *tp)
+{
+	tcp_callout_init(tp->tt_rexmt, TCP_TIMER_REXMT);
+	tcp_callout_init(tp->tt_persist, TCP_TIMER_PERSIST);
+	tcp_callout_init(tp->tt_keep, TCP_TIMER_KEEP);
+	tcp_callout_init(tp->tt_2msl, TCP_TIMER_2MSL);
+	tcp_callout_init(tp->tt_delack, TCP_TIMER_DELACK);
 }

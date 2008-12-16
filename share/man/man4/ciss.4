@@ -1,9 +1,9 @@
-.\" $FreeBSD: src/share/man/man4/ciss.4,v 1.2.2.3 2003/03/03 18:51:16 trhodes Exp $
+.\" $FreeBSD: src/share/man/man4/ciss.4,v 1.2.2.6 2008/06/10 18:51:05 ps Exp $
 .\" $DragonFly: src/share/man/man4/ciss.4,v 1.2 2003/06/17 04:36:58 dillon Exp $
 .\" Written by Tom Rhodes
 .\" This file is in the public domain.
 .\"
-.Dd December 29, 2002
+.Dd December 13, 2008
 .Dt CISS 4
 .Os
 .Sh NAME
@@ -61,7 +61,17 @@ and it is dubious whether they would provide major performance improvements
 except under extreme load.
 .Pp
 Non-disk devices (such as internal DATs and devices
-attached to the external SCSI bus) are not yet supported.
+attached to the external SCSI bus) are supported as normal CAM devices
+provided that they are exported by the controller firmware and are not
+marked as being masked.
+Masked devices can be exposed by setting the
+.Va hw.ciss.expose_hidden_physical
+tunable to non-zero at boot time.
+Direct Access devices (such as disk drives) are only exposed as
+.Xr pass 4
+devices.
+Hot-insertion and removal of devices is supported but a bus
+rescan might be necessary.
 .Pp
 Supported controllers include:
 .Pp
@@ -72,6 +82,44 @@ Compaq Smart Array 5300
 Compaq Smart Array 532
 .It
 Compaq Smart Array 5i
+.It
+HP Smart Array 5312
+.It
+HP Smart Array 6i
+.It
+HP Smart Array 641
+.It
+HP Smart Array 642
+.It
+HP Smart Array 6400
+.It
+HP Smart Array 6400 EM
+.It
+HP Smart Array E200
+.It
+HP Smart Array E200i
+.It
+HP Smart Array P212
+.It
+HP Smart Array P400
+.It
+HP Smart Array P400i
+.It
+HP Smart Array P410
+.It
+HP Smart Array P410i
+.It
+HP Smart Array P411
+.It
+HP Smart Array P600
+.It
+HP Smart Array P800
+.It
+HP Smart Array P812
+.It
+HP Modular Smart Array 20 (MSA20)
+.It
+HP Modular Smart Array 500 (MSA500)
 .El
 .Sh SEE ALSO
 .Xr cam 4 ,

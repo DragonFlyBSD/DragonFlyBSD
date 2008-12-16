@@ -79,7 +79,7 @@ found:
 }
 
 struct hostent *
-bt_gethostbyaddr(char const *addr, socklen_t len, int type)
+bt_gethostbyaddr(void const *addr, socklen_t len, int type)
 {
 	struct hostent	*p;
 

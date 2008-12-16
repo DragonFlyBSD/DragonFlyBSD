@@ -70,7 +70,7 @@ log_from_addr(char *fun_name, struct svc_req *req)
   char hostname_buf[40];
 
   addr = svc_getcaller(req->rq_xprt);
-  host = gethostbyaddr((char *)&(addr->sin_addr), addr->sin_len, AF_INET);
+  host = gethostbyaddr(&(addr->sin_addr), addr->sin_len, AF_INET);
   if (host)
   {
     strncpy(hostname_buf, host->h_name, sizeof(hostname_buf));

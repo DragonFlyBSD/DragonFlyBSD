@@ -994,7 +994,7 @@ print_result(int num, struct result *r, int rssi)
 			num,
 			bt_ntoa(&r->bdaddr, NULL));
 
-	hp = bt_gethostbyaddr((const char *)&r->bdaddr, sizeof(bdaddr_t), AF_BLUETOOTH);
+	hp = bt_gethostbyaddr(&r->bdaddr, sizeof(bdaddr_t), AF_BLUETOOTH);
 
 #if 0
 	if (hp != NULL)
