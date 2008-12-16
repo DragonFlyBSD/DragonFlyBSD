@@ -689,7 +689,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 	int *name = (int*) arg1;
 	int oid = oidp->oid_number;
 	u_int namelen = arg2;
-	struct proc *p, *np;
+	struct proc *p;
 	struct proclist *plist;
 	struct thread *td;
 	int doingzomb, flags = 0;
@@ -728,7 +728,7 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 			plist = &zombproc;
 		else
 			plist = &allproc;
-		LIST_FOREACH_MUTABLE(p, plist, p_list, np) {
+		LIST_FOREACH(p, plist, p_list) {
 			/*
 			 * Show a user only their processes.
 			 */
