@@ -272,7 +272,7 @@ char	*fgetln(FILE *, size_t *);
 #define	__ATTR_FORMAT_ARG
 #endif
 const char *fmtcheck(const char *, const char *) __ATTR_FORMAT_ARG;
-__ssize_t __fpending(FILE *);
+__ssize_t __fpending(const FILE *);
 int	 fpurge(FILE *);
 int	 fseeko(FILE *, __off_t, int);
 __off_t	 ftello(FILE *);

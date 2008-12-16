@@ -40,7 +40,7 @@
 #include "local.h"
 
 __ssize_t
-__fpending(FILE *fp)
+__fpending(const FILE *fp)
 {
 	if (HASUB(fp))
 		return(fp->_up - fp->_bf._base);
