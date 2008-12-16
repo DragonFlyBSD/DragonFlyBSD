@@ -861,13 +861,16 @@ tcp_close(struct tcpcb *tp)
 
 	/*
 	 * Make sure that all of our timers are stopped before we
-	 * delete the PCB.
+	 * delete the PCB.  For listen TCP socket (tp->tt_msg == NULL),
+	 * timers are never used.
 	 */
-	tcp_callout_stop(tp, tp->tt_rexmt);
-	tcp_callout_stop(tp, tp->tt_persist);
-	tcp_callout_stop(tp, tp->tt_keep);
-	tcp_callout_stop(tp, tp->tt_2msl);
-	tcp_callout_stop(tp, tp->tt_delack);
+	if (tp->tt_msg != NULL) {
+		tcp_callout_stop(tp, tp->tt_rexmt);
+		tcp_callout_stop(tp, tp->tt_persist);
+		tcp_callout_stop(tp, tp->tt_keep);
+		tcp_callout_stop(tp, tp->tt_2msl);
+		tcp_callout_stop(tp, tp->tt_delack);
+	}
 
 	if (tp->t_flags & TF_ONOUTPUTQ) {
 		KKASSERT(tp->tt_cpu == mycpu->gd_cpuid);

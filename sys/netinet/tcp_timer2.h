@@ -61,10 +61,8 @@ tcp_callout_stop(struct tcpcb *_tp, struct tcp_callout *_tc)
 {
 	crit_enter();
 	callout_stop(&_tc->tc_callout);
-	if (_tp->tt_msg != NULL) {
-		_tp->tt_msg->tt_tasks &= ~_tc->tc_task;
-		_tp->tt_msg->tt_running_tasks &= ~_tc->tc_task;
-	}
+	_tp->tt_msg->tt_tasks &= ~_tc->tc_task;
+	_tp->tt_msg->tt_running_tasks &= ~_tc->tc_task;
 	crit_exit();
 }
 
@@ -74,10 +72,8 @@ tcp_callout_reset(struct tcpcb *_tp, struct tcp_callout *_tc, int _to_ticks,
 {
 	crit_enter();
 	callout_reset(&_tc->tc_callout, _to_ticks, _func, _tp);
-	if (_tp->tt_msg != NULL) {
-		_tp->tt_msg->tt_tasks &= ~_tc->tc_task;
-		_tp->tt_msg->tt_running_tasks &= ~_tc->tc_task;
-	}
+	_tp->tt_msg->tt_tasks &= ~_tc->tc_task;
+	_tp->tt_msg->tt_running_tasks &= ~_tc->tc_task;
 	crit_exit();
 }
 
@@ -88,7 +84,7 @@ tcp_callout_active(struct tcpcb *_tp, struct tcp_callout *_tc)
 
 	crit_enter();
 	_act = callout_active(&_tc->tc_callout);
-	if (!_act && _tp->tt_msg != NULL) {
+	if (!_act) {
 		_act = (_tp->tt_msg->tt_tasks |
 			_tp->tt_msg->tt_running_tasks) & _tc->tc_task;
 	}
