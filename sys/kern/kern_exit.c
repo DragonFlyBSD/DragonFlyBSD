@@ -824,6 +824,7 @@ loop:
 			 * Finally finished with old proc entry.
 			 * Unlink it from its process group and free it.
 			 */
+			KKASSERT(p->p_lock == 0);
 			proc_remove_zombie(p);
 			leavepgrp(p);
 
