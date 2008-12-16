@@ -398,9 +398,7 @@ done:
 	for (i = 0; i < NDADDR; i++)
 		if (newblks[i] != oip->i_db[i])
 			panic("ffs_truncate2");
-	if (length == 0 &&
-	    (!RB_EMPTY(&ovp->v_rbdirty_tree) ||
-	     !RB_EMPTY(&ovp->v_rbclean_tree)))
+	if (length == 0 && !RB_EMPTY(&ovp->v_rbdirty_tree))
 		panic("ffs_truncate3");
 #endif /* DIAGNOSTIC */
 	/*
