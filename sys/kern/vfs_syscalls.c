@@ -126,7 +126,7 @@ sys_mount(struct mount_args *uap)
 	struct ucred *cred = p->p_ucred;
 
 	KKASSERT(p);
-	if (cred->cr_prison != NULL)
+	if (jailed(cred))
 		return (EPERM);
 	if (usermount == 0 && (error = priv_check(td, PRIV_ROOT)))
 		return (error);
