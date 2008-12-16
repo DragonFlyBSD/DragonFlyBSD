@@ -9,8 +9,6 @@
 
 #define LOOP 100000000
 
-static void nop() { }
-
 int
 main(int ac, char **av)
 {
