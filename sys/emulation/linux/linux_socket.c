@@ -1089,6 +1089,9 @@ linux_setsockopt(struct linux_setsockopt_args *args, int *res)
 	sopt.sopt_valsize = linux_args.optlen;
 	sopt.sopt_td = td;
 
+	if (sopt.sopt_valsize < 0 || sopt.sopt_valsize > SOMAXOPT_SIZE)
+		return (EINVAL);
+
 	if (linux_args.optval) {
 		sopt.sopt_val = kmalloc(sopt.sopt_valsize, M_TEMP, M_WAITOK);
 		error = copyin(linux_args.optval, sopt.sopt_val, sopt.sopt_valsize);
@@ -1133,7 +1136,7 @@ linux_getsockopt(struct linux_getsockopt_args *args, int *res)
 		error = copyin(linux_args.optlen, &valsize, sizeof(valsize));
 		if (error)
 			return (error);
-		if (valsize < 0)
+		if (valsize < 0 || valsize > SOMAXOPT_SIZE)
 			return (EINVAL);
 	} else {
 		valsize = 0;
