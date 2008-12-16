@@ -6,6 +6,7 @@ FILES=	README \
 	imap \
 	login \
 	other \
+	passwd \
 	pop3 \
 	sshd \
 	su \
