@@ -333,10 +333,15 @@ dumpbufs(kvm_t *kd, void *bufp, const char *id)
 	struct buf buf;
 
 	kkread(kd, (u_long)bufp, &buf, sizeof(buf));
-	printf("\t    %-8s %p loffset %08llx foffset %08llx\n",
+	printf("\t    %-8s %p loffset %012llx foffset %08llx",
 		id, bufp,
 		buf.b_bio1.bio_offset,
 		buf.b_bio2.bio_offset);
+	printf(" q=%d lck=%d/%d flags=%08x dep=%p",
+		buf.b_qindex, buf.b_lock.lk_sharecount,
+		buf.b_lock.lk_exclusivecount,
+		buf.b_flags, buf.b_dep.lh_first);
+	printf("\n");
 
 	if (buf.b_rbnode.rbe_left)
 	    dumpbufs(kd, buf.b_rbnode.rbe_left, "LEFT");
