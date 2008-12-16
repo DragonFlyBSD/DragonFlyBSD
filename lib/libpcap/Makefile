@@ -9,7 +9,7 @@ SRCS=	grammar.y tokdefs.h pcap-bpf.c version.h \
 	pcap.c inet.c fad-getad.c gencode.c optimize.c nametoaddr.c \
 	etherent.c savefile.c bpf_filter.c bpf_image.c bpf_dump.c \
 	scanner.l version.c
-INCS=	pcap.h pcap-namedb.h pcap-bpf.h pcap-int.h
+INCS=	pcap.h pcap-namedb.h pcap-int.h
 MAN=	pcap.3
 CLEANFILES=tokdefs.h version.c version.h
 

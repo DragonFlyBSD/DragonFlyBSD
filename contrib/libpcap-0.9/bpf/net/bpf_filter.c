@@ -71,7 +71,7 @@ static const char rcsid[] _U_ =
 
 #endif /* WIN32 */
 
-#include <pcap-bpf.h>
+#include <net/bpf.h>
 
 #if !defined(KERNEL) && !defined(_KERNEL)
 #include <stdlib.h>
