@@ -178,8 +178,8 @@ MODULE_DEPEND(if_jme, miibus, 1, 1, 1);
 DRIVER_MODULE(if_jme, pci, jme_driver, jme_devclass, 0, 0);
 DRIVER_MODULE(miibus, jme, miibus_driver, miibus_devclass, 0, 0);
 
-static int	jme_rx_desc_count = JME_RX_RING_CNT_DEF;
-static int	jme_tx_desc_count = JME_TX_RING_CNT_DEF;
+static int	jme_rx_desc_count = JME_RX_DESC_CNT_DEF;
+static int	jme_tx_desc_count = JME_TX_DESC_CNT_DEF;
 
 TUNABLE_INT("hw.jme.rx_desc_count", &jme_rx_desc_count);
 TUNABLE_INT("hw.jme.tx_desc_count", &jme_tx_desc_count);
@@ -326,7 +326,7 @@ jme_miibus_statchg(device_t dev)
 	jme_txeof(sc);
 	if (sc->jme_cdata.jme_tx_cnt != 0) {
 		/* Remove queued packets for transmit. */
-		for (i = 0; i < sc->jme_tx_ring_cnt; i++) {
+		for (i = 0; i < sc->jme_tx_desc_cnt; i++) {
 			txd = &sc->jme_cdata.jme_txdesc[i];
 			if (txd->tx_m != NULL) {
 				bus_dmamap_unload(
@@ -565,8 +565,13 @@ jme_attach(device_t dev)
 	int error = 0;
 	uint8_t eaddr[ETHER_ADDR_LEN];
 
-	sc->jme_rx_ring_cnt = roundup(jme_rx_desc_count, JME_NDESC_ALIGN);
-	sc->jme_tx_ring_cnt = roundup(jme_tx_desc_count, JME_NDESC_ALIGN);
+	sc->jme_rx_desc_cnt = roundup(jme_rx_desc_count, JME_NDESC_ALIGN);
+	if (sc->jme_rx_desc_cnt > JME_NDESC_MAX)
+		sc->jme_rx_desc_cnt = JME_NDESC_MAX;
+
+	sc->jme_tx_desc_cnt = roundup(jme_tx_desc_count, JME_NDESC_ALIGN);
+	if (sc->jme_tx_desc_cnt > JME_NDESC_MAX)
+		sc->jme_tx_desc_cnt = JME_NDESC_MAX;
 
 	sc->jme_dev = dev;
 	sc->jme_lowaddr = BUS_SPACE_MAXADDR;
@@ -751,7 +756,7 @@ jme_attach(device_t dev)
 	ifp->if_ioctl = jme_ioctl;
 	ifp->if_start = jme_start;
 	ifp->if_watchdog = jme_watchdog;
-	ifq_set_maxlen(&ifp->if_snd, sc->jme_tx_ring_cnt - 1);
+	ifq_set_maxlen(&ifp->if_snd, sc->jme_tx_desc_cnt - 1);
 	ifq_set_ready(&ifp->if_snd);
 
 	/* JMC250 supports Tx/Rx checksum offload and hardware vlan tagging. */
@@ -892,11 +897,11 @@ jme_sysctl_node(struct jme_softc *sc)
 
 	SYSCTL_ADD_INT(&sc->jme_sysctl_ctx,
 		       SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
-		       "rx_desc_count", CTLFLAG_RD, &sc->jme_rx_ring_cnt,
+		       "rx_desc_count", CTLFLAG_RD, &sc->jme_rx_desc_cnt,
 		       0, "RX desc count");
 	SYSCTL_ADD_INT(&sc->jme_sysctl_ctx,
 		       SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
-		       "tx_desc_count", CTLFLAG_RD, &sc->jme_tx_ring_cnt,
+		       "tx_desc_count", CTLFLAG_RD, &sc->jme_tx_desc_cnt,
 		       0, "TX desc count");
 
 	/*
@@ -914,11 +919,11 @@ jme_sysctl_node(struct jme_softc *sc)
 	 * NOTE: coal_max will not be zero, since number of descs
 	 * must aligned by JME_NDESC_ALIGN (16 currently)
 	 */
-	coal_max = sc->jme_tx_ring_cnt / 6;
+	coal_max = sc->jme_tx_desc_cnt / 6;
 	if (coal_max < sc->jme_tx_coal_pkt)
 		sc->jme_tx_coal_pkt = coal_max;
 
-	coal_max = sc->jme_rx_ring_cnt / 4;
+	coal_max = sc->jme_rx_desc_cnt / 4;
 	if (coal_max < sc->jme_rx_coal_pkt)
 		sc->jme_rx_coal_pkt = coal_max;
 }
@@ -962,10 +967,10 @@ jme_dma_alloc(struct jme_softc *sc)
 	int error, i;
 
 	sc->jme_cdata.jme_txdesc =
-	kmalloc(sc->jme_tx_ring_cnt * sizeof(struct jme_txdesc),
+	kmalloc(sc->jme_tx_desc_cnt * sizeof(struct jme_txdesc),
 		M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->jme_cdata.jme_rxdesc =
-	kmalloc(sc->jme_rx_ring_cnt * sizeof(struct jme_rxdesc),
+	kmalloc(sc->jme_rx_desc_cnt * sizeof(struct jme_rxdesc),
 		M_DEVBUF, M_WAITOK | M_ZERO);
 
 	lowaddr = sc->jme_lowaddr;
@@ -1196,7 +1201,7 @@ again:
 	}
 
 	/* Create DMA maps for Tx buffers. */
-	for (i = 0; i < sc->jme_tx_ring_cnt; i++) {
+	for (i = 0; i < sc->jme_tx_desc_cnt; i++) {
 		txd = &sc->jme_cdata.jme_txdesc[i];
 		error = bus_dmamap_create(sc->jme_cdata.jme_tx_tag, 0,
 		    &txd->tx_dmamap);
@@ -1247,7 +1252,7 @@ again:
 		sc->jme_cdata.jme_rx_tag = NULL;
 		return error;
 	}
-	for (i = 0; i < sc->jme_rx_ring_cnt; i++) {
+	for (i = 0; i < sc->jme_rx_desc_cnt; i++) {
 		rxd = &sc->jme_cdata.jme_rxdesc[i];
 		error = bus_dmamap_create(sc->jme_cdata.jme_rx_tag, 0,
 		    &rxd->rx_dmamap);
@@ -1303,7 +1308,7 @@ jme_dma_free(struct jme_softc *sc, int detach)
 
 	/* Tx buffers */
 	if (sc->jme_cdata.jme_tx_tag != NULL) {
-		for (i = 0; i < sc->jme_tx_ring_cnt; i++) {
+		for (i = 0; i < sc->jme_tx_desc_cnt; i++) {
 			txd = &sc->jme_cdata.jme_txdesc[i];
 			bus_dmamap_destroy(sc->jme_cdata.jme_tx_tag,
 			    txd->tx_dmamap);
@@ -1314,7 +1319,7 @@ jme_dma_free(struct jme_softc *sc, int detach)
 
 	/* Rx buffers */
 	if (sc->jme_cdata.jme_rx_tag != NULL) {
-		for (i = 0; i < sc->jme_rx_ring_cnt; i++) {
+		for (i = 0; i < sc->jme_rx_desc_cnt; i++) {
 			rxd = &sc->jme_cdata.jme_rxdesc[i];
 			bus_dmamap_destroy(sc->jme_cdata.jme_rx_tag,
 			    rxd->rx_dmamap);
@@ -1553,7 +1558,7 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 	prod = sc->jme_cdata.jme_tx_prod;
 	txd = &sc->jme_cdata.jme_txdesc[prod];
 
-	maxsegs = (sc->jme_tx_ring_cnt - sc->jme_cdata.jme_tx_cnt) -
+	maxsegs = (sc->jme_tx_desc_cnt - sc->jme_cdata.jme_tx_cnt) -
 		  (JME_TXD_RSVD + 1);
 	if (maxsegs > JME_MAXTXSEGS)
 		maxsegs = JME_MAXTXSEGS;
@@ -1652,8 +1657,8 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 		i = 1;
 	}
 	sc->jme_cdata.jme_tx_cnt++;
-	KKASSERT(sc->jme_cdata.jme_tx_cnt < sc->jme_tx_ring_cnt - JME_TXD_RSVD);
-	JME_DESC_INC(prod, sc->jme_tx_ring_cnt);
+	KKASSERT(sc->jme_cdata.jme_tx_cnt < sc->jme_tx_desc_cnt - JME_TXD_RSVD);
+	JME_DESC_INC(prod, sc->jme_tx_desc_cnt);
 
 	txd->tx_ndesc = 1 - i;
 	for (; i < ctx.nsegs; i++) {
@@ -1665,8 +1670,8 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 
 		sc->jme_cdata.jme_tx_cnt++;
 		KKASSERT(sc->jme_cdata.jme_tx_cnt <=
-			 sc->jme_tx_ring_cnt - JME_TXD_RSVD);
-		JME_DESC_INC(prod, sc->jme_tx_ring_cnt);
+			 sc->jme_tx_desc_cnt - JME_TXD_RSVD);
+		JME_DESC_INC(prod, sc->jme_tx_desc_cnt);
 	}
 
 	/* Update producer index. */
@@ -1715,7 +1720,7 @@ jme_start(struct ifnet *ifp)
 		 * leave JME_TXD_RSVD free TX descs.
 		 */
 		if (sc->jme_cdata.jme_tx_cnt + sc->jme_txd_spare >
-		    sc->jme_tx_ring_cnt - JME_TXD_RSVD) {
+		    sc->jme_tx_desc_cnt - JME_TXD_RSVD) {
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
@@ -2091,7 +2096,7 @@ jme_txeof(struct jme_softc *sc)
 		 */
 		for (nsegs = 0; nsegs < txd->tx_ndesc; nsegs++) {
 			sc->jme_rdata.jme_tx_ring[cons].flags = 0;
-			JME_DESC_INC(cons, sc->jme_tx_ring_cnt);
+			JME_DESC_INC(cons, sc->jme_tx_desc_cnt);
 		}
 
 		/* Reclaim transferred mbufs. */
@@ -2109,7 +2114,7 @@ jme_txeof(struct jme_softc *sc)
 		ifp->if_timer = 0;
 
 	if (sc->jme_cdata.jme_tx_cnt + sc->jme_txd_spare <=
-	    sc->jme_tx_ring_cnt - JME_TXD_RSVD)
+	    sc->jme_tx_desc_cnt - JME_TXD_RSVD)
 		ifp->if_flags &= ~IFF_OACTIVE;
 
 	bus_dmamap_sync(sc->jme_cdata.jme_tx_ring_tag,
@@ -2127,7 +2132,7 @@ jme_discard_rxbufs(struct jme_softc *sc, int cons, int count)
 
 		desc->flags = htole32(JME_RD_OWN | JME_RD_INTR | JME_RD_64BIT);
 		desc->buflen = htole32(MCLBYTES);
-		JME_DESC_INC(cons, sc->jme_rx_ring_cnt);
+		JME_DESC_INC(cons, sc->jme_rx_desc_cnt);
 	}
 }
 
@@ -2156,13 +2161,13 @@ jme_rxpkt(struct jme_softc *sc)
 		    __func__, JME_RX_ERR(status), JME_RX_ERR_BITS);
 #endif
 		sc->jme_cdata.jme_rx_cons += nsegs;
-		sc->jme_cdata.jme_rx_cons %= sc->jme_rx_ring_cnt;
+		sc->jme_cdata.jme_rx_cons %= sc->jme_rx_desc_cnt;
 		return;
 	}
 
 	sc->jme_cdata.jme_rxlen = JME_RX_BYTES(status) - JME_RX_PAD_BYTES;
 	for (count = 0; count < nsegs; count++,
-	     JME_DESC_INC(cons, sc->jme_rx_ring_cnt)) {
+	     JME_DESC_INC(cons, sc->jme_rx_desc_cnt)) {
 		rxd = &sc->jme_cdata.jme_rxdesc[cons];
 		mp = rxd->rx_m;
 
@@ -2260,7 +2265,7 @@ jme_rxpkt(struct jme_softc *sc)
 	}
 
 	sc->jme_cdata.jme_rx_cons += nsegs;
-	sc->jme_cdata.jme_rx_cons %= sc->jme_rx_ring_cnt;
+	sc->jme_cdata.jme_rx_cons %= sc->jme_rx_desc_cnt;
 }
 
 static void
@@ -2402,7 +2407,7 @@ jme_init(void *xsc)
 	CSR_WRITE_4(sc, JME_TXCSR, sc->jme_txcsr);
 
 	/* Set Tx descriptor counter. */
-	CSR_WRITE_4(sc, JME_TXQDC, sc->jme_tx_ring_cnt);
+	CSR_WRITE_4(sc, JME_TXQDC, sc->jme_tx_desc_cnt);
 
 	/* Set Tx ring address to the hardware. */
 	paddr = JME_TX_RING_ADDR(sc, 0);
@@ -2446,7 +2451,7 @@ jme_init(void *xsc)
 	CSR_WRITE_4(sc, JME_RXCSR, sc->jme_rxcsr);
 
 	/* Set Rx descriptor counter. */
-	CSR_WRITE_4(sc, JME_RXQDC, sc->jme_rx_ring_cnt);
+	CSR_WRITE_4(sc, JME_RXQDC, sc->jme_rx_desc_cnt);
 
 	/* Set Rx ring address to the hardware. */
 	paddr = JME_RX_RING_ADDR(sc, 0);
@@ -2602,7 +2607,7 @@ jme_stop(struct jme_softc *sc)
 	/*
 	 * Free RX and TX mbufs still in the queues.
 	 */
-	for (i = 0; i < sc->jme_rx_ring_cnt; i++) {
+	for (i = 0; i < sc->jme_rx_desc_cnt; i++) {
 		rxd = &sc->jme_cdata.jme_rxdesc[i];
 		if (rxd->rx_m != NULL) {
 			bus_dmamap_unload(sc->jme_cdata.jme_rx_tag,
@@ -2611,7 +2616,7 @@ jme_stop(struct jme_softc *sc)
 			rxd->rx_m = NULL;
 		}
         }
-	for (i = 0; i < sc->jme_tx_ring_cnt; i++) {
+	for (i = 0; i < sc->jme_tx_desc_cnt; i++) {
 		txd = &sc->jme_cdata.jme_txdesc[i];
 		if (txd->tx_m != NULL) {
 			bus_dmamap_unload(sc->jme_cdata.jme_tx_tag,
@@ -2676,7 +2681,7 @@ jme_init_tx_ring(struct jme_softc *sc)
 
 	rd = &sc->jme_rdata;
 	bzero(rd->jme_tx_ring, JME_TX_RING_SIZE(sc));
-	for (i = 0; i < sc->jme_tx_ring_cnt; i++) {
+	for (i = 0; i < sc->jme_tx_desc_cnt; i++) {
 		txd = &sc->jme_cdata.jme_txdesc[i];
 		txd->tx_m = NULL;
 		txd->tx_desc = &rd->jme_tx_ring[i];
@@ -2713,7 +2718,7 @@ jme_init_rx_ring(struct jme_softc *sc)
 
 	rd = &sc->jme_rdata;
 	bzero(rd->jme_rx_ring, JME_RX_RING_SIZE(sc));
-	for (i = 0; i < sc->jme_rx_ring_cnt; i++) {
+	for (i = 0; i < sc->jme_rx_desc_cnt; i++) {
 		int error;
 
 		rxd = &sc->jme_cdata.jme_rxdesc[i];
