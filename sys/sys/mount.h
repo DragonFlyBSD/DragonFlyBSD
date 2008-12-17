@@ -365,7 +365,7 @@ struct vfsconf {
 	int	vfc_typenum;		/* historic filesystem type number */
 	int	vfc_refcount;		/* number mounted of this type */
 	int	vfc_flags;		/* permanent flags */
-	struct	vfsconf *vfc_next;	/* next in list */
+	STAILQ_ENTRY(vfsconf) vfc_next;	/* next in list */
 };
 
 struct ovfsconf {
@@ -392,9 +392,12 @@ struct ovfsconf {
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_MOUNT);
 #endif
-extern int maxvfsconf;		/* highest defined filesystem type */
 extern int nfs_mount_type;	/* vfc_typenum for nfs, or -1 */
-extern struct vfsconf *vfsconf;	/* head of list of filesystem types */
+
+struct vfsconf *vfsconf_find_by_name(const char *);
+struct vfsconf *vfsconf_find_by_typenum(int);
+int vfsconf_get_maxtypenum(void);
+int vfsconf_each(int (*)(struct vfsconf *, void *), void *);
 
 #endif
 

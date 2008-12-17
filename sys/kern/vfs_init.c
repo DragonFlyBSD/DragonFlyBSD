@@ -92,15 +92,9 @@ static MALLOC_DEFINE(M_NAMEI, "nameibufs", "namei path buffers");
  */
 struct objcache *namei_oc;
 
-/*
- * vfs_init() will set maxvfsconf
- * to the highest defined type number.
- */
-int maxvfsconf;
-struct vfsconf *vfsconf;
-
 static TAILQ_HEAD(, vnodeopv_node) vnodeopv_list;
 static void vfs_calc_vnodeops(struct vop_ops *ops);
+
 
 /*
  * Add a vnode operations (vnops) vector to the global list.
@@ -233,9 +227,89 @@ vfsinit(void *dummy)
 	 * Vfs type numbers must be distinct from VFS_GENERIC (and VFS_VFSCONF).
 	 */
 	vattr_null(&va_null);
-	maxvfsconf = VFS_GENERIC + 1;
 }
 SYSINIT(vfs, SI_SUB_VFS, SI_ORDER_FIRST, vfsinit, NULL)
+
+/*
+ * vfsconf related functions/data.
+ */
+
+/* highest defined filesystem type */
+static int vfsconf_maxtypenum = VFS_GENERIC + 1; 
+
+/* head of list of filesystem types */
+static STAILQ_HEAD(, vfsconf) vfsconf_list = 
+	STAILQ_HEAD_INITIALIZER(vfsconf_list);
+
+struct vfsconf *
+vfsconf_find_by_name(const char *name) 
+{
+	struct vfsconf *vfsp;
+
+	STAILQ_FOREACH(vfsp, &vfsconf_list, vfc_next) {
+		if (strcmp(name, vfsp->vfc_name) == 0)
+			break;
+	}
+	return vfsp;
+}
+
+struct vfsconf *
+vfsconf_find_by_typenum(int typenum) 
+{
+	struct vfsconf *vfsp;
+
+	STAILQ_FOREACH(vfsp, &vfsconf_list, vfc_next) {
+		if (typenum == vfsp->vfc_typenum)
+			break;
+	}
+	return vfsp;
+}
+
+static void
+vfsconf_add(struct vfsconf *vfc)
+{
+	vfc->vfc_typenum = vfsconf_maxtypenum++;
+	STAILQ_INSERT_TAIL(&vfsconf_list, vfc, vfc_next);
+}
+
+static void
+vfsconf_remove(struct vfsconf *vfc)
+{
+	int maxtypenum;
+
+	STAILQ_REMOVE(&vfsconf_list, vfc, vfsconf, vfc_next); 
+
+	maxtypenum = VFS_GENERIC;
+	STAILQ_FOREACH(vfc, &vfsconf_list, vfc_next) {
+		if (maxtypenum < vfc->vfc_typenum)
+			maxtypenum = vfc->vfc_typenum;
+	}
+	vfsconf_maxtypenum = maxtypenum + 1;
+}
+
+int
+vfsconf_get_maxtypenum()
+{
+	return vfsconf_maxtypenum;
+}
+
+/*
+ * Iterate over all vfsconf entries. Break out of the iterator
+ * by returning != 0.
+ */
+int
+vfsconf_each(int (*iter)(struct vfsconf *element, void *data), void *data)
+{
+	int error;
+	struct vfsconf *vfsp;
+
+	STAILQ_FOREACH(vfsp, &vfsconf_list, vfc_next) {
+		error = iter(vfsp, data);
+		if (error)
+			return (error);
+	}
+	return (0);
+}
 
 /*
  * Register a VFS.
@@ -248,21 +322,12 @@ int
 vfs_register(struct vfsconf *vfc)
 {
 	struct sysctl_oid *oidp;
-	struct vfsconf *vfsp;
 	struct vfsops *vfsops = NULL;
 
-	vfsp = NULL;
-	if (vfsconf)
-		for (vfsp = vfsconf; vfsp->vfc_next; vfsp = vfsp->vfc_next)
-			if (strcmp(vfc->vfc_name, vfsp->vfc_name) == 0)
-				return EEXIST;
+	if (vfsconf_find_by_name(vfc->vfc_name) != NULL)
+		return EEXIST;
 
-	vfc->vfc_typenum = maxvfsconf++;
-	if (vfsp)
-		vfsp->vfc_next = vfc;
-	else
-		vfsconf = vfc;
-	vfc->vfc_next = NULL;
+	vfsconf_add(vfc);
 
 	/*
 	 * If this filesystem has a sysctl node under vfs
@@ -376,35 +441,24 @@ vfs_register(struct vfsconf *vfc)
 int
 vfs_unregister(struct vfsconf *vfc)
 {
-	struct vfsconf *vfsp, *prev_vfsp;
-	int error, i, maxtypenum;
+	struct vfsconf *vfsp;
+	int error;
 
-	i = vfc->vfc_typenum;
+	vfsp = vfsconf_find_by_name(vfc->vfc_name);
 
-	prev_vfsp = NULL;
-	for (vfsp = vfsconf; vfsp;
-			prev_vfsp = vfsp, vfsp = vfsp->vfc_next) {
-		if (!strcmp(vfc->vfc_name, vfsp->vfc_name))
-			break;
-	}
 	if (vfsp == NULL)
 		return EINVAL;
-	if (vfsp->vfc_refcount)
+
+	if (vfsp->vfc_refcount != 0)
 		return EBUSY;
+
 	if (vfc->vfc_vfsops->vfs_uninit != NULL) {
 		error = (*vfc->vfc_vfsops->vfs_uninit)(vfsp);
 		if (error)
 			return (error);
 	}
-	if (prev_vfsp)
-		prev_vfsp->vfc_next = vfsp->vfc_next;
-	else
-		vfsconf = vfsp->vfc_next;
-	maxtypenum = VFS_GENERIC;
-	for (vfsp = vfsconf; vfsp != NULL; vfsp = vfsp->vfc_next)
-		if (maxtypenum < vfsp->vfc_typenum)
-			maxtypenum = vfsp->vfc_typenum;
-	maxvfsconf = maxtypenum + 1;
+
+	vfsconf_remove(vfsp);
 	return 0;
 }
 

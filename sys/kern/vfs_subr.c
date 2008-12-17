@@ -1510,6 +1510,7 @@ vfs_sysctl(SYSCTL_HANDLER_ARGS)
 	int *name = (int *)arg1 - 1;	/* XXX */
 	u_int namelen = arg2 + 1;	/* XXX */
 	struct vfsconf *vfsp;
+	int maxtypenum;
 
 #if 1 || defined(COMPAT_PRELITE2)
 	/* Resolve ambiguity between VFS_VFSCONF and VFS_GENERIC. */
@@ -1522,9 +1523,7 @@ vfs_sysctl(SYSCTL_HANDLER_ARGS)
 	if (namelen < 2)
 		return (ENOTDIR);		/* overloaded */
 	if (name[0] != VFS_GENERIC) {
-		for (vfsp = vfsconf; vfsp; vfsp = vfsp->vfc_next)
-			if (vfsp->vfc_typenum == name[0])
-				break;
+		vfsp = vfsconf_find_by_typenum(name[0]);
 		if (vfsp == NULL)
 			return (EOPNOTSUPP);
 		return ((*vfsp->vfc_vfsops->vfs_sysctl)(&name[1], namelen - 1,
@@ -1535,13 +1534,12 @@ vfs_sysctl(SYSCTL_HANDLER_ARGS)
 	case VFS_MAXTYPENUM:
 		if (namelen != 2)
 			return (ENOTDIR);
-		return (SYSCTL_OUT(req, &maxvfsconf, sizeof(int)));
+		maxtypenum = vfsconf_get_maxtypenum();
+		return (SYSCTL_OUT(req, &maxtypenum, sizeof(maxtypenum)));
 	case VFS_CONF:
 		if (namelen != 3)
 			return (ENOTDIR);	/* overloaded */
-		for (vfsp = vfsconf; vfsp; vfsp = vfsp->vfc_next)
-			if (vfsp->vfc_typenum == name[2])
-				break;
+		vfsp = vfsconf_find_by_typenum(name[2]);
 		if (vfsp == NULL)
 			return (EOPNOTSUPP);
 		return (SYSCTL_OUT(req, vfsp, sizeof *vfsp));
@@ -1555,24 +1553,29 @@ SYSCTL_NODE(_vfs, VFS_GENERIC, generic, CTLFLAG_RD, vfs_sysctl,
 #if 1 || defined(COMPAT_PRELITE2)
 
 static int
-sysctl_ovfs_conf(SYSCTL_HANDLER_ARGS)
+sysctl_ovfs_conf_iter(struct vfsconf *vfsp, void *data)
 {
 	int error;
-	struct vfsconf *vfsp;
 	struct ovfsconf ovfs;
+	struct sysctl_req *req = (struct sysctl_req*) data;
 
-	for (vfsp = vfsconf; vfsp; vfsp = vfsp->vfc_next) {
-		bzero(&ovfs, sizeof(ovfs));
-		ovfs.vfc_vfsops = vfsp->vfc_vfsops;	/* XXX used as flag */
-		strcpy(ovfs.vfc_name, vfsp->vfc_name);
-		ovfs.vfc_index = vfsp->vfc_typenum;
-		ovfs.vfc_refcount = vfsp->vfc_refcount;
-		ovfs.vfc_flags = vfsp->vfc_flags;
-		error = SYSCTL_OUT(req, &ovfs, sizeof ovfs);
-		if (error)
-			return error;
-	}
-	return 0;
+	bzero(&ovfs, sizeof(ovfs));
+	ovfs.vfc_vfsops = vfsp->vfc_vfsops;	/* XXX used as flag */
+	strcpy(ovfs.vfc_name, vfsp->vfc_name);
+	ovfs.vfc_index = vfsp->vfc_typenum;
+	ovfs.vfc_refcount = vfsp->vfc_refcount;
+	ovfs.vfc_flags = vfsp->vfc_flags;
+	error = SYSCTL_OUT(req, &ovfs, sizeof ovfs);
+	if (error)
+		return error; /* abort iteration with error code */
+	else
+		return 0; /* continue iterating with next element */
+}
+
+static int
+sysctl_ovfs_conf(SYSCTL_HANDLER_ARGS)
+{
+	return vfsconf_each(sysctl_ovfs_conf_iter, (void*)req);
 }
 
 #endif /* 1 || COMPAT_PRELITE2 */
