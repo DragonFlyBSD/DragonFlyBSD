@@ -359,6 +359,9 @@ struct nfs_public {
  * type of filesystem supported by the kernel. These are searched at
  * mount time to identify the requested filesystem.
  */
+#ifndef _SYS_QUEUE_H_
+#include <sys/queue.h>
+#endif
 struct vfsconf {
 	struct	vfsops *vfc_vfsops;	/* filesystem operations vector */
 	char	vfc_name[MFSNAMELEN];	/* filesystem type name */
