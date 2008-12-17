@@ -93,10 +93,6 @@
 
 #define	JME_DESC_INC(x, y)	((x) = ((x) + 1) % (y))
 
-#define	JME_PROC_MIN		10
-#define	JME_PROC_DEFAULT	(JME_RX_RING_CNT / 2)
-#define	JME_PROC_MAX		(JME_RX_RING_CNT - 1)
-
 struct jme_txdesc {
 	struct mbuf		*tx_m;
 	bus_dmamap_t		tx_dmamap;
