@@ -1579,9 +1579,8 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 		if (m == NULL) {
 			if_printf(&sc->arpcom.ac_if,
 				  "could not defrag TX mbuf\n");
-			m_freem(*m_head);
-			*m_head = NULL;
-			return (ENOMEM);
+			error = ENOBUFS;
+			goto fail;
 		}
 		*m_head = m;
 
@@ -1599,13 +1598,11 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 						  txd->tx_dmamap);
 				error = EFBIG;
 			}
-			m_freem(*m_head);
-			*m_head = NULL;
-			return (error);
+			goto fail;
 		}
 	} else if (error) {
 		if_printf(&sc->arpcom.ac_if, "could not load TX mbuf\n");
-		return (error);
+		goto fail;
 	}
 
 	m = *m_head;
@@ -1691,7 +1688,11 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 			BUS_DMASYNC_PREWRITE);
 	bus_dmamap_sync(sc->jme_cdata.jme_tx_ring_tag,
 			sc->jme_cdata.jme_tx_ring_map, BUS_DMASYNC_PREWRITE);
-	return (0);
+	return 0;
+fail:
+	m_freem(*m_head);
+	*m_head = NULL;
+	return error;
 }
 
 static void
@@ -1735,11 +1736,8 @@ jme_start(struct ifnet *ifp)
 		 * for the NIC to drain the ring.
 		 */
 		if (jme_encap(sc, &m_head)) {
-			if (m_head == NULL) {
-				ifp->if_oerrors++;
-				break;
-			}
-			ifq_prepend(&ifp->if_snd, m_head);
+			KKASSERT(m_head == NULL);
+			ifp->if_oerrors++;
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
