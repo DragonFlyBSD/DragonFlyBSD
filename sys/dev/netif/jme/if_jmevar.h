@@ -37,10 +37,12 @@
 
 /*
  * JMC250 supports upto 1024 descriptors and the number of
- * descriptors should be multiple of 16.
+ * descriptors should be multiple of JME_NDESC_ALIGN.
  */
-#define	JME_TX_RING_CNT		384
-#define	JME_RX_RING_CNT		256
+#define	JME_TX_RING_CNT_DEF	384
+#define	JME_RX_RING_CNT_DEF	256
+#define JME_NDESC_ALIGN		16
+
 /*
  * Tx/Rx descriptor queue base should be 16bytes aligned and
  * should not cross 4G bytes boundary on the 64bits address
@@ -61,7 +63,8 @@
 #define	JME_MSIX_MESSAGES	8
 
 /* Water mark to kick reclaiming Tx buffers. */
-#define	JME_TX_DESC_HIWAT	(JME_TX_RING_CNT - (((JME_TX_RING_CNT) * 3) / 10))
+#define	JME_TX_DESC_HIWAT(sc)	\
+	((sc)->jme_tx_ring_cnt - (((sc)->jme_tx_ring_cnt * 3) / 10))
 
 /*
  * JMC250 can send 9K jumbo frame on Tx path and can receive
@@ -112,9 +115,9 @@ struct jme_chain_data{
 	bus_dma_tag_t		jme_ssb_tag;
 	bus_dmamap_t		jme_ssb_map;
 	bus_dma_tag_t		jme_tx_tag;
-	struct jme_txdesc	jme_txdesc[JME_TX_RING_CNT];
+	struct jme_txdesc	*jme_txdesc;
 	bus_dma_tag_t		jme_rx_tag;
-	struct jme_rxdesc	jme_rxdesc[JME_RX_RING_CNT];
+	struct jme_rxdesc	*jme_rxdesc;
 	bus_dma_tag_t		jme_tx_ring_tag;
 	bus_dmamap_t		jme_tx_ring_map;
 	bus_dma_tag_t		jme_rx_ring_tag;
@@ -145,10 +148,10 @@ struct jme_ring_data {
 #define JME_RX_RING_ADDR(sc, i)	\
     ((sc)->jme_rdata.jme_rx_ring_paddr + sizeof(struct jme_desc) * (i))
 
-#define JME_TX_RING_SIZE	\
-    (sizeof(struct jme_desc) * JME_TX_RING_CNT)
-#define JME_RX_RING_SIZE	\
-    (sizeof(struct jme_desc) * JME_RX_RING_CNT)
+#define JME_TX_RING_SIZE(sc)	\
+    (sizeof(struct jme_desc) * (sc)->jme_tx_ring_cnt)
+#define JME_RX_RING_SIZE(sc)	\
+    (sizeof(struct jme_desc) * (sc)->jme_rx_ring_cnt)
 #define	JME_SSB_SIZE		sizeof(struct jme_ssb)
 
 struct jme_dmamap_ctx {
@@ -217,6 +220,8 @@ struct jme_softc {
 	int			jme_tx_coal_pkt;
 	int			jme_rx_coal_to;
 	int			jme_rx_coal_pkt;
+	int			jme_rx_ring_cnt;
+	int			jme_tx_ring_cnt;
 };
 
 /* Register access macros. */
