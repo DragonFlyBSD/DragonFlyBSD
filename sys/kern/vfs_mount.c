@@ -281,10 +281,8 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
 
 	if (fstypename == NULL)
 		return (ENODEV);
-	for (vfsp = vfsconf; vfsp; vfsp = vfsp->vfc_next) {
-		if (!strcmp(vfsp->vfc_name, fstypename))
-			break;
-	}
+
+	vfsp = vfsconf_find_by_name(fstypename);
 	if (vfsp == NULL)
 		return (ENODEV);
 	mp = kmalloc(sizeof(struct mount), M_MOUNT, M_WAITOK | M_ZERO);
