@@ -1550,7 +1550,7 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 	struct jme_dmamap_ctx ctx;
 	bus_dma_segment_t txsegs[JME_MAXTXSEGS];
 	int maxsegs;
-	int error, i, prod;
+	int error, i, prod, symbol_desc;
 	uint32_t cflags, flag64;
 
 	M_ASSERTPKTHDR((*m_head));
@@ -1558,11 +1558,16 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 	prod = sc->jme_cdata.jme_tx_prod;
 	txd = &sc->jme_cdata.jme_txdesc[prod];
 
+	if (sc->jme_lowaddr != BUS_SPACE_MAXADDR_32BIT)
+		symbol_desc = 1;
+	else
+		symbol_desc = 0;
+
 	maxsegs = (sc->jme_tx_desc_cnt - sc->jme_cdata.jme_tx_cnt) -
-		  (JME_TXD_RSVD + 1);
+		  (JME_TXD_RSVD + symbol_desc);
 	if (maxsegs > JME_MAXTXSEGS)
 		maxsegs = JME_MAXTXSEGS;
-	KASSERT(maxsegs >= (sc->jme_txd_spare - 1),
+	KASSERT(maxsegs >= (sc->jme_txd_spare - symbol_desc),
 		("not enough segments %d\n", maxsegs));
 
 	ctx.nsegs = maxsegs;
@@ -2362,13 +2367,16 @@ jme_init(void *xsc)
 	 */
 	jme_reset(sc);
 
-	/*
-	 * Since we always use 64bit address mode for transmitting,
-	 * each Tx request requires one more dummy descriptor.
-	 */
 	sc->jme_txd_spare =
-	howmany(ifp->if_mtu + sizeof(struct ether_vlan_header), MCLBYTES) + 1;
-	KKASSERT(sc->jme_txd_spare >= 2);
+	howmany(ifp->if_mtu + sizeof(struct ether_vlan_header), MCLBYTES);
+	KKASSERT(sc->jme_txd_spare >= 1);
+
+	/*
+	 * If we use 64bit address mode for transmitting, each Tx request
+	 * needs one more symbol descriptor.
+	 */
+	if (sc->jme_lowaddr != BUS_SPACE_MAXADDR_32BIT)
+		sc->jme_txd_spare += 1;
 
 	/* Init descriptors. */
 	error = jme_init_rx_ring(sc);
