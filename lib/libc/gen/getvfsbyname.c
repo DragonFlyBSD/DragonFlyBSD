@@ -54,19 +54,20 @@ getvfsbyname(const char *fsname, struct vfsconf *vfcp)
 	name[0] = CTL_VFS;
 	name[1] = VFS_GENERIC;
 	name[2] = VFS_MAXTYPENUM;
-	buflen = 4;
+	buflen = sizeof(maxtypenum);
 	if (sysctl(name, 3, &maxtypenum, &buflen, (void *)0, (size_t)0) < 0)
 		return (-1);
+
 	name[2] = VFS_CONF;
-	buflen = sizeof *vfcp;
+	buflen = sizeof(*vfcp);
 	for (cnt = 0; cnt < maxtypenum; cnt++) {
 		name[3] = cnt;
 		if (sysctl(name, 4, vfcp, &buflen, (void *)0, (size_t)0) < 0) {
-			if (errno != EOPNOTSUPP)
-				return (-1);
-			continue;
+			if (errno == EOPNOTSUPP)
+				continue;
+			return (-1);
 		}
-		if (!strcmp(fsname, vfcp->vfc_name))
+		if (strcmp(fsname, vfcp->vfc_name) == 0)
 			return (0);
 	}
 	errno = ENOENT;
