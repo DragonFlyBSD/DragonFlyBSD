@@ -756,7 +756,7 @@ jme_attach(device_t dev)
 	ifp->if_ioctl = jme_ioctl;
 	ifp->if_start = jme_start;
 	ifp->if_watchdog = jme_watchdog;
-	ifq_set_maxlen(&ifp->if_snd, sc->jme_tx_desc_cnt - 1);
+	ifq_set_maxlen(&ifp->if_snd, sc->jme_tx_desc_cnt - JME_TXD_RSVD);
 	ifq_set_ready(&ifp->if_snd);
 
 	/* JMC250 supports Tx/Rx checksum offload and hardware vlan tagging. */
