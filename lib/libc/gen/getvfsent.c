@@ -17,10 +17,9 @@
 
 /* XXX hide some compatibility problems. */
 #undef getvfsbyname
-#define vfsconf		ovfsconf
 
-static struct vfsconf *_vfslist = 0;
-static struct vfsconf _vfsconf;
+static struct ovfsconf *_vfslist = 0;
+static struct ovfsconf _vfsconf;
 static size_t _vfslistlen = 0;
 static int _vfs_keeplist = 0;
 static size_t _vfs_index = 0;
@@ -49,11 +48,11 @@ initvfs(void)
 		return 0;
 	}
 
-	_vfslistlen = size / sizeof _vfslist[0];
+	_vfslistlen = size / sizeof(_vfslist[0]);
 	return 1;
 }
 
-struct vfsconf *
+struct ovfsconf *
 getvfsent(void)
 {
 	if(!_vfslist && !initvfs())
@@ -73,7 +72,7 @@ getvfsent(void)
 	return &_vfsconf;
 }
 
-struct vfsconf *
+struct ovfsconf *
 getvfsbyname(const char *name)
 {
 	size_t i;
@@ -100,7 +99,7 @@ getvfsbyname(const char *name)
 		return 0;
 }
 
-struct vfsconf *
+struct ovfsconf *
 getvfsbytype(int type)
 {
 	size_t i;
