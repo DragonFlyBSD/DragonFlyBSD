@@ -224,6 +224,7 @@ the pkgsrc version manually.
 <h3>Contributed Software</h3>
 <ul>
     <li>Bring in the privilege separation ready DHCP client from OpenBSD.
+    <li>Update OpenPAM to Hydrangea.
     <li>Update OpenSSH to version 5.1p1.
     <li>Update OpenSSL to version 0.9.8i.
     <li>Sync zoneinfo database with tzdata2008h.
