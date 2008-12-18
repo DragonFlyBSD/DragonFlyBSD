@@ -99,6 +99,7 @@ void swap_pager_copy (vm_object_t, vm_object_t, vm_pindex_t, int);
 void swap_pager_freespace (vm_object_t, vm_pindex_t, vm_size_t);
 void swap_pager_dmzspace (vm_object_t, vm_pindex_t, vm_size_t);
 void swap_pager_swap_init (void);
+void swap_pager_newswap (void);
 int swap_pager_reserve (vm_object_t, vm_pindex_t, vm_size_t);
 
 /*

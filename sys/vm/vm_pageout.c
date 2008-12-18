@@ -439,11 +439,15 @@ vm_pageout_flush(vm_page_t *mc, int count, int flags)
 		case VM_PAGER_ERROR:
 		case VM_PAGER_FAIL:
 			/*
-			 * If page couldn't be paged out, then reactivate the
-			 * page so it doesn't clog the inactive list.  (We
-			 * will try paging out it again later).
+			 * A page typically cannot be paged out when we
+			 * have run out of swap.  We leave the page
+			 * marked inactive and will try to page it out
+			 * again later.
+			 *
+			 * Starvation of the active page list is used to
+			 * determine when the system is massively memory
+			 * starved.
 			 */
-			vm_page_activate(mt);
 			break;
 		case VM_PAGER_AGAIN:
 			break;
@@ -700,6 +704,7 @@ vm_pageout_scan(int pass)
 	vm_object_t object;
 	int actcount;
 	int vnodes_skipped = 0;
+	int pages_freed = 0;
 	int maxlaunder;
 
 	/*
@@ -857,10 +862,6 @@ rescan0:
 		 */
 		if (m->dirty == 0) {
 			vm_page_test_dirty(m);
-#if 0
-			if (m->dirty == 0 && (m->flags & PG_WRITEABLE) != 0)
-				pmap_remove_all(m);
-#endif
 		} else {
 			vm_page_dirty(m);
 		}
@@ -872,6 +873,7 @@ rescan0:
 			vm_pageout_page_free(m);
 			mycpu->gd_cnt.v_dfree++;
 			--page_shortage;
+			++pages_freed;
 		} else if (m->dirty == 0) {
 			/*
 			 * Clean pages can be placed onto the cache queue.
@@ -879,6 +881,7 @@ rescan0:
 			 */
 			vm_page_cache(m);
 			--page_shortage;
+			++pages_freed;
 		} else if ((m->flags & PG_WINATCFLS) == 0 && pass == 0) {
 			/*
 			 * Dirty pages need to be paged out, but flushing
@@ -1016,7 +1019,9 @@ rescan0:
 			if (vm_pageout_clean(m) != 0) {
 				--page_shortage;
 				--maxlaunder;
-			} 
+			} else {
+				addl_page_shortage++;
+			}
 			next = TAILQ_NEXT(&marker, pageq);
 			TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, &marker, pageq);
 			if (vp != NULL)
@@ -1029,8 +1034,18 @@ rescan0:
 	 * active queue to the inactive queue.
 	 */
 	page_shortage = vm_paging_target() +
-	    vmstats.v_inactive_target - vmstats.v_inactive_count;
+		        vmstats.v_inactive_target - vmstats.v_inactive_count;
 	page_shortage += addl_page_shortage;
+
+	/*
+	 * If the system is running out of swap or has none a large backlog
+	 * can accumulate in the inactive list.  Continue moving pages to
+	 * the inactive list even though its 'target' has been met due to
+	 * being unable to drain.  We can then use a low active count to
+	 * measure stress and out-of-memory conditions.
+	 */
+	if (page_shortage < addl_page_shortage)
+		page_shortage = addl_page_shortage;
 
 	/*
 	 * Scan the active queue for things we can deactivate. We nominally
@@ -1112,10 +1127,12 @@ rescan0:
 					vm_page_busy(m);
 					vm_page_protect(m, VM_PROT_NONE);
 					vm_page_wakeup(m);
-					if (m->dirty == 0)
+					if (m->dirty == 0) {
+						++pages_freed;
 						vm_page_cache(m);
-					else
+					} else {
 						vm_page_deactivate(m);
+					}
 				} else {
 					vm_page_deactivate(m);
 				}
@@ -1134,6 +1151,9 @@ rescan0:
 	 * does not effect other calculations.
 	 *
 	 * NOTE: we are still in a critical section.
+	 *
+	 * Pages moved from PQ_CACHE to totally free are not counted in the
+	 * pages_freed counter.
 	 */
 
 	while (vmstats.v_free_count < vmstats.v_free_reserved) {
@@ -1191,14 +1211,33 @@ rescan0:
 	}
 
 	/*
-	 * If we are out of swap and were not able to reach our paging
-	 * target, kill the largest process.
+	 * If we are out of swap space (or have no swap) then we
+	 * can detect when the system has completely run out of
+	 * memory by observing several variables.
+	 *
+	 * - swap_pager_full is set if insufficient swap was
+	 *   available to satisfy a requested pageout.
+	 *
+	 * - vm_page_count_min() means we could not recover
+	 *   enough pages to meet bare minimum needs.
+	 *
+	 * - vm_active_count
+	 *
+	 *and we were
+	 * not able to reach our minimum free page count target,
+	 * then we can detect whether we have run out of memory
+	 * by observing the active count.  A memory starved
+	 * system will reduce the active count
+	 *
+	 * If under these circumstances our paging target exceeds
+	 * 1/2 the number of active pages we have a very serious
+	 * problem that the deactivation of pages failed to solve
+	 * and must start killing things.
 	 */
-	if ((vm_swap_size < 64 && vm_page_count_min()) ||
-	    (swap_pager_full && vm_paging_target() > 0)) {
-#if 0
-	if ((vm_swap_size < 64 || swap_pager_full) && vm_page_count_min()) {
-#endif
+	if (swap_pager_full && vm_page_count_min())
+		kprintf("Warning: system low on memory+swap!\n");
+	if (swap_pager_full && vm_page_count_min() &&
+	    vm_paging_target() > vmstats.v_active_count / 4) {
 		info.bigproc = NULL;
 		info.bigsize = 0;
 		allproc_scan(vm_pageout_scan_callback, &info);

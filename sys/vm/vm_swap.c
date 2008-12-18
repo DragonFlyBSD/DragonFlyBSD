@@ -337,6 +337,7 @@ swaponvp(struct thread *td, struct vnode *vp, u_long nblks)
 		blist_free(swapblist, vsbase, blk);
 		vm_swap_size += blk;
 	}
+	swap_pager_newswap();
 
 	return (0);
 }

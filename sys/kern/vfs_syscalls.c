@@ -260,10 +260,7 @@ sys_mount(struct mount_args *uap)
 		vput(vp);
 		return (error);
 	}
-	for (vfsp = vfsconf; vfsp; vfsp = vfsp->vfc_next) {
-		if (!strcmp(vfsp->vfc_name, fstypename))
-			break;
-	}
+	vfsp = vfsconf_find_by_name(fstypename);
 	if (vfsp == NULL) {
 		linker_file_t lf;
 
@@ -283,10 +280,7 @@ sys_mount(struct mount_args *uap)
 		}
 		lf->userrefs++;
 		/* lookup again, see if the VFS was loaded */
-		for (vfsp = vfsconf; vfsp; vfsp = vfsp->vfc_next) {
-			if (!strcmp(vfsp->vfc_name, fstypename))
-				break;
-		}
+		vfsp = vfsconf_find_by_name(fstypename);
 		if (vfsp == NULL) {
 			lf->userrefs--;
 			linker_file_unload(lf);
