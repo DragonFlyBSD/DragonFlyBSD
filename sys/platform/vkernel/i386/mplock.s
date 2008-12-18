@@ -247,6 +247,10 @@ NON_GPROF_ENTRY(rel_mplock)
 	movl	PCPU(cpuid),%eax
 	movl	$-1,%ecx
 	lock cmpxchgl %ecx,mp_lock
+	movl    mp_lock_contention_mask,%eax
+	cmpl    $0,%eax
+	je      3f
+	call    lwkt_mp_lock_uncontested
 3:
 	NON_GPROF_RET
 

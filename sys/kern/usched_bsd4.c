@@ -213,69 +213,90 @@ SYSINIT(runqueue, SI_BOOT2_USCHED, SI_ORDER_FIRST, rqinit, NULL)
  * It is responsible for making the thread the current designated userland
  * thread for this cpu, blocking if necessary.
  *
- * We are expected to handle userland reschedule requests here too.
+ * The kernel has already depressed our LWKT priority so we must not switch
+ * until we have either assigned or disposed of the thread.
  *
  * WARNING! THIS FUNCTION IS ALLOWED TO CAUSE THE CURRENT THREAD TO MIGRATE
  * TO ANOTHER CPU!  Because most of the kernel assumes that no migration will
  * occur, this function is called only under very controlled circumstances.
- *
- * Basically we recalculate our estcpu to hopefully give us a more
- * favorable disposition, setrunqueue, then wait for the curlwp
- * designation to be handed to us (if the setrunqueue didn't do it).
  *
  * MPSAFE
  */
 static void
 bsd4_acquire_curproc(struct lwp *lp)
 {
-	globaldata_t gd = mycpu;
-	bsd4_pcpu_t dd = &bsd4_pcpu[gd->gd_cpuid];
+	globaldata_t gd;
+	bsd4_pcpu_t dd;
+	struct lwp *olp;
+
+	crit_enter();
+	bsd4_recalculate_estcpu(lp);
 
 	/*
-	 * Possibly select another thread, or keep the current thread.
+	 * If a reschedule was requested give another thread the
+	 * driver's seat.
 	 */
-	if (user_resched_wanted())
-		bsd4_select_curproc(gd);
-
-	/*
-	 * If uschedcp is still pointing to us, we're done
-	 */
-	if (dd->uschedcp == lp)
-		return;
-
-	/*
-	 * If this cpu has no current thread, and the run queue is
-	 * empty, we can safely select ourself.
-	 */
-	if (dd->uschedcp == NULL && bsd4_runqcount == 0) {
-		atomic_set_int(&bsd4_curprocmask, gd->gd_cpumask);
-		dd->uschedcp = lp;
-		dd->upri = lp->lwp_priority;
-		return;
+	if (user_resched_wanted()) {
+		clear_user_resched();
+		bsd4_release_curproc(lp);
 	}
 
 	/*
-	 * Adjust estcpu and recalculate our priority, then put us back on
-	 * the user process scheduler's runq.  Only increment the involuntary
-	 * context switch count if the setrunqueue call did not immediately
-	 * schedule us.
-	 *
-	 * Loop until we become the currently scheduled process.  Note that
-	 * calling setrunqueue can cause us to be migrated to another cpu
-	 * after we switch away.
+	 * Loop until we are the current user thread
 	 */
 	do {
-		crit_enter();
-		bsd4_recalculate_estcpu(lp);
-		lwkt_deschedule_self(gd->gd_curthread);
-		bsd4_setrunqueue(lp);
-		if ((gd->gd_curthread->td_flags & TDF_RUNQ) == 0)
-			++lp->lwp_ru.ru_nivcsw;
-		lwkt_switch();
-		crit_exit();
+		/*
+		 * Reload after a switch or setrunqueue/switch possibly
+		 * moved us to another cpu.
+		 */
+		clear_lwkt_resched();
 		gd = mycpu;
 		dd = &bsd4_pcpu[gd->gd_cpuid];
+
+		/*
+		 * Become the currently scheduled user thread for this cpu
+		 * if we can do so trivially.
+		 *
+		 * We can steal another thread's current thread designation
+		 * on this cpu since if we are running that other thread
+		 * must not be, so we can safely deschedule it.
+		 */
+		if (dd->uschedcp == lp) {
+			dd->upri = lp->lwp_priority;
+		} else if (dd->uschedcp == NULL) {
+			atomic_set_int(&bsd4_curprocmask, gd->gd_cpumask);
+			dd->uschedcp = lp;
+			dd->upri = lp->lwp_priority;
+		} else if (dd->upri > lp->lwp_priority) {
+			olp = dd->uschedcp;
+			dd->uschedcp = lp;
+			dd->upri = lp->lwp_priority;
+			lwkt_deschedule(olp->lwp_thread);
+			bsd4_setrunqueue(olp);
+		} else {
+			lwkt_deschedule(lp->lwp_thread);
+			bsd4_setrunqueue(lp);
+			lwkt_switch();
+		}
+
+		/*
+		 * Other threads at our current user priority have already
+		 * put in their bids, but we must run any kernel threads
+		 * at higher priorities, and we could lose our bid to
+		 * another thread trying to return to user mode in the
+		 * process.
+		 *
+		 * If we lose our bid we will be descheduled and put on
+		 * the run queue.  When we are reactivated we will have
+		 * another chance.
+		 */
+		if (lwkt_check_resched(lp->lwp_thread) > 1) {
+			lwkt_switch();
+			continue;
+		}
 	} while (dd->uschedcp != lp);
+
+	crit_exit();
 	KKASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0);
 }
 
@@ -283,8 +304,8 @@ bsd4_acquire_curproc(struct lwp *lp)
  * BSD4_RELEASE_CURPROC
  *
  * This routine detaches the current thread from the userland scheduler,
- * usually because the thread needs to run in the kernel (at kernel priority)
- * for a while.
+ * usually because the thread needs to run or block in the kernel (at
+ * kernel priority) for a while.
  *
  * This routine is also responsible for selecting a new thread to
  * make the current thread.
@@ -312,27 +333,28 @@ bsd4_release_curproc(struct lwp *lp)
 	bsd4_pcpu_t dd = &bsd4_pcpu[gd->gd_cpuid];
 
 	if (dd->uschedcp == lp) {
-		/*
-		 * Note: we leave ou curprocmask bit set to prevent
-		 * unnecessary scheduler helper wakeups.  
-		 * bsd4_select_curproc() will clean it up.
-		 */
+		crit_enter();
 		KKASSERT((lp->lwp_flag & LWP_ONRUNQ) == 0);
 		dd->uschedcp = NULL;	/* don't let lp be selected */
+		dd->upri = PRIBASE_NULL;
+		atomic_clear_int(&bsd4_curprocmask, gd->gd_cpumask);
 		bsd4_select_curproc(gd);
+		crit_exit();
 	}
 }
 
 /*
  * BSD4_SELECT_CURPROC
  *
- * Select a new current process for this cpu.  This satisfies a user
- * scheduler reschedule request so clear that too.
+ * Select a new current process for this cpu and clear any pending user
+ * reschedule request.  The cpu currently has no current process.
  *
  * This routine is also responsible for equal-priority round-robining,
  * typically triggered from bsd4_schedulerclock().  In our dummy example
  * all the 'user' threads are LWKT scheduled all at once and we just
  * call lwkt_switch().
+ *
+ * The calling process is not on the queue and cannot be selected.
  *
  * MPSAFE
  */
@@ -345,8 +367,6 @@ bsd4_select_curproc(globaldata_t gd)
 	int cpuid = gd->gd_cpuid;
 
 	crit_enter_gd(gd);
-	clear_user_resched();	/* This satisfied the reschedule request */
-	dd->rrcount = 0;	/* Reset the round-robin counter */
 
 	spin_lock_wr(&bsd4_spin);
 	if ((nlp = chooseproc_locked(dd->uschedcp)) != NULL) {
@@ -358,21 +378,11 @@ bsd4_select_curproc(globaldata_t gd)
 		lwkt_acquire(nlp->lwp_thread);
 #endif
 		lwkt_schedule(nlp->lwp_thread);
-	} else if (dd->uschedcp) {
-		dd->upri = dd->uschedcp->lwp_priority;
-		spin_unlock_wr(&bsd4_spin);
-		KKASSERT(bsd4_curprocmask & (1 << cpuid));
 	} else if (bsd4_runqcount && (bsd4_rdyprocmask & (1 << cpuid))) {
-		atomic_clear_int(&bsd4_curprocmask, 1 << cpuid);
 		atomic_clear_int(&bsd4_rdyprocmask, 1 << cpuid);
-		dd->uschedcp = NULL;
-		dd->upri = PRIBASE_NULL;
 		spin_unlock_wr(&bsd4_spin);
 		lwkt_schedule(&dd->helper_thread);
 	} else {
-		dd->uschedcp = NULL;
-		dd->upri = PRIBASE_NULL;
-		atomic_clear_int(&bsd4_curprocmask, 1 << cpuid);
 		spin_unlock_wr(&bsd4_spin);
 	}
 	crit_exit_gd(gd);
@@ -381,35 +391,10 @@ bsd4_select_curproc(globaldata_t gd)
 /*
  * BSD4_SETRUNQUEUE
  *
- * This routine is called to schedule a new user process after a fork.
+ * Place the specified lwp on the user scheduler's run queue.  This routine
+ * must be called with the thread descheduled.  The lwp must be runnable.
  *
- * The caller may set P_PASSIVE_ACQ in p_flag to indicate that we should
- * attempt to leave the thread on the current cpu.
- *
- * If P_PASSIVE_ACQ is set setrunqueue() will not wakeup potential target
- * cpus in an attempt to keep the process on the current cpu at least for
- * a little while to take advantage of locality of reference (e.g. fork/exec
- * or short fork/exit, and uio_yield()).
- *
- * CPU AFFINITY: cpu affinity is handled by attempting to either schedule
- * or (user level) preempt on the same cpu that a process was previously
- * scheduled to.  If we cannot do this but we are at enough of a higher
- * priority then the processes running on other cpus, we will allow the
- * process to be stolen by another cpu.
- *
- * WARNING!  This routine cannot block.  bsd4_acquire_curproc() does 
- * a deschedule/switch interlock and we can be moved to another cpu
- * the moment we are switched out.  Our LWKT run state is the only
- * thing preventing the transfer.
- *
- * The associated thread must NOT currently be scheduled (but can be the
- * current process after it has been LWKT descheduled).  It must NOT be on
- * a bsd4 scheduler queue either.  The purpose of this routine is to put
- * it on a scheduler queue or make it the current user process and LWKT
- * schedule it.  It is possible that the thread is in the middle of a LWKT
- * switchout on another cpu, lwkt_acquire() deals with that case.
- *
- * The process must be runnable.
+ * The thread may be the current thread as a special case.
  *
  * MPSAFE
  */
@@ -418,8 +403,8 @@ bsd4_setrunqueue(struct lwp *lp)
 {
 	globaldata_t gd;
 	bsd4_pcpu_t dd;
-	int cpuid;
 #ifdef SMP
+	int cpuid;
 	cpumask_t mask;
 	cpumask_t tmpmask;
 #endif
@@ -449,29 +434,27 @@ bsd4_setrunqueue(struct lwp *lp)
 	 */
 	KKASSERT(dd->uschedcp != lp);
 
+#ifndef SMP
 	/*
-	 * Check local cpu affinity.  The associated thread is stable at 
-	 * the moment.  Note that we may be checking another cpu here so we
-	 * have to be careful.  We can only assign uschedcp on OUR cpu.
+	 * If we are not SMP we do not have a scheduler helper to kick
+	 * and must directly activate the process if none are scheduled.
 	 *
-	 * This allows us to avoid actually queueing the process.  
-	 * acquire_curproc() will handle any threads we mistakenly schedule.
+	 * This is really only an issue when bootstrapping init since
+	 * the caller in all other cases will be a user process, and
+	 * even if released (dd->uschedcp == NULL), that process will
+	 * kickstart the scheduler when it returns to user mode from
+	 * the kernel.
 	 */
-	cpuid = gd->gd_cpuid;
-	if (gd == mycpu && (bsd4_curprocmask & (1 << cpuid)) == 0) {
-		atomic_set_int(&bsd4_curprocmask, 1 << cpuid);
+	if (dd->uschedcp == NULL) {
+		atomic_set_int(&bsd4_curprocmask, gd->gd_cpumask);
 		dd->uschedcp = lp;
 		dd->upri = lp->lwp_priority;
 		lwkt_schedule(lp->lwp_thread);
 		crit_exit();
 		return;
 	}
+#endif
 
-	/*
-	 * gd and cpuid may still 'hint' at another cpu.  Even so we have
-	 * to place this process on the userland scheduler's run queue for
-	 * action by the target cpu.
-	 */
 #ifdef SMP
 	/*
 	 * XXX fixme.  Could be part of a remrunqueue/setrunqueue
@@ -491,64 +474,42 @@ bsd4_setrunqueue(struct lwp *lp)
 	spin_lock_wr(&bsd4_spin);
 	bsd4_setrunqueue_locked(lp);
 
-	/*
-	 * gd, dd, and cpuid are still our target cpu 'hint', not our current
-	 * cpu info.
-	 *
-	 * We always try to schedule a LWP to its original cpu first.  It
-	 * is possible for the scheduler helper or setrunqueue to assign
-	 * the LWP to a different cpu before the one we asked for wakes
-	 * up.
-	 *
-	 * If the LWP has higher priority (lower lwp_priority value) on
-	 * its target cpu, reschedule on that cpu.
-	 */
-	{
-		if ((dd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK)) {
-			dd->upri = lp->lwp_priority;
-			spin_unlock_wr(&bsd4_spin);
 #ifdef SMP
-			if (gd == mycpu) {
-				need_user_resched();
-			} else {
-				lwkt_send_ipiq(gd, need_user_resched_remote,
-					       NULL);
-			}
-#else
-			need_user_resched();
-#endif
-			crit_exit();
-			return;
-		}
-	}
+	/*
+	 * Kick the scheduler helper on one of the other cpu's
+	 * and request a reschedule if appropriate.
+	 */
+	cpuid = (bsd4_scancpu & 0xFFFF) % ncpus;
+	++bsd4_scancpu;
+	mask = ~bsd4_curprocmask & bsd4_rdyprocmask &
+		lp->lwp_cpumask & smp_active_mask;
 	spin_unlock_wr(&bsd4_spin);
 
-#ifdef SMP
-	/*
-	 * Otherwise the LWP has a lower priority or we were asked not
-	 * to reschedule.  Look for an idle cpu whos scheduler helper
-	 * is ready to accept more work.
-	 *
-	 * Look for an idle cpu starting at our rotator (bsd4_scancpu).
-	 *
-	 * If no cpus are ready to accept work, just return.
-	 *
-	 * XXX P_PASSIVE_ACQ
-	 */
-	mask = ~bsd4_curprocmask & bsd4_rdyprocmask & mycpu->gd_other_cpus &
-	    lp->lwp_cpumask;
-	if (mask) {
-		cpuid = bsd4_scancpu;
-		if (++cpuid == ncpus)
-			cpuid = 0;
+	while (mask) {
 		tmpmask = ~((1 << cpuid) - 1);
 		if (mask & tmpmask)
 			cpuid = bsfl(mask & tmpmask);
 		else
 			cpuid = bsfl(mask);
-		atomic_clear_int(&bsd4_rdyprocmask, 1 << cpuid);
-		bsd4_scancpu = cpuid;
-		lwkt_schedule(&bsd4_pcpu[cpuid].helper_thread);
+		gd = globaldata_find(cpuid);
+		dd = &bsd4_pcpu[cpuid];
+
+		if ((dd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK)) {
+			if (gd == mycpu)
+				need_user_resched_remote(NULL);
+			else
+				lwkt_send_ipiq(gd, need_user_resched_remote, NULL);
+			break;
+		}
+		mask &= ~(1 << cpuid);
+	}
+#else
+	/*
+	 * Request a reschedule if appropriate.
+	 */
+	spin_unlock_wr(&bsd4_spin);
+	if ((dd->upri & ~PPQMASK) > (lp->lwp_priority & ~PPQMASK)) {
+		need_user_resched();
 	}
 #endif
 	crit_exit();
@@ -822,7 +783,6 @@ bsd4_yield(struct lwp *lp)
 	switch(lp->lwp_rqtype) {
 	case RTP_PRIO_NORMAL:
 		lp->lwp_estcpu = ESTCPULIM(lp->lwp_estcpu + ESTCPUINCR);
-		kprintf("Y");
 		break;
 	default:
 		break;
@@ -975,8 +935,11 @@ again:
 }
 
 #ifdef SMP
+
 /*
- * Called via an ipi message to reschedule on another cpu.
+ * Called via an ipi message to reschedule on another cpu.  If no
+ * user thread is active on the target cpu we wake the scheduler
+ * helper thread up to help schedule one.
  *
  * MPSAFE
  */
@@ -984,11 +947,18 @@ static
 void
 need_user_resched_remote(void *dummy)
 {
-	need_user_resched();
+	globaldata_t gd = mycpu;
+	bsd4_pcpu_t  dd = &bsd4_pcpu[gd->gd_cpuid];
+
+	if (dd->uschedcp == NULL && (bsd4_rdyprocmask & gd->gd_cpumask)) {
+		atomic_clear_int(&bsd4_rdyprocmask, gd->gd_cpumask);
+		lwkt_schedule(&dd->helper_thread);
+	} else {
+		need_user_resched();
+	}
 }
 
 #endif
-
 
 /*
  * bsd4_remrunqueue_locked() removes a given process from the run queue
@@ -1119,7 +1089,7 @@ sched_thread(void *dummy)
 
     gd = mycpu;
     cpuid = gd->gd_cpuid;	/* doesn't change */
-    cpumask = 1 << cpuid;	/* doesn't change */
+    cpumask = gd->gd_cpumask;	/* doesn't change */
     dd = &bsd4_pcpu[cpuid];
 
     /*
@@ -1140,7 +1110,15 @@ sched_thread(void *dummy)
 	lwkt_deschedule_self(gd->gd_curthread);
 	spin_lock_wr(&bsd4_spin);
 	atomic_set_int(&bsd4_rdyprocmask, cpumask);
+
+	clear_user_resched();	/* This satisfied the reschedule request */
+	dd->rrcount = 0;	/* Reset the round-robin counter */
+
 	if ((bsd4_curprocmask & cpumask) == 0) {
+		/*
+		 * No thread is currently scheduled.
+		 */
+		KKASSERT(dd->uschedcp == NULL);
 		if ((nlp = chooseproc_locked(NULL)) != NULL) {
 			atomic_set_int(&bsd4_curprocmask, cpumask);
 			dd->upri = nlp->lwp_priority;
@@ -1151,7 +1129,11 @@ sched_thread(void *dummy)
 		} else {
 			spin_unlock_wr(&bsd4_spin);
 		}
-	} else {
+#if 0
+	/*
+	 * Disabled for now, this can create an infinite loop.
+	 */
+	} else if (bsd4_runqcount) {
 		/*
 		 * Someone scheduled us but raced.  In order to not lose
 		 * track of the fact that there may be a LWP ready to go,
@@ -1160,8 +1142,8 @@ sched_thread(void *dummy)
 		 * Rotate through cpus starting with cpuid + 1.  Since cpuid
 		 * is already masked out by gd_other_cpus, just use ~cpumask.
 		 */
-		tmpmask = ~bsd4_curprocmask & bsd4_rdyprocmask &
-			  mycpu->gd_other_cpus;
+		tmpmask = bsd4_rdyprocmask & mycpu->gd_other_cpus &
+			  ~bsd4_curprocmask;
 		if (tmpmask) {
 			if (tmpmask & ~(cpumask - 1))
 				tmpid = bsfl(tmpmask & ~(cpumask - 1));
@@ -1174,6 +1156,12 @@ sched_thread(void *dummy)
 		} else {
 			spin_unlock_wr(&bsd4_spin);
 		}
+#endif
+	} else {
+		/*
+		 * The runq is empty.
+		 */
+		spin_unlock_wr(&bsd4_spin);
 	}
 	crit_exit_gd(gd);
 	lwkt_switch();
@@ -1212,6 +1200,7 @@ sched_thread_cpu_init(void)
 	if (i)
 	    atomic_clear_int(&bsd4_curprocmask, mask);
 	atomic_set_int(&bsd4_rdyprocmask, mask);
+	dd->upri = PRIBASE_NULL;
     }
     if (bootverbose)
 	kprintf("\n");

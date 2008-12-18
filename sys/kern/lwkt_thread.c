@@ -88,7 +88,10 @@ static __int64_t preempt_weird = 0;
 static __int64_t token_contention_count = 0;
 static __int64_t mplock_contention_count = 0;
 static int lwkt_use_spin_port;
+static int chain_mplock = 0;
 static struct objcache *thread_cache;
+
+volatile cpumask_t mp_lock_contention_mask;
 
 /*
  * We can make all thread ports use the spin backend instead of the thread
@@ -99,6 +102,9 @@ TUNABLE_INT("lwkt.use_spin_port", &lwkt_use_spin_port);
 SYSCTL_INT(_lwkt, OID_AUTO, untimely_switch, CTLFLAG_RW, &untimely_switch, 0, "");
 #ifdef	INVARIANTS
 SYSCTL_INT(_lwkt, OID_AUTO, panic_on_cscount, CTLFLAG_RW, &panic_on_cscount, 0, "");
+#endif
+#ifdef SMP
+SYSCTL_INT(_lwkt, OID_AUTO, chain_mplock, CTLFLAG_RW, &chain_mplock, 0, "");
 #endif
 SYSCTL_QUAD(_lwkt, OID_AUTO, switch_count, CTLFLAG_RW, &switch_count, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_hit, CTLFLAG_RW, &preempt_hit, 0, "");
@@ -555,9 +561,9 @@ lwkt_switch(void)
 	ntd->td_flags |= TDF_PREEMPT_DONE;
 
 	/*
-	 * XXX.  The interrupt may have woken a thread up, we need to properly
-	 * set the reschedule flag if the originally interrupted thread is at
-	 * a lower priority.
+	 * The interrupt may have woken a thread up, we need to properly
+	 * set the reschedule flag if the originally interrupted thread is
+	 * at a lower priority.
 	 */
 	if (gd->gd_runqmask > (2 << (ntd->td_pri & TDPRI_MASK)) - 1)
 	    need_lwkt_resched();
@@ -647,6 +653,21 @@ again:
 			break;
 		    rqmask &= ~(1 << nq);
 		    nq = bsrl(rqmask);
+
+		    /*
+		     * We have two choices. We can either refuse to run a
+		     * user thread when a kernel thread needs the MP lock
+		     * but could not get it, or we can allow it to run but
+		     * then expect an IPI (hopefully) later on to force a
+		     * reschedule when the MP lock might become available.
+		     */
+		    if (nq < TDPRI_KERN_LPSCHED) {
+			if (chain_mplock == 0)
+				break;
+			atomic_set_int(&mp_lock_contention_mask,
+				       gd->gd_cpumask);
+			/* continue loop, allow user threads to be scheduled */
+		    }
 		}
 		if (ntd == NULL) {
 		    cpu_mplock_contested();
@@ -864,6 +885,7 @@ lwkt_preempt(thread_t ntd, int critpri)
     ntd->td_preempted = td;
     td->td_flags |= TDF_PREEMPT_LOCK;
     td->td_switch(ntd);
+
     KKASSERT(ntd->td_preempted && (td->td_flags & TDF_PREEMPT_DONE));
 #ifdef SMP
     KKASSERT(savecnt == td->td_mpcount);
@@ -955,6 +977,26 @@ lwkt_yield(void)
 }
 
 /*
+ * Return 0 if no runnable threads are pending at the same or higher
+ * priority as the passed thread.
+ *
+ * Return 1 if runnable threads are pending at the same priority.
+ *
+ * Return 2 if runnable threads are pending at a higher priority.
+ */
+int
+lwkt_check_resched(thread_t td)
+{
+	int pri = td->td_pri & TDPRI_MASK;
+
+	if (td->td_gd->gd_runqmask > (2 << pri) - 1)
+		return(2);
+	if (TAILQ_NEXT(td, td_threadq))
+		return(1);
+	return(0);
+}
+
+/*
  * Generic schedule.  Possibly schedule threads belonging to other cpus and
  * deal with threads that might be blocked on a wait queue.
  *
@@ -977,28 +1019,14 @@ static __inline
 void
 _lwkt_schedule_post(globaldata_t gd, thread_t ntd, int cpri, int reschedok)
 {
-    int mypri;
+    thread_t otd;
 
     if (ntd->td_flags & TDF_RUNQ) {
 	if (ntd->td_preemptable && reschedok) {
 	    ntd->td_preemptable(ntd, cpri);	/* YYY +token */
 	} else if (reschedok) {
-	    /*
-	     * This is a little sticky.  Due to the passive release function
-	     * the LWKT priority can wiggle around for threads acting in
-	     * the kernel on behalf of a user process.  We do not want this
-	     * to effect the comparison per-say.
-	     *
-	     * What will happen is that the current user process will be
-	     * allowed to run until the next hardclock at which time a
-	     * forced need_lwkt_resched() will allow the other kernel mode
-	     * threads to get in their two cents.  This prevents cavitation.
-	     */
-	    mypri = gd->gd_curthread->td_pri & TDPRI_MASK;
-	    if (mypri >= TDPRI_USER_IDLE && mypri <= TDPRI_USER_REAL)
-		mypri = TDPRI_KERN_USER;
-
-	    if ((ntd->td_pri & TDPRI_MASK) > mypri)
+	    otd = curthread;
+	    if ((ntd->td_pri & TDPRI_MASK) > (otd->td_pri & TDPRI_MASK))
 		need_lwkt_resched();
 	}
     }
@@ -1395,6 +1423,58 @@ lwkt_mp_lock_contested(void)
     loggiant(beg);
     lwkt_switch();
     loggiant(end);
+}
+
+/*
+ * The rel_mplock() code will call this function after releasing the
+ * last reference on the MP lock if mp_lock_contention_mask is non-zero.
+ *
+ * We then chain an IPI to a single other cpu potentially needing the
+ * lock.  This is a bit heuristical and we can wind up with IPIs flying
+ * all over the place.
+ */
+static void lwkt_mp_lock_uncontested_remote(void *arg __unused);
+
+void
+lwkt_mp_lock_uncontested(void)
+{
+    globaldata_t gd;
+    globaldata_t dgd;
+    cpumask_t mask;
+    cpumask_t tmpmask;
+    int cpuid;
+
+    if (chain_mplock) {
+	gd = mycpu;
+	atomic_clear_int(&mp_lock_contention_mask, gd->gd_cpumask);
+	mask = mp_lock_contention_mask;
+	tmpmask = ~((1 << gd->gd_cpuid) - 1);
+
+	if (mask) {
+	    if (mask & tmpmask)
+		    cpuid = bsfl(mask & tmpmask);
+	    else
+		    cpuid = bsfl(mask);
+	    atomic_clear_int(&mp_lock_contention_mask, 1 << cpuid);
+	    dgd = globaldata_find(cpuid);
+	    lwkt_send_ipiq(dgd, lwkt_mp_lock_uncontested_remote, NULL);
+	}
+    }
+}
+
+/*
+ * The idea is for this IPI to interrupt a potentially lower priority
+ * thread, such as a user thread, to allow the scheduler to reschedule
+ * a higher priority kernel thread that needs the MP lock.
+ *
+ * For now we set the LWKT reschedule flag which generates an AST in
+ * doreti, though theoretically it is also possible to possibly preempt
+ * here if the underlying thread was operating in user mode.  Nah.
+ */
+static void
+lwkt_mp_lock_uncontested_remote(void *arg __unused)
+{
+	need_lwkt_resched();
 }
 
 #endif
