@@ -215,9 +215,24 @@ vnode_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *before,
 	bsize = vp->v_mount->mnt_stat.f_iosize;
 	voff = loffset % bsize;
 
+	/*
+	 * BMAP returns byte counts before and after, where after
+	 * is inclusive of the base page.  haspage must return page
+	 * counts before and after where after does not include the
+	 * base page.
+	 *
+	 * BMAP is allowed to return a *after of 0 for backwards
+	 * compatibility.  The base page is still considered valid if
+	 * no error is returned.
+	 */
 	error = VOP_BMAP(vp, loffset - voff, &doffset, after, before, 0);
-	if (error)
+	if (error) {
+		if (before)
+			*before = 0;
+		if (after)
+			*after = 0;
 		return TRUE;
+	}
 	if (doffset == NOOFFSET)
 		return FALSE;
 

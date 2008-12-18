@@ -84,6 +84,7 @@
 #include <sys/vkernel.h>
 #include <sys/sfbuf.h>
 #include <sys/lock.h>
+#include <sys/sysctl.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -122,6 +123,9 @@ struct faultstate {
 	boolean_t wired;
 	struct vnode *vp;
 };
+
+static int burst_fault = 0;
+SYSCTL_INT(_vm, OID_AUTO, burst_fault, CTLFLAG_RW, &burst_fault, 0, "");
 
 static int vm_fault_object(struct faultstate *, vm_pindex_t, vm_prot_t);
 static int vm_fault_vpagetable(struct faultstate *, vm_pindex_t *, vpte_t, int);
@@ -172,6 +176,7 @@ _unlock_things(struct faultstate *fs, int dealloc)
 	_cleanup_successful_fault(fs, 0);
 	if (dealloc) {
 		vm_object_deallocate(fs->first_object);
+		fs->first_object = NULL;
 	}
 	unlock_map(fs);	
 	if (fs->vp != NULL) { 
@@ -942,6 +947,7 @@ vm_fault_object(struct faultstate *fs,
 				vm_page_sleep_busy(fs->m, TRUE, "vmpfw");
 				mycpu->gd_cnt.v_intrans++;
 				vm_object_deallocate(fs->first_object);
+				fs->first_object = NULL;
 				crit_exit();
 				return (KERN_TRY_AGAIN);
 			}
@@ -1055,6 +1061,7 @@ readrest:
 				behind = 0;
 			} else {
 				behind = pindex;
+				KKASSERT(behind >= 0);
 				if (behind > VM_FAULT_READ_BEHIND)
 					behind = VM_FAULT_READ_BEHIND;
 
@@ -1698,7 +1705,7 @@ vm_fault_copy_entry(vm_map_t dst_map, vm_map_t src_map,
  */
 static int
 vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
-    vm_page_t *marray, int *reqpage)
+			  vm_page_t *marray, int *reqpage)
 {
 	int i,j;
 	vm_object_t object;
@@ -1741,11 +1748,12 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 	}
 
 	/*
-	 * try to do any readahead that we might have free pages for.
+	 * Do not do any readahead if we have insufficient free memory.
+	 *
+	 * XXX code was broken disabled before and has instability
+	 * with this conditonal fixed, so shortcut for now.
 	 */
-	if ((rahead + rbehind) >
-		((vmstats.v_free_count + vmstats.v_cache_count) - vmstats.v_free_reserved)) {
-		pagedaemon_wakeup();
+	if (burst_fault == 0 || vm_page_count_severe()) {
 		marray[0] = m;
 		*reqpage = 0;
 		return 1;
@@ -1767,18 +1775,14 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 		}
 
 		crit_enter();
-		for ( tpindex = pindex - 1; tpindex >= startpindex; tpindex -= 1) {
-			if (vm_page_lookup( object, tpindex)) {
-				startpindex = tpindex + 1;
-				break;
-			}
-			if (tpindex == 0)
+		for (tpindex = pindex; tpindex > startpindex; --tpindex) {
+			if (vm_page_lookup(object, tpindex - 1))
 				break;
 		}
 
-		for(i = 0, tpindex = startpindex; tpindex < pindex; i++, tpindex++) {
-
-			rtm = vm_page_alloc(object, tpindex, VM_ALLOC_NORMAL);
+		i = 0;
+		while (tpindex < pindex) {
+			rtm = vm_page_alloc(object, tpindex, VM_ALLOC_SYSTEM);
 			if (rtm == NULL) {
 				crit_exit();
 				for (j = 0; j < i; j++) {
@@ -1788,45 +1792,42 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 				*reqpage = 0;
 				return 1;
 			}
-
 			marray[i] = rtm;
+			++i;
+			++tpindex;
 		}
 		crit_exit();
 	} else {
-		startpindex = 0;
 		i = 0;
 	}
 
+	/*
+	 * Assign requested page
+	 */
 	marray[i] = m;
-	/* page offset of the required page */
 	*reqpage = i;
-
-	tpindex = pindex + 1;
-	i++;
+	++i;
 
 	/*
-	 * scan forward for the read ahead pages
+	 * Scan forwards for read-ahead pages
 	 */
+	tpindex = pindex + 1;
 	endpindex = tpindex + rahead;
 	if (endpindex > object->size)
 		endpindex = object->size;
 
 	crit_enter();
-	for( ; tpindex < endpindex; i++, tpindex++) {
-
-		if (vm_page_lookup(object, tpindex)) {
+	while (tpindex < endpindex) {
+		if (vm_page_lookup(object, tpindex))
 			break;
-		}
-
-		rtm = vm_page_alloc(object, tpindex, VM_ALLOC_NORMAL);
-		if (rtm == NULL) {
+		rtm = vm_page_alloc(object, tpindex, VM_ALLOC_SYSTEM);
+		if (rtm == NULL)
 			break;
-		}
-
 		marray[i] = rtm;
+		++i;
+		++tpindex;
 	}
 	crit_exit();
 
-	/* return number of bytes of pages */
-	return i;
+	return (i);
 }
