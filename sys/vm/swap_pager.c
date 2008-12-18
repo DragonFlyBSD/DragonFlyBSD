@@ -1557,13 +1557,20 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count,
 	}
 }
 
+void
+swap_pager_newswap(void)
+{
+	swp_sizecheck();
+}
+
 /*
  *	swap_pager_sync_iodone:
  *
  *	Completion routine for synchronous reads and writes from/to swap.
  *	We just mark the bp is complete and wake up anyone waiting on it.
  *
- *	This routine may not block.  This routine is called at splbio() or better.
+ *	This routine may not block.  This routine is called at splbio()
+ *	or better.
  */
 
 static void
@@ -1697,6 +1704,7 @@ swp_pager_async_iodone(struct bio *bio)
 				 * then finish the I/O.
 				 */
 				vm_page_dirty(m);
+				kprintf("f");
 				vm_page_activate(m);
 				vm_page_io_finish(m);
 			}
