@@ -106,7 +106,7 @@
 /* the kernel process "vm_pageout"*/
 static void vm_pageout (void);
 static int vm_pageout_clean (vm_page_t);
-static void vm_pageout_scan (int pass);
+static int vm_pageout_scan (int pass);
 static int vm_pageout_free_page_calc (vm_size_t count);
 struct thread *pagethread;
 
@@ -221,7 +221,7 @@ static void vm_req_vmdaemon (void);
 static void vm_pageout_page_stats(void);
 
 /*
- * Update
+ * Update vm_load to slow down faulting processes.
  */
 void
 vm_fault_ratecheck(void)
@@ -683,9 +683,8 @@ vm_pageout_page_free(vm_page_t m)
 }
 
 /*
- *	vm_pageout_scan does the dirty work for the pageout daemon.
+ * vm_pageout_scan does the dirty work for the pageout daemon.
  */
-
 struct vm_pageout_scan_info {
 	struct proc *bigproc;
 	vm_offset_t bigsize;
@@ -693,18 +692,18 @@ struct vm_pageout_scan_info {
 
 static int vm_pageout_scan_callback(struct proc *p, void *data);
 
-static void
+static int
 vm_pageout_scan(int pass)
 {
 	struct vm_pageout_scan_info info;
 	vm_page_t m, next;
 	struct vm_page marker;
-	int page_shortage, maxscan, pcount;
-	int addl_page_shortage, addl_page_shortage_init;
+	int maxscan, pcount;
+	int recycle_count;
+	int inactive_shortage, active_shortage;
 	vm_object_t object;
 	int actcount;
 	int vnodes_skipped = 0;
-	int pages_freed = 0;
 	int maxlaunder;
 
 	/*
@@ -712,14 +711,15 @@ vm_pageout_scan(int pass)
 	 */
 	pmap_collect();
 
-	addl_page_shortage_init = vm_pageout_deficit;
-	vm_pageout_deficit = 0;
-
 	/*
-	 * Calculate the number of pages we want to either free or move
-	 * to the cache.
+	 * Calculate our target for the number of free+cache pages we
+	 * want to get to.  This is higher then the number that causes
+	 * allocations to stall (severe) in order to provide hysteresis,
+	 * and if we don't make it all the way but get to the minimum
+	 * we're happy.
 	 */
-	page_shortage = vm_paging_target() + addl_page_shortage_init;
+	inactive_shortage = vm_paging_target() + vm_pageout_deficit;
+	vm_pageout_deficit = 0;
 
 	/*
 	 * Initialize our marker
@@ -760,10 +760,9 @@ vm_pageout_scan(int pass)
 	 */
 	crit_enter();
 rescan0:
-	addl_page_shortage = addl_page_shortage_init;
 	maxscan = vmstats.v_inactive_count;
 	for (m = TAILQ_FIRST(&vm_page_queues[PQ_INACTIVE].pl);
-	     m != NULL && maxscan-- > 0 && page_shortage > 0;
+	     m != NULL && maxscan-- > 0 && inactive_shortage > 0;
 	     m = next
 	 ) {
 		mycpu->gd_cnt.v_pdpages++;
@@ -795,7 +794,6 @@ rescan0:
 		if (m->hold_count) {
 			TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
 			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
-			addl_page_shortage++;
 			continue;
 		}
 
@@ -804,7 +802,6 @@ rescan0:
 		 * queue, most likely are being paged out.
 		 */
 		if (m->busy || (m->flags & PG_BUSY)) {
-			addl_page_shortage++;
 			continue;
 		}
 
@@ -872,16 +869,14 @@ rescan0:
 			 */
 			vm_pageout_page_free(m);
 			mycpu->gd_cnt.v_dfree++;
-			--page_shortage;
-			++pages_freed;
+			--inactive_shortage;
 		} else if (m->dirty == 0) {
 			/*
 			 * Clean pages can be placed onto the cache queue.
 			 * This effectively frees them.
 			 */
 			vm_page_cache(m);
-			--page_shortage;
-			++pages_freed;
+			--inactive_shortage;
 		} else if ((m->flags & PG_WINATCFLS) == 0 && pass == 0) {
 			/*
 			 * Dirty pages need to be paged out, but flushing
@@ -916,7 +911,7 @@ rescan0:
 			} else {
 				swap_pageouts_ok = !(defer_swap_pageouts || disable_swap_pageouts);
 				swap_pageouts_ok |= (!disable_swap_pageouts && defer_swap_pageouts &&
-				vm_page_count_min());
+				vm_page_count_min(0));
 										
 			}
 
@@ -1011,16 +1006,15 @@ rescan0:
 			 * pointer.  To prevent an inordinate number of
 			 * restarts we use our marker to remember our place.
 			 *
-			 * decrement page_shortage on success to account for
-			 * the (future) cleaned page.  Otherwise we could wind
-			 * up laundering or cleaning too many pages.
+			 * decrement inactive_shortage on success to account
+			 * for the (future) cleaned page.  Otherwise we
+			 * could wind up laundering or cleaning too many
+			 * pages.
 			 */
 			TAILQ_INSERT_AFTER(&vm_page_queues[PQ_INACTIVE].pl, m, &marker, pageq);
 			if (vm_pageout_clean(m) != 0) {
-				--page_shortage;
+				--inactive_shortage;
 				--maxlaunder;
-			} else {
-				addl_page_shortage++;
 			}
 			next = TAILQ_NEXT(&marker, pageq);
 			TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, &marker, pageq);
@@ -1030,34 +1024,32 @@ rescan0:
 	}
 
 	/*
-	 * Compute the number of pages we want to try to move from the
-	 * active queue to the inactive queue.
-	 */
-	page_shortage = vm_paging_target() +
-		        vmstats.v_inactive_target - vmstats.v_inactive_count;
-	page_shortage += addl_page_shortage;
-
-	/*
-	 * If the system is running out of swap or has none a large backlog
-	 * can accumulate in the inactive list.  Continue moving pages to
-	 * the inactive list even though its 'target' has been met due to
-	 * being unable to drain.  We can then use a low active count to
-	 * measure stress and out-of-memory conditions.
-	 */
-	if (page_shortage < addl_page_shortage)
-		page_shortage = addl_page_shortage;
-
-	/*
-	 * Scan the active queue for things we can deactivate. We nominally
-	 * track the per-page activity counter and use it to locate 
-	 * deactivation candidates.
+	 * We want to move pages from the active queue to the inactive
+	 * queue to get the inactive queue to the inactive target.  If
+	 * we still have a page shortage from above we try to directly free
+	 * clean pages instead of moving them.
 	 *
-	 * NOTE: we are still in a critical section.
+	 * If we do still have a shortage we keep track of the number of
+	 * pages we free or cache (recycle_count) as a measure of thrashing
+	 * between the active and inactive queues.
+	 *
+	 * We do not do this if we were able to satisfy the requirement
+	 * entirely from the inactive queue.
+	 *
+	 * NOTE: Both variables can end up negative.
+	 * NOTE: We are still in a critical section.
 	 */
+	active_shortage = vmstats.v_inactive_target - vmstats.v_inactive_count;
+	if (inactive_shortage <= 0)
+		active_shortage = 0;
+
 	pcount = vmstats.v_active_count;
+	recycle_count = 0;
 	m = TAILQ_FIRST(&vm_page_queues[PQ_ACTIVE].pl);
 
-	while ((m != NULL) && (pcount-- > 0) && (page_shortage > 0)) {
+	while ((m != NULL) && (pcount-- > 0) &&
+	       (inactive_shortage > 0 || active_shortage > 0)
+	) {
 		/*
 		 * Give interrupts a chance.
 		 */
@@ -1090,13 +1082,14 @@ rescan0:
 		mycpu->gd_cnt.v_pdpages++;
 
 		/*
-		 * Check to see "how much" the page has been used.
+		 * Check to see "how much" the page has been used and clear
+		 * the tracking access bits.  If the object has no references
+		 * don't bother paying the expense.
 		 */
 		actcount = 0;
 		if (m->object->ref_count != 0) {
-			if (m->flags & PG_REFERENCED) {
-				actcount += 1;
-			}
+			if (m->flags & PG_REFERENCED)
+				++actcount;
 			actcount += pmap_ts_referenced(m);
 			if (actcount) {
 				m->act_count += ACT_ADVANCE + actcount;
@@ -1104,31 +1097,35 @@ rescan0:
 					m->act_count = ACT_MAX;
 			}
 		}
-
-		/*
-		 * Since we have "tested" this bit, we need to clear it now.
-		 */
 		vm_page_flag_clear(m, PG_REFERENCED);
 
 		/*
-		 * Only if an object is currently being used, do we use the
-		 * page activation count stats.
+		 * actcount is only valid if the object ref_count is non-zero.
 		 */
-		if (actcount && (m->object->ref_count != 0)) {
+		if (actcount && m->object->ref_count != 0) {
 			TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
 			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
 		} else {
 			m->act_count -= min(m->act_count, ACT_DECLINE);
 			if (vm_pageout_algorithm ||
 			    m->object->ref_count == 0 ||
-			    m->act_count < pass) {
-				page_shortage--;
-				if (m->object->ref_count == 0) {
+			    m->act_count < pass + 1
+			) {
+				/*
+				 * Deactivate the page.  If we had a
+				 * shortage from our inactive scan try to
+				 * free (cache) the page instead.
+				 */
+				--active_shortage;
+				if (inactive_shortage > 0 ||
+				    m->object->ref_count == 0) {
+					if (inactive_shortage > 0)
+						++recycle_count;
 					vm_page_busy(m);
 					vm_page_protect(m, VM_PROT_NONE);
 					vm_page_wakeup(m);
 					if (m->dirty == 0) {
-						++pages_freed;
+						--inactive_shortage;
 						vm_page_cache(m);
 					} else {
 						vm_page_deactivate(m);
@@ -1155,11 +1152,10 @@ rescan0:
 	 * Pages moved from PQ_CACHE to totally free are not counted in the
 	 * pages_freed counter.
 	 */
-
 	while (vmstats.v_free_count < vmstats.v_free_reserved) {
 		static int cache_rover = 0;
 		m = vm_page_list_find(PQ_CACHE, cache_rover, FALSE);
-		if (!m)
+		if (m == NULL)
 			break;
 		if ((m->flags & (PG_BUSY|PG_UNMANAGED)) || 
 		    m->busy || 
@@ -1200,7 +1196,7 @@ rescan0:
 	 * if we did not get enough free pages.
 	 */
 	if (vm_paging_target() > 0) {
-		if (vnodes_skipped && vm_page_count_min())
+		if (vnodes_skipped && vm_page_count_min(0))
 			speedup_syncer();
 #if !defined(NO_SWAPPING)
 		if (vm_swap_enabled && vm_page_count_target()) {
@@ -1211,33 +1207,37 @@ rescan0:
 	}
 
 	/*
-	 * If we are out of swap space (or have no swap) then we
-	 * can detect when the system has completely run out of
-	 * memory by observing several variables.
+	 * Handle catastrophic conditions.  Under good conditions we should
+	 * be at the target, well beyond our minimum.  If we could not even
+	 * reach our minimum the system is under heavy stress.
+	 *
+	 * Determine whether we have run out of memory.  This occurs when
+	 * swap_pager_full is TRUE and the only pages left in the page
+	 * queues are dirty.  We will still likely have page shortages.
 	 *
 	 * - swap_pager_full is set if insufficient swap was
 	 *   available to satisfy a requested pageout.
 	 *
-	 * - vm_page_count_min() means we could not recover
-	 *   enough pages to meet bare minimum needs.
+	 * - the inactive queue is bloated (4 x size of active queue),
+	 *   meaning it is unable to get rid of dirty pages and.
 	 *
-	 * - vm_active_count
+	 * - vm_page_count_min() without counting pages recycled from the
+	 *   active queue (recycle_count) means we could not recover
+	 *   enough pages to meet bare minimum needs.  This test only
+	 *   works if the inactive queue is bloated.
 	 *
-	 *and we were
-	 * not able to reach our minimum free page count target,
-	 * then we can detect whether we have run out of memory
-	 * by observing the active count.  A memory starved
-	 * system will reduce the active count
-	 *
-	 * If under these circumstances our paging target exceeds
-	 * 1/2 the number of active pages we have a very serious
-	 * problem that the deactivation of pages failed to solve
-	 * and must start killing things.
+	 * - due to a positive inactive_shortage we shifted the remaining
+	 *   dirty pages from the active queue to the inactive queue
+	 *   trying to find clean ones to free.
 	 */
-	if (swap_pager_full && vm_page_count_min())
+	if (swap_pager_full && vm_page_count_min(recycle_count))
 		kprintf("Warning: system low on memory+swap!\n");
-	if (swap_pager_full && vm_page_count_min() &&
-	    vm_paging_target() > vmstats.v_active_count / 4) {
+	if (swap_pager_full && vm_page_count_min(recycle_count) &&
+	    vmstats.v_inactive_count > vmstats.v_active_count * 4 &&
+	    inactive_shortage > 0) {
+		/*
+		 * Kill something.
+		 */
 		info.bigproc = NULL;
 		info.bigsize = 0;
 		allproc_scan(vm_pageout_scan_callback, &info);
@@ -1250,6 +1250,7 @@ rescan0:
 			PRELE(info.bigproc);
 		}
 	}
+	return(inactive_shortage);
 }
 
 static int
@@ -1259,7 +1260,8 @@ vm_pageout_scan_callback(struct proc *p, void *data)
 	vm_offset_t size;
 
 	/*
-	 * if this is a system process, skip it
+	 * Never kill system processes or init.  If we have configured swap
+	 * then try to avoid killing low-numbered pids.
 	 */
 	if ((p->p_flag & P_SYSTEM) || (p->p_pid == 1) ||
 	    ((p->p_pid < 48) && (vm_swap_size != 0))) {
@@ -1270,21 +1272,23 @@ vm_pageout_scan_callback(struct proc *p, void *data)
 	 * if the process is in a non-running type state,
 	 * don't touch it.
 	 */
-	if (p->p_stat != SACTIVE && p->p_stat != SSTOP) {
+	if (p->p_stat != SACTIVE && p->p_stat != SSTOP)
 		return (0);
-	}
 
 	/*
-	 * get the process size
+	 * Get the approximate process size.  Note that anonymous pages
+	 * with backing swap will be counted twice, but there should not
+	 * be too many such pages due to the stress the VM system is
+	 * under at this point.
 	 */
-	size = vmspace_resident_count(p->p_vmspace) +
+	size = vmspace_anonymous_count(p->p_vmspace) +
 		vmspace_swap_count(p->p_vmspace);
 
 	/*
 	 * If the this process is bigger than the biggest one
 	 * remember it.
 	 */
-	if (size > info->bigsize) {
+	if (info->bigsize < size) {
 		if (info->bigproc)
 			PRELE(info->bigproc);
 		PHOLD(p);
@@ -1413,12 +1417,13 @@ vm_pageout_free_page_calc(vm_size_t count)
 
 
 /*
- *	vm_pageout is the high level pageout daemon.
+ * vm_pageout is the high level pageout daemon.
  */
 static void
 vm_pageout(void)
 {
 	int pass;
+	int inactive_shortage;
 
 	/*
 	 * Initialize some paging parameters.
@@ -1430,6 +1435,7 @@ vm_pageout(void)
 		vm_pageout_page_count = 8;
 
 	vm_pageout_free_page_calc(vmstats.v_page_count);
+
 	/*
 	 * v_free_target and v_cache_min control pageout hysteresis.  Note
 	 * that these are more a measure of the VM cache queue hysteresis
@@ -1482,66 +1488,96 @@ vm_pageout(void)
 
 	swap_pager_swap_init();
 	pass = 0;
+
 	/*
 	 * The pageout daemon is never done, so loop forever.
 	 */
 	while (TRUE) {
 		int error;
 
-		/*
-		 * If we have enough free memory, wakeup waiters.  Do
-		 * not clear vm_pages_needed until we reach our target,
-		 * otherwise we may be woken up over and over again and
-		 * waste a lot of cpu.
-		 */
-		crit_enter();
-		if (vm_pages_needed && !vm_page_count_min()) {
-			if (vm_paging_needed() <= 0)
-				vm_pages_needed = 0;
-			wakeup(&vmstats.v_free_count);
-		}
-		if (vm_pages_needed) {
+		if (vm_pages_needed == 0) {
 			/*
-			 * Still not done, take a second pass without waiting
-			 * (unlimited dirty cleaning), otherwise sleep a bit
-			 * and try again.
+			 * Wait for an action request
 			 */
-			++pass;
-			if (pass > 1)
-				tsleep(&vm_pages_needed, 0, "psleep", hz/2);
-		} else {
-			/*
-			 * Good enough, sleep & handle stats.  Prime the pass
-			 * for the next run.
-			 */
-			if (pass > 1)
-				pass = 1;
-			else
-				pass = 0;
 			error = tsleep(&vm_pages_needed,
-				0, "psleep", vm_pageout_stats_interval * hz);
-			if (error && !vm_pages_needed) {
-				crit_exit();
-				pass = 0;
+				       0, "psleep",
+				       vm_pageout_stats_interval * hz);
+			if (error && vm_pages_needed == 0) {
 				vm_pageout_page_stats();
 				continue;
 			}
+			vm_pages_needed = 1;
 		}
 
-		if (vm_pages_needed)
-			mycpu->gd_cnt.v_pdwakeups++;
+		/*
+		 * If we have enough free memory, wakeup waiters.
+		 */
+		crit_enter();
+		if (!vm_page_count_min(0))
+			wakeup(&vmstats.v_free_count);
+		mycpu->gd_cnt.v_pdwakeups++;
 		crit_exit();
-		vm_pageout_scan(pass);
-		vm_pageout_deficit = 0;
+		inactive_shortage = vm_pageout_scan(pass);
+
+		/*
+		 * Try to avoid thrashing the system with activity.
+		 */
+		if (inactive_shortage > 0) {
+			++pass;
+			if (swap_pager_full) {
+				/*
+				 * Running out of memory, catastrophic back-off
+				 * to one-second intervals.
+				 */
+				tsleep(&vm_pages_needed, 0, "pdelay", hz);
+			} else if (pass < 10 && vm_pages_needed > 1) {
+				/*
+				 * Normal operation, additional processes
+				 * have already kicked us.  Retry immediately.
+				 */
+			} else if (pass < 10) {
+				/*
+				 * Normal operation, fewer processes.  Delay
+				 * a bit but allow wakeups.
+				 */
+				vm_pages_needed = 0;
+				tsleep(&vm_pages_needed, 0, "pdelay", hz / 10);
+				vm_pages_needed = 1;
+			} else {
+				/*
+				 * We've taken too many passes, forced delay.
+				 */
+				tsleep(&vm_pages_needed, 0, "pdelay", hz / 10);
+			}
+		} else {
+			pass = 0;
+			vm_pages_needed = 0;
+		}
 	}
 }
 
+/*
+ * Called after allocating a page out of the cache or free queue
+ * to possibly wake the pagedaemon up to replentish our supply.
+ *
+ * We try to generate some hysteresis by waking the pagedaemon up
+ * when our free+cache pages go below the severe level.  The pagedaemon
+ * tries to get the count back up to at least the minimum, and through
+ * to the target level if possible.
+ *
+ * If the pagedaemon is already active bump vm_pages_needed as a hint
+ * that there are even more requests pending.
+ */
 void
 pagedaemon_wakeup(void)
 {
-	if (!vm_pages_needed && curthread != pagethread) {
-		vm_pages_needed++;
-		wakeup(&vm_pages_needed);
+	if (vm_page_count_severe() && curthread != pagethread) {
+		if (vm_pages_needed == 0) {
+			vm_pages_needed = 1;
+			wakeup(&vm_pages_needed);
+		} else if (vm_page_count_min(0)) {
+			++vm_pages_needed;
+		}
 	}
 }
 

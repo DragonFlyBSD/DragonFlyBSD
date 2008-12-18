@@ -331,8 +331,7 @@ vmspace_exitfree(struct proc *p)
 }
 
 /*
- * vmspace_swap_count() - count the approximate swap useage in pages for a
- *			  vmspace.
+ * vmspace_swap_count()
  *
  *	Swap useage is determined by taking the proportional swap used by
  *	VM objects backing the VM map.  To make up for fractional losses,
@@ -368,6 +367,42 @@ vmspace_swap_count(struct vmspace *vmspace)
 	}
 	return(count);
 }
+
+/*
+ * vmspace_anonymous_count()
+ *
+ *	Calculate the approximate number of anonymous pages in use by
+ *	this vmspace.  To make up for fractional losses, we count each
+ *	VM object as having at least 1 anonymous page.
+ */
+int
+vmspace_anonymous_count(struct vmspace *vmspace)
+{
+	vm_map_t map = &vmspace->vm_map;
+	vm_map_entry_t cur;
+	vm_object_t object;
+	int count = 0;
+
+	for (cur = map->header.next; cur != &map->header; cur = cur->next) {
+		switch(cur->maptype) {
+		case VM_MAPTYPE_NORMAL:
+		case VM_MAPTYPE_VPAGETABLE:
+			if ((object = cur->object.vm_object) == NULL)
+				break;
+			if (object->type != OBJT_DEFAULT &&
+			    object->type != OBJT_SWAP) {
+				break;
+			}
+			count += object->resident_page_count;
+			break;
+		default:
+			break;
+		}
+	}
+	return(count);
+}
+
+
 
 
 /*

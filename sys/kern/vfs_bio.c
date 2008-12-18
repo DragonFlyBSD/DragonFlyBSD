@@ -2930,17 +2930,6 @@ allocbuf(struct buf *bp, int size)
 
 				if (vm_page_sleep_busy(m, FALSE, "pgtblk"))
 					continue;
-
-				/*
-				 * We have a good page.  Should we wakeup the
-				 * page daemon?
-				 */
-				if ((curthread != pagethread) &&
-				    ((m->queue - m->pc) == PQ_CACHE) &&
-				    ((vmstats.v_free_count + vmstats.v_cache_count) <
-					(vmstats.v_free_min + vmstats.v_cache_min))) {
-					pagedaemon_wakeup();
-				}
 				vm_page_flag_clear(m, PG_ZERO);
 				vm_page_wire(m);
 				bp->b_xio.xio_pages[bp->b_xio.xio_npages] = m;

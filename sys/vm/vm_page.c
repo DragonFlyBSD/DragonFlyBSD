@@ -526,10 +526,8 @@ vm_page_unqueue(vm_page_t m)
 		TAILQ_REMOVE(&pq->pl, m, pageq);
 		(*pq->cnt)--;
 		pq->lcnt--;
-		if ((queue - m->pc) == PQ_CACHE) {
-			if (vm_paging_needed())
-				pagedaemon_wakeup();
-		}
+		if ((queue - m->pc) == PQ_CACHE || (queue - m->pc) == PQ_FREE)
+			pagedaemon_wakeup();
 	}
 }
 
@@ -790,8 +788,7 @@ loop:
 	 * Don't wakeup too often - wakeup the pageout daemon when
 	 * we would be nearly out of memory.
 	 */
-	if (vm_paging_needed())
-		pagedaemon_wakeup();
+	pagedaemon_wakeup();
 
 	crit_exit();
 
@@ -813,7 +810,7 @@ vm_wait(int timo)
 		vm_pageout_pages_needed = 1;
 		tsleep(&vm_pageout_pages_needed, 0, "VMWait", timo);
 	} else {
-		if (!vm_pages_needed) {
+		if (vm_pages_needed == 0) {
 			vm_pages_needed = 1;
 			wakeup(&vm_pages_needed);
 		}
@@ -827,16 +824,12 @@ vm_wait(int timo)
  *
  * Called only in vm_fault so that processes page faulting can be
  * easily tracked.
- *
- * Sleeps at a lower priority than vm_wait() so that vm_wait()ing
- * processes will be able to grab memory first.  Do not change
- * this balance without careful testing first.
  */
 void
 vm_waitpfault(void)
 {
 	crit_enter();
-	if (!vm_pages_needed) {
+	if (vm_pages_needed == 0) {
 		vm_pages_needed = 1;
 		wakeup(&vm_pages_needed);
 	}
@@ -905,7 +898,7 @@ vm_page_free_wakeup(void)
 	 * high water mark. And wakeup scheduler process if we have
 	 * lots of memory. this process will swapin processes.
 	 */
-	if (vm_pages_needed && !vm_page_count_min()) {
+	if (vm_pages_needed && !vm_page_count_min(0)) {
 		vm_pages_needed = 0;
 		wakeup(&vmstats.v_free_count);
 	}

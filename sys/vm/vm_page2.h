@@ -51,68 +51,54 @@
 #ifdef _KERNEL
 
 /*
- * Return TRUE if we are under our reserved low-free-pages threshold
- */
-
-static __inline 
-int
-vm_page_count_reserved(void)
-{
-    return (vmstats.v_free_reserved > 
-	(vmstats.v_free_count + vmstats.v_cache_count));
-}
-
-/*
  * Return TRUE if we are under our severe low-free-pages threshold
  *
- * This routine is typically used at the user<->system interface to determine
- * whether we need to block in order to avoid a low memory deadlock.
+ * This causes user processes to stall to avoid exhausting memory that
+ * the kernel might need.
+ *
+ * reserved < severe < minimum < target < paging_target
  */
-
 static __inline 
 int
 vm_page_count_severe(void)
 {
     return (vmstats.v_free_severe >
-	(vmstats.v_free_count + vmstats.v_cache_count));
+	    vmstats.v_free_count + vmstats.v_cache_count);
 }
 
 /*
  * Return TRUE if we are under our minimum low-free-pages threshold.
+ * This activates the pageout demon.  The pageout demon tries to
+ * reach the target but may stop once it satisfies the minimum.
  *
- * This routine is typically used within the system to determine whether
- * we can execute potentially very expensive code in terms of memory.  It
- * is also used by the pageout daemon to calculate when to sleep, when
- * to wake waiters up, and when (after making a pass) to become more
- * desparate.
+ * reserved < severe < minimum < target < paging_target
  */
-
 static __inline 
 int
-vm_page_count_min(void)
+vm_page_count_min(int donotcount)
 {
-    return (vmstats.v_free_min >
-	(vmstats.v_free_count + vmstats.v_cache_count));
+    return (vmstats.v_free_min + donotcount >
+	    (vmstats.v_free_count + vmstats.v_cache_count) ||
+	    vmstats.v_free_reserved > vmstats.v_free_count);
 }
 
 /*
- * Return TRUE if we have not reached our free page target during
- * free page recovery operations.
+ * Return TRUE if we are under our free page target.  The pageout demon
+ * tries to reach the target but may stop once it gets past the min.
  */
-
 static __inline 
 int
 vm_page_count_target(void)
 {
     return (vmstats.v_free_target >
-	(vmstats.v_free_count + vmstats.v_cache_count));
+	    (vmstats.v_free_count + vmstats.v_cache_count));
 }
 
 /*
- * Return the number of pages we need to free-up or cache
- * A positive number indicates that we do not have enough free pages.
+ * Return the number of pages the pageout daemon needs to move into the
+ * cache or free lists.  A negative number means we have sufficient free
+ * pages.
  */
-
 static __inline 
 int
 vm_paging_target(void)
@@ -124,16 +110,29 @@ vm_paging_target(void)
 }
 
 /*
- * Return a positive number if the pagedaemon needs to be woken up.
+ * Return TRUE if we need to start paging.  This routine should not be
+ * used to determine when to block on the VM system.  It supplies hysteresis
+ * to the pageout code.
+ *
+ * XXX this triggers a wakeup of the pagedaemon.  As part of its work
+ * the pagedaemon tries to maintain v_free_reserved worth of truely
+ * free pages.  Set the trigger point a bit lower so we have some hystereis.
  */
-
 static __inline 
 int
 vm_paging_needed(void)
 {
+    int trigger;
+
+    trigger = vmstats.v_interrupt_free_min +
+	      (vmstats.v_free_reserved - vmstats.v_interrupt_free_min) / 2;
+    if (trigger < 10)	/* safety */
+	trigger = 10;
+
     return (
-	(vmstats.v_free_reserved + vmstats.v_cache_min) >
-	(vmstats.v_free_count + vmstats.v_cache_count)
+	(vmstats.v_free_min + vmstats.v_cache_min) >
+	(vmstats.v_free_count + vmstats.v_cache_count) ||
+	trigger > vmstats.v_free_count
     );
 }
 

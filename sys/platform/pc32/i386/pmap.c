@@ -1495,8 +1495,8 @@ get_pv_entry(void)
 {
 	pv_entry_count++;
 	if (pv_entry_high_water &&
-		(pv_entry_count > pv_entry_high_water) &&
-		(pmap_pagedaemon_waken == 0)) {
+	    (pv_entry_count > pv_entry_high_water) &&
+	    (pmap_pagedaemon_waken == 0)) {
 		pmap_pagedaemon_waken = 1;
 		wakeup (&vm_pages_needed);
 	}
@@ -1516,6 +1516,7 @@ pmap_collect(void)
 
 	if (pmap_pagedaemon_waken == 0)
 		return;
+	pmap_pagedaemon_waken = 0;
 
 	if (warningdone < 5) {
 		kprintf("pmap_collect: collecting pv entries -- suggest increasing PMAP_SHPGPERPROC\n");
@@ -1529,7 +1530,6 @@ pmap_collect(void)
 			continue;
 		pmap_remove_all(m);
 	}
-	pmap_pagedaemon_waken = 0;
 }
 	
 

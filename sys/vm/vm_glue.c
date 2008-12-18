@@ -344,7 +344,7 @@ loop:
 	/*
 	 * Don't try to swap anything in if we are low on memory.
 	 */
-	if (vm_page_count_min()) {
+	if (vm_page_count_severe()) {
 		vm_wait(0);
 		goto loop;
 	}
