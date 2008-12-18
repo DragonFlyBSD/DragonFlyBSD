@@ -753,7 +753,10 @@ grep (int fd, char const *file, struct stats *stats)
   if (! fillbuf (save, stats))
     {
       if (! (is_EISDIR (errno, file) && suppress_errors))
-	error (filename, errno);
+	{
+	  if (error == EINVAL)
+	    error (filename, errno);
+	}
       return 0;
     }
 

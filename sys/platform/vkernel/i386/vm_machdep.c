@@ -408,7 +408,7 @@ kvm_access_check(vm_offset_t saddr, vm_offset_t eaddr, int prot)
 {
 	vm_offset_t addr;
 
-	if (saddr >= (vm_offset_t)&_start && eaddr <= (vm_offset_t)&_end) 
+	if (saddr >= trunc_page((vm_offset_t)&_start) && eaddr <= round_page((vm_offset_t)&_end))
 		return 0;
 	if (saddr < KvaStart)
 		return EFAULT;
