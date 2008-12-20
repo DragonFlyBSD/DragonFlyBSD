@@ -433,7 +433,7 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 
 	bp = NULL;
 
-	error = bread(devvp, 0, BBSIZE, &bp);
+	error = bread(devvp, BBLOCK, BBSIZE, &bp);
 	if (error)
 		goto out;
 	ntmp = kmalloc(sizeof *ntmp, M_NTFSMNT, M_WAITOK | M_ZERO);
