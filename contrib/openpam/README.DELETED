@@ -1,10 +1,10 @@
 INSTALL
-MANIFEST
 Makefile.am
 Makefile.in
 aclocal.m4
 autogen.sh
 bin
+compile
 config.guess
 config.h.in
 config.sub
