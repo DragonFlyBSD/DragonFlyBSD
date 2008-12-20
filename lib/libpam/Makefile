@@ -29,7 +29,7 @@ SRCS+=	pam_debug_log.c
 SRCS+=	${PATCHES}
 
 PAMINCS=	openpam.h openpam_version.h pam_appl.h pam_constants.h
-PAMINCS+=	pam_modules.h pam_types.h
+PAMINCS+=	pam_modules.h pam_types.h openpam_attr.h
 INCS=	${PAMINCS:S;^;${SRCDIR}/include/security/;} pam_mod_misc.h
 INCSDIR=	${INCLUDEDIR}/security
 

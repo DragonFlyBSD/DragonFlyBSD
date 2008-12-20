@@ -305,7 +305,7 @@ static int
 pam_ssh_add_keys_to_agent(pam_handle_t *pamh)
 {
 	AuthenticationConnection *ac;
-	struct pam_ssh_key *psk;
+	const struct pam_ssh_key *psk;
 	const char **kfn;
 	char **envlist, **env;
 	int pam_err;
@@ -358,7 +358,7 @@ pam_sm_open_session(pam_handle_t *pamh, int flags __unused,
 {
 	struct passwd *pwd;
 	const char *user;
-	void *data;
+	const void *data;
 	int pam_err;
 
 	/* no keys, no work */
