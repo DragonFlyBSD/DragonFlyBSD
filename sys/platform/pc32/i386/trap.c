@@ -323,7 +323,7 @@ static __inline void
 userexit(struct lwp *lp)
 {
 	struct thread *td = lp->lwp_thread;
-	globaldata_t gd = td->td_gd;
+	/* globaldata_t gd = td->td_gd; */
 
 	/*
 	 * Handle stop requests at kernel priority.  Any requests queued
