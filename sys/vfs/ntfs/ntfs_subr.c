@@ -1642,7 +1642,7 @@ ntfs_readattr(struct ntfsmount *ntmp, struct ntnode *ip, u_int32_t attrnum,
 	if (vap->va_compression && vap->va_compressalg) {
 		u_int8_t       *cup;
 		u_int8_t       *uup;
-		off_t           off = roff, left = rsize, tocopy;
+		off_t           off, left = rsize, tocopy;
 		caddr_t         data = rdata;
 		cn_t            cn;
 

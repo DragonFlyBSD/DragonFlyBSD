@@ -1252,7 +1252,7 @@ static void
 tulip_2114x_media_preset(tulip_softc_t *sc)
 {
     const tulip_media_info_t *mi = NULL;
-    tulip_media_t media = sc->tulip_media;
+    tulip_media_t media;
 
     if (sc->tulip_probe_state == TULIP_PROBE_INACTIVE)
 	media = sc->tulip_media;
@@ -1489,7 +1489,7 @@ static void
 tulip_21140_cogent_em100_media_probe(tulip_softc_t *sc)
 {
     tulip_media_info_t *mip = sc->tulip_mediainfo;
-    uint32_t cmdmode = TULIP_CSR_READ(sc, csr_command);
+    uint32_t cmdmode;
 
     sc->tulip_gpinit = TULIP_GP_EM100_PINS;
     sc->tulip_gpdata = TULIP_GP_EM100_INIT;

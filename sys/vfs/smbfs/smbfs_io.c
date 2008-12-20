@@ -84,7 +84,7 @@ smbfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 	struct smb_cred scred;
 	struct smbfs_fctx *ctx;
 	struct vnode *newvp;
-	struct smbnode *np = VTOSMB(vp);
+	struct smbnode *np;
 	int error, offset, retval/*, *eofflag = ap->a_eofflag*/;
 
 	np = VTOSMB(vp);

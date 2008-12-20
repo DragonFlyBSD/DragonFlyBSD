@@ -1946,7 +1946,7 @@ wi_get_cfg(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			n = (len - off) / reslen;
 		len = off + reslen * n;
 		if (off != 0) {
-			struct wi_scan_p2_hdr *p2 = (struct wi_scan_p2_hdr *)wreq.wi_val;
+			struct wi_scan_p2_hdr *p2;
 			/*
 			 * Prepend Prism-specific header.
 			 */

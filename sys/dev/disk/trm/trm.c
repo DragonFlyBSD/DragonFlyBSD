@@ -3268,7 +3268,7 @@ NVRAM_trm_write_cmd(PACB pACB, u_int8_t bCmd, u_int8_t bAddr)
 static void
 trm_check_eeprom(PNVRAMTYPE pEEpromBuf, PACB pACB)
 {
-	u_int16_t	*wpEeprom = (u_int16_t *) pEEpromBuf;
+	u_int16_t	*wpEeprom;
 	u_int16_t	wAddr, wCheckSum;
 	u_long	dAddr, *dpEeprom;
 

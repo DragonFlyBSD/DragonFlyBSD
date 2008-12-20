@@ -576,7 +576,6 @@ jme_attach(device_t dev)
 	sc->jme_dev = dev;
 	sc->jme_lowaddr = BUS_SPACE_MAXADDR;
 
-	ifp = &sc->arpcom.ac_if;
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 
 	callout_init(&sc->jme_tick_ch);

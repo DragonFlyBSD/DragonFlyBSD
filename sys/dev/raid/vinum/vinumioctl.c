@@ -75,7 +75,7 @@ vinumioctl(struct dev_ioctl_args *ap)
     struct volume *vol;
     struct partinfo *dpart;
     int fe;						    /* free list element number */
-    struct _ioctl_reply *ioctl_reply = (struct _ioctl_reply *) data; /* struct to return */
+    struct _ioctl_reply *ioctl_reply;			    /* struct to return */
 
     error = 0;
 

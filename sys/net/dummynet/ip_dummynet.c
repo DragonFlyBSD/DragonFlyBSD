@@ -266,7 +266,7 @@ heap_init(struct dn_heap *h, int new_size)
 static int
 heap_insert(struct dn_heap *h, dn_key key1, void *p)
 {
-    int son = h->elements;
+    int son;
 
     if (p == NULL) {	/* Data already there, set starting point */
 	son = key1;
