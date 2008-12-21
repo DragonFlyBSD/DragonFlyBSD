@@ -28,6 +28,8 @@
  * $DragonFly: src/sys/dev/netif/jme/if_jme.c,v 1.12 2008/11/26 11:55:18 sephe Exp $
  */
 
+#include "opt_polling.h"
+
 #include <sys/param.h>
 #include <sys/endian.h>
 #include <sys/kernel.h>
@@ -85,6 +87,9 @@ static void	jme_start(struct ifnet *);
 static void	jme_watchdog(struct ifnet *);
 static void	jme_mediastatus(struct ifnet *, struct ifmediareq *);
 static int	jme_mediachange(struct ifnet *);
+#ifdef DEVICE_POLLING
+static void	jme_poll(struct ifnet *, enum poll_cmd, int);
+#endif
 
 static void	jme_intr(void *);
 static void	jme_txeof(struct jme_softc *);
@@ -378,6 +383,9 @@ jme_miibus_statchg(device_t dev)
 	ifp->if_flags &= ~IFF_OACTIVE;
 	callout_reset(&sc->jme_tick_ch, hz, jme_tick, sc);
 
+#ifdef DEVICE_POLLING
+	if (!(ifp->if_flags & IFF_POLLING))
+#endif
 	/* Reenable interrupts. */
 	CSR_WRITE_4(sc, JME_INTR_MASK_SET, JME_INTRS);
 }
@@ -754,6 +762,9 @@ jme_attach(device_t dev)
 	ifp->if_init = jme_init;
 	ifp->if_ioctl = jme_ioctl;
 	ifp->if_start = jme_start;
+#ifdef DEVICE_POLLING
+	ifp->if_poll = jme_poll;
+#endif
 	ifp->if_watchdog = jme_watchdog;
 	ifq_set_maxlen(&ifp->if_snd, sc->jme_tx_desc_cnt - JME_TXD_RSVD);
 	ifq_set_ready(&ifp->if_snd);
@@ -1658,7 +1669,8 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 		i = 1;
 	}
 	sc->jme_cdata.jme_tx_cnt++;
-	KKASSERT(sc->jme_cdata.jme_tx_cnt < sc->jme_tx_desc_cnt - JME_TXD_RSVD);
+	KKASSERT(sc->jme_cdata.jme_tx_cnt - i <
+		 sc->jme_tx_desc_cnt - JME_TXD_RSVD);
 	JME_DESC_INC(prod, sc->jme_tx_desc_cnt);
 
 	txd->tx_ndesc = 1 - i;
@@ -2540,6 +2552,9 @@ jme_init(void *xsc)
 	/* Disable RSS. */
 	CSR_WRITE_4(sc, JME_RSSC, RSSC_DIS_RSS);
 
+#ifdef DEVICE_POLLING
+	if (!(ifp->if_flags & IFF_POLLING))
+#endif
 	/* Initialize the interrupt mask. */
 	CSR_WRITE_4(sc, JME_INTR_MASK_SET, JME_INTRS);
 	CSR_WRITE_4(sc, JME_INTR_STATUS, 0xFFFFFFFF);
@@ -3015,3 +3030,42 @@ jme_set_rx_coal(struct jme_softc *sc)
 	    PCCRX_COAL_PKT_MASK;
 	CSR_WRITE_4(sc, JME_PCCRX0, reg);
 }
+
+#ifdef DEVICE_POLLING
+
+static void
+jme_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+{
+	struct jme_softc *sc = ifp->if_softc;
+	uint32_t status;
+
+	ASSERT_SERIALIZED(ifp->if_serializer);
+
+	switch (cmd) {
+	case POLL_REGISTER:
+		CSR_WRITE_4(sc, JME_INTR_MASK_CLR, JME_INTRS);
+		break;
+
+	case POLL_DEREGISTER:
+		CSR_WRITE_4(sc, JME_INTR_MASK_SET, JME_INTRS);
+		break;
+
+	case POLL_AND_CHECK_STATUS:
+	case POLL_ONLY:
+		status = CSR_READ_4(sc, JME_INTR_STATUS);
+		jme_rxeof(sc);
+
+		if (status & INTR_RXQ_DESC_EMPTY) {
+			CSR_WRITE_4(sc, JME_INTR_STATUS, status);
+			CSR_WRITE_4(sc, JME_RXCSR, sc->jme_rxcsr |
+			    RXCSR_RX_ENB | RXCSR_RXQ_START);
+		}
+
+		jme_txeof(sc);
+		if (!ifq_is_empty(&ifp->if_snd))
+			if_devstart(ifp);
+		break;
+	}
+}
+
+#endif	/* DEVICE_POLLING */
