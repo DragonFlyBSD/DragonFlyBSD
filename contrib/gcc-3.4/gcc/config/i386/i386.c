@@ -1176,7 +1176,7 @@ override_options (void)
   if (!ix86_tune_string)
     ix86_tune_string = cpu_names [TARGET_CPU_DEFAULT];
   if (!ix86_arch_string)
-    ix86_arch_string = TARGET_64BIT ? "x86-64" : "i386";
+    ix86_arch_string = TARGET_64BIT ? "x86-64" : "i486";
 
   if (ix86_cmodel_string != 0)
     {
