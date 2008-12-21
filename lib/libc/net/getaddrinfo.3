@@ -1,7 +1,5 @@
 .\"	$KAME: getaddrinfo.3,v 1.36 2005/01/05 03:23:05 itojun Exp $
 .\"	$OpenBSD: getaddrinfo.3,v 1.35 2004/12/21 03:40:31 jaredy Exp $
-.\"	$FreeBSD: src/lib/libc/net/getaddrinfo.3,v 1.29 2005/01/23 16:02:48 gnn Exp $
-.\"	$DragonFly: src/lib/libc/net/getaddrinfo.3,v 1.7 2008/05/22 06:50:14 hasso Exp $
 .\"
 .\" Copyright (C) 2004  Internet Systems Consortium, Inc. ("ISC")
 .\" Copyright (C) 2000, 2001  Internet Software Consortium.
@@ -18,7 +16,10 @@
 .\" OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 .\" PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd May 22, 2008
+.\" $FreeBSD: src/lib/libc/net/getaddrinfo.3,v 1.34 2008/07/01 22:59:20 danger Exp $
+.\" $DragonFly: src/lib/libc/net/getaddrinfo.3,v 1.7 2008/05/22 06:50:14 hasso Exp $
+.\"
+.Dd July 1, 2008
 .Dt GETADDRINFO 3
 .Os
 .Sh NAME
@@ -32,8 +33,10 @@
 .In sys/socket.h
 .In netdb.h
 .Ft int
-.Fn getaddrinfo "const char *hostname" "const char *servname" \
-    "const struct addrinfo *hints" "struct addrinfo **res"
+.Fo getaddrinfo
+.Fa "const char *hostname" "const char *servname"
+.Fa "const struct addrinfo *hints" "struct addrinfo **res"
+.Fc
 .Ft void
 .Fn freeaddrinfo "struct addrinfo *ai"
 .Sh DESCRIPTION
@@ -119,10 +122,20 @@ If
 .Fa ai_protocol
 is zero the caller will accept any protocol.
 .It Fa ai_flags
+The
 .Fa ai_flags
-is formed by
-.Tn OR Ns 'ing
-the following values:
+field to which the
+.Fa hints
+parameter points shall be set to zero
+or be the bitwise-inclusive OR of one or more of the values
+.Dv AI_ADDRCONFIG ,
+.Dv AI_ALL ,
+.Dv AI_CANONNAME ,
+.Dv AI_NUMERICHOST ,
+.Dv AI_NUMERICSERV ,
+.Dv AI_PASSIVE ,
+and
+.Dv AI_V4MAPPED .
 .Bl -tag -width "AI_CANONNAMEXX"
 .It Dv AI_ADDRCONFIG
 If the
@@ -227,6 +240,11 @@ flag shall be ignored unless
 .Fa ai_family
 equals
 .Dv AF_INET6 .
+Note: this flag is currently
+.Em not
+supported, see the
+.Sx BUGS
+section.
 .El
 .El
 .Pp
@@ -475,15 +493,23 @@ freeaddrinfo(res0);
 .%B "Proceedings of the freenix track: 2000 USENIX annual technical conference"
 .%D June 2000
 .Re
+.Sh BUGS
+The
+.Nm
+function as implemented in
+.Dx
+currently does not support
+.Dv AI_ALL
+and
+.Dv AI_V4MAPPED
+flags and returns
+.Dv EAI_BADFLAGS
+if one of them is specified.
 .Sh STANDARDS
 The
 .Fn getaddrinfo
 function is defined by the
-.St -p1003.1g-2000
-draft specification and documented in
+.St -p1003.1-2004
+specification and documented in
 .Dv "RFC 3493" ,
 .Dq Basic Socket Interface Extensions for IPv6 .
-.Sh BUGS
-The implementation of
-.Fn getaddrinfo
-is not thread-safe.

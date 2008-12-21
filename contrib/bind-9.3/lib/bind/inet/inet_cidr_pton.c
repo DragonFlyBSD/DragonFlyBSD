@@ -27,7 +27,12 @@ static const char rcsid[] = "$Id: inet_cidr_pton.c,v 1.2.2.1.8.2 2004/03/17 00:2
 #include <arpa/nameser.h>
 #include <arpa/inet.h>
 
+#ifdef _LIBC
+#include <assert.h>
+#define	INSIST(x)	assert(x)
+#else
 #include <isc/assertions.h>
+#endif
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>

@@ -33,6 +33,7 @@ NOASM=
 .include "${.CURDIR}/../libc/quad/Makefile.inc"
 .endif
 .include "${.CURDIR}/../libc/regex/Makefile.inc"
+.include "${.CURDIR}/../libc/resolv/Makefile.inc"
 .include "${.CURDIR}/../libc/stdio/Makefile.inc"
 .include "${.CURDIR}/../libc/stdlib/Makefile.inc"
 .include "${.CURDIR}/../libc/stdtime/Makefile.inc"

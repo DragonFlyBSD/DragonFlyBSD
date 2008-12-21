@@ -17,7 +17,12 @@
 
 #ifndef LIST_H
 #define LIST_H 1
+#ifdef _LIBC
+#include <assert.h>
+#define INSIST(cond)	assert(cond)
+#else
 #include <isc/assertions.h>
+#endif
 
 #define LIST(type) struct { type *head, *tail; }
 #define INIT_LIST(list) \

@@ -35,19 +35,13 @@ static const char rcsid[] = "$Id: inet_ntop.c,v 1.1.2.1.8.2 2005/11/03 23:08:40 
 
 #include "port_after.h"
 
-#ifdef SPRINTF_CHAR
-# define SPRINTF(x) strlen(sprintf/**/x)
-#else
-# define SPRINTF(x) ((size_t)sprintf x)
-#endif
-
 /*
  * WARNING: Don't even consider trying to compile this on a system where
  * sizeof(int) < 4.  sizeof(int) > 4 is fine; all the world's not a VAX.
  */
 
-static const char *inet_ntop4 __P((const u_char *src, char *dst, size_t size));
-static const char *inet_ntop6 __P((const u_char *src, char *dst, size_t size));
+static const char *inet_ntop4 __P((const u_char *src, char *dst, socklen_t size));
+static const char *inet_ntop6 __P((const u_char *src, char *dst, socklen_t size));
 
 /* char *
  * inet_ntop(af, src, dst, size)
@@ -60,9 +54,9 @@ static const char *inet_ntop6 __P((const u_char *src, char *dst, size_t size));
 const char *
 inet_ntop(af, src, dst, size)
 	int af;
-	const void *src;
-	char *dst;
-	size_t size;
+	const void * __restrict src;
+	char * __restrict dst;
+	socklen_t size;
 {
 	switch (af) {
 	case AF_INET:
@@ -91,16 +85,18 @@ static const char *
 inet_ntop4(src, dst, size)
 	const u_char *src;
 	char *dst;
-	size_t size;
+	socklen_t size;
 {
 	static const char fmt[] = "%u.%u.%u.%u";
 	char tmp[sizeof "255.255.255.255"];
+	int l;
 
-	if (SPRINTF((tmp, fmt, src[0], src[1], src[2], src[3])) >= size) {
+	l = snprintf(tmp, sizeof(tmp), fmt, src[0], src[1], src[2], src[3]);
+	if (l <= 0 || (socklen_t) l >= size) {
 		errno = ENOSPC;
 		return (NULL);
 	}
-	strcpy(dst, tmp);
+	strlcpy(dst, tmp, size);
 	return (dst);
 }
 
@@ -114,7 +110,7 @@ static const char *
 inet_ntop6(src, dst, size)
 	const u_char *src;
 	char *dst;
-	size_t size;
+	socklen_t size;
 {
 	/*
 	 * Note that int32_t and int16_t need only be "at least" large enough
@@ -185,7 +181,7 @@ inet_ntop6(src, dst, size)
 			tp += strlen(tp);
 			break;
 		}
-		tp += SPRINTF((tp, "%x", words[i]));
+		tp += sprintf(tp, "%x", words[i]);
 	}
 	/* Was it a trailing run of 0x00's? */
 	if (best.base != -1 && (best.base + best.len) == 
@@ -196,10 +192,19 @@ inet_ntop6(src, dst, size)
 	/*
 	 * Check for overflow, copy, and we're done.
 	 */
-	if ((size_t)(tp - tmp) > size) {
+	if ((socklen_t)(tp - tmp) > size) {
 		errno = ENOSPC;
 		return (NULL);
 	}
 	strcpy(dst, tmp);
 	return (dst);
 }
+
+#ifdef _LIBC
+/*
+ * Weak aliases for applications that use certain private entry points,
+ * and fail to include <arpa/inet.h>.
+ */
+#undef inet_net_ntop
+__weak_reference(__inet_net_ntop, inet_net_ntop);
+#endif

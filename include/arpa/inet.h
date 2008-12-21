@@ -2,7 +2,7 @@
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
  *
  * Copyright (c) 1983, 1993
- *	The Regents of the University of California.  All rights reserved.
+ *    The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -14,8 +14,8 @@
  *    documentation and/or other materials provided with the distribution.
  * 3. All advertising materials mentioning features or use of this software
  *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
+ * 	This product includes software developed by the University of
+ * 	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -40,7 +40,7 @@
  * the name of Digital Equipment Corporation not be used in advertising or
  * publicity pertaining to distribution of the document or software without
  * specific, written prior permission.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS" AND DIGITAL EQUIPMENT CORP. DISCLAIMS ALL
  * WARRANTIES WITH REGARD TO THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS.   IN NO EVENT SHALL DIGITAL EQUIPMENT
@@ -53,8 +53,8 @@
 
 /*
  *	@(#)inet.h	8.1 (Berkeley) 6/2/93
- *	From: Id: inet.h,v 8.5 1997/01/29 08:48:09 vixie Exp $
- * $FreeBSD: src/include/arpa/inet.h,v 1.11.2.1 2001/04/21 14:53:03 ume Exp $
+ *	$Id: inet.h,v 1.2.18.1 2005/04/27 05:00:50 sra Exp $
+ * $FreeBSD: src/include/arpa/inet.h,v 1.30 2007/08/24 20:25:52 bms Exp $
  * $DragonFly: src/include/arpa/inet.h,v 1.5 2005/07/13 12:49:56 joerg Exp $
  */
 
@@ -66,17 +66,30 @@
 #include <sys/types.h>
 #include <sys/cdefs.h>
 
-#ifndef _STRUCT_IN_ADDR_DECLARED
-#define _STRUCT_IN_ADDR_DECLARED
+/* Required for byteorder(3) functions. */
+#include <machine/endian.h>
+
+#define	INET_ADDRSTRLEN		16
+#define	INET6_ADDRSTRLEN	46
+
 /*
- * Internet address (a structure for historical reasons)
+ * XXX socklen_t is used by a POSIX.1-2001 interface, but not required by
+ * POSIX.1-2001.
  */
+#ifndef _SOCKLEN_T_DECLARED
+typedef	__socklen_t	socklen_t;
+#define	_SOCKLEN_T_DECLARED
+#endif
+
+#ifndef _STRUCT_IN_ADDR_DECLARED
 struct in_addr {
 	in_addr_t s_addr;
 };
+#define	_STRUCT_IN_ADDR_DECLARED
 #endif
 
 /* XXX all new diversions!! argh!! */
+#if __BSD_VISIBLE
 #define	inet_addr	__inet_addr
 #define	inet_aton	__inet_aton
 #define	inet_lnaof	__inet_lnaof
@@ -86,42 +99,46 @@ struct in_addr {
 #define	inet_network	__inet_network
 #define	inet_net_ntop	__inet_net_ntop
 #define	inet_net_pton	__inet_net_pton
+#define	inet_cidr_ntop	__inet_cidr_ntop
+#define	inet_cidr_pton	__inet_cidr_pton
 #define	inet_ntoa	__inet_ntoa
+#define	inet_ntoa_r	__inet_ntoa_r
 #define	inet_pton	__inet_pton
 #define	inet_ntop	__inet_ntop
 #define	inet_nsap_addr	__inet_nsap_addr
 #define	inet_nsap_ntoa	__inet_nsap_ntoa
+#endif /* __BSD_VISIBLE */
 
-#ifndef htonl
+__BEGIN_DECLS
+in_addr_t	 inet_addr(const char *);
+/*const*/ char	*inet_ntoa(struct in_addr);
+char		*inet_ntoa_r(struct in_addr, char *buf, socklen_t size);
+const char	*inet_ntop(int, const void * __restrict, char * __restrict,
+		    socklen_t);
+int		 inet_pton(int, const char * __restrict, void * __restrict);
+
+#if __BSD_VISIBLE
+int		 inet_aton(const char *, struct in_addr *);
+in_addr_t	 inet_lnaof(struct in_addr);
+struct in_addr	 inet_makeaddr(in_addr_t, in_addr_t);
+char		*inet_neta(in_addr_t, char *, size_t);
+in_addr_t	 inet_netof(struct in_addr);
+in_addr_t	 inet_network(const char *);
+char		*inet_net_ntop(int, const void *, int, char *, size_t);
+int		 inet_net_pton(int, const char *, void *, size_t);
+char		*inet_cidr_ntop(int, const void *, int, char *, size_t);
+int		 inet_cidr_pton(int, const char *, void *, int *);
+unsigned	 inet_nsap_addr(const char *, unsigned char *, int);
+char		*inet_nsap_ntoa(int, const unsigned char *, char *);
+#endif /* __BSD_VISIBLE */
+__END_DECLS
+
+#ifndef _BYTEORDER_FUNC_DEFINED
+#define	_BYTEORDER_FUNC_DEFINED
 #define	htonl(x)	__htonl(x)
-#endif
-#ifndef htons
 #define	htons(x)	__htons(x)
-#endif
-#ifndef ntohl
 #define	ntohl(x)	__ntohl(x)
-#endif
-#ifndef ntohs
 #define	ntohs(x)	__ntohs(x)
 #endif
 
-__BEGIN_DECLS
-int		 ascii2addr (int, const char *, void *);
-char		*addr2ascii (int, const void *, int, char *);
-in_addr_t	 inet_addr (const char *);
-int		 inet_aton (const char *, struct in_addr *);
-in_addr_t	 inet_lnaof (struct in_addr);
-struct in_addr	 inet_makeaddr (in_addr_t, in_addr_t);
-char *		 inet_neta (in_addr_t, char *, size_t);
-in_addr_t	 inet_netof (struct in_addr);
-in_addr_t	 inet_network (const char *);
-char		*inet_net_ntop (int, const void *, int, char *, size_t);
-int		 inet_net_pton (int, const char *, void *, size_t);
-char		*inet_ntoa (struct in_addr);
-int              inet_pton (int, const char *, void *);
-const char	*inet_ntop (int, const void *, char *, size_t);
-u_int		 inet_nsap_addr (const char *, u_char *, int);
-char		*inet_nsap_ntoa (int, const u_char *, char *);
-__END_DECLS
-
-#endif /* !_INET_H_ */
+#endif /* !_ARPA_INET_H_ */

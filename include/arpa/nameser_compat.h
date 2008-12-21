@@ -32,8 +32,8 @@
 
 /*
  *      from nameser.h	8.1 (Berkeley) 6/2/93
- *	From: Id: nameser_compat.h,v 8.9 1998/03/20 23:25:10 halley Exp
- * $FreeBSD: src/include/arpa/nameser_compat.h,v 1.2.2.1 2001/06/15 22:08:27 ume Exp $
+ *	$Id: nameser_compat.h,v 1.5.18.3 2006/05/19 02:36:00 marka Exp $
+ * $FreeBSD: src/include/arpa/nameser_compat.h,v 1.7 2007/06/03 17:20:25 ume Exp $
  * $DragonFly: src/include/arpa/nameser_compat.h,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
@@ -44,15 +44,15 @@
 
 #include <machine/endian.h>
 
-#if !defined(BYTE_ORDER) || \
-    (BYTE_ORDER != BIG_ENDIAN && BYTE_ORDER != LITTLE_ENDIAN && \
-    BYTE_ORDER != PDP_ENDIAN)
+#if !defined(_BYTE_ORDER) || \
+    (_BYTE_ORDER != _BIG_ENDIAN && _BYTE_ORDER != _LITTLE_ENDIAN && \
+    _BYTE_ORDER != _PDP_ENDIAN)
 	/* you must determine what the correct bit order is for
 	 * your compiler - the next line is an intentional error
 	 * which will force your compiles to bomb until you fix
 	 * the above macros.
 	 */
-  error "Undefined or invalid BYTE_ORDER";
+#error "Undefined or invalid _BYTE_ORDER";
 #endif
 
 /*
@@ -64,7 +64,7 @@
 
 typedef struct {
 	unsigned	id :16;		/* query identification number */
-#if BYTE_ORDER == BIG_ENDIAN
+#if _BYTE_ORDER == _BIG_ENDIAN
 			/* fields in third byte */
 	unsigned	qr: 1;		/* response flag */
 	unsigned	opcode: 4;	/* purpose of message */
@@ -78,7 +78,7 @@ typedef struct {
 	unsigned	cd: 1;		/* checking disabled by resolver */
 	unsigned	rcode :4;	/* response code */
 #endif
-#if BYTE_ORDER == LITTLE_ENDIAN || BYTE_ORDER == PDP_ENDIAN
+#if _BYTE_ORDER == _LITTLE_ENDIAN || _BYTE_ORDER == _PDP_ENDIAN
 			/* fields in third byte */
 	unsigned	rd :1;		/* recursion desired */
 	unsigned	tc :1;		/* truncated message */
@@ -108,6 +108,7 @@ typedef struct {
 #define RRFIXEDSZ	NS_RRFIXEDSZ
 #define	INT32SZ		NS_INT32SZ
 #define	INT16SZ		NS_INT16SZ
+#define	INT8SZ		NS_INT8SZ
 #define	INADDRSZ	NS_INADDRSZ
 #define	IN6ADDRSZ	NS_IN6ADDRSZ
 #define	INDIR_MASK	NS_CMPRSFLGS
@@ -135,6 +136,10 @@ typedef struct {
 #define NXRRSET		ns_r_nxrrset
 #define NOTAUTH		ns_r_notauth
 #define NOTZONE		ns_r_notzone
+/*#define BADSIG		ns_r_badsig*/
+/*#define BADKEY		ns_r_badkey*/
+/*#define BADTIME		ns_r_badtime*/
+
 
 #define DELETE		ns_uop_delete
 #define ADD		ns_uop_add
@@ -174,7 +179,9 @@ typedef struct {
 #define	T_SRV		ns_t_srv
 #define T_ATMA		ns_t_atma
 #define T_NAPTR		ns_t_naptr
+#define T_A6		ns_t_a6
 #define T_OPT		ns_t_opt
+#define	T_TSIG		ns_t_tsig
 #define	T_IXFR		ns_t_ixfr
 #define T_AXFR		ns_t_axfr
 #define T_MAILB		ns_t_mailb

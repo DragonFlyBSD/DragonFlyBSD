@@ -1,9 +1,10 @@
-/*	$FreeBSD: src/lib/libc/net/getnameinfo.c,v 1.4.2.5 2002/07/31 10:11:09 ume Exp $	*/
+/*	$FreeBSD: src/lib/libc/net/getnameinfo.c,v 1.20 2007/02/28 21:18:38 bms Exp $	*/
 /*	$DragonFly: src/lib/libc/net/getnameinfo.c,v 1.5 2008/10/04 22:09:17 swildner Exp $	*/
 /*	$KAME: getnameinfo.c,v 1.61 2002/06/27 09:25:47 itojun Exp $	*/
 
 /*
  * Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
+ * Copyright (c) 2000 Ben Harris.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -48,6 +49,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <net/if.h>
+#include <net/if_dl.h>
+#include <net/if_types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <arpa/nameser.h>
@@ -57,10 +60,41 @@
 #include <stddef.h>
 #include <errno.h>
 
+static int	getnameinfo_inet(const struct sockaddr *, socklen_t, char *,
+				 size_t, char *, size_t, int);
+#ifdef INET6
+static int	ip6_parsenumeric(const struct sockaddr *, const char *, char *,
+				 size_t, int);
+static int	ip6_sa2str(const struct sockaddr_in6 *, char *, size_t, int);
+#endif
+static int	getnameinfo_link(const struct sockaddr *, socklen_t, char *,
+				 size_t, char *, size_t, int);
+static int	hexname(const u_int8_t *, size_t, char *, size_t);
+
+int
+getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host,
+	    size_t hostlen, char *serv, size_t servlen, int flags)
+{
+
+	switch (sa->sa_family) {
+	case AF_INET:
+#ifdef INET6
+	case AF_INET6:
+#endif
+		return getnameinfo_inet(sa, salen, host, hostlen, serv,
+		    servlen, flags);
+	case AF_LINK:
+		return getnameinfo_link(sa, salen, host, hostlen, serv,
+		    servlen, flags);
+	default:
+		return EAI_FAMILY;
+	}
+}
+
 static const struct afd {
 	int a_af;
-	int a_addrlen;
-	int a_socklen;
+	size_t a_addrlen;
+	socklen_t a_socklen;
 	int a_off;
 } afdl [] = {
 #ifdef INET6
@@ -78,15 +112,9 @@ struct sockinet {
 	u_short	si_port;
 };
 
-#ifdef INET6
-static int ip6_parsenumeric (const struct sockaddr *, const char *, char *,
-    size_t, int);
-static int ip6_sa2str (const struct sockaddr_in6 *, char *, size_t, int);
-#endif
-
-int
-getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host,
-	    size_t hostlen, char *serv, size_t servlen, int flags)
+static int
+getnameinfo_inet(const struct sockaddr *sa, socklen_t salen, char *host,
+		 size_t hostlen, char *serv, size_t servlen, int flags)
 {
 	const struct afd *afd;
 	struct servent *sp;
@@ -100,9 +128,6 @@ getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host,
 	char numaddr[512];
 
 	if (sa == NULL)
-		return EAI_FAIL;
-
-	if (sa->sa_len != salen)
 		return EAI_FAIL;
 
 	family = sa->sa_family;
@@ -155,7 +180,7 @@ getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host,
 			flags |= NI_NUMERICHOST;
 		v4a >>= IN_CLASSA_NSHIFT;
 		if (v4a == 0)
-			flags |= NI_NUMERICHOST;			
+			flags |= NI_NUMERICHOST;
 		break;
 #ifdef INET6
 	case AF_INET6:
@@ -191,7 +216,7 @@ getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host,
 		 * hostlen == 0 means that the caller does not want the result.
 		 */
 	} else if (flags & NI_NUMERICHOST) {
-		int numaddrlen;
+		size_t numaddrlen;
 
 		/* NUMERICHOST and NAMEREQD conflicts with each other */
 		if (flags & NI_NAMEREQD)
@@ -273,7 +298,7 @@ static int
 ip6_parsenumeric(const struct sockaddr *sa, const char *addr, char *host,
 		 size_t hostlen, int flags)
 {
-	int numaddrlen;
+	size_t numaddrlen;
 	char numaddr[512];
 
 	if (inet_ntop(AF_INET6, addr, numaddr, sizeof(numaddr)) == NULL)
@@ -338,9 +363,85 @@ ip6_sa2str(const struct sockaddr_in6 *sa6, char *buf, size_t bufsiz, int flags)
 
 	/* last resort */
 	n = snprintf(buf, bufsiz, "%u", sa6->sin6_scope_id);
-	if (n < 0 || n >= bufsiz)
+	if (n < 0 || (size_t)n >= bufsiz)
 		return -1;
 	else
 		return n;
 }
 #endif /* INET6 */
+
+/*
+ * getnameinfo_link():
+ * Format a link-layer address into a printable format, paying attention to
+ * the interface type.
+ */
+/* ARGSUSED */
+static int
+getnameinfo_link(const struct sockaddr *sa, socklen_t salen, char *host,
+		 size_t hostlen, char *serv, size_t servlen, int flags)
+{
+	const struct sockaddr_dl *sdl =
+	    (const struct sockaddr_dl *)(const void *)sa;
+	int n;
+
+	if (serv != NULL && servlen > 0)
+		*serv = '\0';
+
+	if (sdl->sdl_nlen == 0 && sdl->sdl_alen == 0 && sdl->sdl_slen == 0) {
+		n = snprintf(host, hostlen, "link#%d", sdl->sdl_index);
+		if (n > hostlen) {
+			*host = '\0';
+			return EAI_MEMORY;
+		}
+		return 0;
+	}
+
+	switch (sdl->sdl_type) {
+	/*
+	 * The following have zero-length addresses.
+	 * IFT_ATM	(net/if_atmsubr.c)
+	 * IFT_FAITH	(net/if_faith.c)
+	 * IFT_GIF	(net/if_gif.c)
+	 * IFT_LOOP	(net/if_loop.c)
+	 * IFT_PPP	(net/if_ppp.c, net/if_spppsubr.c)
+	 * IFT_SLIP	(net/if_sl.c, net/if_strip.c)
+	 * IFT_STF	(net/if_stf.c)
+	 * IFT_L2VLAN	(net/if_vlan.c)
+	 * IFT_BRIDGE (net/if_bridge.h>
+	 */
+	/*
+	 * The following use IPv4 addresses as link-layer addresses:
+	 * IFT_OTHER	(net/if_gre.c)
+	 * IFT_OTHER	(netinet/ip_ipip.c)
+	 */
+	/* default below is believed correct for all these. */
+	case IFT_ARCNET:
+	case IFT_ETHER:
+	case IFT_FDDI:
+	case IFT_HIPPI:
+	case IFT_ISO88025:
+	default:
+		return hexname((u_int8_t *)LLADDR(sdl), (size_t)sdl->sdl_alen,
+		    host, hostlen);
+	}
+}
+
+static int
+hexname(const u_int8_t *cp, size_t len, char *host, size_t hostlen)
+{
+	int i, n;
+	char *outp = host;
+
+	*outp = '\0';
+	for (i = 0; i < len; i++) {
+		n = snprintf(outp, hostlen, "%s%02x",
+		    i ? ":" : "", cp[i]);
+		if (n < 0 || n >= hostlen) {
+			*host = '\0';
+			return EAI_MEMORY;
+		}
+		outp += n;
+		hostlen -= n;
+	}
+	return 0;
+}

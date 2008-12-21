@@ -1,6 +1,5 @@
-/*
- * Copyright (c) 1983, 1993
- *	The Regents of the University of California.  All rights reserved.
+/*-
+ * Copyright (c) 2006 The FreeBSD Project. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,14 +9,11 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -26,34 +22,25 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#)inet_ntoa.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/net/inet_ntoa.c,v 1.4 2005/09/19 09:34:53 asmodai Exp $
+ * $FreeBSD: src/lib/libc/resolv/h_errno.c,v 1.2 2006/05/21 11:29:26 ume Exp $
  */
 
 #include <sys/types.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
-#include <stdio.h>
-#include <string.h>
+#include <arpa/nameser.h>
+#include <resolv.h>
 
-/*
- * Convert network-format internet address
- * to base 256 d.d.d.d representation.
- */
-char *
-inet_ntoa(struct in_addr in)
+#undef	h_errno
+extern int h_errno;
+
+int *
+__h_errno(void)
 {
-	static char ret[18];
-
-	strlcpy(ret, "[inet_ntoa error]", sizeof(ret));
-	inet_ntop(AF_INET, &in, ret, sizeof ret);
-	return (ret);
+	return (&__res_state()->res_h_errno);
 }
 
-/*
- * Weak aliases for applications that use certain private entry points,
- * and fail to include <arpa/inet.h>.
- */
-#undef inet_ntoa
-__weak_reference(__inet_ntoa, inet_ntoa);
+void
+__h_errno_set(res_state res, int err)
+{
+	h_errno = res->res_h_errno = err;
+}

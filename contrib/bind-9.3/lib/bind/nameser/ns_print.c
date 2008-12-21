@@ -30,8 +30,13 @@ static const char rcsid[] = "$Id: ns_print.c,v 1.3.2.1.4.7 2004/09/16 07:01:12 m
 #include <arpa/nameser.h>
 #include <arpa/inet.h>
 
+#ifdef _LIBC
+#include <assert.h>
+#define INSIST(cond)	assert(cond)
+#else
 #include <isc/assertions.h>
 #include <isc/dst.h>
+#endif
 #include <errno.h>
 #include <resolv.h>
 #include <string.h>
@@ -457,7 +462,11 @@ ns_sprintrrf(const u_char *msg, size_t msglen,
 			goto formerr;
 
 		/* Key flags, Protocol, Algorithm. */
+#ifndef _LIBC
 		key_id = dst_s_dns_key_id(rdata, edata-rdata);
+#else
+		key_id = 0;
+#endif
 		keyflags = ns_get16(rdata);  rdata += NS_INT16SZ;
 		protocol = *rdata++;
 		algorithm = *rdata++;

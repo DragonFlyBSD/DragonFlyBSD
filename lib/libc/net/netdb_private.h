@@ -130,16 +130,16 @@ void __endprotoent_p(struct protoent_data *);
 int __getprotoent_p(struct protoent *, struct protoent_data *);
 void __setprotoent_p(int, struct protoent_data *);
 void _endhostdnsent(void);
-void _endhosthtent(void);
+void _endhosthtent(struct hostent_data *);
 void _endnetdnsent(void);
-void _endnethtent(void);
-struct hostent *_gethostbynisaddr(const char *, int, int);
+void _endnethtent(struct netent_data *);
+struct hostent *_gethostbynisaddr(const void *, socklen_t, int);
 struct hostent *_gethostbynisname(const char *, int);
 void _map_v4v6_address(const char *, char *);
-void _map_v4v6_hostent(struct hostent *, char **, int *);
+void _map_v4v6_hostent(struct hostent *, char **, char *);
 void _sethostdnsent(int);
-void _sethosthtent(int);
+void _sethosthtent(int, struct hostent_data *);
 void _setnetdnsent(int);
-void _setnethtent(int);
+void _setnethtent(int, struct netent_data *);
 
 #endif /* _NETDB_PRIVATE_H_ */
