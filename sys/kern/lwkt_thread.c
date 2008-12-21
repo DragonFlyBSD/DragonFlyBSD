@@ -88,7 +88,9 @@ static __int64_t preempt_weird = 0;
 static __int64_t token_contention_count = 0;
 static __int64_t mplock_contention_count = 0;
 static int lwkt_use_spin_port;
+#ifdef SMP
 static int chain_mplock = 0;
+#endif
 static struct objcache *thread_cache;
 
 volatile cpumask_t mp_lock_contention_mask;
