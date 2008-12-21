@@ -1025,7 +1025,7 @@ again:
 
 	/* Allocate DMA'able memory for TX ring */
 	error = bus_dmamem_alloc(sc->jme_cdata.jme_tx_ring_tag,
-	    (void **)&sc->jme_rdata.jme_tx_ring,
+	    (void **)&sc->jme_cdata.jme_tx_ring,
 	    BUS_DMA_WAITOK | BUS_DMA_ZERO,
 	    &sc->jme_cdata.jme_tx_ring_map);
 	if (error) {
@@ -1038,19 +1038,19 @@ again:
 
 	/*  Load the DMA map for Tx ring. */
 	error = bus_dmamap_load(sc->jme_cdata.jme_tx_ring_tag,
-	    sc->jme_cdata.jme_tx_ring_map, sc->jme_rdata.jme_tx_ring,
+	    sc->jme_cdata.jme_tx_ring_map, sc->jme_cdata.jme_tx_ring,
 	    JME_TX_RING_SIZE(sc), jme_dmamap_ring_cb, &busaddr, BUS_DMA_NOWAIT);
 	if (error) {
 		device_printf(sc->jme_dev,
 		    "could not load DMA'able memory for Tx ring.\n");
 		bus_dmamem_free(sc->jme_cdata.jme_tx_ring_tag,
-				sc->jme_rdata.jme_tx_ring,
+				sc->jme_cdata.jme_tx_ring,
 				sc->jme_cdata.jme_tx_ring_map);
 		bus_dma_tag_destroy(sc->jme_cdata.jme_tx_ring_tag);
 		sc->jme_cdata.jme_tx_ring_tag = NULL;
 		return error;
 	}
-	sc->jme_rdata.jme_tx_ring_paddr = busaddr;
+	sc->jme_cdata.jme_tx_ring_paddr = busaddr;
 
 	/*
 	 * Create DMA stuffs for RX ring
@@ -1075,7 +1075,7 @@ again:
 
 	/* Allocate DMA'able memory for RX ring */
 	error = bus_dmamem_alloc(sc->jme_cdata.jme_rx_ring_tag,
-	    (void **)&sc->jme_rdata.jme_rx_ring,
+	    (void **)&sc->jme_cdata.jme_rx_ring,
 	    BUS_DMA_WAITOK | BUS_DMA_ZERO,
 	    &sc->jme_cdata.jme_rx_ring_map);
 	if (error) {
@@ -1088,32 +1088,32 @@ again:
 
 	/* Load the DMA map for Rx ring. */
 	error = bus_dmamap_load(sc->jme_cdata.jme_rx_ring_tag,
-	    sc->jme_cdata.jme_rx_ring_map, sc->jme_rdata.jme_rx_ring,
+	    sc->jme_cdata.jme_rx_ring_map, sc->jme_cdata.jme_rx_ring,
 	    JME_RX_RING_SIZE(sc), jme_dmamap_ring_cb, &busaddr, BUS_DMA_NOWAIT);
 	if (error) {
 		device_printf(sc->jme_dev,
 		    "could not load DMA'able memory for Rx ring.\n");
 		bus_dmamem_free(sc->jme_cdata.jme_rx_ring_tag,
-				sc->jme_rdata.jme_rx_ring,
+				sc->jme_cdata.jme_rx_ring,
 				sc->jme_cdata.jme_rx_ring_map);
 		bus_dma_tag_destroy(sc->jme_cdata.jme_rx_ring_tag);
 		sc->jme_cdata.jme_rx_ring_tag = NULL;
 		return error;
 	}
-	sc->jme_rdata.jme_rx_ring_paddr = busaddr;
+	sc->jme_cdata.jme_rx_ring_paddr = busaddr;
 
 	if (lowaddr != BUS_SPACE_MAXADDR_32BIT) {
 		bus_addr_t rx_ring_end, tx_ring_end;
 
 		/* Tx/Rx descriptor queue should reside within 4GB boundary. */
-		tx_ring_end = sc->jme_rdata.jme_tx_ring_paddr +
+		tx_ring_end = sc->jme_cdata.jme_tx_ring_paddr +
 			      JME_TX_RING_SIZE(sc);
-		rx_ring_end = sc->jme_rdata.jme_rx_ring_paddr +
+		rx_ring_end = sc->jme_cdata.jme_rx_ring_paddr +
 			      JME_RX_RING_SIZE(sc);
 		if ((JME_ADDR_HI(tx_ring_end) !=
-		     JME_ADDR_HI(sc->jme_rdata.jme_tx_ring_paddr)) ||
+		     JME_ADDR_HI(sc->jme_cdata.jme_tx_ring_paddr)) ||
 		    (JME_ADDR_HI(rx_ring_end) !=
-		     JME_ADDR_HI(sc->jme_rdata.jme_rx_ring_paddr))) {
+		     JME_ADDR_HI(sc->jme_cdata.jme_rx_ring_paddr))) {
 			device_printf(sc->jme_dev, "4GB boundary crossed, "
 			    "switching to 32bit DMA address mode.\n");
 			jme_dma_free(sc, 0);
@@ -1163,7 +1163,7 @@ again:
 
 	/* Allocate DMA'able memory for shared status block. */
 	error = bus_dmamem_alloc(sc->jme_cdata.jme_ssb_tag,
-	    (void **)&sc->jme_rdata.jme_ssb_block,
+	    (void **)&sc->jme_cdata.jme_ssb_block,
 	    BUS_DMA_WAITOK | BUS_DMA_ZERO,
 	    &sc->jme_cdata.jme_ssb_map);
 	if (error) {
@@ -1176,19 +1176,19 @@ again:
 
 	/* Load the DMA map for shared status block */
 	error = bus_dmamap_load(sc->jme_cdata.jme_ssb_tag,
-	    sc->jme_cdata.jme_ssb_map, sc->jme_rdata.jme_ssb_block,
+	    sc->jme_cdata.jme_ssb_map, sc->jme_cdata.jme_ssb_block,
 	    JME_SSB_SIZE, jme_dmamap_ring_cb, &busaddr, BUS_DMA_NOWAIT);
 	if (error) {
 		device_printf(sc->jme_dev, "could not load DMA'able memory "
 		    "for shared status block.\n");
 		bus_dmamem_free(sc->jme_cdata.jme_ssb_tag,
-				sc->jme_rdata.jme_ssb_block,
+				sc->jme_cdata.jme_ssb_block,
 				sc->jme_cdata.jme_ssb_map);
 		bus_dma_tag_destroy(sc->jme_cdata.jme_ssb_tag);
 		sc->jme_cdata.jme_ssb_tag = NULL;
 		return error;
 	}
-	sc->jme_rdata.jme_ssb_block_paddr = busaddr;
+	sc->jme_cdata.jme_ssb_block_paddr = busaddr;
 
 	/*
 	 * Create DMA stuffs for TX buffers
@@ -1299,7 +1299,7 @@ jme_dma_free(struct jme_softc *sc, int detach)
 		bus_dmamap_unload(sc->jme_cdata.jme_tx_ring_tag,
 		    sc->jme_cdata.jme_tx_ring_map);
 		bus_dmamem_free(sc->jme_cdata.jme_tx_ring_tag,
-		    sc->jme_rdata.jme_tx_ring,
+		    sc->jme_cdata.jme_tx_ring,
 		    sc->jme_cdata.jme_tx_ring_map);
 		bus_dma_tag_destroy(sc->jme_cdata.jme_tx_ring_tag);
 		sc->jme_cdata.jme_tx_ring_tag = NULL;
@@ -1310,7 +1310,7 @@ jme_dma_free(struct jme_softc *sc, int detach)
 		bus_dmamap_unload(sc->jme_cdata.jme_rx_ring_tag,
 		    sc->jme_cdata.jme_rx_ring_map);
 		bus_dmamem_free(sc->jme_cdata.jme_rx_ring_tag,
-		    sc->jme_rdata.jme_rx_ring,
+		    sc->jme_cdata.jme_rx_ring,
 		    sc->jme_cdata.jme_rx_ring_map);
 		bus_dma_tag_destroy(sc->jme_cdata.jme_rx_ring_tag);
 		sc->jme_cdata.jme_rx_ring_tag = NULL;
@@ -1345,7 +1345,7 @@ jme_dma_free(struct jme_softc *sc, int detach)
 		bus_dmamap_unload(sc->jme_cdata.jme_ssb_tag,
 		    sc->jme_cdata.jme_ssb_map);
 		bus_dmamem_free(sc->jme_cdata.jme_ssb_tag,
-		    sc->jme_rdata.jme_ssb_block,
+		    sc->jme_cdata.jme_ssb_block,
 		    sc->jme_cdata.jme_ssb_map);
 		bus_dma_tag_destroy(sc->jme_cdata.jme_ssb_tag);
 		sc->jme_cdata.jme_ssb_tag = NULL;
@@ -1637,7 +1637,7 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 		cflags |= JME_TD_VLAN_TAG;
 	}
 
-	desc = &sc->jme_rdata.jme_tx_ring[prod];
+	desc = &sc->jme_cdata.jme_tx_ring[prod];
 	desc->flags = htole32(cflags);
 	desc->addr_hi = htole32(m->m_pkthdr.len);
 	if (sc->jme_lowaddr != BUS_SPACE_MAXADDR_32BIT) {
@@ -1675,7 +1675,7 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 
 	txd->tx_ndesc = 1 - i;
 	for (; i < ctx.nsegs; i++) {
-		desc = &sc->jme_rdata.jme_tx_ring[prod];
+		desc = &sc->jme_cdata.jme_tx_ring[prod];
 		desc->flags = htole32(JME_TD_OWN | flag64);
 		desc->buflen = htole32(txsegs[i].ds_len);
 		desc->addr_hi = htole32(JME_ADDR_HI(txsegs[i].ds_addr));
@@ -2109,7 +2109,7 @@ jme_txeof(struct jme_softc *sc)
 		 * descriptor of a multi-descriptor transmission.
 		 */
 		for (nsegs = 0; nsegs < txd->tx_ndesc; nsegs++) {
-			sc->jme_rdata.jme_tx_ring[cons].flags = 0;
+			sc->jme_cdata.jme_tx_ring[cons].flags = 0;
 			JME_DESC_INC(cons, sc->jme_tx_desc_cnt);
 		}
 
@@ -2142,7 +2142,7 @@ jme_discard_rxbufs(struct jme_softc *sc, int cons, int count)
 	int i;
 
 	for (i = 0; i < count; ++i) {
-		struct jme_desc *desc = &sc->jme_rdata.jme_rx_ring[cons];
+		struct jme_desc *desc = &sc->jme_cdata.jme_rx_ring[cons];
 
 		desc->flags = htole32(JME_RD_OWN | JME_RD_INTR | JME_RD_64BIT);
 		desc->buflen = htole32(MCLBYTES);
@@ -2162,7 +2162,7 @@ jme_rxpkt(struct jme_softc *sc)
 	int cons, count, nsegs;
 
 	cons = sc->jme_cdata.jme_rx_cons;
-	desc = &sc->jme_rdata.jme_rx_ring[cons];
+	desc = &sc->jme_cdata.jme_rx_ring[cons];
 	flags = le32toh(desc->flags);
 	status = le32toh(desc->buflen);
 	nsegs = JME_RX_NSEGS(status);
@@ -2294,7 +2294,7 @@ jme_rxeof(struct jme_softc *sc)
 
 	prog = 0;
 	for (;;) {
-		desc = &sc->jme_rdata.jme_rx_ring[sc->jme_cdata.jme_rx_cons];
+		desc = &sc->jme_cdata.jme_rx_ring[sc->jme_cdata.jme_rx_cons];
 		if ((le32toh(desc->flags) & JME_RD_OWN) == JME_RD_OWN)
 			break;
 		if ((le32toh(desc->buflen) & JME_RD_VALID) == 0)
@@ -2534,7 +2534,7 @@ jme_init(void *xsc)
 	jme_set_rx_coal(sc);
 
 	/* Configure shadow status block but don't enable posting. */
-	paddr = sc->jme_rdata.jme_ssb_block_paddr;
+	paddr = sc->jme_cdata.jme_ssb_block_paddr;
 	CSR_WRITE_4(sc, JME_SHBASE_ADDR_HI, JME_ADDR_HI(paddr));
 	CSR_WRITE_4(sc, JME_SHBASE_ADDR_LO, JME_ADDR_LO(paddr));
 
@@ -2691,7 +2691,7 @@ jme_stop_rx(struct jme_softc *sc)
 static void
 jme_init_tx_ring(struct jme_softc *sc)
 {
-	struct jme_ring_data *rd;
+	struct jme_chain_data *cd;
 	struct jme_txdesc *txd;
 	int i;
 
@@ -2699,12 +2699,12 @@ jme_init_tx_ring(struct jme_softc *sc)
 	sc->jme_cdata.jme_tx_cons = 0;
 	sc->jme_cdata.jme_tx_cnt = 0;
 
-	rd = &sc->jme_rdata;
-	bzero(rd->jme_tx_ring, JME_TX_RING_SIZE(sc));
+	cd = &sc->jme_cdata;
+	bzero(cd->jme_tx_ring, JME_TX_RING_SIZE(sc));
 	for (i = 0; i < sc->jme_tx_desc_cnt; i++) {
 		txd = &sc->jme_cdata.jme_txdesc[i];
 		txd->tx_m = NULL;
-		txd->tx_desc = &rd->jme_tx_ring[i];
+		txd->tx_desc = &cd->jme_tx_ring[i];
 		txd->tx_ndesc = 0;
 	}
 
@@ -2716,10 +2716,10 @@ jme_init_tx_ring(struct jme_softc *sc)
 static void
 jme_init_ssb(struct jme_softc *sc)
 {
-	struct jme_ring_data *rd;
+	struct jme_chain_data *cd;
 
-	rd = &sc->jme_rdata;
-	bzero(rd->jme_ssb_block, JME_SSB_SIZE);
+	cd = &sc->jme_cdata;
+	bzero(cd->jme_ssb_block, JME_SSB_SIZE);
 	bus_dmamap_sync(sc->jme_cdata.jme_ssb_tag, sc->jme_cdata.jme_ssb_map,
 			BUS_DMASYNC_PREWRITE);
 }
@@ -2727,7 +2727,7 @@ jme_init_ssb(struct jme_softc *sc)
 static int
 jme_init_rx_ring(struct jme_softc *sc)
 {
-	struct jme_ring_data *rd;
+	struct jme_chain_data *cd;
 	struct jme_rxdesc *rxd;
 	int i;
 
@@ -2736,14 +2736,14 @@ jme_init_rx_ring(struct jme_softc *sc)
 		 sc->jme_cdata.jme_rxlen == 0);
 	sc->jme_cdata.jme_rx_cons = 0;
 
-	rd = &sc->jme_rdata;
-	bzero(rd->jme_rx_ring, JME_RX_RING_SIZE(sc));
+	cd = &sc->jme_cdata;
+	bzero(cd->jme_rx_ring, JME_RX_RING_SIZE(sc));
 	for (i = 0; i < sc->jme_rx_desc_cnt; i++) {
 		int error;
 
 		rxd = &sc->jme_cdata.jme_rxdesc[i];
 		rxd->rx_m = NULL;
-		rxd->rx_desc = &rd->jme_rx_ring[i];
+		rxd->rx_desc = &cd->jme_rx_ring[i];
 		error = jme_newbuf(sc, rxd, 1);
 		if (error)
 			return (error);
