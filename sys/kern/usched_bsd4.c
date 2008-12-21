@@ -1083,9 +1083,11 @@ sched_thread(void *dummy)
     bsd4_pcpu_t  dd;
     struct lwp *nlp;
     cpumask_t cpumask;
-    cpumask_t tmpmask;
     int cpuid;
+#if 0
+    cpumask_t tmpmask;
     int tmpid;
+#endif
 
     gd = mycpu;
     cpuid = gd->gd_cpuid;	/* doesn't change */
