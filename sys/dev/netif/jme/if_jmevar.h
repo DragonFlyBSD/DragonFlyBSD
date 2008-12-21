@@ -36,7 +36,7 @@
 #include <sys/taskqueue.h>
 
 /*
- * JMC250 supports upto 1024 descriptors and the number of
+ * JMC250 supports upto JME_NDESC_MAX descriptors and the number of
  * descriptors should be multiple of JME_NDESC_ALIGN.
  */
 #define	JME_TX_DESC_CNT_DEF	384
@@ -159,11 +159,6 @@ struct jme_chain_data {
 	struct mbuf		*jme_rxhead;
 	struct mbuf		*jme_rxtail;
 };
-
-#define JME_TX_RING_ADDR(sc, i)	\
-    ((sc)->jme_cdata.jme_tx_ring_paddr + sizeof(struct jme_desc) * (i))
-#define JME_RX_RING_ADDR(sc, i)	\
-    ((sc)->jme_cdata.jme_rx_ring_paddr + sizeof(struct jme_desc) * (i))
 
 #define JME_TX_RING_SIZE(sc)	\
     (sizeof(struct jme_desc) * (sc)->jme_tx_desc_cnt)

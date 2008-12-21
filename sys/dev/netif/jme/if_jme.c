@@ -364,12 +364,12 @@ jme_miibus_statchg(device_t dev)
 		CSR_WRITE_4(sc, JME_TXCSR, sc->jme_txcsr);
 
 		/* Set Tx ring address to the hardware. */
-		paddr = JME_TX_RING_ADDR(sc, 0);
+		paddr = sc->jme_cdata.jme_tx_ring_paddr;
 		CSR_WRITE_4(sc, JME_TXDBA_HI, JME_ADDR_HI(paddr));
 		CSR_WRITE_4(sc, JME_TXDBA_LO, JME_ADDR_LO(paddr));
 
 		/* Set Rx ring address to the hardware. */
-		paddr = JME_RX_RING_ADDR(sc, 0);
+		paddr = sc->jme_cdata.jme_rx_ring_paddr;
 		CSR_WRITE_4(sc, JME_RXDBA_HI, JME_ADDR_HI(paddr));
 		CSR_WRITE_4(sc, JME_RXDBA_LO, JME_ADDR_LO(paddr));
 
@@ -2427,7 +2427,7 @@ jme_init(void *xsc)
 	CSR_WRITE_4(sc, JME_TXQDC, sc->jme_tx_desc_cnt);
 
 	/* Set Tx ring address to the hardware. */
-	paddr = JME_TX_RING_ADDR(sc, 0);
+	paddr = sc->jme_cdata.jme_tx_ring_paddr;
 	CSR_WRITE_4(sc, JME_TXDBA_HI, JME_ADDR_HI(paddr));
 	CSR_WRITE_4(sc, JME_TXDBA_LO, JME_ADDR_LO(paddr));
 
@@ -2471,7 +2471,7 @@ jme_init(void *xsc)
 	CSR_WRITE_4(sc, JME_RXQDC, sc->jme_rx_desc_cnt);
 
 	/* Set Rx ring address to the hardware. */
-	paddr = JME_RX_RING_ADDR(sc, 0);
+	paddr = sc->jme_cdata.jme_rx_ring_paddr;
 	CSR_WRITE_4(sc, JME_RXDBA_HI, JME_ADDR_HI(paddr));
 	CSR_WRITE_4(sc, JME_RXDBA_LO, JME_ADDR_LO(paddr));
 
