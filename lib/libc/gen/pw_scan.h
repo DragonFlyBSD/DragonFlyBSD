@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 1983, 1993
+/*-
+ * Copyright (c) 1994
  *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -10,7 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
+ * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -26,48 +26,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#)getservbyname.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/net/getservbyname.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
+ *	@(#)pw_scan.h	8.1 (Berkeley) 4/1/94
+ * $FreeBSD: src/lib/libc/gen/pw_scan.h,v 1.7 2007/01/09 00:27:55 imp Exp $
+ * $DragonFly: src/usr.sbin/pwd_mkdb/pw_scan.h,v 1.3 2003/11/03 19:31:41 eirikn Exp $
  */
 
-#include <netdb.h>
-#include <string.h>
+#define _PWSCAN_MASTER 0x01
+#define _PWSCAN_WARN   0x02
 
-extern int _serv_stayopen;
-
-struct servent *
-getservbyname(const char *name, const char *proto)
-{
-	struct servent *p;
-	char **cp;
-
-#ifdef YP
-	extern char *___getservbyname_yp;
-	extern char *___getservbyproto_yp;
-
-	___getservbyname_yp = (char *)name;
-	___getservbyproto_yp = (char *)proto;
-#endif
-
-	setservent(_serv_stayopen);
-	while ( (p = getservent()) ) {
-		if (strcmp(name, p->s_name) == 0)
-			goto gotname;
-		for (cp = p->s_aliases; *cp; cp++)
-			if (strcmp(name, *cp) == 0)
-				goto gotname;
-		continue;
-gotname:
-		if (proto == 0 || strcmp(p->s_proto, proto) == 0)
-			break;
-	}
-	if (!_serv_stayopen)
-		endservent();
-
-#ifdef YP
-	___getservbyname_yp = NULL;
-	___getservbyproto_yp = NULL;
-#endif
-
-	return (p);
-}
+extern int	__pw_scan(char *, struct passwd *, int);

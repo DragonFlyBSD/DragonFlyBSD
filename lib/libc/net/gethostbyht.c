@@ -59,6 +59,8 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
+#include <stdarg.h>
+#include <nsswitch.h>
 #include <arpa/nameser.h>	/* XXX */
 #include <resolv.h>		/* XXX */
 
@@ -156,12 +158,17 @@ gethostent(void)
 	return (&host);
 }
 
-struct hostent *
-_gethostbyhtname(const char *name, int af)
+int
+_ht_gethostbyname(void *rval, void *cb_data, va_list ap)
 {
+	const char *name;
+	int af;
 	struct hostent *p;
 	char **cp;
-	
+
+	name = va_arg(ap, const char *);
+	af = va_arg(ap, int);
+
 	sethostent(0);
 	while ((p = gethostent()) != NULL) {
 		if (p->h_addrtype != af)
@@ -174,18 +181,28 @@ _gethostbyhtname(const char *name, int af)
 	}
 found:
 	endhostent();
-	return (p);
+	*(struct hostent **)rval = p;
+
+	return (p != NULL) ? NS_SUCCESS : NS_NOTFOUND;
 }
 
-struct hostent *
-_gethostbyhtaddr(const char *addr, int len, int af)
+int
+_ht_gethostbyaddr(void *rval, void *cb_data, va_list ap)
 {
+	const char *addr;
+	int len, af;
 	struct hostent *p;
+
+	addr = va_arg(ap, const char *);
+	len = va_arg(ap, int);
+	af = va_arg(ap, int);
 
 	sethostent(0);
 	while ((p = gethostent()) != NULL)
 		if (p->h_addrtype == af && !bcmp(p->h_addr, addr, len))
 			break;
 	endhostent();
-	return (p);
+
+	*(struct hostent **)rval = p;
+	return (p != NULL) ? NS_SUCCESS : NS_NOTFOUND;
 }

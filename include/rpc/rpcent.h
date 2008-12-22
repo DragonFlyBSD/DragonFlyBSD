@@ -29,7 +29,7 @@
  *	from: @(#)rpcent.h   1.13    94/04/25 SMI
  *	from: @(#)rpcent.h 1.1 88/12/06 SMI
  * $NetBSD: rpcent.h,v 1.1 2000/06/02 22:57:56 fvdl Exp $
- * $FreeBSD: src/include/rpc/rpcent.h,v 1.2 2002/03/23 17:24:55 imp Exp $
+ * $FreeBSD: src/include/rpc/rpcent.h,v 1.4 2006/04/29 04:26:16 ume Exp $
  * $DragonFly$
  */
 /*
@@ -53,12 +53,10 @@ struct rpcent {
 };
 
 __BEGIN_DECLS
-extern struct rpcent *getrpcbyname_r(const char *, struct rpcent *,
-				     char *, int);
-extern struct rpcent *getrpcbynumber_r(int, struct rpcent *, char *, int);
-extern struct rpcent *getrpcent_r(struct rpcent *, char *, int);
-
-/* Old interfaces that return a pointer to a static area;  MT-unsafe */
+/*
+ * These interfaces are currently implemented through nsswitch and are
+ * MT-safe.
+ */
 extern struct rpcent *getrpcbyname(char *);
 extern struct rpcent *getrpcbynumber(int);
 extern struct rpcent *getrpcent(void);

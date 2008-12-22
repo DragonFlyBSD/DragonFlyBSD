@@ -49,6 +49,8 @@
 #include <netdb.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
+#include <nsswitch.h>
 
 #define	MAXALIASES	35
 
@@ -128,11 +130,14 @@ again:
 	return (&net);
 }
 
-struct netent *
-_getnetbyhtname(const char *name)
+int
+_ht_getnetbyname(void *rval, void *cb_data, va_list ap)
 {
+	const char *name;
 	struct netent *p;
 	char **cp;
+
+	name = va_arg(ap, const char *);
 
 	setnetent(_net_stayopen);
 	while ( (p = getnetent()) ) {
@@ -145,13 +150,19 @@ _getnetbyhtname(const char *name)
 found:
 	if (!_net_stayopen)
 		endnetent();
-	return (p);
+	*(struct netent **)rval = p;
+	return (p != NULL) ? NS_SUCCESS : NS_NOTFOUND;
 }
 
-struct netent *
-_getnetbyhtaddr(unsigned long net, int type)
+int
+_ht_getnetbyaddr(void *rval, void *cb_data, va_list ap)
 {
+	unsigned long net;
+	int type;
 	struct netent *p;
+
+	net = va_arg(ap, unsigned long);
+	type = va_arg(ap, int);
 
 	setnetent(_net_stayopen);
 	while ( (p = getnetent()) )
@@ -159,5 +170,6 @@ _getnetbyhtaddr(unsigned long net, int type)
 			break;
 	if (!_net_stayopen)
 		endnetent();
-	return (p);
+	*(struct netent **)rval = p;
+	return (p != NULL) ? NS_SUCCESS : NS_NOTFOUND;
 }

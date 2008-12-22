@@ -207,6 +207,17 @@ as the standard
 .Xr cpio 1 .
 The default is to use
 .Xr bsdcpio 1 .
+.It Va WANT_HESIOD
+.Pq Vt bool
+Set this to build
+.Xr hesiod 3
+support into libc.
+.It Va NO_NS_CACHING
+.Pq Vt bool
+Set this to disable name caching in the nsswitch subsystem.
+The generic caching daemon,
+.Xr nscd 8 ,
+will not be built either if this option is set.
 .El
 .Pp
 The following list provides a name and short description for variables

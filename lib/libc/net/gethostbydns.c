@@ -70,6 +70,8 @@
 #include <ctype.h>
 #include <errno.h>
 #include <syslog.h>
+#include <stdarg.h>
+#include <nsswitch.h>
 
 #include "res_config.h"
 
@@ -457,18 +459,22 @@ __dns_getanswer(const char *answer, int anslen, const char *qname, int qtype)
 	return(gethostanswer((const querybuf *)answer, anslen, qname, qtype));
 }
 
-struct hostent *
-_gethostbydnsname(const char *name, int af)
+int
+_dns_gethostbyname(void *rval, void *cb_data, va_list ap)
 {
 	querybuf *buf;
-	const char *cp;
+	const char *cp, *name;
 	char *bp;
-	int n, size, type, len;
+	int af, n, size, type, len;
 	struct hostent *hp;
+
+	name = va_arg(ap, const char *);
+	af = va_arg(ap, int);
+	*(struct hostent **)rval = NULL;
 
 	if ((_res.options & RES_INIT) == 0 && res_init() == -1) {
 		h_errno = NETDB_INTERNAL;
-		return (NULL);
+		return NS_UNAVAIL;
 	}
 
 	switch (af) {
@@ -483,7 +489,7 @@ _gethostbydnsname(const char *name, int af)
 	default:
 		h_errno = NETDB_INTERNAL;
 		errno = EAFNOSUPPORT;
-		return (NULL);
+		return NS_UNAVAIL;
 	}
 
 	host.h_addrtype = af;
@@ -513,7 +519,7 @@ _gethostbydnsname(const char *name, int af)
 				 */
 				if (inet_pton(af, name, host_addr) <= 0) {
 					h_errno = HOST_NOT_FOUND;
-					return (NULL);
+					return NS_NOTFOUND;
 				}
 				strncpy(hostbuf, name, MAXDNAME);
 				hostbuf[MAXDNAME] = '\0';
@@ -528,7 +534,8 @@ _gethostbydnsname(const char *name, int af)
 				if (_res.options & RES_USE_INET6)
 					_map_v4v6_hostent(&host, &bp, &len);
 				h_errno = NETDB_SUCCESS;
-				return (&host);
+				*(struct hostent **)rval = &host;
+				return NS_SUCCESS;
 			}
 			if (!isdigit((unsigned char)*cp) && *cp != '.')
 				break;
@@ -546,7 +553,7 @@ _gethostbydnsname(const char *name, int af)
 				 */
 				if (inet_pton(af, name, host_addr) <= 0) {
 					h_errno = HOST_NOT_FOUND;
-					return (NULL);
+					return NS_NOTFOUND;
 				}
 				strncpy(hostbuf, name, MAXDNAME);
 				hostbuf[MAXDNAME] = '\0';
@@ -559,7 +566,8 @@ _gethostbydnsname(const char *name, int af)
 				h_addr_ptrs[1] = NULL;
 				host.h_addr_list = h_addr_ptrs;
 				h_errno = NETDB_SUCCESS;
-				return (&host);
+				*(struct hostent **)rval = &host;
+				return NS_SUCCESS;
 			}
 			if (!isxdigit((unsigned char)*cp) && *cp != ':' && *cp != '.')
 				break;
@@ -579,17 +587,18 @@ _gethostbydnsname(const char *name, int af)
 		dprintf("static buffer is too small (%d)\n", n);
 		return (NULL);
 	}
-	hp = gethostanswer(buf, n, name, type);
+	*(struct hostent **)rval = gethostanswer(buf, n, name, type);
 	free(buf);
-	return (hp);
+	return (*(struct hostent **)rval != NULL) ? NS_SUCCESS : NS_NOTFOUND;
 }
 
-struct hostent *
-_gethostbydnsaddr(const char *addr,	/* XXX should have been def'd as u_char! */
-		  int len,
-		  int af)
+int
+_dns_gethostbyaddr(void *rval, void *cb_data, va_list ap)
 {
-	const u_char *uaddr = (const u_char *)addr;
+	const char *addr;	/* XXX should have been def'd as u_char! */
+	int len, af;
+
+	const u_char *uaddr;
 	static const u_char mapped[] = { 0,0, 0,0, 0,0, 0,0, 0,0, 0xff,0xff };
 	static const u_char tunnelled[] = { 0,0, 0,0, 0,0, 0,0, 0,0, 0,0 };
 	int n, size;
@@ -602,10 +611,17 @@ _gethostbydnsaddr(const char *addr,	/* XXX should have been def'd as u_char! */
 	u_long old_options;
 	char hname2[MAXDNAME+1];
 #endif /*SUNSECURITY*/
+
+	addr = va_arg(ap, const char *);
+	uaddr = (const u_char *)addr;
+	len = va_arg(ap, int);
+	af = va_arg(ap, int);
+
+	*(struct hostent **)rval = NULL;
 	
 	if ((_res.options & RES_INIT) == 0 && res_init() == -1) {
 		h_errno = NETDB_INTERNAL;
-		return (NULL);
+		return NS_UNAVAIL;
 	}
 	if (af == AF_INET6 && len == IN6ADDRSZ &&
 	    (!bcmp(uaddr, mapped, sizeof mapped) ||
@@ -626,12 +642,12 @@ _gethostbydnsaddr(const char *addr,	/* XXX should have been def'd as u_char! */
 	default:
 		errno = EAFNOSUPPORT;
 		h_errno = NETDB_INTERNAL;
-		return (NULL);
+		return NS_UNAVAIL;
 	}
 	if (size != len) {
 		errno = EINVAL;
 		h_errno = NETDB_INTERNAL;
-		return (NULL);
+		return NS_UNAVAIL;
 	}
 	switch (af) {
 	case AF_INET:
@@ -667,16 +683,16 @@ _gethostbydnsaddr(const char *addr,	/* XXX should have been def'd as u_char! */
 	if (n < 0) {
 		free(buf);
 		dprintf("res_query failed (%d)\n", n);
-		return (NULL);
+		return NS_UNAVAIL;
 	}
 	if (n > sizeof buf->buf) {
 		free(buf);
 		dprintf("static buffer is too small (%d)\n", n);
-		return (NULL);
+		return NS_UNAVAIL;
 	}
 	if (!(hp = gethostanswer(buf, n, qbuf, T_PTR))) {
 		free(buf);
-		return (NULL);	/* h_errno was set by gethostanswer() */
+		return NS_NOTFOUND;	/* h_errno was set by gethostanswer() */
 	}
 	free(buf);
 #ifdef SUNSECURITY
@@ -696,7 +712,7 @@ _gethostbydnsaddr(const char *addr,	/* XXX should have been def'd as u_char! */
 		       hname2, inet_ntoa(*((struct in_addr *)addr)));
 		_res.options = old_options;
 		h_errno = HOST_NOT_FOUND;
-		return (NULL);
+		return NS_NOTFOUND;
 	    }
 	    _res.options = old_options;
 	    for (haddr = rhp->h_addr_list; *haddr; haddr++)
@@ -707,7 +723,7 @@ _gethostbydnsaddr(const char *addr,	/* XXX should have been def'd as u_char! */
 		       "gethostbyaddr: A record of %s != PTR record [%s]",
 		       hname2, inet_ntoa(*((struct in_addr *)addr)));
 		h_errno = HOST_NOT_FOUND;
-		return (NULL);
+		return NS_NOTFOUND;
 	    }
 	}
 #endif /*SUNSECURITY*/
@@ -722,7 +738,8 @@ _gethostbydnsaddr(const char *addr,	/* XXX should have been def'd as u_char! */
 		hp->h_length = IN6ADDRSZ;
 	}
 	h_errno = NETDB_SUCCESS;
-	return (hp);
+	*(struct hostent **)rval = hp;
+	return (hp != NULL) ? NS_SUCCESS : NS_NOTFOUND;
 }
 
 #ifdef RESOLVSORT

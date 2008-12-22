@@ -166,7 +166,6 @@ char	*devname_r(dev_t, mode_t, char *, size_t);
 int	 getloadavg(double [], int);
 const char *getprogname(void);
 
-char	*group_from_gid(gid_t, int);
 int	 heapsort(void *, size_t, size_t, int (*)(const void *, const void *));
 char	*initstate(unsigned long, char *, long);
 int	 mergesort(void *, size_t, size_t, int (*)(const void *, const void *));
@@ -182,7 +181,6 @@ void	 setprogname(const char *);
 char	*setstate(char *);
 void	 srandom(unsigned long);
 void	 srandomdev(void);
-char	*user_from_uid(uid_t, int);
 
 #if !defined(__STRICT_ANSI__) && !defined(_KERNEL_VIRTUAL)
 __int64_t	strtoq(const char *, char **, int);

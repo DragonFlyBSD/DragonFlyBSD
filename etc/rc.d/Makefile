@@ -18,13 +18,14 @@ FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
 	mixer motd mountcritlocal mountcritremote \
 	mountd moused mroute6d mrouted msgs \
 	named netif netoptions newsyslog \
-	network_ipv6 nfsclient nfsd nfsserver nisdomain \
+	network_ipv6 nfsclient nfsd nfsserver nisdomain nscd nsswitch \
 	dntpd othermta pf pflog ppp ppp-user pppoed pwcheck \
 	quota random rarpd rcconf.sh resident rndcontrol root route6d routed \
 	routing rpcbind rtadvd rtsold rwho sysdb savecore sdpd securelevel \
 	sendmail sensorsd serial sppp sshd statd swap1 syscons sysctl syslogd \
 	timed ttys usbd varsym vinum virecover watchdogd wpa_supplicant \
 	ypbind yppasswdd ypserv ypset ypupdated ypxfrd
+
 FILESDIR=	/etc/rc.d
 FILESMODE=	${BINMODE}
 

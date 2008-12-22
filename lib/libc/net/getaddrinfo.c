@@ -81,12 +81,19 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
-#include "un-namespace.h"
 
 #include "res_config.h"
 
 #ifdef DEBUG
 #include <syslog.h>
+#endif
+
+#include <stdarg.h>
+#include <nsswitch.h>
+#include "un-namespace.h"
+#include "libc_private.h"
+#ifdef NS_CACHING
+#include "nscache.h"
 #endif
 
 #if defined(__KAME__) && defined(INET6)
@@ -170,6 +177,12 @@ static const struct explore explore[] = {
 #define PTON_MAX	4
 #endif
 
+static const ns_src default_dns_files[] = {
+	{ NSSRC_FILES, 	NS_SUCCESS },
+	{ NSSRC_DNS, 	NS_SUCCESS },
+	{ 0 }
+};
+
 #define MAXPACKET	(64*1024)
 
 typedef union {
@@ -209,15 +222,19 @@ static int ip6_str2scopeid (char *, struct sockaddr_in6 *, u_int32_t *);
 
 static struct addrinfo *getanswer (const querybuf *, int, const char *,
 	int, const struct addrinfo *);
-static int _dns_getaddrinfo (const struct addrinfo *, const char *,
-	struct addrinfo **);
-static struct addrinfo *_gethtent (FILE *fp, const char *,
-	const struct addrinfo *);
-static int _files_getaddrinfo (const struct addrinfo *, const char *,
-	struct addrinfo **);
+static int _dns_getaddrinfo (void *, void *, va_list);
+static void _sethtent (void);
+static void _endhtent (void);
+static struct addrinfo *_gethtent (const char *, const struct addrinfo *);
+static int _files_getaddrinfo (void *, void *, va_list);
 #ifdef YP
-static int _nis_getaddrinfo (const struct addrinfo *, const char *,
-	struct addrinfo **);
+static struct addrinfo *_yphostent (char *, const struct addrinfo *);
+static int _yp_getaddrinfo (void *, void *, va_list);
+#endif
+#ifdef NS_CACHING
+static int addrinfo_id_func(char *, size_t *, va_list, void *);
+static int addrinfo_marshal_func(char *, size_t *, void *, va_list, void *);
+static int addrinfo_unmarshal_func(char *, size_t, void *, va_list, void *);
 #endif
 
 static int res_queryN (const char *, struct res_target *);
@@ -244,34 +261,7 @@ static const char *ai_errlist[] = {
 	"Unknown error", 				/* EAI_MAX        */
 };
 
-/*
- * Select order host function.
- */
-#define	MAXHOSTCONF	4
-
-#ifndef HOSTCONF
-#  define	HOSTCONF	"/etc/host.conf"
-#endif /* !HOSTCONF */
-
-struct _hostconf {
-	int (*byname)(const struct addrinfo *, const char *,
-		      struct addrinfo **);
-};
-
-/* default order */
-static struct _hostconf _hostconf[MAXHOSTCONF] = {
-	_dns_getaddrinfo,
-	_files_getaddrinfo,
-#ifdef ICMPNL
-	NULL,
-#endif /* ICMPNL */
-};
-
-static int	_hostconf_init_done;
-static void	_hostconf_init(void);
-
 /* Make getaddrinfo() thread-safe in libc for use with kernel threads. */
-#include "libc_private.h"
 #include "spinlock.h"
 /*
  * XXX: Our res_*() is not thread-safe.  So, we share lock between
@@ -585,82 +575,6 @@ getaddrinfo(const char *hostname, const char *servname,
 	return error;
 }
 
-static char *
-_hgetword(char **pp)
-{
-	char c, *p, *ret;
-	const char *sp;
-	static const char sep[] = "# \t\n";
-
-	ret = NULL;
-	for (p = *pp; (c = *p) != '\0'; p++) {
-		for (sp = sep; *sp != '\0'; sp++) {
-			if (c == *sp)
-				break;
-		}
-		if (c == '#')
-			p[1] = '\0';	/* ignore rest of line */
-		if (ret == NULL) {
-			if (*sp == '\0')
-				ret = p;
-		} else {
-			if (*sp != '\0') {
-				*p++ = '\0';
-				break;
-			}
-		}
-	}
-	*pp = p;
-	if (ret == NULL || *ret == '\0')
-		return NULL;
-	return ret;
-}
-
-/*
- * Initialize hostconf structure.
- */
-
-static void
-_hostconf_init(void)
-{
-	FILE *fp;
-	int n;
-	char *p, *line;
-	char buf[BUFSIZ];
-
-	_hostconf_init_done = 1;
-	n = 0;
-	p = HOSTCONF;
-	if ((fp = fopen(p, "r")) == NULL)
-		return;
-	while (n < MAXHOSTCONF && fgets(buf, sizeof(buf), fp)) {
-		line = buf;
-		if ((p = _hgetword(&line)) == NULL)
-			continue;
-		do {
-			if (strcmp(p, "hosts") == 0
-			||  strcmp(p, "local") == 0
-			||  strcmp(p, "file") == 0
-			||  strcmp(p, "files") == 0)
-				_hostconf[n++].byname = _files_getaddrinfo;
-			else if (strcmp(p, "dns") == 0
-			     ||  strcmp(p, "bind") == 0)
-				_hostconf[n++].byname = _dns_getaddrinfo;
-#ifdef YP
-			else if (strcmp(p, "nis") == 0)
-				_hostconf[n++].byname = _nis_getaddrinfo;
-#endif
-		} while ((p = _hgetword(&line)) != NULL);
-	}
-	fclose(fp);
-	if (n < 0) {
-		/* no keyword found. do not change default configuration */
-		return;
-	}
-	for (; n < MAXHOSTCONF; n++)
-		_hostconf[n].byname = NULL;
-}
-
 /*
  * FQDN hostname, DNS lookup
  */
@@ -670,10 +584,25 @@ explore_fqdn(const struct addrinfo *pai, const char *hostname,
 {
 	struct addrinfo *result;
 	struct addrinfo *cur;
-	int error = 0, i;
+	int error = 0;
+
+#ifdef NS_CACHING
+	static const nss_cache_info cache_info =
+	NS_COMMON_CACHE_INFO_INITIALIZER(
+		hosts, NULL, addrinfo_id_func, addrinfo_marshal_func,
+		addrinfo_unmarshal_func);
+#endif
+	static const ns_dtab dtab[] = {
+		NS_FILES_CB(_files_getaddrinfo, NULL)
+		{ NSSRC_DNS, _dns_getaddrinfo, NULL },	/* force -DHESIOD */
+		NS_NIS_CB(_yp_getaddrinfo, NULL)
+#ifdef NS_CACHING
+		NS_CACHE_CB(&cache_info)
+#endif
+		{ 0 }
+	};
 
 	result = NULL;
-	*res = NULL;
 
 	THREAD_LOCK();
 
@@ -685,23 +614,30 @@ explore_fqdn(const struct addrinfo *pai, const char *hostname,
 		return 0;
 	}
 
-	if (!_hostconf_init_done)
-		_hostconf_init();
-
-	for (i = 0; i < MAXHOSTCONF; i++) {
-		if (!_hostconf[i].byname)
-			continue;
-		error = (*_hostconf[i].byname)(pai, hostname, &result);
-		if (error != 0)
-			continue;
+	switch (nsdispatch(&result, dtab, NSDB_HOSTS, "getaddrinfo",
+			default_dns_files, hostname, pai)) {
+	case NS_TRYAGAIN:
+		error = EAI_AGAIN;
+		goto free;
+	case NS_UNAVAIL:
+		error = EAI_FAIL;
+		goto free;
+	case NS_NOTFOUND:
+		error = EAI_NODATA;
+		goto free;
+	case NS_SUCCESS:
+		error = 0;
 		for (cur = result; cur; cur = cur->ai_next) {
 			GET_PORT(cur, servname);
 			/* canonname should be filled already */
 		}
 		THREAD_UNLOCK();
-		*res = result;
-		return 0;
+		break;
 	}
+
+	*res = result;
+
+	return 0;
 
 free:
 	THREAD_UNLOCK();
@@ -975,13 +911,13 @@ get_ai(const struct addrinfo *pai, const struct afd *afd, const char *addr)
 	ai->ai_addr->sa_len = afd->a_socklen;
 	ai->ai_addrlen = afd->a_socklen;
 	ai->ai_addr->sa_family = ai->ai_family = afd->a_af;
-	p = (char *)(ai->ai_addr);
+	p = (char *)(void *)(ai->ai_addr);
 #ifdef FAITH
 	if (translate == 1)
-		memcpy(p + afd->a_off, &faith_prefix, afd->a_addrlen);
+		memcpy(p + afd->a_off, &faith_prefix, (size_t)afd->a_addrlen);
 	else
 #endif
-	memcpy(p + afd->a_off, addr, afd->a_addrlen);
+	memcpy(p + afd->a_off, addr, (size_t)afd->a_addrlen);
 
 	return ai;
 }
@@ -1248,6 +1184,7 @@ addr4sort(struct addrinfo *sentinel)
 static const char AskedForGot[] =
 	"gethostby*.getanswer: asked for \"%s\", got \"%s\"";
 #endif
+static FILE *hostf = NULL;
 
 static struct addrinfo *
 getanswer(const querybuf *answer, int anslen, const char *qname, int qtype,
@@ -1457,14 +1394,17 @@ getanswer(const querybuf *answer, int anslen, const char *qname, int qtype,
 
 /*ARGSUSED*/
 static int
-_dns_getaddrinfo(const struct addrinfo *pai, const char *hostname,
-		 struct addrinfo **res)
+_dns_getaddrinfo(void *rv, void *cb_data, va_list ap)
 {
 	struct addrinfo *ai;
 	querybuf *buf, *buf2;
 	const char *name;
+	const struct addrinfo *pai;
 	struct addrinfo sentinel, *cur;
 	struct res_target q, q2;
+
+	name = va_arg(ap, char *);
+	pai = va_arg(ap, const struct addrinfo *);
 
 	memset(&q, 0, sizeof(q2));
 	memset(&q2, 0, sizeof(q2));
@@ -1514,12 +1454,12 @@ _dns_getaddrinfo(const struct addrinfo *pai, const char *hostname,
 	default:
 		free(buf);
 		free(buf2);
-		return EAI_FAIL;
+		return NS_UNAVAIL;
 	}
-	if (res_searchN(hostname, &q) < 0) {
+	if (res_searchN(name, &q) < 0) {
 		free(buf);
 		free(buf2);
-		return EAI_NODATA;
+		return NS_NOTFOUND;
 	}
 	/* prefer IPv6 */
 	if (q.next) {
@@ -1539,18 +1479,36 @@ _dns_getaddrinfo(const struct addrinfo *pai, const char *hostname,
 	if (sentinel.ai_next == NULL)
 		switch (h_errno) {
 		case HOST_NOT_FOUND:
-			return EAI_NODATA;
+			return NS_NOTFOUND;
 		case TRY_AGAIN:
-			return EAI_AGAIN;
+			return NS_TRYAGAIN;
 		default:
-			return EAI_FAIL;
+			return NS_UNAVAIL;
 		}
-	*res = sentinel.ai_next;
-	return 0;
+	*((struct addrinfo **)rv) = sentinel.ai_next;
+	return NS_SUCCESS;
+}
+
+static void
+_sethtent(void)
+{
+	if (!hostf)
+		hostf = fopen(_PATH_HOSTS, "r" );
+	else
+		rewind(hostf);
+}
+
+static void
+_endhtent(void)
+{
+	if (hostf) {
+		fclose(hostf);
+		hostf = NULL;
+	}
 }
 
 static struct addrinfo *
-_gethtent(FILE *hostf, const char *name, const struct addrinfo *pai)
+_gethtent(const char *name, const struct addrinfo *pai)
 {
 	char *p;
 	char *cp, *tname, *cname;
@@ -1559,6 +1517,8 @@ _gethtent(FILE *hostf, const char *name, const struct addrinfo *pai)
 	const char *addr;
 	char hostbuf[8*1024];
 
+	if (!hostf && !(hostf = fopen(_PATH_HOSTS, "r" )))
+		return (NULL);
 again:
 	if (!(p = fgets(hostbuf, sizeof hostbuf, hostf)))
 		return (NULL);
@@ -1624,97 +1584,173 @@ found:
 
 /*ARGSUSED*/
 static int
-_files_getaddrinfo(const struct addrinfo *pai, const char *hostname,
-		   struct addrinfo **res)
+_files_getaddrinfo(void *rv, void *cb_data, va_list ap)
 {
-	FILE *hostf;
+	const char *name;
+	const struct addrinfo *pai;
 	struct addrinfo sentinel, *cur;
 	struct addrinfo *p;
 
-	sentinel.ai_next = NULL;
+	name = va_arg(ap, char *);
+	pai = va_arg(ap, struct addrinfo *);
+
+	memset(&sentinel, 0, sizeof(sentinel));
 	cur = &sentinel;
 
-	if ((hostf = fopen(_PATH_HOSTS, "r")) == NULL)
-		return EAI_FAIL;
-	while ((p = _gethtent(hostf, hostname, pai)) != NULL) {
+	_sethtent();
+	while ((p = _gethtent(name, pai)) != NULL) {
 		cur->ai_next = p;
 		while (cur && cur->ai_next)
 			cur = cur->ai_next;
 	}
-	fclose(hostf);
+	_endhtent();
 
-	if (!sentinel.ai_next)
-		return EAI_NODATA;
-
-	*res = sentinel.ai_next;
-	return 0;
+	*((struct addrinfo **)rv) = sentinel.ai_next;
+	if (sentinel.ai_next == NULL)
+		return NS_NOTFOUND;
+	return NS_SUCCESS;
 }
 
 #ifdef YP
-/*ARGSUSED*/
-static int
-_nis_getaddrinfo(const struct addrinfo *pai, const char *hostname,
-		 struct addrinfo **res)
-{
-	struct hostent *hp;
-	int af;
-	struct addrinfo sentinel, *cur;
-	int i;
-	const struct afd *afd;
-	int error;
+static char *__ypdomain;
 
-	sentinel.ai_next = NULL;
+/*ARGSUSED*/
+static struct addrinfo *
+_yphostent(char *line, const struct addrinfo *pai)
+{
+	struct addrinfo sentinel, *cur;
+	struct addrinfo hints, *res, *res0;
+	int error;
+	char *p = line;
+	const char *addr, *canonname;
+	char *nextline;
+	char *cp;
+
+	addr = canonname = NULL;
+
+	memset(&sentinel, 0, sizeof(sentinel));
 	cur = &sentinel;
 
-	af = (pai->ai_family == AF_UNSPEC) ? AF_INET : pai->ai_family;
-	if (af != AF_INET)
-		return (EAI_ADDRFAMILY);
+nextline:
+	/* terminate line */
+	cp = strchr(p, '\n');
+	if (cp) {
+		*cp++ = '\0';
+		nextline = cp;
+	} else
+		nextline = NULL;
 
-	if ((hp = _gethostbynisname(hostname, af)) == NULL) {
-		switch (errno) {
-		/* XXX: should be filled in */
-		default:
-			error = EAI_FAIL;
-			break;
+	cp = strpbrk(p, " \t");
+	if (cp == NULL) {
+		if (canonname == NULL)
+			return (NULL);
+		else
+			goto done;
+	}
+	*cp++ = '\0';
+
+	addr = p;
+
+	while (cp && *cp) {
+		if (*cp == ' ' || *cp == '\t') {
+			cp++;
+			continue;
 		}
-	} else if (hp->h_name == NULL ||
-		   hp->h_name[0] == 0 || hp->h_addr_list[0] == NULL) {
-		hp = NULL;
-		error = EAI_FAIL;
+		if (!canonname)
+			canonname = cp;
+		if ((cp = strpbrk(cp, " \t")) != NULL)
+			*cp++ = '\0';
 	}
 
-	if (hp == NULL)
-		return error;
+	hints = *pai;
+	hints.ai_flags = AI_NUMERICHOST;
+	error = getaddrinfo(addr, NULL, &hints, &res0);
+	if (error == 0) {
+		for (res = res0; res; res = res->ai_next) {
+			/* cover it up */
+			res->ai_flags = pai->ai_flags;
 
-	for (i = 0; hp->h_addr_list[i] != NULL; i++) {
-		if (hp->h_addrtype != af)
-			continue;
-
-		afd = find_afd(hp->h_addrtype);
-		if (afd == NULL)
-			continue;
-
-		GET_AI(cur->ai_next, afd, hp->h_addr_list[i]);
-		if ((pai->ai_flags & AI_CANONNAME) != 0) {
-			/*
-			 * RFC2553 says that ai_canonname will be set only for
-			 * the first element.  we do it for all the elements,
-			 * just for convenience.
-			 */
-			GET_CANONNAME(cur->ai_next, hp->h_name);
+			if (pai->ai_flags & AI_CANONNAME)
+				get_canonname(pai, res, canonname);
 		}
-
+	} else
+		res0 = NULL;
+	if (res0) {
+		cur->ai_next = res0;
 		while (cur && cur->ai_next)
 			cur = cur->ai_next;
 	}
 
-	*res = sentinel.ai_next;
-	return 0;
+	if (nextline) {
+		p = nextline;
+		goto nextline;
+	}
 
-free:
-	if (sentinel.ai_next)
-		freeaddrinfo(sentinel.ai_next);
-	return error;
+done:
+	return sentinel.ai_next;
+}
+
+/*ARGSUSED*/
+static int
+_yp_getaddrinfo(void *rv, void *cb_data, va_list ap)
+{
+	struct addrinfo sentinel, *cur;
+	struct addrinfo *ai = NULL;
+	static char *__ypcurrent;
+	int __ypcurrentlen, r;
+	const char *name;
+	const struct addrinfo *pai;
+
+	name = va_arg(ap, char *);
+	pai = va_arg(ap, const struct addrinfo *);
+
+	memset(&sentinel, 0, sizeof(sentinel));
+	cur = &sentinel;
+
+	if (!__ypdomain) {
+		if (_yp_check(&__ypdomain) == 0)
+			return NS_UNAVAIL;
+	}
+	if (__ypcurrent)
+		free(__ypcurrent);
+	__ypcurrent = NULL;
+
+	/* hosts.byname is only for IPv4 (Solaris8) */
+	if (pai->ai_family == PF_UNSPEC || pai->ai_family == PF_INET) {
+		r = yp_match(__ypdomain, "hosts.byname", name,
+			(int)strlen(name), &__ypcurrent, &__ypcurrentlen);
+		if (r == 0) {
+			struct addrinfo ai4;
+
+			ai4 = *pai;
+			ai4.ai_family = AF_INET;
+			ai = _yphostent(__ypcurrent, &ai4);
+			if (ai) {
+				cur->ai_next = ai;
+				while (cur && cur->ai_next)
+					cur = cur->ai_next;
+			}
+		}
+	}
+
+	/* ipnodes.byname can hold both IPv4/v6 */
+	r = yp_match(__ypdomain, "ipnodes.byname", name,
+		(int)strlen(name), &__ypcurrent, &__ypcurrentlen);
+	if (r == 0) {
+		ai = _yphostent(__ypcurrent, pai);
+		if (ai) {
+			cur->ai_next = ai;
+			while (cur && cur->ai_next)
+				cur = cur->ai_next;
+		}
+	}
+
+	if (sentinel.ai_next == NULL) {
+		h_errno = HOST_NOT_FOUND;
+		return NS_NOTFOUND;
+	}
+	*((struct addrinfo **)rv) = sentinel.ai_next;
+	return NS_SUCCESS;
 }
 #endif
 
@@ -1722,6 +1758,185 @@ free:
 
 extern const char *__hostalias (const char *);
 extern int h_errno;
+
+
+#ifdef NS_CACHING
+static int
+addrinfo_id_func(char *buffer, size_t *buffer_size, va_list ap,
+    void *cache_mdata)
+{
+	res_state statp;
+	u_long res_options;
+
+	const int op_id = 0;	/* identifies the getaddrinfo for the cache */
+	char *hostname;
+	struct addrinfo *hints;
+
+	char *p;
+	int ai_flags, ai_family, ai_socktype, ai_protocol;
+	size_t desired_size, size;
+
+	statp = __res_state();
+	res_options = statp->options & (RES_RECURSE | RES_DEFNAMES |
+	    RES_DNSRCH | RES_NOALIASES | RES_USE_INET6);
+
+	hostname = va_arg(ap, char *);
+	hints = va_arg(ap, struct addrinfo *);
+
+	desired_size = sizeof(res_options) + sizeof(int) + sizeof(int) * 4;
+	if (hostname != NULL) {
+		size = strlen(hostname);
+		desired_size += size + 1;
+	} else
+		size = 0;
+
+	if (desired_size > *buffer_size) {
+		*buffer_size = desired_size;
+		return (NS_RETURN);
+	}
+
+	if (hints == NULL)
+		ai_flags = ai_family = ai_socktype = ai_protocol = 0;
+	else {
+		ai_flags = hints->ai_flags;
+		ai_family = hints->ai_family;
+		ai_socktype = hints->ai_socktype;
+		ai_protocol = hints->ai_protocol;
+	}
+
+	p = buffer;
+	memcpy(p, &res_options, sizeof(res_options));
+	p += sizeof(res_options);
+
+	memcpy(p, &op_id, sizeof(int));
+	p += sizeof(int);
+
+	memcpy(p, &ai_flags, sizeof(int));
+	p += sizeof(int);
+
+	memcpy(p, &ai_family, sizeof(int));
+	p += sizeof(int);
+
+	memcpy(p, &ai_socktype, sizeof(int));
+	p += sizeof(int);
+
+	memcpy(p, &ai_protocol, sizeof(int));
+	p += sizeof(int);
+
+	if (hostname != NULL)
+		memcpy(p, hostname, size);
+
+	*buffer_size = desired_size;
+	return (NS_SUCCESS);
+}
+
+static int
+addrinfo_marshal_func(char *buffer, size_t *buffer_size, void *retval,
+    va_list ap, void *cache_mdata)
+{
+	struct addrinfo	*ai, *cai;
+	char *p;
+	size_t desired_size, size, ai_size;
+
+	ai = *((struct addrinfo **)retval);
+
+	desired_size = sizeof(size_t);
+	ai_size = 0;
+	for (cai = ai; cai != NULL; cai = cai->ai_next) {
+		desired_size += sizeof(struct addrinfo) + cai->ai_addrlen;
+		if (cai->ai_canonname != NULL)
+			desired_size += sizeof(size_t) +
+			    strlen(cai->ai_canonname);
+		++ai_size;
+	}
+
+	if (desired_size > *buffer_size) {
+		/* this assignment is here for future use */
+		errno = ERANGE;
+		*buffer_size = desired_size;
+		return (NS_RETURN);
+	}
+
+	memset(buffer, 0, desired_size);
+	p = buffer;
+
+	memcpy(p, &ai_size, sizeof(size_t));
+	p += sizeof(size_t);
+	for (cai = ai; cai != NULL; cai = cai->ai_next) {
+		memcpy(p, cai, sizeof(struct addrinfo));
+		p += sizeof(struct addrinfo);
+
+		memcpy(p, cai->ai_addr, cai->ai_addrlen);
+		p += cai->ai_addrlen;
+
+		if (cai->ai_canonname != NULL) {
+			size = strlen(cai->ai_canonname);
+			memcpy(p, &size, sizeof(size_t));
+			p += sizeof(size_t);
+
+			memcpy(p, cai->ai_canonname, size);
+			p += size;
+		}
+	}
+
+	return (NS_SUCCESS);
+}
+
+static int
+addrinfo_unmarshal_func(char *buffer, size_t buffer_size, void *retval,
+    va_list ap, void *cache_mdata)
+{
+	struct addrinfo	new_ai, *result, *sentinel, *lasts;
+
+	char *p;
+	size_t ai_size, ai_i, size;
+
+	p = buffer;
+	memcpy(&ai_size, p, sizeof(size_t));
+	p += sizeof(size_t);
+
+	result = NULL;
+	lasts = NULL;
+	for (ai_i = 0; ai_i < ai_size; ++ai_i) {
+		memcpy(&new_ai, p, sizeof(struct addrinfo));
+		p += sizeof(struct addrinfo);
+		size = new_ai.ai_addrlen + sizeof(struct addrinfo) +
+			_ALIGNBYTES;
+
+		sentinel = (struct addrinfo *)malloc(size);
+		memset(sentinel, 0, size);
+
+		memcpy(sentinel, &new_ai, sizeof(struct addrinfo));
+		sentinel->ai_addr = (struct sockaddr *)_ALIGN((char *)sentinel +
+		    sizeof(struct addrinfo));
+
+		memcpy(sentinel->ai_addr, p, new_ai.ai_addrlen);
+		p += new_ai.ai_addrlen;
+
+		if (new_ai.ai_canonname != NULL) {
+			memcpy(&size, p, sizeof(size_t));
+			p += sizeof(size_t);
+
+			sentinel->ai_canonname = (char *)malloc(size + 1);
+			memset(sentinel->ai_canonname, 0, size + 1);
+
+			memcpy(sentinel->ai_canonname, p, size);
+			p += size;
+		}
+
+		if (result == NULL) {
+			result = sentinel;
+			lasts = sentinel;
+		} else {
+			lasts->ai_next = sentinel;
+			lasts = sentinel;
+		}
+	}
+
+	*((struct addrinfo **)retval) = result;
+	return (NS_SUCCESS);
+}
+#endif /* NS_CACHING */
 
 /*
  * Formulate a normal query, send, and await answer.

@@ -36,6 +36,8 @@
 #include <ctype.h>
 #include <errno.h>
 #include <string.h>
+#include <stdarg.h>
+#include <nsswitch.h>
 #include <arpa/nameser.h>
 #ifdef YP
 #include <rpc/rpc.h>
@@ -48,17 +50,15 @@
 
 #ifdef YP
 static char *host_aliases[MAXALIASES];
-#endif /* YP */
 
 static struct netent *
 _getnetbynis(const char *name, char *map, int af)
 {
-#ifdef YP
 	char *cp, **q;
 	static char *result;
 	int resultlen;
 	static struct netent h;
-	static char *domain = (char *)NULL;
+	static char *domain = NULL;
 	static char ypbuf[YPMAXRECORD + 2];
 
 	switch(af) {
@@ -70,7 +70,7 @@ _getnetbynis(const char *name, char *map, int af)
 		return NULL;
 	}
 
-	if (domain == (char *)NULL)
+	if (domain == NULL)
 		if (yp_get_default_domain (&domain))
 			return (NULL);
 
@@ -112,29 +112,43 @@ _getnetbynis(const char *name, char *map, int af)
 	}
 	*q = NULL;
 	return (&h);
+}
+#endif /* YP */
+
+int
+_nis_getnetbyname(void *rval, void *cb_data, va_list ap)
+{
+#ifdef YP
+	const char *name;
+
+	name = va_arg(ap, const char *);
+
+	*(struct netent **)rval = _getnetbynis(name, "networks.byname", AF_INET);
+	return (*(struct netent **)rval != NULL) ? NS_SUCCESS : NS_NOTFOUND;
 #else
-	return (NULL);
+	return NS_UNAVAIL;
 #endif
+
 }
 
-struct netent *
-_getnetbynisname(const char *name)
+int
+_nis_getnetbyaddr(void *rval, void *cb_data, va_list ap)
 {
-	return _getnetbynis(name, "networks.byname", AF_INET);
-}
-
-struct netent *
-_getnetbynisaddr(unsigned long addr, int af)
-{
+#ifdef YP
 	char *str, *cp;
-	unsigned long net2;
-	int nn;
+	unsigned long addr, net2;
+	int af, nn;
 	unsigned int netbr[4];
 	char buf[MAXDNAME];
 
+	addr = va_arg(ap, unsigned long);
+	af = va_arg(ap, int);
+
+	*(struct netent **)rval = NULL;
+
 	if (af != AF_INET) {
 		errno = EAFNOSUPPORT;
-		return (NULL);
+		return NS_UNAVAIL;
 	}
 
         for (nn = 4, net2 = addr; net2; net2 >>= 8) {
@@ -165,5 +179,9 @@ _getnetbynisaddr(unsigned long addr, int af)
 		cp = str + (strlen(str) - 2);
 	}
 
-	return _getnetbynis(str, "networks.byaddr", af);
+	*(struct netent **)rval = _getnetbynis(str, "networks.byaddr", af);
+	return (*(struct netent**)rval != NULL) ? NS_SUCCESS : NS_NOTFOUND;
+#else
+	return NS_UNAVAIL;
+#endif /* YP */
 }

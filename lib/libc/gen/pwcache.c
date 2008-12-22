@@ -31,12 +31,14 @@
  * SUCH DAMAGE.
  *
  * @(#)pwcache.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/gen/pwcache.c,v 1.10 2002/03/22 02:35:47 imp Exp $
  * $DragonFly: src/lib/libc/gen/pwcache.c,v 1.5 2005/11/13 00:07:42 swildner Exp $
  */
 
+#include <sys/types.h>
+
 #include <grp.h>
 #include <pwd.h>
-#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <utmp.h>
@@ -44,7 +46,7 @@
 #define	NCACHE	64			/* power of 2 */
 #define	MASK	(NCACHE - 1)		/* bits to store with */
 
-char *
+const char *
 user_from_uid(uid_t uid, int nouser)
 {
 	static struct ncache {
@@ -78,7 +80,7 @@ user_from_uid(uid_t uid, int nouser)
 	return ((nouser && !cp->found) ? NULL : cp->name);
 }
 
-char *
+const char *
 group_from_gid(gid_t gid, int nogroup)
 {
 	static struct ncache {

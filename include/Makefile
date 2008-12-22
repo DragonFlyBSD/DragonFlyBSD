@@ -16,7 +16,7 @@ INCS=	a.out.h ar.h assert.h bitstring.h complex.h cpio.h ctype.h db.h \
 	iconv.h ieeefp.h ifaddrs.h iso646.h inttypes.h \
 	langinfo.h libgen.h limits.h link.h locale.h malloc.h math.h memory.h \
 	mpool.h monetary.h ndbm.h netconfig.h \
-	netdb.h nl_types.h nlist.h objformat.h \
+	netdb.h nl_types.h nlist.h nss.h nsswitch.h objformat.h \
 	paths.h pthread.h pthread_np.h pwd.h \
 	ranlib.h readpassphrase.h regex.h regexp.h resolv.h re_comp.h rmd160.h \
 	search.h setjmp.h sgtty.h \
@@ -24,6 +24,10 @@ INCS=	a.out.h ar.h assert.h bitstring.h complex.h cpio.h ctype.h db.h \
 	string.h stringlist.h strings.h struct.h sysexits.h tar.h time.h \
 	timers.h ttyent.h unistd.h ulimit.h utime.h utmp.h uuid.h vis.h \
 	wchar.h wctype.h wordexp.h
+
+.if defined(WANT_HESIOD)
+INCS+=	hesiod.h
+.endif
 
 MHDRS=	float.h floatingpoint.h varargs.h
 

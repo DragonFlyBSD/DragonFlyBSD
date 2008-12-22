@@ -64,7 +64,7 @@ pw_equal(char *buf, struct passwd *pw)
 	len = strlen (buf);
 	if (buf[len-1] == '\n')
 		buf[len-1] = '\0';
-	if (!pw_scan(buf, &buf_pw))
+	if (!__pw_scan(buf, &buf_pw, _PWSCAN_MASTER))
 		return 0;
 	return (strcmp(pw->pw_name, buf_pw.pw_name) == 0
 	    && pw->pw_uid == buf_pw.pw_uid

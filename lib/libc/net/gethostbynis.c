@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/net/gethostbynis.c,v 1.10.2.1 2000/10/01 16:39:47 nectar Exp $
+ * $FreeBSD: src/lib/libc/net/gethostbynis.c,v 1.16 2003/01/05 14:05:24 fenner Exp $
  * $DragonFly: src/lib/libc/net/gethostbynis.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  */
 
@@ -37,6 +37,8 @@
 #include <ctype.h>
 #include <errno.h>
 #include <string.h>
+#include <stdarg.h>
+#include <nsswitch.h>
 #ifdef YP
 #include <rpc/rpc.h>
 #include <rpcsvc/yp_prot.h>
@@ -52,18 +54,17 @@ extern int h_errno;
 static char *host_aliases[MAXALIASES];
 static char hostaddr[MAXADDRS];
 static char *host_addrs[2];
-#endif /* YP */
 
 static struct hostent *
 _gethostbynis(const char *name, char *map, int af)
 {
-#ifdef YP
 	char *cp, **q;
 	char *result;
 	int resultlen,size;
 	static struct hostent h;
 	static char *domain = (char *)NULL;
 	static char ypbuf[YPMAXRECORD + 2];
+	in_addr_t addr;
 
 	switch(af) {
 	case AF_INET:
@@ -101,7 +102,8 @@ _gethostbynis(const char *name, char *map, int af)
 	*cp++ = '\0';
 	h.h_addr_list = host_addrs;
 	h.h_addr = hostaddr;
-	*((u_long *)h.h_addr) = inet_addr(result);
+	addr = inet_addr(result);
+	bcopy((char *)&addr, h.h_addr, size);
 	h.h_length = size;
 	h.h_addrtype = AF_INET;
 	while (*cp == ' ' || *cp == '\t')
@@ -124,19 +126,64 @@ _gethostbynis(const char *name, char *map, int af)
 	}
 	*q = NULL;
 	return (&h);
-#else
-	return (NULL);
-#endif /* YP */
 }
+#endif /* YP */
 
+/* XXX _gethostbynisname/_gethostbynisaddr only used by getaddrinfo */
 struct hostent *
 _gethostbynisname(const char *name, int af)
 {
+#ifdef YP
 	return _gethostbynis(name, "hosts.byname", af);
+#else
+	return NULL;
+#endif
 }
 
 struct hostent *
 _gethostbynisaddr(const char *addr, int len, int af)
 {
-	return _gethostbynis(inet_ntoa(*(struct in_addr *)addr),"hosts.byaddr", af);
+#ifdef YP
+	return _gethostbynis(inet_ntoa(*(struct in_addr *)addr),
+			     "hosts.byaddr", af);
+#else
+	return NULL;
+#endif
+}
+
+
+int
+_nis_gethostbyname(void *rval, void *cb_data, va_list ap)
+{
+#ifdef YP
+	const char *name;
+	int af;
+
+	name = va_arg(ap, const char *);
+	af = va_arg(ap, int);
+
+	*(struct hostent **)rval = _gethostbynis(name, "hosts.byname", af);
+	return (*(struct hostent **)rval != NULL) ? NS_SUCCESS : NS_NOTFOUND;
+#else
+	return NS_UNAVAIL;
+#endif
+}
+
+int
+_nis_gethostbyaddr(void *rval, void *cb_data, va_list ap)
+{
+#ifdef YP
+	const char *addr;
+	int len;
+	int af;
+
+	addr = va_arg(ap, const char *);
+	len = va_arg(ap, int);
+	af = va_arg(ap, int);
+
+	*(struct hostent **)rval =_gethostbynis(inet_ntoa(*(struct in_addr *)addr),"hosts.byaddr", af);
+	return (*(struct hostent **)rval != NULL) ? NS_SUCCESS : NS_NOTFOUND;
+#else
+	return NS_UNAVAIL;
+#endif
 }

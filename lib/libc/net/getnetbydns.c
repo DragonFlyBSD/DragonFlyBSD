@@ -72,6 +72,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <syslog.h>
+#include <stdarg.h>
+#include <nsswitch.h>
 
 #include "res_config.h"
 
@@ -207,18 +209,23 @@ static	char *net_aliases[MAXALIASES], netbuf[PACKETSZ];
 	return (NULL);
 }
 
-struct netent *
-_getnetbydnsaddr(unsigned long net, int net_type)
+int
+_dns_getnetbyaddr(void *rval, void *cb_data, va_list ap)
 {
 	unsigned int netbr[4];
-	int nn, anslen;
+	int nn, anslen, net_type;
 	querybuf *buf;
 	char qbuf[MAXDNAME];
-	unsigned long net2;
+	unsigned long net, net2;
 	struct netent *net_entry;
 
+	net = va_arg(ap, unsigned long);
+	net_type = va_arg(ap, int);
+
+	*(struct netent **)rval = NULL;
+
 	if (net_type != AF_INET)
-		return (NULL);
+		return NS_UNAVAIL;
 
 	for (nn = 4, net2 = net; net2; net2 >>= 8)
 		netbr[--nn] = net2 & 0xff;
@@ -240,7 +247,7 @@ _getnetbydnsaddr(unsigned long net, int net_type)
 	}
 	if ((buf = malloc(sizeof(*buf))) == NULL) {
 		h_errno = NETDB_INTERNAL;
-		return (NULL);
+		return NS_NOTFOUND;
 	}
 	anslen = res_query(qbuf, C_IN, T_PTR, (u_char *)buf, sizeof(*buf));
 	if (anslen < 0) {
@@ -249,14 +256,14 @@ _getnetbydnsaddr(unsigned long net, int net_type)
 		if (_res.options & RES_DEBUG)
 			printf("res_search failed\n");
 #endif
-		return (NULL);
+		return NS_UNAVAIL;
 	} else if (anslen > sizeof(*buf)) {
 		free(buf);
 #ifdef DEBUG
 		if (_res.options & RES_DEBUG)
 			printf("res_search static buffer too small\n");
 #endif
-		return (NULL);
+		return NS_UNAVAIL;
 	}
 	net_entry = getnetanswer(buf, anslen, BYADDR);
 	free(buf);
@@ -267,26 +274,32 @@ _getnetbydnsaddr(unsigned long net, int net_type)
 		while ((u_net & 0xff) == 0 && u_net != 0)
 			u_net >>= 8;
 		net_entry->n_net = u_net;
-		return (net_entry);
+		*(struct netent **)rval = net_entry;
+		return NS_SUCCESS;
 	}
-	return (NULL);
+	return NS_NOTFOUND;
 }
 
-struct netent *
-_getnetbydnsname(const char *net)
+int
+_dns_getnetbyname(void *rval, void *cb_data, va_list ap)
 {
+	const char *net;
 	int anslen;
 	querybuf *buf;
 	char qbuf[MAXDNAME];
 	struct netent *net_entry;
 
+	net = va_arg(ap, const char *);
+
+	*(struct netent**)rval = NULL;
+
 	if ((_res.options & RES_INIT) == 0 && res_init() == -1) {
 		h_errno = NETDB_INTERNAL;
-		return (NULL);
+		return NS_UNAVAIL;
 	}
 	if ((buf = malloc(sizeof(*buf))) == NULL) {
 		h_errno = NETDB_INTERNAL;
-		return (NULL);
+		return NS_NOTFOUND;
 	}
 	strncpy(qbuf, net, sizeof(qbuf) - 1);
 	qbuf[sizeof(qbuf) - 1] = '\0';
@@ -297,18 +310,18 @@ _getnetbydnsname(const char *net)
 		if (_res.options & RES_DEBUG)
 			printf("res_search failed\n");
 #endif
-		return (NULL);
+		return NS_UNAVAIL;
 	} else if (anslen > sizeof(*buf)) {
 		free(buf);
 #ifdef DEBUG
 		if (_res.options & RES_DEBUG)
 			printf("res_search static buffer too small\n");
 #endif
-		return (NULL);
+		return NS_UNAVAIL;
 	}
-	net_entry = getnetanswer(buf, anslen, BYNAME);
+	*(struct netent**)rval = getnetanswer(buf, anslen, BYNAME);
 	free(buf);
-	return net_entry;
+	return (*(struct netent**)rval != NULL) ? NS_SUCCESS : NS_NOTFOUND;
 }
 
 void

@@ -28,10 +28,10 @@ BIN1=	amd.map auth.conf \
 	crontab csh.cshrc csh.login csh.logout \
 	devd.conf devices.conf dhclient.conf dm.conf dntpd.conf \
 	ftpusers group \
-	hosts hosts.allow host.conf hosts.equiv hosts.lpd \
+	hosts hosts.allow hosts.equiv hosts.lpd \
 	inetd.conf login.access login.conf \
 	motd modems netconfig networks newsyslog.conf \
-	pf.conf phones printcap profile \
+	nscd.conf pf.conf phones printcap profile \
 	remote sensorsd.conf \
 	shells sysctl.conf syslog.conf usbd.conf \
 	etc.${MACHINE_ARCH}/ttys

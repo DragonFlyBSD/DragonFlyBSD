@@ -246,5 +246,7 @@ int		_kevent(int, const struct kevent *, int, struct kevent *,
 int		_flock(int, int);
 #endif
 
+#undef		nsdispatch
+
 #endif	/* _UN_NAMESPACE_H_ */
 

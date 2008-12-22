@@ -7,7 +7,7 @@
 .if defined(NOPAM)
 
 PROG=	passwd
-SRCS=	local_passwd.c passwd.c pw_copy.c pw_scan.c pw_util.c 
+SRCS=	local_passwd.c passwd.c pw_copy.c pw_util.c
 
 GENSRCS=yp.h yp_clnt.c yppasswd.h yppasswd_clnt.c \
 	yppasswd_private.h yppasswd_private_clnt.c yppasswd_private_xdr.c
@@ -22,12 +22,13 @@ CFLAGS+= -DLOGIN_CAP -DCRYPT -I. -I${.CURDIR} \
 	-I${.CURDIR}/../../usr.sbin/vipw \
 	-I${.CURDIR}/../../usr.bin/chpass \
 	-I${.CURDIR}/../../usr.sbin/pwd_mkdb \
+	-I${.CURDIR}/../../lib/libc/gen \
 	-Dyp_error=warnx -DLOGGING
 
 .else
 
 PROG=	passwd
-SRCS=	local_passwd.c passwd.c pw_copy.c pw_scan.c pw_util.c pw_yp.c \
+SRCS=	local_passwd.c passwd.c pw_copy.c pw_util.c pw_yp.c \
 	yp_passwd.c ypxfr_misc.c ${GENSRCS}
 GENSRCS=yp.h yp_clnt.c yppasswd.h yppasswd_clnt.c \
 	yppasswd_private.h yppasswd_private_clnt.c yppasswd_private_xdr.c
@@ -45,6 +46,7 @@ CFLAGS+= -DLOGIN_CAP -DCRYPT -DYP -I. -I${.CURDIR} \
 	-I${.CURDIR}/../../libexec/ypxfr \
 	-I${.CURDIR}/../../usr.sbin/pwd_mkdb \
 	-I${.CURDIR}/../../usr.sbin/rpc.yppasswdd \
+	-I${.CURDIR}/../../lib/libc/gen \
 	-Dyp_error=warnx -DLOGGING
 
 .endif

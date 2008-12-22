@@ -34,86 +34,32 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
+#include <stdarg.h>
+#include <nsswitch.h>
 #include <arpa/nameser.h>		/* XXX hack for _res */
 #include <resolv.h>			/* XXX hack for _res */
+#ifdef NS_CACHING
+#include "nscache.h"
+#endif
 
-#define _PATH_HOSTCONF	"/etc/host.conf"
+extern int _ht_gethostbyname(void *, void *, va_list);
+extern int _dns_gethostbyname(void *, void *, va_list);
+extern int _nis_gethostbyname(void *, void *, va_list);
+extern int _ht_gethostbyaddr(void *, void *, va_list);
+extern int _dns_gethostbyaddr(void *, void *, va_list);
+extern int _nis_gethostbyaddr(void *, void *, va_list);
 
-enum service_type {
-  SERVICE_NONE = 0,
-  SERVICE_BIND,
-  SERVICE_HOSTS,
-  SERVICE_NIS };
-#define SERVICE_MAX	SERVICE_NIS
-
-static struct {
-  const char *name;
-  enum service_type type;
-} service_names[] = {
-  { "hosts", SERVICE_HOSTS },
-  { "/etc/hosts", SERVICE_HOSTS },
-  { "hosttable", SERVICE_HOSTS },
-  { "htable", SERVICE_HOSTS },
-  { "bind", SERVICE_BIND },
-  { "dns", SERVICE_BIND },
-  { "domain", SERVICE_BIND },
-  { "yp", SERVICE_NIS },
-  { "yellowpages", SERVICE_NIS },
-  { "nis", SERVICE_NIS },
-  { 0, SERVICE_NONE }
+/* Host lookup order if nsswitch.conf is broken or nonexistant */
+static const ns_src default_src[] = {
+	{ NSSRC_FILES, NS_SUCCESS },
+	{ NSSRC_DNS, NS_SUCCESS },
+	{ 0 }
 };
-
-static enum service_type service_order[SERVICE_MAX + 1];
-static int service_done = 0;
-
-static enum service_type
-get_service_name(const char *name) {
-	int i;
-	for(i = 0; service_names[i].type != SERVICE_NONE; i++) {
-		if(!strcasecmp(name, service_names[i].name)) {
-			return service_names[i].type;
-		}
-	}
-	return SERVICE_NONE;
-}
-
-static void
-init_services(void)
-{
-	char *cp, *p, buf[BUFSIZ];
-	int cc = 0;
-	FILE *fd;
-
-	if ((fd = (FILE *)fopen(_PATH_HOSTCONF, "r")) == NULL) {
-				/* make some assumptions */
-		service_order[0] = SERVICE_BIND;
-		service_order[1] = SERVICE_HOSTS;
-		service_order[2] = SERVICE_NONE;
-	} else {
-		while (fgets(buf, BUFSIZ, fd) != NULL && cc < SERVICE_MAX) {
-			if(buf[0] == '#')
-				continue;
-
-			p = buf;
-			while ((cp = strsep(&p, "\n \t,:;")) != NULL && *cp == '\0')
-				;
-			if (cp == NULL)
-				continue;
-			do {
-				if (isalpha((unsigned char)cp[0])) {
-					service_order[cc] = get_service_name(cp);
-					if(service_order[cc] != SERVICE_NONE)
-						cc++;
-				}
-				while ((cp = strsep(&p, "\n \t,:;")) != NULL && *cp == '\0')
-					;
-			} while(cp != NULL && cc < SERVICE_MAX);
-		}
-		service_order[cc] = SERVICE_NONE;
-		fclose(fd);
-	}
-	service_done = 1;
-}
+#ifdef NS_CACHING
+static int host_id_func(char *, size_t *, va_list, void *);
+static int host_marshal_func(char *, size_t *, void *, va_list, void *);
+static int host_unmarshal_func(char *, size_t, void *, va_list, void *);
+#endif
 
 struct hostent *
 gethostbyname(const char *name)
@@ -136,57 +82,331 @@ struct hostent *
 gethostbyname2(const char *name, int type)
 {
 	struct hostent *hp = 0;
-	int nserv = 0;
+	int rval;
 
-	if (!service_done)
-		init_services();
+#ifdef NS_CACHING
+	static const nss_cache_info cache_info =
+		NS_COMMON_CACHE_INFO_INITIALIZER(
+		hosts, (void *)nss_lt_name,
+		host_id_func, host_marshal_func, host_unmarshal_func);
+#endif
+	static const ns_dtab dtab[] = {
+		NS_FILES_CB(_ht_gethostbyname, NULL)
+		{ NSSRC_DNS, _dns_gethostbyname, NULL },
+		NS_NIS_CB(_nis_gethostbyname, NULL) /* force -DHESIOD */
+#ifdef NS_CACHING
+		NS_CACHE_CB(&cache_info)
+#endif
+		{ 0 }
+	};
 
-	while (!hp) {
-		switch (service_order[nserv]) {
-		      case SERVICE_NONE:
-			return NULL;
-		      case SERVICE_HOSTS:
-			hp = _gethostbyhtname(name, type);
-			break;
-		      case SERVICE_BIND:
-			hp = _gethostbydnsname(name, type);
-			break;
-		      case SERVICE_NIS:
-			hp = _gethostbynisname(name, type);
-			break;
-		}
-		nserv++;
-	}
-	return hp;
+	rval = nsdispatch((void *)&hp, dtab, NSDB_HOSTS, "gethostbyname",
+			  default_src, name, type);
+
+	if (rval != NS_SUCCESS)
+		return NULL;
+	else
+		return hp;
 }
 
 struct hostent *
 gethostbyaddr(const void *addr, socklen_t len, int type)
 {
 	struct hostent *hp = 0;
-	int nserv = 0;
+	int rval;
 
-	if (!service_done)
-		init_services();
+#ifdef NS_CACHING
+	static const nss_cache_info cache_info =
+		NS_COMMON_CACHE_INFO_INITIALIZER(
+		hosts, (void *)nss_lt_id,
+		host_id_func, host_marshal_func, host_unmarshal_func);
+#endif
+	static const ns_dtab dtab[] = {
+		NS_FILES_CB(_ht_gethostbyaddr, NULL)
+		{ NSSRC_DNS, _dns_gethostbyaddr, NULL },
+		NS_NIS_CB(_nis_gethostbyaddr, NULL) /* force -DHESIOD */
+#ifdef NS_CACHING
+		NS_CACHE_CB(&cache_info)
+#endif
+		{ 0 }
+	};
 
-	while (!hp) {
-		switch (service_order[nserv]) {
-		      case SERVICE_NONE:
-			return 0;
-		      case SERVICE_HOSTS:
-			hp = _gethostbyhtaddr(addr, len, type);
-			break;
-		      case SERVICE_BIND:
-			hp = _gethostbydnsaddr(addr, len, type);
-			break;
-		      case SERVICE_NIS:
-			hp = _gethostbynisaddr(addr, len, type);
-			break;
-		}
-		nserv++;
-	}
-	return hp;
+	rval = nsdispatch((void *)&hp, dtab, NSDB_HOSTS, "gethostbyaddr",
+			  default_src, addr, len, type);
+
+	if (rval != NS_SUCCESS)
+		return NULL;
+	else
+		return hp;
 }
+
+#ifdef NS_CACHING
+static int
+host_id_func(char *buffer, size_t *buffer_size, va_list ap, void *cache_mdata)
+{
+	res_state statp;
+	u_long res_options;
+
+	const int op_id = 1;
+	char *str;
+	int len, type;
+
+	size_t desired_size, size;
+	enum nss_lookup_type lookup_type;
+	char *p;
+	int res = NS_UNAVAIL;
+
+	statp = __res_state();
+	res_options = statp->options & (RES_RECURSE | RES_DEFNAMES |
+	    RES_DNSRCH | RES_NOALIASES | RES_USE_INET6);
+
+	lookup_type = (enum nss_lookup_type)cache_mdata;
+	switch (lookup_type) {
+	case nss_lt_name:
+		str = va_arg(ap, char *);
+		type = va_arg(ap, int);
+
+		size = strlen(str);
+		desired_size = sizeof(res_options) + sizeof(int) +
+		    sizeof(enum nss_lookup_type) + sizeof(int) + size + 1;
+
+		if (desired_size > *buffer_size) {
+			res = NS_RETURN;
+			goto fin;
+		}
+
+		p = buffer;
+
+		memcpy(p, &res_options, sizeof(res_options));
+		p += sizeof(res_options);
+
+		memcpy(p, &op_id, sizeof(int));
+		p += sizeof(int);
+
+		memcpy(p, &lookup_type, sizeof(enum nss_lookup_type));
+		p += sizeof(int);
+
+		memcpy(p, &type, sizeof(int));
+		p += sizeof(int);
+
+		memcpy(p, str, size + 1);
+
+		res = NS_SUCCESS;
+		break;
+	case nss_lt_id:
+		str = va_arg(ap, char *);
+		len = va_arg(ap, int);
+		type = va_arg(ap, int);
+
+		desired_size = sizeof(res_options) + sizeof(int) +
+		    sizeof(enum nss_lookup_type) + sizeof(int) * 2 + len;
+
+		if (desired_size > *buffer_size) {
+			res = NS_RETURN;
+			goto fin;
+		}
+
+		p = buffer;
+		memcpy(p, &res_options, sizeof(res_options));
+		p += sizeof(res_options);
+
+		memcpy(p, &op_id, sizeof(int));
+		p += sizeof(int);
+
+		memcpy(p, &lookup_type, sizeof(enum nss_lookup_type));
+		p += sizeof(int);
+
+		memcpy(p, &type, sizeof(int));
+		p += sizeof(int);
+
+		memcpy(p, &len, sizeof(int));
+		p += sizeof(int);
+
+		memcpy(p, str, len);
+
+		res = NS_SUCCESS;
+		break;
+	default:
+		/* should be unreachable */
+		return (NS_UNAVAIL);
+	}
+
+fin:
+	*buffer_size = desired_size;
+	return (res);
+}
+
+static int
+host_marshal_func(char *buffer, size_t *buffer_size, void *retval, va_list ap,
+    void *cache_mdata)
+{
+	char *str;
+	int len, type;
+	struct hostent *ht;
+
+	struct hostent new_ht;
+	size_t desired_size, aliases_size, addr_size, size;
+	char *p, **iter;
+
+	switch ((enum nss_lookup_type)cache_mdata) {
+	case nss_lt_name:
+		str = va_arg(ap, char *);
+		type = va_arg(ap, int);
+		break;
+	case nss_lt_id:
+		str = va_arg(ap, char *);
+		len = va_arg(ap, int);
+		type = va_arg(ap, int);
+		break;
+	default:
+		/* should be unreachable */
+		return (NS_UNAVAIL);
+	}
+	ht = va_arg(ap, struct hostent *);
+
+	desired_size = _ALIGNBYTES + sizeof(struct hostent) + sizeof(char *);
+	if (ht->h_name != NULL)
+		desired_size += strlen(ht->h_name) + 1;
+
+	if (ht->h_aliases != NULL) {
+		aliases_size = 0;
+		for (iter = ht->h_aliases; *iter; ++iter) {
+			desired_size += strlen(*iter) + 1;
+			++aliases_size;
+		}
+
+		desired_size += _ALIGNBYTES +
+		    (aliases_size + 1) * sizeof(char *);
+	}
+
+	if (ht->h_addr_list != NULL) {
+		addr_size = 0;
+		for (iter = ht->h_addr_list; *iter; ++iter)
+			++addr_size;
+
+		desired_size += addr_size * _ALIGN(ht->h_length);
+		desired_size += _ALIGNBYTES + (addr_size + 1) * sizeof(char *);
+	}
+
+	if (desired_size > *buffer_size) {
+		/* this assignment is here for future use */
+		*buffer_size = desired_size;
+		return (NS_RETURN);
+	}
+
+	memcpy(&new_ht, ht, sizeof(struct hostent));
+	memset(buffer, 0, desired_size);
+
+	*buffer_size = desired_size;
+	p = buffer + sizeof(struct hostent) + sizeof(char *);
+	memcpy(buffer + sizeof(struct hostent), &p, sizeof(char *));
+	p = (char *)_ALIGN(p);
+
+	if (new_ht.h_name != NULL) {
+		size = strlen(new_ht.h_name);
+		memcpy(p, new_ht.h_name, size);
+		new_ht.h_name = p;
+		p += size + 1;
+	}
+
+	if (new_ht.h_aliases != NULL) {
+		p = (char *)_ALIGN(p);
+		memcpy(p, new_ht.h_aliases, sizeof(char *) * aliases_size);
+		new_ht.h_aliases = (char **)p;
+		p += sizeof(char *) * (aliases_size + 1);
+
+		for (iter = new_ht.h_aliases; *iter; ++iter) {
+			size = strlen(*iter);
+			memcpy(p, *iter, size);
+			*iter = p;
+			p += size + 1;
+		}
+	}
+
+	if (new_ht.h_addr_list != NULL) {
+		p = (char *)_ALIGN(p);
+		memcpy(p, new_ht.h_addr_list, sizeof(char *) * addr_size);
+		new_ht.h_addr_list = (char **)p;
+		p += sizeof(char *) * (addr_size + 1);
+
+		size = _ALIGN(new_ht.h_length);
+		for (iter = new_ht.h_addr_list; *iter; ++iter) {
+			memcpy(p, *iter, size);
+			*iter = p;
+			p += size + 1;
+		}
+	}
+	memcpy(buffer, &new_ht, sizeof(struct hostent));
+	return (NS_SUCCESS);
+}
+
+static int
+host_unmarshal_func(char *buffer, size_t buffer_size, void *retval, va_list ap,
+    void *cache_mdata)
+{
+	char *str;
+	int len, type;
+	struct hostent *ht;
+
+	char *p;
+	char **iter;
+	char *orig_buf;
+	size_t orig_buf_size;
+
+	switch ((enum nss_lookup_type)cache_mdata) {
+	case nss_lt_name:
+		str = va_arg(ap, char *);
+		type = va_arg(ap, int);
+		break;
+	case nss_lt_id:
+		str = va_arg(ap, char *);
+		len = va_arg(ap, int);
+		type = va_arg(ap, int);
+		break;
+	default:
+		/* should be unreachable */
+		return (NS_UNAVAIL);
+	}
+
+	ht = va_arg(ap, struct hostent *);
+	orig_buf = va_arg(ap, char *);
+	orig_buf_size = va_arg(ap, size_t);
+
+	if (orig_buf_size <
+	    buffer_size - sizeof(struct hostent) - sizeof(char *)) {
+		errno = ERANGE;
+		return (NS_RETURN);
+	}
+
+	memcpy(ht, buffer, sizeof(struct hostent));
+	memcpy(&p, buffer + sizeof(struct hostent), sizeof(char *));
+
+	orig_buf = (char *)_ALIGN(orig_buf);
+	memcpy(orig_buf, buffer + sizeof(struct hostent) + sizeof(char *) +
+	    _ALIGN(p) - (size_t)p,
+	    buffer_size - sizeof(struct hostent) - sizeof(char *) -
+	    _ALIGN(p) + (size_t)p);
+	p = (char *)_ALIGN(p);
+
+	NS_APPLY_OFFSET(ht->h_name, orig_buf, p, char *);
+	if (ht->h_aliases != NULL) {
+		NS_APPLY_OFFSET(ht->h_aliases, orig_buf, p, char **);
+
+		for (iter = ht->h_aliases; *iter; ++iter)
+			NS_APPLY_OFFSET(*iter, orig_buf, p, char *);
+	}
+
+	if (ht->h_addr_list != NULL) {
+		NS_APPLY_OFFSET(ht->h_addr_list, orig_buf, p, char **);
+
+		for (iter = ht->h_addr_list; *iter; ++iter)
+			NS_APPLY_OFFSET(*iter, orig_buf, p, char *);
+	}
+
+	*((struct hostent **)retval) = ht;
+	return (NS_SUCCESS);
+}
+#endif /* NS_CACHING */
 
 void
 sethostent(int stayopen)

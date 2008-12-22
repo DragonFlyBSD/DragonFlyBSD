@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -30,16 +26,19 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     From: @(#)getpwent.3	8.2 (Berkeley) 12/11/93
-.\" $FreeBSD: src/lib/libc/gen/getpwent.3,v 1.11.2.5 2002/02/01 15:51:16 ru Exp $
+.\" $FreeBSD: src/lib/libc/gen/getpwent.3,v 1.30 2007/01/09 00:27:54 imp Exp $
 .\" $DragonFly: src/lib/libc/gen/getpwent.3,v 1.5 2006/05/26 19:39:36 swildner Exp $
 .\"
-.Dd September 20, 1994
+.Dd April 16, 2003
 .Dt GETPWENT 3
 .Os
 .Sh NAME
 .Nm getpwent ,
+.Nm getpwent_r ,
 .Nm getpwnam ,
+.Nm getpwnam_r ,
 .Nm getpwuid ,
+.Nm getpwuid_r ,
 .Nm setpassent ,
 .Nm setpwent ,
 .Nm endpwent
@@ -51,12 +50,18 @@
 .In pwd.h
 .Ft struct passwd *
 .Fn getpwent void
+.Ft int
+.Fn getpwent_r "struct passwd *pwd" "char *buffer" "size_t bufsize" "struct passwd **result"
 .Ft struct passwd *
 .Fn getpwnam "const char *login"
+.Ft int
+.Fn getpwnam_r "const char *name" "struct passwd *pwd" "char *buffer" "size_t bufsize" "struct passwd **result"
 .Ft struct passwd *
 .Fn getpwuid "uid_t uid"
 .Ft int
-.Fn setpassent "int  stayopen"
+.Fn getpwuid_r "uid_t uid" "struct passwd *pwd" "char *buffer" "size_t bufsize" "struct passwd **result"
+.Ft int
+.Fn setpassent "int stayopen"
 .Ft void
 .Fn setpwent void
 .Ft void
@@ -68,7 +73,7 @@ which is described
 in
 .Xr passwd 5 .
 Each entry in the database is defined by the structure
-.Ar passwd
+.Vt passwd
 found in the include
 file
 .In pwd.h :
@@ -101,6 +106,35 @@ function
 sequentially reads the password database and is intended for programs
 that wish to process the complete list of users.
 .Pp
+The functions
+.Fn getpwent_r ,
+.Fn getpwnam_r ,
+and
+.Fn getpwuid_r
+are thread-safe versions of
+.Fn getpwent ,
+.Fn getpwnam ,
+and
+.Fn getpwuid ,
+respectively.
+The caller must provide storage for the results of the search in
+the
+.Fa pwd ,
+.Fa buffer ,
+.Fa bufsize ,
+and
+.Fa result
+arguments.
+When these functions are successful, the
+.Fa pwd
+argument will be filled-in, and a pointer to that argument will be
+stored in
+.Fa result .
+If an entry is not found or an error occurs,
+.Fa result
+will be set to
+.Dv NULL .
+.Pp
 The
 .Fn setpassent
 function
@@ -114,7 +148,7 @@ is non-zero, file descriptors are left open, significantly speeding
 up subsequent accesses for all of the routines.
 (This latter functionality is unnecessary for
 .Fn getpwent
-as it doesn't close its file descriptors by default.)
+as it does not close its file descriptors by default.)
 .Pp
 It is dangerous for long-running programs to keep the file descriptors
 open as the database will become out of date if it is updated while the
@@ -138,32 +172,36 @@ If the process which calls them has an effective uid of 0, the encrypted
 password will be returned, otherwise, the password field of the returned
 structure will point to the string
 .Ql * .
-.Sh YP/NIS INTERACTION
-When the
-.Xr yp 8
-password database is enabled, the
-.Fn getpwnam
-and
-.Fn getpwuid
-functions use the YP maps
-.Dq Li passwd.byname
-and
-.Dq Li passwd.byuid ,
-respectively, if the requested password entry is not found in the
-local database.  The
-.Fn getpwent
-function will step through the YP map
-.Dq Li passwd.byname
-if the entire map is enabled as described in
-.Xr passwd 5 .
 .Sh RETURN VALUES
 The functions
 .Fn getpwent ,
 .Fn getpwnam ,
 and
-.Fn getpwuid ,
+.Fn getpwuid
 return a valid pointer to a passwd structure on success
-and a null pointer if end-of-file is reached or an error occurs.
+or
+.Dv NULL
+if the entry is not found or if an error occurs.
+If an error does occur,
+.Va errno
+will be set.
+Note that programs must explicitly set
+.Va errno
+to zero before calling any of these functions if they need to
+distinguish between a non-existent entry and an error.
+The functions
+.Fn getpwent_r ,
+.Fn getpwnam_r ,
+and
+.Fn getpwuid_r
+return 0 if no error occurred, or an error number to indicate failure.
+It is not an error if a matching entry is not found.
+(Thus, if
+.Fa result
+is
+.Dv NULL
+and the return value is 0, no matching entry exists.)
+.Pp
 The
 .Fn setpassent
 function returns 0 on failure and 1 on success.
@@ -189,13 +227,43 @@ The historic function
 .Xr setpwfile 3 ,
 which allowed the specification of alternate password databases,
 has been deprecated and is no longer available.
+.Sh ERRORS
+These routines may fail for any of the errors specified in
+.Xr open 2 ,
+.Xr dbopen 3 ,
+.Xr socket 2 ,
+and
+.Xr connect 2 ,
+in addition to the following:
+.Bl -tag -width Er
+.It Bq Er ERANGE
+The buffer specified by the
+.Fa buffer
+and
+.Fa bufsize
+arguments was insufficiently sized to store the result.
+The caller should retry with a larger buffer.
+.El
 .Sh SEE ALSO
 .Xr getlogin 2 ,
 .Xr getgrent 3 ,
+.Xr nsswitch.conf 5 ,
 .Xr passwd 5 ,
 .Xr pwd_mkdb 8 ,
 .Xr vipw 8 ,
 .Xr yp 8
+.Sh STANDARDS
+The
+.Fn getpwent ,
+.Fn getpwnam ,
+.Fn getpwnam_r ,
+.Fn getpwuid ,
+.Fn getpwuid_r ,
+.Fn setpwent ,
+and
+.Fn endpwent
+functions conform to
+.St -p1003.1-96 .
 .Sh HISTORY
 The
 .Fn getpwent ,
@@ -210,6 +278,15 @@ The
 .Fn setpassent
 function appeared in
 .Bx 4.3 Reno .
+The
+.Fn getpwent_r ,
+.Fn getpwnam_r ,
+and
+.Fn getpwuid_r
+functions appeared in
+.Fx 5.1
+and
+.Dx 2.1 .
 .Sh BUGS
 The functions
 .Fn getpwent ,
@@ -221,3 +298,21 @@ a pointer to that object.
 Subsequent calls to
 the same function
 will modify the same object.
+.Pp
+The functions
+.Fn getpwent ,
+.Fn getpwent_r ,
+.Fn endpwent ,
+.Fn setpassent ,
+and
+.Fn setpwent
+are fairly useless in a networked environment and should be
+avoided, if possible.
+The
+.Fn getpwent
+and
+.Fn getpwent_r
+functions
+make no attempt to suppress duplicate information if multiple
+sources are specified in
+.Xr nsswitch.conf 5 .

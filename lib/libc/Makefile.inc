@@ -45,6 +45,13 @@ NOASM=
 CFLAGS+= -DYP
 .include "${.CURDIR}/../libc/yp/Makefile.inc"
 .endif
+.if defined(WANT_HESIOD)
+CFLAGS+= -DHESIOD
+.endif
+# Caching isn't ready yet
+#.if !defined(NO_NS_CACHING)
+#CFLAGS+= -DNS_CACHING
+#.endif
 
 # If there are no machine dependent sources, append all the
 # machine-independent sources:

@@ -161,6 +161,11 @@ SUBDIR+=named \
 SUBDIR+=lpr
 .endif
 
+# This isn't ready yet.
+#.if !defined(NO_NS_CACHING)
+#SUBDIR+=nscd
+#.endif
+
 .if !defined(NO_SENDMAIL)
 SUBDIR+=editmap \
 	mailstats \
