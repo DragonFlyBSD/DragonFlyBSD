@@ -3,6 +3,7 @@
 
 PROG=	pppoed
 SRCS=	pppoed.c
+WARNS?=	6
 DPADD=	${LIBNETGRAPH}
 LDADD=	-lnetgraph
 MAN=	pppoed.8

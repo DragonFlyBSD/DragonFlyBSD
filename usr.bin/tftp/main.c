@@ -75,10 +75,10 @@ char	line[200];
 int	margc;
 #define	MAX_MARGV	20
 char	*margv[MAX_MARGV];
-char	*prompt = "tftp";
+const char *prompt = "tftp";
 jmp_buf	toplevel;
 volatile int txrx_error;
-void	intr();
+void	intr(int);
 
 void	get(int, char **);
 void	help(int, char **);
@@ -87,7 +87,7 @@ void	put(int, char **);
 void	quit(int, char **);
 void	setascii(int, char **);
 void	setbinary(int, char **);
-void	setpeer0(char *, char *);
+void	setpeer0(char *, const char *);
 void	setpeer(int, char **);
 void	setrexmt(int, char **);
 void	settimeout(int, char **);
@@ -100,29 +100,29 @@ static void command(void) __dead2;
 static void getusage(char *);
 static void makeargv(void);
 static void putusage(char *);
-static void settftpmode(char *);
+static void settftpmode(const char *);
 
 #define HELPINDENT (sizeof("connect"))
 
 struct cmd {
-	char	*name;
-	char	*help;
+	const char *name;
+	const char *help;
 	void	(*handler)(int, char **);
 };
 
-char	vhelp[] = "toggle verbose mode";
-char	thelp[] = "toggle packet tracing";
-char	chelp[] = "connect to remote tftp";
-char	qhelp[] = "exit tftp";
-char	hhelp[] = "print help information";
-char	shelp[] = "send file";
-char	rhelp[] = "receive file";
-char	mhelp[] = "set file transfer mode";
-char	sthelp[] = "show current status";
-char	xhelp[] = "set per-packet retransmission timeout";
-char	ihelp[] = "set total retransmission timeout";
-char    ashelp[] = "set mode to netascii";
-char    bnhelp[] = "set mode to octet";
+const char	vhelp[] = "toggle verbose mode";
+const char	thelp[] = "toggle packet tracing";
+const char	chelp[] = "connect to remote tftp";
+const char	qhelp[] = "exit tftp";
+const char	hhelp[] = "print help information";
+const char	shelp[] = "send file";
+const char	rhelp[] = "receive file";
+const char	mhelp[] = "set file transfer mode";
+const char	sthelp[] = "show current status";
+const char	xhelp[] = "set per-packet retransmission timeout";
+const char	ihelp[] = "set total retransmission timeout";
+const char	ashelp[] = "set mode to netascii";
+const char	bnhelp[] = "set mode to octet";
 
 struct cmd cmdtab[] = {
 	{ "connect",	chelp,		setpeer },
@@ -138,11 +138,11 @@ struct cmd cmdtab[] = {
 	{ "rexmt",	xhelp,		setrexmt },
 	{ "timeout",	ihelp,		settimeout },
 	{ "?",		hhelp,		help },
-	{ 0 }
+	{ .name = NULL }
 };
 
-struct	cmd *getcmd();
-char	*tail();
+struct	cmd *getcmd(char *);
+char	*tail(char *);
 
 int
 main(int argc, char **argv)
@@ -163,12 +163,12 @@ main(int argc, char **argv)
 char    hostname[MAXHOSTNAMELEN];
 
 void
-setpeer0(char *host, char *port)
+setpeer0(char *host, const char *port)
 {
 	struct addrinfo hints, *res0, *res;
 	int error;
 	struct sockaddr_storage ss;
-	char *cause = "unknown";
+	const char *cause = "unknown";
 
 	if (connected) {
 		close(f);
@@ -251,8 +251,8 @@ setpeer(int argc, char **argv)
 }
 
 struct	modes {
-	char *m_name;
-	char *m_mode;
+	const char *m_name;
+	const char *m_mode;
 } modes[] = {
 	{ "ascii",	"netascii" },
 	{ "netascii",   "netascii" },
@@ -260,14 +260,14 @@ struct	modes {
 	{ "image",      "octet" },
 	{ "octet",     "octet" },
 /*      { "mail",       "mail" },       */
-	{ 0,		0 }
+	{ NULL,		NULL }
 };
 
 void
 modecmd(int argc, char **argv)
 {
 	struct modes *p;
-	char *sep;
+	const char *sep;
 
 	if (argc < 2) {
 		printf("Using %s mode to transfer files.\n", mode);
@@ -297,21 +297,21 @@ modecmd(int argc, char **argv)
 }
 
 void
-setbinary(int argc, char **argv)
+setbinary(int argc __unused, char **argv __unused)
 {
 
 	settftpmode("octet");
 }
 
 void
-setascii(int argc, char **argv)
+setascii(int argc __unused, char **argv __unused)
 {
 
 	settftpmode("netascii");
 }
 
 static void
-settftpmode(char *newmode)
+settftpmode(const char *newmode)
 {
 	strcpy(mode, newmode);
 	if (verbose)
@@ -343,8 +343,6 @@ put(int argc, char **argv)
 	}
 	targ = argv[argc - 1];
 	if (strrchr(argv[argc - 1], ':')) {
-		char *cp;
-
 		for (n = 1; n < argc - 1; n++)
 			if (strchr(argv[n], ':')) {
 				putusage(argv[0]);
@@ -436,7 +434,6 @@ get(int argc, char **argv)
 		if (src == NULL)
 			src = argv[n];
 		else {
-			char *cp;
 			*src++ = 0;
 			cp = argv[n];
 			if (cp[0] == '[' && cp[strlen(cp) - 1] == ']') {
@@ -533,7 +530,7 @@ settimeout(int argc, char **argv)
 }
 
 void
-status(int argc, char **argv)
+status(int argc __unused, char **argv __unused)
 {
 	if (connected)
 		printf("Connected to %s.\n", hostname);
@@ -546,9 +543,8 @@ status(int argc, char **argv)
 }
 
 void
-intr(void)
+intr(int signo __unused)
 {
-
 	signal(SIGALRM, SIG_IGN);
 	alarm(0);
 	longjmp(toplevel, -1);
@@ -611,7 +607,8 @@ command(void)
 struct cmd *
 getcmd(char *name)
 {
-	char *p, *q;
+	const char *p;
+	char *q;
 	struct cmd *c, *found;
 	int nmatches, longest;
 
@@ -665,7 +662,7 @@ makeargv(void)
 }
 
 void
-quit(int argc, char **argv)
+quit(int argc __unused, char **argv __unused)
 {
 
 	exit(txrx_error);
@@ -699,14 +696,14 @@ help(int argc, char **argv)
 }
 
 void
-settrace(int argc, char **argv)
+settrace(int argc __unused, char **argv __unused)
 {
 	trace = !trace;
 	printf("Packet tracing %s.\n", trace ? "on" : "off");
 }
 
 void
-setverbose(int argc, char **argv)
+setverbose(int argc __unused, char **argv __unused)
 {
 	verbose = !verbose;
 	printf("Verbose mode %s.\n", verbose ? "on" : "off");

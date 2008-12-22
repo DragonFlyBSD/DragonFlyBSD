@@ -351,9 +351,10 @@ void
 tftp(struct tftphdr *tp, int size)
 {
 	char *cp;
-	int i, first = 1, has_options = 0, ecode;
+	size_t i;
+	int first = 1, has_options = 0, ecode;
 	struct formats *pf;
-	char *filename, *mode, *option, *ccp;
+	char *filename, *mode = NULL, *option, *ccp;
 	char fnbuf[MAXPATHLEN];
 
 	cp = tp->th_stuff;

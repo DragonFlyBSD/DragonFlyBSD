@@ -4,6 +4,7 @@
 
 PROG=	tftpd
 SRCS=	tftpd.c tftpsubs.c
+WARNS?=	6
 DPADD=	${LIBUTIL}
 LDADD=	-lutil
 MAN=	tftpd.8
