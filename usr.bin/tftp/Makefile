@@ -3,6 +3,5 @@
 
 PROG=	tftp
 SRCS=	main.c tftp.c tftpsubs.c
-WARNS?=	6
 
 .include <bsd.prog.mk>
