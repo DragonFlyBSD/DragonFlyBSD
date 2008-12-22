@@ -93,7 +93,7 @@ static void	jme_poll(struct ifnet *, enum poll_cmd, int);
 
 static void	jme_intr(void *);
 static void	jme_txeof(struct jme_softc *);
-static void	jme_rxeof(struct jme_softc *);
+static void	jme_rxeof(struct jme_softc *, int);
 
 static int	jme_dma_alloc(struct jme_softc *);
 static void	jme_dma_free(struct jme_softc *, int);
@@ -105,7 +105,7 @@ static void	jme_init_tx_ring(struct jme_softc *);
 static void	jme_init_ssb(struct jme_softc *);
 static int	jme_newbuf(struct jme_softc *, struct jme_rxdesc *, int);
 static int	jme_encap(struct jme_softc *, struct mbuf **);
-static void	jme_rxpkt(struct jme_softc *);
+static void	jme_rxpkt(struct jme_softc *, struct mbuf_chain *);
 
 static void	jme_tick(void *);
 static void	jme_stop(struct jme_softc *);
@@ -323,7 +323,7 @@ jme_miibus_statchg(device_t dev)
 	jme_stop_rx(sc);
 	jme_stop_tx(sc);
 
-	jme_rxeof(sc);
+	jme_rxeof(sc, -1);
 	if (sc->jme_cdata.jme_rxhead != NULL)
 		m_freem(sc->jme_cdata.jme_rxhead);
 	JME_RXCHAIN_RESET(sc);
@@ -2036,7 +2036,7 @@ jme_intr(void *xsc)
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		if (status & (INTR_RXQ_COAL | INTR_RXQ_COAL_TO))
-			jme_rxeof(sc);
+			jme_rxeof(sc, -1);
 
 		if (status & INTR_RXQ_DESC_EMPTY) {
 			/*
@@ -2152,7 +2152,7 @@ jme_discard_rxbufs(struct jme_softc *sc, int cons, int count)
 
 /* Receive a frame. */
 static void
-jme_rxpkt(struct jme_softc *sc)
+jme_rxpkt(struct jme_softc *sc, struct mbuf_chain *chain)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct jme_desc *desc;
@@ -2271,7 +2271,7 @@ jme_rxpkt(struct jme_softc *sc)
 
 			ifp->if_ipackets++;
 			/* Pass it on. */
-			ifp->if_input(ifp, m);
+			ether_input_chain(ifp, m, chain);
 
 			/* Reset mbuf chains. */
 			JME_RXCHAIN_RESET(sc);
@@ -2283,10 +2283,13 @@ jme_rxpkt(struct jme_softc *sc)
 }
 
 static void
-jme_rxeof(struct jme_softc *sc)
+jme_rxeof(struct jme_softc *sc, int count)
 {
 	struct jme_desc *desc;
 	int nsegs, prog, pktlen;
+	struct mbuf_chain chain[MAXCPU];
+
+	ether_input_chain_init(chain);
 
 	bus_dmamap_sync(sc->jme_cdata.jme_rx_ring_tag,
 			sc->jme_cdata.jme_rx_ring_map,
@@ -2294,6 +2297,10 @@ jme_rxeof(struct jme_softc *sc)
 
 	prog = 0;
 	for (;;) {
+#ifdef DEVICE_POLLING
+		if (count >= 0 && count-- == 0)
+			break;
+#endif
 		desc = &sc->jme_cdata.jme_rx_ring[sc->jme_cdata.jme_rx_cons];
 		if ((le32toh(desc->flags) & JME_RD_OWN) == JME_RD_OWN)
 			break;
@@ -2316,7 +2323,7 @@ jme_rxeof(struct jme_softc *sc)
 		}
 
 		/* Received a frame. */
-		jme_rxpkt(sc);
+		jme_rxpkt(sc, chain);
 		prog++;
 	}
 
@@ -2324,6 +2331,7 @@ jme_rxeof(struct jme_softc *sc)
 		bus_dmamap_sync(sc->jme_cdata.jme_rx_ring_tag,
 				sc->jme_cdata.jme_rx_ring_map,
 				BUS_DMASYNC_PREWRITE);
+		ether_input_dispatch(chain);
 	}
 }
 
@@ -3053,7 +3061,7 @@ jme_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	case POLL_AND_CHECK_STATUS:
 	case POLL_ONLY:
 		status = CSR_READ_4(sc, JME_INTR_STATUS);
-		jme_rxeof(sc);
+		jme_rxeof(sc, count);
 
 		if (status & INTR_RXQ_DESC_EMPTY) {
 			CSR_WRITE_4(sc, JME_INTR_STATUS, status);
