@@ -325,7 +325,9 @@ pam_ssh_add_keys_to_agent(pam_handle_t *pamh)
 
 	/* look for keys to add to it */
 	for (kfn = pam_ssh_keyfiles; *kfn != NULL; ++kfn) {
-		pam_err = pam_get_data(pamh, *kfn, (void **)&psk);
+		const void *vp;
+		pam_err = pam_get_data(pamh, *kfn, &vp);
+		psk = vp;
 		if (pam_err == PAM_SUCCESS && psk != NULL) {
 			if (ssh_add_identity(ac, psk->key, psk->comment))
 				openpam_log(PAM_LOG_DEBUG,
