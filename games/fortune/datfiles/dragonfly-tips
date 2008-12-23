@@ -506,21 +506,15 @@ If you want to update your pkgsrc installation issue:
 	cd /usr
 	make pkgsrc-update
 %
-To download the DragonFly BSD cvs repository into /home/dcvs issue:
+To download the DragonFly BSD git repository into /usr/src, issue:
 
 	cd /usr
-	make cvs-cvsup
+	make git-clone
 
-To download the latest DragonFly BSD release cvs repository, issue:
-
-	cd /usr
-	make release-src-cvsup
-
-The following target will first synchronize /home/dcvs then issue an
-update into /usr/src.
+To update the DragonFly BSD git repository in /usr/src, issue:
 
 	cd /usr
-	make head-src-cvsup
+	make git-update
 %
 Getting the latest pkgsrc WIP tree in DragonFly BSD is fairly simple:
 

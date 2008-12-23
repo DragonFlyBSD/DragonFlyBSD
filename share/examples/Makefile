@@ -4,8 +4,7 @@
 # Doing a make install builds /usr/share/examples
 
 DIRS!=	for i in *; do \
-	    if test -d $$i -a $$i != CVS -a \
-		$$i != ipfilter -a $$i != smbfs; then \
+	    if test -d $$i -a $$i != ipfilter -a $$i != smbfs; then \
 		echo $$i; \
             fi; \
 	done
@@ -24,7 +23,7 @@ all clean cleandir depend lint tags:
 beforeinstall: etc-examples ${SHARED}
 
 .for dir in ${DIRS}
-FILES!=	find -L ${dir} \( -name CVS -prune \) -o -type f -print
+FILES!=	find -L ${dir} -type f -print
 .for file in ${FILES}
 copies::
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${file} ${DDIR}/${file}

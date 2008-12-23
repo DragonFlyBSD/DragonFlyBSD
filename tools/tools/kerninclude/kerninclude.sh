@@ -41,7 +41,7 @@ if $init ; then
 	(
 	echo "Cleaning compile"
 	cd compile
-	ls | grep -v CVS | xargs rm -rf
+	ls | xargs rm -rf *
 	)
 fi
 
@@ -101,7 +101,7 @@ make > x.0 2>&1
 cd modules
 for i in *
 do
-	if [ -d $i -a $i != CVS ] ; then
+	if [ -d $i ] ; then
 		( cd $i ; ls *.o 2>/dev/null || true)
 	fi
 done
