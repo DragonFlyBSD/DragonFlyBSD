@@ -131,7 +131,7 @@ mpt_probe(device_t dev)
 		desc = "LSILogic FC929 FC Adapter";
 		break;
 	case PCI_PRODUCT_SYMBIOS_FC929X:
-		desc = "LSILogic FC929 FC Adapter";
+		desc = "LSILogic FC929X FC Adapter";
 		break;
 	case PCI_PRODUCT_SYMBIOS_1030:
 		desc = "LSILogic 1030 Ultra4 Adapter";
