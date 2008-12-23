@@ -1,10 +1,5 @@
-/*	$DragonFly$	*/
-
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
- *
- * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.35 2008/09/13 02:21:56 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -7197,6 +7192,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Symbios Logic",
 	    "FC919",
+	},
+	{
+	    PCI_VENDOR_SYMBIOS, PCI_PRODUCT_SYMBIOS_FC929X,
+	    0,
+	    "Symbios Logic",
+	    "FC929X",
 	},
 	{
 	    PCI_VENDOR_SYMBIOS, PCI_PRODUCT_SYMBIOS_PE_GNIC,
