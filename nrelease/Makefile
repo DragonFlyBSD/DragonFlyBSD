@@ -290,6 +290,8 @@ customizeiso:
 	chroot ${ISOROOT} /usr/pkg/bin/mkfontdir /usr/pkg/lib/X11/fonts/${FONT}
 .endfor
 .endif
+	makewhatis ${ISOROOT}/usr/local/man
+	makewhatis ${ISOROOT}/usr/pkg/man
 
 mklocatedb:
 	( find -s ${ISOROOT} -path ${ISOROOT}/tmp -or \
