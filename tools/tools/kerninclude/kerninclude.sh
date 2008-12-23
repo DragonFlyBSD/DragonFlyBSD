@@ -41,7 +41,7 @@ if $init ; then
 	(
 	echo "Cleaning compile"
 	cd compile
-	ls | xargs rm -rf *
+	ls | xargs rm -rf
 	)
 fi
 
