@@ -254,7 +254,7 @@ buildiso:
 #
 syssrcs:
 .if !defined(WITHOUT_SRCS)
-	( cd ${.CURDIR}/../..; tar --exclude CVS -cf - src/Makefile src/Makefile.inc1 src/sys | bzip2 -9 > ${ISOROOT}/usr/src-sys.tar.bz2 )
+	( cd ${.CURDIR}/../..; tar -cf - src/Makefile src/Makefile.inc1 src/sys | bzip2 -9 > ${ISOROOT}/usr/src-sys.tar.bz2 )
 .endif
 
 customizeiso:
@@ -267,7 +267,6 @@ customizeiso:
 	cp -p ${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}/usr/local/bin/cvsup ${ISOROOT}/usr/local/bin/cvsup
 	cp -p ${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}/usr/local/man/man1/cvsup.1 ${ISOROOT}/usr/local/man/man1/cvsup.1
 	rm -rf ${ISOROOT}/tmp/bootstrap ${ISOROOT}/usr/obj/pkgsrc
-	rm -rf `find ${ISOROOT} -type d -name CVS -print`
 	rm -rf ${ISOROOT}/usr/local/share/pristine
 	pwd_mkdb -p -d ${ISOROOT}/etc ${ISOROOT}/etc/master.passwd
 .for UPGRADE_ITEM in Makefile			\
