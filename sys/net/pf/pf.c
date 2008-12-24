@@ -2812,7 +2812,7 @@ cleanup:
 			*sm = s;
 		if ((th->th_flags & (TH_SYN|TH_ACK)) == TH_SYN &&
 		    r->keep_state == PF_STATE_SYNPROXY) {
-			u_int16_t mss = tcp_mssdflt;
+			u_int16_t mss;
 
 			s->src.state = PF_TCPS_PROXY_SRC;
 			if (nr != NULL) {

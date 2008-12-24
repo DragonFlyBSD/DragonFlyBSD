@@ -703,7 +703,7 @@ kern_kill(int sig, pid_t pid, lwpid_t tid)
 	if ((u_int)sig > _SIG_MAXSIG)
 		return (EINVAL);
 	if (pid > 0) {
-		struct proc *p = curthread->td_proc;
+		struct proc *p;
 		struct lwp *lp = NULL;
 
 		/* kill single process */
