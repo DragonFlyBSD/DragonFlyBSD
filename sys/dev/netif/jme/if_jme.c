@@ -2511,6 +2511,7 @@ jme_init(void *xsc)
 	 *  Don't receive runt/bad frame.
 	 */
 	sc->jme_rxcsr = RXCSR_FIFO_FTHRESH_128T;
+#if 0
 	/*
 	 * Since Rx FIFO size is 4K bytes, receiving frames larger
 	 * than 4K bytes will suffer from Rx FIFO overruns. So
@@ -2524,7 +2525,11 @@ jme_init(void *xsc)
 		sc->jme_rxcsr |= RXCSR_FIFO_THRESH_16QW;
 	else
 		sc->jme_rxcsr |= RXCSR_FIFO_THRESH_128QW;
-	sc->jme_rxcsr |= sc->jme_rx_dma_size | RXCSR_RXQ_N_SEL(RXCSR_RXQ0);
+#else
+	/* Improve PCI Express compatibility */
+	sc->jme_rxcsr |= RXCSR_FIFO_THRESH_16QW;
+#endif
+	sc->jme_rxcsr |= sc->jme_rx_dma_size;
 	sc->jme_rxcsr |= RXCSR_DESC_RT_CNT(RXCSR_DESC_RT_CNT_DEFAULT);
 	sc->jme_rxcsr |= RXCSR_DESC_RT_GAP_256 & RXCSR_DESC_RT_GAP_MASK;
 	/* XXX TODO DROP_BAD */
