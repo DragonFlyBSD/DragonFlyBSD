@@ -24,6 +24,7 @@ $DragonFly: doc/notes/porting_drivers.txt,v 1.4 2008/04/06 19:08:30 pavalos Exp 
   malloc(), free() etc.	->	kmalloc(), kfree() etc.
   printf() etc.		->	kprintf() etc.
   psignal()		->	ksignal()
+  random()		->	krandom()
 
 * MUTEX conversion - mutexes are generally replaced by spinlocks.  However,
   DragonFly spinlocks are more restrictive than FreeBSD mutexes so a
@@ -118,8 +119,8 @@ $DragonFly: doc/notes/porting_drivers.txt,v 1.4 2008/04/06 19:08:30 pavalos Exp 
   to avoid confusion and have a struct buf *bp = bio->bio_buf; pointer to
   access the buf.
 
-* TSLEEP conversion.  The DragonFly tsleep does not have 'PRI' priorities.
-  0 should be used.
+* MSLEEP/TSLEEP conversion.  The DragonFly msleep/tsleep do not have 'PRI'
+  priorities.  0 should be used.
 
 * BUS_* FUNCTIONS
 
@@ -128,3 +129,7 @@ $DragonFly: doc/notes/porting_drivers.txt,v 1.4 2008/04/06 19:08:30 pavalos Exp 
   This can either be left NULL or you can convert the spinlock(s) for
   the driver into serializer locks and integrate the interrupt service
   routine with a serializer.
+
+* CAM CODE - cam_simq* code refcounts, so shared device queues (raid and
+  multi-channel devices) are not freed before all references have gone
+  away.
