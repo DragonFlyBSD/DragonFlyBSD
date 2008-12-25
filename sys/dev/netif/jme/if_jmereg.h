@@ -682,10 +682,7 @@
 #define	JME_INTR_MASK_CLR	0x082C
 
 /* Packet completion coalescing control of Rx queue 0, 1, 2 and 3. */
-#define	JME_PCCRX0		0x0830
-#define	JME_PCCRX1		0x0834
-#define	JME_PCCRX2		0x0838
-#define	JME_PCCRX3		0x083C
+#define	JME_PCCRX(r)		(0x0830 + ((r) * 4))
 #define	PCCRX_COAL_TO_MASK	0xFFFF0000
 #define	PCCRX_COAL_TO_SHIFT	16
 #define	PCCRX_COAL_PKT_MASK	0x0000FF00
