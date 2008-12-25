@@ -45,7 +45,13 @@
 #define JME_NDESC_ALIGN		16
 #define JME_NDESC_MAX		1024
 
-#define JME_NRXRING_MAX		4
+#define JME_NRXRING_1		1
+#define JME_NRXRING_2		2
+#define JME_NRXRING_4		4
+
+#define JME_NRXRING_DEF		JME_NRXRING_1
+#define JME_NRXRING_MIN		JME_NRXRING_1
+#define JME_NRXRING_MAX		JME_NRXRING_4
 
 /*
  * Tx/Rx descriptor queue base should be 16bytes aligned and
@@ -226,7 +232,6 @@ struct jme_softc {
 	int			jme_if_flags;
 	uint32_t		jme_txcsr;
 	uint32_t		jme_rxcsr;
-	int			jme_rx_ring_inuse;
 
 	int			jme_txd_spare;
 
@@ -243,6 +248,9 @@ struct jme_softc {
 	int			jme_rx_desc_cnt;
 	int			jme_tx_desc_cnt;
 	int			jme_rx_ring_cnt;
+	int			jme_rx_ring_inuse;
+	int			jme_rss_debug;
+	u_int			jme_rx_ring_pkt[JME_NRXRING_MAX];
 };
 
 /* Register access macros. */

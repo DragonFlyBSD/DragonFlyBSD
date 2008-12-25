@@ -70,6 +70,18 @@
 
 #define	JME_CSUM_FEATURES	(CSUM_IP | CSUM_TCP | CSUM_UDP)
 
+#define JME_RSS_DEBUG
+
+#ifdef JME_RSS_DEBUG
+#define JME_RSS_DPRINTF(sc, lvl, fmt, ...) \
+do { \
+	if ((sc)->jme_rss_debug > (lvl)) \
+		if_printf(&(sc)->arpcom.ac_if, fmt, __VA_ARGS__); \
+} while (0)
+#else	/* !JME_RSS_DEBUG */
+#define JME_RSS_DPRINTF(sc, lvl, fmt, ...)	((void)0)
+#endif	/* JME_RSS_DEBUG */
+
 static int	jme_probe(device_t);
 static int	jme_attach(device_t);
 static int	jme_detach(device_t);
@@ -127,6 +139,8 @@ static void	jme_setlinkspeed(struct jme_softc *);
 #endif
 static void	jme_set_tx_coal(struct jme_softc *);
 static void	jme_set_rx_coal(struct jme_softc *);
+static void	jme_enable_rss(struct jme_softc *);
+static void	jme_disable_rss(struct jme_softc *);
 
 static void	jme_sysctl_node(struct jme_softc *);
 static int	jme_sysctl_tx_coal_to(SYSCTL_HANDLER_ARGS);
@@ -198,10 +212,11 @@ static const struct {
 
 static int	jme_rx_desc_count = JME_RX_DESC_CNT_DEF;
 static int	jme_tx_desc_count = JME_TX_DESC_CNT_DEF;
-static int	jme_rx_ring_count = 1;
+static int	jme_rx_ring_count = JME_NRXRING_DEF;
 
 TUNABLE_INT("hw.jme.rx_desc_count", &jme_rx_desc_count);
 TUNABLE_INT("hw.jme.tx_desc_count", &jme_tx_desc_count);
+TUNABLE_INT("hw.jme_rx_ring_count", &jme_rx_ring_count);
 
 /*
  *	Read a PHY register on the MII of the JMC250.
@@ -604,13 +619,16 @@ jme_attach(device_t dev)
 
 	sc->jme_rx_ring_cnt = jme_rx_ring_count;
 	if (sc->jme_rx_ring_cnt <= 0)
-		sc->jme_rx_ring_cnt = 1;
+		sc->jme_rx_ring_cnt = JME_NRXRING_1;
 	if (sc->jme_rx_ring_cnt > ncpus2)
 		sc->jme_rx_ring_cnt = ncpus2;
-	if (sc->jme_rx_ring_cnt > JME_NRXRING_MAX)
-		sc->jme_rx_ring_cnt = JME_NRXRING_MAX;
 
-	if (sc->jme_rx_ring_cnt > 1) {
+	if (sc->jme_rx_ring_cnt >= JME_NRXRING_4)
+		sc->jme_rx_ring_cnt = JME_NRXRING_4;
+	else if (sc->jme_rx_ring_cnt >= JME_NRXRING_2)
+		sc->jme_rx_ring_cnt = JME_NRXRING_2;
+
+	if (sc->jme_rx_ring_cnt > JME_NRXRING_MIN) {
 		sc->jme_caps |= JME_CAP_RSS;
 		sc->jme_flags |= JME_FLAG_RSS;
 	}
@@ -909,6 +927,10 @@ static void
 jme_sysctl_node(struct jme_softc *sc)
 {
 	int coal_max;
+#ifdef JME_RSS_DEBUG
+	char rx_ring_pkt[32];
+	int r;
+#endif
 
 	sysctl_ctx_init(&sc->jme_sysctl_ctx);
 	sc->jme_sysctl_tree = SYSCTL_ADD_NODE(&sc->jme_sysctl_ctx,
@@ -948,6 +970,28 @@ jme_sysctl_node(struct jme_softc *sc)
 		       SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
 		       "tx_desc_count", CTLFLAG_RD, &sc->jme_tx_desc_cnt,
 		       0, "TX desc count");
+	SYSCTL_ADD_INT(&sc->jme_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+		       "rx_ring_count", CTLFLAG_RD, &sc->jme_rx_ring_cnt,
+		       0, "RX ring count");
+	SYSCTL_ADD_INT(&sc->jme_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+		       "rx_ring_inuse", CTLFLAG_RD, &sc->jme_rx_ring_inuse,
+		       0, "RX ring in use");
+#ifdef JME_RSS_DEBUG
+	SYSCTL_ADD_INT(&sc->jme_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+		       "rss_debug", CTLFLAG_RD, &sc->jme_rss_debug,
+		       0, "RSS debug level");
+	for (r = 0; r < sc->jme_rx_ring_cnt; ++r) {
+		ksnprintf(rx_ring_pkt, sizeof(rx_ring_pkt), "rx_ring%d_pkt", r);
+		SYSCTL_ADD_UINT(&sc->jme_sysctl_ctx,
+				SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
+				rx_ring_pkt, CTLFLAG_RD,
+				&sc->jme_rx_ring_pkt[r],
+				0, "RXed packets");
+	}
+#endif
 
 	/*
 	 * Set default coalesce valves
@@ -2154,6 +2198,10 @@ jme_rxpkt(struct jme_softc *sc, int ring, struct mbuf_chain *chain)
 	status = le32toh(desc->buflen);
 	nsegs = JME_RX_NSEGS(status);
 
+	JME_RSS_DPRINTF(sc, 10, "ring%d, flags 0x%08x, "
+			"hash 0x%08x, hash type 0x%08x\n",
+			ring, flags, desc->addr_hi, desc->addr_lo);
+
 	if (status & JME_RX_ERR_STAT) {
 		ifp->if_ierrors++;
 		jme_discard_rxbufs(sc, ring, cons, nsegs);
@@ -2262,6 +2310,9 @@ jme_rxpkt(struct jme_softc *sc, int ring, struct mbuf_chain *chain)
 
 			/* Reset mbuf chains. */
 			JME_RXCHAIN_RESET(sc, ring);
+#ifdef JME_RSS_DEBUG
+			sc->jme_rx_ring_pkt[ring]++;
+#endif
 		}
 	}
 
@@ -2383,16 +2434,10 @@ jme_init(void *xsc)
 	if (sc->jme_lowaddr != BUS_SPACE_MAXADDR_32BIT)
 		sc->jme_txd_spare += 1;
 
-	if (sc->jme_flags & JME_FLAG_RSS) {
-		sc->jme_rx_ring_inuse = sc->jme_rx_ring_cnt;
-		KKASSERT(sc->jme_rx_ring_inuse > 1);
-		/* TODO: enable RSS */
-	} else {
-		sc->jme_rx_ring_inuse = 1;
-
-		/* Disable RSS. */
-		CSR_WRITE_4(sc, JME_RSSC, RSSC_DIS_RSS);
-	}
+	if (sc->jme_flags & JME_FLAG_RSS)
+		jme_enable_rss(sc);
+	else
+		jme_disable_rss(sc);
 
 	/* Init RX descriptors */
 	for (r = 0; r < sc->jme_rx_ring_inuse; ++r) {
@@ -3208,4 +3253,43 @@ jme_rx_intr(struct jme_softc *sc, uint32_t status)
 		if (status & jme_rx_status[r].jme_coal)
 			jme_rxeof(sc, r, -1);
 	}
+}
+
+static void
+jme_enable_rss(struct jme_softc *sc)
+{
+	uint32_t rssc, key, ind;
+	int i;
+
+	sc->jme_rx_ring_inuse = sc->jme_rx_ring_cnt;
+
+	rssc = RSSC_HASH_64_ENTRY;
+	rssc |= RSSC_HASH_IPV4 | RSSC_HASH_IPV4_TCP;
+	rssc |= sc->jme_rx_ring_inuse >> 1;
+	JME_RSS_DPRINTF(sc, 1, "rssc 0x%08x\n", rssc);
+	CSR_WRITE_4(sc, JME_RSSC, rssc);
+
+	key = 0x6d5a6d5a; /* XXX */
+	for (i = 0; i < RSSKEY_NREGS; ++i)
+		CSR_WRITE_4(sc, RSSKEY_REG(i), key);
+
+	ind = 0;
+	if (sc->jme_rx_ring_inuse == JME_NRXRING_2) {
+		ind = 0x01000100;
+	} else if (sc->jme_rx_ring_inuse == JME_NRXRING_4) {
+		ind = 0x03020100;
+	} else {
+		panic("%s: invalid # of RX rings (%d)\n",
+		      sc->arpcom.ac_if.if_xname, sc->jme_rx_ring_inuse);
+	}
+	JME_RSS_DPRINTF(sc, 1, "ind 0x%08x\n", ind);
+	for (i = 0; i < RSSTBL_NREGS; ++i)
+		CSR_WRITE_4(sc, RSSTBL_REG(i), ind);
+}
+
+static void
+jme_disable_rss(struct jme_softc *sc)
+{
+	sc->jme_rx_ring_inuse = JME_NRXRING_1;
+	CSR_WRITE_4(sc, JME_RSSC, RSSC_DIS_RSS);
 }
