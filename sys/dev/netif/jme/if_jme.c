@@ -105,7 +105,9 @@ static void	jme_poll(struct ifnet *, enum poll_cmd, int);
 
 static void	jme_intr(void *);
 static void	jme_txeof(struct jme_softc *);
-static void	jme_rxeof(struct jme_softc *, int, int);
+static void	jme_rxeof(struct jme_softc *, int);
+static int	jme_rxeof_chain(struct jme_softc *, int,
+				struct mbuf_chain *, int);
 static void	jme_rx_intr(struct jme_softc *, uint32_t);
 
 static int	jme_dma_alloc(struct jme_softc *);
@@ -355,7 +357,7 @@ jme_miibus_statchg(device_t dev)
 	for (r = 0; r < sc->jme_rx_ring_inuse; ++r) {
 		struct jme_rxdata *rdata = &sc->jme_cdata.jme_rx_data[r];
 
-		jme_rxeof(sc, r, -1);
+		jme_rxeof(sc, r);
 		if (rdata->jme_rxhead != NULL)
 			m_freem(rdata->jme_rxhead);
 		JME_RXCHAIN_RESET(sc, r);
@@ -2320,15 +2322,13 @@ jme_rxpkt(struct jme_softc *sc, int ring, struct mbuf_chain *chain)
 	rdata->jme_rx_cons %= sc->jme_rx_desc_cnt;
 }
 
-static void
-jme_rxeof(struct jme_softc *sc, int ring, int count)
+static int
+jme_rxeof_chain(struct jme_softc *sc, int ring, struct mbuf_chain *chain,
+		int count)
 {
 	struct jme_rxdata *rdata = &sc->jme_cdata.jme_rx_data[ring];
 	struct jme_desc *desc;
 	int nsegs, prog, pktlen;
-	struct mbuf_chain chain[MAXCPU];
-
-	ether_input_chain_init(chain);
 
 	bus_dmamap_sync(rdata->jme_rx_ring_tag, rdata->jme_rx_ring_map,
 			BUS_DMASYNC_POSTREAD);
@@ -2368,8 +2368,18 @@ jme_rxeof(struct jme_softc *sc, int ring, int count)
 	if (prog > 0) {
 		bus_dmamap_sync(rdata->jme_rx_ring_tag, rdata->jme_rx_ring_map,
 				BUS_DMASYNC_PREWRITE);
-		ether_input_dispatch(chain);
 	}
+	return prog;
+}
+
+static void
+jme_rxeof(struct jme_softc *sc, int ring)
+{
+	struct mbuf_chain chain[MAXCPU];
+
+	ether_input_chain_init(chain);
+	if (jme_rxeof_chain(sc, ring, chain, -1))
+		ether_input_dispatch(chain);
 }
 
 static void
@@ -3093,8 +3103,9 @@ static void
 jme_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 {
 	struct jme_softc *sc = ifp->if_softc;
+	struct mbuf_chain chain[MAXCPU];
 	uint32_t status;
-	int r;
+	int r, prog = 0;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -3110,8 +3121,12 @@ jme_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	case POLL_AND_CHECK_STATUS:
 	case POLL_ONLY:
 		status = CSR_READ_4(sc, JME_INTR_STATUS);
+
+		ether_input_chain_init(chain);
 		for (r = 0; r < sc->jme_rx_ring_inuse; ++r)
-			jme_rxeof(sc, r, count);
+			prog += jme_rxeof_chain(sc, r, chain, count);
+		if (prog)
+			ether_input_dispatch(chain);
 
 		if (status & INTR_RXQ_DESC_EMPTY) {
 			CSR_WRITE_4(sc, JME_INTR_STATUS, status);
@@ -3247,12 +3262,16 @@ jme_rxbuf_dma_alloc(struct jme_softc *sc, int ring)
 static void
 jme_rx_intr(struct jme_softc *sc, uint32_t status)
 {
-	int r;
+	struct mbuf_chain chain[MAXCPU];
+	int r, prog = 0;
 
+	ether_input_chain_init(chain);
 	for (r = 0; r < sc->jme_rx_ring_inuse; ++r) {
 		if (status & jme_rx_status[r].jme_coal)
-			jme_rxeof(sc, r, -1);
+			prog += jme_rxeof_chain(sc, r, chain, -1);
 	}
+	if (prog)
+		ether_input_dispatch(chain);
 }
 
 static void
