@@ -611,8 +611,13 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 
 	case SIOCAIFADDR_IN6:
 	{
-		int i, error = 0;
+		int i, error = 0, iaIsNew;
 		struct nd_prefix pr0, *pr;
+
+		if (ia != NULL)
+			iaIsNew = 0;
+		else
+			iaIsNew = 1;
 
 		/*
 		 * first, make or update the interface address structure,
@@ -708,8 +713,11 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 			 */
 			pfxlist_onlink_check();
 		}
-		if (error == 0 && ia)
-			EVENTHANDLER_INVOKE(ifaddr_event, ifp);
+		if (error == 0 && ia) {
+			EVENTHANDLER_INVOKE(ifaddr_event, ifp,
+			iaIsNew ? IFADDR_EVENT_ADD : IFADDR_EVENT_CHANGE,
+			&ia->ia_ifa);
+		}
 		break;
 	}
 
@@ -755,9 +763,10 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 			pr->ndpr_expire = 1; /* XXX: just for expiration */
 		}
 
-	  purgeaddr:
+purgeaddr:
+		EVENTHANDLER_INVOKE(ifaddr_event, ifp, IFADDR_EVENT_DELETE,
+				    &ia->ia_ifa);
 		in6_purgeaddr(&ia->ia_ifa);
-		EVENTHANDLER_INVOKE(ifaddr_event, ifp);
 		break;
 	}
 

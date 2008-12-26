@@ -772,13 +772,13 @@ in_arpinput(struct mbuf *m)
 	struct rtentry *rt;
 	struct ifaddr_container *ifac;
 	struct in_ifaddr_container *iac;
-	struct in_ifaddr *ia;
+	struct in_ifaddr *ia = NULL;
 	struct sockaddr sa;
 	struct in_addr isaddr, itaddr, myaddr;
 #ifdef SMP
 	struct netmsg_arp_update msg;
 #endif
-	u_int8_t *enaddr = NULL;
+	uint8_t *enaddr = NULL;
 	int op;
 	int req_len;
 
@@ -792,6 +792,21 @@ in_arpinput(struct mbuf *m)
 	op = ntohs(ah->ar_op);
 	memcpy(&isaddr, ar_spa(ah), sizeof isaddr);
 	memcpy(&itaddr, ar_tpa(ah), sizeof itaddr);
+
+	myaddr.s_addr = INADDR_ANY;
+#ifdef CARP
+	if (ifp->if_carp != NULL) {
+		get_mplock();
+		if (ifp->if_carp != NULL &&
+		    carp_iamatch(ifp->if_carp, &itaddr, &isaddr, &enaddr)) {
+			rel_mplock();
+			myaddr = itaddr;
+			goto match;
+		}
+		rel_mplock();
+	}
+#endif
+
 	/*
 	 * Check both target and sender IP addresses:
 	 *
@@ -808,31 +823,16 @@ in_arpinput(struct mbuf *m)
 		/* Skip all ia's which don't match */
 		if (itaddr.s_addr != ia->ia_addr.sin_addr.s_addr)
 			continue;
-
+#ifdef CARP
+		if (ia->ia_ifp->if_type == IFT_CARP)
+			continue;
+#endif
 		if (ia->ia_ifp == ifp)
 			goto match;
 
 		if (ifp->if_bridge && ia->ia_ifp && 
 		    ifp->if_bridge == ia->ia_ifp->if_bridge)
 			goto match;
-		
-#ifdef CARP
-		/*
-		 * If the interface does not match, but the recieving interface
-		 * is part of carp, we call carp_iamatch to see if this is a
-		 * request for the virtual host ip.
-		 * XXX: This is really ugly!
-		 */
-		if (ifp->if_carp != NULL) {
-			get_mplock();
-			if (ifp->if_carp != NULL &&
-			    carp_iamatch(ifp->if_carp, ia, &isaddr, &enaddr)) {
-				rel_mplock();
-				goto match;
-			}
-			rel_mplock();
-		}
-#endif
 	}
 	LIST_FOREACH(iac, INADDR_HASH(isaddr.s_addr), ia_hash) {
 		ia = iac->ia;
@@ -840,7 +840,10 @@ in_arpinput(struct mbuf *m)
 		/* Skip all ia's which don't match */
 		if (isaddr.s_addr != ia->ia_addr.sin_addr.s_addr)
 			continue;
-
+#ifdef CARP
+		if (ia->ia_ifp->if_type == IFT_CARP)
+			continue;
+#endif
 		if (ia->ia_ifp == ifp)
 			goto match;
 
@@ -869,8 +872,9 @@ in_arpinput(struct mbuf *m)
 
 match:
 	if (!enaddr)
-		enaddr = (u_int8_t *)IF_LLADDR(ifp);
-	myaddr = ia->ia_addr.sin_addr;
+		enaddr = (uint8_t *)IF_LLADDR(ifp);
+	if (myaddr.s_addr == INADDR_ANY)
+		myaddr = ia->ia_addr.sin_addr;
 	if (!bcmp(ar_sha(ah), enaddr, ifp->if_addrlen)) {
 		m_freem(m);	/* it's from me, ignore it. */
 		return;
@@ -1081,14 +1085,10 @@ arp_ifinit(struct ifnet *ifp, struct ifaddr *ifa)
 }
 
 void
-arp_ifinit2(struct ifnet *ifp, struct ifaddr *ifa, u_char *enaddr)
+arp_iainit(struct ifnet *ifp, const struct in_addr *addr, const u_char *enaddr)
 {
-	if (IA_SIN(ifa)->sin_addr.s_addr != INADDR_ANY) {
-		arprequest_async(ifp, &IA_SIN(ifa)->sin_addr,
-				 &IA_SIN(ifa)->sin_addr, enaddr);
-	}
-	ifa->ifa_rtrequest = arp_rtrequest;
-	ifa->ifa_flags |= RTF_CLONING;
+	if (addr->s_addr != INADDR_ANY)
+		arprequest_async(ifp, addr, addr, enaddr);
 }
 
 static void

@@ -635,8 +635,11 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 		    (const struct sockaddr_in *)&ifr->ifr_addr, 1);
 		if (error != 0 && iaIsNew)
 			break;
-		if (error == 0)
-			EVENTHANDLER_INVOKE(ifaddr_event, ifp);
+		if (error == 0) {
+			EVENTHANDLER_INVOKE(ifaddr_event, ifp,
+			iaIsNew ? IFADDR_EVENT_ADD : IFADDR_EVENT_CHANGE,
+			&ia->ia_ifa);
+		}
 		return (0);
 
 	case SIOCSIFNETMASK:
@@ -681,8 +684,11 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 		if ((ifp->if_flags & IFF_BROADCAST) &&
 		    ifra->ifra_broadaddr.sin_family == AF_INET)
 			ia->ia_broadaddr = ifra->ifra_broadaddr;
-		if (error == 0)
-			EVENTHANDLER_INVOKE(ifaddr_event, ifp);
+		if (error == 0) {
+			EVENTHANDLER_INVOKE(ifaddr_event, ifp,
+			iaIsNew ? IFADDR_EVENT_ADD : IFADDR_EVENT_CHANGE,
+			&ia->ia_ifa);
+		}
 		return (error);
 
 	case SIOCDIFADDR:
@@ -697,7 +703,8 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 		 * a routing process they will come back.
 		 */
 		in_ifadown(&ia->ia_ifa, 1);
-		EVENTHANDLER_INVOKE(ifaddr_event, ifp);
+		EVENTHANDLER_INVOKE(ifaddr_event, ifp, IFADDR_EVENT_DELETE,
+				    &ia->ia_ifa);
 		error = 0;
 		break;
 
@@ -1037,9 +1044,13 @@ in_ifinit(struct ifnet *ifp, struct in_ifaddr *ia,
 	if (ia->ia_addr.sin_addr.s_addr != INADDR_ANY ||
 	    ia->ia_netmask != IN_CLASSA_NET ||
 	    ia->ia_dstaddr.sin_addr.s_addr != htonl(IN_CLASSA_HOST)) {
-		if ((error = rtinit(&ia->ia_ifa, RTM_ADD, flags)) != 0)
-			goto fail;
-		ia->ia_flags |= IFA_ROUTE;
+		if ((error = rtinit(&ia->ia_ifa, RTM_ADD, flags)) != 0) {
+			if (error != EEXIST ||
+			    !(ifac->ifa_prflags & IA_PRF_RTEXISTOK))
+				goto fail;
+		} else {
+			ia->ia_flags |= IFA_ROUTE;
+		}
 	}
 
 	/*
