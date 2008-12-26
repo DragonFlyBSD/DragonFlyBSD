@@ -124,7 +124,7 @@ struct faultstate {
 	struct vnode *vp;
 };
 
-static int burst_fault = 0;
+static int burst_fault = 1;
 SYSCTL_INT(_vm, OID_AUTO, burst_fault, CTLFLAG_RW, &burst_fault, 0, "");
 
 static int vm_fault_object(struct faultstate *, vm_pindex_t, vm_prot_t);
