@@ -2153,7 +2153,9 @@ cache_resolve_mp(struct mount *mp)
 				_cache_setvp(ncp, vp);
 				vput(vp);
 			} else {
-				kprintf("[diagnostic] cache_resolve_mp: failed to resolve mount %p\n", mp);
+				kprintf("[diagnostic] cache_resolve_mp: failed"
+					" to resolve mount %p err=%d ncp=%p\n",
+					mp, error, ncp);
 				_cache_setvp(ncp, NULL);
 			}
 		} else if (error == 0) {
