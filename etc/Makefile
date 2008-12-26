@@ -231,9 +231,6 @@ upgrade_etc:	preupgrade remove-obsolete-files
 .endif
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
-.if !defined(NOMAN)
-	cd ${UPGRADE_SRCDIR}/../share/man; ${MAKE} makedb
-.endif
 .if !defined(NO_MAKEDEV)
 	cd ${UPGRADE_SRCDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
 	    MAKEDEV.local MAKEDEV ${DESTDIR}/dev

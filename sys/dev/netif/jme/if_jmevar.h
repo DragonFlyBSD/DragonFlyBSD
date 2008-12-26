@@ -45,6 +45,14 @@
 #define JME_NDESC_ALIGN		16
 #define JME_NDESC_MAX		1024
 
+#define JME_NRXRING_1		1
+#define JME_NRXRING_2		2
+#define JME_NRXRING_4		4
+
+#define JME_NRXRING_DEF		JME_NRXRING_1
+#define JME_NRXRING_MIN		JME_NRXRING_1
+#define JME_NRXRING_MAX		JME_NRXRING_4
+
 /*
  * Tx/Rx descriptor queue base should be 16bytes aligned and
  * should not cross 4G bytes boundary on the 64bits address
@@ -111,6 +119,26 @@ struct jme_rxdesc {
 	struct jme_desc		*rx_desc;
 };
 
+/*
+ * RX ring/descs
+ */
+struct jme_rxdata {
+	bus_dma_tag_t		jme_rx_tag;	/* RX mbuf tag */
+	bus_dmamap_t		jme_rx_sparemap;
+	struct jme_rxdesc	*jme_rxdesc;
+
+	struct jme_desc		*jme_rx_ring;
+	bus_addr_t		jme_rx_ring_paddr;
+	bus_dma_tag_t		jme_rx_ring_tag;
+	bus_dmamap_t		jme_rx_ring_map;
+
+	int			jme_rx_cons;
+
+	int			jme_rxlen;
+	struct mbuf		*jme_rxhead;
+	struct mbuf		*jme_rxtail;
+};
+
 struct jme_chain_data {
 	/*
 	 * Top level tags
@@ -141,23 +169,7 @@ struct jme_chain_data {
 	int			jme_tx_cons;
 	int			jme_tx_cnt;
 
-	/*
-	 * RX ring/descs
-	 */
-	bus_dma_tag_t		jme_rx_tag;	/* RX mbuf tag */
-	bus_dmamap_t		jme_rx_sparemap;
-	struct jme_rxdesc	*jme_rxdesc;
-
-	struct jme_desc		*jme_rx_ring;
-	bus_addr_t		jme_rx_ring_paddr;
-	bus_dma_tag_t		jme_rx_ring_tag;
-	bus_dmamap_t		jme_rx_ring_map;
-
-	int			jme_rx_cons;
-
-	int			jme_rxlen;
-	struct mbuf		*jme_rxhead;
-	struct mbuf		*jme_rxtail;
+	struct jme_rxdata	jme_rx_data[JME_NRXRING_MAX];
 };
 
 #define JME_TX_RING_SIZE(sc)	\
@@ -202,6 +214,7 @@ struct jme_softc {
 #define	JME_CAP_PMCAP		0x0004
 #define	JME_CAP_FASTETH		0x0008
 #define	JME_CAP_JUMBO		0x0010
+#define JME_CAP_RSS		0x0020
 
 	uint32_t		jme_workaround;
 #define JME_WA_EXTFIFO		0x0001
@@ -212,6 +225,7 @@ struct jme_softc {
 #define	JME_FLAG_MSIX		0x0002
 #define	JME_FLAG_DETACH		0x0004
 #define	JME_FLAG_LINK		0x0008
+#define JME_FLAG_RSS		0x0010
 
 	struct callout		jme_tick_ch;
 	struct jme_chain_data	jme_cdata;
@@ -233,6 +247,10 @@ struct jme_softc {
 	int			jme_rx_coal_pkt;
 	int			jme_rx_desc_cnt;
 	int			jme_tx_desc_cnt;
+	int			jme_rx_ring_cnt;
+	int			jme_rx_ring_inuse;
+	int			jme_rss_debug;
+	u_int			jme_rx_ring_pkt[JME_NRXRING_MAX];
 };
 
 /* Register access macros. */
@@ -243,11 +261,11 @@ struct jme_softc {
 
 #define	JME_MAXERR	5
 
-#define	JME_RXCHAIN_RESET(_sc)						\
-do {									\
-	(_sc)->jme_cdata.jme_rxhead = NULL;				\
-	(_sc)->jme_cdata.jme_rxtail = NULL;				\
-	(_sc)->jme_cdata.jme_rxlen = 0;					\
+#define	JME_RXCHAIN_RESET(sc, ring)				\
+do {								\
+	(sc)->jme_cdata.jme_rx_data[(ring)].jme_rxhead = NULL;	\
+	(sc)->jme_cdata.jme_rx_data[(ring)].jme_rxtail = NULL;	\
+	(sc)->jme_cdata.jme_rx_data[(ring)].jme_rxlen = 0;	\
 } while (0)
 
 #define	JME_TX_TIMEOUT		5

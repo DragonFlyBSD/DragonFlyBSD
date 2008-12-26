@@ -110,7 +110,8 @@ void		 pfi_newgroup(const char *, int);
 int		 pfi_skip_if(const char *, struct pfi_kif *, int);
 int		 pfi_unmask(void *);
 void		 pfi_dohooks(struct pfi_kif *);
-void		 pfi_kifaddr_update_event(void *, struct ifnet *);
+void		 pfi_kifaddr_update_event(void *, struct ifnet *,
+		     enum ifaddr_event, struct ifaddr *);
 void		 pfi_attach_clone_event(void *, struct if_clone *);
 void		 pfi_attach_ifnet_event(void *, struct ifnet *);
 void		 pfi_detach_ifnet_event(void *, struct ifnet *);
@@ -187,10 +188,11 @@ pfi_cleanup(void)
  * Wrapper functions for FreeBSD eventhandler
  */
 void
-pfi_kifaddr_update_event(void *arg, struct ifnet *ifp)
+pfi_kifaddr_update_event(void *arg, struct ifnet *ifp,
+    enum ifaddr_event event __unused, struct ifaddr *ifa __unused)
 {
 	struct pfi_kif *p = arg;
-	
+
 	/* 
 	 * Check to see if it is 'our' interface as we do not have per
 	 * interface hooks and thus get an update for every interface.

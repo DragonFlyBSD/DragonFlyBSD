@@ -152,6 +152,13 @@ proc			/proc		procfs	rw		0	0
 #pkgbox:/archive	/archive	nfs	ro,intr,bg	0	0
 EOF
 
+# Since /boot is a separate partition we need to adjust kern.bootfile
+# to make savecore work properly upon boot.
+#
+cat >> /mnt/etc/sysctl.conf << EOF
+kern.bootfile=/boot/kernel
+EOF
+
 # Because root is not on the boot partition we have to tell the loader
 # to tell the kernel where root is.
 #

@@ -39,8 +39,11 @@
 
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <netinet/in.h>
 #include <netinet/ip_carp.h>
 #include <net/route.h>
+
+#include <arpa/inet.h>
 
 #include <ctype.h>
 #include <stdio.h>
@@ -65,6 +68,9 @@ carp_status(int s)
 {
 	const char *state;
 	struct carpreq carpr;
+	struct ifdrv ifd;
+	char devname[IFNAMSIZ];
+	int count, i;
 
 	memset((char *)&carpr, 0, sizeof(struct carpreq));
 	ifr.ifr_data = (caddr_t)&carpr;
@@ -83,8 +89,15 @@ carp_status(int s)
 		    carpr.carpr_advskew);
 	}
 
-	return;
-
+	memset(&ifd, 0, sizeof(ifd));
+	strncpy(ifd.ifd_name, ifr.ifr_name, sizeof(ifd.ifd_name));
+	ifd.ifd_cmd = CARPGDEVNAME;
+	ifd.ifd_len = sizeof(devname);
+	ifd.ifd_data = devname;
+	if (ioctl(s, SIOCGDRVSPEC, &ifd) < 0)
+		strlcpy(devname, "none", sizeof(devname));
+	if (devname[0] != '\0')
+		printf("\tcarpdev: %s\n", devname);
 }
 
 void
@@ -103,8 +116,6 @@ setcarp_passwd(const char *val, int d, int s, const struct afswtch *afp)
 
 	if (ioctl(s, SIOCSVH, (caddr_t)&ifr) == -1)
 		err(1, "SIOCSVH");
-
-	return;
 }
 
 void
@@ -128,8 +139,6 @@ setcarp_vhid(const char *val, int d, int s, const struct afswtch *afp)
 
 	if (ioctl(s, SIOCSVH, (caddr_t)&ifr) == -1)
 		err(1, "SIOCSVH");
-
-	return;
 }
 
 void
@@ -150,8 +159,6 @@ setcarp_advskew(const char *val, int d, int s, const struct afswtch *afp)
 
 	if (ioctl(s, SIOCSVH, (caddr_t)&ifr) == -1)
 		err(1, "SIOCSVH");
-
-	return;
 }
 
 void
@@ -172,8 +179,64 @@ setcarp_advbase(const char *val, int d, int s, const struct afswtch *afp)
 
 	if (ioctl(s, SIOCSVH, (caddr_t)&ifr) == -1)
 		err(1, "SIOCSVH");
+}
 
-	return;
+static void
+getcarp_vhaddr(const char *val, int d, int s, const struct afswtch *afp)
+{
+#define VHADDR_PFMT	"%-15s %-15s %s\n"
+
+	struct ifdrv ifd;
+	struct ifcarpvhaddr *carpa;
+	char devname[IFNAMSIZ];
+	int count, i;
+
+	memset(&ifd, 0, sizeof(ifd));
+	strncpy(ifd.ifd_name, ifr.ifr_name, sizeof(ifd.ifd_name));
+	ifd.ifd_cmd = CARPGVHADDR;
+	if (ioctl(s, SIOCGDRVSPEC, &ifd) < 0)
+		return;
+	if (ifd.ifd_len != 0) {
+		carpa = malloc(ifd.ifd_len);
+		if (carpa == NULL)
+			return;
+
+		ifd.ifd_cmd = CARPGVHADDR;
+		ifd.ifd_data = carpa;
+		if (ioctl(s, SIOCGDRVSPEC, &ifd) < 0) {
+			free(carpa);
+			return;
+		}
+	} else {
+		carpa = NULL;
+	}
+	count = ifd.ifd_len / sizeof(*carpa);
+	if (count != 0)
+		printf(VHADDR_PFMT, "virtual addr", "backing addr", "flags");
+	for (i = 0; i < count; ++i) {
+		char flags[16];
+		char baddr[INET_ADDRSTRLEN];
+		int a = 0;
+
+		memset(flags, 0, sizeof(flags));
+		flags[a] = '*';
+		if (carpa[i].carpa_flags & CARP_VHAF_OWNER)
+			flags[a++] = 'O';
+
+		memset(baddr, 0, sizeof(baddr));
+		baddr[0] = '*';
+		if (carpa[i].carpa_baddr.sin_addr.s_addr != INADDR_ANY) {
+			inet_ntop(AF_INET, &carpa[i].carpa_baddr.sin_addr,
+				  baddr, sizeof(baddr));
+		}
+
+		printf(VHADDR_PFMT, inet_ntoa(carpa[i].carpa_addr.sin_addr),
+		       baddr, flags);
+	}
+	if (carpa != NULL)
+		free(carpa);
+
+#undef VHADDR_PFMT
 }
 
 static struct cmd carp_cmds[] = {
@@ -181,6 +244,7 @@ static struct cmd carp_cmds[] = {
 	DEF_CMD_ARG("advskew",	setcarp_advskew),
 	DEF_CMD_ARG("pass",	setcarp_passwd),
 	DEF_CMD_ARG("vhid",	setcarp_vhid),
+	DEF_CMD("vhaddr", 1,	getcarp_vhaddr)
 };
 static struct afswtch af_carp = {
 	.af_name	= "af_carp",

@@ -682,10 +682,7 @@
 #define	JME_INTR_MASK_CLR	0x082C
 
 /* Packet completion coalescing control of Rx queue 0, 1, 2 and 3. */
-#define	JME_PCCRX0		0x0830
-#define	JME_PCCRX1		0x0834
-#define	JME_PCCRX2		0x0838
-#define	JME_PCCRX3		0x083C
+#define	JME_PCCRX(r)		(0x0830 + ((r) * 4))
 #define	PCCRX_COAL_TO_MASK	0xFFFF0000
 #define	PCCRX_COAL_TO_SHIFT	16
 #define	PCCRX_COAL_PKT_MASK	0x0000FF00
@@ -824,18 +821,13 @@
 
 /* RSS secret key. */
 #define	JME_RSSKEY_BASE		0x0C40
-#define	JME_RSSKEY_LAST		0x0C64
-#define	JME_RSSKEY_END		0x0C67
-#define	HASHKEY_NBYTES		40
-#define	RSSKEY_REG(x)		(JME_RSSKEY_LAST - (4 * ((x) / 4)))
-#define	RSSKEY_VALUE(x, y)	((x) << (24 - 8 * ((y) % 4)))
+#define RSSKEY_NREGS		10
+#define	RSSKEY_REG(x)		(JME_RSSKEY_BASE + (4 * (x)))
 
 /* RSS indirection table entries. */
 #define	JME_RSSTBL_BASE		0x0C80
-#define	JME_RSSTBL_END		0x0CFF
-#define	RSSTBL_NENTRY		128
-#define	RSSTBL_REG(x)		(JME_RSSTBL_BASE + ((x) / 4))
-#define	RSSTBL_VALUE(x, y)	((x) << (8 * ((y) % 4)))
+#define RSSTBL_NREGS		32
+#define	RSSTBL_REG(x)		(JME_RSSTBL_BASE + (4 * (x)))
 
 /* MSI-X table. */
 #define	JME_MSIX_BASE_ADDR	0x2000

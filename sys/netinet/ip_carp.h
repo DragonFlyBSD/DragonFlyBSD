@@ -132,8 +132,20 @@ struct carpreq {
 	int		carpr_advbase;
 	unsigned char	carpr_key[CARP_KEY_LEN];
 };
-#define	SIOCSVH	_IOWR('i', 245, struct ifreq)
-#define	SIOCGVH	_IOWR('i', 246, struct ifreq)
+#define	SIOCSVH		_IOWR('i', 245, struct ifreq)
+#define	SIOCGVH		_IOWR('i', 246, struct ifreq)
+
+
+struct ifcarpvhaddr {
+	uint32_t		carpa_flags;	/* CARP_VHAF_ */
+	struct sockaddr_in	carpa_addr;	/* carp address */
+	struct sockaddr_in	carpa_baddr;	/* backing address */
+};
+#define CARP_VHAF_OWNER		0x1
+#define CARP_VHAF_ONLIST	0x2
+
+#define CARPGDEVNAME		0	/* SIOCGDRVSPEC char[IFNAMSIZ] */
+#define CARPGVHADDR		1	/* SIOCGDRVSPEC ifcarpvhaddr array */
 
 /*
  * Names for CARP sysctl objects
@@ -160,11 +172,11 @@ void		 carp_input(struct mbuf *, ...);
 int		 carp6_input(struct mbuf **, int *, int);
 int		 carp_output(struct ifnet *, struct mbuf *, struct sockaddr *,
 		     struct rtentry *);
-int		 carp_iamatch(void *, struct in_ifaddr *, struct in_addr *,
-		     uint8_t **);
+int		 carp_iamatch(const void *, const struct in_addr *,
+		     const struct in_addr *, uint8_t **);
 struct ifaddr	*carp_iamatch6(void *, struct in6_addr *);
 void		*carp_macmatch6(void *, struct mbuf *, const struct in6_addr *);
-struct ifnet	*carp_forus(void *, void *);
+int		 carp_forus(const void *, const void *);
 #endif /* _KERNEL */
 
 #endif /* _IP_CARP_H */
