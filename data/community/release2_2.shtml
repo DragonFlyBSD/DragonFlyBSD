@@ -167,6 +167,16 @@ states than C1 in modern (multicore) CPUs.
 is considered experimental).
     <li>Fixed CVE-2008-2476 IPv6 security issue with modified patches from NetBSD.
     <li><tt>bridge_input</tt> works now in parallel.
+    <li>Fix bugs in dealing with low-memory situations when the system has run out
+of swap or has no swap.
+    <li>Major rewrite of usched_bsd4 and related support logic, plus
+additional improvements to the LWKT scheduler.
+    <li>Major revamping of the pageout and low-memory handling code.
+</ul>
+<h3>HAMMER changes</h3>
+<ul>
+    <li>Use per-mount kmalloc pools for bulk data structures, particularly inodes
+and records.
 </ul>
 <h3>Hardware changes</h3>
 <ul>
@@ -178,10 +188,12 @@ some power when using mobile devices (from FreeBSD).
     <li>Correctly handle Intel G33 chips and add support for G45 chips to the agp(4) driver
 (from FreeBSD).
     <li>Fixed CVE-2008-3831. Affects the Intel G33 series and newer only.
+    <li>Sync ciss(4) with FreeBSD's RELENG_4 branch.
 </ul>
 <h3>Hardware changes (Networking)</h3>
 <ul>
     <li>Add support for cards with "RealTek 8102EL PCIe 10/100baseTX" chipset.
+    <li>Add poling support for jme(4).
 </ul>
 <h3>Hardware changes (USB)</h3>
 <ul>
@@ -212,7 +224,10 @@ library can be used to view the internal device hierarchy.
     <li>Symlink <tt>/dev/dsp</tt> to <tt>/dev/audio</tt> to preserve compatibility with older
 programs (all pkgsrc apps by default up to 2008Q3).
     <li>A new daily periodic script cleans up all HAMMER volumes at night.
-    <li> Sync libusbhid with other BSDs. Sync usbhidctl with FreeBSD.
+    <li>Sync libusbhid with other BSDs. Sync usbhidctl with FreeBSD.
+    <li>Add ftw(), nftw(), associated header files and documentation.
+    <li>Fixed hundreds of warnings in various userland tools.
+    <li>i486 is now the default architecture for gcc(1).
 </ul>
 <h3>Removals</h3>
 <ul>
