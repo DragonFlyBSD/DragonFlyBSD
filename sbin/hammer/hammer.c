@@ -364,6 +364,7 @@ usage(int exit_code)
 		"hammer [-2qrv] [-b bandwidth] [-c cyclefile] [-f blkdev[:blkdev]*]\n"
 		"       [-i delay ] [-t seconds] command [argument ...]\n"
 		"hammer synctid <filesystem> [quick]\n"
+		"hammer -f blkdev[:blkdev]* blockmap\n"
 		"hammer bstats [interval]\n"
 		"hammer iostats [interval]\n"
 		"hammer history[@offset[,len]] <file> ...\n"

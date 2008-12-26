@@ -825,12 +825,16 @@ ata_modify_if_48bit(struct ata_request *request)
 void
 ata_udelay(int interval)
 {
-    /* for now just use DELAY, the timer/sleep subsytems are not there yet */
-    /* XXX use DRIVERSLEEP if possible */
-    if (1 || interval < (1000000/hz))
+    /*
+     * Use tsleep now.  Theoretically calls to this function are only made
+     * in non-time-critical code paths, i.e. the ata reset code.
+     */
+#if 0
+    if (interval < (1000000/hz))
 	DELAY(interval);
     else
-	tsleep(&interval, 0, "ataslp", interval/(1000000/hz));
+#endif
+    tsleep(&interval, 0, "ataslp", 1 + interval / (1000000 / hz));
 }
 
 char *
