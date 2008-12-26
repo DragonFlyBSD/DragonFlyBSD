@@ -394,6 +394,14 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 		return (mrt6_ioctl(cmd, data));
 	}
 
+	switch(cmd) {
+	case SIOCAADDRCTL_POLICY:
+	case SIOCDADDRCTL_POLICY:
+		if (!privileged)
+			return (EPERM);
+		return (in6_src_ioctl(cmd, data));
+	}
+
 	if (ifp == NULL)
 		return (EOPNOTSUPP);
 

@@ -200,6 +200,7 @@ ip6_init(void)
 	netisr_register(NETISR_IPV6, cpu0_portfn, ip6_input,
 			NETISR_FLAG_NOTMPSAFE);
 	scope6_init();
+	addrsel_policy_init();
 	nd6_init();
 	frag6_init();
 	/*
