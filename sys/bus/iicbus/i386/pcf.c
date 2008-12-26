@@ -100,7 +100,7 @@ static int pcf_print_child(device_t, device_t);
 static int pcf_repeated_start(device_t, u_char, int);
 static int pcf_start(device_t, u_char, int);
 static int pcf_stop(device_t);
-static int pcf_write(device_t, char *, int, int *, int);
+static int pcf_write(device_t, const char *, int, int *, int);
 static int pcf_read(device_t, char *, int, int *, int, int);
 static int pcf_rst_card(device_t, u_char, u_char, u_char *);
 
@@ -543,7 +543,8 @@ pcf_rst_card(device_t pcfdev, u_char speed, u_char addr, u_char *oldaddr)
 }
 
 static int
-pcf_write(device_t pcfdev, char *buf, int len, int *sent, int timeout /* us */)
+pcf_write(device_t pcfdev, const char *buf, int len, int *sent,
+	  int timeout /* us */)
 {
 	struct pcf_softc *pcf = DEVTOSOFTC(pcfdev);
 	int bytes, error = 0;

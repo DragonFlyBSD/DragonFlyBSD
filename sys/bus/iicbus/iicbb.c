@@ -78,7 +78,7 @@ static int iicbb_probe(device_t);
 static int iicbb_callback(device_t, int, caddr_t);
 static int iicbb_start(device_t, u_char, int);
 static int iicbb_stop(device_t);
-static int iicbb_write(device_t, char *, int, int *, int);
+static int iicbb_write(device_t, const char *, int, int *, int);
 static int iicbb_read(device_t, char *, int, int *, int, int);
 static int iicbb_reset(device_t, u_char, u_char, u_char *);
 
@@ -157,7 +157,7 @@ iicbb_detach(device_t dev)
 }
 
 static void
-iicbb_child_detached( device_t dev, device_t child )
+iicbb_child_detached(device_t dev, device_t child)
 {
 	struct iicbb_softc *sc = (struct iicbb_softc *)device_get_softc(dev);
 
@@ -333,7 +333,7 @@ iicbb_stop(device_t dev)
 }
 
 static int
-iicbb_write(device_t dev, char * buf, int len, int *sent, int timeout)
+iicbb_write(device_t dev, const char *buf, int len, int *sent, int timeout)
 {
 	int bytes, error = 0;
 
