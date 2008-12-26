@@ -5,8 +5,8 @@
 
 SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail-8.14
 CFDIR=	cf
-CFDIRS!=	(cd ${SENDMAIL_DIR}; find -L ${CFDIR} \( -name CVS -prune \) -o -type d -print)
-CFFILES!=	(cd ${SENDMAIL_DIR}; find -L ${CFDIR} \( -name CVS -prune \) -o -type f -print)
+CFDIRS!=	(cd ${SENDMAIL_DIR}; find -L ${CFDIR} -type d -print)
+CFFILES!=	(cd ${SENDMAIL_DIR}; find -L ${CFDIR} -type f -print)
 
 DDIR=	${DESTDIR}/usr/share/sendmail
 

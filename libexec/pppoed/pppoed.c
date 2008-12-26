@@ -85,8 +85,8 @@ Farewell(int sig)
 }
 
 static int
-ConfigureNode(const char *prog, const char *iface, const char *provider,
-              int cs, int ds, int debug, struct ngm_connect *ngc)
+ConfigureNode(const char *prog __unused, const char *iface, const char *provider,
+              int cs, int ds __unused, int debug, struct ngm_connect *ngc)
 {
   /*
    * We're going to do this with the passed `ds' & `cs' descriptors:
@@ -122,7 +122,8 @@ ConfigureNode(const char *prog, const char *iface, const char *provider,
   struct ngm_mkpeer mkp;
   struct ng_mesg *resp;
   u_char rbuf[2048];
-  int f, plen;
+  uint32_t f;
+  int plen;
 
   /*
    * Ask for a list of hooks attached to the "ether" node.  This node should
@@ -251,9 +252,9 @@ ConfigureNode(const char *prog, const char *iface, const char *provider,
 }
 
 static void
-Spawn(const char *prog, const char *acname, const char *provider,
+Spawn(const char *prog __unused, const char *acname, const char *provider,
       const char *exec, struct ngm_connect ngc, int cs, int ds, void *request,
-      int sz, int debug)
+      size_t sz, int debug)
 {
   char msgbuf[sizeof(struct ng_mesg) + sizeof(struct ngpppoe_sts)];
   struct ng_mesg *rep = (struct ng_mesg *)msgbuf;
@@ -461,7 +462,7 @@ static int
 LoadModules(void)
 {
   const char *module[] = { "netgraph", "ng_socket", "ng_ether", "ng_pppoe" };
-  int f;
+  size_t f;
 
   for (f = 0; f < sizeof module / sizeof *module; f++)
     if (modfind(module[f]) == -1 && kldload(module[f]) == -1) {

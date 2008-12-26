@@ -700,13 +700,12 @@ killpg_all_callback(struct proc *p, void *data)
 int
 kern_kill(int sig, pid_t pid, lwpid_t tid)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct lwp *lp = NULL;
-
 	if ((u_int)sig > _SIG_MAXSIG)
 		return (EINVAL);
 	if (pid > 0) {
+		struct proc *p;
+		struct lwp *lp = NULL;
+
 		/* kill single process */
 		if ((p = pfind(pid)) == NULL)
 			return (ESRCH);

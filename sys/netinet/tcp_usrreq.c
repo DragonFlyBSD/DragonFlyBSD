@@ -903,6 +903,7 @@ tcp_connect_oncpu(struct tcpcb *tp, struct sockaddr_in *sin,
 {
 	struct inpcb *inp = tp->t_inpcb, *oinp;
 	struct socket *so = inp->inp_socket;
+	struct route *ro = &inp->inp_route;
 	struct tcpcb *otp;
 	struct rmxp_tao *taop;
 	struct rmxp_tao tao_noncached;
@@ -927,6 +928,23 @@ tcp_connect_oncpu(struct tcpcb *tp, struct sockaddr_in *sin,
 	inp->inp_fport = sin->sin_port;
 	inp->inp_cpcbinfo = &tcbinfo[mycpu->gd_cpuid];
 	in_pcbinsconnhash(inp);
+
+	/*
+	 * We are now on the inpcb's owner CPU, if the cached route was
+	 * freed because the rtentry's owner CPU is not the current CPU
+	 * (e.g. in tcp_connect()), then we try to reallocate it here with
+	 * the hope that a rtentry may be cloned from a RTF_PRCLONING
+	 * rtentry.
+	 */
+	if (!(inp->inp_socket->so_options & SO_DONTROUTE) && /*XXX*/
+	    ro->ro_rt == NULL) {
+		bzero(&ro->ro_dst, sizeof(struct sockaddr_in));
+		ro->ro_dst.sa_family = AF_INET;
+		ro->ro_dst.sa_len = sizeof(struct sockaddr_in);
+		((struct sockaddr_in *)&ro->ro_dst)->sin_addr =
+			sin->sin_addr;
+		rtalloc(ro);
+	}
 
 	tcp_create_timermsg(tp);
 
@@ -1033,7 +1051,7 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 		/*
 		 * in_pcbladdr() may have allocated a route entry for us
 		 * on the current CPU, but we need a route entry on the
-		 * target CPU, so free it here.
+		 * inpcb's owner CPU, so free it here.
 		 */
 		if (ro->ro_rt != NULL)
 			RTFREE(ro->ro_rt);

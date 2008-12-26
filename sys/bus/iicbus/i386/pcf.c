@@ -142,7 +142,6 @@ pcf_probe(device_t pcfdev)
 
 	device_set_desc(pcfdev, "PCF8584 I2C bus controller");
 
-	pcf = DEVTOSOFTC(pcfdev);
 	bzero(pcf, sizeof(struct pcf_softc));
 
 	pcf->rid_irq = pcf->rid_ioport = 0;

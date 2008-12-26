@@ -2490,7 +2490,6 @@ pf_test_tcp(struct pf_rule **rm, struct pf_state **sm, int direction,
 	u_short			 reason;
 	int			 rewrite = 0;
 	int			 tag = -1;
-	u_int16_t		 mss = tcp_mssdflt;
 
 	r = TAILQ_FIRST(pf_main_ruleset.rules[PF_RULESET_FILTER].active.ptr);
 
@@ -2813,6 +2812,8 @@ cleanup:
 			*sm = s;
 		if ((th->th_flags & (TH_SYN|TH_ACK)) == TH_SYN &&
 		    r->keep_state == PF_STATE_SYNPROXY) {
+			u_int16_t mss;
+
 			s->src.state = PF_TCPS_PROXY_SRC;
 			if (nr != NULL) {
 				if (direction == PF_OUT) {

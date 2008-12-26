@@ -130,6 +130,9 @@ mpt_probe(device_t dev)
 	case PCI_PRODUCT_SYMBIOS_FC929:
 		desc = "LSILogic FC929 FC Adapter";
 		break;
+	case PCI_PRODUCT_SYMBIOS_FC929X:
+		desc = "LSILogic FC929X FC Adapter";
+		break;
 	case PCI_PRODUCT_SYMBIOS_1030:
 		desc = "LSILogic 1030 Ultra4 Adapter";
 		break;
@@ -213,6 +216,7 @@ mpt_attach(device_t dev)
 	case PCI_PRODUCT_SYMBIOS_FC909A:
 	case PCI_PRODUCT_SYMBIOS_FC919:
 	case PCI_PRODUCT_SYMBIOS_FC929:
+	case PCI_PRODUCT_SYMBIOS_FC929X:
 		mpt->is_fc = 1;
 		break;
 	default:
@@ -251,6 +255,7 @@ mpt_attach(device_t dev)
 	 * If so, link with our partner (around yet)
 	 */
 	if ((pci_get_device(dev) & ~1) == PCI_PRODUCT_SYMBIOS_FC929 ||
+	    (pci_get_device(dev) & ~1) == PCI_PRODUCT_SYMBIOS_FC929X ||
 	    (pci_get_device(dev) & ~1) == PCI_PRODUCT_SYMBIOS_1030) {
 		mpt_link_peer(mpt);
 	}

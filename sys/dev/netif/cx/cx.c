@@ -727,12 +727,12 @@ cxparam (struct tty *tp, struct termios *t)
 void
 cxstop (struct tty *tp, int flag)
 {
-	cx_chan_t *c = cxchan[UNIT(tp->t_dev)];
-	unsigned short port = c->chip->port;
-
 	crit_enter();
 
 	if (tp->t_state & TS_BUSY) {
+		cx_chan_t *c = cxchan[UNIT(tp->t_dev)];
+		unsigned short port = c->chip->port;
+
 		print (("cx%d.%d: cxstop\n", c->board->num, c->num));
 
 		/* Set current channel number */

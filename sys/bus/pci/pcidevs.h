@@ -1,10 +1,5 @@
-/*	$DragonFly$	*/
-
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
- *
- * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.35 2008/09/13 02:21:56 sephe Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -2104,6 +2099,7 @@
 #define	PCI_PRODUCT_SYMBIOS_FC929_1	0x0623		/* FC929 */
 #define	PCI_PRODUCT_SYMBIOS_FC919	0x0624		/* FC919 */
 #define	PCI_PRODUCT_SYMBIOS_FC919_1	0x0625		/* FC919 */
+#define	PCI_PRODUCT_SYMBIOS_FC929X	0x0626		/* FC929X */
 
 /* Packet Engines products */
 #define	PCI_PRODUCT_SYMBIOS_PE_GNIC	0x0702		/* Packet Engines G-NIC Ethernet */

@@ -51,7 +51,7 @@
 u_quad_t
 strtouq(const char *nptr, char **endptr, int base)
 {
-	const char *s = nptr;
+	const char *s;
 	u_quad_t acc;
 	unsigned char c;
 	u_quad_t qbase, cutoff;

@@ -80,7 +80,7 @@ nwfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 {
 	struct nwmount *nmp = VTONWFS(vp);
 	int error, count, i;
-	struct nwnode *np = VTONW(vp);
+	struct nwnode *np;
 	struct nw_entry_info fattr;
 	struct vnode *newvp;
 	ncpfid fid;

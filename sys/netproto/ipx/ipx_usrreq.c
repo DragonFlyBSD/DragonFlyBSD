@@ -595,7 +595,7 @@ static int
 ripx_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	int error = 0;
-	struct ipxpcb *ipxp = sotoipxpcb(so);
+	struct ipxpcb *ipxp;
 
 	if ((error = suser_cred(ai->p_ucred, NULL_CRED_OKAY)) != 0)
 		return (error);

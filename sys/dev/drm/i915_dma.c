@@ -1347,7 +1347,7 @@ static int i915_set_status_page(struct drm_device *dev, void *data,
 
 int i915_driver_load(struct drm_device *dev, unsigned long flags)
 {
-	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct drm_i915_private *dev_priv;
 	unsigned long base, size;
 	int ret = 0, mmio_bar = IS_I9XX(dev) ? 0 : 1;
 

@@ -146,8 +146,8 @@ static int	acpi_cpu_resume(device_t dev);
 static int	acpi_pcpu_get_id(uint32_t idx, uint32_t *acpi_id,
 		    uint32_t *cpu_id);
 static struct resource_list *acpi_cpu_get_rlist(device_t dev, device_t child);
-static device_t	acpi_cpu_add_child(device_t dev, int order, const char *name,
-		    int unit);
+static device_t	acpi_cpu_add_child(device_t bus, device_t parent, int order,
+		    const char *name, int unit);
 static int	acpi_cpu_read_ivar(device_t dev, device_t child, int index,
 		    uintptr_t *result);
 static int	acpi_cpu_shutdown(device_t dev);
@@ -468,7 +468,8 @@ acpi_cpu_get_rlist(device_t dev, device_t child)
 }
 
 static device_t
-acpi_cpu_add_child(device_t dev, int order, const char *name, int unit)
+acpi_cpu_add_child(device_t bus, device_t parent, int order,
+		   const char *name, int unit)
 {
     struct acpi_cpu_device *ad;
     device_t child;
@@ -477,8 +478,8 @@ acpi_cpu_add_child(device_t dev, int order, const char *name, int unit)
 	return (NULL);
 
     resource_list_init(&ad->ad_rl);
-    
-    child = device_add_child_ordered(dev, order, name, unit);
+
+    child = device_add_child_ordered(parent, order, name, unit);
     if (child != NULL)
 	device_set_ivars(child, ad);
     else

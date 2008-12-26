@@ -46,12 +46,8 @@
 .Sh LIBRARY
 .Lb libkvm
 .Sh SYNOPSIS
-.In kvm.h
 .In sys/types.h
-.Fd #define _KERNEL
-.In sys/file.h
-.Fd #undef _KERNEL
-.\" .Fa kvm_t *kd
+.In kvm.h
 .Ft char *
 .Fn kvm_getfiles "kvm_t *kd" "int op" "int arg" "int *cnt"
 .Sh DESCRIPTION

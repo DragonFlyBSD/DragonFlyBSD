@@ -36,7 +36,7 @@
 #include <sys/taskqueue.h>
 
 /*
- * JMC250 supports upto 1024 descriptors and the number of
+ * JMC250 supports upto JME_NDESC_MAX descriptors and the number of
  * descriptors should be multiple of JME_NDESC_ALIGN.
  */
 #define	JME_TX_DESC_CNT_DEF	384
@@ -111,44 +111,54 @@ struct jme_rxdesc {
 	struct jme_desc		*rx_desc;
 };
 
-struct jme_chain_data{
-	bus_dma_tag_t		jme_ring_tag;
-	bus_dma_tag_t		jme_buffer_tag;
+struct jme_chain_data {
+	/*
+	 * Top level tags
+	 */
+	bus_dma_tag_t		jme_ring_tag;	/* parent ring tag */
+	bus_dma_tag_t		jme_buffer_tag;	/* parent mbuf/ssb tag */
+
+	/*
+	 * Shadow status block
+	 */
+	struct jme_ssb		*jme_ssb_block;
+	bus_addr_t		jme_ssb_block_paddr;
 	bus_dma_tag_t		jme_ssb_tag;
 	bus_dmamap_t		jme_ssb_map;
-	bus_dma_tag_t		jme_tx_tag;
+
+	/*
+	 * TX ring/descs
+	 */
+	bus_dma_tag_t		jme_tx_tag;	/* TX mbuf tag */
 	struct jme_txdesc	*jme_txdesc;
-	bus_dma_tag_t		jme_rx_tag;
-	struct jme_rxdesc	*jme_rxdesc;
+
+	struct jme_desc		*jme_tx_ring;
+	bus_addr_t		jme_tx_ring_paddr;
 	bus_dma_tag_t		jme_tx_ring_tag;
 	bus_dmamap_t		jme_tx_ring_map;
-	bus_dma_tag_t		jme_rx_ring_tag;
-	bus_dmamap_t		jme_rx_ring_map;
-	bus_dmamap_t		jme_rx_sparemap;
 
 	int			jme_tx_prod;
 	int			jme_tx_cons;
 	int			jme_tx_cnt;
 
+	/*
+	 * RX ring/descs
+	 */
+	bus_dma_tag_t		jme_rx_tag;	/* RX mbuf tag */
+	bus_dmamap_t		jme_rx_sparemap;
+	struct jme_rxdesc	*jme_rxdesc;
+
+	struct jme_desc		*jme_rx_ring;
+	bus_addr_t		jme_rx_ring_paddr;
+	bus_dma_tag_t		jme_rx_ring_tag;
+	bus_dmamap_t		jme_rx_ring_map;
+
 	int			jme_rx_cons;
+
 	int			jme_rxlen;
 	struct mbuf		*jme_rxhead;
 	struct mbuf		*jme_rxtail;
 };
-
-struct jme_ring_data {
-	struct jme_desc		*jme_tx_ring;
-	bus_addr_t		jme_tx_ring_paddr;
-	struct jme_desc		*jme_rx_ring;
-	bus_addr_t		jme_rx_ring_paddr;
-	struct jme_ssb		*jme_ssb_block;
-	bus_addr_t		jme_ssb_block_paddr;
-};
-
-#define JME_TX_RING_ADDR(sc, i)	\
-    ((sc)->jme_rdata.jme_tx_ring_paddr + sizeof(struct jme_desc) * (i))
-#define JME_RX_RING_ADDR(sc, i)	\
-    ((sc)->jme_rdata.jme_rx_ring_paddr + sizeof(struct jme_desc) * (i))
 
 #define JME_TX_RING_SIZE(sc)	\
     (sizeof(struct jme_desc) * (sc)->jme_tx_desc_cnt)
@@ -205,7 +215,6 @@ struct jme_softc {
 
 	struct callout		jme_tick_ch;
 	struct jme_chain_data	jme_cdata;
-	struct jme_ring_data	jme_rdata;
 	int			jme_if_flags;
 	uint32_t		jme_txcsr;
 	uint32_t		jme_rxcsr;

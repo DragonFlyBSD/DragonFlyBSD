@@ -2313,7 +2313,7 @@ static void
 wlhdwsleaze(u_short *countp, u_char **mb_pp, struct mbuf **tm_pp)
 {
     struct mbuf	*tm_p = *tm_pp;
-    u_char		*mb_p = *mb_pp;
+    u_char		*mb_p;
     u_short		count = 0;
     u_char		*cp;
     int		len;

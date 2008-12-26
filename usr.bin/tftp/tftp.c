@@ -90,7 +90,7 @@ void
 xmitfile(int fd, char *name, char *mode)
 {
 	struct tftphdr *ap;	   	/* data and ack packets */
-	struct tftphdr *r_init(), *dp;
+	struct tftphdr *dp;
 	int n;
 	volatile unsigned short block;
 	volatile int size, convert;
@@ -205,7 +205,7 @@ void
 recvfile(int fd, char *name, char *mode)
 {
 	struct tftphdr *ap;
-	struct tftphdr *dp, *w_init();
+	struct tftphdr *dp;
 	int n;
 	volatile unsigned short block;
 	volatile int size, firsttrip;
@@ -338,7 +338,7 @@ makerequest(int request, const char *name, struct tftphdr *tp, const char *mode)
 
 struct errmsg {
 	int	e_code;
-	char	*e_msg;
+	const char *e_msg;
 } errmsgs[] = {
 	{ EUNDEF,	"Undefined error code" },
 	{ ENOTFOUND,	"File not found" },
@@ -363,7 +363,6 @@ nak(int error, struct sockaddr *peer)
 	struct errmsg *pe;
 	struct tftphdr *tp;
 	int length;
-	char *strerror();
 
 	tp = (struct tftphdr *)ackbuf;
 	tp->th_opcode = htons((u_short)ERROR);
@@ -386,7 +385,7 @@ nak(int error, struct sockaddr *peer)
 static void
 tpacket(const char *s, struct tftphdr *tp, int n)
 {
-	static char *opcodes[] =
+	static const char *opcodes[] =
 	   { "#0", "RRQ", "WRQ", "DATA", "ACK", "ERROR" };
 	char *cp, *file;
 	u_short op = ntohs(tp->th_opcode);
@@ -444,14 +443,14 @@ printstats(const char *direction, unsigned long amount)
 	delta = ((tstop.tv_sec*10.)+(tstop.tv_usec/100000)) -
 		((tstart.tv_sec*10.)+(tstart.tv_usec/100000));
 	delta = delta/10.;      /* back to seconds */
-	printf("%s %d bytes in %.1f seconds", direction, amount, delta);
+	printf("%s %lu bytes in %.1f seconds", direction, amount, delta);
 	if (verbose)
 		printf(" [%.0f bits/sec]", (amount*8.)/delta);
 	putchar('\n');
 }
 
 static void
-timer(int sig)
+timer(int sig __unused)
 {
 
 	timeout += rexmtval;

@@ -53,7 +53,7 @@ def directory_save(filename, patch, suffix = None, root = None, forceful = False
 	f.write(patch)
 	f.close()
 
-def splitpatch(source, output = directory_save, quiet = False, tag = False):
+def splitpatch(source, output = directory_save, quiet = False):
 	"""
 	Split the patch in source into independent pieces
 	and call output on the result with the guessed filename
@@ -63,8 +63,6 @@ def splitpatch(source, output = directory_save, quiet = False, tag = False):
 	"""
 	diff_line = { " ": True, "+": True, "-": True, "@": True, "!": True, '*': True }
 	buf = []
-	if tag:
-		buf.append('$''DragonFly$\n')
 	filename = None
 	for line in source:
 		if not filename:
@@ -88,8 +86,6 @@ def splitpatch(source, output = directory_save, quiet = False, tag = False):
 
 			filename = None
 			buf = []
-			if tag:
-				buf.append('$''DragonFly$\n')
 
 	if filename:
 		output(filename, "".join(buf))
@@ -102,7 +98,6 @@ def main():
 	parser.add_option("-f", "--force", action="store_true", dest="force", help="overwrite existing patches")
 	parser.add_option("-s", "--suffix", type="string", dest="suffix", help="use SUFFIX instead of .patch for the created patches")
 	parser.add_option("-d", "--directory", type="string", dest="directory", help="create patches in DIRECTORY")
-	parser.add_option("-t", "--tag", action="store_true", dest="tag", help="add DragonFly CVS tag")
 	(options, args) = parser.parse_args()
 	if len(args) > 1:
 		parser.error("incorrect number of arguments")
@@ -111,7 +106,7 @@ def main():
 	else:
 		source = sys.stdin
 	splitpatch(source, lambda filename, patch: directory_save(filename, patch, forceful = options.force,
-				suffix = options.suffix, root = options.directory), quiet = options.quiet, tag = options.tag)
+				suffix = options.suffix, root = options.directory), quiet = options.quiet)
 
 if __name__ == '__main__':
 	main()

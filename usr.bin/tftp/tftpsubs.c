@@ -76,7 +76,7 @@ static int current;		/* index of buffer in use */
 int newline = 0;		/* fillbuf: in middle of newline expansion */
 int prevchar = -1;		/* putbuf: previous char (cr check) */
 
-static struct tftphdr *rw_init();
+static struct tftphdr *rw_init(int);
 
 struct tftphdr *w_init(void) { return rw_init(0); }         /* write-behind */
 struct tftphdr *r_init(void) { return rw_init(1); }         /* read-ahead */
