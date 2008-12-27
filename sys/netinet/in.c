@@ -75,6 +75,9 @@ static void	in_control_dispatch(struct netmsg *);
 static int	in_control_internal(u_long, caddr_t, struct ifnet *,
 		    struct thread *);
 
+static int	in_addprefix(struct in_ifaddr *, int);
+static void	in_scrubprefix(struct in_ifaddr *);
+
 static int subnetsarelocal = 0;
 SYSCTL_INT(_net_inet_ip, OID_AUTO, subnets_are_local, CTLFLAG_RW,
 	&subnetsarelocal, 0, "");
@@ -930,16 +933,9 @@ in_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
  * Delete any existing route for an interface.
  */
 void
-in_ifscrub(struct ifnet *ifp, struct in_ifaddr *ia)
+in_ifscrub(struct ifnet *ifp __unused, struct in_ifaddr *ia)
 {
-
-	if ((ia->ia_flags & IFA_ROUTE) == 0)
-		return;
-	if (ifp->if_flags & (IFF_LOOPBACK|IFF_POINTOPOINT))
-		rtinit(&ia->ia_ifa, RTM_DELETE, RTF_HOST);
-	else
-		rtinit(&ia->ia_ifa, RTM_DELETE, 0);
-	ia->ia_flags &= ~IFA_ROUTE;
+	in_scrubprefix(ia);
 }
 
 /*
@@ -1024,7 +1020,7 @@ in_ifinit(struct ifnet *ifp, struct in_ifaddr *ia,
 		ia->ia_netbroadcast.s_addr =
 			htonl(ia->ia_net | ~ ia->ia_netmask);
 	} else if (ifp->if_flags & IFF_LOOPBACK) {
-		ia->ia_ifa.ifa_dstaddr = ia->ia_ifa.ifa_addr;
+		ia->ia_dstaddr = ia->ia_addr;
 		flags |= RTF_HOST;
 	} else if (ifp->if_flags & IFF_POINTOPOINT) {
 		if (ia->ia_dstaddr.sin_family != AF_INET)
@@ -1044,13 +1040,9 @@ in_ifinit(struct ifnet *ifp, struct in_ifaddr *ia,
 	if (ia->ia_addr.sin_addr.s_addr != INADDR_ANY ||
 	    ia->ia_netmask != IN_CLASSA_NET ||
 	    ia->ia_dstaddr.sin_addr.s_addr != htonl(IN_CLASSA_HOST)) {
-		if ((error = rtinit(&ia->ia_ifa, RTM_ADD, flags)) != 0) {
-			if (error != EEXIST ||
-			    !(ifac->ifa_prflags & IA_PRF_RTEXISTOK))
-				goto fail;
-		} else {
-			ia->ia_flags |= IFA_ROUTE;
-		}
+		error = in_addprefix(ia, flags);
+		if (error)
+			goto fail;
 	}
 
 	/*
@@ -1074,6 +1066,158 @@ fail:
 	return (error);
 }
 
+#define rtinitflags(x) \
+	(((x)->ia_ifp->if_flags & (IFF_LOOPBACK | IFF_POINTOPOINT)) \
+	 ? RTF_HOST : 0)
+
+/*
+ * Add a route to prefix ("connected route" in cisco terminology).
+ * Do nothing, if there are some interface addresses with the same
+ * prefix already.  This function assumes that the 'target' parent
+ * interface is UP.
+ */
+static int
+in_addprefix(struct in_ifaddr *target, int flags)
+{
+	struct in_ifaddr_container *iac;
+	struct in_addr prefix, mask;
+	int error;
+
+	mask = target->ia_sockmask.sin_addr;
+	if (flags & RTF_HOST) {
+		prefix = target->ia_dstaddr.sin_addr;
+	} else {
+		prefix = target->ia_addr.sin_addr;
+		prefix.s_addr &= mask.s_addr;
+	}
+
+	TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
+		struct in_ifaddr *ia = iac->ia;
+		struct in_addr p;
+
+		/* Don't test against self */
+		if (ia == target)
+			continue;
+
+		/* The tested address does not own a route entry */
+		if ((ia->ia_flags & IFA_ROUTE) == 0)
+			continue;
+
+		/* Prefix test */
+		if (rtinitflags(ia)) {
+			p = ia->ia_dstaddr.sin_addr;
+		} else {
+			p = ia->ia_addr.sin_addr;
+			p.s_addr &= ia->ia_sockmask.sin_addr.s_addr;
+		}
+		if (prefix.s_addr != p.s_addr)
+			continue;
+
+		/*
+		 * If the to-be-added address and the curretly being
+		 * tested address are not host addresses, we need to
+		 * take subnetmask into consideration.
+		 */
+		if (!(flags & RTF_HOST) && !rtinitflags(ia) &&
+		    mask.s_addr != ia->ia_sockmask.sin_addr.s_addr)
+			continue;
+
+		/*
+		 * If we got a matching prefix route inserted by other
+		 * interface address, we don't need to bother.
+		 */
+		return 0;
+	}
+
+	/*
+	 * No one seem to have prefix route; insert it.
+	 */
+	error = rtinit(&target->ia_ifa, RTM_ADD, flags);
+	if (!error)
+		target->ia_flags |= IFA_ROUTE;
+	return error;
+}
+
+/*
+ * Remove a route to prefix ("connected route" in cisco terminology).
+ * Re-installs the route by using another interface address, if there's
+ * one with the same prefix (otherwise we lose the route mistakenly).
+ */
+static void
+in_scrubprefix(struct in_ifaddr *target)
+{
+	struct in_ifaddr_container *iac;
+	struct in_addr prefix, mask;
+	int error;
+
+	if ((target->ia_flags & IFA_ROUTE) == 0)
+		return;
+
+	mask = target->ia_sockmask.sin_addr;
+	if (rtinitflags(target)) {
+		prefix = target->ia_dstaddr.sin_addr;
+	} else {
+		prefix = target->ia_addr.sin_addr;
+		prefix.s_addr &= mask.s_addr;
+	}
+
+	TAILQ_FOREACH(iac, &in_ifaddrheads[mycpuid], ia_link) {
+		struct in_ifaddr *ia = iac->ia;
+		struct in_addr p;
+
+		/* Don't test against self */
+		if (ia == target)
+			continue;
+
+		/* The tested address already owns a route entry */
+		if (ia->ia_flags & IFA_ROUTE)
+			continue;
+
+		/*
+		 * The prefix route of the tested address should
+		 * never be installed if its parent interface is
+		 * not UP yet.
+		 */
+		if ((ia->ia_ifp->if_flags & IFF_UP) == 0)
+			continue;
+
+		/* Prefix test */
+		if (rtinitflags(ia)) {
+			p = ia->ia_dstaddr.sin_addr;
+		} else {
+			p = ia->ia_addr.sin_addr;
+			p.s_addr &= ia->ia_sockmask.sin_addr.s_addr;
+		}
+		if (prefix.s_addr != p.s_addr)
+			continue;
+
+		/*
+		 * We don't need to test subnetmask here, as what we do
+		 * in in_addprefix(), since if the the tested address's
+		 * parent interface is UP, the tested address should own
+		 * a prefix route entry and we would never reach here.
+		 */
+
+		/*
+		 * If we got a matching prefix route, move IFA_ROUTE to him
+		 */
+		rtinit(&target->ia_ifa, RTM_DELETE, rtinitflags(target));
+		target->ia_flags &= ~IFA_ROUTE;
+
+		error = rtinit(&ia->ia_ifa, RTM_ADD, rtinitflags(ia) | RTF_UP);
+		if (!error)
+			ia->ia_flags |= IFA_ROUTE;
+		return;
+	}
+
+	/*
+	 * No candidates for this prefix route; just remove it.
+	 */
+	rtinit(&target->ia_ifa, RTM_DELETE, rtinitflags(target));
+	target->ia_flags &= ~IFA_ROUTE;
+}
+
+#undef rtinitflags
 
 /*
  * Return 1 if the address might be a local broadcast address.
