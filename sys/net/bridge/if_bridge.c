@@ -1346,7 +1346,7 @@ bridge_ioctl_gifs(struct bridge_softc *sc, void *arg)
 	len = min(bifc->ifbic_len, sizeof(*breq) * count);
 	KKASSERT(len >= sizeof(*breq));
 
-	breq = kmalloc(len, M_TEMP, M_INTWAIT | M_NULLOK | M_ZERO);
+	breq = kmalloc(len, M_TEMP, M_WAITOK | M_NULLOK | M_ZERO);
 	if (breq == NULL) {
 		bifc->ifbic_len = 0;
 		return ENOMEM;
@@ -1414,7 +1414,7 @@ bridge_ioctl_rts(struct bridge_softc *sc, void *arg)
 	len = min(bac->ifbac_len, sizeof(*bareq) * count);
 	KKASSERT(len >= sizeof(*bareq));
 
-	bareq = kmalloc(len, M_TEMP, M_INTWAIT | M_NULLOK | M_ZERO);
+	bareq = kmalloc(len, M_TEMP, M_WAITOK | M_NULLOK | M_ZERO);
 	if (bareq == NULL) {
 		bac->ifbac_len = 0;
 		return ENOMEM;
