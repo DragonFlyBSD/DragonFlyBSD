@@ -214,7 +214,7 @@ doreti_iret:
 	ALIGN_TEXT
 	.globl	doreti_iret_fault
 doreti_iret_fault:
-	PUSH_FRAME
+	PUSH_FRAME_NOSWAP
 	testq	$PSL_I,TF_RFLAGS(%rsp)
 	jz	2f
 	sti

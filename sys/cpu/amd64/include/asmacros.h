@@ -142,12 +142,8 @@
 /*
  * Macros to create and destroy a trap frame.
  */
-#define PUSH_FRAME							\
-	subq	$TF_RIP,%rsp ;	/* extend hardware frame to trapframe */ \
-	testb	$SEL_RPL_MASK,TF_CS(%rsp) ; /* come from kernel? */	\
-	jz	1f ;		/* Yes, dont swapgs again */		\
-	swapgs ;							\
-1:	movq	%rdi,TF_RDI(%rsp) ;					\
+#define PUSH_FRAME_REGS							\
+	movq	%rdi,TF_RDI(%rsp) ;					\
 	movq	%rsi,TF_RSI(%rsp) ;					\
 	movq	%rdx,TF_RDX(%rsp) ;					\
 	movq	%rcx,TF_RCX(%rsp) ;					\
@@ -162,6 +158,18 @@
 	movq	%r13,TF_R13(%rsp) ;					\
 	movq	%r14,TF_R14(%rsp) ;					\
 	movq	%r15,TF_R15(%rsp)
+
+#define PUSH_FRAME							\
+	subq	$TF_RIP,%rsp ;	/* extend hardware frame to trapframe */ \
+	testb	$SEL_RPL_MASK,TF_CS(%rsp) ; /* come from kernel? */	\
+	jz	1f ;		/* Yes, dont swapgs again */		\
+	swapgs ;							\
+1:									\
+	PUSH_FRAME_REGS							\
+
+#define PUSH_FRAME_NOSWAP						\
+	subq	$TF_RIP,%rsp ;	/* extend hardware frame to trapframe */ \
+	PUSH_FRAME_REGS							\
 
 #define POP_FRAME							\
 	movq	TF_RDI(%rsp),%rdi ;					\

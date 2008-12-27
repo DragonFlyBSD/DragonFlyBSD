@@ -296,53 +296,32 @@ userexit(struct lwp *lp)
 	struct thread *td = lp->lwp_thread;
 	globaldata_t gd = td->td_gd;
 
-#if 0
 	/*
-	 * If a user reschedule is requested force a new process to be
-	 * chosen by releasing the current process.  Our process will only
-	 * be chosen again if it has a considerably better priority.
+	 * Handle stop requests at kernel priority.  Any requests queued
+	 * after this loop will generate another AST.
 	 */
-	if (user_resched_wanted())
-		lp->lwp_proc->p_usched->release_curproc(lp);
-#endif
-
-	/*
-	 * Handle a LWKT reschedule request first.  Since our passive release
-	 * is still in place we do not have to do anything special.
-	 */
-	while (lwkt_resched_wanted()) {
-		lwkt_switch();
-
-		/*
-		 * The thread that preempted us may have stopped our process.
-		 */
-		while (lp->lwp_proc->p_stat == SSTOP) {
-			get_mplock();
-			tstop();
-			rel_mplock();
-		}
+	while (lp->lwp_proc->p_stat == SSTOP) {
+		get_mplock();
+		tstop();
+		rel_mplock();
 	}
-
-	/*
-	 * Acquire the current process designation for this user scheduler
-	 * on this cpu.  This will also handle any user-reschedule requests.
-	 */
-	lp->lwp_proc->p_usched->acquire_curproc(lp);
-	/* We may have switched cpus on acquisition */
-	gd = td->td_gd;
 
 	/*
 	 * Reduce our priority in preparation for a return to userland.  If
 	 * our passive release function was still in place, our priority was
 	 * never raised and does not need to be reduced.
-	 *
-	 * Note that at this point there may be other LWKT thread at
-	 * TDPRI_KERN_USER (aka higher then our currenet priority).  We
-	 * do NOT want to run these threads yet.
 	 */
 	if (td->td_release == NULL)
 		lwkt_setpri_self(TDPRI_USER_NORM);
 	td->td_release = NULL;
+
+	/*
+	 * Become the current user scheduled process if we aren't already,
+	 * and deal with reschedule requests and other factors.
+	 */
+	lp->lwp_proc->p_usched->acquire_curproc(lp);
+	/* WARNING: we may have migrated cpu's */
+	/* gd = td->td_gd; */
 }
 
 #if !defined(KTR_KERNENTRY)
@@ -655,6 +634,10 @@ trap(struct trapframe *frame)
 				if (td->td_pcb->pcb_onfault) {
 					frame->tf_rip = (register_t)
 						td->td_pcb->pcb_onfault;
+					goto out2;
+				}
+				if (frame->tf_rip == (long)doreti_iret) {
+					frame->tf_rip = (long)doreti_iret_fault;
 					goto out2;
 				}
 			}
