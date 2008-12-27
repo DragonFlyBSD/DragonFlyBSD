@@ -65,7 +65,7 @@
 #define KTR_AUTO_ENABLE	-1
 #endif
 
-#define	KTR_BUFSIZE	48
+#define	KTR_BUFSIZE	192
 #define KTR_VERSION	3
 
 #ifndef LOCORE
@@ -88,6 +88,7 @@ struct ktr_entry {
 	int32_t	ktr_data[KTR_BUFSIZE / sizeof(int32_t)];
 };
 
+void	ktr_write_str_entry(struct ktr_info *info, const char *file, int line, const char *format, ...);
 void	ktr_log(struct ktr_info *info, const char *file, int line, ...);
 void	ktr_log_ptr(struct ktr_info *info, const char *file, int line, const void *ptr);
 void    cpu_ktr_caller(struct ktr_entry *ktr);
@@ -134,6 +135,11 @@ SYSCTL_DECL(_debug_ktr);
 		format,							\
 		datasize }
 
+#define KTR_LOG_STR(name, format, args...)						\
+	    if (ktr_ ## name ## _enable &&				\
+	      (ktr_ ## name ## _mask & *ktr_info_ ## name .kf_master_enable)) \
+	    ktr_write_str_entry(&ktr_info_ ## name, __FILE__, __LINE__, format, ##args)
+
 #define KTR_LOG(name, args...)						\
 	    if (ktr_ ## name ## _enable &&				\
 	      (ktr_ ## name ## _mask & *ktr_info_ ## name .kf_master_enable)) \
@@ -158,6 +164,7 @@ SYSCTL_DECL(_debug_ktr);
 
 #define KTR_LOG(info, args...)
 #define KTR_LOG_PTR(info, ptr)
+#define KTR_LOG_STR(info, format, args...)
 
 #endif
 

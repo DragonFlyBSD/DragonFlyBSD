@@ -153,29 +153,28 @@ ENTRY(cpu_heavy_switch)
 	pushq	%rax
 	movq	%rsp,TD_SP(%rbx)
 
-#if JG
 	/*
 	 * Save debug regs if necessary
 	 */
-	movb    PCB_FLAGS(%edx),%al
-	andb    $PCB_DBREGS,%al
+	movq    PCB_FLAGS(%rdx),%rax
+	andq    $PCB_DBREGS,%rax
 	jz      1f                              /* no, skip over */
-	movl    %dr7,%eax                       /* yes, do the save */
-	movl    %eax,PCB_DR7(%edx)
-	andl    $0x0000fc00, %eax               /* disable all watchpoints */
-	movl    %eax,%dr7
-	movl    %dr6,%eax
-	movl    %eax,PCB_DR6(%edx)
-	movl    %dr3,%eax
-	movl    %eax,PCB_DR3(%edx)
-	movl    %dr2,%eax
-	movl    %eax,PCB_DR2(%edx)
-	movl    %dr1,%eax
-	movl    %eax,PCB_DR1(%edx)
-	movl    %dr0,%eax
-	movl    %eax,PCB_DR0(%edx)
+	movq    %dr7,%rax                       /* yes, do the save */
+	movq    %rax,PCB_DR7(%rdx)
+	/* JG correct value? */
+	andq    $0x0000fc00, %rax               /* disable all watchpoints */
+	movq    %rax,%dr7
+	movq    %dr6,%rax
+	movq    %rax,PCB_DR6(%rdx)
+	movq    %dr3,%rax
+	movq    %rax,PCB_DR3(%rdx)
+	movq    %dr2,%rax
+	movq    %rax,PCB_DR2(%rdx)
+	movq    %dr1,%rax
+	movq    %rax,PCB_DR1(%rdx)
+	movq    %dr0,%rax
+	movq    %rax,PCB_DR0(%rdx)
 1:
-#endif
  
 #if JG
 #if NNPX > 0
@@ -364,10 +363,11 @@ ENTRY(cpu_heavy_restore)
 	 * usermode.  The PCB is at the top of the stack but we need another
 	 * 16 bytes to take vm86 into account.
 	 */
-#if JG
-	leal	-16(%edx),%ebx
-	movl	%ebx, PCPU(common_tss) + TSS_ESP0
+	leaq	-16(%rdx),%rbx
+	movq	%rbx, PCPU(common_tss) + TSS_RSP0
+	movq	%rbx, PCPU(rsp0)
 
+#if JG
 	cmpl	$0,PCPU(private_tss)	/* don't have to reload if      */
 	je	3f			/* already using the common TSS */
 
@@ -465,33 +465,34 @@ ENTRY(cpu_heavy_restore)
 	popl	%edx
 #endif
 
-#if JG
 	/*
 	 * Restore the DEBUG register state if necessary.
 	 */
-	movb    PCB_FLAGS(%edx),%al
-	andb    $PCB_DBREGS,%al
+	movq    PCB_FLAGS(%rdx),%rax
+	andq    $PCB_DBREGS,%rax
 	jz      1f                              /* no, skip over */
-	movl    PCB_DR6(%edx),%eax              /* yes, do the restore */
-	movl    %eax,%dr6
-	movl    PCB_DR3(%edx),%eax
-	movl    %eax,%dr3
-	movl    PCB_DR2(%edx),%eax
-	movl    %eax,%dr2
-	movl    PCB_DR1(%edx),%eax
-	movl    %eax,%dr1
-	movl    PCB_DR0(%edx),%eax
-	movl    %eax,%dr0
-	movl	%dr7,%eax                /* load dr7 so as not to disturb */
-	andl    $0x0000fc00,%eax         /*   reserved bits               */
-	pushl   %ebx
-	movl    PCB_DR7(%edx),%ebx
-	andl	$~0x0000fc00,%ebx
-	orl     %ebx,%eax
-	popl	%ebx
-	movl    %eax,%dr7
+	movq    PCB_DR6(%rdx),%rax              /* yes, do the restore */
+	movq    %rax,%dr6
+	movq    PCB_DR3(%rdx),%rax
+	movq    %rax,%dr3
+	movq    PCB_DR2(%rdx),%rax
+	movq    %rax,%dr2
+	movq    PCB_DR1(%rdx),%rax
+	movq    %rax,%dr1
+	movq    PCB_DR0(%rdx),%rax
+	movq    %rax,%dr0
+	movq	%dr7,%rax                /* load dr7 so as not to disturb */
+	/* JG correct value? */
+	andq    $0x0000fc00,%rax         /*   reserved bits               */
+	/* JG we've got more registers on amd64 */
+	pushq   %rbx
+	movq    PCB_DR7(%rdx),%rbx
+	/* JG correct value? */
+	andq	$~0x0000fc00,%rbx
+	orq     %rbx,%rax
+	popq	%rbx
+	movq    %rax,%dr7
 1:
-#endif
 
 	CHECKNZ((%rsp), %r9)
 	ret

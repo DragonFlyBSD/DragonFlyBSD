@@ -84,7 +84,7 @@
 #include <machine/specialreg.h>
 
 #include <machine_base/icu/icu.h>
-#include <bus/isa/i386/isa.h>
+#include <bus/isa/isa.h>
 #include <bus/isa/rtc.h>
 #include <machine_base/isa/timerreg.h>
 

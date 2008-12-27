@@ -35,7 +35,9 @@
 #include "use_splash.h"
 #include "opt_syscons.h"
 #include "opt_ddb.h"
+#ifdef __i386__
 #include "use_apm.h"
+#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -55,7 +57,9 @@
 #include <machine/console.h>
 #include <machine/psl.h>
 #include <machine/pc/display.h>
+#ifdef __i386__
 #include <machine/apm_bios.h>
+#endif
 #include <machine/frame.h>
 
 #include <dev/misc/kbd/kbdreg.h>
@@ -1007,11 +1011,19 @@ scioctl(struct dev_ioctl_args *ap)
 	    return error;
 	if (securelevel > 0)
 	    return EPERM;
+#if defined(__i386__)
 	curthread->td_lwp->lwp_md.md_regs->tf_eflags |= PSL_IOPL;
+#elif defined(__amd64__)
+	curthread->td_lwp->lwp_md.md_regs->tf_rflags |= PSL_IOPL;
+#endif
 	return 0;
 
     case KDDISABIO:     	/* disallow io operations (default) */
+#if defined(__i386__)
 	curthread->td_lwp->lwp_md.md_regs->tf_eflags &= ~PSL_IOPL;
+#elif defined(__amd64__)
+	curthread->td_lwp->lwp_md.md_regs->tf_rflags &= ~PSL_IOPL;
+#endif
 	return 0;
 
     case KDSKBSTATE:    	/* set keyboard state (locks) */

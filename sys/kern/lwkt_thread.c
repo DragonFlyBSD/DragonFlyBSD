@@ -95,6 +95,27 @@ static struct objcache *thread_cache;
 
 volatile cpumask_t mp_lock_contention_mask;
 
+extern void cpu_heavy_restore(void);
+extern void cpu_lwkt_restore(void);
+extern void cpu_kthread_restore(void);
+extern void cpu_idle_restore(void);
+
+int
+jg_tos_ok(struct thread *td)
+{
+	if (td == NULL) {
+		return 1;
+	}
+	KKASSERT(td->td_sp != NULL);
+	unsigned long tos = ((unsigned long *)td->td_sp)[0];
+	int tos_ok = 0;
+	if ((tos == cpu_heavy_restore) || (tos == cpu_lwkt_restore)
+		|| (tos == cpu_kthread_restore) || (tos == cpu_idle_restore)) {
+		tos_ok = 1;
+	}
+	return tos_ok;
+}
+
 /*
  * We can make all thread ports use the spin backend instead of the thread
  * backend.  This should only be set to debug the spin backend.
@@ -745,6 +766,7 @@ using_idle_thread:
 #endif
     if (td != ntd) {
 	++switch_count;
+	KKASSERT(jg_tos_ok(ntd));
 	td->td_switch(ntd);
     }
     /* NOTE: current cpu may have changed after switch */

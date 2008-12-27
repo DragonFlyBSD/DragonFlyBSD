@@ -63,7 +63,7 @@ options 	DDB
 options 	DDB_TRACE
 options 	INVARIANTS
 
-#device		isa
+device		isa
 #device		eisa
 #device		pci
 
@@ -112,10 +112,10 @@ device		npx0	at nexus? port IO_NPX irq 13
 # device		apm0	at nexus? disable flags 0x20 # Advanced Power Management
 
 # Serial (COM) ports
-#device		sio0	at isa? port IO_COM1 flags 0x10 irq 4
-#device		sio1	at isa? port IO_COM2 irq 3
-#device		sio2	at isa? disable port IO_COM3 irq 5
-#device		sio3	at isa? disable port IO_COM4 irq 9
+device		sio0	at isa? port IO_COM1 flags 0x10 irq 4
+device		sio1	at isa? port IO_COM2 irq 3
+device		sio2	at isa? disable port IO_COM3 irq 5
+device		sio3	at isa? disable port IO_COM4 irq 9
 
 # Parallel port
 #device		ppc0	at isa? irq 7

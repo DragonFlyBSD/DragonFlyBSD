@@ -454,9 +454,9 @@ gdb_handle_exception (db_regs_t *raw_regs, int type, int code)
   char * ptr;
   struct amd64regs {
     unsigned long rax;
+    unsigned long rbx;
     unsigned long rcx;
     unsigned long rdx;
-    unsigned long rbx;
     unsigned long rsi;
     unsigned long rdi;
     unsigned long rbp;

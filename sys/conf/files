@@ -1538,8 +1538,6 @@ emulation/43bsd/43bsd_exit.c		optional compat_43
 emulation/43bsd/43bsd_resource.c	optional compat_43
 emulation/43bsd/43bsd_hostinfo.c	optional compat_43
 emulation/43bsd/43bsd_vm.c		optional compat_43
-emulation/dragonfly12/dfbsd12_getdirentries.c	nonoptional compat_df12
-emulation/dragonfly12/dfbsd12_stat.c	nonoptional compat_df12
 
 # OS ACPI MI code
 ${OSACPI_MI_DIR}/acpi.c			optional acpi

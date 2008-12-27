@@ -2119,7 +2119,7 @@ pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 	if (device_get_parent(child) == dev) {
 		switch (type) {
 		case SYS_RES_IRQ:
-#ifdef __i386__
+#if defined(__i386__) || defined(__amd64__)
 		/*
 		 * If device doesn't have an interrupt routed, and is
 		 * deserving of an interrupt, try to assign it one.

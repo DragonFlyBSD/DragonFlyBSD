@@ -67,7 +67,7 @@
 #include <sys/machintr.h>
 
 #include <machine/smp.h>
-#include <bus/isa/i386/isa.h>
+#include <bus/isa/isa.h>
 #include <machine_base/icu/icu.h>
 
 #if NISA > 0

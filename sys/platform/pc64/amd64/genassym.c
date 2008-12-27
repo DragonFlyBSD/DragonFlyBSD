@@ -117,6 +117,15 @@ ASSYM(PCB_RBP, offsetof(struct pcb, pcb_rbp));
 ASSYM(PCB_RSP, offsetof(struct pcb, pcb_rsp));
 ASSYM(PCB_RBX, offsetof(struct pcb, pcb_rbx));
 ASSYM(PCB_RIP, offsetof(struct pcb, pcb_rip));
+ASSYM(TSS_RSP0, offsetof(struct amd64tss, tss_rsp0));
+
+ASSYM(PCB_DR0, offsetof(struct pcb, pcb_dr0));
+ASSYM(PCB_DR1, offsetof(struct pcb, pcb_dr1));
+ASSYM(PCB_DR2, offsetof(struct pcb, pcb_dr2));
+ASSYM(PCB_DR3, offsetof(struct pcb, pcb_dr3));
+ASSYM(PCB_DR6, offsetof(struct pcb, pcb_dr6));
+ASSYM(PCB_DR7, offsetof(struct pcb, pcb_dr7));
+ASSYM(PCB_DBREGS, PCB_DBREGS);
 ASSYM(PCB_EXT, offsetof(struct pcb, pcb_ext));
 ASSYM(PCB_FULLCTX, PCB_FULLCTX);
 ASSYM(PCB_FLAGS, offsetof(struct pcb, pcb_flags));

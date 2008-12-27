@@ -567,6 +567,7 @@ static void PCHAR_(int);
 int
 kprintf0(const char *fmt, ...)
 {
+	return 0;
         __va_list ap;
         int retval;
  

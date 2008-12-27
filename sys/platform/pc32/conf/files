@@ -35,6 +35,9 @@ ukbdmap.h			optional	ukbd_dflt_keymap	\
 	no-obj no-implicit-rule before-depend				\
 	clean		"ukbdmap.h"
 #
+emulation/dragonfly12/dfbsd12_getdirentries.c	nonoptional compat_df12
+emulation/dragonfly12/dfbsd12_stat.c	nonoptional compat_df12
+#
 hal.o				optional	ath_hal			\
 	dependency	"$S/contrib/dev/ath/public/i386-elf.hal.o.uu"	\
 	compile-with	"uudecode < $S/contrib/dev/ath/public/i386-elf.hal.o.uu" \

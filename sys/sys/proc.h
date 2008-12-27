@@ -61,7 +61,7 @@
 #endif
 #include <sys/ucred.h>
 #include <sys/event.h>			/* For struct klist */
-#include <sys/sysent.h>			/* For struct klist */
+#include <sys/sysent.h>			/* For struct sysentvec */
 #include <sys/thread.h>
 #include <sys/varsym.h>
 #include <sys/upcall.h>

@@ -431,6 +431,57 @@ ktr_resync_callback(void *dummy __unused)
 /*
  * KTR_WRITE_ENTRY - Primary entry point for kernel trace logging
  */
+
+void
+ktr_write_str_entry(struct ktr_info *info, const char *file, int line, const char *jg_format, ...)
+{
+	__va_list va;
+	struct ktr_entry *entry;
+	int cpu;
+	__va_start(va, jg_format);
+
+	cpu = mycpu->gd_cpuid;
+	if (!ktr_buf[cpu])
+		return;
+
+	crit_enter();
+	entry = ktr_buf[cpu] + (ktr_idx[cpu] & KTR_ENTRIES_MASK);
+	++ktr_idx[cpu];
+#ifdef _RDTSC_SUPPORTED_
+	if (cpu_feature & CPUID_TSC) {
+#ifdef SMP
+		entry->ktr_timestamp = rdtsc() - tsc_offsets[cpu];
+#else
+		entry->ktr_timestamp = rdtsc();
+#endif
+	} else
+#endif
+	{
+		entry->ktr_timestamp = get_approximate_time_t();
+	}
+	entry->ktr_info = info;
+	entry->ktr_file = file;
+	entry->ktr_line = line;
+	crit_exit();
+	kvsnprintf(entry->ktr_data, KTR_BUFSIZE, jg_format, va);
+	((char *)(entry->ktr_data))[KTR_BUFSIZE - 1] = '\0';
+	if (ktr_stacktrace)
+		cpu_ktr_caller(entry);
+#ifdef KTR_VERBOSE
+	if (ktr_verbose && info->kf_format) {
+#ifdef SMP
+		kprintf("cpu%d ", cpu);
+#endif
+		if (ktr_verbose > 1) {
+			kprintf("%s.%d\t", entry->ktr_file, entry->ktr_line);
+		}
+		kvprintf(info->kf_format, ptr);
+		kprintf("\n");
+	}
+#endif
+	__va_end(va);
+}
+
 static __inline
 void
 ktr_write_entry(struct ktr_info *info, const char *file, int line,
@@ -463,9 +514,9 @@ ktr_write_entry(struct ktr_info *info, const char *file, int line,
 	entry->ktr_line = line;
 	crit_exit();
 	if (info->kf_data_size > KTR_BUFSIZE)
-		bcopyi(ptr, entry->ktr_data, KTR_BUFSIZE);
+		bcopy(ptr, entry->ktr_data, KTR_BUFSIZE);
 	else if (info->kf_data_size)
-		bcopyi(ptr, entry->ktr_data, info->kf_data_size);
+		bcopy(ptr, entry->ktr_data, info->kf_data_size);
 	if (ktr_stacktrace)
 		cpu_ktr_caller(entry);
 #ifdef KTR_VERBOSE
@@ -626,11 +677,15 @@ db_mach_vtrace(int cpu, struct ktr_entry *kp, int idx)
 	db_printf("%s\t", kp->ktr_info->kf_name);
 	db_printf("from(%p,%p) ", kp->ktr_caller1, kp->ktr_caller2);
 	if (kp->ktr_info->kf_format) {
-		int32_t *args = kp->ktr_data;
-		db_printf(kp->ktr_info->kf_format,
-			  args[0], args[1], args[2], args[3],
-			  args[4], args[5], args[6], args[7],
-			  args[8], args[9], args[10], args[11]);
+		if (strcmp(kp->ktr_info->kf_format, "STR") == 0) {
+			db_printf("%s", kp->ktr_data);
+		} else {
+			int64_t *args = kp->ktr_data;
+			db_printf(kp->ktr_info->kf_format,
+			  	args[0], args[1], args[2], args[3],
+			  	args[4], args[5], args[6], args[7],
+			  	args[8], args[9], args[10], args[11]);
+		}
 	    
 	}
 	db_printf("\n");

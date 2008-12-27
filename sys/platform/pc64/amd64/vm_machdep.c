@@ -59,8 +59,8 @@
 #include <machine/cpu.h>
 #include <machine/md_var.h>
 #include <machine/smp.h>
-#include <machine/pcb_ext.h>
 #include <machine/pcb.h>
+#include <machine/pcb_ext.h>
 #include <machine/segments.h>
 #include <machine/globaldata.h>	/* npxthread */
 
@@ -74,7 +74,7 @@
 
 #include <sys/thread2.h>
 
-#include <bus/isa/i386/isa.h>
+#include <bus/isa/isa.h>
 
 static void	cpu_reset_real (void);
 /*
@@ -233,7 +233,25 @@ cpu_set_thread_handler(thread_t td, void (*rfunc)(void), void *func, void *arg)
 void
 cpu_lwp_exit(void)
 {
-	panic("dummy called in vm_machdep.c: line: %d", __LINE__);
+	struct thread *td = curthread;
+	struct pcb *pcb;
+#if NNPX > 0
+	npxexit();
+#endif	/* NNPX */
+	KKASSERT(pcb->pcb_ext == NULL); /* Some i386 functionality was dropped */
+        if (pcb->pcb_flags & PCB_DBREGS) {
+                /*
+                 * disable all hardware breakpoints
+                 */
+                reset_dbregs();
+                pcb->pcb_flags &= ~PCB_DBREGS;
+        }
+	td->td_gd->gd_cnt.v_swtch++;
+
+	crit_enter_quick(td);
+	lwkt_deschedule_self(td);
+	lwkt_remove_tdallq(td);
+	cpu_thread_exit();
 }
 
 /*
@@ -248,7 +266,10 @@ cpu_lwp_exit(void)
 void
 cpu_thread_exit(void)
 {
-	panic("dummy called in vm_machdep.c: line: %d", __LINE__);
+	curthread->td_switch = cpu_exit_switch;
+	curthread->td_flags |= TDF_EXITING;
+	lwkt_switch();
+	panic("cpu_thread_exit: lwkt_switch() unexpectedly returned");
 }
 
 /*
@@ -258,7 +279,8 @@ cpu_thread_exit(void)
 void
 cpu_proc_wait(struct proc *p)
 {
-	panic("dummy called in vm_machdep.c: line: %d", __LINE__);
+	/* drop per-process resources */
+	pmap_dispose_proc(p);
 }
 
 void
@@ -339,13 +361,23 @@ cpu_vmspace_alloc(struct vmspace *vm __unused)
 void
 cpu_vmspace_free(struct vmspace *vm __unused)
 {
-	panic("dummy called in vm_machdep.c: line: %d", __LINE__);
 }
 
 int
 kvm_access_check(vm_offset_t saddr, vm_offset_t eaddr, int prot)
 {
-	panic("dummy called in vm_machdep.c: line: %d", __LINE__);
+	vm_offset_t addr;
+
+	if (saddr < KvaStart)
+		return EFAULT;
+	if (eaddr >= KvaEnd)
+		return EFAULT;
+	for (addr = saddr; addr < eaddr; addr += PAGE_SIZE)  {
+		if (pmap_extract(&kernel_pmap, addr) == 0)
+			return EFAULT;
+	}
+	if (!kernacc((caddr_t)saddr, eaddr - saddr, prot))
+		return EFAULT;
 	return 0;
 }
 

@@ -194,6 +194,8 @@ mi_startup(void)
 	struct sysinit **xipp;		/* interior loop of sort*/
 	struct sysinit *save;		/* bubble*/
 
+	//kprintf0("mi_startup\n");
+
 	if (sysinit == NULL) {
 		sysinit = SET_BEGIN(sysinit_set);
 		sysinit_end = SET_LIMIT(sysinit_set);
@@ -230,6 +232,8 @@ restart:
 
 		if (sip->subsystem == SI_SPECIAL_DONE)
 			continue;
+
+		//kprintf0("!%s!", sip->name);
 
 		/* Call function */
 		(*(sip->func))(sip->udata);

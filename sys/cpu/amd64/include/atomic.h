@@ -244,7 +244,8 @@ atomic_intr_cond_enter(atomic_intr_t *p, void (*func)(void *), void *arg)
 			 "2: ;" \
 			 : "+m" (*p) \
 			 : "r"(func), "m"(arg) \
-			 : "ax", "cx", "dx", "di");	/* XXX clobbers more regs */
+			 : "ax", "cx", "dx", "rsi", "rdi", "r8", "r9", "r10", "r11");
+		/* YYY the function call may clobber even more registers? */
 }
 
 /*

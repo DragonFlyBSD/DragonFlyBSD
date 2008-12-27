@@ -1101,7 +1101,7 @@ exec_setregs(u_long entry, u_long stack, u_long ps_strings)
 		pcb->pcb_dr2 = 0;
 		pcb->pcb_dr3 = 0;
 		pcb->pcb_dr6 = 0;
-		pcb->pcb_dr7 = 0;
+		pcb->pcb_dr7 = 0; /* JG set bit 10? */
 		if (pcb == td->td_pcb) {
 			/*
 			 * Clear the debug registers on the running
@@ -2159,30 +2159,26 @@ int
 fill_dbregs(struct lwp *lp, struct dbreg *dbregs)
 {
         if (lp == NULL) {
-#if JG
-                dbregs->dr0 = rdr0();
-                dbregs->dr1 = rdr1();
-                dbregs->dr2 = rdr2();
-                dbregs->dr3 = rdr3();
-                dbregs->dr4 = rdr4();
-                dbregs->dr5 = rdr5();
-                dbregs->dr6 = rdr6();
-                dbregs->dr7 = rdr7();
-#endif
+                dbregs->dr[0] = rdr0();
+                dbregs->dr[1] = rdr1();
+                dbregs->dr[2] = rdr2();
+                dbregs->dr[3] = rdr3();
+                dbregs->dr[4] = rdr4();
+                dbregs->dr[5] = rdr5();
+                dbregs->dr[6] = rdr6();
+                dbregs->dr[7] = rdr7();
         } else {
 		struct pcb *pcb;
 
                 pcb = lp->lwp_thread->td_pcb;
-#if JG
-                dbregs->dr0 = pcb->pcb_dr0;
-                dbregs->dr1 = pcb->pcb_dr1;
-                dbregs->dr2 = pcb->pcb_dr2;
-                dbregs->dr3 = pcb->pcb_dr3;
-                dbregs->dr4 = 0;
-                dbregs->dr5 = 0;
-                dbregs->dr6 = pcb->pcb_dr6;
-                dbregs->dr7 = pcb->pcb_dr7;
-#endif
+                dbregs->dr[0] = pcb->pcb_dr0;
+                dbregs->dr[1] = pcb->pcb_dr1;
+                dbregs->dr[2] = pcb->pcb_dr2;
+                dbregs->dr[3] = pcb->pcb_dr3;
+                dbregs->dr[4] = 0;
+                dbregs->dr[5] = 0;
+                dbregs->dr[6] = pcb->pcb_dr6;
+                dbregs->dr[7] = pcb->pcb_dr7;
         }
 	return (0);
 }
@@ -2191,21 +2187,19 @@ int
 set_dbregs(struct lwp *lp, struct dbreg *dbregs)
 {
 	if (lp == NULL) {
-#if JG
-		load_dr0(dbregs->dr0);
-		load_dr1(dbregs->dr1);
-		load_dr2(dbregs->dr2);
-		load_dr3(dbregs->dr3);
-		load_dr4(dbregs->dr4);
-		load_dr5(dbregs->dr5);
-		load_dr6(dbregs->dr6);
-		load_dr7(dbregs->dr7);
-#endif
+		load_dr0(dbregs->dr[0]);
+		load_dr1(dbregs->dr[1]);
+		load_dr2(dbregs->dr[2]);
+		load_dr3(dbregs->dr[3]);
+		load_dr4(dbregs->dr[4]);
+		load_dr5(dbregs->dr[5]);
+		load_dr6(dbregs->dr[6]);
+		load_dr7(dbregs->dr[7]);
 	} else {
 		struct pcb *pcb;
 		struct ucred *ucred;
 		int i;
-		uint32_t mask1, mask2;
+		uint64_t mask1, mask2;
 
 		/*
 		 * Don't let an illegal value for dr7 get set.	Specifically,
@@ -2213,12 +2207,20 @@ set_dbregs(struct lwp *lp, struct dbreg *dbregs)
 		 * result in undefined behaviour and can lead to an unexpected
 		 * TRCTRAP.
 		 */
-		for (i = 0, mask1 = 0x3<<16, mask2 = 0x2<<16; i < 8; 
-		     i++, mask1 <<= 2, mask2 <<= 2)
-#if JG
-			if ((dbregs->dr7 & mask1) == mask2)
+		/* JG this loop looks unreadable */
+		/* Check 4 2-bit fields for invalid patterns.
+		 * These fields are R/Wi, for i = 0..3
+		 */
+		/* Is 10 in LENi allowed when running in compatibility mode? */
+		/* Pattern 10 in R/Wi might be used to indicate
+		 * breakpoint on I/O. Further analysis should be
+		 * carried to decide if it is safe and useful to
+		 * provide access to that capability
+		 */
+		for (i = 0, mask1 = 0x3<<16, mask2 = 0x2<<16; i < 4; 
+		     i++, mask1 <<= 4, mask2 <<= 4)
+			if ((dbregs->dr[7] & mask1) == mask2)
 				return (EINVAL);
-#endif
 		
 		pcb = lp->lwp_thread->td_pcb;
 		ucred = lp->lwp_proc->p_ucred;
@@ -2239,41 +2241,37 @@ set_dbregs(struct lwp *lp, struct dbreg *dbregs)
 		 */
 
 		if (suser_cred(ucred, 0) != 0) {
-#if JG
-			if (dbregs->dr7 & 0x3) {
+			if (dbregs->dr[7] & 0x3) {
 				/* dr0 is enabled */
-				if (dbregs->dr0 >= VM_MAX_USER_ADDRESS)
+				if (dbregs->dr[0] >= VM_MAX_USER_ADDRESS)
 					return (EINVAL);
 			}
 
-			if (dbregs->dr7 & (0x3<<2)) {
+			if (dbregs->dr[7] & (0x3<<2)) {
 				/* dr1 is enabled */
-				if (dbregs->dr1 >= VM_MAX_USER_ADDRESS)
+				if (dbregs->dr[1] >= VM_MAX_USER_ADDRESS)
 					return (EINVAL);
 			}
 
-			if (dbregs->dr7 & (0x3<<4)) {
+			if (dbregs->dr[7] & (0x3<<4)) {
 				/* dr2 is enabled */
-				if (dbregs->dr2 >= VM_MAX_USER_ADDRESS)
+				if (dbregs->dr[2] >= VM_MAX_USER_ADDRESS)
 					return (EINVAL);
 			}
 
-			if (dbregs->dr7 & (0x3<<6)) {
+			if (dbregs->dr[7] & (0x3<<6)) {
 				/* dr3 is enabled */
-				if (dbregs->dr3 >= VM_MAX_USER_ADDRESS)
+				if (dbregs->dr[3] >= VM_MAX_USER_ADDRESS)
 					return (EINVAL);
 			}
-#endif
 		}
 
-#if JG
-		pcb->pcb_dr0 = dbregs->dr0;
-		pcb->pcb_dr1 = dbregs->dr1;
-		pcb->pcb_dr2 = dbregs->dr2;
-		pcb->pcb_dr3 = dbregs->dr3;
-		pcb->pcb_dr6 = dbregs->dr6;
-		pcb->pcb_dr7 = dbregs->dr7;
-#endif
+		pcb->pcb_dr0 = dbregs->dr[0];
+		pcb->pcb_dr1 = dbregs->dr[1];
+		pcb->pcb_dr2 = dbregs->dr[2];
+		pcb->pcb_dr3 = dbregs->dr[3];
+		pcb->pcb_dr6 = dbregs->dr[6];
+		pcb->pcb_dr7 = dbregs->dr[7];
 
 		pcb->pcb_flags |= PCB_DBREGS;
 	}
@@ -2288,14 +2286,14 @@ set_dbregs(struct lwp *lp, struct dbreg *dbregs)
 int
 user_dbreg_trap(void)
 {
-        u_int32_t dr7, dr6; /* debug registers dr6 and dr7 */
-        u_int32_t bp;       /* breakpoint bits extracted from dr6 */
+        u_int64_t dr7, dr6; /* debug registers dr6 and dr7 */
+        u_int64_t bp;       /* breakpoint bits extracted from dr6 */
         int nbp;            /* number of breakpoints that triggered */
         caddr_t addr[4];    /* breakpoint addresses */
         int i;
         
         dr7 = rdr7();
-        if ((dr7 & 0x000000ff) == 0) {
+        if ((dr7 & 0xff) == 0) {
                 /*
                  * all GE and LE bits in the dr7 register are zero,
                  * thus the trap couldn't have been caused by the
@@ -2306,9 +2304,9 @@ user_dbreg_trap(void)
 
         nbp = 0;
         dr6 = rdr6();
-        bp = dr6 & 0x0000000f;
+        bp = dr6 & 0xf;
 
-        if (!bp) {
+        if (bp == 0) {
                 /*
                  * None of the breakpoint bits are set meaning this
                  * trap was not caused by any of the debug registers

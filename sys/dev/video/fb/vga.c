@@ -46,7 +46,9 @@
 
 #include <machine/clock.h>
 #include <machine/md_var.h>
+#ifdef __i386__
 #include <machine/pc/bios.h>
+#endif
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -59,6 +61,10 @@
 #define VGA_DEBUG		0
 #endif
 
+/* machine/pc/bios.h has got too much i386-specific stuff in it */
+#ifndef BIOS_PADDRTOVADDR
+#define BIOS_PADDRTOVADDR(x) (((x) - ISA_HOLE_START) + atdevbase)
+#endif
 int
 vga_probe_unit(int unit, video_adapter_t *buf, int flags)
 {
@@ -904,7 +910,7 @@ set_display_start(video_adapter_t *adp, int x, int y)
 }
 
 #ifndef VGA_NO_MODE_CHANGE
-#ifdef __i386__	/* XXX */
+#if defined(__i386__) || defined(__amd64__)	/* XXX */
 static void
 fill(int val, void *d, size_t size)
 {
@@ -913,7 +919,7 @@ fill(int val, void *d, size_t size)
     while (size-- > 0)
 	*p++ = val;
 }
-#endif /* __i386__ */
+#endif /* __i386__ || __amd64__ */
 
 static void
 filll_io(int val, vm_offset_t d, size_t size)
@@ -1370,10 +1376,10 @@ vga_save_font(video_adapter_t *adp, int page, int fontsize, u_char *data,
 
     set_font_mode(adp, buf);
     if (fontsize == 32) {
-	bcopy_fromio(segment + ch*32, data, fontsize*count);
+	bcopy_fromio((uintptr_t)segment + ch*32, data, fontsize*count);
     } else {
 	for (c = ch; count > 0; ++c, --count) {
-	    bcopy_fromio(segment + c*32, data, fontsize);
+	    bcopy_fromio((uintptr_t)segment + c*32, data, fontsize);
 	    data += fontsize;
 	}
     }
@@ -1443,10 +1449,10 @@ vga_load_font(video_adapter_t *adp, int page, int fontsize, u_char *data,
 
     set_font_mode(adp, buf);
     if (fontsize == 32) {
-	bcopy_toio(data, segment + ch*32, fontsize*count);
+	bcopy_toio(data, (uintptr_t)segment + ch*32, fontsize*count);
     } else {
 	for (c = ch; count > 0; ++c, --count) {
-	    bcopy_toio(data, segment + c*32, fontsize);
+	    bcopy_toio(data, (uintptr_t)segment + c*32, fontsize);
 	    data += fontsize;
 	}
     }

@@ -345,6 +345,21 @@ userexit(struct lwp *lp)
 	td->td_release = NULL;
 }
 
+#if !defined(KTR_KERNENTRY)
+#define	KTR_KERNENTRY	KTR_ALL
+#endif
+KTR_INFO_MASTER(kernentry);
+KTR_INFO(KTR_KERNENTRY, kernentry, trap, 0, "STR",
+	 sizeof(long) + sizeof(long) + sizeof(long) + sizeof(vm_offset_t));
+KTR_INFO(KTR_KERNENTRY, kernentry, trap_ret, 0, "STR",
+	 sizeof(long) + sizeof(long));
+KTR_INFO(KTR_KERNENTRY, kernentry, syscall, 0, "STR",
+	 sizeof(long) + sizeof(long) + sizeof(long));
+KTR_INFO(KTR_KERNENTRY, kernentry, syscall_ret, 0, "STR",
+	 sizeof(long) + sizeof(long) + sizeof(long));
+KTR_INFO(KTR_KERNENTRY, kernentry, fork_ret, 0, "STR",
+	 sizeof(long) + sizeof(long));
+
 /*
  * Exception, fault, and trap interface to the kernel.
  * This common code is called from assembly language IDT gate entry
@@ -455,8 +470,13 @@ trap(struct trapframe *frame)
 	if (ISPL(frame->tf_cs) == SEL_UPL) {
 		/* user trap */
 
+#if JG
 		KTR_LOG(kernentry_trap, p->p_pid, lp->lwp_tid,
 			frame->tf_trapno, eva);
+#else
+		KTR_LOG_STR(kernentry_trap, "pid=%d, tid=%d, trapno=%ld, eva=%lx", p->p_pid, lp->lwp_tid,
+			frame->tf_trapno, (frame->tf_trapno == T_PAGEFLT ? frame->tf_addr : 0));
+#endif
 
 		userenter(td);
 
@@ -510,7 +530,7 @@ trap(struct trapframe *frame)
 		case T_PAGEFLT:		/* page fault */
 			MAKEMPSAFE(have_mplock);
 			i = trap_pfault(frame, TRUE);
-			kprintf("TRAP_PFAULT %d\n", i);
+			//kprintf("TRAP_PFAULT %d\n", i);
 			if (frame->tf_rip == 0)
 				Debugger("debug");
 			if (i == -1)
@@ -791,7 +811,11 @@ out2:	;
 		rel_mplock();
 #endif
 	if (p != NULL && lp != NULL)
+#if JG
 		KTR_LOG(kernentry_trap_ret, p->p_pid, lp->lwp_tid);
+#else
+		KTR_LOG_STR(kernentry_trap_ret, "pid=%d, tid=%d", p->p_pid, lp->lwp_tid);
+#endif
 #ifdef INVARIANTS
 	KASSERT(crit_count == (td->td_pri & ~TDPRI_MASK),
 		("syscall: critical section count mismatch! %d/%d",
@@ -1057,8 +1081,13 @@ syscall2(struct trapframe *frame)
 	}
 #endif
 
+#if JG
 	KTR_LOG(kernentry_syscall, p->p_pid, lp->lwp_tid,
 		frame->tf_eax);
+#else
+	KTR_LOG_STR(kernentry_syscall, "pid=%d, tid=%d, call=%ld", p->p_pid, lp->lwp_tid,
+		frame->tf_rax);
+#endif
 
 #ifdef SMP
 	KASSERT(td->td_mpcount == 0, ("badmpcount syscall2 from %p", (void *)frame->tf_eip));
@@ -1192,7 +1221,7 @@ out:
 	/*
 	 * MP SAFE (we may or may not have the MP lock at this point)
 	 */
-	kprintf("SYSMSG %d ", error);
+	//kprintf("SYSMSG %d ", error);
 	switch (error) {
 	case 0:
 		/*
@@ -1273,7 +1302,11 @@ bad:
 	if (have_mplock)
 		rel_mplock();
 #endif
+#if JG
 	KTR_LOG(kernentry_syscall_ret, p->p_pid, lp->lwp_tid, error);
+#else
+	KTR_LOG_STR(kernentry_syscall_ret, "pid=%d, tid=%d, err=%d", p->p_pid, lp->lwp_tid, error);
+#endif
 #ifdef INVARIANTS
 	KASSERT(crit_count == (td->td_pri & ~TDPRI_MASK), 
 		("syscall: critical section count mismatch! %d/%d",
@@ -1290,7 +1323,11 @@ fork_return(struct lwp *lp, struct trapframe *frame)
 	frame->tf_rdx = 1;
 
 	generic_lwp_return(lp, frame);
+#if JG
 	KTR_LOG(kernentry_fork_ret, lp->lwp_proc->p_pid, lp->lwp_tid);
+#else
+	KTR_LOG_STR(kernentry_fork_ret, "pid=%d, tid=%d", lp->lwp_proc->p_pid, lp->lwp_tid);
+#endif
 }
 
 /*
