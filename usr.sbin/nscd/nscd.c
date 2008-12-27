@@ -53,6 +53,7 @@
 #include "log.h"
 #include "nscdcli.h"
 #include "parser.h"
+#include "pidfile.h"
 #include "query.h"
 #include "singletons.h"
 

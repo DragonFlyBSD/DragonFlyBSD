@@ -3,11 +3,11 @@
 PROG=	nscd
 MAN=	nscd.conf.5 nscd.8
 
-WARNS?=	2
+WARNS?=	0
 CFLAGS+=-fno-strict-aliasing
-SRCS=	agent.c nscd.c nscdcli.c cachelib.c cacheplcs.c debug.c log.c \
-	config.c query.c mp_ws_query.c mp_rs_query.c singletons.c protocol.c \
-	parser.c
+SRCS=	agent.c cachelib.c cacheplcs.c config.c debug.c log.c \
+	mp_rs_query.c mp_ws_query.c nscd.c nscdcli.c parser.c pidfile.c \
+	protocol.c query.c singletons.c
 CFLAGS+= -DCONFIG_PATH="\"${PREFIX}/etc/nscd.conf\""
 DPADD=	${LIBM} ${LIBPTHREAD} ${LIBUTIL}
 LDADD=	-lm -lpthread -lutil

@@ -22,10 +22,9 @@ SRCS+=	addr2ascii.c ascii2addr.c base64.c ether_addr.c eui64.c \
 	rthdr.c send.c vars.c
 # not supported: iso_addr.c 
 
-# This isn't ready yet.
-#.if !defined(NO_NS_CACHING)
-#SRCS+=	nscache.c nscachedcli.c
-#.endif
+.if !defined(NO_NS_CACHING)
+SRCS+=	nscache.c nscachedcli.c
+.endif
 
 CFLAGS+=-DINET6 -I${.OBJDIR}
 
