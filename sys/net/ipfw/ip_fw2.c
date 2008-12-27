@@ -4446,7 +4446,8 @@ ipfw_init_dispatch(struct netmsg *nmsg)
 
 	callout_init_mp(&ipfw_timeout_h);
 	netmsg_init(&ipfw_timeout_netmsg, &netisr_adone_rport,
-		    MSGF_MPSAFE | MSGF_DROPABLE, ipfw_tick_dispatch);
+		    MSGF_MPSAFE | MSGF_DROPABLE | MSGF_PRIORITY,
+		    ipfw_tick_dispatch);
 	lockinit(&dyn_lock, "ipfw_dyn", 0, 0);
 
 	ip_fw_loaded = 1;
