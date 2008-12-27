@@ -524,10 +524,7 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 	if (la->la_hold != NULL)
 		m_freem(la->la_hold);
 	la->la_hold = m;
-	if (curthread->td_flags & TDF_NETWORK)
-		la->la_msgport = &curthread->td_msgport;
-	else
-		la->la_msgport = cpu_portfn(mycpuid);
+	la->la_msgport = curnetport;
 	if (rt->rt_expire || ((rt->rt_flags & RTF_STATIC) && !sdl->sdl_alen)) {
 		rt->rt_flags &= ~RTF_REJECT;
 		if (la->la_asked == 0 || rt->rt_expire != time_second) {

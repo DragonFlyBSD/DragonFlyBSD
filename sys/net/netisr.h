@@ -223,6 +223,7 @@ extern lwkt_port netisr_apanic_rport;
 
 lwkt_port_t	cpu0_portfn(struct mbuf **mptr);
 lwkt_port_t	cpu_portfn(int cpu);
+lwkt_port_t	cur_netport(void);
 lwkt_port_t	netisr_find_port(int, struct mbuf **);
 void		netisr_dispatch(int, struct mbuf *);
 void		netisr_run(int, struct mbuf *);
@@ -234,6 +235,8 @@ void		netmsg_service_loop(void *arg);
 int		netmsg_service(struct netmsg *, int, int);
 void		netmsg_service_sync(void);
 void		schednetisr(int);
+
+#define curnetport	cur_netport()
 
 #endif	/* _KERNEL */
 

@@ -1821,7 +1821,6 @@ void
 bridge_enqueue(struct ifnet *dst_ifp, struct mbuf *m)
 {
 	struct netmsg_packet *nmp;
-	lwkt_port_t port;
 
 	nmp = &m->m_hdr.mh_netmsg;
 	netmsg_init(&nmp->nm_netmsg, &netisr_apanic_rport, 0,
@@ -1829,11 +1828,7 @@ bridge_enqueue(struct ifnet *dst_ifp, struct mbuf *m)
 	nmp->nm_packet = m;
 	nmp->nm_netmsg.nm_lmsg.u.ms_resultp = dst_ifp;
 
-	if (curthread->td_flags & TDF_NETWORK)
-		port = &curthread->td_msgport;
-	else
-		port = cpu_portfn(mycpuid);
-	lwkt_sendmsg(port, &nmp->nm_netmsg.nm_lmsg);
+	lwkt_sendmsg(curnetport, &nmp->nm_netmsg.nm_lmsg);
 }
 
 /*

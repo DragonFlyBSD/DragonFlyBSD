@@ -421,6 +421,20 @@ cpu_portfn(int cpu)
     return (&netisr_cpu[cpu].td_msgport);
 }
 
+/*
+ * If the current thread is a network protocol thread (TDF_NETWORK),
+ * then return the current thread's message port.
+ * XXX Else, return the current CPU's netisr message port.
+ */
+lwkt_port_t
+cur_netport(void)
+{
+    if (curthread->td_flags & TDF_NETWORK)
+	return &curthread->td_msgport;
+    else
+	return cpu_portfn(mycpuid);
+}
+
 /* ARGSUSED */
 lwkt_port_t
 cpu0_soport(struct socket *so __unused, struct sockaddr *nam __unused,
