@@ -1266,8 +1266,8 @@ no_options:
 				       htons(tlen - hlen + IPPROTO_TCP));
 		m->m_pkthdr.csum_flags = CSUM_TCP;
 		m->m_pkthdr.csum_data = offsetof(struct tcphdr, th_sum);
-		error = ip_output(m, sc->sc_ipopts, &sc->sc_route, 0, NULL,
-				sc->sc_tp->t_inpcb);
+		error = ip_output(m, sc->sc_ipopts, &sc->sc_route,
+				  IP_DEBUGROUTE, NULL, sc->sc_tp->t_inpcb);
 	}
 	return (error);
 }

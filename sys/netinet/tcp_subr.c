@@ -672,6 +672,7 @@ tcp_respond(struct tcpcb *tp, void *ipgen, struct tcphdr *th, struct mbuf *m,
 			ro6->ro_rt = NULL;
 		}
 	} else {
+		ipflags |= IP_DEBUGROUTE;
 		ip_output(m, NULL, ro, ipflags, NULL, tp ? tp->t_inpcb : NULL);
 		if ((ro == &sro) && (ro->ro_rt != NULL)) {
 			RTFREE(ro->ro_rt);

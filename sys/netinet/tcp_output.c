@@ -964,7 +964,8 @@ send:
 			ip->ip_off |= IP_DF;
 
 		error = ip_output(m, inp->inp_options, &inp->inp_route,
-				  (so->so_options & SO_DONTROUTE), NULL, inp);
+				  (so->so_options & SO_DONTROUTE) |
+				  IP_DEBUGROUTE, NULL, inp);
 	}
 	if (error) {
 
