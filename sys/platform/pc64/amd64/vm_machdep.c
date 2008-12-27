@@ -234,7 +234,7 @@ void
 cpu_lwp_exit(void)
 {
 	struct thread *td = curthread;
-	struct pcb *pcb;
+	struct pcb *pcb = td->td_pcb;
 #if NNPX > 0
 	npxexit();
 #endif	/* NNPX */
