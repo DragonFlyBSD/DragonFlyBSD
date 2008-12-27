@@ -131,9 +131,6 @@ SYSCTL_INT(_net_route, OID_AUTO, route_debug, CTLFLAG_RW,
 int route_assert_owner_access = 0;
 SYSCTL_INT(_net_route, OID_AUTO, assert_owner_access, CTLFLAG_RW,
            &route_assert_owner_access, 0, "");
-SYSCTL_INT(_net_route, OID_AUTO, remote_free_panic, CTLFLAG_RW,
-           &route_assert_owner_access, 0, ""); /* alias */
-extern void	db_print_backtrace(void);
 
 /*
  * Initialize the route table(s) for protocol domains and
@@ -383,7 +380,7 @@ rtfree_remote(struct rtentry *rt, int allow_panic)
 	} else {
 		kprintf("rt remote free rt_cpuid %d, mycpuid %d\n",
 			rt->rt_cpuid, mycpuid);
-		db_print_backtrace();
+		backtrace();
 	}
 
 	netmsg_init(&nmsg, &curthread->td_msgport, 0, rtfree_remote_dispatch);
@@ -1394,7 +1391,7 @@ rt_addrinfo_print(int cmd, struct rt_addrinfo *rti)
 
 #ifdef ROUTE_DEBUG
 	if (cmd == RTM_DELETE && route_debug > 1)
-		db_print_backtrace();
+		backtrace();
 #endif
 
 	switch(cmd) {
