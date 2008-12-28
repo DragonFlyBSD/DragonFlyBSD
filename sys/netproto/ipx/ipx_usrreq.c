@@ -107,9 +107,9 @@ struct	pr_usrreqs ipx_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = ipx_shutdown,
 	.pru_sockaddr = ipx_sockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 struct	pr_usrreqs ripx_usrreqs = {
@@ -130,9 +130,9 @@ struct	pr_usrreqs ripx_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = ipx_shutdown,
 	.pru_sockaddr = ipx_sockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 /*
@@ -175,7 +175,7 @@ ipx_input(struct mbuf *m, struct ipxpcb *ipxp)
 		m->m_pkthdr.len -= sizeof(struct ipx);
 		m->m_data += sizeof(struct ipx);
 	}
-	if (ssb_appendaddr(&ipxp->ipxp_socket->so_rcv, (struct sockaddr *)&ipx_ipx,
+	if (ssb_append_addr(&ipxp->ipxp_socket->so_rcv, (struct sockaddr *)&ipx_ipx,
 	    m, (struct mbuf *)NULL) == 0)
 		goto bad;
 	sorwakeup(ipxp->ipxp_socket);

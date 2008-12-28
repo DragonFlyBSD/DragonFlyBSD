@@ -79,6 +79,7 @@
 #include <sys/errno.h>
 #include <sys/systm.h>
 #include <sys/thread2.h>
+#include <sys/socketvar2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -200,7 +201,7 @@ rip6_input(struct mbuf **mp, int *offp, int proto)
 					ip6_savecontrol(last, &opts, ip6, n);
 				/* strip intermediate headers */
 				m_adj(n, *offp);
-				if (ssb_appendaddr(&last->in6p_socket->so_rcv,
+				if (ssb_append_addr(&last->in6p_socket->so_rcv,
 						(struct sockaddr *)&rip6src,
 						 n, opts) == 0) {
 					m_freem(n);
@@ -241,7 +242,7 @@ rip6_input(struct mbuf **mp, int *offp, int proto)
 			ip6_savecontrol(last, &opts, ip6, m);
 		/* strip intermediate headers */
 		m_adj(m, *offp);
-		if (ssb_appendaddr(&last->in6p_socket->so_rcv,
+		if (ssb_append_addr(&last->in6p_socket->so_rcv,
 				(struct sockaddr *)&rip6src, m, opts) == 0) {
 			m_freem(m);
 			if (opts)
@@ -753,7 +754,7 @@ struct pr_usrreqs rip6_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = rip6_shutdown,
 	.pru_sockaddr = in6_setsockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };

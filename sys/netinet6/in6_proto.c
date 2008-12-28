@@ -274,12 +274,20 @@ struct ip6protosw inet6sw[] = {
 extern int in6_inithead (void **, int);
 
 struct domain inet6domain = {
-	AF_INET6, "internet6", NULL, NULL, NULL,
-	(struct protosw *)inet6sw,
-	(struct protosw *)&inet6sw[sizeof(inet6sw)/sizeof(inet6sw[0])],
-	SLIST_ENTRY_INITIALIZER,
-	in6_inithead, offsetof(struct sockaddr_in6, sin6_addr) << 3,
-	sizeof(struct sockaddr_in6), in6_domifattach, in6_domifdetach
+	.dom_family = AF_INET6,
+	.dom_name = "internet6",
+	.dom_init = NULL,
+	.dom_internalize = NULL,
+	.dom_externalize = NULL,
+	.dom_dispose = NULL,
+	.dom_protosw = (struct protosw *)inet6sw,
+	.dom_protoswNPROTOSW = (struct protosw *)&inet6sw[sizeof(inet6sw)/sizeof(inet6sw[0])],
+	.dom_next = SLIST_ENTRY_INITIALIZER,
+	.dom_rtattach = in6_inithead,
+	.dom_rtoffset = offsetof(struct sockaddr_in6, sin6_addr) << 3,
+	.dom_maxrtkey = sizeof(struct sockaddr_in6),
+	.dom_ifattach = in6_domifattach, 
+	.dom_ifdetach = in6_domifdetach
 };
 
 DOMAIN_SET(inet6);

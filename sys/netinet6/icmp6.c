@@ -82,6 +82,7 @@
 #include <sys/kernel.h>
 #include <sys/syslog.h>
 #include <sys/domain.h>
+#include <sys/socketvar2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -1862,7 +1863,7 @@ icmp6_rip6_input(struct	mbuf **mp, int	off)
 					ip6_savecontrol(last, &opts, ip6, n);
 				/* strip intermediate headers */
 				m_adj(n, off);
-				if (ssb_appendaddr(&last->in6p_socket->so_rcv,
+				if (ssb_append_addr(&last->in6p_socket->so_rcv,
 						 (struct sockaddr *)&rip6src,
 						 n, opts) == 0) {
 					/* should notify about lost packet */
@@ -1882,7 +1883,7 @@ icmp6_rip6_input(struct	mbuf **mp, int	off)
 			ip6_savecontrol(last, &opts, ip6, m);
 		/* strip intermediate headers */
 		m_adj(m, off);
-		if (ssb_appendaddr(&last->in6p_socket->so_rcv,
+		if (ssb_append_addr(&last->in6p_socket->so_rcv,
 				 (struct sockaddr *)&rip6src, m, opts) == 0) {
 			m_freem(m);
 			if (opts)

@@ -98,9 +98,18 @@ struct protosw nssw[] = {
 };
 
 struct domain nsdomain = {
-	AF_NS, "network systems", NULL, NULL, NULL,
-	nssw, &nssw[sizeof(nssw)/sizeof(nssw[0])], SLIST_ENTRY_INITIALIZER,
-	rn_inithead, 16, sizeof(struct sockaddr_ns),
+	.dom_family = AF_NS, 
+	.dom_name = "network systems",
+	.dom_init = NULL,
+	.dom_internalize = NULL,
+	.dom_externalize = NULL,
+	.dom_dispose = NULL,
+	.dom_protosw = nssw,
+	.dom_protoswNPROTOSW = &nssw[sizeof(nssw)/sizeof(nssw[0])],
+	.dom_next = SLIST_ENTRY_INITIALIZER,
+	.dom_rtattach = rn_inithead,
+	.dom_rtoffset = 16,
+	.dom_maxrtkey = sizeof(struct sockaddr_ns)
 };
 
 DOMAIN_SET(ns);

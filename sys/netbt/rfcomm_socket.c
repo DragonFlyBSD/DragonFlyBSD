@@ -50,6 +50,8 @@
 #include <sys/systm.h>
 #include <vm/vm_zone.h>
 
+#include <sys/socketvar2.h>
+
 #include <netbt/bluetooth.h>
 #include <netbt/hci.h>		/* XXX for EPASSTHROUGH */
 #include <netbt/rfcomm.h>
@@ -192,7 +194,7 @@ rfcomm_complete(void *arg, int length)
 {
 	struct socket *so = arg;
 
-	sbdrop(&so->so_snd.sb, length);
+	sb_drop(&so->so_snd.sb, length);
 	sowwakeup(so);
 }
 
@@ -229,7 +231,7 @@ rfcomm_input(void *arg, struct mbuf *m)
 
 	KKASSERT(so != NULL);
 
-	if (m->m_pkthdr.len > sbspace(&so->so_rcv)) {
+	if (m->m_pkthdr.len > sbspace(&so->so_rcv.sb)) {
 		kprintf("%s: %d bytes dropped (socket buffer full)\n",
 			__func__, m->m_pkthdr.len);
 		m_freem(m);
@@ -238,7 +240,7 @@ rfcomm_input(void *arg, struct mbuf *m)
 
 	DPRINTFN(10, "received %d bytes\n", m->m_pkthdr.len);
 
-	sbappendstream(&so->so_rcv.sb, m);
+	sb_append_stream(&so->so_rcv.sb, m);
 	sorwakeup(so);
 }
 
@@ -300,7 +302,7 @@ rfcomm_sattach (struct socket *so, int proto,
 	if (err)
 		return err;
 
-	err = rfcomm_rcvd(so->so_pcb, sbspace(&so->so_rcv));
+	err = rfcomm_rcvd(so->so_pcb, sbspace(&so->so_rcv.sb));
 	if (err) {
 		rfcomm_detach((struct rfcomm_dlc **)&so->so_pcb);
 		return err;
@@ -403,7 +405,7 @@ rfcomm_ssend (struct socket *so, int flags, struct mbuf *m,
 	if (m0 == NULL)
 		return ENOMEM;
 
-	sbappendstream(&so->so_snd.sb, m);
+	sb_append_stream(&so->so_snd.sb, m);
 
 	return rfcomm_send(pcb, m0);
 }
@@ -435,7 +437,7 @@ static int
 rfcomm_srcvd(struct socket *so, int flags)
 {
 	struct rfcomm_dlc *pcb = (struct rfcomm_dlc *) so->so_pcb; 
-	return rfcomm_rcvd(pcb, sbspace(&so->so_rcv));
+	return rfcomm_rcvd(pcb, sbspace(&so->so_rcv.sb));
 }
 
 struct pr_usrreqs rfcomm_usrreqs = {
@@ -456,7 +458,7 @@ struct pr_usrreqs rfcomm_usrreqs = {
         .pru_sense = pru_sense_null,
         .pru_shutdown = rfcomm_sshutdown,
         .pru_sockaddr = rfcomm_ssockaddr,
+        .pru_poll = sopoll,
         .pru_sosend = sosend,
-        .pru_soreceive = soreceive,
-        .pru_sopoll = sopoll
+        .pru_soreceive = soreceive
 };

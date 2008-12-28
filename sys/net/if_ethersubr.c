@@ -1412,9 +1412,9 @@ ether_reinput_oncpu(struct ifnet *ifp, struct mbuf *m, int run_bpf)
 }
 
 static void
-ether_input_handler(struct netmsg *nmsg)
+ether_input_handler(anynetmsg_t msg)
 {
-	struct netmsg_packet *nmp = (struct netmsg_packet *)nmsg;
+	struct netmsg_isr_packet *nmp = &msg->isr_packet;
 	struct ifnet *ifp;
 	struct mbuf *m;
 
@@ -1428,7 +1428,7 @@ ether_input_handler(struct netmsg *nmsg)
 static __inline void
 ether_init_netpacket(int num, struct mbuf *m)
 {
-	struct netmsg_packet *pmsg;
+	struct netmsg_isr_packet *pmsg;
 
 	pmsg = &m->m_hdr.mh_netmsg;
 	netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, MSGF_MPSAFE,

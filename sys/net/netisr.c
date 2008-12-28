@@ -68,7 +68,7 @@ do { \
 	rel_mplock(); \
 } while (0)
 
-static void netmsg_sync_func(struct netmsg *msg);
+static void netmsg_sync_func(anynetmsg_t msg);
 
 struct netmsg_port_registration {
     TAILQ_ENTRY(netmsg_port_registration) npr_entry;
@@ -129,10 +129,10 @@ netisr_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
 static int
 netmsg_put_port(lwkt_port_t port, lwkt_msg_t lmsg)
 {
-    netmsg_t netmsg = (void *)lmsg;
+    anynetmsg_t netmsg = (void *)lmsg;
 
     if ((lmsg->ms_flags & MSGF_SYNC) && port == &curthread->td_msgport) {
-	netmsg->nm_dispatch(netmsg);
+	netmsg->netmsg.nm_dispatch(netmsg);
 	if ((lmsg->ms_flags & MSGF_DONE) == 0)
 	    panic("netmsg_put_port: self-referential deadlock on netport");
 	return(EASYNC);
@@ -154,12 +154,12 @@ netmsg_put_port(lwkt_port_t port, lwkt_msg_t lmsg)
 static int
 netmsg_sync_putport(lwkt_port_t port, lwkt_msg_t lmsg)
 {
-    netmsg_t netmsg = (void *)lmsg;
+    anynetmsg_t netmsg = (void *)lmsg;
 
     KKASSERT((lmsg->ms_flags & MSGF_DONE) == 0);
 
     lmsg->ms_target_port = port;	/* required for abort */
-    netmsg->nm_dispatch(netmsg);
+    netmsg->netmsg.nm_dispatch(netmsg);
     return(EASYNC);
 }
 
@@ -255,35 +255,35 @@ netmsg_service_sync(void)
  * EASYNC to be returned if the netmsg function disposes of the message.
  */
 static void
-netmsg_sync_func(struct netmsg *msg)
+netmsg_sync_func(anynetmsg_t msg)
 {
-    lwkt_replymsg(&msg->nm_lmsg, 0);
+    lwkt_replymsg(&msg->lmsg, 0);
 }
 
 /*
  * Return current BGL lock state (1:locked, 0: unlocked)
  */
 int
-netmsg_service(struct netmsg *msg, int mpsafe_mode, int mplocked)
+netmsg_service(anynetmsg_t msg, int mpsafe_mode, int mplocked)
 {
     /*
      * Adjust the mplock dynamically.
      */
     switch (mpsafe_mode) {
     case NETMSG_SERVICE_ADAPTIVE: /* Adaptive BGL */
-	if (msg->nm_lmsg.ms_flags & MSGF_MPSAFE) {
+	if (msg->lmsg.ms_flags & MSGF_MPSAFE) {
 	    if (mplocked) {
 		rel_mplock();
 		mplocked = 0;
 	    }
-	    msg->nm_dispatch(msg);
+	    msg->netmsg.nm_dispatch(msg);
 	    /* Leave mpunlocked */
 	} else {
 	    if (!mplocked) {
 		get_mplock();
 		/* mplocked = 1; not needed */
 	    }
-	    msg->nm_dispatch(msg);
+	    msg->netmsg.nm_dispatch(msg);
 	    rel_mplock();
 	    mplocked = 0;
 	    /* Leave mpunlocked, next msg might be mpsafe */
@@ -295,7 +295,7 @@ netmsg_service(struct netmsg *msg, int mpsafe_mode, int mplocked)
 	    rel_mplock();
 	    mplocked = 0;
 	}
-	msg->nm_dispatch(msg);
+	msg->netmsg.nm_dispatch(msg);
 	/* Leave mpunlocked */
 	break;
 
@@ -304,7 +304,7 @@ netmsg_service(struct netmsg *msg, int mpsafe_mode, int mplocked)
 	    get_mplock();
 	    mplocked = 1;
 	}
-	msg->nm_dispatch(msg);
+	msg->netmsg.nm_dispatch(msg);
 	/* Leave mplocked */
 	break;
     }
@@ -330,7 +330,7 @@ netmsg_service_loop(void *arg)
      * Loop on netmsgs
      */
     while ((msg = lwkt_waitport(&curthread->td_msgport, 0))) {
-	mplocked = netmsg_service(msg, *mpsafe_mode, mplocked);
+	    mplocked = netmsg_service((anynetmsg_t)msg, *mpsafe_mode, mplocked);
     }
 }
 
@@ -354,7 +354,7 @@ int
 netisr_queue(int num, struct mbuf *m)
 {
     struct netisr *ni;
-    struct netmsg_packet *pmsg;
+    struct netmsg_isr_packet *pmsg;
     lwkt_port_t port;
 
     KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
@@ -436,12 +436,14 @@ cpu0_ctlport(int cmd __unused, struct sockaddr *sa __unused,
     return (&netisr_cpu[0].td_msgport);
 }
 
+#if 0
 lwkt_port_t
 sync_soport(struct socket *so __unused, struct sockaddr *nam __unused,
 	    struct mbuf **dummy __unused, int req __unused)
 {
     return (&netisr_sync_port);
 }
+#endif
 
 /*
  * schednetisr() is used to call the netisr handler from the appropriate
@@ -519,7 +521,7 @@ void
 netisr_run(int num, struct mbuf *m)
 {
     struct netisr *ni;
-    struct netmsg_packet *pmsg;
+    anynetmsg_t pmsg;
 
     KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
     	    ("%s: bad isr %d", __func__, num));
@@ -531,13 +533,13 @@ netisr_run(int num, struct mbuf *m)
 	return;
     }
 
-    pmsg = &m->m_hdr.mh_netmsg;
+    pmsg = (anynetmsg_t)&m->m_hdr.mh_netmsg;
 
-    netmsg_init(&pmsg->nm_netmsg, &netisr_apanic_rport, 0, ni->ni_handler);
-    pmsg->nm_packet = m;
-    pmsg->nm_netmsg.nm_lmsg.u.ms_result = num;
+    netmsg_init(&pmsg->netmsg, &netisr_apanic_rport, 0, ni->ni_handler);
+    pmsg->isr_packet.nm_packet = m;
+    pmsg->isr_packet.nm_netmsg.nm_lmsg.u.ms_result = num;
 
     NETISR_GET_MPLOCK(ni);
-    ni->ni_handler(&pmsg->nm_netmsg);
+    ni->ni_handler(pmsg);
     NETISR_REL_MPLOCK(ni);
 }

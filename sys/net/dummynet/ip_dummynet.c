@@ -187,7 +187,7 @@ static int	config_pipe(struct dn_ioc_pipe *);
 static void	dummynet_flush(void);
 
 static void	dummynet_clock(systimer_t, struct intrframe *);
-static void	dummynet(struct netmsg *);
+static void	dummynet(anynetmsg_t);
 
 static struct dn_pipe *dn_find_pipe(int);
 static struct dn_flow_set *dn_locate_flowset(int, int);
@@ -644,7 +644,7 @@ dn_expire_pipe_cb(struct dn_pipe *pipe, void *dummy __unused)
  * increment the current tick counter and schedule expired events.
  */
 static void
-dummynet(struct netmsg *msg)
+dummynet(anynetmsg_t msg)
 {
     void *p;
     struct dn_heap *h;
@@ -657,7 +657,7 @@ dummynet(struct netmsg *msg)
 
     /* Reply ASAP */
     crit_enter();
-    lwkt_replymsg(&msg->nm_lmsg, 0);
+    lwkt_replymsg(&msg->lmsg, 0);
     crit_exit();
 
     curr_time++;
@@ -1903,7 +1903,7 @@ sysctl_dn_hz(SYSCTL_HANDLER_ARGS)
 }
 
 static void
-ip_dn_init_dispatch(struct netmsg *msg)
+ip_dn_init_dispatch(anynetmsg_t msg)
 {
     int i, error = 0;
 
@@ -1944,7 +1944,7 @@ ip_dn_init_dispatch(struct netmsg *msg)
 
 back:
     crit_exit();
-    lwkt_replymsg(&msg->nm_lmsg, error);
+    lwkt_replymsg(&msg->lmsg, error);
 }
 
 static int
@@ -1966,7 +1966,7 @@ ip_dn_init(void)
 #ifdef KLD_MODULE
 
 static void
-ip_dn_stop_dispatch(struct netmsg *msg)
+ip_dn_stop_dispatch(anynetmsg_t msg)
 {
     crit_enter();
 
@@ -1978,7 +1978,7 @@ ip_dn_stop_dispatch(struct netmsg *msg)
     systimer_del(&dn_clock);
 
     crit_exit();
-    lwkt_replymsg(&msg->nm_lmsg, 0);
+    lwkt_replymsg(&msg->lmsg, 0);
 }
 
 

@@ -59,11 +59,18 @@ static struct protosw atalksw[] = {
 };
 
 static struct domain atalkdomain = {
-	AF_APPLETALK, "appletalk", NULL, NULL, NULL,
-	atalksw, &atalksw[sizeof(atalksw)/sizeof(atalksw[0])],
-	SLIST_ENTRY_INITIALIZER,
-	rn_inithead, 8 * offsetof(struct sockaddr_at, sat_addr),
-	sizeof(struct sockaddr_at),
+	.dom_family = AF_APPLETALK,
+	.dom_name = "appletalk",
+	.dom_init = NULL,
+	.dom_internalize = NULL,
+	.dom_externalize = NULL,
+	.dom_dispose = NULL,
+	.dom_protosw = atalksw,
+	.dom_protoswNPROTOSW = &atalksw[sizeof(atalksw)/sizeof(atalksw[0])],
+	.dom_next = SLIST_ENTRY_INITIALIZER,
+	.dom_rtattach = rn_inithead,
+	.dom_rtoffset = 8 * offsetof(struct sockaddr_at, sat_addr),
+	.dom_maxrtkey = sizeof(struct sockaddr_at)
 };
 
 DOMAIN_SET(atalk);

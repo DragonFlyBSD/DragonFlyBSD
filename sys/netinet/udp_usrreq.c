@@ -77,6 +77,7 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/domain.h>
+#include <sys/objcache.h>
 #include <sys/proc.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
@@ -84,11 +85,10 @@
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
 #include <sys/thread2.h>
+#include <sys/socketvar2.h>
 #include <sys/in_cksum.h>
 
 #include <machine/stdarg.h>
-
-#include <vm/vm_zone.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -187,17 +187,22 @@ static int udp_detach (struct socket *so);
 static	int udp_output (struct inpcb *, struct mbuf *, struct sockaddr *,
 			    struct mbuf *, struct thread *);
 
+MALLOC_DEFINE(M_INPCB, "inpcb", "internet pcbs");
+
 void
 udp_init(void)
 {
+	int limit;
+
 	in_pcbinfo_init(&udbinfo);
 	udbinfo.hashbase = hashinit(UDBHASHSIZE, M_PCB, &udbinfo.hashmask);
 	udbinfo.porthashbase = hashinit(UDBHASHSIZE, M_PCB,
 					&udbinfo.porthashmask);
 	udbinfo.wildcardhashbase = hashinit(UDBHASHSIZE, M_PCB,
 					    &udbinfo.wildcardhashmask);
-	udbinfo.ipi_zone = zinit("udpcb", sizeof(struct inpcb), maxsockets,
-				 ZONE_INTERRUPT, 0);
+	limit = maxsockets;
+	udbinfo.objc = objcache_create_mbacked(M_PCB, sizeof(struct inpcb),
+					       &limit, 64, NULL, NULL, 0);
 	udp_thread_init();
 }
 
@@ -519,7 +524,7 @@ udp_input(struct mbuf *m, ...)
 	} else
 #endif
 		append_sa = (struct sockaddr *)&udp_in;
-	if (ssb_appendaddr(&inp->inp_socket->so_rcv, append_sa, m, opts) == 0) {
+	if (ssb_append_addr(&inp->inp_socket->so_rcv, append_sa, m, opts) == 0) {
 		udpstat.udps_fullsock++;
 		goto bad;
 	}
@@ -588,7 +593,7 @@ udp_append(struct inpcb *last, struct ip *ip, struct mbuf *n, int off)
 #endif
 		append_sa = (struct sockaddr *)&udp_in;
 	m_adj(n, off);
-	if (ssb_appendaddr(&last->inp_socket->so_rcv, append_sa, n, opts) == 0) {
+	if (ssb_append_addr(&last->inp_socket->so_rcv, append_sa, n, opts) == 0) {
 		m_freem(n);
 		if (opts)
 			m_freem(opts);
@@ -1088,8 +1093,8 @@ struct pr_usrreqs udp_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = udp_shutdown,
 	.pru_sockaddr = in_setsockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosendudp,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 

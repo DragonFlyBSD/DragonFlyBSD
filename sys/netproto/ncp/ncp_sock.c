@@ -102,7 +102,7 @@ ncp_soconnect(struct socket *so,struct sockaddr *target, struct thread *td) {
 		tsleep((caddr_t)&so->so_timeo, 0, "ncpcon", 2 * hz);
 		if ((so->so_state & SS_ISCONNECTING) &&
 		    so->so_error == 0 /*&& rep &&*/) {
-			so->so_state &= ~SS_ISCONNECTING;
+			atomic_clear_short(&so->so_state, SS_ISCONNECTING);
 			crit_exit();
 			goto bad;
 		}
@@ -143,10 +143,10 @@ ncp_sock_recv(struct socket *so, struct sockbuf *sio)
 {
 	int error, flags;
 
-	sbinit(sio, 1000000);	/* limit data returned (inexact, hint only) */
+	sb_init(sio);	/* limit data returned (inexact, hint only) */
 	flags = MSG_DONTWAIT;
 
-	error = so_pru_soreceive(so, NULL, NULL, sio, NULL, &flags);
+	error = so_pru_soreceive(so, NULL, NULL, sio, 1000000, NULL, &flags);
 #ifdef NCP_SOCKET_DEBUG
 	if (error)
 		kprintf("ncp_recv: err=%d\n", error);
@@ -185,7 +185,7 @@ ncp_sock_send(struct socket *so, struct mbuf *top, struct ncp_rq *rqp)
 int
 ncp_poll(struct socket *so, int events)
 {
-    return (so_pru_sopoll(so, events, NULL));
+    return (so_pru_poll(so, events, NULL));
 }
 
 int
@@ -389,38 +389,43 @@ ncp_sock_disconnect(struct ncp_conn *conn) {
 
 #ifdef IPX
 static void
-ncp_watchdog(struct ncp_conn *conn) {
+ncp_watchdog(struct ncp_conn *conn) 
+{
 	char *buf;
 	int error, len, flags;
 	struct socket *so;
 	struct sockaddr *sa;
 	struct sockbuf sio;
+	struct mbuf *m;
 
 	sa = NULL;
+	sb_init(&sio);
+
 	while (conn->wdg_so) { /* not a loop */
 		so = conn->wdg_so;
-		sbinit(&sio, 1000000);
 		flags = MSG_DONTWAIT;
 		error = so_pru_soreceive(so, (struct sockaddr**)&sa,
-					 NULL, &sio, NULL, &flags);
+					 NULL, &sio, 1000000, NULL, &flags);
 		if (error)
 			break;
-		len = sio.sb_cc;
+		len = sb_cc_est(&sio);
+		m = sb_chain_remove(&sio, len);
 		NCPSDEBUG("got watch dog %d\n",len);
 		if (len != 2) {
-			m_freem(sio.sb_mb);
+			m_freem(m);
 			break;
 		}
-		buf = mtod(sio.sb_mb, char *);
+		buf = mtod(m, char *);
 		if (buf[1] != '?') {
-			m_freem(sio.sb_mb);
+			m_freem(m);
 			break;
 		}
 		buf[1] = 'Y';
-		error = so_pru_sosend(so, sa, NULL, sio.sb_mb, NULL, 0, curthread);
+		error = so_pru_sosend(so, sa, NULL, m, NULL, 0, curthread);
 		NCPSDEBUG("send watch dog %d\n",error);
 		break;
 	}
+	sb_uninit(&sio);
 	if (sa)
 		FREE(sa, M_SONAME);
 	return;

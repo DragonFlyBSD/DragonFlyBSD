@@ -313,9 +313,9 @@ if_start_need_schedule(struct ifaltq *ifq, int running)
 }
 
 static void
-if_start_dispatch(struct netmsg *nmsg)
+if_start_dispatch(anynetmsg_t nmsg)
 {
-	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
+	struct lwkt_msg *lmsg = &nmsg->lmsg;
 	struct ifnet *ifp = lmsg->u.ms_resultp;
 	struct ifaltq *ifq = &ifp->if_snd;
 	int running = 0;
@@ -2216,7 +2216,7 @@ ifac_free(struct ifaddr_container *ifac, int cpu_id)
 }
 
 static void
-ifa_iflink_dispatch(struct netmsg *nmsg)
+ifa_iflink_dispatch(anynetmsg_t nmsg)
 {
 	struct netmsg_ifaddr *msg = (struct netmsg_ifaddr *)nmsg;
 	struct ifaddr *ifa = msg->ifa;
@@ -2239,7 +2239,7 @@ ifa_iflink_dispatch(struct netmsg *nmsg)
 
 	crit_exit();
 
-	ifa_forwardmsg(&nmsg->nm_lmsg, cpu + 1);
+	ifa_forwardmsg(&msg->netmsg.nm_lmsg, cpu + 1);
 }
 
 void
@@ -2257,7 +2257,7 @@ ifa_iflink(struct ifaddr *ifa, struct ifnet *ifp, int tail)
 }
 
 static void
-ifa_ifunlink_dispatch(struct netmsg *nmsg)
+ifa_ifunlink_dispatch(anynetmsg_t nmsg)
 {
 	struct netmsg_ifaddr *msg = (struct netmsg_ifaddr *)nmsg;
 	struct ifaddr *ifa = msg->ifa;
@@ -2277,7 +2277,7 @@ ifa_ifunlink_dispatch(struct netmsg *nmsg)
 
 	crit_exit();
 
-	ifa_forwardmsg(&nmsg->nm_lmsg, cpu + 1);
+	ifa_forwardmsg(&msg->netmsg.nm_lmsg, cpu + 1);
 }
 
 void
@@ -2294,12 +2294,12 @@ ifa_ifunlink(struct ifaddr *ifa, struct ifnet *ifp)
 }
 
 static void
-ifa_destroy_dispatch(struct netmsg *nmsg)
+ifa_destroy_dispatch(anynetmsg_t nmsg)
 {
 	struct netmsg_ifaddr *msg = (struct netmsg_ifaddr *)nmsg;
 
 	IFAFREE(msg->ifa);
-	ifa_forwardmsg(&nmsg->nm_lmsg, mycpuid + 1);
+	ifa_forwardmsg(&nmsg->netmsg.nm_lmsg, mycpuid + 1);
 }
 
 void

@@ -164,9 +164,8 @@ tcp_usr_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	int error;
 	struct inpcb *inp;
 	struct tcpcb *tp = 0;
-	TCPDEBUG0;
 
-	crit_enter();
+	TCPDEBUG0;
 	inp = so->so_pcb;
 	TCPDEBUG1();
 	if (inp) {
@@ -183,7 +182,6 @@ tcp_usr_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	tp = sototcpcb(so);
 out:
 	TCPDEBUG2(PRU_ATTACH);
-	crit_exit();
 	return error;
 }
 
@@ -202,7 +200,6 @@ tcp_usr_detach(struct socket *so)
 	struct tcpcb *tp;
 	TCPDEBUG0;
 
-	crit_enter();
 	inp = so->so_pcb;
 
 	/*
@@ -224,7 +221,6 @@ tcp_usr_detach(struct socket *so)
 		tp = tcp_disconnect(tp);
 		TCPDEBUG2(PRU_DETACH);
 	}
-	crit_exit();
 	return error;
 }
 
@@ -247,7 +243,7 @@ tcp_usr_detach(struct socket *so)
 		 TCPDEBUG1();					\
 	} while(0)
 
-#define COMMON_END(req)	out: TCPDEBUG2(req); crit_exit(); return error; goto out
+#define COMMON_END(req)	out: TCPDEBUG2(req); return error; goto out
 
 
 /*
@@ -331,12 +327,12 @@ struct netmsg_inswildcard {
 };
 
 static void
-in_pcbinswildcardhash_handler(struct netmsg *msg0)
+in_pcbinswildcardhash_handler(anynetmsg_t msg)
 {
-	struct netmsg_inswildcard *msg = (struct netmsg_inswildcard *)msg0;
+	struct netmsg_inswildcard *nm = (struct netmsg_inswildcard *)msg;
 
-	in_pcbinswildcardhash_oncpu(msg->nm_inp, msg->nm_pcbinfo);
-	lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, 0);
+	in_pcbinswildcardhash_oncpu(nm->nm_inp, nm->nm_pcbinfo);
+	lwkt_replymsg(&nm->nm_netmsg.nm_lmsg, 0);
 }
 #endif
 
@@ -442,14 +438,13 @@ tcp6_usr_listen(struct socket *so, struct thread *td)
 
 #ifdef SMP
 static void
-tcp_output_dispatch(struct netmsg *nmsg)
+tcp_output_dispatch(anynetmsg_t msg)
 {
-	struct lwkt_msg *msg = &nmsg->nm_lmsg;
-	struct tcpcb *tp = msg->u.ms_resultp;
+	struct tcpcb *tp = msg->lmsg.u.ms_resultp;
 	int error;
 
 	error = tcp_output(tp);
-	lwkt_replymsg(msg, error);
+	lwkt_replymsg(&msg->lmsg, error);
 }
 #endif
 
@@ -598,16 +593,13 @@ tcp_usr_accept(struct socket *so, struct sockaddr **nam)
 	struct tcpcb *tp = NULL;
 	TCPDEBUG0;
 
-	crit_enter();
 	inp = so->so_pcb;
 	if (so->so_state & SS_ISDISCONNECTED) {
 		error = ECONNABORTED;
 		goto out;
 	}
-	if (inp == 0) {
-		crit_exit();
+	if (inp == 0)
 		return (EINVAL);
-	}
 	tp = intotcpcb(inp);
 	TCPDEBUG1();
 	in_setpeeraddr(so, nam);
@@ -623,17 +615,14 @@ tcp6_usr_accept(struct socket *so, struct sockaddr **nam)
 	struct tcpcb *tp = NULL;
 	TCPDEBUG0;
 
-	crit_enter();
 	inp = so->so_pcb;
 
 	if (so->so_state & SS_ISDISCONNECTED) {
 		error = ECONNABORTED;
 		goto out;
 	}
-	if (inp == 0) {
-		crit_exit();
+	if (inp == 0)
 		return (EINVAL);
-	}
 	tp = intotcpcb(inp);
 	TCPDEBUG1();
 	in6_mapped_peeraddr(so, nam);
@@ -659,26 +648,95 @@ tcp_usr_shutdown(struct socket *so)
 }
 
 /*
- * After a receive, possibly send window update to peer.
+ * Notify that new packets are queued for transmission or that
+ * received packets have been drained.
+ *
+ * New packets are transmitted.  NOTE! packets have already been
+ * queued to so->so_snd.
+ *
+ * We are also notified after a receive, giving us a trigger by
+ * which we may possibly send a window update to the peer.
  */
+static void
+tcp_usr_notify(anynetmsg_t msg)
+{
+	struct socket *so = msg->pru_notify.nm_so;
+	struct inpcb *inp;
+	struct tcpcb *tp;
+	struct mbuf **mpp;
+	struct mbuf *m;
+	int error = 0;
+	int flags = 0;
+
+	lwkt_replymsg(&msg->lmsg, 0);
+
+	TCPDEBUG0;
+	inp = so->so_pcb;
+	if (inp == NULL)
+		return;
+	tp = intotcpcb(inp);
+	TCPDEBUG1();
+
+	/*
+	 * Aggregate M_EOF, use the M_MORETOCOME flag of the last queued
+	 * packet observed.
+	 */
+	while ((mpp = ssb_next_note(&so->so_snd)) != NULL) {
+		m = *mpp;
+		if (m->m_flags & M_EOF)
+			flags |= M_EOF;
+		if (m->m_flags & M_MORETOCOME)
+			flags |= M_MORETOCOME;
+		else
+			flags &= ~M_MORETOCOME;
+	}
+
+	/*
+	 * Handle flags and punch tcp_output.
+	 */
+	if (flags & M_EOF) {
+		/*
+		 * Close the send side of the connection after
+		 * the data is sent.
+		 */
+		socantsendmore(so);
+		tp = tcp_usrclosed(tp);
+	}
+	if (tp != NULL) {
+		if (flags & M_MORETOCOME)
+			tp->t_flags |= TF_MORETOCOME;
+		error = tcp_output(tp);
+		if (flags & M_MORETOCOME)
+			tp->t_flags &= ~TF_MORETOCOME;
+	}
+#ifdef TCPDEBUG
+out:	;
+#endif
+	TCPDEBUG2(PRU_RCVD)
+}
+
+#if 0
+
 static int
 tcp_usr_rcvd(struct socket *so, int flags)
 {
-	int error = 0;
 	struct inpcb *inp;
 	struct tcpcb *tp;
+	int error = 0;
 
 	COMMON_START(so, inp, 0);
 	tcp_output(tp);
 	COMMON_END(PRU_RCVD);
 }
 
+#endif
+
 /*
- * Do a send by putting data in output queue and updating urgent
- * marker if URG set.  Possibly send more data.  Unlike the other
- * pru_*() routines, the mbuf chains are our responsibility.  We
- * must either enqueue them or free them.  The other pru_* routines
- * generally are caller-frees.
+ * Synchronous send from userland.  This is a bit weird but basically since
+ * PR_CONNREQUIRED, PR_IMPLOPCL, and PR_NOCONTROL are set, this routine
+ * is always called with a NULL addr and control.
+ *
+ * Thus the only time this routine is called should be with M_OOB data.
  */
 static int
 tcp_usr_send(struct socket *so, int flags, struct mbuf *m,
@@ -687,12 +745,10 @@ tcp_usr_send(struct socket *so, int flags, struct mbuf *m,
 	int error = 0;
 	struct inpcb *inp;
 	struct tcpcb *tp;
-#ifdef INET6
-	int isipv6;
-#endif
 	TCPDEBUG0;
 
-	crit_enter();
+	KKASSERT(control == NULL && nam == NULL);
+
 	inp = so->so_pcb;
 
 	if (inp == NULL) {
@@ -701,53 +757,22 @@ tcp_usr_send(struct socket *so, int flags, struct mbuf *m,
 		 * we checked SS_CANTSENDMORE, eg: while doing uiomove or a
 		 * network interrupt in the non-critical section of sosend().
 		 */
-		if (m)
-			m_freem(m);
-		if (control)
-			m_freem(control);
 		error = ECONNRESET;	/* XXX EPIPE? */
 		tp = NULL;
 		TCPDEBUG1();
 		goto out;
 	}
-#ifdef INET6
-	isipv6 = nam && nam->sa_family == AF_INET6;
-#endif /* INET6 */
 	tp = intotcpcb(inp);
 	TCPDEBUG1();
-	if (control) {
-		/* TCP doesn't do control messages (rights, creds, etc) */
-		if (control->m_len) {
-			m_freem(control);
-			if (m)
-				m_freem(m);
-			error = EINVAL;
-			goto out;
-		}
-		m_freem(control);	/* empty control, just free it */
-	}
-	if(!(flags & PRUS_OOB)) {
-		ssb_appendstream(&so->so_snd, m);
-		if (nam && tp->t_state < TCPS_SYN_SENT) {
-			/*
-			 * Do implied connect if not yet connected,
-			 * initialize window to default value, and
-			 * initialize maxseg/maxopd using peer's cached
-			 * MSS.
-			 */
-#ifdef INET6
-			if (isipv6)
-				error = tcp6_connect(tp, nam, td);
-			else
-#endif /* INET6 */
-			error = tcp_connect(tp, nam, td);
-			if (error)
-				goto out;
-			tp->snd_wnd = TTCP_CLIENT_SND_WND;
-			tcp_mss(tp, -1);
-		}
 
-		if (flags & PRUS_EOF) {
+	KKASSERT(flags & M_OOB);
+
+#if 0
+	if ((flags & M_OOB) == 0) {
+		/* not OOB, called from notify, already queued */
+		/* m is NULL */
+
+		if (flags & M_EOF) {
 			/*
 			 * Close the send side of the connection after
 			 * the data is sent.
@@ -756,19 +781,19 @@ tcp_usr_send(struct socket *so, int flags, struct mbuf *m,
 			tp = tcp_usrclosed(tp);
 		}
 		if (tp != NULL) {
-			if (flags & PRUS_MORETOCOME)
+			if (flags & M_MORETOCOME)
 				tp->t_flags |= TF_MORETOCOME;
 			error = tcp_output(tp);
-			if (flags & PRUS_MORETOCOME)
+			if (flags & M_MORETOCOME)
 				tp->t_flags &= ~TF_MORETOCOME;
 		}
-	} else {
-		if (ssb_space(&so->so_snd) < -512) {
-			m_freem(m);
-			error = ENOBUFS;
-			goto out;
-		}
+	} else
+#endif
+	{
 		/*
+		 * M_OOB data - not yet queued, called via synchronous
+		 * message.
+		 *
 		 * According to RFC961 (Assigned Protocols),
 		 * the urgent pointer points to the last octet
 		 * of urgent data.  We continue, however,
@@ -776,32 +801,24 @@ tcp_usr_send(struct socket *so, int flags, struct mbuf *m,
 		 * of data past the urgent section.
 		 * Otherwise, snd_up should be one lower.
 		 */
-		ssb_appendstream(&so->so_snd, m);
-		if (nam && tp->t_state < TCPS_SYN_SENT) {
-			/*
-			 * Do implied connect if not yet connected,
-			 * initialize window to default value, and
-			 * initialize maxseg/maxopd using peer's cached
-			 * MSS.
-			 */
-#ifdef INET6
-			if (isipv6)
-				error = tcp6_connect(tp, nam, td);
-			else
-#endif /* INET6 */
-			error = tcp_connect(tp, nam, td);
-			if (error)
-				goto out;
-			tp->snd_wnd = TTCP_CLIENT_SND_WND;
-			tcp_mss(tp, -1);
-		}
-		tp->snd_up = tp->snd_una + so->so_snd.ssb_cc;
+		ssb_append_stream(&so->so_snd, m);
+		m = NULL;
+		tp->snd_up = tp->snd_una + ssb_writer_cc_est(&so->so_snd);
 		tp->t_flags |= TF_FORCE;
 		error = tcp_output(tp);
 		tp->t_flags &= ~TF_FORCE;
 	}
-	COMMON_END((flags & PRUS_OOB) ? PRU_SENDOOB :
-		   ((flags & PRUS_EOF) ? PRU_SEND_EOF : PRU_SEND));
+
+	/*
+	 * Cleanup.
+	 */
+out:
+	if (m)
+		m_freem(m);
+
+	TCPDEBUG2((flags & M_OOB) ? PRU_SENDOOB :
+		  ((flags & M_EOF) ? PRU_SEND_EOF : PRU_SEND));
+	return (error);
 }
 
 /*
@@ -861,15 +878,16 @@ struct pr_usrreqs tcp_usrreqs = {
 	.pru_disconnect = tcp_usr_disconnect,
 	.pru_listen = tcp_usr_listen,
 	.pru_peeraddr = in_setpeeraddr,
-	.pru_rcvd = tcp_usr_rcvd,
+	.pru_notify = tcp_usr_notify,
+	/* .pru_rcvd = tcp_usr_rcvd, */
 	.pru_rcvoob = tcp_usr_rcvoob,
 	.pru_send = tcp_usr_send,
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = tcp_usr_shutdown,
 	.pru_sockaddr = in_setsockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 #ifdef INET6
@@ -885,15 +903,16 @@ struct pr_usrreqs tcp6_usrreqs = {
 	.pru_disconnect = tcp_usr_disconnect,
 	.pru_listen = tcp6_usr_listen,
 	.pru_peeraddr = in6_mapped_peeraddr,
-	.pru_rcvd = tcp_usr_rcvd,
+	.pru_notify = tcp_usr_notify,
+	/* .pru_rcvd = tcp_usr_rcvd, */
 	.pru_rcvoob = tcp_usr_rcvoob,
 	.pru_send = tcp_usr_send,
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = tcp_usr_shutdown,
 	.pru_sockaddr = in6_mapped_sockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 #endif /* INET6 */
 
@@ -991,13 +1010,13 @@ struct netmsg_tcp_connect {
 };
 
 static void
-tcp_connect_handler(netmsg_t netmsg)
+tcp_connect_handler(anynetmsg_t msg)
 {
-	struct netmsg_tcp_connect *msg = (void *)netmsg;
+	struct netmsg_tcp_connect *nm = (void *)msg;
 	int error;
 
-	error = tcp_connect_oncpu(msg->nm_tp, msg->nm_sin, msg->nm_ifsin);
-	lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, error);
+	error = tcp_connect_oncpu(nm->nm_tp, nm->nm_sin, nm->nm_ifsin);
+	lwkt_replymsg(&nm->nm_netmsg.nm_lmsg, error);
 }
 
 #endif
@@ -1022,6 +1041,14 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 #ifdef SMP
 	lwkt_port_t port;
 #endif
+#ifdef INET6
+	/*
+	 * Implied connect may specify a ipv6 address.
+	 */
+	if (nam->sa_family == AF_INET6)
+		return(tcp6_connect(tp, nam, td));
+#endif
+
 
 	if (inp->inp_lport == 0) {
 		error = in_pcbbind(inp, (struct sockaddr *)NULL, td);
@@ -1168,12 +1195,9 @@ tcp_ctloutput(struct socket *so, struct sockopt *sopt)
 	struct	tcpcb *tp;
 
 	error = 0;
-	crit_enter();		/* XXX */
 	inp = so->so_pcb;
-	if (inp == NULL) {
-		crit_exit();
+	if (inp == NULL)
 		return (ECONNRESET);
-	}
 	if (sopt->sopt_level != IPPROTO_TCP) {
 #ifdef INET6
 		if (INP_CHECK_SOCKAF(so, AF_INET6))
@@ -1181,7 +1205,6 @@ tcp_ctloutput(struct socket *so, struct sockopt *sopt)
 		else
 #endif /* INET6 */
 		error = ip_ctloutput(so, sopt);
-		crit_exit();
 		return (error);
 	}
 	tp = intotcpcb(inp);
@@ -1257,7 +1280,6 @@ tcp_ctloutput(struct socket *so, struct sockopt *sopt)
 			soopt_from_kbuf(sopt, &optval, sizeof optval);
 		break;
 	}
-	crit_exit();
 	return (error);
 }
 
@@ -1315,14 +1337,14 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 	if (tp == 0) {
 		int nofd = so->so_state & SS_NOFDREF;	/* XXX */
 
-		so->so_state &= ~SS_NOFDREF;	/* don't free the socket yet */
+		atomic_clear_short(&so->so_state, SS_NOFDREF);	/* don't free the socket yet */
 #ifdef INET6
 		if (isipv6)
 			in6_pcbdetach(inp);
 		else
 #endif
 		in_pcbdetach(inp);
-		so->so_state |= nofd;
+		atomic_set_short(&so->so_state, nofd);
 		return (ENOBUFS);
 	}
 	tp->t_state = TCPS_CLOSED;
@@ -1348,7 +1370,7 @@ tcp_disconnect(struct tcpcb *tp)
 		tp = tcp_drop(tp, 0);
 	else {
 		soisdisconnecting(so);
-		sbflush(&so->so_rcv.sb);
+		sb_flush(&so->so_rcv.sb);
 		tp = tcp_usrclosed(tp);
 		if (tp)
 			tcp_output(tp);

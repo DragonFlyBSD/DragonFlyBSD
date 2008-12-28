@@ -227,6 +227,18 @@ ipflow_fastforward(struct mbuf *m)
 	}
 
 	/*
+	 * Verify the IP header checksum.
+	 */
+	if (m->m_pkthdr.csum_flags & CSUM_IP_CHECKED) {
+		if (!(m->m_pkthdr.csum_flags & CSUM_IP_VALID))
+			return 0;
+	} else {
+		/* Must compute it ourselves. */
+		if (in_cksum_hdr(ip) != 0)
+			return 0;
+	}
+
+	/*
 	 * Route and interface still up?
 	 */
 	rt = ipf->ipf_ro.ro_rt;
@@ -382,12 +394,12 @@ done:
 }
 
 static void
-ipflow_timo_dispatch(struct netmsg *nmsg)
+ipflow_timo_dispatch(anynetmsg_t msg)
 {
 	struct ipflow *ipf, *next_ipf;
 
 	crit_enter();
-	lwkt_replymsg(&nmsg->nm_lmsg, 0);	/* reply ASAP */
+	lwkt_replymsg(&msg->lmsg, 0);	/* reply ASAP */
 	crit_exit();
 
 	LIST_FOREACH_MUTABLE(ipf, &ipflowlist, ipf_list, next_ipf) {

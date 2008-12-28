@@ -48,6 +48,7 @@
 #include <sys/protosw.h>
 #include <sys/errno.h>
 #include <sys/thread2.h>
+#include <sys/socketvar2.h>
 
 #include <net/raw_cb.h>
 #include <net/route.h>
@@ -153,7 +154,7 @@ key_sendup0(struct rawcb *rp, struct mbuf *m, int promisc)
 		pfkeystat.in_msgtype[pmsg->sadb_msg_type]++;
 	}
 
-	if (!ssb_appendaddr(&rp->rcb_socket->so_rcv, (struct sockaddr *)&key_src,
+	if (!ssb_append_addr(&rp->rcb_socket->so_rcv, (struct sockaddr *)&key_src,
 	    m, NULL)) {
 		pfkeystat.in_nomem++;
 		m_freem(m);
@@ -197,7 +198,7 @@ key_sendup(struct socket *so, struct sadb_msg *msg, u_int len,
 	 * Get mbuf chain whenever possible (not clusters),
 	 * to save socket buffer.  We'll be generating many SADB_ACQUIRE
 	 * messages to listening key sockets.  If we simply allocate clusters,
-	 * ssb_appendaddr() will raise ENOBUFS due to too little ssb_space().
+	 * ssb_append_addr() will raise ENOBUFS due to too little ssb_space().
 	 * ssb_space() computes # of actual data bytes AND mbuf region.
 	 *
 	 * TODO: SADB_ACQUIRE filters should be implemented.
@@ -576,8 +577,14 @@ struct protosw keysw[] = {
 };
 
 struct domain keydomain = {
-	PF_KEY, "key", key_init, NULL, NULL,
-	keysw, &keysw[sizeof(keysw)/sizeof(keysw[0])],
+	.dom_family = PF_KEY,
+	.dom_name = "key",
+	.dom_init = key_init,
+	.dom_internalize = NULL,
+	.dom_externalize = NULL,
+	.dom_dispose = NULL,
+	.dom_protosw = keysw,
+	.dom_protoswNPROTOSW = &keysw[sizeof(keysw)/sizeof(keysw[0])]
 };
 
 DOMAIN_SET(key);

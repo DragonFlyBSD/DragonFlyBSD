@@ -53,6 +53,7 @@
 #include <sys/un.h>
 
 #include <sys/thread2.h>
+#include <sys/socketvar2.h>
 
 #include "fifo.h"
 
@@ -196,12 +197,13 @@ fifo_open(struct vop_open_args *ap)
 		}
 		fip->fi_readers = fip->fi_writers = 0;
 		wso->so_snd.ssb_lowat = PIPE_BUF;
-		rso->so_state |= SS_CANTRCVMORE;
+		atomic_set_short(&rso->so_state, SS_CANTRCVMORE);
 	}
 	if (ap->a_mode & FREAD) {
 		fip->fi_readers++;
 		if (fip->fi_readers == 1) {
-			fip->fi_writesock->so_state &= ~SS_CANTSENDMORE;
+			atomic_clear_short(&fip->fi_writesock->so_state,
+					   SS_CANTSENDMORE);
 			if (fip->fi_writers > 0) {
 				wakeup((caddr_t)&fip->fi_writers);
 				sowwakeup(fip->fi_writesock);
@@ -211,7 +213,8 @@ fifo_open(struct vop_open_args *ap)
 	if (ap->a_mode & FWRITE) {
 		fip->fi_writers++;
 		if (fip->fi_writers == 1) {
-			fip->fi_readsock->so_state &= ~SS_CANTRCVMORE;
+			atomic_clear_short(&fip->fi_readsock->so_state,
+					   SS_CANTRCVMORE);
 			if (fip->fi_readers > 0) {
 				wakeup((caddr_t)&fip->fi_readers);
 				sorwakeup(fip->fi_writesock);
@@ -289,7 +292,7 @@ fifo_read(struct vop_read_args *ap)
 		flags = 0;
 	startresid = uio->uio_resid;
 	vn_unlock(ap->a_vp);
-	error = soreceive(rso, NULL, uio, NULL, NULL, &flags);
+	error = soreceive(rso, NULL, uio, NULL, -1, NULL, &flags);
 	vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY);
 	return (error);
 }
@@ -398,7 +401,7 @@ filt_fiforead(struct knote *kn, long hint)
 {
 	struct socket *so = (struct socket *)kn->kn_hook;
 
-	kn->kn_data = so->so_rcv.ssb_cc;
+	kn->kn_data = sb_cc_mplocked(&so->so_rcv.sb);
 	if (so->so_state & SS_CANTRCVMORE) {
 		kn->kn_flags |= EV_EOF;
 		return (1);

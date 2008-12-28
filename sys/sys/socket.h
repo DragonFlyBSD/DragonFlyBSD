@@ -358,6 +358,7 @@ struct msghdr {
 #define	MSG_DONTWAIT	0x00000080	/* this message should be nonblocking */
 #define	MSG_EOF		0x00000100	/* data completes connection */
 #define	MSG_NOTIFICATION 0x00000200	/* notification message */
+#define	MSG_MORE	 0x00000400	/* more data will follow */
 
 /*
  * These override FIONBIO.  MSG_FNONBLOCKING is functionally equivalent to

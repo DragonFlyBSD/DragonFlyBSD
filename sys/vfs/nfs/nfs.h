@@ -368,7 +368,7 @@ extern TAILQ_HEAD(nfs_reqq, nfsreq) nfs_reqq;
 #define	R_SOCKERR	0x0010		/* Fatal error on socket */
 #define	R_TPRINTFMSG	0x0020		/* Did a tprintf msg. */
 #define	R_MUSTRESEND	0x0040		/* Must resend request */
-#define	R_GETONEREP	0x0080		/* Probe for one reply only */
+/*	unused		0x0080					*/
 #define R_MASKTIMER	0x0100		/* Timer should ignore this req */
 #define R_LOCKED	0x0200		/* Locked by the timer */
 

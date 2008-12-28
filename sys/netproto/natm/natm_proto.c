@@ -101,8 +101,14 @@ static struct protosw natmsw[] = {
 };
 
 static struct domain natmdomain = {
-	AF_NATM, "natm", natm_init, NULL, NULL,
-	natmsw, &natmsw[sizeof(natmsw)/sizeof(natmsw[0])],
+	.dom_family = AF_NATM,
+	.dom_name = "natm",
+	.dom_init = natm_init,
+	.dom_internalize = NULL,
+	.dom_externalize = NULL,
+	.dom_dispose = NULL,
+	.dom_protosw = natmsw,
+	.dom_protoswNPROTOSW = &natmsw[sizeof(natmsw)/sizeof(natmsw[0])]
 };
 
 #ifdef NATM_STAT

@@ -47,8 +47,11 @@
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/socketvar2.h>
 #include <sys/systm.h>
 #include <sys/bus.h>
+
+#include <sys/socketvar2.h>
 
 #include <netbt/bluetooth.h>
 #include <netbt/hci.h>
@@ -192,7 +195,7 @@ sco_complete(void *arg, int num)
 	struct socket *so = arg;
 
 	while (num-- > 0)
-		sbdroprecord(&so->so_snd.sb);
+		sb_drop_record(&so->so_snd.sb);
 
 	sowwakeup(so);
 }
@@ -213,12 +216,12 @@ sco_input(void *arg, struct mbuf *m)
 	 * will fit.
 	 */
 
-	while (m->m_pkthdr.len > sbspace(&so->so_rcv))
-		sbdroprecord(&so->so_rcv.sb);
+	while (m->m_pkthdr.len > sbspace(&so->so_rcv.sb))
+		sb_drop_record(&so->so_rcv.sb);
 
 	DPRINTFN(10, "received %d bytes\n", m->m_pkthdr.len);
 
-	sbappendrecord(&so->so_rcv.sb, m);
+	sb_append_record(&so->so_rcv.sb, m);
 	sorwakeup(so);
 }
 
@@ -376,7 +379,7 @@ sco_ssend (struct socket *so, int flags, struct mbuf *m,
 	if (control) /* no use for that */
 		m_freem(control);
 
-	sbappendrecord(&so->so_snd.sb, m);
+	sb_append_record(&so->so_snd.sb, m);
 	return sco_send(pcb, m0);
 
 error:
@@ -428,7 +431,7 @@ struct pr_usrreqs sco_usrreqs = {
         .pru_sense = pru_sense_null,
         .pru_shutdown = sco_sshutdown,
         .pru_sockaddr = sco_ssockaddr,
+        .pru_poll = sopoll,
         .pru_sosend = sosend,
-        .pru_soreceive = soreceive,
-        .pru_sopoll = sopoll
+        .pru_soreceive = soreceive
 };

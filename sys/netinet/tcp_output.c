@@ -136,7 +136,7 @@ tcp_output(struct tcpcb *tp)
 {
 	struct inpcb * const inp = tp->t_inpcb;
 	struct socket *so = inp->inp_socket;
-	long len, recvwin, sendwin;
+	long len, recvwin, sendwin, sndbuf_cc;
 	int nsacked = 0;
 	int off, flags, error;
 	struct mbuf *m;
@@ -154,6 +154,7 @@ tcp_output(struct tcpcb *tp)
 	const boolean_t isipv6 = FALSE;
 #endif
 	struct rmxp_tao *taop;
+	struct sb_reader sr;
 
 	/*
 	 * Determine length of data that should be transmitted,
@@ -195,6 +196,16 @@ tcp_output(struct tcpcb *tp)
 	    !IN_FASTRECOVERY(tp))
 		nsacked = tcp_sack_bytes_below(&tp->scb, tp->snd_nxt);
 
+	/*
+	 * Take a snapshot of cc estimates and use them throughout
+	 * the function. Not sure if this is necessary or not, but
+	 * better be safe than try to decipher this mess of control
+	 * logic.
+	 * XXX: we might get called by tcp_input(), make sure it
+	 * won't make a difference if our sndbuf_cc is different
+	 * that its sndbuf_cc
+	 */
+	sndbuf_cc = sb_cc_est(&so->so_snd.sb);
 again:
 	/* Make use of SACK information when slow-starting after a RTO. */
 	if (TCP_DO_SACK(tp) && tp->snd_nxt != tp->snd_max &&
@@ -244,7 +255,7 @@ again:
 			 * to send then the probe will be the FIN
 			 * itself.
 			 */
-			if (off < so->so_snd.ssb_cc)
+			if (off < sndbuf_cc)
 				flags &= ~TH_FIN;
 			sendwin = 1;
 		} else {
@@ -265,7 +276,10 @@ again:
 	 * be set to snd_una, the offset will be 0, and the length may
 	 * wind up 0.
 	 */
-	len = (long)ulmin(so->so_snd.ssb_cc, sendwin) - off;
+	len = (long)ulmin(sndbuf_cc, sendwin) - off;
+	if (len > 0) {
+		KKASSERT(sb_head(&so->so_snd.sb) != NULL);
+	}
 
 	/*
 	 * Lop off SYN bit if it has already been sent.  However, if this
@@ -324,7 +338,7 @@ again:
 		len = tp->t_maxseg;
 		sendalot = TRUE;
 	}
-	if (SEQ_LT(tp->snd_nxt + len, tp->snd_una + so->so_snd.ssb_cc))
+	if (SEQ_LT(tp->snd_nxt + len, tp->snd_una + sndbuf_cc))
 		flags &= ~TH_FIN;
 
 	recvwin = ssb_space(&so->so_rcv);
@@ -353,7 +367,7 @@ again:
 		 */
 		if (!(tp->t_flags & TF_MORETOCOME) &&	/* normal case */
 		    (idle || (tp->t_flags & TF_NODELAY)) &&
-		    len + off >= so->so_snd.ssb_cc &&
+		    len + off >= sndbuf_cc &&
 		    !(tp->t_flags & TF_NOPUSH)) {
 			goto send;
 		}
@@ -445,7 +459,7 @@ again:
 	 * if window is nonzero, transmit what we can,
 	 * otherwise force out a byte.
 	 */
-	if (so->so_snd.ssb_cc > 0 &&
+	if (sndbuf_cc > 0 &&
 	    !tcp_callout_active(tp, tp->tt_rexmt) &&
 	    !tcp_callout_active(tp, tp->tt_persist)) {
 		tp->t_rxtshift = 0;
@@ -688,18 +702,22 @@ send:
 		}
 		m->m_data += max_linkhdr;
 		m->m_len = hdrlen;
+
+		sb_reader_init(&sr, &so->so_snd.sb);
 		if (len <= MHLEN - hdrlen - max_linkhdr) {
-			m_copydata(so->so_snd.ssb_mb, off, (int) len,
-			    mtod(m, caddr_t) + hdrlen);
+			sb_reader_copy_to_buf(&sr, off, (int) len,
+					      mtod(m, caddr_t) + hdrlen);
 			m->m_len += len;
 		} else {
-			m->m_next = m_copy(so->so_snd.ssb_mb, off, (int) len);
+			m->m_next = sb_reader_copym(&sr, off,
+					   (int) len);
 			if (m->m_next == NULL) {
 				m_free(m);
 				error = ENOBUFS;
 				goto out;
 			}
 		}
+		sb_reader_done(&sr);
 #endif
 		/*
 		 * If we're sending everything we've got, set PUSH.
@@ -707,7 +725,7 @@ send:
 		 * give data to the user when a buffer fills or
 		 * a PUSH comes in.)
 		 */
-		if (off + len == so->so_snd.ssb_cc)
+		if (off + len == sndbuf_cc)
 			flags |= TH_PUSH;
 	} else {
 		if (tp->t_flags & TF_ACKNOW)

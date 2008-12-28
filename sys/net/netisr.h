@@ -122,76 +122,8 @@
 #include <net/netmsg.h>
 #endif
 
-TAILQ_HEAD(notifymsglist, netmsg_so_notify);
-
-typedef __boolean_t (*msg_predicate_fn_t)(struct netmsg *);
-
-/*
- * Base class.  All net messages must start with the same fields.
- */
-
-struct netmsg_packet {
-    struct netmsg	nm_netmsg;
-    struct mbuf		*nm_packet;
-};
-
-struct netmsg_pr_timeout {
-    struct netmsg	nm_netmsg;
-    int			(*nm_prfn) (void);
-};
-
-struct netmsg_so_notify {
-    struct netmsg			nm_netmsg;
-    msg_predicate_fn_t			nm_predicate;
-    struct socket			*nm_so;
-    int					nm_fflags; /* flags e.g. FNONBLOCK */
-    int					nm_etype;  /* receive or send event */
-    TAILQ_ENTRY(netmsg_so_notify)	nm_list;
-};
-
-struct netmsg_so_notify_abort {
-    struct netmsg			nm_netmsg;
-    struct netmsg_so_notify 		*nm_notifymsg;
-};
-
 #define NM_REVENT	0x1		/* event on receive buffer */
 #define NM_SEVENT	0x2		/* event on send buffer */
-
-#endif
-
-#ifdef _KERNEL
-
-/*
- * for dispatching pr_ functions,
- * until they can be converted to message-passing
- */
-void netmsg_pru_abort(netmsg_t);
-void netmsg_pru_accept(netmsg_t);
-void netmsg_pru_attach(netmsg_t);
-void netmsg_pru_bind(netmsg_t);
-void netmsg_pru_connect(netmsg_t);
-void netmsg_pru_connect2(netmsg_t);
-void netmsg_pru_control(netmsg_t);
-void netmsg_pru_detach(netmsg_t);
-void netmsg_pru_disconnect(netmsg_t);
-void netmsg_pru_listen(netmsg_t);
-void netmsg_pru_peeraddr(netmsg_t);
-void netmsg_pru_rcvd(netmsg_t);
-void netmsg_pru_rcvoob(netmsg_t);
-void netmsg_pru_send(netmsg_t);
-void netmsg_pru_sense(netmsg_t);
-void netmsg_pru_shutdown(netmsg_t);
-void netmsg_pru_sockaddr(netmsg_t);
-
-void netmsg_pru_sopoll(netmsg_t);
-void netmsg_pru_ctloutput(netmsg_t);
-void netmsg_pru_ctlinput(netmsg_t);
-
-void netmsg_pr_timeout(netmsg_t);
-
-void netmsg_so_notify(netmsg_t);
-void netmsg_so_notify_abort(netmsg_t);
-void netmsg_so_notify_doabort(lwkt_msg_t);
 
 #endif
 
@@ -221,6 +153,10 @@ extern lwkt_port netisr_adone_rport;
 extern lwkt_port netisr_afree_rport;
 extern lwkt_port netisr_apanic_rport;
 
+void		netmsg_so_notify(anynetmsg_t);
+void		netmsg_so_notify_abort(anynetmsg_t);
+void		netmsg_so_notify_doabort(lwkt_msg_t);
+
 lwkt_port_t	cpu0_portfn(struct mbuf **mptr);
 lwkt_port_t	cpu_portfn(int cpu);
 lwkt_port_t	netisr_find_port(int, struct mbuf **);
@@ -231,7 +167,7 @@ void		netisr_register(int, lwkt_portfn_t, netisr_fn_t, uint32_t);
 int		netisr_unregister(int);
 void		netmsg_service_port_init(lwkt_port_t);
 void		netmsg_service_loop(void *arg);
-int		netmsg_service(struct netmsg *, int, int);
+int		netmsg_service(anynetmsg_t, int, int);
 void		netmsg_service_sync(void);
 void		schednetisr(int);
 

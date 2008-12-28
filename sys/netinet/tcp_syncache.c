@@ -173,7 +173,7 @@ struct msgrec {
 	int slot;			/* constant after init */
 };
 
-static void syncache_timer_handler(netmsg_t);
+static void syncache_timer_handler(anynetmsg_t);
 
 struct tcp_syncache {
 	struct	vm_zone *zone;
@@ -466,14 +466,15 @@ syncache_timer(void *p)
  * a timer has been deactivated here can it be restarted by syncache_timeout().
  */
 static void
-syncache_timer_handler(netmsg_t netmsg)
+syncache_timer_handler(anynetmsg_t msg)
 {
+	struct netmsg_sc_timer *nm = (void *)msg;
 	struct tcp_syncache_percpu *syncache_percpu;
 	struct syncache *sc, *nsc;
 	struct inpcb *inp;
 	int slot;
 
-	slot = ((struct netmsg_sc_timer *)netmsg)->nm_mrec->slot;
+	slot = nm->nm_mrec->slot;
 	syncache_percpu = &tcp_syncache_percpu[mycpu->gd_cpuid];
 
 	nsc = TAILQ_FIRST(&syncache_percpu->timerq[slot]);
@@ -508,7 +509,7 @@ syncache_timer_handler(netmsg_t netmsg)
 	else
 		callout_deactivate(&syncache_percpu->tt_timerq[slot]);
 
-	lwkt_replymsg(&netmsg->nm_lmsg, 0);
+	lwkt_replymsg(&nm->nm_netmsg.nm_lmsg, 0);
 }
 
 /*

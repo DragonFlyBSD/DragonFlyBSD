@@ -86,6 +86,7 @@
 #include <sys/socketvar.h>
 #include <sys/syslog.h>
 #include <sys/in_cksum.h>
+#include <sys/socketvar2.h>
 
 #include <machine/cpu.h>	/* before tcp_seq.h, for tcp_random18() */
 #include <machine/stdarg.h>
@@ -219,7 +220,7 @@ static int	 tcp_reass(struct tcpcb *, struct tcphdr *, int *,
 		     struct mbuf *);
 static void	 tcp_xmit_timer(struct tcpcb *, int);
 static void	 tcp_newreno_partial_ack(struct tcpcb *, struct tcphdr *, int);
-static void	 tcp_sack_rexmt(struct tcpcb *, struct tcphdr *);
+static void	 tcp_sack_rexmt(struct tcpcb *, struct tcphdr *, int);
 
 /* Neighbor Discovery, Neighbor Unreachability Detection Upper layer hint. */
 #ifdef INET6
@@ -456,7 +457,7 @@ present:
 	if (so->so_state & SS_CANTRCVMORE)
 		m_freem(q->tqe_m);
 	else
-		ssb_appendstream(&so->so_rcv, q->tqe_m);
+		ssb_append_stream(&so->so_rcv, q->tqe_m);
 	kfree(q, M_TSEGQ);
 	tcp_reass_qsize--;
 	ND6_HINT(tp);
@@ -484,7 +485,6 @@ tcp6_input(struct mbuf **mp, int *offp, int proto)
 	ia6 = ip6_getdstifaddr(m);
 	if (ia6 && (ia6->ia6_flags & IN6_IFF_ANYCAST)) {
 		struct ip6_hdr *ip6;
-
 		ip6 = mtod(m, struct ip6_hdr *);
 		icmp6_error(m, ICMP6_DST_UNREACH, ICMP6_DST_UNREACH_ADDR,
 			    offsetof(struct ip6_hdr, ip6_dst));
@@ -516,6 +516,8 @@ tcp_input(struct mbuf *m, ...)
 	boolean_t ourfinisacked, needoutput = FALSE;
 	u_long tiwin;
 	int recvwin;
+	struct sb_reader sndr;
+	int rcvbuf_cc;
 	struct tcpopt to;		/* options in this segment */
 	struct rmxp_tao *taop;		/* pointer to our TAO cache entry */
 	struct rmxp_tao	tao_noncached;	/* in case there's no cached entry */
@@ -838,6 +840,15 @@ findpcb:
 		tcp_savetcp = *th;
 	}
 #endif
+
+	/*
+	 * Keep a snapshot for the character count in the
+	 * receive buffer. The control logic may depend on
+	 * it not changing, but in a 2000+ line function
+	 * it's a bit hard to tell for sure...
+	 */
+ 	rcvbuf_cc = ssb_writer_cc_est(&so->so_rcv);
+	sb_reader_init(&sndr, &so->so_snd.sb);
 
 	bzero(&to, sizeof to);
 
@@ -1189,7 +1200,7 @@ after_listen:
 				acked = th->th_ack - tp->snd_una;
 				tcpstat.tcps_rcvackpack++;
 				tcpstat.tcps_rcvackbyte += acked;
-				sbdrop(&so->so_snd.sb, acked);
+				sb_drop(&so->so_snd.sb, acked);
 				tp->snd_recover = th->th_ack - 1;
 				tp->snd_una = th->th_ack;
 				tp->t_dupacks = 0;
@@ -1227,14 +1238,14 @@ after_listen:
 					    tp->t_rxtcur, tcp_timer_rexmt);
 				}
 				sowwakeup(so);
-				if (so->so_snd.ssb_cc > 0)
+				if (sb_notempty(&so->so_snd.sb))
 					tcp_output(tp);
 				return;
 			}
 		} else if (tiwin == tp->snd_wnd &&
 		    th->th_ack == tp->snd_una &&
 		    LIST_EMPTY(&tp->t_segq) &&
-		    tlen <= ssb_space(&so->so_rcv)) {
+		    ssb_writer_space_ge(&so->so_rcv, tlen)) {
 			/*
 			 * This is a pure, in-sequence data packet
 			 * with nothing on the reassembly queue and
@@ -1252,7 +1263,7 @@ after_listen:
 				m_freem(m);
 			} else {
 				m_adj(m, drop_hdrlen); /* delayed header drop */
-				ssb_appendstream(&so->so_rcv, m);
+				ssb_append_stream(&so->so_rcv, m);
 			}
 			sorwakeup(so);
 			/*
@@ -1303,8 +1314,12 @@ after_listen:
 	 * and then do TCP input processing.
 	 * Receive window is amount of space in rcv queue,
 	 * but not less than advertised window.
+	 * A user thread may consume data asynchronously
+	 * but in that case we just don't open the window
+	 * as much as we optimally could, which should be
+	 * ok from a correctness perspective
 	 */
-	recvwin = ssb_space(&so->so_rcv);
+	recvwin = rcvbuf_cc;
 	if (recvwin < 0)
 		recvwin = 0;
 	tp->rcv_wnd = imax(recvwin, (int)(tp->rcv_adv - tp->rcv_nxt));
@@ -1929,7 +1944,8 @@ trimthenstep6:
 			if (IN_FASTRECOVERY(tp)) {
 				if (TCP_DO_SACK(tp)) {
 					/* No artifical cwnd inflation. */
-					tcp_sack_rexmt(tp, th);
+					tcp_sack_rexmt(tp, th,
+						       sb_reader_len(&sndr));
 				} else {
 					/*
 					 * Dup acks mean that packets
@@ -1984,7 +2000,8 @@ fastretransmit:
 				KASSERT(tp->snd_limited <= 2,
 				    ("tp->snd_limited too big"));
 				if (TCP_DO_SACK(tp))
-					tcp_sack_rexmt(tp, th);
+					tcp_sack_rexmt(tp, th,
+						       sb_reader_len(&sndr));
 				else
 					tp->snd_cwnd += tp->t_maxseg *
 					    (tp->t_dupacks - tp->snd_limited);
@@ -2146,13 +2163,15 @@ process_ACK:
 		/* Stop looking for an acceptable ACK since one was received. */
 		tp->t_flags &= ~(TF_FIRSTACCACK | TF_FASTREXMT | TF_EARLYREXMT);
 
-		if (acked > so->so_snd.ssb_cc) {
-			tp->snd_wnd -= so->so_snd.ssb_cc;
-			sbdrop(&so->so_snd.sb, (int)so->so_snd.ssb_cc);
+		if (acked > sb_reader_len(&sndr)) {
+			tp->snd_wnd -= sb_reader_len(&sndr);
+			sb_drop(&so->so_snd.sb, sb_reader_len(&sndr));
+			sb_reader_inv(&sndr);
 			ourfinisacked = TRUE;
 		} else {
-			sbdrop(&so->so_snd.sb, acked);
+			sb_drop(&so->so_snd.sb, acked);
 			tp->snd_wnd -= acked;
+			sb_reader_inv(&sndr);
 			ourfinisacked = FALSE;
 		}
 		sowwakeup(so);
@@ -2210,7 +2229,7 @@ process_ACK:
 			} else {
 				if (TCP_DO_SACK(tp)) {
 					tp->snd_max_rexmt = tp->snd_max;
-					tcp_sack_rexmt(tp, th);
+					tcp_sack_rexmt(tp, th, sb_reader_len(&sndr));
 				} else {
 					tcp_newreno_partial_ack(tp, th, acked);
 				}
@@ -2363,7 +2382,7 @@ step6:
 		 * soreceive.  It's hard to imagine someone
 		 * actually wanting to send this much urgent data.
 		 */
-		if (th->th_urp + so->so_rcv.ssb_cc > sb_max) {
+		if (th->th_urp + rcvbuf_cc > sb_max) {
 			th->th_urp = 0;			/* XXX */
 			thflags &= ~TH_URG;		/* XXX */
 			goto dodata;			/* XXX */
@@ -2384,10 +2403,10 @@ step6:
 		 */
 		if (SEQ_GT(th->th_seq + th->th_urp, tp->rcv_up)) {
 			tp->rcv_up = th->th_seq + th->th_urp;
-			so->so_oobmark = so->so_rcv.ssb_cc +
+			so->so_oobmark = rcvbuf_cc +
 			    (tp->rcv_up - tp->rcv_nxt) - 1;
 			if (so->so_oobmark == 0)
-				so->so_state |= SS_RCVATMARK;
+				atomic_set_short(&so->so_state, SS_RCVATMARK);
 			sohasoutofband(so);
 			tp->t_oobflags &= ~(TCPOOB_HAVEDATA | TCPOOB_HADDATA);
 		}
@@ -2452,7 +2471,7 @@ dodata:							/* XXX */
 			if (so->so_state & SS_CANTRCVMORE)
 				m_freem(m);
 			else
-				ssb_appendstream(&so->so_rcv, m);
+				ssb_append_stream(&so->so_rcv, m);
 			sorwakeup(so);
 		} else {
 			if (!(tp->t_flags & TF_DUPSEG)) {
@@ -3147,9 +3166,10 @@ tcp_newreno_partial_ack(struct tcpcb *tp, struct tcphdr *th, int acked)
  * In contrast to the Slow-but-Steady NewReno variant,
  * we do not reset the retransmission timer for SACK retransmissions,
  * except when retransmitting snd_una.
+ * XXX: sndbuf_cc is a hack, but it is not trivial to remove it
  */
 static void
-tcp_sack_rexmt(struct tcpcb *tp, struct tcphdr *th)
+tcp_sack_rexmt(struct tcpcb *tp, struct tcphdr *th, int sndbuf_cc)
 {
 	uint32_t pipe, seglen;
 	tcp_seq nextrexmt;
@@ -3163,7 +3183,7 @@ tcp_sack_rexmt(struct tcpcb *tp, struct tcphdr *th)
 	pipe = tcp_sack_compute_pipe(tp);
 	while ((tcp_seq_diff_t)(ocwnd - pipe) >= (tcp_seq_diff_t)tp->t_maxseg &&
 	    (!tcp_do_smartsack || nseg < MAXBURST) &&
-	    tcp_sack_nextseg(tp, &nextrexmt, &seglen, &lostdup)) {
+	       tcp_sack_nextseg(tp, &nextrexmt, &seglen, &lostdup, sndbuf_cc)) {
 		uint32_t sent;
 		tcp_seq old_snd_max;
 		int error;

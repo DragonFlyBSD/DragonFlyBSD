@@ -169,15 +169,15 @@ static int	poll_each_burst = POLL_EACH_BURST;
 TUNABLE_INT("kern.polling.each_burst", &poll_each_burst);
 
 /* Netisr handlers */
-static void	netisr_poll(struct netmsg *);
-static void	netisr_pollmore(struct netmsg *);
-static void	poll_register(struct netmsg *);
-static void	poll_deregister(struct netmsg *);
-static void	poll_sysctl_pollhz(struct netmsg *);
-static void	poll_sysctl_polling(struct netmsg *);
-static void	poll_sysctl_regfrac(struct netmsg *);
-static void	poll_sysctl_burstmax(struct netmsg *);
-static void	poll_sysctl_eachburst(struct netmsg *);
+static void	netisr_poll(anynetmsg_t);
+static void	netisr_pollmore(anynetmsg_t);
+static void	poll_register(anynetmsg_t);
+static void	poll_deregister(anynetmsg_t);
+static void	poll_sysctl_pollhz(anynetmsg_t);
+static void	poll_sysctl_polling(anynetmsg_t);
+static void	poll_sysctl_regfrac(anynetmsg_t);
+static void	poll_sysctl_burstmax(anynetmsg_t);
+static void	poll_sysctl_eachburst(anynetmsg_t);
 
 /* Systimer handler */
 static void	pollclock(systimer_t, struct intrframe *);
@@ -191,7 +191,7 @@ static int	sysctl_eachburst(SYSCTL_HANDLER_ARGS);
 static void	poll_add_sysctl(struct sysctl_ctx_list *,
 				struct sysctl_oid_list *, struct pollctx *);
 
-static void	schedpoll_oncpu(struct netmsg *);
+static void	schedpoll_oncpu(struct pollctx *, struct netmsg *, netisr_fn_t);
 
 void		init_device_poll_pcpu(int);	/* per-cpu init routine */
 
@@ -300,25 +300,19 @@ init_device_poll_pcpu(int cpuid)
 	systimer_init_periodic_nq(&pctx->pollclock, pollclock, pctx, 1);
 }
 
-static void
-schedpoll_oncpu(struct netmsg *msg)
-{
-	if (msg->nm_lmsg.ms_flags & MSGF_DONE)
-		lwkt_sendmsg(cpu_portfn(mycpuid), &msg->nm_lmsg);
-}
 
 static __inline void
 schedpoll(struct pollctx *pctx)
 {
 	crit_enter();
-	schedpoll_oncpu(&pctx->poll_netmsg);
+	schedpoll_oncpu(pctx, &pctx->poll_netmsg, netisr_poll);
 	crit_exit();
 }
 
 static __inline void
 schedpollmore(struct pollctx *pctx)
 {
-	schedpoll_oncpu(&pctx->poll_more_netmsg);
+	schedpoll_oncpu(pctx, &pctx->poll_more_netmsg, netisr_pollmore);
 }
 
 /*
@@ -518,7 +512,7 @@ pollclock(systimer_t info, struct intrframe *frame __unused)
 
 /* ARGSUSED */
 static void
-netisr_pollmore(struct netmsg *msg)
+netisr_pollmore(anynetmsg_t msg)
 {
 	struct pollctx *pctx;
 	struct timeval t;
@@ -531,9 +525,9 @@ netisr_pollmore(struct netmsg *msg)
 	pctx = poll_context[cpuid];
 	KKASSERT(pctx != NULL);
 	KKASSERT(pctx->poll_cpuid == cpuid);
-	KKASSERT(pctx == msg->nm_lmsg.u.ms_resultp);
+	KKASSERT(pctx == msg->lmsg.u.ms_resultp);
 
-	lwkt_replymsg(&msg->nm_lmsg, 0);
+	lwkt_replymsg(&msg->lmsg, 0);
 
 	if (pctx->poll_handlers == 0)
 		return;
@@ -594,7 +588,7 @@ netisr_pollmore(struct netmsg *msg)
  */
 /* ARGSUSED */
 static void
-netisr_poll(struct netmsg *msg)
+netisr_poll(anynetmsg_t msg)
 {
 	struct pollctx *pctx;
 	int i, cycles, cpuid;
@@ -606,10 +600,10 @@ netisr_poll(struct netmsg *msg)
 	pctx = poll_context[cpuid];
 	KKASSERT(pctx != NULL);
 	KKASSERT(pctx->poll_cpuid == cpuid);
-	KKASSERT(pctx == msg->nm_lmsg.u.ms_resultp);
+	KKASSERT(pctx == msg->lmsg.u.ms_resultp);
 
 	crit_enter();
-	lwkt_replymsg(&msg->nm_lmsg, 0);
+	lwkt_replymsg(&msg->lmsg, 0);
 	crit_exit();
 
 	if (pctx->poll_handlers == 0)
@@ -657,9 +651,9 @@ netisr_poll(struct netmsg *msg)
 }
 
 static void
-poll_register(struct netmsg *msg)
+poll_register(anynetmsg_t msg)
 {
-	struct ifnet *ifp = msg->nm_lmsg.u.ms_resultp;
+	struct ifnet *ifp = msg->lmsg.u.ms_resultp;
 	struct pollctx *pctx;
 	int rc, cpuid;
 
@@ -706,7 +700,7 @@ poll_register(struct netmsg *msg)
 		}
 	}
 back:
-	lwkt_replymsg(&msg->nm_lmsg, rc);
+	lwkt_replymsg(&msg->lmsg, rc);
 }
 
 /*
@@ -789,9 +783,9 @@ ether_pollcpu_register(struct ifnet *ifp, int cpuid)
 }
 
 static void
-poll_deregister(struct netmsg *msg)
+poll_deregister(anynetmsg_t msg)
 {
-	struct ifnet *ifp = msg->nm_lmsg.u.ms_resultp;
+	struct ifnet *ifp = msg->lmsg.u.ms_resultp;
 	struct pollctx *pctx;
 	int rc, i, cpuid;
 
@@ -822,7 +816,7 @@ poll_deregister(struct netmsg *msg)
 		}
 		rc = 0;
 	}
-	lwkt_replymsg(&msg->nm_lmsg, rc);
+	lwkt_replymsg(&msg->lmsg, rc);
 }
 
 /*
@@ -940,7 +934,22 @@ poll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
 }
 
 static void
-poll_sysctl_pollhz(struct netmsg *msg)
+schedpoll_oncpu(struct pollctx *pctx, struct netmsg *msg, netisr_fn_t handler)
+{
+	if (msg->nm_lmsg.ms_flags & MSGF_DONE) {
+		lwkt_port_t port;
+
+		netmsg_init(msg, &netisr_adone_rport, 0, handler);
+#ifdef INVARIANTS
+		msg->nm_lmsg.u.ms_resultp = pctx;
+#endif
+		port = cpu_portfn(mycpu->gd_cpuid);
+		lwkt_sendmsg(port, &msg->nm_lmsg);
+	}
+}
+
+static void
+poll_sysctl_pollhz(anynetmsg_t msg)
 {
 	struct pollctx *pctx;
 	int cpuid;
@@ -958,7 +967,7 @@ poll_sysctl_pollhz(struct netmsg *msg)
 	 * Polling systimer frequency will be adjusted once polling
 	 * is enabled and there are registered devices.
 	 */
-	pctx->pollhz = msg->nm_lmsg.u.ms_result;
+	pctx->pollhz = msg->lmsg.u.ms_result;
 	if (pctx->polling_enabled && pctx->poll_handlers)
 		systimer_adjust_periodic(&pctx->pollclock, pctx->pollhz);
 
@@ -971,11 +980,11 @@ poll_sysctl_pollhz(struct netmsg *msg)
 			pctx->reg_frac_count = pctx->reg_frac - 1;
 	}
 
-	lwkt_replymsg(&msg->nm_lmsg, 0);
+	lwkt_replymsg(&msg->lmsg, 0);
 }
 
 static void
-poll_sysctl_polling(struct netmsg *msg)
+poll_sysctl_polling(anynetmsg_t msg)
 {
 	struct pollctx *pctx;
 	int cpuid;
@@ -991,7 +1000,7 @@ poll_sysctl_polling(struct netmsg *msg)
 	 * If polling is disabled or there is no device registered,
 	 * cut the polling systimer frequency to 1hz.
 	 */
-	pctx->polling_enabled = msg->nm_lmsg.u.ms_result;
+	pctx->polling_enabled = msg->lmsg.u.ms_result;
 	if (pctx->polling_enabled && pctx->poll_handlers) {
 		systimer_adjust_periodic(&pctx->pollclock, pctx->pollhz);
 	} else {
@@ -1028,11 +1037,11 @@ poll_sysctl_polling(struct netmsg *msg)
 		pctx->poll_handlers = 0;
 	}
 
-	lwkt_replymsg(&msg->nm_lmsg, 0);
+	lwkt_replymsg(&msg->lmsg, 0);
 }
 
 static void
-poll_sysctl_regfrac(struct netmsg *msg)
+poll_sysctl_regfrac(anynetmsg_t msg)
 {
 	struct pollctx *pctx;
 	uint32_t reg_frac;
@@ -1045,7 +1054,7 @@ poll_sysctl_regfrac(struct netmsg *msg)
 	KKASSERT(pctx != NULL);
 	KKASSERT(pctx->poll_cpuid == cpuid);
 
-	reg_frac = msg->nm_lmsg.u.ms_result;
+	reg_frac = msg->lmsg.u.ms_result;
 	if (reg_frac > pctx->pollhz)
 		reg_frac = pctx->pollhz;
 	else if (reg_frac < 1)
@@ -1055,11 +1064,11 @@ poll_sysctl_regfrac(struct netmsg *msg)
 	if (pctx->reg_frac_count > pctx->reg_frac)
 		pctx->reg_frac_count = pctx->reg_frac - 1;
 
-	lwkt_replymsg(&msg->nm_lmsg, 0);
+	lwkt_replymsg(&msg->lmsg, 0);
 }
 
 static void
-poll_sysctl_burstmax(struct netmsg *msg)
+poll_sysctl_burstmax(anynetmsg_t msg)
 {
 	struct pollctx *pctx;
 	int cpuid;
@@ -1071,7 +1080,7 @@ poll_sysctl_burstmax(struct netmsg *msg)
 	KKASSERT(pctx != NULL);
 	KKASSERT(pctx->poll_cpuid == cpuid);
 
-	pctx->poll_burst_max = msg->nm_lmsg.u.ms_result;
+	pctx->poll_burst_max = msg->lmsg.u.ms_result;
 	if (pctx->poll_each_burst > pctx->poll_burst_max)
 		pctx->poll_each_burst = pctx->poll_burst_max;
 	if (pctx->poll_burst > pctx->poll_burst_max)
@@ -1079,11 +1088,11 @@ poll_sysctl_burstmax(struct netmsg *msg)
 	if (pctx->residual_burst > pctx->poll_burst_max)
 		pctx->residual_burst = pctx->poll_burst_max;
 
-	lwkt_replymsg(&msg->nm_lmsg, 0);
+	lwkt_replymsg(&msg->lmsg, 0);
 }
 
 static void
-poll_sysctl_eachburst(struct netmsg *msg)
+poll_sysctl_eachburst(anynetmsg_t msg)
 {
 	struct pollctx *pctx;
 	uint32_t each_burst;
@@ -1096,12 +1105,12 @@ poll_sysctl_eachburst(struct netmsg *msg)
 	KKASSERT(pctx != NULL);
 	KKASSERT(pctx->poll_cpuid == cpuid);
 
-	each_burst = msg->nm_lmsg.u.ms_result;
+	each_burst = msg->lmsg.u.ms_result;
 	if (each_burst > pctx->poll_burst_max)
 		each_burst = pctx->poll_burst_max;
 	else if (each_burst < 1)
 		each_burst = 1;
 	pctx->poll_each_burst = each_burst;
 
-	lwkt_replymsg(&msg->nm_lmsg, 0);
+	lwkt_replymsg(&msg->lmsg, 0);
 }

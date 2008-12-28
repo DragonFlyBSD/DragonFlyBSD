@@ -63,6 +63,7 @@
 #include <sys/kernel.h>
 #include <sys/syslog.h>
 #include <sys/thread2.h>
+#include <sys/socketvar2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -861,7 +862,7 @@ static int
 socket_send(struct socket *s, struct mbuf *mm, struct sockaddr_in6 *src)
 {
 	if (s) {
-		if (ssb_appendaddr(&s->so_rcv,
+		if (ssb_append_addr(&s->so_rcv,
 				 (struct sockaddr *)src,
 				 mm, (struct mbuf *)0) != 0) {
 			sorwakeup(s);

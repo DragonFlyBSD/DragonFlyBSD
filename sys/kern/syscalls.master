@@ -81,11 +81,11 @@
 25	MPSAFE	STD	POSIX	{ uid_t geteuid(void); }
 26	STD	BSD	{ int ptrace(int req, pid_t pid, caddr_t addr, \
 			    int data); }
-27	STD	BSD	{ int recvmsg(int s, struct msghdr *msg, int flags); }
-28	STD	BSD	{ int sendmsg(int s, caddr_t msg, int flags); }
-29	STD	BSD	{ int recvfrom(int s, caddr_t buf, size_t len, \
+27	MPSAFE	STD	BSD	{ int recvmsg(int s, struct msghdr *msg, int flags); }
+28	MPSAFE	STD	BSD	{ int sendmsg(int s, caddr_t msg, int flags); }
+29	MPSAFE	STD	BSD	{ int recvfrom(int s, caddr_t buf, size_t len, \
 			    int flags, caddr_t from, int *fromlenaddr); }
-30	STD	BSD	{ int accept(int s, caddr_t name, int *anamelen); }
+30	MPSAFE	STD	BSD	{ int accept(int s, caddr_t name, int *anamelen); }
 31	STD	BSD	{ int getpeername(int fdes, caddr_t asa, int *alen); }
 32	STD	BSD	{ int getsockname(int fdes, caddr_t asa, int *alen); }
 33	STD	POSIX	{ int access(char *path, int flags); }
@@ -169,7 +169,7 @@
 95	STD	POSIX	{ int fsync(int fd); }
 96	STD	BSD	{ int setpriority(int which, int who, int prio); }
 97	STD	BSD	{ int socket(int domain, int type, int protocol); }
-98	STD	BSD	{ int connect(int s, caddr_t name, int namelen); }
+98	MPSAFE	STD	BSD	{ int connect(int s, caddr_t name, int namelen); }
 99	CPT_NOA	BSD	{ int accept(int s, caddr_t name, int *anamelen); } \
 			    accept accept_args int
 100	STD	BSD	{ int getpriority(int which, int who); }
@@ -177,7 +177,7 @@
 102	COMPAT	BSD	{ int recv(int s, caddr_t buf, int len, int flags); }
 103	OBSOL	NOHIDE	freebsd3_sigreturn
 104	STD	BSD	{ int bind(int s, caddr_t name, int namelen); }
-105	STD	BSD	{ int setsockopt(int s, int level, int name, \
+105	MPSAFE	STD	BSD	{ int setsockopt(int s, int level, int name, \
 			    caddr_t val, int valsize); }
 106	STD	BSD	{ int listen(int s, int backlog); }
 107	OBSOL	NOHIDE	vtimes
@@ -196,7 +196,7 @@
 116	MPSAFE	STD	BSD	{ int gettimeofday(struct timeval *tp, \
 			    struct timezone *tzp); }
 117	STD	BSD	{ int getrusage(int who, struct rusage *rusage); }
-118	STD	BSD	{ int getsockopt(int s, int level, int name, \
+118	MPSAFE	STD	BSD	{ int getsockopt(int s, int level, int name, \
 			    caddr_t val, int *avalsize); }
 119	UNIMPL	NOHIDE	resuba (BSD/OS 2.x)
 120	MPSAFE	STD	BSD	{ int readv(int fd, struct iovec *iovp, u_int iovcnt); }
@@ -216,7 +216,7 @@
 130	COMPAT	BSD	{ int ftruncate(int fd, long length); }
 131	STD	BSD	{ int flock(int fd, int how); }
 132	STD	POSIX	{ int mkfifo(char *path, int mode); }
-133	STD	BSD	{ int sendto(int s, caddr_t buf, size_t len, \
+133	MPSAFE	STD	BSD	{ int sendto(int s, caddr_t buf, size_t len, \
 			    int flags, caddr_t to, int tolen); }
 134	STD	BSD	{ int shutdown(int s, int how); }
 135	STD	BSD	{ int socketpair(int domain, int type, int protocol, \
@@ -657,8 +657,8 @@
 480	STD	BSD	{ int getdents(int fd, char *buf, size_t count); }
 481	STD	BSD	{ int usched_set(pid_t pid, int cmd, void *data, \
 				int bytes); }
-482	STD	BSD	{ int extaccept(int s, int flags, caddr_t name, int *anamelen); }
-483	STD	BSD	{ int extconnect(int s, int flags, caddr_t name, int namelen); }
+482	MPSAFE	STD	BSD	{ int extaccept(int s, int flags, caddr_t name, int *anamelen); }
+483	MPSAFE	STD	BSD	{ int extconnect(int s, int flags, caddr_t name, int namelen); }
 484	STD	BSD	{ int syslink(int cmd, struct syslink_info *info, size_t bytes); }
 485	STD	BSD	{ int mcontrol(void *addr, size_t len, int behav, off_t value); }
 486	STD	BSD	{ int vmspace_create(void *id, int type, void *data); } 

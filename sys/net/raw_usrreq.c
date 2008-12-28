@@ -42,6 +42,7 @@
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/socketvar2.h>
 
 #include <net/raw_cb.h>
 
@@ -98,8 +99,10 @@ raw_input(struct mbuf *m0, struct sockproto *proto, const struct sockaddr *src,
 
 			n = m_copypacket(m, MB_DONTWAIT);
 			if (n != NULL) {
-				if (ssb_appendaddr(&last->so_rcv, src, n,
-						 (struct mbuf *)0) == 0) {
+				if (ssb_space(&last->so_rcv) <= 0 ||
+				    ssb_append_addr(&last->so_rcv, src,
+						    n, NULL) == 0) {
+
 					/* should notify about lost packet */
 					m_freem(n);
 				} else {
@@ -110,7 +113,7 @@ raw_input(struct mbuf *m0, struct sockproto *proto, const struct sockaddr *src,
 		last = rp->rcb_socket;
 	}
 	if (last) {
-		if (ssb_appendaddr(&last->so_rcv, src, m, (struct mbuf *)0) == 0)
+		if (ssb_append_addr(&last->so_rcv, src, m, NULL) == 0)
 			m_freem(m);
 		else
 			sorwakeup(last);
@@ -231,7 +234,7 @@ raw_usend(struct socket *so, int flags, struct mbuf *m,
 		goto release;
 	}
 
-	if (flags & PRUS_OOB) {
+	if (flags & M_OOB) {
 		error = EOPNOTSUPP;
 		goto release;
 	}
@@ -305,8 +308,8 @@ struct pr_usrreqs raw_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = raw_ushutdown,
 	.pru_sockaddr = raw_usockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 

@@ -276,6 +276,8 @@ struct inpcbport {
 	u_short phd_port;
 };
 
+struct objcache;
+
 struct inpcbinfo {		/* XXX documentation, prefixes */
 	struct	inpcbhead *hashbase;
 	u_long	hashmask;
@@ -287,7 +289,7 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 	u_short	lastport;
 	u_short	lastlow;
 	u_short	lasthi;
-	struct	vm_zone *ipi_zone; /* zone to allocate pcbs from */
+	struct	objcache *objc; /* zone to allocate pcbs from */
 	u_int	ipi_count;	/* number of pcbs in this list */
 	u_quad_t ipi_gencnt;	/* current generation count */
 	int	cpu;		/* related protocol thread cpu or -1 */

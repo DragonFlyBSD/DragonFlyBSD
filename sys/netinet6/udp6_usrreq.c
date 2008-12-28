@@ -83,6 +83,7 @@
 #include <sys/syslog.h>
 #include <sys/proc.h>
 #include <sys/thread2.h>
+#include <sys/socketvar2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -274,7 +275,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 					/*
 					 * KAME NOTE: do not
 					 * m_copy(m, offset, ...) above.
-					 * ssb_appendaddr() expects M_PKTHDR,
+					 * ssb_append_addr() expects M_PKTHDR,
 					 * and m_copy() will copy M_PKTHDR
 					 * only if offset is 0.
 					 */
@@ -284,7 +285,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 								ip6, n);
 								
 					m_adj(n, off + sizeof(struct udphdr));
-					if (ssb_appendaddr(&last->in6p_socket->so_rcv,
+					if (ssb_append_addr(&last->in6p_socket->so_rcv,
 							(struct sockaddr *)&udp_in6,
 							n, opts) == 0) {
 						m_freem(n);
@@ -342,7 +343,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 			ip6_savecontrol(last, &opts, ip6, m);
 
 		m_adj(m, off + sizeof(struct udphdr));
-		if (ssb_appendaddr(&last->in6p_socket->so_rcv,
+		if (ssb_append_addr(&last->in6p_socket->so_rcv,
 				(struct sockaddr *)&udp_in6,
 				m, opts) == 0) {
 			udpstat.udps_fullsock++;
@@ -404,7 +405,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 	    || in6p->in6p_socket->so_options & SO_TIMESTAMP)
 		ip6_savecontrol(in6p, &opts, ip6, m);
 	m_adj(m, off + sizeof(struct udphdr));
-	if (ssb_appendaddr(&in6p->in6p_socket->so_rcv,
+	if (ssb_append_addr(&in6p->in6p_socket->so_rcv,
 			(struct sockaddr *)&udp_in6,
 			m, opts) == 0) {
 		udpstat.udps_fullsock++;
@@ -709,7 +710,7 @@ udp6_disconnect(struct socket *so)
 	crit_enter();
 	in6_pcbdisconnect(inp);
 	crit_exit();
-	so->so_state &= ~SS_ISCONNECTED;		/* XXX */
+	atomic_clear_short(&so->so_state, SS_ISCONNECTED);     	/* XXX */
 	return 0;
 }
 
@@ -786,8 +787,8 @@ struct pr_usrreqs udp6_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = udp_shutdown,
 	.pru_sockaddr = in6_mapped_sockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 

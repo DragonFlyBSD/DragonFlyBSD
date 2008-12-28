@@ -52,6 +52,9 @@
 #include <sys/ucred.h>
 
 #include <net/if.h>
+#include <net/netisr.h>
+#include <net/netmsg.h>
+#include <net/netmsg2.h>
 #include <net/route.h>
 
 struct	fileops socketops = {
@@ -72,10 +75,8 @@ int
 soo_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 {
 	struct socket *so;
-	int error;
-	int msgflags;
+	int error, msgflags;
 
-	get_mplock();
 	so = (struct socket *)fp->f_data;
 
 	if (fflags & O_FBLOCKING)
@@ -87,8 +88,7 @@ soo_read(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	else
 		msgflags = 0;
 
-	error = so_pru_soreceive(so, NULL, uio, NULL, NULL, &msgflags);
-	rel_mplock();
+	error = so_pru_soreceive(so, NULL, uio, NULL, -1, NULL, &msgflags);
 	return (error);
 }
 
@@ -102,7 +102,6 @@ soo_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 	int error;
 	int msgflags;
 
-	get_mplock();
 	so = (struct socket *)fp->f_data;
 
 	if (fflags & O_FBLOCKING)
@@ -115,10 +114,18 @@ soo_write(struct file *fp, struct uio *uio, struct ucred *cred, int fflags)
 		msgflags = 0;
 
 	error = so_pru_sosend(so, NULL, uio, NULL, NULL, msgflags, uio->uio_td);
-	rel_mplock();
 	return (error);
 }
 
+static void
+netmsg_sigio_setval(anynetmsg_t msg)
+{
+	struct netmsg_so_op *nm = &msg->so_op;
+
+	nm->nm_so->so_sigio = nm->nm_val;
+	lwkt_replymsg(&nm->nm_netmsg.nm_lmsg, 0);
+}
+	
 /*
  * MPALMOSTSAFE - acquires mplock
  */
@@ -126,40 +133,63 @@ int
 soo_ioctl(struct file *fp, u_long cmd, caddr_t data, struct ucred *cred)
 {
 	struct socket *so;
+	struct netmsg_so_op msg;
+	lwkt_port_t port;
 	int error;
 
-	get_mplock();
 	so = (struct socket *)fp->f_data;
 
 	switch (cmd) {
 	case FIOASYNC:
 		if (*(int *)data) {
-			so->so_state |= SS_ASYNC;
+			atomic_set_short(&so->so_state, SS_ASYNC);
 			so->so_rcv.ssb_flags |= SSB_ASYNC;
 			so->so_snd.ssb_flags |= SSB_ASYNC;
 		} else {
-			so->so_state &= ~SS_ASYNC;
+			atomic_clear_short(&so->so_state, SS_ASYNC);
 			so->so_rcv.ssb_flags &= ~SSB_ASYNC;
 			so->so_snd.ssb_flags &= ~SSB_ASYNC;
 		}
 		error = 0;
 		break;
 	case FIONREAD:
-		*(int *)data = so->so_rcv.ssb_cc;
+		*(int *)data = ssb_reader_cc_est(&so->so_rcv);
 		error = 0;
 		break;
 	case FIOSETOWN:
-		error = fsetown(*(int *)data, &so->so_sigio);
+		port = so->so_proto->pr_mport(so, NULL, NULL, PRU_OP);
+		netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
+			    netmsg_sigio_setval);
+		msg.nm_so = so;
+		get_mplock();	/* XXX: maybe needed for fsetown()? -- agg */
+		error = fsetown(*(int *)data, (struct sigio **)&msg.nm_val);
+		rel_mplock();
+		if (error)
+			break;
+		error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 		break;
 	case FIOGETOWN:
+		get_mplock();	/* XXX: maybe needed for fgetown()? -- agg */
 		*(int *)data = fgetown(so->so_sigio);
+		rel_mplock();
 		error = 0;
 		break;
 	case SIOCSPGRP:
-		error = fsetown(-(*(int *)data), &so->so_sigio);
+		port = so->so_proto->pr_mport(so, NULL, NULL, PRU_OP);
+		netmsg_init(&msg.nm_netmsg, &curthread->td_msgport, 0,
+			    netmsg_sigio_setval);
+		msg.nm_so = so;
+		get_mplock();	/* XXX: maybe needed for fsetown()? -- agg */
+		error = fsetown(-(*(int *)data), (struct sigio **)&msg.nm_val);
+		rel_mplock();
+		if (error)
+			break;
+		error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 		break;
 	case SIOCGPGRP:
+		get_mplock();	/* XXX: maybe needed for fgetown()? -- agg */
 		*(int *)data = -fgetown(so->so_sigio);
+		rel_mplock();
 		error = 0;
 		break;
 	case SIOCATMARK:
@@ -167,6 +197,7 @@ soo_ioctl(struct file *fp, u_long cmd, caddr_t data, struct ucred *cred)
 		error = 0;
 		break;
 	default:
+		get_mplock();
 		/*
 		 * Interface/routing/protocol specific ioctls:
 		 * interface and routing ioctls should have a
@@ -178,14 +209,14 @@ soo_ioctl(struct file *fp, u_long cmd, caddr_t data, struct ucred *cred)
 			error = rtioctl(cmd, data, cred);
 		else
 			error = so_pru_control(so, cmd, data, NULL);
+		rel_mplock();
 		break;
 	}
-	rel_mplock();
 	return (error);
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock
+ * MPSAFE - acquires mplock
  */
 int
 soo_poll(struct file *fp, int events, struct ucred *cred)
@@ -193,15 +224,13 @@ soo_poll(struct file *fp, int events, struct ucred *cred)
 	struct socket *so;
 	int error;
 
-	get_mplock();
 	so = (struct socket *)fp->f_data;
-	error = so_pru_sopoll(so, events, cred);
-	rel_mplock();
+	error = so_pru_poll(so, events, cred);
 	return (error);
 }
 
 /*
- * MPALMOSTSAFE - acquires mplock
+ * MPSAFE - acquires mplock
  */
 int
 soo_stat(struct file *fp, struct stat *ub, struct ucred *cred)
@@ -211,22 +240,20 @@ soo_stat(struct file *fp, struct stat *ub, struct ucred *cred)
 
 	bzero((caddr_t)ub, sizeof (*ub));
 	ub->st_mode = S_IFSOCK;
-	get_mplock();
 	so = (struct socket *)fp->f_data;
 	/*
 	 * If SS_CANTRCVMORE is set, but there's still data left in the
 	 * receive buffer, the socket is still readable.
 	 */
+	ub->st_size = ssb_reader_cc_est(&so->so_rcv);
 	if ((so->so_state & SS_CANTRCVMORE) == 0 ||
-	    so->so_rcv.ssb_cc != 0)
+					ub->st_size != 0)
 		ub->st_mode |= S_IRUSR | S_IRGRP | S_IROTH;
 	if ((so->so_state & SS_CANTSENDMORE) == 0)
 		ub->st_mode |= S_IWUSR | S_IWGRP | S_IWOTH;
-	ub->st_size = so->so_rcv.ssb_cc;
 	ub->st_uid = so->so_cred->cr_uid;
 	ub->st_gid = so->so_cred->cr_gid;
 	error = so_pru_sense(so, ub);
-	rel_mplock();
 	return (error);
 }
 
@@ -238,7 +265,7 @@ soo_close(struct file *fp)
 {
 	int error;
 
-	get_mplock();
+	get_mplock();	/* XXX: remove? lock socket? -- agg */
 	fp->f_ops = &badfileops;
 	if (fp->f_data)
 		error = soclose((struct socket *)fp->f_data, fp->f_flag);
@@ -257,8 +284,8 @@ soo_shutdown(struct file *fp, int how)
 {
 	int error;
 
-	get_mplock();
-	if (fp->f_data)
+	get_mplock();	/* XXX: remove? lock socket for soshutdown? */
+	if (fp->f_data)	/* how can this not be != NULL? */
 		error = soshutdown((struct socket *)fp->f_data, how);
 	else
 		error = 0;

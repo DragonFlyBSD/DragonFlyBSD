@@ -114,12 +114,21 @@ struct protosw {
 
 /*
  * Values for pr_flags.
- * PR_ADDR requires PR_ATOMIC;
- * PR_ADDR and PR_CONNREQUIRED are mutually exclusive.
- * PR_IMPLOPCL means that the protocol allows sendto without prior connect,
- *	and the protocol understands the MSG_EOF flag.  The first property is
- *	is only relevant if PR_CONNREQUIRED is set (otherwise sendto is allowed
- *	anyhow).
+ *
+ * PR_ADDR	- (also requires PR_ATOMIC).  An address mbuf is always
+ *		  included in each packet.
+ *
+ * PR_ADDR_OPT	- An address mbuf may be included in a packet.
+ *
+ * PR_CONNREQUIRED - A connection is required.  Mutually exclusive with PR_ADDR
+ *
+ * PR_IMPLOPCL	- Protocol understands MSG_EOF.
+ *
+ *		  If PR_CONNREQUIRED is also set protocol allows sendto
+ *		  without prior connect.  If PR_CONNREQUIRED is not set
+ *		  sendto is allowed unconditionally.
+ *
+ * PR_NOCONTROL - Protocol does not support control messages.
  */
 #define	PR_ATOMIC	0x01		/* exchange atomic messages only */
 #define	PR_ADDR		0x02		/* addresses given with messages */
@@ -130,6 +139,7 @@ struct protosw {
 #define	PR_LASTHDR	0x40		/* enforce ipsec policy; last header */
 #define	PR_ADDR_OPT	0x80		/* allow addresses during delivery */
 #define PR_MPSAFE	0x0100		/* protocal is MPSAFE */
+#define PR_NOCONTROL	0x0200		/* does not support control msgs */
 
 /*
  * The arguments to usrreq are:
@@ -171,7 +181,8 @@ struct protosw {
 #define PRU_SEND_EOF		23	/* send and close */
 #define	PRU_PRED		24
 #define PRU_CTLOUTPUT		25	/* get/set opts */
-#define PRU_NREQ		26
+#define PRU_OP			26	/* arbitrary operation */
+#define PRU_NREQ		27
 
 #ifdef PRUREQUESTS
 char *prurequests[] = {
@@ -181,7 +192,7 @@ char *prurequests[] = {
 	"SENSE",	"RCVOOB",	"SENDOOB",	"SOCKADDR",
 	"PEERADDR",	"CONNECT2",	"SOPOLL",
 	"FASTTIMO",	"SLOWTIMO",	"PROTORCV",	"PROTOSEND",
-	"SEND_EOF",	"PREDICATE"
+	"SEND_EOF",	"PREDICATE",	"OPERATION",
 };
 #endif
 
@@ -192,6 +203,7 @@ struct stat;
 struct ucred;
 struct uio;
 struct sockbuf;
+union anynetmsg;
 
 struct pru_attach_info {
 	struct rlimit *sb_rlimit;
@@ -225,17 +237,18 @@ struct pr_usrreqs {
 	int	(*pru_rcvd) (struct socket *so, int flags);
 	int	(*pru_rcvoob) (struct socket *so, struct mbuf *m,
 				   int flags);
-	int	(*pru_send) (struct socket *so, int flags, struct mbuf *m, 
-				 struct sockaddr *addr, struct mbuf *control,
-				 struct thread *td);
-#define	PRUS_OOB	0x1
-#define	PRUS_EOF	0x2
-#define	PRUS_MORETOCOME	0x4
+	int     (*pru_send) (struct socket *so, int flags, struct mbuf *m, 
+				struct sockaddr *addr, struct mbuf *control,
+				struct thread *td);
+	void	(*pru_notify) (union anynetmsg *msg);
 	int	(*pru_sense) (struct socket *so, struct stat *sb);
 	int	(*pru_shutdown) (struct socket *so);
 	int	(*pru_sockaddr) (struct socket *so, 
 				     struct sockaddr **nam);
-	 
+	int	(*pru_poll) (struct socket *so, int events,
+				     struct ucred *cred, struct thread *td);
+	int	(*pru_ctloutput) (struct socket *so, struct sockopt *sopt);
+
 	/*
 	 * These three added later, so they are out of order.  They are used
 	 * for shortcutting (fast path input/output) in some protocols.
@@ -252,10 +265,8 @@ struct pr_usrreqs {
 				      struct sockaddr **paddr,
 				      struct uio *uio,
 				      struct sockbuf *sio,
+				      int sio_climit,
 				      struct mbuf **controlp, int *flagsp);
-	int	(*pru_sopoll) (struct socket *so, int events,
-				     struct ucred *cred, struct thread *td);
-	int	(*pru_ctloutput) (struct socket *so, struct sockopt *sopt);
 };
 
 typedef int (*pru_abort_fn_t) (struct socket *so);
@@ -280,9 +291,14 @@ typedef int (*pru_send_fn_t) (struct socket *so, int flags, struct mbuf *m,
 					struct sockaddr *addr,
 					struct mbuf *control,
 					struct thread *td);
+typedef void (*pru_notify_fn_t) (union anynetmsg *msg);
 typedef int (*pru_sense_fn_t) (struct socket *so, struct stat *sb);
 typedef int (*pru_shutdown_fn_t) (struct socket *so);
 typedef int (*pru_sockaddr_fn_t) (struct socket *so, struct sockaddr **nam);
+typedef int (*pru_poll_fn_t) (struct socket *so, int events,
+					struct ucred *cred,
+					struct thread *td);
+typedef	int (*pru_ctloutput_fn_t) (struct socket *so, struct sockopt *sopt);
 typedef int (*pru_sosend_fn_t) (struct socket *so, struct sockaddr *addr,
 					struct uio *uio, struct mbuf *top,
 					struct mbuf *control, int flags,
@@ -292,10 +308,6 @@ typedef int (*pru_soreceive_fn_t) (struct socket *so, struct sockaddr **paddr,
 					struct sockbuf *sio,
 					struct mbuf **controlp,
 					int *flagsp);
-typedef int (*pru_sopoll_fn_t) (struct socket *so, int events,
-					struct ucred *cred,
-					struct thread *td);
-typedef	int	(*pru_ctloutput_fn_t) (struct socket *so, struct sockopt *sopt);
 typedef	void (*pru_ctlinput_fn_t) (int cmd, struct sockaddr *arg, void *extra);
 
 int	pru_accept_notsupp (struct socket *so, struct sockaddr **nam);

@@ -76,6 +76,7 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/domain.h>
+#include <sys/objcache.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -85,8 +86,6 @@
 #include <sys/proc.h>
 #include <sys/jail.h>
 #include <sys/thread2.h>
-
-#include <vm/vm_zone.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -698,7 +697,7 @@ in6_pcbdetach(struct inpcb *inp)
 	ip_freemoptions(inp->inp_moptions);
 
 	inp->inp_vflag = 0;
-	zfree(ipi->ipi_zone, inp);
+	objcache_put(ipi->objc, inp);
 }
 
 /*
@@ -891,7 +890,7 @@ in6_pcbnotify(struct inpcbhead *head, struct sockaddr *dst, in_port_t fport,
 		if (cmd == PRC_MSGSIZE && (inp->inp_flags & IN6P_MTU) != 0 &&
 		    (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_faddr) ||
 		     IN6_ARE_ADDR_EQUAL(&inp->in6p_faddr, &sa6_dst->sin6_addr))) {
-			ip6_notify_pmtu(inp, (struct sockaddr_in6 *)dst, arg);
+			ip6_notify_pmtu(inp, (struct sockaddr_in6 *)dst, (void *)arg);
 		}
 
 		/*

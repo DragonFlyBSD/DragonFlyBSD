@@ -910,7 +910,7 @@ sctp_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 	if (
 #if defined (__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 	    /* FreeBSD uses a flag passed */
-	    ((flags & PRUS_MORETOCOME) == 0)
+	    ((flags & M_MORETOCOME) == 0)
 #elif defined( __NetBSD__)
 	    /* NetBSD uses the so_state field */
 	    ((so->so_state & SS_MORETOCOME) == 0)
@@ -1076,7 +1076,7 @@ sctp_shutdown(struct socket *so)
 #if defined(__FreeBSD__) && __FreeBSD_version >= 502115
 		so->so_rcv.sb_state &= ~SBS_CANTRCVMORE;
 #else
-		so->so_state &= ~SS_CANTRCVMORE;
+		atomic_clear_short(&so->so_state, SS_CANTRCVMORE);
 #endif
 		/* This proc will wakeup for read and do nothing (I hope) */
 		crit_exit();
@@ -4348,9 +4348,9 @@ struct pr_usrreqs sctp_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = sctp_shutdown,
 	.pru_sockaddr = sctp_ingetaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sctp_sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 #else

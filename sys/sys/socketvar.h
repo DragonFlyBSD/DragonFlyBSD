@@ -38,18 +38,12 @@
 #ifndef _SYS_SOCKETVAR_H_
 #define _SYS_SOCKETVAR_H_
 
-#ifndef _SYS_TYPES_H_
+
 #include <sys/types.h>
-#endif
-#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>			/* for TAILQ macros */
-#endif
-#ifndef _SYS_SELINFO_H_
 #include <sys/selinfo.h>		/* for struct selinfo */
-#endif
-#ifndef _SYS_SOCKBUF_H_
 #include <sys/sockbuf.h>
-#endif
+#include <sys/lock.h>
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
@@ -61,17 +55,18 @@ struct accept_filter;
  */
 struct signalsockbuf {
 	struct sockbuf sb;
+	/*
+	 * protects access to ssb from user process context
+	 */
+	struct lock lk;
 	struct selinfo ssb_sel;	/* process selecting read/write */
 	short	ssb_flags;	/* flags, see below */
 	short	ssb_timeo;	/* timeout for read/write */
 	long	ssb_lowat;	/* low water mark */
 	u_long	ssb_hiwat;	/* high water mark / max actual char count */
 	u_long	ssb_mbmax;	/* max chars of mbufs to use */
+	u_int	ssb_waiting;	/* waiters present */
 };
-
-#define ssb_cc		sb.sb_cc	/* commonly used fields */
-#define ssb_mb		sb.sb_mb	/* commonly used fields */
-#define ssb_mbcnt	sb.sb_mbcnt	/* commonly used fields */
 
 #define	SSB_LOCK	0x01		/* lock on data queue */
 #define	SSB_WANT	0x02		/* someone is waiting to lock */
@@ -83,13 +78,16 @@ struct signalsockbuf {
 #define SSB_AIO		0x80		/* AIO operations queued */
 #define SSB_KNOTE	0x100		/* kernel note attached */
 #define SSB_MEVENT	0x200		/* need message event notification */
-#define SSB_STOP	0x400		/* backpressure indicator */
 
 /*
  * Per-socket kernel structure.  Contains universal send and receive queues,
  * protocol control handle, and error information.
  */
 struct socket {
+	/*
+	 * used for mutual exclusion between process context kernel code
+	 */
+	struct	lock so_lock;
 	short	so_type;		/* generic type, see socket.h */
 	short	so_options;		/* from socket call, see socket.h */
 	short	so_linger;		/* time to linger while closing */
@@ -102,6 +100,8 @@ struct socket {
 	 * These fields are used to manage sockets capable of accepting
 	 * new connections.
 	 */
+	struct	spinlock so_qlock;	/* protects following queues and
+					 * len counts */
 	TAILQ_HEAD(, socket) so_incomp;	/* in-progress, incomplete */
 	TAILQ_HEAD(, socket) so_comp;	/* completed but not yet accepted */
 	TAILQ_ENTRY(socket) so_list;	/* list of unaccepted connections */
@@ -120,6 +120,7 @@ struct socket {
 	TAILQ_HEAD(, aiocblist) so_aiojobq; /* AIO ops waiting on socket */
 	struct signalsockbuf so_rcv;
 	struct signalsockbuf so_snd;
+	struct netmsg_pru_notify so_notify_msg;
 
 	void	(*so_upcall) (struct socket *, void *, int);
 	void	*so_upcallarg;
@@ -148,7 +149,7 @@ struct socket {
 
 #define	SS_ABORTING		0x0100	/* so_abort() in progress */
 #define	SS_ASYNC		0x0200	/* async i/o notify */
-#define	SS_ISCONFIRMING		0x0400	/* deciding to accept connection req */
+					/* 0x0400 was SS_ISCONFIRMING */
 
 #define	SS_INCOMP		0x0800	/* unaccepted, incomplete connection */
 #define	SS_COMP			0x1000	/* unaccepted, complete connection */
@@ -186,6 +187,8 @@ struct	xsocket {
 	uid_t	so_uid;		/* XXX */
 };
 
+#ifdef _KERNEL
+
 /*
  * Macros for sockets and socket buffering.
  */
@@ -193,71 +196,114 @@ struct	xsocket {
 #define	sosendallatonce(so) \
     ((so)->so_proto->pr_flags & PR_ATOMIC)
 
-/* can we read something from so? */
-#define	soreadable(so) \
-    ((so)->so_rcv.ssb_cc >= (so)->so_rcv.ssb_lowat || \
-	((so)->so_state & SS_CANTRCVMORE) || \
-	!TAILQ_EMPTY(&(so)->so_comp) || (so)->so_error)
-
-/* can we write something to so? */
-#define	sowriteable(so) \
-    ((ssb_space(&(so)->so_snd) >= (so)->so_snd.ssb_lowat && \
-	(((so)->so_state&SS_ISCONNECTED) || \
-	  ((so)->so_proto->pr_flags&PR_CONNREQUIRED)==0)) || \
-     ((so)->so_state & SS_CANTSENDMORE) || \
-     (so)->so_error)
-
 /*
- * Do we need to notify the other side when I/O is possible?
+ * Return send space available based on hiwat.  Due to packetization
+ * it is possible to temporarily exceed hiwat, so the return value 
+ * is allowed to go negative.
  */
-#define	ssb_notify(ssb)					\
-	(((ssb)->ssb_flags &				\
-	(SSB_WAIT | SSB_SEL | SSB_ASYNC | SSB_UPCALL |	\
-	SSB_AIO | SSB_KNOTE | SSB_MEVENT)))
-
-/* do we have to send all at once on a socket? */
-
-#ifdef _KERNEL
-
-/*
- * How much space is there in a socket buffer (so->so_snd or so->so_rcv)?
- * This is problematical if the fields are unsigned, as the space might
- * still be negative (cc > hiwat or mbcnt > mbmax).  Should detect
- * overflow and return 0.
- *
- * SSB_STOP ignores cc/hiwat and returns 0.  This is used by unix domain
- * stream sockets to signal backpressure.
- */
-static __inline
-long
+static inline long
 ssb_space(struct signalsockbuf *ssb)
 {
-	long bleft;
-	long mleft;
+	long ret;
 
-	if (ssb->ssb_flags & SSB_STOP)
-		return(0);
-	bleft = ssb->ssb_hiwat - ssb->ssb_cc;
-	mleft = ssb->ssb_mbmax - ssb->ssb_mbcnt;
-	return((bleft < mleft) ? bleft : mleft);
+	ret = ssb->ssb_hiwat - sb_cc_est(&ssb->sb);
+
+	return ret;
 }
+
+static inline long
+ssb_reader_cc_est(struct signalsockbuf *ssb)
+{
+	return sb_cc_est(&ssb->sb);
+}
+
+static inline long
+ssb_writer_cc_est(struct signalsockbuf *ssb)
+{
+	return sb_cc_est(&ssb->sb);
+}
+
+#if 0
+
+static inline long
+ssb_reader_space_est(struct signalsockbuf *ssb)
+{
+	long ret;
+
+	/* actual space is <= than our estimate */
+	ret = ssb->ssb_hiwat - sb_cc_est(&ssb->sb);
+
+	/*
+	 * no idea if ret can be <0, let's find out -- agg
+	 */
+	KKASSERT(ret >= 0);
+	return ret;
+}	
+
+static inline long
+ssb_writer_space_est(struct signalsockbuf *ssb)
+{
+	long ret;
+
+	/* actual space is >= than our estimate */
+	ret = ssb->ssb_hiwat - sb_cc_est(&ssb->sb);
+
+	/*
+	 * no idea if ret can be <0, let's find out -- agg
+	 */
+	KKASSERT(ret >= 0);
+	return ret;
+}	
 
 #endif
 
+/*
+ * If true, the available space is >= bytes. If false,
+ * we don't know
+ */
+static inline long
+ssb_writer_space_ge(struct signalsockbuf *ssb, int bytes)
+{
+	long len;
+
+	len = ssb->sb.wbytes - ssb->sb.rbytes;
+	/*
+	 * here ->wbytes is stable and ->rbytes can only be
+	 * increased, so
+	 * 	cc <= len
+	 * and
+	 * 	space = hiwat - cc <=> cc = hiwat - space
+	 * so
+	 * 	hiwat - space <= len <=>
+	 * 	hiwat - len <= space
+	 */
+	return bytes <= (ssb->ssb_hiwat - len);
+}
+
 #define ssb_append(ssb, m)						\
-	sbappend(&(ssb)->sb, m)
+	sb_append(&(ssb)->sb, m)
 
-#define ssb_appendstream(ssb, m)					\
-	sbappendstream(&(ssb)->sb, m)
+#define ssb_append_stream(ssb, m)					\
+	sb_append_stream(&(ssb)->sb, m)
 
-#define ssb_appendrecord(ssb, m)					\
-	sbappendrecord(&(ssb)->sb, m)
+#define ssb_append_record(ssb, m)					\
+	sb_append_record(&(ssb)->sb, m)
 
-#define ssb_appendaddr(ssb, src, m, control)				\
-	((ssb_space(ssb) <= 0) ? 0 : sbappendaddr(&(ssb)->sb, src, m, control))
+#define ssb_deq_record(ssb)						\
+	sb_deq_record(&(ssb)->sb)
 
-#define ssb_appendcontrol(ssb, m, control)				\
-	((ssb_space(ssb) <= 0) ? 0 : sbappendcontrol(&(ssb)->sb, m, control))
+/* note: this function returns 1 on success, 0 on failure */
+#define ssb_append_addr(ssb, src, m, control)				\
+	sb_append_addr(&(ssb)->sb, src, m, control)
+
+#define ssb_append_control(ssb, m, control)				\
+	sb_append_control(&(ssb)->sb, m, control)
+
+#define ssb_head(ssb)							\
+	sb_head(&(ssb)->sb)
+
+#define ssb_next_note(ssb)						\
+	sb_next_note(&(ssb)->sb)
 
 #define ssb_insert_knote(ssb, kn) {					\
         SLIST_INSERT_HEAD(&(ssb)->ssb_sel.si_note, kn, kn_selnext);	\
@@ -269,18 +315,6 @@ ssb_space(struct signalsockbuf *ssb)
 	if (SLIST_EMPTY(&(ssb)->ssb_sel.si_note))			\
 		(ssb)->ssb_flags &= ~SSB_KNOTE;				\
 }
-
-#define	sorwakeup(so)	do { \
-			  if (ssb_notify(&(so)->so_rcv)) \
-			    sowakeup((so), &(so)->so_rcv); \
-			} while (0)
-
-#define	sowwakeup(so)	do { \
-			  if (ssb_notify(&(so)->so_snd)) \
-			    sowakeup((so), &(so)->so_snd); \
-			} while (0)
-
-#ifdef _KERNEL
 
 /*
  * Argument structure for sosetopt et seq.  This is in the KERNEL
@@ -353,7 +387,6 @@ int	ssb_reserve (struct signalsockbuf *ssb, u_long cc, struct socket *so,
 		   struct rlimit *rl);
 void	ssbtoxsockbuf (struct signalsockbuf *sb, struct xsockbuf *xsb);
 int	ssb_wait (struct signalsockbuf *sb);
-int	_ssb_lock (struct signalsockbuf *sb);
 
 void	soabort (struct socket *so);
 void	soaborta (struct socket *so);
@@ -396,6 +429,7 @@ int	sopoll (struct socket *so, int events, struct ucred *cred,
 		    struct thread *td);
 int	soreceive (struct socket *so, struct sockaddr **paddr,
 		       struct uio *uio, struct sockbuf *sio,
+		   int sio_climit,
 		       struct mbuf **controlp, int *flagsp);
 int	soreserve (struct socket *so, u_long sndcc, u_long rcvcc,
 		   struct rlimit *rl);

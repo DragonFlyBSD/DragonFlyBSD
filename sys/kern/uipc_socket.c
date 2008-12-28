@@ -95,6 +95,7 @@
 #include <vm/vm_zone.h>
 #include <vm/pmap.h>
 
+#include <net/netmsg2.h>
 #include <sys/thread2.h>
 #include <sys/socketvar2.h>
 
@@ -153,7 +154,17 @@ soalloc(int waitok)
 		TAILQ_INIT(&so->so_aiojobq);
 		TAILQ_INIT(&so->so_rcv.ssb_sel.si_mlist);
 		TAILQ_INIT(&so->so_snd.ssb_sel.si_mlist);
+		ssb_init(&so->so_snd);
+		ssb_init(&so->so_rcv);
+		netmsg_init(&so->so_notify_msg.nm_netmsg,
+			    &netisr_adone_rport, 0, NULL);
+		/*
+		 * do not reschedule the protocol thread on notification.
+		 */
+		so->so_notify_msg.nm_netmsg.nm_lmsg.ms_flags |= MSGF_NORESCHED;
 	}
+	lockinit(&so->so_lock, "sock", 0, LK_CANRECURSE);
+	spin_init(&so->so_qlock);
 	return so;
 }
 
@@ -199,7 +210,7 @@ socreate(int dom, struct socket **aso, int type,
 	ai.fd_rdir = p->p_fd->fd_rdir;
 	error = so_pru_attach(so, proto, &ai);
 	if (error) {
-		so->so_state |= SS_NOFDREF;
+		atomic_set_short(&so->so_state, SS_NOFDREF);
 		sofree(so);
 		return (error);
 	}
@@ -233,6 +244,10 @@ sodealloc(struct socket *so)
 		do_setopt_accept_filter(so, NULL);
 #endif /* INET */
 	crfree(so->so_cred);
+	ssb_uninit(&so->so_snd);
+	ssb_uninit(&so->so_rcv);
+	spin_uninit(&so->so_qlock);
+	lockuninit(&so->so_lock);
 	kfree(so, M_SOCKET);
 }
 
@@ -296,6 +311,7 @@ sofree(struct socket *so)
 	if (so->so_state & SS_ABORTING)
 		return;
 	if (head != NULL) {
+		so_qlock(head);
 		if (so->so_state & SS_INCOMP) {
 			TAILQ_REMOVE(&head->so_incomp, so, so_list);
 			head->so_incqlen--;
@@ -306,11 +322,13 @@ sofree(struct socket *so)
 			 * accept(2) may hang after select(2) indicated
 			 * that the listening socket was ready.
 			 */
+			so_qunlock(head);
 			return;
 		} else {
 			panic("sofree: not queued");
 		}
-		so->so_state &= ~SS_INCOMP;
+		so_qunlock(head);
+		atomic_clear_short(&so->so_state, SS_INCOMP);
 		so->so_head = NULL;
 	}
 	ssb_release(&so->so_snd, so);
@@ -362,6 +380,7 @@ discard:
 	if (so->so_options & SO_ACCEPTCONN) {
 		struct socket *sp;
 
+		so_qlock(so);
 		while ((sp = TAILQ_FIRST(&so->so_incomp)) != NULL) {
 			TAILQ_REMOVE(&so->so_incomp, sp, so_list);
 			sp->so_state &= ~SS_INCOMP;
@@ -371,15 +390,16 @@ discard:
 		}
 		while ((sp = TAILQ_FIRST(&so->so_comp)) != NULL) {
 			TAILQ_REMOVE(&so->so_comp, sp, so_list);
-			sp->so_state &= ~SS_COMP;
+			atomic_clear_short(&sp->so_state, SS_COMP);
 			sp->so_head = NULL;
 			so->so_qlen--;
 			soaborta(sp);
 		}
+		so_qunlock(so);
 	}
 	if (so->so_state & SS_NOFDREF)
 		panic("soclose: NOFDREF");
-	so->so_state |= SS_NOFDREF;
+	atomic_set_short(&so->so_state, SS_NOFDREF);
 	sofree(so);
 	crit_exit();
 	return (error);
@@ -415,7 +435,7 @@ soaccept(struct socket *so, struct sockaddr **nam)
 	crit_enter();
 	if ((so->so_state & SS_NOFDREF) == 0)
 		panic("soaccept: !NOFDREF");
-	so->so_state &= ~SS_NOFDREF;
+	atomic_clear_short(&so->so_state, SS_NOFDREF);
 	error = so_pru_accept(so, nam);
 	crit_exit();
 	return (error);
@@ -428,7 +448,7 @@ soconnect(struct socket *so, struct sockaddr *nam, struct thread *td)
 
 	if (so->so_options & SO_ACCEPTCONN)
 		return (EOPNOTSUPP);
-	crit_enter();
+
 	/*
 	 * If protocol is connection-based, can only connect once.
 	 * Otherwise, if connected, try to disconnect first.
@@ -442,12 +462,12 @@ soconnect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	} else {
 		/*
 		 * Prevent accumulated error from previous connection
-		 * from biting us.
+		 * from biting us.  The protocol stack will handle
+		 * any race that occurs.
 		 */
 		so->so_error = 0;
 		error = so_pru_connect(so, nam, td);
 	}
-	crit_exit();
 	return (error);
 }
 
@@ -483,18 +503,19 @@ bad:
 }
 
 #define	SBLOCKWAIT(f)	(((f) & MSG_DONTWAIT) ? M_NOWAIT : M_WAITOK)
+
 /*
- * Send on a socket.
- * If send must go all at once and message is larger than
- * send buffering, then hard error.
- * Lock against other senders.
- * If must go all at once and not enough room now, then
- * inform user that this would block and do nothing.
- * Otherwise, if nonblocking, send as much as possible.
- * The data to be sent is described by "uio" if nonzero,
+ * Send on a socket.  If the protocol has a pru_notify function any
+ * sends without addresses will be queued directly to so_snd and an
+ * async notification will be sent.  Sends with addresses always use
+ * the synchronous pru_send message.  If the protocol has no pru_notify
+ * then all sends use the synchronous pru_send message.  OOB data
+ * is always sent syncnronously.
+ *
+ * The data to be sent is described by "uio" if not NULL,
  * otherwise by the mbuf chain "top" (which must be null
- * if uio is not).  Data provided in mbuf chain must be small
- * enough to send all at once.
+ * if uio is not).  Data provided in a top-based mbuf chain must be
+ * small enough to send all at once.
  *
  * Returns nonzero on error, timeout or signal; callers
  * must check for short counts if EINTR/ERESTART are returned.
@@ -507,15 +528,18 @@ sosend(struct socket *so, struct sockaddr *addr, struct uio *uio,
 {
 	struct mbuf **mp;
 	struct mbuf *m;
+	struct protosw *pr = so->so_proto;
 	long space, len, resid;
 	int clen = 0, error, dontroute, mlen;
 	int atomic = sosendallatonce(so) || top;
+	int internalized = 0;
 	int pru_flags;
 
 	if (uio)
 		resid = uio->uio_resid;
 	else
 		resid = top->m_pkthdr.len;
+
 	/*
 	 * In theory resid should be unsigned.
 	 * However, space must be signed, as it might be less than 0
@@ -531,45 +555,47 @@ sosend(struct socket *so, struct sockaddr *addr, struct uio *uio,
 		goto out;
 	}
 
+	/*
+	 * Internalize control messages in the context of the caller, not
+	 * the context of the protocol thread.
+	 */
+	if (control) {
+		if (pr->pr_domain->dom_internalize) {
+			error = (*pr->pr_domain->dom_internalize)(control);
+			if (error)
+				goto out;
+			internalized = 1;
+		}
+	}
+
 	dontroute =
 	    (flags & MSG_DONTROUTE) && (so->so_options & SO_DONTROUTE) == 0 &&
-	    (so->so_proto->pr_flags & PR_ATOMIC);
+	    (pr->pr_flags & PR_ATOMIC);
 	if (td->td_lwp != NULL)
 		td->td_lwp->lwp_ru.ru_msgsnd++;
 	if (control)
 		clen = control->m_len;
-#define	gotoerr(errcode)	{ error = errcode; crit_exit(); goto release; }
+
+#define	gotoerr(errcode)	{ error = errcode; goto release; }
 
 restart:
 	error = ssb_lock(&so->so_snd, SBLOCKWAIT(flags));
 	if (error)
 		goto out;
+
 	do {
-		crit_enter();
 		if (so->so_state & SS_CANTSENDMORE)
 			gotoerr(EPIPE);
 		if (so->so_error) {
-			error = so->so_error;
-			so->so_error = 0;
-			crit_exit();
-			goto release;
+			int tmp = so->so_error;
+			so->so_error = 0;			
+			gotoerr(tmp);
 		}
-		if ((so->so_state & SS_ISCONNECTED) == 0) {
-			/*
-			 * `sendto' and `sendmsg' is allowed on a connection-
-			 * based socket if it supports implied connect.
-			 * Return ENOTCONN if not connected and no address is
-			 * supplied.
-			 */
-			if ((so->so_proto->pr_flags & PR_CONNREQUIRED) &&
-			    (so->so_proto->pr_flags & PR_IMPLOPCL) == 0) {
-				if ((so->so_state & SS_ISCONFIRMING) == 0 &&
-				    !(resid == 0 && clen != 0))
-					gotoerr(ENOTCONN);
-			} else if (addr == 0)
-			    gotoerr(so->so_proto->pr_flags & PR_CONNREQUIRED ?
-				   ENOTCONN : EDESTADDRREQ);
-		}
+
+		/*
+		 * Prechecks, do these before handling implicit connections
+		 * so the sendto() isn't broken up.
+		 */
 		if ((atomic && resid > so->so_snd.ssb_hiwat) ||
 		    clen > so->so_snd.ssb_hiwat) {
 			gotoerr(EMSGSIZE);
@@ -577,18 +603,70 @@ restart:
 		space = ssb_space(&so->so_snd);
 		if (flags & MSG_OOB)
 			space += 1024;
+		tsleep_interlock(&so->so_snd.sb);
 		if (space < resid + clen && uio &&
 		    (atomic || space < so->so_snd.ssb_lowat || space < clen)) {
-			if (flags & (MSG_FNONBLOCKING|MSG_DONTWAIT))
+			if (flags & (MSG_FNONBLOCKING|MSG_DONTWAIT)) {
 				gotoerr(EWOULDBLOCK);
+			}
 			ssb_unlock(&so->so_snd);
 			error = ssb_wait(&so->so_snd);
-			crit_exit();
 			if (error)
 				goto out;
 			goto restart;
 		}
-		crit_exit();
+
+		/*
+		 * Deal with the case where control messages are not
+		 * supported (TCP).
+		 */
+		if (control && (pr->pr_flags & PR_NOCONTROL)) {
+			if (control->m_len)
+				gotoerr(EINVAL);
+			m_freem(control);
+			control = NULL;
+		}
+
+		/*
+		 * If connected and a connection is required addr must be
+		 * NULL.  Implicit reconnections are not allowed and 
+		 * PR_IMPLOPCL is ignored.
+		 *
+		 * If connected and a connection is not required we allow
+		 * implicit connections and addr may or may not be NULL.
+		 * PR_IMPLOPCL is ignored.
+		 *
+		 * If not connected and a connection is required we require
+		 * an implicit connection (addr != NULL), but PR_IMPLOPCL
+		 * must also be set and WE PERFORM THE CONNECT RIGHT HERE
+		 * (this is so TCP doesn't have to deal with non-NULL addr).
+		 *
+		 * If not connected and a connection is not required we
+		 * require an implicit connection (addr != NULL) regardless
+		 * of the state of PR_IMPLOPCL.
+		 */
+		if (so->so_state & (SS_ISCONNECTED|SS_ISCONNECTING)) {
+			if (pr->pr_flags & PR_CONNREQUIRED) {
+				if (addr)
+					gotoerr(EISCONN);
+			} /* else addr may or may not be NULL */
+		} else {
+			if (addr == NULL)
+				gotoerr(EDESTADDRREQ);
+			if (pr->pr_flags & PR_CONNREQUIRED) {
+				if ((pr->pr_flags & PR_IMPLOPCL) == 0)
+					gotoerr(ENOTCONN);
+				error = soconnect(so, addr, td);
+				addr = NULL;
+				if (error)
+					goto out;
+				/* XXX resid != 0 || clen == 0 */
+			} /* else impl temporary connection always allowed */
+		}
+
+		/*
+		 * Construct a mbuf chain from the uio.
+		 */
 		mp = &top;
 		space -= clen;
 		do {
@@ -630,42 +708,65 @@ restart:
 				break;
 			}
 		    } while (space > 0 && atomic);
-		    if (dontroute)
-			    so->so_options |= SO_DONTROUTE;
+
 		    if (flags & MSG_OOB) {
-		    	    pru_flags = PRUS_OOB;
+		    	    pru_flags = M_OOB;
 		    } else if ((flags & MSG_EOF) &&
-		    	       (so->so_proto->pr_flags & PR_IMPLOPCL) &&
+		    	       (pr->pr_flags & PR_IMPLOPCL) &&
 		    	       (resid <= 0)) {
 			    /*
 			     * If the user set MSG_EOF, the protocol
 			     * understands this flag and nothing left to
-			     * send then use PRU_SEND_EOF instead of PRU_SEND.
+			     * send.  Only applies to TCP-like protocols
+			     * with implied-connect capabilities?
 			     */
-		    	    pru_flags = PRUS_EOF;
+		    	    pru_flags = M_EOF;
 		    } else if (resid > 0 && space > 0) {
-			    /* If there is more to send, set PRUS_MORETOCOME */
-		    	    pru_flags = PRUS_MORETOCOME;
+			    /* If there is more to send, set M_MORETOCOME */
+		    	    pru_flags = M_MORETOCOME;
+		    } else if (flags & MSG_MORE) {
+			    /* User indicates more to come */
+		    	    pru_flags = M_MORETOCOME;
 		    } else {
 		    	    pru_flags = 0;
 		    }
-		    crit_enter();
-		    /*
-		     * XXX all the SS_CANTSENDMORE checks previously
-		     * done could be out of date.  We could have recieved
-		     * a reset packet in an interrupt or maybe we slept
-		     * while doing page faults in uiomove() etc. We could
-		     * probably recheck again inside the splnet() protection
-		     * here, but there are probably other places that this
-		     * also happens.  We must rethink this.
-		     */
-		    error = so_pru_send(so, pru_flags, top, addr, control, td);
-		    crit_exit();
 		    if (dontroute)
-			    so->so_options &= ~SO_DONTROUTE;
+			    pru_flags |= M_DONTROUTE;
+
+		    /*
+		     * If running the packet synchronously issue a domsg
+		     * via so_pru_send(), otherwise queue the packet
+		     * directly to the target.  either way top and control
+		     * are dealt with.
+		     *
+		     * WARNING!  At this point addr is always NULL for 
+		     * TCP-like protocols (w/PR_IMPLOPCL and PR_CONNREQUIRED
+		     * both set).  M_OOB data is sent synchronously and not
+		     * queued, otherwise the mess is queued and runs through
+		     * the notify mechanic.
+		     *
+		     * Also note for TCP if PR_NOCONTROL is set (and it is),
+		     * at this point control is NULL as well.
+		     */
+		    if (addr) {
+			    error = so_pru_send(so, pru_flags, top,
+						addr, control, td);
+		    } else if ((pru_flags & M_OOB) ||
+				pr->pr_usrreqs->pru_notify == NULL) {
+			    error = so_pru_send(so, pru_flags, top,
+						addr, control, td);
+		    } else if (control) {
+			    control->m_flags |= pru_flags;
+			    sb_append_control(&so->so_snd.sb, top, control);
+			    error = so_pru_notify(so);
+		    } else {
+			    top->m_flags |= pru_flags;
+			    sb_append(&so->so_snd.sb, top);
+			    error = so_pru_notify(so);
+		    }
 		    clen = 0;
-		    control = 0;
-		    top = 0;
+		    control = NULL;
+		    top = NULL;
 		    mp = &top;
 		    if (error)
 			    goto release;
@@ -677,8 +778,11 @@ release:
 out:
 	if (top)
 		m_freem(top);
-	if (control)
+	if (control) {
+		if (internalized)
+			pr->pr_domain->dom_dispose(control);
 		m_freem(control);
+	}
 	return (error);
 }
 
@@ -698,8 +802,10 @@ int
 sosendudp(struct socket *so, struct sockaddr *addr, struct uio *uio,
 	  struct mbuf *top, struct mbuf *control, int flags, struct thread *td)
 {
+	struct protosw *pr = so->so_proto;
 	int resid, error;
 	boolean_t dontroute;		/* temporary SO_DONTROUTE setting */
+	int pru_flags;
 
 	if (td->td_lwp != NULL)
 		td->td_lwp->lwp_ru.ru_msgsnd++;
@@ -714,13 +820,11 @@ restart:
 	if (error)
 		goto out;
 
-	crit_enter();
 	if (so->so_state & SS_CANTSENDMORE)
 		gotoerr(EPIPE);
 	if (so->so_error) {
 		error = so->so_error;
 		so->so_error = 0;
-		crit_exit();
 		goto release;
 	}
 	if (!(so->so_state & SS_ISCONNECTED) && addr == NULL)
@@ -732,12 +836,10 @@ restart:
 			gotoerr(EWOULDBLOCK);
 		ssb_unlock(&so->so_snd);
 		error = ssb_wait(&so->so_snd);
-		crit_exit();
 		if (error)
 			goto out;
 		goto restart;
 	}
-	crit_exit();
 
 	if (uio) {
 		top = m_uiomove(uio);
@@ -747,14 +849,24 @@ restart:
 
 	dontroute = (flags & MSG_DONTROUTE) && !(so->so_options & SO_DONTROUTE);
 	if (dontroute)
-		so->so_options |= SO_DONTROUTE;
+		pru_flags = M_DONTROUTE;
+	else
+		pru_flags = 0;
 
-	error = so_pru_send(so, 0, top, addr, NULL, td);
+	/*
+	 * The packet is enqueued to so_snd and the protocol
+	 * layer is notified.
+	 */
+	if (addr || pr->pr_usrreqs->pru_notify == NULL) {
+		error = so_pru_send(so, pru_flags, top, addr, control, td);
+		if (error)
+			goto release;
+	} else {
+		top->m_flags |= pru_flags;
+		sb_append(&so->so_snd.sb, top);
+		error = so_pru_notify(so);
+	}
 	top = NULL;		/* sent or freed in lower layer */
-
-	if (dontroute)
-		so->so_options &= ~SO_DONTROUTE;
-
 release:
 	ssb_unlock(&so->so_snd);
 out:
@@ -763,10 +875,26 @@ out:
 	return (error);
 }
 
+static boolean_t
+socanreceive_predicate(struct netmsg *msg0)
+{
+	struct netmsg_so_notify *msg = (struct netmsg_so_notify *)msg0;
+	struct socket *so = msg->nm_so;
+
+	msg->nm_netmsg.nm_lmsg.ms_error = 0;
+	if (so->so_state & SS_CANTRCVMORE)
+		return TRUE;
+	if (sb_cc_est(&so->so_rcv.sb) >= msg->nm_rbytes)
+		return TRUE;
+	if (!(so->so_state & (SS_ISCONNECTING|SS_ISCONNECTED)))
+		return TRUE;
+	return FALSE;
+}
+
 /*
  * Implement receive operations on a socket.
  * We depend on the way that records are added to the signalsockbuf
- * by sbappend*.  In particular, each record (mbufs linked through m_next)
+ * by sb_append*.  In particular, each record (mbufs linked through m_next)
  * must begin with an address if the protocol so specifies,
  * followed by an optional mbuf or mbufs containing ancillary data,
  * and then zero or more mbufs of data.
@@ -781,19 +909,24 @@ out:
  */
 int
 soreceive(struct socket *so, struct sockaddr **psa, struct uio *uio,
-	  struct sockbuf *sio, struct mbuf **controlp, int *flagsp)
+	  struct sockbuf *sio, int sio_climit, struct mbuf **controlp,
+	  int *flagsp)
 {
 	struct mbuf *m, *n;
 	struct mbuf *free_chain = NULL;
 	int flags, len, error, offset;
 	struct protosw *pr = so->so_proto;
 	int moff, type = 0;
-	int resid, orig_resid;
+	int resid, orig_resid, eor;
+	struct sb_reader sr;
 
-	if (uio)
+	if (uio) {
+		KKASSERT(sio_climit < 0);
 		resid = uio->uio_resid;
-	else
-		resid = (int)(sio->sb_climit - sio->sb_cc);
+	} else {
+		KKASSERT(sio_climit > 0);
+		resid = (int)(sio_climit - sb_cc_est(sio));
+	}
 	orig_resid = resid;
 
 	if (psa)
@@ -813,7 +946,7 @@ soreceive(struct socket *so, struct sockaddr **psa, struct uio *uio,
 			goto bad;
 		if (sio) {
 			do {
-				sbappend(sio, m);
+				sb_append(sio, m);
 				resid -= m->m_len;
 			} while (resid > 0 && m);
 		} else {
@@ -830,16 +963,26 @@ bad:
 			m_freem(m);
 		return (error);
 	}
-	if (so->so_state & SS_ISCONFIRMING && resid)
-		so_pru_rcvd(so, 0);
 
 restart:
-	crit_enter();
 	error = ssb_lock(&so->so_rcv, SBLOCKWAIT(flags));
 	if (error)
 		goto done;
 
-	m = so->so_rcv.ssb_mb;
+	/*
+	 * Here we may block, so we don't want to miss a wakeup between
+	 * the test and going to sleep
+	 */
+	crit_enter();
+	tsleep_interlock(&so->so_rcv);
+
+	/*
+	 * if data arrives (rcvcc is increased) after this point we
+	 * will get a wakeup and restart
+	 */
+	sb_reader_init(&sr, &so->so_rcv.sb);
+	m = sb_reader_next(&sr, NULL);
+
 	/*
 	 * If we have less data than requested, block awaiting more
 	 * (subject to any timeout) if:
@@ -851,61 +994,99 @@ restart:
 	 * we have to do the receive in sections, and thus risk returning
 	 * a short count if a timeout or signal occurs after we start.
 	 */
-	if (m == NULL || (((flags & MSG_DONTWAIT) == 0 &&
-	    so->so_rcv.ssb_cc < resid) &&
-	    (so->so_rcv.ssb_cc < so->so_rcv.ssb_lowat ||
-	    ((flags & MSG_WAITALL) && resid <= so->so_rcv.ssb_hiwat)) &&
-	    m->m_nextpkt == 0 && (pr->pr_flags & PR_ATOMIC) == 0)) {
-		KASSERT(m != NULL || !so->so_rcv.ssb_cc, ("receive 1"));
+	if (m == NULL || ((!(flags & MSG_DONTWAIT) &&
+			   (sb_reader_len(&sr) < resid)) &&
+			  (sb_reader_len(&sr) < so->so_rcv.ssb_lowat ||
+			   ((flags & MSG_WAITALL) &&
+			    resid <= so->so_rcv.ssb_hiwat)) &&
+			  sr.m == NULL && !(pr->pr_flags & PR_ATOMIC))) {
+		struct netmsg_so_notify msg;
+		lwkt_port_t port;
+
+		KASSERT(m != NULL || !sb_reader_len(&sr), ("receive 1"));
+		/*
+		 * XXX: so_error serialized? -- agg
+		 */
 		if (so->so_error) {
 			if (m)
 				goto dontblock;
 			error = so->so_error;
 			if ((flags & MSG_PEEK) == 0)
 				so->so_error = 0;
-			goto release;
+			goto drop_crit;
 		}
+		/*
+		 * accesses to ->so_state are done in proto thread
+		 * context only
+		 */
 		if (so->so_state & SS_CANTRCVMORE) {
 			if (m)
 				goto dontblock;
 			else
-				goto release;
+				goto drop_crit;
 		}
-		for (; m; m = m->m_next) {
-			if (m->m_type == MT_OOBDATA  || (m->m_flags & M_EOR)) {
-				m = so->so_rcv.ssb_mb;
+		for (; m; m = sb_reader_next(&sr, NULL)) {
+			if (m->m_type == MT_OOBDATA) {
+				m = sb_head(&so->so_rcv.sb);
 				goto dontblock;
 			}
 		}
 		if ((so->so_state & (SS_ISCONNECTED|SS_ISCONNECTING)) == 0 &&
 		    (pr->pr_flags & PR_CONNREQUIRED)) {
 			error = ENOTCONN;
-			goto release;
+			goto drop_crit;
 		}
 		if (resid == 0)
-			goto release;
+			goto drop_crit;
 		if (flags & (MSG_FNONBLOCKING|MSG_DONTWAIT)) {
 			error = EWOULDBLOCK;
-			goto release;
+			goto drop_crit;
 		}
 		ssb_unlock(&so->so_rcv);
-		error = ssb_wait(&so->so_rcv);
-		if (error)
-			goto done;
+		port = so->so_proto->pr_mport(so, NULL, NULL, PRU_PRED);
+		netmsg_init_abortable(&msg.nm_netmsg, &curthread->td_msgport,
+				      0, netmsg_so_notify,
+				      netmsg_so_notify_doabort);
+		msg.nm_predicate = socanreceive_predicate;
+		msg.nm_so = so;
+		msg.nm_etype = NM_REVENT;
+		msg.nm_rbytes = sb_reader_len(&sr);
+		if (!m) {
+			++msg.nm_rbytes;
+		} else {
+			/*
+			 * TBD: try to be smart here
+			 */
+			++msg.nm_rbytes;
+		}
+		error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 		crit_exit();
+		if (error) {
+			sb_reader_done(&sr);
+			goto done;
+		}
+		sb_reader_done(&sr);
 		goto restart;
+	drop_crit:
+		/*
+		 * slow path, don't care about silly jumps
+		 */
+		crit_exit();
+		goto release;
 	}
 dontblock:
+	crit_exit();
 	if (uio && uio->uio_td && uio->uio_td->td_proc)
 		uio->uio_td->td_lwp->lwp_ru.ru_msgrcv++;
 
 	/*
-	 * note: m should be == sb_mb here.  Cache the next record while
-	 * cleaning up.  Note that calling m_free*() will break out critical
-	 * section.
+	 * note: m should be == sb_head(so_rcv.sb) here.  Cache the next
+	 * record while cleaning up.
 	 */
-	KKASSERT(m == so->so_rcv.ssb_mb);
+	KKASSERT(m == sb_head(&so->so_rcv.sb));	/* XXX: no need? -- agg */
 
+	sb_reader_rewind(&sr);
+	m = sb_reader_next(&sr, NULL);
 	/*
 	 * Skip any address mbufs prepending the record.
 	 */
@@ -915,14 +1096,10 @@ dontblock:
 		if (psa)
 			*psa = dup_sockaddr(mtod(m, struct sockaddr *));
 		if (flags & MSG_PEEK)
-			m = m->m_next;
+			m = sb_reader_next(&sr, NULL);
 		else
-			m = sbunlinkmbuf(&so->so_rcv.sb, m, &free_chain);
+			m = sb_drop_head(&so->so_rcv.sb, NULL, &free_chain);
 	}
-
-	/*
-	 * Skip any control mbufs prepending the record.
-	 */
 #ifdef SCTP
 	if (pr->pr_flags & PR_ADDR_OPT) {
 		/*
@@ -934,20 +1111,26 @@ dontblock:
 			if (psa)
 				*psa = dup_sockaddr(mtod(m, struct sockaddr *));
 			if (flags & MSG_PEEK)
-				m = m->m_next;
+				m = sb_reader_next(&sr, NULL);
 			else
-				m = sbunlinkmbuf(&so->so_rcv.sb, m, &free_chain);
+				m = sb_drop_head(&so->so_rcv.sb, NULL,
+						 &free_chain);
 		}
 	}
 #endif /* SCTP */
+
+	/*
+	 * Skip any control mbufs prepending the record.
+	 */
 	while (m && m->m_type == MT_CONTROL && error == 0) {
 		if (flags & MSG_PEEK) {
 			if (controlp)
 				*controlp = m_copy(m, 0, m->m_len);
-			m = m->m_next;	/* XXX race */
+			m = sb_reader_next(&sr, NULL);
 		} else {
 			if (controlp) {
-				n = sbunlinkmbuf(&so->so_rcv.sb, m, NULL);
+				KKASSERT(m == sb_head(&so->so_rcv.sb));
+				n = sb_drop_head(&so->so_rcv.sb, NULL, NULL);
 				if (pr->pr_domain->dom_externalize &&
 				    mtod(m, struct cmsghdr *)->cmsg_type ==
 				    SCM_RIGHTS)
@@ -955,7 +1138,8 @@ dontblock:
 				*controlp = m;
 				m = n;
 			} else {
-				m = sbunlinkmbuf(&so->so_rcv.sb, m, &free_chain);
+				m = sb_drop_head(&so->so_rcv.sb, NULL,
+						 &free_chain);
 			}
 		}
 		if (controlp && *controlp) {
@@ -963,7 +1147,6 @@ dontblock:
 			controlp = &(*controlp)->m_next;
 		}
 	}
-
 	/*
 	 * flag OOB data.
 	 */
@@ -974,7 +1157,7 @@ dontblock:
 	}
 
 	/*
-	 * Copy to the UIO or mbuf return chain (*mp).
+	 * Copy to the UIO or sockbuf.
 	 */
 	moff = 0;
 	offset = 0;
@@ -986,8 +1169,8 @@ dontblock:
 			break;
 		else
 		    KASSERT(m->m_type == MT_DATA || m->m_type == MT_HEADER,
-			("receive 3"));
-		so->so_state &= ~SS_RCVATMARK;
+			("receive 3 type %d", m->m_type));
+		atomic_clear_short(&so->so_state, SS_RCVATMARK);
 		len = resid;
 		if (so->so_oobmark && len > so->so_oobmark - offset)
 			len = so->so_oobmark - offset;
@@ -1000,11 +1183,9 @@ dontblock:
 		 * with the resid here either way.
 		 */
 		if (uio) {
-			crit_exit();
 			uio->uio_resid = resid;
 			error = uiomove(mtod(m, caddr_t) + moff, len, uio);
 			resid = uio->uio_resid;
-			crit_enter();
 			if (error)
 				goto release;
 		} else {
@@ -1015,43 +1196,47 @@ dontblock:
 		 * Eat the entire mbuf or just a piece of it
 		 */
 		if (len == m->m_len - moff) {
-			if (m->m_flags & M_EOR)
-				flags |= MSG_EOR;
 #ifdef SCTP
 			if (m->m_flags & M_NOTIFICATION)
 				flags |= MSG_NOTIFICATION;
 #endif /* SCTP */
+			eor = 0;
 			if (flags & MSG_PEEK) {
-				m = m->m_next;
+				m = sb_reader_next(&sr, &eor);
 				moff = 0;
 			} else {
 				if (sio) {
-					n = sbunlinkmbuf(&so->so_rcv.sb, m, NULL);
-					sbappend(sio, m);
+					n = sb_drop_head(&so->so_rcv.sb, &eor,
+							 NULL);
+					sb_append(sio, m);
 					m = n;
 				} else {
-					m = sbunlinkmbuf(&so->so_rcv.sb, m, &free_chain);
+					m = sb_drop_head(&so->so_rcv.sb, &eor,
+							 &free_chain);
 				}
 			}
+			if (eor)
+				flags |= MSG_EOR;
 		} else {
+			KKASSERT(len < (m->m_len - moff));
 			if (flags & MSG_PEEK) {
 				moff += len;
 			} else {
 				if (sio) {
 					n = m_copym(m, 0, len, MB_WAIT);
 					if (n)
-						sbappend(sio, n);
+						sb_append(sio, n);
 				}
-				m->m_data += len;
-				m->m_len -= len;
-				so->so_rcv.ssb_cc -= len;
+				sb_drop(&so->so_rcv.sb, len);
 			}
+			KKASSERT(resid == 0);	/* not sure -- agg */
 		}
 		if (so->so_oobmark) {
 			if ((flags & MSG_PEEK) == 0) {
 				so->so_oobmark -= len;
 				if (so->so_oobmark == 0) {
-					so->so_state |= SS_RCVATMARK;
+					atomic_set_short(&so->so_state,
+							 SS_RCVATMARK);
 					break;
 				}
 			} else {
@@ -1071,8 +1256,11 @@ dontblock:
 		 */
 		while ((flags & MSG_WAITALL) && m == NULL && 
 		       resid > 0 && !sosendallatonce(so) && 
-		       so->so_rcv.ssb_mb == NULL) {
-			if (so->so_error || so->so_state & SS_CANTRCVMORE)
+		       sb_head(&so->so_rcv.sb) == NULL) {
+			struct netmsg_so_notify msg;
+			lwkt_port_t port;
+
+			if (so->so_error || (so->so_state & SS_CANTRCVMORE))
 				break;
 			/*
 			 * The window might have closed to zero, make
@@ -1082,13 +1270,21 @@ dontblock:
 			 */
 			if (pr->pr_flags & PR_WANTRCVD && so->so_pcb)
 				so_pru_rcvd(so, flags);
-			error = ssb_wait(&so->so_rcv);
+			port = so->so_proto->pr_mport(so, NULL, NULL, PRU_PRED);
+			netmsg_init_abortable(&msg.nm_netmsg, &curthread->td_msgport,
+					      0, netmsg_so_notify,
+					      netmsg_so_notify_doabort);
+			msg.nm_predicate = socanreceive_predicate;
+			msg.nm_so = so;
+			msg.nm_etype = NM_REVENT;
+			msg.nm_rbytes = 1;
+			error = lwkt_domsg(port, &msg.nm_netmsg.nm_lmsg, 0);
 			if (error) {
 				ssb_unlock(&so->so_rcv);
 				error = 0;
 				goto done;
 			}
-			m = so->so_rcv.ssb_mb;
+			m = sb_head(&so->so_rcv.sb);
 		}
 	}
 
@@ -1101,27 +1297,30 @@ dontblock:
 
 	/*
 	 * Cleanup.  If an atomic read was requested drop any unread data.
+	 *
+	 * Notify the protocol stack that we read out some data.
 	 */
 	if ((flags & MSG_PEEK) == 0) {
 		if (m && (pr->pr_flags & PR_ATOMIC))
-			sbdroprecord(&so->so_rcv.sb);
+			sb_drop_record(&so->so_rcv.sb);
 		if ((pr->pr_flags & PR_WANTRCVD) && so->so_pcb)
 			so_pru_rcvd(so, flags);
+		if (so->so_proto->pr_usrreqs->pru_notify)
+			so_pru_notify(so);
 	}
 
 	if (orig_resid == resid && orig_resid &&
 	    (flags & MSG_EOR) == 0 && (so->so_state & SS_CANTRCVMORE) == 0) {
 		ssb_unlock(&so->so_rcv);
-		crit_exit();
 		goto restart;
 	}
 
 	if (flagsp)
 		*flagsp |= flags;
 release:
+	sb_reader_done(&sr);
 	ssb_unlock(&so->so_rcv);
 done:
-	crit_exit();
 	if (free_chain)
 		m_freem(free_chain);
 	return (error);
@@ -1145,25 +1344,20 @@ sorflush(struct socket *so)
 {
 	struct signalsockbuf *ssb = &so->so_rcv;
 	struct protosw *pr = so->so_proto;
-	struct signalsockbuf asb;
 
+	ssb_lock(ssb, M_WAITOK);
 	ssb->ssb_flags |= SSB_NOINTR;
-	(void) ssb_lock(ssb, M_WAITOK);
 
-	crit_enter();
 	socantrcvmore(so);
+	sb_flush(&ssb->sb);
 	ssb_unlock(ssb);
-	asb = *ssb;
-	bzero((caddr_t)ssb, sizeof (*ssb));
-	if (asb.ssb_flags & SSB_KNOTE) {
-		ssb->ssb_sel.si_note = asb.ssb_sel.si_note;
-		ssb->ssb_flags = SSB_KNOTE;
-	}
-	crit_exit();
 
+
+	/*
+	 * XXX: kill arg -- agg
+	 */
 	if (pr->pr_flags & PR_RIGHTS && pr->pr_domain->dom_dispose)
-		(*pr->pr_domain->dom_dispose)(asb.ssb_mb);
-	ssb_release(&asb, so);
+		(*pr->pr_domain->dom_dispose)(NULL);
 }
 
 #ifdef INET
@@ -1183,6 +1377,7 @@ do_setopt_accept_filter(struct socket *so, struct sockopt *sopt)
 
 	/* removing the filter */
 	if (sopt == NULL) {
+		so->so_options &= ~SO_ACCEPTFILTER;
 		if (af != NULL) {
 			if (af->so_accept_filter != NULL && 
 				af->so_accept_filter->accf_destroy != NULL) {
@@ -1194,7 +1389,6 @@ do_setopt_accept_filter(struct socket *so, struct sockopt *sopt)
 			FREE(af, M_ACCF);
 			so->so_accf = NULL;
 		}
-		so->so_options &= ~SO_ACCEPTFILTER;
 		return (0);
 	}
 	/* adding a filter */
@@ -1287,11 +1481,14 @@ sosetopt(struct socket *so, struct sockopt *sopt)
 	struct	timeval tv;
 	u_long  val;
 
+	so_lock(so);
 	error = 0;
 	sopt->sopt_dir = SOPT_SET;
 	if (sopt->sopt_level != SOL_SOCKET) {
 		if (so->so_proto && so->so_proto->pr_ctloutput) {
-			return (so_pru_ctloutput(so, sopt));
+			error = so_pru_ctloutput(so, sopt);
+			so_unlock(so);
+			return error;
 		}
 		error = ENOPROTOOPT;
 	} else {
@@ -1422,6 +1619,7 @@ sosetopt(struct socket *so, struct sockopt *sopt)
 		}
 	}
 bad:
+	so_unlock(so);
 	return (error);
 }
 
@@ -1467,13 +1665,14 @@ sogetopt(struct socket *so, struct sockopt *sopt)
 	struct accept_filter_arg *afap;
 #endif
 
+	so_lock(so);
 	error = 0;
 	sopt->sopt_dir = SOPT_GET;
 	if (sopt->sopt_level != SOL_SOCKET) {
+		error = ENOPROTOOPT;
 		if (so->so_proto && so->so_proto->pr_ctloutput) {
-			return (so_pru_ctloutput(so, sopt));
-		} else
-			return (ENOPROTOOPT);
+			error = so_pru_ctloutput(so, sopt);
+		}
 	} else {
 		switch (sopt->sopt_name) {
 #ifdef INET
@@ -1551,8 +1750,9 @@ integer:
 			error = ENOPROTOOPT;
 			break;
 		}
-		return (error);
 	}
+	so_unlock(so);
+	return error;
 }
 
 /* XXX; prepare mbuf for (__FreeBSD__ < 3) routines. */
@@ -1666,15 +1866,15 @@ sopoll(struct socket *so, int events, struct ucred *cred, struct thread *td)
 {
 	int revents = 0;
 
-	crit_enter();
 
+	so_lock_rcv(so, M_WAITOK);
+	so_lock_snd(so, M_WAITOK);
 	if (events & (POLLIN | POLLRDNORM))
 		if (soreadable(so))
 			revents |= events & (POLLIN | POLLRDNORM);
 
 	if (events & POLLINIGNEOF)
-		if (so->so_rcv.ssb_cc >= so->so_rcv.ssb_lowat ||
-			!TAILQ_EMPTY(&so->so_comp) || so->so_error)
+		if (soreadable_igneof(so))
 			revents |= POLLINIGNEOF;
 
 	if (events & (POLLOUT | POLLWRNORM))
@@ -1698,8 +1898,9 @@ sopoll(struct socket *so, int events, struct ucred *cred, struct thread *td)
 			so->so_snd.ssb_flags |= SSB_SEL;
 		}
 	}
+	so_unlock_snd(so);
+	so_unlock_rcv(so);
 
-	crit_exit();
 	return (revents);
 }
 
@@ -1725,10 +1926,10 @@ sokqfilter(struct file *fp, struct knote *kn)
 		return (1);
 	}
 
-	crit_enter();
+	so_lock(so);
 	SLIST_INSERT_HEAD(&ssb->ssb_sel.si_note, kn, kn_selnext);
 	ssb->ssb_flags |= SSB_KNOTE;
-	crit_exit();
+	so_unlock(so);
 	return (0);
 }
 
@@ -1750,7 +1951,8 @@ filt_soread(struct knote *kn, long hint)
 {
 	struct socket *so = (struct socket *)kn->kn_fp->f_data;
 
-	kn->kn_data = so->so_rcv.ssb_cc;
+	/* XXX: not sure -- agg */
+	kn->kn_data = ssb_reader_cc_est(&so->so_rcv);
 	if (so->so_state & SS_CANTRCVMORE) {
 		kn->kn_flags |= EV_EOF; 
 		kn->kn_fflags = so->so_error;
@@ -1804,5 +2006,5 @@ filt_solisten(struct knote *kn, long hint)
 	struct socket *so = (struct socket *)kn->kn_fp->f_data;
 
 	kn->kn_data = so->so_qlen;
-	return (! TAILQ_EMPTY(&so->so_comp));
+	return (kn->kn_data != 0);
 }

@@ -732,7 +732,8 @@ ng_ksocket_rcvmsg(node_p node, struct ng_mesg *msg,
 			if ((so->so_state & SS_ISCONNECTING) != 0)
 				ERROUT(EALREADY);
 			if ((error = soconnect(so, sa, td)) != 0) {
-				so->so_state &= ~SS_ISCONNECTING;
+				atomic_clear_short(&so->so_state,
+						   SS_ISCONNECTING);
 				ERROUT(error);
 			}
 			if ((so->so_state & SS_ISCONNECTING) != 0) {
@@ -760,7 +761,7 @@ ng_ksocket_rcvmsg(node_p node, struct ng_mesg *msg,
 			/* Get function */
 			if (msg->header.cmd == NGM_KSOCKET_GETPEERNAME) {
 				if ((so->so_state
-				    & (SS_ISCONNECTED|SS_ISCONFIRMING)) == 0) 
+				    & SS_ISCONNECTED) == 0) 
 					ERROUT(ENOTCONN);
 				error = so_pru_peeraddr(so, &sa);
 			} else
@@ -991,13 +992,16 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 	const node_p node = arg;
 	const priv_p priv = node->private;
 	struct ng_mesg *response;
+	struct sockbuf sio;
 	int error;
 
+	get_mplock();
 	crit_enter();
 
 	/* Sanity check */
 	if ((node->flags & NG_INVALID) != 0) {
 		crit_exit();
+		rel_mplock();
 		return;
 	}
 	KASSERT(so == priv->so, ("%s: wrong socket", __func__));
@@ -1006,7 +1010,7 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 	if (priv->flags & KSF_CONNECTING) {
 		if ((error = so->so_error) != 0) {
 			so->so_error = 0;
-			so->so_state &= ~SS_ISCONNECTING;
+			atomic_clear_short(&so->so_state, SS_ISCONNECTING);
 		}
 		if (!(so->so_state & SS_ISCONNECTING)) {
 			NG_MKMESSAGE(response, NGM_KSOCKET_COOKIE,
@@ -1044,39 +1048,45 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 	 */
 	if (priv->hook == NULL) {
 		crit_exit();
+		rel_mplock();
 		return;
 	}
+
+	sb_init(&sio);
 
 	/* Read and forward available mbuf's */
 	while (1) {
 		struct sockaddr *sa = NULL;
-		struct sockbuf sio;
 		meta_p meta = NULL;
+		struct mbuf *m;
 		struct mbuf *n;
 		int flags;
 
-		sbinit(&sio, 1000000000);
 		flags = MSG_DONTWAIT;
 
 		/* Try to get next packet from socket */
 		error = so_pru_soreceive(so,
 				((so->so_state & SS_ISCONNECTED) ? NULL : &sa),
-				NULL, &sio, NULL, &flags);
+				NULL, &sio, 1000000, NULL, &flags);
 		if (error)
 			break;
 
 		/* See if we got anything */
-		if (sio.sb_mb == NULL) {
+		if (sb_isempty(&sio)) {
 			if (sa != NULL)
 				FREE(sa, M_SONAME);
 			break;
 		}
 
+		m = sb_chain_remove(&sio, sb_cc_est(&sio));
+		KKASSERT(m != NULL);
+		KKASSERT(sb_isempty(&sio));
+
 		/* Don't trust the various socket layers to get the
 		   packet header and length correct (eg. kern/15175) */
-		sio.sb_mb->m_pkthdr.len = 0;
-		for (n = sio.sb_mb; n != NULL; n = n->m_next)
-			sio.sb_mb->m_pkthdr.len += n->m_len;
+		m->m_pkthdr.len = 0;
+		for (n = m; n != NULL; n = n->m_next)
+			m->m_pkthdr.len += n->m_len;
 
 		/* Put peer's socket address (if any) into a meta info blob */
 		if (sa != NULL) {
@@ -1101,8 +1111,9 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 			FREE(sa, M_SONAME);
 		}
 sendit:		/* Forward data with optional peer sockaddr as meta info */
-		NG_SEND_DATA(error, priv->hook, sio.sb_mb, meta);
+		NG_SEND_DATA(error, priv->hook, m, meta);
 	}
+	sb_uninit(&sio);
 
 	/*
 	 * If the peer has closed the connection, forward a 0-length mbuf
@@ -1120,6 +1131,7 @@ sendit:		/* Forward data with optional peer sockaddr as meta info */
 	}
 
 	crit_exit();
+	rel_mplock();
 }
 
 /*
@@ -1161,6 +1173,7 @@ ng_ksocket_finish_accept(priv_p priv, struct ng_mesg **rptr)
 	int len;
 
 	so = TAILQ_FIRST(&head->so_comp);
+	so_qlock(so);
 	if (so == NULL)		/* Should never happen */
 		return;
 	TAILQ_REMOVE(&head->so_comp, so, so_list);
@@ -1168,8 +1181,9 @@ ng_ksocket_finish_accept(priv_p priv, struct ng_mesg **rptr)
 
 	/* XXX KNOTE(&head->so_rcv.ssb_sel.si_note, 0); */
 
-	so->so_state &= ~SS_COMP;
+	atomic_clear_short(&so->so_state, SS_COMP);
 	so->so_head = NULL;
+	so_qunlock(so);
 
 	soaccept(so, &sa);
 

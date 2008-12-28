@@ -48,6 +48,8 @@
 #include <sys/sysent.h>
 #include <sys/resourcevar.h>
 
+#include <sys/socketvar2.h>
+
 /* accept filter that holds a socket until data arrives */
 
 static void	sohasdata(struct socket *so, void *arg, int waitflag);

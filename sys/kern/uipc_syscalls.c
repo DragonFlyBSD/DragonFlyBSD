@@ -218,6 +218,7 @@ soaccept_predicate(struct netmsg *msg0)
 		msg->nm_netmsg.nm_lmsg.ms_error = head->so_error;
 		return (TRUE);
 	}
+	so_qlock(head);
 	if (!TAILQ_EMPTY(&head->so_comp)) {
 		/* Abuse nm_so field as copy in/copy out parameter. XXX JH */
 		msg->nm_so = TAILQ_FIRST(&head->so_comp);
@@ -225,8 +226,10 @@ soaccept_predicate(struct netmsg *msg0)
 		head->so_qlen--;
 
 		msg->nm_netmsg.nm_lmsg.ms_error = 0;
+		so_qunlock(head);
 		return (TRUE);
 	}
+	so_qunlock(head);
 	if (head->so_state & SS_CANTRCVMORE) {
 		msg->nm_netmsg.nm_lmsg.ms_error = ECONNABORTED;
 		return (TRUE);
@@ -286,6 +289,7 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 	else
 		fflags = lfp->f_flag;
 
+	so_lock(head);
 	/* optimize for uniprocessor case later XXX JH */
 	port = head->so_proto->pr_mport(head, NULL, NULL, PRU_PRED);
 	netmsg_init_abortable(&msg.nm_netmsg, &curthread->td_msgport,
@@ -310,7 +314,7 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 	/* connection has been removed from the listen queue */
 	KNOTE(&head->so_rcv.ssb_sel.si_note, 0);
 
-	so->so_state &= ~SS_COMP;
+	atomic_clear_short(&so->so_state, SS_COMP);
 	so->so_head = NULL;
 	if (head->so_sigio != NULL)
 		fsetown(fgetown(head->so_sigio), &so->so_sigio);
@@ -345,6 +349,7 @@ kern_accept(int s, int fflags, struct sockaddr **name, int *namelen, int *res)
 	}
 
 done:
+	so_unlock(head);
 	/*
 	 * If an error occured clear the reserved descriptor, else associate
 	 * nfp with it.
@@ -470,6 +475,7 @@ kern_connect(int s, int fflags, struct sockaddr *sa)
 		error = EALREADY;
 		goto done;
 	}
+	so_lock(so);
 	error = soconnect(so, sa, td);
 	if (error)
 		goto bad;
@@ -500,10 +506,11 @@ kern_connect(int s, int fflags, struct sockaddr *sa)
 	}
 bad:
 	if (!interrupted)
-		so->so_state &= ~SS_ISCONNECTING;
+		atomic_clear_short(&so->so_state, SS_ISCONNECTING);
 	if (error == ERESTART)
 		error = EINTR;
 done:
+	so_unlock(so);
 	fdrop(fp);
 	return (error);
 }
@@ -554,6 +561,7 @@ kern_socketpair(int domain, int type, int protocol, int *sv)
 	struct socket *so1, *so2;
 	int fd1, fd2, error;
 
+	ASSERT_MP_LOCK_HELD(curthread);
 	KKASSERT(p);
 	error = socreate(domain, &so1, type, protocol, td);
 	if (error)
@@ -640,6 +648,7 @@ kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 		error = EINVAL;
 		goto done;
 	}
+	so = (struct socket *)fp->f_data;
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_GENIO)) {
 		int iovlen = auio->uio_iovcnt * sizeof (struct iovec);
@@ -650,7 +659,6 @@ kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 	}
 #endif
 	len = auio->uio_resid;
-	so = (struct socket *)fp->f_data;
 	if ((flags & (MSG_FNONBLOCKING|MSG_FBLOCKING)) == 0) {
 		if (fp->f_flag & FNONBLOCK)
 			flags |= MSG_FNONBLOCKING;
@@ -817,6 +825,8 @@ kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
 		error = EINVAL;
 		goto done;
 	}
+
+	so = (struct socket *)fp->f_data;
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_GENIO)) {
 		int iovlen = auio->uio_iovcnt * sizeof (struct iovec);
@@ -827,7 +837,6 @@ kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
 	}
 #endif
 	len = auio->uio_resid;
-	so = (struct socket *)fp->f_data;
 
 	if (flags == NULL || (*flags & (MSG_FNONBLOCKING|MSG_FBLOCKING)) == 0) {
 		if (fp->f_flag & FNONBLOCK) {
@@ -840,7 +849,7 @@ kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
 		}
 	}
 
-	error = so_pru_soreceive(so, sa, auio, NULL, control, flags);
+	error = so_pru_soreceive(so, sa, auio, NULL, -1, control, flags);
 	if (error) {
 		if (auio->uio_resid != len && (error == ERESTART ||
 		    error == EINTR || error == EWOULDBLOCK))
@@ -1252,7 +1261,7 @@ kern_getpeername(int s, struct sockaddr **name, int *namelen)
 		return (EINVAL);
 	}
 	so = (struct socket *)fp->f_data;
-	if ((so->so_state & (SS_ISCONNECTED|SS_ISCONFIRMING)) == 0) {
+	if ((so->so_state & SS_ISCONNECTED) == 0) {
 		fdrop(fp);
 		return (ENOTCONN);
 	}
@@ -1505,6 +1514,7 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 	off_t off, xfsize;
 	off_t hbytes = 0;
 	int error = 0;
+	int soflags;
 
 	if (vp->v_type != VREG) {
 		error = EINVAL;
@@ -1532,10 +1542,14 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 	}
 
 	*sbytes = 0;
+
 	/*
-	 * Protect against multiple writers to the socket.
+	 * sosend flags
 	 */
-	ssb_lock(&so->so_snd, M_WAITOK);
+	if (fp->f_flag & FNONBLOCK)
+		soflags = MSG_FNONBLOCKING;
+	else
+		soflags = 0;
 
 	/*
 	 * Loop through the pages in the file, starting with the requested
@@ -1572,7 +1586,6 @@ retry_lookup:
 				error = EPIPE;
 			else
 				error = EAGAIN;
-			ssb_unlock(&so->so_snd);
 			goto done;
 		}
 		/*
@@ -1641,7 +1654,6 @@ retry_lookup:
 				vm_page_unwire(pg, 0);
 				vm_page_try_to_free(pg);
 				crit_exit();
-				ssb_unlock(&so->so_snd);
 				goto done;
 			}
 		}
@@ -1656,7 +1668,6 @@ retry_lookup:
 			vm_page_unwire(pg, 0);
 			vm_page_try_to_free(pg);
 			crit_exit();
-			ssb_unlock(&so->so_snd);
 			error = EINTR;
 			goto done;
 		}
@@ -1668,7 +1679,6 @@ retry_lookup:
 		if (m == NULL) {
 			error = ENOBUFS;
 			sf_buf_free(sf);
-			ssb_unlock(&so->so_snd);
 			goto done;
 		}
 
@@ -1701,71 +1711,15 @@ retry_lookup:
 		/*
 		 * Add the buffer to the socket buffer chain.
 		 */
-		crit_enter();
-retry_space:
-		/*
-		 * Make sure that the socket is still able to take more data.
-		 * CANTSENDMORE being true usually means that the connection
-		 * was closed. so_error is true when an error was sensed after
-		 * a previous send.
-		 * The state is checked after the page mapping and buffer
-		 * allocation above since those operations may block and make
-		 * any socket checks stale. From this point forward, nothing
-		 * blocks before the pru_send (or more accurately, any blocking
-		 * results in a loop back to here to re-check).
-		 */
-		if ((so->so_state & SS_CANTSENDMORE) || so->so_error) {
-			if (so->so_state & SS_CANTSENDMORE) {
-				error = EPIPE;
-			} else {
-				error = so->so_error;
-				so->so_error = 0;
-			}
-			m_freem(m);
-			ssb_unlock(&so->so_snd);
-			crit_exit();
+		error = so_pru_sosend(so, NULL, NULL, m, NULL, soflags, td);
+		if (error)
 			goto done;
-		}
-		/*
-		 * Wait for socket space to become available. We do this just
-		 * after checking the connection state above in order to avoid
-		 * a race condition with ssb_wait().
-		 */
-		if (ssb_space(&so->so_snd) < so->so_snd.ssb_lowat) {
-			if (fp->f_flag & FNONBLOCK) {
-				m_freem(m);
-				ssb_unlock(&so->so_snd);
-				crit_exit();
-				error = EAGAIN;
-				goto done;
-			}
-			error = ssb_wait(&so->so_snd);
-			/*
-			 * An error from ssb_wait usually indicates that we've
-			 * been interrupted by a signal. If we've sent anything
-			 * then return bytes sent, otherwise return the error.
-			 */
-			if (error) {
-				m_freem(m);
-				ssb_unlock(&so->so_snd);
-				crit_exit();
-				goto done;
-			}
-			goto retry_space;
-		}
-		error = so_pru_send(so, 0, m, NULL, NULL, td);
-		crit_exit();
-		if (error) {
-			ssb_unlock(&so->so_snd);
-			goto done;
-		}
 	}
 	if (mheader != NULL) {
 		*sbytes += mheader->m_pkthdr.len;
-		error = so_pru_send(so, 0, mheader, NULL, NULL, td);
+		error = so_pru_sosend(so, NULL, NULL, mheader, NULL, soflags, td);
 		mheader = NULL;
 	}
-	ssb_unlock(&so->so_snd);
 
 done:
 	fdrop(fp);
@@ -1829,8 +1783,8 @@ sys_sctp_peeloff(struct sctp_peeloff_args *uap)
 		 */
 		goto noconnection;
 	}
-	so->so_state &= ~SS_COMP;
-	so->so_state &= ~SS_NOFDREF;
+	atomic_clear_short(&so->so_state, SS_COMP);
+	atomic_clear_short(&so->so_state, SS_NOFDREF);
 	so->so_head = NULL;
 	if (head->so_sigio != NULL)
 		fsetown(fgetown(head->so_sigio), &so->so_sigio);

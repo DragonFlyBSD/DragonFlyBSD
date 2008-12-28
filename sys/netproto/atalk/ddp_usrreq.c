@@ -578,7 +578,7 @@ struct pr_usrreqs ddp_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = ddp_shutdown,
 	.pru_sockaddr = at_setsockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };

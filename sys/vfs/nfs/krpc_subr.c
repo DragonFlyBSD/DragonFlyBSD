@@ -215,6 +215,7 @@ krpc_call(struct sockaddr_in *sa, u_int prog, u_int vers, u_int func,
 	/* Free at end if not null. */
 	nam = mhead = NULL;
 	from = NULL;
+	sb_init(&sio);
 
 	/*
 	 * Create socket and set its recieve timeout.
@@ -353,18 +354,18 @@ krpc_call(struct sockaddr_in *sa, u_int prog, u_int vers, u_int func,
 				m_freem(m);
 				m = NULL;
 			}
+			sb_flush(&sio);
 			len = 1 << 16;
-			sbinit(&sio, len);
 			rcvflg = 0;
-			error = soreceive(so, &from, NULL, &sio, NULL, &rcvflg);
+			error = soreceive(so, &from, NULL, &sio, len, NULL, &rcvflg);
 			if (error == EWOULDBLOCK) {
 				secs--;
 				continue;
 			}
 			if (error)
 				goto out;
-			len -= sio.sb_cc;
-			m = sio.sb_mb;
+			len -= sb_cc_mplocked(&sio);
+			m = sb_head(&sio);
 
 			/* Does the reply contain at least a header? */
 			if (len < MIN_REPLY_HDR)
@@ -435,8 +436,11 @@ krpc_call(struct sockaddr_in *sa, u_int prog, u_int vers, u_int func,
 	}
 
  out:
-	if (mhead) m_freem(mhead);
-	if (from) kfree(from, M_SONAME);
+	sb_uninit(&sio);
+	if (mhead)
+		m_freem(mhead);
+	if (from)	
+		kfree(from, M_SONAME);
 	soclose(so, FNONBLOCK);
 	return error;
 }

@@ -76,6 +76,7 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/domain.h>
+#include <sys/objcache.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -86,8 +87,6 @@
 #include <sys/thread2.h>
 
 #include <machine/limits.h>
-
-#include <vm/vm_zone.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -204,7 +203,7 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
 	int error;
 #endif
 
-	inp = zalloc(pcbinfo->ipi_zone);
+	inp = objcache_get(pcbinfo->objc, M_NOWAIT);
 	if (inp == NULL)
 		return (ENOBUFS);
 	bzero(inp, sizeof *inp);
@@ -214,7 +213,7 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
 #ifdef IPSEC
 	error = ipsec_init_policy(so, &inp->inp_sp);
 	if (error != 0) {
-		zfree(pcbinfo->ipi_zone, inp);
+		objcache_put(pcbinfo->objc, inp);
 		return (error);
 	}
 #endif
@@ -662,7 +661,7 @@ in_pcbdetach(struct inpcb *inp)
 		rtfree(inp->inp_route.ro_rt);
 	ip_freemoptions(inp->inp_moptions);
 	inp->inp_vflag = 0;
-	zfree(ipi->ipi_zone, inp);
+	objcache_put(ipi->objc, inp);
 }
 
 /*

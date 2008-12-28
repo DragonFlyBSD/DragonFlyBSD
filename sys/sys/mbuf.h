@@ -86,7 +86,7 @@ struct m_hdr {
 	int	mh_flags;		/* flags; see below */
 	short	mh_type;		/* type of data in this mbuf */
 	short	mh_pad;			/* padding */
-	struct netmsg_packet mh_netmsg;	/* hardware->proto stack msg */
+	struct netmsg_isr_packet mh_netmsg;	/* hardware->proto stack msg */
 };
 
 /*
@@ -183,29 +183,45 @@ struct mbuf {
 /*
  * mbuf flags.
  */
-#define	M_EXT		0x0001	/* has associated external storage */
-#define	M_PKTHDR	0x0002	/* start of record */
-#define	M_EOR		0x0004	/* end of record */
-#define	M_PROTO1	0x0008	/* protocol-specific */
-#define	M_PROTO2	0x0010	/* protocol-specific */
-#define	M_PROTO3	0x0020	/* protocol-specific */
-#define	M_PROTO4	0x0040	/* protocol-specific */
-#define	M_PROTO5	0x0080	/* protocol-specific */
+#define	M_EXT		0x00000001	/* has associated external storage */
+#define	M_PKTHDR	0x00000002	/* start of record */
+#define	M_EOR		0x00000004	/* end of record */
+#define	M_PROTO1	0x00000008	/* protocol-specific */
+#define	M_PROTO2	0x00000010	/* protocol-specific */
+#define	M_PROTO3	0x00000020	/* protocol-specific */
+#define	M_PROTO4	0x00000040	/* protocol-specific */
+#define	M_PROTO5	0x00000080	/* protocol-specific */
 
 /*
  * mbuf pkthdr flags (also stored in m_flags).
  */
-#define	M_BCAST		0x0100	/* send/received as link-level broadcast */
-#define	M_MCAST		0x0200	/* send/received as link-level multicast */
-#define	M_FRAG		0x0400	/* packet is a fragment of a larger packet */
-#define	M_FIRSTFRAG	0x0800	/* packet is first fragment */
-#define	M_LASTFRAG	0x1000	/* packet is last fragment */
-#define	M_CLCACHE	0x2000	/* mbuf allocated from the cluster cache */
-#define M_EXT_CLUSTER	0x4000	/* standard cluster else special */
-#define	M_PHCACHE	0x8000	/* mbuf allocated from the pkt header cache */
-#define M_NOTIFICATION	0x10000	/* notification event */
-#define M_VLANTAG	0x20000	/* ether_vlantag is valid */
-#define M_MPLSLABELED	0x40000	/* packet is mpls labeled */
+#define	M_BCAST		0x00000100	/* send/recv as link-level broadcast */
+#define	M_MCAST		0x00000200	/* send/recv as link-level multicast */
+#define	M_FRAG		0x00000400	/* fragment of a larger packet */
+#define	M_FIRSTFRAG	0x00000800	/* packet is first fragment */
+#define	M_LASTFRAG	0x00001000	/* packet is last fragment */
+#define	M_CLCACHE	0x00002000	/* mbuf alloced from cluster cache */
+#define M_EXT_CLUSTER	0x00004000	/* standard cluster else special */
+#define	M_PHCACHE	0x00008000	/* mbuf alloced from pkt header cache */
+#define M_NOTIFICATION	0x00010000	/* notification event */
+#define M_VLANTAG	0x00020000	/* ether_vlantag is valid */
+#define M_MPLSLABELED	0x00040000	/* packet is mpls labeled */
+
+/*
+ * Additional mbuf flags
+ */
+#define M_SOCKBUF	0x00080000	/* in sockbuf (for debugging) */
+
+/*
+ * PRUS_* flags are now mbuf flags.  These flags are stored in the first
+ * mbuf of a packet (whether address, control, or data).  They only apply
+ * to user<->protothread interactions and are not copied.
+ */
+#define M_OOB		0x10000000
+#define M_EOF		0x20000000
+#define M_MORETOCOME	0x40000000
+#define M_DONTROUTE	0x80000000
+#define M_PRU_FLAGS	(M_OOB|M_EOF|M_MORETOCOME|M_DONTROUTE)
 
 /*
  * Flags copied when copying m_pkthdr.
@@ -424,9 +440,6 @@ struct mbstat {
 /* Length to m_copy to copy all. */
 #define	M_COPYALL	1000000000
 
-/* Compatibility with 4.3 */
-#define	m_copy(m, o, l)	m_copym((m), (o), (l), MB_DONTWAIT)
-
 #ifdef _KERNEL
 extern	u_int		 m_clalloc_wid;	/* mbuf cluster wait count */
 extern	u_int		 m_mballoc_wid;	/* mbuf wait count */
@@ -480,6 +493,12 @@ void		mbuftrackid(struct mbuf *, int);
 #else
 #define mbuftrackid(m, id)	/* empty */
 #endif
+
+static inline struct mbuf *
+m_copy(const struct mbuf *m, int off, int len)
+{
+	return m_copym(m, off, len, MB_DONTWAIT);
+}
 
 /*
  * Allocate the right type of mbuf for the desired total length.
@@ -628,6 +647,22 @@ static __inline struct m_tag *
 m_tag_find(struct mbuf *m, int type, struct m_tag *start)
 {
 	return m_tag_locate(m, MTAG_ABI_COMPAT, type, start);
+}
+
+static __inline void
+m_set_flagsm(struct mbuf *m, int flags)
+{
+	for (; m; m = m->m_next) {
+		m->m_flags |= flags;
+	}
+}
+
+static __inline void
+m_clear_flagsm(struct mbuf *m, int flags)
+{
+	for (; m; m = m->m_next) {
+		m->m_flags &= ~flags;
+	}
 }
 
 #endif	/* _KERNEL */

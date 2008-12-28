@@ -57,6 +57,7 @@
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+#include <sys/socketvar2.h>
 
 int	maxsockets;
 
@@ -80,33 +81,14 @@ static	u_long sb_efficiency = 8;	/* parameter for sbreserve() */
 int
 ssb_wait(struct signalsockbuf *ssb)
 {
-
-	ssb->ssb_flags |= SSB_WAIT;
-	return (tsleep((caddr_t)&ssb->ssb_cc,
-			((ssb->ssb_flags & SSB_NOINTR) ? 0 : PCATCH),
-			"sbwait",
-			ssb->ssb_timeo));
-}
-
-/*
- * Lock a sockbuf already known to be locked;
- * return any error returned from sleep (EINTR).
- */
-int
-_ssb_lock(struct signalsockbuf *ssb)
-{
 	int error;
 
-	while (ssb->ssb_flags & SSB_LOCK) {
-		ssb->ssb_flags |= SSB_WANT;
-		error = tsleep((caddr_t)&ssb->ssb_flags,
-			    ((ssb->ssb_flags & SSB_NOINTR) ? 0 : PCATCH),
-			    "sblock", 0);
-		if (error)
-			return (error);
-	}
-	ssb->ssb_flags |= SSB_LOCK;
-	return (0);
+	ssb->ssb_waiting = 1;
+	error = tsleep((caddr_t)&ssb->sb,
+			((ssb->ssb_flags & SSB_NOINTR) ? 0 : PCATCH),
+			"sbwait",
+			ssb->ssb_timeo);
+	return(error);
 }
 
 /*
@@ -118,10 +100,10 @@ _ssb_lock(struct signalsockbuf *ssb)
 void
 ssbtoxsockbuf(struct signalsockbuf *ssb, struct xsockbuf *xsb)
 {
-	xsb->sb_cc = ssb->ssb_cc;
+	xsb->sb_cc = sb_cc_est(&ssb->sb);
 	xsb->sb_hiwat = ssb->ssb_hiwat;
-	xsb->sb_mbcnt = ssb->ssb_mbcnt;
-	xsb->sb_mbmax = ssb->ssb_mbmax;
+	xsb->sb_mbcnt = 0;	/* XXX: kill -- agg */
+	xsb->sb_mbmax = 0;	/* XXX: kill -- agg */
 	xsb->sb_lowat = ssb->ssb_lowat;
 	xsb->sb_flags = ssb->ssb_flags;
 	xsb->sb_timeo = ssb->ssb_timeo;
@@ -161,8 +143,8 @@ ssbtoxsockbuf(struct signalsockbuf *ssb, struct xsockbuf *xsb)
 void
 soisconnecting(struct socket *so)
 {
-	so->so_state &= ~(SS_ISCONNECTED|SS_ISDISCONNECTING);
-	so->so_state |= SS_ISCONNECTING;
+	atomic_clear_short(&so->so_state, SS_ISCONNECTED|SS_ISDISCONNECTING);
+	atomic_set_short(&so->so_state, SS_ISCONNECTING);
 }
 
 void
@@ -170,8 +152,8 @@ soisconnected(struct socket *so)
 {
 	struct socket *head = so->so_head;
 
-	so->so_state &= ~(SS_ISCONNECTING|SS_ISDISCONNECTING|SS_ISCONFIRMING);
-	so->so_state |= SS_ISCONNECTED;
+	atomic_clear_short(&so->so_state, SS_ISCONNECTING|SS_ISDISCONNECTING);
+	atomic_set_short(&so->so_state, SS_ISCONNECTED);
 	if (head && (so->so_state & SS_INCOMP)) {
 		if ((so->so_options & SO_ACCEPTFILTER) != 0) {
 			so->so_upcall = head->so_accf->so_accept_filter->accf_callback;
@@ -181,12 +163,14 @@ soisconnected(struct socket *so)
 			so->so_upcall(so, so->so_upcallarg, 0);
 			return;
 		}
+		so_qlock(head);
 		TAILQ_REMOVE(&head->so_incomp, so, so_list);
 		head->so_incqlen--;
-		so->so_state &= ~SS_INCOMP;
+		atomic_clear_short(&so->so_state, SS_INCOMP);
 		TAILQ_INSERT_TAIL(&head->so_comp, so, so_list);
 		head->so_qlen++;
-		so->so_state |= SS_COMP;
+		so_qunlock(head);
+		atomic_set_short(&so->so_state, SS_COMP);
 		sorwakeup(head);
 		wakeup_one(&head->so_timeo);
 	} else {
@@ -199,8 +183,9 @@ soisconnected(struct socket *so)
 void
 soisdisconnecting(struct socket *so)
 {
-	so->so_state &= ~SS_ISCONNECTING;
-	so->so_state |= (SS_ISDISCONNECTING|SS_CANTRCVMORE|SS_CANTSENDMORE);
+	atomic_clear_short(&so->so_state, SS_ISCONNECTING);
+	atomic_set_short(&so->so_state, SS_ISDISCONNECTING|SS_CANTRCVMORE|
+		       SS_CANTSENDMORE);
 	wakeup((caddr_t)&so->so_timeo);
 	sowwakeup(so);
 	sorwakeup(so);
@@ -209,10 +194,13 @@ soisdisconnecting(struct socket *so)
 void
 soisdisconnected(struct socket *so)
 {
-	so->so_state &= ~(SS_ISCONNECTING|SS_ISCONNECTED|SS_ISDISCONNECTING);
-	so->so_state |= (SS_CANTRCVMORE|SS_CANTSENDMORE|SS_ISDISCONNECTED);
+	atomic_clear_short(&so->so_state, SS_ISCONNECTING|SS_ISCONNECTED|
+			 SS_ISDISCONNECTING);
+	atomic_set_short(&so->so_state, SS_CANTRCVMORE|SS_CANTSENDMORE|
+		       SS_ISDISCONNECTED);
+	cpu_mfence();
 	wakeup((caddr_t)&so->so_timeo);
-	sbdrop(&so->so_snd.sb, so->so_snd.ssb_cc);
+	sb_flush(&so->so_snd.sb);
 	sowwakeup(so);
 	sorwakeup(so);
 }
@@ -257,9 +245,10 @@ sonewconn(struct socket *head, int connstatus)
 		return ((struct socket *)0);
 	}
 
+	so_qlock(head);
 	if (connstatus) {
 		TAILQ_INSERT_TAIL(&head->so_comp, so, so_list);
-		so->so_state |= SS_COMP;
+		atomic_set_short(&so->so_state, SS_COMP);
 		head->so_qlen++;
 	} else {
 		if (head->so_incqlen > head->so_qlimit) {
@@ -271,13 +260,14 @@ sonewconn(struct socket *head, int connstatus)
 			soaborta(sp);
 		}
 		TAILQ_INSERT_TAIL(&head->so_incomp, so, so_list);
-		so->so_state |= SS_INCOMP;
+		atomic_set_short(&so->so_state, SS_INCOMP);
 		head->so_incqlen++;
 	}
+	so_qunlock(head);
 	if (connstatus) {
 		sorwakeup(head);
 		wakeup((caddr_t)&head->so_timeo);
-		so->so_state |= connstatus;
+		atomic_set_short(&so->so_state, connstatus);
 	}
 	return (so);
 }
@@ -294,14 +284,14 @@ sonewconn(struct socket *head, int connstatus)
 void
 socantsendmore(struct socket *so)
 {
-	so->so_state |= SS_CANTSENDMORE;
+	atomic_set_short(&so->so_state, SS_CANTSENDMORE);
 	sowwakeup(so);
 }
 
 void
 socantrcvmore(struct socket *so)
 {
-	so->so_state |= SS_CANTRCVMORE;
+	atomic_set_short(&so->so_state, SS_CANTRCVMORE);
 	sorwakeup(so);
 }
 
@@ -315,10 +305,12 @@ sowakeup(struct socket *so, struct signalsockbuf *ssb)
 	struct selinfo *selinfo = &ssb->ssb_sel;
 
 	selwakeup(selinfo);
+	/* SSB_SEL only touched by proto thread */
+	/* FIXME: but other flags aren't; split field -- agg */
 	ssb->ssb_flags &= ~SSB_SEL;
-	if (ssb->ssb_flags & SSB_WAIT) {
-		ssb->ssb_flags &= ~SSB_WAIT;
-		wakeup((caddr_t)&ssb->ssb_cc);
+	if (ssb->ssb_waiting) {
+		ssb->ssb_waiting = 0;
+		wakeup((caddr_t)&ssb->sb);
 	}
 	if ((so->so_state & SS_ASYNC) && so->so_sigio != NULL)
 		pgsigio(so->so_sigio, SIGIO, 0);
@@ -444,7 +436,7 @@ ssb_reserve(struct signalsockbuf *ssb, u_long cc, struct socket *so,
 void
 ssb_release(struct signalsockbuf *ssb, struct socket *so)
 {
-	sbflush(&ssb->sb);
+	sb_flush(&ssb->sb);
 	(void)chgsbsize(so->so_cred->cr_uidinfo, &ssb->ssb_hiwat, 0,
 	    RLIM_INFINITY);
 	ssb->ssb_mbmax = 0;

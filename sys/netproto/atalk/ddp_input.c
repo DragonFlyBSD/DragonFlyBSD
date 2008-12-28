@@ -368,7 +368,7 @@ ddp_input(struct mbuf *m, struct ifnet *ifp, struct elaphdr *elh, int phase)
     /* 
      * If we found one, deliver th epacket to the socket
      */
-    if (ssb_appendaddr( &ddp->ddp_socket->so_rcv, (struct sockaddr *)&from,
+    if (ssb_append_addr( &ddp->ddp_socket->so_rcv, (struct sockaddr *)&from,
 	    m, (struct mbuf *)0 ) == 0 ) {
 	/* 
 	 * If the socket is full (or similar error) dump the packet.

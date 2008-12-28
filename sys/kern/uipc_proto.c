@@ -51,35 +51,40 @@
  */
 
 static struct protosw localsw[] = {
-{ SOCK_STREAM,	&localdomain,	0,	PR_CONNREQUIRED|PR_WANTRCVD|PR_RIGHTS,
+{ SOCK_STREAM,	&localdomain,	0,	PR_CONNREQUIRED|PR_RIGHTS,
   NULL,		NULL,		NULL,		&uipc_ctloutput,
-  sync_soport,	NULL,
+  cpu0_soport,	NULL,
   NULL,		NULL,		NULL,		NULL,
   &uipc_usrreqs
 },
-{ SOCK_SEQPACKET, &localdomain,	0,	PR_CONNREQUIRED|PR_WANTRCVD|PR_RIGHTS|PR_ATOMIC,
+{ SOCK_SEQPACKET, &localdomain,	0,	PR_CONNREQUIRED|PR_RIGHTS|PR_ATOMIC,
   NULL,		NULL,		NULL,		&uipc_ctloutput,
-  sync_soport,	NULL,
+  cpu0_soport,	NULL,
   NULL,		NULL,		NULL,		NULL,
   &uipc_usrreqs
 },
 { SOCK_DGRAM,	&localdomain,	0,		PR_ATOMIC|PR_ADDR|PR_RIGHTS,
   NULL,		NULL,		NULL,		NULL,
-  sync_soport,	NULL,
+  cpu0_soport,	NULL,
   NULL,		NULL,		NULL,		NULL,
   &uipc_usrreqs
 },
 { 0,		NULL,		0,		0,
   NULL,		NULL,		raw_ctlinput,	NULL,
-  sync_soport,	cpu0_ctlport,
+  cpu0_soport,	cpu0_ctlport,
   raw_init,	NULL,		NULL,		NULL,
   &raw_usrreqs
 }
 };
 
 struct domain localdomain = {
-	AF_LOCAL, "local", unp_init, unp_externalize, unp_dispose,
-	localsw, &localsw[sizeof(localsw)/sizeof(localsw[0])],
+	.dom_family = AF_LOCAL,
+	.dom_name = "local",
+	.dom_init = unp_init,
+	.dom_externalize = unp_externalize,
+	.dom_dispose = unp_dispose,
+	.dom_protosw = localsw,
+	.dom_protoswNPROTOSW = &localsw[sizeof(localsw)/sizeof(localsw[0])]
 };
 
 DOMAIN_SET(local);

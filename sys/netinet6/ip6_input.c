@@ -87,6 +87,7 @@
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+#include <sys/socketvar2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -159,7 +160,7 @@ struct ip6stat ip6stat;
 static void ip6_init2 (void *);
 static struct ip6aux *ip6_setdstifaddr (struct mbuf *, struct in6_ifaddr *);
 static int ip6_hopopts_input (u_int32_t *, u_int32_t *, struct mbuf **, int *);
-static void ip6_input(struct netmsg *msg);
+static void ip6_input(anynetmsg_t msg);
 #ifdef PULLDOWN_TEST
 static struct mbuf *ip6_pullexthdr (struct mbuf *, size_t, int);
 #endif
@@ -239,9 +240,9 @@ extern struct	route_in6 ip6_forward_rt;
 
 static
 void
-ip6_input(struct netmsg *msg)
+ip6_input(anynetmsg_t msg)
 {
-	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
+	struct mbuf *m = msg->isr_packet.nm_packet;
 	struct ip6_hdr *ip6;
 	int off = sizeof(struct ip6_hdr), nest;
 	u_int32_t plen;
@@ -1420,7 +1421,7 @@ ip6_notify_pmtu(struct inpcb *in6p, struct sockaddr_in6 *dst, u_int32_t *mtu)
 	    IPV6_PATHMTU, IPPROTO_IPV6)) == NULL)
 		return;
 
-	if (sbappendaddr(&so->so_rcv, (struct sockaddr *)dst, NULL, m_mtu)
+	if (ssb_append_addr(&so->so_rcv, (struct sockaddr *)dst, NULL, m_mtu)
 	    == 0) {
 		m_freem(m_mtu);
 		/* XXX: should count statistics */

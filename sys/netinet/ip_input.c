@@ -301,7 +301,7 @@ static struct malloc_pipe ipq_mpipe;
 static void		save_rte(struct mbuf *, u_char *, struct in_addr);
 static int		ip_dooptions(struct mbuf *m, int, struct sockaddr_in *);
 static void		ip_freef(struct ipq *);
-static void		ip_input_handler(struct netmsg *);
+static void		ip_input_handler(anynetmsg_t);
 
 /*
  * IP initialization: fill in IP protocol switch table.
@@ -417,9 +417,9 @@ transport_processing_oncpu(struct mbuf *m, int hlen, struct ip *ip)
 }
 
 static void
-transport_processing_handler(netmsg_t netmsg)
+transport_processing_handler(anynetmsg_t msg)
 {
-	struct netmsg_packet *pmsg = (struct netmsg_packet *)netmsg;
+	struct netmsg_isr_packet *pmsg = &msg->isr_packet;
 	struct ip *ip;
 	int hlen;
 
@@ -431,12 +431,12 @@ transport_processing_handler(netmsg_t netmsg)
 }
 
 static void
-ip_input_handler(struct netmsg *msg0)
+ip_input_handler(anynetmsg_t msg)
 {
-	struct mbuf *m = ((struct netmsg_packet *)msg0)->nm_packet;
+	struct mbuf *m = msg->isr_packet.nm_packet;
 
 	ip_input(m);
-	/* msg0 was embedded in the mbuf, do not reply! */
+	/* msg was embedded in the mbuf, do not reply! */
 }
 
 /*
@@ -928,7 +928,7 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 
 	ipstat.ips_delivered++;
 	if (needredispatch) {
-		struct netmsg_packet *pmsg;
+		struct netmsg_isr_packet *pmsg;
 		lwkt_port_t port;
 
 		ip->ip_off = htons(ip->ip_off);

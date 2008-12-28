@@ -187,12 +187,14 @@ sctp_get_peeloff(struct socket *head, caddr_t assoc_id, int *error)
 	    SCTP_PCB_FLAGS_IN_TCPPOOL | /* Turn on Blocking IO */
 	    (SCTP_PCB_COPY_FLAGS & inp->sctp_flags));
 	n_inp->sctp_socket = newso;
-	newso->so_state |= SS_ISCONNECTED;
+	atomic_set_short(&newso->so_state, SS_ISCONNECTED);
 	/* We remove it right away */
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 	SOCK_LOCK(head);
+	so_qlock(head);
 	TAILQ_REMOVE(&head->so_comp, newso, so_list);
 	head->so_qlen--;
+	so_qunlock(head);
 	SOCK_UNLOCK(head);
 #else
 

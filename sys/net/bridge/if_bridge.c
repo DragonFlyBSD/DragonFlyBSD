@@ -457,7 +457,7 @@ static int	bridge_ip6_checkbasic(struct mbuf **mp);
 #endif /* INET6 */
 static int	bridge_fragment(struct ifnet *, struct mbuf *,
 		    struct ether_header *, int, struct llc *);
-static void	bridge_enqueue_handler(struct netmsg *);
+static void	bridge_enqueue_handler(anynetmsg_t);
 static void	bridge_handoff(struct ifnet *, struct mbuf *);
 
 static void	bridge_del_bif_handler(struct netmsg *);
@@ -707,10 +707,9 @@ bridge_clone_create(struct if_clone *ifc, int unit)
 }
 
 static void
-bridge_delete_dispatch(struct netmsg *nmsg)
+bridge_delete_dispatch(anynetmsg_t msg)
 {
-	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
-	struct bridge_softc *sc = lmsg->u.ms_resultp;
+	struct bridge_softc *sc = msg->lmsg.u.ms_resultp;
 	struct ifnet *bifp = sc->sc_ifp;
 	struct bridge_iflist *bif;
 
@@ -724,7 +723,7 @@ bridge_delete_dispatch(struct netmsg *nmsg)
 
 	lwkt_serialize_exit(bifp->if_serializer);
 
-	lwkt_replymsg(lmsg, 0);
+	lwkt_replymsg(&msg->lmsg, 0);
 }
 
 /*
@@ -1720,14 +1719,13 @@ bridge_ioctl_delspan(struct bridge_softc *sc, void *arg)
 }
 
 static void
-bridge_ifdetach_dispatch(struct netmsg *nmsg)
+bridge_ifdetach_dispatch(anynetmsg_t msg)
 {
-	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
 	struct ifnet *ifp, *bifp;
 	struct bridge_softc *sc;
 	struct bridge_iflist *bif;
 
-	ifp = lmsg->u.ms_resultp;
+	ifp = msg->lmsg.u.ms_resultp;
 	sc = ifp->if_bridge;
 
 	/* Check if the interface is a bridge member */
@@ -1767,7 +1765,7 @@ bridge_ifdetach_dispatch(struct netmsg *nmsg)
 	crit_exit();
 
 reply:
-	lwkt_replymsg(lmsg, 0);
+	lwkt_replymsg(&msg->lmsg, 0);
 }
 
 /*
@@ -1820,7 +1818,7 @@ bridge_stop(struct ifnet *ifp)
 void
 bridge_enqueue(struct ifnet *dst_ifp, struct mbuf *m)
 {
-	struct netmsg_packet *nmp;
+	struct netmsg_isr_packet *nmp;
 	lwkt_port_t port;
 
 	nmp = &m->m_hdr.mh_netmsg;
@@ -3639,15 +3637,13 @@ out:
 }
 
 static void
-bridge_enqueue_handler(struct netmsg *nmsg)
+bridge_enqueue_handler(anynetmsg_t msg)
 {
-	struct netmsg_packet *nmp;
 	struct ifnet *dst_ifp;
 	struct mbuf *m;
 
-	nmp = (struct netmsg_packet *)nmsg;
-	m = nmp->nm_packet;
-	dst_ifp = nmp->nm_netmsg.nm_lmsg.u.ms_resultp;
+	m = msg->isr_packet.nm_packet;
+	dst_ifp = msg->lmsg.u.ms_resultp;
 
 	bridge_handoff(dst_ifp, m);
 }
@@ -3672,9 +3668,9 @@ bridge_handoff(struct ifnet *dst_ifp, struct mbuf *m)
 }
 
 static void
-bridge_control_dispatch(struct netmsg *nmsg)
+bridge_control_dispatch(anynetmsg_t msg)
 {
-	struct netmsg_brctl *bc_msg = (struct netmsg_brctl *)nmsg;
+	struct netmsg_brctl *bc_msg = (struct netmsg_brctl *)msg;
 	struct ifnet *bifp = bc_msg->bc_sc->sc_ifp;
 	int error;
 
@@ -3682,7 +3678,7 @@ bridge_control_dispatch(struct netmsg *nmsg)
 	error = bc_msg->bc_func(bc_msg->bc_sc, bc_msg->bc_arg);
 	lwkt_serialize_exit(bifp->if_serializer);
 
-	lwkt_replymsg(&nmsg->nm_lmsg, error);
+	lwkt_replymsg(&bc_msg->bc_nmsg.nm_lmsg, error);
 }
 
 static int

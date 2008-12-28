@@ -89,7 +89,7 @@ static int	iwl_shutdown(device_t);
 static void	iwl_dma_ring_addr(void *, bus_dma_segment_t *, int, int);
 static void	iwl_service_loop(void *);
 static int	iwl_put_port(struct lwkt_port *, struct lwkt_msg *);
-static void	iwl_destroy_thread_dispatch(struct netmsg *);
+static void	iwl_destroy_thread_dispatch(anynetmsg_t);
 
 static const struct iwl_devinfo iwl2100_devinfo = {
 	.desc =		IWL2100_DESC,
@@ -461,7 +461,7 @@ iwl_put_port(struct lwkt_port *port, struct lwkt_msg *lmsg)
 	ASSERT_SERIALIZED(port->mpu_serialize);
 
 	if ((lmsg->ms_flags & MSGF_SYNC) && curthread == &iwl->iwl_thread) {
-		msg->iwlm_nmsg.nm_dispatch(&msg->iwlm_nmsg);
+		msg->iwlm_nmsg.nm_dispatch((anynetmsg_t)&msg->iwlm_nmsg);
 		if ((lmsg->ms_flags & MSGF_DONE) == 0) {
 			panic("%s: self-referential deadlock on "
 			      "iwl thread port\n", __func__);
@@ -477,11 +477,11 @@ iwl_service_loop(void *arg)
 {
 	struct iwlcom *iwl = arg;
 	struct ifnet *ifp = &iwl->iwl_ic.ic_if;
-	struct netmsg *nmsg;
+	anynetmsg_t nmsg;
 
 	lwkt_serialize_enter(ifp->if_serializer);
 	while ((nmsg = lwkt_waitport(&iwl->iwl_thread_port, 0))) {
-		nmsg->nm_dispatch(nmsg);
+		nmsg->netmsg.nm_dispatch(nmsg);
 		if (iwl->iwl_end)
 			break;
 	}
@@ -507,15 +507,15 @@ iwl_create_thread(struct iwlcom *iwl, int unit)
 }
 
 static void
-iwl_destroy_thread_dispatch(struct netmsg *nmsg)
+iwl_destroy_thread_dispatch(anynetmsg_t msg)
 {
-	struct iwlmsg *msg = (struct iwlmsg *)nmsg;
-	struct iwlcom *iwl = msg->iwlm_softc;
+	struct iwlmsg *nm = (struct iwlmsg *)msg;
+	struct iwlcom *iwl = nm->iwlm_softc;
 
 	ASSERT_SERIALIZED(iwl->iwl_ic.ic_if.if_serializer);
 
 	iwl->iwl_end = 1;
-	lwkt_replymsg(&nmsg->nm_lmsg, 0);
+	lwkt_replymsg(&nm->iwlm_nmsg.nm_lmsg, 0);
 }
 
 void

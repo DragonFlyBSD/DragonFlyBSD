@@ -45,15 +45,15 @@
 #include <net/vlan/if_vlan_ether.h>
 
 void
-vlan_start_dispatch(struct netmsg *nmsg)
+vlan_start_dispatch(anynetmsg_t msg)
 {
-	struct netmsg_packet *nmp = (struct netmsg_packet *)nmsg;
+	struct netmsg_isr_packet *nmp = &msg->isr_packet;
 	struct mbuf *m;
 	struct ifnet *ifp;
 	struct altq_pktattr pktattr;
 
 	m = nmp->nm_packet;
-	ifp = nmsg->nm_lmsg.u.ms_resultp;
+	ifp = nmp->nm_netmsg.nm_lmsg.u.ms_resultp;
 
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_flags & M_VLANTAG, ("mbuf has not been vlan tagged!\n"));

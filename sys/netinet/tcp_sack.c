@@ -463,10 +463,9 @@ tcp_sack_compute_pipe(struct tcpcb *tp)
  */
 boolean_t
 tcp_sack_nextseg(struct tcpcb *tp, tcp_seq *nextrexmt, uint32_t *plen,
-		 boolean_t *lostdup)
+		 boolean_t *lostdup, int sndbuf_cc)
 {
 	struct scoreboard *scb = &tp->scb;
-	struct socket *so = tp->t_inpcb->inp_socket;
 	struct sackblock *sb;
 	const struct sackblock *lastblock =
 	    TAILQ_LAST(&scb->sackblocks, sackblock_list);
@@ -495,7 +494,7 @@ sendunsacked:
 
 	/* See if unsent data available within send window. */
 	off = tp->snd_max - tp->snd_una;
-	len = (long) ulmin(so->so_snd.ssb_cc, tp->snd_wnd) - off;
+	len = (long) ulmin(sndbuf_cc, tp->snd_wnd) - off;
 	if (len > 0) {
 		*nextrexmt = tp->snd_max;	/* Send new data. */
 		*plen = tp->t_maxseg;

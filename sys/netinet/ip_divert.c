@@ -49,6 +49,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
+#include <sys/objcache.h>
 #include <sys/socket.h>
 #include <sys/protosw.h>
 #include <sys/socketvar.h>
@@ -61,8 +62,6 @@
 #ifdef SMP
 #include <sys/msgport.h>
 #endif
-
-#include <vm/vm_zone.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -131,6 +130,8 @@ static struct mbuf *ip_divert(struct mbuf *, int, int);
 void
 div_init(void)
 {
+	int limit;
+
 	in_pcbinfo_init(&divcbinfo);
 	/*
 	 * XXX We don't use the hash list for divert IP, but it's easier
@@ -141,8 +142,10 @@ div_init(void)
 	divcbinfo.porthashbase = hashinit(1, M_PCB, &divcbinfo.porthashmask);
 	divcbinfo.wildcardhashbase = hashinit(1, M_PCB,
 					      &divcbinfo.wildcardhashmask);
-	divcbinfo.ipi_zone = zinit("divcb", sizeof(struct inpcb),
-				   maxsockets, ZONE_INTERRUPT, 0);
+	limit = maxsockets;
+	divcbinfo.objc = objcache_create_mbacked(M_PCB, sizeof(struct inpcb),
+						     &limit, 64, NULL, NULL,
+						     0);
 	ip_divert_p = ip_divert;
 }
 
@@ -311,8 +314,8 @@ div_packet(struct mbuf *m, int incoming, int port)
 			sa = inp->inp_socket;
 	}
 	if (sa) {
-		if (ssb_appendaddr(&sa->so_rcv, (struct sockaddr *)&divsrc, m,
-				 (struct mbuf *)NULL) == 0)
+		if (ssb_append_addr(&sa->so_rcv, (struct sockaddr *)&divsrc,
+				    m, NULL) == 0)
 			m_freem(m);
 		else
 			sorwakeup(sa);
@@ -483,7 +486,7 @@ div_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	 * The socket is always "connected" because
 	 * we always know "where" to send the packet.
 	 */
-	so->so_state |= SS_ISCONNECTED;
+	atomic_set_short(&so->so_state, SS_ISCONNECTED);
 	return 0;
 }
 
@@ -576,9 +579,9 @@ struct pr_usrreqs div_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = div_shutdown,
 	.pru_sockaddr = in_setsockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 static struct mbuf *

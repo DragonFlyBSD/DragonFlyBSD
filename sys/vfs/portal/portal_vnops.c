@@ -213,7 +213,7 @@ portal_open(struct vop_open_args *ap)
 	struct iovec aiov[2];
 	struct sockbuf sio;
 	int res;
-	struct mbuf *cm = 0;
+	struct mbuf *cm = NULL;
 	struct cmsghdr *cmsg;
 	int newfds;
 	int *ip;
@@ -324,21 +324,22 @@ portal_open(struct vop_open_args *ap)
 		goto bad;
 
 	len = sizeof(int);
-	sbinit(&sio, len);
+	sb_init(&sio);
 	do {
 		struct mbuf *m;
 		int flags;
 
 		flags = MSG_WAITALL;
-		error = soreceive(so, NULL, NULL, &sio, &cm, &flags);
+		error = soreceive(so, NULL, NULL, &sio, len, &cm, &flags);
 		if (error)
 			goto bad;
-
 		/*
 		 * Grab an error code from the mbuf.
 		 */
-		if ((m = sio.sb_mb) != NULL) {
-			m = m_pullup(m, sizeof(int));	/* Needed? */
+		if (sb_cc_est(&sio) >= sizeof(int)) {
+			m = sb_chain_remove(&sio, len);
+			if (m->m_len < sizeof(int))
+				m = m_pullup(m, sizeof(int));
 			if (m) {
 				error = *(mtod(m, int *));
 				m_freem(m);
@@ -353,7 +354,9 @@ portal_open(struct vop_open_args *ap)
 #endif
 			}
 		}
-	} while (cm == NULL && sio.sb_cc == 0 && !error);
+	} while (cm == NULL && sb_cc_est(&sio) == 0 && !error);
+	sb_flush(&sio);
+	sb_uninit(&sio);
 
 	if (cm == NULL)
 		goto bad;

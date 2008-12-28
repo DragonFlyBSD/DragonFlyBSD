@@ -34,13 +34,16 @@
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/socketvar2.h>
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
 #include <sys/systm.h>
-#include <sys/thread2.h>
 #include <sys/time.h>
 #include <sys/in_cksum.h>
+
+#include <sys/thread2.h>
+#include <sys/socketvar2.h>
 
 #include <machine/stdarg.h>
 
@@ -1126,9 +1129,9 @@ static int
 socket_send(struct socket *s, struct mbuf *mm, struct sockaddr_in *src)
 {
     if (s) {
-	if (ssb_appendaddr(&s->so_rcv, (struct sockaddr *)src, mm, NULL) != 0) {
-	    sorwakeup(s);
-	    return 0;
+	if (ssb_append_addr(&s->so_rcv, (struct sockaddr *)src, mm, NULL)) {
+		sorwakeup(s);
+		return 0;
 	}
     }
     m_freem(mm);
@@ -2189,15 +2192,15 @@ X_rsvp_input(struct mbuf *m, ...)
     if (inp->inp_flags & INP_CONTROLOPTS ||
 	inp->inp_socket->so_options & SO_TIMESTAMP)
 	ip_savecontrol(inp, &opts, ip, m);
-    if (ssb_appendaddr(&so->so_rcv,
-		     (struct sockaddr *)&rsvp_src,m, opts) == 0) {
+    if (ssb_space(&so->so_rcv) <= 0 ||
+	ssb_append_addr(&so->so_rcv, (struct sockaddr *)&rsvp_src,
+			m, opts) == 0) {
 	m_freem(m);
 	if (opts)
 	    m_freem(opts);
 	if (rsvpdebug)
 	    kprintf("rsvp_input: Failed to append to socket\n");
-    }
-    else {
+    } else {
 	sorwakeup(so);
 	if (rsvpdebug)
 	    kprintf("rsvp_input: send packet up\n");

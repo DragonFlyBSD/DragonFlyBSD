@@ -147,8 +147,8 @@ extern int bluetooth_debug;
 #endif	/* BLUETOOTH_DEBUG */
 
 #define sbspace(sb) \
-    ((long) imin((int)((sb)->ssb_hiwat - (sb)->ssb_cc), \
-         (int)((sb)->ssb_mbmax - (sb)->ssb_mbcnt)))
+	sb_cc_mplocked(sb)
+
 #endif	/* _KERNEL */
 
 #define letoh16(x)              le16toh(x)

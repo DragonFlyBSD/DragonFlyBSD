@@ -56,6 +56,8 @@ struct	domain {
 	int	dom_family;		/* AF_xxx */
 	char	*dom_name;
 	void	(*dom_init)(void);	/* initialize domain data structures */
+	int	(*dom_internalize)(struct mbuf *);	/* internalize access
+							   rights */
 	int	(*dom_externalize)(struct mbuf *);	/* externalize access
 							 * rights */
 	void	(*dom_dispose)(struct mbuf *);	/* dispose of internalized

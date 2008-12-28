@@ -47,7 +47,9 @@
 #include <sys/uio.h>
 #include <sys/fcntl.h>
 #include <sys/sysctl.h>
+
 #include <sys/thread2.h>
+#include <sys/socketvar2.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -97,7 +99,7 @@ nb_setsockopt_int(struct socket *so, int level, int name, int val)
 static __inline int
 nb_poll(struct nbpcb *nbp, int events, struct thread *td)
 {
-	return so_pru_sopoll(nbp->nbp_tso, events, NULL);
+	return so_pru_poll(nbp->nbp_tso, events, NULL);
 }
 
 static int
@@ -159,9 +161,14 @@ nb_upcall(struct socket *so, void *arg, int waitflag)
 {
 	struct nbpcb *nbp = arg;
 
+	/* XXX: no idea if it's needed, must audit
+	 * accesses to ->nbp_selectid -- agg
+	 */
+	get_mplock();
 	if (arg == NULL || nbp->nbp_selectid == NULL)
 		return;
 	wakeup(nbp->nbp_selectid);
+	rel_mplock();
 }
 
 static int
@@ -233,7 +240,7 @@ nb_connect_in(struct nbpcb *nbp, struct sockaddr_in *to, struct thread *td)
 		tsleep(&so->so_timeo, 0, "nbcon", 2 * hz);
 		if ((so->so_state & SS_ISCONNECTING) && so->so_error == 0 &&
 			(error = nb_intr(nbp, td)) != 0) {
-			so->so_state &= ~SS_ISCONNECTING;
+			atomic_clear_short(&so->so_state, SS_ISCONNECTING);
 			crit_exit();
 			goto bad;
 		}
@@ -348,7 +355,7 @@ nbssn_recvhdr(struct nbpcb *nbp, int *lenp,
 	auio.uio_offset = 0;
 	auio.uio_resid = sizeof(len);
 	auio.uio_td = td;
-	error = so_pru_soreceive(so, NULL, &auio, NULL, NULL, &flags);
+	error = so_pru_soreceive(so, NULL, &auio, NULL, 1000000, NULL, &flags);
 	if (error)
 		return error;
 	if (auio.uio_resid > 0) {
@@ -378,9 +385,9 @@ nbssn_recv(struct nbpcb *nbp, struct mbuf **mpp, int *lenp,
 	if (so == NULL)
 		return ENOTCONN;
 
-	sbinit(&sio, 0);
 	if (mpp)
 		*mpp = NULL;
+	sb_init(&sio);
 
 	for(;;) {
 		error = nbssn_recvhdr(nbp, &savelen, &rpcode, MSG_DONTWAIT, td);
@@ -398,35 +405,33 @@ nbssn_recv(struct nbpcb *nbp, struct mbuf **mpp, int *lenp,
 		if (rpcode == NB_SSN_KEEPALIVE)
 			continue;
 		do {
-			sbinit(&sio, savelen);
 			rcvflg = MSG_WAITALL;
 			error = so_pru_soreceive(so, NULL, NULL, &sio,
-						 NULL, &rcvflg);
+						 savelen, NULL, &rcvflg);
 		} while (error == EWOULDBLOCK || error == EINTR ||
 				 error == ERESTART);
 		if (error)
 			break;
-		if (sio.sb_cc != savelen) {
+		if (sb_cc_est(&sio) != savelen) {
 			SMBERROR("packet is shorter than expected\n");
 			error = EPIPE;
-			m_freem(sio.sb_mb);
+			sb_flush(&sio);
 			break;
 		}
 		if (nbp->nbp_state == NBST_SESSION && rpcode == NB_SSN_MESSAGE)
 			break;
 		NBDEBUG("non-session packet %x\n", rpcode);
-		m_freem(sio.sb_mb);
-		sio.sb_mb = NULL;
-		sio.sb_cc = 0;
+		sb_flush(&sio);
 	}
 	if (error == 0) {
+		*lenp = sb_cc_est(&sio);
 		if (mpp)
-			*mpp = sio.sb_mb;
+			*mpp = sb_chain_remove(&sio, *lenp);
 		else
-			m_freem(sio.sb_mb);
-		*lenp = sio.sb_cc;
+			sb_flush(&sio);
 		*rpcodep = rpcode;
 	}
+	sb_uninit(&sio);
 	return (error);
 }
 

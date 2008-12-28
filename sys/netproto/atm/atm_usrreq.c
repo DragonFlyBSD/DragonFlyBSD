@@ -67,9 +67,9 @@ struct pr_usrreqs	atm_dgram_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = atm_proto_notsupp1,
 	.pru_sockaddr = atm_proto_notsupp3,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 /*

@@ -129,7 +129,7 @@ struct protosw inetsw[] = {
   &udp_usrreqs
 },
 { SOCK_STREAM,	&inetdomain,	IPPROTO_TCP,
-	PR_CONNREQUIRED|PR_IMPLOPCL|PR_WANTRCVD,
+	PR_CONNREQUIRED|PR_IMPLOPCL|PR_NOCONTROL,
   tcp_input,	0,		tcp_ctlinput,	tcp_ctloutput,
   tcp_soport,	tcp_ctlport,
   tcp_init,	0,		tcp_slowtimo,	tcp_drain,
@@ -314,10 +314,18 @@ struct protosw inetsw[] = {
 };
 
 struct domain inetdomain = {
-	AF_INET, "internet", NULL, NULL, NULL,
-	inetsw, &inetsw[sizeof(inetsw)/sizeof(inetsw[0])],
-	SLIST_ENTRY_INITIALIZER,
-	in_inithead, 32, sizeof(struct sockaddr_in),
+	.dom_family = AF_INET,
+	.dom_name = "internet",
+	.dom_init = NULL,
+	.dom_internalize = NULL,
+	.dom_externalize = NULL,
+	.dom_dispose = NULL,
+	.dom_protosw = inetsw,
+	.dom_protoswNPROTOSW = &inetsw[sizeof(inetsw)/sizeof(inetsw[0])],
+	.dom_next = SLIST_ENTRY_INITIALIZER,
+	.dom_rtattach = in_inithead,
+	.dom_rtoffset = 32,
+	.dom_maxrtkey = sizeof(struct sockaddr_in)
 };
 
 DOMAIN_SET(inet);

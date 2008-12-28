@@ -48,6 +48,7 @@
 #include <sys/nlookup.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
+#include <sys/socketops.h>
 #include <sys/socketvar.h>
 #include <sys/resourcevar.h>
 #include <sys/stat.h>
@@ -58,6 +59,8 @@
 #include <sys/vnode.h>
 #include <sys/file2.h>
 #include <sys/spinlock2.h>
+#include <sys/socketvar2.h>
+#include <sys/msgport2.h>
 
 
 static	MALLOC_DEFINE(M_UNPCB, "unpcb", "unpcb struct");
@@ -86,6 +89,7 @@ static int     unp_connect (struct socket *,struct sockaddr *,
 static void    unp_disconnect (struct unpcb *);
 static void    unp_shutdown (struct unpcb *);
 static void    unp_drop (struct unpcb *, int);
+static void    unp_process_queue(struct socket *so, struct socket *so2);
 static void    unp_gc (void);
 static int     unp_gc_clearmarks(struct file *, void *);
 static int     unp_gc_checkmarks(struct file *, void *);
@@ -94,8 +98,11 @@ static void    unp_scan (struct mbuf *, void (*)(struct file *, void *),
 				void *data);
 static void    unp_mark (struct file *, void *data);
 static void    unp_discard (struct file *, void *);
-static int     unp_internalize (struct mbuf *, struct thread *);
 static int     unp_listen (struct unpcb *, struct thread *);
+
+static int	uipc_send(struct socket *so, int flags, struct mbuf *m,
+			  struct sockaddr *nam, struct mbuf *control,
+			  struct thread *td);
 
 static int
 uipc_abort(struct socket *so)
@@ -227,45 +234,90 @@ uipc_peeraddr(struct socket *so, struct sockaddr **nam)
 	return 0;
 }
 
-static int
-uipc_rcvd(struct socket *so, int flags)
-{
-	struct unpcb *unp = so->so_pcb;
-	struct socket *so2;
-
-	if (unp == NULL)
-		return EINVAL;
-	switch (so->so_type) {
-	case SOCK_DGRAM:
-		panic("uipc_rcvd DGRAM?");
-		/*NOTREACHED*/
-
-	case SOCK_STREAM:
-	case SOCK_SEQPACKET:
-		if (unp->unp_conn == NULL)
-			break;
-		/*
-		 * Because we are transfering mbufs directly to the
-		 * peer socket we have to use SSB_STOP on the sender
-		 * to prevent it from building up infinite mbufs.
-		 */
-		so2 = unp->unp_conn->unp_socket;
-		if (so->so_rcv.ssb_cc < so2->so_snd.ssb_hiwat &&
-		    so->so_rcv.ssb_mbcnt < so2->so_snd.ssb_mbmax
-		) {
-			so2->so_snd.ssb_flags &= ~SSB_STOP;
-			sowwakeup(so2);
-		}
-		break;
-
-	default:
-		panic("uipc_rcvd unknown socktype");
-	}
-	return 0;
-}
-
 /* pru_rcvoob is EOPNOTSUPP */
 
+/*
+ * Asynchronous message send.  When a protocol specifies a notify function
+ * sends without addresses will be directly queued to so->so_snd and an
+ * async notification will take place.
+ *
+ * Receive notification.  The protocol stack is notified after a socket has
+ * been read to determine if additional records need to be moved from
+ * the peer.
+ */
+static void
+uipc_notify(anynetmsg_t msg)
+{
+	struct socket *so = msg->pru_notify.nm_so;
+	struct socket *so2;
+	struct unpcb *unp = so->so_pcb;
+
+	lwkt_replymsg(&msg->lmsg, 0);
+
+	if (unp->unp_conn) {
+		so2 = unp->unp_conn->unp_socket;
+		unp_process_queue(so, so2);
+		unp_process_queue(so2, so);
+	} else {
+		unp_process_queue(so, NULL);
+	}
+}
+
+static void
+unp_process_queue(struct socket *so, struct socket *so2)
+{
+	struct mbuf **mpp;
+	struct mbuf *m;
+	struct mbuf *control;
+	int error;
+	int flags;
+
+	/*
+	 * Leave the packets in so->so_snd if the peer so_rcv is full.
+	 * This generates backpressure on the sender.
+	 */
+	if (so2 && ssb_space(&so2->so_rcv) <= 0)
+		return;
+
+	/*
+	 * Process the so_snd queue from the head.
+	 */
+	m = ssb_deq_record(&so->so_snd);
+	if (m == NULL)
+		return;
+	do {
+		flags = m->m_flags & M_PRU_FLAGS;
+
+		/*
+		 * Split out the control messages
+		 */
+		if (m->m_type == MT_CONTROL) {
+			control = m;
+			mpp = &m->m_next;
+			while ((m = *mpp) != NULL && m->m_type == MT_CONTROL)
+				mpp = &m->m_next;
+			*mpp = NULL;
+		} else {
+			control = NULL;
+		}
+
+		/*
+		 * Do the send from the context of the protocol stack.
+		 */
+		error = uipc_send(so, flags, m, NULL, control, NULL);
+		if (so2 && ssb_space(&so2->so_rcv) <= 0)
+			break;
+		m = ssb_deq_record(&so->so_snd);
+	} while (m);
+
+	ssb_head(&so->so_snd); /* clean out empty cupholders */
+	sowwakeup(so);
+}
+
+/*
+ * Synchronous message send.  This function is run for sendto()'s with
+ * an address.
+ */
 static int
 uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	  struct mbuf *control, struct thread *td)
@@ -278,13 +330,10 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 		error = EINVAL;
 		goto release;
 	}
-	if (flags & PRUS_OOB) {
+	if (flags & M_OOB) {
 		error = EOPNOTSUPP;
 		goto release;
 	}
-
-	if (control && (error = unp_internalize(control, td)))
-		goto release;
 
 	switch (so->so_type) {
 	case SOCK_DGRAM: 
@@ -310,7 +359,7 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 			from = (struct sockaddr *)unp->unp_addr;
 		else
 			from = &sun_noname;
-		if (ssb_appendaddr(&so2->so_rcv, from, m, control)) {
+		if (ssb_append_addr(&so2->so_rcv, from, m, control)) {
 			sorwakeup(so2);
 			m = NULL;
 			control = NULL;
@@ -353,27 +402,15 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 		 * Wake up readers.
 		 */
 		if (control) {
-			if (ssb_appendcontrol(&so2->so_rcv, m, control)) {
-				control = NULL;
-				m = NULL;
-			}
+			ssb_append_control(&so2->so_rcv, m, control);
+			control = NULL;
+			m = NULL;
 		} else if (so->so_type == SOCK_SEQPACKET) {
-			sbappendrecord(&so2->so_rcv.sb, m);
+			ssb_append_record(&so2->so_rcv, m);
 			m = NULL;
 		} else {
-			sbappend(&so2->so_rcv.sb, m);
+			ssb_append_stream(&so2->so_rcv, m);
 			m = NULL;
-		}
-
-		/*
-		 * Because we are transfering mbufs directly to the
-		 * peer socket we have to use SSB_STOP on the sender
-		 * to prevent it from building up infinite mbufs.
-		 */
-		if (so2->so_rcv.ssb_cc >= so->so_snd.ssb_hiwat ||
-		    so2->so_rcv.ssb_mbcnt >= so->so_snd.ssb_mbmax
-		) {
-			so->so_snd.ssb_flags |= SSB_STOP;
 		}
 		sorwakeup(so2);
 		break;
@@ -385,17 +422,22 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	/*
 	 * SEND_EOF is equivalent to a SEND followed by a SHUTDOWN.
 	 */
-	if (flags & PRUS_EOF) {
+	if (flags & M_EOF) {
 		socantsendmore(so);
 		unp_shutdown(unp);
 	}
 
-	if (control && error != 0)
-		unp_dispose(control);
-
+	/*
+	 * The send code is responsible for the final disposition of
+	 * the mbufs handed to it.  If we didn't queue them we must
+	 * free them.  Control mbufs must be GCd since they may have been
+	 * internalized.
+	 */
 release:
-	if (control)
+	if (control) {
+		unp_dispose(control);
 		m_freem(control);
+	}
 	if (m)
 		m_freem(m);
 	return error;
@@ -452,15 +494,16 @@ struct pr_usrreqs uipc_usrreqs = {
 	.pru_disconnect = uipc_disconnect,
 	.pru_listen = uipc_listen,
 	.pru_peeraddr = uipc_peeraddr,
-	.pru_rcvd = uipc_rcvd,
+	.pru_rcvd = pru_rcvd_notsupp,
 	.pru_rcvoob = pru_rcvoob_notsupp,
+	.pru_notify = uipc_notify,
 	.pru_send = uipc_send,
 	.pru_sense = uipc_sense,
 	.pru_shutdown = uipc_shutdown,
 	.pru_sockaddr = uipc_sockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 int
@@ -784,7 +827,7 @@ unp_disconnect(struct unpcb *unp)
 	switch (unp->unp_socket->so_type) {
 	case SOCK_DGRAM:
 		LIST_REMOVE(unp, unp_reflink);
-		unp->unp_socket->so_state &= ~SS_ISCONNECTED;
+		atomic_clear_short(&unp->unp_socket->so_state, SS_ISCONNECTED);
 		break;
 	case SOCK_STREAM:
 	case SOCK_SEQPACKET:
@@ -1015,10 +1058,10 @@ unp_init(void)
 	spin_init(&unp_spin);
 }
 
-static int
-unp_internalize(struct mbuf *control, struct thread *td)
+int
+unp_internalize(struct mbuf *control)
 {
-	struct proc *p = td->td_proc;
+	struct proc *p = curproc;
 	struct filedesc *fdescp;
 	struct cmsghdr *cm = mtod(control, struct cmsghdr *);
 	struct file **rp;
@@ -1348,7 +1391,7 @@ unp_gc_checkmarks(struct file *fp, void *data)
 	 */
 	info->locked_fp = fp;
 /*	spin_lock_wr(&so->so_rcv.sb_spin); */
-	unp_scan(so->so_rcv.ssb_mb, unp_mark, info);
+	unp_scan(sb_head(&so->so_rcv.sb), unp_mark, info);
 /*	spin_unlock_wr(&so->so_rcv.sb_spin);*/
 	return (0);
 }
@@ -1425,4 +1468,3 @@ unp_discard(struct file *fp, void *data __unused)
 	spin_unlock_wr(&unp_spin);
 	closef(fp, NULL);
 }
-

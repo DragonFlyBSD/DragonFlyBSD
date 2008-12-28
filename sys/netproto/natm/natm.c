@@ -436,9 +436,9 @@ struct pr_usrreqs natm_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = natm_usr_shutdown,
 	.pru_sockaddr = natm_usr_sockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 #else  /* !FREEBSD_USRREQS */
@@ -809,12 +809,13 @@ m->m_pkthdr.rcvif = NULL;	/* null it out to be safe */
 #endif
 
   if (ssb_space(&so->so_rcv) > m->m_pkthdr.len ||
-     ((npcb->npcb_flags & NPCB_RAW) != 0 && so->so_rcv.ssb_cc < NPCB_RAWCC) ) {
+      ((npcb->npcb_flags & NPCB_RAW) != 0 &&
+       sb_cc_mplocked(&so->so_rcv.sb) < NPCB_RAWCC) ) {
 #ifdef NATM_STAT
     natm_sookcnt++;
     natm_sookbytes += m->m_pkthdr.len;
 #endif
-    sbappendrecord(&so->so_rcv.sb, m);
+    sb_appendrecord(&so->so_rcv.sb, m);
     sorwakeup(so);
   } else {
 #ifdef NATM_STAT

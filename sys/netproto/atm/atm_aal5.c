@@ -94,9 +94,9 @@ struct pr_usrreqs	atm_aal5_usrreqs = {
 	.pru_sense = atm_aal5_sense,
 	.pru_shutdown = atm_aal5_shutdown,
 	.pru_sockaddr = atm_aal5_sockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 /*
@@ -734,7 +734,7 @@ atm_aal5_cpcs_data(void *tok, KBuffer *m)
 	/*
 	 * Queue the data and notify the user
 	 */
-	ssb_appendrecord(&so->so_rcv, m);
+	ssb_append_record(&so->so_rcv, m);
 	sorwakeup(so);
 
 	return;

@@ -84,6 +84,7 @@
 #ifdef INET6
 #include <sys/domain.h>
 #endif
+#include <sys/objcache.h>
 #include <sys/proc.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -91,8 +92,6 @@
 #include <sys/random.h>
 #include <sys/in_cksum.h>
 #include <sys/ktr.h>
-
-#include <vm/vm_zone.h>
 
 #include <net/route.h>
 #include <net/if.h>
@@ -158,10 +157,10 @@ KTR_INFO(KTR_TCP, tcp, delayed, 2, "tcp execute delayed ops", 0);
 struct inpcbinfo tcbinfo[MAXCPU];
 struct tcpcbackqhead tcpcbackq[MAXCPU];
 
-int tcp_mpsafe_proto = 0;
+int tcp_mpsafe_proto = 1;
 TUNABLE_INT("net.inet.tcp.mpsafe_proto", &tcp_mpsafe_proto);
 
-static int tcp_mpsafe_thread = 0;
+static int tcp_mpsafe_thread = 2;
 TUNABLE_INT("net.inet.tcp.mpsafe_thread", &tcp_mpsafe_thread);
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, mpsafe_thread, CTLFLAG_RW,
 	   &tcp_mpsafe_thread, 0,
@@ -312,9 +311,9 @@ tcp_init(void)
 {
 	struct inpcbporthead *porthashbase;
 	u_long porthashmask;
-	struct vm_zone *ipi_zone;
+	struct objcache *objc;
 	int hashsize = TCBHASHSIZE;
-	int cpu;
+	int cpu, limit;
 
 	/*
 	 * note: tcptemp is used for keepalives, and it is ok for an
@@ -342,8 +341,9 @@ tcp_init(void)
 	}
 	tcp_tcbhashsize = hashsize;
 	porthashbase = hashinit(hashsize, M_PCB, &porthashmask);
-	ipi_zone = zinit("tcpcb", sizeof(struct inp_tp), maxsockets,
-			 ZONE_INTERRUPT, 0);
+	limit = maxsockets;
+	objc = objcache_create_mbacked(M_PCB, sizeof(struct inp_tp),
+				       &limit, 64, NULL, NULL, 0);
 
 	for (cpu = 0; cpu < ncpus2; cpu++) {
 		in_pcbinfo_init(&tcbinfo[cpu]);
@@ -354,7 +354,7 @@ tcp_init(void)
 		tcbinfo[cpu].porthashmask = porthashmask;
 		tcbinfo[cpu].wildcardhashbase = hashinit(hashsize, M_PCB,
 		    &tcbinfo[cpu].wildcardhashmask);
-		tcbinfo[cpu].ipi_zone = ipi_zone;
+		tcbinfo[cpu].objc = objc;
 		TAILQ_INIT(&tcpcbackq[cpu]);
 	}
 
@@ -390,7 +390,7 @@ tcp_init(void)
 void
 tcpmsg_service_loop(void *dummy)
 {
-	struct netmsg *msg;
+	anynetmsg_t msg;
 	int mplocked;
 
 	/*
@@ -795,27 +795,27 @@ struct netmsg_remwildcard {
  * on the cpu controlling the inp last and then doing the disconnect.
  */
 static void
-in_pcbremwildcardhash_handler(struct netmsg *msg0)
+in_pcbremwildcardhash_handler(anynetmsg_t msg)
 {
-	struct netmsg_remwildcard *msg = (struct netmsg_remwildcard *)msg0;
+	struct netmsg_remwildcard *nm = (struct netmsg_remwildcard *)msg;
 	int cpu;
 
-	cpu = msg->nm_pcbinfo->cpu;
+	cpu = nm->nm_pcbinfo->cpu;
 
-	if (cpu == msg->nm_inp->inp_pcbinfo->cpu) {
+	if (cpu == nm->nm_inp->inp_pcbinfo->cpu) {
 		/* note: detach removes any wildcard hash entry */
 #ifdef INET6
-		if (msg->nm_isinet6)
-			in6_pcbdetach(msg->nm_inp);
+		if (nm->nm_isinet6)
+			in6_pcbdetach(nm->nm_inp);
 		else
 #endif
-			in_pcbdetach(msg->nm_inp);
-		lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, 0);
+			in_pcbdetach(nm->nm_inp);
+		lwkt_replymsg(&nm->nm_netmsg.nm_lmsg, 0);
 	} else {
-		in_pcbremwildcardhash_oncpu(msg->nm_inp, msg->nm_pcbinfo);
+		in_pcbremwildcardhash_oncpu(nm->nm_inp, nm->nm_pcbinfo);
 		cpu = (cpu + 1) % ncpus2;
-		msg->nm_pcbinfo = &tcbinfo[cpu];
-		lwkt_forwardmsg(tcp_cport(cpu), &msg->nm_netmsg.nm_lmsg);
+		nm->nm_pcbinfo = &tcbinfo[cpu];
+		lwkt_forwardmsg(tcp_cport(cpu), &nm->nm_netmsg.nm_lmsg);
 	}
 }
 
@@ -1058,9 +1058,9 @@ struct netmsg_tcp_drain {
 };
 
 static void
-tcp_drain_handler(netmsg_t netmsg)
+tcp_drain_handler(anynetmsg_t msg)
 {
-	struct netmsg_tcp_drain *nm = (void *)netmsg;
+	struct netmsg_tcp_drain *nm = (void *)msg;
 
 	tcp_drain_oncpu(nm->nm_head);
 	lwkt_replymsg(&nm->nm_netmsg.nm_lmsg, 0);

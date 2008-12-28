@@ -2182,21 +2182,21 @@ struct netmsg_hashlookup {
 };
 
 static void
-in_pcblookup_hash_handler(struct netmsg *msg0)
+in_pcblookup_hash_handler(anynetmsg_t msg)
 {
-	struct netmsg_hashlookup *msg = (struct netmsg_hashlookup *)msg0;
+	struct netmsg_hashlookup *nm = (struct netmsg_hashlookup *)msg;
 
-	if (msg->nm_af == AF_INET)
-		*msg->nm_pinp = in_pcblookup_hash(msg->nm_pcbinfo,
-		    msg->nm_saddr->v4, msg->nm_sport, msg->nm_daddr->v4,
-		    msg->nm_dport, INPLOOKUP_WILDCARD, NULL);
+	if (nm->nm_af == AF_INET)
+		*nm->nm_pinp = in_pcblookup_hash(nm->nm_pcbinfo,
+		    nm->nm_saddr->v4, nm->nm_sport, nm->nm_daddr->v4,
+		    nm->nm_dport, INPLOOKUP_WILDCARD, NULL);
 #ifdef INET6
 	else
-		*msg->nm_pinp = in6_pcblookup_hash(msg->nm_pcbinfo,
-		    &msg->nm_saddr->v6, msg->nm_sport, &msg->nm_daddr->v6,
-		    msg->nm_dport, INPLOOKUP_WILDCARD, NULL);
+		*nm->nm_pinp = in6_pcblookup_hash(nm->nm_pcbinfo,
+		    &nm->nm_saddr->v6, nm->nm_sport, &nm->nm_daddr->v6,
+		    nm->nm_dport, INPLOOKUP_WILDCARD, NULL);
 #endif /* INET6 */
-	lwkt_replymsg(&msg->nm_netmsg.nm_lmsg, 0);
+	lwkt_replymsg(&nm->nm_netmsg.nm_lmsg, 0);
 }
 #endif /* SMP */
 

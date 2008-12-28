@@ -168,6 +168,7 @@ struct domain btdomain = {
 	.dom_family = AF_BLUETOOTH,
 	.dom_name = "bluetooth",
 	.dom_init = netbt_init,
+	.dom_internalize = NULL,
 	.dom_externalize = NULL,
 	.dom_dispose = netbt_dispose,
 	.dom_protosw = btsw,

@@ -935,7 +935,7 @@ sctp6_detach(struct socket *so)
 		return EINVAL;
 	crit_enter();
 	if (((so->so_options & SO_LINGER) && (so->so_linger == 0)) ||
-	    (so->so_rcv.ssb_cc > 0))
+	    (sb_cc_mplocked(&so->so_rcv.sb) > 0))
 		sctp_inpcb_free(inp, 1);
 	else
 		sctp_inpcb_free(inp, 0);
@@ -1164,7 +1164,7 @@ connected_type:
 	if (
 #if defined(__FreeBSD__) || defined(__APPLE__) || defined(__DragonFly__)
 	    /* FreeBSD and MacOSX uses a flag passed */
-	    (!(flags & PRUS_MORETOCOME))
+	    (!(flags & M_MORETOCOME))
 #elif defined(__NetBSD__)
 	    /* NetBSD uses the so_state field */
 	    (!(so->so_state & SS_MORETOCOME))
@@ -1642,9 +1642,9 @@ struct pr_usrreqs sctp6_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = sctp_shutdown,
 	.pru_sockaddr = sctp6_in6getaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sctp_sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 #else

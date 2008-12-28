@@ -49,18 +49,13 @@
 #include <sys/sysent.h>
 #include <sys/resourcevar.h>
 
-/* check for GET/HEAD */
 static void sohashttpget(struct socket *so, void *arg, int waitflag);
-/* check for HTTP/1.0 or HTTP/1.1 */
 static void soparsehttpvers(struct socket *so, void *arg, int waitflag);
-/* check for end of HTTP/1.x request */
 static void soishttpconnected(struct socket *so, void *arg, int waitflag);
-/* strcmp on an mbuf chain */
-static int mbufstrcmp(struct mbuf *m, struct mbuf *npkt, int offset, char *cmp);
-/* strncmp on an mbuf chain */
-static int mbufstrncmp(struct mbuf *m, struct mbuf *npkt, int offset,
-	int max, char *cmp);
-/* socketbuffer is full */
+static int mbufstrcmp(struct sb_reader *sr, struct mbuf *m,
+			int offset, char *cmp);
+static int mbufstrncmp(struct sb_reader *sr, struct mbuf *m,
+			int offset, int max, char *cmp);
 static int sbfull(struct signalsockbuf *sb);
 
 static struct accept_filter accf_http_filter = {
@@ -99,70 +94,72 @@ static int
 sbfull(struct signalsockbuf *ssb)
 {
 
-	DPRINT("sbfull, cc(%ld) >= hiwat(%ld): %d, mbcnt(%ld) >= mbmax(%ld): %d", 
-	    ssb->ssb_cc, ssb->ssb_hiwat, ssb->ssb_cc >= ssb->ssb_hiwat,
-	    ssb->ssb_mbcnt, ssb->ssb_mbmax, ssb->ssb_mbcnt >= ssb->ssb_mbmax);
-	return(ssb->ssb_cc >= ssb->ssb_hiwat ||
-	       ssb->ssb_mbcnt >= ssb->ssb_mbmax);
+	/*
+	 * TBD: properly -- agg
+	 */
+	return (sb_cc_est(&ssb->sb) >= ssb->ssb_hiwat ||
+		sb_mbcnt_est(&ssb->sb) >= ssb->ssb_mbmax);
 }
 
 /*
- * start at mbuf m, (must provide npkt if exists)
- * starting at offset in m compare characters in mbuf chain for 'cmp'
+ * starting at offset in sr, compare characters for 'cmp'
  */
 static int
-mbufstrcmp(struct mbuf *m, struct mbuf *npkt, int offset, char *cmp)
+mbufstrcmp(struct sb_reader *sr, struct mbuf *m, int offset, char *cmp)
 {
-	struct mbuf *n;
+	struct sb_reader srcopy;
+	int r = 0;
 
-	for (;m != NULL; m = n) {
-		n = npkt;
-		if (npkt)
-			npkt = npkt->m_nextpkt;
-		for (; m; m = m->m_next) {
-			for (; offset < m->m_len; offset++, cmp++) {
-				if (*cmp == '\0') {
-					return (1);
-				} else if (*cmp != *(mtod(m, char *) + offset)) {
-					return (0);
-				}
+	sb_reader_copy(sr, &srcopy);
+	while (m) {
+		for (; offset < m->m_len; offset++, cmp++) {
+			if (*cmp == '\0') {
+				r = 1;
+				break;
 			}
-			if (*cmp == '\0')
-				return (1);
-			offset = 0;
+			if (*cmp != *(mtod(m, char *) + offset))
+				break;
 		}
+		if (*cmp == '\0') {
+			r = 1;
+			break;
+		}
+		m = sb_reader_next(&srcopy, NULL);
+		offset = 0;
 	}
-	return (0);
+	sb_reader_done(&srcopy);
+	return (r);
 }
 
 /*
- * start at mbuf m, (must provide npkt if exists)
- * starting at offset in m compare characters in mbuf chain for 'cmp'
+ * starting at offset in sr, compare characters in mbuf for 'cmp';
  * stop at 'max' characters
  */
 static int
-mbufstrncmp(struct mbuf *m, struct mbuf *npkt, int offset, int max, char *cmp)
+mbufstrncmp(struct sb_reader *sr, struct mbuf *m,
+	    int offset, int max, char *cmp)
 {
-	struct mbuf *n;
+	struct sb_reader srcopy;
+	int r = 0;
 
-	for (;m != NULL; m = n) {
-		n = npkt;
-		if (npkt)
-			npkt = npkt->m_nextpkt;
-		for (; m; m = m->m_next) {
-			for (; offset < m->m_len; offset++, cmp++, max--) {
-				if (max == 0 || *cmp == '\0') {
-					return (1);
-				} else if (*cmp != *(mtod(m, char *) + offset)) {
-					return (0);
-				}
+	while (m) {
+		for (; offset < m->m_len; offset++, cmp++, max--) {
+			if (max == 0 || *cmp == '\0') {
+				r = 1;
+				break;
 			}
-			if (max == 0 || *cmp == '\0')
-				return (1);
-			offset = 0;
+			if (*cmp != *(mtod(m, char *) + offset))
+				break;
 		}
+		if (max == 0 || *cmp == '\0') {
+			r = 1;
+			break;
+		}
+		m = sb_reader_next(&srcopy, NULL);
+		offset = 0;
 	}
-	return (0);
+	sb_reader_done(&srcopy);
+	return (r);
 }
 
 #define STRSETUP(sptr, slen, str) \
@@ -171,19 +168,26 @@ mbufstrncmp(struct mbuf *m, struct mbuf *npkt, int offset, int max, char *cmp)
 		slen = sizeof(str) - 1;	\
 	} while(0)
 
+/*
+ * check for GET/HEAD
+ */
 static void
 sohashttpget(struct socket *so, void *arg, int waitflag)
 {
+	struct sb_reader sr;
 
 	if ((so->so_state & SS_CANTRCVMORE) == 0 && !sbfull(&so->so_rcv)) {
 		struct mbuf *m;
 		char *cmp;
 		int	cmplen, cc;
 
-		m = so->so_rcv.ssb_mb;
-		cc = so->so_rcv.ssb_cc - 1;
-		if (cc < 1)
+		cc = sb_cc_est(&so->so_rcv.sb) - 1;
+		sb_reader_init(&sr, &so->so_rcv.sb);
+		m = sb_reader_next(&sr, NULL);
+		if (cc < 1) {
+			sb_reader_done(&sr);
 			return;
+		}
 		switch (*mtod(m, char *)) {
 		case 'G':
 			STRSETUP(cmp, cmplen, "ET ");
@@ -192,19 +196,23 @@ sohashttpget(struct socket *so, void *arg, int waitflag)
 			STRSETUP(cmp, cmplen, "EAD ");
 			break;
 		default:
+			sb_reader_done(&sr);
 			goto fallout;
 		}
 		if (cc < cmplen) {
-			if (mbufstrncmp(m, m->m_nextpkt, 1, cc, cmp) == 1) {
+			if (mbufstrncmp(&sr, m, 1, cc, cmp) == 1) {
 				DPRINT("short cc (%d) but mbufstrncmp ok", cc);
+				sb_reader_done(&sr);
 				return;
 			} else {
 				DPRINT("short cc (%d) mbufstrncmp failed", cc);
+				sb_reader_done(&sr);
 				goto fallout;
 			}
 		}
-		if (mbufstrcmp(m, m->m_nextpkt, 1, cmp) == 1) {
+		if (mbufstrcmp(&sr, m, 1, cmp) == 1) {
 			DPRINT("mbufstrcmp ok");
+			sb_reader_done(&sr);
 			if (parse_http_version == 0)
 				soishttpconnected(so, arg, waitflag);
 			else
@@ -222,59 +230,63 @@ fallout:
 	return;
 }
 
+/*
+ * check for HTTP/1.0 or HTTP/1.1
+ */
 static void
 soparsehttpvers(struct socket *so, void *arg, int waitflag)
 {
-	struct mbuf *m, *n;
+	struct sb_reader sr;
+	struct mbuf *m;
 	int	i, cc, spaces, inspaces;
 
 	if ((so->so_state & SS_CANTRCVMORE) != 0 || sbfull(&so->so_rcv))
 		goto fallout;
 
-	m = so->so_rcv.ssb_mb;
-	cc = so->so_rcv.ssb_cc;
+	sb_reader_init(&sr, &so->so_rcv.sb);
+	m = sb_reader_next(&sr, NULL);
+	cc = sb_cc_est(&so->so_rcv.sb);
 	inspaces = spaces = 0;
-	for (m = so->so_rcv.ssb_mb; m; m = n) {
-		n = m->m_nextpkt;
-		for (; m; m = m->m_next) {
-			for (i = 0; i < m->m_len; i++, cc--) {
-				switch (*(mtod(m, char *) + i)) {
-				case ' ':
-					if (!inspaces) {
-						spaces++;
-						inspaces = 1;
-					}
-					break;
-				case '\r':
-				case '\n':
-					DPRINT("newline");
-					goto fallout;
-				default:
-					if (spaces == 2) {
-						/* make sure we have enough data left */
-						if (cc < sizeof("HTTP/1.0") - 1) {
-							if (mbufstrncmp(m, n, i, cc, "HTTP/1.") == 1) {
-								DPRINT("mbufstrncmp ok");
-								goto readmore;
-							} else {
-								DPRINT("mbufstrncmp bad");
-								goto fallout;
-							}
-						} else if (mbufstrcmp(m, n, i, "HTTP/1.0") == 1 ||
-									mbufstrcmp(m, n, i, "HTTP/1.1") == 1) {
-								DPRINT("mbufstrcmp ok");
-								soishttpconnected(so, arg, waitflag);
-								return;
+
+	while (m) {
+		for (i = 0; i < m->m_len; i++, cc--) {
+			switch (*(mtod(m, char *) + i)) {
+			case ' ':
+				if (!inspaces) {
+					spaces++;
+					inspaces = 1;
+				}
+				break;
+			case '\r':
+			case '\n':
+				DPRINT("newline");
+				goto fallout;
+			default:
+				if (spaces == 2) {
+					/* make sure we have enough data left */
+					if (cc < sizeof("HTTP/1.0") - 1) {
+						if (mbufstrncmp(&sr, m, i, cc, "HTTP/1.") == 1) {
+							DPRINT("mbufstrncmp ok");
+							goto readmore;
 						} else {
-							DPRINT("mbufstrcmp bad");
+							DPRINT("mbufstrncmp bad");
 							goto fallout;
 						}
+					} else if (mbufstrcmp(&sr, m, i, "HTTP/1.0") == 1 ||
+						   mbufstrcmp(&sr, m, i, "HTTP/1.1") == 1) {
+							DPRINT("mbufstrcmp ok");
+							soishttpconnected(so, arg, waitflag);
+							return;
+					} else {
+						DPRINT("mbufstrcmp bad");
+						goto fallout;
 					}
-					inspaces = 0;
-					break;
 				}
+				inspaces = 0;
+				break;
 			}
 		}
+		m = sb_reader_next(&sr, NULL);
 	}
 readmore:
 	DPRINT("readmore");
@@ -282,12 +294,14 @@ readmore:
 	 * if we hit here we haven't hit something
 	 * we don't understand or a newline, so try again
 	 */
+	sb_reader_done(&sr);
 	so->so_upcall = soparsehttpvers;
 	so->so_rcv.ssb_flags |= SSB_UPCALL;
 	return;
 
 fallout:
 	DPRINT("fallout");
+	sb_reader_done(&sr);
 	so->so_upcall = NULL;
 	so->so_rcv.ssb_flags &= ~SSB_UPCALL;
 	soisconnected(so);
@@ -297,12 +311,16 @@ fallout:
 
 #define NCHRS 3
 
+/*
+ * check for end of HTTP/1.x request
+ */
 static void
 soishttpconnected(struct socket *so, void *arg, int waitflag)
 {
 	char a, b, c;
-	struct mbuf *m, *n;
+	struct mbuf *m;
 	int ccleft, copied;
+	struct sb_reader sr;
 
 	DPRINT("start");
 	if ((so->so_state & SS_CANTRCVMORE) != 0 || sbfull(&so->so_rcv))
@@ -316,36 +334,37 @@ soishttpconnected(struct socket *so, void *arg, int waitflag)
 	 * have NCHRS left
 	 */
 	copied = 0;
-	ccleft = so->so_rcv.ssb_cc;
+	ccleft = sb_cc_est(&so->so_rcv.sb);
 	if (ccleft < NCHRS)
 		goto readmore;
 	a = b = c = '\0';
-	for (m = so->so_rcv.ssb_mb; m; m = n) {
-		n = m->m_nextpkt;
-		for (; m; m = m->m_next) {
-			ccleft -= m->m_len;
-			if (ccleft <= NCHRS) {
-				char *src;
-				int tocopy;
 
-				tocopy = (NCHRS - ccleft) - copied;
-				src = mtod(m, char *) + (m->m_len - tocopy);
+	sb_reader_init(&sr, &so->so_rcv.sb);
+	m = sb_reader_next(&sr, NULL);
+	while (m) {
+		ccleft -= m->m_len;
+		if (ccleft <= NCHRS) {
+			char *src;
+			int tocopy;
 
-				while (tocopy--) {
-					switch (copied++) {
-					case 0:
-						a = *src++;
-						break;
-					case 1:
-						b = *src++;
-						break;
-					case 2:
-						c = *src++;
-						break;
-					}
+			tocopy = (NCHRS - ccleft) - copied;
+			src = mtod(m, char *) + (m->m_len - tocopy);
+
+			while (tocopy--) {
+				switch (copied++) {
+				case 0:
+					a = *src++;
+					break;
+				case 1:
+					b = *src++;
+					break;
+				case 2:
+					c = *src++;
+					break;
 				}
 			}
 		}
+		m = sb_reader_next(&sr, NULL);
 	}
 	if (c == '\n' && (b == '\n' || (b == '\r' && a == '\n'))) {
 		/* we have all request headers */
@@ -353,11 +372,13 @@ soishttpconnected(struct socket *so, void *arg, int waitflag)
 	}
 
 readmore:
+	sb_reader_done(&sr);
 	so->so_upcall = soishttpconnected;
 	so->so_rcv.ssb_flags |= SSB_UPCALL;
 	return;
 
 gotit:
+	sb_reader_done(&sr);
 	so->so_upcall = NULL;
 	so->so_rcv.ssb_flags &= ~SSB_UPCALL;
 	soisconnected(so);

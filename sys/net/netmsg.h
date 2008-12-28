@@ -40,9 +40,9 @@
 #include <sys/protosw.h>
 #endif
 
-struct netmsg;
+union anynetmsg;
 
-typedef void (*netisr_fn_t)(struct netmsg *);
+typedef void (*netisr_fn_t)(union anynetmsg *);
 
 /*
  * Base netmsg
@@ -158,11 +158,16 @@ struct netmsg_pru_send {
     struct netmsg	nm_netmsg;
     pru_send_fn_t	nm_prufn;
     struct socket	*nm_so;
-    int			nm_flags;
+    int 		nm_flags;
     struct mbuf		*nm_m;
     struct sockaddr	*nm_addr;
     struct mbuf		*nm_control;
     struct thread	*nm_td;
+};
+
+struct netmsg_pru_notify {
+    struct netmsg	nm_netmsg;
+    struct socket	*nm_so;
 };
 
 struct netmsg_pru_sense {
@@ -184,6 +189,32 @@ struct netmsg_pru_sockaddr {
     struct socket	*nm_so;
     struct sockaddr	**nm_nam;
 };
+
+struct netmsg_pru_poll {
+    struct netmsg	nm_netmsg;
+    pru_poll_fn_t	nm_prufn;
+    struct socket	*nm_so;
+    int			nm_events;
+    struct ucred	*nm_cred;
+    struct thread	*nm_td;
+};
+
+struct netmsg_pru_ctloutput {
+    struct netmsg	nm_netmsg;
+    pru_ctloutput_fn_t	nm_prufn;
+    struct socket	*nm_so;
+    struct sockopt	*nm_sopt;
+};
+
+struct netmsg_pru_ctlinput {
+    struct netmsg	nm_netmsg;
+    pru_ctlinput_fn_t	nm_prufn;
+    int			nm_cmd;
+    struct sockaddr	*nm_arg;
+    void		*nm_extra;
+};
+
+#if 0
 
 struct netmsg_pru_sosend {
     struct netmsg	nm_netmsg;
@@ -208,29 +239,86 @@ struct netmsg_pru_soreceive {
     int			*nm_flagsp;
 };
 
-struct netmsg_pru_sopoll {
-    struct netmsg	nm_netmsg;
-    pru_sopoll_fn_t	nm_prufn;
-    struct socket	*nm_so;
-    int			nm_events;
-    struct ucred	*nm_cred;
-    struct thread	*nm_td;
+#endif
+
+/*
+ *  netisr messages
+ */
+TAILQ_HEAD(notifymsglist, netmsg_so_notify);
+
+typedef __boolean_t (*msg_predicate_fn_t)(struct netmsg *);
+
+/*
+ * Base class.  All net messages must start with the same fields.
+ */
+
+struct netmsg_isr_packet {
+     struct netmsg	nm_netmsg;
+     struct mbuf	*nm_packet;
 };
 
-struct netmsg_pru_ctloutput {
+struct netmsg_pr_timeout {
     struct netmsg	nm_netmsg;
-    pru_ctloutput_fn_t	nm_prufn;
-    struct socket	*nm_so;
-    struct sockopt	*nm_sopt;
+    int			(*nm_prfn) (void);
 };
 
-struct netmsg_pru_ctlinput {
-    struct netmsg	nm_netmsg;
-    pru_ctlinput_fn_t	nm_prufn;
-    int			nm_cmd;
-    struct sockaddr	*nm_arg;
-    void		*nm_extra;
+struct netmsg_so_op {
+	struct netmsg	nm_netmsg;
+	struct socket	*nm_so;
+	void		*nm_val;
 };
+
+struct netmsg_so_notify {
+    struct netmsg			nm_netmsg;
+    msg_predicate_fn_t			nm_predicate;
+    struct socket			*nm_so;
+    int					nm_fflags; /* flags e.g. FNONBLOCK */
+    int					nm_etype;  /* receive or send event */
+    /*
+     * waiting for that many bytes
+     */
+    int					nm_rbytes;
+    TAILQ_ENTRY(netmsg_so_notify)	nm_list;
+};
+
+struct netmsg_so_notify_abort {
+    struct netmsg			nm_netmsg;
+    struct netmsg_so_notify 		*nm_notifymsg;
+};
+
+union anynetmsg {
+	struct lwkt_msg    		lmsg;
+	struct netmsg			netmsg;
+	struct netmsg_pru_abort		pru_abort;
+	struct netmsg_pru_accept	pru_accept;
+	struct netmsg_pru_attach	pru_attach;
+	struct netmsg_pru_bind		pru_bind;
+	struct netmsg_pru_connect	pru_connect;
+	struct netmsg_pru_connect2	pru_connect2;
+	struct netmsg_pru_control	pru_control;
+	struct netmsg_pru_detach	pru_detach;
+	struct netmsg_pru_disconnect	pru_disconnect;
+	struct netmsg_pru_listen	pru_listen;
+	struct netmsg_pru_peeraddr	pru_peeraddr;
+	struct netmsg_pru_rcvd		pru_rcvd;
+	struct netmsg_pru_rcvoob	pru_rcvoob;
+	struct netmsg_pru_send		pru_send;
+	struct netmsg_pru_notify	pru_notify;
+	struct netmsg_pru_sense		pru_sense;
+	struct netmsg_pru_shutdown	pru_shutdown;
+	struct netmsg_pru_sockaddr	pru_sockaddr;
+	struct netmsg_pru_ctloutput	pru_ctloutput;
+	struct netmsg_pru_ctlinput	pru_ctlinput;
+	struct netmsg_pru_poll		pru_poll;
+
+	struct netmsg_isr_packet	isr_packet;
+	struct netmsg_pr_timeout	so_timeout;
+	struct netmsg_so_op		so_op;
+	struct netmsg_so_notify		so_notify;
+	struct netmsg_so_notify_abort	so_notify_abort;
+};
+
+typedef union anynetmsg *anynetmsg_t;
 
 #endif	/* _KERNEL || _KERNEL_STRUCTURES */
 

@@ -109,7 +109,7 @@ idp_input(struct mbuf *m, ...)
 		m->m_pkthdr.len -= sizeof (struct idp);
 		m->m_data += sizeof (struct idp);
 	}
-	if (ssb_appendaddr(&nsp->nsp_socket->so_rcv, (struct sockaddr *)&idp_ns,
+	if (ssb_append_addr(&nsp->nsp_socket->so_rcv, (struct sockaddr *)&idp_ns,
 	    m, (struct mbuf *)0) == 0)
 		goto bad;
 	sorwakeup(nsp->nsp_socket);
@@ -604,9 +604,9 @@ struct pr_usrreqs idp_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = idp_shutdown,
 	.pru_sockaddr = idp_sockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 struct pr_usrreqs idp_raw_usrreqs = {
@@ -627,8 +627,8 @@ struct pr_usrreqs idp_raw_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = idp_shutdown,
 	.pru_sockaddr = idp_sockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 

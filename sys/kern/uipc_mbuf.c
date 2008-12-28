@@ -84,7 +84,9 @@
 #include <sys/uio.h>
 #include <sys/thread.h>
 #include <sys/globaldata.h>
+
 #include <sys/thread2.h>
+#include <sys/spinlock2.h>
 
 #include <machine/atomic.h>
 
@@ -95,6 +97,8 @@
 #ifdef INVARIANTS
 #include <machine/cpu.h>
 #endif
+
+extern void db_print_backtrace(void);
 
 /*
  * mbuf cluster meta-data
@@ -134,18 +138,23 @@ mbtrack_cmp(struct mbtrack *mb1, struct mbtrack *mb2)
 RB_GENERATE2(mbuf_rb_tree, mbtrack, rb_node, mbtrack_cmp, struct mbuf *, m);
 
 struct mbuf_rb_tree	mbuf_track_root;
+struct spinlock		mbuf_track_spin;
 
 static void
 mbuftrack(struct mbuf *m)
 {
 	struct mbtrack *mbt;
+	struct mbtrack *mbt_old;
 
-	crit_enter();
 	mbt = kmalloc(sizeof(*mbt), M_MTRACK, M_INTWAIT|M_ZERO);
 	mbt->m = m;
-	if (mbuf_rb_tree_RB_INSERT(&mbuf_track_root, mbt))
-		panic("mbuftrack: mbuf %p already being tracked\n", m);
-	crit_exit();
+	spin_lock_wr(&mbuf_track_spin);
+	mbt_old = mbuf_rb_tree_RB_INSERT(&mbuf_track_root, mbt);
+	if (mbt_old) {
+		panic("mbuftrack: mbuf %p already being tracked via %p\n",
+		      m, mbt_old);
+	}
+	spin_unlock_wr(&mbuf_track_spin);
 }
 
 static void
@@ -153,15 +162,17 @@ mbufuntrack(struct mbuf *m)
 {
 	struct mbtrack *mbt;
 
-	crit_enter();
+	spin_lock_wr(&mbuf_track_spin);
 	mbt = mbuf_rb_tree_RB_LOOKUP(&mbuf_track_root, m);
 	if (mbt == NULL) {
-		kprintf("mbufuntrack: mbuf %p was not tracked\n", m);
+		spin_unlock_wr(&mbuf_track_spin);
+		kprintf("mbufuntrack: mbuf %p was not tracked (possible double free):\n", m);
+		db_print_backtrace();
 	} else {
 		mbuf_rb_tree_RB_REMOVE(&mbuf_track_root, mbt);
+		spin_unlock_wr(&mbuf_track_spin);
 		kfree(mbt, M_MTRACK);
 	}
-	crit_exit();
 }
 
 void
@@ -170,7 +181,7 @@ mbuftrackid(struct mbuf *m, int trackid)
 	struct mbtrack *mbt;
 	struct mbuf *n;
 
-	crit_enter();
+	spin_lock_wr(&mbuf_track_spin);
 	while (m) { 
 		n = m->m_nextpkt;
 		while (m) {
@@ -181,7 +192,7 @@ mbuftrackid(struct mbuf *m, int trackid)
 		}
 		m = n;
 	}
-	crit_exit();
+	spin_unlock_wr(&mbuf_track_spin);
 }
 
 static int
@@ -191,9 +202,11 @@ mbuftrack_callback(struct mbtrack *mbt, void *arg)
 	char buf[64];
 	int error;
 
+	spin_unlock_wr(&mbuf_track_spin);
 	ksnprintf(buf, sizeof(buf), "mbuf %p track %d\n", mbt->m, mbt->trackid);
 
 	error = SYSCTL_OUT(req, buf, strlen(buf));
+	spin_lock_wr(&mbuf_track_spin);
 	if (error)	
 		return(-error);
 	return(0);
@@ -204,10 +217,10 @@ mbuftrack_show(SYSCTL_HANDLER_ARGS)
 {
 	int error;
 
-	crit_enter();
+	spin_lock_wr(&mbuf_track_spin);
 	error = mbuf_rb_tree_RB_SCAN(&mbuf_track_root, NULL,
 				     mbuftrack_callback, req);
-	crit_exit();
+	spin_unlock_wr(&mbuf_track_spin);
 	return (-error);
 }
 SYSCTL_PROC(_kern_ipc, OID_AUTO, showmbufs, CTLFLAG_RD|CTLTYPE_STRING,
@@ -360,7 +373,7 @@ static void m_mclfree(void *arg);
  * Perform sanity checks of tunables declared above.
  */
 static void
-tunable_mbinit(void *dummy)
+tunable_mbinit(void *dummy __unused)
 {
 	/*
 	 * This has to be done before VM init.
@@ -524,14 +537,17 @@ struct objcache_malloc_args mbuf_malloc_args = { MSIZE, M_MBUF };
 struct objcache_malloc_args mclmeta_malloc_args =
 	{ sizeof(struct mbcluster), M_MCLMETA };
 
-/* ARGSUSED*/
 static void
-mbinit(void *dummy)
+mbinit(void *dummy __unused)
 {
 	int mb_limit, cl_limit, mbcl_limit;
 	int limit;
 	int i;
 
+#ifdef MBUF_DEBUG
+ 	spin_init(&mbuf_track_spin);
+ 	RB_INIT(&mbuf_track_root);
+#endif
 	/*
 	 * Initialize statistics
 	 */
@@ -694,6 +710,7 @@ retryonce:
 	}
 
 	updatestats(m, type);
+	m->m_flags &= ~M_SOCKBUF;
 	return (m);
 }
 
@@ -724,6 +741,7 @@ retryonce:
 	}
 
 	updatestats(m, type);
+	m->m_flags &= ~M_SOCKBUF;
 	return (m);
 }
 
@@ -739,6 +757,7 @@ m_getclr(int how, int type)
 	m = m_get(how, type);
 	if (m != NULL)
 		bzero(m->m_data, MLEN);
+	m->m_flags &= ~M_SOCKBUF;
 	return (m);
 }
 
@@ -784,6 +803,7 @@ retryonce:
 
 	atomic_add_long_nonlocked(&mbtypes[mycpu->gd_cpuid][type], 1);
 	atomic_add_long_nonlocked(&mbstat[mycpu->gd_cpuid].m_clusters, 1);
+	m->m_flags &= ~M_SOCKBUF;
 	return (m);
 }
 
@@ -907,6 +927,8 @@ m_free(struct mbuf *m)
 	struct globaldata *gd = mycpu;
 
 	KASSERT(m->m_type != MT_FREE, ("freeing free mbuf %p", m));
+	KASSERT(!(m->m_flags & M_SOCKBUF),
+		("freeing mbuf %p belonging to sb", m));
 	atomic_subtract_long_nonlocked(&mbtypes[gd->gd_cpuid][m->m_type], 1);
 
 	n = m->m_next;
@@ -1044,7 +1066,7 @@ m_free(struct mbuf *m)
 void
 m_freem(struct mbuf *m)
 {
-	crit_enter();
+	crit_enter();	/* XXX: necessary? -- agg */
 	while (m)
 		m = m_free(m);
 	crit_exit();

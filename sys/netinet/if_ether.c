@@ -156,7 +156,7 @@ static void	arprequest(struct ifnet *, const struct in_addr *,
 			   const struct in_addr *, const u_char *);
 static void	arprequest_async(struct ifnet *, const struct in_addr *,
 				 const struct in_addr *, const u_char *);
-static void	arpintr(struct netmsg *);
+static void	arpintr(anynetmsg_t);
 static void	arptfree(struct llinfo_arp *);
 static void	arptimer(void *);
 static struct llinfo_arp *
@@ -383,10 +383,10 @@ arpreq_send(struct ifnet *ifp, struct mbuf *m)
 }
 
 static void
-arpreq_send_handler(struct netmsg *nmsg)
+arpreq_send_handler(anynetmsg_t msg)
 {
-	struct mbuf *m = ((struct netmsg_packet *)nmsg)->nm_packet;
-	struct ifnet *ifp = nmsg->nm_lmsg.u.ms_resultp;
+	struct mbuf *m = ((struct netmsg_isr_packet *)msg)->nm_packet;
+	struct ifnet *ifp = msg->lmsg.u.ms_resultp;
 
 	arpreq_send(ifp, m);
 	/* nmsg was embedded in the mbuf, do not reply! */
@@ -422,7 +422,7 @@ arprequest_async(struct ifnet *ifp, const struct in_addr *sip,
 		 const struct in_addr *tip, const u_char *enaddr)
 {
 	struct mbuf *m;
-	struct netmsg_packet *pmsg;
+	struct netmsg_isr_packet *pmsg;
 
 	m = arpreq_alloc(ifp, sip, tip, enaddr);
 	if (m == NULL)
@@ -553,9 +553,9 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
  * then the protocol-specific routine is called.
  */
 static void
-arpintr(struct netmsg *msg)
+arpintr(anynetmsg_t msg)
 {
-	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
+	struct mbuf *m = msg->isr_packet.nm_packet;
 	struct arphdr *ar;
 	u_short ar_hrd;
 
@@ -614,13 +614,13 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, log_arp_wrong_iface, CTLFLAG_RW,
 	   "log arp packets arriving on the wrong interface");
 
 static void
-arp_hold_output(struct netmsg *nmsg)
+arp_hold_output(anynetmsg_t msg)
 {
-	struct mbuf *m = ((struct netmsg_packet *)nmsg)->nm_packet;
+	struct mbuf *m = ((struct netmsg_isr_packet *)msg)->nm_packet;
 	struct rtentry *rt;
 	struct ifnet *ifp;
 
-	rt = nmsg->nm_lmsg.u.ms_resultp;
+	rt = ((struct netmsg_isr_packet *)msg)->nm_netmsg.nm_lmsg.u.ms_resultp;
 	ifp = m->m_pkthdr.rcvif;
 	m->m_pkthdr.rcvif = NULL;
 
@@ -629,7 +629,7 @@ arp_hold_output(struct netmsg *nmsg)
 	/* Drop the reference count bumped by the sender */
 	RTFREE(rt);
 
-	/* nmsg was embedded in the mbuf, do not reply! */
+	/* msg was embedded in the mbuf, do not reply! */
 }
 
 static void
@@ -717,7 +717,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 		if (la->la_hold != NULL) {
 			struct mbuf *m = la->la_hold;
 			struct lwkt_port *port = la->la_msgport;
-			struct netmsg_packet *pmsg;
+			struct netmsg_isr_packet *pmsg;
 
 			la->la_hold = NULL;
 			la->la_msgport = NULL;
@@ -756,7 +756,7 @@ struct netmsg_arp_update {
 	boolean_t	create;
 };
 
-static void arp_update_msghandler(struct netmsg *);
+static void arp_update_msghandler(anynetmsg_t msg);
 
 #endif
 
@@ -980,19 +980,21 @@ reply:
 
 #ifdef SMP
 
-static void
-arp_update_msghandler(struct netmsg *netmsg)
+static
+void
+arp_update_msghandler(anynetmsg_t msg)
 {
-	struct netmsg_arp_update *msg = (struct netmsg_arp_update *)netmsg;
+	struct netmsg_arp_update *nm = (struct netmsg_arp_update *)msg;
 	int nextcpu;
 
-	arp_update_oncpu(msg->m, msg->saddr, msg->create, mycpuid == 0);
+	arp_update_oncpu(nm->m, nm->saddr, nm->create, mycpuid == 0);
 
 	nextcpu = mycpuid + 1;
-	if (nextcpu < ncpus)
-		lwkt_forwardmsg(rtable_portfn(nextcpu), &msg->netmsg.nm_lmsg);
-	else
-		lwkt_replymsg(&msg->netmsg.nm_lmsg, 0);
+	if (nextcpu < ncpus) {
+		lwkt_forwardmsg(rtable_portfn(nextcpu), &nm->netmsg.nm_lmsg);
+	} else {
+		lwkt_replymsg(&nm->netmsg.nm_lmsg, 0);
+	}
 }
 
 #endif	/* SMP */

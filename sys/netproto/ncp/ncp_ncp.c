@@ -184,7 +184,8 @@ ncp_sign_packet(struct ncp_conn *conn, struct ncp_rq *rqp, int *size) {
  * Connection expected to be locked
  */
 static int 
-ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
+ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) 
+{
 	int error=EIO,len, dosend, plen = 0, gotpacket;
 	struct socket *so;
 	struct thread *td = conn->td;
@@ -192,6 +193,7 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 	struct ncp_rphdr *rp=NULL;
 	struct timeval tv;
 	struct mbuf *m, *mreply = NULL;
+	struct sockbuf sio;
 	
 	conn->nc_rq = rqp;
 	rqp->conn = conn;
@@ -211,15 +213,15 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 	 * Flush out replies on previous reqs
 	 */
 	crit_enter();
+	sb_init(&sio);
 	while (1/*so->so_rcv.sb_cc*/) {
-		struct sockbuf sio;
-
 		if (ncp_poll(so, POLLIN) == 0)
 			break;
 		if (ncp_sock_recv(so, &sio) != 0)	
 			break;
-		sbflush(&sio);
+		sb_flush(&sio);
 	}
+	sb_uninit(&sio);
 	rq = mtod(rqp->rq,struct ncp_rqhdr *);
 	rq->seq = conn->seq;
 	m = rqp->rq;
@@ -275,15 +277,14 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 		 */
 		gotpacket = 0;	/* nothing good found */
 		dosend = 1;	/* resend rq if error */
+		sb_init(&sio);
 		for (;;) {
-			struct sockbuf sio;
-
 			error = 0;
 			if (ncp_poll(so,POLLIN) == 0) break;
 			error = ncp_sock_recv(so, &sio);
 			if (error) break; 		/* must be more checks !!! */
-
-			m = sio.sb_mb;
+			len = sb_cc_est(&sio);
+			m = sb_chain_remove(&sio, len);
 			if (m->m_len < sizeof(*rp)) {
 				m = m_pullup(m, sizeof(*rp));
 				if (m == NULL) {
@@ -292,7 +293,7 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 				}
 			}
 			rp = mtod(m, struct ncp_rphdr*);
-			if (sio.sb_cc == sizeof(*rp) && rp->type == NCP_POSITIVE_ACK) {
+			if (len == sizeof(*rp) && rp->type == NCP_POSITIVE_ACK) {
 				NCPSDEBUG("got positive acknowledge\n");
 				m_freem(m);
 				rqp->rexmit = conn->li.retry_count;
@@ -300,7 +301,7 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 				continue;
 			}
 			NCPSDEBUG("recv:%04x c=%d l=%d s=%d t=%d cc=%02x cs=%02x\n",rp->type,
-			    (rp->conn_high << 8) + rp->conn_low, sio.len, rp->seq, rp->task,
+			    (rp->conn_high << 8) + rp->conn_low, len, rp->seq, rp->task,
 			     rp->completion_code, rp->connection_state);
 			NCPDDEBUG(m);
 			if ( (rp->type == NCP_REPLY) && 
@@ -317,7 +318,7 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 					} else {
 						gotpacket = 1;
 						mreply = m;
-						plen = sio.sb_cc;
+						plen = len;
 					}
 					continue;	/* look up other for other packets */
 				}
@@ -325,6 +326,7 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 			m_freem(m);
 			NCPSDEBUG("reply mismatch\n");
 		} /* for receive */
+		sb_uninit(&sio);
 		if (error) break;
 		if (gotpacket) break;
 		/* try to resend, or just wait */

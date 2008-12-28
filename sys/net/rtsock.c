@@ -323,9 +323,9 @@ static struct pr_usrreqs route_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = rts_shutdown,
 	.pru_sockaddr = rts_sockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 static __inline sa_family_t
@@ -342,15 +342,15 @@ familyof(struct sockaddr *sa)
  * can send a message to the routing socket.
  */
 static void
-rts_input_handler(struct netmsg *msg)
+rts_input_handler(anynetmsg_t msg)
 {
 	static const struct sockaddr route_dst = { 2, PF_ROUTE, };
 	struct sockproto route_proto;
-	struct netmsg_packet *pmsg;
+	struct netmsg_isr_packet *pmsg;
 	struct mbuf *m;
 	sa_family_t family;
 
-	pmsg = (void *)msg;
+	pmsg = &msg->isr_packet;
 	m = pmsg->nm_packet;
 	family = pmsg->nm_netmsg.nm_lmsg.u.ms_result;
 	route_proto.sp_family = PF_ROUTE;
@@ -362,7 +362,7 @@ rts_input_handler(struct netmsg *msg)
 static void
 rts_input(struct mbuf *m, sa_family_t family)
 {
-	struct netmsg_packet *pmsg;
+	struct netmsg_isr_packet *pmsg;
 	lwkt_port_t port;
 
 	port = cpu0_soport(NULL, NULL, NULL, 0);
@@ -1373,8 +1373,14 @@ static struct protosw routesw[] = {
 };
 
 static struct domain routedomain = {
-	PF_ROUTE, "route", NULL, NULL, NULL,
-	routesw, &routesw[(sizeof routesw)/(sizeof routesw[0])],
+	.dom_family = PF_ROUTE,
+	.dom_name = "route",
+	.dom_init = NULL,
+	.dom_internalize = NULL,
+	.dom_externalize = NULL,
+	.dom_dispose = NULL,
+	.dom_protosw = routesw,
+	.dom_protoswNPROTOSW = &routesw[(sizeof routesw)/(sizeof routesw[0])]
 };
 
 DOMAIN_SET(route);

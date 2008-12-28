@@ -52,6 +52,7 @@
 #include <net/if_var.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
+#include <sys/socketvar2.h>
 
 #include <netbt/bluetooth.h>
 #include <netbt/hci.h>
@@ -446,7 +447,7 @@ hci_drop(void *arg)
 {
 	struct socket *so = arg;
 
-	sbdroprecord(&so->so_snd.sb);
+	sb_drop_record(&so->so_snd.sb);
 	sowwakeup(so);
 }
 
@@ -531,7 +532,7 @@ hci_send(struct hci_pcb *pcb, struct mbuf *m, bdaddr_t *addr)
 		err = ENOMEM;
 		goto bad;
 	}
-	sbappendrecord(&pcb->hp_socket->so_snd.sb, m0);
+	sb_append_record(&pcb->hp_socket->so_snd.sb, m0);
 	M_SETCTX(m, pcb->hp_socket);	/* enable drop callback */
 
 	DPRINTFN(2, "(%s) opcode (%03x|%04x)\n",
@@ -572,7 +573,7 @@ hci_sdetach(struct socket *so)
 	
 	if (pcb == NULL)
 		return EINVAL;
-	if (so->so_snd.ssb_mb != NULL)
+	if (sb_notempty(&so->so_snd.sb))
 		hci_cmdwait_flush(so);
 
 	so->so_pcb = NULL;
@@ -598,7 +599,7 @@ hci_sdisconnect (struct socket *so)
 	 * this socket (which is permitted) you get a broken pipe when you
 	 * try to write any data.
 	 */
-	so->so_state &= ~SS_ISCONNECTED;
+	atomic_clear_short(&so->so_state, SS_ISCONNECTED);
 	
 	return 0;
 }
@@ -952,7 +953,7 @@ hci_mtap(struct mbuf *m, struct hci_unit *unit)
 		 * copy to socket
 		 */
 		m0 = m_copym(m, 0, M_COPYALL, MB_DONTWAIT);
-		if (m0 && sbappendaddr(&pcb->hp_socket->so_rcv.sb,
+		if (m0 && sb_append_addr(&pcb->hp_socket->so_rcv.sb,
 				(struct sockaddr *)&sa, m0, ctlmsg)) {
 			sorwakeup(pcb->hp_socket);
 		} else {
@@ -980,7 +981,7 @@ struct pr_usrreqs hci_usrreqs = {
         .pru_sense = pru_sense_null,
         .pru_shutdown = hci_sshutdown,
         .pru_sockaddr = hci_ssockaddr,
+        .pru_poll = sopoll,
         .pru_sosend = sosend,
-        .pru_soreceive = soreceive,
-        .pru_sopoll = sopoll
+        .pru_soreceive = soreceive
 };

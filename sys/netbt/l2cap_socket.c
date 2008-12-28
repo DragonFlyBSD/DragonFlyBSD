@@ -51,6 +51,8 @@
 #include <sys/systm.h>
 #include <vm/vm_zone.h>
 
+#include <sys/socketvar2.h>
+
 #include <netbt/bluetooth.h>
 #include <netbt/hci.h>		/* XXX for EPASSTHROUGH */
 #include <netbt/l2cap.h>
@@ -193,7 +195,7 @@ l2cap_complete(void *arg, int count)
 	struct socket *so = arg;
 
 	while (count-- > 0)
-		sbdroprecord(&so->so_snd.sb);
+		sb_drop_record(&so->so_snd.sb);
 
 	sowwakeup(so);
 }
@@ -221,7 +223,7 @@ l2cap_input(void *arg, struct mbuf *m)
 {
 	struct socket *so = arg;
 
-	if (m->m_pkthdr.len > sbspace(&so->so_rcv)) {
+	if (m->m_pkthdr.len > sbspace(&so->so_rcv.sb)) {
 		kprintf("%s: packet (%d bytes) dropped (socket buffer full)\n",
 			__func__, m->m_pkthdr.len);
 		m_freem(m);
@@ -230,7 +232,7 @@ l2cap_input(void *arg, struct mbuf *m)
 
 	DPRINTFN(10, "received %d bytes\n", m->m_pkthdr.len);
 
-	sbappendrecord(&so->so_rcv.sb, m);
+	sb_append_record(&so->so_rcv.sb, m);
 	sorwakeup(so);
 }
 
@@ -401,7 +403,7 @@ l2cap_ssend (struct socket *so, int flags, struct mbuf *m,
 	if (control)	/* no use for that */
 		m_freem(control);
 
-	sbappendrecord(&so->so_snd.sb, m);
+	sb_append_record(&so->so_snd.sb, m);
 	return l2cap_send(pcb, m0);
 
 error:
@@ -458,7 +460,7 @@ struct pr_usrreqs l2cap_usrreqs = {
         .pru_sense = pru_sense_null,
         .pru_shutdown = l2cap_sshutdown,
         .pru_sockaddr = l2cap_ssockaddr,
+        .pru_poll = sopoll,
         .pru_sosend = sosend,
-        .pru_soreceive = soreceive,
-        .pru_sopoll = sopoll
+        .pru_soreceive = soreceive
 };

@@ -51,7 +51,7 @@ int ip_fw_loaded;
 int fw_enable = 1;
 int fw_one_pass = 1;
 
-static void	ip_fw_sockopt_dispatch(struct netmsg *);
+static void	ip_fw_sockopt_dispatch(anynetmsg_t);
 
 int
 ip_fw_sockopt(struct sockopt *sopt)
@@ -74,10 +74,9 @@ ip_fw_sockopt(struct sockopt *sopt)
 }
 
 static void
-ip_fw_sockopt_dispatch(struct netmsg *nmsg)
+ip_fw_sockopt_dispatch(anynetmsg_t msg)
 {
-	struct lwkt_msg *msg = &nmsg->nm_lmsg;
-	struct sockopt *sopt = msg->u.ms_resultp;
+	struct sockopt *sopt = msg->lmsg.u.ms_resultp;
 	int error;
 
 	KKASSERT(mycpuid == 0);
@@ -86,5 +85,5 @@ ip_fw_sockopt_dispatch(struct netmsg *nmsg)
 		error = ip_fw_ctl_ptr(sopt);
 	else
 		error = ENOPROTOOPT;
-	lwkt_replymsg(msg, error);
+	lwkt_replymsg(&msg->lmsg, error);
 }

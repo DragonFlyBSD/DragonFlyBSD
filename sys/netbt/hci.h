@@ -2564,7 +2564,7 @@ void hci_output_cmd(struct hci_unit *, struct mbuf *);
 void hci_output_acl(struct hci_unit *, struct mbuf *);
 void hci_output_sco(struct hci_unit *, struct mbuf *);
 void hci_intr(void *);
-void btintr(struct netmsg *msg);
+void btintr(anynetmsg_t msg);
 
 /* XXX mimic NetBSD for now, although we don't have these interfaces */
 #define M_GETCTX(m, t)	((t)(m)->m_pkthdr.rcvif)

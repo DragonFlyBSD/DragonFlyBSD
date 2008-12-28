@@ -93,8 +93,14 @@ struct protosw atmsw[] = {
 };
 
 struct domain atmdomain = {
-	AF_ATM, "atm", atm_initialize, NULL, NULL,
-	atmsw, &atmsw[sizeof(atmsw) / sizeof(atmsw[0])],
+	.dom_family = AF_ATM,
+	.dom_name = "atm",
+	.dom_init = "atm_initialize,
+	.dom_internalize = NULL,
+	.dom_externalize = NULL,
+	.dom_dispose = NULL,
+	.dom_protosw = atmsw,
+	.dom_protoswNPROTOSW = &atmsw[sizeof(atmsw) / sizeof(atmsw[0])]
 };
 
 DOMAIN_SET(atm);

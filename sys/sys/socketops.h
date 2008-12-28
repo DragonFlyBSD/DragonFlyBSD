@@ -52,6 +52,8 @@
 #include <sys/socketvar.h>
 #endif
 
+#include <sys/socketvar2.h>
+
 /*
  * sosend() and soreceive() can block and also calls other pru_usrreq functions.
  * They should not really be usrreq functions.  Always call them directly from
@@ -61,16 +63,25 @@ static __inline int
 so_pru_sosend(struct socket *so, struct sockaddr *addr, struct uio *uio,
     struct mbuf *top, struct mbuf *control, int flags, struct thread *td)
 {
-	return ((*so->so_proto->pr_usrreqs->pru_sosend)(so, addr, uio, top,
-	    control, flags, td));
+	int error;
+
+	error = (*so->so_proto->pr_usrreqs->pru_sosend)
+			(so, addr, uio, top, control, flags, td);
+
+	return error;
 }
 
 static __inline int
 so_pru_soreceive(struct socket *so, struct sockaddr **paddr, struct uio *uio,
-    struct sockbuf *sio, struct mbuf **controlp, int *flagsp)
+		 struct sockbuf *sio, int sio_climit, struct mbuf **controlp,
+		 int *flagsp)
 {
-	return ((*so->so_proto->pr_usrreqs->pru_soreceive)(so, paddr, uio, sio,
-		controlp, flagsp));
+	int error;
+
+	error = (*so->so_proto->pr_usrreqs->pru_soreceive)
+			(so, paddr, uio, sio, sio_climit, controlp, flagsp);
+
+	return error;
 }
 
 void so_pru_abort (struct socket *so);
@@ -88,13 +99,13 @@ int so_pru_listen (struct socket *so, struct thread *td);
 int so_pru_peeraddr (struct socket *so, struct sockaddr **nam);
 int so_pru_rcvd (struct socket *so, int flags);
 int so_pru_rcvoob (struct socket *so, struct mbuf *m, int flags);
-int so_pru_send (struct socket *so, int flags, struct mbuf *m,
-		 struct sockaddr *addr, struct mbuf *control,
-		 struct thread *td);
+int so_pru_send(struct socket *so, int flags, struct mbuf *m,
+            struct sockaddr *addr, struct mbuf *control, struct thread *td);
+int so_pru_notify (struct socket *so);
 int so_pru_sense (struct socket *so, struct stat *sb);
 int so_pru_shutdown (struct socket *so);
 int so_pru_sockaddr (struct socket *so, struct sockaddr **nam);
-int so_pru_sopoll (struct socket *so, int events, struct ucred *cred);
+int so_pru_poll (struct socket *so, int events, struct ucred *cred);
 int so_pru_ctloutput(struct socket *so, struct sockopt *sopt);
 void so_pru_ctlinput(struct protosw *pr, int cmd,
 	    struct sockaddr *arg, void *extra);

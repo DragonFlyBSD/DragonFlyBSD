@@ -612,7 +612,7 @@ void	 tcp_sack_tcpcb_init(struct tcpcb *tp);
 uint32_t tcp_sack_compute_pipe(struct tcpcb *tp);
 boolean_t
 	 tcp_sack_nextseg(struct tcpcb *tp, tcp_seq *nextrexmt, uint32_t *len,
-			  boolean_t *losdup);
+			  boolean_t *losdup, int sndbuf_cc);
 #ifdef later
 void	 tcp_sack_revert_scoreboard(struct scoreboard *scb, tcp_seq snd_una,
 				    u_int maxseg);

@@ -143,12 +143,12 @@ static int	vlan_unconfig(struct ifvlan *);
 static void	vlan_link(struct ifvlan *, struct ifnet *);
 static void	vlan_unlink(struct ifvlan *, struct ifnet *);
 
-static void	vlan_config_dispatch(struct netmsg *);
-static void	vlan_unconfig_dispatch(struct netmsg *);
-static void	vlan_link_dispatch(struct netmsg *);
-static void	vlan_unlink_dispatch(struct netmsg *);
-static void	vlan_multi_dispatch(struct netmsg *);
-static void	vlan_ifdetach_dispatch(struct netmsg *);
+static void	vlan_config_dispatch(anynetmsg_t);
+static void	vlan_unconfig_dispatch(anynetmsg_t);
+static void	vlan_link_dispatch(anynetmsg_t);
+static void	vlan_unlink_dispatch(anynetmsg_t);
+static void	vlan_multi_dispatch(anynetmsg_t);
+static void	vlan_ifdetach_dispatch(anynetmsg_t);
 
 static eventhandler_tag vlan_ifdetach_cookie;
 static struct if_clone vlan_cloner =
@@ -275,9 +275,9 @@ static moduledata_t vlan_mod = {
 DECLARE_MODULE(if_vlan, vlan_mod, SI_SUB_PSEUDO, SI_ORDER_ANY);
 
 static void
-vlan_ifdetach_dispatch(struct netmsg *nmsg)
+vlan_ifdetach_dispatch(anynetmsg_t msg)
 {
-	struct netmsg_vlan *vmsg = (struct netmsg_vlan *)nmsg;
+	struct netmsg_vlan *vmsg = (struct netmsg_vlan *)msg;
 	struct ifnet *ifp_p = vmsg->nv_ifp_p;
 	struct vlan_trunk *vlantrunks, *trunk;
 	struct vlan_entry *ifve;
@@ -291,7 +291,7 @@ vlan_ifdetach_dispatch(struct netmsg *nmsg)
 	       (ifve = LIST_FIRST(&trunk->vlan_list)) != NULL)
 		vlan_unconfig(ifve->ifv);
 reply:
-	lwkt_replymsg(&nmsg->nm_lmsg, 0);
+	lwkt_replymsg(&msg->lmsg, 0);
 }
 
 static void
@@ -395,7 +395,7 @@ vlan_start(struct ifnet *ifp)
 		return;
 
 	for (;;) {
-		struct netmsg_packet *nmp;
+		struct netmsg_isr_packet *nmp;
 		struct netmsg *nmsg;
 		struct lwkt_port *port;
 
@@ -489,9 +489,9 @@ vlan_input(struct mbuf *m)
 }
 
 static void
-vlan_link_dispatch(struct netmsg *nmsg)
+vlan_link_dispatch(anynetmsg_t msg)
 {
-	struct netmsg_vlan *vmsg = (struct netmsg_vlan *)nmsg;
+	struct netmsg_vlan *vmsg = (struct netmsg_vlan *)msg;
 	struct ifvlan *ifv = vmsg->nv_ifv;
 	struct ifnet *ifp_p = vmsg->nv_ifp_p;
 	struct vlan_entry *entry;
@@ -509,7 +509,7 @@ vlan_link_dispatch(struct netmsg *nmsg)
 	LIST_INSERT_HEAD(&trunk->vlan_list, entry, ifv_link);
 	crit_exit();
 
-	ifnet_forwardmsg(&nmsg->nm_lmsg, cpu + 1);
+	ifnet_forwardmsg(&msg->lmsg, cpu + 1);
 }
 
 static void
@@ -544,9 +544,9 @@ vlan_link(struct ifvlan *ifv, struct ifnet *ifp_p)
 }
 
 static void
-vlan_config_dispatch(struct netmsg *nmsg)
+vlan_config_dispatch(anynetmsg_t msg)
 {
-	struct netmsg_vlan *vmsg = (struct netmsg_vlan *)nmsg;
+	struct netmsg_vlan *vmsg = (struct netmsg_vlan *)msg;
 	struct ifvlan *ifv;
 	struct ifnet *ifp_p, *ifp;
 	struct sockaddr_dl *sdl1, *sdl2;
@@ -621,7 +621,7 @@ vlan_config_dispatch(struct netmsg *nmsg)
 	ifv->ifv_p = ifp_p;
 	error = 0;
 reply:
-	lwkt_replymsg(&nmsg->nm_lmsg, error);
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 static int
@@ -644,9 +644,9 @@ vlan_config(struct ifvlan *ifv, const char *parent_name, uint16_t vlantag)
 }
 
 static void
-vlan_unlink_dispatch(struct netmsg *nmsg)
+vlan_unlink_dispatch(anynetmsg_t msg)
 {
-	struct netmsg_vlan *vmsg = (struct netmsg_vlan *)nmsg;
+	struct netmsg_vlan *vmsg = (struct netmsg_vlan *)msg;
 	struct ifvlan *ifv = vmsg->nv_ifv;
 	struct vlan_entry *entry;
 	int cpu = mycpuid;
@@ -659,7 +659,7 @@ vlan_unlink_dispatch(struct netmsg *nmsg)
 	LIST_REMOVE(entry, ifv_link);
 	crit_exit();
 
-	ifnet_forwardmsg(&nmsg->nm_lmsg, cpu + 1);
+	ifnet_forwardmsg(&msg->lmsg, cpu + 1);
 }
 
 static void
@@ -698,9 +698,9 @@ vlan_unlink(struct ifvlan *ifv, struct ifnet *ifp_p)
 }
 
 static void
-vlan_unconfig_dispatch(struct netmsg *nmsg)
+vlan_unconfig_dispatch(anynetmsg_t msg)
 {
-	struct netmsg_vlan *vmsg = (struct netmsg_vlan *)nmsg;
+	struct netmsg_vlan *vmsg = (struct netmsg_vlan *)msg;
 	struct sockaddr_dl *sdl;
 	struct ifvlan *ifv;
 	struct ifnet *ifp_p, *ifp;
@@ -760,7 +760,7 @@ vlan_unconfig_dispatch(struct netmsg *nmsg)
 		vlan_unlink(ifv, ifp_p);
 
 	error = 0;
-	lwkt_replymsg(&nmsg->nm_lmsg, error);
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 static int
@@ -893,9 +893,9 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 }
 
 static void
-vlan_multi_dispatch(struct netmsg *nmsg)
+vlan_multi_dispatch(anynetmsg_t msg)
 {
-	struct netmsg_vlan *vmsg = (struct netmsg_vlan *)nmsg;
+	struct netmsg_vlan *vmsg = (struct netmsg_vlan *)msg;
 	struct ifvlan *ifv = vmsg->nv_ifv;
 	int error = 0;
 
@@ -905,7 +905,7 @@ vlan_multi_dispatch(struct netmsg *nmsg)
 	 */
 	if (ifv->ifv_p != NULL)
 		error = vlan_setmulti(ifv, ifv->ifv_p);
-	lwkt_replymsg(&nmsg->nm_lmsg, error);
+	lwkt_replymsg(&msg->lmsg, error);
 }
 
 static int

@@ -286,7 +286,8 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 			if ((so->so_state & SS_ISCONNECTING) &&
 			    so->so_error == 0 && rep &&
 			    (error = nfs_sigintr(nmp, rep, rep->r_td)) != 0){
-				so->so_state &= ~SS_ISCONNECTING;
+				atomic_clear_short(&so->so_state,
+						   SS_ISCONNECTING);
 				crit_exit();
 				goto bad;
 			}
@@ -613,7 +614,7 @@ tryagain:
 			do {
 			   rcvflg = MSG_WAITALL;
 			   error = so_pru_soreceive(so, NULL, &auio, NULL,
-						    NULL, &rcvflg);
+						    -1, NULL, &rcvflg);
 			   if (error == EWOULDBLOCK && rep) {
 				if (rep->r_flags & R_SOFTTERM)
 					return (EINTR);
@@ -651,22 +652,23 @@ tryagain:
 			/*
 			 * Get the rest of the packet as an mbuf chain
 			 */
-			sbinit(&sio, len);
+			sb_init(&sio);
 			do {
 			    rcvflg = MSG_WAITALL;
 			    error = so_pru_soreceive(so, NULL, NULL, &sio,
-						     NULL, &rcvflg);
+						     len, NULL, &rcvflg);
 			} while (error == EWOULDBLOCK || error == EINTR ||
 				 error == ERESTART);
-			if (error == 0 && sio.sb_cc != len) {
-			    if (sio.sb_cc != 0)
-			    log(LOG_INFO,
+			if (error == 0 && sb_cc_mplocked(&sio) != len) {
+				if (sb_cc_mplocked(&sio) != 0)
+					log(LOG_INFO,
 				"short receive (%d/%d) from nfs server %s\n",
 				len - auio.uio_resid, len,
 				rep->r_nmp->nm_mountp->mnt_stat.f_mntfromname);
 			    error = EPIPE;
 			}
-			*mp = sio.sb_mb;
+			*mp = sb_chain_remove(&sio, sb_cc_est(&sio));
+			sb_uninit(&sio);
 		} else {
 			/*
 			 * Non-stream, so get the whole packet by not
@@ -677,27 +679,29 @@ tryagain:
 			 * and then throw them away so we know what is going
 			 * on.
 			 */
-			sbinit(&sio, 100000000);
+			sb_init(&sio);
 			do {
 			    rcvflg = 0;
 			    error =  so_pru_soreceive(so, NULL, NULL, &sio,
-						      &control, &rcvflg);
+						      100000000, &control,
+						      &rcvflg);
 			    if (control)
 				m_freem(control);
 			    if (error == EWOULDBLOCK && rep) {
 				if (rep->r_flags & R_SOFTTERM) {
-					m_freem(sio.sb_mb);
+					m_freem(sb_head(&sio));
+					sb_uninit(&sio);
 					return (EINTR);
 				}
 			    }
 			} while (error == EWOULDBLOCK ||
-				 (error == 0 && sio.sb_mb == NULL && control));
+				 (error == 0 && sb_head(&sio) == NULL && control));
 			if ((rcvflg & MSG_EOR) == 0)
 				kprintf("Egad!!\n");
-			if (error == 0 && sio.sb_mb == NULL)
+			if (error == 0 && sb_head(&sio) == NULL)
 				error = EPIPE;
-			len = sio.sb_cc;
-			*mp = sio.sb_mb;
+			*mp = sb_chain_remove(&sio, sb_cc_est(&sio));
+			sb_uninit(&sio);
 		}
 errout:
 		if (error && error != EINTR && error != ERESTART) {
@@ -725,19 +729,20 @@ errout:
 			getnam = NULL;
 		else
 			getnam = aname;
-		sbinit(&sio, 100000000);
+		sb_init(&sio);
 		do {
 			rcvflg = 0;
 			error =  so_pru_soreceive(so, getnam, NULL, &sio,
-						  NULL, &rcvflg);
+						  100000000, NULL, &rcvflg);
 			if (error == EWOULDBLOCK &&
 			    (rep->r_flags & R_SOFTTERM)) {
-				m_freem(sio.sb_mb);
+				sb_flush(&sio);
+				sb_uninit(&sio);
 				return (EINTR);
 			}
 		} while (error == EWOULDBLOCK);
-		len = sio.sb_cc;
-		*mp = sio.sb_mb;
+		*mp = sb_chain_remove(&sio, sb_cc_est(&sio));
+		sb_uninit(&sio);
 	}
 	if (error) {
 		m_freem(*mp);
@@ -802,8 +807,6 @@ nfs_reply(struct nfsreq *myrep)
 			 */
 			if (NFSIGNORE_SOERROR(nmp->nm_soflags, error)) {
 				nmp->nm_so->so_error = 0;
-				if (myrep->r_flags & R_GETONEREP)
-					return (0);
 				continue;
 			}
 			return (error);
@@ -822,8 +825,6 @@ nfs_reply(struct nfsreq *myrep)
 			nfsstats.rpcinvalid++;
 			m_freem(mrep);
 nfsmout:
-			if (myrep->r_flags & R_GETONEREP)
-				return (0);
 			continue;
 		}
 
@@ -920,8 +921,6 @@ nfsmout:
 				panic("nfsreply nil");
 			return (0);
 		}
-		if (myrep->r_flags & R_GETONEREP)
-			return (0);
 	}
 }
 
@@ -1379,7 +1378,7 @@ nfs_timer(void *arg /* never used */)
 	crit_enter();
 	TAILQ_FOREACH(rep, &nfs_reqq, r_chain) {
 		nmp = rep->r_nmp;
-		if (rep->r_mrep || (rep->r_flags & (R_SOFTTERM|R_MASKTIMER)))
+		if (rep->r_mrep || (rep->r_flags & R_MASKTIMER))
 			continue;
 		rep->r_flags |= R_LOCKED;
 		if (nfs_sigintr(nmp, rep, rep->r_td)) {
@@ -1434,11 +1433,11 @@ nfs_timer(void *arg /* never used */)
 		    nmp->nm_sent < nmp->nm_cwnd) &&
 		   (m = m_copym(rep->r_mreq, 0, M_COPYALL, MB_DONTWAIT))){
 			if ((nmp->nm_flag & NFSMNT_NOCONN) == 0)
-			    error = so_pru_send(so, 0, m, (struct sockaddr *)0,
-				     (struct mbuf *)0, td);
+			    error = so_pru_sosend(so, NULL, NULL, m, NULL, 0, td);
 			else
-			    error = so_pru_send(so, 0, m, nmp->nm_nam,
-			        (struct mbuf *)0, td);
+			    error = so_pru_sosend(so, nmp->nm_nam, NULL, m, NULL,
+					   0, td);
+
 			if (error) {
 				if (NFSIGNORE_SOERROR(nmp->nm_soflags, error))
 					so->so_error = 0;
@@ -1448,7 +1447,7 @@ nfs_timer(void *arg /* never used */)
 				 * else turn timing off, backoff timer
 				 * and divide congestion window by 2.
 				 *
-				 * It is possible for the so_pru_send() to
+				 * It is possible for the sosend() to
 				 * block and for us to race a reply so we
 				 * only do this if the reply field has not 
 				 * been filled in.  R_LOCKED will prevent
@@ -2040,9 +2039,10 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 	struct mbuf *m;
 	struct sockaddr *nam;
 	struct sockbuf sio;
-	int flags, error;
+	int flags, error, didwork;
 	int nparallel_wakeup = 0;
 
+	get_mplock();
 	if ((slp->ns_flag & SLP_VALID) == 0)
 		return;
 
@@ -2093,28 +2093,28 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 		 * Do soreceive().  Pull out as much data as possible without
 		 * blocking.
 		 */
-		sbinit(&sio, 1000000000);
+		sb_init(&sio);
 		flags = MSG_DONTWAIT;
-		error = so_pru_soreceive(so, &nam, NULL, &sio, NULL, &flags);
-		if (error || sio.sb_mb == NULL) {
+		error = so_pru_soreceive(so, &nam, NULL, &sio, 1000000000,
+					 NULL, &flags);
+		if (error || sb_head(&sio) == NULL) {
 			if (error == EWOULDBLOCK)
 				slp->ns_flag |= SLP_NEEDQ;
 			else
 				slp->ns_flag |= SLP_DISCONN;
 			slp->ns_flag &= ~SLP_GETSTREAM;
+			sb_uninit(&sio);
 			goto dorecs;
 		}
-		m = sio.sb_mb;
-		if (slp->ns_rawend) {
-			slp->ns_rawend->m_next = m;
-			slp->ns_cc += sio.sb_cc;
-		} else {
-			slp->ns_raw = m;
-			slp->ns_cc = sio.sb_cc;
+		while ((m = sb_deq_record(&sio)) != NULL) {
+			if (slp->ns_rawend) {
+				slp->ns_rawend->m_next = m;
+			} else {
+				slp->ns_raw = m;
+				slp->ns_cc = 0;
+			}
+			slp->ns_cc += m_lengthm(m, &slp->ns_rawend);
 		}
-		while (m->m_next)
-			m = m->m_next;
-		slp->ns_rawend = m;
 
 		/*
 		 * Now try and parse as many record(s) as we can out of the
@@ -2128,31 +2128,35 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 				slp->ns_flag |= SLP_NEEDQ;
 		}
 		slp->ns_flag &= ~SLP_GETSTREAM;
+		sb_uninit(&sio);
 	} else {
 		/*
 		 * For UDP soreceive typically pulls just one packet, loop
 		 * to get the whole batch.
 		 */
+		sb_init(&sio);
 		do {
-			sbinit(&sio, 1000000000);
+			sb_flush(&sio);
 			flags = MSG_DONTWAIT;
 			error = so_pru_soreceive(so, &nam, NULL, &sio,
-						 NULL, &flags);
-			if (sio.sb_mb) {
+						 1000000000, NULL, &flags);
+			didwork = 0;
+			while ((m = sb_deq_record(&sio)) != NULL) {
 				struct nfsrv_rec *rec;
+
 				int mf = (waitflag & MB_DONTWAIT) ?
 					    M_NOWAIT : M_WAITOK;
 				rec = kmalloc(sizeof(struct nfsrv_rec),
 					     M_NFSRVDESC, mf);
+				didwork = 1;
 				if (!rec) {
 					if (nam)
 						FREE(nam, M_SONAME);
-					m_freem(sio.sb_mb);
+					m_freem(m);
 					continue;
 				}
-				nfs_realign(&sio.sb_mb, 10 * NFSX_UNSIGNED);
 				rec->nr_address = nam;
-				rec->nr_packet = sio.sb_mb;
+				rec->nr_packet = m;
 				STAILQ_INSERT_TAIL(&slp->ns_rec, rec, nr_link);
 				++slp->ns_numrec;
 				++nparallel_wakeup;
@@ -2161,10 +2165,12 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 				if ((so->so_proto->pr_flags & PR_CONNREQUIRED)
 					&& error != EWOULDBLOCK) {
 					slp->ns_flag |= SLP_DISCONN;
+					sb_uninit(&sio);
 					goto dorecs;
 				}
 			}
-		} while (sio.sb_mb);
+		} while (didwork);
+		sb_uninit(&sio);
 	}
 
 	/*
@@ -2178,6 +2184,7 @@ dorecs:
 	     || (slp->ns_flag & (SLP_NEEDQ | SLP_DISCONN)))) {
 		nfsrv_wakenfsd(slp, nparallel_wakeup);
 	}
+	rel_mplock();
 }
 
 /*

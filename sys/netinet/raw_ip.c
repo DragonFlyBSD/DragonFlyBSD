@@ -44,16 +44,16 @@
 #include <sys/jail.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
+#include <sys/objcache.h>
 #include <sys/proc.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
+#include <sys/socketvar2.h>
 
 #include <machine/stdarg.h>
-
-#include <vm/vm_zone.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -122,6 +122,8 @@ void (*ip_rsvp_force_done)(struct socket *);
 void
 rip_init(void)
 {
+	int limit;
+
 	in_pcbinfo_init(&ripcbinfo);
 	/*
 	 * XXX We don't use the hash list for raw IP, but it's easier
@@ -132,8 +134,11 @@ rip_init(void)
 	ripcbinfo.porthashbase = hashinit(1, M_PCB, &ripcbinfo.porthashmask);
 	ripcbinfo.wildcardhashbase = hashinit(1, M_PCB,
 					      &ripcbinfo.wildcardhashmask);
-	ripcbinfo.ipi_zone = zinit("ripcb", sizeof(struct inpcb),
-				   maxsockets, ZONE_INTERRUPT, 0);
+	limit = maxsockets;
+	ripcbinfo.objc = objcache_create_mbacked(M_PCB,
+						     sizeof(struct inpcb),
+						     &limit, 64, NULL,
+						     NULL, 0);
 }
 
 /*
@@ -195,7 +200,7 @@ rip_input(struct mbuf *m, ...)
 				if (last->inp_flags & INP_CONTROLOPTS ||
 				    last->inp_socket->so_options & SO_TIMESTAMP)
 				    ip_savecontrol(last, &opts, ip, n);
-				if (ssb_appendaddr(&last->inp_socket->so_rcv,
+				if (ssb_append_addr(&last->inp_socket->so_rcv,
 				    (struct sockaddr *)&ripsrc, n,
 				    opts) == 0) {
 					/* should notify about lost packet */
@@ -234,7 +239,7 @@ rip_input(struct mbuf *m, ...)
 		if (last->inp_flags & INP_CONTROLOPTS ||
 		    last->inp_socket->so_options & SO_TIMESTAMP)
 			ip_savecontrol(last, &opts, ip, m);
-		if (ssb_appendaddr(&last->inp_socket->so_rcv,
+		if (ssb_append_addr(&last->inp_socket->so_rcv,
 		    (struct sockaddr *)&ripsrc, m, opts) == 0) {
 			m_freem(m);
 			if (opts)
@@ -679,7 +684,7 @@ struct pr_usrreqs rip_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = rip_shutdown,
 	.pru_sockaddr = in_setsockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };

@@ -126,9 +126,9 @@ struct	pr_usrreqs spx_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = spx_shutdown,
 	.pru_sockaddr = ipx_sockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 struct	pr_usrreqs spx_usrreq_sps = {
@@ -149,9 +149,9 @@ struct	pr_usrreqs spx_usrreq_sps = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = spx_shutdown,
 	.pru_sockaddr = ipx_sockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 static MALLOC_DEFINE(M_SPX_Q, "ipx_spx_q", "IPX Packet Management");
@@ -489,7 +489,7 @@ spx_reass(struct spxpcb *cb, struct spx *si, struct mbuf *si_m)
 	 */
 	while ((m = so->so_snd.ssb_mb) != NULL) {
 		if (SSEQ_LT((mtod(m, struct spx *))->si_seq, si->si_ack))
-			sbdroprecord(&so->so_snd.sb);
+			sb_drop_record(&so->so_snd.sb);
 		else
 			break;
 	}
@@ -603,7 +603,8 @@ present:
 				if (so->so_rcv.ssb_cc)
 					so->so_oobmark = so->so_rcv.ssb_cc;
 				else
-					so->so_state |= SS_RCVATMARK;
+					atomic_set_short(&so->so_state,
+							 SS_RCVATMARK);
 			}
 			nq = q;
 			q = q->si_prev;
@@ -628,14 +629,15 @@ present:
 						s[0] = 5;
 						s[1] = 1;
 						*(u_char *)(&s[2]) = dt;
-						sbappend(&so->so_rcv.sb, mm);
+						sb_append(&so->so_rcv.sb, mm);
 					}
 				}
 				if (sp->spx_cc & SPX_OB) {
 					m_chtype(m, MT_OOBDATA);
 					spx_newchecks[1]++;
 					so->so_oobmark = 0;
-					so->so_state &= ~SS_RCVATMARK;
+					atomic_clear_short(&so->so_state,
+							   SS_RCVATMARK);
 				}
 				if (packetp == 0) {
 					m->m_data += SPINC;
@@ -643,20 +645,20 @@ present:
 					m->m_pkthdr.len -= SPINC;
 				}
 				if ((sp->spx_cc & SPX_EM) || packetp) {
-					sbappendrecord(&so->so_rcv.sb, m);
+					sb_appendrecord(&so->so_rcv.sb, m);
 					spx_newchecks[9]++;
 				} else
-					sbappend(&so->so_rcv.sb, m);
+					sb_append(&so->so_rcv.sb, m);
 			} else
 #endif
 			if (packetp) {
-				sbappendrecord(&so->so_rcv.sb, m);
+				sb_appendrecord(&so->so_rcv.sb, m);
 			} else {
 				cb->s_rhdr = *mtod(m, struct spxhdr *);
 				m->m_data += SPINC;
 				m->m_len -= SPINC;
 				m->m_pkthdr.len -= SPINC;
-				sbappend(&so->so_rcv.sb, m);
+				sb_append(&so->so_rcv.sb, m);
 			}
 		  } else
 			break;
@@ -885,7 +887,7 @@ spx_output(struct spxpcb *cb, struct mbuf *m0)
 		/*
 		 * queue stuff up for output
 		 */
-		sbappendrecord(&ssb->sb, m);
+		sb_appendrecord(&ssb->sb, m);
 		cb->s_seq++;
 	}
 #ifdef notdef
@@ -1557,7 +1559,7 @@ spx_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 	cb = ipxtospxpcb(ipxp);
 
 	crit_enter();
-	if (flags & PRUS_OOB) {
+	if (flags & M_OOB) {
 		if (ssb_space(&so->so_snd) < -512) {
 			error = ENOBUFS;
 			goto spx_send_end;

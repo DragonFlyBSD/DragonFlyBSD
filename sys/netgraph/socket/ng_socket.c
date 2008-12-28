@@ -62,11 +62,14 @@
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/socketvar2.h>
 #include <sys/sysctl.h>
-#include <sys/thread2.h>
 #ifdef NOTYET
 #include <sys/vnode.h>
 #endif
+#include <sys/thread2.h>
+#include <sys/socketvar2.h>
+
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
 #include "ng_socketvar.h"
@@ -689,8 +692,8 @@ ship_msg(struct ngpcb *pcbp, struct ng_mesg *msg, struct sockaddr_ng *addr)
 	}
 
 	/* Send it up to the socket */
-	if (ssb_appendaddr(&so->so_rcv,
-	    (struct sockaddr *) addr, mdata, NULL) == 0) {
+	if (ssb_append_addr(&so->so_rcv, (struct sockaddr *)addr,
+			    mdata, NULL) == 0) {
 		TRAP_ERROR;
 		m_freem(mdata);
 		return (ENOBUFS);
@@ -808,7 +811,8 @@ ngs_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	NG_FREE_META(meta);
 
 	/* Try to tell the socket which hook it came in on */
-	if (ssb_appendaddr(&so->so_rcv, (struct sockaddr *) addr, m, NULL) == 0) {
+	if (ssb_append_addr(&so->so_rcv, (struct sockaddr *)addr,
+			    m, NULL) == 0) {
 		m_freem(m);
 		TRAP_ERROR;
 		return (ENOBUFS);
@@ -890,9 +894,9 @@ static struct pr_usrreqs ngc_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = NULL,
 	.pru_sockaddr = ng_setsockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 static struct pr_usrreqs ngd_usrreqs = {
@@ -913,9 +917,9 @@ static struct pr_usrreqs ngd_usrreqs = {
 	.pru_sense = pru_sense_null,
 	.pru_shutdown = NULL,
 	.pru_sockaddr = ng_setsockaddr,
+	.pru_poll = sopoll,
 	.pru_sosend = sosend,
-	.pru_soreceive = soreceive,
-	.pru_sopoll = sopoll
+	.pru_soreceive = soreceive
 };
 
 /*
@@ -948,8 +952,14 @@ static struct protosw ngsw[] = {
 };
 
 struct domain ngdomain = {
-	AF_NETGRAPH, "netgraph", NULL, NULL, NULL,
-	ngsw, &ngsw[sizeof(ngsw) / sizeof(ngsw[0])],
+	.dom_family = AF_NETGRAPH,
+	.dom_name = "netgraph",
+	.dom_init = NULL,
+	.dom_internalize = NULL,
+	.dom_externalize = NULL,
+	.dom_dispose = NULL,
+	.dom_protosw = ngsw,
+	.dom_protoswNPROTOSW = &ngsw[sizeof(ngsw) / sizeof(ngsw[0])]
 };
 
 /*
