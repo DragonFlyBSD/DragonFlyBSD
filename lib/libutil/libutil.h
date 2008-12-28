@@ -121,6 +121,10 @@ __END_DECLS
 #define	FPARSELN_UNESCREST	0x08
 #define	FPARSELN_UNESCALL	0x0f
 
+/* pw_scan() */
+#define PWSCAN_MASTER		0x01
+#define PWSCAN_WARN		0x02
+
 /* humanize_number(3) */ 
 #define HN_DECIMAL		0x01 
 #define HN_NOSPACE		0x02 

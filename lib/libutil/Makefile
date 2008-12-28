@@ -4,7 +4,6 @@
 
 LIB=	util
 SHLIB_MAJOR= 4
-CFLAGS+=-I${.CURDIR} -I${.CURDIR}/../../sys
 CFLAGS+=-DINET6
 CFLAGS+=-D_CTYPE_H_DISABLE_MACROS_ 
 SRCS=	flopen.c login.c login_tty.c logout.c logwtmp.c pty.c \
@@ -14,6 +13,8 @@ SRCS=	flopen.c login.c login_tty.c logout.c logwtmp.c pty.c \
 	dehumanize_number.c humanize_number.c pw_scan.c pw_util.c
 INCS=	libutil.h login_cap.h
 WARNS?=	2
+
+CFLAGS+= -I${.CURDIR} -I${.CURDIR}/../libc/gen/
 
 MAN+=	flopen.3 login.3 login_auth.3 login_tty.3 logout.3 logwtmp.3 pty.3 \
 	login_cap.3 login_class.3 login_times.3 login_ok.3 \
