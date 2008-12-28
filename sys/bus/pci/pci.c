@@ -629,6 +629,9 @@ pci_read_capabilities(device_t pcib, pcicfgregs *cfg)
 		case PCIY_EXPRESS:	/* PCI Express */
 			pci_read_cap_expr(pcib, ptr, cfg);
 			break;
+		case PCIY_VPD:		/* Vital Product Data */
+			cfg->vpdcap_ptr = ptr;
+			break;
 		default:
 			break;
 		}
@@ -1965,6 +1968,9 @@ pci_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
 		break;
 	case PCI_IVAR_PCIECAP_PTR:
 		*result = cfg->expr.expr_ptr;
+		break;
+	case PCI_IVAR_VPDCAP_PTR:
+		*result = cfg->vpdcap_ptr;
 		break;
 	default:
 		return ENOENT;
