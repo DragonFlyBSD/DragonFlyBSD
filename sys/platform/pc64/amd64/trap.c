@@ -449,13 +449,8 @@ trap(struct trapframe *frame)
 	if (ISPL(frame->tf_cs) == SEL_UPL) {
 		/* user trap */
 
-#if JG
 		KTR_LOG(kernentry_trap, p->p_pid, lp->lwp_tid,
 			frame->tf_trapno, eva);
-#else
-		KTR_LOG_STR(kernentry_trap, "pid=%d, tid=%d, trapno=%ld, eva=%lx", p->p_pid, lp->lwp_tid,
-			frame->tf_trapno, (frame->tf_trapno == T_PAGEFLT ? frame->tf_addr : 0));
-#endif
 
 		userenter(td);
 
@@ -794,11 +789,7 @@ out2:	;
 		rel_mplock();
 #endif
 	if (p != NULL && lp != NULL)
-#if JG
 		KTR_LOG(kernentry_trap_ret, p->p_pid, lp->lwp_tid);
-#else
-		KTR_LOG_STR(kernentry_trap_ret, "pid=%d, tid=%d", p->p_pid, lp->lwp_tid);
-#endif
 #ifdef INVARIANTS
 	KASSERT(crit_count == (td->td_pri & ~TDPRI_MASK),
 		("syscall: critical section count mismatch! %d/%d",
@@ -1064,13 +1055,8 @@ syscall2(struct trapframe *frame)
 	}
 #endif
 
-#if JG
 	KTR_LOG(kernentry_syscall, p->p_pid, lp->lwp_tid,
 		frame->tf_eax);
-#else
-	KTR_LOG_STR(kernentry_syscall, "pid=%d, tid=%d, call=%ld", p->p_pid, lp->lwp_tid,
-		frame->tf_rax);
-#endif
 
 #ifdef SMP
 	KASSERT(td->td_mpcount == 0, ("badmpcount syscall2 from %p", (void *)frame->tf_eip));
@@ -1285,11 +1271,7 @@ bad:
 	if (have_mplock)
 		rel_mplock();
 #endif
-#if JG
 	KTR_LOG(kernentry_syscall_ret, p->p_pid, lp->lwp_tid, error);
-#else
-	KTR_LOG_STR(kernentry_syscall_ret, "pid=%d, tid=%d, err=%d", p->p_pid, lp->lwp_tid, error);
-#endif
 #ifdef INVARIANTS
 	KASSERT(crit_count == (td->td_pri & ~TDPRI_MASK), 
 		("syscall: critical section count mismatch! %d/%d",
@@ -1306,11 +1288,7 @@ fork_return(struct lwp *lp, struct trapframe *frame)
 	frame->tf_rdx = 1;
 
 	generic_lwp_return(lp, frame);
-#if JG
 	KTR_LOG(kernentry_fork_ret, lp->lwp_proc->p_pid, lp->lwp_tid);
-#else
-	KTR_LOG_STR(kernentry_fork_ret, "pid=%d, tid=%d", lp->lwp_proc->p_pid, lp->lwp_tid);
-#endif
 }
 
 /*
