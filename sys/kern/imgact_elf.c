@@ -984,7 +984,7 @@ generic_elf_coredump(struct lwp *lp, int sig, struct file *fp, off_t limit)
 	if (error == 0) {
 		Elf_Phdr *php;
 		int i;
-		int nbytes;
+		ssize_t nbytes;
 
 		php = (Elf_Phdr *)(target.buf + sizeof(Elf_Ehdr)) + 1;
 		for (i = 0; i < seginfo.count; i++) {
@@ -1222,7 +1222,7 @@ elf_corehdr(struct lwp *lp, int sig, struct file *fp, struct ucred *cred,
 	    int numsegs, elf_buf_t target)
 {
 	int error;
-	int nbytes;
+	ssize_t nbytes;
 
 	/*
 	 * Fill in the header.  The fp is passed so we can detect and flag
