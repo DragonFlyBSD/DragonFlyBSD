@@ -1,6 +1,3 @@
-.\" @(#) $FreeBSD: src/usr.sbin/rarpd/rarpd.8,v 1.9.2.5 2002/12/01 19:19:34 dwmalone Exp $ (LBL)
-.\" @(#) $DragonFly: src/usr.sbin/rarpd/rarpd.8,v 1.2 2003/06/17 04:30:02 dillon Exp $ (LBL)
-.\"
 .\" Copyright (c) 1990, 1991, 1993 The Regents of the University of
 .\" California. All rights reserved.
 .\"
@@ -9,16 +6,16 @@
 .\" retain the above copyright notice and this paragraph in its entirety, (2)
 .\" distributions including binary code include the above copyright notice and
 .\" this paragraph in its entirety in the documentation or other materials
-.\" provided with the distribution, and (3) all advertising materials mentioning
-.\" features or use of this software display the following acknowledgement:
-.\" ``This product includes software developed by the University of California,
-.\" Lawrence Berkeley Laboratory and its contributors.'' Neither the name of
+.\" provided with the distribution.  Neither the name of
 .\" the University nor the names of its contributors may be used to endorse
 .\" or promote products derived from this software without specific prior
 .\" written permission.
 .\" THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
 .\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
 .\" MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+.\"
+.\" $FreeBSD: src/usr.sbin/rarpd/rarpd.8,v 1.22 2005/02/09 18:04:41 ru Exp $
+.\" $DragonFly: src/usr.sbin/rarpd/rarpd.8,v 1.2 2003/06/17 04:30:02 dillon Exp $
 .\"
 .Dd November 16, 2001
 .Dt RARPD 8
@@ -28,9 +25,13 @@
 .Nd reverse ARP daemon
 .Sh SYNOPSIS
 .Nm
-.Op Fl adfsv
+.Fl a
+.Op Fl dfsv
 .Op Fl t Ar directory
-.Op Ar interface
+.Nm
+.Op Fl dfsv
+.Op Fl t Ar directory
+.Ar interface
 .Sh DESCRIPTION
 The
 .Nm
@@ -142,7 +143,7 @@ If this name is not in the DNS but is in
 .Pa /etc/hosts ,
 the DNS lookup can cause a delayed RARP response, so in this situation
 it is recommended to configure
-.Pa /etc/host.conf
+.Xr nsswitch.conf 5
 to read
 .Pa /etc/hosts
 first.

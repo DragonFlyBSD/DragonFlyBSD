@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/ypserv/yp_server.c,v 1.31.2.1 2002/02/15 00:47:00 des Exp $
+ * $FreeBSD: src/usr.sbin/ypserv/yp_server.c,v 1.40 2006/06/09 14:01:07 maxim Exp $
  * $DragonFly: src/usr.sbin/ypserv/yp_server.c,v 1.4 2005/11/24 22:23:02 swildner Exp $
  */
 
@@ -163,11 +163,12 @@ ypproc_match_2_svc(ypreq_key *argp, struct svc_req *rqstp)
 	 */
 
 #ifdef DB_CACHE
-	if (result.stat != YP_TRUE &&
+	if (do_dns && result.stat != YP_TRUE &&
 	    (yp_testflag(argp->map, argp->domain, YP_INTERDOMAIN) ||
-	    (strstr(argp->map, "hosts") && do_dns))) {
+	    (strstr(argp->map, "hosts") || strstr(argp->map, "ipnodes")))) {
 #else
-	if (do_dns && result.stat != YP_TRUE && strstr(argp->map, "hosts")) {
+	if (do_dns && result.stat != YP_TRUE &&
+	    (strstr(argp->map, "hosts") || strstr(argp->map, "ipnodes"))) {
 #endif
 		char			nbuf[YPMAXRECORD];
 
@@ -179,9 +180,17 @@ ypproc_match_2_svc(ypreq_key *argp, struct svc_req *rqstp)
 			yp_error("doing DNS lookup of %s", nbuf);
 
 		if (!strcmp(argp->map, "hosts.byname"))
-			result.stat = yp_async_lookup_name(rqstp, nbuf);
+			result.stat = yp_async_lookup_name(rqstp, nbuf,
+			    AF_INET);
 		else if (!strcmp(argp->map, "hosts.byaddr"))
-			result.stat = yp_async_lookup_addr(rqstp, nbuf);
+			result.stat = yp_async_lookup_addr(rqstp, nbuf,
+			    AF_INET);
+		else if (!strcmp(argp->map, "ipnodes.byname"))
+			result.stat = yp_async_lookup_name(rqstp, nbuf,
+			    AF_INET6);
+		else if (!strcmp(argp->map, "ipnodes.byaddr"))
+			result.stat = yp_async_lookup_addr(rqstp, nbuf,
+			    AF_INET6);
 
 		if (result.stat == YP_TRUE)
 			return(NULL);
@@ -282,7 +291,7 @@ ypxfr_callback(ypxfrstat rval, struct sockaddr_in *addr, unsigned int transid,
 
 	/* Turn the timeout off -- we don't want to block. */
 	timeout.tv_sec = 0;
-	if (clnt_control(clnt, CLSET_TIMEOUT, (char *)&timeout) == FALSE)
+	if (clnt_control(clnt, CLSET_TIMEOUT, &timeout) == FALSE)
 		yp_error("failed to set timeout on ypproc_xfr callback");
 
 	if (yppushproc_xfrresp_1(&ypxfr_resp, clnt) == NULL) {
@@ -300,7 +309,7 @@ ypxfr_callback(ypxfrstat rval, struct sockaddr_in *addr, unsigned int transid,
 #define YPXFR_RETURN(CODE) 						\
 	/* Order is important: send regular RPC reply, then callback */	\
 	result.xfrstat = CODE; 						\
-	svc_sendreply(rqstp->rq_xprt, xdr_ypresp_xfr, (char *)&result); \
+	svc_sendreply(rqstp->rq_xprt, (xdrproc_t)xdr_ypresp_xfr, &result); \
 	ypxfr_callback(CODE,rqhost,argp->transid, 			\
 					argp->prog,argp->port); 	\
 	return(NULL);
@@ -361,10 +370,10 @@ ypproc_xfr_2_svc(ypreq_xfr *argp, struct svc_req *rqstp)
 		char g[11], t[11], p[11];
 		char ypxfr_command[MAXPATHLEN + 2];
 
-		sprintf (ypxfr_command, "%sypxfr", _PATH_LIBEXEC);
-		sprintf (t, "%u", argp->transid);
-		sprintf (g, "%u", argp->prog);
-		sprintf (p, "%u", argp->port);
+		snprintf (ypxfr_command, sizeof(ypxfr_command), "%sypxfr", _PATH_LIBEXEC);
+		snprintf (t, sizeof(t), "%u", argp->transid);
+		snprintf (g, sizeof(g), "%u", argp->prog);
+		snprintf (p, sizeof(p), "%u", argp->port);
 		if (debug) {
 			close(0); close(1); close(2);
 		}
@@ -547,7 +556,7 @@ ypproc_all_2_svc(ypreq_nokey *argp, struct svc_req *rqstp)
 	}
 
 	/* Kick off the actual data transfer. */
-	svc_sendreply(rqstp->rq_xprt, xdr_my_ypresp_all, (char *)&result);
+	svc_sendreply(rqstp->rq_xprt, (xdrproc_t)xdr_my_ypresp_all, &result);
 
 	/*
 	 * Proper fix for PR #10970: exit here so that we don't risk
@@ -595,10 +604,9 @@ ypproc_master_2_svc(ypreq_nokey *argp, struct svc_req *rqstp)
 	 */
 	result.stat = yp_getbykey(&key, &val);
 	if (result.stat == YP_TRUE) {
-		bcopy((char *)val.valdat_val, (char *)&ypvalbuf,
-						val.valdat_len);
+		bcopy(val.valdat_val, &ypvalbuf, val.valdat_len);
 		ypvalbuf[val.valdat_len] = '\0';
-		result.peer = (char *)&ypvalbuf;
+		result.peer = ypvalbuf;
 	} else
 		result.peer = "";
 
@@ -643,7 +651,7 @@ ypproc_order_2_svc(ypreq_nokey *argp, struct svc_req *rqstp)
 	result.stat = yp_getbykey(&key, &val);
 
 	if (result.stat == YP_TRUE)
-		result.ordernum = atoi((char *)val.valdat_val);
+		result.ordernum = atoi(val.valdat_val);
 	else
 		result.ordernum = 0;
 
@@ -696,7 +704,7 @@ yp_maplist_create(const char *domain)
 				yp_maplist_free(yp_maplist);
 				return(NULL);
 			}
-			if ((cur->map = (char *)strdup(dirp->d_name)) == NULL) {
+			if ((cur->map = strdup(dirp->d_name)) == NULL) {
 				yp_error("strdup() failed: %s",strerror(errno));
 				closedir(dird);
 				yp_maplist_free(yp_maplist);
@@ -816,8 +824,7 @@ ypoldproc_match_1_svc(yprequest *argp, struct svc_req *rqstp)
 	if (v2_result == NULL)
 		return(NULL);
 
-	bcopy((char *)v2_result,
-	      (char *)&result.ypresponse_u.yp_resp_valtype,
+	bcopy(v2_result, &result.ypresponse_u.yp_resp_valtype,
 	      sizeof(ypresp_val));
 
 	return (&result);
@@ -848,8 +855,7 @@ ypoldproc_first_1_svc(yprequest *argp, struct svc_req *rqstp)
 	if (v2_result == NULL)
 		return(NULL);
 
-	bcopy((char *)v2_result,
-	      (char *)&result.ypresponse_u.yp_resp_key_valtype,
+	bcopy(v2_result, &result.ypresponse_u.yp_resp_key_valtype,
 	      sizeof(ypresp_key_val));
 
 	return (&result);
@@ -879,8 +885,7 @@ ypoldproc_next_1_svc(yprequest *argp, struct svc_req *rqstp)
 	if (v2_result == NULL)
 		return(NULL);
 
-	bcopy((char *)v2_result,
-	      (char *)&result.ypresponse_u.yp_resp_key_valtype,
+	bcopy(v2_result, &result.ypresponse_u.yp_resp_key_valtype,
 	      sizeof(ypresp_key_val));
 
 	return (&result);

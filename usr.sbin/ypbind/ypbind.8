@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -29,7 +25,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.sbin/ypbind/ypbind.8,v 1.15.2.4 2003/03/11 22:31:35 trhodes Exp $
+.\" $FreeBSD: src/usr.sbin/ypbind/ypbind.8,v 1.23 2005/02/13 22:25:33 ru Exp $
 .\" $DragonFly: src/usr.sbin/ypbind/ypbind.8,v 1.2 2003/06/17 04:30:04 dillon Exp $
 .\"
 .Dd April 9, 1995
@@ -114,7 +110,7 @@ if they originated from the local host.
 Cause
 .Nm
 to run in secure mode: it will refuse to bind to any NIS server
-that is not running as root (i.e. that is not using privileged
+that is not running as root (i.e., that is not using privileged
 TCP ports).
 .It Fl S Xo
 .Sm off
@@ -140,10 +136,11 @@ options, which are often considered to be security holes.
 The specified
 servers must have valid entries in the local
 .Pa /etc/hosts
-file. IP addresses may be specified in place of hostnames.
+file.
+IP addresses may be specified in place of hostnames.
 If
 .Nm
-can't make sense ouf of the arguments, it will ignore
+cannot make sense out of the arguments, it will ignore
 the
 .Fl S
 flag and continue running normally.

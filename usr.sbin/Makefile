@@ -76,7 +76,6 @@ SUBDIR= 802_11 \
 	pfctl \
 	pflogd \
 	pnpinfo \
-	portmap \
 	ppp \
 	pppctl \
 	pppd \
@@ -101,6 +100,7 @@ SUBDIR= 802_11 \
 	rpc.yppasswdd \
 	rpc.ypupdated \
 	rpc.ypxfrd \
+	rpcbind \
 	rrenumd \
 	rtadvd \
 	rtprio \
@@ -159,6 +159,10 @@ SUBDIR+=named \
 
 .if !defined(NO_LPR)
 SUBDIR+=lpr
+.endif
+
+.if !defined(NO_NS_CACHING)
+SUBDIR+=nscd
 .endif
 
 .if !defined(NO_SENDMAIL)

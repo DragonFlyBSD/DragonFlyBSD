@@ -52,8 +52,8 @@ static int	inet_pton6 __P((const char *src, u_char *dst));
 int
 inet_pton(af, src, dst)
 	int af;
-	const char *src;
-	void *dst;
+	const char * __restrict src;
+	void * __restrict dst;
 {
 	switch (af) {
 	case AF_INET:
@@ -219,3 +219,12 @@ inet_pton6(src, dst)
 	memcpy(dst, tmp, NS_IN6ADDRSZ);
 	return (1);
 }
+
+#ifdef _LIBC
+/*
+ * Weak aliases for applications that use certain private entry points,
+ * and fail to include <arpa/inet.h>.
+ */
+#undef inet_pton
+__weak_reference(__inet_pton, inet_pton);
+#endif

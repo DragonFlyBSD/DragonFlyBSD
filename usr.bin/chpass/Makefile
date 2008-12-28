@@ -8,7 +8,7 @@ SRCS=	chpass.c edit.c field.c pw_copy.c pw_scan.c pw_util.c pw_yp.c \
 GENSRCS=yp.h yp_clnt.c yppasswd.h yppasswd_clnt.c yppasswd_private.h \
 	yppasswd_private_clnt.c yppasswd_private_xdr.c
 BINMODE=4555
-WARNS?=	1
+WARNS?=	0
 .PATH:	${.CURDIR}/../../usr.sbin/pwd_mkdb ${.CURDIR}/../../usr.sbin/vipw \
 	${.CURDIR}/../../libexec/ypxfr \
 	${.CURDIR}/../../usr.sbin/rpc.yppasswdd \

@@ -29,16 +29,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $NetBSD: lockd.h,v 1.2 2000/06/07 14:34:40 bouyer Exp $
+ * $FreeBSD: src/usr.sbin/rpc.lockd/lockd.h,v 1.3 2001/03/19 12:50:09 alfred Exp $
+ * $DragonFly$
  */
 
-
-
-#include <stdio.h>
-#include <rpc/rpc.h>
-#include <syslog.h>
-#include <rpcsvc/sm_inter.h>	/* protocol to talk to rpc.statd	*/
-#include "nlm_prot.h"		/* The protocol we are implementing	*/
-
-
-/* global variables ------------------------------------------------------- */
-extern int debug_level;
+extern int	debug_level;
+extern int	grace_expired;

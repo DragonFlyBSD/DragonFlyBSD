@@ -28,6 +28,7 @@
  * Mountain View, California  94043
  *
  * @(#)rstat.c	1.2 91/03/11 TIRPC 1.0; from 1.6 89/03/24 SMI
+ * $FreeBSD: src/lib/librpcsvc/rstat.c,v 1.4 2003/10/26 03:43:35 peter Exp $
  * $DragonFly: src/lib/librpcsvc/rstat.c,v 1.3 2007/11/25 14:33:02 swildner Exp $
  */
 
@@ -41,12 +42,12 @@
 #include <rpc/rpc.h>
 #include <rpcsvc/rstat.h>
 
-int
+enum clnt_stat
 rstat(char *host, struct statstime *statp)
 {
 	return (callrpc(host, RSTATPROG, RSTATVERS_TIME, RSTATPROC_STATS,
-			xdr_void, (char *) NULL,
-			xdr_statstime, (char *) statp));
+			(xdrproc_t)xdr_void, NULL,
+			(xdrproc_t)xdr_statstime, (char *) statp));
 }
 
 int
@@ -55,8 +56,8 @@ havedisk(char *host)
 	long have;
 	
 	if (callrpc(host, RSTATPROG, RSTATVERS_SWTCH, RSTATPROC_HAVEDISK,
-			xdr_void, (char *) NULL,
-			xdr_long, (char *) &have) != 0)
+			(xdrproc_t)xdr_void, NULL,
+			(xdrproc_t)xdr_long, (char *) &have) != 0)
 		return (-1);
 	else
 		return (have);

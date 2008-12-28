@@ -107,3 +107,14 @@ inet_nsap_ntoa(int binlen, const u_char *binary, char *ascii) {
 	*ascii = '\0';
 	return (start);
 }
+
+#ifdef _LIBC
+/*
+ * Weak aliases for applications that use certain private entry points,
+ * and fail to include <arpa/inet.h>.
+ */
+#undef inet_nsap_addr
+__weak_reference(__inet_nsap_addr, inet_nsap_addr);
+#undef inet_nsap_ntoa
+__weak_reference(__inet_nsap_ntoa, inet_nsap_ntoa);
+#endif

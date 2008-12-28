@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/librpcsvc/yp_passwd.c,v 1.2 1999/08/28 00:05:24 peter Exp $
+ * $FreeBSD: src/lib/librpcsvc/yp_passwd.c,v 1.7 2003/10/26 03:43:35 peter Exp $
  * $DragonFly: src/lib/librpcsvc/yp_passwd.c,v 1.3 2007/11/25 14:33:02 swildner Exp $
  */
 
@@ -39,10 +39,6 @@
 #include <rpcsvc/ypclnt.h>
 #include <rpcsvc/yppasswd.h>
 #include <netinet/in.h>
-
-#ifndef LINT
-static const char rcsid[] = "$FreeBSD: src/lib/librpcsvc/yp_passwd.c,v 1.2 1999/08/28 00:05:24 peter Exp $";
-#endif
 
 /*
  * XXX <rpcsvc/yppasswd.h> does a typedef that makes 'yppasswd'
@@ -54,7 +50,8 @@ static const char rcsid[] = "$FreeBSD: src/lib/librpcsvc/yp_passwd.c,v 1.2 1999/
  * fooling gcc.
  */
 
-int _yppasswd(char *oldpass, struct x_passwd *newpw)
+int
+_yppasswd(char *oldpass, struct x_passwd *newpw)
 {
 	char *server;
 	char *domain;
@@ -79,8 +76,8 @@ int _yppasswd(char *oldpass, struct x_passwd *newpw)
 	}
 
 	rval = callrpc(server, YPPASSWDPROG, YPPASSWDVERS, YPPASSWDPROC_UPDATE,
-		       xdr_yppasswd, (char *)&yppasswd, xdr_int,
-		       (char *)&result);
+		       (xdrproc_t)xdr_yppasswd, (char *)&yppasswd,
+		       (xdrproc_t)xdr_int, (char *)&result);
 
 	free(server);
 	if (rval || result)

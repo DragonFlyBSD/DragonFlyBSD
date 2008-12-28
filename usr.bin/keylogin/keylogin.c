@@ -29,6 +29,7 @@
  *
  * @(#)keylogin.c 1.4 91/03/11 Copyr 1986 Sun Micro
  *
+ * $FreeBSD: src/usr.bin/keylogin/keylogin.c,v 1.4 2002/06/30 05:25:01 obrien Exp $
  * $DragonFly: src/usr.bin/keylogin/keylogin.c,v 1.4 2007/11/25 01:28:23 swildner Exp $
  */
 
@@ -51,7 +52,7 @@ int
 main(void)
 {
 	char fullname[MAXNETNAMELEN + 1];
-	struct netstarg netst;
+	struct key_netstarg netst;
 
 	if (!getnetname(fullname)) {
 		fprintf(stderr, "netname lookup failed -- make sure the ");

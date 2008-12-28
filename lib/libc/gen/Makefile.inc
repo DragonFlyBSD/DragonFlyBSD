@@ -9,7 +9,7 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	alarm.c arc4random.c assert.c basename.c \
 	clock.c closedir.c confstr.c \
 	ctermid.c ctype.c daemon.c devname.c dirname.c disklabel.c disktab.c \
-	dlfcn.c drand48.c erand48.c err.c errlst.c \
+	dlfcn.c dlfunc.c drand48.c erand48.c err.c errlst.c \
 	exec.c fmtcheck.c fmtmsg.c fnmatch.c fpclassifyd.c fpclassifyf.c \
 	fstab.c ftok.c fts.c ftw.c getbootfile.c getbsize.c \
 	getcap.c getcwd.c getdomainname.c getgrent.c getgrouplist.c \
@@ -24,7 +24,7 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	msgget.c msgrcv.c msgsnd.c nftw.c nice.c \
 	nlist.c nrand48.c ntp_gettime.c opendir.c \
 	pause.c pmadvise.c popen.c posixshm.c \
-	psignal.c pthread_fake.c pwcache.c \
+	psignal.c pthread_fake.c pw_scan.c pwcache.c \
 	raise.c readdir.c readpassphrase.c rewinddir.c \
 	scandir.c seed48.c seekdir.c semconfig.c semctl.c semget.c semop.c \
 	setdomainname.c sethostname.c setjmperr.c setmode.c setprogname.c \
@@ -103,7 +103,9 @@ MLINKS+=getnetgrent.3 endnetgrent.3 getnetgrent.3 innetgr.3 \
 	getnetgrent.3 setnetgrent.3
 MLINKS+=getprogname.3 setprogname.3
 MLINKS+=getpwent.3 endpwent.3 getpwent.3 getpwnam.3 getpwent.3 getpwuid.3 \
-	getpwent.3 setpassent.3 getpwent.3 setpwent.3 getpwent.3 setpwfile.3
+	getpwent.3 setpassent.3 getpwent.3 setpwent.3 getpwent.3 setpwfile.3 \
+	getpwent.3 getpwent_r.3 getpwent.3 getpwnam_r.3 \
+	getpwent.3 getpwuid_r.3
 MLINKS+=getttyent.3 endttyent.3 getttyent.3 getttynam.3 \
 	getttyent.3 isdialuptty.3 getttyent.3 isnettty.3 \
 	getttyent.3 setttyent.3

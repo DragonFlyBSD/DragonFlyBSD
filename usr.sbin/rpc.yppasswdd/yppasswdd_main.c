@@ -29,38 +29,41 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/rpc.yppasswdd/yppasswdd_main.c,v 1.14.2.2 2002/02/15 00:46:57 des Exp $
+ * $FreeBSD: src/usr.sbin/rpc.yppasswdd/yppasswdd_main.c,v 1.27 2008/10/30 01:54:31 rafan Exp $
  * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_main.c,v 1.5 2005/11/25 00:32:49 swildner Exp $
  */
 
-#include "yppasswd.h"
-#include <stdio.h>
-#include <sys/types.h>
-#include <stdlib.h> /* getenv, exit */
-#include <unistd.h>
-#include <string.h>
 #include <sys/param.h>
-#include <rpc/pmap_clnt.h> /* for pmap_unset */
-#include <string.h> /* strcmp */
-#include <signal.h>
-#include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
-#ifdef __cplusplus
-#include <sysent.h> /* getdtablesize, open */
-#endif /* __cplusplus */
-#include <memory.h>
 #include <sys/socket.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 #include <netinet/in.h>
-#include <syslog.h>
+
 #include <err.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <memory.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h> /* getenv, exit */
+#include <string.h>
+#include <string.h> /* strcmp */
+#include <syslog.h>
+#include <unistd.h>
+
+#include <rpc/rpc.h>
+#include <rpc/rpc_com.h>
+#include <rpc/pmap_clnt.h> /* for pmap_unset */
 #include <rpcsvc/yp.h>
-struct dom_binding {};
 #include <rpcsvc/ypclnt.h>
+
+#include "yppasswd.h"
 #include "yppasswdd_extern.h"
 #include "yppasswd_private.h"
 #include "ypxfr_extern.h"
+#include "yp_extern.h"
 
 #ifndef SIG_PF
 #define	SIG_PF void(*)(int)
@@ -80,10 +83,15 @@ static int _rpcfdtype;
 #define	_SERVED 1
 #define	_SERVING 2
 
+static char _localhost[] = "localhost";
+static char _passwd_byname[] = "passwd.byname";
 extern int _rpcsvcstate;	 /* Set when a request is serviced */
-char *progname = "rpc.yppasswdd";
-char *yp_dir = _PATH_YP;
-char *passfile_default = _PATH_YP "master.passwd";
+static char _progname[] = "rpc.yppasswdd";
+char *progname = _progname;
+static char _yp_dir[] = _PATH_YP;
+char *yp_dir = _yp_dir;
+static char _passfile_default[] = _PATH_YP "master.passwd";
+char *passfile_default = _passfile_default;
 char *passfile;
 char *yppasswd_domain = NULL;
 int no_chsh = 0;
@@ -93,25 +101,25 @@ int multidomain = 0;
 int verbose = 0;
 int resvport = 1;
 int inplace = 0;
-char *sockname = YP_SOCKNAME;
+char sockname[] = YP_SOCKNAME;
 
 static void
-terminate(int sig)
+terminate(int sig __unused)
 {
-	svc_unregister(YPPASSWDPROG, YPPASSWDVERS);
-	svc_unregister(MASTER_YPPASSWDPROG, MASTER_YPPASSWDVERS);
+	rpcb_unset(YPPASSWDPROG, YPPASSWDVERS, NULL);
+	rpcb_unset(MASTER_YPPASSWDPROG, MASTER_YPPASSWDVERS, NULL);
 	unlink(sockname);
 	exit(0);
 }
 
 static void
-reload(int sig)
+reload(int sig __unused)
 {
 	load_securenets();
 }
 
 static void
-closedown(int sig)
+closedown(int sig __unused)
 {
 	if (_rpcsvcstate == _IDLE) {
 		extern fd_set svc_fdset;
@@ -140,7 +148,8 @@ closedown(int sig)
 	alarm(_RPCSVC_CLOSEDOWN/2);
 }
 
-static void usage(void)
+static void
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
 "usage: rpc.yppasswdd [-t master.passwd file] [-d domain] [-p path] [-s]",
@@ -151,14 +160,18 @@ static void usage(void)
 int
 main(int argc, char *argv[])
 {
+	struct rlimit rlim;
 	SVCXPRT *transp = NULL;
-	int sock;
-	int proto = 0;
 	struct sockaddr_in saddr;
-	int asize = sizeof (saddr);
+	socklen_t asize = sizeof (saddr);
+	struct netconfig *nconf;
+	struct sigaction sa;
+	void *localhandle;
 	int ch;
 	char *mastername;
 	char myname[MAXHOSTNAMELEN + 2];
+	int maxrec = RPC_MAXDATASIZE;
+
 	extern int debug;
 
 	debug = 1;
@@ -212,14 +225,14 @@ name isn't set -- aborting");
 
 	load_securenets();
 
-	if (getrpcport("localhost", YPPROG, YPVERS, IPPROTO_UDP) <= 0) {
+	if (getrpcport(_localhost, YPPROG, YPVERS, IPPROTO_UDP) <= 0) {
 		yp_error("no ypserv processes registered with local portmap");
 		yp_error("this host is not an NIS server -- aborting");
 		exit(1);
 	}
 
-	if ((mastername = ypxfr_get_master(yppasswd_domain, "passwd.byname",
-						"localhost",0)) == NULL) {
+	if ((mastername = ypxfr_get_master(yppasswd_domain,
+		 _passwd_byname, _localhost, 0)) == NULL) {
 		yp_error("can't get name of NIS master server for domain %s",
 			 				yppasswd_domain);
 		exit(1);
@@ -241,68 +254,65 @@ the %s domain -- aborting", yppasswd_domain);
 	debug = 0;
 
 	if (getsockname(0, (struct sockaddr *)&saddr, &asize) == 0) {
-		int ssize = sizeof (int);
-
+		socklen_t ssize = sizeof (int);
 		if (saddr.sin_family != AF_INET)
 			exit(1);
 		if (getsockopt(0, SOL_SOCKET, SO_TYPE,
-				(char *)&_rpcfdtype, &ssize) == -1)
+		    (char *)&_rpcfdtype, &ssize) == -1)
 			exit(1);
-		sock = 0;
 		_rpcpmstart = 1;
-		proto = 0;
-		openlog("rpc.yppasswdd", LOG_PID, LOG_DAEMON);
-	} else {
-		if (!debug) {
-			if (daemon(0,0)) {
-				err(1,"cannot fork");
-			}
-		}
-		openlog("rpc.yppasswdd", LOG_PID, LOG_DAEMON);
-		sock = RPC_ANYSOCK;
-		pmap_unset(YPPASSWDPROG, YPPASSWDVERS);
-		pmap_unset(MASTER_YPPASSWDPROG, MASTER_YPPASSWDVERS);
-		unlink(sockname);
 	}
 
-	if ((_rpcfdtype == 0) || (_rpcfdtype == SOCK_DGRAM)) {
-		transp = svcudp_create(sock);
-		if (transp == NULL) {
-			yp_error("cannot create udp service.");
-			exit(1);
-		}
-		if (!_rpcpmstart)
-			proto = IPPROTO_UDP;
-		if (!svc_register(transp, YPPASSWDPROG, YPPASSWDVERS, yppasswdprog_1, proto)) {
-			yp_error("unable to register (YPPASSWDPROG, YPPASSWDVERS, udp).");
-			exit(1);
+	if (!debug && _rpcpmstart == 0) {
+		if (daemon(0,0)) {
+			err(1,"cannot fork");
 		}
 	}
+	openlog("rpc.yppasswdd", LOG_PID, LOG_DAEMON);
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_flags = SA_NOCLDWAIT;
+	sigaction(SIGCHLD, &sa, NULL);
 
-	if ((_rpcfdtype == 0) || (_rpcfdtype == SOCK_STREAM)) {
-		transp = svctcp_create(sock, 0, 0);
-		if (transp == NULL) {
-			yp_error("cannot create tcp service.");
-			exit(1);
-		}
-		if (!_rpcpmstart)
-			proto = IPPROTO_TCP;
-		if (!svc_register(transp, YPPASSWDPROG, YPPASSWDVERS, yppasswdprog_1, proto)) {
-			yp_error("unable to register (YPPASSWDPROG, YPPASSWDVERS, tcp).");
-			exit(1);
-		}
+	rpcb_unset(YPPASSWDPROG, YPPASSWDVERS, NULL);
+	rpcb_unset(MASTER_YPPASSWDPROG, MASTER_YPPASSWDVERS, NULL);
+
+	rpc_control(RPC_SVC_CONNMAXREC_SET, &maxrec);
+
+	if (svc_create(yppasswdprog_1, YPPASSWDPROG, YPPASSWDVERS, "netpath") == 0) {
+		yp_error("cannot create yppasswd service.");
+		exit(1);
+	}
+	if (svc_create(master_yppasswdprog_1, MASTER_YPPASSWDPROG,
+	    MASTER_YPPASSWDVERS, "netpath") == 0) {
+		yp_error("cannot create master_yppasswd service.");
+		exit(1);
 	}
 
+	nconf = NULL;
+	localhandle = setnetconfig();
+	while ((nconf = getnetconfig(localhandle)) != NULL) {
+		if (nconf->nc_protofmly != NULL &&
+		    strcmp(nconf->nc_protofmly, NC_LOOPBACK) == 0)
+			break;
+	}
+	if (nconf == NULL) {
+		yp_error("getnetconfigent unix: %s", nc_sperror());
+		exit(1);
+	}
 	unlink(sockname);
-	transp = svcunix_create(sock, 0, 0, sockname);
+	transp = svcunix_create(RPC_ANYSOCK, 0, 0, sockname);
 	if (transp == NULL) {
 		yp_error("cannot create AF_LOCAL service.");
 		exit(1);
 	}
-	if (!svc_register(transp, MASTER_YPPASSWDPROG, MASTER_YPPASSWDVERS, master_yppasswdprog_1, 0)) {
-		yp_error("unable to register (MASTER_YPPASSWDPROG, MASTER_YPPASSWDVERS, unix).");
+	if (!svc_reg(transp, MASTER_YPPASSWDPROG, MASTER_YPPASSWDVERS,
+	    master_yppasswdprog_1, nconf)) {
+		yp_error("unable to register (MASTER_YPPASSWDPROG, \
+		    MASTER_YPPASSWDVERS, unix).");
 		exit(1);
 	}
+	endnetconfig(localhandle);
+
 	/* Only root may connect() to the AF_UNIX link. */
 	if (chmod(sockname, 0))
 		err(1, "chmod of %s failed", sockname);
@@ -315,14 +325,26 @@ the %s domain -- aborting", yppasswd_domain);
 		signal(SIGALRM, (SIG_PF) closedown);
 		alarm(_RPCSVC_CLOSEDOWN/2);
 	}
-	/* set up resource limits and block signals */
-	pw_init();
 
-	/* except SIGCHLD, which we need to catch */
-	install_reaper(1);
-	signal(SIGTERM, (SIG_PF) terminate);
+	/* Unlimited resource limits. */
+	rlim.rlim_cur = rlim.rlim_max = RLIM_INFINITY;
+	setrlimit(RLIMIT_CPU, &rlim);
+	setrlimit(RLIMIT_FSIZE, &rlim);
+	setrlimit(RLIMIT_STACK, &rlim);
+	setrlimit(RLIMIT_DATA, &rlim);
+	setrlimit(RLIMIT_RSS, &rlim);
 
+	/* Don't drop core (not really necessary, but GP's). */
+	rlim.rlim_cur = rlim.rlim_max = 0;
+	setrlimit(RLIMIT_CORE, &rlim);
+
+	/* Turn off signals. */
+	signal(SIGALRM, SIG_IGN);
 	signal(SIGHUP, (SIG_PF) reload);
+	signal(SIGINT, SIG_IGN);
+	signal(SIGPIPE, SIG_IGN);
+	signal(SIGQUIT, SIG_IGN);
+	signal(SIGTERM, (SIG_PF) terminate);
 
 	svc_run();
 	yp_error("svc_run returned");

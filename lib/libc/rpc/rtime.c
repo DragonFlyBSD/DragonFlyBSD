@@ -5,35 +5,34 @@
  * may copy or modify Sun RPC without charge, but are not authorized
  * to license or distribute it to anyone else except as part of a product or
  * program developed by the user.
- * 
+ *
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
  * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
- * 
+ *
  * Sun RPC is provided with no support and without any obligation on the
  * part of Sun Microsystems, Inc. to assist in its use, correction,
  * modification or enhancement.
- * 
+ *
  * SUN MICROSYSTEMS, INC. SHALL HAVE NO LIABILITY WITH RESPECT TO THE
  * INFRINGEMENT OF COPYRIGHTS, TRADE SECRETS OR ANY PATENTS BY SUN RPC
  * OR ANY PART THEREOF.
- * 
+ *
  * In no event will Sun Microsystems, Inc. be liable for any lost revenue
  * or profits or other special, indirect and consequential damages, even if
  * Sun has been advised of the possibility of such damages.
- * 
+ *
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  *
  * @(#)rtime.c	2.2 88/08/10 4.0 RPCSRC; from 1.8 88/02/08 SMI
- * $FreeBSD: src/lib/libc/rpc/rtime.c,v 1.5 2000/01/27 23:06:41 jasone Exp $
+ * $FreeBSD: src/lib/libc/rpc/rtime.c,v 1.9 2005/03/10 00:57:01 stefanf Exp $
  * $DragonFly: src/lib/libc/rpc/rtime.c,v 1.5 2005/11/13 12:27:04 swildner Exp $
  */
 
 /*
  * Copyright (c) 1988 by Sun Microsystems, Inc.
-
  */
 
 /*
@@ -58,12 +57,12 @@
 #include <netdb.h>
 #include "un-namespace.h"
 
-extern int _rpc_dtablesize ( void );
+extern int _rpc_dtablesize(void);
 
 #define NYEARS	(unsigned long)(1970 - 1900)
 #define TOFFSET (unsigned long)(60*60*24*(365*NYEARS + (NYEARS/4)))
 
-static void do_close ( int );
+static void do_close(int);
 
 int
 rtime(struct sockaddr_in *addrp, struct timeval *timep, struct timeval *timeout)
@@ -73,7 +72,7 @@ rtime(struct sockaddr_in *addrp, struct timeval *timep, struct timeval *timeout)
 	int res;
 	unsigned long thetime;
 	struct sockaddr_in from;
-	int fromlen;
+	socklen_t fromlen;
 	int type;
 	struct servent *serv;
 

@@ -35,10 +35,9 @@
  * Center for Telecommunications Research
  * Columbia University, New York City
  *
- * $FreeBSD: src/lib/librpcsvc/yp_update.c,v 1.2.2.1 2002/02/15 00:46:54 des Exp $
+ * $FreeBSD: src/lib/librpcsvc/yp_update.c,v 1.7 2003/10/26 03:43:35 peter Exp $
  * $DragonFly: src/lib/librpcsvc/yp_update.c,v 1.3 2007/11/25 14:33:02 swildner Exp $
  *
- * $FreeBSD: src/lib/librpcsvc/yp_update.c,v 1.2.2.1 2002/02/15 00:46:54 des Exp $
  */
 
 #include <stdlib.h>
@@ -128,8 +127,9 @@ yp_update(char *domain, char *map, unsigned int ypop, char *key, int keylen,
 		upargs.datum.yp_buf_len = datalen;
 		upargs.datum.yp_buf_val = data;
 
-		if ((rval = clnt_call(clnt, YPU_CHANGE, xdr_ypupdate_args,
-			&upargs, xdr_u_int, &res, timeout)) != RPC_SUCCESS) {
+		if ((rval = clnt_call(clnt, YPU_CHANGE,
+			(xdrproc_t)xdr_ypupdate_args, &upargs,
+			(xdrproc_t)xdr_u_int, &res, timeout)) != RPC_SUCCESS) {
 			if (rval == RPC_AUTHERROR)
 				res = YPERR_ACCESS;
 			else
@@ -144,8 +144,9 @@ yp_update(char *domain, char *map, unsigned int ypop, char *key, int keylen,
 		upargs.datum.yp_buf_len = datalen;
 		upargs.datum.yp_buf_val = data;
 
-		if ((rval = clnt_call(clnt, YPU_INSERT, xdr_ypupdate_args,
-			&upargs, xdr_u_int, &res, timeout)) != RPC_SUCCESS) {
+		if ((rval = clnt_call(clnt, YPU_INSERT,
+			(xdrproc_t)xdr_ypupdate_args, &upargs,
+			(xdrproc_t)xdr_u_int, &res, timeout)) != RPC_SUCCESS) {
 			if (rval == RPC_AUTHERROR)
 				res = YPERR_ACCESS;
 			else
@@ -158,8 +159,9 @@ yp_update(char *domain, char *map, unsigned int ypop, char *key, int keylen,
 		delargs.key.yp_buf_len = keylen;
 		delargs.key.yp_buf_val = key;
 
-		if ((rval = clnt_call(clnt, YPU_DELETE, xdr_ypdelete_args,
-			&delargs, xdr_u_int, &res, timeout)) != RPC_SUCCESS) {
+		if ((rval = clnt_call(clnt, YPU_DELETE,
+			(xdrproc_t)xdr_ypdelete_args, &delargs,
+			(xdrproc_t)xdr_u_int, &res, timeout)) != RPC_SUCCESS) {
 			if (rval == RPC_AUTHERROR)
 				res = YPERR_ACCESS;
 			else
@@ -174,8 +176,9 @@ yp_update(char *domain, char *map, unsigned int ypop, char *key, int keylen,
 		upargs.datum.yp_buf_len = datalen;
 		upargs.datum.yp_buf_val = data;
 
-		if ((rval = clnt_call(clnt, YPU_STORE, xdr_ypupdate_args,
-			&upargs, xdr_u_int, &res, timeout)) != RPC_SUCCESS) {
+		if ((rval = clnt_call(clnt, YPU_STORE,
+			(xdrproc_t)xdr_ypupdate_args, &upargs,
+			(xdrproc_t)xdr_u_int, &res, timeout)) != RPC_SUCCESS) {
 			if (rval == RPC_AUTHERROR)
 				res = YPERR_ACCESS;
 			else

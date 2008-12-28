@@ -28,7 +28,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.sbin/rpc.yppasswdd/rpc.yppasswdd.8,v 1.12.2.8 2003/03/11 22:31:32 trhodes Exp $
+.\" $FreeBSD: src/usr.sbin/rpc.yppasswdd/rpc.yppasswdd.8,v 1.25 2005/02/13 23:45:53 ru Exp $
 .\" $DragonFly: src/usr.sbin/rpc.yppasswdd/rpc.yppasswdd.8,v 1.4 2006/02/17 19:40:24 swildner Exp $
 .\"
 .Dd February 8, 1996
@@ -84,7 +84,7 @@ the
 or
 .Xr ypchpass 1
 commands.
-(Some administrators don't want users to be able to change their
+(Some administrators do not want users to be able to change their
 full name information or shells; the server can be invoked with option flags
 that disallow such changes.)
 When the server receives an update request,
@@ -100,7 +100,7 @@ utility uses the same access control mechanism as
 .Xr ypserv 8 . )
 .Pp
 The server then
-checks the 'old' password supplied by the user to make sure it's
+checks the 'old' password supplied by the user to make sure it is
 valid, then performs some sanity checks on the updated information (these
 include checking for embedded control characters, colons or invalid shells).
 Once it is satisfied that the update request is valid, the server modifies
@@ -126,7 +126,8 @@ The super-user can modify
 any field in any user's master.passwd entry in any domain, and can
 do so without knowing the user's existing NIS password (when the server
 receives a request from the super-user, the password authentication
-check is bypassed). Furthermore, if the server is invoked with the
+check is bypassed).
+Furthermore, if the server is invoked with the
 .Fl a
 flag, the super-user can even add new entries to the maps using
 .Xr ypchpass 1 .
@@ -249,7 +250,7 @@ be either
 or
 .Pa /var/yp/master.passwd .
 The server will check for the latter file first and then use the former
-if it can't find it.
+if it cannot find it.
 .Pp
 Multi-domain mode is off by default since it can fail if there are
 duplicate or near-duplicate user entries in different domains.
@@ -306,7 +307,7 @@ flag to
 .Nm
 disables the privileged port check so that it will work with
 .Xr yppasswd 1
-clients that don't use privileged ports.
+clients that do not use privileged ports.
 This reduces security to
 a certain small degree, but it might be necessary in cases where it
 is not possible to change the client behavior.

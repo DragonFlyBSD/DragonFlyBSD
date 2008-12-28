@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/include/rpcsvc/yp_prot.h,v 1.10.2.1 2002/02/15 00:46:53 des Exp $
+ * $FreeBSD: src/include/rpcsvc/yp_prot.h,v 1.13 2005/12/06 02:01:06 peter Exp $
  * $DragonFly: src/include/rpcsvc/yp_prot.h,v 1.3 2004/12/15 09:44:47 dillon Exp $
  */
 
@@ -96,7 +96,7 @@ typedef struct {
 struct ypmap_parms {
 	char *domain;
 	char *map;
-	u_long ordernum;
+	u_int ordernum;
 	char *owner;
 };
 
@@ -113,9 +113,9 @@ struct ypreq_nokey {
 
 struct ypreq_xfr {
 	struct ypmap_parms map_parms;
-	u_long transid;
-	u_long proto;
-	u_short port;
+	u_int transid;
+	u_int proto;
+	u_int port;
 };
 #define ypxfr_domain	map_parms.domain
 #define ypxfr_map	map_parms.map
@@ -123,33 +123,33 @@ struct ypreq_xfr {
 #define ypxfr_owner	map_parms.owner
 
 struct ypresp_val {
-	u_long status;
+	u_int status;
 	datum valdat;
 };
 
 struct ypresp_key_val {
-	u_long status;
+	u_int status;
 	datum keydat;
 	datum valdat;
 };
 
 struct ypresp_master {
-	u_long status;
+	u_int status;
 	char *master;
 };
 
 struct ypresp_order {
-	u_long status;
-	u_long ordernum;
+	u_int status;
+	u_int ordernum;
 };
 
 struct ypmaplist {
-	char ypml_name[YPMAXMAP + 1];
+	char *ypml_name;
 	struct ypmaplist *ypml_next;
 };
 
 struct ypresp_maplist {
-	u_long status;
+	u_int status;
 	struct ypmaplist *list;
 };
 
@@ -241,7 +241,7 @@ struct ypbind_binding {
 struct ypbind_resp {
 	enum ypbind_resptype	ypbind_status;
 	union {
-		u_long			ypbind_error;
+		u_int			ypbind_error;
 		struct ypbind_binding	ypbind_bindinfo;
 	} ypbind_respbody;
 };
@@ -257,7 +257,7 @@ struct ypbind_resp {
 struct ypbind_setdom {
 	char ypsetdom_domain[YPMAXDOMAIN + 1];
 	struct ypbind_binding ypsetdom_binding;
-	u_short ypsetdom_vers;
+	u_int ypsetdom_vers;
 };
 #define ypsetdom_addr ypsetdom_binding.ypbind_binding_addr
 #define ypsetdom_port ypsetdom_binding.ypbind_binding_port
@@ -282,8 +282,8 @@ struct ypbind_setdom {
 #define YPPUSHPROC_XFRRESP	((u_long)1)
 
 struct yppushresp_xfr {
-	u_long	transid;
-	u_long	status;
+	u_int	transid;
+	u_int	status;
 };
 
 /* yppush status value in yppushresp_xfr.status */

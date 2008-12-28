@@ -48,11 +48,11 @@ static const char sccsid[] = "@(#)inet_lnaof.c	8.1 (Berkeley) 6/4/93";
  * internet address; handles class a/b/c network
  * number formats.
  */
-u_long
+in_addr_t
 inet_lnaof(in)
 	struct in_addr in;
 {
-	register u_long i = ntohl(in.s_addr);
+	in_addr_t i = ntohl(in.s_addr);
 
 	if (IN_CLASSA(i))
 		return ((i)&IN_CLASSA_HOST);
@@ -61,3 +61,12 @@ inet_lnaof(in)
 	else
 		return ((i)&IN_CLASSC_HOST);
 }
+
+#ifdef _LIBC
+/*
+ * Weak aliases for applications that use certain private entry points,
+ * and fail to include <arpa/inet.h>.
+ */
+#undef inet_lnaof
+__weak_reference(__inet_lnaof, inet_lnaof);
+#endif

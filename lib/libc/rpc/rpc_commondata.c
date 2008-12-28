@@ -27,11 +27,15 @@
  * Mountain View, California  94043
  *
  * @(#)rpc_commondata.c	2.1 88/07/29 4.0 RPCSRC
- * $FreeBSD: src/lib/libc/rpc/rpc_commondata.c,v 1.7 1999/08/28 00:00:45 peter Exp $
+ * $NetBSD: rpc_commondata.c,v 1.7 2000/06/02 23:11:13 fvdl Exp $
+ * $FreeBSD: src/lib/libc/rpc/rpc_commondata.c,v 1.9 2002/03/22 23:18:37 obrien Exp $
  * $DragonFly: src/lib/libc/rpc/rpc_commondata.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
  */
 
+#include "namespace.h"
 #include <rpc/rpc.h>
+#include "un-namespace.h"
+
 /*
  * This file should only contain common data (global data) that is exported
  * by public interfaces
@@ -39,4 +43,3 @@
 struct opaque_auth _null_auth;
 fd_set svc_fdset;
 int svc_maxfd = -1;
-struct rpc_createerr rpc_createerr;

@@ -1,18 +1,20 @@
-# $FreeBSD: src/usr.sbin/ypserv/Makefile,v 1.17.2.3 2002/08/07 16:32:02 ru Exp $
+# $FreeBSD: src/usr.sbin/ypserv/Makefile,v 1.24 2004/10/18 21:42:15 ru Exp $
 # $DragonFly: src/usr.sbin/ypserv/Makefile,v 1.3 2005/07/07 11:49:57 corecode Exp $
 
+RPCDIR=	${.CURDIR}/../../include/rpcsvc
+.PATH: ${RPCDIR}
+
 PROG=	ypserv
+MAN=	ypserv.8 ypinit.8
 SRCS=	yp_svc.c yp_server.c yp_dblookup.c yp_dnslookup.c \
 	ypxfr_clnt.c yp.h yp_main.c yp_error.c yp_access.c yp_svc_udp.c
 
-MAN=	ypserv.8 ypinit.8
+CFLAGS+= -DDB_CACHE -DTCP_WRAPPER -I.
 
-CFLAGS+= -I. -DDB_CACHE
+DPADD=	${LIBWRAP}
+LDADD=	-lwrap
 
 CLEANFILES= yp_svc.c ypxfr_clnt.c yp.h
-
-RPCDIR= ${.CURDIR}/../../include/rpcsvc
-.PATH: ${RPCDIR}
 
 RPCGEN= rpcgen -I -C
 
@@ -29,14 +31,13 @@ ypxfr_clnt.c: yp.x
 yp.h: yp.x
 	${RPCGEN} -h -o ${.TARGET} ${RPCDIR}/yp.x
 
-afterinstall:
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
-		${.CURDIR}/Makefile.yp \
-		${DESTDIR}/var/yp/Makefile.dist
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
-		${.CURDIR}/ypinit.sh ${DESTDIR}${BINDIR}/ypinit
-	@if [ ! -f ${DESTDIR}/var/yp/Makefile.dist ]; then \
-		${LN} -s	${DESTDIR}/var/yp/Makefile.dist \
-			${DESTDIR}/var/yp/Makefile; fi
+FILES=	Makefile.yp
+FILESNAME= Makefile.dist
+FILESDIR= /var/yp
+SCRIPTS= ypinit.sh
+
+.if !exists(${DESTDIR}${FILESDIR}/Makefile)
+SYMLINKS= ${FILESNAME} ${FILESDIR}/Makefile
+.endif
 
 .include <bsd.prog.mk>

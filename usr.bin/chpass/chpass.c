@@ -203,7 +203,7 @@ main(int argc, char **argv)
 		if (uid)
 			baduser();
 		pw = &lpw;
-		if (!pw_scan(arg, pw))
+		if (!__pw_scan(arg, pw, _PWSCAN_WARN|_PWSCAN_MASTER))
 			exit(1);
 		if ((pold_pw = getpwnam(pw->pw_name)) != NULL) {
 			old_pw = *pold_pw;

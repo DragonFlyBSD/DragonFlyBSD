@@ -65,6 +65,7 @@
 #define RTLD_DEFAULT	((void *) -2)	/* Use default search algorithm */
 #define	RTLD_SELF	((void *) -3)	/* Search the caller itself. */
 
+#if __BSD_VISIBLE
 /*
  * Structure filled in by dladdr().
  */
@@ -93,16 +94,38 @@ typedef struct  dl_serinfo {
         Dl_serpath	dls_serpath[1]; /* there may be more than one */
 } Dl_serinfo;
 
+/*
+ * The actual type declared by this typedef is immaterial, provided that
+ * it is a function pointer.  Its purpose is to provide a return type for
+ * dlfunc() which can be cast to a function pointer type without depending
+ * on behavior undefined by the C standard, which might trigger a compiler
+ * diagnostic.  We intentionally declare a unique type signature to force
+ * a diagnostic should the application not cast the return value of dlfunc()
+ * appropriately.
+ */
+struct __dlfunc_arg {
+	int __dlfunc_dummy;
+};
+
+typedef void (*dlfunc_t)(struct __dlfunc_arg);
+
+#endif /* __BSD_VISIBLE */
+
 __BEGIN_DECLS
-int		 dladdr(const void *, Dl_info *);
+/* XSI functions first */
 int		 dlclose(void *);
 const char 	*dlerror(void);
-int		 dlinfo(void *, int, void *);
+void		*dlopen(const char *, int);
+void		*dlsym(void * __restrict, const char * __restrict);
+
+#if __BSD_VISIBLE
+int		 dladdr(const void * __restrict, Dl_info * __restrict);
+dlfunc_t	 dlfunc(void * __restrict, const char * __restrict);
+int		 dlinfo(void * __restrict, int, void * __restrict);
 void		 dllockinit(void *, void *(*)(void *), void (*)(void *),
 			    void (*)(void *), void (*)(void *),
 			    void (*)(void *), void (*)(void *));
-void		*dlopen(const char *, int);
-void		*dlsym(void *, const char *);
+#endif /* __BSD_VISIBLE */
 __END_DECLS
 
 #endif /* !_DLFCN_H_ */

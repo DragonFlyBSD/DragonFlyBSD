@@ -28,6 +28,7 @@
  * Mountain View, California  94043
  *
  * @(#)secretkey.c 1.8 91/03/11 Copyr 1986 Sun Micro
+ * $FreeBSD: src/lib/librpcsvc/secretkey.c,v 1.3 2002/03/21 23:53:40 obrien Exp $
  * $DragonFly: src/lib/librpcsvc/secretkey.c,v 1.5 2007/11/25 14:33:02 swildner Exp $
  */
 
@@ -47,7 +48,7 @@
 #include <rpcsvc/ypclnt.h>
 #include <string.h>
 
-extern int xdecrypt ( char *, char * );
+extern int xdecrypt(char *, char *);
 
 /*
  * Get somebody's encrypted secret key from the database, using the given
@@ -76,7 +77,7 @@ getsecretkey(char *netname, char *secretkey, char *passwd)
 		return (1);
 	}
 	p[HEXKEYBYTES] = '\0';
-	(void) strncpy(secretkey, p, HEXKEYBYTES);
+	strncpy(secretkey, p, HEXKEYBYTES);
 	secretkey[HEXKEYBYTES] = '\0';
 	return (1);
 }

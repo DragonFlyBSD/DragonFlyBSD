@@ -28,7 +28,8 @@
  *
  *	from: @(#)rpc_msg.h 1.7 86/07/16 SMI
  *	from: @(#)rpc_msg.h	2.1 88/07/29 4.0 RPCSRC
- * $FreeBSD: src/include/rpc/rpc_msg.h,v 1.12 1999/08/27 23:45:05 peter Exp $
+ * $NetBSD: rpc_msg.h,v 1.11 2000/06/02 22:57:56 fvdl Exp $
+ * $FreeBSD: src/include/rpc/rpc_msg.h,v 1.15 2003/01/01 18:48:42 schweikh Exp $
  * $DragonFly: src/include/rpc/rpc_msg.h,v 1.4 2007/12/04 20:59:15 swildner Exp $
  */
 
@@ -39,10 +40,10 @@
  * Copyright (C) 1984, Sun Microsystems, Inc.
  */
 
-#ifndef _RPC_RPCMSG_H
-#define _RPC_RPCMSG_H
+#ifndef _RPC_RPC_MSG_H_
+#define _RPC_RPC_MSG_H_
 
-#define RPC_MSG_VERSION		((u_long) 2)
+#define RPC_MSG_VERSION		((u_int32_t) 2)
 #define RPC_SERVICE_PORT	((u_short) 2048)
 
 /*
@@ -89,8 +90,8 @@ struct accepted_reply {
 	enum accept_stat	ar_stat;
 	union {
 		struct {
-			u_int32_t	low;
-			u_int32_t	high;
+			rpcvers_t low;
+			rpcvers_t high;
 		} AR_versions;
 		struct {
 			caddr_t	where;
@@ -109,8 +110,8 @@ struct rejected_reply {
 	enum reject_stat rj_stat;
 	union {
 		struct {
-			u_int32_t low;
-			u_int32_t high;
+			rpcvers_t low;
+			rpcvers_t high;
 		} RJ_versions;
 		enum auth_stat RJ_why;  /* why authentication did not work */
 	} ru;
@@ -135,10 +136,10 @@ struct reply_body {
  * Body of an rpc request call.
  */
 struct call_body {
-	u_int32_t cb_rpcvers;	/* must be equal to two */
-	u_int32_t cb_prog;
-	u_int32_t cb_vers;
-	u_int32_t cb_proc;
+	rpcvers_t cb_rpcvers;	/* must be equal to two */
+	rpcprog_t cb_prog;
+	rpcvers_t cb_vers;
+	rpcproc_t cb_proc;
 	struct opaque_auth cb_cred;
 	struct opaque_auth cb_verf; /* protocol specific - provided by client */
 };
@@ -166,7 +167,7 @@ __BEGIN_DECLS
  * 	XDR *xdrs;
  * 	struct rpc_msg *cmsg;
  */
-extern bool_t	xdr_callmsg	(XDR *, struct rpc_msg *);
+extern bool_t	xdr_callmsg(XDR *, struct rpc_msg *);
 
 /*
  * XDR routine to pre-serialize the static part of a rpc message.
@@ -174,7 +175,7 @@ extern bool_t	xdr_callmsg	(XDR *, struct rpc_msg *);
  * 	XDR *xdrs;
  * 	struct rpc_msg *cmsg;
  */
-extern bool_t	xdr_callhdr	(XDR *, struct rpc_msg *);
+extern bool_t	xdr_callhdr(XDR *, struct rpc_msg *);
 
 /*
  * XDR routine to handle a rpc reply.
@@ -182,7 +183,7 @@ extern bool_t	xdr_callhdr	(XDR *, struct rpc_msg *);
  * 	XDR *xdrs;
  * 	struct rpc_msg *rmsg;
  */
-extern bool_t	xdr_replymsg	(XDR *, struct rpc_msg *);
+extern bool_t	xdr_replymsg(XDR *, struct rpc_msg *);
 
 /*
  * XDR routine to handle an accepted rpc reply.
@@ -206,8 +207,7 @@ extern bool_t	xdr_rejected_reply(XDR *, struct rejected_reply *);
  * 	struct rpc_msg *msg;
  * 	struct rpc_err *error;
  */
-struct rpc_err;
-extern void	_seterr_reply	(struct rpc_msg *, struct rpc_err *);
+extern void	_seterr_reply(struct rpc_msg *, struct rpc_err *);
 __END_DECLS
 
-#endif /* !_RPC_RPCMSG_H */
+#endif /* !_RPC_RPC_MSG_H_ */

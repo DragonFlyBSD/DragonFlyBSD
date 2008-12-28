@@ -8,12 +8,15 @@ use and modify. Please send modifications and/or suggestions + bug fixes to
 */
 
 /*
- * $FreeBSD: src/usr.sbin/bootparamd/bootparamd/bootparamd.c,v 1.10 1999/08/28 01:15:39 peter Exp $
+ * $FreeBSD: src/usr.sbin/bootparamd/bootparamd/bootparamd.c,v 1.14 2008/01/30 13:48:37 rink Exp $
  * $DragonFly: src/usr.sbin/bootparamd/bootparamd/bootparamd.c,v 1.4 2003/11/15 23:33:35 eirikn Exp $
  */
+
+#ifdef YP
 #include <rpc/rpc.h>
 #include <rpcsvc/yp_prot.h>
 #include <rpcsvc/ypclnt.h>
+#endif
 #include "bootparam_prot.h"
 #include <ctype.h>
 #include <err.h>
@@ -25,7 +28,7 @@ use and modify. Please send modifications and/or suggestions + bug fixes to
 #include <sys/types.h>
 #include <sys/socket.h>
 extern int debug, dolog;
-extern unsigned long route_addr;
+extern in_addr_t route_addr;
 extern char *bootpfile;
 
 #define MAXLEN 800
@@ -41,9 +44,9 @@ int getthefile(char *, char *, char *, int);
 int checkhost(char *, char *, int);
 
 bp_whoami_res *
-bootparamproc_whoami_1(bp_whoami_arg *whoami)
+bootparamproc_whoami_1_svc(bp_whoami_arg *whoami, struct svc_req *req)
 {
-  long haddr;
+  in_addr_t haddr;
   static bp_whoami_res res;
   if (debug)
     fprintf(stderr,"whoami got question for %d.%d.%d.%d\n",
@@ -76,7 +79,7 @@ bootparamproc_whoami_1(bp_whoami_arg *whoami)
 
     if (  res.router_address.address_type != IP_ADDR_TYPE ) {
       res.router_address.address_type = IP_ADDR_TYPE;
-      bcopy( &route_addr, &res.router_address.bp_address_u.ip_addr, 4);
+      bcopy( &route_addr, &res.router_address.bp_address_u.ip_addr, sizeof(in_addr_t));
     }
     if (debug) fprintf(stderr,
 		       "Returning %s   %s    %d.%d.%d.%d\n",
@@ -105,7 +108,7 @@ bootparamproc_whoami_1(bp_whoami_arg *whoami)
 
 
 bp_getfile_res *
-bootparamproc_getfile_1(bp_getfile_arg *getfile)
+bootparamproc_getfile_1_svc(bp_getfile_arg *getfile, struct svc_req *req)
 {
   char *where, *index();
   static bp_getfile_res res;
@@ -183,7 +186,9 @@ getthefile(char *askname, char *fileid, char *buffer, int blen)
   char  *where;
   static char *result;
   int resultlen;
+#ifdef YP
   static char *yp_domain;
+#endif
 
   int ch, pch, fid_len, res = 0;
   int match = 0;
@@ -204,6 +209,7 @@ getthefile(char *askname, char *fileid, char *buffer, int blen)
       }
     }
     if (*hostname == '+' ) { /* NIS */
+#ifdef YP
       if (yp_get_default_domain(&yp_domain)) {
 	 if (debug) warn("NIS");
 	 return(0);
@@ -222,6 +228,9 @@ getthefile(char *askname, char *fileid, char *buffer, int blen)
       if (fclose(bpf))
         warnx("could not close %s", bootpfile);
       return(1);
+#else
+      return(0);	/* ENOTSUP */
+#endif
     }
     /* skip to next entry */
     if ( match ) break;
@@ -277,7 +286,9 @@ checkhost(char *askname, char *hostname, int len)
   int res = 0;
   static char *result;
   int resultlen;
+#ifdef YP
   static char *yp_domain;
+#endif
 
 /*  struct hostent *cmp_he;*/
 
@@ -304,6 +315,7 @@ checkhost(char *askname, char *hostname, int len)
       }
     }
     if (*hostname == '+' ) { /* NIS */
+#ifdef YP
       if (yp_get_default_domain(&yp_domain)) {
 	 if (debug) warn("NIS");
 	 return(0);
@@ -321,6 +333,9 @@ checkhost(char *askname, char *hostname, int len)
       if (fclose(bpf))
         warnx("could not close %s", bootpfile);
       return(res);
+#else
+      return(0);	/* ENOTSUP */
+#endif
     }
     /* skip to next entry */
     pch = ch = getc(bpf);

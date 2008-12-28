@@ -89,7 +89,7 @@ static const char rcsid[] = "$Id: inet_addr.c,v 1.2.206.2 2004/03/17 00:29:45 ma
  * Ascii internet address interpretation routine.
  * The value returned is in network order.
  */
-u_long
+in_addr_t
 inet_addr(const char *cp) {
 	struct in_addr val;
 
@@ -204,3 +204,14 @@ inet_aton(const char *cp, struct in_addr *addr) {
 		addr->s_addr = htonl(val);
 	return (1);
 }
+
+#ifdef _LIBC
+/*
+ * Weak aliases for applications that use certain private entry points,
+ * and fail to include <arpa/inet.h>.
+ */
+#undef inet_addr
+__weak_reference(__inet_addr, inet_addr);
+#undef inet_aton
+__weak_reference(__inet_aton, inet_aton);
+#endif

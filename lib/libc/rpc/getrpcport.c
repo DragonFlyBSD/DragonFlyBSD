@@ -28,7 +28,8 @@
  *
  * @(#)getrpcport.c 1.3 87/08/11 SMI
  * @(#)getrpcport.c	2.1 88/07/29 4.0 RPCSRC
- * $FreeBSD: src/lib/libc/rpc/getrpcport.c,v 1.10 1999/08/28 00:00:40 peter Exp $
+ * $NetBSD: getrpcport.c,v 1.16 2000/01/22 22:19:18 mycroft Exp $
+ * $FreeBSD: src/lib/libc/rpc/getrpcport.c,v 1.13 2004/10/16 06:11:34 obrien Exp $
  * $DragonFly: src/lib/libc/rpc/getrpcport.c,v 1.3 2005/11/13 12:27:04 swildner Exp $
  */
 
@@ -36,12 +37,18 @@
  * Copyright (c) 1985 by Sun Microsystems, Inc.
  */
 
+#include "namespace.h"
+#include <sys/types.h>
+#include <sys/socket.h>
+
+#include <assert.h>
+#include <netdb.h>
 #include <stdio.h>
 #include <string.h>
+
 #include <rpc/rpc.h>
 #include <rpc/pmap_clnt.h>
-#include <netdb.h>
-#include <sys/socket.h>
+#include "un-namespace.h"
 
 int
 getrpcport(char *host, int prognum, int versnum, int proto)
@@ -49,12 +56,18 @@ getrpcport(char *host, int prognum, int versnum, int proto)
 	struct sockaddr_in addr;
 	struct hostent *hp;
 
+	assert(host != NULL);
+
 	if ((hp = gethostbyname(host)) == NULL)
 		return (0);
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_len = sizeof(struct sockaddr_in);
 	addr.sin_family = AF_INET;
 	addr.sin_port =  0;
-	memcpy((char *)&addr.sin_addr, hp->h_addr, hp->h_length);
-	return (pmap_getport(&addr, prognum, versnum, proto));
+	if (hp->h_length > addr.sin_len)
+		hp->h_length = addr.sin_len;
+	memcpy(&addr.sin_addr.s_addr, hp->h_addr, (size_t)hp->h_length);
+	/* Inconsistent interfaces need casts! :-( */
+	return (pmap_getport(&addr, (u_long)prognum, (u_long)versnum,
+	    (u_int)proto));
 }

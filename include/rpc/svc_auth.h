@@ -28,7 +28,8 @@
  *
  *	from: @(#)svc_auth.h 1.6 86/07/16 SMI
  *	from: @(#)svc_auth.h	2.1 88/07/29 4.0 RPCSRC
- * $FreeBSD: src/include/rpc/svc_auth.h,v 1.12 1999/08/27 23:45:05 peter Exp $
+ * $NetBSD: svc_auth.h,v 1.8 2000/06/02 22:57:57 fvdl Exp $
+ * $FreeBSD: src/include/rpc/svc_auth.h,v 1.15 2008/09/09 14:15:55 dfr Exp $
  * $DragonFly: src/include/rpc/svc_auth.h,v 1.3 2003/11/14 01:01:50 dillon Exp $
  */
 
@@ -38,20 +39,19 @@
  * Copyright (C) 1984, Sun Microsystems, Inc.
  */
 
-#ifndef _RPC_SVCAUTH_H
-#define _RPC_SVCAUTH_H
-
-struct rpc_msg;
-struct svc_req;
+#ifndef _RPC_SVC_AUTH_H_
+#define _RPC_SVC_AUTH_H_
 
 /*
  * Server side authenticator
  */
 __BEGIN_DECLS
-extern enum auth_stat _authenticate (struct svc_req *, struct rpc_msg *);
-extern int svc_auth_reg (int, enum auth_stat (*)(struct svc_req *,
-						     struct rpc_msg *));
-extern enum auth_stat _svcauth_des (struct svc_req *, struct rpc_msg *);
+extern struct svc_auth_ops svc_auth_null_ops;
+
+extern enum auth_stat _authenticate(struct svc_req *, struct rpc_msg *);
+extern int svc_auth_reg(int, enum auth_stat (*)(struct svc_req *,
+			  struct rpc_msg *));
+
 __END_DECLS
 
-#endif /* !_RPC_SVCAUTH_H */
+#endif /* !_RPC_SVC_AUTH_H_ */

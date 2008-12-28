@@ -27,17 +27,19 @@
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  *
- * $FreeBSD: src/lib/libc/rpc/netnamer.c,v 1.3.6.1 2000/09/20 04:43:11 jkh Exp $
+ * $FreeBSD: src/lib/libc/rpc/netnamer.c,v 1.12 2005/03/10 00:58:21 stefanf Exp $
  * $DragonFly: src/lib/libc/rpc/netnamer.c,v 1.5 2005/11/13 12:27:04 swildner Exp $
  *
  * @(#)netnamer.c 1.13 91/03/11 Copyr 1986 Sun Micro
  */
+
 /*
  * netname utility routines convert from unix names to network names and
  * vice-versa This module is operating system dependent! What we define here
  * will work with any unix system that has adopted the sun NIS domain
  * architecture.
  */
+#include "namespace.h"
 #include <sys/param.h>
 #include <rpc/rpc.h>
 #include <rpc/rpc_com.h>
@@ -52,13 +54,16 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 static char    *OPSYS = "unix";
+#ifdef YP
 static char    *NETID = "netid.byname";
+#endif
 static char    *NETIDFILE = "/etc/netid";
 
-static int getnetid ( char *, char * );
-static int _getgroups ( char *, gid_t * );
+static int	_getgroups(char *, gid_t *);
+static int	 getnetid(char *, char *);
 
 #ifndef NGROUPS
 #define NGROUPS 16
@@ -94,7 +99,6 @@ netname2user(char *netname, uid_t *uidp, gid_t *gidp, int *gidlenp,
 			return (0);
 		}
 		*gidp = (gid_t) atol(p);
-		gidlen = 0;
 		for (gidlen = 0; gidlen < NGROUPS; gidlen++) {
 			p = strsep(&res, "\n,");
 			if (p == NULL)
@@ -120,7 +124,7 @@ netname2user(char *netname, uid_t *uidp, gid_t *gidp, int *gidlenp,
 	strncpy(val, val1, 1024);
 	val[vallen] = 0;
 
-	err = _rpc_get_default_domain(&domain);	/* change to rpc */
+	err = __rpc_get_default_domain(&domain);	/* change to rpc */
 	if (err)
 		return (0);
 
@@ -216,7 +220,7 @@ netname2host(char *netname, char *hostname, int hostlen)
 	strncpy(hostname, val, vallen);
 	hostname[vallen] = 0;
 
-	err = _rpc_get_default_domain(&domain);	/* change to rpc */
+	err = __rpc_get_default_domain(&domain);	/* change to rpc */
 	if (err)
 		return (0);
 

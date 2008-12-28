@@ -1,9 +1,9 @@
 #
-# $FreeBSD: src/etc/rpc,v 1.7.2.4 2002/04/15 00:44:13 dougb Exp $
+# $FreeBSD: src/etc/rpc,v 1.11 2004/06/06 11:46:27 schweikh Exp $
 # $DragonFly: src/etc/rpc,v 1.2 2003/06/17 04:24:45 dillon Exp $
 # rpc 88/08/01 4.0 RPCSRC; from 1.12   99/07/25 SMI
 #
-portmapper	100000  portmap sunrpc rpcbind
+rpcbind		100000  portmap sunrpc rpcbind
 rstatd		100001	rstat rstat_svc rup perfmeter
 rusersd		100002	rusers
 nfs		100003	nfsprog
@@ -31,7 +31,7 @@ bootparamd	100026	bootparam
 ypupdated	100028	ypupdate
 keyserv		100029	keyserver
 sunlink_mapper	100033
-tfsd		100037 
+tfsd		100037
 nsed		100038
 nsemntd		100039
 showfhd		100043	showfh

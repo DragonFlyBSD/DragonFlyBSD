@@ -2,7 +2,7 @@
 # $DragonFly: src/usr.sbin/keyserv/Makefile,v 1.5 2008/11/03 00:25:45 pavalos Exp $
 
 PROG=	keyserv
-SRCS=	keyserv.c setkey.c keyserv_uid.c crypt_svc.c crypt_server.c crypt.h
+SRCS=	keyserv.c setkey.c crypt_svc.c crypt_server.c crypt.h
 WARNS?=	1
 
 MAN=	keyserv.8

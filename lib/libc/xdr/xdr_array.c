@@ -28,7 +28,8 @@
  *
  * @(#)xdr_array.c 1.10 87/08/11 Copyr 1984 Sun Micro
  * @(#)xdr_array.c	2.1 88/07/29 4.0 RPCSRC
- * $FreeBSD: src/lib/libc/xdr/xdr_array.c,v 1.8.2.3 2002/08/01 12:23:20 nectar Exp $
+ * $NetBSD: xdr_array.c,v 1.12 2000/01/22 22:19:18 mycroft Exp $
+ * $FreeBSD: src/lib/libc/xdr/xdr_array.c,v 1.15 2004/10/16 06:32:43 obrien Exp $
  * $DragonFly: src/lib/libc/xdr/xdr_array.c,v 1.4 2005/12/05 00:47:57 swildner Exp $
  */
 
@@ -41,14 +42,16 @@
  * arrays.  See xdr.h for more info on the interface to xdr.
  */
 
+#include "namespace.h"
+#include <err.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include <rpc/types.h>
 #include <rpc/xdr.h>
-
-#define LASTUNSIGNED ((u_int) 0-1)
+#include "un-namespace.h"
 
 /*
  * XDR an array of arbitrary elements
@@ -96,8 +99,7 @@ xdr_array(XDR *xdrs, caddr_t *addrp, u_int *sizep, u_int maxsize, u_int elsize,
 				return (TRUE);
 			*addrp = target = mem_alloc(nodesize);
 			if (target == NULL) {
-				fprintf(stderr,
-					"xdr_array: out of memory\n");
+				warnx("xdr_array: out of memory");
 				return (FALSE);
 			}
 			memset(target, 0, nodesize);
@@ -105,6 +107,7 @@ xdr_array(XDR *xdrs, caddr_t *addrp, u_int *sizep, u_int maxsize, u_int elsize,
 
 		case XDR_FREE:
 			return (TRUE);
+
 		case XDR_ENCODE:
 			break;
 	}
@@ -113,7 +116,7 @@ xdr_array(XDR *xdrs, caddr_t *addrp, u_int *sizep, u_int maxsize, u_int elsize,
 	 * now we xdr each element of array
 	 */
 	for (i = 0; (i < c) && stat; i++) {
-		stat = (*elproc)(xdrs, target, LASTUNSIGNED);
+		stat = (*elproc)(xdrs, target);
 		target += elsize;
 	}
 
@@ -146,11 +149,10 @@ xdr_vector(XDR *xdrs, char *basep, u_int nelem, u_int elemsize,
 
 	elptr = basep;
 	for (i = 0; i < nelem; i++) {
-		if (!(*xdr_elem)(xdrs, elptr, LASTUNSIGNED)) {
+		if (!(*xdr_elem)(xdrs, elptr)) {
 			return(FALSE);
 		}
 		elptr += elemsize;
 	}
 	return(TRUE);
 }
-

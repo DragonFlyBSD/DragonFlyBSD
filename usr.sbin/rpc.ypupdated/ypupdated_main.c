@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/rpc.ypupdated/ypupdated_main.c,v 1.4.2.3 2002/02/15 00:46:58 des Exp $
+ * $FreeBSD: src/usr.sbin/rpc.ypupdated/ypupdated_main.c,v 1.10 2004/05/24 12:28:27 stefanf Exp $
  * $DragonFly: src/usr.sbin/rpc.ypupdated/ypupdated_main.c,v 1.5 2005/11/25 00:32:49 swildner Exp $
  */
 
@@ -37,6 +37,7 @@
 #include <stdio.h>
 #include <stdlib.h> /* getenv, exit */
 #include <rpc/pmap_clnt.h> /* for pmap_unset */
+#include <rpc/rpc_com.h>
 #include <string.h> /* strcmp */
 #include <signal.h>
 #ifdef __cplusplus

@@ -41,7 +41,7 @@ static const char rcsid[] = "$Id: inet_neta.c,v 1.1.206.1 2004/03/09 08:33:33 ma
 /*
  * char *
  * inet_neta(src, dst, size)
- *	format a u_long network number into presentation format.
+ *	format a in_addr_t network number into presentation format.
  * return:
  *	pointer to dst, or NULL if an error occurred (check errno).
  * note:
@@ -51,7 +51,7 @@ static const char rcsid[] = "$Id: inet_neta.c,v 1.1.206.1 2004/03/09 08:33:33 ma
  */
 char *
 inet_neta(src, dst, size)
-	u_long src;
+	in_addr_t src;
 	char *dst;
 	size_t size;
 {
@@ -85,3 +85,12 @@ inet_neta(src, dst, size)
 	errno = EMSGSIZE;
 	return (NULL);
 }
+
+#ifdef _LIBC
+/*
+ * Weak aliases for applications that use certain private entry points,
+ * and fail to include <arpa/inet.h>.
+ */
+#undef inet_neta
+__weak_reference(__inet_neta, inet_neta);
+#endif

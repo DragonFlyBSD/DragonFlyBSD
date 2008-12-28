@@ -33,6 +33,7 @@ NOASM=
 .include "${.CURDIR}/../libc/quad/Makefile.inc"
 .endif
 .include "${.CURDIR}/../libc/regex/Makefile.inc"
+.include "${.CURDIR}/../libc/resolv/Makefile.inc"
 .include "${.CURDIR}/../libc/stdio/Makefile.inc"
 .include "${.CURDIR}/../libc/stdlib/Makefile.inc"
 .include "${.CURDIR}/../libc/stdtime/Makefile.inc"
@@ -44,6 +45,12 @@ NOASM=
 .if !defined(NO_YP_LIBC)
 CFLAGS+= -DYP
 .include "${.CURDIR}/../libc/yp/Makefile.inc"
+.endif
+.if defined(WANT_HESIOD)
+CFLAGS+= -DHESIOD
+.endif
+.if !defined(NO_NS_CACHING)
+CFLAGS+= -DNS_CACHING
 .endif
 
 # If there are no machine dependent sources, append all the

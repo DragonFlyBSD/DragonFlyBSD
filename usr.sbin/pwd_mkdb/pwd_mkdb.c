@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -32,12 +28,14 @@
  *
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pwd_mkdb.c	8.5 (Berkeley) 4/20/94
- * $FreeBSD: src/usr.sbin/pwd_mkdb/pwd_mkdb.c,v 1.35 2000/03/09 18:11:16 paul Exp $
+ * $FreeBSD: src/usr.sbin/pwd_mkdb/pwd_mkdb.c,v 1.51 2005/06/15 10:13:04 dd Exp $
  * $DragonFly: src/usr.sbin/pwd_mkdb/pwd_mkdb.c,v 1.5 2005/12/05 02:40:27 swildner Exp $
  */
 
 #include <sys/param.h>
+#include <sys/endian.h>
 #include <sys/stat.h>
+#include <arpa/inet.h>
 
 #include <db.h>
 #include <err.h>
@@ -57,6 +55,8 @@
 #define	SECURE		2
 #define	PERM_INSECURE	(S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH)
 #define	PERM_SECURE	(S_IRUSR|S_IWUSR)
+#define LEGACY_VERSION(x)  _PW_VERSIONED(x, 3)
+#define CURRENT_VERSION(x) _PW_VERSIONED(x, 4)
 
 HASHINFO openinfo = {
 	4096,		/* bsize */
@@ -64,7 +64,7 @@ HASHINFO openinfo = {
 	256,		/* nelem */
 	2048 * 1024,	/* cachesize */
 	NULL,		/* hash() */
-	0		/* lorder */
+	BYTE_ORDER	/* lorder */
 };
 
 static enum state { FILE_INSECURE, FILE_SECURE, FILE_ORIG } clean;
@@ -76,7 +76,7 @@ static int is_comment;	/* flag for comments */
 static char line[LINE_MAX];
 
 void	cleanup(void);
-void	error(char *);
+void	error(const char *);
 void	cp(char *, char *, mode_t mode);
 void	mv(char *, char *);
 int	scan(FILE *, struct passwd *);
@@ -85,32 +85,51 @@ static void	usage(void);
 int
 main(int argc, char *argv[])
 {
+	static char verskey[] = _PWD_VERSION_KEY;
+	char version = _PWD_CURRENT_VERSION;
 	DB *dp, *sdp, *pw_db;
 	DBT data, sdata, key;
 	FILE *fp, *oldfp;
 	sigset_t set;
-	int ch, cnt, ypcnt, len, makeold, tfd, yp_enabled = 0;
-	char *p, *t;
+	int ch, cnt, ypcnt, makeold, tfd, yp_enabled = 0;
+	unsigned int len;
+	uint32_t store;
+	const char *t;
+	char *p;
 	char buf[MAX(MAXPATHLEN, LINE_MAX * 2)], tbuf[1024];
 	char sbuf[MAX(MAXPATHLEN, LINE_MAX * 2)];
 	char buf2[MAXPATHLEN];
 	char sbuf2[MAXPATHLEN];
 	char *username;
 	u_int method, methoduid;
-	int Cflag;
+	int Cflag, dflag, iflag;
 	int nblock = 0;
 
-	Cflag = 0;
+	iflag = dflag = Cflag = 0;
 	strcpy(prefix, _PATH_PWD);
 	makeold = 0;
 	username = NULL;
-	while ((ch = getopt(argc, argv, "Cd:ps:u:vN")) != -1)
+	oldfp = NULL;
+	while ((ch = getopt(argc, argv, "BCLNd:ips:u:v")) != -1)
 		switch(ch) {
+		case 'B':			/* big-endian output */
+			openinfo.lorder = BIG_ENDIAN;
+			break;
 		case 'C':                       /* verify only */
 			Cflag = 1;
 			break;
+		case 'L':			/* little-endian output */
+			openinfo.lorder = LITTLE_ENDIAN;
+			break;
+		case 'N':			/* do not wait for lock	*/
+			nblock = LOCK_NB;	/* will fail if locked */
+			break;
 		case 'd':
-			strncpy(prefix, optarg, sizeof prefix - 1);
+			dflag++;
+			strlcpy(prefix, optarg, sizeof(prefix));
+			break;
+		case 'i':
+			iflag++;
 			break;
 		case 'p':			/* create V7 "file.orig" */
 			makeold = 1;
@@ -122,9 +141,6 @@ main(int argc, char *argv[])
 			username = optarg;
 			break;
 		case 'v':                       /* backward compatible */
-			break;
-		case 'N':			/* do not wait for lock	*/
-			nblock = LOCK_NB;
 			break;
 		default:
 			usage();
@@ -159,14 +175,14 @@ main(int argc, char *argv[])
 	 *
 	 * This lock is necessary when someone runs pwd_mkdb manually, directly
 	 * on master.passwd, to handle the case where a user might try to
-	 * change his password while pwd_mkdb is running. 
+	 * change his password while pwd_mkdb is running.
 	 */
 	for (;;) {
 		struct stat st;
 
 		if (!(fp = fopen(pname, "r")))
 			error(pname);
-		if (flock(fileno(fp), LOCK_EX|nblock) < 0)
+		if (flock(fileno(fp), LOCK_EX|nblock) < 0 && !(dflag && iflag))
 			error("flock");
 		if (fstat(fileno(fp), &st) < 0)
 			error(pname);
@@ -186,6 +202,8 @@ main(int argc, char *argv[])
 	snprintf(buf, sizeof(buf), "%s/%s.tmp", prefix, _MP_DB);
 	snprintf(sbuf, sizeof(sbuf), "%s/%s.tmp", prefix, _SMP_DB);
 	if (username) {
+		int use_version;
+
 		snprintf(buf2, sizeof(buf2), "%s/%s", prefix, _MP_DB);
 		snprintf(sbuf2, sizeof(sbuf2), "%s/%s", prefix, _SMP_DB);
 
@@ -204,14 +222,21 @@ main(int argc, char *argv[])
 			error(sbuf);
 
 		/*
-		 * Do some trouble to check if we should store this users 
-		 * uid. Don't use getpwnam/getpwuid as that interferes 
+		 * Do some trouble to check if we should store this users
+		 * uid. Don't use getpwnam/getpwuid as that interferes
 		 * with NIS.
 		 */
 		pw_db = dbopen(_PATH_MP_DB, O_RDONLY, 0, DB_HASH, NULL);
 		if (!pw_db)
 			error(_MP_DB);
-		buf[0] = _PW_KEYBYNAME;
+
+		key.data = verskey;
+		key.size = sizeof(verskey)-1;
+		if ((pw_db->get)(pw_db, &key, &data, 0) == 0)
+			use_version = *(unsigned char *)data.data;
+		else
+			use_version = 3;
+		buf[0] = _PW_VERSIONED(_PW_KEYBYNAME, use_version);
 		len = strlen(username);
 
 		/* Only check that username fits in buffer */
@@ -227,10 +252,10 @@ main(int argc, char *argv[])
 			while (*p++)
 				;
 
-			buf[0] = _PW_KEYBYUID;
-			memmove(buf + 1, p, sizeof(int));
+			buf[0] = _PW_VERSIONED(_PW_KEYBYUID, use_version);
+			memmove(buf + 1, p, sizeof(store));
 			key.data = (u_char *)buf;
-			key.size = sizeof(int) + 1;
+			key.size = sizeof(store) + 1;
 
 			if ((pw_db->get)(pw_db, &key, &data, 0) == 0) {
 				/* First field of data.data holds pw_pwname */
@@ -292,6 +317,26 @@ main(int argc, char *argv[])
 	 * original file prepended by the _PW_KEYBYNUM character.  (The special
 	 * characters are prepended to ensure that the keys do not collide.)
 	 */
+	/* In order to transition this file into a machine-independent
+	 * form, we have to change the format of entries.  However, since
+	 * older binaries will still expect the old MD format entries, we
+	 * create those as usual and use versioned tags for the new entries.
+	 */
+	if (username == NULL) {
+		/* Do not add the VERSION tag when updating a single
+		 * user.  When operating on `old format' databases, this
+		 * would result in applications `seeing' only the updated
+		 * entries.
+		 */
+		key.data = verskey;
+		key.size = sizeof(verskey)-1;
+		data.data = &version;
+		data.size = 1;
+		if ((dp->put)(dp, &key, &data, 0) == -1)
+			error("put");
+		if ((dp->put)(sdp, &key, &data, 0) == -1)
+			error("put");
+	}
 	ypcnt = 1;
 	data.data = (u_char *)buf;
 	sdata.data = (u_char *)sbuf;
@@ -303,50 +348,49 @@ main(int argc, char *argv[])
 		if (is_comment)
 			--cnt;
 #define	COMPACT(e)	t = e; while ((*p++ = *t++));
+#define SCALAR(e)	store = htonl((uint32_t)(e));      \
+			memmove(p, &store, sizeof(store)); \
+			p += sizeof(store);
+#define	LSCALAR(e)	store = HTOL((uint32_t)(e));       \
+			memmove(p, &store, sizeof(store)); \
+			p += sizeof(store);
+#define	HTOL(e)		(openinfo.lorder == BYTE_ORDER ? \
+			(uint32_t)(e) : \
+			bswap32((uint32_t)(e)))
 		if (!is_comment && 
 		    (!username || (strcmp(username, pwd.pw_name) == 0))) {
 			/* Create insecure data. */
 			p = buf;
 			COMPACT(pwd.pw_name);
 			COMPACT("*");
-			memmove(p, &pwd.pw_uid, sizeof(pwd.pw_uid));
-			p += sizeof(int);
-			memmove(p, &pwd.pw_gid, sizeof(pwd.pw_gid));
-			p += sizeof(int);
-			memmove(p, &pwd.pw_change, sizeof(time_t));
-			p += sizeof(time_t);
+			SCALAR(pwd.pw_uid);
+			SCALAR(pwd.pw_gid);
+			SCALAR(pwd.pw_change);
 			COMPACT(pwd.pw_class);
 			COMPACT(pwd.pw_gecos);
 			COMPACT(pwd.pw_dir);
 			COMPACT(pwd.pw_shell);
-			memmove(p, &pwd.pw_expire, sizeof(time_t));
-			p += sizeof(time_t);
-			memmove(p, &pwd.pw_fields, sizeof pwd.pw_fields);
-			p += sizeof pwd.pw_fields;
+			SCALAR(pwd.pw_expire);
+			SCALAR(pwd.pw_fields);
 			data.size = p - buf;
 
 			/* Create secure data. */
 			p = sbuf;
 			COMPACT(pwd.pw_name);
 			COMPACT(pwd.pw_passwd);
-			memmove(p, &pwd.pw_uid, sizeof(pwd.pw_uid));
-			p += sizeof(int);
-			memmove(p, &pwd.pw_gid, sizeof(pwd.pw_gid));
-			p += sizeof(int);
-			memmove(p, &pwd.pw_change, sizeof(time_t));
-			p += sizeof(time_t);
+			SCALAR(pwd.pw_uid);
+			SCALAR(pwd.pw_gid);
+			SCALAR(pwd.pw_change);
 			COMPACT(pwd.pw_class);
 			COMPACT(pwd.pw_gecos);
 			COMPACT(pwd.pw_dir);
 			COMPACT(pwd.pw_shell);
-			memmove(p, &pwd.pw_expire, sizeof(time_t));
-			p += sizeof(time_t);
-			memmove(p, &pwd.pw_fields, sizeof pwd.pw_fields);
-			p += sizeof pwd.pw_fields;
+			SCALAR(pwd.pw_expire);
+			SCALAR(pwd.pw_fields);
 			sdata.size = p - sbuf;
 
 			/* Store insecure by name. */
-			tbuf[0] = _PW_KEYBYNAME;
+			tbuf[0] = CURRENT_VERSION(_PW_KEYBYNAME);
 			len = strlen(pwd.pw_name);
 			memmove(tbuf + 1, pwd.pw_name, len);
 			key.size = len + 1;
@@ -354,21 +398,23 @@ main(int argc, char *argv[])
 				error("put");
 
 			/* Store insecure by number. */
-			tbuf[0] = _PW_KEYBYNUM;
-			memmove(tbuf + 1, &cnt, sizeof(cnt));
-			key.size = sizeof(cnt) + 1;
+			tbuf[0] = CURRENT_VERSION(_PW_KEYBYNUM);
+			store = htonl(cnt);
+			memmove(tbuf + 1, &store, sizeof(store));
+			key.size = sizeof(store) + 1;
 			if ((dp->put)(dp, &key, &data, method) == -1)
 				error("put");
 
 			/* Store insecure by uid. */
-			tbuf[0] = _PW_KEYBYUID;
-			memmove(tbuf + 1, &pwd.pw_uid, sizeof(pwd.pw_uid));
-			key.size = sizeof(pwd.pw_uid) + 1;
+			tbuf[0] = CURRENT_VERSION(_PW_KEYBYUID);
+			store = htonl(pwd.pw_uid);
+			memmove(tbuf + 1, &store, sizeof(store));
+			key.size = sizeof(store) + 1;
 			if ((dp->put)(dp, &key, &data, methoduid) == -1)
 				error("put");
 
 			/* Store secure by name. */
-			tbuf[0] = _PW_KEYBYNAME;
+			tbuf[0] = CURRENT_VERSION(_PW_KEYBYNAME);
 			len = strlen(pwd.pw_name);
 			memmove(tbuf + 1, pwd.pw_name, len);
 			key.size = len + 1;
@@ -376,25 +422,119 @@ main(int argc, char *argv[])
 				error("put");
 
 			/* Store secure by number. */
-			tbuf[0] = _PW_KEYBYNUM;
-			memmove(tbuf + 1, &cnt, sizeof(cnt));
-			key.size = sizeof(cnt) + 1;
+			tbuf[0] = CURRENT_VERSION(_PW_KEYBYNUM);
+			store = htonl(cnt);
+			memmove(tbuf + 1, &store, sizeof(store));
+			key.size = sizeof(store) + 1;
 			if ((sdp->put)(sdp, &key, &sdata, method) == -1)
 				error("put");
 
 			/* Store secure by uid. */
-			tbuf[0] = _PW_KEYBYUID;
-			memmove(tbuf + 1, &pwd.pw_uid, sizeof(pwd.pw_uid));
-			key.size = sizeof(pwd.pw_uid) + 1;
+			tbuf[0] = CURRENT_VERSION(_PW_KEYBYUID);
+			store = htonl(pwd.pw_uid);
+			memmove(tbuf + 1, &store, sizeof(store));
+			key.size = sizeof(store) + 1;
 			if ((sdp->put)(sdp, &key, &sdata, methoduid) == -1)
 				error("put");
 
 			/* Store insecure and secure special plus and special minus */
 			if (pwd.pw_name[0] == '+' || pwd.pw_name[0] == '-') {
-				tbuf[0] = _PW_KEYYPBYNUM;
-				memmove(tbuf + 1, &ypcnt, sizeof(cnt));
+				tbuf[0] = CURRENT_VERSION(_PW_KEYYPBYNUM);
+				store = htonl(ypcnt);
+				memmove(tbuf + 1, &store, sizeof(store));
 				ypcnt++;
-				key.size = sizeof(cnt) + 1;
+				key.size = sizeof(store) + 1;
+				if ((dp->put)(dp, &key, &data, method) == -1)
+					error("put");
+				if ((sdp->put)(sdp, &key, &sdata, method) == -1)
+					error("put");
+			}
+
+			/* Create insecure data. (legacy version) */
+			p = buf;
+			COMPACT(pwd.pw_name);
+			COMPACT("*");
+			LSCALAR(pwd.pw_uid);
+			LSCALAR(pwd.pw_gid);
+			LSCALAR(pwd.pw_change);
+			COMPACT(pwd.pw_class);
+			COMPACT(pwd.pw_gecos);
+			COMPACT(pwd.pw_dir);
+			COMPACT(pwd.pw_shell);
+			LSCALAR(pwd.pw_expire);
+			LSCALAR(pwd.pw_fields);
+			data.size = p - buf;
+
+			/* Create secure data. (legacy version) */
+			p = sbuf;
+			COMPACT(pwd.pw_name);
+			COMPACT(pwd.pw_passwd);
+			LSCALAR(pwd.pw_uid);
+			LSCALAR(pwd.pw_gid);
+			LSCALAR(pwd.pw_change);
+			COMPACT(pwd.pw_class);
+			COMPACT(pwd.pw_gecos);
+			COMPACT(pwd.pw_dir);
+			COMPACT(pwd.pw_shell);
+			LSCALAR(pwd.pw_expire);
+			LSCALAR(pwd.pw_fields);
+			sdata.size = p - sbuf;
+
+			/* Store insecure by name. */
+			tbuf[0] = LEGACY_VERSION(_PW_KEYBYNAME);
+			len = strlen(pwd.pw_name);
+			memmove(tbuf + 1, pwd.pw_name, len);
+			key.size = len + 1;
+			if ((dp->put)(dp, &key, &data, method) == -1)
+				error("put");
+
+			/* Store insecure by number. */
+			tbuf[0] = LEGACY_VERSION(_PW_KEYBYNUM);
+			store = HTOL(cnt);
+			memmove(tbuf + 1, &store, sizeof(store));
+			key.size = sizeof(store) + 1;
+			if ((dp->put)(dp, &key, &data, method) == -1)
+				error("put");
+
+			/* Store insecure by uid. */
+			tbuf[0] = LEGACY_VERSION(_PW_KEYBYUID);
+			store = HTOL(pwd.pw_uid);
+			memmove(tbuf + 1, &store, sizeof(store));
+			key.size = sizeof(store) + 1;
+			if ((dp->put)(dp, &key, &data, methoduid) == -1)
+				error("put");
+
+			/* Store secure by name. */
+			tbuf[0] = LEGACY_VERSION(_PW_KEYBYNAME);
+			len = strlen(pwd.pw_name);
+			memmove(tbuf + 1, pwd.pw_name, len);
+			key.size = len + 1;
+			if ((sdp->put)(sdp, &key, &sdata, method) == -1)
+				error("put");
+
+			/* Store secure by number. */
+			tbuf[0] = LEGACY_VERSION(_PW_KEYBYNUM);
+			store = HTOL(cnt);
+			memmove(tbuf + 1, &store, sizeof(store));
+			key.size = sizeof(store) + 1;
+			if ((sdp->put)(sdp, &key, &sdata, method) == -1)
+				error("put");
+
+			/* Store secure by uid. */
+			tbuf[0] = LEGACY_VERSION(_PW_KEYBYUID);
+			store = HTOL(pwd.pw_uid);
+			memmove(tbuf + 1, &store, sizeof(store));
+			key.size = sizeof(store) + 1;
+			if ((sdp->put)(sdp, &key, &sdata, methoduid) == -1)
+				error("put");
+
+			/* Store insecure and secure special plus and special minus */
+			if (pwd.pw_name[0] == '+' || pwd.pw_name[0] == '-') {
+				tbuf[0] = LEGACY_VERSION(_PW_KEYYPBYNUM);
+				store = HTOL(ypcnt);
+				memmove(tbuf + 1, &store, sizeof(store));
+				ypcnt++;
+				key.size = sizeof(store) + 1;
 				if ((dp->put)(dp, &key, &data, method) == -1)
 					error("put");
 				if ((sdp->put)(sdp, &key, &sdata, method) == -1)
@@ -423,7 +563,13 @@ main(int argc, char *argv[])
 	if (yp_enabled) {
 		buf[0] = yp_enabled + 2;
 		data.size = 1;
-		tbuf[0] = _PW_KEYYPENABLED;
+		key.size = 1;
+		tbuf[0] = CURRENT_VERSION(_PW_KEYYPENABLED);
+		if ((dp->put)(dp, &key, &data, method) == -1)
+			error("put");
+		if ((sdp->put)(sdp, &key, &data, method) == -1)
+			error("put");
+		tbuf[0] = LEGACY_VERSION(_PW_KEYYPENABLED);
 		key.size = 1;
 		if ((dp->put)(dp, &key, &data, method) == -1)
 			error("put");
@@ -478,9 +624,11 @@ int
 scan(FILE *fp, struct passwd *pw)
 {
 	static int lcnt;
+	size_t len;
 	char *p;
 
-	if (!fgets(line, sizeof(line), fp))
+	p = fgetln(fp, &len);
+	if (p == NULL)
 		return (0);
 	++lcnt;
 	/*
@@ -488,12 +636,14 @@ scan(FILE *fp, struct passwd *pw)
 	 * throat...''
 	 *	-- The Who
 	 */
-	if (!(p = strchr(line, '\n'))) {
-		warnx("line too long");
+	if (len > 0 && p[len - 1] == '\n')
+		len--;
+	if (len >= sizeof(line) - 1) {
+		warnx("line #%d too long", lcnt);
 		goto fmt;
-
 	}
-	*p = '\0';
+	memcpy(line, p, len);
+	line[len] = '\0';
 
 	/* 
 	 * Ignore comments: ^[ \t]*#
@@ -507,7 +657,7 @@ scan(FILE *fp, struct passwd *pw)
 	} else
 		is_comment = 0;
 
-	if (!pw_scan(line, pw)) {
+	if (!__pw_scan(line, pw, _PWSCAN_WARN|_PWSCAN_MASTER)) {
 		warnx("at line #%d", lcnt);
 fmt:		errno = EFTYPE;	/* XXX */
 		error(pname);
@@ -516,9 +666,9 @@ fmt:		errno = EFTYPE;	/* XXX */
 	return (1);
 }
 
-void                    
-cp(char *from, char *to, mode_t mode)              
-{               
+void
+cp(char *from, char *to, mode_t mode)
+{
 	static char buf[MAXBSIZE];
 	int from_fd, rcount, to_fd, wcount;
 
@@ -560,8 +710,9 @@ mv(char *from, char *to)
 }
 
 void
-error(char *name)
+error(const char *name)
 {
+
 	warn("%s", name);
 	cleanup();
 	exit(1);
@@ -592,6 +743,6 @@ usage(void)
 {
 
 	fprintf(stderr,
-"usage: pwd_mkdb [-C] [-N] [-p] [-d <dest dir>] [-s <cachesize>] [-u <local username>] file\n");
+"usage: pwd_mkdb [-BCiLNp] [-d directory] [-s cachesize] [-u username] file\n");
 	exit(1);
 }

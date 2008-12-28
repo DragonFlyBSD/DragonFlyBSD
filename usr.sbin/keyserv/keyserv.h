@@ -1,4 +1,5 @@
 /*
+ * $FreeBSD: src/usr.sbin/keyserv/keyserv.h,v 1.5 2007/11/07 10:53:35 kevlo Exp $
  * $DragonFly: src/usr.sbin/keyserv/keyserv.h,v 1.6 2006/08/03 16:40:48 swildner Exp $
  */
 
@@ -12,9 +13,7 @@ extern keystatus pk_netget( uid_t, key_netstarg * );
 extern keystatus pk_get_conv_key( uid_t, keybuf, cryptkeyres * );
 extern void pk_nodefaultkeys( void );
 
-extern int __rpc_get_local_uid( uid_t * , SVCXPRT * );
 extern void crypt_prog_1( struct svc_req *, SVCXPRT * );
 extern void load_des( int, char * );
 
 extern int (*_my_crypt)( char *, int, struct desparams * );
-

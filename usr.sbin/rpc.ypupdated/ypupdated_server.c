@@ -35,13 +35,12 @@
  * Center for Telecommunications Research
  * Columbia University, New York City
  *
- * $FreeBSD: src/usr.sbin/rpc.ypupdated/ypupdated_server.c,v 1.3.2.1 2002/02/15 00:46:58 des Exp $
+ * $FreeBSD: src/usr.sbin/rpc.ypupdated/ypupdated_server.c,v 1.7 2003/05/03 21:06:40 obrien Exp $
  * $DragonFly: src/usr.sbin/rpc.ypupdated/ypupdated_server.c,v 1.3 2005/11/25 00:32:49 swildner Exp $
  */
 
 #include <stdio.h>
 #include <rpc/rpc.h>
-#include <rpc/auth_des.h>
 #include <rpc/key_prot.h>
 #include <sys/param.h>
 #include <sys/cdefs.h>

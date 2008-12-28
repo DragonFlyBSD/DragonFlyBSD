@@ -37,7 +37,6 @@
 
 #include <netproto/atm/kern_include.h>
 
-#include <rpc/rpc.h>
 #include "spans_xdr.h"
 #include "spans_var.h"
 

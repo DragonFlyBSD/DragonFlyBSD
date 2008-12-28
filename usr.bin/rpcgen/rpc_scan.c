@@ -5,38 +5,35 @@
  * may copy or modify Sun RPC without charge, but are not authorized
  * to license or distribute it to anyone else except as part of a product or
  * program developed by the user.
- * 
+ *
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
  * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
- * 
+ *
  * Sun RPC is provided with no support and without any obligation on the
  * part of Sun Microsystems, Inc. to assist in its use, correction,
  * modification or enhancement.
- * 
+ *
  * SUN MICROSYSTEMS, INC. SHALL HAVE NO LIABILITY WITH RESPECT TO THE
  * INFRINGEMENT OF COPYRIGHTS, TRADE SECRETS OR ANY PATENTS BY SUN RPC
  * OR ANY PART THEREOF.
- * 
+ *
  * In no event will Sun Microsystems, Inc. be liable for any lost revenue
  * or profits or other special, indirect and consequential damages, even if
  * Sun has been advised of the possibility of such damages.
- * 
+ *
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  *
- * $FreeBSD: src/usr.bin/rpcgen/rpc_scan.c,v 1.4.8.1 2001/03/04 08:59:50 kris Exp $
+ * @(#)rpc_scan.c	1.13	93/07/05 SMI; 1.11 89/02/22 (C) 1987 SMI
+ * $FreeBSD: src/usr.bin/rpcgen/rpc_scan.c,v 1.10 2005/11/13 21:17:24 dwmalone Exp $
  * $DragonFly: src/usr.bin/rpcgen/rpc_scan.c,v 1.5 2008/10/16 01:52:33 swildner Exp $
- *
- * @(#)rpc_scan.c 1.11 89/02/22 (C) 1987 SMI
  */
 
-#ident	"@(#)rpc_scan.c	1.13	93/07/05 SMI"
-
 /*
- * rpc_scan.c, Scanner for the RPC protocol compiler 
- * Copyright (C) 1987, Sun Microsystems, Inc. 
+ * rpc_scan.c, Scanner for the RPC protocol compiler
+ * Copyright (C) 1987, Sun Microsystems, Inc.
  */
 
 #include <sys/types.h>
@@ -45,8 +42,8 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
-#include "rpc_scan.h"
 #include "rpc_parse.h"
+#include "rpc_scan.h"
 #include "rpc_util.h"
 
 #define startcomment(where) (where[0] == '/' && where[1] == '*')
@@ -56,17 +53,17 @@ static int pushed = 0;	/* is a token pushed */
 static token lasttok;	/* last token, if pushed */
 
 static void	unget_token(token *);
-static void	findstrconst(char **, char **);
-static void	findchrconst(char **, char **);
-static void	findconst(char **, char **);
+static void	findstrconst(char **, const char **);
+static void	findchrconst(char **, const char **);
+static void	findconst(char **, const char **);
 static void	findkind(char **, token *);
 static int	cppline(char *);
 static int	directive(char *);
 static void	printdirective(char *);
-static void	docppline(char *, int *, char **);
+static void	docppline(char *, int *, const char **);
 
 /*
- * scan expecting 1 given token 
+ * scan expecting 1 given token
  */
 void
 scan(tok_kind expect, token *tokp)
@@ -77,7 +74,7 @@ scan(tok_kind expect, token *tokp)
 }
 
 /*
- * scan expecting any of the 2 given tokens 
+ * scan expecting any of the 2 given tokens
  */
 void
 scan2(tok_kind expect1, tok_kind expect2, token *tokp)
@@ -88,7 +85,7 @@ scan2(tok_kind expect1, tok_kind expect2, token *tokp)
 }
 
 /*
- * scan expecting any of the 3 given token 
+ * scan expecting any of the 3 given token
  */
 void
 scan3(tok_kind expect1, tok_kind expect2, tok_kind expect3, token *tokp)
@@ -100,7 +97,7 @@ scan3(tok_kind expect1, tok_kind expect2, tok_kind expect3, token *tokp)
 }
 
 /*
- * scan expecting a constant, possibly symbolic 
+ * scan expecting a constant, possibly symbolic
  */
 void
 scan_num(token *tokp)
@@ -115,7 +112,7 @@ scan_num(token *tokp)
 }
 
 /*
- * Peek at the next token 
+ * Peek at the next token
  */
 void
 peek(token *tokp)
@@ -125,7 +122,7 @@ peek(token *tokp)
 }
 
 /*
- * Peek at the next token and scan it if it matches what you expect 
+ * Peek at the next token and scan it if it matches what you expect
  */
 int
 peekscan(tok_kind expect, token *tokp)
@@ -139,14 +136,14 @@ peekscan(tok_kind expect, token *tokp)
 }
 
 /*
- * Get the next token, printing out any directive that are encountered. 
+ * Get the next token, printing out any directive that are encountered.
  */
 void
 get_token(token *tokp)
 {
 	int commenting;
 	int stat = 0;
-	
+
 	if (pushed) {
 		pushed = 0;
 		*tokp = lasttok;
@@ -204,7 +201,7 @@ get_token(token *tokp)
 	}
 
 	/*
-	 * 'where' is not whitespace, comment or directive Must be a token! 
+	 * 'where' is not whitespace, comment or directive Must be a token!
 	 */
 	switch (*where) {
 	case ':':
@@ -311,9 +308,10 @@ unget_token(token *tokp)
 }
 
 static void
-findstrconst(char **str, char **val)
+findstrconst(char **str, const char **val)
 {
 	char *p;
+	char *tmp;
 	int size;
 
 	p = *str;
@@ -324,16 +322,18 @@ findstrconst(char **str, char **val)
 		error("unterminated string constant");
 	p++;
 	size = p - *str;
-	*val = alloc(size + 1);
-	(void) strncpy(*val, *str, size);
-	(*val)[size] = 0;
+	tmp = xmalloc(size + 1);
+	strncpy(tmp, *str, size);
+	tmp[size] = 0;
+	*val = tmp;
 	*str = p;
 }
 
 static void
-findchrconst(char **str, char **val)
+findchrconst(char **str, const char **val)
 {
 	char *p;
+	char *tmp;
 	int size;
 
 	p = *str;
@@ -346,16 +346,18 @@ findchrconst(char **str, char **val)
 	size = p - *str;
 	if (size != 3)
 		error("empty char string");
-	*val = alloc(size + 1);
-	strncpy(*val, *str, size);
-	(*val)[size] = 0;
+	tmp = xmalloc(size + 1);
+	strncpy(tmp, *str, size);
+	tmp[size] = 0;
+	*val = tmp;
 	*str = p;
 }
 
 static void
-findconst(char **str, char **val)
+findconst(char **str, const char **val)
 {
 	char *p;
+	char *tmp;
 	int size;
 
 	p = *str;
@@ -370,9 +372,10 @@ findconst(char **str, char **val)
 		} while (isdigit(*p));
 	}
 	size = p - *str;
-	*val = alloc(size + 1);
-	strncpy(*val, *str, size);
-	(*val)[size] = 0;
+	tmp = xmalloc(size + 1);
+	strncpy(tmp, *str, size);
+	tmp[size] = 0;
+	*val = tmp;
 	*str = p;
 }
 
@@ -408,7 +411,7 @@ findkind(char **mark, token *tokp)
 {
 	int len;
 	token *s;
-	char *str;
+	char *str, *tmp;
 
 	str = *mark;
 	for (s = symbols; s->kind != TOK_EOF; s++) {
@@ -424,9 +427,10 @@ findkind(char **mark, token *tokp)
 	}
 	tokp->kind = TOK_IDENT;
 	for (len = 0; isalnum(str[len]) || str[len] == '_'; len++);
-	tokp->str = alloc(len + 1);
-	strncpy(tokp->str, str, len);
-	tokp->str[len] = 0;
+	tmp = xmalloc(len + 1);
+	strncpy(tmp, str, len);
+	tmp[len] = 0;
+	tokp->str = tmp;
 	*mark = str + len;
 }
 
@@ -449,7 +453,7 @@ printdirective(char *line)
 }
 
 static void
-docppline(char *line, int *lineno, char **fname)
+docppline(char *line, int *lineno, const char **fname)
 {
 	char *file;
 	int num;
@@ -466,7 +470,7 @@ docppline(char *line, int *lineno, char **fname)
 	if (*line != '"')
 		error("preprocessor error");
 	line++;
-	p = file = alloc(strlen(line) + 1);
+	p = file = xmalloc(strlen(line) + 1);
 	while (*line && *line != '"')
 		*p++ = *line++;
 	if (*line == 0)

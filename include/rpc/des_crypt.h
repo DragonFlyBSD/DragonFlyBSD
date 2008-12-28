@@ -1,6 +1,6 @@
 /*
  * @(#)des_crypt.h	2.1 88/08/11 4.0 RPCSRC;	from 1.4 88/02/08 (C) 1986 SMI
- * $FreeBSD: src/include/rpc/des_crypt.h,v 1.2 1999/12/29 05:00:42 peter Exp $
+ * $FreeBSD: src/include/rpc/des_crypt.h,v 1.4 2002/03/23 17:24:55 imp Exp $
  * $DragonFly: src/include/rpc/des_crypt.h,v 1.3 2003/11/14 01:01:50 dillon Exp $
  *
  * des_crypt.h, des library routine interface
@@ -34,6 +34,16 @@
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  */
+/*
+ * Copyright (c) 1986 - 1991 by Sun Microsystems, Inc.
+ */
+
+/*
+ * des_crypt.h, des library routine interface
+ */
+
+#ifndef _DES_DES_CRYPT_H
+#define _DES_DES_CRYPT_H
 
 #include <sys/cdefs.h>
 #include <rpc/rpc.h>
@@ -76,46 +86,22 @@
  * Cipher Block Chaining mode
  */
 __BEGIN_DECLS
-#ifdef __STDC__
-int cbc_crypt ( char *, char *, unsigned int, unsigned int, char *);
-#else
-cbc_crypt(/* key, buf, len, mode, ivec */); /*
-	char *key;	
-	char *buf;
-	unsigned len;
-	unsigned mode;
-	char *ivec;	
-*/ 
-#endif
+int cbc_crypt( char *, char *, unsigned int, unsigned int, char *);
+__END_DECLS
 
 /*
  * Electronic Code Book mode
  */
-#ifdef __STDC__
-int ecb_crypt ( char *, char *, unsigned int, unsigned int );
-#else
-ecb_crypt(/* key, buf, len, mode */); /*
-	char *key;	
-	char *buf;
-	unsigned len;
-	unsigned mode;
-*/
-#endif
+__BEGIN_DECLS
+int ecb_crypt( char *, char *, unsigned int, unsigned int );
 __END_DECLS
 
-#ifndef _KERNEL
 /* 
  * Set des parity for a key.
  * DES parity is odd and in the low bit of each byte
  */
 __BEGIN_DECLS
-#ifdef __STDC__
-void des_setparity ( char *);
-#else
-void
-des_setparity(/* key */); /*
-	char *key;	
-*/
-#endif
+void des_setparity( char *);
 __END_DECLS
-#endif
+
+#endif  /* _DES_DES_CRYPT_H */

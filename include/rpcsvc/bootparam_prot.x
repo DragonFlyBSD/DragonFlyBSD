@@ -28,7 +28,7 @@
  *
  * @(#)bootparam_prot.x 1.2 87/06/24 Copyr 1987 Sun Micro
  * @(#)bootparam_prot.x	2.1 88/08/01 4.0 RPCSRC
- * $FreeBSD: src/include/rpcsvc/bootparam_prot.x,v 1.5 1999/08/27 23:45:07 peter Exp $
+ * $FreeBSD: src/include/rpcsvc/bootparam_prot.x,v 1.7 2003/05/04 02:51:42 obrien Exp $
  * $DragonFly: src/include/rpcsvc/bootparam_prot.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
  */
 
@@ -48,7 +48,6 @@
 %#include <sys/errno.h>
 %#include <sys/param.h>
 %#include <sys/syslimits.h>
-%#include <sys/ucred.h>
 #endif
 
 const MAX_MACHINE_NAME  = 255;

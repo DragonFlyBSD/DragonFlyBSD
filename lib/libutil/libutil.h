@@ -55,6 +55,7 @@ struct in_addr;
 struct sockaddr;
 
 __BEGIN_DECLS
+int	flopen(const char *, int, ...);
 void	login(struct utmp *);
 int	login_tty(int);
 int	logout(const char *);

@@ -49,14 +49,14 @@ static const char sccsid[] = "@(#)inet_network.c	8.1 (Berkeley) 6/4/93";
  * The library routines call this routine to interpret
  * network numbers.
  */
-u_long
+in_addr_t
 inet_network(cp)
-	register const char *cp;
+	const char *cp;
 {
-	register u_long val, base, n, i;
-	register char c;
-	u_long parts[4], *pp = parts;
-	int digit;
+	in_addr_t val, base, n;
+	char c;
+	in_addr_t parts[4], *pp = parts;
+	int i, digit;
 
 again:
 	val = 0; base = 10; digit = 0;
@@ -102,3 +102,12 @@ again:
 	}
 	return (val);
 }
+
+#ifdef _LIBC
+/*
+ * Weak aliases for applications that use certain private entry points,
+ * and fail to include <arpa/inet.h>.
+ */
+#undef inet_network
+__weak_reference(__inet_network, inet_network);
+#endif

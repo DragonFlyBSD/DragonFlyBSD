@@ -241,6 +241,10 @@ SUBDIR+=dig \
 	host
 .endif
 
+.if defined(WANT_HESIOD)
+SUBDIR+=hesinfo
+.endif
+
 .if !defined(NO_OPENSSL)
 SUBDIR+=bc \
 	dc
