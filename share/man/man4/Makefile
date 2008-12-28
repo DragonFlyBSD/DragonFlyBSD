@@ -353,6 +353,7 @@ MLINKS+=snd_sbc.4 snd_sb16.4 \
 	snd_sbc.4 snd_sb8.4
 MLINKS+=splash.4 screensaver.4
 MLINKS+=syscons.4 sc.4
+MLINKS+=vga.4 vesa.4
 MLINKS+=vpo.4 imm.4
 MLINKS+=wlan_ratectl.4 wlan_ratectl_amrr.4 \
 	wlan_ratectl.4 wlan_ratectl_onoe.4 \
