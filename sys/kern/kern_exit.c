@@ -800,6 +800,17 @@ loop:
 				wakeup((caddr_t)t);
 				return (0);
 			}
+
+			/*
+			 * Unlink the proc from its process group so that
+			 * the following operations won't lead to an
+			 * inconsistent state for processes running down
+			 * the zombie list.
+			 */
+			KKASSERT(p->p_lock == 0);
+			proc_remove_zombie(p);
+			leavepgrp(p);
+
 			p->p_xstat = 0;
 			ruadd(&q->p_cru, &p->p_ru);
 
@@ -819,14 +830,6 @@ loop:
 			 */
 			if (p->p_args && --p->p_args->ar_ref == 0)
 				FREE(p->p_args, M_PARGS);
-
-			/*
-			 * Finally finished with old proc entry.
-			 * Unlink it from its process group and free it.
-			 */
-			KKASSERT(p->p_lock == 0);
-			proc_remove_zombie(p);
-			leavepgrp(p);
 
 			if (--p->p_sigacts->ps_refcnt == 0) {
 				kfree(p->p_sigacts, M_SUBPROC);
