@@ -454,10 +454,11 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 	struct ifaddr_container *ifac;
 	struct in_ifaddr_container *iac;
 	struct sockaddr_in oldaddr;
-	int hostIsNew, iaIsNew, maskIsNew;
+	int hostIsNew, iaIsNew, maskIsNew, ifpWasUp;
 	int error = 0;
 
 	iaIsNew = 0;
+	ifpWasUp = 0;
 
 	/*
 	 * Find address for this interface, if it exists.
@@ -487,6 +488,9 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 				}
 			}
 		}
+
+		if (ifp->if_flags & IFF_UP)
+			ifpWasUp = 1;
 	}
 
 	switch (cmd) {
@@ -643,6 +647,14 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 			iaIsNew ? IFADDR_EVENT_ADD : IFADDR_EVENT_CHANGE,
 			&ia->ia_ifa);
 		}
+		if (!ifpWasUp && (ifp->if_flags & IFF_UP)) {
+			/*
+			 * Interface is brought up by in_ifinit()
+			 * (via ifp->if_ioctl).  We act as if the
+			 * interface got IFF_UP flag turned on.
+			 */
+			if_up(ifp);
+		}
 		return (0);
 
 	case SIOCSIFNETMASK:
@@ -691,6 +703,10 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 			EVENTHANDLER_INVOKE(ifaddr_event, ifp,
 			iaIsNew ? IFADDR_EVENT_ADD : IFADDR_EVENT_CHANGE,
 			&ia->ia_ifa);
+		}
+		if (!ifpWasUp && (ifp->if_flags & IFF_UP)) {
+			/* See the comment in SIOCSIFADDR */
+			if_up(ifp);
 		}
 		return (error);
 
@@ -746,6 +762,24 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 #endif
 
 	ifa_destroy(&ia->ia_ifa);
+
+	if ((cmd == SIOCAIFADDR || cmd == SIOCSIFADDR) &&
+	    !ifpWasUp && (ifp->if_flags & IFF_UP)) {
+		/*
+		 * Though the address assignment failed, the
+		 * interface is brought up by in_ifinit()
+		 * (via ifp->if_ioctl).  With the hope that
+		 * the interface has some valid addresses, we
+		 * act as if IFF_UP flag was just set on the
+		 * interface.
+		 *
+		 * NOTE:
+		 * This could only be done after the failed
+		 * address is unlinked from the global address
+		 * list.
+		 */
+		if_up(ifp);
+	}
 
 	return (error);
 }
