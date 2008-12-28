@@ -2,7 +2,6 @@
 
 LIB=	pam_opie
 SRCS=	pam_opie.c
-WARNS?=	6
 MAN=	pam_opie.8
 
 DPADD=	${LIBOPIE}

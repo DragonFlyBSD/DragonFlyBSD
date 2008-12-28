@@ -2,7 +2,6 @@
 
 LIB=	pam_ssh
 SRCS=	pam_ssh.c
-WARNS?=	6
 MAN=	pam_ssh.8
 
 LDADD=	-lssh -lcrypto -lcrypt

@@ -2,7 +2,6 @@
 
 LIB=	pam_unix
 SRCS=	pam_unix.c
-WARNS?=	6
 MAN=	pam_unix.8
 
 DPADD=	${LIBCRYPT} ${LIBUTIL}

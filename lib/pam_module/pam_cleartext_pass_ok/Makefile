@@ -2,7 +2,6 @@
 
 LIB=	pam_cleartext_pass_ok
 SRCS=	pam_cleartext_pass_ok.c
-WARNS?=	6
 NOMAN=
 
 DPADD=	${LIBSKEY}
