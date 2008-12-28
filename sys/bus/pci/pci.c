@@ -619,7 +619,7 @@ pci_read_capabilities(device_t pcib, pcicfgregs *cfg)
 		int ptr = nextptr;
 
 		/* Process this entry */
-		switch (REG(ptr, 1)) {
+		switch (REG(ptr + PCICAP_ID, 1)) {
 		case PCIY_PMG:		/* PCI power management */
 			pci_read_cap_pmgt(pcib, ptr, cfg);
 			break;
@@ -637,7 +637,7 @@ pci_read_capabilities(device_t pcib, pcicfgregs *cfg)
 		}
 
 		/* Find the next entry */
-		nextptr = REG(ptr + 1, 1);
+		nextptr = REG(ptr + PCICAP_NEXTPTR, 1);
 	}
 
 #undef REG
