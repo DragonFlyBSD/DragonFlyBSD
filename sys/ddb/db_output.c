@@ -175,6 +175,12 @@ db_printf(const char *fmt, ...)
 	__va_end(listp);
 }
 
+void
+db_vprintf(const char *fmt, __va_list va)
+{
+	kvcprintf (fmt, db_putchar, NULL, db_radix, va);
+}
+
 int db_indent;
 
 void
