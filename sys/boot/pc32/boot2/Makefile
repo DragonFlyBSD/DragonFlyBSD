@@ -94,7 +94,7 @@ boot1.out: boot1.o bootasmdef.nx
 	${LD} ${LDFLAGS} -e start -Ttext ${ORG1} -o ${.TARGET} boot1.o
 
 boot1.o: boot1.S
-	${CC} ${CFLAGS} -DFLAGS=${B1FLAGS} ${AFLAGS} \
+	${CC} ${CFLAGS} -DFLAGS=${B1FLAGS} \
 		${.IMPSRC} -o ${.TARGET} -c
 
 boot2.o: boot2.c ${.CURDIR}/../../common/ufsread.c ${.CURDIR}/../../../../lib/libstand/hammerread.c
@@ -131,7 +131,7 @@ boot2.o: boot2.h
 
 sio.o: sio.S
 	${CC} -DSIOPRT=${BOOT_COMCONSOLE_PORT} -DSIOFMT=${B2SIOFMT} \
-		-DSIOSPD=${BOOT_COMCONSOLE_SPEED} ${AFLAGS} \
+		-DSIOSPD=${BOOT_COMCONSOLE_SPEED} \
 		${.IMPSRC} -o ${.TARGET} -c
 
 install:
