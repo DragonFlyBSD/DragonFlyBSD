@@ -1019,7 +1019,7 @@ re_probe(device_t dev)
 					sc->re_macver = RE_MACVER_28;
 				break;
 			}
-			if (pci_get_pciecap_ptr(dev) != 0)
+			if (pci_is_pcie(dev))
 				sc->re_caps |= RE_C_PCIE;
 
 			device_set_desc(dev, t->re_name);

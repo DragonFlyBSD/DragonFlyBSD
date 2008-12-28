@@ -1871,7 +1871,7 @@ bge_attach(device_t dev)
 	 * Check if this is a PCI-X or PCI Express device.
   	 */
 	if (BGE_IS_5705_PLUS(sc)) {
-		if (pci_get_pciecap_ptr(dev) != 0) {
+		if (pci_is_pcie(dev)) {
 			sc->bge_flags |= BGE_FLAG_PCIE;
 			pcie_set_max_readrq(dev, PCIEM_DEVCTL_MAX_READRQ_4096);
 		}
