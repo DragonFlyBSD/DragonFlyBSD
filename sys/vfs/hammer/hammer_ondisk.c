@@ -1048,9 +1048,10 @@ hammer_bnew_ext(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
  * additional references, if necessary.
  */
 hammer_node_t
-hammer_get_node(hammer_mount_t hmp, hammer_off_t node_offset,
+hammer_get_node(hammer_transaction_t trans, hammer_off_t node_offset,
 		int isnew, int *errorp)
 {
+	hammer_mount_t hmp = trans->hmp;
 	hammer_node_t node;
 
 	KKASSERT((node_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_BTREE);
@@ -1074,10 +1075,12 @@ again:
 		}
 	}
 	hammer_ref(&node->lock);
-	if (node->ondisk)
+	if (node->ondisk) {
 		*errorp = 0;
-	else
+	} else {
 		*errorp = hammer_load_node(node, isnew);
+		trans->flags |= HAMMER_TRANSF_DIDIO;
+	}
 	if (*errorp) {
 		hammer_rel_node(node);
 		node = NULL;
@@ -1364,7 +1367,7 @@ hammer_alloc_btree(hammer_transaction_t trans, int *errorp)
 					    sizeof(struct hammer_node_ondisk),
 					    errorp);
 	if (*errorp == 0) {
-		node = hammer_get_node(trans->hmp, node_offset, 1, errorp);
+		node = hammer_get_node(trans, node_offset, 1, errorp);
 		hammer_modify_node_noundo(trans, node);
 		bzero(node->ondisk, sizeof(*node->ondisk));
 		hammer_modify_node_done(node);

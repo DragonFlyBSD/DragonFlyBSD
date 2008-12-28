@@ -94,8 +94,7 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 		volume = hammer_get_root_volume(trans->hmp, &error);
 		if (error)
 			break;
-		node = hammer_get_node(trans->hmp,
-				       volume->ondisk->vol0_btree_root,
+		node = hammer_get_node(trans, volume->ondisk->vol0_btree_root,
 				       0, &error);
 		hammer_rel_volume(volume, 0);
 		if (error)
@@ -313,7 +312,8 @@ hammer_load_cursor_parent(hammer_cursor_t cursor, int try_exclusive)
 
 	if (cursor->node->ondisk->parent) {
 		node = cursor->node;
-		parent = hammer_btree_get_parent(node, &parent_index,
+		parent = hammer_btree_get_parent(cursor->trans, node,
+						 &parent_index,
 						 &error, try_exclusive);
 		if (error == 0) {
 			elm = &parent->ondisk->elms[parent_index];
@@ -453,7 +453,7 @@ hammer_cursor_down(hammer_cursor_t cursor)
 		KKASSERT(elm->internal.subtree_offset != 0);
 		cursor->left_bound = &elm[0].internal.base;
 		cursor->right_bound = &elm[1].internal.base;
-		node = hammer_get_node(cursor->trans->hmp,
+		node = hammer_get_node(cursor->trans,
 				       elm->internal.subtree_offset, 0, &error);
 		if (error == 0) {
 			KASSERT(elm->base.btype == node->ondisk->type, ("BTYPE MISMATCH %c %c NODE %p\n", elm->base.btype, node->ondisk->type, node));

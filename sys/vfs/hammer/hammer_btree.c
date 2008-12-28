@@ -2331,8 +2331,8 @@ hammer_btree_mirror_propagate(hammer_cursor_t cursor, hammer_tid_t mirror_tid)
 }
 
 hammer_node_t
-hammer_btree_get_parent(hammer_node_t node, int *parent_indexp, int *errorp,
-			int try_exclusive)
+hammer_btree_get_parent(hammer_transaction_t trans, hammer_node_t node,
+			int *parent_indexp, int *errorp, int try_exclusive)
 {
 	hammer_node_t parent;
 	hammer_btree_elm_t elm;
@@ -2341,7 +2341,7 @@ hammer_btree_get_parent(hammer_node_t node, int *parent_indexp, int *errorp,
 	/*
 	 * Get the node
 	 */
-	parent = hammer_get_node(node->hmp, node->ondisk->parent, 0, errorp);
+	parent = hammer_get_node(trans, node->ondisk->parent, 0, errorp);
 	if (*errorp) {
 		KKASSERT(parent == NULL);
 		return(NULL);
@@ -2406,7 +2406,7 @@ btree_set_parent(hammer_transaction_t trans, hammer_node_t node,
 	switch(elm->base.btype) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
 	case HAMMER_BTREE_TYPE_LEAF:
-		child = hammer_get_node(node->hmp, elm->internal.subtree_offset,
+		child = hammer_get_node(trans, elm->internal.subtree_offset,
 					0, &error);
 		if (error == 0) {
 			hammer_modify_node_field(trans, child, parent);
@@ -2461,7 +2461,7 @@ hammer_btree_lock_children(hammer_cursor_t cursor,
 		    elm->base.btype != HAMMER_BTREE_TYPE_INTERNAL) {
 			continue;
 		}
-		child = hammer_get_node(hmp,
+		child = hammer_get_node(cursor->trans,
 					elm->internal.subtree_offset,
 					0, &error);
 		if (child)
@@ -2479,7 +2479,7 @@ hammer_btree_lock_children(hammer_cursor_t cursor,
 		case HAMMER_BTREE_TYPE_INTERNAL:
 		case HAMMER_BTREE_TYPE_LEAF:
 			KKASSERT(elm->internal.subtree_offset != 0);
-			child = hammer_get_node(hmp,
+			child = hammer_get_node(cursor->trans,
 						elm->internal.subtree_offset,
 						0, &error);
 			break;

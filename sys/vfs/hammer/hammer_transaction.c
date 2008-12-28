@@ -118,6 +118,7 @@ hammer_start_transaction_fls(struct hammer_transaction *trans,
 void
 hammer_done_transaction(struct hammer_transaction *trans)
 {
+	hammer_mount_t hmp = trans->hmp;
 	int expected_lock_refs;
 
 	hammer_rel_volume(trans->rootvol, 0);
@@ -125,8 +126,12 @@ hammer_done_transaction(struct hammer_transaction *trans)
 	expected_lock_refs = (trans->type == HAMMER_TRANS_FLS) ? 1 : 0;
 	KKASSERT(trans->sync_lock_refs == expected_lock_refs);
 	trans->sync_lock_refs = 0;
-	if (trans->flags & HAMMER_TRANSF_NEWINODE)
-		hammer_inode_waitreclaims(trans->hmp);
+	if (trans->type != HAMMER_TRANS_FLS) {
+		if (trans->flags & HAMMER_TRANSF_NEWINODE)
+			hammer_inode_waitreclaims(hmp);
+		else if (trans->flags & HAMMER_TRANSF_DIDIO)
+			hammer_inode_waithard(hmp);
+	}
 }
 
 /*

@@ -116,6 +116,7 @@ struct hammer_transaction {
 typedef struct hammer_transaction *hammer_transaction_t;
 
 #define HAMMER_TRANSF_NEWINODE	0x0001
+#define HAMMER_TRANSF_DIDIO	0x0002
 
 /*
  * HAMMER locks
@@ -352,11 +353,12 @@ typedef struct hammer_inode *hammer_inode_t;
 /*
  * Used by the inode reclaim code to pipeline reclaims and avoid
  * blowing out kernel memory or letting the flusher get too far
- * behind.
+ * behind.  The reclaim wakes up when count reaches 0 or the
+ * timer expires.
  */
 struct hammer_reclaim {
 	TAILQ_ENTRY(hammer_reclaim) entry;
-	int	okydoky;
+	int	count;
 };
 
 #define HAMMER_RECLAIM_FLUSH	2000
@@ -753,6 +755,7 @@ struct hammer_mount {
 typedef struct hammer_mount	*hammer_mount_t;
 
 #define HAMMER_MOUNT_CRITICAL_ERROR	0x0001
+#define HAMMER_MOUNT_FLUSH_RECOVERY	0x0002
 
 struct hammer_sync_info {
 	int error;
@@ -821,7 +824,6 @@ extern int hammer_count_io_running_read;
 extern int hammer_count_io_running_write;
 extern int hammer_count_io_locked;
 extern int hammer_limit_dirtybufspace;
-extern int hammer_limit_iqueued;
 extern int hammer_limit_recs;
 extern int hammer_bio_count;
 extern int hammer_verify_zone;
@@ -846,6 +848,7 @@ void	hammer_scan_inode_snapshots(hammer_mount_t hmp,
 void	hammer_put_inode(struct hammer_inode *ip);
 void	hammer_put_inode_ref(struct hammer_inode *ip);
 void	hammer_inode_waitreclaims(hammer_mount_t hmp);
+void	hammer_inode_waithard(hammer_mount_t hmp);
 
 int	hammer_unload_volume(hammer_volume_t volume, void *data __unused);
 int	hammer_adjust_volume_mode(hammer_volume_t volume, void *data __unused);
@@ -963,7 +966,8 @@ int	hammer_btree_lock_children(hammer_cursor_t cursor,
 void	hammer_btree_unlock_children(hammer_cursor_t cursor,
 			struct hammer_node_locklist **locklistp);
 int	hammer_btree_search_node(hammer_base_elm_t elm, hammer_node_ondisk_t node);
-hammer_node_t hammer_btree_get_parent(hammer_node_t node, int *parent_indexp,
+hammer_node_t hammer_btree_get_parent(hammer_transaction_t trans,
+			hammer_node_t node, int *parent_indexp,
 			int *errorp, int try_exclusive);
 
 void	hammer_print_btree_node(hammer_node_ondisk_t ondisk);
@@ -999,8 +1003,8 @@ void		hammer_rel_buffer(hammer_buffer_t buffer, int flush);
 
 int		hammer_vfs_export(struct mount *mp, int op,
 			const struct export_args *export);
-hammer_node_t	hammer_get_node(hammer_mount_t hmp, hammer_off_t node_offset,
-			int isnew, int *errorp);
+hammer_node_t	hammer_get_node(hammer_transaction_t trans,
+			hammer_off_t node_offset, int isnew, int *errorp);
 void		hammer_ref_node(hammer_node_t node);
 hammer_node_t	hammer_ref_node_safe(struct hammer_mount *hmp,
 			hammer_node_cache_t cache, int *errorp);
@@ -1169,6 +1173,7 @@ void hammer_flusher_sync(hammer_mount_t hmp);
 int  hammer_flusher_async(hammer_mount_t hmp, hammer_flush_group_t flg);
 int  hammer_flusher_async_one(hammer_mount_t hmp);
 void hammer_flusher_wait(hammer_mount_t hmp, int seq);
+void hammer_flusher_wait_next(hammer_mount_t hmp);
 int  hammer_flusher_meta_limit(hammer_mount_t hmp);
 int  hammer_flusher_meta_halflimit(hammer_mount_t hmp);
 int  hammer_flusher_undo_exhausted(hammer_transaction_t trans, int quarter);
