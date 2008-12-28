@@ -30,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)chpass.1	8.2 (Berkeley) 12/30/93
-.\" $FreeBSD: src/usr.bin/chpass/chpass.1,v 1.23.2.10 2003/02/24 23:04:38 trhodes Exp $
+.\" $FreeBSD: src/usr.bin/chpass/chpass.1,v 1.39 2005/08/02 21:38:02 seanc Exp $
 .\" $DragonFly: src/usr.bin/chpass/chpass.1,v 1.4 2006/02/17 19:38:58 swildner Exp $
 .\"
 .Dd December 30, 1993
@@ -51,7 +51,6 @@
 .Op Fl e Ar expiretime
 .Op Fl s Ar newshell
 .Op user
-.Pp
 .Nm
 .Op Fl oly
 .Op Fl a Ar list
@@ -164,7 +163,8 @@ Both of these fields should be unique across the system (and often
 across a group of systems) as they control file access.
 .Pp
 While it is possible to have multiple entries with identical login names
-and/or identical user id's, it is usually a mistake to do so.  Routines
+and/or identical user id's, it is usually a mistake to do so.
+Routines
 that manipulate these files will often return only one of the multiple
 entries, and that one by random selection.
 .Pp
@@ -216,7 +216,7 @@ and
 numbers and finally
 .Ar other information
 which is a single comma delimited string to represent any additional
-gcos fields (typically used for site specific user information).
+gecos fields (typically used for site specific user information).
 Note that
 .Xr finger 1
 will display the office location and office phone together under the
@@ -395,7 +395,7 @@ is compiled with NIS support:
 Force
 .Nm
 to modify the local copy of a user's password
-information in the even that a user exists in both
+information in the event that a user exists in both
 the local and NIS databases.
 .It Fl y
 Opposite effect of
@@ -450,7 +450,8 @@ When invoked by the super-user on the NIS master server,
 allows unrestricted changes to the NIS passwd maps using dedicated,
 non-RPC-based mechanism (in this case, a
 .Ux
-domain socket). The
+domain socket).
+The
 .Fl o
 flag can be used to force
 .Nm
@@ -476,6 +477,7 @@ the list of approved shells
 .Xr getusershell 3 ,
 .Xr login.conf 5 ,
 .Xr passwd 5 ,
+.Xr pw 8 ,
 .Xr pwd_mkdb 8 ,
 .Xr vipw 8
 .Rs

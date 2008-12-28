@@ -1,6 +1,13 @@
 /*-
  * Copyright (c) 1988, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 2002 Networks Associates Technology, Inc.
+ * All rights reserved.
+ *
+ * Portions of this software were developed for the FreeBSD Project by
+ * ThinkSec AS and NAI Labs, the Security Research Division of Network
+ * Associates, Inc.  under DARPA/SPAWAR contract N66001-01-C-8035
+ * ("CBOSS"), as part of the DARPA CHATS research program.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,14 +38,13 @@
  * SUCH DAMAGE.
  *
  * @(#)util.c	8.4 (Berkeley) 4/2/94
- * $FreeBSD: src/usr.bin/chpass/util.c,v 1.8.2.1 2002/03/21 10:33:01 cjc Exp $
+ * $FreeBSD: src/usr.bin/chpass/util.c,v 1.13 2004/01/18 21:46:39 charnier Exp $
  * $DragonFly: src/usr.bin/chpass/util.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
  */
 
 #include <sys/types.h>
 
 #include <ctype.h>
-#include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,9 +52,8 @@
 #include <unistd.h>
 
 #include "chpass.h"
-#include "pathnames.h"
 
-static char *months[] =
+static const char *months[] =
 	{ "January", "February", "March", "April", "May", "June",
 	  "July", "August", "September", "October", "November",
 	  "December", NULL };
@@ -61,7 +66,7 @@ ttoa(time_t tval)
 
 	if (tval) {
 		tp = localtime(&tval);
-		(void)sprintf(tbuf, "%s %d, %d", months[tp->tm_mon],
+		sprintf(tbuf, "%s %d, %d", months[tp->tm_mon],
 		    tp->tm_mday, tp->tm_year + 1900);
 	}
 	else
@@ -73,7 +78,8 @@ int
 atot(char *p, time_t *store)
 {
 	static struct tm *lt;
-	char *t, **mp;
+	char *t;
+	const char **mp;
 	time_t tval;
 	int day, month, year;
 
@@ -83,7 +89,7 @@ atot(char *p, time_t *store)
 	}
 	if (!lt) {
 		unsetenv("TZ");
-		(void)time(&tval);
+		time(&tval);
 		lt = localtime(&tval);
 	}
 	if (!(t = strtok(p, " \t")))
@@ -128,18 +134,45 @@ bad:		return (1);
 	return (0);
 }
 
-char *
+int
 ok_shell(char *name)
 {
 	char *p, *sh;
 
 	setusershell();
 	while ((sh = getusershell())) {
-		if (!strcmp(name, sh))
-			return (name);
+		if (!strcmp(name, sh)) {
+			endusershell();
+			return (1);
+		}
 		/* allow just shell name, but use "real" path */
-		if ((p = strrchr(sh, '/')) && strcmp(name, p + 1) == 0)
-			return (sh);
+		if ((p = strrchr(sh, '/')) && strcmp(name, p + 1) == 0) {
+			endusershell();
+			return (1);
+		}
 	}
+	endusershell();
+	return (0);
+}
+
+char *
+dup_shell(char *name)
+{
+	char *p, *sh, *ret;
+
+	setusershell();
+	while ((sh = getusershell())) {
+		if (!strcmp(name, sh)) {
+			endusershell();
+			return (strdup(name));
+		}
+		/* allow just shell name, but use "real" path */
+		if ((p = strrchr(sh, '/')) && strcmp(name, p + 1) == 0) {
+			ret = strdup(sh);
+			endusershell();
+			return (ret);
+		}
+	}
+	endusershell();
 	return (NULL);
 }

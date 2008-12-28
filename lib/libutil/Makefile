@@ -10,7 +10,7 @@ SRCS=	flopen.c login.c login_tty.c logout.c logwtmp.c pty.c \
 	login_cap.c login_class.c login_auth.c login_times.c login_ok.c \
 	login_crypt.c _secure_path.c uucplock.c property.c auth.c \
 	realhostname.c fparseln.c stub.c pidfile.c trimdomain.c \
-	dehumanize_number.c humanize_number.c pw_scan.c pw_util.c
+	dehumanize_number.c humanize_number.c pw_util.c
 INCS=	libutil.h login_cap.h
 WARNS?=	2
 
