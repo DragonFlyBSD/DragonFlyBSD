@@ -52,6 +52,7 @@ $DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.16 2008/07/22 11:16:11 sephe
 
 oui ALTIMA			0x0010a9	Altima Communications
 oui AMD				0x00001a	Advanced Micro Devices
+oui ATHEROS			0x001374	Atheros Communications
 oui BROADCOM			0x001018	Broadcom Corporation
 oui BROADCOM2			0x000af7	Broadcom Corporation
 oui CICADA			0x0003f1	Cicada Semiconductor
@@ -124,6 +125,10 @@ model xxALTIMA Am79C875		0x0014 Am79C875 10/100 media interface
 model xxAMD 79C873		0x0000 Am79C873 10/100 media interface
 model AMD 79c973phy		0x0036 Am79c973 internal PHY
 model AMD 79c978		0x0039 Am79c978 HomePNA PHY
+
+/* Atheros Communications/Attansic PHYs. */
+model ATHEROS F1		0x0001 Atheros F1 10/100/1000 PHY
+model ATHEROS F2		0x0002 Atheros F2 10/100 PHY
 
 /* Broadcom Corp. PHYs. */
 model BROADCOM BCM5400		0x0004 BCM5400 100/1000baseT PHY
