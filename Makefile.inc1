@@ -891,7 +891,7 @@ _generic_libs+=	kerberos5/lib
 _prebuild_libs+= lib/libcom_err lib/libcrypt lib/libmd \
 		lib/libncurses/libncurses lib/libopie lib/libradius \
 		lib/libsbuf lib/libskey lib/libtacplus lib/libm \
-		lib/libpam lib/lib${THREAD_LIB}
+		lib/libpam lib/libypclnt lib/lib${THREAD_LIB}
 
 lib/libopie__L lib/libradius__L lib/libtacplus__L: lib/libmd__L
 lib/libskey__L: lib/libcrypt__L lib/libmd__L
