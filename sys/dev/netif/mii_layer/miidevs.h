@@ -1,10 +1,5 @@
-/*	$DragonFly: src/sys/dev/netif/mii_layer/miidevs.h,v 1.16 2008/07/22 11:16:28 sephe Exp $	*/
-
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
- *
- * generated from:
- *	DragonFly: src/sys/dev/netif/mii_layer/miidevs,v 1.15 2008/03/16 15:50:22 hasso Exp 
  */
 /* $FreeBSD: src/sys/dev/mii/miidevs,v 1.4.2.13 2003/07/22 02:12:55 ps Exp $ */
 /*$NetBSD: miidevs,v 1.6 1999/05/14 11:37:30 drochner Exp $*/
@@ -59,6 +54,7 @@
 
 #define	MII_OUI_ALTIMA	0x0010a9	/* Altima Communications */
 #define	MII_OUI_AMD	0x00001a	/* Advanced Micro Devices */
+#define	MII_OUI_ATHEROS	0x001374	/* Atheros Communications */
 #define	MII_OUI_BROADCOM	0x001018	/* Broadcom Corporation */
 #define	MII_OUI_BROADCOM2	0x000af7	/* Broadcom Corporation */
 #define	MII_OUI_CICADA	0x0003f1	/* Cicada Semiconductor */
@@ -139,6 +135,12 @@
 #define	MII_STR_AMD_79c973phy	"Am79c973 internal PHY"
 #define	MII_MODEL_AMD_79c978	0x0039
 #define	MII_STR_AMD_79c978	"Am79c978 HomePNA PHY"
+
+/* Atheros Communications/Attansic PHYs. */
+#define	MII_MODEL_ATHEROS_F1	0x0001
+#define	MII_STR_ATHEROS_F1	"Atheros F1 10/100/1000 PHY"
+#define	MII_MODEL_ATHEROS_F2	0x0002
+#define	MII_STR_ATHEROS_F2	"Atheros F2 10/100 PHY"
 
 /* Broadcom Corp. PHYs. */
 #define	MII_MODEL_BROADCOM_BCM5400	0x0004
