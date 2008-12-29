@@ -98,7 +98,7 @@ boot1$s.o: boot1.S
 		${.ALLSRC} -o ${.TARGET} -c
 
 boot2$s.o: boot2.c ${.CURDIR}/../../common/ufsread.c ${.CURDIR}/../../../../lib/libstand/hammerread.c
-	${CC} ${CFLAGS} ${_ADDCFLAGS$s} -S -o boot2$s.s.tmp boot2.c
+	${CC} ${CFLAGS} ${_ADDCFLAGS$s} -S -o boot2$s.s.tmp ${.ALLSRC:M*/boot2.c}
 	sed -e '/align/d' -e '/nop/d' < boot2$s.s.tmp > boot2$s.s
 	rm -f boot2$s.s.tmp
 	${AS} ${AFLAGS} -o boot2$s.o boot2$s.s
