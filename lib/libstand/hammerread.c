@@ -409,6 +409,8 @@ hfind(struct hfs *hfs, hammer_base_elm_t key, hammer_base_elm_t end)
 #if DEBUG > 1
 	printf("searching for ");
 	hprintb(key);
+	printf(" end ");
+	hprintb(end);
 	printf("\n");
 #endif
 
@@ -425,7 +427,7 @@ loop:
 	if (node == NULL)
 		return (NULL);
 
-#if 0
+#if DEBUG > 3
 	for (int i = 0; i < node->count; i++) {
 		printf("E: ");
 		hprintb(&node->elms[i].base);
@@ -467,7 +469,7 @@ loop:
 	}
 
 	// Skip deleted elements
-	while (n < node->count && e->base.delete_tid != 0) {
+	while (n <= node->count && e->base.delete_tid != 0) {
 		e++;
 		n++;
 	}
@@ -475,7 +477,7 @@ loop:
 	// In the unfortunate event when there is no next
 	// element in this node, we repeat the search with
 	// a key beyond the right boundary
-	if (n == node->count) {
+	if (n > node->count) {
 		search = backtrack;
 		nodeoff = hfs->root;
 
@@ -512,6 +514,10 @@ static int
 hreaddir(struct hfs *hfs, ino_t ino, int64_t *off, struct dirent *de)
 {
 	struct hammer_base_elm key, end;
+
+#if DEBUG > 2
+	printf("%s(%llx, %lld)\n", __FUNCTION__, (long long)ino, *off);
+#endif
 
 	bzero(&key, sizeof(key));
 	key.obj_id = ino;
@@ -550,6 +556,10 @@ hresolve(struct hfs *hfs, ino_t dirino, const char *name)
 {
 	struct hammer_base_elm key, end;
 	size_t namel = strlen(name);
+
+#if DEBUG > 2
+	printf("%s(%llx, %s)\n", __FUNCTION__, (long long)dirino, name);
+#endif
 
 	bzero(&key, sizeof(key));
 	key.obj_id = dirino;
@@ -591,6 +601,10 @@ hresolve(struct hfs *hfs, ino_t dirino, const char *name)
 static ino_t
 hlookup(struct hfs *hfs, const char *path)
 {
+#if DEBUG > 2
+	printf("%s(%s)\n", __FUNCTION__, path);
+#endif
+
 #ifdef BOOT2
 	ls = 0;
 #endif
@@ -599,6 +613,8 @@ hlookup(struct hfs *hfs, const char *path)
 		char name[MAXPATHLEN + 1];
 		while (*path == '/')
 			path++;
+		if (*path == 0)
+			break;
 		for (char *n = name; *path != 0 && *path != '/'; path++, n++) {
 			n[0] = *path;
 			n[1] = 0;
@@ -622,6 +638,10 @@ static int
 hstat(struct hfs *hfs, ino_t ino, struct stat* st)
 {
 	struct hammer_base_elm key;
+
+#if DEBUG > 2
+	printf("%s(%llx)\n", __FUNCTION__, (long long)ino);
+#endif
 
 	bzero(&key, sizeof(key));
 	key.obj_id = ino;
