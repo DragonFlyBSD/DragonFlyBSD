@@ -238,15 +238,6 @@ static eventhandler_tag carp_ifdetach_event;
 static eventhandler_tag carp_ifaddr_event;
 
 static __inline void
-ifa_set_prflags(struct ifaddr *ifa, uint16_t prflags)
-{
-	int cpu;
-
-	for (cpu = 0; cpu < ncpus; ++cpu)
-		ifa->ifa_containers[cpu].ifa_prflags |= prflags;
-}
-
-static __inline void
 carp_insert_vhaddr(struct carp_softc *sc, struct carp_vhaddr *vha_new)
 {
 	struct carp_vhaddr *vha;
@@ -1745,7 +1736,6 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *cr)
 #ifdef INET
 		case AF_INET:
 			ifp->if_flags |= IFF_UP | IFF_RUNNING;
-			ifa_set_prflags(ifa, IA_PRF_RTEXISTOK);
 			break;
 #endif /* INET */
 #ifdef INET6
