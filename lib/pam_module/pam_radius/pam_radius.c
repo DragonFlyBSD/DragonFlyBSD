@@ -33,7 +33,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_radius/pam_radius.c,v 1.23 2005/06/13 21:18:52 des Exp $
+ * $FreeBSD: src/lib/libpam/modules/pam_radius/pam_radius.c,v 1.24 2007/01/20 08:52:04 pjd Exp $
  * $DragonFly: src/lib/pam_module/pam_radius/pam_radius.c,v 1.1 2005/07/12 23:13:26 joerg Exp $
  */
 
@@ -66,7 +66,7 @@ static int	 build_access_request(struct rad_handle *, const char *,
 		    size_t);
 static int	 do_accept(pam_handle_t *, struct rad_handle *);
 static int	 do_challenge(pam_handle_t *, struct rad_handle *,
-		    const char *);
+		    const char *, const char *, const char *);
 
 /*
  * Construct an access request, but don't send it.  Returns 0 on success,
@@ -161,7 +161,8 @@ do_accept(pam_handle_t *pamh, struct rad_handle *radh)
 }
 
 static int
-do_challenge(pam_handle_t *pamh, struct rad_handle *radh, const char *user)
+do_challenge(pam_handle_t *pamh, struct rad_handle *radh, const char *user,
+    const char *nas_id, const char *nas_ipaddr)
 {
 	int retval;
 	int attrtype;
@@ -228,8 +229,8 @@ do_challenge(pam_handle_t *pamh, struct rad_handle *radh, const char *user)
 	if ((retval = conv->conv(num_msgs, msg_ptrs, &resp,
 	    conv->appdata_ptr)) != PAM_SUCCESS)
 		return (retval);
-	if (build_access_request(radh, user, resp[num_msgs-1].resp, NULL,
-	    NULL, state, statelen) == -1)
+	if (build_access_request(radh, user, resp[num_msgs-1].resp, nas_id,
+	    nas_ipaddr, state, statelen) == -1)
 		return (PAM_SERVICE_ERR);
 	memset(resp[num_msgs-1].resp, 0, strlen(resp[num_msgs-1].resp));
 	free(resp[num_msgs-1].resp);
@@ -328,7 +329,8 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags __unused,
 			return (PAM_AUTH_ERR);
 
 		case RAD_ACCESS_CHALLENGE:
-			retval = do_challenge(pamh, radh, user);
+			retval = do_challenge(pamh, radh, user, nas_id,
+			    nas_ipaddr);
 			if (retval != PAM_SUCCESS) {
 				rad_close(radh);
 				return (retval);
