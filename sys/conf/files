@@ -319,6 +319,7 @@ dev/netif/mii_layer/rgephy.c	optional miibus
 dev/netif/mii_layer/ip1000phy.c	optional miibus
 dev/netif/mii_layer/truephy.c	optional miibus
 dev/netif/mii_layer/jmphy.c	optional miibus
+dev/netif/mii_layer/atphy.c	optional miibus
 dev/netif/mii_layer/miibus_if.m		optional miibus
 dev/raid/mlx/mlx_disk.c		optional mlx
 dev/raid/mlx/mlx_pci.c		optional mlx
