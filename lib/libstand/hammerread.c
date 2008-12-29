@@ -96,7 +96,7 @@ struct hfs {
 static void *
 hread(struct hfs *hfs, hammer_off_t off)
 {
-	hammer_off_t boff = off & ~HAMMER_BUFMASK;
+	hammer_off_t boff = off & ~HAMMER_BUFMASK64;
 
 	boff &= HAMMER_OFF_LONG_MASK;
 
@@ -153,7 +153,7 @@ hread(struct hfs *hfs, hammer_off_t off)
 {
 	char *buf = dmadat->buf;
 
-	hammer_off_t boff = off & ~HAMMER_BUFMASK;
+	hammer_off_t boff = off & ~HAMMER_BUFMASK64;
 	boff &= HAMMER_OFF_LONG_MASK;
 	if (HAMMER_ZONE_DECODE(off) != HAMMER_ZONE_RAW_VOLUME_INDEX)
 		boff += hfs->buf_beg;
@@ -713,10 +713,16 @@ hreadf(struct hfs *hfs, ino_t ino, int64_t off, int64_t len, char *buf)
 				roff += HAMMER_BUFSIZE;
 			}
 
-			// cut to HAMMER_BUFSIZE
-			if ((roff & ~HAMMER_BUFMASK) != ((roff + dlen - 1) & ~HAMMER_BUFMASK))
+			/*
+			 * boff - relative offset in disk buffer (not aligned)
+			 * roff - base offset of disk buffer     (not aligned)
+			 * dlen - amount of data we think we can copy
+			 *
+			 * hread only reads 16K aligned buffers, check for
+			 * a length overflow and truncate dlen appropriately.
+			 */
+			if ((roff & ~HAMMER_BUFMASK64) != ((roff + boff + dlen - 1) & ~HAMMER_BUFMASK64))
 				dlen = HAMMER_BUFSIZE - ((boff + roff) & HAMMER_BUFMASK);
-
 			char *data = hread(hfs, roff);
 			if (data == NULL)
 				return (-1);
