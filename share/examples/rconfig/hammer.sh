@@ -60,10 +60,8 @@ disklabel ${disk}s1 > /tmp/label
 cat >> /tmp/label << EOF
   a: 256m 32 4.2BSD
   b: 2g * swap
-  d: 123456 * HAMMER
+  d: * * HAMMER
 EOF
-disklabel -R ${disk}s1 /tmp/label
-disklabel ${disk}s1 | sed -e 's/123456/*/g' > /tmp/label
 disklabel -R ${disk}s1 /tmp/label
 
 newfs /dev/${disk}s1a
