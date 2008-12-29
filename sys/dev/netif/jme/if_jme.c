@@ -218,7 +218,7 @@ static int	jme_rx_ring_count = JME_NRXRING_DEF;
 
 TUNABLE_INT("hw.jme.rx_desc_count", &jme_rx_desc_count);
 TUNABLE_INT("hw.jme.tx_desc_count", &jme_tx_desc_count);
-TUNABLE_INT("hw.jme_rx_ring_count", &jme_rx_ring_count);
+TUNABLE_INT("hw.jme.rx_ring_count", &jme_rx_ring_count);
 
 /*
  *	Read a PHY register on the MII of the JMC250.
