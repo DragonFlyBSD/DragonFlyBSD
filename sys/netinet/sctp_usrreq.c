@@ -56,6 +56,7 @@
 #include <sys/mbuf.h>
 #include <sys/domain.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -551,7 +552,7 @@ sctp_getcred(SYSCTL_HANDLER_ARGS)
 	int error;
 
 #if __FreeBSD_version >= 500000 || defined(__DragonFly__)
-	error = suser(req->td);
+	error = priv_check(req->td, PRIV_ROOT);
 #else
 	error = suser(req->p);
 #endif

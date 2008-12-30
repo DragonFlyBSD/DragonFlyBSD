@@ -49,6 +49,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/vnode.h>
 #include <vfs/procfs/procfs.h>
 #include <vm/vm.h>

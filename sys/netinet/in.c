@@ -42,6 +42,7 @@
 #include <sys/sockio.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/msgport.h>
 #include <sys/socket.h>
 
@@ -230,7 +231,7 @@ in_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 	switch (cmd) {
 	case SIOCALIFADDR:
 	case SIOCDLIFADDR:
-		if (td && (error = suser(td)) != 0)
+		if (td && (error = priv_check(td, PRIV_ROOT)) != 0)
 			return error;
 		/* FALLTHROUGH */
 	case SIOCGLIFADDR:
@@ -518,7 +519,7 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 	case SIOCSIFADDR:
 	case SIOCSIFNETMASK:
 	case SIOCSIFDSTADDR:
-		if (td && (error = suser(td)) != 0)
+		if (td && (error = priv_check(td, PRIV_ROOT)) != 0)
 			return error;
 
 		if (ifp == NULL)
@@ -573,7 +574,7 @@ in_control_internal(u_long cmd, caddr_t data, struct ifnet *ifp,
 		break;
 
 	case SIOCSIFBRDADDR:
-		if (td && (error = suser(td)) != 0)
+		if (td && (error = priv_check(td, PRIV_ROOT)) != 0)
 			return error;
 		/* FALLTHROUGH */
 

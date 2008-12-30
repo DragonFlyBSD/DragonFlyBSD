@@ -52,6 +52,7 @@
 #include <sys/systm.h>
 #include <sys/tty.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/conf.h>
 #include <sys/dkstat.h>
 #include <sys/fcntl.h>
@@ -1020,7 +1021,7 @@ open_top:
 				goto open_top;
 			}
 		}
-		if (tp->t_state & TS_XCLUDE && suser(td)) {
+		if (tp->t_state & TS_XCLUDE && priv_check(td, PRIV_ROOT)) {
 			error = EBUSY;
 			goto out;
 		}
@@ -1505,7 +1506,7 @@ dgbioctl(cdev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		}
 		switch (cmd) {
 		case TIOCSETA:
-			error = suser(td);
+			error = priv_check(td, PRIV_ROOT);
 			if (error != 0)
 				return (error);
 			*ct = *(struct termios *)data;
@@ -1727,7 +1728,7 @@ dgbioctl(cdev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 		break;
 	case TIOCMSDTRWAIT:
 		/* must be root since the wait applies to following logins */
-		error = suser(td);
+		error = priv_check(td, PRIV_ROOT);
 		if (error != 0) {
 			crit_exit();
 			return (error);

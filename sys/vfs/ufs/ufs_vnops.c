@@ -51,6 +51,7 @@
 #include <sys/stat.h>
 #include <sys/buf.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/namei.h>
 #include <sys/mount.h>
 #include <sys/unistd.h>
@@ -472,7 +473,7 @@ ufs_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != ip->i_uid &&
-		    (error = suser_cred(cred, PRISON_ROOT)))
+		    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)))
 			return (error);
 		/*
 		 * Note that a root chflags becomes a user chflags when
@@ -534,7 +535,7 @@ ufs_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != ip->i_uid &&
-		    (error = suser_cred(cred, PRISON_ROOT)) &&
+		    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
 		    (error = VOP_ACCESS(vp, VWRITE, cred))))
 			return (error);
@@ -576,7 +577,7 @@ ufs_chmod(struct vnode *vp, int mode, struct ucred *cred)
 	int error;
 
 	if (cred->cr_uid != ip->i_uid) {
-	    error = suser_cred(cred, PRISON_ROOT);
+	    error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT);
 	    if (error)
 		return (error);
 	}
@@ -620,7 +621,7 @@ ufs_chown(struct vnode *vp, uid_t uid, gid_t gid, struct ucred *cred)
 	if ((cred->cr_uid != ip->i_uid || uid != ip->i_uid ||
 	    (gid != ip->i_gid && !(cred->cr_gid == gid ||
 	    groupmember((gid_t)gid, cred)))) &&
-	    (error = suser_cred(cred, PRISON_ROOT)))
+	    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)))
 		return (error);
 	ogid = ip->i_gid;
 	ouid = ip->i_uid;
@@ -2189,7 +2190,7 @@ ufs_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 	if (DOINGSOFTDEP(tvp))
 		softdep_change_linkcnt(ip);
 	if ((ip->i_mode & ISGID) && !groupmember(ip->i_gid, cnp->cn_cred) &&
-	    suser_cred(cnp->cn_cred, 0)) {
+	    priv_check_cred(cnp->cn_cred, PRIV_ROOT, 0)) {
 		ip->i_mode &= ~ISGID;
 	}
 

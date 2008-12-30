@@ -45,6 +45,7 @@
 #include <sys/systm.h>
 #include <sys/sysproto.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
 #include <sys/fcntl.h>
@@ -127,7 +128,7 @@ sys_acct(struct acct_args *uap)
 	int error;
 
 	/* Make sure that the caller is root. */
-	error = suser(td);
+	error = priv_check(td, PRIV_ROOT);
 	if (error)
 		return (error);
 

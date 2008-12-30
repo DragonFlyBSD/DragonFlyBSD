@@ -44,6 +44,7 @@
 #include <sys/kernel.h>
 #include <sys/mbuf.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -597,7 +598,7 @@ ripx_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	int error = 0;
 	struct ipxpcb *ipxp;
 
-	if ((error = suser_cred(ai->p_ucred, NULL_CRED_OKAY)) != 0)
+	if ((error = priv_check_cred(ai->p_ucred, PRIV_ROOT, NULL_CRED_OKAY)) != 0)
 		return (error);
 	crit_enter();
 	error = ipx_pcballoc(so, &ipxrawpcb);

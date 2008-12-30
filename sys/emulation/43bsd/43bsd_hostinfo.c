@@ -46,6 +46,7 @@
 #include <sys/sysproto.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
 #include <vm/vm_param.h>
@@ -84,7 +85,7 @@ sys_osethostname(struct sethostname_args *uap)
 	KKASSERT(p);
 	name[0] = CTL_KERN;
 	name[1] = KERN_HOSTNAME;
-	error = suser_cred(p->p_ucred, PRISON_ROOT);
+	error = priv_check_cred(p->p_ucred, PRIV_ROOT, PRISON_ROOT);
 	if (error)
 		return (error);
 	len = MIN(uap->len, MAXHOSTNAMELEN);
@@ -115,7 +116,7 @@ sys_osethostid(struct osethostid_args *uap)
 	struct thread *td = curthread;
 	int error;
 
-	error = suser(td);
+	error = priv_check(td, PRIV_ROOT);
 	if (error)
 		return (error);
 	hostid = uap->hostid;

@@ -52,6 +52,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/domain.h>
 #include <sys/errno.h>
 #include <sys/kernel.h>
@@ -162,7 +163,7 @@ ngc_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct ngpcb *const pcbp = sotongpcb(so);
 
-	if (suser_cred(ai->p_ucred, NULL_CRED_OKAY) != 0)
+	if (priv_check_cred(ai->p_ucred, PRIV_ROOT, NULL_CRED_OKAY) != 0)
 		return (EPERM);
 	if (pcbp != NULL)
 		return (EISCONN);

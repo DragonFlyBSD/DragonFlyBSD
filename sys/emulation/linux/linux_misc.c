@@ -42,6 +42,7 @@
 #include <sys/mount.h>
 #include <sys/poll.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/nlookup.h>
 #include <sys/blist.h>
 #include <sys/reboot.h>
@@ -975,7 +976,7 @@ sys_linux_setgroups(struct linux_setgroups_args *args)
 	 * Keep cr_groups[0] unchanged to prevent that.
 	 */
 
-	if ((error = suser_cred(oldcred, PRISON_ROOT)) != 0)
+	if ((error = priv_check_cred(oldcred, PRIV_ROOT, PRISON_ROOT)) != 0)
 		return (error);
 
 	if (ngrp >= NGROUPS)

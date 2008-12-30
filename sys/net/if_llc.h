@@ -108,6 +108,7 @@ struct llc {
 #define LLC_ISFRAMELEN 4
 #define LLC_UFRAMELEN  3
 #define LLC_FRMRLEN    7
+#define LLC_SNAPFRAMELEN 8
 
 /*
  * Unnumbered LLC format commands

@@ -55,6 +55,7 @@
 #include <sys/sysctl.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/thread2.h>
 #include <sys/in_cksum.h>
 #include <sys/lock.h>
@@ -466,7 +467,7 @@ div_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	inp  = so->so_pcb;
 	if (inp)
 		panic("div_attach");
-	if ((error = suser_cred(ai->p_ucred, NULL_CRED_OKAY)) != 0)
+	if ((error = priv_check_cred(ai->p_ucred, PRIV_ROOT, NULL_CRED_OKAY)) != 0)
 		return error;
 
 	error = soreserve(so, div_sendspace, div_recvspace, ai->sb_rlimit);

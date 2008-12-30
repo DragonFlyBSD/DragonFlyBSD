@@ -72,6 +72,7 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/syslog.h>
 #include <sys/device.h>
 #include <sys/bus.h>
@@ -2307,7 +2308,7 @@ fdioctl(struct dev_ioctl_args *ap)
 
 	case FD_STYPE:                  /* set drive type */
 		/* this is considered harmful; only allow for superuser */
-		if (suser_cred(ap->a_cred, 0) != 0)
+		if (priv_check_cred(ap->a_cred, PRIV_ROOT, 0) != 0)
 			return EPERM;
 		fd->ft = *(struct fd_type *)ap->a_data;
 		break;

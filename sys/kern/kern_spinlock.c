@@ -42,6 +42,7 @@
 #ifdef INVARIANTS
 #include <sys/proc.h>
 #endif
+#include <sys/priv.h>
 #include <ddb/ddb.h>
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
@@ -347,7 +348,7 @@ sysctl_spin_lock_test(SYSCTL_HANDLER_ARGS)
 	int value = 0;
 	int i;
 
-	if ((error = suser(curthread)) != 0)
+	if ((error = priv_check(curthread, PRIV_ROOT)) != 0)
 		return (error);
 	if ((error = SYSCTL_IN(req, &value, sizeof(value))) != 0)
 		return (error);

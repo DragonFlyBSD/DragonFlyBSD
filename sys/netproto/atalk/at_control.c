@@ -8,6 +8,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/sockio.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
@@ -102,7 +103,7 @@ at_control(struct socket *so, u_long cmd, caddr_t data,
 	/* 
 	 * If we are not superuser, then we don't get to do these ops.
 	 */
-	if (suser(td))
+	if (priv_check(td, PRIV_ROOT))
 	    return(EPERM);
 
 	sat = satosat( &ifr->ifr_addr );

@@ -80,6 +80,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/jail.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
@@ -290,7 +291,7 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 			/* GROSS */
 			if (ntohs(lport) < IPPORT_RESERVED &&
-			    cred && suser_cred(cred, PRISON_ROOT))
+			    cred && priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT))
 				return (EACCES);
 			if (so->so_cred->cr_uid != 0 &&
 			    !IN_MULTICAST(ntohl(sin->sin_addr.s_addr))) {
@@ -348,7 +349,7 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 			lastport = &pcbinfo->lasthi;
 		} else if (inp->inp_flags & INP_LOWPORT) {
 			if (cred &&
-			    (error = suser_cred(cred, PRISON_ROOT))) {
+			    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT))) {
 				inp->inp_laddr.s_addr = INADDR_ANY;
 				return (error);
 			}

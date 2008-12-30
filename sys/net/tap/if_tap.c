@@ -48,6 +48,7 @@
 #include <sys/mbuf.h>
 #include <sys/poll.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/signalvar.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
@@ -266,7 +267,7 @@ tapopen(struct dev_open_args *ap)
 	struct ifnet *ifp = NULL;
 	int error;
 
-	if ((error = suser_cred(ap->a_cred, 0)) != 0)
+	if ((error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) != 0)
 		return (error);
 
 	get_mplock();

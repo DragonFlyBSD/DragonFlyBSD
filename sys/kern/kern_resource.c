@@ -51,6 +51,7 @@
 #include <sys/resourcevar.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/time.h>
 #include <sys/lockf.h>
 
@@ -253,7 +254,7 @@ donice(struct proc *chgp, int n)
 		n = PRIO_MAX;
 	if (n < PRIO_MIN)
 		n = PRIO_MIN;
-	if (n < chgp->p_nice && suser_cred(cr, 0))
+	if (n < chgp->p_nice && priv_check_cred(cr, PRIV_ROOT, 0))
 		return (EACCES);
 	chgp->p_nice = n;
 	FOREACH_LWP_IN_PROC(lp, chgp)
@@ -311,7 +312,7 @@ sys_lwp_rtprio(struct lwp_rtprio_args *uap)
 			return EPERM;
 		}
 		/* disallow setting rtprio in most cases if not superuser */
-		if (suser_cred(cr, 0)) {
+		if (priv_check_cred(cr, PRIV_ROOT, 0)) {
 			/* can't set someone else's */
 			if (uap->pid) { /* XXX */
 				return EPERM;
@@ -385,7 +386,7 @@ sys_rtprio(struct rtprio_args *uap)
 		    cr->cr_ruid != p->p_ucred->cr_uid)
 		        return (EPERM);
 		/* disallow setting rtprio in most cases if not superuser */
-		if (suser_cred(cr, 0)) {
+		if (priv_check_cred(cr, PRIV_ROOT, 0)) {
 			/* can't set someone else's */
 			if (uap->pid)
 				return (EPERM);

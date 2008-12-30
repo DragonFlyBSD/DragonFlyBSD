@@ -43,6 +43,7 @@
 #include <sys/imgact_aout.h>
 #include <sys/mman.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/resourcevar.h>
 #include <sys/sysent.h>
 #include <sys/systm.h>
@@ -132,7 +133,7 @@ sysctl_vm_resident(SYSCTL_HANDLER_ARGS)
 
 	/* only super-user should call this sysctl */
 	td = req->td;
-	if ((suser(td)) != 0)
+	if ((priv_check(td, PRIV_ROOT)) != 0)
 		return EPERM;
 
 	error = count = 0;
@@ -197,7 +198,7 @@ sys_exec_sys_register(struct exec_sys_register_args *uap)
     int error;
 
     p = curproc;
-    if ((error = suser_cred(p->p_ucred, 0)) != 0)
+    if ((error = priv_check_cred(p->p_ucred, PRIV_ROOT, 0)) != 0)
 	return(error);
     if ((vp = p->p_textvp) == NULL)
 	return(ENOENT);
@@ -236,7 +237,7 @@ sys_exec_sys_unregister(struct exec_sys_unregister_args *uap)
     int count;
 
     p = curproc;
-    if ((error = suser_cred(p->p_ucred, 0)) != 0)
+    if ((error = priv_check_cred(p->p_ucred, PRIV_ROOT, 0)) != 0)
 	return(error);
 
     /*

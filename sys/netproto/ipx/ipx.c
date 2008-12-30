@@ -42,6 +42,7 @@
 #include <sys/malloc.h>
 #include <sys/sockio.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/socket.h>
 #include <sys/thread2.h>
 
@@ -107,7 +108,7 @@ ipx_control(struct socket *so, u_long cmd, caddr_t data,
 		return (0);
 	}
 
-	if ((error = suser(td)) != 0)
+	if ((error = priv_check(td, PRIV_ROOT)) != 0)
 		return (error);
 
 	switch (cmd) {

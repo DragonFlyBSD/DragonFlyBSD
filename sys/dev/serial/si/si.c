@@ -50,6 +50,7 @@ static const char si_copyright1[] =  "@(#) Copyright (C) Specialix International
 #endif
 #include <sys/tty.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
 #include <sys/dkstat.h>
@@ -628,7 +629,7 @@ siopen(struct dev_open_args *ap)
 
 	/* quickly let in /dev/si_control */
 	if (IS_CONTROLDEV(mynor)) {
-		if ((error = suser_cred(ap->a_cred, 0)))
+		if ((error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)))
 			return(error);
 		return(0);
 	}
@@ -707,7 +708,7 @@ open_top:
 			}
 		}
 		if (tp->t_state & TS_XCLUDE &&
-		    suser_cred(ap->a_cred, 0)) {
+		    priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
 			DPRINT((pp, DBG_OPEN|DBG_FAIL,
 				"already open and EXCLUSIVE set\n"));
 			error = EBUSY;
@@ -973,7 +974,7 @@ siioctl(struct dev_ioctl_args *ap)
 		}
 		switch (cmd) {
 		case TIOCSETA:
-			error = suser_cred(ap->a_cred, 0);
+			error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
 			if (error != 0)
 				return (error);
 			*ct = *(struct termios *)data;
@@ -1087,7 +1088,7 @@ siioctl(struct dev_ioctl_args *ap)
 		break;
 	case TIOCMSDTRWAIT:
 		/* must be root since the wait applies to following logins */
-		error = suser_cred(ap->a_cred, 0);
+		error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
 		if (error == 0)
 			pp->sp_dtr_wait = *(int *)data * hz / 100;
 		break;
@@ -1139,7 +1140,7 @@ si_Sioctl(cdev_t dev, u_long cmd, caddr_t data, int flag, struct ucred *cred)
 
 	ip = (int *)data;
 
-#define SUCHECK if ((error = suser_cred(cred, 0))) goto out
+#define SUCHECK if ((error = priv_check_cred(cred, PRIV_ROOT, 0))) goto out
 
 	switch (cmd) {
 	case TCSIPORTS:
