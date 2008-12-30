@@ -979,6 +979,37 @@ state_select_disk(struct i_fn_args *a)
 	}
 }
 
+void
+state_ask_fs(struct i_fn_args *a)
+{
+	use_hammer = 0;
+
+	switch (dfui_be_present_dialog(a->c, _("Select file system"),
+	    _("Use HAMMER|Use UFS|Return to Select Disk"),
+	    _("Please select the file system you want to use with %s\n\n"
+	      "HAMMER is the new %s file system.  UFS the traditional BSD file system"),
+	    OPERATING_SYSTEM_NAME,
+	    OPERATING_SYSTEM_NAME))
+	{
+	case 1:
+		/* HAMMER */
+		use_hammer = 1;
+		break;
+	case 2:
+		/* UFS */
+		break;
+	case 3:
+		state = state_select_disk;
+		return;
+		/* NOTREACHED */
+		break;
+	default:
+		abort_backend();
+		break;
+	}
+	state = state_create_subpartitions;
+}
+
 /*
  * state_format_disk: ask the user if they wish to format the disk they
  * selected.
@@ -1018,7 +1049,7 @@ state_format_disk(struct i_fn_args *a)
 
 		fn_format_disk(a);
 		if (a->result)
-			state = state_create_subpartitions;
+			state = state_ask_fs;
 		else
 			state = state_format_disk;
 		break;
@@ -1113,7 +1144,7 @@ state_select_slice(struct i_fn_args *a)
 			} else {
 				inform(a->c, _("Primary partition #%d was formatted."),
 				    slice_get_number(storage_get_selected_slice(a->s)));
-				state = state_create_subpartitions;
+				state = state_ask_fs;
 			}
 		} else {
 			inform(a->c, _("Action cancelled - no primary partitions were formatted."));

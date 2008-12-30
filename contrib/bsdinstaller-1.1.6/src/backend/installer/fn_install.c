@@ -66,6 +66,8 @@
 #include "pathnames.h"
 #include "fn.h"
 
+static const char *pfs_mountpt[5] = {"/var", "/tmp", "/usr", "/home", NULL};
+
 /*
  * fn_install_os: actually put DragonFly on a disk.
  */
@@ -75,7 +77,7 @@ fn_install_os(struct i_fn_args *a)
 	struct subpartition *sp;
 	struct commands *cmds;
 	struct command *cmd;
-	int i, seen_it, prefix;
+	int i, seen_it, prefix, j;
 	FILE *sources_conf;
 	char line[256];
 	char cp_src[64][256];
@@ -158,6 +160,21 @@ fn_install_os(struct i_fn_args *a)
 	 */
 	unmount_all_under(a, cmds, "%smnt", a->os_root);
 
+	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
+	     sp != NULL; sp = subpartition_next(sp)) {
+		if (strcmp(subpartition_get_mountpoint(sp), "/") == 0) {
+			command_add(cmds, "%s%s -p %smnt%s",
+			    a->os_root, cmd_name(a, "MKDIR"),
+			    a->os_root, subpartition_get_mountpoint(sp));
+			command_add(cmds, "%s%s %sdev/%s %smnt%s",
+			    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
+			    a->os_root,
+			    subpartition_get_device_name(sp),
+			    a->os_root,
+			    subpartition_get_mountpoint(sp));
+		}
+	}
+
 	/*
 	 * Create mount points and mount subpartitions on them.
 	 */
@@ -185,11 +202,6 @@ fn_install_os(struct i_fn_args *a)
 			continue;
 		}
 	
-		if (strcmp(subpartition_get_mountpoint(sp), "/") != 0) {
-			command_add(cmds, "%s%s -p %smnt%s",
-			    a->os_root, cmd_name(a, "MKDIR"),
-			    a->os_root, subpartition_get_mountpoint(sp));
-		}
 
 		/*
 		 * Don't mount it if it's MFS-backed.
@@ -198,13 +210,36 @@ fn_install_os(struct i_fn_args *a)
 		if (subpartition_is_mfsbacked(sp)) {
 			continue;
 		}
+		if (use_hammer == 0 || (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0)) {
+			command_add(cmds, "%s%s -p %smnt/boot",
+			    a->os_root, cmd_name(a, "MKDIR"),
+			    a->os_root);
+			command_add(cmds, "%s%s %sdev/%s %smnt%s",
+			    a->os_root, cmd_name(a, "MOUNT"),
+			    a->os_root,
+			    subpartition_get_device_name(sp),
+			    a->os_root,
+			    subpartition_get_mountpoint(sp));
+		}
+	}
 
-		command_add(cmds, "%s%s %sdev/%s %smnt%s",
-		    a->os_root, cmd_name(a, "MOUNT"),
-		    a->os_root,
-		    subpartition_get_device_name(sp),
-		    a->os_root,
-		    subpartition_get_mountpoint(sp));
+	/* Create PFS dir */
+	command_add(cmds, "%s%s -p %smnt/pfs",
+	    a->os_root, cmd_name(a, "MKDIR"),
+	    a->os_root);
+
+	/* mount null pfs */
+	for (j = 0; pfs_mountpt[j] != NULL; j++) {
+		command_add(cmds, "%s%s pfs-master %smnt/pfs%s",
+		    a->os_root, cmd_name(a, "HAMMER"),
+		    a->os_root, pfs_mountpt[j]);
+		command_add(cmds, "%s%s -p %smnt%s",
+		    a->os_root, cmd_name(a, "MKDIR"),
+		    a->os_root, pfs_mountpt[j]);
+		command_add(cmds, "%s%s %smnt/pfs%s %smnt%s",
+		    a->os_root, cmd_name(a, "MOUNT_NULL"),
+		    a->os_root, pfs_mountpt[j],
+		    a->os_root, pfs_mountpt[j]);
 	}
 
 	/*
@@ -434,7 +469,7 @@ fn_install_os(struct i_fn_args *a)
 		    a->os_root, dest);
 		command_set_log_mode(cmd, COMMAND_LOG_QUIET);
 	}
-	
+
 	/*
 	 * Rebuild the user database, to get rid of any extra users
 	 * from the LiveCD that aren't supposed to be installed
@@ -458,31 +493,55 @@ fn_install_os(struct i_fn_args *a)
 
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
-		if (strcmp(subpartition_get_mountpoint(sp), "/") == 0) {
-			command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t1\t1' >>%smnt/etc/fstab",
-			    a->os_root, cmd_name(a, "ECHO"),
-			    subpartition_get_device_name(sp),
-			    subpartition_get_mountpoint(sp),
-			    a->os_root);
-		} else if (strcmp(subpartition_get_mountpoint(sp), "swap") == 0) {
+		if (strcmp(subpartition_get_mountpoint(sp), "swap") == 0) {
 			command_add(cmds, "%s%s '/dev/%s\t\tnone\t\tswap\tsw\t\t0\t0' >>%smnt/etc/fstab",
 			    a->os_root, cmd_name(a, "ECHO"),
 			    subpartition_get_device_name(sp),
 			    a->os_root);
-		} else if (subpartition_is_mfsbacked(sp)) {
-                        mfsbacked_size = slice_get_capacity(storage_get_selected_slice(a->s)) * 2048;
-                        command_add(cmds, "%s%s 'swap\t\t%s\t\t\tmfs\trw,-s%ld\t\t1\t1' >>%smnt/etc/fstab",
-                                a->os_root, cmd_name(a, "ECHO"),
-                                subpartition_get_mountpoint(sp),
-                                mfsbacked_size,
-                                a->os_root);
-		} else {
-			command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t2\t2' >>%smnt/etc/fstab",
-			    a->os_root, cmd_name(a, "ECHO"),
-			    subpartition_get_device_name(sp),
-			    subpartition_get_mountpoint(sp),
-			    a->os_root);
 		}
+		if (use_hammer == 0) {
+			if (strcmp(subpartition_get_mountpoint(sp), "/") == 0) {
+				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t1\t1' >>%smnt/etc/fstab",
+				    a->os_root, cmd_name(a, "ECHO"),
+				    subpartition_get_device_name(sp),
+				    subpartition_get_mountpoint(sp),
+				    a->os_root);
+			} else if (subpartition_is_mfsbacked(sp)) {
+				mfsbacked_size = slice_get_capacity(storage_get_selected_slice(a->s)) * 2048;
+				command_add(cmds, "%s%s 'swap\t\t%s\t\t\tmfs\trw,-s%ld\t\t1\t1' >>%smnt/etc/fstab",
+					a->os_root, cmd_name(a, "ECHO"),
+					subpartition_get_mountpoint(sp),
+					mfsbacked_size,
+					a->os_root);
+			} else {
+				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t2\t2' >>%smnt/etc/fstab",
+				    a->os_root, cmd_name(a, "ECHO"),
+				    subpartition_get_device_name(sp),
+				    subpartition_get_mountpoint(sp),
+				    a->os_root);
+			}
+		} else {
+			if (strcmp(subpartition_get_mountpoint(sp), "/") == 0) {
+				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\thammer\trw\t\t1\t1' >>%smnt/etc/fstab",
+				    a->os_root, cmd_name(a, "ECHO"),
+				    subpartition_get_device_name(sp),
+				    subpartition_get_mountpoint(sp),
+				    a->os_root);
+			} else if (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0) {
+				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t1\t1' >>%smnt/etc/fstab",
+				    a->os_root, cmd_name(a, "ECHO"),
+				    subpartition_get_device_name(sp),
+				    subpartition_get_mountpoint(sp),
+				    a->os_root);
+			}
+		}
+	}
+	for (j = 0; pfs_mountpt[j] != NULL; j++) {
+		command_add(cmds, "%s%s '/pfs%s\t\t%s\t\tnull\trw\t\t0\t0' >>%smnt/etc/fstab",
+		    a->os_root, cmd_name(a, "ECHO"),
+		    pfs_mountpt[j],
+		    pfs_mountpt[j],
+		    a->os_root);
 	}
 
 	command_add(cmds, "%s%s '%s' >>%smnt/etc/fstab",
@@ -491,12 +550,20 @@ fn_install_os(struct i_fn_args *a)
 	    a->os_root);
 
 	/* Backup the disklabel and the log. */
+	if (use_hammer == 0) {
+		command_add(cmds, "%s%s %s > %smnt/etc/disklabel.%s",
+		    a->os_root, cmd_name(a, "DISKLABEL"),
+		    slice_get_device_name(storage_get_selected_slice(a->s)),
+		    a->os_root,
+		    slice_get_device_name(storage_get_selected_slice(a->s)));
+	} else {
+		command_add(cmds, "%s%s %s > %smnt/etc/disklabel.%s",
+		    a->os_root, cmd_name(a, "DISKLABEL64"),
+		    slice_get_device_name(storage_get_selected_slice(a->s)),
+		    a->os_root,
+		    slice_get_device_name(storage_get_selected_slice(a->s)));
+	}
 
-	command_add(cmds, "%s%s %s > %smnt/etc/disklabel.%s",
-	    a->os_root, cmd_name(a, "DISKLABEL"),
-	    slice_get_device_name(storage_get_selected_slice(a->s)),
-	    a->os_root,
-	    slice_get_device_name(storage_get_selected_slice(a->s)));
 	command_add(cmds, "%s%s %sinstall.log %smnt/var/log/install.log",
 	    a->os_root, cmd_name(a, "CP"),
 	    a->tmp, a->os_root);
@@ -534,9 +601,15 @@ fn_install_os(struct i_fn_args *a)
 	 * make sure once and for all that the disklabel is bootable.
 	 */
 	if (a->result) {
-		command_add(cmds, "%s%s -B %s",
-		    a->os_root, cmd_name(a, "DISKLABEL"),
-		    slice_get_device_name(storage_get_selected_slice(a->s)));
+		if (use_hammer == 0) {
+			command_add(cmds, "%s%s -B %s",
+			    a->os_root, cmd_name(a, "DISKLABEL"),
+			    slice_get_device_name(storage_get_selected_slice(a->s)));
+		} else {
+			command_add(cmds, "%s%s -B %s",
+			    a->os_root, cmd_name(a, "DISKLABEL64"),
+			    slice_get_device_name(storage_get_selected_slice(a->s)));
+		}
 	}
 
 	if (!commands_execute(a, cmds))

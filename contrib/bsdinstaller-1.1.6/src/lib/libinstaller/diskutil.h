@@ -50,6 +50,9 @@ struct disk;
 struct slice;
 struct subpartition;
 
+#define FS_HAMMER	0
+#define FS_UFS		1
+
 #ifdef NEEDS_DISKUTIL_STRUCTURE_DEFINITIONS
 
 struct storage {
@@ -101,6 +104,8 @@ struct subpartition {
 	long bsize;			/* block size */
 	int is_swap;
 	int mfsbacked;			/* Memory File System Backed */
+	int type;			/* FS type (UFS, HAMMER) */
+	int pfs;			/* HAMMER pseudo file system */
 };
 
 #endif /* NEEDS_DISKUTIL_STRUCTURE_DEFINITIONS */
@@ -150,12 +155,14 @@ struct subpartition	*slice_subpartition_first(const struct slice *);
 
 struct subpartition	*subpartition_new(struct slice *, const char *, long,
 					  int, long, long, int);
+struct subpartition	*subpartition_new_hammer(struct slice *, const char *, long);
 int			 subpartition_count(const struct slice *);
 struct subpartition	*subpartition_find(const struct slice *, const char *, ...);
 struct subpartition	*subpartition_of(const struct slice *, const char *, ...);
 struct subpartition	*subpartition_find_capacity(const struct slice *, long);
 void		 	 subpartitions_free(struct slice *);
 struct subpartition	*subpartition_next(const struct subpartition *);
+int 			 subpartition_get_pfs(const struct subpartition *);
 const char		*subpartition_get_mountpoint(const struct subpartition *);
 const char		*subpartition_get_device_name(const struct subpartition *);
 const char		*subpartition_get_raw_device_name(const struct subpartition *);
