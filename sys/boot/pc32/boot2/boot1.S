@@ -217,6 +217,10 @@ main.4: 	xor %dx,%dx			// Partition:drive
 //
 main.5: 	pushw %dx			// Save args
 		movb $NSECT,%dh			// Sector count
+#ifdef DISKLABEL64
+						// In disklabel64 boot2 starts
+		addl $7,0x8(%si)		// offset 0x1000.
+#endif
 		callw nread			// Read disk
 		mov $MEM_BTX_ORG,%bx		// Base of BTX header
 		mov 0xa(%bx),%si		// Get BTX text length (btx.S)

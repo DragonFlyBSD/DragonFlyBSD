@@ -52,7 +52,11 @@
 #endif
 
 #include <sys/param.h>
+#ifdef DISKLABEL64
+#include <sys/disklabel64.h>
+#else
 #include <sys/disklabel32.h>
+#endif
 #include <sys/diskslice.h>
 #include <sys/diskmbr.h>
 #include <sys/dtype.h>
@@ -66,7 +70,12 @@
 
 #include <btxv86.h>
 
-#include "boot2.h"
+#ifdef DISKLABEL64
+#include "boot2_64.h"
+#else
+#include "boot2_32.h"
+#endif
+
 #include "lib.h"
 #include "../bootasm.h"
 
@@ -533,7 +542,11 @@ static int
 dskread(void *buf, unsigned lba, unsigned nblk)
 {
     struct dos_partition *dp;
+#ifdef DISKLABEL64
+    struct disklabel64 *d;
+#else
     struct disklabel32 *d;
+#endif
     char *sec;
     unsigned sl, i;
 
@@ -565,6 +578,21 @@ dskread(void *buf, unsigned lba, unsigned nblk)
 	    }
 	    dsk.start = dp->dp_start;
 	}
+#ifdef DISKLABEL64
+	if (drvread(sec, dsk.start, (sizeof(struct disklabel64) + 511) / 512))
+		return -1;
+	d = (void *)sec;
+	if (d->d_magic != DISKMAGIC64) {
+	    printf(INVALID_S, "label");
+	    return -1;
+	} else {
+	    if (dsk.part >= d->d_npartitions || d->d_partitions[dsk.part].p_bsize == 0) {
+		printf(INVALID_S, "partition");
+		return -1;
+	    }
+	    dsk.start += d->d_partitions[dsk.part].p_boffset / 512;
+	}
+#else
 	if (drvread(sec, dsk.start + LABELSECTOR32, 1))
 		return -1;
 	d = (void *)(sec + LABELOFFSET32);
@@ -587,6 +615,7 @@ dskread(void *buf, unsigned lba, unsigned nblk)
 	    dsk.start += d->d_partitions[dsk.part].p_offset;
 	    dsk.start -= d->d_partitions[RAW_PART].p_offset;
 	}
+#endif
     }
     return drvread(buf, dsk.start + lba, nblk);
 }

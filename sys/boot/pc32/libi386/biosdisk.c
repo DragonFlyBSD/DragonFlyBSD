@@ -40,6 +40,7 @@
 #include <stand.h>
 
 #include <sys/disklabel32.h>
+#include <sys/disklabel64.h>
 #include <sys/diskmbr.h>
 #include <sys/dtype.h>
 #include <machine/bootinfo.h>
@@ -52,7 +53,7 @@
 
 #define BIOS_NUMDRIVES		0x475
 #define BIOSDISK_SECSIZE	512
-#define BUFSIZE			(1 * BIOSDISK_SECSIZE)
+#define BUFSIZE			(4 * BIOSDISK_SECSIZE)
 #define	MAXBDDEV		MAXDEV
 
 #define DT_ATAPI		0x10		/* disk type for ATAPI floppies */
@@ -82,7 +83,10 @@ struct open_disk {
 #define BD_FLOPPY		0x0004
 #define BD_LABELOK		0x0008
 #define BD_PARTTABOK		0x0010
-    struct disklabel32		od_disklabel;
+    union {
+	struct disklabel32		od_disklabel;
+	struct disklabel64		od_disklabel64;
+    };
     int				od_nslices;	/* slice count */
     struct dos_partition	od_slicetab[NEXTDOSPART];
 };
@@ -454,10 +458,11 @@ bd_opendisk(struct open_disk **odp, struct i386_devdesc *dev)
 {
     struct dos_partition	*dptr;
     struct disklabel32		*lp;
+    struct disklabel64		*lp64;
     struct open_disk		*od;
     int				sector, slice, i;
     int				error;
-    char			buf[BUFSIZE];
+    static char			buf[BUFSIZE];
 
     if (dev->d_kind.biosdisk.unit >= nbdinfo) {
 	DEBUG("attempt to open nonexistent disk");
@@ -618,34 +623,68 @@ bd_opendisk(struct open_disk **odp, struct i386_devdesc *dev)
 	DEBUG("copy %d bytes of label from %p to %p", sizeof(struct disklabel32), buf + LABELOFFSET32, &od->od_disklabel);
 	bcopy(buf + LABELOFFSET32, &od->od_disklabel, sizeof(struct disklabel32));
 	lp = &od->od_disklabel;
-	od->od_flags |= BD_LABELOK;
 
-	if (lp->d_magic != DISKMAGIC32) {
-	    DEBUG("no disklabel");
-	    error = ENOENT;
-	    goto out;
-	}
-	if (dev->d_kind.biosdisk.partition >= lp->d_npartitions) {
-	    DEBUG("partition '%c' exceeds partitions in table (a-'%c')",
-		  'a' + dev->d_kind.biosdisk.partition, 'a' + lp->d_npartitions);
-	    error = EPART;
-	    goto out;
+	if (lp->d_magic == DISKMAGIC32) {
+	    od->od_flags |= BD_LABELOK;
 
-	}
+	    if (dev->d_kind.biosdisk.partition >= lp->d_npartitions) {
+		DEBUG("partition '%c' exceeds partitions in table (a-'%c')",
+		      'a' + dev->d_kind.biosdisk.partition, 'a' + lp->d_npartitions);
+		error = EPART;
+		goto out;
+
+	    }
 
 #ifdef DISK_DEBUG
-	/* Complain if the partition is unused unless this is a floppy. */
-	if ((lp->d_partitions[dev->d_kind.biosdisk.partition].p_fstype == FS_UNUSED) &&
-	    !(od->od_flags & BD_FLOPPY))
-	    DEBUG("warning, partition marked as unused");
+	    /* Complain if the partition is unused unless this is a floppy. */
+	    if ((lp->d_partitions[dev->d_kind.biosdisk.partition].p_fstype == FS_UNUSED) &&
+		!(od->od_flags & BD_FLOPPY))
+		DEBUG("warning, partition marked as unused");
 #endif
-	
-	od->od_boff = 
-		lp->d_partitions[dev->d_kind.biosdisk.partition].p_offset -
-		lp->d_partitions[RAW_PART].p_offset +
-		sector;
+	    
+	    od->od_boff = 
+		    lp->d_partitions[dev->d_kind.biosdisk.partition].p_offset -
+		    lp->d_partitions[RAW_PART].p_offset +
+		    sector;
+
+	    goto out;
+	}
+
+	/* else maybe DISKLABEL64? */
+
+	if (bd_read(od, sector, (sizeof(od->od_disklabel64) + 511) / 512, buf)) {
+	    DEBUG("error reading disklabel");
+	    error = EIO;
+	    goto out;
+	}
+	DEBUG("copy %d bytes of label from %p to %p", sizeof(od->od_disklabel64), buf, &od->od_disklabel64);
+	bcopy(buf, &od->od_disklabel64, sizeof(od->od_disklabel64));
+	lp64 = &od->od_disklabel64;
+
+	if (lp64->d_magic == DISKMAGIC64) {
+	    od->od_flags |= BD_LABELOK;
+
+	    if (dev->d_kind.biosdisk.partition >= lp64->d_npartitions ||
+		lp64->d_partitions[dev->d_kind.biosdisk.partition].p_bsize == 0) {
+		DEBUG("partition '%c' exceeds partitions in table (a-'%c')",
+		      'a' + dev->d_kind.biosdisk.partition, 'a' + lp64->d_npartitions);
+		error = EPART;
+		goto out;
+
+	    }
+
+	    od->od_boff = 
+		    lp64->d_partitions[dev->d_kind.biosdisk.partition].p_boffset / 512 +
+		    sector;
+
+	    DEBUG("disklabel64 slice at %d", od->od_boff);
+
+	} else {
+	    DEBUG("no disklabel");
+	    error = ENOENT;
+	}
     }
-    
+
  out:
     if (error) {
 	free(od);

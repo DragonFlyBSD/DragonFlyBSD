@@ -53,6 +53,7 @@ struct devsw *devsw[] = {
 };
 
 struct fs_ops *file_system[] = {
+    &hammer_fsops,
     &ufs_fsops,
     &ext2fs_fsops,
     &dosfs_fsops,

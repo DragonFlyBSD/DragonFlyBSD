@@ -73,7 +73,7 @@
  * This is the origin of boot2.bin relative to the BTX user address space
  * (e.g. physical address would be MEM_BTX_USR+BOOT2_VORIGIN).
  */
-#define BOOT2_VORIGIN	0x2000
+#define BOOT2_VORIGIN	0x4000
 
 /*
  * NOTE: BOOT0_ORIGIN is extracted from this file and used in boot0/Makefile

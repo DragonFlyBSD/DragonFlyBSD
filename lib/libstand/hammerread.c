@@ -96,7 +96,7 @@ struct hfs {
 static void *
 hread(struct hfs *hfs, hammer_off_t off)
 {
-	hammer_off_t boff = off & ~HAMMER_BUFMASK;
+	hammer_off_t boff = off & ~HAMMER_BUFMASK64;
 
 	boff &= HAMMER_OFF_LONG_MASK;
 
@@ -153,7 +153,7 @@ hread(struct hfs *hfs, hammer_off_t off)
 {
 	char *buf = dmadat->buf;
 
-	hammer_off_t boff = off & ~HAMMER_BUFMASK;
+	hammer_off_t boff = off & ~HAMMER_BUFMASK64;
 	boff &= HAMMER_OFF_LONG_MASK;
 	if (HAMMER_ZONE_DECODE(off) != HAMMER_ZONE_RAW_VOLUME_INDEX)
 		boff += hfs->buf_beg;
@@ -409,6 +409,8 @@ hfind(struct hfs *hfs, hammer_base_elm_t key, hammer_base_elm_t end)
 #if DEBUG > 1
 	printf("searching for ");
 	hprintb(key);
+	printf(" end ");
+	hprintb(end);
 	printf("\n");
 #endif
 
@@ -425,7 +427,7 @@ loop:
 	if (node == NULL)
 		return (NULL);
 
-#if 0
+#if DEBUG > 3
 	for (int i = 0; i < node->count; i++) {
 		printf("E: ");
 		hprintb(&node->elms[i].base);
@@ -467,7 +469,7 @@ loop:
 	}
 
 	// Skip deleted elements
-	while (n < node->count && e->base.delete_tid != 0) {
+	while (n <= node->count && e->base.delete_tid != 0) {
 		e++;
 		n++;
 	}
@@ -475,7 +477,7 @@ loop:
 	// In the unfortunate event when there is no next
 	// element in this node, we repeat the search with
 	// a key beyond the right boundary
-	if (n == node->count) {
+	if (n > node->count) {
 		search = backtrack;
 		nodeoff = hfs->root;
 
@@ -512,6 +514,10 @@ static int
 hreaddir(struct hfs *hfs, ino_t ino, int64_t *off, struct dirent *de)
 {
 	struct hammer_base_elm key, end;
+
+#if DEBUG > 2
+	printf("%s(%llx, %lld)\n", __FUNCTION__, (long long)ino, *off);
+#endif
 
 	bzero(&key, sizeof(key));
 	key.obj_id = ino;
@@ -550,6 +556,10 @@ hresolve(struct hfs *hfs, ino_t dirino, const char *name)
 {
 	struct hammer_base_elm key, end;
 	size_t namel = strlen(name);
+
+#if DEBUG > 2
+	printf("%s(%llx, %s)\n", __FUNCTION__, (long long)dirino, name);
+#endif
 
 	bzero(&key, sizeof(key));
 	key.obj_id = dirino;
@@ -591,6 +601,10 @@ hresolve(struct hfs *hfs, ino_t dirino, const char *name)
 static ino_t
 hlookup(struct hfs *hfs, const char *path)
 {
+#if DEBUG > 2
+	printf("%s(%s)\n", __FUNCTION__, path);
+#endif
+
 #ifdef BOOT2
 	ls = 0;
 #endif
@@ -599,6 +613,8 @@ hlookup(struct hfs *hfs, const char *path)
 		char name[MAXPATHLEN + 1];
 		while (*path == '/')
 			path++;
+		if (*path == 0)
+			break;
 		for (char *n = name; *path != 0 && *path != '/'; path++, n++) {
 			n[0] = *path;
 			n[1] = 0;
@@ -622,6 +638,10 @@ static int
 hstat(struct hfs *hfs, ino_t ino, struct stat* st)
 {
 	struct hammer_base_elm key;
+
+#if DEBUG > 2
+	printf("%s(%llx)\n", __FUNCTION__, (long long)ino);
+#endif
 
 	bzero(&key, sizeof(key));
 	key.obj_id = ino;
@@ -693,10 +713,16 @@ hreadf(struct hfs *hfs, ino_t ino, int64_t off, int64_t len, char *buf)
 				roff += HAMMER_BUFSIZE;
 			}
 
-			// cut to HAMMER_BUFSIZE
-			if ((roff & ~HAMMER_BUFMASK) != ((roff + dlen - 1) & ~HAMMER_BUFMASK))
+			/*
+			 * boff - relative offset in disk buffer (not aligned)
+			 * roff - base offset of disk buffer     (not aligned)
+			 * dlen - amount of data we think we can copy
+			 *
+			 * hread only reads 16K aligned buffers, check for
+			 * a length overflow and truncate dlen appropriately.
+			 */
+			if ((roff & ~HAMMER_BUFMASK64) != ((roff + boff + dlen - 1) & ~HAMMER_BUFMASK64))
 				dlen = HAMMER_BUFSIZE - ((boff + roff) & HAMMER_BUFMASK);
-
 			char *data = hread(hfs, roff);
 			if (data == NULL)
 				return (-1);
