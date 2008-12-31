@@ -138,7 +138,7 @@ udp6_output(struct in6pcb *in6p, struct mbuf *m, struct sockaddr *addr6,
 	int flags;
 	struct sockaddr_in6 tmp;
 
-	priv = !priv_check(td, PRIV_ROOT);	/* 1 if privilaged, 0 if not */
+	priv = !priv_check(td, PRIV_ROOT);	/* 1 if privileged, 0 if not */
 	if (control) {
 		if ((error = ip6_setpktoptions(control, &opt,
 		    in6p->in6p_outputopts, 
