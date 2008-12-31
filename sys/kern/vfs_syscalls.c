@@ -59,6 +59,7 @@
 #include <sys/vnode.h>
 #include <sys/proc.h>
 #include <sys/priv.h>
+#include <sys/jail.h>
 #include <sys/namei.h>
 #include <sys/nlookup.h>
 #include <sys/dirent.h>
