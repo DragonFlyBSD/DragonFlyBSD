@@ -54,6 +54,7 @@
 #include <sys/sysctl.h>
 #include <sys/vnode.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/nlookup.h>
 #include <sys/file.h>
 #include <sys/stat.h>
@@ -511,7 +512,7 @@ fp_mmap(void *addr_arg, size_t size, int prot, int flags, struct file *fp,
 	if (securelevel >= 1)
 	    disablexworkaround = 1;
 	else
-	    disablexworkaround = suser(td);
+	    disablexworkaround = priv_check(td, PRIV_ROOT);
 	if (vp->v_type == VCHR && disablexworkaround &&
 	    (flags & (MAP_PRIVATE|MAP_COPY))) {
 		error = EINVAL;

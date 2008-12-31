@@ -53,6 +53,7 @@
 #include <sys/diskslice.h>
 #include <sys/reboot.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/fcntl.h>		/* FREAD	*/
 #include <sys/stat.h>		/* S_IFCHR	*/
 #include <sys/vnode.h>
@@ -186,7 +187,7 @@ sys_reboot(struct reboot_args *uap)
 	struct thread *td = curthread;
 	int error;
 
-	if ((error = suser(td)))
+	if ((error = priv_check(td, PRIV_ROOT)))
 		return (error);
 
 	boot(uap->opt);

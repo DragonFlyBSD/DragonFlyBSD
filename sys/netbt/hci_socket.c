@@ -43,6 +43,7 @@
 #include <sys/kernel.h>
 #include <sys/mbuf.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -630,7 +631,7 @@ hci_sattach (struct socket *so, int proto, struct pru_attach_info *ai)
 	so->so_pcb = pcb;
 	pcb->hp_socket = so;
 
-	if (curproc == NULL || suser(curthread) == 0)
+	if (curproc == NULL || priv_check(curthread, PRIV_ROOT) == 0)
 		pcb->hp_flags |= HCI_PRIVILEGED;
 
 	/*

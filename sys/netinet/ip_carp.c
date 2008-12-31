@@ -41,6 +41,7 @@
 #include <sys/mbuf.h>
 #include <sys/time.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/sockio.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
@@ -1798,7 +1799,7 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *cr)
 		break;
 
 	case SIOCSVH:
-		error = suser_cred(cr, NULL_CRED_OKAY);
+		error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
 		if (error)
 			break;
 		error = copyin(ifr->ifr_data, &carpr, sizeof(carpr));
@@ -1875,8 +1876,7 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *cr)
 		carpr.carpr_vhid = sc->sc_vhid;
 		carpr.carpr_advbase = sc->sc_advbase;
 		carpr.carpr_advskew = sc->sc_advskew;
-
-		error = suser_cred(cr, NULL_CRED_OKAY);
+		error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
 		if (error == 0) {
 			bcopy(sc->sc_key, carpr.carpr_key,
 			      sizeof(carpr.carpr_key));

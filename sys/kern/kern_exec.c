@@ -42,6 +42,7 @@
 #include <sys/wait.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/ktrace.h>
 #include <sys/signalvar.h>
 #include <sys/pioctl.h>
@@ -398,7 +399,7 @@ interpret:
 		 * we do not regain any tracing during a possible block.
 		 */
 		setsugid();
-		if (p->p_tracenode && suser(td) != 0) {
+		if (p->p_tracenode && priv_check(td, PRIV_ROOT) != 0) {
 			ktrdestroy(&p->p_tracenode);
 			p->p_traceflag = 0;
 		}

@@ -71,6 +71,7 @@
 #include <sys/param.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/jail.h>
@@ -564,7 +565,7 @@ rip6_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	inp = so->so_pcb;
 	if (inp)
 		panic("rip6_attach");
-	if ((error = suser_cred(ai->p_ucred, flag)) != 0)
+	if ((error = priv_check_cred(ai->p_ucred, PRIV_ROOT, flag)) != 0)
 		return error;
 
 	error = soreserve(so, rip_sendspace, rip_recvspace, ai->sb_rlimit);

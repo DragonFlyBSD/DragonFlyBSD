@@ -85,6 +85,7 @@
 #include <sys/domain.h>
 #endif
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/protosw.h>
@@ -1264,7 +1265,7 @@ tcp_getcred(SYSCTL_HANDLER_ARGS)
 	int cpu;
 	int error;
 
-	error = suser(req->td);
+	error = priv_check(req->td, PRIV_ROOT);
 	if (error != 0)
 		return (error);
 	error = SYSCTL_IN(req, addrs, sizeof addrs);
@@ -1297,7 +1298,7 @@ tcp6_getcred(SYSCTL_HANDLER_ARGS)
 	int error;
 	boolean_t mapped = FALSE;
 
-	error = suser(req->td);
+	error = priv_check(req->td, PRIV_ROOT);
 	if (error != 0)
 		return (error);
 	error = SYSCTL_IN(req, addrs, sizeof addrs);

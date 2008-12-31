@@ -72,6 +72,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/dkstat.h>
@@ -253,7 +254,7 @@ slopen(cdev_t dev, struct tty *tp)
 	int error;
 	struct thread *td = curthread;	/* XXX */
 
-	error = suser(td);
+	error = priv_check(td, PRIV_ROOT);
 	if (error)
 		return (error);
 

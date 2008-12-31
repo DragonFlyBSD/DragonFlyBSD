@@ -36,6 +36,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/buf.h>
 #include <sys/bus.h>
 #include <sys/disk.h>
@@ -596,7 +597,7 @@ acdioctl(struct dev_ioctl_args *ap)
 
     case CDIOCRESET:
 ;	/* note: if no proc EPERM will be returned */
-	error = suser_cred(ap->a_cred, 0);
+	error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
 	if (error)
 	    break;
 	error = atapi_test_ready(cdp->device);

@@ -84,6 +84,7 @@
 #include <sys/kernel.h>
 #include <sys/syslog.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
@@ -1131,7 +1132,7 @@ ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
 	int rthdr_exist = 0;
 
 
-	if (suser(td) == 0)
+	if (priv_check(td, PRIV_ROOT) == 0)
  		privileged++;
 
 #ifdef SO_TIMESTAMP

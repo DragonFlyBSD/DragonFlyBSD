@@ -80,6 +80,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/mbuf.h>
 #include <sys/dkstat.h>
 #include <sys/socket.h>
@@ -177,7 +178,7 @@ pppopen(cdev_t dev, struct tty *tp)
     struct ppp_softc *sc;
     int error;
 
-    if ((error = suser(td)) != 0)
+    if ((error = priv_check(td, PRIV_ROOT)) != 0)
 	return (error);
 
     crit_enter();
@@ -434,7 +435,7 @@ ppptioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cr)
     error = 0;
     switch (cmd) {
     case PPPIOCSASYNCMAP:
-	if ((error = suser_cred(cr, 0)) != 0)
+	if ((error = priv_check_cred(cr, PRIV_ROOT, 0)) != 0)
 	    break;
 	sc->sc_asyncmap[0] = *(u_int *)data;
 	break;
@@ -444,7 +445,7 @@ ppptioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cr)
 	break;
 
     case PPPIOCSRASYNCMAP:
-	if ((error = suser_cred(cr, 0)) != 0)
+	if ((error = priv_check_cred(cr, PRIV_ROOT, 0)) != 0)
 	    break;
 	sc->sc_rasyncmap = *(u_int *)data;
 	break;
@@ -454,7 +455,7 @@ ppptioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct ucred *cr)
 	break;
 
     case PPPIOCSXASYNCMAP:
-	if ((error = suser_cred(cr, 0)) != 0)
+	if ((error = priv_check_cred(cr, PRIV_ROOT, 0)) != 0)
 	    break;
 	crit_enter();
 	bcopy(data, sc->sc_asyncmap, sizeof(sc->sc_asyncmap));

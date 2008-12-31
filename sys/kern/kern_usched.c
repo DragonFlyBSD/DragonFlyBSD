@@ -37,6 +37,7 @@
 #include <sys/errno.h>
 #include <sys/globaldata.h>		/* curthread */
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/sysproto.h>		/* struct usched_set_args */
 #include <sys/systm.h>			/* strcmp() */
 #include <sys/usched.h>	
@@ -162,7 +163,7 @@ sys_usched_set(struct usched_set_args *uap)
 	struct lwp *lp;
 	int cpuid;
 
-	if ((error = suser(curthread)) != 0)
+	if ((error = priv_check(curthread, PRIV_ROOT)) != 0)
 		return (error);
 
 	if (uap->pid != 0 && uap->pid != curthread->td_proc->p_pid)

@@ -35,6 +35,7 @@
 
 #include <sys/param.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/systm.h>
 #include <sys/time.h>
 #include <sys/mbuf.h>
@@ -676,7 +677,7 @@ pfsyncioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			return (error);
 		break;
 	case SIOCSETPFSYNC:
-		if ((error = suser_cred(cr, NULL_CRED_OKAY)) != 0)
+		if ((error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY)) != 0)
 			return (error);
 		if ((error = copyin(ifr->ifr_data, &pfsyncr, sizeof(pfsyncr))))
 			return (error);

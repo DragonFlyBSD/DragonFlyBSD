@@ -50,6 +50,7 @@
 #include <sys/module.h>
 #include <sys/endian.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/ucred.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
@@ -1953,7 +1954,7 @@ iwi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 	case SIOCSLOADFW:
 		/* only super-user can do that! */
-		error = suser_cred(cr, NULL_CRED_OKAY);
+		error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
 		if (error != 0)
 			break;
 
@@ -1963,7 +1964,7 @@ iwi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 
 	case SIOCSKILLFW:
 		/* only super-user can do that! */
-		error = suser_cred(cr, NULL_CRED_OKAY);
+		error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
 		if (error != 0)
 			break;
 

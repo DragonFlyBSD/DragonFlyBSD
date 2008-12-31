@@ -48,6 +48,7 @@
 #include <sys/ioctl_compat.h>
 #endif
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/tty.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
@@ -191,7 +192,7 @@ ptsopen(struct dev_open_args *ap)
 		tp->t_lflag = TTYDEF_LFLAG;
 		tp->t_cflag = TTYDEF_CFLAG;
 		tp->t_ispeed = tp->t_ospeed = TTYDEF_SPEED;
-	} else if ((tp->t_state & TS_XCLUDE) && suser_cred(ap->a_cred, 0)) {
+	} else if ((tp->t_state & TS_XCLUDE) && priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
 		return (EBUSY);
 	} else if (pti->pt_prison != ap->a_cred->cr_prison) {
 		return (EBUSY);
