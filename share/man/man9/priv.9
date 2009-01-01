@@ -48,7 +48,7 @@ passed thread,
 .Fa td ,
 or credential,
 .Fa cred .
-This interface replaces the now removed
+This interface replaces the 
 .Xr suser 9
 privilege checking interface.
 Privileges typically represent rights in one of two categories: the right to
@@ -67,9 +67,6 @@ sometimes real) UID having a value of 0, and the
 .Xr jail 2
 policy, which permits only certain privileges to be granted to processes in a
 jail.
-The set of available privileges may also be influenced by the TrustedBSD MAC
-Framework, described in
-.Xr mac 9 .
 .Sh IMPLEMENTATION NOTES
 When adding a new privilege check to a code path, first check the complete
 list of current privileges in
@@ -111,7 +108,6 @@ privilege checks, and the caller is unable to tell if an access control
 failure occurred.
 .Sh SEE ALSO
 .Xr jail 2 ,
-.Xr mac 9 ,
 .Xr ucred 9
 .Sh AUTHORS
 The
