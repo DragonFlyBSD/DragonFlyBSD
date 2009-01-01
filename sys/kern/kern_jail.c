@@ -153,7 +153,7 @@ sys_jail(struct jail_args *uap)
 		uap->sysmsg_result = -1;
 		return (error);
 	}
-	pr = kmalloc(sizeof *pr , M_PRISON, M_WAITOK | M_ZERO);
+	pr = kmalloc(sizeof(*pr), M_PRISON, M_WAITOK | M_ZERO);
 	SLIST_INIT(&pr->pr_ips);
 
 	switch (jversion) {
@@ -200,7 +200,7 @@ sys_jail(struct jail_args *uap)
 		goto bail;
 	}
 
-	error = copyinstr(j.hostname, &pr->pr_host, sizeof pr->pr_host, 0);
+	error = copyinstr(j.hostname, &pr->pr_host, sizeof(pr->pr_host), 0);
 	if (error)
 		goto bail;
 	error = nlookup_init(&nd, j.path, UIO_USERSPACE, NLC_FOLLOW);
