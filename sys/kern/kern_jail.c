@@ -146,19 +146,21 @@ sys_jail(struct jail_args *uap)
 	error = priv_check(td, PRIV_ROOT);
 	if (error) {
 		uap->sysmsg_result = -1;
-		return(error);
+		return (error);
 	}
-	error = copyin(uap->jail, &jversion, sizeof jversion);
+	error = copyin(uap->jail, &jversion, sizeof(jversion));
 	if (error) {
 		uap->sysmsg_result = -1;
-		return(error);
+		return (error);
 	}
 	pr = kmalloc(sizeof *pr , M_PRISON, M_WAITOK | M_ZERO);
 	SLIST_INIT(&pr->pr_ips);
 
 	switch (jversion) {
 	case 0:
-		error = copyin(uap->jail, &jv0, sizeof(struct jail_v0));
+		/* Single IPv4 jails. */
+			
+		error = copyin(uap->jail, &jv0, sizeof(jv0));
 		if (error)
 			goto bail;
 		jip = kmalloc(sizeof(*jip),  M_PRISON, M_WAITOK | M_ZERO);
@@ -168,6 +170,13 @@ sys_jail(struct jail_args *uap)
 		SLIST_INSERT_HEAD(&pr->pr_ips, jip, entries);
 		break;
 	case 1:
+		/*
+		 * DragonFly multi noIP/IPv4/IPv6 jails
+		 *
+		 * NOTE: This version is unsupported by FreeBSD
+		 * (which uses version 2 instead).
+		 */
+
 		error = copyin(uap->jail, &j, sizeof(j));
 		if (error)
 			goto bail;
