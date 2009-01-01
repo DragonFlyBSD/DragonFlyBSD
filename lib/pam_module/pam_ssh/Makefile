@@ -8,6 +8,6 @@ LDADD=	-lssh -lcrypto -lcrypt
 DPADD=	${LIBSSH} ${LIBCRYPTO} ${LIBCRYPT}
 
 SSHDIR=		${.CURDIR}/../../../crypto/openssh-5
-CFLAGS+=	-I${SSHDIR}
+CFLAGS+=	-I${SSHDIR} -include ssh_namespace.h
 
 .include <bsd.lib.mk>
