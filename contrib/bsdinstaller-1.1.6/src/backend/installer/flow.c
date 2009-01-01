@@ -986,8 +986,8 @@ state_ask_fs(struct i_fn_args *a)
 
 	switch (dfui_be_present_dialog(a->c, _("Select file system"),
 	    _("Use HAMMER|Use UFS|Return to Select Disk"),
-	    _("Please select the file system you want to use with %s\n\n"
-	      "HAMMER is the new %s file system.  UFS the traditional BSD file system"),
+	    _("Please select the file system you want to use with %s.\n\n"
+	      "HAMMER is the new %s file system.  UFS is the traditional BSD file system."),
 	    OPERATING_SYSTEM_NAME,
 	    OPERATING_SYSTEM_NAME))
 	{
