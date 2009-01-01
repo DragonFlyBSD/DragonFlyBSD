@@ -172,11 +172,15 @@ of swap or has no swap.
     <li>Major rewrite of usched_bsd4 and related support logic, plus
 additional improvements to the LWKT scheduler.
     <li>Major revamping of the pageout and low-memory handling code.
+    <li>suser_* replaced with priv_* implementation from FreeBSD.
 </ul>
 <h3>HAMMER changes</h3>
 <ul>
     <li>Use per-mount kmalloc pools for bulk data structures, particularly inodes
 and records.
+    <li>The installer is now HAMMER ready.
+    <li>It is now possible to boot from a HAMMER-only disk.  No need for a single
+UFS partition for /boot.
 </ul>
 <h3>Hardware changes</h3>
 <ul>
@@ -194,6 +198,9 @@ some power when using mobile devices (from FreeBSD).
 <ul>
     <li>Add support for cards with "RealTek 8102EL PCIe 10/100baseTX" chipset.
     <li>Add poling support for jme(4).
+    <li>Add driver for Attansic PHYs (from FreeBSD).
+    <li>Add ale(4) for Atheros AR8121/AR8113/AR8114 PCIe ethernet controller (from FreeBSD).
+    <li>Add age(4) for Attansic/Atheros L1 gigabit ethernet controller (from FreeBSD).
 </ul>
 <h3>Hardware changes (USB)</h3>
 <ul>
@@ -228,6 +235,9 @@ programs (all pkgsrc apps by default up to 2008Q3).
     <li>Add ftw(), nftw(), associated header files and documentation.
     <li>Fixed hundreds of warnings in various userland tools.
     <li>i486 is now the default architecture for gcc(1).
+    <li>Use BIND's resolver in libc.
+    <li>Add nsswitch.conf(5) support and add the Name Service Cache Daemon nscd(8) from FreeBSD.
+    <li>Import a bunch of pam_* modules from FreeBSD.
 </ul>
 <h3>Removals</h3>
 <ul>
