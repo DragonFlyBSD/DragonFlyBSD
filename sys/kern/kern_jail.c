@@ -251,9 +251,9 @@ bail:
 	while (!SLIST_EMPTY(&pr->pr_ips)) {
 		jip = SLIST_FIRST(&pr->pr_ips);
 		SLIST_REMOVE_HEAD(&pr->pr_ips, entries);
-		FREE(jip, M_PRISON);
+		kfree(jip, M_PRISON);
 	}
-	FREE(pr, M_PRISON);
+	kfree(pr, M_PRISON);
 	return(error);
 }
 
@@ -620,7 +620,7 @@ prison_free(struct prison *pr)
 	while (!SLIST_EMPTY(&pr->pr_ips)) {
 		jls = SLIST_FIRST(&pr->pr_ips);
 		SLIST_REMOVE_HEAD(&pr->pr_ips, entries);
-		FREE(jls, M_PRISON);
+		kfree(jls, M_PRISON);
 	}
 	LIST_REMOVE(pr, pr_list);
 	prisoncount--;
