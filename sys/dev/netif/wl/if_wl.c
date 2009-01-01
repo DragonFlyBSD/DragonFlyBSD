@@ -1429,7 +1429,7 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 	/* copy the EEPROM in 2.4 Gz WaveMODEM  out to the caller */
     case SIOCGWLEEPROM:
 	/* root only */
-	if ((error = priv_check(td; PRIV_ROOT)))
+	if ((error = priv_check(td, PRIV_ROOT)))
 	    break;
 	/* pointer to buffer in user space */
 	up = (void *)ifr->ifr_data;
