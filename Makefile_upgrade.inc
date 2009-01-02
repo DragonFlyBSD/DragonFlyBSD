@@ -1013,3 +1013,6 @@ TO_REMOVE+=/usr/share/man/cat3/xdr_authunix_parms.3.gz
 TO_REMOVE+=/usr/share/man/man3/xdr_authunix_parms.3.gz
 TO_REMOVE+=/usr/share/man/cat9/KTR_LOG_PTR.9.gz
 TO_REMOVE+=/usr/share/man/man9/KTR_LOG_PTR.9.gz
+TO_REMOVE+=/usr/libexec/rexecd
+TO_REMOVE+=/usr/share/man/man8/rexecd.8.gz
+TO_REMOVE+=/usr/share/man/cat8/rexecd.8.gz
