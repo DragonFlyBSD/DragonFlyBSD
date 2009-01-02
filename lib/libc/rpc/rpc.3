@@ -376,8 +376,6 @@ pages on which they are described:
 .Xr rpc_clnt_create 3
 .It Fn clnt_tp_create_timed
 .Xr rpc_clnt_create 3
-.It Fn clnt_udpcreate
-.Xr rpc_soc 3
 .It Fn clnt_vc_create
 .Xr rpc_clnt_create 3
 .It Fn clntraw_create
@@ -385,6 +383,8 @@ pages on which they are described:
 .It Fn clnttcp_create
 .Xr rpc_soc 3
 .It Fn clntudp_bufcreate
+.Xr rpc_soc 3
+.It Fn clntudp_create
 .Xr rpc_soc 3
 .It Fn get_myaddress
 .Xr rpc_soc 3
@@ -418,8 +418,6 @@ pages on which they are described:
 .Xr rpc_svc_calls 3
 .It Fn svc_fd_create
 .Xr rpc_svc_create 3
-.It Fn svc_fds
-.Xr rpc_soc 3
 .It Fn svc_freeargs
 .Xr rpc_svc_reg 3
 .It Fn svc_getargs
@@ -432,8 +430,8 @@ pages on which they are described:
 .Xr rpc_svc_calls 3
 .It Fn svc_getrpccaller
 .Xr rpc_svc_calls 3
-.It Fn svc_kerb_reg
-.Xr kerberos_rpc 3
+.\".It Fn svc_kerb_reg
+.\".Xr kerberos_rpc 3
 .It Fn svc_raw_create
 .Xr rpc_svc_create 3
 .It Fn svc_reg

@@ -1011,3 +1011,5 @@ TO_REMOVE+=/usr/share/man/cat3/svc_getregset.3.gz
 TO_REMOVE+=/usr/share/man/man3/svc_getregset.3.gz
 TO_REMOVE+=/usr/share/man/cat3/xdr_authunix_parms.3.gz
 TO_REMOVE+=/usr/share/man/man3/xdr_authunix_parms.3.gz
+TO_REMOVE+=/usr/share/man/cat9/KTR_LOG_PTR.9.gz
+TO_REMOVE+=/usr/share/man/man9/KTR_LOG_PTR.9.gz
