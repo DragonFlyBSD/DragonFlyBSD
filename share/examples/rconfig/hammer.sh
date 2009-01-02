@@ -53,6 +53,7 @@ set echo
 #
 #	Use PFSs for backup domain separation
 #
+dd if=/dev/zero of=/dev/${disk} bs=32k count=16
 fdisk -IB ${disk}
 disklabel -r -w ${disk}s1 auto
 disklabel -B ${disk}s1
