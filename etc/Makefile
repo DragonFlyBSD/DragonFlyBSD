@@ -55,8 +55,6 @@ DIRS+=	secure/usr.bin/openssl
 BIN2=	pccard_ether rc.firewall rc.suspend rc.resume
 
 DEFAULTS= rc.conf make.conf periodic.conf uuids
-PAMD_CONF=	README convert.sh ftpd gdm imap login other pop3 sshd \
-	telnetd xdm xserver
 
 MTREE=	BSD.include.dist BSD.local.dist BSD.root.dist BSD.usr.dist \
 	BSD.var.dist
@@ -254,8 +252,7 @@ distribution:
 	    pwd_mkdb -p -d ${DESTDIR}/etc ${DESTDIR}/etc/master.passwd
 	cd ${.CURDIR}/defaults; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
 	    ${DEFAULTS} ${DESTDIR}/etc/defaults
-	cd ${.CURDIR}/pam.d; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
-	    ${PAMD_CONF} ${DESTDIR}/etc/pam.d
+	cd ${.CURDIR}/pam.d; ${MAKE} install
 	cd ${.CURDIR}/bluetooth; ${MAKE} install
 	cd ${.CURDIR}/dma; ${MAKE} install
 	cd ${.CURDIR}/periodic; ${MAKE} install
