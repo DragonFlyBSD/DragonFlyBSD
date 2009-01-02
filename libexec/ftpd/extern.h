@@ -31,51 +31,48 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.2 (Berkeley) 4/4/94
- * $FreeBSD: src/libexec/ftpd/extern.h,v 1.14.2.2 2002/02/16 14:02:00 dwmalone Exp $
+ * $FreeBSD: src/libexec/ftpd/extern.h,v 1.20 2008/12/23 01:23:09 cperciva Exp $
  * $DragonFly: src/libexec/ftpd/extern.h,v 1.3 2003/11/14 03:54:30 dillon Exp $
  */
 
 #include <sys/types.h>
 #include <sys/socket.h>
 
-void	blkfree (char **);
-char  **copyblk (char **);
-void	cwd (char *);
-void	delete (char *);
-void	dologout (int);
-void	fatalerror (char *);
-void    ftpd_logwtmp (char *, char *, struct sockaddr *addr);
-int	ftpd_pclose (FILE *);
-FILE   *ftpd_popen (char *, char *);
-char   *getline (char *, int, FILE *);
-void	lreply (int, const char *, ...);
-void	makedir (char *);
-void	nack (char *);
-void	pass (char *);
-void	passive (void);
-void	long_passive (char *, int);
-void	perror_reply (int, char *);
-void	pwd (void);
-void	removedir (char *);
-void	renamecmd (char *, char *);
-char   *renamefrom (char *);
-void	reply (int, const char *, ...);
-void	retrieve (char *, char *);
-void	send_file_list (char *);
+void	blkfree(char **);
+char  **copyblk(char **);
+void	cwd(char *);
+void	delete(char *);
+void	dologout(int);
+void	fatalerror(char *);
+void    ftpd_logwtmp(char *, char *, struct sockaddr *addr);
+int	ftpd_pclose(FILE *);
+FILE   *ftpd_popen(char *, char *);
+int	getline(char *, int, FILE *);
+void	lreply(int, const char *, ...) __printflike(2, 3);
+void	makedir(char *);
+void	nack(char *);
+void	pass(char *);
+void	passive(void);
+void	long_passive(char *, int);
+void	perror_reply(int, char *);
+void	pwd(void);
+void	removedir(char *);
+void	renamecmd(char *, char *);
+char   *renamefrom(char *);
+void	reply(int, const char *, ...) __printflike(2, 3);
+void	retrieve(char *, char *);
+void	send_file_list(char *);
 #ifdef OLD_SETPROCTITLE
-void	setproctitle (const char *, ...);
+void	setproctitle(const char *, ...);
 #endif
-void	statcmd (void);
-void	statfilecmd (char *);
-void	store (char *, char *, int);
-void	upper (char *);
-void	user (char *);
-void	yyerror (char *);
-int	yyparse (void);
-#if defined(SKEY) && defined(_PWD_H_) /* XXX evil */
-char   *skey_challenge (char *, struct passwd *, int);
-#endif
-int	ls_main (int, char **);
+void	statcmd(void);
+void	statfilecmd(char *);
+void	store(char *, char *, int);
+void	upper(char *);
+void	user(char *);
+void	yyerror(char *);
+int	yyparse(void);
+int	ls_main(int, char **);
 
 struct sockaddr_in;
 struct sockaddr_in6;
