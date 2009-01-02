@@ -394,10 +394,13 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 #ifndef __DragonFly__
 	if (!(argp->flags & MSDOSFSMNT_GEMDOSFS)) {
 #endif
-		/* XXX - We should probably check more values here */
-		if (!pmp->pm_BytesPerSec || !SecPerClust
-			|| !pmp->pm_Heads
-			|| !pmp->pm_SecPerTrack || pmp->pm_SecPerTrack > 63) {
+		/*
+		 * We don't check pm_Heads nor pm_SecPerTrack, because
+		 * these may not be set for EFI file systems. We don't
+		 * use these anyway, so we're unaffected if they are
+		 * invalid.
+		 */
+		if (!pmp->pm_BytesPerSec || !SecPerClust) {
 			error = EINVAL;
 			goto error_exit;
 		}
