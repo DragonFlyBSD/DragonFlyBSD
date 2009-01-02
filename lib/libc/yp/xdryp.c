@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/yp/xdryp.c,v 1.9.2.1 2002/02/15 00:46:53 des Exp $
+ * $FreeBSD: src/lib/libc/yp/xdryp.c,v 1.15 2008/03/26 07:32:06 brueffer Exp $
  * $DragonFly: src/lib/libc/yp/xdryp.c,v 1.4 2005/11/20 13:24:36 swildner Exp $
  */
 
@@ -42,14 +42,12 @@ extern void *ypresp_data;
  * I'm leaving the xdr_datum() function in purely for backwards
  * compatibility. yplib.c doesn't actually use it, but it's listed
  * in yp_prot.h as being available, so it's probably a good idea to
- * leave it in in case somebody goes looking for it.
+ * leave it in case somebody goes looking for it.
  */
 typedef struct {
 	char *dptr;
 	int  dsize;
 } datum;
-
-bool_t xdr_datum(XDR *, datum *);
 
 bool_t
 xdr_datum(XDR *xdrs, datum *objp)
