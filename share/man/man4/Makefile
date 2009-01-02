@@ -11,6 +11,7 @@ MAN=	aac.4 \
 	acx.4 \
 	adv.4 \
 	adw.4 \
+	age.4 \
 	agp.4 \
 	aha.4 \
 	ahb.4 \
