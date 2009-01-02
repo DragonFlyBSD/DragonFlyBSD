@@ -432,7 +432,7 @@ packages</a>
 <TD>DragonFlyBSD.org (California)</TD>
 <TD>Code master site (<B>NOTE: Use other sites if possible!</B>)</TD>
 <TD> 
-<a href="git://crater.dragonflybsd.org/dragonfly.git">git repo</a>
+<a href="git://crater.dragonflybsd.org/dragonfly.git">git repo</a>,
 <a href="http://gitweb.dragonflybsd.org/">gitweb</a>
 </TD>
 </TR>
@@ -441,7 +441,7 @@ packages</a>
 <TD>chlamydia.fs.ei.tum.de (Germany)</TD>
 <TD>Code</TD>
 <TD>
-<a href="git://chlamydia.fs.ei.tum.de/dragonfly.git">git repo</a>,
+<a href="git://chlamydia.fs.ei.tum.de/dragonfly.git">git repo</a>
 </TD>
 </TR>
 
