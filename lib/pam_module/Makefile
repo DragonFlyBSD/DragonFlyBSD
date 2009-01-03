@@ -1,7 +1,6 @@
 # $DragonFly: src/lib/pam_module/Makefile,v 1.4 2008/01/02 17:41:30 matthias Exp $
 
 SUBDIR=	pam_chroot \
-	pam_cleartext_pass_ok \
 	pam_deny \
 	pam_echo \
 	pam_exec \

@@ -76,9 +76,9 @@ LIBOPIE?=	${DESTDIR}${LIBDIR}/libopie.a
 LIBPAM?=	${DESTDIR}${LIBDIR}/libpam.a
 MINUSLPAM?=	-lpam
 .if defined(NOSHARED) && ${NOSHARED} != "no" && ${NOSHARED} != "NO"
-LIBPAM+=	${LIBRADIUS} ${LIBTACPLUS} ${LIBSKEY} ${LIBCRYPT} ${LIBMD} \
+LIBPAM+=	${LIBRADIUS} ${LIBTACPLUS} ${LIBOPIE} ${LIBCRYPT} ${LIBMD} \
 		${LIBUTIL}
-MINUSLPAM+=	-lradius -ltacplus -lskey -lcrypt -lmd -lutil
+MINUSLPAM+=	-lradius -ltacplus -lopie -lcrypt -lmd -lutil
 .endif
 
 LIBPANEL?=	${DESTDIR}${LIBDIR}/libpanel.a
@@ -96,7 +96,6 @@ LIBSCRYPT?=	"don't use LIBSCRYPT, use LIBCRYPT"
 LIBSMB?=	${DESTDIR}${LIBDIR}/libsmb.a
 LIBDESCRYPT?=	"don't use LIBDESCRYPT, use LIBCRYPT"
 LIBSCSI?=	${DESTDIR}${LIBDIR}/libscsi.a
-LIBSKEY?=	${DESTDIR}${LIBDIR}/libskey.a
 LIBSS?=		${DESTDIR}${LIBDIR}/libss.a
 LIBSSH?=	${DESTDIR}${LIBDIR}/libssh.a	# XXX in secure dist, not base
 LIBSSL?=	${DESTDIR}${LIBDIR}/libssl.a	# XXX in secure dist, not base
