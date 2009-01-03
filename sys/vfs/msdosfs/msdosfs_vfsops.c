@@ -417,9 +417,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	}
 
 	if (pmp->pm_RootDirEnts == 0) {
-		if (bsp->bs710.bsBootSectSig2 != BOOTSIG2
-		    || bsp->bs710.bsBootSectSig3 != BOOTSIG3
-		    || pmp->pm_Sectors
+		if (pmp->pm_Sectors
 		    || pmp->pm_FATsecs
 		    || getushort(b710->bpbFSVers)) {
 			error = EINVAL;
