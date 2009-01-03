@@ -135,7 +135,7 @@ CLEANFILES+=	boot1$s boot1$s.out boot1$s.o \
 .endfor
 
 sio.o: sio.S
-	${CC} -DSIOPRT=${BOOT_COMCONSOLE_PORT} -DSIOFMT=${B2SIOFMT} \
+	${CC} ${CFLAGS} -DSIOPRT=${BOOT_COMCONSOLE_PORT} -DSIOFMT=${B2SIOFMT} \
 		-DSIOSPD=${BOOT_COMCONSOLE_SPEED} \
 		${.ALLSRC} -o ${.TARGET} -c
 
