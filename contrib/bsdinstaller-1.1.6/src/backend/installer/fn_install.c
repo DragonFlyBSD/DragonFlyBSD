@@ -166,12 +166,21 @@ fn_install_os(struct i_fn_args *a)
 			command_add(cmds, "%s%s -p %smnt%s",
 			    a->os_root, cmd_name(a, "MKDIR"),
 			    a->os_root, subpartition_get_mountpoint(sp));
-			command_add(cmds, "%s%s %sdev/%s %smnt%s",
-			    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
-			    a->os_root,
-			    subpartition_get_device_name(sp),
-			    a->os_root,
-			    subpartition_get_mountpoint(sp));
+			if (use_hammer == 1) {
+				command_add(cmds, "%s%s %sdev/%s %smnt%s",
+				    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
+				    a->os_root,
+				    subpartition_get_device_name(sp),
+				    a->os_root,
+				    subpartition_get_mountpoint(sp));
+			} else {
+				command_add(cmds, "%s%s %sdev/%s %smnt%s",
+				    a->os_root, cmd_name(a, "MOUNT"),
+				    a->os_root,
+				    subpartition_get_device_name(sp),
+				    a->os_root,
+				    subpartition_get_mountpoint(sp));
+			}
 		}
 	}
 
@@ -210,36 +219,42 @@ fn_install_os(struct i_fn_args *a)
 		if (subpartition_is_mfsbacked(sp)) {
 			continue;
 		}
-		if (use_hammer == 0 || (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0)) {
-			command_add(cmds, "%s%s -p %smnt/boot",
-			    a->os_root, cmd_name(a, "MKDIR"),
-			    a->os_root);
-			command_add(cmds, "%s%s %sdev/%s %smnt%s",
-			    a->os_root, cmd_name(a, "MOUNT"),
-			    a->os_root,
-			    subpartition_get_device_name(sp),
-			    a->os_root,
-			    subpartition_get_mountpoint(sp));
+		if (use_hammer == 0) {
+			/* / is already mounted */
+			if (strcmp(subpartition_get_mountpoint(sp), "/") != 0) {
+				command_add(cmds, "%s%s -p %smnt%s",
+				    a->os_root, cmd_name(a, "MKDIR"),
+				    a->os_root,
+				    subpartition_get_mountpoint(sp));
+				command_add(cmds, "%s%s %sdev/%s %smnt%s",
+				    a->os_root, cmd_name(a, "MOUNT"),
+				    a->os_root,
+				    subpartition_get_device_name(sp),
+				    a->os_root,
+				    subpartition_get_mountpoint(sp));
+			}
 		}
 	}
 
-	/* Create PFS dir */
-	command_add(cmds, "%s%s -p %smnt/pfs",
-	    a->os_root, cmd_name(a, "MKDIR"),
-	    a->os_root);
-
-	/* mount null pfs */
-	for (j = 0; pfs_mountpt[j] != NULL; j++) {
-		command_add(cmds, "%s%s pfs-master %smnt/pfs%s",
-		    a->os_root, cmd_name(a, "HAMMER"),
-		    a->os_root, pfs_mountpt[j]);
-		command_add(cmds, "%s%s -p %smnt%s",
+	if (use_hammer == 1) {
+		/* Create PFS dir */
+		command_add(cmds, "%s%s -p %smnt/pfs",
 		    a->os_root, cmd_name(a, "MKDIR"),
-		    a->os_root, pfs_mountpt[j]);
-		command_add(cmds, "%s%s %smnt/pfs%s %smnt%s",
-		    a->os_root, cmd_name(a, "MOUNT_NULL"),
-		    a->os_root, pfs_mountpt[j],
-		    a->os_root, pfs_mountpt[j]);
+		    a->os_root);
+
+		/* mount null pfs */
+		for (j = 0; pfs_mountpt[j] != NULL; j++) {
+			command_add(cmds, "%s%s pfs-master %smnt/pfs%s",
+			    a->os_root, cmd_name(a, "HAMMER"),
+			    a->os_root, pfs_mountpt[j]);
+			command_add(cmds, "%s%s -p %smnt%s",
+			    a->os_root, cmd_name(a, "MKDIR"),
+			    a->os_root, pfs_mountpt[j]);
+			command_add(cmds, "%s%s %smnt/pfs%s %smnt%s",
+			    a->os_root, cmd_name(a, "MOUNT_NULL"),
+			    a->os_root, pfs_mountpt[j],
+			    a->os_root, pfs_mountpt[j]);
+		}
 	}
 
 	/*
@@ -536,12 +551,14 @@ fn_install_os(struct i_fn_args *a)
 			}
 		}
 	}
-	for (j = 0; pfs_mountpt[j] != NULL; j++) {
-		command_add(cmds, "%s%s '/pfs%s\t\t%s\t\tnull\trw\t\t0\t0' >>%smnt/etc/fstab",
-		    a->os_root, cmd_name(a, "ECHO"),
-		    pfs_mountpt[j],
-		    pfs_mountpt[j],
-		    a->os_root);
+	if (use_hammer == 1) {
+		for (j = 0; pfs_mountpt[j] != NULL; j++) {
+			command_add(cmds, "%s%s '/pfs%s\t\t%s\t\tnull\trw\t\t0\t0' >>%smnt/etc/fstab",
+			    a->os_root, cmd_name(a, "ECHO"),
+			    pfs_mountpt[j],
+			    pfs_mountpt[j],
+			    a->os_root);
+		}
 	}
 
 	command_add(cmds, "%s%s '%s' >>%smnt/etc/fstab",

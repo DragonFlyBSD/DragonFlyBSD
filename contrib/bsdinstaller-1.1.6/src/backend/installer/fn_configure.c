@@ -1364,8 +1364,10 @@ mount_target_system(struct i_fn_args *a)
 				 * with /dev/ and it isn't 'swap'.
 				 */
 				if (strstr(device, "/dev/") == NULL &&
-				    strcmp(device, "swap") != 0)
+				    strcmp(device, "swap") != 0) {
+				    if (strstr(device, "/pfs") != NULL)
 					continue;
+				}
 
 				/*
 				 * If the device is 'swap', mount_mfs it instead.
@@ -1388,12 +1390,21 @@ mount_target_system(struct i_fn_args *a)
 						    a->os_root, device, a->os_root,
 						    a->cfg_root, mtpt);
 					} else {
-						command_add_ensure_dev(a, cmds, device);
-						command_add(cmds,
-						    "%s%s %s%s %s%s%s",
-						    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
-						    a->os_root, device, a->os_root,
-						    a->cfg_root, mtpt);
+						if (strcmp(fstype, "null") == 0) {
+							command_add_ensure_dev(a, cmds, device);
+							command_add(cmds,
+							    "%s%s %s%s %s%s%s",
+							    a->os_root, cmd_name(a, "MOUNT_NULL"),
+							    a->os_root, device, a->os_root,
+							    a->cfg_root, mtpt);
+						} else {
+							command_add_ensure_dev(a, cmds, device);
+							command_add(cmds,
+							    "%s%s %s%s %s%s%s",
+							    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
+							    a->os_root, device, a->os_root,
+							    a->cfg_root, mtpt);
+						}
 					}
 				}
 			}
