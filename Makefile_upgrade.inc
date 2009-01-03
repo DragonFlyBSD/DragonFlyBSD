@@ -1047,3 +1047,4 @@ TO_REMOVE+=/usr/share/man/cat3/skey_crypt.3.gz
 TO_REMOVE+=/usr/share/man/man5/skey.access.5.gz
 TO_REMOVE+=/usr/share/man/cat5/skey.access.5.gz
 TO_REMOVE+=/etc/pam.d/xserver
+TO_REMOVE+=/usr/share/man/man4/i386/cx.4.gz

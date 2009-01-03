@@ -27,7 +27,6 @@
  * $DragonFly: src/sys/bus/isa/amd64/isa_compat.h,v 1.1 2008/08/02 05:22:17 dillon Exp $
  */
 
-#include "use_cx.h"
 #include "use_el.h"
 #include "use_le.h"
 #include "use_rdp.h"
@@ -50,7 +49,6 @@ struct old_isa_driver {
 	struct isa_driver	*driver;
 };
 
-extern struct isa_driver  cxdriver;
 extern struct isa_driver  eldriver;
 extern struct isa_driver  ledriver;
 extern struct isa_driver rdpdriver;
@@ -125,9 +123,6 @@ static struct old_isa_driver old_drivers[] = {
 
 #if NLE > 0
 	{ 0, &ledriver },
-#endif
-#if NCX > 0
-	{ 0, &cxdriver },
 #endif
 #if NEL > 0
 	{ 0, &eldriver },
