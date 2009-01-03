@@ -12,8 +12,7 @@ FILES=	README \
 	su \
 	system \
 	telnetd \
-	xdm \
-	xserver
+	xdm
 
 FILESDIR= /etc/pam.d
 FILESMODE= 644
