@@ -784,6 +784,9 @@ fn_create_subpartitions(struct i_fn_args *a)
 	 * it must be in the form "adXsY".
 	 */
 	if (use_hammer == 1) {
+		command_add(cmds, "%s%s if=/dev/zero of=/dev/%s bs=32k count=12",
+		    a->os_root, cmd_name(a, "DD"),
+		    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
 		command_add(cmds, "%s%s -B -r -w %s auto",
 		    a->os_root, cmd_name(a, "DISKLABEL64"),
 		    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
@@ -791,6 +794,9 @@ fn_create_subpartitions(struct i_fn_args *a)
 		commands_free(cmds);
 		fn_create_subpartitions_hammer(a);
 	} else {
+		command_add(cmds, "%s%s if=/dev/zero of=/dev/%s bs=32k count=12",
+		    a->os_root, cmd_name(a, "DD"),
+		    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
 		command_add(cmds, "%s%s -B -r -w %s auto",
 		    a->os_root, cmd_name(a, "DISKLABEL"),
 		    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
