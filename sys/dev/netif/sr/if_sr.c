@@ -451,9 +451,6 @@ sr_attach(device_t device)
 #endif	/* NETGRAPH */
 	}
 
-	if (hc->mempages)
-		SRC_SET_OFF(hc->iobase);
-
 	return (0);
 
 errexit:
@@ -485,24 +482,6 @@ sr_detach(device_t device)
 	hc->sc = NULL;
 	hc->mem_start = NULL;
 	return (sr_deallocate_resources(device));
-}
-
-int
-sr_allocate_ioport(device_t device, int rid, u_long size)
-{
-	struct sr_hardc *hc = device_get_softc(device);
-
-	hc->rid_ioport = rid;
-	hc->res_ioport = bus_alloc_resource(device, SYS_RES_IOPORT,
-			&hc->rid_ioport, 0ul, ~0ul, size, RF_ACTIVE);
-	if (hc->res_ioport == NULL) {
-		goto errexit;
-	}
-	return (0);
-
-errexit:
-	sr_deallocate_resources(device);
-	return (ENXIO);
 }
 
 int
@@ -570,13 +549,6 @@ sr_deallocate_resources(device_t device)
 		bus_release_resource(device, SYS_RES_IRQ,
 			hc->rid_irq, hc->res_irq);
 		hc->res_irq = 0;
-	}
-	if (hc->res_ioport != 0) {
-		bus_deactivate_resource(device, SYS_RES_IOPORT,
-			hc->rid_ioport, hc->res_ioport);
-		bus_release_resource(device, SYS_RES_IOPORT,
-			hc->rid_ioport, hc->res_ioport);
-		hc->res_ioport = 0;
 	}
 	if (hc->res_memory != 0) {
 		bus_deactivate_resource(device, SYS_RES_MEMORY,
@@ -775,10 +747,6 @@ srstart(struct sr_softc *sc)
 	 * It is OK to set the memory window outside the loop because all tx
 	 * buffers and descriptors are assumed to be in the same 16K window.
 	 */
-	if (hc->mempages) {
-		SRC_SET_ON(hc->iobase);
-		SRC_SET_MEM(hc->iobase, sc->block[0].txdesc);
-	}
 
 	/*
 	 * Loop to place packets into DPRAM.
@@ -797,9 +765,6 @@ top_srstart:
 #else
 		/*ifp->if_flags |= IFF_OACTIVE;*/	/* yes, mark active */
 #endif /* NETGRAPH */
-
-		if (hc->mempages)
-			SRC_SET_OFF(hc->iobase);
 
 #if BUGGY > 9
 		kprintf("sr%d.srstart: sc->txb_inuse=%d; DPRAM full...\n",
@@ -831,8 +796,6 @@ top_srstart:
 	}
 #endif /* NETGRAPH */
 	if (!mtx) {
-		if (hc->mempages)
-			SRC_SET_OFF(hc->iobase);
 		return;
 	}
 	/*
@@ -1168,10 +1131,6 @@ sr_up(struct sr_softc *sc)
 
 	if (sc->scachan == 0)
 		switch (hc->cardtype) {
-		case SR_CRD_N2:
-			outb(hc->iobase + SR_MCR,
-			     (inb(hc->iobase + SR_MCR) & ~SR_MCR_DTR0));
-			break;
 		case SR_CRD_N2PCI:
 			fecrp = (u_int *)(hc->sca_base + SR_FECR);
 			*fecrp &= ~SR_FECR_DTR0;
@@ -1179,10 +1138,6 @@ sr_up(struct sr_softc *sc)
 		}
 	else
 		switch (hc->cardtype) {
-		case SR_CRD_N2:
-			outb(hc->iobase + SR_MCR,
-			     (inb(hc->iobase + SR_MCR) & ~SR_MCR_DTR1));
-			break;
 		case SR_CRD_N2PCI:
 			fecrp = (u_int *)(hc->sca_base + SR_FECR);
 			*fecrp &= ~SR_FECR_DTR1;
@@ -1202,7 +1157,7 @@ sr_up(struct sr_softc *sc)
 	}
 
 	SRC_PUT8(hc->sca_base, msci->cmd, SCA_CMD_RXENABLE);
-	inb(hc->iobase);	/* XXX slow it down a bit. */
+	DELAY(1000);	/* XXX slow it down a bit. */
 	SRC_PUT8(hc->sca_base, msci->cmd, SCA_CMD_TXENABLE);
 
 #ifndef NETGRAPH
@@ -1237,7 +1192,7 @@ sr_down(struct sr_softc *sc)
 	 * interrupts.
 	 */
 	SRC_PUT8(hc->sca_base, msci->cmd, SCA_CMD_RXDISABLE);
-	inb(hc->iobase);	/* XXX slow it down a bit. */
+	DELAY(1000);	/* XXX slow it down a bit. */
 	SRC_PUT8(hc->sca_base, msci->cmd, SCA_CMD_TXDISABLE);
 
 	SRC_PUT8(hc->sca_base, msci->ctl,
@@ -1245,10 +1200,6 @@ sr_down(struct sr_softc *sc)
 
 	if (sc->scachan == 0)
 		switch (hc->cardtype) {
-		case SR_CRD_N2:
-			outb(hc->iobase + SR_MCR,
-			     (inb(hc->iobase + SR_MCR) | SR_MCR_DTR0));
-			break;
 		case SR_CRD_N2PCI:
 			fecrp = (u_int *)(hc->sca_base + SR_FECR);
 			*fecrp |= SR_FECR_DTR0;
@@ -1256,10 +1207,6 @@ sr_down(struct sr_softc *sc)
 		}
 	else
 		switch (hc->cardtype) {
-		case SR_CRD_N2:
-			outb(hc->iobase + SR_MCR,
-			     (inb(hc->iobase + SR_MCR) | SR_MCR_DTR1));
-			break;
 		case SR_CRD_N2PCI:
 			fecrp = (u_int *)(hc->sca_base + SR_FECR);
 			*fecrp |= SR_FECR_DTR1;
@@ -1397,7 +1344,6 @@ static void
 sr_init_msci(struct sr_softc *sc)
 {
 	int portndx;		/* on-board port number */
-	u_int mcr_v;		/* contents of modem control */
 	u_int *fecrp;		/* pointer for PCI's MCR i/o */
 	struct sr_hardc *hc = sc->hc;
 	msci_channel *msci = &hc->sca->msci[sc->scachan];
@@ -1485,10 +1431,6 @@ sr_init_msci(struct sr_softc *sc)
 			mcr_v = *fecrp;
 			etcndx = 2;
 			break;
-		case SR_CRD_N2:
-		default:
-			mcr_v = inb(hc->iobase + SR_MCR);
-			etcndx = 0;
 		}
 
 		fifo_v = 0x10;	/* stolen from Linux version */
@@ -1537,9 +1479,6 @@ sr_init_msci(struct sr_softc *sc)
 		case SR_CRD_N2PCI:
 			*fecrp = mcr_v;
 			break;
-		case SR_CRD_N2:
-		default:
-			outb(hc->iobase + SR_MCR, mcr_v);
 		}
 
 #if BUGGY > 0
@@ -1564,19 +1503,9 @@ sr_init_msci(struct sr_softc *sc)
 				fecrp = (u_int *)(hc->sca_base + SR_FECR);
 				*fecrp |= SR_FECR_ETC0;
 				break;
-			case SR_CRD_N2:
-			default:
-				mcr_v = inb(hc->iobase + SR_MCR);
-				mcr_v |= SR_MCR_ETC0;
-				outb(hc->iobase + SR_MCR, mcr_v);
 			}
 		else
 			switch (hc->cardtype) {
-			case SR_CRD_N2:
-				mcr_v = inb(hc->iobase + SR_MCR);
-				mcr_v |= SR_MCR_ETC1;
-				outb(hc->iobase + SR_MCR, mcr_v);
-				break;
 			case SR_CRD_N2PCI:
 				fecrp = (u_int *)(hc->sca_base + SR_FECR);
 				*fecrp |= SR_FECR_ETC1;
@@ -1621,9 +1550,6 @@ sr_init_rx_dmac(struct sr_softc *sc)
 
 	hc = sc->hc;
 	dmac = &hc->sca->dmac[DMAC_RXCH(sc->scachan)];
-
-	if (hc->mempages)
-		SRC_SET_MEM(hc->iobase, sc->rxdesc);
 
 	/*
 	 * This phase initializes the contents of the descriptor table
@@ -1712,9 +1638,6 @@ sr_init_tx_dmac(struct sr_softc *sc)
 	hc = sc->hc;
 	dmac = &hc->sca->dmac[DMAC_TXCH(sc->scachan)];
 
-	if (hc->mempages)
-		SRC_SET_MEM(hc->iobase, sc->block[0].txdesc);
-
 	/*
 	 * Initialize the array of descriptors for transmission
 	 */
@@ -1799,10 +1722,6 @@ sr_packet_avail(struct sr_softc *sc, int *len, u_char *rxstat)
 	/*
 	 * open the appropriate memory window and set our expectations...
 	 */
-	if (hc->mempages) {
-		SRC_SET_MEM(hc->iobase, sc->rxdesc);
-		SRC_SET_ON(hc->iobase);
-	}
 	rxdesc = (sca_descriptor *)
 	    (hc->mem_start + (sc->rxdesc & hc->winmsk));
 	endp = rxdesc;
@@ -1895,9 +1814,6 @@ sr_copy_rxbuf(struct mbuf *m, struct sr_softc *sc, int len)
 		 */
 		tlen = (len < SR_BUF_SIZ) ? len : SR_BUF_SIZ;
 
-		if (hc->mempages)
-			SRC_SET_MEM(hc->iobase, rxdata);
-
 		bcopy(hc->mem_start + (rxdata & hc->winmsk),
 		      mtod(m, caddr_t) +off,
 		      tlen);
@@ -1909,8 +1825,6 @@ sr_copy_rxbuf(struct mbuf *m, struct sr_softc *sc, int len)
 		 * now, return to the descriptor's window in DPRAM and reset
 		 * the descriptor we've just suctioned...
 		 */
-		if (hc->mempages)
-			SRC_SET_MEM(hc->iobase, sc->rxdesc);
 
 		rxdesc->len = 0;
 		rxdesc->stat = 0xff;
@@ -1960,8 +1874,6 @@ sr_eat_packet(struct sr_softc *sc, int single)
 	 * loop until desc->stat == (0xff || EOM) Clear the status and
 	 * length in the descriptor. Increment the descriptor.
 	 */
-	if (hc->mempages)
-		SRC_SET_MEM(hc->iobase, sc->rxdesc);
 
 	rxdesc = (sca_descriptor *)
 	    (hc->mem_start + (sc->rxdesc & hc->winmsk));
@@ -2039,10 +1951,6 @@ sr_get_packets(struct sr_softc *sc)
 	ifp = &sc->ifsppp.pp_if;
 #endif /* NETGRAPH */
 
-	if (hc->mempages) {
-		SRC_SET_MEM(hc->iobase, sc->rxdesc);
-		SRC_SET_ON(hc->iobase);	/* enable shared memory */
-	}
 	pkts = 0;		/* reset count of found packets */
 
 	/*
@@ -2217,9 +2125,6 @@ sr_get_packets(struct sr_softc *sc)
 	kprintf("sr%d: sr_get_packets() found %d packet(s)\n",
 	       sc->unit, pkts);
 #endif
-
-	if (hc->mempages)
-		SRC_SET_OFF(hc->iobase);
 }
 
 /*
@@ -2382,10 +2287,6 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 					    SRC_GET16(hc->sca_base, dmac->cda),
 					    SRC_GET16(hc->sca_base, dmac->eda));
 
-					if (hc->mempages) {
-						SRC_SET_ON(hc->iobase);
-						SRC_SET_MEM(hc->iobase, sc->rxdesc);
-					}
 					rxdesc = (sca_descriptor *)
 					         (hc->mem_start +
 					          (sc->rxdesc & hc->winmsk));
@@ -2396,9 +2297,6 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 						       "len %d.\n",
 						       rxdesc->stat,
 						       rxdesc->len);
-
-					if (hc->mempages)
-						SRC_SET_OFF(hc->iobase);
 				}
 #endif /* BUGGY */
 			}
@@ -2437,8 +2335,6 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 				 * Make sure we eat as many as possible.
 				 * Then get the system running again.
 				 */
-				if (hc->mempages)
-					SRC_SET_ON(hc->iobase);
 
 				sr_eat_packet(sc, 0);
 #ifndef NETGRAPH
@@ -2468,9 +2364,6 @@ sr_dmac_intr(struct sr_hardc *hc, u_char isr1)
 				       SRC_GET16(hc->sca_base, dmac->eda),
 				       SRC_GET8(hc->sca_base, dmac->dsr));
 #endif
-
-				if (hc->mempages)
-					SRC_SET_OFF(hc->iobase);
 			}
 			/*
 			 * End of Transfer

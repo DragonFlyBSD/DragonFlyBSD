@@ -131,19 +131,6 @@
 #define SRC_PUT16(base,off,d)	(*hc->src_put16)(base,(u_int)&off,d)
 
 /*
- * These macros enable/disable the DPRAM and select the correct
- * DPRAM page.
- */
-#define SRC_GET_WIN(addr)	((addr >> SRC_WIN_SHFT) & SR_PG_MSK)
-
-#define SRC_SET_ON(iobase)	outb(iobase+SR_PCR,			     \
-					SR_PCR_MEM_WIN | inb(iobase+SR_PCR))
-#define SRC_SET_MEM(iobase,win)	outb(iobase+SR_PSR, SRC_GET_WIN(win) |	     \
-					(inb(iobase+SR_PSR) & ~SR_PG_MSK))
-#define SRC_SET_OFF(iobase)	outb(iobase+SR_PCR,			     \
-					~SR_PCR_MEM_WIN & inb(iobase+SR_PCR))
-
-/*
  * Define the hardware (card information) structure needed to keep
  * track of the device itself... There is only one per card.
  */
@@ -151,7 +138,6 @@ struct sr_hardc {
 	struct	sr_softc *sc;		/* software channels */
 	int	cunit;			/* card w/in system */
 
-	u_short	iobase;			/* I/O Base Address */
 	int	cardtype;
 	int	numports;		/* # of ports on cd */
 	int	mempages;
@@ -167,11 +153,9 @@ struct sr_hardc {
 
 	bus_space_tag_t bt;
 	bus_space_handle_t bh;
-	int rid_ioport;
 	int rid_memory;
 	int rid_plx_memory;
 	int rid_irq;
-	struct resource* res_ioport;	/* resource for port range */
 	struct resource* res_memory;	/* resource for mem range */
 	struct resource* res_plx_memory;
 	struct resource* res_irq;	/* resource for irq range */
