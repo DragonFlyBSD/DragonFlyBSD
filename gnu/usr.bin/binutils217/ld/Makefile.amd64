@@ -8,10 +8,9 @@ CFLAGS+= -DDEFAULT_EMULATION=\"${NATIVE_EMULATION}\"
 CFLAGS+= -DTARGET=\"${TARGET_TUPLE}\"
 _amd64_path=	${USRDATA_PREFIX}/usr/lib
 EMS+=		${NATIVE_EMULATION}
-LDSCRIPTS+=	${NATIVE_EMULATION}.x ${NATIVE_EMULATION}.xbn \
-		${NATIVE_EMULATION}.xn ${NATIVE_EMULATION}.xr \
-		${NATIVE_EMULATION}.xs ${NATIVE_EMULATION}.xu \
-		${NATIVE_EMULATION}.xc ${NATIVE_EMULATION}.xsc
+.for ext in ${ELF_SCR_EXT}
+LDSCRIPTS+=	${NATIVE_EMULATION}.${ext}
+.endfor
 SRCS+=	e${NATIVE_EMULATION}.c
 CLEANFILES+=	e${NATIVE_EMULATION}.c
 
@@ -30,3 +29,20 @@ e${NATIVE_EMULATION}.c: emulparams/${NATIVE_EMULATION}.sh emultempl/elf32.em \
 		no \
 		${NATIVE_EMULATION:Q} \
 		${TARGET_TUPLE:Q}
+
+X86_EMULATION=	elf_i386
+# XXX adjust path
+_i386_path=	${USRDATA_PREFIX}/usr/lib/i386
+EMS+=		${X86_EMULATION}
+.for ext in ${ELF_SCR_EXT}
+LDSCRIPTS+=	${X86_EMULATION}.${ext}
+.endfor
+
+SRCS+=		e${X86_EMULATION}.c
+CLEANFILES+=	e${X86_EMULATION}.c
+e${X86_EMULATION}.c: emulparams/${X86_EMULATION}.sh emultempl/elf32.em \
+    scripttempl/elf.sc genscripts.sh stringify.sed
+	sh ${SRCDIR}/ld/genscripts.sh ${SRCDIR:Q}/ld ${_i386_path:Q} \
+	    "" "" \
+	    ${HOST} ${TARGET_TUPLE:Q} ${TARGET_TUPLE:Q} \
+	    ${X86_EMULATION:Q} "" no ${X86_EMULATION:Q} ${TARGET_TUPLE:Q}
