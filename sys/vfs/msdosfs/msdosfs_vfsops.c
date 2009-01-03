@@ -124,14 +124,6 @@ update_mp(struct mount *mp, struct msdosfs_args *argp)
 		bcopy(argp->lu, pmp->pm_lu, sizeof(pmp->pm_lu));
 	}
 
-#ifndef __DragonFly__
-	/*
-	 * GEMDOS knows nothing (yet) about win95
-	 */
-	if (pmp->pm_flags & MSDOSFSMNT_GEMDOSFS)
-		pmp->pm_flags |= MSDOSFSMNT_NOWIN95;
-#endif
-
 	if (pmp->pm_flags & MSDOSFSMNT_NOWIN95)
 		pmp->pm_flags |= MSDOSFSMNT_SHORTNAME;
 	else if (!(pmp->pm_flags &
@@ -355,17 +347,11 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	b50 = (struct byte_bpb50 *)bsp->bs50.bsBPB;
 	b710 = (struct byte_bpb710 *)bsp->bs710.bsPBP;
 
-#ifndef __DragonFly__
-	if (!(argp->flags & MSDOSFSMNT_GEMDOSFS)) {
-#endif
 #ifndef MSDOSFS_NOCHECKSIG
-		if (bsp->bs50.bsBootSectSig0 != BOOTSIG0
-		    || bsp->bs50.bsBootSectSig1 != BOOTSIG1) {
-			error = EINVAL;
-			goto error_exit;
-		}
-#endif
-#ifndef __DragonFly__
+	if (bsp->bs50.bsBootSectSig0 != BOOTSIG0
+	    || bsp->bs50.bsBootSectSig1 != BOOTSIG1) {
+		error = EINVAL;
+		goto error_exit;
 	}
 #endif
 
@@ -391,22 +377,16 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	/* calculate the ratio of sector size to DEV_BSIZE */
 	pmp->pm_BlkPerSec = pmp->pm_BytesPerSec / DEV_BSIZE;
 
-#ifndef __DragonFly__
-	if (!(argp->flags & MSDOSFSMNT_GEMDOSFS)) {
-#endif
-		/*
-		 * We don't check pm_Heads nor pm_SecPerTrack, because
-		 * these may not be set for EFI file systems. We don't
-		 * use these anyway, so we're unaffected if they are
-		 * invalid.
-		 */
-		if (!pmp->pm_BytesPerSec || !SecPerClust) {
-			error = EINVAL;
-			goto error_exit;
-		}
-#ifndef __DragonFly__
+	/*
+	 * We don't check pm_Heads nor pm_SecPerTrack, because
+	 * these may not be set for EFI file systems. We don't
+	 * use these anyway, so we're unaffected if they are
+	 * invalid.
+	 */
+	if (!pmp->pm_BytesPerSec || !SecPerClust) {
+		error = EINVAL;
+		goto error_exit;
 	}
-#endif
 
 	if (pmp->pm_Sectors == 0) {
 		pmp->pm_HiddenSects = getulong(b50->bpbHiddenSecs);
@@ -476,22 +456,6 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct msdosfs_args *argp)
 	    SecPerClust + 1;
 	pmp->pm_fatsize = pmp->pm_FATsecs * DEV_BSIZE; /* XXX not used? */
 
-#ifndef __DragonFly__
-	if (argp->flags & MSDOSFSMNT_GEMDOSFS) {
-		if ((pmp->pm_maxcluster <= (0xff0 - 2))
-		      && ((dtype == DTYPE_FLOPPY) || ((dtype == DTYPE_VNODE)
-		      && ((pmp->pm_Heads == 1) || (pmp->pm_Heads == 2))))
-		    ) {
-			pmp->pm_fatmask = FAT12_MASK;
-			pmp->pm_fatmult = 3;
-			pmp->pm_fatdiv = 2;
-		} else {
-			pmp->pm_fatmask = FAT16_MASK;
-			pmp->pm_fatmult = 2;
-			pmp->pm_fatdiv = 1;
-		}
-	} else 
-#endif
 	if (pmp->pm_fatmask == 0) {
 		if (pmp->pm_maxcluster
 		    <= ((CLUST_RSRVD - CLUST_FIRST) & FAT12_MASK)) {
