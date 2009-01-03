@@ -31,8 +31,7 @@
 .Sh NAME
 .Nm KTR_INFO_MASTER ,
 .Nm KTR_INFO ,
-.Nm KTR_LOG ,
-.Nm KTR_LOG_PTR
+.Nm KTR_LOG
 .Nd kernel tracing facility
 .Sh SYNOPSIS
 .In sys/ktr.h
@@ -42,7 +41,6 @@
 .Fn KTR_INFO_MASTER "master"
 .Fn KTR_INFO "compile" "master" "name" "maskbit" "format" "datasize"
 .Fn KTR_LOG "info" "arg ..."
-.Fn KTR_LOG_PTR "info" "ptr"
 .Sh DESCRIPTION
 The
 .Nm ktr
@@ -91,9 +89,7 @@ is currently unused and can be set to 0.
 .Pp
 Kernel events are logged via the
 .Fn KTR_LOG
-and
-.Fn KTR_LOG_PTR
-macros.
+macro.
 The
 .Fa info
 parameter is an identifier of the format
@@ -106,11 +102,6 @@ arguments as required by the
 string passed to the associated
 .Fn KTR_INFO
 call.
-The
-.Fn KTR_LOG_PTR
-macro behaves similarly but takes a single data pointer
-.Fa ptr
-instead.
 .Pp
 The
 .Va ktr_entries

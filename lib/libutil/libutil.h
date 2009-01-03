@@ -1,6 +1,13 @@
 /*
  * Copyright (c) 1996  Peter Wemm <peter@FreeBSD.org>.
  * All rights reserved.
+ * Copyright (c) 2002 Networks Associates Technology, Inc.
+ * All rights reserved.
+ *
+ * Portions of this software were developed for the FreeBSD Project by
+ * ThinkSec AS and NAI Labs, the Security Research Division of Network
+ * Associates, Inc.  under DARPA/SPAWAR contract N66001-01-C-8035
+ * ("CBOSS"), as part of the DARPA CHATS research program.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, is permitted provided that the following conditions
@@ -10,6 +17,9 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote
+ *    products derived from this software without specific prior written
+ *    permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -29,8 +39,6 @@
 
 #ifndef _LIBUTIL_H_
 #define	_LIBUTIL_H_
-
-#include <sys/cdefs.h>
 
 #ifdef _PWD_H_
 #define	_PWSCAN_MASTER	0x01
@@ -82,7 +90,6 @@ char   *fparseln(FILE *, size_t *, size_t *, const char[3], int);
 #endif
 
 #ifdef _PWD_H_
-int	__pw_scan(char *, struct passwd *, int);
 int	pw_copy(int _ffd, int _tfd, const struct passwd *_pw, struct passwd *_old_pw);
 struct passwd *pw_dup(const struct passwd *_pw);
 int	pw_edit(int _notsetuid);
@@ -120,6 +127,10 @@ __END_DECLS
 #define	FPARSELN_UNESCCOMM	0x04
 #define	FPARSELN_UNESCREST	0x08
 #define	FPARSELN_UNESCALL	0x0f
+
+/* pw_scan() */
+#define PWSCAN_MASTER		0x01
+#define PWSCAN_WARN		0x02
 
 /* humanize_number(3) */ 
 #define HN_DECIMAL		0x01 

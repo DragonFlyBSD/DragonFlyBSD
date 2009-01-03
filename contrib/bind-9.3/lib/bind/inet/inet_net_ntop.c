@@ -275,3 +275,12 @@ emsgsize:
 	errno = EMSGSIZE;
 	return (NULL);
 }
+
+#ifdef _LIBC
+/*
+ * Weak aliases for applications that use certain private entry points,
+ * and fail to include <arpa/inet.h>.
+ */
+#undef inet_net_ntop
+__weak_reference(__inet_net_ntop, inet_net_ntop);
+#endif

@@ -41,6 +41,7 @@
 #include <sys/mount.h>
 #include <sys/nlookup.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/stat.h>
 #include <sys/sysproto.h>
 #include <sys/systm.h>
@@ -137,7 +138,7 @@ sys_dfbsd12_fhstat(struct dfbsd12_fhstat_args *uap)
 	/*
 	 * Must be super user
 	 */
-	error = suser(td);
+	error = priv_check(td, PRIV_ROOT);
 	if (error)
 		return (error);
 	

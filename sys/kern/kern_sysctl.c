@@ -48,6 +48,7 @@
 #include <sys/sysctl.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/sysproto.h>
 #include <sys/lock.h>
 #include <vm/vm.h>
@@ -535,7 +536,7 @@ sysctl_sysctl_debug(SYSCTL_HANDLER_ARGS)
 {
 	int error;
 
-	error = suser(req->td);
+	error = priv_check(req->td, PRIV_ROOT);
 	if (error)
 		return error;
 	sysctl_sysctl_debug_dump_node(&sysctl__children, 0);
@@ -1179,7 +1180,7 @@ sysctl_root(SYSCTL_HANDLER_ARGS)
 
 	/* Most likely only root can write */
 	if (!(oid->oid_kind & CTLFLAG_ANYBODY) && req->newptr && p &&
-	    (error = suser_cred(p->p_ucred, 
+	    (error = priv_check_cred(p->p_ucred, PRIV_ROOT,
 	     (oid->oid_kind & CTLFLAG_PRISON) ? PRISON_ROOT : 0)))
 		return (error);
 

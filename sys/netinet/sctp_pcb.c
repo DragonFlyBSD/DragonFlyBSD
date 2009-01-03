@@ -58,6 +58,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
@@ -1933,7 +1934,7 @@ sctp_inpcb_bind(struct socket *so, struct sockaddr *addr, struct proc *p)
 #elif defined(__NetBSD__) || defined(__APPLE__)
 			    suser(p->p_ucred, &p->p_acflag)
 #elif defined(__DragonFly__)
-			    suser(p)
+			    priv_check(p, PRIV_ROOT)
 #else
 			    suser(p, 0)
 #endif

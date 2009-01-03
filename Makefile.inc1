@@ -124,6 +124,9 @@ DESTDIRBASE?=		${OBJTREE}${.CURDIR}
 # anyhow, and we need to be able to override it for stage installs
 .MAKEFLAGS:=	${.MAKEFLAGS:NDESTDIR=*}
 
+# This sets the compiler we use to build the world/kernel with
+WORLD_CCVER?=	gcc41
+
 TARGET_ARCH?=	${MACHINE_ARCH}
 .if ${TARGET_ARCH} == ${MACHINE_ARCH}
 TARGET?=	${MACHINE}
@@ -274,7 +277,9 @@ CROSSENV=	MAKEOBJDIRPREFIX=${WORLDDEST} \
 		MACHINE_ARCH=${TARGET_ARCH} \
 		MACHINE=${TARGET} \
 		MACHINE_PLATFORM=${TARGET_PLATFORM} \
-		OBJFORMAT_PATH=${CTOOLSDEST}
+		OBJFORMAT_PATH=${CTOOLSDEST} \
+		HOST_CCVER=${HOST_CCVER} \
+		CCVER=${WORLD_CCVER}
 
 WMAKEENV=	${CROSSENV} \
 		DESTDIR=${WORLDDEST} \
@@ -885,11 +890,10 @@ _generic_libs+=	kerberos5/lib
 
 _prebuild_libs+= lib/libcom_err lib/libcrypt lib/libmd \
 		lib/libncurses/libncurses lib/libopie lib/libradius \
-		lib/libsbuf lib/libskey lib/libtacplus lib/libm \
-		lib/libpam lib/lib${THREAD_LIB}
+		lib/libsbuf lib/libtacplus lib/libm \
+		lib/libpam lib/libypclnt lib/lib${THREAD_LIB}
 
 lib/libopie__L lib/libradius__L lib/libtacplus__L: lib/libmd__L
-lib/libskey__L: lib/libcrypt__L lib/libmd__L
 
 _generic_libs+=	lib
 

@@ -37,6 +37,7 @@
 #include <sys/param.h>
 #include <sys/ipc.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/ucred.h>
 
 #if defined(SYSVSEM) || defined(SYSVSHM) || defined(SYSVMSG)
@@ -53,7 +54,7 @@ ipcperm(struct proc *p, struct ipc_perm *perm, int mode)
 	/* Check for user match. */
 	if (cred->cr_uid != perm->cuid && cred->cr_uid != perm->uid) {
 		if (mode & IPC_M)
-			return (suser_cred(cred, 0) == 0 ? 0 : EPERM);
+			return (priv_check_cred(cred, PRIV_ROOT, 0) == 0 ? 0 : EPERM);
 		/* Check for group match. */
 		mode >>= 3;
 		if (!groupmember(perm->gid, cred) &&
@@ -65,7 +66,7 @@ ipcperm(struct proc *p, struct ipc_perm *perm, int mode)
 	if (mode & IPC_M)
 		return (0);
 	return ((mode & perm->mode) == mode || 
-		suser_cred(cred, 0) == 0 ? 0 : EACCES);
+		priv_check_cred(cred, PRIV_ROOT, 0) == 0 ? 0 : EACCES);
 }
 
 #endif /* defined(SYSVSEM) || defined(SYSVSHM) || defined(SYSVMSG) */

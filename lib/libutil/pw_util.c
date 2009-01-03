@@ -33,7 +33,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libutil/pw_util.c,v 1.35 2004/05/18 15:53:58 stefanf Exp $
+ * @(#)pw_util.c	8.3 (Berkeley) 4/2/94
+ * $FreeBSD: src/lib/libutil/pw_util.c,v 1.38 2007/01/09 01:02:05 imp Exp $
  * $DragonFly: src/lib/libutil/pw_util.c,v 1.2 2007/12/30 13:44:33 matthias Exp $
  */
 
@@ -309,8 +310,8 @@ pw_edit(int notsetuid)
 		sigaction(SIGQUIT, &sa_quit, NULL);
 		sigprocmask(SIG_SETMASK, &oldsigset, NULL);
 		if (notsetuid) {
-			(void)setgid(getgid());
-			(void)setuid(getuid());
+			setgid(getgid());
+			setuid(getuid());
 		}
 		errno = 0;
 		execlp(editor, basename(editor), tempname, (char *)NULL);
@@ -472,13 +473,22 @@ pw_copy(int ffd, int tfd, const struct passwd *pw, struct passwd *old_pw)
 		}
 
 		/* is it the one we're looking for? */
+
 		t = *q;
 		*q = '\0';
-		fpw = pw_scan(r, _PWSCAN_MASTER);
+
+		fpw = pw_scan(r, PWSCAN_MASTER);
+
+		/*
+		 * fpw is either the struct passwd for the current line,
+		 * or NULL if the line is malformed.
+		 */
+
 		*q = t;
-		if (strcmp(fpw->pw_name, pw->pw_name) != 0) {
+		if (fpw == NULL || strcmp(fpw->pw_name, pw->pw_name) != 0) {
 			/* nope */
-			free(fpw);
+			if (fpw != NULL)
+				free(fpw);
 			if (write(tfd, p, q - p + 1) != q - p + 1)
 				goto err;
 			++q;
@@ -583,6 +593,8 @@ pw_dup(const struct passwd *pw)
 	}
 	return (npw);
 }
+
+#include "pw_scan.h"
 
 /*
  * Wrapper around an internal libc function

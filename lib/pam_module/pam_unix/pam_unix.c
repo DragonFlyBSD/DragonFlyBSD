@@ -33,7 +33,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_unix/pam_unix.c,v 1.51 2005/07/05 18:42:18 des Exp $
+ * $FreeBSD: src/lib/libpam/modules/pam_unix/pam_unix.c,v 1.53 2007/12/21 12:00:16 des Exp $
  * $DragonFly: src/lib/pam_module/pam_unix/pam_unix.c,v 1.1 2005/08/01 16:15:19 joerg Exp $
  */
 
@@ -69,6 +69,9 @@
 #define PASSWORD_HASH		"md5"
 #define DEFAULT_WARN		(2L * 7L * 86400L)  /* Two weeks */
 #define	SALTSIZE		32
+
+#define	LOCKED_PREFIX		"*LOCKED*"
+#define	LOCKED_PREFIX_LEN	(sizeof(LOCKED_PREFIX) - 1)
 
 static void makesalt(char []);
 
@@ -126,6 +129,7 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags __unused,
 	if (strcmp(crypt(pass, realpw), realpw) == 0)
 		return (PAM_SUCCESS);
 
+	PAM_VERBOSE_ERROR("UNIX authentication refused");
 	return (PAM_AUTH_ERR);
 }
 
@@ -174,6 +178,9 @@ pam_sm_acct_mgmt(pam_handle_t *pamh, int flags __unused,
 	if (*pwd->pw_passwd == '\0' &&
 	    (flags & PAM_DISALLOW_NULL_AUTHTOK) != 0)
 		return (PAM_NEW_AUTHTOK_REQD);
+
+	if (strncmp(pwd->pw_passwd, LOCKED_PREFIX, LOCKED_PREFIX_LEN) == 0)
+		return (PAM_AUTH_ERR);
 
 	lc = login_getpwclass(pwd);
 	if (lc == NULL) {
@@ -268,7 +275,7 @@ pam_sm_chauthtok(pam_handle_t *pamh, int flags,
 	struct passwd *pwd, *old_pwd;
 	const char *user, *old_pass, *new_pass;
 	char *encrypted;
-	int pfd, tfd, retval = PAM_ABORT;
+	int pfd, tfd, retval;
 
 	if (openpam_get_option(pamh, PAM_OPT_AUTH_AS_SELF))
 		pwd = getpwnam(getlogin());
@@ -288,23 +295,17 @@ pam_sm_chauthtok(pam_handle_t *pamh, int flags,
 
 		PAM_LOG("PRELIM round");
 
-		if (getuid() == 0
-#if 0
-		    && (pwd->pw_fields & _PWF_SOURCE) == _PWF_FILES
-#endif
-		    )
+		if (getuid() == 0 &&
+		    (pwd->pw_fields & _PWF_SOURCE) == _PWF_FILES)
 			/* root doesn't need the old password */
 			return (pam_set_item(pamh, PAM_OLDAUTHTOK, ""));
 #ifdef YP
-		if (getuid() == 0
-#if 0
-		    && (pwd->pw_fields & _PWF_SOURCE) == _PWF_NIS
-#endif
-		    ) {
+		if (getuid() == 0 &&
+		    (pwd->pw_fields & _PWF_SOURCE) == _PWF_NIS) {
 
 			yp_domain = yp_server = NULL;
-			(void)pam_get_data(pamh, "yp_domain", &yp_domain);
-			(void)pam_get_data(pamh, "yp_server", &yp_server);
+			pam_get_data(pamh, "yp_domain", &yp_domain);
+			pam_get_data(pamh, "yp_server", &yp_server);
 
 			ypclnt = ypclnt_new(yp_domain, "passwd.byname", yp_server);
 			if (ypclnt == NULL)
@@ -406,8 +407,8 @@ pam_sm_chauthtok(pam_handle_t *pamh, int flags,
 			break;
 		case _PWF_NIS:
 			yp_domain = yp_server = NULL;
-			(void)pam_get_data(pamh, "yp_domain", &yp_domain);
-			(void)pam_get_data(pamh, "yp_server", &yp_server);
+			pam_get_data(pamh, "yp_domain", &yp_domain);
+			pam_get_data(pamh, "yp_server", &yp_server);
 			ypclnt = ypclnt_new(yp_domain,
 			    "passwd.byname", yp_server);
 			if (ypclnt == NULL) {

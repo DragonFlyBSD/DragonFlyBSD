@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)popen.c	8.3 (Berkeley) 4/6/94
- * $FreeBSD: src/libexec/ftpd/popen.c,v 1.18.2.3 2001/08/09 00:53:18 mikeh Exp $
+ * $FreeBSD: src/libexec/ftpd/popen.c,v 1.26 2004/11/18 13:46:29 yar Exp $
  * $DragonFly: src/libexec/ftpd/popen.c,v 1.3 2006/01/12 13:43:10 corecode Exp $
  */
 
@@ -54,7 +54,6 @@
 #include "pathnames.h"
 #include <syslog.h>
 #include <time.h>
-#include <varargs.h>
 
 #define	MAXUSRARGS	100
 #define	MAXGLOBARGS	1000
@@ -68,8 +67,7 @@ static int *pids;
 static int fds;
 
 FILE *
-ftpd_popen(program, type)
-	char *program, *type;
+ftpd_popen(char *program, char *type)
 {
 	char *cp;
 	FILE *iop;
@@ -82,7 +80,7 @@ ftpd_popen(program, type)
 	if (!pids) {
 		if ((fds = getdtablesize()) <= 0)
 			return (NULL);
-		if ((pids = (int *)malloc((u_int)(fds * sizeof(int)))) == NULL)
+		if ((pids = malloc(fds * sizeof(int))) == NULL)
 			return (NULL);
 		memset(pids, 0, fds * sizeof(int));
 	}
@@ -100,7 +98,7 @@ ftpd_popen(program, type)
 	gargv[0] = argv[0];
 	for (gargc = argc = 1; argv[argc] && gargc < (MAXGLOBARGS-1); argc++) {
 		glob_t gl;
-		int flags = GLOB_BRACE|GLOB_NOCHECK|GLOB_QUOTE|GLOB_TILDE;
+		int flags = GLOB_BRACE|GLOB_NOCHECK|GLOB_TILDE;
 
 		memset(&gl, 0, sizeof(gl));
 		gl.gl_matchc = MAXGLOBARGS;
@@ -120,24 +118,24 @@ ftpd_popen(program, type)
 	pid = (strcmp(gargv[0], _PATH_LS) == 0) ? fork() : vfork();
 	switch(pid) {
 	case -1:			/* error */
-		(void)close(pdes[0]);
-		(void)close(pdes[1]);
+		close(pdes[0]);
+		close(pdes[1]);
 		goto pfree;
 		/* NOTREACHED */
 	case 0:				/* child */
 		if (*type == 'r') {
 			if (pdes[1] != STDOUT_FILENO) {
 				dup2(pdes[1], STDOUT_FILENO);
-				(void)close(pdes[1]);
+				close(pdes[1]);
 			}
 			dup2(STDOUT_FILENO, STDERR_FILENO); /* stderr too! */
-			(void)close(pdes[0]);
+			close(pdes[0]);
 		} else {
 			if (pdes[0] != STDIN_FILENO) {
 				dup2(pdes[0], STDIN_FILENO);
-				(void)close(pdes[0]);
+				close(pdes[0]);
 			}
-			(void)close(pdes[1]);
+			close(pdes[1]);
 		}
 		if (strcmp(gargv[0], _PATH_LS) == 0) {
 			/* Reset getopt for ls_main() */
@@ -160,10 +158,10 @@ ftpd_popen(program, type)
 	/* parent; assume fdopen can't fail...  */
 	if (*type == 'r') {
 		iop = fdopen(pdes[0], type);
-		(void)close(pdes[1]);
+		close(pdes[1]);
 	} else {
 		iop = fdopen(pdes[1], type);
-		(void)close(pdes[0]);
+		close(pdes[0]);
 	}
 	pids[fileno(iop)] = pid;
 
@@ -174,8 +172,7 @@ pfree:	for (argc = 1; gargv[argc] != NULL; argc++)
 }
 
 int
-ftpd_pclose(iop)
-	FILE *iop;
+ftpd_pclose(FILE *iop)
 {
 	int fdes, omask, status;
 	pid_t pid;
@@ -186,11 +183,11 @@ ftpd_pclose(iop)
 	 */
 	if (pids == 0 || pids[fdes = fileno(iop)] == 0)
 		return (-1);
-	(void)fclose(iop);
+	fclose(iop);
 	omask = sigblock(sigmask(SIGINT)|sigmask(SIGQUIT)|sigmask(SIGHUP));
 	while ((pid = waitpid(pids[fdes], &status, 0)) < 0 && errno == EINTR)
 		continue;
-	(void)sigsetmask(omask);
+	sigsetmask(omask);
 	pids[fdes] = 0;
 	if (pid < 0)
 		return (pid);

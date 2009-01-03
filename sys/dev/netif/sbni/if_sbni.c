@@ -67,6 +67,7 @@
 #include <sys/mbuf.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/callout.h>
 #include <sys/syslog.h>
 #include <sys/random.h>
@@ -1091,7 +1092,7 @@ sbni_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 
 	case SIOCSHWFLAGS:	/* set flags */
 		/* root only */
-		error = suser_cred(cr, NULL_CRED_OKAY);
+		error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
 					/* NOTE: returns EPERM if no proc */
 		if (error)
 			break;
@@ -1114,7 +1115,7 @@ sbni_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		break;
 
 	case SIOCRINSTATS:
-		if (!(error = suser_cred(cr, NULL_CRED_OKAY)))	/* root only */
+		if (!(error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY)))	/* root only */
 			bzero(&sc->in_stats, sizeof(struct sbni_in_stats));
 		break;
 

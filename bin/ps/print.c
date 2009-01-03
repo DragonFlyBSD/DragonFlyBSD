@@ -51,6 +51,7 @@
 #include <locale.h>
 #include <math.h>
 #include <nlist.h>
+#include <pwd.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>

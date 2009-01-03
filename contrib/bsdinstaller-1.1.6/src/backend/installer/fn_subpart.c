@@ -76,10 +76,10 @@ static int	warn_subpartition_selections(struct i_fn_args *);
 static struct dfui_form *make_create_subpartitions_form(struct i_fn_args *);
 static int	show_create_subpartitions_form(struct dfui_form *, struct i_fn_args *);
 
-const char *def_mountpt[7]  = {"/", "swap", "/var", "/tmp", "/usr", "/home", NULL};
-long def_capacity[7]        = {128,    128,    128,    128,    256,      -1,    0};
+static const char *def_mountpt[7]  = {"/", "swap", "/var", "/tmp", "/usr", "/home", NULL};
+static long def_capacity[7]        = {128,    128,    128,    128,    256,      -1,    0};
 
-int expert = 0;
+static int expert = 0;
 
 /*
  * Given a set of subpartitions-to-be in the selected slice,
@@ -773,6 +773,41 @@ show_create_subpartitions_form(struct dfui_form *f, struct i_fn_args *a)
  */
 void
 fn_create_subpartitions(struct i_fn_args *a)
+{
+	struct commands *cmds;
+
+	cmds = commands_new();
+
+	/*
+	 * Auto-disklabel the slice.
+	 * NB: one cannot use "/dev/adXsY" here -
+	 * it must be in the form "adXsY".
+	 */
+	if (use_hammer == 1) {
+		command_add(cmds, "%s%s if=/dev/zero of=/dev/%s bs=32k count=16",
+		    a->os_root, cmd_name(a, "DD"),
+		    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
+		command_add(cmds, "%s%s -B -r -w %s auto",
+		    a->os_root, cmd_name(a, "DISKLABEL64"),
+		    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
+		commands_execute(a, cmds);
+		commands_free(cmds);
+		fn_create_subpartitions_hammer(a);
+	} else {
+		command_add(cmds, "%s%s if=/dev/zero of=/dev/%s bs=32k count=16",
+		    a->os_root, cmd_name(a, "DD"),
+		    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
+		command_add(cmds, "%s%s -B -r -w %s auto",
+		    a->os_root, cmd_name(a, "DISKLABEL"),
+		    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
+		commands_execute(a, cmds);
+		commands_free(cmds);
+		fn_create_subpartitions_ufs(a);
+	}
+}
+
+void
+fn_create_subpartitions_ufs(struct i_fn_args *a)
 {
 	struct dfui_form *f;
 	int done = 0;

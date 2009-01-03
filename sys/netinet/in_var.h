@@ -96,9 +96,6 @@ struct	in_aliasreq {
 #ifdef	_KERNEL
 struct in_ifaddr_container;
 
-#define IA_PRF_RTEXISTOK	IFA_PRF_FLAG0	/* don't fail even if rtentry
-						 * already exist */
-
 extern	struct	in_addr zeroin_addr;
 extern	u_char	inetctlerrmap[];
 

@@ -57,6 +57,7 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
@@ -423,7 +424,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	case SIOCSIFDSTADDR: 
 		break;
 	case SIOCSIFFLAGS:
-		if ((error = suser_cred(cr, NULL_CRED_OKAY)) != 0)
+		if ((error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY)) != 0)
 			break;
 		if ((ifr->ifr_flags & IFF_LINK0) != 0)
 			sc->g_proto = IPPROTO_GRE;
@@ -431,7 +432,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			sc->g_proto = IPPROTO_MOBILE;
 		goto recompute;
 	case SIOCSIFMTU:
-		if ((error = suser_cred(cr, NULL_CRED_OKAY)) != 0)
+		if ((error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY)) != 0)
 			break;
 		if (ifr->ifr_mtu < 576) {
 			error = EINVAL;
@@ -444,7 +445,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		break;
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-		if ((error = suser_cred(cr, NULL_CRED_OKAY)) != 0)
+		if ((error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY)) != 0)
 			break;
 		if (ifr == 0) {
 			error = EAFNOSUPPORT;
@@ -461,7 +462,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		}
 		break;
 	case GRESPROTO:
-		if ((error = suser_cred(cr, NULL_CRED_OKAY)) != 0)
+		if ((error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY)) != 0)
 			break;
 		sc->g_proto = ifr->ifr_flags;
 		switch (sc->g_proto) {
@@ -481,7 +482,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		break;
 	case GRESADDRS:
 	case GRESADDRD:
-		if ((error = suser_cred(cr, NULL_CRED_OKAY)) != 0)
+		if ((error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY)) != 0)
 			break;
 		/*
 		 * set tunnel endpoints, compute a less specific route
@@ -547,7 +548,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		ifr->ifr_addr = *sa;
 		break;
 	case SIOCSIFPHYADDR:
-		if ((error = suser_cred(cr, NULL_CRED_OKAY)) != 0)
+		if ((error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY)) != 0)
 			break;
 		if (aifr->ifra_addr.sin_family != AF_INET ||
 		    aifr->ifra_dstaddr.sin_family != AF_INET) {
@@ -563,7 +564,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		sc->g_dst = aifr->ifra_dstaddr.sin_addr;
 		goto recompute;
 	case SIOCSLIFPHYADDR:
-		if ((error = suser_cred(cr, NULL_CRED_OKAY)) != 0)
+		if ((error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY)) != 0)
 			break;
 		if (lifr->addr.ss_family != AF_INET ||
 		    lifr->dstaddr.ss_family != AF_INET) {
@@ -580,7 +581,7 @@ gre_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		    (satosin((struct sockadrr *)&lifr->dstaddr))->sin_addr;
 		goto recompute;
 	case SIOCDIFPHYADDR:
-		if ((error = suser_cred(cr, NULL_CRED_OKAY)) != 0)
+		if ((error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY)) != 0)
 			break;
 		sc->g_src.s_addr = INADDR_ANY;
 		sc->g_dst.s_addr = INADDR_ANY;

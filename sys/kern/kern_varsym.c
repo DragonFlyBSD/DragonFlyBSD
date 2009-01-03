@@ -45,6 +45,7 @@
 #include <sys/ucred.h>
 #include <sys/resourcevar.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/jail.h>
 #include <sys/queue.h>
 #include <sys/sysctl.h>
@@ -149,7 +150,7 @@ sys_varsym_set(struct varsym_set_args *uap)
 	    uap->level = VARSYM_PRISON;
     case VARSYM_PRISON:
 	if (curthread->td_proc != NULL &&
-	    (error = suser_cred(curthread->td_proc->p_ucred, PRISON_ROOT)) != 0)
+	    (error = priv_check_cred(curthread->td_proc->p_ucred, PRIV_ROOT, PRISON_ROOT)) != 0)
 	    break;
 	/* fall through */
     case VARSYM_USER:

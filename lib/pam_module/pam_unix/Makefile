@@ -2,12 +2,15 @@
 
 LIB=	pam_unix
 SRCS=	pam_unix.c
-WARNS?=	6
 MAN=	pam_unix.8
 
 DPADD=	${LIBCRYPT} ${LIBUTIL}
 LDADD=	-lcrypt -lutil
 
-.include <bsd.lib.mk>
+.if !defined(NO_NIS)
+CFLAGS+= -DYP
+DPADD+=	${LIBYPCLNT}
+LDADD+=	-lypclnt
+.endif
 
-.PATH: ${OPENPAM_DIR}/modules/pam_unix
+.include <bsd.lib.mk>

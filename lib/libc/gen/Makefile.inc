@@ -37,6 +37,11 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	ualarm.c ucontext.c ulimit.c uname.c unvis.c usleep.c utime.c \
 	valloc.c vis.c wait.c wait3.c waitpid.c wordexp.c
 
+# Temporary hack to hide these symbols until we get a full implementation.
+CFLAGS+= -Dgetgrent_r=GETGRENT_R -Dgetgrnam_r=GETGRNAM_R \
+	-Dgetgrgid_r=GETGRGID_R -Dgetpwent_r=GETPWENT_R \
+	-Dgetpwnam_r=GETPWNAM_R -Dgetpwuid_r=GETPWUID_R
+
 .if ${LIB} != {c_rtld}
 SRCS+=	tls.c
 .endif

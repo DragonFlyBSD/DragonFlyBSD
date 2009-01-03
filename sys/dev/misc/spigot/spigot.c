@@ -60,6 +60,7 @@ error "Can only have 1 spigot configured."
 #include	<sys/conf.h>
 #include	<sys/device.h>
 #include	<sys/proc.h>
+#include	<sys/priv.h>
 #include	<sys/signalvar.h>
 #include	<sys/mman.h>
 
@@ -166,7 +167,7 @@ spigot_open(struct dev_open_args *ap)
 	 * require sufficient privilege soon and nothing much can be done
 	 * without them.
 	 */
-	error = suser_cred(ap->a_cred, 0);
+	error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
 	if (error != 0)
 		return error;
 	if (securelevel > 0)
@@ -231,7 +232,7 @@ spigot_ioctl(struct dev_ioctl_args *ap)
 		break;
 	case	SPIGOT_IOPL_ON:	/* allow access to the IO PAGE */
 #if !defined(SPIGOT_UNSECURE)
-		error = suser_cred(ap->a_cred, 0);
+		error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
 		if (error != 0)
 			return error;
 		if (securelevel > 0)

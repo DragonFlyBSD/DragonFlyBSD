@@ -92,32 +92,31 @@ void
 hammer_cmd_cleanup(char **av, int ac)
 {
 	FILE *fp;
-	char *ptr;
-	char *path;
+	char *fs, *ptr, *path;
 	char buf[256];
 
 	tzset();
 	if (ac == 0) {
-		fp = popen("df -t hammer,null", "r");
+		fp = popen("mount -t hammer,null", "r");
 		if (fp == NULL)
-			errx(1, "hammer cleanup: 'df' failed");
+			errx(1, "hammer cleanup: 'mount' failed");
 		while (fgets(buf, sizeof(buf), fp) != NULL) {
-			ptr = strtok(buf, WS);
-			if (ptr && strcmp(ptr, "Filesystem") == 0)
+			fs = strtok(buf, WS);
+			if (fs == NULL)
 				continue;
-			if (ptr)
-				ptr = strtok(NULL, WS);
-			if (ptr)
-				ptr = strtok(NULL, WS);
-			if (ptr)
-				ptr = strtok(NULL, WS);
-			if (ptr)
-				ptr = strtok(NULL, WS);
-			if (ptr) {
-				path = strtok(NULL, WS);
-				if (path)
-					do_cleanup(path);
-			}
+			ptr = strtok(NULL, WS);
+			if (ptr == NULL)
+				continue;
+			path = strtok(NULL, WS);
+			if (path == NULL)
+				continue;
+			ptr = strtok(NULL, WS);
+			if (ptr == NULL)
+				continue;
+			if ((strncmp(ptr, "(hammer,", 8) == 0) ||
+			    ((strncmp(ptr, "(null,", 6) == 0) &&
+			     (strncmp(fs, "/pfs", 4) == 0)))
+				do_cleanup(path);
 		}
 		fclose(fp);
 	} else {

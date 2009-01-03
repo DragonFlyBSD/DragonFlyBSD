@@ -82,6 +82,7 @@
 #include <sys/systm.h>
 #include <sys/syslog.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/thread2.h>
 
 #include <net/if.h>
@@ -490,7 +491,7 @@ udp6_getcred(SYSCTL_HANDLER_ARGS)
 	struct inpcb *inp;
 	int error;
 
-	error = suser(req->td);
+	error = priv_check(req->td, PRIV_ROOT);
 	if (error)
 		return (error);
 

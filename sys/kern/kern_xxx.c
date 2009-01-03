@@ -40,6 +40,7 @@
 #include <sys/sysproto.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/sysctl.h>
 #include <sys/utsname.h>
 
@@ -125,7 +126,7 @@ sys_setdomainname(struct setdomainname_args *uap)
 	struct thread *td = curthread;
         int error, domainnamelen;
 
-        if ((error = suser(td)))
+        if ((error = priv_check(td, PRIV_ROOT)))
                 return (error);
         if ((u_int)uap->len > sizeof (domainname) - 1)
                 return EINVAL;

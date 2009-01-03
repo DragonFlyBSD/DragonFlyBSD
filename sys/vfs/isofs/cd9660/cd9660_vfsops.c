@@ -43,6 +43,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/nlookup.h>
 #include <sys/kernel.h>
 #include <sys/vnode.h>
@@ -231,7 +232,7 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct ucred *cred)
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY);
 	error = VOP_ACCESS(devvp, accessmode, cred);
 	if (error) 
-		error = suser_cred(cred, 0);
+		error = priv_check_cred(cred, PRIV_ROOT, 0);
 	if (error) {
 		vput(devvp);
 		return (error);

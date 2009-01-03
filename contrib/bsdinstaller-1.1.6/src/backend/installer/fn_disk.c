@@ -676,15 +676,6 @@ format_slice(struct i_fn_args *a)
 	    disk_get_raw_device_name(storage_get_selected_disk(a->s)));
 
 	/*
-	 * Auto-disklabel the slice.
-	 * NB: one cannot use "/dev/adXsY" here -
-	 * it must be in the form "adXsY".
-	 */
-	command_add(cmds, "%s%s -B -r -w %s auto",
-	    a->os_root, cmd_name(a, "DISKLABEL"),
-	    slice_get_raw_device_name(storage_get_selected_slice(a->s)));
-
-	/*
 	 * If there is an old 'virgin' disklabel hanging around
 	 * in the temp dir, get rid of it.  This won't happen
 	 * from a real CD, but might happen with '-o' installs.

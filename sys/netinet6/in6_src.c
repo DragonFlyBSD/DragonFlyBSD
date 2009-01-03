@@ -83,6 +83,7 @@
 #include <sys/errno.h>
 #include <sys/time.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -421,7 +422,7 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
 		last  = ipport_hilastauto;
 		lastport = &pcbinfo->lasthi;
 	} else if (inp->inp_flags & INP_LOWPORT) {
-		if ((error = suser(td)) != 0)
+		if ((error = priv_check(td, PRIV_ROOT)) != 0)
 			return error;
 		first = ipport_lowfirstauto;	/* 1023 */
 		last  = ipport_lowlastauto;	/* 600 */

@@ -80,9 +80,6 @@ SUBDIR=	alias \
 	jot \
 	kdump \
 	kenv \
-	key \
-	keyinfo \
-	keyinit \
 	keylogin \
 	keylogout \
 	killall \

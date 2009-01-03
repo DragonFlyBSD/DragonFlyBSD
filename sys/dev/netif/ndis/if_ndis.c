@@ -42,6 +42,7 @@
 #include <sys/socket.h>
 #include <sys/queue.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/sysctl.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
@@ -1939,7 +1940,7 @@ ndis_wi_ioctl_set(struct ifnet *ifp, u_long command, caddr_t data)
 	uint32_t		foo;
 	int			error, len;
 
-	error = suser(curthread);
+	error = priv_check(curthread, PRIV_ROOT);
 	if (error)
 		return (error);
 

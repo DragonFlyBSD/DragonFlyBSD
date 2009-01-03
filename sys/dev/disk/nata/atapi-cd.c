@@ -44,6 +44,7 @@
 #include <sys/module.h>
 #include <sys/nata.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/systm.h>
 
 #include "ata-all.h"
@@ -345,7 +346,7 @@ acd_ioctl(struct dev_ioctl_args *ap)
 	break;
 
     case CDIOCRESET:
-	error = suser_cred(ap->a_cred, 0);
+	error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
 	if (error)
 	    break;
 	error = acd_test_ready(dev);

@@ -124,7 +124,7 @@ showpigs(void)
 			uname = "";
 			pname = "<idle>";
 		} else {
-			uname = (char *)user_from_uid(pt[k].pt_kp->kp_uid, 0);
+			uname = user_from_uid(pt[k].pt_kp->kp_uid, 0);
 			pname = pt[k].pt_kp->kp_comm;
 		}
 		wmove(wnd, y, 0);

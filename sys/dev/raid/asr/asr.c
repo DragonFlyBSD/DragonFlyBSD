@@ -215,6 +215,7 @@ static dpt_sig_S ASR_sig = {
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/conf.h>
 #include <sys/bus.h>
 #include <sys/rman.h>
@@ -3243,7 +3244,7 @@ asr_open(struct dev_open_args *ap)
 	crit_enter();
         if (ASR_ctlr_held) {
                 error = EBUSY;
-        } else if ((error = suser_cred(ap->a_cred, 0)) == 0) {
+        } else if ((error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) == 0) {
                 ++ASR_ctlr_held;
         }
 	crit_exit();

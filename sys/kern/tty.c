@@ -78,6 +78,7 @@
 #include <sys/ioctl_compat.h>
 #endif
 #include <sys/proc.h>
+#include <sys/priv.h>
 #define	TTYDEFCHARS
 #include <sys/tty.h>
 #include <sys/clist.h>
@@ -902,7 +903,7 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 			    ISSET(constty->t_state, TS_CONNECTED))
 				return (EBUSY);
 #ifndef	UCONSOLE
-			if ((error = suser(td)) != 0)
+			if ((error = priv_check(td, PRIV_ROOT)) != 0)
 				return (error);
 #endif
 			constty = tp;
@@ -1074,9 +1075,9 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		crit_exit();
 		break;
 	case TIOCSTI:			/* simulate terminal input */
-		if ((flag & FREAD) == 0 && suser(td))
+		if ((flag & FREAD) == 0 && priv_check(td, PRIV_ROOT))
 			return (EPERM);
-		if (!isctty(p, tp) && suser(td))
+		if (!isctty(p, tp) && priv_check(td, PRIV_ROOT))
 			return (EACCES);
 		crit_enter();
 		(*linesw[tp->t_line].l_rint)(*(u_char *)data, tp);
@@ -1124,7 +1125,7 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		}
 		break;
 	case TIOCSDRAINWAIT:
-		error = suser(td);
+		error = priv_check(td, PRIV_ROOT);
 		if (error)
 			return (error);
 		tp->t_timeout = *(int *)data * hz;

@@ -1,6 +1,13 @@
 /*-
  * Copyright (c) 1990, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 2002 Networks Associates Technology, Inc.
+ * All rights reserved.
+ *
+ * Portions of this software were developed for the FreeBSD Project by
+ * ThinkSec AS and NAI Labs, the Security Research Division of Network
+ * Associates, Inc.  under DARPA/SPAWAR contract N66001-01-C-8035
+ * ("CBOSS"), as part of the DARPA CHATS research program.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,10 +37,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/chpass/edit.c,v 1.16.2.2 2001/08/02 01:48:22 obrien Exp $
- * $DragonFly: src/usr.bin/chpass/edit.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
- *
  * @(#)edit.c	8.3 (Berkeley) 4/2/94
+ * $FreeBSD: src/usr.bin/chpass/edit.c,v 1.23 2003/04/09 18:18:42 des Exp $
+ * $DragonFly: src/usr.bin/chpass/edit.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -42,7 +48,6 @@
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
-#include <md5.h>
 #include <paths.h>
 #include <pwd.h>
 #include <stdio.h>
@@ -51,39 +56,42 @@
 #include <unistd.h>
 
 #include <pw_scan.h>
-#include <pw_util.h>
+#include <libutil.h>
 
 #include "chpass.h"
-#ifdef YP
-#include "pw_yp.h"
-#endif /* YP */
 
-extern char *tempname;
+static int display(const char *tfn, struct passwd *pw);
+static struct passwd *verify(const char *tfn, struct passwd *pw);
 
-void
-edit(struct passwd *pw)
+struct passwd *
+edit(const char *tfn, struct passwd *pw)
 {
-	struct stat begin, end;
-	char *begin_sum, *end_sum;
+	struct passwd *npw;
+	char *line;
+	size_t len;
 
+	if (display(tfn, pw) == -1)
+		return (NULL);
 	for (;;) {
-		if (stat(tempname, &begin))
-			pw_error(tempname, 1, 1);
-		begin_sum = MD5File(tempname, (char *)NULL);
-		pw_edit(1);
-		if (stat(tempname, &end))
-			pw_error(tempname, 1, 1);
-		end_sum = MD5File(tempname, (char *)NULL);
-		if ((begin.st_mtime == end.st_mtime) &&
-		    (strcmp(begin_sum, end_sum) == 0)) {
-			warnx("no changes made");
-			pw_error(NULL, 0, 0);
-		}
-		free(begin_sum);
-		free(end_sum);
-		if (verify(pw))
+		switch (pw_edit(1)) {
+		case -1:
+			return (NULL);
+		case 0:
+			return (pw_dup(pw));
+		default:
 			break;
-		pw_prompt();
+		}
+		if ((npw = verify(tfn, pw)) != NULL)
+			return (npw);
+		free(npw);
+		printf("re-edit the password file? ");
+		fflush(stdout);
+		if ((line = fgetln(stdin, &len)) == NULL) {
+			warn("fgetln()");
+			return (NULL);
+		}
+		if (len > 0 && (*line == 'N' || *line == 'n'))
+			return (NULL);
 	}
 }
 
@@ -92,35 +100,31 @@ edit(struct passwd *pw)
  *	print out the file for the user to edit; strange side-effect:
  *	set conditional flag if the user gets to edit the shell.
  */
-void
-display(int fd, struct passwd *pw)
+static int
+display(const char *tfn, struct passwd *pw)
 {
 	FILE *fp;
-	char *bp, *p, *ttoa();
+	char *bp, *gecos, *p;
 
-	if (!(fp = fdopen(fd, "w")))
-		pw_error(tempname, 1, 1);
+	if ((fp = fopen(tfn, "w")) == NULL) {
+		warn("%s", tfn);
+		return (-1);
+	}
 
-	(void)fprintf(fp,
-#ifdef YP
-	    "#Changing %s information for %s.\n", _use_yp ? "NIS" : "user database", pw->pw_name);
-	if (!uid && (!_use_yp || suser_override)) {
-#else
-	    "#Changing user database information for %s.\n", pw->pw_name);
-	if (!uid) {
-#endif /* YP */
-		(void)fprintf(fp, "Login: %s\n", pw->pw_name);
-		(void)fprintf(fp, "Password: %s\n", pw->pw_passwd);
-		(void)fprintf(fp, "Uid [#]: %lu\n", (unsigned long)pw->pw_uid);
-		(void)fprintf(fp, "Gid [# or name]: %lu\n",
+	fprintf(fp, "#Changing user information for %s.\n", pw->pw_name);
+	if (master_mode) {
+		fprintf(fp, "Login: %s\n", pw->pw_name);
+		fprintf(fp, "Password: %s\n", pw->pw_passwd);
+		fprintf(fp, "Uid [#]: %lu\n", (unsigned long)pw->pw_uid);
+		fprintf(fp, "Gid [# or name]: %lu\n",
 		    (unsigned long)pw->pw_gid);
-		(void)fprintf(fp, "Change [month day year]: %s\n",
+		fprintf(fp, "Change [month day year]: %s\n",
 		    ttoa(pw->pw_change));
-		(void)fprintf(fp, "Expire [month day year]: %s\n",
+		fprintf(fp, "Expire [month day year]: %s\n",
 		    ttoa(pw->pw_expire));
-		(void)fprintf(fp, "Class: %s\n", pw->pw_class);
-		(void)fprintf(fp, "Home directory: %s\n", pw->pw_dir);
-		(void)fprintf(fp, "Shell: %s\n",
+		fprintf(fp, "Class: %s\n", pw->pw_class);
+		fprintf(fp, "Home directory: %s\n", pw->pw_dir);
+		fprintf(fp, "Shell: %s\n",
 		    *pw->pw_shell ? pw->pw_shell : _PATH_BSHELL);
 	}
 	/* Only admin can change "restricted" shells. */
@@ -131,135 +135,156 @@ display(int fd, struct passwd *pw)
 		 * necklace, but there's not much else to do.
 		 */
 #else
-	else if ((!list[E_SHELL].restricted && ok_shell(pw->pw_shell)) || !uid)
+	else if ((!list[E_SHELL].restricted && ok_shell(pw->pw_shell)) ||
+	    master_mode)
 		/*
 		 * If change not restrict (table.c) and standard shell
 		 *	OR if root, then allow editing of shell.
 		 */
 #endif
-		(void)fprintf(fp, "Shell: %s\n",
+		fprintf(fp, "Shell: %s\n",
 		    *pw->pw_shell ? pw->pw_shell : _PATH_BSHELL);
 	else
-	  list[E_SHELL].restricted = 1;
-	bp = pw->pw_gecos;
+		list[E_SHELL].restricted = 1;
+
+	if ((bp = gecos = strdup(pw->pw_gecos)) == NULL) {
+		warn(NULL);
+		fclose(fp);
+		return (-1);
+	}
 
 	p = strsep(&bp, ",");
 	p = strdup(p ? p : "");
 	list[E_NAME].save = p;
-	if (!list[E_NAME].restricted || !uid)
-	  (void)fprintf(fp, "Full Name: %s\n", p);
+	if (!list[E_NAME].restricted || master_mode)
+		fprintf(fp, "Full Name: %s\n", p);
 
-        p = strsep(&bp, ",");
+	p = strsep(&bp, ",");
 	p = strdup(p ? p : "");
 	list[E_LOCATE].save = p;
-	if (!list[E_LOCATE].restricted || !uid)
-	  (void)fprintf(fp, "Office Location: %s\n", p);
+	if (!list[E_LOCATE].restricted || master_mode)
+		fprintf(fp, "Office Location: %s\n", p);
 
-        p = strsep(&bp, ",");
+	p = strsep(&bp, ",");
 	p = strdup(p ? p : "");
 	list[E_BPHONE].save = p;
-	if (!list[E_BPHONE].restricted || !uid)
-	  (void)fprintf(fp, "Office Phone: %s\n", p);
+	if (!list[E_BPHONE].restricted || master_mode)
+		fprintf(fp, "Office Phone: %s\n", p);
 
-        p = strsep(&bp, ",");
+	p = strsep(&bp, ",");
 	p = strdup(p ? p : "");
 	list[E_HPHONE].save = p;
-	if (!list[E_HPHONE].restricted || !uid)
-	  (void)fprintf(fp, "Home Phone: %s\n", p);
+	if (!list[E_HPHONE].restricted || master_mode)
+		fprintf(fp, "Home Phone: %s\n", p);
 
 	bp = strdup(bp ? bp : "");
 	list[E_OTHER].save = bp;
-	if (!list[E_OTHER].restricted || !uid)
-	  (void)fprintf(fp, "Other information: %s\n", bp);
+	if (!list[E_OTHER].restricted || master_mode)
+		fprintf(fp, "Other information: %s\n", bp);
 
-	(void)fchown(fd, getuid(), getgid());
-	(void)fclose(fp);
+	free(gecos);
+
+	fchown(fileno(fp), getuid(), getgid());
+	fclose(fp);
+	return (0);
 }
 
-int
-verify(struct passwd *pw)
+static struct passwd *
+verify(const char *tfn, struct passwd *pw)
 {
+	struct passwd *npw;
 	ENTRY *ep;
-	char *p;
+	char *buf, *p, *val;
 	struct stat sb;
 	FILE *fp;
-	int len, line;
-	static char buf[LINE_MAX];
+	int line;
+	size_t len;
 
-	if (!(fp = fopen(tempname, "r")))
-		pw_error(tempname, 1, 1);
-	if (fstat(fileno(fp), &sb))
-		pw_error(tempname, 1, 1);
+	if ((pw = pw_dup(pw)) == NULL)
+		return (NULL);
+	if ((fp = fopen(tfn, "r")) == NULL ||
+	    fstat(fileno(fp), &sb) == -1) {
+		warn("%s", tfn);
+		free(pw);
+		return (NULL);
+	}
 	if (sb.st_size == 0) {
 		warnx("corrupted temporary file");
-		goto bad;
+		fclose(fp);
+		free(pw);
+		return (NULL);
 	}
-	line = 0;
-	while (fgets(buf, sizeof(buf), fp)) {
-		line++;
-		if (!buf[0] || buf[0] == '#')
+	val = NULL;
+	for (line = 1; (buf = fgetln(fp, &len)) != NULL; ++line) {
+		if (*buf == '\0' || *buf == '#')
 			continue;
-		if (!(p = strchr(buf, '\n'))) {
-			warnx("line %d too long", line);
-			goto bad;
-		}
-		*p = '\0';
+		while (len > 0 && isspace(buf[len - 1]))
+			--len;
 		for (ep = list;; ++ep) {
 			if (!ep->prompt) {
-				warnx("unrecognized field on line %d", line);
+				warnx("%s: unrecognized field on line %d",
+				    tfn, line);
 				goto bad;
 			}
-			if (!strncasecmp(buf, ep->prompt, ep->len)) {
-				if (ep->restricted && uid) {
-					warnx(
-					    "you may not change the %s field",
-						ep->prompt);
-					goto bad;
-				}
-				if (!(p = strchr(buf, ':'))) {
-					warnx("line %d corrupted", line);
-					goto bad;
-				}
-				while (isspace(*++p));
-				if (ep->except && strpbrk(p, ep->except)) {
-					warnx(
-				   "illegal character in the \"%s\" field",
-					    ep->prompt);
-					goto bad;
-				}
-				if ((ep->func)(p, pw, ep)) {
-bad:					(void)fclose(fp);
-					return (0);
-				}
-				break;
+			if (ep->len > len)
+				continue;
+			if (strncasecmp(buf, ep->prompt, ep->len) != 0)
+				continue;
+			if (ep->restricted && !master_mode) {
+				warnx("%s: you may not change the %s field",
+				    tfn, ep->prompt);
+				goto bad;
 			}
+			for (p = buf; p < buf + len && *p != ':'; ++p)
+				/* nothing */ ;
+			if (*p != ':') {
+				warnx("%s: line %d corrupted", tfn, line);
+				goto bad;
+			}
+			while (++p < buf + len && isspace(*p))
+				/* nothing */ ;
+			free(val);
+			asprintf(&val, "%.*s", (int)(buf + len - p), p);
+			if (val == NULL)
+				goto bad;
+			if (ep->except && strpbrk(val, ep->except)) {
+				warnx("%s: invalid character in \"%s\" field '%s'",
+				    tfn, ep->prompt, val);
+				goto bad;
+			}
+			if ((ep->func)(val, pw, ep))
+				goto bad;
+			break;
 		}
 	}
-	(void)fclose(fp);
+	free(val);
+	fclose(fp);
 
 	/* Build the gecos field. */
-	len = strlen(list[E_NAME].save) + strlen(list[E_BPHONE].save) +
-	    strlen(list[E_HPHONE].save) + strlen(list[E_LOCATE].save) +
-	    strlen(list[E_OTHER].save) + 5;
-	if (!(p = malloc(len)))
-		err(1, NULL);
-	(void)sprintf(pw->pw_gecos = p, "%s,%s,%s,%s,%s", list[E_NAME].save,
-	    list[E_LOCATE].save, list[E_BPHONE].save, list[E_HPHONE].save,
-	    list[E_OTHER].save);
-
-	while ((len = strlen(pw->pw_gecos)) && pw->pw_gecos[len - 1] == ',')
-		pw->pw_gecos[len - 1] = '\0';
-
-	if (snprintf(buf, sizeof(buf),
-	    "%s:%s:%lu:%lu:%s:%ld:%ld:%s:%s:%s",
-	    pw->pw_name, pw->pw_passwd, (unsigned long)pw->pw_uid, 
-	    (unsigned long)pw->pw_gid, pw->pw_class, (long)pw->pw_change,
-	    (long)pw->pw_expire, pw->pw_gecos, pw->pw_dir,
-	    pw->pw_shell) >= sizeof(buf)) {
-		warnx("entries too long");
-		free(p);
-		return (0);
+	len = asprintf(&p, "%s,%s,%s,%s,%s", list[E_NAME].save,
+	    list[E_LOCATE].save, list[E_BPHONE].save,
+	    list[E_HPHONE].save, list[E_OTHER].save);
+	if (p == NULL) {
+		warn("asprintf()");
+		free(pw);
+		return (NULL);
 	}
+	while (len > 0 && p[len - 1] == ',')
+		p[--len] = '\0';
+	pw->pw_gecos = p;
+	buf = pw_make(pw);
+	free(pw);
 	free(p);
-	return (__pw_scan(buf, pw, _PWSCAN_WARN|_PWSCAN_MASTER));
+	if (buf == NULL) {
+		warn("pw_make()");
+		return (NULL);
+	}
+	npw = pw_scan(buf, PWSCAN_WARN|PWSCAN_MASTER);
+	free(buf);
+	return (npw);
+bad:
+	free(pw);
+	free(val);
+	fclose(fp);
+	return (NULL);
 }

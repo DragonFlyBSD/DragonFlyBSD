@@ -41,6 +41,7 @@
 #include <sys/mbuf.h>
 #include <sys/time.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/sockio.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
@@ -236,15 +237,6 @@ IF_CLONE_INITIALIZER(CARP_IFNAME, carp_clone_create, carp_clone_destroy,
 
 static eventhandler_tag carp_ifdetach_event;
 static eventhandler_tag carp_ifaddr_event;
-
-static __inline void
-ifa_set_prflags(struct ifaddr *ifa, uint16_t prflags)
-{
-	int cpu;
-
-	for (cpu = 0; cpu < ncpus; ++cpu)
-		ifa->ifa_containers[cpu].ifa_prflags |= prflags;
-}
 
 static __inline void
 carp_insert_vhaddr(struct carp_softc *sc, struct carp_vhaddr *vha_new)
@@ -1745,7 +1737,6 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *cr)
 #ifdef INET
 		case AF_INET:
 			ifp->if_flags |= IFF_UP | IFF_RUNNING;
-			ifa_set_prflags(ifa, IA_PRF_RTEXISTOK);
 			break;
 #endif /* INET */
 #ifdef INET6
@@ -1808,7 +1799,7 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *cr)
 		break;
 
 	case SIOCSVH:
-		error = suser_cred(cr, NULL_CRED_OKAY);
+		error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
 		if (error)
 			break;
 		error = copyin(ifr->ifr_data, &carpr, sizeof(carpr));
@@ -1885,8 +1876,7 @@ carp_ioctl(struct ifnet *ifp, u_long cmd, caddr_t addr, struct ucred *cr)
 		carpr.carpr_vhid = sc->sc_vhid;
 		carpr.carpr_advbase = sc->sc_advbase;
 		carpr.carpr_advskew = sc->sc_advskew;
-
-		error = suser_cred(cr, NULL_CRED_OKAY);
+		error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
 		if (error == 0) {
 			bcopy(sc->sc_key, carpr.carpr_key,
 			      sizeof(carpr.carpr_key));

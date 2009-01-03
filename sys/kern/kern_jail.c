@@ -51,6 +51,7 @@
 #include <sys/nlookup.h>
 #include <sys/namecache.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/jail.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
@@ -121,88 +122,11 @@ kern_jail_attach(int jid)
 	return(0);
 }
 
-/*
- * jail()
- *
- * jail_args(syscallarg(struct jail *) jail)
- */
-int
-sys_jail(struct jail_args *uap)
+static int
+assign_prison_id(struct prison *pr)
 {
-	struct prison *pr, *tpr;
-	struct jail j;
-	struct jail_v0 jv0;
-	struct thread *td = curthread;
-	int error, tryprid, i;
-	uint32_t jversion;
-	struct nlookupdata nd;
-	/* Multiip */
-	struct sockaddr_storage *uips; /* Userland ips */
-	struct sockaddr_in ip4addr;
-	struct jail_ip_storage *jip;
-	/* Multiip */
-
-	error = suser(td);
-	if (error) {
-		uap->sysmsg_result = -1;
-		return(error);
-	}
-	error = copyin(uap->jail, &jversion, sizeof jversion);
-	if (error) {
-		uap->sysmsg_result = -1;
-		return(error);
-	}
-	pr = kmalloc(sizeof *pr , M_PRISON, M_WAITOK | M_ZERO);
-	SLIST_INIT(&pr->pr_ips);
-
-	switch (jversion) {
-	case 0:
-		error = copyin(uap->jail, &jv0, sizeof(struct jail_v0));
-		if (error)
-			goto bail;
-		jip = kmalloc(sizeof(*jip),  M_PRISON, M_WAITOK | M_ZERO);
-		ip4addr.sin_family = AF_INET;
-		ip4addr.sin_addr.s_addr = htonl(jv0.ip_number);
-		memcpy(&jip->ip, &ip4addr, sizeof(ip4addr));
-		SLIST_INSERT_HEAD(&pr->pr_ips, jip, entries);
-		break;
-	case 1:
-		error = copyin(uap->jail, &j, sizeof(j));
-		if (error)
-			goto bail;
-		uips = kmalloc((sizeof(*uips) * j.n_ips), M_PRISON,
-				M_WAITOK | M_ZERO);
-		error = copyin(j.ips, uips, (sizeof(*uips) * j.n_ips));
-		if (error) {
-			kfree(uips, M_PRISON);
-			goto bail;
-		}
-		for (i = 0; i < j.n_ips; i++) {
-			jip = kmalloc(sizeof(*jip),  M_PRISON,
-				      M_WAITOK | M_ZERO);
-			memcpy(&jip->ip, &uips[i], sizeof(*uips));
-			SLIST_INSERT_HEAD(&pr->pr_ips, jip, entries);
-		}
-		kfree(uips, M_PRISON);
-		break;
-	default:
-		error = EINVAL;
-		goto bail;
-	}
-
-	error = copyinstr(j.hostname, &pr->pr_host, sizeof pr->pr_host, 0);
-	if (error)
-		goto bail;
-	error = nlookup_init(&nd, j.path, UIO_USERSPACE, NLC_FOLLOW);
-	if (error)
-		goto nlookup_init_clean;
-	error = nlookup(&nd);
-	if (error)
-		goto nlookup_init_clean;
-	cache_copy(&nd.nl_nch, &pr->pr_root);
-
-	varsymset_init(&pr->pr_varsymset, NULL);
-	prison_ipcache_init(pr);
+	int tryprid;
+	struct prison *tpr;
 
 	tryprid = lastprid + 1;
 	if (tryprid == JAIL_MAX)
@@ -213,38 +137,152 @@ next:
 			continue;
 		tryprid++;
 		if (tryprid == JAIL_MAX) {
-			error = ERANGE;
-			goto varsym_clean;
+			return (ERANGE);
 		}
 		goto next;
 	}
 	pr->pr_id = lastprid = tryprid;
+
+	return (0);
+}
+
+static int
+kern_jail(struct prison *pr, struct jail *j)
+{
+	int error;
+	struct nlookupdata nd;
+
+	error = nlookup_init(&nd, j->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error) {
+		nlookup_done(&nd);
+		return (error);
+	}
+	error = nlookup(&nd);
+	if (error) {
+		nlookup_done(&nd);
+		return (error);
+	}
+	cache_copy(&nd.nl_nch, &pr->pr_root);
+
+	varsymset_init(&pr->pr_varsymset, NULL);
+	prison_ipcache_init(pr);
+
+	error = assign_prison_id(pr);
+	if (error) {
+		varsymset_clean(&pr->pr_varsymset);
+		nlookup_done(&nd);
+		return (error);
+	}
+		
 	LIST_INSERT_HEAD(&allprison, pr, pr_list);
 	prisoncount++;
 
 	error = kern_jail_attach(pr->pr_id);
-	if (error)
-		goto jail_attach_clean;
-
+	if (error) {
+		LIST_REMOVE(pr, pr_list);
+		varsymset_clean(&pr->pr_varsymset);
+	}
 	nlookup_done(&nd);
+	return (error);
+}
+
+/*
+ * jail()
+ *
+ * jail_args(syscallarg(struct jail *) jail)
+ */
+int
+sys_jail(struct jail_args *uap)
+{
+	struct thread *td = curthread;
+	struct prison *pr;
+	struct jail_ip_storage *jip;
+	struct jail j;
+	int error;
+	uint32_t jversion;
+
+	uap->sysmsg_result = -1;
+
+	error = priv_check(td, PRIV_ROOT);
+	if (error)
+		return (error);
+
+	error = copyin(uap->jail, &jversion, sizeof(jversion));
+	if (error)
+		return (error);
+
+	pr = kmalloc(sizeof(*pr), M_PRISON, M_WAITOK | M_ZERO);
+	SLIST_INIT(&pr->pr_ips);
+
+	switch (jversion) {
+	case 0:
+		/* Single IPv4 jails. */
+		{
+		struct jail_v0 jv0;
+		struct sockaddr_in ip4addr;
+
+		error = copyin(uap->jail, &jv0, sizeof(jv0));
+		if (error)
+			goto out;
+
+		j.path = jv0.path;
+		j.hostname = jv0.hostname; 
+
+		jip = kmalloc(sizeof(*jip),  M_PRISON, M_WAITOK | M_ZERO);
+		ip4addr.sin_family = AF_INET;
+		ip4addr.sin_addr.s_addr = htonl(jv0.ip_number);
+		memcpy(&jip->ip, &ip4addr, sizeof(ip4addr));
+		SLIST_INSERT_HEAD(&pr->pr_ips, jip, entries);
+		break;
+		}
+
+	case 1:
+		/*
+		 * DragonFly multi noIP/IPv4/IPv6 jails
+		 *
+		 * NOTE: This version is unsupported by FreeBSD
+		 * (which uses version 2 instead).
+		 */
+
+		error = copyin(uap->jail, &j, sizeof(j));
+		if (error)
+			goto out;
+
+		for (int i = 0; i < j.n_ips; i++) {
+			jip = kmalloc(sizeof(*jip), M_PRISON,
+				      M_WAITOK | M_ZERO);
+			SLIST_INSERT_HEAD(&pr->pr_ips, jip, entries);
+			error = copyin(&j.ips[i], &jip->ip,
+					sizeof(struct sockaddr_storage));
+			if (error)
+				goto out;
+		}
+		break;
+	default:
+		error = EINVAL;
+		goto out;
+	}
+
+	error = copyinstr(j.hostname, &pr->pr_host, sizeof(pr->pr_host), 0);
+	if (error)
+		goto out;
+
+	error = kern_jail(pr, &j);
+	if (error)
+		goto out;
+
 	uap->sysmsg_result = pr->pr_id;
 	return (0);
 
-jail_attach_clean:
-	LIST_REMOVE(pr, pr_list);
-varsym_clean:
-	varsymset_clean(&pr->pr_varsymset);
-nlookup_init_clean:
-	nlookup_done(&nd);
-bail:
+out:
 	/* Delete all ips */
 	while (!SLIST_EMPTY(&pr->pr_ips)) {
 		jip = SLIST_FIRST(&pr->pr_ips);
 		SLIST_REMOVE_HEAD(&pr->pr_ips, entries);
-		FREE(jip, M_PRISON);
+		kfree(jip, M_PRISON);
 	}
-	FREE(pr, M_PRISON);
-	return(error);
+	kfree(pr, M_PRISON);
+	return (error);
 }
 
 /*
@@ -256,7 +294,7 @@ sys_jail_attach(struct jail_attach_args *uap)
 	struct thread *td = curthread;
 	int error;
 
-	error = suser(td);
+	error = priv_check(td, PRIV_ROOT);
 	if (error)
 		return(error);
 
@@ -610,7 +648,7 @@ prison_free(struct prison *pr)
 	while (!SLIST_EMPTY(&pr->pr_ips)) {
 		jls = SLIST_FIRST(&pr->pr_ips);
 		SLIST_REMOVE_HEAD(&pr->pr_ips, entries);
-		FREE(jls, M_PRISON);
+		kfree(jls, M_PRISON);
 	}
 	LIST_REMOVE(pr, pr_list);
 	prisoncount--;

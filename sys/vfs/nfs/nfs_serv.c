@@ -66,6 +66,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/nlookup.h>
 #include <sys/namei.h>
 #include <sys/unistd.h>
@@ -1692,7 +1693,7 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			if (vap->va_type == VCHR && rdev == 0xffffffff)
 				vap->va_type = VFIFO;
                         if (vap->va_type != VFIFO &&
-                            (error = suser_cred(cred, 0))) {
+                            (error = priv_check_cred(cred, PRIV_ROOT, 0))) {
 				goto nfsmreply0;
                         }
 			vap->va_rmajor = umajor(rdev);
@@ -1891,7 +1892,7 @@ nfsrv_mknod(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		vrele(dvp);
 		dvp = NULL;
 	} else {
-		if (vtyp != VFIFO && (error = suser_cred(cred, 0)))
+		if (vtyp != VFIFO && (error = priv_check_cred(cred, PRIV_ROOT, 0)))
 			goto out;
 
 		vn_unlock(dvp);

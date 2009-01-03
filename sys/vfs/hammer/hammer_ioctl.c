@@ -54,7 +54,7 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 	struct hammer_transaction trans;
 	int error;
 
-	error = suser_cred(cred, PRISON_ROOT);
+	error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT);
 
 	hammer_start_transaction(&trans, ip->hmp);
 

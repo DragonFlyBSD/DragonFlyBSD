@@ -383,6 +383,10 @@
 
 #define PCIR_POWER_DATA		0x7
 
+/* VPD capability registers */
+#define PCIR_VPD_ADDR		0x2
+#define PCIR_VPD_DATA		0x4
+
 /* PCI Message Signalled Interrupts (MSI) */
 #define PCIR_MSI_CTRL           0x2
 #define PCIM_MSICTRL_VECTOR             0x0100

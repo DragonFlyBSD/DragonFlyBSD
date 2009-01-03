@@ -205,6 +205,6 @@ inet_ntop6(src, dst, size)
  * Weak aliases for applications that use certain private entry points,
  * and fail to include <arpa/inet.h>.
  */
-#undef inet_net_ntop
-__weak_reference(__inet_net_ntop, inet_net_ntop);
+#undef inet_ntop
+__weak_reference(__inet_ntop, inet_ntop);
 #endif

@@ -10,7 +10,7 @@ CONTRIBDIR=${BSDINS_SRC}/backend/installer
 PROG=	dfuibe_installer
 NOMAN=
 SRCS=	flow.c fn_diagnostic.c fn_install.c fn_zonetab.c \
-        fn_configure.c fn_disk.c fn_subpart.c main.c
+        fn_configure.c fn_disk.c fn_subpart_hammer.c fn_subpart.c main.c
 
 CFLAGS+= -I${BSDINS_SRC}/lib
 

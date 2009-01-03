@@ -45,6 +45,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <fts.h>
+#include <grp.h>
+#include <pwd.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>

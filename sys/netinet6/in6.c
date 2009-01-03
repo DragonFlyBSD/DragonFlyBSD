@@ -77,6 +77,7 @@
 #include <sys/sockio.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/time.h>
 #include <sys/kernel.h>
 #include <sys/syslog.h>
@@ -385,7 +386,7 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 	int error;
 
 	privileged = 0;
-	if (suser(td) == 0)
+	if (priv_check(td, PRIV_ROOT) == 0)
 		privileged++;
 
 	switch (cmd) {

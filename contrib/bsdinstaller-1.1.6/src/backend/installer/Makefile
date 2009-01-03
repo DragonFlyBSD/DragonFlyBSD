@@ -3,8 +3,8 @@
 OSTYPE!=sysctl -n kern.ostype
 
 PROG=	dfuibe_installer
-OBJS=	fn_disk.o fn_configure.o fn_diagnostic.o fn_subpart.o fn_install.o \
-	flow.o main.o
+OBJS=	fn_disk.o fn_configure.o fn_diagnostic.o fn_subpart_hammer.o \
+	fn_subpart.o fn_install.o flow.o main.o
 
 WARNS=	-W -Werror -Wall -Wstrict-prototypes -Wmissing-prototypes \
 	-Wpointer-arith	-Wno-uninitialized -Wreturn-type -Wcast-qual \
