@@ -3,25 +3,18 @@
 # $DragonFly: src/usr.bin/login/Makefile,v 1.4 2007/08/27 16:50:56 pavalos Exp $
 
 PROG=	login
-SRCS=	login.c login_access.c login_fbtab.c
-MAN=	login.1 login.access.5
+SRCS=	login.c login_fbtab.c
 WARNS?=	2
 
-CFLAGS+=-DLOGIN_ACCESS -DLOGALL
+CFLAGS+=-DLOGALL
 
-DPADD=	${LIBUTIL} ${LIBCRYPT}
-LDADD=	-lutil -lcrypt
+DPADD=	${LIBUTIL} ${LIBPAM}
+LDADD=	-lutil ${MINUSLPAM}
 
-.if !defined(NOPAM)
-CFLAGS+= -DUSE_PAM
-DPADD+=	${LIBPAM}
-LDADD+=	${MINUSLPAM}
-.endif
-
+BINOWN=	root
 BINMODE=4555
 .if !defined(NOFSCHG)
 INSTALLFLAGS=-fschg
 .endif
-NEED_LIBNAMES= yes
 
 .include <bsd.prog.mk>

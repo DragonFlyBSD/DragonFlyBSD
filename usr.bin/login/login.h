@@ -1,6 +1,5 @@
 /*-
- * Copyright (c) 1989, 1993
- *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 2001 FreeBSD, Inc
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,13 +9,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -30,13 +22,16 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)pathnames.h	8.1 (Berkeley) 6/9/93
- * $FreeBSD: src/usr.bin/login/pathnames.h,v 1.6 2006/03/06 12:38:42 yar Exp $
+ * $FreeBSD: src/usr.bin/login/login.h,v 1.7 2007/05/07 11:01:36 dwmalone Exp $
  */
 
-#include <paths.h>
+void	login_fbtab(char *, uid_t, gid_t);
 
-#define	_PATH_HUSHLOGIN		".hushlogin"
-#define	_PATH_MOTDFILE		"/etc/motd"
-#define _PATH_FBTAB		"/etc/fbtab"
-#define _PATH_LOGINDEVPERM	"/etc/logindevperm"
+#ifdef USE_BSM_AUDIT
+void	au_login_success(void);
+void	au_login_fail(const char *, int);
+void	audit_logout(void);
+#endif
+
+extern char		**environ;
+extern struct passwd	*pwd;

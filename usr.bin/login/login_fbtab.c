@@ -13,7 +13,7 @@
 * warranties, including, without limitation, the implied warranties of
 * merchantibility and fitness for any particular purpose.
 ************************************************************************/
-/* $FreeBSD: src/usr.bin/login/login_fbtab.c,v 1.6.2.4 2001/12/14 10:58:18 rwatson Exp $ */
+/* $FreeBSD: src/usr.bin/login/login_fbtab.c,v 1.18 2007/09/21 01:55:11 kevlo Exp $ */
 /* $DragonFly: src/usr.bin/login/login_fbtab.c,v 1.3 2003/10/04 20:36:48 hmp Exp $ */
 /*
     SYNOPSIS
@@ -62,17 +62,18 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <stdio.h>
-#include <syslog.h>
-#include <string.h>
 #include <errno.h>
 #include <glob.h>
 #include <paths.h>
+#include <stdio.h>
+#include <string.h>
+#include <syslog.h>
 #include <unistd.h>
+
+#include "login.h"
 #include "pathnames.h"
 
-void	login_protect(char *, char *, int, uid_t, gid_t);
-void	login_fbtab(char *tty, uid_t uid, gid_t gid);
+static void	login_protect(const char *, char *, int, uid_t, gid_t);
 
 #define	WSPACE		" \t\n"
 
@@ -86,10 +87,10 @@ login_fbtab(char *tty, uid_t uid, gid_t gid)
     char   *devname;
     char   *cp;
     int     prot;
-    char *table;
+    const char *table;
 
-    if ((fp = fopen(table = _PATH_FBTAB, "r")) == 0
-    && (fp = fopen(table = _PATH_LOGINDEVPERM, "r")) == 0)
+    if ((fp = fopen(table = _PATH_FBTAB, "r")) == NULL
+    && (fp = fopen(table = _PATH_LOGINDEVPERM, "r")) == NULL)
 	return;
 
     while (fgets(buf, sizeof(buf), fp)) {
@@ -119,23 +120,23 @@ login_fbtab(char *tty, uid_t uid, gid_t gid)
 /* login_protect - protect one device entry */
 
 void
-login_protect(char *table, char *pattern, int mask, uid_t uid, gid_t gid)
+login_protect(const char *table, char *pattern, int mask, uid_t uid, gid_t gid)
 {
-	glob_t  gl;
-	char	*path;
-	int     i;
+    glob_t  gl;
+    char   *path;
+    unsigned int     i;
 
-	if (glob(pattern, GLOB_NOSORT, NULL, &gl) != 0)
-		return;
-	for (i = 0; i < gl.gl_pathc; i++) {
-		path = gl.gl_pathv[i];
-		/* clear flags of the device */
-		if (chflags(path, 0) && errno != ENOENT && errno != EOPNOTSUPP)
-			syslog(LOG_ERR, "%s: chflags(%s): %m", table, path);
-		if (chmod(path, mask) && errno != ENOENT)
-			syslog(LOG_ERR, "%s: chmod(%s): %m", table, path);
-		if (chown(path, uid, gid) && errno != ENOENT)
-			syslog(LOG_ERR, "%s: chown(%s): %m", table, path);
-	}
-	globfree(&gl);
+    if (glob(pattern, GLOB_NOSORT, NULL, &gl) != 0)
+	return;
+    for (i = 0; i < gl.gl_pathc; i++) {
+	path = gl.gl_pathv[i];
+	/* clear flags of the device */
+	if (chflags(path, 0) && errno != ENOENT && errno != EOPNOTSUPP)
+	    syslog(LOG_ERR, "%s: chflags(%s): %m", table, path);
+	if (chmod(path, mask) && errno != ENOENT)
+	    syslog(LOG_ERR, "%s: chmod(%s): %m", table, path);
+	if (chown(path, uid, gid) && errno != ENOENT)
+	    syslog(LOG_ERR, "%s: chown(%s): %m", table, path);
+    }
+    globfree(&gl);
 }
