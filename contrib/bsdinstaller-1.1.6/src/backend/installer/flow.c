@@ -390,6 +390,31 @@ state_configure_menu(struct i_fn_args *a)
 	}
 
 	a->cfg_root = "mnt";
+
+	if (during_install == 0) {
+		switch (dfui_be_present_dialog(a->c, _("Select file system"),
+		    _("HAMMER|UFS|Return to Welcome Menu"),
+		    _("Please select the file system installed on the disk.\n\n")))
+		{
+		case 1:
+			/* HAMMER */
+			use_hammer = 1;
+			break;
+		case 2:
+			/* UFS */
+			use_hammer = 0;
+			break;
+		case 3:
+			state = state_welcome;
+			return;
+			/* NOTREACHED */
+			break;
+		default:
+			abort_backend();
+			break;
+		}
+	}
+
 	if (!mount_target_system(a)) {
 		inform(a->c, _("Target system could not be mounted."));
 		state = state_welcome;
@@ -1279,6 +1304,7 @@ void
 state_finish_install(struct i_fn_args *a)
 {
 	char msg_buf[1][1024];
+	during_install = 1;
 
 	snprintf(msg_buf[0], sizeof(msg_buf[0]),
 	    "%s is Installed!",

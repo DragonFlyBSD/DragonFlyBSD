@@ -53,7 +53,7 @@
 
 struct i_fn_args;
 int use_hammer;
-
+int during_install;
 /*** PROTOTYPES ***/
 
 /* Menus */
