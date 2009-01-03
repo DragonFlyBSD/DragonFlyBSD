@@ -8,6 +8,8 @@ FILES=	README \
 	other \
 	pop3 \
 	sshd \
+	su \
+	system \
 	telnetd \
 	xdm \
 	xserver
