@@ -4,8 +4,8 @@
 ORG=		0x7c00
 
 LDR=		pxeldr
-BOOT=		pxeboot
-LOADER=		loader
+BOOT?=		pxeboot
+LOADER?=	loader
 PROG=		${BOOT}
 MAN=		${BOOT}.8
 STRIP=
