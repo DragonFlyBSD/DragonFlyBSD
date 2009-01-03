@@ -1,6 +1,7 @@
 NOOBJ=
 
 FILES=	README \
+	atrun \
 	ftpd \
 	gdm \
 	imap \
