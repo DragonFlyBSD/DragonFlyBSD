@@ -34,6 +34,8 @@
 #include <sys/uio.h>
 #include <sys/thread2.h>
 #include <sys/bus_dma.h>
+#include <sys/kernel.h>
+#include <sys/sysctl.h>
 
 #include <vm/vm.h>
 #include <vm/vm_page.h>
@@ -103,6 +105,10 @@ static bus_addr_t add_bounce_page(bus_dma_tag_t dmat, bus_dmamap_t map,
 				   vm_offset_t vaddr, bus_size_t size);
 static void free_bounce_page(bus_dma_tag_t dmat, struct bounce_page *bpage);
 static __inline int run_filter(bus_dma_tag_t dmat, bus_addr_t paddr);
+
+SYSCTL_NODE(_hw, OID_AUTO, busdma, CTLFLAG_RD, 0, "Busdma parameters");
+SYSCTL_INT(_hw_busdma, OID_AUTO, total_bpages, CTLFLAG_RD, &total_bpages, 0,
+	   "Total bounce pages");
 
 static __inline int
 run_filter(bus_dma_tag_t dmat, bus_addr_t paddr)
