@@ -270,8 +270,7 @@ bus_dmamap_create(bus_dma_tag_t dmat, int flags, bus_dmamap_t *mapp)
 		int maxpages;
 
 		*mapp = kmalloc(sizeof(**mapp), M_DEVBUF, M_INTWAIT | M_ZERO);
-		if (*mapp == NULL)
-			return (ENOMEM);
+
 		/* Initialize the new map */
 		STAILQ_INIT(&((*mapp)->bpages));
 		/*
@@ -836,11 +835,8 @@ alloc_bounce_pages(bus_dma_tag_t dmat, u_int numpages)
 	while (numpages > 0) {
 		struct bounce_page *bpage;
 
-		bpage = (struct bounce_page *)kmalloc(sizeof(*bpage), M_DEVBUF,
-						     M_INTWAIT | M_ZERO);
+		bpage = kmalloc(sizeof(*bpage), M_DEVBUF, M_INTWAIT | M_ZERO);
 
-		if (bpage == NULL)
-			break;
 		bpage->vaddr = (vm_offset_t)contigmalloc(PAGE_SIZE, M_DEVBUF,
 							 M_NOWAIT, 0ul,
 							 dmat->lowaddr,
