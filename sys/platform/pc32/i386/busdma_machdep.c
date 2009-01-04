@@ -369,6 +369,7 @@ bus_dmamem_alloc(bus_dma_tag_t dmat, void** vaddr, int flags,
 		if ((((intptr_t)*vaddr) & PAGE_MASK) !=
 		    (((intptr_t)*vaddr + dmat->maxsize) & PAGE_MASK)) {
 			size_t size;
+
 			kfree(*vaddr, M_DEVBUF);
 			/* XXX check for overflow? */
 			for (size = 1; size <= dmat->maxsize; size <<= 1)
@@ -420,13 +421,11 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 		bus_size_t buflen, bus_dmamap_callback_t *callback,
 		void *callback_arg, int flags)
 {
-	vm_offset_t		vaddr;
-	vm_paddr_t		paddr;
-	bus_dma_segment_t      *sg;
-	int			seg;
-	int			error;
-	vm_paddr_t		nextpaddr;
-	bus_addr_t		bmask;
+	vm_offset_t vaddr;
+	vm_paddr_t paddr, nextpaddr;
+	bus_dma_segment_t *sg;
+	bus_addr_t bmask;
+	int seg, error;
 
 	if (map == NULL)
 		map = &nobounce_dmamap;
@@ -438,7 +437,7 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 	 */
 	if (dmat->lowaddr < ptoa(Maxmem) &&
 	    map->pagesneeded == 0) {
-		vm_offset_t	vendaddr;
+		vm_offset_t vendaddr;
 
 		/*
 		 * Count the number of bounce pages
@@ -483,7 +482,7 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 
 	/* force at least one segment */
 	do {
-		bus_size_t	size;
+		bus_size_t size;
 
 		/*
 		 * Per-page main loop
@@ -523,7 +522,7 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 		 * Handle maxsegsz and boundary issues with a nested loop
 		 */
 		for (;;) {
-			bus_size_t	tmpsize;
+			bus_size_t tmpsize;
 
 			/*
 			 * Limit to the boundary and maximum segment size
