@@ -47,7 +47,7 @@
 
 #include <machine/md_var.h>
 
-#define MAX_BPAGES 1024
+#define MAX_BPAGES	1024
 
 struct bus_dma_tag {
 	bus_dma_tag_t	  parent;
@@ -65,6 +65,11 @@ struct bus_dma_tag {
 	int		  map_count;
 	bus_dma_segment_t *segments;
 };
+
+/*
+ * bus_dma_tag private flags
+ */
+#define BUS_DMA_MIN_ALLOC_COMP	BUS_DMA_BUS4
 
 struct bounce_page {
 	vm_offset_t	vaddr;		/* kva of bounce buffer */
@@ -127,7 +132,6 @@ run_filter(bus_dma_tag_t dmat, bus_addr_t paddr)
 	return (retval);
 }
 
-#define BUS_DMA_MIN_ALLOC_COMP BUS_DMA_BUS4
 /*
  * Allocate a device specific dma_tag.
  */
