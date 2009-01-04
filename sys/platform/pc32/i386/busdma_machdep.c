@@ -99,12 +99,11 @@ static STAILQ_HEAD(, bus_dmamap) bounce_map_waitinglist;
 static STAILQ_HEAD(, bus_dmamap) bounce_map_callbacklist;
 static struct bus_dmamap nobounce_dmamap;
 
-static int alloc_bounce_pages(bus_dma_tag_t dmat, u_int numpages);
-static int reserve_bounce_pages(bus_dma_tag_t dmat, bus_dmamap_t map);
-static bus_addr_t add_bounce_page(bus_dma_tag_t dmat, bus_dmamap_t map,
-				   vm_offset_t vaddr, bus_size_t size);
-static void free_bounce_page(bus_dma_tag_t dmat, struct bounce_page *bpage);
-static __inline int run_filter(bus_dma_tag_t dmat, bus_addr_t paddr);
+static int		alloc_bounce_pages(bus_dma_tag_t, u_int);
+static int		reserve_bounce_pages(bus_dma_tag_t, bus_dmamap_t);
+static bus_addr_t	add_bounce_page(bus_dma_tag_t, bus_dmamap_t,
+			    vm_offset_t, bus_size_t);
+static void		free_bounce_page(bus_dma_tag_t, struct bounce_page *);
 
 SYSCTL_NODE(_hw, OID_AUTO, busdma, CTLFLAG_RD, 0, "Busdma parameters");
 SYSCTL_INT(_hw_busdma, OID_AUTO, total_bpages, CTLFLAG_RD, &total_bpages, 0,
