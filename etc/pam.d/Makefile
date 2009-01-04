@@ -6,6 +6,7 @@ FILES=	README \
 	ftpd \
 	gdm \
 	imap \
+	kde \
 	login \
 	other \
 	passwd \
