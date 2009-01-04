@@ -2,6 +2,7 @@ NOOBJ=
 
 FILES=	README \
 	atrun \
+	cron \
 	ftpd \
 	gdm \
 	imap \
