@@ -146,6 +146,9 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 	bus_dma_tag_t newtag;
 	int error = 0;
 
+	if (alignment == 0)
+		alignment = 1;
+
 	/* Return a NULL tag on failure */
 	*dmat = NULL;
 
@@ -177,6 +180,10 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 			newtag->boundary = MIN(parent->boundary,
 					       newtag->boundary);
 		}
+
+#ifdef notyet
+		newtag->alignment = MAX(parent->alignment, newtag->alignment);
+#endif
 
 		if (newtag->filter == NULL) {
 			/*
@@ -390,8 +397,7 @@ bus_dmamem_alloc(bus_dma_tag_t dmat, void** vaddr, int flags,
 		 *     multi-seg allocations yet though.
 		 */
 		*vaddr = contigmalloc(dmat->maxsize, M_DEVBUF, mflags,
-		    0ul, dmat->lowaddr, dmat->alignment? dmat->alignment : 1ul,
-		    dmat->boundary);
+		    0ul, dmat->lowaddr, dmat->alignment, dmat->boundary);
 	}
 	if (*vaddr == NULL)
 		return (ENOMEM);
