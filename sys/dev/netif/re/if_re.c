@@ -368,6 +368,7 @@ static driver_t re_driver = {
 static devclass_t re_devclass;
 
 DECLARE_DUMMY_MODULE(if_re);
+MODULE_DEPEND(if_re, miibus, 1, 1, 1);
 DRIVER_MODULE(if_re, pci, re_driver, re_devclass, 0, 0);
 DRIVER_MODULE(if_re, cardbus, re_driver, re_devclass, 0, 0);
 DRIVER_MODULE(miibus, re, miibus_driver, miibus_devclass, 0, 0);
