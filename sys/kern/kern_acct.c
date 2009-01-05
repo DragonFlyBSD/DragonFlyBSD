@@ -127,8 +127,7 @@ sys_acct(struct acct_args *uap)
 	struct vnode *vp;
 	int error;
 
-	/* Make sure that the caller is root. */
-	error = priv_check(td, PRIV_ROOT);
+	error = priv_check(td, PRIV_ACCT);
 	if (error)
 		return (error);
 
