@@ -173,6 +173,8 @@ static const struct agp_i810_match {
 	    "Intel GM45 SVGA controller"},
 	{0x2E028086, CHIP_G4X, 0x00020000,
 	    "Intel 4 Series SVGA controller"},
+	{0x2E328086, CHIP_G4X, 0x00020000,
+	    "Intel 4 Series SVGA controller"},
 	{0x2E128086, CHIP_G4X, 0x00020000,
 	    "Intel Q45 SVGA controller"},
 	{0x2E228086, CHIP_G4X, 0x00020000,
