@@ -69,6 +69,7 @@ struct bus_dma_tag {
 /*
  * bus_dma_tag private flags
  */
+#define BUS_DMA_COULD_BOUNCE	BUS_DMA_BUS3
 #define BUS_DMA_MIN_ALLOC_COMP	BUS_DMA_BUS4
 
 struct bounce_page {
@@ -187,7 +188,10 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 			parent->ref_count++;
 	}
 
-	if (newtag->lowaddr < ptoa(Maxmem) &&
+	if (newtag->lowaddr < ptoa(Maxmem))
+		newtag->flags |= BUS_DMA_COULD_BOUNCE;
+
+	if ((newtag->flags & BUS_DMA_COULD_BOUNCE) &&
 	    (flags & BUS_DMA_ALLOCNOW) != 0) {
 		/* Must bounce */
 
@@ -266,7 +270,7 @@ bus_dmamap_create(bus_dma_tag_t dmat, int flags, bus_dmamap_t *mapp)
 					dmat->nsegments, M_DEVBUF, M_INTWAIT);
 	}
 
-	if (dmat->lowaddr < ptoa(Maxmem)) {
+	if (dmat->flags & BUS_DMA_COULD_BOUNCE) {
 		/* Must bounce */
 		int maxpages;
 
@@ -435,7 +439,7 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 	 * If we are being called during a callback, pagesneeded will
 	 * be non-zero, so we can avoid doing the work twice.
 	 */
-	if (dmat->lowaddr < ptoa(Maxmem) &&
+	if ((dmat->flags & BUS_DMA_COULD_BOUNCE) &&
 	    map->pagesneeded == 0) {
 		vm_offset_t vendaddr;
 
