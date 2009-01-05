@@ -449,21 +449,21 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 	 * be non-zero, so we can avoid doing the work twice.
 	 */
 	if ((dmat->flags & BUS_DMA_COULD_BOUNCE) &&
-	    map->pagesneeded == 0) {
+	    map != &nobounce_dmamap && map->pagesneeded == 0) {
 		vm_offset_t vendaddr;
 
 		/*
 		 * Count the number of bounce pages
 		 * needed in order to complete this transfer
 		 */
-		vaddr = trunc_page((vm_offset_t)buf);
+		vaddr = (vm_offset_t)buf;
 		vendaddr = (vm_offset_t)buf + buflen;
 
 		while (vaddr < vendaddr) {
 			paddr = pmap_kextract(vaddr);
 			if (run_filter(dmat, paddr) != 0)
 				map->pagesneeded++;
-			vaddr += PAGE_SIZE;
+			vaddr += (PAGE_SIZE - ((vm_offset_t)vaddr & PAGE_MASK));
 		}
 	}
 
