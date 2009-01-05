@@ -35,7 +35,7 @@ SRCS+=	strcasecmp.c
 
 # string functions from libc
 .PATH:	${.CURDIR}/../libc/string
-.if ${MACHINE_ARCH} == "i386"
+.if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "amd64"
 SRCS+=	bcmp.c bcopy.c bzero.c ffs.c index.c memccpy.c memchr.c memcmp.c \
         memcpy.c memmove.c memset.c qdivrem.c rindex.c strcat.c strchr.c \
         strcmp.c strcpy.c strcspn.c strlen.c strncat.c strncmp.c strncpy.c \
@@ -46,13 +46,14 @@ SRCS+=	bcmp.c bcopy.c bzero.c ffs.c index.c memccpy.c memchr.c memcmp.c \
 SRCS+=  ucmpdi2.c
 .endif
 
-.if ${MACHINE_ARCH} == "i386"
 # _setjmp/_longjmp
-.PATH:	${.CURDIR}/${MACHINE_ARCH}
-SRCS+=	_setjmp.S
+.if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "amd64"
+.PATH:	${.CURDIR}/i386
+.else
+.endif
 # really only required for i386
 CFLAGS+=-I${.CURDIR}/../libc/${MACHINE_ARCH}
-.endif
+SRCS+=	_setjmp.S
 
 # decompression functionality from libbz2
 BZ2DIR=	${.CURDIR}/../../contrib/bzip2-1.0
