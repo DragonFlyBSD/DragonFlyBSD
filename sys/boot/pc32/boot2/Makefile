@@ -154,14 +154,22 @@ install:
 .include <bsd.prog.mk>
 
 .if defined(REALLY_AMD64)
+# For amd64, we need to fake up a complete machine/ tree
+# so that types for -m32 appear correctly.
+
 boot2.o: machine
 
-beforedepend ${OBJS}: machine
+beforedepend ${OBJS}: machine cpu
 
-machine:
-	${LN} -sf ${.CURDIR}/../../../i386/include machine
+machine::
+	mkdir -p machine
+	${LN} -sf ${.CURDIR}/../../../cpu/i386/include/* machine
+	${LN} -sf ${.CURDIR}/../../../platform/pc32/include/* machine
 
-CLEANFILES+=	machine
+cpu::
+	${LN} -sf ${.CURDIR}/../../../cpu/i386/include cpu
+
+CLEANDIRS+=	machine cpu
 .endif
 
 CLEANFILES+=	bootasmdef.nx
