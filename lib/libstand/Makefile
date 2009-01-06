@@ -90,3 +90,19 @@ SRCS+=	splitfs.c
 SRCS+=	hammerread.c
 
 .include <bsd.lib.mk>
+
+.if ${MACHINE_ARCH} == "amd64"
+CFLAGS+= -I${.OBJDIR}
+
+beforedepend ${OBJS}: machine cpu
+
+machine::
+	mkdir -p machine
+	${LN} -fs ${.CURDIR}/../../sys/cpu/i386/include/* machine
+	${LN} -fs ${.CURDIR}/../../sys/platform/pc32/include/* machine
+
+cpu::
+	${LN} -fs ${.CURDIR}/../../sys/cpu/i386/include cpu
+
+CLEANDIRS+=	machine cpu
+.endif
