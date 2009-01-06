@@ -212,6 +212,7 @@ sys_exec_sys_register(struct exec_sys_register_args *uap)
     vmres->vr_id = ++exec_res_id;
     vmres->vr_entry_addr = (intptr_t)uap->entry;
     vmres->vr_vmspace = vmspace_fork(p->p_vmspace); /* XXX order */
+    pmap_pinit2(vmspace_pmap(vmres->vr_vmspace));
 
     lockmgr(&exec_list_lock, LK_EXCLUSIVE);
     TAILQ_INSERT_TAIL(&exec_res_list, vmres, vr_link);
