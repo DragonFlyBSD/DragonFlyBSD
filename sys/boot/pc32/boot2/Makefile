@@ -53,6 +53,10 @@ CFLAGS=	-elf -ffreestanding -Os -fno-builtin \
 	-Wpointer-arith -Wshadow -Wstrict-prototypes -Wwrite-strings \
 	-D__BOOT2_HACK
 
+# Tell gcc that it shouldn't do fancy optimizations for newer processors.
+# Otherwise it winds up creating larger code and we won't be able to fit boot2.
+CFLAGS+= -march=i386
+
 # Unfortunately, unit-at-a-time creates issues as yet
 # not tracked down, in boot2, so we have to turn it off.  Note that
 # the problem has been narrowed down to the 'boot2' code.  The /boot/loader
