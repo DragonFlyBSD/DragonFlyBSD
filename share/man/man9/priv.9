@@ -28,7 +28,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/priv.9,v 1.7 2008/09/17 15:49:44 attilio Exp $
 .\"
-.Dd August 30, 2006
+.Dd January 1, 2009
 .Dt PRIV 9
 .Os
 .Sh NAME
@@ -48,7 +48,7 @@ passed thread,
 .Fa td ,
 or credential,
 .Fa cred .
-This interface replaces the 
+This interface replaces the
 .Xr suser 9
 privilege checking interface.
 Privileges typically represent rights in one of two categories: the right to
@@ -70,18 +70,18 @@ jail.
 .Sh IMPLEMENTATION NOTES
 When adding a new privilege check to a code path, first check the complete
 list of current privileges in
-.Pa sys/priv.h
+.In sys/priv.h
 to see if one already exists for the class of privilege required.
 Only if there is not an exact match should a new privilege be added to the
 privilege list.
 As privilege numbers becomes encoded in the kernel module ABI, privilege
 constants must not be changed as any kernel modules depending on privileges
 will then need to be recompiled.
-When adding a new privilege, be certain to also determine whether it should
-be listed in
-.Fn prison_priv_check ,
-which includes a complete list of privileges granted to the root user in
-.Xr jail 2 .
+.\"When adding a new privilege, be certain to also determine whether it should
+.\"be listed in
+.\".Fn prison_priv_check ,
+.\"which includes a complete list of privileges granted to the root user in
+.\".Xr jail 2 .
 .Pp
 Certain catch-all privileges exist, such as
 .Dv PRIV_DRIVER ,
@@ -107,8 +107,8 @@ insufficient privilege is highly undesirable, as it results in frequent
 privilege checks, and the caller is unable to tell if an access control
 failure occurred.
 .Sh SEE ALSO
-.Xr jail 2 ,
-.Xr ucred 9
+.Xr jail 2
+.\".Xr ucred 9
 .Sh AUTHORS
 The
 .Nm
