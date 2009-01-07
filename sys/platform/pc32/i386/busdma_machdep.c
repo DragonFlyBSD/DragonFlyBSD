@@ -424,26 +424,25 @@ bus_dmamem_free(bus_dma_tag_t dmat, void *vaddr, bus_dmamap_t map)
 		contigfree(vaddr, dmat->maxsize, M_DEVBUF);
 }
 
-#define BUS_DMAMAP_NSEGS ((BUS_SPACE_MAXSIZE / PAGE_SIZE) + 1)
-
-/*
- * Map the buffer buf into bus space using the dmamap map.
- */
-int
-bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
-		bus_size_t buflen, bus_dmamap_callback_t *callback,
-		void *callback_arg, int flags)
+static int
+_bus_dmamap_load_buffer2(bus_dma_tag_t dmat,
+			bus_dmamap_t map,
+			void *buf, bus_size_t buflen,
+			struct thread *td,
+			int flags,
+			vm_paddr_t *lastpaddrp,
+			int *segp,
+			int first)
 {
 	vm_offset_t vaddr;
 	vm_paddr_t paddr, nextpaddr;
 	bus_dma_segment_t *sg;
 	bus_addr_t bmask;
-	int seg, error;
+	int seg, error = 0;
 
 	if (map == NULL)
 		map = &nobounce_dmamap;
 
-	error = 0;
 	/*
 	 * If we are being called during a callback, pagesneeded will
 	 * be non-zero, so we can avoid doing the work twice.
@@ -475,8 +474,6 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 			map->dmat = dmat;
 			map->buf = buf;
 			map->buflen = buflen;
-			map->callback = callback;
-			map->callback_arg = callback_arg;
 
 			STAILQ_INSERT_TAIL(&bounce_map_waitinglist, map, links);
 			crit_exit();
@@ -486,11 +483,12 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 		crit_exit();
 	}
 
+	KKASSERT(*segp >= 1);
+	seg = *segp;
+	sg = &dmat->segments[seg - 1];
+
 	vaddr = (vm_offset_t)buf;
-	sg = dmat->segments;
-	seg = 1;
-	sg->ds_len = 0;
-	nextpaddr = 0;
+	nextpaddr = *lastpaddrp;
 	bmask = ~(dmat->boundary - 1);	/* note: will be 0 if boundary is 0 */
 
 	/* force at least one segment */
@@ -505,7 +503,7 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 		if (size > buflen)
 			size = buflen;
 		if (map->pagesneeded != 0 && run_filter(dmat, paddr)) {
-			/* 
+			/*
 			 * note: this paddr has the same in-page offset
 			 * as vaddr and thus the paddr above, so the
 			 * size does not have to be recalculated
@@ -516,9 +514,10 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 		/*
 		 * Fill in the bus_dma_segment
 		 */
-		if (sg->ds_len == 0) {
+		if (first) {
 			sg->ds_addr = paddr;
 			sg->ds_len = size;
+			first = 0;
 		} else if (paddr == nextpaddr) {
 			sg->ds_len += size;
 		} else {
@@ -570,7 +569,6 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 		buflen -= size;
 		vaddr += size;
 	} while (buflen > 0);
-
 fail:
 	if (buflen != 0) {
 		kprintf("bus_dmamap_load: Too many segs! buf_len = 0x%lx\n",
@@ -578,9 +576,36 @@ fail:
 		error = EFBIG;
 	}
 
-	(*callback)(callback_arg, dmat->segments, seg, error);
+	*segp = seg;
+	*lastpaddrp = nextpaddr;
 
-	return (0);
+	return error;
+}
+
+/*
+ * Map the buffer buf into bus space using the dmamap map.
+ */
+int
+bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
+		bus_size_t buflen, bus_dmamap_callback_t *callback,
+		void *callback_arg, int flags)
+{
+	vm_paddr_t lastaddr = 0;
+	int error, nsegs = 1;
+
+	if (map != NULL) {
+		flags |= BUS_DMA_WAITOK;
+		map->callback = callback;
+		map->callback_arg = callback_arg;
+	}
+
+	error = _bus_dmamap_load_buffer2(dmat, map,
+			buf, buflen, NULL, flags, &lastaddr, &nsegs, 1);
+	if (error == EINPROGRESS)
+		return error;
+
+	callback(callback_arg, dmat->segments, nsegs, error);
+	return 0;
 }
 
 /*
