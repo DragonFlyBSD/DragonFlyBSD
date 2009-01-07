@@ -726,39 +726,46 @@ bus_dmamap_load_mbuf(bus_dma_tag_t dmat, bus_dmamap_t map,
 {
 	int nsegs, error;
 
-	KASSERT(dmat->lowaddr >= ptoa(Maxmem) || map != NULL,
-		("bus_dmamap_load_mbuf: No support for bounce pages!"));
-	KASSERT(m0->m_flags & M_PKTHDR,
-		("bus_dmamap_load_mbuf: no packet header"));
+	M_ASSERTPKTHDR(m0);
 
-	nsegs = 0;
-	error = 0;
+	/*
+	 * XXX
+	 * Follow old semantics.  Once all of the callers are fixed,
+	 * we should get rid of these internal flag "adjustment".
+	 */
+	flags &= ~BUS_DMA_WAITOK;
+	flags |= BUS_DMA_NOWAIT;
+
 	if (m0->m_pkthdr.len <= dmat->maxsize) {
 		int first = 1;
-		vm_offset_t lastaddr = 0;
+		vm_paddr_t lastaddr = 0;
 		struct mbuf *m;
 
+		nsegs = 1;
+		error = 0;
 		for (m = m0; m != NULL && error == 0; m = m->m_next) {
-			if ( m->m_len == 0 )
+			if (m->m_len == 0)
 				continue;
-			error = _bus_dmamap_load_buffer(dmat,
+
+			error = _bus_dmamap_load_buffer2(dmat, map,
 					m->m_data, m->m_len,
-					curthread, flags, &lastaddr,
+					NULL, flags, &lastaddr,
 					&nsegs, first);
 			first = 0;
 		}
 	} else {
+		nsegs = 0;
 		error = EINVAL;
 	}
 
 	if (error) {
 		/* force "no valid mappings" in callback */
-		(*callback)(callback_arg, dmat->segments, 0, 0, error);
+		callback(callback_arg, dmat->segments, 0, 0, error);
 	} else {
-		(*callback)(callback_arg, dmat->segments,
-			    nsegs+1, m0->m_pkthdr.len, error);
+		callback(callback_arg, dmat->segments, nsegs,
+			 m0->m_pkthdr.len, error);
 	}
-	return (error);
+	return error;
 }
 
 /*
