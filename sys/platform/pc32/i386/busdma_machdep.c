@@ -777,7 +777,7 @@ bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 		    bus_dmamap_callback2_t *callback, void *callback_arg,
 		    int flags)
 {
-	vm_offset_t lastaddr;
+	vm_offset_t lastaddr = 0;
 	int nsegs, error, first, i;
 	bus_size_t resid;
 	struct iovec *iov;
