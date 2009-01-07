@@ -106,7 +106,7 @@ static STAILQ_HEAD(, bus_dmamap) bounce_map_callbacklist;
 static struct bus_dmamap nobounce_dmamap;
 
 static int		alloc_bounce_pages(bus_dma_tag_t, u_int);
-static int		reserve_bounce_pages(bus_dma_tag_t, bus_dmamap_t);
+static int		reserve_bounce_pages(bus_dma_tag_t, bus_dmamap_t, int);
 static bus_addr_t	add_bounce_page(bus_dma_tag_t, bus_dmamap_t,
 			    vm_offset_t, bus_size_t);
 static void		free_bounce_page(bus_dma_tag_t, struct bounce_page *);
@@ -469,16 +469,24 @@ _bus_dmamap_load_buffer2(bus_dma_tag_t dmat,
 	/* Reserve Necessary Bounce Pages */
 	if (map->pagesneeded != 0) {
 		crit_enter();
-	 	if (reserve_bounce_pages(dmat, map) != 0) {
-			/* Queue us for resources */
-			map->dmat = dmat;
-			map->buf = buf;
-			map->buflen = buflen;
+		if (flags & BUS_DMA_NOWAIT) {
+			if (reserve_bounce_pages(dmat, map, 0) != 0) {
+				crit_exit();
+				return (ENOMEM);
+			}
+		} else {
+			if (reserve_bounce_pages(dmat, map, 1) != 0) {
+				/* Queue us for resources */
+				map->dmat = dmat;
+				map->buf = buf;
+				map->buflen = buflen;
 
-			STAILQ_INSERT_TAIL(&bounce_map_waitinglist, map, links);
-			crit_exit();
+				STAILQ_INSERT_TAIL(&bounce_map_waitinglist,
+						   map, links);
+				crit_exit();
 
-			return (EINPROGRESS);
+				return (EINPROGRESS);
+			}
 		}
 		crit_exit();
 	}
@@ -594,7 +602,14 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 	int error, nsegs = 1;
 
 	if (map != NULL) {
+		/*
+		 * XXX
+		 * Follow old semantics.  Once all of the callers are fixed,
+		 * we should get rid of these internal flag "adjustment".
+		 */
+		flags &= ~BUS_DMA_NOWAIT;
 		flags |= BUS_DMA_WAITOK;
+
 		map->callback = callback;
 		map->callback_arg = callback_arg;
 	}
@@ -894,11 +909,13 @@ alloc_bounce_pages(bus_dma_tag_t dmat, u_int numpages)
 }
 
 static int
-reserve_bounce_pages(bus_dma_tag_t dmat, bus_dmamap_t map)
+reserve_bounce_pages(bus_dma_tag_t dmat, bus_dmamap_t map, int commit)
 {
 	int pages;
 
 	pages = MIN(free_bpages, map->pagesneeded - map->pagesreserved);
+	if (!commit && map->pagesneeded > (map->pagesreserved + pages))
+		return (map->pagesneeded - (map->pagesreserved + pages));
 	free_bpages -= pages;
 	reserved_bpages += pages;
 	map->pagesreserved += pages;
@@ -950,7 +967,7 @@ free_bounce_page(bus_dma_tag_t dmat, struct bounce_page *bpage)
 	free_bpages++;
 	active_bpages--;
 	if ((map = STAILQ_FIRST(&bounce_map_waitinglist)) != NULL) {
-		if (reserve_bounce_pages(map->dmat, map) == 0) {
+		if (reserve_bounce_pages(map->dmat, map, 1) == 0) {
 			STAILQ_REMOVE_HEAD(&bounce_map_waitinglist, links);
 			STAILQ_INSERT_TAIL(&bounce_map_callbacklist,
 					   map, links);
