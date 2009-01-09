@@ -42,7 +42,8 @@ struct server_info {
 	int poll_mode;		/* mode of operation */
 	int poll_count;		/* number of polls in current mode */
 	int poll_failed;	/* count of NTP failures */
-	struct sockaddr_in sam; /* udp connection info */
+	struct sockaddr *sam; 	/* udp connection info */
+	struct sockaddr_storage sam_st; 	/* udp connection info (stor) */
 	char *target;		/* target hostname or IP (string) */
 	char *ipstr;		/* IP string */
 
