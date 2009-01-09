@@ -29,32 +29,4 @@ LOADERBIN=	${.OBJDIR}/../${LOADER}/loader_tftp.bin
 LOADERBIN=	${.CURDIR}/../${LOADER}/loader_tftp.bin
 .endif
 
-# BTX components
-.if exists(${.OBJDIR}/../btx)
-BTXDIR=		${.OBJDIR}/../btx
-.else
-BTXDIR=		${.CURDIR}/../btx
-.endif
-BTXLDR=		${BTXDIR}/btxldr/btxldr
-BTXKERN=	${BTXDIR}/btx/btx
-BTXCRT=		${BTXDIR}/lib/crt0.o
-
-${BOOT}: ${LDR} ${LOADER}
-	cat ${LDR} ${LOADER} > ${.TARGET}.tmp
-	dd if=${.TARGET}.tmp of=${.TARGET} obs=2k conv=osync
-	rm ${.TARGET}.tmp
-
-${LOADER}: ${LOADERBIN} ${BTXLDR} ${BTXKERN} ${BTXCRT}
-	btxld -v -f aout -e ${LOADER_ADDRESS} -o ${.TARGET} -l ${BTXLDR} \
-	    -b ${BTXKERN} ${LOADERBIN}
-
-${LDR}: ${LDR}.o
-	${LD} -N -e start -Ttext ${ORG} -o ${LDR}.out ${LDR}.o
-	objcopy -S -O binary ${LDR}.out ${.TARGET}
-
-${LDR}.o: ${LDR}.S
-	${CC} ${CFLAGS} ${AFLAGS} ${.IMPSRC} -o ${LDR}.o -c
-
-CLEANFILES+= ${LDR} ${LDR}.out ${LDR}.o ${BOOT}.tmp ${LOADER}
-
-.include <bsd.prog.mk>
+.include "${.CURDIR}/../pxeldr/Makefile"

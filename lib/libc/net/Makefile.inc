@@ -28,6 +28,15 @@ SRCS+=	nscache.c nscachedcli.c
 
 CFLAGS+=-DINET6 -I${.OBJDIR}
 
+# Temporary hack to fix 3rd party programs
+CFLAGS+=-Dgethostbyaddr_r=GETHOSTBYADDR_R -Dgethostbyname_r=GETHOSTBYNAME_R \
+	-Dgethostbyname2_r=GETHOSTBYNAME2_R -Dgethostent_r=GETHOSTENT_R \
+	-Dgetnetbyaddr_r=GETNETBYADDR_R -Dgetnetbyname_r=GETNETBYNAME_R \
+	-Dgetnetent_r=GETNETENT_R -Dgetprotobyname_r=GETPROTOBYNAME_R \
+	-Dgetprotobynumber_r=GETPROTOBYNUMBER_R -Dgetprotoent_r=GETPROTOENT_R \
+	-Dgetservbyname_r=GETSERVBYNAME_R -Dgetservbyport_r=GETSERVBYPORT_R \
+	-Dgetservent_r=GETSERVENT_R
+
 YFLAGS+=-p_nsyy
 LFLAGS+=-P_nsyy
 

@@ -7,6 +7,9 @@ STRIP=
 BINDIR?=	/boot
 BINMODE=	444
 
+NXCFLAGS=
+NXLDFLAGS=
+
 .PATH: ${.CURDIR}/..
 
 # The default set of flags compiled into boot0.  This enables update (writing

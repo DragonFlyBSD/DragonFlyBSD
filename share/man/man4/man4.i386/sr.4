@@ -38,15 +38,14 @@
 .Nm sr
 .Nd synchronous RISCom/N2 / WANic 400/405 device driver
 .Sh SYNOPSIS
-.Cd "device sr0 at isa? port 0x300 irq 10 iomem 0xd0000"
-.Cd "device sr1 at isa? port 0x310 irq 11 flags 0x1 iomem 0xd0000"
+.Cd "device sr"
 .Pp
 .Cd "pseudo-device sppp"
 .Sh DESCRIPTION
 The
 .Nm
-driver supports the RISCom/N2 ISA cards and the WANic 400/405 PCI cards
-that is based on the HD64570 chip.
+driver supports the WANic 400/405 PCI cards
+that are based on the HD64570 chip.
 .Pp
 The standard
 .Dx
@@ -109,12 +108,11 @@ The node will have the same name as the device with ``sync_''
 prepended, e.g.,
 .Dv sync_sr0 .
 .Sh FILES
-.Bl -tag -width /sys/platform/pc32/isa/ic/hd64570.h -compact
+.Bl -tag -width ".Pa /sys/dev/netif/sr/if_sr_pci.c" -compact
 .It Pa /sys/dev/netif/sr/if_sr.c
 .It Pa /sys/dev/netif/sr/if_sr.h
 .It Pa /sys/dev/netif/sr/if_sr_pci.c
 .It Pa /sys/dev/netif/sr/if_srregs.h
-.It Pa /sys/platform/pc32/isa/ic/hd64570.h
 .El
 .Sh DIAGNOSTICS
 .Bl -diag
@@ -124,7 +122,6 @@ Choose a different one.
 .El
 .Sh SEE ALSO
 .Xr ar 4 ,
-.Xr cx 4 ,
 .Xr netgraph 4 ,
 .Xr netintro 4 ,
 .Xr ifconfig 8

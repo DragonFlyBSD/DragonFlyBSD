@@ -210,47 +210,73 @@ void		endprotoent(void);
 void		endservent(void);
 void		freehostent(struct hostent *);
 struct hostent	*gethostbyaddr(const void *, socklen_t, int);
+#if 0
 int		gethostbyaddr_r(const void *, socklen_t, int, struct hostent *,
 				char *, size_t, struct hostent **, int *);
+#endif
 struct hostent	*gethostbyname(const char *);
+#if 0
 int		gethostbyname_r(const char *, struct hostent *, char *, size_t,
 				struct hostent **, int *);
+#endif
 struct hostent	*gethostbyname2(const char *, int);
+#if 0
 int		gethostbyname2_r(const char *, int, struct hostent *, char *,
 				 size_t, struct hostent **, int *);
+#endif
 struct hostent	*gethostent(void);
+#if 0
 int		gethostent_r(struct hostent *, char *, size_t,
 			     struct hostent **, int *);
+#endif
 struct hostent	*getipnodebyaddr(const void *, size_t, int, int *);
 struct hostent	*getipnodebyname(const char *, int, int, int *);
 struct netent	*getnetbyaddr(uint32_t, int);
+#if 0
 int		getnetbyaddr_r(uint32_t, int, struct netent *, char *, size_t,
 			       struct netent**, int *);
+#endif
 struct netent	*getnetbyname(const char *);
+#if 0
 int		getnetbyname_r(const char *, struct netent *, char *, size_t,
 			       struct netent **, int *);
+#endif
 struct netent	*getnetent(void);
+#if 0
 int		getnetent_r(struct netent *, char *, size_t, struct netent **,
 			    int *);
+#endif
 int		getnetgrent(char **, char **, char **);
 struct protoent	*getprotobyname(const char *);
+#if 0
 int		getprotobyname_r(const char *, struct protoent *, char *,
 				 size_t, struct protoent **);
+#endif
 struct protoent	*getprotobynumber(int);
+#if 0
 int		getprotobynumber_r(int, struct protoent *, char *, size_t,
 				   struct protoent **);
+#endif
 struct protoent	*getprotoent(void);
+#if 0
 int		getprotoent_r(struct protoent *, char *, size_t,
 			      struct protoent **);
+#endif
 struct servent	*getservbyname(const char *, const char *);
+#if 0
 int		getservbyname_r(const char *, const char *, struct servent *,
 				char *, size_t, struct servent **);
+#endif
 struct servent	*getservbyport(int, const char *);
+#if 0
 int		getservbyport_r(int, const char *, struct servent *, char *,
 				size_t, struct servent **);
+#endif
 struct servent	*getservent(void);
+#if 0
 int		getservent_r(struct servent *, char *, size_t,
 			     struct servent **);
+#endif
 void		herror(const char *);
 __const char	*hstrerror(int);
 int		innetgr(const char *, const char *, const char *, const char *);

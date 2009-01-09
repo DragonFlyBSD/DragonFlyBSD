@@ -598,10 +598,13 @@ ale_attach(device_t dev)
 	ifq_set_maxlen(&ifp->if_snd, ALE_TX_RING_CNT - 1);
 	ifq_set_ready(&ifp->if_snd);
 
-	ifp->if_capabilities = IFCAP_HWCSUM |
+	ifp->if_capabilities = IFCAP_RXCSUM |
 			       IFCAP_VLAN_MTU |
 			       IFCAP_VLAN_HWTAGGING;
+#ifdef notyet
+	ifp->if_capabilities |= IFCAP_TXCSUM;
 	ifp->if_hwassist = ALE_CSUM_FEATURES;
+#endif
 	ifp->if_capenable = ifp->if_capabilities;
 
 	/* Set up MII bus. */

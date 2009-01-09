@@ -20,7 +20,7 @@ WITH_INSTALLER=
 # targes may be specified which set make variables which enhance
 # the build in various ways.
 #
-gui installer:
+gui installer img:
 
 warning:
 	@echo "WARNING: The installer_* targets are now obsolete, please"
@@ -34,6 +34,9 @@ WITH_GUI=
 .endif
 .if make(installer)
 WITH_INSTALLER=
+.endif
+.if make(img)
+WITH_IMG=
 .endif
 
 #########################################################################
@@ -95,6 +98,7 @@ ROOTSKELS+=		${.CURDIR}/installer
 
 .if defined(WITH_GUI)
 ISOFILE?=		${ISODIR}/dfly-gui.iso
+IMGFILE?=		${ISODIR}/dfly-gui.img
 PKGSRC_PACKAGES+=	modular-xorg-apps \
 			modular-xorg-drivers \
 			modular-xorg-fonts \
@@ -127,6 +131,10 @@ ROOTSKELS+=		${.CURDIR}/gui
 .endif
 
 ISOFILE ?= ${ISODIR}/dfly.iso
+IMGFILE ?= ${ISODIR}/dfly.img
+
+IMGMNT ?= ${ISOROOT}/mnt
+IMGUSBDEV ?= /dev/da0
 
 # note: we use the '${NRLOBJDIR}/nrelease' construct, that is we add
 # the additional '/nrelease' manually, as a safety measure.
@@ -138,12 +146,13 @@ NRLOBJDIR?= /usr/obj
 #########################################################################
 
 release:	check clean buildworld1 buildkernel1 \
-		buildiso syssrcs customizeiso mklocatedb mkiso
+		buildiso syssrcs customizeiso mklocatedb mkiso mkimg
 
 quickrel:	check clean buildworld2 buildkernel2 \
-		buildiso syssrcs customizeiso mklocatedb mkiso
+		buildiso syssrcs customizeiso mklocatedb mkiso mkimg
 
-realquickrel:	check clean buildiso syssrcs customizeiso mklocatedb mkiso
+realquickrel:	check clean buildiso syssrcs customizeiso mklocatedb mkiso \
+		mkimg
 
 quick:		quickrel
 
@@ -280,16 +289,19 @@ customizeiso:
 		     periodic/monthly/Makefile
 	cp -R ${.CURDIR}/../etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
 .endfor
+	# There seems to be no reliable way to install a package to a target
+	# directory prefix so we mount_null our package directory into the
+	# ISO root and do the install chrooted.
+	#
+	mkdir ${ISOROOT}/tmp/packages
+	mount_null -o ro ${PKGSRC_PKG_PATH} ${ISOROOT}/tmp/packages
 .for PKG in ${PKGSRC_PACKAGES}
-	${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -I -K ${ISOROOT}${PKGSRC_DB} -p ${ISOROOT}${PKGSRC_PREFIX} ${PKG}
+	${ENVCMD} PKG_PATH=/tmp/packages chroot ${ISOROOT} ${PKGBIN_PKG_ADD} ${PKG}
 .endfor
+	umount ${ISOROOT}/tmp/packages
+	rmdir ${ISOROOT}/tmp/packages
 	find ${ISOROOT}${PKGSRC_DB} -name +CONTENTS -type f -exec sed -i '' -e 's,${ISOROOT},,' -- {} \;
-	${PKGBIN_PKG_ADMIN} -K ${ISOROOT}${PKGSRC_DB} rebuild
-.if defined(WITH_GUI)
-.for FONT in 75dpi 100dpi misc Type1 TTF
-	chroot ${ISOROOT} /usr/pkg/bin/mkfontdir /usr/pkg/lib/X11/fonts/${FONT}
-.endfor
-.endif
+	chroot ${ISOROOT} ${PKGBIN_PKG_ADMIN} rebuild
 	makewhatis ${ISOROOT}/usr/local/man
 	makewhatis ${ISOROOT}/usr/pkg/man
 
@@ -304,7 +316,46 @@ mkiso:
 	( cd ${ISOROOT}; ${PKGBIN_MKISOFS} -b boot/cdboot -no-emul-boot \
 		-R -J -V DragonFly -o ${ISOFILE} . )
 
+
+mkimg:
+.if defined(WITH_IMG)
+	if [ ! -d ${IMGMNT} ]; then mkdir -p ${IMGMNT}; fi
+
+	echo "determine required image size" > /dev/null;		\
+	sz=`du -ck ${ISOROOT} | tail -n 1 | cut -f 1`;			\
+	echo "add 10 MB more space as required" > /dev/null;		\
+	sz=`bc -e "($${sz}) / 1024 + 10" -equit`;			\
+	dd if=/dev/zero of=${IMGFILE} bs=1m count=$${sz};		\
+	fdisk -IB -p ${IMGFILE};					\
+	echo "determine free vn device" > /dev/null;			\
+	vn=`vnconfig -l | grep "not in use" | head -n 1 | cut -f 1 -d:`; \
+	vnconfig -e -s labels $${vn} ${IMGFILE}; 			\
+	echo "write standard disklabel" > /dev/null;			\
+	disklabel -w -r $${vn}s1 auto;					\
+	echo "read disklabel back" > /dev/null;				\
+	disklabel -r $${vn}s1 > ${IMGFILE}.label;			\
+	echo "determine number of sectors of whole disk" > /dev/null; 	\
+	secs=`tail -n 1 ${IMGFILE}.label | cut -f 3 -w`;		\
+	echo "and add a: partition" > /dev/null;			\
+	echo "  a:  $${secs} 0 4.2BSD" >> ${IMGFILE}.label;		\
+	echo "write modified disklabel back" > /dev/null;		\
+	disklabel -R -r $${vn}s1 ${IMGFILE}.label;			\
+	rm ${IMGFILE}.label;						\
+	echo "write bootsector" >  /dev/null;				\
+	disklabel -B $${vn}s1;						\
+	newfs /dev/$${vn}s1a;						\
+	mount /dev/$${vn}s1a ${IMGMNT};					\
+	cpdup -vvv ${ISOROOT} ${IMGMNT};				\
+	echo "fix /etc/fstab" > /dev/null;				\
+	echo "${IMGUSBDEV}s1a / ufs rw 0 0" > ${IMGMNT}/etc/fstab; 	\
+	echo "proc /proc procfs rw 0 0" >> ${IMGMNT}/etc/fstab; 	\
+	umount ${IMGMNT};						\
+	vnconfig -u $${vn};						\
+	rmdir ${IMGMNT}
+.endif
+
 clean:
+	-umount ${ISOROOT}/tmp/packages
 	if [ -d ${ISOROOT} ]; then chflags -R noschg ${ISOROOT}; fi
 	if [ -d ${ISOROOT} ]; then rm -rf ${ISOROOT}/*; fi
 	if [ -d ${NRLOBJDIR}/nrelease ]; then rm -rf ${NRLOBJDIR}/nrelease; fi
@@ -346,7 +397,7 @@ pkgsrc_cdrecord:
 .PHONY: installer_fetch installer
 .PHONY: quick realquick
 .PHONY: installer_realquickrel check buildworld1 buildworld2
-.PHONY: buildkernel1 buildkernel2 buildiso customizeiso mklocatedb mkiso
+.PHONY: buildkernel1 buildkernel2 buildiso customizeiso mklocatedb mkiso mkimg
 .PHONY: clean realclean fetch
 
 .include <bsd.prog.mk>

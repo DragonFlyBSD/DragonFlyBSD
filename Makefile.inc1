@@ -977,5 +977,11 @@ tmake:
 tmakeenv:
 	@echo '${TMAKEENV} /bin/sh'
 
+xmake:
+	@echo '${XMAKEENV} ${MAKE} -m ${.CURDIR}/share/mk ${XMAKE_ARGS}'
+
+xmakeenv:
+	@echo '${XMAKEENV} /bin/sh'
+
 .include <bsd.subdir.mk>
 

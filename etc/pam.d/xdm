@@ -1,11 +1,23 @@
 #
+# $FreeBSD: src/etc/pam.d/xdm,v 1.11 2007/06/10 18:57:20 yar Exp $
 # $DragonFly: src/etc/pam.d/xdm,v 1.1 2005/07/22 18:20:43 joerg Exp $
 #
 # PAM configuration for the "xdm" service
 #
 
-account		required	pam_unix.so			try_first_pass
-session		required	pam_deny.so
+# auth
+#auth		sufficient	pam_krb5.so		no_warn try_first_pass
+#auth		sufficient	pam_ssh.so		no_warn try_first_pass
+auth		required	pam_unix.so		no_warn try_first_pass
+
+# account
+account		required	pam_nologin.so
+#account 	required	pam_krb5.so
+account		required	pam_unix.so
+
+# session
+#session 	required	pam_ssh.so		want_agent
+session		required	pam_lastlog.so		no_fail
+
+# password
 password	required	pam_deny.so
-auth		required	pam_unix.so
-#auth		sufficient	pam_krb5.so			try_first_pass

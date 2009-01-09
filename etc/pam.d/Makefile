@@ -1,19 +1,22 @@
 NOOBJ=
 
 FILES=	README \
+	atrun \
+	cron \
 	ftpd \
 	gdm \
 	imap \
+	kde \
 	login \
 	other \
 	passwd \
 	pop3 \
+	rsh \
 	sshd \
 	su \
 	system \
 	telnetd \
-	xdm \
-	xserver
+	xdm
 
 FILESDIR= /etc/pam.d
 FILESMODE= 644

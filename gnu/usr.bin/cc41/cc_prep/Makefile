@@ -3,7 +3,6 @@
 .include "../Makefile.inc"
 .include "../Makefile.langs"
 
-PATCHES!=	echo ${.CURDIR}/patches/*.patch
 CONTRIBDIR=	${GCCDIR}/gcc
 
 BASEVER_s!=	cat ${CONTRIBDIR}/BASE-VER
@@ -81,17 +80,3 @@ CLEANFILES+=	options.c options.h optionlist
 
 # keep this order!
 depend: version.c configargs.h bconfig.h tm.h tm_p.h options.h options.c
-
-# we don't use SRCS, so we can't use the normal bsd.dep.mk code
-.for _PSRC in ${PATCHES:M*.patch}
-.for _PC in ${_PSRC:T:S/.patch$//:S|,|/|g}
-
-${_PC}: ${CONTRIBDIR}/${_PC} ${_PSRC}
-	mkdir -p ${.TARGET:H}
-	patch -o ${.TARGET} -i ${.ALLSRC:M*.patch} ${CONTRIBDIR}/${.TARGET}
-
-CLEANFILES:=	${CLEANFILES} ${_PC}
-
-depend: ${_PC}
-.endfor
-.endfor

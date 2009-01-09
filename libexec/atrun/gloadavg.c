@@ -22,19 +22,13 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/libexec/atrun/gloadavg.c,v 1.5 1999/08/28 00:09:12 peter Exp $
+ * $FreeBSD: src/libexec/atrun/gloadavg.c,v 1.6 2007/06/15 10:12:37 yar Exp $
  * $DragonFly: src/libexec/atrun/gloadavg.c,v 1.3 2004/02/03 23:24:50 rob Exp $
  */
 
-#ifndef __DragonFly__
-#define _POSIX_SOURCE 1
-
 /* System Headers */
 
-#include <stdio.h>
-#else
 #include <stdlib.h>
-#endif
 
 /* Local headers */
 
@@ -42,7 +36,7 @@
 
 /* Global functions */
 
-void perr(const char *a);
+void perr(const char *fmt, ...);
 
 double
 gloadavg(void)
@@ -51,20 +45,7 @@ gloadavg(void)
  */
 {
     double result;
-#ifndef __DragonFly__
-    FILE *fp;
-    
-    if((fp=fopen(PROC_DIR "loadavg","r")) == NULL)
-	result = -1.0;
-    else
-    {
-	if(fscanf(fp,"%lf",&result) != 1)
-	    result = -1.0;
-	fclose(fp);
-    }
-#else
     if (getloadavg(&result, 1) != 1)
 	    perr("error in getloadavg");
-#endif
     return result;
 }

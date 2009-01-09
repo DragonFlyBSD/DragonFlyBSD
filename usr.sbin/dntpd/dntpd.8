@@ -32,7 +32,7 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd January 19, 2008
+.Dd January 6, 2009
 .Dt DNTPD 8
 .Os
 .Sh NAME
@@ -41,7 +41,7 @@
 .Sh SYNOPSIS
 .Nm
 .Bk -words
-.Op Fl dnqstFSQ
+.Op Fl 46dnqstFSQ
 .Op Fl f Ar config_file
 .Op Fl i Ar insane_deviation
 .Op Fl l Ar log_level
@@ -81,6 +81,14 @@ no new daemon will be started.
 .Pp
 The following command line options are available:
 .Bl -tag -width Fl
+.It Fl 4
+Forces
+.Nm
+to use only IPv4 addresses.
+.It Fl 6
+Forces
+.Nm
+to use only IPv6 addresses.
 .It Fl d
 Run in debug mode.
 Implies

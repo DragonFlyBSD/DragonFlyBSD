@@ -12,6 +12,7 @@ SUBDIR=	pam_chroot \
 	pam_nologin \
 	pam_opie \
 	pam_opieaccess \
+	pam_passwdqc \
 	pam_permit \
 	pam_radius \
 	pam_rhosts \

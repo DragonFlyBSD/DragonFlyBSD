@@ -733,6 +733,7 @@ static const char *link_ssp_spec = LINK_SSP_SPEC;
 static const char *asm_spec = ASM_SPEC;
 static const char *asm_final_spec = ASM_FINAL_SPEC;
 static const char *link_spec = LINK_SPEC;
+static const char *pre_lib_spec = PRE_LIB_SPEC;
 static const char *lib_spec = LIB_SPEC;
 static const char *mfwrap_spec = MFWRAP_SPEC;
 static const char *mflib_spec = MFLIB_SPEC;
@@ -1441,30 +1442,10 @@ static const char *gcc_libexec_prefix;
 #define STANDARD_STARTFILE_PREFIX_2 "/usr/lib/"
 #endif
 
-#ifdef CROSS_COMPILE  /* Don't use these prefixes for a cross compiler.  */
-#undef MD_EXEC_PREFIX
-#undef MD_STARTFILE_PREFIX
-#undef MD_STARTFILE_PREFIX_1
-#endif
-
-/* If no prefixes defined, use the null string, which will disable them.  */
-#ifndef MD_EXEC_PREFIX
-#define MD_EXEC_PREFIX ""
-#endif
-#ifndef MD_STARTFILE_PREFIX
-#define MD_STARTFILE_PREFIX ""
-#endif
-#ifndef MD_STARTFILE_PREFIX_1
-#define MD_STARTFILE_PREFIX_1 ""
-#endif
-
 static const char *const standard_exec_prefix = STANDARD_EXEC_PREFIX;
 static const char *const standard_exec_prefix_1 = "/usr/libexec/gcc/";
 static const char *const standard_exec_prefix_2 = "/usr/lib/gcc/";
-static const char *md_exec_prefix = MD_EXEC_PREFIX;
 
-static const char *md_startfile_prefix = MD_STARTFILE_PREFIX;
-static const char *md_startfile_prefix_1 = MD_STARTFILE_PREFIX_1;
 static const char *const standard_startfile_prefix = STANDARD_STARTFILE_PREFIX;
 static const char *const standard_startfile_prefix_1
   = STANDARD_STARTFILE_PREFIX_1;
@@ -1530,6 +1511,7 @@ static struct spec_list static_specs[] =
   INIT_STATIC_SPEC ("link_ssp",			&link_ssp_spec),
   INIT_STATIC_SPEC ("endfile",			&endfile_spec),
   INIT_STATIC_SPEC ("link",			&link_spec),
+  INIT_STATIC_SPEC ("pre_lib",			&pre_lib_spec),
   INIT_STATIC_SPEC ("lib",			&lib_spec),
   INIT_STATIC_SPEC ("mfwrap",			&mfwrap_spec),
   INIT_STATIC_SPEC ("mflib",			&mflib_spec),
@@ -1546,9 +1528,6 @@ static struct spec_list static_specs[] =
   INIT_STATIC_SPEC ("multilib_options",		&multilib_options),
   INIT_STATIC_SPEC ("linker",			&linker_name_spec),
   INIT_STATIC_SPEC ("link_libgcc",		&link_libgcc_spec),
-  INIT_STATIC_SPEC ("md_exec_prefix",		&md_exec_prefix),
-  INIT_STATIC_SPEC ("md_startfile_prefix",	&md_startfile_prefix),
-  INIT_STATIC_SPEC ("md_startfile_prefix_1",	&md_startfile_prefix_1),
   INIT_STATIC_SPEC ("startfile_prefix_spec",	&startfile_prefix_spec),
   INIT_STATIC_SPEC ("sysroot_spec",             &sysroot_spec),
   INIT_STATIC_SPEC ("sysroot_suffix_spec",	&sysroot_suffix_spec),
@@ -3278,8 +3257,6 @@ process_command (int argc, const char **argv)
       set_std_prefix (gcc_exec_prefix, len);
       add_prefix (&exec_prefixes, gcc_libexec_prefix, "GCC",
 		  PREFIX_PRIORITY_LAST, 0, 0);
-      add_prefix (&startfile_prefixes, gcc_exec_prefix, "GCC",
-		  PREFIX_PRIORITY_LAST, 0, 0);
     }
 
   /* COMPILER_PATH and LIBRARY_PATH have values
@@ -3827,11 +3804,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 	      PREFIX_PRIORITY_LAST, 2, 0);
 #endif
 
-  add_prefix (&startfile_prefixes, standard_exec_prefix, "BINUTILS",
-	      PREFIX_PRIORITY_LAST, 1, 0);
-  add_prefix (&startfile_prefixes, standard_exec_prefix_2, "BINUTILS",
-	      PREFIX_PRIORITY_LAST, 1, 0);
-
   tooldir_prefix = concat (tooldir_base_prefix, spec_machine,
 			   dir_separator_str, NULL);
 
@@ -3854,23 +3826,12 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 		      concat (gcc_exec_tooldir_prefix, "bin",
 			      dir_separator_str, NULL),
 		      NULL, PREFIX_PRIORITY_LAST, 0, 0);
-	  add_prefix (&startfile_prefixes,
-		      concat (gcc_exec_tooldir_prefix, "lib",
-			      dir_separator_str, NULL),
-		      NULL, PREFIX_PRIORITY_LAST, 0, 1);
 	}
 
       tooldir_prefix = concat (standard_exec_prefix, spec_machine,
 			       dir_separator_str, spec_version,
 			       dir_separator_str, tooldir_prefix, NULL);
     }
-
-  add_prefix (&exec_prefixes,
-	      concat (tooldir_prefix, "bin", dir_separator_str, NULL),
-	      "BINUTILS", PREFIX_PRIORITY_LAST, 0, 0);
-  add_prefix (&startfile_prefixes,
-	      concat (tooldir_prefix, "lib", dir_separator_str, NULL),
-	      "BINUTILS", PREFIX_PRIORITY_LAST, 0, 1);
 
 #if defined(TARGET_SYSTEM_ROOT_RELOCATABLE) && !defined(VMS)
   /* If the normal TARGET_SYSTEM_ROOT is inside of $exec_prefix,
@@ -6138,10 +6099,6 @@ main (int argc, const char **argv)
 
   /* Read specs from a file if there is one.  */
 
-  machine_suffix = concat (spec_machine, dir_separator_str,
-			   spec_version, dir_separator_str, NULL);
-  just_machine_suffix = concat (spec_machine, dir_separator_str, NULL);
-
   specs_file = find_a_file (&startfile_prefixes, "specs", R_OK, 0);
   /* Read the specs file unless it is a default one.  */
   if (specs_file != 0 && strcmp (specs_file, "specs"))
@@ -6151,11 +6108,9 @@ main (int argc, const char **argv)
 
   /* We need to check standard_exec_prefix/just_machine_suffix/specs
      for any override of as, ld and libraries.  */
-  specs_file = alloca (strlen (standard_exec_prefix)
-		       + strlen (just_machine_suffix) + sizeof ("specs"));
+  specs_file = alloca (strlen (standard_exec_prefix) + sizeof ("specs"));
 
   strcpy (specs_file, standard_exec_prefix);
-  strcat (specs_file, just_machine_suffix);
   strcat (specs_file, "specs");
   if (access (specs_file, R_OK) == 0)
     read_specs (specs_file, TRUE);
@@ -6171,17 +6126,6 @@ main (int argc, const char **argv)
 
   for (i = 0; i < ARRAY_SIZE (driver_self_specs); i++)
     do_self_spec (driver_self_specs[i]);
-
-  /* If not cross-compiling, look for executables in the standard
-     places.  */
-  if (*cross_compile == '0')
-    {
-      if (*md_exec_prefix)
-	{
-	  add_prefix (&exec_prefixes, md_exec_prefix, "GCC",
-		      PREFIX_PRIORITY_LAST, 0, 0);
-	}
-    }
 
   /* Process sysroot_suffix_spec.  */
   if (*sysroot_suffix_spec != 0
@@ -6228,49 +6172,12 @@ main (int argc, const char **argv)
     }
   /* We should eventually get rid of all these and stick to
      startfile_prefix_spec exclusively.  */
-  else if (*cross_compile == '0' || target_system_root)
+  else
     {
-      if (*md_startfile_prefix)
-	add_sysrooted_prefix (&startfile_prefixes, md_startfile_prefix,
-			      "GCC", PREFIX_PRIORITY_LAST, 0, 1);
-
-      if (*md_startfile_prefix_1)
-	add_sysrooted_prefix (&startfile_prefixes, md_startfile_prefix_1,
-			      "GCC", PREFIX_PRIORITY_LAST, 0, 1);
-
-      /* If standard_startfile_prefix is relative, base it on
-	 standard_exec_prefix.  This lets us move the installed tree
-	 as a unit.  If GCC_EXEC_PREFIX is defined, base
-	 standard_startfile_prefix on that as well.
-
-         If the prefix is relative, only search it for native compilers;
-         otherwise we will search a directory containing host libraries.  */
-      if (IS_ABSOLUTE_PATH (standard_startfile_prefix))
-	add_sysrooted_prefix (&startfile_prefixes,
-			      standard_startfile_prefix, "BINUTILS",
-			      PREFIX_PRIORITY_LAST, 0, 1);
-      else if (*cross_compile == '0')
-	{
-	  if (gcc_exec_prefix)
-	    add_prefix (&startfile_prefixes,
-			concat (gcc_exec_prefix, machine_suffix,
-				standard_startfile_prefix, NULL),
-			NULL, PREFIX_PRIORITY_LAST, 0, 1);
-	  add_prefix (&startfile_prefixes,
-		      concat (standard_exec_prefix,
-			      machine_suffix,
-			      standard_startfile_prefix, NULL),
-		      NULL, PREFIX_PRIORITY_LAST, 0, 1);
-	}
-
-      if (*standard_startfile_prefix_1)
- 	add_sysrooted_prefix (&startfile_prefixes,
-			      standard_startfile_prefix_1, "BINUTILS",
-			      PREFIX_PRIORITY_LAST, 0, 1);
-      if (*standard_startfile_prefix_2)
-	add_sysrooted_prefix (&startfile_prefixes,
-			      standard_startfile_prefix_2, "BINUTILS",
-			      PREFIX_PRIORITY_LAST, 0, 1);
+      add_prefix (&startfile_prefixes, standard_startfile_prefix,
+			    "GCC", PREFIX_PRIORITY_LAST, 0, 1);
+      add_prefix (&startfile_prefixes, standard_startfile_prefix_1,
+			    "GCC", PREFIX_PRIORITY_LAST, 0, 1);
     }
 
   /* Process any user specified specs in the order given on the command
@@ -6306,7 +6213,7 @@ main (int argc, const char **argv)
 
   if (print_search_dirs)
     {
-      printf (_("install: %s%s\n"), standard_exec_prefix, machine_suffix);
+      printf (_("install: %s\n"), standard_exec_prefix);
       printf (_("programs: %s\n"), build_search_list (&exec_prefixes, "", 0));
       printf (_("libraries: %s\n"), build_search_list (&startfile_prefixes, "", 0));
       return (0);

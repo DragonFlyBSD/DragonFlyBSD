@@ -220,6 +220,7 @@ modules-install:
 	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules install
 
 modules-reinstall:
+	mkdir -p ${DESTDIR}/boot/modules # Ensure that the modules directory exists!
 	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules install
 
 config.o:

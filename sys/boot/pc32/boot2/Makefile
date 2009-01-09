@@ -53,6 +53,10 @@ CFLAGS=	-elf -ffreestanding -Os -fno-builtin \
 	-Wpointer-arith -Wshadow -Wstrict-prototypes -Wwrite-strings \
 	-D__BOOT2_HACK
 
+# Tell gcc that it shouldn't do fancy optimizations for newer processors.
+# Otherwise it winds up creating larger code and we won't be able to fit boot2.
+CFLAGS+= -march=i386
+
 # Unfortunately, unit-at-a-time creates issues as yet
 # not tracked down, in boot2, so we have to turn it off.  Note that
 # the problem has been narrowed down to the 'boot2' code.  The /boot/loader
@@ -135,7 +139,7 @@ CLEANFILES+=	boot1$s boot1$s.out boot1$s.o \
 .endfor
 
 sio.o: sio.S
-	${CC} -DSIOPRT=${BOOT_COMCONSOLE_PORT} -DSIOFMT=${B2SIOFMT} \
+	${CC} ${CFLAGS} -DSIOPRT=${BOOT_COMCONSOLE_PORT} -DSIOFMT=${B2SIOFMT} \
 		-DSIOSPD=${BOOT_COMCONSOLE_SPEED} \
 		${.ALLSRC} -o ${.TARGET} -c
 
@@ -154,14 +158,22 @@ install:
 .include <bsd.prog.mk>
 
 .if defined(REALLY_AMD64)
+# For amd64, we need to fake up a complete machine/ tree
+# so that types for -m32 appear correctly.
+
 boot2.o: machine
 
-beforedepend ${OBJS}: machine
+beforedepend ${OBJS}: machine cpu
 
-machine:
-	${LN} -sf ${.CURDIR}/../../../i386/include machine
+machine::
+	mkdir -p machine
+	${LN} -sf ${.CURDIR}/../../../cpu/i386/include/* machine
+	${LN} -sf ${.CURDIR}/../../../platform/pc32/include/* machine
 
-CLEANFILES+=	machine
+cpu::
+	${LN} -sf ${.CURDIR}/../../../cpu/i386/include cpu
+
+CLEANDIRS+=	machine cpu
 .endif
 
 CLEANFILES+=	bootasmdef.nx

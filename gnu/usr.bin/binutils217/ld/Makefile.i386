@@ -12,13 +12,16 @@ _i386_path=	${USRDATA_PREFIX}/usr/lib
 _i386_path=	/usr/cross/i386-dragonfly/usr/lib
 .endif
 EMS+=		${NATIVE_EMULATION}
-LDSCRIPTS+=	${NATIVE_EMULATION}.x ${NATIVE_EMULATION}.xbn ${NATIVE_EMULATION}.xn ${NATIVE_EMULATION}.xr \
-		${NATIVE_EMULATION}.xs ${NATIVE_EMULATION}.xu ${NATIVE_EMULATION}.xc ${NATIVE_EMULATION}.xsc
+.for ext in ${ELF_SCR_EXT}
+LDSCRIPTS_${NATIVE_EMULATION}+=	${NATIVE_EMULATION}.${ext}
+.endfor
+LDSCRIPTS+=	${LDSCRIPTS_${NATIVE_EMULATION}}
 SRCS+=	e${NATIVE_EMULATION}.c
 CLEANFILES+=	e${NATIVE_EMULATION}.c
 
-e${NATIVE_EMULATION}.c: emulparams/${NATIVE_EMULATION}.sh emultempl/elf32.em \
-    scripttempl/elf.sc genscripts.sh stringify.sed
+e${NATIVE_EMULATION}.c ${LDSCRIPTS_${NATIVE_EMULATION}}: \
+    emulparams/${NATIVE_EMULATION}.sh emultempl/elf32.em \
+    scripttempl/elf.sc genscripts.sh stringify.sed sort-sections.sh
 	sh ${SRCDIR}/ld/genscripts.sh \
 		${SRCDIR:Q}/ld \
 		${_i386_path:Q} \
@@ -31,4 +34,5 @@ e${NATIVE_EMULATION}.c: emulparams/${NATIVE_EMULATION}.sh emultempl/elf32.em \
 		"" \
 		no \
 		${NATIVE_EMULATION:Q} \
-		${TARGET_TUPLE:Q}
+		${TARGET_TUPLE:Q} \
+		sort-sections

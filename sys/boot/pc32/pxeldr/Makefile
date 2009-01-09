@@ -4,26 +4,26 @@
 ORG=		0x7c00
 
 LDR=		pxeldr
-BOOT=		pxeboot
-LOADER=		loader
+BOOT?=		pxeboot
+LOADER?=	loader
 PROG=		${BOOT}
 MAN=		${BOOT}.8
 STRIP=
 BINDIR?=	/boot
 
 .if defined(BOOT_PXELDR_PROBE_KEYBOARD)
-AFLAGS+=	-DPROBE_KEYBOARD
+CFLAGS+=	-DPROBE_KEYBOARD
 .endif
 
 .if defined(BOOT_PXELDR_ALWAYS_SERIAL)
-AFLAGS+=	-DALWAYS_SERIAL
+CFLAGS+=	-DALWAYS_SERIAL
 .endif
 
 
 .if exists(${.OBJDIR}/../loader)
-LOADERBIN=	${.OBJDIR}/../loader/loader.bin
+LOADERBIN?=	${.OBJDIR}/../loader/loader.bin
 .else
-LOADERBIN=	${.CURDIR}/../loader/loader.bin
+LOADERBIN?=	${.CURDIR}/../loader/loader.bin
 .endif
 
 # BTX components
@@ -50,7 +50,7 @@ ${LDR}: ${LDR}.o
 	objcopy -S -O binary ${LDR}.out ${.TARGET}
 
 ${LDR}.o: ${LDR}.S
-	${CC} ${CFLAGS} ${AFLAGS} ${.IMPSRC} -o ${LDR}.o -c
+	${CC} ${CFLAGS} ${.IMPSRC} -o ${LDR}.o -c
 
 CLEANFILES+= ${LDR} ${LDR}.out ${LDR}.o ${BOOT}.tmp ${LOADER}
 

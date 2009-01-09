@@ -11,14 +11,14 @@ BOOT_BTX_FLAGS=0x1
 BOOT_BTX_FLAGS=0x0
 .endif
 
-AFLAGS+=	-DBTX_FLAGS=${BOOT_BTX_FLAGS}
+CFLAGS+=	-DBTX_FLAGS=${BOOT_BTX_FLAGS}
 
 .if defined(BTX_SERIAL)
 BOOT_COMCONSOLE_PORT?= 0x3f8
 BOOT_COMCONSOLE_SPEED?= 9600
 B2SIOFMT?=	0x3
 
-AFLAGS+=	-DBTX_SERIAL -DSIOPRT=${BOOT_COMCONSOLE_PORT} \
+CFLAGS+=	-DBTX_SERIAL -DSIOPRT=${BOOT_COMCONSOLE_PORT} \
 		-DSIOFMT=${B2SIOFMT} -DSIOSPD=${BOOT_COMCONSOLE_SPEED}
 .endif
 
@@ -27,11 +27,11 @@ ORG=	0x9000
 all: btx
 
 btx: btx.o
-	${LD} -N -e start -Ttext ${ORG} -o btx.out btx.o
+	${LD} ${LDFLAGS} -N -e start -Ttext ${ORG} -o btx.out btx.o
 	objcopy -S -O binary btx.out ${.TARGET}
 
 btx.o: btx.S
-	${CC} ${CFLAGS} ${AFLAGS} ${.IMPSRC} -o ${.TARGET} -c
+	${CC} ${CFLAGS} ${.IMPSRC} -o ${.TARGET} -c
 
 CLEANFILES+= btx btx.out btx.o
 
