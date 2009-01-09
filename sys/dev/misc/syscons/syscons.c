@@ -987,8 +987,8 @@ scioctl(struct dev_ioctl_args *ap)
 	scp = SC_STAT(SC_DEV(sc, i));
 	if (scp == scp->sc->cur_scp)
 	    return 0;
-	while ((error=tsleep((caddr_t)&scp->smode, PCATCH,
-			     "waitvt", 0)) == ERESTART) ;
+	error = tsleep((caddr_t)&scp->smode, PCATCH, "waitvt", 0);
+	/* May return ERESTART */
 	return error;
 
     case VT_GETACTIVE:		/* get active vty # */
@@ -2021,8 +2021,9 @@ wait_scrn_saver_stop(sc_softc_t *sc)
 	    break;
 	}
 	error = tsleep((caddr_t)&scrn_blanked, PCATCH, "scrsav", 0);
-	if ((error != 0) && (error != ERESTART))
-	    break;
+	/* May return ERESTART */
+	if (error)
+		break;
     }
     run_scrn_saver = FALSE;
     return error;
