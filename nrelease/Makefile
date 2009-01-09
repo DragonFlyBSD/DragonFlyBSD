@@ -20,7 +20,7 @@ WITH_INSTALLER=
 # targes may be specified which set make variables which enhance
 # the build in various ways.
 #
-gui installer:
+gui installer img:
 
 warning:
 	@echo "WARNING: The installer_* targets are now obsolete, please"
@@ -34,6 +34,9 @@ WITH_GUI=
 .endif
 .if make(installer)
 WITH_INSTALLER=
+.endif
+.if make(img)
+WITH_IMG=
 .endif
 
 #########################################################################
@@ -95,6 +98,7 @@ ROOTSKELS+=		${.CURDIR}/installer
 
 .if defined(WITH_GUI)
 ISOFILE?=		${ISODIR}/dfly-gui.iso
+IMGFILE?=		${ISODIR}/dfly-gui.img
 PKGSRC_PACKAGES+=	modular-xorg-apps \
 			modular-xorg-drivers \
 			modular-xorg-fonts \
@@ -127,6 +131,12 @@ ROOTSKELS+=		${.CURDIR}/gui
 .endif
 
 ISOFILE ?= ${ISODIR}/dfly.iso
+IMGFILE ?= ${ISODIR}/dfly.img
+
+IMGMNT ?= /mnt
+IMGSIZE ?= 450
+IMGVN ?= vn0
+IMGUSBDEV ?= /dev/da0
 
 # note: we use the '${NRLOBJDIR}/nrelease' construct, that is we add
 # the additional '/nrelease' manually, as a safety measure.
@@ -138,12 +148,13 @@ NRLOBJDIR?= /usr/obj
 #########################################################################
 
 release:	check clean buildworld1 buildkernel1 \
-		buildiso syssrcs customizeiso mklocatedb mkiso
+		buildiso syssrcs customizeiso mklocatedb mkiso mkimg
 
 quickrel:	check clean buildworld2 buildkernel2 \
-		buildiso syssrcs customizeiso mklocatedb mkiso
+		buildiso syssrcs customizeiso mklocatedb mkiso mkimg
 
-realquickrel:	check clean buildiso syssrcs customizeiso mklocatedb mkiso
+realquickrel:	check clean buildiso syssrcs customizeiso mklocatedb mkiso \
+		mkimg
 
 quick:		quickrel
 
@@ -304,6 +315,41 @@ mkiso:
 	( cd ${ISOROOT}; ${PKGBIN_MKISOFS} -b boot/cdboot -no-emul-boot \
 		-R -J -V DragonFly -o ${ISOFILE} . )
 
+
+mkimg:
+.if defined(WITH_IMG)
+	#dd if=/dev/zero of=${IMGFILE} bs=1m count=${IMGSIZE}
+	fdisk -IB -p ${IMGFILE}
+	vnconfig -e -s labels ${IMGVN} ${IMGFILE}
+	# write standard disklabel
+	disklabel -w -r ${IMGVN}s1 auto
+	# read back disklabel
+	disklabel -r ${IMGVN}s1 > ${IMGFILE}.label
+	# determine number of sectors of whole disk
+	# and add a: partition
+	( secs=`tail -n 1 ${IMGFILE}.label | cut -f 3 -w` && \
+	  echo "  a:  $${secs} 0 4.2BSD" >> ${IMGFILE}.label )
+	# write modified disklabel back
+	disklabel -R -r ${IMGVN}s1 ${IMGFILE}.label
+	# write bootsector
+	disklabel -B ${IMGVN}s1 
+	newfs /dev/${IMGVN}s1a
+	mount  /dev/${IMGVN}s1a ${IMGMNT}
+
+	cpdup -vvv ${ISOROOT} ${IMGMNT}
+
+	#
+	# fix /etc/fstab
+	#
+	mv ${IMGMNT}/etc/fstab ${IMGMNT}/etc/fstab.old 
+	cat ${IMGMNT}/etc/fstab.old | grep -v "cd9660" > ${IMGMNT}/etc/fstab
+	echo "${IMGUSBDEV}s1a / ufs rw 0 0" >> ${IMGMNT}/etc/fstab
+	rm ${IMGMNT}/etc/fstab.old
+
+	umount ${IMGMNT}
+	vnconfig -u ${IMGVN}
+.endif
+
 clean:
 	if [ -d ${ISOROOT} ]; then chflags -R noschg ${ISOROOT}; fi
 	if [ -d ${ISOROOT} ]; then rm -rf ${ISOROOT}/*; fi
@@ -346,7 +392,7 @@ pkgsrc_cdrecord:
 .PHONY: installer_fetch installer
 .PHONY: quick realquick
 .PHONY: installer_realquickrel check buildworld1 buildworld2
-.PHONY: buildkernel1 buildkernel2 buildiso customizeiso mklocatedb mkiso
+.PHONY: buildkernel1 buildkernel2 buildiso customizeiso mklocatedb mkiso mkimg
 .PHONY: clean realclean fetch
 
 .include <bsd.prog.mk>
