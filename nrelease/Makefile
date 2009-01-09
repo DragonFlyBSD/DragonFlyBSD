@@ -318,7 +318,7 @@ mkiso:
 
 mkimg:
 .if defined(WITH_IMG)
-	#dd if=/dev/zero of=${IMGFILE} bs=1m count=${IMGSIZE}
+	dd if=/dev/zero of=${IMGFILE} bs=1m count=${IMGSIZE}
 	fdisk -IB -p ${IMGFILE}
 	vnconfig -e -s labels ${IMGVN} ${IMGFILE}
 	# write standard disklabel
