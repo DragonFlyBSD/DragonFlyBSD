@@ -133,9 +133,7 @@ ROOTSKELS+=		${.CURDIR}/gui
 ISOFILE ?= ${ISODIR}/dfly.iso
 IMGFILE ?= ${ISODIR}/dfly.img
 
-IMGMNT ?= /mnt
-IMGSIZE ?= 450
-IMGVN ?= vn0
+IMGMNT ?= ${ISODIR}/mnt
 IMGUSBDEV ?= /dev/da0
 
 # note: we use the '${NRLOBJDIR}/nrelease' construct, that is we add
@@ -318,36 +316,39 @@ mkiso:
 
 mkimg:
 .if defined(WITH_IMG)
-	dd if=/dev/zero of=${IMGFILE} bs=1m count=${IMGSIZE}
-	fdisk -IB -p ${IMGFILE}
-	vnconfig -e -s labels ${IMGVN} ${IMGFILE}
-	# write standard disklabel
-	disklabel -w -r ${IMGVN}s1 auto
-	# read back disklabel
-	disklabel -r ${IMGVN}s1 > ${IMGFILE}.label
-	# determine number of sectors of whole disk
-	# and add a: partition
-	( secs=`tail -n 1 ${IMGFILE}.label | cut -f 3 -w` && \
-	  echo "  a:  $${secs} 0 4.2BSD" >> ${IMGFILE}.label )
-	# write modified disklabel back
-	disklabel -R -r ${IMGVN}s1 ${IMGFILE}.label
-	# write bootsector
-	disklabel -B ${IMGVN}s1 
-	newfs /dev/${IMGVN}s1a
-	mount  /dev/${IMGVN}s1a ${IMGMNT}
+	if [ ! -d ${IMGMNT} ]; then mkdir -p ${IMGMNT}; fi
 
-	cpdup -vvv ${ISOROOT} ${IMGMNT}
-
-	#
-	# fix /etc/fstab
-	#
-	mv ${IMGMNT}/etc/fstab ${IMGMNT}/etc/fstab.old 
-	cat ${IMGMNT}/etc/fstab.old | grep -v "cd9660" > ${IMGMNT}/etc/fstab
-	echo "${IMGUSBDEV}s1a / ufs rw 0 0" >> ${IMGMNT}/etc/fstab
-	rm ${IMGMNT}/etc/fstab.old
-
-	umount ${IMGMNT}
-	vnconfig -u ${IMGVN}
+	echo "determine required image size" > /dev/null;		\
+	sz=`du -ck ${ISOROOT} | tail -n 1 | cut -f 1`;			\
+	echo "add 10 MB more space as required" > /dev/null;		\
+	sz=`bc -e "($${sz}) / 1024 + 10" -equit`;			\
+	dd if=/dev/zero of=${IMGFILE} bs=1m count=$${sz};		\
+	fdisk -IB -p ${IMGFILE};					\
+	echo "determine free vn device" > /dev/null;			\
+	vn=`vnconfig -l | grep "not in use" | head -n 1 | cut -f 1 -d:`; \
+	vnconfig -e -s labels $${vn} ${IMGFILE}; 			\
+	echo "write standard disklabel" > /dev/null;			\
+	disklabel -w -r $${vn}s1 auto;					\
+	echo "read disklabel back" > /dev/null;				\
+	disklabel -r $${vn}s1 > ${IMGFILE}.label;			\
+	echo "determine number of sectors of whole disk" > /dev/null; 	\
+	secs=`tail -n 1 ${IMGFILE}.label | cut -f 3 -w`;		\
+	echo "and add a: partition" > /dev/null;			\
+	echo "  a:  $${secs} 0 4.2BSD" >> ${IMGFILE}.label;		\
+	echo "write modified disklabel back" > /dev/null;		\
+	disklabel -R -r $${vn}s1 ${IMGFILE}.label;			\
+	rm ${IMGFILE}.label;						\
+	echo "write bootsector" >  /dev/null;				\
+	disklabel -B $${vn}s1;						\
+	newfs /dev/$${vn}s1a;						\
+	mount /dev/$${vn}s1a ${IMGMNT};					\
+	cpdup -vvv ${ISOROOT} ${IMGMNT};				\
+	echo "fix /etc/fstab" > /dev/null;				\
+	echo "${IMGUSBDEV}s1a / ufs rw 0 0" > ${IMGMNT}/etc/fstab; 	\
+	echo "proc /proc procfs rw 0 0" >> ${IMGMNT}/etc/fstab; 	\
+	umount ${IMGMNT};						\
+	vnconfig -u $${vn};						\
+	rmdir ${IMGMNT}
 .endif
 
 clean:
