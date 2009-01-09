@@ -153,6 +153,7 @@ rsync
 </TR>
 -->
 
+<!--
 <TR>
 <TD>Starkast.net (Sweden)</TD>
 <TD>Daily snapshots, official ISOs</TD>
@@ -161,7 +162,7 @@ rsync
 <a href="ftp://ftp.starkast.net/pub/DragonFly/">FTP</a>
 </TD>
 </TR>
-
+-->
 <!--
 <TR>
 <TD>bgp4.net</TD>
@@ -289,6 +290,7 @@ rsync
 </TD>
 </TR>
 
+<!--
 <TR>
 <TD>boulder.tele.dk (Denmark)</TD>
 <TD>Daily Snapshots, Official ISOs</TD>
@@ -297,6 +299,7 @@ rsync
 <a href="ftp://mirror03.inet.tele.dk/pub/DragonFly/">FTP</a>
 </TD>
 </TR>
+-->
 
 <TR>
 <TD>Philipps-University Marburg (Germany)</TD>
@@ -331,13 +334,14 @@ rsync
 
 <TR><TD CLASS="mirrorsection" COLSPAN="3">pkgsrc binary mirrors</TD></TR>
 
+<!--
 <TR>
 <TD>www.pkgsrc-box.org (Germany)</TD>
 <TD>binary pkgsrc packages</TD>
 <TD><a href="http://www.pkgsrc-box.org/packages/stable/">i386 packages</a>
 </TD>
 </TR>
-
+-->
 <TR>
 <TD>chlamydia.fs.ei.tum.de (Germany)</TD>
 <TD>binary pkgsrc packages<br>(mirror from here)</TD>
@@ -396,6 +400,7 @@ rsync
 </TD>
 </TR>
 
+<!--
 <TR>
 <TD>boulder.tele.dk (Denmark)</TD>
 <TD>binary pkgsrc packages</TD>
@@ -404,6 +409,7 @@ rsync
 packages</a>
 </TD>
 </TR>
+-->
 
 <TR>
 <TD>Philipps-University Marburg (Germany)</TD>
