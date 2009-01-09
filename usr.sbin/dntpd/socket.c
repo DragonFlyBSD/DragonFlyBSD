@@ -37,50 +37,67 @@
 #include "defs.h"
 
 int
-udp_socket(const char *target, int port, struct sockaddr_in *sam)
+udp_socket(const char *target, int port, struct sockaddr *sam)
 {
-    struct hostent *hp;
-    int rc;
+    struct addrinfo hints, *res, *res0;
+    char servname[128];
+    const char *cause = NULL;
+    int error;
     int fd;
     int tos;
 
-    if ((rc = inet_aton(target, &sam->sin_addr)) == 0) {
-	if ((hp = gethostbyname2(target, AF_INET)) == NULL) {
-	    logerr("Unable to resolve server %s", target);
-	    return(-1);
-	}
-	bcopy(hp->h_addr_list[0], &sam->sin_addr, hp->h_length);
-    } else if (rc != 1) {
-	logerrstr("unable to resolve server %s", target);
-	return(-1);
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = family;
+    hints.ai_socktype = SOCK_DGRAM;
+    snprintf(servname, sizeof(servname), "%d", port);
+    error = getaddrinfo(target, servname, &hints, &res0);
+    if (error) {
+        logerr("getaddrinfo (%s) init error", target, gai_strerror(error));
+        return(-1);
     }
-    if ((fd = socket(PF_INET, SOCK_DGRAM, PF_UNSPEC)) < 0) {
-	logerr("socket(%s)", target);
-	return(-1);
+
+    fd = -1;
+    for (res = res0; res; res = res->ai_next) {
+        fd = socket(res->ai_family, res->ai_socktype,
+        res->ai_protocol);
+        if (fd < 0) {
+           cause = "socket";
+           continue;
+        }
+
+        if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) {
+            logerr("%s: unable to set non-blocking mode", target);
+            close(fd);
+            fd = -1;
+            continue;
+        }
+
+        if (connect(fd, res->ai_addr, res->ai_addrlen) < 0) {
+           cause = "connect";
+           close(fd);
+           fd = -1;
+           continue;
+        }
+
+        break;  /* okay we got one */
     }
-    if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) {
-	logerr("socket(%s) unable to set non-blocking mode", target);
-	close(fd);
-	return(-1);
+
+    if (fd < 0) {
+        logerr("Unable to establish a connection with %s: %s", target, cause);
+        return(-1);
     }
-    sam->sin_port = htons(port);
-    sam->sin_len = sizeof(sam);
-    sam->sin_family = AF_INET;
-    if (connect(fd, (void *)sam, sizeof(*sam)) < 0) {
-	logerr("connect(%s)", target);
-	close(fd);
-	return(-1);
-    }
+    memcpy(sam, res->ai_addr, res->ai_addr->sa_len);
+    freeaddrinfo(res0);
+
 #ifdef IPTOS_LOWDELAY
     tos = IPTOS_LOWDELAY;
-    setsockopt(fd, IPPROTO_IP, IP_TOS, &tos, sizeof(tos)); 
+    setsockopt(fd, IPPROTO_IP, IP_TOS, &tos, sizeof(tos));
 #endif
 #if 0
 #ifdef IP_PORTRANGE
     tos = IP_PORTRANGE_HIGH;
-    setsockopt(fd, IPPROTO_IP, IP_PORTRANGE, &tos, sizeof(tos)); 
+    setsockopt(fd, IPPROTO_IP, IP_PORTRANGE, &tos, sizeof(tos));
 #endif
 #endif
     return(fd);
 }
-

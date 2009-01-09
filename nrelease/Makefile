@@ -289,16 +289,19 @@ customizeiso:
 		     periodic/monthly/Makefile
 	cp -R ${.CURDIR}/../etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
 .endfor
+	# There seems to be no reliable way to install a package to a target
+	# directory prefix so we mount_null our package directory into the
+	# ISO root and do the install chrooted.
+	#
+	mkdir ${ISOROOT}/tmp/packages
+	mount_null -o ro ${PKGSRC_PKG_PATH} ${ISOROOT}/tmp/packages
 .for PKG in ${PKGSRC_PACKAGES}
-	${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -I -K ${ISOROOT}${PKGSRC_DB} -p ${ISOROOT}${PKGSRC_PREFIX} ${PKG}
+	${ENVCMD} PKG_PATH=/tmp/packages chroot ${ISOROOT} ${PKGBIN_PKG_ADD} ${PKG}
 .endfor
+	umount ${ISOROOT}/tmp/packages
+	rmdir ${ISOROOT}/tmp/packages
 	find ${ISOROOT}${PKGSRC_DB} -name +CONTENTS -type f -exec sed -i '' -e 's,${ISOROOT},,' -- {} \;
-	${PKGBIN_PKG_ADMIN} -K ${ISOROOT}${PKGSRC_DB} rebuild
-.if defined(WITH_GUI)
-.for FONT in 75dpi 100dpi misc Type1 TTF
-	chroot ${ISOROOT} /usr/pkg/bin/mkfontdir /usr/pkg/lib/X11/fonts/${FONT}
-.endfor
-.endif
+	chroot ${ISOROOT} ${PKGBIN_PKG_ADMIN} rebuild
 	makewhatis ${ISOROOT}/usr/local/man
 	makewhatis ${ISOROOT}/usr/pkg/man
 
@@ -352,6 +355,7 @@ mkimg:
 .endif
 
 clean:
+	-umount ${ISOROOT}/tmp/packages
 	if [ -d ${ISOROOT} ]; then chflags -R noschg ${ISOROOT}; fi
 	if [ -d ${ISOROOT} ]; then rm -rf ${ISOROOT}/*; fi
 	if [ -d ${NRLOBJDIR}/nrelease ]; then rm -rf ${NRLOBJDIR}/nrelease; fi
