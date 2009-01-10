@@ -42,7 +42,7 @@
 static int
 hello (struct proc *p, void *arg)
 {
-	printf ("hello kernel\n");
+	kprintf ("hello kernel\n");
 	return 0;
 }
 
@@ -72,10 +72,10 @@ load (struct module *module, int cmd, void *arg)
 
 	switch (cmd) {
 	case MOD_LOAD :
-		printf ("syscall loaded at %d\n", offset);
+		kprintf ("syscall loaded at %d\n", offset);
 		break;
 	case MOD_UNLOAD :
-		printf ("syscall unloaded from %d\n", offset);
+		kprintf ("syscall unloaded from %d\n", offset);
 		break;
 	default :
 		error = EINVAL;
