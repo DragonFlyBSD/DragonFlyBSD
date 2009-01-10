@@ -121,17 +121,17 @@ cdev_load(module_t mod, int cmd, void *arg)
 	/* Do any initialization that you should do with the kernel */
 	
 	/* if we make it to here, print copyright on console*/
-	printf("\nSample Loaded kld character device driver\n");
-	printf("Copyright (c) 1998\n");
-	printf("Rajesh Vaidheeswarran\n");
-	printf("All rights reserved\n");
+	kprintf("\nSample Loaded kld character device driver\n");
+	kprintf("Copyright (c) 1998\n");
+	kprintf("Rajesh Vaidheeswarran\n");
+	kprintf("All rights reserved\n");
 	dev_ops_add(&my_devops,-1,0);
 	sdev = make_dev(&my_devops, 0, UID_ROOT, GID_WHEEL, 0600, "cdev");
 	sdev = reference_dev(sdev);
 	break;		/* Success*/
 
     case MOD_UNLOAD:
-	printf("Unloaded kld character device driver\n");
+	kprintf("Unloaded kld character device driver\n");
 	dev_ops_remove(&my_devops, -1, 0);
 	destroy_dev(sdev);
 	break;		/* Success*/
