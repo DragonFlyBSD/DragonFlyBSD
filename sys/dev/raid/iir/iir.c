@@ -1,7 +1,9 @@
-/* $FreeBSD: src/sys/dev/iir/iir.c,v 1.2.2.3 2002/05/05 08:18:12 asmodai Exp $ */
+/* $FreeBSD: src/sys/dev/iir/iir.c,v 1.20 2008/01/09 20:02:56 scottl Exp $ */
 /* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.21 2008/05/18 20:30:23 pavalos Exp $ */
-/*
- *       Copyright (c) 2000-01 Intel Corporation
+/*-
+ *       Copyright (c) 2000-04 ICP vortex GmbH
+ *       Copyright (c) 2002-04 Intel Corporation
+ *       Copyright (c) 2003-04 Adaptec Inc.
  *       All Rights Reserved
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,17 +34,16 @@
 /*
  * iir.c: SCSI dependant code for the Intel Integrated RAID Controller driver
  *
- * Written by: Achim Leubner <achim.leubner@intel.com>
+ * Written by: Achim Leubner <achim_leubner@adaptec.com>
  * Fixes/Additions: Boji Tony Kannanthanam <boji.t.kannanthanam@intel.com>
  *
  * credits:     Niklas Hallqvist;       OpenBSD driver for the ICP Controllers.
  *              Mike Smith;             Some driver source code.
  *              FreeBSD.ORG;            Great O/S to work on and for.
  *
- * TODO:     
+ * $Id: iir.c 1.5 2004/03/30 10:17:53 achim Exp $"
  */
 
-#ident "$Id: iir.c 1.2 2001/06/21 20:28:32 achim Exp $"
 
 #define _IIR_C_
 
@@ -50,13 +51,13 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/types.h>
+#include <sys/endian.h>
 #include <sys/eventhandler.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
 #include <sys/thread2.h>
 
-#include <machine/clock.h>
 #include <machine/stdarg.h>
 
 #include <bus/cam/cam.h>
@@ -70,7 +71,9 @@
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
-#include "iir.h"
+#include <dev/raid/iir/iir.h>
+
+MALLOC_DEFINE(M_GDTBUF, "iirbuf", "iir driver buffer");
 
 struct gdt_softc *gdt_wait_gdt;
 int     gdt_wait_index;
@@ -157,19 +160,17 @@ static void     iir_shutdown(void *arg, int howto);
 static void     iir_timeout(void *arg);
 static void     iir_watchdog(void *arg);
 
-static void     gdt_eval_mapping(u_int32_t size, int *cyls, int *heads, 
+static void     gdt_eval_mapping(u_int32_t size, int *cyls, int *heads,
                                  int *secs);
-static int      gdt_internal_cmd(struct gdt_softc *gdt, struct gdt_ccb *gccb, 
-                                 u_int8_t service, u_int16_t opcode, 
+static int      gdt_internal_cmd(struct gdt_softc *gdt, struct gdt_ccb *gccb,
+                                 u_int8_t service, u_int16_t opcode,
                                  u_int32_t arg1, u_int32_t arg2, u_int32_t arg3);
-static int      gdt_wait(struct gdt_softc *gdt, struct gdt_ccb *ccb, 
+static int      gdt_wait(struct gdt_softc *gdt, struct gdt_ccb *ccb,
                          int timeout);
 
 static struct gdt_ccb *gdt_get_ccb(struct gdt_softc *gdt);
-static u_int32_t gdt_ccb_vtop(struct gdt_softc *gdt, 
-                              struct gdt_ccb *gccb);
 
-static int      gdt_sync_event(struct gdt_softc *gdt, int service, 
+static int      gdt_sync_event(struct gdt_softc *gdt, int service,
                                u_int8_t index, struct gdt_ccb *gccb);
 static int      gdt_async_event(struct gdt_softc *gdt, int service);
 static struct gdt_ccb *gdt_raw_cmd(struct gdt_softc *gdt,  union ccb *ccb);
@@ -192,7 +193,7 @@ iir_init(struct gdt_softc *gdt)
     GDT_DPRINTF(GDT_D_DEBUG, ("iir_init()\n"));
 
     gdt->sc_state = GDT_POLLING;
-    gdt_clear_events(); 
+    gdt_clear_events();
     bzero(&gdt_stat, sizeof(gdt_statist_t));
 
     SLIST_INIT(&gdt->sc_free_gccb);
@@ -203,7 +204,7 @@ iir_init(struct gdt_softc *gdt)
 
     /* DMA tag for mapping buffers into device visible space. */
     if (bus_dma_tag_create(gdt->sc_parent_dmat, /*alignment*/1, /*boundary*/0,
-                           /*lowaddr*/BUS_SPACE_MAXADDR,
+                           /*lowaddr*/BUS_SPACE_MAXADDR_32BIT,
                            /*highaddr*/BUS_SPACE_MAXADDR,
                            /*filter*/NULL, /*filterarg*/NULL,
                            /*maxsize*/MAXBSIZE, /*nsegments*/GDT_MAXSG,
@@ -217,48 +218,60 @@ iir_init(struct gdt_softc *gdt)
     gdt->sc_init_level++;
 
     /* DMA tag for our ccb structures */
-    if (bus_dma_tag_create(gdt->sc_parent_dmat, /*alignment*/1, /*boundary*/0,
-                           /*lowaddr*/BUS_SPACE_MAXADDR,
+    if (bus_dma_tag_create(gdt->sc_parent_dmat,
+			   /*alignment*/1,
+			   /*boundary*/0,
+                           /*lowaddr*/BUS_SPACE_MAXADDR_32BIT,
                            /*highaddr*/BUS_SPACE_MAXADDR,
-                           /*filter*/NULL, /*filterarg*/NULL,
-                           GDT_MAXCMDS * sizeof(struct gdt_ccb),
+                           /*filter*/NULL,
+			   /*filterarg*/NULL,
+                           GDT_MAXCMDS * GDT_SCRATCH_SZ, /* maxsize */
                            /*nsegments*/1,
                            /*maxsegsz*/BUS_SPACE_MAXSIZE_32BIT,
-                           /*flags*/0, &gdt->sc_gccb_dmat) != 0) {
-        kprintf("iir%d: bus_dma_tag_create(...,gdt->sc_gccb_dmat) failed\n",
+                           /*flags*/0, &gdt->sc_gcscratch_dmat) != 0) {
+        kprintf("iir%d: bus_dma_tag_create(...,gdt->sc_gcscratch_dmat) failed\n",
                gdt->sc_hanum);
         return (1);
     }
     gdt->sc_init_level++;
 
-    /* Allocation for our ccbs */
-    if (bus_dmamem_alloc(gdt->sc_gccb_dmat, (void **)&gdt->sc_gccbs,
-                         BUS_DMA_NOWAIT, &gdt->sc_gccb_dmamap) != 0) {
-        kprintf("iir%d: bus_dmamem_alloc(...,&gdt->sc_gccbs,...) failed\n",
+    /* Allocation for our ccb scratch area */
+    if (bus_dmamem_alloc(gdt->sc_gcscratch_dmat, (void **)&gdt->sc_gcscratch,
+                         BUS_DMA_NOWAIT, &gdt->sc_gcscratch_dmamap) != 0) {
+        kprintf("iir%d: bus_dmamem_alloc(...,&gdt->sc_gcscratch,...) failed\n",
                gdt->sc_hanum);
         return (1);
     }
     gdt->sc_init_level++;
 
     /* And permanently map them */
-    bus_dmamap_load(gdt->sc_gccb_dmat, gdt->sc_gccb_dmamap,
-                    gdt->sc_gccbs, GDT_MAXCMDS * sizeof(struct gdt_ccb),
-                    gdtmapmem, &gdt->sc_gccb_busbase, /*flags*/0);
+    bus_dmamap_load(gdt->sc_gcscratch_dmat, gdt->sc_gcscratch_dmamap,
+                    gdt->sc_gcscratch, GDT_MAXCMDS * GDT_SCRATCH_SZ,
+                    gdtmapmem, &gdt->sc_gcscratch_busbase, /*flags*/0);
     gdt->sc_init_level++;
 
     /* Clear them out. */
-    bzero(gdt->sc_gccbs, GDT_MAXCMDS * sizeof(struct gdt_ccb));
+    bzero(gdt->sc_gcscratch, GDT_MAXCMDS * GDT_SCRATCH_SZ);
 
     /* Initialize the ccbs */
+    gdt->sc_gccbs = kmalloc(sizeof(struct gdt_ccb) * GDT_MAXCMDS, M_GDTBUF,
+        M_INTWAIT | M_ZERO);
+    if (gdt->sc_gccbs == NULL) {
+        kprintf("iir%d: no memory for gccbs.\n", gdt->sc_hanum);
+        return (1);
+    }
     for (i = GDT_MAXCMDS-1; i >= 0; i--) {
-        gdt->sc_gccbs[i].gc_cmd_index = i + 2;
-        gdt->sc_gccbs[i].gc_flags = GDT_GCF_UNUSED;
-        gdt->sc_gccbs[i].gc_map_flag = FALSE;
+        gccb = &gdt->sc_gccbs[i];
+        gccb->gc_cmd_index = i + 2;
+        gccb->gc_flags = GDT_GCF_UNUSED;
+        gccb->gc_map_flag = FALSE;
         if (bus_dmamap_create(gdt->sc_buffer_dmat, /*flags*/0,
-                              &gdt->sc_gccbs[i].gc_dmamap) != 0)
+                              &gccb->gc_dmamap) != 0)
             return(1);
-        gdt->sc_gccbs[i].gc_map_flag = TRUE;
-        SLIST_INSERT_HEAD(&gdt->sc_free_gccb, &gdt->sc_gccbs[i], sle);
+        gccb->gc_map_flag = TRUE;
+	gccb->gc_scratch = &gdt->sc_gcscratch[GDT_SCRATCH_SZ * i];
+        gccb->gc_scratch_busbase = gdt->sc_gcscratch_busbase + GDT_SCRATCH_SZ * i;
+        SLIST_INSERT_HEAD(&gdt->sc_free_gccb, gccb, sle);
     }
     gdt->sc_init_level++;
 
@@ -272,8 +285,9 @@ iir_init(struct gdt_softc *gdt)
                gdt->sc_hanum);
         return (1);
     }
+    bzero(gccb->gc_cmd, GDT_CMD_SZ);
 
-    if (!gdt_internal_cmd(gdt, gccb, GDT_SCREENSERVICE, GDT_INIT, 
+    if (!gdt_internal_cmd(gdt, gccb, GDT_SCREENSERVICE, GDT_INIT,
                           0, 0, 0)) {
         kprintf("iir%d: Screen service initialization error %d\n",
                gdt->sc_hanum, gdt->sc_status);
@@ -281,27 +295,12 @@ iir_init(struct gdt_softc *gdt)
         return (1);
     }
 
-    if (!gdt_internal_cmd(gdt, gccb, GDT_CACHESERVICE, GDT_INIT, 
-                          GDT_LINUX_OS, 0, 0)) {
-        kprintf("iir%d: Cache service initialization error %d\n",
-               gdt->sc_hanum, gdt->sc_status);
-        gdt_free_ccb(gdt, gccb);
-        return (1);
-    }
     gdt_internal_cmd(gdt, gccb, GDT_CACHESERVICE, GDT_UNFREEZE_IO,
                      0, 0, 0);
 
-    if (!gdt_internal_cmd(gdt, gccb, GDT_CACHESERVICE, GDT_MOUNT, 
-                          0xffff, 1, 0)) {
-        kprintf("iir%d: Cache service mount error %d\n",
-               gdt->sc_hanum, gdt->sc_status);
-        gdt_free_ccb(gdt, gccb);
-        return (1);
-    }
-
-    if (!gdt_internal_cmd(gdt, gccb, GDT_CACHESERVICE, GDT_INIT, 
+    if (!gdt_internal_cmd(gdt, gccb, GDT_CACHESERVICE, GDT_INIT,
                           GDT_LINUX_OS, 0, 0)) {
-        kprintf("iir%d: Cache service post-mount initialization error %d\n",
+        kprintf("iir%d: Cache service initialization error %d\n",
                gdt->sc_hanum, gdt->sc_status);
         gdt_free_ccb(gdt, gccb);
         return (1);
@@ -350,7 +349,7 @@ iir_init(struct gdt_softc *gdt)
     gdt->sc_virt_bus = gdt->sc_bus_cnt;
     gdt->sc_bus_cnt++;
 
-    if (!gdt_internal_cmd(gdt, gccb, GDT_SCSIRAWSERVICE, GDT_INIT, 
+    if (!gdt_internal_cmd(gdt, gccb, GDT_SCSIRAWSERVICE, GDT_INIT,
                           0, 0, 0)) {
             kprintf("iir%d: Raw service initialization error %d\n",
                    gdt->sc_hanum, gdt->sc_status);
@@ -362,7 +361,7 @@ iir_init(struct gdt_softc *gdt)
     gdt->sc_raw_feat = 0;
     if (gdt_internal_cmd(gdt, gccb, GDT_SCSIRAWSERVICE, GDT_SET_FEAT,
                          GDT_SCATTER_GATHER, 0, 0)) {
-        if (gdt_internal_cmd(gdt, gccb, GDT_SCSIRAWSERVICE, GDT_GET_FEAT, 
+        if (gdt_internal_cmd(gdt, gccb, GDT_SCSIRAWSERVICE, GDT_GET_FEAT,
                              0, 0, 0)) {
             gdt->sc_raw_feat = gdt->sc_info;
             if (!(gdt->sc_info & GDT_SCATTER_GATHER)) {
@@ -376,9 +375,9 @@ iir_init(struct gdt_softc *gdt)
 
     /* Set/get features cache service (scatter/gather) */
     gdt->sc_cache_feat = 0;
-    if (gdt_internal_cmd(gdt, gccb, GDT_CACHESERVICE, GDT_SET_FEAT, 
+    if (gdt_internal_cmd(gdt, gccb, GDT_CACHESERVICE, GDT_SET_FEAT,
                          0, GDT_SCATTER_GATHER, 0)) {
-        if (gdt_internal_cmd(gdt, gccb, GDT_CACHESERVICE, GDT_GET_FEAT, 
+        if (gdt_internal_cmd(gdt, gccb, GDT_CACHESERVICE, GDT_GET_FEAT,
                              0, 0, 0)) {
             gdt->sc_cache_feat = gdt->sc_info;
             if (!(gdt->sc_info & GDT_SCATTER_GATHER)) {
@@ -390,13 +389,30 @@ iir_init(struct gdt_softc *gdt)
         }
     }
 
+    /* OEM */
+    gdt_enc32(gccb->gc_scratch + GDT_OEM_VERSION, 0x01);
+    gdt_enc32(gccb->gc_scratch + GDT_OEM_BUFSIZE, sizeof(gdt_oem_record_t));
+    if (gdt_internal_cmd(gdt, gccb, GDT_CACHESERVICE, GDT_IOCTL,
+                         GDT_OEM_STR_RECORD, GDT_INVALID_CHANNEL,
+                         sizeof(gdt_oem_str_record_t))) {
+	    strncpy(gdt->oem_name, ((gdt_oem_str_record_t *)
+            gccb->gc_scratch)->text.scsi_host_drive_inquiry_vendor_id, 7);
+		gdt->oem_name[7]='\0';
+	} else {
+		/* Old method, based on PCI ID */
+		if (gdt->sc_vendor == INTEL_VENDOR_ID)
+            strcpy(gdt->oem_name,"Intel  ");
+        else
+            strcpy(gdt->oem_name,"ICP    ");
+    }
+
     /* Scan for cache devices */
     for (i = 0; i < cdev_cnt && i < GDT_MAX_HDRIVES; i++) {
-        if (gdt_internal_cmd(gdt, gccb, GDT_CACHESERVICE, GDT_INFO, 
+        if (gdt_internal_cmd(gdt, gccb, GDT_CACHESERVICE, GDT_INFO,
                              i, 0, 0)) {
             gdt->sc_hdr[i].hd_present = 1;
             gdt->sc_hdr[i].hd_size = gdt->sc_info;
-            
+
             /*
              * Evaluate mapping (sectors per head, heads per cyl)
              */
@@ -414,16 +430,16 @@ iir_init(struct gdt_softc *gdt)
             gdt->sc_hdr[i].hd_secs = drv_secs;
             /* Round the size */
             gdt->sc_hdr[i].hd_size = drv_cyls * drv_hds * drv_secs;
-            
+
             if (gdt_internal_cmd(gdt, gccb, GDT_CACHESERVICE,
                                  GDT_DEVTYPE, i, 0, 0))
                 gdt->sc_hdr[i].hd_devtype = gdt->sc_info;
         }
     }
-    
-    GDT_DPRINTF(GDT_D_INIT, ("dpmem %x %d-bus %d cache device%s\n", 
+
+    GDT_DPRINTF(GDT_D_INIT, ("dpmem %x %d-bus %d cache device%s\n",
                              gdt->sc_dpmembase,
-                             gdt->sc_bus_cnt, cdev_cnt, 
+                             gdt->sc_bus_cnt, cdev_cnt,
                              cdev_cnt == 1 ? "" : "s"));
     gdt_free_ccb(gdt, gccb);
 
@@ -442,15 +458,16 @@ iir_free(struct gdt_softc *gdt)
       default:
         gdt_destroy_dev(gdt->sc_dev);
       case 5:
-        for (i = GDT_MAXCMDS-1; i >= 0; i--) 
+        for (i = GDT_MAXCMDS-1; i >= 0; i--)
             if (gdt->sc_gccbs[i].gc_map_flag)
                 bus_dmamap_destroy(gdt->sc_buffer_dmat,
                                    gdt->sc_gccbs[i].gc_dmamap);
-        bus_dmamap_unload(gdt->sc_gccb_dmat, gdt->sc_gccb_dmamap);
+        bus_dmamap_unload(gdt->sc_gcscratch_dmat, gdt->sc_gcscratch_dmamap);
+        kfree(gdt->sc_gccbs, M_GDTBUF);
       case 4:
-        bus_dmamem_free(gdt->sc_gccb_dmat, gdt->sc_gccbs, gdt->sc_gccb_dmamap);
+        bus_dmamem_free(gdt->sc_gcscratch_dmat, gdt->sc_gcscratch, gdt->sc_gcscratch_dmamap);
       case 3:
-        bus_dma_tag_destroy(gdt->sc_gccb_dmat);
+        bus_dma_tag_destroy(gdt->sc_gcscratch_dmat);
       case 2:
         bus_dma_tag_destroy(gdt->sc_buffer_dmat);
       case 1:
@@ -472,8 +489,9 @@ iir_attach(struct gdt_softc *gdt)
     callout_init(&gdt->watchdog_timer);
     /*
      * Create the device queue for our SIM.
+     * XXX Throttle this down since the card has problems under load.
      */
-    devq = cam_simq_alloc(GDT_MAXCMDS);
+    devq = cam_simq_alloc(32);
     if (devq == NULL)
         return;
 
@@ -483,7 +501,7 @@ iir_attach(struct gdt_softc *gdt)
          */
         gdt->sims[i] = cam_sim_alloc(iir_action, iir_poll, "iir",
                                      gdt, gdt->sc_hanum, &sim_mplock,
-				     /*untagged*/2,
+				     /*untagged*/1,
                                      /*tagged*/GDT_MAXCMDS, devq);
         if (xpt_bus_register(gdt->sims[i], i) != CAM_SUCCESS) {
             cam_sim_free(gdt->sims[i]);
@@ -530,7 +548,7 @@ gdt_eval_mapping(u_int32_t size, int *cyls, int *heads, int *secs)
 }
 
 static int
-gdt_wait(struct gdt_softc *gdt, struct gdt_ccb *gccb, 
+gdt_wait(struct gdt_softc *gdt, struct gdt_ccb *gccb,
          int timeout)
 {
     int rv = 0;
@@ -549,7 +567,7 @@ gdt_wait(struct gdt_softc *gdt, struct gdt_ccb *gccb,
         DELAY(1);
     } while (--timeout);
     gdt->sc_state &= ~GDT_POLL_WAIT;
-    
+
     while (gdt->sc_test_busy(gdt))
         DELAY(1);               /* XXX correct? */
 
@@ -558,57 +576,56 @@ gdt_wait(struct gdt_softc *gdt, struct gdt_ccb *gccb,
 
 static int
 gdt_internal_cmd(struct gdt_softc *gdt, struct gdt_ccb *gccb,
-                 u_int8_t service, u_int16_t opcode, 
+                 u_int8_t service, u_int16_t opcode,
                  u_int32_t arg1, u_int32_t arg2, u_int32_t arg3)
 {
     int retries;
-    
+
     GDT_DPRINTF(GDT_D_CMD, ("gdt_internal_cmd(%p, %d, %d, %d, %d, %d)\n",
                             gdt, service, opcode, arg1, arg2, arg3));
 
-    bzero(gdt->sc_cmd, GDT_CMD_SZ);
+    bzero(gccb->gc_cmd, GDT_CMD_SZ);
 
     for (retries = GDT_RETRIES; ; ) {
         gccb->gc_service = service;
         gccb->gc_flags = GDT_GCF_INTERNAL;
-        
-        gdt->sc_set_sema0(gdt);
-        gdt_enc32(gdt->sc_cmd + GDT_CMD_COMMANDINDEX,
+
+        gdt_enc32(gccb->gc_cmd + GDT_CMD_COMMANDINDEX,
                   gccb->gc_cmd_index);
-        gdt_enc16(gdt->sc_cmd + GDT_CMD_OPCODE, opcode);
+        gdt_enc16(gccb->gc_cmd + GDT_CMD_OPCODE, opcode);
 
         switch (service) {
           case GDT_CACHESERVICE:
             if (opcode == GDT_IOCTL) {
-                gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION +
+                gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION +
                           GDT_IOCTL_SUBFUNC, arg1);
-                gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION +
+                gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION +
                           GDT_IOCTL_CHANNEL, arg2);
-                gdt_enc16(gdt->sc_cmd + GDT_CMD_UNION +
+                gdt_enc16(gccb->gc_cmd + GDT_CMD_UNION +
                           GDT_IOCTL_PARAM_SIZE, (u_int16_t)arg3);
-                gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_IOCTL_P_PARAM,
-                          gdt_ccb_vtop(gdt, gccb) + 
-                          offsetof(struct gdt_ccb, gc_scratch[0]));
+                gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_IOCTL_P_PARAM,
+                          gccb->gc_scratch_busbase);
             } else {
-                gdt_enc16(gdt->sc_cmd + GDT_CMD_UNION +
+                gdt_enc16(gccb->gc_cmd + GDT_CMD_UNION +
                           GDT_CACHE_DEVICENO, (u_int16_t)arg1);
-                gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION +
+                gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION +
                           GDT_CACHE_BLOCKNO, arg2);
             }
             break;
 
           case GDT_SCSIRAWSERVICE:
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION +
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION +
                       GDT_RAW_DIRECTION, arg1);
-            gdt->sc_cmd[GDT_CMD_UNION + GDT_RAW_BUS] =
+            gccb->gc_cmd[GDT_CMD_UNION + GDT_RAW_BUS] =
                 (u_int8_t)arg2;
-            gdt->sc_cmd[GDT_CMD_UNION + GDT_RAW_TARGET] =
+            gccb->gc_cmd[GDT_CMD_UNION + GDT_RAW_TARGET] =
                 (u_int8_t)arg3;
-            gdt->sc_cmd[GDT_CMD_UNION + GDT_RAW_LUN] =
+            gccb->gc_cmd[GDT_CMD_UNION + GDT_RAW_LUN] =
                 (u_int8_t)(arg3 >> 8);
         }
 
-        gdt->sc_cmd_len = GDT_CMD_SZ;
+        gdt->sc_set_sema0(gdt);
+        gccb->gc_cmd_len = GDT_CMD_SZ;
         gdt->sc_cmd_off = 0;
         gdt->sc_cmd_cnt = 0;
         gdt->sc_copy_cmd(gdt, gccb);
@@ -627,7 +644,7 @@ static struct gdt_ccb *
 gdt_get_ccb(struct gdt_softc *gdt)
 {
     struct gdt_ccb *gccb;
-    
+
     GDT_DPRINTF(GDT_D_QUEUE, ("gdt_get_ccb(%p)\n", gdt));
 
     crit_enter();
@@ -647,7 +664,7 @@ void
 gdt_free_ccb(struct gdt_softc *gdt, struct gdt_ccb *gccb)
 {
     GDT_DPRINTF(GDT_D_QUEUE, ("gdt_free_ccb(%p, %p)\n", gdt, gccb));
-    
+
     crit_enter();
     gccb->gc_flags = GDT_GCF_UNUSED;
     SLIST_REMOVE(&gdt->sc_pending_gccb, gccb, gdt_ccb, sle);
@@ -658,14 +675,7 @@ gdt_free_ccb(struct gdt_softc *gdt, struct gdt_ccb *gccb)
         wakeup(gccb);
 }
 
-static u_int32_t
-gdt_ccb_vtop(struct gdt_softc *gdt, struct gdt_ccb *gccb)
-{
-    return (gdt->sc_gccb_busbase
-            + (u_int32_t)((caddr_t)gccb - (caddr_t)gdt->sc_gccbs));
-}
-
-void    
+void
 gdt_next(struct gdt_softc *gdt)
 {
     union ccb *ccb;
@@ -707,44 +717,44 @@ gdt_next(struct gdt_softc *gdt)
                 TAILQ_INSERT_HEAD(&gdt->sc_ucmd_queue, ucmd, links);
                 break;
             }
-            break;      
+            break;
             /* wenn mehrere Kdos. zulassen: if (!gdt_polling) continue; */
         }
 
         /* 2.: I/Os with ccb */
-        ccb = (union ccb *)TAILQ_FIRST(&gdt->sc_ccb_queue); 
+        ccb = (union ccb *)TAILQ_FIRST(&gdt->sc_ccb_queue);
         /* ist dann immer != NULL, da oben getestet */
         sim = (struct cam_sim *)ccb->ccb_h.ccb_sim_ptr;
         bus = cam_sim_bus(sim);
         target = ccb->ccb_h.target_id;
         lun = ccb->ccb_h.target_lun;
-    
+
         TAILQ_REMOVE(&gdt->sc_ccb_queue, &ccb->ccb_h, sim_links.tqe);
         --gdt_stat.req_queue_act;
         /* ccb->ccb_h.func_code is XPT_SCSI_IO */
-        GDT_DPRINTF(GDT_D_QUEUE, ("XPT_SCSI_IO flags 0x%x)\n", 
+        GDT_DPRINTF(GDT_D_QUEUE, ("XPT_SCSI_IO flags 0x%x)\n",
                                   ccb->ccb_h.flags));
         csio = &ccb->csio;
         ccbh = &ccb->ccb_h;
         cmd  = csio->cdb_io.cdb_bytes[0];
         /* Max CDB length is 12 bytes */
-        if (csio->cdb_len > 12) { 
+        if (csio->cdb_len > 12) {
             ccbh->status = CAM_REQ_INVALID;
             --gdt_stat.io_count_act;
             xpt_done(ccb);
         } else if (bus != gdt->sc_virt_bus) {
             /* raw service command */
             if ((gccb = gdt_raw_cmd(gdt, ccb)) == NULL) {
-                TAILQ_INSERT_HEAD(&gdt->sc_ccb_queue, &ccb->ccb_h, 
+                TAILQ_INSERT_HEAD(&gdt->sc_ccb_queue, &ccb->ccb_h,
                                   sim_links.tqe);
                 ++gdt_stat.req_queue_act;
                 if (gdt_stat.req_queue_act > gdt_stat.req_queue_max)
                     gdt_stat.req_queue_max = gdt_stat.req_queue_act;
                 next_cmd = FALSE;
             }
-        } else if (target >= GDT_MAX_HDRIVES || 
+        } else if (target >= GDT_MAX_HDRIVES ||
                    !gdt->sc_hdr[target].hd_present || lun != 0) {
-            ccbh->status = CAM_SEL_TIMEOUT;
+            ccbh->status = CAM_DEV_NOT_THERE;
             --gdt_stat.io_count_act;
             xpt_done(ccb);
         } else {
@@ -752,7 +762,7 @@ gdt_next(struct gdt_softc *gdt)
             if (cmd == READ_6  || cmd == WRITE_6 ||
                 cmd == READ_10 || cmd == WRITE_10) {
                 if ((gccb = gdt_cache_cmd(gdt, ccb)) == NULL) {
-                    TAILQ_INSERT_HEAD(&gdt->sc_ccb_queue, &ccb->ccb_h, 
+                    TAILQ_INSERT_HEAD(&gdt->sc_ccb_queue, &ccb->ccb_h,
                                       sim_links.tqe);
                     ++gdt_stat.req_queue_act;
                     if (gdt_stat.req_queue_act > gdt_stat.req_queue_max)
@@ -764,7 +774,7 @@ gdt_next(struct gdt_softc *gdt)
                 gdt_internal_cache_cmd(gdt, ccb);
 		crit_enter();
             }
-        }           
+        }
         if ((gdt->sc_state & GDT_POLLING) || !next_cmd)
             break;
     }
@@ -789,12 +799,10 @@ gdt_raw_cmd(struct gdt_softc *gdt, union ccb *ccb)
     if (roundup(GDT_CMD_UNION + GDT_RAW_SZ, sizeof(u_int32_t)) +
         gdt->sc_cmd_off + GDT_DPMEM_COMMAND_OFFSET >
         gdt->sc_ic_all_size) {
-        GDT_DPRINTF(GDT_D_INVALID, ("iir%d: gdt_raw_cmd(): DPMEM overflow\n", 
+        GDT_DPRINTF(GDT_D_INVALID, ("iir%d: gdt_raw_cmd(): DPMEM overflow\n",
                                     gdt->sc_hanum));
         return (NULL);
     }
-
-    bzero(gdt->sc_cmd, GDT_CMD_SZ);
 
     gccb = gdt_get_ccb(gdt);
     if (gccb == NULL) {
@@ -802,49 +810,49 @@ gdt_raw_cmd(struct gdt_softc *gdt, union ccb *ccb)
                                     gdt->sc_hanum));
         return (gccb);
     }
+    bzero(gccb->gc_cmd, GDT_CMD_SZ);
     sim = (struct cam_sim *)ccb->ccb_h.ccb_sim_ptr;
     gccb->gc_ccb = ccb;
     gccb->gc_service = GDT_SCSIRAWSERVICE;
     gccb->gc_flags = GDT_GCF_SCSI;
-        
+
     if (gdt->sc_cmd_cnt == 0)
         gdt->sc_set_sema0(gdt);
     crit_exit();
-    gdt_enc32(gdt->sc_cmd + GDT_CMD_COMMANDINDEX,
+    gdt_enc32(gccb->gc_cmd + GDT_CMD_COMMANDINDEX,
               gccb->gc_cmd_index);
-    gdt_enc16(gdt->sc_cmd + GDT_CMD_OPCODE, GDT_WRITE);
+    gdt_enc16(gccb->gc_cmd + GDT_CMD_OPCODE, GDT_WRITE);
 
-    gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_RAW_DIRECTION,
+    gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_RAW_DIRECTION,
               (ccb->ccb_h.flags & CAM_DIR_MASK) == CAM_DIR_IN ?
               GDT_DATA_IN : GDT_DATA_OUT);
-    gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_RAW_SDLEN,
+    gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_RAW_SDLEN,
               ccb->csio.dxfer_len);
-    gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_RAW_CLEN,
+    gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_RAW_CLEN,
               ccb->csio.cdb_len);
-    bcopy(ccb->csio.cdb_io.cdb_bytes, gdt->sc_cmd + GDT_CMD_UNION + GDT_RAW_CMD,
+    bcopy(ccb->csio.cdb_io.cdb_bytes, gccb->gc_cmd + GDT_CMD_UNION + GDT_RAW_CMD,
           ccb->csio.cdb_len);
-    gdt->sc_cmd[GDT_CMD_UNION + GDT_RAW_TARGET] = 
+    gccb->gc_cmd[GDT_CMD_UNION + GDT_RAW_TARGET] =
         ccb->ccb_h.target_id;
-    gdt->sc_cmd[GDT_CMD_UNION + GDT_RAW_LUN] = 
+    gccb->gc_cmd[GDT_CMD_UNION + GDT_RAW_LUN] =
         ccb->ccb_h.target_lun;
-    gdt->sc_cmd[GDT_CMD_UNION + GDT_RAW_BUS] = 
+    gccb->gc_cmd[GDT_CMD_UNION + GDT_RAW_BUS] =
         cam_sim_bus(sim);
-    gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_RAW_SENSE_LEN,
+    gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_RAW_SENSE_LEN,
               sizeof(struct scsi_sense_data));
-    gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_RAW_SENSE_DATA,
-              gdt_ccb_vtop(gdt, gccb) + 
-              offsetof(struct gdt_ccb, gc_scratch[0]));
- 
+    gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_RAW_SENSE_DATA,
+              gccb->gc_scratch_busbase);
+
     /*
      * If we have any data to send with this command,
      * map it into bus space.
      */
     /* Only use S/G if there is a transfer */
     if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE) {
-        if ((ccb->ccb_h.flags & CAM_SCATTER_VALID) == 0) { 
+        if ((ccb->ccb_h.flags & CAM_SCATTER_VALID) == 0) {
             if ((ccb->ccb_h.flags & CAM_DATA_PHYS) == 0) {
                 int error;
-            
+
                 /* vorher unlock von splcam() ??? */
 		crit_enter();
                 error =
@@ -856,17 +864,11 @@ gdt_raw_cmd(struct gdt_softc *gdt, union ccb *ccb)
                                     gccb, /*flags*/0);
                 if (error == EINPROGRESS) {
                     xpt_freeze_simq(sim, 1);
-                    gccb->gc_state |= CAM_RELEASE_SIMQ;
+                    gccb->gc_ccb->ccb_h.status |= CAM_RELEASE_SIMQ;
                 }
 		crit_exit();
             } else {
-                struct bus_dma_segment seg; 
-            
-                /* Pointer to physical buffer */
-                seg.ds_addr =
-                    (bus_addr_t)ccb->csio.data_ptr;
-                seg.ds_len = ccb->csio.dxfer_len;
-                gdtexecuteccb(gccb, &seg, 1, 0);
+		panic("iir: CAM_DATA_PHYS not supported");
             }
         } else {
             struct bus_dma_segment *segs;
@@ -905,12 +907,10 @@ gdt_cache_cmd(struct gdt_softc *gdt, union ccb *ccb)
     if (roundup(GDT_CMD_UNION + GDT_CACHE_SZ, sizeof(u_int32_t)) +
         gdt->sc_cmd_off + GDT_DPMEM_COMMAND_OFFSET >
         gdt->sc_ic_all_size) {
-        GDT_DPRINTF(GDT_D_INVALID, ("iir%d: gdt_cache_cmd(): DPMEM overflow\n", 
+        GDT_DPRINTF(GDT_D_INVALID, ("iir%d: gdt_cache_cmd(): DPMEM overflow\n",
                                     gdt->sc_hanum));
         return (NULL);
     }
-
-    bzero(gdt->sc_cmd, GDT_CMD_SZ);
 
     gccb = gdt_get_ccb(gdt);
     if (gccb == NULL) {
@@ -918,23 +918,24 @@ gdt_cache_cmd(struct gdt_softc *gdt, union ccb *ccb)
                                   gdt->sc_hanum));
         return (gccb);
     }
+    bzero(gccb->gc_cmd, GDT_CMD_SZ);
     sim = (struct cam_sim *)ccb->ccb_h.ccb_sim_ptr;
     gccb->gc_ccb = ccb;
     gccb->gc_service = GDT_CACHESERVICE;
     gccb->gc_flags = GDT_GCF_SCSI;
-        
+
     if (gdt->sc_cmd_cnt == 0)
         gdt->sc_set_sema0(gdt);
     crit_exit();
-    gdt_enc32(gdt->sc_cmd + GDT_CMD_COMMANDINDEX,
+    gdt_enc32(gccb->gc_cmd + GDT_CMD_COMMANDINDEX,
               gccb->gc_cmd_index);
     cmdp = ccb->csio.cdb_io.cdb_bytes;
     opcode = (*cmdp == WRITE_6 || *cmdp == WRITE_10) ? GDT_WRITE : GDT_READ;
     if ((gdt->sc_state & GDT_SHUTDOWN) && opcode == GDT_WRITE)
         opcode = GDT_WRITE_THR;
-    gdt_enc16(gdt->sc_cmd + GDT_CMD_OPCODE, opcode);
- 
-    gdt_enc16(gdt->sc_cmd + GDT_CMD_UNION + GDT_CACHE_DEVICENO,
+    gdt_enc16(gccb->gc_cmd + GDT_CMD_OPCODE, opcode);
+
+    gdt_enc16(gccb->gc_cmd + GDT_CMD_UNION + GDT_CACHE_DEVICENO,
               ccb->ccb_h.target_id);
     if (ccb->csio.cdb_len == 6) {
         struct scsi_rw_6 *rw = (struct scsi_rw_6 *)cmdp;
@@ -945,9 +946,9 @@ gdt_cache_cmd(struct gdt_softc *gdt, union ccb *ccb)
         blockno = scsi_4btoul(rw->addr);
         blockcnt = scsi_2btoul(rw->length);
     }
-    gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_CACHE_BLOCKNO,
+    gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_CACHE_BLOCKNO,
               blockno);
-    gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_CACHE_BLOCKCNT,
+    gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_CACHE_BLOCKCNT,
               blockcnt);
 
     /*
@@ -955,10 +956,10 @@ gdt_cache_cmd(struct gdt_softc *gdt, union ccb *ccb)
      * map it into bus space.
      */
     /* Only use S/G if there is a transfer */
-    if ((ccb->ccb_h.flags & CAM_SCATTER_VALID) == 0) { 
+    if ((ccb->ccb_h.flags & CAM_SCATTER_VALID) == 0) {
         if ((ccb->ccb_h.flags & CAM_DATA_PHYS) == 0) {
             int error;
-            
+
             /* vorher unlock von splcam() ??? */
 	    crit_enter();
             error =
@@ -970,17 +971,11 @@ gdt_cache_cmd(struct gdt_softc *gdt, union ccb *ccb)
                                 gccb, /*flags*/0);
             if (error == EINPROGRESS) {
                 xpt_freeze_simq(sim, 1);
-                gccb->gc_state |= CAM_RELEASE_SIMQ;
+                gccb->gc_ccb->ccb_h.status |= CAM_RELEASE_SIMQ;
             }
 	    crit_exit();
         } else {
-            struct bus_dma_segment seg; 
-            
-            /* Pointer to physical buffer */
-            seg.ds_addr =
-                (bus_addr_t)ccb->csio.data_ptr;
-            seg.ds_len = ccb->csio.dxfer_len;
-            gdtexecuteccb(gccb, &seg, 1, 0);
+	    panic("iir: CAM_DATA_PHYS not supported");
         }
     } else {
         struct bus_dma_segment *segs;
@@ -1010,58 +1005,57 @@ gdt_ioctl_cmd(struct gdt_softc *gdt, gdt_ucmd_t *ucmd)
 
     GDT_DPRINTF(GDT_D_DEBUG, ("gdt_ioctl_cmd(%p, %p)\n", gdt, ucmd));
 
-    bzero(gdt->sc_cmd, GDT_CMD_SZ);
-
     gccb = gdt_get_ccb(gdt);
     if (gccb == NULL) {
         GDT_DPRINTF(GDT_D_DEBUG, ("iir%d: No free command index found\n",
                                   gdt->sc_hanum));
         return (gccb);
     }
+    bzero(gccb->gc_cmd, GDT_CMD_SZ);
     gccb->gc_ucmd = ucmd;
     gccb->gc_service = ucmd->service;
     gccb->gc_flags = GDT_GCF_IOCTL;
-        
+
     /* check DPMEM space, copy data buffer from user space */
     if (ucmd->service == GDT_CACHESERVICE) {
         if (ucmd->OpCode == GDT_IOCTL) {
-            gdt->sc_cmd_len = roundup(GDT_CMD_UNION + GDT_IOCTL_SZ,
+            gccb->gc_cmd_len = roundup(GDT_CMD_UNION + GDT_IOCTL_SZ,
                                       sizeof(u_int32_t));
             cnt = ucmd->u.ioctl.param_size;
             if (cnt > GDT_SCRATCH_SZ) {
-                kprintf("iir%d: Scratch buffer too small (%d/%d)\n", 
+                kprintf("iir%d: Scratch buffer too small (%d/%d)\n",
                        gdt->sc_hanum, GDT_SCRATCH_SZ, cnt);
                 gdt_free_ccb(gdt, gccb);
                 return (NULL);
             }
         } else {
-            gdt->sc_cmd_len = roundup(GDT_CMD_UNION + GDT_CACHE_SG_LST +
+            gccb->gc_cmd_len = roundup(GDT_CMD_UNION + GDT_CACHE_SG_LST +
                                       GDT_SG_SZ, sizeof(u_int32_t));
             cnt = ucmd->u.cache.BlockCnt * GDT_SECTOR_SIZE;
             if (cnt > GDT_SCRATCH_SZ) {
-                kprintf("iir%d: Scratch buffer too small (%d/%d)\n", 
+                kprintf("iir%d: Scratch buffer too small (%d/%d)\n",
                        gdt->sc_hanum, GDT_SCRATCH_SZ, cnt);
                 gdt_free_ccb(gdt, gccb);
                 return (NULL);
             }
         }
     } else {
-        gdt->sc_cmd_len = roundup(GDT_CMD_UNION + GDT_RAW_SG_LST +
+        gccb->gc_cmd_len = roundup(GDT_CMD_UNION + GDT_RAW_SG_LST +
                                   GDT_SG_SZ, sizeof(u_int32_t));
         cnt = ucmd->u.raw.sdlen;
         if (cnt + ucmd->u.raw.sense_len > GDT_SCRATCH_SZ) {
-            kprintf("iir%d: Scratch buffer too small (%d/%d)\n", 
+            kprintf("iir%d: Scratch buffer too small (%d/%d)\n",
                    gdt->sc_hanum, GDT_SCRATCH_SZ, cnt + ucmd->u.raw.sense_len);
             gdt_free_ccb(gdt, gccb);
             return (NULL);
         }
     }
-    if (cnt != 0) 
+    if (cnt != 0)
         bcopy(ucmd->data, gccb->gc_scratch, cnt);
 
-    if (gdt->sc_cmd_off + gdt->sc_cmd_len + GDT_DPMEM_COMMAND_OFFSET >
+    if (gdt->sc_cmd_off + gccb->gc_cmd_len + GDT_DPMEM_COMMAND_OFFSET >
         gdt->sc_ic_all_size) {
-        GDT_DPRINTF(GDT_D_INVALID, ("iir%d: gdt_ioctl_cmd(): DPMEM overflow\n", 
+        GDT_DPRINTF(GDT_D_INVALID, ("iir%d: gdt_ioctl_cmd(): DPMEM overflow\n",
                                     gdt->sc_hanum));
         gdt_free_ccb(gdt, gccb);
         return (NULL);
@@ -1072,70 +1066,66 @@ gdt_ioctl_cmd(struct gdt_softc *gdt, gdt_ucmd_t *ucmd)
     crit_exit();
 
     /* fill cmd structure */
-    gdt_enc32(gdt->sc_cmd + GDT_CMD_COMMANDINDEX,
+    gdt_enc32(gccb->gc_cmd + GDT_CMD_COMMANDINDEX,
               gccb->gc_cmd_index);
-    gdt_enc16(gdt->sc_cmd + GDT_CMD_OPCODE, 
+    gdt_enc16(gccb->gc_cmd + GDT_CMD_OPCODE,
               ucmd->OpCode);
 
     if (ucmd->service == GDT_CACHESERVICE) {
         if (ucmd->OpCode == GDT_IOCTL) {
             /* IOCTL */
-            gdt_enc16(gdt->sc_cmd + GDT_CMD_UNION + GDT_IOCTL_PARAM_SIZE,
+            gdt_enc16(gccb->gc_cmd + GDT_CMD_UNION + GDT_IOCTL_PARAM_SIZE,
                       ucmd->u.ioctl.param_size);
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_IOCTL_SUBFUNC,
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_IOCTL_SUBFUNC,
                       ucmd->u.ioctl.subfunc);
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_IOCTL_CHANNEL,
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_IOCTL_CHANNEL,
                       ucmd->u.ioctl.channel);
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_IOCTL_P_PARAM,
-                      gdt_ccb_vtop(gdt, gccb) + 
-                      offsetof(struct gdt_ccb, gc_scratch[0]));
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_IOCTL_P_PARAM,
+                      gccb->gc_scratch_busbase);
         } else {
             /* cache service command */
-            gdt_enc16(gdt->sc_cmd + GDT_CMD_UNION + GDT_CACHE_DEVICENO,
+            gdt_enc16(gccb->gc_cmd + GDT_CMD_UNION + GDT_CACHE_DEVICENO,
                       ucmd->u.cache.DeviceNo);
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_CACHE_BLOCKNO,
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_CACHE_BLOCKNO,
                       ucmd->u.cache.BlockNo);
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_CACHE_BLOCKCNT,
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_CACHE_BLOCKCNT,
                       ucmd->u.cache.BlockCnt);
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_CACHE_DESTADDR,
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_CACHE_DESTADDR,
                       0xffffffffUL);
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_CACHE_SG_CANZ,
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_CACHE_SG_CANZ,
                       1);
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_CACHE_SG_LST + 
-                      GDT_SG_PTR, gdt_ccb_vtop(gdt, gccb) + 
-                      offsetof(struct gdt_ccb, gc_scratch[0]));
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_CACHE_SG_LST +
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_CACHE_SG_LST +
+                      GDT_SG_PTR, gccb->gc_scratch_busbase);
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_CACHE_SG_LST +
                       GDT_SG_LEN, ucmd->u.cache.BlockCnt * GDT_SECTOR_SIZE);
         }
     } else {
         /* raw service command */
-        gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_RAW_DIRECTION,
+        gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_RAW_DIRECTION,
                   ucmd->u.raw.direction);
-        gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_RAW_SDATA,
+        gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_RAW_SDATA,
                   0xffffffffUL);
-        gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_RAW_SDLEN,
+        gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_RAW_SDLEN,
                   ucmd->u.raw.sdlen);
-        gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_RAW_CLEN,
+        gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_RAW_CLEN,
                   ucmd->u.raw.clen);
-        bcopy(ucmd->u.raw.cmd, gdt->sc_cmd + GDT_CMD_UNION + GDT_RAW_CMD,
+        bcopy(ucmd->u.raw.cmd, gccb->gc_cmd + GDT_CMD_UNION + GDT_RAW_CMD,
               12);
-        gdt->sc_cmd[GDT_CMD_UNION + GDT_RAW_TARGET] = 
+        gccb->gc_cmd[GDT_CMD_UNION + GDT_RAW_TARGET] =
             ucmd->u.raw.target;
-        gdt->sc_cmd[GDT_CMD_UNION + GDT_RAW_LUN] = 
+        gccb->gc_cmd[GDT_CMD_UNION + GDT_RAW_LUN] =
             ucmd->u.raw.lun;
-        gdt->sc_cmd[GDT_CMD_UNION + GDT_RAW_BUS] = 
+        gccb->gc_cmd[GDT_CMD_UNION + GDT_RAW_BUS] =
             ucmd->u.raw.bus;
-        gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_RAW_SENSE_LEN,
+        gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_RAW_SENSE_LEN,
                   ucmd->u.raw.sense_len);
-        gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_RAW_SENSE_DATA,
-                  gdt_ccb_vtop(gdt, gccb) + 
-                  offsetof(struct gdt_ccb, gc_scratch[ucmd->u.raw.sdlen]));
-        gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_RAW_SG_RANZ,
+        gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_RAW_SENSE_DATA,
+                  gccb->gc_scratch_busbase + ucmd->u.raw.sdlen);
+        gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_RAW_SG_RANZ,
                   1);
-        gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_RAW_SG_LST + 
-                  GDT_SG_PTR, gdt_ccb_vtop(gdt, gccb) + 
-                  offsetof(struct gdt_ccb, gc_scratch[0]));
-        gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_RAW_SG_LST +
+        gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_RAW_SG_LST +
+                  GDT_SG_PTR, gccb->gc_scratch_busbase);
+        gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_RAW_SG_LST +
                   GDT_SG_LEN, ucmd->u.raw.sdlen);
     }
 
@@ -1145,13 +1135,13 @@ gdt_ioctl_cmd(struct gdt_softc *gdt, gdt_ucmd_t *ucmd)
     return (gccb);
 }
 
-static void 
+static void
 gdt_internal_cache_cmd(struct gdt_softc *gdt,union ccb *ccb)
 {
     int t;
 
     t = ccb->ccb_h.target_id;
-    GDT_DPRINTF(GDT_D_CMD, ("gdt_internal_cache_cmd(%p, %p, 0x%x, %d)\n", 
+    GDT_DPRINTF(GDT_D_CMD, ("gdt_internal_cache_cmd(%p, %p, 0x%x, %d)\n",
         gdt, ccb, ccb->csio.cdb_io.cdb_bytes[0], t));
 
     switch (ccb->csio.cdb_io.cdb_bytes[0]) {
@@ -1163,20 +1153,25 @@ gdt_internal_cache_cmd(struct gdt_softc *gdt,union ccb *ccb)
         break;
       case INQUIRY:
         {
-            struct scsi_inquiry_data *inq;
+            struct scsi_inquiry_data inq;
+            size_t copylen = MIN(sizeof(inq), ccb->csio.dxfer_len);
 
-            inq = (struct scsi_inquiry_data *)ccb->csio.data_ptr;       
-            bzero(inq, sizeof(struct scsi_inquiry_data));
-            inq->device = (gdt->sc_hdr[t].hd_devtype & 4) ?
+            bzero(&inq, sizeof(inq));
+            inq.device = (gdt->sc_hdr[t].hd_devtype & 4) ?
                 T_CDROM : T_DIRECT;
-            inq->dev_qual2 = (gdt->sc_hdr[t].hd_devtype & 1) ? 0x80 : 0;
-            inq->version = SCSI_REV_2;
-            inq->response_format = 2; 
-            inq->additional_length = 32; 
-            inq->flags = SID_CmdQue | SID_Sync; 
-            strcpy(inq->vendor, "IIR     ");
-            ksprintf(inq->product, "Host Drive   #%02d", t);
-            strcpy(inq->revision, "   ");
+            inq.dev_qual2 = (gdt->sc_hdr[t].hd_devtype & 1) ? 0x80 : 0;
+            inq.version = SCSI_REV_2;
+            inq.response_format = 2;
+            inq.additional_length = 32;
+            inq.flags = SID_CmdQue | SID_Sync;
+            strncpy(inq.vendor, gdt->oem_name, sizeof(inq.vendor));
+            ksnprintf(inq.product, sizeof(inq.product),
+                     "Host Drive   #%02d", t);
+            strncpy(inq.revision, "   ", sizeof(inq.revision));
+            bcopy(&inq, ccb->csio.data_ptr, copylen );
+            if( ccb->csio.dxfer_len > copylen )
+                bzero( ccb->csio.data_ptr+copylen,
+                       ccb->csio.dxfer_len - copylen );
             break;
         }
       case MODE_SENSE_6:
@@ -1185,18 +1180,24 @@ gdt_internal_cache_cmd(struct gdt_softc *gdt,union ccb *ccb)
                 struct scsi_mode_hdr_6 hd;
                 struct scsi_mode_block_descr bd;
                 struct scsi_control_page cp;
-            } *mpd;
+            } mpd;
+            size_t copylen = MIN(sizeof(mpd), ccb->csio.dxfer_len);
             u_int8_t page;
 
-            mpd = (struct mpd_data *)ccb->csio.data_ptr;        
-            bzero(mpd, sizeof(struct mpd_data));
-            mpd->hd.datalen = sizeof(struct scsi_mode_hdr_6) +
+            /*mpd = (struct mpd_data *)ccb->csio.data_ptr;*/
+            bzero(&mpd, sizeof(mpd));
+            mpd.hd.datalen = sizeof(struct scsi_mode_hdr_6) +
                 sizeof(struct scsi_mode_block_descr);
-            mpd->hd.dev_specific = (gdt->sc_hdr[t].hd_devtype & 2) ? 0x80 : 0;
-            mpd->hd.block_descr_len = sizeof(struct scsi_mode_block_descr);
-            mpd->bd.block_len[0] = (GDT_SECTOR_SIZE & 0x00ff0000) >> 16;
-            mpd->bd.block_len[1] = (GDT_SECTOR_SIZE & 0x0000ff00) >> 8;
-            mpd->bd.block_len[2] = (GDT_SECTOR_SIZE & 0x000000ff);
+            mpd.hd.dev_specific = (gdt->sc_hdr[t].hd_devtype & 2) ? 0x80 : 0;
+            mpd.hd.block_descr_len = sizeof(struct scsi_mode_block_descr);
+            mpd.bd.block_len[0] = (GDT_SECTOR_SIZE & 0x00ff0000) >> 16;
+            mpd.bd.block_len[1] = (GDT_SECTOR_SIZE & 0x0000ff00) >> 8;
+            mpd.bd.block_len[2] = (GDT_SECTOR_SIZE & 0x000000ff);
+
+            bcopy(&mpd, ccb->csio.data_ptr, copylen );
+            if( ccb->csio.dxfer_len > copylen )
+                bzero( ccb->csio.data_ptr+copylen,
+                       ccb->csio.dxfer_len - copylen );
             page=((struct scsi_mode_sense_6 *)ccb->csio.cdb_io.cdb_bytes)->page;
             switch (page) {
               default:
@@ -1207,34 +1208,39 @@ gdt_internal_cache_cmd(struct gdt_softc *gdt,union ccb *ccb)
         }
       case READ_CAPACITY:
         {
-            struct scsi_read_capacity_data *rcd;
-              
-            rcd = (struct scsi_read_capacity_data *)ccb->csio.data_ptr; 
-            bzero(rcd, sizeof(struct scsi_read_capacity_data));
-            scsi_ulto4b(gdt->sc_hdr[t].hd_size - 1, rcd->addr);
-            scsi_ulto4b(GDT_SECTOR_SIZE, rcd->length);
+            struct scsi_read_capacity_data rcd;
+            size_t copylen = MIN(sizeof(rcd), ccb->csio.dxfer_len);
+
+            /*rcd = (struct scsi_read_capacity_data *)ccb->csio.data_ptr;*/
+            bzero(&rcd, sizeof(rcd));
+            scsi_ulto4b(gdt->sc_hdr[t].hd_size - 1, rcd.addr);
+            scsi_ulto4b(GDT_SECTOR_SIZE, rcd.length);
+            bcopy(&rcd, ccb->csio.data_ptr, copylen );
+            if( ccb->csio.dxfer_len > copylen )
+                bzero( ccb->csio.data_ptr+copylen,
+                       ccb->csio.dxfer_len - copylen );
             break;
         }
       default:
-        GDT_DPRINTF(GDT_D_MISC, ("gdt_internal_cache_cmd(%d) unknown\n", 
+        GDT_DPRINTF(GDT_D_MISC, ("gdt_internal_cache_cmd(%d) unknown\n",
                                     ccb->csio.cdb_io.cdb_bytes[0]));
         break;
     }
-    ccb->ccb_h.status = CAM_REQ_CMP;
+    ccb->ccb_h.status |= CAM_REQ_CMP;
     --gdt_stat.io_count_act;
     xpt_done(ccb);
 }
 
-static void     
+static void
 gdtmapmem(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 {
     bus_addr_t *busaddrp;
-    
+
     busaddrp = (bus_addr_t *)arg;
     *busaddrp = dm_segs->ds_addr;
 }
 
-static void     
+static void
 gdtexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 {
     struct gdt_ccb *gccb;
@@ -1248,7 +1254,7 @@ gdtexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
     ccb = gccb->gc_ccb;
     gdt = cam_sim_softc((struct cam_sim *)ccb->ccb_h.ccb_sim_ptr);
 
-    GDT_DPRINTF(GDT_D_CMD, ("gdtexecuteccb(%p, %p, %p, %d, %d)\n", 
+    GDT_DPRINTF(GDT_D_CMD, ("gdtexecuteccb(%p, %p, %p, %d, %d)\n",
                             gdt, gccb, dm_segs, nseg, error));
     gdt_stat.sg_count_act = nseg;
     if (nseg > gdt_stat.sg_count_max)
@@ -1257,50 +1263,46 @@ gdtexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
     /* Copy the segments into our SG list */
     if (gccb->gc_service == GDT_CACHESERVICE) {
         for (i = 0; i < nseg; ++i) {
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_CACHE_SG_LST +
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_CACHE_SG_LST +
                       i * GDT_SG_SZ + GDT_SG_PTR, dm_segs->ds_addr);
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_CACHE_SG_LST +
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_CACHE_SG_LST +
                       i * GDT_SG_SZ + GDT_SG_LEN, dm_segs->ds_len);
             dm_segs++;
         }
-        gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_CACHE_SG_CANZ,      
+        gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_CACHE_SG_CANZ,
                   nseg);
-        gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_CACHE_DESTADDR, 
+        gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_CACHE_DESTADDR,
                   0xffffffffUL);
 
-        gdt->sc_cmd_len = roundup(GDT_CMD_UNION + GDT_CACHE_SG_LST +
+        gccb->gc_cmd_len = roundup(GDT_CMD_UNION + GDT_CACHE_SG_LST +
                                   nseg * GDT_SG_SZ, sizeof(u_int32_t));
     } else {
         for (i = 0; i < nseg; ++i) {
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_RAW_SG_LST +
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_RAW_SG_LST +
                       i * GDT_SG_SZ + GDT_SG_PTR, dm_segs->ds_addr);
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_RAW_SG_LST +
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_RAW_SG_LST +
                       i * GDT_SG_SZ + GDT_SG_LEN, dm_segs->ds_len);
             dm_segs++;
         }
-        gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_RAW_SG_RANZ,        
+        gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_RAW_SG_RANZ,
                   nseg);
-        gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_RAW_SDATA, 
+        gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_RAW_SDATA,
                   0xffffffffUL);
 
-        gdt->sc_cmd_len = roundup(GDT_CMD_UNION + GDT_RAW_SG_LST +
+        gccb->gc_cmd_len = roundup(GDT_CMD_UNION + GDT_RAW_SG_LST +
                                   nseg * GDT_SG_SZ, sizeof(u_int32_t));
     }
 
     if (nseg != 0) {
-        bus_dmasync_op_t op;
-
-        if ((ccb->ccb_h.flags & CAM_DIR_MASK) == CAM_DIR_IN)
-            op = BUS_DMASYNC_PREREAD;
-        else
-            op = BUS_DMASYNC_PREWRITE;
-        bus_dmamap_sync(gdt->sc_buffer_dmat, gccb->gc_dmamap, op);
+        bus_dmamap_sync(gdt->sc_buffer_dmat, gccb->gc_dmamap,
+            (ccb->ccb_h.flags & CAM_DIR_MASK) == CAM_DIR_IN ?
+            BUS_DMASYNC_PREREAD : BUS_DMASYNC_PREWRITE);
     }
-    
+
     /* We must NOT abort the command here if CAM_REQ_INPROG is not set,
      * because command semaphore is already set!
      */
-    
+
     ccb->ccb_h.status |= CAM_SIM_QUEUED;
     /* timeout handling */
     callout_reset(&ccb->ccb_h.timeout_ch, (ccb->ccb_h.timeout * hz) / 1000,
@@ -1311,7 +1313,7 @@ gdtexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 }
 
 
-static void     
+static void
 iir_action( struct cam_sim *sim, union ccb *ccb )
 {
     struct gdt_softc *gdt;
@@ -1322,10 +1324,10 @@ iir_action( struct cam_sim *sim, union ccb *ccb )
     bus = cam_sim_bus(sim);
     target = ccb->ccb_h.target_id;
     lun = ccb->ccb_h.target_lun;
-    GDT_DPRINTF(GDT_D_CMD, 
-                ("iir_action(%p) func 0x%x cmd 0x%x bus %d target %d lun %d\n", 
-                 gdt, ccb->ccb_h.func_code, ccb->csio.cdb_io.cdb_bytes[0], 
-                 bus, target, lun)); 
+    GDT_DPRINTF(GDT_D_CMD,
+                ("iir_action(%p) func 0x%x cmd 0x%x bus %d target %d lun %d\n",
+                 gdt, ccb->ccb_h.func_code, ccb->csio.cdb_io.cdb_bytes[0],
+                 bus, target, lun));
     ++gdt_stat.io_count_act;
     if (gdt_stat.io_count_act > gdt_stat.io_count_max)
         gdt_stat.io_count_max = gdt_stat.io_count_act;
@@ -1350,7 +1352,7 @@ iir_action( struct cam_sim *sim, union ccb *ccb )
       case XPT_SET_TRAN_SETTINGS:
         ccb->ccb_h.status = CAM_FUNC_NOTAVAIL;
         --gdt_stat.io_count_act;
-        xpt_done(ccb);  
+        xpt_done(ccb);
         break;
       case XPT_GET_TRAN_SETTINGS:
         /* Get default/user set transfer settings for the target */
@@ -1417,7 +1419,7 @@ iir_action( struct cam_sim *sim, union ccb *ccb )
       case XPT_PATH_INQ:            /* Path routing inquiry */
           {
               struct ccb_pathinq *cpi = &ccb->cpi;
-              
+
               cpi->version_num = 1;
               cpi->hba_inquiry = PI_SDTR_ABLE|PI_TAG_ABLE;
               cpi->hba_inquiry |= PI_WIDE_16;
@@ -1433,11 +1435,14 @@ iir_action( struct cam_sim *sim, union ccb *ccb )
               cpi->max_lun = 7;
               cpi->unit_number = cam_sim_unit(sim);
               cpi->bus_id = bus;
-              cpi->initiator_id = 
+              cpi->initiator_id =
                   (bus == gdt->sc_virt_bus ? 127 : gdt->sc_bus_id[bus]);
               cpi->base_transfer_speed = 3300;
               strncpy(cpi->sim_vid, "FreeBSD", SIM_IDLEN);
-              strncpy(cpi->hba_vid, "Intel Corp.", HBA_IDLEN);
+              if (gdt->sc_vendor == INTEL_VENDOR_ID)
+                  strncpy(cpi->hba_vid, "Intel Corp.", HBA_IDLEN);
+              else
+                  strncpy(cpi->hba_vid, "ICP vortex ", HBA_IDLEN);
               strncpy(cpi->dev_name, cam_sim_name(sim), DEV_IDLEN);
               cpi->transport = XPORT_SPI;
               cpi->transport_version = 2;
@@ -1449,7 +1454,7 @@ iir_action( struct cam_sim *sim, union ccb *ccb )
               break;
           }
       default:
-        GDT_DPRINTF(GDT_D_INVALID, ("gdt_next(%p) cmd 0x%x invalid\n", 
+        GDT_DPRINTF(GDT_D_INVALID, ("gdt_next(%p) cmd 0x%x invalid\n",
                                     gdt, ccb->ccb_h.func_code));
         ccb->ccb_h.status = CAM_REQ_INVALID;
         --gdt_stat.io_count_act;
@@ -1458,7 +1463,7 @@ iir_action( struct cam_sim *sim, union ccb *ccb )
     }
 }
 
-static void     
+static void
 iir_poll( struct cam_sim *sim )
 {
     struct gdt_softc *gdt;
@@ -1468,10 +1473,10 @@ iir_poll( struct cam_sim *sim )
     iir_intr(gdt);
 }
 
-static void     
+static void
 iir_timeout(void *arg)
 {
-    GDT_DPRINTF(GDT_D_TIMEOUT, ("iir_timeout(%p)\n", arg));
+    GDT_DPRINTF(GDT_D_TIMEOUT, ("iir_timeout(%p)\n", gccb));
 }
 
 static void
@@ -1488,27 +1493,27 @@ iir_watchdog(void *arg)
         struct ccb_hdr *h;
         struct gdt_ucmd *u;
 
-        for (h = TAILQ_FIRST(&gdt->sc_ccb_queue); h != NULL; 
+        for (h = TAILQ_FIRST(&gdt->sc_ccb_queue); h != NULL;
              h = TAILQ_NEXT(h, sim_links.tqe))
             ccbs++;
-        for (u = TAILQ_FIRST(&gdt->sc_ucmd_queue); u != NULL; 
+        for (u = TAILQ_FIRST(&gdt->sc_ucmd_queue); u != NULL;
              u = TAILQ_NEXT(u, links))
             ucmds++;
-        for (p = SLIST_FIRST(&gdt->sc_free_gccb); p != NULL; 
+        for (p = SLIST_FIRST(&gdt->sc_free_gccb); p != NULL;
              p = SLIST_NEXT(p, sle))
             frees++;
-        for (p = SLIST_FIRST(&gdt->sc_pending_gccb); p != NULL; 
+        for (p = SLIST_FIRST(&gdt->sc_pending_gccb); p != NULL;
              p = SLIST_NEXT(p, sle))
             pends++;
 
         GDT_DPRINTF(GDT_D_TIMEOUT, ("ccbs %d ucmds %d frees %d pends %d\n",
-                                    ccbs, ucmds, frees, pends));
+               ccbs, ucmds, frees, pends));
     }
 
     callout_reset(&gdt->watchdog_timer, hz * 15, iir_watchdog, gdt);
 }
 
-static void     
+static void
 iir_shutdown( void *arg, int howto )
 {
     struct gdt_softc *gdt;
@@ -1523,7 +1528,7 @@ iir_shutdown( void *arg, int howto )
            gdt->sc_hanum);
 
     /* allocate ucmd buffer */
-    ucmd = kmalloc(sizeof(gdt_ucmd_t), M_DEVBUF, M_INTWAIT | M_ZERO);
+    ucmd = kmalloc(sizeof(gdt_ucmd_t), M_GDTBUF, M_INTWAIT | M_ZERO);
 
     /* wait for pending IOs */
     crit_enter();
@@ -1568,13 +1573,13 @@ iir_intr(void *arg)
         !(gdt->sc_state & GDT_POLL_WAIT))
         return;
 
-    if (!(gdt->sc_state & GDT_POLLING)) 
+    if (!(gdt->sc_state & GDT_POLLING))
 	crit_enter();
     gdt_wait_index = 0;
 
     ctx.istatus = gdt->sc_get_status(gdt);
-    if (!ctx.istatus) {
-        if (!(gdt->sc_state & GDT_POLLING)) 
+    if (ctx.istatus == 0x00) {
+        if (!(gdt->sc_state & GDT_POLLING))
 	    crit_exit();
         gdt->sc_status = GDT_S_NO_STATUS;
         return;
@@ -1587,25 +1592,25 @@ iir_intr(void *arg)
     gdt->sc_info = ctx.info;
     gdt->sc_info2 = ctx.info2;
 
-    if (gdt->sc_state & GDT_POLL_WAIT) { 
+    if (gdt->sc_state & GDT_POLL_WAIT) {
         gdt_wait_gdt = gdt;
         gdt_wait_index = ctx.istatus;
     }
 
     if (ctx.istatus == GDT_ASYNCINDEX) {
         gdt_async_event(gdt, ctx.service);
-        if (!(gdt->sc_state & GDT_POLLING)) 
+        if (!(gdt->sc_state & GDT_POLLING))
 	    crit_exit();
         return;
     }
     if (ctx.istatus == GDT_SPEZINDEX) {
-        GDT_DPRINTF(GDT_D_INVALID, 
-                    ("iir%d: Service unknown or not initialized!\n", 
-                     gdt->sc_hanum));   
+        GDT_DPRINTF(GDT_D_INVALID,
+                    ("iir%d: Service unknown or not initialized!\n",
+                     gdt->sc_hanum));
         gdt->sc_dvr.size = sizeof(gdt->sc_dvr.eu.driver);
         gdt->sc_dvr.eu.driver.ionode = gdt->sc_hanum;
         gdt_store_event(GDT_ES_DRIVER, 4, &gdt->sc_dvr);
-        if (!(gdt->sc_state & GDT_POLLING)) 
+        if (!(gdt->sc_state & GDT_POLLING))
 	    crit_exit();
         return;
     }
@@ -1625,17 +1630,17 @@ iir_intr(void *arg)
         /* fallthrough */
 
       case GDT_GCF_INTERNAL:
-        if (!(gdt->sc_state & GDT_POLLING)) 
+        if (!(gdt->sc_state & GDT_POLLING))
 	    crit_exit();
         break;
 
       case GDT_GCF_IOCTL:
-        ucmd = gccb->gc_ucmd; 
+        ucmd = gccb->gc_ucmd;
         if (gdt->sc_status == GDT_S_BSY) {
-            GDT_DPRINTF(GDT_D_DEBUG, ("iir_intr(%p) ioctl: gccb %p busy\n", 
+            GDT_DPRINTF(GDT_D_DEBUG, ("iir_intr(%p) ioctl: gccb %p busy\n",
                                       gdt, gccb));
             TAILQ_INSERT_HEAD(&gdt->sc_ucmd_queue, ucmd, links);
-            if (!(gdt->sc_state & GDT_POLLING)) 
+            if (!(gdt->sc_state & GDT_POLLING))
 		crit_exit();
         } else {
             ucmd->status = gdt->sc_status;
@@ -1655,24 +1660,24 @@ iir_intr(void *arg)
                 cnt = ucmd->u.raw.sdlen;
                 if (cnt != 0)
                     bcopy(gccb->gc_scratch, ucmd->data, cnt);
-                if (ucmd->u.raw.sense_len != 0) 
+                if (ucmd->u.raw.sense_len != 0)
                     bcopy(gccb->gc_scratch, ucmd->data, cnt);
             }
             gdt_free_ccb(gdt, gccb);
-            if (!(gdt->sc_state & GDT_POLLING)) 
+            if (!(gdt->sc_state & GDT_POLLING))
 		crit_exit();
             /* wakeup */
             wakeup(ucmd);
         }
-        gdt_next(gdt); 
+        gdt_next(gdt);
         break;
 
       default:
         gdt_free_ccb(gdt, gccb);
         gdt_sync_event(gdt, ctx.service, ctx.istatus, gccb);
-        if (!(gdt->sc_state & GDT_POLLING)) 
+        if (!(gdt->sc_state & GDT_POLLING))
 	    crit_exit();
-        gdt_next(gdt); 
+        gdt_next(gdt);
         break;
     }
 }
@@ -1688,26 +1693,25 @@ gdt_async_event(struct gdt_softc *gdt, int service)
         if (gdt->sc_status == GDT_MSG_REQUEST) {
             while (gdt->sc_test_busy(gdt))
                 DELAY(1);
-            bzero(gdt->sc_cmd, GDT_CMD_SZ);
             gccb = gdt_get_ccb(gdt);
             if (gccb == NULL) {
                 kprintf("iir%d: No free command index found\n",
                        gdt->sc_hanum);
                 return (1);
             }
+            bzero(gccb->gc_cmd, GDT_CMD_SZ);
             gccb->gc_service = service;
             gccb->gc_flags = GDT_GCF_SCREEN;
-            gdt->sc_set_sema0(gdt);
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_COMMANDINDEX,
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_COMMANDINDEX,
                       gccb->gc_cmd_index);
-            gdt_enc16(gdt->sc_cmd + GDT_CMD_OPCODE, GDT_READ);
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_SCREEN_MSG_HANDLE,
+            gdt_enc16(gccb->gc_cmd + GDT_CMD_OPCODE, GDT_READ);
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_SCREEN_MSG_HANDLE,
                       GDT_MSG_INV_HANDLE);
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_SCREEN_MSG_ADDR,
-                      gdt_ccb_vtop(gdt, gccb) + 
-                      offsetof(struct gdt_ccb, gc_scratch[0]));
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_SCREEN_MSG_ADDR,
+                      gccb->gc_scratch_busbase);
+            gdt->sc_set_sema0(gdt);
             gdt->sc_cmd_off = 0;
-            gdt->sc_cmd_len = roundup(GDT_CMD_UNION + GDT_SCREEN_SZ, 
+            gccb->gc_cmd_len = roundup(GDT_CMD_UNION + GDT_SCREEN_SZ,
                                       sizeof(u_int32_t));
             gdt->sc_cmd_cnt = 0;
             gdt->sc_copy_cmd(gdt, gccb);
@@ -1722,7 +1726,7 @@ gdt_async_event(struct gdt_softc *gdt, int service)
             gdt->sc_dvr.eu.async.ionode = gdt->sc_hanum;
             gdt->sc_dvr.eu.async.status  = gdt->sc_status;
             /* severity and event_string already set! */
-        } else {        
+        } else {
             gdt->sc_dvr.size = sizeof(gdt->sc_dvr.eu.async);
             gdt->sc_dvr.eu.async.ionode   = gdt->sc_hanum;
             gdt->sc_dvr.eu.async.service = service;
@@ -1733,16 +1737,15 @@ gdt_async_event(struct gdt_softc *gdt, int service)
         gdt_store_event(GDT_ES_ASYNC, service, &gdt->sc_dvr);
         kprintf("iir%d: %s\n", gdt->sc_hanum, gdt->sc_dvr.event_string);
     }
-    
+
     return (0);
 }
 
 int
-gdt_sync_event(struct gdt_softc *gdt, int service, 
+gdt_sync_event(struct gdt_softc *gdt, int service,
                u_int8_t index, struct gdt_ccb *gccb)
 {
     union ccb *ccb;
-    bus_dmasync_op_t op;
 
     GDT_DPRINTF(GDT_D_INTR,
                 ("gdt_sync_event(%p, %d, %d, %p)\n", gdt,service,index,gccb));
@@ -1754,17 +1757,17 @@ gdt_sync_event(struct gdt_softc *gdt, int service,
 
         msg_len = gdt_dec32(gccb->gc_scratch + GDT_SCR_MSG_LEN);
         if (msg_len)
-            if (!(gccb->gc_scratch[GDT_SCR_MSG_ANSWER] && 
+            if (!(gccb->gc_scratch[GDT_SCR_MSG_ANSWER] &&
                   gccb->gc_scratch[GDT_SCR_MSG_EXT])) {
                 gccb->gc_scratch[GDT_SCR_MSG_TEXT + msg_len] = '\0';
                 kprintf("%s",&gccb->gc_scratch[GDT_SCR_MSG_TEXT]);
             }
 
-        if (gccb->gc_scratch[GDT_SCR_MSG_EXT] && 
+        if (gccb->gc_scratch[GDT_SCR_MSG_EXT] &&
             !gccb->gc_scratch[GDT_SCR_MSG_ANSWER]) {
             while (gdt->sc_test_busy(gdt))
                 DELAY(1);
-            bzero(gdt->sc_cmd, GDT_CMD_SZ);
+            bzero(gccb->gc_cmd, GDT_CMD_SZ);
             gccb = gdt_get_ccb(gdt);
             if (gccb == NULL) {
                 kprintf("iir%d: No free command index found\n",
@@ -1773,17 +1776,16 @@ gdt_sync_event(struct gdt_softc *gdt, int service,
             }
             gccb->gc_service = service;
             gccb->gc_flags = GDT_GCF_SCREEN;
-            gdt->sc_set_sema0(gdt);
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_COMMANDINDEX,
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_COMMANDINDEX,
                       gccb->gc_cmd_index);
-            gdt_enc16(gdt->sc_cmd + GDT_CMD_OPCODE, GDT_READ);
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_SCREEN_MSG_HANDLE,
+            gdt_enc16(gccb->gc_cmd + GDT_CMD_OPCODE, GDT_READ);
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_SCREEN_MSG_HANDLE,
                       gccb->gc_scratch[GDT_SCR_MSG_HANDLE]);
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_SCREEN_MSG_ADDR,
-                      gdt_ccb_vtop(gdt, gccb) + 
-                      offsetof(struct gdt_ccb, gc_scratch[0]));
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_SCREEN_MSG_ADDR,
+                      gccb->gc_scratch_busbase);
+            gdt->sc_set_sema0(gdt);
             gdt->sc_cmd_off = 0;
-            gdt->sc_cmd_len = roundup(GDT_CMD_UNION + GDT_SCREEN_SZ, 
+            gccb->gc_cmd_len = roundup(GDT_CMD_UNION + GDT_SCREEN_SZ,
                                       sizeof(u_int32_t));
             gdt->sc_cmd_cnt = 0;
             gdt->sc_copy_cmd(gdt, gccb);
@@ -1791,7 +1793,7 @@ gdt_sync_event(struct gdt_softc *gdt, int service,
             return (0);
         }
 
-        if (gccb->gc_scratch[GDT_SCR_MSG_ANSWER] && 
+        if (gccb->gc_scratch[GDT_SCR_MSG_ANSWER] &&
             gdt_dec32(gccb->gc_scratch + GDT_SCR_MSG_ALEN)) {
             /* default answers (getchar() not possible) */
             if (gdt_dec32(gccb->gc_scratch + GDT_SCR_MSG_ALEN) == 1) {
@@ -1799,7 +1801,7 @@ gdt_sync_event(struct gdt_softc *gdt, int service,
                 gdt_enc32(gccb->gc_scratch + GDT_SCR_MSG_LEN, 1);
                 gccb->gc_scratch[GDT_SCR_MSG_TEXT] = 0;
             } else {
-                gdt_enc32(gccb->gc_scratch + GDT_SCR_MSG_ALEN, 
+                gdt_enc32(gccb->gc_scratch + GDT_SCR_MSG_ALEN,
                           gdt_dec32(gccb->gc_scratch + GDT_SCR_MSG_ALEN) - 2);
                 gdt_enc32(gccb->gc_scratch + GDT_SCR_MSG_LEN, 2);
                 gccb->gc_scratch[GDT_SCR_MSG_TEXT] = 1;
@@ -1809,7 +1811,7 @@ gdt_sync_event(struct gdt_softc *gdt, int service,
             gccb->gc_scratch[GDT_SCR_MSG_ANSWER] = 0;
             while (gdt->sc_test_busy(gdt))
                 DELAY(1);
-            bzero(gdt->sc_cmd, GDT_CMD_SZ);
+            bzero(gccb->gc_cmd, GDT_CMD_SZ);
             gccb = gdt_get_ccb(gdt);
             if (gccb == NULL) {
                 kprintf("iir%d: No free command index found\n",
@@ -1818,17 +1820,16 @@ gdt_sync_event(struct gdt_softc *gdt, int service,
             }
             gccb->gc_service = service;
             gccb->gc_flags = GDT_GCF_SCREEN;
-            gdt->sc_set_sema0(gdt);
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_COMMANDINDEX,
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_COMMANDINDEX,
                       gccb->gc_cmd_index);
-            gdt_enc16(gdt->sc_cmd + GDT_CMD_OPCODE, GDT_WRITE);
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_SCREEN_MSG_HANDLE,
+            gdt_enc16(gccb->gc_cmd + GDT_CMD_OPCODE, GDT_WRITE);
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_SCREEN_MSG_HANDLE,
                       gccb->gc_scratch[GDT_SCR_MSG_HANDLE]);
-            gdt_enc32(gdt->sc_cmd + GDT_CMD_UNION + GDT_SCREEN_MSG_ADDR,
-                      gdt_ccb_vtop(gdt, gccb) + 
-                      offsetof(struct gdt_ccb, gc_scratch[0]));
+            gdt_enc32(gccb->gc_cmd + GDT_CMD_UNION + GDT_SCREEN_MSG_ADDR,
+                      gccb->gc_scratch_busbase);
+            gdt->sc_set_sema0(gdt);
             gdt->sc_cmd_off = 0;
-            gdt->sc_cmd_len = roundup(GDT_CMD_UNION + GDT_SCREEN_SZ, 
+            gccb->gc_cmd_len = roundup(GDT_CMD_UNION + GDT_SCREEN_SZ,
                                       sizeof(u_int32_t));
             gdt->sc_cmd_cnt = 0;
             gdt->sc_copy_cmd(gdt, gccb);
@@ -1840,7 +1841,7 @@ gdt_sync_event(struct gdt_softc *gdt, int service,
     } else {
         callout_stop(&ccb->ccb_h.timeout_ch);
         if (gdt->sc_status == GDT_S_BSY) {
-            GDT_DPRINTF(GDT_D_DEBUG, ("gdt_sync_event(%p) gccb %p busy\n", 
+            GDT_DPRINTF(GDT_D_DEBUG, ("gdt_sync_event(%p) gccb %p busy\n",
                                       gdt, gccb));
             TAILQ_INSERT_HEAD(&gdt->sc_ccb_queue, &ccb->ccb_h, sim_links.tqe);
             ++gdt_stat.req_queue_act;
@@ -1849,19 +1850,20 @@ gdt_sync_event(struct gdt_softc *gdt, int service,
             return (2);
         }
 
-        if ((ccb->ccb_h.flags & CAM_DIR_MASK) == CAM_DIR_IN)
-            op = BUS_DMASYNC_POSTREAD;
-        else
-            op = BUS_DMASYNC_POSTWRITE;
-        bus_dmamap_sync(gdt->sc_buffer_dmat, gccb->gc_dmamap, op);
+        bus_dmamap_sync(gdt->sc_buffer_dmat, gccb->gc_dmamap,
+            (ccb->ccb_h.flags & CAM_DIR_MASK) == CAM_DIR_IN ?
+            BUS_DMASYNC_POSTREAD : BUS_DMASYNC_POSTWRITE);
+        bus_dmamap_unload(gdt->sc_buffer_dmat, gccb->gc_dmamap);
 
         ccb->csio.resid = 0;
         if (gdt->sc_status == GDT_S_OK) {
-            ccb->ccb_h.status = CAM_REQ_CMP;
+            ccb->ccb_h.status |= CAM_REQ_CMP;
+            ccb->ccb_h.status &= ~CAM_SIM_QUEUED;
         } else {
             /* error */
             if (gccb->gc_service == GDT_CACHESERVICE) {
-                ccb->ccb_h.status = CAM_SCSI_STATUS_ERROR | CAM_AUTOSNS_VALID;
+                ccb->ccb_h.status |= CAM_SCSI_STATUS_ERROR | CAM_AUTOSNS_VALID;
+                ccb->ccb_h.status &= ~CAM_SIM_QUEUED;
                 ccb->csio.scsi_status = SCSI_STATUS_CHECK_COND;
                 bzero(&ccb->csio.sense_data, ccb->csio.sense_len);
                 ccb->csio.sense_data.error_code =
@@ -1881,9 +1883,10 @@ gdt_sync_event(struct gdt_softc *gdt, int service,
             } else {
                 /* raw service */
                 if (gdt->sc_status != GDT_S_RAW_SCSI || gdt->sc_info >= 0x100) {
-                    ccb->ccb_h.status = CAM_SEL_TIMEOUT;
+                    ccb->ccb_h.status = CAM_DEV_NOT_THERE;
                 } else {
-                    ccb->ccb_h.status = CAM_SCSI_STATUS_ERROR|CAM_AUTOSNS_VALID;
+                    ccb->ccb_h.status |= CAM_SCSI_STATUS_ERROR|CAM_AUTOSNS_VALID;
+                    ccb->ccb_h.status &= ~CAM_SIM_QUEUED;
                     ccb->csio.scsi_status = gdt->sc_info;
                     bcopy(gccb->gc_scratch, &ccb->csio.sense_data,
                           ccb->csio.sense_len);
@@ -1914,7 +1917,7 @@ gdt_store_event(u_int16_t source, u_int16_t idx, gdt_evt_data *evt)
                   (char *)&evt->eu, evt->size)) ||
          (evt->size == 0 && ebuffer[elastidx].event_data.size == 0 &&
           !strcmp((char *)&ebuffer[elastidx].event_data.event_string,
-                  (char *)&evt->event_string)))) { 
+                  (char *)&evt->event_string)))) {
         e = &ebuffer[elastidx];
         getmicrotime(&tv);
         e->last_stamp = tv.tv_sec;
@@ -1947,7 +1950,7 @@ gdt_read_event(int handle, gdt_evt_str *estr)
 {
     gdt_evt_str *e;
     int eindex;
-    
+
     GDT_DPRINTF(GDT_D_MISC, ("gdt_read_event(%d)\n", handle));
     crit_enter();
     if (handle == -1)
@@ -1980,7 +1983,7 @@ gdt_readapp_event(u_int8_t application, gdt_evt_str *estr)
     gdt_evt_str *e;
     int found = FALSE;
     int eindex;
-    
+
     GDT_DPRINTF(GDT_D_MISC, ("gdt_readapp_event(%d)\n", application));
     crit_enter();
     eindex = eoldidx;

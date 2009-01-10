@@ -4,9 +4,10 @@
 #
 # $DragonFly: src/etc/Makefile.usr,v 1.8 2008/09/03 10:38:55 hasso Exp $
 
-CVSROOT_PKGSRC=anoncvs@anoncvs.NetBSD.org:/cvsroot
-CVSROOT_PKGSRC_WIP=anoncvs@anoncvs.NetBSD.se:/cvsroot
-GIT_DRAGONFLY=git://crater.dragonflybsd.org/dragonfly.git
+CVSROOT_PKGSRC?=	anoncvs@anoncvs.NetBSD.org:/cvsroot
+CVSROOT_PKGSRC_WIP?=	anoncvs@anoncvs.NetBSD.se:/cvsroot
+GIT_DRAGONFLY?=		git://chlamydia.fs.ei.tum.de/dragonfly.git
+GIT_BRANCH?=		master
 
 all:
 	@echo "Install or update /usr/pkgsrc using NetBSDs anoncvs"
@@ -51,19 +52,19 @@ release-sys-extract:
 	bunzip2 < src-sys.tar.bz2 | tar xvpf -
 
 git-clone:
-	@cd ${.CURDIR}; \
-	if [ -z "`which git`" ]; then \
+	@if [ -z "`which git`" ]; then \
 		echo "Please install devel/scmgit from pkgsrc"; \
 		exit 1; \
-	fi; \
-	git clone -o crater -n ${GIT_DRAGONFLY} src; \
-	cd src && git checkout master
+	fi
+	git clone -n ${GIT_DRAGONFLY} ${.CURDIR}/src
+	if [ "${GIT_BRANCH}" != master ]; then \
+		git --git-dir=${.CURDIR}/src/.git branch --track -l -f ${GIT_BRANCH} origin/${GIT_BRANCH}; \
+	fi
+	cd ${.CURDIR}/src && git checkout ${GIT_BRANCH}
 
 git-update:
-	@cd ${.CURDIR}/src; \
-	if [ -z "`which git`" ]; then \
+	@if [ -z "`which git`" ]; then \
 		echo "Please install devel/scmgit from pkgsrc"; \
 		exit 1; \
-	fi; \
-	git pull crater
-
+	fi
+	cd ${.CURDIR}/src && git pull
