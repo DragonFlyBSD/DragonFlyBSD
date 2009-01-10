@@ -352,7 +352,7 @@ summarize_branch_revs()
 	if [ -n "$gitweburl" ]
 	then
 		echo ""
-		echo "$gitweburl?p=$reponame;a=commitdiff;h=$newrev${oldrev:+;hp=}$oldrev"
+		echo "$gitweburl/$reponame/commitdiff/$oldrev${oldrev:+..}$newrev"
 	fi
 	echo $LOGEND
 }
