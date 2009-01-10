@@ -323,8 +323,8 @@ mkimg:
 
 	echo "determine required image size" > /dev/null;		\
 	sz=`du -ck ${ISOROOT} | tail -n 1 | cut -f 1`;			\
-	echo "add 15 MB more space as required" > /dev/null;		\
-	sz=`bc -e "($${sz}) / 1024 + 15" -equit`;			\
+	echo "add 15% more space as required" > /dev/null;		\
+	sz=`bc -e "(($${sz}) / 1024) * 1.15" -equit | cut -f1 -d.`;	\
 	dd if=/dev/zero of=${IMGFILE} bs=1m count=$${sz};		\
 	fdisk -IB -p ${IMGFILE};					\
 	echo "determine free vn device" > /dev/null;			\
@@ -347,8 +347,10 @@ mkimg:
 	mount /dev/$${vn}s1a ${IMGMNT};					\
 	cpdup -vvv ${ISOROOT} ${IMGMNT};				\
 	echo "fix /etc/fstab" > /dev/null;				\
-	echo "${IMGUSBDEV}s1a / ufs rw 0 0" > ${IMGMNT}/etc/fstab; 	\
-	echo "proc /proc procfs rw 0 0" >> ${IMGMNT}/etc/fstab; 	\
+	mv ${IMGMNT}/etc/fstab ${IMGMNT}/etc/fstab.old;			\
+	grep -v cd9660 ${IMGMNT}/etc/fstab.old > ${IMGMNT}/etc/fstab;	\
+	echo "${IMGUSBDEV}s1a / ufs ro,noauto 0 0" >> ${IMGMNT}/etc/fstab;\
+	rm ${IMGMNT}/etc/fstab.old;					\
 	df ${IMGMNT};							\
 	umount ${IMGMNT};						\
 	vnconfig -u $${vn};						\
