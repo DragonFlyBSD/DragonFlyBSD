@@ -323,8 +323,8 @@ mkimg:
 
 	echo "determine required image size" > /dev/null;		\
 	sz=`du -ck ${ISOROOT} | tail -n 1 | cut -f 1`;			\
-	echo "add 10 MB more space as required" > /dev/null;		\
-	sz=`bc -e "($${sz}) / 1024 + 10" -equit`;			\
+	echo "add 15 MB more space as required" > /dev/null;		\
+	sz=`bc -e "($${sz}) / 1024 + 15" -equit`;			\
 	dd if=/dev/zero of=${IMGFILE} bs=1m count=$${sz};		\
 	fdisk -IB -p ${IMGFILE};					\
 	echo "determine free vn device" > /dev/null;			\
@@ -349,6 +349,7 @@ mkimg:
 	echo "fix /etc/fstab" > /dev/null;				\
 	echo "${IMGUSBDEV}s1a / ufs rw 0 0" > ${IMGMNT}/etc/fstab; 	\
 	echo "proc /proc procfs rw 0 0" >> ${IMGMNT}/etc/fstab; 	\
+	df ${IMGMNT};							\
 	umount ${IMGMNT};						\
 	vnconfig -u $${vn};						\
 	rmdir ${IMGMNT}

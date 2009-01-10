@@ -1,7 +1,9 @@
-/* $FreeBSD: src/sys/dev/iir/iir_ctrl.c,v 1.2.2.4 2002/05/05 08:18:12 asmodai Exp $ */
+/* $FreeBSD: src/sys/dev/iir/iir_ctrl.c,v 1.17 2005/05/06 02:32:34 cperciva Exp $ */
 /* $DragonFly: src/sys/dev/raid/iir/iir_ctrl.c,v 1.13 2007/05/17 21:08:49 dillon Exp $ */
-/*
- *       Copyright (c) 2000-01 Intel Corporation
+/*-
+ *       Copyright (c) 2000-03 ICP vortex GmbH
+ *       Copyright (c) 2002-03 Intel Corporation
+ *       Copyright (c) 2003    Adaptec Inc.
  *       All Rights Reserved
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,16 +34,16 @@
 /*
  * iir_ctrl.c: Control functions and /dev entry points for /dev/iir*
  *
- * Written by: Achim Leubner <achim.leubner@intel.com>
+ * Written by: Achim Leubner <achim_leubner@adaptec.com>
  * Fixes/Additions: Boji Tony Kannanthanam <boji.t.kannanthanam@intel.com>
  *
- * TODO:     
+ * $Id: iir_ctrl.c 1.3 2003/08/26 12:31:15 achim Exp $"
  */
 
-#ident "$Id: iir_ctrl.c 1.2 2001/07/18 11:17:22 achim Exp $"
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/endian.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/uio.h>
@@ -259,11 +261,13 @@ iir_ioctl(struct dev_ioctl_args *ap)
         }
 
       case GDT_IOCTL_DRVERS:
+      case GDT_IOCTL_DRVERS_OLD:
         *(int *)ap->a_data = 
             (IIR_DRIVER_VERSION << 8) | IIR_DRIVER_SUBVERSION;
         break;
 
       case GDT_IOCTL_CTRTYPE:
+      case GDT_IOCTL_CTRTYPE_OLD:
         {
             gdt_ctrt_t *p;
             struct gdt_softc *gdt; 
@@ -272,10 +276,22 @@ iir_ioctl(struct dev_ioctl_args *ap)
             gdt = gdt_minor2softc(p->io_node);
             if (gdt == NULL)
                 return (ENXIO);
-            p->oem_id = 0x8000;
-            p->type = 0xfd;
+            /* only RP controllers */
+            p->ext_type = 0x6000 | gdt->sc_device;
+            if (gdt->sc_vendor == INTEL_VENDOR_ID) {
+                p->oem_id = OEM_ID_INTEL;
+                p->type = 0xfd;
+                /* new -> subdevice into ext_type */
+                if (gdt->sc_device >= 0x600)
+                    p->ext_type = 0x6000 | gdt->sc_subdevice;
+            } else {
+                p->oem_id = OEM_ID_ICP;
+                p->type = 0xfe;
+                /* new -> subdevice into ext_type */
+                if (gdt->sc_device >= 0x300)
+                    p->ext_type = 0x6000 | gdt->sc_subdevice;
+            }
             p->info = (gdt->sc_bus << 8) | (gdt->sc_slot << 3);
-            p->ext_type = 0x6000 | gdt->sc_subdevice;
             p->device_id = gdt->sc_device;
             p->sub_device_id = gdt->sc_subdevice;
             break;
