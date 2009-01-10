@@ -133,7 +133,7 @@ ROOTSKELS+=		${.CURDIR}/gui
 ISOFILE ?= ${ISODIR}/dfly.iso
 IMGFILE ?= ${ISODIR}/dfly.img
 
-IMGMNT ?= ${ISOROOT}/mnt
+IMGMNT ?= ${ISODIR}/mnt
 IMGUSBDEV ?= /dev/da0
 
 # note: we use the '${NRLOBJDIR}/nrelease' construct, that is we add
