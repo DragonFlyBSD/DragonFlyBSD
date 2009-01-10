@@ -231,7 +231,7 @@ TAILQ_HEAD(hammer_node_cache_list, hammer_node_cache);
 struct hammer_flush_group {
 	TAILQ_ENTRY(hammer_flush_group)	flush_entry;
 	TAILQ_HEAD(, hammer_inode)	flush_list;
-	int				inode_count;	/* inode load */
+	int				unused01;	/* inode load */
 	int				total_count;	/* record load */
 	int				running;	/* group is running */
 	int				closed;

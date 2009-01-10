@@ -31,7 +31,7 @@
 .\" $FreeBSD: src/share/man/man7/release.7,v 1.3.2.6 2003/04/12 20:42:30 murray Exp $
 .\" $DragonFly: src/share/man/man7/release.7,v 1.12 2008/04/01 21:10:26 swildner Exp $
 .\"
-.Dd December 1, 2008
+.Dd January 9, 2009
 .Dt NRELEASE 7
 .Os
 .Sh NAME
@@ -99,19 +99,25 @@ have been done before.
 For a description of the corresponding build targets, see
 .Xr build 7 .
 .Pp
-If the
-.Cm installer
-target is specified along with a
+A number of additional targets may be specified along with
 .Cm release ,
 .Cm quickrel ,
 or
 .Cm realquickrel
-target, the
+to add additional features:
+.Bl -tag -width ".Cm realquickrel"
+.It Cm installer
+Adds the
 .Bx
-Installer will be added to the resulting ISO image.
-Likewise, if the
-.Cm gui
-target is specified, X11 will be added to the ISO.
+Installer to the ISO (our standard LiveCD).
+.It Cm gui
+Adds
+.Xr Xorg 1
+along with some additional applications to the ISO (LiveDVD).
+.It Cm img
+In addition to the ISO, an image suitable for use with e.g., a USB thumb
+drive, will be created.
+.El
 .Pp
 During the process of rolling a release a check is performed to find
 out if a number of external packages to be put on the CD exist on
@@ -157,6 +163,17 @@ packages are kept.
 If set, this variable will prevent kernel source code from being copied to
 .Pa /usr/src-sys.tar.bz2
 on the ISO image.
+.It Va IMGFILE
+The name of the image file (default is
+.Pa /usr/release/dfly.img ) .
+.It Va IMGMNT
+The mount point for the image (default is
+.Pa /usr/release/mnt ) .
+.It Va IMGUSBDEV
+The disk device to use in the image's
+.Xr fstab 5
+(default is
+.Pa /dev/da0 ) .
 .El
 .Sh FILES
 .Bl -tag -compact

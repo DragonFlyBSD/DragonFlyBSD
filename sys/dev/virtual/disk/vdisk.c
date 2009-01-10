@@ -236,6 +236,12 @@ vkd_doio(struct vkd_softc *sc, struct bio *bio)
 		/* XXX HANDLE SHORT WRITE XXX */
 		n = pwrite(sc->fd, bp->b_data, bp->b_bcount, bio->bio_offset);
 		break;
+	case BUF_CMD_FLUSH:
+		if (fsync(sc->fd) < 0)
+			n = -1;
+		else
+			n = bp->b_bcount;
+		break;
 	default:
 		panic("vkd: bad b_cmd %d", bp->b_cmd);
 		break; /* not reached */
@@ -244,7 +250,6 @@ vkd_doio(struct vkd_softc *sc, struct bio *bio)
 		bp->b_error = EIO;
 		bp->b_flags |= B_ERROR;
 	}
-		
 	bp->b_resid = bp->b_bcount - n;
 }
 

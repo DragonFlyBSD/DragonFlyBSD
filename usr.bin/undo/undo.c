@@ -538,6 +538,10 @@ output_history(const char *filename, int fd, FILE *fp,
 	qsort(hist_ary, tid_num, sizeof(*hist_ary), tid_cmp);
 	if (tid_num == 0)
 		goto done;
+
+	/*
+	 * If fp != NULL dump the history to stdout.
+	 */
 	for (i = 0; fp && i < tid_num; ++i) {
 		if (i && hist_ary[i].tid == hist_ary[i-1].tid)
 			continue;
@@ -546,8 +550,17 @@ output_history(const char *filename, int fd, FILE *fp,
 		strftime(datestr, sizeof(datestr), "%d-%b-%Y %H:%M:%S", tp);
 		printf("\t0x%016llx %s\n", hist_ary[i].tid, datestr);
 	}
-	if (tid_num > 1)
-		hen = hist_ary[tid_num-2];
+
+	/*
+	 * Locate the next-to-last entry, ignoring any duplicates.
+	 */
+	if (tid_num > 1) {
+		for (i = tid_num - 2; i > 0; --i) {
+			if (hist_ary[i].tid != hist_ary[tid_num-1].tid)
+				break;
+		}
+		hen = hist_ary[i];
+	}
 done:
 	if (hist_aryp) {
 		*hist_aryp = hist_ary;
