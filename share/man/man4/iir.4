@@ -1,27 +1,42 @@
-.\" $FreeBSD: src/share/man/man4/iir.4,v 1.1.2.2 2003/03/03 18:51:16 trhodes Exp $
+.\" $FreeBSD: src/share/man/man4/iir.4,v 1.10 2006/06/19 15:22:34 brueffer Exp $
 .\" $DragonFly: src/share/man/man4/iir.4,v 1.4 2007/04/04 18:36:55 swildner Exp $
 .\" Written by Tom Rhodes
 .\" This file is in the public domain.
 .\"
-.Dd January 5, 2003
+.Dd January 10, 2009
 .Dt IIR 4
 .Os
 .Sh NAME
 .Nm iir
 .Nd Intel Integrated RAID controller and ICP Vortex driver
 .Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device pci"
 .Cd "device scbus"
 .Cd "device iir"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+iir_load="YES"
+.Ed
 .Sh DESCRIPTION
 The
 .Nm
 driver claims to interface with the Intel integrated
 RAID controller cards, and all versions of the
 ICP Vortex controllers (including FC).
+.Sh HARDWARE
+Controllers supported by the
+.Nm
+driver include:
 .Pp
-Supported controllers include:
-.Pp
-.Bl -item -compact
+.Bl -bullet -compact
 .It
 Intel RAID Controller SRCMR
 .It
@@ -34,7 +49,7 @@ Intel Server RAID Controller U3-2 (SRCU32)
 All past and future releases of Intel and ICP RAID Controllers.
 .El
 .Pp
-.Bl -item -compact
+.Bl -bullet -compact
 .It
 Intel RAID Controller SRCU21 (discontinued)
 .It
@@ -55,20 +70,9 @@ The
 .Nm
 driver is supported and maintained by
 .An -nosplit
-.An Achim Leubner Aq achim.leubner@intel.com
-and
-.An Boji Tony Kannanthanam Aq boji.t.kannanthanam@intel.com
-of Intel's Storage Components division.
+.An Achim Leubner Aq Achim_Leubner@adaptec.com .
 .Pp
 This manual page was written by
 .An Tom Rhodes Aq trhodes@FreeBSD.org
 and is based on information supplied by the driver authors and the website of
-.An Mike Smith Aq msith@FreeBSD.org .
-.Sh BUGS
-During a
-.Dx
-install, the
-.Nm
-controller appears to correctly probe, but finds no disk devices.
-The card in question is an Intel SRCU32 RAID controller with 32Mb RAM,
-Firmware revision 2.33.01.
+.An Mike Smith Aq msmith@FreeBSD.org .

@@ -1,7 +1,9 @@
-/* $FreeBSD: src/sys/dev/iir/iir.h,v 1.3.2.2 2002/05/04 08:49:50 msmith Exp $ */
+/* $FreeBSD: src/sys/dev/iir/iir.h,v 1.16 2007/06/17 05:55:50 scottl Exp $ */
 /* $DragonFly: src/sys/dev/raid/iir/iir.h,v 1.7 2006/12/22 23:26:23 swildner Exp $ */
-/*
- *       Copyright (c) 2000-01 Intel Corporation
+/*-
+ *       Copyright (c) 2000-04 ICP vortex GmbH
+ *       Copyright (c) 2002-04 Intel Corporation
+ *       Copyright (c) 2003-04 Adaptec Inc.
  *       All Rights Reserved
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,23 +36,26 @@
  *
  * iir.h:       Definitions/Constants used by the Intel Integrated RAID driver
  *
- * Written by: 	Achim Leubner <achim.leubner@intel.com>
+ * Written by: 	Achim Leubner <achim_leubner@adaptec.com>
  * Fixes/Additions:	Boji Tony Kannanthanam <boji.t.kannanthanam@intel.com>
  *
  * credits:     Niklas Hallqvist;       OpenBSD driver for the ICP Controllers.
  *              FreeBSD.ORG;            Great O/S to work on and for.
+ *
+ * $Id: iir.h 1.6 2004/03/30 10:19:44 achim Exp $"
  */
-
-
-#ident "$Id: iir.h 1.3 2001/07/03 11:28:57 achim Exp $"
 
 #ifndef _IIR_H
 #define _IIR_H
 
 #define IIR_DRIVER_VERSION      1
-#define IIR_DRIVER_SUBVERSION   1
+#define IIR_DRIVER_SUBVERSION   5
 
 #define IIR_CDEV_MAJOR          164
+
+/* OEM IDs */
+#define OEM_ID_ICP              0x941c
+#define OEM_ID_INTEL            0x8000
 
 #define GDT_VENDOR_ID           0x1119
 #define GDT_DEVICE_ID_MIN       0x100
@@ -143,14 +148,17 @@
 #define GDT_CACHE_DRV_INFO      0x07            /* cache drive info */
 #define GDT_BOARD_FEATURES      0x15            /* controller features */
 #define GDT_BOARD_INFO          0x28            /* controller info */
+#define GDT_OEM_STR_RECORD      0x84            /* OEM info */
 #define GDT_HOST_GET            0x10001         /* get host drive list */
 #define GDT_IO_CHANNEL          0x20000         /* default IO channel */
 #define GDT_INVALID_CHANNEL     0xffff          /* invalid channel */
 
 /* IOCTLs */
 #define GDT_IOCTL_GENERAL       _IOWR('J', 0, gdt_ucmd_t) /* general IOCTL */
-#define GDT_IOCTL_DRVERS        _IOWR('J', 1, int)      /* get driver version */
-#define GDT_IOCTL_CTRTYPE       _IOR('J', 2, gdt_ctrt_t) /* get ctr. type */
+#define GDT_IOCTL_DRVERS        _IOR('J', 1, int)      /* get driver version */
+#define GDT_IOCTL_CTRTYPE       _IOWR('J', 2, gdt_ctrt_t) /* get ctr. type */
+#define GDT_IOCTL_DRVERS_OLD    _IOWR('J', 1, int)      /* get driver version */
+#define GDT_IOCTL_CTRTYPE_OLD   _IOR('J', 2, gdt_ctrt_t) /* get ctr. type */
 #define GDT_IOCTL_OSVERS        _IOR('J', 3, gdt_osv_t) /* get OS version */
 #define GDT_IOCTL_CTRCNT        _IOR('J', 5, int)       /* get ctr. count */
 #define GDT_IOCTL_EVENT         _IOWR('J', 8, gdt_event_t) /* get event */
@@ -372,12 +380,6 @@ extern int ser_printf(const char *fmt, ...);
 #define GDT_WATCH_TIMEOUT       10000000        /* 10000 * 1us = 10s */
 #define GDT_SCRATCH_SZ          3072            /* 3KB scratch buffer */
 
-/* macros */
-#define htole32(v)      (v)
-#define htole16(v)      (v)
-#define letoh32(v)      (v)
-#define letoh16(v)      (v)
-
 /* Map minor numbers to device identity */
 #define LUN_MASK                0x0007
 #define TARGET_MASK             0x03f8
@@ -460,6 +462,52 @@ typedef struct gdt_osv {
     u_int16_t revision;
     char      name[64];
 } gdt_osv_t;
+
+/* OEM */
+#define GDT_OEM_VERSION     0x00
+#define GDT_OEM_BUFSIZE     0x0c
+typedef struct {
+    u_int32_t ctl_version;
+    u_int32_t file_major_version;
+    u_int32_t file_minor_version;
+    u_int32_t buffer_size;
+    u_int32_t cpy_count;
+    u_int32_t ext_error;
+    u_int32_t oem_id;
+    u_int32_t board_id;
+} gdt_oem_param_t;
+
+typedef struct {
+    char      product_0_1_name[16];
+    char      product_4_5_name[16];
+    char      product_cluster_name[16];
+    char      product_reserved[16];
+    char      scsi_cluster_target_vendor_id[16];
+    char      cluster_raid_fw_name[16];
+    char      oem_brand_name[16];
+    char      oem_raid_type[16];
+    char      bios_type[13];
+    char      bios_title[50];
+    char      oem_company_name[37];
+    u_int32_t pci_id_1;
+    u_int32_t pci_id_2;
+    char      validation_status[80];
+    char      reserved_1[4];
+    char      scsi_host_drive_inquiry_vendor_id[16];
+    char      library_file_template[32];
+    char      tool_name_1[32];
+    char      tool_name_2[32];
+    char      tool_name_3[32];
+    char      oem_contact_1[84];
+    char      oem_contact_2[84];
+    char      oem_contact_3[84];
+} gdt_oem_record_t;
+
+typedef struct {
+    gdt_oem_param_t  parameters;
+    gdt_oem_record_t text;
+} gdt_oem_str_record_t;
+
 
 /* controller event structure */
 #define GDT_ES_ASYNC    1
@@ -548,6 +596,7 @@ struct gdt_softc {
 #define GDT_FC          0x10
 #define GDT_CLASS(gdt)  ((gdt)->sc_class & GDT_CLASS_MASK)
     int sc_bus, sc_slot;
+    u_int16_t sc_vendor;
     u_int16_t sc_device, sc_subdevice;
     u_int16_t sc_fw_vers;
     int sc_init_level;
@@ -563,20 +612,19 @@ struct gdt_softc {
     bus_addr_t sc_dpmembase;
     bus_dma_tag_t sc_parent_dmat;
     bus_dma_tag_t sc_buffer_dmat;
-    bus_dma_tag_t sc_gccb_dmat;
-    bus_dmamap_t sc_gccb_dmamap;
-    bus_addr_t sc_gccb_busbase;
+    bus_dma_tag_t sc_gcscratch_dmat;
+    bus_dmamap_t sc_gcscratch_dmamap;
+    bus_addr_t sc_gcscratch_busbase;
 
     struct gdt_ccb *sc_gccbs;
+    u_int8_t  *sc_gcscratch;
     SLIST_HEAD(, gdt_ccb) sc_free_gccb, sc_pending_gccb;
     TAILQ_HEAD(, ccb_hdr) sc_ccb_queue;
     TAILQ_HEAD(, gdt_ucmd) sc_ucmd_queue;
 
     u_int16_t sc_ic_all_size;
-    u_int16_t sc_cmd_len;
     u_int16_t sc_cmd_off;
     u_int16_t sc_cmd_cnt;
-    u_int8_t sc_cmd[GDT_CMD_SZ];
 
     u_int32_t sc_info;
     u_int32_t sc_info2;
@@ -610,6 +658,7 @@ struct gdt_softc {
     u_int16_t sc_cache_feat;
 
     gdt_evt_data sc_dvr;
+    char oem_name[8];
 
     struct cam_sim *sims[GDT_MAXBUS];
     struct cam_path *paths[GDT_MAXBUS];
@@ -629,13 +678,13 @@ struct gdt_softc {
  * controller.
  */
 struct gdt_ccb {
-    u_int8_t    gc_scratch[GDT_SCRATCH_SZ];
+    u_int8_t    *gc_scratch;
+    bus_addr_t  gc_scratch_busbase;
     union ccb   *gc_ccb;
     gdt_ucmd_t  *gc_ucmd;
     bus_dmamap_t gc_dmamap;
     int         gc_map_flag;
     int         gc_timeout;
-    int         gc_state;
     u_int8_t    gc_service;
     u_int8_t    gc_cmd_index;
     u_int8_t    gc_flags;
@@ -644,6 +693,8 @@ struct gdt_ccb {
 #define GDT_GCF_SCREEN          2
 #define GDT_GCF_SCSI            3
 #define GDT_GCF_IOCTL           4
+    u_int16_t	gc_cmd_len;
+    u_int8_t	gc_cmd[GDT_CMD_SZ];
     SLIST_ENTRY(gdt_ccb) sle;
 };
 
@@ -675,13 +726,13 @@ gdt_enc32(u_int8_t *addr, u_int32_t value)
 static __inline__ u_int16_t
 gdt_dec16(u_int8_t *addr)
 {
-        return letoh16(*(u_int16_t *)addr);
+        return le16toh(*(u_int16_t *)addr);
 }
 
 static __inline__ u_int32_t
 gdt_dec32(u_int8_t *addr)
 {
-        return letoh32(*(u_int32_t *)addr);
+        return le32toh(*(u_int32_t *)addr);
 }
 #endif
 
