@@ -427,6 +427,7 @@
 
 struct bfe_data {
 	struct mbuf	*bfe_mbuf;
+	bus_addr_t	bfe_paddr;
 	bus_dmamap_t	bfe_map;
 };
 

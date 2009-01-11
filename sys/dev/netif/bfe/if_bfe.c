@@ -78,6 +78,11 @@ MODULE_DEPEND(bfe, miibus, 1, 1, 1);
 
 #define BFE_DEVDESC_MAX		64	/* Maximum device description length */
 
+struct bfe_dmamap_ctx {
+	int			nsegs;
+	bus_dma_segment_t	*segs;
+};
+
 static struct bfe_type bfe_devs[] = {
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM4401,
 	    "Broadcom BCM4401 Fast Ethernet" },
@@ -103,7 +108,8 @@ static void	bfe_txeof(struct bfe_softc *);
 static void	bfe_rxeof(struct bfe_softc *);
 static void	bfe_set_rx_mode(struct bfe_softc *);
 static int	bfe_list_rx_init(struct bfe_softc *);
-static int	bfe_newbuf(struct bfe_softc *, int, struct mbuf*);
+static int	bfe_newbuf(struct bfe_softc *, int, int);
+static void	bfe_setup_rxdesc(struct bfe_softc *, int);
 static void	bfe_rx_ring_free(struct bfe_softc *);
 
 static void	bfe_pci_setup(struct bfe_softc *, uint32_t);
@@ -130,6 +136,8 @@ static void	bfe_dma_free(struct bfe_softc *);
 static void	bfe_dma_map_desc(void *, bus_dma_segment_t *, int, int);
 static void	bfe_dma_map(void *, bus_dma_segment_t *, int, int);
 static void	bfe_cam_write(struct bfe_softc *, u_char *, int);
+static void	bfe_dmamap_buf_cb(void *, bus_dma_segment_t *, int,
+				  bus_size_t, int);
 
 static device_method_t bfe_methods[] = {
 	/* Device interface */
@@ -570,11 +578,13 @@ bfe_rx_ring_free(struct bfe_softc *sc)
 static int 
 bfe_list_rx_init(struct bfe_softc *sc)
 {
-	int i;
+	int i, error;
 
-	for (i = 0; i < BFE_RX_LIST_CNT; i++)
-		if (bfe_newbuf(sc, i, NULL) == ENOBUFS)
-			return(ENOBUFS);
+	for (i = 0; i < BFE_RX_LIST_CNT; i++) {
+		error = bfe_newbuf(sc, i, 1);
+		if (error)
+			return(error);
+	}
 
 	bus_dmamap_sync(sc->bfe_rx_tag, sc->bfe_rx_map, BUS_DMASYNC_PREWRITE);
 	CSR_WRITE_4(sc, BFE_DMARX_PTR, (i * sizeof(struct bfe_desc)));
@@ -585,46 +595,85 @@ bfe_list_rx_init(struct bfe_softc *sc)
 }
 
 static int
-bfe_newbuf(struct bfe_softc *sc, int c, struct mbuf *m)
+bfe_newbuf(struct bfe_softc *sc, int c, int init)
+{
+	struct bfe_data *r;
+	bus_dmamap_t map;
+	bus_dma_segment_t seg;
+	struct bfe_dmamap_ctx ctx;
+	struct mbuf *m;
+	int error;
+
+	m = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	if (m == NULL)
+		return ENOBUFS;
+	m->m_len = m->m_pkthdr.len = MCLBYTES;
+
+	ctx.nsegs = 1;
+	ctx.segs = &seg;
+	error = bus_dmamap_load_mbuf(sc->bfe_rxbuf_tag,
+				     sc->bfe_rx_tmpmap,
+				     m, bfe_dmamap_buf_cb, &ctx,
+				     BUS_DMA_NOWAIT);
+	if (error || ctx.nsegs == 0) {
+		if (!error) {
+			bus_dmamap_unload(sc->bfe_rxbuf_tag,
+					  sc->bfe_rx_tmpmap);
+			error = EFBIG;
+			if_printf(&sc->arpcom.ac_if, "too many segments?!\n");
+		}
+		m_freem(m);
+
+		if (init)
+			if_printf(&sc->arpcom.ac_if, "can't load RX mbuf\n");
+		return error;
+	}
+
+	KKASSERT(c >= 0 && c < BFE_RX_LIST_CNT);
+	r = &sc->bfe_rx_ring[c];
+
+	if (r->bfe_mbuf != NULL)
+		bus_dmamap_unload(sc->bfe_rxbuf_tag, r->bfe_map);
+
+	map = r->bfe_map;
+	r->bfe_map = sc->bfe_rx_tmpmap;
+	sc->bfe_rx_tmpmap = map;
+
+	r->bfe_mbuf = m;
+	r->bfe_paddr = seg.ds_addr;
+
+	bfe_setup_rxdesc(sc, c);
+	return 0;
+}
+
+static void
+bfe_setup_rxdesc(struct bfe_softc *sc, int c)
 {
 	struct bfe_rxheader *rx_header;
+	struct mbuf *m;
 	struct bfe_desc *d;
 	struct bfe_data *r;
 	uint32_t ctrl;
 
-	if ((c < 0) || (c >= BFE_RX_LIST_CNT))
-		return(EINVAL);
+	KKASSERT(c >= 0 && c < BFE_RX_LIST_CNT);
+	r = &sc->bfe_rx_ring[c];
+	d = &sc->bfe_rx_list[c];
 
-	if (m == NULL) {
-		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
-		if (m == NULL)
-			return(ENOBUFS);
-		m->m_len = m->m_pkthdr.len = MCLBYTES;
-	}
-	else
-		m->m_data = m->m_ext.ext_buf;
+	KKASSERT(r->bfe_mbuf != NULL && r->bfe_paddr != 0);
 
+	m = r->bfe_mbuf;
 	rx_header = mtod(m, struct bfe_rxheader *);
 	rx_header->len = 0;
 	rx_header->flags = 0;
-
-	/* Map the mbuf into DMA */
-	d = &sc->bfe_rx_list[c];
-	r = &sc->bfe_rx_ring[c];
-	/* XXX error? */
-	bus_dmamap_load(sc->bfe_rxbuf_tag, r->bfe_map, mtod(m, void *),
-			MCLBYTES, bfe_dma_map_desc, d, BUS_DMA_NOWAIT);
 	bus_dmamap_sync(sc->bfe_rxbuf_tag, r->bfe_map, BUS_DMASYNC_PREWRITE);
 
 	ctrl = ETHER_MAX_LEN + 32;
-
-	if(c == BFE_RX_LIST_CNT - 1)
+	if (c == BFE_RX_LIST_CNT - 1)
 		ctrl |= BFE_DESC_EOT;
 
+	d->bfe_addr = r->bfe_paddr + BFE_PCI_DMA;
 	d->bfe_ctrl = ctrl;
-	r->bfe_mbuf = m;
 	bus_dmamap_sync(sc->bfe_rx_tag, sc->bfe_rx_map, BUS_DMASYNC_PREWRITE);
-	return(0);
 }
 
 static void
@@ -1133,32 +1182,31 @@ bfe_rxeof(struct bfe_softc *sc)
 
 	while (current != cons) {
 		r = &sc->bfe_rx_ring[cons];
+		bus_dmamap_sync(sc->bfe_rxbuf_tag, r->bfe_map,
+				BUS_DMASYNC_POSTREAD);
+
+		KKASSERT(r->bfe_mbuf != NULL);
 		m = r->bfe_mbuf;
 		rxheader = mtod(m, struct bfe_rxheader*);
-		bus_dmamap_sync(sc->bfe_rxbuf_tag, r->bfe_map, BUS_DMASYNC_POSTREAD);
-		len = rxheader->len;
-		r->bfe_mbuf = NULL;
-
-		bus_dmamap_unload(sc->bfe_rxbuf_tag, r->bfe_map);
+		len = rxheader->len - ETHER_CRC_LEN;
 		flags = rxheader->flags;
 
-		len -= ETHER_CRC_LEN;
-
 		/* flag an error and try again */
-		if ((len > ETHER_MAX_LEN+32) || (flags & BFE_RX_FLAG_ERRORS)) {
+		if (len > ETHER_MAX_LEN + 32 || (flags & BFE_RX_FLAG_ERRORS)) {
 			ifp->if_ierrors++;
 			if (flags & BFE_RX_FLAG_SERR)
 				ifp->if_collisions++;
-			bfe_newbuf(sc, cons, m);
+
+			bfe_setup_rxdesc(sc, cons);
 			BFE_INC(cons, BFE_RX_LIST_CNT);
 			continue;
 		}
 
 		/* Go past the rx header */
-		if (bfe_newbuf(sc, cons, NULL) != 0) {
-			bfe_newbuf(sc, cons, m);
-			BFE_INC(cons, BFE_RX_LIST_CNT);
+		if (bfe_newbuf(sc, cons, 0) != 0) {
+			bfe_setup_rxdesc(sc, cons);
 			ifp->if_ierrors++;
+			BFE_INC(cons, BFE_RX_LIST_CNT);
 			continue;
 		}
 
@@ -1560,4 +1608,24 @@ bfe_stop(struct bfe_softc *sc)
 	bfe_rx_ring_free(sc);
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+}
+
+static void
+bfe_dmamap_buf_cb(void *xctx, bus_dma_segment_t *segs, int nsegs,
+		  bus_size_t mapsz __unused, int error)
+{
+	struct bfe_dmamap_ctx *ctx = xctx;
+	int i;
+
+	if (error)
+		return;
+
+	if (nsegs > ctx->nsegs) {
+		ctx->nsegs = 0;
+		return;
+	}
+
+	ctx->nsegs = nsegs;
+	for (i = 0; i < nsegs; ++i)
+		ctx->segs[i] = segs[i];
 }
