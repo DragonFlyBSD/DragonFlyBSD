@@ -489,7 +489,7 @@ struct bfe_softc
 	uint32_t		bfe_imask;
 	uint32_t		bfe_dma_offset;
 	uint32_t		bfe_tx_cnt, bfe_tx_cons, bfe_tx_prod;
-	uint32_t		bfe_rx_cnt, bfe_rx_prod, bfe_rx_cons;
+	uint32_t		bfe_rx_cons;
 	uint32_t		bfe_tx_dma, bfe_rx_dma;
 	uint32_t		bfe_link;
 	uint8_t			bfe_phyaddr;	/* Address of the card's PHY */

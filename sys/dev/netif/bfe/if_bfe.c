@@ -609,7 +609,6 @@ bfe_list_newbuf(struct bfe_softc *sc, int c, struct mbuf *m)
 	rx_header->flags = 0;
 
 	/* Map the mbuf into DMA */
-	sc->bfe_rx_cnt = c;
 	d = &sc->bfe_rx_list[c];
 	r = &sc->bfe_rx_ring[c];
 	/* XXX error? */
@@ -732,7 +731,7 @@ bfe_chip_reset(struct bfe_softc *sc)
 		if (CSR_READ_4(sc, BFE_DMARX_STAT) & BFE_STAT_EMASK) 
 			bfe_wait_bit(sc, BFE_DMARX_STAT, BFE_STAT_SIDLE, 100, 0);
 		CSR_WRITE_4(sc, BFE_DMARX_CTRL, 0);
-		sc->bfe_rx_prod = sc->bfe_rx_cons = 0;
+		sc->bfe_rx_cons = 0;
 	}
 
 	bfe_core_reset(sc);
