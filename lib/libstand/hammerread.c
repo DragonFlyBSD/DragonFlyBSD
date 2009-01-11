@@ -433,6 +433,11 @@ loop:
 		hprintb(&node->elms[i].base);
 		printf("\n");
 	}
+	if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
+		printf("B: ");
+		hprintb(&node->elms[node->count].base);
+		printf("\n");
+	}
 #endif
 
 	n = hammer_btree_search_node(&search, node);
