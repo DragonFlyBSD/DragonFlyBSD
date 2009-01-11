@@ -13,8 +13,9 @@ NOLINT=		true
 .include "Makefile.inc"
 
 # base sources
-SRCS+=	cpt_err.c cryptlib.c cversion.c ebcdic.c ex_data.c mem.c mem_clr.c \
-	mem_dbg.c o_dir.c o_time.c tmdiff.c uid.c
+SRCS+=	cpt_err.c cryptlib.c cversion.c dyn_lck.c ebcdic.c ex_data.c \
+	fips_err.c mem.c mem_clr.c \
+	mem_dbg.c o_dir.c o_init.c o_time.c tmdiff.c uid.c
 
 # aes
 SRCS+=	aes_cbc.c aes_cfb.c aes_core.c aes_ctr.c aes_ecb.c aes_ige.c \
@@ -49,11 +50,12 @@ SRCS+=	b_dump.c b_print.c b_sock.c bf_buff.c bf_lbuf.c bf_nbio.c \
 SRCS+=	bn_add.c bn_asm.c bn_blind.c bn_const.c bn_ctx.c bn_depr.c \
 	bn_div.c bn_err.c bn_exp.c \
 	bn_exp2.c bn_gcd.c bn_gf2m.c bn_kron.c bn_lib.c bn_mod.c bn_mont.c \
-	bn_mpi.c bn_mul.c bn_nist.c bn_prime.c bn_print.c bn_rand.c bn_recp.c \
-	bn_shift.c bn_sqr.c bn_sqrt.c bn_word.c
+	bn_mpi.c bn_mul.c bn_nist.c bn_opt.c \
+	bn_prime.c bn_print.c bn_rand.c bn_recp.c \
+	bn_shift.c bn_sqr.c bn_sqrt.c bn_word.c bn_x931p.c
 
 # buffer
-SRCS+=	buf_err.c buffer.c
+SRCS+=	buf_err.c buf_str.c buffer.c
 
 # camellia
 # still disabled in 0.9.8
@@ -75,7 +77,8 @@ SRCS+=	conf_api.c conf_def.c conf_err.c conf_lib.c conf_mall.c conf_mod.c conf_s
 
 # des
 SRCS+=	cbc3_enc.c cbc_cksm.c cbc_enc.c cfb64ede.c cfb64enc.c cfb_enc.c \
-	des_enc.c des_old.c des_old2.c ecb3_enc.c ecb_enc.c ede_cbcm_enc.c \
+	des_enc.c des_lib.c des_old.c des_old2.c \
+	ecb3_enc.c ecb_enc.c ede_cbcm_enc.c \
 	enc_read.c enc_writ.c fcrypt.c fcrypt_b.c ofb64ede.c ofb64enc.c \
 	ofb_enc.c pcbc_enc.c qud_cksm.c rand_key.c read2pwd.c \
 	rpc_enc.c set_key.c str2key.c xcbc_enc.c
@@ -85,7 +88,7 @@ SRCS+=	dh_asn1.c dh_check.c dh_depr.c dh_err.c dh_gen.c dh_key.c dh_lib.c
 
 # dsa
 SRCS+=	dsa_asn1.c dsa_depr.c dsa_err.c dsa_gen.c dsa_key.c dsa_lib.c \
-	dsa_ossl.c dsa_sign.c dsa_vrf.c
+	dsa_ossl.c dsa_sign.c dsa_utl.c dsa_vrf.c
 
 # dso
 SRCS+=	dso_dl.c dso_dlfcn.c dso_err.c dso_lib.c dso_null.c dso_openssl.c
@@ -113,13 +116,15 @@ SRCS+=	e_4758cca.c e_aep.c e_atalla.c e_chil.c e_cswift.c e_gmp.c \
 	e_nuron.c e_sureware.c e_ubsec.c
 
 # err
-SRCS+=	err.c err_all.c err_prn.c
+SRCS+=	err.c err_all.c err_bio.c err_def.c err_prn.c err_str.c
 
 # evp
 SRCS+=	bio_b64.c bio_enc.c bio_md.c bio_ok.c c_all.c c_allc.c c_alld.c \
+	dig_eng.c \
 	digest.c e_aes.c e_bf.c e_camellia.c e_cast.c e_des.c e_des3.c \
-	e_idea.c e_null.c e_rc2.c e_rc4.c e_rc5.c e_xcbc_d.c encode.c \
-	evp_acnf.c evp_enc.c evp_err.c evp_key.c evp_lib.c evp_pbe.c \
+	e_idea.c e_null.c e_rc2.c e_rc4.c e_rc5.c e_xcbc_d.c \
+	enc_min.c encode.c \
+	evp_acnf.c evp_cnf.c evp_enc.c evp_err.c evp_key.c evp_lib.c evp_pbe.c \
 	evp_pkey.c m_dss.c m_dss1.c m_ecdsa.c m_md2.c m_md4.c m_md5.c \
 	m_mdc2.c m_null.c m_ripemd.c m_sha.c m_sha1.c names.c openbsd_hw.c \
 	p5_crpt.c p5_crpt2.c p_dec.c p_enc.c p_lib.c p_open.c p_seal.c \
@@ -176,14 +181,15 @@ SRCS+=	example.c pk7_asn1.c pk7_attr.c pk7_dgst.c pk7_doit.c \
 SRCS+=	pqueue.c
 
 # rand
-SRCS+=	md_rand.c rand_egd.c rand_err.c rand_lib.c rand_nw.c rand_unix.c \
+SRCS+=	md_rand.c rand_egd.c rand_eng.c \
+	rand_err.c rand_lib.c rand_nw.c rand_unix.c \
 	randfile.c
 
 # rc2
 SRCS+=	rc2_cbc.c rc2_ecb.c rc2_skey.c rc2cfb64.c rc2ofb64.c
 
 # rc4
-SRCS+=	rc4_enc.c rc4_skey.c
+SRCS+=	rc4_enc.c rc4_fblk.c rc4_skey.c
 
 # rc5
 # .. is patented, so don't compile by default
@@ -193,9 +199,10 @@ SRCS+=	rc4_enc.c rc4_skey.c
 SRCS+=	rmd_dgst.c rmd_one.c
 
 # rsa
-SRCS+=	rsa_asn1.c rsa_chk.c rsa_depr.c rsa_eay.c rsa_err.c rsa_gen.c \
+SRCS+=	rsa_asn1.c rsa_chk.c rsa_depr.c rsa_eay.c \
+	rsa_eng.c rsa_err.c rsa_gen.c \
 	rsa_lib.c rsa_none.c rsa_null.c rsa_oaep.c rsa_pk1.c rsa_pss.c \
-	rsa_saos.c rsa_sign.c rsa_ssl.c rsa_x931.c
+	rsa_saos.c rsa_sign.c rsa_ssl.c rsa_x931.c rsa_x931g.c
 
 # sha
 SRCS+=	sha1_one.c sha1dgst.c sha256.c sha512.c sha_dgst.c sha_one.c
