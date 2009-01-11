@@ -469,10 +469,14 @@ struct bfe_softc
 	device_t		bfe_miibus;
 	bus_space_handle_t	bfe_bhandle;
 	bus_space_tag_t		bfe_btag;
-	bus_dma_tag_t		bfe_tag;
 	bus_dma_tag_t		bfe_parent_tag;
-	bus_dma_tag_t		bfe_tx_tag, bfe_rx_tag;
-	bus_dmamap_t		bfe_tx_map, bfe_rx_map;
+	bus_dma_tag_t		bfe_rxbuf_tag;
+	bus_dmamap_t		bfe_rx_tmpmap;
+	bus_dma_tag_t		bfe_txbuf_tag;
+	bus_dma_tag_t		bfe_tx_tag;
+	bus_dma_tag_t		bfe_rx_tag;
+	bus_dmamap_t		bfe_tx_map;
+	bus_dmamap_t		bfe_rx_map;
 	void			*bfe_intrhand;
 	struct resource		*bfe_irq;
 	struct resource		*bfe_res;

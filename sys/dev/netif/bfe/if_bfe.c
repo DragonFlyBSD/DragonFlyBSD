@@ -186,7 +186,7 @@ static int
 bfe_dma_alloc(device_t dev)
 {
 	struct bfe_softc *sc = device_get_softc(dev);
-	int error, i, tx_pos, rx_pos;
+	int error, i, tx_pos = 0, rx_pos = 0;
 
 	/*
 	 * Parent tag.  Apparently the chip cannot handle any DMA address
@@ -229,22 +229,28 @@ bfe_dma_alloc(device_t dev)
 		return(error);
 	}
 
-	/* tag for mbufs */
+	/* Tag for RX mbufs */
 	error = bus_dma_tag_create(sc->bfe_parent_tag, ETHER_ALIGN, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
 				   MCLBYTES, 1, MCLBYTES,
-				   BUS_DMA_ALLOCNOW, &sc->bfe_tag);
+				   BUS_DMA_ALLOCNOW, &sc->bfe_rxbuf_tag);
 	if (error) {
-		device_printf(dev, "could not allocate dma tag for mbufs\n");
+		device_printf(dev, "could not allocate dma tag for RX mbufs\n");
 		return(error);
 	}
 
-	rx_pos = tx_pos = 0;
+	error = bus_dmamap_create(sc->bfe_rxbuf_tag, 0, &sc->bfe_rx_tmpmap);
+	if (error) {
+		device_printf(dev, "could not create RX mbuf tmp map\n");
+		bus_dma_tag_destroy(sc->bfe_rxbuf_tag);
+		sc->bfe_rxbuf_tag = NULL;
+		return error;
+	}
 
-	/* pre allocate dmamaps for RX list */
+	/* Allocate dma maps for RX list */
 	for (i = 0; i < BFE_RX_LIST_CNT; i++) {
-		error = bus_dmamap_create(sc->bfe_tag, 0,
+		error = bus_dmamap_create(sc->bfe_rxbuf_tag, 0,
 					  &sc->bfe_rx_ring[i].bfe_map);
 		if (error) {
 			rx_pos = i;
@@ -254,9 +260,20 @@ bfe_dma_alloc(device_t dev)
 	}
 	rx_pos = BFE_RX_LIST_CNT;
 
-	/* pre allocate dmamaps for TX list */
+	/* Tag for TX mbufs */
+	error = bus_dma_tag_create(sc->bfe_parent_tag, ETHER_ALIGN, 0,
+				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+				   NULL, NULL,
+				   MCLBYTES, 1, MCLBYTES,
+				   BUS_DMA_ALLOCNOW, &sc->bfe_txbuf_tag);
+	if (error) {
+		device_printf(dev, "could not allocate dma tag for TX mbufs\n");
+		return(error);
+	}
+
+	/* Allocate dmamaps for TX list */
 	for (i = 0; i < BFE_TX_LIST_CNT; i++) {
-		error = bus_dmamap_create(sc->bfe_tag, 0,
+		error = bus_dmamap_create(sc->bfe_txbuf_tag, 0,
 					  &sc->bfe_tx_ring[i].bfe_map);
 		if (error) {
 			tx_pos = i;
@@ -302,13 +319,24 @@ bfe_dma_alloc(device_t dev)
 	return(0);
 
 ring_fail:
-	for (i = 0; i < rx_pos; ++i)
-		bus_dmamap_destroy(sc->bfe_tag, sc->bfe_rx_ring[i].bfe_map);
-	for (i = 0; i < tx_pos; ++i)
-		bus_dmamap_destroy(sc->bfe_tag, sc->bfe_tx_ring[i].bfe_map);
+	if (sc->bfe_rxbuf_tag != NULL) {
+		for (i = 0; i < rx_pos; ++i) {
+			bus_dmamap_destroy(sc->bfe_rxbuf_tag,
+					   sc->bfe_rx_ring[i].bfe_map);
+		}
+		bus_dmamap_destroy(sc->bfe_rxbuf_tag, sc->bfe_rx_tmpmap);
+		bus_dma_tag_destroy(sc->bfe_rxbuf_tag);
+		sc->bfe_rxbuf_tag = NULL;
+	}
 
-	bus_dma_tag_destroy(sc->bfe_tag);
-	sc->bfe_tag = NULL;
+	if (sc->bfe_txbuf_tag != NULL) {
+		for (i = 0; i < tx_pos; ++i) {
+			bus_dmamap_destroy(sc->bfe_txbuf_tag,
+					   sc->bfe_tx_ring[i].bfe_map);
+		}
+		bus_dma_tag_destroy(sc->bfe_txbuf_tag);
+		sc->bfe_txbuf_tag = NULL;
+	}
 	return error;
 }
 
@@ -511,7 +539,7 @@ bfe_tx_ring_free(struct bfe_softc *sc)
 	int i;
     
 	for (i = 0; i < BFE_TX_LIST_CNT; i++) {
-		bus_dmamap_unload(sc->bfe_tag,
+		bus_dmamap_unload(sc->bfe_txbuf_tag,
 				  sc->bfe_tx_ring[i].bfe_map);
 		if (sc->bfe_tx_ring[i].bfe_mbuf != NULL) {
 			m_freem(sc->bfe_tx_ring[i].bfe_mbuf);
@@ -529,7 +557,7 @@ bfe_rx_ring_free(struct bfe_softc *sc)
 
 	for (i = 0; i < BFE_RX_LIST_CNT; i++) {
 		if (sc->bfe_rx_ring[i].bfe_mbuf != NULL) {
-			bus_dmamap_unload(sc->bfe_tag,
+			bus_dmamap_unload(sc->bfe_rxbuf_tag,
 					  sc->bfe_rx_ring[i].bfe_map);
 			m_freem(sc->bfe_rx_ring[i].bfe_mbuf);
 			sc->bfe_rx_ring[i].bfe_mbuf = NULL;
@@ -585,9 +613,9 @@ bfe_list_newbuf(struct bfe_softc *sc, int c, struct mbuf *m)
 	d = &sc->bfe_rx_list[c];
 	r = &sc->bfe_rx_ring[c];
 	/* XXX error? */
-	bus_dmamap_load(sc->bfe_tag, r->bfe_map, mtod(m, void *),
+	bus_dmamap_load(sc->bfe_rxbuf_tag, r->bfe_map, mtod(m, void *),
 			MCLBYTES, bfe_dma_map_desc, d, BUS_DMA_NOWAIT);
-	bus_dmamap_sync(sc->bfe_tag, r->bfe_map, BUS_DMASYNC_PREWRITE);
+	bus_dmamap_sync(sc->bfe_rxbuf_tag, r->bfe_map, BUS_DMASYNC_PREWRITE);
 
 	ctrl = ETHER_MAX_LEN + 32;
 
@@ -899,6 +927,8 @@ bfe_dma_map_desc(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 static void
 bfe_dma_free(struct bfe_softc *sc)
 {
+	int i;
+
 	if (sc->bfe_tx_tag != NULL) {
 		bus_dmamap_unload(sc->bfe_tx_tag, sc->bfe_tx_map);
 		if (sc->bfe_tx_list != NULL) {
@@ -921,20 +951,23 @@ bfe_dma_free(struct bfe_softc *sc)
 		sc->bfe_rx_tag = NULL;
 	}
 
-	if (sc->bfe_tag != NULL) {
-		int i;
-
+	if (sc->bfe_txbuf_tag != NULL) {
 		for (i = 0; i < BFE_TX_LIST_CNT; i++) {
-			bus_dmamap_destroy(sc->bfe_tag,
+			bus_dmamap_destroy(sc->bfe_txbuf_tag,
 					   sc->bfe_tx_ring[i].bfe_map);
 		}
+		bus_dma_tag_destroy(sc->bfe_txbuf_tag);
+		sc->bfe_txbuf_tag = NULL;
+	}
+
+	if (sc->bfe_rxbuf_tag != NULL) {
 		for (i = 0; i < BFE_RX_LIST_CNT; i++) {
-			bus_dmamap_destroy(sc->bfe_tag,
+			bus_dmamap_destroy(sc->bfe_rxbuf_tag,
 					   sc->bfe_rx_ring[i].bfe_map);
 		}
-
-		bus_dma_tag_destroy(sc->bfe_tag);
-		sc->bfe_tag = NULL;
+		bus_dmamap_destroy(sc->bfe_rxbuf_tag, sc->bfe_rx_tmpmap);
+		bus_dma_tag_destroy(sc->bfe_rxbuf_tag);
+		sc->bfe_rxbuf_tag = NULL;
 	}
 
 	if (sc->bfe_parent_tag != NULL) {
@@ -1061,7 +1094,7 @@ bfe_txeof(struct bfe_softc *sc)
 	while (i != chipidx) {
 		struct bfe_data *r = &sc->bfe_tx_ring[i];
 
-		bus_dmamap_unload(sc->bfe_tag, r->bfe_map);
+		bus_dmamap_unload(sc->bfe_txbuf_tag, r->bfe_map);
 		if (r->bfe_mbuf != NULL) {
 			ifp->if_opackets++;
 			m_freem(r->bfe_mbuf);
@@ -1103,11 +1136,11 @@ bfe_rxeof(struct bfe_softc *sc)
 		r = &sc->bfe_rx_ring[cons];
 		m = r->bfe_mbuf;
 		rxheader = mtod(m, struct bfe_rxheader*);
-		bus_dmamap_sync(sc->bfe_tag, r->bfe_map, BUS_DMASYNC_POSTREAD);
+		bus_dmamap_sync(sc->bfe_rxbuf_tag, r->bfe_map, BUS_DMASYNC_POSTREAD);
 		len = rxheader->len;
 		r->bfe_mbuf = NULL;
 
-		bus_dmamap_unload(sc->bfe_tag, r->bfe_map);
+		bus_dmamap_unload(sc->bfe_rxbuf_tag, r->bfe_map);
 		flags = rxheader->flags;
 
 		len -= ETHER_CRC_LEN;
@@ -1254,7 +1287,7 @@ bfe_encap(struct bfe_softc *sc, struct mbuf **m_head, uint32_t *txidx)
 				d->bfe_ctrl |= BFE_DESC_EOT;
 			}
 
-			error = bus_dmamap_load(sc->bfe_tag, r->bfe_map,
+			error = bus_dmamap_load(sc->bfe_txbuf_tag, r->bfe_map,
 						mtod(m, void *), m->m_len,
 						bfe_dma_map_desc, d,
 						BUS_DMA_NOWAIT);
@@ -1267,7 +1300,7 @@ bfe_encap(struct bfe_softc *sc, struct mbuf **m_head, uint32_t *txidx)
 				return (ENOBUFS);
 			}
 
-			bus_dmamap_sync(sc->bfe_tag, r->bfe_map,
+			bus_dmamap_sync(sc->bfe_txbuf_tag, r->bfe_map,
 					BUS_DMASYNC_PREWRITE);
 
 			frag = cur;
