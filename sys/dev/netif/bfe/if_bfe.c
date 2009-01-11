@@ -189,16 +189,16 @@ bfe_dma_alloc(device_t dev)
 	int error, i, tx_pos, rx_pos;
 
 	/*
-	 * parent tag.  Apparently the chip cannot handle any DMA address
-	 * greater than 1GB.
+	 * Parent tag.  Apparently the chip cannot handle any DMA address
+	 * greater than BFE_BUS_SPACE_MAXADDR (1GB).
 	 */
 	error = bus_dma_tag_create(NULL,          /* parent */
-			4096, 0,                  /* alignment, boundary */
-			0x3FFFFFFF,               /* lowaddr */
+			1, 0,                     /* alignment, boundary */
+			BFE_BUS_SPACE_MAXADDR,    /* lowaddr */
 			BUS_SPACE_MAXADDR,        /* highaddr */
 			NULL, NULL,               /* filter, filterarg */
-			MAXBSIZE,                 /* maxsize */
-			BUS_SPACE_UNRESTRICTED,   /* num of segments */
+			BUS_SPACE_MAXSIZE_32BIT,  /* maxsize */
+			0,                        /* num of segments */
 			BUS_SPACE_MAXSIZE_32BIT,  /* max segment size */
 			0,                        /* flags */
 			&sc->bfe_parent_tag);
@@ -208,11 +208,10 @@ bfe_dma_alloc(device_t dev)
 	}
 
 	/* tag for TX ring */
-	error = bus_dma_tag_create(sc->bfe_parent_tag, 4096, 0,
+	error = bus_dma_tag_create(sc->bfe_parent_tag, PAGE_SIZE, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   BFE_TX_LIST_SIZE, 1,
-				   BUS_SPACE_MAXSIZE_32BIT,
+				   BFE_TX_LIST_SIZE, 1, BFE_TX_LIST_SIZE,
 				   0, &sc->bfe_tx_tag);
 	if (error) {
 		device_printf(dev, "could not allocate dma tag for TX list\n");
@@ -220,11 +219,10 @@ bfe_dma_alloc(device_t dev)
 	}
 
 	/* tag for RX ring */
-	error = bus_dma_tag_create(sc->bfe_parent_tag, 4096, 0,
+	error = bus_dma_tag_create(sc->bfe_parent_tag, PAGE_SIZE, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   BFE_RX_LIST_SIZE, 1,
-				   BUS_SPACE_MAXSIZE_32BIT,
+				   BFE_RX_LIST_SIZE, 1, BFE_RX_LIST_SIZE,
 				   0, &sc->bfe_rx_tag);
 	if (error) {
 		device_printf(dev, "could not allocate dma tag for RX list\n");
@@ -235,7 +233,7 @@ bfe_dma_alloc(device_t dev)
 	error = bus_dma_tag_create(sc->bfe_parent_tag, ETHER_ALIGN, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   MCLBYTES, 1, BUS_SPACE_MAXSIZE_32BIT,
+				   MCLBYTES, 1, MCLBYTES,
 				   BUS_DMA_ALLOCNOW, &sc->bfe_tag);
 	if (error) {
 		device_printf(dev, "could not allocate dma tag for mbufs\n");
@@ -284,8 +282,6 @@ bfe_dma_alloc(device_t dev)
 		return(error);
 	}
 
-	bus_dmamap_sync(sc->bfe_rx_tag, sc->bfe_rx_map, BUS_DMASYNC_PREWRITE);
-
 	/* Alloc dma for tx ring */
 	error = bus_dmamem_alloc(sc->bfe_tx_tag, (void *)&sc->bfe_tx_list,
 				 BUS_DMA_WAITOK | BUS_DMA_ZERO,
@@ -302,8 +298,6 @@ bfe_dma_alloc(device_t dev)
 		device_printf(dev, "cannot load DMA map for TX\n");
 		return(error);
 	}
-
-	bus_dmamap_sync(sc->bfe_tx_tag, sc->bfe_tx_map, BUS_DMASYNC_PREWRITE);
 
 	return(0);
 

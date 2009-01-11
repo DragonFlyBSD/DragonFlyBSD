@@ -502,4 +502,6 @@ struct bfe_type
 	const char		*bfe_name;
 };
 
+#define BFE_BUS_SPACE_MAXADDR	0x3fffffff
+
 #endif /* _BFE_H */
