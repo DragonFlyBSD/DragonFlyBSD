@@ -347,10 +347,8 @@ mkimg:
 	mount /dev/$${vn}s1a ${IMGMNT};					\
 	cpdup -vvv ${ISOROOT} ${IMGMNT};				\
 	echo "fix /etc/fstab" > /dev/null;				\
-	mv ${IMGMNT}/etc/fstab ${IMGMNT}/etc/fstab.old;			\
-	grep -v cd9660 ${IMGMNT}/etc/fstab.old > ${IMGMNT}/etc/fstab;	\
-	echo "${IMGUSBDEV}s1a / ufs ro,noauto 0 0" >> ${IMGMNT}/etc/fstab;\
-	rm ${IMGMNT}/etc/fstab.old;					\
+	echo "${IMGUSBDEV}s1a / ufs rw 0 0" > ${IMGMNT}/etc/fstab; 	\
+	echo "proc /proc procfs rw 0 0" >> ${IMGMNT}/etc/fstab; 	\
 	df ${IMGMNT};							\
 	umount ${IMGMNT};						\
 	vnconfig -u $${vn};						\
