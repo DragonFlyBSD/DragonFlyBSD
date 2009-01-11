@@ -103,7 +103,7 @@ static void	bfe_txeof(struct bfe_softc *);
 static void	bfe_rxeof(struct bfe_softc *);
 static void	bfe_set_rx_mode(struct bfe_softc *);
 static int	bfe_list_rx_init(struct bfe_softc *);
-static int	bfe_list_newbuf(struct bfe_softc *, int, struct mbuf*);
+static int	bfe_newbuf(struct bfe_softc *, int, struct mbuf*);
 static void	bfe_rx_ring_free(struct bfe_softc *);
 
 static void	bfe_pci_setup(struct bfe_softc *, uint32_t);
@@ -573,7 +573,7 @@ bfe_list_rx_init(struct bfe_softc *sc)
 	int i;
 
 	for (i = 0; i < BFE_RX_LIST_CNT; i++)
-		if (bfe_list_newbuf(sc, i, NULL) == ENOBUFS) 
+		if (bfe_newbuf(sc, i, NULL) == ENOBUFS)
 			return(ENOBUFS);
 
 	bus_dmamap_sync(sc->bfe_rx_tag, sc->bfe_rx_map, BUS_DMASYNC_PREWRITE);
@@ -585,7 +585,7 @@ bfe_list_rx_init(struct bfe_softc *sc)
 }
 
 static int
-bfe_list_newbuf(struct bfe_softc *sc, int c, struct mbuf *m)
+bfe_newbuf(struct bfe_softc *sc, int c, struct mbuf *m)
 {
 	struct bfe_rxheader *rx_header;
 	struct bfe_desc *d;
@@ -1149,14 +1149,14 @@ bfe_rxeof(struct bfe_softc *sc)
 			ifp->if_ierrors++;
 			if (flags & BFE_RX_FLAG_SERR)
 				ifp->if_collisions++;
-			bfe_list_newbuf(sc, cons, m);
+			bfe_newbuf(sc, cons, m);
 			BFE_INC(cons, BFE_RX_LIST_CNT);
 			continue;
 		}
 
 		/* Go past the rx header */
-		if (bfe_list_newbuf(sc, cons, NULL) != 0) {
-			bfe_list_newbuf(sc, cons, m);
+		if (bfe_newbuf(sc, cons, NULL) != 0) {
+			bfe_newbuf(sc, cons, m);
 			BFE_INC(cons, BFE_RX_LIST_CNT);
 			ifp->if_ierrors++;
 			continue;
