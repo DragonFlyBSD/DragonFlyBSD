@@ -2,7 +2,7 @@
 # $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.18 2008/09/27 21:04:45 pavalos Exp $
 
 OSSLVERSION=	0.9.8i
-LCRYPTO_SRC=	${.CURDIR}/../../../crypto/openssl-0.9
+LCRYPTO_SRC=	${.CURDIR}/../../../crypto/openssl
 LCRYPTO_DOC=	${LCRYPTO_SRC}/doc
 
 CFLAGS+=	-DTERMIOS -DANSI_SOURCE
