@@ -508,5 +508,7 @@ struct bfe_type
 };
 
 #define BFE_BUS_SPACE_MAXADDR	0x3fffffff
+#define BFE_SPARE_TXDESC	2
+#define BFE_MAXSEGS		16	/* XXX no limit */
 
 #endif /* _BFE_H */

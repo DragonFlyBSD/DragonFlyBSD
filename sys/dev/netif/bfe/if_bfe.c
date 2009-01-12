@@ -133,7 +133,6 @@ static void	bfe_core_reset(struct bfe_softc *);
 static void	bfe_core_disable(struct bfe_softc *);
 static int	bfe_dma_alloc(device_t);
 static void	bfe_dma_free(struct bfe_softc *);
-static void	bfe_dma_map_desc(void *, bus_dma_segment_t *, int, int);
 static void	bfe_dma_map(void *, bus_dma_segment_t *, int, int);
 static void	bfe_cam_write(struct bfe_softc *, u_char *, int);
 static void	bfe_dmamap_buf_cb(void *, bus_dma_segment_t *, int,
@@ -272,7 +271,7 @@ bfe_dma_alloc(device_t dev)
 	error = bus_dma_tag_create(sc->bfe_parent_tag, ETHER_ALIGN, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   MCLBYTES, 1, MCLBYTES,
+				   MCLBYTES, BFE_MAXSEGS, MCLBYTES,
 				   BUS_DMA_ALLOCNOW, &sc->bfe_txbuf_tag);
 	if (error) {
 		device_printf(dev, "could not allocate dma tag for TX mbufs\n");
@@ -547,9 +546,9 @@ bfe_tx_ring_free(struct bfe_softc *sc)
 	int i;
     
 	for (i = 0; i < BFE_TX_LIST_CNT; i++) {
-		bus_dmamap_unload(sc->bfe_txbuf_tag,
-				  sc->bfe_tx_ring[i].bfe_map);
 		if (sc->bfe_tx_ring[i].bfe_mbuf != NULL) {
+			bus_dmamap_unload(sc->bfe_txbuf_tag,
+					  sc->bfe_tx_ring[i].bfe_map);
 			m_freem(sc->bfe_tx_ring[i].bfe_mbuf);
 			sc->bfe_tx_ring[i].bfe_mbuf = NULL;
 		}
@@ -963,16 +962,6 @@ bfe_dma_map(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 }
 
 static void
-bfe_dma_map_desc(void *arg, bus_dma_segment_t *segs, int nseg, int error)
-{
-	struct bfe_desc *d;
-
-	d = arg;
-	/* The chip needs all addresses to be added to BFE_PCI_DMA */
-	d->bfe_addr = segs->ds_addr + BFE_PCI_DMA;
-}
-
-static void
 bfe_dma_free(struct bfe_softc *sc)
 {
 	int i;
@@ -1138,29 +1127,31 @@ bfe_txeof(struct bfe_softc *sc)
 	chipidx /= sizeof(struct bfe_desc);
 
 	i = sc->bfe_tx_cons;
+
 	/* Go through the mbufs and free those that have been transmitted */
 	while (i != chipidx) {
 		struct bfe_data *r = &sc->bfe_tx_ring[i];
 
-		bus_dmamap_unload(sc->bfe_txbuf_tag, r->bfe_map);
 		if (r->bfe_mbuf != NULL) {
 			ifp->if_opackets++;
+			bus_dmamap_unload(sc->bfe_txbuf_tag, r->bfe_map);
 			m_freem(r->bfe_mbuf);
 			r->bfe_mbuf = NULL;
 		}
+
+		KKASSERT(sc->bfe_tx_cnt > 0);
 		sc->bfe_tx_cnt--;
 		BFE_INC(i, BFE_TX_LIST_CNT);
 	}
 
 	if (i != sc->bfe_tx_cons) {
-		/* we freed up some mbufs */
 		sc->bfe_tx_cons = i;
-		ifp->if_flags &= ~IFF_OACTIVE;
+
+		if (sc->bfe_tx_cnt + BFE_SPARE_TXDESC < BFE_TX_LIST_CNT)
+			ifp->if_flags &= ~IFF_OACTIVE;
 	}
 	if (sc->bfe_tx_cnt == 0)
 		ifp->if_timer = 0;
-	else
-		ifp->if_timer = 5;
 }
 
 /* Pass a received packet up the stack */
@@ -1278,91 +1269,100 @@ bfe_intr(void *xsc)
 static int
 bfe_encap(struct bfe_softc *sc, struct mbuf **m_head, uint32_t *txidx)
 {
-	struct bfe_desc *d = NULL;
-	struct bfe_data *r = NULL;
-	struct mbuf *m;
-	uint32_t frag, cur, cnt = 0;
-	int error, chainlen = 0;
+	struct mbuf *m = *m_head;
+	struct bfe_dmamap_ctx ctx;
+	bus_dma_segment_t segs[BFE_MAXSEGS];
+	bus_dmamap_t map;
+	int i, first_idx, last_idx, cur, error, maxsegs;
 
-	KKASSERT(BFE_TX_LIST_CNT >= (2 + sc->bfe_tx_cnt));
+	KKASSERT(sc->bfe_tx_cnt + BFE_SPARE_TXDESC < BFE_TX_LIST_CNT);
+	maxsegs = BFE_TX_LIST_CNT - sc->bfe_tx_cnt - BFE_SPARE_TXDESC;
+	if (maxsegs > BFE_MAXSEGS)
+		maxsegs = BFE_MAXSEGS;
 
-	/*
-	 * Count the number of frags in this chain to see if
-	 * we need to m_defrag.  Since the descriptor list is shared
-	 * by all packets, we'll m_defrag long chains so that they
-	 * do not use up the entire list, even if they would fit.
-	 */
-	for (m = *m_head; m != NULL; m = m->m_next)
-		chainlen++;
+	first_idx = *txidx;
+	map = sc->bfe_tx_ring[first_idx].bfe_map;
 
-	if (chainlen > (BFE_TX_LIST_CNT / 4) ||
-	    BFE_TX_LIST_CNT < (2 + chainlen + sc->bfe_tx_cnt)) {
-		m = m_defrag(*m_head, MB_DONTWAIT);
-		if (m == NULL) {
-			m_freem(*m_head);
-			return (ENOBUFS);
-		}
-		*m_head = m;
+	ctx.segs = segs;
+	ctx.nsegs = maxsegs;
+	error = bus_dmamap_load_mbuf(sc->bfe_txbuf_tag, map, m,
+				     bfe_dmamap_buf_cb, &ctx, BUS_DMA_NOWAIT);
+	if (!error && ctx.nsegs == 0) {
+		bus_dmamap_unload(sc->bfe_txbuf_tag, map);
+		error = EFBIG;
 	}
+	if (error && error != EFBIG)
+		return error;
+	if (error) {	/* error == EFBIG */
+		struct mbuf *m_new;
 
-	/*
-	 * Start packing the mbufs in this chain into
-	 * the fragment pointers. Stop when we run out
-	 * of fragments or hit the end of the mbuf chain.
-	 */
-	cur = frag = *txidx;
-	cnt = 0;
+		m_new = m_defrag(m, MB_DONTWAIT);
+		if (m_new == NULL) {
+			m_freem(m);
+			*m_head = NULL;
+			return ENOBUFS;
+		} else {
+			*m_head = m = m_new;
+		}
 
-	for (m = *m_head; m != NULL; m = m->m_next) {
-		if (m->m_len != 0) {
-			KKASSERT(BFE_TX_LIST_CNT >= (2 + sc->bfe_tx_cnt + cnt));
-
-			d = &sc->bfe_tx_list[cur];
-			r = &sc->bfe_tx_ring[cur];
-			d->bfe_ctrl = BFE_DESC_LEN & m->m_len;
-			/* always intterupt on completion */
-			d->bfe_ctrl |= BFE_DESC_IOC;
-			if (cnt == 0) {
-				/* Set start of frame */
-				d->bfe_ctrl |= BFE_DESC_SOF;
+		ctx.segs = segs;
+		ctx.nsegs = maxsegs;
+		error = bus_dmamap_load_mbuf(sc->bfe_txbuf_tag, map, m,
+					     bfe_dmamap_buf_cb, &ctx,
+					     BUS_DMA_NOWAIT);
+		if (error || ctx.nsegs == 0) {
+			if (!error) {
+				bus_dmamap_unload(sc->bfe_txbuf_tag, map);
+				error = EFBIG;
 			}
-			if (cur == BFE_TX_LIST_CNT - 1) {
-				/*
-				 * Tell the chip to wrap to the start of the
-				 * descriptor list
-				 */
-				d->bfe_ctrl |= BFE_DESC_EOT;
-			}
-
-			error = bus_dmamap_load(sc->bfe_txbuf_tag, r->bfe_map,
-						mtod(m, void *), m->m_len,
-						bfe_dma_map_desc, d,
-						BUS_DMA_NOWAIT);
-			if (error) {
-				/* XXX This should be a fatal error. */
-				if_printf(&sc->arpcom.ac_if,
-					  "%s bus_dmamap_load failed: %d",
-					  __func__, error);
-				m_freem(*m_head);
-				return (ENOBUFS);
-			}
-
-			bus_dmamap_sync(sc->bfe_txbuf_tag, r->bfe_map,
-					BUS_DMASYNC_PREWRITE);
-
-			frag = cur;
-			BFE_INC(cur, BFE_TX_LIST_CNT);
-			cnt++;
+			return error;
 		}
 	}
+	bus_dmamap_sync(sc->bfe_txbuf_tag, map, BUS_DMASYNC_PREWRITE);
 
-	sc->bfe_tx_list[frag].bfe_ctrl |= BFE_DESC_EOF;
-	sc->bfe_tx_ring[frag].bfe_mbuf = *m_head;
+	last_idx = -1;
+	cur = first_idx;
+	for (i = 0; i < ctx.nsegs; ++i) {
+		struct bfe_desc *d;
+		uint32_t ctrl;
+
+		ctrl = BFE_DESC_LEN & segs[i].ds_len;
+		ctrl |= BFE_DESC_IOC; /* always interrupt */
+		if (cur == BFE_TX_LIST_CNT - 1) {
+			/*
+			 * Tell the chip to wrap to the
+			 * start of the descriptor list.
+			 */
+			ctrl |= BFE_DESC_EOT;
+		}
+
+		d = &sc->bfe_tx_list[cur];
+		d->bfe_addr = segs[i].ds_addr + BFE_PCI_DMA;
+		d->bfe_ctrl = ctrl;
+
+		last_idx = cur;
+		BFE_INC(cur, BFE_TX_LIST_CNT);
+	}
+	KKASSERT(last_idx >= 0);
+
+	/* End of the frame */
+	sc->bfe_tx_list[last_idx].bfe_ctrl |= BFE_DESC_EOF;
+
+	/*
+	 * Set start of the frame on the first fragment,
+	 * _after_ all of the fragments are setup.
+	 */
+	sc->bfe_tx_list[first_idx].bfe_ctrl |= BFE_DESC_SOF;
+
+	sc->bfe_tx_ring[first_idx].bfe_map = sc->bfe_tx_ring[last_idx].bfe_map;
+	sc->bfe_tx_ring[last_idx].bfe_map = map;
+	sc->bfe_tx_ring[last_idx].bfe_mbuf = m;
+
 	bus_dmamap_sync(sc->bfe_tx_tag, sc->bfe_tx_map, BUS_DMASYNC_PREWRITE);
 
 	*txidx = cur;
-	sc->bfe_tx_cnt += cnt;
-	return(0);
+	sc->bfe_tx_cnt += ctx.nsegs;
+	return 0;
 }
 
 /*
@@ -1392,8 +1392,8 @@ bfe_start(struct ifnet *ifp)
 	idx = sc->bfe_tx_prod;
 
 	need_trans = 0;
-	while (sc->bfe_tx_ring[idx].bfe_mbuf == NULL) {
-		if (BFE_TX_LIST_CNT < (2 + sc->bfe_tx_cnt)) {
+	while (!ifq_is_empty(&ifp->if_snd)) {
+		if (sc->bfe_tx_cnt + BFE_SPARE_TXDESC >= BFE_TX_LIST_CNT) {
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
@@ -1408,6 +1408,8 @@ bfe_start(struct ifnet *ifp)
 		 */
 		if (bfe_encap(sc, &m_head, &idx)) {
 			ifp->if_flags |= IFF_OACTIVE;
+			if (m_head != NULL)
+				ifq_prepend(&ifp->if_snd, m_head);
 			break;
 		}
 		need_trans = 1;
@@ -1423,6 +1425,7 @@ bfe_start(struct ifnet *ifp)
 		return;
 
 	sc->bfe_tx_prod = idx;
+
 	/* Transmit - twice due to apparent hardware bug */
 	CSR_WRITE_4(sc, BFE_DMATX_PTR, idx * sizeof(struct bfe_desc));
 	CSR_WRITE_4(sc, BFE_DMATX_PTR, idx * sizeof(struct bfe_desc));
