@@ -33,9 +33,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cksum.c	8.2 (Berkeley) 4/28/95
- * $FreeBSD: src/usr.bin/cksum/cksum.c,v 1.11.2.1 2001/07/30 10:16:29 dd Exp $
+ * $FreeBSD: src/usr.bin/cksum/cksum.c,v 1.18 2008/05/15 20:04:36 brooks Exp $
  * $DragonFly: src/usr.bin/cksum/cksum.c,v 1.6 2005/04/10 20:55:38 drhodus Exp $
  */
 
@@ -55,11 +54,12 @@ static void usage(void);
 int
 main(int argc, char **argv)
 {
+	uint32_t val;
 	int ch, fd, rval;
-	u_int32_t len, val;
+	off_t len;
 	char *fn, *p;
-	int (*cfncn)(int, u_int32_t *, u_int32_t *);
-	void (*pfncn)(char *, u_int32_t, u_int32_t);
+	int (*cfncn)(int, uint32_t *, off_t *);
+	void (*pfncn)(char *, uint32_t, off_t);
 
 	if ((p = strrchr(argv[0], '/')) == NULL)
 		p = argv[0];
@@ -115,7 +115,7 @@ main(int argc, char **argv)
 			rval = 1;
 		} else
 			pfncn(fn, val, len);
-		(void)close(fd);
+		close(fd);
 	} while (*argv);
 	exit(rval);
 }
@@ -123,7 +123,7 @@ main(int argc, char **argv)
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: cksum [-o 1 | 2 | 3] [file ...]\n");
-	(void)fprintf(stderr, "       sum [file ...]\n");
+	fprintf(stderr, "usage: cksum [-o 1 | 2 | 3] [file ...]\n");
+	fprintf(stderr, "       sum [file ...]\n");
 	exit(1);
 }
