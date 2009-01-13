@@ -1574,6 +1574,7 @@ ${OSACPI_MI_DIR}/Osd/OsdStream.c	optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdSynch.c		optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdTable.c		optional acpi
 
+${OSACPI_MI_DIR}/acpi_asus/acpi_asus.c		optional acpi_asus acpi
 ${OSACPI_MI_DIR}/acpi_toshiba/acpi_toshiba.c	optional acpi_toshiba acpi
 ${OSACPI_MI_DIR}/acpi_thinkpad/acpi_thinkpad.c	optional acpi_thinkpad acpi
 ${OSACPI_MI_DIR}/acpi_video/acpi_video.c	optional acpi_video acpi

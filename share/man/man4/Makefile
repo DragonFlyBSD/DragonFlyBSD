@@ -4,6 +4,7 @@
 
 MAN=	aac.4 \
 	acpi.4 \
+	acpi_asus.4 \
 	acpi_thermal.4 \
 	acpi_thinkpad.4 \
 	acpi_toshiba.4 \
