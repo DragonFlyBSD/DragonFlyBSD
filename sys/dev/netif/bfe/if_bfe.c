@@ -1410,6 +1410,8 @@ bfe_start(struct ifnet *ifp)
 			ifp->if_flags |= IFF_OACTIVE;
 			if (m_head != NULL)
 				ifq_prepend(&ifp->if_snd, m_head);
+			else
+				ifp->if_oerrors++;
 			break;
 		}
 		need_trans = 1;
