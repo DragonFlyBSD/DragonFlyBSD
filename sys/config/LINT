@@ -2641,6 +2641,11 @@ options		UBSEC_DEBUG	# enable debugging support: hw.ubsec.debug
 options		UBSEC_RNDTEST	# enable rndtest support
 
 device		acpi		# basic ACPI support
+device		acpi_asus	# Asus laptop support
+device		acpi_cpu
+device		acpi_thinkpad	# ThinkPad support
+device		acpi_toshiba	# Toshiba laptop support
+device		acpi_video	# ACPI video extensions
 device		pmtimer		# adjust the system clock after resume
 
 # DRM options:
