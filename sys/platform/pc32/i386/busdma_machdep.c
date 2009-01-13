@@ -92,6 +92,7 @@ struct bounce_zone {
 	int		active_bpages;
 	int		total_bounced;
 	int		total_deferred;
+	int		reserve_failed;
 	bus_size_t	alignment;
 	bus_size_t	boundary;
 	bus_addr_t	lowaddr;
@@ -987,6 +988,10 @@ alloc_bounce_zone(bus_dma_tag_t dmat)
 	    SYSCTL_CHILDREN(bz->sysctl_tree), OID_AUTO,
 	    "total_deferred", CTLFLAG_RD, &bz->total_deferred, 0,
 	    "Total bounce requests that were deferred");
+	SYSCTL_ADD_INT(&bz->sysctl_ctx,
+	    SYSCTL_CHILDREN(bz->sysctl_tree), OID_AUTO,
+	    "reserve_failed", CTLFLAG_RD, &bz->reserve_failed, 0,
+	    "Total bounce page reservations that were failed");
 	SYSCTL_ADD_STRING(&bz->sysctl_ctx,
 	    SYSCTL_CHILDREN(bz->sysctl_tree), OID_AUTO,
 	    "lowaddr", CTLFLAG_RD, bz->lowaddrid, 0, "");
@@ -1042,8 +1047,10 @@ reserve_bounce_pages(bus_dma_tag_t dmat, bus_dmamap_t map, int commit)
 	int pages;
 
 	pages = MIN(bz->free_bpages, map->pagesneeded - map->pagesreserved);
-	if (!commit && map->pagesneeded > (map->pagesreserved + pages))
+	if (!commit && map->pagesneeded > (map->pagesreserved + pages)) {
+		bz->reserve_failed++;
 		return (map->pagesneeded - (map->pagesreserved + pages));
+	}
 	bz->free_bpages -= pages;
 	bz->reserved_bpages += pages;
 	map->pagesreserved += pages;
