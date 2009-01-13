@@ -1361,13 +1361,12 @@ mount_target_system(struct i_fn_args *a)
 
 				/*
 				 * Don't mount it if device doesn't start
-				 * with /dev/ and it isn't 'swap'.
+				 * with /dev/ or /pfs and it isn't 'swap'.
 				 */
-				if (strstr(device, "/dev/") == NULL &&
-				    strcmp(device, "swap") != 0) {
-				    if (strstr(device, "/pfs") != NULL)
+				if (strstr(device, "/dev/") != NULL &&
+				     strstr(device, "/pfs/") != NULL &&
+				     strcmp(device, "swap") != 0)
 					continue;
-				}
 
 				/*
 				 * If the device is 'swap', mount_mfs it instead.
@@ -1393,9 +1392,9 @@ mount_target_system(struct i_fn_args *a)
 						if (strcmp(fstype, "null") == 0) {
 							command_add_ensure_dev(a, cmds, device);
 							command_add(cmds,
-							    "%s%s %s%s %s%s%s",
+							    "%s%s %s%s%s %s%s%s",
 							    a->os_root, cmd_name(a, "MOUNT_NULL"),
-							    a->os_root, device, a->os_root,
+							    a->os_root, a->cfg_root, device, a->os_root,
 							    a->cfg_root, mtpt);
 						} else {
 							command_add_ensure_dev(a, cmds, device);
