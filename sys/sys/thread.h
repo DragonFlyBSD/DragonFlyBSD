@@ -115,6 +115,23 @@ typedef struct lwkt_token {
     struct thread       *t_lastowner;	/* Last owner that acquired token */ 
 } lwkt_token;
 
+#ifdef SMP
+#define LWKT_TOKEN_INITIALIZER(head) \
+{ \
+	.t_spinlock = SPINLOCK_INITIALIZER(head.t_spinlock), \
+	.t_owner = NULL, \
+	.t_lastowner = NULL, \
+	.t_count = 0 \
+}
+#else
+#define LWKT_TOKEN_INITIALIZER(head) \
+{ \
+	.t_owner = NULL, \
+	.t_lastowner = NULL, \
+	.t_count = 0 \
+}
+#endif
+
 typedef struct lwkt_tokref {
     lwkt_token_t	tr_tok;		/* token in question */
     lwkt_tokref_t	tr_next;	/* linked list */
