@@ -484,7 +484,7 @@ _bus_dma_extract(pmap_t pmap, vm_offset_t vaddr)
  * of this function.
  */
 static int
-_bus_dmamap_load_buffer2(bus_dma_tag_t dmat,
+_bus_dmamap_load_buffer(bus_dma_tag_t dmat,
 			bus_dmamap_t map,
 			void *buf, bus_size_t buflen,
 			pmap_t pmap,
@@ -673,8 +673,8 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 		map->callback_arg = callback_arg;
 	}
 
-	error = _bus_dmamap_load_buffer2(dmat, map,
-			buf, buflen, NULL, flags, &lastaddr, &nsegs, 1);
+	error = _bus_dmamap_load_buffer(dmat, map, buf, buflen,
+			NULL, flags, &lastaddr, &nsegs, 1);
 	if (error == EINPROGRESS)
 		return error;
 
@@ -714,7 +714,7 @@ bus_dmamap_load_mbuf(bus_dma_tag_t dmat, bus_dmamap_t map,
 			if (m->m_len == 0)
 				continue;
 
-			error = _bus_dmamap_load_buffer2(dmat, map,
+			error = _bus_dmamap_load_buffer(dmat, map,
 					m->m_data, m->m_len,
 					NULL, flags, &lastaddr,
 					&nsegs, first);
@@ -785,7 +785,7 @@ bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 			resid < iov[i].iov_len ? resid : iov[i].iov_len;
 		caddr_t addr = (caddr_t) iov[i].iov_base;
 
-		error = _bus_dmamap_load_buffer2(dmat, map, addr, minlen,
+		error = _bus_dmamap_load_buffer(dmat, map, addr, minlen,
 				pmap, flags, &lastaddr, &nsegs, first);
 		first = 0;
 
