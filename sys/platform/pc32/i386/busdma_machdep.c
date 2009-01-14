@@ -50,6 +50,7 @@
 #define MAX_BPAGES	1024
 
 struct bounce_zone;
+struct bus_dmamap;
 
 struct bus_dma_tag {
 	bus_dma_tag_t	parent;
@@ -86,6 +87,7 @@ struct bounce_page {
 struct bounce_zone {
 	STAILQ_ENTRY(bounce_zone) links;
 	STAILQ_HEAD(bp_list, bounce_page) bounce_page_list;
+	STAILQ_HEAD(, bus_dmamap) bounce_map_waitinglist;
 	int		total_bpages;
 	int		free_bpages;
 	int		reserved_bpages;
@@ -121,9 +123,6 @@ struct bus_dmamap {
 	void		*callback_arg;
 	STAILQ_ENTRY(bus_dmamap) links;
 };
-
-static STAILQ_HEAD(, bus_dmamap) bounce_map_waitinglist =
-	STAILQ_HEAD_INITIALIZER(bounce_map_waitinglist);
 
 static STAILQ_HEAD(, bus_dmamap) bounce_map_callbacklist =
 	STAILQ_HEAD_INITIALIZER(bounce_map_callbacklist);
@@ -540,8 +539,9 @@ _bus_dmamap_load_buffer(bus_dma_tag_t dmat,
 				map->buf = buf;
 				map->buflen = buflen;
 
-				STAILQ_INSERT_TAIL(&bounce_map_waitinglist,
-						   map, links);
+				STAILQ_INSERT_TAIL(
+				    &dmat->bounce_zone->bounce_map_waitinglist,
+				    map, links);
 				crit_exit();
 
 				return (EINPROGRESS);
@@ -877,6 +877,7 @@ alloc_bounce_zone(bus_dma_tag_t dmat)
 	bz = kmalloc(sizeof(*bz), M_DEVBUF, M_INTWAIT | M_ZERO);
 
 	STAILQ_INIT(&bz->bounce_page_list);
+	STAILQ_INIT(&bz->bounce_map_waitinglist);
 	bz->free_bpages = 0;
 	bz->reserved_bpages = 0;
 	bz->active_bpages = 0;
@@ -1037,9 +1038,9 @@ free_bounce_page(bus_dma_tag_t dmat, struct bounce_page *bpage)
 	STAILQ_INSERT_HEAD(&bz->bounce_page_list, bpage, links);
 	bz->free_bpages++;
 	bz->active_bpages--;
-	if ((map = STAILQ_FIRST(&bounce_map_waitinglist)) != NULL) {
+	if ((map = STAILQ_FIRST(&bz->bounce_map_waitinglist)) != NULL) {
 		if (reserve_bounce_pages(map->dmat, map, 1) == 0) {
-			STAILQ_REMOVE_HEAD(&bounce_map_waitinglist, links);
+			STAILQ_REMOVE_HEAD(&bz->bounce_map_waitinglist, links);
 			STAILQ_INSERT_TAIL(&bounce_map_callbacklist,
 					   map, links);
 			busdma_swi_pending = 1;
