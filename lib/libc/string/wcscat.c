@@ -24,29 +24,23 @@
  * SUCH DAMAGE.
  *
  *	citrus Id: wcscat.c,v 1.1 1999/12/29 21:47:45 tshiozak Exp
- *
  * $NetBSD: wcscat.c,v 1.1 2000/12/23 23:14:36 itojun Exp $
- * $FreeBSD: src/lib/libc/string/wcscat.c,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
+ * $FreeBSD: src/lib/libc/string/wcscat.c,v 1.8 2002/09/26 09:28:55 tjr Exp $
  * $DragonFly: src/lib/libc/string/wcscat.c,v 1.3 2005/09/18 16:32:34 asmodai Exp $
  */
 
-#include <assert.h>
 #include <wchar.h>
 
 wchar_t *
-wcscat(wchar_t *s1, const wchar_t *s2)
+wcscat(wchar_t * __restrict s1, const wchar_t * __restrict s2)
 {
-	wchar_t *p;
-	wchar_t *q;
-	const wchar_t *r;
+	wchar_t *cp;
 
-	p = s1;
-	while (*p)
-		p++;
-	q = p;
-	r = s2;
-	while (*r)
-		*q++ = *r++;
-	*q = '\0';
-	return s1;
+	cp = s1;
+	while (*cp != L'\0')
+		cp++;
+	while ((*cp++ = *s2++) != L'\0')
+		;
+
+	return (s1);
 }

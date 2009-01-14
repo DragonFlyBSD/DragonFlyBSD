@@ -31,84 +31,116 @@
  * SUCH DAMAGE.
  *
  *	@(#)string.h	8.1 (Berkeley) 6/2/93
- * $FreeBSD: src/include/string.h,v 1.6.2.3 2001/12/25 00:36:57 ache Exp $
+ * $FreeBSD: src/include/string.h,v 1.27 2008/12/08 21:04:24 kib Exp $
  * $DragonFly: src/include/string.h,v 1.9 2008/06/05 17:53:10 swildner Exp $
  */
 
 #ifndef _STRING_H_
 #define	_STRING_H_
 
-#ifndef _SYS_TYPES_H_
+#include <sys/cdefs.h>
+#include <sys/_null.h>
 #include <sys/types.h>
-#endif
 
-#ifndef _MACHINE_STDINT_H_
-#include <machine/stdint.h>
+/*
+ * Prototype functions which were historically defined in <string.h>, but
+ * are required by POSIX to be prototyped in <strings.h>.
+ */
+#if __BSD_VISIBLE
+#include <strings.h>
 #endif
 
 #ifndef _SIZE_T_DECLARED
-#define _SIZE_T_DECLARED
-typedef __size_t        size_t;		/* open group */
+typedef	__size_t	size_t;
+#define	_SIZE_T_DECLARED
 #endif
-
-#include <sys/_null.h>
-#include <sys/cdefs.h>
 
 __BEGIN_DECLS
-void	*memchr (const void *, int, size_t);
-void	*memmove (void *, const void *, size_t);
-char	*strchr (const char *, int);
-int	 strcoll (const char *, const char *);
-size_t strcspn (const char *, const char *);
-char	*strerror (int);
-char	*strpbrk (const char *, const char *);
-char	*strrchr (const char *, int);
-size_t strspn (const char *, const char *);
-char	*strstr (const char *, const char *);
-char	*strtok (char *, const char *);
-size_t strxfrm (char *, const char *, size_t);
-
+#if __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE
+void	*memccpy(void * __restrict, const void * __restrict, int, size_t);
+#endif
+void	*memchr(const void *, int, size_t) __pure;
+void	*memrchr(const void *, int, size_t) __pure;
 #if !defined(_KERNEL_VIRTUAL)
-int	memcmp (const void *, const void *, size_t);
-void	*memcpy (void *, const void *, size_t);
-void	*memset (void *, int, size_t);
-char	*strcat (char *, const char *);
-int	strcmp (const char *, const char *);
-char	*strcpy (char *, const char *);
-size_t	strlen (const char *);
-char	*strncat (char *, const char *, size_t);
-int	strncmp (const char *, const char *, size_t);
-char	*strncpy (char *, const char *, size_t);
+int	 memcmp(const void *, const void *, size_t) __pure;
+void	*memcpy(void * __restrict, const void * __restrict, size_t);
 #endif
-
-/* Nonstandard routines */
-#if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
-void	*memccpy (void *, const void *, int, size_t);
-int	 strcasecmp (const char *, const char *);
-char	*strcasestr (const char *, const char *);
-char	*strdup (const char *);
-int	 strerror_r (int, char *, size_t);
-void	 strmode (mode_t, char *);
-int	 strncasecmp (const char *, const char *, size_t);
-char	*strnstr (const char *, const char *, size_t);
-char	*strsep (char **, const char *);
-char	*strsignal (int);
-char	*strtok_r (char *, const char *, char **);
-void	 swab (const void *, void *, size_t);
-
+#if __BSD_VISIBLE
+void	*memmem(const void *, size_t, const void *, size_t);
+#endif
+void	*memmove(void *, const void *, size_t);
 #if !defined(_KERNEL_VIRTUAL)
-void	bcopy (const void *, void *, size_t);
-void	bzero (void *, size_t);
-int	ffs (int);
-int	bcmp (const void *, const void *, size_t);
-char	*index (const char *, int);
-char	*rindex (const char *, int);
-size_t	strlcat (char *, const char *, size_t);
-size_t	strlcpy (char *, const char *, size_t);
+void	*memset(void *, int, size_t);
 #endif
-
+#if __BSD_VISIBLE
+char	*stpcpy(char *, const char *);
+char	*strcasestr(const char *, const char *) __pure;
 #endif
+#if !defined(_KERNEL_VIRTUAL)
+char	*strcat(char * __restrict, const char * __restrict);
+#endif
+char	*strchr(const char *, int) __pure;
+#if !defined(_KERNEL_VIRTUAL)
+int	 strcmp(const char *, const char *) __pure;
+#endif
+int	 strcoll(const char *, const char *);
+#if !defined(_KERNEL_VIRTUAL)
+char	*strcpy(char * __restrict, const char * __restrict);
+#endif
+size_t	 strcspn(const char *, const char *) __pure;
+#if __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE
+char	*strdup(const char *);
+#endif
+char	*strerror(int);
+#if __POSIX_VISIBLE >= 200112
+int	 strerror_r(int, char *, size_t);
+#endif
+#if !defined(_KERNEL_VIRTUAL)
+#if __BSD_VISIBLE
+size_t	 strlcat(char *, const char *, size_t);
+size_t	 strlcpy(char *, const char *, size_t);
+#endif /* __BSD_VISIBLE */
+size_t	 strlen(const char *) __pure;
+#endif /* !_KERNEL_VIRTUAL */
+#if __BSD_VISIBLE
+void	 strmode(mode_t, char *);
+#endif
+#if !defined(_KERNEL_VIRTUAL)
+char	*strncat(char * __restrict, const char * __restrict, size_t);
+int	 strncmp(const char *, const char *, size_t) __pure;
+char	*strncpy(char * __restrict, const char * __restrict, size_t);
+#endif
+#if __BSD_VISIBLE
+char	*strndup(const char *, size_t);
+char	*strnstr(const char *, const char *, size_t) __pure;
+#endif
+char	*strpbrk(const char *, const char *) __pure;
+char	*strrchr(const char *, int) __pure;
+#if __BSD_VISIBLE
+char	*strsep(char **, const char *);
+char	*strsignal(int);
+#endif
+size_t	 strspn(const char *, const char *) __pure;
+char	*strstr(const char *, const char *) __pure;
+char	*strtok(char * __restrict, const char * __restrict);
+#if __POSIX_VISIBLE >= 199506 || __XSI_VISIBLE >= 500
+char	*strtok_r(char *, const char *, char **);
+#endif
+size_t	 strxfrm(char * __restrict, const char * __restrict, size_t);
+#if __BSD_VISIBLE
 
+#ifndef _SWAB_DECLARED
+#define _SWAB_DECLARED
+
+#ifndef _SSIZE_T_DECLARED
+typedef	__ssize_t	ssize_t;
+#define	_SSIZE_T_DECLARED
+#endif /* _SSIZE_T_DECLARED */
+
+void	 swab(const void * __restrict, void * __restrict, ssize_t);
+#endif /* _SWAB_DECLARED */
+
+#endif /* __BSD_VISIBLE */
 __END_DECLS
 
 #endif /* _STRING_H_ */

@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,12 +30,11 @@
  * SUCH DAMAGE.
  *
  * @(#)bcopy.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/string/bcopy.c,v 1.1.1.1.14.1 2001/07/09 23:30:03 obrien Exp $
+ * $FreeBSD: src/lib/libc/string/bcopy.c,v 1.7 2007/01/09 00:28:11 imp Exp $
  * $DragonFly: src/lib/libc/string/bcopy.c,v 1.4 2005/09/18 16:32:34 asmodai Exp $
  */
- 
-#include <sys/cdefs.h>
-#include <string.h>
+
+#include <sys/types.h>
 
 /*
  * sizeof(word) MUST BE A POWER OF TWO
@@ -55,17 +50,21 @@ typedef	int word;		/* "word" used for optimal copy speed */
  * This is the routine that actually implements
  * (the portable versions of) bcopy, memcpy, and memmove.
  */
+#if defined(MEMCOPY) || defined(MEMMOVE)
+#include <string.h>
+
+void *
 #ifdef MEMCOPY
-void *
-memcpy(void *dst0, const void *src0, size_t length)
+memcpy
 #else
-#ifdef MEMMOVE
-void *
-memmove(void *dst0, const void *src0, size_t length)
+memmove
+#endif
+(void *dst0, const void *src0, size_t length)
 #else
+#include <strings.h>
+
 void
 bcopy(const void *src0, void *dst0, size_t length)
-#endif
 #endif
 {
 	char *dst = dst0;
@@ -85,13 +84,13 @@ bcopy(const void *src0, void *dst0, size_t length)
 		/*
 		 * Copy forward.
 		 */
-		t = (int)src;	/* only need low bits */
-		if ((t | (int)dst) & wmask) {
+		t = (uintptr_t)src;	/* only need low bits */
+		if ((t | (uintptr_t)dst) & wmask) {
 			/*
 			 * Try to align operands.  This cannot be done
 			 * unless the low bits match.
 			 */
-			if ((t ^ (int)dst) & wmask || length < wsize)
+			if ((t ^ (uintptr_t)dst) & wmask || length < wsize)
 				t = length;
 			else
 				t = wsize - (t & wmask);
@@ -113,9 +112,9 @@ bcopy(const void *src0, void *dst0, size_t length)
 		 */
 		src += length;
 		dst += length;
-		t = (int)src;
-		if ((t | (int)dst) & wmask) {
-			if ((t ^ (int)dst) & wmask || length <= wsize)
+		t = (uintptr_t)src;
+		if ((t | (uintptr_t)dst) & wmask) {
+			if ((t ^ (uintptr_t)dst) & wmask || length <= wsize)
 				t = length;
 			else
 				t &= wmask;

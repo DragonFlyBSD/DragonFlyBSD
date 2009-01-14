@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/string/strxfrm.c,v 1.11.2.1 2001/07/09 23:30:07 obrien Exp $
+ * $FreeBSD: src/lib/libc/string/strxfrm.c,v 1.17 2008/10/19 09:10:44 delphij Exp $
  * $DragonFly: src/lib/libc/string/strxfrm.c,v 1.3 2005/09/18 16:32:34 asmodai Exp $
  */
 
@@ -33,7 +33,7 @@
 #include "collate.h"
 
 size_t
-strxfrm(char *dest, const char *src, size_t len)
+strxfrm(char * __restrict dest, const char * __restrict src, size_t len)
 {
 	int prim, sec, l;
 	size_t slen;
@@ -45,18 +45,8 @@ strxfrm(char *dest, const char *src, size_t len)
 		return 0;
 	}
 
-	if (__collate_load_error) {
-		slen = strlen(src);
-		if (len > 0) {
-			if (slen < len)
-				strcpy(dest, src);
-			else {
-				strncpy(dest, src, len - 1);
-				dest[len - 1] = '\0';
-			}
-		}
-		return slen;
-	}
+	if (__collate_load_error)
+		return strlcpy(dest, src, len);
 
 	slen = 0;
 	prim = sec = 0;

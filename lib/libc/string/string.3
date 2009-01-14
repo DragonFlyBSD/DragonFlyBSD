@@ -11,10 +11,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -32,13 +28,14 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)string.3	8.2 (Berkeley) 12/11/93
-.\" $FreeBSD: src/lib/libc/string/string.3,v 1.6.2.4 2001/12/14 18:33:59 ru Exp $
+.\" $FreeBSD: src/lib/libc/string/string.3,v 1.14 2007/01/09 00:28:12 imp Exp $
 .\" $DragonFly: src/lib/libc/string/string.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
 .\"
 .Dd December 11, 1993
 .Dt STRING 3
 .Os
 .Sh NAME
+.Nm stpcpy ,
 .Nm strcat ,
 .Nm strncat ,
 .Nm strchr ,
@@ -64,6 +61,8 @@
 .Lb libc
 .Sh SYNOPSIS
 .In string.h
+.Ft char *
+.Fn stpcpy "char *dst" "const char *src"
 .Ft char *
 .Fn strcat "char *s" "const char * append"
 .Ft char *
@@ -121,6 +120,7 @@ for size limitations.
 .Xr bstring 3 ,
 .Xr index 3 ,
 .Xr rindex 3 ,
+.Xr stpcpy 3 ,
 .Xr strcasecmp 3 ,
 .Xr strcat 3 ,
 .Xr strchr 3 ,
@@ -148,7 +148,6 @@ The
 .Fn strerror ,
 .Fn strlen ,
 .Fn strpbrk ,
-.Fn strsep ,
 .Fn strspn ,
 .Fn strcspn ,
 .Fn strstr ,

@@ -1,9 +1,6 @@
-/*	$NetBSD: src/lib/libc/locale/wcsxfrm.c,v 1.1 2003/03/02 22:18:16 tshiozak Exp $	*/
-/*	$DragonFly: src/lib/libc/locale/wcsxfrm.c,v 1.2 2005/11/20 09:18:37 swildner Exp $ */
-
 /*-
- * Copyright (c)2003 Citrus Project,
- * All rights reserved.
+ * Copyright (c) 1990, 1993
+ *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -13,11 +10,14 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
+ * 4. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -25,32 +25,23 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/lib/libc/string/ffsll.c,v 1.1 2008/11/03 10:22:19 kib Exp $
  */
 
-#include <assert.h>
-#include <wchar.h>
+#include <strings.h>
 
 /*
- * Compare strings with using collating information.
+ * Find First Set bit
  */
-size_t
-wcsxfrm(wchar_t *s1, const wchar_t *s2, size_t n)
+int
+ffsll(long long mask)
 {
-	size_t len;
+	int bit;
 
-	/* XXX: LC_COLLATE should be implemented. */
-
-	len = wcslen(s2);
-	if (len < n)
-		wcscpy(s1, s2);
-	else {
-		/*
-		 * SUSv3 says:
-		 *   If the value returned is n or more, the contents
-		 *   of the array pointed to by ws1 are unspecified.
-		 */
-		/* thus, do nothing */;
-	}
-
-	return(len);
+	if (mask == 0)
+		return (0);
+	for (bit = 1; !(mask & 1); bit++)
+		mask = (unsigned long long)mask >> 1;
+	return (bit);
 }
