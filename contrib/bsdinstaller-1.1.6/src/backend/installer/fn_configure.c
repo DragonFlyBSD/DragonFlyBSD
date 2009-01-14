@@ -974,6 +974,7 @@ fn_assign_ip(struct i_fn_args *a)
 		command_add(cmds, "%s%s %s",
 		    a->os_root, cmd_name(a, "DHCLIENT"),
 		    interface);
+		asprintf(&string, "ifconfig_%s", interface);
 		if (commands_execute(a, cmds)) {
 			/* XXX sleep(3); */
 			show_ifconfig(a->c, interface);
@@ -995,7 +996,6 @@ fn_assign_ip(struct i_fn_args *a)
 			}
 		}
 		commands_free(cmds);
-		asprintf(&string, "ifconfig_%s", interface);
 		config_var_set(rc_conf, string, "DHCP");
 		free(string);
 		break;
