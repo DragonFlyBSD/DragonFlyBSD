@@ -467,11 +467,27 @@ bus_dmamem_free(bus_dma_tag_t dmat, void *vaddr, bus_dmamap_t map)
 		contigfree(vaddr, dmat->maxsize, M_DEVBUF);
 }
 
+static __inline vm_paddr_t
+_bus_dma_extract(pmap_t pmap, vm_offset_t vaddr)
+{
+	if (pmap)
+		return pmap_extract(pmap, vaddr);
+	else
+		return pmap_kextract(vaddr);
+}
+
+/*
+ * Utility function to load a linear buffer.  lastaddrp holds state
+ * between invocations (for multiple-buffer loads).  segp contains
+ * the segment following the starting one on entrace, and the ending
+ * segment on exit.  first indicates if this is the first invocation
+ * of this function.
+ */
 static int
 _bus_dmamap_load_buffer2(bus_dma_tag_t dmat,
 			bus_dmamap_t map,
 			void *buf, bus_size_t buflen,
-			struct thread *td,
+			pmap_t pmap,
 			int flags,
 			vm_paddr_t *lastpaddrp,
 			int *segp,
@@ -502,7 +518,7 @@ _bus_dmamap_load_buffer2(bus_dma_tag_t dmat,
 		vendaddr = (vm_offset_t)buf + buflen;
 
 		while (vaddr < vendaddr) {
-			paddr = pmap_kextract(vaddr);
+			paddr = _bus_dma_extract(pmap, vaddr);
 			if (run_filter(dmat, paddr) != 0)
 				map->pagesneeded++;
 			vaddr += (PAGE_SIZE - ((vm_offset_t)vaddr & PAGE_MASK));
@@ -549,7 +565,7 @@ _bus_dmamap_load_buffer2(bus_dma_tag_t dmat,
 		/*
 		 * Per-page main loop
 		 */
-		paddr = pmap_kextract(vaddr);
+		paddr = _bus_dma_extract(pmap, vaddr);
 		size = PAGE_SIZE - (paddr & PAGE_MASK);
 		if (size > buflen)
 			size = buflen;
@@ -667,98 +683,6 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 }
 
 /*
- * Utility function to load a linear buffer.  lastaddrp holds state
- * between invocations (for multiple-buffer loads).  segp contains
- * the starting segment on entrace, and the ending segment on exit.
- * first indicates if this is the first invocation of this function.
- */
-static int
-_bus_dmamap_load_buffer(bus_dma_tag_t dmat,
-			void *buf, bus_size_t buflen,
-			struct thread *td,
-			int flags,
-			vm_offset_t *lastaddrp,
-			int *segp,
-			int first)
-{
-	bus_dma_segment_t *segs;
-	bus_size_t sgsize;
-	bus_addr_t curaddr, lastaddr, baddr, bmask;
-	vm_offset_t vaddr = (vm_offset_t)buf;
-	int seg;
-	pmap_t pmap;
-
-	if (td->td_proc != NULL)
-		pmap = vmspace_pmap(td->td_proc->p_vmspace);
-	else
-		pmap = NULL;
-
-	segs = dmat->segments;
-	lastaddr = *lastaddrp;
-	bmask  = ~(dmat->boundary - 1);
-
-	for (seg = *segp; buflen > 0 ; ) {
-		/*
-		 * Get the physical address for this segment.
-		 */
-		if (pmap)
-			curaddr = pmap_extract(pmap, vaddr);
-		else
-			curaddr = pmap_kextract(vaddr);
-
-		/*
-		 * Compute the segment size, and adjust counts.
-		 */
-		sgsize = PAGE_SIZE - ((u_long)curaddr & PAGE_MASK);
-		if (buflen < sgsize)
-			sgsize = buflen;
-
-		/*
-		 * Make sure we don't cross any boundaries.
-		 */
-		if (dmat->boundary > 0) {
-			baddr = (curaddr + dmat->boundary) & bmask;
-			if (sgsize > (baddr - curaddr))
-				sgsize = (baddr - curaddr);
-		}
-
-		/*
-		 * Insert chunk into a segment, coalescing with
-		 * previous segment if possible.
-		 */
-		if (first) {
-			segs[seg].ds_addr = curaddr;
-			segs[seg].ds_len = sgsize;
-			first = 0;
-		} else {
-			if (curaddr == lastaddr &&
-			    (segs[seg].ds_len + sgsize) <= dmat->maxsegsz &&
-			    (dmat->boundary == 0 ||
-			     (segs[seg].ds_addr & bmask) == (curaddr & bmask)))
-				segs[seg].ds_len += sgsize;
-			else {
-				if (++seg >= dmat->nsegments)
-					break;
-				segs[seg].ds_addr = curaddr;
-				segs[seg].ds_len = sgsize;
-			}
-		}
-
-		lastaddr = curaddr + sgsize;
-		vaddr += sgsize;
-		buflen -= sgsize;
-	}
-
-	*segp = seg;
-	*lastaddrp = lastaddr;
-
-	/*
-	 * Did we fit?
-	 */
-	return (buflen != 0 ? EFBIG : 0); /* XXX better return value here? */
-}
-
-/*
  * Like _bus_dmamap_load(), but for mbufs.
  */
 int
@@ -820,27 +744,38 @@ bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 		    bus_dmamap_callback2_t *callback, void *callback_arg,
 		    int flags)
 {
-	vm_offset_t lastaddr = 0;
+	vm_paddr_t lastaddr;
 	int nsegs, error, first, i;
 	bus_size_t resid;
 	struct iovec *iov;
-	struct thread *td = NULL;
+	pmap_t pmap;
 
-	KASSERT(dmat->lowaddr >= ptoa(Maxmem) || map != NULL,
-		("bus_dmamap_load_uio: No support for bounce pages!"));
+	/*
+	 * XXX
+	 * Follow old semantics.  Once all of the callers are fixed,
+	 * we should get rid of these internal flag "adjustment".
+	 */
+	flags &= ~BUS_DMA_WAITOK;
+	flags |= BUS_DMA_NOWAIT;
 
 	resid = uio->uio_resid;
 	iov = uio->uio_iov;
 
 	if (uio->uio_segflg == UIO_USERSPACE) {
+		struct thread *td;
+
 		td = uio->uio_td;
 		KASSERT(td != NULL && td->td_proc != NULL,
 			("bus_dmamap_load_uio: USERSPACE but no proc"));
+		pmap = vmspace_pmap(td->td_proc->p_vmspace);
+	} else {
+		pmap = NULL;
 	}
 
-	nsegs = 0;
 	error = 0;
+	nsegs = 1;
 	first = 1;
+	lastaddr = 0;
 	for (i = 0; i < uio->uio_iovcnt && resid != 0 && !error; i++) {
 		/*
 		 * Now at the first iovec to load.  Load each iovec
@@ -850,9 +785,8 @@ bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 			resid < iov[i].iov_len ? resid : iov[i].iov_len;
 		caddr_t addr = (caddr_t) iov[i].iov_base;
 
-		error = _bus_dmamap_load_buffer(dmat,
-				addr, minlen,
-				td, flags, &lastaddr, &nsegs, first);
+		error = _bus_dmamap_load_buffer2(dmat, map, addr, minlen,
+				pmap, flags, &lastaddr, &nsegs, first);
 		first = 0;
 
 		resid -= minlen;
@@ -860,12 +794,12 @@ bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 
 	if (error) {
 		/* force "no valid mappings" in callback */
-		(*callback)(callback_arg, dmat->segments, 0, 0, error);
+		callback(callback_arg, dmat->segments, 0, 0, error);
 	} else {
-		(*callback)(callback_arg, dmat->segments,
-			    nsegs+1, uio->uio_resid, error);
+		callback(callback_arg, dmat->segments, nsegs,
+			 uio->uio_resid, error);
 	}
-	return (error);
+	return error;
 }
 
 /*
