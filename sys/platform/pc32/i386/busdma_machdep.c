@@ -149,9 +149,13 @@ static struct bus_dmamap nobounce_dmamap;
 static int		alloc_bounce_zone(bus_dma_tag_t);
 static int		alloc_bounce_pages(bus_dma_tag_t, u_int);
 static int		reserve_bounce_pages(bus_dma_tag_t, bus_dmamap_t, int);
+static void		return_bounce_pages(bus_dma_tag_t, bus_dmamap_t);
 static bus_addr_t	add_bounce_page(bus_dma_tag_t, bus_dmamap_t,
 			    vm_offset_t, bus_size_t);
 static void		free_bounce_page(bus_dma_tag_t, struct bounce_page *);
+
+static bus_dmamap_t	get_map_waiting(bus_dma_tag_t);
+static void		add_map_callback(bus_dmamap_t);
 
 SYSCTL_NODE(_hw, OID_AUTO, busdma, CTLFLAG_RD, 0, "Busdma parameters");
 SYSCTL_INT(_hw_busdma, OID_AUTO, total_bpages, CTLFLAG_RD, &total_bounce_pages,
@@ -657,15 +661,17 @@ _bus_dmamap_load_buffer(bus_dma_tag_t dmat,
 		vaddr += size;
 	} while (buflen > 0);
 fail:
-	if (buflen != 0) {
-		kprintf("bus_dmamap_load: Too many segs! buf_len = 0x%lx\n",
-		       (u_long)buflen);
+	if (buflen != 0)
 		error = EFBIG;
-	}
 
 	*segp = seg;
 	*lastpaddrp = nextpaddr;
 
+	if (error && (dmat->flags & BUS_DMA_COULD_BOUNCE) &&
+	    map != &nobounce_dmamap) {
+		_bus_dmamap_unload(dmat, map);
+		return_bounce_pages(dmat, map);
+	}
 	return error;
 }
 
@@ -1008,6 +1014,7 @@ alloc_bounce_pages(bus_dma_tag_t dmat, u_int numpages)
 	return count;
 }
 
+/* Assume caller holds bounce zone spinlock */
 static int
 reserve_bounce_pages(bus_dma_tag_t dmat, bus_dmamap_t map, int commit)
 {
@@ -1025,6 +1032,29 @@ reserve_bounce_pages(bus_dma_tag_t dmat, bus_dmamap_t map, int commit)
 	pages = map->pagesneeded - map->pagesreserved;
 
 	return pages;
+}
+
+static void
+return_bounce_pages(bus_dma_tag_t dmat, bus_dmamap_t map)
+{
+	struct bounce_zone *bz = dmat->bounce_zone;
+	int reserved = map->pagesreserved;
+	bus_dmamap_t wait_map;
+
+	map->pagesreserved = 0;
+	map->pagesneeded = 0;
+
+	if (reserved == 0)
+		return;
+
+	BZ_LOCK(bz);
+	bz->free_bpages += reserved;
+	bz->reserved_bpages -= reserved;
+	wait_map = get_map_waiting(dmat);
+	BZ_UNLOCK(bz);
+
+	if (wait_map != NULL)
+		add_map_callback(map);
 }
 
 static bus_addr_t
@@ -1062,7 +1092,7 @@ static void
 free_bounce_page(bus_dma_tag_t dmat, struct bounce_page *bpage)
 {
 	struct bounce_zone *bz = dmat->bounce_zone;
-	struct bus_dmamap *map;
+	bus_dmamap_t map;
 
 	bpage->datavaddr = 0;
 	bpage->datacount = 0;
@@ -1071,7 +1101,22 @@ free_bounce_page(bus_dma_tag_t dmat, struct bounce_page *bpage)
 	STAILQ_INSERT_HEAD(&bz->bounce_page_list, bpage, links);
 	bz->free_bpages++;
 	bz->active_bpages--;
-	if ((map = STAILQ_FIRST(&bz->bounce_map_waitinglist)) != NULL) {
+	map = get_map_waiting(dmat);
+	BZ_UNLOCK(bz);
+
+	if (map != NULL)
+		add_map_callback(map);
+}
+
+/* Assume caller holds bounce zone spinlock */
+static bus_dmamap_t
+get_map_waiting(bus_dma_tag_t dmat)
+{
+	struct bounce_zone *bz = dmat->bounce_zone;
+	bus_dmamap_t map;
+
+	map = STAILQ_FIRST(&bz->bounce_map_waitinglist);
+	if (map != NULL) {
 		if (reserve_bounce_pages(map->dmat, map, 1) == 0) {
 			STAILQ_REMOVE_HEAD(&bz->bounce_map_waitinglist, links);
 			bz->total_deferred++;
@@ -1079,24 +1124,26 @@ free_bounce_page(bus_dma_tag_t dmat, struct bounce_page *bpage)
 			map = NULL;
 		}
 	}
-	BZ_UNLOCK(bz);
+	return map;
+}
 
-	if (map != NULL) {
-		/* XXX callbacklist is not MPSAFE */
-		crit_enter();
-		get_mplock();
-		STAILQ_INSERT_TAIL(&bounce_map_callbacklist, map, links);
-		busdma_swi_pending = 1;
-		setsoftvm();
-		rel_mplock();
-		crit_exit();
-	}
+static void
+add_map_callback(bus_dmamap_t map)
+{
+	/* XXX callbacklist is not MPSAFE */
+	crit_enter();
+	get_mplock();
+	STAILQ_INSERT_TAIL(&bounce_map_callbacklist, map, links);
+	busdma_swi_pending = 1;
+	setsoftvm();
+	rel_mplock();
+	crit_exit();
 }
 
 void
 busdma_swi(void)
 {
-	struct bus_dmamap *map;
+	bus_dmamap_t map;
 
 	crit_enter();
 	while ((map = STAILQ_FIRST(&bounce_map_callbacklist)) != NULL) {
