@@ -104,6 +104,8 @@ struct bounce_zone {
 	struct sysctl_oid *sysctl_tree;
 };
 
+static struct lwkt_token bounce_zone_tok =
+	LWKT_TOKEN_INITIALIZER(bounce_zone_tok);
 static int busdma_zonecount;
 static STAILQ_HEAD(, bounce_zone) bounce_zone_list =
 	STAILQ_HEAD_INITIALIZER(bounce_zone_list);
@@ -859,22 +861,29 @@ _bus_dmamap_sync(bus_dma_tag_t dmat, bus_dmamap_t map, bus_dmasync_op_t op)
 static int
 alloc_bounce_zone(bus_dma_tag_t dmat)
 {
-	struct bounce_zone *bz;
+	struct bounce_zone *bz, *new_bz;
+	lwkt_tokref ref;
 
 	KASSERT(dmat->bounce_zone == NULL,
 		("bounce zone was already assigned\n"));
+
+	new_bz = kmalloc(sizeof(*new_bz), M_DEVBUF, M_INTWAIT | M_ZERO);
+
+	lwkt_gettoken(&ref, &bounce_zone_tok);
 
 	/* Check to see if we already have a suitable zone */
 	STAILQ_FOREACH(bz, &bounce_zone_list, links) {
 		if (dmat->alignment <= bz->alignment &&
 		    dmat->boundary <= bz->boundary &&
 		    dmat->lowaddr >= bz->lowaddr) {
+			lwkt_reltoken(&ref);
+
 			dmat->bounce_zone = bz;
+			kfree(new_bz, M_DEVBUF);
 			return 0;
 		}
 	}
-
-	bz = kmalloc(sizeof(*bz), M_DEVBUF, M_INTWAIT | M_ZERO);
+	bz = new_bz;
 
 	STAILQ_INIT(&bz->bounce_page_list);
 	STAILQ_INIT(&bz->bounce_map_waitinglist);
@@ -888,6 +897,9 @@ alloc_bounce_zone(bus_dma_tag_t dmat)
 	busdma_zonecount++;
 	ksnprintf(bz->lowaddrid, 18, "%#jx", (uintmax_t)bz->lowaddr);
 	STAILQ_INSERT_TAIL(&bounce_zone_list, bz, links);
+
+	lwkt_reltoken(&ref);
+
 	dmat->bounce_zone = bz;
 
 	sysctl_ctx_init(&bz->sysctl_ctx);
