@@ -1106,12 +1106,13 @@ re_allocmem(device_t dev)
 	 */
 	error = bus_dma_tag_create(NULL,	/* parent */
 			1, 0,			/* alignment, boundary */
-			BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
+			BUS_SPACE_MAXADDR,	/* lowaddr */
 			BUS_SPACE_MAXADDR,	/* highaddr */
 			NULL, NULL,		/* filter, filterarg */
-			MAXBSIZE, RE_MAXSEGS,	/* maxsize, nsegments */
+			BUS_SPACE_MAXSIZE_32BIT,/* maxsize */
+			0,			/* nsegments */
 			BUS_SPACE_MAXSIZE_32BIT,/* maxsegsize */
-			BUS_DMA_ALLOCNOW,	/* flags */
+			0,			/* flags */
 			&sc->re_parent_tag);
 	if (error) {
 		device_printf(dev, "could not allocate parent dma tag\n");
@@ -1121,11 +1122,10 @@ re_allocmem(device_t dev)
 	/* Allocate tag for TX descriptor list. */
 	error = bus_dma_tag_create(sc->re_parent_tag,
 			RE_RING_ALIGN, 0,
-			BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 			NULL, NULL,
 			RE_TX_LIST_SZ(sc), 1, RE_TX_LIST_SZ(sc),
-			BUS_DMA_ALLOCNOW,
-			&sc->re_ldata.re_tx_list_tag);
+			0, &sc->re_ldata.re_tx_list_tag);
 	if (error) {
 		device_printf(dev, "could not allocate TX ring dma tag\n");
 		return(error);
@@ -1162,11 +1162,10 @@ re_allocmem(device_t dev)
 	/* Allocate tag for RX descriptor list. */
 	error = bus_dma_tag_create(sc->re_parent_tag,
 			RE_RING_ALIGN, 0,
-			BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 			NULL, NULL,
 			RE_RX_LIST_SZ(sc), 1, RE_RX_LIST_SZ(sc),
-			BUS_DMA_ALLOCNOW,
-			&sc->re_ldata.re_rx_list_tag);
+			0, &sc->re_ldata.re_rx_list_tag);
 	if (error) {
 		device_printf(dev, "could not allocate RX ring dma tag\n");
 		return(error);
@@ -1202,8 +1201,8 @@ re_allocmem(device_t dev)
 
 	/* Allocate map for RX/TX mbufs. */
 	error = bus_dma_tag_create(sc->re_parent_tag,
-			ETHER_ALIGN, 0,
-			BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+			1, 0,
+			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 			NULL, NULL,
 			RE_FRAMELEN_MAX, RE_MAXSEGS, MCLBYTES,
 			BUS_DMA_ALLOCNOW,
@@ -3365,13 +3364,13 @@ re_jpool_alloc(struct re_softc *sc)
 	jpool_size = RE_JBUF_COUNT(sc) * RE_JBUF_SIZE;
 
 	error = bus_dma_tag_create(sc->re_parent_tag,
-			RE_BUF_ALIGN, 0,	/* alignment, boundary */
-			BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
+			RE_RXBUF_ALIGN, 0,	/* alignment, boundary */
+			BUS_SPACE_MAXADDR,	/* lowaddr */
 			BUS_SPACE_MAXADDR,	/* highaddr */
 			NULL, NULL,		/* filter, filterarg */
-			jpool_size, 1,		/* nsegments, maxsize */
-			BUS_SPACE_MAXSIZE_32BIT,/* maxsegsize */
-			BUS_DMA_ALLOCNOW,	/* flags */
+			jpool_size, 1,		/* maxsize, nsegments */
+			jpool_size,		/* maxsegsize */
+			0,			/* flags */
 			&ldata->re_jpool_tag);
 	if (error) {
 		device_printf(sc->re_dev, "could not allocate jumbo dma tag\n");
