@@ -259,7 +259,8 @@ label:
 				pt = _fmt("%H:%M", t, pt, ptlim, warnp);
 				continue;
 			case 'r':
-				pt = _fmt("%I:%M:%S %p", t, pt, ptlim, warnp);
+				pt = _fmt(Locale->t_fmt_ampm, t, pt, ptlim,
+					warnp);
 				continue;
 			case 'S':
 				pt = _conv(t->tm_sec, "%02d", pt, ptlim);
