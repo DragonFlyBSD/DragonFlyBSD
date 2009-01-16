@@ -12,11 +12,7 @@ installer_quickrel: warning quickrel
 installer_realquickrel: warning realquickrel
 installer_fetch: warning fetch
 
-.if make(installer_release) || make(installer_quickrel) || make(installer_realquickrel) || make(installer_fetch)
-WITH_INSTALLER=
-.endif
-
-# New method e.g. 'make installer fetch'.  A series of enhancement
+# New method e.g. 'make gui release'.  A series of enhancement
 # targes may be specified which set make variables which enhance
 # the build in various ways.
 #
@@ -24,16 +20,13 @@ gui installer img:
 
 warning:
 	@echo "WARNING: The installer_* targets are now obsolete, please"
-	@echo "use 'make installer blah' instead of 'make installer_blah'"
+	@echo "use 'make blah' instead of 'make installer_blah'"
 	@echo ""
 	@echo "will continue in 10 seconds"
 	@sleep 10
 
 .if make(gui)
 WITH_GUI=
-.endif
-.if make(installer)
-WITH_INSTALLER=
 .endif
 .if make(img)
 WITH_IMG=
@@ -88,13 +81,11 @@ OLD_PKGSRC_PACKAGES?= cdrtools-2.01.01.27nb1 cdrecord-2.00.3nb2 \
 REQ_ROOTSKELS= ${.CURDIR}/root
 ROOTSKELS?=	${REQ_ROOTSKELS}
 
-.if defined(WITH_INSTALLER)
 OLD_PKGSRC_PACKAGES+=	dfuibe_installer-1.1.6 gettext-lib-0.14.5 \
 			dfuibe_installer-1.1.7nb1 dfuife_curses-1.5 \
 			gettext-lib-0.14.6 gettext-tools-0.14.6nb1 \
 			libaura-3.1 libdfui-4.2 libinstaller-5.1
 ROOTSKELS+=		${.CURDIR}/installer
-.endif
 
 .if defined(WITH_GUI)
 ISOFILE?=		${ISODIR}/dfly-gui.iso
@@ -174,7 +165,7 @@ check:
 .endfor
 .for PKG in ${PKGSRC_PACKAGES}
 	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -K ${ISOROOT}${PKGSRC_DB} -n ${PKG} > /dev/null 2>&1 || \
-		(echo "Unable to find ${PKG}, use the following command to fetch required packages:"; echo "    make [installer] fetch"; exit 1)
+		(echo "Unable to find ${PKG}, use the following command to fetch required packages:"; echo "    make fetch"; exit 1)
 .endfor
 .if !exists(${PKGBIN_MKISOFS})
 	@echo "mkisofs is not installed.  It is part of the cdrecord package."
@@ -184,17 +175,17 @@ check:
 .endif
 .if !exists(${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
 	@echo "The pkgsrc bootstrap kit is not installed.  You can install it with:"
-	@echo "    make [installer] fetch"
+	@echo "    make fetch"
 	@exit 1
 .endif
 .if !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
 	@echo "The cvsup bootstrap kit is not installed.  You can install it with:"
-	@echo "    make [installer] fetch"
+	@echo "    make fetch"
 	@exit 1
 .endif
 
 buildworld1 buildworld2:
-	cd ${.CURDIR}/..; ${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} make ${WITH_INSTALLER:C/^/-DWANT_INSTALLER/} ${.TARGET:C/build(.*)2/quick\1/:C/1//}
+	cd ${.CURDIR}/..; ${WORLD_CCVER:C/^..*$/WORLD_CCVER=/}${WORLD_CCVER} make -DWANT_INSTALLER ${.TARGET:C/build(.*)2/quick\1/:C/1//}
 
 buildkernel1 buildkernel2:
 .if make(gui)
@@ -224,7 +215,7 @@ buildkernel1 buildkernel2:
 buildiso:
 	if [ ! -d ${ISOROOT} ]; then mkdir -p ${ISOROOT}; fi
 	if [ ! -d ${NRLOBJDIR}/nrelease ]; then mkdir -p ${NRLOBJDIR}/nrelease; fi
-	( cd ${.CURDIR}/..; make ${WITH_INSTALLER:C/^/-DWANT_INSTALLER/} DESTDIR=${ISOROOT} installworld )
+	( cd ${.CURDIR}/..; make -DWANT_INSTALLER DESTDIR=${ISOROOT} installworld )
 	( cd ${.CURDIR}/../etc; MAKEOBJDIRPREFIX=${NRLOBJDIR}/nrelease \
 		make -m ${.CURDIR}/../share/mk DESTDIR=${ISOROOT} distribution )
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
