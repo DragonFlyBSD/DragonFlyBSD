@@ -1026,8 +1026,12 @@ reserve_bounce_pages(bus_dma_tag_t dmat, bus_dmamap_t map, int commit)
 		bz->reserve_failed++;
 		return (map->pagesneeded - (map->pagesreserved + pages));
 	}
+
 	bz->free_bpages -= pages;
+
 	bz->reserved_bpages += pages;
+	KKASSERT(bz->reserved_bpages <= bz->total_bpages);
+
 	map->pagesreserved += pages;
 	pages = map->pagesneeded - map->pagesreserved;
 
@@ -1048,9 +1052,15 @@ return_bounce_pages(bus_dma_tag_t dmat, bus_dmamap_t map)
 		return;
 
 	BZ_LOCK(bz);
+
 	bz->free_bpages += reserved;
+	KKASSERT(bz->free_bpages <= bz->total_bpages);
+
+	KKASSERT(bz->reserved_bpages >= reserved);
 	bz->reserved_bpages -= reserved;
+
 	wait_map = get_map_waiting(dmat);
+
 	BZ_UNLOCK(bz);
 
 	if (wait_map != NULL)
@@ -1064,22 +1074,24 @@ add_bounce_page(bus_dma_tag_t dmat, bus_dmamap_t map, vm_offset_t vaddr,
 	struct bounce_zone *bz = dmat->bounce_zone;
 	struct bounce_page *bpage;
 
-	if (map->pagesneeded == 0)
-		panic("add_bounce_page: map doesn't need any pages");
+	KASSERT(map->pagesneeded > 0, ("map doesn't need any pages"));
 	map->pagesneeded--;
 
-	if (map->pagesreserved == 0)
-		panic("add_bounce_page: map doesn't need any pages");
+	KASSERT(map->pagesreserved > 0, ("map doesn't reserve any pages"));
 	map->pagesreserved--;
 
 	BZ_LOCK(bz);
-	bpage = STAILQ_FIRST(&bz->bounce_page_list);
-	if (bpage == NULL)
-		panic("add_bounce_page: free page list is empty");
 
+	bpage = STAILQ_FIRST(&bz->bounce_page_list);
+	KASSERT(bpage != NULL, ("free page list is empty"));
 	STAILQ_REMOVE_HEAD(&bz->bounce_page_list, links);
+
+	KKASSERT(bz->reserved_bpages > 0);
 	bz->reserved_bpages--;
+
 	bz->active_bpages++;
+	KKASSERT(bz->active_bpages <= bz->total_bpages);
+
 	BZ_UNLOCK(bz);
 
 	bpage->datavaddr = vaddr;
@@ -1098,10 +1110,17 @@ free_bounce_page(bus_dma_tag_t dmat, struct bounce_page *bpage)
 	bpage->datacount = 0;
 
 	BZ_LOCK(bz);
+
 	STAILQ_INSERT_HEAD(&bz->bounce_page_list, bpage, links);
+
 	bz->free_bpages++;
+	KKASSERT(bz->free_bpages <= bz->total_bpages);
+
+	KKASSERT(bz->active_bpages > 0);
 	bz->active_bpages--;
+
 	map = get_map_waiting(dmat);
+
 	BZ_UNLOCK(bz);
 
 	if (map != NULL)
