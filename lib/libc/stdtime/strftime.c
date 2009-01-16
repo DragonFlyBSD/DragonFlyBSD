@@ -1,6 +1,6 @@
 /*
  * @(#)strftime.c	8.3
- * $NetBSD: src/lib/libc/time/strftime.c,v 1.16 2004/05/12 23:03:11 kleink Exp $
+ * $NetBSD: strftime.c,v 1.19 2009/01/11 02:46:30 christos Exp $
  * $DragonFly: src/lib/libc/stdtime/strftime.c,v 1.7 2008/10/19 20:15:58 swildner Exp $
  */
 
@@ -276,10 +276,11 @@ label:
 					mkt = mktime(&tm);
 					/* CONSTCOND */
 					if (TYPE_SIGNED(time_t))
-						sprintf(buf, "%ld",
-							(long) mkt);
-					else	sprintf(buf, "%lu",
-							(unsigned long) mkt);
+						snprintf(buf, sizeof(buf),
+						    "%ld", (long) mkt);
+					else	snprintf(buf, sizeof(buf),
+						    "%lu", (unsigned long)
+						    mkt);
 					pt = _add(buf, pt, ptlim);
 				}
 				continue;
@@ -544,7 +545,7 @@ _conv(const int n, const char * const format, char * const pt,
 {
 	char	buf[INT_STRLEN_MAXIMUM(int) + 1];
 
-	sprintf(buf, format, n);
+	snprintf(buf, sizeof(buf), format, n);
 	return _add(buf, pt, ptlim);
 }
 
