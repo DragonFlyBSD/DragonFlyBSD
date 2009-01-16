@@ -92,10 +92,12 @@ main.5:		movw %sp,%di			 /* Save stack pointer */
 		movb 0x1(%si),%dh		 /* Load head */
 		movw 0x2(%si),%cx		 /* Load cylinder:sector */
 		movw $LOAD,%bx			 /* Transfer buffer */
+#ifdef AVOID_PACKET_MODE
 		cmpb $0xff,%dh			 /* Might we need to use LBA? */
 		jnz main.7			 /* No. */
 		cmpw $0xffff,%cx		 /* Do we need to use LBA? */
 		jnz main.7			 /* No. */
+#endif
 		pushw %cx			 /* Save %cx */
 		pushw %bx			 /* Save %bx */
 		movw $0x55aa,%bx		 /* Magic */
