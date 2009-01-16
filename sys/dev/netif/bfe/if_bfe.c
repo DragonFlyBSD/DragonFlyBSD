@@ -237,7 +237,7 @@ bfe_dma_alloc(device_t dev)
 	}
 
 	/* Tag for RX mbufs */
-	error = bus_dma_tag_create(sc->bfe_parent_tag, ETHER_ALIGN, 0,
+	error = bus_dma_tag_create(sc->bfe_parent_tag, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
 				   MCLBYTES, 1, MCLBYTES,
@@ -268,7 +268,7 @@ bfe_dma_alloc(device_t dev)
 	rx_pos = BFE_RX_LIST_CNT;
 
 	/* Tag for TX mbufs */
-	error = bus_dma_tag_create(sc->bfe_parent_tag, ETHER_ALIGN, 0,
+	error = bus_dma_tag_create(sc->bfe_parent_tag, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
 				   MCLBYTES, BFE_MAXSEGS, MCLBYTES,
