@@ -2,61 +2,69 @@
 #
 # Provides simple targets to download and maintain /usr/pkgsrc.
 #
-# $DragonFly: src/etc/Makefile.usr,v 1.5.2.1 2008/07/29 13:10:57 swildner Exp $
+# $DragonFly: src/etc/Makefile.usr,v 1.8 2008/09/03 10:38:55 hasso Exp $
+
+CVSROOT_PKGSRC?=	anoncvs@anoncvs.NetBSD.org:/cvsroot
+CVSROOT_PKGSRC_WIP?=	anoncvs@anoncvs.NetBSD.se:/cvsroot
+GIT_DRAGONFLY?=		git://chlamydia.fs.ei.tum.de/dragonfly.git
+GIT_BRANCH?=		DragonFly_RELEASE_2_0
 
 all:
 	@echo "Install or update /usr/pkgsrc using NetBSDs anoncvs"
 	@echo "    make pkgsrc-checkout"
 	@echo "    make pkgsrc-update"
 	@echo ""
-	@echo "These targets download/update the DragonFly cvs repository into"
-	@echo "/home/dcvs.  The release-src-cvsup and head-src-cvsup will"
-	@echo "first synchronize /home/dcvs then issue an update into /usr/src."
-	@echo "    make cvs-cvsup"
-	@echo "    make release-src-cvsup     (suggested)"
-	@echo "    make preview-src-cvsup"
-	@echo "    make head-src-cvsup"
+	@echo "These targets download/update the DragonFly git repository into"
+	@echo "/usr/src."
+	@echo "    make git-clone"
+	@echo "    make git-update"
+	@echo ""
+	@echo "Install or update /usr/pkgsrc/wip using NetBSD.se anoncvs"
+	@echo "    make pkgsrc-wip-checkout"
+	@echo "    make pkgsrc-wip-update"
 	@echo ""
 	@echo "Extract kernel sources from src-sys.tar.bz2 in this directory."
 	@echo "    make release-sys-extract"
 	@echo ""
 	@echo "If automating please restrict updates from the NetBSD anoncvs"
-	@echo "server to no more than once a week and run cvsups no more often"
+	@echo "server to no more than once a week and run gits no more often"
 	@echo "than daily."
 
 pkgsrc-checkout:
 	cd ${.CURDIR}; \
-	cvs -d anoncvs@anoncvs.NetBSD.org:/cvsroot checkout pkgsrc
+	cvs -d ${CVSROOT_PKGSRC} checkout -P pkgsrc
 
 pkgsrc-update:
 	cd ${.CURDIR}; \
-	cvs -d anoncvs@anoncvs.NetBSD.org:/cvsroot update -Pd pkgsrc
+	cvs -d ${CVSROOT_PKGSRC} update -Pd pkgsrc
+
+pkgsrc-wip-checkout:
+	cd ${.CURDIR}; \
+	mkdir -p pkgsrc/wip; \
+	cd pkgsrc; \
+	cvs -d ${CVSROOT_PKGSRC_WIP} checkout -P wip
+
+pkgsrc-wip-update:
+	cd ${.CURDIR}/pkgsrc; \
+	cvs -d ${CVSROOT_PKGSRC_WIP} update -Pd wip
 
 release-sys-extract:
 	bunzip2 < src-sys.tar.bz2 | tar xvpf -
 
-cvs-cvsup:
-	if [ ! -d /home/dcvs ]; then mkdir /home/dcvs; fi
-	cvsup -g -L 4 /usr/share/examples/cvsup/DragonFly-cvs-supfile
-
-release-src-cvsup: cvs-cvsup
-	cd ${.CURDIR}; if [ -d src/CVS ]; then \
-	    cvs -R -d /home/dcvs update -PAd -rDragonFly_RELEASE_2_0_Slip src; \
-	else \
-	    cvs -R -d /home/dcvs checkout -PA -rDragonFly_RELEASE_2_0_Slip src; \
+git-clone:
+	@if [ -z "`which git`" ]; then \
+		echo "Please install devel/scmgit from pkgsrc"; \
+		exit 1; \
 	fi
-
-preview-src-cvsup: cvs-cvsup
-	cd ${.CURDIR}; if [ -d src/CVS ]; then \
-	    cvs -R -d /home/dcvs update -PAd -rDragonFly_Preview src; \
-	else \
-	    cvs -R -d /home/dcvs checkout -PA -rDragonFly_Preview src; \
+	git clone -n ${GIT_DRAGONFLY} ${.CURDIR}/src
+	if [ "${GIT_BRANCH}" != master ]; then \
+		git --git-dir=${.CURDIR}/src/.git branch --track -l -f ${GIT_BRANCH} origin/${GIT_BRANCH}; \
 	fi
+	cd ${.CURDIR}/src && git checkout ${GIT_BRANCH}
 
-head-src-cvsup: cvs-cvsup
-	cd ${.CURDIR}; if [ -d src/CVS ]; then \
-	    cvs -R -d /home/dcvs update -PAd -rHEAD src; \
-	else \
-	    cvs -R -d /home/dcvs checkout -PA -rHEAD src; \
+git-update:
+	@if [ -z "`which git`" ]; then \
+		echo "Please install devel/scmgit from pkgsrc"; \
+		exit 1; \
 	fi
-
+	cd ${.CURDIR}/src && git pull
