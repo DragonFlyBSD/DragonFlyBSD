@@ -132,7 +132,8 @@ struct re_list_data {
 	bus_dmamap_t		*re_tx_dmamap;
 	bus_dmamap_t		*re_rx_dmamap;
 	bus_dmamap_t		re_rx_spare;
-	bus_dma_tag_t		re_mtag;	/* mbuf mapping tag */
+	bus_dma_tag_t		re_rx_mtag;	/* RX mbuf mapping tag */
+	bus_dma_tag_t		re_tx_mtag;	/* TX mbuf mapping tag */
 	bus_dma_tag_t		re_stag;	/* stats mapping tag */
 	bus_dmamap_t		re_smap;	/* stats map */
 	struct re_stats		*re_stats;
