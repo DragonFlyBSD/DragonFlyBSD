@@ -1062,3 +1062,5 @@ TO_REMOVE+=/usr/share/man/man8/iwicontrol.8.gz
 TO_REMOVE+=/usr/share/man/cat8/iwicontrol.8.gz
 TO_REMOVE+=/usr/share/man/man9/objcache_reclaim_list.9.gz
 TO_REMOVE+=/usr/share/man/cat9/objcache_reclaim_list.9.gz
+TO_REMOVE+=/usr/share/man/cat3/timezone.3.gz
+TO_REMOVE+=/usr/share/man/man3/timezone.3.gz

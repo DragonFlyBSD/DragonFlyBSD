@@ -33,7 +33,7 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	signbitd.c signbitf.c sigsetops.c sigwait.c sleep.c srand48.c \
 	stringlist.c strtofflags.c sysconf.c sysctl.c sysctlbyname.c \
 	sysctlnametomib.c syslog.c telldir.c termios.c time.c times.c \
-	timezone.c toascii.c tolower.c toupper.c ttyname.c ttyslot.c \
+	toascii.c tolower.c toupper.c ttyname.c ttyslot.c \
 	ualarm.c ucontext.c ulimit.c uname.c unvis.c usleep.c utime.c \
 	valloc.c vis.c wait.c wait3.c waitpid.c wordexp.c
 
@@ -72,7 +72,7 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	scandir.3 setjmp.3 setmode.3 setproctitle.3 shm_open.3 \
 	siginterrupt.3 signal.3 signbit.3 sigsetops.3 sleep.3 stringlist.3 \
 	strtofflags.3 sysconf.3 sysctl.3 syslog.3 tcgetpgrp.3 \
-	tcsendbreak.3 tcsetattr.3 tcsetpgrp.3 time.3 times.3 timezone.3 \
+	tcsendbreak.3 tcsetattr.3 tcsetpgrp.3 time.3 times.3 \
 	toascii.3 tolower.3 toupper.3 ttyname.3 tzset.3 ualarm.3 \
 	ucontext.3 ulimit.3 uname.3 unvis.3 usleep.3 utime.3 \
 	valloc.3 vis.3 wordexp.3

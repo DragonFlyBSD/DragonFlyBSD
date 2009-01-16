@@ -167,11 +167,12 @@ int nanosleep (const struct timespec *, struct timespec *);
 #endif /* __POSIX_VISIBLE >= 199309 */
 
 #if __XSI_VISIBLE
+extern int daylight;
+extern long timezone;
 char *strptime (const char *, const char *, struct tm *);
 #endif
 
 #if __BSD_VISIBLE
-char *timezone (int, int);
 void tzsetwall (void);
 time_t timelocal (struct tm * const);
 time_t timegm (struct tm * const);

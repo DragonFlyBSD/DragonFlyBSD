@@ -211,6 +211,9 @@ char *			tzname[2] = {
 
 static struct tm	tm;
 
+time_t			timezone = 0;
+int			daylight = 0;
+
 static long
 detzcode(const char * const codep)
 {
@@ -243,12 +246,18 @@ settzname(void)
 
 	tzname[0] = wildabbr;
 	tzname[1] = wildabbr;
+	daylight = 0;
+	timezone = 0;
 
 	for (i = 0; i < sp->typecnt; ++i) {
 		const struct ttinfo * const	ttisp = &sp->ttis[i];
 
 		tzname[ttisp->tt_isdst] =
 			&sp->chars[ttisp->tt_abbrind];
+		if (ttisp->tt_isdst)
+			daylight = 1;
+		if (i == 0 || !ttisp->tt_isdst)
+			timezone = -(ttisp->tt_gmtoff);
 	}
 	/*
 	** And to get the latest zone names into tzname. . .
