@@ -272,6 +272,7 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 			int pages;
 
 			pages = atop(maxsize) - bz->total_bpages;
+			pages = MAX(pages, 1); /* One page, at least */
 
 			/* Add pages to our bounce pool */
 			if (alloc_bounce_pages(newtag, pages) < pages)
