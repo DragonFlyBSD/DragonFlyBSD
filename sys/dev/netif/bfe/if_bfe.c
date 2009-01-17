@@ -254,7 +254,8 @@ bfe_dma_alloc(device_t dev)
 		return(error);
 	}
 
-	error = bus_dmamap_create(sc->bfe_rxbuf_tag, 0, &sc->bfe_rx_tmpmap);
+	error = bus_dmamap_create(sc->bfe_rxbuf_tag, BUS_DMA_WAITOK,
+				  &sc->bfe_rx_tmpmap);
 	if (error) {
 		device_printf(dev, "could not create RX mbuf tmp map\n");
 		bus_dma_tag_destroy(sc->bfe_rxbuf_tag);
