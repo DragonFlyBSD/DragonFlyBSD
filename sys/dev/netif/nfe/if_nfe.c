@@ -1290,12 +1290,10 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 
 		if (sc->sc_caps & NFE_40BIT_ADDR) {
 			desc64 = &ring->desc64[j];
-#if defined(__LP64__)
 			desc64->physaddr[0] =
-			    htole32(segs[i].ds_addr >> 32);
-#endif
+			    htole32(NFE_ADDR_HI(segs[i].ds_addr));
 			desc64->physaddr[1] =
-			    htole32(segs[i].ds_addr & 0xffffffff);
+			    htole32(NFE_ADDR_LO(segs[i].ds_addr));
 			desc64->length = htole16(segs[i].ds_len - 1);
 			desc64->vtag = htole32(vtag);
 			desc64->flags = htole16(flags);
@@ -1520,14 +1518,17 @@ nfe_init(void *xsc)
 	nfe_set_macaddr(sc, sc->arpcom.ac_enaddr);
 
 	/* tell MAC where rings are in memory */
-#ifdef __LP64__
-	NFE_WRITE(sc, NFE_RX_RING_ADDR_HI, sc->rxq.physaddr >> 32);
-#endif
-	NFE_WRITE(sc, NFE_RX_RING_ADDR_LO, sc->rxq.physaddr & 0xffffffff);
-#ifdef __LP64__
-	NFE_WRITE(sc, NFE_TX_RING_ADDR_HI, sc->txq.physaddr >> 32);
-#endif
-	NFE_WRITE(sc, NFE_TX_RING_ADDR_LO, sc->txq.physaddr & 0xffffffff);
+	if (sc->sc_caps & NFE_40BIT_ADDR) {
+		NFE_WRITE(sc, NFE_RX_RING_ADDR_HI,
+			  NFE_ADDR_HI(sc->rxq.physaddr));
+	}
+	NFE_WRITE(sc, NFE_RX_RING_ADDR_LO, NFE_ADDR_LO(sc->rxq.physaddr));
+
+	if (sc->sc_caps & NFE_40BIT_ADDR) {
+		NFE_WRITE(sc, NFE_TX_RING_ADDR_HI,
+			  NFE_ADDR_HI(sc->txq.physaddr));
+	}
+	NFE_WRITE(sc, NFE_TX_RING_ADDR_LO, NFE_ADDR_LO(sc->txq.physaddr));
 
 	NFE_WRITE(sc, NFE_RING_SIZE,
 	    (sc->sc_rx_ring_count - 1) << 16 |
@@ -2328,10 +2329,8 @@ nfe_set_paddr_rxdesc(struct nfe_softc *sc, struct nfe_rx_ring *ring, int idx,
 	if (sc->sc_caps & NFE_40BIT_ADDR) {
 		struct nfe_desc64 *desc64 = &ring->desc64[idx];
 
-#if defined(__LP64__)
-		desc64->physaddr[0] = htole32(physaddr >> 32);
-#endif
-		desc64->physaddr[1] = htole32(physaddr & 0xffffffff);
+		desc64->physaddr[0] = htole32(NFE_ADDR_HI(physaddr));
+		desc64->physaddr[1] = htole32(NFE_ADDR_LO(physaddr));
 	} else {
 		struct nfe_desc32 *desc32 = &ring->desc32[idx];
 
