@@ -287,8 +287,13 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 		if (ptoa(bz->total_bpages) < maxsize) {
 			int pages;
 
-			pages = atop(round_page(maxsize)) - bz->total_bpages;
-			pages = MAX(pages, 1); /* One page, at least */
+			if (flags & BUS_DMA_ONEPAGE) {
+				pages = 1;
+			} else {
+				pages = atop(round_page(maxsize)) -
+					bz->total_bpages;
+				pages = MAX(pages, 1);
+			}
 
 			/* Add pages to our bounce pool */
 			if (alloc_bounce_pages(newtag, pages, flags) < pages)
@@ -387,9 +392,13 @@ bus_dmamap_create(bus_dma_tag_t dmat, int flags, bus_dmamap_t *mapp)
 				      "not implemented");
 			}
 
-			pages = atop(round_page(dmat->maxsize));
-			pages = MIN(maxpages - bz->total_bpages, pages);
-			pages = MAX(pages, 1);
+			if (flags & BUS_DMA_ONEPAGE) {
+				pages = 1;
+			} else {
+				pages = atop(round_page(dmat->maxsize));
+				pages = MIN(maxpages - bz->total_bpages, pages);
+				pages = MAX(pages, 1);
+			}
 			if (alloc_bounce_pages(dmat, pages, flags) < pages)
 				error = ENOMEM;
 

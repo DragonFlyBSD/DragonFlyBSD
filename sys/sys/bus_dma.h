@@ -92,6 +92,7 @@
 #define	BUS_DMA_BUS2		0x20
 #define	BUS_DMA_BUS3		0x40
 #define	BUS_DMA_BUS4		0x80
+#define BUS_DMA_ONEPAGE		0x0100	/* allocate one bounce page at most */
 
 /* Forwards needed by prototypes below. */
 struct mbuf;
@@ -251,4 +252,3 @@ void _bus_dmamap_unload(bus_dma_tag_t dmat, bus_dmamap_t map);
 		_bus_dmamap_unload(dmat, dmamap)
 
 #endif /* _SYS_BUS_DMA_H_ */
-
