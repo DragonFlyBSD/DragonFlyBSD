@@ -141,7 +141,6 @@ static void	nfe_set_macaddr(struct nfe_softc *, const uint8_t *);
 static void	nfe_powerup(device_t);
 static void	nfe_mac_reset(struct nfe_softc *);
 static void	nfe_tick(void *);
-static void	nfe_ring_dma_addr(void *, bus_dma_segment_t *, int, int);
 static void	nfe_buf_dma_addr(void *, bus_dma_segment_t *, int, bus_size_t,
 				 int);
 static void	nfe_set_paddr_rxdesc(struct nfe_softc *, struct nfe_rx_ring *,
@@ -457,6 +456,7 @@ nfe_attach(device_t dev)
 	struct nfe_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint8_t eaddr[ETHER_ADDR_LEN];
+	bus_addr_t lowaddr;
 	int error;
 
 	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
@@ -531,6 +531,28 @@ nfe_attach(device_t dev)
 		nfe_powerup(dev);
 
 	nfe_get_macaddr(sc, eaddr);
+
+	/*
+	 * Allocate top level DMA tag
+	 */
+	if (sc->sc_caps & NFE_40BIT_ADDR)
+		lowaddr = NFE_BUS_SPACE_MAXADDR;
+	else
+		lowaddr = BUS_SPACE_MAXADDR_32BIT;
+	error = bus_dma_tag_create(NULL,	/* parent */
+			1, 0,			/* alignment, boundary */
+			lowaddr,		/* lowaddr */
+			BUS_SPACE_MAXADDR,	/* highaddr */
+			NULL, NULL,		/* filter, filterarg */
+			BUS_SPACE_MAXSIZE_32BIT,/* maxsize */
+			0,			/* nsegments */
+			BUS_SPACE_MAXSIZE_32BIT,/* maxsegsize */
+			0,			/* flags */
+			&sc->sc_dtag);
+	if (error) {
+		device_printf(dev, "could not allocate parent dma tag\n");
+		goto fail;
+	}
 
 	/*
 	 * Allocate Tx and Rx rings.
@@ -671,6 +693,8 @@ nfe_detach(device_t dev)
 
 	nfe_free_tx_ring(sc, &sc->txq);
 	nfe_free_rx_ring(sc, &sc->rxq);
+	if (sc->sc_dtag != NULL)
+		bus_dma_tag_destroy(sc->sc_dtag);
 
 	return 0;
 }
@@ -1627,6 +1651,7 @@ static int
 nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 {
 	int i, j, error, descsize;
+	bus_dmamem_t dmem;
 	void **desc;
 
 	if (sc->sc_caps & NFE_40BIT_ADDR) {
@@ -1640,40 +1665,19 @@ nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 	ring->bufsz = MCLBYTES;
 	ring->cur = ring->next = 0;
 
-	error = bus_dma_tag_create(NULL, PAGE_SIZE, 0,
-				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
-				   sc->sc_rx_ring_count * descsize, 1,
-				   BUS_SPACE_MAXSIZE_32BIT,
-				   0, &ring->tag);
+	error = bus_dmamem_coherent(sc->sc_dtag, PAGE_SIZE, 0,
+				    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+				    sc->sc_rx_ring_count * descsize,
+				    BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
 	if (error) {
 		if_printf(&sc->arpcom.ac_if,
-			  "could not create desc RX DMA tag\n");
+			  "could not create RX desc ring\n");
 		return error;
 	}
-
-	error = bus_dmamem_alloc(ring->tag, desc, BUS_DMA_WAITOK | BUS_DMA_ZERO,
-				 &ring->map);
-	if (error) {
-		if_printf(&sc->arpcom.ac_if,
-			  "could not allocate RX desc DMA memory\n");
-		bus_dma_tag_destroy(ring->tag);
-		ring->tag = NULL;
-		return error;
-	}
-
-	error = bus_dmamap_load(ring->tag, ring->map, *desc,
-				sc->sc_rx_ring_count * descsize,
-				nfe_ring_dma_addr, &ring->physaddr,
-				BUS_DMA_WAITOK);
-	if (error) {
-		if_printf(&sc->arpcom.ac_if,
-			  "could not load RX desc DMA map\n");
-		bus_dmamem_free(ring->tag, *desc, ring->map);
-		bus_dma_tag_destroy(ring->tag);
-		ring->tag = NULL;
-		return error;
-	}
+	ring->tag = dmem.dmem_tag;
+	ring->map = dmem.dmem_map;
+	*desc = dmem.dmem_addr;
+	ring->physaddr = dmem.dmem_busaddr;
 
 	if (sc->sc_caps & NFE_JUMBO_SUP) {
 		ring->jbuf =
@@ -1693,11 +1697,12 @@ nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 	ring->data = kmalloc(sizeof(struct nfe_rx_data) * sc->sc_rx_ring_count,
 			     M_DEVBUF, M_WAITOK | M_ZERO);
 
-	error = bus_dma_tag_create(NULL, 1, 0,
-				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+	error = bus_dma_tag_create(sc->sc_dtag, 1, 0,
+				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   MCLBYTES, 1, BUS_SPACE_MAXSIZE_32BIT,
-				   BUS_DMA_ALLOCNOW, &ring->data_tag);
+				   MCLBYTES, 1, MCLBYTES,
+				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,
+				   &ring->data_tag);
 	if (error) {
 		if_printf(&sc->arpcom.ac_if,
 			  "could not create RX mbuf DMA tag\n");
@@ -1705,7 +1710,8 @@ nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 	}
 
 	/* Create a spare RX mbuf DMA map */
-	error = bus_dmamap_create(ring->data_tag, 0, &ring->data_tmpmap);
+	error = bus_dmamap_create(ring->data_tag, BUS_DMA_WAITOK,
+				  &ring->data_tmpmap);
 	if (error) {
 		if_printf(&sc->arpcom.ac_if,
 			  "could not create spare RX mbuf DMA map\n");
@@ -1715,7 +1721,7 @@ nfe_alloc_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 	}
 
 	for (i = 0; i < sc->sc_rx_ring_count; i++) {
-		error = bus_dmamap_create(ring->data_tag, 0,
+		error = bus_dmamap_create(ring->data_tag, BUS_DMA_WAITOK,
 					  &ring->data[i].map);
 		if (error) {
 			if_printf(&sc->arpcom.ac_if,
@@ -1878,6 +1884,7 @@ static int
 nfe_jpool_alloc(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 {
 	struct nfe_jbuf *jbuf;
+	bus_dmamem_t dmem;
 	bus_addr_t physaddr;
 	caddr_t buf;
 	int i, error;
@@ -1885,39 +1892,19 @@ nfe_jpool_alloc(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 	/*
 	 * Allocate a big chunk of DMA'able memory.
 	 */
-	error = bus_dma_tag_create(NULL, PAGE_SIZE, 0,
-				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
-				   NFE_JPOOL_SIZE(sc), 1,
-				   BUS_SPACE_MAXSIZE_32BIT,
-				   0, &ring->jtag);
+	error = bus_dmamem_coherent(sc->sc_dtag, PAGE_SIZE, 0,
+				    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+				    NFE_JPOOL_SIZE(sc),
+				    BUS_DMA_WAITOK, &dmem);
 	if (error) {
 		if_printf(&sc->arpcom.ac_if,
-			  "could not create jumbo DMA tag\n");
+			  "could not create jumbo buffer\n");
 		return error;
 	}
-
-	error = bus_dmamem_alloc(ring->jtag, (void **)&ring->jpool,
-				 BUS_DMA_WAITOK, &ring->jmap);
-	if (error) {
-		if_printf(&sc->arpcom.ac_if,
-			  "could not allocate jumbo DMA memory\n");
-		bus_dma_tag_destroy(ring->jtag);
-		ring->jtag = NULL;
-		return error;
-	}
-
-	error = bus_dmamap_load(ring->jtag, ring->jmap, ring->jpool,
-				NFE_JPOOL_SIZE(sc),
-				nfe_ring_dma_addr, &physaddr, BUS_DMA_WAITOK);
-	if (error) {
-		if_printf(&sc->arpcom.ac_if,
-			  "could not load jumbo DMA map\n");
-		bus_dmamem_free(ring->jtag, ring->jpool, ring->jmap);
-		bus_dma_tag_destroy(ring->jtag);
-		ring->jtag = NULL;
-		return error;
-	}
+	ring->jtag = dmem.dmem_tag;
+	ring->jmap = dmem.dmem_map;
+	ring->jpool = dmem.dmem_addr;
+	physaddr = dmem.dmem_busaddr;
 
 	/* ..and split it into 9KB chunks */
 	SLIST_INIT(&ring->jfreelist);
@@ -1956,6 +1943,7 @@ static int
 nfe_alloc_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 {
 	int i, j, error, descsize;
+	bus_dmamem_t dmem;
 	void **desc;
 
 	if (sc->sc_caps & NFE_40BIT_ADDR) {
@@ -1969,50 +1957,29 @@ nfe_alloc_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 	ring->queued = 0;
 	ring->cur = ring->next = 0;
 
-	error = bus_dma_tag_create(NULL, PAGE_SIZE, 0,
-				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
-				   sc->sc_tx_ring_count * descsize, 1,
-				   BUS_SPACE_MAXSIZE_32BIT,
-				   0, &ring->tag);
+	error = bus_dmamem_coherent(sc->sc_dtag, PAGE_SIZE, 0,
+				    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+				    sc->sc_tx_ring_count * descsize,
+				    BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
 	if (error) {
 		if_printf(&sc->arpcom.ac_if,
-			  "could not create TX desc DMA map\n");
+			  "could not create TX desc ring\n");
 		return error;
 	}
-
-	error = bus_dmamem_alloc(ring->tag, desc, BUS_DMA_WAITOK | BUS_DMA_ZERO,
-				 &ring->map);
-	if (error) {
-		if_printf(&sc->arpcom.ac_if,
-			  "could not allocate TX desc DMA memory\n");
-		bus_dma_tag_destroy(ring->tag);
-		ring->tag = NULL;
-		return error;
-	}
-
-	error = bus_dmamap_load(ring->tag, ring->map, *desc,
-				sc->sc_tx_ring_count * descsize,
-				nfe_ring_dma_addr, &ring->physaddr,
-				BUS_DMA_WAITOK);
-	if (error) {
-		if_printf(&sc->arpcom.ac_if,
-			  "could not load TX desc DMA map\n");
-		bus_dmamem_free(ring->tag, *desc, ring->map);
-		bus_dma_tag_destroy(ring->tag);
-		ring->tag = NULL;
-		return error;
-	}
+	ring->tag = dmem.dmem_tag;
+	ring->map = dmem.dmem_map;
+	*desc = dmem.dmem_addr;
+	ring->physaddr = dmem.dmem_busaddr;
 
 	ring->data = kmalloc(sizeof(struct nfe_tx_data) * sc->sc_tx_ring_count,
 			     M_DEVBUF, M_WAITOK | M_ZERO);
 
-	error = bus_dma_tag_create(NULL, PAGE_SIZE, 0,
-				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
-				   NFE_JBYTES, NFE_MAX_SCATTER,
-				   BUS_SPACE_MAXSIZE_32BIT,
-				   BUS_DMA_ALLOCNOW, &ring->data_tag);
+	error = bus_dma_tag_create(sc->sc_dtag, 1, 0,
+			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+			NULL, NULL,
+			NFE_JBYTES, NFE_MAX_SCATTER, MCLBYTES,
+			BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK | BUS_DMA_ONEPAGE,
+			&ring->data_tag);
 	if (error) {
 		if_printf(&sc->arpcom.ac_if,
 			  "could not create TX buf DMA tag\n");
@@ -2020,8 +1987,9 @@ nfe_alloc_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 	}
 
 	for (i = 0; i < sc->sc_tx_ring_count; i++) {
-		error = bus_dmamap_create(ring->data_tag, 0,
-					  &ring->data[i].map);
+		error = bus_dmamap_create(ring->data_tag,
+				BUS_DMA_WAITOK | BUS_DMA_ONEPAGE,
+				&ring->data[i].map);
 		if (error) {
 			if_printf(&sc->arpcom.ac_if,
 				  "could not create %dth TX buf DMA map\n", i);
@@ -2239,17 +2207,6 @@ nfe_tick(void *arg)
 	callout_reset(&sc->sc_tick_ch, hz, nfe_tick, sc);
 
 	lwkt_serialize_exit(ifp->if_serializer);
-}
-
-static void
-nfe_ring_dma_addr(void *arg, bus_dma_segment_t *seg, int nseg, int error)
-{
-	if (error)
-		return;
-
-	KASSERT(nseg == 1, ("too many segments, should be 1\n"));
-
-	*((uint32_t *)arg) = seg->ds_addr;
 }
 
 static void
