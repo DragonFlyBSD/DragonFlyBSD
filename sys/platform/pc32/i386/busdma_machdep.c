@@ -303,9 +303,10 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 			/* Add pages to our bounce pool */
 			if (alloc_bounce_pages(newtag, pages, flags) < pages)
 				error = ENOMEM;
+
+			/* Performed initial allocation */
+			newtag->flags |= BUS_DMA_MIN_ALLOC_COMP;
 		}
-		/* Performed initial allocation */
-		newtag->flags |= BUS_DMA_MIN_ALLOC_COMP;
 	}
 back:
 	if (error)
