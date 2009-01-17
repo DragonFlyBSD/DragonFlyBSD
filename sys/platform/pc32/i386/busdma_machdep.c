@@ -555,7 +555,8 @@ _bus_dmamap_load_buffer(bus_dma_tag_t dmat,
 		if (flags & BUS_DMA_NOWAIT) {
 			if (reserve_bounce_pages(dmat, map, 0) != 0) {
 				BZ_UNLOCK(bz);
-				return (ENOMEM);
+				error = ENOMEM;
+				goto free_bounce;
 			}
 		} else {
 			if (reserve_bounce_pages(dmat, map, 1) != 0) {
@@ -668,6 +669,7 @@ fail:
 	*segp = seg;
 	*lastpaddrp = nextpaddr;
 
+free_bounce:
 	if (error && (dmat->flags & BUS_DMA_COULD_BOUNCE) &&
 	    map != &nobounce_dmamap) {
 		_bus_dmamap_unload(dmat, map);
@@ -745,6 +747,14 @@ bus_dmamap_load_mbuf(bus_dma_tag_t dmat, bus_dmamap_t map,
 					m->m_data, m->m_len,
 					NULL, flags, &lastaddr,
 					&nsegs, first);
+			if (error == ENOMEM && !first) {
+				/*
+				 * Out of bounce pages due to too many
+				 * fragments in the mbuf chain; return
+				 * EFBIG instead.
+				 */
+				error = EFBIG;
+			}
 			first = 0;
 		}
 	} else {
