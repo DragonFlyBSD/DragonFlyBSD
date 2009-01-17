@@ -241,7 +241,8 @@ bfe_dma_alloc(device_t dev)
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
 				   MCLBYTES, 1, MCLBYTES,
-				   BUS_DMA_ALLOCNOW, &sc->bfe_rxbuf_tag);
+				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,
+				   &sc->bfe_rxbuf_tag);
 	if (error) {
 		device_printf(dev, "could not allocate dma tag for RX mbufs\n");
 		return(error);
@@ -257,7 +258,7 @@ bfe_dma_alloc(device_t dev)
 
 	/* Allocate dma maps for RX list */
 	for (i = 0; i < BFE_RX_LIST_CNT; i++) {
-		error = bus_dmamap_create(sc->bfe_rxbuf_tag, 0,
+		error = bus_dmamap_create(sc->bfe_rxbuf_tag, BUS_DMA_WAITOK,
 					  &sc->bfe_rx_ring[i].bfe_map);
 		if (error) {
 			rx_pos = i;
@@ -272,7 +273,8 @@ bfe_dma_alloc(device_t dev)
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
 				   MCLBYTES, BFE_MAXSEGS, MCLBYTES,
-				   BUS_DMA_ALLOCNOW, &sc->bfe_txbuf_tag);
+				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,
+				   &sc->bfe_txbuf_tag);
 	if (error) {
 		device_printf(dev, "could not allocate dma tag for TX mbufs\n");
 		return(error);
@@ -280,7 +282,7 @@ bfe_dma_alloc(device_t dev)
 
 	/* Allocate dmamaps for TX list */
 	for (i = 0; i < BFE_TX_LIST_CNT; i++) {
-		error = bus_dmamap_create(sc->bfe_txbuf_tag, 0,
+		error = bus_dmamap_create(sc->bfe_txbuf_tag, BUS_DMA_WAITOK,
 					  &sc->bfe_tx_ring[i].bfe_map);
 		if (error) {
 			tx_pos = i;
@@ -1292,15 +1294,14 @@ bfe_encap(struct bfe_softc *sc, struct mbuf **m_head, uint32_t *txidx)
 		error = EFBIG;
 	}
 	if (error && error != EFBIG)
-		return error;
+		goto fail;
 	if (error) {	/* error == EFBIG */
 		struct mbuf *m_new;
 
 		m_new = m_defrag(m, MB_DONTWAIT);
 		if (m_new == NULL) {
-			m_freem(m);
-			*m_head = NULL;
-			return ENOBUFS;
+			error = ENOBUFS;
+			goto fail;
 		} else {
 			*m_head = m = m_new;
 		}
@@ -1315,7 +1316,7 @@ bfe_encap(struct bfe_softc *sc, struct mbuf **m_head, uint32_t *txidx)
 				bus_dmamap_unload(sc->bfe_txbuf_tag, map);
 				error = EFBIG;
 			}
-			return error;
+			goto fail;
 		}
 	}
 	bus_dmamap_sync(sc->bfe_txbuf_tag, map, BUS_DMASYNC_PREWRITE);
@@ -1363,6 +1364,10 @@ bfe_encap(struct bfe_softc *sc, struct mbuf **m_head, uint32_t *txidx)
 	*txidx = cur;
 	sc->bfe_tx_cnt += ctx.nsegs;
 	return 0;
+fail:
+	m_freem(m);
+	*m_head = NULL;
+	return error;
 }
 
 /*
@@ -1407,12 +1412,22 @@ bfe_start(struct ifnet *ifp)
 		 * enough room, let the chip drain the ring.
 		 */
 		if (bfe_encap(sc, &m_head, &idx)) {
-			ifp->if_flags |= IFF_OACTIVE;
-			if (m_head != NULL)
-				ifq_prepend(&ifp->if_snd, m_head);
-			else
-				ifp->if_oerrors++;
-			break;
+			/* m_head is freed by re_encap(), if we reach here */
+			ifp->if_oerrors++;
+
+			if (sc->bfe_tx_cnt > 0) {
+				ifp->if_flags |= IFF_OACTIVE;
+				break;
+			} else {
+				/*
+				 * IFF_OACTIVE could not be set under
+				 * this situation, since except up/down,
+				 * nothing will clear IFF_OACTIVE.
+				 *
+				 * Let's just keep draining the ifq ...
+				 */
+				continue;
+			}
 		}
 		need_trans = 1;
 
