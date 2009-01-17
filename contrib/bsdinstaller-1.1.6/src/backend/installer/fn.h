@@ -98,7 +98,6 @@ void		 fn_create_cdboot_floppy(struct i_fn_args *);
 void		 fn_create_memtest86_floppy(struct i_fn_args *);
 
 int		 format_slice(struct i_fn_args *);
-int		 autopacket(struct disk *);
 
 void		 fn_create_subpartitions(struct i_fn_args *);
 void		 fn_create_subpartitions_ufs(struct i_fn_args *);
