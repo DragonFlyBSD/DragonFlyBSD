@@ -1172,7 +1172,7 @@ re_allocmem(device_t dev)
 	}
 
 	/* Create spare DMA map for RX */
-	error = bus_dmamap_create(sc->re_ldata.re_rx_mtag, 0,
+	error = bus_dmamap_create(sc->re_ldata.re_rx_mtag, BUS_DMA_WAITOK,
 			&sc->re_ldata.re_rx_spare);
 	if (error) {
 		device_printf(dev, "can't create spare DMA map for RX\n");
