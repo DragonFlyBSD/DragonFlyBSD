@@ -444,11 +444,10 @@ static driver_t bce_driver = {
 
 static devclass_t bce_devclass;
 
-MODULE_DEPEND(bce, pci, 1, 1, 1);
-MODULE_DEPEND(bce, ether, 1, 1, 1);
-MODULE_DEPEND(bce, miibus, 1, 1, 1);
 
-DRIVER_MODULE(bce, pci, bce_driver, bce_devclass, 0, 0);
+DECLARE_DUMMY_MODULE(if_xl);
+MODULE_DEPEND(bce, miibus, 1, 1, 1);
+DRIVER_MODULE(if_bce, pci, bce_driver, bce_devclass, 0, 0);
 DRIVER_MODULE(miibus, bce, miibus_driver, miibus_devclass, 0, 0);
 
 
