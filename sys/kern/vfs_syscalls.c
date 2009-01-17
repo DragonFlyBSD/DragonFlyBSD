@@ -380,8 +380,8 @@ update:
 		/* XXX get the root of the fs and cache_setvp(mnt_ncmountpt...) */
 		vp->v_flag &= ~VMOUNT;
 		mountlist_insert(mp, MNTINS_LAST);
-		checkdirs(&mp->mnt_ncmounton, &mp->mnt_ncmountpt);
 		vn_unlock(vp);
+		checkdirs(&mp->mnt_ncmounton, &mp->mnt_ncmountpt);
 		error = vfs_allocate_syncvnode(mp);
 		vfs_unbusy(mp);
 		error = VFS_START(mp, 0);
