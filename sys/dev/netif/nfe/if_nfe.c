@@ -1171,8 +1171,6 @@ nfe_txeof(struct nfe_softc *sc, int start)
 		}
 
 		/* last fragment of the mbuf chain transmitted */
-		bus_dmamap_sync(ring->data_tag, data->map,
-				BUS_DMASYNC_POSTWRITE);
 		bus_dmamap_unload(ring->data_tag, data->map);
 		m_freem(data->m);
 		data->m = NULL;
@@ -1229,17 +1227,13 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 		bus_dmamap_unload(ring->data_tag, map);
 		error = EFBIG;
 	}
-	if (error && error != EFBIG) {
-		if_printf(&sc->arpcom.ac_if, "could not map TX mbuf\n");
+	if (error && error != EFBIG)
 		goto back;
-	}
 	if (error) {	/* error == EFBIG */
 		struct mbuf *m_new;
 
 		m_new = m_defrag(m0, MB_DONTWAIT);
 		if (m_new == NULL) {
-			if_printf(&sc->arpcom.ac_if,
-				  "could not defrag TX mbuf\n");
 			error = ENOBUFS;
 			goto back;
 		} else {
@@ -1256,11 +1250,10 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 				bus_dmamap_unload(ring->data_tag, map);
 				error = EFBIG;
 			}
-			if_printf(&sc->arpcom.ac_if,
-				  "could not map defraged TX mbuf\n");
 			goto back;
 		}
 	}
+	bus_dmamap_sync(ring->data_tag, map, BUS_DMASYNC_PREWRITE);
 
 	error = 0;
 
@@ -1343,8 +1336,6 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 	data_map->map = data->map;
 	data->map = map;
 	data->m = m0;
-
-	bus_dmamap_sync(ring->data_tag, map, BUS_DMASYNC_PREWRITE);
 back:
 	if (error)
 		m_freem(m0);
@@ -1755,7 +1746,6 @@ nfe_reset_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 			data->m = NULL;
 		}
 	}
-	bus_dmamap_sync(ring->tag, ring->map, BUS_DMASYNC_PREWRITE);
 
 	ring->cur = ring->next = 0;
 }
@@ -1778,7 +1768,6 @@ nfe_init_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 				  "could not allocate RX buffer\n");
 			return error;
 		}
-
 		nfe_set_ready_rxdesc(sc, ring, i);
 	}
 	bus_dmamap_sync(ring->tag, ring->map, BUS_DMASYNC_PREWRITE);
@@ -2021,8 +2010,6 @@ nfe_reset_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 			ring->desc32[i].flags = 0;
 
 		if (data->m != NULL) {
-			bus_dmamap_sync(ring->data_tag, data->map,
-					BUS_DMASYNC_POSTWRITE);
 			bus_dmamap_unload(ring->data_tag, data->map);
 			m_freem(data->m);
 			data->m = NULL;
@@ -2250,12 +2237,15 @@ nfe_newbuf_std(struct nfe_softc *sc, struct nfe_rx_ring *ring, int idx,
 	ctx.segs = &seg;
 	error = bus_dmamap_load_mbuf(ring->data_tag, ring->data_tmpmap,
 				     m, nfe_buf_dma_addr, &ctx,
-				     wait ? BUS_DMA_WAITOK : BUS_DMA_NOWAIT);
+				     BUS_DMA_NOWAIT);
 	if (error || ctx.nsegs == 0) {
 		if (!error) {
 			bus_dmamap_unload(ring->data_tag, ring->data_tmpmap);
 			error = EFBIG;
-			if_printf(&sc->arpcom.ac_if, "too many segments?!\n");
+			if (wait) {
+				if_printf(&sc->arpcom.ac_if,
+					  "too many segments?!\n");
+			}
 		}
 		m_freem(m);
 
@@ -2266,8 +2256,12 @@ nfe_newbuf_std(struct nfe_softc *sc, struct nfe_rx_ring *ring, int idx,
 		return error;
 	}
 
-	/* Unload originally mapped mbuf */
-	bus_dmamap_unload(ring->data_tag, data->map);
+	if (data->m != NULL) {
+		/* Sync and unload originally mapped mbuf */
+		bus_dmamap_sync(ring->data_tag, data->map,
+				BUS_DMASYNC_POSTREAD);
+		bus_dmamap_unload(ring->data_tag, data->map);
+	}
 
 	/* Swap this DMA map with tmp DMA map */
 	map = data->map;
@@ -2278,8 +2272,6 @@ nfe_newbuf_std(struct nfe_softc *sc, struct nfe_rx_ring *ring, int idx,
 	data->m = m;
 
 	nfe_set_paddr_rxdesc(sc, ring, idx, seg.ds_addr);
-
-	bus_dmamap_sync(ring->data_tag, data->map, BUS_DMASYNC_PREREAD);
 	return 0;
 }
 
@@ -2317,8 +2309,6 @@ nfe_newbuf_jumbo(struct nfe_softc *sc, struct nfe_rx_ring *ring, int idx,
 	data->m = m;
 
 	nfe_set_paddr_rxdesc(sc, ring, idx, jbuf->physaddr);
-
-	bus_dmamap_sync(ring->jtag, ring->jmap, BUS_DMASYNC_PREREAD);
 	return 0;
 }
 
