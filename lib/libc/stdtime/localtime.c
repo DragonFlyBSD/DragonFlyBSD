@@ -32,6 +32,21 @@
 #define	_MUTEX_LOCK(x)		if (__isthreaded) _pthread_mutex_lock(x)
 #define	_MUTEX_UNLOCK(x)	if (__isthreaded) _pthread_mutex_unlock(x)
 
+#define _RWLOCK_RDLOCK(x)						\
+		do {							\
+			if (__isthreaded) _pthread_rwlock_rdlock(x);	\
+		} while (0)
+
+#define _RWLOCK_WRLOCK(x)						\
+		do {							\
+			if (__isthreaded) _pthread_rwlock_wrlock(x);	\
+		} while (0)
+
+#define _RWLOCK_UNLOCK(x)						\
+		do {							\
+			if (__isthreaded) _pthread_rwlock_unlock(x);	\
+		} while (0)
+
 #ifndef TZ_ABBR_MAX_LEN
 #define TZ_ABBR_MAX_LEN	16
 #endif /* !defined TZ_ABBR_MAX_LEN */
@@ -193,7 +208,7 @@ static struct state	gmtmem;
 static char		lcl_TZname[TZ_STRLEN_MAX + 1];
 static int		lcl_is_set;
 static int		gmt_is_set;
-static pthread_mutex_t	lcl_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_rwlock_t	lcl_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 static pthread_mutex_t	gmt_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 char *			tzname[2] = {
@@ -1101,38 +1116,56 @@ gmtload(struct state * const sp)
 }
 
 static void
-tzsetwall_basic(void)
+tzsetwall_basic(int rdlocked)
 {
-	if (lcl_is_set < 0)
+	if (!rdlocked)
+		_RWLOCK_RDLOCK(&lcl_rwlock);
+	if (lcl_is_set < 0) {
+		if (!rdlocked)
+			_RWLOCK_UNLOCK(&lcl_rwlock);
 		return;
+	}
+	_RWLOCK_UNLOCK(&lcl_rwlock);
+
+	_RWLOCK_WRLOCK(&lcl_rwlock);
 	lcl_is_set = -1;
 
 	if (tzload((char *) NULL, lclptr, TRUE) != 0)
 		gmtload(lclptr);
 	settzname();
+	_RWLOCK_UNLOCK(&lcl_rwlock);
+
+	if (rdlocked)
+		_RWLOCK_RDLOCK(&lcl_rwlock);
 }
 
 void
 tzsetwall(void)
 {
-	_MUTEX_LOCK(&lcl_mutex);
-	tzsetwall_basic();
-	_MUTEX_UNLOCK(&lcl_mutex);
+	tzsetwall_basic(0);
 }
 
 static void
-tzset_basic(void)
+tzset_basic(int rdlocked)
 {
 	const char *	name;
 
 	name = getenv("TZ");
 	if (name == NULL) {
-		tzsetwall_basic();
+		tzsetwall_basic(rdlocked);
 		return;
 	}
 
-	if (lcl_is_set > 0 && strcmp(lcl_TZname, name) == 0)
+	if (!rdlocked)
+		_RWLOCK_RDLOCK(&lcl_rwlock);
+	if (lcl_is_set > 0 && strcmp(lcl_TZname, name) == 0) {
+		if (!rdlocked)
+			_RWLOCK_UNLOCK(&lcl_rwlock);
 		return;
+	}
+	_RWLOCK_UNLOCK(&lcl_rwlock);
+
+	_RWLOCK_WRLOCK(&lcl_rwlock);
 	lcl_is_set = strlen(name) < sizeof lcl_TZname;
 	if (lcl_is_set)
 		strcpy(lcl_TZname, name);
@@ -1152,14 +1185,16 @@ tzset_basic(void)
 		if (name[0] == ':' || tzparse(name, lclptr, FALSE) != 0)
 			gmtload(lclptr);
 	settzname();
+	_RWLOCK_UNLOCK(&lcl_rwlock);
+
+	if (rdlocked)
+		_RWLOCK_RDLOCK(&lcl_rwlock);
 }
 
 void
 tzset(void)
 {
-	_MUTEX_LOCK(&lcl_mutex);
-	tzset_basic();
-	_MUTEX_UNLOCK(&lcl_mutex);
+	tzset_basic(0);
 }
 
 /*
@@ -1262,10 +1297,10 @@ localsub(const time_t * const timep, const long offset __unused,
 struct tm *
 localtime_r(const time_t * const timep, struct tm *p_tm)
 {
-	_MUTEX_LOCK(&lcl_mutex);
-	tzset_basic();
+	_RWLOCK_RDLOCK(&lcl_rwlock);
+	tzset_basic(1);
 	localsub(timep, 0L, p_tm);
-	_MUTEX_UNLOCK(&lcl_mutex);
+	_RWLOCK_UNLOCK(&lcl_rwlock);
 	return(p_tm);
 }
 
@@ -1277,14 +1312,16 @@ localtime(const time_t * const timep)
 	struct tm *p_tm;
 
 	if (__isthreaded != 0) {
-		_pthread_mutex_lock(&localtime_mutex);
 		if (localtime_key < 0) {
-			if (_pthread_key_create(&localtime_key, free) < 0) {
-				_pthread_mutex_unlock(&localtime_mutex);
-				return(NULL);
+			_pthread_mutex_lock(&localtime_mutex);
+			if (localtime_key < 0) {
+				if (_pthread_key_create(&localtime_key, free) < 0) {
+					_pthread_mutex_unlock(&localtime_mutex);
+					return(NULL);
+				}
 			}
+			_pthread_mutex_unlock(&localtime_mutex);
 		}
-		_pthread_mutex_unlock(&localtime_mutex);
 		p_tm = _pthread_getspecific(localtime_key);
 		if (p_tm == NULL) {
 			if ((p_tm = (struct tm *)malloc(sizeof(struct tm)))
@@ -1292,13 +1329,13 @@ localtime(const time_t * const timep)
 				return(NULL);
 			_pthread_setspecific(localtime_key, p_tm);
 		}
-		_pthread_mutex_lock(&lcl_mutex);
-		tzset_basic();
+		_RWLOCK_RDLOCK(&lcl_rwlock);
+		tzset_basic(1);
 		localsub(timep, 0L, p_tm);
-		_pthread_mutex_unlock(&lcl_mutex);
+		_RWLOCK_UNLOCK(&lcl_rwlock);
 		return(p_tm);
 	} else {
-		tzset_basic();
+		tzset_basic(0);
 		localsub(timep, 0L, &tm);
 		return(&tm);
 	}
@@ -1313,12 +1350,14 @@ gmtsub(const time_t * const timep, const long offset, struct tm * const tmp)
 {
 	struct tm *	result;
 
-	_MUTEX_LOCK(&gmt_mutex);
 	if (!gmt_is_set) {
-		gmt_is_set = TRUE;
-		gmtload(gmtptr);
+		_MUTEX_LOCK(&gmt_mutex);
+		if (!gmt_is_set) {
+			gmtload(gmtptr);
+			gmt_is_set = TRUE;
+		}
+		_MUTEX_UNLOCK(&gmt_mutex);
 	}
-	_MUTEX_UNLOCK(&gmt_mutex);
 	result = timesub(timep, offset, gmtptr, tmp);
 #ifdef TM_ZONE
 	/*
@@ -1342,14 +1381,16 @@ gmtime(const time_t * const timep)
 	struct tm *p_tm;
 
 	if (__isthreaded != 0) {
-		_pthread_mutex_lock(&gmtime_mutex);
 		if (gmtime_key < 0) {
-			if (_pthread_key_create(&gmtime_key, free) < 0) {
-				_pthread_mutex_unlock(&gmtime_mutex);
-				return(NULL);
+			_pthread_mutex_lock(&gmtime_mutex);
+			if (gmtime_key < 0) {
+				if (_pthread_key_create(&gmtime_key, free) < 0) {
+					_pthread_mutex_unlock(&gmtime_mutex);
+					return(NULL);
+				}
 			}
+			_pthread_mutex_unlock(&gmtime_mutex);
 		}
-		_pthread_mutex_unlock(&gmtime_mutex);
 		/*
 		 * Changed to follow POSIX.1 threads standard, which
 		 * is what BSD currently has.
@@ -1877,10 +1918,10 @@ time_t
 mktime(struct tm * const tmp)
 {
 	time_t mktime_return_value;
-	_MUTEX_LOCK(&lcl_mutex);
-	tzset_basic();
+	_RWLOCK_RDLOCK(&lcl_rwlock);
+	tzset_basic(1);
 	mktime_return_value = time1(tmp, localsub, 0L);
-	_MUTEX_UNLOCK(&lcl_mutex);
+	_RWLOCK_UNLOCK(&lcl_rwlock);
 	return(mktime_return_value);
 }
 
