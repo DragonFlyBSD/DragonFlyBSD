@@ -147,7 +147,7 @@ static STAILQ_HEAD(, bus_dmamap) bounce_map_callbacklist =
 static struct bus_dmamap nobounce_dmamap;
 
 static int		alloc_bounce_zone(bus_dma_tag_t);
-static int		alloc_bounce_pages(bus_dma_tag_t, u_int);
+static int		alloc_bounce_pages(bus_dma_tag_t, u_int, int);
 static int		reserve_bounce_pages(bus_dma_tag_t, bus_dmamap_t, int);
 static void		return_bounce_pages(bus_dma_tag_t, bus_dmamap_t);
 static bus_addr_t	add_bounce_page(bus_dma_tag_t, bus_dmamap_t,
@@ -192,8 +192,24 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 	bus_dma_tag_t newtag;
 	int error = 0;
 
+	/*
+	 * Sanity checks
+	 */
+
 	if (alignment == 0)
 		alignment = 1;
+	if (alignment & (alignment - 1))
+		panic("alignment must be power of 2\n");
+
+	if (boundary != 0) {
+		if (boundary & (boundary - 1))
+			panic("boundary must be power of 2\n");
+		if (boundary < maxsegsz) {
+			kprintf("boundary < maxsegsz:\n");
+			backtrace();
+			maxsegsz = boundary;
+		}
+	}
 
 	/* Return a NULL tag on failure */
 	*dmat = NULL;
@@ -271,11 +287,11 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 		if (ptoa(bz->total_bpages) < maxsize) {
 			int pages;
 
-			pages = atop(maxsize) - bz->total_bpages;
+			pages = atop(round_page(maxsize)) - bz->total_bpages;
 			pages = MAX(pages, 1); /* One page, at least */
 
 			/* Add pages to our bounce pool */
-			if (alloc_bounce_pages(newtag, pages) < pages)
+			if (alloc_bounce_pages(newtag, pages, flags) < pages)
 				error = ENOMEM;
 		}
 		/* Performed initial allocation */
@@ -371,10 +387,10 @@ bus_dmamap_create(bus_dma_tag_t dmat, int flags, bus_dmamap_t *mapp)
 				      "not implemented");
 			}
 
-			pages = MAX(atop(dmat->maxsize), 1);
+			pages = atop(round_page(dmat->maxsize));
 			pages = MIN(maxpages - bz->total_bpages, pages);
 			pages = MAX(pages, 1);
-			if (alloc_bounce_pages(dmat, pages) < pages)
+			if (alloc_bounce_pages(dmat, pages, flags) < pages)
 				error = ENOMEM;
 
 			if ((dmat->flags & BUS_DMA_MIN_ALLOC_COMP) == 0) {
@@ -929,8 +945,10 @@ alloc_bounce_zone(bus_dma_tag_t dmat)
 	bz->reserved_bpages = 0;
 	bz->active_bpages = 0;
 	bz->lowaddr = dmat->lowaddr;
-	bz->alignment = dmat->alignment;
-	bz->boundary = dmat->boundary;
+	bz->alignment = round_page(dmat->alignment);
+	bz->boundary = round_page(dmat->boundary);
+	if (bz->boundary == 0)
+		bz->boundary = PAGE_SIZE;
 	ksnprintf(bz->zoneid, 8, "zone%d", busdma_zonecount);
 	busdma_zonecount++;
 	ksnprintf(bz->lowaddrid, 18, "%#jx", (uintmax_t)bz->lowaddr);
@@ -991,10 +1009,15 @@ alloc_bounce_zone(bus_dma_tag_t dmat)
 }
 
 static int
-alloc_bounce_pages(bus_dma_tag_t dmat, u_int numpages)
+alloc_bounce_pages(bus_dma_tag_t dmat, u_int numpages, int flags)
 {
 	struct bounce_zone *bz = dmat->bounce_zone;
-	int count = 0;
+	int count = 0, mflags;
+
+	if (flags & BUS_DMA_NOWAIT)
+		mflags = M_NOWAIT;
+	else
+		mflags = M_WAITOK;
 
 	while (numpages > 0) {
 		struct bounce_page *bpage;
@@ -1002,10 +1025,10 @@ alloc_bounce_pages(bus_dma_tag_t dmat, u_int numpages)
 		bpage = kmalloc(sizeof(*bpage), M_DEVBUF, M_INTWAIT | M_ZERO);
 
 		bpage->vaddr = (vm_offset_t)contigmalloc(PAGE_SIZE, M_DEVBUF,
-							 M_NOWAIT, 0ul,
-							 dmat->lowaddr,
-							 PAGE_SIZE,
-							 0);
+							 mflags, 0ul,
+							 bz->lowaddr,
+							 bz->alignment,
+							 bz->boundary);
 		if (bpage->vaddr == 0) {
 			kfree(bpage, M_DEVBUF);
 			break;
