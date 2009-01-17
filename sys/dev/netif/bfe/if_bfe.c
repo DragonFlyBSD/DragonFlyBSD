@@ -133,7 +133,6 @@ static void	bfe_core_reset(struct bfe_softc *);
 static void	bfe_core_disable(struct bfe_softc *);
 static int	bfe_dma_alloc(device_t);
 static void	bfe_dma_free(struct bfe_softc *);
-static void	bfe_dma_map(void *, bus_dma_segment_t *, int, int);
 static void	bfe_cam_write(struct bfe_softc *, u_char *, int);
 static void	bfe_dmamap_buf_cb(void *, bus_dma_segment_t *, int,
 				  bus_size_t, int);
@@ -193,6 +192,7 @@ static int
 bfe_dma_alloc(device_t dev)
 {
 	struct bfe_softc *sc = device_get_softc(dev);
+	bus_dmamem_t dmem;
 	int error, i, tx_pos = 0, rx_pos = 0;
 
 	/*
@@ -214,27 +214,33 @@ bfe_dma_alloc(device_t dev)
 		return(error);
 	}
 
-	/* tag for TX ring */
-	error = bus_dma_tag_create(sc->bfe_parent_tag, PAGE_SIZE, 0,
-				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
-				   BFE_TX_LIST_SIZE, 1, BFE_TX_LIST_SIZE,
-				   0, &sc->bfe_tx_tag);
+	/* Allocate TX ring */
+	error = bus_dmamem_coherent(sc->bfe_parent_tag, PAGE_SIZE, 0,
+				    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+				    BFE_TX_LIST_SIZE,
+				    BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
 	if (error) {
-		device_printf(dev, "could not allocate dma tag for TX list\n");
+		device_printf(dev, "could not allocate TX list\n");
 		return(error);
 	}
+	sc->bfe_tx_tag = dmem.dmem_tag;
+	sc->bfe_tx_map = dmem.dmem_map;
+	sc->bfe_tx_list = dmem.dmem_addr;
+	sc->bfe_tx_dma = dmem.dmem_busaddr;
 
-	/* tag for RX ring */
-	error = bus_dma_tag_create(sc->bfe_parent_tag, PAGE_SIZE, 0,
-				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
-				   BFE_RX_LIST_SIZE, 1, BFE_RX_LIST_SIZE,
-				   0, &sc->bfe_rx_tag);
+	/* Allocate RX ring */
+	error = bus_dmamem_coherent(sc->bfe_parent_tag, PAGE_SIZE, 0,
+				    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+				    BFE_RX_LIST_SIZE,
+				    BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
 	if (error) {
-		device_printf(dev, "could not allocate dma tag for RX list\n");
+		device_printf(dev, "could not allocate RX list\n");
 		return(error);
 	}
+	sc->bfe_rx_tag = dmem.dmem_tag;
+	sc->bfe_rx_map = dmem.dmem_map;
+	sc->bfe_rx_list = dmem.dmem_addr;
+	sc->bfe_rx_dma = dmem.dmem_busaddr;
 
 	/* Tag for RX mbufs */
 	error = bus_dma_tag_create(sc->bfe_parent_tag, 1, 0,
@@ -289,40 +295,6 @@ bfe_dma_alloc(device_t dev)
 			device_printf(dev, "cannot create DMA map for TX\n");
 			goto ring_fail;
 		}
-	}
-
-	/* Alloc dma for rx ring */
-	error = bus_dmamem_alloc(sc->bfe_rx_tag, (void *)&sc->bfe_rx_list,
-				 BUS_DMA_WAITOK | BUS_DMA_ZERO,
-				 &sc->bfe_rx_map);
-	if (error) {
-		device_printf(dev, "cannot allocate DMA mem for RX\n");
-		return(error);
-	}
-
-	error = bus_dmamap_load(sc->bfe_rx_tag, sc->bfe_rx_map,
-				sc->bfe_rx_list, sizeof(struct bfe_desc),
-				bfe_dma_map, &sc->bfe_rx_dma, BUS_DMA_WAITOK);
-	if (error) {
-		device_printf(dev, "cannot load DMA map for RX\n");
-		return(error);
-	}
-
-	/* Alloc dma for tx ring */
-	error = bus_dmamem_alloc(sc->bfe_tx_tag, (void *)&sc->bfe_tx_list,
-				 BUS_DMA_WAITOK | BUS_DMA_ZERO,
-				 &sc->bfe_tx_map);
-	if (error) {
-		device_printf(dev, "cannot allocate DMA mem for TX\n");
-		return(error);
-	}
-
-	error = bus_dmamap_load(sc->bfe_tx_tag, sc->bfe_tx_map,
-				sc->bfe_tx_list, sizeof(struct bfe_desc),
-				bfe_dma_map, &sc->bfe_tx_dma, BUS_DMA_WAITOK);
-	if (error) {
-		device_printf(dev, "cannot load DMA map for TX\n");
-		return(error);
 	}
 
 	return(0);
@@ -952,15 +924,6 @@ bfe_set_rx_mode(struct bfe_softc *sc)
 
 	CSR_WRITE_4(sc, BFE_RXCONF, val);
 	BFE_OR(sc, BFE_CAM_CTRL, BFE_CAM_ENABLE);
-}
-
-static void
-bfe_dma_map(void *arg, bus_dma_segment_t *segs, int nseg, int error)
-{
-	uint32_t *ptr;
-
-	ptr = arg;
-	*ptr = segs->ds_addr;
 }
 
 static void
