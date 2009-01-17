@@ -138,6 +138,13 @@ typedef struct bus_dma_segment {
 	bus_size_t	ds_len;		/* length of transfer */
 } bus_dma_segment_t;
 
+typedef struct bus_dmamem {
+	bus_dma_tag_t	dmem_tag;
+	bus_dmamap_t	dmem_map;
+	void		*dmem_addr;
+	bus_addr_t	dmem_busaddr;
+} bus_dmamem_t;
+
 /*
  * A function that returns 1 if the address cannot be accessed by
  * a device and 0 if it can be.
@@ -234,6 +241,16 @@ int bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 			struct uio *ui,
 			bus_dmamap_callback2_t *callback, void *callback_arg,
 			int flags);
+
+/*
+ * Convenient function to create coherent busdma memory
+ */
+int
+bus_dmamem_coherent(bus_dma_tag_t parent,
+		    bus_size_t alignment, bus_size_t boundary,
+		    bus_addr_t lowaddr, bus_addr_t highaddr,
+		    bus_size_t maxsize, int flags,
+		    bus_dmamem_t *dmem);
 
 /*
  * Perform a syncronization operation on the given map.

@@ -268,7 +268,6 @@ static int	re_suspend(device_t);
 static int	re_resume(device_t);
 static void	re_shutdown(device_t);
 
-static void	re_dma_map_addr(void *, bus_dma_segment_t *, int, int);
 static void	re_dma_map_desc(void *, bus_dma_segment_t *, int,
 				bus_size_t, int);
 static int	re_allocmem(device_t);
@@ -1056,27 +1055,11 @@ re_dma_map_desc(void *xarg, bus_dma_segment_t *segs, int nsegs,
 		arg->re_segs[i] = segs[i];
 }
 
-/*
- * Map a single buffer address.
- */
-
-static void
-re_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nseg, int error)
-{
-	uint32_t *addr;
-
-	if (error)
-		return;
-
-	KASSERT(nseg == 1, ("too many DMA segments, %d should be 1", nseg));
-	addr = arg;
-	*addr = segs->ds_addr;
-}
-
 static int
 re_allocmem(device_t dev)
 {
 	struct re_softc *sc = device_get_softc(dev);
+	bus_dmamem_t dmem;
 	int error, i;
 
 	/*
@@ -1120,85 +1103,35 @@ re_allocmem(device_t dev)
 		return error;
 	}
 
-	/* Allocate tag for TX descriptor list. */
-	error = bus_dma_tag_create(sc->re_parent_tag,
+	/* Allocate TX descriptor list. */
+	error = bus_dmamem_coherent(sc->re_parent_tag,
 			RE_RING_ALIGN, 0,
 			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-			NULL, NULL,
-			RE_TX_LIST_SZ(sc), 1, RE_TX_LIST_SZ(sc),
-			0, &sc->re_ldata.re_tx_list_tag);
+			RE_TX_LIST_SZ(sc), BUS_DMA_WAITOK | BUS_DMA_ZERO,
+			&dmem);
 	if (error) {
-		device_printf(dev, "could not allocate TX ring dma tag\n");
-		return(error);
-	}
-
-	/* Allocate DMA'able memory for the TX ring */
-        error = bus_dmamem_alloc(sc->re_ldata.re_tx_list_tag,
-			(void **)&sc->re_ldata.re_tx_list,
-			BUS_DMA_WAITOK | BUS_DMA_ZERO,
-			&sc->re_ldata.re_tx_list_map);
-        if (error) {
 		device_printf(dev, "could not allocate TX ring\n");
-		bus_dma_tag_destroy(sc->re_ldata.re_tx_list_tag);
-		sc->re_ldata.re_tx_list_tag = NULL;
-                return(error);
+		return error;
 	}
+	sc->re_ldata.re_tx_list_tag = dmem.dmem_tag;
+	sc->re_ldata.re_tx_list_map = dmem.dmem_map;
+	sc->re_ldata.re_tx_list = dmem.dmem_addr;
+	sc->re_ldata.re_tx_list_addr = dmem.dmem_busaddr;
 
-	/* Load the map for the TX ring. */
-	error = bus_dmamap_load(sc->re_ldata.re_tx_list_tag,
-			sc->re_ldata.re_tx_list_map,
-			sc->re_ldata.re_tx_list, RE_TX_LIST_SZ(sc),
-			re_dma_map_addr, &sc->re_ldata.re_tx_list_addr,
-			BUS_DMA_NOWAIT);
-	if (error) {
-		device_printf(dev, "could not get address of TX ring\n");
-		bus_dmamem_free(sc->re_ldata.re_tx_list_tag,
-				sc->re_ldata.re_tx_list,
-				sc->re_ldata.re_tx_list_map);
-		bus_dma_tag_destroy(sc->re_ldata.re_tx_list_tag);
-		sc->re_ldata.re_tx_list_tag = NULL;
-		return(error);
-	}
-
-	/* Allocate tag for RX descriptor list. */
-	error = bus_dma_tag_create(sc->re_parent_tag,
+	/* Allocate RX descriptor list. */
+	error = bus_dmamem_coherent(sc->re_parent_tag,
 			RE_RING_ALIGN, 0,
 			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-			NULL, NULL,
-			RE_RX_LIST_SZ(sc), 1, RE_RX_LIST_SZ(sc),
-			0, &sc->re_ldata.re_rx_list_tag);
+			RE_RX_LIST_SZ(sc), BUS_DMA_WAITOK | BUS_DMA_ZERO,
+			&dmem);
 	if (error) {
-		device_printf(dev, "could not allocate RX ring dma tag\n");
-		return(error);
-	}
-
-	/* Allocate DMA'able memory for the RX ring */
-        error = bus_dmamem_alloc(sc->re_ldata.re_rx_list_tag,
-			(void **)&sc->re_ldata.re_rx_list,
-			BUS_DMA_WAITOK | BUS_DMA_ZERO,
-			&sc->re_ldata.re_rx_list_map);
-        if (error) {
 		device_printf(dev, "could not allocate RX ring\n");
-		bus_dma_tag_destroy(sc->re_ldata.re_rx_list_tag);
-		sc->re_ldata.re_rx_list_tag = NULL;
-                return(error);
+		return error;
 	}
-
-	/* Load the map for the RX ring. */
-	error = bus_dmamap_load(sc->re_ldata.re_rx_list_tag,
-			sc->re_ldata.re_rx_list_map,
-			sc->re_ldata.re_rx_list, RE_RX_LIST_SZ(sc),
-			re_dma_map_addr, &sc->re_ldata.re_rx_list_addr,
-			BUS_DMA_NOWAIT);
-	if (error) {
-		device_printf(dev, "could not get address of RX ring\n");
-		bus_dmamem_free(sc->re_ldata.re_rx_list_tag,
-				sc->re_ldata.re_rx_list,
-				sc->re_ldata.re_rx_list_map);
-		bus_dma_tag_destroy(sc->re_ldata.re_rx_list_tag);
-		sc->re_ldata.re_rx_list_tag = NULL;
-		return(error);
-	}
+	sc->re_ldata.re_rx_list_tag = dmem.dmem_tag;
+	sc->re_ldata.re_rx_list_map = dmem.dmem_map;
+	sc->re_ldata.re_rx_list = dmem.dmem_addr;
+	sc->re_ldata.re_rx_list_addr = dmem.dmem_busaddr;
 
 	/* Allocate maps for TX mbufs. */
 	error = bus_dma_tag_create(sc->re_parent_tag,
@@ -3373,6 +3306,7 @@ re_jpool_alloc(struct re_softc *sc)
 	struct re_jbuf *jbuf;
 	bus_addr_t paddr;
 	bus_size_t jpool_size;
+	bus_dmamem_t dmem;
 	caddr_t buf;
 	int i, error;
 
@@ -3383,41 +3317,18 @@ re_jpool_alloc(struct re_softc *sc)
 
 	jpool_size = RE_JBUF_COUNT(sc) * RE_JBUF_SIZE;
 
-	error = bus_dma_tag_create(sc->re_parent_tag,
-			RE_RXBUF_ALIGN, 0,	/* alignment, boundary */
-			BUS_SPACE_MAXADDR,	/* lowaddr */
-			BUS_SPACE_MAXADDR,	/* highaddr */
-			NULL, NULL,		/* filter, filterarg */
-			jpool_size, 1,		/* maxsize, nsegments */
-			jpool_size,		/* maxsegsize */
-			0,			/* flags */
-			&ldata->re_jpool_tag);
+	error = bus_dmamem_coherent(sc->re_parent_tag,
+			RE_RXBUF_ALIGN, 0,
+			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+			jpool_size, BUS_DMA_WAITOK, &dmem);
 	if (error) {
-		device_printf(sc->re_dev, "could not allocate jumbo dma tag\n");
+		device_printf(sc->re_dev, "could not allocate jumbo memory\n");
 		return error;
 	}
-
-	error = bus_dmamem_alloc(ldata->re_jpool_tag, (void **)&ldata->re_jpool,
-				 BUS_DMA_WAITOK, &ldata->re_jpool_map);
-	if (error) {
-		device_printf(sc->re_dev,
-			      "could not allocate jumbo dma memory\n");
-		bus_dma_tag_destroy(ldata->re_jpool_tag);
-		ldata->re_jpool_tag = NULL;
-		return error;
-	}
-
-	error = bus_dmamap_load(ldata->re_jpool_tag, ldata->re_jpool_map,
-				ldata->re_jpool, jpool_size,
-				re_dma_map_addr, &paddr, BUS_DMA_WAITOK);
-	if (error) {
-		device_printf(sc->re_dev, "could not load jumbo dma map\n");
-		bus_dmamem_free(ldata->re_jpool_tag, ldata->re_jpool,
-				ldata->re_jpool_map);
-		bus_dma_tag_destroy(ldata->re_jpool_tag);
-		ldata->re_jpool_tag = NULL;
-		return error;
-	}
+	ldata->re_jpool_tag = dmem.dmem_tag;
+	ldata->re_jpool_map = dmem.dmem_map;
+	ldata->re_jpool = dmem.dmem_addr;
+	paddr = dmem.dmem_busaddr;
 
 	/* ..and split it into 9KB chunks */
 	SLIST_INIT(&ldata->re_jbuf_free);
