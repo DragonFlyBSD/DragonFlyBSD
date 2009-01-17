@@ -49,7 +49,7 @@
 #define RE_RING_ALIGN		256
 #define RE_IFQ_MAXLEN		512
 #define RE_MAXSEGS		16
-#define RE_TXDESC_SPARE		4
+#define RE_TXDESC_SPARE		5
 #define RE_JBUF_COUNT(sc)	(((sc)->re_rx_desc_cnt * 3) / 2)
 
 #define RE_RXDESC_INC(sc, x)	(x = (x + 1) % (sc)->re_rx_desc_cnt)
