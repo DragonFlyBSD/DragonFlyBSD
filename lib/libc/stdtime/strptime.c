@@ -56,7 +56,8 @@ static const u_char *find_string(const u_char *, int *, const char * const *,
 	const char * const *, int);
 
 char *
-strptime(const char *buf, const char *fmt, struct tm *tm)
+strptime(const char * __restrict buf, const char * __restrict fmt,
+	 struct tm * __restrict tm)
 {
 	unsigned char c;
 	const unsigned char *bp;

@@ -81,8 +81,8 @@ static char *	_yconv(int, int, int, int, char *, const char *);
 #define IN_ALL	3
 
 size_t
-strftime(char * const s, const size_t maxsize, const char * const format,
-	 const struct tm * const t)
+strftime(char * __restrict s, size_t maxsize, const char * __restrict format,
+	 const struct tm * __restrict t)
 {
 	char *	p;
 	int	warn;
