@@ -127,7 +127,10 @@ static STAILQ_HEAD(, bounce_zone) bounce_zone_list =
 
 int busdma_swi_pending;
 static int total_bounce_pages;
+static int max_bounce_pages = MAX_BPAGES;
 static bus_addr_t bounce_lowaddr = BUS_SPACE_MAXADDR;
+
+TUNABLE_INT("hw.busdma.max_bpages", &max_bounce_pages);
 
 struct bus_dmamap {
 	struct bp_list	bpages;
@@ -160,6 +163,8 @@ static void		add_map_callback(bus_dmamap_t);
 SYSCTL_NODE(_hw, OID_AUTO, busdma, CTLFLAG_RD, 0, "Busdma parameters");
 SYSCTL_INT(_hw_busdma, OID_AUTO, total_bpages, CTLFLAG_RD, &total_bounce_pages,
 	   0, "Total bounce pages");
+SYSCTL_INT(_hw_busdma, OID_AUTO, max_bpages, CTLFLAG_RD, &max_bounce_pages,
+	   0, "Max bounce pages per bounce zone");
 
 static __inline int
 run_filter(bus_dma_tag_t dmat, bus_addr_t paddr)
@@ -377,7 +382,7 @@ bus_dmamap_create(bus_dma_tag_t dmat, int flags, bus_dmamap_t *mapp)
 		 * Attempt to add pages to our pool on a per-instance
 		 * basis up to a sane limit.
 		 */
-		maxpages = MIN(MAX_BPAGES, Maxmem - atop(dmat->lowaddr));
+		maxpages = MIN(max_bounce_pages, Maxmem - atop(dmat->lowaddr));
 		if ((dmat->flags & BUS_DMA_MIN_ALLOC_COMP) == 0
 		 || (dmat->map_count > 0
 		  && bz->total_bpages < maxpages)) {
