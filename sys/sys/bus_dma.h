@@ -243,6 +243,20 @@ int bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 			int flags);
 
 /*
+ * Like bus_dmamap_load_mbuf without callback.
+ * Segmentation information are saved in 'segs' and 'nsegs' if
+ * the loading is successful.  'maxsegs' must be set by caller
+ * and must be at least 1 but less than 'dmat' nsegment.  It
+ * indicates the number of elements in 'segs'.  'flags' must
+ * have BUS_DMA_NOWAIT turned on.
+ */
+int
+bus_dmamap_load_mbuf_segment(bus_dma_tag_t dmat, bus_dmamap_t map,
+			     struct mbuf *mbuf,
+			     bus_dma_segment_t *segs, int maxsegs,
+			     int *nsegs, int flags);
+
+/*
  * Convenient function to create coherent busdma memory
  */
 int

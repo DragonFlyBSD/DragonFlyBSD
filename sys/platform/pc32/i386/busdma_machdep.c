@@ -539,6 +539,8 @@ static int
 _bus_dmamap_load_buffer(bus_dma_tag_t dmat,
 			bus_dmamap_t map,
 			void *buf, bus_size_t buflen,
+			bus_dma_segment_t *segments,
+			int nsegments,
 			pmap_t pmap,
 			int flags,
 			vm_paddr_t *lastpaddrp,
@@ -607,9 +609,9 @@ _bus_dmamap_load_buffer(bus_dma_tag_t dmat,
 		BZ_UNLOCK(bz);
 	}
 
-	KKASSERT(*segp >= 1 && *segp <= dmat->nsegments);
+	KKASSERT(*segp >= 1 && *segp <= nsegments);
 	seg = *segp;
-	sg = &dmat->segments[seg - 1];
+	sg = &segments[seg - 1];
 
 	vaddr = (vm_offset_t)buf;
 	nextpaddr = *lastpaddrp;
@@ -647,7 +649,7 @@ _bus_dmamap_load_buffer(bus_dma_tag_t dmat,
 		} else {
 			sg++;
 			seg++;
-			if (seg > dmat->nsegments)
+			if (seg > nsegments)
 				break;
 			sg->ds_addr = paddr;
 			sg->ds_len = size;
@@ -678,7 +680,7 @@ _bus_dmamap_load_buffer(bus_dma_tag_t dmat,
 			/*
 			 * Futz, split the data into a new segment.
 			 */
-			if (seg >= dmat->nsegments)
+			if (seg >= nsegments)
 				goto fail;
 			sg[1].ds_len = sg[0].ds_len - tmpsize;
 			sg[1].ds_addr = sg[0].ds_addr + tmpsize;
@@ -734,6 +736,7 @@ bus_dmamap_load(bus_dma_tag_t dmat, bus_dmamap_t map, void *buf,
 	}
 
 	error = _bus_dmamap_load_buffer(dmat, map, buf, buflen,
+			dmat->segments, dmat->nsegments,
 			NULL, flags, &lastaddr, &nsegs, 1);
 	if (error == EINPROGRESS)
 		return error;
@@ -753,8 +756,6 @@ bus_dmamap_load_mbuf(bus_dma_tag_t dmat, bus_dmamap_t map,
 {
 	int nsegs, error;
 
-	M_ASSERTPKTHDR(m0);
-
 	/*
 	 * XXX
 	 * Follow old semantics.  Once all of the callers are fixed,
@@ -763,12 +764,41 @@ bus_dmamap_load_mbuf(bus_dma_tag_t dmat, bus_dmamap_t map,
 	flags &= ~BUS_DMA_WAITOK;
 	flags |= BUS_DMA_NOWAIT;
 
+	error = bus_dmamap_load_mbuf_segment(dmat, map, m0,
+			dmat->segments, dmat->nsegments, &nsegs, flags);
+	if (error) {
+		/* force "no valid mappings" in callback */
+		callback(callback_arg, dmat->segments, 0, 0, error);
+	} else {
+		callback(callback_arg, dmat->segments, nsegs,
+			 m0->m_pkthdr.len, error);
+	}
+	return error;
+}
+
+int
+bus_dmamap_load_mbuf_segment(bus_dma_tag_t dmat, bus_dmamap_t map,
+			     struct mbuf *m0,
+			     bus_dma_segment_t *segs, int maxsegs,
+			     int *nsegs, int flags)
+{
+	int error;
+
+	M_ASSERTPKTHDR(m0);
+
+	KASSERT(maxsegs >= 1, ("invalid maxsegs %d\n", maxsegs));
+	KASSERT(maxsegs <= dmat->nsegments,
+		("%d too many segments, dmat only support %d segments\n",
+		 maxsegs, dmat->nsegments));
+	KASSERT(flags & BUS_DMA_NOWAIT,
+		("only BUS_DMA_NOWAIT is supported\n"));
+
 	if (m0->m_pkthdr.len <= dmat->maxsize) {
 		int first = 1;
 		vm_paddr_t lastaddr = 0;
 		struct mbuf *m;
 
-		nsegs = 1;
+		*nsegs = 1;
 		error = 0;
 		for (m = m0; m != NULL && error == 0; m = m->m_next) {
 			if (m->m_len == 0)
@@ -776,8 +806,9 @@ bus_dmamap_load_mbuf(bus_dma_tag_t dmat, bus_dmamap_t map,
 
 			error = _bus_dmamap_load_buffer(dmat, map,
 					m->m_data, m->m_len,
+					segs, maxsegs,
 					NULL, flags, &lastaddr,
-					&nsegs, first);
+					nsegs, first);
 			if (error == ENOMEM && !first) {
 				/*
 				 * Out of bounce pages due to too many
@@ -788,18 +819,15 @@ bus_dmamap_load_mbuf(bus_dma_tag_t dmat, bus_dmamap_t map,
 			}
 			first = 0;
 		}
+#ifdef INVARIANTS
+		if (!error)
+			KKASSERT(*nsegs <= maxsegs && *nsegs >= 1);
+#endif
 	} else {
-		nsegs = 0;
+		*nsegs = 0;
 		error = EINVAL;
 	}
-
-	if (error) {
-		/* force "no valid mappings" in callback */
-		callback(callback_arg, dmat->segments, 0, 0, error);
-	} else {
-		callback(callback_arg, dmat->segments, nsegs,
-			 m0->m_pkthdr.len, error);
-	}
+	KKASSERT(error != EINPROGRESS);
 	return error;
 }
 
@@ -854,6 +882,7 @@ bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 		caddr_t addr = (caddr_t) iov[i].iov_base;
 
 		error = _bus_dmamap_load_buffer(dmat, map, addr, minlen,
+				dmat->segments, dmat->nsegments,
 				pmap, flags, &lastaddr, &nsegs, first);
 		first = 0;
 
