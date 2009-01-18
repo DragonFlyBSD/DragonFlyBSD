@@ -35,6 +35,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus_dma.h>
+#include <sys/mbuf.h>
 
 static void
 _bus_dmamem_coherent_cb(void *arg, bus_dma_segment_t *segs, int nseg, int error)
@@ -90,4 +91,30 @@ bus_dmamem_coherent(bus_dma_tag_t parent,
 		return error;
 	}
 	return 0;
+}
+
+int
+bus_dmamap_load_mbuf_defrag(bus_dma_tag_t dmat, bus_dmamap_t map,
+			    struct mbuf **m_head,
+			    bus_dma_segment_t *segs, int maxsegs,
+			    int *nsegs, int flags)
+{
+	struct mbuf *m = *m_head;
+	int error;
+
+	error = bus_dmamap_load_mbuf_segment(dmat, map, m,
+			segs, maxsegs, nsegs, flags);
+	if (error == EFBIG) {
+		struct mbuf *m_new;
+
+		m_new = m_defrag(m, MB_DONTWAIT);
+		if (m_new == NULL)
+			return ENOBUFS;
+		else
+			*m_head = m = m_new;
+
+		error = bus_dmamap_load_mbuf_segment(dmat, map, m,
+				segs, maxsegs, nsegs, BUS_DMA_NOWAIT);
+	}
+	return error;
 }

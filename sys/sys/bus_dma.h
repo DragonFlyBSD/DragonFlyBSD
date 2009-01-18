@@ -257,6 +257,17 @@ bus_dmamap_load_mbuf_segment(bus_dma_tag_t dmat, bus_dmamap_t map,
 			     int *nsegs, int flags);
 
 /*
+ * Like bus_dmamap_load_mbuf_segment, but it will call m_defrag()
+ * and try reloading if low level code indicates too many fragments
+ * in the '*mbuf'; 'mbuf' will be updated under this situation.
+ */
+int
+bus_dmamap_load_mbuf_defrag(bus_dma_tag_t dmat, bus_dmamap_t map,
+			    struct mbuf **mbuf,
+			    bus_dma_segment_t *segs, int maxsegs,
+			    int *nsegs, int flags);
+
+/*
  * Convenient function to create coherent busdma memory
  */
 int
