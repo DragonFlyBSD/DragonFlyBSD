@@ -141,8 +141,6 @@ static void	nfe_set_macaddr(struct nfe_softc *, const uint8_t *);
 static void	nfe_powerup(device_t);
 static void	nfe_mac_reset(struct nfe_softc *);
 static void	nfe_tick(void *);
-static void	nfe_buf_dma_addr(void *, bus_dma_segment_t *, int, bus_size_t,
-				 int);
 static void	nfe_set_paddr_rxdesc(struct nfe_softc *, struct nfe_rx_ring *,
 				     int, bus_addr_t);
 static void	nfe_set_ready_rxdesc(struct nfe_softc *, struct nfe_rx_ring *,
@@ -190,11 +188,6 @@ TUNABLE_INT("hw.nfe.debug", &nfe_debug);
 #define DPRINTFN(sc, lv, fmt, ...)
 
 #endif	/* NFE_DEBUG */
-
-struct nfe_dma_ctx {
-	int			nsegs;
-	bus_dma_segment_t	*segs;
-};
 
 static const struct nfe_dev {
 	uint16_t	vid;
@@ -1199,7 +1192,6 @@ skip:
 static int
 nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 {
-	struct nfe_dma_ctx ctx;
 	bus_dma_segment_t segs[NFE_MAX_SCATTER];
 	struct nfe_tx_data *data, *data_map;
 	bus_dmamap_t map;
@@ -1207,7 +1199,7 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 	struct nfe_desc32 *desc32 = NULL;
 	uint16_t flags = 0;
 	uint32_t vtag = 0;
-	int error, i, j, maxsegs;
+	int error, i, j, maxsegs, nsegs;
 
 	data = &ring->data[ring->cur];
 	map = data->map;
@@ -1219,40 +1211,10 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 	KASSERT(maxsegs >= sc->sc_tx_spare,
 		("no enough segments %d,%d\n", maxsegs, sc->sc_tx_spare));
 
-	ctx.nsegs = maxsegs;
-	ctx.segs = segs;
-	error = bus_dmamap_load_mbuf(ring->data_tag, map, m0,
-				     nfe_buf_dma_addr, &ctx, BUS_DMA_NOWAIT);
-	if (!error && ctx.nsegs == 0) {
-		bus_dmamap_unload(ring->data_tag, map);
-		error = EFBIG;
-	}
-	if (error && error != EFBIG)
+	error = bus_dmamap_load_mbuf_defrag(ring->data_tag, map, &m0,
+			segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
+	if (error)
 		goto back;
-	if (error) {	/* error == EFBIG */
-		struct mbuf *m_new;
-
-		m_new = m_defrag(m0, MB_DONTWAIT);
-		if (m_new == NULL) {
-			error = ENOBUFS;
-			goto back;
-		} else {
-			m0 = m_new;
-		}
-
-		ctx.nsegs = maxsegs;
-		ctx.segs = segs;
-		error = bus_dmamap_load_mbuf(ring->data_tag, map, m0,
-					     nfe_buf_dma_addr, &ctx,
-					     BUS_DMA_NOWAIT);
-		if (error || ctx.nsegs == 0) {
-			if (!error) {
-				bus_dmamap_unload(ring->data_tag, map);
-				error = EFBIG;
-			}
-			goto back;
-		}
-	}
 	bus_dmamap_sync(ring->data_tag, map, BUS_DMASYNC_PREWRITE);
 
 	error = 0;
@@ -1277,7 +1239,7 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 	 * go.
 	 */
 
-	for (i = 0; i < ctx.nsegs; i++) {
+	for (i = 0; i < nsegs; i++) {
 		j = (ring->cur + i) % sc->sc_tx_ring_count;
 		data = &ring->data[j];
 
@@ -1320,7 +1282,7 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 	 * Set NFE_TX_VALID backwards so the hardware doesn't see the
 	 * whole mess until the first descriptor in the map is flagged.
 	 */
-	for (i = ctx.nsegs - 1; i >= 0; --i) {
+	for (i = nsegs - 1; i >= 0; --i) {
 		j = (ring->cur + i) % sc->sc_tx_ring_count;
 		if (sc->sc_caps & NFE_40BIT_ADDR) {
 			desc64 = &ring->desc64[j];
@@ -1330,7 +1292,7 @@ nfe_encap(struct nfe_softc *sc, struct nfe_tx_ring *ring, struct mbuf *m0)
 			desc32->flags |= htole16(NFE_TX_VALID);
 		}
 	}
-	ring->cur = (ring->cur + ctx.nsegs) % sc->sc_tx_ring_count;
+	ring->cur = (ring->cur + nsegs) % sc->sc_tx_ring_count;
 
 	/* Exchange DMA map */
 	data_map->map = data->map;
@@ -2197,58 +2159,25 @@ nfe_tick(void *arg)
 	lwkt_serialize_exit(ifp->if_serializer);
 }
 
-static void
-nfe_buf_dma_addr(void *arg, bus_dma_segment_t *segs, int nsegs,
-		 bus_size_t mapsz __unused, int error)
-{
-	struct nfe_dma_ctx *ctx = arg;
-	int i;
-
-	if (error)
-		return;
-
-	if (nsegs > ctx->nsegs) {
-		ctx->nsegs = 0;
-		return;
-	}
-
-	ctx->nsegs = nsegs;
-	for (i = 0; i < nsegs; ++i)
-		ctx->segs[i] = segs[i];
-}
-
 static int
 nfe_newbuf_std(struct nfe_softc *sc, struct nfe_rx_ring *ring, int idx,
 	       int wait)
 {
 	struct nfe_rx_data *data = &ring->data[idx];
-	struct nfe_dma_ctx ctx;
 	bus_dma_segment_t seg;
 	bus_dmamap_t map;
 	struct mbuf *m;
-	int error;
+	int nsegs, error;
 
 	m = m_getcl(wait ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
 		return ENOBUFS;
 	m->m_len = m->m_pkthdr.len = MCLBYTES;
 
-	ctx.nsegs = 1;
-	ctx.segs = &seg;
-	error = bus_dmamap_load_mbuf(ring->data_tag, ring->data_tmpmap,
-				     m, nfe_buf_dma_addr, &ctx,
-				     BUS_DMA_NOWAIT);
-	if (error || ctx.nsegs == 0) {
-		if (!error) {
-			bus_dmamap_unload(ring->data_tag, ring->data_tmpmap);
-			error = EFBIG;
-			if (wait) {
-				if_printf(&sc->arpcom.ac_if,
-					  "too many segments?!\n");
-			}
-		}
+	error = bus_dmamap_load_mbuf_segment(ring->data_tag, ring->data_tmpmap,
+			m, &seg, 1, &nsegs, BUS_DMA_NOWAIT);
+	if (error) {
 		m_freem(m);
-
 		if (wait) {
 			if_printf(&sc->arpcom.ac_if,
 				  "could map RX mbuf %d\n", error);
