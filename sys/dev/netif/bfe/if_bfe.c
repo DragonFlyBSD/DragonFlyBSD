@@ -78,11 +78,6 @@ MODULE_DEPEND(bfe, miibus, 1, 1, 1);
 
 #define BFE_DEVDESC_MAX		64	/* Maximum device description length */
 
-struct bfe_dmamap_ctx {
-	int			nsegs;
-	bus_dma_segment_t	*segs;
-};
-
 static struct bfe_type bfe_devs[] = {
 	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM4401,
 	    "Broadcom BCM4401 Fast Ethernet" },
@@ -134,8 +129,6 @@ static void	bfe_core_disable(struct bfe_softc *);
 static int	bfe_dma_alloc(device_t);
 static void	bfe_dma_free(struct bfe_softc *);
 static void	bfe_cam_write(struct bfe_softc *, u_char *, int);
-static void	bfe_dmamap_buf_cb(void *, bus_dma_segment_t *, int,
-				  bus_size_t, int);
 
 static device_method_t bfe_methods[] = {
 	/* Device interface */
@@ -574,30 +567,19 @@ bfe_newbuf(struct bfe_softc *sc, int c, int init)
 	struct bfe_data *r;
 	bus_dmamap_t map;
 	bus_dma_segment_t seg;
-	struct bfe_dmamap_ctx ctx;
 	struct mbuf *m;
-	int error;
+	int error, nsegs;
 
 	m = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
 		return ENOBUFS;
 	m->m_len = m->m_pkthdr.len = MCLBYTES;
 
-	ctx.nsegs = 1;
-	ctx.segs = &seg;
-	error = bus_dmamap_load_mbuf(sc->bfe_rxbuf_tag,
-				     sc->bfe_rx_tmpmap,
-				     m, bfe_dmamap_buf_cb, &ctx,
-				     BUS_DMA_NOWAIT);
-	if (error || ctx.nsegs == 0) {
-		if (!error) {
-			bus_dmamap_unload(sc->bfe_rxbuf_tag,
-					  sc->bfe_rx_tmpmap);
-			error = EFBIG;
-			if_printf(&sc->arpcom.ac_if, "too many segments?!\n");
-		}
+	error = bus_dmamap_load_mbuf_segment(sc->bfe_rxbuf_tag,
+				     sc->bfe_rx_tmpmap, m,
+				     &seg, 1, &nsegs, BUS_DMA_NOWAIT);
+	if (error) {
 		m_freem(m);
-
 		if (init)
 			if_printf(&sc->arpcom.ac_if, "can't load RX mbuf\n");
 		return error;
@@ -1236,10 +1218,9 @@ static int
 bfe_encap(struct bfe_softc *sc, struct mbuf **m_head, uint32_t *txidx)
 {
 	struct mbuf *m = *m_head;
-	struct bfe_dmamap_ctx ctx;
 	bus_dma_segment_t segs[BFE_MAXSEGS];
 	bus_dmamap_t map;
-	int i, first_idx, last_idx, cur, error, maxsegs;
+	int i, first_idx, last_idx, cur, error, maxsegs, nsegs;
 
 	KKASSERT(sc->bfe_tx_cnt + BFE_SPARE_TXDESC < BFE_TX_LIST_CNT);
 	maxsegs = BFE_TX_LIST_CNT - sc->bfe_tx_cnt - BFE_SPARE_TXDESC;
@@ -1249,14 +1230,8 @@ bfe_encap(struct bfe_softc *sc, struct mbuf **m_head, uint32_t *txidx)
 	first_idx = *txidx;
 	map = sc->bfe_tx_ring[first_idx].bfe_map;
 
-	ctx.segs = segs;
-	ctx.nsegs = maxsegs;
-	error = bus_dmamap_load_mbuf(sc->bfe_txbuf_tag, map, m,
-				     bfe_dmamap_buf_cb, &ctx, BUS_DMA_NOWAIT);
-	if (!error && ctx.nsegs == 0) {
-		bus_dmamap_unload(sc->bfe_txbuf_tag, map);
-		error = EFBIG;
-	}
+	error = bus_dmamap_load_mbuf_segment(sc->bfe_txbuf_tag, map, m,
+			segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
 	if (error && error != EFBIG)
 		goto fail;
 	if (error) {	/* error == EFBIG */
@@ -1270,24 +1245,16 @@ bfe_encap(struct bfe_softc *sc, struct mbuf **m_head, uint32_t *txidx)
 			*m_head = m = m_new;
 		}
 
-		ctx.segs = segs;
-		ctx.nsegs = maxsegs;
-		error = bus_dmamap_load_mbuf(sc->bfe_txbuf_tag, map, m,
-					     bfe_dmamap_buf_cb, &ctx,
-					     BUS_DMA_NOWAIT);
-		if (error || ctx.nsegs == 0) {
-			if (!error) {
-				bus_dmamap_unload(sc->bfe_txbuf_tag, map);
-				error = EFBIG;
-			}
+		error = bus_dmamap_load_mbuf_segment(sc->bfe_txbuf_tag, map, m,
+				segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
+		if (error)
 			goto fail;
-		}
 	}
 	bus_dmamap_sync(sc->bfe_txbuf_tag, map, BUS_DMASYNC_PREWRITE);
 
 	last_idx = -1;
 	cur = first_idx;
-	for (i = 0; i < ctx.nsegs; ++i) {
+	for (i = 0; i < nsegs; ++i) {
 		struct bfe_desc *d;
 		uint32_t ctrl;
 
@@ -1326,7 +1293,7 @@ bfe_encap(struct bfe_softc *sc, struct mbuf **m_head, uint32_t *txidx)
 	bus_dmamap_sync(sc->bfe_tx_tag, sc->bfe_tx_map, BUS_DMASYNC_PREWRITE);
 
 	*txidx = cur;
-	sc->bfe_tx_cnt += ctx.nsegs;
+	sc->bfe_tx_cnt += nsegs;
 	return 0;
 fail:
 	m_freem(m);
@@ -1592,24 +1559,4 @@ bfe_stop(struct bfe_softc *sc)
 	bfe_rx_ring_free(sc);
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-}
-
-static void
-bfe_dmamap_buf_cb(void *xctx, bus_dma_segment_t *segs, int nsegs,
-		  bus_size_t mapsz __unused, int error)
-{
-	struct bfe_dmamap_ctx *ctx = xctx;
-	int i;
-
-	if (error)
-		return;
-
-	if (nsegs > ctx->nsegs) {
-		ctx->nsegs = 0;
-		return;
-	}
-
-	ctx->nsegs = nsegs;
-	for (i = 0; i < nsegs; ++i)
-		ctx->segs[i] = segs[i];
 }
