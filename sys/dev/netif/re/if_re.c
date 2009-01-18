@@ -268,8 +268,6 @@ static int	re_suspend(device_t);
 static int	re_resume(device_t);
 static void	re_shutdown(device_t);
 
-static void	re_dma_map_desc(void *, bus_dma_segment_t *, int,
-				bus_size_t, int);
 static int	re_allocmem(device_t);
 static void	re_freemem(device_t);
 static void	re_freebufmem(struct re_softc *, int, int);
@@ -1035,26 +1033,6 @@ re_probe(device_t dev)
 	return ENXIO;
 }
 
-static void
-re_dma_map_desc(void *xarg, bus_dma_segment_t *segs, int nsegs,
-		bus_size_t mapsize, int error)
-{
-	struct re_dmaload_arg *arg = xarg;
-	int i;
-
-	if (error)
-		return;
-
-	if (nsegs > arg->re_nsegs) {
-		arg->re_nsegs = 0;
-		return;
-	}
-
-	arg->re_nsegs = nsegs;
-	for (i = 0; i < nsegs; ++i)
-		arg->re_segs[i] = segs[i];
-}
-
 static int
 re_allocmem(device_t dev)
 {
@@ -1685,11 +1663,10 @@ re_setup_rxdesc(struct re_softc *sc, int idx)
 static int
 re_newbuf_std(struct re_softc *sc, int idx, int init)
 {
-	struct re_dmaload_arg arg;
 	bus_dma_segment_t seg;
 	bus_dmamap_t map;
 	struct mbuf *m;
-	int error;
+	int error, nsegs;
 
 	m = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL) {
@@ -1710,20 +1687,11 @@ re_newbuf_std(struct re_softc *sc, int idx, int init)
 	 * aligned, so don't call m_adj(m, ETHER_ALIGN) here.
 	 */
 
-	arg.re_nsegs = 1;
-	arg.re_segs = &seg;
-	error = bus_dmamap_load_mbuf(sc->re_ldata.re_rx_mtag,
-				     sc->re_ldata.re_rx_spare, m,
-				     re_dma_map_desc, &arg, BUS_DMA_NOWAIT);
-	if (error || arg.re_nsegs == 0) {
-		if (!error) {
-			if_printf(&sc->arpcom.ac_if, "too many segments?!\n");
-			bus_dmamap_unload(sc->re_ldata.re_rx_mtag,
-					  sc->re_ldata.re_rx_spare);
-			error = EFBIG;
-		}
+	error = bus_dmamap_load_mbuf_segment(sc->re_ldata.re_rx_mtag,
+			sc->re_ldata.re_rx_spare, m,
+			&seg, 1, &nsegs, BUS_DMA_NOWAIT);
+	if (error) {
 		m_freem(m);
-
 		if (init) {
 			if_printf(&sc->arpcom.ac_if, "can't load RX mbuf\n");
 			return error;
@@ -2290,19 +2258,16 @@ re_intr(void *arg)
 static int
 re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 {
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct mbuf *m;
-	struct re_dmaload_arg arg;
+	struct mbuf *m = *m_head;
 	bus_dma_segment_t segs[RE_MAXSEGS];
 	bus_dmamap_t map;
-	int error, maxsegs, idx, i;
+	int error, maxsegs, idx, i, nsegs;
 	struct re_desc *d, *tx_ring;
 	uint32_t cmd_csum, ctl_csum, vlantag;
 
 	KASSERT(sc->re_ldata.re_tx_free > RE_TXDESC_SPARE,
 		("not enough free TX desc\n"));
 
-	m = *m_head;
 	map = sc->re_ldata.re_tx_dmamap[*idx0];
 
 	/*
@@ -2366,48 +2331,12 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 	if (maxsegs > RE_MAXSEGS)
 		maxsegs = RE_MAXSEGS;
 
-	arg.re_nsegs = maxsegs;
-	arg.re_segs = segs;
-	error = bus_dmamap_load_mbuf(sc->re_ldata.re_tx_mtag, map, m,
-				     re_dma_map_desc, &arg, BUS_DMA_NOWAIT);
-	if (error && error != EFBIG) {
-		if_printf(ifp, "can't map mbuf (error %d)\n", error);
+	error = bus_dmamap_load_mbuf_defrag(sc->re_ldata.re_tx_mtag, map,
+			m_head, segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
+	if (error)
 		goto back;
-	}
 
-	/*
-	 * Too many segments to map, coalesce into a single mbuf
-	 */
-	if (!error && arg.re_nsegs == 0) {
-		bus_dmamap_unload(sc->re_ldata.re_tx_mtag, map);
-		error = EFBIG;
-	}
-	if (error) {
-		struct mbuf *m_new;
-
-		m_new = m_defrag(m, MB_DONTWAIT);
-		if (m_new == NULL) {
-			if_printf(ifp, "can't defrag TX mbuf\n");
-			error = ENOBUFS;
-			goto back;
-		} else {
-			*m_head = m = m_new;
-		}
-
-		arg.re_nsegs = maxsegs;
-		arg.re_segs = segs;
-		error = bus_dmamap_load_mbuf(sc->re_ldata.re_tx_mtag, map, m,
-					     re_dma_map_desc, &arg,
-					     BUS_DMA_NOWAIT);
-		if (error || arg.re_nsegs == 0) {
-			if (!error) {
-				bus_dmamap_unload(sc->re_ldata.re_tx_mtag, map);
-				error = EFBIG;
-			}
-			if_printf(ifp, "can't map mbuf (error %d)\n", error);
-			goto back;
-		}
-	}
+	m = *m_head;
 	bus_dmamap_sync(sc->re_ldata.re_tx_mtag, map, BUS_DMASYNC_PREWRITE);
 
 	/*
@@ -2437,7 +2366,7 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 		d->re_control = htole32(ctl_csum | vlantag);
 
 		i++;
-		if (i == arg.re_nsegs)
+		if (i == nsegs)
 			break;
 		RE_TXDESC_INC(sc, idx);
 	}
@@ -2457,13 +2386,13 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 	sc->re_ldata.re_tx_dmamap[idx] = map;
 
 	sc->re_ldata.re_tx_mbuf[idx] = m;
-	sc->re_ldata.re_tx_free -= arg.re_nsegs;
+	sc->re_ldata.re_tx_free -= nsegs;
 
 	RE_TXDESC_INC(sc, idx);
 	*idx0 = idx;
 back:
 	if (error) {
-		m_freem(m);
+		m_freem(*m_head);
 		*m_head = NULL;
 	}
 	return error;

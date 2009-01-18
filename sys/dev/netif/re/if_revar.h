@@ -106,11 +106,6 @@ struct re_hwrev {
 #define RE_MACVER_2A		0x2a
 #define RE_MACVER_2B		0x2b
 
-struct re_dmaload_arg {
-	int			re_nsegs;
-	bus_dma_segment_t	*re_segs;
-};
-
 struct re_softc;
 struct re_jbuf {
 	struct re_softc 	*re_sc;
