@@ -915,30 +915,26 @@ inet_makenetandmask(u_long net, struct sockaddr_in *in, u_long bits)
 	char *cp;
 
 	rtm_addrs |= RTA_NETMASK;
-	if (net == 0)
-		mask = addr = 0;
-	else {
-		if (net <= 0xff)
-			addr = net << 24;
-		else if (net <= 0xffff)
-			addr = net << 16;
-		else if (net <= 0xffffff)
-			addr = net << 8;
-		else
-			addr = net;
+	if (net <= 0xff)
+		addr = net << 24;
+	else if (net <= 0xffff)
+		addr = net << 16;
+	else if (net <= 0xffffff)
+		addr = net << 8;
+	else
+		addr = net;
 
-		if (bits)
-			mask = 0xffffffff << (32 - bits);
-		else {
-			if (IN_CLASSA(addr)) {
-				mask = IN_CLASSA_NET;
-			} else if (IN_CLASSB(addr)) {
-				mask = IN_CLASSB_NET;
-			} else if (IN_CLASSC(addr)) {
-				mask = IN_CLASSC_NET;
-			} else
-				mask = 0xffffffff;
-		}
+	if (bits)
+		mask = 0xffffffff << (32 - bits);
+	else {
+		if (IN_CLASSA(addr)) {
+			mask = IN_CLASSA_NET;
+		} else if (IN_CLASSB(addr)) {
+			mask = IN_CLASSB_NET;
+		} else if (IN_CLASSC(addr)) {
+			mask = IN_CLASSC_NET;
+		} else
+			mask = 0xffffffff;
 	}
 	in->sin_addr.s_addr = htonl(addr);
 	in = &so_mask.sin;
