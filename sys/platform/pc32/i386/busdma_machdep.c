@@ -292,7 +292,7 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 		if (ptoa(bz->total_bpages) < maxsize) {
 			int pages;
 
-			if (flags & BUS_DMA_ONEPAGE) {
+			if (flags & BUS_DMA_ONEBPAGE) {
 				pages = 1;
 			} else {
 				pages = atop(round_page(maxsize)) -
@@ -398,7 +398,7 @@ bus_dmamap_create(bus_dma_tag_t dmat, int flags, bus_dmamap_t *mapp)
 				      "not implemented");
 			}
 
-			if (flags & BUS_DMA_ONEPAGE) {
+			if (flags & BUS_DMA_ONEBPAGE) {
 				pages = 1;
 			} else {
 				pages = atop(round_page(dmat->maxsize));

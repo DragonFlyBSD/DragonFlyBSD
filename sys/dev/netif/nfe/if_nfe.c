@@ -1968,7 +1968,7 @@ nfe_alloc_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 			NULL, NULL,
 			NFE_JBYTES, NFE_MAX_SCATTER, MCLBYTES,
-			BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK | BUS_DMA_ONEPAGE,
+			BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
 			&ring->data_tag);
 	if (error) {
 		if_printf(&sc->arpcom.ac_if,
@@ -1978,7 +1978,7 @@ nfe_alloc_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 
 	for (i = 0; i < sc->sc_tx_ring_count; i++) {
 		error = bus_dmamap_create(ring->data_tag,
-				BUS_DMA_WAITOK | BUS_DMA_ONEPAGE,
+				BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
 				&ring->data[i].map);
 		if (error) {
 			if_printf(&sc->arpcom.ac_if,

@@ -83,16 +83,19 @@
 /*
  * Flags used in various bus DMA methods.
  */
-#define	BUS_DMA_WAITOK		0x00	/* safe to sleep (pseudo-flag) */
-#define	BUS_DMA_NOWAIT		0x01	/* not safe to sleep */
-#define	BUS_DMA_ALLOCNOW	0x02	/* perform resource allocation now */
-#define	BUS_DMA_COHERENT	0x04	/* map memory to not require sync */
-#define	BUS_DMA_ZERO		0x08	/* allocate zero'ed memory */
-#define	BUS_DMA_BUS1		0x10	/* placeholders for bus functions... */
-#define	BUS_DMA_BUS2		0x20
-#define	BUS_DMA_BUS3		0x40
-#define	BUS_DMA_BUS4		0x80
-#define BUS_DMA_ONEPAGE		0x0100	/* allocate one bounce page at most */
+#define	BUS_DMA_WAITOK		0x0000	/* safe to sleep (pseudo-flag) */
+#define	BUS_DMA_NOWAIT		0x0001	/* not safe to sleep */
+#define	BUS_DMA_ALLOCNOW	0x0002	/* perform resource allocation now */
+#define	BUS_DMA_COHERENT	0x0004	/* map memory to not require sync */
+#define	BUS_DMA_ZERO		0x0008	/* allocate zero'ed memory */
+#define	BUS_DMA_BUS1		0x0010	/* placeholders for bus functions... */
+#define	BUS_DMA_BUS2		0x0020
+#define	BUS_DMA_BUS3		0x0040
+#define	BUS_DMA_BUS4		0x0080
+#define	BUS_DMA_ONEBPAGE	0x0100	/* allocate one bpage per map at most */
+#define	BUS_DMA_ALIGNED		0x0200	/* no bpage should be allocated due to
+					 * alignment requirement; all to-be-
+					 * loaded memory is properly aligned */
 
 /* Forwards needed by prototypes below. */
 struct mbuf;

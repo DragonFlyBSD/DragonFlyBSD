@@ -1139,7 +1139,7 @@ re_allocmem(device_t dev)
 			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 			NULL, NULL,
 			RE_FRAMELEN_MAX, RE_MAXSEGS, MCLBYTES,
-			BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK | BUS_DMA_ONEPAGE,
+			BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
 			&sc->re_ldata.re_tx_mtag);
 	if (error) {
 		device_printf(dev, "could not allocate TX buf dma tag\n");
@@ -1149,7 +1149,7 @@ re_allocmem(device_t dev)
 	/* Create DMA maps for TX buffers */
 	for (i = 0; i < sc->re_tx_desc_cnt; i++) {
 		error = bus_dmamap_create(sc->re_ldata.re_tx_mtag,
-				BUS_DMA_WAITOK | BUS_DMA_ONEPAGE,
+				BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
 				&sc->re_ldata.re_tx_dmamap[i]);
 		if (error) {
 			device_printf(dev, "can't create DMA map for TX buf\n");
@@ -1164,7 +1164,7 @@ re_allocmem(device_t dev)
 			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 			NULL, NULL,
 			MCLBYTES, 1, MCLBYTES,
-			BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,
+			BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK | BUS_DMA_ALIGNED,
 			&sc->re_ldata.re_rx_mtag);
 	if (error) {
 		device_printf(dev, "could not allocate RX buf dma tag\n");
