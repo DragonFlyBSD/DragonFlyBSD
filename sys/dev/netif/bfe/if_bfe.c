@@ -1217,7 +1217,6 @@ bfe_intr(void *xsc)
 static int
 bfe_encap(struct bfe_softc *sc, struct mbuf **m_head, uint32_t *txidx)
 {
-	struct mbuf *m = *m_head;
 	bus_dma_segment_t segs[BFE_MAXSEGS];
 	bus_dmamap_t map;
 	int i, first_idx, last_idx, cur, error, maxsegs, nsegs;
@@ -1230,26 +1229,10 @@ bfe_encap(struct bfe_softc *sc, struct mbuf **m_head, uint32_t *txidx)
 	first_idx = *txidx;
 	map = sc->bfe_tx_ring[first_idx].bfe_map;
 
-	error = bus_dmamap_load_mbuf_segment(sc->bfe_txbuf_tag, map, m,
+	error = bus_dmamap_load_mbuf_defrag(sc->bfe_txbuf_tag, map, m_head,
 			segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
-	if (error && error != EFBIG)
+	if (error)
 		goto fail;
-	if (error) {	/* error == EFBIG */
-		struct mbuf *m_new;
-
-		m_new = m_defrag(m, MB_DONTWAIT);
-		if (m_new == NULL) {
-			error = ENOBUFS;
-			goto fail;
-		} else {
-			*m_head = m = m_new;
-		}
-
-		error = bus_dmamap_load_mbuf_segment(sc->bfe_txbuf_tag, map, m,
-				segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
-		if (error)
-			goto fail;
-	}
 	bus_dmamap_sync(sc->bfe_txbuf_tag, map, BUS_DMASYNC_PREWRITE);
 
 	last_idx = -1;
@@ -1288,7 +1271,7 @@ bfe_encap(struct bfe_softc *sc, struct mbuf **m_head, uint32_t *txidx)
 
 	sc->bfe_tx_ring[first_idx].bfe_map = sc->bfe_tx_ring[last_idx].bfe_map;
 	sc->bfe_tx_ring[last_idx].bfe_map = map;
-	sc->bfe_tx_ring[last_idx].bfe_mbuf = m;
+	sc->bfe_tx_ring[last_idx].bfe_mbuf = *m_head;
 
 	bus_dmamap_sync(sc->bfe_tx_tag, sc->bfe_tx_map, BUS_DMASYNC_PREWRITE);
 
@@ -1296,7 +1279,7 @@ bfe_encap(struct bfe_softc *sc, struct mbuf **m_head, uint32_t *txidx)
 	sc->bfe_tx_cnt += nsegs;
 	return 0;
 fail:
-	m_freem(m);
+	m_freem(*m_head);
 	*m_head = NULL;
 	return error;
 }
