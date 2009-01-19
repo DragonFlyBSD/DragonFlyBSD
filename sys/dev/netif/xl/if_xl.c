@@ -1682,14 +1682,28 @@ xl_dma_alloc(device_t dev)
 	ld = &sc->xl_ldata;
 
 	/*
+	 * Allocate the parent bus DMA tag appropriate for PCI.
+	 */
+	error = bus_dma_tag_create(NULL, 1, 0,
+				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+				   NULL, NULL,
+				   BUS_SPACE_MAXSIZE_32BIT, 0,
+				   BUS_SPACE_MAXSIZE_32BIT,
+				   0, &sc->xl_parent_tag);
+	if (error) {
+		device_printf(dev, "could not allocate parent dma tag\n");
+		return error;
+	}
+
+	/*
 	 * Now allocate a tag for the DMA descriptor lists and a chunk
 	 * of DMA-able memory based on the tag.  Also obtain the DMA
 	 * addresses of the RX and TX ring, which we'll need later.
 	 * All of our lists are allocated as a contiguous block
 	 * of memory.
 	 */
-	error = bus_dma_tag_create(NULL, 8, 0,
-				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+	error = bus_dma_tag_create(sc->xl_parent_tag, XL_LIST_ALIGN, 0,
+				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
 				   XL_RX_LIST_SZ, 1, XL_RX_LIST_SZ,
 				   0, &ld->xl_rx_tag);
@@ -1721,8 +1735,8 @@ xl_dma_alloc(device_t dev)
 		return error;
 	}
 
-	error = bus_dma_tag_create(NULL, 8, 0,
-				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+	error = bus_dma_tag_create(sc->xl_parent_tag, XL_LIST_ALIGN, 0,
+				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
 				   XL_TX_LIST_SZ, 1, XL_TX_LIST_SZ,
 				   0, &ld->xl_tx_tag);
@@ -1757,8 +1771,8 @@ xl_dma_alloc(device_t dev)
 	/*
 	 * Allocate a DMA tag for the mapping of mbufs.
 	 */
-	error = bus_dma_tag_create(NULL, 1, 0,
-				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+	error = bus_dma_tag_create(sc->xl_parent_tag, 1, 0,
+				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
 				   MCLBYTES * XL_MAXFRAGS, XL_MAXFRAGS,
 				   MCLBYTES, 0, &sc->xl_mtag);
@@ -1856,6 +1870,9 @@ xl_dma_free(device_t dev)
 		bus_dmamap_destroy(sc->xl_mtag, sc->xl_tmpmap);
 		bus_dma_tag_destroy(sc->xl_mtag);
 	}
+
+	if (sc->xl_parent_tag)
+		bus_dma_tag_destroy(sc->xl_parent_tag);
 }
 
 /*
