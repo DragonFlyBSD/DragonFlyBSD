@@ -252,8 +252,6 @@ static void xl_list_tx_init_90xB(struct xl_softc *);
 static void xl_wait		(struct xl_softc *);
 static void xl_mediacheck	(struct xl_softc *);
 static void xl_choose_xcvr	(struct xl_softc *, int);
-static void xl_dma_map_txbuf	(void *, bus_dma_segment_t *, int, bus_size_t,
-						int);
 
 static int xl_dma_alloc		(device_t);
 static void xl_dma_free		(device_t);
@@ -310,32 +308,6 @@ xl_enable_intrs(struct xl_softc *sc, uint16_t intrs)
 	CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_INTR_ENB | intrs);
 	if (sc->xl_flags & XL_FLAG_FUNCREG)
 		bus_space_write_4(sc->xl_ftag, sc->xl_fhandle, 4, 0x8000);
-}
-
-static void
-xl_dma_map_txbuf(void *arg, bus_dma_segment_t *segs, int nseg,
-    bus_size_t mapsize, int error)
-{
-	struct xl_list *l;
-	int i, total_len;
-
-	if (error)
-		return;
-
-	KASSERT(nseg <= XL_MAXFRAGS, ("too many DMA segments"));
-
-	total_len = 0;
-	l = arg;
-	for (i = 0; i < nseg; i++) {
-		KASSERT(segs[i].ds_len <= MCLBYTES, ("segment size too large"));
-		l->xl_frag[i].xl_addr = htole32(segs[i].ds_addr);
-		l->xl_frag[i].xl_len = htole32(segs[i].ds_len);
-		total_len += segs[i].ds_len;
-	}
-	l->xl_frag[nseg - 1].xl_len = htole32(segs[nseg - 1].ds_len |
-	    XL_LAST_FRAG);
-	l->xl_status = htole32(total_len);
-	l->xl_next = 0;
 }
 
 /*
@@ -2493,57 +2465,21 @@ xl_stats_update_serialized(void *xsc)
 static int
 xl_encap(struct xl_softc *sc, struct xl_chain *c, struct mbuf *m_head)
 {
-	int			error;
+	int			error, nsegs, i;
 	u_int32_t		status;
-	struct ifnet		*ifp;
+	bus_dma_segment_t	segs[XL_MAXFRAGS];
+	struct xl_list		*l;
 
-	ifp = &sc->arpcom.ac_if;
-
-	/*
- 	 * Start packing the mbufs in this chain into
-	 * the fragment pointers. Stop when we run out
- 	 * of fragments or hit the end of the mbuf chain.
-	 */
-	error = bus_dmamap_load_mbuf(sc->xl_tx_mtag, c->xl_map, m_head,
-	    xl_dma_map_txbuf, c->xl_ptr, BUS_DMA_NOWAIT);
-
-	if (error && error != EFBIG) {
-		m_freem(m_head);
-		if_printf(ifp, "can't map mbuf (error %d)\n", error);
-		return(1);
-	}
-
-	/*
-	 * Handle special case: we used up all 63 fragments,
-	 * but we have more mbufs left in the chain. Copy the
-	 * data into an mbuf cluster. Note that we don't
-	 * bother clearing the values in the other fragment
-	 * pointers/counters; it wouldn't gain us anything,
-	 * and would waste cycles.
-	 */
+	error = bus_dmamap_load_mbuf_defrag(sc->xl_tx_mtag, c->xl_map, &m_head,
+			segs, XL_MAXFRAGS, &nsegs, BUS_DMA_NOWAIT);
 	if (error) {
-		struct mbuf		*m_new;
-
-		m_new = m_defrag(m_head, MB_DONTWAIT);
-		if (m_new == NULL) {
-			m_freem(m_head);
-			return(1);
-		} else {
-			m_head = m_new;
-		}
-
-		error = bus_dmamap_load_mbuf(sc->xl_tx_mtag, c->xl_map,
-			m_head, xl_dma_map_txbuf, c->xl_ptr, BUS_DMA_NOWAIT);
-		if (error) {
-			m_freem(m_head);
-			if_printf(ifp, "can't map mbuf (error %d)\n", error);
-			return(1);
-		}
+		m_freem(m_head);
+		return error;
 	}
+	bus_dmamap_sync(sc->xl_tx_mtag, c->xl_map, BUS_DMASYNC_PREWRITE);
 
 	if (sc->xl_type == XL_TYPE_905B) {
 		status = XL_TXSTAT_RND_DEFEAT;
-
 		if (m_head->m_pkthdr.csum_flags) {
 			if (m_head->m_pkthdr.csum_flags & CSUM_IP)
 				status |= XL_TXSTAT_IPCKSUM;
@@ -2552,11 +2488,22 @@ xl_encap(struct xl_softc *sc, struct xl_chain *c, struct mbuf *m_head)
 			if (m_head->m_pkthdr.csum_flags & CSUM_UDP)
 				status |= XL_TXSTAT_UDPCKSUM;
 		}
-		c->xl_ptr->xl_status = htole32(status);
+	} else {
+		status = m_head->m_pkthdr.len;
 	}
 
+	l = c->xl_ptr;
+	for (i = 0; i < nsegs; i++) {
+		l->xl_frag[i].xl_addr = htole32(segs[i].ds_addr);
+		l->xl_frag[i].xl_len = htole32(segs[i].ds_len);
+	}
+	l->xl_frag[nsegs - 1].xl_len =
+		htole32(segs[nsegs - 1].ds_len | XL_LAST_FRAG);
+	l->xl_status = htole32(status);
+	l->xl_next = 0;
+
 	c->xl_mbuf = m_head;
-	bus_dmamap_sync(sc->xl_tx_mtag, c->xl_map, BUS_DMASYNC_PREWRITE);
+
 	return(0);
 }
 
