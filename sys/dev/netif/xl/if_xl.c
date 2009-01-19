@@ -205,7 +205,8 @@ static void xl_shutdown		(device_t);
 static int xl_suspend		(device_t); 
 static int xl_resume		(device_t);
 
-static int xl_newbuf		(struct xl_softc *, struct xl_chain_onefrag *);
+static int xl_newbuf		(struct xl_softc *, struct xl_chain_onefrag *,
+				 int);
 static void xl_stats_update	(void *);
 static void xl_stats_update_serialized(void *);
 static int xl_encap		(struct xl_softc *, struct xl_chain *,
@@ -251,8 +252,6 @@ static void xl_list_tx_init_90xB(struct xl_softc *);
 static void xl_wait		(struct xl_softc *);
 static void xl_mediacheck	(struct xl_softc *);
 static void xl_choose_xcvr	(struct xl_softc *, int);
-static void xl_dma_map_rxbuf	(void *, bus_dma_segment_t *, int, bus_size_t,
-						int);
 static void xl_dma_map_txbuf	(void *, bus_dma_segment_t *, int, bus_size_t,
 						int);
 
@@ -311,19 +310,6 @@ xl_enable_intrs(struct xl_softc *sc, uint16_t intrs)
 	CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_INTR_ENB | intrs);
 	if (sc->xl_flags & XL_FLAG_FUNCREG)
 		bus_space_write_4(sc->xl_ftag, sc->xl_fhandle, 4, 0x8000);
-}
-
-static void
-xl_dma_map_rxbuf(void *arg, bus_dma_segment_t *segs, int nseg,
-    bus_size_t mapsize, int error)
-{
-	u_int32_t *paddr;
-
-	if (error)
-		return;
-	KASSERT(nseg == 1, ("xl_dma_map_rxbuf: too many DMA segments"));
-	paddr = arg;
-	*paddr = segs->ds_addr;
 }
 
 static void
@@ -1920,7 +1906,7 @@ xl_list_rx_init(struct xl_softc *sc)
 	ld = &sc->xl_ldata;
 
 	for (i = 0; i < XL_RX_LIST_CNT; i++) {
-		error = xl_newbuf(sc, &cd->xl_rx_chain[i]);
+		error = xl_newbuf(sc, &cd->xl_rx_chain[i], 1);
 		if (error)
 			return(error);
 		if (i == (XL_RX_LIST_CNT - 1))
@@ -1945,14 +1931,14 @@ xl_list_rx_init(struct xl_softc *sc)
  * the old DMA map untouched so that it can be reused.
  */
 static int
-xl_newbuf(struct xl_softc *sc, struct xl_chain_onefrag *c)
+xl_newbuf(struct xl_softc *sc, struct xl_chain_onefrag *c, int init)
 {
 	struct mbuf		*m_new;
 	bus_dmamap_t		map;
-	int			error;
-	u_int32_t		baddr;
+	int			error, nsegs;
+	bus_dma_segment_t	seg;
 
-	m_new = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m_new = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m_new == NULL)
 		return(ENOBUFS);
 
@@ -1961,24 +1947,32 @@ xl_newbuf(struct xl_softc *sc, struct xl_chain_onefrag *c)
 	/* Force longword alignment for packet payload. */
 	m_adj(m_new, ETHER_ALIGN);
 
-	error = bus_dmamap_load_mbuf(sc->xl_rx_mtag, sc->xl_tmpmap, m_new,
-	    xl_dma_map_rxbuf, &baddr, BUS_DMA_NOWAIT);
+	error = bus_dmamap_load_mbuf_segment(sc->xl_rx_mtag, sc->xl_tmpmap,
+			m_new, &seg, 1, &nsegs, BUS_DMA_NOWAIT);
 	if (error) {
 		m_freem(m_new);
-		if_printf(&sc->arpcom.ac_if, "can't map mbuf (error %d)\n",
-		    error);
+		if (init) {
+			if_printf(&sc->arpcom.ac_if,
+				  "can't map mbuf (error %d)\n", error);
+		}
 		return(error);
 	}
 
-	bus_dmamap_unload(sc->xl_rx_mtag, c->xl_map);
+	if (c->xl_mbuf != NULL) {
+		bus_dmamap_sync(sc->xl_rx_mtag, c->xl_map,
+				BUS_DMASYNC_POSTREAD);
+		bus_dmamap_unload(sc->xl_rx_mtag, c->xl_map);
+	}
+
 	map = c->xl_map;
 	c->xl_map = sc->xl_tmpmap;
 	sc->xl_tmpmap = map;
 	c->xl_mbuf = m_new;
-	c->xl_ptr->xl_frag.xl_len = htole32(m_new->m_len | XL_LAST_FRAG);
+
+	c->xl_ptr->xl_frag.xl_len = htole32(seg.ds_len | XL_LAST_FRAG);
+	c->xl_ptr->xl_frag.xl_addr = htole32(seg.ds_addr);
 	c->xl_ptr->xl_status = 0;
-	c->xl_ptr->xl_frag.xl_addr = htole32(baddr);
-	bus_dmamap_sync(sc->xl_rx_mtag, c->xl_map, BUS_DMASYNC_PREREAD);
+
 	return(0);
 }
 
@@ -2073,8 +2067,6 @@ again:
 		}
 
 		/* No errors; receive the packet. */	
-		bus_dmamap_sync(sc->xl_rx_mtag, cur_rx->xl_map,
-		    BUS_DMASYNC_POSTREAD);
 		m = cur_rx->xl_mbuf;
 
 		/*
@@ -2084,7 +2076,7 @@ again:
 		 * result in a lost packet, but there's little else we
 		 * can do in this situation.
 		 */
-		if (xl_newbuf(sc, cur_rx)) {
+		if (xl_newbuf(sc, cur_rx, 0)) {
 			ifp->if_ierrors++;
 			cur_rx->xl_ptr->xl_status = 0;
 			bus_dmamap_sync(sc->xl_ldata.xl_rx_tag,
