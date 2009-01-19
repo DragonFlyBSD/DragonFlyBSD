@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -33,9 +29,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libc/stdlib/radixsort.c,v 1.5 2005/11/20 12:37:49 swildner Exp $
- *
  * @(#)radixsort.c	8.2 (Berkeley) 4/28/95
+ * $FreeBSD: src/lib/libc/stdlib/radixsort.c,v 1.8 2007/01/09 00:28:10 imp Exp $
+ * $DragonFly: src/lib/libc/stdlib/radixsort.c,v 1.5 2005/11/20 12:37:49 swildner Exp $
  */
 
 /*
@@ -61,11 +57,10 @@ typedef struct {
 	int sn, si;
 } stack;
 
-static inline void simplesort
-	    (const u_char **, int, int, const u_char *, u_int);
-static void r_sort_a (const u_char **, int, int, const u_char *, u_int);
-static void r_sort_b (const u_char **,
-	    const u_char **, int, int, const u_char *, u_int);
+static inline void simplesort(const u_char **, int, int, const u_char *, u_int);
+static void r_sort_a(const u_char **, int, int, const u_char *, u_int);
+static void r_sort_b(const u_char **, const u_char **, int, int,
+		     const u_char *, u_int);
 
 #define	THRESHOLD	20		/* Divert to simplesort(). */
 #define	SIZE		512		/* Default stack size. */
@@ -162,6 +157,17 @@ r_sort_a(const u_char **a, int n, int i, const u_char *tr, u_int endch)
 				r_sort_a(a, n, i, tr, endch);
 				continue;
 			}
+		}
+
+		/*
+		 * Special case: if all strings have the same
+		 * character at position i, move on to the next
+		 * character.
+		 */
+		if (nc == 1 && count[bmin] == n) {
+			push(a, n, i+1);
+			nc = count[bmin] = 0;
+			continue;
 		}
 
 		/*

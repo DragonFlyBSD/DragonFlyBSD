@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -30,14 +26,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libc/stdlib/getsubopt.c,v 1.4 2005/11/20 12:37:48 swildner Exp $
- *
  * @(#)getsubopt.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/stdlib/getsubopt.c,v 1.7 2007/01/09 00:28:10 imp Exp $
+ * $DragonFly: src/lib/libc/stdlib/getsubopt.c,v 1.4 2005/11/20 12:37:48 swildner Exp $
  */
 
-#include <string.h>
-#include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
 
 /*
  * The SVID interface to getsubopt provides no way of figuring out which

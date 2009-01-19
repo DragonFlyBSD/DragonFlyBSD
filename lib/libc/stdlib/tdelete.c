@@ -9,32 +9,29 @@
  * Totally public domain.
  *
  * $NetBSD: tdelete.c,v 1.2 1999/09/16 11:45:37 lukem Exp $
- * $FreeBSD: src/lib/libc/stdlib/tdelete.c,v 1.1.2.1 2000/08/17 07:38:39 jhb Exp $
+ * $FreeBSD: src/lib/libc/stdlib/tdelete.c,v 1.6 2003/01/05 02:43:18 tjr Exp $
  * $DragonFly: src/lib/libc/stdlib/tdelete.c,v 1.5 2005/11/24 17:18:30 swildner Exp $
  */
 
-#include <sys/cdefs.h>
-
-#include <assert.h>
 #define _SEARCH_PRIVATE
 #include <search.h>
 #include <stdlib.h>
 
 
-/* 
+/*
  * delete node with given key
  *
- * Parameters:
- *	vkey:	key to be deleted
- *	vrootp:	address of the root of tree
-*/
+ * vkey:   key to be deleted
+ * vrootp: address of the root of the tree
+ * compar: function to carry out node comparisons
+ */
 void *
-tdelete(const void *vkey, void **vrootp,
+tdelete(const void * __restrict vkey, void ** __restrict vrootp,
 	int (*compar)(const void *, const void *))
 {
 	node_t **rootp = (node_t **)vrootp;
 	node_t *p, *q, *r;
-	int  cmp;
+	int cmp;
 
 	if (rootp == NULL || (p = *rootp) == NULL)
 		return NULL;

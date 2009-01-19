@@ -447,8 +447,6 @@ malloc_dump(int fd)
 }
 #endif /* MALLOC_STATS */
 
-extern char	*__progname;
-
 static void
 wrterror(char *p)
 {

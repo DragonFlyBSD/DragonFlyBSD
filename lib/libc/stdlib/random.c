@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -30,15 +26,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdlib/random.c,v 1.13 2000/01/27 23:06:49 jasone Exp $
- * $DragonFly: src/lib/libc/stdlib/random.c,v 1.9 2005/11/24 17:18:30 swildner Exp $
- *
  * @(#)random.c	8.2 (Berkeley) 5/19/95
+ * $FreeBSD: src/lib/libc/stdlib/random.c,v 1.25 2007/01/09 00:28:10 imp Exp $
+ * $DragonFly: src/lib/libc/stdlib/random.c,v 1.9 2005/11/24 17:18:30 swildner Exp $
  */
 
 #include "namespace.h"
 #include <sys/time.h>          /* for srandomdev() */
 #include <fcntl.h>             /* for srandomdev() */
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>            /* for srandomdev() */
@@ -60,7 +56,7 @@
  * congruential generator.  If the amount of state information is less than
  * 32 bytes, a simple linear congruential R.N.G. is used.
  *
- * Internally, the state information is treated as an array of ints; the
+ * Internally, the state information is treated as an array of uint32_t's; the
  * zeroeth element of the array is the type of R.N.G. being used (small
  * integer); the remainder of the array is the state information for the
  * R.N.G.  Thus, 32 bytes of state information will give 7 ints worth of
@@ -79,7 +75,7 @@
  * period of the generator is approximately deg*(2**deg - 1); thus doubling
  * the amount of state information has a vast influence on the period of the
  * generator.  Note: the deg*(2**deg - 1) is an approximation only good for
- * large deg, when the period of the shift register is the dominant factor.
+ * large deg, when the period of the shift is the dominant factor.
  * With deg equal to seven, the period is actually much longer than the
  * 7*(2**7 - 1) predicted by this formula.
  *
@@ -140,6 +136,12 @@
  * relies on fact that TYPE_i == i.
  */
 #define	MAX_TYPES	5		/* max number of types above */
+
+#ifdef  USE_WEAK_SEEDING
+#define NSHUFF 0
+#else   /* !USE_WEAK_SEEDING */
+#define NSHUFF 50       /* to drop some "seed -> 1st value" linearity */
+#endif  /* !USE_WEAK_SEEDING */
 
 static const int degrees[MAX_TYPES] =	{ DEG_0, DEG_1, DEG_2, DEG_3, DEG_4 };
 static const int seps [MAX_TYPES] =	{ SEP_0, SEP_1, SEP_2, SEP_3, SEP_4 };
@@ -212,10 +214,10 @@ static int rand_deg = DEG_3;
 static int rand_sep = SEP_3;
 static uint32_t *end_ptr = &randtbl[DEG_3 + 1];
 
-static inline long good_rand(long);
+static inline uint32_t good_rand(int32_t);
 
-static inline long
-good_rand(long x)
+static inline uint32_t
+good_rand(int32_t x)
 {
 #ifdef  USE_WEAK_SEEDING
 /*
@@ -233,12 +235,15 @@ good_rand(long x)
  * Park and Miller, Communications of the ACM, vol. 31, no. 10,
  * October 1988, p. 1195.
  */
-	long hi, lo;
+	int32_t hi, lo;
 
+	/* Can't be initialized with 0, so use another value. */
+	if (x == 0)
+		x = 123459876;
 	hi = x / 127773;
 	lo = x % 127773;
 	x = 16807 * lo - 2836 * hi;
-	if (x <= 0)
+	if (x < 0)
 		x += 0x7fffffff;
 	return (x);
 #endif  /* !USE_WEAK_SEEDING */
@@ -259,19 +264,20 @@ good_rand(long x)
 void
 srandom(unsigned long x)
 {
-	int i;
+	int i, lim;
 
+	state[0] = (uint32_t)x;
 	if (rand_type == TYPE_0)
-		state[0] = (uint32_t)x;
+		lim = NSHUFF;
 	else {
-		state[0] = (uint32_t)x;
 		for (i = 1; i < rand_deg; i++)
-			state[i] = (uint32_t)good_rand(state[i - 1]);
+			state[i] = good_rand(state[i - 1]);
 		fptr = &state[rand_sep];
 		rptr = &state[0];
-		for (i = 0; i < 10 * rand_deg; i++)
-			random();
+		lim = 10 * rand_deg;
 	}
+	for (i = 0; i < lim; i++)
+		random();
 }
 
 /*
@@ -279,7 +285,7 @@ srandom(unsigned long x)
  *
  * Many programs choose the seed value in a totally predictable manner.
  * This often causes problems.  We seed the generator using the much more
- * secure urandom(4) interface.  Note that this particular seeding
+ * secure random(4) interface.  Note that this particular seeding
  * procedure can generate states which are impossible to reproduce by
  * calling srandom() with any value, since the succeeding terms in the
  * state buffer are no longer derived from the LC algorithm applied to
@@ -297,7 +303,7 @@ srandomdev(void)
 		len = rand_deg * sizeof state[0];
 
 	done = 0;
-	fd = _open("/dev/urandom", O_RDONLY, 0);
+	fd = _open("/dev/random", O_RDONLY, 0);
 	if (fd >= 0) {
 		if (_read(fd, (void *) state, len) == (ssize_t) len)
 			done = 1;
@@ -309,7 +315,7 @@ srandomdev(void)
 		unsigned long junk;	/* XXX left uninitialized on purpose */
 
 		gettimeofday(&tv, NULL);
-		srandom(getpid() ^ tv.tv_sec ^ tv.tv_usec ^ junk);
+		srandom((getpid() << 16) ^ tv.tv_sec ^ tv.tv_usec ^ junk);
 		return;
 	}
 
@@ -351,12 +357,12 @@ char *
 initstate(unsigned long seed, char *arg_state, long n)
 {
 	char *ostate = (char *)(&state[-1]);
-	uint32_t *int_arg_state = (uint32_t *)(void *)arg_state;
+	uint32_t *int_arg_state = (uint32_t *)arg_state;
 
 	if (rand_type == TYPE_0)
 		state[-1] = rand_type;
 	else
-		state[-1] = MAX_TYPES * (uint32_t)(rptr - state) + rand_type;
+		state[-1] = MAX_TYPES * (rptr - state) + rand_type;
 	if (n < BREAK_0) {
 		fprintf(stderr,
 		    "random: not enough state (%ld bytes); ignored.\n", n);
@@ -383,13 +389,13 @@ initstate(unsigned long seed, char *arg_state, long n)
 		rand_deg = DEG_4;
 		rand_sep = SEP_4;
 	}
-	state = (uint32_t *) (int_arg_state + 1); /* first location */
+	state = int_arg_state + 1; /* first location */
 	end_ptr = &state[rand_deg];	/* must set end_ptr before srandom */
-	srandom((uint32_t)seed);
+	srandom(seed);
 	if (rand_type == TYPE_0)
 		int_arg_state[0] = rand_type;
 	else
-		int_arg_state[0] = MAX_TYPES * (uint32_t)(rptr - state) + rand_type;
+		int_arg_state[0] = MAX_TYPES * (rptr - state) + rand_type;
 	return(ostate);
 }
 
@@ -411,14 +417,14 @@ initstate(unsigned long seed, char *arg_state, long n)
  *
  * Returns a pointer to the old state information.
  *
- * Note: The Sparc platform requires that arg_state begin on a long
+ * Note: The Sparc platform requires that arg_state begin on an int
  * word boundary; otherwise a bus error will occur. Even so, lint will
  * complain about mis-alignment, but you should disregard these messages.
  */
 char *
 setstate(char *arg_state)
 {
-	uint32_t *new_state = (uint32_t *)(void *)arg_state;
+	uint32_t *new_state = (uint32_t *)arg_state;
 	uint32_t type = new_state[0] % MAX_TYPES;
 	uint32_t rear = new_state[0] / MAX_TYPES;
 	char *ostate = (char *)(&state[-1]);
@@ -426,7 +432,7 @@ setstate(char *arg_state)
 	if (rand_type == TYPE_0)
 		state[-1] = rand_type;
 	else
-		state[-1] = MAX_TYPES * (uint32_t)(rptr - state) + rand_type;
+		state[-1] = MAX_TYPES * (rptr - state) + rand_type;
 	switch(type) {
 	case TYPE_0:
 	case TYPE_1:
@@ -441,7 +447,7 @@ setstate(char *arg_state)
 		fprintf(stderr,
 		    "random: state info corrupted; not changed.\n");
 	}
-	state = (uint32_t *) (new_state + 1);
+	state = new_state + 1;
 	if (rand_type != TYPE_0) {
 		rptr = &state[rear];
 		fptr = &state[(rear + rand_sep) % rand_deg];

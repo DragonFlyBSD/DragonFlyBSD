@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -32,12 +28,14 @@
  *
  * Posix rand_r function added May 1999 by Wes Peters <wes@softweyr.com>.
  *
- * $FreeBSD: src/lib/libc/stdlib/rand.c,v 1.15 2001/03/05 11:33:57 ache Exp $
+ * @(#)rand.c	8.1 (Berkeley) 6/14/93
+ * $FreeBSD: src/lib/libc/stdlib/rand.c,v 1.17 2007/12/11 20:39:32 ache Exp $
  * $DragonFly: src/lib/libc/stdlib/rand.c,v 1.6 2005/11/20 14:58:40 swildner Exp $
  */
 
 #include "namespace.h"
 #include <sys/time.h>          /* for sranddev() */
+#include <sys/types.h>
 #include <fcntl.h>             /* for sranddev() */
 #include <stdlib.h>
 #include <unistd.h>            /* for sranddev() */
@@ -46,8 +44,6 @@
 #ifdef TEST
 #include <stdio.h>
 #endif /* TEST */
-
-void	sranddev(void);
 
 static int
 do_rand(unsigned long *ctx)
@@ -62,7 +58,7 @@ do_rand(unsigned long *ctx)
 #else   /* !USE_WEAK_SEEDING */
 /*
  * Compute x = (7^5 * x) mod (2^31 - 1)
- * wihout overflowing 31 bits:
+ * without overflowing 31 bits:
  *      (2^31 - 1) = 127773 * (7^5) + 2836
  * From "Random number generators: good ones are hard to find",
  * Park and Miller, Communications of the ACM, vol. 31, no. 10,
@@ -115,11 +111,6 @@ srand(u_int seed)
  * Many programs choose the seed value in a totally predictable manner.
  * This often causes problems.  We seed the generator using the much more
  * secure random(4) interface.
- *
- * FreeBSD chooses to use /dev/random for their seed.  However, because
- * of possible problems surrounding /dev/random, we use /dev/urandom for now,
- * which is guaranteed not to block and will produce a "good enough" seed
- * for us for the time being.
  */
 void
 sranddev(void)
@@ -127,7 +118,7 @@ sranddev(void)
 	int fd, done;
 
 	done = 0;
-	fd = _open("/dev/urandom", O_RDONLY, 0);
+	fd = _open("/dev/random", O_RDONLY, 0);
 	if (fd >= 0) {
 		if (_read(fd, (void *) &next, sizeof(next)) == sizeof(next))
 			done = 1;

@@ -159,7 +159,6 @@ int	 lwp_create(struct lwp_params *);
 lwpid_t	 lwp_gettid(void);
 char	*mkdtemp(char *);
 int	 mknod(const char *, mode_t, dev_t);
-int	 mkstemp(char *);
 int	 mkstemps(char *, int);
 char	*mktemp(char *);
 int	 nfssvc(int, void *);
@@ -226,8 +225,6 @@ int	 varsym_set(int, const char *, const char *);
 int	 varsym_get(int, const char *, char *, int);
 int	 varsym_list(int, char *, int, int *);
 
-extern char *suboptarg;			/* getsubopt(3) external variable */
-int	 getsubopt(char **, char * const *, char **);
 #endif /* !_POSIX_SOURCE */
 extern int optreset;			/* getopt(3) external variable */
 __END_DECLS

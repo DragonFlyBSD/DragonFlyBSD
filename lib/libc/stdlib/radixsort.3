@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -30,14 +26,15 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)radixsort.3	8.2 (Berkeley) 1/27/94
-.\" $FreeBSD: src/lib/libc/stdlib/radixsort.3,v 1.5.2.4 2001/12/14 18:33:58 ru Exp $
+.\" $FreeBSD: src/lib/libc/stdlib/radixsort.3,v 1.12 2007/01/09 00:28:10 imp Exp $
 .\" $DragonFly: src/lib/libc/stdlib/radixsort.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
 .\"
 .Dd January 27, 1994
 .Dt RADIXSORT 3
 .Os
 .Sh NAME
-.Nm radixsort
+.Nm radixsort ,
+.Nm sradixsort
 .Nd radix sort
 .Sh LIBRARY
 .Lb libc
@@ -106,7 +103,10 @@ The
 function is not stable, but uses no additional memory.
 .Pp
 These functions are variants of most-significant-byte radix sorting; in
-particular, see D.E. Knuth's Algorithm R and section 5.2.5, exercise 10.
+particular, see
+.An "D.E. Knuth" Ns 's
+.%T "Algorithm R"
+and section 5.2.5, exercise 10.
 They take linear time relative to the number of bytes in the strings.
 .Sh RETURN VALUES
 .Rv -std radixsort
