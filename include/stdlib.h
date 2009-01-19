@@ -98,12 +98,12 @@ int	 rand(void);
 void	*realloc(void *, size_t);
 void	 srand(unsigned);
 double	 strtod(const char * __restrict, char ** __restrict);
-/* float	 strtof(const char * __restrict, char ** __restrict); */
+float	 strtof(const char * __restrict, char ** __restrict);
 #if !defined(_KERNEL_VIRTUAL)
 long	 strtol(const char * __restrict, char ** __restrict, int);
 #endif
-/* long double
-	 strtold(const char * __restrict, char ** __restrict); */
+long double
+	 strtold(const char * __restrict, char ** __restrict);
 #if !defined(_KERNEL_VIRTUAL)
 unsigned long
 	 strtoul(const char * __restrict, char ** __restrict, int);
