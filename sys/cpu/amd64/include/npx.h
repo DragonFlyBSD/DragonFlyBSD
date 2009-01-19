@@ -149,6 +149,11 @@ union	savefpu {
  */
 #define	__INITIAL_NPXCW__	0x127F
 
+#define __INITIAL_FPUCW__       0x037F	/* used by libm/arch/amd64/fenv.c */
+#define __INITIAL_FPUCW_I386__  0x127F
+#define __INITIAL_MXCSR__       0x1F80	/* used by libm/arch/amd64/fenv.c */
+#define __INITIAL_MXCSR_MASK__  0xFFBF
+
 #ifdef _KERNEL
 
 struct proc;
