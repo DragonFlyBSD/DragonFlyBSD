@@ -251,7 +251,6 @@ static void xl_list_tx_init_90xB(struct xl_softc *);
 static void xl_wait		(struct xl_softc *);
 static void xl_mediacheck	(struct xl_softc *);
 static void xl_choose_xcvr	(struct xl_softc *, int);
-static void xl_dma_map_addr	(void *, bus_dma_segment_t *, int, int);
 static void xl_dma_map_rxbuf	(void *, bus_dma_segment_t *, int, bus_size_t,
 						int);
 static void xl_dma_map_txbuf	(void *, bus_dma_segment_t *, int, bus_size_t,
@@ -312,15 +311,6 @@ xl_enable_intrs(struct xl_softc *sc, uint16_t intrs)
 	CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_INTR_ENB | intrs);
 	if (sc->xl_flags & XL_FLAG_FUNCREG)
 		bus_space_write_4(sc->xl_ftag, sc->xl_fhandle, 4, 0x8000);
-}
-
-static void
-xl_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nseg, int error)
-{
-	u_int32_t *paddr;
-	
-	paddr = arg;
-	*paddr = segs->ds_addr;
 }
 
 static void
@@ -1675,6 +1665,7 @@ xl_dma_alloc(device_t dev)
 	struct xl_softc *sc;
 	struct xl_chain_data *cd;
 	struct xl_list_data *ld;
+	bus_dmamem_t dmem;
 	int i, error;
 
 	sc = device_get_softc(dev);
@@ -1702,71 +1693,29 @@ xl_dma_alloc(device_t dev)
 	 * All of our lists are allocated as a contiguous block
 	 * of memory.
 	 */
-	error = bus_dma_tag_create(sc->xl_parent_tag, XL_LIST_ALIGN, 0,
-				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
-				   XL_RX_LIST_SZ, 1, XL_RX_LIST_SZ,
-				   0, &ld->xl_rx_tag);
+	error = bus_dmamem_coherent(sc->xl_parent_tag, XL_LIST_ALIGN, 0,
+				    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+				    XL_RX_LIST_SZ, BUS_DMA_WAITOK, &dmem);
 	if (error) {
-		device_printf(dev, "failed to allocate rx dma tag\n");
+		device_printf(dev, "failed to allocate rx list\n");
 		return error;
 	}
+	ld->xl_rx_tag = dmem.dmem_tag;
+	ld->xl_rx_dmamap = dmem.dmem_map;
+	ld->xl_rx_list = dmem.dmem_addr;
+	ld->xl_rx_dmaaddr = dmem.dmem_busaddr;
 
-	error = bus_dmamem_alloc(ld->xl_rx_tag, (void **)&ld->xl_rx_list,
-				 BUS_DMA_WAITOK | BUS_DMA_ZERO,
-				 &ld->xl_rx_dmamap);
+	error = bus_dmamem_coherent(sc->xl_parent_tag, XL_LIST_ALIGN, 0,
+				    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+				    XL_TX_LIST_SZ, BUS_DMA_WAITOK, &dmem);
 	if (error) {
-		device_printf(dev, "no memory for rx list buffers!\n");
-		bus_dma_tag_destroy(ld->xl_rx_tag);
-		ld->xl_rx_tag = NULL;
+		device_printf(dev, "failed to allocate tx list\n");
 		return error;
 	}
-
-	error = bus_dmamap_load(ld->xl_rx_tag, ld->xl_rx_dmamap,
-				ld->xl_rx_list, XL_RX_LIST_SZ,
-				xl_dma_map_addr, &ld->xl_rx_dmaaddr,
-				BUS_DMA_WAITOK);
-	if (error) {
-		device_printf(dev, "cannot get dma address of the rx ring!\n");
-		bus_dmamem_free(ld->xl_rx_tag, ld->xl_rx_list,
-				ld->xl_rx_dmamap);
-		bus_dma_tag_destroy(ld->xl_rx_tag);
-		ld->xl_rx_tag = NULL;
-		return error;
-	}
-
-	error = bus_dma_tag_create(sc->xl_parent_tag, XL_LIST_ALIGN, 0,
-				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
-				   XL_TX_LIST_SZ, 1, XL_TX_LIST_SZ,
-				   0, &ld->xl_tx_tag);
-	if (error) {
-		device_printf(dev, "failed to allocate tx dma tag\n");
-		return error;
-	}
-
-	error = bus_dmamem_alloc(ld->xl_tx_tag, (void **)&ld->xl_tx_list,
-				 BUS_DMA_WAITOK | BUS_DMA_ZERO,
-				 &ld->xl_tx_dmamap);
-	if (error) {
-		device_printf(dev, "no memory for list buffers!\n");
-		bus_dma_tag_destroy(ld->xl_tx_tag);
-		ld->xl_tx_tag = NULL;
-		return error;
-	}
-
-	error = bus_dmamap_load(ld->xl_tx_tag, ld->xl_tx_dmamap,
-				ld->xl_tx_list, XL_TX_LIST_SZ,
-				xl_dma_map_addr, &ld->xl_tx_dmaaddr,
-				BUS_DMA_WAITOK);
-	if (error) {
-		device_printf(dev, "cannot get dma address of the tx ring!\n");
-		bus_dmamem_free(ld->xl_tx_tag, ld->xl_tx_list,
-				ld->xl_tx_dmamap);
-		bus_dma_tag_destroy(ld->xl_tx_tag);
-		ld->xl_tx_tag = NULL;
-		return error;
-	}
+	ld->xl_tx_tag = dmem.dmem_tag;
+	ld->xl_tx_dmamap = dmem.dmem_map;
+	ld->xl_tx_list = dmem.dmem_addr;
+	ld->xl_tx_dmaaddr = dmem.dmem_busaddr;
 
 	/*
 	 * Allocate a DMA tag for the mapping of mbufs.
