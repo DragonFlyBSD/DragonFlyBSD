@@ -31,17 +31,18 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
+ * $FreeBSD: src/usr.bin/cksum/extern.h,v 1.6 2003/03/13 23:32:28 robert Exp $
  * $DragonFly: src/usr.bin/cksum/extern.h,v 1.3 2003/11/03 19:31:28 eirikn Exp $
  */
 
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	crc(int, u_int32_t *, u_int32_t *);
-void	pcrc(char *, u_int32_t, u_int32_t);
-void	psum1(char *, u_int32_t, u_int32_t);
-void	psum2(char *, u_int32_t, u_int32_t);
-int	csum1(int, u_int32_t *, u_int32_t *);
-int	csum2(int, u_int32_t *, u_int32_t *);
-int	crc32(int, u_int32_t *, u_int32_t *);
+int	crc(int, uint32_t *, off_t *);
+void	pcrc(char *, uint32_t, off_t);
+void	psum1(char *, uint32_t, off_t);
+void	psum2(char *, uint32_t, off_t);
+int	csum1(int, uint32_t *, off_t *);
+int	csum2(int, uint32_t *, off_t *);
+int	crc32(int, uint32_t *, off_t *);
 __END_DECLS

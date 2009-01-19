@@ -80,6 +80,8 @@ static	int		camperiphscsisenseerror(union ccb *ccb,
 					        int *openings,
 					        u_int32_t *relsim_flags,
 					        u_int32_t *timeout);
+static void cam_periph_unmapbufs(struct cam_periph_map_info *mapinfo,
+				 u_int8_t ***data_ptrs, int numbufs);
 
 static int nperiph_drivers;
 struct periph_driver **periph_drivers;
@@ -545,11 +547,13 @@ camperiphfree(struct cam_periph *periph)
 int
 cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 {
-	int numbufs, i, j;
 	buf_cmd_t cmd[CAM_PERIPH_MAXMAPS];
 	u_int8_t **data_ptrs[CAM_PERIPH_MAXMAPS];
 	u_int32_t lengths[CAM_PERIPH_MAXMAPS];
-	u_int32_t dirs[CAM_PERIPH_MAXMAPS];
+	int numbufs;
+	int error;
+	int i;
+	struct buf *bp;
 
 	switch(ccb->ccb_h.func_code) {
 	case XPT_DEV_MATCH:
@@ -561,15 +565,15 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 		if (ccb->cdm.pattern_buf_len > 0) {
 			data_ptrs[0] = (u_int8_t **)&ccb->cdm.patterns;
 			lengths[0] = ccb->cdm.pattern_buf_len;
-			dirs[0] = CAM_DIR_OUT;
+			mapinfo->dirs[0] = CAM_DIR_OUT;
 			data_ptrs[1] = (u_int8_t **)&ccb->cdm.matches;
 			lengths[1] = ccb->cdm.match_buf_len;
-			dirs[1] = CAM_DIR_IN;
+			mapinfo->dirs[1] = CAM_DIR_IN;
 			numbufs = 2;
 		} else {
 			data_ptrs[0] = (u_int8_t **)&ccb->cdm.matches;
 			lengths[0] = ccb->cdm.match_buf_len;
-			dirs[0] = CAM_DIR_IN;
+			mapinfo->dirs[0] = CAM_DIR_IN;
 			numbufs = 1;
 		}
 		break;
@@ -580,7 +584,7 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 
 		data_ptrs[0] = &ccb->csio.data_ptr;
 		lengths[0] = ccb->csio.dxfer_len;
-		dirs[0] = ccb->ccb_h.flags & CAM_DIR_MASK;
+		mapinfo->dirs[0] = ccb->ccb_h.flags & CAM_DIR_MASK;
 		numbufs = 1;
 		break;
 	default:
@@ -618,7 +622,7 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 			return(E2BIG);
 		}
 
-		if (dirs[i] & CAM_DIR_OUT) {
+		if (mapinfo->dirs[i] & CAM_DIR_OUT) {
 			if (!useracc(*data_ptrs[i], lengths[i], 
 				     VM_PROT_READ)) {
 				kprintf("cam_periph_mapmem: error, "
@@ -630,7 +634,7 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 			}
 		}
 
-		if (dirs[i] & CAM_DIR_IN) {
+		if (mapinfo->dirs[i] & CAM_DIR_IN) {
 			cmd[i] = BUF_CMD_READ;
 			if (!useracc(*data_ptrs[i], lengths[i], 
 				     VM_PROT_WRITE)) {
@@ -650,33 +654,62 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 		/*
 		 * Get the buffer.
 		 */
-		mapinfo->bp[i] = getpbuf(NULL);
+		bp = getpbuf(NULL);
 
 		/* save the original user pointer */
 		mapinfo->saved_ptrs[i] = *data_ptrs[i];
 
 		/* set the flags */
-		mapinfo->bp[i]->b_cmd = cmd[i];
+		bp->b_cmd = cmd[i];
 
-		/* map the user buffer into kernel memory */
-		if (vmapbuf(mapinfo->bp[i], *data_ptrs[i], lengths[i]) < 0) {
+		/*
+		 * Require 16-byte alignment and bounce if we don't get it.
+		 * (NATA does not realign buffers for DMA).
+		 */
+		if ((intptr_t)*data_ptrs[i] & 15)
+			mapinfo->bounce[i] = 1;
+		else
+			mapinfo->bounce[i] = 0;
+
+		/*
+		 * Map the user buffer into kernel memory.  If the user
+		 * buffer is not aligned we have to allocate a bounce buffer
+		 * and copy.
+		 */
+		if (mapinfo->bounce[i]) {
+			bp->b_data = bp->b_kvabase;
+			bp->b_bcount = lengths[i];
+			vm_hold_load_pages(bp, (vm_offset_t)bp->b_data,
+				       (vm_offset_t)bp->b_data + bp->b_bcount);
+			if (mapinfo->dirs[i] & CAM_DIR_OUT) {
+				error = copyin(*data_ptrs[i], bp->b_data, bp->b_bcount);
+				if (error) {
+					vm_hold_free_pages(bp, (vm_offset_t)bp->b_data, (vm_offset_t)bp->b_data + bp->b_bcount);
+				}
+			} else {
+				error = 0;
+			}
+		} else if (vmapbuf(bp, *data_ptrs[i], lengths[i]) < 0) {
 			kprintf("cam_periph_mapmem: error, "
 				"address %p, length %lu isn't "
 				"user accessible any more\n",
 				(void *)*data_ptrs[i],
 				(u_long)lengths[i]);
-			for (j = 0; j < i; ++j) {
-				*data_ptrs[j] = mapinfo->saved_ptrs[j];
-				vunmapbuf(mapinfo->bp[j]);
-				relpbuf(mapinfo->bp[j], NULL);
-			}
+			error = EACCES;
+		} else {
+			error = 0;
+		}
+		if (error) {
+			relpbuf(bp, NULL);
+			cam_periph_unmapbufs(mapinfo, data_ptrs, i);
 			mapinfo->num_bufs_used -= i;
-			return(EACCES);
+			return(error);
 		}
 
 		/* set our pointer to the new mapped area */
-		*data_ptrs[i] = mapinfo->bp[i]->b_data;
+		*data_ptrs[i] = bp->b_data;
 
+		mapinfo->bp[i] = bp;
 		mapinfo->num_bufs_used++;
 	}
 
@@ -690,7 +723,7 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 void
 cam_periph_unmapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 {
-	int numbufs, i;
+	int numbufs;
 	u_int8_t **data_ptrs[CAM_PERIPH_MAXMAPS];
 
 	if (mapinfo->num_bufs_used <= 0) {
@@ -719,19 +752,37 @@ cam_periph_unmapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 		return;
 		break; /* NOTREACHED */ 
 	}
+	cam_periph_unmapbufs(mapinfo, data_ptrs, numbufs);
+}
+
+static void
+cam_periph_unmapbufs(struct cam_periph_map_info *mapinfo,
+		     u_int8_t ***data_ptrs, int numbufs)
+{
+	struct buf *bp;
+	int i;
 
 	for (i = 0; i < numbufs; i++) {
+		bp = mapinfo->bp[i];
+
 		/* Set the user's pointer back to the original value */
 		*data_ptrs[i] = mapinfo->saved_ptrs[i];
 
 		/* unmap the buffer */
-		vunmapbuf(mapinfo->bp[i]);
-
-		/* release the buffer */
-		relpbuf(mapinfo->bp[i], NULL);
+		if (mapinfo->bounce[i]) {
+			if (mapinfo->dirs[i] & CAM_DIR_IN) {
+				/* XXX return error */
+				copyout(bp->b_data, *data_ptrs[i],
+					bp->b_bcount);
+			}
+			vm_hold_free_pages(bp, (vm_offset_t)bp->b_data,
+				   (vm_offset_t)bp->b_data + bp->b_bcount);
+		} else {
+			vunmapbuf(bp);
+		}
+		relpbuf(bp, NULL);
+		mapinfo->bp[i] = NULL;
 	}
-
-	/* allow ourselves to be swapped once again */
 }
 
 union ccb *

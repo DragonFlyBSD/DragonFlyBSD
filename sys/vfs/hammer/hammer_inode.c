@@ -2049,6 +2049,14 @@ hammer_flush_inode_done(hammer_inode_t ip, int error)
 	hmp = ip->hmp;
 
 	/*
+	 * Auto-reflush if the backend could not completely flush
+	 * the inode.  This fixes a case where a deferred buffer flush
+	 * could cause fsync to return early.
+	 */
+	if (ip->sync_flags & HAMMER_INODE_MODMASK)
+		ip->flags |= HAMMER_INODE_REFLUSH;
+
+	/*
 	 * Merge left-over flags back into the frontend and fix the state.
 	 * Incomplete truncations are retained by the backend.
 	 */

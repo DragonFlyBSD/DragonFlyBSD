@@ -460,7 +460,7 @@ fn_install_bootblocks(struct i_fn_args *a)
 		/* XXX need to see how this is handled in OpenBSD/NetBSD */
 		dfui_dataset_celldata_add(ds, "disk", disk_get_raw_device_name(d));
 		dfui_dataset_celldata_add(ds, "boot0cfg", "Y");
-		dfui_dataset_celldata_add(ds, "packet", autopacket(d) == 1 ? "Y" : "N");
+		dfui_dataset_celldata_add(ds, "packet", "Y");
 		dfui_form_dataset_add(f, ds);
 	}
 
@@ -478,9 +478,9 @@ fn_install_bootblocks(struct i_fn_args *a)
 			strlcpy(packet, dfui_dataset_get_value(ds, "packet"), 32);
 
 			if (strcasecmp(boot0cfg, "Y") == 0) {
-				cmd = command_add(cmds, "%s%s -B %s %s",
+				cmd = command_add(cmds, "%s%s -B %s -o %spacket",
 				    a->os_root, cmd_name(a, "BOOT0CFG"),
-				    strcasecmp(packet, "Y") == 0 ? "-o packet" : "",
+				    strcasecmp(packet, "Y") == 0 ? "" : "no",
 				    disk);
 				command_set_failure_mode(cmd, COMMAND_FAILURE_WARN);
 				command_set_tag(cmd, disk);
@@ -690,17 +690,4 @@ format_slice(struct i_fn_args *a)
 	commands_free(cmds);
 
 	return(result);
-}
-
-int
-autopacket(struct disk *d) {
-	struct slice *p;
-	long tcap = 0;
-	
-	for (p = disk_slice_first(d); p != NULL; p = slice_next(p)) {
-		tcap += slice_get_capacity(p);
-		if (tcap > 8 * 1024)
-			return(1);
-	}
-	return(0);
 }

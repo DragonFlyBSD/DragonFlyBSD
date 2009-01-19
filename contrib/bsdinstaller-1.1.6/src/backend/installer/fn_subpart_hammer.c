@@ -586,7 +586,12 @@ make_create_subpartitions_form(struct i_fn_args *a)
 	    _("Create Subpartitions"),
 	    _("Set up the subpartitions (also known as just `partitions' "
 	    "in BSD tradition) you want to have on this primary "
-	    "partition.\n\n"
+	    "partition.\n\nIMPORTANT: "
+	    "You have chosen HAMMER as your file system. This means you will "
+	    "not need to create separate subpartitions for /home, /usr, /var and "
+	    "/tmp. The installer will create them automatically as pseudo-"
+	    "filesystems (PFS) for you. In most cases you should be fine with "
+	    "the default settings.\n\n"
 	    "For Capacity, use 'M' to indicate megabytes, 'G' to "
 	    "indicate gigabytes, or a single '*' to indicate "
 	    "'use the remaining space on the primary partition'."),

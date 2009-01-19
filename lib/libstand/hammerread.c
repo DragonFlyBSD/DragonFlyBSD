@@ -421,11 +421,13 @@ hfind(struct hfs *hfs, hammer_base_elm_t key, hammer_base_elm_t end)
 	hammer_off_t nodeoff = hfs->root;
 	hammer_node_ondisk_t node;
 	hammer_btree_elm_t e = NULL;
+	int internal;
 
 loop:
 	node = hread(hfs, nodeoff);
 	if (node == NULL)
 		return (NULL);
+	internal = node->type == HAMMER_BTREE_TYPE_INTERNAL;
 
 #if DEBUG > 3
 	for (int i = 0; i < node->count; i++) {
@@ -433,11 +435,18 @@ loop:
 		hprintb(&node->elms[i].base);
 		printf("\n");
 	}
+	if (internal) {
+		printf("B: ");
+		hprintb(&node->elms[node->count].base);
+		printf("\n");
+	}
 #endif
 
 	n = hammer_btree_search_node(&search, node);
 
-	for (; n < node->count; n++) {
+	// In internal nodes, we cover the right boundary as well.
+	// If we hit it, we'll backtrack.
+	for (; n < node->count + internal; n++) {
 		e = &node->elms[n];
 		r = hammer_btree_cmp(&search, &e->base);
 
@@ -447,7 +456,7 @@ loop:
 
 	// unless we stopped right on the left side, we need to back off a bit
 	if (n > 0)
-		e = &node->elms[n - 1];
+		e = &node->elms[--n];
 
 #if DEBUG > 2
 	printf("  found: ");
@@ -455,7 +464,11 @@ loop:
 	printf("\n");
 #endif
 
-	if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
+	if (internal) {
+		// If we hit the right boundary, backtrack to
+		// the next higher level.
+		if (n == node->count)
+			goto backtrack;
 		nodeoff = e->internal.subtree_offset;
 		backtrack = (e+1)->base;
 		goto loop;
@@ -469,7 +482,7 @@ loop:
 	}
 
 	// Skip deleted elements
-	while (n <= node->count && e->base.delete_tid != 0) {
+	while (n < node->count && e->base.delete_tid != 0) {
 		e++;
 		n++;
 	}
@@ -477,7 +490,8 @@ loop:
 	// In the unfortunate event when there is no next
 	// element in this node, we repeat the search with
 	// a key beyond the right boundary
-	if (n > node->count) {
+	if (n == node->count) {
+backtrack:
 		search = backtrack;
 		nodeoff = hfs->root;
 

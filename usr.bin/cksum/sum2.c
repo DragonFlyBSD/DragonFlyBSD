@@ -31,18 +31,23 @@
  * SUCH DAMAGE.
  *
  * @(#)sum2.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/cksum/sum2.c,v 1.4 1999/12/05 20:03:22 charnier Exp $
+ * $FreeBSD: src/usr.bin/cksum/sum2.c,v 1.8 2003/03/13 23:32:28 robert Exp $
  * $DragonFly: src/usr.bin/cksum/sum2.c,v 1.4 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <sys/types.h>
+
 #include <unistd.h>
+#include <stdint.h>
+
+#include "extern.h"
 
 int
-csum2(int fd, u_int32_t *cval, u_int32_t *clen)
+csum2(int fd, uint32_t *cval, off_t *clen)
 {
-	u_int32_t crc, total;
+	uint32_t lcrc;
 	int nr;
+	off_t total;
 	u_char *p;
 	u_char buf[8192];
 
@@ -51,19 +56,19 @@ csum2(int fd, u_int32_t *cval, u_int32_t *clen)
 	 *
 	 *   s = sum of all bytes
 	 *   r = s % 2^16 + (s % 2^32) / 2^16
-	 * crc = (r % 2^16) + r / 2^16
+	 * lcrc = (r % 2^16) + r / 2^16
 	 */
-	crc = total = 0;
+	lcrc = total = 0;
 	while ((nr = read(fd, buf, sizeof(buf))) > 0)
 		for (total += nr, p = buf; nr--; ++p)
-			crc += *p;
+			lcrc += *p;
 	if (nr < 0)
-		return(1);
+		return (1);
 
-	crc = (crc & 0xffff) + (crc >> 16);
-	crc = (crc & 0xffff) + (crc >> 16);
+	lcrc = (lcrc & 0xffff) + (lcrc >> 16);
+	lcrc = (lcrc & 0xffff) + (lcrc >> 16);
 
-	*cval = crc;
+	*cval = lcrc;
 	*clen = total;
-	return(0);
+	return (0);
 }

@@ -66,7 +66,60 @@
 #include "pathnames.h"
 #include "fn.h"
 
-static const char *pfs_mountpt[5] = {"/var", "/tmp", "/usr", "/home", NULL};
+static const char *pfs_mountpt[8] = {"/var", "/tmp", "/usr", "/home",
+	"/usr/obj", "/var/crash", "/var/tmp", NULL};
+
+static const int pfs_nohistory[8] = {0, 0, 0, 0, 1, 1, 1};
+
+static void
+handle_pfs(struct i_fn_args *a, struct commands *cmds)
+{
+	int j;
+
+	/*
+	 * Create PFS root directory.
+	 */
+	command_add(cmds, "%s%s -p %smnt/pfs",
+	    a->os_root, cmd_name(a, "MKDIR"),
+	    a->os_root);
+
+	for (j = 0; pfs_mountpt[j] != NULL; j++) {
+		/*
+		 * We have a PFS for a subdirectory, e.g. /var/crash, so we
+		 * need to create /pfs/var.crash
+		 */
+		if (rindex(pfs_mountpt[j]+1, '/') != NULL) {
+			command_add(cmds, "%s%s pfs-master %smnt/pfs%s.%s",
+			    a->os_root, cmd_name(a, "HAMMER"),
+			    a->os_root, dirname(pfs_mountpt[j]),
+			    basename(pfs_mountpt[j]));
+			command_add(cmds, "%s%s -p %smnt%s",
+			    a->os_root, cmd_name(a, "MKDIR"),
+			    a->os_root, pfs_mountpt[j]);
+			command_add(cmds, "%s%s %smnt/pfs%s.%s %smnt%s",
+			    a->os_root, cmd_name(a, "MOUNT_NULL"),
+			    a->os_root, dirname(pfs_mountpt[j]),
+			    basename(pfs_mountpt[j]),
+			    a->os_root, pfs_mountpt[j]);
+			if (pfs_nohistory[j] == 1)
+				command_add(cmds, "%s%s nohistory %smnt%s",
+				    a->os_root, cmd_name(a, "CHFLAGS"),
+				    a->os_root, pfs_mountpt[j]);
+		}
+		else {
+			command_add(cmds, "%s%s pfs-master %smnt/pfs%s",
+			    a->os_root, cmd_name(a, "HAMMER"),
+			    a->os_root, pfs_mountpt[j]);
+			command_add(cmds, "%s%s -p %smnt%s",
+			    a->os_root, cmd_name(a, "MKDIR"),
+			    a->os_root, pfs_mountpt[j]);
+			command_add(cmds, "%s%s %smnt/pfs%s %smnt%s",
+			    a->os_root, cmd_name(a, "MOUNT_NULL"),
+			    a->os_root, pfs_mountpt[j],
+			    a->os_root, pfs_mountpt[j]);
+		}
+	}
+}
 
 /*
  * fn_install_os: actually put DragonFly on a disk.
@@ -93,34 +146,30 @@ fn_install_os(struct i_fn_args *a)
         if (!is_file("%s%s", a->os_root, SOURCES_CONF_FILE)) {
 		i_log(a, "Using internal copy sources table.");
 		strcpy(cp_src[0],"/COPYRIGHT");
-		strcpy(cp_src[1],"/var");
-		strcpy(cp_src[2],"/bin");
-		strcpy(cp_src[3],"/boot");
-		strcpy(cp_src[4],"/cdrom");
-		strcpy(cp_src[5],"/dev");
-		strcpy(cp_src[6],"/etc");
-		strcpy(cp_src[7],"/libexec");
-		strcpy(cp_src[8],"/lib");
-		strcpy(cp_src[9],"/kernel");
-		strcpy(cp_src[10],"/modules");
-		strcpy(cp_src[11],"/root");
-		strcpy(cp_src[12],"/sbin");
-		strcpy(cp_src[13],"/sys");
-		strcpy(cp_src[14],"/tmp");
-		strcpy(cp_src[15],"/usr/bin");
-		strcpy(cp_src[16],"/usr/games");
-		strcpy(cp_src[17],"/usr/include");
-		strcpy(cp_src[18],"/usr/lib");
-		strcpy(cp_src[19],"/usr/local");
-		strcpy(cp_src[20],"/usr/local/OpenOffice.org1.1.3");
-		strcpy(cp_src[21],"/usr/X11R6");
-		strcpy(cp_src[22],"/usr/libdata");
-		strcpy(cp_src[23],"/usr/libexec");
-		strcpy(cp_src[24],"/usr/obj");
-		strcpy(cp_src[25],"/usr/sbin");
-		strcpy(cp_src[26],"/usr/share");
-		strcpy(cp_src[27],"/usr/src");
-		strcpy(cp_src[28],"");
+		strcpy(cp_src[1],"/bin");
+		strcpy(cp_src[2],"/boot");
+		strcpy(cp_src[3],"/cdrom");
+		strcpy(cp_src[4],"/dev");
+		strcpy(cp_src[5],"/etc");
+		strcpy(cp_src[6],"/root");
+		strcpy(cp_src[7],"/sbin");
+		strcpy(cp_src[8],"/sys");
+		strcpy(cp_src[9],"/tmp");
+		strcpy(cp_src[10],"/usr/Makefile");
+		strcpy(cp_src[11],"/usr/bin");
+		strcpy(cp_src[12],"/usr/games");
+		strcpy(cp_src[13],"/usr/include");
+		strcpy(cp_src[14],"/usr/lib");
+		strcpy(cp_src[15],"/usr/libdata");
+		strcpy(cp_src[16],"/usr/libexec");
+		strcpy(cp_src[17],"/usr/local");
+		strcpy(cp_src[18],"/usr/obj");
+		strcpy(cp_src[19],"/usr/pkg");
+		strcpy(cp_src[20],"/usr/sbin");
+		strcpy(cp_src[21],"/usr/share");
+		strcpy(cp_src[22],"/usr/src");
+		strcpy(cp_src[23],"/var");
+		strcpy(cp_src[24],"");
 	} else {
 		snprintf(file_path, 256, "%s%s", a->os_root, SOURCES_CONF_FILE);
                 sources_conf = fopen(file_path, "r");
@@ -236,26 +285,11 @@ fn_install_os(struct i_fn_args *a)
 		}
 	}
 
-	if (use_hammer == 1) {
-		/* Create PFS dir */
-		command_add(cmds, "%s%s -p %smnt/pfs",
-		    a->os_root, cmd_name(a, "MKDIR"),
-		    a->os_root);
-
-		/* mount null pfs */
-		for (j = 0; pfs_mountpt[j] != NULL; j++) {
-			command_add(cmds, "%s%s pfs-master %smnt/pfs%s",
-			    a->os_root, cmd_name(a, "HAMMER"),
-			    a->os_root, pfs_mountpt[j]);
-			command_add(cmds, "%s%s -p %smnt%s",
-			    a->os_root, cmd_name(a, "MKDIR"),
-			    a->os_root, pfs_mountpt[j]);
-			command_add(cmds, "%s%s %smnt/pfs%s %smnt%s",
-			    a->os_root, cmd_name(a, "MOUNT_NULL"),
-			    a->os_root, pfs_mountpt[j],
-			    a->os_root, pfs_mountpt[j]);
-		}
-	}
+	/*
+	 * Take care of HAMMER PFS.
+	 */
+	if (use_hammer == 1)
+		handle_pfs(a, cmds);
 
 	/*
 	 * Actually copy files now.
@@ -550,13 +584,25 @@ fn_install_os(struct i_fn_args *a)
 			}
 		}
 	}
+
+	/*
+	 * Take care of HAMMER PFS null mounts.
+	 */
 	if (use_hammer == 1) {
 		for (j = 0; pfs_mountpt[j] != NULL; j++) {
-			command_add(cmds, "%s%s '/pfs%s\t\t%s\t\tnull\trw\t\t0\t0' >>%smnt/etc/fstab",
-			    a->os_root, cmd_name(a, "ECHO"),
-			    pfs_mountpt[j],
-			    pfs_mountpt[j],
-			    a->os_root);
+			if (rindex(pfs_mountpt[j]+1, '/') != NULL)
+				command_add(cmds, "%s%s '/pfs%s.%s\t%s\t\tnull\trw\t\t0\t0' >>%smnt/etc/fstab",
+				    a->os_root, cmd_name(a, "ECHO"),
+				    dirname(pfs_mountpt[j]),
+				    basename(pfs_mountpt[j]),
+				    pfs_mountpt[j],
+				    a->os_root);
+			else
+				command_add(cmds, "%s%s '/pfs%s\t\t%s\t\tnull\trw\t\t0\t0' >>%smnt/etc/fstab",
+				    a->os_root, cmd_name(a, "ECHO"),
+				    pfs_mountpt[j],
+				    pfs_mountpt[j],
+				    a->os_root);
 		}
 	}
 

@@ -243,11 +243,10 @@
 
 			IF YOU HAVE PROBLEMS BOOTING FROM HD
 
-    There are a couple of things to try.  If you can select CHS or LBA mode
-    in your BIOS, try changing the mode to LBA.  If that doesn't work, boot
-    from the CD again and use boot0cfg to turn on packet mode (boot0cfg -o
-    packet ad0).  Also try booting with and without ACPI (option 1 or 2 in
-    the boot menu).
+    There are a couple of things to try.  Try booting from the CD again and
+    use boot0cfg to turn off packet mode (boot0cfg -o nopacket ad0).  If you
+    can select CHS or LBA mode in your BIOS, try changing the mode to LBA.
+    Also try booting with and without ACPI (option 1 or 2 in the boot menu).
 
     Once you have a working HD based system you can clean up /etc/rc.conf
     to enable things like cron, sendmail, setup your networking, and so

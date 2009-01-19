@@ -30,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)fingerd.8	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/libexec/fingerd/fingerd.8,v 1.4.2.3 2001/08/16 10:44:15 ru Exp $
+.\" $FreeBSD: src/libexec/fingerd/fingerd.8,v 1.14 2005/01/18 09:29:39 ru Exp $
 .\" $DragonFly: src/libexec/fingerd/fingerd.8,v 1.5 2007/11/23 23:16:36 swildner Exp $
 .\"
 .Dd June 4, 1993
@@ -45,20 +45,28 @@
 .Op Fl l
 .Op Fl p Ar filename
 .Sh DESCRIPTION
-.Nm Fingerd
-is a simple protocol based on
+The
+.Nm
+utility uses a simple protocol based on
 .%T RFC 1196
-that provides an interface to the
-Name and Finger programs at several network sites.
-The program is supposed to return a friendly,
+that provides an interface to
+.Xr finger 1
+at several network sites.
+It is supposed to return a friendly,
 human-oriented status report on either the system at the moment
 or a particular person in depth.
 There is no required format and the
 protocol consists mostly of specifying a single
-.Dq command line .
+.Dq "command line" ,
+thus,
+.Nm
+can also be used to implement other protocols in conjunction with the
+.Fl p
+flag.
 .Pp
-.Nm Fingerd
-is started by
+The
+.Nm
+utility is started by
 .Xr inetd 8 ,
 which listens for
 .Tn TCP
@@ -68,10 +76,11 @@ terminated by a
 .Aq Tn CRLF
 which is passed to
 .Xr finger 1 .
-.Nm Fingerd
-closes its connections as soon as the output is finished.
+The
+.Nm
+utility closes its connections as soon as the output is finished.
 .Pp
-If the line is null (i.e. just a
+If the line is null (i.e., just a
 .Aq Tn CRLF
 is sent) then
 .Xr finger 1
@@ -118,6 +127,13 @@ By specifying a customized local server,
 this option allows a system manager
 to have more control over what information is
 provided to remote sites.
+If
+.Fl p
+is specified,
+.Nm
+will also set the environment variable
+.Ev FINGERD_REMOTE_HOST
+to the name of the host making the request.
 .El
 .Sh SEE ALSO
 .Xr finger 1 ,
@@ -125,7 +141,7 @@ provided to remote sites.
 .Sh HISTORY
 The
 .Nm
-command appeared in
+utility appeared in
 .Bx 4.3 .
 .Sh BUGS
 Connecting directly to the server from a
@@ -135,8 +151,9 @@ or an equally narrow-minded
 user program can result
 in meaningless attempts at option negotiation being sent to the
 server, which will foul up the command line interpretation.
-.Nm Fingerd
-should be taught to filter out
+The
+.Nm
+utility should be taught to filter out
 .Tn IAC Ns \'s
 and perhaps even respond
 negatively

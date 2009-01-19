@@ -1,8 +1,8 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile.inc,v 1.7.2.11 2003/02/20 15:07:32 nectar Exp $
 # $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.18 2008/09/27 21:04:45 pavalos Exp $
 
-OSSLVERSION=	0.9.8i
-LCRYPTO_SRC=	${.CURDIR}/../../../crypto/openssl-0.9
+OSSLVERSION=	0.9.8j
+LCRYPTO_SRC=	${.CURDIR}/../../../crypto/openssl
 LCRYPTO_DOC=	${LCRYPTO_SRC}/doc
 
 CFLAGS+=	-DTERMIOS -DANSI_SOURCE
@@ -11,6 +11,7 @@ CFLAGS+=	-I${LCRYPTO_SRC} -I${LCRYPTO_SRC}/crypto \
 
 CFLAGS+=	-DOPENSSL_NO_GMP
 CFLAGS+=	-DOPENSSL_NO_CMS
+CFLAGS+=	-DOPENSSL_NO_JPAKE
 
 .if !defined(WANT_IDEA)
 CFLAGS+=	-DOPENSSL_NO_IDEA
@@ -26,6 +27,7 @@ CRYTPO_HDRS=	\
 	../e_os.h ../e_os2.h \
 	crypto.h \
 	ebcdic.h \
+	fips_err.h \
 	opensslv.h \
 	ossl_typ.h \
 	symhacks.h \
@@ -137,7 +139,6 @@ man-update:
 
 man-makefile-update:
 	rm -f ${.CURDIR}/Makefile.man
-	echo '# $$''DragonFly$$' >> ${.CURDIR}/Makefile.man
 	echo '# DO NOT EDIT: generated from man-makefile-update target' >> \
 	    ${.CURDIR}/Makefile.man
 	for i in ${LCRYPTO_DOC}/${_docs}/*.pod; do \

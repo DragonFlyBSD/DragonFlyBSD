@@ -10,11 +10,17 @@
  * use.  An error-free packet will leave 0xDEBB20E3 in the crc.
  *			Spencer Garrett <srg@quick.com>
  *
- * $FreeBSD: src/usr.bin/cksum/crc32.c,v 1.5 1999/12/05 20:03:21 charnier Exp $
+ * $FreeBSD: src/usr.bin/cksum/crc32.c,v 1.9 2003/03/13 23:32:28 robert Exp $
  * $DragonFly: src/usr.bin/cksum/crc32.c,v 1.4 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <sys/types.h>
+
+#include <stdio.h>
+#include <stdint.h>
+#include <unistd.h>
+
+#include "extern.h"
 
 #define CRC(crc, ch)	 (crc = (crc >> 8) ^ crctab[(crc ^ (ch)) & 0xff])
 
@@ -22,7 +28,7 @@
  *	x^32 + x^26 + x^23 + x^22 + x^16 +
  *	x^12 + x^11 + x^10 + x^8 + x^7 + x^5 + x^4 + x^2 + x^1 + 1
  */
-static const u_int32_t crctab[256] = {
+static const uint32_t crctab[256] = {
 	0x00000000, 0x77073096, 0xee0e612c, 0x990951ba,
 	0x076dc419, 0x706af48f, 0xe963a535, 0x9e6495a3,
 	0x0edb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988,
@@ -89,31 +95,28 @@ static const u_int32_t crctab[256] = {
 	0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d,
 };
 
-#include <stdio.h>
-#include <sys/types.h>
-#include <unistd.h>
-
-u_int32_t crc32_total = 0 ;
+uint32_t crc32_total = 0;
 
 int
-crc32(int fd, u_int32_t *cval, u_int32_t *clen)
+crc32(int fd, uint32_t *cval, off_t *clen)
 {
-    u_int32_t crc = ~0;
+    uint32_t lcrc = ~0;
+    int nr ;
+    off_t len ;
     char buf[BUFSIZ], *p ;
-    int len, nr ;
 	
     len = 0 ;
     crc32_total = ~crc32_total ;
     while ((nr = read(fd, buf, sizeof(buf))) > 0)
         for (len += nr, p = buf; nr--; ++p) {
-	    CRC(crc, *p) ;
+	    CRC(lcrc, *p) ;
 	    CRC(crc32_total, *p) ;
 	}
     if (nr < 0)
         return 1 ;
 
     *clen = len ;
-    *cval = ~crc ;
+    *cval = ~lcrc ;
     crc32_total = ~crc32_total ;
     return 0 ;
 }

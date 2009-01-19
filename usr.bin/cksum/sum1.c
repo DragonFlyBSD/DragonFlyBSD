@@ -31,19 +31,23 @@
  * SUCH DAMAGE.
  *
  * @(#)sum1.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/cksum/sum1.c,v 1.4 1999/12/05 20:03:22 charnier Exp $
+ * $FreeBSD: src/usr.bin/cksum/sum1.c,v 1.8 2003/03/13 23:32:28 robert Exp $
  * $DragonFly: src/usr.bin/cksum/sum1.c,v 1.4 2005/04/10 20:55:38 drhodus Exp $
  */
 
 #include <sys/types.h>
+
 #include <unistd.h>
+#include <stdint.h>
+
+#include "extern.h"
 
 int
-csum1(int fd, u_int32_t *cval, u_int32_t *clen)
+csum1(int fd, uint32_t *cval, off_t *clen)
 {
-	u_int32_t total;
 	int nr;
-	u_int crc;
+	u_int lcrc;
+	off_t total;
 	u_char *p;
 	u_char buf[8192];
 
@@ -51,17 +55,17 @@ csum1(int fd, u_int32_t *cval, u_int32_t *clen)
 	 * 16-bit checksum, rotating right before each addition;
 	 * overflow is discarded.
 	 */
-	crc = total = 0;
+	lcrc = total = 0;
 	while ((nr = read(fd, buf, sizeof(buf))) > 0)
 		for (total += nr, p = buf; nr--; ++p) {
-			if (crc & 1)
-				crc |= 0x10000;
-			crc = ((crc >> 1) + *p) & 0xffff;
+			if (lcrc & 1)
+				lcrc |= 0x10000;
+			lcrc = ((lcrc >> 1) + *p) & 0xffff;
 		}
 	if (nr < 0)
-		return(1);
+		return (1);
 
-	*cval = crc;
+	*cval = lcrc;
 	*clen = total;
-	return(0);
+	return (0);
 }

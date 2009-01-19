@@ -30,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)comsat.8	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/libexec/comsat/comsat.8,v 1.6.2.4 2002/08/18 17:30:53 johan Exp $
+.\" $FreeBSD: src/libexec/comsat/comsat.8,v 1.14 2005/02/13 23:45:48 ru Exp $
 .\" $DragonFly: src/libexec/comsat/comsat.8,v 1.3 2006/02/17 19:33:31 swildner Exp $
 .\"
 .Dd August 9, 2002
@@ -42,11 +42,13 @@
 .Sh SYNOPSIS
 .Nm
 .Sh DESCRIPTION
-.Nm Comsat
-is the server process which receives reports of incoming mail
+The
+.Nm
+utility is the server process which receives reports of incoming mail
 and notifies users if they have requested this service.
-.Nm Comsat
-receives messages on a datagram port associated with the
+The
+.Nm
+utility receives messages on a datagram port associated with the
 .Dq biff
 service
 specification (see
@@ -55,38 +57,43 @@ and
 .Xr inetd 8 ) .
 The one line messages are of the form:
 .Pp
-.Dl user@mailbox-offset[:mailbox-name]
+.D1 Ar user Ns @ Ns Ar mailbox Ns - Ns Ar offset Ns Op : Ns Ar mailbox-name
 .Pp
 If the
-.Em user
+.Ar user
 specified is logged in to the system and the associated terminal has
 the owner execute bit turned on (by a
-.Dq Li biff y ) ,
+.Dq Nm biff Cm y ) ,
 the
-.Em offset
+.Ar offset
 is used as a seek offset into the appropriate mailbox file and
 the first 7 lines or 560 characters of the message are printed
-on the user's terminal.  Lines which appear to be part of
+on the user's terminal.
+Lines which appear to be part of
 the message header other than the
-.Dq From ,
-.Dq \&To ,
-.Dq Date ,
+.Dq Li From ,
+.Dq Li \&To ,
+.Dq Li Date ,
 or
-.Dq Subject
+.Dq Li Subject
 lines are not included in the displayed message.
 .Pp
 If the
-.Em user
+.Ar user
 specified is logged in to the system and the associated terminal has
 the group execute bit turned on (by a
-.Dq Li biff b ) ,
-two bell characters (ASCII \\007) are printed on the user's terminal.
+.Dq Nm biff Cm b ) ,
+two bell characters
+.Tn ( ASCII
+\\007) are printed on the user's terminal.
 .Pp
-If mailbox-name omitted, standard mailbox assumed.
+If
+.Ar mailbox-name
+omitted, standard mailbox assumed.
 .Sh FILES
-.Bl -tag -width /var/mail/user -compact
+.Bl -tag -width ".Pa /var/mail/user" -compact
 .It Pa /var/run/utmp
-to find out who's logged on and on what terminals
+to find out who is logged on and on what terminals
 .It Pa /var/mail/user
 standard mailbox
 .El
@@ -96,7 +103,7 @@ standard mailbox
 .Sh HISTORY
 The
 .Nm
-command appeared in
+utility appeared in
 .Bx 4.2 .
 .Sh BUGS
 The message header filtering is prone to error.
