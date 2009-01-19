@@ -304,9 +304,18 @@ vinvalbuf(struct vnode *vp, int flags, int slpflag, int slptimeo)
 			if ((error = VOP_FSYNC(vp, MNT_WAIT)) != 0)
 				return (error);
 			crit_enter();
-			if (vp->v_track_write.bk_active > 0 ||
-			    !RB_EMPTY(&vp->v_rbdirty_tree))
+
+			/*
+			 * Dirty bufs may be left or generated via races
+			 * in circumstances where vinvalbuf() is called on
+			 * a vnode not undergoing reclamation.   Only
+			 * panic if we are trying to reclaim the vnode.
+			 */
+			if ((vp->v_flag & VRECLAIMED) &&
+			    (vp->v_track_write.bk_active > 0 ||
+			    !RB_EMPTY(&vp->v_rbdirty_tree))) {
 				panic("vinvalbuf: dirty bufs");
+			}
 		}
 		crit_exit();
   	}
