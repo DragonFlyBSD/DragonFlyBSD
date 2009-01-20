@@ -97,7 +97,7 @@ hammer_cmd_cleanup(char **av, int ac)
 
 	tzset();
 	if (ac == 0) {
-		fp = popen("mount -t hammer,null", "r");
+		fp = popen("/sbin/mount -t hammer,null", "r");
 		if (fp == NULL)
 			errx(1, "hammer cleanup: 'mount' failed");
 		while (fgets(buf, sizeof(buf), fp) != NULL) {
