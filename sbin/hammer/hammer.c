@@ -40,6 +40,7 @@
 
 static void hammer_parsedevs(const char *blkdevs);
 static void sigalrm(int signo);
+static void sigintr(int signo);
 static void usage(int exit_code);
 
 int RecurseOpt;
@@ -49,6 +50,8 @@ int NoSyncOpt;
 int TwoWayPipeOpt;
 int TimeoutOpt;
 int DelayOpt = 5;
+int RunningIoctl;
+int DidInterrupt;
 u_int64_t BandwidthOpt;
 const char *CyclePath;
 const char *LinkPath;
@@ -134,6 +137,7 @@ main(int ac, char **av)
 	}
 
 	signal(SIGALRM, sigalrm);
+	signal(SIGINT, sigintr);
 
 	if (strcmp(av[0], "synctid") == 0) {
 		hammer_cmd_synctid(av + 1, ac - 1);
@@ -352,6 +356,16 @@ static
 void
 sigalrm(int signo __unused)
 {
+	/* do nothing (interrupts HAMMER ioctl) */
+}
+
+static
+void
+sigintr(int signo __unused)
+{
+	if (RunningIoctl == 0)
+		_exit(1);
+	DidInterrupt = 1;
 	/* do nothing (interrupts HAMMER ioctl) */
 }
 

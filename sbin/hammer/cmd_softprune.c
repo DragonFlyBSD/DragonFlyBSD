@@ -145,10 +145,13 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 			rcode = 1;
 			continue;
 		}
-		printf("objspace %016llx %016llx\n",
+		printf("objspace %016llx:%04x %016llx:%04x\n",
 		       scan->prune.key_beg.obj_id,
-		       scan->prune.key_end.obj_id);
+		       scan->prune.key_beg.localization,
+		       scan->prune.key_end.obj_id,
+		       scan->prune.key_end.localization);
 
+		RunningIoctl = 1;
 		if (ioctl(fd, HAMMERIOC_PRUNE, &scan->prune) < 0) {
 			printf("Prune %s failed: %s\n",
 			       scan->filesystem, strerror(errno));
@@ -174,6 +177,7 @@ hammer_cmd_softprune(char **av, int ac, int everything_opt)
 			scan->prune.stat_dirrecords,
 			scan->prune.stat_bytes
 		);
+		RunningIoctl = 0;
 		close(fd);
 	}
 	if (rcode)

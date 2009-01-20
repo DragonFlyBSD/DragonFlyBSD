@@ -715,6 +715,7 @@ runcmd(int *resp, const char *ctl, ...)
 	/*
 	 * Run the command.
 	 */
+	RunningIoctl = 1;
 	if ((pid = fork()) == 0) {
 		if (VerboseOpt < 2) {
 			int fd = open("/dev/null", O_RDWR);
@@ -727,10 +728,14 @@ runcmd(int *resp, const char *ctl, ...)
 		res = 127;
 	} else {
 		int status;
+
 		while (waitpid(pid, &status, 0) != pid)
 			;
 		res = WEXITSTATUS(status);
 	}
+	RunningIoctl = 0;
+	if (DidInterrupt)
+		_exit(1);
 
 	free(cmd);
 	free(av);

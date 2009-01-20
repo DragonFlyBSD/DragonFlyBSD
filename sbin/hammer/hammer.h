@@ -66,6 +66,8 @@ extern int QuietOpt;
 extern int TwoWayPipeOpt;
 extern int TimeoutOpt;
 extern int DelayOpt;
+extern int RunningIoctl;
+extern int DidInterrupt;
 extern u_int64_t BandwidthOpt;
 extern const char *LinkPath;
 extern const char *CyclePath;
