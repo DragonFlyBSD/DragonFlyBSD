@@ -75,8 +75,16 @@ struct bus_dma_tag {
 /*
  * bus_dma_tag private flags
  */
-#define BUS_DMA_COULD_BOUNCE	BUS_DMA_BUS3
+#define BUS_DMA_BOUNCE_ALIGN	BUS_DMA_BUS2
+#define BUS_DMA_BOUNCE_LOWADDR	BUS_DMA_BUS3
 #define BUS_DMA_MIN_ALLOC_COMP	BUS_DMA_BUS4
+
+#define BUS_DMA_COULD_BOUNCE	(BUS_DMA_BOUNCE_LOWADDR | BUS_DMA_BOUNCE_ALIGN)
+
+#define BUS_DMAMEM_KMALLOC(dmat) \
+	((dmat)->maxsize <= PAGE_SIZE && \
+	 (dmat)->alignment <= PAGE_SIZE && \
+	 (dmat)->lowaddr >= ptoa(Maxmem))
 
 struct bounce_page {
 	vm_offset_t	vaddr;		/* kva of bounce buffer */
@@ -128,8 +136,10 @@ static STAILQ_HEAD(, bounce_zone) bounce_zone_list =
 int busdma_swi_pending;
 static int total_bounce_pages;
 static int max_bounce_pages = MAX_BPAGES;
+static int bounce_alignment = 0; /* XXX temporary */
 
 TUNABLE_INT("hw.busdma.max_bpages", &max_bounce_pages);
+TUNABLE_INT("hw.busdma.bounce_alignment", &bounce_alignment);
 
 struct bus_dmamap {
 	struct bp_list	bpages;
@@ -172,10 +182,10 @@ run_filter(bus_dma_tag_t dmat, bus_addr_t paddr)
 
 	retval = 0;
 	do {
-		if (paddr > dmat->lowaddr
-		 && paddr <= dmat->highaddr
-		 && (dmat->filter == NULL
-		  || (*dmat->filter)(dmat->filterarg, paddr) != 0))
+		if (((paddr > dmat->lowaddr && paddr <= dmat->highaddr) ||
+		     (bounce_alignment && (paddr & (dmat->alignment - 1)) != 0))
+		 && (dmat->filter == NULL ||
+		     dmat->filter(dmat->filterarg, paddr) != 0))
 			retval = 1;
 
 		dmat = dmat->parent;
@@ -266,7 +276,10 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 	}
 
 	if (newtag->lowaddr < ptoa(Maxmem))
-		newtag->flags |= BUS_DMA_COULD_BOUNCE;
+		newtag->flags |= BUS_DMA_BOUNCE_LOWADDR;
+	if (bounce_alignment && newtag->alignment > 1 &&
+	    !(newtag->flags & BUS_DMA_ALIGNED))
+		newtag->flags |= BUS_DMA_BOUNCE_ALIGN;
 
 	if ((newtag->flags & BUS_DMA_COULD_BOUNCE) &&
 	    (flags & BUS_DMA_ALLOCNOW) != 0) {
@@ -369,11 +382,17 @@ bus_dmamap_create(bus_dma_tag_t dmat, int flags, bus_dmamap_t *mapp)
 
 		/* Initialize the new map */
 		STAILQ_INIT(&((*mapp)->bpages));
+
 		/*
 		 * Attempt to add pages to our pool on a per-instance
 		 * basis up to a sane limit.
 		 */
-		maxpages = MIN(max_bounce_pages, Maxmem - atop(dmat->lowaddr));
+		if (dmat->flags & BUS_DMA_BOUNCE_ALIGN) {
+			maxpages = max_bounce_pages;
+		} else {
+			maxpages = MIN(max_bounce_pages,
+				       Maxmem - atop(dmat->lowaddr));
+		}
 		if ((dmat->flags & BUS_DMA_MIN_ALLOC_COMP) == 0
 		 || (dmat->map_count > 0
 		  && bz->total_bpages < maxpages)) {
@@ -420,6 +439,30 @@ bus_dmamap_destroy(bus_dma_tag_t dmat, bus_dmamap_t map)
 	return (0);
 }
 
+static __inline bus_size_t
+check_kmalloc(bus_dma_tag_t dmat, const void *vaddr0, int verify)
+{
+	bus_size_t maxsize = 0;
+	uintptr_t vaddr = (uintptr_t)vaddr0;
+
+	if ((vaddr ^ (vaddr + dmat->maxsize - 1)) & ~PAGE_MASK) {
+		kprintf("boundary check failed\n");
+		if (verify)
+			backtrace(); /* XXX panic */
+		maxsize = dmat->maxsize;
+	}
+	if (vaddr & (dmat->alignment - 1)) {
+		kprintf("alignment check failed\n");
+		if (verify)
+			backtrace(); /* XXX panic */
+		if (dmat->maxsize < dmat->alignment)
+			maxsize = dmat->alignment;
+		else
+			maxsize = dmat->maxsize;
+	}
+	return maxsize;
+}
+
 /*
  * Allocate a piece of memory that can be efficiently mapped into
  * bus device space based on the constraints lited in the dma tag.
@@ -428,7 +471,7 @@ bus_dmamap_destroy(bus_dma_tag_t dmat, bus_dmamap_t map)
  * bounce buffers so do not allocate a dma map.
  */
 int
-bus_dmamem_alloc(bus_dma_tag_t dmat, void** vaddr, int flags,
+bus_dmamem_alloc(bus_dma_tag_t dmat, void **vaddr, int flags,
 		 bus_dmamap_t *mapp)
 {
 	int mflags;
@@ -449,22 +492,28 @@ bus_dmamem_alloc(bus_dma_tag_t dmat, void** vaddr, int flags,
 	if (flags & BUS_DMA_ZERO)
 		mflags |= M_ZERO;
 
-	if ((dmat->maxsize <= PAGE_SIZE) &&
-	    dmat->lowaddr >= ptoa(Maxmem)) {
+	if (BUS_DMAMEM_KMALLOC(dmat)) {
+		bus_size_t maxsize;
+
 		*vaddr = kmalloc(dmat->maxsize, M_DEVBUF, mflags);
+
 		/*
-		 * XXX Check whether the allocation crossed a page boundary
-		 * and retry with power-of-2 alignment in that case.
+		 * XXX
+		 * Check whether the allocation
+		 * - crossed a page boundary
+		 * - was not aligned
+		 * Retry with power-of-2 alignment in the above cases.
 		 */
-		if ((((intptr_t)*vaddr) & PAGE_MASK) !=
-		    (((intptr_t)*vaddr + dmat->maxsize) & PAGE_MASK)) {
+		maxsize = check_kmalloc(dmat, *vaddr, 0);
+		if (maxsize) {
 			size_t size;
 
 			kfree(*vaddr, M_DEVBUF);
 			/* XXX check for overflow? */
-			for (size = 1; size <= dmat->maxsize; size <<= 1)
+			for (size = 1; size <= maxsize; size <<= 1)
 				;
 			*vaddr = kmalloc(size, M_DEVBUF, mflags);
+			check_kmalloc(dmat, *vaddr, 1);
 		}
 	} else {
 		/*
@@ -493,8 +542,7 @@ bus_dmamem_free(bus_dma_tag_t dmat, void *vaddr, bus_dmamap_t map)
 	 */
 	if (map != NULL)
 		panic("bus_dmamem_free: Invalid map freed\n");
-	if ((dmat->maxsize <= PAGE_SIZE) &&
-	    dmat->lowaddr >= ptoa(Maxmem))
+	if (BUS_DMAMEM_KMALLOC(dmat))
 		kfree(vaddr, M_DEVBUF);
 	else
 		contigfree(vaddr, dmat->maxsize, M_DEVBUF);
@@ -536,6 +584,11 @@ _bus_dmamap_load_buffer(bus_dma_tag_t dmat,
 
 	if (map == NULL)
 		map = &nobounce_dmamap;
+
+#ifdef INVARIANTS
+	if (dmat->flags & BUS_DMA_ALIGNED)
+		KKASSERT(((uintptr_t)buf & (dmat->alignment - 1)) == 0);
+#endif
 
 	/*
 	 * If we are being called during a callback, pagesneeded will
