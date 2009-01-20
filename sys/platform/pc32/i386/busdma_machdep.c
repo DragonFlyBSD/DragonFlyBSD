@@ -128,7 +128,6 @@ static STAILQ_HEAD(, bounce_zone) bounce_zone_list =
 int busdma_swi_pending;
 static int total_bounce_pages;
 static int max_bounce_pages = MAX_BPAGES;
-static bus_addr_t bounce_lowaddr = BUS_SPACE_MAXADDR;
 
 TUNABLE_INT("hw.busdma.max_bpages", &max_bounce_pages);
 
@@ -275,15 +274,6 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 
 		/* Must bounce */
 
-		if (lowaddr > bounce_lowaddr) {
-			/*
-			 * Go through the pool and kill any pages
-			 * that don't reside below lowaddr.
-			 */
-			panic("bus_dma_tag_create: page reallocation "
-			      "not implemented");
-		}
-
 		error = alloc_bounce_zone(newtag);
 		if (error)
 			goto back;
@@ -388,15 +378,6 @@ bus_dmamap_create(bus_dma_tag_t dmat, int flags, bus_dmamap_t *mapp)
 		 || (dmat->map_count > 0
 		  && bz->total_bpages < maxpages)) {
 			int pages;
-
-			if (dmat->lowaddr > bounce_lowaddr) {
-				/*
-				 * Go through the pool and kill any pages
-				 * that don't reside below lowaddr.
-				 */
-				panic("bus_dmamap_create: page reallocation "
-				      "not implemented");
-			}
 
 			if (flags & BUS_DMA_ONEBPAGE) {
 				pages = 1;
