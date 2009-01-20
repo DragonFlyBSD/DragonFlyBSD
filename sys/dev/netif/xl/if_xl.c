@@ -2141,8 +2141,6 @@ xl_txeof(struct xl_softc *sc)
 			break;
 
 		sc->xl_cdata.xl_tx_head = cur_tx->xl_next;
-		bus_dmamap_sync(sc->xl_tx_mtag, cur_tx->xl_map,
-		    BUS_DMASYNC_POSTWRITE);
 		bus_dmamap_unload(sc->xl_tx_mtag, cur_tx->xl_map);
 		m_freem(cur_tx->xl_mbuf);
 		cur_tx->xl_mbuf = NULL;
@@ -2188,8 +2186,6 @@ xl_txeof_90xB(struct xl_softc *sc)
 			break;
 
 		if (cur_tx->xl_mbuf != NULL) {
-			bus_dmamap_sync(sc->xl_tx_mtag, cur_tx->xl_map,
-			    BUS_DMASYNC_POSTWRITE);
 			bus_dmamap_unload(sc->xl_tx_mtag, cur_tx->xl_map);
 			m_freem(cur_tx->xl_mbuf);
 			cur_tx->xl_mbuf = NULL;
