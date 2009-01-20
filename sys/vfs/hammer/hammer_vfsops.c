@@ -674,6 +674,7 @@ hammer_free_hmp(struct mount *mp)
 	struct hammer_mount *hmp = (void *)mp->mnt_data;
 	hammer_flush_group_t flg;
 	int count;
+	int dummy;
 
 	/*
 	 * Flush anything dirty.  This won't even run if the
@@ -688,7 +689,7 @@ hammer_free_hmp(struct mount *mp)
 				kprintf("HAMMER: umount flushing.");
 			else
 				kprintf(".");
-			tsleep(hmp, 0, "hmrufl", hz);
+			tsleep(&dummy, 0, "hmrufl", hz);
 		}
 		if (count == 30) {
 			kprintf("giving up\n");

@@ -128,6 +128,10 @@ typedef u_int32_t hammer_crc_t;
  * zone 9 (z,v,o):	Record		- actually zone-2 address
  * zone 10 (z,v,o):	Large-data	- actually zone-2 address
  * zone 15:		reserved for sanity
+ *
+ * layer1/layer2 direct map:
+ *	zzzzvvvvvvvvoooo oooooooooooooooo oooooooooooooooo oooooooooooooooo
+ *	----111111111111 1111112222222222 222222222ooooooo oooooooooooooooo
  */
 
 #define HAMMER_ZONE_RAW_VOLUME		0x1000000000000000ULL
