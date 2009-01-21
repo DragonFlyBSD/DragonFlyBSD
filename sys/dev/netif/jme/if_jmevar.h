@@ -66,6 +66,12 @@
 #define	JME_RX_BUF_ALIGN	sizeof(uint64_t)
 #define	JME_SSB_ALIGN		16
 
+#if (BUS_SPACE_MAXADDR != BUS_SPACE_MAXADDR_32BIT)
+#define JME_RING_BOUNDARY	0x100000000ULL
+#else
+#define JME_RING_BOUNDARY	0
+#endif
+
 #define	JME_ADDR_LO(x)		((uint64_t) (x) & 0xFFFFFFFF)
 #define	JME_ADDR_HI(x)		((uint64_t) (x) >> 32)
 

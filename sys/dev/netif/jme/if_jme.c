@@ -121,7 +121,7 @@ static void	jme_init_ssb(struct jme_softc *);
 static int	jme_newbuf(struct jme_softc *, int, struct jme_rxdesc *, int);
 static int	jme_encap(struct jme_softc *, struct mbuf **);
 static void	jme_rxpkt(struct jme_softc *, int, struct mbuf_chain *);
-static int	jme_rxring_dma_alloc(struct jme_softc *, bus_addr_t, int);
+static int	jme_rxring_dma_alloc(struct jme_softc *, int);
 static int	jme_rxbuf_dma_alloc(struct jme_softc *, int);
 
 static void	jme_tick(void *);
@@ -1053,7 +1053,7 @@ static int
 jme_dma_alloc(struct jme_softc *sc)
 {
 	struct jme_txdesc *txd;
-	bus_addr_t busaddr, lowaddr;
+	bus_addr_t busaddr;
 	int error, i;
 
 	sc->jme_cdata.jme_txdesc =
@@ -1065,12 +1065,10 @@ jme_dma_alloc(struct jme_softc *sc)
 			M_DEVBUF, M_WAITOK | M_ZERO);
 	}
 
-	lowaddr = sc->jme_lowaddr;
-again:
 	/* Create parent ring tag. */
 	error = bus_dma_tag_create(NULL,/* parent */
-	    1, 0,			/* algnmnt, boundary */
-	    lowaddr,			/* lowaddr */
+	    1, JME_RING_BOUNDARY,	/* algnmnt, boundary */
+	    sc->jme_lowaddr,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
 	    NULL, NULL,			/* filter, filterarg */
 	    BUS_SPACE_MAXSIZE_32BIT,	/* maxsize */
@@ -1091,7 +1089,7 @@ again:
 	/* Create tag for Tx ring. */
 	error = bus_dma_tag_create(sc->jme_cdata.jme_ring_tag,/* parent */
 	    JME_TX_RING_ALIGN, 0,	/* algnmnt, boundary */
-	    lowaddr,			/* lowaddr */
+	    sc->jme_lowaddr,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
 	    NULL, NULL,			/* filter, filterarg */
 	    JME_TX_RING_SIZE(sc),	/* maxsize */
@@ -1138,46 +1136,9 @@ again:
 	 * Create DMA stuffs for RX ring
 	 */
 	for (i = 0; i < sc->jme_rx_ring_cnt; ++i) {
-		error = jme_rxring_dma_alloc(sc, lowaddr, i);
+		error = jme_rxring_dma_alloc(sc, i);
 		if (error)
 			return error;
-	}
-
-	if (lowaddr != BUS_SPACE_MAXADDR_32BIT) {
-		bus_addr_t ring_end;
-
-		/* Tx/Rx descriptor queue should reside within 4GB boundary. */
-		ring_end = sc->jme_cdata.jme_tx_ring_paddr +
-			   JME_TX_RING_SIZE(sc);
-		if (JME_ADDR_HI(ring_end) !=
-		    JME_ADDR_HI(sc->jme_cdata.jme_tx_ring_paddr)) {
-			device_printf(sc->jme_dev, "TX ring 4GB boundary "
-			    "crossed, switching to 32bit DMA address mode.\n");
-			jme_dma_free(sc, 0);
-			/* Limit DMA address space to 32bit and try again. */
-			lowaddr = BUS_SPACE_MAXADDR_32BIT;
-			goto again;
-		}
-
-		for (i = 0; i < sc->jme_rx_ring_cnt; ++i) {
-			bus_addr_t ring_start;
-
-			ring_start =
-			    sc->jme_cdata.jme_rx_data[i].jme_rx_ring_paddr;
-			ring_end = ring_start + JME_RX_RING_SIZE(sc);
-			if (JME_ADDR_HI(ring_end) != JME_ADDR_HI(ring_start)) {
-				device_printf(sc->jme_dev,
-				"%dth RX ring 4GB boundary crossed, "
-				"switching to 32bit DMA address mode.\n", i);
-				jme_dma_free(sc, 0);
-				/*
-				 * Limit DMA address space to 32bit and
-				 * try again.
-				 */
-				lowaddr = BUS_SPACE_MAXADDR_32BIT;
-				goto again;
-			}
-		}
 	}
 
 	/* Create parent buffer tag. */
@@ -3149,7 +3110,7 @@ jme_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 #endif	/* DEVICE_POLLING */
 
 static int
-jme_rxring_dma_alloc(struct jme_softc *sc, bus_addr_t lowaddr, int ring)
+jme_rxring_dma_alloc(struct jme_softc *sc, int ring)
 {
 	struct jme_rxdata *rdata = &sc->jme_cdata.jme_rx_data[ring];
 	bus_addr_t busaddr;
@@ -3158,7 +3119,7 @@ jme_rxring_dma_alloc(struct jme_softc *sc, bus_addr_t lowaddr, int ring)
 	/* Create tag for Rx ring. */
 	error = bus_dma_tag_create(sc->jme_cdata.jme_ring_tag,/* parent */
 	    JME_RX_RING_ALIGN, 0,	/* algnmnt, boundary */
-	    lowaddr,			/* lowaddr */
+	    sc->jme_lowaddr,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
 	    NULL, NULL,			/* filter, filterarg */
 	    JME_RX_RING_SIZE(sc),	/* maxsize */
