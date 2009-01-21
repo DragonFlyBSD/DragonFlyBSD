@@ -112,7 +112,6 @@ static void	jme_rx_intr(struct jme_softc *, uint32_t);
 
 static int	jme_dma_alloc(struct jme_softc *);
 static void	jme_dma_free(struct jme_softc *, int);
-static void	jme_dmamap_ring_cb(void *, bus_dma_segment_t *, int, int);
 static void	jme_dmamap_buf_cb(void *, bus_dma_segment_t *, int,
 				  bus_size_t, int);
 static int	jme_init_rx_ring(struct jme_softc *, int);
@@ -1020,16 +1019,6 @@ jme_sysctl_node(struct jme_softc *sc)
 }
 
 static void
-jme_dmamap_ring_cb(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
-{
-	if (error)
-		return;
-
-	KASSERT(nsegs == 1, ("%s: %d segments returned!", __func__, nsegs));
-	*((bus_addr_t *)arg) = segs->ds_addr;
-}
-
-static void
 jme_dmamap_buf_cb(void *xctx, bus_dma_segment_t *segs, int nsegs,
 		  bus_size_t mapsz __unused, int error)
 {
@@ -1053,7 +1042,7 @@ static int
 jme_dma_alloc(struct jme_softc *sc)
 {
 	struct jme_txdesc *txd;
-	bus_addr_t busaddr;
+	bus_dmamem_t dmem;
 	int error, i;
 
 	sc->jme_cdata.jme_txdesc =
@@ -1085,55 +1074,22 @@ jme_dma_alloc(struct jme_softc *sc)
 	/*
 	 * Create DMA stuffs for TX ring
 	 */
-
-	/* Create tag for Tx ring. */
-	error = bus_dma_tag_create(sc->jme_cdata.jme_ring_tag,/* parent */
-	    JME_TX_RING_ALIGN, 0,	/* algnmnt, boundary */
-	    sc->jme_lowaddr,		/* lowaddr */
-	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
-	    JME_TX_RING_SIZE(sc),	/* maxsize */
-	    1,				/* nsegments */
-	    JME_TX_RING_SIZE(sc),	/* maxsegsize */
-	    0,				/* flags */
-	    &sc->jme_cdata.jme_tx_ring_tag);
+	error = bus_dmamem_coherent(sc->jme_cdata.jme_ring_tag,
+			JME_TX_RING_ALIGN, 0,
+			sc->jme_lowaddr, BUS_SPACE_MAXADDR,
+			JME_TX_RING_SIZE(sc),
+			BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
 	if (error) {
-		device_printf(sc->jme_dev,
-		    "could not allocate Tx ring DMA tag.\n");
+		device_printf(sc->jme_dev, "could not allocate Tx ring.\n");
 		return error;
 	}
-
-	/* Allocate DMA'able memory for TX ring */
-	error = bus_dmamem_alloc(sc->jme_cdata.jme_tx_ring_tag,
-	    (void **)&sc->jme_cdata.jme_tx_ring,
-	    BUS_DMA_WAITOK | BUS_DMA_ZERO,
-	    &sc->jme_cdata.jme_tx_ring_map);
-	if (error) {
-		device_printf(sc->jme_dev,
-		    "could not allocate DMA'able memory for Tx ring.\n");
-		bus_dma_tag_destroy(sc->jme_cdata.jme_tx_ring_tag);
-		sc->jme_cdata.jme_tx_ring_tag = NULL;
-		return error;
-	}
-
-	/*  Load the DMA map for Tx ring. */
-	error = bus_dmamap_load(sc->jme_cdata.jme_tx_ring_tag,
-	    sc->jme_cdata.jme_tx_ring_map, sc->jme_cdata.jme_tx_ring,
-	    JME_TX_RING_SIZE(sc), jme_dmamap_ring_cb, &busaddr, BUS_DMA_NOWAIT);
-	if (error) {
-		device_printf(sc->jme_dev,
-		    "could not load DMA'able memory for Tx ring.\n");
-		bus_dmamem_free(sc->jme_cdata.jme_tx_ring_tag,
-				sc->jme_cdata.jme_tx_ring,
-				sc->jme_cdata.jme_tx_ring_map);
-		bus_dma_tag_destroy(sc->jme_cdata.jme_tx_ring_tag);
-		sc->jme_cdata.jme_tx_ring_tag = NULL;
-		return error;
-	}
-	sc->jme_cdata.jme_tx_ring_paddr = busaddr;
+	sc->jme_cdata.jme_tx_ring_tag = dmem.dmem_tag;
+	sc->jme_cdata.jme_tx_ring_map = dmem.dmem_map;
+	sc->jme_cdata.jme_tx_ring = dmem.dmem_addr;
+	sc->jme_cdata.jme_tx_ring_paddr = dmem.dmem_busaddr;
 
 	/*
-	 * Create DMA stuffs for RX ring
+	 * Create DMA stuffs for RX rings
 	 */
 	for (i = 0; i < sc->jme_rx_ring_cnt; ++i) {
 		error = jme_rxring_dma_alloc(sc, i);
@@ -1161,52 +1117,18 @@ jme_dma_alloc(struct jme_softc *sc)
 	/*
 	 * Create DMA stuffs for shadow status block
 	 */
-
-	/* Create shadow status block tag. */
-	error = bus_dma_tag_create(sc->jme_cdata.jme_buffer_tag,/* parent */
-	    JME_SSB_ALIGN, 0,		/* algnmnt, boundary */
-	    sc->jme_lowaddr,		/* lowaddr */
-	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
-	    JME_SSB_SIZE,		/* maxsize */
-	    1,				/* nsegments */
-	    JME_SSB_SIZE,		/* maxsegsize */
-	    0,				/* flags */
-	    &sc->jme_cdata.jme_ssb_tag);
+	error = bus_dmamem_coherent(sc->jme_cdata.jme_buffer_tag,
+			JME_SSB_ALIGN, 0, sc->jme_lowaddr, BUS_SPACE_MAXADDR,
+			JME_SSB_SIZE, BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
 	if (error) {
 		device_printf(sc->jme_dev,
-		    "could not create shadow status block DMA tag.\n");
+		    "could not create shadow status block.\n");
 		return error;
 	}
-
-	/* Allocate DMA'able memory for shadow status block. */
-	error = bus_dmamem_alloc(sc->jme_cdata.jme_ssb_tag,
-	    (void **)&sc->jme_cdata.jme_ssb_block,
-	    BUS_DMA_WAITOK | BUS_DMA_ZERO,
-	    &sc->jme_cdata.jme_ssb_map);
-	if (error) {
-		device_printf(sc->jme_dev, "could not allocate DMA'able "
-		    "memory for shadow status block.\n");
-		bus_dma_tag_destroy(sc->jme_cdata.jme_ssb_tag);
-		sc->jme_cdata.jme_ssb_tag = NULL;
-		return error;
-	}
-
-	/* Load the DMA map for shadow status block */
-	error = bus_dmamap_load(sc->jme_cdata.jme_ssb_tag,
-	    sc->jme_cdata.jme_ssb_map, sc->jme_cdata.jme_ssb_block,
-	    JME_SSB_SIZE, jme_dmamap_ring_cb, &busaddr, BUS_DMA_NOWAIT);
-	if (error) {
-		device_printf(sc->jme_dev, "could not load DMA'able memory "
-		    "for shadow status block.\n");
-		bus_dmamem_free(sc->jme_cdata.jme_ssb_tag,
-				sc->jme_cdata.jme_ssb_block,
-				sc->jme_cdata.jme_ssb_map);
-		bus_dma_tag_destroy(sc->jme_cdata.jme_ssb_tag);
-		sc->jme_cdata.jme_ssb_tag = NULL;
-		return error;
-	}
-	sc->jme_cdata.jme_ssb_block_paddr = busaddr;
+	sc->jme_cdata.jme_ssb_tag = dmem.dmem_tag;
+	sc->jme_cdata.jme_ssb_map = dmem.dmem_map;
+	sc->jme_cdata.jme_ssb_block = dmem.dmem_addr;
+	sc->jme_cdata.jme_ssb_block_paddr = dmem.dmem_busaddr;
 
 	/*
 	 * Create DMA stuffs for TX buffers
@@ -3114,54 +3036,23 @@ static int
 jme_rxring_dma_alloc(struct jme_softc *sc, int ring)
 {
 	struct jme_rxdata *rdata = &sc->jme_cdata.jme_rx_data[ring];
-	bus_addr_t busaddr;
+	bus_dmamem_t dmem;
 	int error;
 
-	/* Create tag for Rx ring. */
-	error = bus_dma_tag_create(sc->jme_cdata.jme_ring_tag,/* parent */
-	    JME_RX_RING_ALIGN, 0,	/* algnmnt, boundary */
-	    sc->jme_lowaddr,		/* lowaddr */
-	    BUS_SPACE_MAXADDR,		/* highaddr */
-	    NULL, NULL,			/* filter, filterarg */
-	    JME_RX_RING_SIZE(sc),	/* maxsize */
-	    1,				/* nsegments */
-	    JME_RX_RING_SIZE(sc),	/* maxsegsize */
-	    0,				/* flags */
-	    &rdata->jme_rx_ring_tag);
+	error = bus_dmamem_coherent(sc->jme_cdata.jme_ring_tag,
+			JME_RX_RING_ALIGN, 0,
+			sc->jme_lowaddr, BUS_SPACE_MAXADDR,
+			JME_RX_RING_SIZE(sc),
+			BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
 	if (error) {
 		device_printf(sc->jme_dev,
-		    "could not allocate %dth Rx ring DMA tag.\n", ring);
+		    "could not allocate %dth Rx ring.\n", ring);
 		return error;
 	}
-
-	/* Allocate DMA'able memory for RX ring */
-	error = bus_dmamem_alloc(rdata->jme_rx_ring_tag,
-				 (void **)&rdata->jme_rx_ring,
-				 BUS_DMA_WAITOK | BUS_DMA_ZERO,
-				 &rdata->jme_rx_ring_map);
-	if (error) {
-		device_printf(sc->jme_dev,
-		    "could not allocate DMA'able memory for "
-		    "%dth Rx ring.\n", ring);
-		bus_dma_tag_destroy(rdata->jme_rx_ring_tag);
-		rdata->jme_rx_ring_tag = NULL;
-		return error;
-	}
-
-	/* Load the DMA map for Rx ring. */
-	error = bus_dmamap_load(rdata->jme_rx_ring_tag, rdata->jme_rx_ring_map,
-				rdata->jme_rx_ring, JME_RX_RING_SIZE(sc),
-				jme_dmamap_ring_cb, &busaddr, BUS_DMA_NOWAIT);
-	if (error) {
-		device_printf(sc->jme_dev,
-		    "could not load DMA'able memory for %dth Rx ring.\n", ring);
-		bus_dmamem_free(rdata->jme_rx_ring_tag, rdata->jme_rx_ring,
-				rdata->jme_rx_ring_map);
-		bus_dma_tag_destroy(rdata->jme_rx_ring_tag);
-		rdata->jme_rx_ring_tag = NULL;
-		return error;
-	}
-	rdata->jme_rx_ring_paddr = busaddr;
+	rdata->jme_rx_ring_tag = dmem.dmem_tag;
+	rdata->jme_rx_ring_map = dmem.dmem_map;
+	rdata->jme_rx_ring = dmem.dmem_addr;
+	rdata->jme_rx_ring_paddr = dmem.dmem_busaddr;
 
 	return 0;
 }
