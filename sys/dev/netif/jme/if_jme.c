@@ -111,7 +111,7 @@ static int	jme_rxeof_chain(struct jme_softc *, int,
 static void	jme_rx_intr(struct jme_softc *, uint32_t);
 
 static int	jme_dma_alloc(struct jme_softc *);
-static void	jme_dma_free(struct jme_softc *, int);
+static void	jme_dma_free(struct jme_softc *);
 static void	jme_dmamap_buf_cb(void *, bus_dma_segment_t *, int,
 				  bus_size_t, int);
 static int	jme_init_rx_ring(struct jme_softc *, int);
@@ -919,7 +919,7 @@ jme_detach(device_t dev)
 				     sc->jme_mem_res);
 	}
 
-	jme_dma_free(sc, 1);
+	jme_dma_free(sc);
 
 	return (0);
 }
@@ -1185,7 +1185,7 @@ jme_dma_alloc(struct jme_softc *sc)
 }
 
 static void
-jme_dma_free(struct jme_softc *sc, int detach)
+jme_dma_free(struct jme_softc *sc)
 {
 	struct jme_txdesc *txd;
 	struct jme_rxdesc *rxd;
@@ -1264,17 +1264,15 @@ jme_dma_free(struct jme_softc *sc, int detach)
 		sc->jme_cdata.jme_ring_tag = NULL;
 	}
 
-	if (detach) {
-		if (sc->jme_cdata.jme_txdesc != NULL) {
-			kfree(sc->jme_cdata.jme_txdesc, M_DEVBUF);
-			sc->jme_cdata.jme_txdesc = NULL;
-		}
-		for (r = 0; r < sc->jme_rx_ring_cnt; ++r) {
-			rdata = &sc->jme_cdata.jme_rx_data[r];
-			if (rdata->jme_rxdesc != NULL) {
-				kfree(rdata->jme_rxdesc, M_DEVBUF);
-				rdata->jme_rxdesc = NULL;
-			}
+	if (sc->jme_cdata.jme_txdesc != NULL) {
+		kfree(sc->jme_cdata.jme_txdesc, M_DEVBUF);
+		sc->jme_cdata.jme_txdesc = NULL;
+	}
+	for (r = 0; r < sc->jme_rx_ring_cnt; ++r) {
+		rdata = &sc->jme_cdata.jme_rx_data[r];
+		if (rdata->jme_rxdesc != NULL) {
+			kfree(rdata->jme_rxdesc, M_DEVBUF);
+			rdata->jme_rxdesc = NULL;
 		}
 	}
 }
