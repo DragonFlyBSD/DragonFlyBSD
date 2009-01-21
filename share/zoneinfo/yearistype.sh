@@ -1,7 +1,5 @@
 #! /bin/sh
 
-# $FreeBSD: src/share/zoneinfo/yearistype.sh,v 1.1.2.3.8.1 2000/10/25 19:44:09 wollman Exp $
-# $DragonFly: src/share/zoneinfo/yearistype.sh,v 1.4 2006/10/08 08:56:37 swildner Exp $
 : 'This file is in the public domain, so clarified as of'
 : '2006-07-17 by Arthur David Olson.'
 
