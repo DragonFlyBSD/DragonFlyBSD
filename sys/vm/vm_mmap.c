@@ -984,7 +984,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 {
 	boolean_t fitit;
 	vm_object_t object;
-	struct vnode *vp = NULL;
+	struct vnode *vp;
 	struct thread *td = curthread;
 	struct proc *p;
 	objtype_t type;
@@ -1034,10 +1034,11 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		/*
 		 * Unnamed anonymous regions always start at 0.
 		 */
-		if (handle == 0)
+		if (handle == NULL)
 			foff = 0;
+		vp = NULL;
 	} else {
-		vp = (struct vnode *) handle;
+		vp = (struct vnode *)handle;
 		if (vp->v_type == VCHR) {
 			type = OBJT_DEVICE;
 			handle = (void *)(intptr_t)vp->v_rdev;
@@ -1141,9 +1142,8 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	/*
 	 * Set the access time on the vnode
 	 */
-	if (handle != NULL) {
-		vn_mark_atime(handle, td);
-	}
+	if (vp != NULL)
+		vn_mark_atime(vp, td);
 out:
 	switch (rv) {
 	case KERN_SUCCESS:
