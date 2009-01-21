@@ -985,6 +985,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	boolean_t fitit;
 	vm_object_t object;
 	struct vnode *vp = NULL;
+	struct thread *td = curthread;
 	struct proc *p;
 	objtype_t type;
 	int rv = KERN_SUCCESS;
@@ -1135,6 +1136,13 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 			vm_map_remove(map, *addr, *addr + size);
 			goto out;
 		}
+	}
+
+	/*
+	 * Set the access time on the vnode
+	 */
+	if (handle != NULL) {
+		vn_mark_atime(handle, td);
 	}
 out:
 	switch (rv) {

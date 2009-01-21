@@ -89,6 +89,7 @@ static int ufs_create (struct vop_old_create_args *);
 static int ufs_getattr (struct vop_getattr_args *);
 static int ufs_link (struct vop_old_link_args *);
 static int ufs_makeinode (int mode, struct vnode *, struct vnode **, struct componentname *);
+static int ufs_markatime (struct vop_markatime_args *);
 static int ufs_missingop (struct vop_generic_args *ap);
 static int ufs_mkdir (struct vop_old_mkdir_args *);
 static int ufs_mknod (struct vop_old_mknod_args *);
@@ -441,6 +442,22 @@ ufs_getattr(struct vop_getattr_args *ap)
 	vap->va_type = IFTOVT(ip->i_mode);
 	vap->va_filerev = ip->i_modrev;
 	vap->va_fsmid = ip->i_fsmid;
+	return (0);
+}
+
+static
+int
+ufs_markatime(struct vop_markatime_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+	struct inode *ip = VTOI(vp);
+
+	if (vp->v_mount->mnt_flag & MNT_RDONLY)
+		return (EROFS);
+	if (vp->v_mount->mnt_flag & MNT_NOATIME)
+		return (0);
+	ip->i_flag |= IN_ACCESS;
+	VN_KNOTE(vp, NOTE_ATTRIB);
 	return (0);
 }
 
@@ -2368,6 +2385,7 @@ static struct vop_ops ufs_vnode_vops = {
 	.vop_old_rename =	ufs_rename,
 	.vop_old_rmdir =	ufs_rmdir,
 	.vop_setattr =		ufs_setattr,
+	.vop_markatime =	ufs_markatime,
 	.vop_strategy =		ufs_strategy,
 	.vop_old_symlink =	ufs_symlink,
 	.vop_old_whiteout =	ufs_whiteout
@@ -2384,6 +2402,7 @@ static struct vop_ops ufs_spec_vops = {
 	.vop_read =		ufsspec_read,
 	.vop_reclaim =		ufs_reclaim,
 	.vop_setattr =		ufs_setattr,
+	.vop_markatime =	ufs_markatime,
 	.vop_write =		ufsspec_write
 };
 
@@ -2399,6 +2418,7 @@ static struct vop_ops ufs_fifo_vops = {
 	.vop_read =		ufsfifo_read,
 	.vop_reclaim =		ufs_reclaim,
 	.vop_setattr =		ufs_setattr,
+	.vop_markatime =	ufs_markatime,
 	.vop_write =		ufsfifo_write
 };
 

@@ -123,10 +123,12 @@ are as follows:
 .It st_atime
 Time when file data last accessed.
 Changed by the
+.Xr execve 2 ,
 .Xr mknod 2 ,
-.Xr utimes 2
-and
+.Xr mmap 2 ,
 .Xr read 2
+and
+.Xr utimes 2
 system calls.
 .It st_mtime
 Time when file data last modified.

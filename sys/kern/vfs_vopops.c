@@ -127,6 +127,7 @@ VNODEOP_DESC_INIT(aclcheck);
 VNODEOP_DESC_INIT(getextattr);
 VNODEOP_DESC_INIT(setextattr);
 VNODEOP_DESC_INIT(mountctl);
+VNODEOP_DESC_INIT(markatime);
 
 VNODEOP_DESC_INIT(nresolve);
 VNODEOP_DESC_INIT(nlookupdotdot);
@@ -902,7 +903,7 @@ vop_setextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 
 int
 vop_mountctl(struct vop_ops *ops, int op, struct file *fp, 
-	    const void *ctl, int ctllen, void *buf, int buflen, int *res)
+	const void *ctl, int ctllen, void *buf, int buflen, int *res)
 {
 	struct vop_mountctl_args ap;
 	int error;
@@ -918,6 +919,21 @@ vop_mountctl(struct vop_ops *ops, int op, struct file *fp,
 	ap.a_res = res;
 
 	DO_OPS(ops, error, &ap, vop_mountctl);
+	return(error);
+}
+
+int
+vop_markatime(struct vop_ops *ops, struct vnode *vp, struct ucred *cred)
+{
+	struct vop_markatime_args ap;
+	int error;
+
+	ap.a_head.a_desc = &vop_markatime_desc;
+	ap.a_head.a_ops = ops;
+	ap.a_vp = vp;
+	ap.a_cred = cred;
+
+	DO_OPS(ops, error, &ap, vop_markatime);
 	return(error);
 }
 
@@ -1602,6 +1618,15 @@ vop_mountctl_ap(struct vop_mountctl_args *ap)
 	int error;
 
 	DO_OPS(ap->a_head.a_ops, error, ap, vop_mountctl);
+	return(error);
+}
+
+int
+vop_markatime_ap(struct vop_markatime_args *ap)
+{
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_markatime);
 	return(error);
 }
 
