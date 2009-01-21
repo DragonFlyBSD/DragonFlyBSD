@@ -174,6 +174,8 @@ SYSCTL_INT(_hw_busdma, OID_AUTO, total_bpages, CTLFLAG_RD, &total_bounce_pages,
 	   0, "Total bounce pages");
 SYSCTL_INT(_hw_busdma, OID_AUTO, max_bpages, CTLFLAG_RD, &max_bounce_pages,
 	   0, "Max bounce pages per bounce zone");
+SYSCTL_INT(_hw_busdma, OID_AUTO, alignment, CTLFLAG_RD, &bounce_alignment,
+	   0, "Obey alignment constraint");
 
 static __inline int
 run_filter(bus_dma_tag_t dmat, bus_addr_t paddr)
