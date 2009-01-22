@@ -522,7 +522,6 @@ bfe_tx_ring_free(struct bfe_softc *sc)
 		}
 	}
 	bzero(sc->bfe_tx_list, BFE_TX_LIST_SIZE);
-	bus_dmamap_sync(sc->bfe_tx_tag, sc->bfe_tx_map, BUS_DMASYNC_PREWRITE);
 }
 
 static void
@@ -539,7 +538,6 @@ bfe_rx_ring_free(struct bfe_softc *sc)
 		}
 	}
 	bzero(sc->bfe_rx_list, BFE_RX_LIST_SIZE);
-	bus_dmamap_sync(sc->bfe_rx_tag, sc->bfe_rx_map, BUS_DMASYNC_PREWRITE);
 }
 
 static int 
@@ -553,7 +551,6 @@ bfe_list_rx_init(struct bfe_softc *sc)
 			return(error);
 	}
 
-	bus_dmamap_sync(sc->bfe_rx_tag, sc->bfe_rx_map, BUS_DMASYNC_PREWRITE);
 	CSR_WRITE_4(sc, BFE_DMARX_PTR, (i * sizeof(struct bfe_desc)));
 
 	sc->bfe_rx_cons = 0;
@@ -629,7 +626,6 @@ bfe_setup_rxdesc(struct bfe_softc *sc, int c)
 
 	d->bfe_addr = r->bfe_paddr + BFE_PCI_DMA;
 	d->bfe_ctrl = ctrl;
-	bus_dmamap_sync(sc->bfe_rx_tag, sc->bfe_rx_map, BUS_DMASYNC_PREWRITE);
 }
 
 static void
@@ -1272,8 +1268,6 @@ bfe_encap(struct bfe_softc *sc, struct mbuf **m_head, uint32_t *txidx)
 	sc->bfe_tx_ring[first_idx].bfe_map = sc->bfe_tx_ring[last_idx].bfe_map;
 	sc->bfe_tx_ring[last_idx].bfe_map = map;
 	sc->bfe_tx_ring[last_idx].bfe_mbuf = *m_head;
-
-	bus_dmamap_sync(sc->bfe_tx_tag, sc->bfe_tx_map, BUS_DMASYNC_PREWRITE);
 
 	*txidx = cur;
 	sc->bfe_tx_cnt += nsegs;
