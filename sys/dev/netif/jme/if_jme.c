@@ -1550,9 +1550,6 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 	txd->tx_m = m;
 	txd->tx_ndesc += nsegs;
 
-	/* Sync descriptors. */
-	bus_dmamap_sync(sc->jme_cdata.jme_tx_ring_tag,
-			sc->jme_cdata.jme_tx_ring_map, BUS_DMASYNC_PREWRITE);
 	return 0;
 fail:
 	m_freem(*m_head);
@@ -1930,10 +1927,6 @@ jme_txeof(struct jme_softc *sc)
 	if (cons == sc->jme_cdata.jme_tx_prod)
 		return;
 
-	bus_dmamap_sync(sc->jme_cdata.jme_tx_ring_tag,
-			sc->jme_cdata.jme_tx_ring_map,
-			BUS_DMASYNC_POSTREAD);
-
 	/*
 	 * Go through our Tx list and free mbufs for those
 	 * frames which have been transmitted.
@@ -1987,10 +1980,6 @@ jme_txeof(struct jme_softc *sc)
 	if (sc->jme_cdata.jme_tx_cnt + sc->jme_txd_spare <=
 	    sc->jme_tx_desc_cnt - JME_TXD_RSVD)
 		ifp->if_flags &= ~IFF_OACTIVE;
-
-	bus_dmamap_sync(sc->jme_cdata.jme_tx_ring_tag,
-			sc->jme_cdata.jme_tx_ring_map,
-			BUS_DMASYNC_PREWRITE);
 }
 
 static __inline void
@@ -2156,9 +2145,6 @@ jme_rxeof_chain(struct jme_softc *sc, int ring, struct mbuf_chain *chain,
 	struct jme_desc *desc;
 	int nsegs, prog, pktlen;
 
-	bus_dmamap_sync(rdata->jme_rx_ring_tag, rdata->jme_rx_ring_map,
-			BUS_DMASYNC_POSTREAD);
-
 	prog = 0;
 	for (;;) {
 #ifdef DEVICE_POLLING
@@ -2189,11 +2175,6 @@ jme_rxeof_chain(struct jme_softc *sc, int ring, struct mbuf_chain *chain,
 		/* Received a frame. */
 		jme_rxpkt(sc, ring, chain);
 		prog++;
-	}
-
-	if (prog > 0) {
-		bus_dmamap_sync(rdata->jme_rx_ring_tag, rdata->jme_rx_ring_map,
-				BUS_DMASYNC_PREWRITE);
 	}
 	return prog;
 }
@@ -2599,10 +2580,6 @@ jme_init_tx_ring(struct jme_softc *sc)
 		txd->tx_desc = &cd->jme_tx_ring[i];
 		txd->tx_ndesc = 0;
 	}
-
-	bus_dmamap_sync(sc->jme_cdata.jme_tx_ring_tag,
-			sc->jme_cdata.jme_tx_ring_map,
-			BUS_DMASYNC_PREWRITE);
 }
 
 static void
@@ -2612,8 +2589,6 @@ jme_init_ssb(struct jme_softc *sc)
 
 	cd = &sc->jme_cdata;
 	bzero(cd->jme_ssb_block, JME_SSB_SIZE);
-	bus_dmamap_sync(sc->jme_cdata.jme_ssb_tag, sc->jme_cdata.jme_ssb_map,
-			BUS_DMASYNC_PREWRITE);
 }
 
 static int
@@ -2639,9 +2614,6 @@ jme_init_rx_ring(struct jme_softc *sc, int ring)
 		if (error)
 			return error;
 	}
-
-	bus_dmamap_sync(rdata->jme_rx_ring_tag, rdata->jme_rx_ring_map,
-			BUS_DMASYNC_PREWRITE);
 	return 0;
 }
 
