@@ -114,7 +114,7 @@ bus_dmamap_load_mbuf_defrag(bus_dma_tag_t dmat, bus_dmamap_t map,
 			*m_head = m = m_new;
 
 		error = bus_dmamap_load_mbuf_segment(dmat, map, m,
-				segs, maxsegs, nsegs, BUS_DMA_NOWAIT);
+				segs, maxsegs, nsegs, flags);
 	}
 	return error;
 }
