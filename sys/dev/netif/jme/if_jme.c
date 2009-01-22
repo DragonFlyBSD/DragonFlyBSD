@@ -112,8 +112,6 @@ static void	jme_rx_intr(struct jme_softc *, uint32_t);
 
 static int	jme_dma_alloc(struct jme_softc *);
 static void	jme_dma_free(struct jme_softc *);
-static void	jme_dmamap_buf_cb(void *, bus_dma_segment_t *, int,
-				  bus_size_t, int);
 static int	jme_init_rx_ring(struct jme_softc *, int);
 static void	jme_init_tx_ring(struct jme_softc *);
 static void	jme_init_ssb(struct jme_softc *);
@@ -1018,26 +1016,6 @@ jme_sysctl_node(struct jme_softc *sc)
 		sc->jme_rx_coal_pkt = coal_max;
 }
 
-static void
-jme_dmamap_buf_cb(void *xctx, bus_dma_segment_t *segs, int nsegs,
-		  bus_size_t mapsz __unused, int error)
-{
-	struct jme_dmamap_ctx *ctx = xctx;
-	int i;
-
-	if (error)
-		return;
-
-	if (nsegs > ctx->nsegs) {
-		ctx->nsegs = 0;
-		return;
-	}
-
-	ctx->nsegs = nsegs;
-	for (i = 0; i < nsegs; ++i)
-		ctx->segs[i] = segs[i];
-}
-
 static int
 jme_dma_alloc(struct jme_softc *sc)
 {
@@ -1462,9 +1440,8 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 	struct jme_txdesc *txd;
 	struct jme_desc *desc;
 	struct mbuf *m;
-	struct jme_dmamap_ctx ctx;
 	bus_dma_segment_t txsegs[JME_MAXTXSEGS];
-	int maxsegs;
+	int maxsegs, nsegs;
 	int error, i, prod, symbol_desc;
 	uint32_t cflags, flag64;
 
@@ -1485,45 +1462,11 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 	KASSERT(maxsegs >= (sc->jme_txd_spare - symbol_desc),
 		("not enough segments %d\n", maxsegs));
 
-	ctx.nsegs = maxsegs;
-	ctx.segs = txsegs;
-	error = bus_dmamap_load_mbuf(sc->jme_cdata.jme_tx_tag, txd->tx_dmamap,
-				     *m_head, jme_dmamap_buf_cb, &ctx,
-				     BUS_DMA_NOWAIT);
-	if (!error && ctx.nsegs == 0) {
-		bus_dmamap_unload(sc->jme_cdata.jme_tx_tag, txd->tx_dmamap);
-		error = EFBIG;
-	}
-	if (error == EFBIG) {
-		m = m_defrag(*m_head, MB_DONTWAIT);
-		if (m == NULL) {
-			if_printf(&sc->arpcom.ac_if,
-				  "could not defrag TX mbuf\n");
-			error = ENOBUFS;
-			goto fail;
-		}
-		*m_head = m;
-
-		ctx.nsegs = maxsegs;
-		ctx.segs = txsegs;
-		error = bus_dmamap_load_mbuf(sc->jme_cdata.jme_tx_tag,
-					     txd->tx_dmamap, *m_head,
-					     jme_dmamap_buf_cb, &ctx,
-					     BUS_DMA_NOWAIT);
-		if (error || ctx.nsegs == 0) {
-			if_printf(&sc->arpcom.ac_if,
-				  "could not load defragged TX mbuf\n");
-			if (!error) {
-				bus_dmamap_unload(sc->jme_cdata.jme_tx_tag,
-						  txd->tx_dmamap);
-				error = EFBIG;
-			}
-			goto fail;
-		}
-	} else if (error) {
-		if_printf(&sc->arpcom.ac_if, "could not load TX mbuf\n");
+	error = bus_dmamap_load_mbuf_defrag(sc->jme_cdata.jme_tx_tag,
+			txd->tx_dmamap, m_head,
+			txsegs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
+	if (error)
 		goto fail;
-	}
 
 	m = *m_head;
 	cflags = 0;
@@ -1579,7 +1522,7 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 	JME_DESC_INC(prod, sc->jme_tx_desc_cnt);
 
 	txd->tx_ndesc = 1 - i;
-	for (; i < ctx.nsegs; i++) {
+	for (; i < nsegs; i++) {
 		desc = &sc->jme_cdata.jme_tx_ring[prod];
 		desc->flags = htole32(JME_TD_OWN | flag64);
 		desc->buflen = htole32(txsegs[i].ds_len);
@@ -1602,7 +1545,7 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 	desc->flags |= htole32(JME_TD_OWN | JME_TD_INTR);
 
 	txd->tx_m = m;
-	txd->tx_ndesc += ctx.nsegs;
+	txd->tx_ndesc += nsegs;
 
 	/* Sync descriptors. */
 	bus_dmamap_sync(sc->jme_cdata.jme_tx_tag, txd->tx_dmamap,
@@ -2707,10 +2650,9 @@ jme_newbuf(struct jme_softc *sc, int ring, struct jme_rxdesc *rxd, int init)
 	struct jme_rxdata *rdata = &sc->jme_cdata.jme_rx_data[ring];
 	struct jme_desc *desc;
 	struct mbuf *m;
-	struct jme_dmamap_ctx ctx;
 	bus_dma_segment_t segs;
 	bus_dmamap_t map;
-	int error;
+	int error, nsegs;
 
 	m = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
@@ -2723,21 +2665,11 @@ jme_newbuf(struct jme_softc *sc, int ring, struct jme_rxdesc *rxd, int init)
 	 */
 	m->m_len = m->m_pkthdr.len = MCLBYTES;
 
-	ctx.nsegs = 1;
-	ctx.segs = &segs;
-	error = bus_dmamap_load_mbuf(rdata->jme_rx_tag,
-				     rdata->jme_rx_sparemap,
-				     m, jme_dmamap_buf_cb, &ctx,
-				     BUS_DMA_NOWAIT);
-	if (error || ctx.nsegs == 0) {
-		if (!error) {
-			bus_dmamap_unload(rdata->jme_rx_tag,
-					  rdata->jme_rx_sparemap);
-			error = EFBIG;
-			if_printf(&sc->arpcom.ac_if, "too many segments?!\n");
-		}
+	error = bus_dmamap_load_mbuf_segment(rdata->jme_rx_tag,
+			rdata->jme_rx_sparemap, m, &segs, 1, &nsegs,
+			BUS_DMA_NOWAIT);
+	if (error) {
 		m_freem(m);
-
 		if (init)
 			if_printf(&sc->arpcom.ac_if, "can't load RX mbuf\n");
 		return error;

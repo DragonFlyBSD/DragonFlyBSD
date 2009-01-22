@@ -184,11 +184,6 @@ struct jme_chain_data {
     (sizeof(struct jme_desc) * (sc)->jme_rx_desc_cnt)
 #define	JME_SSB_SIZE		sizeof(struct jme_ssb)
 
-struct jme_dmamap_ctx {
-	int			nsegs;
-	bus_dma_segment_t	*segs;
-};
-
 /*
  * Software state per device.
  */
