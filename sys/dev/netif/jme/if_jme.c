@@ -1076,7 +1076,7 @@ jme_dma_alloc(struct jme_softc *sc)
 	 */
 	error = bus_dmamem_coherent(sc->jme_cdata.jme_ring_tag,
 			JME_TX_RING_ALIGN, 0,
-			sc->jme_lowaddr, BUS_SPACE_MAXADDR,
+			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 			JME_TX_RING_SIZE(sc),
 			BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
 	if (error) {
@@ -1118,7 +1118,7 @@ jme_dma_alloc(struct jme_softc *sc)
 	 * Create DMA stuffs for shadow status block
 	 */
 	error = bus_dmamem_coherent(sc->jme_cdata.jme_buffer_tag,
-			JME_SSB_ALIGN, 0, sc->jme_lowaddr, BUS_SPACE_MAXADDR,
+			JME_SSB_ALIGN, 0, BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 			JME_SSB_SIZE, BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
 	if (error) {
 		device_printf(sc->jme_dev,
@@ -1137,7 +1137,7 @@ jme_dma_alloc(struct jme_softc *sc)
 	/* Create tag for Tx buffers. */
 	error = bus_dma_tag_create(sc->jme_cdata.jme_buffer_tag,/* parent */
 	    1, 0,			/* algnmnt, boundary */
-	    sc->jme_lowaddr,		/* lowaddr */
+	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
 	    NULL, NULL,			/* filter, filterarg */
 	    JME_JUMBO_FRAMELEN,		/* maxsize */
@@ -3039,7 +3039,7 @@ jme_rxring_dma_alloc(struct jme_softc *sc, int ring)
 
 	error = bus_dmamem_coherent(sc->jme_cdata.jme_ring_tag,
 			JME_RX_RING_ALIGN, 0,
-			sc->jme_lowaddr, BUS_SPACE_MAXADDR,
+			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 			JME_RX_RING_SIZE(sc),
 			BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
 	if (error) {
@@ -3064,7 +3064,7 @@ jme_rxbuf_dma_alloc(struct jme_softc *sc, int ring)
 	/* Create tag for Rx buffers. */
 	error = bus_dma_tag_create(sc->jme_cdata.jme_buffer_tag,/* parent */
 	    JME_RX_BUF_ALIGN, 0,	/* algnmnt, boundary */
-	    sc->jme_lowaddr,		/* lowaddr */
+	    BUS_SPACE_MAXADDR,		/* lowaddr */
 	    BUS_SPACE_MAXADDR,		/* highaddr */
 	    NULL, NULL,			/* filter, filterarg */
 	    MCLBYTES,			/* maxsize */
