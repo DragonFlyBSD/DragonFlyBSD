@@ -849,8 +849,6 @@ re_diag(struct re_softc *sc)
 	 * entry in the RX DMA ring. Grab it from there.
 	 */
 
-	bus_dmamap_sync(sc->re_ldata.re_rx_list_tag,
-			sc->re_ldata.re_rx_list_map, BUS_DMASYNC_POSTREAD);
 	bus_dmamap_sync(sc->re_ldata.re_rx_mtag, sc->re_ldata.re_rx_dmamap[0],
 			BUS_DMASYNC_POSTREAD);
 	bus_dmamap_unload(sc->re_ldata.re_rx_mtag,
@@ -1239,8 +1237,7 @@ re_freemem(device_t dev)
 
 	/* Unload and free the stats buffer and map */
 	if (sc->re_ldata.re_stag) {
-		bus_dmamap_unload(sc->re_ldata.re_stag,
-				  sc->re_ldata.re_rx_list_map);
+		bus_dmamap_unload(sc->re_ldata.re_stag, sc->re_ldata.re_smap);
 		bus_dmamem_free(sc->re_ldata.re_stag,
 				sc->re_ldata.re_stats,
 				sc->re_ldata.re_smap);
@@ -1777,10 +1774,6 @@ re_tx_list_init(struct re_softc *sc)
 {
 	bzero(sc->re_ldata.re_tx_list, RE_TX_LIST_SZ(sc));
 
-	/* Flush the TX descriptors */
-	bus_dmamap_sync(sc->re_ldata.re_tx_list_tag,
-			sc->re_ldata.re_tx_list_map, BUS_DMASYNC_PREWRITE);
-
 	sc->re_ldata.re_tx_prodidx = 0;
 	sc->re_ldata.re_tx_considx = 0;
 	sc->re_ldata.re_tx_free = sc->re_tx_desc_cnt;
@@ -1800,10 +1793,6 @@ re_rx_list_init(struct re_softc *sc)
 		if (error)
 			return(error);
 	}
-
-	/* Flush the RX descriptors */
-	bus_dmamap_sync(sc->re_ldata.re_rx_list_tag,
-			sc->re_ldata.re_rx_list_map, BUS_DMASYNC_PREWRITE);
 
 	sc->re_ldata.re_rx_prodidx = 0;
 	sc->re_head = sc->re_tail = NULL;
@@ -1848,11 +1837,6 @@ re_rxeof(struct re_softc *sc)
 	uint32_t rxstat, rxctrl;
 	int i, total_len, rx = 0;
 	struct mbuf_chain chain[MAXCPU];
-
-	/* Invalidate the descriptor memory */
-
-	bus_dmamap_sync(sc->re_ldata.re_rx_list_tag,
-			sc->re_ldata.re_rx_list_map, BUS_DMASYNC_POSTREAD);
 
 	ether_input_chain_init(chain);
 
@@ -2007,11 +1991,6 @@ re_rxeof(struct re_softc *sc)
 
 	ether_input_dispatch(chain);
 
-	/* Flush the RX DMA ring */
-
-	bus_dmamap_sync(sc->re_ldata.re_rx_list_tag,
-			sc->re_ldata.re_rx_list_map, BUS_DMASYNC_PREWRITE);
-
 	sc->re_ldata.re_rx_prodidx = i;
 
 	return rx;
@@ -2027,10 +2006,6 @@ re_tx_collect(struct re_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t txstat;
 	int idx, tx = 0;
-
-	/* Invalidate the TX descriptor list */
-	bus_dmamap_sync(sc->re_ldata.re_tx_list_tag,
-			sc->re_ldata.re_tx_list_map, BUS_DMASYNC_POSTREAD);
 
 	for (idx = sc->re_ldata.re_tx_considx;
 	     sc->re_ldata.re_tx_free < sc->re_tx_desc_cnt;
@@ -2466,10 +2441,6 @@ re_start(struct ifnet *ifp)
 
 	if (!need_trans)
 		return;
-
-	/* Flush the TX descriptors */
-	bus_dmamap_sync(sc->re_ldata.re_tx_list_tag,
-			sc->re_ldata.re_tx_list_map, BUS_DMASYNC_PREWRITE);
 
 	sc->re_ldata.re_tx_prodidx = idx;
 
