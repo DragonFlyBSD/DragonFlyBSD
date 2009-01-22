@@ -1820,8 +1820,6 @@ xl_list_tx_init(struct xl_softc *sc)
 
 	cd->xl_tx_free = &cd->xl_tx_chain[0];
 	cd->xl_tx_tail = cd->xl_tx_head = NULL;
-
-	bus_dmamap_sync(ld->xl_tx_tag, ld->xl_tx_dmamap, BUS_DMASYNC_PREWRITE);
 }
 
 /*
@@ -1857,8 +1855,6 @@ xl_list_tx_init_90xB(struct xl_softc *sc)
 	cd->xl_tx_prod = 1;
 	cd->xl_tx_cons = 1;
 	cd->xl_tx_cnt = 0;
-
-	bus_dmamap_sync(ld->xl_tx_tag, ld->xl_tx_dmamap, BUS_DMASYNC_PREWRITE);
 }
 
 /*
@@ -1891,7 +1887,6 @@ xl_list_rx_init(struct xl_softc *sc)
 		ld->xl_rx_list[i].xl_next = htole32(nextptr);
 	}
 
-	bus_dmamap_sync(ld->xl_rx_tag, ld->xl_rx_dmamap, BUS_DMASYNC_PREWRITE);
 	cd->xl_rx_head = &cd->xl_rx_chain[0];
 
 	return(0);
@@ -1988,9 +1983,6 @@ xl_rxeof(struct xl_softc *sc, int count)
 
 	ether_input_chain_init(chain);
 again:
-
-	bus_dmamap_sync(sc->xl_ldata.xl_rx_tag, sc->xl_ldata.xl_rx_dmamap,
-	    BUS_DMASYNC_POSTREAD);
 	while((rxstat = le32toh(sc->xl_cdata.xl_rx_head->xl_ptr->xl_status))) {
 #ifdef DEVICE_POLLING
 		if (count >= 0 && count-- == 0)
@@ -2018,8 +2010,6 @@ again:
 		if (rxstat & XL_RXSTAT_UP_ERROR) {
 			ifp->if_ierrors++;
 			cur_rx->xl_ptr->xl_status = 0;
-			bus_dmamap_sync(sc->xl_ldata.xl_rx_tag,
-			    sc->xl_ldata.xl_rx_dmamap, BUS_DMASYNC_PREWRITE);
 			continue;
 		}
 
@@ -2033,8 +2023,6 @@ again:
 				  "bad receive status -- packet dropped\n");
 			ifp->if_ierrors++;
 			cur_rx->xl_ptr->xl_status = 0;
-			bus_dmamap_sync(sc->xl_ldata.xl_rx_tag,
-			    sc->xl_ldata.xl_rx_dmamap, BUS_DMASYNC_PREWRITE);
 			continue;
 		}
 
@@ -2051,12 +2039,8 @@ again:
 		if (xl_newbuf(sc, cur_rx, 0)) {
 			ifp->if_ierrors++;
 			cur_rx->xl_ptr->xl_status = 0;
-			bus_dmamap_sync(sc->xl_ldata.xl_rx_tag,
-			    sc->xl_ldata.xl_rx_dmamap, BUS_DMASYNC_PREWRITE);
 			continue;
 		}
-		bus_dmamap_sync(sc->xl_ldata.xl_rx_tag,
-		    sc->xl_ldata.xl_rx_dmamap, BUS_DMASYNC_PREWRITE);
 
 		ifp->if_ipackets++;
 		m->m_pkthdr.rcvif = ifp;
@@ -2174,8 +2158,6 @@ xl_txeof_90xB(struct xl_softc *sc)
 
 	ifp = &sc->arpcom.ac_if;
 
-	bus_dmamap_sync(sc->xl_ldata.xl_tx_tag, sc->xl_ldata.xl_tx_dmamap,
-	    BUS_DMASYNC_POSTREAD);
 	idx = sc->xl_cdata.xl_tx_cons;
 	while(idx != sc->xl_cdata.xl_tx_prod) {
 
@@ -2612,8 +2594,6 @@ xl_start_body(struct ifnet *ifp, int proc_rx)
 		sc->xl_cdata.xl_tx_head = start_tx;
 		sc->xl_cdata.xl_tx_tail = cur_tx;
 	}
-	bus_dmamap_sync(sc->xl_ldata.xl_tx_tag, sc->xl_ldata.xl_tx_dmamap,
-	    BUS_DMASYNC_PREWRITE);
 
 	if (!CSR_READ_4(sc, XL_DOWNLIST_PTR))
 		CSR_WRITE_4(sc, XL_DOWNLIST_PTR, start_tx->xl_phys);
@@ -2717,9 +2697,6 @@ xl_start_90xB(struct ifnet *ifp)
 	/* Start transmission */
 	sc->xl_cdata.xl_tx_prod = idx;
 	start_tx->xl_prev->xl_ptr->xl_next = htole32(start_tx->xl_phys);
-
-	bus_dmamap_sync(sc->xl_ldata.xl_tx_tag, sc->xl_ldata.xl_tx_dmamap,
-	    BUS_DMASYNC_PREWRITE);
 
 	/*
 	 * Set a timeout in case the chip goes out to lunch.
