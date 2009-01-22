@@ -1017,8 +1017,6 @@ nfe_rxeof(struct nfe_softc *sc)
 	struct mbuf_chain chain[MAXCPU];
 
 	reap = 0;
-	bus_dmamap_sync(ring->tag, ring->map, BUS_DMASYNC_POSTREAD);
-
 	ether_input_chain_init(chain);
 
 	for (;;) {
@@ -1105,10 +1103,8 @@ skip:
 		sc->rxq.cur = (sc->rxq.cur + 1) % sc->sc_rx_ring_count;
 	}
 
-	if (reap) {
-		bus_dmamap_sync(ring->tag, ring->map, BUS_DMASYNC_PREWRITE);
+	if (reap)
 		ether_input_dispatch(chain);
-	}
 	return reap;
 }
 
@@ -1119,7 +1115,6 @@ nfe_txeof(struct nfe_softc *sc, int start)
 	struct nfe_tx_ring *ring = &sc->txq;
 	struct nfe_tx_data *data = NULL;
 
-	bus_dmamap_sync(ring->tag, ring->map, BUS_DMASYNC_POSTREAD);
 	while (ring->next != ring->cur) {
 		uint16_t flags;
 
@@ -1361,11 +1356,9 @@ nfe_start(struct ifnet *ifp)
 		 * it should not be touched any more.
 		 */
 	}
+
 	if (count == 0)	/* nothing sent */
 		return;
-
-	/* Sync TX descriptor ring */
-	bus_dmamap_sync(ring->tag, ring->map, BUS_DMASYNC_PREWRITE);
 
 	/* Kick Tx */
 	NFE_WRITE(sc, NFE_RXTX_CTL, NFE_RXTX_KICKTX | sc->rxtxctl);
@@ -1732,8 +1725,6 @@ nfe_init_rx_ring(struct nfe_softc *sc, struct nfe_rx_ring *ring)
 		}
 		nfe_set_ready_rxdesc(sc, ring, i);
 	}
-	bus_dmamap_sync(ring->tag, ring->map, BUS_DMASYNC_PREWRITE);
-
 	return 0;
 }
 
@@ -1977,7 +1968,6 @@ nfe_reset_tx_ring(struct nfe_softc *sc, struct nfe_tx_ring *ring)
 			data->m = NULL;
 		}
 	}
-	bus_dmamap_sync(ring->tag, ring->map, BUS_DMASYNC_PREWRITE);
 
 	ring->queued = 0;
 	ring->cur = ring->next = 0;
