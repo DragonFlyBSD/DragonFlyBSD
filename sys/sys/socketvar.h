@@ -357,6 +357,7 @@ int	_ssb_lock (struct signalsockbuf *sb);
 
 void	soabort (struct socket *so);
 void	soaborta (struct socket *so);
+void	soabort_oncpu (struct socket *so);
 int	soaccept (struct socket *so, struct sockaddr **nam);
 struct	socket *soalloc (int waitok);
 int	sobind (struct socket *so, struct sockaddr *nam, struct thread *td);

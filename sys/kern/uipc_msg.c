@@ -92,6 +92,18 @@ so_pru_aborta(struct socket *so)
 	lwkt_sendmsg(port, &msg->nm_netmsg.nm_lmsg);
 }
 
+/*
+ * Abort a socket and free it.  Called from soabort_oncpu() only.
+ * Caller must make sure that the current CPU is inpcb's owner CPU.
+ *
+ * The SS_ABORTING flag must already be set.
+ */
+void
+so_pru_abort_oncpu(struct socket *so)
+{
+	so->so_proto->pr_usrreqs->pru_abort(so);
+}
+
 int
 so_pru_accept(struct socket *so, struct sockaddr **nam)
 {
