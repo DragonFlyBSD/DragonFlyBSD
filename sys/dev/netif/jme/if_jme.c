@@ -1468,6 +1468,9 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 	if (error)
 		goto fail;
 
+	bus_dmamap_sync(sc->jme_cdata.jme_tx_tag, txd->tx_dmamap,
+			BUS_DMASYNC_PREWRITE);
+
 	m = *m_head;
 	cflags = 0;
 
@@ -1548,8 +1551,6 @@ jme_encap(struct jme_softc *sc, struct mbuf **m_head)
 	txd->tx_ndesc += nsegs;
 
 	/* Sync descriptors. */
-	bus_dmamap_sync(sc->jme_cdata.jme_tx_tag, txd->tx_dmamap,
-			BUS_DMASYNC_PREWRITE);
 	bus_dmamap_sync(sc->jme_cdata.jme_tx_ring_tag,
 			sc->jme_cdata.jme_tx_ring_map, BUS_DMASYNC_PREWRITE);
 	return 0;
