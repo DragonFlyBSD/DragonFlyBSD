@@ -1035,10 +1035,6 @@ bge_init_rx_ring_std(struct bge_softc *sc)
 			return(ENOBUFS);
 	};
 
-	bus_dmamap_sync(sc->bge_cdata.bge_rx_std_ring_tag,
-			sc->bge_cdata.bge_rx_std_ring_map,
-			BUS_DMASYNC_PREWRITE);
-
 	sc->bge_std = i - 1;
 	bge_writembx(sc, BGE_MBX_RX_STD_PROD_LO, sc->bge_std);
 
@@ -1072,10 +1068,6 @@ bge_init_rx_ring_jumbo(struct bge_softc *sc)
 		if (bge_newbuf_jumbo(sc, i, NULL) == ENOBUFS)
 			return(ENOBUFS);
 	};
-
-	bus_dmamap_sync(sc->bge_cdata.bge_rx_jumbo_ring_tag,
-			sc->bge_cdata.bge_rx_jumbo_ring_map,
-			BUS_DMASYNC_PREWRITE);
 
 	sc->bge_jumbo = i - 1;
 
@@ -1385,8 +1377,6 @@ bge_blockinit(struct bge_softc *sc)
 	    BGE_ADDR_LO(sc->bge_ldata.bge_rx_std_ring_paddr);
 	rcb->bge_hostaddr.bge_addr_hi =
 	    BGE_ADDR_HI(sc->bge_ldata.bge_rx_std_ring_paddr);
-	bus_dmamap_sync(sc->bge_cdata.bge_rx_std_ring_tag,
-	    sc->bge_cdata.bge_rx_std_ring_map, BUS_DMASYNC_PREREAD);
 	if (BGE_IS_5705_PLUS(sc))
 		rcb->bge_maxlen_flags = BGE_RCB_MAXLEN_FLAGS(512, 0);
 	else
@@ -1412,9 +1402,6 @@ bge_blockinit(struct bge_softc *sc)
 		    BGE_ADDR_LO(sc->bge_ldata.bge_rx_jumbo_ring_paddr);
 		rcb->bge_hostaddr.bge_addr_hi =
 		    BGE_ADDR_HI(sc->bge_ldata.bge_rx_jumbo_ring_paddr);
-		bus_dmamap_sync(sc->bge_cdata.bge_rx_jumbo_ring_tag,
-		    sc->bge_cdata.bge_rx_jumbo_ring_map,
-		    BUS_DMASYNC_PREREAD);
 		rcb->bge_maxlen_flags =
 		    BGE_RCB_MAXLEN_FLAGS(BGE_MAX_FRAMELEN,
 		    BGE_RCB_FLAG_RING_DISABLED);
@@ -2348,18 +2335,6 @@ bge_rxeof(struct bge_softc *sc)
 
 	ifp = &sc->arpcom.ac_if;
 
-	bus_dmamap_sync(sc->bge_cdata.bge_rx_return_ring_tag,
-			sc->bge_cdata.bge_rx_return_ring_map,
-			BUS_DMASYNC_POSTREAD);
-	bus_dmamap_sync(sc->bge_cdata.bge_rx_std_ring_tag,
-			sc->bge_cdata.bge_rx_std_ring_map,
-			BUS_DMASYNC_POSTREAD);
-	if (BGE_IS_JUMBO_CAPABLE(sc)) {
-		bus_dmamap_sync(sc->bge_cdata.bge_rx_jumbo_ring_tag,
-				sc->bge_cdata.bge_rx_jumbo_ring_map,
-				BUS_DMASYNC_POSTREAD);
-	}
-
 	while (sc->bge_rx_saved_considx !=
 	       sc->bge_ldata.bge_status_block->bge_idx[0].bge_rx_prod_idx) {
 		struct bge_rx_bd	*cur_rx;
@@ -2463,18 +2438,6 @@ bge_rxeof(struct bge_softc *sc)
 
 	ether_input_dispatch(chain);
 
-	if (stdcnt > 0) {
-		bus_dmamap_sync(sc->bge_cdata.bge_rx_std_ring_tag,
-				sc->bge_cdata.bge_rx_std_ring_map,
-				BUS_DMASYNC_PREWRITE);
-	}
-
-	if (BGE_IS_JUMBO_CAPABLE(sc) && jumbocnt > 0) {
-		bus_dmamap_sync(sc->bge_cdata.bge_rx_jumbo_ring_tag,
-				sc->bge_cdata.bge_rx_jumbo_ring_map,
-				BUS_DMASYNC_PREWRITE);
-	}
-
 	bge_writembx(sc, BGE_MBX_RX_CONS0_LO, sc->bge_rx_saved_considx);
 	if (stdcnt)
 		bge_writembx(sc, BGE_MBX_RX_STD_PROD_LO, sc->bge_std);
@@ -2493,10 +2456,6 @@ bge_txeof(struct bge_softc *sc)
 		return;
 
 	ifp = &sc->arpcom.ac_if;
-
-	bus_dmamap_sync(sc->bge_cdata.bge_tx_ring_tag,
-			sc->bge_cdata.bge_tx_ring_map,
-			BUS_DMASYNC_POSTREAD);
 
 	/*
 	 * Go through our tx ring and free mbufs for those
@@ -2552,10 +2511,6 @@ bge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		bge_enable_intr(sc);
 		break;
 	case POLL_AND_CHECK_STATUS:
-		bus_dmamap_sync(sc->bge_cdata.bge_status_tag,
-				sc->bge_cdata.bge_status_map,
-				BUS_DMASYNC_POSTREAD);
-
 		/*
 		 * Process link state changes.
 		 */
@@ -2606,10 +2561,6 @@ bge_intr(void *xsc)
 	 * even with MSI.  It would only be needed for using a task queue.
 	 */
 	bge_writembx(sc, BGE_MBX_IRQ0_LO, 0);
-
-	bus_dmamap_sync(sc->bge_cdata.bge_status_tag,
-			sc->bge_cdata.bge_status_map,
-			BUS_DMASYNC_POSTREAD);
 
 	/*
 	 * Process link state changes.
