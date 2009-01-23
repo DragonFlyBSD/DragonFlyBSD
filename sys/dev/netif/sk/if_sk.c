@@ -190,7 +190,7 @@ static void	sk_intr_xmac(struct sk_if_softc *);
 static void	sk_intr_yukon(struct sk_if_softc *);
 static void	sk_rxeof(struct sk_if_softc *);
 static void	sk_txeof(struct sk_if_softc *);
-static int	sk_encap(struct sk_if_softc *, struct mbuf *, uint32_t *);
+static int	sk_encap(struct sk_if_softc *, struct mbuf **, uint32_t *);
 static void	sk_start(struct ifnet *);
 static int	sk_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	sk_init(void *);
@@ -1609,18 +1609,24 @@ skc_detach(device_t dev)
 }
 
 static int
-sk_encap(struct sk_if_softc *sc_if, struct mbuf *m_head, uint32_t *txidx)
+sk_encap(struct sk_if_softc *sc_if, struct mbuf **m_head0, uint32_t *txidx)
 {
 	struct sk_chain_data *cd = &sc_if->sk_cdata;
 	struct sk_ring_data *rd = sc_if->sk_rdata;
+	struct mbuf *m_head = *m_head0;
 	struct sk_tx_desc *f = NULL;
 	uint32_t frag, cur, sk_ctl;
 	struct sk_dma_ctx ctx;
 	bus_dma_segment_t segs[SK_NTXSEG];
 	bus_dmamap_t map;
-	int i, error;
+	int i, error, maxsegs;
 
 	DPRINTFN(2, ("sk_encap\n"));
+
+	maxsegs = SK_TX_RING_CNT - sc_if->sk_cdata.sk_tx_cnt - SK_NDESC_RESERVE;
+	KASSERT(maxsegs >= SK_NDESC_SPARE, ("not enough spare TX desc\n"));
+	if (maxsegs > SK_NTXSEG)
+		maxsegs = SK_NTXSEG;
 
 	cur = frag = *txidx;
 
@@ -1636,18 +1642,12 @@ sk_encap(struct sk_if_softc *sc_if, struct mbuf *m_head, uint32_t *txidx)
 	 * the fragment pointers. Stop when we run out
 	 * of fragments or hit the end of the mbuf chain.
 	 */
-	ctx.nsegs = SK_NTXSEG;
+	ctx.nsegs = maxsegs;
 	ctx.segs = segs;
 	error = bus_dmamap_load_mbuf(cd->sk_tx_dtag, map, m_head,
 				     sk_buf_dma_addr, &ctx, BUS_DMA_NOWAIT);
 	if (error) {
 		if_printf(&sc_if->arpcom.ac_if, "could not map TX mbuf\n");
-		return ENOBUFS;
-	}
-
-	if ((SK_TX_RING_CNT - (cd->sk_tx_cnt + ctx.nsegs)) < 2) {
-		bus_dmamap_unload(cd->sk_tx_dtag, map);
-		DPRINTFN(2, ("sk_encap: too few descriptors free\n"));
 		return ENOBUFS;
 	}
 
@@ -1706,11 +1706,10 @@ sk_encap(struct sk_if_softc *sc_if, struct mbuf *m_head, uint32_t *txidx)
 static void
 sk_start(struct ifnet *ifp)
 {
-        struct sk_if_softc *sc_if = ifp->if_softc;
-        struct sk_softc *sc = sc_if->sk_softc;
-        struct mbuf *m_head = NULL;
+	struct sk_if_softc *sc_if = ifp->if_softc;
+	struct sk_softc *sc = sc_if->sk_softc;
 	uint32_t idx = sc_if->sk_cdata.sk_tx_prod;
-	int pkts = 0;
+	int trans = 0;
 
 	DPRINTFN(2, ("sk_start\n"));
 
@@ -1718,7 +1717,9 @@ sk_start(struct ifnet *ifp)
 		return;
 
 	while (sc_if->sk_cdata.sk_tx_mbuf[idx] == NULL) {
-		if ((SK_TX_RING_CNT - sc_if->sk_cdata.sk_tx_cnt) <= 2) {
+		struct mbuf *m_head;
+
+		if (SK_IS_OACTIVE(sc_if)) {
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
@@ -1732,16 +1733,16 @@ sk_start(struct ifnet *ifp)
 		 * don't have room, set the OACTIVE flag and wait
 		 * for the NIC to drain the ring.
 		 */
-		if (sk_encap(sc_if, m_head, &idx)) {
+		if (sk_encap(sc_if, &m_head, &idx)) {
 			ifp->if_flags |= IFF_OACTIVE;
 			ifq_prepend(&ifp->if_snd, m_head);
 			break;
 		}
 
-		pkts++;
+		trans = 1;
 		BPF_MTAP(ifp, m_head);
 	}
-	if (pkts == 0)
+	if (!trans)
 		return;
 
 	/* Transmit */
@@ -2068,10 +2069,12 @@ sk_txeof(struct sk_if_softc *sc_if)
 		reap = 1;
 		SK_INC(idx, SK_TX_RING_CNT);
 	}
-	ifp->if_timer = sc_if->sk_cdata.sk_tx_cnt > 0 ? 5 : 0;
 
-	if (sc_if->sk_cdata.sk_tx_cnt < SK_TX_RING_CNT - 2)
+	if (!SK_IS_OACTIVE(sc_if))
 		ifp->if_flags &= ~IFF_OACTIVE;
+
+	if (sc_if->sk_cdata.sk_tx_cnt == 0)
+		ifp->if_timer = 0;
 
 	sc_if->sk_cdata.sk_tx_cons = idx;
 

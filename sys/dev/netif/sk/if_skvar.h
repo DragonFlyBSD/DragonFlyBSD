@@ -210,4 +210,11 @@ struct sk_dma_ctx {
 	bus_dma_segment_t	*segs;
 };
 
+#define SK_NDESC_RESERVE	2
+#define SK_NDESC_SPARE		5
+
+#define SK_IS_OACTIVE(sc_if) \
+	((sc_if)->sk_cdata.sk_tx_cnt + SK_NDESC_RESERVE + SK_NDESC_SPARE > \
+	 SK_TX_RING_CNT)
+
 #endif /* !_IF_SKVAR_H_ */
