@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.16.2.2 2003/01/23 00:55:27 scottl Exp $
+ * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.94 2008/08/15 20:51:31 kmacy Exp $
  * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.23 2008/06/05 18:06:32 swildner Exp $
  */
 
