@@ -943,10 +943,6 @@ bge_newbuf_std(struct bge_softc *sc, int i, int init)
 	sc->bge_cdata.bge_rx_std_chain[i].bge_paddr = seg.ds_addr;
 
 	bge_setup_rxdesc_std(sc, i);
-
-	bus_dmamap_sync(sc->bge_cdata.bge_rx_mtag,
-			sc->bge_cdata.bge_rx_std_dmamap[i],
-			BUS_DMASYNC_PREREAD);
 	return 0;
 }
 
@@ -2494,9 +2490,6 @@ bge_txeof(struct bge_softc *sc)
 		if (cur_tx->bge_flags & BGE_TXBDFLAG_END)
 			ifp->if_opackets++;
 		if (sc->bge_cdata.bge_tx_chain[idx] != NULL) {
-			bus_dmamap_sync(sc->bge_cdata.bge_tx_mtag,
-					sc->bge_cdata.bge_tx_dmamap[idx],
-					BUS_DMASYNC_POSTWRITE);
 			bus_dmamap_unload(sc->bge_cdata.bge_tx_mtag,
 			    sc->bge_cdata.bge_tx_dmamap[idx]);
 			m_freem(sc->bge_cdata.bge_tx_chain[idx]);
