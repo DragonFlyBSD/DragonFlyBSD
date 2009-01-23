@@ -89,8 +89,13 @@
 
 SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/hda/hdac.c,v 1.14 2007/12/01 08:32:11 hasso Exp $");
 
+static int hda_debug
+#ifdef HDA_DEBUG
+	= 1
+#endif
+	;
 #define HDA_BOOTVERBOSE(stmt)	do {			\
-	if (bootverbose != 0) {				\
+	if (hda_debug && bootverbose != 0) {		\
 		stmt					\
 	}						\
 } while(0)
