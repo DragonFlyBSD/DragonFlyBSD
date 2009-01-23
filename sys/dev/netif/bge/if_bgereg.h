@@ -2236,7 +2236,7 @@ struct bge_gib {
 #define BGE_JUMBO_FRAMELEN	9018
 #define BGE_JUMBO_MTU		(BGE_JUMBO_FRAMELEN-ETHER_HDR_LEN-ETHER_CRC_LEN)
 #define BGE_PAGE_SIZE		PAGE_SIZE
-#define BGE_MIN_FRAMELEN		60
+#define BGE_MIN_FRAMELEN	60
 
 /*
  * Other utility macros.
