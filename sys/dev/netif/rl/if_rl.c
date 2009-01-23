@@ -1679,7 +1679,7 @@ rl_dma_alloc(struct rl_softc *sc)
 	 * Allocate TX mbuf's DMA tag and maps
 	 */
 	error = bus_dma_tag_create(sc->rl_parent_tag,/* parent */
-			4, 0,			/* alignment, boundary */
+			RL_TXBUF_ALIGN, 0,	/* alignment, boundary */
 			BUS_SPACE_MAXADDR,	/* lowaddr */
 			BUS_SPACE_MAXADDR,	/* highaddr */
 			NULL, NULL,		/* filter, filterarg */
