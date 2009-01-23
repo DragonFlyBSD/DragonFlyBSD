@@ -331,8 +331,6 @@ static void	bge_copper_link_upd(struct bge_softc *, uint32_t);
 
 static void	bge_reset(struct bge_softc *);
 
-static void	bge_dma_map_mbuf(void *, bus_dma_segment_t *, int,
-				 bus_size_t, int);
 static int	bge_dma_alloc(struct bge_softc *);
 static void	bge_dma_free(struct bge_softc *);
 static int	bge_dma_block_alloc(struct bge_softc *, bus_size_t,
@@ -909,10 +907,9 @@ static int
 bge_newbuf_std(struct bge_softc *sc, int i, int init)
 {
 	struct mbuf *m_new = NULL;
-	struct bge_dmamap_arg ctx;
 	bus_dma_segment_t seg;
 	bus_dmamap_t map;
-	int error;
+	int error, nsegs;
 
 	m_new = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m_new == NULL)
@@ -922,20 +919,12 @@ bge_newbuf_std(struct bge_softc *sc, int i, int init)
 	if ((sc->bge_flags & BGE_FLAG_RX_ALIGNBUG) == 0)
 		m_adj(m_new, ETHER_ALIGN);
 
-	ctx.bge_maxsegs = 1;
-	ctx.bge_segs = &seg;
-	error = bus_dmamap_load_mbuf(sc->bge_cdata.bge_rx_mtag,
-				     sc->bge_cdata.bge_rx_tmpmap,
-				     m_new, bge_dma_map_mbuf, &ctx,
-				     BUS_DMA_NOWAIT);
-	if (error || ctx.bge_maxsegs == 0) {
-		if (!error) {
-			if_printf(&sc->arpcom.ac_if, "too many segments?!\n");
-			bus_dmamap_unload(sc->bge_cdata.bge_rx_mtag,
-					  sc->bge_cdata.bge_rx_tmpmap);
-		}
+	error = bus_dmamap_load_mbuf_segment(sc->bge_cdata.bge_rx_mtag,
+			sc->bge_cdata.bge_rx_tmpmap, m_new,
+			&seg, 1, &nsegs, BUS_DMA_NOWAIT);
+	if (error) {
 		m_freem(m_new);
-		return ENOMEM;
+		return error;
 	}
 
 	if (!init) {
@@ -951,7 +940,7 @@ bge_newbuf_std(struct bge_softc *sc, int i, int init)
 	sc->bge_cdata.bge_rx_std_dmamap[i] = map;
 
 	sc->bge_cdata.bge_rx_std_chain[i].bge_mbuf = m_new;
-	sc->bge_cdata.bge_rx_std_chain[i].bge_paddr = ctx.bge_segs[0].ds_addr;
+	sc->bge_cdata.bge_rx_std_chain[i].bge_paddr = seg.ds_addr;
 
 	bge_setup_rxdesc_std(sc, i);
 
@@ -2713,10 +2702,9 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 {
 	struct bge_tx_bd *d = NULL;
 	uint16_t csum_flags = 0;
-	struct bge_dmamap_arg ctx;
 	bus_dma_segment_t segs[BGE_NSEG_NEW];
 	bus_dmamap_t map;
-	int error, maxsegs, idx, i;
+	int error, maxsegs, nsegs, idx, i;
 	struct mbuf *m_head = *m_head0;
 
 	if (m_head->m_pkthdr.csum_flags) {
@@ -2756,57 +2744,23 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 			goto back;
 	}
 
-	ctx.bge_segs = segs;
-	ctx.bge_maxsegs = maxsegs;
-	error = bus_dmamap_load_mbuf(sc->bge_cdata.bge_tx_mtag, map, m_head,
-				     bge_dma_map_mbuf, &ctx, BUS_DMA_NOWAIT);
-	if (error == EFBIG || ctx.bge_maxsegs == 0) {
-		struct mbuf *m_new;
-
-		if (!error)
-			bus_dmamap_unload(sc->bge_cdata.bge_tx_mtag, map);
-
-		m_new = m_defrag(m_head, MB_DONTWAIT);
-		if (m_new == NULL) {
-			if_printf(&sc->arpcom.ac_if,
-				  "could not defrag TX mbuf\n");
-			error = ENOBUFS;
-			goto back;
-		} else {
-			m_head = m_new;
-			*m_head0 = m_head;
-		}
-
-		ctx.bge_segs = segs;
-		ctx.bge_maxsegs = maxsegs;
-		error = bus_dmamap_load_mbuf(sc->bge_cdata.bge_tx_mtag, map,
-					     m_head, bge_dma_map_mbuf, &ctx,
-					     BUS_DMA_NOWAIT);
-		if (error || ctx.bge_maxsegs == 0) {
-			if_printf(&sc->arpcom.ac_if,
-				  "could not defrag TX mbuf\n");
-			if (!error) {
-				bus_dmamap_unload(sc->bge_cdata.bge_tx_mtag, map);
-				error = EFBIG;
-			}
-			goto back;
-		}
-	} else if (error) {
-		if_printf(&sc->arpcom.ac_if, "could not map TX mbuf\n");
+	error = bus_dmamap_load_mbuf_defrag(sc->bge_cdata.bge_tx_mtag, map,
+			m_head0, segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
+	if (error)
 		goto back;
-	}
 
+	m_head = *m_head0;
 	bus_dmamap_sync(sc->bge_cdata.bge_tx_mtag, map, BUS_DMASYNC_PREWRITE);
 
 	for (i = 0; ; i++) {
 		d = &sc->bge_ldata.bge_tx_ring[idx];
 
-		d->bge_addr.bge_addr_lo = BGE_ADDR_LO(ctx.bge_segs[i].ds_addr);
-		d->bge_addr.bge_addr_hi = BGE_ADDR_HI(ctx.bge_segs[i].ds_addr);
+		d->bge_addr.bge_addr_lo = BGE_ADDR_LO(segs[i].ds_addr);
+		d->bge_addr.bge_addr_hi = BGE_ADDR_HI(segs[i].ds_addr);
 		d->bge_len = segs[i].ds_len;
 		d->bge_flags = csum_flags;
 
-		if (i == ctx.bge_maxsegs - 1)
+		if (i == nsegs - 1)
 			break;
 		BGE_INC(idx, BGE_TX_RING_CNT);
 	}
@@ -2829,13 +2783,13 @@ bge_encap(struct bge_softc *sc, struct mbuf **m_head0, uint32_t *txidx)
 	sc->bge_cdata.bge_tx_dmamap[*txidx] = sc->bge_cdata.bge_tx_dmamap[idx];
 	sc->bge_cdata.bge_tx_dmamap[idx] = map;
 	sc->bge_cdata.bge_tx_chain[idx] = m_head;
-	sc->bge_txcnt += ctx.bge_maxsegs;
+	sc->bge_txcnt += nsegs;
 
 	BGE_INC(idx, BGE_TX_RING_CNT);
 	*txidx = idx;
 back:
 	if (error) {
-		m_freem(m_head);
+		m_freem(*m_head0);
 		*m_head0 = NULL;
 	}
 	return error;
@@ -3399,26 +3353,6 @@ bge_setpromisc(struct bge_softc *sc)
 		BGE_SETBIT(sc, BGE_RX_MODE, BGE_RXMODE_RX_PROMISC);
 	else
 		BGE_CLRBIT(sc, BGE_RX_MODE, BGE_RXMODE_RX_PROMISC);
-}
-
-static void
-bge_dma_map_mbuf(void *arg, bus_dma_segment_t *segs, int nsegs,
-		 bus_size_t mapsz __unused, int error)
-{
-	struct bge_dmamap_arg *ctx = arg;
-	int i;
-
-	if (error)
-		return;
-
-	if (nsegs > ctx->bge_maxsegs) {
-		ctx->bge_maxsegs = 0;
-		return;
-	}
-
-	ctx->bge_maxsegs = nsegs;
-	for (i = 0; i < nsegs; ++i)
-		ctx->bge_segs[i] = segs[i];
 }
 
 static void

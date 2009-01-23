@@ -2389,11 +2389,6 @@ struct bge_chain_data {
 	struct bge_jslot	bge_jslots[BGE_JSLOTS];
 };
 
-struct bge_dmamap_arg {
-	int			bge_maxsegs;
-	bus_dma_segment_t	*bge_segs;
-};
-
 struct bge_type {
 	uint16_t		bge_vid;
 	uint16_t		bge_did;
