@@ -329,7 +329,6 @@ static void	bge_copper_link_upd(struct bge_softc *, uint32_t);
 
 static void	bge_reset(struct bge_softc *);
 
-static void	bge_dma_map_addr(void *, bus_dma_segment_t *, int, int);
 static void	bge_dma_map_mbuf(void *, bus_dma_segment_t *, int,
 				 bus_size_t, int);
 static int	bge_dma_alloc(struct bge_softc *);
@@ -3407,20 +3406,6 @@ bge_setpromisc(struct bge_softc *sc)
 }
 
 static void
-bge_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
-{
-	struct bge_dmamap_arg *ctx = arg;
-
-	if (error)
-		return;
-
-	KASSERT(nsegs == 1 && ctx->bge_maxsegs == 1,
-		("only one segment is allowed\n"));
-
-	ctx->bge_segs[0] = *segs;
-}
-
-static void
 bge_dma_map_mbuf(void *arg, bus_dma_segment_t *segs, int nsegs,
 		 bus_size_t mapsz __unused, int error)
 {
@@ -3657,49 +3642,19 @@ static int
 bge_dma_block_alloc(struct bge_softc *sc, bus_size_t size, bus_dma_tag_t *tag,
 		    bus_dmamap_t *map, void **addr, bus_addr_t *paddr)
 {
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct bge_dmamap_arg ctx;
-	bus_dma_segment_t seg;
+	bus_dmamem_t dmem;
 	int error;
 
-	/*
-	 * Create DMA tag
-	 */
-	error = bus_dma_tag_create(sc->bge_cdata.bge_parent_tag, PAGE_SIZE, 0,
-				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL, size, 1, size, 0, tag);
-	if (error) {
-		if_printf(ifp, "could not allocate dma tag\n");
+	error = bus_dmamem_coherent(sc->bge_cdata.bge_parent_tag, PAGE_SIZE, 0,
+				    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+				    size, BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
+	if (error)
 		return error;
-	}
 
-	/*
-	 * Allocate DMA'able memory
-	 */
-	error = bus_dmamem_alloc(*tag, addr, BUS_DMA_WAITOK | BUS_DMA_ZERO,
-				 map);
-        if (error) {
-		if_printf(ifp, "could not allocate dma memory\n");
-		bus_dma_tag_destroy(*tag);
-		*tag = NULL;
-                return error;
-	}
-
-	/*
-	 * Load the DMA'able memory
-	 */
-	ctx.bge_maxsegs = 1;
-	ctx.bge_segs = &seg;
-	error = bus_dmamap_load(*tag, *map, *addr, size, bge_dma_map_addr, &ctx,
-				BUS_DMA_WAITOK);
-	if (error) {
-		if_printf(ifp, "could not load dma memory\n");
-		bus_dmamem_free(*tag, *addr, *map);
-		bus_dma_tag_destroy(*tag);
-		*tag = NULL;
-		return error;
-	}
-	*paddr = ctx.bge_segs[0].ds_addr;
+	*tag = dmem.dmem_tag;
+	*map = dmem.dmem_map;
+	*addr = dmem.dmem_addr;
+	*paddr = dmem.dmem_busaddr;
 
 	return 0;
 }
