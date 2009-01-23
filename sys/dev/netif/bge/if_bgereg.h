@@ -2351,6 +2351,11 @@ struct bge_ring_data {
 
 #define BGE_STATS_SZ		sizeof (struct bge_stats)
 
+struct bge_rxchain {
+	struct mbuf	*bge_mbuf;
+	bus_addr_t	bge_paddr;
+};
+
 /*
  * Mbuf pointers. We need these to keep track of the virtual addresses
  * of our mbuf chains since we can only convert from physical to virtual,
@@ -2367,6 +2372,7 @@ struct bge_chain_data {
 	bus_dma_tag_t		bge_jumbo_tag;
 	bus_dma_tag_t		bge_tx_mtag;	/* TX mbuf DMA tag */
 	bus_dma_tag_t		bge_rx_mtag;	/* RX mbuf DMA tag */
+	bus_dmamap_t		bge_rx_tmpmap;
 	bus_dmamap_t		bge_tx_dmamap[BGE_TX_RING_CNT];
 	bus_dmamap_t		bge_rx_std_dmamap[BGE_STD_RX_RING_CNT];
 	bus_dmamap_t		bge_rx_std_ring_map;
@@ -2377,8 +2383,8 @@ struct bge_chain_data {
 	bus_dmamap_t		bge_stats_map;
 	bus_dmamap_t		bge_jumbo_map;
 	struct mbuf		*bge_tx_chain[BGE_TX_RING_CNT];
-	struct mbuf		*bge_rx_std_chain[BGE_STD_RX_RING_CNT];
-	struct mbuf		*bge_rx_jumbo_chain[BGE_JUMBO_RX_RING_CNT];
+	struct bge_rxchain	bge_rx_std_chain[BGE_STD_RX_RING_CNT];
+	struct bge_rxchain	bge_rx_jumbo_chain[BGE_JUMBO_RX_RING_CNT];
 	/* Stick the jumbo mem management stuff here too. */
 	struct bge_jslot	bge_jslots[BGE_JSLOTS];
 };
