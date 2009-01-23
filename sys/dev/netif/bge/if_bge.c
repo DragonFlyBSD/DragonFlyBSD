@@ -3500,7 +3500,7 @@ static int
 bge_dma_alloc(struct bge_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int nseg, i, error;
+	int i, error;
 
 	/*
 	 * Allocate the parent bus DMA tag appropriate for PCI.
@@ -3508,7 +3508,7 @@ bge_dma_alloc(struct bge_softc *sc)
 	error = bus_dma_tag_create(NULL, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   MAXBSIZE, BGE_NSEG_NEW,
+				   BUS_SPACE_MAXSIZE_32BIT, 0,
 				   BUS_SPACE_MAXSIZE_32BIT,
 				   0, &sc->bge_cdata.bge_parent_tag);
 	if (error) {
@@ -3519,12 +3519,12 @@ bge_dma_alloc(struct bge_softc *sc)
 	/*
 	 * Create DMA tag for mbufs.
 	 */
-	nseg = BGE_NSEG_NEW;
 	error = bus_dma_tag_create(sc->bge_cdata.bge_parent_tag, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   MCLBYTES * nseg, nseg, MCLBYTES,
-				   BUS_DMA_ALLOCNOW, &sc->bge_cdata.bge_mtag);
+				   BGE_JUMBO_FRAMELEN, BGE_NSEG_NEW, MCLBYTES,
+				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,
+				   &sc->bge_cdata.bge_mtag);
 	if (error) {
 		if_printf(ifp, "could not allocate mbuf dma tag\n");
 		return error;
@@ -3534,7 +3534,8 @@ bge_dma_alloc(struct bge_softc *sc)
 	 * Create DMA maps for TX/RX mbufs.
 	 */
 	for (i = 0; i < BGE_STD_RX_RING_CNT; i++) {
-		error = bus_dmamap_create(sc->bge_cdata.bge_mtag, 0,
+		error = bus_dmamap_create(sc->bge_cdata.bge_mtag,
+					  BUS_DMA_WAITOK,
 					  &sc->bge_cdata.bge_rx_std_dmamap[i]);
 		if (error) {
 			int j;
@@ -3552,7 +3553,8 @@ bge_dma_alloc(struct bge_softc *sc)
 	}
 
 	for (i = 0; i < BGE_TX_RING_CNT; i++) {
-		error = bus_dmamap_create(sc->bge_cdata.bge_mtag, 0,
+		error = bus_dmamap_create(sc->bge_cdata.bge_mtag,
+					  BUS_DMA_WAITOK,
 					  &sc->bge_cdata.bge_tx_dmamap[i]);
 		if (error) {
 			int j;
