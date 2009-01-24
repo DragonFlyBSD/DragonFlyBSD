@@ -1273,8 +1273,6 @@
 #define SK_ADDR_LO(x)	((uint64_t) (x) & 0xffffffff)
 #define SK_ADDR_HI(x)	((uint64_t) (x) >> 32)
 
-#define SK_RING_ALIGN	64
-
 /* RX queue descriptor data structure */
 struct sk_rx_desc {
 	uint32_t		sk_ctl;
@@ -1364,3 +1362,13 @@ struct sk_tx_desc {
 #define SK_TIMEOUT	1000
 
 #define SUBDEVICEID_LINKSYS_EG1032_REV2	0x0015
+
+#define SK_RING_ALIGN		8
+#if (BUS_SPACE_MAXADDR == BUS_SPACE_MAXADDR_32BIT)
+#define SK_RING_BOUNDARY	0
+#else
+#define SK_RING_BOUNDARY	0x100000000ULL
+#endif
+
+#define SK_RX_RING_SIZE		(sizeof(struct sk_rx_desc) * SK_RX_RING_CNT)
+#define SK_TX_RING_SIZE		(sizeof(struct sk_tx_desc) * SK_TX_RING_CNT)
