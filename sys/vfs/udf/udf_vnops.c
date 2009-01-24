@@ -143,8 +143,6 @@ udf_hashins(struct udf_node *node)
 
 	lwkt_gettoken(&hashlock, &udfmp->hash_token);
 	lh = &udfmp->hashtbl[node->hash_id % udfmp->hashsz];
-	if (lh == NULL)
-		LIST_INIT(lh);
 	LIST_INSERT_HEAD(lh, node, le);
 	lwkt_reltoken(&hashlock);
 

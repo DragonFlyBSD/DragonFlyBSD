@@ -1,5 +1,5 @@
 /*
- * @(#)strftime.c	8.2
+ * @(#)strftime.c	8.3
  * $NetBSD: src/lib/libc/time/strftime.c,v 1.16 2004/05/12 23:03:11 kleink Exp $
  * $DragonFly: src/lib/libc/stdtime/strftime.c,v 1.7 2008/10/19 20:15:58 swildner Exp $
  */
@@ -163,7 +163,7 @@ label:
 				{
 				int warn2 = IN_SOME;
 
-				pt = _fmt(Locale->d_t_fmt, t, pt, ptlim, warnp);
+				pt = _fmt(Locale->d_t_fmt, t, pt, ptlim, &warn2);
 				if (warn2 == IN_ALL)
 					warn2 = IN_THIS;
 				if (warn2 > *warnp)

@@ -124,8 +124,11 @@ getq(const struct printer *pp, struct jobqueue *(*namelist[]))
 	/*
 	 * Estimate the array size by taking the size of the directory file
 	 * and dividing it by a multiple of the minimum size entry. 
+	 *
+	 * However some file systems do report a directory size == 0 (HAMMER
+	 * for instance).  Use a sensible minimum size for the array.
 	 */
-	arraysz = (stbuf.st_size / 24);
+	arraysz = MAX(20, (stbuf.st_size / 24));
 	queue = (struct jobqueue **)malloc(arraysz * sizeof(struct jobqueue *));
 	if (queue == NULL)
 		goto errdone;

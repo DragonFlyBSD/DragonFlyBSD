@@ -1,5 +1,5 @@
 /*
- * @(#)zdump.c	8.6
+ * @(#)zdump.c	8.8
  * $FreeBSD: src/usr.sbin/zic/zdump.c,v 1.7 1999/08/28 01:21:19 peter Exp $
  * $DragonFly: src/usr.sbin/zic/zdump.c,v 1.5 2008/10/19 20:15:58 swildner Exp $
  */
@@ -313,13 +313,9 @@ main(int argc, char *argv[])
 			strncpy(buf, abbr(&tm), (sizeof buf) - 1);
 		}
 		for ( ; ; ) {
-			if (t >= cuthitime)
+			if (t >= cuthitime || t >= cuthitime - SECSPERHOUR * 12)
 				break;
 			newt = t + SECSPERHOUR * 12;
-			if (newt >= cuthitime)
-				break;
-			if (newt <= t)
-				break;
 			newtmp = localtime(&newt);
 			if (newtmp != NULL)
 				newtm = *newtmp;
@@ -399,7 +395,7 @@ _("use of -v on system with floating time_t other than float or double\n"));
 static void
 usage(void)
 {
-	fprintf(stderr, _("usage: zdump [-v] [-c cutoff] zonename ...\n"));
+	fprintf(stderr, _("usage: zdump [-v] [-c [loyear,]hiyear] zonename ...\n"));
 	exit(EXIT_FAILURE);
 }
 
