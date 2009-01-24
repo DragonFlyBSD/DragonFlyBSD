@@ -1,6 +1,7 @@
 NOOBJ=
 
 FILES=	README \
+	convert.sh \
 	atrun \
 	cron \
 	ftpd \
