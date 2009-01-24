@@ -821,10 +821,9 @@ sk_newbuf_std(struct sk_if_softc *sc_if, int idx, int wait)
 	struct mbuf *m_new = NULL;
 	struct sk_chain_data *cd = &sc_if->sk_cdata;
 	struct sk_rx_desc *r;
-	struct sk_dma_ctx ctx;
 	bus_dma_segment_t seg;
 	bus_dmamap_t map;
-	int error;
+	int error, nseg;
 
 	KKASSERT(idx < SK_RX_RING_CNT && idx >= 0);
 
@@ -841,21 +840,23 @@ sk_newbuf_std(struct sk_if_softc *sc_if, int idx, int wait)
 	 */
 	m_adj(m_new, ETHER_ALIGN);
 
-	bzero(&ctx, sizeof(ctx));
-	ctx.nsegs = 1;
-	ctx.segs = &seg;
-	error = bus_dmamap_load_mbuf(cd->sk_rx_dtag, cd->sk_rx_dmap_tmp,
-				     m_new, sk_buf_dma_addr, &ctx,
-				     wait ? BUS_DMA_WAITOK : BUS_DMA_NOWAIT);
+	error = bus_dmamap_load_mbuf_segment(cd->sk_rx_dtag, cd->sk_rx_dmap_tmp,
+			m_new, &seg, 1, &nseg, BUS_DMA_NOWAIT);
 	if (error) {
-		if_printf(&sc_if->arpcom.ac_if, "could not map RX mbuf\n");
 		m_freem(m_new);
+		if (wait) {
+			if_printf(&sc_if->arpcom.ac_if,
+				  "could not map RX mbuf\n");
+		}
 		return error;
 	}
 
 	/* Unload originally mapped mbuf */
-	if (cd->sk_rx_mbuf[idx] != NULL)
+	if (cd->sk_rx_mbuf[idx] != NULL) {
+		bus_dmamap_sync(cd->sk_rx_dtag, cd->sk_rx_dmap[idx],
+				BUS_DMASYNC_POSTREAD);
 		bus_dmamap_unload(cd->sk_rx_dtag, cd->sk_rx_dmap[idx]);
+	}
 
 	/* Switch DMA map with tmp DMA map */
 	map = cd->sk_rx_dmap_tmp;
@@ -1832,13 +1833,10 @@ sk_rxeof(struct sk_if_softc *sc_if)
 
 	i = cd->sk_rx_prod;
 
-	if (sc_if->sk_use_jumbo) {
-		bus_dmamap_sync(cd->sk_jpool_dtag, cd->sk_jpool_dmap,
-				BUS_DMASYNC_POSTREAD);
+	if (sc_if->sk_use_jumbo)
 		max_frmlen = SK_JUMBO_FRAMELEN;
-	} else {
+	else
 		max_frmlen = ETHER_MAX_LEN;
-	}
 
 	reap = 0;
 	for (;;) {
@@ -1888,11 +1886,6 @@ sk_rxeof(struct sk_if_softc *sc_if)
 			continue;
 		}
 
-		if (!sc_if->sk_use_jumbo) {
-			bus_dmamap_sync(cd->sk_rx_dtag, cd->sk_rx_dmap[cur],
-					BUS_DMASYNC_POSTREAD);
-		}
-
 		/*
 		 * Try to allocate a new RX buffer. If that fails,
 		 * copy the packet to mbufs and put the RX buffer
@@ -1901,23 +1894,9 @@ sk_rxeof(struct sk_if_softc *sc_if)
 		 * the packet.
 		 */
 		if (sk_newbuf(sc_if, cur, 0)) {
-			struct mbuf *m0;
-
-			m0 = m_devget(mtod(m, char *) - ETHER_ALIGN,
-			    total_len + ETHER_ALIGN, 0, ifp, NULL);
-
-			/*
-			 * Set up the RX descriptor's control word
-			 * _after_ the mbuf is duplicated.
-			 */
+			ifp->if_ierrors++;
 			cur_desc->sk_ctl = htole32(m->m_pkthdr.len | SK_RXSTAT);
-
-			if (m0 == NULL) {
-				ifp->if_ierrors++;
-				continue;
-			}
-			m_adj(m0, ETHER_ALIGN);
-			m = m0;
+			continue;
 		} else {
 			m->m_pkthdr.rcvif = ifp;
 			m->m_pkthdr.len = m->m_len = total_len;
