@@ -1942,10 +1942,11 @@ msk_txrx_dma_alloc(struct msk_if_softc *sc_if)
 		    BUS_SPACE_MAXADDR,		/* lowaddr */
 		    BUS_SPACE_MAXADDR,		/* highaddr */
 		    NULL, NULL,			/* filter, filterarg */
-		    MSK_TSO_MAXSIZE,		/* maxsize */
+		    MSK_JUMBO_FRAMELEN,		/* maxsize */
 		    MSK_MAXTXSEGS,		/* nsegments */
-		    MSK_TSO_MAXSGSIZE,		/* maxsegsize */
-		    0,				/* flags */
+		    MSK_MAXSGSIZE,		/* maxsegsize */
+		    BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK |
+		    BUS_DMA_ONEBPAGE,		/* flags */
 		    &sc_if->msk_cdata.msk_tx_tag);
 	if (error) {
 		device_printf(sc_if->msk_if_dev,
@@ -1957,8 +1958,9 @@ msk_txrx_dma_alloc(struct msk_if_softc *sc_if)
 	for (i = 0; i < MSK_TX_RING_CNT; i++) {
 		struct msk_txdesc *txd = &sc_if->msk_cdata.msk_txdesc[i];
 
-		error = bus_dmamap_create(sc_if->msk_cdata.msk_tx_tag, 0,
-		    &txd->tx_dmamap);
+		error = bus_dmamap_create(sc_if->msk_cdata.msk_tx_tag,
+				BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
+				&txd->tx_dmamap);
 		if (error) {
 			device_printf(sc_if->msk_if_dev,
 				      "failed to create %dth Tx dmamap\n", i);
@@ -1984,7 +1986,7 @@ msk_txrx_dma_alloc(struct msk_if_softc *sc_if)
 		    MCLBYTES,			/* maxsize */
 		    1,				/* nsegments */
 		    MCLBYTES,			/* maxsegsize */
-		    0,				/* flags */
+		    BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,/* flags */
 		    &sc_if->msk_cdata.msk_rx_tag);
 	if (error) {
 		device_printf(sc_if->msk_if_dev,
@@ -1993,7 +1995,7 @@ msk_txrx_dma_alloc(struct msk_if_softc *sc_if)
 	}
 
 	/* Create DMA maps for Rx buffers. */
-	error = bus_dmamap_create(sc_if->msk_cdata.msk_rx_tag, 0,
+	error = bus_dmamap_create(sc_if->msk_cdata.msk_rx_tag, BUS_DMA_WAITOK,
 				  &sc_if->msk_cdata.msk_rx_sparemap);
 	if (error) {
 		device_printf(sc_if->msk_if_dev,
@@ -2005,8 +2007,8 @@ msk_txrx_dma_alloc(struct msk_if_softc *sc_if)
 	for (i = 0; i < MSK_RX_RING_CNT; i++) {
 		struct msk_rxdesc *rxd = &sc_if->msk_cdata.msk_rxdesc[i];
 
-		error = bus_dmamap_create(sc_if->msk_cdata.msk_rx_tag, 0,
-					  &rxd->rx_dmamap);
+		error = bus_dmamap_create(sc_if->msk_cdata.msk_rx_tag,
+					  BUS_DMA_WAITOK, &rxd->rx_dmamap);
 		if (error) {
 			device_printf(sc_if->msk_if_dev,
 				      "failed to create %dth Rx dmamap\n", i);
