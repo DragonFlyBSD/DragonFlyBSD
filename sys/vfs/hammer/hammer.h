@@ -930,8 +930,8 @@ int	hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 void	hammer_normalize_cursor(hammer_cursor_t cursor);
 void	hammer_done_cursor(hammer_cursor_t cursor);
 int	hammer_recover_cursor(hammer_cursor_t cursor);
-void	hammer_unlock_cursor(hammer_cursor_t cursor, int also_ip);
-int	hammer_lock_cursor(hammer_cursor_t cursor, int also_ip);
+void	hammer_unlock_cursor(hammer_cursor_t cursor);
+int	hammer_lock_cursor(hammer_cursor_t cursor);
 hammer_cursor_t	hammer_push_cursor(hammer_cursor_t ocursor);
 void	hammer_pop_cursor(hammer_cursor_t ocursor, hammer_cursor_t ncursor);
 

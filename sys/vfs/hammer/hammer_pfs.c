@@ -411,9 +411,9 @@ retry:
 
 		while (hammer_flusher_meta_halflimit(trans->hmp) ||
 		       hammer_flusher_undo_exhausted(trans, 2)) {
-			hammer_unlock_cursor(&cursor, 0);
+			hammer_unlock_cursor(&cursor);
 			hammer_flusher_wait(trans->hmp, seq);
-			hammer_lock_cursor(&cursor, 0);
+			hammer_lock_cursor(&cursor);
 			seq = hammer_flusher_async_one(trans->hmp);
 		}
 

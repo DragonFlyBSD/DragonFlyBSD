@@ -2337,9 +2337,9 @@ done:
 	 * due to the exclusive sync lock the finalizer must get.
 	 */
         if (hammer_flusher_meta_limit(hmp)) {
-		hammer_unlock_cursor(cursor, 0);
+		hammer_unlock_cursor(cursor);
                 hammer_flusher_finalize(trans, 0);
-		hammer_lock_cursor(cursor, 0);
+		hammer_lock_cursor(cursor);
 	}
 
 	return(error);
