@@ -208,11 +208,6 @@ struct sk_if_softc {
 	int			sk_use_jumbo;
 };
 
-struct sk_dma_ctx {
-	int			nsegs;
-	bus_dma_segment_t	*segs;
-};
-
 #define SK_NDESC_RESERVE	2
 #define SK_NDESC_SPARE		5
 

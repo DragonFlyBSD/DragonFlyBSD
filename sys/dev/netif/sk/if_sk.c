@@ -235,9 +235,6 @@ static void	sk_rxcsum(struct ifnet *, struct mbuf *, const uint16_t,
 static int	sk_dma_alloc(device_t);
 static void	sk_dma_free(device_t);
 
-static void	sk_buf_dma_addr(void *, bus_dma_segment_t *, int, bus_size_t,
-				int);
-
 #ifdef SK_DEBUG
 #define DPRINTF(x)	if (skdebug) kprintf x
 #define DPRINTFN(n,x)	if (skdebug >= (n)) kprintf x
@@ -1622,13 +1619,11 @@ sk_encap(struct sk_if_softc *sc_if, struct mbuf **m_head0, uint32_t *txidx)
 {
 	struct sk_chain_data *cd = &sc_if->sk_cdata;
 	struct sk_ring_data *rd = &sc_if->sk_rdata;
-	struct mbuf *m_head = *m_head0;
 	struct sk_tx_desc *f = NULL;
 	uint32_t frag, cur, sk_ctl;
-	struct sk_dma_ctx ctx;
 	bus_dma_segment_t segs[SK_NTXSEG];
 	bus_dmamap_t map;
-	int i, error, maxsegs;
+	int i, error, maxsegs, nsegs;
 
 	DPRINTFN(2, ("sk_encap\n"));
 
@@ -1641,31 +1636,25 @@ sk_encap(struct sk_if_softc *sc_if, struct mbuf **m_head0, uint32_t *txidx)
 
 #ifdef SK_DEBUG
 	if (skdebug >= 2)
-		sk_dump_mbuf(m_head);
+		sk_dump_mbuf(*m_head0);
 #endif
 
 	map = cd->sk_tx_dmap[*txidx];
 
-	/*
-	 * Start packing the mbufs in this chain into
-	 * the fragment pointers. Stop when we run out
-	 * of fragments or hit the end of the mbuf chain.
-	 */
-	ctx.nsegs = maxsegs;
-	ctx.segs = segs;
-	error = bus_dmamap_load_mbuf(cd->sk_tx_dtag, map, m_head,
-				     sk_buf_dma_addr, &ctx, BUS_DMA_NOWAIT);
+	error = bus_dmamap_load_mbuf_defrag(cd->sk_tx_dtag, map, m_head0,
+			segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
 	if (error) {
-		if_printf(&sc_if->arpcom.ac_if, "could not map TX mbuf\n");
-		return ENOBUFS;
+		m_freem(*m_head0);
+		*m_head0 = NULL;
+		return error;
 	}
 
-	DPRINTFN(2, ("sk_encap: nsegs=%d\n", ctx.nsegs));
+	DPRINTFN(2, ("sk_encap: nsegs=%d\n", nsegs));
 
 	/* Sync the DMA map. */
 	bus_dmamap_sync(cd->sk_tx_dtag, map, BUS_DMASYNC_PREWRITE);
 
-	for (i = 0; i < ctx.nsegs; i++) {
+	for (i = 0; i < nsegs; i++) {
 		f = &rd->sk_tx_ring[frag];
 		f->sk_data_lo = htole32(SK_ADDR_LO(segs[i].ds_addr));
 		f->sk_data_hi = htole32(SK_ADDR_HI(segs[i].ds_addr));
@@ -1679,7 +1668,7 @@ sk_encap(struct sk_if_softc *sc_if, struct mbuf **m_head0, uint32_t *txidx)
 		SK_INC(frag, SK_TX_RING_CNT);
 	}
 
-	cd->sk_tx_mbuf[cur] = m_head;
+	cd->sk_tx_mbuf[cur] = *m_head0;
 	/* Switch DMA map */
 	cd->sk_tx_dmap[*txidx] = cd->sk_tx_dmap[cur];
 	cd->sk_tx_dmap[cur] = map;
@@ -1688,7 +1677,7 @@ sk_encap(struct sk_if_softc *sc_if, struct mbuf **m_head0, uint32_t *txidx)
 		htole32(SK_TXCTL_LASTFRAG|SK_TXCTL_EOF_INTR);
 	rd->sk_tx_ring[*txidx].sk_ctl |= htole32(SK_TXCTL_OWN);
 
-	sc_if->sk_cdata.sk_tx_cnt += ctx.nsegs;
+	sc_if->sk_cdata.sk_tx_cnt += nsegs;
 
 #ifdef SK_DEBUG
 	if (skdebug >= 2) {
@@ -1740,9 +1729,12 @@ sk_start(struct ifnet *ifp)
 		 * for the NIC to drain the ring.
 		 */
 		if (sk_encap(sc_if, &m_head, &idx)) {
-			ifp->if_flags |= IFF_OACTIVE;
-			ifq_prepend(&ifp->if_snd, m_head);
-			break;
+			if (sc_if->sk_cdata.sk_tx_cnt == 0) {
+				continue;
+			} else {
+				ifp->if_flags |= IFF_OACTIVE;
+				break;
+			}
 		}
 
 		trans = 1;
@@ -3248,25 +3240,6 @@ sk_dma_free(device_t dev)
 		bus_dma_tag_destroy(cd->sk_buf_dtag);
 	if (sc_if->sk_parent_dtag != NULL)
 		bus_dma_tag_destroy(sc_if->sk_parent_dtag);
-}
-
-static void
-sk_buf_dma_addr(void *arg, bus_dma_segment_t *segs, int nsegs,
-		bus_size_t mapsz __unused, int error)
-{
-	struct sk_dma_ctx *ctx = arg;
-	int i;
-
-	if (error)
-		return;
-
-	KASSERT(nsegs <= ctx->nsegs,
-		("too many segments(%d), should be <= %d\n",
-		 nsegs, ctx->nsegs));
-
-	ctx->nsegs = nsegs;
-	for (i = 0; i < nsegs; ++i)
-		ctx->segs[i] = segs[i];
 }
 
 static int
