@@ -1931,6 +1931,8 @@ msk_txrx_dma_alloc(struct msk_if_softc *sc_if)
 				bus_dmamap_destroy(sc_if->msk_cdata.msk_rx_tag,
 						   rxd->rx_dmamap);
 			}
+			bus_dmamap_destroy(sc_if->msk_cdata.msk_rx_tag,
+					   sc_if->msk_cdata.msk_rx_sparemap);
 			bus_dma_tag_destroy(sc_if->msk_cdata.msk_rx_tag);
 			sc_if->msk_cdata.msk_rx_tag = NULL;
 
