@@ -2816,13 +2816,25 @@ retry:
 		 * If we are trying to remove a directory the directory must
 		 * be empty.
 		 *
-		 * WARNING: hammer_ip_check_directory_empty() may have to
-		 * terminate the cursor to avoid a deadlock.  It is ok to
-		 * call hammer_done_cursor() twice.
+		 * The check directory code can loop and deadlock/retry.  Our
+		 * own cursor's node locks must be released to avoid a 3-way
+		 * deadlock with the flusher if the check directory code
+		 * blocks.
+		 *
+		 * If any changes whatsoever have been made to the cursor
+		 * set EDEADLK and retry.
 		 */
 		if (error == 0 && ip->ino_data.obj_type ==
 				  HAMMER_OBJTYPE_DIRECTORY) {
+			hammer_unlock_cursor(&cursor);
 			error = hammer_ip_check_directory_empty(trans, ip);
+			hammer_lock_cursor(&cursor);
+			if (cursor.flags & HAMMER_CURSOR_RETEST) {
+				kprintf("HAMMER: Warning: avoided deadlock "
+					"on rmdir '%s'\n",
+					ncp->nc_name);
+				error = EDEADLK;
+			}
 		}
 
 		/*
