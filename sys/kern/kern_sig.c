@@ -1277,7 +1277,7 @@ proc_stop(struct proc *p)
 	struct lwp *lp;
 
 	/* If somebody raced us, be happy with it */
-	if (p->p_stat == SSTOP)
+	if (p->p_stat == SSTOP || p->p_stat == SZOMB)
 		return;
 
 	crit_enter();
