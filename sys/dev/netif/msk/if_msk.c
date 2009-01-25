@@ -248,7 +248,6 @@ static void	msk_set_prefetch(struct msk_softc *, int, bus_addr_t, uint32_t);
 static void	msk_set_rambuffer(struct msk_if_softc *);
 static void	msk_stop(struct msk_if_softc *);
 
-static void	msk_dmamap_cb(void *, bus_dma_segment_t *, int, int);
 static void	msk_dmamap_mbuf_cb(void *, bus_dma_segment_t *, int,
 				   bus_size_t, int);
 static int	msk_txrx_dma_alloc(struct msk_if_softc *);
@@ -604,9 +603,6 @@ msk_init_rx_ring(struct msk_if_softc *sc_if)
 		MSK_INC(prod, MSK_RX_RING_CNT);
 	}
 
-	bus_dmamap_sync(sc_if->msk_cdata.msk_rx_ring_tag,
-	    sc_if->msk_cdata.msk_rx_ring_map, BUS_DMASYNC_PREWRITE);
-
 	/* Update prefetch unit. */
 	sc_if->msk_cdata.msk_rx_prod = MSK_RX_RING_CNT - 1;
 	CSR_WRITE_2(sc_if->msk_softc,
@@ -674,9 +670,6 @@ msk_init_tx_ring(struct msk_if_softc *sc_if)
 		txd->tx_m = NULL;
 		txd->tx_le = &rd->msk_tx_ring[i];
 	}
-
-	bus_dmamap_sync(sc_if->msk_cdata.msk_tx_ring_tag,
-	    sc_if->msk_cdata.msk_tx_ring_map, BUS_DMASYNC_PREWRITE);
 }
 
 static __inline void
@@ -1259,8 +1252,6 @@ mskc_reset(struct msk_softc *sc)
 	bzero(sc->msk_stat_ring,
 	    sizeof(struct msk_stat_desc) * MSK_STAT_RING_CNT);
 	sc->msk_stat_cons = 0;
-	bus_dmamap_sync(sc->msk_stat_tag, sc->msk_stat_map,
-			BUS_DMASYNC_PREWRITE);
 	CSR_WRITE_4(sc, STAT_CTRL, SC_STAT_RST_SET);
 	CSR_WRITE_4(sc, STAT_CTRL, SC_STAT_RST_CLR);
 	/* Set the status list base address. */
@@ -1780,76 +1771,25 @@ msk_dmamap_mbuf_cb(void *arg, bus_dma_segment_t *segs, int nseg,
 		ctx->segs[i] = segs[i];
 }
 
-static void
-msk_dmamap_cb(void *arg, bus_dma_segment_t *segs, int nseg, int error)
-{
-	struct msk_dmamap_arg *ctx = arg;
-	int i;
-
-	if (error)
-		return;
-
-	KKASSERT(nseg <= ctx->nseg);
-
-	ctx->nseg = nseg;
-	for (i = 0; i < ctx->nseg; ++i)
-		ctx->segs[i] = segs[i];
-}
-
 /* Create status DMA region. */
 static int
 mskc_status_dma_alloc(struct msk_softc *sc)
 {
-	struct msk_dmamap_arg ctx;
-	bus_dma_segment_t seg;
+	bus_dmamem_t dmem;
 	int error;
 
-	error = bus_dma_tag_create(
-		    NULL,			/* XXX parent */
-		    MSK_STAT_ALIGN, 0,		/* alignment, boundary */
-		    BUS_SPACE_MAXADDR,		/* lowaddr */
-		    BUS_SPACE_MAXADDR,		/* highaddr */
-		    NULL, NULL,			/* filter, filterarg */
-		    MSK_STAT_RING_SZ,		/* maxsize */
-		    1,				/* nsegments */
-		    MSK_STAT_RING_SZ,		/* maxsegsize */
-		    0,				/* flags */
-		    &sc->msk_stat_tag);
+	error = bus_dmamem_coherent(NULL/* XXX parent */, MSK_STAT_ALIGN, 0,
+			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+			MSK_STAT_RING_SZ, BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
 	if (error) {
 		device_printf(sc->msk_dev,
-		    "failed to create status DMA tag\n");
-		return (error);
+		    "failed to create status coherent DMA memory\n");
+		return error;
 	}
-
-	/* Allocate DMA'able memory and load the DMA map for status ring. */
-	error = bus_dmamem_alloc(sc->msk_stat_tag,
-				 (void **)&sc->msk_stat_ring,
-				 BUS_DMA_WAITOK | BUS_DMA_ZERO,
-				 &sc->msk_stat_map);
-	if (error) {
-		device_printf(sc->msk_dev,
-		    "failed to allocate DMA'able memory for status ring\n");
-		bus_dma_tag_destroy(sc->msk_stat_tag);
-		sc->msk_stat_tag = NULL;
-		return (error);
-	}
-
-	bzero(&ctx, sizeof(ctx));
-	ctx.nseg = 1;
-	ctx.segs = &seg;
-	error = bus_dmamap_load(sc->msk_stat_tag, sc->msk_stat_map,
-				sc->msk_stat_ring, MSK_STAT_RING_SZ,
-				msk_dmamap_cb, &ctx, 0);
-	if (error) {
-		device_printf(sc->msk_dev,
-		    "failed to load DMA'able memory for status ring\n");
-		bus_dmamem_free(sc->msk_stat_tag, sc->msk_stat_ring,
-				sc->msk_stat_map);
-		bus_dma_tag_destroy(sc->msk_stat_tag);
-		sc->msk_stat_tag = NULL;
-		return (error);
-	}
-	sc->msk_stat_ring_paddr = seg.ds_addr;
+	sc->msk_stat_tag = dmem.dmem_tag;
+	sc->msk_stat_map = dmem.dmem_map;
+	sc->msk_stat_ring = dmem.dmem_addr;
+	sc->msk_stat_ring_paddr = dmem.dmem_busaddr;
 
 	return (0);
 }
@@ -2624,8 +2564,6 @@ msk_encap(struct msk_if_softc *sc_if, struct mbuf **m_head)
 
 	/* Sync descriptors. */
 	bus_dmamap_sync(sc_if->msk_cdata.msk_tx_tag, map, BUS_DMASYNC_PREWRITE);
-	bus_dmamap_sync(sc_if->msk_cdata.msk_tx_ring_tag,
-	    sc_if->msk_cdata.msk_tx_ring_map, BUS_DMASYNC_PREWRITE);
 
 	return (0);
 }
@@ -2927,9 +2865,6 @@ msk_txeof(struct msk_if_softc *sc_if, int idx)
 
 	ifp = sc_if->msk_ifp;
 
-	bus_dmamap_sync(sc_if->msk_cdata.msk_tx_ring_tag,
-	    sc_if->msk_cdata.msk_tx_ring_map, BUS_DMASYNC_POSTREAD);
-
 	/*
 	 * Go through our tx ring and free mbufs for those
 	 * frames that have been sent.
@@ -3167,14 +3102,8 @@ msk_rxput(struct msk_if_softc *sc_if)
 		    sc_if->msk_cdata.msk_jumbo_rx_ring_tag,
 		    sc_if->msk_cdata.msk_jumbo_rx_ring_map,
 		    BUS_DMASYNC_PREWRITE);
-	} else
-#endif
-	{
-		bus_dmamap_sync(
-		    sc_if->msk_cdata.msk_rx_ring_tag,
-		    sc_if->msk_cdata.msk_rx_ring_map,
-		    BUS_DMASYNC_PREWRITE);
 	}
+#endif
 	CSR_WRITE_2(sc, Y2_PREF_Q_ADDR(sc_if->msk_rxq,
 	    PREF_UNIT_PUT_IDX_REG), sc_if->msk_cdata.msk_rx_prod);
 }
@@ -3194,11 +3123,6 @@ mskc_handle_events(struct msk_softc *sc)
 		return (0);
 
 	ether_input_chain_init(chain);
-
-	/* Sync status LEs. */
-	bus_dmamap_sync(sc->msk_stat_tag, sc->msk_stat_map,
-			BUS_DMASYNC_POSTREAD);
-	/* XXX Sync Rx LEs here. */
 
 	rxput[MSK_PORT_A] = rxput[MSK_PORT_B] = 0;
 
@@ -3863,43 +3787,23 @@ msk_dmamem_create(device_t dev, bus_size_t size, bus_dma_tag_t *dtag,
 		  void **addr, bus_addr_t *paddr, bus_dmamap_t *dmap)
 {
 	struct msk_if_softc *sc_if = device_get_softc(dev);
-	struct msk_dmamap_arg ctx;
-	bus_dma_segment_t seg;
+	bus_dmamem_t dmem;
 	int error;
 
-	error = bus_dma_tag_create(sc_if->msk_cdata.msk_parent_tag,
-				   MSK_RING_ALIGN, 0,
-				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
-				   size, 1, BUS_SPACE_MAXSIZE_32BIT,
-				   0, dtag);
+	error = bus_dmamem_coherent(sc_if->msk_cdata.msk_parent_tag,
+			MSK_RING_ALIGN, 0,
+			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+			size, BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
 	if (error) {
-		device_printf(dev, "can't create DMA tag\n");
+		device_printf(dev, "can't create coherent DMA memory\n");
 		return error;
 	}
 
-	error = bus_dmamem_alloc(*dtag, addr, BUS_DMA_WAITOK | BUS_DMA_ZERO,
-				 dmap);
-	if (error) {
-		device_printf(dev, "can't allocate DMA mem\n");
-		bus_dma_tag_destroy(*dtag);
-		*dtag = NULL;
-		return error;
-	}
+	*dtag = dmem.dmem_tag;
+	*dmap = dmem.dmem_map;
+	*addr = dmem.dmem_addr;
+	*paddr = dmem.dmem_busaddr;
 
-	bzero(&ctx, sizeof(ctx));
-	ctx.nseg = 1;
-	ctx.segs = &seg;
-	error = bus_dmamap_load(*dtag, *dmap, *addr, size,
-				msk_dmamap_cb, &ctx, BUS_DMA_WAITOK);
-	if (error) {
-		device_printf(dev, "can't load DMA mem\n");
-		bus_dmamem_free(*dtag, *addr, *dmap);
-		bus_dma_tag_destroy(*dtag);
-		*dtag = NULL;
-		return error;
-	}
-	*paddr = seg.ds_addr;
 	return 0;
 }
 
