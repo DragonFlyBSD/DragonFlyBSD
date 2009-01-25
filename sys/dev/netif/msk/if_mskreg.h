@@ -2378,7 +2378,7 @@ struct msk_if_softc {
 #define	MSK_PHY_POWERUP		1
 #define	MSK_PHY_POWERDOWN	0
 
-struct msk_dmamap_arg {
-	int	nseg;
-	bus_dma_segment_t *segs;
-};
+#define MSK_SPARE_TX_DESC_CNT	5
+#define MSK_IS_OACTIVE(sc_if) \
+	((sc_if)->msk_cdata.msk_tx_cnt + \
+	 MSK_RESERVED_TX_DESC_CNT + MSK_SPARE_TX_DESC_CNT > MSK_TX_RING_CNT)

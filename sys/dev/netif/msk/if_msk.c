@@ -248,8 +248,6 @@ static void	msk_set_prefetch(struct msk_softc *, int, bus_addr_t, uint32_t);
 static void	msk_set_rambuffer(struct msk_if_softc *);
 static void	msk_stop(struct msk_if_softc *);
 
-static void	msk_dmamap_mbuf_cb(void *, bus_dma_segment_t *, int,
-				   bus_size_t, int);
 static int	msk_txrx_dma_alloc(struct msk_if_softc *);
 static void	msk_txrx_dma_free(struct msk_if_softc *);
 static int	msk_init_rx_ring(struct msk_if_softc *);
@@ -257,8 +255,6 @@ static void	msk_init_tx_ring(struct msk_if_softc *);
 static __inline void
 		msk_discard_rxbuf(struct msk_if_softc *, int);
 static int	msk_newbuf(struct msk_if_softc *, int, int);
-static struct mbuf *
-		msk_defrag(struct mbuf *, int, int);
 static int	msk_encap(struct msk_if_softc *, struct mbuf **);
 
 #ifdef MSK_JUMBO
@@ -1748,26 +1744,6 @@ mskc_detach(device_t dev)
 	return (0);
 }
 
-static void
-msk_dmamap_mbuf_cb(void *arg, bus_dma_segment_t *segs, int nseg,
-		   bus_size_t mapsz __unused, int error)
-{
-	struct msk_dmamap_arg *ctx = arg;
-	int i;
-
-	if (error)
-		return;
-
-	if (ctx->nseg < nseg) {
-		ctx->nseg = 0;
-		return;
-	}
-
-	ctx->nseg = nseg;
-	for (i = 0; i < ctx->nseg; ++i)
-		ctx->segs[i] = segs[i];
-}
-
 /* Create status DMA region. */
 static int
 mskc_status_dma_alloc(struct msk_softc *sc)
@@ -2286,91 +2262,6 @@ msk_jfree(void *buf, void *args)
 }
 #endif
 
-/*
- * It's copy of ath_defrag(ath(4)).
- *
- * Defragment an mbuf chain, returning at most maxfrags separate
- * mbufs+clusters.  If this is not possible NULL is returned and
- * the original mbuf chain is left in it's present (potentially
- * modified) state.  We use two techniques: collapsing consecutive
- * mbufs and replacing consecutive mbufs by a cluster.
- */
-static struct mbuf *
-msk_defrag(struct mbuf *m0, int how, int maxfrags)
-{
-	struct mbuf *m, *n, *n2, **prev;
-	u_int curfrags;
-
-	/*
-	 * Calculate the current number of frags.
-	 */
-	curfrags = 0;
-	for (m = m0; m != NULL; m = m->m_next)
-		curfrags++;
-	/*
-	 * First, try to collapse mbufs.  Note that we always collapse
-	 * towards the front so we don't need to deal with moving the
-	 * pkthdr.  This may be suboptimal if the first mbuf has much
-	 * less data than the following.
-	 */
-	m = m0;
-again:
-	for (;;) {
-		n = m->m_next;
-		if (n == NULL)
-			break;
-		if (n->m_len < M_TRAILINGSPACE(m)) {
-			bcopy(mtod(n, void *), mtod(m, char *) + m->m_len,
-				n->m_len);
-			m->m_len += n->m_len;
-			m->m_next = n->m_next;
-			m_free(n);
-			if (--curfrags <= maxfrags)
-				return (m0);
-		} else
-			m = n;
-	}
-	KASSERT(maxfrags > 1,
-		("maxfrags %u, but normal collapse failed", maxfrags));
-	/*
-	 * Collapse consecutive mbufs to a cluster.
-	 */
-	prev = &m0->m_next;		/* NB: not the first mbuf */
-	while ((n = *prev) != NULL) {
-		if ((n2 = n->m_next) != NULL &&
-		    n->m_len + n2->m_len < MCLBYTES) {
-			m = m_getcl(how, MT_DATA, 0);
-			if (m == NULL)
-				goto bad;
-			bcopy(mtod(n, void *), mtod(m, void *), n->m_len);
-			bcopy(mtod(n2, void *), mtod(m, char *) + n->m_len,
-				n2->m_len);
-			m->m_len = n->m_len + n2->m_len;
-			m->m_next = n2->m_next;
-			*prev = m;
-			m_free(n);
-			m_free(n2);
-			if (--curfrags <= maxfrags)	/* +1 cl -2 mbufs */
-				return m0;
-			/*
-			 * Still not there, try the normal collapse
-			 * again before we allocate another cluster.
-			 */
-			goto again;
-		}
-		prev = &n->m_next;
-	}
-	/*
-	 * No place where we can collapse to a cluster; punt.
-	 * This can occur if, for example, you request 2 frags
-	 * but the packet requires that both be clusters (we
-	 * never reallocate the first mbuf to avoid moving the
-	 * packet header).
-	 */
-bad:
-	return (NULL);
-}
-
 static int
 msk_encap(struct msk_if_softc *sc_if, struct mbuf **m_head)
 {
@@ -2378,11 +2269,17 @@ msk_encap(struct msk_if_softc *sc_if, struct mbuf **m_head)
 	struct msk_tx_desc *tx_le;
 	struct mbuf *m;
 	bus_dmamap_t map;
-	struct msk_dmamap_arg ctx;
 	bus_dma_segment_t txsegs[MSK_MAXTXSEGS];
 	uint32_t control, prod, si;
 	uint16_t offset, tcp_offset;
-	int error, i;
+	int error, i, nsegs, maxsegs;
+
+	maxsegs = MSK_TX_RING_CNT - sc_if->msk_cdata.msk_tx_cnt -
+		  MSK_RESERVED_TX_DESC_CNT;
+	KASSERT(maxsegs >= MSK_SPARE_TX_DESC_CNT,
+		("not enough spare TX desc\n"));
+	if (maxsegs > MSK_MAXTXSEGS)
+		maxsegs = MSK_MAXTXSEGS;
 
 	tcp_offset = offset = 0;
 	m = *m_head;
@@ -2454,49 +2351,17 @@ msk_encap(struct msk_if_softc *sc_if, struct mbuf **m_head)
 	txd = &sc_if->msk_cdata.msk_txdesc[prod];
 	txd_last = txd;
 	map = txd->tx_dmamap;
-	bzero(&ctx, sizeof(ctx));
-	ctx.nseg = MSK_MAXTXSEGS;
-	ctx.segs = txsegs;
-	error = bus_dmamap_load_mbuf(sc_if->msk_cdata.msk_tx_tag, map,
-	    *m_head, msk_dmamap_mbuf_cb, &ctx, BUS_DMA_NOWAIT);
-	if (error == 0 && ctx.nseg == 0) {
-		bus_dmamap_unload(sc_if->msk_cdata.msk_tx_tag, map);
-		error = EFBIG;
-	}
-	if (error == EFBIG) {
-		m = msk_defrag(*m_head, MB_DONTWAIT, MSK_MAXTXSEGS);
-		if (m == NULL) {
-			m_freem(*m_head);
-			*m_head = NULL;
-			return (ENOBUFS);
-		}
-		*m_head = m;
 
-		bzero(&ctx, sizeof(ctx));
-		ctx.nseg = MSK_MAXTXSEGS;
-		ctx.segs = txsegs;
-		error = bus_dmamap_load_mbuf(sc_if->msk_cdata.msk_tx_tag,
-		    map, *m_head, msk_dmamap_mbuf_cb, &ctx, BUS_DMA_NOWAIT);
-		if (error == 0 && ctx.nseg == 0) {
-			bus_dmamap_unload(sc_if->msk_cdata.msk_tx_tag, map);
-			error = EFBIG;
-		}
-		if (error != 0) {
-			m_freem(*m_head);
-			*m_head = NULL;
-			return (error);
-		}
-	} else if (error != 0) {
-		return (error);
+	error = bus_dmamap_load_mbuf_defrag(sc_if->msk_cdata.msk_tx_tag, map,
+			m_head, txsegs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
+	if (error) {
+		m_freem(*m_head);
+		*m_head = NULL;
+		return error;
 	}
+	bus_dmamap_sync(sc_if->msk_cdata.msk_tx_tag, map, BUS_DMASYNC_PREWRITE);
 
-	/* Check number of available descriptors. */
-	if (sc_if->msk_cdata.msk_tx_cnt + ctx.nseg >=
-	    (MSK_TX_RING_CNT - MSK_RESERVED_TX_DESC_CNT)) {
-		bus_dmamap_unload(sc_if->msk_cdata.msk_tx_tag, map);
-		return (ENOBUFS);
-	}
-
+	m = *m_head;
 	control = 0;
 	tx_le = NULL;
 
@@ -2533,7 +2398,7 @@ msk_encap(struct msk_if_softc *sc_if, struct mbuf **m_head)
 	sc_if->msk_cdata.msk_tx_cnt++;
 	MSK_INC(prod, MSK_TX_RING_CNT);
 
-	for (i = 1; i < ctx.nseg; i++) {
+	for (i = 1; i < nsegs; i++) {
 		tx_le = &sc_if->msk_rdata.msk_tx_ring[prod];
 		tx_le->msk_addr = htole32(MSK_ADDR_LO(txsegs[i].ds_addr));
 		tx_le->msk_control = htole32(txsegs[i].ds_len | control |
@@ -2559,9 +2424,6 @@ msk_encap(struct msk_if_softc *sc_if, struct mbuf **m_head)
 	txd->tx_dmamap = map;
 	txd->tx_m = m;
 
-	/* Sync descriptors. */
-	bus_dmamap_sync(sc_if->msk_cdata.msk_tx_tag, map, BUS_DMASYNC_PREWRITE);
-
 	return (0);
 }
 
@@ -2584,9 +2446,13 @@ msk_start(struct ifnet *ifp)
 	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
 		return;
 
-	for (enq = 0; !ifq_is_empty(&ifp->if_snd) &&
-	    sc_if->msk_cdata.msk_tx_cnt <
-	    (MSK_TX_RING_CNT - MSK_RESERVED_TX_DESC_CNT); ) {
+	enq = 0;
+	while (!ifq_is_empty(&ifp->if_snd)) {
+		if (MSK_IS_OACTIVE(sc_if)) {
+			ifp->if_flags |= IFF_OACTIVE;
+			break;
+		}
+
 		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;
@@ -2597,14 +2463,15 @@ msk_start(struct ifnet *ifp)
 		 * for the NIC to drain the ring.
 		 */
 		if (msk_encap(sc_if, &m_head) != 0) {
-			if (m_head == NULL)
+			if (sc_if->msk_cdata.msk_tx_cnt == 0) {
+				continue;
+			} else {
+				ifp->if_flags |= IFF_OACTIVE;
 				break;
-			m_freem(m_head);
-			ifp->if_flags |= IFF_OACTIVE;
-			break;
+			}
 		}
+		enq = 1;
 
-		enq++;
 		/*
 		 * If there's a BPF listener, bounce a copy of this frame
 		 * to him.
@@ -2612,7 +2479,7 @@ msk_start(struct ifnet *ifp)
 		BPF_MTAP(ifp, m_head);
 	}
 
-	if (enq > 0) {
+	if (enq) {
 		/* Transmit */
 		CSR_WRITE_2(sc_if->msk_softc,
 		    Y2_PREF_Q_ADDR(sc_if->msk_txq, PREF_UNIT_PUT_IDX_REG),
@@ -2875,12 +2742,9 @@ msk_txeof(struct msk_if_softc *sc_if, int idx)
 		cur_tx = &sc_if->msk_rdata.msk_tx_ring[cons];
 		control = le32toh(cur_tx->msk_control);
 		sc_if->msk_cdata.msk_tx_cnt--;
-		ifp->if_flags &= ~IFF_OACTIVE;
 		if ((control & EOP) == 0)
 			continue;
 		txd = &sc_if->msk_cdata.msk_txdesc[cons];
-		bus_dmamap_sync(sc_if->msk_cdata.msk_tx_tag, txd->tx_dmamap,
-		    BUS_DMASYNC_POSTWRITE);
 		bus_dmamap_unload(sc_if->msk_cdata.msk_tx_tag, txd->tx_dmamap);
 
 		ifp->if_opackets++;
@@ -2892,6 +2756,8 @@ msk_txeof(struct msk_if_softc *sc_if, int idx)
 
 	if (prog > 0) {
 		sc_if->msk_cdata.msk_tx_cons = cons;
+		if (!MSK_IS_OACTIVE(sc_if))
+			ifp->if_flags &= ~IFF_OACTIVE;
 		if (sc_if->msk_cdata.msk_tx_cnt == 0)
 			ifp->if_timer = 0;
 		/* No need to sync LEs as we didn't update LEs. */
@@ -3696,8 +3562,6 @@ msk_stop(struct msk_if_softc *sc_if)
 	for (i = 0; i < MSK_RX_RING_CNT; i++) {
 		rxd = &sc_if->msk_cdata.msk_rxdesc[i];
 		if (rxd->rx_m != NULL) {
-			bus_dmamap_sync(sc_if->msk_cdata.msk_rx_tag,
-			    rxd->rx_dmamap, BUS_DMASYNC_POSTREAD);
 			bus_dmamap_unload(sc_if->msk_cdata.msk_rx_tag,
 			    rxd->rx_dmamap);
 			m_freem(rxd->rx_m);
@@ -3720,8 +3584,6 @@ msk_stop(struct msk_if_softc *sc_if)
 	for (i = 0; i < MSK_TX_RING_CNT; i++) {
 		txd = &sc_if->msk_cdata.msk_txdesc[i];
 		if (txd->tx_m != NULL) {
-			bus_dmamap_sync(sc_if->msk_cdata.msk_tx_tag,
-			    txd->tx_dmamap, BUS_DMASYNC_POSTWRITE);
 			bus_dmamap_unload(sc_if->msk_cdata.msk_tx_tag,
 			    txd->tx_dmamap);
 			m_freem(txd->tx_m);
