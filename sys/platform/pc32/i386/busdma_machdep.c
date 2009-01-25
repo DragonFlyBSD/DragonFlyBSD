@@ -135,7 +135,7 @@ static STAILQ_HEAD(, bounce_zone) bounce_zone_list =
 int busdma_swi_pending;
 static int total_bounce_pages;
 static int max_bounce_pages = MAX_BPAGES;
-static int bounce_alignment = 0; /* XXX temporary */
+static int bounce_alignment = 1; /* XXX temporary */
 
 TUNABLE_INT("hw.busdma.max_bpages", &max_bounce_pages);
 TUNABLE_INT("hw.busdma.bounce_alignment", &bounce_alignment);
@@ -173,8 +173,8 @@ SYSCTL_INT(_hw_busdma, OID_AUTO, total_bpages, CTLFLAG_RD, &total_bounce_pages,
 	   0, "Total bounce pages");
 SYSCTL_INT(_hw_busdma, OID_AUTO, max_bpages, CTLFLAG_RD, &max_bounce_pages,
 	   0, "Max bounce pages per bounce zone");
-SYSCTL_INT(_hw_busdma, OID_AUTO, alignment, CTLFLAG_RD, &bounce_alignment,
-	   0, "Obey alignment constraint");
+SYSCTL_INT(_hw_busdma, OID_AUTO, bounce_alignment, CTLFLAG_RD,
+	   &bounce_alignment, 0, "Obey alignment constraint");
 
 static __inline int
 run_filter(bus_dma_tag_t dmat, bus_addr_t paddr)
