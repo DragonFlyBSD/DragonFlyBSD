@@ -489,11 +489,24 @@ hammer_cursor_down(hammer_cursor_t cursor)
 void
 hammer_unlock_cursor(hammer_cursor_t cursor)
 {
+	hammer_buffer_t data_buffer;
 	hammer_node_t node;
-	hammer_inode_t ip;
 
 	KKASSERT((cursor->flags & HAMMER_CURSOR_TRACKED) == 0);
 	KKASSERT(cursor->node);
+
+	/*
+	 * We must release any cached data buffer held by the cursor,
+	 * otherwise we can deadlock against other threads attempting
+	 * to invalidate the underlying buffer cache buffers which
+	 * become stale due to a pruning or reblocking operation.
+	 */
+	if ((data_buffer = cursor->data_buffer) != NULL) {
+		cursor->data_buffer = NULL;
+		cursor->data = NULL;
+		hammer_rel_buffer(data_buffer, 0);
+	}
+
 	/*
 	 * Release the cursor's locks and track B-Tree operations on node.
 	 * While being tracked our cursor can be modified by other threads
@@ -521,7 +534,6 @@ hammer_unlock_cursor(hammer_cursor_t cursor)
 int
 hammer_lock_cursor(hammer_cursor_t cursor)
 {
-	hammer_inode_t ip;
 	hammer_node_t node;
 	int error;
 
