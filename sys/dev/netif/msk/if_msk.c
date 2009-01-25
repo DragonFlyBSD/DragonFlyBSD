@@ -256,7 +256,7 @@ static int	msk_init_rx_ring(struct msk_if_softc *);
 static void	msk_init_tx_ring(struct msk_if_softc *);
 static __inline void
 		msk_discard_rxbuf(struct msk_if_softc *, int);
-static int	msk_newbuf(struct msk_if_softc *, int);
+static int	msk_newbuf(struct msk_if_softc *, int, int);
 static struct mbuf *
 		msk_defrag(struct mbuf *, int, int);
 static int	msk_encap(struct msk_if_softc *, struct mbuf **);
@@ -598,7 +598,7 @@ msk_init_rx_ring(struct msk_if_softc *sc_if)
 		rxd = &sc_if->msk_cdata.msk_rxdesc[prod];
 		rxd->rx_m = NULL;
 		rxd->rx_le = &rd->msk_rx_ring[prod];
-		if (msk_newbuf(sc_if, prod) != 0)
+		if (msk_newbuf(sc_if, prod, 1) != 0)
 			return (ENOBUFS);
 		MSK_INC(prod, MSK_RX_RING_CNT);
 	}
@@ -701,33 +701,31 @@ msk_discard_jumbo_rxbuf(struct msk_if_softc *sc_if, int	idx)
 #endif
 
 static int
-msk_newbuf(struct msk_if_softc *sc_if, int idx)
+msk_newbuf(struct msk_if_softc *sc_if, int idx, int init)
 {
 	struct msk_rx_desc *rx_le;
 	struct msk_rxdesc *rxd;
 	struct mbuf *m;
-	struct msk_dmamap_arg ctx;
 	bus_dma_segment_t seg;
 	bus_dmamap_t map;
+	int error, nseg;
 
-	m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
 		return (ENOBUFS);
 
 	m->m_len = m->m_pkthdr.len = MCLBYTES;
 	m_adj(m, ETHER_ALIGN);
 
-	bzero(&ctx, sizeof(ctx));
-	ctx.nseg = 1;
-	ctx.segs = &seg;
-	if (bus_dmamap_load_mbuf(sc_if->msk_cdata.msk_rx_tag,
-	    sc_if->msk_cdata.msk_rx_sparemap, m, msk_dmamap_mbuf_cb, &ctx,
-	    BUS_DMA_NOWAIT) != 0) {
+	error = bus_dmamap_load_mbuf_segment(sc_if->msk_cdata.msk_rx_tag,
+			sc_if->msk_cdata.msk_rx_sparemap,
+			m, &seg, 1, &nseg, BUS_DMA_NOWAIT);
+	if (error) {
 		m_freem(m);
-		return (ENOBUFS);
+		if (init)
+			if_printf(&sc_if->arpcom.ac_if, "can't load RX mbuf\n");
+		return (error);
 	}
-	KASSERT(ctx.nseg == 1,
-		("%s: %d segments returned!", __func__, ctx.nseg));
 
 	rxd = &sc_if->msk_cdata.msk_rxdesc[idx];
 	if (rxd->rx_m != NULL) {
@@ -735,16 +733,15 @@ msk_newbuf(struct msk_if_softc *sc_if, int idx)
 		    BUS_DMASYNC_POSTREAD);
 		bus_dmamap_unload(sc_if->msk_cdata.msk_rx_tag, rxd->rx_dmamap);
 	}
+
 	map = rxd->rx_dmamap;
 	rxd->rx_dmamap = sc_if->msk_cdata.msk_rx_sparemap;
 	sc_if->msk_cdata.msk_rx_sparemap = map;
-	bus_dmamap_sync(sc_if->msk_cdata.msk_rx_tag, rxd->rx_dmamap,
-	    BUS_DMASYNC_PREREAD);
+
 	rxd->rx_m = m;
 	rx_le = rxd->rx_le;
 	rx_le->msk_addr = htole32(MSK_ADDR_LO(seg.ds_addr));
-	rx_le->msk_control =
-	    htole32(seg.ds_len | OP_PACKET | HW_OWNER);
+	rx_le->msk_control = htole32(seg.ds_len | OP_PACKET | HW_OWNER);
 
 	return (0);
 }
@@ -2774,7 +2771,7 @@ msk_rxeof(struct msk_if_softc *sc_if, uint32_t status, int len,
 		}
 		rxd = &sc_if->msk_cdata.msk_rxdesc[cons];
 		m = rxd->rx_m;
-		if (msk_newbuf(sc_if, cons) != 0) {
+		if (msk_newbuf(sc_if, cons, 0) != 0) {
 			ifp->if_iqdrops++;
 			/* Reuse old buffer. */
 			msk_discard_rxbuf(sc_if, cons);
