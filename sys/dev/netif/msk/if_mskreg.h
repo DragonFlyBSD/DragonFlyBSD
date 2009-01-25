@@ -2342,6 +2342,9 @@ struct msk_softc {
 	 */
 	int			msk_process_limit;
 	int			msk_intr_rate;
+	int			msk_defrag_avoided;
+	int			msk_leading_copied;
+	int			msk_trailing_copied;
 };
 
 #define	MSK_USECS(sc, us)	((sc)->msk_clock * (us))

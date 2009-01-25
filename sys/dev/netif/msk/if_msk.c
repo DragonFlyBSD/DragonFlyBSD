@@ -1548,6 +1548,18 @@ mskc_attach(device_t dev)
 			OID_AUTO, "intr_rate", CTLTYPE_INT | CTLFLAG_RW,
 			sc, 0, mskc_sysctl_intr_rate,
 			"I", "max number of interrupt per second");
+	SYSCTL_ADD_INT(&sc->msk_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->msk_sysctl_tree), OID_AUTO,
+		       "defrag_avoided", CTLFLAG_RW, &sc->msk_defrag_avoided,
+		       0, "# of avoided m_defrag on TX path");
+	SYSCTL_ADD_INT(&sc->msk_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->msk_sysctl_tree), OID_AUTO,
+		       "leading_copied", CTLFLAG_RW, &sc->msk_leading_copied,
+		       0, "# of leading copies on TX path");
+	SYSCTL_ADD_INT(&sc->msk_sysctl_ctx,
+		       SYSCTL_CHILDREN(sc->msk_sysctl_tree), OID_AUTO,
+		       "trailing_copied", CTLFLAG_RW, &sc->msk_trailing_copied,
+		       0, "# of trailing copies on TX path");
 
 	/* Soft reset. */
 	CSR_WRITE_2(sc, B0_CTST, CS_RST_SET);
@@ -2274,7 +2286,7 @@ msk_encap(struct msk_if_softc *sc_if, struct mbuf **m_head)
 	bus_dma_segment_t txsegs[MSK_MAXTXSEGS];
 	uint32_t control, prod, si;
 	uint16_t offset, tcp_offset;
-	int error, i, nsegs, maxsegs;
+	int error, i, nsegs, maxsegs, defrag;
 
 	maxsegs = MSK_TX_RING_CNT - sc_if->msk_cdata.msk_tx_cnt -
 		  MSK_RESERVED_TX_DESC_CNT;
@@ -2283,8 +2295,68 @@ msk_encap(struct msk_if_softc *sc_if, struct mbuf **m_head)
 	if (maxsegs > MSK_MAXTXSEGS)
 		maxsegs = MSK_MAXTXSEGS;
 
-	tcp_offset = offset = 0;
+	/*
+	 * Align TX buffer to 8bytes boundary.  This greately improves
+	 * bulk data TX performance on my 88E8053 (+100Mbps) at least.
+	 * Try avoiding m_defrag(), if the mbufs are not chained together
+	 * by m_next (i.e. m->m_len == m->m_pkthdr.len).
+	 *
+	 * XXX Maybe 4bytes alignment is enough?
+	 */
+
+#define MSK_TXBUF_ALIGN	8
+#define MSK_TXBUF_MASK	(MSK_TXBUF_ALIGN - 1)
+
+	defrag = 1;
 	m = *m_head;
+	if (m->m_len == m->m_pkthdr.len) {
+		int space;
+
+		space = ((uintptr_t)m->m_data & MSK_TXBUF_MASK);
+		if (space) {
+			if (M_WRITABLE(m)) {
+				if (M_TRAILINGSPACE(m) >= space) {
+					/* e.g. TCP ACKs */
+					bcopy(m->m_data, m->m_data + space,
+					      m->m_len);
+					m->m_data += space;
+					defrag = 0;
+					sc_if->msk_softc->msk_trailing_copied++;
+				} else {
+					space = MSK_TXBUF_ALIGN - space;
+					if (M_LEADINGSPACE(m) >= space) {
+						/* e.g. Small UDP datagrams */
+						bcopy(m->m_data,
+						      m->m_data - space,
+						      m->m_len);
+						m->m_data -= space;
+						defrag = 0;
+						sc_if->msk_softc->
+						msk_leading_copied++;
+					}
+				}
+			}
+		} else {
+			/* e.g. on forwarding path */
+			defrag = 0;
+		}
+	}
+	if (defrag) {
+		m = m_defrag(*m_head, MB_DONTWAIT);
+		if (m == NULL) {
+			m_freem(*m_head);
+			*m_head = NULL;
+			return ENOBUFS;
+		}
+		*m_head = m;
+	} else {
+		sc_if->msk_softc->msk_defrag_avoided++;
+	}
+
+#undef MSK_TXBUF_MASK
+#undef MSK_TXBUF_ALIGN
+
+	tcp_offset = offset = 0;
 	if (m->m_pkthdr.csum_flags & MSK_CSUM_FEATURES) {
 		/*
 		 * Since mbuf has no protocol specific structure information
@@ -2465,6 +2537,7 @@ msk_start(struct ifnet *ifp)
 		 * for the NIC to drain the ring.
 		 */
 		if (msk_encap(sc_if, &m_head) != 0) {
+			ifp->if_oerrors++;
 			if (sc_if->msk_cdata.msk_tx_cnt == 0) {
 				continue;
 			} else {
