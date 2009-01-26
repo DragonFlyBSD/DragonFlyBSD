@@ -37,7 +37,7 @@
 #ifndef _IF_ETVAR_H
 #define _IF_ETVAR_H
 
-#define ET_ALIGN		0x1000
+#define ET_ALIGN		0x1000	/* XXX safest guess */
 #define ET_NSEG_MAX		32	/* XXX no limit actually */
 #define ET_NSEG_SPARE		8
 
@@ -50,6 +50,7 @@
 #define ET_RX_RING_SIZE		(ET_RX_NDESC * sizeof(struct et_rxdesc))
 #define ET_RXSTAT_RING_SIZE	(ET_RX_NSTAT * sizeof(struct et_rxstat))
 
+#define ET_JUMBO_ALIGN		8
 #define ET_JUMBO_FRAMELEN	(ET_MEM_SIZE - ET_MEM_RXSIZE_MIN -	\
 				 ET_MEM_TXSIZE_EX)
 #define ET_JUMBO_MTU		(ET_JUMBO_FRAMELEN - ETHER_HDR_LEN -	\
@@ -59,7 +60,7 @@
 				 ETHER_CRC_LEN)
 
 #define ET_JSLOTS		(ET_RX_NDESC + 128)
-#define ET_JLEN			(ET_JUMBO_FRAMELEN + ETHER_ALIGN)
+#define ET_JLEN			roundup2(ET_JUMBO_FRAMELEN, ET_JUMBO_ALIGN)
 #define ET_JUMBO_MEM_SIZE	(ET_JSLOTS * ET_JLEN)
 
 #define CSR_WRITE_4(sc, reg, val)	\

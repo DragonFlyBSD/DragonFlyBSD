@@ -707,11 +707,11 @@ et_dma_alloc(device_t dev)
 	 * Create top level DMA tag
 	 */
 	error = bus_dma_tag_create(NULL, 1, 0,
-				   BUS_SPACE_MAXADDR_32BIT,
+				   BUS_SPACE_MAXADDR,
 				   BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   MAXBSIZE,
-				   BUS_SPACE_UNRESTRICTED,
+				   BUS_SPACE_MAXSIZE_32BIT,
+				   0,
 				   BUS_SPACE_MAXSIZE_32BIT,
 				   0, &sc->sc_dtag);
 	if (error) {
@@ -881,9 +881,9 @@ et_dma_mbuf_create(device_t dev)
 	error = bus_dma_tag_create(sc->sc_dtag, 1, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   ET_JUMBO_FRAMELEN, ET_NSEG_MAX,
-				   BUS_SPACE_MAXSIZE_32BIT,
-				   BUS_DMA_ALLOCNOW, &sc->sc_mbuf_dtag);
+				   ET_JUMBO_FRAMELEN, ET_NSEG_MAX, MCLBYTES,
+				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,
+				   &sc->sc_mbuf_dtag);
 	if (error) {
 		device_printf(dev, "can't create mbuf DMA tag\n");
 		return error;
@@ -892,7 +892,8 @@ et_dma_mbuf_create(device_t dev)
 	/*
 	 * Create spare DMA map for RX mbufs
 	 */
-	error = bus_dmamap_create(sc->sc_mbuf_dtag, 0, &sc->sc_mbuf_tmp_dmap);
+	error = bus_dmamap_create(sc->sc_mbuf_dtag, BUS_DMA_WAITOK,
+				  &sc->sc_mbuf_tmp_dmap);
 	if (error) {
 		device_printf(dev, "can't create spare mbuf DMA map\n");
 		bus_dma_tag_destroy(sc->sc_mbuf_dtag);
@@ -909,8 +910,9 @@ et_dma_mbuf_create(device_t dev)
 		int j;
 
 		for (j = 0; j < ET_RX_NDESC; ++j) {
-			error = bus_dmamap_create(sc->sc_mbuf_dtag, 0,
-				&rbd->rbd_buf[j].rb_dmap);
+			error = bus_dmamap_create(sc->sc_mbuf_dtag,
+						  BUS_DMA_WAITOK,
+						  &rbd->rbd_buf[j].rb_dmap);
 			if (error) {
 				device_printf(dev, "can't create %d RX mbuf "
 					      "for %d RX ring\n", j, i);
@@ -929,7 +931,7 @@ et_dma_mbuf_create(device_t dev)
 	 * Create DMA maps for TX mbufs
 	 */
 	for (i = 0; i < ET_TX_NDESC; ++i) {
-		error = bus_dmamap_create(sc->sc_mbuf_dtag, 0,
+		error = bus_dmamap_create(sc->sc_mbuf_dtag, BUS_DMA_WAITOK,
 					  &tbd->tbd_buf[i].tb_dmap);
 		if (error) {
 			device_printf(dev, "can't create %d TX mbuf "
@@ -999,8 +1001,7 @@ et_dma_mem_create(device_t dev, bus_size_t size, bus_dma_tag_t *dtag,
 
 	error = bus_dma_tag_create(sc->sc_dtag, ET_ALIGN, 0,
 				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL,
-				   size, 1, BUS_SPACE_MAXSIZE_32BIT,
+				   NULL, NULL, size, 1, size,
 				   0, dtag);
 	if (error) {
 		device_printf(dev, "can't create DMA tag\n");
