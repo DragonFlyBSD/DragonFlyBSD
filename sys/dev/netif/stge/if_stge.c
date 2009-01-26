@@ -940,55 +940,6 @@ stge_dma_alloc(struct stge_softc *sc)
 		goto fail;
 	}
 
-	/* create tag for Rx ring. */
-	error = bus_dma_tag_create(sc->sc_cdata.stge_parent_tag,/* parent */
-		    STGE_RING_ALIGN, 0,		/* algnmnt, boundary */
-		    BUS_SPACE_MAXADDR,		/* lowaddr */
-		    BUS_SPACE_MAXADDR,		/* highaddr */
-		    NULL, NULL,			/* filter, filterarg */
-		    STGE_RX_RING_SZ,		/* maxsize */
-		    1,				/* nsegments */
-		    STGE_RX_RING_SZ,		/* maxsegsize */
-		    0,				/* flags */
-		    &sc->sc_cdata.stge_rx_ring_tag);
-	if (error != 0) {
-		device_printf(sc->sc_dev,
-		    "failed to allocate Rx ring DMA tag\n");
-		goto fail;
-	}
-
-	/* create tag for Tx buffers. */
-	error = bus_dma_tag_create(sc->sc_cdata.stge_parent_tag,/* parent */
-		    1, 0,			/* algnmnt, boundary */
-		    BUS_SPACE_MAXADDR,		/* lowaddr */
-		    BUS_SPACE_MAXADDR,		/* highaddr */
-		    NULL, NULL,			/* filter, filterarg */
-		    STGE_JUMBO_FRAMELEN,	/* maxsize */
-		    STGE_MAXTXSEGS,		/* nsegments */
-		    STGE_MAXSGSIZE,		/* maxsegsize */
-		    BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,/* flags */
-		    &sc->sc_cdata.stge_tx_tag);
-	if (error != 0) {
-		device_printf(sc->sc_dev, "failed to allocate Tx DMA tag\n");
-		goto fail;
-	}
-
-	/* create tag for Rx buffers. */
-	error = bus_dma_tag_create(sc->sc_cdata.stge_parent_tag,/* parent */
-		    1, 0,			/* algnmnt, boundary */
-		    BUS_SPACE_MAXADDR,		/* lowaddr */
-		    BUS_SPACE_MAXADDR,		/* highaddr */
-		    NULL, NULL,			/* filter, filterarg */
-		    MCLBYTES,			/* maxsize */
-		    1,				/* nsegments */
-		    MCLBYTES,			/* maxsegsize */
-		    BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,/* flags */
-		    &sc->sc_cdata.stge_rx_tag);
-	if (error != 0) {
-		device_printf(sc->sc_dev, "failed to allocate Rx DMA tag\n");
-		goto fail;
-	}
-
 	/* allocate DMA'able memory and load the DMA map for Tx ring. */
 	error = bus_dmamem_alloc(sc->sc_cdata.stge_tx_ring_tag,
 	    (void **)&sc->sc_rdata.stge_tx_ring, BUS_DMA_NOWAIT | BUS_DMA_ZERO,
@@ -1009,6 +960,23 @@ stge_dma_alloc(struct stge_softc *sc)
 		goto fail;
 	}
 	sc->sc_rdata.stge_tx_ring_paddr = ctx.stge_busaddr;
+
+	/* create tag for Rx ring. */
+	error = bus_dma_tag_create(sc->sc_cdata.stge_parent_tag,/* parent */
+		    STGE_RING_ALIGN, 0,		/* algnmnt, boundary */
+		    BUS_SPACE_MAXADDR,		/* lowaddr */
+		    BUS_SPACE_MAXADDR,		/* highaddr */
+		    NULL, NULL,			/* filter, filterarg */
+		    STGE_RX_RING_SZ,		/* maxsize */
+		    1,				/* nsegments */
+		    STGE_RX_RING_SZ,		/* maxsegsize */
+		    0,				/* flags */
+		    &sc->sc_cdata.stge_rx_ring_tag);
+	if (error != 0) {
+		device_printf(sc->sc_dev,
+		    "failed to allocate Rx ring DMA tag\n");
+		goto fail;
+	}
 
 	/* allocate DMA'able memory and load the DMA map for Rx ring. */
 	error = bus_dmamem_alloc(sc->sc_cdata.stge_rx_ring_tag,
@@ -1031,6 +999,22 @@ stge_dma_alloc(struct stge_softc *sc)
 	}
 	sc->sc_rdata.stge_rx_ring_paddr = ctx.stge_busaddr;
 
+	/* create tag for Tx buffers. */
+	error = bus_dma_tag_create(sc->sc_cdata.stge_parent_tag,/* parent */
+		    1, 0,			/* algnmnt, boundary */
+		    BUS_SPACE_MAXADDR,		/* lowaddr */
+		    BUS_SPACE_MAXADDR,		/* highaddr */
+		    NULL, NULL,			/* filter, filterarg */
+		    STGE_JUMBO_FRAMELEN,	/* maxsize */
+		    STGE_MAXTXSEGS,		/* nsegments */
+		    STGE_MAXSGSIZE,		/* maxsegsize */
+		    BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,/* flags */
+		    &sc->sc_cdata.stge_tx_tag);
+	if (error != 0) {
+		device_printf(sc->sc_dev, "failed to allocate Tx DMA tag\n");
+		goto fail;
+	}
+
 	/* create DMA maps for Tx buffers. */
 	for (i = 0; i < STGE_TX_RING_CNT; i++) {
 		txd = &sc->sc_cdata.stge_txdesc[i];
@@ -1041,6 +1025,22 @@ stge_dma_alloc(struct stge_softc *sc)
 			    "failed to create Tx dmamap\n");
 			goto fail;
 		}
+	}
+
+	/* create tag for Rx buffers. */
+	error = bus_dma_tag_create(sc->sc_cdata.stge_parent_tag,/* parent */
+		    1, 0,			/* algnmnt, boundary */
+		    BUS_SPACE_MAXADDR,		/* lowaddr */
+		    BUS_SPACE_MAXADDR,		/* highaddr */
+		    NULL, NULL,			/* filter, filterarg */
+		    MCLBYTES,			/* maxsize */
+		    1,				/* nsegments */
+		    MCLBYTES,			/* maxsegsize */
+		    BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,/* flags */
+		    &sc->sc_cdata.stge_rx_tag);
+	if (error != 0) {
+		device_printf(sc->sc_dev, "failed to allocate Rx DMA tag\n");
+		goto fail;
 	}
 
 	/* create DMA maps for Rx buffers. */
