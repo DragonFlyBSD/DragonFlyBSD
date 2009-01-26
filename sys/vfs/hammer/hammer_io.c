@@ -253,18 +253,23 @@ hammer_io_new(struct vnode *devvp, struct hammer_io *io)
 
 /*
  * Remove potential device level aliases against buffers managed by high level
- * vnodes.  Aliases can also be created due to mixed buffer sizes.
+ * vnodes.  Aliases can also be created due to mixed buffer sizes or via
+ * direct access to the backing store device.
  *
  * This is nasty because the buffers are also VMIO-backed.  Even if a buffer
  * does not exist its backing VM pages might, and we have to invalidate
  * those as well or a getblk() will reinstate them.
+ *
+ * Buffer cache buffers associated with hammer_buffers cannot be
+ * invalidated.
  */
-void
+int
 hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 {
 	hammer_io_structure_t iou;
 	hammer_off_t phys_offset;
 	struct buf *bp;
+	int error;
 
 	phys_offset = volume->ondisk->vol_buf_beg +
 		      (zone2_offset & HAMMER_OFF_SHORT_MASK);
@@ -274,6 +279,7 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 	else
 		bp = getblk(volume->devvp, phys_offset, HAMMER_BUFSIZE, 0, 0);
 	if ((iou = (void *)LIST_FIRST(&bp->b_dep)) != NULL) {
+#if 0
 		hammer_ref(&iou->io.lock);
 		hammer_io_clear_modify(&iou->io, 1);
 		bundirty(bp);
@@ -284,13 +290,17 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 		KKASSERT(iou->io.lock.refs == 1);
 		hammer_rel_buffer(&iou->buffer, 0);
 		/*hammer_io_deallocate(bp);*/
+#endif
+		error = EAGAIN;
 	} else {
 		KKASSERT((bp->b_flags & B_LOCKED) == 0);
 		bundirty(bp);
 		bp->b_flags |= B_NOCACHE|B_RELBUF;
 		brelse(bp);
+		error = 0;
 	}
 	crit_exit();
+	return(error);
 }
 
 /*
@@ -1318,14 +1328,20 @@ hammer_io_direct_wait(hammer_record_t record)
 	}
 
 	/*
-	 * Invalidate any related buffer cache aliases.
+	 * Invalidate any related buffer cache aliases associated with the
+	 * backing device.  This is needed because the buffer cache buffer
+	 * for file data is associated with the file vnode, not the backing
+	 * device vnode.
+	 *
+	 * XXX I do not think this case can occur any more now that
+	 * reservations ensure that all such buffers are removed before
+	 * an area can be reused.
 	 */
 	if (record->flags & HAMMER_RECF_DIRECT_INVAL) {
 		KKASSERT(record->leaf.data_offset);
-		hammer_del_buffers(record->ip->hmp,
-				   record->leaf.data_offset,
-				   record->zone2_offset,
-				   record->leaf.data_len);
+		hammer_del_buffers(record->ip->hmp, record->leaf.data_offset,
+				   record->zone2_offset, record->leaf.data_len,
+				   1);
 		record->flags &= ~HAMMER_RECF_DIRECT_INVAL;
 	}
 }

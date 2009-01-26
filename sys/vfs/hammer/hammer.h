@@ -991,9 +991,10 @@ hammer_buffer_t	hammer_get_buffer(hammer_mount_t hmp, hammer_off_t buf_offset,
 			int bytes, int isnew, int *errorp);
 void		hammer_sync_buffers(hammer_mount_t hmp,
 			hammer_off_t base_offset, int bytes);
-void		hammer_del_buffers(hammer_mount_t hmp,
+int		hammer_del_buffers(hammer_mount_t hmp,
 			hammer_off_t base_offset,
-			hammer_off_t zone2_offset, int bytes);
+			hammer_off_t zone2_offset, int bytes,
+			int report_conflicts);
 
 int		hammer_ref_volume(hammer_volume_t volume);
 int		hammer_ref_buffer(hammer_buffer_t buffer);
@@ -1120,7 +1121,7 @@ void hammer_io_init(hammer_io_t io, hammer_volume_t volume,
 int hammer_io_read(struct vnode *devvp, struct hammer_io *io,
 			hammer_off_t limit);
 int hammer_io_new(struct vnode *devvp, struct hammer_io *io);
-void hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset);
+int hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset);
 struct buf *hammer_io_release(struct hammer_io *io, int flush);
 void hammer_io_flush(struct hammer_io *io);
 void hammer_io_wait(struct hammer_io *io);
