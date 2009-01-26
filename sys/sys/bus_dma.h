@@ -281,6 +281,21 @@ bus_dmamem_coherent(bus_dma_tag_t parent,
 		    bus_dmamem_t *dmem);
 
 /*
+ * Simplified version of bus_dmamem_coherent() with:
+ * boundary == 0
+ * lowaddr  == BUS_SPACE_MAXADDR
+ * highaddr == BUS_SPACE_MAXADDR
+ *
+ * 'parent' usually should not be NULL, so we could inherit
+ * boundary, lowaddr and highaddr from it.
+ */
+void *
+bus_dmamem_coherent_any(bus_dma_tag_t parent, bus_size_t alignment,
+			bus_size_t maxsize, int flags,
+			bus_dma_tag_t *dtag, bus_dmamap_t *dmap,
+			bus_addr_t *busaddr);
+
+/*
  * Perform a syncronization operation on the given map.
  */
 void _bus_dmamap_sync(bus_dma_tag_t, bus_dmamap_t, bus_dmasync_op_t);

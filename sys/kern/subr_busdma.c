@@ -93,6 +93,28 @@ bus_dmamem_coherent(bus_dma_tag_t parent,
 	return 0;
 }
 
+void *
+bus_dmamem_coherent_any(bus_dma_tag_t parent,
+			bus_size_t alignment, bus_size_t size, int flags,
+			bus_dma_tag_t *dtag, bus_dmamap_t *dmap,
+			bus_addr_t *busaddr)
+{
+	bus_dmamem_t dmem;
+	int error;
+
+	error = bus_dmamem_coherent(parent, alignment, 0,
+				    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+				    size, flags, &dmem);
+	if (error)
+		return NULL;
+
+	*dtag = dmem.dmem_tag;
+	*dmap = dmem.dmem_map;
+	*busaddr = dmem.dmem_busaddr;
+
+	return dmem.dmem_addr;
+}
+
 int
 bus_dmamap_load_mbuf_defrag(bus_dma_tag_t dmat, bus_dmamap_t map,
 			    struct mbuf **m_head,
