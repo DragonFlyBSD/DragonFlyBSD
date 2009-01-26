@@ -109,11 +109,6 @@ struct et_rxstatus {
 #define ET_RXS_STATRING_INDEX	__BITS(27, 16)
 #define ET_RXS_STATRING_WRAP	__BIT(28)
 
-struct et_dmamap_ctx {
-	int		nsegs;
-	bus_dma_segment_t *segs;
-};
-
 struct et_txbuf {
 	struct mbuf		*tb_mbuf;
 	bus_dmamap_t		tb_dmap;

@@ -100,8 +100,6 @@ static int	et_dma_mbuf_create(device_t);
 static void	et_dma_mbuf_destroy(device_t, int, const int[]);
 static int	et_jumbo_mem_alloc(device_t);
 static void	et_jumbo_mem_free(device_t);
-static void	et_dma_buf_addr(void *, bus_dma_segment_t *, int,
-				bus_size_t, int);
 static int	et_init_tx_ring(struct et_softc *);
 static int	et_init_rx_ring(struct et_softc *);
 static void	et_free_tx_ring(struct et_softc *);
@@ -1505,26 +1503,6 @@ et_init_rx_ring(struct et_softc *sc)
 	return 0;
 }
 
-static void
-et_dma_buf_addr(void *xctx, bus_dma_segment_t *segs, int nsegs,
-		bus_size_t mapsz __unused, int error)
-{
-	struct et_dmamap_ctx *ctx = xctx;
-	int i;
-
-	if (error)
-		return;
-
-	if (nsegs > ctx->nsegs) {
-		ctx->nsegs = 0;
-		return;
-	}
-
-	ctx->nsegs = nsegs;
-	for (i = 0; i < nsegs; ++i)
-		ctx->segs[i] = segs[i];
-}
-
 static int
 et_init_rxdma(struct et_softc *sc)
 {
@@ -1961,14 +1939,12 @@ et_rxeof(struct et_softc *sc)
 static int
 et_encap(struct et_softc *sc, struct mbuf **m0)
 {
-	struct mbuf *m = *m0;
 	bus_dma_segment_t segs[ET_NSEG_MAX];
-	struct et_dmamap_ctx ctx;
 	struct et_txdesc_ring *tx_ring = &sc->sc_tx_ring;
 	struct et_txbuf_data *tbd = &sc->sc_tx_data;
 	struct et_txdesc *td;
 	bus_dmamap_t map;
-	int error, maxsegs, first_idx, last_idx, i;
+	int error, maxsegs, nsegs, first_idx, last_idx, i;
 	uint32_t tx_ready_pos, last_td_ctrl2;
 
 	maxsegs = ET_TX_NDESC - tbd->tbd_used;
@@ -1981,58 +1957,21 @@ et_encap(struct et_softc *sc, struct mbuf **m0)
 	first_idx = tx_ring->tr_ready_index;
 	map = tbd->tbd_buf[first_idx].tb_dmap;
 
-	ctx.nsegs = maxsegs;
-	ctx.segs = segs;
-	error = bus_dmamap_load_mbuf(sc->sc_txbuf_dtag, map, m,
-				     et_dma_buf_addr, &ctx, BUS_DMA_NOWAIT);
-	if (!error && ctx.nsegs == 0) {
-		bus_dmamap_unload(sc->sc_txbuf_dtag, map);
-		error = EFBIG;
-	}
-	if (error && error != EFBIG) {
-		if_printf(&sc->arpcom.ac_if, "can't load TX mbuf, error %d\n",
-			  error);
+	error = bus_dmamap_load_mbuf_defrag(sc->sc_txbuf_dtag, map, m0,
+			segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
+	if (error)
 		goto back;
-	}
-	if (error) {	/* error == EFBIG */
-		struct mbuf *m_new;
-
-		m_new = m_defrag(m, MB_DONTWAIT);
-		if (m_new == NULL) {
-			if_printf(&sc->arpcom.ac_if, "can't defrag TX mbuf\n");
-			error = ENOBUFS;
-			goto back;
-		} else {
-			*m0 = m = m_new;
-		}
-
-		ctx.nsegs = maxsegs;
-		ctx.segs = segs;
-		error = bus_dmamap_load_mbuf(sc->sc_txbuf_dtag, map, m,
-					     et_dma_buf_addr, &ctx,
-					     BUS_DMA_NOWAIT);
-		if (error || ctx.nsegs == 0) {
-			if (ctx.nsegs == 0) {
-				bus_dmamap_unload(sc->sc_txbuf_dtag, map);
-				error = EFBIG;
-			}
-			if_printf(&sc->arpcom.ac_if,
-				  "can't load defraged TX mbuf\n");
-			goto back;
-		}
-	}
-
 	bus_dmamap_sync(sc->sc_txbuf_dtag, map, BUS_DMASYNC_PREWRITE);
 
 	last_td_ctrl2 = ET_TDCTRL2_LAST_FRAG;
-	sc->sc_tx += ctx.nsegs;
+	sc->sc_tx += nsegs;
 	if (sc->sc_tx / sc->sc_tx_intr_nsegs != sc->sc_tx_intr) {
 		sc->sc_tx_intr = sc->sc_tx / sc->sc_tx_intr_nsegs;
 		last_td_ctrl2 |= ET_TDCTRL2_INTR;
 	}
 
 	last_idx = -1;
-	for (i = 0; i < ctx.nsegs; ++i) {
+	for (i = 0; i < nsegs; ++i) {
 		int idx;
 
 		idx = (first_idx + i) % ET_TX_NDESC;
@@ -2041,7 +1980,7 @@ et_encap(struct et_softc *sc, struct mbuf **m0)
 		td->td_addr_lo = ET_ADDR_LO(segs[i].ds_addr);
 		td->td_ctrl1 = __SHIFTIN(segs[i].ds_len, ET_TDCTRL1_LEN);
 
-		if (i == ctx.nsegs - 1) {	/* Last frag */
+		if (i == nsegs - 1) {	/* Last frag */
 			td->td_ctrl2 = last_td_ctrl2;
 			last_idx = idx;
 		}
@@ -2058,9 +1997,9 @@ et_encap(struct et_softc *sc, struct mbuf **m0)
 	KKASSERT(last_idx >= 0);
 	tbd->tbd_buf[first_idx].tb_dmap = tbd->tbd_buf[last_idx].tb_dmap;
 	tbd->tbd_buf[last_idx].tb_dmap = map;
-	tbd->tbd_buf[last_idx].tb_mbuf = m;
+	tbd->tbd_buf[last_idx].tb_mbuf = *m0;
 
-	tbd->tbd_used += ctx.nsegs;
+	tbd->tbd_used += nsegs;
 	KKASSERT(tbd->tbd_used <= ET_TX_NDESC);
 
 	tx_ready_pos = __SHIFTIN(tx_ring->tr_ready_index,
@@ -2072,7 +2011,7 @@ et_encap(struct et_softc *sc, struct mbuf **m0)
 	error = 0;
 back:
 	if (error) {
-		m_freem(m);
+		m_freem(*m0);
 		*m0 = NULL;
 	}
 	return error;
@@ -2171,10 +2110,9 @@ et_newbuf(struct et_rxbuf_data *rbd, int buf_idx, int init, int len0)
 	struct et_softc *sc = rbd->rbd_softc;
 	struct et_rxbuf *rb;
 	struct mbuf *m;
-	struct et_dmamap_ctx ctx;
 	bus_dma_segment_t seg;
 	bus_dmamap_t dmap;
-	int error, len;
+	int error, len, nseg;
 
 	KASSERT(!rbd->rbd_jumbo, ("calling %s with jumbo ring\n", __func__));
 
@@ -2198,19 +2136,11 @@ et_newbuf(struct et_rxbuf_data *rbd, int buf_idx, int init, int len0)
 	/*
 	 * Try load RX mbuf into temporary DMA tag
 	 */
-	ctx.nsegs = 1;
-	ctx.segs = &seg;
-	error = bus_dmamap_load_mbuf(sc->sc_rxbuf_dtag, sc->sc_rxbuf_tmp_dmap,
-				     m, et_dma_buf_addr, &ctx, BUS_DMA_NOWAIT);
-	if (error || ctx.nsegs == 0) {
-		if (!error) {
-			bus_dmamap_unload(sc->sc_rxbuf_dtag,
-					  sc->sc_rxbuf_tmp_dmap);
-			error = EFBIG;
-			if_printf(&sc->arpcom.ac_if, "too many segments?!\n");
-		}
+	error = bus_dmamap_load_mbuf_segment(sc->sc_rxbuf_dtag,
+			sc->sc_rxbuf_tmp_dmap, m, &seg, 1, &nseg,
+			BUS_DMA_NOWAIT);
+	if (error) {
 		m_freem(m);
-
 		if (init) {
 			if_printf(&sc->arpcom.ac_if, "can't load RX mbuf\n");
 			return error;
