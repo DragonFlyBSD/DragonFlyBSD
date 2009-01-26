@@ -1219,8 +1219,6 @@ stge_encap(struct stge_softc *sc, struct mbuf **m_head)
 	/* Sync descriptors. */
 	bus_dmamap_sync(sc->sc_cdata.stge_tx_tag, txd->tx_dmamap,
 	    BUS_DMASYNC_PREWRITE);
-	bus_dmamap_sync(sc->sc_cdata.stge_tx_ring_tag,
-	    sc->sc_cdata.stge_tx_ring_map, BUS_DMASYNC_PREWRITE);
 
 	return (0);
 }
@@ -1524,8 +1522,6 @@ stge_txeof(struct stge_softc *sc)
 	txd = STAILQ_FIRST(&sc->sc_cdata.stge_txbusyq);
 	if (txd == NULL)
 		return;
-	bus_dmamap_sync(sc->sc_cdata.stge_tx_ring_tag,
-	    sc->sc_cdata.stge_tx_ring_map, BUS_DMASYNC_POSTREAD);
 
 	/*
 	 * Go through our Tx list and free mbufs for those
@@ -1555,10 +1551,6 @@ stge_txeof(struct stge_softc *sc)
 	sc->sc_cdata.stge_tx_cons = cons;
 	if (sc->sc_cdata.stge_tx_cnt == 0)
 		ifp->if_timer = 0;
-
-        bus_dmamap_sync(sc->sc_cdata.stge_tx_ring_tag,
-	    sc->sc_cdata.stge_tx_ring_map,
-	    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 }
 
 static __inline void
@@ -1623,9 +1615,6 @@ stge_rxeof(struct stge_softc *sc, int count)
 	uint64_t status64;
 	uint32_t status;
 	int cons, prog;
-
-	bus_dmamap_sync(sc->sc_cdata.stge_rx_ring_tag,
-	    sc->sc_cdata.stge_rx_ring_map, BUS_DMASYNC_POSTREAD);
 
 	prog = 0;
 	for (cons = sc->sc_cdata.stge_rx_cons; prog < STGE_RX_RING_CNT;
@@ -1746,9 +1735,6 @@ stge_rxeof(struct stge_softc *sc, int count)
 	if (prog > 0) {
 		/* Update the consumer index. */
 		sc->sc_cdata.stge_rx_cons = cons;
-		bus_dmamap_sync(sc->sc_cdata.stge_rx_ring_tag,
-		    sc->sc_cdata.stge_rx_ring_map,
-		    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 	}
 }
 
@@ -2337,9 +2323,6 @@ stge_init_tx_ring(struct stge_softc *sc)
 		txd = &sc->sc_cdata.stge_txdesc[i];
 		STAILQ_INSERT_TAIL(&sc->sc_cdata.stge_txfreeq, txd, tx_q);
 	}
-
-	bus_dmamap_sync(sc->sc_cdata.stge_tx_ring_tag,
-	    sc->sc_cdata.stge_tx_ring_map, BUS_DMASYNC_PREWRITE);
 }
 
 static int
@@ -2364,10 +2347,6 @@ stge_init_rx_ring(struct stge_softc *sc)
 		rd->stge_rx_ring[i].rfd_next = htole64(addr);
 		rd->stge_rx_ring[i].rfd_status = 0;
 	}
-
-	bus_dmamap_sync(sc->sc_cdata.stge_rx_ring_tag,
-	    sc->sc_cdata.stge_rx_ring_map, BUS_DMASYNC_PREWRITE);
-
 	return (0);
 }
 
