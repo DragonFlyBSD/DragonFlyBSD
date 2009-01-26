@@ -83,10 +83,10 @@
  * Note that while DMA addresses are all in 64-bit fields, only
  * the lower 40 bits of a DMA address are valid.
  */
-#if (BUS_SPACE_MAXADDR < 0xFFFFFFFFFF)
-#define	STGE_DMA_MAXADDR	BUS_SPACE_MAXADDR
+#if BUS_SPACE_MAXADDR > BUS_SPACE_MAXADDR_32BIT
+#define	STGE_DMA_MAXADDR	0xFFFFFFFFFFULL
 #else
-#define	STGE_DMA_MAXADDR	0xFFFFFFFFFF
+#define	STGE_DMA_MAXADDR	BUS_SPACE_MAXADDR
 #endif
 
 #define STGE_PCIR_LOIO	PCIR_BAR(0)
