@@ -2296,15 +2296,13 @@ msk_encap(struct msk_if_softc *sc_if, struct mbuf **m_head)
 		maxsegs = MSK_MAXTXSEGS;
 
 	/*
-	 * Align TX buffer to 8bytes boundary.  This greately improves
+	 * Align TX buffer to 64bytes boundary.  This greately improves
 	 * bulk data TX performance on my 88E8053 (+100Mbps) at least.
 	 * Try avoiding m_defrag(), if the mbufs are not chained together
 	 * by m_next (i.e. m->m_len == m->m_pkthdr.len).
-	 *
-	 * XXX Maybe 4bytes alignment is enough?
 	 */
 
-#define MSK_TXBUF_ALIGN	8
+#define MSK_TXBUF_ALIGN	64
 #define MSK_TXBUF_MASK	(MSK_TXBUF_ALIGN - 1)
 
 	defrag = 1;
