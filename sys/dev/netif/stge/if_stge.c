@@ -2361,14 +2361,15 @@ stge_newbuf(struct stge_softc *sc, int idx, int waitok)
 	struct stge_rxdesc *rxd;
 	struct stge_rfd *rfd;
 	struct mbuf *m;
-	struct stge_mbuf_dmamap_arg arg;
-	bus_dma_segment_t segs[1];
+	bus_dma_segment_t seg;
 	bus_dmamap_t map;
+	int error, nseg;
 
 	m = m_getcl(waitok ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
-		return (ENOBUFS);
+		return ENOBUFS;
 	m->m_len = m->m_pkthdr.len = MCLBYTES;
+
 	/*
 	 * The hardware requires 4bytes aligned DMA address when JUMBO
 	 * frame is used.
@@ -2376,13 +2377,12 @@ stge_newbuf(struct stge_softc *sc, int idx, int waitok)
 	if (sc->sc_if_framesize <= (MCLBYTES - ETHER_ALIGN))
 		m_adj(m, ETHER_ALIGN);
 
-	arg.segs = segs;
-	arg.nsegs = 1;
-	if (bus_dmamap_load_mbuf(sc->sc_cdata.stge_rx_tag,
-	    sc->sc_cdata.stge_rx_sparemap, m, stge_mbuf_dmamap_cb, &arg,
-	    waitok ? BUS_DMA_WAITOK : BUS_DMA_NOWAIT) != 0) {
+	error = bus_dmamap_load_mbuf_segment(sc->sc_cdata.stge_rx_tag,
+			sc->sc_cdata.stge_rx_sparemap, m,
+			&seg, 1, &nseg, BUS_DMA_NOWAIT);
+	if (error) {
 		m_freem(m);
-		return (ENOBUFS);
+		return error;
 	}
 
 	rxd = &sc->sc_cdata.stge_rxdesc[idx];
@@ -2391,19 +2391,19 @@ stge_newbuf(struct stge_softc *sc, int idx, int waitok)
 		    BUS_DMASYNC_POSTREAD);
 		bus_dmamap_unload(sc->sc_cdata.stge_rx_tag, rxd->rx_dmamap);
 	}
+
 	map = rxd->rx_dmamap;
 	rxd->rx_dmamap = sc->sc_cdata.stge_rx_sparemap;
 	sc->sc_cdata.stge_rx_sparemap = map;
-	bus_dmamap_sync(sc->sc_cdata.stge_rx_tag, rxd->rx_dmamap,
-	    BUS_DMASYNC_PREREAD);
+
 	rxd->rx_m = m;
 
 	rfd = &sc->sc_rdata.stge_rx_ring[idx];
 	rfd->rfd_frag.frag_word0 =
-	    htole64(FRAG_ADDR(segs[0].ds_addr) | FRAG_LEN(segs[0].ds_len));
+	    htole64(FRAG_ADDR(seg.ds_addr) | FRAG_LEN(seg.ds_len));
 	rfd->rfd_status = 0;
 
-	return (0);
+	return 0;
 }
 
 /*
