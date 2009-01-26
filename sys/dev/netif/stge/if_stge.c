@@ -171,7 +171,6 @@ static void	stge_miibus_statchg(device_t);
 static int	stge_mediachange(struct ifnet *);
 static void	stge_mediastatus(struct ifnet *, struct ifmediareq *);
 
-static void	stge_dmamap_cb(void *, bus_dma_segment_t *, int, int);
 static void	stge_mbuf_dmamap_cb(void *, bus_dma_segment_t *, int,
 				    bus_size_t, int);
 static int	stge_dma_alloc(struct stge_softc *);
@@ -855,24 +854,6 @@ stge_detach(device_t dev)
 	return (0);
 }
 
-struct stge_dmamap_arg {
-	bus_addr_t	stge_busaddr;
-};
-
-static void
-stge_dmamap_cb(void *arg, bus_dma_segment_t *segs, int nseg, int error)
-{
-	struct stge_dmamap_arg *ctx;
-
-	if (error != 0)
-		return;
-
-	KASSERT(nseg == 1, ("too many segments %d\n", nseg));
-
-	ctx = (struct stge_dmamap_arg *)arg;
-	ctx->stge_busaddr = segs[0].ds_addr;
-}
-
 struct stge_mbuf_dmamap_arg {
 	int			nsegs;
 	bus_dma_segment_t	*segs;
@@ -902,7 +883,6 @@ stge_mbuf_dmamap_cb(void *xarg, bus_dma_segment_t *segs, int nsegs,
 static int
 stge_dma_alloc(struct stge_softc *sc)
 {
-	struct stge_dmamap_arg ctx;
 	struct stge_txdesc *txd;
 	struct stge_rxdesc *rxd;
 	int error, i;
@@ -920,84 +900,36 @@ stge_dma_alloc(struct stge_softc *sc)
 		    &sc->sc_cdata.stge_parent_tag);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "failed to create parent DMA tag\n");
-		goto fail;
+		return error;
 	}
 
-	/* create tag for Tx ring. */
-	error = bus_dma_tag_create(sc->sc_cdata.stge_parent_tag,/* parent */
-		    STGE_RING_ALIGN, 0,		/* algnmnt, boundary */
-		    BUS_SPACE_MAXADDR,		/* lowaddr */
-		    BUS_SPACE_MAXADDR,		/* highaddr */
-		    NULL, NULL,			/* filter, filterarg */
-		    STGE_TX_RING_SZ,		/* maxsize */
-		    1,				/* nsegments */
-		    STGE_TX_RING_SZ,		/* maxsegsize */
-		    0,				/* flags */
-		    &sc->sc_cdata.stge_tx_ring_tag);
-	if (error != 0) {
+	/* allocate Tx ring. */
+	sc->sc_rdata.stge_tx_ring =
+		bus_dmamem_coherent_any(sc->sc_cdata.stge_parent_tag,
+			STGE_RING_ALIGN, STGE_TX_RING_SZ,
+			BUS_DMA_WAITOK | BUS_DMA_ZERO,
+			&sc->sc_cdata.stge_tx_ring_tag,
+			&sc->sc_cdata.stge_tx_ring_map,
+			&sc->sc_rdata.stge_tx_ring_paddr);
+	if (sc->sc_rdata.stge_tx_ring == NULL) {
 		device_printf(sc->sc_dev,
-		    "failed to allocate Tx ring DMA tag\n");
-		goto fail;
+		    "failed to allocate Tx ring\n");
+		return ENOMEM;
 	}
 
-	/* allocate DMA'able memory and load the DMA map for Tx ring. */
-	error = bus_dmamem_alloc(sc->sc_cdata.stge_tx_ring_tag,
-	    (void **)&sc->sc_rdata.stge_tx_ring, BUS_DMA_NOWAIT | BUS_DMA_ZERO,
-	    &sc->sc_cdata.stge_tx_ring_map);
-	if (error != 0) {
+	/* allocate Rx ring. */
+	sc->sc_rdata.stge_rx_ring =
+		bus_dmamem_coherent_any(sc->sc_cdata.stge_parent_tag,
+			STGE_RING_ALIGN, STGE_RX_RING_SZ,
+			BUS_DMA_WAITOK | BUS_DMA_ZERO,
+			&sc->sc_cdata.stge_rx_ring_tag,
+			&sc->sc_cdata.stge_rx_ring_map,
+			&sc->sc_rdata.stge_rx_ring_paddr);
+	if (sc->sc_rdata.stge_rx_ring == NULL) {
 		device_printf(sc->sc_dev,
-		    "failed to allocate DMA'able memory for Tx ring\n");
-		goto fail;
+		    "failed to allocate Rx ring\n");
+		return ENOMEM;
 	}
-
-	ctx.stge_busaddr = 0;
-	error = bus_dmamap_load(sc->sc_cdata.stge_tx_ring_tag,
-	    sc->sc_cdata.stge_tx_ring_map, sc->sc_rdata.stge_tx_ring,
-	    STGE_TX_RING_SZ, stge_dmamap_cb, &ctx, BUS_DMA_NOWAIT);
-	if (error != 0 || ctx.stge_busaddr == 0) {
-		device_printf(sc->sc_dev,
-		    "failed to load DMA'able memory for Tx ring\n");
-		goto fail;
-	}
-	sc->sc_rdata.stge_tx_ring_paddr = ctx.stge_busaddr;
-
-	/* create tag for Rx ring. */
-	error = bus_dma_tag_create(sc->sc_cdata.stge_parent_tag,/* parent */
-		    STGE_RING_ALIGN, 0,		/* algnmnt, boundary */
-		    BUS_SPACE_MAXADDR,		/* lowaddr */
-		    BUS_SPACE_MAXADDR,		/* highaddr */
-		    NULL, NULL,			/* filter, filterarg */
-		    STGE_RX_RING_SZ,		/* maxsize */
-		    1,				/* nsegments */
-		    STGE_RX_RING_SZ,		/* maxsegsize */
-		    0,				/* flags */
-		    &sc->sc_cdata.stge_rx_ring_tag);
-	if (error != 0) {
-		device_printf(sc->sc_dev,
-		    "failed to allocate Rx ring DMA tag\n");
-		goto fail;
-	}
-
-	/* allocate DMA'able memory and load the DMA map for Rx ring. */
-	error = bus_dmamem_alloc(sc->sc_cdata.stge_rx_ring_tag,
-	    (void **)&sc->sc_rdata.stge_rx_ring, BUS_DMA_NOWAIT | BUS_DMA_ZERO,
-	    &sc->sc_cdata.stge_rx_ring_map);
-	if (error != 0) {
-		device_printf(sc->sc_dev,
-		    "failed to allocate DMA'able memory for Rx ring\n");
-		goto fail;
-	}
-
-	ctx.stge_busaddr = 0;
-	error = bus_dmamap_load(sc->sc_cdata.stge_rx_ring_tag,
-	    sc->sc_cdata.stge_rx_ring_map, sc->sc_rdata.stge_rx_ring,
-	    STGE_RX_RING_SZ, stge_dmamap_cb, &ctx, BUS_DMA_NOWAIT);
-	if (error != 0 || ctx.stge_busaddr == 0) {
-		device_printf(sc->sc_dev,
-		    "failed to load DMA'able memory for Rx ring\n");
-		goto fail;
-	}
-	sc->sc_rdata.stge_rx_ring_paddr = ctx.stge_busaddr;
 
 	/* create tag for Tx buffers. */
 	error = bus_dma_tag_create(sc->sc_cdata.stge_parent_tag,/* parent */
