@@ -944,7 +944,7 @@ stge_dma_alloc(struct stge_softc *sc)
 		    &sc->sc_cdata.stge_tx_tag);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "failed to allocate Tx DMA tag\n");
-		goto fail;
+		return error;
 	}
 
 	/* create DMA maps for Tx buffers. */
@@ -953,9 +953,19 @@ stge_dma_alloc(struct stge_softc *sc)
 		error = bus_dmamap_create(sc->sc_cdata.stge_tx_tag,
 				BUS_DMA_WAITOK, &txd->tx_dmamap);
 		if (error != 0) {
+			int j;
+
+			for (j = 0; j < i; ++j) {
+				txd = &sc->sc_cdata.stge_txdesc[j];
+				bus_dmamap_destroy(sc->sc_cdata.stge_tx_tag,
+					txd->tx_dmamap);
+			}
+			bus_dma_tag_destroy(sc->sc_cdata.stge_tx_tag);
+			sc->sc_cdata.stge_tx_tag = NULL;
+
 			device_printf(sc->sc_dev,
 			    "failed to create Tx dmamap\n");
-			goto fail;
+			return error;
 		}
 	}
 
@@ -972,7 +982,7 @@ stge_dma_alloc(struct stge_softc *sc)
 		    &sc->sc_cdata.stge_rx_tag);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "failed to allocate Rx DMA tag\n");
-		goto fail;
+		return error;
 	}
 
 	/* create DMA maps for Rx buffers. */
@@ -980,20 +990,33 @@ stge_dma_alloc(struct stge_softc *sc)
 			&sc->sc_cdata.stge_rx_sparemap);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "failed to create spare Rx dmamap\n");
-		goto fail;
+		bus_dma_tag_destroy(sc->sc_cdata.stge_rx_tag);
+		sc->sc_cdata.stge_rx_tag = NULL;
+		return error;
 	}
 	for (i = 0; i < STGE_RX_RING_CNT; i++) {
 		rxd = &sc->sc_cdata.stge_rxdesc[i];
 		error = bus_dmamap_create(sc->sc_cdata.stge_rx_tag,
 				BUS_DMA_WAITOK, &rxd->rx_dmamap);
 		if (error != 0) {
+			int j;
+
+			for (j = 0; j < i; ++j) {
+				rxd = &sc->sc_cdata.stge_rxdesc[j];
+				bus_dmamap_destroy(sc->sc_cdata.stge_rx_tag,
+					rxd->rx_dmamap);
+			}
+			bus_dmamap_destroy(sc->sc_cdata.stge_rx_tag,
+				sc->sc_cdata.stge_rx_sparemap);
+			bus_dma_tag_destroy(sc->sc_cdata.stge_rx_tag);
+			sc->sc_cdata.stge_rx_tag = NULL;
+
 			device_printf(sc->sc_dev,
 			    "failed to create Rx dmamap\n");
-			goto fail;
+			return error;
 		}
 	}
-fail:
-	return (error);
+	return 0;
 }
 
 static void
@@ -1005,70 +1028,49 @@ stge_dma_free(struct stge_softc *sc)
 
 	/* Tx ring */
 	if (sc->sc_cdata.stge_tx_ring_tag) {
-		if (sc->sc_cdata.stge_tx_ring_map)
-			bus_dmamap_unload(sc->sc_cdata.stge_tx_ring_tag,
-			    sc->sc_cdata.stge_tx_ring_map);
-		if (sc->sc_cdata.stge_tx_ring_map &&
-		    sc->sc_rdata.stge_tx_ring)
-			bus_dmamem_free(sc->sc_cdata.stge_tx_ring_tag,
-			    sc->sc_rdata.stge_tx_ring,
-			    sc->sc_cdata.stge_tx_ring_map);
-		sc->sc_rdata.stge_tx_ring = NULL;
-		sc->sc_cdata.stge_tx_ring_map = 0;
+		bus_dmamap_unload(sc->sc_cdata.stge_tx_ring_tag,
+		    sc->sc_cdata.stge_tx_ring_map);
+		bus_dmamem_free(sc->sc_cdata.stge_tx_ring_tag,
+		    sc->sc_rdata.stge_tx_ring,
+		    sc->sc_cdata.stge_tx_ring_map);
 		bus_dma_tag_destroy(sc->sc_cdata.stge_tx_ring_tag);
-		sc->sc_cdata.stge_tx_ring_tag = NULL;
 	}
+
 	/* Rx ring */
 	if (sc->sc_cdata.stge_rx_ring_tag) {
-		if (sc->sc_cdata.stge_rx_ring_map)
-			bus_dmamap_unload(sc->sc_cdata.stge_rx_ring_tag,
-			    sc->sc_cdata.stge_rx_ring_map);
-		if (sc->sc_cdata.stge_rx_ring_map &&
-		    sc->sc_rdata.stge_rx_ring)
-			bus_dmamem_free(sc->sc_cdata.stge_rx_ring_tag,
-			    sc->sc_rdata.stge_rx_ring,
-			    sc->sc_cdata.stge_rx_ring_map);
-		sc->sc_rdata.stge_rx_ring = NULL;
-		sc->sc_cdata.stge_rx_ring_map = 0;
+		bus_dmamap_unload(sc->sc_cdata.stge_rx_ring_tag,
+		    sc->sc_cdata.stge_rx_ring_map);
+		bus_dmamem_free(sc->sc_cdata.stge_rx_ring_tag,
+		    sc->sc_rdata.stge_rx_ring,
+		    sc->sc_cdata.stge_rx_ring_map);
 		bus_dma_tag_destroy(sc->sc_cdata.stge_rx_ring_tag);
-		sc->sc_cdata.stge_rx_ring_tag = NULL;
 	}
+
 	/* Tx buffers */
 	if (sc->sc_cdata.stge_tx_tag) {
 		for (i = 0; i < STGE_TX_RING_CNT; i++) {
 			txd = &sc->sc_cdata.stge_txdesc[i];
-			if (txd->tx_dmamap) {
-				bus_dmamap_destroy(sc->sc_cdata.stge_tx_tag,
-				    txd->tx_dmamap);
-				txd->tx_dmamap = 0;
-			}
+			bus_dmamap_destroy(sc->sc_cdata.stge_tx_tag,
+			    txd->tx_dmamap);
 		}
 		bus_dma_tag_destroy(sc->sc_cdata.stge_tx_tag);
-		sc->sc_cdata.stge_tx_tag = NULL;
 	}
+
 	/* Rx buffers */
 	if (sc->sc_cdata.stge_rx_tag) {
 		for (i = 0; i < STGE_RX_RING_CNT; i++) {
 			rxd = &sc->sc_cdata.stge_rxdesc[i];
-			if (rxd->rx_dmamap) {
-				bus_dmamap_destroy(sc->sc_cdata.stge_rx_tag,
-				    rxd->rx_dmamap);
-				rxd->rx_dmamap = 0;
-			}
-		}
-		if (sc->sc_cdata.stge_rx_sparemap) {
 			bus_dmamap_destroy(sc->sc_cdata.stge_rx_tag,
-			    sc->sc_cdata.stge_rx_sparemap);
-			sc->sc_cdata.stge_rx_sparemap = 0;
+			    rxd->rx_dmamap);
 		}
+		bus_dmamap_destroy(sc->sc_cdata.stge_rx_tag,
+		    sc->sc_cdata.stge_rx_sparemap);
 		bus_dma_tag_destroy(sc->sc_cdata.stge_rx_tag);
-		sc->sc_cdata.stge_rx_tag = NULL;
 	}
 
-	if (sc->sc_cdata.stge_parent_tag) {
+	/* Top level tag */
+	if (sc->sc_cdata.stge_parent_tag)
 		bus_dma_tag_destroy(sc->sc_cdata.stge_parent_tag);
-		sc->sc_cdata.stge_parent_tag = NULL;
-	}
 }
 
 /*
