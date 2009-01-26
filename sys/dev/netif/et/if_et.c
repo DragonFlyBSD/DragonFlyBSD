@@ -1300,10 +1300,7 @@ et_free_tx_ring(struct et_softc *sc)
 			tb->tb_mbuf = NULL;
 		}
 	}
-
 	bzero(tx_ring->tr_desc, ET_TX_RING_SIZE);
-	bus_dmamap_sync(tx_ring->tr_dtag, tx_ring->tr_dmap,
-			BUS_DMASYNC_PREWRITE);
 }
 
 static void
@@ -1328,10 +1325,7 @@ et_free_rx_ring(struct et_softc *sc)
 				rb->rb_mbuf = NULL;
 			}
 		}
-
 		bzero(rx_ring->rr_desc, ET_RX_RING_SIZE);
-		bus_dmamap_sync(rx_ring->rr_dtag, rx_ring->rr_dmap,
-				BUS_DMASYNC_PREWRITE);
 	}
 }
 
@@ -1460,16 +1454,13 @@ et_init_tx_ring(struct et_softc *sc)
 	struct et_txbuf_data *tbd = &sc->sc_tx_data;
 
 	bzero(tx_ring->tr_desc, ET_TX_RING_SIZE);
-	bus_dmamap_sync(tx_ring->tr_dtag, tx_ring->tr_dmap,
-			BUS_DMASYNC_PREWRITE);
 
 	tbd->tbd_start_index = 0;
 	tbd->tbd_start_wrap = 0;
 	tbd->tbd_used = 0;
 
 	bzero(txsd->txsd_status, sizeof(uint32_t));
-	bus_dmamap_sync(txsd->txsd_dtag, txsd->txsd_dmap,
-			BUS_DMASYNC_PREWRITE);
+
 	return 0;
 }
 
@@ -1495,12 +1486,7 @@ et_init_rx_ring(struct et_softc *sc)
 	}
 
 	bzero(rxsd->rxsd_status, sizeof(struct et_rxstatus));
-	bus_dmamap_sync(rxsd->rxsd_dtag, rxsd->rxsd_dmap,
-			BUS_DMASYNC_PREWRITE);
-
 	bzero(rxst_ring->rsr_stat, ET_RXSTAT_RING_SIZE);
-	bus_dmamap_sync(rxst_ring->rsr_dtag, rxst_ring->rsr_dmap,
-			BUS_DMASYNC_PREWRITE);
 
 	return 0;
 }
@@ -1872,11 +1858,6 @@ et_rxeof(struct et_softc *sc)
 	if ((sc->sc_flags & ET_FLAG_TXRX_ENABLED) == 0)
 		return;
 
-	bus_dmamap_sync(rxsd->rxsd_dtag, rxsd->rxsd_dmap,
-			BUS_DMASYNC_POSTREAD);
-	bus_dmamap_sync(rxst_ring->rsr_dtag, rxst_ring->rsr_dmap,
-			BUS_DMASYNC_POSTREAD);
-
 	rxs_stat_ring = rxsd->rxsd_status->rxs_stat_ring;
 	rxst_wrap = (rxs_stat_ring & ET_RXS_STATRING_WRAP) ? 1 : 0;
 	rxst_index = __SHIFTOUT(rxs_stat_ring, ET_RXS_STATRING_INDEX);
@@ -2068,9 +2049,6 @@ et_encap(struct et_softc *sc, struct mbuf **m0)
 	tbd->tbd_used += ctx.nsegs;
 	KKASSERT(tbd->tbd_used <= ET_TX_NDESC);
 
-	bus_dmamap_sync(tx_ring->tr_dtag, tx_ring->tr_dmap,
-			BUS_DMASYNC_PREWRITE);
-
 	tx_ready_pos = __SHIFTIN(tx_ring->tr_ready_index,
 		       ET_TX_READY_POS_INDEX);
 	if (tx_ring->tr_ready_wrap)
@@ -2113,8 +2091,6 @@ et_txeof(struct et_softc *sc, int start)
 
 		bzero(&tx_ring->tr_desc[tbd->tbd_start_index],
 		      sizeof(struct et_txdesc));
-		bus_dmamap_sync(tx_ring->tr_dtag, tx_ring->tr_dmap,
-				BUS_DMASYNC_PREWRITE);
 
 		if (tb->tb_mbuf != NULL) {
 			bus_dmamap_unload(sc->sc_mbuf_dtag, tb->tb_dmap);
@@ -2348,8 +2324,7 @@ et_jumbo_mem_alloc(device_t dev)
 	int i;
 
 	jd->jd_buf = bus_dmamem_coherent_any(sc->sc_dtag,
-			ET_JUMBO_ALIGN, ET_JUMBO_MEM_SIZE,
-			BUS_DMA_WAITOK | BUS_DMA_ZERO,
+			ET_JUMBO_ALIGN, ET_JUMBO_MEM_SIZE, BUS_DMA_WAITOK,
 			&jd->jd_dtag, &jd->jd_dmap, &paddr);
 	if (jd->jd_buf == NULL) {
 		device_printf(dev, "can't create jumbo DMA stuffs\n");
@@ -2513,7 +2488,4 @@ et_setup_rxdesc(struct et_rxbuf_data *rbd, int buf_idx, bus_addr_t paddr)
 	desc->rd_addr_hi = ET_ADDR_HI(paddr);
 	desc->rd_addr_lo = ET_ADDR_LO(paddr);
 	desc->rd_ctrl = __SHIFTIN(buf_idx, ET_RDCTRL_BUFIDX);
-
-	bus_dmamap_sync(rx_ring->rr_dtag, rx_ring->rr_dmap,
-			BUS_DMASYNC_PREWRITE);
 }
