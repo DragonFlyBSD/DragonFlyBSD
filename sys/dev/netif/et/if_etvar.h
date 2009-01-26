@@ -240,9 +240,11 @@ struct et_softc {
 	struct et_txdesc_ring	sc_tx_ring;
 	struct et_txstatus_data	sc_tx_status;
 
-	bus_dma_tag_t		sc_mbuf_dtag;
-	bus_dmamap_t		sc_mbuf_tmp_dmap;
+	bus_dma_tag_t		sc_rxbuf_dtag;
+	bus_dmamap_t		sc_rxbuf_tmp_dmap;
 	struct et_rxbuf_data	sc_rx_data[ET_RX_NRING];
+
+	bus_dma_tag_t		sc_txbuf_dtag;
 	struct et_txbuf_data	sc_tx_data;
 
 	struct et_jumbo_data	sc_jumbo_data;
