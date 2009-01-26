@@ -102,7 +102,6 @@ static int	et_dma_mbuf_create(device_t);
 static void	et_dma_mbuf_destroy(device_t, int, const int[]);
 static int	et_jumbo_mem_alloc(device_t);
 static void	et_jumbo_mem_free(device_t);
-static void	et_dma_ring_addr(void *, bus_dma_segment_t *, int, int);
 static void	et_dma_buf_addr(void *, bus_dma_segment_t *, int,
 				bus_size_t, int);
 static int	et_init_tx_ring(struct et_softc *);
@@ -997,35 +996,23 @@ et_dma_mem_create(device_t dev, bus_size_t size, bus_dma_tag_t *dtag,
 		  void **addr, bus_addr_t *paddr, bus_dmamap_t *dmap)
 {
 	struct et_softc *sc = device_get_softc(dev);
+	bus_dmamem_t dmem;
 	int error;
 
-	error = bus_dma_tag_create(sc->sc_dtag, ET_ALIGN, 0,
-				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-				   NULL, NULL, size, 1, size,
-				   0, dtag);
+	error = bus_dmamem_coherent(sc->sc_dtag, ET_ALIGN, 0,
+				    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+				    size, BUS_DMA_WAITOK | BUS_DMA_ZERO,
+				    &dmem);
 	if (error) {
-		device_printf(dev, "can't create DMA tag\n");
+		device_printf(dev, "can't create coherent DMA memory\n");
 		return error;
 	}
 
-	error = bus_dmamem_alloc(*dtag, addr, BUS_DMA_WAITOK | BUS_DMA_ZERO,
-				 dmap);
-	if (error) {
-		device_printf(dev, "can't allocate DMA mem\n");
-		bus_dma_tag_destroy(*dtag);
-		*dtag = NULL;
-		return error;
-	}
+	*dtag = dmem.dmem_tag;
+	*dmap = dmem.dmem_map;
+	*addr = dmem.dmem_addr;
+	*paddr = dmem.dmem_busaddr;
 
-	error = bus_dmamap_load(*dtag, *dmap, *addr, size,
-				et_dma_ring_addr, paddr, BUS_DMA_WAITOK);
-	if (error) {
-		device_printf(dev, "can't load DMA mem\n");
-		bus_dmamem_free(*dtag, *addr, *dmap);
-		bus_dma_tag_destroy(*dtag);
-		*dtag = NULL;
-		return error;
-	}
 	return 0;
 }
 
@@ -1037,13 +1024,6 @@ et_dma_mem_destroy(bus_dma_tag_t dtag, void *addr, bus_dmamap_t dmap)
 		bus_dmamem_free(dtag, addr, dmap);
 		bus_dma_tag_destroy(dtag);
 	}
-}
-
-static void
-et_dma_ring_addr(void *arg, bus_dma_segment_t *seg, int nseg, int error)
-{
-	KASSERT(nseg == 1, ("too many segments\n"));
-	*((bus_addr_t *)arg) = seg->ds_addr;
 }
 
 static void
