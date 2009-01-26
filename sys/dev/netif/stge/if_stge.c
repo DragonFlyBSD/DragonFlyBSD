@@ -1126,7 +1126,6 @@ stge_encap(struct stge_softc *sc, struct mbuf **m_head)
 		*m_head = NULL;
 		return (error);
 	}
-
 	bus_dmamap_sync(sc->sc_cdata.stge_tx_tag, txd->tx_dmamap,
 	    BUS_DMASYNC_PREWRITE);
 
@@ -1488,8 +1487,6 @@ stge_txeof(struct stge_softc *sc)
 			break;
 		sc->sc_cdata.stge_tx_cnt--;
 
-		bus_dmamap_sync(sc->sc_cdata.stge_tx_tag, txd->tx_dmamap,
-		    BUS_DMASYNC_POSTWRITE);
 		bus_dmamap_unload(sc->sc_cdata.stge_tx_tag, txd->tx_dmamap);
 
 		/* Output counter is updated with statistics register */
@@ -2137,8 +2134,6 @@ stge_stop(struct stge_softc *sc)
 	for (i = 0; i < STGE_RX_RING_CNT; i++) {
 		rxd = &sc->sc_cdata.stge_rxdesc[i];
 		if (rxd->rx_m != NULL) {
-			bus_dmamap_sync(sc->sc_cdata.stge_rx_tag,
-			    rxd->rx_dmamap, BUS_DMASYNC_POSTREAD);
 			bus_dmamap_unload(sc->sc_cdata.stge_rx_tag,
 			    rxd->rx_dmamap);
 			m_freem(rxd->rx_m);
@@ -2148,8 +2143,6 @@ stge_stop(struct stge_softc *sc)
 	for (i = 0; i < STGE_TX_RING_CNT; i++) {
 		txd = &sc->sc_cdata.stge_txdesc[i];
 		if (txd->tx_m != NULL) {
-			bus_dmamap_sync(sc->sc_cdata.stge_tx_tag,
-			    txd->tx_dmamap, BUS_DMASYNC_POSTWRITE);
 			bus_dmamap_unload(sc->sc_cdata.stge_tx_tag,
 			    txd->tx_dmamap);
 			m_freem(txd->tx_m);
