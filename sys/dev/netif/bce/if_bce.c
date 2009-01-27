@@ -343,6 +343,7 @@ static int	bce_chipinit(struct bce_softc *);
 static int	bce_blockinit(struct bce_softc *);
 static int	bce_newbuf_std(struct bce_softc *, struct mbuf *,
 			       uint16_t *, uint16_t *, uint32_t *);
+static void	bce_setup_rxdesc_std(struct bce_softc *, uint16_t, uint32_t *);
 
 static int	bce_init_tx_chain(struct bce_softc *);
 static int	bce_init_rx_chain(struct bce_softc *);
@@ -3225,7 +3226,6 @@ bce_newbuf_std(struct bce_softc *sc, struct mbuf *m,
 	struct bce_dmamap_arg ctx;
 	bus_dma_segment_t seg;
 	struct mbuf *m_new;
-	struct rx_bd *rxbd;
 	int error;
 #ifdef BCE_DEBUG
 	uint16_t debug_chain_prod = *chain_prod;
@@ -3290,20 +3290,12 @@ bce_newbuf_std(struct bce_softc *sc, struct mbuf *m,
 		sc->rx_low_watermark = sc->free_rx_bd);
 	DBRUNIF((sc->free_rx_bd == 0), sc->rx_empty_count++);
 
-	/* Setup the rx_bd for the first segment. */
-	rxbd = &sc->rx_bd_chain[RX_PAGE(*chain_prod)][RX_IDX(*chain_prod)];
-
-	rxbd->rx_bd_haddr_lo = htole32(BCE_ADDR_LO(seg.ds_addr));
-	rxbd->rx_bd_haddr_hi = htole32(BCE_ADDR_HI(seg.ds_addr));
-	rxbd->rx_bd_len = htole32(seg.ds_len);
-	rxbd->rx_bd_flags = htole32(RX_BD_FLAGS_START);
-	*prod_bseq += seg.ds_len;
-
-	rxbd->rx_bd_flags |= htole32(RX_BD_FLAGS_END);
-
 	/* Save the mbuf and update our counter. */
 	sc->rx_mbuf_ptr[*chain_prod] = m_new;
+	sc->rx_mbuf_paddr[*chain_prod] = seg.ds_addr;
 	sc->free_rx_bd--;
+
+	bce_setup_rxdesc_std(sc, *chain_prod, prod_bseq);
 
 	DBRUN(BCE_VERBOSE_RECV,
 	      bce_dump_rx_mbuf_chain(sc, debug_chain_prod, 1));
@@ -3312,6 +3304,29 @@ bce_newbuf_std(struct bce_softc *sc, struct mbuf *m,
 		"prod_bseq = 0x%08X\n", __func__, *prod, *chain_prod, *prod_bseq);
 
 	return 0;
+}
+
+
+static void
+bce_setup_rxdesc_std(struct bce_softc *sc, uint16_t chain_prod, uint32_t *prod_bseq)
+{
+	struct rx_bd *rxbd;
+	bus_addr_t paddr;
+	int len;
+
+	paddr = sc->rx_mbuf_paddr[chain_prod];
+	len = sc->rx_mbuf_ptr[chain_prod]->m_len;
+
+	/* Setup the rx_bd for the first segment. */
+	rxbd = &sc->rx_bd_chain[RX_PAGE(chain_prod)][RX_IDX(chain_prod)];
+
+	rxbd->rx_bd_haddr_lo = htole32(BCE_ADDR_LO(paddr));
+	rxbd->rx_bd_haddr_hi = htole32(BCE_ADDR_HI(paddr));
+	rxbd->rx_bd_len = htole32(len);
+	rxbd->rx_bd_flags = htole32(RX_BD_FLAGS_START);
+	*prod_bseq += len;
+
+	rxbd->rx_bd_flags |= htole32(RX_BD_FLAGS_END);
 }
 
 

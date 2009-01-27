@@ -4731,6 +4731,7 @@ struct bce_softc {
 	/* S/W maintained mbuf RX chain structure. */
 	bus_dmamap_t		rx_mbuf_map[TOTAL_RX_BD];
 	struct mbuf		*rx_mbuf_ptr[TOTAL_RX_BD];
+	bus_addr_t		rx_mbuf_paddr[TOTAL_RX_BD];
 
 	/* Track the number of rx_bd and tx_bd's in use. */
 	uint16_t 		free_rx_bd;
