@@ -2196,7 +2196,7 @@ bce_dma_alloc(struct bce_softc *sc)
 	rc = bus_dma_tag_create(NULL, 1, BCE_DMA_BOUNDARY,
 				sc->max_bus_addr, BUS_SPACE_MAXADDR,
 				NULL, NULL,
-				MAXBSIZE, BUS_SPACE_UNRESTRICTED,
+				BUS_SPACE_MAXSIZE_32BIT, 0,
 				BUS_SPACE_MAXSIZE_32BIT,
 				0, &sc->parent_tag);
 	if (rc != 0) {
@@ -2334,12 +2334,14 @@ bce_dma_alloc(struct bce_softc *sc)
 	}
 
 	/* Create a DMA tag for TX mbufs. */
-	rc = bus_dma_tag_create(sc->parent_tag, 1, BCE_DMA_BOUNDARY,
-				sc->max_bus_addr, BUS_SPACE_MAXADDR,
+	rc = bus_dma_tag_create(sc->parent_tag, 1, 0,
+				BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				NULL, NULL,
-				MCLBYTES * BCE_MAX_SEGMENTS,
+				/* BCE_MAX_JUMBO_ETHER_MTU_VLAN */MCLBYTES,
 				BCE_MAX_SEGMENTS, MCLBYTES,
-				0, &sc->tx_mbuf_tag);
+				BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK |
+				BUS_DMA_ONEBPAGE,
+				&sc->tx_mbuf_tag);
 	if (rc != 0) {
 		if_printf(ifp, "Could not allocate TX mbuf DMA tag!\n");
 		return rc;
@@ -2347,7 +2349,8 @@ bce_dma_alloc(struct bce_softc *sc)
 
 	/* Create DMA maps for the TX mbufs clusters. */
 	for (i = 0; i < TOTAL_TX_BD; i++) {
-		rc = bus_dmamap_create(sc->tx_mbuf_tag, BUS_DMA_WAITOK,
+		rc = bus_dmamap_create(sc->tx_mbuf_tag,
+				       BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
 				       &sc->tx_mbuf_map[i]);
 		if (rc != 0) {
 			for (j = 0; j < i; ++j) {
@@ -2413,11 +2416,12 @@ bce_dma_alloc(struct bce_softc *sc)
 	}
 
 	/* Create a DMA tag for RX mbufs. */
-	rc = bus_dma_tag_create(sc->parent_tag, 1, BCE_DMA_BOUNDARY,
-				sc->max_bus_addr, BUS_SPACE_MAXADDR,
+	rc = bus_dma_tag_create(sc->parent_tag, 1, 0,
+				BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				NULL, NULL,
-				MCLBYTES, 1/* BCE_MAX_SEGMENTS */, MCLBYTES,
-				0, &sc->rx_mbuf_tag);
+				MCLBYTES, 1, MCLBYTES,
+				BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,
+				&sc->rx_mbuf_tag);
 	if (rc != 0) {
 		if_printf(ifp, "Could not allocate RX mbuf DMA tag!\n");
 		return rc;
