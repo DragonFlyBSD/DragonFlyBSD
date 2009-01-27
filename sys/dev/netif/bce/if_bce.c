@@ -324,8 +324,6 @@ static int	bce_nvram_write(struct bce_softc *, uint32_t, uint8_t *,
 static int	bce_dma_alloc(struct bce_softc *);
 static void	bce_dma_free(struct bce_softc *);
 static void	bce_dma_map_addr(void *, bus_dma_segment_t *, int, int);
-static void	bce_dma_map_mbuf(void *, bus_dma_segment_t *, int,
-				 bus_size_t, int);
 
 /****************************************************************************/
 /* BCE Firmware Synchronization and Load                                    */
@@ -341,8 +339,8 @@ static void	bce_stop(struct bce_softc *);
 static int	bce_reset(struct bce_softc *, uint32_t);
 static int	bce_chipinit(struct bce_softc *);
 static int	bce_blockinit(struct bce_softc *);
-static int	bce_newbuf_std(struct bce_softc *, struct mbuf *,
-			       uint16_t *, uint16_t *, uint32_t *);
+static int	bce_newbuf_std(struct bce_softc *, uint16_t *, uint16_t *,
+			       uint32_t *, int);
 static void	bce_setup_rxdesc_std(struct bce_softc *, uint16_t, uint32_t *);
 
 static int	bce_init_tx_chain(struct bce_softc *);
@@ -2110,6 +2108,7 @@ bce_dma_free(struct bce_softc *sc)
 			bus_dmamap_destroy(sc->rx_mbuf_tag,
 					   sc->rx_mbuf_map[i]);
 		}
+		bus_dmamap_destroy(sc->rx_mbuf_tag, sc->rx_mbuf_tmpmap);
 		bus_dma_tag_destroy(sc->rx_mbuf_tag);
 	}
 
@@ -2151,27 +2150,6 @@ bce_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 
 	KASSERT(nseg == 1, ("only one segment is allowed\n"));
 	*busaddr = segs->ds_addr;
-}
-
-
-static void
-bce_dma_map_mbuf(void *arg, bus_dma_segment_t *segs, int nsegs,
-		 bus_size_t mapsz __unused, int error)
-{
-	struct bce_dmamap_arg *ctx = arg;
-	int i;
-
-	if (error)
-		return;
-
-	if (nsegs > ctx->bce_maxsegs) {
-		ctx->bce_maxsegs = 0;
-		return;
-	}
-
-	ctx->bce_maxsegs = nsegs;
-	for (i = 0; i < nsegs; ++i)
-		ctx->bce_segs[i] = segs[i];
 }
 
 
@@ -2379,6 +2357,17 @@ bce_dma_alloc(struct bce_softc *sc)
 				&sc->rx_mbuf_tag);
 	if (rc != 0) {
 		if_printf(ifp, "Could not allocate RX mbuf DMA tag!\n");
+		return rc;
+	}
+
+	/* Create tmp DMA map for RX mbuf clusters. */
+	rc = bus_dmamap_create(sc->rx_mbuf_tag, BUS_DMA_WAITOK,
+			       &sc->rx_mbuf_tmpmap);
+	if (rc != 0) {
+		bus_dma_tag_destroy(sc->rx_mbuf_tag);
+		sc->rx_mbuf_tag = NULL;
+
+		if_printf(ifp, "Could not create RX mbuf tmp DMA map!\n");
 		return rc;
 	}
 
@@ -3219,14 +3208,13 @@ bce_blockinit(struct bce_softc *sc)
 /*   0 for success, positive value for failure.                             */
 /****************************************************************************/
 static int
-bce_newbuf_std(struct bce_softc *sc, struct mbuf *m,
-	       uint16_t *prod, uint16_t *chain_prod, uint32_t *prod_bseq)
+bce_newbuf_std(struct bce_softc *sc, uint16_t *prod, uint16_t *chain_prod,
+	       uint32_t *prod_bseq, int init)
 {
 	bus_dmamap_t map;
-	struct bce_dmamap_arg ctx;
 	bus_dma_segment_t seg;
 	struct mbuf *m_new;
-	int error;
+	int error, nseg;
 #ifdef BCE_DEBUG
 	uint16_t debug_chain_prod = *chain_prod;
 #endif
@@ -3241,42 +3229,43 @@ bce_newbuf_std(struct bce_softc *sc, struct mbuf *m,
 	DBPRINT(sc, BCE_VERBOSE_RECV, "%s(enter): prod = 0x%04X, chain_prod = 0x%04X, "
 		"prod_bseq = 0x%08X\n", __func__, *prod, *chain_prod, *prod_bseq);
 
-	if (m == NULL) {
-		DBRUNIF(DB_RANDOMTRUE(bce_debug_mbuf_allocation_failure),
-			if_printf(&sc->arpcom.ac_if, "%s(%d): "
-				  "Simulating mbuf allocation failure.\n",
-				  __FILE__, __LINE__);
-			sc->mbuf_alloc_failed++;
-			return ENOBUFS);
+	DBRUNIF(DB_RANDOMTRUE(bce_debug_mbuf_allocation_failure),
+		if_printf(&sc->arpcom.ac_if, "%s(%d): "
+			  "Simulating mbuf allocation failure.\n",
+			  __FILE__, __LINE__);
+		sc->mbuf_alloc_failed++;
+		return ENOBUFS);
 
-		/* This is a new mbuf allocation. */
-		m_new = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
-		if (m_new == NULL)
-			return ENOBUFS;
-		DBRUNIF(1, sc->rx_mbuf_alloc++);
-	} else {
-		m_new = m;
-		m_new->m_data = m_new->m_ext.ext_buf;
-	}
+	/* This is a new mbuf allocation. */
+	m_new = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
+	if (m_new == NULL)
+		return ENOBUFS;
+	DBRUNIF(1, sc->rx_mbuf_alloc++);
+
 	m_new->m_len = m_new->m_pkthdr.len = MCLBYTES;
 
 	/* Map the mbuf cluster into device memory. */
-	map = sc->rx_mbuf_map[*chain_prod];
-
-	ctx.bce_maxsegs = 1;
-	ctx.bce_segs = &seg;
-	error = bus_dmamap_load_mbuf(sc->rx_mbuf_tag, map, m_new,
-				     bce_dma_map_mbuf, &ctx, BUS_DMA_NOWAIT);
-	if (error || ctx.bce_maxsegs == 0) {
-		if_printf(&sc->arpcom.ac_if,
-			  "Error mapping mbuf into RX chain!\n");
-
-		if (m == NULL)
-			m_freem(m_new);
-
+	error = bus_dmamap_load_mbuf_segment(sc->rx_mbuf_tag,
+			sc->rx_mbuf_tmpmap, m_new, &seg, 1, &nseg,
+			BUS_DMA_NOWAIT);
+	if (error) {
+		m_freem(m_new);
+		if (init) {
+			if_printf(&sc->arpcom.ac_if,
+				  "Error mapping mbuf into RX chain!\n");
+		}
 		DBRUNIF(1, sc->rx_mbuf_alloc--);
-		return ENOBUFS;
+		return error;
 	}
+
+	if (sc->rx_mbuf_ptr[*chain_prod] != NULL) {
+		bus_dmamap_unload(sc->rx_mbuf_tag,
+				  sc->rx_mbuf_map[*chain_prod]);
+	}
+
+	map = sc->rx_mbuf_map[*chain_prod];
+	sc->rx_mbuf_map[*chain_prod] = sc->rx_mbuf_tmpmap;
+	sc->rx_mbuf_tmpmap = map;
 
 	/* Watch for overflow. */
 	DBRUNIF((sc->free_rx_bd > USABLE_RX_BD),
@@ -3506,7 +3495,7 @@ bce_init_rx_chain(struct bce_softc *sc)
 	prod = prod_bseq = 0;
 	while (prod < TOTAL_RX_BD) {
 		chain_prod = RX_CHAIN_IDX(prod);
-		if (bce_newbuf_std(sc, NULL, &prod, &chain_prod, &prod_bseq)) {
+		if (bce_newbuf_std(sc, &prod, &chain_prod, &prod_bseq, 1)) {
 			if_printf(&sc->arpcom.ac_if,
 				  "Error filling RX chain: rx_bd[0x%04X]!\n",
 				  chain_prod);
@@ -3752,7 +3741,7 @@ bce_rx_intr(struct bce_softc *sc, int count)
 		rxbd = &sc->rx_bd_chain[RX_PAGE(sw_chain_cons)]
 				       [RX_IDX(sw_chain_cons)];
 		sc->free_rx_bd++;
-	
+
 		DBRUN(BCE_VERBOSE_RECV,
 		      if_printf(ifp, "%s(): ", __func__);
 		      bce_dump_rxbd(sc, sw_chain_cons, rxbd));
@@ -3766,23 +3755,25 @@ bce_rx_intr(struct bce_softc *sc, int count)
 				__FILE__, __LINE__, sw_chain_cons);
 				bce_breakpoint(sc));
 
-			/*
-			 * ToDo: If the received packet is small enough
-			 * to fit into a single, non-M_EXT mbuf,
-			 * allocate a new mbuf here, copy the data to
-			 * that mbuf, and recycle the mapped jumbo frame.
-			 */
+			if (sw_chain_cons != sw_chain_prod) {
+				if_printf(ifp, "RX cons(%d) != prod(%d), "
+					  "drop!\n", sw_chain_cons,
+					  sw_chain_prod);
+				ifp->if_ierrors++;
+
+				bce_setup_rxdesc_std(sc, sw_chain_cons,
+						     &sw_prod_bseq);
+				m = NULL;
+				goto bce_rx_int_next_rx;
+			}
 
 			/* Unmap the mbuf from DMA space. */
 			bus_dmamap_sync(sc->rx_mbuf_tag,
 					sc->rx_mbuf_map[sw_chain_cons],
 					BUS_DMASYNC_POSTREAD);
-			bus_dmamap_unload(sc->rx_mbuf_tag,
-					  sc->rx_mbuf_map[sw_chain_cons]);
 
-			/* Remove the mbuf from the driver's chain. */
+			/* Save the mbuf from the driver's chain. */
 			m = sc->rx_mbuf_ptr[sw_chain_cons];
-			sc->rx_mbuf_ptr[sw_chain_cons] = NULL;
 
 			/*
 			 * Frames received on the NetXteme II are prepended 
@@ -3827,14 +3818,8 @@ bce_rx_intr(struct bce_softc *sc, int count)
 				DBRUNIF(1, sc->l2fhdr_status_errors++);
 
 				/* Reuse the mbuf for a new frame. */
-				if (bce_newbuf_std(sc, m, &sw_prod,
-						   &sw_chain_prod,
-						   &sw_prod_bseq)) {
-					DBRUNIF(1, bce_breakpoint(sc));
-					/* XXX */
-					panic("%s: Can't reuse RX mbuf!\n",
-					      ifp->if_xname);
-				}
+				bce_setup_rxdesc_std(sc, sw_chain_prod,
+						     &sw_prod_bseq);
 				m = NULL;
 				goto bce_rx_int_next_rx;
 			}
@@ -3845,8 +3830,8 @@ bce_rx_intr(struct bce_softc *sc, int count)
 			 * log an ierror on the interface, and generate
 			 * an error in the system log.
 			 */
-			if (bce_newbuf_std(sc, NULL, &sw_prod, &sw_chain_prod,
-					   &sw_prod_bseq)) {
+			if (bce_newbuf_std(sc, &sw_prod, &sw_chain_prod,
+					   &sw_prod_bseq, 0)) {
 				DBRUN(BCE_WARN,
 				      if_printf(ifp,
 				      "%s(%d): Failed to allocate new mbuf, "
@@ -3856,14 +3841,8 @@ bce_rx_intr(struct bce_softc *sc, int count)
 				ifp->if_ierrors++;
 
 				/* Try and reuse the exisitng mbuf. */
-				if (bce_newbuf_std(sc, m, &sw_prod,
-						   &sw_chain_prod,
-						   &sw_prod_bseq)) {
-					DBRUNIF(1, bce_breakpoint(sc));
-					/* XXX */
-					panic("%s: Double mbuf allocation "
-					      "failure!", ifp->if_xname);
-				}
+				bce_setup_rxdesc_std(sc, sw_chain_prod,
+						     &sw_prod_bseq);
 				m = NULL;
 				goto bce_rx_int_next_rx;
 			}
