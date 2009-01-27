@@ -291,6 +291,7 @@ hammer_io_inval(hammer_volume_t volume, hammer_off_t zone2_offset)
 		hammer_rel_buffer(&iou->buffer, 0);
 		/*hammer_io_deallocate(bp);*/
 #endif
+		bqrelse(bp);
 		error = EAGAIN;
 	} else {
 		KKASSERT((bp->b_flags & B_LOCKED) == 0);
