@@ -14,10 +14,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -35,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)quad.h	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/quad/quad.h,v 1.5 1999/08/28 00:00:29 peter Exp $
+ * $FreeBSD: src/lib/libc/quad/quad.h,v 1.8 2007/01/09 00:28:03 imp Exp $
  * $DragonFly: src/lib/libc/quad/quad.h,v 1.3 2003/11/12 20:21:25 eirikn Exp $
  */
 
@@ -97,20 +93,12 @@ union uu {
 #define	LHALF(x)	((x) & ((1 << HALF_BITS) - 1))
 #define	LHUP(x)		((x) << HALF_BITS)
 
-quad_t		__divdi3 (quad_t a, quad_t b);
-quad_t		__moddi3 (quad_t a, quad_t b);
-u_quad_t	__qdivrem (u_quad_t u, u_quad_t v, u_quad_t *rem);
-u_quad_t	__udivdi3 (u_quad_t a, u_quad_t b);
-u_quad_t	__umoddi3 (u_quad_t a, u_quad_t b);
+int		__cmpdi2(quad_t a, quad_t b);
+quad_t		__divdi3(quad_t a, quad_t b);
+quad_t		__moddi3(quad_t a, quad_t b);
+u_quad_t	__qdivrem(u_quad_t u, u_quad_t v, u_quad_t *rem);
+int		__ucmpdi2(u_quad_t a, u_quad_t b);
+u_quad_t	__udivdi3(u_quad_t a, u_quad_t b);
+u_quad_t	__umoddi3(u_quad_t a, u_quad_t b);
 
-/*
- * XXX
- * Compensate for gcc 1 vs gcc 2.  Gcc 1 defines ?sh?di3's second argument
- * as u_quad_t, while gcc 2 correctly uses int.  Unfortunately, we still use
- * both compilers.
- */
-#if __GNUC__ >= 2
 typedef unsigned int	qshift_t;
-#else
-typedef u_quad_t	qshift_t;
-#endif
