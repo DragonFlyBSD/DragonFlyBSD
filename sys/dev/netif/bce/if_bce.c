@@ -4303,7 +4303,6 @@ bce_mgmt_init(struct bce_softc *sc)
 static int
 bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 {
-	struct bce_dmamap_arg ctx;
 	bus_dma_segment_t segs[BCE_MAX_SEGMENTS];
 	bus_dmamap_t map, tmp_map;
 	struct mbuf *m0 = *m_head;
@@ -4311,7 +4310,7 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 	uint16_t vlan_tag = 0, flags = 0;
 	uint16_t chain_prod, chain_prod_start, prod;
 	uint32_t prod_bseq;
-	int i, error, maxsegs;
+	int i, error, maxsegs, nsegs;
 #ifdef BCE_DEBUG
 	uint16_t debug_prod;
 #endif
@@ -4343,38 +4342,14 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 		maxsegs = BCE_MAX_SEGMENTS;
 
 	/* Map the mbuf into our DMA address space. */
-	ctx.bce_maxsegs = maxsegs;
-	ctx.bce_segs = segs;
-	error = bus_dmamap_load_mbuf(sc->tx_mbuf_tag, map, m0,
-				     bce_dma_map_mbuf, &ctx, BUS_DMA_NOWAIT);
-	if (error == EFBIG || ctx.bce_maxsegs == 0) {
-		DBPRINT(sc, BCE_WARN, "%s(): fragmented mbuf\n", __func__);
-		DBRUNIF(1, bce_dump_mbuf(sc, m0););
-
-		m0 = m_defrag(*m_head, MB_DONTWAIT);
-		if (m0 == NULL) {
-			error = ENOBUFS;
-			goto back;
-		}
-		*m_head = m0;
-
-		ctx.bce_maxsegs = maxsegs;
-		ctx.bce_segs = segs;
-		error = bus_dmamap_load_mbuf(sc->tx_mbuf_tag, map, m0,
-					     bce_dma_map_mbuf, &ctx,
-					     BUS_DMA_NOWAIT);
-		if (error || ctx.bce_maxsegs == 0) {
-			if_printf(&sc->arpcom.ac_if,
-				  "Error mapping mbuf into TX chain\n");
-			if (error == 0)
-				error = EFBIG;
-			goto back;
-		}
-	} else if (error) {
-		if_printf(&sc->arpcom.ac_if,
-			  "Error mapping mbuf into TX chain\n");
+	error = bus_dmamap_load_mbuf_defrag(sc->tx_mbuf_tag, map, m_head,
+			segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
+	if (error)
 		goto back;
-	}
+	bus_dmamap_sync(sc->tx_mbuf_tag, map, BUS_DMASYNC_PREWRITE);
+
+	/* Reset m0 */
+	m0 = *m_head;
 
 	/* prod points to an empty tx_bd at this point. */
 	prod_bseq  = sc->tx_prod_bseq;
@@ -4394,7 +4369,7 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 	 * for that segment and creating a tx_bd to for
 	 * the mbuf.
 	 */
-	for (i = 0; i < ctx.bce_maxsegs; i++) {
+	for (i = 0; i < nsegs; i++) {
 		chain_prod = TX_CHAIN_IDX(prod);
 		txbd= &sc->tx_bd_chain[TX_PAGE(chain_prod)][TX_IDX(chain_prod)];
 
@@ -4420,8 +4395,6 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 		"prod_bseq = 0x%08X\n",
 		__func__, prod, chain_prod, prod_bseq);
 
-	bus_dmamap_sync(sc->tx_mbuf_tag, map, BUS_DMASYNC_PREWRITE);
-
 	/*
 	 * Ensure that the mbuf pointer for this transmission
 	 * is placed at the array index of the last
@@ -4437,7 +4410,7 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 	sc->tx_mbuf_map[chain_prod] = map;
 	sc->tx_mbuf_map[chain_prod_start] = tmp_map;
 
-	sc->used_tx_bd += ctx.bce_maxsegs;
+	sc->used_tx_bd += nsegs;
 
 	/* Update some debug statistic counters */
 	DBRUNIF((sc->used_tx_bd > sc->tx_hi_watermark),
@@ -4513,12 +4486,13 @@ bce_start(struct ifnet *ifp)
 		 * to wait for the NIC to drain the chain.
 		 */
 		if (bce_encap(sc, &m_head)) {
-			ifp->if_flags |= IFF_OACTIVE;
-			DBPRINT(sc, BCE_INFO_SEND,
-				"TX chain is closed for business! "
-				"Total tx_bd used = %d\n", 
-				sc->used_tx_bd);
-			break;
+			ifp->if_oerrors++;
+			if (sc->used_tx_bd == 0) {
+				continue;
+			} else {
+				ifp->if_flags |= IFF_OACTIVE;
+				break;
+			}
 		}
 
 		count++;
