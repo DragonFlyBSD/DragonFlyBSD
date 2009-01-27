@@ -2205,94 +2205,38 @@ bce_dma_alloc(struct bce_softc *sc)
 	}
 
 	/*
-	 * Create a DMA tag for the status block, allocate and clear the
-	 * memory, map the memory into DMA space, and fetch the physical 
-	 * address of the block.
+	 * Allocate status block.
 	 */
-	rc = bus_dma_tag_create(sc->parent_tag,
-				BCE_DMA_ALIGN, BCE_DMA_BOUNDARY,
-				sc->max_bus_addr, BUS_SPACE_MAXADDR,
-				NULL, NULL,
-				BCE_STATUS_BLK_SZ, 1, BCE_STATUS_BLK_SZ,
-				0, &sc->status_tag);
-	if (rc != 0) {
-		if_printf(ifp, "Could not allocate status block DMA tag!\n");
-		return rc;
+	sc->status_block = bus_dmamem_coherent_any(sc->parent_tag,
+				BCE_DMA_ALIGN, BCE_STATUS_BLK_SZ,
+				BUS_DMA_WAITOK | BUS_DMA_ZERO,
+				&sc->status_tag, &sc->status_map,
+				&sc->status_block_paddr);
+	if (sc->status_block == NULL) {
+		if_printf(ifp, "Could not allocate status block!\n");
+		return ENOMEM;
 	}
-
-	rc = bus_dmamem_alloc(sc->status_tag, (void **)&sc->status_block,
-			      BUS_DMA_WAITOK | BUS_DMA_ZERO,
-			      &sc->status_map);
-	if (rc != 0) {
-		if_printf(ifp, "Could not allocate status block DMA memory!\n");
-		return rc;
-	}
-
-	rc = bus_dmamap_load(sc->status_tag, sc->status_map,
-			     sc->status_block, BCE_STATUS_BLK_SZ,
-			     bce_dma_map_addr, &busaddr, BUS_DMA_WAITOK);
-	if (rc != 0) {
-		if_printf(ifp, "Could not map status block DMA memory!\n");
-		bus_dmamem_free(sc->status_tag, sc->status_block,
-				sc->status_map);
-		sc->status_block = NULL;
-		return rc;
-	}
-
-	sc->status_block_paddr = busaddr;
-	/* DRC - Fix for 64 bit addresses. */
-	DBPRINT(sc, BCE_INFO, "status_block_paddr = 0x%08X\n",
-		(uint32_t)sc->status_block_paddr);
 
 	/*
-	 * Create a DMA tag for the statistics block, allocate and clear the
-	 * memory, map the memory into DMA space, and fetch the physical 
-	 * address of the block.
+	 * Allocate statistics block.
 	 */
-	rc = bus_dma_tag_create(sc->parent_tag,
-				BCE_DMA_ALIGN, BCE_DMA_BOUNDARY,
-				sc->max_bus_addr, BUS_SPACE_MAXADDR,
-				NULL, NULL,
-				BCE_STATS_BLK_SZ, 1, BCE_STATS_BLK_SZ,
-				0, &sc->stats_tag);
-	if (rc != 0) {
-		if_printf(ifp, "Could not allocate "
-			  "statistics block DMA tag!\n");
-		return rc;
+	sc->stats_block = bus_dmamem_coherent_any(sc->parent_tag,
+				BCE_DMA_ALIGN, BCE_STATS_BLK_SZ,
+				BUS_DMA_WAITOK | BUS_DMA_ZERO,
+				&sc->stats_tag, &sc->stats_map,
+				&sc->stats_block_paddr);
+	if (sc->stats_block == NULL) {
+		if_printf(ifp, "Could not allocate statistics block!\n");
+		return ENOMEM;
 	}
-
-	rc = bus_dmamem_alloc(sc->stats_tag, (void **)&sc->stats_block,
-			      BUS_DMA_WAITOK | BUS_DMA_ZERO,
-			      &sc->stats_map);
-	if (rc != 0) {
-		if_printf(ifp, "Could not allocate "
-			  "statistics block DMA memory!\n");
-		return rc;
-	}
-
-	rc = bus_dmamap_load(sc->stats_tag, sc->stats_map,
-			     sc->stats_block, BCE_STATS_BLK_SZ,
-			     bce_dma_map_addr, &busaddr, BUS_DMA_WAITOK);
-	if (rc != 0) {
-		if_printf(ifp, "Could not map statistics block DMA memory!\n");
-		bus_dmamem_free(sc->stats_tag, sc->stats_block, sc->stats_map);
-		sc->stats_block = NULL;
-		return rc;
-	}
-
-	sc->stats_block_paddr = busaddr;
-	/* DRC - Fix for 64 bit address. */
-	DBPRINT(sc, BCE_INFO, "stats_block_paddr = 0x%08X\n", 
-		(uint32_t)sc->stats_block_paddr);
 
 	/*
 	 * Create a DMA tag for the TX buffer descriptor chain,
 	 * allocate and clear the  memory, and fetch the
 	 * physical address of the block.
 	 */
-	rc = bus_dma_tag_create(sc->parent_tag,
-				BCM_PAGE_SIZE, BCE_DMA_BOUNDARY,
-				sc->max_bus_addr, BUS_SPACE_MAXADDR,
+	rc = bus_dma_tag_create(sc->parent_tag, BCM_PAGE_SIZE, 0,
+				BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				NULL, NULL,
 				BCE_TX_CHAIN_PAGE_SZ, 1, BCE_TX_CHAIN_PAGE_SZ,
 				0, &sc->tx_bd_chain_tag);
@@ -2305,7 +2249,9 @@ bce_dma_alloc(struct bce_softc *sc)
 	for (i = 0; i < TX_PAGES; i++) {
 		rc = bus_dmamem_alloc(sc->tx_bd_chain_tag,
 				      (void **)&sc->tx_bd_chain[i],
-				      BUS_DMA_WAITOK, &sc->tx_bd_chain_map[i]);
+				      BUS_DMA_WAITOK | BUS_DMA_ZERO |
+				      BUS_DMA_COHERENT,
+				      &sc->tx_bd_chain_map[i]);
 		if (rc != 0) {
 			if_printf(ifp, "Could not allocate %dth TX descriptor "
 				  "chain DMA memory!\n", i);
@@ -2318,6 +2264,10 @@ bce_dma_alloc(struct bce_softc *sc)
 				     bce_dma_map_addr, &busaddr,
 				     BUS_DMA_WAITOK);
 		if (rc != 0) {
+			if (rc == EINPROGRESS) {
+				panic("%s coherent memory loading "
+				      "is still in progress!", ifp->if_xname);
+			}
 			if_printf(ifp, "Could not map %dth TX descriptor "
 				  "chain DMA memory!\n", i);
 			bus_dmamem_free(sc->tx_bd_chain_tag,
@@ -2371,9 +2321,8 @@ bce_dma_alloc(struct bce_softc *sc)
 	 * allocate and clear the  memory, and fetch the physical
 	 * address of the blocks.
 	 */
-	rc = bus_dma_tag_create(sc->parent_tag,
-				BCM_PAGE_SIZE, BCE_DMA_BOUNDARY,
-				sc->max_bus_addr, BUS_SPACE_MAXADDR,
+	rc = bus_dma_tag_create(sc->parent_tag, BCM_PAGE_SIZE, 0,
+				BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				NULL, NULL,
 				BCE_RX_CHAIN_PAGE_SZ, 1, BCE_RX_CHAIN_PAGE_SZ,
 				0, &sc->rx_bd_chain_tag);
@@ -2386,7 +2335,8 @@ bce_dma_alloc(struct bce_softc *sc)
 	for (i = 0; i < RX_PAGES; i++) {
 		rc = bus_dmamem_alloc(sc->rx_bd_chain_tag,
 				      (void **)&sc->rx_bd_chain[i],
-				      BUS_DMA_WAITOK | BUS_DMA_ZERO,
+				      BUS_DMA_WAITOK | BUS_DMA_ZERO |
+				      BUS_DMA_COHERENT,
 				      &sc->rx_bd_chain_map[i]);
 		if (rc != 0) {
 			if_printf(ifp, "Could not allocate %dth RX descriptor "
@@ -2400,6 +2350,10 @@ bce_dma_alloc(struct bce_softc *sc)
 				     bce_dma_map_addr, &busaddr,
 				     BUS_DMA_WAITOK);
 		if (rc != 0) {
+			if (rc == EINPROGRESS) {
+				panic("%s coherent memory loading "
+				      "is still in progress!", ifp->if_xname);
+			}
 			if_printf(ifp, "Could not map %dth RX descriptor "
 				  "chain DMA memory!\n", i);
 			bus_dmamem_free(sc->rx_bd_chain_tag,
@@ -3413,11 +3367,6 @@ bce_init_tx_chain(struct bce_softc *sc)
 			htole32(BCE_ADDR_LO(sc->tx_bd_chain_paddr[j]));
 	}
 
-	for (i = 0; i < TX_PAGES; ++i) {
-		bus_dmamap_sync(sc->tx_bd_chain_tag, sc->tx_bd_chain_map[i],
-				BUS_DMASYNC_PREWRITE);
-	}
-
 	/* Initialize the context ID for an L2 TX chain. */
 	val = BCE_L2CTX_TYPE_TYPE_L2;
 	val |= BCE_L2CTX_TYPE_SIZE_L2;
@@ -3555,11 +3504,6 @@ bce_init_rx_chain(struct bce_softc *sc)
 	/* Save the RX chain producer index. */
 	sc->rx_prod = prod;
 	sc->rx_prod_bseq = prod_bseq;
-
-	for (i = 0; i < RX_PAGES; i++) {
-		bus_dmamap_sync(sc->rx_bd_chain_tag, sc->rx_bd_chain_map[i],
-				BUS_DMASYNC_PREWRITE);
-	}
 
 	/* Tell the chip about the waiting rx_bd's. */
 	REG_WR16(sc, MB_RX_CID_ADDR + BCE_L2CTX_HOST_BDIDX, sc->rx_prod);
@@ -3738,7 +3682,6 @@ bce_rx_intr(struct bce_softc *sc, int count)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint16_t hw_cons, sw_cons, sw_chain_cons, sw_prod, sw_chain_prod;
 	uint32_t sw_prod_bseq;
-	int i;
 	struct mbuf_chain chain[MAXCPU];
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
@@ -3746,12 +3689,6 @@ bce_rx_intr(struct bce_softc *sc, int count)
 	ether_input_chain_init(chain);
 
 	DBRUNIF(1, sc->rx_interrupts++);
-
-	/* Prepare the RX chain pages to be accessed by the host CPU. */
-	for (i = 0; i < RX_PAGES; i++) {
-		bus_dmamap_sync(sc->rx_bd_chain_tag,
-				sc->rx_bd_chain_map[i], BUS_DMASYNC_POSTREAD);
-	}
 
 	/* Get the hardware's view of the RX consumer index. */
 	hw_cons = sc->hw_rx_cons = bce_get_hw_rx_cons(sc);
@@ -4016,11 +3953,6 @@ bce_rx_int_next_rx:
 	}
 
 	ether_input_dispatch(chain);
-
-	for (i = 0; i < RX_PAGES; i++) {
-		bus_dmamap_sync(sc->rx_bd_chain_tag,
-				sc->rx_bd_chain_map[i], BUS_DMASYNC_PREWRITE);
-	}
 
 	sc->rx_cons = sw_cons;
 	sc->rx_prod = sw_prod;
@@ -4780,8 +4712,6 @@ bce_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		break;
 	}
 
-	bus_dmamap_sync(sc->status_tag, sc->status_map, BUS_DMASYNC_POSTREAD);
-
 	if (cmd == POLL_AND_CHECK_STATUS) {
 		uint32_t status_attn_bits;
 
@@ -4829,8 +4759,6 @@ bce_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	if (hw_tx_cons != sc->hw_tx_cons)
 		bce_tx_intr(sc);
 
-	bus_dmamap_sync(sc->status_tag,	sc->status_map, BUS_DMASYNC_PREWRITE);
-
 	/* Check for new frames to transmit. */
 	if (!ifq_is_empty(&ifp->if_snd))
 		if_devstart(ifp);
@@ -4863,7 +4791,6 @@ bce_intr(void *xsc)
 	DBPRINT(sc, BCE_EXCESSIVE, "Entering %s()\n", __func__);
 	DBRUNIF(1, sc->interrupts_generated++);
 
-	bus_dmamap_sync(sc->status_tag, sc->status_map, BUS_DMASYNC_POSTREAD);
 	sblk = sc->status_block;
 
 	/*
@@ -4951,8 +4878,6 @@ bce_intr(void *xsc)
 		if ((hw_rx_cons == sc->hw_rx_cons) && (hw_tx_cons == sc->hw_tx_cons))
 			break;
 	}
-
-	bus_dmamap_sync(sc->status_tag,	sc->status_map, BUS_DMASYNC_PREWRITE);
 
 	/* Re-enable interrupts. */
 	REG_WR(sc, BCE_PCICFG_INT_ACK_CMD,
