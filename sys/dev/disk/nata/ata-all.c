@@ -826,15 +826,13 @@ void
 ata_udelay(int interval)
 {
     /*
-     * Use tsleep now.  Theoretically calls to this function are only made
-     * in non-time-critical code paths, i.e. the ata reset code.
+     * We can't use tsleep here, because we might be called from callout
+     * context.
      */
-#if 0
-    if (interval < (1000000/hz))
+    if (1 || interval < (1000000/hz))
 	DELAY(interval);
     else
-#endif
-    tsleep(&interval, 0, "ataslp", 1 + interval / (1000000 / hz));
+	tsleep(&interval, 0, "ataslp", 1 + interval / (1000000 / hz));
 }
 
 char *

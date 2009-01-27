@@ -1043,18 +1043,12 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 			type = OBJT_DEVICE;
 			handle = (void *)(intptr_t)vp->v_rdev;
 		} else {
-			struct vattr vat, tsvat;
+			struct vattr vat;
 			int error;
 
 			error = VOP_GETATTR(vp, &vat);
 			if (error)
 				return (error);
-
-			/* Update access time */
-			VATTR_NULL(&tsvat);
-			vfs_timestamp(&tsvat.va_atime);
-			VOP_SETATTR(vp, &tsvat, curproc != NULL ? curproc->p_ucred : NULL);
-
 			objsize = vat.va_size;
 			type = OBJT_VNODE;
 			/*
