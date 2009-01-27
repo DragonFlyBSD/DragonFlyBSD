@@ -14,10 +14,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -35,8 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)regerror.c	8.4 (Berkeley) 3/20/94
- *
- * @(#)regerror.c	8.4 (Berkeley) 3/20/94
+ * $FreeBSD: src/lib/libc/regex/regerror.c,v 1.11 2007/06/11 03:05:54 delphij Exp $
  * $DragonFly: src/lib/libc/regex/regerror.c,v 1.6 2005/11/13 02:17:18 swildner Exp $
  */
 
@@ -78,6 +73,7 @@ static char *regatoi(const regex_t *preg, char *localbuf);
  = #define	REG_EMPTY	14
  = #define	REG_ASSERT	15
  = #define	REG_INVARG	16
+ = #define	REG_ILLSEQ	17
  = #define	REG_ATOI	255	// convert name to number (!)
  = #define	REG_ITOA	0400	// convert number to name (!)
  */
@@ -102,6 +98,7 @@ static struct rerr {
 	{REG_EMPTY,	"REG_EMPTY",	"empty (sub)expression"},
 	{REG_ASSERT,	"REG_ASSERT",	"\"can't happen\" -- you found a bug"},
 	{REG_INVARG,	"REG_INVARG",	"invalid argument to regex routine"},
+	{REG_ILLSEQ,	"REG_ILLSEQ",	"illegal byte sequence"},
 	{0,		"",		"*** unknown regexp error code ***"}
 };
 
@@ -111,7 +108,10 @@ static struct rerr {
  */
 /* ARGSUSED */
 size_t
-regerror(int errcode, const regex_t *preg, char *errbuf, size_t errbuf_size)
+regerror(int errcode,
+	 const regex_t * __restrict preg,
+	 char * __restrict errbuf,
+	 size_t errbuf_size)
 {
 	struct rerr *r;
 	size_t len;
