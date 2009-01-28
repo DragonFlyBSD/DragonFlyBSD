@@ -3409,8 +3409,6 @@ bce_free_tx_chain(struct bce_softc *sc)
 	/* Unmap, unload, and free any mbufs still in the TX mbuf chain. */
 	for (i = 0; i < TOTAL_TX_BD; i++) {
 		if (sc->tx_mbuf_ptr[i] != NULL) {
-			bus_dmamap_sync(sc->tx_mbuf_tag, sc->tx_mbuf_map[i],
-					BUS_DMASYNC_POSTWRITE);
 			bus_dmamap_unload(sc->tx_mbuf_tag, sc->tx_mbuf_map[i]);
 			m_freem(sc->tx_mbuf_ptr[i]);
 			sc->tx_mbuf_ptr[i] = NULL;
@@ -3537,8 +3535,6 @@ bce_free_rx_chain(struct bce_softc *sc)
 	/* Free any mbufs still in the RX mbuf chain. */
 	for (i = 0; i < TOTAL_RX_BD; i++) {
 		if (sc->rx_mbuf_ptr[i] != NULL) {
-			bus_dmamap_sync(sc->rx_mbuf_tag, sc->rx_mbuf_map[i],
-					BUS_DMASYNC_POSTREAD);
 			bus_dmamap_unload(sc->rx_mbuf_tag, sc->rx_mbuf_map[i]);
 			m_freem(sc->rx_mbuf_ptr[i]);
 			sc->rx_mbuf_ptr[i] = NULL;
