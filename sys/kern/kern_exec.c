@@ -469,6 +469,9 @@ interpret:
 	exec_setregs(imgp->entry_addr, (u_long)(uintptr_t)stack_base,
 	    imgp->ps_strings);
 
+	/* Set the access time on the vnode */
+	vn_mark_atime(imgp->vp, td);
+
 	/* Free any previous argument cache */
 	if (p->p_args && --p->p_args->ar_ref == 0)
 		FREE(p->p_args, M_PARGS);

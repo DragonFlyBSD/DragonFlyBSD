@@ -40,10 +40,10 @@
 #include "hammer.h"
 
 static int hammer_res_rb_compare(hammer_reserve_t res1, hammer_reserve_t res2);
-static void hammer_reserve_setdelay(hammer_mount_t hmp,
+static void hammer_reserve_setdelay_offset(hammer_mount_t hmp,
 				    hammer_off_t base_offset,
 				    struct hammer_blockmap_layer2 *layer2);
-
+static void hammer_reserve_setdelay(hammer_mount_t hmp, hammer_reserve_t resv);
 
 /*
  * Reserved big-blocks red-black tree support
@@ -580,6 +580,7 @@ void
 hammer_blockmap_reserve_complete(hammer_mount_t hmp, hammer_reserve_t resv)
 {
 	hammer_off_t base_offset;
+	int error;
 
 	KKASSERT(resv->refs > 0);
 	KKASSERT((resv->zone_offset & HAMMER_OFF_ZONE_MASK) ==
@@ -589,14 +590,21 @@ hammer_blockmap_reserve_complete(hammer_mount_t hmp, hammer_reserve_t resv)
 	 * Setting append_off to the max prevents any new allocations
 	 * from occuring while we are trying to dispose of the reservation,
 	 * allowing us to safely delete any related HAMMER buffers.
+	 *
+	 * If we are unable to clean out all related HAMMER buffers we
+	 * requeue the delay.
 	 */
 	if (resv->refs == 1 && (resv->flags & HAMMER_RESF_LAYER2FREE)) {
 		resv->append_off = HAMMER_LARGEBLOCK_SIZE;
 		resv->flags &= ~HAMMER_RESF_LAYER2FREE;
 		base_offset = resv->zone_offset & ~HAMMER_ZONE_RAW_BUFFER;
 		base_offset = HAMMER_ZONE_ENCODE(base_offset, resv->zone);
-		hammer_del_buffers(hmp, base_offset, resv->zone_offset,
-				   HAMMER_LARGEBLOCK_SIZE);
+		error = hammer_del_buffers(hmp, base_offset,
+					   resv->zone_offset,
+					   HAMMER_LARGEBLOCK_SIZE,
+					   0);
+		if (error)
+			hammer_reserve_setdelay(hmp, resv);
 	}
 	if (--resv->refs == 0) {
 		KKASSERT((resv->flags & HAMMER_RESF_ONDELAY) == 0);
@@ -615,7 +623,7 @@ hammer_blockmap_reserve_complete(hammer_mount_t hmp, hammer_reserve_t resv)
  * reservation has been allocated.
  */
 static void
-hammer_reserve_setdelay(hammer_mount_t hmp, hammer_off_t base_offset,
+hammer_reserve_setdelay_offset(hammer_mount_t hmp, hammer_off_t base_offset,
 			struct hammer_blockmap_layer2 *layer2)
 {
 	hammer_reserve_t resv;
@@ -639,11 +647,15 @@ again:
 		}
 		++hammer_count_reservations;
 	}
+}
 
-	/*
-	 * Enter the reservation on the on-delay list, or move it if it
-	 * is already on the list.
-	 */
+/*
+ * Enter the reservation on the on-delay list, or move it if it
+ * is already on the list.
+ */
+static void
+hammer_reserve_setdelay(hammer_mount_t hmp, hammer_reserve_t resv)
+{
 	if (resv->flags & HAMMER_RESF_ONDELAY) {
 		TAILQ_REMOVE(&hmp->delay_list, resv, delay_entry);
 		resv->flush_group = hmp->flusher.next + 1;
@@ -776,7 +788,7 @@ hammer_blockmap_free(hammer_transaction_t trans,
 	if (layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE) {
 		base_off = (zone_offset & (~HAMMER_LARGEBLOCK_MASK64 & ~HAMMER_OFF_ZONE_MASK)) | HAMMER_ZONE_RAW_BUFFER;
 
-		hammer_reserve_setdelay(hmp, base_off, layer2);
+		hammer_reserve_setdelay_offset(hmp, base_off, layer2);
 		if (layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE) {
 			layer2->zone = 0;
 			layer2->append_off = 0;

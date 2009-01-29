@@ -417,6 +417,13 @@ struct vop_mountctl_args {
 	int *a_res;
 };
 
+struct vop_markatime_args {
+	struct vop_generic_args a_head;
+	int a_op;
+	struct vnode *a_vp;
+	struct ucred *a_cred;
+};
+
 /*
  * NEW API
  */
@@ -621,6 +628,7 @@ struct vop_ops {
 	int	(*vop_unused07)(void *);
 	int	(*vop_unused08)(void *);
 	int	(*vop_mountctl)(struct vop_mountctl_args *);
+	int	(*vop_markatime)(struct vop_markatime_args *);
 
 	int	(*vop_nresolve)(struct vop_nresolve_args *);
 	int	(*vop_nlookupdotdot)(struct vop_nlookupdotdot_args *);
@@ -693,6 +701,7 @@ union vop_args_union {
 	struct vop_getextattr_args vu_getextattr;
 	struct vop_setextattr_args vu_setextattr;
 	struct vop_mountctl_args vu_mountctl;
+	struct vop_markatime_args vu_markatime;
 
 	struct vop_nresolve_args vu_nresolve;
 	struct vop_nlookupdotdot_args vu_nlookupdotdot;
@@ -802,6 +811,7 @@ int vop_setextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 		struct uio *uio, struct ucred *cred);
 int vop_mountctl(struct vop_ops *ops, int op, struct file *fp, 
 		const void *ctl, int ctllen, void *buf, int buflen, int *res);
+int vop_markatime(struct vop_ops *ops, struct vnode *vp, struct ucred *cred);
 int vop_nresolve(struct vop_ops *ops, struct nchandle *nch,
 		struct vnode *dvp, struct ucred *cred);
 int vop_nlookupdotdot(struct vop_ops *ops, struct vnode *dvp,
@@ -883,6 +893,7 @@ int vop_aclcheck_ap(struct vop_aclcheck_args *ap);
 int vop_getextattr_ap(struct vop_getextattr_args *ap);
 int vop_setextattr_ap(struct vop_setextattr_args *ap);
 int vop_mountctl_ap(struct vop_mountctl_args *ap);
+int vop_markatime_ap(struct vop_markatime_args *ap);
 
 int vop_nresolve_ap(struct vop_nresolve_args *ap);
 int vop_nlookupdotdot_ap(struct vop_nlookupdotdot_args *ap);
@@ -945,6 +956,7 @@ extern struct syslink_desc vop_aclcheck_desc;
 extern struct syslink_desc vop_getextattr_desc;
 extern struct syslink_desc vop_setextattr_desc;
 extern struct syslink_desc vop_mountctl_desc;
+extern struct syslink_desc vop_markatime_desc;
 
 extern struct syslink_desc vop_nresolve_desc;
 extern struct syslink_desc vop_nlookupdotdot_desc;
@@ -1026,6 +1038,8 @@ extern struct syslink_desc vop_nrename_desc;
 	vop_getextattr(*(vp)->v_ops, vp, name, uio, cred)
 #define VOP_SETEXTATTR(vp, name, uio, cred)		\
 	vop_setextattr(*(vp)->v_ops, vp, name, uio, cred)
+#define VOP_MARKATIME(vp, cred)			\
+	vop_markatime(*(vp)->v_ops, vp, cred)
 /* no VOP_VFSSET() */
 /* VOP_STRATEGY - does not exist, use vn_strategy() */
 

@@ -591,17 +591,19 @@ ata_sort_queue(struct ata_channel *ch, struct ata_request *request)
 {
     struct ata_request *this, *next;
 
-    request->sortq_lost = 0;
     this = TAILQ_FIRST(&ch->ata_queue);
 
     /* if the queue is empty just insert */
     if (this == NULL) {
-	if (request->composite)
+	if (request->composite) {
 	    ch->freezepoint = request;
+	    ch->sortq_lost = 0;
+	}
 	TAILQ_INSERT_TAIL(&ch->ata_queue, request, chain);
 	return;
     }
 
+#if 0
     /*
      * disk devices have write caches, sorting writes just interferes
      * with read performance.
@@ -609,11 +611,14 @@ ata_sort_queue(struct ata_channel *ch, struct ata_request *request)
      * (Added by DragonFly)
      */
     if (request->flags & ATA_R_WRITE) {
-	if (request->composite)
+	if (request->composite) {
 	    ch->freezepoint = request;
+	    ch->sortq_lost = 0;
+	}
 	TAILQ_INSERT_TAIL(&ch->ata_queue, request, chain);
 	return;
     }
+#endif
 
     /* dont sort frozen parts of the queue */
     if (ch->freezepoint)
@@ -625,7 +630,6 @@ ata_sort_queue(struct ata_channel *ch, struct ata_request *request)
 
 	    /* have we reached the tipping point */
 	    if (ata_get_lba(next) < ata_get_lba(this)) {
-
 		/* sort the insert */
 		do {
 		    if (ata_get_lba(request) < ata_get_lba(next))
@@ -648,17 +652,24 @@ ata_sort_queue(struct ata_channel *ch, struct ata_request *request)
 	}
     }
 
-    if (request->composite)
+    if (request->composite) {
 	ch->freezepoint = request;
+	ch->sortq_lost = 0;
+    }
 
     /*
      * We really do not want to allow large amounts of linear I/O to
      * indefinitely delay previously queued I/O.
      *
+     * Think of it like this: One out of 16 seeks will be less then
+     * optimal, improving machine performance under heavy multi-process
+     * loads by slightly reducing physical performance.
+     *
      * (Added by DragonFly)
      */
-    if (next && ++next->sortq_lost > 16) {
+    if (next && ++ch->sortq_lost > 16) {
 	ch->freezepoint = request;
+	ch->sortq_lost = 0;
 	TAILQ_INSERT_TAIL(&ch->ata_queue, request, chain);
     } else {
 	TAILQ_INSERT_AFTER(&ch->ata_queue, this, request, chain);

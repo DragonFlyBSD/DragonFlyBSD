@@ -478,7 +478,7 @@ fn_install_bootblocks(struct i_fn_args *a)
 			strlcpy(packet, dfui_dataset_get_value(ds, "packet"), 32);
 
 			if (strcasecmp(boot0cfg, "Y") == 0) {
-				cmd = command_add(cmds, "%s%s -B %s -o %spacket",
+				cmd = command_add(cmds, "%s%s -B -o %spacket %s",
 				    a->os_root, cmd_name(a, "BOOT0CFG"),
 				    strcasecmp(packet, "Y") == 0 ? "" : "no",
 				    disk);

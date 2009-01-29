@@ -149,9 +149,9 @@ retry:
 				error = ENOSPC;
 				break;
 			}
-			hammer_unlock_cursor(&cursor, 0);
+			hammer_unlock_cursor(&cursor);
 			hammer_flusher_wait(trans->hmp, seq);
-			hammer_lock_cursor(&cursor, 0);
+			hammer_lock_cursor(&cursor);
 			seq = hammer_flusher_async(trans->hmp, NULL);
 			continue;
 		}
@@ -168,9 +168,9 @@ retry:
 
 		while (hammer_flusher_meta_halflimit(trans->hmp) ||
 		       hammer_flusher_undo_exhausted(trans, 2)) {
-			hammer_unlock_cursor(&cursor, 0);
+			hammer_unlock_cursor(&cursor);
 			hammer_flusher_wait(trans->hmp, seq);
-			hammer_lock_cursor(&cursor, 0);
+			hammer_lock_cursor(&cursor);
 			seq = hammer_flusher_async_one(trans->hmp);
 		}
 
@@ -189,9 +189,9 @@ retry:
 		 * (The cursor's node and element may change!)
 		 */
 		if (bd_heatup()) {
-			hammer_unlock_cursor(&cursor, 0);
+			hammer_unlock_cursor(&cursor);
 			bwillwrite(HAMMER_XBUFSIZE);
-			hammer_lock_cursor(&cursor, 0);
+			hammer_lock_cursor(&cursor);
 		}
 
 		if (error == 0) {
@@ -289,9 +289,9 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 			 * the cursor locked.
 			 */
 			leaf = elm->leaf;
-			hammer_unlock_cursor(cursor, 0);
+			hammer_unlock_cursor(cursor);
 			hammer_io_direct_uncache(hmp, &leaf);
-			hammer_lock_cursor(cursor, 0);
+			hammer_lock_cursor(cursor);
 			if (cursor->flags & HAMMER_CURSOR_RETEST) {
 				kprintf("hammer: retest after uncache\n");
 				error = EDEADLK;

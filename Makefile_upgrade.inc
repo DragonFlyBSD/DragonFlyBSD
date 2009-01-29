@@ -1052,3 +1052,4 @@ TO_REMOVE+=/etc/pam.d/xserver
 TO_REMOVE+=/usr/include/machine/cronyx.h
 TO_REMOVE+=/usr/share/man/man4/i386/cx.4.gz
 TO_REMOVE+=/usr/share/man/cat4/i386/cx.4.gz
+TO_REMOVE+=/usr/share/zoneinfo/Asia/Katmandu

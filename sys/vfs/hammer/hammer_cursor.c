@@ -487,13 +487,13 @@ hammer_cursor_down(hammer_cursor_t cursor)
  * operations.
  */
 void
-hammer_unlock_cursor(hammer_cursor_t cursor, int also_ip)
+hammer_unlock_cursor(hammer_cursor_t cursor)
 {
 	hammer_node_t node;
-	hammer_inode_t ip;
 
 	KKASSERT((cursor->flags & HAMMER_CURSOR_TRACKED) == 0);
 	KKASSERT(cursor->node);
+
 	/*
 	 * Release the cursor's locks and track B-Tree operations on node.
 	 * While being tracked our cursor can be modified by other threads
@@ -508,9 +508,6 @@ hammer_unlock_cursor(hammer_cursor_t cursor, int also_ip)
 	cursor->flags |= HAMMER_CURSOR_TRACKED;
 	TAILQ_INSERT_TAIL(&node->cursor_list, cursor, deadlk_entry);
 	hammer_unlock(&node->lock);
-
-	if (also_ip && (ip = cursor->ip) != NULL)
-		hammer_unlock(&ip->lock);
 }
 
 /*
@@ -522,23 +519,12 @@ hammer_unlock_cursor(hammer_cursor_t cursor, int also_ip)
  * the element after it.
  */
 int
-hammer_lock_cursor(hammer_cursor_t cursor, int also_ip)
+hammer_lock_cursor(hammer_cursor_t cursor)
 {
-	hammer_inode_t ip;
 	hammer_node_t node;
 	int error;
 
 	KKASSERT(cursor->flags & HAMMER_CURSOR_TRACKED);
-
-	/*
-	 * Relock the inode
-	 */
-	if (also_ip && (ip = cursor->ip) != NULL) {
-		if (cursor->trans->type == HAMMER_TRANS_FLS)
-			hammer_lock_ex(&ip->lock);
-		else
-			hammer_lock_sh(&ip->lock);
-	}
 
 	/*
 	 * Relock the node
@@ -589,7 +575,7 @@ hammer_recover_cursor(hammer_cursor_t cursor)
 {
 	int error;
 
-	hammer_unlock_cursor(cursor, 0);
+	hammer_unlock_cursor(cursor);
 	KKASSERT(cursor->trans->sync_lock_refs > 0);
 
 	/*
@@ -606,7 +592,7 @@ hammer_recover_cursor(hammer_cursor_t cursor)
 		hammer_rel_mem_record(cursor->deadlk_rec);
 		cursor->deadlk_rec = NULL;
 	}
-	error = hammer_lock_cursor(cursor, 0);
+	error = hammer_lock_cursor(cursor);
 	return(error);
 }
 
@@ -672,7 +658,7 @@ hammer_pop_cursor(hammer_cursor_t ocursor, hammer_cursor_t ncursor)
 	hammer_done_cursor(ncursor);
 	kfree(ncursor, hmp->m_misc);
 	KKASSERT(ocursor->ip == ip);
-	hammer_lock_cursor(ocursor, 0);
+	hammer_lock_cursor(ocursor);
 }
 
 /*

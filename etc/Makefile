@@ -176,11 +176,10 @@ upgrade_etc:	preupgrade remove-obsolete-files
 	cd ${UPGRADE_SRCDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 Makefile.usr ${DESTDIR}/usr/Makefile
 .if !exists(${DESTDIR}/etc/pam.d)
 	mkdir -p ${DESTDIR}/etc/pam.d
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${UPGRADE_SRCDIR}/pam.d/README ${DESTDIR}/etc/pam.d
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${UPGRADE_SRCDIR}/pam.d/convert.sh ${DESTDIR}/etc/pam.d
+	cd ${UPGRADE_SRCDIR}/pam.d; ${MAKE} install
 	sh ${DESTDIR}/etc/pam.d/convert.sh ${DESTDIR}/etc/pam.d ${DESTDIR}/etc/pam.conf
 .else
-.for pamconf in README convert.sh
+.for pamconf in README convert.sh atrun cron passwd rsh su system
 .if !exists(${DESTDIR}/etc/pam.d/${pamconf})
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${UPGRADE_SRCDIR}/pam.d/${pamconf} ${DESTDIR}/etc/pam.d
 .endif
@@ -238,6 +237,16 @@ upgrade_etc:	preupgrade remove-obsolete-files
 .endif
 .endif
 .endif
+
+# The existence of cleartext_pass_ok means pam config files are out of date.
+	@set - `fgrep cleartext_pass_ok ${DESTDIR}/etc/pam.d/*`; \
+	if [ $$# -gt 0 ] ; \
+	then \
+		echo "It appears your PAM configuration files need to be updated"; \
+		echo "This can be done by manually editing the files or:"; \
+		echo "	cd ${UPGRADE_SRCDIR}/pam.d"; \
+		echo "	make install"; \
+	fi
 
 distribution:
 	cd ${.CURDIR}; \

@@ -2143,3 +2143,13 @@ vop_write_dirent(int *error, struct uio *uio, ino_t d_ino, uint8_t d_type,
 	return(0);
 }
 
+void
+vn_mark_atime(struct vnode *vp, struct thread *td)
+{
+	struct proc *p = td->td_proc;
+	struct ucred *cred = p ? p->p_ucred : proc0.p_ucred;
+
+	if ((vp->v_mount->mnt_flag & (MNT_NOATIME | MNT_RDONLY)) == 0) {
+		VOP_MARKATIME(vp, cred);
+	}
+}

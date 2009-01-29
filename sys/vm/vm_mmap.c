@@ -984,7 +984,8 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 {
 	boolean_t fitit;
 	vm_object_t object;
-	struct vnode *vp = NULL;
+	struct vnode *vp;
+	struct thread *td = curthread;
 	struct proc *p;
 	objtype_t type;
 	int rv = KERN_SUCCESS;
@@ -1033,26 +1034,21 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		/*
 		 * Unnamed anonymous regions always start at 0.
 		 */
-		if (handle == 0)
+		if (handle == NULL)
 			foff = 0;
+		vp = NULL;
 	} else {
-		vp = (struct vnode *) handle;
+		vp = (struct vnode *)handle;
 		if (vp->v_type == VCHR) {
 			type = OBJT_DEVICE;
 			handle = (void *)(intptr_t)vp->v_rdev;
 		} else {
-			struct vattr vat, tsvat;
+			struct vattr vat;
 			int error;
 
 			error = VOP_GETATTR(vp, &vat);
 			if (error)
 				return (error);
-
-			/* Update access time */
-			VATTR_NULL(&tsvat);
-			vfs_timestamp(&tsvat.va_atime);
-			VOP_SETATTR(vp, &tsvat, curproc != NULL ? curproc->p_ucred : NULL);
-
 			objsize = vat.va_size;
 			type = OBJT_VNODE;
 			/*
@@ -1136,6 +1132,12 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 			goto out;
 		}
 	}
+
+	/*
+	 * Set the access time on the vnode
+	 */
+	if (vp != NULL)
+		vn_mark_atime(vp, td);
 out:
 	switch (rv) {
 	case KERN_SUCCESS:
