@@ -1527,7 +1527,7 @@ static void add_to_val_tags (const char *name)
     datum mytag;
     datum value;
 
-    if (noexec) return;
+    if (noexec || readonlyfs) return;
 
     val_tags_lock (current_parsed_root->directory);
 
