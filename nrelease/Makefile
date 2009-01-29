@@ -25,13 +25,6 @@ warning:
 	@echo "will continue in 10 seconds"
 	@sleep 10
 
-.if make(gui)
-WITH_GUI=
-.endif
-.if make(img)
-WITH_IMG=
-.endif
-
 #########################################################################
 #				 SETUP		 			#
 #########################################################################
@@ -53,71 +46,83 @@ PKGBIN_PKG_ADMIN?=	${PKGSRC_PREFIX}/sbin/pkg_admin
 PKGBIN_MKISOFS?=	${PKGSRC_PREFIX}/bin/mkisofs
 PKGSRC_PKG_PATH?=	${ISODIR}/packages
 PKGSRC_DB?=		/var/db/pkg
-PKGSRC_BOOTSTRAP_URL?=	http://pkgbox.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.12.0-RELEASE-BUILD
-
-ENVCMD?=	env
-TAR?=	tar
-
-PKGSRC_BOOTSTRAP_KIT?=	bootstrap-kit-20080211
 CVSUP_BOOTSTRAP_KIT?=	cvsup-bootstrap-20070716
 
-# Default packages to be installed on the release ISO.
+# pkgsrc packages to be built and installed on the release ISO
 #
-PKGSRC_PACKAGES?=	cdrtools-ossdvd-2.01.1.36nb2.tgz \
-			isc-dhcp-base-4.0.0.tgz isc-dhcp-server-4.0.0.tgz
+PKGSRC_PACKAGES?=	devel/scmgit \
+			net/isc-dhcp4 \
+			net/isc-dhcpd4 \
+			pkgtools/pkg_leaves \
+			sysutils/cdrtools
+
+# pkgsrc options to use when building packages
+#
+.if !make(gui)
+PKGSRC_OPTIONS?=	PKG_OPTIONS.scmgit=-scmgit-gui
+.endif
 
 # Even though buildiso wipes the packages, our check target has to run
 # first and old packages (listed as they appear in pkg_info) must be
 # cleaned out in order for the pkg_add -n test we use in the check target
 # to operate properly.
 #
-OLD_PKGSRC_PACKAGES?= cdrtools-2.01.01.27nb1 cdrecord-2.00.3nb2 \
-		      bootstrap-kit-20070205
+OLD_PKGSRC_PACKAGES?=	cdrtools-2.01.01.27nb1 \
+			cdrecord-2.00.3nb2 \
+			bootstrap-kit-20070205 \
+			dfuibe_installer-1.1.6 \
+			gettext-lib-0.14.5 \
+			dfuibe_installer-1.1.7nb1 \
+			dfuife_curses-1.5 \
+			gettext-lib-0.14.6 \
+			gettext-tools-0.14.6nb1 \
+			libaura-3.1 \
+			libdfui-4.2 \
+			libinstaller-5.1 \
+			bootstrap-kit-20080211 \
+			cdrtools-ossdvd-2.01.1.36nb2 \
+			isc-dhcp-base-4.0.0 \
+			isc-dhcp-server-4.0.0
 
 # Specify which root skeletons are required, and let the user include
 # their own.  They are copied into ISODIR during the `pkgcustomizeiso'
 # target; each overwrites the last.
 #
-REQ_ROOTSKELS= ${.CURDIR}/root
+REQ_ROOTSKELS=	${.CURDIR}/root \
+		${.CURDIR}/installer
 ROOTSKELS?=	${REQ_ROOTSKELS}
 
-OLD_PKGSRC_PACKAGES+=	dfuibe_installer-1.1.6 gettext-lib-0.14.5 \
-			dfuibe_installer-1.1.7nb1 dfuife_curses-1.5 \
-			gettext-lib-0.14.6 gettext-tools-0.14.6nb1 \
-			libaura-3.1 libdfui-4.2 libinstaller-5.1
-ROOTSKELS+=		${.CURDIR}/installer
-
-.if defined(WITH_GUI)
+.if make(gui)
 ISOFILE?=		${ISODIR}/dfly-gui.iso
 IMGFILE?=		${ISODIR}/dfly-gui.img
-PKGSRC_PACKAGES+=	modular-xorg-apps \
-			modular-xorg-drivers \
-			modular-xorg-fonts \
-			modular-xorg-libs \
-			fluxbox \
-			firefox3 \
-			xpdf \
-			zsh \
-			emacs \
-			vim \
-			pidgin \
-			irssi \
-			xchat \
-			rxvt-unicode \
-			eterm \
-			perl \
-			nano \
-			bash \
-			exctags \
-			zip \
-			sudo \
-			links-gui \
-			nmap \
-			wget \
-			terminus-font \
-			rsync \
-			idesk \
-			screen
+PKGSRC_PACKAGES+=	meta/modular-xorg-apps \
+			meta/modular-xorg-drivers \
+			meta/modular-xorg-fonts \
+			meta/modular-xorg-libs \
+			wm/fluxbox \
+			www/firefox3 \
+			print/xpdf \
+			shells/zsh \
+			editors/emacs \
+			editors/vim \
+			chat/pidgin \
+			chat/irssi \
+			chat/xchat \
+			x11/rxvt-unicode \
+			x11/eterm \
+			lang/perl5 \
+			editors/nano \
+			shells/bash \
+			devel/exctags \
+			archivers/zip \
+			security/sudo \
+			www/links-gui \
+			net/nmap \
+			net/wget \
+			fonts/terminus-font \
+			net/rsync \
+			sysutils/idesk \
+			misc/screen
 ROOTSKELS+=		${.CURDIR}/gui
 .endif
 
@@ -154,33 +159,14 @@ realquick:	realquickrel
 #########################################################################
 
 check:
-.if !exists(${PKGBIN_PKG_ADD})
-	@echo "Unable to find ${PKGBIN_PKG_ADD}.  You can use the following"
-	@echo "command to bootstrap pkgsrc:"
-	@echo "    make pkgsrc_bootstrap"
-	@exit 1
-.endif
-.for PKG in ${OLD_PKGSRC_PACKAGES}
-	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_DELETE} -K ${ISOROOT}${PKGSRC_DB} ${PKG} > /dev/null 2>&1 || exit 0
-.endfor
-.for PKG in ${PKGSRC_PACKAGES}
-	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -K ${ISOROOT}${PKGSRC_DB} -n ${PKG} > /dev/null 2>&1 || \
-		(echo "Unable to find ${PKG}, use the following command to fetch required packages:"; echo "    make fetch"; exit 1)
-.endfor
-.if !exists(${PKGBIN_MKISOFS})
-	@echo "mkisofs is not installed.  It is part of the cdrecord package."
-	@echo "You can install it with:"
-	@echo "    make pkgsrc_cdrecord"
-	@exit 1
-.endif
-.if !exists(${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
-	@echo "The pkgsrc bootstrap kit is not installed.  You can install it with:"
-	@echo "    make fetch"
-	@exit 1
-.endif
 .if !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
 	@echo "The cvsup bootstrap kit is not installed.  You can install it with:"
 	@echo "    make fetch"
+	@exit 1
+.endif
+.if !defined(PKGSRC_PATH)
+	@echo "Please set PKGSRC_PATH to the pkgsrc tree that shall be used for"
+	@echo "package building."
 	@exit 1
 .endif
 
@@ -220,7 +206,7 @@ buildiso:
 		make -m ${.CURDIR}/../share/mk DESTDIR=${ISOROOT} distribution )
 	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
 .if make(gui)
-	if [ ! -d ${ISOROOT}/kernel.smp ]; then mkdir -p ${ISOROOT}/kernel.smp; fi
+	if [ ! -d ${ISOROOT}/kernel.smp/boot ]; then mkdir -p ${ISOROOT}/kernel.smp/boot; fi
 	cd ${.CURDIR}/..; \
 	make installkernel DESTDIR=${ISOROOT} \
 	KERNCONF=DFLYLIVE DESTKERNNAME=kernel KERNCONFDIR=${.CURDIR}/gui/root; \
@@ -258,16 +244,12 @@ syssrcs:
 .endif
 
 customizeiso:
-	(cd ${PKGSRC_PKG_PATH}; tar xzpf ${CVSUP_BOOTSTRAP_KIT}.tgz)
 .for ROOTSKEL in ${ROOTSKELS}
 	cpdup -X cpignore -o ${ROOTSKEL} ${ISOROOT}
 .endfor
-	rm -rf ${ISOROOT}/tmp/bootstrap ${ISOROOT}/usr/obj/pkgsrc
-	cd ${ISOROOT}; tar xvzpf ${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}.tgz
+	(cd ${PKGSRC_PKG_PATH}; tar xzpf ${CVSUP_BOOTSTRAP_KIT}.tgz)
 	cp -p ${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}/usr/local/bin/cvsup ${ISOROOT}/usr/local/bin/cvsup
 	cp -p ${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}/usr/local/man/man1/cvsup.1 ${ISOROOT}/usr/local/man/man1/cvsup.1
-	rm -rf ${ISOROOT}/tmp/bootstrap ${ISOROOT}/usr/obj/pkgsrc
-	rm -rf ${ISOROOT}/usr/local/share/pristine
 	pwd_mkdb -p -d ${ISOROOT}/etc ${ISOROOT}/etc/master.passwd
 .for UPGRADE_ITEM in Makefile			\
 		     etc.${MACHINE_ARCH} 	\
@@ -280,19 +262,23 @@ customizeiso:
 		     periodic/monthly/Makefile
 	cp -R ${.CURDIR}/../etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
 .endfor
-	# There seems to be no reliable way to install a package to a target
-	# directory prefix so we mount_null our package directory into the
-	# ISO root and do the install chrooted.
-	#
-	mkdir ${ISOROOT}/tmp/packages
-	mount_null -o ro ${PKGSRC_PKG_PATH} ${ISOROOT}/tmp/packages
+	# setup some things
+	cp -p /etc/resolv.conf ${ISOROOT}/etc
+	chroot ${ISOROOT} sh -c "ldconfig -elf /usr/lib /usr/lib/gcc* /usr/lib/compat"
+	# mount pkgsrc tree
+	mkdir ${ISOROOT}/usr/pkgsrc
+	mount_null ${PKGSRC_PATH} ${ISOROOT}/usr/pkgsrc
+	# bootstrap
+	chroot ${ISOROOT} sh -c "cd /usr/pkgsrc/bootstrap; ./bootstrap; ./cleanup"
+	# build and install packages
 .for PKG in ${PKGSRC_PACKAGES}
-	${ENVCMD} PKG_PATH=/tmp/packages chroot ${ISOROOT} ${PKGBIN_PKG_ADD} ${PKG}
+	chroot ${ISOROOT} sh -c "cd /usr/pkgsrc; cd ${PKG}; bmake ${PKGSRC_OPTIONS} build install clean clean-depends"
 .endfor
-	umount ${ISOROOT}/tmp/packages
-	rmdir ${ISOROOT}/tmp/packages
-	find ${ISOROOT}${PKGSRC_DB} -name +CONTENTS -type f -exec sed -i '' -e 's,${ISOROOT},,' -- {} \;
-	chroot ${ISOROOT} ${PKGBIN_PKG_ADMIN} rebuild
+	# remove packages which nothing depends on
+	chroot ${ISOROOT} sh -c "pkg_leaves | xargs pkg_delete -R"
+	umount ${ISOROOT}/usr/pkgsrc
+	rmdir ${ISOROOT}/usr/pkgsrc
+	rm -f ${ISOROOT}/etc/resolv.conf
 	makewhatis ${ISOROOT}/usr/local/man
 	makewhatis ${ISOROOT}/usr/pkg/man
 
@@ -309,7 +295,7 @@ mkiso:
 
 
 mkimg:
-.if defined(WITH_IMG)
+.if make(img)
 	if [ ! -d ${IMGMNT} ]; then mkdir -p ${IMGMNT}; fi
 
 	echo "determine required image size" > /dev/null;		\
@@ -347,7 +333,7 @@ mkimg:
 .endif
 
 clean:
-	-umount ${ISOROOT}/tmp/packages
+	-umount ${ISOROOT}/usr/pkgsrc
 	if [ -d ${ISOROOT} ]; then chflags -R noschg ${ISOROOT}; fi
 	if [ -d ${ISOROOT} ]; then rm -rf ${ISOROOT}/*; fi
 	if [ -d ${NRLOBJDIR}/nrelease ]; then rm -rf ${NRLOBJDIR}/nrelease; fi
@@ -360,13 +346,6 @@ realclean:	clean
 
 fetch:
 	@if [ ! -d ${PKGSRC_PKG_PATH} ]; then mkdir -p ${PKGSRC_PKG_PATH}; fi
-.for PKG in ${PKGSRC_PACKAGES}
-	@${ENVCMD} PKG_PATH=${PKGSRC_PKG_PATH} ${PKGBIN_PKG_ADD} -K ${ISOROOT}${PKGSRC_DB} -n ${PKG} > /dev/null 2>&1 || \
-	(cd ${PKGSRC_PKG_PATH}; echo "Fetching ${PKGSRC_BOOTSTRAP_URL}/${PKG}"; fetch ${PKGSRC_BOOTSTRAP_URL}/${PKG})
-.endfor
-.if !exists(${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
-	(cd ${PKGSRC_PKG_PATH}; fetch ${PKGSRC_BOOTSTRAP_URL}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
-.endif
 .if !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
 	(cd ${PKGSRC_PKG_PATH}; fetch ${PKGSRC_BOOTSTRAP_URL}/${CVSUP_BOOTSTRAP_KIT}.tgz)
 .endif
