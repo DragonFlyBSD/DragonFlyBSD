@@ -471,8 +471,22 @@ ata_pci_status(device_t dev)
 		    (ch->dma->flags & ATA_DMA_ACTIVE))) {
 	int bmstat = ATA_IDX_INB(ch, ATA_BMSTAT_PORT) & ATA_BMSTAT_MASK;
 
-	if ((bmstat & (ATA_BMSTAT_ACTIVE | ATA_BMSTAT_INTERRUPT)) !=
-	    ATA_BMSTAT_INTERRUPT)
+	/*
+	 * Strictly speaking the DMA engine should already be stopped
+	 * once we receive the interrupt.
+	 * However at least ICH controllers seem to have the habbit
+	 * of not clearing the active bit even though the interrupt
+	 * is valid.
+	 * To make sure we wait a little bit (to make sure that other
+	 * buggy systems actually have a chance of finishing their
+	 * DMA transaction) and then ignore the active bit.
+	 */
+	if ((bmstat & (ATA_BMSTAT_ACTIVE | ATA_BMSTAT_INTERRUPT)) ==
+		(ATA_BMSTAT_ACTIVE | ATA_BMSTAT_INTERRUPT)) {
+	    DELAY(100);
+	    bmstat = ATA_IDX_INB(ch, ATA_BMSTAT_PORT) & ATA_BMSTAT_MASK;
+	}
+	if ((bmstat & ATA_BMSTAT_INTERRUPT) == 0)
 	    return 0;
 	ATA_IDX_OUTB(ch, ATA_BMSTAT_PORT, bmstat & ~ATA_BMSTAT_ERROR);
 	DELAY(1);
