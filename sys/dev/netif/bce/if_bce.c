@@ -4378,7 +4378,7 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 	txbd->tx_bd_flags |= htole16(TX_BD_FLAGS_END);
 
 	DBRUN(BCE_EXCESSIVE_SEND,
-	      bce_dump_tx_chain(sc, debug_prod, ctx.bce_maxsegs));
+	      bce_dump_tx_chain(sc, debug_prod, nsegs));
 
 	DBPRINT(sc, BCE_INFO_SEND,
 		"%s(): End: prod = 0x%04X, chain_prod = %04X, "
@@ -4409,7 +4409,7 @@ bce_encap(struct bce_softc *sc, struct mbuf **m_head)
 	DBRUNIF(1, sc->tx_mbuf_alloc++);
 
 	DBRUN(BCE_VERBOSE_SEND,
-	      bce_dump_tx_mbuf_chain(sc, chain_prod, ctx.bce_maxsegs));
+	      bce_dump_tx_mbuf_chain(sc, chain_prod, nsegs));
 
 	/* prod points to the next free tx_bd at this point. */
 	sc->tx_prod = prod;
