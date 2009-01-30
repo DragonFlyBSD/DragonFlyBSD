@@ -262,22 +262,23 @@ customizeiso:
 		     periodic/monthly/Makefile
 	cp -R ${.CURDIR}/../etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
 .endfor
-	# setup some things
+	# setup some things & mount pkgsrc tree
 	cp -p /etc/resolv.conf ${ISOROOT}/etc
 	chroot ${ISOROOT} sh -c "ldconfig -elf /usr/lib /usr/lib/gcc* /usr/lib/compat"
-	# mount pkgsrc tree
+	mkdir -p ${ISOROOT}/usr/pkgobj/bootstrap/work
 	mkdir ${ISOROOT}/usr/pkgsrc
 	mount_null ${PKGSRC_PATH} ${ISOROOT}/usr/pkgsrc
 	# bootstrap
-	chroot ${ISOROOT} sh -c "cd /usr/pkgsrc/bootstrap; ./bootstrap; ./cleanup"
+	chroot ${ISOROOT} sh -c "cd /usr/pkgsrc/bootstrap; ./bootstrap --workdir /usr/pkgobj/bootstrap/work"
 	# build and install packages
 .for PKG in ${PKGSRC_PACKAGES}
-	chroot ${ISOROOT} sh -c "cd /usr/pkgsrc; cd ${PKG}; bmake ${PKGSRC_OPTIONS} build install clean clean-depends"
+	chroot ${ISOROOT} sh -c "cd /usr/pkgsrc; cd ${PKG}; bmake WRKOBJDIR=/usr/pkgobj ${PKGSRC_OPTIONS} build install"
 .endfor
 	# remove packages which nothing depends on
 	chroot ${ISOROOT} sh -c "pkg_leaves | xargs pkg_delete -R"
 	umount ${ISOROOT}/usr/pkgsrc
 	rmdir ${ISOROOT}/usr/pkgsrc
+	rm -rf ${ISOROOT}/usr/pkgobj
 	rm -f ${ISOROOT}/etc/resolv.conf
 	makewhatis ${ISOROOT}/usr/local/man
 	makewhatis ${ISOROOT}/usr/pkg/man
@@ -291,7 +292,7 @@ mklocatedb:
 
 mkiso:
 	( cd ${ISOROOT}; ${PKGBIN_MKISOFS} -b boot/cdboot -no-emul-boot \
-		-R -J -V DragonFly -o ${ISOFILE} . )
+		-R -J -V DragonFly-`${.CURDIR}/../tools/gitrev.sh` -o ${ISOFILE} . )
 
 
 mkimg:
