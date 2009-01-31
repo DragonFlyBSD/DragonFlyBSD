@@ -350,21 +350,29 @@ rts_input_handler(struct netmsg *msg)
 	struct netmsg_packet *pmsg;
 	struct mbuf *m;
 	sa_family_t family;
+	struct rawcb *skip;
 
 	pmsg = (void *)msg;
-	m = pmsg->nm_packet;
 	family = pmsg->nm_netmsg.nm_lmsg.u.ms_result;
 	route_proto.sp_family = PF_ROUTE;
 	route_proto.sp_protocol = family;
 
-	raw_input(m, &route_proto, &route_src, &route_dst);
+	m = pmsg->nm_packet;
+	M_ASSERTPKTHDR(m);
+
+	skip = m->m_pkthdr.header;
+	m->m_pkthdr.header = NULL;
+
+	raw_input(m, &route_proto, &route_src, &route_dst, skip);
 }
 
 static void
-rts_input(struct mbuf *m, sa_family_t family)
+rts_input_skip(struct mbuf *m, sa_family_t family, struct rawcb *skip)
 {
 	struct netmsg_packet *pmsg;
 	lwkt_port_t port;
+
+	M_ASSERTPKTHDR(m);
 
 	port = cpu0_soport(NULL, NULL, NULL, 0);
 	pmsg = &m->m_hdr.mh_netmsg;
@@ -372,7 +380,14 @@ rts_input(struct mbuf *m, sa_family_t family)
 		    0, rts_input_handler);
 	pmsg->nm_packet = m;
 	pmsg->nm_netmsg.nm_lmsg.u.ms_result = family;
+	m->m_pkthdr.header = skip; /* XXX steal field in pkthdr */
 	lwkt_sendmsg(port, &pmsg->nm_netmsg.nm_lmsg);
+}
+
+static __inline void
+rts_input(struct mbuf *m, sa_family_t family)
+{
+	rts_input_skip(m, family, NULL);
 }
 
 static void *
@@ -594,12 +609,8 @@ flush:
 			m_adj(m, rtm->rtm_msglen - m->m_pkthdr.len);
 		kfree(rtm, M_RTABLE);
 	}
-	if (rp != NULL)
-		rp->rcb_proto.sp_family = 0; /* Avoid us */
 	if (m != NULL)
-		rts_input(m, familyof(rtinfo.rti_dst));
-	if (rp != NULL)
-		rp->rcb_proto.sp_family = PF_ROUTE;
+		rts_input_skip(m, familyof(rtinfo.rti_dst), rp);
 	return (error);
 }
 
