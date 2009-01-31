@@ -1477,7 +1477,7 @@ state_setup_remote_installation_server(struct i_fn_args *a)
 			if (commands_execute(a, cmds)) {
 				inform(a->c, _("NetBoot installation services are now started."));
 			} else {
-				inform(a->c, _("A failure occured while provisioning the NetBoot environment.  Please check the logs."));
+				inform(a->c, _("A failure occurred while provisioning the NetBoot environment.  Please check the logs."));
 			}
 
 			commands_free(cmds);

@@ -161,7 +161,7 @@ getlock(nlm4_lockargs *lckarg, struct svc_req *rqstp, int flags)
 		    nlm4_denied_nolock : nlm_denied_nolocks;
 	}
 	if (lckarg->alock.fh.n_len != sizeof(fhandle_t)) {
-		syslog(LOG_DEBUG, "recieved fhandle size %d, local size %d",
+		syslog(LOG_DEBUG, "received fhandle size %d, local size %d",
 		    lckarg->alock.fh.n_len, (int)sizeof(fhandle_t));
 	}
 	memcpy(&newfl->filehandle, lckarg->alock.fh.n_bytes, sizeof(fhandle_t));

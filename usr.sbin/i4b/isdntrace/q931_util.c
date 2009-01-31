@@ -734,7 +734,7 @@ p_q931user_user(char *pbuf, unsigned char *buf)
 			sprintf((pbuf+strlen(pbuf)), "(pd=X.208/X.209 coded user info");
 			break;
 		case 7:
-			sprintf((pbuf+strlen(pbuf)), "(pd=V.120 rate adaption");
+			sprintf((pbuf+strlen(pbuf)), "(pd=V.120 rate adaptation");
 			break;
 		case 8:
 			sprintf((pbuf+strlen(pbuf)), "(pd=Q.931/I.451 user network call control messages");
