@@ -4,8 +4,6 @@
 #
 # $DragonFly: src/usr.bin/make/tests/common.sh,v 1.8 2005/03/02 10:55:37 okumoto Exp $
 
-IDTAG='$'DragonFly'$'
-
 #
 # Output usage messsage.
 #
@@ -204,35 +202,9 @@ eval_cmd()
 			;;
 		update)
 			sh $0 test
-			#
-			# Preserve the RCS id tag at top of file.
-			# Create initial tag if the file didn't
-			# exist.
-			#
-			if [ -f "."$SRC_BASE/expected.stdout ]; then
-				head -n 1 "."$SRC_BASE/expected.stdout
-			else
-				echo $IDTAG
-			fi > $WORK_BASE/expected.stdout
-
-			if [ -f "."$SRC_BASE/expected.stderr ]; then
-				head -n 1 "."$SRC_BASE/expected.stderr
-			else
-				echo $IDTAG
-			fi > $WORK_BASE/expected.stderr
-
-			if [ -f "."$SRC_BASE/expected.status ]; then
-				head -n 1 "."$SRC_BASE/expected.status
-			else
-				echo $IDTAG
-			fi > $WORK_BASE/expected.status
-
-			cat $WORK_BASE/stdout >> $WORK_BASE/expected.stdout
-			cat $WORK_BASE/stderr >> $WORK_BASE/expected.stderr
-			cat $WORK_BASE/status >> $WORK_BASE/expected.status
-			mv $WORK_BASE/expected.stdout "."$SRC_BASE/expected.stdout
-			mv $WORK_BASE/expected.stderr "."$SRC_BASE/expected.stderr
-			mv $WORK_BASE/expected.status "."$SRC_BASE/expected.status
+			cp $WORK_BASE/stdout "."$SRC_BASE/expected.stdout
+			cp $WORK_BASE/stderr "."$SRC_BASE/expected.stderr
+			cp $WORK_BASE/status "."$SRC_BASE/expected.status
 			;;
 		*)
 			print_usage
