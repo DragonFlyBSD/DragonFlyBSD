@@ -663,7 +663,7 @@ route_output_change_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
 	 */
 	if (((rt->rt_flags & RTF_GATEWAY) && rtinfo->rti_gateway != NULL) ||
 	    rtinfo->rti_ifpaddr != NULL || (rtinfo->rti_ifaaddr != NULL &&
-	    sa_equal(rtinfo->rti_ifaaddr, rt->rt_ifa->ifa_addr))
+	    !sa_equal(rtinfo->rti_ifaaddr, rt->rt_ifa->ifa_addr))
 	) {
 		error = rt_getifa(rtinfo);
 		if (error != 0)
