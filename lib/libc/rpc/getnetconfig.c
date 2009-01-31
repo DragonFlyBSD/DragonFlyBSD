@@ -30,7 +30,6 @@
  * @(#)getnetconfig.c	1.12 91/12/19 SMI
  * $NetBSD: getnetconfig.c,v 1.3 2000/07/06 03:10:34 christos Exp $
  * $FreeBSD: src/lib/libc/rpc/getnetconfig.c,v 1.14 2007/09/20 22:35:24 matteo Exp $
- * $DragonFly$
  */
 
 /*

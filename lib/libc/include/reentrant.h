@@ -34,7 +34,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/include/reentrant.h,v 1.3 2004/02/25 21:03:45 green Exp $
- * $DragonFly$
  */
 
 /*

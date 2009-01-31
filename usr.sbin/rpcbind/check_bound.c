@@ -29,7 +29,6 @@
  * @(#)check_bound.c	1.15	93/07/05 SMI; 1.11 89/04/21 Copyr 1989 Sun Micro
  * $NetBSD: check_bound.c,v 1.2 2000/06/22 08:09:26 fvdl Exp $
  * $FreeBSD: src/usr.sbin/rpcbind/check_bound.c,v 1.5 2007/11/07 10:53:39 kevlo Exp $
- * $DragonFly$
  */
 /*
  * Copyright (c) 1986 - 1991 by Sun Microsystems, Inc.

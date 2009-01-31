@@ -31,7 +31,6 @@
  *
  * $NetBSD: lockd_lock.c,v 1.5 2000/11/21 03:47:41 enami Exp $
  * $FreeBSD: src/usr.sbin/rpc.lockd/lockd_lock.c,v 1.1 2001/03/19 12:50:09 alfred Exp $
- * $DragonFly$
  */
 
 #include <stdio.h>

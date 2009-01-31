@@ -30,7 +30,6 @@
  *	from: rpcb_clnt.h 1.3 88/12/05 SMI
  * $NetBSD: rpcb_clnt.h,v 1.1 2000/06/02 22:57:56 fvdl Exp $
  * $FreeBSD: src/include/rpc/rpcb_clnt.h,v 1.2 2002/03/23 17:24:55 imp Exp $
- * $DragonFly$
  */
 /*
  * Copyright (c) 1986 - 1991 by Sun Microsystems, Inc.

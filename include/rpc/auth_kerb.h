@@ -27,7 +27,6 @@
  * Mountain View, California  94043
  *
  * $FreeBSD: src/include/rpc/auth_kerb.h,v 1.3 2007/02/02 18:11:18 schweikh Exp $
- * $DragonFly$
  */
 /*
  * auth_kerb.h, Protocol for Kerberos style authentication for RPC

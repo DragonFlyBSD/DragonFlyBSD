@@ -28,7 +28,6 @@
  * @(#)rpc_soc.c	1.17	94/04/24 SMI; 1.41 89/05/02 Copyr 1988 Sun Micro
  * $NetBSD: rpc_soc.c,v 1.6 2000/07/06 03:10:35 christos Exp $
  * $FreeBSD: src/lib/libc/rpc/rpc_soc.c,v 1.15 2006/02/27 22:10:59 deischen Exp $
- * $DragonFly$
  */
 
 /*

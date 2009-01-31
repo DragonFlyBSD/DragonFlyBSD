@@ -36,7 +36,6 @@
 /*
  * @(#)warmstart.c	1.7	93/07/05 SMI
  * $FreeBSD: src/usr.sbin/rpcbind/warmstart.c,v 1.4 2007/11/07 10:53:39 kevlo Exp $
- * $DragonFly$
  */
 #include <sys/types.h>
 #include <sys/stat.h>

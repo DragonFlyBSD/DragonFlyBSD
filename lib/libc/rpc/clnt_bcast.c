@@ -29,7 +29,6 @@
  * @(#)clnt_bcast.c	1.18	94/05/03 SMI; 1.15 89/04/21 Copyr 1988 Sun Micro
  * $NetBSD: clnt_bcast.c,v 1.3 2000/07/06 03:05:20 christos Exp $
  * $FreeBSD: src/lib/libc/rpc/clnt_bcast.c,v 1.9 2006/09/09 22:14:42 mbr Exp $
- * $DragonFly$
  */
 /*
  * Copyright (c) 1986-1991 by Sun Microsystems Inc.

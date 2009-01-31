@@ -30,7 +30,6 @@
  * @(#)getnetpath.c	1.11 91/12/19 SMI
  * $NetBSD: getnetpath.c,v 1.3 2000/07/06 03:10:34 christos Exp $
  * $FreeBSD: src/lib/libc/rpc/getnetpath.c,v 1.8 2007/09/20 22:35:24 matteo Exp $
- * $DragonFly$
  */
 
 /*

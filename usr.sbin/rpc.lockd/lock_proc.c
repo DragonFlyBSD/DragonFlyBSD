@@ -31,7 +31,6 @@
  *
  * $NetBSD: lock_proc.c,v 1.7 2000/10/11 20:23:56 is Exp $
  * $FreeBSD: src/usr.sbin/rpc.lockd/lock_proc.c,v 1.1 2001/03/19 12:50:09 alfred Exp $
- * $DragonFly$
  */
 
 #include <sys/param.h>

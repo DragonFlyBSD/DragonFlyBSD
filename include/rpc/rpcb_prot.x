@@ -1,6 +1,5 @@
 %/*
 % * $FreeBSD: src/include/rpc/rpcb_prot.x,v 1.3 2002/03/13 10:29:06 obrien Exp $
-% * $DragonFly$
 % *
 % * Sun RPC is a product of Sun Microsystems, Inc. and is provided for
 % * unrestricted use provided that this legend is included on all tape
