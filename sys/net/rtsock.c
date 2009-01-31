@@ -455,8 +455,8 @@ static void route_output_delete_callback(int, int, struct rt_addrinfo *,
 					struct rtentry *, void *);
 static int route_output_change_callback(int, struct rt_addrinfo *,
 					struct rtentry *, void *);
-static void route_output_lock_callback(int, int, struct rt_addrinfo *, 
-					struct rtentry *, void *);
+static int route_output_lock_callback(int, struct rt_addrinfo *,
+				      struct rtentry *, void *);
 
 /*ARGSUSED*/
 static int
@@ -572,8 +572,9 @@ route_output(struct mbuf *m, struct socket *so, ...)
 					RTS_EXACTMATCH);
 		break;
 	case RTM_LOCK:
-		error = rtrequest1_global(RTM_GET, &rtinfo,
-					  route_output_lock_callback, rtm);
+		error = rtsearch_global(RTM_LOCK, &rtinfo,
+					route_output_lock_callback, rtm,
+					RTS_EXACTMATCH);
 		break;
 	default:
 		error = EOPNOTSUPP;
@@ -694,8 +695,8 @@ done:
 	return error;
 }
 
-static void
-route_output_lock_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
+static int
+route_output_lock_callback(int cmd, struct rt_addrinfo *rtinfo,
 			   struct rtentry *rt, void *arg)
 {
 	struct rt_msghdr *rtm = arg;
@@ -703,6 +704,7 @@ route_output_lock_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
 	rt->rt_rmx.rmx_locks &= ~(rtm->rtm_inits);
 	rt->rt_rmx.rmx_locks |=
 		(rtm->rtm_inits & rtm->rtm_rmx.rmx_locks);
+	return 0;
 }
 
 static void
