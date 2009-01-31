@@ -1,4 +1,3 @@
-$DragonFly: src/usr.bin/make/tests/variables/t1/expected.stdout,v 1.2 2005/02/26 11:23:54 okumoto Exp $
 all files: main.c globals.h  util.c util.h  map.c map.h  parser.y lexer.l  cmdman.1 format.5
 cfiles: main.c util.c map.c
 hfiles: globals.h util.h map.h
