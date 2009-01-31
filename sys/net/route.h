@@ -376,6 +376,8 @@ rtlookup(struct sockaddr *dst)
 
 typedef void (*rtrequest1_callback_func_t)(int, int, struct rt_addrinfo *,
 				      struct rtentry *, void *);
+typedef int (*rtsearch_callback_func_t)(int, struct rt_addrinfo *,
+					struct rtentry *, void *);
 
 void	 rtfree (struct rtentry *);
 int	 rtinit (struct ifaddr *, int, int);
@@ -388,6 +390,12 @@ int	 rtrequest_global (int, struct sockaddr *,
 	    struct sockaddr *, struct sockaddr *, int);
 int	 rtrequest1 (int, struct rt_addrinfo *, struct rtentry **);
 int	 rtrequest1_global (int, struct rt_addrinfo *, rtrequest1_callback_func_t, void *);
+
+#define RTS_EXACTMATCH		TRUE
+#define RTS_NOEXACTMATCH	FALSE
+
+int	 rtsearch_global(int, struct rt_addrinfo *,
+	    rtsearch_callback_func_t, void *, boolean_t);
 
 void	rtfree_oncpu(struct rtentry *);
 void	rtfree_remote(struct rtentry *, int);

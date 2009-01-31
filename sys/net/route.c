@@ -117,6 +117,7 @@ static void rtinit_rtrequest_callback(int, int, struct rt_addrinfo *,
 static void rtredirect_msghandler(struct netmsg *netmsg);
 static void rtrequest1_msghandler(struct netmsg *netmsg);
 #endif
+static void rtsearch_msghandler(struct netmsg *netmsg);
 
 static int rt_setshims(struct rtentry *, struct sockaddr **);
 
@@ -1610,6 +1611,122 @@ rtinit_rtrequest_callback(int cmd, int error,
 				rtfree(rt);
 			}
 		}
+	}
+}
+
+struct netmsg_rts {
+	struct netmsg		netmsg;
+	int			req;
+	struct rt_addrinfo	*rtinfo;
+	rtsearch_callback_func_t callback;
+	void			*arg;
+	boolean_t		exact_match;
+	int			found_cnt;
+};
+
+int
+rtsearch_global(int req, struct rt_addrinfo *rtinfo,
+		rtsearch_callback_func_t callback, void *arg,
+		boolean_t exact_match)
+{
+	struct netmsg_rts msg;
+
+	netmsg_init(&msg.netmsg, &curthread->td_msgport, 0,
+		    rtsearch_msghandler);
+	msg.req = req;
+	msg.rtinfo = rtinfo;
+	msg.callback = callback;
+	msg.arg = arg;
+	msg.exact_match = exact_match;
+	msg.found_cnt = 0;
+	return lwkt_domsg(rtable_portfn(0), &msg.netmsg.nm_lmsg, 0);
+}
+
+static void
+rtsearch_msghandler(struct netmsg *netmsg)
+{
+	struct netmsg_rts *msg = (void *)netmsg;
+	struct rt_addrinfo *rtinfo = msg->rtinfo;
+	struct radix_node_head *rnh;
+	struct rtentry *rt;
+	int nextcpu, error;
+
+	/*
+	 * Find the correct routing tree to use for this Address Family
+	 */
+	if ((rnh = rt_tables[mycpuid][rtinfo->rti_dst->sa_family]) == NULL) {
+		if (mycpuid != 0)
+			panic("partially initialized routing tables\n");
+		lwkt_replymsg(&msg->netmsg.nm_lmsg, EAFNOSUPPORT);
+		return;
+	}
+
+	/*
+	 * Correct rtinfo for the host route searching.
+	 */
+	if (rtinfo->rti_flags & RTF_HOST) {
+		rtinfo->rti_netmask = NULL;
+		rtinfo->rti_flags &= ~(RTF_CLONING | RTF_PRCLONING);
+	}
+
+	rt = (struct rtentry *)
+	     rnh->rnh_lookup((char *)rtinfo->rti_dst,
+			     (char *)rtinfo->rti_netmask, rnh);
+
+	/*
+	 * If we are asked to do the "exact match", we need to make sure
+	 * that host route searching got a host route while a network
+	 * route searching got a network route.
+	 */
+	if (rt != NULL && msg->exact_match &&
+	    ((rt->rt_flags ^ rtinfo->rti_flags) & RTF_HOST))
+		rt = NULL;
+
+	if (rt == NULL) {
+		/*
+		 * No matching routes have been found, don't count this
+		 * as a critical error (here, we set 'error' to 0), just
+		 * keep moving on, since at least prcloned routes are not
+		 * duplicated onto each CPU.
+		 */
+		error = 0;
+	} else {
+		msg->found_cnt++;
+
+		rt->rt_refcnt++;
+		error = msg->callback(msg->req, msg->rtinfo, rt, msg->arg);
+		rt->rt_refcnt--;
+
+		if (error == EJUSTRETURN) {
+			lwkt_replymsg(&msg->netmsg.nm_lmsg, 0);
+			return;
+		}
+	}
+
+	nextcpu = mycpuid + 1;
+	if (error) {
+		KKASSERT(msg->found_cnt > 0);
+
+		/*
+		 * Under following cases, unrecoverable error has
+		 * not occured:
+		 * o  Request is RTM_GET
+		 * o  The first time that we find the route, but the
+		 *    modification fails.
+		 */
+		if (msg->req != RTM_GET && msg->found_cnt > 1) {
+			panic("rtsearch_msghandler: unrecoverable error "
+			      "cpu %d, rtinfo %p", mycpuid, msg->rtinfo);
+		}
+		lwkt_replymsg(&msg->netmsg.nm_lmsg, error);
+	} else if (nextcpu < ncpus) {
+		lwkt_forwardmsg(rtable_portfn(nextcpu), &msg->netmsg.nm_lmsg);
+	} else {
+		if (msg->found_cnt == 0) {
+			/* The requested route was never seen ... */
+			error = ESRCH;
+		}
+		lwkt_replymsg(&msg->netmsg.nm_lmsg, error);
 	}
 }
 

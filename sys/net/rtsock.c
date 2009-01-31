@@ -453,7 +453,7 @@ static void route_output_add_callback(int, int, struct rt_addrinfo *,
 					struct rtentry *, void *);
 static void route_output_delete_callback(int, int, struct rt_addrinfo *,
 					struct rtentry *, void *);
-static void route_output_change_callback(int, int, struct rt_addrinfo *,
+static int route_output_change_callback(int, struct rt_addrinfo *,
 					struct rtentry *, void *);
 static void route_output_lock_callback(int, int, struct rt_addrinfo *, 
 					struct rtentry *, void *);
@@ -567,8 +567,9 @@ route_output(struct mbuf *m, struct socket *so, ...)
 		--rt->rt_refcnt;
 		break;
 	case RTM_CHANGE:
-		error = rtrequest1_global(RTM_GET, &rtinfo,
-					  route_output_change_callback, rtm);
+		error = rtsearch_global(RTM_CHANGE, &rtinfo,
+					route_output_change_callback, rtm,
+					RTS_EXACTMATCH);
 		break;
 	case RTM_LOCK:
 		error = rtrequest1_global(RTM_GET, &rtinfo,
@@ -646,15 +647,13 @@ route_output_delete_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
 	}
 }
 
-static void
-route_output_change_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
-			  struct rtentry *rt, void *arg)
+static int
+route_output_change_callback(int cmd, struct rt_addrinfo *rtinfo,
+			     struct rtentry *rt, void *arg)
 {
 	struct rt_msghdr *rtm = arg;
 	struct ifaddr *ifa;
-
-	if (error)
-		goto done;
+	int error = 0;
 
 	/*
 	 * new gateway could require new ifaddr, ifp;
@@ -688,12 +687,11 @@ route_output_change_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
 	}
 	rt_setmetrics(rtm->rtm_inits, &rtm->rtm_rmx, &rt->rt_rmx);
 	if (rt->rt_ifa && rt->rt_ifa->ifa_rtrequest)
-	       rt->rt_ifa->ifa_rtrequest(RTM_ADD, rt, rtinfo);
+		rt->rt_ifa->ifa_rtrequest(RTM_ADD, rt, rtinfo);
 	if (rtinfo->rti_genmask != NULL)
 		rt->rt_genmask = rtinfo->rti_genmask;
 done:
-	/* XXX no way to return error */
-	;
+	return error;
 }
 
 static void
