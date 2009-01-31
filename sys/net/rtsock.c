@@ -453,6 +453,8 @@ static void route_output_add_callback(int, int, struct rt_addrinfo *,
 					struct rtentry *, void *);
 static void route_output_delete_callback(int, int, struct rt_addrinfo *,
 					struct rtentry *, void *);
+static int route_output_get_callback(int, struct rt_addrinfo *,
+				     struct rtentry *, void *);
 static int route_output_change_callback(int, struct rt_addrinfo *,
 					struct rtentry *, void *);
 static int route_output_lock_callback(int, struct rt_addrinfo *,
@@ -463,8 +465,6 @@ static int
 route_output(struct mbuf *m, struct socket *so, ...)
 {
 	struct rt_msghdr *rtm = NULL;
-	struct rtentry *rt;
-	struct radix_node_head *rnh;
 	struct rawcb *rp = NULL;
 	struct pr_output_info *oi;
 	struct rt_addrinfo rtinfo;
@@ -549,22 +549,12 @@ route_output(struct mbuf *m, struct socket *so, ...)
 					  route_output_delete_callback, &rtm);
 		break;
 	case RTM_GET:
-		rnh = rt_tables[mycpuid][rtinfo.rti_dst->sa_family];
-		if (rnh == NULL) {
-			error = EAFNOSUPPORT;
-			break;
-		}
-		rt = (struct rtentry *)
-		    rnh->rnh_lookup((char *)rtinfo.rti_dst,
-		    		    (char *)rtinfo.rti_netmask, rnh);
-		if (rt == NULL) {
-			error = ESRCH;
-			break;
-		}
-		rt->rt_refcnt++;
-		if (fillrtmsg(&rtm, rt, &rtinfo) != 0)
-			gotoerr(ENOBUFS);
-		--rt->rt_refcnt;
+		/*
+		 * note: &rtm passed as argument so 'rtm' can be replaced.
+		 */
+		error = rtsearch_global(RTM_GET, &rtinfo,
+					route_output_get_callback, &rtm,
+					RTS_NOEXACTMATCH);
 		break;
 	case RTM_CHANGE:
 		error = rtsearch_global(RTM_CHANGE, &rtinfo,
@@ -646,6 +636,24 @@ route_output_delete_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
 		}
 		--rt->rt_refcnt;
 	}
+}
+
+static int
+route_output_get_callback(int cmd, struct rt_addrinfo *rtinfo,
+			  struct rtentry *rt, void *arg)
+{
+	struct rt_msghdr **rtm = arg;
+	int error, found = 0;
+
+	if (((rtinfo->rti_flags ^ rt->rt_flags) & RTF_HOST) == 0)
+		found = 1;
+
+	error = fillrtmsg(rtm, rt, rtinfo);
+	if (!error && found) {
+		/* Got the exact match, we could return now! */
+		error = EJUSTRETURN;
+	}
+	return error;
 }
 
 static int
