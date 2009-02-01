@@ -431,6 +431,8 @@ fillrtmsg(struct rt_msghdr **prtm, struct rtentry *rt,
 			rtinfo->rti_ifpaddr = NULL;
 			rtinfo->rti_ifaaddr = NULL;
 		}
+	} else if (rt->rt_ifp != NULL) {
+		rtm->rtm_index = rt->rt_ifp->if_index;
 	}
 
 	msglen = rt_msgsize(rtm->rtm_type, rtinfo);
