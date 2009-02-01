@@ -531,7 +531,8 @@ route_output(struct mbuf *m, struct socket *so, ...)
 	 * Verify that the caller has the appropriate privilege; RTM_GET
 	 * is the only operation the non-superuser is allowed.
 	 */
-	if (rtm->rtm_type != RTM_GET && priv_check_cred(so->so_cred, PRIV_ROOT, 0) != 0)
+	if (rtm->rtm_type != RTM_GET &&
+	    priv_check_cred(so->so_cred, PRIV_ROOT, 0) != 0)
 		gotoerr(EPERM);
 
 	switch (rtm->rtm_type) {
