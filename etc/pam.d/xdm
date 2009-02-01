@@ -17,7 +17,10 @@ account		required	pam_unix.so
 
 # session
 #session 	required	pam_ssh.so		want_agent
-session		required	pam_lastlog.so		no_fail
+# xdm has a software bug in it where session callbacks can occur
+# after the widget has been destroyed, causing a seg-fault.  Commenting
+# out the session line works around the problem.
+#session	required	pam_lastlog.so		no_fail
 
 # password
 password	required	pam_deny.so
