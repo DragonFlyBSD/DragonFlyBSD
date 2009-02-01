@@ -430,7 +430,7 @@ fillrtmsg(struct rt_msghdr **prtm, struct rtentry *rt,
 		} else {
 			rtinfo->rti_ifpaddr = NULL;
 			rtinfo->rti_ifaaddr = NULL;
-	    }
+		}
 	}
 
 	msglen = rt_msgsize(rtm->rtm_type, rtinfo);
