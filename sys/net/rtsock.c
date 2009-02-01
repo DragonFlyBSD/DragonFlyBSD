@@ -622,6 +622,7 @@ route_output_add_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
 		rt->rt_rmx.rmx_locks |=
 		    (rtm->rtm_inits & rtm->rtm_rmx.rmx_locks);
 		rt->rt_genmask = rtinfo->rti_genmask;
+		rtm->rtm_index = rt->rt_ifp->if_index;
 	}
 }
 
@@ -702,6 +703,7 @@ route_output_change_callback(int cmd, struct rt_addrinfo *rtinfo,
 		rt->rt_ifa->ifa_rtrequest(RTM_ADD, rt, rtinfo);
 	if (rtinfo->rti_genmask != NULL)
 		rt->rt_genmask = rtinfo->rti_genmask;
+	rtm->rtm_index = rt->rt_ifp->if_index;
 done:
 	return error;
 }
