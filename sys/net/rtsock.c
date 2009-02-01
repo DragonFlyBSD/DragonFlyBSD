@@ -473,6 +473,8 @@ route_output(struct mbuf *m, struct socket *so, ...)
 	int len, error = 0;
 	__va_list ap;
 
+	M_ASSERTPKTHDR(m);
+
 	__va_start(ap, so);
 	oi = __va_arg(ap, struct pr_output_info *);
 	__va_end(ap);
@@ -483,8 +485,6 @@ route_output(struct mbuf *m, struct socket *so, ...)
 	    (m->m_len < sizeof(long) &&
 	     (m = m_pullup(m, sizeof(long))) == NULL))
 		return (ENOBUFS);
-	if (!(m->m_flags & M_PKTHDR))
-		panic("route_output");
 	len = m->m_pkthdr.len;
 	if (len < sizeof(struct rt_msghdr) ||
 	    len != mtod(m, struct rt_msghdr *)->rtm_msglen) {
