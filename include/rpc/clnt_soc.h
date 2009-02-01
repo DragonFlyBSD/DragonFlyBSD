@@ -28,7 +28,6 @@
  *
  * $NetBSD: clnt_soc.h,v 1.1 2000/06/02 22:57:55 fvdl Exp $
  * $FreeBSD: src/include/rpc/clnt_soc.h,v 1.2 2002/03/23 17:24:55 imp Exp $
- * $DragonFly$
  */
 /*
  * Copyright (c) 1984 - 1991 by Sun Microsystems, Inc.

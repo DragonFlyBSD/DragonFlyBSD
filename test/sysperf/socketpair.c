@@ -1,7 +1,5 @@
 /*
  * socketpair.c
- *
- * $DragonFly$
  */
 
 #include "blib.h"

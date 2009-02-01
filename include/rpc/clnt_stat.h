@@ -4,7 +4,6 @@
  *
  * @(#)clnt_stat.h>-------1.2>----97/04/28 SMI
  * $FreeBSD: src/include/rpc/clnt_stat.h,v 1.2 2001/03/20 08:20:50 alfred Exp $
- * $DragonFly$
  */
 
 /*

@@ -1053,3 +1053,5 @@ TO_REMOVE+=/usr/include/machine/cronyx.h
 TO_REMOVE+=/usr/share/man/man4/i386/cx.4.gz
 TO_REMOVE+=/usr/share/man/cat4/i386/cx.4.gz
 TO_REMOVE+=/usr/share/zoneinfo/Asia/Katmandu
+TO_REMOVE+=/usr/share/man/man3/__svc_getcallercreds.3.gz
+TO_REMOVE+=/usr/share/man/cat3/__svc_getcallercreds.3.gz

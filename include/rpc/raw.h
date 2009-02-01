@@ -30,8 +30,6 @@
  * 	from: @(#)raw.h 1.2 88/10/25 SMI
  * $NetBSD: raw.h,v 1.1 2000/06/02 22:57:56 fvdl Exp $
  * $FreeBSD: src/include/rpc/raw.h,v 1.1 2001/03/19 12:49:47 alfred Exp $
- * $DragonFly$
-
  */
 /*
  * Copyright (c) 1986 - 1991 by Sun Microsystems, Inc.

@@ -1,6 +1,5 @@
 #	$NetBSD: Makefile,v 1.3 2000/06/20 13:56:43 fvdl Exp $
 # $FreeBSD: src/usr.sbin/rpcbind/Makefile,v 1.7 2006/03/10 07:58:02 deischen Exp $
-# $DragonFly$
 
 
 PROG=	rpcbind

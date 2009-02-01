@@ -4,8 +4,7 @@
 .\" Copyright (c) 1988 Sun Microsystems, Inc. - All Rights Reserved.
 .\"	$NetBSD: rpc_svc_calls.3,v 1.1 2000/06/02 23:11:13 fvdl Exp $
 .\" $FreeBSD: src/lib/libc/rpc/rpc_svc_calls.3,v 1.10 2005/11/23 16:44:23 ru Exp $
-.\" $DragonFly$
-.Dd May 3, 1993
+.Dd January 31, 2009
 .Dt RPC_SVC_CALLS 3
 .Os
 .Sh NAME
@@ -42,8 +41,6 @@
 .Fn svc_getreqset "fd_set * rdfds"
 .Ft "struct netbuf *"
 .Fn svc_getrpccaller "const SVCXPRT *xprt"
-.Ft "struct cmsgcred *"
-.Fn __svc_getcallercreds "const SVCXPRT *xprt"
 .Vt struct pollfd svc_pollset[FD_SETSIZE];
 .Ft void
 .Fn svc_run "void"
@@ -76,7 +73,7 @@ See
 for the definition of the
 .Vt SVCXPRT
 data structure.
-.Bl -tag -width __svc_getcallercreds()
+.Bl -tag -width ".Fn svc_dg_enablecache"
 .It Fn svc_dg_enablecache
 This function allocates a duplicate request cache for the
 service endpoint
@@ -197,20 +194,6 @@ The approved way of getting the network address of the caller
 of a procedure associated with the
 RPC service transport handle
 .Fa xprt .
-.It Fn __svc_getcallercreds
-.Em Warning :
-this macro is specific to
-.Fx
-and thus not portable.
-This macro returns a pointer to a
-.Vt cmsgcred
-structure, defined in
-.In sys/socket.h ,
-identifying the calling client.
-This only works if the client is
-calling the server over an
-.Dv AF_LOCAL
-socket.
 .It Xo
 .Vt struct pollfd Va svc_pollset[FD_SETSIZE] ;
 .Xc

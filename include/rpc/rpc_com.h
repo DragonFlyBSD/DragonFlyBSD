@@ -29,7 +29,6 @@
  *	from: @(#)rpc_com.h	1.11	93/07/05 SMI
  * $NetBSD: rpc_com.h,v 1.3 2000/12/10 04:10:08 christos Exp $
  * $FreeBSD: src/include/rpc/rpc_com.h,v 1.6 2003/01/16 07:13:51 mbr Exp $
- * $DragonFly$
  */
 /*
  * Copyright (c) 1986 - 1991 by Sun Microsystems, Inc.

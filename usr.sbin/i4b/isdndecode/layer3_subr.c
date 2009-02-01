@@ -628,7 +628,7 @@ f_bc(char *pbuf, unsigned char *buf, int off)
 			strcpy(buffer, "H.221/H.242");
 			break;
 		case 0x07:
-			strcpy(buffer, "non-CCITT rate adaption");
+			strcpy(buffer, "non-CCITT rate adaptation");
 			break;
 		case 0x08:
 			strcpy(buffer, "V.120");

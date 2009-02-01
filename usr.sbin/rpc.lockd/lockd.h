@@ -31,7 +31,6 @@
  *
  * $NetBSD: lockd.h,v 1.2 2000/06/07 14:34:40 bouyer Exp $
  * $FreeBSD: src/usr.sbin/rpc.lockd/lockd.h,v 1.3 2001/03/19 12:50:09 alfred Exp $
- * $DragonFly$
  */
 
 extern int	debug_level;

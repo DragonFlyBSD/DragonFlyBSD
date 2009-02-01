@@ -146,6 +146,8 @@ The name
 derives in part from
 .Nm iota ,
 a function in APL.
+.Sh EXIT STATUS
+.Ex -std
 .Sh EXAMPLES
 The command
 .Dl jot 21 -1 1.00
@@ -188,7 +190,6 @@ from column 10 and ending in column 132, use
 and to print all lines 80 characters or longer,
 .Dl grep `jot -s \&"\&" -b \&. 80`
 .Sh DIAGNOSTICS
-.Ex -std
 The following diagnostic messages deserve special explanation:
 .Bl -diag
 .It "illegal or unsupported format '%s'"

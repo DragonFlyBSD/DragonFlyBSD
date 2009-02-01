@@ -30,7 +30,6 @@
  *	from: svc_soc.h 1.8 89/05/01 SMI
  * $NetBSD: svc_soc.h,v 1.1 2000/06/02 22:57:57 fvdl Exp $
  * $FreeBSD: src/include/rpc/svc_soc.h,v 1.2 2002/03/23 17:24:55 imp Exp $
- * $DragonFly$
  */
 /*
  * Copyright (c) 1986 - 1991 by Sun Microsystems, Inc.

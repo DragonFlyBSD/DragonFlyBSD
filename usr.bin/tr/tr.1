@@ -232,6 +232,8 @@ environment variables affect the execution of
 .Nm
 as described in
 .Xr environ 7 .
+.Sh EXIT STATUS
+.Ex -std
 .Sh EXAMPLES
 The following examples are shown as given to the shell:
 .Pp
@@ -252,8 +254,6 @@ Remove diacritical marks from all accented variants of the letter
 .Sq e :
 .Pp
 .Dl "tr \*q[=e=]\*q \*qe\*q"
-.Sh DIAGNOSTICS
-.Ex -std
 .Sh COMPATIBILITY
 System V has historically implemented character ranges using the syntax
 ``[c-c]'' instead of the ``c-c'' used by historic

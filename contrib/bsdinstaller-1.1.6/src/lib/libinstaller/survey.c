@@ -210,7 +210,7 @@ survey_storage(struct i_fn_args *a)
 		cmd = command_add(cmds, "%s%s '@DESC' >>%ssurvey.txt",
 		    a->os_root, cmd_name(a, "ECHO"), a->tmp);
 		command_set_log_mode(cmd, COMMAND_LOG_SILENT);
-		cmd = command_add(cmds, "%s%s '^%s:' %s%s >>%ssurvey.txt || %s%s '%s' >>%ssurvey.txt",
+		cmd = command_add(cmds, "%s%s -w '^%s: [0-9]*MB' %s%s >>%ssurvey.txt || %s%s '%s' >>%ssurvey.txt",
 		    a->os_root, cmd_name(a, "GREP"),
 		    disk,
 		    a->os_root, cmd_name(a, "DMESG_BOOT"),
@@ -224,7 +224,6 @@ survey_storage(struct i_fn_args *a)
 
 		/*
 		 * Ensure that the device node for this disk exists,
-		 * XXX OpenBSD will require a 'c' appended to it here.
 		 */
 		cmd = command_add_ensure_dev(a, cmds, disk);
 

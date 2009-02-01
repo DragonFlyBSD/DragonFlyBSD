@@ -29,7 +29,6 @@
  * @(#)rpcbind.h 1.4 90/04/12 SMI
  * $NetBSD: rpcbind.h,v 1.1 2000/06/03 00:47:21 fvdl Exp $
  * $FreeBSD: src/usr.sbin/rpcbind/rpcbind.h,v 1.3 2007/11/07 10:53:39 kevlo Exp $
- * $DragonFly$
  */
 /*
  * Copyright (c) 1986 - 1991 by Sun Microsystems, Inc.

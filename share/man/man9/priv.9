@@ -28,7 +28,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man9/priv.9,v 1.7 2008/09/17 15:49:44 attilio Exp $
 .\"
-.Dd January 1, 2009
+.Dd January 31, 2009
 .Dt PRIV 9
 .Os
 .Sh NAME
@@ -60,13 +60,17 @@ argument.
 The optional flags argument,
 .Fa flags ,
 is currently unused.
-.Ss Privilege Policies
-Privileges are typically granted based on one of two base system policies:
+.\".Ss Privilege Policies
+.\"Privileges are typically granted based on one of two base system policies:
+.\"the superuser policy, which grants privilege based on the effective (or
+.\"sometimes real) UID having a value of 0, and the
+.\".Xr jail 2
+.\"policy, which permits only certain privileges to be granted to processes in a
+.\"jail.
+.Pp
+Privileges are typically granted based on
 the superuser policy, which grants privilege based on the effective (or
-sometimes real) UID having a value of 0, and the
-.Xr jail 2
-policy, which permits only certain privileges to be granted to processes in a
-jail.
+sometimes real) UID having a value of 0.
 .Sh IMPLEMENTATION NOTES
 When adding a new privilege check to a code path, first check the complete
 list of current privileges in

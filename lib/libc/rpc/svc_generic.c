@@ -29,7 +29,6 @@
  * @(#)svc_generic.c	1.19	94/04/24 SMI; 1.21 89/02/28 Copyr 1988 Sun Micro
  * $NetBSD: svc_generic.c,v 1.3 2000/07/06 03:10:35 christos Exp $
  * $FreeBSD: src/lib/libc/rpc/svc_generic.c,v 1.7 2006/02/27 22:10:59 deischen Exp $
- * $DragonFly$
  */
 
 /*

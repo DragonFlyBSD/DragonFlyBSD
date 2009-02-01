@@ -29,7 +29,6 @@
  * @(#)rpcb_svc.c	1.16	93/07/05 SMI"
  * $NetBSD: rpcb_svc.c,v 1.1 2000/06/02 23:15:41 fvdl Exp $
  * $FreeBSD: src/usr.sbin/rpcbind/rpcb_svc.c,v 1.3 2007/11/07 10:53:39 kevlo Exp $
- * $DragonFly$
  */
 /*
  * Copyright (c) 1986 - 1991 by Sun Microsystems, Inc.
