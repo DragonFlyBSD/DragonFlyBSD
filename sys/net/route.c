@@ -1712,7 +1712,8 @@ rtsearch_msghandler(struct netmsg *netmsg)
 		msg->found_cnt++;
 
 		rt->rt_refcnt++;
-		error = msg->callback(msg->req, msg->rtinfo, rt, msg->arg);
+		error = msg->callback(msg->req, msg->rtinfo, rt, msg->arg,
+				      msg->found_cnt);
 		rt->rt_refcnt--;
 
 		if (error == EJUSTRETURN) {

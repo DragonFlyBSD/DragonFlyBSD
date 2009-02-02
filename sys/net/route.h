@@ -377,7 +377,7 @@ rtlookup(struct sockaddr *dst)
 typedef void (*rtrequest1_callback_func_t)(int, int, struct rt_addrinfo *,
 				      struct rtentry *, void *);
 typedef int (*rtsearch_callback_func_t)(int, struct rt_addrinfo *,
-					struct rtentry *, void *);
+					struct rtentry *, void *, int);
 
 void	 rtfree (struct rtentry *);
 int	 rtinit (struct ifaddr *, int, int);

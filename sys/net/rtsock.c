@@ -456,11 +456,11 @@ static void route_output_add_callback(int, int, struct rt_addrinfo *,
 static void route_output_delete_callback(int, int, struct rt_addrinfo *,
 					struct rtentry *, void *);
 static int route_output_get_callback(int, struct rt_addrinfo *,
-				     struct rtentry *, void *);
+				     struct rtentry *, void *, int);
 static int route_output_change_callback(int, struct rt_addrinfo *,
-					struct rtentry *, void *);
+					struct rtentry *, void *, int);
 static int route_output_lock_callback(int, struct rt_addrinfo *,
-				      struct rtentry *, void *);
+				      struct rtentry *, void *, int);
 
 /*ARGSUSED*/
 static int
@@ -644,7 +644,7 @@ route_output_delete_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
 
 static int
 route_output_get_callback(int cmd, struct rt_addrinfo *rtinfo,
-			  struct rtentry *rt, void *arg)
+			  struct rtentry *rt, void *arg, int found_cnt)
 {
 	struct rt_msghdr **rtm = arg;
 	int error, found = 0;
@@ -662,7 +662,7 @@ route_output_get_callback(int cmd, struct rt_addrinfo *rtinfo,
 
 static int
 route_output_change_callback(int cmd, struct rt_addrinfo *rtinfo,
-			     struct rtentry *rt, void *arg)
+			     struct rtentry *rt, void *arg, int found_cnt)
 {
 	struct rt_msghdr *rtm = arg;
 	struct ifaddr *ifa;
@@ -682,8 +682,12 @@ route_output_change_callback(int cmd, struct rt_addrinfo *rtinfo,
 			goto done;
 	}
 	if (rtinfo->rti_gateway != NULL) {
+		/*
+		 * We only need to generate rtmsg upon the
+		 * first route to be changed.
+		 */
 		error = rt_setgate(rt, rt_key(rt), rtinfo->rti_gateway,
-				   RTL_REPORTMSG);
+			found_cnt == 1 ? RTL_REPORTMSG : RTL_DONTREPORT);
 		if (error != 0)
 			goto done;
 	}
@@ -711,7 +715,8 @@ done:
 
 static int
 route_output_lock_callback(int cmd, struct rt_addrinfo *rtinfo,
-			   struct rtentry *rt, void *arg)
+			   struct rtentry *rt, void *arg,
+			   int found_cnt __unused)
 {
 	struct rt_msghdr *rtm = arg;
 
