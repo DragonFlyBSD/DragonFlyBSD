@@ -1,9 +1,5 @@
-/*-
- * Copyright (c) 1990 The Regents of the University of California.
- * All rights reserved.
- *
- * This code is derived from software contributed to Berkeley by
- * William Jolitz.
+/*
+ * Copyright (c) 2002 William C. Fenner.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -13,15 +9,8 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
@@ -33,17 +22,16 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/i386/net/ntohl.S,v 1.5 1999/08/27 23:59:25 peter Exp $
- * $DragonFly: src/lib/libc/i386/net/ntohl.S,v 1.3 2003/12/06 03:11:35 drhodus Exp $
+ * $FreeBSD: src/lib/libc/net/sockatmark.c,v 1.1 2002/12/13 22:22:55 fenner Exp $
  */
 
-/* hostorder = ntohl(netorder) */
+#include <sys/ioctl.h>
 
-#include "DEFS.h"
+int sockatmark(int s)
+{
+	int atmark;
 
-ENTRY(ntohl)
-	movl	4(%esp),%eax
-	xchgb	%al,%ah
-	roll	$16,%eax
-	xchgb	%al,%ah
-	ret
+	if (ioctl(s, SIOCATMARK, &atmark) == -1)
+		return -1;
+	return atmark;
+}

@@ -28,7 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/net/vars.c,v 1.1.2.1 2002/04/28 05:40:24 suz Exp $
+ * $FreeBSD: src/lib/libc/net/vars.c,v 1.3 2002/04/19 04:46:20 suz Exp $
  * $DragonFly: src/lib/libc/net/vars.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 

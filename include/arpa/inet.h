@@ -61,7 +61,7 @@
 #ifndef _ARPA_INET_H_
 #define	_ARPA_INET_H_
 
-/* External definitions for functions in inet(3), addr2ascii(3) */
+/* External definitions for functions in inet(3) */
 
 #include <sys/types.h>
 #include <sys/cdefs.h>
@@ -118,8 +118,6 @@ const char	*inet_ntop(int, const void * __restrict, char * __restrict,
 int		 inet_pton(int, const char * __restrict, void * __restrict);
 
 #if __BSD_VISIBLE
-int		 ascii2addr (int, const char *, void *);
-char		*addr2ascii (int, const void *, int, char *);
 int		 inet_aton(const char *, struct in_addr *);
 in_addr_t	 inet_lnaof(struct in_addr);
 struct in_addr	 inet_makeaddr(in_addr_t, in_addr_t);

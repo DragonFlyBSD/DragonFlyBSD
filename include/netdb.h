@@ -55,7 +55,7 @@
 /*
  *      @(#)netdb.h	8.1 (Berkeley) 6/2/93
  *      From: Id: netdb.h,v 8.9 1996/11/19 08:39:29 vixie Exp $
- * $FreeBSD: src/include/netdb.h,v 1.44 2006/05/21 11:27:28 ume Exp $
+ * $FreeBSD: src/include/netdb.h,v 1.45 2009/03/14 20:04:28 das Exp $
  * $DragonFly: src/include/netdb.h,v 1.7 2008/10/04 22:09:16 swildner Exp $
  */
 
@@ -146,12 +146,14 @@ struct addrinfo {
 /*
  * Error return codes from getaddrinfo()
  */
+/* XXX deprecated */
 #define	EAI_ADDRFAMILY	 1	/* address family for hostname not supported */
 #define	EAI_AGAIN	 2	/* temporary failure in name resolution */
 #define	EAI_BADFLAGS	 3	/* invalid value for ai_flags */
 #define	EAI_FAIL	 4	/* non-recoverable failure in name resolution */
 #define	EAI_FAMILY	 5	/* ai_family not supported */
 #define	EAI_MEMORY	 6	/* memory allocation failure */
+/* XXX deprecated */
 #define	EAI_NODATA	 7	/* no address associated with hostname */
 #define	EAI_NONAME	 8	/* hostname nor servname provided, or not known */
 #define	EAI_SERVICE	 9	/* servname not supported for ai_socktype */
@@ -195,7 +197,9 @@ struct addrinfo {
 #define	NI_NAMEREQD	0x00000004
 #define	NI_NUMERICSERV	0x00000008
 #define	NI_DGRAM	0x00000010
+/* XXX deprecated */
 #define NI_WITHSCOPEID	0x00000020
+
 
 /*
  * Scope delimit character
@@ -205,81 +209,22 @@ struct addrinfo {
 __BEGIN_DECLS
 void		endhostent(void);
 void		endnetent(void);
-void		endnetgrent(void);
 void		endprotoent(void);
 void		endservent(void);
-void		freehostent(struct hostent *);
+#if __BSD_VISIBLE || (__POSIX_VISIBLE && __POSIX_VISIBLE <= 200112)
 struct hostent	*gethostbyaddr(const void *, socklen_t, int);
-#if 0
-int		gethostbyaddr_r(const void *, socklen_t, int, struct hostent *,
-				char *, size_t, struct hostent **, int *);
-#endif
 struct hostent	*gethostbyname(const char *);
-#if 0
-int		gethostbyname_r(const char *, struct hostent *, char *, size_t,
-				struct hostent **, int *);
-#endif
-struct hostent	*gethostbyname2(const char *, int);
-#if 0
-int		gethostbyname2_r(const char *, int, struct hostent *, char *,
-				 size_t, struct hostent **, int *);
 #endif
 struct hostent	*gethostent(void);
-#if 0
-int		gethostent_r(struct hostent *, char *, size_t,
-			     struct hostent **, int *);
-#endif
-struct hostent	*getipnodebyaddr(const void *, size_t, int, int *);
-struct hostent	*getipnodebyname(const char *, int, int, int *);
 struct netent	*getnetbyaddr(uint32_t, int);
-#if 0
-int		getnetbyaddr_r(uint32_t, int, struct netent *, char *, size_t,
-			       struct netent**, int *);
-#endif
 struct netent	*getnetbyname(const char *);
-#if 0
-int		getnetbyname_r(const char *, struct netent *, char *, size_t,
-			       struct netent **, int *);
-#endif
 struct netent	*getnetent(void);
-#if 0
-int		getnetent_r(struct netent *, char *, size_t, struct netent **,
-			    int *);
-#endif
-int		getnetgrent(char **, char **, char **);
 struct protoent	*getprotobyname(const char *);
-#if 0
-int		getprotobyname_r(const char *, struct protoent *, char *,
-				 size_t, struct protoent **);
-#endif
 struct protoent	*getprotobynumber(int);
-#if 0
-int		getprotobynumber_r(int, struct protoent *, char *, size_t,
-				   struct protoent **);
-#endif
 struct protoent	*getprotoent(void);
-#if 0
-int		getprotoent_r(struct protoent *, char *, size_t,
-			      struct protoent **);
-#endif
 struct servent	*getservbyname(const char *, const char *);
-#if 0
-int		getservbyname_r(const char *, const char *, struct servent *,
-				char *, size_t, struct servent **);
-#endif
 struct servent	*getservbyport(int, const char *);
-#if 0
-int		getservbyport_r(int, const char *, struct servent *, char *,
-				size_t, struct servent **);
-#endif
 struct servent	*getservent(void);
-#if 0
-int		getservent_r(struct servent *, char *, size_t,
-			     struct servent **);
-#endif
-void		herror(const char *);
-__const char	*hstrerror(int);
-int		innetgr(const char *, const char *, const char *, const char *);
 void		sethostent(int);
 /* void		sethostfile(const char *); */
 void		setnetent(int);
@@ -290,8 +235,47 @@ int		getnameinfo(const struct sockaddr *, socklen_t, char *,
 			    size_t, char *, size_t, int);
 void		freeaddrinfo(struct addrinfo *);
 const char	*gai_strerror(int);
-void		setnetgrent(const char *);
 void		setservent(int);
+
+#if __BSD_VISIBLE
+void		endnetgrent(void);
+void		freehostent(struct hostent *);
+int		gethostbyaddr_r(const void *, socklen_t, int, struct hostent *,
+				char *, size_t, struct hostent **, int *);
+int		gethostbyname_r(const char *, struct hostent *, char *, size_t,
+				struct hostent **, int *);
+struct hostent	*gethostbyname2(const char *, int);
+int		gethostbyname2_r(const char *, int, struct hostent *, char *,
+				 size_t, struct hostent **, int *);
+int		gethostent_r(struct hostent *, char *, size_t,
+			     struct hostent **, int *);
+struct hostent	*getipnodebyaddr(const void *, size_t, int, int *);
+struct hostent	*getipnodebyname(const char *, int, int, int *);
+int		getnetbyaddr_r(uint32_t, int, struct netent *, char *, size_t,
+			       struct netent**, int *);
+int		getnetbyname_r(const char *, struct netent *, char *, size_t,
+			       struct netent **, int *);
+int		getnetent_r(struct netent *, char *, size_t, struct netent **,
+			    int *);
+int		getnetgrent(char **, char **, char **);
+int		getprotobyname_r(const char *, struct protoent *, char *,
+				 size_t, struct protoent **);
+int		getprotobynumber_r(int, struct protoent *, char *, size_t,
+				   struct protoent **);
+int		getprotoent_r(struct protoent *, char *, size_t,
+			      struct protoent **);
+int		getservbyname_r(const char *, const char *, struct servent *,
+				char *, size_t, struct servent **);
+int		getservbyport_r(int, const char *, struct servent *, char *,
+				size_t, struct servent **);
+int		getservent_r(struct servent *, char *, size_t,
+			     struct servent **);
+void		herror(const char *);
+__const char	*hstrerror(int);
+int		innetgr(const char *, const char *, const char *, const char *);
+void		setnetgrent(const char *);
+#endif
+
 
 /*
  * PRIVATE functions specific to the FreeBSD implementation

@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -30,10 +26,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)byteorder.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/net/byteorder.3,v 1.3.2.4 2001/12/14 18:33:55 ru Exp $
+.\" $FreeBSD: src/lib/libc/net/byteorder.3,v 1.13 2007/01/09 00:28:01 imp Exp $
 .\" $DragonFly: src/lib/libc/net/byteorder.3,v 1.3 2004/09/15 15:04:31 joerg Exp $
 .\"
-.Dd June 4, 1993
+.Dd March 20, 2005
 .Dt BYTEORDER 3
 .Os
 .Sh NAME
@@ -46,6 +42,10 @@
 .Lb libc
 .Sh SYNOPSIS
 .In arpa/inet.h
+.Pp
+or
+.Pp
+.In netinet/in.h
 .Ft uint32_t
 .Fn htonl "uint32_t hostlong"
 .Ft uint16_t
@@ -67,7 +67,13 @@ and
 .Xr getservent 3 .
 .Sh SEE ALSO
 .Xr gethostbyname 3 ,
-.Xr getservent 3
+.Xr getservent 3 ,
+.Xr byteorder 9
+.Sh STANDARDS
+The
+.Nm byteorder
+functions conform to
+.St -p1003.1-2001 .
 .Sh HISTORY
 The
 .Nm byteorder
@@ -77,4 +83,5 @@ functions appeared in
 On the
 .Tn VAX
 bytes are handled backwards from most everyone else in
-the world.  This is not expected to be fixed in the near future.
+the world.
+This is not expected to be fixed in the near future.

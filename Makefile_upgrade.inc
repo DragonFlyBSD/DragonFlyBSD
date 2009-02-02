@@ -1064,3 +1064,7 @@ TO_REMOVE+=/usr/share/man/man9/objcache_reclaim_list.9.gz
 TO_REMOVE+=/usr/share/man/cat9/objcache_reclaim_list.9.gz
 TO_REMOVE+=/usr/share/man/cat3/timezone.3.gz
 TO_REMOVE+=/usr/share/man/man3/timezone.3.gz
+TO_REMOVE+=/usr/share/man/cat3/addr2ascii.3.gz
+TO_REMOVE+=/usr/share/man/man3/addr2ascii.3.gz
+TO_REMOVE+=/usr/share/man/cat3/ascii2addr.3.gz
+TO_REMOVE+=/usr/share/man/man3/ascii2addr.3.gz

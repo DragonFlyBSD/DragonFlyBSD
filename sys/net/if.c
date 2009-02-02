@@ -1211,6 +1211,10 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		return (ENXIO);
 	switch (cmd) {
 
+	case SIOCGIFINDEX:
+		ifr->ifr_index = ifp->if_index;
+		break;
+
 	case SIOCGIFFLAGS:
 		ifr->ifr_flags = ifp->if_flags;
 		ifr->ifr_flagshigh = ifp->if_flags >> 16;

@@ -23,19 +23,22 @@
  * SUCH DAMAGE.
  *
  *	BSDI Id: if_nametoindex.c,v 2.3 2000/04/17 22:38:05 dab Exp
- *
- * $FreeBSD: src/lib/libc/net/if_nametoindex.c,v 1.1.2.1 2002/07/29 18:33:18 ume Exp $
+ * $FreeBSD: src/lib/libc/net/if_nametoindex.c,v 1.5 2003/05/01 19:03:14 nectar Exp $
  * $DragonFly: src/lib/libc/net/if_nametoindex.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/sockio.h>
 #include <net/if.h>
 #include <net/if_dl.h>
 #include <ifaddrs.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
+#include "un-namespace.h"
 
 /*
  * From RFC 2553:
@@ -59,8 +62,20 @@
 unsigned int
 if_nametoindex(const char *ifname)
 {
+	int s;
+	struct ifreq ifr;
 	struct ifaddrs *ifaddrs, *ifa;
 	unsigned int ni;
+
+	s = _socket(AF_INET, SOCK_DGRAM, 0);
+	if (s != -1) {
+		strlcpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
+		if (_ioctl(s, SIOCGIFINDEX, &ifr) != -1) {
+			_close(s);
+			return (ifr.ifr_index);
+		}
+		_close(s);
+	}
 
 	if (getifaddrs(&ifaddrs) < 0)
 		return(0);

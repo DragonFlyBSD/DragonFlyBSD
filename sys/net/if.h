@@ -235,6 +235,7 @@ struct	ifreq {
 		struct	sockaddr ifru_dstaddr;
 		struct	sockaddr ifru_broadaddr;
 		short	ifru_flags[2];
+		short	ifru_index;
 		int	ifru_metric;
 		int	ifru_mtu;
 		int	ifru_phys;
@@ -255,6 +256,7 @@ struct	ifreq {
 #define	ifr_data	ifr_ifru.ifru_data	/* for use by interface */
 #define	ifr_reqcap	ifr_ifru.ifru_cap[0]	/* requested capabilities */
 #define	ifr_curcap	ifr_ifru.ifru_cap[1]	/* current capabilities */
+#define	ifr_index	ifr_ifru.ifru_index	/* interface index */
 #define ifr_pollcpu	ifr_ifru.ifru_pollcpu	/* polling(4) cpu */
 };
 
