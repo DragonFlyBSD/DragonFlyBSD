@@ -160,7 +160,7 @@ static void	arpintr(struct netmsg *);
 static void	arptfree(struct llinfo_arp *);
 static void	arptimer(void *);
 static struct llinfo_arp *
-		arplookup(in_addr_t, boolean_t, boolean_t);
+		arplookup(in_addr_t, boolean_t, boolean_t, boolean_t);
 #ifdef INET
 static void	in_arpinput(struct mbuf *);
 #endif
@@ -472,7 +472,8 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 		la = rt->rt_llinfo;
 	}
 	if (la == NULL) {
-		la = arplookup(SIN(dst)->sin_addr.s_addr, TRUE, FALSE);
+		la = arplookup(SIN(dst)->sin_addr.s_addr,
+			       TRUE, RTL_REPORTMSG, FALSE);
 		if (la != NULL)
 			rt = la->la_rt;
 	}
@@ -632,7 +633,7 @@ arp_hold_output(struct netmsg *nmsg)
 
 static void
 arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
-		 boolean_t dologging)
+		 boolean_t generate_report, boolean_t dologging)
 {
 	struct arphdr *ah = mtod(m, struct arphdr *);
 	struct ifnet *ifp = m->m_pkthdr.rcvif;
@@ -640,7 +641,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 	struct sockaddr_dl *sdl;
 	struct rtentry *rt;
 
-	la = arplookup(saddr, create, FALSE);
+	la = arplookup(saddr, create, generate_report, FALSE);
 	if (la && (rt = la->la_rt) && (sdl = SDL(rt->rt_gateway))) {
 		struct in_addr isaddr = { saddr };
 
@@ -901,7 +902,7 @@ match:
 	lwkt_domsg(rtable_portfn(0), &msg.netmsg.nm_lmsg, 0);
 #else
 	arp_update_oncpu(m, isaddr.s_addr, (itaddr.s_addr == myaddr.s_addr),
-			 TRUE);
+			 RTL_REPORTMSG, TRUE);
 #endif
 reply:
 	if (op != ARPOP_REQUEST) {
@@ -915,7 +916,7 @@ reply:
 	} else {
 		struct llinfo_arp *la;
 
-		la = arplookup(itaddr.s_addr, FALSE, SIN_PROXY);
+		la = arplookup(itaddr.s_addr, FALSE, RTL_DONTREPORT, SIN_PROXY);
 		if (la == NULL) {
 			struct sockaddr_in sin;
 
@@ -988,7 +989,13 @@ arp_update_msghandler(struct netmsg *netmsg)
 	struct netmsg_arp_update *msg = (struct netmsg_arp_update *)netmsg;
 	int nextcpu;
 
-	arp_update_oncpu(msg->m, msg->saddr, msg->create, mycpuid == 0);
+	/*
+	 * This message handler will be called on all of the CPUs,
+	 * however, we only need to generate rtmsg on CPU0.
+	 */
+	arp_update_oncpu(msg->m, msg->saddr, msg->create,
+			 mycpuid == 0 ? RTL_REPORTMSG : RTL_DONTREPORT,
+			 mycpuid == 0);
 
 	nextcpu = mycpuid + 1;
 	if (nextcpu < ncpus)
@@ -1033,7 +1040,8 @@ arptfree(struct llinfo_arp *la)
  * Lookup or enter a new address in arptab.
  */
 static struct llinfo_arp *
-arplookup(in_addr_t addr, boolean_t create, boolean_t proxy)
+arplookup(in_addr_t addr, boolean_t create, boolean_t generate_report,
+	  boolean_t proxy)
 {
 	struct rtentry *rt;
 	struct sockaddr_inarp sin = { sizeof sin, AF_INET };
@@ -1041,10 +1049,12 @@ arplookup(in_addr_t addr, boolean_t create, boolean_t proxy)
 
 	sin.sin_addr.s_addr = addr;
 	sin.sin_other = proxy ? SIN_PROXY : 0;
-	if (create)
-		rt = rtlookup((struct sockaddr *)&sin);
-	else
+	if (create) {
+		rt = _rtlookup((struct sockaddr *)&sin,
+			       generate_report, RTL_DOCLONE);
+	} else {
 		rt = rtpurelookup((struct sockaddr *)&sin);
+	}
 	if (rt == NULL)
 		return (NULL);
 	rt->rt_refcnt--;
