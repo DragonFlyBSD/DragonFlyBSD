@@ -682,7 +682,8 @@ route_output_change_callback(int cmd, struct rt_addrinfo *rtinfo,
 			goto done;
 	}
 	if (rtinfo->rti_gateway != NULL) {
-		error = rt_setgate(rt, rt_key(rt), rtinfo->rti_gateway);
+		error = rt_setgate(rt, rt_key(rt), rtinfo->rti_gateway,
+				   RTL_REPORTMSG);
 		if (error != 0)
 			goto done;
 	}

@@ -472,7 +472,10 @@ create:
 		 */
 		rt->rt_flags |= RTF_MODIFIED;
 		flags |= RTF_MODIFIED;
-		rt_setgate(rt, rt_key(rt), gateway);
+
+		/* We only need to report rtmsg on CPU0 */
+		rt_setgate(rt, rt_key(rt), gateway,
+			   mycpuid == 0 ? RTL_REPORTMSG : RTL_DONTREPORT);
 		error = 0;
 		stat = &rtstat.rts_newgateway;
 	}
@@ -815,6 +818,7 @@ rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 	struct radix_node_head *rnh;
 	struct ifaddr *ifa;
 	struct sockaddr *ndst;
+	boolean_t reportmsg;
 	int error = 0;
 
 #define gotoerr(x) { error = x ; goto bad; }
@@ -930,7 +934,19 @@ makeroute:
 		bzero(rt, sizeof(struct rtentry));
 		rt->rt_flags = RTF_UP | rtinfo->rti_flags;
 		rt->rt_cpuid = mycpuid;
-		error = rt_setgate(rt, dst, rtinfo->rti_info[RTAX_GATEWAY]);
+
+		if (mycpuid != 0 && req == RTM_ADD) {
+			/* For RTM_ADD, we have already sent rtmsg on CPU0. */
+			reportmsg = RTL_DONTREPORT;
+		} else {
+			/*
+			 * For RTM_ADD, we only send rtmsg on CPU0.
+			 * For RTM_RESOLVE, we always send rtmsg. XXX
+			 */
+			reportmsg = RTL_REPORTMSG;
+		}
+		error = rt_setgate(rt, dst, rtinfo->rti_info[RTAX_GATEWAY],
+				   reportmsg);
 		if (error != 0) {
 			Free(rt);
 			gotoerr(error);
@@ -1186,7 +1202,8 @@ rt_fixchange(struct radix_node *rn, void *vp)
 #define ROUNDUP(a) (a>0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
 
 int
-rt_setgate(struct rtentry *rt0, struct sockaddr *dst, struct sockaddr *gate)
+rt_setgate(struct rtentry *rt0, struct sockaddr *dst, struct sockaddr *gate,
+	   boolean_t generate_report)
 {
 	char *space, *oldspace;
 	int dlen = ROUNDUP(dst->sa_len), glen = ROUNDUP(gate->sa_len);
@@ -1266,7 +1283,8 @@ rt_setgate(struct rtentry *rt0, struct sockaddr *dst, struct sockaddr *gate)
 		 *
 		 * This breaks TTCP for hosts outside the gateway!  XXX JH
 		 */
-		rt->rt_gwroute = _rtlookup(gate, RTL_REPORTMSG, RTF_PRCLONING);
+		rt->rt_gwroute = _rtlookup(gate, generate_report,
+					   RTF_PRCLONING);
 		if (rt->rt_gwroute == rt) {
 			rt->rt_gwroute = NULL;
 			--rt->rt_refcnt;

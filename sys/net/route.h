@@ -343,7 +343,7 @@ void	 rt_newaddrmsg (int, struct ifaddr *, int, struct rtentry *);
 void	 rt_newmaddrmsg (int, struct ifmultiaddr *);
 void	 rt_rtmsg(int cmd, struct rtentry *rt, struct ifnet *ifp, int error);
 int	 rt_setgate (struct rtentry *,
-	    struct sockaddr *, struct sockaddr *);
+	    struct sockaddr *, struct sockaddr *, boolean_t);
 void	 rtalloc (struct route *);
 void	 rtalloc_ign (struct route *, u_long);
 
