@@ -185,7 +185,6 @@ generate_email()
 			{
 			generate_email_header
 			generate_${change_type}_branch_email
-			summarize_branch_revs
 			generate_email_footer
 			} | $send_mail
 		fi
@@ -272,11 +271,24 @@ generate_create_branch_email()
 {
 	# This is a new branch and so oldrev is not valid
 	echo "        at  $newrev ($newrev_type)"
+	echo ""
 }
 
 list_create_branch_revs()
 {
-	git rev-parse --not --branches | grep -v $(git rev-parse $refname) |
+	# We want to list all revs that are reachable now, but
+	# were not before.
+	# All revs that were reachable before are git rev-parse --branches.
+	# However, this includes $refname.  The naive | grep -v $branchtip
+	# will not work, because another branch might already have been on
+	# $branchtip.  In this case we shouldn't list any rev.
+	# As git rev-parse --branches might list a given rev multiple times
+	# if there are multiple branches at this rev, we simply drop this
+	# $branchtip rev once, and pass all subsequent ones through.
+
+	branchtip=$(git rev-parse $refname)
+
+	git rev-parse --not --branches | sed -e "1,/$branchtip/{/$branchtip/d;}" |
 	git rev-list --reverse --stdin $newrev
 }
 
