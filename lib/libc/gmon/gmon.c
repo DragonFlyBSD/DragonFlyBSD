@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -30,10 +26,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/gmon/gmon.c,v 1.8 2000/01/27 23:06:25 jasone Exp $
- * $DragonFly: src/lib/libc/gmon/gmon.c,v 1.8 2005/11/13 01:18:20 swildner Exp $
- *
  * @(#)gmon.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/gmon/gmon.c,v 1.22 2007/01/09 00:27:58 imp Exp $
+ * $DragonFly: src/lib/libc/gmon/gmon.c,v 1.8 2005/11/13 01:18:20 swildner Exp $
  */
 
 #include "namespace.h"
@@ -43,18 +38,19 @@
 #include <sys/sysctl.h>
 
 #include <err.h>
-#include <errno.h>
-#include <stdio.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include "un-namespace.h"
 
-#if defined(__i386__) || defined(__amd64__)
-extern char *minbrk asm (".minbrk");
+#include "libc_private.h"
+
+#if defined(__i386__) || defined(__sparc64__) || defined(__amd64__) || defined(__powerpc__)
+extern char *minbrk __asm (".minbrk");
 #else
-extern char *minbrk asm ("minbrk");
+extern char *minbrk __asm ("minbrk");
 #endif
 
 struct gmonparam _gmonparam = { GMON_PROF_OFF };
@@ -65,8 +61,8 @@ static int	s_scale;
 
 #define ERR(s) _write(2, s, sizeof(s))
 
-void	moncontrol (int);
-static int hertz (void);
+void	moncontrol(int);
+static int hertz(void);
 
 void
 monstartup(u_long lowpc, u_long highpc)
@@ -170,23 +166,24 @@ _mcleanup(void)
 	}
 
 	moncontrol(0);
-	snprintf(outname, sizeof(outname), "%s.gmon", getprogname());
+	snprintf(outname, sizeof(outname), "%s.gmon", _getprogname());
 	fd = _open(outname, O_CREAT|O_TRUNC|O_WRONLY, 0666);
 	if (fd < 0) {
-		warnx("_mcleanup: %s - %s",outname,strerror(errno));
+		_warn("_mcleanup: %s", outname);
 		return;
 	}
 #ifdef DEBUG
 	log = _open("gmon.log", O_CREAT|O_TRUNC|O_WRONLY, 0664);
 	if (log < 0) {
-		perror("_mcleanup: gmon.log");
+		_warn("_mcleanup: gmon.log");
 		return;
 	}
-	len = sprintf(buf, "[mcleanup1] kcount 0x%x ssiz %d\n",
+	len = sprintf(buf, "[mcleanup1] kcount 0x%p ssiz %lu\n",
 	    p->kcount, p->kcountsize);
 	_write(log, buf, len);
 #endif
 	hdr = (struct gmonhdr *)&gmonhdr;
+	bzero(hdr, sizeof(*hdr));
 	hdr->lpc = p->lowpc;
 	hdr->hpc = p->highpc;
 	hdr->ncnt = p->kcountsize + sizeof(gmonhdr);
@@ -205,7 +202,7 @@ _mcleanup(void)
 		     toindex = p->tos[toindex].link) {
 #ifdef DEBUG
 			len = sprintf(buf,
-			"[mcleanup2] frompc 0x%x selfpc 0x%x count %d\n" ,
+			"[mcleanup2] frompc 0x%lx selfpc 0x%lx count %lu\n" ,
 				frompc, p->tos[toindex].selfpc,
 				p->tos[toindex].count);
 			_write(log, buf, len);

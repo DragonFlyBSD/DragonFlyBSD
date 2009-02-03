@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -30,10 +26,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)moncontrol.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/gmon/moncontrol.3,v 1.6.2.5 2001/12/14 18:33:54 ru Exp $
+.\" $FreeBSD: src/lib/libc/gmon/moncontrol.3,v 1.17 2007/01/09 00:27:58 imp Exp $
 .\" $DragonFly: src/lib/libc/gmon/moncontrol.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
 .\"
-.Dd June 4, 1993
+.Dd June 14, 2004
 .Dt MONCONTROL 3
 .Os
 .Sh NAME
@@ -44,10 +40,11 @@
 .Lb libc
 .Sh SYNOPSIS
 .In sys/types.h
-.Ft int
+.In sys/gmon.h
+.Ft void
 .Fn moncontrol "int mode"
-.Ft int
-.Fn monstartup "u_long *lowpc" "u_long *highpc"
+.Ft void
+.Fn monstartup "u_long lowpc" "u_long highpc"
 .Sh DESCRIPTION
 An executable program compiled using the
 .Fl pg
@@ -59,12 +56,14 @@ call-graph execution profiler.
 In typical operation, profiling begins at program startup
 and ends when the program calls exit.
 When the program exits, the profiling data are written to the file
-.Em progname.gmon ,
+.Ar progname Ns Pa .gmon ,
 where progname is the name of the program, then
 .Xr gprof 1
 can be used to examine the results.
 .Pp
+The
 .Fn moncontrol
+function
 selectively controls profiling within a program.
 When the program starts, profiling begins.
 To stop the collection of histogram ticks and call counts use
@@ -81,9 +80,11 @@ Programs that are not loaded with
 may selectively collect profiling statistics by calling
 .Fn monstartup
 with the range of addresses to be profiled.
+The
 .Fa lowpc
 and
 .Fa highpc
+arguments
 specify the address range that is to be sampled;
 the lowest address sampled is that of
 .Fa lowpc

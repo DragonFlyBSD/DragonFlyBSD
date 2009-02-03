@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)mcount.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/gmon/mcount.c,v 1.17 1999/12/29 05:04:13 peter Exp $
+ * $FreeBSD: src/lib/libc/gmon/mcount.c,v 1.20 2004/10/16 06:32:43 obrien Exp $
  * $DragonFly: src/lib/libc/gmon/mcount.c,v 1.5 2005/11/13 01:18:20 swildner Exp $
  */
 
@@ -42,10 +42,10 @@
 #include <vm/vm.h>
 #include <vm/vm_param.h>
 #include <vm/pmap.h>
-void	bintr (void);
-void	btrap (void);
-void	eintr (void);
-void	user (void);
+void	bintr(void);
+void	btrap(void);
+void	eintr(void);
+void	user(void);
 #endif
 
 /*
@@ -62,9 +62,8 @@ void	user (void);
  * Note: the original BSD code used the same variable (frompcindex) for
  * both frompcindex and frompc.  Any reasonable, modern compiler will
  * perform this optimization.
- *
- * _mcount; may be static, inline, etc
  */
+/* _mcount; may be static, inline, etc */
 _MCOUNT_DECL(uintfptr_t frompc, uintfptr_t selfpc)
 {
 #ifdef GUPROF
@@ -91,7 +90,7 @@ _MCOUNT_DECL(uintfptr_t frompc, uintfptr_t selfpc)
 #ifdef _KERNEL
 	MCOUNT_ENTER(s);
 #else
-	p->state = GMON_PROF_BUSY;
+	p->state = GMON_PROF_BUSY;	/* XXX */
 #endif
 	frompci = frompc - p->lowpc;
 
@@ -259,11 +258,11 @@ done:
 #ifdef _KERNEL
 	MCOUNT_EXIT(s);
 #else
-	p->state = GMON_PROF_ON;
+	p->state = GMON_PROF_ON;	/* XXX */
 #endif
 	return;
 overflow:
-	p->state = GMON_PROF_ERROR;
+	p->state = GMON_PROF_ERROR;	/* XXX */
 #ifdef _KERNEL
 	MCOUNT_EXIT(s);
 #endif
