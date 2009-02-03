@@ -252,7 +252,10 @@ utilities.
 Print mount information in
 .Xr fstab 5
 format.
-Implies also the
+If fstab is missing or if the freq and passno fields are omitted,
+the default values as described in
+.Xr fstab 5
+are used. Implies also the
 .Fl v
 option.
 .It Fl r
