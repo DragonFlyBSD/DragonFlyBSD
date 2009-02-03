@@ -134,6 +134,7 @@ MAN=	accept_filter.9 \
 	tvtohz.9 \
 	uio.9 \
 	usbdi.9 \
+	vcount.9 \
 	vflush.9 \
 	VFS.9 \
 	VFS_CHECKEXP.9 \
@@ -656,6 +657,7 @@ MLINKS+=usbdi.9 usbd_abort_default_pipe.9 \
 	usbdi.9 usbd_sync_transfer.9 \
 	usbdi.9 usbd_transfer.9 \
 	usbdi.9 usb_find_desc.9
+MLINKS+=vcount.9 count_dev.9
 MLINKS+=vhold.9 vdrop.9
 MLINKS+=VOP_ATTRIB.9 VOP_GETATTR.9 \
 	VOP_ATTRIB.9 VOP_SETATTR.9
