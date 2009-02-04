@@ -292,7 +292,8 @@ mklocatedb:
 
 mkiso:
 	( cd ${ISOROOT}; ${PKGBIN_MKISOFS} -b boot/cdboot -no-emul-boot \
-		-R -J -V DragonFly-`${.CURDIR}/../tools/gitrev.sh` -o ${ISOFILE} . )
+		-R -J -o ${ISOFILE} \
+		-V DragonFly-`${.CURDIR}/../tools/gitrev.sh | cut -c -22` . )
 
 
 mkimg:
