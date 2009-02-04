@@ -48,6 +48,11 @@ PKGSRC_PKG_PATH?=	${ISODIR}/packages
 PKGSRC_DB?=		/var/db/pkg
 CVSUP_BOOTSTRAP_KIT?=	cvsup-bootstrap-20070716
 
+# We use env -i in the chroot, so that environment variables won't
+# disturb any (pkgsrc) build.  This has happened for TARGET_ARCH,
+# which is used by gmake in completely different context.
+CHROOT_CMD?=		env -i CCVER=${CCVER:Q} /usr/sbin/chroot ${ISOROOT} sh -c
+
 # pkgsrc packages to be built and installed on the release ISO
 #
 PKGSRC_PACKAGES?=	devel/scmgit \
@@ -264,18 +269,19 @@ customizeiso:
 .endfor
 	# setup some things & mount pkgsrc tree
 	cp -p /etc/resolv.conf ${ISOROOT}/etc
-	chroot ${ISOROOT} sh -c "ldconfig -elf /usr/lib /usr/lib/gcc* /usr/lib/compat"
+	${CHROOT_CMD} "ldconfig -elf /usr/lib /usr/lib/gcc* /usr/lib/compat"
 	mkdir -p ${ISOROOT}/usr/pkgobj/bootstrap/work
 	mkdir ${ISOROOT}/usr/pkgsrc
 	mount_null ${PKGSRC_PATH} ${ISOROOT}/usr/pkgsrc
+
 	# bootstrap
-	chroot ${ISOROOT} sh -c "cd /usr/pkgsrc/bootstrap; ./bootstrap --workdir /usr/pkgobj/bootstrap/work"
+	${CHROOT_CMD} "cd /usr/pkgsrc/bootstrap; ./bootstrap --workdir /usr/pkgobj/bootstrap/work"
 	# build and install packages
 .for PKG in ${PKGSRC_PACKAGES}
-	chroot ${ISOROOT} sh -c "cd /usr/pkgsrc; cd ${PKG}; bmake WRKOBJDIR=/usr/pkgobj ${PKGSRC_OPTIONS} build install"
+	${CHROOT_CMD} "cd /usr/pkgsrc/${PKG} && bmake WRKOBJDIR=/usr/pkgobj ${PKGSRC_OPTIONS} build install"
 .endfor
 	# remove packages which nothing depends on
-	chroot ${ISOROOT} sh -c "pkg_leaves | xargs pkg_delete -R"
+	${CHROOT_CMD} "pkg_leaves | xargs pkg_delete -R"
 	umount ${ISOROOT}/usr/pkgsrc
 	rmdir ${ISOROOT}/usr/pkgsrc
 	rm -rf ${ISOROOT}/usr/pkgobj
