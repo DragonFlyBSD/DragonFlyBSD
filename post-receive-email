@@ -330,7 +330,7 @@ set_update_branch_subject()
 {
 	set_describe $newrev
 
-	detail=$(git diff-tree -r -c --name-only $oldrev${oldrev:+..}$newrev |
+	detail=$(git diff-tree -r -c --name-only $oldrev${oldrev:+..}$newrev 2>/dev/null |
 			skip_diff_tree_parent |
 			sed -E -e 's#/([^/]*)$# \1#' |
 			awk 'pos > 74 {
@@ -346,7 +346,7 @@ set_update_branch_subject()
 				printf " %s", $2;
 				pos += length($2) + 1;
 			}')
-	[ -n "$(git diff-tree -r --name-only --cc $oldrev${oldrev:+..}$newrev |
+	[ -n "$(git diff-tree -r --name-only --cc $oldrev${oldrev:+..}$newrev 2>/dev/null |
 		skip_diff_tree_parent)" ]
 }
 

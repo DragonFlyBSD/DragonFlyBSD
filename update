@@ -79,7 +79,7 @@ case "$refname","$newrev_type" in
 		;;
 	refs/heads/*,commit)
 		# branch
-		if [ -n "$(git rev-list $newrev..$oldrev)" -a "$allownonfastfwd" != "true" ]; then
+		if [ -n "$(git rev-list $newrev..$oldrev 2>/dev/null)" -a "$allownonfastfwd" != "true" ]; then
 			echo "*** Non fast forward pushes are not allowed in this repository" >&2
 			exit 1
 		fi
