@@ -387,6 +387,7 @@ extern	Char		 *unparse	(struct command *);
 extern	void 		  update_dspmbyte_vars	(void);
 extern	void		  autoset_dspmbyte	(const Char *);
 #endif
+extern	void		 exportpath	(Char **);
 
 /*
  * sh.time.c
