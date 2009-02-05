@@ -269,8 +269,10 @@ generate_create_branch_email()
 	echo ""
 }
 
-list_create_branch_revs()
+generic_list_branch_revs()
 {
+	range=$1
+
 	# We want to list all revs that are reachable now, but
 	# were not before.
 	# All revs that were reachable before are git rev-parse --branches.
@@ -284,7 +286,12 @@ list_create_branch_revs()
 	branchtip=$(git rev-parse $refname)
 
 	git rev-parse --not --branches | sed -e "1,/$branchtip/{/$branchtip/d;}" |
-	git rev-list --reverse --stdin $newrev
+	git rev-list --reverse --stdin $range
+}
+
+list_create_branch_revs()
+{
+	generic_list_branch_revs $newrev
 }
 
 #
@@ -347,8 +354,7 @@ set_update_branch_subject()
 
 list_update_branch_revs()
 {
-	git rev-parse --not --branches | grep -v $(git rev-parse $refname) |
-	git rev-list --reverse --stdin $oldrev..$newrev
+	generic_list_branch_revs $oldrev..$newrev
 }
 
 summarize_branch_revs()
