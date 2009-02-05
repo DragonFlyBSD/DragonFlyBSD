@@ -46,6 +46,7 @@ PKGBIN_PKG_ADMIN?=	${PKGSRC_PREFIX}/sbin/pkg_admin
 PKGBIN_MKISOFS?=	${PKGSRC_PREFIX}/bin/mkisofs
 PKGSRC_PKG_PATH?=	${ISODIR}/packages
 PKGSRC_DB?=		/var/db/pkg
+PKGSRC_BOOTSTRAP_URL?= http://pkgbox.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.12.0-RELEASE-BUILD
 CVSUP_BOOTSTRAP_KIT?=	cvsup-bootstrap-20070716
 
 # We use env -i in the chroot, so that environment variables won't
