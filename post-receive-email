@@ -172,12 +172,7 @@ generate_email()
 
 	case "$fn_name" in
 	branch)
-		split=""
 		revs=$(list_${change_type}_branch_revs 2>/dev/null)
-		if [ "$(echo "$revs" | wc -l)" -gt 1 ]
-		then
-			split=1
-		fi
 
 		if [ "$change_type" != "update" ]
 		then
