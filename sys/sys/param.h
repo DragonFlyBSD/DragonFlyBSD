@@ -66,7 +66,7 @@
  * 200201 - base development version after 2.2 branch
  */
 #undef __DragonFly_version
-#define __DragonFly_version 200201	/* Master, propagated to newvers */
+#define __DragonFly_version 200200	/* Master, propagated to newvers */
 
 #ifdef __FreeBSD__
 /* 
