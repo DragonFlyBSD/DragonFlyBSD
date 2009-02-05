@@ -103,7 +103,7 @@ STATIC const struct varinit varinit[] = {
 	  NULL },
 	{ &vmpath,	VSTRFIXED|VTEXTFIXED|VUNSET,	"MAILPATH=",
 	  NULL },
-	{ &vpath,	VSTRFIXED|VTEXTFIXED,
+	{ &vpath,	VSTRFIXED|VTEXTFIXED|VEXPORT,
 #ifdef _PATH_DEFPATH
 		"PATH=" _PATH_DEFPATH,
 #else
