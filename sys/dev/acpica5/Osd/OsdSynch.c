@@ -355,9 +355,6 @@ AcpiOsDeleteLock (ACPI_SPINLOCK Spin)
     kfree(Spin, M_ACPISEM);
 }
 
-#ifdef ACPI_DEBUG_LOCKS
-void db_print_backtrace(void);
-#endif
 /*
  * OS-dependent locking primitives.  These routines should be able to be
  * called from an interrupt-handler or cpu_idle thread.
@@ -379,7 +376,7 @@ AcpiOsAcquireLock (ACPI_SPINLOCK Spin)
 	kprintf("%p(%s:%d): acpi_spinlock %p already held by %p(%s:%d)\n",
 		curthread, func, line, Spin, Spin->owner, Spin->func,
 		Spin->line);
-	db_print_backtrace();
+	print_backtrace();
     } else {
 	Spin->owner = curthread;
 	Spin->func = func;
@@ -397,7 +394,7 @@ AcpiOsReleaseLock (ACPI_SPINLOCK Spin, UINT32 Flags)
 	if (Spin->owner != NULL) {
 	    kprintf("%p: acpi_spinlock %p is unexectedly held by %p(%s:%d)\n",
 		    curthread, Spin, Spin->owner, Spin->func, Spin->line);
-	    db_print_backtrace();
+	    print_backtrace();
 	} else
 	    return;
     }

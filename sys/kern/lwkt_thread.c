@@ -40,7 +40,6 @@
  * to use a critical section to avoid problems.  Foreign thread 
  * scheduling is queued via (async) IPIs.
  */
-#include "opt_ddb.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -71,9 +70,6 @@
 #include <machine/stdarg.h>
 #include <machine/smp.h>
 
-#ifdef DDB
-#include <ddb/ddb.h>
-#endif
 
 static MALLOC_DEFINE(M_THREAD, "thread", "lwkt threads");
 
@@ -501,9 +497,7 @@ lwkt_switch(void)
 		td->td_flags |= TDF_PANICWARN;
 		kprintf("Warning: thread switch from interrupt or IPI, "
 			"thread %p (%s)\n", td, td->td_comm);
-#ifdef DDB
-		db_print_backtrace();
-#endif
+		print_backtrace();
 	    }
 	    lwkt_switch();
 	    gd->gd_intr_nesting_level = savegdnest;

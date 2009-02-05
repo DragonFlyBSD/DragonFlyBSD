@@ -435,7 +435,7 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 }
 
 void
-db_print_backtrace(void)
+print_backtrace(void)
 {
 	register_t  ebp;
 

@@ -96,6 +96,7 @@
 #include <machine/stdarg.h>
 
 #ifdef DDB
+#include <ddb/ddb.h>
 #ifdef DDB_UNATTENDED
 int debugger_on_panic = 0;
 #else
@@ -103,8 +104,6 @@ int debugger_on_panic = 1;
 #endif
 SYSCTL_INT(_debug, OID_AUTO, debugger_on_panic, CTLFLAG_RW,
 	&debugger_on_panic, 0, "Run debugger on kernel panic");
-
-extern void db_print_backtrace(void);
 
 #ifdef DDB_TRACE
 int trace_on_panic = 1;
@@ -794,7 +793,7 @@ panic(const char *fmt, ...)
 
 #if defined(DDB)
 	if (newpanic && trace_on_panic)
-		db_print_backtrace();
+		print_backtrace();
 	if (debugger_on_panic)
 		Debugger("panic");
 #endif

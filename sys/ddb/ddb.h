@@ -145,11 +145,6 @@ db_cmdfcn_t	vm_page_print;
 #endif
 
 /*
- * Print backtrace. (Machine-Dependant)
- */
-void		db_print_backtrace(void);
-
-/*
  * Command table.
  */
 struct command {
