@@ -190,32 +190,33 @@ upgrade:	upgrade_etc
 upgrade_etc:
 	@cd ${.CURDIR}/etc; make -m ${.CURDIR}/share/mk upgrade_etc
 
+## Remove obsolete CVS commands, we are using GIT now.
+##
+## Convenient targets for use by the CVS repository meister.
+##
+#update_preview_tag:     iamoncrater
+#	cvs -d /cvs rtag -a -F DragonFly_Preview src
 #
-# Convenient targets for use by the CVS repository meister.  
+#update_release1_2_slip_tag:     iamoncrater
+#	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_2 DragonFly_RELEASE_1_2_Slip src
 #
-update_preview_tag:     iamoncrater
-	cvs -d /cvs rtag -a -F DragonFly_Preview src
-
-update_release1_2_slip_tag:     iamoncrater
-	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_2 DragonFly_RELEASE_1_2_Slip src
-
-update_release1_4_slip_tag:     iamoncrater
-	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_4 DragonFly_RELEASE_1_4_Slip src
-
-update_release1_6_slip_tag:     iamoncrater
-	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_6 DragonFly_RELEASE_1_6_Slip src
-
-update_release1_8_slip_tag:     iamoncrater
-	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_8 DragonFly_RELEASE_1_8_Slip src
-
-update_release1_10_slip_tag:     iamoncrater
-	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_10 DragonFly_RELEASE_1_10_Slip src
-
-update_release1_12_slip_tag:     iamoncrater
-	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_12 DragonFly_RELEASE_1_12_Slip src
-
-update_release2_0_slip_tag:     iamoncrater
-	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_2_0 DragonFly_RELEASE_2_0_Slip src
+#update_release1_4_slip_tag:     iamoncrater
+#	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_4 DragonFly_RELEASE_1_4_Slip src
+#
+#update_release1_6_slip_tag:     iamoncrater
+#	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_6 DragonFly_RELEASE_1_6_Slip src
+#
+#update_release1_8_slip_tag:     iamoncrater
+#	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_8 DragonFly_RELEASE_1_8_Slip src
+#
+#update_release1_10_slip_tag:     iamoncrater
+#	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_10 DragonFly_RELEASE_1_10_Slip src
+#
+#update_release1_12_slip_tag:     iamoncrater
+#	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_1_12 DragonFly_RELEASE_1_12_Slip src
+#
+#update_release2_0_slip_tag:     iamoncrater
+#	cvs -d /cvs rtag -a -F -rDragonFly_RELEASE_2_0 DragonFly_RELEASE_2_0_Slip src
 
 iamoncrater:
 	@ [ "`hostname`" = "crater.dragonflybsd.org" ] || \
