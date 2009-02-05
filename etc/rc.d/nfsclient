@@ -63,7 +63,7 @@ unmount_all()
 	if checkyesno rpc_umntall_enable; then
 		if [ -f /var/db/mounttab ]; then
 			echo -n ' rpc.umntall'
-			rpc.umntall -k -f
+			rpc.umntall -k
 		fi
 	fi
 }
