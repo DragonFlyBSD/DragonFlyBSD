@@ -221,7 +221,7 @@ bus_dma_tag_create(bus_dma_tag_t parent, bus_size_t alignment,
 			panic("boundary must be power of 2\n");
 		if (boundary < maxsegsz) {
 			kprintf("boundary < maxsegsz:\n");
-			backtrace();
+			print_backtrace();
 			maxsegsz = boundary;
 		}
 	}
@@ -449,13 +449,13 @@ check_kmalloc(bus_dma_tag_t dmat, const void *vaddr0, int verify)
 	if ((vaddr ^ (vaddr + dmat->maxsize - 1)) & ~PAGE_MASK) {
 		kprintf("boundary check failed\n");
 		if (verify)
-			backtrace(); /* XXX panic */
+			print_backtrace(); /* XXX panic */
 		maxsize = dmat->maxsize;
 	}
 	if (vaddr & (dmat->alignment - 1)) {
 		kprintf("alignment check failed\n");
 		if (verify)
-			backtrace(); /* XXX panic */
+			print_backtrace(); /* XXX panic */
 		if (dmat->maxsize < dmat->alignment)
 			maxsize = dmat->alignment;
 		else
