@@ -514,17 +514,9 @@ route_output(struct mbuf *m, struct socket *so, ...)
 		gotoerr(EINVAL);
 
 	if (rtinfo.rti_genmask != NULL) {
-		struct radix_node *n;
-
-#define	clen(s)	(*(u_char *)(s))
-		n = rn_addmask((char *)rtinfo.rti_genmask, TRUE, 1);
-		if (n != NULL &&
-		    rtinfo.rti_genmask->sa_len >= clen(n->rn_key) &&
-		    bcmp((char *)rtinfo.rti_genmask + 1,
-		         (char *)n->rn_key + 1, clen(n->rn_key) - 1) == 0)
-			rtinfo.rti_genmask = (struct sockaddr *)n->rn_key;
-		else
-			gotoerr(ENOBUFS);
+		error = rtmask_add_global(rtinfo.rti_genmask);
+		if (error)
+			goto flush;
 	}
 
 	/*
@@ -621,7 +613,19 @@ route_output_add_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
 		rt->rt_rmx.rmx_locks &= ~(rtm->rtm_inits);
 		rt->rt_rmx.rmx_locks |=
 		    (rtm->rtm_inits & rtm->rtm_rmx.rmx_locks);
-		rt->rt_genmask = rtinfo->rti_genmask;
+		if (rtinfo->rti_genmask != NULL) {
+			rt->rt_genmask = rtmask_purelookup(rtinfo->rti_genmask);
+			if (rt->rt_genmask == NULL) {
+				/*
+				 * This should not happen, since we
+				 * have already installed genmask
+				 * on each CPU before we reach here.
+				 */
+				panic("genmask is gone!?");
+			}
+		} else {
+			rt->rt_genmask = NULL;
+		}
 		rtm->rtm_index = rt->rt_ifp->if_index;
 	}
 }
@@ -706,8 +710,17 @@ route_output_change_callback(int cmd, struct rt_addrinfo *rtinfo,
 	rt_setmetrics(rtm->rtm_inits, &rtm->rtm_rmx, &rt->rt_rmx);
 	if (rt->rt_ifa && rt->rt_ifa->ifa_rtrequest)
 		rt->rt_ifa->ifa_rtrequest(RTM_ADD, rt, rtinfo);
-	if (rtinfo->rti_genmask != NULL)
-		rt->rt_genmask = rtinfo->rti_genmask;
+	if (rtinfo->rti_genmask != NULL) {
+		rt->rt_genmask = rtmask_purelookup(rtinfo->rti_genmask);
+		if (rt->rt_genmask == NULL) {
+			/*
+			 * This should not happen, since we
+			 * have already installed genmask
+			 * on each CPU before we reach here.
+			 */
+			panic("genmask is gone!?\n");
+		}
+	}
 	rtm->rtm_index = rt->rt_ifp->if_index;
 done:
 	return error;

@@ -119,6 +119,8 @@ static void rtrequest1_msghandler(struct netmsg *netmsg);
 #endif
 static void rtsearch_msghandler(struct netmsg *netmsg);
 
+static void rtmask_add_msghandler(struct netmsg *netmsg);
+
 static int rt_setshims(struct rtentry *, struct sockaddr **);
 
 SYSCTL_NODE(_net, OID_AUTO, route, CTLFLAG_RW, 0, "Routing");
@@ -1747,6 +1749,53 @@ rtsearch_msghandler(struct netmsg *netmsg)
 		}
 		lwkt_replymsg(&msg->netmsg.nm_lmsg, error);
 	}
+}
+
+int
+rtmask_add_global(struct sockaddr *mask)
+{
+	struct netmsg nmsg;
+
+	netmsg_init(&nmsg, &curthread->td_msgport, 0,
+		    rtmask_add_msghandler);
+	nmsg.nm_lmsg.u.ms_resultp = mask;
+
+	return lwkt_domsg(rtable_portfn(0), &nmsg.nm_lmsg, 0);
+}
+
+struct sockaddr *
+_rtmask_lookup(struct sockaddr *mask, boolean_t search)
+{
+	struct radix_node *n;
+
+#define	clen(s)	(*(u_char *)(s))
+	n = rn_addmask((char *)mask, search, 1);
+	if (n != NULL &&
+	    mask->sa_len >= clen(n->rn_key) &&
+	    bcmp((char *)mask + 1,
+		 (char *)n->rn_key + 1, clen(n->rn_key) - 1) == 0) {
+		return (struct sockaddr *)n->rn_key;
+	} else {
+		return NULL;
+	}
+#undef clen
+}
+
+static void
+rtmask_add_msghandler(struct netmsg *nmsg)
+{
+	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
+	struct sockaddr *mask = lmsg->u.ms_resultp;
+	int error = 0, nextcpu;
+
+	if (rtmask_lookup(mask) == NULL)
+		error = ENOBUFS;
+
+	nextcpu = mycpuid + 1;
+	if (!error && nextcpu < ncpus)
+		lwkt_forwardmsg(rtable_portfn(nextcpu), lmsg);
+	else
+		lwkt_replymsg(lmsg, error);
 }
 
 /* This must be before ip6_init2(), which is now SI_ORDER_MIDDLE */

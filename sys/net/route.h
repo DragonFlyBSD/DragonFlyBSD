@@ -397,6 +397,22 @@ int	 rtrequest1_global (int, struct rt_addrinfo *, rtrequest1_callback_func_t, v
 int	 rtsearch_global(int, struct rt_addrinfo *,
 	    rtsearch_callback_func_t, void *, boolean_t);
 
+int	 rtmask_add_global(struct sockaddr *);
+
+struct sockaddr *_rtmask_lookup(struct sockaddr *, boolean_t);
+
+static __inline struct sockaddr *
+rtmask_lookup(struct sockaddr *_mask)
+{
+	return _rtmask_lookup(_mask, FALSE);
+}
+
+static __inline struct sockaddr *
+rtmask_purelookup(struct sockaddr *_mask)
+{
+	return _rtmask_lookup(_mask, TRUE);
+}
+
 void	rtfree_oncpu(struct rtentry *);
 void	rtfree_remote(struct rtentry *, int);
 void	rt_print(struct rt_addrinfo *, struct rtentry *);
