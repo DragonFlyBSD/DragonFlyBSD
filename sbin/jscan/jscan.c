@@ -562,7 +562,7 @@ static void
 usage(const char *av0)
 {
     fprintf(stderr, 
-	"%s [-2duF] [-D dir] [-m mirror_transid_file/none]\n"
+	"%s [-2dfuvF] [-D dir] [-m mirror_transid_file/none]\n"
 	"\t[-o/O output_transid_file/none]\n"
 	"\t[-s size[kmgt]] -w/W record_prefix] [input_file/input_prefix]\n",
 	av0);

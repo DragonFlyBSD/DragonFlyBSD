@@ -32,7 +32,7 @@
 .\" 
 .\" $DragonFly: src/sbin/diskinfo/diskinfo.8,v 1.1 2007/05/15 17:53:11 dillon Exp $
 .\"
-.Dd May 15, 2007
+.Dd February 8, 2009
 .Dt DISKINFO 8
 .Os
 .Sh NAME
@@ -40,7 +40,8 @@
 .Nd extract block IO management info for a disk, slice, or partition
 .Sh SYNOPSIS
 .Nm
-.Ar devices...
+.Op Fl qx
+.Ar device ...
 .Sh DESCRIPTION
 The
 .Nm
@@ -50,6 +51,14 @@ The block size (aka sector size), disk offset, and disk size,
 in bytes, is returned for each device.
 Offsets are relative to the base of the raw disk, not the base of
 the slice or partition.
+.Pp
+The options are as follows:
+.Bl -tag -width indent
+.It Fl q
+Quiet operation.
+.It Fl x
+Extended information.
+.El
 .Sh EXAMPLES
 .Dl "diskinfo /dev/da0*"
 .Sh SEE ALSO

@@ -69,7 +69,6 @@
  */
 
 #include "opt_param.h"
-#include "opt_ddb.h"
 #include "opt_mbuf_stress_test.h"
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -890,8 +889,6 @@ m_mclfree(void *arg)
 		objcache_put(mclmeta_cache, mcl);
 }
 
-extern void db_print_backtrace(void);
-
 /*
  * Free a single mbuf and any associated external storage.  The successor,
  * if any, is returned.
@@ -921,14 +918,12 @@ m_free(struct mbuf *m)
 	KKASSERT(m->m_nextpkt == NULL);
 #else
 	if (m->m_nextpkt != NULL) {
-#ifdef DDB
 		static int afewtimes = 10;
 
 		if (afewtimes-- > 0) {
 			kprintf("mfree: m->m_nextpkt != NULL\n");
-			db_print_backtrace();
+			print_backtrace();
 		}
-#endif
 		m->m_nextpkt = NULL;
 	}
 #endif

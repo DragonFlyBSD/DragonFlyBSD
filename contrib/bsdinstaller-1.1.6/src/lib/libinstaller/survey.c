@@ -141,7 +141,7 @@ parse_slice_info(char *line, int *slice,
 int
 survey_storage(struct i_fn_args *a)
 {
-	long mem = 0;
+	unsigned long mem = 0;
 	char disks[256], line[256];
 	char *disk, *disk_ptr;
 	struct commands *cmds;

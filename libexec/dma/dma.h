@@ -64,17 +64,6 @@
 #define DEFER		0x010		/* Defer mails */
 #define INSECURE	0x020		/* Allow plain login w/o encryption */
 
-#define	ENDOFDOTFORWARD	0x01		/* no ~/.forward for this user */
-#define	ISPIPE		0x02		/* there is a pipe line in the .forward */
-#define	ISMAILBOX	0x04		/* there is a mailbox line in the .forward */
-
-#define ENDOFMAIL	0x01		/* on deliver_local() side everythings ok */
-#define GOTOCHOP	0x02		/* there was an problem with the queue-file, reset file seek */
-
-#define SEM_DF		0		/* semaphore for exclusive dotforwardhandler communication */
-#define SEM_WL		1		/* semaphore for exclusive write_to_local_user communication */
-#define SEM_SIGHUP	2		/* semaphore for signalling that the processes can terminate */
-
 #define CONF_PATH	"/etc/dma/dma.conf"	/* Default path to dma.conf */
 
 struct stritem {
@@ -94,12 +83,11 @@ struct qitem {
 	LIST_ENTRY(qitem) next;
 	const char *sender;
 	char *addr;
-	char *pipeuser;
 	char *queuefn;
 	char *queueid;
 	FILE *queuef;
 	off_t hdrlen;
-	int local;
+	int remote;
 };
 LIST_HEAD(queueh, qitem);
 
@@ -162,7 +150,7 @@ extern int smtp_init_crypto(struct qitem *, int, int);
 /* net.c */
 extern int read_remote(int, int, char *);
 extern ssize_t send_remote_command(int, const char*, ...);
-extern int deliver_remote(struct qitem *, const char **, struct queue **);
+extern int deliver_remote(struct qitem *, const char **);
 
 /* base64.c */
 extern int base64_encode(const void *, int, char **);

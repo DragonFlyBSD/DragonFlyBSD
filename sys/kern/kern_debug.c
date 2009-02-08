@@ -80,15 +80,11 @@
 /*
  * Simple DDB stack trace funtionality.
  */
+#ifndef DDB
 void
-backtrace(void)
+print_backtrace(void)
 {
-
-#ifdef DDB
-		kprintf("Stack backtrace:\n");
-		db_print_backtrace();
-#else
 		kprintf("Cannot print stack trace.\n");
 		kprintf("DDB kernel option is needed.\n");
-#endif
 }
+#endif

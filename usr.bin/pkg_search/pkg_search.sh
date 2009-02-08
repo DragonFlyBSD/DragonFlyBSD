@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2007-08 The DragonFly Project.  All rights reserved.
+# Copyright (c) 2007-09 The DragonFly Project.  All rights reserved.
 #
 # This code is derived from software contributed to The DragonFly Project
 # by Matthias Schmidt <matthias@dragonflybsd.org>, University of Marburg.
@@ -39,13 +39,14 @@ NO_INDEX=0
 PORTSDIR=/usr/pkgsrc
 PKGSUM=${PORTSDIR}/pkg_summary
 PKGSRCBOX1=http://pkgbox.dragonflybsd.org/packages/${UNAME}-${VERSION}/stable/
-PKGSRCBOX2=http://pkgbox.dragonflybsd.org/packages/DragonFly-2.0/stable/
+PKGSRCBOX2=http://pkgbox.dragonflybsd.org/packages/DragonFly-2.2/stable/
 INDEXFILE=INDEX
 
-if [ ! -f ${PKGSUM} -a ! -e ${PORTSDIR}/${INDEXFILE} ]; then
-	echo "No pkgsrc(7) tree found.  Fetching pkg_summary(5) file."
+# Download the pkg_summary file
+download_summary()
+{
+	echo "Fetching pkg_summary(5) file."
 	FETCHPATH=${PKGSRCBOX1}/All/pkg_summary.bz2
-	mkdir -p ${PORTSDIR}
 	fetch -o ${PKGSUM}.bz2 ${FETCHPATH}
 	if [ $? -ne 0 ]; then
 		FETCHPATH=${PKGSRCBOX2}/All/pkg_summary.bz2
@@ -57,11 +58,7 @@ if [ ! -f ${PKGSUM} -a ! -e ${PORTSDIR}/${INDEXFILE} ]; then
 	fi
 	bunzip2 < ${PKGSUM}.bz2 > ${PKGSUM}
 	rm -f ${PKGSUM}.bz2
-	NO_INDEX=1
-fi
-if [ -e ${PKGSUM} -a ! -e ${PORTSDIR}/${INDEXFILE} ]; then
-	NO_INDEX=1
-fi
+}
 
 # Perform simple search in pkg_summary
 bin_simple_search()
@@ -161,18 +158,32 @@ usage()
 {
         echo "usage: `basename $0` [-kv] package"
         echo "       `basename $0` -s package"
+        echo "       `basename $0` -d"
         exit 1
 }
 
-args=`getopt ksv $*`
+if [ ! -f ${PKGSUM} -a ! -e ${PORTSDIR}/${INDEXFILE} ]; then
+	echo "No pkgsrc(7) tree found."
+	mkdir -p ${PORTSDIR}
+	download_summary
+	NO_INDEX=1
+fi
+if [ -e ${PKGSUM} -a ! -e ${PORTSDIR}/${INDEXFILE} ]; then
+	NO_INDEX=1
+fi
+
+args=`getopt dksv $*`
 
 SFLAG=0
 KFLAG=0
 VFLAG=0
+DFLAG=0
 
 set -- $args
 for i; do
 	case "$i" in
+	-d)
+		DFLAG=1; shift;;
 	-k)
 		KFLAG=1; shift;;
 	-s)
@@ -184,8 +195,13 @@ for i; do
 	esac
 done
 
-if [ -z ${1} ]; then
+if [ ${DFLAG} -eq 0 -a -z ${1} ]; then
 	usage
+fi
+
+if [ ${DFLAG} -eq 1 ]; then
+	download_summary
+	exit $?
 fi
 
 if [ ${VFLAG} -eq 0 -a ${NO_INDEX} -eq 1 ]; then

@@ -46,6 +46,7 @@
  */
 
 #include <locale.h>
+#include <paths.h>
 
 #include "shell.h"
 #include "output.h"
@@ -102,7 +103,12 @@ STATIC const struct varinit varinit[] = {
 	  NULL },
 	{ &vmpath,	VSTRFIXED|VTEXTFIXED|VUNSET,	"MAILPATH=",
 	  NULL },
-	{ &vpath,	VSTRFIXED|VTEXTFIXED,		"PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/pkg/bin:/usr/pkg/sbin",
+	{ &vpath,	VSTRFIXED|VTEXTFIXED|VEXPORT,
+#ifdef _PATH_DEFPATH
+		"PATH=" _PATH_DEFPATH,
+#else
+		"PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/pkg/bin:/usr/pkg/sbin",
+#endif
 	  changepath },
 	{ &vppid,	VSTRFIXED|VTEXTFIXED|VUNSET,	"PPID=",
 	  NULL },

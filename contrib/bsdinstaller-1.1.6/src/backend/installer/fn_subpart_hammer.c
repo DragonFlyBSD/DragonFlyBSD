@@ -233,6 +233,8 @@ default_capacity(struct storage *s, int mtpt)
 		swap = storage_get_memsize(s);
 	if (storage_get_memsize(s) > capacity)
 		swap = capacity / 2;
+	if (swap > 8192)
+		swap = 8192;
 
 	if (capacity < DISK_MIN) {
 		/*
@@ -395,6 +397,11 @@ check_subpartition_selections(struct dfui_response *r, struct i_fn_args *a)
 			    "must be a series of decimal digits ending with a "
 			    "'M' (indicating megabytes) or a 'G' (indicating "
 			    "gigabytes.)"));
+			valid = 0;
+		}
+
+		if ((strcasecmp(mountpoint, "swap") == 0) && (capacity > 8192)) {
+			inform(a->c, _("Swap capacity is limited to 8G."));
 			valid = 0;
 		}
 
