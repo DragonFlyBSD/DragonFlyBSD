@@ -77,7 +77,7 @@ void		 fn_assign_ip(struct i_fn_args *);
 void		 fn_show_dmesg(struct i_fn_args *);
 void		 fn_show_pciconf(struct i_fn_args *);
 void		 fn_show_pnpinfo(struct i_fn_args *);
-void		 fn_show_atacontrol(struct i_fn_args *);
+void		 fn_show_natacontrol(struct i_fn_args *);
 void		 fn_memtest(struct i_fn_args *);
 
 void		 view_memtest_log(struct i_fn_args *);
