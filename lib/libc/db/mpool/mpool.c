@@ -191,9 +191,8 @@ mpool_get(MPOOL *mp, pgno_t pgno, u_int flags __unused)
 	++mp->pageread;
 #endif
 	off = mp->pagesize * pgno;
-	if (lseek(mp->fd, off, SEEK_SET) != off)
-		return (NULL);
-	if ((nr = _read(mp->fd, bp->page, mp->pagesize)) != mp->pagesize) {
+	nr = pread(mp->fd, bp->page, mp->pagesize, off);
+	if (nr != mp->pagesize) {
 		if (nr >= 0)
 			errno = EFTYPE;
 		return (NULL);
@@ -357,9 +356,7 @@ mpool_write(MPOOL *mp, BKT *bp)
 		(mp->pgout)(mp->pgcookie, bp->pgno, bp->page);
 
 	off = mp->pagesize * bp->pgno;
-	if (lseek(mp->fd, off, SEEK_SET) != off)
-		return (RET_ERROR);
-	if (_write(mp->fd, bp->page, mp->pagesize) != mp->pagesize)
+	if (pwrite(mp->fd, bp->page, mp->pagesize, off) != mp->pagesize)
 		return (RET_ERROR);
 
 	bp->flags &= ~MPOOL_DIRTY;
