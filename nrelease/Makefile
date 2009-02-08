@@ -430,7 +430,7 @@ pkgsrc_cdrecord:
 help:
 	@echo "make release   - complete build from scratch"
 	@echo "make quick     - attempt to do an incremental rebuild"
-	@echo "make realquic  - attempt to restart after world & kernel"
+	@echo "make realquick - attempt to restart after world & kernel"
 	@echo ""
 	@echo "If the main build works but customizeiso fails you can restart"
 	@echo "at the customize iso step with:"
