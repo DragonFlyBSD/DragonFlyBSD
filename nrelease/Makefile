@@ -309,13 +309,23 @@ customizeiso:
 	cp /etc/shells ${ISOROOT}/usr/pkgsrc/distfiles/.test || \
 		mount_null ${ISODIR}/distfiles ${ISOROOT}/usr/pkgsrc/distfiles
 	#
-	# Bootstrap, if not already installed
+	# Bootstrap, if not already installed, and added licenses needed
+	# for the gui release
 	#
-	test -e ${ISODIR}/.didbootstrap ||	\
-	    ${CHROOT_CMD} "cd /usr/pkgsrc/bootstrap;    \
+.if !exists (${ISODIR}/.didbootstrap)
+	${CHROOT_CMD} "cd /usr/pkgsrc/bootstrap;    \
 		./bootstrap --workdir /usr/pkgobj/bootstrap/work"
+	echo ".ifdef BSD_PKG_MK	# added by nrelease" \
+		>> ${ISOROOT}/usr/pkg/etc/mk.conf
+	echo "ACCEPTABLE_LICENSES+=openmotif-license" \
+		>> ${ISOROOT}/usr/pkg/etc/mk.conf
+	echo "ACCEPTABLE_LICENSES+=vim-license" \
+		>> ${ISOROOT}/usr/pkg/etc/mk.conf
+	echo ".endif			# added by nrelease" \
+		>> ${ISOROOT}/usr/pkg/etc/mk.conf
 	sync
 	touch ${ISODIR}/.didbootstrap
+.endif
 	#
 	# Build and install packages, skip packages already installed
 	#
