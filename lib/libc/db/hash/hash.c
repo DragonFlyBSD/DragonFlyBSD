@@ -213,7 +213,7 @@ __hash_open(const char *file, int flags, int mode, const HASHINFO * info,
 
 #ifdef DEBUG
 	fprintf(stderr,
-"%s\n%s%x\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%x\n%s%x\n%s%d\n%s%d\n",
+"%s\n%s%p\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%d\n%s%x\n%s%x\n%s%d\n%s%d\n",
 	    "init_htab:",
 	    "TABLE POINTER   ", hashp,
 	    "BUCKET SIZE     ", hashp->BSIZE,

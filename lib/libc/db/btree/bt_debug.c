@@ -61,7 +61,7 @@ __bt_dump(DB *dbp)
 	fprintf(stderr, "%s: pgsz %d",
 	    F_ISSET(t, B_INMEM) ? "memory" : "disk", t->bt_psize);
 	if (F_ISSET(t, R_RECNO))
-		fprintf(stderr, " keys %lu", t->bt_nrecs);
+		fprintf(stderr, " keys %u", t->bt_nrecs);
 #undef X
 #define	X(flag, name) \
 	if (F_ISSET(t, flag)) { \
@@ -99,12 +99,12 @@ __bt_dmpage(PAGE *h)
 	char *sep;
 
 	m = (BTMETA *)h;
-	fprintf(stderr, "magic %lx\n", m->magic);
-	fprintf(stderr, "version %lu\n", m->version);
-	fprintf(stderr, "psize %lu\n", m->psize);
-	fprintf(stderr, "free %lu\n", m->free);
-	fprintf(stderr, "nrecs %lu\n", m->nrecs);
-	fprintf(stderr, "flags %lu", m->flags);
+	fprintf(stderr, "magic %x\n", m->magic);
+	fprintf(stderr, "version %u\n", m->version);
+	fprintf(stderr, "psize %u\n", m->psize);
+	fprintf(stderr, "free %u\n", m->free);
+	fprintf(stderr, "nrecs %u\n", m->nrecs);
+	fprintf(stderr, "flags %u", m->flags);
 #undef X
 #define	X(flag, name) \
 	if (m->flags & flag) { \
@@ -200,14 +200,15 @@ __bt_dpage(PAGE *h)
 			bl = GETBLEAF(h, cur);
 			if (bl->flags & P_BIGKEY)
 				fprintf(stderr,
-				    "big key page %lu size %u/",
+				    "big key page %u size %u/",
 				    *(pgno_t *)bl->bytes,
 				    *(u_int32_t *)(bl->bytes + sizeof(pgno_t)));
 			else if (bl->ksize)
-				fprintf(stderr, "%s/", bl->bytes);
+				fprintf(stderr, "%.*s/",
+				    bl->ksize, bl->bytes);
 			if (bl->flags & P_BIGDATA)
 				fprintf(stderr,
-				    "big data page %lu size %u",
+				    "big data page %u size %u",
 				    *(pgno_t *)(bl->bytes + bl->ksize),
 				    *(u_int32_t *)(bl->bytes + bl->ksize +
 				    sizeof(pgno_t)));
@@ -219,7 +220,7 @@ __bt_dpage(PAGE *h)
 			rl = GETRLEAF(h, cur);
 			if (rl->flags & P_BIGDATA)
 				fprintf(stderr,
-				    "big data page %lu size %u",
+				    "big data page %u size %u",
 				    *(pgno_t *)rl->bytes,
 				    *(u_int32_t *)(rl->bytes + sizeof(pgno_t)));
 			else if (rl->dsize)
@@ -291,13 +292,13 @@ __bt_stat(DB *dbp)
 	fprintf(stderr, "%d level%s with %ld keys",
 	    levels, levels == 1 ? "" : "s", nkeys);
 	if (F_ISSET(t, R_RECNO))
-		fprintf(stderr, " (%ld header count)", t->bt_nrecs);
+		fprintf(stderr, " (%d header count)", t->bt_nrecs);
 	fprintf(stderr,
-	    "\n%lu pages (leaf %ld, internal %ld, overflow %ld)\n",
+	    "\n%u pages (leaf %d, internal %d, overflow %d)\n",
 	    pinternal + pleaf + pcont, pleaf, pinternal, pcont);
 	fprintf(stderr, "%ld cache hits, %ld cache misses\n",
 	    bt_cache_hit, bt_cache_miss);
-	fprintf(stderr, "%ld splits (%ld root splits, %ld sort splits)\n",
+	fprintf(stderr, "%lu splits (%lu root splits, %lu sort splits)\n",
 	    bt_split, bt_rootsplit, bt_sortsplit);
 	pleaf *= t->bt_psize - BTDATAOFF;
 	if (pleaf)
