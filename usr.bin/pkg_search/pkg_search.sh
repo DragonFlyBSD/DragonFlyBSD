@@ -39,7 +39,7 @@ NO_INDEX=0
 PORTSDIR=/usr/pkgsrc
 PKGSUM=${PORTSDIR}/pkg_summary
 PKGSRCBOX1=http://pkgbox.dragonflybsd.org/packages/${UNAME}-${VERSION}/stable/
-PKGSRCBOX2=http://pkgbox.dragonflybsd.org/packages/DragonFly-2.0/stable/
+PKGSRCBOX2=http://pkgbox.dragonflybsd.org/packages/DragonFly-2.2/stable/
 INDEXFILE=INDEX
 
 if [ ! -f ${PKGSUM} -a ! -e ${PORTSDIR}/${INDEXFILE} ]; then
