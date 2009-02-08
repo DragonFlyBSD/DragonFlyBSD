@@ -9,7 +9,7 @@ OBJS=	dbtest.o strerror.o
 INC=	-I${PORTDIR}/include -I${PORTDIR}
 OORG=	-g
 #STAT=	-DSTATISTICS
-CFLAGS=	-D__DBINTERFACE_PRIVATE -DDEBUG ${STAT} ${OORG} ${INC}
+CFLAGS+=-D__DBINTERFACE_PRIVATE -DDEBUG ${STAT} ${OORG} ${INC}
 
 dbtest: ${OBJS} ${PORTDIR}/libdb.a
 	${CC} -o ${.TARGET} ${OBJS} ${PORTDIR}/libdb.a
