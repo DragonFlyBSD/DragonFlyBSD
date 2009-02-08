@@ -69,7 +69,7 @@
 static const char *pfs_mountpt[8] = {"/var", "/tmp", "/usr", "/home",
 	"/usr/obj", "/var/crash", "/var/tmp", NULL};
 
-static const int pfs_nohistory[8] = {0, 0, 0, 0, 1, 1, 1};
+static const int pfs_nohistory[8] = {0, 1, 0, 0, 1, 1, 1};
 
 static void
 handle_pfs(struct i_fn_args *a, struct commands *cmds)
