@@ -54,13 +54,19 @@ CVSUP_BOOTSTRAP_KIT?=	cvsup-bootstrap-20070716
 # which is used by gmake in completely different context.
 CHROOT_CMD?=		env -i CCVER=${CCVER:Q} /usr/sbin/chroot ${ISOROOT} sh -c
 
-# pkgsrc packages to be built and installed on the release ISO
+# User may specify extra packages in addition to the defaults
 #
-PKGSRC_PACKAGES?=	devel/scmgit \
+PKGSRC_EXTRA_PACKAGES?=
+
+# Pkgsrc packages to be built and installed on the release ISO
+#
+PKGSRC_PACKAGES?=	pkgtools/pkg_leaves \
+			pkgtools/pkg_tarup \
+			devel/scmgit \
 			net/isc-dhcp4 \
 			net/isc-dhcpd4 \
-			pkgtools/pkg_leaves \
-			sysutils/cdrtools
+			sysutils/cdrtools \
+			${PKGSRC_EXTRA_PACKAGES}
 
 # pkgsrc options to use when building packages
 #
@@ -268,21 +274,53 @@ customizeiso:
 		     periodic/monthly/Makefile
 	cp -R ${.CURDIR}/../etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
 .endfor
-	# setup some things & mount pkgsrc tree
+	#
+	# Setup some things & mount pkgsrc tree.  Use defensive umounts and
+	# rm -rf's to allow restarts.  Allow /usr/pkgsrc to be read-only.
+	#
+	# If we did not get past the bootstrap we clean out the entire
+	# /usr/pkg infrastructure.  Otherwise we attempt to pick up where
+	# we left off.
+	#
 	cp -p /etc/resolv.conf ${ISOROOT}/etc
 	${CHROOT_CMD} "ldconfig -elf /usr/lib /usr/lib/gcc* /usr/lib/compat"
+	-@umount ${ISOROOT}/usr/pkgsrc/distfiles
+	-@umount ${ISOROOT}/usr/pkgsrc
+	mkdir -p ${ISODIR}/distfiles
+	rm -rf ${ISOROOT}/usr/pkgobj
+	test -e ${ISODIR}/.didbootstrap ||	    \
+	    rm -rf ${ISOROOT}/usr/pkg ${ISOROOT}/var/db/pkg \
+		    ${ISOROOT}/var/db/pkg.refcount
+	#
+	# Mount /usr/pkgsrc, make sure /usr/pkgsrc/distfiles is writable
+	#
+	mkdir -p ${ISOROOT}/usr/pkgobj
 	mkdir -p ${ISOROOT}/usr/pkgobj/bootstrap/work
-	mkdir ${ISOROOT}/usr/pkgsrc
+	mkdir -p ${ISOROOT}/usr/pkgsrc
 	mount_null ${PKGSRC_PATH} ${ISOROOT}/usr/pkgsrc
-
-	# bootstrap
-	${CHROOT_CMD} "cd /usr/pkgsrc/bootstrap; ./bootstrap --workdir /usr/pkgobj/bootstrap/work"
-	# build and install packages
+	cp /etc/shells ${ISOROOT}/usr/pkgsrc/distfiles/.test || \
+		mount_null ${ISODIR}/distfiles ${ISOROOT}/usr/pkgsrc/distfiles
+	#
+	# Bootstrap, if not already installed
+	#
+	test -e ${ISODIR}/.didbootstrap ||	\
+	    ${CHROOT_CMD} "cd /usr/pkgsrc/bootstrap;    \
+		./bootstrap --workdir /usr/pkgobj/bootstrap/work"
+	sync
+	touch ${ISODIR}/.didbootstrap
+	#
+	# Build and install packages, skip packages already installed
+	#
 .for PKG in ${PKGSRC_PACKAGES}
-	${CHROOT_CMD} "cd /usr/pkgsrc/${PKG} && bmake WRKOBJDIR=/usr/pkgobj ${PKGSRC_OPTIONS} build install"
+	${CHROOT_CMD} "cd /usr/pkgsrc/${PKG} && \
+	    (bmake WRKOBJDIR=/usr/pkgobj check > /dev/null 2>&1 || \
+	    bmake WRKOBJDIR=/usr/pkgobj ${PKGSRC_OPTIONS} clean build install)"
 .endfor
-	# remove packages which nothing depends on
+	#
+	# Remove packages which nothing depends on and clean up
+	#
 	${CHROOT_CMD} "pkg_leaves | xargs pkg_delete -R"
+	-umount ${ISOROOT}/usr/pkgsrc/distfiles
 	umount ${ISOROOT}/usr/pkgsrc
 	rmdir ${ISOROOT}/usr/pkgsrc
 	rm -rf ${ISOROOT}/usr/pkgobj
@@ -342,15 +380,19 @@ mkimg:
 .endif
 
 clean:
+	-umount ${ISOROOT}/usr/pkgsrc/distfiles
 	-umount ${ISOROOT}/usr/pkgsrc
 	if [ -d ${ISOROOT} ]; then chflags -R noschg ${ISOROOT}; fi
 	if [ -d ${ISOROOT} ]; then rm -rf ${ISOROOT}/*; fi
 	if [ -d ${NRLOBJDIR}/nrelease ]; then rm -rf ${NRLOBJDIR}/nrelease; fi
+	rm -f ${ISODIR}/.didbootstrap
 
 realclean:	clean
 	rm -rf ${OBJSYS}/${KERNCONF}
+	#
 	# do not use PKGSRC_PKG_PATH here, we do not want to destroy an
 	# override location.
+	#
 	if [ -d ${ISODIR}/packages ]; then rm -rf ${ISODIR}/packages; fi
 
 fetch:
@@ -372,12 +414,23 @@ pkgsrc_cdrecord:
 	${PKGBIN_PKG_ADD} ${PKGSRC_PKG_PATH}/cdrtools*
 .endif
 
+help:
+	@echo "make release   - complete build from scratch"
+	@echo "make quick     - attempt to do an incremental rebuild"
+	@echo "make realquic  - attempt to restart after world & kernel"
+	@echo ""
+	@echo "If the main build works but customizeiso fails you can restart"
+	@echo "at the customize iso step with:"
+	@echo ""
+	@echo "make customizeiso mklocatedb mkiso mkimg"
+	@echo ""
+	@echo "Extra packages may be specified with PKGSRC_EXTRA_PACKAGES"
 
 .PHONY: all release installer_release quickrel installer_quickrel realquickrel
 .PHONY: installer_fetch installer
 .PHONY: quick realquick
 .PHONY: installer_realquickrel check buildworld1 buildworld2
 .PHONY: buildkernel1 buildkernel2 buildiso customizeiso mklocatedb mkiso mkimg
-.PHONY: clean realclean fetch
+.PHONY: clean realclean fetch help
 
 .include <bsd.prog.mk>
