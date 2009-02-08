@@ -5,25 +5,11 @@
 #				ENHANCEMENTS	 			#
 #########################################################################
 
-# These targets are now obsolete and should not be used 
-#
-installer_release: warning release
-installer_quickrel: warning quickrel
-installer_realquickrel: warning realquickrel
-installer_fetch: warning fetch
-
 # New method e.g. 'make gui release'.  A series of enhancement
 # targes may be specified which set make variables which enhance
 # the build in various ways.
 #
 gui installer img:
-
-warning:
-	@echo "WARNING: The installer_* targets are now obsolete, please"
-	@echo "use 'make blah' instead of 'make installer_blah'"
-	@echo ""
-	@echo "will continue in 10 seconds"
-	@sleep 10
 
 #########################################################################
 #				 SETUP		 			#
@@ -107,11 +93,12 @@ ROOTSKELS?=	${REQ_ROOTSKELS}
 .if make(gui)
 ISOFILE?=		${ISODIR}/dfly-gui.iso
 IMGFILE?=		${ISODIR}/dfly-gui.img
-PKGSRC_PACKAGES+=	meta/modular-xorg-apps \
-			meta/modular-xorg-drivers \
-			meta/modular-xorg-fonts \
-			meta/modular-xorg-libs \
+PKGSRC_PACKAGES+=	meta-pkgs/modular-xorg-apps \
+			meta-pkgs/modular-xorg-drivers \
+			meta-pkgs/modular-xorg-fonts \
+			meta-pkgs/modular-xorg-libs \
 			wm/fluxbox \
+			wm/fvwm \
 			www/firefox3 \
 			print/xpdf \
 			shells/zsh \
@@ -120,6 +107,7 @@ PKGSRC_PACKAGES+=	meta/modular-xorg-apps \
 			chat/pidgin \
 			chat/irssi \
 			chat/xchat \
+			x11/modular-xorg-server \
 			x11/rxvt-unicode \
 			x11/eterm \
 			lang/perl5 \
@@ -134,6 +122,7 @@ PKGSRC_PACKAGES+=	meta/modular-xorg-apps \
 			fonts/terminus-font \
 			net/rsync \
 			sysutils/idesk \
+			time/asclock \
 			misc/screen
 ROOTSKELS+=		${.CURDIR}/gui
 .endif
@@ -154,13 +143,16 @@ NRLOBJDIR?= /usr/obj
 #########################################################################
 
 release:	check clean buildworld1 buildkernel1 \
-		buildiso syssrcs customizeiso mklocatedb mkiso mkimg
+		buildiso syssrcs customizeiso mkaliases mklocatedb \
+		mkiso mkimg
 
 quickrel:	check clean buildworld2 buildkernel2 \
-		buildiso syssrcs customizeiso mklocatedb mkiso mkimg
+		buildiso syssrcs customizeiso mkaliases mklocatedb \
+		mkiso mkimg
 
-realquickrel:	check clean buildiso syssrcs customizeiso mklocatedb mkiso \
-		mkimg
+realquickrel:	check clean buildiso syssrcs customizeiso \
+		mkaliases mklocatedb \
+		mkiso mkimg
 
 quick:		quickrel
 
@@ -171,14 +163,30 @@ realquick:	realquickrel
 #########################################################################
 
 check:
+.if !exists(${PKGBIN_PKG_ADMIN})
+	@echo "You never bootstrapped pkgsrc on your machine.  You can install it with:"
+	@echo "    make pkgsrc_bootstrap"
+.endif
 .if !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
 	@echo "The cvsup bootstrap kit is not installed.  You can install it with:"
 	@echo "    make fetch"
-	@exit 1
+.endif
+.if !exists (${PKGBIN_MKISOFS})
+	@echo
+	@echo "Your machine does not have cdrtools installed.  You can install it with:"
+	@echo "    make pkgsrc_cdrecord"
 .endif
 .if !defined(PKGSRC_PATH)
 	@echo "Please set PKGSRC_PATH to the pkgsrc tree that shall be used for"
 	@echo "package building."
+.endif
+.if !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
+	@exit 1
+.endif
+.if !exists (${PKGBIN_MKISOFS})
+	@exit 1
+.endif
+.if !defined(PKGSRC_PATH)
 	@exit 1
 .endif
 
@@ -328,6 +336,13 @@ customizeiso:
 	makewhatis ${ISOROOT}/usr/local/man
 	makewhatis ${ISOROOT}/usr/pkg/man
 
+# So a CD boot does not complain about a missing aliases database
+#
+mkaliases:
+	${CHROOT_CMD} "newaliases"
+
+# So locate works
+#
 mklocatedb:
 	( find -s ${ISOROOT} -path ${ISOROOT}/tmp -or \
 		-path ${ISOROOT}/usr/tmp -or -path ${ISOROOT}/var/tmp \
@@ -402,16 +417,14 @@ fetch:
 .endif
 
 pkgsrc_bootstrap:
-	mkdir -p ${PKGSRC_PKG_PATH}
 .if !exists(${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
-	(cd ${PKGSRC_PKG_PATH}; fetch ${PKGSRC_BOOTSTRAP_URL}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
+	mkdir -p /usr/release/bootstrap
+	(cd ${PKGSRC_PATH}/bootstrap; ./bootstrap --workdir /usr/release/bootstrap)
 .endif
-	(cd ${PKGSRC_PKG_PATH}; tar xzpf ${PKGSRC_BOOTSTRAP_KIT}.tgz)
-	(cd ${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}/bootstrap; ./bootstrap)
 
 pkgsrc_cdrecord:
 .if !exists (${PKGBIN_MKISOFS})
-	${PKGBIN_PKG_ADD} ${PKGSRC_PKG_PATH}/cdrtools*
+	(cd ${PKGSRC_PATH}/sysutils/cdrtools; bmake clean build install)
 .endif
 
 help:
@@ -422,7 +435,7 @@ help:
 	@echo "If the main build works but customizeiso fails you can restart"
 	@echo "at the customize iso step with:"
 	@echo ""
-	@echo "make customizeiso mklocatedb mkiso mkimg"
+	@echo "make customizeiso mkaliases mklocatedb mkiso mkimg"
 	@echo ""
 	@echo "Extra packages may be specified with PKGSRC_EXTRA_PACKAGES"
 
@@ -431,6 +444,6 @@ help:
 .PHONY: quick realquick
 .PHONY: installer_realquickrel check buildworld1 buildworld2
 .PHONY: buildkernel1 buildkernel2 buildiso customizeiso mklocatedb mkiso mkimg
-.PHONY: clean realclean fetch help
+.PHONY: clean realclean fetch help mkaliases
 
 .include <bsd.prog.mk>
