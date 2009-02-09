@@ -414,7 +414,7 @@ fn_install_os(struct i_fn_args *a)
 	 */
 
 	/*
-	 * If the user has both /var and /tmp subparitions,
+	 * If the user has both /var and /tmp subpartitions,
 	 * symlink /var/tmp to /tmp.
 	 */
 	if (subpartition_find(storage_get_selected_slice(a->s), "/tmp") != NULL &&
