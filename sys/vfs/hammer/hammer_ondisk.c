@@ -736,8 +736,10 @@ hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
 				   base_offset);
 		if (buffer) {
 			error = hammer_ref_buffer(buffer);
-			if (error == 0 && buffer->io.lock.refs != 1)
+			if (error == 0 && buffer->io.lock.refs != 1) {
 				error = EAGAIN;
+				hammer_rel_buffer(buffer, 0);
+			}
 			if (error == 0) {
 				KKASSERT(buffer->zone2_offset == zone2_offset);
 				hammer_io_clear_modify(&buffer->io, 1);
@@ -752,7 +754,7 @@ hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
 		if (error) {
 			ret_error = error;
 			if (report_conflicts || (hammer_debug_general & 0x8000))
-				kprintf("hammer_del_buffers: unable to invalidate %016llx rep=%d\n", base_offset, report_conflicts);
+				kprintf("hammer_del_buffers: unable to invalidate %016llx buffer=%p rep=%d\n", base_offset, buffer, report_conflicts);
 		}
 		base_offset += HAMMER_BUFSIZE;
 		zone2_offset += HAMMER_BUFSIZE;
