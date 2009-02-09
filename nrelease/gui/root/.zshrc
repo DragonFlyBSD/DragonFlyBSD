@@ -44,13 +44,6 @@ mamma() {
 	fi
 }
 
-# autostart X
-if [ ! -f /tmp/.firstLogin ]; then 
- 	echo "Starting X..."
- 	touch /tmp/.firstLogin
-	startx
-fi
-
 zstyle ':completion:*:descriptions' format '%B%d%b'
 zstyle ':completion:*:messages' format '%d'
 zstyle ':completion:*:warnings' format 'No matches for: %d'
