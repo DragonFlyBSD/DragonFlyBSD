@@ -285,17 +285,17 @@ fn_show_pnpinfo(struct i_fn_args *a)
 }
 
 void
-fn_show_atacontrol(struct i_fn_args *a)
+fn_show_natacontrol(struct i_fn_args *a)
 {
 	struct aura_buffer *e;
 	struct dfui_form *f;
 	struct dfui_response *r;
 
 	e = aura_buffer_new(1024);
-	aura_buffer_cat_pipe(e, "atacontrol list");
+	aura_buffer_cat_pipe(e, "natacontrol list");
 
 	f = dfui_form_create(
-	    "atacontrol",
+	    "natacontrol",
 	    _("ATA Devices"),
 	    aura_buffer_buf(e),
 	    "",
