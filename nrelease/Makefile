@@ -154,9 +154,12 @@ realquickrel:	check clean buildiso syssrcs customizeiso \
 		mkaliases mklocatedb \
 		mkiso mkimg
 
+restartpkgs:	check customizeiso mkaliases mklocatedb mkiso mkimg
+
 quick:		quickrel
 
 realquick:	realquickrel
+
 
 #########################################################################
 #			   CORE SUPPORT TARGETS 			#
@@ -178,7 +181,8 @@ check:
 .endif
 .if !defined(PKGSRC_PATH)
 	@echo "Please set PKGSRC_PATH to the pkgsrc tree that shall be used for"
-	@echo "package building."
+	@echo "package building.  For example /usr/pkgsrc.  See the Makefile"
+	@echo "in /usr if you are unfamiliar with pkgsrc."
 .endif
 .if !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
 	@exit 1
@@ -263,9 +267,17 @@ syssrcs:
 	( cd ${.CURDIR}/../..; tar -cf - src/Makefile src/Makefile.inc1 src/sys | bzip2 -9 > ${ISOROOT}/usr/src-sys.tar.bz2 )
 .endif
 
+# Customize the ISO by copying rootskels in reverse priority order,
+# building packages, and doing other post-install tasks.
+#
 customizeiso:
+	# Copy the rootskels.  Allow sources to be owned by someone other
+	# then root (as is common when checked out via git).
+	#
 .for ROOTSKEL in ${ROOTSKELS}
 	cpdup -X cpignore -o ${ROOTSKEL} ${ISOROOT}
+	@test -O ${.CURDIR} || echo "chowning copied files to root:wheel"
+	@test -O ${.CURDIR} || ((cd ${ROOTSKEL} && find .) | fgrep -v cpignore | (cd ${ISOROOT} && xargs chown root:wheel))
 .endfor
 	(cd ${PKGSRC_PKG_PATH}; tar xzpf ${CVSUP_BOOTSTRAP_KIT}.tgz)
 	cp -p ${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}/usr/local/bin/cvsup ${ISOROOT}/usr/local/bin/cvsup
@@ -306,10 +318,10 @@ customizeiso:
 	mkdir -p ${ISOROOT}/usr/pkgobj/bootstrap/work
 	mkdir -p ${ISOROOT}/usr/pkgsrc
 	mount_null ${PKGSRC_PATH} ${ISOROOT}/usr/pkgsrc
-	cp /etc/shells ${ISOROOT}/usr/pkgsrc/distfiles/.test || \
-		mount_null ${ISODIR}/distfiles ${ISOROOT}/usr/pkgsrc/distfiles
+	cp /etc/shells ${ISOROOT}/usr/pkgsrc/distfiles/.test > /dev/null 2>&1 \
+	    || mount_null ${ISODIR}/distfiles ${ISOROOT}/usr/pkgsrc/distfiles
 	#
-	# Bootstrap, if not already installed, and added licenses needed
+	# Bootstrap, if not already installed, and add licenses needed
 	# for the gui release
 	#
 .if !exists (${ISODIR}/.didbootstrap)
@@ -438,14 +450,10 @@ pkgsrc_cdrecord:
 .endif
 
 help:
-	@echo "make release   - complete build from scratch"
-	@echo "make quick     - attempt to do an incremental rebuild"
-	@echo "make realquick - attempt to restart after world & kernel"
-	@echo ""
-	@echo "If the main build works but customizeiso fails you can restart"
-	@echo "at the customize iso step with:"
-	@echo ""
-	@echo "make customizeiso mkaliases mklocatedb mkiso mkimg"
+	@echo "make [gui] release   - complete build from scratch"
+	@echo "make [gui] quick     - attempt to do an incremental rebuild"
+	@echo "make [gui] realquick - attempt to restart after world & kernel"
+	@echo "make [gui] restartpkgs - attempt to restart at the pkg building stage"
 	@echo ""
 	@echo "Extra packages may be specified with PKGSRC_EXTRA_PACKAGES"
 

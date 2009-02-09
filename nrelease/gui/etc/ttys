@@ -31,7 +31,7 @@
 # when going to single-user mode.
 console	none				unknown	off secure
 #
-ttyv0	"/usr/libexec/getty al.Pc"	cons25	on  secure
+ttyv0	"/usr/libexec/getty Pc"		cons25	on  secure
 # Virtual terminals
 ttyv1	"/usr/libexec/getty Pc"		cons25	on  secure
 ttyv2	"/usr/libexec/getty Pc"		cons25	on  secure
