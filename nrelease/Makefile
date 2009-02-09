@@ -260,11 +260,22 @@ buildiso:
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
 
-# Include kernel sources on the release CD (~14MB)
+# Release CD: Kernel sources (~16M) and the full pkgsrc tree (~26M)
+# Release DVD: Full sources (~90M) and the full pkgsrctree (~27M)
 #
 syssrcs:
+	cd ${PKGSRC_PATH} && tar --exclude work --exclude CVS --exclude .git \
+		-czf ${ISOROOT}/usr/pkgsrc-all.tgz .
+.if make(gui)
+	rm -f ${ISOROOT}/usr/src-sys.tgz
+	cd ${.CURDIR}/../.. && tar --exclude .git --exclude CVS \
+		-czf ${ISOROOT}/usr/src-all.tgz src
+.else
 .if !defined(WITHOUT_SRCS)
-	( cd ${.CURDIR}/../..; tar -cf - src/Makefile src/Makefile.inc1 src/sys | bzip2 -9 > ${ISOROOT}/usr/src-sys.tar.bz2 )
+	rm -f ${ISOROOT}/usr/src-all.tgz
+	cd ${.CURDIR}/../.. && tar --exclude .git --exclude CVS \
+		-czf ${ISOROOT}/usr/src-sys.tgz src/Makefile src/Makefile.inc1 src/sys
+.endif
 .endif
 
 # Customize the ISO by copying rootskels in reverse priority order,
@@ -308,9 +319,6 @@ customizeiso:
 	-@umount ${ISOROOT}/usr/pkgsrc
 	mkdir -p ${ISODIR}/distfiles
 	rm -rf ${ISOROOT}/usr/pkgobj
-	test -e ${ISODIR}/.didbootstrap ||	    \
-	    rm -rf ${ISOROOT}/usr/pkg ${ISOROOT}/var/db/pkg \
-		    ${ISOROOT}/var/db/pkg.refcount
 	#
 	# Mount /usr/pkgsrc, make sure /usr/pkgsrc/distfiles is writable
 	#
@@ -324,20 +332,26 @@ customizeiso:
 	# Bootstrap, if not already installed, and add licenses needed
 	# for the gui release
 	#
-.if !exists (${ISODIR}/.didbootstrap)
-	${CHROOT_CMD} "cd /usr/pkgsrc/bootstrap;    \
+	test -e ${ISODIR}/.didbootstrap || \
+	    rm -rf ${ISOROOT}/usr/pkg ${ISOROOT}/var/db/pkg \
+		    ${ISOROOT}/var/db/pkg.refcount
+	test -e ${ISODIR}/.didbootstrap || \
+	    ${CHROOT_CMD} "cd /usr/pkgsrc/bootstrap;    \
 		./bootstrap --workdir /usr/pkgobj/bootstrap/work"
-	echo ".ifdef BSD_PKG_MK	# added by nrelease" \
+	test -e ${ISODIR}/.didbootstrap || \
+	    echo ".ifdef BSD_PKG_MK	# added by nrelease" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
-	echo "ACCEPTABLE_LICENSES+=openmotif-license" \
+	test -e ${ISODIR}/.didbootstrap || \
+	    echo "ACCEPTABLE_LICENSES+=openmotif-license" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
-	echo "ACCEPTABLE_LICENSES+=vim-license" \
+	test -e ${ISODIR}/.didbootstrap || \
+	    echo "ACCEPTABLE_LICENSES+=vim-license" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
-	echo ".endif			# added by nrelease" \
+	test -e ${ISODIR}/.didbootstrap || \
+	    echo ".endif			# added by nrelease" \
 		>> ${ISOROOT}/usr/pkg/etc/mk.conf
-	sync
-	touch ${ISODIR}/.didbootstrap
-.endif
+	test -e ${ISODIR}/.didbootstrap || sync
+	test -e ${ISODIR}/.didbootstrap || touch ${ISODIR}/.didbootstrap
 	#
 	# Build and install packages, skip packages already installed
 	#
@@ -417,11 +431,11 @@ mkimg:
 .endif
 
 clean:
-	-umount ${ISOROOT}/usr/pkgsrc/distfiles
-	-umount ${ISOROOT}/usr/pkgsrc
+	-umount ${ISOROOT}/usr/pkgsrc/distfiles > /dev/null 2>&1
+	-umount ${ISOROOT}/usr/pkgsrc > /dev/null 2>&1
 	if [ -d ${ISOROOT} ]; then chflags -R noschg ${ISOROOT}; fi
-	if [ -d ${ISOROOT} ]; then rm -rf ${ISOROOT}/*; fi
-	if [ -d ${NRLOBJDIR}/nrelease ]; then rm -rf ${NRLOBJDIR}/nrelease; fi
+	rm -rf ${ISOROOT}
+	rm -rf ${NRLOBJDIR}/nrelease
 	rm -f ${ISODIR}/.didbootstrap
 
 realclean:	clean
@@ -430,7 +444,8 @@ realclean:	clean
 	# do not use PKGSRC_PKG_PATH here, we do not want to destroy an
 	# override location.
 	#
-	if [ -d ${ISODIR}/packages ]; then rm -rf ${ISODIR}/packages; fi
+	rm -rf ${ISODIR}/packages
+	rm -rf ${ISODIR}/distfiles
 
 fetch:
 	@if [ ! -d ${PKGSRC_PKG_PATH} ]; then mkdir -p ${PKGSRC_PKG_PATH}; fi
