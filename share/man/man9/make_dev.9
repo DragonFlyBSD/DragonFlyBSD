@@ -25,34 +25,88 @@
 .\" $FreeBSD: src/share/man/man9/make_dev.9,v 1.2.2.3 2001/12/17 11:30:18 ru Exp $
 .\" $DragonFly: src/share/man/man9/make_dev.9,v 1.3 2006/05/26 19:39:40 swildner Exp $
 .\"
-.Dd September 25, 1999
+.Dd February 10, 2009
 .Os
 .Dt MAKE_DEV 9
 .Sh NAME
+.Nm compile_dev_ops ,
+.Nm destroy_all_devs ,
+.Nm destroy_dev ,
+.Nm dev_ops_add ,
+.Nm dev_ops_add_override ,
+.Nm dev_ops_intercept ,
+.Nm dev_ops_release ,
+.Nm dev_ops_remove ,
+.Nm dev_ops_restore ,
+.Nm dev_ops_scan ,
+.Nm get_dev ,
 .Nm make_dev ,
-.Nm destroy_dev
-.Nd "Create or destroy dev_t for a new device"
+.Nm make_adhoc_dev ,
+.Nm make_sub_dev ,
+.Nm reference_dev ,
+.Nm release_dev
+.Nd "device entry manipulation functions"
 .Sh SYNOPSIS
 .In sys/types.h
 .In sys/conf.h
-.Ft dev_t
-.Fn make_dev "struct cdevsw *cdevsw" "int minor" "uid_t uid" "gid_t gid" "int perms" "char *fmt" ...
 .Ft void
-.Fn destroy_dev "dev_t dev"
+.Fn compile_dev_ops "struct dev_ops *ops"
+.Ft void
+.Fn destroy_all_devs "struct dev_ops *ops" "u_int mask" "u_int match"
+.Ft void
+.Fn destroy_dev "cdev_t dev"
+.Ft int
+.Fn dev_ops_add "struct dev_ops *ops" "u_int mask" "u_int match"
+.Ft struct dev_ops *
+.Fo dev_ops_add_override
+.Fa "cdev_t backing_dev"
+.Fa "struct dev_ops *template"
+.Fa "u_int mask"
+.Fa "u_int match"
+.Fc
+.Ft struct dev_ops *
+.Fn dev_ops_intercept "cdev_t dev" "struct dev_ops *iops"
+.Ft void
+.Fn dev_ops_release "struct dev_ops *ops"
+.Ft int
+.Fn dev_ops_remove "struct dev_ops *ops" "u_int mask" "u_int match"
+.Ft void
+.Fn dev_ops_restore "cdev_t dev" "struct dev_ops *oops"
+.Ft int
+.Fn dev_ops_scan "int (*callback)(struct dev_ops *, void *)" "void *arg"
+.Ft cdev_t
+.Fn get_dev "int x" "int y"
+.Ft cdev_t
+.Fn make_dev "struct dev_ops *ops" "int minor" "uid_t uid" "gid_t gid" "int perms" "char *fmt" ...
+.Ft cdev_t
+.Fn make_adhoc_dev "struct dev_ops *ops" "int minor"
+.Ft cdev_t
+.Fn make_sub_dev "cdev_t odev" "int minor"
+.Ft cdev_t
+.Fn reference_dev "cdev_t dev"
+.Ft void
+.Fn release_dev "cdev_t dev"
 .Sh DESCRIPTION
 The
 .Fn make_dev
 function creates a
-.Fa dev_t
+.Vt cdev_t
 structure for a new device.
+If an entry already exists, this function will set its cred
+requirements and name.
 The device will be owned by
-.Va uid ,
+.Fa uid ,
 with the group ownership as
-.Va gid ,
-and with the name as specified in
-.Va name .
+.Fa gid .
+The name is the expansion of
+.Fa fmt
+and following arguments as
+.Xr kprintf 9
+would print it.
+The name determines its path under
+.Pa /dev .
 The permissions of the file specified in
-.Va perms
+.Fa perms
 are defined in
 .In sys/stat.h :
 .Pp
@@ -80,13 +134,190 @@ are defined in
 #endif
 .Ed
 .Pp
+.Fn dev_ops_add
+populates a
+.Vt dev_ops
+data structure, which is defined as follows:
+.Bd -literal
+struct dev_ops {
+	struct {
+		const char	*name;	/* base name, e.g. 'da' */
+		int		maj;	/* major device number */
+		u_int		flags;	/* D_XXX flags */
+		void            *data;	/* custom driver data */
+		int             refs;	/* ref count */
+	} head;
+
+#define dev_ops_first_field	d_default
+	d_default_t	*d_default;
+	d_open_t	*d_open;
+	d_close_t	*d_close;
+	d_read_t	*d_read;
+	d_write_t	*d_write;
+	d_ioctl_t	*d_ioctl;
+	d_poll_t	*d_poll;
+	d_mmap_t	*d_mmap;
+	d_strategy_t	*d_strategy;
+	d_dump_t	*d_dump;
+	d_psize_t	*d_psize;
+	d_kqfilter_t	*d_kqfilter;
+	d_clone_t	*d_clone;	/* clone from base dev_ops */
+#define dev_ops_last_field	d_clone
+};
+.Ed
+.Pp
+Every member of the
+.Fn d_xxx_t
+family is defined as:
+.Bd -literal
+typedef int d_xxx_t (struct dev_xxx_args *ap);
+.Ed
+.Pp
+Therefore, if one wants to implement a
+.Fn mydev_open
+function, this is the way:
+.Bd -literal
+d_open_t mydev_open;
+
+int
+mydev_open(struct dev_open_args *ap)
+{
+}
+.Ed
+.Pp
 The
+.Fa mask ,
+.Fa match
+supplied in this call are a full 32 bits and the same mask and match must
+be specified in a later
+.Fn dev_ops_remove
+call to match this add.
+However, the match value for the minor number should never have any bits
+set in the major number's bit range (8-15).
+The mask value may be conveniently specified as -1 without creating any
+major number interference.
+.Pp
+.Fn make_adhoc_dev
+is similar to
+.Fn make_dev
+but no cred information or name need to be specified.
+.Pp
+.Fn make_sub_dev
+is similar to
+.Fn make_dev
+except that the new device is created using
+.Fa odev
+as a template.
+.Pp
+.Fn get_dev
+takes as arguments a (major, minor) pair and returns a
+.Vt cdev_t .
+.Pp
 .Fn destroy_dev
-function takes the returned
-.Fa dev_t
+takes the returned
+.Vt cdev_t
 from
 .Fn make_dev
 and destroys the registration for that device.
+.Pp
+.Fn destroy_all_devs
+destroys all ad-hoc device associations associated with a domain within
+a device switch.
+Only the minor numbers are included in the
+.Fa mask ,
+.Fa match
+values.
+.Pp
+.Fn reference_dev
+adds a reference to
+.Fa dev .
+Callers generally add their own references when they are going to store a device
+node in a variable for long periods of time, to prevent a disassociation from
+freeing the node.
+Also note that a caller that intends to call
+.Fn destroy_dev
+must first obtain a reference on the device. The ad-hoc reference you get with
+.Fn make_dev
+and friends is
+.Em not
+sufficient to be able to call
+.Fn destroy_dev .
+.Pp
+.Fn release_dev
+releases a reference on
+.Fa dev .
+The device will be terminated when the last reference has been released.
+.Pp
+.Fn dev_ops_add_override
+takes a cookie cutter to the
+.Fa major ,
+.Fa minor
+device space for the passed device and generates a new
+.Vt dev_ops
+visible to userland which the caller can then modify.
+The original device is not modified but portions of its major/minor space will
+no longer be visible to userland.
+.Pp
+.Fn compile_dev_ops
+converts a template
+.Vt dev_ops
+into the real thing by filling in uninitialized fields.
+.Pp
+.Fn dev_ops_remove
+removes all matching
+.Vt dev_ops
+entries from the dev_ops_array[] major array so no new user opens can be
+performed, and destroys all devices installed in the hash table that are
+associated with this
+.Fa ops
+(see
+.Fn destroy_all_devs
+also).
+The
+.Fa mask
+and
+.Fa match
+should match a previous call to
+.Fn dev_ops_add* .
+.Pp
+.Fn dev_ops_release
+releases the
+.Fa ops
+entry.
+When fully implemented, if reference count reaches zero it will recurse through
+stack.
+.Pp
+.Fn dev_ops_intercept
+intercepts the device operations vector of
+.Fa dev
+with
+.Fa iops .
+The old
+.Vt dev_ops
+is returned which may be used in a subsequent
+.Fn dev_ops_restore
+call.
+The function sets the
+.Dv SI_INTERCEPTED
+flag in
+.Fa dev .
+.Pp
+.Fn dev_ops_restore
+restores the device operations vector of
+.Fa dev
+to
+.Fa oops .
+Also it unsets the
+.Dv SI_INTERCEPTED
+flag in
+.Fa dev .
+.Pp
+.Fn dev_ops_scan
+issues a callback for all installed
+.Vt dev_ops
+structures.
+The scan will terminate if a callback returns a negative number.
+If not, it will return the sum of the returned values of all callback invocations.
 .Sh HISTORY
 The
 .Fn make_dev
