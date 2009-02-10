@@ -32,6 +32,8 @@
         misc
             lpt
             ..
+            ppi
+            ..
         ..
         netif
             wi
