@@ -142,11 +142,6 @@ kernel-reinstall: kernel-installable
 .endif
 
 kernel-installable:
-.if ${P} == vkernel
-.if !defined(DESTDIR)
-	@echo "When installing a virtual kernel, DESTDIR must be manually specified"
-	@exit 1
-.endif
 	@if [ -f ${DESTDIR}/${DESTKERNNAME} ]; then \
 		echo "You need to make buildworld, installworld, and upgrade"; \
 		echo "before you can install a new kernel, because the"; \
