@@ -264,7 +264,7 @@ buildiso:
 # Release DVD: Full sources (~90M) and the full pkgsrctree (~27M)
 #
 syssrcs:
-	cd ${PKGSRC_PATH} && tar --exclude work --exclude CVS --exclude .git \
+	cd ${PKGSRC_PATH} && tar --exclude distfiles --exclude work --exclude CVS --exclude .git \
 		-czf ${ISOROOT}/usr/pkgsrc-all.tgz .
 .if make(gui)
 	rm -f ${ISOROOT}/usr/src-sys.tgz
