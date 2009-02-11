@@ -780,6 +780,9 @@ lookup(const char *path)
 
 	if (ino == -1)
 		ino = 0;
+
+	fs_off = 0;
+
 	return (ino);
 }
 
