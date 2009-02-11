@@ -411,6 +411,9 @@ config(struct vndisk *vnp)
 			printf("Unable to open file %s\n", file);
 			return(0);
 		}
+	} else if (file == NULL && vnp->size == 0 && (flags & VN_CONFIG)) {
+		warnx("specify regular filename or swap size");
+		return (0);
 	}
 
 	rdev = rawdevice(dev);
