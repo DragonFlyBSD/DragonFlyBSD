@@ -56,7 +56,7 @@ release-pkgsrc-extract:
 	cd ${.CURDIR}; \
 	mkdir -p pkgsrc; \
 	cd pkgsrc; \
-	tar xvpzf pkgsrc-all.tgz
+	tar xvpzf ${.CURDIR}/pkgsrc-all.tgz
 
 release-src-extract:
 	cd ${.CURDIR}; \
