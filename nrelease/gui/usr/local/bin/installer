@@ -80,6 +80,14 @@ installer_start()
 		pfi_frontend=none
 	fi
 
+	if [ "X$pfi_frontend" = "Xauto" ]; then
+		if [ "X$DISPLAY" = "X" ]; then
+			pfi_frontend="curses"
+		else
+			pfi_frontend="xorg"
+		fi
+	fi
+
 	case "X$pfi_frontend" in
 	Xqt)
 		$pfi_backend -r $RENDEZVOUS -t $pfi_dfui_transport

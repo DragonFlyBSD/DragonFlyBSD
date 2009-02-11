@@ -84,16 +84,6 @@
 # LIBMODE	Library mode. [${NOBINMODE}]
 #
 #
-# KMODDIR	Base path for loadable kernel modules
-#		(see kld(4)). [/boot/modules]
-#
-# KMODOWN	KLD owner. [${BINOWN}]
-#
-# KMODGRP	KLD group. [${BINGRP}]
-#
-# KMODMODE	KLD mode. [${BINMODE}]
-#
-#
 # SHAREDIR	Base path for architecture-independent ascii
 #		text files. [/usr/share]
 #
@@ -150,11 +140,6 @@ BINOWN?=	root
 BINGRP?=	wheel
 BINMODE?=	555
 NOBINMODE?=	444
-
-KMODDIR?=	/boot/modules
-KMODOWN?=	${BINOWN}
-KMODGRP?=	${BINGRP}
-KMODMODE?=	${BINMODE}
 
 LIBDIR?=	/usr/lib
 GCCLIBDIR?=	${LIBDIR}/${CCVER}
