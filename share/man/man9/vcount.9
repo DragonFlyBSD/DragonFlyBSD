@@ -29,20 +29,23 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd February 3, 2009
+.Dd February 10, 2009
 .Os
 .Dt VCOUNT 9
 .Sh NAME
 .Nm vcount ,
 .Nm count_dev
+.Nm count_udev
 .Nd "get total number of references to a device"
 .Sh SYNOPSIS
-.In sys/param.h
+.In sys/conf.h
 .In sys/vnode.h
 .Ft int
 .Fn vcount "struct vnode *vp"
 .Ft int
 .Fn count_dev "cdev_t dev"
+.Ft int
+.Fn count_udev "int x" "int y"
 .Sh DESCRIPTION
 .Fn vcount
 is used to get the number of references to a special device.
@@ -63,6 +66,11 @@ and
 vnodes since
 .Fa v_rdev
 is an overloaded field.
+.Pp
+.Fn count_udev
+does the same thing as
+.Fn count_dev ,
+but acts on a (major, minor) pair.
 .Sh RETURN VALUES
 .Fn vcount
 and

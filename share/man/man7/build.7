@@ -164,6 +164,37 @@ be built (the default is
 .It Ev KERNCONFDIR
 The directory where the kernel configuration files are kept (the default is
 .Pa /usr/src/sys/config ) .
+.It Ev DESTLABEL
+Common suffix added to kernel and modules directory names, prefixed by
+a single dot.  For example,
+.Bd -literal -offset indent
+make DESTLABEL=test installkernel
+.Ed
+.Pp
+installs them as
+.Pa /boot/kernel.test
+and
+.Pa /boot/modules.test ,
+respectively.
+.It Ev DESTKERNDIR
+Where to install the kernel and the modules (the default is
+.Pa /boot ) ,
+in the directory hierarchy specified by the environment variable
+.Ev DESTDIR .
+.It Ev DESTKERNNAME
+The name of the installed kernel file (the default is
+.Pa kernel ) ,
+under the directory specified by
+.Ev DESTKERNDIR .
+This overrides the effect of
+.Ev DESTLABEL .
+.It Ev DESTMODULESNAME
+The name of the directory to install the kernel modules (the default is
+.Pa modules ) ,
+under the directory specified by
+.Ev DESTKERNDIR .
+This overrides the effect of
+.Ev DESTLABEL .
 .El
 .Sh FILES
 .Bl -tag -width ".Pa /usr/src/share/doc/Makefile" -compact

@@ -431,7 +431,22 @@ MLINKS+=lock.9 lockcount.9 \
 	lock.9 lockmgr.9 \
 	lock.9 lockmgr_printinfo.9 \
 	lock.9 lockstatus.9
-MLINKS+=make_dev.9 destroy_dev.9
+MLINKS+=make_dev.9 compile_dev_ops.9 \
+	make_dev.9 destroy_all_devs.9 \
+	make_dev.9 destroy_dev.9 \
+	make_dev.9 dev_ops.9 \
+	make_dev.9 dev_ops_add.9 \
+	make_dev.9 dev_ops_add_override.9 \
+	make_dev.9 dev_ops_intercept.9 \
+	make_dev.9 dev_ops_release.9 \
+	make_dev.9 dev_ops_remove.9 \
+	make_dev.9 dev_ops_restore.9 \
+	make_dev.9 dev_ops_scan.9 \
+	make_dev.9 get_dev.9 \
+	make_dev.9 make_adhoc_dev.9 \
+	make_dev.9 make_sub_dev.9 \
+	make_dev.9 reference_dev.9 \
+	make_dev.9 release_dev.9
 MLINKS+=MD5.9 MD5Init.9 \
 	MD5.9 MD5Transform.9
 MLINKS+=microtime.9 getmicrotime.9 \
@@ -657,7 +672,8 @@ MLINKS+=usbdi.9 usbd_abort_default_pipe.9 \
 	usbdi.9 usbd_sync_transfer.9 \
 	usbdi.9 usbd_transfer.9 \
 	usbdi.9 usb_find_desc.9
-MLINKS+=vcount.9 count_dev.9
+MLINKS+=vcount.9 count_dev.9 \
+	vcount.9 count_udev.9
 MLINKS+=vhold.9 vdrop.9
 MLINKS+=VOP_ATTRIB.9 VOP_GETATTR.9 \
 	VOP_ATTRIB.9 VOP_SETATTR.9
