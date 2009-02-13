@@ -23,19 +23,25 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libstand/assert.c,v 1.2 1999/08/28 00:05:29 peter Exp $
+ * $FreeBSD: src/lib/libstand/assert.c,v 1.7 2001/10/29 07:07:25 mike Exp $
  * $DragonFly: src/lib/libstand/assert.c,v 1.3 2004/01/23 14:43:52 joerg Exp $
  */
 
-#include <stand.h>
 #include <assert.h>
+
+#include "stand.h"
 
 void	exit(int code);
 
 void
-__assert(const char *file, int line, const char *expression)
+__assert(const char *func, const char *file, int line, const char *expression)
 {
-	printf("assertion \"%s\" failed: file \"%s\", line %d\n", expression,
-	       file, line);
+	if (func == NULL) {
+		printf("Assertion failed: (%s), file %s, line %d.\n",
+		    expression, file, line);
+	} else {
+		printf("Assertion failed: (%s), function %s, file %s, line "
+		    "%d.\n", expression, func, file, line);
+	}
 	exit(1);
 }
