@@ -23,7 +23,7 @@
 #
 # Do also refer to the "printing" section of the handbook.  
 #
-#	http://wiki.dragonflybsd.org/index.cgi/printing.html
+#	http://www.dragonflybsd.org/docs/handbook/handbook-printing/
 #
 # Banner pages are now suppressed by default.  Remove the :sh: capability
 # to turn them back on.
