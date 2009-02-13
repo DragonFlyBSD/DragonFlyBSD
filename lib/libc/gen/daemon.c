@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -30,23 +26,34 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/gen/daemon.c,v 1.3 2000/01/27 23:06:14 jasone Exp $
- * $DragonFly: src/lib/libc/gen/daemon.c,v 1.4 2005/04/26 15:57:39 joerg Exp $
- *
  * @(#)daemon.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/gen/daemon.c,v 1.8 2007/01/09 00:27:53 imp Exp $
+ * $DragonFly: src/lib/libc/gen/daemon.c,v 1.4 2005/04/26 15:57:39 joerg Exp $
  */
 
 #include "namespace.h"
+#include <errno.h>
 #include <fcntl.h>
 #include <paths.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <unistd.h>
 #include "un-namespace.h"
 
 int
 daemon(int nochdir, int noclose)
 {
+	struct sigaction osa, sa;
 	int fd;
+	pid_t newgrp;
+	int oerrno;
+	int osa_ok;
+
+	/* A SIGHUP may be thrown when the parent exits below. */
+	sigemptyset(&sa.sa_mask);
+	sa.sa_handler = SIG_IGN;
+	sa.sa_flags = 0;
+	osa_ok = _sigaction(SIGHUP, &sa, &osa);
 
 	switch (fork()) {
 	case -1:
@@ -57,8 +64,15 @@ daemon(int nochdir, int noclose)
 		_exit(0);
 	}
 
-	if (setsid() == -1)
+	newgrp = setsid();
+	oerrno = errno;
+	if (osa_ok != -1)
+		_sigaction(SIGHUP, &osa, NULL);
+
+	if (newgrp == -1) {
+		errno = oerrno;
 		return (-1);
+	}
 
 	if (!nochdir)
 		chdir("/");
