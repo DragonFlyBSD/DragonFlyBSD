@@ -1196,7 +1196,7 @@ getservbyport(int port, const char *proto)
 }
 
 struct servent *
-getservent()
+getservent(void)
 {
 	struct key key;
 

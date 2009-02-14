@@ -288,7 +288,7 @@ vfsconf_remove(struct vfsconf *vfc)
 }
 
 int
-vfsconf_get_maxtypenum()
+vfsconf_get_maxtypenum(void)
 {
 	return vfsconf_maxtypenum;
 }
