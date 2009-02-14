@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -29,21 +25,22 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *	From: @(#)err.c	8.1 (Berkeley) 6/4/93
  *
- * $FreeBSD: src/lib/libc/gen/err.c,v 1.6 1999/08/27 23:58:33 peter Exp $
+ * @(#)err.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/gen/err.c,v 1.15 2008/04/03 20:36:44 imp Exp $
  * $DragonFly: src/lib/libc/gen/err.c,v 1.5 2006/02/12 21:14:11 dillon Exp $
  */
 
-#include <sys/cdefs.h>
+#include "namespace.h"
 #include <err.h>
 #include <errno.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "un-namespace.h"
 
-#include <stdarg.h>
-
+#include "libc_private.h"
 
 static FILE *err_file; /* file to use for error output */
 static void (*err_exit)(int);
@@ -68,8 +65,10 @@ err_set_exit(void (*ef)(int))
 	err_exit = ef;
 }
 
+__weak_reference(_err, err);
+
 void
-err(int eval, const char *fmt, ...)
+_err(int eval, const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
@@ -97,7 +96,7 @@ verrc(int eval, int code, const char *fmt, va_list ap)
 {
 	if (err_file == 0)
 		err_set_file((FILE *)0);
-	fprintf(err_file, "%s: ", getprogname());
+	fprintf(err_file, "%s: ", _getprogname());
 	if (fmt != NULL) {
 		vfprintf(err_file, fmt, ap);
 		fprintf(err_file, ": ");
@@ -122,7 +121,7 @@ verrx(int eval, const char *fmt, va_list ap)
 {
 	if (err_file == 0)
 		err_set_file((FILE *)0);
-	fprintf(err_file, "%s: ", getprogname());
+	fprintf(err_file, "%s: ", _getprogname());
 	if (fmt != NULL)
 		vfprintf(err_file, fmt, ap);
 	fprintf(err_file, "\n");
@@ -130,6 +129,8 @@ verrx(int eval, const char *fmt, va_list ap)
 		err_exit(eval);
 	exit(eval);
 }
+
+__weak_reference(_warn, warn);
 
 void
 _warn(const char *fmt, ...)
@@ -139,7 +140,6 @@ _warn(const char *fmt, ...)
 	vwarnc(errno, fmt, ap);
 	va_end(ap);
 }
-__weak_reference(_warn,warn);
 
 void
 vwarn(const char *fmt, va_list ap)
@@ -161,7 +161,7 @@ vwarnc(int code, const char *fmt, va_list ap)
 {
 	if (err_file == 0)
 		err_set_file((FILE *)0);
-	fprintf(err_file, "%s: ", getprogname());
+	fprintf(err_file, "%s: ", _getprogname());
 	if (fmt != NULL) {
 		vfprintf(err_file, fmt, ap);
 		fprintf(err_file, ": ");
@@ -183,7 +183,7 @@ vwarnx(const char *fmt, va_list ap)
 {
 	if (err_file == 0)
 		err_set_file((FILE *)0);
-	fprintf(err_file, "%s: ", getprogname());
+	fprintf(err_file, "%s: ", _getprogname());
 	if (fmt != NULL)
 		vfprintf(err_file, fmt, ap);
 	fprintf(err_file, "\n");
