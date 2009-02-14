@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -31,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)errlst.c	8.2 (Berkeley) 11/16/93
+ * $FreeBSD: src/lib/libc/gen/errlst.c,v 1.9 2007/01/09 00:27:53 imp Exp $
  * $DragonFly: src/lib/libc/gen/errlst.c,v 1.3 2005/05/03 07:29:04 joerg Exp $
  */
 
@@ -142,6 +139,15 @@ const char *const sys_errlist[] = {
 	"Value too large to be stored in data type", /* 84 - EOVERFLOW */
 	"Operation canceled",			/* 85 - ECANCELED */
 	"Illegal byte sequence",		/* 86 - EILSEQ */
+	"Attribute not found",			/* 87 - ENOATTR */
+
+/* General */
+	"Programming error",			/* 88 - EDOOFUS */
+
+	"Bad message",				/* 89 - EBADMSG */
+	"Multihop attempted",			/* 90 - EMULTIHOP */
+	"Link has been severed",		/* 91 - ENOLINK */
+	"Protocol error",			/* 92 - EPROTO */
 };
 __thread int errno;
 const int sys_nerr = sizeof(sys_errlist) / sizeof(sys_errlist[0]);
