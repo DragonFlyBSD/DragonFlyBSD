@@ -67,6 +67,7 @@ History *hist;	/* history cookie */
 EditLine *el;	/* editline cookie */
 int displayhist;
 static FILE *el_in, *el_out, *el_err;
+unsigned char _el_fn_complete(EditLine *, int);
 
 STATIC char *fc_replace(const char *, char *, char *);
 
@@ -124,6 +125,9 @@ histedit(void)
 				if (hist)
 					el_set(el, EL_HIST, history, hist);
 				el_set(el, EL_PROMPT, getprompt);
+				el_set(el, EL_ADDFN, "rl-complete",
+				    "ReadLine compatible completion function",
+				    _el_fn_complete);
 			} else {
 bad:
 				out2str("sh: can't initialize editing\n");
@@ -140,6 +144,8 @@ bad:
 				el_set(el, EL_EDITOR, "vi");
 			else if (Eflag)
 				el_set(el, EL_EDITOR, "emacs");
+			el_set(el, EL_BIND, "^I",
+			    tabcomplete ? "rl-complete" : "ed-insert", NULL);
 			el_source(el, NULL);
 		}
 	} else {

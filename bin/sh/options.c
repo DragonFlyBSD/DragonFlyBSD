@@ -97,6 +97,8 @@ procargs(int argc, char **argv)
 		iflag = 1;
 	if (mflag == 2)
 		mflag = iflag;
+	/* turn on tabcomplete in an interactive shell by default */
+	tabcomplete = iflag;
 	for (i = 0; i < NOPTS; i++)
 		if (optlist[i].val == 2)
 			optlist[i].val = 0;
