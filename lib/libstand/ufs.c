@@ -595,8 +595,8 @@ ufs_close(struct open_file *f)
 	struct file *fp = (struct file *)f->f_fsdata;
 	int level;
 
-	f->f_fsdata = (void *)0;
-	if (fp == (struct file *)0)
+	f->f_fsdata = NULL;
+	if (fp == NULL)
 		return (0);
 
 	for (level = 0; level < NIADDR; level++) {

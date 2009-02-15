@@ -909,9 +909,11 @@ hammer_close(struct open_file *f)
 {
 	struct hfile *hf = f->f_fsdata;
 
-	hclose(&hf->hfs);
 	f->f_fsdata = NULL;
-	free(hf);
+	if (hf) {
+	    hclose(&hf->hfs);
+	    free(hf);
+	}
 	return (0);
 }
 

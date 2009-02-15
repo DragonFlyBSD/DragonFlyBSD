@@ -358,6 +358,7 @@ tftp_close(struct open_file *f)
 	if (tftpfile) {
 		free(tftpfile->path);
 		free(tftpfile);
+		f->f_fsdata = NULL;
 	}
 	return (0);
 }

@@ -233,10 +233,13 @@ static int
 zf_close(struct open_file *f)
 {
     struct z_file	*zf = (struct z_file *)f->f_fsdata;
-    
-    inflateEnd(&(zf->zf_zstream));
-    close(zf->zf_rawfd);
-    free(zf);
+
+    f->f_fsdata = NULL;
+    if (zf) {
+	inflateEnd(&(zf->zf_zstream));
+	close(zf->zf_rawfd);
+	free(zf);
+    }
     return(0);
 }
  
