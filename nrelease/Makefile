@@ -38,6 +38,7 @@ CVSUP_BOOTSTRAP_KIT?=	cvsup-bootstrap-20070716
 # We use env -i in the chroot, so that environment variables won't
 # disturb any (pkgsrc) build.  This has happened for TARGET_ARCH,
 # which is used by gmake in completely different context.
+#
 CHROOT_CMD?=		env -i CCVER=${CCVER:Q} /usr/sbin/chroot ${ISOROOT} sh -c
 
 # User may specify extra packages in addition to the defaults
@@ -83,7 +84,7 @@ OLD_PKGSRC_PACKAGES?=	cdrtools-2.01.01.27nb1 \
 			isc-dhcp-server-4.0.0
 
 # Specify which root skeletons are required, and let the user include
-# their own.  They are copied into ISODIR during the `pkgcustomizeiso'
+# their own.  They are copied into ISODIR during the `customizeiso'
 # target; each overwrites the last.
 #
 REQ_ROOTSKELS=	${.CURDIR}/root \
@@ -143,14 +144,14 @@ NRLOBJDIR?= /usr/obj
 #########################################################################
 
 release:	check clean buildworld1 buildkernel1 \
-		buildiso syssrcs customizeiso mkaliases mklocatedb \
+		buildiso srcs customizeiso mkaliases mklocatedb \
 		mkiso mkimg
 
 quickrel:	check clean buildworld2 buildkernel2 \
-		buildiso syssrcs customizeiso mkaliases mklocatedb \
+		buildiso srcs customizeiso mkaliases mklocatedb \
 		mkiso mkimg
 
-realquickrel:	check clean buildiso syssrcs customizeiso \
+realquickrel:	check clean buildiso srcs customizeiso \
 		mkaliases mklocatedb \
 		mkiso mkimg
 
@@ -260,19 +261,20 @@ buildiso:
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
 
-# Release CD: Kernel sources (~16M) and the full pkgsrc tree (~26M)
-# Release DVD: Full sources (~90M) and the full pkgsrctree (~27M)
+# Release CD: Kernel sources (~16M) and the full pkgsrc tree (~27M)
+# Release DVD: Full sources (~90M) and the full pkgsrc tree (~27M)
 #
-syssrcs:
-	cd ${PKGSRC_PATH} && tar --exclude distfiles --exclude work --exclude CVS --exclude .git \
+srcs:
+.if !defined(WITHOUT_SRCS)
+	rm -f ${ISOROOT}/usr/pkgsrc-all.tgz
+	cd ${PKGSRC_PATH} && tar --exclude distfiles --exclude packages --exclude work --exclude CVS --exclude .git \
 		-czf ${ISOROOT}/usr/pkgsrc-all.tgz .
 .if make(gui)
-	rm -f ${ISOROOT}/usr/src-sys.tgz
+	rm -f ${ISOROOT}/usr/src-all.tgz
 	cd ${.CURDIR}/../.. && tar --exclude .git --exclude CVS \
 		-czf ${ISOROOT}/usr/src-all.tgz src
 .else
-.if !defined(WITHOUT_SRCS)
-	rm -f ${ISOROOT}/usr/src-all.tgz
+	rm -f ${ISOROOT}/usr/src-sys.tgz
 	cd ${.CURDIR}/../.. && tar --exclude .git --exclude CVS \
 		-czf ${ISOROOT}/usr/src-sys.tgz src/Makefile src/Makefile.inc1 src/sys
 .endif
@@ -464,7 +466,7 @@ pkgsrc_cdrecord:
 	(cd ${PKGSRC_PATH}/sysutils/cdrtools; bmake clean build install)
 .endif
 
-help:
+help all:
 	@echo "make [gui] release   - complete build from scratch"
 	@echo "make [gui] quick     - attempt to do an incremental rebuild"
 	@echo "make [gui] realquick - attempt to restart after world & kernel"
@@ -472,11 +474,11 @@ help:
 	@echo ""
 	@echo "Extra packages may be specified with PKGSRC_EXTRA_PACKAGES"
 
-.PHONY: all release installer_release quickrel installer_quickrel realquickrel
-.PHONY: installer_fetch installer
+.PHONY: release quickrel realquickrel
+.PHONY: installer
 .PHONY: quick realquick
-.PHONY: installer_realquickrel check buildworld1 buildworld2
+.PHONY: check buildworld1 buildworld2
 .PHONY: buildkernel1 buildkernel2 buildiso customizeiso mklocatedb mkiso mkimg
-.PHONY: clean realclean fetch help mkaliases
+.PHONY: clean realclean fetch help all mkaliases srcs
 
 .include <bsd.prog.mk>

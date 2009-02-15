@@ -9,13 +9,15 @@ CVSROOT_PKGSRC_WIP?=	anoncvs@anoncvs.NetBSD.se:/cvsroot
 GIT_DRAGONFLY?=		git://chlamydia.fs.ei.tum.de/dragonfly.git
 GIT_BRANCH?=		master
 
-all:
-	@echo "Install or update /usr/pkgsrc using NetBSDs anoncvs"
+help all:
+	@echo "Extract /usr/pkgsrc from pkgsrc-all.tgz"
+	@echo "    make release-pkgsrc-extract"
+	@echo "Or, install or update /usr/pkgsrc using NetBSDs anoncvs"
 	@echo "    make pkgsrc-checkout"
 	@echo "    make pkgsrc-update"
 	@echo ""
 	@echo "These targets download/update the DragonFly git repository into"
-	@echo "/usr/src."
+	@echo "/usr/src"
 	@echo "    make git-clone"
 	@echo "    make git-update"
 	@echo ""
@@ -23,8 +25,10 @@ all:
 	@echo "    make pkgsrc-wip-checkout"
 	@echo "    make pkgsrc-wip-update"
 	@echo ""
-	@echo "Extract kernel sources from src-sys.tar.bz2 in this directory."
+	@echo "Extract kernel sources from src-sys.tgz in this directory"
 	@echo "    make release-sys-extract"
+	@echo "Extract full DragonFly sources from src-all.tgz in this directory"
+	@echo "    make release-src-extract"
 	@echo ""
 	@echo "If automating please restrict updates from the NetBSD anoncvs"
 	@echo "server to no more than once a week and run gits no more often"
@@ -48,8 +52,19 @@ pkgsrc-wip-update:
 	cd ${.CURDIR}/pkgsrc; \
 	cvs -d ${CVSROOT_PKGSRC_WIP} update -Pd wip
 
+release-pkgsrc-extract:
+	cd ${.CURDIR}; \
+	mkdir -p pkgsrc; \
+	cd pkgsrc; \
+	tar xvpzf ${.CURDIR}/pkgsrc-all.tgz
+
+release-src-extract:
+	cd ${.CURDIR}; \
+	tar xvpzf src-all.tgz
+
 release-sys-extract:
-	bunzip2 < src-sys.tar.bz2 | tar xvpf -
+	cd ${.CURDIR}; \
+	tar xvpzf src-sys.tgz
 
 git-clone:
 	@if [ -z "`which git`" ]; then \
