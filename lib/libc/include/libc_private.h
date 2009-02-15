@@ -92,4 +92,7 @@ extern const char *__progname;
  */
 extern void (*__cleanup)(void);
 
+/* execve() with PATH processing to implement posix_spawnp() */
+int _execvpe(const char *, char * const *, char * const *);
+
 #endif /* _LIBC_PRIVATE_H_ */
