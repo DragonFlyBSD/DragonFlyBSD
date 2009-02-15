@@ -31,7 +31,7 @@
 .\" $FreeBSD: src/share/man/man7/release.7,v 1.3.2.6 2003/04/12 20:42:30 murray Exp $
 .\" $DragonFly: src/share/man/man7/release.7,v 1.12 2008/04/01 21:10:26 swildner Exp $
 .\"
-.Dd January 15, 2009
+.Dd February 11, 2009
 .Dt NRELEASE 7
 .Os
 .Sh NAME
@@ -59,6 +59,8 @@ The release Makefile
 defines a number of targets which are roughly modeled after the
 targets used for building the system.
 .Bl -tag -width ".Cm realquickrel"
+.It Cm help
+Offer some help.
 .It Cm release
 Builds world and kernel, installs them, adds packages and prepares the ISO
 image.
@@ -83,7 +85,7 @@ Same as
 .Cm clean
 but also removes external packages.
 .It Cm fetch
-Downloads the bootstrap kit and binary packages using
+Downloads binary packages using
 .Xr fetch 1 .
 .El
 .Pp
@@ -116,19 +118,21 @@ drive, will be created.
 .El
 .Pp
 During the process of rolling a release a check is performed to find
-out if a number of external packages to be put on the CD exist on
-your system.
+out if external packages to be put on the CD exist on your system.
 If they cannot be found, the release process will stop and give
 proper commands for downloading and setting up these packages.
 .Sh ENVIRONMENT
-.Bl -tag -width ".Va PKGBIN_PKG_DELETE"
+.Bl -tag -width ".Va PKGSRC_EXTRA_PACKAGES"
 .It Va ISODIR
 Default prefix of
 .Va ISOFILE
 and
-.Va ISOROOT .
+.Va ISOROOT
+(default is
+.Pa /usr/release ) .
 .It Va ISOFILE
-Name of the ISO image to generate.
+Name of the ISO image to generate (default is
+.Pa /usr/release/dfly.iso ) .
 .It Va ISOROOT
 Location where the image contents are installed to before the ISO is prepared.
 .It Va KERNCONF
@@ -151,14 +155,21 @@ Location of the
 utility which is to be used during the build.
 .It Va PKGSRC_PACKAGES
 List of packages to be added to the ISO.
+.It Va PKGSRC_EXTRA_PACKAGES
+List of packages, in addition to
+.Va PKGSRC_PACKAGES ,
+to be added to the ISO.
+.It Va PKGSRC_PATH
+Location of
+.Xr pkgsrc 7
+tree to be used for package building.
 .It Va PKGSRC_PKG_PATH
 Specifies the location where binary
 .Xr pkgsrc 7
 packages are kept.
 .It Va WITHOUT_SRCS
-If set, this variable will prevent kernel source code from being copied to
-.Pa /usr/src-sys.tar.bz2
-on the ISO image.
+If set, this variable will prevent source code from being copied to
+the ISO image.
 .It Va IMGFILE
 The name of the image file (default is
 .Pa /usr/release/dfly.img ) .
@@ -182,7 +193,9 @@ The disk device to use in the image's
 The following sequence of commands is used to build a standard
 .Dx 2.0
 installation CD image (assuming that a local git repository is
-available):
+available, see
+.Xr development 7
+for how to get this):
 .Bd -literal -offset indent
 cd /usr/src
 git checkout -b rel2_0 crater/DragonFly_RELEASE_2_0

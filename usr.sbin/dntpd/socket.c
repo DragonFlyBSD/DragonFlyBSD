@@ -37,7 +37,8 @@
 #include "defs.h"
 
 int
-udp_socket(const char *target, int port, struct sockaddr *sam)
+udp_socket(const char *target, int port, struct sockaddr *sam,
+	   dns_error_policy_t dns_error_policy)
 {
     struct addrinfo hints, *res, *res0;
     char servname[128];
@@ -52,7 +53,8 @@ udp_socket(const char *target, int port, struct sockaddr *sam)
     snprintf(servname, sizeof(servname), "%d", port);
     error = getaddrinfo(target, servname, &hints, &res0);
     if (error) {
-        logerr("getaddrinfo (%s) init error", target, gai_strerror(error));
+	if (dns_error_policy == LOG_DNS_ERROR)
+	    logerr("getaddrinfo (%s) init error", target, gai_strerror(error));
         return(-1);
     }
 
