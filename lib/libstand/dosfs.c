@@ -325,11 +325,16 @@ static int
 dos_close(struct open_file *fd)
 {
     DOS_FILE *f = (DOS_FILE *)fd->f_fsdata;
-    DOS_FS *fs = f->fs;
+    DOS_FS *fs;
 
-    f->fs->links--;
-    free(f);
-    dos_unmount(fs);
+    fd->f_fsdata = NULL;
+    if (f) {
+	fs = f->fs;
+	f->fs = NULL;
+	fs->links--;
+	free(f);
+	dos_unmount(fs);
+    }
     return 0;
 }
 

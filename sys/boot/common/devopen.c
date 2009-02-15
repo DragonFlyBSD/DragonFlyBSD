@@ -56,6 +56,7 @@ devclose(struct open_file *f)
 {
     if (f->f_devdata != NULL) {
 	free(f->f_devdata);
+	f->f_devdata = NULL;
     }
     return(0);
 }

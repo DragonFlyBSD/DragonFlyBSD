@@ -94,7 +94,7 @@ free(void *ptr)
 
 #ifdef USEGUARD
 	if (res->ga_Magic != GAMAGIC)
-	    panic("free: guard1 fail @ %p", ptr);
+	    panic("free: guard1x fail @ %p", ptr);
 	res->ga_Magic = -1;
 #endif
 #ifdef USEENDGUARD
@@ -143,6 +143,9 @@ realloc(void *ptr, size_t size)
     if ((res = malloc(size)) != NULL) {
 	if (ptr) {
 	    old = *(size_t *)((char *)ptr - MALLOCALIGN) - MALLOCALIGN;
+#ifdef USEENDGUARD
+	    --old;
+#endif
 	    if (old < size)
 		bcopy(ptr, res, old);
 	    else

@@ -163,7 +163,7 @@ check_header(struct z_file *zf)
 static int
 zf_open(const char *fname, struct open_file *f)
 {
-    static char		*zfname;
+    char		*zfname;
     int			rawfd;
     struct z_file	*zf;
     char		*cp;

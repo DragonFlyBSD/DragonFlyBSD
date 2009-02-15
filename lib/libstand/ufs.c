@@ -581,6 +581,7 @@ out:
 	if (path)
 		free(path);
 	if (rc) {
+		f->f_fsdata = NULL;
 		if (fp->f_buf)
 			free(fp->f_buf);
 		free(fp->f_fs);
