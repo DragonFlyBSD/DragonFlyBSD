@@ -156,9 +156,13 @@ splitfs_close(struct open_file *f)
     struct split_file *sf;
 
     sf = (struct split_file *)f->f_fsdata;
-    fd = sf->curfd;
-    split_file_destroy(sf);
-    return(close(fd));
+    f->f_fsdata = NULL;
+    if (sf) {
+	fd = sf->curfd;
+	split_file_destroy(sf);
+	return(close(fd));
+    }
+    return(0);
 }
  
 static int 

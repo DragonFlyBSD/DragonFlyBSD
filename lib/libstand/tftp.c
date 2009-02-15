@@ -354,10 +354,11 @@ tftp_close(struct open_file *f)
 	tftpfile = (struct tftp_handle *) f->f_fsdata;
 
 	/* let it time out ... */
-
+	f->f_fsdata = NULL;
 	if (tftpfile) {
 		free(tftpfile->path);
 		free(tftpfile);
+		f->f_fsdata = NULL;
 	}
 	return (0);
 }

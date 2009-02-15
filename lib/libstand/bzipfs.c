@@ -206,9 +206,12 @@ bzf_close(struct open_file *f)
 {
     struct bz_file	*bzf = (struct bz_file *)f->f_fsdata;
     
-    BZ2_bzDecompressEnd(&(bzf->bzf_bzstream));
-    close(bzf->bzf_rawfd);
-    free(bzf);
+    f->f_fsdata = NULL;
+    if (bzf) {
+	BZ2_bzDecompressEnd(&(bzf->bzf_bzstream));
+	close(bzf->bzf_rawfd);
+	free(bzf);
+    }
     return(0);
 }
  

@@ -416,6 +416,7 @@ cd9660_open(const char *path, struct open_file *f)
 	return 0;
 
 out:
+	f->f_fsdata = NULL;
 	if (fp)
 		free(fp);
 	free(buf);
@@ -428,8 +429,9 @@ cd9660_close(struct open_file *f)
 {
 	struct file *fp = (struct file *)f->f_fsdata;
 
-	f->f_fsdata = 0;
-	free(fp);
+	f->f_fsdata = NULL;
+	if (fp)
+		free(fp);
 
 	return 0;
 }
