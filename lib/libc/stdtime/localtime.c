@@ -1448,15 +1448,11 @@ gmtime_r(const time_t * timep, struct tm * tmp)
 	return gmtsub(timep, 0L, tmp);
 }
 
-#ifdef STD_INSPIRED
-
 struct tm *
 offtime(const time_t * const timep, const long offset)
 {
 	return gmtsub(timep, offset, &tm);
 }
-
-#endif /* defined STD_INSPIRED */
 
 /*
 ** Return the number of leap years through the end of the given year
@@ -1977,8 +1973,6 @@ mktime(struct tm * const tmp)
 	return(mktime_return_value);
 }
 
-#ifdef STD_INSPIRED
-
 time_t
 timelocal(struct tm * const tmp)
 {
@@ -1999,8 +1993,6 @@ timeoff(struct tm * const tmp, const long offset)
 	tmp->tm_isdst = 0;
 	return time1(tmp, gmtsub, offset);
 }
-
-#endif /* defined STD_INSPIRED */
 
 #ifdef CMUCS
 
@@ -2024,8 +2016,6 @@ gtime(struct tm * const tmp)
 /*
 ** XXX--is the below the right way to conditionalize??
 */
-
-#ifdef STD_INSPIRED
 
 /*
 ** IEEE Std 1003.1-1988 (POSIX) legislates that 536457599
@@ -2091,5 +2081,3 @@ posix2time(time_t t)
 	}
 	return x;
 }
-
-#endif /* defined STD_INSPIRED */
