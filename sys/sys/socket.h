@@ -38,6 +38,8 @@
 #ifndef _SYS_SOCKET_H_
 #define	_SYS_SOCKET_H_
 
+#include <sys/_iovec.h>
+
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
