@@ -2453,7 +2453,7 @@ sys_pathconf(struct pathconf_args *uap)
 		error = cache_vget(&nd.nl_nch, nd.nl_cred, LK_EXCLUSIVE, &vp);
 	nlookup_done(&nd);
 	if (error == 0) {
-		error = VOP_PATHCONF(vp, uap->name, uap->sysmsg_fds);
+		error = VOP_PATHCONF(vp, uap->name, &uap->sysmsg_reg);
 		vput(vp);
 	}
 	return (error);
