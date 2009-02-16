@@ -362,7 +362,7 @@ msf_uio_iterate(struct uio *uio,
 				bytes = iov->iov_len - offset;
 				if (bytes + pgoff > XIO_INTERNAL_SIZE)
 					bytes = XIO_INTERNAL_SIZE - pgoff;
-				error = msf_map_ubuf(&msf, iov->iov_base + offset, bytes, 0);
+				error = msf_map_ubuf(&msf, (char *)iov->iov_base + offset, bytes, 0);
 				if (error)
 					break;
 				error = callback(info, msf_buf_kva(msf), bytes);
