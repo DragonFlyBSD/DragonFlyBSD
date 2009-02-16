@@ -126,7 +126,6 @@
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
-#include <netinet/ip6.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 
@@ -282,6 +281,7 @@ static int	em_newbuf(struct adapter *, int, int);
 static int	em_encap(struct adapter *, struct mbuf **);
 static void	em_rxcsum(struct adapter *, struct e1000_rx_desc *,
 		    struct mbuf *);
+static int	em_txcsum_pullup(struct adapter *, struct mbuf **);
 static void	em_txcsum(struct adapter *, struct mbuf *,
 		    uint32_t *, uint32_t *);
 
@@ -912,6 +912,7 @@ em_start(struct ifnet *ifp)
 			break;
 
 		if (em_encap(adapter, &m_head)) {
+			ifp->if_oerrors++;
 			if (adapter->num_tx_desc_avail ==
 			    adapter->num_tx_desc) {
 				continue;
@@ -1476,9 +1477,24 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 	bus_dmamap_t map;
 	struct em_buffer *tx_buffer, *tx_buffer_mapped;
 	struct e1000_tx_desc *ctxd = NULL;
-	struct mbuf *m_head;
+	struct mbuf *m_head = *m_headp;
 	uint32_t txd_upper, txd_lower, txd_used;
 	int maxsegs, nsegs, i, j, first, last = 0, error;
+
+	if (__predict_false(m_head->m_len < EM_TXCSUM_MINHL) &&
+	    (m_head->m_flags & EM_CSUM_FEATURES)) {
+		/*
+		 * Make sure that ethernet header and ip.ip_hl are in
+		 * contiguous memory, since if TXCSUM is enabled, later
+		 * TX context descriptor's setup need to access ip.ip_hl.
+		 */
+		error = em_txcsum_pullup(adapter, m_headp);
+		if (error) {
+			KKASSERT(*m_headp == NULL);
+			return error;
+		}
+		m_head = *m_headp;
+	}
 
 	txd_upper = txd_lower = 0;
 	txd_used = 0;
@@ -1519,7 +1535,7 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 
 	m_head = *m_headp;
 
-	if (m_head->m_pkthdr.csum_flags & CSUM_OFFLOAD) {
+	if (m_head->m_pkthdr.csum_flags & EM_CSUM_FEATURES) {
 		/* TX csum offloading will consume one TX desc */
 		em_txcsum(adapter, m_head, &txd_upper, &txd_lower);
 	}
@@ -2498,7 +2514,7 @@ em_destroy_tx_ring(struct adapter *adapter, int ndesc)
 /*
  * The offload context needs to be set when we transfer the first
  * packet of a particular protocol (TCP/UDP).  This routine has been
- * enhanced to deal with inserted VLAN headers, and IPV6 (not complete)
+ * enhanced to deal with inserted VLAN headers.
  */
 static void
 em_txcsum(struct adapter *adapter, struct mbuf *mp,
@@ -2508,14 +2524,11 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 	struct em_buffer *tx_buffer;
 	struct ether_vlan_header *eh;
 	struct ip *ip = NULL;
-	struct ip6_hdr *ip6;
-	struct tcp_hdr *th;
 	int curr_txd, ehdrlen;
 	uint32_t cmd, hdr_len, ip_hlen;
 	uint16_t etype;
-	uint8_t ipproto;
 
-	cmd = hdr_len = ipproto = 0;
+	cmd = hdr_len = 0;
 
 	/* Setup checksum offload context. */
 	curr_txd = adapter->next_avail_tx_desc;
@@ -2537,11 +2550,15 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 	}
 
 	/*
-	 * We only support TCP/UDP for IPv4 and IPv6 for the moment.
+	 * We only support TCP/UDP for IPv4 for the moment.
 	 * TODO: Support SCTP too when it hits the tree.
 	 */
 	switch (etype) {
 	case ETHERTYPE_IP:
+		KASSERT(mp->m_len >= ehdrlen + EM_IPVHL_SIZE,
+			("em_txcsum_pullup is not called?\n"));
+
+		/* NOTE: We could only safely access ip.ip_vhl part */
 		ip = (struct ip *)(mp->m_data + ehdrlen);
 		ip_hlen = ip->ip_hl << 2;
 
@@ -2560,27 +2577,7 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 			cmd |= E1000_TXD_CMD_IP;
 			*txd_upper |= E1000_TXD_POPTS_IXSM << 8;
 		}
-
-		if (mp->m_len < ehdrlen + ip_hlen)
-			return;	/* failure */
-
 		hdr_len = ehdrlen + ip_hlen;
-		ipproto = ip->ip_p;
-
-		break;
-
-	case ETHERTYPE_IPV6:
-		ip6 = (struct ip6_hdr *)(mp->m_data + ehdrlen);
-		ip_hlen = sizeof(struct ip6_hdr); /* XXX: No header stacking. */
-
-		if (mp->m_len < ehdrlen + ip_hlen)
-			return;	/* failure */
-
-		/* IPv6 doesn't have a header checksum. */
-
-		hdr_len = ehdrlen + ip_hlen;
-		ipproto = ip6->ip6_nxt;
-
 		break;
 
 	default:
@@ -2589,41 +2586,29 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 		return;
 	}
 
-	switch (ipproto) {
-	case IPPROTO_TCP:
-		if (mp->m_pkthdr.csum_flags & CSUM_TCP) {
-			/*
-			 * Start offset for payload checksum calculation.
-			 * End offset for payload checksum calculation.
-			 * Offset of place to put the checksum.
-			 */
-			th = (struct tcp_hdr *)(mp->m_data + hdr_len);
-			TXD->upper_setup.tcp_fields.tucss = hdr_len;
-			TXD->upper_setup.tcp_fields.tucse = htole16(0);
-			TXD->upper_setup.tcp_fields.tucso =
-			    hdr_len + offsetof(struct tcphdr, th_sum);
-			cmd |= E1000_TXD_CMD_TCP;
-			*txd_upper |= E1000_TXD_POPTS_TXSM << 8;
-		}
-		break;
-
-	case IPPROTO_UDP:
-		if (mp->m_pkthdr.csum_flags & CSUM_UDP) {
-			/*
-			 * Start offset for header checksum calculation.
-			 * End offset for header checksum calculation.
-			 * Offset of place to put the checksum.
-			 */
-			TXD->upper_setup.tcp_fields.tucss = hdr_len;
-			TXD->upper_setup.tcp_fields.tucse = htole16(0);
-			TXD->upper_setup.tcp_fields.tucso =
-			    hdr_len + offsetof(struct udphdr, uh_sum);
-			*txd_upper |= E1000_TXD_POPTS_TXSM << 8;
-		}
-		break;
-
-	default:
-		break;
+	if (mp->m_pkthdr.csum_flags & CSUM_TCP) {
+		/*
+		 * Start offset for payload checksum calculation.
+		 * End offset for payload checksum calculation.
+		 * Offset of place to put the checksum.
+		 */
+		TXD->upper_setup.tcp_fields.tucss = hdr_len;
+		TXD->upper_setup.tcp_fields.tucse = htole16(0);
+		TXD->upper_setup.tcp_fields.tucso =
+		    hdr_len + offsetof(struct tcphdr, th_sum);
+		cmd |= E1000_TXD_CMD_TCP;
+		*txd_upper |= E1000_TXD_POPTS_TXSM << 8;
+	} else if (mp->m_pkthdr.csum_flags & CSUM_UDP) {
+		/*
+		 * Start offset for header checksum calculation.
+		 * End offset for header checksum calculation.
+		 * Offset of place to put the checksum.
+		 */
+		TXD->upper_setup.tcp_fields.tucss = hdr_len;
+		TXD->upper_setup.tcp_fields.tucse = htole16(0);
+		TXD->upper_setup.tcp_fields.tucso =
+		    hdr_len + offsetof(struct udphdr, uh_sum);
+		*txd_upper |= E1000_TXD_POPTS_TXSM << 8;
 	}
 
 	*txd_lower = E1000_TXD_CMD_DEXT |	/* Extended descr type */
@@ -2641,6 +2626,66 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 	adapter->num_tx_desc_avail--;
 
 	adapter->next_avail_tx_desc = curr_txd;
+}
+
+static int
+em_txcsum_pullup(struct adapter *adapter, struct mbuf **m0)
+{
+	struct mbuf *m = *m0;
+	struct ether_header *eh;
+	int len;
+
+	adapter->tx_csum_try_pullup++;
+
+	len = ETHER_HDR_LEN + EM_IPVHL_SIZE;
+
+	if (__predict_false(!M_WRITABLE(m))) {
+		if (__predict_false(m->m_len < ETHER_HDR_LEN)) {
+			adapter->tx_csum_drop1++;
+			m_freem(m);
+			*m0 = NULL;
+			return ENOBUFS;
+		}
+		eh = mtod(m, struct ether_header *);
+
+		if (eh->ether_type == htons(ETHERTYPE_VLAN))
+			len += EVL_ENCAPLEN;
+
+		if (__predict_false(m->m_len < len)) {
+			adapter->tx_csum_drop2++;
+			m_freem(m);
+			*m0 = NULL;
+			return ENOBUFS;
+		}
+		return 0;
+	}
+
+	if (__predict_false(m->m_len < ETHER_HDR_LEN)) {
+		adapter->tx_csum_pullup1++;
+		m = m_pullup(m, ETHER_HDR_LEN);
+		if (m == NULL) {
+			adapter->tx_csum_pullup1_failed++;
+			*m0 = NULL;
+			return ENOBUFS;
+		}
+		*m0 = m;
+	}
+	eh = mtod(m, struct ether_header *);
+
+	if (eh->ether_type == htons(ETHERTYPE_VLAN))
+		len += EVL_ENCAPLEN;
+
+	if (__predict_false(m->m_len < len)) {
+		adapter->tx_csum_pullup2++;
+		m = m_pullup(m, len);
+		if (m == NULL) {
+			adapter->tx_csum_pullup2_failed++;
+			*m0 = NULL;
+			return ENOBUFS;
+		}
+		*m0 = m;
+	}
+	return 0;
 }
 
 static void
@@ -3565,7 +3610,22 @@ em_print_debug_info(struct adapter *adapter)
 	device_printf(dev, "Driver dropped packets = %ld\n",
 	    adapter->dropped_pkts);
 	device_printf(dev, "Driver tx dma failure in encap = %ld\n",
-		adapter->no_tx_dma_setup);
+	    adapter->no_tx_dma_setup);
+
+	device_printf(dev, "TXCSUM try pullup = %lu\n",
+	    adapter->tx_csum_try_pullup);
+	device_printf(dev, "TXCSUM m_pullup(eh) called = %lu\n",
+	    adapter->tx_csum_pullup1);
+	device_printf(dev, "TXCSUM m_pullup(eh) failed = %lu\n",
+	    adapter->tx_csum_pullup1_failed);
+	device_printf(dev, "TXCSUM m_pullup(eh+ip) called = %lu\n",
+	    adapter->tx_csum_pullup2);
+	device_printf(dev, "TXCSUM m_pullup(eh+ip) failed = %lu\n",
+	    adapter->tx_csum_pullup2_failed);
+	device_printf(dev, "TXCSUM non-writable(eh) droped = %lu\n",
+	    adapter->tx_csum_drop1);
+	device_printf(dev, "TXCSUM non-writable(eh+ip) droped = %lu\n",
+	    adapter->tx_csum_drop2);
 }
 
 static void
