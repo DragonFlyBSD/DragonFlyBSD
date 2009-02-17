@@ -7,6 +7,5 @@ SRCS=	find.c function.c ls.c main.c misc.c operator.c option.c \
 	getdate.y
 CFLAGS+=-DHAVE_SYS_TIMEB_H -I${.CURDIR}
 YFLAGS=
-WARNS?=	4
 
 .include <bsd.prog.mk>
