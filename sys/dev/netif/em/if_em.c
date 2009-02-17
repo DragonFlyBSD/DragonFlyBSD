@@ -3257,7 +3257,22 @@ em_enable_intr(struct adapter *adapter)
 static void
 em_disable_intr(struct adapter *adapter)
 {
-	E1000_WRITE_REG(&adapter->hw, E1000_IMC, 0xffffffff);
+	uint32_t clear = 0xffffffff;
+
+	/*
+	 * The first version of 82542 had an errata where when link was forced
+	 * it would stay up even up even if the cable was disconnected.
+	 * Sequence errors were used to detect the disconnect and then the
+	 * driver would unforce the link.  This code in the in the ISR.  For
+	 * this to work correctly the Sequence error interrupt had to be
+	 * enabled all the time.
+	 */
+	if (adapter->hw.mac.type == e1000_82542 &&
+	    adapter->hw.revision_id == E1000_REVISION_2)
+		clear &= ~E1000_IMC_RXSEQ;
+
+	E1000_WRITE_REG(&adapter->hw, E1000_IMC, clear);
+
 	lwkt_serialize_handler_disable(adapter->arpcom.ac_if.if_serializer);
 }
 

@@ -858,6 +858,9 @@
 #define E1000_EIMS_TCP_TIMER    E1000_EICR_TCP_TIMER /* TCP Timer */
 #define E1000_EIMS_OTHER        E1000_EICR_OTHER   /* Interrupt Cause Active */
 
+/* Interrupt Mask Clear */
+#define E1000_IMC_RXSEQ		E1000_ICR_RXSEQ	/* rx sequence error */
+
 /* Interrupt Cause Set */
 #define E1000_ICS_TXDW      E1000_ICR_TXDW      /* Transmit desc written back */
 #define E1000_ICS_TXQE      E1000_ICR_TXQE      /* Transmit Queue empty */
