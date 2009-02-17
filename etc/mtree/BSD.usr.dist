@@ -1160,10 +1160,6 @@
         vi
             catalog
             ..
-            perl
-            ..
-            tcl
-            ..
         ..
         zoneinfo
             Africa

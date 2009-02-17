@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl
+#!/usr/pkg/bin/perl
 
 if ($#ARGV < 1) {
     die "usage master counter command comandargs ... \n";

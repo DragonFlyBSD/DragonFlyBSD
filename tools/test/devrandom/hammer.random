@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/pkg/bin/perl
 
 #
 # Test program for /dev/random

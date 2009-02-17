@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/pkg/bin/perl
 # 
 # Copyright (C) 1997
 # 	Peter Dufault, Joerg Wunsch.  All rights reserved.
