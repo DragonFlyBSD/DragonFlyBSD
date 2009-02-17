@@ -2,6 +2,5 @@
 # $DragonFly: src/usr.bin/truncate/Makefile,v 1.5 2008/11/03 00:25:45 pavalos Exp $
 
 PROG=		truncate
-WARNS?=	4
 
 .include <bsd.prog.mk>
