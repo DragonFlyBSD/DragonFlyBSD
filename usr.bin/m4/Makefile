@@ -7,7 +7,6 @@
 
 PROG=	m4
 CFLAGS+=-DEXTENDED
-WARNS?=	6
 
 SRCS=	eval.c expr.c look.c main.c misc.c gnum4.c trace.c
 
