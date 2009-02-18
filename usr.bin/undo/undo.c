@@ -206,6 +206,7 @@ doiterate(const char *orig_filename, const char *outFileName,
 	char *path = NULL;
 	int tid_num = 0;
 	int i;
+	int j;
 	int fd;
 
 	tid_max.tid = HAMMER_MAX_TID;
@@ -226,23 +227,22 @@ doiterate(const char *orig_filename, const char *outFileName,
 		output_history(NULL, fd, NULL, &tid_ary, &tid_num);
 		close(fd);
 
-		for (i = 0; i < tid_num; ++i) {
-			if (i && tid_ary[i].tid == tid_ary[i-1].tid)
+		i = 0;
+		for (j = 1; j < tid_num; ++j) {
+			if (tid_ary[i].tid == tid_ary[j].tid)
 				continue;
-
-			if (i == tid_num - 1) {
-				dogenerate(orig_filename,
-					   outFileName, outFilePostfix,
-					   mult, i, type,
-					   tid_ary[i], tid_max, 0);
-			} else {
-				dogenerate(orig_filename,
-					   outFileName, outFilePostfix,
-					   mult, i, type,
-					   tid_ary[i], tid_ary[i+1], 0);
-			}
+			dogenerate(orig_filename,
+				   outFileName, outFilePostfix,
+				   mult, i, type,
+				   tid_ary[i], tid_ary[j], 0);
+			i = j;
 		}
-
+		if (tid_num && tid_ary) {
+			dogenerate(orig_filename,
+				   outFileName, outFilePostfix,
+				   mult, i, type,
+				   tid_ary[tid_num - 1], tid_max, 0);
+		}
 	} else {
 		printf("%s: ITERATE ENTIRE HISTORY: %s\n",
 			orig_filename, strerror(errno));
@@ -290,7 +290,7 @@ dogenerate(const char *filename, const char *outFileName,
 			fprintf(stderr, "Cannot locate src/historical "
 					"idx=%d %s@@0x%016llx,\n"
 					"the file may have been renamed "
-					"in the past.\n",
+					"or deleted at this point.\n",
 				idx, filename, ts1.tid);
 			goto done;
 		}
@@ -303,7 +303,7 @@ dogenerate(const char *filename, const char *outFileName,
 	if (ts2.tid == 0) {
 		asprintf(&ipath2, "%s", filename);
 	} else {
-		asprintf(&ipath2, "%s@@0x%015llx", filename, ts2.tid);
+		asprintf(&ipath2, "%s@@0x%016llx", filename, ts2.tid);
 	}
 	if (lstat(ipath2, &st) < 0) {
 		if (VerboseOpt) {
