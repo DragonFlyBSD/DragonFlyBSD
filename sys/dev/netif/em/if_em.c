@@ -1998,6 +1998,11 @@ em_stop(struct adapter *adapter)
 			rx_buffer->m_head = NULL;
 		}
 	}
+
+	if (adapter->fmp != NULL)
+		m_freem(adapter->fmp);
+	adapter->fmp = NULL;
+	adapter->lmp = NULL;
 }
 
 static int
