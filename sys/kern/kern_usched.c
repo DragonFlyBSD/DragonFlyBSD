@@ -162,8 +162,8 @@ sys_usched_set(struct usched_set_args *uap)
 	cpumask_t mask;
 	struct lwp *lp;
 	int cpuid;
-
-	if ((error = priv_check(curthread, PRIV_ROOT)) != 0)
+	/* USCHED_GET_CPU doesn't require root privileges. */
+	if (uap->cmd != USCHED_GET_CPU && (error = priv_check(curthread, PRIV_ROOT)) != 0)
 		return (error);
 
 	if (uap->pid != 0 && uap->pid != curthread->td_proc->p_pid)
@@ -216,6 +216,11 @@ sys_usched_set(struct usched_set_args *uap)
 		lp->lwp_cpumask = 1 << cpuid;
 		if (cpuid != mycpu->gd_cpuid)
 			lwkt_migratecpu(cpuid);
+		break;
+	case USCHED_GET_CPU:
+		if (uap->bytes != sizeof(int))
+			return (EINVAL);
+		error = copyout(&(mycpu->gd_cpuid), uap->data, sizeof(int));
 		break;
 	case USCHED_ADD_CPU:
 		if (uap->bytes != sizeof(int))
