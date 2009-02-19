@@ -345,7 +345,7 @@ MLINKS+=hash.9 hashinit.9 \
 	hash.9 phashinit.9
 MLINKS+=ioctl.9 _IOR.9 \
 	ioctl.9 _IOW.9 \
-	ioctl.9 _IOWR.9
+	ioctl.9 _IOWR.9 \
 	ioctl.9 _IO.9
 MLINKS+=ieee80211.9 ieee80211_chan2ieee.9 \
 	ieee80211.9 ieee80211_chan2mode.9 \
