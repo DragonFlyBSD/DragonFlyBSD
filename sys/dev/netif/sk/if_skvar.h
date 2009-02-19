@@ -106,6 +106,8 @@ struct sk_jpool_entry {
 #define SK_NTXSEG      30
 
 struct sk_chain_data {
+	bus_dma_tag_t		sk_buf_dtag;
+
 	struct mbuf		*sk_tx_mbuf[SK_TX_RING_CNT];
 	bus_dma_tag_t		sk_tx_dtag;
 	bus_dmamap_t		sk_tx_dmap[SK_TX_RING_CNT];
@@ -130,15 +132,18 @@ struct sk_chain_data {
 };
 
 struct sk_ring_data {
-	struct sk_tx_desc	sk_tx_ring[SK_TX_RING_CNT];
-	struct sk_rx_desc	sk_rx_ring[SK_RX_RING_CNT];
+	bus_dma_tag_t		sk_ring_dtag;
+
+	bus_dma_tag_t		sk_tx_ring_dtag;
+	bus_dmamap_t		sk_tx_ring_dmap;
+	bus_addr_t		sk_tx_ring_paddr;
+	struct sk_tx_desc	*sk_tx_ring;
+
+	bus_dma_tag_t		sk_rx_ring_dtag;
+	bus_dmamap_t		sk_rx_ring_dmap;
+	bus_addr_t		sk_rx_ring_paddr;
+	struct sk_rx_desc	*sk_rx_ring;
 };
-
-#define SK_TX_RING_ADDR(sc, i)	\
-    ((sc)->sk_rdata_paddr + offsetof(struct sk_ring_data, sk_tx_ring[(i)]))
-
-#define SK_RX_RING_ADDR(sc, i)	\
-    ((sc)->sk_rdata_paddr + offsetof(struct sk_ring_data, sk_rx_ring[(i)]))
 
 struct sk_bcom_hack {
 	int			reg;
@@ -195,19 +200,19 @@ struct sk_if_softc {
 	int			sk_link;
 	struct callout		sk_tick_timer;
 	struct sk_chain_data	sk_cdata;
-	struct sk_ring_data	*sk_rdata;
-	bus_dma_tag_t		sk_rdata_dtag;
-	bus_dmamap_t		sk_rdata_dmap;
-	bus_addr_t		sk_rdata_paddr;
+	struct sk_ring_data	sk_rdata;
+	bus_dma_tag_t		sk_parent_dtag;
 	struct sk_softc		*sk_softc;	/* parent controller */
 	int			sk_tx_bmu;	/* TX BMU register */
 	int			sk_if_flags;
 	int			sk_use_jumbo;
 };
 
-struct sk_dma_ctx {
-	int			nsegs;
-	bus_dma_segment_t	*segs;
-};
+#define SK_NDESC_RESERVE	2
+#define SK_NDESC_SPARE		5
+
+#define SK_IS_OACTIVE(sc_if) \
+	((sc_if)->sk_cdata.sk_tx_cnt + SK_NDESC_RESERVE + SK_NDESC_SPARE > \
+	 SK_TX_RING_CNT)
 
 #endif /* !_IF_SKVAR_H_ */

@@ -4,8 +4,6 @@
 #
 # $DragonFly: src/usr.bin/make/tests/common.sh,v 1.8 2005/03/02 10:55:37 okumoto Exp $
 
-IDTAG='$'DragonFly'$'
-
 #
 # Output usage messsage.
 #
@@ -23,9 +21,6 @@ print_usage()
 
 #
 # Check if the test result is the same as the expected result.
-# First remove the RCS Id tag, check for differences in the files.
-# We need this function because the CVS repository will not allow
-# us to check in a file without a DragonFly RCS Id tag.
 #
 # $1	Input file
 #
@@ -36,10 +31,7 @@ hack_cmp()
 	RESULT=$WORK_BASE/$1
 
 	if [ -f $EXPECTED ]; then
-		cat $EXPECTED |\
-			sed -e '1d' |\
-			diff -q - $RESULT \
-			1> /dev/null 2> /dev/null
+		diff -q $EXPECTED $RESULT 1> /dev/null 2> /dev/null
 		return $?
 	else
 		return 1	# FAIL
@@ -48,9 +40,6 @@ hack_cmp()
 
 #
 # Check if the test result is the same as the expected result.
-# First remove the RCS Id tag, print the differences in the files.
-# We need this function because the CVS repository will not allow
-# us to check in a file without a DragonFly RCS Id tag.
 #
 # $1	Input file
 #
@@ -62,9 +51,7 @@ hack_diff()
 
 	echo diff $EXPECTED $RESULT
 	if [ -f $EXPECTED ]; then
-		cat $EXPECTED |\
-			sed -e '1d' |\
-			diff - $RESULT
+		diff $EXPECTED $RESULT
 		return $?
 	else
 		return 1	# FAIL
@@ -204,35 +191,9 @@ eval_cmd()
 			;;
 		update)
 			sh $0 test
-			#
-			# Preserve the RCS id tag at top of file.
-			# Create initial tag if the file didn't
-			# exist.
-			#
-			if [ -f "."$SRC_BASE/expected.stdout ]; then
-				head -n 1 "."$SRC_BASE/expected.stdout
-			else
-				echo $IDTAG
-			fi > $WORK_BASE/expected.stdout
-
-			if [ -f "."$SRC_BASE/expected.stderr ]; then
-				head -n 1 "."$SRC_BASE/expected.stderr
-			else
-				echo $IDTAG
-			fi > $WORK_BASE/expected.stderr
-
-			if [ -f "."$SRC_BASE/expected.status ]; then
-				head -n 1 "."$SRC_BASE/expected.status
-			else
-				echo $IDTAG
-			fi > $WORK_BASE/expected.status
-
-			cat $WORK_BASE/stdout >> $WORK_BASE/expected.stdout
-			cat $WORK_BASE/stderr >> $WORK_BASE/expected.stderr
-			cat $WORK_BASE/status >> $WORK_BASE/expected.status
-			mv $WORK_BASE/expected.stdout "."$SRC_BASE/expected.stdout
-			mv $WORK_BASE/expected.stderr "."$SRC_BASE/expected.stderr
-			mv $WORK_BASE/expected.status "."$SRC_BASE/expected.status
+			cp $WORK_BASE/stdout "."$SRC_BASE/expected.stdout
+			cp $WORK_BASE/stderr "."$SRC_BASE/expected.stderr
+			cp $WORK_BASE/status "."$SRC_BASE/expected.status
 			;;
 		*)
 			print_usage

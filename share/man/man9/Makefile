@@ -88,6 +88,7 @@ MAN=	accept_filter.9 \
 	ifnet.9 \
 	inittodr.9 \
 	intro.9 \
+	ioctl.9 \
 	KASSERT.9 \
 	kenv.9 \
 	kernacc.9 \
@@ -134,6 +135,7 @@ MAN=	accept_filter.9 \
 	tvtohz.9 \
 	uio.9 \
 	usbdi.9 \
+	vcount.9 \
 	vflush.9 \
 	VFS.9 \
 	VFS_CHECKEXP.9 \
@@ -341,6 +343,10 @@ MLINKS+=firmware.9 firmware_image_load.9 \
 	firmware.9 firmware_image_unload.9
 MLINKS+=hash.9 hashinit.9 \
 	hash.9 phashinit.9
+MLINKS+=ioctl.9 _IOR.9 \
+	ioctl.9 _IOW.9 \
+	ioctl.9 _IOWR.9 \
+	ioctl.9 _IO.9
 MLINKS+=ieee80211.9 ieee80211_chan2ieee.9 \
 	ieee80211.9 ieee80211_chan2mode.9 \
 	ieee80211.9 ieee80211_ieee2mhz.9 \
@@ -430,7 +436,22 @@ MLINKS+=lock.9 lockcount.9 \
 	lock.9 lockmgr.9 \
 	lock.9 lockmgr_printinfo.9 \
 	lock.9 lockstatus.9
-MLINKS+=make_dev.9 destroy_dev.9
+MLINKS+=make_dev.9 compile_dev_ops.9 \
+	make_dev.9 destroy_all_devs.9 \
+	make_dev.9 destroy_dev.9 \
+	make_dev.9 dev_ops.9 \
+	make_dev.9 dev_ops_add.9 \
+	make_dev.9 dev_ops_add_override.9 \
+	make_dev.9 dev_ops_intercept.9 \
+	make_dev.9 dev_ops_release.9 \
+	make_dev.9 dev_ops_remove.9 \
+	make_dev.9 dev_ops_restore.9 \
+	make_dev.9 dev_ops_scan.9 \
+	make_dev.9 get_dev.9 \
+	make_dev.9 make_adhoc_dev.9 \
+	make_dev.9 make_sub_dev.9 \
+	make_dev.9 reference_dev.9 \
+	make_dev.9 release_dev.9
 MLINKS+=MD5.9 MD5Init.9 \
 	MD5.9 MD5Transform.9
 MLINKS+=microtime.9 getmicrotime.9 \
@@ -656,6 +677,8 @@ MLINKS+=usbdi.9 usbd_abort_default_pipe.9 \
 	usbdi.9 usbd_sync_transfer.9 \
 	usbdi.9 usbd_transfer.9 \
 	usbdi.9 usb_find_desc.9
+MLINKS+=vcount.9 count_dev.9 \
+	vcount.9 count_udev.9
 MLINKS+=vhold.9 vdrop.9
 MLINKS+=VOP_ATTRIB.9 VOP_GETATTR.9 \
 	VOP_ATTRIB.9 VOP_SETATTR.9

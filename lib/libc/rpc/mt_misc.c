@@ -1,7 +1,6 @@
 /* @(#)mt_misc.c	1.24	93/04/29 SMI */
 /* $NetBSD: mt_misc.c,v 1.1 2000/06/02 23:11:11 fvdl Exp $ */
 /* $FreeBSD: src/lib/libc/rpc/mt_misc.c,v 1.7 2006/02/27 22:10:59 deischen Exp $ */
-/* $DragonFly$ */
 
 #include "namespace.h"
 #include "reentrant.h"

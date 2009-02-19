@@ -780,6 +780,9 @@ lookup(const char *path)
 
 	if (ino == -1)
 		ino = 0;
+
+	fs_off = 0;
+
 	return (ino);
 }
 
@@ -815,20 +818,22 @@ hinit(struct hfs *hfs)
 	hfs->lru = 0;
 
 	hammer_volume_ondisk_t volhead = hread(hfs, HAMMER_ZONE_ENCODE(1, 0));
-	if (volhead == NULL)
-		return (-1);
 
 #ifdef TESTING
-	printf("signature: %svalid\n",
-	       volhead->vol_signature != HAMMER_FSBUF_VOLUME ?
-			"in" :
-			"");
-	printf("name: %s\n", volhead->vol_name);
+	if (volhead) {
+		printf("signature: %svalid\n",
+		       volhead->vol_signature != HAMMER_FSBUF_VOLUME ?
+				"in" :
+				"");
+		printf("name: %s\n", volhead->vol_name);
+	}
 #endif
 
-	if (volhead->vol_signature != HAMMER_FSBUF_VOLUME) {
-		for (int i = 0; i < NUMCACHE; i++)
+	if (volhead == NULL || volhead->vol_signature != HAMMER_FSBUF_VOLUME) {
+		for (int i = 0; i < NUMCACHE; i++) {
 			free(hfs->cache[i].data);
+			hfs->cache[i].data = NULL;
+		}
 		errno = ENODEV;
 		return (-1);
 	}
@@ -845,8 +850,12 @@ hclose(struct hfs *hfs)
 #if DEBUG
 	printf("hclose\n");
 #endif
-	for (int i = 0; i < NUMCACHE; i++)
-		free(hfs->cache[i].data);
+	for (int i = 0; i < NUMCACHE; i++) {
+		if (hfs->cache[i].data) {
+			free(hfs->cache[i].data);
+			hfs->cache[i].data = NULL;
+		}
+	}
 }
 #endif
 
@@ -861,14 +870,15 @@ static int
 hammer_open(const char *path, struct open_file *f)
 {
 	struct hfile *hf = malloc(sizeof(*hf));
-	bzero(hf, sizeof(*hf));
 
+	bzero(hf, sizeof(*hf));
 	f->f_fsdata = hf;
 	hf->hfs.f = f;
 	f->f_offset = 0;
 
 	int rv = hinit(&hf->hfs);
 	if (rv) {
+		f->f_fsdata = NULL;
 		free(hf);
 		return (rv);
 	}
@@ -896,6 +906,7 @@ fail:
 #if DEBUG
 	printf("hammer_open fail\n");
 #endif
+	f->f_fsdata = NULL;
 	hclose(&hf->hfs);
 	free(hf);
 	return (ENOENT);
@@ -906,9 +917,11 @@ hammer_close(struct open_file *f)
 {
 	struct hfile *hf = f->f_fsdata;
 
-	hclose(&hf->hfs);
 	f->f_fsdata = NULL;
-	free(hf);
+	if (hf) {
+	    hclose(&hf->hfs);
+	    free(hf);
+	}
 	return (0);
 }
 

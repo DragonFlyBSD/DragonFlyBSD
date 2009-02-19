@@ -30,7 +30,6 @@
  *	from: @(#)rpcent.h 1.1 88/12/06 SMI
  * $NetBSD: rpcent.h,v 1.1 2000/06/02 22:57:56 fvdl Exp $
  * $FreeBSD: src/include/rpc/rpcent.h,v 1.4 2006/04/29 04:26:16 ume Exp $
- * $DragonFly$
  */
 /*
  * Copyright (c) 1986 - 1991 by Sun Microsystems, Inc.

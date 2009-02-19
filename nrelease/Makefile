@@ -5,25 +5,11 @@
 #				ENHANCEMENTS	 			#
 #########################################################################
 
-# These targets are now obsolete and should not be used 
-#
-installer_release: warning release
-installer_quickrel: warning quickrel
-installer_realquickrel: warning realquickrel
-installer_fetch: warning fetch
-
 # New method e.g. 'make gui release'.  A series of enhancement
 # targes may be specified which set make variables which enhance
 # the build in various ways.
 #
 gui installer img:
-
-warning:
-	@echo "WARNING: The installer_* targets are now obsolete, please"
-	@echo "use 'make blah' instead of 'make installer_blah'"
-	@echo ""
-	@echo "will continue in 10 seconds"
-	@sleep 10
 
 #########################################################################
 #				 SETUP		 			#
@@ -46,15 +32,28 @@ PKGBIN_PKG_ADMIN?=	${PKGSRC_PREFIX}/sbin/pkg_admin
 PKGBIN_MKISOFS?=	${PKGSRC_PREFIX}/bin/mkisofs
 PKGSRC_PKG_PATH?=	${ISODIR}/packages
 PKGSRC_DB?=		/var/db/pkg
+PKGSRC_BOOTSTRAP_URL?=	http://pkgbox.dragonflybsd.org/DragonFly-pkgsrc-packages/i386/1.12.0-RELEASE-BUILD
 CVSUP_BOOTSTRAP_KIT?=	cvsup-bootstrap-20070716
 
-# pkgsrc packages to be built and installed on the release ISO
+# We use env -i in the chroot, so that environment variables won't
+# disturb any (pkgsrc) build.  This has happened for TARGET_ARCH,
+# which is used by gmake in completely different context.
 #
-PKGSRC_PACKAGES?=	devel/scmgit \
+CHROOT_CMD?=		env -i CCVER=${CCVER:Q} /usr/sbin/chroot ${ISOROOT} sh -c
+
+# User may specify extra packages in addition to the defaults
+#
+PKGSRC_EXTRA_PACKAGES?=
+
+# Pkgsrc packages to be built and installed on the release ISO
+#
+PKGSRC_PACKAGES?=	pkgtools/pkg_leaves \
+			pkgtools/pkg_tarup \
+			devel/scmgit \
 			net/isc-dhcp4 \
 			net/isc-dhcpd4 \
-			pkgtools/pkg_leaves \
-			sysutils/cdrtools
+			sysutils/cdrtools \
+			${PKGSRC_EXTRA_PACKAGES}
 
 # pkgsrc options to use when building packages
 #
@@ -85,7 +84,7 @@ OLD_PKGSRC_PACKAGES?=	cdrtools-2.01.01.27nb1 \
 			isc-dhcp-server-4.0.0
 
 # Specify which root skeletons are required, and let the user include
-# their own.  They are copied into ISODIR during the `pkgcustomizeiso'
+# their own.  They are copied into ISODIR during the `customizeiso'
 # target; each overwrites the last.
 #
 REQ_ROOTSKELS=	${.CURDIR}/root \
@@ -95,11 +94,12 @@ ROOTSKELS?=	${REQ_ROOTSKELS}
 .if make(gui)
 ISOFILE?=		${ISODIR}/dfly-gui.iso
 IMGFILE?=		${ISODIR}/dfly-gui.img
-PKGSRC_PACKAGES+=	meta/modular-xorg-apps \
-			meta/modular-xorg-drivers \
-			meta/modular-xorg-fonts \
-			meta/modular-xorg-libs \
+PKGSRC_PACKAGES+=	meta-pkgs/modular-xorg-apps \
+			meta-pkgs/modular-xorg-drivers \
+			meta-pkgs/modular-xorg-fonts \
+			meta-pkgs/modular-xorg-libs \
 			wm/fluxbox \
+			wm/fvwm \
 			www/firefox3 \
 			print/xpdf \
 			shells/zsh \
@@ -108,6 +108,7 @@ PKGSRC_PACKAGES+=	meta/modular-xorg-apps \
 			chat/pidgin \
 			chat/irssi \
 			chat/xchat \
+			x11/modular-xorg-server \
 			x11/rxvt-unicode \
 			x11/eterm \
 			lang/perl5 \
@@ -122,6 +123,7 @@ PKGSRC_PACKAGES+=	meta/modular-xorg-apps \
 			fonts/terminus-font \
 			net/rsync \
 			sysutils/idesk \
+			time/asclock \
 			misc/screen
 ROOTSKELS+=		${.CURDIR}/gui
 .endif
@@ -142,31 +144,54 @@ NRLOBJDIR?= /usr/obj
 #########################################################################
 
 release:	check clean buildworld1 buildkernel1 \
-		buildiso syssrcs customizeiso mklocatedb mkiso mkimg
+		buildiso srcs customizeiso mkaliases mklocatedb \
+		mkiso mkimg
 
 quickrel:	check clean buildworld2 buildkernel2 \
-		buildiso syssrcs customizeiso mklocatedb mkiso mkimg
+		buildiso srcs customizeiso mkaliases mklocatedb \
+		mkiso mkimg
 
-realquickrel:	check clean buildiso syssrcs customizeiso mklocatedb mkiso \
-		mkimg
+realquickrel:	check clean buildiso srcs customizeiso \
+		mkaliases mklocatedb \
+		mkiso mkimg
+
+restartpkgs:	check customizeiso mkaliases mklocatedb mkiso mkimg
 
 quick:		quickrel
 
 realquick:	realquickrel
+
 
 #########################################################################
 #			   CORE SUPPORT TARGETS 			#
 #########################################################################
 
 check:
+.if !exists(${PKGBIN_PKG_ADMIN})
+	@echo "You never bootstrapped pkgsrc on your machine.  You can install it with:"
+	@echo "    make pkgsrc_bootstrap"
+.endif
 .if !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
 	@echo "The cvsup bootstrap kit is not installed.  You can install it with:"
 	@echo "    make fetch"
-	@exit 1
+.endif
+.if !exists (${PKGBIN_MKISOFS})
+	@echo
+	@echo "Your machine does not have cdrtools installed.  You can install it with:"
+	@echo "    make pkgsrc_cdrecord"
 .endif
 .if !defined(PKGSRC_PATH)
 	@echo "Please set PKGSRC_PATH to the pkgsrc tree that shall be used for"
-	@echo "package building."
+	@echo "package building.  For example /usr/pkgsrc.  See the Makefile"
+	@echo "in /usr if you are unfamiliar with pkgsrc."
+.endif
+.if !exists(${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}.tgz)
+	@exit 1
+.endif
+.if !exists (${PKGBIN_MKISOFS})
+	@exit 1
+.endif
+.if !defined(PKGSRC_PATH)
 	@exit 1
 .endif
 
@@ -231,21 +256,41 @@ buildiso:
 		first=done; \
 	done
 .endif
-	ln -s kernel ${ISOROOT}/kernel.BOOTP
+	ln -s kernel ${ISOROOT}/boot/kernel.BOOTP
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.local.dist -p ${ISOROOT}/usr/local/
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
 
-# Include kernel sources on the release CD (~14MB)
+# Release CD: Kernel sources (~16M) and the full pkgsrc tree (~27M)
+# Release DVD: Full sources (~90M) and the full pkgsrc tree (~27M)
 #
-syssrcs:
+srcs:
 .if !defined(WITHOUT_SRCS)
-	( cd ${.CURDIR}/../..; tar -cf - src/Makefile src/Makefile.inc1 src/sys | bzip2 -9 > ${ISOROOT}/usr/src-sys.tar.bz2 )
+	rm -f ${ISOROOT}/usr/pkgsrc-all.tgz
+	cd ${PKGSRC_PATH} && tar --exclude distfiles --exclude packages --exclude work --exclude CVS --exclude .git \
+		-czf ${ISOROOT}/usr/pkgsrc-all.tgz .
+.if make(gui)
+	rm -f ${ISOROOT}/usr/src-all.tgz
+	cd ${.CURDIR}/../.. && tar --exclude .git --exclude CVS \
+		-czf ${ISOROOT}/usr/src-all.tgz src
+.else
+	rm -f ${ISOROOT}/usr/src-sys.tgz
+	cd ${.CURDIR}/../.. && tar --exclude .git --exclude CVS \
+		-czf ${ISOROOT}/usr/src-sys.tgz src/Makefile src/Makefile.inc1 src/sys
+.endif
 .endif
 
+# Customize the ISO by copying rootskels in reverse priority order,
+# building packages, and doing other post-install tasks.
+#
 customizeiso:
+	# Copy the rootskels.  Allow sources to be owned by someone other
+	# then root (as is common when checked out via git).
+	#
 .for ROOTSKEL in ${ROOTSKELS}
 	cpdup -X cpignore -o ${ROOTSKEL} ${ISOROOT}
+	@test -O ${.CURDIR} || echo "chowning copied files to root:wheel"
+	@test -O ${.CURDIR} || ((cd ${ROOTSKEL} && find .) | fgrep -v cpignore | (cd ${ISOROOT} && xargs chown root:wheel))
 .endfor
 	(cd ${PKGSRC_PKG_PATH}; tar xzpf ${CVSUP_BOOTSTRAP_KIT}.tgz)
 	cp -p ${PKGSRC_PKG_PATH}/${CVSUP_BOOTSTRAP_KIT}/usr/local/bin/cvsup ${ISOROOT}/usr/local/bin/cvsup
@@ -262,26 +307,80 @@ customizeiso:
 		     periodic/monthly/Makefile
 	cp -R ${.CURDIR}/../etc/${UPGRADE_ITEM} ${ISOROOT}/etc/${UPGRADE_ITEM}
 .endfor
-	# setup some things
+	#
+	# Setup some things & mount pkgsrc tree.  Use defensive umounts and
+	# rm -rf's to allow restarts.  Allow /usr/pkgsrc to be read-only.
+	#
+	# If we did not get past the bootstrap we clean out the entire
+	# /usr/pkg infrastructure.  Otherwise we attempt to pick up where
+	# we left off.
+	#
 	cp -p /etc/resolv.conf ${ISOROOT}/etc
-	chroot ${ISOROOT} sh -c "ldconfig -elf /usr/lib /usr/lib/gcc* /usr/lib/compat"
-	# mount pkgsrc tree
-	mkdir ${ISOROOT}/usr/pkgsrc
+	${CHROOT_CMD} "ldconfig -elf /usr/lib /usr/lib/gcc* /usr/lib/compat"
+	-@umount ${ISOROOT}/usr/pkgsrc/distfiles
+	-@umount ${ISOROOT}/usr/pkgsrc
+	mkdir -p ${ISODIR}/distfiles
+	rm -rf ${ISOROOT}/usr/pkgobj
+	#
+	# Mount /usr/pkgsrc, make sure /usr/pkgsrc/distfiles is writable
+	#
+	mkdir -p ${ISOROOT}/usr/pkgobj
+	mkdir -p ${ISOROOT}/usr/pkgobj/bootstrap/work
+	mkdir -p ${ISOROOT}/usr/pkgsrc
 	mount_null ${PKGSRC_PATH} ${ISOROOT}/usr/pkgsrc
-	# bootstrap
-	chroot ${ISOROOT} sh -c "cd /usr/pkgsrc/bootstrap; ./bootstrap; ./cleanup"
-	# build and install packages
+	cp /etc/shells ${ISOROOT}/usr/pkgsrc/distfiles/.test > /dev/null 2>&1 \
+	    || mount_null ${ISODIR}/distfiles ${ISOROOT}/usr/pkgsrc/distfiles
+	#
+	# Bootstrap, if not already installed, and add licenses needed
+	# for the gui release
+	#
+	test -e ${ISODIR}/.didbootstrap || \
+	    rm -rf ${ISOROOT}/usr/pkg ${ISOROOT}/var/db/pkg \
+		    ${ISOROOT}/var/db/pkg.refcount
+	test -e ${ISODIR}/.didbootstrap || \
+	    ${CHROOT_CMD} "cd /usr/pkgsrc/bootstrap;    \
+		./bootstrap --workdir /usr/pkgobj/bootstrap/work"
+	test -e ${ISODIR}/.didbootstrap || \
+	    echo ".ifdef BSD_PKG_MK	# added by nrelease" \
+		>> ${ISOROOT}/usr/pkg/etc/mk.conf
+	test -e ${ISODIR}/.didbootstrap || \
+	    echo "ACCEPTABLE_LICENSES+=openmotif-license" \
+		>> ${ISOROOT}/usr/pkg/etc/mk.conf
+	test -e ${ISODIR}/.didbootstrap || \
+	    echo "ACCEPTABLE_LICENSES+=vim-license" \
+		>> ${ISOROOT}/usr/pkg/etc/mk.conf
+	test -e ${ISODIR}/.didbootstrap || \
+	    echo ".endif			# added by nrelease" \
+		>> ${ISOROOT}/usr/pkg/etc/mk.conf
+	test -e ${ISODIR}/.didbootstrap || sync
+	test -e ${ISODIR}/.didbootstrap || touch ${ISODIR}/.didbootstrap
+	#
+	# Build and install packages, skip packages already installed
+	#
 .for PKG in ${PKGSRC_PACKAGES}
-	chroot ${ISOROOT} sh -c "cd /usr/pkgsrc; cd ${PKG}; bmake ${PKGSRC_OPTIONS} build install clean clean-depends"
+	${CHROOT_CMD} "cd /usr/pkgsrc/${PKG} && \
+	    (bmake WRKOBJDIR=/usr/pkgobj check > /dev/null 2>&1 || \
+	    bmake WRKOBJDIR=/usr/pkgobj ${PKGSRC_OPTIONS} clean build install)"
 .endfor
-	# remove packages which nothing depends on
-	chroot ${ISOROOT} sh -c "pkg_leaves | xargs pkg_delete -R"
+	#
+	# Remove packages which nothing depends on and clean up
+	#
+	${CHROOT_CMD} "pkg_leaves | xargs pkg_delete -R"
+	-umount ${ISOROOT}/usr/pkgsrc/distfiles
 	umount ${ISOROOT}/usr/pkgsrc
 	rmdir ${ISOROOT}/usr/pkgsrc
+	rm -rf ${ISOROOT}/usr/pkgobj
 	rm -f ${ISOROOT}/etc/resolv.conf
 	makewhatis ${ISOROOT}/usr/local/man
 	makewhatis ${ISOROOT}/usr/pkg/man
 
+# So a CD boot does not complain about a missing aliases database
+#
+mkaliases:
+	${CHROOT_CMD} "newaliases"
+
+# So locate works
+#
 mklocatedb:
 	( find -s ${ISOROOT} -path ${ISOROOT}/tmp -or \
 		-path ${ISOROOT}/usr/tmp -or -path ${ISOROOT}/var/tmp \
@@ -291,7 +390,8 @@ mklocatedb:
 
 mkiso:
 	( cd ${ISOROOT}; ${PKGBIN_MKISOFS} -b boot/cdboot -no-emul-boot \
-		-R -J -V DragonFly -o ${ISOFILE} . )
+		-R -J -o ${ISOFILE} \
+		-V DragonFly-`${.CURDIR}/../tools/gitrev.sh | cut -c -22` . )
 
 
 mkimg:
@@ -333,16 +433,21 @@ mkimg:
 .endif
 
 clean:
-	-umount ${ISOROOT}/usr/pkgsrc
+	-umount ${ISOROOT}/usr/pkgsrc/distfiles > /dev/null 2>&1
+	-umount ${ISOROOT}/usr/pkgsrc > /dev/null 2>&1
 	if [ -d ${ISOROOT} ]; then chflags -R noschg ${ISOROOT}; fi
-	if [ -d ${ISOROOT} ]; then rm -rf ${ISOROOT}/*; fi
-	if [ -d ${NRLOBJDIR}/nrelease ]; then rm -rf ${NRLOBJDIR}/nrelease; fi
+	rm -rf ${ISOROOT}
+	rm -rf ${NRLOBJDIR}/nrelease
+	rm -f ${ISODIR}/.didbootstrap
 
 realclean:	clean
 	rm -rf ${OBJSYS}/${KERNCONF}
+	#
 	# do not use PKGSRC_PKG_PATH here, we do not want to destroy an
 	# override location.
-	if [ -d ${ISODIR}/packages ]; then rm -rf ${ISODIR}/packages; fi
+	#
+	rm -rf ${ISODIR}/packages
+	rm -rf ${ISODIR}/distfiles
 
 fetch:
 	@if [ ! -d ${PKGSRC_PKG_PATH} ]; then mkdir -p ${PKGSRC_PKG_PATH}; fi
@@ -351,24 +456,29 @@ fetch:
 .endif
 
 pkgsrc_bootstrap:
-	mkdir -p ${PKGSRC_PKG_PATH}
 .if !exists(${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
-	(cd ${PKGSRC_PKG_PATH}; fetch ${PKGSRC_BOOTSTRAP_URL}/${PKGSRC_BOOTSTRAP_KIT}.tgz)
+	mkdir -p /usr/release/bootstrap
+	(cd ${PKGSRC_PATH}/bootstrap; ./bootstrap --workdir /usr/release/bootstrap)
 .endif
-	(cd ${PKGSRC_PKG_PATH}; tar xzpf ${PKGSRC_BOOTSTRAP_KIT}.tgz)
-	(cd ${PKGSRC_PKG_PATH}/${PKGSRC_BOOTSTRAP_KIT}/bootstrap; ./bootstrap)
 
 pkgsrc_cdrecord:
 .if !exists (${PKGBIN_MKISOFS})
-	${PKGBIN_PKG_ADD} ${PKGSRC_PKG_PATH}/cdrtools*
+	(cd ${PKGSRC_PATH}/sysutils/cdrtools; bmake clean build install)
 .endif
 
+help all:
+	@echo "make [gui] release   - complete build from scratch"
+	@echo "make [gui] quick     - attempt to do an incremental rebuild"
+	@echo "make [gui] realquick - attempt to restart after world & kernel"
+	@echo "make [gui] restartpkgs - attempt to restart at the pkg building stage"
+	@echo ""
+	@echo "Extra packages may be specified with PKGSRC_EXTRA_PACKAGES"
 
-.PHONY: all release installer_release quickrel installer_quickrel realquickrel
-.PHONY: installer_fetch installer
+.PHONY: release quickrel realquickrel
+.PHONY: installer
 .PHONY: quick realquick
-.PHONY: installer_realquickrel check buildworld1 buildworld2
+.PHONY: check buildworld1 buildworld2
 .PHONY: buildkernel1 buildkernel2 buildiso customizeiso mklocatedb mkiso mkimg
-.PHONY: clean realclean fetch
+.PHONY: clean realclean fetch help all mkaliases srcs
 
 .include <bsd.prog.mk>

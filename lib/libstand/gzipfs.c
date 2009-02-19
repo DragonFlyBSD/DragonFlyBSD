@@ -162,7 +162,7 @@ check_header(struct z_file *zf)
 static int
 zf_open(const char *fname, struct open_file *f)
 {
-    static char		*zfname;
+    char		*zfname;
     int			rawfd;
     struct z_file	*zf;
     char		*cp;
@@ -183,7 +183,6 @@ zf_open(const char *fname, struct open_file *f)
     if (zfname == NULL)
         return(ENOMEM);
     sprintf(zfname, "%s.gz", fname);
-
     /* Try to open the compressed datafile */
     rawfd = open(zfname, O_RDONLY);
     free(zfname);
@@ -233,10 +232,13 @@ static int
 zf_close(struct open_file *f)
 {
     struct z_file	*zf = (struct z_file *)f->f_fsdata;
-    
-    inflateEnd(&(zf->zf_zstream));
-    close(zf->zf_rawfd);
-    free(zf);
+
+    f->f_fsdata = NULL;
+    if (zf) {
+	inflateEnd(&(zf->zf_zstream));
+	close(zf->zf_rawfd);
+	free(zf);
+    }
     return(0);
 }
  

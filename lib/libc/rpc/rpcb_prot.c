@@ -29,7 +29,6 @@
  * @(#)rpcb_prot.c	1.13	94/04/24 SMI; 1.9 89/04/21 Copyr 1984 Sun Micro
  * $NetBSD: rpcb_prot.c,v 1.3 2000/07/14 08:40:42 fvdl Exp $
  * $FreeBSD: src/lib/libc/rpc/rpcb_prot.c,v 1.7 2007/11/20 01:51:20 jb Exp $
- * $DragonFly$
  */
 /*
  * Copyright (c) 1986-1991 by Sun Microsystems Inc.

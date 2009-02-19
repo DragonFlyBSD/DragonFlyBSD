@@ -13,7 +13,7 @@ MAN=	dma.8
 
 BINOWN= root
 BINGRP= mail
-#BINMODE=4555
-WARNS?=	6
+BINMODE=2555
+WARNS?=	1
 
 .include <bsd.prog.mk>

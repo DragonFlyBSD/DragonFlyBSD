@@ -477,20 +477,6 @@ label:
 				** determinable, so output nothing if the
 				** appropriate variables are not available.
 				*/
-#ifndef STD_INSPIRED
-				if (t->tm_isdst == 0)
-#ifdef USG_COMPAT
-					diff = -timezone;
-#else /* !defined USG_COMPAT */
-					continue;
-#endif /* !defined USG_COMPAT */
-				else
-#ifdef ALTZONE
-					diff = -altzone;
-#else /* !defined ALTZONE */
-					continue;
-#endif /* !defined ALTZONE */
-#else /* defined STD_INSPIRED */
 				{
 					struct tm tmp;
 					time_t lct, gct;
@@ -518,7 +504,6 @@ label:
 					/* LINTED difference will fit int */
 					diff = (intmax_t)gct - (intmax_t)lct;
 				}
-#endif /* defined STD_INSPIRED */
 #endif /* !defined TM_GMTOFF */
 				if (diff < 0) {
 					sign = "-";

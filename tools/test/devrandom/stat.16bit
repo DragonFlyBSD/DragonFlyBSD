@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/pkg/bin/perl
 
 #
 # Perform primitive binning into 16-bit bins (take 16bits of randomness

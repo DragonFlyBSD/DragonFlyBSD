@@ -39,6 +39,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <ctype.h>
@@ -66,7 +67,6 @@ static void     vputc(unsigned char);
 void
 lflag_print(void)
 {
-	extern int pplan;
 	PERSON *pn;
 	int sflag, r;
 	PERSON *tmp;
@@ -98,7 +98,6 @@ lflag_print(void)
 static void
 lprint(PERSON *pn)
 {
-	extern time_t now;
 	struct tm *delta;
 	WHERE *w;
 	int cpr, len, maxlen;

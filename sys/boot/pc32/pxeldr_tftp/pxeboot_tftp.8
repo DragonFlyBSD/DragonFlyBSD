@@ -68,8 +68,9 @@ default-lease-time 120;
 max-lease-time 120;
 
 subnet 10.0.0.0 netmask 255.255.255.0 {
-       filename "pxeboot_tftp";
+       filename "boot/pxeboot_tftp";
        range 10.0.0.10 10.0.0.254;
+       option root-path "10.0.0.1:/netbootroot";
 }
 
 .Ed

@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/pkg/bin/perl
 #
 #ich habe zwei vielleicht n?tzliche Erweiterungen an isdn_pacct
 #gemacht:

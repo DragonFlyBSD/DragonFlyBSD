@@ -31,7 +31,6 @@
  *
  * $NetBSD: lockd_lock.c,v 1.5 2000/11/21 03:47:41 enami Exp $
  * $FreeBSD: src/usr.sbin/rpc.lockd/lockd_lock.c,v 1.1 2001/03/19 12:50:09 alfred Exp $
- * $DragonFly$
  */
 
 #include <stdio.h>
@@ -161,7 +160,7 @@ getlock(nlm4_lockargs *lckarg, struct svc_req *rqstp, int flags)
 		    nlm4_denied_nolock : nlm_denied_nolocks;
 	}
 	if (lckarg->alock.fh.n_len != sizeof(fhandle_t)) {
-		syslog(LOG_DEBUG, "recieved fhandle size %d, local size %d",
+		syslog(LOG_DEBUG, "received fhandle size %d, local size %d",
 		    lckarg->alock.fh.n_len, (int)sizeof(fhandle_t));
 	}
 	memcpy(&newfl->filehandle, lckarg->alock.fh.n_bytes, sizeof(fhandle_t));

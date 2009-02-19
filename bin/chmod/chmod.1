@@ -104,6 +104,8 @@ command's actions are determined by the last one specified.
 .Pp
 Only the owner of a file or the super-user is permitted to change
 the mode of a file.
+.Sh EXIT STATUS
+.Ex -std
 .Sh EXAMPLES
 .Bl -tag -width "u=rwx,go=u-w" -compact
 .It Li 644
@@ -131,8 +133,6 @@ clear all mode bits for group and others.
 .It Li g=u-w
 set the group bits equal to the user bits, but clear the group write bit.
 .El
-.Sh DIAGNOSTICS
-.Ex -std
 .Sh MODES
 Modes may be absolute or symbolic.
 An absolute mode is an octal number constructed from the sum of

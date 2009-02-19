@@ -57,6 +57,16 @@ module at boot time, place the following line in
 .Bd -literal -offset indent
 ubsa_load="YES"
 .Ed
+.Sh DESCRIPTION
+The
+.Nm
+driver provides support for USB-to-RS232 Bridge chip used by a variety of
+serial adapters from Belkin and other vendors.
+.Pp
+The device is accessed through the
+.Xr ucom 4
+driver which makes it behave like a
+.Xr tty 4 .
 .Sh HARDWARE
 The
 .Nm
@@ -76,16 +86,6 @@ HandyTech's Braille displays
 .It
 Peracom single port serial adapter
 .El
-.Sh DESCRIPTION
-The
-.Nm
-driver provides support for USB-to-RS232 Bridge chip used by a variety of
-serial adapters from Belkin and other vendors.
-.Pp
-The device is accessed through the
-.Xr ucom 4
-driver which makes it behave like a
-.Xr tty 4 .
 .Sh SEE ALSO
 .Xr tty 4 ,
 .Xr ucom 4 ,

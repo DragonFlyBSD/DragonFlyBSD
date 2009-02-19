@@ -868,7 +868,7 @@ acpi_cpu_startup_cx(struct acpi_cpu_softc *sc)
  * interrupts are re-enabled.
  */
 static void
-acpi_cpu_idle()
+acpi_cpu_idle(void)
 {
     struct	acpi_cpu_softc *sc;
     struct	acpi_cx *cx_next;

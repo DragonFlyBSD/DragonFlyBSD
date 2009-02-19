@@ -707,9 +707,9 @@ state_diagnostics_menu(struct i_fn_args *a)
 		    "a", "pnpinfo",
 		    _("Display Plug'n'Play ISA devices"),
 		    _("Display Plug'n'Play ISA devices (pnpinfo)"), "",
-		    "a", "atacontrol",
+		    "a", "natacontrol",
 		    _("Display ATA devices"),
-		    _("Display ATA devices (atactl)"), "",
+		    _("Display ATA devices (natacontrol)"), "",
 		    NULL
 		);
 
@@ -741,8 +741,8 @@ state_diagnostics_menu(struct i_fn_args *a)
 			fn_show_pciconf(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "pnpinfo") == 0) {
 			fn_show_pnpinfo(a);
-		} else if (strcmp(dfui_response_get_action_id(r), "atacontrol") == 0) {
-			fn_show_atacontrol(a);
+		} else if (strcmp(dfui_response_get_action_id(r), "natacontrol") == 0) {
+			fn_show_natacontrol(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "memtest") == 0) {
 			fn_memtest(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "memtest86") == 0) {
@@ -1477,7 +1477,7 @@ state_setup_remote_installation_server(struct i_fn_args *a)
 			if (commands_execute(a, cmds)) {
 				inform(a->c, _("NetBoot installation services are now started."));
 			} else {
-				inform(a->c, _("A failure occured while provisioning the NetBoot environment.  Please check the logs."));
+				inform(a->c, _("A failure occurred while provisioning the NetBoot environment.  Please check the logs."));
 			}
 
 			commands_free(cmds);

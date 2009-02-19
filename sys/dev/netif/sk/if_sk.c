@@ -190,7 +190,7 @@ static void	sk_intr_xmac(struct sk_if_softc *);
 static void	sk_intr_yukon(struct sk_if_softc *);
 static void	sk_rxeof(struct sk_if_softc *);
 static void	sk_txeof(struct sk_if_softc *);
-static int	sk_encap(struct sk_if_softc *, struct mbuf *, uint32_t *);
+static int	sk_encap(struct sk_if_softc *, struct mbuf **, uint32_t *);
 static void	sk_start(struct ifnet *);
 static int	sk_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	sk_init(void *);
@@ -234,10 +234,6 @@ static void	sk_rxcsum(struct ifnet *, struct mbuf *, const uint16_t,
 #endif
 static int	sk_dma_alloc(device_t);
 static void	sk_dma_free(device_t);
-
-static void	sk_buf_dma_addr(void *, bus_dma_segment_t *, int, bus_size_t,
-				int);
-static void	sk_dmamem_addr(void *, bus_dma_segment_t *, int, int);
 
 #ifdef SK_DEBUG
 #define DPRINTF(x)	if (skdebug) kprintf x
@@ -700,18 +696,22 @@ static int
 sk_init_rx_ring(struct sk_if_softc *sc_if)
 {
 	struct sk_chain_data *cd = &sc_if->sk_cdata;
-	struct sk_ring_data *rd = sc_if->sk_rdata;
+	struct sk_ring_data *rd = &sc_if->sk_rdata;
 	int i, nexti, error;
 
-	bzero(rd->sk_rx_ring, sizeof(struct sk_rx_desc) * SK_RX_RING_CNT);
+	bzero(rd->sk_rx_ring, SK_RX_RING_SIZE);
 
 	for (i = 0; i < SK_RX_RING_CNT; i++) {
+		bus_addr_t paddr;
+
 		if (i == (SK_RX_RING_CNT - 1))
 			nexti = 0;
 		else
 			nexti = i + 1;
-		rd->sk_rx_ring[i].sk_next =
-			htole32(SK_RX_RING_ADDR(sc_if, nexti));
+		paddr = rd->sk_rx_ring_paddr +
+			(nexti * sizeof(struct sk_rx_desc));
+
+		rd->sk_rx_ring[i].sk_next = htole32(SK_ADDR_LO(paddr));
 		rd->sk_rx_ring[i].sk_csum1_start = htole16(ETHER_HDR_LEN);
 		rd->sk_rx_ring[i].sk_csum2_start =
 			htole16(ETHER_HDR_LEN + sizeof(struct ip));
@@ -727,34 +727,33 @@ sk_init_rx_ring(struct sk_if_softc *sc_if)
 	cd->sk_rx_prod = 0;
 	cd->sk_rx_cons = 0;
 
-	bus_dmamap_sync(sc_if->sk_rdata_dtag, sc_if->sk_rdata_dmap,
-			BUS_DMASYNC_PREWRITE);
-
 	return (0);
 }
 
 static int
 sk_init_tx_ring(struct sk_if_softc *sc_if)
 {
-	struct sk_ring_data *rd = sc_if->sk_rdata;
+	struct sk_ring_data *rd = &sc_if->sk_rdata;
 	int i, nexti;
 
-	bzero(rd->sk_tx_ring, sizeof(struct sk_tx_desc) * SK_TX_RING_CNT);
+	bzero(rd->sk_tx_ring, SK_TX_RING_SIZE);
 
 	for (i = 0; i < SK_TX_RING_CNT; i++) {
+		bus_addr_t paddr;
+
 		if (i == (SK_TX_RING_CNT - 1))
 			nexti = 0;
 		else
 			nexti = i + 1;
-		rd->sk_tx_ring[i].sk_next = htole32(SK_TX_RING_ADDR(sc_if, nexti));
+		paddr = rd->sk_tx_ring_paddr +
+			(nexti * sizeof(struct sk_tx_desc));
+
+		rd->sk_tx_ring[i].sk_next = htole32(SK_ADDR_LO(paddr));
 	}
 
 	sc_if->sk_cdata.sk_tx_prod = 0;
 	sc_if->sk_cdata.sk_tx_cons = 0;
 	sc_if->sk_cdata.sk_tx_cnt = 0;
-
-	bus_dmamap_sync(sc_if->sk_rdata_dtag, sc_if->sk_rdata_dmap,
-			BUS_DMASYNC_PREWRITE);
 
 	return (0);
 }
@@ -765,6 +764,7 @@ sk_newbuf_jumbo(struct sk_if_softc *sc_if, int idx, int wait)
 	struct sk_jpool_entry *entry;
 	struct mbuf *m_new = NULL;
 	struct sk_rx_desc *r;
+	bus_addr_t paddr;
 
 	KKASSERT(idx < SK_RX_RING_CNT && idx >= 0);
 
@@ -792,17 +792,21 @@ sk_newbuf_jumbo(struct sk_if_softc *sc_if, int idx, int wait)
 	m_new->m_data = m_new->m_ext.ext_buf;
 	m_new->m_len = m_new->m_pkthdr.len = m_new->m_ext.ext_size;
 
+	paddr = entry->paddr;
+
 	/*
 	 * Adjust alignment so packet payload begins on a
 	 * longword boundary. Mandatory for Alpha, useful on
 	 * x86 too.
 	 */
 	m_adj(m_new, ETHER_ALIGN);
+	paddr += ETHER_ALIGN;
 
 	sc_if->sk_cdata.sk_rx_mbuf[idx] = m_new;
 
-	r = &sc_if->sk_rdata->sk_rx_ring[idx];
-	r->sk_data_lo = htole32(entry->paddr + ETHER_ALIGN);
+	r = &sc_if->sk_rdata.sk_rx_ring[idx];
+	r->sk_data_lo = htole32(SK_ADDR_LO(paddr));
+	r->sk_data_hi = htole32(SK_ADDR_HI(paddr));
 	r->sk_ctl = htole32(m_new->m_pkthdr.len | SK_RXSTAT);
 
 	return 0;
@@ -814,10 +818,9 @@ sk_newbuf_std(struct sk_if_softc *sc_if, int idx, int wait)
 	struct mbuf *m_new = NULL;
 	struct sk_chain_data *cd = &sc_if->sk_cdata;
 	struct sk_rx_desc *r;
-	struct sk_dma_ctx ctx;
 	bus_dma_segment_t seg;
 	bus_dmamap_t map;
-	int error;
+	int error, nseg;
 
 	KKASSERT(idx < SK_RX_RING_CNT && idx >= 0);
 
@@ -834,21 +837,23 @@ sk_newbuf_std(struct sk_if_softc *sc_if, int idx, int wait)
 	 */
 	m_adj(m_new, ETHER_ALIGN);
 
-	bzero(&ctx, sizeof(ctx));
-	ctx.nsegs = 1;
-	ctx.segs = &seg;
-	error = bus_dmamap_load_mbuf(cd->sk_rx_dtag, cd->sk_rx_dmap_tmp,
-				     m_new, sk_buf_dma_addr, &ctx,
-				     wait ? BUS_DMA_WAITOK : BUS_DMA_NOWAIT);
+	error = bus_dmamap_load_mbuf_segment(cd->sk_rx_dtag, cd->sk_rx_dmap_tmp,
+			m_new, &seg, 1, &nseg, BUS_DMA_NOWAIT);
 	if (error) {
-		if_printf(&sc_if->arpcom.ac_if, "could not map RX mbuf\n");
 		m_freem(m_new);
+		if (wait) {
+			if_printf(&sc_if->arpcom.ac_if,
+				  "could not map RX mbuf\n");
+		}
 		return error;
 	}
 
 	/* Unload originally mapped mbuf */
-	if (cd->sk_rx_mbuf[idx] != NULL)
+	if (cd->sk_rx_mbuf[idx] != NULL) {
+		bus_dmamap_sync(cd->sk_rx_dtag, cd->sk_rx_dmap[idx],
+				BUS_DMASYNC_POSTREAD);
 		bus_dmamap_unload(cd->sk_rx_dtag, cd->sk_rx_dmap[idx]);
+	}
 
 	/* Switch DMA map with tmp DMA map */
 	map = cd->sk_rx_dmap_tmp;
@@ -857,8 +862,9 @@ sk_newbuf_std(struct sk_if_softc *sc_if, int idx, int wait)
 
 	cd->sk_rx_mbuf[idx] = m_new;
 
-	r = &sc_if->sk_rdata->sk_rx_ring[idx];
-	r->sk_data_lo = htole32(seg.ds_addr);
+	r = &sc_if->sk_rdata.sk_rx_ring[idx];
+	r->sk_data_lo = htole32(SK_ADDR_LO(seg.ds_addr));
+	r->sk_data_hi = htole32(SK_ADDR_HI(seg.ds_addr));
 	r->sk_ctl = htole32(m_new->m_pkthdr.len | SK_RXSTAT);
 
 	return 0;
@@ -1609,56 +1615,49 @@ skc_detach(device_t dev)
 }
 
 static int
-sk_encap(struct sk_if_softc *sc_if, struct mbuf *m_head, uint32_t *txidx)
+sk_encap(struct sk_if_softc *sc_if, struct mbuf **m_head0, uint32_t *txidx)
 {
 	struct sk_chain_data *cd = &sc_if->sk_cdata;
-	struct sk_ring_data *rd = sc_if->sk_rdata;
+	struct sk_ring_data *rd = &sc_if->sk_rdata;
 	struct sk_tx_desc *f = NULL;
 	uint32_t frag, cur, sk_ctl;
-	struct sk_dma_ctx ctx;
 	bus_dma_segment_t segs[SK_NTXSEG];
 	bus_dmamap_t map;
-	int i, error;
+	int i, error, maxsegs, nsegs;
 
 	DPRINTFN(2, ("sk_encap\n"));
+
+	maxsegs = SK_TX_RING_CNT - sc_if->sk_cdata.sk_tx_cnt - SK_NDESC_RESERVE;
+	KASSERT(maxsegs >= SK_NDESC_SPARE, ("not enough spare TX desc\n"));
+	if (maxsegs > SK_NTXSEG)
+		maxsegs = SK_NTXSEG;
 
 	cur = frag = *txidx;
 
 #ifdef SK_DEBUG
 	if (skdebug >= 2)
-		sk_dump_mbuf(m_head);
+		sk_dump_mbuf(*m_head0);
 #endif
 
 	map = cd->sk_tx_dmap[*txidx];
 
-	/*
-	 * Start packing the mbufs in this chain into
-	 * the fragment pointers. Stop when we run out
-	 * of fragments or hit the end of the mbuf chain.
-	 */
-	ctx.nsegs = SK_NTXSEG;
-	ctx.segs = segs;
-	error = bus_dmamap_load_mbuf(cd->sk_tx_dtag, map, m_head,
-				     sk_buf_dma_addr, &ctx, BUS_DMA_NOWAIT);
+	error = bus_dmamap_load_mbuf_defrag(cd->sk_tx_dtag, map, m_head0,
+			segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
 	if (error) {
-		if_printf(&sc_if->arpcom.ac_if, "could not map TX mbuf\n");
-		return ENOBUFS;
+		m_freem(*m_head0);
+		*m_head0 = NULL;
+		return error;
 	}
 
-	if ((SK_TX_RING_CNT - (cd->sk_tx_cnt + ctx.nsegs)) < 2) {
-		bus_dmamap_unload(cd->sk_tx_dtag, map);
-		DPRINTFN(2, ("sk_encap: too few descriptors free\n"));
-		return ENOBUFS;
-	}
-
-	DPRINTFN(2, ("sk_encap: nsegs=%d\n", ctx.nsegs));
+	DPRINTFN(2, ("sk_encap: nsegs=%d\n", nsegs));
 
 	/* Sync the DMA map. */
 	bus_dmamap_sync(cd->sk_tx_dtag, map, BUS_DMASYNC_PREWRITE);
 
-	for (i = 0; i < ctx.nsegs; i++) {
+	for (i = 0; i < nsegs; i++) {
 		f = &rd->sk_tx_ring[frag];
-		f->sk_data_lo = htole32(segs[i].ds_addr);
+		f->sk_data_lo = htole32(SK_ADDR_LO(segs[i].ds_addr));
+		f->sk_data_hi = htole32(SK_ADDR_HI(segs[i].ds_addr));
 		sk_ctl = segs[i].ds_len | SK_OPCODE_DEFAULT;
 		if (i == 0)
 			sk_ctl |= SK_TXCTL_FIRSTFRAG;
@@ -1669,7 +1668,7 @@ sk_encap(struct sk_if_softc *sc_if, struct mbuf *m_head, uint32_t *txidx)
 		SK_INC(frag, SK_TX_RING_CNT);
 	}
 
-	cd->sk_tx_mbuf[cur] = m_head;
+	cd->sk_tx_mbuf[cur] = *m_head0;
 	/* Switch DMA map */
 	cd->sk_tx_dmap[*txidx] = cd->sk_tx_dmap[cur];
 	cd->sk_tx_dmap[cur] = map;
@@ -1678,11 +1677,7 @@ sk_encap(struct sk_if_softc *sc_if, struct mbuf *m_head, uint32_t *txidx)
 		htole32(SK_TXCTL_LASTFRAG|SK_TXCTL_EOF_INTR);
 	rd->sk_tx_ring[*txidx].sk_ctl |= htole32(SK_TXCTL_OWN);
 
-	/* Sync first descriptor to hand it off */
-	bus_dmamap_sync(sc_if->sk_rdata_dtag, sc_if->sk_rdata_dmap,
-			BUS_DMASYNC_PREWRITE);
-
-	sc_if->sk_cdata.sk_tx_cnt += ctx.nsegs;
+	sc_if->sk_cdata.sk_tx_cnt += nsegs;
 
 #ifdef SK_DEBUG
 	if (skdebug >= 2) {
@@ -1706,11 +1701,10 @@ sk_encap(struct sk_if_softc *sc_if, struct mbuf *m_head, uint32_t *txidx)
 static void
 sk_start(struct ifnet *ifp)
 {
-        struct sk_if_softc *sc_if = ifp->if_softc;
-        struct sk_softc *sc = sc_if->sk_softc;
-        struct mbuf *m_head = NULL;
+	struct sk_if_softc *sc_if = ifp->if_softc;
+	struct sk_softc *sc = sc_if->sk_softc;
 	uint32_t idx = sc_if->sk_cdata.sk_tx_prod;
-	int pkts = 0;
+	int trans = 0;
 
 	DPRINTFN(2, ("sk_start\n"));
 
@@ -1718,7 +1712,9 @@ sk_start(struct ifnet *ifp)
 		return;
 
 	while (sc_if->sk_cdata.sk_tx_mbuf[idx] == NULL) {
-		if ((SK_TX_RING_CNT - sc_if->sk_cdata.sk_tx_cnt) <= 2) {
+		struct mbuf *m_head;
+
+		if (SK_IS_OACTIVE(sc_if)) {
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
@@ -1732,16 +1728,19 @@ sk_start(struct ifnet *ifp)
 		 * don't have room, set the OACTIVE flag and wait
 		 * for the NIC to drain the ring.
 		 */
-		if (sk_encap(sc_if, m_head, &idx)) {
-			ifp->if_flags |= IFF_OACTIVE;
-			ifq_prepend(&ifp->if_snd, m_head);
-			break;
+		if (sk_encap(sc_if, &m_head, &idx)) {
+			if (sc_if->sk_cdata.sk_tx_cnt == 0) {
+				continue;
+			} else {
+				ifp->if_flags |= IFF_OACTIVE;
+				break;
+			}
 		}
 
-		pkts++;
+		trans = 1;
 		BPF_MTAP(ifp, m_head);
 	}
-	if (pkts == 0)
+	if (!trans)
 		return;
 
 	/* Transmit */
@@ -1819,22 +1818,17 @@ sk_rxeof(struct sk_if_softc *sc_if)
 	struct sk_softc *sc = sc_if->sk_softc;
 	struct ifnet *ifp = &sc_if->arpcom.ac_if;
 	struct sk_chain_data *cd = &sc_if->sk_cdata;
-	struct sk_ring_data *rd = sc_if->sk_rdata;
+	struct sk_ring_data *rd = &sc_if->sk_rdata;
 	int i, reap, max_frmlen;
 
 	DPRINTFN(2, ("sk_rxeof\n"));
 
 	i = cd->sk_rx_prod;
 
-	bus_dmamap_sync(sc_if->sk_rdata_dtag, sc_if->sk_rdata_dmap,
-			BUS_DMASYNC_POSTREAD);
-	if (sc_if->sk_use_jumbo) {
-		bus_dmamap_sync(cd->sk_jpool_dtag, cd->sk_jpool_dmap,
-				BUS_DMASYNC_POSTREAD);
+	if (sc_if->sk_use_jumbo)
 		max_frmlen = SK_JUMBO_FRAMELEN;
-	} else {
+	else
 		max_frmlen = ETHER_MAX_LEN;
-	}
 
 	reap = 0;
 	for (;;) {
@@ -1884,11 +1878,6 @@ sk_rxeof(struct sk_if_softc *sc_if)
 			continue;
 		}
 
-		if (!sc_if->sk_use_jumbo) {
-			bus_dmamap_sync(cd->sk_rx_dtag, cd->sk_rx_dmap[cur],
-					BUS_DMASYNC_POSTREAD);
-		}
-
 		/*
 		 * Try to allocate a new RX buffer. If that fails,
 		 * copy the packet to mbufs and put the RX buffer
@@ -1897,23 +1886,9 @@ sk_rxeof(struct sk_if_softc *sc_if)
 		 * the packet.
 		 */
 		if (sk_newbuf(sc_if, cur, 0)) {
-			struct mbuf *m0;
-
-			m0 = m_devget(mtod(m, char *) - ETHER_ALIGN,
-			    total_len + ETHER_ALIGN, 0, ifp, NULL);
-
-			/*
-			 * Set up the RX descriptor's control word
-			 * _after_ the mbuf is duplicated.
-			 */
+			ifp->if_ierrors++;
 			cur_desc->sk_ctl = htole32(m->m_pkthdr.len | SK_RXSTAT);
-
-			if (m0 == NULL) {
-				ifp->if_ierrors++;
-				continue;
-			}
-			m_adj(m0, ETHER_ALIGN);
-			m = m0;
+			continue;
 		} else {
 			m->m_pkthdr.rcvif = ifp;
 			m->m_pkthdr.len = m->m_len = total_len;
@@ -1925,11 +1900,6 @@ sk_rxeof(struct sk_if_softc *sc_if)
 
 		ifp->if_ipackets++;
 		ifp->if_input(ifp, m);
-	}
-
-	if (reap) {
-		bus_dmamap_sync(sc_if->sk_rdata_dtag, sc_if->sk_rdata_dmap,
-				BUS_DMASYNC_PREWRITE);
 	}
 }
 
@@ -2037,9 +2007,6 @@ sk_txeof(struct sk_if_softc *sc_if)
 
 	DPRINTFN(2, ("sk_txeof\n"));
 
-	bus_dmamap_sync(sc_if->sk_rdata_dtag, sc_if->sk_rdata_dmap,
-			BUS_DMASYNC_POSTREAD);
-
 	/*
 	 * Go through our tx ring and free mbufs for those
 	 * frames that have been sent.
@@ -2049,7 +2016,7 @@ sk_txeof(struct sk_if_softc *sc_if)
 		struct sk_tx_desc *cur_tx;
 		uint32_t sk_ctl;
 
-		cur_tx = &sc_if->sk_rdata->sk_tx_ring[idx];
+		cur_tx = &sc_if->sk_rdata.sk_tx_ring[idx];
 		sk_ctl = le32toh(cur_tx->sk_ctl);
 #ifdef SK_DEBUG
 		if (skdebug >= 2)
@@ -2068,17 +2035,14 @@ sk_txeof(struct sk_if_softc *sc_if)
 		reap = 1;
 		SK_INC(idx, SK_TX_RING_CNT);
 	}
-	ifp->if_timer = sc_if->sk_cdata.sk_tx_cnt > 0 ? 5 : 0;
 
-	if (sc_if->sk_cdata.sk_tx_cnt < SK_TX_RING_CNT - 2)
+	if (!SK_IS_OACTIVE(sc_if))
 		ifp->if_flags &= ~IFF_OACTIVE;
 
-	sc_if->sk_cdata.sk_tx_cons = idx;
+	if (sc_if->sk_cdata.sk_tx_cnt == 0)
+		ifp->if_timer = 0;
 
-	if (reap) {
-		bus_dmamap_sync(sc_if->sk_rdata_dtag, sc_if->sk_rdata_dmap,
-				BUS_DMASYNC_PREWRITE);
-	}
+	sc_if->sk_cdata.sk_tx_cons = idx;
 }
 
 static void
@@ -2751,13 +2715,15 @@ sk_init(void *xsc_if)
 	/* Configure BMUs */
 	SK_IF_WRITE_4(sc_if, 0, SK_RXQ1_BMU_CSR, SK_RXBMU_ONLINE);
 	SK_IF_WRITE_4(sc_if, 0, SK_RXQ1_CURADDR_LO,
-	    SK_RX_RING_ADDR(sc_if, 0));
-	SK_IF_WRITE_4(sc_if, 0, SK_RXQ1_CURADDR_HI, 0);
+		      SK_ADDR_LO(sc_if->sk_rdata.sk_rx_ring_paddr));
+	SK_IF_WRITE_4(sc_if, 0, SK_RXQ1_CURADDR_HI,
+		      SK_ADDR_HI(sc_if->sk_rdata.sk_rx_ring_paddr));
 
 	SK_IF_WRITE_4(sc_if, 1, SK_TXQS1_BMU_CSR, SK_TXBMU_ONLINE);
 	SK_IF_WRITE_4(sc_if, 1, SK_TXQS1_CURADDR_LO,
-	    SK_TX_RING_ADDR(sc_if, 0));
-	SK_IF_WRITE_4(sc_if, 1, SK_TXQS1_CURADDR_HI, 0);
+		      SK_ADDR_LO(sc_if->sk_rdata.sk_tx_ring_paddr));
+	SK_IF_WRITE_4(sc_if, 1, SK_TXQS1_CURADDR_HI,
+		      SK_ADDR_HI(sc_if->sk_rdata.sk_tx_ring_paddr));
 
 	/* Init descriptors */
 	if (sk_init_rx_ring(sc_if) == ENOBUFS) {
@@ -3013,41 +2979,24 @@ sk_jpool_alloc(device_t dev)
 {
 	struct sk_if_softc *sc_if = device_get_softc(dev);
 	struct sk_chain_data *cd = &sc_if->sk_cdata;
+	bus_dmamem_t dmem;
 	bus_addr_t paddr;
 	caddr_t buf;
 	int error, i;
 
 	lwkt_serialize_init(&cd->sk_jpool_serializer);
 
-	error = bus_dma_tag_create(NULL, PAGE_SIZE, 0,
-				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
-				   NULL, NULL, SK_JMEM, 1, SK_JMEM,
-				   0, &cd->sk_jpool_dtag);
+	error = bus_dmamem_coherent(cd->sk_buf_dtag, PAGE_SIZE /* XXX */, 0,
+				    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+				    SK_JMEM, BUS_DMA_WAITOK, &dmem);
 	if (error) {
-		device_printf(dev, "can't create jpool DMA tag\n");
+		device_printf(dev, "can't allocate jumbo frame pool\n");
 		return error;
 	}
-
-	error = bus_dmamem_alloc(cd->sk_jpool_dtag, &cd->sk_jpool,
-				 BUS_DMA_WAITOK, &cd->sk_jpool_dmap);
-	if (error) {
-		device_printf(dev, "can't alloc jpool DMA mem\n");
-		bus_dma_tag_destroy(cd->sk_jpool_dtag);
-		cd->sk_jpool_dtag = NULL;
-		return error;
-	}
-
-	error = bus_dmamap_load(cd->sk_jpool_dtag, cd->sk_jpool_dmap,
-				cd->sk_jpool, SK_JMEM,
-				sk_dmamem_addr, &paddr, BUS_DMA_WAITOK);
-	if (error) {
-		device_printf(dev, "can't load DMA mem\n");
-		bus_dmamem_free(cd->sk_jpool_dtag, cd->sk_jpool,
-				cd->sk_jpool_dmap);
-		bus_dma_tag_destroy(cd->sk_jpool_dtag);
-		cd->sk_jpool_dtag = NULL;
-		return error;
-	}
+	cd->sk_jpool_dtag = dmem.dmem_tag;
+	cd->sk_jpool_dmap = dmem.dmem_map;
+	cd->sk_jpool = dmem.dmem_addr;
+	paddr = dmem.dmem_busaddr;
 
 	SLIST_INIT(&cd->sk_jpool_free_ent);
 	buf = cd->sk_jpool;
@@ -3091,46 +3040,74 @@ sk_dma_alloc(device_t dev)
 {
 	struct sk_if_softc *sc_if = device_get_softc(dev);
 	struct sk_chain_data *cd = &sc_if->sk_cdata;
+	struct sk_ring_data *rd = &sc_if->sk_rdata;
+	bus_dmamem_t dmem;
 	int i, j, error;
 
-	/*
-	 * Allocate the descriptor queues.
-	 * TODO: split into RX/TX rings
-	 */
-	error = bus_dma_tag_create(NULL, PAGE_SIZE, 0,
-				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+	/* Create parent DMA tag */
+	error = bus_dma_tag_create(NULL, 1, 0,
+				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
-				   sizeof(struct sk_ring_data), 1,
-				   sizeof(struct sk_ring_data), 0,
-				   &sc_if->sk_rdata_dtag);
+				   BUS_SPACE_MAXSIZE_32BIT, 0,
+				   BUS_SPACE_MAXSIZE_32BIT,
+				   0, &sc_if->sk_parent_dtag);
 	if (error) {
-		device_printf(dev, "can't create desc DMA tag\n");
+		device_printf(dev, "can't create parent DMA tag\n");
 		return error;
 	}
 
-	error = bus_dmamem_alloc(sc_if->sk_rdata_dtag,
-				 (void **)&sc_if->sk_rdata,
-				 BUS_DMA_WAITOK | BUS_DMA_ZERO,
-				 &sc_if->sk_rdata_dmap);
+	/* Create top level ring DMA tag */
+	error = bus_dma_tag_create(sc_if->sk_parent_dtag,
+				   1, SK_RING_BOUNDARY,
+				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+				   NULL, NULL,
+				   BUS_SPACE_MAXSIZE_32BIT, 0,
+				   BUS_SPACE_MAXSIZE_32BIT,
+				   0, &rd->sk_ring_dtag);
 	if (error) {
-		device_printf(dev, "can't alloc desc DMA mem\n");
-		bus_dma_tag_destroy(sc_if->sk_rdata_dtag);
-		sc_if->sk_rdata_dtag = NULL;
+		device_printf(dev, "can't create ring DMA tag\n");
 		return error;
 	}
 
-	error = bus_dmamap_load(sc_if->sk_rdata_dtag, sc_if->sk_rdata_dmap,
-				sc_if->sk_rdata, sizeof(struct sk_ring_data),
-				sk_dmamem_addr, &sc_if->sk_rdata_paddr,
-				BUS_DMA_WAITOK);
+	/* Create top level buffer DMA tag */
+	error = bus_dma_tag_create(sc_if->sk_parent_dtag, 1, 0,
+				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+				   NULL, NULL,
+				   BUS_SPACE_MAXSIZE_32BIT, 0,
+				   BUS_SPACE_MAXSIZE_32BIT,
+				   0, &cd->sk_buf_dtag);
 	if (error) {
-		device_printf(dev, "can't load desc DMA mem\n");
-		bus_dmamem_free(sc_if->sk_rdata_dtag, sc_if->sk_rdata,
-				sc_if->sk_rdata_dmap);
-		bus_dma_tag_destroy(sc_if->sk_rdata_dtag);
-		sc_if->sk_rdata_dtag = NULL;
+		device_printf(dev, "can't create buf DMA tag\n");
 		return error;
 	}
+
+	/* Allocate the TX descriptor queue. */
+	error = bus_dmamem_coherent(rd->sk_ring_dtag, SK_RING_ALIGN, 0,
+				    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+				    SK_TX_RING_SIZE,
+				    BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
+	if (error) {
+		device_printf(dev, "can't allocate TX ring\n");
+		return error;
+	}
+	rd->sk_tx_ring_dtag = dmem.dmem_tag;
+	rd->sk_tx_ring_dmap = dmem.dmem_map;
+	rd->sk_tx_ring = dmem.dmem_addr;
+	rd->sk_tx_ring_paddr = dmem.dmem_busaddr;
+
+	/* Allocate the RX descriptor queue. */
+	error = bus_dmamem_coherent(rd->sk_ring_dtag, SK_RING_ALIGN, 0,
+				    BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+				    SK_RX_RING_SIZE,
+				    BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmem);
+	if (error) {
+		device_printf(dev, "can't allocate TX ring\n");
+		return error;
+	}
+	rd->sk_rx_ring_dtag = dmem.dmem_tag;
+	rd->sk_rx_ring_dmap = dmem.dmem_map;
+	rd->sk_rx_ring = dmem.dmem_addr;
+	rd->sk_rx_ring_paddr = dmem.dmem_busaddr;
 
 	/* Try to allocate memory for jumbo buffers. */
 	error = sk_jpool_alloc(dev);
@@ -3140,11 +3117,13 @@ sk_dma_alloc(device_t dev)
 	}
 
 	/* Create DMA tag for TX. */
-	error = bus_dma_tag_create(NULL, 1, 0,
-				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+	error = bus_dma_tag_create(cd->sk_buf_dtag, 1, 0,
+				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 				   NULL, NULL,
 				   SK_JLEN, SK_NTXSEG, SK_JLEN,
-				   0, &cd->sk_tx_dtag);
+				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK |
+				   BUS_DMA_ONEBPAGE,
+				   &cd->sk_tx_dtag);
 	if (error) {
 		device_printf(dev, "can't create TX DMA tag\n");
 		return error;
@@ -3152,7 +3131,8 @@ sk_dma_alloc(device_t dev)
 
 	/* Create DMA maps for TX. */
 	for (i = 0; i < SK_TX_RING_CNT; i++) {
-		error = bus_dmamap_create(cd->sk_tx_dtag, 0,
+		error = bus_dmamap_create(cd->sk_tx_dtag,
+					  BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
 					  &cd->sk_tx_dmap[i]);
 		if (error) {
 			device_printf(dev, "can't create %dth TX DMA map\n", i);
@@ -3168,17 +3148,20 @@ sk_dma_alloc(device_t dev)
 	}
 
 	/* Create DMA tag for RX. */
-	error = bus_dma_tag_create(NULL, 1, 0,
-				   BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
-				   NULL, NULL, MCLBYTES, 1, MCLBYTES,
-				   0, &cd->sk_rx_dtag);
+	error = bus_dma_tag_create(cd->sk_buf_dtag, 1, 0,
+				   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+				   NULL, NULL,
+				   MCLBYTES, 1, MCLBYTES,
+				   BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,
+				   &cd->sk_rx_dtag);
 	if (error) {
 		device_printf(dev, "can't create RX DMA tag\n");
 		return error;
 	}
 
 	/* Create a spare RX DMA map. */
-	error = bus_dmamap_create(cd->sk_rx_dtag, 0, &cd->sk_rx_dmap_tmp);
+	error = bus_dmamap_create(cd->sk_rx_dtag, BUS_DMA_WAITOK,
+				  &cd->sk_rx_dmap_tmp);
 	if (error) {
 		device_printf(dev, "can't create spare RX DMA map\n");
 		bus_dma_tag_destroy(cd->sk_rx_dtag);
@@ -3188,7 +3171,7 @@ sk_dma_alloc(device_t dev)
 
 	/* Create DMA maps for RX. */
 	for (i = 0; i < SK_RX_RING_CNT; ++i) {
-		error = bus_dmamap_create(cd->sk_rx_dtag, 0,
+		error = bus_dmamap_create(cd->sk_rx_dtag, BUS_DMA_WAITOK,
 					  &cd->sk_rx_dmap[i]);
 		if (error) {
 			device_printf(dev, "can't create %dth RX DMA map\n", i);
@@ -3211,6 +3194,7 @@ sk_dma_free(device_t dev)
 {
 	struct sk_if_softc *sc_if = device_get_softc(dev);
 	struct sk_chain_data *cd = &sc_if->sk_cdata;
+	struct sk_ring_data *rd = &sc_if->sk_rdata;
 	int i;
 
 	if (cd->sk_tx_dtag != NULL) {
@@ -3221,7 +3205,6 @@ sk_dma_free(device_t dev)
 			bus_dmamap_destroy(cd->sk_tx_dtag, cd->sk_tx_dmap[i]);
 		}
 		bus_dma_tag_destroy(cd->sk_tx_dtag);
-		cd->sk_tx_dtag = NULL;
 	}
 
 	if (cd->sk_rx_dtag != NULL) {
@@ -3233,44 +3216,30 @@ sk_dma_free(device_t dev)
 		}
 		bus_dmamap_destroy(cd->sk_rx_dtag, cd->sk_rx_dmap_tmp);
 		bus_dma_tag_destroy(cd->sk_rx_dtag);
-		cd->sk_rx_dtag = NULL;
 	}
 
 	sk_jpool_free(sc_if);
 
-	if (sc_if->sk_rdata_dtag != NULL) {
-		bus_dmamap_unload(sc_if->sk_rdata_dtag, sc_if->sk_rdata_dmap);
-		bus_dmamem_free(sc_if->sk_rdata_dtag, sc_if->sk_rdata,
-				sc_if->sk_rdata_dmap);
-		bus_dma_tag_destroy(sc_if->sk_rdata_dtag);
-		sc_if->sk_rdata_dtag = NULL;
+	if (rd->sk_rx_ring_dtag != NULL) {
+		bus_dmamap_unload(rd->sk_rx_ring_dtag, rd->sk_rx_ring_dmap);
+		bus_dmamem_free(rd->sk_rx_ring_dtag, rd->sk_rx_ring,
+				rd->sk_rx_ring_dmap);
+		bus_dma_tag_destroy(rd->sk_rx_ring_dtag);
 	}
-}
 
-static void
-sk_buf_dma_addr(void *arg, bus_dma_segment_t *segs, int nsegs,
-		bus_size_t mapsz __unused, int error)
-{
-	struct sk_dma_ctx *ctx = arg;
-	int i;
+	if (rd->sk_tx_ring_dtag != NULL) {
+		bus_dmamap_unload(rd->sk_tx_ring_dtag, rd->sk_tx_ring_dmap);
+		bus_dmamem_free(rd->sk_tx_ring_dtag, rd->sk_tx_ring,
+				rd->sk_tx_ring_dmap);
+		bus_dma_tag_destroy(rd->sk_tx_ring_dtag);
+	}
 
-	if (error)
-		return;
-
-	KASSERT(nsegs <= ctx->nsegs,
-		("too many segments(%d), should be <= %d\n",
-		 nsegs, ctx->nsegs));
-
-	ctx->nsegs = nsegs;
-	for (i = 0; i < nsegs; ++i)
-		ctx->segs[i] = segs[i];
-}
-
-static void
-sk_dmamem_addr(void *arg, bus_dma_segment_t *seg, int nseg, int error)
-{
-	KASSERT(nseg == 1, ("too many segments %d", nseg));
-	*((bus_addr_t *)arg) = seg->ds_addr;
+	if (rd->sk_ring_dtag != NULL)
+		bus_dma_tag_destroy(rd->sk_ring_dtag);
+	if (cd->sk_buf_dtag != NULL)
+		bus_dma_tag_destroy(cd->sk_buf_dtag);
+	if (sc_if->sk_parent_dtag != NULL)
+		bus_dma_tag_destroy(sc_if->sk_parent_dtag);
 }
 
 static int

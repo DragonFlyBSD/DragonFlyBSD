@@ -25,6 +25,10 @@ CFLAGS+=	-DHAVE_PNP
 CFLAGS+=	-DTESTMAIN -D_TESTMAIN
 SRCS+=		testmain.c
 PROG=		testmain
+OBJS+=		rel_open.o
+
+rel_open.o: ../common/rel_open.c
+
 .include <bsd.prog.mk>
 .else
 OBJS+=		stack_protector.o

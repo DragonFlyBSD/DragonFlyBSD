@@ -23,7 +23,6 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/rpc/mt_misc.h,v 1.2 2006/02/28 07:36:25 delphij Exp $
- * $DragonFly$
  */
 #ifndef _MT_MISC_H
 #define	_MT_MISC_H

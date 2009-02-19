@@ -28,7 +28,6 @@
  *
  * $NetBSD: rpcb_st_xdr.c,v 1.3 2000/07/14 08:40:42 fvdl Exp $
  * $FreeBSD: src/lib/libc/rpc/rpcb_st_xdr.c,v 1.4 2007/11/20 01:51:20 jb Exp $
- * $DragonFly$
  */
 /*
  * Copyright 1991 Sun Microsystems, Inc.

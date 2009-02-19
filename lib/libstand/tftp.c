@@ -49,6 +49,7 @@
 #include <sys/stat.h>
 #include <netinet/in.h>
 #include <netinet/udp.h>
+#include <netinet/ip.h>
 #include <netinet/in_systm.h>
 #include <arpa/tftp.h>
 
@@ -95,7 +96,7 @@ struct tftp_handle {
 		u_char header[HEADER_SIZE];
 		struct tftphdr t;
 		u_char space[RSPACE];
-	} lastdata;
+	} __packed __aligned(4) lastdata;
 };
 
 static int tftperrors[8] = {
@@ -110,18 +111,38 @@ static int tftperrors[8] = {
 };
 
 static ssize_t 
-recvtftp(struct iodesc *d, void *pkt, size_t len, time_t tleft)
+recvtftp(struct iodesc *d, void *pkt, size_t max_len, time_t tleft)
 {
 	struct tftphdr *t;
+	ssize_t len;
+	ssize_t tmp_len;
 
+	/*
+	 * Note: errno of 0 with -1 return means udp poll failed or
+	 * packet was not for us.
+	 *
+	 * We may end up broadcasting the initial TFTP request.  Take the
+	 * first DATA result and save any ERROR result in case we do not
+	 * get a DATA.
+	 */
+	errno = 0;
+	bzero(pkt, len);
+	if (d->xid == 1) {
+		len = -1;
+		while ((tmp_len = readudp(d, pkt, max_len, tleft)) > 0) {
+			len = tmp_len;
+			t = (struct tftphdr *)pkt;
+			if (ntohs(t->th_opcode) == DATA)
+				break;
+		}
+	} else {
+		len = readudp(d, pkt, max_len, tleft);
+	}
+	if ((int)len < (int)sizeof(*t))
+		return (-1);
+	t = (struct tftphdr *)pkt;
 	errno = 0;
 
-	len = readudp(d, pkt, len, tleft);
-
-	if (len < 4)
-		return (-1);
-
-	t = (struct tftphdr *) pkt;
 	switch (ntohs(t->th_opcode)) {
 	case DATA: {
 		int got;
@@ -134,13 +155,19 @@ recvtftp(struct iodesc *d, void *pkt, size_t len, time_t tleft)
 		}
 		if (d->xid == 1) {
 			/*
-			 * First data packet from new port.
+			 * First data packet from new port.  Set destip in
+			 * case we got replies from multiple hosts, so only
+			 * one host is selected.
 			 */
 			struct udphdr *uh;
+			struct ip *ip;
+
 			uh = (struct udphdr *) pkt - 1;
+			ip = (struct ip *)uh - 1;
 			d->destport = uh->uh_sport;
+			d->destip = ip->ip_src;
 		} /* else check uh_sport has not changed??? */
-		got = len - (t->th_data - (char *) t);
+		got = len - (t->th_data - (char *)t);
 		return got;
 	}
 	case ERROR:
@@ -170,7 +197,7 @@ tftp_makereq(struct tftp_handle *h)
 		u_char header[HEADER_SIZE];
 		struct tftphdr  t;
 		u_char space[FNAME_SIZE + 6];
-	} wbuf;
+	} __packed __aligned(4) wbuf;
 	char           *wtail;
 	int             l;
 	ssize_t         res;
@@ -212,11 +239,14 @@ tftp_getnextblock(struct tftp_handle *h)
 	struct {
 		u_char header[HEADER_SIZE];
 		struct tftphdr t;
-	} wbuf;
+	} __packed __aligned(4) wbuf;
 	char           *wtail;
 	int             res;
 	struct tftphdr *t;
 
+	/*
+	 * Ack previous block
+	 */
 	wbuf.t.th_opcode = htons((u_short) ACK);
 	wtail = (char *) &wbuf.t.th_block;
 	wbuf.t.th_block = htons((u_short) h->currblock);
@@ -325,9 +355,9 @@ tftp_read(struct open_file *f, void *addr, size_t size, size_t *resid)
 			}
 			count = (size < inbuffer ? size : inbuffer);
 			bcopy(tftpfile->lastdata.t.th_data + offinblock,
-			    addr, count);
+			      addr, count);
 
-			addr += count;
+			addr = (char *)addr + count;
 			tftpfile->off += count;
 			size -= count;
 
@@ -354,10 +384,11 @@ tftp_close(struct open_file *f)
 	tftpfile = (struct tftp_handle *) f->f_fsdata;
 
 	/* let it time out ... */
-
+	f->f_fsdata = NULL;
 	if (tftpfile) {
 		free(tftpfile->path);
 		free(tftpfile);
+		f->f_fsdata = NULL;
 	}
 	return (0);
 }

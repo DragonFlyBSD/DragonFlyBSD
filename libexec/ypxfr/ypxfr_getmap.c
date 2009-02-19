@@ -43,7 +43,7 @@
 
 extern bool_t xdr_ypresp_all_seq(XDR *, unsigned long *);
 
-int (*ypresp_allfn)();
+int (*ypresp_allfn)(int, char *, int, char *, int, char *);
 void *ypresp_data;
 extern DB *specdbp;
 extern enum ypstat yp_errno;
@@ -57,11 +57,9 @@ extern enum ypstat yp_errno;
  * talking to one of the slaves instead. We do need to dig into libc
  * a little though, since it contains the magic XDR function we need.
  */
-int ypxfr_get_map(map, domain, host, callback)
-	char *map;
-	char *domain;
-	char *host;
-	int (*callback)();
+int
+ypxfr_get_map(char *map, char *domain, char *host,
+    int (*callback)(int, char *, int, char *, int, char *))
 {
 	CLIENT *clnt;
 	ypreq_nokey req;
@@ -84,8 +82,8 @@ create tcp handle"));
 	ypresp_allfn = callback;
 	ypresp_data = NULL;
 
-	(void)clnt_call(clnt, YPPROC_ALL, xdr_ypreq_nokey, &req,
-		xdr_ypresp_all_seq, &status, timeout);
+	(void)clnt_call(clnt, YPPROC_ALL, (xdrproc_t)xdr_ypreq_nokey, &req,
+	    (xdrproc_t)xdr_ypresp_all_seq, &status, timeout);
 
 	clnt_destroy(clnt);
 

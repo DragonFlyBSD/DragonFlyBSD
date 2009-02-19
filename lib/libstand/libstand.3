@@ -25,7 +25,7 @@
 .\" $FreeBSD: src/lib/libstand/libstand.3,v 1.5.2.11 2002/06/26 19:14:43 schweikh Exp $
 .\" $DragonFly: src/lib/libstand/libstand.3,v 1.9 2008/11/23 21:55:52 swildner Exp $
 .\"
-.Dd September 13, 2004
+.Dd February 15, 2009
 .Dt LIBSTAND 3
 .Os
 .Sh NAME
@@ -41,7 +41,8 @@ provides a set of supporting functions for standalone
 applications, mimicking where possible the standard
 .Bx
 programming
-environment.  The following sections group these functions by kind.
+environment.
+The following sections group these functions by kind.
 Unless specifically described here, see the corresponding section 3
 manpages for the given functions.
 .Sh STRING FUNCTIONS
@@ -71,9 +72,11 @@ Free the allocated object at
 .Fn setheap "void *start" "void *limit"
 .Xc
 .Pp
-Initialise the heap.  This function must be called before calling
+Initialise the heap.
+This function must be called before calling
 .Fn alloc
-for the first time.  The region between
+for the first time.
+The region between
 .Fa start
 and
 .Fa limit
@@ -86,14 +89,17 @@ in a panic.
 .Pp
 Provides the behaviour of
 .Fn sbrk 0 ,
-ie. returns the highest point that the heap has reached.  This value can
-be used during testing to determine the actual heap usage.  The
+ie. returns the highest point that the heap has reached.
+This value can
+be used during testing to determine the actual heap usage.
+The
 .Fa junk
 argument is ignored.
 .El
 .Sh ENVIRONMENT
 A set of functions are provided for manipulating a flat variable space similar
-to the traditional shell-supported environment.  Major enhancements are support
+to the traditional shell-supported environment.
+Major enhancements are support
 for set/unset hook functions.
 .Bl -hang -width 10n
 .It Xo
@@ -135,18 +141,25 @@ and
 arguments may be specified.
 .Pp
 The set hook is invoked whenever an attempt
-is made to set the variable, unless the EV_NOHOOK flag is set.  Typically
+is made to set the variable, unless the
+.Dv EV_NOHOOK
+flag is set.
+Typically
 a set hook will validate the
 .Fa value
 argument, and then call
 .Fn env_setenv
-again with EV_NOHOOK set to actually save the value.  The predefined function
+again with
+.Dv EV_NOHOOK
+set to actually save the value.
+The predefined function
 .Fn env_noset
 may be specified to refuse all attempts to set a variable.
 .Pp
 The unset hook is invoked when an attempt is made to unset a variable.
 If it
-returns zero, the  variable will be unset.  The predefined function
+returns zero, the  variable will be unset.
+The predefined function
 .Fn env_nounset
 may be used to prevent a variable being unset.
 .El
@@ -180,7 +193,7 @@ values supported by
 .It Fn assert expression
 .Pp
 Requires
-.In assert.h
+.In assert.h .
 .It Xo
 .Ft int
 .Fn setjmp "jmp_buf env"
@@ -194,8 +207,9 @@ Defined as
 .Fn _setjmp
 and
 .Fn _longjmp
-respectively as there is no signal state to manipulate.  Requires
-.In setjmp.h
+respectively as there is no signal state to manipulate.
+Requires
+.In setjmp.h .
 .El
 .Sh CHARACTER I/O
 .Bl -hang -width 10n
@@ -229,8 +243,9 @@ Read a line of at most
 .Fa size
 characters into
 .Fa buf .
-Line terminating characters are stripped, and the buffer is always nul
-terminated.  Returns the number of characters in
+Line terminating characters are stripped, and the buffer is always
+nul-terminated.
+Returns the number of characters in
 .Fa buf
 if successful, or -1 if a read error occurs.
 .It Xo
@@ -252,13 +267,17 @@ if successful, or -1 if a read error occurs.
 .Pp
 The *printf functions implement a subset of the standard
 .Fn printf
-family functionality and some extensions.  The following standard conversions
-are supported: c,d,n,o,p,s,u,x.  The following modifiers are supported:
-+,-,#,*,0,field width,precision,l.
+family functionality and some extensions.
+The following standard conversions
+are supported:
+.Cm c , d , n , o , p , s , u , x .
+The following modifiers are supported:
+.Cm + , - , # , * , 0 , field width,  precision,  l .
 .Pp
 The
-.Li b
-conversion is provided to decode error registers.  Its usage is:
+.Cm b
+conversion is provided to decode error registers.
+Its usage is:
 .Bd -ragged -offset indent
 printf(
 .Qq reg=%b\en ,
@@ -267,8 +286,9 @@ regval,
 );
 .Ed
 .Pp
-where <base> is the output expressed as a control character, eg. \e10 gives
-octal, \e20 gives hex.  Each <arg> is a sequence of characters, the first of
+where <base> is the output expressed as a control character, e.g. \e10 gives
+octal, \e20 gives hex.
+Each <arg> is a sequence of characters, the first of
 which gives the bit number to be inspected (origin 1) and the next characters
 (up to a character less than 32) give the text to be displayed if the bit is set.
 Thus
@@ -286,7 +306,7 @@ reg=3<BITTWO,BITONE>
 .Ed
 .Pp
 The
-.Li D
+.Cm D
 conversion provides a hexdump facility, eg.
 .Bd -ragged -offset indent
 printf(
@@ -355,10 +375,15 @@ ptr,
 Similar to the behaviour as specified in
 .Xr open 2 ,
 except that file creation is not supported, so the mode parameter is not
-required.  The
+required.
+The
 .Fa flags
-argument may be one of O_RDONLY, O_WRONLY and O_RDWR (although no filesystems
-currently support writing).
+argument may be one of
+.Dv O_RDONLY ,
+.Dv O_WRONLY
+and
+.Dv O_RDWR
+(although no filesystems currently support writing).
 .It Xo
 .Ft int
 .Fn close "int fd"
@@ -401,7 +426,9 @@ and
 .Fn fstat
 functions only fill out the following fields in the
 .Fa sb
-structure: st_mode,st_nlink,st_uid,st_gid,st_size.  The
+structure:
+.Fa st_mode , st_nlink , st_uid , st_gid , st_size .
+The
 .Nm tftp
 filesystem cannot provide meaningful values for this call, and the
 .Nm cd9660
@@ -416,8 +443,9 @@ supplies a simple internal pager to ease reading the output of large commands.
 .Fn pager_open
 .Xc
 .Pp
-Initialises the pager and tells it that the next line output will be the top of the
-display.  The environment variable LINES is consulted to determine the number of
+Initialises the pager and tells it that the next line output will be the
+top of the display.
+The environment variable LINES is consulted to determine the number of
 lines to be displayed before pausing.
 .It Xo
 .Ft void
@@ -432,7 +460,8 @@ Closes the pager.
 .Pp
 Sends the lines in the nul-terminated buffer at
 .Fa lines
-to the pager.  Newline characters are counted in order to determine the number
+to the pager.
+Newline characters are counted in order to determine the number
 of lines being output (wrapped lines are not accounted for).
 .Fn pager_output
 will return zero when all of the lines have been output, or nonzero if the
@@ -444,7 +473,9 @@ display was paused and the user elected to quit.
 .Pp
 Attempts to open and display the file
 .Fa fname .
-Returns -1 on error, 0 at EOF, or 1 if the user elects to quit while reading.
+Returns -1 on error, 0 at
+.Dv EOF ,
+or 1 if the user elects to quit while reading.
 .El
 .Sh MISC
 .Bl -hang -width 10n
@@ -453,7 +484,7 @@ Returns -1 on error, 0 at EOF, or 1 if the user elects to quit while reading.
 .Fn twiddle void
 .Xc
 .Pp
-Successive calls emit the characters in the sequence |,/,-,\\ followed by a
+Successive calls emit the characters in the sequence |, /, -, \\ followed by a
 backspace in order to provide reassurance to the user.
 .El
 .Sh REQUIRED LOW-LEVEL SUPPORT
@@ -463,7 +494,8 @@ The following resources are consumed by
 .Pp
 The stack must be established before
 .Nm
-functions can be invoked.  Stack requirements vary depending on the functions
+functions can be invoked.
+Stack requirements vary depending on the functions
 and filesystems used by the consumer and the support layer functions detailed
 below.
 .Pp
@@ -474,7 +506,8 @@ or
 by calling
 .Fn setheap .
 Heap usage will vary depending on the number of simultaneously open files,
-as well as client behaviour.  Automatic decompression will allocate more
+as well as client behaviour.
+Automatic decompression will allocate more
 than 64K of data per open file.
 .Pp
 Console access is performed via the
@@ -536,13 +569,15 @@ returning in
 .Fa file
 a pointer to the remaining body of
 .Fa name
-which does not refer to the device.  The
+which does not refer to the device.
+The
 .Va f_dev
 field in
 .Fa of
 will be set to point to the
 .Vt devsw
-structure for the opened device if successful.  Device identifiers must
+structure for the opened device if successful.
+Device identifiers must
 always precede the path component, but may otherwise be arbitrarily formatted.
 Used by
 .Fn open
@@ -551,16 +586,20 @@ and thus for all device-related I/O.
 .Ft int
 .Fn devclose "struct open_file *of"
 .Xc
+.Pp
 Close the device allocated for
 .Fa of .
-The device driver itself will already have been called for the close; this call
-should clean up any allocation made by devopen only.
+The device driver itself will already have been called for the close;
+this call should clean up any allocation made by
+.Fn devopen
+only.
 .It Xo
 .Ft void
 .Fn panic "const char *msg" "..."
 .Xc
 .Pp
-Signal a fatal and unrecoverable error condition.  The
+Signal a fatal and unrecoverable error condition.
+The
 .Fa msg ...
 arguments are as for
 .Fn printf .
@@ -571,7 +610,8 @@ Internal filesystems are enabled by the consumer exporting the array
 which should be initialised with pointers
 to
 .Vt struct fs_ops
-structures.  The following filesystem handlers are supplied by
+structures.
+The following filesystem handlers are supplied by
 .Nm ,
 the consumer may supply other filesystems of their own:
 .Bl -hang -width ".Va cd9660_fsops"
@@ -579,8 +619,13 @@ the consumer may supply other filesystems of their own:
 The
 .Bx
 .Xr UFS 5 .
+.It Va hammer_fsops
+.Xr HAMMER 5
+filesystem.
 .It Va ext2fs_fsops
 Linux ext2fs filesystem.
+.It Va msdos_fsops
+MS-DOS filesystem.
 .It Va tftp_fsops
 File access via TFTP.
 .It Va nfs_fsops
@@ -594,10 +639,12 @@ When trying the zipfs filesystem,
 appends
 .Li .gz
 to the end of the filename, and then tries to locate the file using the other
-filesystems.  Placement of this filesystem in the
+filesystems.
+Placement of this filesystem in the
 .Va file_system[]
 array determines whether gzipped files will be opened in preference to non-gzipped
-files.  It is only possible to seek a gzipped file forwards, and
+files.
+It is only possible to seek a gzipped file forwards, and
 .Fn stat
 and
 .Fn fstat

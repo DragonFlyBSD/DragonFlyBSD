@@ -29,7 +29,6 @@
  * @(#)clnt_vc.c 1.19 89/03/16 Copyr 1988 Sun Micro
  * $NetBSD: clnt_vc.c,v 1.4 2000/07/14 08:40:42 fvdl Exp $
  * $FreeBSD: src/lib/libc/rpc/clnt_vc.c,v 1.20 2006/09/09 22:18:57 mbr Exp $
- * $DragonFly$
  */
 
 /*

@@ -30,7 +30,6 @@
  * @(#)svc_tcp.c	2.2 88/08/01 4.0 RPCSRC
  * $NetBSD: svc_vc.c,v 1.7 2000/08/03 00:01:53 fvdl Exp $
  * $FreeBSD: src/lib/libc/rpc/svc_vc.c,v 1.27 2008/03/30 09:36:17 dfr Exp $
- * $DragonFly$
  */
 
 /*

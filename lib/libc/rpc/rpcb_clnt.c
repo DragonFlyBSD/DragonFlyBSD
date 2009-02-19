@@ -45,7 +45,6 @@
  * @(#)rpcb_clnt.c	1.27	94/04/24 SMI; 1.30 89/06/21 Copyr 1988 Sun Micro
  * $NetBSD: rpcb_clnt.c,v 1.6 2000/07/16 06:41:43 itojun Exp $
  * $FreeBSD: src/lib/libc/rpc/rpcb_clnt.c,v 1.17 2007/09/20 22:35:24 matteo Exp $
- * $DragonFly$
  */
 /*
  * Copyright (c) 1986-1991 by Sun Microsystems Inc.

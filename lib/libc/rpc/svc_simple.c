@@ -229,7 +229,7 @@ rpc_reg(rpcprog_t prognum,			/* program number */
 	mutex_unlock(&proglst_lock);
 
 	if (done == FALSE) {
-		warnx("%s cant find suitable transport for %s",
+		warnx("%s can't find suitable transport for %s",
 			rpc_reg_msg, nettype);
 		return (-1);
 	}

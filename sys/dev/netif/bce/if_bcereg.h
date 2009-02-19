@@ -4729,8 +4729,10 @@ struct bce_softc {
 	struct mbuf		*tx_mbuf_ptr[TOTAL_TX_BD];
 
 	/* S/W maintained mbuf RX chain structure. */
+	bus_dmamap_t		rx_mbuf_tmpmap;
 	bus_dmamap_t		rx_mbuf_map[TOTAL_RX_BD];
 	struct mbuf		*rx_mbuf_ptr[TOTAL_RX_BD];
+	bus_addr_t		rx_mbuf_paddr[TOTAL_RX_BD];
 
 	/* Track the number of rx_bd and tx_bd's in use. */
 	uint16_t 		free_rx_bd;
@@ -4832,10 +4834,5 @@ struct bce_softc {
 #define BCE_COALMASK_RX_BDS		0x20
 #define BCE_COALMASK_RX_TICKS_INT	0x40
 #define BCE_COALMASK_RX_TICKS		0x80
-
-struct bce_dmamap_arg {
-	int			bce_maxsegs;
-	bus_dma_segment_t	*bce_segs;
-};
 
 #endif /* #ifndef _BCE_H_DEFINED */

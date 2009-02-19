@@ -107,6 +107,7 @@ struct nfe_softc {
 	uint32_t		rxtxctl;
 	uint8_t			mii_phyaddr;
 
+	bus_dma_tag_t		sc_dtag;
 	struct nfe_tx_ring	txq;
 	struct nfe_rx_ring	rxq;
 
@@ -125,3 +126,6 @@ struct nfe_softc {
 #define NFE_IRQ_ENABLE(sc)	\
 	((sc)->sc_imtime == 0 ? NFE_IRQ_NOIMTIMER : \
 	 (((sc)->sc_flags & NFE_F_DYN_IM) ? NFE_IRQ_NOIMTIMER: NFE_IRQ_IMTIMER))
+
+#define NFE_ADDR_HI(addr)	((uint64_t) (addr) >> 32)
+#define NFE_ADDR_LO(addr)	((uint64_t) (addr) & 0xffffffff)

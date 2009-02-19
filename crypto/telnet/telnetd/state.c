@@ -44,6 +44,8 @@
 #include <libtelnet/encrypt.h>
 #endif
 
+static int envvarok(char *);
+
 unsigned char	doopt[] = { IAC, DO, '%', 'c', 0 };
 unsigned char	dont[] = { IAC, DONT, '%', 'c', 0 };
 unsigned char	will[] = { IAC, WILL, '%', 'c', 0 };
@@ -1045,6 +1047,44 @@ int env_ovalue = -1;
 # define env_ovalue OLD_ENV_VALUE
 #endif	/* ENV_HACK */
 
+/* envvarok(char*) */
+/* check that variable is safe to pass to login or shell */
+static int
+envvarok(char *varp)
+{
+
+	if (strcmp(varp, "TERMCAP") &&	/* to prevent a security hole */
+	    strcmp(varp, "TERMINFO") &&	/* with tgetent */
+	    strcmp(varp, "TERMPATH") &&
+	    strcmp(varp, "HOME") &&	/* to prevent the tegetent bug  */
+	    strncmp(varp, "LD_", strlen("LD_")) &&	/* most systems */
+	    strncmp(varp, "_RLD_", strlen("_RLD_")) &&	/* IRIX */
+	    strcmp(varp, "LIBPATH") &&			/* AIX */
+	    strcmp(varp, "ENV") &&
+	    strcmp(varp, "BASH_ENV") &&
+	    strcmp(varp, "IFS") &&
+	    strncmp(varp, "KRB5", strlen("KRB5")) &&	/* Krb5 */
+	    /*
+	     * The above case is a catch-all for now.  Here are some of
+	     * the specific ones we must avoid passing, at least until
+	     * we can prove it can be done safely.  Keep this list
+	     * around un case someone wants to remove the catch-all.
+	     */
+	    strcmp(varp, "KRB5_CONFIG") &&		/* Krb5 */
+	    strcmp(varp, "KRB5CCNAME") &&		/* Krb5 */
+	    strcmp(varp, "KRB5_KTNAME") &&		/* Krb5 */
+	    strcmp(varp, "KRBTKFILE") &&		/* Krb4 */
+	    strcmp(varp, "KRB_CONF") &&			/* CNS 4 */
+	    strcmp(varp, "KRB_REALMS") &&		/* CNS 4 */
+	    strcmp(varp, "RESOLV_HOST_CONF"))		/* Linux */
+		return (1);
+	else {
+		syslog(LOG_INFO, "Rejected the attempt to modify the "
+		    "environment variable \"%s\"", varp);
+		return (0);
+	}
+}
+
 /*
  * suboption()
  *
@@ -1382,10 +1422,12 @@ suboption(void)
 		case NEW_ENV_VAR:
 		case ENV_USERVAR:
 			*cp = '\0';
-			if (valp)
-				(void)setenv(varp, valp, 1);
-			else
-				unsetenv(varp);
+			if (envvarok(varp)) {
+				if (valp)
+					(void)setenv(varp, valp, 1);
+				else
+					unsetenv(varp);
+			}
 			cp = varp = (char *)subpointer;
 			valp = 0;
 			break;
@@ -1401,10 +1443,12 @@ suboption(void)
 		}
 	}
 	*cp = '\0';
-	if (valp)
-		(void)setenv(varp, valp, 1);
-	else
-		unsetenv(varp);
+	if (envvarok(varp)) {
+		if (valp)
+			(void)setenv(varp, valp, 1);
+		else
+			unsetenv(varp);
+	}
 	break;
     }  /* end of case TELOPT_NEW_ENVIRON */
 #ifdef	AUTHENTICATION

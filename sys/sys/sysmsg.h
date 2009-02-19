@@ -32,6 +32,7 @@ struct sysmsg {
 	    __int32_t result32;          /* 32 bit result */
 	    __int64_t result64;          /* 64 bit result */
 	    __off_t offset;              /* off_t result */
+	    register_t reg;
 	} sm_result;
 	struct trapframe *sm_frame;	 /* trapframe - saved user context */
 	void *sm_unused;
@@ -50,6 +51,7 @@ union sysunion;
 #define sysmsg_offset	sysmsg.sm_result.offset
 #define sysmsg_result32	sysmsg.sm_result.result32
 #define sysmsg_result64	sysmsg.sm_result.result64
+#define sysmsg_reg	sysmsg.sm_result.reg
 #define sysmsg_frame	sysmsg.sm_frame
 #endif
 

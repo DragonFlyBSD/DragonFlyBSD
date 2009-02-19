@@ -31,7 +31,7 @@
 .\"
 .\" $DragonFly: src/share/man/man5/uuids.5,v 1.2 2008/07/28 12:38:36 swildner Exp $
 .\"
-.Dd July 27, 2008
+.Dd February 8, 2009
 .Os
 .Dt UUIDS 5
 .Sh NAME
@@ -43,24 +43,24 @@
 .Sh DESCRIPTION
 A
 .Nm
-file contains a list of UUIDs and their symbolic names.
+file contains a list of UUIDs (universally unique identifiers) and their symbolic names.
 .Pp
 Each line in a
 .Nm
 file, other than comment lines that begin with a
 .Sq # ,
-specifies an UUID and its symbolic name.
+specifies a UUID and its symbolic name.
 The first field is the UUID, the second field is the name,
 they are separated by tabs or spaces.
-An UUID is a 64 bit number formatted this way:
+A UUID is a 128 bit number written in hexadecimal and formatted like this:
 01234567-89ab-cdef-0123-456789abcdef,
-i.e. 16 hexadecimal digits, with
-.Sq -
+i.e. 16 hexadecimal digits, with dash
+.Pq Sq - ,
 after digit no. 8, 12, 16 and 20.
-A name is a text string enclosed in
-.Sq \&" .
+A name is a text string enclosed in double quotes
+.Pq Sq \&" .
 .Sh EXAMPLES
-An UUID with name
+A UUID with name
 .Dq test UUID :
 .Bd -literal -offset indent
 # test uuids(5) file

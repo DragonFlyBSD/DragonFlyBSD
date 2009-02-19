@@ -29,6 +29,12 @@
 #define NFE_JPOOL_COUNT(sc)	(((sc)->sc_rx_ring_count * 3) / 2)
 #define NFE_JPOOL_SIZE(sc)	(NFE_JPOOL_COUNT((sc)) * NFE_JBYTES)
 
+#if (BUS_SPACE_MAXADDR > BUS_SPACE_MAXADDR_32BIT)
+#define NFE_BUS_SPACE_MAXADDR	0x7fffffffffULL	/* 39 bit */
+#else
+#define NFE_BUS_SPACE_MAXADDR	BUS_SPACE_MAXADDR
+#endif
+
 #define NFE_MAX_SCATTER		32
 #define NFE_NSEG_SPARE_JUMBO	5
 #define NFE_NSEG_SPARE		1

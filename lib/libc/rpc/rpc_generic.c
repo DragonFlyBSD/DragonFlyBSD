@@ -28,7 +28,6 @@
  * @(#)rpc_generic.c	1.17	94/04/24 SMI
  * $NetBSD: rpc_generic.c,v 1.4 2000/09/28 09:07:04 kleink Exp $
  * $FreeBSD: src/lib/libc/rpc/rpc_generic.c,v 1.14 2007/09/20 22:35:24 matteo Exp $
- * $DragonFly$
  */
 /*
  * Copyright (c) 1986-1991 by Sun Microsystems Inc.

@@ -5,7 +5,7 @@ zmodload -i zsh/complist
 alias ls='ls -G -F -h'
 alias df='df -h'
 alias vi='vim'
-alias du='du -hsc *'
+alias du='du -hsc'
 
 PS1="$(print '%{\e[1;34m%}(%{\e[1;31m%}%M%{\e[1;34m%})%{\e[1;36m%}-%{\e[1;34m%}(%{\e[0m%}%C%{\e[1;34m%})%{\e[1;36m%}-%{\e[1;31m%}%#%{\e[0m%}') "
 
@@ -43,13 +43,6 @@ mamma() {
 		echo "Keyboard layout: DVORAK"
 	fi
 }
-
-# autostart X
-if [ ! -f /tmp/.firstLogin ]; then 
- 	echo "Starting X..."
- 	touch /tmp/.firstLogin
-	startx
-fi
 
 zstyle ':completion:*:descriptions' format '%B%d%b'
 zstyle ':completion:*:messages' format '%d'

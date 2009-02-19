@@ -138,7 +138,6 @@ MLINKS+=	bindresvport.3 bindresvport_sa.3 \
 		rpc_soc.3 svcunixfd_create.3 \
 		rpc_soc.3 xdr_pmap.3 \
 		rpc_soc.3 xdr_pmaplist.3 \
-		rpc_svc_calls.3 __svc_getcallercreds.3 \
 		rpc_svc_calls.3 svc_dg_enablecache.3 \
 		rpc_svc_calls.3 svc_exit.3 \
 		rpc_svc_calls.3 svc_freeargs.3 \

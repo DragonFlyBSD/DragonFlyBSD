@@ -97,6 +97,8 @@ No component may start with the hyphen
 character.
 .El
 .El
+.Sh EXIT STATUS
+.Ex -std
 .Sh EXAMPLES
 Check whether the names of files in the current directory are portable to
 other
@@ -104,8 +106,6 @@ other
 systems:
 .Pp
 .Dl "find . -print | xargs pathchk -p"
-.Sh DIAGNOSTICS
-.Ex -std
 .Sh SEE ALSO
 .Xr getconf 1 ,
 .Xr pathconf 2 ,

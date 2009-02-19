@@ -29,7 +29,6 @@
  * @(#)clnt_dg.c	1.23	94/04/22 SMI; 1.19 89/03/16 Copyr 1988 Sun Micro
  * $NetBSD: clnt_dg.c,v 1.4 2000/07/14 08:40:41 fvdl Exp $
  * $FreeBSD: src/lib/libc/rpc/clnt_dg.c,v 1.18 2006/02/27 22:10:58 deischen Exp $
- * $DragonFly$
  */
 /*
  * Copyright (c) 1986-1991 by Sun Microsystems Inc.

@@ -335,10 +335,10 @@ getinfo( const char *vname )
 					vnu.vnu_size);
 			else
 				fprintf(stdout, 
-					"covering %s on %s, inode %d\n", 
+					"covering %s on %s, inode %ju\n",
 					vnu.vnu_file,
 					devname(vnu.vnu_dev, S_IFBLK), 
-					vnu.vnu_ino);
+					(uintmax_t)vnu.vnu_ino);
 		}
 	}
 	close(vd);
@@ -411,6 +411,9 @@ config(struct vndisk *vnp)
 			printf("Unable to open file %s\n", file);
 			return(0);
 		}
+	} else if (file == NULL && vnp->size == 0 && (flags & VN_CONFIG)) {
+		warnx("specify regular filename or swap size");
+		return (0);
 	}
 
 	rdev = rawdevice(dev);

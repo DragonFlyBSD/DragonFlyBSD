@@ -293,6 +293,8 @@ option is used.
 .It Pa /etc/mtree
 system specification directory
 .El
+.Sh EXIT STATUS
+.Ex -std
 .Sh EXAMPLES
 To detect system binaries that have been ``trojan horsed'', it is recommended
 that
@@ -335,8 +337,6 @@ style BSD.*.dist file, use
 .Fl n
 .Fl k
 .Cm uname,gname,mode,nochange .
-.Sh DIAGNOSTICS
-.Ex -std
 .Sh SEE ALSO
 .Xr chflags 1 ,
 .Xr chgrp 1 ,

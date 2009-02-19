@@ -759,8 +759,6 @@ The
 directive requires that the target be configured as a slave and that the
 .Ar shared-uuid
 field of the mirroring source and target match.
-.Sh DIAGNOSTICS
-.Ex -std
 .Sh FILES
 .Bl -tag -width ".It Pa <fs>/var/slaves/<name>" -compact
 .It Pa snapshots
@@ -772,6 +770,8 @@ configuration file
 .It Pa <fs>/var/slaves/<name>
 recommended slave PFS snapshots directory
 .El
+.Sh EXIT STATUS
+.Ex -std
 .Sh SEE ALSO
 .Xr undo 1 ,
 .Xr HAMMER 5 ,

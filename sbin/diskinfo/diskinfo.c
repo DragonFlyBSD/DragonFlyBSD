@@ -155,7 +155,7 @@ static
 void
 usage(const char *av0)
 {
-	fprintf(stderr, "%s [-q] [devices....]\n", av0);
+	fprintf(stderr, "%s [-qx] device ...\n", av0);
 	exit(1);
 }
 

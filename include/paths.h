@@ -42,7 +42,7 @@
 #include <sys/paths.h>	/* dev paths */
 
 /* Default search path. */
-#define	_PATH_DEFPATH	"/usr/bin:/bin"
+#define	_PATH_DEFPATH	"/bin:/sbin:/usr/bin:/usr/sbin:/usr/pkg/bin:/usr/pkg/sbin"
 /* All standard utilities path. */
 #define	_PATH_STDPATH \
 	"/usr/bin:/bin:/usr/sbin:/sbin:"

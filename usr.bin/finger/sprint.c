@@ -38,6 +38,7 @@
  * $DragonFly: src/usr.bin/finger/sprint.c,v 1.4 2008/02/09 17:12:05 matthias Exp $
  */
 
+#include <sys/socket.h>
 #include <db.h>
 #include <err.h>
 #include <langinfo.h>
@@ -53,8 +54,6 @@ static void	  stimeprint(WHERE *);
 void
 sflag_print(void)
 {
-	extern time_t now;
-	extern int    oflag;
 	PERSON *pn;
 	WHERE *w;
 	int sflag, r, namelen;

@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl
+#!/usr/pkg/bin/perl
 #
 # create message-id / in-reply-to database
 #

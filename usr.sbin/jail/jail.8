@@ -107,7 +107,7 @@ make distribution DESTDIR=$D -DNO_MAKEDEV_RUN
 cd $D/dev
 sh MAKEDEV jail
 cd $D
-ln -sf dev/null kernel
+ln -sf dev/null boot/kernel
 .Ed
 .Pp
 In many cases this example would put far more stuff in the jail than is needed.
@@ -216,10 +216,6 @@ options by editing
 etc.
 .Pp
 .Bl -bullet -offset indent -compact
-.It
-Create an empty
-.Pa /etc/fstab
-to quell startup warnings about missing fstab
 .It
 Disable the port mapper
 .Pa ( /etc/rc.conf :

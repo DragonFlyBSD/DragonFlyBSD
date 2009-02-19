@@ -54,7 +54,7 @@ main(int argc, char **argv)
 	int	ch, error, fd, oflags;
 	char   *fname, *rname;
 
-	rsize = tsize = 0;
+	rsize = tsize = sz = 0;
 	error = 0;
 	rname = NULL;
 	while ((ch = getopt(argc, argv, "cr:s:")) != -1)

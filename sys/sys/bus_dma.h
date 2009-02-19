@@ -83,15 +83,19 @@
 /*
  * Flags used in various bus DMA methods.
  */
-#define	BUS_DMA_WAITOK		0x00	/* safe to sleep (pseudo-flag) */
-#define	BUS_DMA_NOWAIT		0x01	/* not safe to sleep */
-#define	BUS_DMA_ALLOCNOW	0x02	/* perform resource allocation now */
-#define	BUS_DMA_COHERENT	0x04	/* map memory to not require sync */
-#define	BUS_DMA_ZERO		0x08	/* allocate zero'ed memory */
-#define	BUS_DMA_BUS1		0x10	/* placeholders for bus functions... */
-#define	BUS_DMA_BUS2		0x20
-#define	BUS_DMA_BUS3		0x40
-#define	BUS_DMA_BUS4		0x80
+#define	BUS_DMA_WAITOK		0x0000	/* safe to sleep (pseudo-flag) */
+#define	BUS_DMA_NOWAIT		0x0001	/* not safe to sleep */
+#define	BUS_DMA_ALLOCNOW	0x0002	/* perform resource allocation now */
+#define	BUS_DMA_COHERENT	0x0004	/* map memory to not require sync */
+#define	BUS_DMA_ZERO		0x0008	/* allocate zero'ed memory */
+#define	BUS_DMA_BUS1		0x0010	/* placeholders for bus functions... */
+#define	BUS_DMA_BUS2		0x0020
+#define	BUS_DMA_BUS3		0x0040
+#define	BUS_DMA_BUS4		0x0080
+#define	BUS_DMA_ONEBPAGE	0x0100	/* allocate one bpage per map at most */
+#define	BUS_DMA_ALIGNED		0x0200	/* no bpage should be allocated due to
+					 * alignment requirement; all to-be-
+					 * loaded memory is properly aligned */
 
 /* Forwards needed by prototypes below. */
 struct mbuf;
@@ -136,6 +140,13 @@ typedef struct bus_dma_segment {
 	bus_addr_t	ds_addr;	/* DMA address */
 	bus_size_t	ds_len;		/* length of transfer */
 } bus_dma_segment_t;
+
+typedef struct bus_dmamem {
+	bus_dma_tag_t	dmem_tag;
+	bus_dmamap_t	dmem_map;
+	void		*dmem_addr;
+	bus_addr_t	dmem_busaddr;
+} bus_dmamem_t;
 
 /*
  * A function that returns 1 if the address cannot be accessed by
@@ -235,6 +246,56 @@ int bus_dmamap_load_uio(bus_dma_tag_t dmat, bus_dmamap_t map,
 			int flags);
 
 /*
+ * Like bus_dmamap_load_mbuf without callback.
+ * Segmentation information are saved in 'segs' and 'nsegs' if
+ * the loading is successful.  'maxsegs' must be set by caller
+ * and must be at least 1 but less than 'dmat' nsegment.  It
+ * indicates the number of elements in 'segs'.  'flags' must
+ * have BUS_DMA_NOWAIT turned on.
+ */
+int
+bus_dmamap_load_mbuf_segment(bus_dma_tag_t dmat, bus_dmamap_t map,
+			     struct mbuf *mbuf,
+			     bus_dma_segment_t *segs, int maxsegs,
+			     int *nsegs, int flags);
+
+/*
+ * Like bus_dmamap_load_mbuf_segment, but it will call m_defrag()
+ * and try reloading if low level code indicates too many fragments
+ * in the '*mbuf'; 'mbuf' will be updated under this situation.
+ */
+int
+bus_dmamap_load_mbuf_defrag(bus_dma_tag_t dmat, bus_dmamap_t map,
+			    struct mbuf **mbuf,
+			    bus_dma_segment_t *segs, int maxsegs,
+			    int *nsegs, int flags);
+
+/*
+ * Convenient function to create coherent busdma memory
+ */
+int
+bus_dmamem_coherent(bus_dma_tag_t parent,
+		    bus_size_t alignment, bus_size_t boundary,
+		    bus_addr_t lowaddr, bus_addr_t highaddr,
+		    bus_size_t maxsize, int flags,
+		    bus_dmamem_t *dmem);
+
+/*
+ * Simplified version of bus_dmamem_coherent() with:
+ * boundary == 0
+ * lowaddr  == BUS_SPACE_MAXADDR
+ * highaddr == BUS_SPACE_MAXADDR
+ *
+ * 'parent' usually should not be NULL, so we could inherit
+ * boundary, lowaddr and highaddr from it.
+ */
+void *
+bus_dmamem_coherent_any(bus_dma_tag_t parent, bus_size_t alignment,
+			bus_size_t maxsize, int flags,
+			bus_dma_tag_t *dtag, bus_dmamap_t *dmap,
+			bus_addr_t *busaddr);
+
+/*
  * Perform a syncronization operation on the given map.
  */
 void _bus_dmamap_sync(bus_dma_tag_t, bus_dmamap_t, bus_dmasync_op_t);
@@ -251,4 +312,3 @@ void _bus_dmamap_unload(bus_dma_tag_t dmat, bus_dmamap_t map);
 		_bus_dmamap_unload(dmat, dmamap)
 
 #endif /* _SYS_BUS_DMA_H_ */
-

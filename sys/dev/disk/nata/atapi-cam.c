@@ -467,7 +467,7 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
     case XPT_SCSI_IO: {
 	struct ccb_scsiio *csio = &ccb->csio;
 	int tid = ccb_h->target_id, lid = ccb_h->target_lun;
-	int request_flags = ATA_R_ATAPI;
+	int request_flags = ATA_R_QUIET | ATA_R_ATAPI;
 
 	CAM_DEBUG(ccb_h->path, CAM_DEBUG_SUBTRACE, ("XPT_SCSI_IO\n"));
 

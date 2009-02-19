@@ -29,7 +29,6 @@
  * @(#)svc_dg.c	1.17	94/04/24 SMI
  * $NetBSD: svc_dg.c,v 1.4 2000/07/06 03:10:35 christos Exp $
  * $FreeBSD: src/lib/libc/rpc/svc_dg.c,v 1.8 2006/02/27 22:10:59 deischen Exp $
- * $DragonFly$
  */
 
 /*

@@ -33,7 +33,8 @@
 
 if [ -z "$BINPKG_SITES" ]
 then
-	BINPKG_SITES=http://pkgbox.dragonflybsd.org/
+	osver=`uname -r | awk -F - '{ print $1; }'`
+	BINPKG_SITES=http://pkgbox.dragonflybsd.org/DragonFly-$osver
 	[ -f /etc/settings.conf ] && . /etc/settings.conf
 fi
 

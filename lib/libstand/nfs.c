@@ -551,9 +551,9 @@ nfs_close(struct open_file *f)
 		printf("nfs_close: fp=0x%lx\n", (u_long)fp);
 #endif
 
-	if (fp != &nfs_root_node && fp)
+	f->f_fsdata = NULL;
+	if (fp && fp != &nfs_root_node)
 		free(fp);
-	f->f_fsdata = (void *)0;
 	
 	return (0);
 }

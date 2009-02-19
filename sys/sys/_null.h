@@ -38,6 +38,8 @@
 #ifndef NULL
 #ifndef __cplusplus
 #define NULL	((void *)0)
+#elif defined(__GNUC__) && __GNUC__ >= 4
+#define NULL	__null
 #else
 #define NULL	0
 #endif

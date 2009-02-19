@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/pkg/bin/perl -w
 #
 # Copyright (C) 2000 Jason Evans <jasone@freebsd.org>.
 # All rights reserved.

@@ -407,6 +407,15 @@ soaborta(struct socket *so)
 	}
 }
 
+void
+soabort_oncpu(struct socket *so)
+{
+	if ((so->so_state & SS_ABORTING) == 0) {
+		so->so_state |= SS_ABORTING;
+		so_pru_abort_oncpu(so);
+	}
+}
+
 int
 soaccept(struct socket *so, struct sockaddr **nam)
 {

@@ -603,7 +603,8 @@ checklost(int dosfs, struct bootblock *boot, struct fatEntry *fat)
 				ret = 1;
 			}
 		}
-		if (boot->NumFree && fat[boot->FSNext].next != CLUST_FREE) {
+		if (boot->NumFree && (boot->FSNext >= boot->NumClusters ||
+				      fat[boot->FSNext].next != CLUST_FREE)) {
 			pwarn("Next free cluster in FSInfo block (%u) not free\n",
 			      boot->FSNext);
 			if (ask(1, "fix"))

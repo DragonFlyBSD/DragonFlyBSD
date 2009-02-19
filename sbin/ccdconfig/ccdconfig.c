@@ -682,11 +682,11 @@ static void
 usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n",
-		"usage: ccdconfig [-cv] ccd ileave [flags] dev [...]",
+		"usage: ccdconfig [-cv] ccd ileave [flags] dev ...",
 		"       ccdconfig -C [-v] [-f config_file]",
-		"       ccdconfig -u [-v] ccd [...]",
+		"       ccdconfig -u [-v] ccd ...",
 		"       ccdconfig -U [-v] [-f config_file]",
-		"       ccdconfig -g [-M core] [-N system] [ccd [...]]");
+		"       ccdconfig -g [-M core] [-N system] [ccd ...]");
 	exit(1);
 }
 

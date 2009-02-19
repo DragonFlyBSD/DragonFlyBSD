@@ -117,6 +117,9 @@ static void rtinit_rtrequest_callback(int, int, struct rt_addrinfo *,
 static void rtredirect_msghandler(struct netmsg *netmsg);
 static void rtrequest1_msghandler(struct netmsg *netmsg);
 #endif
+static void rtsearch_msghandler(struct netmsg *netmsg);
+
+static void rtmask_add_msghandler(struct netmsg *netmsg);
 
 static int rt_setshims(struct rtentry *, struct sockaddr **);
 
@@ -380,7 +383,7 @@ rtfree_remote(struct rtentry *rt, int allow_panic)
 	} else {
 		kprintf("rt remote free rt_cpuid %d, mycpuid %d\n",
 			rt->rt_cpuid, mycpuid);
-		backtrace();
+		print_backtrace();
 	}
 
 	netmsg_init(&nmsg, &curthread->td_msgport, 0, rtfree_remote_dispatch);
@@ -471,7 +474,10 @@ create:
 		 */
 		rt->rt_flags |= RTF_MODIFIED;
 		flags |= RTF_MODIFIED;
-		rt_setgate(rt, rt_key(rt), gateway);
+
+		/* We only need to report rtmsg on CPU0 */
+		rt_setgate(rt, rt_key(rt), gateway,
+			   mycpuid == 0 ? RTL_REPORTMSG : RTL_DONTREPORT);
 		error = 0;
 		stat = &rtstat.rts_newgateway;
 	}
@@ -814,6 +820,7 @@ rtrequest1(int req, struct rt_addrinfo *rtinfo, struct rtentry **ret_nrt)
 	struct radix_node_head *rnh;
 	struct ifaddr *ifa;
 	struct sockaddr *ndst;
+	boolean_t reportmsg;
 	int error = 0;
 
 #define gotoerr(x) { error = x ; goto bad; }
@@ -929,7 +936,19 @@ makeroute:
 		bzero(rt, sizeof(struct rtentry));
 		rt->rt_flags = RTF_UP | rtinfo->rti_flags;
 		rt->rt_cpuid = mycpuid;
-		error = rt_setgate(rt, dst, rtinfo->rti_info[RTAX_GATEWAY]);
+
+		if (mycpuid != 0 && req == RTM_ADD) {
+			/* For RTM_ADD, we have already sent rtmsg on CPU0. */
+			reportmsg = RTL_DONTREPORT;
+		} else {
+			/*
+			 * For RTM_ADD, we only send rtmsg on CPU0.
+			 * For RTM_RESOLVE, we always send rtmsg. XXX
+			 */
+			reportmsg = RTL_REPORTMSG;
+		}
+		error = rt_setgate(rt, dst, rtinfo->rti_info[RTAX_GATEWAY],
+				   reportmsg);
 		if (error != 0) {
 			Free(rt);
 			gotoerr(error);
@@ -1185,7 +1204,8 @@ rt_fixchange(struct radix_node *rn, void *vp)
 #define ROUNDUP(a) (a>0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
 
 int
-rt_setgate(struct rtentry *rt0, struct sockaddr *dst, struct sockaddr *gate)
+rt_setgate(struct rtentry *rt0, struct sockaddr *dst, struct sockaddr *gate,
+	   boolean_t generate_report)
 {
 	char *space, *oldspace;
 	int dlen = ROUNDUP(dst->sa_len), glen = ROUNDUP(gate->sa_len);
@@ -1265,7 +1285,8 @@ rt_setgate(struct rtentry *rt0, struct sockaddr *dst, struct sockaddr *gate)
 		 *
 		 * This breaks TTCP for hosts outside the gateway!  XXX JH
 		 */
-		rt->rt_gwroute = _rtlookup(gate, RTL_REPORTMSG, RTF_PRCLONING);
+		rt->rt_gwroute = _rtlookup(gate, generate_report,
+					   RTF_PRCLONING);
 		if (rt->rt_gwroute == rt) {
 			rt->rt_gwroute = NULL;
 			--rt->rt_refcnt;
@@ -1391,7 +1412,7 @@ rt_addrinfo_print(int cmd, struct rt_addrinfo *rti)
 
 #ifdef ROUTE_DEBUG
 	if (cmd == RTM_DELETE && route_debug > 1)
-		backtrace();
+		print_backtrace();
 #endif
 
 	switch(cmd) {
@@ -1611,6 +1632,170 @@ rtinit_rtrequest_callback(int cmd, int error,
 			}
 		}
 	}
+}
+
+struct netmsg_rts {
+	struct netmsg		netmsg;
+	int			req;
+	struct rt_addrinfo	*rtinfo;
+	rtsearch_callback_func_t callback;
+	void			*arg;
+	boolean_t		exact_match;
+	int			found_cnt;
+};
+
+int
+rtsearch_global(int req, struct rt_addrinfo *rtinfo,
+		rtsearch_callback_func_t callback, void *arg,
+		boolean_t exact_match)
+{
+	struct netmsg_rts msg;
+
+	netmsg_init(&msg.netmsg, &curthread->td_msgport, 0,
+		    rtsearch_msghandler);
+	msg.req = req;
+	msg.rtinfo = rtinfo;
+	msg.callback = callback;
+	msg.arg = arg;
+	msg.exact_match = exact_match;
+	msg.found_cnt = 0;
+	return lwkt_domsg(rtable_portfn(0), &msg.netmsg.nm_lmsg, 0);
+}
+
+static void
+rtsearch_msghandler(struct netmsg *netmsg)
+{
+	struct netmsg_rts *msg = (void *)netmsg;
+	struct rt_addrinfo *rtinfo = msg->rtinfo;
+	struct radix_node_head *rnh;
+	struct rtentry *rt;
+	int nextcpu, error;
+
+	/*
+	 * Find the correct routing tree to use for this Address Family
+	 */
+	if ((rnh = rt_tables[mycpuid][rtinfo->rti_dst->sa_family]) == NULL) {
+		if (mycpuid != 0)
+			panic("partially initialized routing tables\n");
+		lwkt_replymsg(&msg->netmsg.nm_lmsg, EAFNOSUPPORT);
+		return;
+	}
+
+	/*
+	 * Correct rtinfo for the host route searching.
+	 */
+	if (rtinfo->rti_flags & RTF_HOST) {
+		rtinfo->rti_netmask = NULL;
+		rtinfo->rti_flags &= ~(RTF_CLONING | RTF_PRCLONING);
+	}
+
+	rt = (struct rtentry *)
+	     rnh->rnh_lookup((char *)rtinfo->rti_dst,
+			     (char *)rtinfo->rti_netmask, rnh);
+
+	/*
+	 * If we are asked to do the "exact match", we need to make sure
+	 * that host route searching got a host route while a network
+	 * route searching got a network route.
+	 */
+	if (rt != NULL && msg->exact_match &&
+	    ((rt->rt_flags ^ rtinfo->rti_flags) & RTF_HOST))
+		rt = NULL;
+
+	if (rt == NULL) {
+		/*
+		 * No matching routes have been found, don't count this
+		 * as a critical error (here, we set 'error' to 0), just
+		 * keep moving on, since at least prcloned routes are not
+		 * duplicated onto each CPU.
+		 */
+		error = 0;
+	} else {
+		msg->found_cnt++;
+
+		rt->rt_refcnt++;
+		error = msg->callback(msg->req, msg->rtinfo, rt, msg->arg,
+				      msg->found_cnt);
+		rt->rt_refcnt--;
+
+		if (error == EJUSTRETURN) {
+			lwkt_replymsg(&msg->netmsg.nm_lmsg, 0);
+			return;
+		}
+	}
+
+	nextcpu = mycpuid + 1;
+	if (error) {
+		KKASSERT(msg->found_cnt > 0);
+
+		/*
+		 * Under following cases, unrecoverable error has
+		 * not occured:
+		 * o  Request is RTM_GET
+		 * o  The first time that we find the route, but the
+		 *    modification fails.
+		 */
+		if (msg->req != RTM_GET && msg->found_cnt > 1) {
+			panic("rtsearch_msghandler: unrecoverable error "
+			      "cpu %d, rtinfo %p", mycpuid, msg->rtinfo);
+		}
+		lwkt_replymsg(&msg->netmsg.nm_lmsg, error);
+	} else if (nextcpu < ncpus) {
+		lwkt_forwardmsg(rtable_portfn(nextcpu), &msg->netmsg.nm_lmsg);
+	} else {
+		if (msg->found_cnt == 0) {
+			/* The requested route was never seen ... */
+			error = ESRCH;
+		}
+		lwkt_replymsg(&msg->netmsg.nm_lmsg, error);
+	}
+}
+
+int
+rtmask_add_global(struct sockaddr *mask)
+{
+	struct netmsg nmsg;
+
+	netmsg_init(&nmsg, &curthread->td_msgport, 0,
+		    rtmask_add_msghandler);
+	nmsg.nm_lmsg.u.ms_resultp = mask;
+
+	return lwkt_domsg(rtable_portfn(0), &nmsg.nm_lmsg, 0);
+}
+
+struct sockaddr *
+_rtmask_lookup(struct sockaddr *mask, boolean_t search)
+{
+	struct radix_node *n;
+
+#define	clen(s)	(*(u_char *)(s))
+	n = rn_addmask((char *)mask, search, 1);
+	if (n != NULL &&
+	    mask->sa_len >= clen(n->rn_key) &&
+	    bcmp((char *)mask + 1,
+		 (char *)n->rn_key + 1, clen(n->rn_key) - 1) == 0) {
+		return (struct sockaddr *)n->rn_key;
+	} else {
+		return NULL;
+	}
+#undef clen
+}
+
+static void
+rtmask_add_msghandler(struct netmsg *nmsg)
+{
+	struct lwkt_msg *lmsg = &nmsg->nm_lmsg;
+	struct sockaddr *mask = lmsg->u.ms_resultp;
+	int error = 0, nextcpu;
+
+	if (rtmask_lookup(mask) == NULL)
+		error = ENOBUFS;
+
+	nextcpu = mycpuid + 1;
+	if (!error && nextcpu < ncpus)
+		lwkt_forwardmsg(rtable_portfn(nextcpu), lmsg);
+	else
+		lwkt_replymsg(lmsg, error);
 }
 
 /* This must be before ip6_init2(), which is now SI_ORDER_MIDDLE */

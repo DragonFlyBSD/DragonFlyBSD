@@ -73,6 +73,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <fcntl.h>
 #include <paths.h>
 #include <string.h>
@@ -87,37 +88,43 @@ static char buf[512+1];
 int
 main(int argc, char *argv[])
 {
-    int kernel_fd;
-    int one;
-    int len;
+	int kernel_fd;
+	int one;
+	int len;
 
-    if ((kernel_fd = open("/dev/" CDEV_DEVICE, O_RDWR)) == -1) {
-	perror("/dev/" CDEV_DEVICE);
-	exit(1);
-    }
+	if ((kernel_fd = open("/dev/" CDEV_DEVICE, O_RDWR)) == -1) {
+		perror("/dev/" CDEV_DEVICE);
+		exit(1);
+	}
 
-    /* Send ioctl */
-    if (ioctl(kernel_fd, CDEV_IOCTL1, &one) == -1) {
-	perror("CDEV_IOCTL1");
-    } else {
-	printf( "Sent ioctl CDEV_IOCTL1 to device %s%s\n", _PATH_DEV, CDEV_DEVICE);
-    }
+	/* Send ioctl */
+	if (ioctl(kernel_fd, CDEV_IOCTL1, &one) == -1) {
+		perror("CDEV_IOCTL1");
+	}
+	else {
+		printf("Sent ioctl CDEV_IOCTL1 to device %s%s\n", _PATH_DEV,
+		    CDEV_DEVICE);
+	}
 
-    len = strlen(writestr) + 1;
+	len = strlen(writestr) + 1;
 
-    /* Write operation */
-    if (write(kernel_fd, writestr, len) == -1) {
-	perror("write()");
-    } else {
-	printf("Written \"%s\" string to device /dev/" CDEV_DEVICE "\n", writestr);
-    }
+	/* Write operation */
+	if (write(kernel_fd, writestr, len) == -1) {
+		perror("write()");
+	}
+	else {
+		printf("Written \"%s\" string to device /dev/" CDEV_DEVICE "\n",
+		    writestr);
+	}
 
-    /* Read operation */
-    if (read(kernel_fd, buf, len) == -1) {
-	perror("read()");
-    } else {
-	printf("Read \"%s\" string from device /dev/" CDEV_DEVICE "\n", buf);
-    }
+	/* Read operation */
+	if (read(kernel_fd, buf, len) == -1) {
+		perror("read()");
+	}
+	else {
+		printf("Read \"%s\" string from device /dev/" CDEV_DEVICE "\n",
+		    buf);
+	}
 
-    exit(0);
+	exit(0);
 }

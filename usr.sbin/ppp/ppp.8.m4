@@ -5773,7 +5773,7 @@ to get online information about what's available.
 The following URLs contain useful information:
 .Bl -bullet -compact
 .It
-.Pa http://wiki.dragonflybsd.org/index.cgi/userppp.html
+.Pa http://www.dragonflybsd.org/docs/handbook/handbook-userppp/
 .El
 .El
 .Sh FILES

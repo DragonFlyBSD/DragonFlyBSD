@@ -28,7 +28,6 @@
  *
  * $NetBSD: nettype.h,v 1.2 2000/07/06 03:17:19 christos Exp $
  * $FreeBSD: src/include/rpc/nettype.h,v 1.2 2002/03/23 17:24:55 imp Exp $
- * $DragonFly$
  */
 
 /*

@@ -99,8 +99,6 @@
  * The per-cpu augmentation was done by Matthew Dillon.
  */
 
-#include "opt_ddb.h"
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/callout.h>
@@ -108,7 +106,6 @@
 #include <sys/interrupt.h>
 #include <sys/thread.h>
 #include <sys/thread2.h>
-#include <ddb/ddb.h>
 
 #ifndef MAX_SOFTCLOCK_STEPS
 #define MAX_SOFTCLOCK_STEPS 100 /* Maximum allowed value of steps. */
@@ -360,9 +357,7 @@ callout_reset(struct callout *c, int to_ticks, void (*ftn)(void *),
 		kprintf(
 		    "callout_reset(%p) from %p: callout was not initialized\n",
 		    c, ((int **)&c)[-1]);
-#ifdef DDB
-		db_print_backtrace();
-#endif
+		print_backtrace();
 	}
 #endif
 	gd = mycpu;
@@ -415,9 +410,7 @@ callout_stop(struct callout *c)
 		kprintf(
 		    "callout_stop(%p) from %p: callout was not initialized\n",
 		    c, ((int **)&c)[-1]);
-#ifdef DDB
-		db_print_backtrace();
-#endif
+		print_backtrace();
 	}
 #endif
 	crit_enter_gd(gd);

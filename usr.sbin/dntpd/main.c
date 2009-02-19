@@ -302,7 +302,7 @@ dotest(const char *target)
 
     bzero(&info, sizeof(info));
     info.sam = (struct sockaddr *)&info.sam_st;
-    info.fd = udp_socket(target, 123, info.sam);
+    info.fd = udp_socket(target, 123, info.sam, LOG_DNS_ERROR);
     if (info.fd < 0) {
 	logerrstr("unable to create UDP socket for %s", target);
 	return;
@@ -344,7 +344,6 @@ static void
 add_server(const char *target)
 {
     server_info_t info;
-    const char *ipstr;
 
     if (nservers == maxservers) {
 	maxservers += 16;
@@ -355,14 +354,13 @@ add_server(const char *target)
     servers[nservers] = info;
     bzero(info, sizeof(struct server_info));
     info->sam = (struct sockaddr *)&info->sam_st;
-    info->fd = udp_socket(target, 123, info->sam);
     info->target = strdup(target);
-    if (info->fd >= 0) {
-	ipstr = myaddr2ascii(info->sam);
-	info->ipstr = strdup(ipstr);
-    } else {
-	client_setserverstate(info, -1, "DNS or IP lookup failure");
-    }
+    /*
+     * Postpone socket opening and server name resolution until we are in main
+     * loop to avoid hang during init if network down.
+     */
+    info->fd = -1;
+    info->server_state = -1;
     ++nservers;
 }
 
@@ -382,15 +380,23 @@ void
 reconnect_server(server_info_t info)
 {
     const char *ipstr;
+    dns_error_policy_t policy;
 
-    if (info->fd >= 0)
+    /* 
+     * Ignore DNS errors if never connected before to handle the case where
+     * we're started before network up.
+     */
+    policy = IGNORE_DNS_ERROR;
+    if (info->fd >= 0) {
 	close(info->fd);
+	policy = LOG_DNS_ERROR;
+    }
     if (info->ipstr) {
 	free(info->ipstr);
 	info->ipstr = NULL;
     }
     info->sam = (struct sockaddr *)&info->sam_st;
-    info->fd = udp_socket(info->target, 123, info->sam);
+    info->fd = udp_socket(info->target, 123, info->sam, policy);
     if (info->fd >= 0) {
 	ipstr = myaddr2ascii(info->sam);
 	info->ipstr = strdup(ipstr);
