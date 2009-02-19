@@ -3,6 +3,5 @@
 # $DragonFly: src/usr.bin/ypmatch/Makefile,v 1.3 2007/08/27 16:51:02 pavalos Exp $
 
 PROG=	ypmatch
-WARNS?=	2
 
 .include <bsd.prog.mk>
