@@ -49,7 +49,8 @@
 
 int fp = 0;
 
-static bool_t xdr_my_xfr(register XDR *xdrs, xfr *objp)
+static bool_t
+xdr_my_xfr(register XDR *xdrs, xfr *objp)
 {
 	while (1) {
 		if (!xdr_xfr(xdrs, objp))
@@ -61,7 +62,7 @@ static bool_t xdr_my_xfr(register XDR *xdrs, xfr *objp)
 				return(FALSE);
 			}
 		}
-		xdr_free(xdr_xfr, (char *)objp);
+		xdr_free((xdrproc_t)xdr_xfr, objp);
 		if (objp->ok == FALSE) {
 			switch (objp->xfr_u.xfrstat) {
 			case(XFR_DONE):
@@ -98,11 +99,8 @@ static bool_t xdr_my_xfr(register XDR *xdrs, xfr *objp)
 
 #define PERM_SECURE (S_IRUSR|S_IWUSR)
 
-int ypxfrd_get_map(host, map, domain, tmpname)
-	char *host;
-	char *map;
-	char *domain;
-	char *tmpname;
+int
+ypxfrd_get_map(char *host, char *map, char *domain, char *tmpname)
 {
 	CLIENT *clnt;
 	struct ypxfr_mapname req;
@@ -131,8 +129,10 @@ int ypxfrd_get_map(host, map, domain, tmpname)
 		return(1);
 	}
 
-	if (clnt_call(clnt,YPXFRD_GETMAP,xdr_ypxfr_mapname,(char *)&req,
-			xdr_my_xfr, (char *)&resp, timeout) != RPC_SUCCESS) {
+	if (clnt_call(clnt, YPXFRD_GETMAP,
+			(xdrproc_t)xdr_ypxfr_mapname, (char *)&req,
+			(xdrproc_t)xdr_my_xfr, (char *)&resp,
+			timeout) != RPC_SUCCESS) {
 		yp_error("%s", clnt_sperror(clnt,"call to rpc.ypxfrd failed"));
 		status++;
 		unlink(tmpname);
