@@ -88,6 +88,7 @@ MAN=	accept_filter.9 \
 	ifnet.9 \
 	inittodr.9 \
 	intro.9 \
+	ioctl.9 \
 	KASSERT.9 \
 	kenv.9 \
 	kernacc.9 \
@@ -342,6 +343,10 @@ MLINKS+=firmware.9 firmware_image_load.9 \
 	firmware.9 firmware_image_unload.9
 MLINKS+=hash.9 hashinit.9 \
 	hash.9 phashinit.9
+MLINKS+=ioctl.9 _IOR.9 \
+	ioctl.9 _IOW.9 \
+	ioctl.9 _IOWR.9
+	ioctl.9 _IO.9
 MLINKS+=ieee80211.9 ieee80211_chan2ieee.9 \
 	ieee80211.9 ieee80211_chan2mode.9 \
 	ieee80211.9 ieee80211_ieee2mhz.9 \
