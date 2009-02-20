@@ -48,10 +48,8 @@ EMITC	?= ${LOCALBASE}/bin/emitc
 hash:
 	( echo '/*' ;							\
 	  echo ' * DO NOT EDIT' ;					\
-	  echo ' * $$''DragonFly$$' ;					\
 	  echo -n ' * auto-generated from ' ;				\
 	  echo ${.CURDIR}/parse.c ;					\
-	  echo ' * DO NOT EDIT' ;					\
 	  echo ' */' ;							\
 	  echo '#include <sys/types.h>' ;				\
 	  echo ;							\
