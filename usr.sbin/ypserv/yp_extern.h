@@ -68,7 +68,7 @@ extern int	do_dns;
 extern int	children;
 extern int	resfd;
 extern char 	*progname;
-extern char	*yp_dir;
+extern const char *yp_dir;
 extern pid_t	yp_pid;
 
 extern enum ypstat	yp_errno;

@@ -49,7 +49,7 @@
 #include "yp_extern.h"
 #include "ypxfr_extern.h"
 
-char *yp_dir = "";	/* No particular default needed. */
+const char *yp_dir = "";	/* No particular default needed. */
 int _rpcpmstart = 0;
 int debug = 1;
 

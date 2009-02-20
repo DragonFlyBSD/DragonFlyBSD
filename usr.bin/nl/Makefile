@@ -2,6 +2,5 @@
 # $DragonFly: src/usr.bin/nl/Makefile,v 1.3 2007/08/27 16:50:57 pavalos Exp $
 
 PROG=	nl
-WARNS?=	1
 
 .include <bsd.prog.mk>

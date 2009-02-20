@@ -76,9 +76,9 @@ struct numbering_property {
 #define NP_LAST		HEADER
 
 static struct numbering_property numbering_properties[NP_LAST + 1] = {
-	{ "footer",	number_none	},
-	{ "body",	number_nonempty	},
-	{ "header",	number_none	}
+	{ .name = "footer",	.type = number_none	},
+	{ .name = "body",	.type = number_nonempty	},
+	{ .name = "header",	.type = number_none	}
 };
 
 #define max(a, b)	((a) > (b) ? (a) : (b))
@@ -88,7 +88,7 @@ static struct numbering_property numbering_properties[NP_LAST + 1] = {
  * (signed) int; courtesy of tzcode.
  */
 #define INT_STRLEN_MAXIMUM \
-	((sizeof (int) * CHAR_BIT - 1) * 302 / 1000 + 2)
+	((int)(sizeof (int) * CHAR_BIT - 1) * 302 / 1000 + 2)
 
 static void	filter(void);
 int		main(int, char *[]);
@@ -277,12 +277,9 @@ filter(void)
 	int consumed;		/* intbuffer measurement */
 	int donumber, idx;
 
-	adjblank = 0;
+	adjblank = donumber = 0;
 	line = startnum;
 	section = BODY;
-#ifdef __GNUC__
-	(void)&donumber;	/* avoid bogus `uninitialized' warning */
-#endif
 
 	while (fgets(buffer, (int)buffersize, stdin) != NULL) {
 		for (idx = FOOTER; idx <= NP_LAST; idx++) {
