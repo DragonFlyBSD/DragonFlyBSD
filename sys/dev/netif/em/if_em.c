@@ -2003,6 +2003,10 @@ em_stop(struct adapter *adapter)
 		m_freem(adapter->fmp);
 	adapter->fmp = NULL;
 	adapter->lmp = NULL;
+
+	adapter->csum_flags = 0;
+	adapter->csum_ehlen = 0;
+	adapter->csum_iphlen = 0;
 }
 
 static int
@@ -2520,6 +2524,11 @@ em_destroy_tx_ring(struct adapter *adapter, int ndesc)
  * The offload context needs to be set when we transfer the first
  * packet of a particular protocol (TCP/UDP).  This routine has been
  * enhanced to deal with inserted VLAN headers.
+ *
+ * If the new packet's ether header length, ip header length and
+ * csum offloading type are same as the previous packet, we should
+ * avoid allocating a new csum context descriptor; mainly to take
+ * advantage of the pipeline effect of the TX data read request.
  */
 static void
 em_txcsum(struct adapter *adapter, struct mbuf *mp,
@@ -2528,23 +2537,18 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 	struct e1000_context_desc *TXD;
 	struct em_buffer *tx_buffer;
 	struct ether_vlan_header *eh;
-	struct ip *ip = NULL;
-	int curr_txd, ehdrlen;
+	struct ip *ip;
+	int curr_txd, ehdrlen, csum_flags;
 	uint32_t cmd, hdr_len, ip_hlen;
 	uint16_t etype;
-
-	cmd = hdr_len = 0;
-
-	/* Setup checksum offload context. */
-	curr_txd = adapter->next_avail_tx_desc;
-	tx_buffer = &adapter->tx_buffer_area[curr_txd];
-	TXD = (struct e1000_context_desc *)&adapter->tx_desc_base[curr_txd];
 
 	/*
 	 * Determine where frame payload starts.
 	 * Jump over vlan headers if already present,
 	 * helpful for QinQ too.
 	 */
+	KASSERT(mp->m_len >= sizeof(struct ether_vlan_header),
+		("em_txcsum_pullup is not called?\n"));
 	eh = mtod(mp, struct ether_vlan_header *);
 	if (eh->evl_encap_proto == htons(ETHERTYPE_VLAN)) {
 		etype = ntohs(eh->evl_proto);
@@ -2558,40 +2562,58 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 	 * We only support TCP/UDP for IPv4 for the moment.
 	 * TODO: Support SCTP too when it hits the tree.
 	 */
-	switch (etype) {
-	case ETHERTYPE_IP:
-		KASSERT(mp->m_len >= ehdrlen + EM_IPVHL_SIZE,
-			("em_txcsum_pullup is not called?\n"));
+	if (etype != ETHERTYPE_IP)
+		return;
 
-		/* NOTE: We could only safely access ip.ip_vhl part */
-		ip = (struct ip *)(mp->m_data + ehdrlen);
-		ip_hlen = ip->ip_hl << 2;
+	KASSERT(mp->m_len >= ehdrlen + EM_IPVHL_SIZE,
+		("em_txcsum_pullup is not called?\n"));
 
-		/* Setup of IP header checksum. */
-		if (mp->m_pkthdr.csum_flags & CSUM_IP) {
-			/*
-			 * Start offset for header checksum calculation.
-			 * End offset for header checksum calculation.
-			 * Offset of place to put the checksum.
-			 */
-			TXD->lower_setup.ip_fields.ipcss = ehdrlen;
-			TXD->lower_setup.ip_fields.ipcse =
-			    htole16(ehdrlen + ip_hlen - 1);
-			TXD->lower_setup.ip_fields.ipcso =
-			    ehdrlen + offsetof(struct ip, ip_sum);
-			cmd |= E1000_TXD_CMD_IP;
-			*txd_upper |= E1000_TXD_POPTS_IXSM << 8;
-		}
-		hdr_len = ehdrlen + ip_hlen;
-		break;
+	/* NOTE: We could only safely access ip.ip_vhl part */
+	ip = (struct ip *)(mp->m_data + ehdrlen);
+	ip_hlen = ip->ip_hl << 2;
 
-	default:
-		*txd_upper = 0;
-		*txd_lower = 0;
+	csum_flags = mp->m_pkthdr.csum_flags & EM_CSUM_FEATURES;
+
+	if (adapter->csum_ehlen == ehdrlen &&
+	    adapter->csum_iphlen == ip_hlen &&
+	    adapter->csum_flags == csum_flags) {
+		/*
+		 * Same csum offload context as the previous packets;
+		 * just return.
+		 */
+		*txd_upper = adapter->csum_txd_upper;
+		*txd_lower = adapter->csum_txd_lower;
 		return;
 	}
 
-	if (mp->m_pkthdr.csum_flags & CSUM_TCP) {
+	/*
+	 * Setup a new csum offload context.
+	 */
+
+	curr_txd = adapter->next_avail_tx_desc;
+	tx_buffer = &adapter->tx_buffer_area[curr_txd];
+	TXD = (struct e1000_context_desc *)&adapter->tx_desc_base[curr_txd];
+
+	cmd = 0;
+
+	/* Setup of IP header checksum. */
+	if (csum_flags & CSUM_IP) {
+		/*
+		 * Start offset for header checksum calculation.
+		 * End offset for header checksum calculation.
+		 * Offset of place to put the checksum.
+		 */
+		TXD->lower_setup.ip_fields.ipcss = ehdrlen;
+		TXD->lower_setup.ip_fields.ipcse =
+		    htole16(ehdrlen + ip_hlen - 1);
+		TXD->lower_setup.ip_fields.ipcso =
+		    ehdrlen + offsetof(struct ip, ip_sum);
+		cmd |= E1000_TXD_CMD_IP;
+		*txd_upper |= E1000_TXD_POPTS_IXSM << 8;
+	}
+	hdr_len = ehdrlen + ip_hlen;
+
+	if (csum_flags & CSUM_TCP) {
 		/*
 		 * Start offset for payload checksum calculation.
 		 * End offset for payload checksum calculation.
@@ -2603,7 +2625,7 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 		    hdr_len + offsetof(struct tcphdr, th_sum);
 		cmd |= E1000_TXD_CMD_TCP;
 		*txd_upper |= E1000_TXD_POPTS_TXSM << 8;
-	} else if (mp->m_pkthdr.csum_flags & CSUM_UDP) {
+	} else if (csum_flags & CSUM_UDP) {
 		/*
 		 * Start offset for header checksum calculation.
 		 * End offset for header checksum calculation.
@@ -2618,6 +2640,14 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 
 	*txd_lower = E1000_TXD_CMD_DEXT |	/* Extended descr type */
 		     E1000_TXD_DTYP_D;		/* Data descr */
+
+	/* Save the information for this csum offloading context */
+	adapter->csum_ehlen = ehdrlen;
+	adapter->csum_iphlen = ip_hlen;
+	adapter->csum_flags = csum_flags;
+	adapter->csum_txd_upper = *txd_upper;
+	adapter->csum_txd_lower = *txd_lower;
+
 	TXD->tcp_seg_setup.data = htole32(0);
 	TXD->cmd_and_length =
 	    htole32(adapter->txd_cmd | E1000_TXD_CMD_DEXT | cmd);

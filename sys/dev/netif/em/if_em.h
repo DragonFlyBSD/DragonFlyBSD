@@ -327,7 +327,14 @@ struct adapter {
 	bus_dma_tag_t		txtag;		/* dma tag for tx */
 	int			spare_tx_desc;
 
-	/* 
+	/* Saved csum offloading context information */
+	int			csum_flags;
+	int			csum_ehlen;
+	int			csum_iphlen;
+	uint32_t		csum_txd_upper;
+	uint32_t		csum_txd_lower;
+
+	/*
 	 * Receive definitions
 	 *
 	 * we have an array of num_rx_desc rx_desc (handled by the
