@@ -1922,14 +1922,20 @@ em_update_link_status(struct adapter *adapter)
 	if (link_check && adapter->link_active == 0) {
 		e1000_get_speed_and_duplex(hw, &adapter->link_speed,
 		    &adapter->link_duplex);
-		/* Check if we must disable SPEED_MODE bit on PCI-E */
-		if (adapter->link_speed != SPEED_1000 &&
-		    (hw->mac.type == e1000_82571 ||
-		     hw->mac.type == e1000_82572)) {
+
+		/*
+		 * Check if we should enable/disable SPEED_MODE bit on
+		 * 82571/82572
+		 */
+		if (hw->mac.type == e1000_82571 ||
+		    hw->mac.type == e1000_82572) {
 			int tarc0;
 
 			tarc0 = E1000_READ_REG(hw, E1000_TARC(0));
-			tarc0 &= ~SPEED_MODE_BIT;
+			if (adapter->link_speed != SPEED_1000)
+				tarc0 &= ~SPEED_MODE_BIT;
+			else
+				tarc0 |= SPEED_MODE_BIT;
 			E1000_WRITE_REG(hw, E1000_TARC(0), tarc0);
 		}
 		if (bootverbose) {
