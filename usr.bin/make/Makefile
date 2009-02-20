@@ -23,7 +23,7 @@ CFLAGS+=-DMAKE_VERSION=\"5200408120\"
 main.o: ${MAKEFILE}
 
 # Directive and keyword tables. We use hash tables. These hash tables have been
-# generated with mph which can be found on the usual GNU mirrors.
+# generated with mph which can be found in pkgsrc/devel/mph.
 # If you change the directives or keywords (adding, deleting, reordering) you
 # need to create new tables and hash functions (directive_hash, keyword_hash).
 #
@@ -39,7 +39,7 @@ main.o: ${MAKEFILE}
 #	  not the trailing '\0', via the -l flag in emitc and some editing
 #	  (only for directive_hash).
 
-LOCALBASE ?= /usr/local
+LOCALBASE ?= /usr/pkg
 MPH	?= ${LOCALBASE}/bin/mph
 EMITC	?= ${LOCALBASE}/bin/emitc
 
