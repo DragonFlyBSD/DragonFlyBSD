@@ -2553,10 +2553,12 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 	 * Jump over vlan headers if already present,
 	 * helpful for QinQ too.
 	 */
-	KASSERT(mp->m_len >= sizeof(struct ether_vlan_header),
-		("em_txcsum_pullup is not called?\n"));
+	KASSERT(mp->m_len >= ETHER_HDR_LEN,
+		("em_txcsum_pullup is not called (eh)?\n"));
 	eh = mtod(mp, struct ether_vlan_header *);
 	if (eh->evl_encap_proto == htons(ETHERTYPE_VLAN)) {
+		KASSERT(mp->m_len >= ETHER_HDR_LEN + EVL_ENCAPLEN,
+			("em_txcsum_pullup is not called (evh)?\n"));
 		etype = ntohs(eh->evl_proto);
 		ehdrlen = ETHER_HDR_LEN + EVL_ENCAPLEN;
 	} else {
@@ -2572,7 +2574,7 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 		return;
 
 	KASSERT(mp->m_len >= ehdrlen + EM_IPVHL_SIZE,
-		("em_txcsum_pullup is not called?\n"));
+		("em_txcsum_pullup is not called (eh+ip_vhl)?\n"));
 
 	/* NOTE: We could only safely access ip.ip_vhl part */
 	ip = (struct ip *)(mp->m_data + ehdrlen);
