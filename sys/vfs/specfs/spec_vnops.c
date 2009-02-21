@@ -746,12 +746,11 @@ spec_close(struct vop_close_args *ap)
 
 	/*
 	 * Track the actual opens and closes on the vnode.  The last close
-	 * disassociates the rdev.  If the rdev is already disassociated 
-	 * the vnode might have been revoked and no further opencount
-	 * tracking occurs.
+	 * disassociates the rdev.  If the rdev is already disassociated or the
+	 * opencount is already 0, the vnode might have been revoked and no
+	 * further opencount tracking occurs.
 	 */
 	if (dev) {
-		/*KKASSERT(vp->v_opencount > 0);*/
 		if (dev_ref_debug) {
 			kprintf("spec_close: %s %d\n",
 				dev->si_name, vp->v_opencount - 1);
@@ -760,7 +759,8 @@ spec_close(struct vop_close_args *ap)
 			v_release_rdev(vp);
 		release_dev(dev);
 	}
-	vop_stdclose(ap);
+	if (vp->v_opencount > 0)
+		vop_stdclose(ap);
 	return(error);
 }
 
