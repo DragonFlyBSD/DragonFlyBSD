@@ -483,7 +483,7 @@ nwfs_mbuftouio(struct mbuf **mrep, struct uio *uiop, int siz, caddr_t *dpos)
 			uiop->uio_iovcnt--;
 			uiop->uio_iov++;
 		} else {
-			uiop->uio_iov->iov_base += uiosiz;
+			uiop->uio_iov->iov_base = (char *)uiop->uio_iov->iov_base + uiosiz;
 			uiop->uio_iov->iov_len -= uiosiz;
 		}
 		siz -= uiosiz;
@@ -549,7 +549,7 @@ nwfs_uiotombuf(struct uio *uiop, struct mbuf **mq, int siz, caddr_t *bpos)
 			uiop->uio_offset += xfer;
 			uiop->uio_resid -= xfer;
 		}
-		uiop->uio_iov->iov_base += uiosiz;
+		uiop->uio_iov->iov_base = (char *)uiop->uio_iov->iov_base + uiosiz;
 		uiop->uio_iov->iov_len -= uiosiz;
 		siz -= uiosiz;
 	}

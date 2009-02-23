@@ -463,7 +463,7 @@ xdrmbuf_getlong(XDR *xdrs, long *lp)
 	/*
 	 * Advance the data stream
 	 */
-	xdrs->x_private += sizeof(long);
+	xdrs->x_private = (char *)xdrs->x_private + sizeof(long);
 	return (TRUE);
 }
 
@@ -517,7 +517,7 @@ xdrmbuf_putlong(XDR *xdrs, long *lp)
 	/*
 	 * Advance the data stream
 	 */
-	xdrs->x_private += sizeof(long);
+	xdrs->x_private = (char *)xdrs->x_private + sizeof(long);
 	return (TRUE);
 }
 
@@ -561,7 +561,7 @@ xdrmbuf_getbytes(XDR *xdrs, caddr_t addr, u_int len)
 		/*
 		 * Update data stream controls
 		 */
-		xdrs->x_private += copy;
+		xdrs->x_private = (char *)xdrs->x_private + copy;
 		xdrs->x_handy -= copy;
 		addr += copy;
 		len -= copy;
@@ -609,7 +609,7 @@ xdrmbuf_putbytes(XDR *xdrs, caddr_t addr, u_int len)
 		/*
 		 * Update data stream controls
 		 */
-		xdrs->x_private += copy;
+		xdrs->x_private = (char *)xdrs->x_private + copy;
 		xdrs->x_handy -= copy;
 		addr += copy;
 		len -= copy;
