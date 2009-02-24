@@ -6,6 +6,7 @@ SHLIB_NAME=	${LIBNAME}.so
 SONAME=		${SHLIB_NAME}.${SHLIB_MAJOR}
 
 SRCS=		dummy.c
+WARNS?=		6
 
 realinstall: linkinstall
 linkinstall:
