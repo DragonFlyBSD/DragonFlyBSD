@@ -40,7 +40,7 @@ SRCS=	dhclient.c clparse.c dispatch.c bpf.c options.c \
 PROG=	dhclient
 MAN=	dhclient.8 dhclient.conf.5 dhclient.leases.5 dhclient-script.8
 
-WARNS?=	0
+WARNS?=	2
 
 beforeinstall:
 	${INSTALL} ${INSTALL_COPY} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \
