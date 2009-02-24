@@ -7,6 +7,7 @@ LIB=		bluetooth
 SHLIB_MAJOR=	3
 SRCS=		bluetooth.c devaddr.c
 MAN=		bluetooth.3
+WARNS?=		6
 
 CFLAGS+=	-I${.CURDIR} -I${SYSDIR}
 
