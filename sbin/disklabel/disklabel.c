@@ -1719,7 +1719,7 @@ fixlabel(int f, struct disklabel32 *lp, int writeadj)
 	u_int64_t offset;
 	int part;
 	int rev;
-	int rev_len = sizeof(rev);
+	size_t rev_len = sizeof(rev);
 
 	if (sysctlbyname("kern.osrevision", &rev, &rev_len, NULL, 0) < 0) {
 		errx(1, "Cannot use raw mode on non-DragonFly systems\n");
