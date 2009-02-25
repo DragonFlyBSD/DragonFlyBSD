@@ -526,6 +526,11 @@ em_attach(device_t dev)
 
 		/* Recalculate the tunable value to get the exact frequency. */
 		throttle = 1000000000 / 256 / throttle;
+
+		/* Upper 16bits of ITR is reserved and should be zero */
+		if (throttle & 0xffff0000)
+			throttle = 1000000000 / 256 / EM_DEFAULT_ITR;
+
 		adapter->int_throttle_ceil = 1000000000 / 256 / throttle;
 	}
 
@@ -4060,18 +4065,24 @@ em_sysctl_int_throttle(SYSCTL_HANDLER_ARGS)
 	if (throttle < 0 || throttle > 1000000000 / 256)
 		return EINVAL;
 
-	lwkt_serialize_enter(ifp->if_serializer);
-
 	if (throttle) {
 		/*
 		 * Set the interrupt throttling rate in 256ns increments,
 		 * recalculate sysctl value assignment to get exact frequency.
 		 */
 		throttle = 1000000000 / 256 / throttle;
-		adapter->int_throttle_ceil = 1000000000 / 256 / throttle;
-	} else {
-		adapter->int_throttle_ceil = 0;
+
+		/* Upper 16bits of ITR is reserved and should be zero */
+		if (throttle & 0xffff0000)
+			return EINVAL;
 	}
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	if (throttle)
+		adapter->int_throttle_ceil = 1000000000 / 256 / throttle;
+	else
+		adapter->int_throttle_ceil = 0;
 	E1000_WRITE_REG(&adapter->hw, E1000_ITR, throttle);
 
 	lwkt_serialize_exit(ifp->if_serializer);
