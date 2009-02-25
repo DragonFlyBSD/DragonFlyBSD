@@ -298,7 +298,6 @@ struct adapter {
 	uint32_t		smartspeed;
 	struct em_int_delay_info tx_int_delay;
 	struct em_int_delay_info tx_abs_int_delay;
-	struct em_int_delay_info rx_int_delay;
 	struct em_int_delay_info rx_abs_int_delay;
 	int			int_throttle_ceil;
 

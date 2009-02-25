@@ -360,7 +360,6 @@ DRIVER_MODULE(if_em, pci, em_driver, em_devclass, 0, 0);
 #define EM_USECS_TO_TICKS(usecs)	((1000 * (usecs) + 512) / 1024)
 
 static int	em_tx_int_delay_dflt = EM_TICKS_TO_USECS(EM_TIDV);
-static int	em_rx_int_delay_dflt = EM_TICKS_TO_USECS(EM_RDTR);
 static int	em_tx_abs_int_delay_dflt = EM_TICKS_TO_USECS(EM_TADV);
 static int	em_rx_abs_int_delay_dflt = EM_TICKS_TO_USECS(EM_RADV);
 static int	em_int_throttle_ceil = EM_DEFAULT_ITR;
@@ -372,7 +371,6 @@ static int	em_smart_pwr_down = FALSE;
 static int	em_debug_sbp = FALSE;
 
 TUNABLE_INT("hw.em.tx_int_delay", &em_tx_int_delay_dflt);
-TUNABLE_INT("hw.em.rx_int_delay", &em_rx_int_delay_dflt);
 TUNABLE_INT("hw.em.tx_abs_int_delay", &em_tx_abs_int_delay_dflt);
 TUNABLE_INT("hw.em.rx_abs_int_delay", &em_rx_abs_int_delay_dflt);
 TUNABLE_INT("hw.em.int_throttle_ceil", &em_int_throttle_ceil);
@@ -3926,9 +3924,6 @@ em_sysctl_int_delay(SYSCTL_HANDLER_ARGS)
 	regval = (regval & ~0xffff) | (ticks & 0xffff);
 	/* Handle a few special cases. */
 	switch (info->offset) {
-	case E1000_RDTR:
-		break;
-
 	case E1000_TIDV:
 		if (ticks == 0) {
 			adapter->txd_cmd &= ~E1000_TXD_CMD_IDE;
@@ -4031,9 +4026,6 @@ em_add_sysctl(struct adapter *adapter)
 	}
 
 	/* Set up some sysctls for the tunable interrupt delays */
-	em_add_int_delay_sysctl(adapter, "rx_int_delay",
-	    "receive interrupt delay in usecs", &adapter->rx_int_delay,
-	    E1000_REGISTER(&adapter->hw, E1000_RDTR), em_rx_int_delay_dflt);
 	em_add_int_delay_sysctl(adapter, "tx_int_delay",
 	    "transmit interrupt delay in usecs", &adapter->tx_int_delay,
 	    E1000_REGISTER(&adapter->hw, E1000_TIDV), em_tx_int_delay_dflt);
