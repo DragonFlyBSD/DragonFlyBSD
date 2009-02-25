@@ -90,7 +90,7 @@ struct sock {
 static struct sock *sockhash[HASHSIZE];
 
 static struct kinfo_file *xfiles;
-static int nxfiles;
+static size_t nxfiles;
 
 static int
 xprintf(const char *fmt, ...)
