@@ -35,7 +35,10 @@
  */
 
 #include "hammer.h"
+#include <math.h>
 #include <sys/sysctl.h>
+
+static void loaddelay(struct timespec *ts, const char *arg);
 
 void
 hammer_cmd_bstats(char **av, int ac)
@@ -45,13 +48,13 @@ hammer_cmd_bstats(char **av, int ac)
 	int64_t stats[8];
 	int64_t copy[8];
 	size_t size;
-	int delay = 1;
+	struct timespec delay = { 1, 0 };
 	int count;
 	int i;
 	int r;
 
 	if (ac > 0)
-		delay = strtol(av[0], NULL, 0);
+		loaddelay(&delay, av[0]);
 	lens[0] = 16;
 	lens[1] = 16;
 	lens[2] = 16;
@@ -97,7 +100,7 @@ hammer_cmd_bstats(char **av, int ac)
 				stats[4] - copy[4],
 				stats[5] - copy[5]);
 		}
-		sleep(delay);
+		nanosleep(&delay, NULL);
 		bcopy(stats, copy, sizeof(stats));
 	}
 }
@@ -111,13 +114,13 @@ hammer_cmd_iostats(char **av, int ac)
 	int64_t stats[8];
 	int64_t copy[8];
 	size_t size;
-	int delay = 1;
+	struct timespec delay = { 1, 0 };
 	int count;
 	int i;
 	int r;
 
 	if (ac > 0)
-		delay = strtol(av[0], NULL, 0);
+		loaddelay(&delay, av[0]);
 	lens[0] = 16;
 	lens[1] = 16;
 	lens[2] = 16;
@@ -170,9 +173,24 @@ hammer_cmd_iostats(char **av, int ac)
 				stats[6] - copy[6],
 				stats[7] - copy[7]);
 		}
-		sleep(delay);
+		nanosleep(&delay, NULL);
 		bcopy(stats, copy, sizeof(stats));
 	}
 }
 
+/*
+ * Convert a delay string (e.g. "0.1") into a timespec.
+ */
+static
+void
+loaddelay(struct timespec *ts, const char *arg)
+{
+	double d;
+
+	d = strtod(arg, NULL);
+	if (d < 0.001)
+		d = 0.001;
+	ts->tv_sec = (int)d;
+	ts->tv_nsec = (int)(modf(d, &d) * 1000000000.0);
+}
 
