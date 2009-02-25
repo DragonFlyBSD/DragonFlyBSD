@@ -84,6 +84,9 @@ main(int ac, char **av)
 			case 'K':
 				BandwidthOpt *= 1024;
 				break;
+			case '\0':
+				/* bytes per second if no suffix */
+				break;
 			default:
 				usage(1);
 			}
