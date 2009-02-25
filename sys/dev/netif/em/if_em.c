@@ -370,6 +370,8 @@ static int	em_smart_pwr_down = FALSE;
 /* Controls whether promiscuous also shows bad packets */
 static int	em_debug_sbp = FALSE;
 
+static int	em_82573_workaround = TRUE;
+
 TUNABLE_INT("hw.em.tx_int_delay", &em_tx_int_delay_dflt);
 TUNABLE_INT("hw.em.tx_abs_int_delay", &em_tx_abs_int_delay_dflt);
 TUNABLE_INT("hw.em.rx_abs_int_delay", &em_rx_abs_int_delay_dflt);
@@ -378,6 +380,7 @@ TUNABLE_INT("hw.em.rxd", &em_rxd);
 TUNABLE_INT("hw.em.txd", &em_txd);
 TUNABLE_INT("hw.em.smart_pwr_down", &em_smart_pwr_down);
 TUNABLE_INT("hw.em.sbp", &em_debug_sbp);
+TUNABLE_INT("hw.em.82573_workaround", &em_82573_workaround);
 
 /* Global used in WOL setup with multiport cards */
 static int	em_global_quad_port_a = 0;
@@ -3153,7 +3156,7 @@ em_init_rx_unit(struct adapter *adapter)
 	 * values in RDTR is a known source of problems on other
 	 * platforms another solution is being sought.
 	 */
-	if (adapter->hw.mac.type == e1000_82573)
+	if (em_82573_workaround && adapter->hw.mac.type == e1000_82573)
 		E1000_WRITE_REG(&adapter->hw, E1000_RDTR, 0x20);
 
 	/* Enable Receives */
