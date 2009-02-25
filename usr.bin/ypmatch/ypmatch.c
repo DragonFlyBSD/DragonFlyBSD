@@ -46,7 +46,7 @@
 #include <rpcsvc/ypclnt.h>
 
 struct ypalias {
-	char *alias, *name;
+	const char *alias, *name;
 } ypaliases[] = {
 	{ "passwd", "passwd.byname" },
 	{ "master.passwd", "master.passwd.byname" },
@@ -74,7 +74,8 @@ main(int argc, char **argv)
 	char *domainname = NULL;
 	char *inkey, *inmap, *outbuf;
 	int outbuflen, key, notrans;
-	int c, r, i;
+	int c, r;
+	u_int i;
 
 	notrans = key = 0;
 
@@ -108,7 +109,7 @@ main(int argc, char **argv)
 	inmap = argv[argc-1];
 	for (i = 0; (!notrans) && i<sizeof ypaliases/sizeof ypaliases[0]; i++)
 		if (strcmp(inmap, ypaliases[i].alias) == 0)
-			inmap = ypaliases[i].name;
+			inmap = __DECONST(char *, ypaliases[i].name);
 	for (; optind < argc-1; optind++) {
 		inkey = argv[optind];
 

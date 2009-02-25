@@ -3,6 +3,5 @@
 # $DragonFly: src/usr.bin/ypcat/Makefile,v 1.3 2007/08/27 16:51:01 pavalos Exp $
 
 PROG=	ypcat
-WARNS?=	0
 
 .include <bsd.prog.mk>

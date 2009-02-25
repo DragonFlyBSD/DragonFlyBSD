@@ -289,7 +289,8 @@ again:
 	 * might cause a bogus v_data pointer to get dereferenced
 	 * elsewhere if MALLOC should block.
 	 */
-	MALLOC(ldep, struct denode *, sizeof(struct denode), M_MSDOSFSNODE, M_WAITOK);
+	MALLOC(ldep, struct denode *, sizeof(struct denode), M_MSDOSFSNODE,
+	    M_WAITOK | M_ZERO);
 
 	/*
 	 * Directory entry was not in cache, have to create a vnode and
@@ -304,7 +305,6 @@ again:
 		return error;
 	}
 
-	bzero((caddr_t)ldep, sizeof *ldep);
 	ldep->de_vnode = nvp;
 	ldep->de_flag = 0;
 	ldep->de_devvp = 0;

@@ -52,7 +52,7 @@ CLEANFILES+=	scriptdump y.tab.h
 #SCRIPTS=scriptdump
 MAN=	setkey.8
 
-LOCALPREFIX=	/usr
+LOCALPREFIX=	/usr/pkg
 
 scriptdump: scriptdump.pl
 	sed -e 's#@LOCALPREFIX@#${LOCALPREFIX}#' < $> > scriptdump

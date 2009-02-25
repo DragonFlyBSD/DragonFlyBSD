@@ -32,7 +32,7 @@
 .\" 
 .\" $DragonFly: src/share/man/man7/committer.7,v 1.11 2008/05/02 02:05:06 swildner Exp $
 .\" 
-.Dd December 3, 2008
+.Dd February 22, 2009
 .Dt COMMITTER 7
 .Os
 .Sh NAME
@@ -151,9 +151,13 @@ use:
 git push crater
 .Ed
 .Pp
-See
-.Xr development 7
-how to commit to a specific branch (to merge bug fixes, for example).
+To merge bug fixes to other branches (MFC), use
+.Nm git Cm cherry-pick :
+.Bd -literal -offset indent
+git checkout -b rel2_2 crater/DragonFly_RELEASE_2_2
+git cherry-pick <commit>...
+git push crater rel2_2:DragonFly_RELEASE_2_2
+.Ed
 .Pp
 Do not set the default remote tag to
 .Pa origin .

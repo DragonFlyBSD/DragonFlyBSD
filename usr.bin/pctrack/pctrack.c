@@ -249,7 +249,7 @@ read_symbols(const char *execfile)
 {
 	char buf[256];
 	char cmd[256];
-	int buflen = sizeof(buf);
+	size_t buflen = sizeof(buf);
 	FILE *fp;
 	struct symdata *sym;
 	char *s1;

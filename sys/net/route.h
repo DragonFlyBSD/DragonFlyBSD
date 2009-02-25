@@ -343,7 +343,7 @@ void	 rt_newaddrmsg (int, struct ifaddr *, int, struct rtentry *);
 void	 rt_newmaddrmsg (int, struct ifmultiaddr *);
 void	 rt_rtmsg(int cmd, struct rtentry *rt, struct ifnet *ifp, int error);
 int	 rt_setgate (struct rtentry *,
-	    struct sockaddr *, struct sockaddr *);
+	    struct sockaddr *, struct sockaddr *, boolean_t);
 void	 rtalloc (struct route *);
 void	 rtalloc_ign (struct route *, u_long);
 
@@ -376,6 +376,8 @@ rtlookup(struct sockaddr *dst)
 
 typedef void (*rtrequest1_callback_func_t)(int, int, struct rt_addrinfo *,
 				      struct rtentry *, void *);
+typedef int (*rtsearch_callback_func_t)(int, struct rt_addrinfo *,
+					struct rtentry *, void *, int);
 
 void	 rtfree (struct rtentry *);
 int	 rtinit (struct ifaddr *, int, int);
@@ -388,6 +390,28 @@ int	 rtrequest_global (int, struct sockaddr *,
 	    struct sockaddr *, struct sockaddr *, int);
 int	 rtrequest1 (int, struct rt_addrinfo *, struct rtentry **);
 int	 rtrequest1_global (int, struct rt_addrinfo *, rtrequest1_callback_func_t, void *);
+
+#define RTS_EXACTMATCH		TRUE
+#define RTS_NOEXACTMATCH	FALSE
+
+int	 rtsearch_global(int, struct rt_addrinfo *,
+	    rtsearch_callback_func_t, void *, boolean_t);
+
+int	 rtmask_add_global(struct sockaddr *);
+
+struct sockaddr *_rtmask_lookup(struct sockaddr *, boolean_t);
+
+static __inline struct sockaddr *
+rtmask_lookup(struct sockaddr *_mask)
+{
+	return _rtmask_lookup(_mask, FALSE);
+}
+
+static __inline struct sockaddr *
+rtmask_purelookup(struct sockaddr *_mask)
+{
+	return _rtmask_lookup(_mask, TRUE);
+}
 
 void	rtfree_oncpu(struct rtentry *);
 void	rtfree_remote(struct rtentry *, int);

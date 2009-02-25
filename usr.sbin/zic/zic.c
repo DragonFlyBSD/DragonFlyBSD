@@ -608,7 +608,6 @@ dolink(const char * const fromfield, const char * const tofield)
 			exit(EXIT_FAILURE);
 
 		result = link(fromname, toname);
-#if HAVE_SYMLINK
 		if (result != 0 &&
 			access(fromname, F_OK) == 0 &&
 			!itsdir(fromname)) {
@@ -628,7 +627,6 @@ dolink(const char * const fromfield, const char * const tofield)
 warning(_("hard link failed, symbolic link used"));
 				ifree(symlinkcontents);
 		}
-#endif /* HAVE_SYMLINK */
 		if (result != 0) {
 			err(EXIT_FAILURE, _("can't link from %s to %s"),
 			    fromname, toname);

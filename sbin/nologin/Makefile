@@ -5,6 +5,5 @@
 PROG=	nologin
 SRCS=	nologin.c
 MAN=	nologin.5 nologin.8
-WARNS=	6
 
 .include <bsd.prog.mk>

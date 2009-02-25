@@ -13,6 +13,7 @@ NOPROFILE=	YES
 NOPIC=		YES
 INCS=		stand.h
 MAN=		libstand.3
+WARNS?=		2
 
 # Mostly OK, some of the libc imports are a bit noisy
 CFLAGS+=	-ffreestanding -std=c99

@@ -427,6 +427,7 @@
 
 struct bfe_data {
 	struct mbuf	*bfe_mbuf;
+	bus_addr_t	bfe_paddr;
 	bus_dmamap_t	bfe_map;
 };
 
@@ -469,10 +470,14 @@ struct bfe_softc
 	device_t		bfe_miibus;
 	bus_space_handle_t	bfe_bhandle;
 	bus_space_tag_t		bfe_btag;
-	bus_dma_tag_t		bfe_tag;
 	bus_dma_tag_t		bfe_parent_tag;
-	bus_dma_tag_t		bfe_tx_tag, bfe_rx_tag;
-	bus_dmamap_t		bfe_tx_map, bfe_rx_map;
+	bus_dma_tag_t		bfe_rxbuf_tag;
+	bus_dmamap_t		bfe_rx_tmpmap;
+	bus_dma_tag_t		bfe_txbuf_tag;
+	bus_dma_tag_t		bfe_tx_tag;
+	bus_dma_tag_t		bfe_rx_tag;
+	bus_dmamap_t		bfe_tx_map;
+	bus_dmamap_t		bfe_rx_map;
 	void			*bfe_intrhand;
 	struct resource		*bfe_irq;
 	struct resource		*bfe_res;
@@ -485,7 +490,7 @@ struct bfe_softc
 	uint32_t		bfe_imask;
 	uint32_t		bfe_dma_offset;
 	uint32_t		bfe_tx_cnt, bfe_tx_cons, bfe_tx_prod;
-	uint32_t		bfe_rx_cnt, bfe_rx_prod, bfe_rx_cons;
+	uint32_t		bfe_rx_cons;
 	uint32_t		bfe_tx_dma, bfe_rx_dma;
 	uint32_t		bfe_link;
 	uint8_t			bfe_phyaddr;	/* Address of the card's PHY */
@@ -501,5 +506,9 @@ struct bfe_type
 	uint16_t		bfe_did;
 	const char		*bfe_name;
 };
+
+#define BFE_BUS_SPACE_MAXADDR	0x3fffffff
+#define BFE_SPARE_TXDESC	2
+#define BFE_MAXSEGS		16	/* XXX no limit */
 
 #endif /* _BFE_H */

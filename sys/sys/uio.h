@@ -38,6 +38,8 @@
 #ifndef _SYS_UIO_H_
 #define	_SYS_UIO_H_
 
+#include <sys/_iovec.h>
+
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
@@ -47,15 +49,6 @@
 #ifndef _SYS_MALLOC_H_
 #include <sys/malloc.h>		/* Needed to inline iovec_free(). */
 #endif
-
-/*
- * XXX
- * iov_base should be a void *.
- */
-struct iovec {
-	char	*iov_base;	/* Base address. */
-	size_t	 iov_len;	/* Length. */
-};
 
 enum	uio_rw { UIO_READ, UIO_WRITE };
 

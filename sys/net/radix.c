@@ -43,6 +43,8 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/domain.h>
+#include <sys/globaldata.h>
+#include <sys/thread.h>
 #else
 #include <stdlib.h>
 #endif
@@ -67,7 +69,7 @@ static struct radix_node
     *rn_search_m(const char *, struct radix_node *, const char *);
 
 static struct radix_mask *rn_mkfreelist;
-static struct radix_node_head *mask_rnhead;
+static struct radix_node_head *mask_rnheads[MAXCPU];
 
 static int max_keylen;
 static char *rn_zeros, *rn_ones;
@@ -435,13 +437,14 @@ rn_addmask(char *netmask, boolean_t search, int skip)
 	boolean_t maskduplicated, isnormal;
 	static int last_zeroed = 0;
 	char *addmask_key;
+	struct radix_node_head *mask_rnh = mask_rnheads[mycpuid];
 
 	if ((mlen = clen(netmask)) > max_keylen)
 		mlen = max_keylen;
 	if (skip == 0)
 		skip = 1;
 	if (mlen <= skip)
-		return (mask_rnhead->rnh_nodes);
+		return (mask_rnh->rnh_nodes);
 	R_Malloc(addmask_key, char *, max_keylen);
 	if (addmask_key == NULL)
 		return NULL;
@@ -459,12 +462,12 @@ rn_addmask(char *netmask, boolean_t search, int skip)
 		if (m0 >= last_zeroed)
 			last_zeroed = mlen;
 		Free(addmask_key);
-		return (mask_rnhead->rnh_nodes);
+		return (mask_rnh->rnh_nodes);
 	}
 	if (m0 < last_zeroed)
 		bzero(addmask_key + m0, last_zeroed - m0);
 	*addmask_key = last_zeroed = mlen;
-	x = rn_search(addmask_key, mask_rnhead->rnh_treetop);
+	x = rn_search(addmask_key, mask_rnh->rnh_treetop);
 	if (bcmp(addmask_key, x->rn_key, mlen) != 0)
 		x = NULL;
 	if (x != NULL || search)
@@ -475,7 +478,7 @@ rn_addmask(char *netmask, boolean_t search, int skip)
 	bzero(x, max_keylen + 2 * (sizeof *x));
 	netmask = cp = (char *)(x + 2);
 	bcopy(addmask_key, cp, mlen);
-	x = rn_insert(cp, mask_rnhead, &maskduplicated, x);
+	x = rn_insert(cp, mask_rnh, &maskduplicated, x);
 	if (maskduplicated) {
 		log(LOG_ERR, "rn_addmask: mask impossibly already in tree");
 		Free(saved_x);
@@ -1054,6 +1057,7 @@ void
 rn_init(void)
 {
 	char *cp, *cplim;
+	int cpu;
 #ifdef _KERNEL
 	struct domain *dom;
 
@@ -1074,6 +1078,9 @@ rn_init(void)
 	cplim = rn_ones + max_keylen;
 	while (cp < cplim)
 		*cp++ = -1;
-	if (rn_inithead((void **)&mask_rnhead, 0) == 0)
-		panic("rn_init 2");
+
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		if (rn_inithead((void **)&mask_rnheads[cpu], 0) == 0)
+			panic("rn_init 2");
+	}
 }

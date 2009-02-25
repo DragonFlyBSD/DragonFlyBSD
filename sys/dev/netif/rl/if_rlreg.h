@@ -315,12 +315,15 @@
 
 struct rl_chain_data {
 	uint16_t		cur_rx;
-	caddr_t			rl_rx_buf;
 	caddr_t			rl_rx_buf_ptr;
+	caddr_t			rl_rx_buf;	/* adjusted rl_rx_buf_ptr */
+	bus_addr_t		rl_rx_buf_paddr;/* paddr of rl_rx_buf */
+	bus_dma_tag_t		rl_rx_tag;
 	bus_dmamap_t		rl_rx_dmamap;
 
-	struct mbuf		*rl_tx_chain[RL_TX_LIST_CNT];
+	bus_dma_tag_t		rl_tx_tag;
 	bus_dmamap_t		rl_tx_dmamap[RL_TX_LIST_CNT];
+	struct mbuf		*rl_tx_chain[RL_TX_LIST_CNT];
 	uint8_t			last_tx;
 	uint8_t			cur_tx;
 };
@@ -365,7 +368,6 @@ struct rl_softc {
 	void			*rl_intrhand;
 	device_t		rl_miibus;
 	bus_dma_tag_t		rl_parent_tag;
-	bus_dma_tag_t		rl_tag;
 	uint8_t			rl_type;
 	int			rl_eecmd_read;
 	uint8_t			rl_stats_no_timeout;
@@ -441,3 +443,5 @@ struct rl_softc {
 #define RL_PSTATE_D3		0x0003
 #define RL_PME_EN		0x0010
 #define RL_PME_STATUS		0x8000
+
+#define RL_TXBUF_ALIGN		4

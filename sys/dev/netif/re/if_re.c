@@ -268,9 +268,6 @@ static int	re_suspend(device_t);
 static int	re_resume(device_t);
 static void	re_shutdown(device_t);
 
-static void	re_dma_map_addr(void *, bus_dma_segment_t *, int, int);
-static void	re_dma_map_desc(void *, bus_dma_segment_t *, int,
-				bus_size_t, int);
 static int	re_allocmem(device_t);
 static void	re_freemem(device_t);
 static void	re_freebufmem(struct re_softc *, int, int);
@@ -852,11 +849,10 @@ re_diag(struct re_softc *sc)
 	 * entry in the RX DMA ring. Grab it from there.
 	 */
 
-	bus_dmamap_sync(sc->re_ldata.re_rx_list_tag,
-			sc->re_ldata.re_rx_list_map, BUS_DMASYNC_POSTREAD);
-	bus_dmamap_sync(sc->re_ldata.re_mtag, sc->re_ldata.re_rx_dmamap[0],
-			BUS_DMASYNC_POSTWRITE);
-	bus_dmamap_unload(sc->re_ldata.re_mtag, sc->re_ldata.re_rx_dmamap[0]);
+	bus_dmamap_sync(sc->re_ldata.re_rx_mtag, sc->re_ldata.re_rx_dmamap[0],
+			BUS_DMASYNC_POSTREAD);
+	bus_dmamap_unload(sc->re_ldata.re_rx_mtag,
+			  sc->re_ldata.re_rx_dmamap[0]);
 
 	m0 = sc->re_ldata.re_rx_mbuf[0];
 	sc->re_ldata.re_rx_mbuf[0] = NULL;
@@ -1035,47 +1031,11 @@ re_probe(device_t dev)
 	return ENXIO;
 }
 
-static void
-re_dma_map_desc(void *xarg, bus_dma_segment_t *segs, int nsegs,
-		bus_size_t mapsize, int error)
-{
-	struct re_dmaload_arg *arg = xarg;
-	int i;
-
-	if (error)
-		return;
-
-	if (nsegs > arg->re_nsegs) {
-		arg->re_nsegs = 0;
-		return;
-	}
-
-	arg->re_nsegs = nsegs;
-	for (i = 0; i < nsegs; ++i)
-		arg->re_segs[i] = segs[i];
-}
-
-/*
- * Map a single buffer address.
- */
-
-static void
-re_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nseg, int error)
-{
-	uint32_t *addr;
-
-	if (error)
-		return;
-
-	KASSERT(nseg == 1, ("too many DMA segments, %d should be 1", nseg));
-	addr = arg;
-	*addr = segs->ds_addr;
-}
-
 static int
 re_allocmem(device_t dev)
 {
 	struct re_softc *sc = device_get_softc(dev);
+	bus_dmamem_t dmem;
 	int error, i;
 
 	/*
@@ -1106,126 +1066,66 @@ re_allocmem(device_t dev)
 	 */
 	error = bus_dma_tag_create(NULL,	/* parent */
 			1, 0,			/* alignment, boundary */
-			BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
+			BUS_SPACE_MAXADDR,	/* lowaddr */
 			BUS_SPACE_MAXADDR,	/* highaddr */
 			NULL, NULL,		/* filter, filterarg */
-			MAXBSIZE, RE_MAXSEGS,	/* maxsize, nsegments */
+			BUS_SPACE_MAXSIZE_32BIT,/* maxsize */
+			0,			/* nsegments */
 			BUS_SPACE_MAXSIZE_32BIT,/* maxsegsize */
-			BUS_DMA_ALLOCNOW,	/* flags */
+			0,			/* flags */
 			&sc->re_parent_tag);
 	if (error) {
 		device_printf(dev, "could not allocate parent dma tag\n");
 		return error;
 	}
 
-	/* Allocate tag for TX descriptor list. */
-	error = bus_dma_tag_create(sc->re_parent_tag,
+	/* Allocate TX descriptor list. */
+	error = bus_dmamem_coherent(sc->re_parent_tag,
 			RE_RING_ALIGN, 0,
-			BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
-			NULL, NULL,
-			RE_TX_LIST_SZ(sc), 1, RE_TX_LIST_SZ(sc),
-			BUS_DMA_ALLOCNOW,
-			&sc->re_ldata.re_tx_list_tag);
+			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+			RE_TX_LIST_SZ(sc), BUS_DMA_WAITOK | BUS_DMA_ZERO,
+			&dmem);
 	if (error) {
-		device_printf(dev, "could not allocate TX ring dma tag\n");
-		return(error);
-	}
-
-	/* Allocate DMA'able memory for the TX ring */
-        error = bus_dmamem_alloc(sc->re_ldata.re_tx_list_tag,
-			(void **)&sc->re_ldata.re_tx_list,
-			BUS_DMA_WAITOK | BUS_DMA_ZERO,
-			&sc->re_ldata.re_tx_list_map);
-        if (error) {
 		device_printf(dev, "could not allocate TX ring\n");
-		bus_dma_tag_destroy(sc->re_ldata.re_tx_list_tag);
-		sc->re_ldata.re_tx_list_tag = NULL;
-                return(error);
+		return error;
 	}
+	sc->re_ldata.re_tx_list_tag = dmem.dmem_tag;
+	sc->re_ldata.re_tx_list_map = dmem.dmem_map;
+	sc->re_ldata.re_tx_list = dmem.dmem_addr;
+	sc->re_ldata.re_tx_list_addr = dmem.dmem_busaddr;
 
-	/* Load the map for the TX ring. */
-	error = bus_dmamap_load(sc->re_ldata.re_tx_list_tag,
-			sc->re_ldata.re_tx_list_map,
-			sc->re_ldata.re_tx_list, RE_TX_LIST_SZ(sc),
-			re_dma_map_addr, &sc->re_ldata.re_tx_list_addr,
-			BUS_DMA_NOWAIT);
-	if (error) {
-		device_printf(dev, "could not get address of TX ring\n");
-		bus_dmamem_free(sc->re_ldata.re_tx_list_tag,
-				sc->re_ldata.re_tx_list,
-				sc->re_ldata.re_tx_list_map);
-		bus_dma_tag_destroy(sc->re_ldata.re_tx_list_tag);
-		sc->re_ldata.re_tx_list_tag = NULL;
-		return(error);
-	}
-
-	/* Allocate tag for RX descriptor list. */
-	error = bus_dma_tag_create(sc->re_parent_tag,
+	/* Allocate RX descriptor list. */
+	error = bus_dmamem_coherent(sc->re_parent_tag,
 			RE_RING_ALIGN, 0,
-			BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
-			NULL, NULL,
-			RE_RX_LIST_SZ(sc), 1, RE_RX_LIST_SZ(sc),
-			BUS_DMA_ALLOCNOW,
-			&sc->re_ldata.re_rx_list_tag);
+			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+			RE_RX_LIST_SZ(sc), BUS_DMA_WAITOK | BUS_DMA_ZERO,
+			&dmem);
 	if (error) {
-		device_printf(dev, "could not allocate RX ring dma tag\n");
-		return(error);
-	}
-
-	/* Allocate DMA'able memory for the RX ring */
-        error = bus_dmamem_alloc(sc->re_ldata.re_rx_list_tag,
-			(void **)&sc->re_ldata.re_rx_list,
-			BUS_DMA_WAITOK | BUS_DMA_ZERO,
-			&sc->re_ldata.re_rx_list_map);
-        if (error) {
 		device_printf(dev, "could not allocate RX ring\n");
-		bus_dma_tag_destroy(sc->re_ldata.re_rx_list_tag);
-		sc->re_ldata.re_rx_list_tag = NULL;
-                return(error);
+		return error;
 	}
+	sc->re_ldata.re_rx_list_tag = dmem.dmem_tag;
+	sc->re_ldata.re_rx_list_map = dmem.dmem_map;
+	sc->re_ldata.re_rx_list = dmem.dmem_addr;
+	sc->re_ldata.re_rx_list_addr = dmem.dmem_busaddr;
 
-	/* Load the map for the RX ring. */
-	error = bus_dmamap_load(sc->re_ldata.re_rx_list_tag,
-			sc->re_ldata.re_rx_list_map,
-			sc->re_ldata.re_rx_list, RE_RX_LIST_SZ(sc),
-			re_dma_map_addr, &sc->re_ldata.re_rx_list_addr,
-			BUS_DMA_NOWAIT);
-	if (error) {
-		device_printf(dev, "could not get address of RX ring\n");
-		bus_dmamem_free(sc->re_ldata.re_rx_list_tag,
-				sc->re_ldata.re_rx_list,
-				sc->re_ldata.re_rx_list_map);
-		bus_dma_tag_destroy(sc->re_ldata.re_rx_list_tag);
-		sc->re_ldata.re_rx_list_tag = NULL;
-		return(error);
-	}
-
-	/* Allocate map for RX/TX mbufs. */
+	/* Allocate maps for TX mbufs. */
 	error = bus_dma_tag_create(sc->re_parent_tag,
-			ETHER_ALIGN, 0,
-			BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
+			1, 0,
+			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
 			NULL, NULL,
 			RE_FRAMELEN_MAX, RE_MAXSEGS, MCLBYTES,
-			BUS_DMA_ALLOCNOW,
-			&sc->re_ldata.re_mtag);
+			BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
+			&sc->re_ldata.re_tx_mtag);
 	if (error) {
-		device_printf(dev, "could not allocate buf dma tag\n");
+		device_printf(dev, "could not allocate TX buf dma tag\n");
 		return(error);
-	}
-
-	/* Create spare DMA map for RX */
-	error = bus_dmamap_create(sc->re_ldata.re_mtag, 0,
-			&sc->re_ldata.re_rx_spare);
-	if (error) {
-		device_printf(dev, "can't create spare DMA map for RX\n");
-		bus_dma_tag_destroy(sc->re_ldata.re_mtag);
-		sc->re_ldata.re_mtag = NULL;
-		return error;
 	}
 
 	/* Create DMA maps for TX buffers */
 	for (i = 0; i < sc->re_tx_desc_cnt; i++) {
-		error = bus_dmamap_create(sc->re_ldata.re_mtag, 0,
+		error = bus_dmamap_create(sc->re_ldata.re_tx_mtag,
+				BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
 				&sc->re_ldata.re_tx_dmamap[i]);
 		if (error) {
 			device_printf(dev, "can't create DMA map for TX buf\n");
@@ -1234,10 +1134,33 @@ re_allocmem(device_t dev)
 		}
 	}
 
+	/* Allocate maps for RX mbufs. */
+	error = bus_dma_tag_create(sc->re_parent_tag,
+			RE_RXBUF_ALIGN, 0,
+			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+			NULL, NULL,
+			MCLBYTES, 1, MCLBYTES,
+			BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK | BUS_DMA_ALIGNED,
+			&sc->re_ldata.re_rx_mtag);
+	if (error) {
+		device_printf(dev, "could not allocate RX buf dma tag\n");
+		return(error);
+	}
+
+	/* Create spare DMA map for RX */
+	error = bus_dmamap_create(sc->re_ldata.re_rx_mtag, BUS_DMA_WAITOK,
+			&sc->re_ldata.re_rx_spare);
+	if (error) {
+		device_printf(dev, "can't create spare DMA map for RX\n");
+		bus_dma_tag_destroy(sc->re_ldata.re_rx_mtag);
+		sc->re_ldata.re_rx_mtag = NULL;
+		return error;
+	}
+
 	/* Create DMA maps for RX buffers */
 	for (i = 0; i < sc->re_rx_desc_cnt; i++) {
-		error = bus_dmamap_create(sc->re_ldata.re_mtag, 0,
-				&sc->re_ldata.re_rx_dmamap[i]);
+		error = bus_dmamap_create(sc->re_ldata.re_rx_mtag,
+				BUS_DMA_WAITOK, &sc->re_ldata.re_rx_dmamap[i]);
 		if (error) {
 			device_printf(dev, "can't create DMA map for RX buf\n");
 			re_freebufmem(sc, sc->re_tx_desc_cnt, i);
@@ -1263,19 +1186,24 @@ re_freebufmem(struct re_softc *sc, int tx_cnt, int rx_cnt)
 	int i;
 
 	/* Destroy all the RX and TX buffer maps */
-	if (sc->re_ldata.re_mtag) {
+	if (sc->re_ldata.re_tx_mtag) {
 		for (i = 0; i < tx_cnt; i++) {
-			bus_dmamap_destroy(sc->re_ldata.re_mtag,
+			bus_dmamap_destroy(sc->re_ldata.re_tx_mtag,
 					   sc->re_ldata.re_tx_dmamap[i]);
 		}
+		bus_dma_tag_destroy(sc->re_ldata.re_tx_mtag);
+		sc->re_ldata.re_tx_mtag = NULL;
+	}
+
+	if (sc->re_ldata.re_rx_mtag) {
 		for (i = 0; i < rx_cnt; i++) {
-			bus_dmamap_destroy(sc->re_ldata.re_mtag,
+			bus_dmamap_destroy(sc->re_ldata.re_rx_mtag,
 					   sc->re_ldata.re_rx_dmamap[i]);
 		}
-		bus_dmamap_destroy(sc->re_ldata.re_mtag,
+		bus_dmamap_destroy(sc->re_ldata.re_rx_mtag,
 				   sc->re_ldata.re_rx_spare);
-		bus_dma_tag_destroy(sc->re_ldata.re_mtag);
-		sc->re_ldata.re_mtag = NULL;
+		bus_dma_tag_destroy(sc->re_ldata.re_rx_mtag);
+		sc->re_ldata.re_rx_mtag = NULL;
 	}
 }
 
@@ -1309,8 +1237,7 @@ re_freemem(device_t dev)
 
 	/* Unload and free the stats buffer and map */
 	if (sc->re_ldata.re_stag) {
-		bus_dmamap_unload(sc->re_ldata.re_stag,
-				  sc->re_ldata.re_rx_list_map);
+		bus_dmamap_unload(sc->re_ldata.re_stag, sc->re_ldata.re_smap);
 		bus_dmamem_free(sc->re_ldata.re_stag,
 				sc->re_ldata.re_stats,
 				sc->re_ldata.re_smap);
@@ -1733,11 +1660,10 @@ re_setup_rxdesc(struct re_softc *sc, int idx)
 static int
 re_newbuf_std(struct re_softc *sc, int idx, int init)
 {
-	struct re_dmaload_arg arg;
 	bus_dma_segment_t seg;
 	bus_dmamap_t map;
 	struct mbuf *m;
-	int error;
+	int error, nsegs;
 
 	m = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL) {
@@ -1754,24 +1680,15 @@ re_newbuf_std(struct re_softc *sc, int idx, int init)
 
 	/*
 	 * NOTE:
-	 * Some re(4) chips(e.g. RTL8101E) need address of the receive buffer
-	 * to be 8-byte aligned, so don't call m_adj(m, ETHER_ALIGN) here.
+	 * re(4) chips need address of the receive buffer to be 8-byte
+	 * aligned, so don't call m_adj(m, ETHER_ALIGN) here.
 	 */
 
-	arg.re_nsegs = 1;
-	arg.re_segs = &seg;
-        error = bus_dmamap_load_mbuf(sc->re_ldata.re_mtag,
-				     sc->re_ldata.re_rx_spare, m,
-				     re_dma_map_desc, &arg, BUS_DMA_NOWAIT);
-	if (error || arg.re_nsegs == 0) {
-		if (!error) {
-			if_printf(&sc->arpcom.ac_if, "too many segments?!\n");
-			bus_dmamap_unload(sc->re_ldata.re_mtag,
-					  sc->re_ldata.re_rx_spare);
-			error = EFBIG;
-		}
+	error = bus_dmamap_load_mbuf_segment(sc->re_ldata.re_rx_mtag,
+			sc->re_ldata.re_rx_spare, m,
+			&seg, 1, &nsegs, BUS_DMA_NOWAIT);
+	if (error) {
 		m_freem(m);
-
 		if (init) {
 			if_printf(&sc->arpcom.ac_if, "can't load RX mbuf\n");
 			return error;
@@ -1781,10 +1698,10 @@ re_newbuf_std(struct re_softc *sc, int idx, int init)
 	}
 
 	if (!init) {
-		bus_dmamap_sync(sc->re_ldata.re_mtag,
+		bus_dmamap_sync(sc->re_ldata.re_rx_mtag,
 				sc->re_ldata.re_rx_dmamap[idx],
 				BUS_DMASYNC_POSTREAD);
-		bus_dmamap_unload(sc->re_ldata.re_mtag,
+		bus_dmamap_unload(sc->re_ldata.re_rx_mtag,
 				  sc->re_ldata.re_rx_dmamap[idx]);
 	}
 	sc->re_ldata.re_rx_mbuf[idx] = m;
@@ -1857,10 +1774,6 @@ re_tx_list_init(struct re_softc *sc)
 {
 	bzero(sc->re_ldata.re_tx_list, RE_TX_LIST_SZ(sc));
 
-	/* Flush the TX descriptors */
-	bus_dmamap_sync(sc->re_ldata.re_tx_list_tag,
-			sc->re_ldata.re_tx_list_map, BUS_DMASYNC_PREWRITE);
-
 	sc->re_ldata.re_tx_prodidx = 0;
 	sc->re_ldata.re_tx_considx = 0;
 	sc->re_ldata.re_tx_free = sc->re_tx_desc_cnt;
@@ -1880,10 +1793,6 @@ re_rx_list_init(struct re_softc *sc)
 		if (error)
 			return(error);
 	}
-
-	/* Flush the RX descriptors */
-	bus_dmamap_sync(sc->re_ldata.re_rx_list_tag,
-			sc->re_ldata.re_rx_list_map, BUS_DMASYNC_PREWRITE);
 
 	sc->re_ldata.re_rx_prodidx = 0;
 	sc->re_head = sc->re_tail = NULL;
@@ -1928,11 +1837,6 @@ re_rxeof(struct re_softc *sc)
 	uint32_t rxstat, rxctrl;
 	int i, total_len, rx = 0;
 	struct mbuf_chain chain[MAXCPU];
-
-	/* Invalidate the descriptor memory */
-
-	bus_dmamap_sync(sc->re_ldata.re_rx_list_tag,
-			sc->re_ldata.re_rx_list_map, BUS_DMASYNC_POSTREAD);
 
 	ether_input_chain_init(chain);
 
@@ -2087,11 +1991,6 @@ re_rxeof(struct re_softc *sc)
 
 	ether_input_dispatch(chain);
 
-	/* Flush the RX DMA ring */
-
-	bus_dmamap_sync(sc->re_ldata.re_rx_list_tag,
-			sc->re_ldata.re_rx_list_map, BUS_DMASYNC_PREWRITE);
-
 	sc->re_ldata.re_rx_prodidx = i;
 
 	return rx;
@@ -2107,10 +2006,6 @@ re_tx_collect(struct re_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t txstat;
 	int idx, tx = 0;
-
-	/* Invalidate the TX descriptor list */
-	bus_dmamap_sync(sc->re_ldata.re_tx_list_tag,
-			sc->re_ldata.re_tx_list_map, BUS_DMASYNC_POSTREAD);
 
 	for (idx = sc->re_ldata.re_tx_considx;
 	     sc->re_ldata.re_tx_free < sc->re_tx_desc_cnt;
@@ -2130,10 +2025,10 @@ re_tx_collect(struct re_softc *sc)
 		 * are valid.
 		 */
 		if (txstat & RE_TDESC_CMD_EOF) {
+			bus_dmamap_unload(sc->re_ldata.re_tx_mtag,
+			    sc->re_ldata.re_tx_dmamap[idx]);
 			m_freem(sc->re_ldata.re_tx_mbuf[idx]);
 			sc->re_ldata.re_tx_mbuf[idx] = NULL;
-			bus_dmamap_unload(sc->re_ldata.re_mtag,
-			    sc->re_ldata.re_tx_dmamap[idx]);
 			if (txstat & (RE_TDESC_STAT_EXCESSCOL|
 			    RE_TDESC_STAT_COLCNT))
 				ifp->if_collisions++;
@@ -2338,19 +2233,16 @@ re_intr(void *arg)
 static int
 re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 {
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct mbuf *m;
-	struct re_dmaload_arg arg;
+	struct mbuf *m = *m_head;
 	bus_dma_segment_t segs[RE_MAXSEGS];
 	bus_dmamap_t map;
-	int error, maxsegs, idx, i;
+	int error, maxsegs, idx, i, nsegs;
 	struct re_desc *d, *tx_ring;
 	uint32_t cmd_csum, ctl_csum, vlantag;
 
 	KASSERT(sc->re_ldata.re_tx_free > RE_TXDESC_SPARE,
 		("not enough free TX desc\n"));
 
-	m = *m_head;
 	map = sc->re_ldata.re_tx_dmamap[*idx0];
 
 	/*
@@ -2414,49 +2306,13 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 	if (maxsegs > RE_MAXSEGS)
 		maxsegs = RE_MAXSEGS;
 
-	arg.re_nsegs = maxsegs;
-	arg.re_segs = segs;
-	error = bus_dmamap_load_mbuf(sc->re_ldata.re_mtag, map, m,
-				     re_dma_map_desc, &arg, BUS_DMA_NOWAIT);
-	if (error && error != EFBIG) {
-		if_printf(ifp, "can't map mbuf (error %d)\n", error);
+	error = bus_dmamap_load_mbuf_defrag(sc->re_ldata.re_tx_mtag, map,
+			m_head, segs, maxsegs, &nsegs, BUS_DMA_NOWAIT);
+	if (error)
 		goto back;
-	}
 
-	/*
-	 * Too many segments to map, coalesce into a single mbuf
-	 */
-	if (!error && arg.re_nsegs == 0) {
-		bus_dmamap_unload(sc->re_ldata.re_mtag, map);
-		error = EFBIG;
-	}
-	if (error) {
-		struct mbuf *m_new;
-
-		m_new = m_defrag(m, MB_DONTWAIT);
-		if (m_new == NULL) {
-			if_printf(ifp, "can't defrag TX mbuf\n");
-			error = ENOBUFS;
-			goto back;
-		} else {
-			*m_head = m = m_new;
-		}
-
-		arg.re_nsegs = maxsegs;
-		arg.re_segs = segs;
-		error = bus_dmamap_load_mbuf(sc->re_ldata.re_mtag, map, m,
-					     re_dma_map_desc, &arg,
-					     BUS_DMA_NOWAIT);
-		if (error || arg.re_nsegs == 0) {
-			if (!error) {
-				bus_dmamap_unload(sc->re_ldata.re_mtag, map);
-				error = EFBIG;
-			}
-			if_printf(ifp, "can't map mbuf (error %d)\n", error);
-			goto back;
-		}
-	}
-	bus_dmamap_sync(sc->re_ldata.re_mtag, map, BUS_DMASYNC_PREWRITE);
+	m = *m_head;
+	bus_dmamap_sync(sc->re_ldata.re_tx_mtag, map, BUS_DMASYNC_PREWRITE);
 
 	/*
 	 * Map the segment array into descriptors.  We also keep track
@@ -2485,7 +2341,7 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 		d->re_control = htole32(ctl_csum | vlantag);
 
 		i++;
-		if (i == arg.re_nsegs)
+		if (i == nsegs)
 			break;
 		RE_TXDESC_INC(sc, idx);
 	}
@@ -2505,13 +2361,13 @@ re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx0)
 	sc->re_ldata.re_tx_dmamap[idx] = map;
 
 	sc->re_ldata.re_tx_mbuf[idx] = m;
-	sc->re_ldata.re_tx_free -= arg.re_nsegs;
+	sc->re_ldata.re_tx_free -= nsegs;
 
 	RE_TXDESC_INC(sc, idx);
 	*idx0 = idx;
 back:
 	if (error) {
-		m_freem(m);
+		m_freem(*m_head);
 		*m_head = NULL;
 	}
 	return error;
@@ -2585,10 +2441,6 @@ re_start(struct ifnet *ifp)
 
 	if (!need_trans)
 		return;
-
-	/* Flush the TX descriptors */
-	bus_dmamap_sync(sc->re_ldata.re_tx_list_tag,
-			sc->re_ldata.re_tx_list_map, BUS_DMASYNC_PREWRITE);
 
 	sc->re_ldata.re_tx_prodidx = idx;
 
@@ -2940,7 +2792,7 @@ re_stop(struct re_softc *sc)
 	/* Free the TX list buffers. */
 	for (i = 0; i < sc->re_tx_desc_cnt; i++) {
 		if (sc->re_ldata.re_tx_mbuf[i] != NULL) {
-			bus_dmamap_unload(sc->re_ldata.re_mtag,
+			bus_dmamap_unload(sc->re_ldata.re_tx_mtag,
 					  sc->re_ldata.re_tx_dmamap[i]);
 			m_freem(sc->re_ldata.re_tx_mbuf[i]);
 			sc->re_ldata.re_tx_mbuf[i] = NULL;
@@ -2951,7 +2803,7 @@ re_stop(struct re_softc *sc)
 	for (i = 0; i < sc->re_rx_desc_cnt; i++) {
 		if (sc->re_ldata.re_rx_mbuf[i] != NULL) {
 			if ((sc->re_flags & RE_F_USE_JPOOL) == 0) {
-				bus_dmamap_unload(sc->re_ldata.re_mtag,
+				bus_dmamap_unload(sc->re_ldata.re_rx_mtag,
 						  sc->re_ldata.re_rx_dmamap[i]);
 			}
 			m_freem(sc->re_ldata.re_rx_mbuf[i]);
@@ -3354,6 +3206,7 @@ re_jpool_alloc(struct re_softc *sc)
 	struct re_jbuf *jbuf;
 	bus_addr_t paddr;
 	bus_size_t jpool_size;
+	bus_dmamem_t dmem;
 	caddr_t buf;
 	int i, error;
 
@@ -3364,41 +3217,18 @@ re_jpool_alloc(struct re_softc *sc)
 
 	jpool_size = RE_JBUF_COUNT(sc) * RE_JBUF_SIZE;
 
-	error = bus_dma_tag_create(sc->re_parent_tag,
-			RE_BUF_ALIGN, 0,	/* alignment, boundary */
-			BUS_SPACE_MAXADDR_32BIT,/* lowaddr */
-			BUS_SPACE_MAXADDR,	/* highaddr */
-			NULL, NULL,		/* filter, filterarg */
-			jpool_size, 1,		/* nsegments, maxsize */
-			BUS_SPACE_MAXSIZE_32BIT,/* maxsegsize */
-			BUS_DMA_ALLOCNOW,	/* flags */
-			&ldata->re_jpool_tag);
+	error = bus_dmamem_coherent(sc->re_parent_tag,
+			RE_RXBUF_ALIGN, 0,
+			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+			jpool_size, BUS_DMA_WAITOK, &dmem);
 	if (error) {
-		device_printf(sc->re_dev, "could not allocate jumbo dma tag\n");
+		device_printf(sc->re_dev, "could not allocate jumbo memory\n");
 		return error;
 	}
-
-	error = bus_dmamem_alloc(ldata->re_jpool_tag, (void **)&ldata->re_jpool,
-				 BUS_DMA_WAITOK, &ldata->re_jpool_map);
-	if (error) {
-		device_printf(sc->re_dev,
-			      "could not allocate jumbo dma memory\n");
-		bus_dma_tag_destroy(ldata->re_jpool_tag);
-		ldata->re_jpool_tag = NULL;
-		return error;
-	}
-
-	error = bus_dmamap_load(ldata->re_jpool_tag, ldata->re_jpool_map,
-				ldata->re_jpool, jpool_size,
-				re_dma_map_addr, &paddr, BUS_DMA_WAITOK);
-	if (error) {
-		device_printf(sc->re_dev, "could not load jumbo dma map\n");
-		bus_dmamem_free(ldata->re_jpool_tag, ldata->re_jpool,
-				ldata->re_jpool_map);
-		bus_dma_tag_destroy(ldata->re_jpool_tag);
-		ldata->re_jpool_tag = NULL;
-		return error;
-	}
+	ldata->re_jpool_tag = dmem.dmem_tag;
+	ldata->re_jpool_map = dmem.dmem_map;
+	ldata->re_jpool = dmem.dmem_addr;
+	paddr = dmem.dmem_busaddr;
 
 	/* ..and split it into 9KB chunks */
 	SLIST_INIT(&ldata->re_jbuf_free);

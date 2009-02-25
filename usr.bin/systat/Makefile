@@ -10,6 +10,5 @@ DPADD=	${LIBCURSES} ${LIBTERMCAP} ${LIBM} ${LIBKVM} ${LIBDEVSTAT} ${LIBKINFO}
 LDADD=	-lcurses -ltermcap -lm -lkvm -ldevstat -lkinfo
 BINGRP=	kmem
 BINMODE=2555
-WARNS?=	6
 
 .include <bsd.prog.mk>

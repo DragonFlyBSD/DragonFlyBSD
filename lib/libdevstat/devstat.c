@@ -78,7 +78,7 @@ getnumdevs(void)
 {
 	size_t numdevsize;
 	int numdevs;
-	char *func_name = "getnumdevs";
+	const char *func_name = "getnumdevs";
 
 	numdevsize = sizeof(int);
 
@@ -106,7 +106,7 @@ getgeneration(void)
 {
 	size_t gensize;
 	long generation;
-	char *func_name = "getgeneration";
+	const char *func_name = "getgeneration";
 
 	gensize = sizeof(long);
 
@@ -133,7 +133,7 @@ getversion(void)
 {
 	size_t versize;
 	int version;
-	char *func_name = "getversion";
+	const char *func_name = "getversion";
 
 	versize = sizeof(int);
 
@@ -159,7 +159,7 @@ checkversion(void)
 {
 	int retval = 0;
 	int errlen = 0;
-	char *func_name = "checkversion";
+	const char *func_name = "checkversion";
 	int version;
 
 	version = getversion();
@@ -234,7 +234,7 @@ getdevs(struct statinfo *stats)
 	long oldgeneration;
 	int retval = 0;
 	struct devinfo *dinfo;
-	char *func_name = "getdevs";
+	const char *func_name = "getdevs";
 
 	dinfo = stats->dinfo;
 
@@ -807,7 +807,7 @@ selectdevs(struct device_selection **dev_select, int *num_selected,
 			 * device at index i in the old array.
 			 */
 			else {
-				int found = 0;
+				found = 0;
 
 				/*
 				 * Search through the old selection array
@@ -858,17 +858,17 @@ selectdevs(struct device_selection **dev_select, int *num_selected,
 static int
 compare_select(const void *arg1, const void *arg2)
 {
-	if ((((struct device_selection *)arg1)->selected)
-	 && (((struct device_selection *)arg2)->selected == 0))
+	if ((((const struct device_selection *)arg1)->selected)
+	 && (((const struct device_selection *)arg2)->selected == 0))
 		return(-1);
-	else if ((((struct device_selection *)arg1)->selected == 0)
-	      && (((struct device_selection *)arg2)->selected))
+	else if ((((const struct device_selection *)arg1)->selected == 0)
+	      && (((const struct device_selection *)arg2)->selected))
 		return(1);
-	else if (((struct device_selection *)arg2)->bytes <
-	         ((struct device_selection *)arg1)->bytes)
+	else if (((const struct device_selection *)arg2)->bytes <
+	         ((const struct device_selection *)arg1)->bytes)
 		return(-1);
-	else if (((struct device_selection *)arg2)->bytes >
-		 ((struct device_selection *)arg1)->bytes)
+	else if (((const struct device_selection *)arg2)->bytes >
+		 ((const struct device_selection *)arg1)->bytes)
 		return(1);
 	else
 		return(0);

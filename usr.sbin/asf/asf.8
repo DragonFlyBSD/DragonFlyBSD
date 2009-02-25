@@ -21,10 +21,9 @@
 .\" out of the use of this software, even if advised of the possibility of
 .\" such damage.
 .\"
-.\" $FreeBSD$
 .\" $DragonFly: src/usr.sbin/asf/asf.8,v 1.6 2008/09/02 11:50:46 matthias Exp $
 .\"
-.Dd September 2, 2008
+.Dd February 21, 2009
 .Os
 .Dt ASF 8
 .Sh NAME
@@ -39,13 +38,15 @@ By default,
 .Nm
 reads
 .Xr kldstat 8
-output from standard input and writes to standard output a list of
-.Xr gdb 1
+output from standard input and writes to the
+.Pa .asf
+file a list of
+.Xr kgdb 1
 commands to add symbol files from KLDs in subdirectories of the subdirectory
 .Pa modules
 of the current directory, which is intended to be a kernel build directory.
 This allows
-.Xr gdb 1
+.Xr kgdb 1
 to load the symbols into the debugging environment.
 .Pp
 If
@@ -87,20 +88,17 @@ and read the information from it.
 .Sh EXAMPLES
 The common usage on a
 .Dx
-system would probably be cut-and-pasting the output of
-.Xr gdb 1
-.Bd -literal -offset indent
-(kgdb) kldstat
-.Ed
-.Pp
+system is sourcing the output of
+.Nm Fl k
 into
-.Nm
-and then issuing a
+.Xr kgdb 1 :
 .Bd -literal -offset indent
+# asf -k
+# [start kgdb...]
 (kgdb) source .asf
 .Ed
 .Sh SEE ALSO
-.Xr gdb 1 ,
+.Xr kgdb 1 ,
 .Xr kldstat 8
 .Sh HISTORY
 The

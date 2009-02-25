@@ -485,9 +485,8 @@ get_chroot(void)
 	const int ichlen = strlen(ichname);
 	int real_oid[CTL_MAXNAME];
 	char sbuf[1024];
-	size_t oidlen;
+	size_t oidlen, slen;
 	char *res;
-	int slen;
 	int i;
 
 	oidlen = __arysize(real_oid);

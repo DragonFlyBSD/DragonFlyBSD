@@ -188,7 +188,7 @@ main(int argc, char *argv[])
 
     getcwd(cwd, MAXPATHLEN);		/* find where we are */
     kldstat = stdin;
-    while ((ch = getopt(argc, argv, "afks")) != -1) {
+    while ((ch = getopt(argc, argv, "afk")) != -1) {
 	switch (ch) {
 	case 'k': /* get input from kldstat(8) */
 	    if (!(kldstat = popen("kldstat", "r"))) {

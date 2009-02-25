@@ -302,7 +302,7 @@ extern int	pager_file(const char *);
 
 struct env_var;
 typedef char	*(ev_format_t)(struct env_var *);
-typedef int	(ev_sethook_t)(struct env_var *, int, void *);
+typedef int	(ev_sethook_t)(struct env_var *, int, const void *);
 typedef int	(ev_unsethook_t)(struct env_var *);
 
 struct env_var

@@ -4,7 +4,7 @@
 .\" $FreeBSD: src/lib/libc/rpc/rpc.3,v 1.23 2004/07/03 22:30:09 ru Exp $
 .\" $DragonFly: src/lib/libc/rpc/rpc.3,v 1.8 2008/05/01 22:06:06 swildner Exp $
 .\"
-.Dd May 7, 1993
+.Dd February 23, 2009
 .Dt RPC 3
 .Os
 .Sh NAME
@@ -279,9 +279,9 @@ typedef struct {
         long *    (*x_inline)();    /* buf quick ptr to buffered data */
         void    (*x_destroy)();    /* free privates of this xdr_stream */
     } *x_ops;
-    caddr_t    x_public;    /* users' data */
-    caddr_t    x_private;    /* pointer to private data */
-    caddr_t    x_base;    /* private used for position info */
+    char *    x_public;    /* users' data */
+    void *    x_private;    /* pointer to private data */
+    char *    x_base;    /* private used for position info */
     u_int    x_handy;    /* extra private word */
 } XDR;
 

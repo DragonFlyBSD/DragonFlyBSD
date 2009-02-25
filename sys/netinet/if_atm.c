@@ -106,7 +106,8 @@ atm_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
 		 */
 
 		if ((rt->rt_flags & RTF_HOST) == 0) {
-			rt_setgate(rt,rt_key(rt),(struct sockaddr *)&null_sdl);
+			rt_setgate(rt,rt_key(rt),(struct sockaddr *)&null_sdl,
+				   RTL_DONTREPORT);
 			gate = rt->rt_gateway;
 			SDL(gate)->sdl_type = rt->rt_ifp->if_type;
 			SDL(gate)->sdl_index = rt->rt_ifp->if_index;

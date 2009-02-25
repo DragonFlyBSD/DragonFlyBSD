@@ -35,12 +35,21 @@
  * $DragonFly: src/usr.bin/finger/extern.h,v 1.3 2004/09/03 19:13:23 dillon Exp $
  */
 
+#ifndef	_EXTERN_H_
+#define	_EXTERN_H_
+
 extern char tbuf[1024];			/* Temp buffer for anybody. */
 extern int entries;			/* Number of people. */
 extern DB *db;				/* Database. */
 extern int d_first;
 extern int gflag;
 extern int eightflag;
+extern int pplan;
+extern time_t now;
+extern int oflag;
+extern int lflag;
+extern int Tflag;
+extern sa_family_t family;
 
 void	 enter_lastlog(PERSON *);
 PERSON	*enter_person(struct passwd *);
@@ -54,3 +63,5 @@ PERSON	*palloc(void);
 char	*prphone(char *);
 void	 sflag_print(void);
 int	 show_text(const char *, const char *, const char *);
+
+#endif /* !_EXTERN_H_ */

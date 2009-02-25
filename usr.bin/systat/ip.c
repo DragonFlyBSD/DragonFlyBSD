@@ -241,30 +241,64 @@ showip(void)
 #undef DO
 }
 
-int
-initip(void)
+#define CPU_STATS_FUNC(proto,type)                            \
+static void                                                   \
+proto ##_stats_agg(type *ary, type *ttl, int cpucnt)          \
+{                                                             \
+    int i, off, siz;                                          \
+    siz = sizeof(type);                                       \
+                                                              \
+    if (!ary && !ttl)                                         \
+        return;                                               \
+                                                              \
+    bzero(ttl, siz);                                          \
+    if (cpucnt == 1) {                                        \
+        *ttl = ary[0];                                        \
+    } else {                                                  \
+        for (i = 0; i < cpucnt; ++i) {                        \
+            for (off = 0; off < siz; off += sizeof(u_long)) { \
+                *(u_long *)((char *)(*(&ttl)) + off) +=       \
+                *(u_long *)((char *)&ary[i] + off);           \
+            }                                                 \
+        }                                                     \
+    }                                                         \
+}
+CPU_STATS_FUNC(ip, struct ip_stats);
+
+static int
+fetch_ipstats(struct ip_stats *st)
 {
+	struct ip_stats stattmp[SMP_MAXCPU];
 	size_t len;
-	int name[4];
+	int name[4], cpucnt;
 
 	name[0] = CTL_NET;
 	name[1] = PF_INET;
 	name[2] = IPPROTO_IP;
 	name[3] = IPCTL_STATS;
 
-	len = 0;
-	if (sysctl(name, 4, 0, &len, 0, 0) < 0) {
-		error("sysctl getting ip_stats size failed");
-		return 0;
-	}
-	if (len > sizeof curstat.i) {
-		error("ip_stats structure has grown--recompile systat!");
-		return 0;
-	}
-	if (sysctl(name, 4, &initstat.i, &len, 0, 0) < 0) {
+	len = sizeof(struct ip_stats) * SMP_MAXCPU;
+	if (sysctl(name, 4, stattmp, &len, NULL, 0) < 0) {
 		error("sysctl getting ip_stats failed");
-		return 0;
+		return -1;
 	}
+	cpucnt = len / sizeof(struct ip_stats);
+	ip_stats_agg(stattmp, st, cpucnt);
+
+	return 0;
+}
+
+int
+initip(void)
+{
+	size_t len;
+	int name[4];
+
+	if (fetch_ipstats(&initstat.i) < 0)
+		return 0;
+
+	name[0] = CTL_NET;
+	name[1] = PF_INET;
 	name[2] = IPPROTO_UDP;
 	name[3] = UDPCTL_STATS;
 
@@ -291,15 +325,10 @@ resetip(void)
 	size_t len;
 	int name[4];
 
+	fetch_ipstats(&initstat.i);
+
 	name[0] = CTL_NET;
 	name[1] = PF_INET;
-	name[2] = IPPROTO_IP;
-	name[3] = IPCTL_STATS;
-
-	len = sizeof initstat.i;
-	if (sysctl(name, 4, &initstat.i, &len, 0, 0) < 0) {
-		error("sysctl getting ip_stat failed");
-	}
 	name[2] = IPPROTO_UDP;
 	name[3] = UDPCTL_STATS;
 
@@ -317,14 +346,12 @@ fetchip(void)
 	size_t len;
 
 	oldstat = curstat;
+
+	if (fetch_ipstats(&curstat.i) < 0)
+		return;
+
 	name[0] = CTL_NET;
 	name[1] = PF_INET;
-	name[2] = IPPROTO_IP;
-	name[3] = IPCTL_STATS;
-	len = sizeof curstat.i;
-
-	if (sysctl(name, 4, &curstat.i, &len, 0, 0) < 0)
-		return;
 	name[2] = IPPROTO_UDP;
 	name[3] = UDPCTL_STATS;
 	len = sizeof curstat.u;
@@ -332,4 +359,3 @@ fetchip(void)
 	if (sysctl(name, 4, &curstat.u, &len, 0, 0) < 0)
 		return;
 }
-

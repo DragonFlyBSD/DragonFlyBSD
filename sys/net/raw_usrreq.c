@@ -68,8 +68,9 @@ raw_init(void)
  * Most other raw protocol interface functions are also serialized XXX.
  */
 void
-raw_input(struct mbuf *m0, struct sockproto *proto, const struct sockaddr *src,
-	  const struct sockaddr *dst)
+raw_input(struct mbuf *m0, const struct sockproto *proto,
+	  const struct sockaddr *src, const struct sockaddr *dst,
+	  const struct rawcb *skip)
 {
 	struct rawcb *rp;
 	struct mbuf *m = m0;
@@ -77,6 +78,8 @@ raw_input(struct mbuf *m0, struct sockproto *proto, const struct sockaddr *src,
 
 	last = NULL;
 	LIST_FOREACH(rp, &rawcb_list, list) {
+		if (rp == skip)
+			continue;
 		if (rp->rcb_proto.sp_family != proto->sp_family)
 			continue;
 		if (rp->rcb_proto.sp_protocol  &&
