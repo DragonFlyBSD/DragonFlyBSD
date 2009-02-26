@@ -126,7 +126,7 @@ ls_list(ARCHD *arcn, time_t now, FILE *fp)
 		fprintf(fp, "%4lu,%4lu ", (unsigned long)MAJOR(sbp->st_rdev),
 		    (unsigned long)MINOR(sbp->st_rdev));
 	else {
-		fprintf(fp, "%9qu ", sbp->st_size);
+		fprintf(fp, "%9jd ", (intmax_t)sbp->st_size);
 	}
 
 	/*
