@@ -134,7 +134,7 @@ void	writerec(const void *, int);
 
 void	Exit(int) __dead2;
 void	dumpabort(int);
-void	getfstab(void);
+void	dump_getfstab(void);
 
 char	*rawname(char *);
 struct	ufs1_dinode *getino(ufs1_ino_t);

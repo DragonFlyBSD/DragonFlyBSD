@@ -106,7 +106,8 @@ MLINKS+=getcap.3 cgetcap.3 getcap.3 cgetclose.3 getcap.3 cgetent.3 \
 MLINKS+=getcwd.3 getwd.3
 MLINKS+=getdomainname.3 setdomainname.3
 MLINKS+=getfsent.3 endfsent.3 getfsent.3 getfsfile.3 getfsent.3 getfsspec.3 \
-	getfsent.3 getfstype.3 getfsent.3 setfsent.3
+	getfsent.3 getfstab.3 getfsent.3 getfstype.3 getfsent.3 setfsent.3 \
+	getfsent.3 setfstab.3
 MLINKS+=getgrent.3 endgrent.3 getgrent.3 getgrgid.3 getgrent.3 getgrnam.3 \
 	getgrent.3 setgrent.3 getgrent.3 setgroupent.3
 MLINKS+=gethostname.3 sethostname.3
