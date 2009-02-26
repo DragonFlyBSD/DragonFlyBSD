@@ -11,7 +11,7 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	ctermid.c ctype.c daemon.c devname.c dirname.c disklabel.c disktab.c \
 	dlfcn.c dlfunc.c drand48.c erand48.c err.c errlst.c \
 	exec.c fmtcheck.c fmtmsg.c fnmatch.c fpclassifyd.c fpclassifyf.c \
-	fstab.c ftok.c fts.c ftw.c getbootfile.c getbsize.c \
+	frexp.c fstab.c ftok.c fts.c ftw.c getbootfile.c getbsize.c \
 	getcap.c getcwd.c getdomainname.c getgrent.c getgrouplist.c \
 	gethostname.c getloadavg.c getlogin.c getmntinfo.c getmntvinfo.c \
 	getnetgrent.c getobjformat.c getosreldate.c getpagesize.c \
@@ -95,6 +95,7 @@ MLINKS+=err.3 err_set_exit.3 err.3 err_set_file.3 err.3 errc.3 err.3 errx.3 \
 	err.3 vwarnx.3 err.3 warnc.3 err.3 warn.3 err.3 warnx.3
 MLINKS+=exec.3 execl.3 exec.3 execle.3 exec.3 execlp.3 exec.3 exect.3 \
 	exec.3 execv.3 exec.3 execvP.3 exec.3 execvp.3
+MLINKS+=frexp.3 frexpf.3 frexp.3 frexpl.3
 MLINKS+=fts.3 fts_children.3 fts.3 fts_close.3 fts.3 fts_open.3 \
 	fts.3 fts_read.3 fts.3 fts_set.3
 MLINKS+=ftw.3 nftw.3
