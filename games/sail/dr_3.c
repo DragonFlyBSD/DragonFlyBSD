@@ -137,8 +137,8 @@ moveall(void)		/* move all comp ships */
 						makesignal(sp,
 							"fouled with %s (%c%c)",
 							sq);
-						Write(W_FOUL, sp, 0, l, 0, 0, 0);
-						Write(W_FOUL, sq, 0, n, 0, 0, 0);
+						Write(W_FOUL, sp, l, 0, 0, 0);
+						Write(W_FOUL, sq, n, 0, 0, 0);
 					}
 					snap++;
 				}
@@ -169,13 +169,13 @@ moveall(void)		/* move all comp ships */
 		if (sp->file->dir != 0) {
 			*sp->file->movebuf = 0;
 			if (row[n] != sp->file->row)
-				Write(W_ROW, sp, 0, sp->file->row, 0, 0, 0);
+				Write(W_ROW, sp, sp->file->row, 0, 0, 0);
 			if (col[n] != sp->file->col)
-				Write(W_COL, sp, 0, sp->file->col, 0, 0, 0);
+				Write(W_COL, sp, sp->file->col, 0, 0, 0);
 			if (dir[n] != sp->file->dir)
-				Write(W_DIR, sp, 0, sp->file->dir, 0, 0, 0);
+				Write(W_DIR, sp, sp->file->dir, 0, 0, 0);
 			if (drift[n] != sp->file->drift)
-				Write(W_DRIFT, sp, 0, sp->file->drift, 0, 0, 0);
+				Write(W_DRIFT, sp, sp->file->drift, 0, 0, 0);
 		}
 		n++;
 	}
@@ -268,7 +268,7 @@ sendbp(struct ship *from, struct ship *to, int sections, char isdefense)
 	for (n = 0; n < NBP && bp[n].turnsent; n++)
 		;
 	if (n < NBP && sections) {
-		Write(isdefense ? W_DBP : W_OBP, from, 0,
+		Write(isdefense ? W_DBP : W_OBP, from,
 			n, turn, to->file->index, sections);
 		if (isdefense)
 			makesignal(from, "repelling boarders",
@@ -344,6 +344,6 @@ checksails(void)
 		} else
 			full = 0;
 		if ((sp->file->FS != 0) != full)
-			Write(W_FS, sp, 0, full, 0, 0, 0);
+			Write(W_FS, sp, full, 0, 0, 0);
 	}
 }

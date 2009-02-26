@@ -125,7 +125,7 @@ acceptmove(void)
 		Signal("Movement error.", (struct ship *)0);
 		if (ta < 0 && moved) {
 			if (mf->FS == 1) {
-				Write(W_FS, ms, 0, 0, 0, 0, 0);
+				Write(W_FS, ms, 0, 0, 0, 0);
 				Signal("No hands to set full sails.",
 					(struct ship *)0);
 			}
@@ -134,7 +134,7 @@ acceptmove(void)
 	}
 	if (af && !moved) {
 		if (mf->FS == 1) {
-			Write(W_FS, ms, 0, 0, 0, 0, 0);
+			Write(W_FS, ms, 0, 0, 0, 0);
 			Signal("No hands to set full sails.",
 				(struct ship *)0);
 		}
@@ -143,7 +143,7 @@ acceptmove(void)
 		strcpy(movebuf, buf);
 	else
 		strcpy(movebuf, "d");
-	Write(W_MOVE, ms, 1, (int)movebuf, 0, 0, 0);
+	Writestr(W_MOVE, ms, movebuf);
 	Signal("Helm: %s.", (struct ship *)0, movebuf);
 }
 
@@ -225,7 +225,7 @@ parties(int crew[3], struct ship *to, char isdefense, char buf)
 			if (buf > '0')
 				Signal("Sending all crew sections.",
 					(struct ship *)0);
-			Write(isdefense ? W_DBP : W_OBP, ms, 0,
+			Write(isdefense ? W_DBP : W_OBP, ms,
 				j, turn, to->file->index, men);
 			if (isdefense) {
 				wmove(slot_w, 2, 0);

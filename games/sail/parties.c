@@ -69,5 +69,5 @@ unboard(struct ship *ship, struct ship *to, char isdefense)
 
 	for (n = 0; n < NBP; p++, n++)
 		if (p->turnsent && (p->toship == to || isdefense || ship == to))
-			Write(isdefense ? W_DBP : W_OBP, ship, 0, n, 0, 0, 0);
+			Write(isdefense ? W_DBP : W_OBP, ship, n, 0, 0, 0);
 }

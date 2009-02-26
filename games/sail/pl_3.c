@@ -229,8 +229,8 @@ grapungrap(void)
 		case 'g':
 			if (die() < 3
 			    || ms->nationality == capship(sp)->nationality) {
-				Write(W_GRAP, ms, 0, sp->file->index, 0, 0, 0);
-				Write(W_GRAP, sp, 0, player, 0, 0, 0);
+				Write(W_GRAP, ms, sp->file->index, 0, 0, 0);
+				Write(W_GRAP, sp, player, 0, 0, 0);
 				Signal("Attempt succeeds!", (struct ship *)0);
 				makesignal(ms, "grappled with %s (%c%c)", sp);
 			} else

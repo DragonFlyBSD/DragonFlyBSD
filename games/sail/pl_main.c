@@ -174,7 +174,7 @@ reprint:
 	mf = ms->file;
 	mc = ms->specs;
 
-	Write(W_BEGIN, ms, 0, 0, 0, 0, 0);
+	Write(W_BEGIN, ms, 0, 0, 0, 0);
 	if (Sync() < 0)
 		leave(LEAVE_SYNC);
 
@@ -206,7 +206,7 @@ reprint:
 		else
 			captain[sizeof(captain) - 1] = '\0';
 	}
-	Write(W_CAPTAIN, ms, 1, (long)captain, 0, 0, 0);
+	Writestr(W_CAPTAIN, ms, captain);
 	for (n = 0; n < 2; n++) {
 		char buf[10];
 
@@ -241,7 +241,8 @@ reprint:
 
 	initscreen();
 	draw_board();
-	sprintf(message, "Captain %s assuming command", captain);
-	Write(W_SIGNAL, ms, 1, (long)message, 0, 0, 0);
+	snprintf(message, sizeof message, "Captain %s assuming command",
+		 captain);
+	Writestr(W_SIGNAL, ms, message);
 	newturn();
 }
