@@ -327,6 +327,7 @@ again:
 		nvp->v_type = VBAD;
 		vx_put(nvp);
 		kfree(ldep, M_MSDOSFSNODE);
+		*depp = NULL;
 		return (EINVAL);
 	}
 	nvp->v_data = ldep;
