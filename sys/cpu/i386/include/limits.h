@@ -94,6 +94,9 @@
 #if !defined(_POSIX_SOURCE)
 #define	SIZE_T_MAX	UINT_MAX	/* max value for a size_t */
 
+#define	OFF_MAX		LLONG_MAX	/* max value for an off_t */
+#define	OFF_MIN		LLONG_MIN	/* min value for an off_t */
+
 #define	GID_MAX		UINT_MAX	/* max value for a gid_t */
 #define	UID_MAX		UINT_MAX	/* max value for a uid_t */
 

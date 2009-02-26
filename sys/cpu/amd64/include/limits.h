@@ -72,14 +72,12 @@
 #define	INT_MAX		0x7fffffff	/* max value for an int */
 #define	INT_MIN		(-0x7fffffff - 1)	/* min value for an int */
 
-/* Bad hack for gcc configured to give 64-bit longs. */
-#define	ULONG_MAX	0xffffffffffffffffUL
-#define	LONG_MAX	0x7fffffffffffffffL
-#define	LONG_MIN	(-0x7fffffffffffffffL - 1)
+#define	ULONG_MAX	0xffffffffffffffffUL	/* max for an unsigned long */
+#define	LONG_MAX	0x7fffffffffffffffL	/* max for a long */
+#define	LONG_MIN	(-0x7fffffffffffffffL - 1) /* min for a long */
 
-	/* XXX what is long long on amd64? */
-			/* max value for an unsigned long long */
-#define	ULLONG_MAX	0xffffffffffffffffULL
+/* XXX what is long long on amd64? */
+#define	ULLONG_MAX	0xffffffffffffffffULL	/* max value for an unsigned long long */
 #define	LLONG_MAX	0x7fffffffffffffffLL	/* max value for a long long */
 #define	LLONG_MIN	(-0x7fffffffffffffffLL - 1)  /* min for a long long */
 
@@ -88,6 +86,9 @@
 
 #if !defined(_POSIX_SOURCE)
 #define	SIZE_T_MAX	ULONG_MAX	/* max value for a size_t */
+
+#define	OFF_MAX		LONG_MAX	/* max value for an off_t */
+#define	OFF_MIN		LONG_MIN	/* min value for an off_t */
 
 #define GID_MAX		UINT_MAX        /* max value for a gid_t */
 #define UID_MAX		UINT_MAX        /* max value for a uid_t */
