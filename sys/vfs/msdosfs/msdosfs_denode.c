@@ -178,7 +178,7 @@ msdosfs_hashins(struct denode *dep)
 		    deq->de_dirclust == dep->de_dirclust &&
 		    deq->de_diroffset == dep->de_diroffset) {
 			lwkt_reltoken(&ilock);
-			if (dep->de_refcnt)
+			if (deq->de_refcnt)
 				return(EBUSY);
 			else
 				return(EINVAL);
