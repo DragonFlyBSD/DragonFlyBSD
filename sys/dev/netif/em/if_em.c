@@ -3152,8 +3152,8 @@ em_init_rx_unit(struct adapter *adapter)
 	 * platforms another solution is being sought.
 	 */
 	if (em_82573_workaround && adapter->hw.mac.type == e1000_82573) {
-		E1000_WRITE_REG(&adapter->hw, E1000_RADV, 0x40);
-		E1000_WRITE_REG(&adapter->hw, E1000_RDTR, 0x20);
+		E1000_WRITE_REG(&adapter->hw, E1000_RADV, EM_RADV_82573);
+		E1000_WRITE_REG(&adapter->hw, E1000_RDTR, EM_RDTR_82573);
 	}
 
 	/* Enable Receives */

@@ -96,38 +96,22 @@
 #define EM_TADV				64
 
 /*
- * EM_RDTR - Receive Interrupt Delay Timer (Packet Timer)
- * Valid Range: 0-65535 (0=off)
- * Default Value: 0
- *   This value delays the generation of receive interrupts in units of 1.024
- *   microseconds.  Receive interrupt reduction can improve CPU efficiency if
- *   properly tuned for specific network traffic. Increasing this value adds
- *   extra latency to frame reception and can end up decreasing the throughput
- *   of TCP traffic. If the system is reporting dropped receives, this value
- *   may be set too high, causing the driver to run out of available receive
- *   descriptors.
+ * Receive Interrupt Delay Timer (Packet Timer)
  *
- *   CAUTION: When setting EM_RDTR to a value other than 0, adapters
- *            may hang (stop transmitting) under certain network conditions.
- *            If this occurs a WATCHDOG message is logged in the system
- *            event log. In addition, the controller is automatically reset,
- *            restoring the network connection. To eliminate the potential
- *            for the hang ensure that EM_RDTR is set to 0.
+ * NOTE:
+ * RDTR and RADV are deprecated; use ITR instead.  They are only used to
+ * workaround hardware bug on certain 82573 based NICs.
  */
-#define EM_RDTR				0
+#define EM_RDTR_82573			32
 
 /*
  * Receive Interrupt Absolute Delay Timer (Not valid for 82542/82543/82544)
- * Valid Range: 0-65535 (0=off)
- * Default Value: 64
- *   This value, in units of 1.024 microseconds, limits the delay in which a
- *   receive interrupt is generated. Useful only if EM_RDTR is non-zero,
- *   this value ensures that an interrupt is generated after the initial
- *   packet is received within the set amount of time.  Proper tuning,
- *   along with EM_RDTR, may improve traffic throughput in specific network
- *   conditions.
+ *
+ * NOTE:
+ * RDTR and RADV are deprecated; use ITR instead.  They are only used to
+ * workaround hardware bug on certain 82573 based NICs.
  */
-#define EM_RADV				64
+#define EM_RADV_82573			64
 
 /*
  * This parameter controls the duration of transmit watchdog timer.
