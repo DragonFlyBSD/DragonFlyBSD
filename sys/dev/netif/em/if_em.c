@@ -361,7 +361,6 @@ DRIVER_MODULE(if_em, pci, em_driver, em_devclass, 0, 0);
 
 static int	em_tx_int_delay_dflt = EM_TICKS_TO_USECS(EM_TIDV);
 static int	em_tx_abs_int_delay_dflt = EM_TICKS_TO_USECS(EM_TADV);
-static int	em_rx_abs_int_delay_dflt = EM_TICKS_TO_USECS(EM_RADV);
 static int	em_int_throttle_ceil = EM_DEFAULT_ITR;
 static int	em_rxd = EM_DEFAULT_RXD;
 static int	em_txd = EM_DEFAULT_TXD;
@@ -374,7 +373,6 @@ static int	em_82573_workaround = TRUE;
 
 TUNABLE_INT("hw.em.tx_int_delay", &em_tx_int_delay_dflt);
 TUNABLE_INT("hw.em.tx_abs_int_delay", &em_tx_abs_int_delay_dflt);
-TUNABLE_INT("hw.em.rx_abs_int_delay", &em_rx_abs_int_delay_dflt);
 TUNABLE_INT("hw.em.int_throttle_ceil", &em_int_throttle_ceil);
 TUNABLE_INT("hw.em.rxd", &em_rxd);
 TUNABLE_INT("hw.em.txd", &em_txd);
@@ -3071,9 +3069,6 @@ em_init_rx_unit(struct adapter *adapter)
 	E1000_WRITE_REG(&adapter->hw, E1000_RCTL, rctl & ~E1000_RCTL_EN);
 
 	if (adapter->hw.mac.type >= e1000_82540) {
-		E1000_WRITE_REG(&adapter->hw, E1000_RADV,
-		    adapter->rx_abs_int_delay.value);
-
 		/*
 		 * Set the interrupt throttling rate. Value is calculated
 		 * as ITR = 1 / (INT_THROTTLE_CEIL * 256ns)
@@ -3156,8 +3151,10 @@ em_init_rx_unit(struct adapter *adapter)
 	 * values in RDTR is a known source of problems on other
 	 * platforms another solution is being sought.
 	 */
-	if (em_82573_workaround && adapter->hw.mac.type == e1000_82573)
+	if (em_82573_workaround && adapter->hw.mac.type == e1000_82573) {
+		E1000_WRITE_REG(&adapter->hw, E1000_RADV, 0x40);
 		E1000_WRITE_REG(&adapter->hw, E1000_RDTR, 0x20);
+	}
 
 	/* Enable Receives */
 	E1000_WRITE_REG(&adapter->hw, E1000_RCTL, rctl);
@@ -4033,11 +4030,6 @@ em_add_sysctl(struct adapter *adapter)
 	    "transmit interrupt delay in usecs", &adapter->tx_int_delay,
 	    E1000_REGISTER(&adapter->hw, E1000_TIDV), em_tx_int_delay_dflt);
 	if (adapter->hw.mac.type >= e1000_82540) {
-		em_add_int_delay_sysctl(adapter, "rx_abs_int_delay",
-		    "receive interrupt delay limit in usecs",
-		    &adapter->rx_abs_int_delay,
-		    E1000_REGISTER(&adapter->hw, E1000_RADV),
-		    em_rx_abs_int_delay_dflt);
 		em_add_int_delay_sysctl(adapter, "tx_abs_int_delay",
 		    "transmit interrupt delay limit in usecs",
 		    &adapter->tx_abs_int_delay,
