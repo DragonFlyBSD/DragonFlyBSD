@@ -363,7 +363,7 @@ Spawn(const char *prog __unused, const char *acname, const char *provider,
 
       /* And send our request data to the waiting node */
       if (debug)
-        syslog(LOG_INFO, "Sending original request to %s (%d bytes)", path, sz);
+        syslog(LOG_INFO, "Sending original request to %s (%zu bytes)", path, sz);
       if (NgSendData(ds, ngc.ourhook, request, sz) == -1) {
         syslog(LOG_ERR, "Cannot send original request to %s: %m", path);
         _exit(EX_OSERR);
@@ -572,8 +572,8 @@ main(int argc, char *argv[])
     }
     exec = (char *)alloca(sizeof DEFAULT_EXEC_PREFIX + strlen(label));
     if (exec == NULL) {
-      fprintf(stderr, "%s: Cannot allocate %d bytes\n", prog,
-              (int)(sizeof DEFAULT_EXEC_PREFIX) + strlen(label));
+      fprintf(stderr, "%s: Cannot allocate %zu bytes\n", prog,
+              sizeof DEFAULT_EXEC_PREFIX + strlen(label));
       return EX_OSERR;
     }
     strcpy(exec, DEFAULT_EXEC_PREFIX);
