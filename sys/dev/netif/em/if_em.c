@@ -3926,11 +3926,8 @@ em_sysctl_int_delay(SYSCTL_HANDLER_ARGS)
 	switch (info->offset) {
 	case E1000_TIDV:
 		if (ticks == 0) {
-			adapter->txd_cmd &= ~E1000_TXD_CMD_IDE;
 			/* Don't write 0 into the TIDV register. */
 			regval++;
-		} else {
-			adapter->txd_cmd |= E1000_TXD_CMD_IDE;
 		}
 		break;
 	}
