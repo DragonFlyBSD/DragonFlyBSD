@@ -32,7 +32,7 @@
 .\"
 .\" $DragonFly: src/lib/libc/sys/usched_set.2,v 1.4 2007/12/23 15:31:28 swildner Exp $
 .\"
-.Dd July 5, 2007
+.Dd February 26, 2009
 .Dt USCHED_SET 2
 .Os
 .Sh NAME
@@ -55,7 +55,7 @@ and removing a CPU from the list of available CPUs for an LWP.
 The
 .Fn usched_set
 function requires superuser privileges for all commands except
-.Dv USCHED_GET_CPU.
+.Dv USCHED_GET_CPU .
 .Pp
 The
 .Fa cmd
@@ -91,7 +91,7 @@ The function will fail if:
 The user scheduler to set is not in the list of available user schedulers.
 The
 .Fa bytes
-argument does is not the correct size
+argument is not the correct size
 .Vt ( int )
 for a cpuid.
 The specified cpuid is not set in
