@@ -244,12 +244,25 @@ is_zero_or_null(struct val *vp)
 	/* NOTREACHED */
 }
 
+static void
+usage(void)
+{
+        fprintf(stderr,
+                "usage: expr expression\n");
+        exit(EXIT_FAILURE);
+}
+
 int
-main (int argc __unused, char **argv)
+main (int argc, char **argv)
 {
 	setlocale (LC_ALL, "");
 
-	av = argv + 1;
+	if (argc > 1 && strcmp(argv[1], "--"))
+		av = argv + 1;
+	else if (argc > 2)
+		av = argv + 2;
+	else
+		usage();
 
 	yyparse ();
 
