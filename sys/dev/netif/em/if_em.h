@@ -346,7 +346,7 @@ struct adapter {
 	int			tx_dd_tail;
 	int			tx_dd_head;
 #define EM_TXDD_MAX	64
-#define EM_TXDD_SAFE	50 /* must be less than EM_TXDD_MAX */
+#define EM_TXDD_SAFE	48 /* must be less than EM_TXDD_MAX */
 	int			tx_dd[EM_TXDD_MAX];
 
 	/*
