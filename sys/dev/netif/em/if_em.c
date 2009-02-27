@@ -3983,7 +3983,9 @@ em_sysctl_int_throttle(SYSCTL_HANDLER_ARGS)
 		adapter->int_throttle_ceil = 1000000000 / 256 / throttle;
 	else
 		adapter->int_throttle_ceil = 0;
-	E1000_WRITE_REG(&adapter->hw, E1000_ITR, throttle);
+
+	if (ifp->if_flags & IFF_RUNNING)
+		E1000_WRITE_REG(&adapter->hw, E1000_ITR, throttle);
 
 	lwkt_serialize_exit(ifp->if_serializer);
 
