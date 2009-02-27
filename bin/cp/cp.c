@@ -83,7 +83,7 @@ volatile sig_atomic_t info;
 enum op { FILE_TO_FILE, FILE_TO_DIR, DIR_TO_DNE };
 
 static int copy (char **, enum op, int);
-static int mastercmp (const FTSENT **, const FTSENT **);
+static int mastercmp (const FTSENT * const *, const FTSENT * const *);
 static void siginfo (int);
 
 int
@@ -475,7 +475,7 @@ copy(char **argv, enum op type, int fts_options)
  *	files first reduces seeking.
  */
 static int
-mastercmp(const FTSENT **a, const FTSENT **b)
+mastercmp(const FTSENT * const *a, const FTSENT * const *b)
 {
 	int a_info, b_info;
 

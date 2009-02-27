@@ -69,7 +69,7 @@ static uid_t uid;
 static mode_t mode;
 static u_long flags = 0xffffffff;
 
-static int	dsort(const FTSENT **, const FTSENT **);
+static int	dsort(const FTSENT * const *, const FTSENT * const *);
 static void	output(int, int *, const char *, ...);
 static int	statd(FTS *, FTSENT *, uid_t *, gid_t *, mode_t *,
 			   u_long *);
@@ -378,7 +378,7 @@ statd(FTS *t, FTSENT *parent, uid_t *puid, gid_t *pgid, mode_t *pmode,
 }
 
 static int
-dsort(const FTSENT **a, const FTSENT **b)
+dsort(const FTSENT * const *a, const FTSENT * const *b)
 {
 
 	if (S_ISDIR((*a)->fts_statp->st_mode)) {
