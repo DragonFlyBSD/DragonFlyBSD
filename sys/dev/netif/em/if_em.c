@@ -1581,7 +1581,7 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 				ctxd->buffer_addr = htole64(
 				    desc_array.descriptor[counter].address);
 				ctxd->lower.data = htole32(
-				    adapter->txd_cmd | txd_lower |
+				    E1000_TXD_CMD_IFCS | txd_lower |
 				    desc_array.descriptor[counter].length);
 				ctxd->upper.data = htole32(txd_upper);
 
@@ -1597,7 +1597,7 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 			ctxd = &adapter->tx_desc_base[i];
 
 			ctxd->buffer_addr = htole64(segs[j].ds_addr);
-			ctxd->lower.data = htole32(adapter->txd_cmd |
+			ctxd->lower.data = htole32(E1000_TXD_CMD_IFCS |
 						   txd_lower | segs[j].ds_len);
 			ctxd->upper.data = htole32(txd_upper);
 
@@ -2523,9 +2523,6 @@ em_init_tx_unit(struct adapter *adapter)
 
 	/* This write will effectively turn on the transmit unit. */
 	E1000_WRITE_REG(&adapter->hw, E1000_TCTL, tctl);
-
-	/* Setup Transmit Descriptor Base Settings */   
-	adapter->txd_cmd = E1000_TXD_CMD_IFCS;
 }
 
 static void
@@ -2684,7 +2681,7 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 
 	TXD->tcp_seg_setup.data = htole32(0);
 	TXD->cmd_and_length =
-	    htole32(adapter->txd_cmd | E1000_TXD_CMD_DEXT | cmd);
+	    htole32(E1000_TXD_CMD_IFCS | E1000_TXD_CMD_DEXT | cmd);
 	tx_buffer->m_head = NULL;
 
 	if (++curr_txd == adapter->num_tx_desc)

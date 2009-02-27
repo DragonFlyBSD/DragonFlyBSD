@@ -300,7 +300,6 @@ struct adapter {
 	uint32_t		next_tx_to_clean;
 	int			num_tx_desc_avail;
 	int			num_tx_desc;
-	uint32_t		txd_cmd;
 	bus_dma_tag_t		txtag;		/* dma tag for tx */
 	int			spare_tx_desc;
 	int			oact_tx_desc;
