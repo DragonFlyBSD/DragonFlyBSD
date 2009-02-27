@@ -149,7 +149,7 @@ get_ifa(char *cp, int n)
 
 	return (NULL);
 }
-struct iaddr defaddr = { 4, {NULL} }; /* NULL is for silence warnings */
+struct iaddr defaddr = { .len = 4 }; /* NULL is for silence warnings */
 
 /* ARGSUSED */
 void

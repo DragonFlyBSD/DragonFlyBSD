@@ -76,7 +76,7 @@ repair(void)
 			int max = ptr->guns/4;
 			if (ptr->hull < max) {
 				FIX(hull, max);
-				Write(W_HULL, ms, 0, ptr->hull, 0, 0, 0);
+				Write(W_HULL, ms, ptr->hull, 0, 0, 0);
 			}
 			break;
 			}
@@ -85,14 +85,14 @@ repair(void)
 				int max = ptr->guns/5 - ptr->carL;
 				if (ptr->gunL < max) {
 					FIX(gunL, max);
-					Write(W_GUNL, ms, 0, ptr->gunL,
+					Write(W_GUNL, ms, ptr->gunL,
 						ptr->carL, 0, 0);
 				}
 			} else {
 				int max = ptr->guns/5 - ptr->carR;
 				if (ptr->gunR < max) {
 					FIX(gunR, max);
-					Write(W_GUNR, ms, 0, ptr->gunR,
+					Write(W_GUNR, ms, ptr->gunR,
 						ptr->carR, 0, 0);
 				}
 			}
@@ -101,19 +101,19 @@ repair(void)
 #define X 2
 			if (ptr->rig4 >= 0 && ptr->rig4 < X) {
 				FIX(rig4, X);
-				Write(W_RIG4, ms, 0, ptr->rig4, 0, 0, 0);
+				Write(W_RIG4, ms, ptr->rig4, 0, 0, 0);
 			}
 			if (count && ptr->rig3 < X) {
 				FIX(rig3, X);
-				Write(W_RIG3, ms, 0, ptr->rig3, 0, 0, 0);
+				Write(W_RIG3, ms, ptr->rig3, 0, 0, 0);
 			}
 			if (count && ptr->rig2 < X) {
 				FIX(rig2, X);
-				Write(W_RIG2, ms, 0, ptr->rig2, 0, 0, 0);
+				Write(W_RIG2, ms, ptr->rig2, 0, 0, 0);
 			}
 			if (count && ptr->rig1 < X) {
 				FIX(rig1, X);
-				Write(W_RIG1, ms, 0, ptr->rig1, 0, 0, 0);
+				Write(W_RIG1, ms, ptr->rig1, 0, 0, 0);
 			}
 			break;
 		}

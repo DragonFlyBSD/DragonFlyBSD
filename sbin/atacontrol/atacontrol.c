@@ -137,7 +137,7 @@ cap_print(struct ata_params *parm)
 
 	printf("lba48%ssupported         ", parm->support.address48 ? " " : " not ");
 	if (parm->lba_size48)
-		printf("%lld sectors\n", parm->lba_size48);	
+		printf("%ju sectors\n", (uintmax_t)parm->lba_size48);
 	else
 		printf("\n");
 	printf("dma%ssupported\n", parm->support_dma ? " " : " not");

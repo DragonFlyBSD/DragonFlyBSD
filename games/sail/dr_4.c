@@ -59,7 +59,7 @@ grap(struct ship *from, struct ship *to)
 {
 	if (capship(from)->nationality != capship(to)->nationality && die() > 2)
 		return;
-	Write(W_GRAP, from, 0, to->file->index, 0, 0, 0);
-	Write(W_GRAP, to, 0, from->file->index, 0, 0, 0);
+	Write(W_GRAP, from, to->file->index, 0, 0, 0);
+	Write(W_GRAP, to, from->file->index, 0, 0, 0);
 	makesignal(from, "grappled with %s (%c%c)", to);
 }

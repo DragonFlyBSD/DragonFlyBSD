@@ -852,10 +852,16 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	}
 
 	/*
-	 * If there is no path component the time extension is relative to
-	 * dip.
+	 * If there is no path component the time extension is relative to dip.
+	 * e.g. "fubar/@@<snapshot>"
+	 *
+	 * "." is handled by the kernel, but ".@@<snapshot>" is not.
+	 * e.g. "fubar/.@@<snapshot>"
+	 *
+	 * ".." is handled by the kernel.  We do not currently handle
+	 * "..@<snapshot>".
 	 */
-	if (nlen == 0) {
+	if (nlen == 0 || (nlen == 1 && ncp->nc_name[0] == '.')) {
 		ip = hammer_get_inode(&trans, dip, dip->obj_id,
 				      asof, dip->obj_localization,
 				      flags, &error);

@@ -509,6 +509,9 @@ vnioctl(struct dev_ioctl_args *ap)
 		 * How are these problems handled for removable and failing
 		 * hardware devices? (Hint: They are not)
 		 */
+		if (count_dev(vn->sc_devlist) > 1)
+			return (EBUSY);
+
 		vnclear(vn);
 		IFOPT(vn, VN_FOLLOW)
 			kprintf("vnioctl: CLRed\n");

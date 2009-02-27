@@ -89,7 +89,7 @@ sysntp_getbasetime(struct timeval *tvp)
 {
     struct timespec ts;
     int error;
-    int ts_size;
+    size_t ts_size;
 
     ts_size = sizeof(ts);
     error = sysctlbyname("kern.basetime", &ts, &ts_size, NULL, 0);
@@ -107,7 +107,7 @@ int
 sysntp_offset_correction_is_running(void)
 {
     int64_t delta;
-    int delta_len;
+    size_t delta_len;
 
     delta_len = sizeof(delta);
     if (sysctlbyname("kern.ntp.delta", &delta, &delta_len, NULL, 0) == 0) {

@@ -639,8 +639,10 @@ again:
 	 * Insert the buffer into the RB tree and handle late collisions.
 	 */
 	if (RB_INSERT(hammer_buf_rb_tree, &hmp->rb_bufs_root, buffer)) {
-		hammer_unref(&buffer->io.lock);
+		hammer_unref(&buffer->io.lock);	/* safety */
 		--hammer_count_buffers;
+		hammer_rel_volume(volume, 0);
+		buffer->io.volume = NULL;	/* safety */
 		kfree(buffer, hmp->m_misc);
 		goto again;
 	}

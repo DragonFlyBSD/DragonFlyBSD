@@ -171,7 +171,7 @@ load_client_broadcast_tags(tag_t tag, const char *tagName)
     struct if_msghdr *ifm;
     int mib[6];
     char *buf;
-    int bytes;
+    size_t bytes;
     int i;
 
     mib[0] = CTL_NET;

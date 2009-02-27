@@ -46,19 +46,31 @@ int opienewseed FUNCTION((seed), char *seed)
 	if (seed[0]) {
 		char *c, *end;
 		unsigned int i, max;
+		size_t slen;
 
-		if ((i = strlen(seed)) > OPIE_SEED_MAX)
-			i = OPIE_SEED_MAX;
+		if ((slen = strlen(seed)) > OPIE_SEED_MAX)
+			slen = OPIE_SEED_MAX;
 
-		for (c = end = seed + i - 1, max = 1;
-				(c > seed) && isdigit(*c); c--)
+		for (c = end = seed + slen - 1, max = 1;
+				(c >= seed) && isdigit(*c); c--)
 			max *= 10;
 
-		if ((i = strtoul(++c, (char **)0, 10)) < max) {
+		/* c either points before seed or to an alpha, so skip */
+		++c;
+
+		/* keep alphas, only look at numbers */
+		slen -= c - seed;
+
+		if ((i = strtoul(c, (char **)0, 10)) < max) {
 			if (++i >= max)
 				i = 1;
 
-			snprintf(c, end - c, "%d", i);
+			/*
+			 * If we roll over, we will have to generate a
+			 * seed which is at least as long as the previous one
+			 * was.  snprintf() will add a NUL character as well.
+			 */
+			snprintf(c, slen + 1, "%0*d", slen, i);
 			seed[OPIE_SEED_MAX] = 0;
 			return 0;
 		}

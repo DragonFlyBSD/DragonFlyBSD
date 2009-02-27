@@ -483,8 +483,8 @@ syserr:			run_err("%s: %s", name, strerror(errno));
 				goto next;
 		}
 #define	MODEMASK	(S_ISUID|S_ISGID|S_ISTXT|S_IRWXU|S_IRWXG|S_IRWXO)
-		snprintf(buf, sizeof(buf), "C%04o %qd %s\n",
-		    stb.st_mode & MODEMASK, stb.st_size, last);
+		snprintf(buf, sizeof(buf), "C%04o %jd %s\n",
+		    stb.st_mode & MODEMASK, (intmax_t)stb.st_size, last);
 		write(rem, buf, strlen(buf));
 		if (response() < 0)
 			goto next;
@@ -581,8 +581,8 @@ sink(int argc, char *argv[])
 	enum { YES, NO, DISPLAYED } wrerr;
 	BUF *bp;
 	off_t i, j, size;
-	size_t amt, count;
-	int exists, first, mask, mode, ofd, omode;
+	size_t count;
+	int amt, exists, first, mask, mode, ofd, omode;
 	int setimes, targisdir, wrerrno = 0;
 	char ch, *cp, *np, *targ, *why, *vect[1], buf[BUFSIZ], path[PATH_MAX];
 
@@ -752,7 +752,7 @@ bad:			run_err("%s: %s", np, strerror(errno));
 				/* Keep reading so we stay sync'd up. */
 				if (wrerr == NO) {
 					j = write(ofd, bp->buf, count);
-					if (j != count) {
+					if (j != (off_t)count) {
 						wrerr = YES;
 						wrerrno = j >= 0 ? EIO : errno;
 					}
@@ -762,7 +762,7 @@ bad:			run_err("%s: %s", np, strerror(errno));
 			}
 		}
 		if (count != 0 && wrerr == NO &&
-		    (j = write(ofd, bp->buf, count)) != count) {
+		    (j = write(ofd, bp->buf, count)) != (off_t)count) {
 			wrerr = YES;
 			wrerrno = j >= 0 ? EIO : errno;
 		}

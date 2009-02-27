@@ -62,7 +62,7 @@
 struct mntopt mopts[] = {
 	MOPT_STDOPTS,
 	MOPT_UPDATE,
-	{ NULL }
+	{ NULL, 0, 0, 0 }
 };
 
 void	usage(void);
