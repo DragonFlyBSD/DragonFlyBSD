@@ -315,12 +315,9 @@ static void	em_print_hw_stats(struct adapter *);
 
 static int	em_sysctl_stats(SYSCTL_HANDLER_ARGS);
 static int	em_sysctl_debug_info(SYSCTL_HANDLER_ARGS);
-static int	em_sysctl_int_delay(SYSCTL_HANDLER_ARGS);
 static int	em_sysctl_int_throttle(SYSCTL_HANDLER_ARGS);
 static int	em_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS);
 static void	em_add_sysctl(struct adapter *adapter);
-static void	em_add_int_delay_sysctl(struct adapter *, const char *,
-		    const char *, struct em_int_delay_info *, int, int);
 
 /* Management and WOL Support */
 static void	em_get_mgmt(struct adapter *);
@@ -352,15 +349,9 @@ DECLARE_DUMMY_MODULE(if_em);
 MODULE_DEPEND(em, ig_hal, 1, 1, 1);
 DRIVER_MODULE(if_em, pci, em_driver, em_devclass, 0, 0);
 
-/*********************************************************************
- *  Tunable default values.
- *********************************************************************/
-
-#define EM_TICKS_TO_USECS(ticks)	((1024 * (ticks) + 500) / 1000)
-#define EM_USECS_TO_TICKS(usecs)	((1000 * (usecs) + 512) / 1024)
-
-static int	em_tx_int_delay_dflt = EM_TICKS_TO_USECS(EM_TIDV);
-static int	em_tx_abs_int_delay_dflt = EM_TICKS_TO_USECS(EM_TADV);
+/*
+ * Tunables
+ */
 static int	em_int_throttle_ceil = EM_DEFAULT_ITR;
 static int	em_rxd = EM_DEFAULT_RXD;
 static int	em_txd = EM_DEFAULT_TXD;
@@ -371,8 +362,6 @@ static int	em_debug_sbp = FALSE;
 
 static int	em_82573_workaround = TRUE;
 
-TUNABLE_INT("hw.em.tx_int_delay", &em_tx_int_delay_dflt);
-TUNABLE_INT("hw.em.tx_abs_int_delay", &em_tx_abs_int_delay_dflt);
 TUNABLE_INT("hw.em.int_throttle_ceil", &em_int_throttle_ceil);
 TUNABLE_INT("hw.em.rxd", &em_rxd);
 TUNABLE_INT("hw.em.txd", &em_txd);
@@ -2503,11 +2492,11 @@ em_init_tx_unit(struct adapter *adapter)
 	}
 
 	E1000_WRITE_REG(&adapter->hw, E1000_TIPG, tipg);
-	E1000_WRITE_REG(&adapter->hw, E1000_TIDV, adapter->tx_int_delay.value);
-	if(adapter->hw.mac.type >= e1000_82540) {
-		E1000_WRITE_REG(&adapter->hw, E1000_TADV,
-		    adapter->tx_abs_int_delay.value);
-	}
+
+	/* NOTE: 0 is not allowed for TIDV */
+	E1000_WRITE_REG(&adapter->hw, E1000_TIDV, 1);
+	if(adapter->hw.mac.type >= e1000_82540)
+		E1000_WRITE_REG(&adapter->hw, E1000_TADV, 0);
 
 	if (adapter->hw.mac.type == e1000_82571 ||
 	    adapter->hw.mac.type == e1000_82572) {
@@ -3896,64 +3885,6 @@ em_sysctl_stats(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
-static int
-em_sysctl_int_delay(SYSCTL_HANDLER_ARGS)
-{
-	struct em_int_delay_info *info;
-	struct adapter *adapter;
-	struct ifnet *ifp;
-	uint32_t regval;
-	int error, usecs, ticks;
-
-	info = (struct em_int_delay_info *)arg1;
-	usecs = info->value;
-	error = sysctl_handle_int(oidp, &usecs, 0, req);
-	if (error != 0 || req->newptr == NULL)
-		return (error);
-	if (usecs < 0 || usecs > EM_TICKS_TO_USECS(65535))
-		return (EINVAL);
-	info->value = usecs;
-	ticks = EM_USECS_TO_TICKS(usecs);
-
-	adapter = info->adapter;
-	ifp = &adapter->arpcom.ac_if;
-
-	lwkt_serialize_enter(ifp->if_serializer);
-
-	regval = E1000_READ_OFFSET(&adapter->hw, info->offset);
-	regval = (regval & ~0xffff) | (ticks & 0xffff);
-	/* Handle a few special cases. */
-	switch (info->offset) {
-	case E1000_TIDV:
-		if (ticks == 0) {
-			/* Don't write 0 into the TIDV register. */
-			regval++;
-		}
-		break;
-	}
-	E1000_WRITE_OFFSET(&adapter->hw, info->offset, regval);
-
-	lwkt_serialize_exit(ifp->if_serializer);
-	return (0);
-}
-
-static void
-em_add_int_delay_sysctl(struct adapter *adapter, const char *name,
-	const char *description, struct em_int_delay_info *info,
-	int offset, int value)
-{
-	info->adapter = adapter;
-	info->offset = offset;
-	info->value = value;
-
-	if (adapter->sysctl_tree != NULL) {
-		SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
-		    SYSCTL_CHILDREN(adapter->sysctl_tree),
-		    OID_AUTO, name, CTLTYPE_INT|CTLFLAG_RW,
-		    info, 0, em_sysctl_int_delay, "I", description);
-	}
-}
-
 static void
 em_add_sysctl(struct adapter *adapter)
 {
@@ -4020,18 +3951,6 @@ em_add_sysctl(struct adapter *adapter)
 		    CTLTYPE_INT|CTLFLAG_RW, adapter, 0,
 		    em_sysctl_int_tx_nsegs, "I",
 		    "# segments per TX interrupt");
-	}
-
-	/* Set up some sysctls for the tunable interrupt delays */
-	em_add_int_delay_sysctl(adapter, "tx_int_delay",
-	    "transmit interrupt delay in usecs", &adapter->tx_int_delay,
-	    E1000_REGISTER(&adapter->hw, E1000_TIDV), em_tx_int_delay_dflt);
-	if (adapter->hw.mac.type >= e1000_82540) {
-		em_add_int_delay_sysctl(adapter, "tx_abs_int_delay",
-		    "transmit interrupt delay limit in usecs",
-		    &adapter->tx_abs_int_delay,
-		    E1000_REGISTER(&adapter->hw, E1000_TADV),
-		    em_tx_abs_int_delay_dflt);
 	}
 }
 

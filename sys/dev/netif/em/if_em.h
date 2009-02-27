@@ -78,6 +78,11 @@
  *   efficiency if properly tuned for specific network traffic. If the
  *   system is reporting dropped transmits, this value may be set too high
  *   causing the driver to run out of available transmit descriptors.
+ *
+ * NOTE:
+ * It is not used.  In DragonFly the TX interrupt moderation is done by
+ * conditionally setting RS bit in TX descriptors.  See the description
+ * in struct adapter.
  */
 #define EM_TIDV				64
 
@@ -92,6 +97,11 @@
  *   packet is sent on the wire within the set amount of time.  Proper tuning,
  *   along with EM_TIDV, may improve traffic throughput in specific
  *   network conditions.
+ *
+ * NOTE:
+ * It is not used.  In DragonFly the TX interrupt moderation is done by
+ * conditionally setting RS bit in TX descriptors.  See the description
+ * in struct adapter.
  */
 #define EM_TADV				64
 
@@ -222,14 +232,6 @@
 #define EM_FIFO_HDR			0x10
 #define EM_82547_PKT_THRESH		0x3e0
 
-struct adapter;
-
-struct em_int_delay_info {
-	struct adapter	*adapter;	/* Back-pointer to the adapter struct */
-	int		offset;		/* Register offset to read/write */
-	int		value;		/* Current value in usecs */
-};
-
 /*
  * Bus dma allocation structure used by
  * e1000_dma_malloc and e1000_dma_free.
@@ -280,8 +282,6 @@ struct adapter {
 	uint16_t		link_speed;
 	uint16_t		link_duplex;
 	uint32_t		smartspeed;
-	struct em_int_delay_info tx_int_delay;
-	struct em_int_delay_info tx_abs_int_delay;
 	int			int_throttle_ceil;
 
 	/*
