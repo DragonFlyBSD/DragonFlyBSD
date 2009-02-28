@@ -27,7 +27,7 @@
 .\" ARISING IN ANY WAY  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd February 19, 2009
+.Dd February 27, 2009
 .Dt IOCTL 9
 .Os
 .Sh NAME
@@ -89,14 +89,76 @@ This integer describes to which subsystem the ioctl applies.
 Here are some examples:
 .Pp
 .Bl -tag -width xxxxx -compact
+.It '5'
+.Xr perfmon 4
+.It '8'
+.Xr aac 4
 .It 'a'
 .Xr nata 4
-.It 'b'
+.It 'B'
 .Xr bpf 4
+.It 'C'
+.Xr ciss 4
+.It 'd'
+.Xr disklabel 5
+.It 'd'
+diskslice
+.It 'f'
+generic file-descriptor
+.It 'F'
+frame buffer
 .It 'h'
 .Xr HAMMER 5
+.It 'i'
+.Xr iic 4
+.It 'i'
+.Xr carp 4
+.It 'i'
+.Xr gre 4
+.It 'k'
+.Xr keyboard 4
+and
+.Xr syscons 4
+.It 'm'
+.Xr mem 4
+.It 'm'
+.Pa /dev/midi
+.It 'm'
+.Xr mtio 4
+.It 'n'
+.Xr smb 4
+.It 'n'
+NetWare volume mount
+.It 'p'
+.Pa /dev/dsp
+and
+.Pa /dev/audio
+.It 'p'
+.Xr pci 4
+.It 'p'
+.Xr ppbus 4
+.It 'P'
+.Xr apm 4
+.It 'q'
+.Pa /dev/sequencer
+.It 'r'
+.Xr ipf 4
+.It 'r'
+random number generator
 .It 't'
-the tty layer
+.Xr tty 4
+.It 't'
+.Xr ppp 4
+.It 't'
+.Xr tap 4
+.It 't'
+.Xr tun 4
+.It 't'
+SLIP ttys
+.It 'T'
+.Xr snp 4
+.\".It 'V'
+.\"VMware
 .El
 .It Fa n
 This number uniquely identifies the ioctl within the group.
@@ -131,7 +193,7 @@ Within the
 routine of the driver, it can be then accessed like:
 .Bd -literal -offset indent
 int
-mydev_ioctl(dev_ioctl_args *ap)
+mydev_ioctl(struct dev_ioctl_args *ap)
 {
 	int error;
 	int *a;

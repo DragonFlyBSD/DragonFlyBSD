@@ -104,7 +104,7 @@ newturn(void)
 			mf->readyR = R_LOADED;
 	}
 	if (!hasdriver)
-		Write(W_DDEAD, SHIP(0), 0, 0, 0, 0, 0);
+		Write(W_DDEAD, SHIP(0), 0, 0, 0, 0);
 
 	if (sc_hasprompt) {
 		wmove(scroll_w, sc_line, 0);
@@ -118,11 +118,11 @@ newturn(void)
 		wprintw(scroll_w, "%s%s", sc_prompt, sc_buf);
 
 	if (turn % 50 == 0)
-		Write(W_ALIVE, SHIP(0), 0, 0, 0, 0, 0);
+		Write(W_ALIVE, SHIP(0), 0, 0, 0, 0);
 	if (mf->FS && (!mc->rig1 || windspeed == 6))
-		Write(W_FS, ms, 0, 0, 0, 0, 0);
+		Write(W_FS, ms, 0, 0, 0, 0);
 	if (mf->FS == 1)
-		Write(W_FS, ms, 0, 2, 0, 0, 0);
+		Write(W_FS, ms, 2, 0, 0, 0);
 
 	if (mf->struck)
 		leave(LEAVE_QUIT);

@@ -264,6 +264,7 @@ static void	em_timer(void *);
 static void	em_intr(void *);
 static void	em_rxeof(struct adapter *, int);
 static void	em_txeof(struct adapter *);
+static void	em_tx_collect(struct adapter *);
 static void	em_tx_purge(struct adapter *);
 static void	em_enable_intr(struct adapter *);
 static void	em_disable_intr(struct adapter *);
@@ -282,7 +283,7 @@ static int	em_encap(struct adapter *, struct mbuf **);
 static void	em_rxcsum(struct adapter *, struct e1000_rx_desc *,
 		    struct mbuf *);
 static int	em_txcsum_pullup(struct adapter *, struct mbuf **);
-static void	em_txcsum(struct adapter *, struct mbuf *,
+static int	em_txcsum(struct adapter *, struct mbuf *,
 		    uint32_t *, uint32_t *);
 
 static int	em_get_hw_info(struct adapter *);
@@ -314,11 +315,9 @@ static void	em_print_hw_stats(struct adapter *);
 
 static int	em_sysctl_stats(SYSCTL_HANDLER_ARGS);
 static int	em_sysctl_debug_info(SYSCTL_HANDLER_ARGS);
-static int	em_sysctl_int_delay(SYSCTL_HANDLER_ARGS);
 static int	em_sysctl_int_throttle(SYSCTL_HANDLER_ARGS);
+static int	em_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS);
 static void	em_add_sysctl(struct adapter *adapter);
-static void	em_add_int_delay_sysctl(struct adapter *, const char *,
-		    const char *, struct em_int_delay_info *, int, int);
 
 /* Management and WOL Support */
 static void	em_get_mgmt(struct adapter *);
@@ -350,17 +349,9 @@ DECLARE_DUMMY_MODULE(if_em);
 MODULE_DEPEND(em, ig_hal, 1, 1, 1);
 DRIVER_MODULE(if_em, pci, em_driver, em_devclass, 0, 0);
 
-/*********************************************************************
- *  Tunable default values.
- *********************************************************************/
-
-#define EM_TICKS_TO_USECS(ticks)	((1024 * (ticks) + 500) / 1000)
-#define EM_USECS_TO_TICKS(usecs)	((1000 * (usecs) + 512) / 1024)
-
-static int	em_tx_int_delay_dflt = EM_TICKS_TO_USECS(EM_TIDV);
-static int	em_rx_int_delay_dflt = EM_TICKS_TO_USECS(EM_RDTR);
-static int	em_tx_abs_int_delay_dflt = EM_TICKS_TO_USECS(EM_TADV);
-static int	em_rx_abs_int_delay_dflt = EM_TICKS_TO_USECS(EM_RADV);
+/*
+ * Tunables
+ */
 static int	em_int_throttle_ceil = EM_DEFAULT_ITR;
 static int	em_rxd = EM_DEFAULT_RXD;
 static int	em_txd = EM_DEFAULT_TXD;
@@ -369,15 +360,14 @@ static int	em_smart_pwr_down = FALSE;
 /* Controls whether promiscuous also shows bad packets */
 static int	em_debug_sbp = FALSE;
 
-TUNABLE_INT("hw.em.tx_int_delay", &em_tx_int_delay_dflt);
-TUNABLE_INT("hw.em.rx_int_delay", &em_rx_int_delay_dflt);
-TUNABLE_INT("hw.em.tx_abs_int_delay", &em_tx_abs_int_delay_dflt);
-TUNABLE_INT("hw.em.rx_abs_int_delay", &em_rx_abs_int_delay_dflt);
+static int	em_82573_workaround = TRUE;
+
 TUNABLE_INT("hw.em.int_throttle_ceil", &em_int_throttle_ceil);
 TUNABLE_INT("hw.em.rxd", &em_rxd);
 TUNABLE_INT("hw.em.txd", &em_txd);
 TUNABLE_INT("hw.em.smart_pwr_down", &em_smart_pwr_down);
 TUNABLE_INT("hw.em.sbp", &em_debug_sbp);
+TUNABLE_INT("hw.em.82573_workaround", &em_82573_workaround);
 
 /* Global used in WOL setup with multiport cards */
 static int	em_global_quad_port_a = 0;
@@ -524,6 +514,11 @@ em_attach(device_t dev)
 
 		/* Recalculate the tunable value to get the exact frequency. */
 		throttle = 1000000000 / 256 / throttle;
+
+		/* Upper 16bits of ITR is reserved and should be zero */
+		if (throttle & 0xffff0000)
+			throttle = 1000000000 / 256 / EM_DEFAULT_ITR;
+
 		adapter->int_throttle_ceil = 1000000000 / 256 / throttle;
 	}
 
@@ -741,6 +736,22 @@ em_attach(device_t dev)
 		adapter->spare_tx_desc = EM_TX_SPARE;
 	}
 
+	/*
+	 * Keep following relationship between spare_tx_desc, oact_tx_desc
+	 * and tx_int_nsegs:
+	 * (spare_tx_desc + EM_TX_RESERVED) <=
+	 * oact_tx_desc <= EM_TX_OACTIVE_MAX <= tx_int_nsegs
+	 */
+	adapter->oact_tx_desc = adapter->num_tx_desc / 8;
+	if (adapter->oact_tx_desc > EM_TX_OACTIVE_MAX)
+		adapter->oact_tx_desc = EM_TX_OACTIVE_MAX;
+	if (adapter->oact_tx_desc < adapter->spare_tx_desc + EM_TX_RESERVED)
+		adapter->oact_tx_desc = adapter->spare_tx_desc + EM_TX_RESERVED;
+
+	adapter->tx_int_nsegs = adapter->num_tx_desc / 16;
+	if (adapter->tx_int_nsegs < adapter->oact_tx_desc)
+		adapter->tx_int_nsegs = adapter->oact_tx_desc;
+
 	error = bus_setup_intr(dev, adapter->intr_res, INTR_MPSAFE,
 			       em_intr, adapter, &adapter->intr_tag,
 			       ifp->if_serializer);
@@ -891,17 +902,12 @@ em_start(struct ifnet *ifp)
 	}
 
 	while (!ifq_is_empty(&ifp->if_snd)) {
-		/*
-		 * Force a cleanup if number of TX descriptors
-		 * available hits the threshold
-		 */
-		if (adapter->num_tx_desc_avail <= EM_TX_CLEANUP_THRESHOLD) {
-			em_txeof(adapter);
-
-			/* Now do we at least have a minimal? */
+		/* Now do we at least have a minimal? */
+		if (EM_IS_OACTIVE(adapter)) {
+			em_tx_collect(adapter);
 			if (EM_IS_OACTIVE(adapter)) {
-				adapter->no_tx_desc_avail1++;
 				ifp->if_flags |= IFF_OACTIVE;
+				adapter->no_tx_desc_avail1++;
 				break;
 			}
 		}
@@ -913,13 +919,8 @@ em_start(struct ifnet *ifp)
 
 		if (em_encap(adapter, &m_head)) {
 			ifp->if_oerrors++;
-			if (adapter->num_tx_desc_avail ==
-			    adapter->num_tx_desc) {
-				continue;
-			} else {
-				ifp->if_flags |= IFF_OACTIVE;
-				break;
-			}
+			em_tx_collect(adapter);
+			continue;
 		}
 
 		/* Send a copy of the frame to the BPF listener */
@@ -1075,6 +1076,18 @@ em_watchdog(struct ifnet *ifp)
 	 * Finally, anytime all descriptors are clean the timer is
 	 * set to 0.
 	 */
+
+	if (E1000_READ_REG(&adapter->hw, E1000_TDT(0)) ==
+	    E1000_READ_REG(&adapter->hw, E1000_TDH(0))) {
+		/*
+		 * If we reach here, all TX jobs are completed and
+		 * the TX engine should have been idled for some time.
+		 * We don't need to call if_devstart() here.
+		 */
+		ifp->if_flags &= ~IFF_OACTIVE;
+		ifp->if_timer = 0;
+		return;
+	}
 
 	/*
 	 * If we are in this routine because of pause frames, then
@@ -1344,8 +1357,14 @@ em_intr(void *xsc)
 	}
 
 	if (ifp->if_flags & IFF_RUNNING) {
-		em_rxeof(adapter, -1);
-		em_txeof(adapter);
+		if (reg_icr &
+		    (E1000_IMS_RXT0 | E1000_IMS_RXDMT0 | E1000_ICR_RXO))
+			em_rxeof(adapter, -1);
+		if (reg_icr & E1000_IMS_TXDW) {
+			em_txeof(adapter);
+			if (!ifq_is_empty(&ifp->if_snd))
+				if_devstart(ifp);
+		}
 	}
 
 	/* Link status change */
@@ -1362,9 +1381,6 @@ em_intr(void *xsc)
 
 	if (reg_icr & E1000_ICR_RXO)
 		adapter->rx_overruns++;
-
-	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_empty(&ifp->if_snd))
-		if_devstart(ifp);
 
 	logif(intr_end);
 }
@@ -1478,7 +1494,7 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 	struct em_buffer *tx_buffer, *tx_buffer_mapped;
 	struct e1000_tx_desc *ctxd = NULL;
 	struct mbuf *m_head = *m_headp;
-	uint32_t txd_upper, txd_lower, txd_used;
+	uint32_t txd_upper, txd_lower, txd_used, cmd = 0;
 	int maxsegs, nsegs, i, j, first, last = 0, error;
 
 	if (__predict_false(m_head->m_len < EM_TXCSUM_MINHL) &&
@@ -1534,10 +1550,12 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
         bus_dmamap_sync(adapter->txtag, map, BUS_DMASYNC_PREWRITE);
 
 	m_head = *m_headp;
+	adapter->tx_nsegs += nsegs;
 
 	if (m_head->m_pkthdr.csum_flags & EM_CSUM_FEATURES) {
 		/* TX csum offloading will consume one TX desc */
-		em_txcsum(adapter, m_head, &txd_upper, &txd_lower);
+		adapter->tx_nsegs += em_txcsum(adapter, m_head,
+					       &txd_upper, &txd_lower);
 	}
 	i = adapter->next_avail_tx_desc;
 
@@ -1563,7 +1581,7 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 				ctxd->buffer_addr = htole64(
 				    desc_array.descriptor[counter].address);
 				ctxd->lower.data = htole32(
-				    adapter->txd_cmd | txd_lower |
+				    E1000_TXD_CMD_IFCS | txd_lower |
 				    desc_array.descriptor[counter].length);
 				ctxd->upper.data = htole32(txd_upper);
 
@@ -1572,7 +1590,6 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 					i = 0;
 
 				tx_buffer->m_head = NULL;
-				tx_buffer->next_eop = -1;
 				txd_used++;
                         }
 		} else {
@@ -1580,7 +1597,7 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 			ctxd = &adapter->tx_desc_base[i];
 
 			ctxd->buffer_addr = htole64(segs[j].ds_addr);
-			ctxd->lower.data = htole32(adapter->txd_cmd |
+			ctxd->lower.data = htole32(E1000_TXD_CMD_IFCS |
 						   txd_lower | segs[j].ds_len);
 			ctxd->upper.data = htole32(txd_upper);
 
@@ -1589,7 +1606,6 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 				i = 0;
 
 			tx_buffer->m_head = NULL;
-			tx_buffer->next_eop = -1;
 		}
 	}
 
@@ -1616,18 +1632,26 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 	tx_buffer_mapped->map = tx_buffer->map;
 	tx_buffer->map = map;
 
+	if (adapter->tx_nsegs >= adapter->tx_int_nsegs) {
+		adapter->tx_nsegs = 0;
+		cmd = E1000_TXD_CMD_RS;
+
+		adapter->tx_dd[adapter->tx_dd_tail] = last;
+		EM_INC_TXDD_IDX(adapter->tx_dd_tail);
+		KKASSERT(adapter->tx_dd_tail != adapter->tx_dd_head);
+	}
+
 	/*
 	 * Last Descriptor of Packet needs End Of Packet (EOP)
 	 * and Report Status (RS)
 	 */
-	ctxd->lower.data |= htole32(E1000_TXD_CMD_EOP | E1000_TXD_CMD_RS);
+	ctxd->lower.data |= htole32(E1000_TXD_CMD_EOP | cmd);
 
 	/*
 	 * Keep track in the first buffer which descriptor will be
 	 * written back
 	 */
 	tx_buffer = &adapter->tx_buffer_area[first];
-	tx_buffer->next_eop = last;
 
 	/*
 	 * Advance the Transmit Descriptor Tail (TDT), this tells the E1000
@@ -1992,7 +2016,6 @@ em_stop(struct adapter *adapter)
 			m_freem(tx_buffer->m_head);
 			tx_buffer->m_head = NULL;
 		}
-		tx_buffer->next_eop = -1;
 	}
 
 	for (i = 0; i < adapter->num_rx_desc; i++) {
@@ -2013,6 +2036,10 @@ em_stop(struct adapter *adapter)
 	adapter->csum_flags = 0;
 	adapter->csum_ehlen = 0;
 	adapter->csum_iphlen = 0;
+
+	adapter->tx_dd_head = 0;
+	adapter->tx_dd_tail = 0;
+	adapter->tx_nsegs = 0;
 }
 
 static int
@@ -2403,7 +2430,6 @@ em_create_tx_ring(struct adapter *adapter)
 			em_destroy_tx_ring(adapter, i);
 			return error;
 		}
-		tx_buffer->next_eop = -1;
 	}
 	return (0);
 }
@@ -2466,11 +2492,11 @@ em_init_tx_unit(struct adapter *adapter)
 	}
 
 	E1000_WRITE_REG(&adapter->hw, E1000_TIPG, tipg);
-	E1000_WRITE_REG(&adapter->hw, E1000_TIDV, adapter->tx_int_delay.value);
-	if(adapter->hw.mac.type >= e1000_82540) {
-		E1000_WRITE_REG(&adapter->hw, E1000_TADV,
-		    adapter->tx_abs_int_delay.value);
-	}
+
+	/* NOTE: 0 is not allowed for TIDV */
+	E1000_WRITE_REG(&adapter->hw, E1000_TIDV, 1);
+	if(adapter->hw.mac.type >= e1000_82540)
+		E1000_WRITE_REG(&adapter->hw, E1000_TADV, 0);
 
 	if (adapter->hw.mac.type == e1000_82571 ||
 	    adapter->hw.mac.type == e1000_82572) {
@@ -2497,12 +2523,6 @@ em_init_tx_unit(struct adapter *adapter)
 
 	/* This write will effectively turn on the transmit unit. */
 	E1000_WRITE_REG(&adapter->hw, E1000_TCTL, tctl);
-
-	/* Setup Transmit Descriptor Base Settings */   
-	adapter->txd_cmd = E1000_TXD_CMD_IFCS;
-
-	if (adapter->tx_int_delay.value > 0)
-		adapter->txd_cmd |= E1000_TXD_CMD_IDE;
 }
 
 static void
@@ -2535,8 +2555,11 @@ em_destroy_tx_ring(struct adapter *adapter, int ndesc)
  * csum offloading type are same as the previous packet, we should
  * avoid allocating a new csum context descriptor; mainly to take
  * advantage of the pipeline effect of the TX data read request.
+ *
+ * This function returns number of TX descrptors allocated for
+ * csum context.
  */
-static void
+static int
 em_txcsum(struct adapter *adapter, struct mbuf *mp,
 	  uint32_t *txd_upper, uint32_t *txd_lower)
 {
@@ -2571,7 +2594,7 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 	 * TODO: Support SCTP too when it hits the tree.
 	 */
 	if (etype != ETHERTYPE_IP)
-		return;
+		return 0;
 
 	KASSERT(mp->m_len >= ehdrlen + EM_IPVHL_SIZE,
 		("em_txcsum_pullup is not called (eh+ip_vhl)?\n"));
@@ -2591,7 +2614,7 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 		 */
 		*txd_upper = adapter->csum_txd_upper;
 		*txd_lower = adapter->csum_txd_lower;
-		return;
+		return 0;
 	}
 
 	/*
@@ -2658,9 +2681,8 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 
 	TXD->tcp_seg_setup.data = htole32(0);
 	TXD->cmd_and_length =
-	    htole32(adapter->txd_cmd | E1000_TXD_CMD_DEXT | cmd);
+	    htole32(E1000_TXD_CMD_IFCS | E1000_TXD_CMD_DEXT | cmd);
 	tx_buffer->m_head = NULL;
-	tx_buffer->next_eop = -1;
 
 	if (++curr_txd == adapter->num_tx_desc)
 		curr_txd = 0;
@@ -2669,6 +2691,7 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 	adapter->num_tx_desc_avail--;
 
 	adapter->next_avail_tx_desc = curr_txd;
+	return 1;
 }
 
 static int
@@ -2734,10 +2757,13 @@ em_txcsum_pullup(struct adapter *adapter, struct mbuf **m0)
 static void
 em_txeof(struct adapter *adapter)
 {
-	int first, last, done, num_avail;
-	struct em_buffer *tx_buffer;
-	struct e1000_tx_desc *tx_desc, *eop_desc;
 	struct ifnet *ifp = &adapter->arpcom.ac_if;
+	struct e1000_tx_desc *tx_desc;
+	struct em_buffer *tx_buffer;
+	int first, num_avail;
+
+	if (adapter->tx_dd_head == adapter->tx_dd_tail)
+		return;
 
 	if (adapter->num_tx_desc_avail == adapter->num_tx_desc)
 		return;
@@ -2745,64 +2771,114 @@ em_txeof(struct adapter *adapter)
 	num_avail = adapter->num_tx_desc_avail;
 	first = adapter->next_tx_to_clean;
 
-	tx_desc = &adapter->tx_desc_base[first];
-	tx_buffer = &adapter->tx_buffer_area[first];
-	last = tx_buffer->next_eop;
-	eop_desc = &adapter->tx_desc_base[last];
+	while (adapter->tx_dd_head != adapter->tx_dd_tail) {
+		int dd_idx = adapter->tx_dd[adapter->tx_dd_head];
 
-	/*
-	 * What this does is get the index of the
-	 * first descriptor AFTER the EOP of the
-	 * first packet, that way we can do the
-	 * simple comparison on the inner while loop.
-	 */
-	if (++last == adapter->num_tx_desc)
-		last = 0;
-	done = last;
+		tx_desc = &adapter->tx_desc_base[dd_idx];
 
-        while (eop_desc->upper.fields.status & E1000_TXD_STAT_DD) {
-		/* We clean the range of the packet */
-		while (first != done) {
-			logif(pkt_txclean);
+		if (tx_desc->upper.fields.status & E1000_TXD_STAT_DD) {
+			EM_INC_TXDD_IDX(adapter->tx_dd_head);
 
-			tx_desc->upper.data = 0;
-			tx_desc->lower.data = 0;
-			tx_desc->buffer_addr = 0;
-			num_avail++;
+			if (++dd_idx == adapter->num_tx_desc)
+				dd_idx = 0;
 
-			if (tx_buffer->m_head) {
-				ifp->if_opackets++;
-				bus_dmamap_unload(adapter->txtag,
-						  tx_buffer->map);
-				m_freem(tx_buffer->m_head);
-				tx_buffer->m_head = NULL;
+			while (first != dd_idx) {
+				tx_buffer = &adapter->tx_buffer_area[first];
+				tx_desc = &adapter->tx_desc_base[first];
+
+				tx_desc->upper.data = 0;
+				tx_desc->lower.data = 0;
+				tx_desc->buffer_addr = 0;
+				num_avail++;
+
+				if (tx_buffer->m_head) {
+					ifp->if_opackets++;
+					bus_dmamap_unload(adapter->txtag,
+							  tx_buffer->map);
+					m_freem(tx_buffer->m_head);
+					tx_buffer->m_head = NULL;
+				}
+
+				if (++first == adapter->num_tx_desc)
+					first = 0;
 			}
-			tx_buffer->next_eop = -1;
-
-			if (++first == adapter->num_tx_desc)
-				first = 0;
-
-			tx_buffer = &adapter->tx_buffer_area[first];
-			tx_desc = &adapter->tx_desc_base[first];
-		}
-
-		/* See if we can continue to the next packet */
-		last = tx_buffer->next_eop;
-		if (last != -1) {
-			eop_desc = &adapter->tx_desc_base[last];
-
-			/* Get new done point */
-			if (++last == adapter->num_tx_desc)
-				last = 0;
-			done = last;
 		} else {
 			break;
 		}
 	}
-        adapter->next_tx_to_clean = first;
+	adapter->next_tx_to_clean = first;
 	adapter->num_tx_desc_avail = num_avail;
 
-	if (adapter->num_tx_desc_avail > EM_TX_CLEANUP_THRESHOLD) {
+	if (adapter->tx_dd_head == adapter->tx_dd_tail) {
+		adapter->tx_dd_head = 0;
+		adapter->tx_dd_tail = 0;
+	}
+
+	if (!EM_IS_OACTIVE(adapter)) {
+		ifp->if_flags &= ~IFF_OACTIVE;
+
+		/* All clean, turn off the timer */
+		if (adapter->num_tx_desc_avail == adapter->num_tx_desc)
+			ifp->if_timer = 0;
+	}
+}
+
+static void
+em_tx_collect(struct adapter *adapter)
+{
+	struct ifnet *ifp = &adapter->arpcom.ac_if;
+	struct e1000_tx_desc *tx_desc;
+	struct em_buffer *tx_buffer;
+	int tdh, first, num_avail, dd_idx = -1;
+
+	if (adapter->num_tx_desc_avail == adapter->num_tx_desc)
+		return;
+
+	tdh = E1000_READ_REG(&adapter->hw, E1000_TDH(0));
+	if (tdh == adapter->next_tx_to_clean)
+		return;
+
+	if (adapter->tx_dd_head != adapter->tx_dd_tail)
+		dd_idx = adapter->tx_dd[adapter->tx_dd_head];
+
+	num_avail = adapter->num_tx_desc_avail;
+	first = adapter->next_tx_to_clean;
+
+	while (first != tdh) {
+		tx_buffer = &adapter->tx_buffer_area[first];
+		tx_desc = &adapter->tx_desc_base[first];
+
+		tx_desc->upper.data = 0;
+		tx_desc->lower.data = 0;
+		tx_desc->buffer_addr = 0;
+		num_avail++;
+
+		if (tx_buffer->m_head) {
+			ifp->if_opackets++;
+			bus_dmamap_unload(adapter->txtag,
+					  tx_buffer->map);
+			m_freem(tx_buffer->m_head);
+			tx_buffer->m_head = NULL;
+		}
+
+		if (first == dd_idx) {
+			EM_INC_TXDD_IDX(adapter->tx_dd_head);
+			if (adapter->tx_dd_head == adapter->tx_dd_tail) {
+				adapter->tx_dd_head = 0;
+				adapter->tx_dd_tail = 0;
+				dd_idx = -1;
+			} else {
+				dd_idx = adapter->tx_dd[adapter->tx_dd_head];
+			}
+		}
+
+		if (++first == adapter->num_tx_desc)
+			first = 0;
+	}
+	adapter->next_tx_to_clean = first;
+	adapter->num_tx_desc_avail = num_avail;
+
+	if (!EM_IS_OACTIVE(adapter)) {
 		ifp->if_flags &= ~IFF_OACTIVE;
 
 		/* All clean, turn off the timer */
@@ -2823,7 +2899,7 @@ em_tx_purge(struct adapter *adapter)
 	struct ifnet *ifp = &adapter->arpcom.ac_if;
 
 	if (!adapter->link_active && ifp->if_timer) {
-		em_txeof(adapter);
+		em_tx_collect(adapter);
 		if (ifp->if_timer) {
 			if_printf(ifp, "Link lost, TX pending, reinit\n");
 			ifp->if_timer = 0;
@@ -2979,9 +3055,6 @@ em_init_rx_unit(struct adapter *adapter)
 	E1000_WRITE_REG(&adapter->hw, E1000_RCTL, rctl & ~E1000_RCTL_EN);
 
 	if (adapter->hw.mac.type >= e1000_82540) {
-		E1000_WRITE_REG(&adapter->hw, E1000_RADV,
-		    adapter->rx_abs_int_delay.value);
-
 		/*
 		 * Set the interrupt throttling rate. Value is calculated
 		 * as ITR = 1 / (INT_THROTTLE_CEIL * 256ns)
@@ -3064,8 +3137,10 @@ em_init_rx_unit(struct adapter *adapter)
 	 * values in RDTR is a known source of problems on other
 	 * platforms another solution is being sought.
 	 */
-	if (adapter->hw.mac.type == e1000_82573)
-		E1000_WRITE_REG(&adapter->hw, E1000_RDTR, 0x20);
+	if (em_82573_workaround && adapter->hw.mac.type == e1000_82573) {
+		E1000_WRITE_REG(&adapter->hw, E1000_RADV, EM_RADV_82573);
+		E1000_WRITE_REG(&adapter->hw, E1000_RDTR, EM_RDTR_82573);
+	}
 
 	/* Enable Receives */
 	E1000_WRITE_REG(&adapter->hw, E1000_RCTL, rctl);
@@ -3807,70 +3882,6 @@ em_sysctl_stats(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
-static int
-em_sysctl_int_delay(SYSCTL_HANDLER_ARGS)
-{
-	struct em_int_delay_info *info;
-	struct adapter *adapter;
-	struct ifnet *ifp;
-	uint32_t regval;
-	int error, usecs, ticks;
-
-	info = (struct em_int_delay_info *)arg1;
-	usecs = info->value;
-	error = sysctl_handle_int(oidp, &usecs, 0, req);
-	if (error != 0 || req->newptr == NULL)
-		return (error);
-	if (usecs < 0 || usecs > EM_TICKS_TO_USECS(65535))
-		return (EINVAL);
-	info->value = usecs;
-	ticks = EM_USECS_TO_TICKS(usecs);
-
-	adapter = info->adapter;
-	ifp = &adapter->arpcom.ac_if;
-
-	lwkt_serialize_enter(ifp->if_serializer);
-
-	regval = E1000_READ_OFFSET(&adapter->hw, info->offset);
-	regval = (regval & ~0xffff) | (ticks & 0xffff);
-	/* Handle a few special cases. */
-	switch (info->offset) {
-	case E1000_RDTR:
-		break;
-
-	case E1000_TIDV:
-		if (ticks == 0) {
-			adapter->txd_cmd &= ~E1000_TXD_CMD_IDE;
-			/* Don't write 0 into the TIDV register. */
-			regval++;
-		} else {
-			adapter->txd_cmd |= E1000_TXD_CMD_IDE;
-		}
-		break;
-	}
-	E1000_WRITE_OFFSET(&adapter->hw, info->offset, regval);
-
-	lwkt_serialize_exit(ifp->if_serializer);
-	return (0);
-}
-
-static void
-em_add_int_delay_sysctl(struct adapter *adapter, const char *name,
-	const char *description, struct em_int_delay_info *info,
-	int offset, int value)
-{
-	info->adapter = adapter;
-	info->offset = offset;
-	info->value = value;
-
-	if (adapter->sysctl_tree != NULL) {
-		SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
-		    SYSCTL_CHILDREN(adapter->sysctl_tree),
-		    OID_AUTO, name, CTLTYPE_INT|CTLFLAG_RW,
-		    info, 0, em_sysctl_int_delay, "I", description);
-	}
-}
-
 static void
 em_add_sysctl(struct adapter *adapter)
 {
@@ -3931,26 +3942,12 @@ em_add_sysctl(struct adapter *adapter)
 			    em_sysctl_int_throttle, "I",
 			    "interrupt throttling rate");
 		}
-	}
-
-	/* Set up some sysctls for the tunable interrupt delays */
-	em_add_int_delay_sysctl(adapter, "rx_int_delay",
-	    "receive interrupt delay in usecs", &adapter->rx_int_delay,
-	    E1000_REGISTER(&adapter->hw, E1000_RDTR), em_rx_int_delay_dflt);
-	em_add_int_delay_sysctl(adapter, "tx_int_delay",
-	    "transmit interrupt delay in usecs", &adapter->tx_int_delay,
-	    E1000_REGISTER(&adapter->hw, E1000_TIDV), em_tx_int_delay_dflt);
-	if (adapter->hw.mac.type >= e1000_82540) {
-		em_add_int_delay_sysctl(adapter, "rx_abs_int_delay",
-		    "receive interrupt delay limit in usecs",
-		    &adapter->rx_abs_int_delay,
-		    E1000_REGISTER(&adapter->hw, E1000_RADV),
-		    em_rx_abs_int_delay_dflt);
-		em_add_int_delay_sysctl(adapter, "tx_abs_int_delay",
-		    "transmit interrupt delay limit in usecs",
-		    &adapter->tx_abs_int_delay,
-		    E1000_REGISTER(&adapter->hw, E1000_TADV),
-		    em_tx_abs_int_delay_dflt);
+		SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
+		    SYSCTL_CHILDREN(adapter->sysctl_tree),
+		    OID_AUTO, "int_tx_nsegs",
+		    CTLTYPE_INT|CTLFLAG_RW, adapter, 0,
+		    em_sysctl_int_tx_nsegs, "I",
+		    "# segments per TX interrupt");
 	}
 }
 
@@ -3968,19 +3965,27 @@ em_sysctl_int_throttle(SYSCTL_HANDLER_ARGS)
 	if (throttle < 0 || throttle > 1000000000 / 256)
 		return EINVAL;
 
-	lwkt_serialize_enter(ifp->if_serializer);
-
 	if (throttle) {
 		/*
 		 * Set the interrupt throttling rate in 256ns increments,
 		 * recalculate sysctl value assignment to get exact frequency.
 		 */
 		throttle = 1000000000 / 256 / throttle;
-		adapter->int_throttle_ceil = 1000000000 / 256 / throttle;
-	} else {
-		adapter->int_throttle_ceil = 0;
+
+		/* Upper 16bits of ITR is reserved and should be zero */
+		if (throttle & 0xffff0000)
+			return EINVAL;
 	}
-	E1000_WRITE_REG(&adapter->hw, E1000_ITR, throttle);
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	if (throttle)
+		adapter->int_throttle_ceil = 1000000000 / 256 / throttle;
+	else
+		adapter->int_throttle_ceil = 0;
+
+	if (ifp->if_flags & IFF_RUNNING)
+		E1000_WRITE_REG(&adapter->hw, E1000_ITR, throttle);
 
 	lwkt_serialize_exit(ifp->if_serializer);
 
@@ -3989,4 +3994,41 @@ em_sysctl_int_throttle(SYSCTL_HANDLER_ARGS)
 			  adapter->int_throttle_ceil);
 	}
 	return 0;
+}
+
+static int
+em_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS)
+{
+	struct adapter *adapter = (void *)arg1;
+	struct ifnet *ifp = &adapter->arpcom.ac_if;
+	int error, segs;
+
+	segs = adapter->tx_int_nsegs;
+	error = sysctl_handle_int(oidp, &segs, 0, req);
+	if (error || req->newptr == NULL)
+		return error;
+	if (segs <= 0)
+		return EINVAL;
+
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	/*
+	 * Don't allow int_tx_nsegs to become:
+	 * o  Less the oact_tx_desc
+	 * o  Too large that no TX desc will cause TX interrupt to
+	 *    be generated (OACTIVE will never recover)
+	 * o  Too small that will cause tx_dd[] overflow
+	 */
+	if (segs < adapter->oact_tx_desc ||
+	    segs >= adapter->num_tx_desc - adapter->oact_tx_desc ||
+	    segs < adapter->num_tx_desc / EM_TXDD_SAFE) {
+		error = EINVAL;
+	} else {
+		error = 0;
+		adapter->tx_int_nsegs = segs;
+	}
+
+	lwkt_serialize_exit(ifp->if_serializer);
+
+	return error;
 }

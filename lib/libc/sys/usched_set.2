@@ -32,7 +32,7 @@
 .\"
 .\" $DragonFly: src/lib/libc/sys/usched_set.2,v 1.4 2007/12/23 15:31:28 swildner Exp $
 .\"
-.Dd July 5, 2007
+.Dd February 26, 2009
 .Dt USCHED_SET 2
 .Os
 .Sh NAME
@@ -41,6 +41,7 @@
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
+.In sys/types.h
 .In sys/usched.h
 .Ft int
 .Fn usched_set "pid_t pid" "int cmd" "void *data" "int bytes"
@@ -51,6 +52,10 @@ function is used to perform several user scheduler tasks.
 These tasks include: setting the user scheduler, assigning an LWP to a
 specific CPU, adding a CPU to the available CPUs for an LWP,
 and removing a CPU from the list of available CPUs for an LWP.
+The
+.Fn usched_set
+function requires superuser privileges for all commands except
+.Dv USCHED_GET_CPU .
 .Pp
 The
 .Fa cmd
@@ -65,6 +70,9 @@ is a
 that contains the name of the user scheduler.
 .Dv USCHED_SET_CPU
 assigns the LWP to the cpuid pointed to by
+.Fa data .
+.Dv USCHED_GET_CPU
+copies the LWP's CPU ID to the cpuid pointed to by
 .Fa data .
 .Dv USCHED_ADD_CPU
 adds the cpuid specified by
@@ -83,7 +91,7 @@ The function will fail if:
 The user scheduler to set is not in the list of available user schedulers.
 The
 .Fa bytes
-argument does is not the correct size
+argument is not the correct size
 .Vt ( int )
 for a cpuid.
 The specified cpuid is not set in

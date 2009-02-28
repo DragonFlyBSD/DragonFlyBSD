@@ -412,5 +412,6 @@ void	makesignal(struct ship *, const char *, struct ship *, ...);
 bool	sync_exists(int);
 int	sync_open(void);
 void	sync_close(char);
-void	Write(int, struct ship *, char, int, int, int, int);
+void	Write(int, struct ship *, int, int, int, int);
+void	Writestr(int, struct ship *, const char *);
 int	Sync(void);

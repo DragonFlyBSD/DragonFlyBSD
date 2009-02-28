@@ -38,6 +38,8 @@
 #include "externs.h"
 #include <sys/file.h>
 #include <sys/errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #define BUFSIZE 4096
 
@@ -50,7 +52,8 @@ static FILE *sync_fp;
 #define SF "/tmp/#sailsink.%d"
 #define LF "/tmp/#saillock.%d"
 
-static int	sync_update(int, struct ship *, long, long, long, long);
+static int	sync_update(int, struct ship *, const char *, long, long, long,
+			    long);
 
 void
 fmtship(char *buf, size_t len, const char *fmt, struct ship *ship)
@@ -91,11 +94,9 @@ makesignal(struct ship *from, const char *fmt, struct ship *ship, ...)
 		vsprintf(message, format, ap);
 	}
 	va_end(ap);
-	Write(W_SIGNAL, from, 1, (long)message, 0, 0, 0);
+	Writestr(W_SIGNAL, from, message);
 }
 
-#include <sys/types.h>
-#include <sys/stat.h>
 bool
 sync_exists(int lgame)
 {
@@ -145,20 +146,28 @@ sync_close(char rm)
 }
 
 void
-Write(int type, struct ship *ship, char isstr, int a, int b, int c, int d)
+Write(int type, struct ship *ship, int a, int b, int c, int d)
 {
-	if (isstr)
-		sprintf(sync_bp, "%d %d %d %s\n",
-			type, ship->file->index, isstr, (char *)a);
-	else
-		sprintf(sync_bp, "%d %d %d %d %d %d %d\n",
-			type, ship->file->index, isstr, a, b, c, d);
+	sprintf(sync_bp, "%d %d 0 %d %d %d %d\n",
+		type, ship->file->index, a, b, c, d);
 	while (*sync_bp++)
 		;
 	sync_bp--;
 	if (sync_bp >= &sync_buf[sizeof sync_buf])
 		abort();
-	sync_update(type, ship, a, b, c, d);
+	sync_update(type, ship, NULL, a, b, c, d);
+}
+
+void
+Writestr(int type, struct ship *ship, const char *a)
+{
+	sprintf(sync_bp, "%d %d 1 %s\n", type, ship->file->index, a);
+	while (*sync_bp++)
+		;
+	sync_bp--;
+	if (sync_bp >= &sync_buf[sizeof sync_buf])
+		abort();
+	sync_update(type, ship, a, 0, 0, 0, 0);
 }
 
 int
@@ -167,6 +176,7 @@ Sync(void)
 	sig_t sighup, sigint;
 	int n;
 	int type, shipnum, isstr, a, b, c, d;
+	char *astr;
 	char buf[80];
 	char erred = 0;
 	sighup = signal(SIGHUP, SIG_IGN);
@@ -219,19 +229,21 @@ Sync(void)
 			*p = 0;
 			for (p = buf; *p == ' '; p++)
 				;
-			a = (long)p;
-			b = c = d = 0;
-		} else
+			astr = p;
+			a = b = c = d = 0;
+		} else {
 			if (fscanf(sync_fp, "%d%d%d%d", &a, &b, &c, &d) != 4)
 				goto bad;
-		if (sync_update(type, SHIP(shipnum), a, b, c, d) < 0)
+			astr = NULL;
+		}
+		if (sync_update(type, SHIP(shipnum), astr, a, b, c, d) < 0)
 			goto bad;
 	}
 bad:
 	erred++;
 out:
 	if (!erred && sync_bp != sync_buf) {
-		fseek(sync_fp, 0L, 2);
+		fseek(sync_fp, 0L, SEEK_END);
 		fwrite(sync_buf, sizeof *sync_buf, sync_bp - sync_buf,
 			sync_fp);
 		fflush(sync_fp);
@@ -249,7 +261,8 @@ out:
 }
 
 static int
-sync_update(int type, struct ship *ship, long a, long b, long c, long d)
+sync_update(int type, struct ship *ship, const char *astr, long a, long b,
+	    long c, long d)
 {
 	switch (type) {
 	case W_DBP: {
@@ -313,9 +326,9 @@ sync_update(int type, struct ship *ship, long a, long b, long c, long d)
 	case W_SIGNAL:
 		if (mode == MODE_PLAYER) {
 			if (nobells)
-				Signal("%s (%c%c): %s", ship, a);
+				Signal("%s (%c%c): %s", ship, astr);
 			else
-				Signal("\7%s (%c%c): %s", ship, a);
+				Signal("\7%s (%c%c): %s", ship, astr);
 		}
 		break;
 	case W_CREW: {
@@ -326,7 +339,7 @@ sync_update(int type, struct ship *ship, long a, long b, long c, long d)
 		break;
 		}
 	case W_CAPTAIN:
-		strncpy(ship->file->captain, (char *)a,
+		strncpy(ship->file->captain, astr,
 			sizeof ship->file->captain - 1);
 		ship->file->captain[sizeof ship->file->captain - 1] = 0;
 		break;
@@ -365,7 +378,7 @@ sync_update(int type, struct ship *ship, long a, long b, long c, long d)
 		ship->specs->hull = a;
 		break;
 	case W_MOVE:
-		strncpy(ship->file->movebuf, (char *)a,
+		strncpy(ship->file->movebuf, astr,
 			sizeof ship->file->movebuf - 1);
 		ship->file->movebuf[sizeof ship->file->movebuf - 1] = 0;
 		break;

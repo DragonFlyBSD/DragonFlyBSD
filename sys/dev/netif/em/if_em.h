@@ -36,8 +36,8 @@
 
 /*
  * EM_TXD: Maximum number of Transmit Descriptors
- * Valid Range: 80-256 for 82542 and 82543-based adapters
- *              80-4096 for others
+ * Valid Range: 256 for 82542 and 82543-based adapters
+ *              256-4096 for others
  * Default Value: 256
  *   This value is the number of transmit descriptors allocated by the driver.
  *   Increasing this value allows the driver to queue more transmits. Each
@@ -46,15 +46,15 @@
  *   desscriptors should meet the following condition.
  *      (num_tx_desc * sizeof(struct e1000_tx_desc)) % 128 == 0
  */
-#define EM_MIN_TXD			80
-#define EM_MAX_TXD_82543		256
+#define EM_MIN_TXD			256
+#define EM_MAX_TXD_82543		EM_MIN_TXD
 #define EM_MAX_TXD			4096
-#define EM_DEFAULT_TXD			EM_MAX_TXD_82543
+#define EM_DEFAULT_TXD			EM_MIN_TXD
 
 /*
  * EM_RXD - Maximum number of receive Descriptors
- * Valid Range: 80-256 for 82542 and 82543-based adapters
- *              80-4096 for others
+ * Valid Range: 256 for 82542 and 82543-based adapters
+ *              256-4096 for others
  * Default Value: 256
  *   This value is the number of receive descriptors allocated by the driver.
  *   Increasing this value allows the driver to buffer more incoming packets.
@@ -64,10 +64,10 @@
  *   desscriptors should meet the following condition.
  *      (num_tx_desc * sizeof(struct e1000_tx_desc)) % 128 == 0
  */
-#define EM_MIN_RXD			80
-#define EM_MAX_RXD_82543		256
+#define EM_MIN_RXD			256
+#define EM_MAX_RXD_82543		EM_MIN_RXD
 #define EM_MAX_RXD			4096
-#define EM_DEFAULT_RXD			EM_MAX_RXD_82543
+#define EM_DEFAULT_RXD			EM_MIN_RXD
 
 /*
  * EM_TIDV - Transmit Interrupt Delay Value
@@ -78,6 +78,11 @@
  *   efficiency if properly tuned for specific network traffic. If the
  *   system is reporting dropped transmits, this value may be set too high
  *   causing the driver to run out of available transmit descriptors.
+ *
+ * NOTE:
+ * It is not used.  In DragonFly the TX interrupt moderation is done by
+ * conditionally setting RS bit in TX descriptors.  See the description
+ * in struct adapter.
  */
 #define EM_TIDV				64
 
@@ -92,42 +97,31 @@
  *   packet is sent on the wire within the set amount of time.  Proper tuning,
  *   along with EM_TIDV, may improve traffic throughput in specific
  *   network conditions.
+ *
+ * NOTE:
+ * It is not used.  In DragonFly the TX interrupt moderation is done by
+ * conditionally setting RS bit in TX descriptors.  See the description
+ * in struct adapter.
  */
 #define EM_TADV				64
 
 /*
- * EM_RDTR - Receive Interrupt Delay Timer (Packet Timer)
- * Valid Range: 0-65535 (0=off)
- * Default Value: 0
- *   This value delays the generation of receive interrupts in units of 1.024
- *   microseconds.  Receive interrupt reduction can improve CPU efficiency if
- *   properly tuned for specific network traffic. Increasing this value adds
- *   extra latency to frame reception and can end up decreasing the throughput
- *   of TCP traffic. If the system is reporting dropped receives, this value
- *   may be set too high, causing the driver to run out of available receive
- *   descriptors.
+ * Receive Interrupt Delay Timer (Packet Timer)
  *
- *   CAUTION: When setting EM_RDTR to a value other than 0, adapters
- *            may hang (stop transmitting) under certain network conditions.
- *            If this occurs a WATCHDOG message is logged in the system
- *            event log. In addition, the controller is automatically reset,
- *            restoring the network connection. To eliminate the potential
- *            for the hang ensure that EM_RDTR is set to 0.
+ * NOTE:
+ * RDTR and RADV are deprecated; use ITR instead.  They are only used to
+ * workaround hardware bug on certain 82573 based NICs.
  */
-#define EM_RDTR				0
+#define EM_RDTR_82573			32
 
 /*
  * Receive Interrupt Absolute Delay Timer (Not valid for 82542/82543/82544)
- * Valid Range: 0-65535 (0=off)
- * Default Value: 64
- *   This value, in units of 1.024 microseconds, limits the delay in which a
- *   receive interrupt is generated. Useful only if EM_RDTR is non-zero,
- *   this value ensures that an interrupt is generated after the initial
- *   packet is received within the set amount of time.  Proper tuning,
- *   along with EM_RDTR, may improve traffic throughput in specific network
- *   conditions.
+ *
+ * NOTE:
+ * RDTR and RADV are deprecated; use ITR instead.  They are only used to
+ * workaround hardware bug on certain 82573 based NICs.
  */
-#define EM_RADV				64
+#define EM_RADV_82573			64
 
 /*
  * This parameter controls the duration of transmit watchdog timer.
@@ -140,15 +134,10 @@
 /* Large enough for 16K jumbo frame */
 #define EM_TX_SPARE			8
 
+#define EM_TX_OACTIVE_MAX		64
+
 /* Interrupt throttle rate */
 #define EM_DEFAULT_ITR			10000
-
-/*
- * This parameter controls when the driver calls the routine to reclaim
- * transmit descriptors.
- */
-#define EM_TX_CLEANUP_THRESHOLD		(adapter->num_tx_desc / 8)
-#define EM_TX_OP_THRESHOLD		(adapter->num_tx_desc / 32)
 
 /*
  * This parameter controls whether or not autonegotation is enabled.
@@ -243,14 +232,6 @@
 #define EM_FIFO_HDR			0x10
 #define EM_82547_PKT_THRESH		0x3e0
 
-struct adapter;
-
-struct em_int_delay_info {
-	struct adapter	*adapter;	/* Back-pointer to the adapter struct */
-	int		offset;		/* Register offset to read/write */
-	int		value;		/* Current value in usecs */
-};
-
 /*
  * Bus dma allocation structure used by
  * e1000_dma_malloc and e1000_dma_free.
@@ -301,10 +282,6 @@ struct adapter {
 	uint16_t		link_speed;
 	uint16_t		link_duplex;
 	uint32_t		smartspeed;
-	struct em_int_delay_info tx_int_delay;
-	struct em_int_delay_info tx_abs_int_delay;
-	struct em_int_delay_info rx_int_delay;
-	struct em_int_delay_info rx_abs_int_delay;
 	int			int_throttle_ceil;
 
 	/*
@@ -318,14 +295,14 @@ struct adapter {
 	 */
 	struct em_dma_alloc	txdma;		/* bus_dma glue for tx desc */
 	struct e1000_tx_desc	*tx_desc_base;
+	struct em_buffer	*tx_buffer_area;
 	uint32_t		next_avail_tx_desc;
 	uint32_t		next_tx_to_clean;
 	int			num_tx_desc_avail;
 	int			num_tx_desc;
-	uint32_t		txd_cmd;
-	struct em_buffer	*tx_buffer_area;
 	bus_dma_tag_t		txtag;		/* dma tag for tx */
 	int			spare_tx_desc;
+	int			oact_tx_desc;
 
 	/* Saved csum offloading context information */
 	int			csum_flags;
@@ -333,6 +310,44 @@ struct adapter {
 	int			csum_iphlen;
 	uint32_t		csum_txd_upper;
 	uint32_t		csum_txd_lower;
+
+	/*
+	 * Variables used to reduce TX interrupt rate and
+	 * number of device's TX ring write requests.
+	 *
+	 * tx_nsegs:
+	 * Number of TX descriptors setup so far.
+	 *
+	 * tx_int_nsegs:
+	 * Once tx_nsegs > tx_int_nsegs, RS bit will be set
+	 * in the last TX descriptor of the packet, and
+	 * tx_nsegs will be reset to 0.  So TX interrupt and
+	 * TX ring write request should be generated roughly
+	 * every tx_int_nsegs TX descriptors.
+	 *
+	 * tx_dd[]:
+	 * Index of the TX descriptors which have RS bit set,
+	 * i.e. DD bit will be set on this TX descriptor after
+	 * the data of the TX descriptor are transfered to
+	 * hardware's internal packet buffer.  Only the TX
+	 * descriptors listed in tx_dd[] will be checked upon
+	 * TX interrupt.  This array is used as circular ring.
+	 *
+	 * tx_dd_tail, tx_dd_head:
+	 * Tail and head index of valid elements in tx_dd[].
+	 * tx_dd_tail == tx_dd_head means there is no valid
+	 * elements in tx_dd[].  tx_dd_tail points to the position
+	 * which is one beyond the last valid element in tx_dd[].
+	 * tx_dd_head points to the first valid element in
+	 * tx_dd[].
+	 */
+	int			tx_int_nsegs;
+	int			tx_nsegs;
+	int			tx_dd_tail;
+	int			tx_dd_head;
+#define EM_TXDD_MAX	64
+#define EM_TXDD_SAFE	48 /* must be less than EM_TXDD_MAX */
+	int			tx_dd[EM_TXDD_MAX];
 
 	/*
 	 * Receive definitions
@@ -405,7 +420,6 @@ struct em_vendor_info {
 };
 
 struct em_buffer {
-	int		next_eop;	/* Index of the desc to watch */
 	struct mbuf	*m_head;
 	bus_dmamap_t	map;		/* bus_dma map for packet */
 };
@@ -422,7 +436,12 @@ typedef struct _DESCRIPTOR_PAIR {
 } DESC_ARRAY, *PDESC_ARRAY;
 
 #define EM_IS_OACTIVE(adapter) \
-	((adapter)->num_tx_desc_avail < \
-	 (adapter)->spare_tx_desc + EM_TX_RESERVED)
+	((adapter)->num_tx_desc_avail <= (adapter)->oact_tx_desc)
+
+#define EM_INC_TXDD_IDX(idx) \
+do { \
+	if (++(idx) == EM_TXDD_MAX) \
+		(idx) = 0; \
+} while (0)
 
 #endif /* _IF_EM_H_ */

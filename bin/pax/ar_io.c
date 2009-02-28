@@ -383,19 +383,20 @@ ar_close(void)
 	 * could have written anything yet.
 	 */
 	if (frmt == NULL) {
-		fprintf(listf, "%s: unknown format, %qu bytes skipped.\n",
-		    argv0, rdcnt);
+		fprintf(listf, "%s: unknown format, %jd bytes skipped.\n",
+		    argv0, (intmax_t)rdcnt);
 		fflush(listf);
 		flcnt = 0;
 		return;
 	}
 
 	if (strcmp(NM_CPIO, argv0) == 0)
-		fprintf(listf, "%qu blocks\n", (rdcnt ? rdcnt : wrcnt) / 5120);
+		fprintf(listf, "%jdu blocks\n", (intmax_t)((rdcnt ? rdcnt : wrcnt) / 5120));
 	else if (strcmp(NM_TAR, argv0) != 0)
 		fprintf(listf,
-		    "%s: %s vol %d, %lu files, %qu bytes read, %qu bytes written.\n",
-		    argv0, frmt->name, arvol-1, flcnt, rdcnt, wrcnt);
+		    "%s: %s vol %d, %lu files, %jd bytes read, %jd bytes written.\n",
+		    argv0, frmt->name, arvol-1, flcnt,
+		    (intmax_t)rdcnt, (intmax_t)wrcnt);
 	fflush(listf);
 	flcnt = 0;
 }

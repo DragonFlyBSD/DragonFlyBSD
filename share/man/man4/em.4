@@ -29,26 +29,43 @@
 .\"
 .\" * Other names and brands may be claimed as the property of others.
 .\"
-.\" $FreeBSD: src/share/man/man4/em.4,v 1.2.2.6 2003/02/01 01:21:31 pdeuskar Exp $
+.\" $FreeBSD: src/share/man/man4/em.4,v 1.30 2008/10/06 21:55:53 simon Exp $
 .\" $DragonFly: src/share/man/man4/em.4,v 1.12 2008/07/11 10:38:50 thomas Exp $
 .\"
-.Dd February 1, 2008
+.Dd February 27, 2009
 .Dt EM 4
 .Os
 .Sh NAME
 .Nm em
-.Nd "Intel(R) PRO/1000 gigabit Ethernet driver"
+.Nd "Intel(R) PRO/1000 Gigabit Ethernet adapter driver"
 .Sh SYNOPSIS
+To compile this driver into the kernel,
+place the following lines in your
+kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device ig_hal"
 .Cd "device em"
+.Ed
+.Pp
+Alternatively, to load the driver as a
+module at boot time, place the following lines in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+ig_hal_load="YES"
+if_em_load="YES"
+.Ed
 .Sh DESCRIPTION
 The
 .Nm
-driver provides support for PCI gigabit Ethernet adapters based on
-the Intel 82540, 82541, 82542, 82543, 82544, 82546, and 82547 Ethernet
+driver provides support for PCI Gigabit Ethernet adapters based on
+the Intel 82540, 82541ER, 82541PI, 82542, 82543, 82544, 82545, 82546,
+82546EB, 82546GB, 82547, 82571, 81572, 82573, and 82574 Ethernet
 controller chips.
-The driver does not support Transmit/Receive checksum offload and
-Jumbo Frames on adapters based on the Intel 82542 and 82573 LAN controllers.
-For a list of supported adapters, see the
+The driver supports Transmit/Receive checksum offload
+and Jumbo Frames on all but 82542-based adapters.
+.\" Furthermore it supports TCP segmentation offload (TSO) on all adapters but
+.\" those based on the 82543, 82544 and 82547 controller chips.
+For further hardware information, see the
 .Pa README
 included with the driver.
 .Pp
@@ -61,80 +78,9 @@ Support for Jumbo Frames is provided via the interface MTU setting.
 Selecting an MTU larger than 1500 bytes with the
 .Xr ifconfig 8
 utility configures the adapter to receive and transmit Jumbo Frames.
-The maximum MTU setting for Jumbo Frames is 16110.
-This value coincides with the maximum Jumbo Frames size of 16128.
-Some Intel gigabit adapters that support Jumbo Frames have a frame size
-limit of 9238 bytes, with a corresponding MTU size limit of 9216 bytes.
-The adapters with this limitation are based on the Intel(R)
-82571EB, 82572EI, 82573L, 82563EB and 82564EI LAN controllers.
-These correspond to the following product names:
-.Pp
-.Bl -bullet -compact
-.It
-Intel(R) PRO/1000 PT Server Adapter
-.It
-Intel(R) PRO/1000 PT Desktop Adapter
-.It
-Intel(R) PRO/1000 PT Network Connection
-.It
-Intel(R) PRO/1000 PT Dual Port Server Adapter
-.It
-Intel(R) PRO/1000 PT Dual Port Network Connection
-.It
-Intel(R) PRO/1000 PT Quad Port Server Adapter
-.It
-Intel(R) PRO/1000 PF Quad Port Server Adapter
-.It
-Intel(R) PRO/1000 PF Server Adapter
-.It
-Intel(R) PRO/1000 PF Network Connection
-.It
-Intel(R) PRO/1000 PF Dual Port Server Adapter
-.It
-Intel(R) PRO/1000 PB Server Connection
-.It
-Intel(R) PRO/1000 PL Network Connection
-.It
-Intel(R) PRO/1000 EB Network Connection with I/O Acceleration
-.It
-Intel(R) PRO/1000 EB Backplane Connection with I/O Acceleration
-.It
-Intel(R) 82566DM-2 Gigabit Network Connection
-.El
-.Pp
-Adapters based on the Intel(R) 82542 and 82573V/E controller do not
-support Jumbo Frames.
-These correspond to the following product names:
-.Pp
-.Bl -bullet -compact
-.It
-Intel(R) PRO/1000 Gigabit Server Adapter
-.It
-Intel(R) PRO/1000 PM Network Connection
-.El
-.Pp
-Using Jumbo Frames at 10 or 100 Mbps may result in poor performance or
-loss of link.
-.Pp
-The following adapters do not support Jumbo Frames:
-.Pp
-.Bl -bullet -compact
-.It
-Intel(R) 82562V 10/100 Network Connection
-.It
-Intel(R) 82566DM Gigabit Network Connection
-.It
-Intel(R) 82566DC Gigabit Network Connection
-.It
-Intel(R) 82566MM Gigabit Network Connection
-.It
-Intel(R) 82566MC Gigabit Network Connection
-.El
+The maximum MTU size for Jumbo Frames is 16114.
 .Pp
 This driver version supports VLANs.
-For information on enabling VLANs,
-see the
-.Pa README .
 The
 .Nm
 driver supports the following media types:
@@ -192,8 +138,67 @@ The
 .Nm
 driver supports
 .Xr polling 4 .
-.Sh TUNABLES
-.Bl -tag -width ".Va hw.em.int_throttle_ceil"
+.Sh HARDWARE
+The
+.Nm
+driver supports Gigabit Ethernet adapters based on the Intel
+82540, 82541ER, 82541PI, 82542, 82543, 82544, 82545, 82546, 82546EB,
+82546GB, 82547, 82571, 82572, 82573, and 82574 controller chips:
+.Pp
+.Bl -bullet -compact
+.It
+Intel PRO/1000 CT Network Connection (82547)
+.It
+Intel PRO/1000 F Server Adapter (82543)
+.It
+Intel PRO/1000 Gigabit Server Adapter (82542)
+.It
+Intel PRO/1000 GT Desktop Adapter (82541PI)
+.It
+Intel PRO/1000 MF Dual Port Server Adapter (82546)
+.It
+Intel PRO/1000 MF Server Adapter (82545)
+.It
+Intel PRO/1000 MF Server Adapter (LX) (82545)
+.It
+Intel PRO/1000 MT Desktop Adapter (82540)
+.It
+Intel PRO/1000 MT Desktop Adapter (82541)
+.It
+Intel PRO/1000 MT Dual Port Server Adapter (82546)
+.It
+Intel PRO/1000 MT Quad Port Server Adapter (82546EB)
+.It
+Intel PRO/1000 MT Server Adapter (82545)
+.It
+Intel PRO/1000 PF Dual Port Server Adapter (82571)
+.It
+Intel PRO/1000 PF Quad Port Server Adapter (82571)
+.It
+Intel PRO/1000 PF Server Adapter (82572)
+.It
+Intel PRO/1000 PT Desktop Adapter (82572)
+.It
+Intel PRO/1000 PT Dual Port Server Adapter (82571)
+.It
+Intel PRO/1000 PT Quad Port Server Adapter (82571)
+.It
+Intel PRO/1000 PT Server Adapter (82572)
+.It
+Intel PRO/1000 T Desktop Adapter (82544)
+.It
+Intel PRO/1000 T Server Adapter (82543)
+.It
+Intel PRO/1000 XF Server Adapter (82544)
+.It
+Intel PRO/1000 XT Server Adapter (82544)
+.El
+.Sh LOADER TUNABLES
+Tunables can be set at the
+.Xr loader 8
+prompt before booting the kernel or stored in
+.Xr loader.conf 5 .
+.Bl -tag -width indent
 .It Va hw.em.int_throttle_ceil
 Hardware interrupt throttling rate.
 The default value is 10000Hz.
@@ -207,25 +212,15 @@ Number of transmit descriptors allocated by the driver.
 The default value is 256.
 The 82542 and 82543-based adapters can handle up to 256 descriptors,
 while others can have up to 4096.
-.It Va hw.em.rx_int_delay
-This value delays the generation of receive interrupts in units of
-1.024 microseconds.
-The default value is 0, since adapters may hang with this feature
-being enabled.
-.It Va hw.em.rx_abs_int_delay
+.It Va hw.em.int_tx_nsegs
+This value controls how many transmit descriptors should be consumed
+by the hardware before the hardware generates a transmit interrupt.
+The default value is 1/16 of the number of transmit descriptors.
 If
-.Va hw.em.rx_int_delay
-is non-zero, this tunable limits the maximum delay in which a receive
-interrupt is generated.
-.It Va hw.em.tx_int_delay
-This value delays the generation of transmit interrupts in units of
-1.024 microseconds.
-The default value is 64.
-.It Va hw.em.tx_abs_int_delay
-If
-.Va hw.em.tx_int_delay
-is non-zero, this tunable limits the maximum delay in which a transmit
-interrupt is generated.
+.Xr polling 4
+is not used on the hardware and
+the major part of the transmitted data are bulk data,
+this value could safely be set to 1/2 of the number of transmit descriptors.
 .El
 .Sh DIAGNOSTICS
 .Bl -diag
@@ -238,10 +233,6 @@ The device has stopped responding to the network, or there is a problem with
 the network connection (cable).
 .El
 .Sh SUPPORT
-For additional information regarding building and installation,
-see the
-.Pa README
-included with the driver.
 For general information and support,
 go to the Intel support website at:
 .Pa http://support.intel.com .

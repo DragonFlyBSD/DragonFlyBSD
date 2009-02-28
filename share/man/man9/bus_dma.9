@@ -81,10 +81,14 @@
 .Nm bus_dmamap_destroy ,
 .Nm bus_dmamap_load ,
 .Nm bus_dmamap_load_mbuf ,
+.Nm bus_dmamap_load_mbuf_segment ,
+.Nm bus_dmamap_load_mbuf_defrag ,
 .Nm bus_dmamap_load_uio ,
 .Nm bus_dmamap_unload ,
 .Nm bus_dmamap_sync ,
 .Nm bus_dmamem_alloc ,
+.Nm bus_dmamem_coherent ,
+.Nm bus_dmamem_coherent_any ,
 .Nm bus_dmamem_free
 .Nd Bus and Machine Independent DMA Mapping Interface
 .Sh SYNOPSIS
@@ -109,12 +113,28 @@
 "struct mbuf *mbuf" "bus_dmamap_callback2_t *callback" "void *callback_arg" \
 "int flags"
 .Ft int
+.Fn bus_dmamap_load_mbuf_segment "bus_dma_tag_t dmat" "bus_dmamap_t map" \
+"struct mbuf *mbuf" "bus_dma_segment_t *segs" "int maxsegs" "int *nsegs" \
+"int flags"
+.Ft int
+.Fn bus_dmamap_load_mbuf_defrag "bus_dma_tag_t dmat" "bus_dmamap_t map" \
+"struct mbuf **mbuf" "bus_dma_segment_t *segs" "int maxsegs" "int *nsegs" \
+"int flags"
+.Ft int
 .Fn bus_dmamap_load_uio "bus_dma_tag_t dmat" "bus_dmamap_t map" \
 "struct uio *uio" "bus_dmamap_callback2_t *callback" "void *callback_arg" \
 "int flags"
 .Ft int
 .Fn bus_dmamem_alloc "bus_dma_tag_t dmat" "void **vaddr" \
 "int flags" "bus_dmamap_t *mapp"
+.Ft int
+.Fn bus_dmamem_coherent "bus_dma_tag_t parent" "bus_size_t alignment" \
+"bus_size_t boundary" "bus_addr_t lowaddr" "bus_addr_t highaddr" \
+"bus_size_t maxsize" "int flags" "bus_dmamem_t *dmem"
+.Ft void *
+.Fn bus_dmamem_coherent_any "bus_dma_tag_t parent" "bus_size_t alignment" \
+"bus_size_t maxsize" "int flags" "bus_dma_tag_t *dtag" "bus_dmamap_t *dmap" \
+"bus_addr_t *busaddr"
 .Ft void
 .Fn bus_dmamap_unload "bus_dma_tag_t dmat" "bus_dmamap_t map"
 .Ft void
@@ -190,6 +210,27 @@ almost always required when presenting segment information to the device.
 .It Vt bus_dmamap_t
 A machine-dependent opaque type describing an individual mapping.
 Multiple DMA maps can be associated with one DMA tag.
+.It Vt bus_dmamem_t
+A machine-dependent type that describes DMA memory created by
+.Fn bus_dmamem_coherent .
+.Bd -literal
+	bus_dma_tag_t	dmem_tag;
+	bus_dmamap_t	dmem_map;
+	void		*dmem_addr;
+	bus_addr_t	dmem_busaddr;
+.Ed
+.sp
+The
+.Fa dmem_tag
+field contains the DMA tag of the DMA memory and
+.Fa dmem_map
+field contains the DMA map of the DMA memory.
+The
+.Fa dmem_addr
+field points to the allocated DMA memory in kernel virtual address space.
+The
+.Fa dmem_busaddr
+field contains the device visible address of the DMA memory.
 .It Vt bus_dmamap_callback_t
 Client specified callback for receiving mapping information resulting from
 the load of a
@@ -353,11 +394,42 @@ with
 Are as follows:
 .Bl -tag -width "BUS_DMA_ALLOCNOW" -compact
 .It Dv BUS_DMA_ALLOCNOW
-Allocate the resources necessary to guarantee that all map load
-operations associated with this tag will not block.
+Allocate the minimum resources necessary to guarantee that all map load
+operations associated with this tag may not block.
 If sufficient resources are not available,
 .Er ENOMEM
 is returned.
+.It Dv BUS_DMA_WAITOK
+Indicates that it is OK to wait for resources.
+However,
+unlike
+.Xr kmalloc 9 ,
+it is not garanteed that the resource allocation will succeed.
+This flag is the default one,
+if
+.Dv BUS_DMA_NOWAIT
+is not supplied.
+.It Dv BUS_DMA_NOWAIT
+If the resource allocation request cannot be immediately fulfilled,
+.Er ENOMEM
+is returned.
+.It Dv BUS_DMA_ONEBPAGE
+Allocte one bounce page at most,
+even if the
+.Fa maxsize
+indicates that multiple bounce pages are needed.
+.It Dv BUS_DMA_ALIGNED
+Indicates that all memory to be loaded into the DMA maps associated
+with this DMA tag is properly aligned according to
+.Fa alignment
+constraint.
+No resources,
+e.g. bounce pages,
+will be allocated due to the
+.Fa alignment
+constraint.
+If unaligned memory was loaded into the DMA maps associated with this DMA tag,
+system will panic.
 .El
 .It Fa dmat
 Pointer to a bus_dma_tag_t where the resulting DMA tag will
@@ -388,9 +460,30 @@ Arguments are as follows:
 .It Fa dmat
 DMA tag.
 .It Fa flags
-The value of this argument is currently undefined and should be
-specified as
-.Ql 0 .
+Are as follows:
+.Bl -tag -width "BUS_DMA_ONEBPAGE" -compact
+.It Dv BUS_DMA_WAITOK
+Indicates that it is OK to wait for resources.
+However,
+unlike
+.Xr kmalloc 9 ,
+it is not garanteed that the resource allocation will succeed.
+This flag is the default one,
+if
+.Dv BUS_DMA_NOWAIT
+is not supplied.
+.It Dv BUS_DMA_NOWAIT
+If the resource allocation request cannot be immediately fulfilled,
+.Er ENOMEM
+is returned.
+.It Dv BUS_DMA_ONEBPAGE
+Allocte one bounce page at most,
+even if the
+.Fa maxsize
+used to create the
+.Fa dmat
+indicates that multiple bounce pages are needed.
+.El
 .It Fa mapp
 Pointer to a
 .Vt bus_dmamap_t
@@ -505,6 +598,62 @@ Returns
 .Er EINVAL
 if the size of the mbuf chain exceeds the maximum limit of the
 DMA tag.
+.It Fn bus_dmamap_load_mbuf_segment "dmat" "map" "mbuf" "*segs" "maxsegs" \
+"*nsegs" "flags"
+It is like
+.Fn bus_dmamap_load_mbuf
+without callback.
+Segmentation information are saved in the
+.Fa segs
+and
+.Fa nsegs
+if the loading is successful.
+The
+.Fa maxsegs ,
+which indicates the number of elements in the
+.Fa segs ,
+must be set by the caller and must be at least 1 but less than the
+.Fa nsegments
+used to create the
+.Fa dmat .
+The
+.Fa flags
+must have
+.Dv BUS_DMA_NOWAIT
+turned on.
+.Pp
+This function will not block.
+When system is short of DMA resources,
+this function will return
+.Er ENOMEM ,
+instead of
+.Er EINPROGRESS .
+.It Fn bus_dmamap_load_mbuf_defrag "dmat" "map" "*mbuf" "*segs" "maxsegs" \
+"*nsegs" "flags"
+This function is like
+.Fn bus_dmamap_load_mbuf_segment ,
+but it will call
+.Fn m_defrag
+on the
+.Fa *mbuf
+and try reloading,
+if low level code indicates too many fragments in the
+.Fa *mbuf ;
+the
+.Fa mbuf
+will be updated under this situation.
+However,
+.Fa *mbuf
+would not be freed by this function,
+even if
+.Fn m_defrag
+failed.
+.Pp
+Return
+.Er ENOBUFS ,
+if the calling of
+.Fn m_defrag
+failed.
 .It Fn bus_dmamap_load_uio "dmat" "map" "uio" "callback2" "callback_arg" "flags"
 This is a variation of
 .Fn bus_dmamap_load
@@ -644,6 +793,103 @@ Returns
 .Er ENOMEM
 if sufficient memory is not available for completing
 the operation.
+.It Fn bus_dmamem_coherent "parent" "alignment" "boundary" "lowaddr" \
+"highaddr" "maxsize" "flags" "*dmem"
+This is a convenient function to create one segment of DMA memory.
+It combines following
+.Xr bus_dma 9
+function calls:
+.Bd -literal
+	bus_dma_tag_create(..., dtag);
+	bus_dmamem_alloc(*dtag, vaddr, ..., dmap);
+	bus_dmamap_load(*dtag, *dmap, *vaddr, ..., \\
+			callback, busaddr, ...);
+.Ed
+.sp
+The final results of the above function calls are:
+DMA tag,
+DMA map,
+DMA memory's kernel virtual address and
+its device visible address.
+.Fn bus_dmamem_coherent
+saves the results in
+.Fa *dmem .
+.Pp
+The
+.Fa parent ,
+.Fa alignment ,
+.Fa boundary ,
+.Fa lowaddr
+and
+.Fa highaddr
+will be passed to
+.Fn bus_dma_tag_create
+as they are.
+The
+.Fa maxsize
+will be passed to
+.Fn bus_dma_tag_create
+as its
+.Fa maxsize
+and
+.Fa maxsegsz
+and
+.Ql 1
+will be passed to
+.Fn bus_dma_tag_create
+as its
+.Fa nsegments .
+When
+.Fn bus_dmamem_alloc
+is called,
+.Fa flags
+will be first or'ed with
+.Dv BUS_DMA_COHERENT
+then passed to it.
+The final results of the above three functions,
+i.e. DMA tag,
+DMA map,
+DMA memory's kernel virtual address and
+its device visible address,
+are saved in
+.Fa *dmem .
+If any of the three functions failed,
+this function will return the error code and the
+.Fa *dmem
+should not be used.
+.It Fn bus_dmamem_coherent_any "parent" "alignment" "maxsize" "flags" \
+"*dtag" "*dmap" "*busaddr"
+This function is a simplified version of
+.Fn bus_dmamem_coherent
+with
+its
+.Fa boundary
+set to
+.Ql 0 ,
+.Fa lowaddr
+set to
+.Dv BUS_SPACE_MAXADDR
+and
+.Fa highaddr
+set to
+.Dv BUS_SPACE_MAXADDR .
+The
+.Fa parent
+usually should not be NULL.
+.Pp
+Return the DMA memory's kernel virtual address.
+The DMA tag, DMA map and device visible address are returned in
+.Fa *dtag ,
+.Fa *dmap ,
+and
+.Fa *busaddr .
+If this function failed,
+NULL will be returned;
+.Fa *dtag ,
+.Fa *dmap ,
+and
+.Fa *busaddr
+are left unchanged.
 .It Fn bus_dmamem_free "dmat" "*vaddr" "map"
 Frees memory previously allocated by
 .Fn bus_dmamem_alloc .

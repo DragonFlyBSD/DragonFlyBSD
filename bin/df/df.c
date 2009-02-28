@@ -337,15 +337,13 @@ prthumanval(int64_t bytes)
  * Convert statfs returned filesystem size into BLOCKSIZE units.
  * Attempts to avoid overflow for large filesystems.
  */
-static
-int64_t
-fsbtoblk(int64_t num, long bsize, long reqbsize)
+static intmax_t
+fsbtoblk(int64_t num, uint64_t bsize, u_long reqbsize)
 {
-	if (bsize && bsize < reqbsize)
-		num = num / (reqbsize / bsize);
+	if (bsize != 0 && bsize < reqbsize)
+		return (num / (intmax_t)(reqbsize / bsize));
 	else
-		num = num * (bsize / reqbsize);
-	return(num);
+		return (num * (intmax_t)(bsize / reqbsize));
 }
 
 /*
@@ -388,7 +386,7 @@ prtstat(struct statfs *sfsp, struct statvfs *vsfsp, struct maxwidths *mwp)
 	if (hflag) {
 		prthuman(vsfsp, used);
 	} else {
-		printf(" %*lld %*lld %*lld", mwp->total,
+		printf(" %*jd %*jd %*jd", mwp->total,
 	            fsbtoblk(vsfsp->f_blocks, vsfsp->f_bsize, blocksize),
 		    mwp->used, fsbtoblk(used, vsfsp->f_bsize, blocksize),
 	            mwp->avail, fsbtoblk(vsfsp->f_bavail, vsfsp->f_bsize,
@@ -399,8 +397,8 @@ prtstat(struct statfs *sfsp, struct statvfs *vsfsp, struct maxwidths *mwp)
 	if (iflag) {
 		inodes = vsfsp->f_files;
 		used = inodes - vsfsp->f_ffree;
-		printf(" %*lld %*lld %4.0f%% ", mwp->iused, used,
-		    mwp->ifree, (int64_t)vsfsp->f_ffree, inodes == 0 ? 100.0 :
+		printf(" %*jd %*jd %4.0f%% ", mwp->iused, (intmax_t)used,
+		    mwp->ifree, (intmax_t)vsfsp->f_ffree, inodes == 0 ? 100.0 :
 		    (double)used / (double)inodes * 100.0);
 	} else
 		printf("  ");

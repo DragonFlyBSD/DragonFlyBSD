@@ -104,7 +104,7 @@ leave(int conditions)
 		if (conditions != LEAVE_SYNC) {
 			makesignal(ms, "Captain %s relinquishing.",
 				(struct ship *)0, mf->captain);
-			Write(W_END, ms, 0, 0, 0, 0, 0);
+			Write(W_END, ms, 0, 0, 0, 0);
 			Sync();
 		}
 	}
