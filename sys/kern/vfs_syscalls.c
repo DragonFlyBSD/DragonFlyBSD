@@ -2888,7 +2888,10 @@ kern_utimes(struct nlookupdata *nd, struct timeval *tptr)
 		return (error);
 	if ((error = cache_vref(&nd->nl_nch, nd->nl_cred, &vp)) != 0)
 		return (error);
-	error = setutimes(vp, ts, tptr == NULL);
+	if ((error = vn_writechk(vp, &nd->nl_nch)) == 0 &&
+	    (error = VOP_ACCESS(vp, VWRITE, nd->nl_cred)) == 0) {
+		error = setutimes(vp, ts, tptr == NULL);
+	}
 	vrele(vp);
 	return (error);
 }
