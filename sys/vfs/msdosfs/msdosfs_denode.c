@@ -148,7 +148,7 @@ loop:
 		if (dirclust != dep->de_dirclust
 		    || diroff != dep->de_diroffset
 		    || dev != dep->de_dev
-		    || dep->de_refcnt == 0) {
+		    || dep->de_refcnt <= 0) {
 			continue;
 		}
 		vp = DETOV(dep);
@@ -163,7 +163,7 @@ loop:
 			if (dirclust == dep->de_dirclust
 			    && diroff == dep->de_diroffset
 			    && dev == dep->de_dev
-			    && dep->de_refcnt != 0) {
+			    && dep->de_refcnt > 0) {
 				break;
 			}
 		}

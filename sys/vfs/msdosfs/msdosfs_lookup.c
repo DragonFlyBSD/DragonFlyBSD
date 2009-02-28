@@ -332,7 +332,7 @@ notfound:
 	       slotcount, slotoffset);
 #endif
 	if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) &&
-	    dp->de_refcnt != 0) {
+	    dp->de_refcnt > 0) {
 		/*
 		 * Access for write is interpreted as allowing
 		 * creation of files in the directory.
@@ -894,6 +894,7 @@ removede(struct denode *pdep,	/* directory where the entry is removed */
 	    dep->de_Name, dep, offset);
 #endif
 
+	KKASSERT(dep->de_refcnt > 0);
 	dep->de_refcnt--;
 	offset += sizeof(struct direntry);
 	do {
