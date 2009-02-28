@@ -63,8 +63,8 @@ the Intel 82540, 82541ER, 82541PI, 82542, 82543, 82544, 82545, 82546,
 controller chips.
 The driver supports Transmit/Receive checksum offload
 and Jumbo Frames on all but 82542-based adapters.
-Furthermore it supports TCP segmentation offload (TSO) on all adapters but
-those based on the 82543, 82544 and 82547 controller chips.
+.\" Furthermore it supports TCP segmentation offload (TSO) on all adapters but
+.\" those based on the 82543, 82544 and 82547 controller chips.
 For further hardware information, see the
 .Pa README
 included with the driver.
@@ -212,25 +212,15 @@ Number of transmit descriptors allocated by the driver.
 The default value is 256.
 The 82542 and 82543-based adapters can handle up to 256 descriptors,
 while others can have up to 4096.
-.It Va hw.em.rx_int_delay
-This value delays the generation of receive interrupts in units of
-1.024 microseconds.
-The default value is 0, since adapters may hang with this feature
-being enabled.
-.It Va hw.em.rx_abs_int_delay
+.It Va hw.em.int_tx_nsegs
+This value controls how many transmit descriptors should be consumed
+by the hardware before the hardware generates a transmit interrupt.
+The default value is 1/16 of the number of transmit descriptors.
 If
-.Va hw.em.rx_int_delay
-is non-zero, this tunable limits the maximum delay in which a receive
-interrupt is generated.
-.It Va hw.em.tx_int_delay
-This value delays the generation of transmit interrupts in units of
-1.024 microseconds.
-The default value is 64.
-.It Va hw.em.tx_abs_int_delay
-If
-.Va hw.em.tx_int_delay
-is non-zero, this tunable limits the maximum delay in which a transmit
-interrupt is generated.
+.Xr polling 4
+is not used on the hardware and
+the major part of the transmitted data are bulk data,
+this value could safely be set to 1/2 of the number of transmit descriptors.
 .El
 .Sh DIAGNOSTICS
 .Bl -diag
@@ -269,9 +259,3 @@ The
 .Nm
 driver was written by
 .An Intel Corporation Aq freebsdnic@mailbox.intel.com .
-.Sh BUGS
-Hardware-assisted VLAN processing is disabled by default.
-You can enable it on an
-.Nm
-interface using
-.Xr ifconfig 8 .
