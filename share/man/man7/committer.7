@@ -32,7 +32,7 @@
 .\" 
 .\" $DragonFly: src/share/man/man7/committer.7,v 1.11 2008/05/02 02:05:06 swildner Exp $
 .\" 
-.Dd February 22, 2009
+.Dd February 28, 2009
 .Dt COMMITTER 7
 .Os
 .Sh NAME
@@ -172,10 +172,15 @@ As many
 tools display the first line of a commit message as a summary,
 structure your commit messages like this, if possible:
 .Bd -literal -offset indent
-One line summary of your change.
+One line summary of your change (less than 50 characters).
 
 Maybe more text here describing your changes in detail (including
 issue tracker id's etc).
+.Ed
+.Pp
+To customize the commit template for DragonFly, use:
+.Bd -literal -offset indent
+git config --add commit.template /usr/src/tools/gittemplate
 .Ed
 .Sh DISCUSSING COMMITTABLE WORK BEFOREHAND
 Discussion prior to committing usually occurs on the
