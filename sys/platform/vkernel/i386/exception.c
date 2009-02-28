@@ -50,6 +50,7 @@
 #include <machine/md_var.h>
 #include <machine/segments.h>
 #include <machine/cpu.h>
+#include <machine/smp.h>
 
 #include <err.h>
 #include <signal.h>
@@ -63,13 +64,12 @@ static void exc_segfault(int signo, siginfo_t *info, void *ctx);
 static void exc_debugger(int signo, siginfo_t *info, void *ctx);
 #endif
 
+#ifdef SMP
+
 /*
  * IPIs are 'fast' interrupts, so we deal with them directly from our
  * signal handler.
  */
-
-#ifdef SMP
-
 static
 void
 ipisig(int nada, siginfo_t *info, void *ctxp)
@@ -81,6 +81,35 @@ ipisig(int nada, siginfo_t *info, void *ctxp)
 		curthread->td_pri -= TDPRI_CRIT;
 	} else {
 		need_ipiq();
+	}
+	--mycpu->gd_intr_nesting_level;
+}
+
+/*
+ * Unconditionally stop or restart a cpu.
+ *
+ * Note: cpu_mask_all_signals() masks all signals except SIGXCPU itself.
+ * SIGXCPU itself is blocked on entry to stopsig() by the signal handler
+ * itself.
+ */
+static
+void
+stopsig(int nada, siginfo_t *info, void *ctxp)
+{
+	sigset_t ss;
+
+	sigemptyset(&ss);
+	sigaddset(&ss, SIGALRM);
+	sigaddset(&ss, SIGIO);
+	sigaddset(&ss, SIGQUIT);
+	sigaddset(&ss, SIGUSR1);
+	sigaddset(&ss, SIGUSR2);
+	sigaddset(&ss, SIGTERM);
+	sigaddset(&ss, SIGWINCH);
+
+	++mycpu->gd_intr_nesting_level;
+	while (stopped_cpus & mycpu->gd_cpumask) {
+		sigsuspend(&ss);
 	}
 	--mycpu->gd_intr_nesting_level;
 }
@@ -122,6 +151,8 @@ init_exceptions(void)
 #ifdef SMP
 	sa.sa_sigaction = ipisig;
 	sigaction(SIGUSR1, &sa, NULL);
+	sa.sa_sigaction = stopsig;
+	sigaction(SIGXCPU, &sa, NULL);
 #endif
 #if 0
 	sa.sa_sigaction = iosig;
