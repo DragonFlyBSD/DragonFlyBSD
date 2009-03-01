@@ -2063,7 +2063,7 @@ static int
 em_alloc_pci_res(struct adapter *adapter)
 {
 	device_t dev = adapter->dev;
-	int val, rid, error = E1000_SUCCESS;
+	int val, rid;
 
 	/* Enable bus mastering */
 	pci_enable_busmaster(dev);
@@ -2128,7 +2128,7 @@ em_alloc_pci_res(struct adapter *adapter)
 
 	adapter->hw.bus.pci_cmd_word = pci_read_config(dev, PCIR_COMMAND, 2);
 	adapter->hw.back = &adapter->osdep;
-	return (error);
+	return (0);
 }
 
 static void
