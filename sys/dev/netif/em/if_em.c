@@ -2778,6 +2778,8 @@ em_txeof(struct adapter *adapter)
 				dd_idx = 0;
 
 			while (first != dd_idx) {
+				logif(pkt_txclean);
+
 				tx_buffer = &adapter->tx_buffer_area[first];
 				tx_desc = &adapter->tx_desc_base[first];
 
@@ -2840,6 +2842,8 @@ em_tx_collect(struct adapter *adapter)
 	first = adapter->next_tx_to_clean;
 
 	while (first != tdh) {
+		logif(pkt_txclean);
+
 		tx_buffer = &adapter->tx_buffer_area[first];
 		tx_desc = &adapter->tx_desc_base[first];
 
