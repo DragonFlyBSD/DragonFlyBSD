@@ -415,6 +415,7 @@ struct adapter {
 struct em_vendor_info {
 	uint16_t	vendor_id;
 	uint16_t	device_id;
+	int		ret;
 	const char	*desc;
 };
 
