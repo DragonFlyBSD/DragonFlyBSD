@@ -1968,7 +1968,10 @@ device		vx		# 3Com 3c590, 3c595 (``Vortex'')
 
 # Gigabit Ethernet NICs.
 device		bge		# Broadcom BCM570x (``Tigon III'')
-device		em		# Intel Pro/1000 (82542,82543,82544,82540)
+device		em		# Intel Pro/1000 (8254x,8257x)
+				# Requires ig_hal
+device		emx		# Intel Pro/1000 (8257{1,2,3,4})
+				# Requires ig_hal
 device		ig_hal		# Intel Pro/1000 hardware abstraction layer
 device		et		# Agere ET1310 10/100/1000 Ethernet
 device		lge		# Level 1 LXT1001 (``Mercury'')
@@ -2755,6 +2758,7 @@ options	KTR
 #options KTR_HAMMER
 #options KTR_IF_BGE
 #options KTR_IF_EM
+#options KTR_IF_EMX
 #options KTR_IF_START
 #options KTR_IFQ
 #options KTR_IPIQ
