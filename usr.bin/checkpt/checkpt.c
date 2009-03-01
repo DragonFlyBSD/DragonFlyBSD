@@ -39,6 +39,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 
 static
 void
@@ -75,7 +76,7 @@ main(int ac, char **av)
     }
     error = sys_checkpoint(CKPT_THAW, fd, -1, 1);
     if (error)
-	fprintf(stderr, "thaw failed error %d %s\n", error, strerror(error));
+	fprintf(stderr, "thaw failed error %d %s\n", errno, strerror(errno));
     else
 	fprintf(stderr, "Unknown error restoring checkpoint\n");
     return(5);
