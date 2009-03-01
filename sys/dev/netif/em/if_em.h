@@ -408,7 +408,6 @@ struct adapter {
 
         /* For 82544 PCIX Workaround */
 	boolean_t		pcix_82544;
-	boolean_t		in_detach;
 
 	struct e1000_hw_stats	stats;
 };

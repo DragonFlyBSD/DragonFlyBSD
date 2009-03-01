@@ -779,7 +779,6 @@ em_detach(device_t dev)
 
 		lwkt_serialize_enter(ifp->if_serializer);
 
-		adapter->in_detach = 1;
 		em_stop(adapter);
 
 		e1000_phy_hw_reset(&adapter->hw);
@@ -939,9 +938,6 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	uint16_t eeprom_data = 0;
 	int max_frame_size, mask, reinit;
 	int error = 0;
-
-	if (adapter->in_detach)
-		return (error);
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
