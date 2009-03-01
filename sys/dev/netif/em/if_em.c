@@ -1179,9 +1179,8 @@ em_init(void *xsc)
 		else
 			pba = E1000_PBA_48K; /* 48K for Rx, 16K for Tx */
 	}
-
 	E1000_WRITE_REG(&adapter->hw, E1000_PBA, pba);
-	
+
 	/* Get the latest mac address, User can use a LAA */
         bcopy(IF_LLADDR(ifp), adapter->hw.mac.addr, ETHER_ADDR_LEN);
 
@@ -3811,8 +3810,8 @@ em_print_hw_stats(struct adapter *adapter)
 static void
 em_print_nvm_info(struct adapter *adapter)
 {
-	uint16_t	eeprom_data;
-	int	i, j, row = 0;
+	uint16_t eeprom_data;
+	int i, j, row = 0;
 
 	/* Its a bit crude, but it gets the job done */
 	kprintf("\nInterface EEPROM Dump:\n");
