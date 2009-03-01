@@ -234,7 +234,7 @@
 
 /*
  * Bus dma allocation structure used by
- * e1000_dma_malloc and e1000_dma_free.
+ * em_dma_malloc and em_dma_free.
  */
 struct em_dma_alloc {
 	bus_addr_t		dma_paddr;
