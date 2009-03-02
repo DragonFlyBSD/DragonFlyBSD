@@ -96,14 +96,14 @@ u_long resetopt = 0;
 char *configfile;
 
 int config(struct vndisk *);
-void getoptions(struct vndisk *, char *);
+void getoptions(struct vndisk *, const char *);
 int getinfo(const char *vname);
-char *rawdevice(char *);
+char *rawdevice(const char *);
 void readconfig(int);
 static void usage(void);
 static int64_t getsize(const char *arg);
 static void do_autolabel(const char *dev, const char *label);
-int what_opt(char *, u_long *);
+int what_opt(const char *, u_long *);
 
 int
 main(int argc, char *argv[])
@@ -244,7 +244,7 @@ main(int argc, char *argv[])
 }
 
 int
-what_opt(char *str, u_long *p)
+what_opt(const char *str, u_long *p)
 {
 	if (!strcmp(str,"reserve")) { *p |= VN_RESERVE; return 0; }
 	if (!strcmp(str,"labels")) { *p |= VN_LABELS; return 0; }
@@ -298,7 +298,7 @@ getinfo( const char *vname )
 
 	snprintf(vnpath, sizeof(vnpath), "/dev/vn%d", i);
 
-	vd = open((char *)vnpath, O_RDONLY);
+	vd = open(vnpath, O_RDONLY);
 	if (vd < 0) {
 		err(1, "open: %s", vnpath);
 		return 1;
@@ -314,8 +314,9 @@ getinfo( const char *vname )
 
 		snprintf(vnpath, sizeof(vnpath), "/dev/vn%d", vnu.vnu_unit);
 
-		if(stat(vnpath, &sb) < 0)
+		if(stat(vnpath, &sb) < 0) {
 			break;
+		}
 		else {
         		if (ioctl(vd, VNIOCGET, &vnu) == -1) {
 				if (errno != ENXIO) {
@@ -654,10 +655,10 @@ readconfig(int flags)
 }
 
 void
-getoptions(struct vndisk *vnp, char *fstr)
+getoptions(struct vndisk *vnp, const char *fstr)
 {
 	int flags = 0;
-	char *oarg = NULL;
+	const char *oarg = NULL;
 
 	if (strcmp(fstr, "swap") == 0)
 		flags |= VN_SWAP;
@@ -681,7 +682,7 @@ getoptions(struct vndisk *vnp, char *fstr)
 }
 
 char *
-rawdevice(char *dev)
+rawdevice(const char *dev)
 {
 	char *rawbuf, *dp, *ep;
 	struct stat sb;
@@ -722,7 +723,7 @@ getsize(const char *arg)
 	switch(tolower(*ptr)) {
 	case 't':
 		/*
-		 * GULP!  Terrabytes.  It's actually possible to create 
+		 * GULP!  Terabytes.  It's actually possible to create
 		 * a 7.9 TB VN device, though newfs can't handle any single
 		 * filesystem larger then 1 TB.
 		 */
