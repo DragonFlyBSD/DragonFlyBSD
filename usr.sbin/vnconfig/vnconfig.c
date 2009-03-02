@@ -320,9 +320,17 @@ getinfo( const char *vname )
 		else {
         		if (ioctl(vd, VNIOCGET, &vnu) == -1) {
 				if (errno != ENXIO) {
-					err(1, "ioctl: %s", vname);
-                        		close(vd);
-                        		return 1;
+					if (*vnu.vnu_file == '\0') {
+						fprintf(stdout,
+						    "vn%d: ioctl: can't access regular file\n",
+						    vnu.vnu_unit);
+						continue;
+					}
+					else {
+						err(1, "ioctl: %s", vname);
+						close(vd);
+						return 1;
+					}
 				}
         		}
 
