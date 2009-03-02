@@ -93,7 +93,7 @@ int global = 0;
 int listopt = 0;
 u_long setopt = 0;
 u_long resetopt = 0;
-char *configfile;
+const char *configfile;
 
 int config(struct vndisk *);
 void getoptions(struct vndisk *, const char *);
@@ -210,6 +210,7 @@ main(int argc, char *argv[])
 		if (kldload("vn") < 0 || modfind("vn") < 0)
 			warnx( "cannot find or load \"vn\" kernel module");
 
+	rv = 0;
 	if (listopt) {
 		if(argc > optind)
 			while(argc > optind) 
@@ -270,18 +271,17 @@ what_opt(const char *str, u_long *p)
 int
 getinfo( const char *vname )
 {
-	int i, vd, printlim = 0;
-	char vnpath[PATH_MAX], *tmp;
+	int i = 0, vd, printlim = 0;
+	char vnpath[PATH_MAX];
+	const char *tmp;
 
 	struct vn_user vnu;
 	struct stat sb;
 
 	if (vname == NULL) {
-		i = 0;
 		printlim = 1024;
-	}
-	else {
-		tmp = (char *) vname;
+	} else {
+		tmp = vname;
 		while (*tmp != 0) {
 			if(isdigit(*tmp)){
 				i = atoi(tmp);
@@ -304,7 +304,7 @@ getinfo( const char *vname )
 		return 1;
 	}
 
-	for (i; i<printlim; i++) {
+	for (; i<printlim; i++) {
 
 		bzero((void *) &vnpath, sizeof(vnpath));
 		bzero((void *) &sb, sizeof(struct stat));
@@ -340,7 +340,7 @@ getinfo( const char *vname )
 				fprintf(stdout, "not in use\n");
 			else if ((strcmp(vnu.vnu_file, _VN_USER_SWAP)) == 0)
 				fprintf(stdout,
-					"consuming %d VM pages\n",
+					"consuming %lld VM pages\n",
 					vnu.vnu_size);
 			else
 				fprintf(stdout, 
@@ -480,7 +480,7 @@ config(struct vndisk *vnp)
 			status--;
 			warn("VNIO[GU]SET");
 		} else if (verbose)
-			printf("%s: flags now=%08x\n",dev,l);
+			printf("%s: flags now=%08lx\n",dev,l);
 	}
 	/*
 	 * Reset specified options
@@ -495,7 +495,7 @@ config(struct vndisk *vnp)
 			status--;
 			warn("VNIO[GU]CLEAR");
 		} else if (verbose)
-			printf("%s: flags now=%08x\n",dev,l);
+			printf("%s: flags now=%08lx\n",dev,l);
 	}
 	/*
 	 * Configure the device
@@ -762,7 +762,7 @@ getsize(const char *arg)
  */
 
 static void
-do_autolabel(const char *dev, const char *label)
+do_autolabel(const char *dev __unused, const char *label __unused)
 {
 	/* XXX not yet implemented */
 	fprintf(stderr, "autolabel not yet implemented, sorry\n");
