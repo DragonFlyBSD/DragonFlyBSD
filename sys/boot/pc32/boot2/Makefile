@@ -11,6 +11,8 @@ NXCFLAGS=
 NXLDFLAGS=
 
 .PATH: ${.CURDIR}/..
+.PATH: ${.CURDIR}/../../common
+.PATH: ${.CURDIR}/../../../../lib/libstand
 
 # A value of 0x80 enables LBA support.
 B1FLAGS=	0x80
@@ -50,8 +52,7 @@ CFLAGS=	-elf -ffreestanding -Os -fno-builtin \
 	-I${.CURDIR}/../btx/lib -I. \
 	-Wall -Waggregate-return -Wbad-function-cast -Wcast-align \
 	-Wmissing-declarations -Wmissing-prototypes -Wnested-externs \
-	-Wpointer-arith -Wshadow -Wstrict-prototypes -Wwrite-strings \
-	-D__BOOT2_HACK
+	-Wpointer-arith -Wshadow -Wstrict-prototypes -Wwrite-strings
 
 # Tell gcc that it shouldn't do fancy optimizations for newer processors.
 # Otherwise it winds up creating larger code and we won't be able to fit boot2.
@@ -69,8 +70,15 @@ CFLAGS+= -fno-unit-at-a-time
 CFLAGS+= -fno-stack-protector
 .endif
 
+# boot2 area in 32 bit disklabel is 16 sectors (8K)
+#
+# boot2 area in 64 bit disklabel is 64 sectors (32K).
+# However, the boot1 btx loader puts boot2 at a physical address
+# of MEM_BTX_USR+BOOT2_VORIGIN which is typically 0xC000, so we
+# cannot make boot2 any larger then 16KB or we overflow the segment.
+#
 NSECT_32?=	16
-NSECT_64?=	18
+NSECT_64?=	30
 LDFLAGS=-nostdlib -static -N --gc-sections
 
 all: boot
@@ -84,9 +92,11 @@ _ADDCFLAGS$s:= -DNSECT=${NSECT$s}
 _ts=	$s
 .if ${_ts} == "_64"
 _ADDCFLAGS$s+= -DDISKLABEL64
-_ADDCFLAGS$s+= -DHAMMERFS
+_ADDCFLAGS$s+= -DHAMMERFS -DUFS
+_ADDOBJS$s+= hammerread$s.o ufsread$s.o
 .else
-_ADDCFLAGS$s+= -DUFS1_ONLY
+_ADDCFLAGS$s+= -DUFS -DUFS1_ONLY
+_ADDOBJS$s+= ufsread$s.o
 .endif
 
 all: boot1$s boot2$s
@@ -127,14 +137,22 @@ boot2$s.ldr:
 boot2$s.bin: boot2$s.out
 	objcopy -S -O binary boot2$s.out ${.TARGET}
 
-boot2$s.out: boot2$s.o sio.o
+boot2$s.out: boot2$s.o sio.o ${_ADDOBJS$s}
 	${LD} ${LDFLAGS} -Ttext ${ORG2} -o ${.TARGET} \
 		${BTX}/lib/crt0.o ${.ALLSRC}
 
 boot2$s.o: boot2$s.h
 
 CLEANFILES+=	boot1$s boot1$s.out boot1$s.o \
-		boot2$s boot2$s.ldr boot2$s.bin boot2$s.ld boot2$s.out boot2$s.o boot2$s.h boot2$s.s
+		boot2$s boot2$s.ldr boot2$s.bin \
+		boot2$s.ld boot2$s.out boot2$s.o boot2$s.h boot2$s.s \
+		${_ADDOBJS$s}
+
+hammerread$s.o: hammerread.c
+	${CC} ${CFLAGS} ${_ADDCFLAGS$s} ${.ALLSRC} -o ${.TARGET} -c
+
+ufsread$s.o: ufsread.c
+	${CC} ${CFLAGS} ${_ADDCFLAGS$s} ${.ALLSRC} -o ${.TARGET} -c
 
 .endfor
 

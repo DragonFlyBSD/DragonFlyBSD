@@ -45,10 +45,13 @@
 #define	LIBSTAND	1
 #endif
 
+#ifdef BOOT2
+#include "boot2.h"
+#else
 #include <sys/param.h>
-
 #include <stddef.h>
 #include <stdint.h>
+#endif
 
 #ifdef TESTING
 #include <sys/fcntl.h>
@@ -136,12 +139,12 @@ hread(struct hfs *hfs, hammer_off_t off)
 
 #else	/* BOOT2 */
 
-struct dmadat {
-	char		secbuf[DEV_BSIZE];
+struct hammer_dmadat {
+	struct boot2_dmadat boot2;
 	char		buf[HAMMER_BUFSIZE];
 };
 
-static struct dmadat *dmadat;
+#define fsdmadat	((struct hammer_dmadat *)boot2_dmadat)
 
 struct hfs {
 	hammer_off_t	root;
@@ -151,7 +154,7 @@ struct hfs {
 static void *
 hread(struct hfs *hfs, hammer_off_t off)
 {
-	char *buf = dmadat->buf;
+	char *buf = fsdmadat->buf;
 
 	hammer_off_t boff = off & ~HAMMER_BUFMASK64;
 	boff &= HAMMER_OFF_LONG_MASK;
@@ -755,27 +758,23 @@ hreadf(struct hfs *hfs, ino_t ino, int64_t off, int64_t len, char *buf)
 struct hfs hfs;
 
 static int
-hammerinit(void)
+boot2_hammer_init(void)
 {
-	if (dsk_meta)
-		return (0);
+	hammer_volume_ondisk_t volhead;
 
-	hammer_volume_ondisk_t volhead = hread(&hfs, HAMMER_ZONE_ENCODE(1, 0));
+	volhead = hread(&hfs, HAMMER_ZONE_ENCODE(1, 0));
 	if (volhead == NULL)
 		return (-1);
 	if (volhead->vol_signature != HAMMER_FSBUF_VOLUME)
 		return (-1);
 	hfs.root = volhead->vol0_btree_root;
 	hfs.buf_beg = volhead->vol_buf_beg;
-	dsk_meta++;
 	return (0);
 }
 
-static ino_t
-lookup(const char *path)
+static boot2_ino_t
+boot2_hammer_lookup(const char *path)
 {
-	hammerinit();
-
 	ino_t ino = hlookup(&hfs, path);
 
 	if (ino == -1)
@@ -787,15 +786,20 @@ lookup(const char *path)
 }
 
 static ssize_t
-fsread(ino_t ino, void *buf, size_t len)
+boot2_hammer_read(boot2_ino_t ino, void *buf, size_t len)
 {
-	hammerinit();
-
 	ssize_t rlen = hreadf(&hfs, ino, fs_off, len, buf);
 	if (rlen != -1)
 		fs_off += rlen;
 	return (rlen);
 }
+
+const struct boot2_fsapi boot2_hammer_api = {
+	.fsinit = boot2_hammer_init,
+	.fslookup = boot2_hammer_lookup,
+	.fsread = boot2_hammer_read
+};
+
 #endif
 
 #ifndef BOOT2

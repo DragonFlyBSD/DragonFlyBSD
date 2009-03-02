@@ -47,9 +47,6 @@
  * $FreeBSD: src/sys/boot/i386/boot2/boot2.c,v 1.64 2003/08/25 23:28:31 obrien Exp $
  * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.18 2008/09/13 11:45:45 corecode Exp $
  */
-#ifdef HAMMERFS
-#undef __BOOT2_HACK
-#endif
 
 #include <sys/param.h>
 #ifdef DISKLABEL64
@@ -75,7 +72,7 @@
 #else
 #include "boot2_32.h"
 #endif
-
+#include "boot2.h"
 #include "lib.h"
 #include "../bootasm.h"
 
@@ -157,21 +154,26 @@ static struct dsk {
     unsigned start;
     int init;
 } dsk;
+
 static char cmd[512];
 static char kname[1024];
-static uint32_t opts;
+static uint32_t opts = RBF_VIDEO;
 static struct bootinfo bootinfo;
 
-static int ls, dsk_meta;
-static uint32_t fs_off;
+/*
+ * boot2 encapsulated ABI elements provided to *fsread.c
+ *
+ * NOTE: boot2_dmadat is extended by per-filesystem APIs
+ */
+uint32_t fs_off;
+int	ls;
+struct boot2_dmadat *boot2_dmadat;
 
 void exit(int);
 static void load(void);
 static int parse(void);
-static int xfsread(ino_t, void *, size_t);
-static int dskread(void *, unsigned, unsigned);
-static void printf(const char *,...);
-static void putchar(int);
+static int dskprobe(void);
+static int xfsread(boot2_ino_t, void *, size_t);
 static uint32_t memsize(void);
 static int drvread(void *, unsigned, unsigned);
 static int keyhit(unsigned);
@@ -179,7 +181,7 @@ static void xputc(int);
 static int xgetc(int);
 static int getc(int);
 
-static void 
+void
 memcpy(void *d, const void *s, int len)
 {
     char *dd = d;
@@ -198,23 +200,32 @@ memcpy(void *d, const void *s, int len)
 #endif
 }
 
-static inline int
+int
 strcmp(const char *s1, const char *s2)
 {
-    for (; *s1 == *s2 && *s1; s1++, s2++);
-    return (unsigned char)*s1 - (unsigned char)*s2;
+    for (; *s1 == *s2 && *s1; s1++, s2++)
+	;
+    return ((int)((unsigned char)*s1 - (unsigned char)*s2));
 }
 
-#if HAMMERFS
-#include "hammerread.c"
-#else
-#include "ufsread.c"
+#if defined(UFS) && defined(HAMMERFS)
+
+const struct boot2_fsapi *fsapi;
+
+#elif defined(UFS)
+
+#define fsapi	(&boot2_ufs_api)
+
+#elif defined(HAMMERFS)
+
+#define fsapi	(&boot2_hammer_api)
+
 #endif
 
 static int
-xfsread(ino_t inode, void *buf, size_t nbyte)
+xfsread(boot2_ino_t inode, void *buf, size_t nbyte)
 {
-    if ((size_t)fsread(inode, buf, nbyte) != nbyte) {
+    if ((size_t)fsapi->fsread(inode, buf, nbyte) != nbyte) {
 	printf(INVALID_S, "format");
 	return -1;
     }
@@ -273,9 +284,10 @@ int
 main(void)
 {
     int autoboot;
-    ino_t ino;
+    boot2_ino_t ino;
 
-    dmadat = (void *)(roundup2(__base + (int32_t)&_end, 0x10000) - __base);
+    boot2_dmadat =
+		(void *)(roundup2(__base + (int32_t)&_end, 0x10000) - __base);
     v86.ctl = V86_FLAGS;
     dsk.drive = *(uint8_t *)PTOV(MEM_BTX_USR_ARG);
     dsk.type = dsk.drive & DRV_HARD ? TYPE_AD : TYPE_FD;
@@ -287,13 +299,20 @@ main(void)
     bootinfo.bi_extmem = memsize();
     bootinfo.bi_memsizes_valid++;
 
-    /* Process configuration file */
-
     autoboot = 1;
 
-    if ((ino = lookup(PATH_CONFIG)))
-	fsread(ino, cmd, sizeof(cmd));
+    /*
+     * Probe the default disk and process the configuration file if
+     * successful.
+     */
+    if (dskprobe() == 0) {
+	if ((ino = fsapi->fslookup(PATH_CONFIG)))
+	    fsapi->fsread(ino, cmd, sizeof(cmd));
+    }
 
+    /*
+     * Parse config file if present.  parse() will re-probe if necessary.
+     */
     if (cmd[0]) {
 	printf("%s: %s", PATH_CONFIG, cmd);
 	if (parse())
@@ -367,11 +386,11 @@ load(void)
     Elf32_Phdr ep[2];
     Elf32_Shdr es[2];
     caddr_t p;
-    ino_t ino;
+    boot2_ino_t ino;
     uint32_t addr, x;
     int fmt, i, j;
 
-    if (!(ino = lookup(kname))) {
+    if (!(ino = fsapi->fslookup(kname))) {
 	if (!ls)
 	    printf("No %s\n", kname);
 	return;
@@ -453,7 +472,7 @@ load(void)
 }
 
 static int
-parse()
+parse(void)
 {
     char *arg = cmd;
     char *p, *q;
@@ -525,7 +544,6 @@ parse()
 		    drv = dsk.unit;
 		dsk.drive = (dsk.type <= TYPE_MAXHARD
 			     ? DRV_HARD : 0) + drv;
-		dsk_meta = 0;
 	    }
 	    if ((i = p - arg - !*(p - 1))) {
 		if ((size_t)i >= sizeof(kname))
@@ -535,11 +553,11 @@ parse()
 	}
 	arg = p;
     }
-    return 0;
+    return dskprobe();
 }
 
 static int
-dskread(void *buf, unsigned lba, unsigned nblk)
+dskprobe(void)
 {
     struct dos_partition *dp;
 #ifdef DISKLABEL64
@@ -550,77 +568,112 @@ dskread(void *buf, unsigned lba, unsigned nblk)
     char *sec;
     unsigned sl, i;
 
-    if (!dsk_meta) {
-	sec = dmadat->secbuf;
-	dsk.start = 0;
-	if (drvread(sec, DOSBBSECTOR, 1))
-	    return -1;
-	dp = (void *)(sec + DOSPARTOFF);
-	sl = dsk.slice;
-	if (sl < BASE_SLICE) {
-	    for (i = 0; i < NDOSPART; i++)
-		if (dp[i].dp_typ == DOSPTYP_386BSD &&
-		    (dp[i].dp_flag & 0x80 || sl < BASE_SLICE)) {
-		    sl = BASE_SLICE + i;
-		    if (dp[i].dp_flag & 0x80 ||
-			dsk.slice == COMPATIBILITY_SLICE)
-			break;
-		}
-	    if (dsk.slice == WHOLE_DISK_SLICE)
-		dsk.slice = sl;
-	}
-	if (sl != WHOLE_DISK_SLICE) {
-	    if (sl != COMPATIBILITY_SLICE)
-		dp += sl - BASE_SLICE;
-	    if (dp->dp_typ != DOSPTYP_386BSD) {
-		printf(INVALID_S, "slice");
-		return -1;
+    /*
+     * Probe slice table
+     */
+    sec = boot2_dmadat->secbuf;
+    dsk.start = 0;
+    if (drvread(sec, DOSBBSECTOR, 1))
+	return -1;
+    dp = (void *)(sec + DOSPARTOFF);
+    sl = dsk.slice;
+    if (sl < BASE_SLICE) {
+	for (i = 0; i < NDOSPART; i++)
+	    if (dp[i].dp_typ == DOSPTYP_386BSD &&
+		(dp[i].dp_flag & 0x80 || sl < BASE_SLICE)) {
+		sl = BASE_SLICE + i;
+		if (dp[i].dp_flag & 0x80 ||
+		    dsk.slice == COMPATIBILITY_SLICE)
+		    break;
 	    }
-	    dsk.start = dp->dp_start;
+	if (dsk.slice == WHOLE_DISK_SLICE)
+	    dsk.slice = sl;
+    }
+    if (sl != WHOLE_DISK_SLICE) {
+	if (sl != COMPATIBILITY_SLICE)
+	    dp += sl - BASE_SLICE;
+	if (dp->dp_typ != DOSPTYP_386BSD) {
+	    printf(INVALID_S, "slice");
+	    return -1;
 	}
+	dsk.start = dp->dp_start;
+    }
+
+    /*
+     * Probe label and partition table
+     */
 #ifdef DISKLABEL64
-	if (drvread(sec, dsk.start, (sizeof(struct disklabel64) + 511) / 512))
-		return -1;
-	d = (void *)sec;
-	if (d->d_magic != DISKMAGIC64) {
+    if (drvread(sec, dsk.start, (sizeof(struct disklabel64) + 511) / 512))
+	    return -1;
+    d = (void *)sec;
+    if (d->d_magic != DISKMAGIC64) {
+	printf(INVALID_S, "label");
+	return -1;
+    } else {
+	if (dsk.part >= d->d_npartitions || d->d_partitions[dsk.part].p_bsize == 0) {
+	    printf(INVALID_S, "partition");
+	    return -1;
+	}
+	dsk.start += d->d_partitions[dsk.part].p_boffset / 512;
+    }
+#else
+    if (drvread(sec, dsk.start + LABELSECTOR32, 1))
+	    return -1;
+    d = (void *)(sec + LABELOFFSET32);
+    if (d->d_magic != DISKMAGIC32 || d->d_magic2 != DISKMAGIC32) {
+	if (dsk.part != RAW_PART) {
 	    printf(INVALID_S, "label");
 	    return -1;
-	} else {
-	    if (dsk.part >= d->d_npartitions || d->d_partitions[dsk.part].p_bsize == 0) {
-		printf(INVALID_S, "partition");
-		return -1;
-	    }
-	    dsk.start += d->d_partitions[dsk.part].p_boffset / 512;
 	}
-#else
-	if (drvread(sec, dsk.start + LABELSECTOR32, 1))
-		return -1;
-	d = (void *)(sec + LABELOFFSET32);
-	if (d->d_magic != DISKMAGIC32 || d->d_magic2 != DISKMAGIC32) {
-	    if (dsk.part != RAW_PART) {
-		printf(INVALID_S, "label");
-		return -1;
-	    }
-	} else {
-	    if (!dsk.init) {
-		if (d->d_type == DTYPE_SCSI)
-		    dsk.type = TYPE_DA;
-		dsk.init++;
-	    }
-	    if (dsk.part >= d->d_npartitions ||
-		!d->d_partitions[dsk.part].p_size) {
-		printf(INVALID_S, "partition");
-		return -1;
-	    }
-	    dsk.start += d->d_partitions[dsk.part].p_offset;
-	    dsk.start -= d->d_partitions[RAW_PART].p_offset;
+    } else {
+	if (!dsk.init) {
+	    if (d->d_type == DTYPE_SCSI)
+		dsk.type = TYPE_DA;
+	    dsk.init++;
 	}
-#endif
+	if (dsk.part >= d->d_npartitions ||
+	    !d->d_partitions[dsk.part].p_size) {
+	    printf(INVALID_S, "partition");
+	    return -1;
+	}
+	dsk.start += d->d_partitions[dsk.part].p_offset;
+	dsk.start -= d->d_partitions[RAW_PART].p_offset;
     }
+#endif
+    /*
+     * Probe filesystem
+     */
+#if defined(UFS) && defined(HAMMERFS)
+    if (boot2_hammer_api.fsinit() == 0) {
+	fsapi = &boot2_hammer_api;
+    } else if (boot2_ufs_api.fsinit() == 0) {
+	fsapi = &boot2_ufs_api;
+    } else {
+	printf("fs probe failed\n");
+	fsapi = &boot2_ufs_api;
+	return -1;
+    }
+    return 0;
+#else
+    return fsapi->fsinit();
+#endif
+}
+
+
+/*
+ * Read from the probed disk.  We have established the slice and partition
+ * base sector.
+ */
+int
+dskread(void *buf, unsigned lba, unsigned nblk)
+{
     return drvread(buf, dsk.start + lba, nblk);
 }
 
-static void
+/*
+ * boot encapsulated ABI
+ */
+void
 printf(const char *fmt,...)
 {
     va_list ap;
@@ -655,10 +708,12 @@ printf(const char *fmt,...)
 	putchar(c);
     }
     va_end(ap);
-    return;
 }
 
-static void
+/*
+ * boot encapsulated ABI
+ */
+void
 putchar(int c)
 {
     if (c == '\n')
@@ -666,7 +721,10 @@ putchar(int c)
     xputc(c);
 }
 
-static int
+/*
+ * boot encapsulated ABI
+ */
+int
 drvread(void *buf, unsigned lba, unsigned nblk)
 {
     static unsigned c = 0x2d5c7c2f;	/* twiddle */

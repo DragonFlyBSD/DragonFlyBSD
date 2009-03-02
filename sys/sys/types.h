@@ -90,11 +90,7 @@ typedef	__uint32_t	gid_t;		/* group id */
 typedef __int64_t	id_t;		/* general id, can hold gid/pid/uid_t */
 typedef	__uint32_t	in_addr_t;	/* base type for internet address */
 typedef	__uint16_t	in_port_t;
-#ifdef __BOOT2_HACK
-typedef	__uint32_t	ino_t;		/* inode number */
-#else
 typedef	__uint64_t	ino_t;		/* inode number */
-#endif
 typedef	long		key_t;		/* IPC key (for Sys V IPC) */
 typedef	__uint16_t	mode_t;		/* permissions */
 typedef	__uint32_t	nlink_t;	/* link count */

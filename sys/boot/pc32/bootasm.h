@@ -72,8 +72,11 @@
 /*
  * This is the origin of boot2.bin relative to the BTX user address space
  * (e.g. physical address would be MEM_BTX_USR+BOOT2_VORIGIN).
+ *
+ * The physical origin is typically around 0xC000 and limits the size of
+ * boot2 to 16K, otherwise the loader will overflow the segment in v86 mode.
  */
-#define BOOT2_VORIGIN	0x4000
+#define BOOT2_VORIGIN	0x2000
 
 /*
  * NOTE: BOOT0_ORIGIN is extracted from this file and used in boot0/Makefile

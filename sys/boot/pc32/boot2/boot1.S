@@ -202,7 +202,11 @@ main.4: 	xor %dx,%dx			// Partition:drive
 //
 // Ok, we have a slice and drive in %dx now, so use that to locate and load
 // boot2.  %si references the start of the slice we are looking for, so go
-// ahead and load up the first 16 sectors (boot1 + boot2) from that.  
+// ahead and load up the first N sectors (boot1 + boot2) from that.
+//
+// N is 16 for boot1 in a disklabel32 and up to 32 in a disklabel64.  The
+// disklabel64 can hold up to 64 sectors but MEM_BTX_USR+BOOT2_VORIGIN
+// will overflow the segment if we use more then 32 sectors.
 //
 // When we read it in, we conveniently use BOOT2_LOAD_BUF (0x8c00) as our
 // transfer buffer.  Thus, boot1 ends up at 0x8c00, and boot2 starts at
