@@ -139,9 +139,11 @@
 #define EM_NAME	"Intel(R) PRO/1000 Network Connection "
 #define EM_VER	" 6.9.6"
 
-#define EM_DEVICE(id)	\
-	{ EM_VENDOR_ID, E1000_DEV_ID_##id, EM_NAME #id EM_VER }
-#define EM_DEVICE_NULL	{ 0, 0, NULL }
+#define _EM_DEVICE(id, ret)	\
+	{ EM_VENDOR_ID, E1000_DEV_ID_##id, ret, EM_NAME #id EM_VER }
+#define EM_EMX_DEVICE(id)	_EM_DEVICE(id, -100)
+#define EM_DEVICE(id)		_EM_DEVICE(id, 0)
+#define EM_DEVICE_NULL	{ 0, 0, 0, NULL }
 
 static const struct em_vendor_info em_vendor_info_array[] = {
 	EM_DEVICE(82540EM),
@@ -188,29 +190,29 @@ static const struct em_vendor_info em_vendor_info_array[] = {
 	EM_DEVICE(82547EI_MOBILE),
 	EM_DEVICE(82547GI),
 
-	EM_DEVICE(82571EB_COPPER),
-	EM_DEVICE(82571EB_FIBER),
-	EM_DEVICE(82571EB_SERDES),
-	EM_DEVICE(82571EB_SERDES_DUAL),
-	EM_DEVICE(82571EB_SERDES_QUAD),
-	EM_DEVICE(82571EB_QUAD_COPPER),
-	EM_DEVICE(82571EB_QUAD_COPPER_LP),
-	EM_DEVICE(82571EB_QUAD_FIBER),
-	EM_DEVICE(82571PT_QUAD_COPPER),
+	EM_EMX_DEVICE(82571EB_COPPER),
+	EM_EMX_DEVICE(82571EB_FIBER),
+	EM_EMX_DEVICE(82571EB_SERDES),
+	EM_EMX_DEVICE(82571EB_SERDES_DUAL),
+	EM_EMX_DEVICE(82571EB_SERDES_QUAD),
+	EM_EMX_DEVICE(82571EB_QUAD_COPPER),
+	EM_EMX_DEVICE(82571EB_QUAD_COPPER_LP),
+	EM_EMX_DEVICE(82571EB_QUAD_FIBER),
+	EM_EMX_DEVICE(82571PT_QUAD_COPPER),
 
-	EM_DEVICE(82572EI_COPPER),
-	EM_DEVICE(82572EI_FIBER),
-	EM_DEVICE(82572EI_SERDES),
-	EM_DEVICE(82572EI),
+	EM_EMX_DEVICE(82572EI_COPPER),
+	EM_EMX_DEVICE(82572EI_FIBER),
+	EM_EMX_DEVICE(82572EI_SERDES),
+	EM_EMX_DEVICE(82572EI),
 
-	EM_DEVICE(82573E),
-	EM_DEVICE(82573E_IAMT),
-	EM_DEVICE(82573L),
+	EM_EMX_DEVICE(82573E),
+	EM_EMX_DEVICE(82573E_IAMT),
+	EM_EMX_DEVICE(82573L),
 
-	EM_DEVICE(80003ES2LAN_COPPER_SPT),
-	EM_DEVICE(80003ES2LAN_SERDES_SPT),
-	EM_DEVICE(80003ES2LAN_COPPER_DPT),
-	EM_DEVICE(80003ES2LAN_SERDES_DPT),
+	EM_EMX_DEVICE(80003ES2LAN_COPPER_SPT),
+	EM_EMX_DEVICE(80003ES2LAN_SERDES_SPT),
+	EM_EMX_DEVICE(80003ES2LAN_COPPER_DPT),
+	EM_EMX_DEVICE(80003ES2LAN_SERDES_DPT),
 
 	EM_DEVICE(ICH8_IGP_M_AMT),
 	EM_DEVICE(ICH8_IGP_AMT),
@@ -230,7 +232,7 @@ static const struct em_vendor_info em_vendor_info_array[] = {
 	EM_DEVICE(ICH9_IFE_G),
 	EM_DEVICE(ICH9_BM),
 
-	EM_DEVICE(82574L),
+	EM_EMX_DEVICE(82574L),
 
 	EM_DEVICE(ICH10_R_BM_LM),
 	EM_DEVICE(ICH10_R_BM_LF),
@@ -399,7 +401,7 @@ em_probe(device_t dev)
 		if (vid == ent->vendor_id && did == ent->device_id) {
 			device_set_desc(dev, ent->desc);
 			device_set_async_attach(dev, TRUE);
-			return (0);
+			return (ent->ret);
 		}
 	}
 	return (ENXIO);
@@ -779,7 +781,6 @@ em_detach(device_t dev)
 
 		lwkt_serialize_enter(ifp->if_serializer);
 
-		adapter->in_detach = 1;
 		em_stop(adapter);
 
 		e1000_phy_hw_reset(&adapter->hw);
@@ -939,9 +940,6 @@ em_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	uint16_t eeprom_data = 0;
 	int max_frame_size, mask, reinit;
 	int error = 0;
-
-	if (adapter->in_detach)
-		return (error);
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -1179,9 +1177,8 @@ em_init(void *xsc)
 		else
 			pba = E1000_PBA_48K; /* 48K for Rx, 16K for Tx */
 	}
-
 	E1000_WRITE_REG(&adapter->hw, E1000_PBA, pba);
-	
+
 	/* Get the latest mac address, User can use a LAA */
         bcopy(IF_LLADDR(ifp), adapter->hw.mac.addr, ETHER_ADDR_LEN);
 
@@ -2064,7 +2061,7 @@ static int
 em_alloc_pci_res(struct adapter *adapter)
 {
 	device_t dev = adapter->dev;
-	int val, rid, error = E1000_SUCCESS;
+	int val, rid;
 
 	/* Enable bus mastering */
 	pci_enable_busmaster(dev);
@@ -2129,7 +2126,7 @@ em_alloc_pci_res(struct adapter *adapter)
 
 	adapter->hw.bus.pci_cmd_word = pci_read_config(dev, PCIR_COMMAND, 2);
 	adapter->hw.back = &adapter->osdep;
-	return (error);
+	return (0);
 }
 
 static void
@@ -2783,6 +2780,8 @@ em_txeof(struct adapter *adapter)
 				dd_idx = 0;
 
 			while (first != dd_idx) {
+				logif(pkt_txclean);
+
 				tx_buffer = &adapter->tx_buffer_area[first];
 				tx_desc = &adapter->tx_desc_base[first];
 
@@ -2845,6 +2844,8 @@ em_tx_collect(struct adapter *adapter)
 	first = adapter->next_tx_to_clean;
 
 	while (first != tdh) {
+		logif(pkt_txclean);
+
 		tx_buffer = &adapter->tx_buffer_area[first];
 		tx_desc = &adapter->tx_desc_base[first];
 
@@ -3811,8 +3812,8 @@ em_print_hw_stats(struct adapter *adapter)
 static void
 em_print_nvm_info(struct adapter *adapter)
 {
-	uint16_t	eeprom_data;
-	int	i, j, row = 0;
+	uint16_t eeprom_data;
+	int i, j, row = 0;
 
 	/* Its a bit crude, but it gets the job done */
 	kprintf("\nInterface EEPROM Dump:\n");

@@ -594,6 +594,7 @@ KTR_GIANT_CONTENTION		opt_ktr.h
 KTR_SPIN_CONTENTION		opt_ktr.h
 KTR_IF_BGE			opt_ktr.h
 KTR_IF_EM			opt_ktr.h
+KTR_IF_EMX			opt_ktr.h
 KTR_KERNENTRY			opt_ktr.h
 KTR_TESTLOG			opt_ktr.h
 KTR_SERIALIZER			opt_ktr.h
