@@ -1401,7 +1401,7 @@ ip_ctloutput(struct socket *so, struct sockopt *sopt)
 				inp->inp_ip_ttl = optval;
 				break;
 			case IP_MINTTL:
-				if (optval > 0 && optval <= MAXTTL)
+				if (optval >= 0 && optval <= MAXTTL)
 					inp->inp_ip_minttl = optval;
 				else
 					error = EINVAL;
