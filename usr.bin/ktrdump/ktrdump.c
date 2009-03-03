@@ -341,14 +341,8 @@ print_entry(FILE *fo, int n, int row, struct ktr_entry *entry,
 	if (pflag) {
 		if (info == NULL)
 			info = kvm_ktrinfo(entry->ktr_info);
-		if (info) {
-			fprintf(fo, kvm_string(info->kf_format),
-				entry->ktr_data[0], entry->ktr_data[1],
-				entry->ktr_data[2], entry->ktr_data[3],
-				entry->ktr_data[4], entry->ktr_data[5],
-				entry->ktr_data[6], entry->ktr_data[7],
-				entry->ktr_data[8], entry->ktr_data[9]);
-		}
+		if (info)
+			vfprintf(fo, kvm_string(info->kf_format), (void *)&entry->ktr_data);
 	}
 	fprintf(fo, "\n");
 	*last_timestamp = entry->ktr_timestamp;
