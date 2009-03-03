@@ -41,6 +41,7 @@
 #include <sys/sysctl.h>
 #include <sys/sockio.h>
 #include <sys/mbuf.h>
+#include <sys/firmware.h>
 #include <sys/kernel.h>
 #include <sys/kthread.h>
 #include <sys/interrupt.h>
@@ -147,9 +148,9 @@ static int	iwi_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	iwi_stop_master(struct iwi_softc *);
 static int	iwi_reset(struct iwi_softc *);
 static int	iwi_load_ucode(struct iwi_softc *, void *, int);
+static int	iwi_alloc_firmware(struct iwi_softc *, enum ieee80211_opmode);
+static int	iwi_free_firmware(struct iwi_softc *);
 static int	iwi_load_firmware(struct iwi_softc *, void *, int);
-static int	iwi_cache_firmware(struct iwi_softc *, void *);
-static void	iwi_free_firmware(struct iwi_softc *);
 static int	iwi_config(struct iwi_softc *);
 static int	iwi_set_chan(struct iwi_softc *, struct ieee80211_channel *);
 static int	iwi_scan(struct iwi_softc *);
@@ -1015,6 +1016,29 @@ iwi_media_change(struct ifnet *ifp)
 	return 0;
 }
 
+/* 
+ * Convert h/w rate code to IEEE rate code.
+ */
+static int
+iwi_cvtrate(int iwirate)
+{
+	switch (iwirate) {
+	case IWI_RATE_DS1:	return 2;
+	case IWI_RATE_DS2:	return 4;
+	case IWI_RATE_DS5:	return 11;
+	case IWI_RATE_DS11:	return 22;
+	case IWI_RATE_OFDM6:	return 12;
+	case IWI_RATE_OFDM9:	return 18;
+	case IWI_RATE_OFDM12:	return 24;
+	case IWI_RATE_OFDM18:	return 36;
+	case IWI_RATE_OFDM24:	return 48;
+	case IWI_RATE_OFDM36:	return 72;
+	case IWI_RATE_OFDM48:	return 96;
+	case IWI_RATE_OFDM54:	return 108;
+	}
+	return 0;
+}
+
 /*
  * The firmware automatically adapts the transmit speed.  We report its current
  * value here.
@@ -1024,26 +1048,7 @@ iwi_media_status(struct ifnet *ifp, struct ifmediareq *imr)
 {
 	struct iwi_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = &sc->sc_ic;
-#define N(a)	(sizeof (a) / sizeof (a[0]))
-	static const struct {
-		uint32_t	val;
-		int		rate;
-	} rates[] = {
-		{ IWI_RATE_DS1,      2 },
-		{ IWI_RATE_DS2,      4 },
-		{ IWI_RATE_DS5,     11 },
-		{ IWI_RATE_DS11,    22 },
-		{ IWI_RATE_OFDM6,   12 },
-		{ IWI_RATE_OFDM9,   18 },
-		{ IWI_RATE_OFDM12,  24 },
-		{ IWI_RATE_OFDM18,  36 },
-		{ IWI_RATE_OFDM24,  48 },
-		{ IWI_RATE_OFDM36,  72 },
-		{ IWI_RATE_OFDM48,  96 },
-		{ IWI_RATE_OFDM54, 108 },
-	};
-	uint32_t val;
-	int rate, i;
+	int rate;
 
 	imr->ifm_status = IFM_AVALID;
 	imr->ifm_active = IFM_IEEE80211;
@@ -1051,31 +1056,13 @@ iwi_media_status(struct ifnet *ifp, struct ifmediareq *imr)
 		imr->ifm_status |= IFM_ACTIVE;
 
 	/* read current transmission rate from adapter */
-	val = CSR_READ_4(sc, IWI_CSR_CURRENT_TX_RATE);
-
-	/* convert rate to 802.11 rate */
-	for (i = 0; i < N(rates) && rates[i].val != val; i++);
-	rate = (i < N(rates)) ? rates[i].rate : 0;
-
+	rate = iwi_cvtrate(CSR_READ_4(sc, IWI_CSR_CURRENT_TX_RATE));
 	imr->ifm_active |= ieee80211_rate2media(ic, rate, ic->ic_curmode);
-	switch (ic->ic_opmode) {
-	case IEEE80211_M_STA:
-		break;
 
-	case IEEE80211_M_IBSS:
+	if (ic->ic_opmode == IEEE80211_M_IBSS)
 		imr->ifm_active |= IFM_IEEE80211_ADHOC;
-		break;
-
-	case IEEE80211_M_MONITOR:
+	else if (ic->ic_opmode == IEEE80211_M_MONITOR)
 		imr->ifm_active |= IFM_IEEE80211_MONITOR;
-		break;
-
-	case IEEE80211_M_AHDEMO:
-	case IEEE80211_M_HOSTAP:
-		/* should not get there */
-		break;
-	}
-#undef N
 }
 
 static int
@@ -1938,7 +1925,6 @@ iwi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct iwi_softc *sc = ifp->if_softc;
 	struct ieee80211com *ic = &sc->sc_ic;
-	struct ifreq *ifr;
 	int error = 0;
 
 	switch (cmd) {
@@ -1950,27 +1936,6 @@ iwi_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			if (ifp->if_flags & IFF_RUNNING)
 				iwi_stop(sc);
 		}
-		break;
-
-	case SIOCSLOADFW:
-		/* only super-user can do that! */
-		error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
-		if (error != 0)
-			break;
-
-		ifr = (struct ifreq *)data;
-		error = iwi_cache_firmware(sc, ifr->ifr_data);
-		break;
-
-	case SIOCSKILLFW:
-		/* only super-user can do that! */
-		error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
-		if (error != 0)
-			break;
-
-		ifp->if_flags &= ~IFF_UP;
-		iwi_stop(sc);
-		iwi_free_firmware(sc);
 		break;
 
 	default:
@@ -2118,6 +2083,94 @@ iwi_load_ucode(struct iwi_softc *sc, void *uc, int size)
 	return 0;
 }
 
+static int
+iwi_alloc_firmware(struct iwi_softc *sc, enum ieee80211_opmode opmode)
+{
+	struct {
+		const char *suffix;
+		enum ieee80211_opmode opmode;
+	} fw_arr[] = {
+		{ "bss", IEEE80211_M_STA },
+		{ "ibss", IEEE80211_M_IBSS},
+		{ "sniffer", IEEE80211_M_MONITOR},
+		{ NULL, 0 }
+	};
+	struct ifnet *ifp = &sc->sc_ic.ic_if;
+	struct iwi_firmware_hdr *hdr;
+	struct iwi_firmware *fw = &sc->fw;
+	struct fw_image *image;
+	char filename[128];
+	int i, error, length_sum;
+
+	for (i = 0; fw_arr[i].suffix != NULL; ++i) {
+		if (fw_arr[i].opmode == opmode)
+			break;
+	}
+
+	KASSERT(fw_arr[i].suffix != NULL, ("unsupported opmode %u\n", opmode));
+
+	ksnprintf(filename, sizeof(filename), IWI_FW_PATH, fw_arr[i].suffix);
+
+	/*
+	 * Release the serializer to avoid possible dead lock
+	 */
+	lwkt_serialize_exit(ifp->if_serializer);
+	image = firmware_image_load(filename, NULL);
+	lwkt_serialize_enter(ifp->if_serializer);
+
+	if (image == NULL)
+		return ENOENT;
+	fw->fw_image = image;
+
+	/*
+	 * Verify the image
+	 */
+	error = EINVAL;
+
+	if (fw->fw_image->fw_imglen < sizeof(struct iwi_firmware_hdr)) {
+		if_printf(ifp, "%s firmware too short", image->fw_name);
+		goto back;
+	}
+
+	hdr = (struct iwi_firmware_hdr *)image->fw_image;
+	if (hdr->vermaj != 3) {
+		if_printf(ifp, "%s unsupported firmware version %d.%d\n",
+			image->fw_name, hdr->vermaj, hdr->vermin);
+		goto back;
+	}
+
+	length_sum = le32toh(hdr->bsize) + le32toh(hdr->usize) + le32toh(hdr->fsize);
+	if (length_sum + sizeof(*hdr) != image->fw_imglen) {
+		if_printf(ifp, "%s size mismatch, %u/hdr %u\n", image->fw_name,
+			fw->fw_image->fw_imglen, length_sum + sizeof(*hdr));
+		goto back;
+	}
+
+	fw->boot = (uint8_t *)(hdr + 1);
+	fw->boot_size =	le32toh(hdr->bsize);
+	fw->ucode = fw->boot + fw->boot_size;
+	fw->ucode_size = le32toh(hdr->usize);
+	fw->main = fw->ucode + fw->ucode_size;
+	fw->main_size = le32toh(hdr->fsize);
+	
+	error = 0;
+
+back:
+	if (error) {
+		firmware_image_unload(fw->fw_image);
+		bzero(fw, sizeof(*fw));
+	}
+	return error;
+}
+
+static int
+iwi_free_firmware(struct iwi_softc *sc)
+{
+	if (sc->fw.fw_image != NULL)
+		firmware_image_unload(sc->fw.fw_image);
+	return 0;
+}
+
 /* macro to handle unaligned little endian data in firmware image */
 #define GETLE32(p) ((p)[0] | (p)[1] << 8 | (p)[2] << 16 | (p)[3] << 24)
 
@@ -2255,67 +2308,6 @@ fail3:	bus_dmamem_free(dmat, virtaddr, map);
 fail2:	bus_dma_tag_destroy(dmat);
 fail1:
 	return error;
-}
-
-/*
- * Store firmware into kernel memory so we can download it when we need to,
- * e.g when the adapter wakes up from suspend mode.
- */
-static int
-iwi_cache_firmware(struct iwi_softc *sc, void *data)
-{
-	struct iwi_firmware *kfw = &sc->fw;
-	struct iwi_firmware ufw;
-	int error;
-
-	iwi_free_firmware(sc);
-
-	if ((error = copyin(data, &ufw, sizeof ufw)) != 0)
-		return error;
-
-	kfw->boot_size  = ufw.boot_size;
-	kfw->ucode_size = ufw.ucode_size;
-	kfw->main_size  = ufw.main_size;
-
-	kfw->boot = kmalloc(kfw->boot_size, M_DEVBUF, M_WAITOK);
-	kfw->ucode = kmalloc(kfw->ucode_size, M_DEVBUF, M_WAITOK);
-	kfw->main = kmalloc(kfw->main_size, M_DEVBUF, M_WAITOK);
-
-	if ((error = copyin(ufw.boot, kfw->boot, kfw->boot_size)) != 0)
-		goto fail;
-
-	if ((error = copyin(ufw.ucode, kfw->ucode, kfw->ucode_size)) != 0)
-		goto fail;
-
-	if ((error = copyin(ufw.main, kfw->main, kfw->main_size)) != 0)
-		goto fail;
-
-	DPRINTF(("Firmware cached: boot %u, ucode %u, main %u\n",
-	    kfw->boot_size, kfw->ucode_size, kfw->main_size));
-
-	sc->flags |= IWI_FLAG_FW_CACHED;
-
-	return 0;
-
-fail:
-	kfree(kfw->boot, M_DEVBUF);
-	kfree(kfw->ucode, M_DEVBUF);
-	kfree(kfw->main, M_DEVBUF);
-
-	return error;
-}
-
-static void
-iwi_free_firmware(struct iwi_softc *sc)
-{
-	if (!(sc->flags & IWI_FLAG_FW_CACHED))
-		return;
-
-	kfree(sc->fw.boot, M_DEVBUF);
-	kfree(sc->fw.ucode, M_DEVBUF);
-	kfree(sc->fw.main, M_DEVBUF);
-
-	sc->flags &= ~IWI_FLAG_FW_CACHED;
 }
 
 static int
@@ -2646,19 +2638,15 @@ iwi_init(void *priv)
 	struct iwi_rx_data *data;
 	int i;
 
-	/* exit immediately if firmware has not been ioctl'd */
-	if (!(sc->flags & IWI_FLAG_FW_CACHED)) {
-		if (!(sc->flags & IWI_FLAG_FW_WARNED))
-			device_printf(sc->sc_dev, "Please load firmware\n");
-		sc->flags |= IWI_FLAG_FW_WARNED;
-		ifp->if_flags &= ~IFF_UP;
-		return;
-	}
-
 	iwi_stop(sc);
 
 	if (iwi_reset(sc) != 0) {
 		device_printf(sc->sc_dev, "could not reset adapter\n");
+		goto fail;
+	}
+
+	if (iwi_alloc_firmware(sc, ic->ic_opmode) != 0) {
+		device_printf(sc->sc_dev, "could not allocate firmware\n");
 		goto fail;
 	}
 
