@@ -1057,3 +1057,5 @@ TO_REMOVE+=/usr/share/man/man3/__svc_getcallercreds.3.gz
 TO_REMOVE+=/usr/share/man/cat3/__svc_getcallercreds.3.gz
 TO_REMOVE+=/usr/share/vi/perl
 TO_REMOVE+=/usr/share/vi/tcl
+TO_REMOVE+=/usr/sbin/iwicontrol
+TO_REMOVE+=/usr/share/man/man8/iwicontrol.8.gz

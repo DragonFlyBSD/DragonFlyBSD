@@ -45,7 +45,6 @@ SUBDIR= 802_11 \
 	ifmcstat \
 	inetd \
 	iostat \
-	iwicontrol \
 	jail \
 	jexec \
 	jls \
