@@ -1406,6 +1406,11 @@ emx_encap(struct emx_softc *sc, struct mbuf **m_headp)
 
 	if (sc->tx_nsegs >= sc->tx_int_nsegs) {
 		sc->tx_nsegs = 0;
+
+		/*
+		 * Report Status (RS) is turned on
+		 * every tx_int_nsegs descriptors.
+		 */
 		cmd = E1000_TXD_CMD_RS;
 
 		sc->tx_dd[sc->tx_dd_tail] = last;
@@ -1415,7 +1420,6 @@ emx_encap(struct emx_softc *sc, struct mbuf **m_headp)
 
 	/*
 	 * Last Descriptor of Packet needs End Of Packet (EOP)
-	 * and Report Status (RS)
 	 */
 	ctxd->lower.data |= htole32(E1000_TXD_CMD_EOP | cmd);
 

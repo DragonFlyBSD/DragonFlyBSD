@@ -1631,6 +1631,11 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 
 	if (adapter->tx_nsegs >= adapter->tx_int_nsegs) {
 		adapter->tx_nsegs = 0;
+
+		/*
+		 * Report Status (RS) is turned on
+		 * every tx_int_nsegs descriptors.
+		 */
 		cmd = E1000_TXD_CMD_RS;
 
 		adapter->tx_dd[adapter->tx_dd_tail] = last;
@@ -1640,7 +1645,6 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 
 	/*
 	 * Last Descriptor of Packet needs End Of Packet (EOP)
-	 * and Report Status (RS)
 	 */
 	ctxd->lower.data |= htole32(E1000_TXD_CMD_EOP | cmd);
 
