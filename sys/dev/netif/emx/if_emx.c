@@ -1381,8 +1381,6 @@ emx_encap(struct emx_softc *sc, struct mbuf **m_headp)
 		last = i;
 		if (++i == sc->num_tx_desc)
 			i = 0;
-
-		tx_buffer->m_head = NULL;
 	}
 
 	sc->next_avail_tx_desc = i;
@@ -2161,7 +2159,6 @@ emx_txcsum(struct emx_softc *sc, struct mbuf *mp,
 	TXD->tcp_seg_setup.data = htole32(0);
 	TXD->cmd_and_length =
 	    htole32(E1000_TXD_CMD_IFCS | E1000_TXD_CMD_DEXT | cmd);
-	tx_buffer->m_head = NULL;
 
 	if (++curr_txd == sc->num_tx_desc)
 		curr_txd = 0;
@@ -2237,7 +2234,6 @@ static void
 emx_txeof(struct emx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct e1000_tx_desc *tx_desc;
 	struct emx_buf *tx_buffer;
 	int first, num_avail;
 
@@ -2252,9 +2248,9 @@ emx_txeof(struct emx_softc *sc)
 
 	while (sc->tx_dd_head != sc->tx_dd_tail) {
 		int dd_idx = sc->tx_dd[sc->tx_dd_head];
+		struct e1000_tx_desc *tx_desc;
 
 		tx_desc = &sc->tx_desc_base[dd_idx];
-
 		if (tx_desc->upper.fields.status & E1000_TXD_STAT_DD) {
 			EMX_INC_TXDD_IDX(sc->tx_dd_head);
 
@@ -2264,14 +2260,9 @@ emx_txeof(struct emx_softc *sc)
 			while (first != dd_idx) {
 				logif(pkt_txclean);
 
-				tx_buffer = &sc->tx_buffer_area[first];
-				tx_desc = &sc->tx_desc_base[first];
-
-				tx_desc->upper.data = 0;
-				tx_desc->lower.data = 0;
-				tx_desc->buffer_addr = 0;
 				num_avail++;
 
+				tx_buffer = &sc->tx_buffer_area[first];
 				if (tx_buffer->m_head) {
 					ifp->if_opackets++;
 					bus_dmamap_unload(sc->txtag,
@@ -2308,7 +2299,6 @@ static void
 emx_tx_collect(struct emx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct e1000_tx_desc *tx_desc;
 	struct emx_buf *tx_buffer;
 	int tdh, first, num_avail, dd_idx = -1;
 
@@ -2328,14 +2318,9 @@ emx_tx_collect(struct emx_softc *sc)
 	while (first != tdh) {
 		logif(pkt_txclean);
 
-		tx_buffer = &sc->tx_buffer_area[first];
-		tx_desc = &sc->tx_desc_base[first];
-
-		tx_desc->upper.data = 0;
-		tx_desc->lower.data = 0;
-		tx_desc->buffer_addr = 0;
 		num_avail++;
 
+		tx_buffer = &sc->tx_buffer_area[first];
 		if (tx_buffer->m_head) {
 			ifp->if_opackets++;
 			bus_dmamap_unload(sc->txtag,
