@@ -981,7 +981,7 @@ lwpsignal(struct proc *p, struct lwp *lp, int sig)
 			return;
 
 		/*
-		 * Ig the signal is being ignored, then we forget about
+		 * If the signal is being ignored, then we forget about
 		 * it immediately.  NOTE: We don't set SIGCONT in p_sigignore,
 		 * and if it is set to SIG_IGN, action will be SIG_DFL here.
 		 */
