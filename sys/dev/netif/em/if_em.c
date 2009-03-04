@@ -1638,6 +1638,10 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 		 */
 		cmd = E1000_TXD_CMD_RS;
 
+		/*
+		 * Keep track of the descriptor, which will
+		 * be written back by hardware.
+		 */
 		adapter->tx_dd[adapter->tx_dd_tail] = last;
 		EM_INC_TXDD_IDX(adapter->tx_dd_tail);
 		KKASSERT(adapter->tx_dd_tail != adapter->tx_dd_head);
@@ -1647,12 +1651,6 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 	 * Last Descriptor of Packet needs End Of Packet (EOP)
 	 */
 	ctxd->lower.data |= htole32(E1000_TXD_CMD_EOP | cmd);
-
-	/*
-	 * Keep track in the first buffer which descriptor will be
-	 * written back
-	 */
-	tx_buffer = &adapter->tx_buffer_area[first];
 
 	/*
 	 * Advance the Transmit Descriptor Tail (TDT), this tells the E1000
