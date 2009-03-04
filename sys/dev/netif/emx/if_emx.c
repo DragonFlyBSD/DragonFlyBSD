@@ -1313,7 +1313,7 @@ emx_encap(struct emx_softc *sc, struct mbuf **m_headp)
 	uint32_t txd_upper, txd_lower, cmd = 0;
 	int maxsegs, nsegs, i, j, first, last = 0, error;
 
-	if (__predict_false(m_head->m_len < EMX_TXCSUM_MINHL) &&
+	if (m_head->m_len < EMX_TXCSUM_MINHL &&
 	    (m_head->m_flags & EMX_CSUM_FEATURES)) {
 		/*
 		 * Make sure that ethernet header and ip.ip_hl are in
@@ -2198,7 +2198,7 @@ emx_txcsum_pullup(struct emx_softc *sc, struct mbuf **m0)
 		if (eh->ether_type == htons(ETHERTYPE_VLAN))
 			len += EVL_ENCAPLEN;
 
-		if (__predict_false(m->m_len < len)) {
+		if (m->m_len < len) {
 			sc->tx_csum_drop2++;
 			m_freem(m);
 			*m0 = NULL;
@@ -2222,7 +2222,7 @@ emx_txcsum_pullup(struct emx_softc *sc, struct mbuf **m0)
 	if (eh->ether_type == htons(ETHERTYPE_VLAN))
 		len += EVL_ENCAPLEN;
 
-	if (__predict_false(m->m_len < len)) {
+	if (m->m_len < len) {
 		sc->tx_csum_pullup2++;
 		m = m_pullup(m, len);
 		if (m == NULL) {
