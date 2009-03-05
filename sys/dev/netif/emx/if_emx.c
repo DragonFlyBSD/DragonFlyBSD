@@ -369,28 +369,6 @@ emx_attach(device_t dev)
 	}
 	e1000_get_bus_info(&sc->hw);
 
-	/*
-	 * Validate number of transmit and receive descriptors.  It
-	 * must not exceed hardware maximum, and must be multiple
-	 * of E1000_DBA_ALIGN.
-	 */
-	if ((emx_txd * sizeof(struct e1000_tx_desc)) % EMX_DBA_ALIGN != 0 ||
-	    emx_txd > EMX_MAX_TXD || emx_txd < EMX_MIN_TXD) {
-		device_printf(dev, "Using %d TX descriptors instead of %d!\n",
-		    EMX_DEFAULT_TXD, emx_txd);
-		sc->num_tx_desc = EMX_DEFAULT_TXD;
-	} else {
-		sc->num_tx_desc = emx_txd;
-	}
-	if ((emx_rxd * sizeof(struct e1000_rx_desc)) % EMX_DBA_ALIGN != 0 ||
-	    emx_rxd > EMX_MAX_RXD || emx_rxd < EMX_MIN_RXD) {
-		device_printf(dev, "Using %d RX descriptors instead of %d!\n",
-		    EMX_DEFAULT_RXD, emx_rxd);
-		sc->num_rx_desc = EMX_DEFAULT_RXD;
-	} else {
-		sc->num_rx_desc = emx_rxd;
-	}
-
 	sc->hw.mac.autoneg = EMX_DO_AUTO_NEG;
 	sc->hw.phy.autoneg_wait_to_complete = FALSE;
 	sc->hw.phy.autoneg_advertised = EMX_AUTONEG_ADV_DEFAULT;
@@ -448,6 +426,19 @@ emx_attach(device_t dev)
 	}
 
 	/*
+	 * Validate number of transmit descriptors.  It must not exceed
+	 * hardware maximum, and must be multiple of E1000_DBA_ALIGN.
+	 */
+	if ((emx_txd * sizeof(struct e1000_tx_desc)) % EMX_DBA_ALIGN != 0 ||
+	    emx_txd > EMX_MAX_TXD || emx_txd < EMX_MIN_TXD) {
+		device_printf(dev, "Using %d TX descriptors instead of %d!\n",
+		    EMX_DEFAULT_TXD, emx_txd);
+		sc->num_tx_desc = EMX_DEFAULT_TXD;
+	} else {
+		sc->num_tx_desc = emx_txd;
+	}
+
+	/*
 	 * Allocate Transmit Descriptor ring
 	 */
 	tsize = roundup2(sc->num_tx_desc * sizeof(struct e1000_tx_desc),
@@ -460,6 +451,28 @@ emx_attach(device_t dev)
 	sc->tx_desc_base = sc->txdma.dma_vaddr;
 
 	/*
+	 * Allocate transmit buffers
+	 */
+	error = emx_create_tx_ring(sc);
+	if (error) {
+		device_printf(dev, "Could not setup transmit structures\n");
+		goto fail;
+	}
+
+	/*
+	 * Validate number of receive descriptors.  It must not exceed
+	 * hardware maximum, and must be multiple of E1000_DBA_ALIGN.
+	 */
+	if ((emx_rxd * sizeof(struct e1000_rx_desc)) % EMX_DBA_ALIGN != 0 ||
+	    emx_rxd > EMX_MAX_RXD || emx_rxd < EMX_MIN_RXD) {
+		device_printf(dev, "Using %d RX descriptors instead of %d!\n",
+		    EMX_DEFAULT_RXD, emx_rxd);
+		sc->num_rx_desc = EMX_DEFAULT_RXD;
+	} else {
+		sc->num_rx_desc = emx_rxd;
+	}
+
+	/*
 	 * Allocate Receive Descriptor ring
 	 */
 	rsize = roundup2(sc->num_rx_desc * sizeof(struct e1000_rx_desc),
@@ -470,6 +483,15 @@ emx_attach(device_t dev)
 		goto fail;
 	}
 	sc->rx_desc_base = sc->rxdma.dma_vaddr;
+
+	/*
+	 * Allocate receive buffers
+	 */
+	error = emx_create_rx_ring(sc);
+	if (error) {
+		device_printf(dev, "Could not setup receive structures\n");
+		goto fail;
+	}
 
 	/* Make sure we have a good EEPROM before we read from it */
 	if (e1000_validate_nvm_checksum(&sc->hw) < 0) {
@@ -503,20 +525,6 @@ emx_attach(device_t dev)
 	if (!emx_is_valid_eaddr(sc->hw.mac.addr)) {
 		device_printf(dev, "Invalid MAC address\n");
 		error = EIO;
-		goto fail;
-	}
-
-	/* Allocate transmit descriptors and buffers */
-	error = emx_create_tx_ring(sc);
-	if (error) {
-		device_printf(dev, "Could not setup transmit structures\n");
-		goto fail;
-	}
-
-	/* Allocate receive descriptors and buffers */
-	error = emx_create_rx_ring(sc);
-	if (error) {
-		device_printf(dev, "Could not setup receive structures\n");
 		goto fail;
 	}
 
