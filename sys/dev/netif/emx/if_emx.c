@@ -304,7 +304,6 @@ emx_attach(device_t dev)
 {
 	struct emx_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int tsize, rsize;
 	int error = 0;
 	uint16_t eeprom_data, device_id;
 
@@ -426,32 +425,7 @@ emx_attach(device_t dev)
 	}
 
 	/*
-	 * Validate number of transmit descriptors.  It must not exceed
-	 * hardware maximum, and must be multiple of E1000_DBA_ALIGN.
-	 */
-	if ((emx_txd * sizeof(struct e1000_tx_desc)) % EMX_DBA_ALIGN != 0 ||
-	    emx_txd > EMX_MAX_TXD || emx_txd < EMX_MIN_TXD) {
-		device_printf(dev, "Using %d TX descriptors instead of %d!\n",
-		    EMX_DEFAULT_TXD, emx_txd);
-		sc->num_tx_desc = EMX_DEFAULT_TXD;
-	} else {
-		sc->num_tx_desc = emx_txd;
-	}
-
-	/*
-	 * Allocate Transmit Descriptor ring
-	 */
-	tsize = roundup2(sc->num_tx_desc * sizeof(struct e1000_tx_desc),
-			 EMX_DBA_ALIGN);
-	error = emx_dma_malloc(sc, tsize, &sc->txdma);
-	if (error) {
-		device_printf(dev, "Unable to allocate tx_desc memory\n");
-		goto fail;
-	}
-	sc->tx_desc_base = sc->txdma.dma_vaddr;
-
-	/*
-	 * Allocate transmit buffers
+	 * Allocate transmit descriptors ring and buffers
 	 */
 	error = emx_create_tx_ring(sc);
 	if (error) {
@@ -460,32 +434,7 @@ emx_attach(device_t dev)
 	}
 
 	/*
-	 * Validate number of receive descriptors.  It must not exceed
-	 * hardware maximum, and must be multiple of E1000_DBA_ALIGN.
-	 */
-	if ((emx_rxd * sizeof(struct e1000_rx_desc)) % EMX_DBA_ALIGN != 0 ||
-	    emx_rxd > EMX_MAX_RXD || emx_rxd < EMX_MIN_RXD) {
-		device_printf(dev, "Using %d RX descriptors instead of %d!\n",
-		    EMX_DEFAULT_RXD, emx_rxd);
-		sc->num_rx_desc = EMX_DEFAULT_RXD;
-	} else {
-		sc->num_rx_desc = emx_rxd;
-	}
-
-	/*
-	 * Allocate Receive Descriptor ring
-	 */
-	rsize = roundup2(sc->num_rx_desc * sizeof(struct e1000_rx_desc),
-			 EMX_DBA_ALIGN);
-	error = emx_dma_malloc(sc, rsize, &sc->rxdma);
-	if (error) {
-		device_printf(dev, "Unable to allocate rx_desc memory\n");
-		goto fail;
-	}
-	sc->rx_desc_base = sc->rxdma.dma_vaddr;
-
-	/*
-	 * Allocate receive buffers
+	 * Allocate receive descriptors ring and buffers
 	 */
 	error = emx_create_rx_ring(sc);
 	if (error) {
@@ -688,14 +637,6 @@ emx_detach(device_t dev)
 
 	emx_destroy_tx_ring(sc, sc->num_tx_desc);
 	emx_destroy_rx_ring(sc, sc->num_rx_desc);
-
-	/* Free Transmit Descriptor ring */
-	if (sc->tx_desc_base)
-		emx_dma_free(sc, &sc->txdma);
-
-	/* Free Receive Descriptor ring */
-	if (sc->rx_desc_base)
-		emx_dma_free(sc, &sc->rxdma);
 
 	/* Free top level busdma tag */
 	if (sc->parent_dtag != NULL)
@@ -1885,7 +1826,32 @@ emx_create_tx_ring(struct emx_softc *sc)
 {
 	device_t dev = sc->dev;
 	struct emx_buf *tx_buffer;
-	int error, i;
+	int error, i, tsize;
+
+	/*
+	 * Validate number of transmit descriptors.  It must not exceed
+	 * hardware maximum, and must be multiple of E1000_DBA_ALIGN.
+	 */
+	if ((emx_txd * sizeof(struct e1000_tx_desc)) % EMX_DBA_ALIGN != 0 ||
+	    emx_txd > EMX_MAX_TXD || emx_txd < EMX_MIN_TXD) {
+		device_printf(dev, "Using %d TX descriptors instead of %d!\n",
+		    EMX_DEFAULT_TXD, emx_txd);
+		sc->num_tx_desc = EMX_DEFAULT_TXD;
+	} else {
+		sc->num_tx_desc = emx_txd;
+	}
+
+	/*
+	 * Allocate Transmit Descriptor ring
+	 */
+	tsize = roundup2(sc->num_tx_desc * sizeof(struct e1000_tx_desc),
+			 EMX_DBA_ALIGN);
+	error = emx_dma_malloc(sc, tsize, &sc->txdma);
+	if (error) {
+		device_printf(dev, "Unable to allocate tx_desc memory\n");
+		return error;
+	}
+	sc->tx_desc_base = sc->txdma.dma_vaddr;
 
 	sc->tx_buffer_area =
 		kmalloc(sizeof(struct emx_buf) * sc->num_tx_desc,
@@ -2016,6 +1982,10 @@ emx_destroy_tx_ring(struct emx_softc *sc, int ndesc)
 {
 	struct emx_buf *tx_buffer;
 	int i;
+
+	/* Free Transmit Descriptor ring */
+	if (sc->tx_desc_base)
+		emx_dma_free(sc, &sc->txdma);
 
 	if (sc->tx_buffer_area == NULL)
 		return;
@@ -2438,7 +2408,32 @@ emx_create_rx_ring(struct emx_softc *sc)
 {
 	device_t dev = sc->dev;
 	struct emx_buf *rx_buffer;
-	int i, error;
+	int i, error, rsize;
+
+	/*
+	 * Validate number of receive descriptors.  It must not exceed
+	 * hardware maximum, and must be multiple of E1000_DBA_ALIGN.
+	 */
+	if ((emx_rxd * sizeof(struct e1000_rx_desc)) % EMX_DBA_ALIGN != 0 ||
+	    emx_rxd > EMX_MAX_RXD || emx_rxd < EMX_MIN_RXD) {
+		device_printf(dev, "Using %d RX descriptors instead of %d!\n",
+		    EMX_DEFAULT_RXD, emx_rxd);
+		sc->num_rx_desc = EMX_DEFAULT_RXD;
+	} else {
+		sc->num_rx_desc = emx_rxd;
+	}
+
+	/*
+	 * Allocate Receive Descriptor ring
+	 */
+	rsize = roundup2(sc->num_rx_desc * sizeof(struct e1000_rx_desc),
+			 EMX_DBA_ALIGN);
+	error = emx_dma_malloc(sc, rsize, &sc->rxdma);
+	if (error) {
+		device_printf(dev, "Unable to allocate rx_desc memory\n");
+		return error;
+	}
+	sc->rx_desc_base = sc->rxdma.dma_vaddr;
 
 	sc->rx_buffer_area =
 		kmalloc(sizeof(struct emx_buf) * sc->num_rx_desc,
@@ -2629,6 +2624,10 @@ emx_destroy_rx_ring(struct emx_softc *sc, int ndesc)
 {
 	struct emx_buf *rx_buffer;
 	int i;
+
+	/* Free Receive Descriptor ring */
+	if (sc->rx_desc_base)
+		emx_dma_free(sc, &sc->rxdma);
 
 	if (sc->rx_buffer_area == NULL)
 		return;
