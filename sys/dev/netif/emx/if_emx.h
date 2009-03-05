@@ -168,17 +168,6 @@
  */
 #define EMX_EIAC			0x000DC
 
-/*
- * busdma(9) information structure used by
- * emx_dma_malloc() and emx_dma_free().
- */
-struct emx_dma {
-	bus_addr_t		dma_paddr;
-	void			*dma_vaddr;
-	bus_dma_tag_t		dma_tag;
-	bus_dmamap_t		dma_map;
-};
-
 struct emx_softc {
 	struct arpcom		arpcom;
 	struct e1000_hw		hw;
@@ -188,8 +177,14 @@ struct emx_softc {
 	device_t		dev;
 
 	bus_dma_tag_t		parent_dtag;
-	struct emx_dma		rxdma;		/* bus_dma glue for rx desc */
-	struct emx_dma		txdma;		/* bus_dma glue for tx desc */
+
+	bus_dma_tag_t		rx_desc_dtag;
+	bus_dmamap_t		rx_desc_dmap;
+	bus_addr_t		rx_desc_paddr;
+
+	bus_dma_tag_t		tx_desc_dtag;
+	bus_dmamap_t		tx_desc_dmap;
+	bus_addr_t		tx_desc_paddr;
 
 	struct resource		*memory;
 	int			memory_rid;

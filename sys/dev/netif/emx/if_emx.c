@@ -174,9 +174,6 @@ static void	emx_tx_purge(struct emx_softc *);
 static void	emx_enable_intr(struct emx_softc *);
 static void	emx_disable_intr(struct emx_softc *);
 
-static int	emx_dma_malloc(struct emx_softc *, bus_size_t,
-		    struct emx_dma *);
-static void	emx_dma_free(struct emx_softc *, struct emx_dma *);
 static void	emx_init_tx_ring(struct emx_softc *);
 static int	emx_init_rx_ring(struct emx_softc *);
 static int	emx_create_tx_ring(struct emx_softc *);
@@ -1798,30 +1795,6 @@ emx_smartspeed(struct emx_softc *sc)
 }
 
 static int
-emx_dma_malloc(struct emx_softc *sc, bus_size_t size,
-	       struct emx_dma *dma)
-{
-	dma->dma_vaddr = bus_dmamem_coherent_any(sc->parent_dtag,
-				EMX_DBA_ALIGN, size, BUS_DMA_WAITOK,
-				&dma->dma_tag, &dma->dma_map,
-				&dma->dma_paddr);
-	if (dma->dma_vaddr == NULL)
-		return ENOMEM;
-	else
-		return 0;
-}
-
-static void
-emx_dma_free(struct emx_softc *sc, struct emx_dma *dma)
-{
-	if (dma->dma_tag == NULL)
-		return;
-	bus_dmamap_unload(dma->dma_tag, dma->dma_map);
-	bus_dmamem_free(dma->dma_tag, dma->dma_vaddr, dma->dma_map);
-	bus_dma_tag_destroy(dma->dma_tag);
-}
-
-static int
 emx_create_tx_ring(struct emx_softc *sc)
 {
 	device_t dev = sc->dev;
@@ -1846,12 +1819,14 @@ emx_create_tx_ring(struct emx_softc *sc)
 	 */
 	tsize = roundup2(sc->num_tx_desc * sizeof(struct e1000_tx_desc),
 			 EMX_DBA_ALIGN);
-	error = emx_dma_malloc(sc, tsize, &sc->txdma);
-	if (error) {
+	sc->tx_desc_base = bus_dmamem_coherent_any(sc->parent_dtag,
+				EMX_DBA_ALIGN, tsize, BUS_DMA_WAITOK,
+				&sc->tx_desc_dtag, &sc->tx_desc_dmap,
+				&sc->tx_desc_paddr);
+	if (sc->tx_desc_base == NULL) {
 		device_printf(dev, "Unable to allocate tx_desc memory\n");
-		return error;
+		return ENOMEM;
 	}
-	sc->tx_desc_base = sc->txdma.dma_vaddr;
 
 	sc->tx_buffer_area =
 		kmalloc(sizeof(struct emx_buf) * sc->num_tx_desc,
@@ -1916,7 +1891,7 @@ emx_init_tx_unit(struct emx_softc *sc)
 	uint64_t bus_addr;
 
 	/* Setup the Base and Length of the Tx Descriptor Ring */
-	bus_addr = sc->txdma.dma_paddr;
+	bus_addr = sc->tx_desc_paddr;
 	E1000_WRITE_REG(&sc->hw, E1000_TDLEN(0),
 	    sc->num_tx_desc * sizeof(struct e1000_tx_desc));
 	E1000_WRITE_REG(&sc->hw, E1000_TDBAH(0),
@@ -1984,8 +1959,14 @@ emx_destroy_tx_ring(struct emx_softc *sc, int ndesc)
 	int i;
 
 	/* Free Transmit Descriptor ring */
-	if (sc->tx_desc_base)
-		emx_dma_free(sc, &sc->txdma);
+	if (sc->tx_desc_base) {
+		bus_dmamap_unload(sc->tx_desc_dtag, sc->tx_desc_dmap);
+		bus_dmamem_free(sc->tx_desc_dtag, sc->tx_desc_base,
+				sc->tx_desc_dmap);
+		bus_dma_tag_destroy(sc->tx_desc_dtag);
+
+		sc->tx_desc_base = NULL;
+	}
 
 	if (sc->tx_buffer_area == NULL)
 		return;
@@ -2428,12 +2409,14 @@ emx_create_rx_ring(struct emx_softc *sc)
 	 */
 	rsize = roundup2(sc->num_rx_desc * sizeof(struct e1000_rx_desc),
 			 EMX_DBA_ALIGN);
-	error = emx_dma_malloc(sc, rsize, &sc->rxdma);
-	if (error) {
+	sc->rx_desc_base = bus_dmamem_coherent_any(sc->parent_dtag,
+				EMX_DBA_ALIGN, rsize, BUS_DMA_WAITOK,
+				&sc->rx_desc_dtag, &sc->rx_desc_dmap,
+				&sc->rx_desc_paddr);
+	if (sc->rx_desc_base == NULL) {
 		device_printf(dev, "Unable to allocate rx_desc memory\n");
-		return error;
+		return ENOMEM;
 	}
-	sc->rx_desc_base = sc->rxdma.dma_vaddr;
 
 	sc->rx_buffer_area =
 		kmalloc(sizeof(struct emx_buf) * sc->num_rx_desc,
@@ -2543,7 +2526,7 @@ emx_init_rx_unit(struct emx_softc *sc)
 	}
 
 	/* Setup the Base and Length of the Rx Descriptor Ring */
-	bus_addr = sc->rxdma.dma_paddr;
+	bus_addr = sc->rx_desc_paddr;
 	E1000_WRITE_REG(&sc->hw, E1000_RDLEN(0),
 	    sc->num_rx_desc * sizeof(struct e1000_rx_desc));
 	E1000_WRITE_REG(&sc->hw, E1000_RDBAH(0), (uint32_t)(bus_addr >> 32));
@@ -2626,8 +2609,14 @@ emx_destroy_rx_ring(struct emx_softc *sc, int ndesc)
 	int i;
 
 	/* Free Receive Descriptor ring */
-	if (sc->rx_desc_base)
-		emx_dma_free(sc, &sc->rxdma);
+	if (sc->rx_desc_base) {
+		bus_dmamap_unload(sc->rx_desc_dtag, sc->rx_desc_dmap);
+		bus_dmamem_free(sc->rx_desc_dtag, sc->rx_desc_base,
+				sc->rx_desc_dmap);
+		bus_dma_tag_destroy(sc->rx_desc_dtag);
+
+		sc->rx_desc_base = NULL;
+	}
 
 	if (sc->rx_buffer_area == NULL)
 		return;
