@@ -240,7 +240,7 @@ doiterate(const char *filename, const char *outFileName,
 	RB_INIT(&dir_tree);
 	RB_INIT(&tse_tree);
 
-	tid_max.tid = HAMMER_MAX_TID - 1;
+	tid_max.tid = HAMMER_MAX_TID;
 	tid_max.time32 = 0;
 
 	/*
