@@ -305,10 +305,16 @@ doiterate(const char *filename, const char *outFileName,
 			tse1 = tse2;
 			++i;
 		}
-		dogenerate(filename,
-			   outFileName, outFilePostfix,
-			   flags, i, type,
-			   tse1->tse, tid_max);
+		/*
+		 * There is no delta to print for the last pair,
+		 * because they are identical.
+		 */
+		if (type != TYPE_DIFF && type != TYPE_RDIFF) {
+			dogenerate(filename,
+				   outFileName, outFilePostfix,
+				   flags, i, type,
+				   tse1->tse, tid_max);
+		}
 	} else {
 		printf("%s: ITERATE ENTIRE HISTORY: %s\n",
 		       filename, strerror(error));
