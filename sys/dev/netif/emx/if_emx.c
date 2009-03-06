@@ -174,6 +174,8 @@ static void	emx_tx_purge(struct emx_softc *);
 static void	emx_enable_intr(struct emx_softc *);
 static void	emx_disable_intr(struct emx_softc *);
 
+static int	emx_dma_alloc(struct emx_softc *);
+static void	emx_dma_free(struct emx_softc *);
 static void	emx_init_tx_ring(struct emx_softc *);
 static int	emx_init_rx_ring(struct emx_softc *);
 static int	emx_create_tx_ring(struct emx_softc *);
@@ -408,36 +410,10 @@ emx_attach(device_t dev)
 	/* This controls when hardware reports transmit completion status. */
 	sc->hw.mac.report_tx_early = 1;
 
-	/*
-	 * Create top level busdma tag
-	 */
-	error = bus_dma_tag_create(NULL, 1, 0,
-			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
-			NULL, NULL,
-			BUS_SPACE_MAXSIZE_32BIT, 0, BUS_SPACE_MAXSIZE_32BIT,
-			0, &sc->parent_dtag);
-	if (error) {
-		device_printf(dev, "could not create top level DMA tag\n");
+	/* Allocate RX/TX rings' busdma(9) stuffs */
+	error = emx_dma_alloc(sc);
+	if (error)
 		goto fail;
-	}
-
-	/*
-	 * Allocate transmit descriptors ring and buffers
-	 */
-	error = emx_create_tx_ring(sc);
-	if (error) {
-		device_printf(dev, "Could not setup transmit structures\n");
-		goto fail;
-	}
-
-	/*
-	 * Allocate receive descriptors ring and buffers
-	 */
-	error = emx_create_rx_ring(sc);
-	if (error) {
-		device_printf(dev, "Could not setup receive structures\n");
-		goto fail;
-	}
 
 	/* Make sure we have a good EEPROM before we read from it */
 	if (e1000_validate_nvm_checksum(&sc->hw) < 0) {
@@ -632,12 +608,7 @@ emx_detach(device_t dev)
 				     sc->memory);
 	}
 
-	emx_destroy_tx_ring(sc, sc->num_tx_desc);
-	emx_destroy_rx_ring(sc, sc->num_rx_desc);
-
-	/* Free top level busdma tag */
-	if (sc->parent_dtag != NULL)
-		bus_dma_tag_destroy(sc->parent_dtag);
+	emx_dma_free(sc);
 
 	/* Free sysctl tree */
 	if (sc->sysctl_tree != NULL)
@@ -3357,4 +3328,53 @@ emx_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS)
 	lwkt_serialize_exit(ifp->if_serializer);
 
 	return error;
+}
+
+static int
+emx_dma_alloc(struct emx_softc *sc)
+{
+	int error;
+
+	/*
+	 * Create top level busdma tag
+	 */
+	error = bus_dma_tag_create(NULL, 1, 0,
+			BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR,
+			NULL, NULL,
+			BUS_SPACE_MAXSIZE_32BIT, 0, BUS_SPACE_MAXSIZE_32BIT,
+			0, &sc->parent_dtag);
+	if (error) {
+		device_printf(sc->dev, "could not create top level DMA tag\n");
+		return error;
+	}
+
+	/*
+	 * Allocate transmit descriptors ring and buffers
+	 */
+	error = emx_create_tx_ring(sc);
+	if (error) {
+		device_printf(sc->dev, "Could not setup transmit structures\n");
+		return error;
+	}
+
+	/*
+	 * Allocate receive descriptors ring and buffers
+	 */
+	error = emx_create_rx_ring(sc);
+	if (error) {
+		device_printf(sc->dev, "Could not setup receive structures\n");
+		return error;
+	}
+	return 0;
+}
+
+static void
+emx_dma_free(struct emx_softc *sc)
+{
+	emx_destroy_tx_ring(sc, sc->num_tx_desc);
+	emx_destroy_rx_ring(sc, sc->num_rx_desc);
+
+	/* Free top level busdma tag */
+	if (sc->parent_dtag != NULL)
+		bus_dma_tag_destroy(sc->parent_dtag);
 }
