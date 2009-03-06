@@ -231,7 +231,7 @@ doiterate(const char *filename, const char *outFileName,
 	struct undo_hist_entry_rb_tree tse_tree;
 	struct undo_hist_entry *tse1;
 	struct undo_hist_entry *tse2;
-	struct hammer_ioc_hist_entry tid_max;
+	struct hammer_ioc_hist_entry ts2, tid_max;
 	char *path = NULL;
 	int i;
 	int fd;
@@ -266,10 +266,11 @@ doiterate(const char *filename, const char *outFileName,
 			}
 		}
 		if (ts1.tid == 0) {
-			tse1 = RB_MAX(undo_hist_entry_rb_tree, &tse_tree);
-			if (tse1) {
+			tse2 = RB_MAX(undo_hist_entry_rb_tree, &tse_tree);
+			if (tse2) {
+				ts2 = tse2->tse;
 				tse1 = RB_PREV(undo_hist_entry_rb_tree,
-					       &tse_tree, tse1);
+					       &tse_tree, tse2);
 				if (tse1)
 					ts1 = tse1->tse;
 			}
@@ -280,7 +281,7 @@ doiterate(const char *filename, const char *outFileName,
 			dogenerate(filename,
 				   outFileName, outFilePostfix,
 				   0, 0, type,
-				   ts1, tid_max);
+				   ts1, ts2);
 		}
 	} else if (RB_ROOT(&tse_tree)) {
 		/*
