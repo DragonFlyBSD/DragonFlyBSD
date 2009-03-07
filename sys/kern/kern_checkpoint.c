@@ -693,7 +693,11 @@ ckpt_freeze_proc(struct lwp *lp, struct file *fp)
         PRINTF(("calling generic_elf_coredump\n"));
 	limit = p->p_rlimit[RLIMIT_CORE].rlim_cur;
 	if (limit) {
+		proc_stop(p);
+		while (p->p_nstopped < p->p_nthreads - 1)
+			tsleep(&p->p_nstopped, 0, "freeze", 1);
 		error = generic_elf_coredump(lp, SIGCKPT, fp, limit);
+		proc_unstop(p);
 	} else {
 		error = ERANGE;
 	}
