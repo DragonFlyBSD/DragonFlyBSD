@@ -249,11 +249,7 @@ killlwps(struct lwp *lp)
 	 * Wait for everything to clear out.
 	 */
 	while (p->p_nthreads > 1) {
-		if (bootverbose)
-			kprintf("killlwps: waiting for %d lwps of pid "
-				"%d to die\n",
-				p->p_nthreads - 1, p->p_pid);
-		tsleep(&p->p_nthreads, 0, "killlwps", hz);
+		tsleep(&p->p_nthreads, 0, "killlwps", 0);
 	}
 }
 
