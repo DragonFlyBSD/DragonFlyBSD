@@ -168,6 +168,39 @@
  */
 #define EMX_EIAC			0x000DC
 
+#define EMX_NRX_RING			2
+
+struct emx_rxdata {
+	/*
+	 * Receive definitions
+	 *
+	 * we have an array of num_rx_desc rx_desc (handled by the
+	 * controller), and paired with an array of rx_buffers
+	 * (at rx_buffer_area).
+	 * The next pair to check on receive is at offset next_rx_desc_to_check
+	 */
+	struct e1000_rx_desc	*rx_desc_base;
+	uint32_t		next_rx_desc_to_check;
+	int			num_rx_desc;
+	struct emx_buf		*rx_buffer_area;
+	bus_dma_tag_t		rxtag;
+	bus_dmamap_t		rx_sparemap;
+
+	/*
+	 * First/last mbuf pointers, for
+	 * collecting multisegment RX packets.
+	 */
+	struct mbuf		*fmp;
+	struct mbuf		*lmp;
+
+	/* RX statistics */
+	unsigned long		mbuf_cluster_failed;
+
+	bus_dma_tag_t		rx_desc_dtag;
+	bus_dmamap_t		rx_desc_dmap;
+	bus_addr_t		rx_desc_paddr;
+};
+
 struct emx_softc {
 	struct arpcom		arpcom;
 	struct e1000_hw		hw;
@@ -177,10 +210,6 @@ struct emx_softc {
 	device_t		dev;
 
 	bus_dma_tag_t		parent_dtag;
-
-	bus_dma_tag_t		rx_desc_dtag;
-	bus_dmamap_t		rx_desc_dmap;
-	bus_addr_t		rx_desc_paddr;
 
 	bus_dma_tag_t		tx_desc_dtag;
 	bus_dmamap_t		tx_desc_dmap;
@@ -274,33 +303,11 @@ struct emx_softc {
 #define EMX_TXDD_SAFE	48 /* 48 <= val < EMX_TXDD_MAX */
 	int			tx_dd[EMX_TXDD_MAX];
 
-	/*
-	 * Receive definitions
-	 *
-	 * we have an array of num_rx_desc rx_desc (handled by the
-	 * controller), and paired with an array of rx_buffers
-	 * (at rx_buffer_area).
-	 * The next pair to check on receive is at offset next_rx_desc_to_check
-	 */
-	struct e1000_rx_desc	*rx_desc_base;
-	uint32_t		next_rx_desc_to_check;
-	uint32_t		rx_buffer_len;
-	int			num_rx_desc;
-	struct emx_buf		*rx_buffer_area;
-	bus_dma_tag_t		rxtag;
-	bus_dmamap_t		rx_sparemap;
-
-	/*
-	 * First/last mbuf pointers, for
-	 * collecting multisegment RX packets.
-	 */
-	struct mbuf		*fmp;
-	struct mbuf		*lmp;
+	struct emx_rxdata	rx_data[EMX_NRX_RING];
 
 	/* Misc stats maintained by the driver */
 	unsigned long		dropped_pkts;
 	unsigned long		mbuf_alloc_failed;
-	unsigned long		mbuf_cluster_failed;
 	unsigned long		no_tx_desc_avail1;
 	unsigned long		no_tx_desc_avail2;
 	unsigned long		no_tx_map_avail;
