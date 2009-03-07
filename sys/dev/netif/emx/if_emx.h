@@ -182,7 +182,7 @@ struct emx_rxdata {
 	struct e1000_rx_desc	*rx_desc_base;
 	uint32_t		next_rx_desc_to_check;
 	int			num_rx_desc;
-	struct emx_buf		*rx_buffer_area;
+	struct emx_rxbuf	*rx_buf;
 	bus_dma_tag_t		rxtag;
 	bus_dmamap_t		rx_sparemap;
 
@@ -249,7 +249,7 @@ struct emx_softc {
 	 * The number of remaining tx_desc is num_tx_desc_avail.
 	 */
 	struct e1000_tx_desc	*tx_desc_base;
-	struct emx_buf		*tx_buffer_area;
+	struct emx_txbuf	*tx_buf;
 	uint32_t		next_avail_tx_desc;
 	uint32_t		next_tx_to_clean;
 	int			num_tx_desc_avail;
@@ -332,9 +332,15 @@ struct emx_softc {
 	struct e1000_hw_stats	stats;
 };
 
-struct emx_buf {
+struct emx_txbuf {
 	struct mbuf	*m_head;
 	bus_dmamap_t	map;
+};
+
+struct emx_rxbuf {
+	struct mbuf	*m_head;
+	bus_dmamap_t	map;
+	bus_addr_t	paddr;
 };
 
 #define EMX_IS_OACTIVE(sc)	((sc)->num_tx_desc_avail <= (sc)->oact_tx_desc)

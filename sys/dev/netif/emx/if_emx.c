@@ -1225,7 +1225,7 @@ emx_encap(struct emx_softc *sc, struct mbuf **m_headp)
 {
 	bus_dma_segment_t segs[EMX_MAX_SCATTER];
 	bus_dmamap_t map;
-	struct emx_buf *tx_buffer, *tx_buffer_mapped;
+	struct emx_txbuf *tx_buffer, *tx_buffer_mapped;
 	struct e1000_tx_desc *ctxd = NULL;
 	struct mbuf *m_head = *m_headp;
 	uint32_t txd_upper, txd_lower, cmd = 0;
@@ -1254,7 +1254,7 @@ emx_encap(struct emx_softc *sc, struct mbuf **m_headp)
 	 * that now gets a DONE bit writeback.
 	 */
 	first = sc->next_avail_tx_desc;
-	tx_buffer = &sc->tx_buffer_area[first];
+	tx_buffer = &sc->tx_buf[first];
 	tx_buffer_mapped = tx_buffer;
 	map = tx_buffer->map;
 
@@ -1288,7 +1288,7 @@ emx_encap(struct emx_softc *sc, struct mbuf **m_headp)
 
 	/* Set up our transmit descriptors */
 	for (j = 0; j < nsegs; j++) {
-		tx_buffer = &sc->tx_buffer_area[i];
+		tx_buffer = &sc->tx_buf[i];
 		ctxd = &sc->tx_desc_base[i];
 
 		ctxd->buffer_addr = htole64(segs[j].ds_addr);
@@ -1547,7 +1547,7 @@ emx_stop(struct emx_softc *sc)
 	E1000_WRITE_REG(&sc->hw, E1000_WUC, 0);
 
 	for (i = 0; i < sc->num_tx_desc; i++) {
-		struct emx_buf *tx_buffer = &sc->tx_buffer_area[i];
+		struct emx_txbuf *tx_buffer = &sc->tx_buf[i];
 
 		if (tx_buffer->m_head != NULL) {
 			bus_dmamap_unload(sc->txtag, tx_buffer->map);
@@ -1757,7 +1757,7 @@ static int
 emx_create_tx_ring(struct emx_softc *sc)
 {
 	device_t dev = sc->dev;
-	struct emx_buf *tx_buffer;
+	struct emx_txbuf *tx_buffer;
 	int error, i, tsize;
 
 	/*
@@ -1787,9 +1787,8 @@ emx_create_tx_ring(struct emx_softc *sc)
 		return ENOMEM;
 	}
 
-	sc->tx_buffer_area =
-		kmalloc(sizeof(struct emx_buf) * sc->num_tx_desc,
-			M_DEVBUF, M_WAITOK | M_ZERO);
+	sc->tx_buf = kmalloc(sizeof(struct emx_txbuf) * sc->num_tx_desc,
+			     M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/*
 	 * Create DMA tags for tx buffers
@@ -1807,8 +1806,8 @@ emx_create_tx_ring(struct emx_softc *sc)
 			&sc->txtag);
 	if (error) {
 		device_printf(dev, "Unable to allocate TX DMA tag\n");
-		kfree(sc->tx_buffer_area, M_DEVBUF);
-		sc->tx_buffer_area = NULL;
+		kfree(sc->tx_buf, M_DEVBUF);
+		sc->tx_buf = NULL;
 		return error;
 	}
 
@@ -1816,7 +1815,7 @@ emx_create_tx_ring(struct emx_softc *sc)
 	 * Create DMA maps for tx buffers
 	 */
 	for (i = 0; i < sc->num_tx_desc; i++) {
-		tx_buffer = &sc->tx_buffer_area[i];
+		tx_buffer = &sc->tx_buf[i];
 
 		error = bus_dmamap_create(sc->txtag,
 					  BUS_DMA_WAITOK | BUS_DMA_ONEBPAGE,
@@ -1914,7 +1913,7 @@ emx_init_tx_unit(struct emx_softc *sc)
 static void
 emx_destroy_tx_ring(struct emx_softc *sc, int ndesc)
 {
-	struct emx_buf *tx_buffer;
+	struct emx_txbuf *tx_buffer;
 	int i;
 
 	/* Free Transmit Descriptor ring */
@@ -1927,19 +1926,19 @@ emx_destroy_tx_ring(struct emx_softc *sc, int ndesc)
 		sc->tx_desc_base = NULL;
 	}
 
-	if (sc->tx_buffer_area == NULL)
+	if (sc->tx_buf == NULL)
 		return;
 
 	for (i = 0; i < ndesc; i++) {
-		tx_buffer = &sc->tx_buffer_area[i];
+		tx_buffer = &sc->tx_buf[i];
 
 		KKASSERT(tx_buffer->m_head == NULL);
 		bus_dmamap_destroy(sc->txtag, tx_buffer->map);
 	}
 	bus_dma_tag_destroy(sc->txtag);
 
-	kfree(sc->tx_buffer_area, M_DEVBUF);
-	sc->tx_buffer_area = NULL;
+	kfree(sc->tx_buf, M_DEVBUF);
+	sc->tx_buf = NULL;
 }
 
 /*
@@ -1960,7 +1959,7 @@ emx_txcsum(struct emx_softc *sc, struct mbuf *mp,
 	   uint32_t *txd_upper, uint32_t *txd_lower)
 {
 	struct e1000_context_desc *TXD;
-	struct emx_buf *tx_buffer;
+	struct emx_txbuf *tx_buffer;
 	struct ether_vlan_header *eh;
 	struct ip *ip;
 	int curr_txd, ehdrlen, csum_flags;
@@ -2017,7 +2016,7 @@ emx_txcsum(struct emx_softc *sc, struct mbuf *mp,
 	 */
 
 	curr_txd = sc->next_avail_tx_desc;
-	tx_buffer = &sc->tx_buffer_area[curr_txd];
+	tx_buffer = &sc->tx_buf[curr_txd];
 	TXD = (struct e1000_context_desc *)&sc->tx_desc_base[curr_txd];
 
 	cmd = 0;
@@ -2152,7 +2151,7 @@ static void
 emx_txeof(struct emx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct emx_buf *tx_buffer;
+	struct emx_txbuf *tx_buffer;
 	int first, num_avail;
 
 	if (sc->tx_dd_head == sc->tx_dd_tail)
@@ -2180,7 +2179,7 @@ emx_txeof(struct emx_softc *sc)
 
 				num_avail++;
 
-				tx_buffer = &sc->tx_buffer_area[first];
+				tx_buffer = &sc->tx_buf[first];
 				if (tx_buffer->m_head) {
 					ifp->if_opackets++;
 					bus_dmamap_unload(sc->txtag,
@@ -2217,7 +2216,7 @@ static void
 emx_tx_collect(struct emx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct emx_buf *tx_buffer;
+	struct emx_txbuf *tx_buffer;
 	int tdh, first, num_avail, dd_idx = -1;
 
 	if (sc->num_tx_desc_avail == sc->num_tx_desc)
@@ -2238,7 +2237,7 @@ emx_tx_collect(struct emx_softc *sc)
 
 		num_avail++;
 
-		tx_buffer = &sc->tx_buffer_area[first];
+		tx_buffer = &sc->tx_buf[first];
 		if (tx_buffer->m_head) {
 			ifp->if_opackets++;
 			bus_dmamap_unload(sc->txtag,
@@ -2300,7 +2299,7 @@ emx_newbuf(struct emx_softc *sc, struct emx_rxdata *rdata, int i, int init)
 	struct mbuf *m;
 	bus_dma_segment_t seg;
 	bus_dmamap_t map;
-	struct emx_buf *rx_buffer;
+	struct emx_rxbuf *rx_buffer;
 	int error, nseg;
 
 	m = m_getcl(init ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
@@ -2329,7 +2328,7 @@ emx_newbuf(struct emx_softc *sc, struct emx_rxdata *rdata, int i, int init)
 		return (error);
 	}
 
-	rx_buffer = &rdata->rx_buffer_area[i];
+	rx_buffer = &rdata->rx_buf[i];
 	if (rx_buffer->m_head != NULL)
 		bus_dmamap_unload(rdata->rxtag, rx_buffer->map);
 
@@ -2347,7 +2346,7 @@ static int
 emx_create_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata)
 {
 	device_t dev = sc->dev;
-	struct emx_buf *rx_buffer;
+	struct emx_rxbuf *rx_buffer;
 	int i, error, rsize;
 
 	/*
@@ -2377,9 +2376,8 @@ emx_create_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata)
 		return ENOMEM;
 	}
 
-	rdata->rx_buffer_area =
-		kmalloc(sizeof(struct emx_buf) * rdata->num_rx_desc,
-			M_DEVBUF, M_WAITOK | M_ZERO);
+	rdata->rx_buf = kmalloc(sizeof(struct emx_rxbuf) * rdata->num_rx_desc,
+				M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/*
 	 * Create DMA tag for rx buffers
@@ -2396,8 +2394,8 @@ emx_create_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata)
 			&rdata->rxtag);
 	if (error) {
 		device_printf(dev, "Unable to allocate RX DMA tag\n");
-		kfree(rdata->rx_buffer_area, M_DEVBUF);
-		rdata->rx_buffer_area = NULL;
+		kfree(rdata->rx_buf, M_DEVBUF);
+		rdata->rx_buf = NULL;
 		return error;
 	}
 
@@ -2409,8 +2407,8 @@ emx_create_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata)
 	if (error) {
 		device_printf(dev, "Unable to create spare RX DMA map\n");
 		bus_dma_tag_destroy(rdata->rxtag);
-		kfree(rdata->rx_buffer_area, M_DEVBUF);
-		rdata->rx_buffer_area = NULL;
+		kfree(rdata->rx_buf, M_DEVBUF);
+		rdata->rx_buf = NULL;
 		return error;
 	}
 
@@ -2418,7 +2416,7 @@ emx_create_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata)
 	 * Create DMA maps for rx buffers
 	 */
 	for (i = 0; i < rdata->num_rx_desc; i++) {
-		rx_buffer = &rdata->rx_buffer_area[i];
+		rx_buffer = &rdata->rx_buf[i];
 
 		error = bus_dmamap_create(rdata->rxtag, BUS_DMA_WAITOK,
 					  &rx_buffer->map);
@@ -2437,7 +2435,7 @@ emx_free_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata)
 	int i;
 
 	for (i = 0; i < rdata->num_rx_desc; i++) {
-		struct emx_buf *rx_buffer = &rdata->rx_buffer_area[i];
+		struct emx_rxbuf *rx_buffer = &rdata->rx_buf[i];
 
 		if (rx_buffer->m_head != NULL) {
 			bus_dmamap_unload(rdata->rxtag, rx_buffer->map);
@@ -2567,7 +2565,7 @@ emx_init_rx_unit(struct emx_softc *sc)
 static void
 emx_destroy_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata, int ndesc)
 {
-	struct emx_buf *rx_buffer;
+	struct emx_rxbuf *rx_buffer;
 	int i;
 
 	/* Free Receive Descriptor ring */
@@ -2580,11 +2578,11 @@ emx_destroy_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata, int ndesc)
 		rdata->rx_desc_base = NULL;
 	}
 
-	if (rdata->rx_buffer_area == NULL)
+	if (rdata->rx_buf == NULL)
 		return;
 
 	for (i = 0; i < ndesc; i++) {
-		rx_buffer = &rdata->rx_buffer_area[i];
+		rx_buffer = &rdata->rx_buf[i];
 
 		KKASSERT(rx_buffer->m_head == NULL);
 		bus_dmamap_destroy(rdata->rxtag, rx_buffer->map);
@@ -2592,8 +2590,8 @@ emx_destroy_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata, int ndesc)
 	bus_dmamap_destroy(rdata->rxtag, rdata->rx_sparemap);
 	bus_dma_tag_destroy(rdata->rxtag);
 
-	kfree(rdata->rx_buffer_area, M_DEVBUF);
-	rdata->rx_buffer_area = NULL;
+	kfree(rdata->rx_buf, M_DEVBUF);
+	rdata->rx_buf = NULL;
 }
 
 static void
@@ -2621,13 +2619,13 @@ emx_rxeof(struct emx_softc *sc, int ring_idx, int count)
 
 		logif(pkt_receive);
 
-		mp = rdata->rx_buffer_area[i].m_head;
+		mp = rdata->rx_buf[i].m_head;
 
 		/*
 		 * Can't defer bus_dmamap_sync(9) because TBI_ACCEPT
 		 * needs to access the last received byte in the mbuf.
 		 */
-		bus_dmamap_sync(rdata->rxtag, rdata->rx_buffer_area[i].map,
+		bus_dmamap_sync(rdata->rxtag, rdata->rx_buf[i].map,
 				BUS_DMASYNC_POSTREAD);
 
 		accept_frame = 1;
