@@ -66,9 +66,9 @@ lwp_delsig(struct lwp *lp, int sig)
 	SIGDELSET(lp->lwp_proc->p_siglist, sig);
 }
 
-#define	CURSIG(lp)		__cursig(lp, 0)
-#define	CURSIG_TRACE(lp)	__cursig(lp, 1)
-#define CURSIGNB(lp)	__cursignb(lp)
+#define	CURSIG(lp)		__cursig(lp, 1, 0)
+#define	CURSIG_TRACE(lp)	__cursig(lp, 1, 1)
+#define CURSIG_NOBLOCK(lp)	__cursig(lp, 0, 0)
 
 /*
  * Determine signal that should be delivered to process p, the current
@@ -79,32 +79,32 @@ lwp_delsig(struct lwp *lp, int sig)
  */
 static __inline
 int
-__cursig(struct lwp *lp, int maytrace)
+__cursig(struct lwp *lp, int mayblock, int maytrace)
 {
-	struct proc *p;
+	struct proc *p = lp->lwp_proc;
 	sigset_t tmpset;
 	int r;
 
-	p = lp->lwp_proc;
 	tmpset = lwp_sigpend(lp);
 	SIGSETNAND(tmpset, lp->lwp_sigmask);
-	if (!(p->p_flag & P_TRACED) && SIGISEMPTY(tmpset))
-		return(0);
-	r = issignal(lp, maytrace);
+
+	/* Nothing interesting happening? */
+	if (SIGISEMPTY(tmpset)) {
+		/*
+		 * Quit here, unless
+		 *  a) we may block and
+		 *  b) somebody is tracing us.
+		 */
+		if (!(mayblock && (p->p_flag & P_TRACED)))
+			return (0);
+	}
+
+	if (mayblock)
+		r = issignal(lp, maytrace);
+	else
+		r = TRUE;	/* simply state the fact */
+
 	return(r);
-}
-
-static __inline
-int
-__cursignb(struct lwp *lp)
-{
-	sigset_t tmpset;
-
-	tmpset = lwp_sigpend(lp);
-	SIGSETNAND(tmpset, lp->lwp_sigmask);
-	if (SIGISEMPTY(tmpset))
-		return(FALSE);
-	return (TRUE);
 }
 
 #endif
