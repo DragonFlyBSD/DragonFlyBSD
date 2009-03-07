@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -31,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)getbsize.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/gen/getbsize.c,v 1.9 2008/08/04 06:53:13 cperciva Exp $
  * $DragonFly: src/lib/libc/gen/getbsize.c,v 1.4 2005/11/13 00:07:42 swildner Exp $
  */
 
@@ -81,7 +78,8 @@ getbsize(int *headerlenp, long *blocksizep)
 			break;
 		default:
 fmterr:			warnx("%s: unknown blocksize", p);
-			max = n = 512;
+			n = 512;
+			max = MAXB;
 			mul = 1;
 			break;
 		}
