@@ -2543,7 +2543,7 @@ emx_init_rx_unit(struct emx_softc *sc)
 	/* Setup the Receive Control Register */
 	rctl &= ~(3 << E1000_RCTL_MO_SHIFT);
 	rctl |= E1000_RCTL_EN | E1000_RCTL_BAM | E1000_RCTL_LBM_NO |
-		E1000_RCTL_RDMTS_HALF |
+		E1000_RCTL_RDMTS_HALF | E1000_RCTL_SECRC |
 		(sc->hw.mac.mc_filter_type << E1000_RCTL_MO_SHIFT);
 
 	/* Make sure VLAN Filters are off */
@@ -2629,7 +2629,6 @@ emx_rxeof(struct emx_softc *sc, int ring_idx, int count)
 	struct emx_rxdata *rdata = &sc->rx_data[ring_idx];
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint32_t staterr;
-	uint16_t len, desc_len, prev_len_adj;
 	emx_rxdesc_t *current_desc;
 	struct mbuf *mp;
 	int i;
@@ -2647,7 +2646,7 @@ emx_rxeof(struct emx_softc *sc, int ring_idx, int count)
 	while ((staterr & E1000_RXD_STAT_DD) && count != 0) {
 		struct emx_rxbuf *rx_buf = &rdata->rx_buf[i];
 		struct mbuf *m = NULL;
-		int eop;
+		int eop, len;
 
 		logif(pkt_receive);
 
@@ -2660,20 +2659,12 @@ emx_rxeof(struct emx_softc *sc, int ring_idx, int count)
 		bus_dmamap_sync(rdata->rxtag, rx_buf->map,
 				BUS_DMASYNC_POSTREAD);
 
-		prev_len_adj = 0;
-		desc_len = le16toh(current_desc->rxd_length);
+		len = le16toh(current_desc->rxd_length);
 		if (staterr & E1000_RXD_STAT_EOP) {
 			count--;
 			eop = 1;
-			if (desc_len < ETHER_CRC_LEN) {
-				len = 0;
-				prev_len_adj = ETHER_CRC_LEN - desc_len;
-			} else {
-				len = desc_len - ETHER_CRC_LEN;
-			}
 		} else {
 			eop = 0;
-			len = desc_len;
 		}
 
 		if (!(staterr & E1000_RXDEXT_ERR_FRAME_ERR_MASK)) {
@@ -2702,17 +2693,6 @@ emx_rxeof(struct emx_softc *sc, int ring_idx, int count)
 				/*
 				 * Chain mbuf's together
 				 */
-
-				/*
-				 * Adjust length of previous mbuf in chain if
-				 * we received less than 4 bytes in the last
-				 * descriptor.
-				 */
-				if (prev_len_adj > 0) {
-					rdata->lmp->m_len -= prev_len_adj;
-					rdata->fmp->m_pkthdr.len -=
-					    prev_len_adj;
-				}
 				rdata->lmp->m_next = mp;
 				rdata->lmp = rdata->lmp->m_next;
 				rdata->fmp->m_pkthdr.len += len;
