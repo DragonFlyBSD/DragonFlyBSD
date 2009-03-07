@@ -192,7 +192,7 @@ extern int sugid_coredump;	/* Sysctl variable kern.sugid_coredump */
  */
 void	execsigs (struct proc *p);
 void	gsignal (int pgid, int sig);
-int	issignal (struct lwp *lp);
+int	issignal (struct lwp *lp, int maytrace);
 int	iscaught (struct lwp *p);
 void	killproc (struct proc *p, char *why);
 void	pgsigio (struct sigio *, int signum, int checkctty);

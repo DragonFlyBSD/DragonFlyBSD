@@ -66,7 +66,8 @@ lwp_delsig(struct lwp *lp, int sig)
 	SIGDELSET(lp->lwp_proc->p_siglist, sig);
 }
 
-#define	CURSIG(lp)	__cursig(lp)
+#define	CURSIG(lp)		__cursig(lp, 0)
+#define	CURSIG_TRACE(lp)	__cursig(lp, 1)
 #define CURSIGNB(lp)	__cursignb(lp)
 
 /*
@@ -78,7 +79,7 @@ lwp_delsig(struct lwp *lp, int sig)
  */
 static __inline
 int
-__cursig(struct lwp *lp)
+__cursig(struct lwp *lp, int maytrace)
 {
 	struct proc *p;
 	sigset_t tmpset;
@@ -89,7 +90,7 @@ __cursig(struct lwp *lp)
 	SIGSETNAND(tmpset, lp->lwp_sigmask);
 	if (!(p->p_flag & P_TRACED) && SIGISEMPTY(tmpset))
 		return(0);
-	r = issignal(lp);
+	r = issignal(lp, maytrace);
 	return(r);
 }
 

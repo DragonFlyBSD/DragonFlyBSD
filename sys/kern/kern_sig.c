@@ -1410,7 +1410,7 @@ kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
 			SIGFILLSET(lp->lwp_sigmask);
 			SIGDELSET(lp->lwp_sigmask, sig);
 			SIG_CANTMASK(lp->lwp_sigmask);
-			sig = issignal(lp);
+			sig = issignal(lp, 1);
 			/*
 			 * It may be a STOP signal, in the case, issignal
 			 * returns 0, because we may stop there, and new
@@ -1587,7 +1587,7 @@ iscaught(struct lwp *lp)
  *		postsig(sig);
  */
 int
-issignal(struct lwp *lp)
+issignal(struct lwp *lp, int maytrace)
 {
 	struct proc *p = lp->lwp_proc;
 	sigset_t mask;
@@ -1596,6 +1596,12 @@ issignal(struct lwp *lp)
 	get_mplock();
 	for (;;) {
 		int traced = (p->p_flag & P_TRACED) || (p->p_stops & S_SIG);
+
+		/*
+		 * If this process is supposed to stop, stop this thread.
+		 */
+		if (p->p_stat == SSTOP)
+			tstop();
 
 		mask = lwp_sigpend(lp);
 		SIGSETNAND(mask, lp->lwp_sigmask);
@@ -1617,7 +1623,7 @@ issignal(struct lwp *lp)
 			lwp_delsig(lp, sig);
 			continue;
 		}
-		if ((p->p_flag & P_TRACED) && (p->p_flag & P_PPWAIT) == 0) {
+		if (maytrace && (p->p_flag & P_TRACED) && (p->p_flag & P_PPWAIT) == 0) {
 			/*
 			 * If traced, always stop, and stay stopped until
 			 * released by the parent.
@@ -1710,9 +1716,7 @@ issignal(struct lwp *lp)
 					break;	/* == ignore */
 				p->p_xstat = sig;
 				proc_stop(p);
-				while (p->p_stat == SSTOP) {
-					tstop();
-				}
+				tstop();
 				break;
 			} else if (prop & SA_IGNORE) {
 				/*

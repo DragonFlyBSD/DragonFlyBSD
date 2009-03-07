@@ -268,7 +268,7 @@ recheck:
 	/*
 	 * Post any pending signals
 	 */
-	if ((sig = CURSIG(lp)) != 0) {
+	if ((sig = CURSIG_TRACE(lp)) != 0) {
 		get_mplock();
 		postsig(sig);
 		rel_mplock();

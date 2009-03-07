@@ -284,7 +284,7 @@ recheck:
 	 * Post any pending signals.  If running a virtual kernel be sure
 	 * to restore the virtual kernel's vmspace before posting the signal.
 	 */
-	if ((sig = CURSIG(lp)) != 0) {
+	if ((sig = CURSIG_TRACE(lp)) != 0) {
 		get_mplock();
 		postsig(sig);
 		rel_mplock();
