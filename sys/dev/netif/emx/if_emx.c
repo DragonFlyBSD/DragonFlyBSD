@@ -186,8 +186,6 @@ static void	emx_destroy_rx_ring(struct emx_softc *,
 		    struct emx_rxdata *, int);
 static int	emx_newbuf(struct emx_softc *, struct emx_rxdata *, int, int);
 static int	emx_encap(struct emx_softc *, struct mbuf **);
-static void	emx_rxcsum(struct emx_softc *, struct e1000_rx_desc *,
-		    struct mbuf *);
 static int	emx_txcsum_pullup(struct emx_softc *, struct mbuf **);
 static int	emx_txcsum(struct emx_softc *, struct mbuf *,
 		    uint32_t *, uint32_t *);
@@ -280,6 +278,34 @@ KTR_INFO(KTR_IF_EMX, if_emx, pkt_receive, 4, "rx packet", 0);
 KTR_INFO(KTR_IF_EMX, if_emx, pkt_txqueue, 5, "tx packet", 0);
 KTR_INFO(KTR_IF_EMX, if_emx, pkt_txclean, 6, "tx clean", 0);
 #define logif(name)	KTR_LOG(if_emx_ ## name)
+
+static __inline void
+emx_setup_rxdesc(emx_rxdesc_t *rxd, const struct emx_rxbuf *rxbuf)
+{
+	rxd->rxd_bufaddr = htole64(rxbuf->paddr);
+	/* DD bits must be cleared */
+	rxd->rxd_staterr = 0;
+}
+
+static __inline void
+emx_rxcsum(uint32_t staterr, struct mbuf *mp)
+{
+	/* Ignore Checksum bit is set */
+	if (staterr & E1000_RXD_STAT_IXSM)
+		return;
+
+	if ((staterr & (E1000_RXD_STAT_IPCS | E1000_RXDEXT_STATERR_IPE)) ==
+	    E1000_RXD_STAT_IPCS)
+		mp->m_pkthdr.csum_flags |= CSUM_IP_CHECKED | CSUM_IP_VALID;
+
+	if ((staterr & (E1000_RXD_STAT_TCPCS | E1000_RXDEXT_STATERR_TCPE)) ==
+	    E1000_RXD_STAT_TCPCS) {
+		mp->m_pkthdr.csum_flags |= CSUM_DATA_VALID |
+					   CSUM_PSEUDO_HDR |
+					   CSUM_FRAG_NOT_CHECKED;
+		mp->m_pkthdr.csum_data = htons(0xffff);
+	}
+}
 
 static int
 emx_probe(device_t dev)
@@ -2337,8 +2363,9 @@ emx_newbuf(struct emx_softc *sc, struct emx_rxdata *rdata, int i, int init)
 	rdata->rx_sparemap = map;
 
 	rx_buffer->m_head = m;
+	rx_buffer->paddr = seg.ds_addr;
 
-	rdata->rx_desc_base[i].buffer_addr = htole64(seg.ds_addr);
+	emx_setup_rxdesc(&rdata->rx_desc[i], rx_buffer);
 	return (0);
 }
 
@@ -2365,13 +2392,13 @@ emx_create_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata)
 	/*
 	 * Allocate Receive Descriptor ring
 	 */
-	rsize = roundup2(rdata->num_rx_desc * sizeof(struct e1000_rx_desc),
+	rsize = roundup2(rdata->num_rx_desc * sizeof(emx_rxdesc_t),
 			 EMX_DBA_ALIGN);
-	rdata->rx_desc_base = bus_dmamem_coherent_any(sc->parent_dtag,
+	rdata->rx_desc = bus_dmamem_coherent_any(sc->parent_dtag,
 				EMX_DBA_ALIGN, rsize, BUS_DMA_WAITOK,
 				&rdata->rx_desc_dtag, &rdata->rx_desc_dmap,
 				&rdata->rx_desc_paddr);
-	if (rdata->rx_desc_base == NULL) {
+	if (rdata->rx_desc == NULL) {
 		device_printf(dev, "Unable to allocate rx_desc memory\n");
 		return ENOMEM;
 	}
@@ -2456,8 +2483,7 @@ emx_init_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata)
 	int i, error;
 
 	/* Reset descriptor ring */
-	bzero(rdata->rx_desc_base,
-	      sizeof(struct e1000_rx_desc) * rdata->num_rx_desc);
+	bzero(rdata->rx_desc, sizeof(emx_rxdesc_t) * rdata->num_rx_desc);
 
 	/* Allocate new ones. */
 	for (i = 0; i < rdata->num_rx_desc; i++) {
@@ -2478,7 +2504,7 @@ emx_init_rx_unit(struct emx_softc *sc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	struct emx_rxdata *rdata = &sc->rx_data[0];
 	uint64_t bus_addr;
-	uint32_t rctl, rxcsum;
+	uint32_t rctl, rxcsum, rfctl;
 
 	/*
 	 * Make sure receives are disabled while setting
@@ -2498,11 +2524,14 @@ emx_init_rx_unit(struct emx_softc *sc)
 		E1000_WRITE_REG(&sc->hw, E1000_ITR, 0);
 	}
 
+	/* Use extended RX descriptor */
+	rfctl = E1000_RFCTL_EXTEN;
+
 	/* Disable accelerated ackknowledge */
-	if (sc->hw.mac.type == e1000_82574) {
-		E1000_WRITE_REG(&sc->hw,
-		    E1000_RFCTL, E1000_RFCTL_ACK_DIS);
-	}
+	if (sc->hw.mac.type == e1000_82574)
+		rfctl |= E1000_RFCTL_ACK_DIS;
+
+	E1000_WRITE_REG(&sc->hw, E1000_RFCTL, rfctl);
 
 	/* Setup the Base and Length of the Rx Descriptor Ring */
 	bus_addr = rdata->rx_desc_paddr;
@@ -2569,13 +2598,13 @@ emx_destroy_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata, int ndesc)
 	int i;
 
 	/* Free Receive Descriptor ring */
-	if (rdata->rx_desc_base) {
+	if (rdata->rx_desc) {
 		bus_dmamap_unload(rdata->rx_desc_dtag, rdata->rx_desc_dmap);
-		bus_dmamem_free(rdata->rx_desc_dtag, rdata->rx_desc_base,
+		bus_dmamem_free(rdata->rx_desc_dtag, rdata->rx_desc,
 				rdata->rx_desc_dmap);
 		bus_dma_tag_destroy(rdata->rx_desc_dtag);
 
-		rdata->rx_desc_base = NULL;
+		rdata->rx_desc = NULL;
 	}
 
 	if (rdata->rx_buf == NULL)
@@ -2599,40 +2628,41 @@ emx_rxeof(struct emx_softc *sc, int ring_idx, int count)
 {
 	struct emx_rxdata *rdata = &sc->rx_data[ring_idx];
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	uint8_t status, accept_frame = 0, eop = 0;
+	uint32_t staterr;
 	uint16_t len, desc_len, prev_len_adj;
-	struct e1000_rx_desc *current_desc;
+	emx_rxdesc_t *current_desc;
 	struct mbuf *mp;
 	int i;
 	struct mbuf_chain chain[MAXCPU];
 
 	i = rdata->next_rx_desc_to_check;
-	current_desc = &rdata->rx_desc_base[i];
+	current_desc = &rdata->rx_desc[i];
+	staterr = le32toh(current_desc->rxd_staterr);
 
-	if (!(current_desc->status & E1000_RXD_STAT_DD))
+	if (!(staterr & E1000_RXD_STAT_DD))
 		return;
 
 	ether_input_chain_init(chain);
 
-	while ((current_desc->status & E1000_RXD_STAT_DD) && count != 0) {
+	while ((staterr & E1000_RXD_STAT_DD) && count != 0) {
+		struct emx_rxbuf *rx_buf = &rdata->rx_buf[i];
 		struct mbuf *m = NULL;
+		int eop;
 
 		logif(pkt_receive);
 
-		mp = rdata->rx_buf[i].m_head;
+		mp = rx_buf->m_head;
 
 		/*
 		 * Can't defer bus_dmamap_sync(9) because TBI_ACCEPT
 		 * needs to access the last received byte in the mbuf.
 		 */
-		bus_dmamap_sync(rdata->rxtag, rdata->rx_buf[i].map,
+		bus_dmamap_sync(rdata->rxtag, rx_buf->map,
 				BUS_DMASYNC_POSTREAD);
 
-		accept_frame = 1;
 		prev_len_adj = 0;
-		desc_len = le16toh(current_desc->length);
-		status = current_desc->status;
-		if (status & E1000_RXD_STAT_EOP) {
+		desc_len = le16toh(current_desc->rxd_length);
+		if (staterr & E1000_RXD_STAT_EOP) {
 			count--;
 			eop = 1;
 			if (desc_len < ETHER_CRC_LEN) {
@@ -2646,10 +2676,16 @@ emx_rxeof(struct emx_softc *sc, int ring_idx, int count)
 			len = desc_len;
 		}
 
-		if (current_desc->errors & E1000_RXD_ERR_FRAME_ERR_MASK)
-			accept_frame = 0;
+		if (!(staterr & E1000_RXDEXT_ERR_FRAME_ERR_MASK)) {
+			uint16_t vlan = 0;
 
-		if (accept_frame) {
+			/*
+			 * Save several necessary information,
+			 * before emx_newbuf() destroy it.
+			 */
+			if ((staterr & E1000_RXD_STAT_VP) && eop)
+				vlan = le16toh(current_desc->rxd_vlan);
+
 			if (emx_newbuf(sc, rdata, i, 0) != 0) {
 				ifp->if_iqdrops++;
 				goto discard;
@@ -2686,15 +2722,12 @@ emx_rxeof(struct emx_softc *sc, int ring_idx, int count)
 				rdata->fmp->m_pkthdr.rcvif = ifp;
 				ifp->if_ipackets++;
 
-				if (ifp->if_capenable & IFCAP_RXCSUM) {
-					emx_rxcsum(sc, current_desc,
-						   rdata->fmp);
-				}
+				if (ifp->if_capenable & IFCAP_RXCSUM)
+					emx_rxcsum(staterr, rdata->fmp);
 
-				if (status & E1000_RXD_STAT_VP) {
+				if (staterr & E1000_RXD_STAT_VP) {
 					rdata->fmp->m_pkthdr.ether_vlantag =
-					    (le16toh(current_desc->special) &
-					    E1000_RXD_SPC_VLAN_MASK);
+					    vlan;
 					rdata->fmp->m_flags |= M_VLANTAG;
 				}
 				m = rdata->fmp;
@@ -2704,6 +2737,7 @@ emx_rxeof(struct emx_softc *sc, int ring_idx, int count)
 		} else {
 			ifp->if_ierrors++;
 discard:
+			emx_setup_rxdesc(current_desc, rx_buf);
 			if (rdata->fmp != NULL) {
 				m_freem(rdata->fmp);
 				rdata->fmp = NULL;
@@ -2712,16 +2746,15 @@ discard:
 			m = NULL;
 		}
 
-		/* Zero out the receive descriptors status. */
-		current_desc->status = 0;
-
 		if (m != NULL)
 			ether_input_chain(ifp, m, chain);
 
 		/* Advance our pointers to the next descriptor. */
 		if (++i == rdata->num_rx_desc)
 			i = 0;
-		current_desc = &rdata->rx_desc_base[i];
+
+		current_desc = &rdata->rx_desc[i];
+		staterr = le32toh(current_desc->rxd_staterr);
 	}
 	rdata->next_rx_desc_to_check = i;
 
@@ -2731,27 +2764,6 @@ discard:
 	if (--i < 0)
 		i = rdata->num_rx_desc - 1;
 	E1000_WRITE_REG(&sc->hw, E1000_RDT(0), i);
-}
-
-static void
-emx_rxcsum(struct emx_softc *sc, struct e1000_rx_desc *rx_desc,
-	   struct mbuf *mp)
-{
-	/* Ignore Checksum bit is set */
-	if (rx_desc->status & E1000_RXD_STAT_IXSM)
-		return;
-
-	if ((rx_desc->status & E1000_RXD_STAT_IPCS) &&
-	    !(rx_desc->errors & E1000_RXD_ERR_IPE))
-		mp->m_pkthdr.csum_flags |= CSUM_IP_CHECKED | CSUM_IP_VALID;
-
-	if ((rx_desc->status & E1000_RXD_STAT_TCPCS) &&
-	    !(rx_desc->errors & E1000_RXD_ERR_TCPE)) {
-		mp->m_pkthdr.csum_flags |= CSUM_DATA_VALID |
-					   CSUM_PSEUDO_HDR |
-					   CSUM_FRAG_NOT_CHECKED;
-		mp->m_pkthdr.csum_data = htons(0xffff);
-	}
 }
 
 static void

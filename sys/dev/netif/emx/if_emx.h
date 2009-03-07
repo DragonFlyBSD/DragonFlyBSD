@@ -170,6 +170,13 @@
 
 #define EMX_NRX_RING			2
 
+typedef union e1000_rx_desc_extended	emx_rxdesc_t;
+
+#define rxd_bufaddr	read.buffer_addr	/* 64bits */
+#define rxd_length	wb.upper.length		/* 16bits */
+#define rxd_vlan	wb.upper.vlan		/* 16bits */
+#define rxd_staterr	wb.upper.status_error	/* 32bits */
+
 struct emx_rxdata {
 	/*
 	 * Receive definitions
@@ -179,7 +186,7 @@ struct emx_rxdata {
 	 * (at rx_buffer_area).
 	 * The next pair to check on receive is at offset next_rx_desc_to_check
 	 */
-	struct e1000_rx_desc	*rx_desc_base;
+	emx_rxdesc_t		*rx_desc;
 	uint32_t		next_rx_desc_to_check;
 	int			num_rx_desc;
 	struct emx_rxbuf	*rx_buf;
