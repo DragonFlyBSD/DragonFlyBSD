@@ -83,12 +83,12 @@ function
 gets the related device name of
 a file descriptor for which
 .Fn isatty
-is true
+is true.
 .Pp
 The
 .Fn ttyname_r
 function is a thread-safe version of
-.Fn ttyname
+.Fn ttyname .
 .Pp
 The
 .Fn ttyslot
@@ -97,6 +97,12 @@ fetches the current process' control terminal number from the
 .Xr ttys 5
 file entry.
 .Sh RETURN VALUES
+The
+.Fn isatty
+function
+returns 1 if the file descriptor refers to a valid terminal
+device and 0 otherwise.
+.Pp
 The
 .Fn ttyname
 function
@@ -116,6 +122,21 @@ the value zero is returned.
 .Bl -tag -width /etc/ttys -compact
 .It Pa /dev/\(**
 .It Pa /etc/ttys
+.El
+.Sh ERRORS
+The
+.Fn isatty
+function
+may fail if:
+.Bl -tag -width Er
+.It Bq Er EBADF
+The
+.Fa fd
+is not a valid open file descriptor.
+.It Bq Er ENOTTY
+The
+.Fa fd
+is not associated with a terminal.
 .El
 .Sh SEE ALSO
 .Xr ioctl 2 ,
