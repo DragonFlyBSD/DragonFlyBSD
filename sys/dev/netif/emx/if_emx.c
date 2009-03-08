@@ -1121,9 +1121,9 @@ emx_intr(void *xsc)
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		if (reg_icr &
-		    (E1000_IMS_RXT0 | E1000_IMS_RXDMT0 | E1000_ICR_RXO))
+		    (E1000_ICR_RXT0 | E1000_ICR_RXDMT0 | E1000_ICR_RXO))
 			emx_rxeof(sc, 0, -1);
-		if (reg_icr & E1000_IMS_TXDW) {
+		if (reg_icr & E1000_ICR_TXDW) {
 			emx_txeof(sc);
 			if (!ifq_is_empty(&ifp->if_snd))
 				if_devstart(ifp);
