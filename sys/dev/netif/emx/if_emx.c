@@ -2549,10 +2549,8 @@ emx_init_rx_unit(struct emx_softc *sc)
 	/* Make sure VLAN Filters are off */
 	rctl &= ~E1000_RCTL_VFE;
 
-	if (e1000_tbi_sbp_enabled_82543(&sc->hw))
-		rctl |= E1000_RCTL_SBP;
-	else
-		rctl &= ~E1000_RCTL_SBP;
+	/* Don't store bad paket */
+	rctl &= ~E1000_RCTL_SBP;
 
 	/* MCLBYTES */
 	rctl |= E1000_RCTL_SZ_2048;
