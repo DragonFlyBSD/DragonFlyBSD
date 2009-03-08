@@ -106,6 +106,18 @@
 #include <dev/netif/ig_hal/e1000_82571.h>
 #include <dev/netif/emx/if_emx.h>
 
+#define EMX_RSS_DEBUG
+
+#ifdef EMX_RSS_DEBUG
+#define EMX_RSS_DPRINTF(sc, lvl, fmt, ...) \
+do { \
+	if (sc->rss_debug > lvl) \
+		if_printf(&sc->arpcom.ac_if, fmt, __VA_ARGS__); \
+} while (0)
+#else	/* !EMX_RSS_DEBUG */
+#define EMX_RSS_DPRINTF(sc, lvl, fmt, ...)	((void)0)
+#endif	/* EMX_RSS_DEBUG */
+
 #define EMX_NAME	"Intel(R) PRO/1000 "
 
 #define EMX_DEVICE(id)	\
@@ -283,7 +295,7 @@ static __inline void
 emx_setup_rxdesc(emx_rxdesc_t *rxd, const struct emx_rxbuf *rxbuf)
 {
 	rxd->rxd_bufaddr = htole64(rxbuf->paddr);
-	/* DD bits must be cleared */
+	/* DD bit must be cleared */
 	rxd->rxd_staterr = 0;
 }
 
@@ -912,6 +924,7 @@ emx_init(void *xsc)
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	device_t dev = sc->dev;
 	uint32_t pba;
+	int i;
 
 	ASSERT_SERIALIZED(ifp->if_serializer);
 
@@ -1001,10 +1014,13 @@ emx_init(void *xsc)
 	emx_set_multi(sc);
 
 	/* Prepare receive descriptors and buffers */
-	if (emx_init_rx_ring(sc, &sc->rx_data[0])) {
-		device_printf(dev, "Could not setup receive structures\n");
-		emx_stop(sc);
-		return;
+	for (i = 0; i < EMX_NRX_RING; ++i) {
+		if (emx_init_rx_ring(sc, &sc->rx_data[i])) {
+			device_printf(dev,
+			    "Could not setup receive structures\n");
+			emx_stop(sc);
+			return;
+		}
 	}
 	emx_init_rx_unit(sc);
 
@@ -1079,9 +1095,12 @@ emx_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		/* FALL THROUGH */
 	case POLL_ONLY:
 		if (ifp->if_flags & IFF_RUNNING) {
-			emx_rxeof(sc, 0, count);
-			emx_txeof(sc);
+			int i;
 
+			for (i = 0; i < EMX_NRX_RING; ++i)
+				emx_rxeof(sc, i, count);
+
+			emx_txeof(sc);
 			if (!ifq_is_empty(&ifp->if_snd))
 				if_devstart(ifp);
 		}
@@ -1121,8 +1140,12 @@ emx_intr(void *xsc)
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		if (reg_icr &
-		    (E1000_ICR_RXT0 | E1000_ICR_RXDMT0 | E1000_ICR_RXO))
-			emx_rxeof(sc, 0, -1);
+		    (E1000_ICR_RXT0 | E1000_ICR_RXDMT0 | E1000_ICR_RXO)) {
+			int i;
+
+			for (i = 0; i < EMX_NRX_RING; ++i)
+				emx_rxeof(sc, i, -1);
+		}
 		if (reg_icr & E1000_ICR_TXDW) {
 			emx_txeof(sc);
 			if (!ifq_is_empty(&ifp->if_snd))
@@ -1569,6 +1592,15 @@ emx_stop(struct emx_softc *sc)
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 	ifp->if_timer = 0;
 
+	/*
+	 * Disable multiple receive queues.
+	 *
+	 * NOTE:
+	 * We should disable multiple receive queues before
+	 * resetting the hardware.
+	 */
+	E1000_WRITE_REG(&sc->hw, E1000_MRQC, 0);
+
 	e1000_reset_hw(&sc->hw);
 	E1000_WRITE_REG(&sc->hw, E1000_WUC, 0);
 
@@ -1582,7 +1614,8 @@ emx_stop(struct emx_softc *sc)
 		}
 	}
 
-	emx_free_rx_ring(sc, &sc->rx_data[0]);
+	for (i = 0; i < EMX_NRX_RING; ++i)
+		emx_free_rx_ring(sc, &sc->rx_data[i]);
 
 	sc->csum_flags = 0;
 	sc->csum_ehlen = 0;
@@ -2380,7 +2413,7 @@ emx_create_rx_ring(struct emx_softc *sc, struct emx_rxdata *rdata)
 	 * Validate number of receive descriptors.  It must not exceed
 	 * hardware maximum, and must be multiple of E1000_DBA_ALIGN.
 	 */
-	if ((emx_rxd * sizeof(struct e1000_rx_desc)) % EMX_DBA_ALIGN != 0 ||
+	if ((emx_rxd * sizeof(emx_rxdesc_t)) % EMX_DBA_ALIGN != 0 ||
 	    emx_rxd > EMX_MAX_RXD || emx_rxd < EMX_MIN_RXD) {
 		device_printf(dev, "Using %d RX descriptors instead of %d!\n",
 		    EMX_DEFAULT_RXD, emx_rxd);
@@ -2502,9 +2535,9 @@ static void
 emx_init_rx_unit(struct emx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct emx_rxdata *rdata = &sc->rx_data[0];
 	uint64_t bus_addr;
-	uint32_t rctl, rxcsum, rfctl;
+	uint32_t rctl, rxcsum, rfctl, key, reta;
+	int i;
 
 	/*
 	 * Make sure receives are disabled while setting
@@ -2534,11 +2567,17 @@ emx_init_rx_unit(struct emx_softc *sc)
 	E1000_WRITE_REG(&sc->hw, E1000_RFCTL, rfctl);
 
 	/* Setup the Base and Length of the Rx Descriptor Ring */
-	bus_addr = rdata->rx_desc_paddr;
-	E1000_WRITE_REG(&sc->hw, E1000_RDLEN(0),
-	    rdata->num_rx_desc * sizeof(struct e1000_rx_desc));
-	E1000_WRITE_REG(&sc->hw, E1000_RDBAH(0), (uint32_t)(bus_addr >> 32));
-	E1000_WRITE_REG(&sc->hw, E1000_RDBAL(0), (uint32_t)bus_addr);
+	for (i = 0; i < EMX_NRX_RING; ++i) {
+		struct emx_rxdata *rdata = &sc->rx_data[i];
+
+		bus_addr = rdata->rx_desc_paddr;
+		E1000_WRITE_REG(&sc->hw, E1000_RDLEN(i),
+		    rdata->num_rx_desc * sizeof(emx_rxdesc_t));
+		E1000_WRITE_REG(&sc->hw, E1000_RDBAH(i),
+		    (uint32_t)(bus_addr >> 32));
+		E1000_WRITE_REG(&sc->hw, E1000_RDBAL(i),
+		    (uint32_t)bus_addr);
+	}
 
 	/* Setup the Receive Control Register */
 	rctl &= ~(3 << E1000_RCTL_MO_SHIFT);
@@ -2560,12 +2599,54 @@ emx_init_rx_unit(struct emx_softc *sc)
 	else
 		rctl &= ~E1000_RCTL_LPE;
 
+#if 0
 	/* Receive Checksum Offload for TCP and UDP */
 	if (ifp->if_capenable & IFCAP_RXCSUM) {
+#else
+	if (1) {
+#endif
 		rxcsum = E1000_READ_REG(&sc->hw, E1000_RXCSUM);
-		rxcsum |= (E1000_RXCSUM_IPOFL | E1000_RXCSUM_TUOFL);
+
+		/*
+		 * NOTE:
+		 * PCSD must be enabled to enable multiple
+		 * receive queues.
+		 */
+		rxcsum |= E1000_RXCSUM_IPOFL | E1000_RXCSUM_TUOFL |
+			  E1000_RXCSUM_PCSD;
 		E1000_WRITE_REG(&sc->hw, E1000_RXCSUM, rxcsum);
 	}
+
+	/*
+	 * NOTE:
+	 * When we reach here, RSS has already been disabled
+	 * in emx_stop(), so we could safely configure RSS key
+	 * and redirect table.
+	 */
+
+	/*
+	 * Configure RSS key
+	 */
+	key = 0x5a6d5a6d; /* XXX */
+	for (i = 0; i < EMX_NRSSRK; ++i)
+		E1000_WRITE_REG(&sc->hw, E1000_RSSRK(i), key);
+
+	/*
+	 * Configure RSS redirect table
+	 */
+	reta = 0x80008000;
+	for (i = 0; i < EMX_NRETA; ++i)
+		E1000_WRITE_REG(&sc->hw, E1000_RETA(i), reta);
+
+	/*
+	 * Enable multiple receive queues.
+	 * Enable IPv4 RSS standard hash functions.
+	 * Disable RSS interrupt.
+	 */
+	E1000_WRITE_REG(&sc->hw, E1000_MRQC,
+			E1000_MRQC_ENABLE_RSS_2Q |
+			E1000_MRQC_RSS_FIELD_IPV4_TCP |
+			E1000_MRQC_RSS_FIELD_IPV4);
 
 	/*
 	 * XXX TEMPORARY WORKAROUND: on some systems with 82573
@@ -2579,14 +2660,17 @@ emx_init_rx_unit(struct emx_softc *sc)
 		E1000_WRITE_REG(&sc->hw, E1000_RDTR, EMX_RDTR_82573);
 	}
 
-	/* Enable Receives */
-	E1000_WRITE_REG(&sc->hw, E1000_RCTL, rctl);
-
 	/*
 	 * Setup the HW Rx Head and Tail Descriptor Pointers
 	 */
-	E1000_WRITE_REG(&sc->hw, E1000_RDH(0), 0);
-	E1000_WRITE_REG(&sc->hw, E1000_RDT(0), sc->rx_data[0].num_rx_desc - 1);
+	for (i = 0; i < EMX_NRX_RING; ++i) {
+		E1000_WRITE_REG(&sc->hw, E1000_RDH(i), 0);
+		E1000_WRITE_REG(&sc->hw, E1000_RDT(i),
+		    sc->rx_data[i].num_rx_desc - 1);
+	}
+
+	/* Enable Receives */
+	E1000_WRITE_REG(&sc->hw, E1000_RCTL, rctl);
 }
 
 static void
@@ -2667,6 +2751,7 @@ emx_rxeof(struct emx_softc *sc, int ring_idx, int count)
 
 		if (!(staterr & E1000_RXDEXT_ERR_FRAME_ERR_MASK)) {
 			uint16_t vlan = 0;
+			uint32_t mrq, rss_hash;
 
 			/*
 			 * Save several necessary information,
@@ -2674,6 +2759,13 @@ emx_rxeof(struct emx_softc *sc, int ring_idx, int count)
 			 */
 			if ((staterr & E1000_RXD_STAT_VP) && eop)
 				vlan = le16toh(current_desc->rxd_vlan);
+
+			mrq = le32toh(current_desc->rxd_mrq);
+			rss_hash = le32toh(current_desc->rxd_rss);
+
+			EMX_RSS_DPRINTF(sc, 10,
+			    "ring%d, mrq 0x%08x, rss_hash 0x%08x\n",
+			    ring_idx, mrq, rss_hash);
 
 			if (emx_newbuf(sc, rdata, i, 0) != 0) {
 				ifp->if_iqdrops++;
@@ -2711,6 +2803,10 @@ emx_rxeof(struct emx_softc *sc, int ring_idx, int count)
 				m = rdata->fmp;
 				rdata->fmp = NULL;
 				rdata->lmp = NULL;
+
+#ifdef EMX_RSS_DEBUG
+				rdata->rx_pkts++;
+#endif
 			}
 		} else {
 			ifp->if_ierrors++;
@@ -2738,10 +2834,10 @@ discard:
 
 	ether_input_dispatch(chain);
 
-	/* Advance the E1000's Receive Queue #0  "Tail Pointer". */
+	/* Advance the E1000's Receive Queue "Tail Pointer". */
 	if (--i < 0)
 		i = rdata->num_rx_desc - 1;
-	E1000_WRITE_REG(&sc->hw, E1000_RDT(0), i);
+	E1000_WRITE_REG(&sc->hw, E1000_RDT(ring_idx), i);
 }
 
 static void
@@ -3173,6 +3269,10 @@ emx_add_sysctl(struct emx_softc *sc)
 #ifdef PROFILE_SERIALIZER
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 #endif
+#ifdef EMX_RSS_DEBUG
+	char rx_pkt[32];
+	int i;
+#endif
 
 	sysctl_ctx_init(&sc->sysctl_ctx);
 	sc->sysctl_tree = SYSCTL_ADD_NODE(&sc->sysctl_ctx,
@@ -3221,6 +3321,19 @@ emx_add_sysctl(struct emx_softc *sc)
 			OID_AUTO, "int_tx_nsegs", CTLTYPE_INT|CTLFLAG_RW,
 			sc, 0, emx_sysctl_int_tx_nsegs, "I",
 			"# segments per TX interrupt");
+
+#ifdef EMX_RSS_DEBUG
+	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+		       OID_AUTO, "rss_debug", CTLFLAG_RW, &sc->rss_debug,
+		       0, "RSS debug level");
+	for (i = 0; i < EMX_NRX_RING; ++i) {
+		ksnprintf(rx_pkt, sizeof(rx_pkt), "rx%d_pkt", i);
+		SYSCTL_ADD_UINT(&sc->sysctl_ctx,
+				SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO,
+				rx_pkt, CTLFLAG_RD,
+				&sc->rx_data[i].rx_pkts, 0, "RXed packets");
+	}
+#endif
 }
 
 static int
@@ -3308,7 +3421,7 @@ emx_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS)
 static int
 emx_dma_alloc(struct emx_softc *sc)
 {
-	int error;
+	int error, i;
 
 	/*
 	 * Create top level busdma tag
@@ -3335,10 +3448,13 @@ emx_dma_alloc(struct emx_softc *sc)
 	/*
 	 * Allocate receive descriptors ring and buffers
 	 */
-	error = emx_create_rx_ring(sc, &sc->rx_data[0]);
-	if (error) {
-		device_printf(sc->dev, "Could not setup receive structures\n");
-		return error;
+	for (i = 0; i < EMX_NRX_RING; ++i) {
+		error = emx_create_rx_ring(sc, &sc->rx_data[i]);
+		if (error) {
+			device_printf(sc->dev,
+			    "Could not setup receive structures\n");
+			return error;
+		}
 	}
 	return 0;
 }
@@ -3346,8 +3462,14 @@ emx_dma_alloc(struct emx_softc *sc)
 static void
 emx_dma_free(struct emx_softc *sc)
 {
+	int i;
+
 	emx_destroy_tx_ring(sc, sc->num_tx_desc);
-	emx_destroy_rx_ring(sc, &sc->rx_data[0], sc->rx_data[0].num_rx_desc);
+
+	for (i = 0; i < EMX_NRX_RING; ++i) {
+		emx_destroy_rx_ring(sc, &sc->rx_data[i],
+				    sc->rx_data[i].num_rx_desc);
+	}
 
 	/* Free top level busdma tag */
 	if (sc->parent_dtag != NULL)

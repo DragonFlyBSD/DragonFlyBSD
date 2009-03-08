@@ -168,6 +168,9 @@
  */
 #define EMX_EIAC			0x000DC
 
+#define EMX_NRSSRK			10
+#define EMX_NRETA			32
+
 #define EMX_NRX_RING			2
 
 typedef union e1000_rx_desc_extended	emx_rxdesc_t;
@@ -176,6 +179,8 @@ typedef union e1000_rx_desc_extended	emx_rxdesc_t;
 #define rxd_length	wb.upper.length		/* 16bits */
 #define rxd_vlan	wb.upper.vlan		/* 16bits */
 #define rxd_staterr	wb.upper.status_error	/* 32bits */
+#define rxd_mrq		wb.lower.mrq		/* 32bits */
+#define rxd_rss		wb.lower.hi_dword.rss	/* 32bits */
 
 struct emx_rxdata {
 	/*
@@ -201,6 +206,7 @@ struct emx_rxdata {
 	struct mbuf		*lmp;
 
 	/* RX statistics */
+	unsigned long		rx_pkts;
 	unsigned long		mbuf_cluster_failed;
 
 	bus_dma_tag_t		rx_desc_dtag;
@@ -335,6 +341,8 @@ struct emx_softc {
 	/* sysctl tree glue */
 	struct sysctl_ctx_list	sysctl_ctx;
 	struct sysctl_oid	*sysctl_tree;
+
+	int			rss_debug;
 
 	struct e1000_hw_stats	stats;
 };
