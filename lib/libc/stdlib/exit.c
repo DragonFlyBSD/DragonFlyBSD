@@ -71,6 +71,11 @@ exit(int status)
 	_exit(status);
 }
 
+/*
+ * ISO C99 added the _Exit() function that results in immediate program
+ * termination without triggering signals or atexit()-registered functions.
+ * In POSIX this is equivalent to the _exit() function.
+ */
 void
 _Exit(int status)
 {
