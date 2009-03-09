@@ -286,7 +286,8 @@ SYMLINKS+=libncurses.a ${PROFLIBDIR}/libtinfo.aa
 .endif
 
 INCS=	term.h ${.CURDIR}/../include/termcap.h \
-	${.CURDIR}/../include/unctrl.h curses.h
+	${.CURDIR}/../include/unctrl.h curses.h \
+	${NCURSESDIR}/include/ncurses_dll.h
 INCSLINKS=curses.h ${INCLUDEDIR}/ncurses.h
 
 .include <bsd.lib.mk>
