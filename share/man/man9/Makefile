@@ -108,6 +108,7 @@ MAN=	accept_filter.9 \
 	MODULE_DEPEND.9 \
 	MODULE_VERSION.9 \
 	nlookup.9 \
+	objcache.9 \
 	panic.9 \
 	pci.9 \
 	pfil.9 \
@@ -471,6 +472,18 @@ MLINKS+=nlookup.9 naccess.9 \
 	nlookup.9 nlookup_simple.9 \
 	nlookup.9 nlookup_zero.9 \
 	nlookup.9 nreadsymlink.9
+MLINKS+=objcache.9 objcache_create.9 \
+	objcache.9 objcache_create_mbacked.9 \
+	objcache.9 objcache_create_simple.9 \
+	objcache.9 objcache_destroy.9 \
+	objcache.9 objcache_dtor.9 \
+	objcache.9 objcache_get.9 \
+	objcache.9 objcache_malloc_alloc.9 \
+	objcache.9 objcache_malloc_free.9 \
+	objcache.9 objcache_nop_alloc.9 \
+	objcache.9 objcache_nop_free.9 \
+	objcache.9 objcache_put.9 \
+	objcache.9 objcache_reclaim_list.9
 MLINKS+=pci.9 pci_disable_busmaster.9 \
 	pci.9 pci_disable_io.9 \
 	pci.9 pci_enable_busmaster.9 \
