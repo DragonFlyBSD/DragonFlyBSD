@@ -261,6 +261,7 @@ static int	emx_int_throttle_ceil = EMX_DEFAULT_ITR;
 static int	emx_rxd = EMX_DEFAULT_RXD;
 static int	emx_txd = EMX_DEFAULT_TXD;
 static int	emx_smart_pwr_down = FALSE;
+static int	emx_rss = FALSE;
 
 /* Controls whether promiscuous also shows bad packets */
 static int	emx_debug_sbp = FALSE;
@@ -271,6 +272,7 @@ TUNABLE_INT("hw.emx.int_throttle_ceil", &emx_int_throttle_ceil);
 TUNABLE_INT("hw.emx.rxd", &emx_rxd);
 TUNABLE_INT("hw.emx.txd", &emx_txd);
 TUNABLE_INT("hw.emx.smart_pwr_down", &emx_smart_pwr_down);
+TUNABLE_INT("hw.emx.rss", &emx_rss);
 TUNABLE_INT("hw.emx.sbp", &emx_debug_sbp);
 TUNABLE_INT("hw.emx.82573_workaround", &emx_82573_workaround);
 
@@ -448,6 +450,12 @@ emx_attach(device_t dev)
 
 	/* This controls when hardware reports transmit completion status. */
 	sc->hw.mac.report_tx_early = 1;
+
+	/* Calculate # of RX rings */
+	if (emx_rss && ncpus > 1)
+		sc->rx_ring_cnt = EMX_NRX_RING;
+	else
+		sc->rx_ring_cnt = 1;
 
 	/* Allocate RX/TX rings' busdma(9) stuffs */
 	error = emx_dma_alloc(sc);
@@ -1014,7 +1022,7 @@ emx_init(void *xsc)
 	emx_set_multi(sc);
 
 	/* Prepare receive descriptors and buffers */
-	for (i = 0; i < EMX_NRX_RING; ++i) {
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		if (emx_init_rx_ring(sc, &sc->rx_data[i])) {
 			device_printf(dev,
 			    "Could not setup receive structures\n");
@@ -1097,7 +1105,7 @@ emx_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		if (ifp->if_flags & IFF_RUNNING) {
 			int i;
 
-			for (i = 0; i < EMX_NRX_RING; ++i)
+			for (i = 0; i < sc->rx_ring_cnt; ++i)
 				emx_rxeof(sc, i, count);
 
 			emx_txeof(sc);
@@ -1143,7 +1151,7 @@ emx_intr(void *xsc)
 		    (E1000_ICR_RXT0 | E1000_ICR_RXDMT0 | E1000_ICR_RXO)) {
 			int i;
 
-			for (i = 0; i < EMX_NRX_RING; ++i)
+			for (i = 0; i < sc->rx_ring_cnt; ++i)
 				emx_rxeof(sc, i, -1);
 		}
 		if (reg_icr & E1000_ICR_TXDW) {
@@ -1614,7 +1622,7 @@ emx_stop(struct emx_softc *sc)
 		}
 	}
 
-	for (i = 0; i < EMX_NRX_RING; ++i)
+	for (i = 0; i < sc->rx_ring_cnt; ++i)
 		emx_free_rx_ring(sc, &sc->rx_data[i]);
 
 	sc->csum_flags = 0;
@@ -2567,7 +2575,7 @@ emx_init_rx_unit(struct emx_softc *sc)
 	E1000_WRITE_REG(&sc->hw, E1000_RFCTL, rfctl);
 
 	/* Setup the Base and Length of the Rx Descriptor Ring */
-	for (i = 0; i < EMX_NRX_RING; ++i) {
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		struct emx_rxdata *rdata = &sc->rx_data[i];
 
 		bus_addr = rdata->rx_desc_paddr;
@@ -2599,12 +2607,14 @@ emx_init_rx_unit(struct emx_softc *sc)
 	else
 		rctl &= ~E1000_RCTL_LPE;
 
-#if 0
-	/* Receive Checksum Offload for TCP and UDP */
-	if (ifp->if_capenable & IFCAP_RXCSUM) {
-#else
-	if (1) {
-#endif
+	/*
+	 * Receive Checksum Offload for TCP and UDP
+	 *
+	 * Checksum offloading is also enabled if multiple receive
+	 * queue is to be supported, since we need it to figure out
+	 * packet type.
+	 */
+	if (EMX_RSS_ENABLED(sc) && (ifp->if_capenable & IFCAP_RXCSUM)) {
 		rxcsum = E1000_READ_REG(&sc->hw, E1000_RXCSUM);
 
 		/*
@@ -2618,35 +2628,40 @@ emx_init_rx_unit(struct emx_softc *sc)
 	}
 
 	/*
-	 * NOTE:
-	 * When we reach here, RSS has already been disabled
-	 * in emx_stop(), so we could safely configure RSS key
-	 * and redirect table.
+	 * Configure multiple receive queue (RSS)
 	 */
+	if (EMX_RSS_ENABLED(sc)) {
+		/*
+		 * NOTE:
+		 * When we reach here, RSS has already been disabled
+		 * in emx_stop(), so we could safely configure RSS key
+		 * and redirect table.
+		 */
 
-	/*
-	 * Configure RSS key
-	 */
-	key = 0x5a6d5a6d; /* XXX */
-	for (i = 0; i < EMX_NRSSRK; ++i)
-		E1000_WRITE_REG(&sc->hw, E1000_RSSRK(i), key);
+		/*
+		 * Configure RSS key
+		 */
+		key = 0x5a6d5a6d; /* XXX */
+		for (i = 0; i < EMX_NRSSRK; ++i)
+			E1000_WRITE_REG(&sc->hw, E1000_RSSRK(i), key);
 
-	/*
-	 * Configure RSS redirect table
-	 */
-	reta = 0x80008000;
-	for (i = 0; i < EMX_NRETA; ++i)
-		E1000_WRITE_REG(&sc->hw, E1000_RETA(i), reta);
+		/*
+		 * Configure RSS redirect table
+		 */
+		reta = 0x80008000;
+		for (i = 0; i < EMX_NRETA; ++i)
+			E1000_WRITE_REG(&sc->hw, E1000_RETA(i), reta);
 
-	/*
-	 * Enable multiple receive queues.
-	 * Enable IPv4 RSS standard hash functions.
-	 * Disable RSS interrupt.
-	 */
-	E1000_WRITE_REG(&sc->hw, E1000_MRQC,
-			E1000_MRQC_ENABLE_RSS_2Q |
-			E1000_MRQC_RSS_FIELD_IPV4_TCP |
-			E1000_MRQC_RSS_FIELD_IPV4);
+		/*
+		 * Enable multiple receive queues.
+		 * Enable IPv4 RSS standard hash functions.
+		 * Disable RSS interrupt.
+		 */
+		E1000_WRITE_REG(&sc->hw, E1000_MRQC,
+				E1000_MRQC_ENABLE_RSS_2Q |
+				E1000_MRQC_RSS_FIELD_IPV4_TCP |
+				E1000_MRQC_RSS_FIELD_IPV4);
+	}
 
 	/*
 	 * XXX TEMPORARY WORKAROUND: on some systems with 82573
@@ -2663,7 +2678,7 @@ emx_init_rx_unit(struct emx_softc *sc)
 	/*
 	 * Setup the HW Rx Head and Tail Descriptor Pointers
 	 */
-	for (i = 0; i < EMX_NRX_RING; ++i) {
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		E1000_WRITE_REG(&sc->hw, E1000_RDH(i), 0);
 		E1000_WRITE_REG(&sc->hw, E1000_RDT(i),
 		    sc->rx_data[i].num_rx_desc - 1);
@@ -3326,7 +3341,7 @@ emx_add_sysctl(struct emx_softc *sc)
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 		       OID_AUTO, "rss_debug", CTLFLAG_RW, &sc->rss_debug,
 		       0, "RSS debug level");
-	for (i = 0; i < EMX_NRX_RING; ++i) {
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		ksnprintf(rx_pkt, sizeof(rx_pkt), "rx%d_pkt", i);
 		SYSCTL_ADD_UINT(&sc->sysctl_ctx,
 				SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO,
@@ -3448,7 +3463,7 @@ emx_dma_alloc(struct emx_softc *sc)
 	/*
 	 * Allocate receive descriptors ring and buffers
 	 */
-	for (i = 0; i < EMX_NRX_RING; ++i) {
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		error = emx_create_rx_ring(sc, &sc->rx_data[i]);
 		if (error) {
 			device_printf(sc->dev,
@@ -3466,7 +3481,7 @@ emx_dma_free(struct emx_softc *sc)
 
 	emx_destroy_tx_ring(sc, sc->num_tx_desc);
 
-	for (i = 0; i < EMX_NRX_RING; ++i) {
+	for (i = 0; i < sc->rx_ring_cnt; ++i) {
 		emx_destroy_rx_ring(sc, &sc->rx_data[i],
 				    sc->rx_data[i].num_rx_desc);
 	}
