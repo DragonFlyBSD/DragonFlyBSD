@@ -1586,7 +1586,6 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 				if (++i == adapter->num_tx_desc)
 					i = 0;
 
-				tx_buffer->m_head = NULL;
 				txd_used++;
                         }
 		} else {
@@ -1601,8 +1600,6 @@ em_encap(struct adapter *adapter, struct mbuf **m_headp)
 			last = i;
 			if (++i == adapter->num_tx_desc)
 				i = 0;
-
-			tx_buffer->m_head = NULL;
 		}
 	}
 
@@ -2681,7 +2678,6 @@ em_txcsum(struct adapter *adapter, struct mbuf *mp,
 	TXD->tcp_seg_setup.data = htole32(0);
 	TXD->cmd_and_length =
 	    htole32(E1000_TXD_CMD_IFCS | E1000_TXD_CMD_DEXT | cmd);
-	tx_buffer->m_head = NULL;
 
 	if (++curr_txd == adapter->num_tx_desc)
 		curr_txd = 0;
