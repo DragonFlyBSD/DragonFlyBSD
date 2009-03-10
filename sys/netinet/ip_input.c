@@ -138,7 +138,7 @@ int rsvp_on = 0;
 static int ip_rsvp_on;
 struct socket *ip_rsvpd;
 
-int ip_mpsafe = 0;
+int ip_mpsafe = 1;
 TUNABLE_INT("net.inet.ip.mpsafe", &ip_mpsafe);
 
 int ipforwarding = 0;

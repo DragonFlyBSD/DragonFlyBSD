@@ -148,7 +148,7 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, useloopback, CTLFLAG_RW,
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, proxyall, CTLFLAG_RW,
 	   &arp_proxyall, 0, "");
 
-static int	arp_mpsafe = 0;
+static int	arp_mpsafe = 1;
 TUNABLE_INT("net.link.ether.inet.arp_mpsafe", &arp_mpsafe);
 
 static void	arp_rtrequest(int, struct rtentry *, struct rt_addrinfo *);

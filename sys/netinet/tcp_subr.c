@@ -162,7 +162,7 @@ struct tcpcbackqhead tcpcbackq[MAXCPU];
 int tcp_mpsafe_proto = 0;
 TUNABLE_INT("net.inet.tcp.mpsafe_proto", &tcp_mpsafe_proto);
 
-static int tcp_mpsafe_thread = 0;
+static int tcp_mpsafe_thread = NETMSG_SERVICE_ADAPTIVE;
 TUNABLE_INT("net.inet.tcp.mpsafe_thread", &tcp_mpsafe_thread);
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, mpsafe_thread, CTLFLAG_RW,
 	   &tcp_mpsafe_thread, 0,

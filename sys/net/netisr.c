@@ -87,7 +87,7 @@ lwkt_port netisr_sync_port;
 
 static int (*netmsg_fwd_port_fn)(lwkt_port_t, lwkt_msg_t);
 
-static int netisr_mpsafe_thread = 0;
+static int netisr_mpsafe_thread = NETMSG_SERVICE_ADAPTIVE;
 TUNABLE_INT("net.netisr.mpsafe_thread", &netisr_mpsafe_thread);
 
 SYSCTL_NODE(_net, OID_AUTO, netisr, CTLFLAG_RW, 0, "netisr");

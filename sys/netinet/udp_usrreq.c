@@ -123,7 +123,7 @@
 int	udp_mpsafe_proto = 0;
 TUNABLE_INT("net.inet.udp.mpsafe_proto", &udp_mpsafe_proto);
 
-int	udp_mpsafe_thread = 0;
+int	udp_mpsafe_thread = NETMSG_SERVICE_ADAPTIVE;
 TUNABLE_INT("net.inet.udp.mpsafe_thread", &udp_mpsafe_thread);
 SYSCTL_INT(_net_inet_udp, OID_AUTO, mpsafe_thread, CTLFLAG_RW,
 	   &udp_mpsafe_thread, 0,
