@@ -229,16 +229,16 @@ __uint32_t
 	 arc4random_uniform(__uint32_t);
 char	*getbsize(int *, long *);
 					/* getcap(3) functions */
-char	*cgetcap(char *, char *, int);
+char	*cgetcap(char *, const char *, int);
 int	 cgetclose(void);
-int	 cgetent(char **, char **, char *);
+int	 cgetent(char **, char **, const char *);
 int	 cgetfirst(char **, char **);
-int	 cgetmatch(char *, char *);
+int	 cgetmatch(const char *, const char *);
 int	 cgetnext(char **, char **);
-int	 cgetnum(char *, char *, long *);
-int	 cgetset(char *);
-int	 cgetstr(char *, char *, char **);
-int	 cgetustr(char *, char *, char **);
+int	 cgetnum(char *, const char *, long *);
+int	 cgetset(const char *);
+int	 cgetstr(char *, const char *, char **);
+int	 cgetustr(char *, const char *, char **);
 
 int	 daemon(int, int);
 char	*devname(dev_t, mode_t);
