@@ -153,7 +153,7 @@ int	 getdomainname(char *, int);
 int	 getdtablesize(void);
 int	 getgrouplist(const char *, gid_t, gid_t *, int *);
 long	 gethostid(void);
-int	 gethostname(char *, int);
+int	 gethostname(char *, size_t);
 int	 getlogin_r(char *, int);
 mode_t	 getmode(const void *, mode_t);
 int	 getpagesize(void) __pure2;
