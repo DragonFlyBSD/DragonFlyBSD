@@ -3129,14 +3129,14 @@ em_init_rx_unit(struct adapter *adapter)
 		E1000_WRITE_REG(&adapter->hw, E1000_RDTR, EM_RDTR_82573);
 	}
 
-	/* Enable Receives */
-	E1000_WRITE_REG(&adapter->hw, E1000_RCTL, rctl);
-
 	/*
 	 * Setup the HW Rx Head and Tail Descriptor Pointers
 	 */
 	E1000_WRITE_REG(&adapter->hw, E1000_RDH(0), 0);
 	E1000_WRITE_REG(&adapter->hw, E1000_RDT(0), adapter->num_rx_desc - 1);
+
+	/* Enable Receives */
+	E1000_WRITE_REG(&adapter->hw, E1000_RCTL, rctl);
 }
 
 static void
