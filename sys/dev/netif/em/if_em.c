@@ -1355,9 +1355,9 @@ em_intr(void *xsc)
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		if (reg_icr &
-		    (E1000_IMS_RXT0 | E1000_IMS_RXDMT0 | E1000_ICR_RXO))
+		    (E1000_ICR_RXT0 | E1000_ICR_RXDMT0 | E1000_ICR_RXO))
 			em_rxeof(adapter, -1);
-		if (reg_icr & E1000_IMS_TXDW) {
+		if (reg_icr & E1000_ICR_TXDW) {
 			em_txeof(adapter);
 			if (!ifq_is_empty(&ifp->if_snd))
 				if_devstart(ifp);
