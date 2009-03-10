@@ -2753,7 +2753,6 @@ static void
 em_txeof(struct adapter *adapter)
 {
 	struct ifnet *ifp = &adapter->arpcom.ac_if;
-	struct e1000_tx_desc *tx_desc;
 	struct em_buffer *tx_buffer;
 	int first, num_avail;
 
@@ -2767,10 +2766,10 @@ em_txeof(struct adapter *adapter)
 	first = adapter->next_tx_to_clean;
 
 	while (adapter->tx_dd_head != adapter->tx_dd_tail) {
+		struct e1000_tx_desc *tx_desc;
 		int dd_idx = adapter->tx_dd[adapter->tx_dd_head];
 
 		tx_desc = &adapter->tx_desc_base[dd_idx];
-
 		if (tx_desc->upper.fields.status & E1000_TXD_STAT_DD) {
 			EM_INC_TXDD_IDX(adapter->tx_dd_head);
 
@@ -2780,14 +2779,9 @@ em_txeof(struct adapter *adapter)
 			while (first != dd_idx) {
 				logif(pkt_txclean);
 
-				tx_buffer = &adapter->tx_buffer_area[first];
-				tx_desc = &adapter->tx_desc_base[first];
-
-				tx_desc->upper.data = 0;
-				tx_desc->lower.data = 0;
-				tx_desc->buffer_addr = 0;
 				num_avail++;
 
+				tx_buffer = &adapter->tx_buffer_area[first];
 				if (tx_buffer->m_head) {
 					ifp->if_opackets++;
 					bus_dmamap_unload(adapter->txtag,
@@ -2824,7 +2818,6 @@ static void
 em_tx_collect(struct adapter *adapter)
 {
 	struct ifnet *ifp = &adapter->arpcom.ac_if;
-	struct e1000_tx_desc *tx_desc;
 	struct em_buffer *tx_buffer;
 	int tdh, first, num_avail, dd_idx = -1;
 
@@ -2844,14 +2837,9 @@ em_tx_collect(struct adapter *adapter)
 	while (first != tdh) {
 		logif(pkt_txclean);
 
-		tx_buffer = &adapter->tx_buffer_area[first];
-		tx_desc = &adapter->tx_desc_base[first];
-
-		tx_desc->upper.data = 0;
-		tx_desc->lower.data = 0;
-		tx_desc->buffer_addr = 0;
 		num_avail++;
 
+		tx_buffer = &adapter->tx_buffer_area[first];
 		if (tx_buffer->m_head) {
 			ifp->if_opackets++;
 			bus_dmamap_unload(adapter->txtag,
