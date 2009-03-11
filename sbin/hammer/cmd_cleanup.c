@@ -115,8 +115,9 @@ hammer_cmd_cleanup(char **av, int ac)
 				continue;
 			if ((strncmp(ptr, "(hammer,", 8) == 0) ||
 			    ((strncmp(ptr, "(null,", 6) == 0) &&
-			     (strncmp(fs, "/pfs", 4) == 0)))
+			     (strstr(fs, "/@@0x") != NULL))) {
 				do_cleanup(path);
+			}
 		}
 		fclose(fp);
 	} else {
