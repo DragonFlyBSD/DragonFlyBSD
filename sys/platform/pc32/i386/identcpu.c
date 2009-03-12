@@ -712,7 +712,7 @@ printcpuinfo(void)
 				"\024SSE4.1"
 				"\025SSE4.2"
 				"\026x2APIC"	/* xAPIC Extensions */
-				"\027<b22>"
+				"\027MOVBE"	/* MOVBE instruction */
 				"\030POPCNT"
 				"\031<b24>"
 				"\032<b25>"
