@@ -66,6 +66,7 @@
 
 #include "opt_polling.h"
 #include "opt_serializer.h"
+#include "opt_emx.h"
 
 #include <sys/param.h>
 #include <sys/bus.h>
@@ -105,8 +106,6 @@
 #include <dev/netif/ig_hal/e1000_api.h>
 #include <dev/netif/ig_hal/e1000_82571.h>
 #include <dev/netif/emx/if_emx.h>
-
-#define EMX_RSS_DEBUG
 
 #ifdef EMX_RSS_DEBUG
 #define EMX_RSS_DPRINTF(sc, lvl, fmt, ...) \
