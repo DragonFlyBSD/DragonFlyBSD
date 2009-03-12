@@ -716,13 +716,17 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	/*
 	 * Special case for @@PFS softlinks.  The actual size of the
 	 * expanded softlink is "@@0x%016llx:%05d" == 26 bytes.
+	 * or for MAX_TID is    "@@-1:%05d" == 10 bytes.
 	 */
 	if (ip->ino_data.obj_type == HAMMER_OBJTYPE_SOFTLINK &&
 	    ip->ino_data.size == 10 &&
 	    ip->obj_asof == HAMMER_MAX_TID &&
 	    ip->obj_localization == 0 &&
 	    strncmp(ip->ino_data.ext.symlink, "@@PFS", 5) == 0) {
-		    vap->va_size = 26;
+		    if (ip->pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE)
+			    vap->va_size = 26;
+		    else
+			    vap->va_size = 10;
 	}
 
 	/*
@@ -1447,15 +1451,22 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 			if (error == 0) {
 				if (pfsm->pfsd.mirror_flags &
 				    HAMMER_PFSD_SLAVE) {
+					/* vap->va_size == 26 */
 					ksnprintf(buf, sizeof(buf),
 						  "@@0x%016llx:%05d",
 						  pfsm->pfsd.sync_end_tid,
 						  localization >> 16);
 				} else {
+					/* vap->va_size == 10 */
+					ksnprintf(buf, sizeof(buf),
+						  "@@-1:%05d",
+						  localization >> 16);
+#if 0
 					ksnprintf(buf, sizeof(buf),
 						  "@@0x%016llx:%05d",
 						  HAMMER_MAX_TID,
 						  localization >> 16);
+#endif
 				}
 				ptr = buf;
 				bytes = strlen(buf);
