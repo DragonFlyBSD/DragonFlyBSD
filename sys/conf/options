@@ -617,6 +617,9 @@ BCE_NVRAM_WRITE_SUPPORT	opt_bce.h
 # ed driver
 ED_NO_MIIBUS		opt_ed.h
 
+# jme driver
+JME_RSS_DEBUG		opt_jme.h
+
 # wi driver
 WI_SYMBOL_FIRMWARE	opt_wi.h
 

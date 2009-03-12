@@ -29,6 +29,7 @@
  */
 
 #include "opt_polling.h"
+#include "opt_jme.h"
 
 #include <sys/param.h>
 #include <sys/endian.h>
@@ -69,8 +70,6 @@
 #undef	JME_SHOW_ERRORS
 
 #define	JME_CSUM_FEATURES	(CSUM_IP | CSUM_TCP | CSUM_UDP)
-
-#define JME_RSS_DEBUG
 
 #ifdef JME_RSS_DEBUG
 #define JME_RSS_DPRINTF(sc, lvl, fmt, ...) \
