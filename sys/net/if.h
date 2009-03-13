@@ -158,6 +158,7 @@ struct if_data {
 #define IFCAP_VLAN_MTU		0x0008	/* VLAN-compatible MTU */
 #define IFCAP_VLAN_HWTAGGING	0x0010	/* hardware VLAN tag support */
 #define IFCAP_JUMBO_MTU		0x0020	/* 9000 byte MTU support */
+#define IFCAP_RSS		0x0040	/* Receive Side Scaling for IPv4 */
 
 #define IFCAP_HWCSUM		(IFCAP_RXCSUM | IFCAP_TXCSUM)
 
