@@ -509,12 +509,12 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 		return 1;
 	}
 	/*
-	 * If ARP is disabled on this interface, stop.
+	 * If ARP is disabled or static on this interface, stop.
 	 * XXX
 	 * Probably should not allocate empty llinfo struct if we are
 	 * not going to be sending out an arp request.
 	 */
-	if (ifp->if_flags & IFF_NOARP) {
+	if (ifp->if_flags & (IFF_NOARP | IFF_STATICARP)) {
 		m_freem(m);
 		return (0);
 	}
@@ -893,6 +893,8 @@ match:
 		itaddr = myaddr;
 		goto reply;
 	}
+	if (ifp->if_flags & IFF_STATICARP)
+		goto reply;
 #ifdef SMP
 	netmsg_init(&msg.netmsg, &curthread->td_msgport, 0, 
 		    arp_update_msghandler);

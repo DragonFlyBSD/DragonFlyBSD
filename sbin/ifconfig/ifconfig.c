@@ -1072,10 +1072,8 @@ static struct cmd basic_cmds[] = {
 	DEF_CMD("-link2",	-IFF_LINK2,	setifflags),
 	DEF_CMD("monitor",	IFF_MONITOR,	setifflags),
 	DEF_CMD("-monitor",	-IFF_MONITOR,	setifflags),
-#ifdef notyet
 	DEF_CMD("staticarp",	IFF_STATICARP,	setifflags),
 	DEF_CMD("-staticarp",	-IFF_STATICARP,	setifflags),
-#endif
 	DEF_CMD("polling",	IFF_POLLING,	setifflags),
 	DEF_CMD("-polling",	-IFF_POLLING,	setifflags),
 	DEF_CMD("rxcsum",	IFCAP_RXCSUM,	setifcap),
