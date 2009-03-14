@@ -34,6 +34,7 @@
  */
 
 #include "opt_inet.h"
+#include "opt_rss.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -276,11 +277,14 @@ ip_mport(struct mbuf **mptr, int dir)
 	case IPPROTO_UDP:
 		uh = (struct udphdr *)((caddr_t)ip + iphlen);
 
+#ifndef RSS
 		if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr)) ||
 		    (dir == IP_MPORT_IN &&
 		     in_broadcast(ip->ip_dst, m->m_pkthdr.rcvif))) {
 			cpu = 0;
-		} else {
+		} else
+#endif
+		{
 			cpu = INP_MPORT_HASH(ip->ip_src.s_addr,
 			    ip->ip_dst.s_addr, uh->uh_sport, uh->uh_dport);
 		}
@@ -398,8 +402,10 @@ udp_soport(struct socket *so, struct sockaddr *nam __unused,
 
 	inp = so->so_pcb;
 
+#ifndef RSS
 	if (IN_MULTICAST(ntohl(inp->inp_laddr.s_addr)))
 		return (&udp_thread[0].td_msgport);
+#endif
 
 	/*
 	 * Rely on type-stable memory and check in protocol handler
@@ -459,9 +465,11 @@ tcp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 int
 udp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 {
+#ifndef RSS
 	if (IN_MULTICAST(ntohl(laddr)))
 		return (0);
 	else
+#endif
 		return (INP_MPORT_HASH(faddr, laddr, fport, lport));
 }
 
