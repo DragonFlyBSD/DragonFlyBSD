@@ -47,6 +47,9 @@
 
 #include <net/if.h>
 #include <net/netisr.h>
+#ifdef RSS
+#include <net/toeplitz2.h>
+#endif
 
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
@@ -66,6 +69,8 @@ extern int udp_mpsafe_thread;
 static struct thread tcp_thread[MAXCPU];
 static struct thread udp_thread[MAXCPU];
 
+#ifndef RSS
+
 static __inline int
 INP_MPORT_HASH(in_addr_t faddr, in_addr_t laddr,
 	       in_port_t fport, in_port_t lport)
@@ -83,18 +88,28 @@ INP_MPORT_HASH(in_addr_t faddr, in_addr_t laddr,
 #endif
 }
 
+#endif	/* !RSS */
+
 static __inline int
 INP_MPORT_HASH_UDP(in_addr_t faddr, in_addr_t laddr,
 		   in_port_t fport, in_port_t lport)
 {
+#ifndef RSS
 	return INP_MPORT_HASH(faddr, laddr, fport, lport);
+#else
+	return (toeplitz_hash(faddr, laddr) & ncpus2_mask);
+#endif
 }
 
 static __inline int
 INP_MPORT_HASH_TCP(in_addr_t faddr, in_addr_t laddr,
 		   in_port_t fport, in_port_t lport)
 {
+#ifndef RSS
 	return INP_MPORT_HASH(faddr, laddr, fport, lport);
+#else
+	return (toeplitz_hash_tcp(faddr, laddr, fport, lport) & ncpus2_mask);
+#endif
 }
 
 /*
