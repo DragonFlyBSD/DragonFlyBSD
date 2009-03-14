@@ -83,6 +83,20 @@ INP_MPORT_HASH(in_addr_t faddr, in_addr_t laddr,
 #endif
 }
 
+static __inline int
+INP_MPORT_HASH_UDP(in_addr_t faddr, in_addr_t laddr,
+		   in_port_t fport, in_port_t lport)
+{
+	return INP_MPORT_HASH(faddr, laddr, fport, lport);
+}
+
+static __inline int
+INP_MPORT_HASH_TCP(in_addr_t faddr, in_addr_t laddr,
+		   in_port_t fport, in_port_t lport)
+{
+	return INP_MPORT_HASH(faddr, laddr, fport, lport);
+}
+
 /*
  * If the packet is a valid IP datagram, upon returning of this function
  * following things are promised:
@@ -270,10 +284,11 @@ ip_mport(struct mbuf **mptr, int dir)
 	case IPPROTO_TCP:
 		th = (struct tcphdr *)((caddr_t)ip + iphlen);
 		thoff = th->th_off << 2;
-		cpu = INP_MPORT_HASH(ip->ip_src.s_addr, ip->ip_dst.s_addr,
+		cpu = INP_MPORT_HASH_TCP(ip->ip_src.s_addr, ip->ip_dst.s_addr,
 		    th->th_sport, th->th_dport);
 		port = &tcp_thread[cpu].td_msgport;
 		break;
+
 	case IPPROTO_UDP:
 		uh = (struct udphdr *)((caddr_t)ip + iphlen);
 
@@ -285,11 +300,12 @@ ip_mport(struct mbuf **mptr, int dir)
 		} else
 #endif
 		{
-			cpu = INP_MPORT_HASH(ip->ip_src.s_addr,
+			cpu = INP_MPORT_HASH_UDP(ip->ip_src.s_addr,
 			    ip->ip_dst.s_addr, uh->uh_sport, uh->uh_dport);
 		}
 		port = &udp_thread[cpu].td_msgport;
 		break;
+
 	default:
 		port = &netisr_cpu[0].td_msgport;
 		break;
@@ -332,7 +348,7 @@ tcp_soport(struct socket *so, struct sockaddr *nam __unused,
 	 * Rely on type-stable memory and check in protocol handler
 	 * to fix race condition here w/ deallocation of inp.  XXX JH
 	 */
-	return (&tcp_thread[INP_MPORT_HASH(inp->inp_faddr.s_addr,
+	return (&tcp_thread[INP_MPORT_HASH_TCP(inp->inp_faddr.s_addr,
 	    inp->inp_laddr.s_addr, inp->inp_fport, inp->inp_lport)].td_msgport);
 }
 
@@ -412,7 +428,7 @@ udp_soport(struct socket *so, struct sockaddr *nam __unused,
 	 * to fix race condition here w/ deallocation of inp.  XXX JH
 	 */
 
-	return (&udp_thread[INP_MPORT_HASH(inp->inp_faddr.s_addr,
+	return (&udp_thread[INP_MPORT_HASH_UDP(inp->inp_faddr.s_addr,
 	    inp->inp_laddr.s_addr, inp->inp_fport, inp->inp_lport)].td_msgport);
 }
 
@@ -447,8 +463,8 @@ udp_ctlport(int cmd, struct sockaddr *sa, void *vip)
 	} else {
 		uh = (struct udphdr *)((caddr_t)ip + (ip->ip_hl << 2));
 
-		cpu = INP_MPORT_HASH(faddr.s_addr, ip->ip_src.s_addr,
-				     uh->uh_dport, uh->uh_sport);
+		cpu = INP_MPORT_HASH_UDP(faddr.s_addr, ip->ip_src.s_addr,
+					 uh->uh_dport, uh->uh_sport);
 	}
 	return (&udp_thread[cpu].td_msgport);
 }
@@ -459,7 +475,7 @@ udp_ctlport(int cmd, struct sockaddr *sa, void *vip)
 int
 tcp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 {
-	return (INP_MPORT_HASH(faddr, laddr, fport, lport));
+	return (INP_MPORT_HASH_TCP(faddr, laddr, fport, lport));
 }
 
 int
@@ -470,7 +486,7 @@ udp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 		return (0);
 	else
 #endif
-		return (INP_MPORT_HASH(faddr, laddr, fport, lport));
+		return (INP_MPORT_HASH_UDP(faddr, laddr, fport, lport));
 }
 
 /*
