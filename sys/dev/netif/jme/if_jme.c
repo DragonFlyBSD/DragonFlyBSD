@@ -1724,16 +1724,13 @@ jme_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		mask = ifr->ifr_reqcap ^ ifp->if_capenable;
 
 		if ((mask & IFCAP_TXCSUM) && ifp->if_mtu < JME_TX_FIFO_SIZE) {
-			if (IFCAP_TXCSUM & ifp->if_capabilities) {
-				ifp->if_capenable ^= IFCAP_TXCSUM;
-				if (IFCAP_TXCSUM & ifp->if_capenable)
-					ifp->if_hwassist |= JME_CSUM_FEATURES;
-				else
-					ifp->if_hwassist &= ~JME_CSUM_FEATURES;
-			}
+			ifp->if_capenable ^= IFCAP_TXCSUM;
+			if (IFCAP_TXCSUM & ifp->if_capenable)
+				ifp->if_hwassist |= JME_CSUM_FEATURES;
+			else
+				ifp->if_hwassist &= ~JME_CSUM_FEATURES;
 		}
-		if ((mask & IFCAP_RXCSUM) &&
-		    (IFCAP_RXCSUM & ifp->if_capabilities)) {
+		if (mask & IFCAP_RXCSUM) {
 			uint32_t reg;
 
 			ifp->if_capenable ^= IFCAP_RXCSUM;
@@ -1744,17 +1741,16 @@ jme_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			CSR_WRITE_4(sc, JME_RXMAC, reg);
 		}
 
-		if ((mask & IFCAP_VLAN_HWTAGGING) &&
-		    (IFCAP_VLAN_HWTAGGING & ifp->if_capabilities)) {
+		if (mask & IFCAP_VLAN_HWTAGGING) {
 			ifp->if_capenable ^= IFCAP_VLAN_HWTAGGING;
 			jme_set_vlan(sc);
 		}
-#ifdef RSS
+
 		if (mask & IFCAP_RSS) {
 			ifp->if_capenable ^= IFCAP_RSS;
-			jme_init(sc);
+			if (ifp->if_flags & IFF_RUNNING)
+				jme_init(sc);
 		}
-#endif
 		break;
 
 	default:
