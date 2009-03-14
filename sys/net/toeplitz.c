@@ -53,6 +53,8 @@
  * be possible.
  */
 
+#include "opt_rss.h"
+
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
@@ -132,6 +134,33 @@ toeplitz_cache_create(uint32_t cache[][256], int cache_len,
 	}
 }
 
+#ifdef RSS_DEBUG
+
+static void
+toeplitz_verify(void)
+{
+	in_addr_t faddr, laddr;
+	in_port_t fport, lport;
+
+	/*
+	 * The first IPv4 example in the verification suite
+	 */
+
+	/* 66.9.149.187:2794 */
+	faddr = 0xbb950942;
+	fport = 0xea0a;
+
+	/* 161.142.100.80:1766 */
+	laddr = 0x50648ea1;
+	lport = 0xe606;
+
+	kprintf("toeplitz: verify addr/port 0x%08x, addr 0x%08x\n",
+		toeplitz_hash_tcp(faddr, laddr, fport, lport),
+		toeplitz_hash(faddr, laddr));
+}
+
+#endif	/* RSS_DEBUG */
+
 static void
 toeplitz_init(void *dummy __unused)
 {
@@ -142,10 +171,23 @@ toeplitz_init(void *dummy __unused)
 		toeplitz_keyseeds[i] &= 0xff;
 
 	/* Replicate key seeds to form key string */
-	for (i = 0; i < TOEPLITZ_KEY_STRLEN; ++i)
+	for (i = 0; i < TOEPLITZ_KEY_STRLEN; ++i) {
 		keystr[i] = toeplitz_keyseeds[i % TOEPLITZ_KEYSEED_CNT];
+
+#ifdef RSS_DEBUG
+		if (i == 0)
+			kprintf("toeplitz: keystr ");
+		kprintf("%02x ", keystr[i]);
+		if (i == TOEPLITZ_KEY_STRLEN - 1)
+			kprintf("\n");
+#endif
+	}
 
 	toeplitz_cache_create(toeplitz_cache, TOEPLITZ_KEYSEED_CNT,
 			      keystr, TOEPLITZ_KEY_STRLEN);
+
+#ifdef RSS_DEBUG
+	toeplitz_verify();
+#endif
 }
 SYSINIT(toeplitz, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST, toeplitz_init, NULL);

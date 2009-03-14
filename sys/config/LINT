@@ -2807,3 +2807,4 @@ options		PROFILE_SERIALIZER
 
 # Receive Side Scaling
 options		RSS
+options		RSS_DEBUG
