@@ -1150,7 +1150,7 @@ emx_intr(void *xsc)
 
 	/*
 	 * XXX: some laptops trigger several spurious interrupts
-	 * on em(4) when in the resume cycle. The ICR register
+	 * on emx(4) when in the resume cycle. The ICR register
 	 * reports all-ones value in this case. Processing such
 	 * interrupts would lead to a freeze. I don't know why.
 	 */
