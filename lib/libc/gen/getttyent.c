@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/gen/getttyent.c,v 1.11 1999/11/04 04:16:27 ache Exp $
+ * $FreeBSD: src/lib/libc/gen/getttyent.c,v 1.13 2005/07/25 17:57:15 mdodd Exp $
  * $DragonFly: src/lib/libc/gen/getttyent.c,v 1.5 2005/11/13 00:07:42 swildner Exp $
  *
  * @(#)getttyent.c	8.1 (Berkeley) 6/4/93
@@ -81,7 +81,7 @@ getttyent(void)
 		if (!fgets(p = line, lbsize, tf))
 			return (NULL);
 		/* extend buffer if line was too big, and retry */
-		while (!index(p, '\n')) {
+		while (!index(p, '\n') && !feof(tf)) {
 			i = strlen(p);
 			lbsize += MALLOCCHUNK;
 			if ((p = realloc(line, lbsize)) == NULL) {
@@ -103,6 +103,10 @@ getttyent(void)
 
 	zapchar = 0;
 	tty.ty_name = p;
+	tty.ty_status = 0;
+	tty.ty_window = NULL;
+	tty.ty_group  = _TTYS_NOGROUP;
+
 	p = skip(p);
 	if (!*(tty.ty_getty = p))
 		tty.ty_getty = tty.ty_type = NULL;
@@ -119,9 +123,6 @@ getttyent(void)
 			p = skip(p);
 		}
 	}
-	tty.ty_status = 0;
-	tty.ty_window = NULL;
-	tty.ty_group  = _TTYS_NOGROUP;
 
 	for (; *p; p = skip(p)) {
 		if (scmp(_TTYS_OFF))
