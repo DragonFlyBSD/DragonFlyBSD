@@ -313,7 +313,10 @@ hammer_reblock_helper(struct hammer_ioc_reblock *reblock,
 
 skip:
 	/*
-	 * Reblock a B-Tree internal or leaf node.
+	 * Reblock a B-Tree internal or leaf node.  A leaf node is reblocked
+	 * on initial entry only (element 0).  An internal node is reblocked
+	 * when entered upward from its first leaf node only (also element 0).
+	 * Further revisits of the internal node (index > 0) are ignored.
 	 */
 	tmp_offset = cursor->node->node_offset;
 	if (cursor->index == 0 &&
@@ -476,13 +479,14 @@ static int
 hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 			 hammer_cursor_t cursor, hammer_btree_elm_t elm)
 {
-	hammer_node_locklist_t locklist = NULL;
+	struct hammer_node_lock lockroot;
 	hammer_node_t onode;
 	hammer_node_t nnode;
 	int error;
 	int i;
 
-	error = hammer_btree_lock_children(cursor, &locklist);
+	hammer_node_lock_init(&lockroot, cursor->node);
+	error = hammer_btree_lock_children(cursor, 1, &lockroot);
 	if (error)
 		goto done;
 
@@ -554,7 +558,7 @@ hammer_reblock_int_node(struct hammer_ioc_reblock *reblock,
 	hammer_rel_node(onode);
 
 done:
-	hammer_btree_unlock_children(cursor, &locklist);
+	hammer_btree_unlock_children(cursor, &lockroot);
 	return (error);
 }
 

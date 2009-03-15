@@ -591,15 +591,26 @@ struct hammer_node {
 typedef struct hammer_node	*hammer_node_t;
 
 /*
- * List of locked nodes.
+ * List of locked nodes.  This structure is used to lock potentially large
+ * numbers of nodes as an aid for complex B-Tree operations.
  */
-struct hammer_node_locklist {
-	struct hammer_node_locklist *next;
+struct hammer_node_lock;
+TAILQ_HEAD(hammer_node_lock_list, hammer_node_lock);
+
+struct hammer_node_lock {
+	TAILQ_ENTRY(hammer_node_lock) entry;
+	struct hammer_node_lock_list  list;
+	struct hammer_node_lock	      *parent;
 	hammer_node_t	node;
+	hammer_node_ondisk_t copy;	/* copy of on-disk data */
+	int		index;		/* index of this node in parent */
+	int		count;		/* count children */
+	int		flags;
 };
 
-typedef struct hammer_node_locklist *hammer_node_locklist_t;
+typedef struct hammer_node_lock *hammer_node_lock_t;
 
+#define HAMMER_NODE_LOCK_UPDATED	0x0001
 
 /*
  * Common I/O management structure - embedded in in-memory structures
@@ -940,6 +951,10 @@ void	hammer_cursor_removed_node(hammer_node_t onode, hammer_node_t parent,
 			int index);
 void	hammer_cursor_split_node(hammer_node_t onode, hammer_node_t nnode,
 			int index);
+void	hammer_cursor_moved_element(hammer_node_t onode, hammer_node_t nnode,
+			int oindex, int nindex);
+void	hammer_cursor_parent_changed(hammer_node_t node, hammer_node_t oparent,
+			hammer_node_t nparent, int nindex);
 void	hammer_cursor_inserted_element(hammer_node_t node, int index);
 void	hammer_cursor_deleted_element(hammer_node_t node, int index);
 
@@ -962,10 +977,15 @@ int	hammer_btree_correct_lhb(hammer_cursor_t cursor, hammer_tid_t tid);
 
 int	btree_set_parent(hammer_transaction_t trans, hammer_node_t node,
                         hammer_btree_elm_t elm);
-int	hammer_btree_lock_children(hammer_cursor_t cursor,
-                        struct hammer_node_locklist **locklistp);
+void	hammer_node_lock_init(hammer_node_lock_t parent, hammer_node_t node);
+int	hammer_btree_lock_children(hammer_cursor_t cursor, int depth,
+			hammer_node_lock_t parent);
+void	hammer_btree_lock_copy(hammer_cursor_t cursor,
+			hammer_node_lock_t parent);
+void	hammer_btree_sync_copy(hammer_cursor_t cursor,
+			hammer_node_lock_t parent);
 void	hammer_btree_unlock_children(hammer_cursor_t cursor,
-			struct hammer_node_locklist **locklistp);
+			hammer_node_lock_t parent);
 int	hammer_btree_search_node(hammer_base_elm_t elm, hammer_node_ondisk_t node);
 hammer_node_t hammer_btree_get_parent(hammer_transaction_t trans,
 			hammer_node_t node, int *parent_indexp,
@@ -1148,6 +1168,8 @@ void hammer_modify_buffer_done(hammer_buffer_t buffer);
 
 int hammer_ioc_reblock(hammer_transaction_t trans, hammer_inode_t ip,
 			struct hammer_ioc_reblock *reblock);
+int hammer_ioc_rebalance(hammer_transaction_t trans, hammer_inode_t ip,
+			struct hammer_ioc_rebalance *rebal);
 int hammer_ioc_prune(hammer_transaction_t trans, hammer_inode_t ip,
 			struct hammer_ioc_prune *prune);
 int hammer_ioc_mirror_read(hammer_transaction_t trans, hammer_inode_t ip,

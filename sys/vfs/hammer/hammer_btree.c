@@ -171,7 +171,10 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 
 			/*
 			 * If we are reblocking we want to return internal
-			 * nodes.
+			 * nodes.  Note that the internal node will be
+			 * returned multiple times, on each upward recursion
+			 * from its children.  The caller selects which
+			 * revisit it cares about (usually first or last only).
 			 */
 			if (cursor->flags & HAMMER_CURSOR_REBLOCKING) {
 				cursor->flags |= HAMMER_CURSOR_ATEDISK;
@@ -1407,7 +1410,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	hammer_node_t new_node;
 	hammer_btree_elm_t elm;
 	hammer_btree_elm_t parent_elm;
-	hammer_node_locklist_t locklist = NULL;
+	struct hammer_node_lock lockroot;
 	hammer_mount_t hmp = cursor->trans->hmp;
 	int parent_index;
 	int made_root;
@@ -1416,7 +1419,8 @@ btree_split_internal(hammer_cursor_t cursor)
 	int i;
 	const int esize = sizeof(*elm);
 
-	error = hammer_btree_lock_children(cursor, &locklist);
+	hammer_node_lock_init(&lockroot, cursor->node);
+	error = hammer_btree_lock_children(cursor, 1, &lockroot);
 	if (error)
 		goto done;
 	if ((error = hammer_cursor_upgrade(cursor)) != 0)
@@ -1611,7 +1615,7 @@ btree_split_internal(hammer_cursor_t cursor)
 		 &cursor->node->ondisk->elms[cursor->node->ondisk->count].internal.base) >= 0);
 
 done:
-	hammer_btree_unlock_children(cursor, &locklist);
+	hammer_btree_unlock_children(cursor, &lockroot);
 	hammer_cursor_downgrade(cursor);
 	return (error);
 }
@@ -2422,6 +2426,21 @@ btree_set_parent(hammer_transaction_t trans, hammer_node_t node,
 }
 
 /*
+ * Initialize the root of a recursive B-Tree node lock list structure.
+ */
+void
+hammer_node_lock_init(hammer_node_lock_t parent, hammer_node_t node)
+{
+	TAILQ_INIT(&parent->list);
+	parent->parent = NULL;
+	parent->node = node;
+	parent->index = -1;
+	parent->count = node->ondisk->count;
+	parent->copy = NULL;
+	parent->flags = 0;
+}
+
+/*
  * Exclusively lock all the children of node.  This is used by the split
  * code to prevent anyone from accessing the children of a cursor node
  * while we fix-up its parent offset.
@@ -2431,13 +2450,16 @@ btree_set_parent(hammer_transaction_t trans, hammer_node_t node,
  *
  * On failure EDEADLK (or some other error) is returned.  If a deadlock
  * error is returned the cursor is adjusted to block on termination.
+ *
+ * The caller is responsible for managing parent->node, the root's node
+ * is usually aliased from a cursor.
  */
 int
-hammer_btree_lock_children(hammer_cursor_t cursor,
-			   struct hammer_node_locklist **locklistp)
+hammer_btree_lock_children(hammer_cursor_t cursor, int depth,
+			   hammer_node_lock_t parent)
 {
 	hammer_node_t node;
-	hammer_node_locklist_t item;
+	hammer_node_lock_t item;
 	hammer_node_ondisk_t ondisk;
 	hammer_btree_elm_t elm;
 	hammer_node_t child;
@@ -2445,14 +2467,15 @@ hammer_btree_lock_children(hammer_cursor_t cursor,
 	int error;
 	int i;
 
-	node = cursor->node;
+	node = parent->node;
 	ondisk = node->ondisk;
 	error = 0;
 	hmp = cursor->trans->hmp;
 
 	/*
 	 * We really do not want to block on I/O with exclusive locks held,
-	 * pre-get the children before trying to lock the mess.
+	 * pre-get the children before trying to lock the mess.  This is
+	 * only done one-level deep for now.
 	 */
 	for (i = 0; i < ondisk->count; ++i) {
 		++hammer_stats_btree_elements;
@@ -2496,31 +2519,91 @@ hammer_btree_lock_children(hammer_cursor_t cursor,
 				error = EDEADLK;
 				hammer_rel_node(child);
 			} else {
-				item = kmalloc(sizeof(*item),
-						hmp->m_misc, M_WAITOK);
-				item->next = *locklistp;
+				item = kmalloc(sizeof(*item), hmp->m_misc,
+					       M_WAITOK|M_ZERO);
+				TAILQ_INSERT_TAIL(&parent->list, item, entry);
+				TAILQ_INIT(&item->list);
+				item->parent = parent;
 				item->node = child;
-				*locklistp = item;
+				item->index = i;
+				item->count = child->ondisk->count;
+
+				/*
+				 * Recurse (used by the rebalancing code)
+				 */
+				if (depth > 1 && elm->base.btype == HAMMER_BTREE_TYPE_INTERNAL) {
+					error = hammer_btree_lock_children(
+							cursor,
+							depth - 1,
+							item);
+				}
 			}
 		}
 	}
 	if (error)
-		hammer_btree_unlock_children(cursor, locklistp);
+		hammer_btree_unlock_children(cursor, parent);
 	return(error);
 }
 
-
 /*
- * Release previously obtained node locks.
+ * Create an in-memory copy of all B-Tree nodes listed, recursively,
+ * including the parent.
  */
 void
-hammer_btree_unlock_children(hammer_cursor_t cursor,
-			     struct hammer_node_locklist **locklistp)
+hammer_btree_lock_copy(hammer_cursor_t cursor, hammer_node_lock_t parent)
 {
-	hammer_node_locklist_t item;
+	hammer_mount_t hmp = cursor->trans->hmp;
+	hammer_node_lock_t item;
 
-	while ((item = *locklistp) != NULL) {
-		*locklistp = item->next;
+	if (parent->copy == NULL) {
+		parent->copy = kmalloc(sizeof(*parent->copy), hmp->m_misc,
+				       M_WAITOK);
+		*parent->copy = *parent->node->ondisk;
+	}
+	TAILQ_FOREACH(item, &parent->list, entry) {
+		hammer_btree_lock_copy(cursor, item);
+	}
+}
+
+/*
+ * Recursively sync modified copies to the media.
+ */
+void
+hammer_btree_sync_copy(hammer_cursor_t cursor, hammer_node_lock_t parent)
+{
+	hammer_node_lock_t item;
+
+	if (parent->flags & HAMMER_NODE_LOCK_UPDATED) {
+		hammer_modify_node_all(cursor->trans, parent->node);
+		*parent->node->ondisk = *parent->copy;
+                hammer_modify_node_done(parent->node);
+		if (parent->copy->type == HAMMER_BTREE_TYPE_DELETED) {
+			hammer_flush_node(parent->node);
+			hammer_delete_node(cursor->trans, parent->node);
+		}
+	}
+	TAILQ_FOREACH(item, &parent->list, entry) {
+		hammer_btree_sync_copy(cursor, item);
+	}
+}
+
+/*
+ * Release previously obtained node locks.  The caller is responsible for
+ * cleaning up parent->node itself (its usually just aliased from a cursor),
+ * but this function will take care of the copies.
+ */
+void
+hammer_btree_unlock_children(hammer_cursor_t cursor, hammer_node_lock_t parent)
+{
+	hammer_node_lock_t item;
+
+	if (parent->copy) {
+		kfree(parent->copy, cursor->trans->hmp->m_misc);
+		parent->copy = NULL;	/* safety */
+	}
+	while ((item = TAILQ_FIRST(&parent->list)) != NULL) {
+		TAILQ_REMOVE(&parent->list, item, entry);
+		hammer_btree_unlock_children(cursor, item);
 		hammer_unlock(&item->node->lock);
 		hammer_rel_node(item->node);
 		kfree(item, cursor->trans->hmp->m_misc);

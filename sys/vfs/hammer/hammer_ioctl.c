@@ -75,6 +75,12 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 					(struct hammer_ioc_reblock *)data);
 		}
 		break;
+	case HAMMERIOC_REBALANCE:
+		if (error == 0) {
+			error = hammer_ioc_rebalance(&trans, ip,
+					(struct hammer_ioc_rebalance *)data);
+		}
+		break;
 	case HAMMERIOC_SYNCTID:
 		error = hammer_ioc_synctid(&trans, ip,
 					(struct hammer_ioc_synctid *)data);

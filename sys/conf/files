@@ -1291,6 +1291,7 @@ vfs/hammer/hammer_ondisk.c	optional hammer
 vfs/hammer/hammer_pfs.c		optional hammer
 vfs/hammer/hammer_prune.c	optional hammer
 vfs/hammer/hammer_reblock.c	optional hammer
+vfs/hammer/hammer_rebalance.c	optional hammer
 vfs/hammer/hammer_recover.c	optional hammer
 vfs/hammer/hammer_signal.c	optional hammer
 vfs/hammer/hammer_subs.c	optional hammer

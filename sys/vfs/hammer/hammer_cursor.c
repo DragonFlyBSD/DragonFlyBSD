@@ -726,6 +726,62 @@ again:
 }
 
 /*
+ * An element was moved from one node to another or within a node.  The
+ * index may also represent the end of the node (index == numelements).
+ *
+ * This is used by the rebalancing code.  This is not an insertion or
+ * deletion and any additional elements, including the degenerate case at
+ * the end of the node, will be dealt with by additional distinct calls.
+ */
+void
+hammer_cursor_moved_element(hammer_node_t onode, hammer_node_t nnode,
+			    int oindex, int nindex)
+{
+	hammer_cursor_t cursor;
+
+again:
+	TAILQ_FOREACH(cursor, &onode->cursor_list, deadlk_entry) {
+		KKASSERT(cursor->node == onode);
+		if (cursor->index != oindex)
+			continue;
+		TAILQ_REMOVE(&onode->cursor_list, cursor, deadlk_entry);
+		TAILQ_INSERT_TAIL(&nnode->cursor_list, cursor, deadlk_entry);
+		cursor->node = nnode;
+		cursor->index = nindex;
+		hammer_ref_node(nnode);
+		hammer_rel_node(onode);
+		goto again;
+	}
+}
+
+/*
+ * The B-Tree element pointing to the specified node was moved from (oparent)
+ * to (nparent, nindex).  We must locate any tracked cursors pointing at
+ * node and adjust their parent accordingly.
+ *
+ * This is used by the rebalancing code when packing elements causes an
+ * element to shift from one node to another.
+ */
+void
+hammer_cursor_parent_changed(hammer_node_t node, hammer_node_t oparent,
+			     hammer_node_t nparent, int nindex)
+{
+	hammer_cursor_t cursor;
+
+again:
+	TAILQ_FOREACH(cursor, &node->cursor_list, deadlk_entry) {
+		KKASSERT(cursor->node == node);
+		if (cursor->parent == oparent) {
+			cursor->parent = nparent;
+			cursor->parent_index = nindex;
+			hammer_ref_node(nparent);
+			hammer_rel_node(oparent);
+			goto again;
+		}
+	}
+}
+
+/*
  * Deleted element at (node, index)
  *
  * Shift indexes >= index
