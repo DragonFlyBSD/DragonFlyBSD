@@ -165,7 +165,7 @@ int	 getresuid(uid_t *, uid_t *, uid_t *);
 int	 getsid(pid_t _pid);
 char	*getusershell(void);
 char	*getwd(char *);				/* obsoleted by getcwd() */
-int	 initgroups(const char *, int);
+int	 initgroups(const char *, gid_t);
 int	 iruserok(unsigned long, int, const char *, const char *);
 int	 iruserok_sa(const void *, int, int, const char *, const char *);
 int	 issetugid(void);
