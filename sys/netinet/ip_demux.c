@@ -254,6 +254,7 @@ ipcheckonly:
 		break;
 	}
 
+	m->m_flags |= M_LENCHECKED;
 	*mp = m;
 	return TRUE;
 

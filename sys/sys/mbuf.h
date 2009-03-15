@@ -206,13 +206,15 @@ struct mbuf {
 #define M_NOTIFICATION	0x10000	/* notification event */
 #define M_VLANTAG	0x20000	/* ether_vlantag is valid */
 #define M_MPLSLABELED	0x40000	/* packet is mpls labeled */
+#define M_LENCHECKED	0x80000	/* packet proto lengths are checked */
 
 /*
  * Flags copied when copying m_pkthdr.
  */
 #define	M_COPYFLAGS	(M_PKTHDR|M_EOR|M_PROTO1|M_PROTO2|M_PROTO3 | \
 			 M_PROTO4|M_PROTO5|M_BCAST|M_MCAST|M_FRAG | \
-			 M_FIRSTFRAG|M_LASTFRAG|M_VLANTAG|M_MPLSLABELED)
+			 M_FIRSTFRAG|M_LASTFRAG|M_VLANTAG|M_MPLSLABELED | \
+			 M_LENCHECKED)
 
 /*
  * Flags indicating hw checksum support and sw checksum requirements.

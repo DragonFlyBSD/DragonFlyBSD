@@ -72,7 +72,7 @@
 
 #if defined(INET) || defined(INET6)
 #include <netinet/in.h>
-#include <netinet/in_var.h>
+#include <netinet/ip_var.h>
 #include <netinet/if_ether.h>
 #include <netinet/ip_flow.h>
 #include <net/ipfw/ip_fw.h>
@@ -1176,6 +1176,10 @@ post_stats:
 	switch (ether_type) {
 #ifdef INET
 	case ETHERTYPE_IP:
+		if ((m->m_flags & M_LENCHECKED) == 0) {
+			if (!ip_lengthcheck(&m))
+				return;
+		}
 		if (ipflow_fastforward(m))
 			return;
 		isr = NETISR_IP;
