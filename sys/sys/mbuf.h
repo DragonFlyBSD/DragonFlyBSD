@@ -210,9 +210,9 @@ struct mbuf {
 /*
  * Flags copied when copying m_pkthdr.
  */
-#define	M_COPYFLAGS	(M_PKTHDR|M_EOR|M_PROTO1|M_PROTO1|M_PROTO2|M_PROTO3 | \
-			    M_PROTO4|M_PROTO5|M_BCAST|M_MCAST|M_FRAG | \
-			    M_FIRSTFRAG|M_LASTFRAG|M_VLANTAG|M_MPLSLABELED)
+#define	M_COPYFLAGS	(M_PKTHDR|M_EOR|M_PROTO1|M_PROTO2|M_PROTO3 | \
+			 M_PROTO4|M_PROTO5|M_BCAST|M_MCAST|M_FRAG | \
+			 M_FIRSTFRAG|M_LASTFRAG|M_VLANTAG|M_MPLSLABELED)
 
 /*
  * Flags indicating hw checksum support and sw checksum requirements.
