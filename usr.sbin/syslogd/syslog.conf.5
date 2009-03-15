@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -30,10 +26,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)syslog.conf.5	8.1 (Berkeley) 6/9/93
-.\" $FreeBSD: src/usr.sbin/syslogd/syslog.conf.5,v 1.35 2004/07/03 18:35:53 ru Exp $
+.\" $FreeBSD: src/usr.sbin/syslogd/syslog.conf.5,v 1.46 2008/12/23 17:39:24 trhodes Exp $
 .\" $DragonFly: src/usr.sbin/syslogd/syslog.conf.5,v 1.10 2008/04/20 21:14:39 swildner Exp $
 .\"
-.Dd June 9, 1993
+.Dd December 23, 2008
 .Dt SYSLOG.CONF 5
 .Os
 .Sh NAME
@@ -52,7 +48,7 @@ blocks of lines separated by
 .Em program
 and
 .Em hostname
-specifications (separations appear along on the line),
+specifications (separations appear alone on their lines),
 with each line containing two fields: the
 .Em selector
 field which specifies the types of messages and priorities to which the
@@ -99,9 +95,13 @@ are case insensitive.
 The
 .Em facility
 describes the part of the system generating the message, and is one of
-the following keywords: auth, authpriv, console, cron, daemon, ftp, kern,
-lpr, mail, mark, news, ntp, security, syslog, user, uucp and local0 through
-local7.
+the following keywords:
+.Cm auth , authpriv , console , cron , daemon , ftp , kern , lpr ,
+.Cm mail , mark , news , ntp , security , syslog , user , uucp ,
+and
+.Cm local0
+through
+.Cm local7 .
 These keywords (with the exception of mark) correspond to
 similar
 .Dq Dv LOG_
@@ -137,8 +137,10 @@ has the same meaning as
 The
 .Em level
 describes the severity of the message, and is a keyword from the
-following ordered list (higher to lower): emerg, alert, crit, err,
-warning, notice, info and debug.
+following ordered list (higher to lower):
+.Cm emerg , crit , alert , err , warning , notice , info
+and
+.Cm debug .
 These keywords correspond to
 similar
 .Dq Dv LOG_
@@ -242,7 +244,7 @@ for further descriptions of both the
 and
 .Em level
 keywords and their significance.
-It's preferred that selections be made on
+It is preferred that selections be made on
 .Em facility
 rather than
 .Em program ,
@@ -250,7 +252,7 @@ since the latter can easily vary in a networked environment.
 In some cases,
 though, an appropriate
 .Em facility
-simply doesn't exist.
+simply does not exist.
 .Pp
 If a received message matches the specified
 .Em facility
@@ -342,6 +344,10 @@ sign).
 Selected messages are forwarded to the
 .Xr syslogd 8
 program on the named host.
+If a port number is added after a colon
+.Pq Ql :\&
+then that port will be used as the destination port
+rather than the usual syslog port.
 .It
 A comma separated list of users.
 Selected messages are written to those users
@@ -381,7 +387,7 @@ Upon receipt of a
 .Dv SIGHUP ,
 .Xr syslogd 8
 will close the pipe to the process.
-If the process didn't exit
+If the process did not exit
 voluntarily, it will be sent a
 .Dv SIGTERM
 signal after a grace period of up to 60 seconds.
@@ -396,7 +402,7 @@ flowing quickly), this can be achieved by exiting after just one line of
 input.
 If necessary, a script wrapper can be written to this effect.
 .Pp
-Unless the command is a full pipeline, it's probably useful to
+Unless the command is a full pipeline, it is probably useful to
 start the command with
 .Em exec
 so that the invoking shell process does not wait for the command to
@@ -409,6 +415,20 @@ normally the superuser.
 Blank lines and lines whose first non-blank character is a hash
 .Pq Dq #
 character are ignored.
+If
+.Ql #
+is placed in the middle of the line, the
+.Ql #
+character and the rest of the line after it is ignored.
+To prevent special meaning, the
+.Ql #
+character may be escaped with
+.Ql \e ;
+in this case preceding
+.Ql \e
+is removed and
+.Ql #
+is treated as an ordinary character.
 .Sh IMPLEMENTATION NOTES
 The
 .Dq kern
@@ -435,7 +455,7 @@ A configuration file might appear as follows:
 # level notice or higher, and anything of level err or
 # higher to the console.
 # Don't log private authentication messages!
-*.err;kern.*;auth.notice;authpriv.none	/dev/console
+*.err;kern.*;auth.notice;authpriv.none;mail.crit	/dev/console
 
 # Log anything (except mail) of level info or higher.
 # Don't log private authentication messages!
