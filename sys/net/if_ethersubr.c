@@ -1415,12 +1415,23 @@ static void
 ether_input_handler(struct netmsg *nmsg)
 {
 	struct netmsg_packet *nmp = (struct netmsg_packet *)nmsg;
+	struct ether_header *eh;
 	struct ifnet *ifp;
 	struct mbuf *m;
 
 	m = nmp->nm_packet;
 	M_ASSERTPKTHDR(m);
 	ifp = m->m_pkthdr.rcvif;
+
+	eh = mtod(m, struct ether_header *);
+	if (ETHER_IS_MULTICAST(eh->ether_dhost)) {
+		if (bcmp(ifp->if_broadcastaddr, eh->ether_dhost,
+			 ifp->if_addrlen) == 0)
+			m->m_flags |= M_BCAST;
+		else
+			m->m_flags |= M_MCAST;
+		ifp->if_imcasts++;
+	}
 
 	ether_input_oncpu(ifp, m);
 }
@@ -1494,26 +1505,20 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 		m_freem(m);
 		return;
 	}
-	eh = mtod(m, struct ether_header *);
 
 	m->m_pkthdr.rcvif = ifp;
 
 	logether(chain_beg, ifp);
-
-	if (ETHER_IS_MULTICAST(eh->ether_dhost)) {
-		if (bcmp(ifp->if_broadcastaddr, eh->ether_dhost,
-			 ifp->if_addrlen) == 0)
-			m->m_flags |= M_BCAST;
-		else
-			m->m_flags |= M_MCAST;
-		ifp->if_imcasts++;
-	}
 
 	ETHER_BPF_MTAP(ifp, m);
 
 	ifp->if_ibytes += m->m_pkthdr.len;
 
 	if (ifp->if_flags & IFF_MONITOR) {
+		eh = mtod(m, struct ether_header *);
+		if (ETHER_IS_MULTICAST(eh->ether_dhost))
+			ifp->if_imcasts++;
+
 		/*
 		 * Interface marked for monitoring; discard packet.
 		 */
@@ -1522,6 +1527,8 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 		logether(chain_end, ifp);
 		return;
 	}
+
+	eh = mtod(m, struct ether_header *);
 
 	if (ntohs(eh->ether_type) == ETHERTYPE_VLAN &&
 	    (m->m_flags & M_VLANTAG) == 0) {
