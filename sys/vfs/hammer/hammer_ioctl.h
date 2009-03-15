@@ -102,6 +102,28 @@ struct hammer_ioc_prune {
 
 #define HAMMER_IOC_PRUNE_ALL	0x0001
 
+/*
+ * HAMMERIOC_REPACK
+ *
+ * Forward scan leaf-up B-Tree packing.  The saturation point is typically
+ * set to HAMMER_BTREE_LEAF_ELMS * 2 / 3 for 2/3rds fill.  Referenced nodes
+ * have to be skipped, we can't track cursors through pack ops.
+ */
+struct hammer_ioc_rebalance {
+	struct hammer_ioc_head head;
+	int		saturation;	/* saturation pt elements/node */
+	int		reserved02;
+
+	struct hammer_base_elm key_beg;	/* start forward scan */
+	struct hammer_base_elm key_end; /* stop forward scan (inclusive) */
+	struct hammer_base_elm key_cur; /* current scan index */
+
+	int64_t		stat_ncount;	/* number of nodes scanned */
+	int64_t		stat_deletions; /* number of nodes deleted */
+	int64_t		stat_collisions;/* number of subtrees skipped */
+	int64_t		stat_lrebal;	/* number of leaf-nodes rebalanced */
+	int64_t		stat_irebal;	/* number of int-nodes rebalanced */
+};
 
 /*
  * HAMMERIOC_GETHISTORY
@@ -336,6 +358,7 @@ typedef union hammer_ioc_mrecord_any *hammer_ioc_mrecord_any_t;
 #define HAMMERIOC_WAI_PSEUDOFS	_IOWR('h',12,struct hammer_ioc_pseudofs_rw)
 #define HAMMERIOC_GET_VERSION	_IOWR('h',13,struct hammer_ioc_version)
 #define HAMMERIOC_SET_VERSION	_IOWR('h',14,struct hammer_ioc_version)
+#define HAMMERIOC_REBALANCE	_IOWR('h',15,struct hammer_ioc_rebalance)
 
 #endif
 

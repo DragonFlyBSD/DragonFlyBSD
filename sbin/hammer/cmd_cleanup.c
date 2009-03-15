@@ -623,20 +623,46 @@ cleanup_reblock(const char *path, const char *snapshots_path,
 		printf(".");
 		fflush(stdout);
 	}
+
+	/*
+	 * When reblocking the B-Tree always reblock everything in normal
+	 * mode.
+	 */
 	runcmd(NULL,
-	       "hammer -c %s/.reblock-1.cycle -t %d reblock-btree %s 95",
+	       "hammer -c %s/.reblock-1.cycle -t %d reblock-btree %s",
 	       snapshots_path, arg2, path);
 	if (VerboseOpt == 0) {
 		printf(".");
 		fflush(stdout);
 	}
+
+	/*
+	 * When reblocking the inodes always reblock everything in normal
+	 * mode.
+	 */
 	runcmd(NULL,
-	       "hammer -c %s/.reblock-2.cycle -t %d reblock-inodes %s 95",
+	       "hammer -c %s/.reblock-2.cycle -t %d reblock-inodes %s",
 	       snapshots_path, arg2, path);
 	if (VerboseOpt == 0) {
 		printf(".");
 		fflush(stdout);
 	}
+
+	/*
+	 * When reblocking the directories always reblock everything in normal
+	 * mode.
+	 */
+	runcmd(NULL,
+	       "hammer -c %s/.reblock-4.cycle -t %d reblock-dirs %s",
+	       snapshots_path, arg2, path);
+	if (VerboseOpt == 0) {
+		printf(".");
+		fflush(stdout);
+	}
+
+	/*
+	 * Do not reblock all the data in normal mode.
+	 */
 	runcmd(NULL,
 	       "hammer -c %s/.reblock-3.cycle -t %d reblock-data %s 95",
 	       snapshots_path, arg2, path);
@@ -662,6 +688,13 @@ cleanup_recopy(const char *path, const char *snapshots_path,
 	}
 	runcmd(NULL,
 	       "hammer -c %s/.recopy-2.cycle -t %d reblock-inodes %s",
+	       snapshots_path, arg2, path);
+	if (VerboseOpt == 0) {
+		printf(".");
+		fflush(stdout);
+	}
+	runcmd(NULL,
+	       "hammer -c %s/.recopy-4.cycle -t %d reblock-dirs %s",
 	       snapshots_path, arg2, path);
 	if (VerboseOpt == 0) {
 		printf(".");

@@ -220,12 +220,14 @@ The format of the configuration file is:
 .Bd -literal -offset indent
 snapshots  <period> <retention-time> [any]
 prune      <period> <max-runtime>
+rebalance  <period> <max-runtime>
 reblock    <period> <1/3 max-runtime>
 recopy     <period> <1/3 max-runtime>
 
 Defaults are:
 snapshots  1d 60d  # 0d 60d  for PFS /tmp, /var/tmp, /usr/obj
 prune      1d 5m
+rebalance  1d 5m
 reblock    1d 5m
 recopy     30d 10m
 .Ed
@@ -419,6 +421,14 @@ history for modifications pertaining to that snapshot would be destroyed.
 .It Ar prune-everything Ar filesystem
 This command will remove all historical records from the file system.
 This directive is not normally used on a production system.
+.\" ==== rebalance ====
+.It Ar rebalance Ar filesystem Op Ar saturation_level
+This command will rebalance the B-Tree, nodes with small numbers of
+elements will be combined and element counts will be smoothed out
+between nodes.
+.Pp
+The saturation level is a percentage between 50 and 100.  The default
+is 75 percent.
 .\" ==== reblock ====
 .It Ar reblock Ar filesystem Op Ar fill_percentage
 .It Ar reblock-btree Ar filesystem Op Ar fill_percentage

@@ -86,6 +86,7 @@ void hammer_cmd_mirror_dump(void);
 void hammer_cmd_history(const char *offset_str, char **av, int ac);
 void hammer_cmd_blockmap(void);
 void hammer_cmd_reblock(char **av, int ac, int flags);
+void hammer_cmd_rebalance(char **av, int ac);
 void hammer_cmd_pseudofs_status(char **av, int ac);
 void hammer_cmd_pseudofs_create(char **av, int ac, int is_slave);
 void hammer_cmd_pseudofs_update(char **av, int ac);

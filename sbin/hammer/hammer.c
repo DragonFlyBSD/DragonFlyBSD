@@ -268,6 +268,11 @@ main(int ac, char **av)
 		hammer_cmd_history(av[0] + 7, av + 1, ac - 1);
 		exit(0);
 	}
+	if (strcmp(av[0], "rebalance") == 0) {
+		signal(SIGINT, sigalrm);
+		hammer_cmd_rebalance(av + 1, ac - 1);
+		exit(0);
+	}
 	if (strncmp(av[0], "reblock", 7) == 0) {
 		signal(SIGINT, sigalrm);
 		if (strcmp(av[0], "reblock") == 0)
@@ -385,7 +390,7 @@ usage(int exit_code)
 		"hammer bstats [interval]\n"
 		"hammer iostats [interval]\n"
 		"hammer history[@offset[,len]] <file> ...\n"
-		"hammer -f blkdev[:blkdev]* [-r] show [offset]\n"
+		"hammer -f blkdev[:blkdev]* [-r] [-vvv] show [offset]\n"
 #if 0
 		"hammer -f blkdev[:blkdev]* blockmap\n"
 #endif
@@ -395,6 +400,7 @@ usage(int exit_code)
 		"hammer snapshot [<filesystem>] <snapshot-dir>\n"
 		"hammer prune <softlink-dir>\n"
 		"hammer prune-everything <filesystem>\n"
+		"hammer rebalance <filesystem> [saturation_percentage]\n"
 		"hammer reblock[-btree/inodes/dirs/data] "
 			"<filesystem> [fill_percentage]\n"
 		"hammer pfs-status <dirpath> ...\n"
