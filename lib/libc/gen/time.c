@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -31,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)time.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/gen/time.c,v 1.5 2007/01/09 00:27:55 imp Exp $
  * $DragonFly: src/lib/libc/gen/time.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
  */
 
@@ -41,10 +38,13 @@ time_t
 time(time_t *t)
 {
 	struct timeval tt;
+	time_t retval;
 
 	if (gettimeofday(&tt, (struct timezone *)0) < 0)
-		return(-1);
-	if (t)
-		*t = tt.tv_sec;
-	return(tt.tv_sec);
+		retval = -1;
+	else
+		retval = tt.tv_sec;
+	if (t != NULL)
+		*t = retval;
+	return (retval);
 }
