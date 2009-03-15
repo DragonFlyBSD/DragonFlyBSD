@@ -29,6 +29,7 @@
  */
 
 #include "opt_polling.h"
+#include "opt_rss.h"
 #include "opt_jme.h"
 
 #include <sys/param.h>
@@ -615,6 +616,7 @@ jme_attach(device_t dev)
 	if (sc->jme_tx_desc_cnt > JME_NDESC_MAX)
 		sc->jme_tx_desc_cnt = JME_NDESC_MAX;
 
+#ifdef RSS
 	sc->jme_rx_ring_cnt = jme_rx_ring_count;
 	if (sc->jme_rx_ring_cnt <= 0)
 		sc->jme_rx_ring_cnt = JME_NRXRING_1;
@@ -625,11 +627,9 @@ jme_attach(device_t dev)
 		sc->jme_rx_ring_cnt = JME_NRXRING_4;
 	else if (sc->jme_rx_ring_cnt >= JME_NRXRING_2)
 		sc->jme_rx_ring_cnt = JME_NRXRING_2;
-
-	if (sc->jme_rx_ring_cnt > JME_NRXRING_MIN) {
-		sc->jme_caps |= JME_CAP_RSS;
-		sc->jme_flags |= JME_FLAG_RSS;
-	}
+#else
+	sc->jme_rx_ring_cnt = JME_NRXRING_MIN;
+#endif
 	sc->jme_rx_ring_inuse = sc->jme_rx_ring_cnt;
 
 	sc->jme_dev = dev;
@@ -824,6 +824,8 @@ jme_attach(device_t dev)
 	ifp->if_capabilities = IFCAP_HWCSUM |
 			       IFCAP_VLAN_MTU |
 			       IFCAP_VLAN_HWTAGGING;
+	if (sc->jme_rx_ring_cnt > JME_NRXRING_MIN)
+		ifp->if_capabilities |= IFCAP_RSS;
 	ifp->if_hwassist = JME_CSUM_FEATURES;
 	ifp->if_capenable = ifp->if_capabilities;
 
@@ -1722,16 +1724,13 @@ jme_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		mask = ifr->ifr_reqcap ^ ifp->if_capenable;
 
 		if ((mask & IFCAP_TXCSUM) && ifp->if_mtu < JME_TX_FIFO_SIZE) {
-			if (IFCAP_TXCSUM & ifp->if_capabilities) {
-				ifp->if_capenable ^= IFCAP_TXCSUM;
-				if (IFCAP_TXCSUM & ifp->if_capenable)
-					ifp->if_hwassist |= JME_CSUM_FEATURES;
-				else
-					ifp->if_hwassist &= ~JME_CSUM_FEATURES;
-			}
+			ifp->if_capenable ^= IFCAP_TXCSUM;
+			if (IFCAP_TXCSUM & ifp->if_capenable)
+				ifp->if_hwassist |= JME_CSUM_FEATURES;
+			else
+				ifp->if_hwassist &= ~JME_CSUM_FEATURES;
 		}
-		if ((mask & IFCAP_RXCSUM) &&
-		    (IFCAP_RXCSUM & ifp->if_capabilities)) {
+		if (mask & IFCAP_RXCSUM) {
 			uint32_t reg;
 
 			ifp->if_capenable ^= IFCAP_RXCSUM;
@@ -1742,10 +1741,15 @@ jme_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			CSR_WRITE_4(sc, JME_RXMAC, reg);
 		}
 
-		if ((mask & IFCAP_VLAN_HWTAGGING) &&
-		    (IFCAP_VLAN_HWTAGGING & ifp->if_capabilities)) {
+		if (mask & IFCAP_VLAN_HWTAGGING) {
 			ifp->if_capenable ^= IFCAP_VLAN_HWTAGGING;
 			jme_set_vlan(sc);
+		}
+
+		if (mask & IFCAP_RSS) {
+			ifp->if_capenable ^= IFCAP_RSS;
+			if (ifp->if_flags & IFF_RUNNING)
+				jme_init(sc);
 		}
 		break;
 
@@ -2250,7 +2254,7 @@ jme_init(void *xsc)
 	if (sc->jme_lowaddr != BUS_SPACE_MAXADDR_32BIT)
 		sc->jme_txd_spare += 1;
 
-	if (sc->jme_flags & JME_FLAG_RSS)
+	if (ifp->if_capenable & IFCAP_RSS)
 		jme_enable_rss(sc);
 	else
 		jme_disable_rss(sc);

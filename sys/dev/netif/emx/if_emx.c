@@ -66,6 +66,7 @@
 
 #include "opt_polling.h"
 #include "opt_serializer.h"
+#include "opt_rss.h"
 #include "opt_emx.h"
 
 #include <sys/param.h>
@@ -260,7 +261,6 @@ static int	emx_int_throttle_ceil = EMX_DEFAULT_ITR;
 static int	emx_rxd = EMX_DEFAULT_RXD;
 static int	emx_txd = EMX_DEFAULT_TXD;
 static int	emx_smart_pwr_down = FALSE;
-static int	emx_rss = FALSE;
 
 /* Controls whether promiscuous also shows bad packets */
 static int	emx_debug_sbp = FALSE;
@@ -271,7 +271,6 @@ TUNABLE_INT("hw.emx.int_throttle_ceil", &emx_int_throttle_ceil);
 TUNABLE_INT("hw.emx.rxd", &emx_rxd);
 TUNABLE_INT("hw.emx.txd", &emx_txd);
 TUNABLE_INT("hw.emx.smart_pwr_down", &emx_smart_pwr_down);
-TUNABLE_INT("hw.emx.rss", &emx_rss);
 TUNABLE_INT("hw.emx.sbp", &emx_debug_sbp);
 TUNABLE_INT("hw.emx.82573_workaround", &emx_82573_workaround);
 
@@ -450,11 +449,14 @@ emx_attach(device_t dev)
 	/* This controls when hardware reports transmit completion status. */
 	sc->hw.mac.report_tx_early = 1;
 
+#ifdef RSS
 	/* Calculate # of RX rings */
-	if (emx_rss && ncpus > 1)
+	if (ncpus > 1)
 		sc->rx_ring_cnt = EMX_NRX_RING;
 	else
+#endif
 		sc->rx_ring_cnt = 1;
+	sc->rx_ring_inuse = sc->rx_ring_cnt;
 
 	/* Allocate RX/TX rings' busdma(9) stuffs */
 	error = emx_dma_alloc(sc);
@@ -865,6 +867,10 @@ emx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			ifp->if_capenable ^= IFCAP_VLAN_HWTAGGING;
 			reinit = 1;
 		}
+		if (mask & IFCAP_RSS) {
+			ifp->if_capenable ^= IFCAP_RSS;
+			reinit = 1;
+		}
 		if (reinit && (ifp->if_flags & IFF_RUNNING))
 			emx_init(sc);
 		break;
@@ -1020,8 +1026,16 @@ emx_init(void *xsc)
 	/* Setup Multicast table */
 	emx_set_multi(sc);
 
+	/*
+	 * Adjust # of RX ring to be used based on IFCAP_RSS
+	 */
+	if (ifp->if_capenable & IFCAP_RSS)
+		sc->rx_ring_inuse = sc->rx_ring_cnt;
+	else
+		sc->rx_ring_inuse = 1;
+
 	/* Prepare receive descriptors and buffers */
-	for (i = 0; i < sc->rx_ring_cnt; ++i) {
+	for (i = 0; i < sc->rx_ring_inuse; ++i) {
 		if (emx_init_rx_ring(sc, &sc->rx_data[i])) {
 			device_printf(dev,
 			    "Could not setup receive structures\n");
@@ -1104,7 +1118,7 @@ emx_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		if (ifp->if_flags & IFF_RUNNING) {
 			int i;
 
-			for (i = 0; i < sc->rx_ring_cnt; ++i)
+			for (i = 0; i < sc->rx_ring_inuse; ++i)
 				emx_rxeof(sc, i, count);
 
 			emx_txeof(sc);
@@ -1136,7 +1150,7 @@ emx_intr(void *xsc)
 
 	/*
 	 * XXX: some laptops trigger several spurious interrupts
-	 * on em(4) when in the resume cycle. The ICR register
+	 * on emx(4) when in the resume cycle. The ICR register
 	 * reports all-ones value in this case. Processing such
 	 * interrupts would lead to a freeze. I don't know why.
 	 */
@@ -1150,7 +1164,7 @@ emx_intr(void *xsc)
 		    (E1000_ICR_RXT0 | E1000_ICR_RXDMT0 | E1000_ICR_RXO)) {
 			int i;
 
-			for (i = 0; i < sc->rx_ring_cnt; ++i)
+			for (i = 0; i < sc->rx_ring_inuse; ++i)
 				emx_rxeof(sc, i, -1);
 		}
 		if (reg_icr & E1000_ICR_TXDW) {
@@ -1621,7 +1635,7 @@ emx_stop(struct emx_softc *sc)
 		}
 	}
 
-	for (i = 0; i < sc->rx_ring_cnt; ++i)
+	for (i = 0; i < sc->rx_ring_inuse; ++i)
 		emx_free_rx_ring(sc, &sc->rx_data[i]);
 
 	sc->csum_flags = 0;
@@ -1722,6 +1736,8 @@ emx_setup_ifp(struct emx_softc *sc)
 	ifp->if_capabilities = IFCAP_HWCSUM |
 			       IFCAP_VLAN_HWTAGGING |
 			       IFCAP_VLAN_MTU;
+	if (sc->rx_ring_cnt > 1)
+		ifp->if_capabilities |= IFCAP_RSS;
 	ifp->if_capenable = ifp->if_capabilities;
 	ifp->if_hwassist = EMX_CSUM_FEATURES;
 
@@ -2574,7 +2590,7 @@ emx_init_rx_unit(struct emx_softc *sc)
 	E1000_WRITE_REG(&sc->hw, E1000_RFCTL, rfctl);
 
 	/* Setup the Base and Length of the Rx Descriptor Ring */
-	for (i = 0; i < sc->rx_ring_cnt; ++i) {
+	for (i = 0; i < sc->rx_ring_inuse; ++i) {
 		struct emx_rxdata *rdata = &sc->rx_data[i];
 
 		bus_addr = rdata->rx_desc_paddr;
@@ -2613,7 +2629,7 @@ emx_init_rx_unit(struct emx_softc *sc)
 	 * queue is to be supported, since we need it to figure out
 	 * packet type.
 	 */
-	if (EMX_RSS_ENABLED(sc) && (ifp->if_capenable & IFCAP_RXCSUM)) {
+	if (ifp->if_capenable & (IFCAP_RSS | IFCAP_RXCSUM)) {
 		rxcsum = E1000_READ_REG(&sc->hw, E1000_RXCSUM);
 
 		/*
@@ -2629,7 +2645,7 @@ emx_init_rx_unit(struct emx_softc *sc)
 	/*
 	 * Configure multiple receive queue (RSS)
 	 */
-	if (EMX_RSS_ENABLED(sc)) {
+	if (ifp->if_capenable & IFCAP_RSS) {
 		/*
 		 * NOTE:
 		 * When we reach here, RSS has already been disabled
@@ -2677,7 +2693,7 @@ emx_init_rx_unit(struct emx_softc *sc)
 	/*
 	 * Setup the HW Rx Head and Tail Descriptor Pointers
 	 */
-	for (i = 0; i < sc->rx_ring_cnt; ++i) {
+	for (i = 0; i < sc->rx_ring_inuse; ++i) {
 		E1000_WRITE_REG(&sc->hw, E1000_RDH(i), 0);
 		E1000_WRITE_REG(&sc->hw, E1000_RDT(i),
 		    sc->rx_data[i].num_rx_desc - 1);
@@ -3335,6 +3351,10 @@ emx_add_sysctl(struct emx_softc *sc)
 			OID_AUTO, "int_tx_nsegs", CTLTYPE_INT|CTLFLAG_RW,
 			sc, 0, emx_sysctl_int_tx_nsegs, "I",
 			"# segments per TX interrupt");
+
+	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+		       OID_AUTO, "rx_ring_inuse", CTLFLAG_RD,
+		       &sc->rx_ring_inuse, 0, "RX ring in use");
 
 #ifdef EMX_RSS_DEBUG
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),

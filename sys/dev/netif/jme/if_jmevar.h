@@ -215,7 +215,6 @@ struct jme_softc {
 #define	JME_CAP_PMCAP		0x0004
 #define	JME_CAP_FASTETH		0x0008
 #define	JME_CAP_JUMBO		0x0010
-#define JME_CAP_RSS		0x0020
 
 	uint32_t		jme_workaround;
 #define JME_WA_EXTFIFO		0x0001
@@ -226,7 +225,6 @@ struct jme_softc {
 #define	JME_FLAG_MSIX		0x0002
 #define	JME_FLAG_DETACH		0x0004
 #define	JME_FLAG_LINK		0x0008
-#define JME_FLAG_RSS		0x0010
 
 	struct callout		jme_tick_ch;
 	struct jme_chain_data	jme_cdata;

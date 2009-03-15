@@ -229,6 +229,14 @@ addresses and
 .It Fl arp
 Disable the use of the Address Resolution Protocol
 .Pq Xr arp 4 .
+.It Cm staticarp
+If the Address Resolution Protocol is enabled,
+the host will only reply to requests for its addresses,
+and will never send any requests.
+.It Fl staticarp
+If the Address Resolution Protocol is enabled,
+the host will perform normally,
+sending out requests and listening for replies.
 .It Cm broadcast
 (Inet only.)
 Specify the address to use to represent broadcasts to the
@@ -313,6 +321,12 @@ operating modes.
 .It Cm name Ar name
 Set the interface name to
 .Ar name .
+.It Cm rss
+If the driver supports receive side scaling,
+enable receive side scaling on the interface.
+.It Fl rss
+If the driver supports receive side scaling,
+disable receive side scaling on the interface.
 .It Cm rxcsum , txcsum
 If the driver supports user-configurable checksum offloading,
 enable receive (or transmit) checksum offloading on the interface.
