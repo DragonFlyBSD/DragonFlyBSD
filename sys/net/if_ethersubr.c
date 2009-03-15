@@ -1345,8 +1345,8 @@ ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
 		KASSERT(bridge_input_p != NULL,
 			("%s: if_bridge not loaded!", __func__));
 
-		if(m->m_flags & M_PROTO1) {
-			m->m_flags &= ~M_PROTO1;
+		if(m->m_flags & M_ETHER_BRIDGED) {
+			m->m_flags &= ~M_ETHER_BRIDGED;
 		} else {
 			/* clear M_PROMISC, in case the packets comes from a vlan */
 			/* m->m_flags &= ~M_PROMISC; */

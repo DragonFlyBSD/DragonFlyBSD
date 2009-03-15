@@ -2181,7 +2181,7 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 
 	eh = mtod(m, struct ether_header *);
 
-	m->m_flags &= ~M_PROTO1; /* XXX Hack - loop prevention */
+	m->m_flags &= ~M_ETHER_BRIDGED; /* XXX Hack - loop prevention */
 
 	if (memcmp(eh->ether_dhost, IF_LLADDR(bifp), ETHER_ADDR_LEN) == 0) {
 		/*
@@ -2293,7 +2293,7 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		    ETHER_ADDR_LEN) == 0) {
 			if (bif->bif_ifp != ifp) {
 				/* XXX loop prevention */
-				m->m_flags |= M_PROTO1;
+				m->m_flags |= M_ETHER_BRIDGED;
 				new_ifp = bif->bif_ifp;
 			}
 			if (bif->bif_flags & IFBIF_LEARNING) {
