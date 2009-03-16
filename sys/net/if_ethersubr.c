@@ -1415,6 +1415,47 @@ ether_reinput_oncpu(struct ifnet *ifp, struct mbuf *m, int run_bpf)
 	ether_input_oncpu(ifp, m);
 }
 
+static __inline boolean_t
+ether_vlancheck(struct mbuf **m0)
+{
+	struct mbuf *m = *m0;
+	struct ether_header *eh;
+	uint16_t ether_type;
+
+	eh = mtod(m, struct ether_header *);
+	ether_type = ntohs(eh->ether_type);
+
+	if (ether_type == ETHERTYPE_VLAN && (m->m_flags & M_VLANTAG) == 0) {
+		/*
+		 * Extract vlan tag if hardware does not do it for us
+		 */
+		vlan_ether_decap(&m);
+		if (m == NULL)
+			goto failed;
+
+		eh = mtod(m, struct ether_header *);
+		ether_type = ntohs(eh->ether_type);
+	}
+
+	if (ether_type == ETHERTYPE_VLAN && (m->m_flags & M_VLANTAG)) {
+		/*
+		 * To prevent possible dangerous recursion,
+		 * we don't do vlan-in-vlan
+		 */
+		m->m_pkthdr.rcvif->if_noproto++;
+		goto failed;
+	}
+	KKASSERT(ether_type != ETHERTYPE_VLAN);
+
+	*m0 = m;
+	return TRUE;
+failed:
+	if (m != NULL)
+		m_freem(m);
+	*m0 = NULL;
+	return FALSE;
+}
+
 static void
 ether_input_handler(struct netmsg *nmsg)
 {
@@ -1532,30 +1573,13 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 		return;
 	}
 
-	eh = mtod(m, struct ether_header *);
-
-	if (ntohs(eh->ether_type) == ETHERTYPE_VLAN &&
-	    (m->m_flags & M_VLANTAG) == 0) {
-		/*
-		 * Extract vlan tag if hardware does not do it for us
-		 */
-		vlan_ether_decap(&m);
-		if (m == NULL)
-			return;
-		eh = mtod(m, struct ether_header *);
-	}
-	ether_type = ntohs(eh->ether_type);
-
-	if ((m->m_flags & M_VLANTAG) && ether_type == ETHERTYPE_VLAN) {
-		/*
-		 * To prevent possible dangerous recursion,
-		 * we don't do vlan-in-vlan
-		 */
-		ifp->if_noproto++;
-		m_freem(m);
+	if (!ether_vlancheck(&m)) {
+		logether(chain_end, ifp);
+		KKASSERT(m == NULL);
 		return;
 	}
-	KKASSERT(ether_type != ETHERTYPE_VLAN);
+	eh = mtod(m, struct ether_header *);
+	ether_type = ntohs(eh->ether_type);
 
 	/*
 	 * Map ether type to netisr id.
