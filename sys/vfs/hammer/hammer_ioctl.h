@@ -120,9 +120,9 @@ struct hammer_ioc_rebalance {
 
 	int64_t		stat_ncount;	/* number of nodes scanned */
 	int64_t		stat_deletions; /* number of nodes deleted */
-	int64_t		stat_collisions;/* number of subtrees skipped */
-	int64_t		stat_lrebal;	/* number of leaf-nodes rebalanced */
-	int64_t		stat_irebal;	/* number of int-nodes rebalanced */
+	int64_t		stat_collisions;/* number of collision retries */
+	int64_t		stat_nrebal;	/* number of btree-nodes rebalanced */
+	int64_t		stat_unused04;
 };
 
 /*

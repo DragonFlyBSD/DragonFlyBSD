@@ -2568,12 +2568,14 @@ hammer_btree_lock_copy(hammer_cursor_t cursor, hammer_node_lock_t parent)
 /*
  * Recursively sync modified copies to the media.
  */
-void
+int
 hammer_btree_sync_copy(hammer_cursor_t cursor, hammer_node_lock_t parent)
 {
 	hammer_node_lock_t item;
+	int count = 0;
 
 	if (parent->flags & HAMMER_NODE_LOCK_UPDATED) {
+		++count;
 		hammer_modify_node_all(cursor->trans, parent->node);
 		*parent->node->ondisk = *parent->copy;
                 hammer_modify_node_done(parent->node);
@@ -2583,8 +2585,9 @@ hammer_btree_sync_copy(hammer_cursor_t cursor, hammer_node_lock_t parent)
 		}
 	}
 	TAILQ_FOREACH(item, &parent->list, entry) {
-		hammer_btree_sync_copy(cursor, item);
+		count += hammer_btree_sync_copy(cursor, item);
 	}
+	return(count);
 }
 
 /*

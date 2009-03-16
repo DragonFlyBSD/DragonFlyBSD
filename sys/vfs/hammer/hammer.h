@@ -982,7 +982,7 @@ int	hammer_btree_lock_children(hammer_cursor_t cursor, int depth,
 			hammer_node_lock_t parent);
 void	hammer_btree_lock_copy(hammer_cursor_t cursor,
 			hammer_node_lock_t parent);
-void	hammer_btree_sync_copy(hammer_cursor_t cursor,
+int	hammer_btree_sync_copy(hammer_cursor_t cursor,
 			hammer_node_lock_t parent);
 void	hammer_btree_unlock_children(hammer_cursor_t cursor,
 			hammer_node_lock_t parent);

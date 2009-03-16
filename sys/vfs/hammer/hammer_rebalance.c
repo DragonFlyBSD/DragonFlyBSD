@@ -169,8 +169,10 @@ retry:
 	if (error == ENOENT)
 		error = 0;
 	hammer_done_cursor(&cursor);
-	if (error == EDEADLK)
+	if (error == EDEADLK) {
+		++rebal->stat_collisions;
 		goto retry;
+	}
 	if (error == EINTR) {
 		rebal->head.flags |= HAMMER_IOC_HEAD_INTR;
 		error = 0;
@@ -417,13 +419,14 @@ rebalance_node(struct hammer_ioc_rebalance *rebal, hammer_cursor_t cursor)
 		base_item->flags |= HAMMER_NODE_LOCK_UPDATED;
 		if (cursor->index > lockroot.copy->count)
 			--cursor->index;
+		++rebal->stat_deletions;
 	}
 
 	/*
 	 * All done, sync the locked child tree to disk.  This will also
 	 * flush and delete deleted nodes.
 	 */
-	hammer_btree_sync_copy(cursor, &lockroot);
+	rebal->stat_nrebal += hammer_btree_sync_copy(cursor, &lockroot);
 done:
 	hammer_btree_unlock_children(cursor, &lockroot);
 	hammer_cursor_downgrade(cursor);
@@ -470,14 +473,23 @@ rebalance_closeout(hammer_node_lock_t base_item, int base_count,
 	 * Internal nodes are required to have at least one child,
 	 * otherwise the left and right boundary would end up being
 	 * the same element.  Only leaf nodes can be empty.
+	 *
+	 * Rebalancing may cut-off an internal node such that the
+	 * new right hand boundary is the next element anyway, but
+	 * we still have to make sure that subtree_offset, btype,
+	 * and mirror_tid are all 0.
 	 */
 	if (base_item->copy->type == HAMMER_BTREE_TYPE_INTERNAL) {
 		KKASSERT(base_count != 0);
 		base_elm = &base_item->copy->elms[base_count];
 
-		if (bcmp(base_elm, elm, sizeof(*elm)) != 0) {
+		if (bcmp(base_elm, elm, sizeof(*elm)) != 0 ||
+		    elm->internal.subtree_offset ||
+		    elm->internal.mirror_tid ||
+		    elm->base.btype) {
 			*base_elm = *elm;
 			base_elm->internal.subtree_offset = 0;
+			base_elm->internal.mirror_tid = 0;
 			base_elm->base.btype = 0;
 			base_item->flags |= HAMMER_NODE_LOCK_UPDATED;
 			if (hammer_debug_general & 0x1000)

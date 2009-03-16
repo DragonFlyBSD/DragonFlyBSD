@@ -98,12 +98,12 @@ hammer_cmd_rebalance(char **av, int ac)
 	printf("Rebalance:\n"
 	       "    %lld btree nodes scanned\n"
 	       "    %lld btree nodes deleted\n"
-	       "    %lld btree leaf nodes rebalanced\n"
-	       "    %lld btree internal nodes rebalanced\n",
+	       "    %lld collision retries\n"
+	       "    %lld btree nodes rebalanced\n",
 	       rebal.stat_ncount,
 	       rebal.stat_deletions,
-	       rebal.stat_lrebal,
-	       rebal.stat_irebal
+	       rebal.stat_collisions,
+	       rebal.stat_nrebal
 	);
 }
 
