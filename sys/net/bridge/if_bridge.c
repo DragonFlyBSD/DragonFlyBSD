@@ -2181,8 +2181,6 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 
 	eh = mtod(m, struct ether_header *);
 
-	m->m_flags &= ~M_ETHER_BRIDGED; /* XXX Hack - loop prevention */
-
 	if (memcmp(eh->ether_dhost, IF_LLADDR(bifp), ETHER_ADDR_LEN) == 0) {
 		/*
 		 * If the packet is for us, set the packets source as the
