@@ -114,8 +114,6 @@ atphy_attach(device_t dev)
 
 	mii->mii_instance++;
 
-	atphy_reset(sc);
-
 	sc->mii_capabilities = PHY_READ(sc, MII_BMSR) & ma->mii_capmask;
 	if (sc->mii_capabilities & BMSR_EXTSTAT)
 		sc->mii_extcapabilities = PHY_READ(sc, MII_EXTSR);
@@ -127,6 +125,8 @@ atphy_attach(device_t dev)
 	else
 		mii_phy_add_media(sc);
 	kprintf("\n");
+
+	atphy_reset(sc);
 
 	MIIBUS_MEDIAINIT(sc->mii_dev);
 	return 0;
@@ -352,11 +352,7 @@ atphy_reset(struct mii_softc *sc)
 	PHY_WRITE(sc, ATPHY_SCR, reg);
 
 	/* Workaround F1 bug to reset phy. */
-#if 0
 	atphy_auto(sc);
-#else
-	PHY_WRITE(sc, MII_BMCR, BMCR_RESET | BMCR_AUTOEN | BMCR_STARTNEG);
-#endif
 
 	for (i = 0; i < 1000; i++) {
 		DELAY(1);
