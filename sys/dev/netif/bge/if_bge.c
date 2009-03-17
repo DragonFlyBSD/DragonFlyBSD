@@ -3153,7 +3153,7 @@ bge_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
         case SIOCSIFCAP:
 		mask = ifr->ifr_reqcap ^ ifp->if_capenable;
 		if (mask & IFCAP_HWCSUM) {
-			ifp->if_capenable ^= IFCAP_HWCSUM;
+			ifp->if_capenable ^= (mask & IFCAP_HWCSUM);
 			if (IFCAP_HWCSUM & ifp->if_capenable)
 				ifp->if_hwassist = BGE_CSUM_FEATURES;
 			else
