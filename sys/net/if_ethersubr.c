@@ -1170,8 +1170,20 @@ post_stats:
 		return;
 	}
 
+	/*
+	 * Clear protocol specific flags,
+	 * before entering the upper layer.
+	 */
 	m->m_flags &= ~M_ETHER_FLAGS;
+
+	/* Strip ethernet header. */
 	m_adj(m, sizeof(struct ether_header));
+
+	/*
+	 * By default, we don't need to do the redispatch; for the
+	 * most common packet types, e.g. IPv4, ether_input_chain()
+	 * has already picked up the correct target network msgport.
+	 */
 	redispatch = 0;
 
 	switch (ether_type) {
