@@ -55,8 +55,8 @@
 
 #include <netinet/ip.h>
 
+#include <dev/netif/mii_layer/mii.h>
 #include <dev/netif/mii_layer/miivar.h>
-#include <dev/netif/mii_layer/jmphyreg.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
@@ -188,6 +188,12 @@ ale_miibus_readreg(device_t dev, int phy, int reg)
 	if (phy != sc->ale_phyaddr)
 		return (0);
 
+	if (sc->ale_flags & ALE_FLAG_FASTETHER) {
+		if (reg == MII_100T2CR || reg == MII_100T2SR ||
+		    reg == MII_EXTSR)
+			return (0);
+	}
+
 	CSR_WRITE_4(sc, ALE_MDIO, MDIO_OP_EXECUTE | MDIO_OP_READ |
 	    MDIO_SUP_PREAMBLE | MDIO_CLK_25_4 | MDIO_REG_ADDR(reg));
 	for (i = ALE_PHY_TIMEOUT; i > 0; i--) {
@@ -216,6 +222,12 @@ ale_miibus_writereg(device_t dev, int phy, int reg, int val)
 
 	if (phy != sc->ale_phyaddr)
 		return (0);
+
+	if (sc->ale_flags & ALE_FLAG_FASTETHER) {
+		if (reg == MII_100T2CR || reg == MII_100T2SR ||
+		    reg == MII_EXTSR)
+			return (0);
+	}
 
 	CSR_WRITE_4(sc, ALE_MDIO, MDIO_OP_EXECUTE | MDIO_OP_WRITE |
 	    (val & MDIO_DATA_MASK) << MDIO_DATA_SHIFT |
