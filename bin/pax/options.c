@@ -551,6 +551,8 @@ pax_options(int argc, char **argv)
 		}
 		--argc;
 		dirptr = argv[argc];
+		if (mkpath(dirptr) < 0)
+			exit(1);
 		/* FALL THROUGH */
 	case ARCHIVE:
 	case APPND:
