@@ -1170,6 +1170,7 @@ post_stats:
 		return;
 	}
 
+	m->m_flags &= ~M_ETHER_FLAGS;
 	m_adj(m, sizeof(struct ether_header));
 	redispatch = 0;
 
@@ -1447,6 +1448,7 @@ ether_vlancheck(struct mbuf **m0)
 	}
 	KKASSERT(ether_type != ETHERTYPE_VLAN);
 
+	m->m_flags |= M_ETHER_VLANCHECKED;
 	*m0 = m;
 	return TRUE;
 failed:
@@ -1476,6 +1478,13 @@ ether_input_handler(struct netmsg *nmsg)
 		else
 			m->m_flags |= M_MCAST;
 		ifp->if_imcasts++;
+	}
+
+	if ((m->m_flags & M_ETHER_VLANCHECKED) == 0) {
+		if (!ether_vlancheck(&m)) {
+			KKASSERT(m == NULL);
+			return;
+		}
 	}
 
 	ether_input_oncpu(ifp, m);

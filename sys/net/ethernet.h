@@ -356,7 +356,10 @@ extern const uint8_t	etherbroadcastaddr[ETHER_ADDR_LEN];
 
 #ifdef _KERNEL
 
-#define M_ETHER_BRIDGED	M_PROTO1
+#define M_ETHER_BRIDGED		M_PROTO1
+#define M_ETHER_VLANCHECKED	M_PROTO2
+
+#define M_ETHER_FLAGS		(M_ETHER_BRIDGED | M_ETHER_VLANCHECKED)
 
 struct ifnet;
 struct mbuf;
