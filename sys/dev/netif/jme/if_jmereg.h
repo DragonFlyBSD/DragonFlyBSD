@@ -822,7 +822,12 @@
 /* RSS secret key. */
 #define	JME_RSSKEY_BASE		0x0C40
 #define RSSKEY_NREGS		10
-#define	RSSKEY_REG(x)		(JME_RSSKEY_BASE + (4 * (x)))
+#define RSSKEY_REGSIZE		4
+#define RSSKEY_REGVAL(k, x)	(k[(x) * RSSKEY_REGSIZE] << 24 | \
+				 k[(x) * RSSKEY_REGSIZE + 1] << 16 | \
+				 k[(x) * RSSKEY_REGSIZE + 2] << 8 | \
+				 k[(x) * RSSKEY_REGSIZE + 3])
+#define	RSSKEY_REG(x)		(JME_RSSKEY_BASE + (RSSKEY_REGSIZE * (x)))
 
 /* RSS indirection table entries. */
 #define	JME_RSSTBL_BASE		0x0C80

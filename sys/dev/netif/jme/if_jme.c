@@ -52,6 +52,9 @@
 #include <net/if_dl.h>
 #include <net/if_media.h>
 #include <net/ifq_var.h>
+#ifdef RSS
+#include <net/toeplitz.h>
+#endif
 #include <net/vlan/if_vlan_var.h>
 #include <net/vlan/if_vlan_ether.h>
 
@@ -138,7 +141,9 @@ static void	jme_setlinkspeed(struct jme_softc *);
 #endif
 static void	jme_set_tx_coal(struct jme_softc *);
 static void	jme_set_rx_coal(struct jme_softc *);
+#ifdef RSS
 static void	jme_enable_rss(struct jme_softc *);
+#endif
 static void	jme_disable_rss(struct jme_softc *);
 
 static void	jme_sysctl_node(struct jme_softc *);
@@ -981,7 +986,7 @@ jme_sysctl_node(struct jme_softc *sc)
 #ifdef JME_RSS_DEBUG
 	SYSCTL_ADD_INT(&sc->jme_sysctl_ctx,
 		       SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
-		       "rss_debug", CTLFLAG_RD, &sc->jme_rss_debug,
+		       "rss_debug", CTLFLAG_RW, &sc->jme_rss_debug,
 		       0, "RSS debug level");
 	for (r = 0; r < sc->jme_rx_ring_cnt; ++r) {
 		ksnprintf(rx_ring_pkt, sizeof(rx_ring_pkt), "rx_ring%d_pkt", r);
@@ -2254,9 +2259,11 @@ jme_init(void *xsc)
 	if (sc->jme_lowaddr != BUS_SPACE_MAXADDR_32BIT)
 		sc->jme_txd_spare += 1;
 
+#ifdef RSS
 	if (ifp->if_capenable & IFCAP_RSS)
 		jme_enable_rss(sc);
 	else
+#endif
 		jme_disable_rss(sc);
 
 	/* Init RX descriptors */
@@ -3038,10 +3045,13 @@ jme_rx_intr(struct jme_softc *sc, uint32_t status)
 		ether_input_dispatch(chain);
 }
 
+#ifdef RSS
+
 static void
 jme_enable_rss(struct jme_softc *sc)
 {
-	uint32_t rssc, key, ind;
+	uint32_t rssc, ind;
+	uint8_t key[RSSKEY_NREGS * RSSKEY_REGSIZE];
 	int i;
 
 	sc->jme_rx_ring_inuse = sc->jme_rx_ring_cnt;
@@ -3052,9 +3062,15 @@ jme_enable_rss(struct jme_softc *sc)
 	JME_RSS_DPRINTF(sc, 1, "rssc 0x%08x\n", rssc);
 	CSR_WRITE_4(sc, JME_RSSC, rssc);
 
-	key = 0x6d5a6d5a; /* XXX */
-	for (i = 0; i < RSSKEY_NREGS; ++i)
-		CSR_WRITE_4(sc, RSSKEY_REG(i), key);
+	toeplitz_get_key(key, sizeof(key));
+	for (i = 0; i < RSSKEY_NREGS; ++i) {
+		uint32_t keyreg;
+
+		keyreg = RSSKEY_REGVAL(key, i);
+		JME_RSS_DPRINTF(sc, 5, "keyreg%d 0x%08x\n", i, keyreg);
+
+		CSR_WRITE_4(sc, RSSKEY_REG(i), keyreg);
+	}
 
 	ind = 0;
 	if (sc->jme_rx_ring_inuse == JME_NRXRING_2) {
@@ -3069,6 +3085,8 @@ jme_enable_rss(struct jme_softc *sc)
 	for (i = 0; i < RSSTBL_NREGS; ++i)
 		CSR_WRITE_4(sc, RSSTBL_REG(i), ind);
 }
+
+#endif	/* RSS */
 
 static void
 jme_disable_rss(struct jme_softc *sc)
