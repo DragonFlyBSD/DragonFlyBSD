@@ -832,7 +832,8 @@
 /* RSS indirection table entries. */
 #define	JME_RSSTBL_BASE		0x0C80
 #define RSSTBL_NREGS		32
-#define	RSSTBL_REG(x)		(JME_RSSTBL_BASE + (4 * (x)))
+#define RSSTBL_REGSIZE		4
+#define	RSSTBL_REG(x)		(JME_RSSTBL_BASE + (RSSTBL_REGSIZE * (x)))
 
 /* MSI-X table. */
 #define	JME_MSIX_BASE_ADDR	0x2000

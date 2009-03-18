@@ -78,7 +78,7 @@
 #ifdef JME_RSS_DEBUG
 #define JME_RSS_DPRINTF(sc, lvl, fmt, ...) \
 do { \
-	if ((sc)->jme_rss_debug > (lvl)) \
+	if ((sc)->jme_rss_debug >= (lvl)) \
 		if_printf(&(sc)->arpcom.ac_if, fmt, __VA_ARGS__); \
 } while (0)
 #else	/* !JME_RSS_DEBUG */
@@ -3056,6 +3056,11 @@ jme_enable_rss(struct jme_softc *sc)
 
 	sc->jme_rx_ring_inuse = sc->jme_rx_ring_cnt;
 
+	KASSERT(sc->jme_rx_ring_inuse == JME_NRXRING_2 ||
+		sc->jme_rx_ring_inuse == JME_NRXRING_4,
+		("%s: invalid # of RX rings (%d)\n",
+		 sc->arpcom.ac_if.if_xname, sc->jme_rx_ring_inuse));
+
 	rssc = RSSC_HASH_64_ENTRY;
 	rssc |= RSSC_HASH_IPV4 | RSSC_HASH_IPV4_TCP;
 	rssc |= sc->jme_rx_ring_inuse >> 1;
@@ -3072,16 +3077,19 @@ jme_enable_rss(struct jme_softc *sc)
 		CSR_WRITE_4(sc, RSSKEY_REG(i), keyreg);
 	}
 
+	/*
+	 * Create redirect table in following fashion:
+	 * (hash & ring_cnt_mask) == rdr_table[(hash & rdr_table_mask)]
+	 */
 	ind = 0;
-	if (sc->jme_rx_ring_inuse == JME_NRXRING_2) {
-		ind = 0x01000100;
-	} else if (sc->jme_rx_ring_inuse == JME_NRXRING_4) {
-		ind = 0x03020100;
-	} else {
-		panic("%s: invalid # of RX rings (%d)\n",
-		      sc->arpcom.ac_if.if_xname, sc->jme_rx_ring_inuse);
+	for (i = 0; i < RSSTBL_REGSIZE; ++i) {
+		int q;
+
+		q = i % sc->jme_rx_ring_inuse;
+		ind |= q << (i * 8);
 	}
 	JME_RSS_DPRINTF(sc, 1, "ind 0x%08x\n", ind);
+
 	for (i = 0; i < RSSTBL_NREGS; ++i)
 		CSR_WRITE_4(sc, RSSTBL_REG(i), ind);
 }
