@@ -65,7 +65,7 @@
 
 #define TOEPLITZ_KEYSEED0	0x6d
 #define TOEPLITZ_KEYSEED1	0x5a
-#define TOEPLITZ_KEY_STRLEN	(TOEPLITZ_KEYSEED_CNT + sizeof(uint32_t))
+#define TOEPLITZ_INIT_KEYLEN	(TOEPLITZ_KEYSEED_CNT + sizeof(uint32_t))
 
 static uint32_t	toeplitz_keyseeds[TOEPLITZ_KEYSEED_CNT] =
 	{ TOEPLITZ_KEYSEED0, TOEPLITZ_KEYSEED1 };
@@ -82,10 +82,16 @@ SYSCTL_INT(_net_toeplitz, OID_AUTO, keyseed1, CTLFLAG_RD,
 	   &toeplitz_keyseeds[1], 0, "Toeplitz hash key seed1");
 
 void
-toeplitz_get_keyseeds(uint32_t *seed0, uint32_t *seed1)
+toeplitz_get_key(uint8_t *key, int keylen)
 {
-	*seed0 = toeplitz_keyseeds[0];
-	*seed1 = toeplitz_keyseeds[1];
+	int i;
+
+	if (keylen > TOEPLITZ_KEYLEN_MAX)
+		panic("invalid key length %d\n", keylen);
+
+	/* Replicate key seeds to form key */
+	for (i = 0; i < keylen; ++i)
+		key[i] = toeplitz_keyseeds[i % TOEPLITZ_KEYSEED_CNT];
 }
 
 static void
@@ -164,27 +170,23 @@ toeplitz_verify(void)
 static void
 toeplitz_init(void *dummy __unused)
 {
-	uint8_t keystr[TOEPLITZ_KEY_STRLEN];
+	uint8_t key[TOEPLITZ_INIT_KEYLEN];
 	int i;
 
 	for (i = 0; i < TOEPLITZ_KEYSEED_CNT; ++i)
 		toeplitz_keyseeds[i] &= 0xff;
 
-	/* Replicate key seeds to form key string */
-	for (i = 0; i < TOEPLITZ_KEY_STRLEN; ++i) {
-		keystr[i] = toeplitz_keyseeds[i % TOEPLITZ_KEYSEED_CNT];
+	toeplitz_get_key(key, TOEPLITZ_INIT_KEYLEN);
 
 #ifdef RSS_DEBUG
-		if (i == 0)
-			kprintf("toeplitz: keystr ");
-		kprintf("%02x ", keystr[i]);
-		if (i == TOEPLITZ_KEY_STRLEN - 1)
-			kprintf("\n");
+	kprintf("toeplitz: keystr ");
+	for (i = 0; i < TOEPLITZ_INIT_KEYLEN; ++i)
+		kprintf("%02x ", key[i]);
+	kprintf("\n");
 #endif
-	}
 
 	toeplitz_cache_create(toeplitz_cache, TOEPLITZ_KEYSEED_CNT,
-			      keystr, TOEPLITZ_KEY_STRLEN);
+			      key, TOEPLITZ_INIT_KEYLEN);
 
 #ifdef RSS_DEBUG
 	toeplitz_verify();

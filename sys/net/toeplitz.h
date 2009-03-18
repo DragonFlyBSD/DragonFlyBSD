@@ -39,6 +39,8 @@
 #error "kernel only header file"
 #endif
 
-void	toeplitz_get_keyseeds(uint32_t *_seed0, uint32_t *_seed1);
+#define TOEPLITZ_KEYLEN_MAX	40
+
+void	toeplitz_get_key(uint8_t *_key, int _keylen);
 
 #endif	/* !_NET_TOEPLITZ_H_ */
