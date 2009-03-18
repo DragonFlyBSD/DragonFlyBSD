@@ -67,14 +67,14 @@ static int no_op (void);
 static void printflg (unsigned int);
 static int c_frmt (const void *, const void *);
 static off_t str_offt (char *);
-static char *getline (FILE *fp);
+static char *getline (FILE *);
 static void pax_options (int, char **);
 static void pax_usage (void);
 static void tar_options (int, char **);
 static void tar_usage (void);
 static void cpio_options (int, char **);
 static void cpio_usage (void);
-static int mkpath(char *path);
+static int mkpath(char *);
 
 /* errors from getline */
 #define GETLINE_FILE_CORRUPT 1
