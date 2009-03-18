@@ -74,6 +74,7 @@ static void tar_options (int, char **);
 static void tar_usage (void);
 static void cpio_options (int, char **);
 static void cpio_usage (void);
+static int mkpath(char *path);
 
 /* errors from getline */
 #define GETLINE_FILE_CORRUPT 1
@@ -967,7 +968,7 @@ tar_options(int argc, char **argv)
 	}
 }
 
-int
+static int
 mkpath(char *path)
 {
 	struct stat sb;
