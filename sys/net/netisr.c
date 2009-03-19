@@ -381,7 +381,7 @@ netisr_queue(int num, struct mbuf *m)
 }
 
 void
-netisr_register(int num, lwkt_portfn_t mportfn, netisr_fn_t handler,
+netisr_register(int num, pkt_portfn_t mportfn, netisr_fn_t handler,
 		uint32_t flags)
 {
     struct netisr *ni;

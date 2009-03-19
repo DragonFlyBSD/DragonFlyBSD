@@ -197,11 +197,11 @@ void netmsg_so_notify_doabort(lwkt_msg_t);
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
-typedef lwkt_port_t (*lwkt_portfn_t)(struct mbuf **);
+typedef lwkt_port_t (*pkt_portfn_t)(struct mbuf **);
 
 struct netisr {
 	lwkt_port	ni_port;	/* must be first */
-	lwkt_portfn_t	ni_mport;
+	pkt_portfn_t	ni_mport;
 	netisr_fn_t	ni_handler;
 	struct netmsg	ni_netmsg;	/* for sched_netisr() (no-data) */
 	uint32_t	ni_flags;	/* NETISR_FLAG_ */
@@ -228,7 +228,7 @@ lwkt_port_t	netisr_find_port(int, struct mbuf **);
 void		netisr_dispatch(int, struct mbuf *);
 void		netisr_run(int, struct mbuf *);
 int		netisr_queue(int, struct mbuf *);
-void		netisr_register(int, lwkt_portfn_t, netisr_fn_t, uint32_t);
+void		netisr_register(int, pkt_portfn_t, netisr_fn_t, uint32_t);
 int		netisr_unregister(int);
 void		netmsg_service_port_init(lwkt_port_t);
 void		netmsg_service_loop(void *arg);
