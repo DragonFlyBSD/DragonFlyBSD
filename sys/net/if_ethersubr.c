@@ -1528,6 +1528,32 @@ ether_mport(int num, struct mbuf **m)
 	return netisr_find_port(num, m);
 }
 
+static void
+ether_dispatch(int isr, struct lwkt_port *port, struct mbuf *m,
+	       struct mbuf_chain *chain)
+{
+	ether_init_netpacket(isr, m);
+
+	if (chain != NULL) {
+		struct mbuf_chain *c;
+		int cpuid;
+
+		m->m_pkthdr.header = port; /* XXX */
+		cpuid = port->mpu_td->td_gd->gd_cpuid;
+
+		c = &chain[cpuid];
+		if (c->mc_head == NULL) {
+			c->mc_head = c->mc_tail = m;
+		} else {
+			c->mc_tail->m_nextpkt = m;
+			c->mc_tail = m;
+		}
+		m->m_nextpkt = NULL;
+	} else {
+		lwkt_sendmsg(port, &m->m_hdr.mh_netmsg.nm_netmsg.nm_lmsg);
+	}
+}
+
 /*
  * Process a received Ethernet packet.
  *
@@ -1703,30 +1729,10 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 	}
 
 	/*
-	 * Initialize mbuf's netmsg packet _after_ possible
-	 * ether header restoration, else the initialized
-	 * netmsg packet may be lost during ether header
-	 * restoration.
+	 * Send the packet to the target msgport or
+	 * queue it into 'chain'.
 	 */
-	ether_init_netpacket(isr, m);
+	ether_dispatch(isr, port, m, chain);
 
-	if (chain != NULL) {
-		struct mbuf_chain *c;
-		int cpuid;
-
-		m->m_pkthdr.header = port; /* XXX */
-		cpuid = port->mpu_td->td_gd->gd_cpuid;
-
-		c = &chain[cpuid];
-		if (c->mc_head == NULL) {
-			c->mc_head = c->mc_tail = m;
-		} else {
-			c->mc_tail->m_nextpkt = m;
-			c->mc_tail = m;
-		}
-		m->m_nextpkt = NULL;
-	} else {
-		lwkt_sendmsg(port, &m->m_hdr.mh_netmsg.nm_netmsg.nm_lmsg);
-	}
 	logether(chain_end, ifp);
 }
