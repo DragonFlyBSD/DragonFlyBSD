@@ -112,8 +112,8 @@ atm_initialize(void)
 	atm_init = 1;
 
 	atm_intrq.ifq_maxlen = ATM_INTRQ_MAX;
-	netisr_register(NETISR_ATM, cpu0_portfn, atm_intr,
-			NETISR_FLAG_NOTMPSAFE);
+	netisr_register(NETISR_ATM, cpu0_portfn, pktinfo_portfn_cpu0,
+			atm_intr, NETISR_FLAG_NOTMPSAFE);
 
 	/*
 	 * Initialize subsystems

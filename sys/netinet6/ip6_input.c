@@ -198,8 +198,8 @@ ip6_init(void)
 			"error %d\n", __func__, i);
 	}
 
-	netisr_register(NETISR_IPV6, cpu0_portfn, ip6_input,
-			NETISR_FLAG_NOTMPSAFE);
+	netisr_register(NETISR_IPV6, cpu0_portfn, pktinfo_portfn_cpu0,
+			ip6_input, NETISR_FLAG_NOTMPSAFE);
 	scope6_init();
 	addrsel_policy_init();
 	nd6_init();

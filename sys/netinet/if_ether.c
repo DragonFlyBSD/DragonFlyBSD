@@ -1116,7 +1116,8 @@ arp_init(void)
 	} else {
 		flags = NETISR_FLAG_NOTMPSAFE;
 	}
-	netisr_register(NETISR_ARP, cpu0_portfn, arpintr, flags);
+	netisr_register(NETISR_ARP, cpu0_portfn, pktinfo_portfn_cpu0,
+			arpintr, flags);
 }
 
 SYSINIT(arp, SI_SUB_PROTO_DOMAIN, SI_ORDER_ANY, arp_init, 0);

@@ -117,8 +117,8 @@ ipx_init(void)
 	ipx_hostmask.sipx_addr.x_net = ipx_broadnet;
 	ipx_hostmask.sipx_addr.x_host = ipx_broadhost;
 
-	netisr_register(NETISR_IPX, cpu0_portfn, ipxintr,
-			NETISR_FLAG_NOTMPSAFE);
+	netisr_register(NETISR_IPX, cpu0_portfn, pktinfo_portfn_cpu0,
+			ipxintr, NETISR_FLAG_NOTMPSAFE);
 }
 
 /*

@@ -381,7 +381,8 @@ netisr_queue(int num, struct mbuf *m)
 }
 
 void
-netisr_register(int num, pkt_portfn_t mportfn, netisr_fn_t handler,
+netisr_register(int num, pkt_portfn_t mportfn,
+		pktinfo_portfn_t mportfn_pktinfo, netisr_fn_t handler,
 		uint32_t flags)
 {
     struct netisr *ni;
@@ -391,6 +392,7 @@ netisr_register(int num, pkt_portfn_t mportfn, netisr_fn_t handler,
     ni = &netisrs[num];
 
     ni->ni_mport = mportfn;
+    ni->ni_mport_pktinfo = mportfn_pktinfo;
     ni->ni_handler = handler;
     ni->ni_flags = flags;
     netmsg_init(&ni->ni_netmsg, &netisr_adone_rport, NETISR_TO_MSGF(ni), NULL);
@@ -554,4 +556,33 @@ netisr_run(int num, struct mbuf *m)
     NETISR_GET_MPLOCK(ni);
     ni->ni_handler(&pmsg->nm_netmsg);
     NETISR_REL_MPLOCK(ni);
+}
+
+lwkt_port_t
+pktinfo_portfn_cpu0(const struct pktinfo *dummy __unused)
+{
+    return &netisr_cpu[0].td_msgport;
+}
+
+lwkt_port_t
+pktinfo_portfn_notsupp(const struct pktinfo *dummy __unused)
+{
+    return NULL;
+}
+
+lwkt_port_t
+netisr_find_pktinfo_port(const struct pktinfo *pi)
+{
+    struct netisr *ni;
+
+    KASSERT((pi->pi_netisr > 0 &&
+	     pi->pi_netisr <= (sizeof(netisrs)/sizeof(netisrs[0]))),
+	    ("%s: bad isr %d", __func__, pi->pi_netisr));
+
+    ni = &netisrs[pi->pi_netisr];
+    if (ni->ni_mport_pktinfo == NULL) {
+	kprintf("%s: unregistered isr %d\n", __func__, pi->pi_netisr);
+	return NULL;
+    }
+    return ni->ni_mport_pktinfo(pi);
 }

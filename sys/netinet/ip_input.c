@@ -392,7 +392,8 @@ ip_init(void)
 		flags = NETISR_FLAG_NOTMPSAFE;
 	}
 #endif
-	netisr_register(NETISR_IP, ip_mport_in, ip_input_handler, flags);
+	netisr_register(NETISR_IP, ip_mport_in, pktinfo_portfn_notsupp,
+			ip_input_handler, flags);
 }
 
 /*

@@ -76,8 +76,8 @@ mpls_init(void)
 	bzero(&mplsstat, sizeof(struct mpls_stats));
 #endif
 
-	netisr_register(NETISR_MPLS, mpls_mport, mpls_input_handler,
-			NETISR_FLAG_NOTMPSAFE);
+	netisr_register(NETISR_MPLS, mpls_mport, pktinfo_portfn_notsupp,
+			mpls_input_handler, NETISR_FLAG_NOTMPSAFE);
 }
 
 static void

@@ -257,7 +257,8 @@ pppattach(void *dummy)
 	if_attach(&sc->sc_if, NULL);
 	bpfattach(&sc->sc_if, DLT_PPP, PPP_HDRLEN);
     }
-    netisr_register(NETISR_PPP, cpu0_portfn, pppintr, NETISR_FLAG_NOTMPSAFE);
+    netisr_register(NETISR_PPP, cpu0_portfn, pktinfo_portfn_cpu0,
+    		    pppintr, NETISR_FLAG_NOTMPSAFE);
     /*
      * XXX layering violation - if_ppp can work over any lower level
      * transport that cares to attach to it.

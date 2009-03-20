@@ -96,7 +96,8 @@ ns_init(void)
 	ns_hostmask.sns_len = 12;
 	ns_hostmask.sns_addr.x_net = ns_broadnet;
 	ns_hostmask.sns_addr.x_host = ns_broadhost;
-	netisr_register(NETISR_NS, cpu0_portfn, nsintr, NETISR_FLAG_NOTMPSAFE);
+	netisr_register(NETISR_NS, cpu0_portfn, pktinfo_portfn_cpu0,
+			nsintr, NETISR_FLAG_NOTMPSAFE);
 }
 
 /*

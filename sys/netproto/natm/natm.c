@@ -748,8 +748,8 @@ static void natmintr(struct netmsg *);
 static void
 netisr_natm_setup(void *dummy __unused)
 {
-	netisr_register(NETISR_NATM, cpu0_portfn, natmintr,
-			NETISR_FLAG_NOTMPSAFE);
+	netisr_register(NETISR_NATM, cpu0_portfn, pktinfo_portfn_cpu0,
+			natmintr, NETISR_FLAG_NOTMPSAFE);
 }
 SYSINIT(natm_setup, SI_BOOT2_KLD, SI_ORDER_ANY, netisr_natm_setup, NULL);
 #endif
@@ -759,7 +759,8 @@ natm_init(void)
 {
   LIST_INIT(&natm_pcbs);
 
-  netisr_register(NETISR_NATM, cpu0_portfn, natmintr, 0);
+  netisr_register(NETISR_NATM, cpu0_portfn, pktinfo_portfn_cpu0,
+  		  natmintr, NETISR_FLAG_NOTMPSAFE);
 }
 
 /*
