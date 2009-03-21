@@ -161,8 +161,8 @@ toeplitz_verify(void)
 	lport = 0xe606;
 
 	kprintf("toeplitz: verify addr/port 0x%08x, addr 0x%08x\n",
-		toeplitz_hash_tcp(faddr, laddr, fport, lport),
-		toeplitz_hash(faddr, laddr));
+		toeplitz_rawhash_addrport(faddr, laddr, fport, lport),
+		toeplitz_rawhash_addr(faddr, laddr));
 }
 
 #endif	/* RSS_DEBUG */

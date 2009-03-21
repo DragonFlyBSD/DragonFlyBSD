@@ -97,7 +97,7 @@ INP_MPORT_HASH_UDP(in_addr_t faddr, in_addr_t laddr,
 #ifndef RSS
 	return INP_MPORT_HASH(faddr, laddr, fport, lport);
 #else
-	return (toeplitz_hash(faddr, laddr) & ncpus2_mask);
+	return toeplitz_hash(toeplitz_rawhash_addr(faddr, laddr));
 #endif
 }
 
@@ -108,7 +108,8 @@ INP_MPORT_HASH_TCP(in_addr_t faddr, in_addr_t laddr,
 #ifndef RSS
 	return INP_MPORT_HASH(faddr, laddr, fport, lport);
 #else
-	return (toeplitz_hash_tcp(faddr, laddr, fport, lport) & ncpus2_mask);
+	return toeplitz_hash(
+	       toeplitz_rawhash_addrport(faddr, laddr, fport, lport));
 #endif
 }
 

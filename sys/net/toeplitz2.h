@@ -39,13 +39,17 @@
 #error "kernel only header file"
 #endif
 
+#ifndef _SYS_SYSTM_H_
+#include <sys/systm.h>
+#endif
+
 #define TOEPLITZ_KEYSEED_CNT	2
 
 extern uint32_t	toeplitz_cache[TOEPLITZ_KEYSEED_CNT][256];
 
 static __inline uint32_t
-toeplitz_hash_tcp(in_addr_t _faddr, in_addr_t _laddr,
-		  in_port_t _fport, in_port_t _lport)
+toeplitz_rawhash_addrport(in_addr_t _faddr, in_addr_t _laddr,
+			  in_port_t _fport, in_port_t _lport)
 {
 	uint32_t _res;
 
@@ -67,7 +71,7 @@ toeplitz_hash_tcp(in_addr_t _faddr, in_addr_t _laddr,
 }
 
 static __inline uint32_t
-toeplitz_hash(in_addr_t _faddr, in_addr_t _laddr)
+toeplitz_rawhash_addr(in_addr_t _faddr, in_addr_t _laddr)
 {
 	uint32_t _res;
 
@@ -82,6 +86,12 @@ toeplitz_hash(in_addr_t _faddr, in_addr_t _laddr)
 	_res ^= toeplitz_cache[1][(_laddr >> 24) & 0xff];
 
 	return _res;
+}
+
+static __inline int
+toeplitz_hash(uint32_t _rawhash)
+{
+	return (_rawhash & ncpus2_mask);
 }
 
 #endif	/* !_NET_TOEPLITZ2_H_ */
