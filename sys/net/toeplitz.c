@@ -70,6 +70,8 @@
 static uint32_t	toeplitz_keyseeds[TOEPLITZ_KEYSEED_CNT] =
 	{ TOEPLITZ_KEYSEED0, TOEPLITZ_KEYSEED1 };
 
+#ifdef RSS
+
 uint32_t	toeplitz_cache[TOEPLITZ_KEYSEED_CNT][256];
 
 TUNABLE_INT("net.toeplitz.keyseed0", &toeplitz_keyseeds[0]);
@@ -80,19 +82,6 @@ SYSCTL_INT(_net_toeplitz, OID_AUTO, keyseed0, CTLFLAG_RD,
 	   &toeplitz_keyseeds[0], 0, "Toeplitz hash key seed0");
 SYSCTL_INT(_net_toeplitz, OID_AUTO, keyseed1, CTLFLAG_RD,
 	   &toeplitz_keyseeds[1], 0, "Toeplitz hash key seed1");
-
-void
-toeplitz_get_key(uint8_t *key, int keylen)
-{
-	int i;
-
-	if (keylen > TOEPLITZ_KEYLEN_MAX)
-		panic("invalid key length %d\n", keylen);
-
-	/* Replicate key seeds to form key */
-	for (i = 0; i < keylen; ++i)
-		key[i] = toeplitz_keyseeds[i % TOEPLITZ_KEYSEED_CNT];
-}
 
 static void
 toeplitz_cache_create(uint32_t cache[][256], int cache_len,
@@ -193,3 +182,18 @@ toeplitz_init(void *dummy __unused)
 #endif
 }
 SYSINIT(toeplitz, SI_SUB_PRE_DRIVERS, SI_ORDER_FIRST, toeplitz_init, NULL);
+
+#endif	/* RSS */
+
+void
+toeplitz_get_key(uint8_t *key, int keylen)
+{
+	int i;
+
+	if (keylen > TOEPLITZ_KEYLEN_MAX)
+		panic("invalid key length %d\n", keylen);
+
+	/* Replicate key seeds to form key */
+	for (i = 0; i < keylen; ++i)
+		key[i] = toeplitz_keyseeds[i % TOEPLITZ_KEYSEED_CNT];
+}

@@ -1021,7 +1021,7 @@ net/bpf_filter.c			optional netgraph_bpf
 crypto/rc4/rc4.c			optional netgraph_mppc_encryption
 crypto/sha1.c				optional netgraph_mppc_encryption
 
-net/toeplitz.c			optional rss
+net/toeplitz.c			standard
 
 net/accf_data/accf_data.c		optional accept_filter_data
 net/accf_http/accf_http.c		optional accept_filter_http

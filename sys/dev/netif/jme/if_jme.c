@@ -52,9 +52,7 @@
 #include <net/if_dl.h>
 #include <net/if_media.h>
 #include <net/ifq_var.h>
-#ifdef RSS
 #include <net/toeplitz.h>
-#endif
 #include <net/vlan/if_vlan_var.h>
 #include <net/vlan/if_vlan_ether.h>
 
@@ -141,9 +139,7 @@ static void	jme_setlinkspeed(struct jme_softc *);
 #endif
 static void	jme_set_tx_coal(struct jme_softc *);
 static void	jme_set_rx_coal(struct jme_softc *);
-#ifdef RSS
 static void	jme_enable_rss(struct jme_softc *);
-#endif
 static void	jme_disable_rss(struct jme_softc *);
 
 static void	jme_sysctl_node(struct jme_softc *);
@@ -2256,11 +2252,9 @@ jme_init(void *xsc)
 	if (sc->jme_lowaddr != BUS_SPACE_MAXADDR_32BIT)
 		sc->jme_txd_spare += 1;
 
-#ifdef RSS
 	if (ifp->if_capenable & IFCAP_RSS)
 		jme_enable_rss(sc);
 	else
-#endif
 		jme_disable_rss(sc);
 
 	/* Init RX descriptors */
@@ -3042,8 +3036,6 @@ jme_rx_intr(struct jme_softc *sc, uint32_t status)
 		ether_input_dispatch(chain);
 }
 
-#ifdef RSS
-
 static void
 jme_enable_rss(struct jme_softc *sc)
 {
@@ -3090,8 +3082,6 @@ jme_enable_rss(struct jme_softc *sc)
 	for (i = 0; i < RSSTBL_NREGS; ++i)
 		CSR_WRITE_4(sc, RSSTBL_REG(i), ind);
 }
-
-#endif	/* RSS */
 
 static void
 jme_disable_rss(struct jme_softc *sc)
