@@ -2031,7 +2031,8 @@ jme_pktinfo(struct pktinfo *pi, uint32_t flags)
 		pi->pi_l3proto = IPPROTO_TCP;
 	else if (flags & JME_RD_UDP)
 		pi->pi_l3proto = IPPROTO_UDP;
-
+	else
+		pi = NULL;
 	return pi;
 }
 
