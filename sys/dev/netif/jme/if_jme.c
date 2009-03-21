@@ -2073,7 +2073,6 @@ jme_rxpkt(struct jme_softc *sc, int ring, struct mbuf_chain *chain)
 			 * Receive processor can receive a maximum frame
 			 * size of 65535 bytes.
 			 */
-			mp->m_flags &= ~M_PKTHDR;
 			rdata->jme_rxtail->m_next = mp;
 			rdata->jme_rxtail = mp;
 		}
@@ -2081,8 +2080,6 @@ jme_rxpkt(struct jme_softc *sc, int ring, struct mbuf_chain *chain)
 		if (count == nsegs - 1) {
 			/* Last desc. for this frame. */
 			m = rdata->jme_rxhead;
-			/* XXX assert PKTHDR? */
-			m->m_flags |= M_PKTHDR;
 			m->m_pkthdr.len = rdata->jme_rxlen;
 			if (nsegs > 1) {
 				/* Set first mbuf size. */
