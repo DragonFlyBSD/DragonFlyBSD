@@ -53,8 +53,11 @@
 #include <net/if_media.h>
 #include <net/ifq_var.h>
 #include <net/toeplitz.h>
+#include <net/toeplitz2.h>
 #include <net/vlan/if_vlan_var.h>
 #include <net/vlan/if_vlan_ether.h>
+
+#include <netinet/in.h>
 
 #include <dev/netif/mii_layer/miivar.h>
 #include <dev/netif/mii_layer/jmphyreg.h>
@@ -2009,6 +2012,29 @@ jme_discard_rxbufs(struct jme_softc *sc, int ring, int cons, int count)
 	}
 }
 
+static __inline struct pktinfo *
+jme_pktinfo(struct pktinfo *pi, uint32_t flags)
+{
+	if (flags & JME_RD_IPV4)
+		pi->pi_netisr = NETISR_IP;
+	else if (flags & JME_RD_IPV6)
+		pi->pi_netisr = NETISR_IPV6;
+	else
+		return NULL;
+
+	pi->pi_flags = 0;
+	pi->pi_l3proto = IPPROTO_UNKNOWN;
+
+	if (flags & JME_RD_MORE_FRAG)
+		pi->pi_flags |= PKTINFO_FLAG_FRAG;
+	else if (flags & JME_RD_TCP)
+		pi->pi_l3proto = IPPROTO_TCP;
+	else if (flags & JME_RD_UDP)
+		pi->pi_l3proto = IPPROTO_UDP;
+
+	return pi;
+}
+
 /* Receive a frame. */
 static void
 jme_rxpkt(struct jme_softc *sc, int ring, struct mbuf_chain *chain)
@@ -2018,18 +2044,20 @@ jme_rxpkt(struct jme_softc *sc, int ring, struct mbuf_chain *chain)
 	struct jme_desc *desc;
 	struct jme_rxdesc *rxd;
 	struct mbuf *mp, *m;
-	uint32_t flags, status;
+	uint32_t flags, status, hash, hashinfo;
 	int cons, count, nsegs;
 
 	cons = rdata->jme_rx_cons;
 	desc = &rdata->jme_rx_ring[cons];
 	flags = le32toh(desc->flags);
 	status = le32toh(desc->buflen);
+	hash = le32toh(desc->addr_hi);
+	hashinfo = le32toh(desc->addr_lo);
 	nsegs = JME_RX_NSEGS(status);
 
-	JME_RSS_DPRINTF(sc, 10, "ring%d, flags 0x%08x, "
-			"hash 0x%08x, hash type 0x%08x\n",
-			ring, flags, desc->addr_hi, desc->addr_lo);
+	JME_RSS_DPRINTF(sc, 15, "ring%d, flags 0x%08x, "
+			"hash 0x%08x, hash info 0x%08x\n",
+			ring, flags, hash, hashinfo);
 
 	if (status & JME_RX_ERR_STAT) {
 		ifp->if_ierrors++;
@@ -2082,6 +2110,8 @@ jme_rxpkt(struct jme_softc *sc, int ring, struct mbuf_chain *chain)
 		}
 
 		if (count == nsegs - 1) {
+			struct pktinfo pi0, *pi;
+
 			/* Last desc. for this frame. */
 			m = rdata->jme_rxhead;
 			m->m_pkthdr.len = rdata->jme_rxlen;
@@ -2131,8 +2161,30 @@ jme_rxpkt(struct jme_softc *sc, int ring, struct mbuf_chain *chain)
 			}
 
 			ifp->if_ipackets++;
+
+			if (ifp->if_capenable & IFCAP_RSS)
+				pi = jme_pktinfo(&pi0, flags);
+			else
+				pi = NULL;
+
+			if (pi != NULL &&
+			    (hashinfo & JME_RD_HASH_FN_MASK) != 0) {
+				m->m_flags |= M_HASH;
+				m->m_pkthdr.hash = toeplitz_hash(hash);
+			}
+
+#ifdef JME_RSS_DEBUG
+			if (pi != NULL) {
+				JME_RSS_DPRINTF(sc, 10,
+				    "isr %d flags %08x, l3 %d %s\n",
+				    pi->pi_netisr, pi->pi_flags,
+				    pi->pi_l3proto,
+				    (m->m_flags & M_HASH) ? "hash" : "");
+			}
+#endif
+
 			/* Pass it on. */
-			ether_input_chain(ifp, m, NULL, chain);
+			ether_input_chain(ifp, m, pi, chain);
 
 			/* Reset mbuf chains. */
 			JME_RXCHAIN_RESET(sc, ring);
