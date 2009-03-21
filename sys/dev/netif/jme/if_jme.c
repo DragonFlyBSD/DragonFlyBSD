@@ -827,8 +827,16 @@ jme_attach(device_t dev)
 			       IFCAP_VLAN_HWTAGGING;
 	if (sc->jme_rx_ring_cnt > JME_NRXRING_MIN)
 		ifp->if_capabilities |= IFCAP_RSS;
-	ifp->if_hwassist = JME_CSUM_FEATURES;
 	ifp->if_capenable = ifp->if_capabilities;
+
+	/*
+	 * Disable TXCSUM by default to improve bulk data
+	 * transmit performance (+20Mbps improvement).
+	 */
+	ifp->if_capenable &= ~IFCAP_TXCSUM;
+
+	if (ifp->if_capenable & IFCAP_TXCSUM)
+		ifp->if_hwassist = JME_CSUM_FEATURES;
 
 	/* Set up MII bus. */
 	error = mii_phy_probe(dev, &sc->jme_miibus,
