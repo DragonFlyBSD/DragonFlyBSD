@@ -338,6 +338,47 @@ ip_mport_in(struct mbuf **mptr)
 }
 
 /*
+ * Map a packet to a protocol processing thread and return the thread's port.
+ * Unlike ip_mport(), the packet content is not accessed.  The packet info
+ * (pi) and the hash of the packet (m_pkthdr.hash) is used instead.  NULL is
+ * returned if the packet info does not contain enough information.
+ *
+ * Caller has already made sure that m_pkthdr.hash is valid, i.e. m_flags
+ * has M_HASH set.
+ */
+lwkt_port_t
+ip_mport_pktinfo(const struct pktinfo *pi, struct mbuf *m)
+{
+	lwkt_port_t port;
+
+	KASSERT(m->m_pkthdr.hash < ncpus2,
+		("invalid packet hash %#x\n", m->m_pkthdr.hash));
+
+	/*
+	 * XXX generic packet handling defrag on CPU 0 for now.
+	 */
+	if (pi->pi_flags & PKTINFO_FLAG_FRAG) {
+		m->m_pkthdr.hash = 0;
+		return &netisr_cpu[0].td_msgport;
+	}
+
+	switch (pi->pi_l3proto) {
+	case IPPROTO_TCP:
+		port = &tcp_thread[m->m_pkthdr.hash].td_msgport;
+		break;
+
+	case IPPROTO_UDP:
+		port = &udp_thread[m->m_pkthdr.hash].td_msgport;
+		break;
+
+	default:
+		port = NULL;
+		break;
+	}
+	return port;
+}
+
+/*
  * Map a TCP socket to a protocol processing thread.
  */
 lwkt_port_t
