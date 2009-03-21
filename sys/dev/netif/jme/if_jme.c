@@ -999,7 +999,7 @@ jme_sysctl_node(struct jme_softc *sc)
 		ksnprintf(rx_ring_pkt, sizeof(rx_ring_pkt), "rx_ring%d_pkt", r);
 		SYSCTL_ADD_UINT(&sc->jme_sysctl_ctx,
 				SYSCTL_CHILDREN(sc->jme_sysctl_tree), OID_AUTO,
-				rx_ring_pkt, CTLFLAG_RD,
+				rx_ring_pkt, CTLFLAG_RW,
 				&sc->jme_rx_ring_pkt[r],
 				0, "RXed packets");
 	}
