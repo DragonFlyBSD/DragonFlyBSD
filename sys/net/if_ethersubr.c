@@ -42,6 +42,7 @@
 #include "opt_mpls.h"
 #include "opt_netgraph.h"
 #include "opt_carp.h"
+#include "opt_rss.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -158,6 +159,13 @@ static int ether_ipfw;
 static u_int ether_restore_hdr;
 static u_int ether_prepend_hdr;
 
+#ifdef RSS_DEBUG
+static u_int ether_pktinfo_try;
+static u_int ether_pktinfo_hit;
+static u_int ether_rss_nopi;
+static u_int ether_rss_nohash;
+#endif
+
 SYSCTL_DECL(_net_link);
 SYSCTL_NODE(_net_link, IFT_ETHER, ether, CTLFLAG_RW, 0, "Ethernet");
 SYSCTL_INT(_net_link_ether, OID_AUTO, ipfw, CTLFLAG_RW,
@@ -167,6 +175,18 @@ SYSCTL_UINT(_net_link_ether, OID_AUTO, restore_hdr, CTLFLAG_RW,
 SYSCTL_UINT(_net_link_ether, OID_AUTO, prepend_hdr, CTLFLAG_RW,
 	    &ether_prepend_hdr, 0,
 	    "# of ether header restoration which prepends mbuf");
+#ifdef RSS_DEBUG
+SYSCTL_UINT(_net_link_ether, OID_AUTO, rss_nopi, CTLFLAG_RW,
+	    &ether_rss_nopi, 0, "# of packets do not have pktinfo");
+SYSCTL_UINT(_net_link_ether, OID_AUTO, rss_nohash, CTLFLAG_RW,
+	    &ether_rss_nohash, 0, "# of packets do not have hash");
+SYSCTL_UINT(_net_link_ether, OID_AUTO, pktinfo_try, CTLFLAG_RW,
+	    &ether_pktinfo_try, 0,
+	    "# of tries to find packets' msgport using pktinfo");
+SYSCTL_UINT(_net_link_ether, OID_AUTO, pktinfo_hit, CTLFLAG_RW,
+	    &ether_pktinfo_hit, 0,
+	    "# of packets whose msgport are found using pktinfo");
+#endif
 
 #define ETHER_KTR_STR		"ifp=%p"
 #define ETHER_KTR_ARG_SIZE	(sizeof(void *))
@@ -1626,9 +1646,15 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 	}
 
 	if (pi != NULL && (m->m_flags & M_HASH)) {
+#ifdef RSS_DEBUG
+		ether_pktinfo_try++;
+#endif
 		/* Try finding the port using the packet info */
 		port = netisr_find_pktinfo_port(pi, m);
 		if (port != NULL) {
+#ifdef RSS_DEBUG
+			ether_pktinfo_hit++;
+#endif
 			ether_dispatch(pi->pi_netisr, port, m, chain);
 
 			logether(chain_end, ifp);
@@ -1641,6 +1667,14 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 		 * packet content.
 		 */
 	}
+#ifdef RSS_DEBUG
+	else if (ifp->if_capenable & IFCAP_RSS) {
+		if (pi == NULL)
+			ether_rss_nopi++;
+		else
+			ether_rss_nohash++;
+	}
+#endif
 
 	/*
 	 * Packet hash will be recalculated by software,
