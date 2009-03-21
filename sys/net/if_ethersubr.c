@@ -1630,6 +1630,8 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 		port = netisr_find_pktinfo_port(pi, m);
 		if (port != NULL) {
 			ether_dispatch(pi->pi_netisr, port, m, chain);
+
+			logether(chain_end, ifp);
 			return;
 		}
 
@@ -1649,8 +1651,8 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 	m->m_flags &= ~M_HASH;
 
 	if (!ether_vlancheck(&m)) {
-		logether(chain_end, ifp);
 		KKASSERT(m == NULL);
+		logether(chain_end, ifp);
 		return;
 	}
 	eh = mtod(m, struct ether_header *);
@@ -1740,6 +1742,7 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 	port = ether_mport(isr, &m);
 	if (port == NULL) {
 		KKASSERT(m == NULL);
+		logether(chain_end, ifp);
 		return;
 	}
 
@@ -1748,8 +1751,10 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
 	 */
 	if (save_eh != NULL) {
 		ether_restore_header(&m, eh, save_eh);
-		if (m == NULL)
+		if (m == NULL) {
+			logether(chain_end, ifp);
 			return;
+		}
 	} else {
 		m->m_data -= ETHER_HDR_LEN;
 		m->m_len += ETHER_HDR_LEN;
