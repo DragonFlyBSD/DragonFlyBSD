@@ -2851,7 +2851,7 @@ discard:
 		}
 
 		if (m != NULL)
-			ether_input_chain(ifp, m, chain);
+			ether_input_chain(ifp, m, NULL, chain);
 
 		/* Advance our pointers to the next descriptor. */
 		if (++i == rdata->num_rx_desc)

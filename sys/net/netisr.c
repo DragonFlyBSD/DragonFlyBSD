@@ -559,30 +559,34 @@ netisr_run(int num, struct mbuf *m)
 }
 
 lwkt_port_t
-pktinfo_portfn_cpu0(const struct pktinfo *dummy __unused)
+pktinfo_portfn_cpu0(const struct pktinfo *dummy __unused,
+		    struct mbuf *m)
 {
+    m->m_pkthdr.hash = 0;
     return &netisr_cpu[0].td_msgport;
 }
 
 lwkt_port_t
-pktinfo_portfn_notsupp(const struct pktinfo *dummy __unused)
+pktinfo_portfn_notsupp(const struct pktinfo *dummy __unused,
+		       struct mbuf *m __unused)
 {
     return NULL;
 }
 
 lwkt_port_t
-netisr_find_pktinfo_port(const struct pktinfo *pi)
+netisr_find_pktinfo_port(const struct pktinfo *pi, struct mbuf *m)
 {
     struct netisr *ni;
+    int num = pi->pi_netisr;
 
-    KASSERT((pi->pi_netisr > 0 &&
-	     pi->pi_netisr <= (sizeof(netisrs)/sizeof(netisrs[0]))),
-	    ("%s: bad isr %d", __func__, pi->pi_netisr));
+    KASSERT(m->m_flags & M_HASH, ("packet does not contain hash\n"));
+    KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
+    	    ("%s: bad isr %d", __func__, num));
 
-    ni = &netisrs[pi->pi_netisr];
+    ni = &netisrs[num];
     if (ni->ni_mport_pktinfo == NULL) {
-	kprintf("%s: unregistered isr %d\n", __func__, pi->pi_netisr);
+	kprintf("%s: unregistered isr %d\n", __func__, num);
 	return NULL;
     }
-    return ni->ni_mport_pktinfo(pi);
+    return ni->ni_mport_pktinfo(pi, m);
 }

@@ -2063,7 +2063,7 @@ again:
 			}
 		}
 
-		ether_input_chain(ifp, m, chain);
+		ether_input_chain(ifp, m, NULL, chain);
 	}
 
 	if (sc->xl_type != XL_TYPE_905B) {

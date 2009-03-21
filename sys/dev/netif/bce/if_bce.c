@@ -3918,7 +3918,7 @@ bce_rx_int_next_rx:
 				m->m_pkthdr.ether_vlantag =
 					l2fhdr->l2_fhdr_vlan_tag;
 			}
-			ether_input_chain(ifp, m, chain);
+			ether_input_chain(ifp, m, NULL, chain);
 
 			DBRUNIF(1, sc->rx_mbuf_alloc--);
 		}

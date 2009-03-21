@@ -2131,7 +2131,7 @@ jme_rxpkt(struct jme_softc *sc, int ring, struct mbuf_chain *chain)
 
 			ifp->if_ipackets++;
 			/* Pass it on. */
-			ether_input_chain(ifp, m, chain);
+			ether_input_chain(ifp, m, NULL, chain);
 
 			/* Reset mbuf chains. */
 			JME_RXCHAIN_RESET(sc, ring);

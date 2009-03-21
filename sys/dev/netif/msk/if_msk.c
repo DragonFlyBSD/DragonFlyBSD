@@ -2729,7 +2729,7 @@ msk_rxeof(struct msk_if_softc *sc_if, uint32_t status, int len,
 		}
 #endif
 
-		ether_input_chain(ifp, m, chain);
+		ether_input_chain(ifp, m, NULL, chain);
 	} while (0);
 
 	MSK_INC(sc_if->msk_cdata.msk_rx_cons, MSK_RX_RING_CNT);

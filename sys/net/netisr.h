@@ -201,13 +201,12 @@ struct pktinfo {
 	int		pi_netisr;	/* netisr index, e.g. NETISR_IP */
 	uint32_t	pi_flags;	/* PKTINFO_FLAG_ */
 	int		pi_l3proto;	/* layer3 protocol number */
-	int		pi_hash;	/* packet hash value */
 };
 
 #define PKTINFO_FLAG_FRAG	0x1
 
 typedef lwkt_port_t (*pkt_portfn_t)(struct mbuf **);
-typedef lwkt_port_t (*pktinfo_portfn_t)(const struct pktinfo *);
+typedef lwkt_port_t (*pktinfo_portfn_t)(const struct pktinfo *, struct mbuf *);
 
 struct netisr {
 	lwkt_port	ni_port;	/* must be first */
@@ -234,12 +233,12 @@ extern lwkt_port netisr_apanic_rport;
 
 lwkt_port_t	cpu0_portfn(struct mbuf **mptr);
 lwkt_port_t	cpu_portfn(int cpu);
-lwkt_port_t	pktinfo_portfn_cpu0(const struct pktinfo *);
-lwkt_port_t	pktinfo_portfn_notsupp(const struct pktinfo *);
+lwkt_port_t	pktinfo_portfn_cpu0(const struct pktinfo *, struct mbuf *);
+lwkt_port_t	pktinfo_portfn_notsupp(const struct pktinfo *, struct mbuf *);
 lwkt_port_t	cur_netport(void);
 
 lwkt_port_t	netisr_find_port(int, struct mbuf **);
-lwkt_port_t	netisr_find_pktinfo_port(const struct pktinfo *);
+lwkt_port_t	netisr_find_pktinfo_port(const struct pktinfo *, struct mbuf *);
 void		netisr_dispatch(int, struct mbuf *);
 void		netisr_run(int, struct mbuf *);
 int		netisr_queue(int, struct mbuf *);

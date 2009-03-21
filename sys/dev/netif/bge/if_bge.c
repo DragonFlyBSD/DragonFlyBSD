@@ -2453,7 +2453,7 @@ bge_rxeof(struct bge_softc *sc)
 			m->m_pkthdr.ether_vlantag = vlan_tag;
 			have_tag = vlan_tag = 0;
 		}
-		ether_input_chain(ifp, m, chain);
+		ether_input_chain(ifp, m, NULL, chain);
 	}
 
 	ether_input_dispatch(chain);

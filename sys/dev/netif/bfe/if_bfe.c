@@ -1151,7 +1151,7 @@ bfe_rxeof(struct bfe_softc *sc)
 		ifp->if_ipackets++;
 		m->m_pkthdr.rcvif = ifp;
 
-		ether_input_chain(ifp, m, chain);
+		ether_input_chain(ifp, m, NULL, chain);
 		BFE_INC(cons, BFE_RX_LIST_CNT);
 	}
 

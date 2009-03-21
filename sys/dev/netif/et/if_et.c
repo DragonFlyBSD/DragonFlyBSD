@@ -1907,7 +1907,7 @@ et_rxeof(struct et_softc *sc)
 				m_adj(m, -ETHER_CRC_LEN);
 
 				ifp->if_ipackets++;
-				ether_input_chain(ifp, m, chain);
+				ether_input_chain(ifp, m, NULL, chain);
 			}
 		} else {
 			ifp->if_ierrors++;

@@ -3310,7 +3310,7 @@ discard:
 		current_desc->status = 0;
 
 		if (m != NULL)
-			ether_input_chain(ifp, m, chain);
+			ether_input_chain(ifp, m, NULL, chain);
 
 		/* Advance our pointers to the next descriptor. */
 		if (++i == adapter->num_rx_desc)

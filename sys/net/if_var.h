@@ -89,6 +89,7 @@ struct	ifaddr;
 struct	lwkt_port;
 struct	lwkt_msg;
 struct	netmsg;
+struct	pktinfo;
 
 #include <sys/queue.h>		/* get TAILQ macros */
 
@@ -567,7 +568,8 @@ void	ether_ifdetach(struct ifnet *);
 void	ether_demux_oncpu(struct ifnet *, struct mbuf *);
 void	ether_input_oncpu(struct ifnet *, struct mbuf *);
 void	ether_reinput_oncpu(struct ifnet *, struct mbuf *, int);
-void	ether_input_chain(struct ifnet *, struct mbuf *, struct mbuf_chain *);
+void	ether_input_chain(struct ifnet *, struct mbuf *,
+			  const struct pktinfo *, struct mbuf_chain *);
 void	ether_input_chain_init(struct mbuf_chain *);
 void	ether_input_dispatch(struct mbuf_chain *);
 int	ether_output_frame(struct ifnet *, struct mbuf *);

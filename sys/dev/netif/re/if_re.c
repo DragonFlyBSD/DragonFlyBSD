@@ -1986,7 +1986,7 @@ re_rxeof(struct re_softc *sc)
 			m->m_pkthdr.ether_vlantag =
 				be16toh((rxctrl & RE_RDESC_CTL_TAGDATA));
 		}
-		ether_input_chain(ifp, m, chain);
+		ether_input_chain(ifp, m, NULL, chain);
 	}
 
 	ether_input_dispatch(chain);

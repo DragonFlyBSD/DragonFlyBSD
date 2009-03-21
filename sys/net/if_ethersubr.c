@@ -601,7 +601,7 @@ ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst, struct ip_fw **rule,
 static void
 ether_input(struct ifnet *ifp, struct mbuf *m)
 {
-	ether_input_chain(ifp, m, NULL);
+	ether_input_chain(ifp, m, NULL, NULL);
 }
 
 /*
@@ -1528,6 +1528,10 @@ ether_mport(int num, struct mbuf **m)
 	return netisr_find_port(num, m);
 }
 
+/*
+ * Send the packet to the target msgport or
+ * queue it into 'chain'.
+ */
 static void
 ether_dispatch(int isr, struct lwkt_port *port, struct mbuf *m,
 	       struct mbuf_chain *chain)
@@ -1576,7 +1580,8 @@ ether_dispatch(int isr, struct lwkt_port *port, struct mbuf *m,
  *   queued on 'chain' to their target msgport.
  */
 void
-ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
+ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
+		  struct mbuf_chain *chain)
 {
 	struct ether_header *eh, *save_eh, save_eh0;
 	struct lwkt_port *port;
@@ -1619,6 +1624,29 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 		logether(chain_end, ifp);
 		return;
 	}
+
+	if (pi != NULL && (m->m_flags & M_HASH)) {
+		/* Try finding the port using the packet info */
+		port = netisr_find_pktinfo_port(pi, m);
+		if (port != NULL) {
+			ether_dispatch(pi->pi_netisr, port, m, chain);
+			return;
+		}
+
+		/*
+		 * The packet info does not contain enough
+		 * information, we will have to check the
+		 * packet content.
+		 */
+	}
+
+	/*
+	 * Packet hash will be recalculated by software,
+	 * so clear the M_HASH flag set by the driver;
+	 * the hash value calculated by the hardware may
+	 * not be exactly what we want.
+	 */
+	m->m_flags &= ~M_HASH;
 
 	if (!ether_vlancheck(&m)) {
 		logether(chain_end, ifp);
@@ -1728,10 +1756,6 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 		m->m_pkthdr.len += ETHER_HDR_LEN;
 	}
 
-	/*
-	 * Send the packet to the target msgport or
-	 * queue it into 'chain'.
-	 */
 	ether_dispatch(isr, port, m, chain);
 
 	logether(chain_end, ifp);

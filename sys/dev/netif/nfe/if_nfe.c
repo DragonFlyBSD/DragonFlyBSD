@@ -1097,7 +1097,7 @@ nfe_rxeof(struct nfe_softc *sc)
 		}
 
 		ifp->if_ipackets++;
-		ether_input_chain(ifp, m, chain);
+		ether_input_chain(ifp, m, NULL, chain);
 skip:
 		nfe_set_ready_rxdesc(sc, ring, ring->cur);
 		sc->rxq.cur = (sc->rxq.cur + 1) % sc->sc_rx_ring_count;
