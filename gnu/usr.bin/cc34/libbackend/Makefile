@@ -5,7 +5,7 @@
 .include "../Makefile.langs"
 
 CFLAGS+=	-I${.CURDIR}/../config -I.
-CFLAGS+=	-DTARGET_NAME=\"${target}\"
+CFLAGS+=	-DTARGET_NAME=\"${target_machine}\"
 
 .PATH: ${GCCDIR}/gcc/config/${GCC_CPU}
 

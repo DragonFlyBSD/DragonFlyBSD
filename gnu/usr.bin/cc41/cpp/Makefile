@@ -13,7 +13,7 @@ SRCS+=	insn-constants.h insn-flags.h specs.h options.h
 
 CFLAGS+= -I.
 CFLAGS+= -DDEFAULT_TARGET_VERSION=\"${version}\"
-CFLAGS+= -DDEFAULT_TARGET_MACHINE=\"${target}\"
+CFLAGS+= -DDEFAULT_TARGET_MACHINE=\"${target_machine}\"
 
 cpp41.1: ${GCCDIR}/gcc/doc/cpp.1
 	cp ${.ALLSRC} ${.TARGET}

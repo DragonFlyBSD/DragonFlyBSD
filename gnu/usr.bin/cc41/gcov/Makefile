@@ -13,7 +13,7 @@ SRCS+=	insn-constants.h gcov-iov.h insn-flags.h
 
 CFLAGS+= -I.
 CFLAGS+= -DDEFAULT_TARGET_VERSION=\"${version}\"
-CFLAGS+= -DDEFAULT_TARGET_MACHINE=\"${target}\"
+CFLAGS+= -DDEFAULT_TARGET_MACHINE=\"${target_machine}\"
 
 gcov41.1: ${GCCDIR}/gcc/doc/gcov.1
 	cp ${.ALLSRC} ${.TARGET}
