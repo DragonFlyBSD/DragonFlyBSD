@@ -53,7 +53,7 @@
 
 static struct mntopt mopts[] = {
 	MOPT_STDOPTS,
-	{ NULL }
+	{ .m_option = NULL }
 };
 
 static void	usage(void) __dead2;
