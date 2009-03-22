@@ -190,6 +190,13 @@ typedef union e1000_rx_desc_extended	emx_rxdesc_t;
 #define rxd_mrq		wb.lower.mrq		/* 32bits */
 #define rxd_rss		wb.lower.hi_dword.rss	/* 32bits */
 
+#define EMX_RXDMRQ_RSSTYPE_MASK	0xf
+#define EMX_RXDMRQ_NO_HASH	0
+#define EMX_RXDMRQ_IPV4_TCP	1
+#define EMX_RXDMRQ_IPV4		2
+#define EMX_RXDMRQ_IPV6_TCP	3
+#define EMX_RXDMRQ_IPV6		5
+
 struct emx_rxdata {
 	/*
 	 * Receive definitions

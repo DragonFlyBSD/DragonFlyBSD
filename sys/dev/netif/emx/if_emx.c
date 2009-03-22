@@ -93,6 +93,7 @@
 #include <net/if_media.h>
 #include <net/ifq_var.h>
 #include <net/toeplitz.h>
+#include <net/toeplitz2.h>
 #include <net/vlan/if_vlan_var.h>
 #include <net/vlan/if_vlan_ether.h>
 
@@ -318,6 +319,45 @@ emx_rxcsum(uint32_t staterr, struct mbuf *mp)
 					   CSUM_FRAG_NOT_CHECKED;
 		mp->m_pkthdr.csum_data = htons(0xffff);
 	}
+}
+
+static __inline struct pktinfo *
+emx_rssinfo(struct mbuf *m, struct pktinfo *pi,
+	    uint32_t mrq, uint32_t hash, uint32_t staterr)
+{
+	switch (mrq & EMX_RXDMRQ_RSSTYPE_MASK) {
+	case EMX_RXDMRQ_IPV4_TCP:
+		pi->pi_netisr = NETISR_IP;
+		pi->pi_flags = 0;
+		pi->pi_l3proto = IPPROTO_TCP;
+		break;
+
+	case EMX_RXDMRQ_IPV6_TCP:
+		pi->pi_netisr = NETISR_IPV6;
+		pi->pi_flags = 0;
+		pi->pi_l3proto = IPPROTO_TCP;
+		break;
+
+	case EMX_RXDMRQ_IPV4:
+		if (staterr & E1000_RXD_STAT_IXSM)
+			return NULL;
+
+		if ((staterr &
+		     (E1000_RXD_STAT_TCPCS | E1000_RXDEXT_STATERR_TCPE)) ==
+		    E1000_RXD_STAT_TCPCS) {
+			pi->pi_netisr = NETISR_IP;
+			pi->pi_flags = 0;
+			pi->pi_l3proto = IPPROTO_UDP;
+			break;
+		}
+		/* FALL THROUGH */
+	default:
+		return NULL;
+	}
+
+	m->m_flags |= M_HASH;
+	m->m_pkthdr.hash = toeplitz_hash(hash);
+	return pi;
 }
 
 static int
@@ -2779,6 +2819,7 @@ emx_rxeof(struct emx_softc *sc, int ring_idx, int count)
 	ether_input_chain_init(chain);
 
 	while ((staterr & E1000_RXD_STAT_DD) && count != 0) {
+		struct pktinfo *pi = NULL, pi0;
 		struct emx_rxbuf *rx_buf = &rdata->rx_buf[i];
 		struct mbuf *m = NULL;
 		int eop, len;
@@ -2857,6 +2898,10 @@ emx_rxeof(struct emx_softc *sc, int ring_idx, int count)
 				rdata->fmp = NULL;
 				rdata->lmp = NULL;
 
+				if (ifp->if_capenable & IFCAP_RSS) {
+					pi = emx_rssinfo(m, &pi0, mrq,
+							 rss_hash, staterr);
+				}
 #ifdef EMX_RSS_DEBUG
 				rdata->rx_pkts++;
 #endif
@@ -2874,7 +2919,7 @@ discard:
 		}
 
 		if (m != NULL)
-			ether_input_chain(ifp, m, NULL, chain);
+			ether_input_chain(ifp, m, pi, chain);
 
 		/* Advance our pointers to the next descriptor. */
 		if (++i == rdata->num_rx_desc)
