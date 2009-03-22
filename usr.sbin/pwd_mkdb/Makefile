@@ -8,7 +8,7 @@ PROG=	pwd_mkdb
 MAN=	pwd_mkdb.8
 SRCS=	pw_scan.c pwd_mkdb.c
 
-WARNS?=	4
+WARNS?=	6
 CFLAGS+= -I${.CURDIR}/../../lib/libc/gen		# for pw_scan.h
 
 .include <bsd.prog.mk>
