@@ -71,16 +71,19 @@ utility.
 The driver is able to process several ioctl's:
 .Pp
 .Bl -tag -width Ds -compact -offset indent
-.It Ar I4B_TEL_GETAUDIOFMT
+.It Dv I4B_TEL_GETAUDIOFMT
 get currently used audio format conversion.
-.It Ar I4B_TEL_SETAUDIOFMT
+.It Dv I4B_TEL_SETAUDIOFMT
 set currently used audio format conversion.
-.It Ar I4B_TEL_EMPTYINPUTQUEUE
+.It Dv I4B_TEL_EMPTYINPUTQUEUE
 clear the input queue.
 .El
 .Pp
-For the I4B_TEL_GETAUDIOFMT and I4B_TEL_SETAUDIOFMT, the following
-parameters are available:
+For the
+.Dv I4B_TEL_GETAUDIOFMT
+and
+.Dv I4B_TEL_SETAUDIOFMT ,
+the following parameters are available:
 .Pp
 .Bl -tag -width Ds -compact -offset indent
 .It Ar CVT_NONE

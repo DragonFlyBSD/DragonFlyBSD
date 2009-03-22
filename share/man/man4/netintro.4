@@ -217,7 +217,7 @@ struct	ifreq {
 .Ed
 .Pp
 Calls which are now deprecated are:
-.Bl -tag -width SIOCGIFBRDADDR
+.Bl -tag -width ".Dv SIOCGIFBRDADDR"
 .It Dv SIOCSIFADDR
 Set interface address for protocol family.  Following the address
 assignment, the ``initialization'' routine for
@@ -234,7 +234,7 @@ retrieve other data are still fully supported
 and use the
 .Vt ifreq
 structure:
-.Bl -tag -width SIOCGIFBRDADDR
+.Bl -tag -width ".Dv SIOCGIFBRDADDR"
 .It Dv SIOCGIFADDR
 Get interface address for protocol family.
 .It Dv SIOCGIFDSTADDR
@@ -266,7 +266,7 @@ Attempt to destroy the specified interface.
 .El
 .Pp
 There are two requests that make use of a new structure:
-.Bl -tag -width SIOCGIFBRDADDR
+.Bl -tag -width ".Dv SIOCGIFBRDADDR"
 .It Dv SIOCAIFADDR
 An interface may have more than one address associated with it
 in some protocols.  This request provides a means to

@@ -158,7 +158,7 @@ file descriptor zero by the following code fragment:
 	ioctl(0, TIOCSETD, &ldisc);
 .Ed
 .Ss Terminal File Request Descriptions
-.Bl -tag -width TIOCGWINSZ
+.Bl -tag -width ".Dv TIOCGWINSZ"
 .It Dv TIOCSETD Fa int *ldisc
 Change to the new line discipline pointed to by
 .Fa ldisc .

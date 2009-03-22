@@ -133,23 +133,23 @@ There is a utility, called
 that provides access to these
 requests from within shell.
 .Bl -tag -width Ds
-.It GSC_SRES int
+.It Dv GSC_SRES Vt int
 Set the
 .Em resolution
 value.
 If this call is made after the first
 read access to the device there will be no effect unless the device is
 closed and opened again.
-.It GSC_GRES int
+.It Dv GSC_GRES Vt int
 Get current resolution in dots per inch (dpi).
-.It GSC_SRESSSW void
+.It Dv GSC_SRESSW Vt void
 Set resolution value from selector switch.
 The driver must be in an
 open though untouched state otherwise the request will fail and
 .Xr errno 2
 is set to
 .Er EBUSY .
-.It GSC_SWIDTH int
+.It Dv GSC_SWIDTH Vt int
 Set the
 .Em width
 of the bitmap.
@@ -191,9 +191,9 @@ by only by the hardware switch.
 Any line that is longer than what is
 defined for the actual resolution will be undefined (usually white) on
 the right part that is exceeding the standard line.
-.It GSC_GWIDTH int
+.It Dv GSC_GWIDTH Vt int
 Get current width of the bitmap in pixels.
-.It GSC_SHEIGHT int
+.It Dv GSC_SHEIGHT Vt int
 Set the
 .Em height
 of the bitmap in
@@ -205,9 +205,9 @@ operation.
 When the limit is reached read will return 0. However, the
 device is turned off only when a close is performed (either
 explicitly or implicitly on exit of the calling process).
-.It GSC_GHEIGHT int
+.It Dv GSC_GHEIGHT Vt int
 Get the current height of the bitmap.
-.It GSC_SBLEN int
+.It Dv GSC_SBLEN Vt int
 Set the length of the buffer used internally to do the DMA transfer.
 The buffer length is supplied in lines of the bitmap.
 Since the buffer
@@ -226,9 +226,9 @@ if the buffer length turns out too high.
 It is generally wise to
 choose long buffers rather than go save in order to obtain better
 output.
-.It GSC_GBLEN int
+.It Dv GSC_GBLEN Vt int
 Get the current buffer length in lines.
-.It GSC_SBTIME int
+.It Dv GSC_SBTIME Vt int
 Set the timeout for the completion of reading one buffer.
 Since a
 handy scanner is a human/computer interface timeout values are usually
@@ -243,11 +243,13 @@ not cause you to scan faster for longer images.
 BLEN/BTIME is similar
 as MIN/TIME in
 .Xr termios 4 .
-.It GSC_GBTIME int
+.It Dv GSC_GBTIME Vt int
 Get the current buffer timeout.
 .El
 .Pp
-All ioctl requests that modify a parameter except GSC_SBTIME do not
+All ioctl requests that modify a parameter except
+.Dv GSC_SBTIME
+do not
 have an effect on an ongoing scan process, i.e. after the first read
 request that follows open.
 You must close the device and open it again

@@ -44,20 +44,22 @@ following ioctls:
 .Pp
 .Bl -column "System Management Bus ioctls" -compact
 .It Em Ioctl Ta Em Description
-.It Sy SMB_QUICK_WRITE Ta "QuickWrite command"
-.It Sy SMB_QUICK_READ Ta "QuickRead command"
-.It Sy SMB_SENDB Ta "SendByte command"
-.It Sy SMB_RECVB Ta "ReceiveByte command"
-.It Sy SMB_WRITEB Ta "WriteByte command"
-.It Sy SMB_WRITEW Ta "WriteWord command"
-.It Sy SMB_READB Ta "ReadByte command"
-.It Sy SMB_READW Ta "ReadWord command"
-.It Sy SMB_PCALL Ta "ProcedureCall command"
-.It Sy SMB_BWRITE Ta "BlockWrite command"
-.It Sy SMB_BREAD Ta "BlockRead command"
+.It Dv SMB_QUICK_WRITE Ta "QuickWrite command"
+.It Dv SMB_QUICK_READ Ta "QuickRead command"
+.It Dv SMB_SENDB Ta "SendByte command"
+.It Dv SMB_RECVB Ta "ReceiveByte command"
+.It Dv SMB_WRITEB Ta "WriteByte command"
+.It Dv SMB_WRITEW Ta "WriteWord command"
+.It Dv SMB_READB Ta "ReadByte command"
+.It Dv SMB_READW Ta "ReadWord command"
+.It Dv SMB_PCALL Ta "ProcedureCall command"
+.It Dv SMB_BWRITE Ta "BlockWrite command"
+.It Dv SMB_BREAD Ta "BlockRead command"
 .El
 .Pp
-Using the write routine is equivalent to a SMB_WRITEW ioctl.
+Using the write routine is equivalent to a
+.Dv SMB_WRITEW
+ioctl.
 .Sh SEE ALSO
 .Xr smbus 4
 .Sh HISTORY

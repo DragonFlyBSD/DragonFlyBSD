@@ -229,28 +229,28 @@ file
 .Pp
 Supported command and response messages (ioctls) to the kernel are:
 .Bl -tag -width Ds -compact -offset indent
-.It Ar I4B_CDID_REQ
+.It Dv I4B_CDID_REQ
 Request a unique Call Description IDentifier (cdid) which identifies
 uniquely a single interaction of the local D channel with the exchange.
-.It Ar I4B_CONNECT_REQ
+.It Dv I4B_CONNECT_REQ
 Actively request a call setup to a remote ISDN subscriber.
-.It Ar I4B_CONNECT_RESP
+.It Dv I4B_CONNECT_RESP
 Respond to an incoming call, either accept, reject or ignore it.
-.It Ar I4B_DISCONNECT_REQ
+.It Dv I4B_DISCONNECT_REQ
 Actively terminate a connection.
-.It Ar I4B_CTRL_INFO_REQ
+.It Dv I4B_CTRL_INFO_REQ
 Request information about an installed ISDN controller card.
-.It Ar I4B_DIALOUT_RESP
+.It Dv I4B_DIALOUT_RESP
 Give information about call setup to driver who requested dialing out.
-.It Ar I4B_TIMEOUT_UPD
+.It Dv I4B_TIMEOUT_UPD
 Update the kernels timeout value(s) in case of dynamically calculated
 shorthold mode timing changes.
-.It Ar I4B_UPDOWN_IND
+.It Dv I4B_UPDOWN_IND
 Inform the kernel userland drivers about interface soft up/down status
 changes.
-.It Ar I4B_CTRL_DOWNLOAD
+.It Dv I4B_CTRL_DOWNLOAD
 Download firmware to active card(s).
-.It Ar I4B_ACTIVE_DIAGNOSTIC
+.It Dv I4B_ACTIVE_DIAGNOSTIC
 Return diagnostic information from active cards.
 .El
 .Pp
@@ -287,14 +287,14 @@ to the
 utility.
 .Pp
 The daemon requests a new CDID from the kernel by using the
-.Em I4B_CDID_REQ
+.Dv I4B_CDID_REQ
 ioctl message, this CDID is now used in all interactions with the kernel
 to identify this single call until a disconnect occurs.
 .Pp
 After getting the CDID, the daemon looks up several additional information
 in its entry section of the configuration corresponding to that connection
 and issues a
-.Em I4B_CONNECT_REQ
+.Dv I4B_CONNECT_REQ
 ioctl message to the kernel.
 The kernel now dials the remote side and
 if the remote side accepts the call, the kernel sends a
@@ -303,11 +303,11 @@ to the daemon.
 .Pp
 The call is terminated by either the local side timing out or the remote
 side hanging up the connection or the local side actively sending a
-.Em I4B_DISCONNECT_REQ
+.Dv I4B_DISCONNECT_REQ
 ioctl message, both events are signaled to the
 .Nm
 by the kernel sending the
-.Em I4B_DISCONNECT_IND
+.Em MSG_DISCONNECT_IND
 message and the CDID corresponding to the call is no longer valid.
 .Ss INCOMING CALLS
 Incoming calls are signaled to the
@@ -321,7 +321,7 @@ With the information contained in this message, the
 searches the entry section of its configuration database and if a match is
 found, it accepts or rejects the call or, if no match is found, it ignores the
 call - all by issuing a
-.Em I4B_CONNECT_RESP
+.Dv I4B_CONNECT_RESP
 ioctl message with the appropriate parameters to the kernel.
 .Pp
 In case the daemon decided to accept the call, the kernel signals this
@@ -331,11 +331,11 @@ message to the daemon.
 .Pp
 The call is terminated by either the local side timing out or the remote
 side hanging up the connection or the local side actively sending a
-.Em I4B_DISCONNECT_REQ
+.Dv I4B_DISCONNECT_REQ
 ioctl message, both events are signaled to the
 .Nm
 by the kernel sending the
-.Em I4B_DISCONNECT_IND
+.Em MSG_DISCONNECT_IND
 message and the CDID corresponding to the call is no longer valid.
 .Sh SIGNALS
 Sending a HUP signal to

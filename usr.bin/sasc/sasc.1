@@ -61,7 +61,7 @@ is called with no option only the current settings are reported.
 .Pp
 The following options are available:
 .Bl -tag -width indent
-.It Fl s Bq ASC_SRESSW
+.It Fl s Bq Dv ASC_SRESSW
 Set the scanner with the values of the resolution selector switch.
 .It Fl q
 Operate in quiet mode, i.e. do not report any of the current settings.
@@ -75,17 +75,17 @@ several of them will refer the same device unit.
 The modifications are
 performed od the unit regardless of the device node by which it is
 accessed.
-.It Fl r Ar resolution Bq ASC_SRES
+.It Fl r Ar resolution Bq Dv ASC_SRES
 Set the resolution in dpi.
-.It Fl w Ar width Bq ASC_SWIDHT
+.It Fl w Ar width Bq Dv ASC_SWIDTH
 Set the width of the bitmap in pixels.
-.It Fl h Ar height Bq ASC_SHEIGHT
+.It Fl h Ar height Bq Dv ASC_SHEIGHT
 Set the height of the bitmap in lines of pixels.
-.It Fl b Ar len Bq ASC_SBLEN
+.It Fl b Ar len Bq Dv ASC_SBLEN
 Set the internal dma buffer to be
 .Ar len
 lines in size.
-.It Fl t Ar timeout Bq ASC_SBTIME
+.It Fl t Ar timeout Bq Dv ASC_SBTIME
 Set the timeout time for reading one dma buffer.
 .El
 .Sh FILES

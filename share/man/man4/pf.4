@@ -96,13 +96,21 @@ struct pfioc_pooladdr {
 Clears the buffer address pool
 and returns a
 .Va ticket
-for subsequent DIOCADDADDR, DIOCADDRULE and DIOCCHANGERULE calls.
+for subsequent
+.Dv DIOCADDADDR ,
+.Dv DIOCADDRULE
+and
+.Dv DIOCCHANGERULE
+calls.
 .It Dv DIOCADDADDR     Fa "struct pfioc_pooladdr"
 .Pp
 Adds pool address
 .Va addr
 to the buffer address pool to be used in the following
-DIOCADDRULE or DIOCCHANGERULE call.
+.Dv DIOCADDRULE
+or
+.Dv DIOCCHANGERULE
+call.
 All other members of the structure are ignored.
 .It Dv DIOCADDRULE     Fa "struct pfioc_rule"
 .Bd -literal
@@ -122,10 +130,15 @@ Adds
 at the end of the inactive ruleset.
 Requires
 .Va ticket
-obtained through preceding DIOCXBEGIN call, and
+obtained through preceding
+.Dv DIOCXBEGIN
+call, and
 .Va pool_ticket
-obtained through DIOCBEGINADDRS call.
-DIOCADDADDR must also be called if any pool addresses are required.
+obtained through
+.Dv DIOCBEGINADDRS
+call.
+.Dv DIOCADDADDR
+must also be called if any pool addresses are required.
 The optional
 .Va anchor
 and
@@ -148,7 +161,9 @@ struct pfioc_altq {
 .It Dv DIOCGETRULES    Fa "struct pfioc_rule"
 Returns
 .Va ticket
-for subsequent DIOCGETRULE calls and
+for subsequent
+.Dv DIOCGETRULE
+calls and
 .Va nr
 of rules in the active ruleset.
 .It Dv DIOCGETRULE     Fa "struct pfioc_rule"
@@ -158,11 +173,15 @@ number
 .Va nr
 using
 .Va ticket
-obtained through a preceding DIOCGETRULES call.
+obtained through a preceding
+.Dv DIOCGETRULES
+call.
 .It Dv DIOCGETADDRS    Fa "struct pfioc_pooladdr"
 Returns
 .Va ticket
-for subsequent DIOCGETADDR calls and
+for subsequent
+.Dv DIOCGETADDR
+calls and
 .Va nr
 of pool addresses in the rule specified with
 .Va r_action ,
@@ -183,11 +202,15 @@ and
 .Va ruleset
 using
 .Va ticket
-obtained through a preceding DIOCGETADDRS call.
+obtained through a preceding
+.Dv DIOCGETADDRS
+call.
 .It Dv DIOCGETALTQS    Fa "struct pfioc_altq"
 Returns
 .Va ticket
-for subsequent DIOCGETALTQ calls and
+for subsequent
+.Dv DIOCGETALTQ
+calls and
 .Va nr
 of queues in the active list.
 .It Dv DIOCGETALTQ     Fa "struct pfioc_altq"
@@ -197,7 +220,9 @@ number
 .Va nr
 using
 .Va ticket
-obtained through a preceding DIOCGETALTQS call.
+obtained through a preceding
+.Dv DIOCGETALTQS
+call.
 .It Dv DIOCGETQSTATS   Fa "struct pfioc_qstats"
 Returns statistics on a queue.
 .Bd -literal
@@ -326,8 +351,9 @@ The type of operation to be performed is indicated by
 must be set to the value obtained with PF_CHANGE_GET_TICKET
 for all actions except PF_CHANGE_GET_TICKET.
 .Va pool_ticket
-must be set to the value obtained with the DIOCBEGINADDRS call
-for all actions except PF_CHANGE_REMOVE and PF_CHANGE_GET_TICKET.
+must be set to the value obtained with the
+.Dv DIOCBEGINADDRS
+call for all actions except PF_CHANGE_REMOVE and PF_CHANGE_GET_TICKET.
 .Pp
 .Va anchor
 and
@@ -765,8 +791,9 @@ will be set by the kernel to the number of interfaces and drivers
 that have been cleared.
 .El
 .Sh EXAMPLES
-The following example demonstrates how to use the DIOCNATLOOK command
-to find the internal host/port of a NATed connection.
+The following example demonstrates how to use the
+.Dv DIOCNATLOOK
+command to find the internal host/port of a NATed connection.
 .Bd -literal
 #include <sys/types.h>
 #include <sys/socket.h>
