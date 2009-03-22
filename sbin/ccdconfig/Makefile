@@ -9,6 +9,5 @@ LDADD+=		-lkvm
 DPADD+=		${LIBKVM}
 BINGRP=		kmem
 BINMODE=	2555
-WARNS?=		4
 
 .include <bsd.prog.mk>
