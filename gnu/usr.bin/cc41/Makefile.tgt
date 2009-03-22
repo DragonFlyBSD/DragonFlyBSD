@@ -10,8 +10,6 @@ GCC_CPU?=	${TARGET_ARCH}
 GCC_CPU=	i386
 .endif
 
-CFLAGS+=	-DLOLL
-
 # from gcc/Makefile
 srcdir= ${GCCDIR}/gcc
 
