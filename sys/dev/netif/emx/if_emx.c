@@ -92,6 +92,7 @@
 #include <net/if_dl.h>
 #include <net/if_media.h>
 #include <net/ifq_var.h>
+#include <net/toeplitz.h>
 #include <net/vlan/if_vlan_var.h>
 #include <net/vlan/if_vlan_ether.h>
 
@@ -111,7 +112,7 @@
 #ifdef EMX_RSS_DEBUG
 #define EMX_RSS_DPRINTF(sc, lvl, fmt, ...) \
 do { \
-	if (sc->rss_debug > lvl) \
+	if (sc->rss_debug >= lvl) \
 		if_printf(&sc->arpcom.ac_if, fmt, __VA_ARGS__); \
 } while (0)
 #else	/* !EMX_RSS_DEBUG */
@@ -2559,7 +2560,7 @@ emx_init_rx_unit(struct emx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 	uint64_t bus_addr;
-	uint32_t rctl, rxcsum, rfctl, key, reta;
+	uint32_t rctl, rxcsum, rfctl;
 	int i;
 
 	/*
@@ -2646,6 +2647,13 @@ emx_init_rx_unit(struct emx_softc *sc)
 	 * Configure multiple receive queue (RSS)
 	 */
 	if (ifp->if_capenable & IFCAP_RSS) {
+		uint8_t key[EMX_NRSSRK * EMX_RSSRK_SIZE];
+		uint32_t reta;
+
+		KASSERT(sc->rx_ring_inuse == EMX_NRX_RING,
+			("invalid number of RX ring (%d)",
+			 sc->rx_ring_inuse));
+
 		/*
 		 * NOTE:
 		 * When we reach here, RSS has already been disabled
@@ -2656,14 +2664,29 @@ emx_init_rx_unit(struct emx_softc *sc)
 		/*
 		 * Configure RSS key
 		 */
-		key = 0x5a6d5a6d; /* XXX */
-		for (i = 0; i < EMX_NRSSRK; ++i)
-			E1000_WRITE_REG(&sc->hw, E1000_RSSRK(i), key);
+		toeplitz_get_key(key, sizeof(key));
+		for (i = 0; i < EMX_NRSSRK; ++i) {
+			uint32_t rssrk;
+
+			rssrk = EMX_RSSRK_VAL(key, i);
+			EMX_RSS_DPRINTF(sc, 1, "rssrk%d 0x%08x\n", i, rssrk);
+
+			E1000_WRITE_REG(&sc->hw, E1000_RSSRK(i), rssrk);
+		}
 
 		/*
-		 * Configure RSS redirect table
+		 * Configure RSS redirect table in following fashion:
+	 	 * (hash & ring_cnt_mask) == rdr_table[(hash & rdr_table_mask)]
 		 */
-		reta = 0x80008000;
+		reta = 0;
+		for (i = 0; i < EMX_RETA_SIZE; ++i) {
+			uint32_t q;
+
+			q = (i % sc->rx_ring_inuse) << EMX_RETA_RINGIDX_SHIFT;
+			reta |= q << (8 * i);
+		}
+		EMX_RSS_DPRINTF(sc, 1, "reta 0x%08x\n", reta);
+
 		for (i = 0; i < EMX_NRETA; ++i)
 			E1000_WRITE_REG(&sc->hw, E1000_RETA(i), reta);
 
@@ -3364,7 +3387,7 @@ emx_add_sysctl(struct emx_softc *sc)
 		ksnprintf(rx_pkt, sizeof(rx_pkt), "rx%d_pkt", i);
 		SYSCTL_ADD_UINT(&sc->sysctl_ctx,
 				SYSCTL_CHILDREN(sc->sysctl_tree), OID_AUTO,
-				rx_pkt, CTLFLAG_RD,
+				rx_pkt, CTLFLAG_RW,
 				&sc->rx_data[i].rx_pkts, 0, "RXed packets");
 	}
 #endif

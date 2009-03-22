@@ -169,7 +169,15 @@
 #define EMX_EIAC			0x000DC
 
 #define EMX_NRSSRK			10
+#define EMX_RSSRK_SIZE			4
+#define EMX_RSSRK_VAL(key, i)		(key[(i) * EMX_RSSRK_SIZE] | \
+					 key[(i) * EMX_RSSRK_SIZE + 1] << 8 | \
+					 key[(i) * EMX_RSSRK_SIZE + 2] << 16 | \
+					 key[(i) * EMX_RSSRK_SIZE + 3] << 24)
+
 #define EMX_NRETA			32
+#define EMX_RETA_SIZE			4
+#define EMX_RETA_RINGIDX_SHIFT		7
 
 #define EMX_NRX_RING			2
 
