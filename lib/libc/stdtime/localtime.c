@@ -68,7 +68,7 @@
 
 static char		wildabbr[] = WILDABBR;
 
-static const char	gmt[] = "GMT";
+static const char	gmt[] = "UTC";
 
 /*
 ** The DST rules to use if TZ has no rules and we can't load TZDEFRULES.
