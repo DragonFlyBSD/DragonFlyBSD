@@ -36,18 +36,29 @@
  * SUCH DAMAGE.
  *
  *	@(#)pwd.h	8.2 (Berkeley) 1/21/94
- * $FreeBSD: src/include/pwd.h,v 1.16 2005/01/26 17:26:54 nectar Exp $
+ * $FreeBSD: src/include/pwd.h,v 1.17 2009/03/14 19:13:01 das Exp $
  * $DragonFly: src/include/pwd.h,v 1.2 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef _PWD_H_
 #define	_PWD_H_
 
+#include <sys/cdefs.h>
 #include <sys/types.h>
+
+#ifndef _GID_T_DECLARED
+typedef	__uint32_t	gid_t;
+#define	_GID_T_DECLARED
+#endif
 
 #ifndef _TIME_T_DECLARED
 typedef	__time_t	time_t;
 #define	_TIME_T_DECLARED
+#endif
+
+#ifndef _UID_T_DECLARED
+typedef	__uint32_t	uid_t;
+#define	_UID_T_DECLARED
 #endif
 
 #ifndef _SIZE_T_DECLARED
@@ -138,16 +149,17 @@ struct passwd {
 #define _PWF_NIS	0x2000
 #define _PWF_HESIOD	0x3000
 
-#include <sys/cdefs.h>
-
 __BEGIN_DECLS
 struct passwd	*getpwnam(const char *);
 struct passwd	*getpwuid(uid_t);
 
-#if __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE >= 500
+#if __XSI_VISIBLE >= 500
 void		 endpwent(void);
 struct passwd	*getpwent(void);
 void		 setpwent(void);
+#endif
+
+#if __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE >= 500
 int		 getpwnam_r(const char *, struct passwd *, char *, size_t,
 		    struct passwd **);
 int		 getpwuid_r(uid_t, struct passwd *, char *, size_t,
