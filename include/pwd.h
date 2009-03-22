@@ -148,16 +148,14 @@ struct passwd	*getpwuid(uid_t);
 void		 endpwent(void);
 struct passwd	*getpwent(void);
 void		 setpwent(void);
-#if 0
 int		 getpwnam_r(const char *, struct passwd *, char *, size_t,
 		    struct passwd **);
 int		 getpwuid_r(uid_t, struct passwd *, char *, size_t,
 		    struct passwd **);
 #endif
-#endif
 
 #if __BSD_VISIBLE
-/* int		 getpwent_r(struct passwd *, char *, size_t, struct passwd **); */
+int		 getpwent_r(struct passwd *, char *, size_t, struct passwd **);
 int		 setpassent(int);
 const char	*user_from_uid(uid_t, int);
 #endif
