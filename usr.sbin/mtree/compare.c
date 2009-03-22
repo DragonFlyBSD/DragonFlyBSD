@@ -56,10 +56,7 @@
 #include "mtree.h"
 #include "extern.h"
 
-extern int uflag;
-extern int lineno;
-
-static char *ftype(u_int);
+static const char *ftype(u_int);
 
 #define	INDENTNAMELEN	8
 #define	LABEL \
@@ -69,13 +66,12 @@ static char *ftype(u_int);
 	}
 
 int
-compare(char *name, NODE *s, FTSENT *p)
+compare(NODE *s, FTSENT *p)
 {
-	extern int uflag;
 	u_long len, val;
 	int fd, label;
-	char *cp, *tab = "";
-	char *fflags;
+	char *cp, *fflags;
+	const char *tab = "";
 
 	label = 0;
 	switch(s->type) {
@@ -167,8 +163,8 @@ typeerr:		LABEL;
 	if (s->flags & F_SIZE && s->st_size != p->fts_statp->st_size &&
 		!S_ISDIR(p->fts_statp->st_mode)) {
 		LABEL;
-		printf("%ssize expected %qd found %qd\n",
-		    tab, s->st_size, p->fts_statp->st_size);
+		printf("%ssize expected %jd found %jd\n", tab,
+		    (intmax_t)s->st_size, (intmax_t)p->fts_statp->st_size);
 		tab = "\t";
 	}
 	/*
@@ -297,7 +293,7 @@ typeerr:		LABEL;
 	return (label);
 }
 
-char *
+const char *
 inotype(u_int type)
 {
 	switch(type & S_IFMT) {
@@ -321,7 +317,7 @@ inotype(u_int type)
 	/* NOTREACHED */
 }
 
-static char *
+static const char *
 ftype(u_int type)
 {
 	switch(type) {
