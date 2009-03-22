@@ -294,8 +294,11 @@ ip_mport(struct mbuf **mptr, int dir)
 	/*
 	 * XXX generic packet handling defrag on CPU 0 for now.
 	 */
-	if (ntohs(ip->ip_off) & (IP_MF | IP_OFFMASK))
-		return (&netisr_cpu[0].td_msgport);
+	if (ntohs(ip->ip_off) & (IP_MF | IP_OFFMASK)) {
+		cpu = 0;
+		port = &netisr_cpu[cpu].td_msgport;
+		goto back;
+	}
 
 	switch (ip->ip_p) {
 	case IPPROTO_TCP:
@@ -324,10 +327,13 @@ ip_mport(struct mbuf **mptr, int dir)
 		break;
 
 	default:
-		port = &netisr_cpu[0].td_msgport;
+		cpu = 0;
+		port = &netisr_cpu[cpu].td_msgport;
 		break;
 	}
-
+back:
+	m->m_flags |= M_HASH;
+	m->m_pkthdr.hash = cpu;
 	return (port);
 }
 

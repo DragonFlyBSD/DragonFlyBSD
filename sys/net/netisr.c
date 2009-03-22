@@ -414,7 +414,12 @@ netisr_unregister(int num)
 lwkt_port_t
 cpu0_portfn(struct mbuf **mptr)
 {
-    return (&netisr_cpu[0].td_msgport);
+    struct mbuf *m = *mptr;
+    int cpu = 0;
+
+    m->m_pkthdr.hash = cpu;
+    m->m_flags |= M_HASH;
+    return (&netisr_cpu[cpu].td_msgport);
 }
 
 lwkt_port_t
