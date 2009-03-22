@@ -16,7 +16,6 @@
 #ifndef TM_GMTOFF
 #define TM_GMTOFF	tm_gmtoff
 #define TM_ZONE		tm_zone
-#define PCTS		1
 #define TZDIR		"/usr/share/zoneinfo"
 #endif /* ndef TM_GMTOFF */
 
@@ -44,40 +43,12 @@
 
 #include <sys/wait.h>	/* for WIFEXITED and WEXITSTATUS */
 
-#ifndef WIFEXITED
-#define WIFEXITED(status)	(((status) & 0xff) == 0)
-#endif /* !defined WIFEXITED */
-#ifndef WEXITSTATUS
-#define WEXITSTATUS(status)	(((status) >> 8) & 0xff)
-#endif /* !defined WEXITSTATUS */
-
 #include "unistd.h"	/* for F_OK, R_OK, and other POSIX goodness */
-
-#ifndef F_OK
-#define F_OK	0
-#endif /* !defined F_OK */
-#ifndef R_OK
-#define R_OK	4
-#endif /* !defined R_OK */
 
 /* Unlike <ctype.h>'s isdigit, this also works if c < 0 | c > UCHAR_MAX. */
 #define is_digit(c) ((unsigned)(c) - '0' <= 9)
 
 #include "stdint.h"
-
-/*
-** Workarounds for compilers/systems.
-*/
-
-/*
-** Some time.h implementations don't declare asctime_r.
-** Others might define it as a macro.
-** Fix the former without affecting the latter.
-*/
-
-#ifndef asctime_r
-extern char *	asctime_r(struct tm const *, char *);
-#endif
 
 /*
 ** Private function declarations.
@@ -171,9 +142,7 @@ const char *	scheck(const char * string, const char * format);
 #define TZ_DOMAIN "tz"
 #endif /* !defined TZ_DOMAIN */
 
-#ifndef YEARSPERREPEAT
 #define YEARSPERREPEAT		400	/* years before a Gregorian repeat */
-#endif /* !defined YEARSPERREPEAT */
 
 /*
 ** UNIX was a registered trademark of The Open Group in 2003.
