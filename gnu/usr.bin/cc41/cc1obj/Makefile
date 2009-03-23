@@ -3,7 +3,8 @@
 GCC_LANG_DIR=	gcc/objc
 CONTRIBDIR=	${GCCDIR}/gcc/objc
 
-CFLAGS+=	-DTARGET_MACHINE=\"${target}\" -DHOST_MACHINE=\"${target}\"
+CFLAGS+=	-DTARGET_MACHINE=\"${target_machine}\"
+CFLAGS+=	-DHOST_MACHINE=\"${target_machine}\"
 
 PROG=		cc1obj
 NOMAN=		1

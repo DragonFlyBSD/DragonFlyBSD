@@ -3,7 +3,7 @@
 TARGET_ARCH?=	${MACHINE_ARCH}
 
 version=	4.1.2
-target=		${TARGET_ARCH}-our-dragonflybsd
+target_machine=	${TARGET_ARCH}-pc-dragonflybsd
 
 GCC_CPU?=	${TARGET_ARCH}
 .if ${TARGET_ARCH} == "amd64"

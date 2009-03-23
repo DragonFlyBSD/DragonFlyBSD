@@ -12,7 +12,7 @@ SRCS+=	xexit.c xmalloc.c xstrdup.c
 
 CFLAGS+= -I.
 CFLAGS+= -DDEFAULT_TARGET_VERSION=\"${version}\"
-CFLAGS+= -DDEFAULT_TARGET_MACHINE=\"${target}\"
+CFLAGS+= -DDEFAULT_TARGET_MACHINE=\"${target_machine}\"
 
 gcov.1: ${GCCDIR}/gcc/doc/gcov.1
 	cp ${.ALLSRC} ${.TARGET}

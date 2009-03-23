@@ -16,7 +16,7 @@ SRCS+=	xmalloc.c xstrdup.c xmemdup.c xstrerror.c
 
 CFLAGS+= -I.
 CFLAGS+= -DDEFAULT_TARGET_VERSION=\"${version}\"
-CFLAGS+= -DDEFAULT_TARGET_MACHINE=\"${target}\"
+CFLAGS+= -DDEFAULT_TARGET_MACHINE=\"${target_machine}\"
 
 gcc34.1: ${GCCDIR}/gcc/doc/gcc.1
 	cp ${.ALLSRC} ${.TARGET}
