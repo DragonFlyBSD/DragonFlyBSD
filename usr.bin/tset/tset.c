@@ -48,7 +48,7 @@
 #include "extern.h"
 
 void	obsolete(char *[]);
-void	report(char *, int, u_int);
+void	report(const char *, int, u_int);
 void	usage(void);
 
 struct termios mode, oldmode;
@@ -67,7 +67,8 @@ main(int argc, char **argv)
 	struct winsize win;
 #endif
 	int ch, noinit, noset, quiet, Sflag, sflag, showterm, usingupper;
-	char *p, *t, *tcapbuf, *ttype;
+	char *p, *tcapbuf;
+	const char *ttype;
 
 	if (tcgetattr(STDERR_FILENO, &mode) < 0)
 		err(1, "standard error");
@@ -228,7 +229,7 @@ main(int argc, char **argv)
  * Tell the user if a control key has been changed from the default value.
  */
 void
-report(char *name, int which, u_int def)
+report(const char *name, int which, u_int def)
 {
 	u_int old, new;
 
@@ -265,13 +266,13 @@ obsolete(char **argv)
 			continue;
 		switch(argv[0][1]) {
 		case 'e':
-			argv[0] = "-e^H";
+			argv[0] = strdup("-e^H");
 			break;
 		case 'i':
-			argv[0] = "-i^C";
+			argv[0] = strdup("-i^C");
 			break;
 		case 'k':
-			argv[0] = "-k^U";
+			argv[0] = strdup("-k^U");
 			break;
 		}
 	}

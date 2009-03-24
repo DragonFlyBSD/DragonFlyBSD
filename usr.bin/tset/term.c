@@ -47,19 +47,20 @@
 
 char    tbuf[1024];      		/* Termcap entry. */
 
-char	*askuser(char *);
+const char *askuser(const char *);
 char	*ttys(char *);
 
 /*
  * Figure out what kind of terminal we're dealing with, and then read in
  * its termcap entry.
  */
-char *
+const char *
 get_termcap_entry(char *userarg, char **tcapbufp)
 {
 	struct ttyent *t;
 	int rval;
-	char *p, *ttype, *ttypath;
+	char *p, *ttypath;
+	const char *ttype;
 
 	if (userarg) {
 		ttype = userarg;
@@ -118,8 +119,8 @@ found:	if ((p = getenv("TERMCAP")) != NULL && *p != '/')
 }
 
 /* Prompt the user for a terminal type. */
-char *
-askuser(char *dflt)
+const char *
+askuser(const char *dflt)
 {
 	static char answer[256];
 	char *p;

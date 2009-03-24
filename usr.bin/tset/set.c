@@ -280,7 +280,8 @@ set_tabs(void)
 {
 	int c;
 	char *capsp, *clear_tabs;
-	char *set_column, *set_pos, *Set_tab, *tg_out;
+	char *set_column, *set_pos, *Set_tab;
+	const char *tg_out;
 	char caps[1024];
 
 	capsp = caps;
