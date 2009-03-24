@@ -50,19 +50,16 @@
 
 #define	SBUFLEN	128
 
-extern char *optarg;
-extern int optind;
-
 static void usage(void);
 static void do_output(int, int, struct kinfo_pcheader *, struct kinfo_pctrack *, int);
 static void read_symbols(const char *);
 static const char *address_to_symbol(void *);
 
 static struct nlist nl[] = {
-	{ "_ncpus" },
-	{ "_cputime_pcheader" },
-	{ "_cputime_pctrack" },
-	{ NULL }
+	{ .n_name = "_ncpus" },
+	{ .n_name = "_cputime_pcheader" },
+	{ .n_name = "_cputime_pctrack" },
+	{ .n_name = NULL }
 };
 
 static char corefile[PATH_MAX];
@@ -213,7 +210,7 @@ again:
 }
 
 static void
-do_output(int cpu, int track, struct kinfo_pcheader *pchead, struct kinfo_pctrack *pctrack, int base_index)
+do_output(int cpu __unused, int track __unused, struct kinfo_pcheader *pchead, struct kinfo_pctrack *pctrack, int base_index)
 {
 	int i;
 
@@ -243,9 +240,8 @@ static struct symdata *symcache;
 static char *symbegin;
 static char *symend;
 
-static
-void
-read_symbols(const char *execfile)
+static void
+read_symbols(const char *file)
 {
 	char buf[256];
 	char cmd[256];
@@ -258,13 +254,13 @@ read_symbols(const char *execfile)
 
 	TAILQ_INIT(&symlist);
 
-	if (execfile == NULL) {
+	if (file == NULL) {
 		if (sysctlbyname("kern.bootfile", buf, &buflen, NULL, 0) < 0)
-			execfile = "/boot/kernel";
+			file = "/boot/kernel";
 		else
-			execfile = buf;
+			file = buf;
 	}
-	snprintf(cmd, sizeof(cmd), "nm -n %s", execfile);
+	snprintf(cmd, sizeof(cmd), "nm -n %s", file);
 	if ((fp = popen(cmd, "r")) != NULL) {
 		while (fgets(buf, sizeof(buf), fp) != NULL) {
 		    s1 = strtok(buf, " \t\n");
@@ -287,8 +283,7 @@ read_symbols(const char *execfile)
 	symcache = TAILQ_FIRST(&symlist);
 }
 
-static
-const char *
+static const char *
 address_to_symbol(void *kptr)
 {
 	static char buf[64];
