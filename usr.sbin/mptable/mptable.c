@@ -34,12 +34,6 @@
 #define VMINOR			0
 #define VDELTA			15
 
-/*
- * this will cause the raw mp table to be dumped to /tmp/mpdump
- *
-#define RAW_DUMP
- */
-
 #define MP_SIG			0x5f504d5f	/* _MP_ */
 #define EXTENDED_PROCESSING_READY
 #define OEM_PROCESSING_READY_NOT
@@ -291,12 +285,13 @@ int	nintr;
 
 int	dmesg;
 int	grope;
+int	raw;
 int	verbose;
 
 static void
 usage( void )
 {
-    fprintf( stderr, "usage: mptable [-dmesg] [-verbose] [-grope] [-help]\n" );
+    fprintf( stderr, "usage: mptable [-dmesg] [-verbose] [-grope] [-raw] [-help]\n" );
     exit( 0 );
 }
 
@@ -319,7 +314,7 @@ main( int argc, char *argv[] )
 
     printf( "MPTable, version %d.%d.%d\n", VMAJOR, VMINOR, VDELTA );
 
-    while ((ch = getopt(argc, argv, "d:g:h:v:")) != -1) {
+    while ((ch = getopt(argc, argv, "d:g:h:r:v:")) != -1) {
 	switch(ch) {
 	case 'd':
 	    if ( strcmp( optarg, "mesg") == 0 )
@@ -334,6 +329,10 @@ main( int argc, char *argv[] )
 	case 'g':
 	    if ( strcmp( optarg, "rope") == 0 )
 	        grope = 1;
+	    break;
+	case 'r':
+	    if ( strcmp (optarg, "aw") == 0 )
+	        raw = 1;
 	    break;
 	case 'v':
 	    if ( strcmp( optarg, "erbose") == 0 )
@@ -824,18 +823,16 @@ MPConfigTableHeader( void* pap )
 
     fflush( stdout );
 
-#if defined( RAW_DUMP )
-{
-    int		ofd;
-    u_char	dumpbuf[ 4096 ];
+    if ( raw ) {
+        int		ofd;
+        u_char	dumpbuf[ 4096 ];
 
-    ofd = open( "/tmp/mpdump", O_CREAT | O_RDWR );
-    seekEntry( paddr );
-    readEntry( dumpbuf, 1024 );
-    write( ofd, dumpbuf, 1024 );
-    close( ofd );
-}
-#endif /* RAW_DUMP */
+        ofd = open( "/tmp/mpdump", O_CREAT | O_RDWR );
+        seekEntry( paddr );
+        readEntry( dumpbuf, 1024 );
+        write( ofd, dumpbuf, 1024 );
+        close( ofd );
+    }
 }
 
 
