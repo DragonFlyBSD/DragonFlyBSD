@@ -1463,9 +1463,9 @@ dropit:
 				if ((ia = (INA)ifa_ifwithdstaddr((SA)&ipaddr))
 									== NULL)
 					ia = (INA)ifa_ifwithnet((SA)&ipaddr);
-			} else
-				ia = ip_rtaddr(ipaddr.sin_addr,
-					       &ipforward_rt[mycpuid]);
+			} else {
+				ia = ip_rtaddr(ipaddr.sin_addr, NULL);
+			}
 			if (ia == NULL) {
 				type = ICMP_UNREACH;
 				code = ICMP_UNREACH_SRCFAIL;
@@ -1505,9 +1505,7 @@ dropit:
 			 * use the incoming interface (should be same).
 			 */
 			if ((ia = (INA)ifa_ifwithaddr((SA)&ipaddr)) == NULL &&
-			    (ia = ip_rtaddr(ipaddr.sin_addr,
-			    		    &ipforward_rt[mycpuid]))
-								     == NULL) {
+			    (ia = ip_rtaddr(ipaddr.sin_addr, NULL)) == NULL) {
 				type = ICMP_UNREACH;
 				code = ICMP_UNREACH_HOST;
 				goto bad;
@@ -1600,9 +1598,18 @@ bad:
  * return internet address info of interface to be used to get there.
  */
 struct in_ifaddr *
-ip_rtaddr(struct in_addr dst, struct route *ro)
+ip_rtaddr(struct in_addr dst, struct route *ro0)
 {
+	struct route sro, *ro;
 	struct sockaddr_in *sin;
+	struct in_ifaddr *ia;
+
+	if (ro0 != NULL) {
+		ro = ro0;
+	} else {
+		bzero(&sro, sizeof(sro));
+		ro = &sro;
+	}
 
 	sin = (struct sockaddr_in *)&ro->ro_dst;
 
@@ -1620,7 +1627,11 @@ ip_rtaddr(struct in_addr dst, struct route *ro)
 	if (ro->ro_rt == NULL)
 		return (NULL);
 
-	return (ifatoia(ro->ro_rt->rt_ifa));
+	ia = ifatoia(ro->ro_rt->rt_ifa);
+
+	if (ro == &sro)
+		RTFREE(ro->ro_rt);
+	return ia;
 }
 
 /*
