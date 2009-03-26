@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright 2007 Red Hat, Inc
  * All rights reserved.
  *
@@ -20,8 +20,6 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- *
- * $DragonFly: src/sys/dev/drm/drm_internal.h,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
 /* This header file holds function prototypes and data types that are

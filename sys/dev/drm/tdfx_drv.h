@@ -1,7 +1,7 @@
 /* tdfx.h -- 3dfx DRM template customization -*- linux-c -*-
  * Created: Wed Feb 14 12:32:32 2001 by gareth@valinux.com
  */
-/*
+/*-
  * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.
  * All Rights Reserved.
  *
@@ -26,8 +26,6 @@
  *
  * Authors:
  *    Gareth Hughes <gareth@valinux.com>
- *
- * $DragonFly: src/sys/dev/drm/tdfx_drv.h,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
 #ifndef __TDFX_H__

@@ -8,7 +8,7 @@
  * Dec 1999, Richard Henderson <rth@twiddle.net>, move to generic \c cmpxchg.
  */
 
-/*
+/*-
  * Copyright 1999 Precision Insight, Inc., Cedar Park, Texas.
  * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.
  * All rights reserved.
@@ -31,8 +31,6 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- *
- * $DragonFly: src/sys/dev/drm/drm.h,v 1.4 2008/04/05 18:12:29 hasso Exp $
  */
 
 /**
@@ -557,6 +555,20 @@ union drm_wait_vblank {
 	struct drm_wait_vblank_reply reply;
 };
 
+
+#define _DRM_PRE_MODESET 1
+#define _DRM_POST_MODESET 2
+
+/**
+ * DRM_IOCTL_MODESET_CTL ioctl argument type
+ *
+ * \sa drmModesetCtl().
+ */
+struct drm_modeset_ctl {
+	uint32_t crtc;
+	uint32_t cmd;
+};
+
 /**
  * DRM_IOCTL_AGP_ENABLE ioctl argument type.
  *
@@ -632,8 +644,14 @@ struct drm_set_version {
 
 #define DRM_FENCE_FLAG_EMIT                0x00000001
 #define DRM_FENCE_FLAG_SHAREABLE           0x00000002
+/**
+ * On hardware with no interrupt events for operation completion,
+ * indicates that the kernel should sleep while waiting for any blocking
+ * operation to complete rather than spinning.
+ *
+ * Has no effect otherwise.
+ */
 #define DRM_FENCE_FLAG_WAIT_LAZY           0x00000004
-#define DRM_FENCE_FLAG_WAIT_IGNORE_SIGNALS 0x00000008
 #define DRM_FENCE_FLAG_NO_USER             0x00000010
 
 /* Reserved for driver use */
@@ -707,7 +725,14 @@ struct drm_fence_arg {
  */
 #define DRM_BO_FLAG_NO_MOVE     (1ULL << 8)
 
-/* Mask: Make sure the buffer is in cached memory when mapped
+/* Mask: Make sure the buffer is in cached memory when mapped.  In conjunction
+ * with DRM_BO_FLAG_CACHED it also allows the buffer to be bound into the GART
+ * with unsnooped PTEs instead of snooped, by using chipset-specific cache
+ * flushing at bind time.  A better name might be DRM_BO_FLAG_TT_UNSNOOPED,
+ * as the eviction to local memory (TTM unbind) on map is just a side effect
+ * to prevent aggressive cache prefetch from the GPU disturbing the cache
+ * management that the DRM is doing.
+ *
  * Flags: Acknowledge.
  * Buffers allocated with this flag should not be used for suballocators
  * This type may have issues on CPUs with over-aggressive caching
@@ -775,13 +800,12 @@ struct drm_fence_arg {
  * with it as a result of this operation
  */
 #define DRM_BO_HINT_DONT_FENCE  0x00000004
-/*
- * Sleep while waiting for the operation to complete.
- * Without this flag, the kernel will, instead, spin
- * until this operation has completed. I'm not sure
- * why you would ever want this, so please always
- * provide DRM_BO_HINT_WAIT_LAZY to any operation
- * which may block
+/**
+ * On hardware with no interrupt events for operation completion,
+ * indicates that the kernel should sleep while waiting for any blocking
+ * operation to complete rather than spinning.
+ *
+ * Has no effect otherwise.
  */
 #define DRM_BO_HINT_WAIT_LAZY   0x00000008
 /*
@@ -930,6 +954,36 @@ struct drm_mm_init_arg {
 	uint64_t p_size;
 };
 
+struct drm_mm_info_arg {
+	unsigned int mem_type;
+	uint64_t p_size;
+};
+
+struct drm_gem_close {
+	/** Handle of the object to be closed. */
+	uint32_t handle;
+	uint32_t pad;
+};
+
+struct drm_gem_flink {
+	/** Handle for the object being named */
+	uint32_t handle;
+
+	/** Returned global name */
+	uint32_t name;
+};
+
+struct drm_gem_open {
+	/** Name of object being opened */
+	uint32_t name;
+
+	/** Returned handle for the object */
+	uint32_t handle;
+	
+	/** Returned size of the object */
+	uint64_t size;
+};
+
 /**
  * \name Ioctls Definitions
  */
@@ -949,6 +1003,11 @@ struct drm_mm_init_arg {
 #define DRM_IOCTL_GET_CLIENT            DRM_IOWR(0x05, struct drm_client)
 #define DRM_IOCTL_GET_STATS             DRM_IOR( 0x06, struct drm_stats)
 #define DRM_IOCTL_SET_VERSION		DRM_IOWR(0x07, struct drm_set_version)
+#define DRM_IOCTL_MODESET_CTL           DRM_IOW(0x08,  struct drm_modeset_ctl)
+
+#define DRM_IOCTL_GEM_CLOSE		DRM_IOW (0x09, struct drm_gem_close)
+#define DRM_IOCTL_GEM_FLINK		DRM_IOWR(0x0a, struct drm_gem_flink)
+#define DRM_IOCTL_GEM_OPEN		DRM_IOWR(0x0b, struct drm_gem_open)
 
 #define DRM_IOCTL_SET_UNIQUE		DRM_IOW( 0x10, struct drm_unique)
 #define DRM_IOCTL_AUTH_MAGIC		DRM_IOW( 0x11, struct drm_auth)
@@ -990,7 +1049,7 @@ struct drm_mm_init_arg {
 #define DRM_IOCTL_AGP_BIND		DRM_IOW( 0x36, struct drm_agp_binding)
 #define DRM_IOCTL_AGP_UNBIND		DRM_IOW( 0x37, struct drm_agp_binding)
 
-#define DRM_IOCTL_SG_ALLOC		DRM_IOW( 0x38, struct drm_scatter_gather)
+#define DRM_IOCTL_SG_ALLOC		DRM_IOWR(0x38, struct drm_scatter_gather)
 #define DRM_IOCTL_SG_FREE		DRM_IOW( 0x39, struct drm_scatter_gather)
 
 #define DRM_IOCTL_WAIT_VBLANK		DRM_IOWR(0x3a, union drm_wait_vblank)
@@ -1020,7 +1079,7 @@ struct drm_mm_init_arg {
 #define DRM_IOCTL_BO_INFO               DRM_IOWR(0xd4, struct drm_bo_reference_info_arg)
 #define DRM_IOCTL_BO_WAIT_IDLE          DRM_IOWR(0xd5, struct drm_bo_map_wait_idle_arg)
 #define DRM_IOCTL_BO_VERSION          DRM_IOR(0xd6, struct drm_bo_version_arg)
-
+#define DRM_IOCTL_MM_INFO               DRM_IOWR(0xd7, struct drm_mm_info_arg)
 
 /*@}*/
 
@@ -1036,8 +1095,7 @@ struct drm_mm_init_arg {
 #define DRM_COMMAND_END                 0xA0
 
 /* typedef area */
-#if !defined(__KERNEL__) || defined(__FreeBSD__) || defined(__OpenBSD__) || \
-    defined(__NetBSD__) || defined(__DragonFly__)
+#ifndef __KERNEL__
 typedef struct drm_clip_rect drm_clip_rect_t;
 typedef struct drm_tex_region drm_tex_region_t;
 typedef struct drm_hw_lock drm_hw_lock_t;

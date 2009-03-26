@@ -1,7 +1,7 @@
 /* mach64_drv.h -- Private header for mach64 driver -*- linux-c -*-
  * Created: Fri Nov 24 22:07:58 2000 by gareth@valinux.com
  */
-/*
+/*-
  * Copyright 2000 Gareth Hughes
  * Copyright 2002 Frank C. Earl
  * Copyright 2002-2003 Leif Delgass
@@ -30,8 +30,6 @@
  *    Frank C. Earl <fearl@airmail.net>
  *    Leif Delgass <ldelgass@retinalburn.net>
  *    José Fonseca <j_r_fonseca@yahoo.co.uk>
- *
- * $DragonFly: src/sys/dev/drm/mach64_drv.h,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
 #ifndef __MACH64_DRV_H__
@@ -98,6 +96,8 @@ typedef struct drm_mach64_private {
 	unsigned int depth_bpp;
 	unsigned int depth_offset, depth_pitch;
 
+	atomic_t vbl_received;          /**< Number of vblanks received. */
+
 	u32 front_offset_pitch;
 	u32 back_offset_pitch;
 	u32 depth_offset_pitch;
@@ -162,13 +162,15 @@ extern int mach64_dma_blit(struct drm_device *dev, void *data,
 			   struct drm_file *file_priv);
 extern int mach64_get_param(struct drm_device *dev, void *data,
 			    struct drm_file *file_priv);
-extern int mach64_driver_vblank_wait(struct drm_device * dev,
-				     unsigned int *sequence);
 
+extern int mach64_driver_load(struct drm_device * dev, unsigned long flags);
+extern u32 mach64_get_vblank_counter(struct drm_device *dev, int crtc);
+extern int mach64_enable_vblank(struct drm_device *dev, int crtc);
+extern void mach64_disable_vblank(struct drm_device *dev, int crtc);
 extern irqreturn_t mach64_driver_irq_handler(DRM_IRQ_ARGS);
-extern void mach64_driver_irq_preinstall(struct drm_device * dev);
-extern void mach64_driver_irq_postinstall(struct drm_device * dev);
-extern void mach64_driver_irq_uninstall(struct drm_device * dev);
+extern void mach64_driver_irq_preinstall(struct drm_device *dev);
+extern int mach64_driver_irq_postinstall(struct drm_device *dev);
+extern void mach64_driver_irq_uninstall(struct drm_device *dev);
 
 /* ================================================================
  * Registers

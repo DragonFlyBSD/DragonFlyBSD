@@ -1,7 +1,7 @@
 /* r128_drm.h -- Public header for the r128 driver -*- linux-c -*-
  * Created: Wed Apr  5 19:24:19 2000 by kevin@precisioninsight.com
  */
-/*
+/*-
  * Copyright 2000 Precision Insight, Inc., Cedar Park, Texas.
  * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.
  * All rights reserved.
@@ -28,8 +28,6 @@
  * Authors:
  *    Gareth Hughes <gareth@valinux.com>
  *    Kevin E. Martin <martin@valinux.com>
- *
- * $DragonFly: src/sys/dev/drm/r128_drm.h,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
 #ifndef __R128_DRM_H__

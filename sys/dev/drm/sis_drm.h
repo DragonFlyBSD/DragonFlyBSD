@@ -1,5 +1,5 @@
 /* sis_drv.h -- Private header for sis driver -*- linux-c -*- */
-/*
+/*-
  * Copyright 2005 Eric Anholt
  * All Rights Reserved.
  *
@@ -22,7 +22,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *
- * $DragonFly: src/sys/dev/drm/sis_drm.h,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
 #ifndef __SIS_DRM_H__

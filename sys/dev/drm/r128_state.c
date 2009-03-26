@@ -1,7 +1,7 @@
 /* r128_state.c -- State support for r128 -*- linux-c -*-
  * Created: Thu Jan 27 02:53:43 2000 by gareth@valinux.com
  */
-/*
+/*-
  * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.
  * All Rights Reserved.
  *
@@ -26,14 +26,12 @@
  *
  * Authors:
  *    Gareth Hughes <gareth@valinux.com>
- *
- * $DragonFly: src/sys/dev/drm/r128_state.c,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
-#include "drmP.h"
-#include "drm.h"
-#include "r128_drm.h"
-#include "r128_drv.h"
+#include "dev/drm/drmP.h"
+#include "dev/drm/drm.h"
+#include "dev/drm/r128_drm.h"
+#include "dev/drm/r128_drv.h"
 
 /* ================================================================
  * CCE hardware state programming functions

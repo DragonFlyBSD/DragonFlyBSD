@@ -1,6 +1,6 @@
 /* i915_mem.c -- Simple agp/fb memory manager for i915 -*- linux-c -*-
  */
-/*
+/*-
  * Copyright 2003 Tungsten Graphics, Inc., Cedar Park, Texas.
  * All Rights Reserved.
  *
@@ -24,13 +24,12 @@
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
- * $DragonFly: src/sys/dev/drm/i915_mem.c,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
-#include "drmP.h"
-#include "drm.h"
-#include "i915_drm.h"
-#include "i915_drv.h"
+#include "dev/drm/drmP.h"
+#include "dev/drm/drm.h"
+#include "dev/drm/i915_drm.h"
+#include "dev/drm/i915_drv.h"
 
 /* This memory manager is integrated into the global/local lru
  * mechanisms used by the clients.  Specifically, it operates by

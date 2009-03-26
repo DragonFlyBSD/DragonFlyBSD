@@ -1,7 +1,7 @@
 /* r128_cce.c -- ATI Rage 128 driver -*- linux-c -*-
  * Created: Wed Apr  5 19:24:19 2000 by kevin@precisioninsight.com
  */
-/*
+/*-
  * Copyright 2000 Precision Insight, Inc., Cedar Park, Texas.
  * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.
  * All Rights Reserved.
@@ -27,14 +27,12 @@
  *
  * Authors:
  *    Gareth Hughes <gareth@valinux.com>
- *
- * $DragonFly: src/sys/dev/drm/r128_cce.c,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
-#include "drmP.h"
-#include "drm.h"
-#include "r128_drm.h"
-#include "r128_drv.h"
+#include "dev/drm/drmP.h"
+#include "dev/drm/drm.h"
+#include "dev/drm/r128_drm.h"
+#include "dev/drm/r128_drv.h"
 
 #define R128_FIFO_DEBUG		0
 
@@ -560,6 +558,7 @@ static int r128_do_init_cce(struct drm_device * dev, drm_r128_init_t * init)
 #if __OS_HAS_AGP
 	if (dev_priv->is_pci) {
 #endif
+		dev_priv->gart_info.table_mask = DMA_BIT_MASK(32);
 		dev_priv->gart_info.gart_table_location = DRM_ATI_GART_MAIN;
 		dev_priv->gart_info.table_size = R128_PCIGART_TABLE_SIZE;
 		dev_priv->gart_info.addr = NULL;

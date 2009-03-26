@@ -1,7 +1,7 @@
 /* mga_state.c -- State support for MGA G200/G400 -*- linux-c -*-
  * Created: Thu Jan 27 02:53:43 2000 by jhartmann@precisioninsight.com
  */
-/*
+/*-
  * Copyright 1999 Precision Insight, Inc., Cedar Park, Texas.
  * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.
  * All Rights Reserved.
@@ -31,14 +31,12 @@
  *
  * Rewritten by:
  *    Gareth Hughes <gareth@valinux.com>
- *
- * $DragonFly: src/sys/dev/drm/mga_state.c,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
-#include "drmP.h"
-#include "drm.h"
-#include "mga_drm.h"
-#include "mga_drv.h"
+#include "dev/drm/drmP.h"
+#include "dev/drm/drm.h"
+#include "dev/drm/mga_drm.h"
+#include "dev/drm/mga_drv.h"
 
 /* ================================================================
  * DMA hardware state programming functions

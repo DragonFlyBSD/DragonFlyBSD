@@ -1,7 +1,7 @@
 /* mga_warp.c -- Matrox G200/G400 WARP engine management -*- linux-c -*-
  * Created: Thu Jan 11 21:29:32 2001 by gareth@valinux.com
  */
-/*
+/*-
  * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.
  * All Rights Reserved.
  *
@@ -26,15 +26,13 @@
  *
  * Authors:
  *    Gareth Hughes <gareth@valinux.com>
- *
- * $DragonFly: src/sys/dev/drm/mga_warp.c,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
-#include "drmP.h"
-#include "drm.h"
-#include "mga_drm.h"
-#include "mga_drv.h"
-#include "mga_ucode.h"
+#include "dev/drm/drmP.h"
+#include "dev/drm/drm.h"
+#include "dev/drm/mga_drm.h"
+#include "dev/drm/mga_drv.h"
+#include "dev/drm/mga_ucode.h"
 
 #define MGA_WARP_CODE_ALIGN		256	/* in bytes */
 

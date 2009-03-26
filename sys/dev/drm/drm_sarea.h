@@ -5,7 +5,7 @@
  * \author Michel D�zer <michel@daenzer.net>
  */
 
-/*
+/*-
  * Copyright 2002 Tungsten Graphics, Inc., Cedar Park, Texas.
  * All Rights Reserved.
  *
@@ -27,14 +27,12 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- *
- * $DragonFly: src/sys/dev/drm/drm_sarea.h,v 1.3 2008/04/05 18:12:29 hasso Exp $
  */
 
 #ifndef _DRM_SAREA_H_
 #define _DRM_SAREA_H_
 
-#include "drm.h"
+#include "dev/drm/drm.h"
 
 /* SAREA area needs to be at least a page */
 #if defined(__alpha__)

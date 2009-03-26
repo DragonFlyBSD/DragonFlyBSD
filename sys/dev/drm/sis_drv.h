@@ -1,5 +1,5 @@
 /* sis_drv.h -- Private header for sis driver -*- linux-c -*- */
-/*
+/*-
  * Copyright 1999 Precision Insight, Inc., Cedar Park, Texas.
  * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.
  * All rights reserved.
@@ -23,7 +23,6 @@
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * $DragonFly: src/sys/dev/drm/sis_drv.h,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
 #ifndef _SIS_DRV_H_
@@ -50,7 +49,7 @@ enum sis_family {
 #endif
 
 #ifdef SIS_HAVE_CORE_MM
-#include "drm_sman.h"
+#include "dev/drm/drm_sman.h"
 
 #define SIS_BASE (dev_priv->mmio)
 #define SIS_READ(reg)	 DRM_READ32(SIS_BASE, reg);
@@ -73,7 +72,7 @@ extern void sis_reclaim_buffers_locked(struct drm_device *dev,
 extern void sis_lastclose(struct drm_device *dev);
 
 #else
-#include "sis_ds.h"
+#include "dev/drm/sis_ds.h"
 
 typedef struct drm_sis_private {
 	memHeap_t *AGPHeap;

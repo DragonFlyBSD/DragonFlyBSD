@@ -27,7 +27,6 @@
  * Authors:
  *    Eric Anholt <anholt@FreeBSD.org>
  *
- * $DragonFly: src/sys/dev/drm/drm_linux_list.h,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
 struct list_head {
@@ -65,8 +64,12 @@ list_del(struct list_head *entry) {
 #define list_for_each(entry, head)				\
     for (entry = (head)->next; entry != head; entry = (entry)->next)
 
+#define list_for_each_prev(entry, head) \
+        for (entry = (head)->prev; entry != (head); \
+                entry = entry->prev)
+
 #define list_for_each_safe(entry, temp, head)			\
     for (entry = (head)->next, temp = (entry)->next;		\
-	temp != head; 						\
-	entry = temp, temp = temp->next)
+	entry != head; 						\
+	entry = temp, temp = entry->next)
 

@@ -1,7 +1,7 @@
 /* mach64_drm.h -- Public header for the mach64 driver -*- linux-c -*-
  * Created: Thu Nov 30 20:04:32 2000 by gareth@valinux.com
  */
-/*
+/*-
  * Copyright 2000 Gareth Hughes
  * Copyright 2002 Frank C. Earl
  * Copyright 2002-2003 Leif Delgass
@@ -29,8 +29,6 @@
  *    Gareth Hughes <gareth@valinux.com>
  *    Frank C. Earl <fearl@airmail.net>
  *    Leif Delgass <ldelgass@retinalburn.net>
- *
- * $DragonFly: src/sys/dev/drm/mach64_drm.h,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
 #ifndef __MACH64_DRM_H__
