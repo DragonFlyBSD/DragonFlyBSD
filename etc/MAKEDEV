@@ -157,6 +157,7 @@
 #	nsmb*	SMB/CIFS protocol interface
 #	pf	PF packet filter
 #	cmx	Omnikey CardMan 4040 smartcard reader
+#	devctl	devctl(4) interface
 #
 ##############################################################################
 #
@@ -526,6 +527,7 @@ all)
 	sh MAKEDEV fw0					# cdev, firewire
 	sh MAKEDEV dcons				# cdev, dcons
 	sh MAKEDEV pf					# pf
+	sh MAKEDEV devctl				# cdev, devctl
 	;;
 
 
@@ -2235,6 +2237,13 @@ cmx*)
 
 	mknod cmx $unit c 185 $unit
 	;;
+
+#-----------------------------------------------------------------------------
+
+devctl)
+	mknod devctl "" c 188 0 root:wheel 600
+	;;
+
 #-----------------------------------------------------------------------------
 
 local)
