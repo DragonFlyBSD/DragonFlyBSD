@@ -7,7 +7,7 @@
 #
 # To profile, put -DPROF in DEFS and -pg in CFLAGS, and recompile.
 
-WARNS?=	0	# Net yet
+WARNS?=	2
 
 TCSHDIR= ${.CURDIR}/../../contrib/tcsh-6
 CONTRIBDIR=${TCSHDIR}
