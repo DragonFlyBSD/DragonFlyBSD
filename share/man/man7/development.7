@@ -31,7 +31,7 @@
 .\"
 .\" $DragonFly: src/share/man/man7/development.7,v 1.12 2008/07/27 22:23:42 thomas Exp $
 .\"
-.Dd February 11, 2009
+.Dd March 26, 2009
 .Dt DEVELOPMENT 7
 .Os
 .Sh NAME
@@ -59,7 +59,7 @@ For information on how to build the
 .Dx
 system from source code, see
 .Xr build 7 .
-For information on how to build a LiveCD, see
+For information on how to build the LiveCD, LiveDVD or thumb drive image, see
 .Xr release 7 .
 .Sh EXAMPLES
 A fresh copy of the repository can be cloned anywhere.
@@ -67,6 +67,11 @@ Note that the directory to clone into
 .Pa ( /usr/src
 in the following example) must not exist, so all previous work in this
 directory has to be saved and the directory be removed prior to cloning.
+Also note that while the main repository is on
+.Pa crater ,
+it is recommended that one of the
+.Dx
+mirrors be used instead.
 .Pp
 Simple setup and updating of local repository is done using
 .Pa /usr/Makefile :
@@ -79,7 +84,7 @@ make git-update
 .Pp
 Somewhat finer control can be achieved using
 .Xr git 1
-directly:
+directly.
 To clone the repository and check out the master branch (this will take
 some time):
 .Bd -literal -offset 4n
