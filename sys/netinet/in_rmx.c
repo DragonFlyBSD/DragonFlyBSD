@@ -136,18 +136,6 @@ in_addroute(char *key, char *mask, struct radix_node_head *head,
 			}
 		}
 	}
-
-	/*
-	 * If the new route created successfully, and we are forwarding,
-	 * and there is a cached route, free it.  Otherwise, we may end
-	 * up using the wrong route.
-	 */
-	if (ret != NULL && ipforwarding &&
-	    ipforward_rt[mycpuid].ro_rt != NULL) {
-		RTFREE(ipforward_rt[mycpuid].ro_rt);
-		ipforward_rt[mycpuid].ro_rt = NULL;
-	}
-
 	return ret;
 }
 

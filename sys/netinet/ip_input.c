@@ -396,13 +396,6 @@ ip_init(void)
 			ip_input_handler, flags);
 }
 
-/*
- * XXX watch out this one. It is perhaps used as a cache for
- * the most recently used route ? it is cleared in in_addroute()
- * when a new route is successfully created.
- */
-struct route ipforward_rt[MAXCPU];
-
 /* Do transport protocol processing. */
 static void
 transport_processing_oncpu(struct mbuf *m, int hlen, struct ip *ip)
@@ -1795,13 +1788,12 @@ void
 ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 {
 	struct ip *ip = mtod(m, struct ip *);
-	struct sockaddr_in *ipforward_rtaddr;
 	struct rtentry *rt;
+	struct route ro;
 	int error, type = 0, code = 0, destmtu = 0;
 	struct mbuf *mcopy;
 	n_long dest;
 	struct in_addr pkt_dst;
-	struct route *cache_rt = &ipforward_rt[mycpuid];
 
 	dest = INADDR_ANY;
 	/*
@@ -1826,23 +1818,13 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		return;
 	}
 
-	ipforward_rtaddr = (struct sockaddr_in *) &cache_rt->ro_dst;
-	if (cache_rt->ro_rt == NULL ||
-	    ipforward_rtaddr->sin_addr.s_addr != pkt_dst.s_addr) {
-		if (cache_rt->ro_rt != NULL) {
-			RTFREE(cache_rt->ro_rt);
-			cache_rt->ro_rt = NULL;
-		}
-		ipforward_rtaddr->sin_family = AF_INET;
-		ipforward_rtaddr->sin_len = sizeof(struct sockaddr_in);
-		ipforward_rtaddr->sin_addr = pkt_dst;
-		rtalloc_ign(cache_rt, RTF_PRCLONING);
-		if (cache_rt->ro_rt == NULL) {
-			icmp_error(m, ICMP_UNREACH, ICMP_UNREACH_HOST, dest, 0);
-			return;
-		}
+	bzero(&ro, sizeof(ro));
+	ip_rtaddr(pkt_dst, &ro);
+	if (ro.ro_rt == NULL) {
+		icmp_error(m, ICMP_UNREACH, ICMP_UNREACH_HOST, dest, 0);
+		return;
 	}
-	rt = cache_rt->ro_rt;
+	rt = ro.ro_rt;
 
 	/*
 	 * Save the IP header and at most 8 bytes of the payload,
@@ -1915,15 +1897,15 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		}
 	}
 
-	error = ip_output(m, NULL, cache_rt, IP_FORWARDING, NULL, NULL);
+	error = ip_output(m, NULL, &ro, IP_FORWARDING, NULL, NULL);
 	if (error == 0) {
 		ipstat.ips_forward++;
 		if (type == 0) {
 			if (mcopy) {
-				ipflow_create(cache_rt, mcopy);
+				ipflow_create(&ro, mcopy);
 				m_freem(mcopy);
 			}
-			return;		/* most common case */
+			goto done;
 		} else {
 			ipstat.ips_redirectsent++;
 		}
@@ -1932,7 +1914,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 	}
 
 	if (mcopy == NULL)
-		return;
+		goto done;
 
 	/*
 	 * Send ICMP message.
@@ -1963,7 +1945,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		 *	tunnel MTU = if MTU - sizeof(IP) - ESP/AH hdrsiz
 		 * XXX quickhack!!!
 		 */
-		if (cache_rt->ro_rt != NULL) {
+		if (ro.ro_rt != NULL) {
 			struct secpolicy *sp = NULL;
 			int ipsecerror;
 			int ipsechdr;
@@ -1975,7 +1957,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 						    &ipsecerror);
 
 			if (sp == NULL)
-				destmtu = cache_rt->ro_rt->rt_ifp->if_mtu;
+				destmtu = ro.ro_rt->rt_ifp->if_mtu;
 			else {
 				/* count IPsec header size */
 				ipsechdr = ipsec4_hdrsiz(mcopy,
@@ -2008,7 +1990,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		 *	tunnel MTU = if MTU - sizeof(IP) - ESP/AH hdrsiz
 		 * XXX quickhack!!!
 		 */
-		if (cache_rt->ro_rt != NULL) {
+		if (ro.ro_rt != NULL) {
 			struct secpolicy *sp = NULL;
 			int ipsecerror;
 			int ipsechdr;
@@ -2020,7 +2002,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 						   &ipsecerror);
 
 			if (sp == NULL)
-				destmtu = cache_rt->ro_rt->rt_ifp->if_mtu;
+				destmtu = ro.ro_rt->rt_ifp->if_mtu;
 			else {
 				/* count IPsec header size */
 				ipsechdr = ipsec4_hdrsiz(mcopy,
@@ -2048,8 +2030,8 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 			}
 		}
 #else /* !IPSEC && !FAST_IPSEC */
-		if (cache_rt->ro_rt != NULL)
-			destmtu = cache_rt->ro_rt->rt_ifp->if_mtu;
+		if (ro.ro_rt != NULL)
+			destmtu = ro.ro_rt->rt_ifp->if_mtu;
 #endif /*IPSEC*/
 		ipstat.ips_cantfrag++;
 		break;
@@ -2065,7 +2047,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		 */
 		if (!ip_sendsourcequench) {
 			m_freem(mcopy);
-			return;
+			goto done;
 		} else {
 			type = ICMP_SOURCEQUENCH;
 			code = 0;
@@ -2074,9 +2056,12 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 
 	case EACCES:			/* ipfw denied packet */
 		m_freem(mcopy);
-		return;
+		goto done;
 	}
 	icmp_error(mcopy, type, code, dest, destmtu);
+done:
+	if (ro.ro_rt != NULL)
+		RTFREE(ro.ro_rt);
 }
 
 void
