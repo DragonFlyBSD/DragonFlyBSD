@@ -96,21 +96,28 @@ extern void cpu_lwkt_restore(void);
 extern void cpu_kthread_restore(void);
 extern void cpu_idle_restore(void);
 
-int
+#ifdef __amd64__
+
+static int
 jg_tos_ok(struct thread *td)
 {
+	void *tos;
+	int tos_ok;
+
 	if (td == NULL) {
 		return 1;
 	}
 	KKASSERT(td->td_sp != NULL);
-	unsigned long tos = ((unsigned long *)td->td_sp)[0];
-	int tos_ok = 0;
-	if ((tos == cpu_heavy_restore) || (tos == cpu_lwkt_restore)
-		|| (tos == cpu_kthread_restore) || (tos == cpu_idle_restore)) {
+	tos = ((void **)td->td_sp)[0];
+	tos_ok = 0;
+	if ((tos == cpu_heavy_restore) || (tos == cpu_lwkt_restore) ||
+	    (tos == cpu_kthread_restore) || (tos == cpu_idle_restore)) {
 		tos_ok = 1;
 	}
 	return tos_ok;
 }
+
+#endif
 
 /*
  * We can make all thread ports use the spin backend instead of the thread
@@ -760,7 +767,9 @@ using_idle_thread:
 #endif
     if (td != ntd) {
 	++switch_count;
+#ifdef __amd64__
 	KKASSERT(jg_tos_ok(ntd));
+#endif
 	td->td_switch(ntd);
     }
     /* NOTE: current cpu may have changed after switch */
