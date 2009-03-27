@@ -31,7 +31,7 @@
 .\"
 .\" $DragonFly: src/share/man/man7/vkernel.7,v 1.43 2008/09/02 22:41:19 thomas Exp $
 .\"
-.Dd September 3, 2008
+.Dd March 27, 2009
 .Dt VKERNEL 7
 .Os
 .Sh NAME
@@ -324,6 +324,12 @@ entry with the following line and turn off all other gettys.
 .Bd -literal
 console	"/usr/libexec/getty Pc"		cons25	on  secure
 .Ed
+.Pp
+Replace
+.Li \&Pc
+with
+.Li al.Pc
+if you would like to automatically log in as root.
 .Pp
 Then, unmount the disk.
 .Bd -literal
