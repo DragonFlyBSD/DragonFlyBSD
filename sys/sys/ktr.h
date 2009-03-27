@@ -59,14 +59,17 @@
  * The user can enable individual masks via sysctl.
  */
 #if defined(KTR_ALL)
-#define KTR_AUTO_ENABLE	0
+#define KTR_AUTO_ENABLE		0
 #else
-#define KTR_ALL		0
-#define KTR_AUTO_ENABLE	-1
+#define KTR_ALL			0
+#define KTR_AUTO_ENABLE		-1
 #endif
 
-#define	KTR_BUFSIZE	192
-#define KTR_VERSION	3
+#define	KTR_BUFSIZE		192
+#define KTR_VERSION		4
+
+#define KTR_VERSION_WITH_FREQ	3
+#define KTR_VERSION_KTR_CPU	4
 
 #ifndef LOCORE
 
@@ -88,8 +91,22 @@ struct ktr_entry {
 	int32_t	ktr_data[KTR_BUFSIZE / sizeof(int32_t)];
 };
 
+struct ktr_cpu_core {
+	struct ktr_entry *ktr_buf;
+	int		 ktr_idx;
+};
+
+struct ktr_cpu {
+	struct ktr_cpu_core core;
+	char pad[__VM_CACHELINE_ALIGN(sizeof(struct ktr_cpu_core))];
+};
+
+#ifdef _KERNEL
+
 void	ktr_log(struct ktr_info *info, const char *file, int line, ...);
 void    cpu_ktr_caller(struct ktr_entry *ktr);
+
+#endif
 
 /*
  * Take advantage of constant integer optimizations by the compiler

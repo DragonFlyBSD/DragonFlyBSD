@@ -57,16 +57,26 @@ struct ktr_buffer {
 	int end_idx;		/* Ending index */
 };
 
-static struct nlist nl[] = {
+static struct nlist nl1[] = {
 	{ .n_name = "_ktr_version" },
 	{ .n_name = "_ktr_entries" },
-	{ .n_name = "_ktr_idx" },
-	{ .n_name = "_ktr_buf" },
 	{ .n_name = "_ncpus" },
 	{ .n_name = NULL }
 };
+
 static struct nlist nl2[] = {
 	{ .n_name = "_tsc_frequency" },
+	{ .n_name = NULL }
+};
+
+static struct nlist nl_version_ktr_idx[] = {
+	{ .n_name = "_ktr_idx" },
+	{ .n_name = "_ktr_buf" },
+	{ .n_name = NULL }
+};
+
+static struct nlist nl_version_ktr_cpu[] = {
+	{ .n_name = "_ktr_cpu" },
 	{ .n_name = NULL }
 };
 
@@ -94,6 +104,7 @@ static int ncpus;
 static kvm_t *kd;
 static int entries_per_buf;
 static int fifo_mask;
+static int ktr_version;
 
 static void usage(void);
 static int earliest_ts(struct ktr_buffer *);
@@ -105,8 +116,8 @@ static const char *trunc_path(const char *, int);
 static void read_symbols(const char *);
 static const char *address_to_symbol(void *);
 static struct ktr_buffer *ktr_bufs_init(void);
-static void get_indices(int *);
-static void load_bufs(struct ktr_buffer *, struct ktr_entry **);
+static void get_indices(struct ktr_entry **, int *);
+static void load_bufs(struct ktr_buffer *, struct ktr_entry **, int *);
 static void print_buf(FILE *, struct ktr_buffer *, int, u_int64_t *);
 static void print_bufs_timesorted(FILE *, struct ktr_buffer *, u_int64_t *);
 
@@ -119,10 +130,10 @@ main(int ac, char **av)
 {
 	struct ktr_buffer *ktr_bufs;
 	struct ktr_entry **ktr_kbuf;
+	int *ktr_idx;
 	FILE *fo;
 	int64_t tts;
 	int *ktr_start_index;
-	int version;
 	int c;
 	int n;
 
@@ -220,41 +231,49 @@ main(int ac, char **av)
 	if ((kd = kvm_openfiles(Nflag ? execfile : NULL,
 	    Mflag ? corefile : NULL, NULL, O_RDONLY, errbuf)) == NULL)
 		errx(1, "%s", errbuf);
-	if (kvm_nlist(kd, nl) != 0)
+	if (kvm_nlist(kd, nl1) != 0)
 		errx(1, "%s", kvm_geterr(kd));
-	if (kvm_read(kd, nl[0].n_value, &version, sizeof(version)) == -1)
+	if (kvm_read(kd, nl1[0].n_value, &ktr_version, sizeof(ktr_version)) == -1)
 		errx(1, "%s", kvm_geterr(kd));
-	if (kvm_read(kd, nl[4].n_value, &ncpus, sizeof(ncpus)) == -1)
+	if (kvm_read(kd, nl1[2].n_value, &ncpus, sizeof(ncpus)) == -1)
 		errx(1, "%s", kvm_geterr(kd));
 	ktr_start_index = malloc(sizeof(*ktr_start_index) * ncpus);
-	if (version >= 3 && kvm_nlist(kd, nl2) == 0) {
+	if (ktr_version >= KTR_VERSION_WITH_FREQ && kvm_nlist(kd, nl2) == 0) {
 		if (kvm_read(kd, nl2[0].n_value, &tts, sizeof(tts)) == -1)
 			errx(1, "%s", kvm_geterr(kd));
 		tsc_frequency = (double)tts;
 	}
-	if (version > KTR_VERSION)
+	if (ktr_version > KTR_VERSION)
 		errx(1, "ktr version too high for us to handle");
-	if (kvm_read(kd, nl[1].n_value, &entries_per_buf,
+	if (kvm_read(kd, nl1[1].n_value, &entries_per_buf,
 				sizeof(entries_per_buf)) == -1)
 		errx(1, "%s", kvm_geterr(kd));
 	fifo_mask = entries_per_buf - 1;
 
 	printf("TSC frequency is %6.3f MHz\n", tsc_frequency / 1000000.0);
 
-	ktr_kbuf = malloc(sizeof(*ktr_kbuf) * ncpus);
+	ktr_kbuf = calloc(ncpus, sizeof(*ktr_kbuf));
+	ktr_idx = calloc(ncpus, sizeof(*ktr_idx));
 
 	if (nflag == 0)
 		read_symbols(Nflag ? execfile : NULL);
 
-	if (kvm_read(kd, nl[3].n_value, ktr_kbuf, sizeof(*ktr_kbuf) * ncpus) == -1)
-		errx(1, "%s", kvm_geterr(kd));
+	if (ktr_version < KTR_VERSION_KTR_CPU) {
+		if (kvm_nlist(kd, nl_version_ktr_idx))
+			errx(1, "%s", kvm_geterr(kd));
+	} else {
+		if (kvm_nlist(kd, nl_version_ktr_cpu))
+			errx(1, "%s", kvm_geterr(kd));
+	}
+
+	get_indices(ktr_kbuf, ktr_idx);
 
 	ktr_bufs = ktr_bufs_init();
 
 	if (sflag) {
 		u_int64_t last_timestamp = 0;
 		do {
-			load_bufs(ktr_bufs, ktr_kbuf);
+			load_bufs(ktr_bufs, ktr_kbuf, ktr_idx);
 			print_bufs_timesorted(fo, ktr_bufs, &last_timestamp);
 			if (lflag)
 				usleep(1000000 / 10);
@@ -262,7 +281,7 @@ main(int ac, char **av)
 	} else {
 		u_int64_t *last_timestamp = calloc(sizeof(u_int64_t), ncpus);
 		do {
-			load_bufs(ktr_bufs, ktr_kbuf);
+			load_bufs(ktr_bufs, ktr_kbuf, ktr_idx);
 			for (n = 0; n < ncpus; ++n)
 				print_buf(fo, ktr_bufs, n, &last_timestamp[n]);
 			if (lflag)
@@ -519,10 +538,36 @@ ktr_bufs_init(void)
 
 static
 void
-get_indices(int *idx)
+get_indices(struct ktr_entry **ktr_kbuf, int *ktr_idx)
 {
-	if (kvm_read(kd, nl[2].n_value, idx, sizeof(*idx) * ncpus) == -1)
-		errx(1, "%s", kvm_geterr(kd));
+	static struct ktr_cpu *ktr_cpus;
+	int i;
+
+	if (ktr_cpus == NULL)
+		ktr_cpus = malloc(sizeof(*ktr_cpus) * ncpus);
+
+	if (ktr_version < KTR_VERSION_KTR_CPU) {
+		if (kvm_read(kd, nl_version_ktr_idx[0].n_value, ktr_idx,
+		    sizeof(*ktr_idx) * ncpus) == -1) {
+			errx(1, "%s", kvm_geterr(kd));
+		}
+		if (ktr_kbuf[0] == NULL) {
+			if (kvm_read(kd, nl_version_ktr_idx[1].n_value,
+			    ktr_kbuf, sizeof(*ktr_kbuf) * ncpus) == -1) {
+				errx(1, "%s", kvm_geterr(kd));
+			}
+		}
+	} else {
+		printf("2\n");
+		if (kvm_read(kd, nl_version_ktr_cpu[0].n_value,
+			     ktr_cpus, sizeof(*ktr_cpus) * ncpus) == -1) {
+				errx(1, "%s", kvm_geterr(kd));
+		}
+		for (i = 0; i < ncpus; ++i) {
+			ktr_idx[i] = ktr_cpus[i].core.ktr_idx;
+			ktr_kbuf[i] = ktr_cpus[i].core.ktr_buf;
+		}
+	}
 }
 
 /*
@@ -530,25 +575,17 @@ get_indices(int *idx)
  */
 static
 void
-load_bufs(struct ktr_buffer *ktr_bufs, struct ktr_entry **kbufs)
+load_bufs(struct ktr_buffer *ktr_bufs, struct ktr_entry **kbufs, int *ktr_idx)
 {
-	static int *kern_idx;
 	struct ktr_buffer *kbuf;
 	int i;
 
-	if (!kern_idx) {
-		kern_idx = malloc(sizeof(*kern_idx) * ncpus);
-		if (!kern_idx) {
-			err(1, "can't allocate data structures\n");
-		}
-	}
-
-	get_indices(kern_idx);
+	get_indices(kbufs, ktr_idx);
 	for (i = 0; i < ncpus; ++i) {
 		kbuf = &ktr_bufs[i];
-		if (kern_idx[i] == kbuf->end_idx)
+		if (ktr_idx[i] == kbuf->end_idx)
 			continue;
-		kbuf->end_idx = kern_idx[i];
+		kbuf->end_idx = ktr_idx[i];
 
 		/*
 		 * If we do not have a notion of the beginning index, assume
