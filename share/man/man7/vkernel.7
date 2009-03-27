@@ -75,7 +75,8 @@ option defining
 .Li vcd0 ,
 the second one
 .Li vcd1 ,
-and so on.  The first
+and so on.
+The first
 .Fl r
 or
 .Fl c
@@ -196,7 +197,8 @@ option defining
 .Li vkd0 ,
 the second one
 .Li vkd1 ,
-and so on.  The first
+and so on.
+The first
 .Fl r
 or
 .Fl c
@@ -300,8 +302,8 @@ ln -s /home/var.vkernel /var/vkernel
 .Ed
 .Pp
 Next, a filesystem image to be used by the virtual kernel has to be
-created and populated (assuming world has been built previously).  If
-the image is created on a UFS filesystem you might want to pre-zero it.
+created and populated (assuming world has been built previously).
+If the image is created on a UFS filesystem you might want to pre-zero it.
 On a HAMMER filesystem you should just truncate-extend to the image size
 as HAMMER does not re-use data blocks already present in the file.
 .Bd -literal
