@@ -876,7 +876,7 @@ sctp_endpoint_probe(struct sockaddr *nam, struct sctppcbhead *head,
 		}
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-			kprintf("Ok, found maching local port\n");
+			kprintf("Ok, found matching local port\n");
 		}
 #endif
 		LIST_FOREACH(laddr, &inp->sctp_addr_list, sctp_nxt_addr) {
