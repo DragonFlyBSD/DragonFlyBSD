@@ -19,55 +19,38 @@
  * ERIC ANHOLT BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
- * $DragonFly: src/sys/dev/drm/drm_vm.c,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
 /** @file drm_vm.c
  * Support code for mmaping of DRM maps.
  */
 
-#include "drmP.h"
-#include "drm.h"
+#include "dev/drm/drmP.h"
+#include "dev/drm/drm.h"
 
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500102
-int drm_mmap(struct cdev *kdev, vm_offset_t offset, vm_paddr_t *paddr,
-    int prot)
-#elif defined(__FreeBSD__)
-int drm_mmap(dev_t kdev, vm_offset_t offset, int prot)
-#elif defined(__NetBSD__) || defined(__OpenBSD__)
-paddr_t drm_mmap(dev_t kdev, off_t offset, int prot)
-#endif
-#ifdef __DragonFly__
 int drm_mmap(struct dev_mmap_args *ap)
 {
 	struct cdev *kdev = ap->a_head.a_dev;
 	vm_offset_t offset = ap->a_offset;
-#else
-{
-#endif
-	drm_device_t *dev = drm_get_device_from_kdev(kdev);
+	struct drm_device *dev = drm_get_device_from_kdev(kdev);
+	struct drm_file *file_priv = NULL;
 	drm_local_map_t *map;
-	drm_file_t *priv;
-	drm_map_type_t type;
-#if defined(__FreeBSD__) || defined(__DragonFly__)
+	enum drm_map_type type;
 	vm_paddr_t phys;
-#else
-	paddr_t phys;
-#endif
 
-	DRM_LOCK();
-	priv = drm_find_file_by_proc(dev, DRM_CURPROC);
-	DRM_UNLOCK();
-	if (priv == NULL) {
-		DRM_ERROR("can't find authenticator\n");
-		return EINVAL;
-	}
+        DRM_LOCK();
+        file_priv = drm_find_file_by_proc(dev, DRM_CURPROC);
+        DRM_UNLOCK();
 
-	if (!priv->authenticated)
-		return EACCES;
+        if (file_priv == NULL) {
+                DRM_ERROR("can't find authenticator\n");
+                return EINVAL;
+        }
 
-	if (dev->dma && offset >= 0 && offset < ptoa(dev->dma->page_count)) {
+        if (!file_priv->authenticated)
+                return EACCES;
+
+	if (dev->dma && offset < ptoa(dev->dma->page_count)) {
 		drm_device_dma_t *dma = dev->dma;
 
 		DRM_SPINLOCK(&dev->dma_lock);
@@ -75,23 +58,13 @@ int drm_mmap(struct dev_mmap_args *ap)
 		if (dma->pagelist != NULL) {
 			unsigned long page = offset >> PAGE_SHIFT;
 			unsigned long phys = dma->pagelist[page];
-
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500102
-			*paddr = phys;
-			DRM_SPINUNLOCK(&dev->dma_lock);
-			return 0;
-#elif defined(__DragonFly__)
 			ap->a_result = atop(phys);
 			DRM_SPINUNLOCK(&dev->dma_lock);
-			return (0);
-#else
-			return atop(phys);
-#endif
+			return 0;
 		} else {
 			DRM_SPINUNLOCK(&dev->dma_lock);
 			return -1;
 		}
-		DRM_SPINUNLOCK(&dev->dma_lock);
 	}
 
 				/* A sequential search of a linked list is
@@ -108,8 +81,14 @@ int drm_mmap(struct dev_mmap_args *ap)
 	}
 
 	if (map == NULL) {
+		DRM_DEBUG("Can't find map, requested offset = %016lx\n",
+		    (unsigned long)offset);
+		TAILQ_FOREACH(map, &dev->maplist, link) {
+			DRM_DEBUG("map offset = %016lx, handle = %016lx\n",
+			    (unsigned long)map->offset,
+			    (unsigned long)map->handle);
+		}
 		DRM_UNLOCK();
-		DRM_DEBUG("can't find map\n");
 		return -1;
 	}
 	if (((map->flags&_DRM_RESTRICTED) && !DRM_SUSER(DRM_CURPROC))) {
@@ -138,14 +117,7 @@ int drm_mmap(struct dev_mmap_args *ap)
 		return -1;	/* This should never happen. */
 	}
 
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500102
-	*paddr = phys;
-	return 0;
-#elif defined(__DragonFly__)
 	ap->a_result = atop(phys);
-	return (0);
-#else
-	return atop(phys);
-#endif
+	return 0;
 }
 

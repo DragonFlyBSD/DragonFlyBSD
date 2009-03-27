@@ -29,24 +29,15 @@
 #include "patchlevel.h"
 #include "bootpd.h"
 
-#ifdef	__STDC__
-#define P(args) args
-#else
-#define P(args) ()
-#endif
-
 #ifdef DEBUG
-static void dump_generic P((FILE *, struct shared_bindata *));
-static void dump_host P((FILE *, struct host *));
-static void list_ipaddresses P((FILE *, struct in_addr_list *));
+static void dump_generic(FILE *, struct shared_bindata *);
+static void dump_host(FILE *, struct host *);
+static void list_ipaddresses(FILE *, struct in_addr_list *);
 #endif
-
-#undef P
 
 #ifndef	DEBUG
 void
-dumptab(filename)
-	char *filename;
+dumptab(char *filename)
 {
 	report(LOG_INFO, "No dumptab support!");
 }
@@ -58,8 +49,7 @@ dumptab(filename)
  */
 
 void
-dumptab(filename)
-	char *filename;
+dumptab(char *filename)
 {
 	int n;
 	struct host *hp;
@@ -139,9 +129,7 @@ dumptab(filename)
  */
 
 static void
-dump_host(fp, hp)
-	FILE *fp;
-	struct host *hp;
+dump_host(FILE *fp, struct host *hp)
 {
 	/* Print symbols in alphabetical order for reader's convenience. */
 	if (hp) {
@@ -308,9 +296,7 @@ dump_host(fp, hp)
 
 
 static void
-dump_generic(fp, generic)
-	FILE *fp;
-	struct shared_bindata *generic;
+dump_generic(FILE *fp, struct shared_bindata *generic)
 {
 	u_char *bp = generic->data;
 	u_char *ep = bp + generic->length;
@@ -353,9 +339,7 @@ dump_generic(fp, generic)
  */
 
 static void
-list_ipaddresses(fp, ipptr)
-	FILE *fp;
-	struct in_addr_list *ipptr;
+list_ipaddresses(FILE *fp, struct in_addr_list *ipptr)
 {
 	unsigned count;
 	struct in_addr *addrptr;

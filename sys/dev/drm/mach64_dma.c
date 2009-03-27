@@ -9,7 +9,7 @@
  * \author José Fonseca <j_r_fonseca@yahoo.co.uk>
  */
 
-/*
+/*-
  * Copyright 2000 Gareth Hughes
  * Copyright 2002 Frank C. Earl
  * Copyright 2002-2003 Leif Delgass
@@ -32,14 +32,12 @@
  * THE COPYRIGHT OWNER(S) BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
- * $DragonFly: src/sys/dev/drm/mach64_dma.c,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
-#include "drmP.h"
-#include "drm.h"
-#include "mach64_drm.h"
-#include "mach64_drv.h"
+#include "dev/drm/drmP.h"
+#include "dev/drm/drm.h"
+#include "dev/drm/mach64_drm.h"
+#include "dev/drm/mach64_drv.h"
 
 /*******************************************************************/
 /** \name Engine, FIFO control */
@@ -836,8 +834,14 @@ static int mach64_bm_dma_test(struct drm_device * dev)
 
 	/* FIXME: get a dma buffer from the freelist here */
 	DRM_DEBUG("Allocating data memory ...\n");
+#if defined(__FreeBSD__) || defined(__DragonFly__)
+	DRM_UNLOCK();
+#endif
 	cpu_addr_dmah =
 	    drm_pci_alloc(dev, 0x1000, 0x1000, 0xfffffffful);
+#if defined(__FreeBSD__) || defined(__DragonFly__)
+	DRM_LOCK();
+#endif
 	if (!cpu_addr_dmah) {
 		DRM_INFO("data-memory allocation failed!\n");
 		return -ENOMEM;

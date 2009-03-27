@@ -1521,6 +1521,7 @@ dev/drm/i915_dma.c			optional i915drm drm
 dev/drm/i915_drv.c			optional i915drm drm
 dev/drm/i915_irq.c			optional i915drm drm
 dev/drm/i915_mem.c			optional i915drm drm
+dev/drm/i915_suspend.c			optional i915drm drm
 dev/drm/mach64_dma.c			optional mach64drm drm
 dev/drm/mach64_drv.c			optional mach64drm drm
 dev/drm/mach64_irq.c			optional mach64drm drm
@@ -1535,6 +1536,7 @@ dev/drm/r128_drv.c			optional r128drm drm
 dev/drm/r128_state.c			optional r128drm drm
 dev/drm/r128_irq.c			optional r128drm drm
 dev/drm/r300_cmdbuf.c			optional radeondrm drm
+dev/drm/r600_cp.c			optional radeondrm drm
 dev/drm/radeon_cp.c			optional radeondrm drm
 dev/drm/radeon_drv.c			optional radeondrm drm
 dev/drm/radeon_state.c			optional radeondrm drm

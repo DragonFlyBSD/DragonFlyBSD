@@ -23,8 +23,6 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
- *
- * $DragonFly: src/sys/dev/drm/mga_dma.c,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
 /**
@@ -37,11 +35,11 @@
  * \author Gareth Hughes <gareth@valinux.com>
  */
 
-#include "drmP.h"
-#include "drm.h"
-#include "drm_sarea.h"
-#include "mga_drm.h"
-#include "mga_drv.h"
+#include "dev/drm/drmP.h"
+#include "dev/drm/drm.h"
+#include "dev/drm/drm_sarea.h"
+#include "dev/drm/mga_drm.h"
+#include "dev/drm/mga_drv.h"
 
 #define MGA_DEFAULT_USEC_TIMEOUT	10000
 #define MGA_FREELIST_DEBUG		0
@@ -398,6 +396,7 @@ int mga_freelist_put(struct drm_device * dev, struct drm_buf * buf)
 int mga_driver_load(struct drm_device *dev, unsigned long flags)
 {
 	drm_mga_private_t *dev_priv;
+	int ret;
 
 	dev_priv = drm_alloc(sizeof(drm_mga_private_t), DRM_MEM_DRIVER);
 	if (!dev_priv)
@@ -416,6 +415,13 @@ int mga_driver_load(struct drm_device *dev, unsigned long flags)
 	dev->types[6] = _DRM_STAT_IRQ;
 	dev->types[7] = _DRM_STAT_PRIMARY;
 	dev->types[8] = _DRM_STAT_SECONDARY;
+
+	ret = drm_vblank_init(dev, 1);
+
+	if (ret) {
+		(void) mga_driver_unload(dev);
+		return ret;
+	}
 
 	return 0;
 }

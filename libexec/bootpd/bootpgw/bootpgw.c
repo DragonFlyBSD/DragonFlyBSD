@@ -91,17 +91,9 @@ SOFTWARE.
  * Externals, forward declarations, and global variables
  */
 
-#ifdef	__STDC__
-#define P(args) args
-#else
-#define P(args) ()
-#endif
-
-static void usage P((void));
-static void handle_reply P((void));
-static void handle_request P((void));
-
-#undef	P
+static void usage(void);
+static void handle_reply(void);
+static void handle_request(void);
 
 /*
  * IP port numbers for client and server obtained from /etc/services
@@ -158,9 +150,7 @@ char *hostname;
  */
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	struct timeval *timeout;
 	struct bootp *bp;
@@ -509,7 +499,7 @@ main(argc, argv)
  */
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr,
 			"usage:  bootpgw [-d level] [-i] [-s] [-t timeout] server\n");
@@ -530,7 +520,7 @@ usage()
  * Note, this just forwards the request to a real server.
  */
 static void
-handle_request()
+handle_request(void)
 {
 	struct bootp *bp = (struct bootp *) pktbuf;
 	u_short secs;
@@ -621,7 +611,7 @@ handle_request()
  * Process BOOTREPLY packet.
  */
 static void
-handle_reply()
+handle_reply(void)
 {
 	struct bootp *bp = (struct bootp *) pktbuf;
 	struct ifreq *ifr;

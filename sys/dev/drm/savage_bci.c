@@ -21,12 +21,11 @@
  * ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
- * $DragonFly: src/sys/dev/drm/savage_bci.c,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
-#include "drmP.h"
-#include "savage_drm.h"
-#include "savage_drv.h"
+
+#include "dev/drm/drmP.h"
+#include "dev/drm/savage_drm.h"
+#include "dev/drm/savage_drv.h"
 
 /* Need a long timeout for shadow status updates can take a while
  * and so can waiting for events when the queue is full. */

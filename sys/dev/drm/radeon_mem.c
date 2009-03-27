@@ -1,5 +1,5 @@
 /* radeon_mem.c -- Simple GART/fb memory manager for radeon -*- linux-c -*- */
-/*
+/*-
  * Copyright (C) The Weather Channel, Inc.  2002.  All Rights Reserved.
  *
  * The Weather Channel (TM) funded Tungsten Graphics to develop the
@@ -27,14 +27,12 @@
  *
  * Authors:
  *    Keith Whitwell <keith@tungstengraphics.com>
- *
- * $DragonFly: src/sys/dev/drm/radeon_mem.c,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
-#include "drmP.h"
-#include "drm.h"
-#include "radeon_drm.h"
-#include "radeon_drv.h"
+#include "dev/drm/drmP.h"
+#include "dev/drm/drm.h"
+#include "dev/drm/radeon_drm.h"
+#include "dev/drm/radeon_drv.h"
 
 /* Very simple allocator for GART memory, working on a static range
  * already mapped into each client's address space.
@@ -90,7 +88,7 @@ static struct mem_block *alloc_block(struct mem_block *heap, int size,
 
 	list_for_each(p, heap) {
 		int start = (p->start + mask) & ~mask;
-		if (p->file_priv == 0 && start + size <= p->start + p->size)
+		if (p->file_priv == NULL && start + size <= p->start + p->size)
 			return split_block(p, start, size, file_priv);
 	}
 
@@ -115,7 +113,7 @@ static void free_block(struct mem_block *p)
 	/* Assumes a single contiguous range.  Needs a special file_priv in
 	 * 'heap' to stop it being subsumed.
 	 */
-	if (p->next->file_priv == 0) {
+	if (p->next->file_priv == NULL) {
 		struct mem_block *q = p->next;
 		p->size += q->size;
 		p->next = q->next;
@@ -123,7 +121,7 @@ static void free_block(struct mem_block *p)
 		drm_free(q, sizeof(*q), DRM_MEM_BUFS);
 	}
 
-	if (p->prev->file_priv == 0) {
+	if (p->prev->file_priv == NULL) {
 		struct mem_block *q = p->prev;
 		q->size += p->size;
 		q->next = p->next;
@@ -176,7 +174,7 @@ void radeon_mem_release(struct drm_file *file_priv, struct mem_block *heap)
 	 * 'heap' to stop it being subsumed.
 	 */
 	list_for_each(p, heap) {
-		while (p->file_priv == 0 && p->next->file_priv == 0) {
+		while (p->file_priv == NULL && p->next->file_priv == NULL) {
 			struct mem_block *q = p->next;
 			p->size += q->size;
 			p->next = q->next;

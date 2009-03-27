@@ -82,7 +82,9 @@ static int s = -1; 	/* routing socket */
 /*
  * Open the routing socket
  */
-static void getsocket () {
+static void
+getsocket(void)
+{
 	if (s < 0) {
 		s = socket(PF_ROUTE, SOCK_RAW, 0);
 		if (s < 0) {
@@ -116,14 +118,12 @@ static struct	{
 /*
  * Set an individual arp entry
  */
-int bsd_arp_set(ia, eaddr, len)
-	struct in_addr *ia;
-	char *eaddr;
-	int len;
+int
+bsd_arp_set(struct in_addr *ia, char *eaddr, int len)
 {
-	register struct sockaddr_inarp *sin = &sin_m;
-	register struct sockaddr_dl *sdl;
-	register struct rt_msghdr *rtm = &(m_rtmsg.m_rtm);
+	struct sockaddr_inarp *sin = &sin_m;
+	struct sockaddr_dl *sdl;
+	struct rt_msghdr *rtm = &(m_rtmsg.m_rtm);
 	u_char *ea;
 	struct timeval time;
 	int op = RTM_ADD;
@@ -185,14 +185,14 @@ overwrite:
 }
 
 
-static int rtmsg(cmd)
-	int cmd;
+static int
+rtmsg(int cmd)
 {
 	static int seq;
 	int rlen;
-	register struct rt_msghdr *rtm = &m_rtmsg.m_rtm;
-	register char *cp = m_rtmsg.m_space;
-	register int l;
+	struct rt_msghdr *rtm = &m_rtmsg.m_rtm;
+	char *cp = m_rtmsg.m_space;
+	int l;
 
 	errno = 0;
 	bzero((char *)&m_rtmsg, sizeof(m_rtmsg));

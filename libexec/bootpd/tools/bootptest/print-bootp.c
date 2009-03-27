@@ -54,10 +54,7 @@ static void dump_hex();
  * Print bootp requests
  */
 void
-bootp_print(bp, length, sport, dport)
-	struct bootp *bp;
-	int length;
-	u_short sport, dport;
+bootp_print(struct bootp *bp, int length, u_short sport, u_short dport)
 {
 	static char tstr[] = " [|bootp]";
 	static unsigned char vm_cmu[4] = VM_CMU;
@@ -102,8 +99,8 @@ bootp_print(bp, length, sport, dport)
 
 	/* Client's Hardware address */
 	if (bp->bp_hlen) {
-		register struct ether_header *eh;
-		register char *e;
+		struct ether_header *eh;
+		char *e;
 
 		TCHECK(bp->bp_chaddr[0], 6);
 		eh = (struct ether_header *) packetp;
@@ -275,13 +272,11 @@ rfc1048_opts[] = {
 #define	KNOWN_OPTIONS (sizeof(rfc1048_opts) / sizeof(rfc1048_opts[0]))
 
 static void
-rfc1048_print(bp, length)
-	register u_char *bp;
-	int length;
+rfc1048_print(u_char *bp, int length)
 {
 	u_char tag;
 	u_char *ep;
-	register int len;
+	int len;
 	u_int32 ul;
 	u_short us;
 	struct in_addr ia;
@@ -377,9 +372,7 @@ rfc1048_print(bp, length)
 }
 
 static void
-cmu_print(bp, length)
-	register u_char *bp;
-	int length;
+cmu_print(u_char *bp, int length)
 {
 	struct cmu_vend *v;
 	u_char *ep;
@@ -428,9 +421,7 @@ cmu_print(bp, length)
  */
 
 static void
-other_print(bp, length)
-	register u_char *bp;
-	int length;
+other_print(u_char *bp, int length)
 {
 	u_char *ep;					/* end pointer */
 	u_char *zp;					/* points one past last non-zero byte */
@@ -468,9 +459,7 @@ other_print(bp, length)
 }
 
 static void
-dump_hex(bp, len)
-	u_char *bp;
-	int len;
+dump_hex(u_char *bp, int len)
 {
 	while (len > 0) {
 		printf("%02X", *bp);

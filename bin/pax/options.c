@@ -188,7 +188,7 @@ pax_options(int argc, char **argv)
 	/*
 	 * process option flags
 	 */
-	while ((c=getopt(argc,argv,"ab:cdf:iklno:p:rs:tuvwx:zB:DE:G:HLPT:U:XYZ"))
+	while ((c=getopt(argc,argv,"ab:cdf:iklno:p:rs:tuvwx:zB:DE:G:HLOPT:U:XYZ"))
 	    != -1) {
 		switch (c) {
 		case 'a':
@@ -440,6 +440,12 @@ pax_options(int argc, char **argv)
 			 */
 			Lflag = 1;
 			flg |= CLF;
+			break;
+		case 'O':
+			/*
+			 * Force one volume.  Non standard option.
+			 */
+			force_one_volume = 1;
 			break;
 		case 'P':
 			/*
