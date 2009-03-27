@@ -90,16 +90,8 @@ SOFTWARE.
  * Externals, forward declarations, and global variables
  */
 
-#ifdef	__STDC__
-#define P(args) args
-#else
-#define P(args) ()
-#endif
-
-static void mktagfile P((struct host *));
-static void usage P((void));
-
-#undef P
+static void mktagfile(struct host *);
+static void usage(void);
 
 
 /*
@@ -122,7 +114,7 @@ char *bootptab = CONFIG_FILE;
  * Print "usage" message and exit
  */
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr,
 	   "usage:  $s [ -c chdir ] [-d level] [-f configfile] [host...]\n");
@@ -138,9 +130,7 @@ usage()
  * main server loop is started.
  */
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	struct host *hp;
 	char *stmp;
@@ -284,8 +274,7 @@ main(argc, argv)
  */
 
 static void
-mktagfile(hp)
-	struct host *hp;
+mktagfile(struct host *hp)
 {
 	FILE *fp;
 	int bytesleft, len;

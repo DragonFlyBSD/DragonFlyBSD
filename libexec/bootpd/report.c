@@ -38,8 +38,7 @@ extern char *progname;
 static int stderr_only = 1;
 
 void
-report_init(nolog)
-	int nolog;
+report_init(int nolog)
 {
 	stderr_only = nolog;
 #ifdef SYSLOG
@@ -138,7 +137,7 @@ report(priority, fmt, va_alist)
  * Return pointer to static string which gives full filesystem error message.
  */
 const char *
-get_errmsg()
+get_errmsg(void)
 {
 	return strerror(errno);
 }

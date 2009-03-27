@@ -39,11 +39,14 @@ static struct ifconf ifconf;	/* points to ifreq */
 
 static int nmatch();
 
-/* Return a pointer to the interface struct for the passed address. */
+/*
+ * Return a pointer to the interface struct for the passed address.
+ *
+ * s      socket file descriptor
+ * addrp  destination address on interface
+ */
 struct ifreq *
-getif(s, addrp)
-	int s;						/* socket file descriptor */
-	struct in_addr *addrp;		/* destination address on interface */
+getif(int s, struct in_addr *addrp)
 {
 	int maxmatch;
 	int len, m, incr;
@@ -109,10 +112,11 @@ getif(s, addrp)
 /*
  * Return the number of leading bits matching in the
  * internet addresses supplied.
+ *
+ * ca, cb  ptrs to IP address, network order
  */
 static int
-nmatch(ca, cb)
-	u_char *ca, *cb;			/* ptrs to IP address, network order */
+nmatch(u_char *ca, u_char *cb)
 {
 	u_int m = 0;				/* count of matching bits */
 	u_int n = 4;				/* bytes left, then bitmask */
