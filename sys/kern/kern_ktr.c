@@ -517,7 +517,7 @@ DB_SHOW_COMMAND(ktr, db_ktr_all)
 
 	for(i = 0; i < ncpus; i++) {
 		tstate[i].first = -1;
-		tstate[i].cur = ktr_idx[i] & KTR_ENTRIES_MASK;
+		tstate[i].cur = (ktr_idx[i] - 1) & KTR_ENTRIES_MASK;
 	}
 	db_ktr_verbose = 0;
 	while ((c = *(modif++)) != '\0') {
@@ -581,8 +581,11 @@ DB_SHOW_COMMAND(ktr, db_ktr_all)
 				highest_cpu = i;
 			}
 		}
+		if (highest_cpu < 0) {
+			db_printf("no KTR data available\n");
+			break;
+		}
 		i = highest_cpu;
-		KKASSERT(i != -1);
 		kp = &ktr_buf[i][tstate[i].cur];
 		if (tstate[i].first == -1)
 			tstate[i].first = tstate[i].cur;
