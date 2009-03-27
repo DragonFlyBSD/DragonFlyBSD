@@ -62,11 +62,9 @@ main(void)
 }
 
 static void
-get(bp, len)
-	char *bp;
-	register int len;
+get(char *bp, int len)
 {
-	register int nr;
+	int nr;
 
 	bp[len] = '\0';
 	if ((nr = read(STDIN_FILENO, bp, len)) == len)
