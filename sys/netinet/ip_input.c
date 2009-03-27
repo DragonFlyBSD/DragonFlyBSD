@@ -1789,7 +1789,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 {
 	struct ip *ip = mtod(m, struct ip *);
 	struct rtentry *rt;
-	struct route ro;
+	struct route fwd_ro;
 	int error, type = 0, code = 0, destmtu = 0;
 	struct mbuf *mcopy;
 	n_long dest;
@@ -1818,13 +1818,13 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		return;
 	}
 
-	bzero(&ro, sizeof(ro));
-	ip_rtaddr(pkt_dst, &ro);
-	if (ro.ro_rt == NULL) {
+	bzero(&fwd_ro, sizeof(fwd_ro));
+	ip_rtaddr(pkt_dst, &fwd_ro);
+	if (fwd_ro.ro_rt == NULL) {
 		icmp_error(m, ICMP_UNREACH, ICMP_UNREACH_HOST, dest, 0);
 		return;
 	}
-	rt = ro.ro_rt;
+	rt = fwd_ro.ro_rt;
 
 	/*
 	 * Save the IP header and at most 8 bytes of the payload,
@@ -1897,12 +1897,12 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		}
 	}
 
-	error = ip_output(m, NULL, &ro, IP_FORWARDING, NULL, NULL);
+	error = ip_output(m, NULL, &fwd_ro, IP_FORWARDING, NULL, NULL);
 	if (error == 0) {
 		ipstat.ips_forward++;
 		if (type == 0) {
 			if (mcopy) {
-				ipflow_create(&ro, mcopy);
+				ipflow_create(&fwd_ro, mcopy);
 				m_freem(mcopy);
 			}
 			goto done;
@@ -1945,7 +1945,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		 *	tunnel MTU = if MTU - sizeof(IP) - ESP/AH hdrsiz
 		 * XXX quickhack!!!
 		 */
-		if (ro.ro_rt != NULL) {
+		if (fwd_ro.ro_rt != NULL) {
 			struct secpolicy *sp = NULL;
 			int ipsecerror;
 			int ipsechdr;
@@ -1957,7 +1957,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 						    &ipsecerror);
 
 			if (sp == NULL)
-				destmtu = ro.ro_rt->rt_ifp->if_mtu;
+				destmtu = fwd_ro.ro_rt->rt_ifp->if_mtu;
 			else {
 				/* count IPsec header size */
 				ipsechdr = ipsec4_hdrsiz(mcopy,
@@ -1990,7 +1990,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 		 *	tunnel MTU = if MTU - sizeof(IP) - ESP/AH hdrsiz
 		 * XXX quickhack!!!
 		 */
-		if (ro.ro_rt != NULL) {
+		if (fwd_ro.ro_rt != NULL) {
 			struct secpolicy *sp = NULL;
 			int ipsecerror;
 			int ipsechdr;
@@ -2002,7 +2002,7 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 						   &ipsecerror);
 
 			if (sp == NULL)
-				destmtu = ro.ro_rt->rt_ifp->if_mtu;
+				destmtu = fwd_ro.ro_rt->rt_ifp->if_mtu;
 			else {
 				/* count IPsec header size */
 				ipsechdr = ipsec4_hdrsiz(mcopy,
@@ -2030,8 +2030,8 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 			}
 		}
 #else /* !IPSEC && !FAST_IPSEC */
-		if (ro.ro_rt != NULL)
-			destmtu = ro.ro_rt->rt_ifp->if_mtu;
+		if (fwd_ro.ro_rt != NULL)
+			destmtu = fwd_ro.ro_rt->rt_ifp->if_mtu;
 #endif /*IPSEC*/
 		ipstat.ips_cantfrag++;
 		break;
@@ -2060,8 +2060,8 @@ ip_forward(struct mbuf *m, boolean_t using_srcrt, struct sockaddr_in *next_hop)
 	}
 	icmp_error(mcopy, type, code, dest, destmtu);
 done:
-	if (ro.ro_rt != NULL)
-		RTFREE(ro.ro_rt);
+	if (fwd_ro.ro_rt != NULL)
+		RTFREE(fwd_ro.ro_rt);
 }
 
 void
