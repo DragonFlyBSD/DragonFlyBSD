@@ -109,6 +109,13 @@ static int			ipflow_inuse_pcpu[MAXCPU];
 static struct netmsg		ipflow_timo_netmsgs[MAXCPU];
 static int			ipflow_active = 0;
 
+#define IPFLOW_REFCNT_INIT	1
+
+/* ipflow is alive and active */
+#define IPFLOW_IS_ACTIVE(ipf)	((ipf)->ipf_refcnt > IPFLOW_REFCNT_INIT)
+/* ipflow is alive but not active */
+#define IPFLOW_NOT_ACTIVE(ipf)	((ipf)->ipf_refcnt == IPFLOW_REFCNT_INIT)
+
 #define IPFLOW_REF(ipf) \
 do { \
 	KKASSERT((ipf)->ipf_refcnt > 0); \
@@ -352,7 +359,7 @@ ipflow_reap(void)
 		/*
 		 * Skip actively used ipflow
 		 */
-		if (ipf->ipf_refcnt > 1)
+		if (IPFLOW_IS_ACTIVE(ipf))
 			continue;
 
 		/*
@@ -471,22 +478,22 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 				      M_NOWAIT | M_ZERO);
 			if (ipf == NULL)
 				return;
-			ipf->ipf_refcnt = 1;
+			ipf->ipf_refcnt = IPFLOW_REFCNT_INIT;
 
 			ipflow_inuse++;
 		}
 	} else {
-		if (ipf->ipf_refcnt == 1) {
+		if (IPFLOW_NOT_ACTIVE(ipf)) {
 			IPFLOW_REMOVE(ipf);
 			ipflow_reset(ipf);
 		} else {
 			/* This ipflow is being used; don't change it */
-			KKASSERT(ipf->ipf_refcnt > 1);
+			KKASSERT(IPFLOW_IS_ACTIVE(ipf));
 			return;
 		}
 	}
 	/* This ipflow should not be actively used */
-	KKASSERT(ipf->ipf_refcnt == 1);
+	KKASSERT(IPFLOW_NOT_ACTIVE(ipf));
 
 	/*
 	 * Fill in the updated information.
