@@ -48,6 +48,7 @@ struct route;
 int	ipflow_fastforward(struct mbuf *);
 void	ipflow_create(const struct route *, struct mbuf *);
 void	ipflow_slowtimo(void);
+void	ipflow_flush_oncpu(void);
 
 #endif	/* _KERNEL */
 

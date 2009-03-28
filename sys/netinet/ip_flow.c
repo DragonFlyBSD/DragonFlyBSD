@@ -499,6 +499,17 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 	IPFLOW_INSERT(&ipflowtable[hash], ipf);
 }
 
+void
+ipflow_flush_oncpu(void)
+{
+	struct ipflow *ipf;
+
+	while ((ipf = LIST_FIRST(&ipflowlist)) != NULL) {
+		IPFLOW_REMOVE(ipf);
+		IPFLOW_FREE(ipf);
+	}
+}
+
 static void
 ipflow_init(void)
 {
