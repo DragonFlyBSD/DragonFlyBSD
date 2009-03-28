@@ -1060,3 +1060,5 @@ TO_REMOVE+=/usr/share/vi/tcl
 TO_REMOVE+=/usr/sbin/iwicontrol
 TO_REMOVE+=/usr/share/man/man8/iwicontrol.8.gz
 TO_REMOVE+=/usr/share/man/cat8/iwicontrol.8.gz
+TO_REMOVE+=/usr/share/man/man9/objcache_reclaim_list.9.gz
+TO_REMOVE+=/usr/share/man/cat9/objcache_reclaim_list.9.gz

@@ -45,7 +45,7 @@
 .Nm objcache_nop_free ,
 .\" .Nm objcache_populate_linear ,
 .Nm objcache_put ,
-.Nm objcache_reclaim_list
+.Nm objcache_reclaimlist
 .Nd "object caching facility"
 .Sh SYNOPSIS
 .In sys/objcache.h
@@ -97,7 +97,7 @@
 .Ft void
 .Fn objcache_put "struct objcache *oc" "void *obj"
 .Ft boolean_t
-.Fn objcache_reclaim_list "struct objcache *oc[]" "int nlist" "int ocflags"
+.Fn objcache_reclaimlist "struct objcache *oc[]" "int nlist" "int ocflags"
 .Sh DESCRIPTION
 Object caching is a technique for manipulating objects that are frequently
 allocated and freed.

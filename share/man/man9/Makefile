@@ -483,7 +483,7 @@ MLINKS+=objcache.9 objcache_create.9 \
 	objcache.9 objcache_nop_alloc.9 \
 	objcache.9 objcache_nop_free.9 \
 	objcache.9 objcache_put.9 \
-	objcache.9 objcache_reclaim_list.9
+	objcache.9 objcache_reclaimlist.9
 MLINKS+=pci.9 pci_disable_busmaster.9 \
 	pci.9 pci_disable_io.9 \
 	pci.9 pci_enable_busmaster.9 \
