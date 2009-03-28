@@ -133,6 +133,9 @@ CFLAGS+=	-include ${BUILDING_WITH_KERNEL}/opt_global.h
 .endif
 
 CFLAGS+=	${DEBUG_FLAGS}
+.if ${MACHINE_ARCH} == amd64
+CFLAGS+=	-fno-omit-frame-pointer
+.endif
 
 .include <bsd.patch.mk>
 

@@ -687,9 +687,12 @@ quickkernel:	maybe_bk_tools bk_build_list bk_kernwarn
 # Install the kernel defined by INSTALLKERNEL
 #
 installkernel reinstallkernel:
-.if exists(${KRNLOBJDIR}/${_kernel}/.buildkernel_run)
+	@echo "--------------------------------------------------------------"
+	@echo ">>> Kernel install for ${INSTALLKERNEL} started on `LC_ALL=C date`"
+	@echo "--------------------------------------------------------------"
+.if exists(${KRNLOBJDIR}/${INSTALLKERNEL}/.buildkernel_run)
 	cd ${KRNLOBJDIR}/${INSTALLKERNEL}; \
-	    ${CROSSENV} ${MAKE} KERNEL=${INSTKERNNAME} ${.TARGET:S/kernel$//}
+	    ${IMAKEENV} ${MAKE} KERNEL=${INSTKERNNAME} ${.TARGET:S/kernel$//}
 .else
 	cd ${KRNLOBJDIR}/${INSTALLKERNEL}; \
 	    ${MAKE} KERNEL=${INSTKERNNAME} ${.TARGET:S/kernel$//}

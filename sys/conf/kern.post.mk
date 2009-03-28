@@ -70,7 +70,8 @@ assym.s: $S/kern/genassym.sh genassym.o
 	sh $S/kern/genassym.sh genassym.o > ${.TARGET}
 
 genassym.o: $S/platform/$P/$M/genassym.c ${FORWARD_HEADERS_COOKIE}
-	${CC} -c ${CFLAGS:N-fno-common} $S/platform/$P/$M/genassym.c
+	${CC} -c ${CFLAGS:N-fno-common:N-mcmodel=small} \
+	$S/platform/$P/$M/genassym.c
 
 ${SYSTEM_OBJS} genassym.o vers.o: opt_global.h
 
