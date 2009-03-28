@@ -50,6 +50,7 @@
 #include <machine/smp.h>
 
 #include <net/if.h>
+#include <net/if_var.h>
 #include <net/route.h>
 #include <net/netisr.h>
 #include <net/netmsg2.h>
@@ -68,6 +69,11 @@
 #define IPFLOW_RTENTRY_ISDOWN(rt) \
 	(((rt)->rt_flags & RTF_UP) == 0 || \
 	 ((rt)->rt_ifp->if_flags & IFF_UP) == 0)
+
+struct netmsg_ipfaddr {
+	struct netmsg	ipf_nmsg;
+	struct in_addr	ipf_addr;
+};
 
 struct ipflow {
 	LIST_ENTRY(ipflow) ipf_hash;	/* next ipflow in hash bucket */
@@ -511,6 +517,48 @@ ipflow_flush_oncpu(void)
 }
 
 static void
+ipflow_ifaddr_handler(struct netmsg *nmsg)
+{
+	struct netmsg_ipfaddr *amsg = (struct netmsg_ipfaddr *)nmsg;
+	struct ipflow *ipf, *next_ipf;
+
+	LIST_FOREACH_MUTABLE(ipf, &ipflowlist, ipf_list, next_ipf) {
+		if (ipf->ipf_dst.s_addr == amsg->ipf_addr.s_addr ||
+		    ipf->ipf_src.s_addr == amsg->ipf_addr.s_addr) {
+			IPFLOW_REMOVE(ipf);
+			IPFLOW_FREE(ipf);
+		}
+	}
+	ifnet_forwardmsg(&nmsg->nm_lmsg, mycpuid + 1);
+}
+
+static void
+ipflow_ifaddr(void *arg __unused, struct ifnet *ifp __unused,
+	      enum ifaddr_event event, struct ifaddr *ifa)
+{
+	struct netmsg_ipfaddr amsg;
+
+	if (ifa->ifa_addr->sa_family != AF_INET)
+		return;
+
+	/* Only add/change events need to be handled */
+	switch (event) {
+	case IFADDR_EVENT_ADD:
+	case IFADDR_EVENT_CHANGE:
+		break;
+
+	case IFADDR_EVENT_DELETE:
+		return;
+	}
+
+	netmsg_init(&amsg.ipf_nmsg, &curthread->td_msgport, MSGF_PRIORITY,
+		    ipflow_ifaddr_handler);
+	amsg.ipf_addr = ifatoia(ifa)->ia_addr.sin_addr;
+
+	ifnet_domsg(&amsg.ipf_nmsg.nm_lmsg, 0);
+}
+
+static void
 ipflow_init(void)
 {
 	char oid_name[32];
@@ -527,5 +575,7 @@ ipflow_init(void)
 		OID_AUTO, oid_name, CTLFLAG_RD, &ipflow_inuse_pcpu[i], 0,
 		"# of ip flow being used");
 	}
+	EVENTHANDLER_REGISTER(ifaddr_event, ipflow_ifaddr, NULL,
+			      EVENTHANDLER_PRI_ANY);
 }
 SYSINIT(arp, SI_SUB_PROTO_DOMAIN, SI_ORDER_ANY, ipflow_init, 0);
