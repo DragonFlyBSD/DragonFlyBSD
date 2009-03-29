@@ -6,7 +6,6 @@
 
 SRCDIR ?= /usr/src
 QEMU ?= qemu-0.10.1
-QEMU_PATCH ?= qemu-0.10.0
 ROOTSIZE ?= 512M
 
 all: help
@@ -29,7 +28,7 @@ help:
 #
 clean: check
 	rm -rf ${QEMUDIR}/${QEMU}.tar.gz ${QEMUDIR}/${QEMU} \
-		${QEMUDIR}/${QEMU_PATCH}-dragonfly.patch \
+		${QEMUDIR}/${QEMU}-dragonfly.patch \
 		${QEMUDIR}/root.img ${QEMUDIR}/root
 
 # Build qemu for Intel 32 and 64 bit environments
@@ -45,13 +44,13 @@ qemu: checkq
 	cd ${QEMUDIR} && \
 	    fetch http://download.savannah.gnu.org/releases/qemu/${QEMU}.tar.gz
 .endif
-.if !exists(${QEMUDIR}/${QEMU_PATCH}-dragonfly.patch)
+.if !exists(${QEMUDIR}/${QEMU}-dragonfly.patch)
 	cd ${QEMUDIR} && \
-	    fetch http://leaf.dragonflybsd.org/~hasso/${QEMU_PATCH}-dragonfly.patch
+	    fetch http://pkgbox.dragonflybsd.org/patches/${QEMU}-dragonfly.patch
 .endif
 	rm -rf ${QEMUDIR}/${QEMU}
 	cd ${QEMUDIR} && tar xvzpf ${QEMU}.tar.gz
-	cd ${QEMUDIR}/${QEMU} && patch -p1 < ${QEMUDIR}/${QEMU_PATCH}-dragonfly.patch
+	cd ${QEMUDIR}/${QEMU} && patch -p1 < ${QEMUDIR}/${QEMU}-dragonfly.patch
 	cd ${QEMUDIR}/${QEMU} &&  \
 	    ./configure --disable-sdl \
 			--disable-gfx-check \
@@ -146,10 +145,11 @@ reinstall64: mount
 # (check does this for us)
 #
 run: check
-	cd ${QEMUDIR} && qemu-system-x86_64 -curses -hda ${QEMUDIR}/root.img
+	cd ${QEMUDIR} && qemu-system-x86_64 -curses -hda ${QEMUDIR}/root.img \
+					    -m 128 -no-fd-bootchk
 
 rungdb: check
-	@echo "run with:  run -curses -hda root.img"
+	@echo "RUN WITH:  run -curses -hda root.img"
 	cd ${QEMUDIR} && gdb qemu-system-x86_64
 
 
