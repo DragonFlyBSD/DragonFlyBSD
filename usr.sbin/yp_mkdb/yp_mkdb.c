@@ -331,8 +331,8 @@ doclear:
 		char *out = NULL;
 		int stat;
 		if ((stat = callrpc("localhost",YPPROG,YPVERS,YPPROC_CLEAR,
-			xdr_void, (void *)&in,
-			xdr_void, (void *)out)) != RPC_SUCCESS) {
+			(xdrproc_t)xdr_void, (void *)&in,
+			(xdrproc_t)xdr_void, (void *)out)) != RPC_SUCCESS) {
 			warnx("failed to send 'clear' to local ypserv: %s",
 				clnt_sperrno((enum clnt_stat) stat));
 		}
