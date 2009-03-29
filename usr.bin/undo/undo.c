@@ -70,12 +70,15 @@ enum undo_cmd { CMD_DUMP, CMD_ITERATEALL };
 
 #define UNDO_FLAG_MULT		0x0001
 #define UNDO_FLAG_INOCHG	0x0002
+#define UNDO_FLAG_SETTID1	0x0004
+#define UNDO_FLAG_SETTID2	0x0008
 
 static int undo_hist_entry_compare(struct undo_hist_entry *he1,
 		    struct undo_hist_entry *he2);
 static void doiterate(const char *filename, const char *outFileName,
 		   const char *outFilePostfix, int flags,
 		   struct hammer_ioc_hist_entry ts1,
+		   struct hammer_ioc_hist_entry ts2,
 		   enum undo_cmd cmd, enum undo_type type);
 static void dogenerate(const char *filename, const char *outFileName,
 		   const char *outFilePostfix,
@@ -87,7 +90,8 @@ static void collect_history(int fd, int *error,
 static void collect_dir_history(const char *filename, int *error,
 		   struct undo_hist_entry_rb_tree *dir_tree);
 static void clean_tree(struct undo_hist_entry_rb_tree *tree);
-static hammer_tid_t parse_delta_time(const char *timeStr);
+static hammer_tid_t parse_delta_time(const char *timeStr, int *flags,
+		   int ind_flag);
 static void runcmd(int fd, const char *cmd, ...);
 static char *timestamp(hammer_ioc_hist_entry_t hen);
 static void usage(void);
@@ -108,6 +112,7 @@ main(int ac, char **av)
 	struct hammer_ioc_hist_entry ts1;
 	struct hammer_ioc_hist_entry ts2;
 	int c;
+	int count_t;
 	int flags;
 
 	bzero(&ts1, sizeof(ts1));
@@ -115,17 +120,15 @@ main(int ac, char **av)
 
 	cmd = CMD_DUMP;
 	type = TYPE_FILE;
+	count_t = 0;
+	flags = 0;
 
 	while ((c = getopt(ac, av, "adDiuvo:t:")) != -1) {
 		switch(c) {
 		case 'd':
-			if (type != TYPE_FILE)
-				usage();
 			type = TYPE_DIFF;
 			break;
 		case 'D':
-			if (type != TYPE_FILE)
-				usage();
 			type = TYPE_RDIFF;
 			break;
 		case 'i':
@@ -147,12 +150,22 @@ main(int ac, char **av)
 			outFileName = optarg;
 			break;
 		case 't':
-			if (ts1.tid && ts2.tid)
+			/*
+			 * Parse one or two -t options.  If two are specified
+			 * -d is implied (but may be overridden)
+			 */
+			++count_t;
+			if (count_t == 1) {
+				ts1.tid = parse_delta_time(optarg, &flags,
+				                           UNDO_FLAG_SETTID1);
+			} else if (count_t == 2) {
+				ts2.tid = parse_delta_time(optarg, &flags,
+				                           UNDO_FLAG_SETTID2);
+				if (type == TYPE_FILE)
+					type = TYPE_DIFF;
+			} else {
 				usage();
-			else if (ts1.tid == 0)
-				ts1.tid = parse_delta_time(optarg);
-			else
-				ts2.tid = parse_delta_time(optarg);
+			}
 			break;
 		default:
 			usage();
@@ -171,7 +184,6 @@ main(int ac, char **av)
 
 	ac -= optind;
 	av += optind;
-	flags = 0;
 	if (ac > 1)
 		flags |= UNDO_FLAG_MULT;
 
@@ -205,7 +217,7 @@ main(int ac, char **av)
 
 	while (ac) {
 		doiterate(*av, outFileName, outFilePostfix,
-			  flags, ts1, cmd, type);
+			  flags, ts1, ts2, cmd, type);
 		++av;
 		--ac;
 	}
@@ -214,8 +226,8 @@ main(int ac, char **av)
 
 /*
  * Iterate through a file's history.  If cmd == CMD_DUMP we take the
- * next-to-last transaction id.  Otherwise if cmd == CMD_ITERATEALL
- * we scan all transaction ids.
+ * next-to-last transaction id, unless another given.  Otherwise if
+ * cmd == CMD_ITERATEALL we scan all transaction ids.
  *
  * Also iterate through the directory's history to locate other inodes that
  * used the particular file name.
@@ -225,13 +237,14 @@ void
 doiterate(const char *filename, const char *outFileName,
 	  const char *outFilePostfix, int flags,
 	  struct hammer_ioc_hist_entry ts1,
+	  struct hammer_ioc_hist_entry ts2,
 	  enum undo_cmd cmd, enum undo_type type)
 {
 	struct undo_hist_entry_rb_tree dir_tree;
 	struct undo_hist_entry_rb_tree tse_tree;
 	struct undo_hist_entry *tse1;
 	struct undo_hist_entry *tse2;
-	struct hammer_ioc_hist_entry ts2, tid_max;
+	struct hammer_ioc_hist_entry tid_max;
 	char *path = NULL;
 	int i;
 	int fd;
@@ -256,15 +269,43 @@ doiterate(const char *filename, const char *outFileName,
 		}
 	}
 	if (cmd == CMD_DUMP) {
-		/*
-		 * Single entry, most recent prior to current
-		 */
-		if (ts1.tid == 0 && RB_EMPTY(&tse_tree)) {
+		if ((ts1.tid == 0 ||
+		     flags & (UNDO_FLAG_SETTID1|UNDO_FLAG_SETTID2)) &&
+		    RB_EMPTY(&tse_tree)) {
 			if ((fd = open(filename, O_RDONLY)) > 0) {
 				collect_history(fd, &error, &tse_tree);
 				close(fd);
 			}
 		}
+		/*
+		 * Find entry if tid set to placeholder index
+		 */
+		if (flags & UNDO_FLAG_SETTID1){
+			tse1 = RB_MAX(undo_hist_entry_rb_tree, &tse_tree);
+			while (tse1 && ts1.tid--) {
+				tse1 = RB_PREV(undo_hist_entry_rb_tree,
+					       &tse_tree, tse1);
+			}
+			if (tse1)
+				ts1 = tse1->tse;
+			else
+				ts1.tid = 0;
+		}
+		if (flags & UNDO_FLAG_SETTID2){
+			tse2 = RB_MAX(undo_hist_entry_rb_tree, &tse_tree);
+			while (tse2 && ts2.tid--) {
+				tse2 = RB_PREV(undo_hist_entry_rb_tree,
+					       &tse_tree, tse2);
+			}
+			if (tse2)
+				ts2 = tse2->tse;
+			else
+				ts2.tid = 0;
+		}
+
+		/*
+		 * Single entry, most recent prior to current
+		 */
 		if (ts1.tid == 0) {
 			tse2 = RB_MAX(undo_hist_entry_rb_tree, &tse_tree);
 			if (tse2) {
@@ -582,11 +623,15 @@ collect_dir_history(const char *filename, int *errorp,
 
 static
 hammer_tid_t
-parse_delta_time(const char *timeStr)
+parse_delta_time(const char *timeStr, int *flags, int ind_flag)
 {
 	hammer_tid_t tid;
 
 	tid = strtoull(timeStr, NULL, 0);
+	if (timeStr[0] == '+')
+		++timeStr;
+	if (timeStr[0] >= '0' && timeStr[0] <= '9' && timeStr[1] != 'x')
+		*flags |= ind_flag;
 	return(tid);
 }
 
@@ -668,7 +713,11 @@ usage(void)
 			"    -v       Verbose\n"
 			"    -o file  Output to the specified file\n"
 			"    -t TID   Retrieve as of transaction-id, TID\n"
-			"             (a second `-t TID' to diff two versions)\n");
+			"             (a second `-t TID' to diff two)\n"
+			"    transaction ids must be prefixed with 0x, and\n"
+			"    otherwise may specify an index starting at 0\n"
+			"    and iterating backwards through the history.\n"
+	);
 	exit(1);
 }
 
