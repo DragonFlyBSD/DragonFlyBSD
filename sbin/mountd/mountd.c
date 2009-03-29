@@ -264,7 +264,7 @@ main(int argc, char **argv)
 	struct vfsconf vfc;
 
 	udp6conf = tcp6conf = NULL;
-	udp6sock = tcp6sock = NULL;
+	udp6sock = tcp6sock = 0;
 
 	/* Check that another mountd isn't already running. */
 	if ((mountdlockfd = (open(MOUNTDLOCK, O_RDONLY|O_CREAT, 0444))) == -1)
@@ -540,7 +540,7 @@ mntsrv(struct svc_req *rqstp, SVCXPRT *transp)
 	ai = NULL;
 	switch (rqstp->rq_proc) {
 	case NULLPROC:
-		if (!svc_sendreply(transp, xdr_void, (caddr_t)NULL))
+		if (!svc_sendreply(transp, (xdrproc_t)xdr_void, NULL))
 			syslog(LOG_ERR, "can't send reply");
 		return;
 	case RPCMNT_MOUNT:
@@ -551,7 +551,7 @@ mntsrv(struct svc_req *rqstp, SVCXPRT *transp)
 			svcerr_weakauth(transp);
 			return;
 		}
-		if (!svc_getargs(transp, xdr_dir, rpcpath)) {
+		if (!svc_getargs(transp, (xdrproc_t)xdr_dir, rpcpath)) {
 			syslog(LOG_NOTICE, "undecodable mount request from %s",
 			    numerichost);
 			svcerr_decode(transp);
@@ -587,8 +587,8 @@ mntsrv(struct svc_req *rqstp, SVCXPRT *transp)
 		    (defset && scan_tree(ep->ex_defdir, saddr) == 0 &&
 		     scan_tree(ep->ex_dirl, saddr) == 0))) {
 			if (bad) {
-				if (!svc_sendreply(transp, xdr_long,
-				    (caddr_t)&bad))
+				if (!svc_sendreply(transp, (xdrproc_t)xdr_long,
+				    &bad))
 					syslog(LOG_ERR, "can't send reply");
 				sigprocmask(SIG_UNBLOCK, &sighup_mask, NULL);
 				return;
@@ -603,13 +603,13 @@ mntsrv(struct svc_req *rqstp, SVCXPRT *transp)
 			if (getfh(dirpath, (fhandle_t *)&fhr.fhr_fh) < 0) {
 				bad = errno;
 				syslog(LOG_ERR, "can't get fh for %s", dirpath);
-				if (!svc_sendreply(transp, xdr_long,
-				    (caddr_t)&bad))
+				if (!svc_sendreply(transp, (xdrproc_t)xdr_long,
+				    &bad))
 					syslog(LOG_ERR, "can't send reply");
 				sigprocmask(SIG_UNBLOCK, &sighup_mask, NULL);
 				return;
 			}
-			if (!svc_sendreply(transp, xdr_fhs, (caddr_t)&fhr))
+			if (!svc_sendreply(transp, (xdrproc_t)xdr_fhs, &fhr))
 				syslog(LOG_ERR, "can't send reply");
 			if (!lookup_failed)
 				add_mlist(host, dirpath);
@@ -628,12 +628,12 @@ mntsrv(struct svc_req *rqstp, SVCXPRT *transp)
 			    numerichost, dirpath);
 		}
 
-		if (bad && !svc_sendreply(transp, xdr_long, (caddr_t)&bad))
+		if (bad && !svc_sendreply(transp, (xdrproc_t)xdr_long, &bad))
 			syslog(LOG_ERR, "can't send reply");
 		sigprocmask(SIG_UNBLOCK, &sighup_mask, NULL);
 		return;
 	case RPCMNT_DUMP:
-		if (!svc_sendreply(transp, xdr_mlist, (caddr_t)NULL))
+		if (!svc_sendreply(transp, (xdrproc_t)xdr_mlist, NULL))
 			syslog(LOG_ERR, "can't send reply");
 		else if (do_log)
 			syslog(LOG_NOTICE,
@@ -648,7 +648,7 @@ mntsrv(struct svc_req *rqstp, SVCXPRT *transp)
 			svcerr_weakauth(transp);
 			return;
 		}
-		if (!svc_getargs(transp, xdr_dir, rpcpath)) {
+		if (!svc_getargs(transp, (xdrproc_t)xdr_dir, rpcpath)) {
 			syslog(LOG_NOTICE, "undecodable umount request from %s",
 			    numerichost);
 			svcerr_decode(transp);
@@ -659,7 +659,7 @@ mntsrv(struct svc_req *rqstp, SVCXPRT *transp)
 			    "for non existent path %s",
 			    numerichost, dirpath);
 		}
-		if (!svc_sendreply(transp, xdr_void, (caddr_t)NULL))
+		if (!svc_sendreply(transp, (xdrproc_t)xdr_void, NULL))
 			syslog(LOG_ERR, "can't send reply");
 		if (!lookup_failed)
 			del_mlist(host, dirpath);
@@ -677,7 +677,7 @@ mntsrv(struct svc_req *rqstp, SVCXPRT *transp)
 			svcerr_weakauth(transp);
 			return;
 		}
-		if (!svc_sendreply(transp, xdr_void, (caddr_t)NULL))
+		if (!svc_sendreply(transp, (xdrproc_t)xdr_void, NULL))
 			syslog(LOG_ERR, "can't send reply");
 		if (!lookup_failed)
 			del_mlist(host, NULL);
@@ -688,7 +688,7 @@ mntsrv(struct svc_req *rqstp, SVCXPRT *transp)
 			    numerichost);
 		return;
 	case RPCMNT_EXPORT:
-		if (!svc_sendreply(transp, xdr_explist, (caddr_t)NULL))
+		if (!svc_sendreply(transp, (xdrproc_t)xdr_explist, NULL))
 			syslog(LOG_ERR, "can't send reply");
 		if (do_log)
 			syslog(LOG_NOTICE,
