@@ -468,7 +468,8 @@ skipit:
 		tv.tv_sec = _yplib_timeout/2;
 		tv.tv_usec = 0;
 		r = clnt_call(client, YPBINDPROC_DOMAIN,
-			xdr_domainname, (char *)&dom, xdr_ypbind_resp, &ypbr, tv);
+		    (xdrproc_t)xdr_domainname, (char *)&dom,
+		    (xdrproc_t)xdr_ypbind_resp, &ypbr, tv);
 		if (r != RPC_SUCCESS) {
 			clnt_destroy(client);
 			ysd->dom_vers = -1;
@@ -617,7 +618,7 @@ yp_unbind(char *dom)
 }
 
 int
-yp_match(const char *indomain, const char *inmap, const char *inkey, int inkeylen,
+yp_match(char *indomain, char *inmap, const char *inkey, int inkeylen,
     char **outval, int *outvallen)
 {
 	struct dom_binding *ysd;
@@ -668,7 +669,8 @@ again:
 	bzero((char *)&yprv, sizeof yprv);
 
 	r = clnt_call(ysd->dom_client, YPPROC_MATCH,
-		xdr_ypreq_key, &yprk, xdr_ypresp_val, &yprv, tv);
+	    (xdrproc_t)xdr_ypreq_key, &yprk,
+	    (xdrproc_t)xdr_ypresp_val, &yprv, tv);
 	if (r != RPC_SUCCESS) {
 		clnt_perror(ysd->dom_client, "yp_match: clnt_call");
 		_yp_unbind(ysd);
@@ -685,7 +687,7 @@ again:
 #endif
 	}
 
-	xdr_free(xdr_ypresp_val, (char *)&yprv);
+	xdr_free((xdrproc_t)xdr_ypresp_val, &yprv);
 	return (r);
 }
 
@@ -731,7 +733,8 @@ again:
 	bzero((char *)&yprkv, sizeof yprkv);
 
 	r = clnt_call(ysd->dom_client, YPPROC_FIRST,
-		xdr_ypreq_nokey, &yprnk, xdr_ypresp_key_val, &yprkv, tv);
+	    (xdrproc_t)xdr_ypreq_nokey, &yprnk,
+	    (xdrproc_t)xdr_ypresp_key_val, &yprkv, tv);
 	if (r != RPC_SUCCESS) {
 		clnt_perror(ysd->dom_client, "yp_first: clnt_call");
 		_yp_unbind(ysd);
@@ -748,7 +751,7 @@ again:
 		(*outval)[*outvallen] = '\0';
 	}
 
-	xdr_free(xdr_ypresp_key_val, (char *)&yprkv);
+	xdr_free((xdrproc_t)xdr_ypresp_key_val, &yprkv);
 	return (r);
 }
 
@@ -786,7 +789,8 @@ again:
 	bzero((char *)&yprkv, sizeof yprkv);
 
 	r = clnt_call(ysd->dom_client, YPPROC_NEXT,
-		xdr_ypreq_key, &yprk, xdr_ypresp_key_val, &yprkv, tv);
+	    (xdrproc_t)xdr_ypreq_key, &yprk,
+	    (xdrproc_t)xdr_ypresp_key_val, &yprkv, tv);
 	if (r != RPC_SUCCESS) {
 		clnt_perror(ysd->dom_client, "yp_next: clnt_call");
 		_yp_unbind(ysd);
@@ -803,7 +807,7 @@ again:
 		(*outval)[*outvallen] = '\0';
 	}
 
-	xdr_free(xdr_ypresp_key_val, (char *)&yprkv);
+	xdr_free((xdrproc_t)xdr_ypresp_key_val, &yprkv);
 	return (r);
 }
 
@@ -849,8 +853,8 @@ again:
 	ypresp_data = (void *)incallback->data;
 
 	if (clnt_call(clnt, YPPROC_ALL,
-		xdr_ypreq_nokey, &yprnk,
-		xdr_ypresp_all_seq, &status, tv) != RPC_SUCCESS) {
+		(xdrproc_t)xdr_ypreq_nokey, &yprnk,
+		(xdrproc_t)xdr_ypresp_all_seq, &status, tv) != RPC_SUCCESS) {
 			clnt_perror(ysd->dom_client, "yp_all: clnt_call");
 			clnt_destroy(clnt);
 			_yp_unbind(ysd);
@@ -859,7 +863,7 @@ again:
 
 	clnt_destroy(clnt);
 	savstat = status;
-	xdr_free(xdr_ypresp_all_seq, (char *)&status);	/* not really needed... */
+	xdr_free((xdrproc_t)xdr_ypresp_all_seq, &status);	/* not really needed... */
 	if (savstat != YP_NOMORE)
 		return (ypprot_err(savstat));
 	return (0);
@@ -893,7 +897,8 @@ again:
 	bzero((char *)(char *)&ypro, sizeof ypro);
 
 	r = clnt_call(ysd->dom_client, YPPROC_ORDER,
-		xdr_ypreq_nokey, &yprnk, xdr_ypresp_order, &ypro, tv);
+	    (xdrproc_t)xdr_ypreq_nokey, &yprnk,
+	    (xdrproc_t)xdr_ypresp_order, &ypro, tv);
 
 	/*
 	 * NIS+ in YP compat mode doesn't support the YPPROC_ORDER
@@ -913,7 +918,7 @@ again:
 		*outorder = ypro.ordernum;
 	}
 
-	xdr_free(xdr_ypresp_order, (char *)&ypro);
+	xdr_free((xdrproc_t)xdr_ypresp_order, &ypro);
 	return (r);
 }
 
@@ -944,7 +949,8 @@ again:
 	bzero((char *)&yprm, sizeof yprm);
 
 	r = clnt_call(ysd->dom_client, YPPROC_MASTER,
-		xdr_ypreq_nokey, &yprnk, xdr_ypresp_master, &yprm, tv);
+	    (xdrproc_t)xdr_ypreq_nokey, &yprnk,
+	    (xdrproc_t)xdr_ypresp_master, &yprm, tv);
 	if (r != RPC_SUCCESS) {
 		clnt_perror(ysd->dom_client, "yp_master: clnt_call");
 		_yp_unbind(ysd);
@@ -955,7 +961,7 @@ again:
 		*outname = (char *)strdup(yprm.peer);
 	}
 
-	xdr_free(xdr_ypresp_master, (char *)&yprm);
+	xdr_free((xdrproc_t)xdr_ypresp_master, &yprm);
 	return (r);
 }
 
@@ -982,7 +988,8 @@ again:
 	bzero((char *)&ypml, sizeof ypml);
 
 	r = clnt_call(ysd->dom_client, YPPROC_MAPLIST,
-		xdr_domainname,(char *)&indomain,xdr_ypresp_maplist,&ypml,tv);
+	    (xdrproc_t)xdr_domainname, (char *)&indomain,
+	    (xdrproc_t)xdr_ypresp_maplist, &ypml, tv);
 	if (r != RPC_SUCCESS) {
 		clnt_perror(ysd->dom_client, "yp_maplist: clnt_call");
 		_yp_unbind(ysd);
