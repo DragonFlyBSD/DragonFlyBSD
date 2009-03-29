@@ -65,6 +65,7 @@
 #include <sys/systm.h>
 #include <sys/reboot.h>
 #include <sys/cons.h>
+#include <sys/thread.h>
 
 #include <machine/cpu.h>
 #include <machine/smp.h>
@@ -75,6 +76,8 @@
 #include <vm/pmap.h>
 
 #include <ddb/ddb.h>
+
+#include <sys/thread2.h>
 
 #include <setjmp.h>
 
@@ -154,6 +157,7 @@ kdb_trap(int type, int code, struct amd64_saved_state *regs)
 	 */
 	ddb_regs = *regs;
 
+	crit_enter();
 #ifdef SMP
 	db_printf("\nCPU%d stopping CPUs: 0x%08x\n", 
 	    mycpu->gd_cpuid, mycpu->gd_other_cpus);
@@ -192,6 +196,7 @@ kdb_trap(int type, int code, struct amd64_saved_state *regs)
 
 	db_printf(" restarted\n");
 #endif /* SMP */
+	crit_exit();
 
 	regs->tf_rip    = ddb_regs.tf_rip;
 	regs->tf_rflags = ddb_regs.tf_rflags;
