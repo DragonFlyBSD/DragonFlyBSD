@@ -304,9 +304,9 @@ getinfo( const char *vname )
 
 	for (; i<printlim; i++) {
 
-		bzero((void *) &vnpath, sizeof(vnpath));
-		bzero((void *) &sb, sizeof(struct stat));
-		bzero((void *) &vnu, sizeof(struct vn_user));
+		bzero(&vnpath, sizeof(vnpath));
+		bzero(&sb, sizeof(struct stat));
+		bzero(&vnu, sizeof(struct vn_user));
 
 		vnu.vnu_unit = i;
 
