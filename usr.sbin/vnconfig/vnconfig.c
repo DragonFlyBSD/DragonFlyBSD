@@ -290,10 +290,8 @@ getinfo( const char *vname )
 			}
 			tmp++;
 		}
-		if (tmp == NULL) {
-			printf("unknown vn device: %s", vname);
-			return 1;
-		}
+		if (*tmp == '\0')
+			errx(1, "unknown vn device: %s", vname);
 	}
 
 	snprintf(vnpath, sizeof(vnpath), "/dev/vn%d", i);
