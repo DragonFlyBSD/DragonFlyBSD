@@ -65,14 +65,14 @@ an operation due to the destruction of the parent data structure.
 For example, one thread may be blocked on a vnode operation related
 to a file descriptor that another thread then closes.
 .Sh SEE ALSO
+.Xr vdrop 9 ,
+.Xr vget 9 ,
+.Xr vhold 9 ,
 .Xr vnode 9 ,
 .Xr vn_lock 9 ,
 .Xr vn_unlock 9 ,
-.Xr vget 9 ,
 .Xr vput 9 ,
-.Xr vrele 9 ,
-.Xr vhold 9 ,
-.Xr vdrop 9
+.Xr vrele 9
 .Sh AUTHORS
 This manual page was written by
 .An Doug Rabson .
