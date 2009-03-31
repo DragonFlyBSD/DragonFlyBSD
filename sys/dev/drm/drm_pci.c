@@ -89,6 +89,7 @@ drm_pci_alloc(struct drm_device *dev, size_t size,
 		return NULL;
 	}
 
+	/* XXX BUS_DMA_NOCACHE */
 	ret = bus_dmamem_alloc(dmah->tag, &dmah->vaddr,
 	    BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmah->map);
 	if (ret != 0) {
