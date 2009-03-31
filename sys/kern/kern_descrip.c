@@ -2087,9 +2087,8 @@ closef(struct file *fp, struct thread *td)
  * caller of fhold() already has a reference to the file pointer in some
  * manner or other). 
  *
- * This is a rare case where callers are allowed to hold spinlocks, so
- * we can't ourselves.  Since we are not obtaining the fp spinlock,
- * we have to use an atomic lock to interlock against fdrop().
+ * f_count is not spin-locked.  Instead, atomic ops are used for
+ * incrementing, decrementing, and handling the 1->0 transition.
  */
 void
 fhold(struct file *fp)
@@ -2098,8 +2097,7 @@ fhold(struct file *fp)
 }
 
 /*
- * A spinlock is required to handle 1->0 transitions on f_count.  We have
- * to use atomic_sub_int so as not to race the atomic_add_int in fhold().
+ * fdrop() - drop a reference to a descriptor
  *
  * MPALMOSTSAFE - acquires mplock for final close sequence
  */
@@ -2110,13 +2108,13 @@ fdrop(struct file *fp)
 	struct vnode *vp;
 	int error;
 
-	spin_lock_wr(&fp->f_spin);
-	atomic_subtract_int(&fp->f_count, 1);
-	if (fp->f_count > 0) {
-		spin_unlock_wr(&fp->f_spin);
+	/*
+	 * A combined fetch and subtract is needed to properly detect
+	 * 1->0 transitions, otherwise two cpus dropping from a ref
+	 * count of 2 might both try to run the 1->0 code.
+	 */
+	if (atomic_fetchadd_int(&fp->f_count, -1) > 1)
 		return (0);
-	}
-	spin_unlock_wr(&fp->f_spin);
 
 	get_mplock();
 
