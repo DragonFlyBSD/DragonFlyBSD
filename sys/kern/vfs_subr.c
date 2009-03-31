@@ -1343,6 +1343,9 @@ vgone_vxlocked(struct vnode *vp)
 
 /*
  * Lookup a vnode by device number.
+ *
+ * Returns non-zero and *vpp set to a vref'd vnode on success.
+ * Returns zero on failure.
  */
 int
 vfinddev(cdev_t dev, enum vtype type, struct vnode **vpp)
@@ -1354,6 +1357,7 @@ vfinddev(cdev_t dev, enum vtype type, struct vnode **vpp)
 	SLIST_FOREACH(vp, &dev->si_hlist, v_cdevnext) {
 		if (type == vp->v_type) {
 			*vpp = vp;
+			vref(vp);
 			lwkt_reltoken(&ilock);
 			return (1);
 		}

@@ -322,10 +322,12 @@ sys_linux_ustat(struct linux_ustat_args *args)
 	dev = udev2dev(makeudev(args->dev >> 8, args->dev & 0xFF), 0);
 	if (dev != NULL && vfinddev(dev, VCHR, &vp)) {
 		if (vp->v_mount == NULL) {
+			vrele(vp);
 			return (EINVAL);
 		}
 		stat = &(vp->v_mount->mnt_stat);
 		error = VFS_STATFS(vp->v_mount, stat, curproc->p_ucred);
+		vrele(vp);
 		if (error) {
 			return (error);
 		}

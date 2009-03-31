@@ -117,6 +117,8 @@ chflags nohistory /mnt/usr/obj
 # Install the system from the live CD
 #
 cpdup -o / /mnt
+cpdup -o /boot /mnt/boot
+cpdup -o /usr /mnt/usr
 cpdup -o /var /mnt/var
 cpdup -o /dev /mnt/dev
 cpdup -i0 /etc.hdd /mnt/etc
