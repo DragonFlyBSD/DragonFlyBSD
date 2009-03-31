@@ -392,7 +392,7 @@ with
 .Fa dmat .
 .It Fa flags
 Are as follows:
-.Bl -tag -width "BUS_DMA_ALLOCNOW" -compact
+.Bl -tag -width ".Dv BUS_DMA_ALLOCNOW" -compact
 .It Dv BUS_DMA_ALLOCNOW
 Allocate the minimum resources necessary to guarantee that all map load
 operations associated with this tag may not block.
@@ -461,7 +461,7 @@ Arguments are as follows:
 DMA tag.
 .It Fa flags
 Are as follows:
-.Bl -tag -width "BUS_DMA_ONEBPAGE" -compact
+.Bl -tag -width ".Dv BUS_DMA_ONEBPAGE" -compact
 .It Dv BUS_DMA_WAITOK
 Indicates that it is OK to wait for resources.
 However,
@@ -751,7 +751,7 @@ Pointer to a pointer that will hold the returned KVA mapping of
 the allocated region.
 .It Fa flags
 Flags are defined as follows:
-.Bl -tag -width BUS_DMA_NOWAIT -compact
+.Bl -tag -width ".Dv BUS_DMA_NOWAIT" -compact
 .It Dv BUS_DMA_WAITOK
 The routine can safely wait (sleep) for resources.
 .It Dv BUS_DMA_NOWAIT
