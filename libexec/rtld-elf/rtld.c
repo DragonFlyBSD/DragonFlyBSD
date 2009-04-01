@@ -721,7 +721,7 @@ digest_dynamic(Obj_Entry *obj, int early)
 
 	case DT_HASH:
 	    {
-		const Elf_Addr *hashtab = (const Elf_Addr *)
+		const Elf_Hashelt *hashtab = (const Elf_Hashelt *)
 		  (obj->relocbase + dynp->d_un.d_ptr);
 		obj->nbuckets = hashtab[0];
 		obj->nchains = hashtab[1];
@@ -1229,13 +1229,14 @@ initlist_add_objects(Obj_Entry *obj, Obj_Entry **tail, Objlist *list)
 static bool
 is_exported(const Elf_Sym *def)
 {
-    func_ptr_type value;
+    Elf_Addr value;
     const func_ptr_type *p;
 
-    value = (func_ptr_type)(obj_rtld.relocbase + def->st_value);
-    for (p = exports;  *p != NULL;  p++)
-	if (*p == value)
+    value = (Elf_Addr)(obj_rtld.relocbase + def->st_value);
+    for (p = exports;  *p != NULL;  p++) {
+	if ((Elf_Addr)(*p) == value)
 	    return true;
+    }
     return false;
 }
 
