@@ -12,16 +12,30 @@ all: help
 
 scratch: qemu world32 world64 kernel64 root64 install64
 	@echo "Run the environment with:"
-	@echo "make DESTDIR=${QEMUDIR} run"
+	@echo "make QEMUDIR=${QEMUDIR} run"
 
-quick: quick64 reinstall64
+quickw: quickworld64 quickkernel64 reinstall64 reinstallkernel64
 	@echo "Run the environment with:"
-	@echo "make DESTDIR=${QEMUDIR} run"
+	@echo "make QEMUDIR=${QEMUDIR} run"
 
-realquick: quick64 reinstall64
+quick: quickkernel64 reinstallkernel64
+	@echo "Run the environment with:"
+	@echo "make QEMUDIR=${QEMUDIR} run"
 
 help:
-	@echo "make QEMUDIR=target_dir [help | clean | scratch | quick | realquick run mount umount]"
+	@echo "setenv QEMUDIR target_dir"
+	@echo "make [help | clean | scratch | quick | quickw"
+	@echo "make [run | mount | umount]"
+	@echo "make [gdb64]"
+	@echo "    help     - this help"
+	@echo "    clean    - clean up"
+	@echo "    scratch  - rebuild everything from scratch, including qemu"
+	@echo "    quick    - incremental quickkernel & kernel install"
+	@echo "    quickw   - incremental world & kernel & install"
+	@echo "    run      - run qemu with install image"
+	@echo "    mount    - mount image at QEMUDIR/root"
+	@echo "    umount   - unmount"
+	@echo "    gdb64    - create /usr/loca/bin/gdb64 - debug 64 bit bins"
 
 # Unmount everything, de-configured VN, and clean up.
 # (check handles umounting/deconfiguring)
@@ -80,7 +94,11 @@ kernel64:
 # Quick build - just rebuild the kernel quickly
 #
 #
-quick64:
+quickworld64:
+	cd ${SRCDIR} && \
+	    make -j 4 TARGET_ARCH=amd64 TARGET_PLATFORM=pc64 quickworld
+
+quickkernel64:
 	cd ${SRCDIR} && \
 	    make TARGET_ARCH=amd64 TARGET_PLATFORM=pc64 KERNCONF=JG64 \
 	    quickkernel
@@ -105,6 +123,7 @@ root64:	check
 
 mount: check
 	vnconfig -c -s labels `cat ${QEMUDIR}/vn.which` ${QEMUDIR}/root.img
+	fsck -p /dev/`cat ${QEMUDIR}/vn.which`s1a
 	mount /dev/`cat ${QEMUDIR}/vn.which`s1a ${QEMUDIR}/root
 	@echo "Mounted ${QEMUDIR}/root"
 
@@ -122,6 +141,7 @@ install64: mount
 		 DESTDIR=${QEMUDIR}/root distribution
 	echo '/dev/ad1s1a	/	ufs	rw	1 1' > ${QEMUDIR}/root/etc/fstab
 	echo 'proc		/proc	procfs	rw	0 0' >> ${QEMUDIR}/root/etc/fstab
+	echo 'vfs.root.mountfrom="ufs:ad1s1a"' > ${QEMUDIR}/root/boot/loader.conf
 	(egrep -v '^console' ${QEMUDIR}/root/etc/ttys; echo 'console "/usr/libexec/getty Pc"	cons25	on	secure') > ${QEMUDIR}/root/etc/ttys.new
 	mv -f ${QEMUDIR}/root/etc/ttys.new ${QEMUDIR}/root/etc/ttys
 	cd ${SRCDIR} && \
@@ -134,6 +154,11 @@ install64: mount
 #
 #
 reinstall64: mount
+	cd ${SRCDIR} && \
+	    make -j 4 TARGET_ARCH=amd64 TARGET_PLATFORM=pc64 \
+		 DESTDIR=${QEMUDIR}/root installworld
+
+reinstallkernel64: mount
 	cd ${SRCDIR} && \
 	    make -j 4 TARGET_ARCH=amd64 TARGET_PLATFORM=pc64 \
 		 DESTDIR=${QEMUDIR}/root KERNCONF=JG64 \
@@ -152,6 +177,12 @@ rungdb: check
 	@echo "RUN WITH:  run -curses -hda root.img"
 	cd ${QEMUDIR} && gdb qemu-system-x86_64
 
+# build a gdb capable of debugging 64 bit binaries
+#
+gdb64:
+	cd /usr/src/gnu/usr.bin/gdb && (make clean; make TARGET_ARCH=amd64)
+	cp /usr/obj/usr/src/gnu/usr.bin/gdb/gdb/gdb /usr/local/bin/gdb64
+	cd /usr/src/gnu/usr.bin/gdb && make clean
 
 # Make sure we are not mounted and the VN device is unconfigured,
 #
