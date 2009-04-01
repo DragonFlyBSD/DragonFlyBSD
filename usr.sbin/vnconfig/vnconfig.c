@@ -290,10 +290,8 @@ getinfo( const char *vname )
 			}
 			tmp++;
 		}
-		if (tmp == NULL) {
-			printf("unknown vn device: %s", vname);
-			return 1;
-		}
+		if (*tmp == '\0')
+			errx(1, "unknown vn device: %s", vname);
 	}
 
 	snprintf(vnpath, sizeof(vnpath), "/dev/vn%d", i);
@@ -306,9 +304,9 @@ getinfo( const char *vname )
 
 	for (; i<printlim; i++) {
 
-		bzero((void *) &vnpath, sizeof(vnpath));
-		bzero((void *) &sb, sizeof(struct stat));
-		bzero((void *) &vnu, sizeof(struct vn_user));
+		bzero(&vnpath, sizeof(vnpath));
+		bzero(&sb, sizeof(struct stat));
+		bzero(&vnu, sizeof(struct vn_user));
 
 		vnu.vnu_unit = i;
 

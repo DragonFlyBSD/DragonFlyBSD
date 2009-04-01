@@ -190,7 +190,7 @@ present.
 For most of the above macros, declaring a type as part of the access flags is
 not necessary -- however, when declaring a sysctl implemented by a function,
 including a type in the access mask is required:
-.Bl -tag -width CTLTYPE_STRING
+.Bl -tag -width ".Dv CTLTYPE_STRING"
 .It Dv CTLTYPE_NODE
 This is a node intended to be a parent for other nodes.
 .It Dv CTLTYPE_INT
@@ -216,7 +216,7 @@ This is a 64-bit unsigned integer.
 .Pp
 All sysctl types except for new node declarations require one or more flags
 to be set indicating the read and write disposition of the sysctl:
-.Bl -tag -width CTLFLAG_ANYBODY
+.Bl -tag -width ".Dv CTLFLAG_ANYBODY"
 .It Dv CTLFLAG_RD
 This is a read-only sysctl.
 .It Dv CTLFLAG_WR

@@ -672,7 +672,7 @@ name##_RB_FIND(struct name *head, struct type *elm)			\
  * deleted while the scan is in progress.				\
  */									\
 static int								\
-name##_SCANCMP_ALL(struct type *type, void *data __unused)		\
+name##_SCANCMP_ALL(struct type *type __unused, void *data __unused)	\
 {									\
 	return(0);							\
 }									\

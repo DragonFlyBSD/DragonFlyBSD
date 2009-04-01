@@ -544,11 +544,12 @@ send_granted(struct file_lock *fl, int opcode)
 		    (fl->flags & LOCK_ASYNC) ? " (async)":"");
 		if (fl->flags & LOCK_ASYNC) {
 			success = clnt_call(cli, NLM4_GRANTED_MSG,
-			    xdr_nlm4_testargs, &res, xdr_void, &dummy, timeo);
+			    (xdrproc_t)xdr_nlm4_testargs, &res,
+			    (xdrproc_t)xdr_void, &dummy, timeo);
 		} else {
 			success = clnt_call(cli, NLM4_GRANTED,
-			    xdr_nlm4_testargs, &res, xdr_nlm4_res,
-			    &retval4, timeo);
+			    (xdrproc_t)xdr_nlm4_testargs, &res,
+			    (xdrproc_t)xdr_nlm4_res, &retval4, timeo);
 		}
 	} else {
 		static nlm_testargs res;
@@ -566,11 +567,12 @@ send_granted(struct file_lock *fl, int opcode)
 		    (fl->flags & LOCK_ASYNC) ? " (async)":"");
 		if (fl->flags & LOCK_ASYNC) {
 			success = clnt_call(cli, NLM_GRANTED_MSG,
-			    xdr_nlm_testargs, &res, xdr_void, &dummy, timeo);
+			    (xdrproc_t)xdr_nlm_testargs, &res,
+			    (xdrproc_t)xdr_void, &dummy, timeo);
 		} else {
 			success = clnt_call(cli, NLM_GRANTED,
-			    xdr_nlm_testargs, &res, xdr_nlm_res,
-			    &retval, timeo);
+			    (xdrproc_t)xdr_nlm_testargs, &res,
+			    (xdrproc_t)xdr_nlm_res, &retval, timeo);
 		}
 	}
 	if (debug_level > 2)
@@ -686,8 +688,8 @@ do_mon(char *hostname)
 	my_mon.mon_id.my_id.my_vers = NLM_SM;
 	my_mon.mon_id.my_id.my_proc = NLM_SM_NOTIFY;
 	if ((retval =
-	    callrpc("localhost", SM_PROG, SM_VERS, SM_MON, xdr_mon,
-	    (char*)&my_mon, xdr_sm_stat_res, (char*)&res)) != 0) {
+	    callrpc("localhost", SM_PROG, SM_VERS, SM_MON, (xdrproc_t)xdr_mon,
+	    (char*)&my_mon, (xdrproc_t)xdr_sm_stat_res, (char*)&res)) != 0) {
 		syslog(LOG_WARNING, "rpc to statd failed: %s",
 		    clnt_sperrno((enum clnt_stat)retval));
 		free(hp);

@@ -164,7 +164,11 @@ If no regular file is specified, VN will use swap for backing store.
 This option specifies the size of the device.  For example,
 .Sq 23m
 for
-23 megabytes.  The VN device will round the size up to a machine page boundary.
+23 megabytes.
+In the absence of a size modifier,
+.Cm m
+is implied.
+The VN device will round the size up to a machine page boundary.
 Filesystems up to 7.9 terabytes are supported.  When specified along with
 a regular file, this option overrides the regular file's size insofar as
 VN is concerned.

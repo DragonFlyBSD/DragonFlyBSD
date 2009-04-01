@@ -140,7 +140,7 @@ spray_service(rqstp, transp)
 		/*FALLTHROUGH*/
 
 	case NULLPROC:
-		(void)svc_sendreply(transp, xdr_void, (char *)NULL);
+		(void)svc_sendreply(transp, (xdrproc_t)xdr_void, NULL);
 		return;
 
 	case SPRAYPROC_SPRAY:
@@ -159,7 +159,7 @@ spray_service(rqstp, transp)
 		return;
 	}
 
-	if (!svc_sendreply(transp, xdr_spraycumul, (caddr_t)&scum)) {
+	if (!svc_sendreply(transp, (xdrproc_t)xdr_spraycumul, &scum)) {
 		svcerr_systemerr(transp);
 		syslog(LOG_ERR, "bad svc_sendreply");
 	}

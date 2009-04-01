@@ -113,7 +113,7 @@ and
 .Fn bpfattach_dlt )
 on behalf of the caller.
 It also implements the
-.Vt ifmedia
+.Xr ifmedia 4
 interface.
 .Pp
 .\"
@@ -134,9 +134,9 @@ The
 .Fa flags
 argument is a hint which specifies whether the frequency is in
 the 2GHz ISM band
-.Pq Vt IEEE80211_CHAN_2GHZ
+.Pq Dv IEEE80211_CHAN_2GHZ
 or the 5GHz band
-.Pq Vt IEEE80211_CHAN_5GHZ ;
+.Pq Dv IEEE80211_CHAN_5GHZ ;
 appropriate clipping of the result is then performed.
 .Pp
 .\"
@@ -162,16 +162,16 @@ The
 .Fa flags
 argument is a hint which specifies whether the frequency is in
 the 2GHz ISM band
-.Pq Vt IEEE80211_CHAN_2GHZ
+.Pq Dv IEEE80211_CHAN_2GHZ
 or the 5GHz band
-.Pq Vt IEEE80211_CHAN_5GHZ ;
+.Pq Dv IEEE80211_CHAN_5GHZ ;
 appropriate clipping of the result is then performed.
 .Pp
 .\"
 The
 .Fn ieee80211_media_init
 function initializes media data structures used by the
-.Vt ifmedia
+.Xr ifmedia 4
 interface, for the driver
 .Fa ic .
 It must be called by the driver after calling
@@ -184,7 +184,7 @@ The
 and
 .Fa media_stat
 arguments specify helper functions which will be invoked by the
-.Vt ifmedia
+.Xr ifmedia 4
 framework when the user changes or queries media options,
 using a command such as
 .Xr ifconfig 8 .
@@ -195,7 +195,7 @@ The
 and
 .Fn ieee80211_media_change
 functions are device-independent handlers for
-.Vt ifmedia
+.Xr ifmedia 4
 commands and are not intended to be called directly.
 .Pp
 .\"
@@ -233,7 +233,7 @@ The
 function converts the bit rate
 .Fa rate
 (measured in units of 0.5Mbps) to an
-.Vt ifmedia
+.Xr ifmedia 4
 sub-type, for the device
 .Fa ic
 running in PHY mode
@@ -242,7 +242,7 @@ The
 .Fn ieee80211_media2rate
 performs the reverse of this conversion, returning the bit rate (in 0.5Mbps
 units) corresponding to an
-.Vt ifmedia
+.Xr ifmedia 4
 sub-type.
 .\"
 .Sh SEE ALSO
