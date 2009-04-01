@@ -190,6 +190,9 @@ vkd_io_intr(cothread_t cotd)
 /*
  * WARNING!  This runs as a cothread and has no access to mycpu nor can it
  * make vkernel-specific calls other then cothread_*() calls.
+ *
+ * WARNING!  A signal can occur and be discarded prior to our initial
+ * call to cothread_lock().  Process pending I/O before waiting.
  */
 static
 void
@@ -201,7 +204,6 @@ vkd_io_thread(cothread_t cotd)
 
 	cothread_lock(cotd);
 	for (;;) {
-		cothread_wait(cotd);	/* interlocks cothread lock */
 		count = 0;
 		while ((bio = TAILQ_FIRST(&sc->cotd_queue)) != NULL) {
 			TAILQ_REMOVE(&sc->cotd_queue, bio, bio_act);
@@ -216,6 +218,7 @@ vkd_io_thread(cothread_t cotd)
 		}
 		if (count)
 			cothread_intr(cotd);
+		cothread_wait(cotd);	/* interlocks cothread lock */
 	}
 	/* NOT REACHED */
 	cothread_unlock(cotd);

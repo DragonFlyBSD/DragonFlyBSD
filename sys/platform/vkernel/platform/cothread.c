@@ -95,7 +95,9 @@ cothread_create(void (*thr_func)(cothread_t cotd),
 	 * The vkernel's cpu_disable_intr() masks signals.  We don't want
 	 * our coprocessor thread taking any unix signals :-)
 	 */
+	cpu_mask_all_signals();
 	pthread_create(&cotd->pthr, NULL, (void *)cothread_thread, cotd);
+	cpu_unmask_all_signals();
 	return(cotd);
 }
 
@@ -105,7 +107,7 @@ cothread_thread(void *arg)
 	cothread_t cotd = arg;
 	int dummy = 0;
 
-	cpu_mask_all_signals();
+	cpu_mask_all_signals(); /* XXX remove me? should already be masked */
 	/*
 	 * %fs (aka mycpu) is illegal in cothreads.   Note that %fs is used
 	 * by pthreads.
