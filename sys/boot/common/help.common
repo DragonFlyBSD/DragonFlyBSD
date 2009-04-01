@@ -6,7 +6,6 @@
 	?
 
 	The help command displays help on commands and their usage.
-	$DragonFly: src/sys/boot/common/help.common,v 1.6 2008/09/01 19:39:45 dillon Exp $
 
 	In command help, a term enclosed with <...> indicates a value as
 	described by the term.  A term enclosed with [...] is optional,
