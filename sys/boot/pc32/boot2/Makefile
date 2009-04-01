@@ -189,7 +189,7 @@ machine::
 	${LN} -sf ${.CURDIR}/../../../platform/pc32/include/* machine
 
 cpu::
-	${LN} -sf ${.CURDIR}/../../../cpu/i386/include cpu
+	${LN} -hsf ${.CURDIR}/../../../cpu/i386/include cpu
 
 CLEANDIRS+=	machine cpu
 .endif
