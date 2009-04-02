@@ -297,10 +297,8 @@ getinfo( const char *vname )
 	snprintf(vnpath, sizeof(vnpath), "/dev/vn%d", i);
 
 	vd = open(vnpath, O_RDONLY);
-	if (vd < 0) {
+	if (vd < 0)
 		err(1, "open: %s", vnpath);
-		return 1;
-	}
 
 	for (; i<printlim; i++) {
 
@@ -325,9 +323,8 @@ getinfo( const char *vname )
 						continue;
 					}
 					else {
-						err(1, "ioctl: %s", vname);
 						close(vd);
-						return 1;
+						err(1, "ioctl: %s", vname);
 					}
 				}
         		}
