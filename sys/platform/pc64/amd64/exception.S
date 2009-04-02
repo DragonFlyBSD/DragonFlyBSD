@@ -84,6 +84,7 @@ MCOUNT_LABEL(btrap)
 /* Traps that we leave interrupts disabled for.. */
 #define	TRAP_NOEN(a)	\
 	subq $TF_RIP,%rsp; \
+	movq $0,TF_XFLAGS(%rsp) ; \
 	movq $(a),TF_TRAPNO(%rsp) ; \
 	movq $0,TF_ADDR(%rsp) ; \
 	movq $0,TF_ERR(%rsp) ; \
@@ -96,6 +97,7 @@ IDTVEC(bpt)
 /* Regular traps; The cpu does not supply tf_err for these. */
 #define	TRAP(a)	 \
 	subq $TF_RIP,%rsp; \
+	movq $0,TF_XFLAGS(%rsp) ; \
 	movq $(a),TF_TRAPNO(%rsp) ; \
 	movq $0,TF_ADDR(%rsp) ; \
 	movq $0,TF_ERR(%rsp) ; \
@@ -463,9 +465,6 @@ pmsg4:  .asciz	"fork_trampoline mpcount %d after calling %p"
 	 *
 	 * trapframe is at the top of the stack.
 	 */
-#if JG
-	pushl	$0			/* cpl to restore */
-#endif
 	MEXITCOUNT
 	jmp	doreti
 

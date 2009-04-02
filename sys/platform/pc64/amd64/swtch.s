@@ -318,6 +318,7 @@ ENTRY(cpu_heavy_restore)
 	 * already have been set before we set it above, check? YYY
 	 */
 #if JG
+#error x
 	movq	%cr3,%rsi
 	movq	PCB_CR3(%rdx),%rcx
 	cmpq	%rsi,%rcx

@@ -191,7 +191,7 @@
 	jz	1f ;		/* keep kernel GS.base */		\
 	cli ;								\
 	swapgs ;							\
-1:	addq	$TF_RIP,%rsp	/* skip over tf_err, tf_trapno */
+1:	addq	$TF_RIP,%rsp	/* skip over tf_err, tf_trapno, tf_xflags */
 
 /*
  * Access per-CPU data.

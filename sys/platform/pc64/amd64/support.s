@@ -669,7 +669,7 @@ ENTRY(lgdt)
 	movl	%eax,%ds
 	movl	%eax,%es
 	movl	%eax,%fs	/* Beware, use wrmsr to set 64 bit base */
-	movl	%eax,%gs
+	movl	%eax,%gs	/* Beware, use wrmsr to set 64 bit base */
 	movl	%eax,%ss
 
 	/* reload code selector by turning return into intersegmental return */

@@ -132,6 +132,7 @@ struct	sigcontext {
 	long		sc_r13;
 	long		sc_r14;
 	long		sc_r15;
+	long		sc_xflags;
 	long		sc_trapno;
 	long		sc_addr;
 	long		sc_flags;

@@ -150,6 +150,7 @@ ASSYM(TF_RCX, offsetof(struct trapframe, tf_rcx));
 ASSYM(TF_RAX, offsetof(struct trapframe, tf_rax));
 
 ASSYM(TF_TRAPNO, offsetof(struct trapframe, tf_trapno));
+ASSYM(TF_XFLAGS, offsetof(struct trapframe, tf_xflags));
 ASSYM(TF_ADDR, offsetof(struct trapframe, tf_addr));
 ASSYM(TF_ERR, offsetof(struct trapframe, tf_err));
 ASSYM(TF_FLAGS, offsetof(struct trapframe, tf_flags));

@@ -39,6 +39,9 @@ typedef struct __mcontext {
 	 * The first 20 fields must match the definition of
 	 * sigcontext. So that we can support sigcontext
 	 * and ucontext_t at the same time.
+	 *
+	 * NOTE: bcopy in sendsig copies trapframe to this
+	 * structure as of mc_rdi.
 	 */
 	__register_t	mc_onstack;	/* XXX - sigcontext compat. */
 	__register_t	mc_rdi;
@@ -56,6 +59,7 @@ typedef struct __mcontext {
 	__register_t	mc_r13;
 	__register_t	mc_r14;
 	__register_t	mc_r15;
+	__register_t	mc_xflags;
 	__register_t	mc_trapno;
 	__register_t	mc_addr;
 	__register_t	mc_flags;
