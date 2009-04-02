@@ -38,6 +38,7 @@
  *
  * Signal trampoline, copied to top of user stack
  *
+ * arguments: %rdi, %rsi, %rdx, %rcx
  */
 NON_GPROF_ENTRY(sigcode)
 	call	*SIGF_HANDLER(%rsp)	/* call signal handler */

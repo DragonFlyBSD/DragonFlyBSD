@@ -458,11 +458,12 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	struct sigacts *psp = p->p_sigacts;
 	struct sigframe sf, *sfp;
 	int oonstack;
+	char *sp;
 
 	regs = lp->lwp_md.md_regs;
 	oonstack = (lp->lwp_sigstk.ss_flags & SS_ONSTACK) ? 1 : 0;
 
-	/* save user context */
+	/* Save user context */
 	bzero(&sf, sizeof(struct sigframe));
 	sf.sf_uc.uc_sigmask = *mask;
 	sf.sf_uc.uc_stack = lp->lwp_sigstk;
@@ -470,22 +471,25 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	KKASSERT(__offsetof(struct trapframe, tf_rdi) == 0);
 	bcopy(regs, &sf.sf_uc.uc_mcontext.mc_rdi, sizeof(struct trapframe));
 
-	/* make the size of the saved context visible to userland */
+	/* Make the size of the saved context visible to userland */
 	sf.sf_uc.uc_mcontext.mc_len = sizeof(sf.sf_uc.uc_mcontext);
 
-	/* save mailbox pending state for syscall interlock semantics */
+	/* Save mailbox pending state for syscall interlock semantics */
 	if (p->p_flag & P_MAILBOX)
 		sf.sf_uc.uc_mcontext.mc_xflags |= PGEX_MAILBOX;
 
 	/* Allocate and validate space for the signal handler context. */
         if ((lp->lwp_flag & LWP_ALTSTACK) != 0 && !oonstack &&
 	    SIGISMEMBER(psp->ps_sigonstack, sig)) {
-		sfp = (struct sigframe *)(lp->lwp_sigstk.ss_sp +
-		    lp->lwp_sigstk.ss_size - sizeof(struct sigframe));
+		sp = (char *)(lp->lwp_sigstk.ss_sp + lp->lwp_sigstk.ss_size -
+			      sizeof(struct sigframe));
 		lp->lwp_sigstk.ss_flags |= SS_ONSTACK;
 	} else {
-		sfp = (struct sigframe *)regs->tf_rsp - 1;
+		sp = (char *)regs->tf_rsp - sizeof(struct sigframe);
 	}
+
+	/* Align to 16 bytes */
+	sfp = (struct sigframe *)((intptr_t)sp & ~0xFUL);
 
 	/* Translate the signal is appropriate */
 	if (p->p_sysent->sv_sigtbl) {
@@ -493,23 +497,36 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 			sig = p->p_sysent->sv_sigtbl[_SIG_IDX(sig)];
 	}
 
-	/* Build the argument list for the signal handler. */
-	sf.sf_signum = sig;
-	sf.sf_ucontext = (register_t)&sfp->sf_uc;
+	/*
+	 * Build the argument list for the signal handler.
+	 *
+	 * Arguments are in registers (%rdi, %rsi, %rdx, %rcx)
+	 */
+	regs->tf_rdi = sig;				/* argument 1 */
+	regs->tf_rdx = (register_t)&sfp->sf_uc;		/* argument 3 */
+
 	if (SIGISMEMBER(psp->ps_siginfo, sig)) {
-		/* Signal handler installed with SA_SIGINFO. */
-		sf.sf_siginfo = (register_t)&sfp->sf_si;
+		/*
+		 * Signal handler installed with SA_SIGINFO.
+		 *
+		 * action(signo, siginfo, ucontext)
+		 */
+		regs->tf_rsi = (register_t)&sfp->sf_si;	/* argument 2 */
+		regs->tf_rcx = (register_t)regs->tf_err; /* argument 4 */
 		sf.sf_ahu.sf_action = (__siginfohandler_t *)catcher;
 
 		/* fill siginfo structure */
 		sf.sf_si.si_signo = sig;
 		sf.sf_si.si_code = code;
-		sf.sf_si.si_addr = (void*)regs->tf_err;
-	}
-	else {
-		/* Old FreeBSD-style arguments. */
-		sf.sf_siginfo = code;
-		sf.sf_addr = regs->tf_err;
+		sf.sf_si.si_addr = (void *)regs->tf_err;
+	} else {
+		/*
+		 * Old FreeBSD-style arguments.
+		 *
+		 * handler (signo, code, [uc], addr)
+		 */
+		regs->tf_rsi = (register_t)code;	/* argument 2 */
+		regs->tf_rcx = (register_t)regs->tf_err; /* argument 4 */
 		sf.sf_ahu.sf_handler = catcher;
 	}
 
@@ -569,12 +586,12 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	 */
 	regs->tf_rflags &= ~(PSL_T|PSL_D);
 
-	regs->tf_cs = _ucodesel;
-	/* no DS or ES */
-
 	/*
-	 * Set a degenerate SS.  We don't have to worry about %fs or %gs?
+	 * 64 bit mode has a code and stack selector but
+	 * no data or extra selector.  %fs and %gs are not
+	 * stored in-context.
 	 */
+	regs->tf_cs = _ucodesel;
 	regs->tf_ss = _udatasel;
 }
 

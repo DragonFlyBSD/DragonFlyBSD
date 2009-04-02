@@ -504,9 +504,8 @@ trap(struct trapframe *frame)
 		case T_PAGEFLT:		/* page fault */
 			MAKEMPSAFE(have_mplock);
 			i = trap_pfault(frame, TRUE);
-			//kprintf("TRAP_PFAULT %d\n", i);
 			if (frame->tf_rip == 0)
-				Debugger("debug");
+				kprintf("T_PAGEFLT: Warning %rip == 0!\n");
 			if (i == -1)
 				goto out;
 			if (i == 0)
@@ -1122,7 +1121,7 @@ syscall2(struct trapframe *frame)
 
 	/*
 	 * On amd64 we get up to six arguments in registers. The rest are
-	 * on the stack. The first six members of 'struct trampframe' happen
+	 * on the stack. The first six members of 'struct trapframe' happen
 	 * to be the registers used to pass arguments, in exactly the right
 	 * order.
 	 */
