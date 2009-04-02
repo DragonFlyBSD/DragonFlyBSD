@@ -145,6 +145,8 @@ nwfs_access(struct vop_access_args *ap)
 		mode >>= 3;
 		if (!groupmember(nmp->m.gid, cred))
 			mode >>= 3;
+	} else if (mode & VOWN) {
+		return (0);
 	}
 	error = (((vp->v_type == VREG) ? nmp->m.file_mode : nmp->m.dir_mode) & mode) == mode ? 0 : EACCES;
 	return error;

@@ -2888,8 +2888,13 @@ kern_utimes(struct nlookupdata *nd, struct timeval *tptr)
 		return (error);
 	if ((error = cache_vref(&nd->nl_nch, nd->nl_cred, &vp)) != 0)
 		return (error);
+
+	/*
+	 * NOTE: utimes() succeeds for the owner even if the file
+	 * is not user-writable.
+	 */
 	if ((error = vn_writechk(vp, &nd->nl_nch)) == 0 &&
-	    (error = VOP_ACCESS(vp, VWRITE, nd->nl_cred)) == 0) {
+	    (error = VOP_ACCESS(vp, VWRITE | VOWN, nd->nl_cred)) == 0) {
 		error = setutimes(vp, ts, tptr == NULL);
 	}
 	vrele(vp);
