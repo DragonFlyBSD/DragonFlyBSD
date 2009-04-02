@@ -148,6 +148,8 @@ smbfs_access(struct vop_access_args *ap)
 		mode >>= 3;
 		if (!groupmember(smp->sm_args.gid, cred))
 			mode >>= 3;
+	} else if (mode & VOWN) {
+		return (0);
 	}
 	error = (((vp->v_type == VREG) ? smp->sm_args.file_mode : smp->sm_args.dir_mode) & mode) == mode ? 0 : EACCES;
 	return error;

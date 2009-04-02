@@ -110,6 +110,8 @@ vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,
 
 	/* Otherwise, check the owner. */
 	if (cred->cr_uid == ino_uid) {
+		if (mode & VOWN)
+			return (0);
 		if (mode & VEXEC)
 			mask |= S_IXUSR;
 		if (mode & VREAD)
