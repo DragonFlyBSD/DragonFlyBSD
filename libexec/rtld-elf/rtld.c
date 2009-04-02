@@ -292,8 +292,6 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
     Objlist_Entry *entry;
     Obj_Entry *obj;
 
-    ld_index = 0;	/* don't use old env cache in case we are resident */
-
     /*
      * On entry, the dynamic linker itself has not been relocated yet.
      * Be very careful not to reference any global data until after
@@ -310,8 +308,13 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
     /*
      * If we aren't already resident we have to dig out some more info.
      * Note that auxinfo does not exist when we are resident.
+     *
+     * I'm not sure about the ld_resident check.  It seems to read zero
+     * prior to relocation, which is what we want.  When running from a
+     * resident copy everything will be relocated so we are definitely
+     * good there.
      */
-    if (ld_resident == 0) {
+    if (ld_resident == 0)  {
 	while (*sp++ != 0)	/* Skip over environment, and NULL terminator */
 	    ;
 	aux = (Elf_Auxinfo *) sp;
@@ -329,6 +332,7 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
 	init_rtld((caddr_t) aux_info[AT_BASE]->a_un.a_ptr);
     }
 
+    ld_index = 0;	/* don't use old env cache in case we are resident */
     __progname = obj_rtld.path;
     argv0 = argv[0] != NULL ? argv[0] : "(null)";
     environ = env;

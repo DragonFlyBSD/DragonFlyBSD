@@ -801,6 +801,8 @@ exec_elf_imgact(struct image_params *imgp)
 			}
                 }
 		kfree(path, M_TEMP);
+	} else {
+		addr = 0;
 	}
 
 	/*

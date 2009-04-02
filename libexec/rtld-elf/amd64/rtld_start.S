@@ -26,6 +26,9 @@
  * $DragonFly: src/libexec/rtld-elf/amd64/rtld_start.S,v 1.1 2006/07/27 00:40:35 corecode Exp $
  */
 
+/*
+ * Dynamic program start.  argv pointer is in %rdi.
+ */
 	.text
 	.align	4
 	.globl	resident_start
@@ -93,9 +96,9 @@ _rtld_bind_start:
 	pushq	%r9			# Save %r9
 	pushq	%r10			# Save %r10
 	pushq	%r11			# Save %r11
-
-	movq	0x58(%rsp),%rdi		# Fetch obj argument
-	movq	0x60(%rsp),%rsi		# Fetch reloff argument
+	movq	0x58(%rsp),%rdi		# Fetch obj argument    (arg 1)
+	movq	0x60(%rsp),%rsi		# Fetch reloff argument (arg 2)
+	leaq	0x68(%rsp),%rdx		# Fetch original stack pointer (arg 3)
 	leaq	(%rsi,%rsi,2),%rsi	# multiply by 3
 	leaq	(,%rsi,8),%rsi		# now 8, for 24 (sizeof Elf_Rela)
 

@@ -79,15 +79,15 @@ int	elf_remove_brand_entry (Elf32_Brandinfo *entry);
  * stack fixup routine.
  */
 typedef struct {
-	Elf64_Sxword	execfd;
-	Elf64_Addr	phdr;
-	Elf64_Word	phent;
-	Elf64_Word	phnum;
-	Elf64_Word	pagesz;
-	Elf64_Addr	base;
-	Elf64_Word	flags;
-	Elf64_Addr	entry;
-	Elf64_Word	trace;
+	Elf64_Ssize	execfd;
+	Elf64_Size	phdr;
+	Elf64_Size	phent;
+	Elf64_Size	phnum;
+	Elf64_Size	pagesz;
+	Elf64_Size	base;
+	Elf64_Size	flags;
+	Elf64_Size	entry;
+	Elf64_Size	trace;
 } Elf64_Auxargs;
 
 typedef struct {
