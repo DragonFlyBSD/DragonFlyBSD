@@ -900,7 +900,7 @@ nogo:
 	 */
 	kprintf("seg-fault accessing address %p ip=%p\n",
 		va, frame->tf_rip);
-	Debugger("seg-fault");
+	/* Debugger("seg-fault"); */
 
 	return((rv == KERN_PROTECTION_FAILURE) ? SIGBUS : SIGSEGV);
 }
