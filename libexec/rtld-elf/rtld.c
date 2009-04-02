@@ -542,7 +542,7 @@ _rtld_call_init(void)
 }
 
 Elf_Addr
-_rtld_bind(Obj_Entry *obj, Elf_Word reloff, void *stack)
+_rtld_bind(Obj_Entry *obj, Elf_Size reloff, void *stack)
 {
     const Elf_Rel *rel;
     const Elf_Sym *def;
@@ -1142,6 +1142,7 @@ init_rtld(caddr_t mapbase)
      * The "path" member can't be initialized yet because string constatns
      * cannot yet be acessed. Below we will set it correctly.
      */
+    memset(&objtmp, 0, sizeof(objtmp));
     objtmp.path = NULL;
     objtmp.rtld = true;
     objtmp.mapbase = mapbase;

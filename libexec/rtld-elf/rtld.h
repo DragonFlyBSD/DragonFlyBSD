@@ -57,8 +57,6 @@ extern size_t tls_static_space;
 extern int tls_dtv_generation;
 extern int tls_max_index;
 
-extern Elf_Addr _GLOBAL_OFFSET_TABLE_[];
-
 struct stat;
 struct Struct_Obj_Entry;
 
@@ -112,8 +110,8 @@ typedef struct Struct_Obj_Entry {
      * These two items have to be set right for compatibility with the
      * original ElfKit crt1.o.
      */
-    Elf_Word magic;		/* Magic number (sanity check) */
-    Elf_Word version;		/* Version number of struct format */
+    Elf_Size magic;		/* Magic number (sanity check) */
+    Elf_Size version;		/* Version number of struct format */
 
     struct Struct_Obj_Entry *next;
     char *path;			/* Pathname of underlying file (%) */
@@ -207,6 +205,8 @@ void		 dump_relocations(Obj_Entry *);
 void		 dump_obj_relocations(Obj_Entry *);
 void		 dump_Elf_Rel(Obj_Entry *, const Elf_Rel *, u_long);
 void		 dump_Elf_Rela(Obj_Entry *, const Elf_Rela *, u_long);
+
+extern Elf_Addr _GLOBAL_OFFSET_TABLE_[];
 
 /*
  * Function declarations.
