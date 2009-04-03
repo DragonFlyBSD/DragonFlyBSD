@@ -11,11 +11,11 @@ ROOTSIZE ?= 512M
 
 all: help
 
-scratch: qemu world32 world64 kernel64 root64 install64
+scratch: qemu world32 world64 kernel64 root64 install64 sysloader
 	@echo "Run the environment with:"
 	@echo "make QEMUDIR=${QEMUDIR} run"
 
-quickw: quickworld64 quickkernel64 reinstall64 reinstallkernel64
+quickw: quickworld64 quickkernel64 reinstall64 reinstallkernel64 sysloader
 	@echo "Run the environment with:"
 	@echo "make QEMUDIR=${QEMUDIR} run"
 
@@ -24,19 +24,41 @@ quick: quickkernel64 reinstallkernel64
 	@echo "make QEMUDIR=${QEMUDIR} run"
 
 help:
-	@echo "setenv QEMUDIR target_dir"
-	@echo "make [help | clean | scratch | quick | quickw"
-	@echo "make [run | mount | umount]"
-	@echo "make [gdb64]"
+	@echo "Setup Instructions:"
+	@echo ""
+	@echo "    setenv QEMUDIR target_dir"
+	@echo ""
+	@echo "Meta target components:"
+	@echo ""
 	@echo "    help     - this help"
 	@echo "    clean    - clean up"
-	@echo "    scratch  - rebuild everything from scratch, including qemu"
-	@echo "    quick    - incremental quickkernel & kernel install"
-	@echo "    quickw   - incremental world & kernel & install"
-	@echo "    run      - run qemu with install image"
-	@echo "    mount    - mount image at QEMUDIR/root"
+	@echo "    scratch  - build and install everything from scratch"
+	@echo "               (this is absolutely everything, except gdb64)"
+	@echo "    quick    - incremental kernel build & reinstall"
+	@echo "    quickw   - incremental world & kernel build & reinstall"
+	@echo "    run      - run qemu with QEMUDIR/root.img"
+	@echo "    mount    - mount QEMUDIR/root.img at QEMUDIR/root"
 	@echo "    umount   - unmount"
 	@echo "    gdb64    - create /usr/loca/bin/gdb64 - debug 64 bit bins"
+	@echo ""
+	@echo "Individual target components:"
+	@echo ""
+	@echo "    qemu              - fetch, patch, and build qemu"
+	@echo "    world32           - build the 32 bit world from scratch"
+	@echo "    world64           - build the 64 bit world from scratch"
+	@echo "    kernel64          - build the 64 bit kernel from scratch"
+	@echo "    root64            - create a new, empty root.img"
+	@echo "    install64         - install a 64 bit world & kernel"
+	@echo "                        into root.img"
+	@echo "    quickworld64      - incremental rebuild world64"
+	@echo "    quickkernel64     - incremental rebuild kernel64"
+	@echo "    reinstall64       - reinstall world64 into root.img"
+	@echo "                        (just the installworld piece)"
+	@echo "    reinstallkernel64 - reinstall kernel64 into root.img"
+	@echo "    sysloader         - reinstall 32-bit system loader"
+	@echo "                        (in case the 64 bit loader fails,"
+	@echo "                        the 32 bit loader can be used)"
+	@echo ""
 
 # Unmount everything, de-configured VN, and clean up.
 # (check handles umounting/deconfiguring)
@@ -150,11 +172,16 @@ install64: mount
 		 DESTDIR=${QEMUDIR}/root KERNCONF=JG64 \
 		 NO_MODULES= \
 		 installkernel
+	@echo "WARNING: 64 bit loader installed, if it doesn't work"
+	@echo "         then use 'sysloader' to install the 32 bit one"
 
 # Quick reinstall - just install a new kernel on top of an existing image
 #
 #
 reinstall64: mount
+	@echo "NOTE: Installing native 32 bit loader into root.img."
+	@echo "      This loader should still be able to boot the"
+	@echo "      64 bit kernel"
 	cd ${SRCDIR} && \
 	    make -j 4 TARGET_ARCH=amd64 TARGET_PLATFORM=pc64 \
 		 DESTDIR=${QEMUDIR}/root installworld
@@ -165,6 +192,10 @@ reinstallkernel64: mount
 		 DESTDIR=${QEMUDIR}/root KERNCONF=JG64 \
 		 NO_MODULES= \
 		 installkernel
+
+sysloader: mount
+	cp /boot/loader ${QEMUDIR}/root/boot/loader
+	sync
 
 # Run qemu on our image in 64 bit mode.  Make sure we are unmounted so
 # we do not compete against the emulated kernel when writing to root.img.
