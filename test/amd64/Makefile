@@ -4,7 +4,8 @@
 # kernel builds, and create a 64 bit root.img disk.
 #
 
-SRCDIR ?= /usr/src
+# require it to be specified
+#SRCDIR ?= /usr/src
 QEMU ?= qemu-0.10.1
 ROOTSIZE ?= 512M
 
@@ -79,14 +80,14 @@ qemu: checkq
 # Build the 32 and 64 bit worlds and the 64 bit kernel
 #
 #
-world32:
+world32: checkq
 	cd ${SRCDIR} && make -j 4 buildworld
 
-world64:
+world64: checkq
 	cd ${SRCDIR} && \
 	    make -j 4 TARGET_ARCH=amd64 TARGET_PLATFORM=pc64 buildworld
 
-kernel64:
+kernel64: checkq
 	cd ${SRCDIR} && \
 	    make -j 4 TARGET_ARCH=amd64 TARGET_PLATFORM=pc64 KERNCONF=JG64 \
 	    buildkernel
@@ -94,11 +95,11 @@ kernel64:
 # Quick build - just rebuild the kernel quickly
 #
 #
-quickworld64:
+quickworld64: checkq
 	cd ${SRCDIR} && \
 	    make -j 4 TARGET_ARCH=amd64 TARGET_PLATFORM=pc64 quickworld
 
-quickkernel64:
+quickkernel64: checkq
 	cd ${SRCDIR} && \
 	    make TARGET_ARCH=amd64 TARGET_PLATFORM=pc64 KERNCONF=JG64 \
 	    quickkernel
@@ -190,7 +191,10 @@ gdb64:
 #
 checkq:
 .if !defined(QEMUDIR)
-	@(echo "must specify QEMUDIR=target or as environment for run-time build"; exit 1)
+	@(echo "must specify QEMUDIR=target or as an environment variable"; exit 1)
+.endif
+.if !defined(SRCDIR)
+	@(echo "must specify SRCDIR=target (e.g. /usr/src) or as an environment variable"; exit 1)
 .endif
 .if exists(${QEMUDIR})
 	@echo "${QEMUDIR} found"
