@@ -5,7 +5,7 @@
 #
 
 # require it to be specified
-#SRCDIR ?= /usr/src
+SRCDIR ?= ${.CURDIR}/../..
 QEMU ?= qemu-0.10.1
 ROOTSIZE ?= 512M
 
@@ -192,9 +192,6 @@ gdb64:
 checkq:
 .if !defined(QEMUDIR)
 	@(echo "must specify QEMUDIR=target or as an environment variable"; exit 1)
-.endif
-.if !defined(SRCDIR)
-	@(echo "must specify SRCDIR=target (e.g. /usr/src) or as an environment variable"; exit 1)
 .endif
 .if exists(${QEMUDIR})
 	@echo "${QEMUDIR} found"
