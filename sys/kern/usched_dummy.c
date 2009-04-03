@@ -154,7 +154,7 @@ dummy_acquire_curproc(struct lwp *lp)
 	 * If this cpu has no current thread, select ourself
 	 */
 	if (dd->uschedcp == lp ||
-	    dd->uschedcp == NULL && TAILQ_EMPTY(&dummy_runq)) {
+	    (dd->uschedcp == NULL && TAILQ_EMPTY(&dummy_runq))) {
 		atomic_set_int(&dummy_curprocmask, gd->gd_cpumask);
 		dd->uschedcp = lp;
 		return;
