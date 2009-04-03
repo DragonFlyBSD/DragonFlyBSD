@@ -359,7 +359,6 @@ extern	int		vttoif_tab[];
 #define	WRITECLOSE	0x0004		/* vflush: only close writable files */
 #define	DOCLOSE		0x0008		/* vclean: close active files */
 #define	V_SAVE		0x0001		/* vinvalbuf: sync file first */
-#define	REVOKEALL	0x0001		/* vop_revoke: revoke all aliases */
 
 #ifdef DIAGNOSTIC
 #define	VATTR_NULL(vap)	vattr_null(vap)
@@ -480,6 +479,7 @@ void	vclean_vxlocked (struct vnode *vp, int flags);
 void	vclean_unlocked (struct vnode *vp);
 void	vgone_vxlocked (struct vnode *vp);
 void	vupdatefsmid (struct vnode *vp);
+int	vrevoke (struct vnode *vp, struct ucred *cred);
 int	vinvalbuf (struct vnode *vp, int save, int slpflag, int slptimeo);
 int	vtruncbuf (struct vnode *vp, off_t length, int blksize);
 int	vfsync(struct vnode *vp, int waitfor, int passes,
@@ -529,7 +529,6 @@ int	vop_stdmarkatime(struct vop_markatime_args *ap);
 int	vop_nopoll (struct vop_poll_args *ap);
 int	vop_stdpathconf (struct vop_pathconf_args *ap);
 int	vop_stdpoll (struct vop_poll_args *ap);
-int	vop_stdrevoke (struct vop_revoke_args *ap);
 int	vop_eopnotsupp (struct vop_generic_args *ap);
 int	vop_ebadf (struct vop_generic_args *ap);
 int	vop_einval (struct vop_generic_args *ap);

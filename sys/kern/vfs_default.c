@@ -88,7 +88,6 @@ struct vop_ops default_vnode_vops = {
 	.vop_poll		= vop_nopoll,
 	.vop_readlink		= (void *)vop_einval,
 	.vop_reallocblks	= (void *)vop_eopnotsupp,
-	.vop_revoke		= vop_stdrevoke,
 	.vop_strategy		= vop_nostrategy,
 	.vop_getacl		= (void *)vop_eopnotsupp,
 	.vop_setacl		= (void *)vop_eopnotsupp,

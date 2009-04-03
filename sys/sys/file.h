@@ -118,7 +118,7 @@ struct file {
 	int	f_count;	/* reference count */
 	int	f_msgcount;	/* (U) reference count from message queue */
 	struct nchandle f_nchandle; /* namecache reference */
-	struct spinlock f_spin;
+	struct spinlock f_spin;	/* NOT USED */
 };
 
 #define	DTYPE_VNODE	1	/* file */

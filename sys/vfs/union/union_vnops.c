@@ -94,7 +94,6 @@ static int	union_readlink (struct vop_readlink_args *ap);
 static int	union_reclaim (struct vop_reclaim_args *ap);
 static int	union_remove (struct vop_old_remove_args *ap);
 static int	union_rename (struct vop_old_rename_args *ap);
-static int	union_revoke (struct vop_revoke_args *ap);
 static int	union_rmdir (struct vop_old_rmdir_args *ap);
 static int	union_poll (struct vop_poll_args *ap);
 static int	union_setattr (struct vop_setattr_args *ap);
@@ -1143,29 +1142,6 @@ union_poll(struct vop_poll_args *ap)
 }
 
 /*
- * union_revoke(struct vnode *a_vp, int a_flags, struct thread *a_td)
- */
-static int
-union_revoke(struct vop_revoke_args *ap)
-{
-	struct vnode *vp = ap->a_vp;
-	struct vnode *vx;
-
-	if ((vx = UPPERVP(vp)) != NULL) {
-		vx_get(vx);
-		VOP_REVOKE(vx, ap->a_flags);
-		vx_put(vx);
-	}
-	if ((vx = LOWERVP(vp)) != NULL) {
-		vx_get(vx);
-		VOP_REVOKE(vx, ap->a_flags);
-		vx_put(vx);
-	}
-	vgone_vxlocked(vp);
-	return (0);
-}
-
-/*
  * union_mmap(struct vnode *a_vp, int a_fflags, struct ucred *a_cred,
  *	      struct thread *a_td)
  */
@@ -1804,7 +1780,6 @@ struct vop_ops union_vnode_vops = {
 	.vop_reclaim =		union_reclaim,
 	.vop_old_remove =	union_remove,
 	.vop_old_rename =	union_rename,
-	.vop_revoke =		union_revoke,
 	.vop_old_rmdir =	union_rmdir,
 	.vop_setattr =		union_setattr,
 	.vop_strategy =		union_strategy,

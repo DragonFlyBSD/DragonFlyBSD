@@ -341,9 +341,9 @@ retry:
 			vclrflags(vp, VCTTYISOPEN);
 			VOP_CLOSE(vp, FREAD|FWRITE);
 		}
-		if (dorevoke)
-			VOP_REVOKE(vp, REVOKEALL);
 		vn_unlock(vp);
+		if (dorevoke)
+			vrevoke(vp, proc0.p_ucred);
 		vdrop(vp);
 	} else {
 		sp->s_ttyvp = NULL;

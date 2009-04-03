@@ -1265,7 +1265,7 @@ unp_gc_checkrefs(struct file *fp, void *data)
 static int
 unp_gc_clearmarks(struct file *fp, void *data __unused)
 {
-	fp->f_flag &= ~(FMARK|FDEFER);
+	atomic_clear_int(&fp->f_flag, FMARK | FDEFER);
 	return(0);
 }
 
@@ -1289,7 +1289,7 @@ unp_gc_checkmarks(struct file *fp, void *data)
 	 * and un-mark it
 	 */
 	if (fp->f_flag & FDEFER) {
-		fp->f_flag &= ~FDEFER;
+		atomic_clear_int(&fp->f_flag, FDEFER);
 		--info->defer;
 	} else {
 		/*
@@ -1309,7 +1309,7 @@ unp_gc_checkmarks(struct file *fp, void *data)
 		 * If it got this far then it must be
 		 * externally accessible.
 		 */
-		fp->f_flag |= FMARK;
+		atomic_set_int(&fp->f_flag, FMARK);
 	}
 	/*
 	 * either it was defered, or it is externally 
@@ -1323,7 +1323,6 @@ unp_gc_checkmarks(struct file *fp, void *data)
 	    !(so->so_proto->pr_flags & PR_RIGHTS))
 		return(0);
 #ifdef notdef
-	XXX note: exclusive fp->f_spin lock held
 	if (so->so_rcv.sb_flags & SB_LOCK) {
 		/*
 		 * This is problematical; it's not clear
@@ -1406,14 +1405,10 @@ unp_mark(struct file *fp, void *data)
 {
 	struct unp_gc_info *info = data;
 
-	if (info->locked_fp != fp)
-		spin_lock_wr(&fp->f_spin);
 	if ((fp->f_flag & FMARK) == 0) {
 		++info->defer;
-		fp->f_flag |= (FMARK|FDEFER);
+		atomic_set_int(&fp->f_flag, FMARK | FDEFER);
 	}
-	if (info->locked_fp != fp)
-		spin_unlock_wr(&fp->f_spin);
 }
 
 static void

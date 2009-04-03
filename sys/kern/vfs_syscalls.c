@@ -3565,17 +3565,15 @@ sys_revoke(struct revoke_args *uap)
 	cred = crhold(nd.nl_cred);
 	nlookup_done(&nd);
 	if (error == 0) {
-		if (vp->v_type != VCHR && vp->v_type != VBLK)
-			error = EINVAL;
 		if (error == 0)
 			error = VOP_GETATTR(vp, &vattr);
 		if (error == 0 && cred->cr_uid != vattr.va_uid)
 			error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT);
-		if (error == 0 && count_udev(vp->v_umajor, vp->v_uminor) > 0) {
-			error = 0;
-			vx_lock(vp);
-			VOP_REVOKE(vp, REVOKEALL);
-			vx_unlock(vp);
+		if (error == 0 && (vp->v_type == VCHR || vp->v_type == VBLK)) {
+			if (count_udev(vp->v_umajor, vp->v_uminor) > 0)
+				error = vrevoke(vp, cred);
+		} else if (error == 0) {
+			error = vrevoke(vp, cred);
 		}
 		vrele(vp);
 	}

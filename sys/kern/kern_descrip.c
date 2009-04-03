@@ -596,7 +596,7 @@ retry:
 	 * close() were performed on it).
 	 */
 	if (delfp) {
-		(void)closef(delfp, td);
+		closef(delfp, p);
 		if (holdleaders) {
 			spin_lock_wr(&fdp->fd_spin);
 			fdp->fd_holdleaderscount--;
@@ -830,7 +830,7 @@ kern_close(int fd)
 			knote_fdclose(p, fd);
 		rel_mplock();
 	}
-	error = closef(fp, td);
+	error = closef(fp, p);
 	if (holdleaders) {
 		spin_lock_wr(&fdp->fd_spin);
 		fdp->fd_holdleaderscount--;
@@ -1177,6 +1177,98 @@ fdavail(struct proc *p, int n)
 	}
 	spin_unlock_rd(&fdp->fd_spin);
 	return (0);
+}
+
+/*
+ * Revoke open descriptors referencing (f_data, f_type)
+ *
+ * Any revoke executed within a prison is only able to
+ * revoke descriptors for processes within that prison.
+ *
+ * Returns 0 on success or an error code.
+ */
+struct fdrevoke_info {
+	void *data;
+	short type;
+	short unused;
+	int count;
+	int again;
+	struct ucred *cred;
+	struct file *nfp;
+};
+
+static int fdrevoke_callback(struct proc *p, void *vinfo);
+
+int
+fdrevoke(void *f_data, short f_type, struct ucred *cred)
+{
+	struct fdrevoke_info info;
+	int error;
+
+	bzero(&info, sizeof(info));
+	info.data = f_data;
+	info.type = f_type;
+	info.cred = cred;
+	error = falloc(NULL, &info.nfp, NULL);
+	if (error)
+		return (error);
+	do {
+		info.again = 0;
+		allproc_scan(fdrevoke_callback, &info);
+	} while (info.again != 0);
+	fdrop(info.nfp);
+	return(info.count);
+}
+
+static int
+fdrevoke_callback(struct proc *p, void *vinfo)
+{
+	struct fdrevoke_info *info = vinfo;
+	struct filedesc *fdp;
+	struct file *fp;
+	int n;
+
+	if (p->p_stat == SIDL || p->p_stat == SZOMB)
+		return(0);
+	if (info->cred->cr_prison &&
+	    info->cred->cr_prison != p->p_ucred->cr_prison) {
+		return(0);
+	}
+
+	/*
+	 * If the controlling terminal of the process matches the
+	 * vnode being revoked we clear the controlling terminal.
+	 *
+	 * The normal spec_close() may not catch this because it
+	 * uses curproc instead of p.
+	 */
+	if (p->p_session && info->type == DTYPE_VNODE &&
+	    info->data == p->p_session->s_ttyvp) {
+		p->p_session->s_ttyvp = NULL;
+		vrele(info->data);
+	}
+
+	/*
+	 * Locate and close any matching file descriptors.
+	 */
+	if ((fdp = p->p_fd) == NULL)
+		return(0);
+	spin_lock_wr(&fdp->fd_spin);
+	for (n = 0; n < fdp->fd_nfiles; ++n) {
+		if ((fp = fdp->fd_files[n].fp) == NULL)
+			continue;
+		if (info->data == fp->f_data && info->type == fp->f_type) {
+			fhold(info->nfp);
+			fdp->fd_files[n].fp = info->nfp;
+			spin_unlock_wr(&fdp->fd_spin);
+			closef(fp, p);
+			spin_lock_wr(&fdp->fd_spin);
+			++info->count;
+			info->again = 1;
+		}
+	}
+	spin_unlock_wr(&fdp->fd_spin);
+	return(0);
 }
 
 /*
@@ -1630,8 +1722,6 @@ again:
 void
 fdfree(struct proc *p)
 {
-	/* Take any thread of p */
-	struct thread *td = FIRST_LWP_IN_PROC(p)->lwp_thread;
 	struct filedesc *fdp = p->p_fd;
 	struct fdnode *fdnode;
 	int i;
@@ -1731,7 +1821,7 @@ fdfree(struct proc *p)
 	 */
 	for (i = 0; i <= fdp->fd_lastfile; ++i) {
 		if (fdp->fd_files[i].fp)
-			closef(fdp->fd_files[i].fp, td);
+			closef(fdp->fd_files[i].fp, p);
 	}
 	if (fdp->fd_files != fdp->fd_builtin_files)
 		kfree(fdp->fd_files, M_FILEDESC);
@@ -1879,8 +1969,6 @@ is_unsafe(struct file *fp)
 void
 setugidsafety(struct proc *p)
 {
-	/* Take any thread of p */
-	struct thread *td = FIRST_LWP_IN_PROC(p)->lwp_thread;
 	struct filedesc *fdp = p->p_fd;
 	int i;
 
@@ -1905,7 +1993,7 @@ setugidsafety(struct proc *p)
 			 * a race while close blocks.
 			 */
 			if ((fp = funsetfd_locked(fdp, i)) != NULL)
-				closef(fp, td);
+				closef(fp, p);
 		}
 	}
 }
@@ -1918,8 +2006,6 @@ setugidsafety(struct proc *p)
 void
 fdcloseexec(struct proc *p)
 {
-	/* Take any thread of p */
-	struct thread *td = FIRST_LWP_IN_PROC(p)->lwp_thread;
 	struct filedesc *fdp = p->p_fd;
 	int i;
 
@@ -1943,7 +2029,7 @@ fdcloseexec(struct proc *p)
 			 * a race while close blocks.
 			 */
 			if ((fp = funsetfd_locked(fdp, i)) != NULL)
-				closef(fp, td);
+				closef(fp, p);
 		}
 	}
 }
@@ -2010,21 +2096,15 @@ fdcheckstd(struct proc *p)
  * MPALMOSTSAFE - acquires mplock for VOP operations
  */
 int
-closef(struct file *fp, struct thread *td)
+closef(struct file *fp, struct proc *p)
 {
 	struct vnode *vp;
 	struct flock lf;
 	struct filedesc_to_leader *fdtol;
-	struct proc *p;
 
 	if (fp == NULL)
 		return (0);
-	if (td == NULL) {
-		td = curthread;
-		p = NULL;		/* allow no proc association */
-	} else {
-		p = td->td_proc;	/* can also be NULL */
-	}
+
 	/*
 	 * POSIX record locking dictates that any close releases ALL
 	 * locks owned by this process.  This is handled by setting
@@ -2323,9 +2403,7 @@ allfiles_scan_exclusive(int (*callback)(struct file *, void *), void *data)
 
 	spin_lock_wr(&filehead_spin);
 	LIST_FOREACH(fp, &filehead, f_list) {
-		spin_lock_wr(&fp->f_spin);
 		res = callback(fp, data);
-		spin_unlock_wr(&fp->f_spin);
 		if (res < 0)
 			break;
 	}

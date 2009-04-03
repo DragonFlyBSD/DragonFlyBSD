@@ -53,6 +53,7 @@
 #include <sys/domain.h>
 #include <sys/eventhandler.h>
 #include <sys/fcntl.h>
+#include <sys/file.h>
 #include <sys/kernel.h>
 #include <sys/kthread.h>
 #include <sys/malloc.h>
@@ -1200,26 +1201,15 @@ vclean_vxlocked(struct vnode *vp, int flags)
  * Eliminate all activity associated with the requested vnode
  * and with all vnodes aliased to the requested vnode.
  *
- * The vnode must be referenced and vx_lock()'d
- *
- * revoke { struct vnode *a_vp, int a_flags }
+ * The vnode must be referenced but should not be locked.
  */
 int
-vop_stdrevoke(struct vop_revoke_args *ap)
+vrevoke(struct vnode *vp, struct ucred *cred)
 {
-	struct vnode *vp, *vq;
+	struct vnode *vq;
 	lwkt_tokref ilock;
 	cdev_t dev;
-
-	KASSERT((ap->a_flags & REVOKEALL) != 0, ("vop_revoke"));
-
-	vp = ap->a_vp;
-
-	/*
-	 * If the vnode is already dead don't try to revoke it
-	 */
-	if (vp->v_flag & VRECLAIMED)
-		return (0);
+	int error;
 
 	/*
 	 * If the vnode has a device association, scrap all vnodes associated
@@ -1229,8 +1219,10 @@ vop_stdrevoke(struct vop_revoke_args *ap)
 	 * The passed vp will probably show up in the list, do not VX lock
 	 * it twice!
 	 */
-	if (vp->v_type != VCHR)
-		return(0);
+	if (vp->v_type != VCHR) {
+		error = fdrevoke(vp, DTYPE_VNODE, cred);
+		return (error);
+	}
 	if ((dev = vp->v_rdev) == NULL) {
 		if ((dev = get_dev(vp->v_umajor, vp->v_uminor)) == NULL)
 			return(0);
@@ -1238,12 +1230,10 @@ vop_stdrevoke(struct vop_revoke_args *ap)
 	reference_dev(dev);
 	lwkt_gettoken(&ilock, &spechash_token);
 	while ((vq = SLIST_FIRST(&dev->si_hlist)) != NULL) {
-		if (vp != vq)
-			vx_get(vq);
-		if (vq == SLIST_FIRST(&dev->si_hlist))
-			vgone_vxlocked(vq);
-		if (vp != vq)
-			vx_put(vq);
+		vref(vq);
+		fdrevoke(vq, DTYPE_VNODE, cred);
+		v_release_rdev(vq);
+		vrele(vq);
 	}
 	lwkt_reltoken(&ilock);
 	release_dev(dev);

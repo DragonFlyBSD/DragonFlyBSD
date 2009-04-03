@@ -97,7 +97,6 @@ VNODEOP_DESC_INIT(write);
 VNODEOP_DESC_INIT(ioctl);
 VNODEOP_DESC_INIT(poll);
 VNODEOP_DESC_INIT(kqfilter);
-VNODEOP_DESC_INIT(revoke);
 VNODEOP_DESC_INIT(mmap);
 VNODEOP_DESC_INIT(fsync);
 VNODEOP_DESC_INIT(old_remove);
@@ -402,21 +401,6 @@ vop_kqfilter(struct vop_ops *ops, struct vnode *vp, struct knote *kn)
 	ap.a_kn = kn;
 
 	DO_OPS(ops, error, &ap, vop_kqfilter);
-	return(error);
-}
-
-int
-vop_revoke(struct vop_ops *ops, struct vnode *vp, int flags)
-{
-	struct vop_revoke_args ap;
-	int error;
-
-	ap.a_head.a_desc = &vop_revoke_desc;
-	ap.a_head.a_ops = ops;
-	ap.a_vp = vp;
-	ap.a_flags = flags;
-
-	DO_OPS(ops, error, &ap, vop_revoke);
 	return(error);
 }
 
@@ -1411,15 +1395,6 @@ vop_kqfilter_ap(struct vop_kqfilter_args *ap)
 	int error;
 
 	DO_OPS(ap->a_head.a_ops, error, ap, vop_kqfilter);
-	return(error);
-}
-
-int
-vop_revoke_ap(struct vop_revoke_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_revoke);
 	return(error);
 }
 

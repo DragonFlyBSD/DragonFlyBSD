@@ -688,7 +688,7 @@ spec_bmap(struct vop_bmap_args *ap)
  *
  * spec_close(struct vnode *a_vp, int a_fflag)
  *
- * NOTE: the vnode may or may not be locked on call.
+ * NOTE: The vnode may or may not be locked on call.
  */
 /* ARGSUSED */
 static int
@@ -701,37 +701,35 @@ spec_close(struct vop_close_args *ap)
 	int needrelock;
 
 	/*
-	 * Hack: a tty device that is a controlling terminal
-	 * has a reference from the session structure.
-	 * We cannot easily tell that a character device is
-	 * a controlling terminal, unless it is the closing
-	 * process' controlling terminal.  In that case,
-	 * if the reference count is 2 (this last descriptor
-	 * plus the session), release the reference from the session.
+	 * A couple of hacks for devices and tty devices.  The
+	 * vnode ref count cannot be used to figure out the
+	 * last close, but we can use v_opencount now that
+	 * revoke works properly.
 	 *
-	 * It is possible for v_opencount to be 0 or 1 in this case, 0
-	 * because the tty might have been revoked.
+	 * Detect the last close on a controlling terminal and clear
+	 * the session (half-close).
 	 */
 	if (dev)
 		reference_dev(dev);
-	if (vcount(vp) == 2 && vp->v_opencount <= 1 && 
-	    p && vp == p->p_session->s_ttyvp) {
+
+	if (p && vp->v_opencount <= 1 && vp == p->p_session->s_ttyvp) {
 		p->p_session->s_ttyvp = NULL;
 		vrele(vp);
 	}
 
 	/*
-	 * Vnodes can be opened and close multiple times.  Do not really
+	 * Vnodes can be opened and closed multiple times.  Do not really
 	 * close the device unless (1) it is being closed forcibly,
 	 * (2) the device wants to track closes, or (3) this is the last
 	 * vnode doing its last close on the device.
 	 *
 	 * XXX the VXLOCK (force close) case can leave vnodes referencing
-	 * a closed device.
+	 * a closed device.  This might not occur now that our revoke is
+	 * fixed.
 	 */
 	if (dev && ((vp->v_flag & VRECLAIMED) ||
 	    (dev_dflags(dev) & D_TRACKCLOSE) ||
-	    (vcount(vp) <= 1 && vp->v_opencount == 1))) {
+	    (vp->v_opencount == 1))) {
 		needrelock = 0;
 		if (vn_islocked(vp)) {
 			needrelock = 1;

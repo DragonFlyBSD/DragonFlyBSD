@@ -193,12 +193,6 @@ struct vop_kqfilter_args {
 	struct knote *a_kn;
 };
 
-struct vop_revoke_args {
-	struct vop_generic_args a_head;
-	struct vnode *a_vp;
-	int a_flags;
-};
-
 struct vop_mmap_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
@@ -593,7 +587,7 @@ struct vop_ops {
 	int	(*vop_ioctl)(struct vop_ioctl_args *);
 	int	(*vop_poll)(struct vop_poll_args *);
 	int	(*vop_kqfilter)(struct vop_kqfilter_args *);
-	int	(*vop_revoke)(struct vop_revoke_args *);
+	int	(*vop_unused01)(void *);	/* was vop_revoke */
 	int	(*vop_mmap)(struct vop_mmap_args *);
 	int	(*vop_fsync)(struct vop_fsync_args *);
 	int	(*vop_old_remove)(struct vop_old_remove_args *);
@@ -672,7 +666,6 @@ union vop_args_union {
 	struct vop_ioctl_args vu_ioctl;
 	struct vop_poll_args vu_poll;
 	struct vop_kqfilter_args vu_kqfilter;
-	struct vop_revoke_args vu_revoke;
 	struct vop_mmap_args vu_mmap;
 	struct vop_fsync_args vu_fsync;
 	struct vop_old_remove_args vu_remove;
@@ -753,7 +746,6 @@ int vop_ioctl(struct vop_ops *ops, struct vnode *vp, u_long command,
 int vop_poll(struct vop_ops *ops, struct vnode *vp, int events,
 		struct ucred *cred);
 int vop_kqfilter(struct vop_ops *ops, struct vnode *vp, struct knote *kn);
-int vop_revoke(struct vop_ops *ops, struct vnode *vp, int flags);
 int vop_mmap(struct vop_ops *ops, struct vnode *vp, int fflags,
 		struct ucred *cred);
 int vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor);
@@ -864,7 +856,6 @@ int vop_write_ap(struct vop_write_args *ap);
 int vop_ioctl_ap(struct vop_ioctl_args *ap);
 int vop_poll_ap(struct vop_poll_args *ap);
 int vop_kqfilter_ap(struct vop_kqfilter_args *ap);
-int vop_revoke_ap(struct vop_revoke_args *ap);
 int vop_mmap_ap(struct vop_mmap_args *ap);
 int vop_fsync_ap(struct vop_fsync_args *ap);
 int vop_old_remove_ap(struct vop_old_remove_args *ap);
@@ -927,7 +918,6 @@ extern struct syslink_desc vop_write_desc;
 extern struct syslink_desc vop_ioctl_desc;
 extern struct syslink_desc vop_poll_desc;
 extern struct syslink_desc vop_kqfilter_desc;
-extern struct syslink_desc vop_revoke_desc;
 extern struct syslink_desc vop_mmap_desc;
 extern struct syslink_desc vop_fsync_desc;
 extern struct syslink_desc vop_old_remove_desc;
@@ -996,8 +986,6 @@ extern struct syslink_desc vop_nrename_desc;
 	vop_poll(*(vp)->v_ops, vp, events, cred)
 #define VOP_KQFILTER(vp, kn)				\
 	vop_kqfilter(*(vp)->v_ops, vp, kn)
-#define VOP_REVOKE(vp, flags)				\
-	vop_revoke(*(vp)->v_ops, vp, flags)
 #define VOP_MMAP(vp, fflags, cred)			\
 	vop_mmap(*(vp)->v_ops, vp, fflags, cred)
 #define VOP_FSYNC(vp, waitfor)				\
