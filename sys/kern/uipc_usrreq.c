@@ -90,12 +90,14 @@ static void    unp_gc (void);
 static int     unp_gc_clearmarks(struct file *, void *);
 static int     unp_gc_checkmarks(struct file *, void *);
 static int     unp_gc_checkrefs(struct file *, void *);
+static int     unp_revoke_gc_check(struct file *, void *);
 static void    unp_scan (struct mbuf *, void (*)(struct file *, void *),
 				void *data);
 static void    unp_mark (struct file *, void *data);
 static void    unp_discard (struct file *, void *);
 static int     unp_internalize (struct mbuf *, struct thread *);
 static int     unp_listen (struct unpcb *, struct thread *);
+static void    unp_fp_externalize(struct proc *p, struct file *fp, int fd);
 
 static int
 uipc_abort(struct socket *so)
@@ -955,6 +957,7 @@ unp_externalize(struct mbuf *rights)
 		}
 		return (EMSGSIZE);
 	}
+
 	/*
 	 * now change each pointer to an fd in the global table to 
 	 * an integer that is the index to the local fd table entry
@@ -973,12 +976,7 @@ unp_externalize(struct mbuf *rights)
 			if (fdalloc(p, 0, &f))
 				panic("unp_externalize");
 			fp = *rp++;
-			fsetfd(p, fp, f);
-			fdrop(fp);
-			spin_lock_wr(&unp_spin);
-			fp->f_msgcount--;
-			unp_rights--;
-			spin_unlock_wr(&unp_spin);
+			unp_fp_externalize(p, fp, f);
 			*fdp++ = f;
 		}
 	} else {
@@ -988,12 +986,7 @@ unp_externalize(struct mbuf *rights)
 			if (fdalloc(p, 0, &f))
 				panic("unp_externalize");
 			fp = *rp--;
-			fsetfd(p, fp, f);
-			fdrop(fp);
-			spin_lock_wr(&unp_spin);
-			fp->f_msgcount--;
-			unp_rights--;
-			spin_unlock_wr(&unp_spin);
+			unp_fp_externalize(p, fp, f);
 			*fdp-- = f;
 		}
 	}
@@ -1006,6 +999,35 @@ unp_externalize(struct mbuf *rights)
 	rights->m_len = cm->cmsg_len;
 	return (0);
 }
+
+static void
+unp_fp_externalize(struct proc *p, struct file *fp, int fd)
+{
+	struct file *fx;
+	int error;
+
+	if (p) {
+		KKASSERT(fd >= 0);
+		if (fp->f_flag & FREVOKED) {
+			kprintf("Warning: revoked fp exiting unix socket\n");
+			fx = NULL;
+			error = falloc(p, &fx, NULL);
+			if (error == 0)
+				fsetfd(p, fx, fd);
+			else
+				fsetfd(p, NULL, fd);
+			fdrop(fx);
+		} else {
+			fsetfd(p, fp, fd);
+		}
+	}
+	spin_lock_wr(&unp_spin);
+	fp->f_msgcount--;
+	unp_rights--;
+	spin_unlock_wr(&unp_spin);
+	fdrop(fp);
+}
+
 
 void
 unp_init(void)
@@ -1311,6 +1333,7 @@ unp_gc_checkmarks(struct file *fp, void *data)
 		 */
 		atomic_set_int(&fp->f_flag, FMARK);
 	}
+
 	/*
 	 * either it was defered, or it is externally 
 	 * accessible and not already marked so.
@@ -1350,6 +1373,115 @@ unp_gc_checkmarks(struct file *fp, void *data)
 	unp_scan(so->so_rcv.ssb_mb, unp_mark, info);
 /*	spin_unlock_wr(&so->so_rcv.sb_spin);*/
 	return (0);
+}
+
+/*
+ * Scan all unix domain sockets and replace any revoked file pointers
+ * found with the dummy file pointer fx.  We don't worry about races
+ * against file pointers being read out as those are handled in the
+ * externalize code.
+ */
+
+#define REVOKE_GC_MAXFILES	32
+
+struct unp_revoke_gc_info {
+	struct file	*fx;
+	struct file	*fary[REVOKE_GC_MAXFILES];
+	int		fcount;
+};
+
+void
+unp_revoke_gc(struct file *fx)
+{
+	struct unp_revoke_gc_info info;
+	int i;
+
+	info.fx = fx;
+	do {
+		info.fcount = 0;
+		allfiles_scan_exclusive(unp_revoke_gc_check, &info);
+		for (i = 0; i < info.fcount; ++i)
+			unp_fp_externalize(NULL, info.fary[i], -1);
+	} while (info.fcount == REVOKE_GC_MAXFILES);
+}
+
+/*
+ * Check for and replace revoked descriptors.
+ *
+ * WARNING:  This routine is not allowed to block.
+ */
+static int
+unp_revoke_gc_check(struct file *fps, void *vinfo)
+{
+	struct unp_revoke_gc_info *info = vinfo;
+	struct file *fp;
+	struct socket *so;
+	struct mbuf *m0;
+	struct mbuf *m;
+	struct file **rp;
+	struct cmsghdr *cm;
+	int i;
+	int qfds;
+
+	/*
+	 * Is this a unix domain socket with rights-passing abilities?
+	 */
+	if (fps->f_type != DTYPE_SOCKET)
+		return (0);
+	if ((so = (struct socket *)fps->f_data) == NULL)
+		return(0);
+	if (so->so_proto->pr_domain != &localdomain)
+		return(0);
+	if ((so->so_proto->pr_flags & PR_RIGHTS) == 0)
+		return(0);
+
+	/*
+	 * Scan the mbufs for control messages and replace any revoked
+	 * descriptors we find.
+	 */
+	m0 = so->so_rcv.ssb_mb;
+	while (m0) {
+		for (m = m0; m; m = m->m_next) {
+			if (m->m_type != MT_CONTROL)
+				continue;
+			if (m->m_len < sizeof(*cm))
+				continue;
+			cm = mtod(m, struct cmsghdr *);
+			if (cm->cmsg_level != SOL_SOCKET ||
+			    cm->cmsg_type != SCM_RIGHTS) {
+				continue;
+			}
+			qfds = (cm->cmsg_len -
+				(CMSG_DATA(cm) - (u_char *)cm))
+					/ sizeof (struct file *);
+			rp = (struct file **)CMSG_DATA(cm);
+			for (i = 0; i < qfds; i++) {
+				fp = rp[i];
+				if (fp->f_flag & FREVOKED) {
+					kprintf("Warning: Removing revoked fp from unix domain socket queue\n");
+					fhold(info->fx);
+					info->fx->f_msgcount++;
+					unp_rights++;
+					rp[i] = info->fx;
+					info->fary[info->fcount++] = fp;
+				}
+				if (info->fcount == REVOKE_GC_MAXFILES)
+					break;
+			}
+			if (info->fcount == REVOKE_GC_MAXFILES)
+				break;
+		}
+		m0 = m0->m_nextpkt;
+		if (info->fcount == REVOKE_GC_MAXFILES)
+			break;
+	}
+
+	/*
+	 * Stop the scan if we filled up our array.
+	 */
+	if (info->fcount == REVOKE_GC_MAXFILES)
+		return(-1);
+	return(0);
 }
 
 void
