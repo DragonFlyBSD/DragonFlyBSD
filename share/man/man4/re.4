@@ -149,11 +149,15 @@ branch of the
 MIB.
 .Bl -tag -width ".Va rx_desc_count"
 .It Va rx_desc_count
-Number of RX descriptor (read-only).
-Use tunable hw.re.rx_desc_count to configure it.
+Number of RX descriptors (read-only).
+Use the tunable
+.Va hw.re.rx_desc_count
+to configure it.
 .It Va tx_desc_count
-Number of TX descriptor (read-only).
-Use tunable hw.re.tx_desc_count to configure it.
+Number of TX descriptors (read-only).
+Use the tunable
+.Va hw.re.tx_desc_count
+to configure it.
 .It Va imtype
 Interrupt moderation type.
 0 means disable interrupt moderation.
