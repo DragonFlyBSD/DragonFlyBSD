@@ -356,7 +356,7 @@ int			path_changed(struct resp_buf *base,
 void			check_vif_state(void);
 
 int			main(int argc, char **argv);
-void			log(int, int, char *, ...);
+void			dolog(int, int, char *, ...);
 static void		usage(void);
 
 
@@ -371,13 +371,13 @@ init_igmp(void)
 
     recv_buf = (char *)malloc(RECV_BUF_SIZE);
     if (recv_buf == 0)
-	log(LOG_ERR, 0, "Out of memory allocating recv_buf!");
+	dolog(LOG_ERR, 0, "Out of memory allocating recv_buf!");
     send_buf = (char *)malloc(RECV_BUF_SIZE);
     if (send_buf == 0)
-	log(LOG_ERR, 0, "Out of memory allocating send_buf!");
+	dolog(LOG_ERR, 0, "Out of memory allocating send_buf!");
 
     if ((igmp_socket = socket(AF_INET, SOCK_RAW, IPPROTO_IGMP)) < 0) 
-	log(LOG_ERR, errno, "IGMP socket");
+	dolog(LOG_ERR, errno, "IGMP socket");
 
     k_hdr_include(TRUE);	/* include IP header when sending */
     k_set_rcvbuf(48*1024);	/* lots of input buffering        */
@@ -460,7 +460,7 @@ checkforsolarisbug(void)
 	    else if (ip->ip_len == IGMP_MINLEN + 8)
 		ip_addlen = 0;
 	    else
-		log(LOG_ERR, 0, "while checking for Solaris bug: Sent %d bytes and got back %d!", IGMP_MINLEN + 8, ip->ip_len);
+		dolog(LOG_ERR, 0, "while checking for Solaris bug: Sent %d bytes and got back %d!", IGMP_MINLEN + 8, ip->ip_len);
 
 	    break;
 	}
@@ -540,14 +540,14 @@ send_igmp(u_int32 src, u_int32 dst, int type, int code, u_int32 group,
     sdst.sin_addr.s_addr = dst;
     if (sendto(igmp_socket, send_buf, sendlen, 0,
 			(struct sockaddr *)&sdst, sizeof(sdst)) < 0) {
-	    log(LOG_WARNING, errno, "sendto to %s on %s",
+	    dolog(LOG_WARNING, errno, "sendto to %s on %s",
 		inet_fmt(dst, s1), inet_fmt(src, s2));
     }
 
     if (setloop)
 	    k_set_loop(FALSE);
 
-    log(LOG_DEBUG, 0, "SENT %s from %-15s to %s",
+    dolog(LOG_DEBUG, 0, "SENT %s from %-15s to %s",
 	type == IGMP_MTRACE ? "mtrace request" : "ask_neighbors",
 	src == INADDR_ANY ? "INADDR_ANY" : inet_fmt(src, s1),
 	inet_fmt(dst, s2));
@@ -610,7 +610,7 @@ k_set_rcvbuf(int bufsize)
 {
     if (setsockopt(igmp_socket, SOL_SOCKET, SO_RCVBUF,
 		   (char *)&bufsize, sizeof(bufsize)) < 0)
-	log(LOG_ERR, errno, "setsockopt SO_RCVBUF %u", bufsize);
+	dolog(LOG_ERR, errno, "setsockopt SO_RCVBUF %u", bufsize);
 }
 
 
@@ -620,7 +620,7 @@ k_hdr_include(int boolv)
 #ifdef IP_HDRINCL
     if (setsockopt(igmp_socket, IPPROTO_IP, IP_HDRINCL,
 		   (char *)&boolv, sizeof(boolv)) < 0)
-	log(LOG_ERR, errno, "setsockopt IP_HDRINCL %u", boolv);
+	dolog(LOG_ERR, errno, "setsockopt IP_HDRINCL %u", boolv);
 #endif
 }
 
@@ -632,7 +632,7 @@ k_set_ttl(int t)
     ttl = t;
     if (setsockopt(igmp_socket, IPPROTO_IP, IP_MULTICAST_TTL,
 		   (char *)&ttl, sizeof(ttl)) < 0)
-	log(LOG_ERR, errno, "setsockopt IP_MULTICAST_TTL %u", ttl);
+	dolog(LOG_ERR, errno, "setsockopt IP_MULTICAST_TTL %u", ttl);
 }
 
 
@@ -644,7 +644,7 @@ k_set_loop(int l)
     loop = l;
     if (setsockopt(igmp_socket, IPPROTO_IP, IP_MULTICAST_LOOP,
 		   (char *)&loop, sizeof(loop)) < 0)
-	log(LOG_ERR, errno, "setsockopt IP_MULTICAST_LOOP %u", loop);
+	dolog(LOG_ERR, errno, "setsockopt IP_MULTICAST_LOOP %u", loop);
 }
 
 void
@@ -655,7 +655,7 @@ k_set_if(u_int32 ifa)
     adr.s_addr = ifa;
     if (setsockopt(igmp_socket, IPPROTO_IP, IP_MULTICAST_IF,
 		   (char *)&adr, sizeof(adr)) < 0)
-	log(LOG_ERR, errno, "setsockopt IP_MULTICAST_IF %s",
+	dolog(LOG_ERR, errno, "setsockopt IP_MULTICAST_IF %s",
 	    		    inet_fmt(ifa, s1));
 }
 
@@ -669,7 +669,7 @@ k_join(u_int32 grp, u_int32 ifa)
 
     if (setsockopt(igmp_socket, IPPROTO_IP, IP_ADD_MEMBERSHIP,
 		   (char *)&mreq, sizeof(mreq)) < 0)
-	log(LOG_WARNING, errno, "can't join group %s on interface %s",
+	dolog(LOG_WARNING, errno, "can't join group %s on interface %s",
 				inet_fmt(grp, s1), inet_fmt(ifa, s2));
 }
 
@@ -684,7 +684,7 @@ k_leave(u_int32 grp, u_int32 ifa)
 
     if (setsockopt(igmp_socket, IPPROTO_IP, IP_DROP_MEMBERSHIP,
 		   (char *)&mreq, sizeof(mreq)) < 0)
-	log(LOG_WARNING, errno, "can't leave group %s on interface %s",
+	dolog(LOG_WARNING, errno, "can't leave group %s on interface %s",
 				inet_fmt(grp, s1), inet_fmt(ifa, s2));
 }
 
@@ -1222,7 +1222,7 @@ send_recv(u_int32 dst, int type, int code, int tries, struct resp_buf *save,
 	 */
 	while (TRUE) {
 	    if (igmp_socket >= FD_SETSIZE)
-		    log(LOG_ERR, 0, "descriptor too big");
+		    dolog(LOG_ERR, 0, "descriptor too big");
 	    FD_ZERO(&fds);
 	    FD_SET(igmp_socket, &fds);
 	    gettimeofday(&tv, 0);
@@ -3054,7 +3054,7 @@ usage(void)
 void
 check_vif_state(void)
 {
-    log(LOG_WARNING, errno, "sendto");
+    dolog(LOG_WARNING, errno, "sendto");
 }
 
 /*
@@ -3063,7 +3063,7 @@ check_vif_state(void)
  * LOG_ERR or worse, terminate the program.
  */
 void
-log(int severity, int syserr, char *format, ...)
+dolog(int severity, int syserr, char *format, ...)
 {
 	va_list ap;
 	char    fmt[100];

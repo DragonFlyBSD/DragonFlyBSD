@@ -214,7 +214,7 @@ main(int argc, char **argv)
 	    } else
 		usage();
 	} else if (strcmp(*argv, "-p") == 0) {
-	    log(LOG_WARNING, 0, "disabling pruning is no longer supported");
+	    dolog(LOG_WARNING, 0, "disabling pruning is no longer supported");
 #ifdef SNMP
    } else if (strcmp(*argv, "-P") == 0) {
 	    if (argc > 1 && isdigit(*(argv + 1)[0])) {
@@ -257,7 +257,7 @@ main(int argc, char **argv)
 #endif
     sprintf(versionstring, "mrouted version %s", todaysversion);
 
-    log(LOG_DEBUG, 0, "%s starting", versionstring);
+    dolog(LOG_DEBUG, 0, "%s starting", versionstring);
 
 #ifdef SYSV
     srand48(time(NULL));
@@ -309,7 +309,7 @@ main(int argc, char **argv)
      */
     if ((((vers >> 8) & 0xff) != 3) ||
 	 ((vers & 0xff) != 5))
-	log(LOG_ERR, 0, "kernel (v%d.%d)/mrouted (v%d.%d) version mismatch",
+	dolog(LOG_ERR, 0, "kernel (v%d.%d)/mrouted (v%d.%d) version mismatch",
 		(vers >> 8) & 0xff, vers & 0xff,
 		PROTOCOL_VERSION, MROUTED_VERSION);
 #endif
@@ -344,13 +344,13 @@ main(int argc, char **argv)
     sigaction(SIGUSR2, &sa, NULL);
 
     if (igmp_socket >= FD_SETSIZE)
-	    log(LOG_ERR, 0, "descriptor too big");
+	    dolog(LOG_ERR, 0, "descriptor too big");
     FD_ZERO(&readers);
     FD_SET(igmp_socket, &readers);
     nfds = igmp_socket + 1;
     for (i = 0; i < nhandlers; i++) {
 	if (ihandlers[i].fd >= FD_SETSIZE)
-		log(LOG_ERR, 0, "descriptor too big");
+		dolog(LOG_ERR, 0, "descriptor too big");
 	FD_SET(ihandlers[i].fd, &readers);
 	if (ihandlers[i].fd >= nfds)
 	    nfds = ihandlers[i].fd + 1;
@@ -475,7 +475,7 @@ main(int argc, char **argv)
 	}
 	if ((n = select(nfds, &rfds, NULL, NULL, timeout)) < 0) {
             if (errno != EINTR)
-                log(LOG_WARNING, errno, "select failed");
+                dolog(LOG_WARNING, errno, "select failed");
             continue;
         }
 
@@ -484,7 +484,7 @@ main(int argc, char **argv)
 		recvlen = recvfrom(igmp_socket, recv_buf, RECV_BUF_SIZE,
 				   0, NULL, &dummy);
 		if (recvlen < 0) {
-		    if (errno != EINTR) log(LOG_ERR, errno, "recvfrom");
+		    if (errno != EINTR) dolog(LOG_ERR, errno, "recvfrom");
 		    continue;
 		}
 		accept_igmp(recvlen);
@@ -543,7 +543,7 @@ main(int argc, char **argv)
 	    secs = -1;
 	} while (difftime.tv_sec > 0);
     }
-    log(LOG_NOTICE, 0, "%s exiting", versionstring);
+    dolog(LOG_NOTICE, 0, "%s exiting", versionstring);
     cleanup();
     exit(0);
 }
@@ -561,7 +561,7 @@ final_init(void *i)
 {
     char *s = (char *)i;
 
-    log(LOG_NOTICE, 0, "%s%s", versionstring, s ? s : "");
+    dolog(LOG_NOTICE, 0, "%s%s", versionstring, s ? s : "");
     if (s)
 	free(s);
 
@@ -807,7 +807,7 @@ restart(void)
 
     s = (char *)malloc(sizeof(" restart"));
     if (s == NULL)
-	log(LOG_ERR, 0, "out of memory");
+	dolog(LOG_ERR, 0, "out of memory");
     strcpy(s, " restart");
 
     /*
@@ -896,7 +896,7 @@ printringbuf(void)
 
     f = fopen("/var/tmp/mrouted.log", "a");
     if (f == NULL) {
-	log(LOG_ERR, errno, "can't open /var/tmp/mrouted.log");
+	dolog(LOG_ERR, errno, "can't open /var/tmp/mrouted.log");
 	/*NOTREACHED*/
     }
     fprintf(f, "--------------------------------------------\n");
@@ -922,7 +922,7 @@ printringbuf(void)
  */
 
 void
-log(int severity, int syserr, char *format, ...)
+dolog(int severity, int syserr, char *format, ...)
 {
     va_list ap;
     static char fmt[211] = "warning - ";
@@ -1013,7 +1013,7 @@ md_log(int what, u_int32 origin, u_int32 mcastgrp)
 
     if (!f) {
 	if ((f = fopen("/tmp/mrouted.clog", "w")) == NULL) {
-	    log(LOG_ERR, errno, "open /tmp/mrouted.clog");
+	    dolog(LOG_ERR, errno, "open /tmp/mrouted.clog");
 	}
     }
 

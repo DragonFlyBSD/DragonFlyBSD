@@ -157,7 +157,7 @@ readrates(char *filename)
 		{
 			indx = *bp - '0';
 
-			DBGL(DL_RATES, (log(LL_DBG, "rates: index = %d", indx)));
+			DBGL(DL_RATES, (dolog(LL_DBG, "rates: index = %d", indx)));
 		}
 		else
 		{
@@ -357,14 +357,14 @@ readrates(char *filename)
 					rt = rates [j][i];
 					for (; rt; rt = rt->next)
 					{
-						log(LL_DBG, "rates: index %d day %d = %d.%2.2d-%d.%2.2d:%d",
+						dolog(LL_DBG, "rates: index %d day %d = %d.%2.2d-%d.%2.2d:%d",
 							j, i, rt->start_time/60, rt->start_time%60,
 							rt->end_time/60,rt->end_time%60,rt->rate);
 					}
 				}
 				else
 				{
-					log(LL_DBG, "rates: NO entry for day %d !!\n", i);
+					dolog(LL_DBG, "rates: NO entry for day %d !!\n", i);
 				}
 			}
 		}
@@ -393,14 +393,14 @@ get_current_rate(cfg_entry_t *cep, int logit)
 	{
 		case ULSRC_CMDL:	/* specified on commandline     */
 			if(logit)
-				log(LL_CHD, "%05d %s rate %d sec/unit (cmdl)",
+				dolog(LL_CHD, "%05d %s rate %d sec/unit (cmdl)",
 					cep->cdid, cep->name, unit_length);
 			return(unit_length);
 			break;
 
 		case ULSRC_CONF:	/* get it from config file      */
 			if(logit)
-				log(LL_CHD, "%05d %s rate %d sec/unit (conf)",
+				dolog(LL_CHD, "%05d %s rate %d sec/unit (conf)",
 					cep->cdid, cep->name, cep->unitlength);
 			return(cep->unitlength);
 
@@ -408,7 +408,7 @@ get_current_rate(cfg_entry_t *cep, int logit)
 			if(!got_rate)	/* got valid rates struct ?? */
 			{
 				if(logit)
-					log(LL_CHD, "%05d %s rate %d sec/unit (no ratefile)",
+					dolog(LL_CHD, "%05d %s rate %d sec/unit (no ratefile)",
 						cep->cdid, cep->name, UNITLENGTH_DEFAULT);
 				return(UNITLENGTH_DEFAULT);
 			}
@@ -416,7 +416,7 @@ get_current_rate(cfg_entry_t *cep, int logit)
 			   (cep->ratetype == INVALID_RATE))
 			{
 				if(logit)
-					log(LL_CHD, "%05d %s rate %d sec/unit (rate out of range)",
+					dolog(LL_CHD, "%05d %s rate %d sec/unit (rate out of range)",
 						cep->cdid, cep->name, UNITLENGTH_DEFAULT);
 				return(UNITLENGTH_DEFAULT);
 			}
@@ -424,13 +424,13 @@ get_current_rate(cfg_entry_t *cep, int logit)
 			if((rt = getrate(cep->ratetype)) != -1)
 			{
 				if(logit)
-					log(LL_CHD, "%05d %s rate %d sec/unit (rate)",
+					dolog(LL_CHD, "%05d %s rate %d sec/unit (rate)",
 						cep->cdid, cep->name, rt);
 				return(rt);
 			}
 
 			if(logit)			
-				log(LL_CHD, "%05d %s rate %d sec/unit (ratescan fail)",
+				dolog(LL_CHD, "%05d %s rate %d sec/unit (ratescan fail)",
 					cep->cdid, cep->name, UNITLENGTH_DEFAULT);
 
 			return(UNITLENGTH_DEFAULT);
@@ -440,12 +440,12 @@ get_current_rate(cfg_entry_t *cep, int logit)
 			if((rt = getrate(cep->ratetype)) != -1)
 			{
 				if(logit)
-					log(LL_CHD, "%05d %s rate %d sec/unit (aocd, rate)",
+					dolog(LL_CHD, "%05d %s rate %d sec/unit (aocd, rate)",
 						cep->cdid, cep->name, rt);
 				return(rt);
 			}
 			if(logit)
-				log(LL_CHD, "%05d %s rate %d sec/unit (aocd, default)",
+				dolog(LL_CHD, "%05d %s rate %d sec/unit (aocd, default)",
 					cep->cdid, cep->name, UNITLENGTH_DEFAULT);
 
 			return(UNITLENGTH_DEFAULT);
@@ -453,7 +453,7 @@ get_current_rate(cfg_entry_t *cep, int logit)
 
 		default:
 			if(logit)
-				log(LL_CHD, "%05d %s rate %d sec/unit (unitlen unknown)",
+				dolog(LL_CHD, "%05d %s rate %d sec/unit (unitlen unknown)",
 					cep->cdid, cep->name, UNITLENGTH_DEFAULT);
 
 			return(UNITLENGTH_DEFAULT);
@@ -495,7 +495,7 @@ getrate(int rate_type)
 		if((time_now >= hd->start_time ) &&
 		   (time_now < hd->end_time ))
 		{
-			DBGL(DL_RATES, (log(LL_DBG, "rate=%d sec/unit (day=%d, beg=%d:%2.2d, end=%d:2.2d, current=%d:%2.2d)",
+			DBGL(DL_RATES, (dolog(LL_DBG, "rate=%d sec/unit (day=%d, beg=%d:%2.2d, end=%d:2.2d, current=%d:%2.2d)",
 				hd->rate,
 				ptr->tm_wday,
 				hd->start_time/60, hd->start_time%60,

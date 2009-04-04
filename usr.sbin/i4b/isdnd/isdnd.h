@@ -773,7 +773,7 @@ void init_controller ( void );
 void init_controller_protocol ( void );
 void init_log ( void );
 void init_screen ( void );
-void log ( int what, const char *fmt, ... );
+void dolog ( int what, const char *fmt, ... );
 int main ( int argc, char **argv );
 void msg_accounting ( msg_accounting_ind_t *mp );
 void msg_alert_ind ( msg_alert_ind_t *mp );

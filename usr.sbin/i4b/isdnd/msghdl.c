@@ -27,7 +27,7 @@
  *	i4b daemon - message from kernel handling routines
  *	--------------------------------------------------
  *
- *	$Id: msghdl.c,v 1.78 2000/09/21 11:29:51 hm Exp $ 
+ *	$Id: msghdl.c,v 1.78 2000/09/21 11:29:51 hm Exp $
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/msghdl.c,v 1.6.2.3 2001/12/16 15:13:38 hm Exp $
  * $DragonFly: src/usr.sbin/i4b/isdnd/msghdl.c,v 1.3 2004/02/10 02:59:42 rob Exp $
@@ -82,8 +82,8 @@ msg_connect_ind(msg_connect_ind_t *mp)
 	}
 
 	if(cep->cdid != CDID_UNUSED && cep->cdid != CDID_RESERVED)
-	{	
-		/* 
+	{
+		/*
 		 * This is an incoming call on a number we just dialed out.
 		 * Stop our dial-out and accept the incoming call.
 		 */
@@ -93,7 +93,7 @@ msg_connect_ind(msg_connect_ind_t *mp)
 			int cdid;
 
 			/* disconnect old, not new */
-			
+
 			cdid = cep->cdid;
 			cep->cdid = cep->saved_call.cdid;
 			sendm_disconnect_req(cep, (CAUSET_I4B << 8) | CAUSE_I4B_NORMAL);
@@ -113,7 +113,7 @@ msg_connect_ind(msg_connect_ind_t *mp)
 
 	if(cep->inout == DIR_OUTONLY)
 	{
-		log(LL_CHD, "%05d %s incoming call from %s to %s not allowed by configuration!",
+		dolog(LL_CHD, "%05d %s incoming call from %s to %s not allowed by configuration!",
 			mp->header.cdid, cep->name, SRC, DST);
 		sendm_connect_resp(NULL, mp->header.cdid, SETUP_RESP_DNTCRE, 0);
 		handle_scrprs(mp->header.cdid, mp->scr_ind, mp->prs_ind, SRC);
@@ -122,18 +122,18 @@ msg_connect_ind(msg_connect_ind_t *mp)
 
 	cep->charge = 0;
 	cep->last_charge = 0;
-		
+
 	switch(cep->dialin_reaction)
 	{
 		case REACT_ACCEPT:
-			log(LL_CHD, "%05d %s accepting: incoming call from %s to %s",
+			dolog(LL_CHD, "%05d %s accepting: incoming call from %s to %s",
 				mp->header.cdid, cep->name, SRC, DST);
 			decr_free_channels(mp->controller);
 			next_state(cep, EV_MCI);
 			break;
 
 		case REACT_REJECT:
-			log(LL_CHD, "%05d %s rejecting: incoming call from %s to %s",
+			dolog(LL_CHD, "%05d %s rejecting: incoming call from %s to %s",
 				mp->header.cdid, cep->name, SRC, DST);
 			sendm_connect_resp(cep, mp->header.cdid, SETUP_RESP_REJECT,
 				(CAUSET_I4B << 8) | CAUSE_I4B_REJECT);
@@ -141,7 +141,7 @@ msg_connect_ind(msg_connect_ind_t *mp)
 			break;
 
 		case REACT_IGNORE:
-			log(LL_CHD, "%05d %s ignoring: incoming call from %s to %s",
+			dolog(LL_CHD, "%05d %s ignoring: incoming call from %s to %s",
 				mp->header.cdid, cep->name, SRC, DST);
 			sendm_connect_resp(NULL, mp->header.cdid, SETUP_RESP_DNTCRE, 0);
 			cep->cdid = CDID_UNUSED;
@@ -153,12 +153,12 @@ msg_connect_ind(msg_connect_ind_t *mp)
 			{
 				if(mp->display)
 				{
-					log(LL_CHD, "%05d %s alerting: incoming call from %s to %s (%s)",
+					dolog(LL_CHD, "%05d %s alerting: incoming call from %s to %s (%s)",
 					        mp->header.cdid, cep->name, SRC, DST, mp->display);
 				}
 				else
 				{
-					log(LL_CHD, "%05d %s alerting: incoming call from %s to %s",
+					dolog(LL_CHD, "%05d %s alerting: incoming call from %s to %s",
 					        mp->header.cdid, cep->name, SRC, DST);
 				}
 				next_state(cep, EV_ALRT);
@@ -166,13 +166,13 @@ msg_connect_ind(msg_connect_ind_t *mp)
 			else
 			{
 				if(mp->display)
-				{				
-					log(LL_CHD, "%05d %s answering: incoming call from %s to %s (%s)",
+				{
+					dolog(LL_CHD, "%05d %s answering: incoming call from %s to %s (%s)",
 						mp->header.cdid, cep->name, SRC, DST, mp->display);
 				}
 				else
 				{
-					log(LL_CHD, "%05d %s answering: incoming call from %s to %s",
+					dolog(LL_CHD, "%05d %s answering: incoming call from %s to %s",
 						mp->header.cdid, cep->name, SRC, DST);
 				}
 				next_state(cep, EV_MCI);
@@ -180,20 +180,20 @@ msg_connect_ind(msg_connect_ind_t *mp)
 			break;
 
 		case REACT_CALLBACK:
-		
+
 #ifdef NOTDEF
 /*XXX reserve channel ??? */	decr_free_channels(mp->controller);
 #endif
 			if(cep->cdid == CDID_RESERVED)
 			{
-				log(LL_CHD, "%05d %s reserved: incoming call from %s to %s",
+				dolog(LL_CHD, "%05d %s reserved: incoming call from %s to %s",
 					mp->header.cdid, cep->name, SRC, DST);
 				sendm_connect_resp(cep, mp->header.cdid, SETUP_RESP_REJECT,
 #if 0
 					(CAUSET_I4B << 8) | CAUSE_I4B_NORMAL);
 #else
 					(CAUSET_I4B << 8) | CAUSE_I4B_REJECT);
-#endif					
+#endif
 				/* no state change */
 			}
 			else
@@ -203,14 +203,14 @@ msg_connect_ind(msg_connect_ind_t *mp)
 					(CAUSET_I4B << 8) | CAUSE_I4B_NORMAL);
 #else
 					(CAUSET_I4B << 8) | CAUSE_I4B_REJECT);
-#endif					
+#endif
 				if(cep->budget_callbackperiod && cep->budget_callbackncalls)
 				{
 					cep->budget_callback_req++;
 					cep->budget_calltype = 0;
 					if(cep->budget_callbackncalls_cnt == 0)
 					{
-						log(LL_CHD, "%05d %s no budget: call from %s to %s",
+						dolog(LL_CHD, "%05d %s no budget: call from %s to %s",
 							mp->header.cdid, cep->name, SRC, DST);
 						cep->cdid = CDID_UNUSED;
 						cep->budget_callback_rej++;
@@ -222,7 +222,7 @@ msg_connect_ind(msg_connect_ind_t *mp)
 					}
 				}
 
-				log(LL_CHD, "%05d %s callback: incoming call from %s to %s",
+				dolog(LL_CHD, "%05d %s callback: incoming call from %s to %s",
 					mp->header.cdid, cep->name, SRC, DST);
 
 				cep->last_release_time = time(NULL);
@@ -230,9 +230,9 @@ msg_connect_ind(msg_connect_ind_t *mp)
 				next_state(cep, EV_CBRQ);
 			}
 			break;
-			
+
 		default:
-			log(LL_WRN, "msg_connect_ind: unknown response type, tx SETUP_RESP_DNTCRE");
+			dolog(LL_WRN, "msg_connect_ind: unknown response type, tx SETUP_RESP_DNTCRE");
 			sendm_connect_resp(NULL, mp->header.cdid, SETUP_RESP_DNTCRE, 0);
 			break;
 	}
@@ -249,23 +249,23 @@ msg_connect_active_ind(msg_connect_active_ind_t *mp)
 {
 	cfg_entry_t *cep;
 	char *device;
-	
+
 	if((cep = get_cep_by_cdid(mp->header.cdid)) == NULL)
 	{
-		log(LL_WRN, "msg_connect_active_ind: cdid not found!");
+		dolog(LL_WRN, "msg_connect_active_ind: cdid not found!");
 		return;
 	}
 
 	cep->isdncontrollerused = mp->controller;
-	cep->isdnchannelused = mp->channel;	
-                                                                                
+	cep->isdnchannelused = mp->channel;
+
 	cep->aoc_now = cep->connect_time = time(NULL);
 	cep->aoc_last = 0;
 	cep->aoc_diff = 0;
 	cep->aoc_valid = AOC_INVALID;
 
-	cep->local_disconnect = DISCON_REM;	
-	
+	cep->local_disconnect = DISCON_REM;
+
 	cep->inbytes = INVALID;
 	cep->outbytes = INVALID;
 	cep->hangup = 0;
@@ -275,11 +275,11 @@ msg_connect_active_ind(msg_connect_active_ind_t *mp)
 	/* set the B-channel to active */
 
 	if((set_channel_busy(cep->isdncontrollerused, cep->isdnchannelused)) == ERROR)
-		log(LL_ERR, "msg_connect_active_ind: set_channel_busy failed!");
+		dolog(LL_ERR, "msg_connect_active_ind: set_channel_busy failed!");
 
 	if(cep->direction == DIR_OUT)
 	{
-		log(LL_CHD, "%05d %s outgoing call active (ctl %d, ch %d, %s%d)",
+		dolog(LL_CHD, "%05d %s outgoing call active (ctl %d, ch %d, %s%d)",
 			cep->cdid, cep->name,
 			cep->isdncontrollerused, cep->isdnchannelused,
 			bdrivername(cep->usrdevicename), cep->usrdeviceunit);
@@ -290,7 +290,7 @@ msg_connect_active_ind(msg_connect_active_ind_t *mp)
 			{
 				cep->budget_callback_done++;
 				cep->budget_callbackncalls_cnt--;
-				DBGL(DL_BDGT, (log(LL_DBG, "%s: new cback-budget = %d",
+				DBGL(DL_BDGT, (dolog(LL_DBG, "%s: new cback-budget = %d",
 					cep->name, cep->budget_callbackncalls_cnt)));
 				if(cep->budget_callbacks_file != NULL)
 					upd_callstat_file(cep->budget_callbacks_file, cep->budget_callbacksfile_rotate);
@@ -299,7 +299,7 @@ msg_connect_active_ind(msg_connect_active_ind_t *mp)
 			{
 				cep->budget_callout_done++;
 				cep->budget_calloutncalls_cnt--;
-				DBGL(DL_BDGT, (log(LL_DBG, "%s: new cout-budget = %d",
+				DBGL(DL_BDGT, (dolog(LL_DBG, "%s: new cout-budget = %d",
 					cep->name, cep->budget_calloutncalls_cnt)));
 				if(cep->budget_callouts_file != NULL)
 					upd_callstat_file(cep->budget_callouts_file, cep->budget_calloutsfile_rotate);
@@ -309,12 +309,12 @@ msg_connect_active_ind(msg_connect_active_ind_t *mp)
 	}
 	else
 	{
-		log(LL_CHD, "%05d %s incoming call active (ctl %d, ch %d, %s%d)",
+		dolog(LL_CHD, "%05d %s incoming call active (ctl %d, ch %d, %s%d)",
 			cep->cdid, cep->name,
 			cep->isdncontrollerused, cep->isdnchannelused,
 			bdrivername(cep->usrdevicename), cep->usrdeviceunit);
 	}
-	
+
 #ifdef USE_CURSES
 	if(do_fullscreen)
 		display_connect(cep);
@@ -326,12 +326,12 @@ msg_connect_active_ind(msg_connect_active_ind_t *mp)
 
 	if(isdntime && (mp->datetime[0] != '\0'))
 	{
-		log(LL_DMN, "date/time from exchange = %s", mp->datetime);
+		dolog(LL_DMN, "date/time from exchange = %s", mp->datetime);
 	}
 
 	next_state(cep, EV_MCAI);
 }
-                                                                                
+
 /*---------------------------------------------------------------------------*
  *	handle incoming PROCEEDING_IND message
  *---------------------------------------------------------------------------*/
@@ -339,26 +339,26 @@ void
 msg_proceeding_ind(msg_proceeding_ind_t *mp)
 {
 	cfg_entry_t *cep;
-	
+
 	if((cep = get_cep_by_cdid(mp->header.cdid)) == NULL)
 	{
-		log(LL_WRN, "msg_proceeding_ind: cdid not found!");
+		dolog(LL_WRN, "msg_proceeding_ind: cdid not found!");
 		return;
 	}
 
 	cep->isdncontrollerused = mp->controller;
-	cep->isdnchannelused = mp->channel;	
-                                                                                
+	cep->isdnchannelused = mp->channel;
+
 	/* set the B-channels active */
 
 	if((set_channel_busy(cep->isdncontrollerused, cep->isdnchannelused)) == ERROR)
-		log(LL_ERR, "msg_proceeding_ind: set_channel_busy failed!");
-	
-	log(LL_CHD, "%05d %s outgoing call proceeding (ctl %d, ch %d)",
+		dolog(LL_ERR, "msg_proceeding_ind: set_channel_busy failed!");
+
+	dolog(LL_CHD, "%05d %s outgoing call proceeding (ctl %d, ch %d)",
 			cep->cdid, cep->name,
 			cep->isdncontrollerused, cep->isdnchannelused);
 }
-                                                                                
+
 /*---------------------------------------------------------------------------*
  *	handle incoming ALERT_IND message
  *---------------------------------------------------------------------------*/
@@ -366,17 +366,17 @@ void
 msg_alert_ind(msg_alert_ind_t *mp)
 {
 	cfg_entry_t *cep;
-	
+
 	if((cep = get_cep_by_cdid(mp->header.cdid)) == NULL)
 	{
-		log(LL_WRN, "msg_alert_ind: cdid not found!");
+		dolog(LL_WRN, "msg_alert_ind: cdid not found!");
 		return;
 	}
 #ifdef NOTDEF
-	log(LL_CHD, "%05d %s incoming alert", cep->cdid, cep->name);
+	dolog(LL_CHD, "%05d %s incoming alert", cep->cdid, cep->name);
 #endif
 }
-                                                                                
+
 /*---------------------------------------------------------------------------*
  *	handle incoming L12STAT_IND message
  *---------------------------------------------------------------------------*/
@@ -385,7 +385,7 @@ msg_l12stat_ind(msg_l12stat_ind_t *ml)
 {
 	if((ml->controller < 0) || (ml->controller >= ncontroller))
 	{
-		log(LL_ERR, "msg_l12stat_ind: invalid controller number [%d]!", ml->controller);
+		dolog(LL_ERR, "msg_l12stat_ind: invalid controller number [%d]!", ml->controller);
 		return;
 	}
 
@@ -398,7 +398,7 @@ msg_l12stat_ind(msg_l12stat_ind_t *ml)
 		monitor_evnt_l12stat(ml->controller, ml->layer, ml->state);
 #endif
 
-	DBGL(DL_CNST, (log(LL_DBG, "msg_l12stat_ind: unit %d, layer %d, state %d",
+	DBGL(DL_CNST, (dolog(LL_DBG, "msg_l12stat_ind: unit %d, layer %d, state %d",
 		ml->controller, ml->layer, ml->state)));
 
 	if(ml->layer == LAYER_ONE)
@@ -415,10 +415,10 @@ msg_l12stat_ind(msg_l12stat_ind_t *ml)
 	}
 	else
 	{
-		log(LL_ERR, "msg_l12stat_ind: invalid layer number [%d]!", ml->layer);
+		dolog(LL_ERR, "msg_l12stat_ind: invalid layer number [%d]!", ml->layer);
 	}
 }
-                                                                                
+
 /*---------------------------------------------------------------------------*
  *	handle incoming TEIASG_IND message
  *---------------------------------------------------------------------------*/
@@ -427,7 +427,7 @@ msg_teiasg_ind(msg_teiasg_ind_t *mt)
 {
 	if((mt->controller < 0) || (mt->controller >= ncontroller))
 	{
-		log(LL_ERR, "msg_teiasg_ind: invalid controller number [%d]!", mt->controller);
+		dolog(LL_ERR, "msg_teiasg_ind: invalid controller number [%d]!", mt->controller);
 		return;
 	}
 
@@ -440,7 +440,7 @@ msg_teiasg_ind(msg_teiasg_ind_t *mt)
 		monitor_evnt_tei(mt->controller, mt->tei);
 #endif
 
-	DBGL(DL_CNST, (log(LL_DBG, "msg_teiasg_ind: unit %d, tei = %d",
+	DBGL(DL_CNST, (dolog(LL_DBG, "msg_teiasg_ind: unit %d, tei = %d",
 		mt->controller, mt->tei)));
 
 	isdn_ctrl_tab[mt->controller].tei = mt->tei;
@@ -468,24 +468,24 @@ msg_pdeact_ind(msg_pdeact_ind_t *md)
 	if(do_monitor && accepted)
 	{
 		monitor_evnt_l12stat(ctrl, LAYER_ONE, LAYER_IDLE);
-		monitor_evnt_l12stat(ctrl, LAYER_TWO, LAYER_IDLE);		
+		monitor_evnt_l12stat(ctrl, LAYER_TWO, LAYER_IDLE);
 		monitor_evnt_tei(ctrl, -1);
 	}
 #endif
 
-	DBGL(DL_CNST, (log(LL_DBG, "msg_pdeact_ind: unit %d, persistent deactivation", ctrl)));
+	DBGL(DL_CNST, (dolog(LL_DBG, "msg_pdeact_ind: unit %d, persistent deactivation", ctrl)));
 
 	isdn_ctrl_tab[ctrl].l1stat = LAYER_IDLE;
 	isdn_ctrl_tab[ctrl].l2stat = LAYER_IDLE;
-	isdn_ctrl_tab[ctrl].tei = -1;		
-	
+	isdn_ctrl_tab[ctrl].tei = -1;
+
 	for(i=0; i < nentries; i++)
 	{
 		if((cfg_entry_tab[i].cdid != CDID_UNUSED)	&&
 		   (cfg_entry_tab[i].isdncontrollerused == ctrl))
 		{
 			cep = &cfg_entry_tab[i];
-			
+
 			if(cep->cdid == CDID_RESERVED)
 			{
 				cep->state = ST_IDLE;
@@ -494,26 +494,26 @@ msg_pdeact_ind(msg_pdeact_ind_t *md)
 			}
 
 			cep->cdid = CDID_UNUSED;
-			
+
 			cep->last_release_time = time(NULL);
 
 			SET_CAUSE_TYPE(cep->disc_cause, CAUSET_I4B);
 			SET_CAUSE_VAL(cep->disc_cause, CAUSE_I4B_L1ERROR);
-		
+
 			if(cep->direction == DIR_OUT)
 			{
-				log(LL_CHD, "%05d %s outgoing call disconnected (local)",
+				dolog(LL_CHD, "%05d %s outgoing call disconnected (local)",
 					cep->cdid, cep->name);
 			}
 			else
 			{
-				log(LL_CHD, "%05d %s incoming call disconnected (local)",
+				dolog(LL_CHD, "%05d %s incoming call disconnected (local)",
 					cep->cdid, cep->name);
 			}
-		
-			log(LL_CHD, "%05d %s cause %s",
+
+			dolog(LL_CHD, "%05d %s cause %s",
 				cep->cdid, cep->name, print_i4b_cause(cep->disc_cause));
-		
+
 #ifdef USE_CURSES
 			if(do_fullscreen && (cep->connect_time > 0))
 				display_disconnect(cep);
@@ -525,35 +525,35 @@ msg_pdeact_ind(msg_pdeact_ind_t *md)
 
 			if(cep->disconnectprog)
 				exec_connect_prog(cep, cep->disconnectprog, 1);
-		
+
 			if(cep->connect_time > 0)
 			{
 				if(cep->direction == DIR_OUT)
 				{
-					log(LL_CHD, "%05d %s charging: %d units, %d seconds",
+					dolog(LL_CHD, "%05d %s charging: %d units, %d seconds",
 						cep->cdid, cep->name, cep->charge,
 						(int)difftime(time(NULL), cep->connect_time));
 				}
 				else
 				{
-					log(LL_CHD, "%05d %s connected %d seconds",
+					dolog(LL_CHD, "%05d %s connected %d seconds",
 						cep->cdid, cep->name,
 						(int)difftime(time(NULL), cep->connect_time));
 				}
-		
+
 				if((cep->inbytes != INVALID) && (cep->outbytes != INVALID))
 				{
 					if((cep->ioutbytes != cep->outbytes) ||
 					   (cep->iinbytes != cep->inbytes))
 					{
-						log(LL_CHD, "%05d %s accounting: in %d, out %d (in %d, out %d)",
+						dolog(LL_CHD, "%05d %s accounting: in %d, out %d (in %d, out %d)",
 							cep->cdid, cep->name,
 							cep->inbytes, cep->outbytes,
 							cep->iinbytes, cep->ioutbytes);
 					}
 					else
 					{
-						log(LL_CHD, "%05d %s accounting: in %d, out %d",
+						dolog(LL_CHD, "%05d %s accounting: in %d, out %d",
 							cep->cdid, cep->name,
 							cep->inbytes, cep->outbytes);
 					}
@@ -565,13 +565,13 @@ msg_pdeact_ind(msg_pdeact_ind_t *md)
 				int con_secs;
 				char logdatetime[41];
 				struct tm *tp;
-		
+
 				con_secs = difftime(time(NULL), cep->connect_time);
-					
+
 				tp = localtime(&cep->connect_time);
-				
+
 				strftime(logdatetime,40,I4B_TIME_FORMAT,tp);
-		
+
 				if(cep->inbytes != INVALID && cep->outbytes != INVALID)
 				{
 					fprintf(acctfp, "%s - %s %s %d (%d) (%d/%d)\n",
@@ -586,21 +586,21 @@ msg_pdeact_ind(msg_pdeact_ind_t *md)
 						cep->name, cep->charge, con_secs);
 				}
 			}
-		
+
 			/* set the B-channel inactive */
-		
+
 			if((set_channel_idle(cep->isdncontrollerused, cep->isdnchannelused)) == ERROR)
-				log(LL_ERR, "msg_pdeact_ind: set_channel_idle failed!");
-		
+				dolog(LL_ERR, "msg_pdeact_ind: set_channel_idle failed!");
+
 			incr_free_channels(cep->isdncontrollerused);
-			
+
 			cep->connect_time = 0;
 
 			cep->state = ST_IDLE;
 		}
 	}
 }
-                                                                                
+
 /*---------------------------------------------------------------------------*
  *	handle incoming NEGCOMP_IND message
  *---------------------------------------------------------------------------*/
@@ -611,14 +611,14 @@ msg_negcomplete_ind(msg_negcomplete_ind_t *mp)
 
 	if((cep = get_cep_by_cdid(mp->header.cdid)) == NULL)
 	{
-		log(LL_WRN, "msg_negcomp_ind: cdid not found");
+		dolog(LL_WRN, "msg_negcomp_ind: cdid not found");
 		return;
 	}
 
 	if(cep->connectprog)
 		exec_connect_prog(cep, cep->connectprog, 0);
 }
-                                                                                
+
 /*---------------------------------------------------------------------------*
  *	handle incoming IFSTATE_CHANGED indication
  *---------------------------------------------------------------------------*/
@@ -630,12 +630,12 @@ msg_ifstatechg_ind(msg_ifstatechg_ind_t *mp)
 
 	if((cep = get_cep_by_cdid(mp->header.cdid)) == NULL)
 	{
-		log(LL_WRN, "msg_negcomp_ind: cdid not found");
+		dolog(LL_WRN, "msg_negcomp_ind: cdid not found");
 		return;
 	}
 
 	device = bdrivername(cep->usrdevicename);
-	log(LL_DBG, "%s%d: switched to state %d", device, cep->usrdeviceunit, mp->state);
+	dolog(LL_DBG, "%s%d: switched to state %d", device, cep->usrdeviceunit, mp->state);
 }
 
 /*---------------------------------------------------------------------------*
@@ -648,14 +648,14 @@ msg_disconnect_ind(msg_disconnect_ind_t *mp)
 
 	if((cep = get_cep_by_cdid(mp->header.cdid)) == NULL)
 	{
-		log(LL_WRN, "msg_disconnect_ind: cdid not found");
+		dolog(LL_WRN, "msg_disconnect_ind: cdid not found");
 		return;
 	}
 
 	/* is this an aborted out-call prematurely called back? */
 	if (cep->saved_call.cdid == mp->header.cdid)
 	{
-		DBGL(DL_CNST, (log(LL_DBG, "aborted outcall %05d disconnected",
+		DBGL(DL_CNST, (dolog(LL_DBG, "aborted outcall %05d disconnected",
 			mp->header.cdid)));
 		cep->saved_call.cdid = CDID_UNUSED;
 
@@ -670,20 +670,20 @@ msg_disconnect_ind(msg_disconnect_ind_t *mp)
 
 	if(cep->direction == DIR_OUT)
 	{
-		log(LL_CHD, "%05d %s outgoing call disconnected %s",
-			cep->cdid, cep->name, 
+		dolog(LL_CHD, "%05d %s outgoing call disconnected %s",
+			cep->cdid, cep->name,
 			cep->local_disconnect == DISCON_LOC ?
 						"(local)" : "(remote)");
 	}
 	else
 	{
-		log(LL_CHD, "%05d %s incoming call disconnected %s", 
+		dolog(LL_CHD, "%05d %s incoming call disconnected %s",
 			cep->cdid, cep->name,
 			cep->local_disconnect == DISCON_LOC ?
 						"(local)" : "(remote)");
 	}
 
-	log(LL_CHD, "%05d %s cause %s",
+	dolog(LL_CHD, "%05d %s cause %s",
 		cep->cdid, cep->name, print_i4b_cause(mp->cause));
 
 #ifdef USE_CURSES
@@ -702,13 +702,13 @@ msg_disconnect_ind(msg_disconnect_ind_t *mp)
 	{
 		if(cep->direction == DIR_OUT)
 		{
-			log(LL_CHD, "%05d %s charging: %d units, %d seconds",
+			dolog(LL_CHD, "%05d %s charging: %d units, %d seconds",
 				cep->cdid, cep->name, cep->charge,
 				(int)difftime(time(NULL), cep->connect_time));
 		}
 		else
 		{
-			log(LL_CHD, "%05d %s connected %d seconds",
+			dolog(LL_CHD, "%05d %s connected %d seconds",
 				cep->cdid, cep->name,
 				(int)difftime(time(NULL), cep->connect_time));
 		}
@@ -718,19 +718,19 @@ msg_disconnect_ind(msg_disconnect_ind_t *mp)
 			if((cep->ioutbytes != cep->outbytes) ||
 			   (cep->iinbytes != cep->inbytes))
 			{
-				log(LL_CHD, "%05d %s accounting: in %d, out %d (in %d, out %d)",
+				dolog(LL_CHD, "%05d %s accounting: in %d, out %d (in %d, out %d)",
 					cep->cdid, cep->name,
 					cep->inbytes, cep->outbytes,
 					cep->iinbytes, cep->ioutbytes);
 			}
 			else
 			{
-				log(LL_CHD, "%05d %s accounting: in %d, out %d",
+				dolog(LL_CHD, "%05d %s accounting: in %d, out %d",
 					cep->cdid, cep->name,
 					cep->inbytes, cep->outbytes);
 			}
 		}
-	}			
+	}
 
 	if(useacctfile && (cep->connect_time > 0))
 	{
@@ -739,9 +739,9 @@ msg_disconnect_ind(msg_disconnect_ind_t *mp)
 		struct tm *tp;
 
 		con_secs = difftime(time(NULL), cep->connect_time);
-			
+
 		tp = localtime(&cep->connect_time);
-		
+
 		strftime(logdatetime,40,I4B_TIME_FORMAT,tp);
 
 		if(cep->inbytes != INVALID && cep->outbytes != INVALID)
@@ -764,8 +764,8 @@ msg_disconnect_ind(msg_disconnect_ind_t *mp)
 	set_channel_idle(cep->isdncontrollerused, cep->isdnchannelused);
 
 	incr_free_channels(cep->isdncontrollerused);
-	
-	cep->connect_time = 0;			
+
+	cep->connect_time = 0;
 	cep->cdid = CDID_UNUSED;
 
 	next_state(cep, EV_MDI);
@@ -778,12 +778,12 @@ void
 msg_dialout(msg_dialout_ind_t *mp)
 {
 	cfg_entry_t *cep;
-	
-	DBGL(DL_DRVR, (log(LL_DBG, "msg_dialout: dial req from %s, unit %d", bdrivername(mp->driver), mp->driver_unit)));
+
+	DBGL(DL_DRVR, (dolog(LL_DBG, "msg_dialout: dial req from %s, unit %d", bdrivername(mp->driver), mp->driver_unit)));
 
 	if((cep = find_by_device_for_dialout(mp->driver, mp->driver_unit)) == NULL)
 	{
-		DBGL(DL_DRVR, (log(LL_DBG, "msg_dialout: config entry reserved or no match")));
+		DBGL(DL_DRVR, (dolog(LL_DBG, "msg_dialout: config entry reserved or no match")));
 		return;
 	}
 
@@ -797,10 +797,10 @@ msg_dialout(msg_dialout_ind_t *mp)
 	{
 		cep->budget_calltype = 0;
 		cep->budget_callout_req++;
-		
+
 		if(cep->budget_calloutncalls_cnt == 0)
 		{
-			log(LL_CHD, "%05d %s no budget for calling out", 0, cep->name);
+			dolog(LL_CHD, "%05d %s no budget for calling out", 0, cep->name);
 			cep->budget_callout_rej++;
 			dialresponse(cep, DSTAT_TFAIL);
 			return;
@@ -813,15 +813,15 @@ msg_dialout(msg_dialout_ind_t *mp)
 
 	if((cep->cdid = get_cdid()) == 0)
 	{
-		DBGL(DL_DRVR, (log(LL_DBG, "msg_dialout: get_cdid() returned 0!")));
+		DBGL(DL_DRVR, (dolog(LL_DBG, "msg_dialout: get_cdid() returned 0!")));
 		return;
 	}
-	
+
 	cep->charge = 0;
 	cep->last_charge = 0;
 	cep->hangup = 0;
 
-	next_state(cep, EV_MDO);	
+	next_state(cep, EV_MDO);
 }
 
 /*---------------------------------------------------------------------------*
@@ -831,12 +831,12 @@ void
 msg_dialoutnumber(msg_dialoutnumber_ind_t *mp)
 {
 	cfg_entry_t *cep;
-	
-	DBGL(DL_DRVR, (log(LL_DBG, "msg_dialoutnumber: dial req from %s, unit %d", bdrivername(mp->driver), mp->driver_unit)));
+
+	DBGL(DL_DRVR, (dolog(LL_DBG, "msg_dialoutnumber: dial req from %s, unit %d", bdrivername(mp->driver), mp->driver_unit)));
 
 	if((cep = find_by_device_for_dialoutnumber(mp->driver, mp->driver_unit, mp->cmdlen, mp->cmd)) == NULL)
 	{
-		DBGL(DL_DRVR, (log(LL_DBG, "msg_dialoutnumber: config entry reserved or no match")));
+		DBGL(DL_DRVR, (dolog(LL_DBG, "msg_dialoutnumber: config entry reserved or no match")));
 		return;
 	}
 
@@ -845,15 +845,15 @@ msg_dialoutnumber(msg_dialoutnumber_ind_t *mp)
 		dialresponse(cep, DSTAT_INONLY);
 		return;
 	}
-	
+
 	if(cep->budget_calloutperiod && cep->budget_calloutncalls)
 	{
 		cep->budget_calltype = 0;
 		cep->budget_callout_req++;
-		
+
 		if(cep->budget_calloutncalls_cnt == 0)
 		{
-			log(LL_CHD, "%05d %s no budget for calling out", 0, cep->name);
+			dolog(LL_CHD, "%05d %s no budget for calling out", 0, cep->name);
 			cep->budget_callout_rej++;
 			dialresponse(cep, DSTAT_TFAIL);
 			return;
@@ -866,16 +866,16 @@ msg_dialoutnumber(msg_dialoutnumber_ind_t *mp)
 
 	if((cep->cdid = get_cdid()) == 0)
 	{
-		DBGL(DL_DRVR, (log(LL_DBG, "msg_dialoutnumber: get_cdid() returned 0!")));
+		DBGL(DL_DRVR, (dolog(LL_DBG, "msg_dialoutnumber: get_cdid() returned 0!")));
 		return;
 	}
 
-	cep->keypad[0] = '\0';	
+	cep->keypad[0] = '\0';
 	cep->charge = 0;
 	cep->last_charge = 0;
 	cep->hangup = 0;
 
-	next_state(cep, EV_MDO);	
+	next_state(cep, EV_MDO);
 }
 
 /*---------------------------------------------------------------------------*
@@ -885,12 +885,12 @@ void
 msg_keypad(msg_keypad_ind_t *mp)
 {
 	cfg_entry_t *cep;
-	
-	DBGL(DL_DRVR, (log(LL_DBG, "msg_keypad: dial req from %s, unit %d", bdrivername(mp->driver), mp->driver_unit)));
+
+	DBGL(DL_DRVR, (dolog(LL_DBG, "msg_keypad: dial req from %s, unit %d", bdrivername(mp->driver), mp->driver_unit)));
 
 	if((cep = find_by_device_for_keypad(mp->driver, mp->driver_unit, mp->cmdlen, mp->cmd)) == NULL)
 	{
-		DBGL(DL_DRVR, (log(LL_DBG, "msg_keypad: config entry reserved or no match")));
+		DBGL(DL_DRVR, (dolog(LL_DBG, "msg_keypad: config entry reserved or no match")));
 		return;
 	}
 
@@ -899,15 +899,15 @@ msg_keypad(msg_keypad_ind_t *mp)
 		dialresponse(cep, DSTAT_INONLY);
 		return;
 	}
-	
+
 	if(cep->budget_calloutperiod && cep->budget_calloutncalls)
 	{
 		cep->budget_calltype = 0;
 		cep->budget_callout_req++;
-		
+
 		if(cep->budget_calloutncalls_cnt == 0)
 		{
-			log(LL_CHD, "%05d %s no budget for calling out", 0, cep->name);
+			dolog(LL_CHD, "%05d %s no budget for calling out", 0, cep->name);
 			cep->budget_callout_rej++;
 			dialresponse(cep, DSTAT_TFAIL);
 			return;
@@ -920,15 +920,15 @@ msg_keypad(msg_keypad_ind_t *mp)
 
 	if((cep->cdid = get_cdid()) == 0)
 	{
-		DBGL(DL_DRVR, (log(LL_DBG, "msg_keypad: get_cdid() returned 0!")));
+		DBGL(DL_DRVR, (dolog(LL_DBG, "msg_keypad: get_cdid() returned 0!")));
 		return;
 	}
-	
+
 	cep->charge = 0;
 	cep->last_charge = 0;
 	cep->hangup = 0;
 
-	next_state(cep, EV_MDO);	
+	next_state(cep, EV_MDO);
 }
 
 /*---------------------------------------------------------------------------*
@@ -938,12 +938,12 @@ void
 msg_drvrdisc_req(msg_drvrdisc_req_t *mp)
 {
 	cfg_entry_t *cep;
-	
-	DBGL(DL_DRVR, (log(LL_DBG, "msg_drvrdisc_req: req from %s, unit %d", bdrivername(mp->driver), mp->driver_unit)));
+
+	DBGL(DL_DRVR, (dolog(LL_DBG, "msg_drvrdisc_req: req from %s, unit %d", bdrivername(mp->driver), mp->driver_unit)));
 
 	if((cep = get_cep_by_driver(mp->driver, mp->driver_unit)) == NULL)
 	{
-		DBGL(DL_DRVR, (log(LL_DBG, "msg_drvrdisc_req: config entry not found")));
+		DBGL(DL_DRVR, (dolog(LL_DBG, "msg_drvrdisc_req: config entry not found")));
 		return;
 	}
 	next_state(cep, EV_DRQ);
@@ -959,7 +959,7 @@ msg_accounting(msg_accounting_ind_t *mp)
 
 	if((cep = find_active_entry_by_driver(mp->driver, mp->driver_unit)) == NULL)
 	{
-		log(LL_WRN, "msg_accounting: no config entry found!");	
+		dolog(LL_WRN, "msg_accounting: no config entry found!");
 		return;
 	}
 
@@ -970,7 +970,7 @@ msg_accounting(msg_accounting_ind_t *mp)
 	cep->inbps = mp->inbps;
 	cep->outbps = mp->outbps;
 
-	if(mp->accttype == ACCT_DURING) 
+	if(mp->accttype == ACCT_DURING)
 	{
 #ifdef USE_CURSES
 		if(do_fullscreen)
@@ -994,22 +994,22 @@ msg_charging_ind(msg_charging_ind_t *mp)
 		"AOCD",
 		"AOCE",
 		"estimated" };
-		
+
 	cfg_entry_t *cep;
 
 	if((cep = get_cep_by_cdid(mp->header.cdid)) == NULL)
 	{
-		log(LL_WRN, "msg_charging_ind: cdid not found");
+		dolog(LL_WRN, "msg_charging_ind: cdid not found");
 		return;
 	}
 
 	if(mp->units_type < CHARGE_INVALID || mp->units_type > CHARGE_CALC)
-	{ 
-		log(LL_ERR, "msg_charging: units_type %d out of range!", mp->units_type);
+	{
+		dolog(LL_ERR, "msg_charging: units_type %d out of range!", mp->units_type);
 		error_exit(1, "msg_charging: units_type %d out of range!", mp->units_type);
 	}
-	
-	DBGL(DL_DRVR, (log(LL_DBG, "msg_charging: %d unit(s) (%s)",
+
+	DBGL(DL_DRVR, (dolog(LL_DBG, "msg_charging: %d unit(s) (%s)",
 			mp->units, cttab[mp->units_type])));
 
 	cep->charge = mp->units;
@@ -1024,7 +1024,7 @@ msg_charging_ind(msg_charging_ind_t *mp)
 				handle_charge(cep);
 			}
 			break;
-			
+
 		case CHARGE_CALC:
 #ifdef USE_CURSES
 		        if(do_fullscreen)
@@ -1045,17 +1045,17 @@ void
 msg_idle_timeout_ind(msg_idle_timeout_ind_t *mp)
 {
 	cfg_entry_t *cep;
-	
+
 	if((cep = get_cep_by_cdid(mp->header.cdid)) == NULL)
 	{
-		log(LL_WRN, "msg_idle_timeout_ind: cdid not found!");
+		dolog(LL_WRN, "msg_idle_timeout_ind: cdid not found!");
 		return;
 	}
 
 	cep->local_disconnect = DISCON_LOC;
-	
-	DBGL(DL_DRVR, (log(LL_DBG, "msg_idle_timeout_ind: idletimeout, kernel sent disconnect!")));
-	
+
+	DBGL(DL_DRVR, (dolog(LL_DBG, "msg_idle_timeout_ind: idletimeout, kernel sent disconnect!")));
+
 	check_and_kill(cep);
 }
 
@@ -1160,7 +1160,7 @@ msg_packet_ind(msg_packet_ind_t *mp)
 		cptr = ipapp( cptr, ip->ip_dst.s_addr);
 	}
 
-	log(LL_PKT, "%s %s %u %s",
+	dolog(LL_PKT, "%s %s %u %s",
 		name, mp->direction ? "send" : "recv",
 		ntohs( ip->ip_len ), tmp );
 }
@@ -1174,10 +1174,10 @@ get_cdid(void)
 	msg_cdid_req_t mcr;
 
 	mcr.cdid = 0;
-	
+
 	if((ioctl(isdnfd, I4B_CDID_REQ, &mcr)) < 0)
 	{
-		log(LL_ERR, "get_cdid: ioctl I4B_CDID_REQ failed: %s", strerror(errno));
+		dolog(LL_ERR, "get_cdid: ioctl I4B_CDID_REQ failed: %s", strerror(errno));
 		error_exit(1, "get_cdid: ioctl I4B_CDID_REQ failed: %s", strerror(errno));
 	}
 
@@ -1194,9 +1194,9 @@ sendm_connect_req(cfg_entry_t *cep)
         int ret;
 
 	cep->local_disconnect = DISCON_REM;
-        
+
 	cep->unitlength = get_current_rate(cep, 1);
-	
+
 	mcr.cdid = cep->cdid;
 
 	mcr.controller = cep->isdncontrollerused;
@@ -1211,32 +1211,32 @@ sendm_connect_req(cfg_entry_t *cep)
 	/* setup the shorthold data */
 	mcr.shorthold_data.shorthold_algorithm = cep->shorthold_algorithm;
 	mcr.shorthold_data.unitlen_time = cep->unitlength;
-	mcr.shorthold_data.idle_time = cep->idle_time_out;		
+	mcr.shorthold_data.idle_time = cep->idle_time_out;
 	mcr.shorthold_data.earlyhup_time = cep->earlyhangup;
 
 	if(cep->unitlengthsrc == ULSRC_DYN)
 		mcr.unitlen_method = ULEN_METHOD_DYNAMIC;
 	else
 		mcr.unitlen_method = ULEN_METHOD_STATIC;
-	
+
 	strcpy(mcr.dst_telno, cep->remote_phone_dialout);
 	strcpy(mcr.src_telno, cep->local_phone_dialout);
-	strcpy(mcr.keypad, cep->keypad);	
+	strcpy(mcr.keypad, cep->keypad);
 
 	cep->last_dial_time = time(NULL);
 	cep->direction = DIR_OUT;
 
-	DBGL(DL_CNST, (log(LL_DBG, "sendm_connect_req: ctrl = %d, chan = %d", cep->isdncontrollerused, cep->isdnchannelused)));
-		
+	DBGL(DL_CNST, (dolog(LL_DBG, "sendm_connect_req: ctrl = %d, chan = %d", cep->isdncontrollerused, cep->isdnchannelused)));
+
 	if((ret = ioctl(isdnfd, I4B_CONNECT_REQ, &mcr)) < 0)
 	{
-		log(LL_ERR, "sendm_connect_req: ioctl I4B_CONNECT_REQ failed: %s", strerror(errno));
+		dolog(LL_ERR, "sendm_connect_req: ioctl I4B_CONNECT_REQ failed: %s", strerror(errno));
 		error_exit(1, "sendm_connect_req: ioctl I4B_CONNECT_REQ failed: %s", strerror(errno));
 	}
 
 	decr_free_channels(cep->isdncontrollerused);
-	
-	log(LL_CHD, "%05d %s dialing out from %s to %s",
+
+	dolog(LL_CHD, "%05d %s dialing out from %s to %s",
 		cep->cdid,
 	        cep->name,
 		aliasing ? get_alias(cep->local_phone_dialout) : cep->local_phone_dialout,
@@ -1261,7 +1261,7 @@ sendm_connect_resp(cfg_entry_t *cep, int cdid, int response, cause_t cause)
 	if(response == SETUP_RESP_REJECT)
 	{
 		mcr.cause = cause;
-		DBGL(DL_DRVR, (log(LL_DBG, "sendm_connect_resp: reject, cause=0x%x", cause)));
+		DBGL(DL_DRVR, (dolog(LL_DBG, "sendm_connect_resp: reject, cause=0x%x", cause)));
 	}
 	else if(response == SETUP_RESP_ACCEPT)
 	{
@@ -1276,12 +1276,12 @@ sendm_connect_resp(cfg_entry_t *cep, int cdid, int response, cause_t cause)
 
 		mcr.max_idle_time = cep->idle_time_in;
 
-		DBGL(DL_DRVR, (log(LL_DBG, "sendm_connect_resp: accept")));
+		DBGL(DL_DRVR, (dolog(LL_DBG, "sendm_connect_resp: accept")));
 	}
-	
+
 	if((ret = ioctl(isdnfd, I4B_CONNECT_RESP, &mcr)) < 0)
 	{
-		log(LL_ERR, "sendm_connect_resp: ioctl I4B_CONNECT_RESP failed: %s", strerror(errno));
+		dolog(LL_ERR, "sendm_connect_resp: ioctl I4B_CONNECT_RESP failed: %s", strerror(errno));
 		error_exit(1, "sendm_connect_resp: ioctl I4B_CONNECT_RESP failed: %s", strerror(errno));
 	}
 	return(ret);
@@ -1301,18 +1301,18 @@ sendm_disconnect_req(cfg_entry_t *cep, cause_t cause)
 	mcr.cause = cause;
 
 	cep->local_disconnect = DISCON_LOC;
-	
+
 	if((ret = ioctl(isdnfd, I4B_DISCONNECT_REQ, &mcr)) < 0)
 	{
-		log(LL_ERR, "sendm_disconnect_req: ioctl I4B_DISCONNECT_REQ failed: %s", strerror(errno));
+		dolog(LL_ERR, "sendm_disconnect_req: ioctl I4B_DISCONNECT_REQ failed: %s", strerror(errno));
 	}
 	else
 	{
-		DBGL(DL_DRVR, (log(LL_DBG, "sendm_disconnect_req: sent DISCONNECT_REQ")));
+		DBGL(DL_DRVR, (dolog(LL_DBG, "sendm_disconnect_req: sent DISCONNECT_REQ")));
 	}
 	return(ret);
 }
-	
+
 /*---------------------------------------------------------------------------*
  *	send message "alert request" to kernel
  *---------------------------------------------------------------------------*/
@@ -1323,17 +1323,17 @@ sendm_alert_req(cfg_entry_t *cep)
 	int ret;
 
 	mar.cdid = cep->cdid;
-	
+
 	if((ret = ioctl(isdnfd, I4B_ALERT_REQ, &mar)) < 0)
 	{
-		log(LL_ERR, "sendm_alert_req: ioctl I4B_ALERT_REQ failed: %s", strerror(errno));
+		dolog(LL_ERR, "sendm_alert_req: ioctl I4B_ALERT_REQ failed: %s", strerror(errno));
 		error_exit(1, "sendm_alert_req: ioctl I4B_ALERT_REQ failed: %s", strerror(errno));
 	}
 	else
 	{
-		DBGL(DL_DRVR, (log(LL_DBG, "sendm_alert_req: sent ALERT_REQ")));
+		DBGL(DL_DRVR, (dolog(LL_DBG, "sendm_alert_req: sent ALERT_REQ")));
 	}
 	return(ret);
 }
-	
+
 /* EOF */

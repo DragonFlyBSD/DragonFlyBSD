@@ -81,7 +81,7 @@ usage(void)
 	fprintf(stderr, "  usage: isdnd [-c file] [-d level] [-F] [-f [-r dev] [-t termtype]]\n");
 #else
 	fprintf(stderr, "  usage: isdnd [-c file] [-F] [-f [-r dev] [-t termtype]]\n");
-#endif	
+#endif
 	fprintf(stderr, "               [-l] [-L file] [-m] [-s facility] [-u time]\n");
 	fprintf(stderr, "    -c <filename> configuration file name (def: %s)\n", CONFIG_FILE_DEF);
 #ifdef DEBUG
@@ -103,7 +103,7 @@ usage(void)
 	fprintf(stderr, "    -u <time>     length of a charging unit in seconds\n");
 #ifdef I4B_EXTERNAL_MONITOR
 	fprintf(stderr, "    -m            inhibit network/local monitoring (protocol %02d.%02d)\n", MPROT_VERSION, MPROT_REL);
-#endif	
+#endif
 	fprintf(stderr, "\n");
 	exit(1);
 }
@@ -116,7 +116,7 @@ main(int argc, char **argv)
 {
 	int i;
 	msg_vr_req_t mvr;
-	
+
 #ifdef I4B_EXTERNAL_MONITOR
 	int sockfd = -1;		/* local monitor socket */
 #ifndef I4B_NOTCPIP_MONITOR
@@ -125,7 +125,7 @@ main(int argc, char **argv)
 #endif
 
 	setlocale (LC_ALL, "");
-	
+
 	while ((i = getopt(argc, argv, "mc:d:fFlL:Pr:s:t:u:")) != -1)
 	{
 		switch (i)
@@ -135,25 +135,25 @@ main(int argc, char **argv)
 				inhibit_monitor = 1;
 				break;
 #endif
-				
+
 			case 'c':
 				configfile = optarg;
 				break;
 
-#ifdef DEBUG				
+#ifdef DEBUG
 			case 'd':
 				if(*optarg == 'n')
 					debug_noscreen = 1;
 				else if((sscanf(optarg, "%i", &debug_flags)) == 1)
 					do_debug = 1;
 				else
-					usage();				
+					usage();
 				break;
 #endif
 
 			case 'f':
 				do_fullscreen = 1;
-				do_fork = 0;			
+				do_fork = 0;
 #ifndef USE_CURSES
 				fprintf(stderr, "Sorry, no fullscreen mode available - daemon compiled without USE_CURSES\n");
 				exit(1);
@@ -239,62 +239,62 @@ main(int argc, char **argv)
 
 	if(!do_print)
 	{
-		umask(UMASK);	/* set our umask ... */	
-	
+		umask(UMASK);	/* set our umask ... */
+
 		init_log();	/* initialize the logging subsystem */
 	}
-	
+
 	check_pid();	/* check if we are already running */
 
 	if(!do_print)
 	{
 		if(do_fork || (do_fullscreen && do_rdev)) /* daemon mode ? */
 			daemonize();
-	
+
 		write_pid();	/* write our pid to file */
-			
+
 		/* set signal handler(s) */
-	
+
 		signal(SIGCHLD, sigchild_handler); /* process handling	*/
 		signal(SIGHUP,  rereadconfig);	/* reread configuration	*/
 		signal(SIGUSR1, reopenfiles);	/* reopen acct/log files*/
 		signal(SIGPIPE, SIG_IGN);	/* handled manually	*/
 		signal(SIGINT,  do_exit);	/* clean up on SIGINT	*/
 		signal(SIGTERM, do_exit);	/* clean up on SIGTERM	*/
-		signal(SIGQUIT, do_exit);	/* clean up on SIGQUIT	*/	
+		signal(SIGQUIT, do_exit);	/* clean up on SIGQUIT	*/
 	}
 
 	/* open isdn device */
-	
+
 	if((isdnfd = open(I4BDEVICE, O_RDWR)) < 0)
 	{
-		log(LL_ERR, "main: cannot open %s: %s", I4BDEVICE, strerror(errno));
+		dolog(LL_ERR, "main: cannot open %s: %s", I4BDEVICE, strerror(errno));
 		exit(1);
 	}
 
 	/* check kernel and userland have same version/release numbers */
-	
+
 	if((ioctl(isdnfd, I4B_VR_REQ, &mvr)) < 0)
 	{
-		log(LL_ERR, "main: ioctl I4B_VR_REQ failed: %s", strerror(errno));
+		dolog(LL_ERR, "main: ioctl I4B_VR_REQ failed: %s", strerror(errno));
 		do_exit(1);
 	}
 
 	if(mvr.version != VERSION)
 	{
-		log(LL_ERR, "main: version mismatch, kernel %d, daemon %d", mvr.version, VERSION);
+		dolog(LL_ERR, "main: version mismatch, kernel %d, daemon %d", mvr.version, VERSION);
 		do_exit(1);
 	}
 
 	if(mvr.release != REL)
 	{
-		log(LL_ERR, "main: release mismatch, kernel %d, daemon %d", mvr.release, REL);
+		dolog(LL_ERR, "main: release mismatch, kernel %d, daemon %d", mvr.release, REL);
 		do_exit(1);
 	}
 
 	if(mvr.step != STEP)
 	{
-		log(LL_ERR, "main: step mismatch, kernel %d, daemon %d", mvr.step, STEP);
+		dolog(LL_ERR, "main: step mismatch, kernel %d, daemon %d", mvr.step, STEP);
 		do_exit(1);
 	}
 
@@ -303,57 +303,57 @@ main(int argc, char **argv)
 	init_controller();
 
 	/* read runtime configuration file and configure ourselves */
-	
+
 	configure(configfile, 0);
 
 	if(config_error_flag)
 	{
-		log(LL_ERR, "there were %d error(s) in the configuration file, terminating!", config_error_flag);
+		dolog(LL_ERR, "there were %d error(s) in the configuration file, terminating!", config_error_flag);
 		exit(1);
 	}
 
 	/* set controller ISDN protocol */
-	
+
 	init_controller_protocol();
-	
+
 	/* init active controllers, if any */
-	
+
 	signal(SIGCHLD, SIG_IGN);		/*XXX*/
 
 	init_active_controller();
 
 	signal(SIGCHLD, sigchild_handler);	/*XXX*/
-	
+
 	/* handle the rates stuff */
-	
+
 	if((i = readrates(ratesfile)) == ERROR)
 	{
 		if(rate_error != NULL)
-			log(LL_ERR, "%s", rate_error);
+			dolog(LL_ERR, "%s", rate_error);
 		exit(1);
 	}
 
 	if(i == GOOD)
 	{
 		got_rate = 1;	/* flag, ratesfile read and ok */
-		DBGL(DL_RCCF, (log(LL_DBG, "ratesfile %s read successfully", ratesfile)));
+		DBGL(DL_RCCF, (dolog(LL_DBG, "ratesfile %s read successfully", ratesfile)));
 	}
 	else
 	{
 		if(rate_error != NULL)
-			log(LL_WRN, "%s", rate_error);
+			dolog(LL_WRN, "%s", rate_error);
 	}
 
 	/* if writing accounting info, open file, set unbuffered */
-	
+
 	if(useacctfile)
 	{
 		if((acctfp = fopen(acctfile, "a")) == NULL)
 		{
-			log(LL_ERR, "ERROR, can't open acctfile %s for writing, terminating!", acctfile);
+			dolog(LL_ERR, "ERROR, can't open acctfile %s for writing, terminating!", acctfile);
 			exit(1);
 		}
-		setvbuf(acctfp, (char *)NULL, _IONBF, 0);		
+		setvbuf(acctfp, (char *)NULL, _IONBF, 0);
 	}
 
 	/* initialize alias processing */
@@ -362,11 +362,11 @@ main(int argc, char **argv)
 		init_alias(aliasfile);
 
 	/* init holidays */
-	
-	init_holidays(holidayfile);		
+
+	init_holidays(holidayfile);
 
 	/* init remote monitoring */
-	
+
 #ifdef I4B_EXTERNAL_MONITOR
 	if(do_monitor)
 	{
@@ -377,7 +377,7 @@ main(int argc, char **argv)
 #endif
 	}
 #endif
-	
+
 	/* in case fullscreendisplay, initialize */
 
 #ifdef USE_CURSES
@@ -388,7 +388,7 @@ main(int argc, char **argv)
 #endif
 
 	/* init realtime priority */
-  		
+
 #ifdef USE_RTPRIO
   	if(rt_prio != RTPRIO_NOTUSED)
   	{
@@ -399,16 +399,16 @@ main(int argc, char **argv)
 
   		if((rtprio(RTP_SET, getpid(), &rtp)) == -1)
   		{
-			log(LL_ERR, "rtprio failed: %s", strerror(errno));
+			dolog(LL_ERR, "rtprio failed: %s", strerror(errno));
 			do_exit(1);
 		}
 	}
 #endif
 
 	starttime = time(NULL);	/* get starttime */
-	
+
 	srandom(580403);	/* init random number gen */
-	
+
 	mloop(		/* enter loop of no return .. */
 #ifdef I4B_EXTERNAL_MONITOR
 		sockfd
@@ -431,8 +431,8 @@ do_exit(int exitval)
 
 	unlink(PIDFILE);
 
-	log(LL_DMN, "daemon terminating, exitval = %d", exitval);
-	
+	dolog(LL_DMN, "daemon terminating, exitval = %d", exitval);
+
 #ifdef USE_CURSES
 	if(do_fullscreen)
 		endwin();
@@ -455,8 +455,8 @@ error_exit(int exitval, const char *fmt, ...)
 
 	unlink(PIDFILE);
 
-	log(LL_DMN, "fatal error, daemon terminating, exitval = %d", exitval);
-	
+	dolog(LL_DMN, "fatal error, daemon terminating, exitval = %d", exitval);
+
 #ifdef USE_CURSES
 	if(do_fullscreen)
 		endwin();
@@ -480,7 +480,7 @@ error_exit(int exitval, const char *fmt, ...)
 		va_end(ap);
 
 		signal(SIGCHLD, SIG_IGN);	/* remove handler */
-		
+
 		snprintf(sbuffer, sizeof(sbuffer), "%s%s%s%s%s%s%s%s",
 			"cat << ENDOFDATA | ",
 			mailer,
@@ -515,9 +515,9 @@ mloop(
 	int high_selfd;
 
  	/* go into loop */
-	
- 	log(LL_DMN, "i4b isdn daemon started (pid = %d)", getpid());
- 
+
+	dolog(LL_DMN, "i4b isdn daemon started (pid = %d)", getpid());
+
 	for(;;)
 	{
 		FD_ZERO(&set);
@@ -530,7 +530,7 @@ mloop(
 		FD_SET(isdnfd, &set);
 
 		high_selfd = isdnfd;
-		
+
 #ifdef I4B_EXTERNAL_MONITOR
 		if(do_monitor)
 		{
@@ -556,14 +556,14 @@ mloop(
 			}
 		}
 #endif
-		
+
 		timeout.tv_sec = 1;
 		timeout.tv_usec = 0;
 
 		ret = select(high_selfd + 1, &set, NULL, NULL, &timeout);
 
 		if(ret > 0)
-		{	
+		{
 			if(FD_ISSET(isdnfd, &set))
 				isdnrdhdl();
 
@@ -591,12 +591,12 @@ mloop(
 		{
 			if(errno != EINTR)
 			{
-				log(LL_ERR, "mloop: ERROR, select error on isdn device, errno = %d!", errno);
+				dolog(LL_ERR, "mloop: ERROR, select error on isdn device, errno = %d!", errno);
 				error_exit(1, "mloop: ERROR, select error on isdn device, errno = %d!", errno);
 			}
-		}			
+		}
 
-		/* handle timeout and recovery */		
+		/* handle timeout and recovery */
 
 		handle_recovery();
 	}
@@ -604,7 +604,7 @@ mloop(
 
 #ifdef USE_CURSES
 /*---------------------------------------------------------------------------*
- *	data from keyboard available, read and process it 
+ *	data from keyboard available, read and process it
  *---------------------------------------------------------------------------*/
 static void
 kbdrdhdl(void)
@@ -613,7 +613,7 @@ kbdrdhdl(void)
 
 	if(ch == ERR)
 	{
-		log(LL_ERR, "kbdrdhdl: ERROR, read error on controlling tty, errno = %d!", errno);
+		dolog(LL_ERR, "kbdrdhdl: ERROR, read error on controlling tty, errno = %d!", errno);
 		error_exit(1, "kbdrdhdl: ERROR, read error on controlling tty, errno = %d!", errno);
 	}
 
@@ -622,7 +622,7 @@ kbdrdhdl(void)
 		case 0x0c:	/* control L */
 			wrefresh(curscr);
 			break;
-		
+
 		case '\n':
 		case '\r':
 			do_menu();
@@ -639,17 +639,17 @@ isdnrdhdl(void)
 {
 	static unsigned char msg_rd_buf[MSG_BUF_SIZ];
 	msg_hdr_t *hp = (msg_hdr_t *)&msg_rd_buf[0];
-	
+
 	int len;
 
 	if((len = read(isdnfd, msg_rd_buf, MSG_BUF_SIZ)) > 0)
 	{
 		switch(hp->type)
 		{
-			case MSG_CONNECT_IND:				
+			case MSG_CONNECT_IND:
 				msg_connect_ind((msg_connect_ind_t *)msg_rd_buf);
 				break;
-				
+
 			case MSG_CONNECT_ACTIVE_IND:
 				msg_connect_active_ind((msg_connect_active_ind_t *)msg_rd_buf);
 				break;
@@ -657,7 +657,7 @@ isdnrdhdl(void)
 			case MSG_DISCONNECT_IND:
 				msg_disconnect_ind((msg_disconnect_ind_t *)msg_rd_buf);
 				break;
-				
+
 			case MSG_DIALOUT_IND:
 				msg_dialout((msg_dialout_ind_t *)msg_rd_buf);
 				break;
@@ -719,13 +719,13 @@ isdnrdhdl(void)
 				break;
 
 			default:
-				log(LL_WRN, "ERROR, unknown message received from %sisdn (0x%x)", _PATH_DEV, msg_rd_buf[0]);
+				dolog(LL_WRN, "ERROR, unknown message received from %sisdn (0x%x)", _PATH_DEV, msg_rd_buf[0]);
 				break;
 		}
 	}
 	else
 	{
-		log(LL_WRN, "ERROR, read error on isdn device, errno = %d, length = %d", errno, len);
+		dolog(LL_WRN, "ERROR, read error on isdn device, errno = %d, length = %d", errno, len);
 	}
 }
 
@@ -737,8 +737,8 @@ rereadconfig(int dummy)
 {
 	extern int entrycount;
 
-	log(LL_DMN, "re-reading configuration file");
-	
+	dolog(LL_DMN, "re-reading configuration file");
+
 	close_allactive();
 
 #if I4B_EXTERNAL_MONITOR
@@ -747,14 +747,14 @@ rereadconfig(int dummy)
 
 	entrycount = -1;
 	nentries = 0;
-	
+
 	/* read runtime configuration file and configure ourselves */
-	
+
 	configure(configfile, 1);
 
 	if(config_error_flag)
 	{
-		log(LL_ERR, "rereadconfig: there were %d error(s) in the configuration file, terminating!", config_error_flag);
+		dolog(LL_ERR, "rereadconfig: there were %d error(s) in the configuration file, terminating!", config_error_flag);
 		error_exit(1, "rereadconfig: there were %d error(s) in the configuration file, terminating!", config_error_flag);
 	}
 
@@ -775,12 +775,12 @@ reopenfiles(int dummy)
         if(useacctfile)
 	{
 		/* close file */
-		
+
 	        fflush(acctfp);
 	        fclose(acctfp);
 
 	        /* if user specified a suffix, rename the old file */
-	        
+
 	        if(rotatesuffix[0] != '\0')
 	        {
 	        	char filename[MAXPATHLEN];
@@ -789,14 +789,14 @@ reopenfiles(int dummy)
 
 			if((rename(acctfile, filename)) != 0)
 			{
-				log(LL_ERR, "reopenfiles: acct rename failed, cause = %s", strerror(errno));
+				dolog(LL_ERR, "reopenfiles: acct rename failed, cause = %s", strerror(errno));
 				error_exit(1, "reopenfiles: acct rename failed, cause = %s", strerror(errno));
 			}
 		}
 
 		if((acctfp = fopen(acctfile, "a")) == NULL)
 		{
-			log(LL_ERR, "ERROR, can't open acctfile %s for writing, terminating!", acctfile);
+			dolog(LL_ERR, "ERROR, can't open acctfile %s for writing, terminating!", acctfile);
 			error_exit(1, "ERROR, can't open acctfile %s for writing, terminating!", acctfile);
 		}
 		setvbuf(acctfp, (char *)NULL, _IONBF, 0);
@@ -807,7 +807,7 @@ reopenfiles(int dummy)
 	        finish_log();
 
 	        /* if user specified a suffix, rename the old file */
-	        
+
 	        if(rotatesuffix[0] != '\0')
 	        {
 	        	char filename[MAXPATHLEN];
@@ -816,7 +816,7 @@ reopenfiles(int dummy)
 
 			if((rename(logfile, filename)) != 0)
 			{
-				log(LL_ERR, "reopenfiles: log rename failed, cause = %s", strerror(errno));
+				dolog(LL_ERR, "reopenfiles: log rename failed, cause = %s", strerror(errno));
 				error_exit(1, "reopenfiles: log rename failed, cause = %s", strerror(errno));
 			}
 		}
