@@ -195,7 +195,6 @@ hammer_flusher_destroy(hammer_mount_t hmp)
 		wakeup(&info->runstate);
 		while (info->td)
 			tsleep(&info->td, 0, "hmrwwc", 0);
-		TAILQ_REMOVE(&hmp->flusher.ready_list, info, entry);
 		kfree(info, hmp->m_misc);
 	}
 }
