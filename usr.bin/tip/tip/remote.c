@@ -37,7 +37,6 @@
  * $DragonFly: src/usr.bin/tip/tip/remote.c,v 1.4 2005/04/19 05:32:02 cpressey Exp $
  */
 
-#include <sys/syslimits.h>
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>

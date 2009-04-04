@@ -120,6 +120,7 @@
 #include <err.h>
 #include <fcntl.h>
 #include <grp.h>
+#include <limits.h>
 #include <netdb.h>
 #include <pwd.h>
 #include <signal.h>
