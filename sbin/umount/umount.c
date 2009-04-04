@@ -69,7 +69,7 @@ char	*getmntname (const char *, const char *,
 	 mntwhat, char **, dowhat);
 char 	*getrealname(char *, char *resolved_path);
 char   **makevfslist (const char *);
-size_t	 mntinfo (struct statfs **);
+int	 mntinfo (struct statfs **);
 int	 namematch (struct addrinfo *);
 int	 sacmp (struct sockaddr *, struct sockaddr *);
 int	 umountall (char **);
@@ -250,6 +250,7 @@ checkname(char *name, char **typelist)
 	char *mntfromnamerev;
 	char *resolved, realname[MAXPATHLEN];
 	char *type, *hostp, *delimp, *origname;
+	char none[] = "none";
 
 	len = 0;
 	mntfromname = mntonname = delimp = hostp = NULL;
@@ -334,7 +335,7 @@ checkname(char *name, char **typelist)
 				if (mntfromname == NULL && mntonname == NULL) {
 					strcpy(name, origname);
 					if (umountfs(NULL, origname,
-					    "none") == 0) {;
+					    none) == 0) {;
 						warnx("%s not found in "
 						    "mount table, "
 						    "unmounted it anyway",
@@ -454,8 +455,8 @@ umountfs(char *mntfromname, char *mntonname, char *type)
 		clp->cl_auth = authsys_create_default();
 		try.tv_sec = 20;
 		try.tv_usec = 0;
-		clnt_stat = clnt_call(clp, RPCMNT_UMOUNT, xdr_dir,
-		    nfsdirname, xdr_void, (caddr_t)0, try);
+		clnt_stat = clnt_call(clp, RPCMNT_UMOUNT, (xdrproc_t)xdr_dir,
+		    nfsdirname, (xdrproc_t)xdr_void, (caddr_t)0, try);
 		if (clnt_stat != RPC_SUCCESS) {
 			warnx("%s: %s", hostp,
 			    clnt_sperror(clp, "RPCMNT_UMOUNT"));
@@ -483,7 +484,7 @@ getmntname(const char *fromname, const char *onname,
     mntwhat what, char **type, dowhat mark)
 {
 	static struct statfs *mntbuf;
-	static size_t mntsize = 0;
+	static int mntsize = 0;
 	static char *mntcheck = NULL;
 	static char *mntcount = NULL;
 	int i, count;
@@ -647,7 +648,7 @@ checkmntlist(char *name, char **fromname, char **onname, char **type)
 		*onname = name;
 }
 
-size_t
+int
 mntinfo(struct statfs **mntbuf)
 {
 	static struct statfs *origbuf;
