@@ -9,6 +9,13 @@ SRCDIR ?= ${.CURDIR}/../..
 QEMU ?= qemu-0.10.1
 ROOTSIZE ?= 512M
 
+.if defined(WITHSDL)
+QEMU_SDL_OPT ?= --extra-cflags=-I/usr/pkg/include \
+		--extra-ldflags=-L/usr/pkg/lib
+.else
+QEMU_SDL_OPT ?= --disable-sdl
+.endif
+
 all: help
 
 scratch: qemu world32 world64 kernel64 root64 install64 sysloader
@@ -36,7 +43,8 @@ help:
 	@echo "               (this is absolutely everything, except gdb64)"
 	@echo "    quick    - incremental kernel build & reinstall"
 	@echo "    quickw   - incremental world & kernel build & reinstall"
-	@echo "    run      - run qemu with QEMUDIR/root.img"
+	@echo "    run      - run qemu with QEMUDIR/root.img - curses mode"
+	@echo "    xrun     - run qemu with QEMUDIR/root.img - X Window mode"
 	@echo "    mount    - mount QEMUDIR/root.img at QEMUDIR/root"
 	@echo "    umount   - unmount"
 	@echo "    gdb64    - create /usr/loca/bin/gdb64 - debug 64 bit bins"
@@ -44,6 +52,7 @@ help:
 	@echo "Individual target components:"
 	@echo ""
 	@echo "    qemu              - fetch, patch, and build qemu"
+	@echo "                        Specify WITHSDL=yes to build X support"
 	@echo "    world32           - build the 32 bit world from scratch"
 	@echo "    world64           - build the 64 bit world from scratch"
 	@echo "    kernel64          - build the 64 bit kernel from scratch"
@@ -76,7 +85,7 @@ clean: check
 #	--extra-cflags=-I/usr/pkg/include
 #	--extra-ldflags=-L/usr/pkg/lib
 #
-qemu: checkq
+qemu: checkq sdl
 .if !exists(${QEMUDIR}/${QEMU}.tar.gz)
 	cd ${QEMUDIR} && \
 	    fetch http://download.savannah.gnu.org/releases/qemu/${QEMU}.tar.gz
@@ -89,8 +98,8 @@ qemu: checkq
 	cd ${QEMUDIR} && tar xvzpf ${QEMU}.tar.gz
 	cd ${QEMUDIR}/${QEMU} && patch -p1 < ${QEMUDIR}/${QEMU}-dragonfly.patch
 	cd ${QEMUDIR}/${QEMU} &&  \
-	    ./configure --disable-sdl \
-			--disable-gfx-check \
+	    ./configure --disable-gfx-check \
+			${QEMU_SDL_OPT} \
 			--disable-kqemu \
 			--enable-system \
 			--disable-aio \
@@ -98,6 +107,17 @@ qemu: checkq
 			--target-list=i386-softmmu,x86_64-softmmu
 	cd ${QEMUDIR}/${QEMU} && CCVER=gcc34 gmake
 	cd ${QEMUDIR}/${QEMU} && CCVER=gcc34 gmake install
+
+# SDL dependancies
+#
+sdl:
+.if defined(WITHSDL)
+	@echo "SDL enabled"
+	pkg_info libX11 > /dev/null 2>&1 || pkg_radd libX11
+	pkg_info SDL > /dev/null 2>&1 || pkg_radd SDL
+.else
+	@echo "SDL not enabled"
+.endif
 
 # Build the 32 and 64 bit worlds and the 64 bit kernel
 #
@@ -141,8 +161,6 @@ root64:	check
 	disklabel -B `cat ${QEMUDIR}/vn.which`s1
 	newfs /dev/`cat ${QEMUDIR}/vn.which`s1a
 	mkdir -p ${QEMUDIR}/root
-	vnconfig -u `cat ${QEMUDIR}/vn.which`
-	rm -f ${QEMUDIR}/vn.which
 
 mount: check
 	vnconfig -c -s labels `cat ${QEMUDIR}/vn.which` ${QEMUDIR}/root.img
@@ -203,6 +221,13 @@ sysloader: mount
 #
 run: check
 	cd ${QEMUDIR} && qemu-system-x86_64 -curses -hda ${QEMUDIR}/root.img \
+					    -m 128 -no-fd-bootchk
+
+xrun:
+.if !defined(DISPLAY)
+	@(echo "Variable DISPLAY not set. Is X running?"; exit 1)
+.endif
+	cd ${QEMUDIR} && qemu-system-x86_64 -hda ${QEMUDIR}/root.img \
 					    -m 128 -no-fd-bootchk
 
 rungdb: check
