@@ -443,7 +443,7 @@ amrr_tick(void *arg)
 	struct ifnet *ifp = &ic->ic_if;
 	int interval;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		if (ic->ic_opmode == IEEE80211_M_STA)
@@ -456,7 +456,7 @@ amrr_tick(void *arg)
 		interval /= 2;
 	callout_reset(&asc->timer, (interval * hz) / 1000, amrr_tick, asc);
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 }
 
 static void

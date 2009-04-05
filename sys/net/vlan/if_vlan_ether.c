@@ -58,7 +58,7 @@ vlan_start_dispatch(struct netmsg *nmsg)
 	M_ASSERTPKTHDR(m);
 	KASSERT(m->m_flags & M_VLANTAG, ("mbuf has not been vlan tagged!\n"));
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_tx(ifp);
 
 	/*
 	 * Make sure that the interface is still UP and RUNNING,
@@ -120,7 +120,7 @@ vlan_start_dispatch(struct netmsg *nmsg)
 	}
 	ifq_handoff(ifp, m, &pktattr);
 back:
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_tx(ifp);
 }
 
 void

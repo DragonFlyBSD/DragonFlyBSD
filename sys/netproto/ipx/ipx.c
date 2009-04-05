@@ -162,10 +162,10 @@ ipx_control(struct socket *so, u_long cmd, caddr_t data,
 			ia->ia_flags &= ~IFA_ROUTE;
 		}
 		if (ifp->if_ioctl) {
-			lwkt_serialize_enter(ifp->if_serializer);
+			ifnet_serialize_all(ifp);
 			error = ifp->if_ioctl(ifp, SIOCSIFDSTADDR,
 					      (void *)ia, td->td_proc->p_ucred);
-			lwkt_serialize_exit(ifp->if_serializer);
+			ifnet_deserialize_all(ifp);
 			if (error)
 				return (error);
 		}
@@ -221,9 +221,9 @@ ipx_control(struct socket *so, u_long cmd, caddr_t data,
 	default:
 		if (ifp->if_ioctl == NULL)
 			return (EOPNOTSUPP);
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		error = ifp->if_ioctl(ifp, cmd, data, td->td_proc->p_ucred);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		return (error);
 	}
 }
@@ -270,14 +270,14 @@ ipx_ifinit(struct ifnet *ifp, struct ipx_ifaddr *ia,
 	 * if this is its first address,
 	 * and to validate the address if necessary.
 	 */
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	if (ifp->if_ioctl != NULL &&
 	    (error = ifp->if_ioctl(ifp, SIOCSIFADDR, (void *)ia, NULL))) {
 		ia->ia_addr = oldaddr;
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		return (error);
 	}
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	ia->ia_ifa.ifa_metric = ifp->if_metric;
 	/*
 	 * Add route for the network.

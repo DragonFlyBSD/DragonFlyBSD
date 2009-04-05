@@ -418,9 +418,9 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 {
 	int error;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_tx(ifp);
 	error = i4biproutput_serialized(ifp, m, dst, rtp);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_tx(ifp);
 
 	return error;
 }

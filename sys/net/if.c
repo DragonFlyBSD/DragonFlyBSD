@@ -342,7 +342,7 @@ if_start_dispatch(struct netmsg *nmsg)
 #endif
 
 	if (ifp->if_flags & IFF_UP) {
-		lwkt_serialize_enter(ifp->if_serializer); /* XXX try? */
+		ifnet_serialize_tx(ifp); /* XXX try? */
 		if ((ifp->if_flags & IFF_OACTIVE) == 0) {
 			logifstart(run, ifp);
 			ifp->if_start(ifp);
@@ -350,7 +350,7 @@ if_start_dispatch(struct netmsg *nmsg)
 			(IFF_OACTIVE | IFF_RUNNING)) == IFF_RUNNING)
 				running = 1;
 		}
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_tx(ifp);
 	}
 #ifdef SMP
 check:
@@ -410,6 +410,24 @@ if_devstart(struct ifnet *ifp)
 	}
 }
 
+static void
+if_default_serialize(struct ifnet *ifp, enum ifnet_serialize slz __unused)
+{
+	lwkt_serialize_enter(ifp->if_serializer);
+}
+
+static void
+if_default_deserialize(struct ifnet *ifp, enum ifnet_serialize slz __unused)
+{
+	lwkt_serialize_exit(ifp->if_serializer);
+}
+
+static int
+if_default_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz __unused)
+{
+	return lwkt_serialize_try(ifp->if_serializer);
+}
+
 /*
  * Attach an interface to the list of "active" interfaces.
  *
@@ -439,6 +457,19 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 		lwkt_serialize_init(serializer);
 	}
 	ifp->if_serializer = serializer;
+
+	if (ifp->if_serialize != NULL) {
+		KASSERT(ifp->if_deserialize != NULL &&
+			ifp->if_tryserialize != NULL,
+			("serialize functions are partially setup\n"));
+	} else {
+		KASSERT(ifp->if_deserialize == NULL &&
+			ifp->if_tryserialize == NULL,
+			("serialize functions are partially setup\n"));
+		ifp->if_serialize = if_default_serialize;
+		ifp->if_deserialize = if_default_deserialize;
+		ifp->if_tryserialize = if_default_tryserialize;
+	}
 
 	ifp->if_start_cpuid = if_start_cpuid;
 	ifp->if_cpuid = 0;
@@ -1105,9 +1136,9 @@ if_slowtimo(void *arg)
 		if (ifp->if_timer == 0 || --ifp->if_timer)
 			continue;
 		if (ifp->if_watchdog) {
-			if (lwkt_serialize_try(ifp->if_serializer)) {
+			if (ifnet_tryserialize_all(ifp)) {
 				(*ifp->if_watchdog)(ifp);
-				lwkt_serialize_exit(ifp->if_serializer);
+				ifnet_deserialize_all(ifp);
 			} else {
 				/* try again next timeout */
 				++ifp->if_timer;
@@ -1291,9 +1322,9 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 			ifp->if_flags &= ~IFF_PROMISC;
 		}
 		if (ifp->if_ioctl) {
-			lwkt_serialize_enter(ifp->if_serializer);
+			ifnet_serialize_all(ifp);
 			ifp->if_ioctl(ifp, cmd, data, cred);
-			lwkt_serialize_exit(ifp->if_serializer);
+			ifnet_deserialize_all(ifp);
 		}
 		getmicrotime(&ifp->if_lastchange);
 		break;
@@ -1304,9 +1335,9 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 			return (error);
 		if (ifr->ifr_reqcap & ~ifp->if_capabilities)
 			return (EINVAL);
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		ifp->if_ioctl(ifp, cmd, data, cred);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		break;
 
 	case SIOCSIFNAME:
@@ -1369,9 +1400,9 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 			return error;
 		if (!ifp->if_ioctl)
 		        return EOPNOTSUPP;
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		error = ifp->if_ioctl(ifp, cmd, data, cred);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		if (error == 0)
 			getmicrotime(&ifp->if_lastchange);
 		return (error);
@@ -1387,9 +1418,9 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 			return (EOPNOTSUPP);
 		if (ifr->ifr_mtu < IF_MINMTU || ifr->ifr_mtu > IF_MAXMTU)
 			return (EINVAL);
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		error = ifp->if_ioctl(ifp, cmd, data, cred);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		if (error == 0) {
 			getmicrotime(&ifp->if_lastchange);
 			rt_ifmsg(ifp);
@@ -1442,9 +1473,9 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 			return (error);
 		if (ifp->if_ioctl == 0)
 			return (EOPNOTSUPP);
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		error = ifp->if_ioctl(ifp, cmd, data, cred);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		if (error == 0)
 			getmicrotime(&ifp->if_lastchange);
 		return error;
@@ -1460,9 +1491,9 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	case SIOCGIFGENERIC:
 		if (ifp->if_ioctl == NULL)
 			return (EOPNOTSUPP);
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		error = ifp->if_ioctl(ifp, cmd, data, cred);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		return (error);
 
 	case SIOCSIFLLADDR:
@@ -1584,10 +1615,9 @@ ifpromisc(struct ifnet *ifp, int pswitch)
 	}
 	ifr.ifr_flags = ifp->if_flags;
 	ifr.ifr_flagshigh = ifp->if_flags >> 16;
-	lwkt_serialize_enter(ifp->if_serializer);
-	error = ifp->if_ioctl(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
-				 NULL);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
+	error = ifp->if_ioctl(ifp, SIOCSIFFLAGS, (caddr_t)&ifr, NULL);
+	ifnet_deserialize_all(ifp);
 	if (error == 0)
 		rt_ifmsg(ifp);
 	else
@@ -1702,10 +1732,10 @@ if_allmulti(struct ifnet *ifp, int onswitch)
 			ifp->if_flags |= IFF_ALLMULTI;
 			ifr.ifr_flags = ifp->if_flags;
 			ifr.ifr_flagshigh = ifp->if_flags >> 16;
-			lwkt_serialize_enter(ifp->if_serializer);
+			ifnet_serialize_all(ifp);
 			error = ifp->if_ioctl(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
 					      NULL);
-			lwkt_serialize_exit(ifp->if_serializer);
+			ifnet_deserialize_all(ifp);
 		}
 	} else {
 		if (ifp->if_amcount > 1) {
@@ -1715,10 +1745,10 @@ if_allmulti(struct ifnet *ifp, int onswitch)
 			ifp->if_flags &= ~IFF_ALLMULTI;
 			ifr.ifr_flags = ifp->if_flags;
 			ifr.ifr_flagshigh = ifp->if_flags >> 16;
-			lwkt_serialize_enter(ifp->if_serializer);
+			ifnet_serialize_all(ifp);
 			error = ifp->if_ioctl(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
 					      NULL);
-			lwkt_serialize_exit(ifp->if_serializer);
+			ifnet_deserialize_all(ifp);
 		}
 	}
 
@@ -1762,9 +1792,9 @@ if_addmulti(
 	 * already.
 	 */
 	if (ifp->if_resolvemulti) {
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		error = ifp->if_resolvemulti(ifp, &llsa, sa);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		if (error) 
 			return error;
 	} else {
@@ -1817,9 +1847,9 @@ if_addmulti(
 	 * interface to let them know about it.
 	 */
 	crit_enter();
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	ifp->if_ioctl(ifp, SIOCADDMULTI, 0, NULL);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	crit_exit();
 
 	return 0;
@@ -1854,9 +1884,9 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 	 * in the case of a link layer mcast group being left.
 	 */
 	if (ifma->ifma_addr->sa_family == AF_LINK && sa == 0) {
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		ifp->if_ioctl(ifp, SIOCDELMULTI, 0, NULL);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 	}
 	crit_exit();
 	kfree(ifma->ifma_addr, M_IFMADDR);
@@ -1887,10 +1917,10 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 	}
 
 	crit_enter();
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	LIST_REMOVE(ifma, ifma_link);
 	ifp->if_ioctl(ifp, SIOCDELMULTI, 0, NULL);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	crit_exit();
 	kfree(ifma->ifma_addr, M_IFMADDR);
 	kfree(sa, M_IFMADDR);
@@ -1931,7 +1961,7 @@ if_setlladdr(struct ifnet *ifp, const u_char *lladdr, int len)
 	 * to re-init it in order to reprogram its
 	 * address filter.
 	 */
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	if ((ifp->if_flags & IFF_UP) != 0) {
 		struct ifaddr_container *ifac;
 
@@ -1959,7 +1989,7 @@ if_setlladdr(struct ifnet *ifp, const u_char *lladdr, int len)
 		}
 #endif
 	}
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	return (0);
 }
 
@@ -2132,7 +2162,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 	 * contention on ifnet's serializer, ifnet.if_start will
 	 * be scheduled on ifnet's CPU.
 	 */
-	if (!lwkt_serialize_try(ifp->if_serializer)) {
+	if (!ifnet_tryserialize_tx(ifp)) {
 		/*
 		 * ifnet serializer contention happened,
 		 * ifnet.if_start is scheduled on ifnet's
@@ -2151,7 +2181,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 			running = 1;
 	}
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_tx(ifp);
 
 	if (ifq_dispatch_schednochk || if_start_need_schedule(ifq, running)) {
 		/*

@@ -714,7 +714,7 @@ bridge_delete_dispatch(struct netmsg *nmsg)
 	struct ifnet *bifp = sc->sc_ifp;
 	struct bridge_iflist *bif;
 
-	lwkt_serialize_enter(bifp->if_serializer);
+	ifnet_serialize_all(bifp);
 
 	while ((bif = LIST_FIRST(&sc->sc_iflists[mycpuid])) != NULL)
 		bridge_delete_member(sc, bif, 0);
@@ -722,7 +722,7 @@ bridge_delete_dispatch(struct netmsg *nmsg)
 	while ((bif = LIST_FIRST(&sc->sc_spanlist)) != NULL)
 		bridge_delete_span(sc, bif);
 
-	lwkt_serialize_exit(bifp->if_serializer);
+	ifnet_deserialize_all(bifp);
 
 	lwkt_replymsg(lmsg, 0);
 }
@@ -739,12 +739,12 @@ bridge_clone_destroy(struct ifnet *ifp)
 	struct lwkt_msg *lmsg;
 	struct netmsg nmsg;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	bridge_stop(ifp);
 	ifp->if_flags &= ~IFF_UP;
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	netmsg_init(&nmsg, &curthread->td_msgport, 0, bridge_delete_dispatch);
 	lmsg = &nmsg.nm_lmsg;
@@ -906,9 +906,9 @@ bridge_mutecaps(struct bridge_ifinfo *bif_info, struct ifnet *ifp, int mute)
 	}
 
 	if (bif_info->bifi_mutecap != 0) {
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		error = ifp->if_ioctl(ifp, SIOCSIFCAP, (caddr_t)&ifr, NULL);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 	}
 }
 
@@ -988,7 +988,7 @@ bridge_delete_member(struct bridge_softc *sc, struct bridge_iflist *bif,
 	 * - To avoid possible dead lock.
 	 * - Various sync operation will block the current thread.
 	 */
-	lwkt_serialize_exit(bifp->if_serializer);
+	ifnet_deserialize_all(bifp);
 
 	if (!gone) {
 		switch (ifs->if_type) {
@@ -1041,7 +1041,7 @@ bridge_delete_member(struct bridge_softc *sc, struct bridge_iflist *bif,
 	bridge_rtmsg_sync(sc);
 	bridge_rtdelete(sc, ifs, IFBF_FLUSHALL | IFBF_FLUSHSYNC);
 
-	lwkt_serialize_enter(bifp->if_serializer);
+	ifnet_serialize_all(bifp);
 
 	if (bifp->if_flags & IFF_RUNNING)
 		bstp_initialization(sc);
@@ -1108,7 +1108,7 @@ bridge_ioctl_stop(struct bridge_softc *sc, void *arg __unused)
 
 	ifp->if_flags &= ~IFF_RUNNING;
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	/* Let everyone know that we are stopped */
 	netmsg_service_sync();
@@ -1122,7 +1122,7 @@ bridge_ioctl_stop(struct bridge_softc *sc, void *arg __unused)
 	bridge_rtmsg_sync(sc);
 	bridge_rtflush(sc, IFBF_FLUSHDYN | IFBF_FLUSHSYNC);
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	return 0;
 }
 
@@ -1173,7 +1173,7 @@ bridge_ioctl_add(struct bridge_softc *sc, void *arg)
 	 * - To avoid possible dead lock.
 	 * - Various sync operation will block the current thread.
 	 */
-	lwkt_serialize_exit(bifp->if_serializer);
+	ifnet_deserialize_all(bifp);
 
 	switch (ifs->if_type) {
 	case IFT_ETHER:
@@ -1183,7 +1183,7 @@ bridge_ioctl_add(struct bridge_softc *sc, void *arg)
 		 */
 		error = ifpromisc(ifs, 1);
 		if (error) {
-			lwkt_serialize_enter(bifp->if_serializer);
+			ifnet_serialize_all(bifp);
 			goto out;
 		}
 		bridge_mutecaps(bif_info, ifs, 1);
@@ -1194,7 +1194,7 @@ bridge_ioctl_add(struct bridge_softc *sc, void *arg)
 
 	default:
 		error = EINVAL;
-		lwkt_serialize_enter(bifp->if_serializer);
+		ifnet_serialize_all(bifp);
 		goto out;
 	}
 
@@ -1203,7 +1203,7 @@ bridge_ioctl_add(struct bridge_softc *sc, void *arg)
 	 */
 	bridge_add_bif(sc, bif_info, ifs);
 
-	lwkt_serialize_enter(bifp->if_serializer);
+	ifnet_serialize_all(bifp);
 
 	if (bifp->if_flags & IFF_RUNNING)
 		bstp_initialization(sc);
@@ -1285,9 +1285,9 @@ bridge_ioctl_sifflags(struct bridge_softc *sc, void *arg)
 		}
 	}
 
-	lwkt_serialize_exit(bifp->if_serializer);
+	ifnet_deserialize_all(bifp);
 	bridge_set_bifflags(sc, bif->bif_info, req->ifbr_ifsflags);
-	lwkt_serialize_enter(bifp->if_serializer);
+	ifnet_serialize_all(bifp);
 
 	if (bifp->if_flags & IFF_RUNNING)
 		bstp_initialization(sc);
@@ -1303,9 +1303,9 @@ bridge_ioctl_scache(struct bridge_softc *sc, void *arg)
 
 	sc->sc_brtmax = param->ifbrp_csize;
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	bridge_rttrim(sc);
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	return (0);
 }
@@ -1466,10 +1466,10 @@ bridge_ioctl_saddr(struct bridge_softc *sc, void *arg)
 	if (bif == NULL)
 		return (ENOENT);
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	error = bridge_rtsaddr(sc, req->ifba_dst, bif->bif_ifp,
 			       req->ifba_flags);
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	return (error);
 }
 
@@ -1500,9 +1500,9 @@ bridge_ioctl_daddr(struct bridge_softc *sc, void *arg)
 	struct ifnet *ifp = sc->sc_ifp;
 	int error;
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	error = bridge_rtdaddr(sc, req->ifba_dst);
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	return error;
 }
 
@@ -1512,9 +1512,9 @@ bridge_ioctl_flush(struct bridge_softc *sc, void *arg)
 	struct ifbreq *req = arg;
 	struct ifnet *ifp = sc->sc_ifp;
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	bridge_rtflush(sc, req->ifbr_ifsflags | IFBF_FLUSHSYNC);
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	return (0);
 }
@@ -1734,7 +1734,7 @@ bridge_ifdetach_dispatch(struct netmsg *nmsg)
 	if (sc != NULL) {
 		bifp = sc->sc_ifp;
 
-		lwkt_serialize_enter(bifp->if_serializer);
+		ifnet_serialize_all(bifp);
 
 		bif = bridge_lookup_member_if(sc, ifp);
 		if (bif != NULL) {
@@ -1743,7 +1743,7 @@ bridge_ifdetach_dispatch(struct netmsg *nmsg)
 			/* XXX Why bif will be NULL? */
 		}
 
-		lwkt_serialize_exit(bifp->if_serializer);
+		ifnet_deserialize_all(bifp);
 		goto reply;
 	}
 
@@ -1753,7 +1753,7 @@ bridge_ifdetach_dispatch(struct netmsg *nmsg)
 	LIST_FOREACH(sc, &bridge_list, sc_list) {
 		bifp = sc->sc_ifp;
 
-		lwkt_serialize_enter(bifp->if_serializer);
+		ifnet_serialize_all(bifp);
 
 		LIST_FOREACH(bif, &sc->sc_spanlist, bif_next)
 			if (ifp == bif->bif_ifp) {
@@ -1761,7 +1761,7 @@ bridge_ifdetach_dispatch(struct netmsg *nmsg)
 				break;
 			}
 
-		lwkt_serialize_exit(bifp->if_serializer);
+		ifnet_deserialize_all(bifp);
 	}
 
 	crit_exit();
@@ -2209,9 +2209,9 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		/* Tap off 802.1D packets; they do not get forwarded. */
 		if (memcmp(eh->ether_dhost, bstp_etheraddr,
 		    ETHER_ADDR_LEN) == 0) {
-			lwkt_serialize_enter(bifp->if_serializer);
+			ifnet_serialize_all(bifp);
 			bstp_input(sc, bif, m);
-			lwkt_serialize_exit(bifp->if_serializer);
+			ifnet_deserialize_all(bifp);
 
 			/* m is freed by bstp_input */
 			m = NULL;
@@ -2484,7 +2484,7 @@ bridge_span(struct bridge_softc *sc, struct mbuf *m)
 	struct mbuf *mc;
 
 	bifp = sc->sc_ifp;
-	lwkt_serialize_enter(bifp->if_serializer);
+	ifnet_serialize_all(bifp);
 
 	LIST_FOREACH(bif, &sc->sc_spanlist, bif_next) {
 		dst_if = bif->bif_ifp;
@@ -2500,7 +2500,7 @@ bridge_span(struct bridge_softc *sc, struct mbuf *m)
 		bridge_enqueue(dst_if, mc);
 	}
 
-	lwkt_serialize_exit(bifp->if_serializer);
+	ifnet_deserialize_all(bifp);
 }
 
 static void
@@ -3671,9 +3671,9 @@ bridge_control_dispatch(struct netmsg *nmsg)
 	struct ifnet *bifp = bc_msg->bc_sc->sc_ifp;
 	int error;
 
-	lwkt_serialize_enter(bifp->if_serializer);
+	ifnet_serialize_all(bifp);
 	error = bc_msg->bc_func(bc_msg->bc_sc, bc_msg->bc_arg);
-	lwkt_serialize_exit(bifp->if_serializer);
+	ifnet_deserialize_all(bifp);
 
 	lwkt_replymsg(&nmsg->nm_lmsg, error);
 }
@@ -3697,9 +3697,9 @@ bridge_control(struct bridge_softc *sc, u_long cmd,
 	bc_msg.bc_sc = sc;
 	bc_msg.bc_arg = bc_arg;
 
-	lwkt_serialize_exit(bifp->if_serializer);
+	ifnet_deserialize_all(bifp);
 	error = lwkt_domsg(BRIDGE_CFGPORT, &nmsg->nm_lmsg, 0);
-	lwkt_serialize_enter(bifp->if_serializer);
+	ifnet_serialize_all(bifp);
 	return error;
 }
 

@@ -431,7 +431,7 @@ onoe_tick(void *arg)
 	struct ifnet *ifp = &ic->ic_if;
 	int interval;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	if (ifp->if_flags & IFF_RUNNING) {
 		if (ic->ic_opmode == IEEE80211_M_STA)
@@ -445,7 +445,7 @@ onoe_tick(void *arg)
 		interval /= 2;
 	callout_reset(&osc->timer, (interval * hz) / 1000, onoe_tick, osc);
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 }
 
 static void

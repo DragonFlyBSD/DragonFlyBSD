@@ -782,9 +782,9 @@ purgeaddr:
 	default:
 		if (ifp == NULL || ifp->if_ioctl == 0)
 			return (EOPNOTSUPP);
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		error = ifp->if_ioctl(ifp, cmd, data, td->td_proc->p_ucred);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		return (error);
 	}
 
@@ -1585,16 +1585,17 @@ in6_ifinit(struct ifnet *ifp, struct in6_ifaddr *ia, struct sockaddr_in6 *sin6,
 		ifacount++;
 	}
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	ia->ia_addr = *sin6;
 
 	if (ifacount <= 1 && ifp->if_ioctl &&
 	    (error = ifp->if_ioctl(ifp, SIOCSIFADDR, (caddr_t)ia, NULL))) {
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 		return (error);
 	}
-	lwkt_serialize_exit(ifp->if_serializer);
+
+	ifnet_deserialize_all(ifp);
 
 	ia->ia_ifa.ifa_metric = ifp->if_metric;
 

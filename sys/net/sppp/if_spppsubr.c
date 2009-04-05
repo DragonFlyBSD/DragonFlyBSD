@@ -1003,9 +1003,9 @@ sppp_output(struct ifnet *ifp, struct mbuf *m,
 {
 	int error;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_tx(ifp);
 	error = sppp_output_serialized(ifp, m, dst, rt);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_tx(ifp);
 
 	return error;
 }
@@ -4846,7 +4846,7 @@ sppp_keepalive(void *dummy)
 				lcp.Up(sp);
 			}
 		}
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		if (sp->pp_alivecnt <= MAXALIVECNT)
 			++sp->pp_alivecnt;
 		if (sp->pp_mode == IFF_CISCO)
@@ -4858,7 +4858,7 @@ sppp_keepalive(void *dummy)
 			sppp_cp_send (sp, PPP_LCP, ECHO_REQ,
 				sp->lcp.echoid, 4, &nmagic);
 		}
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 	}
 	callout_reset(&keepalive_timeout, hz * 10, sppp_keepalive, NULL);
 	crit_exit();

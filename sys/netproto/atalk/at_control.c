@@ -309,9 +309,9 @@ at_control(struct socket *so, u_long cmd, caddr_t data,
     default:
 	if ( ifp == 0 || ifp->if_ioctl == 0 )
 	    return( EOPNOTSUPP );
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	error = ifp->if_ioctl(ifp, cmd, data, td->td_proc->p_ucred);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	return (error);
     }
     return( 0 );
@@ -560,7 +560,7 @@ at_ifinit(struct ifnet *ifp, struct at_ifaddr *aa, struct sockaddr_at *sat)
      * Now that we have selected an address, we need to tell the interface
      * about it, just in case it needs to adjust something.
      */
-    lwkt_serialize_enter(ifp->if_serializer);
+    ifnet_serialize_all(ifp);
     if (ifp->if_ioctl &&
 	(error = ifp->if_ioctl(ifp, SIOCSIFADDR, (caddr_t)aa, NULL))
     ) {
@@ -571,11 +571,11 @@ at_ifinit(struct ifnet *ifp, struct at_ifaddr *aa, struct sockaddr_at *sat)
 	aa->aa_addr = oldaddr;
 	aa->aa_firstnet = onr.nr_firstnet;
 	aa->aa_lastnet = onr.nr_lastnet;
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 	crit_exit();
 	return( error );
     }
-    lwkt_serialize_exit(ifp->if_serializer);
+    ifnet_deserialize_all(ifp);
 
     /* 
      * set up the netmask part of the at_ifaddr

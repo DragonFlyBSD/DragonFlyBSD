@@ -1060,7 +1060,7 @@ bstp_linkstate(struct ifnet *ifp, int state)
 	struct bridge_iflist *bif;
 
 	sc = ifp->if_bridge;
-	lwkt_serialize_enter(sc->sc_ifp->if_serializer);
+	ifnet_serialize_all(sc->sc_ifp);
 
 	/*
 	 * bstp_ifupdstatus() may block, but it is the last
@@ -1077,7 +1077,7 @@ bstp_linkstate(struct ifnet *ifp, int state)
 			break;
 		}
 	}
-	lwkt_serialize_exit(sc->sc_ifp->if_serializer);
+	ifnet_deserialize_all(sc->sc_ifp);
 }
 
 static void
@@ -1088,9 +1088,9 @@ bstp_ifupdstatus(struct bridge_softc *sc, struct bridge_iflist *bif)
 	int error = 0;
 
 	bzero((char *)&ifmr, sizeof(ifmr));
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	error = (*ifp->if_ioctl)(ifp, SIOCGIFMEDIA, (caddr_t)&ifmr, NULL);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	if ((error == 0) && (ifp->if_flags & IFF_UP)) {
 	 	if (ifmr.ifm_status & IFM_ACTIVE) {
@@ -1144,7 +1144,7 @@ bstp_tick_handler(struct netmsg *nmsg)
 	lwkt_replymsg(&nmsg->nm_lmsg, 0);
 	crit_exit();
 
-	lwkt_serialize_enter(sc->sc_ifp->if_serializer);
+	ifnet_serialize_all(sc->sc_ifp);
 
 	/*
 	 * NOTE:
@@ -1200,7 +1200,7 @@ bstp_tick_handler(struct netmsg *nmsg)
 	if (sc->sc_ifp->if_flags & IFF_RUNNING)
 		callout_reset(&sc->sc_bstpcallout, hz, bstp_tick, sc);
 
-	lwkt_serialize_exit(sc->sc_ifp->if_serializer);
+	ifnet_deserialize_all(sc->sc_ifp);
 }
 
 static void

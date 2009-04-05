@@ -231,9 +231,9 @@ ieee80211_ifdetach(struct ieee80211com *ic)
 	 * In order to make the assertion work, hold serializer here.
 	 * SHOULD BE REMOVED
 	 */
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	ieee80211_ratectl_detach(ic);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	ieee80211_remove_vap(ic);
 
@@ -249,9 +249,9 @@ ieee80211_ifdetach(struct ieee80211com *ic)
 	 * In order to make the assertion work, hold serializer here.
 	 * SHOULD BE REMOVED
 	 */
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 	ieee80211_node_detach(ic);
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	ifmedia_removeall(&ic->ic_media);
 
@@ -358,7 +358,7 @@ ieee80211_media_init(struct ieee80211com *ic,
 	 *
 	 * SHOULD BE REMOVED
 	 */
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	/*
 	 * Do late attach work that must wait for any subclass
@@ -366,7 +366,7 @@ ieee80211_media_init(struct ieee80211com *ic,
 	 */
 	ieee80211_node_lateattach(ic);
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	/*
 	 * Fill in media characteristics.
