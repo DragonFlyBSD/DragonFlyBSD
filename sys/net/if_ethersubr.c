@@ -1395,8 +1395,6 @@ ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
 		if(m->m_flags & M_ETHER_BRIDGED) {
 			m->m_flags &= ~M_ETHER_BRIDGED;
 		} else {
-			/* clear M_PROMISC, in case the packets comes from a vlan */
-			/* m->m_flags &= ~M_PROMISC; */
 			m = bridge_input_p(ifp, m);
 			if (m == NULL)
 				return;
