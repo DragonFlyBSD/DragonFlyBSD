@@ -381,7 +381,7 @@ not_recovered:
 #ifdef MAIL
 			ckmailstatus();
 #endif
-			rhack((char *) 0);
+			rhack(NULL);
 		}
 		if(multi && multi%7 == 0)
 			fflush(stdout);

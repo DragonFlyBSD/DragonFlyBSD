@@ -210,7 +210,7 @@ static int yy_n_chars;		/* number of characters read into yy_ch_buf */
 int yyleng;
 
 /* Points to current character in buffer. */
-static char *yy_c_buf_p = (char *) 0;
+static char *yy_c_buf_p = NULL;
 static int yy_init = 1;		/* whether we need to initialize */
 static int yy_start = 0;	/* start state number */
 
@@ -256,7 +256,7 @@ static void yy_flex_free YY_PROTO(( void * ));
 #define YY_AT_BOL() (yy_current_buffer->yy_at_bol)
 
 typedef unsigned char YY_CHAR;
-FILE *yyin = (FILE *) 0, *yyout = (FILE *) 0;
+FILE *yyin = NULL, *yyout = NULL;
 typedef int yy_state_type;
 extern char *yytext;
 #define yytext_ptr yytext
@@ -1602,7 +1602,7 @@ YY_RULE_SETUP
 #line 110 "scan.l"
 {
 			++linenum;
-			line_directive_out( (FILE *) 0, 1 );
+			line_directive_out( NULL, 1 );
 			indented_code = false;
 			BEGIN(CODEBLOCK);
 			}
@@ -1619,7 +1619,7 @@ YY_RULE_SETUP
 			sectnum = 2;
 			bracelevel = 0;
 			mark_defs1();
-			line_directive_out( (FILE *) 0, 1 );
+			line_directive_out( NULL, 1 );
 			BEGIN(SECT2PROLOG);
 			return SECTEND;
 			}

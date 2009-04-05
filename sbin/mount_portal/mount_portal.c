@@ -79,7 +79,7 @@ sigchld(int sig)
 {
 	pid_t pid;
 
-	while ((pid = waitpid((pid_t) -1, (int *) 0, WNOHANG)) > 0)
+	while ((pid = waitpid((pid_t) -1, NULL, WNOHANG)) > 0)
 		;
 	/* wrtp - waitpid _doesn't_ return 0 when no children! */
 #ifdef notdef
@@ -226,7 +226,7 @@ main(int argc, char **argv)
 		 */
 		FD_ZERO(&fdset);
 		FD_SET(so, &fdset);
-		rc = select(so+1, &fdset, (fd_set *) 0, (fd_set *) 0, (struct timeval *) 0);
+		rc = select(so+1, &fdset, NULL, NULL, NULL);
 		if (rc < 0) {
 			if (errno == EINTR)
 				continue;

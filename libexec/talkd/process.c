@@ -169,7 +169,7 @@ do_announce(mp, rp)
 		return;
 	}
 	ptr = find_request(mp);
-	if (ptr == (CTL_MSG *) 0) {
+	if (ptr == NULL) {
 		insert_table(mp, rp);
 		rp->answer = announce(mp, hp->h_name);
 		return;

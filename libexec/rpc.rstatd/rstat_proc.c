@@ -245,7 +245,7 @@ updatestat()
 	stats_all.s1.v_pswpin = vmm.v_swappgsin;
 	stats_all.s1.v_pswpout = vmm.v_swappgsout;
 	stats_all.s1.v_intr = vmm.v_intr;
-	gettimeofday(&tm, (struct timezone *) 0);
+	gettimeofday(&tm, NULL);
 	stats_all.s1.v_intr -= hz*(tm.tv_sec - btm.tv_sec) +
 	    hz*(tm.tv_usec - btm.tv_usec)/1000000;
 	stats_all.s2.v_swtch = vmm.v_swtch;
@@ -286,8 +286,7 @@ updatestat()
 		stats_all.s1.if_oerrors += ifmd.ifmd_data.ifi_oerrors;
 		stats_all.s1.if_collisions += ifmd.ifmd_data.ifi_collisions;
 	}
-	gettimeofday((struct timeval *)&stats_all.s3.curtime,
-		(struct timezone *) 0);
+	gettimeofday((struct timeval *)&stats_all.s3.curtime, NULL);
 	alarm(1);
 }
 

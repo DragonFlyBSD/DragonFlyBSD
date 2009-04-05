@@ -17,8 +17,6 @@
 #define	rindex	strrchr
 #endif /* BSD */
 
-#define	Null(type)	((struct type *) 0)
-
 #include	"def.objclass.h"
 
 typedef struct {

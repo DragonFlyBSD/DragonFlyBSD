@@ -116,11 +116,11 @@ int to_stderr     = 0;
 int Verbose       = 0;
 int quiet         = 0;
 int exit_code     = 0;
-FILE* report_fp   = (FILE *) 0;
-char *report_file = (char *) 0;
-char *chat_file   = (char *) 0;
-char *phone_num   = (char *) 0;
-char *phone_num2  = (char *) 0;
+FILE* report_fp   = NULL;
+char *report_file = NULL;
+char *chat_file   = NULL;
+char *phone_num   = NULL;
+char *phone_num2  = NULL;
 int timeout       = DEFAULT_CHAT_TIMEOUT;
 
 static char blank[] = "";
@@ -511,7 +511,7 @@ void break_sequence(void)
 void terminate(int status)
 {
     echo_stderr(-1);
-    if (report_file != (char *) 0 && report_fp != (FILE *) NULL) {
+    if (report_file != NULL && report_fp != (FILE *) NULL) {
 /*
  * Allow the last of the report string to be gathered before we terminate.
  */
@@ -721,7 +721,7 @@ expect_strtok (char *s, const char *term)
     if (*str)
 	result = str;
     else
-	result = (char *) 0;
+	result = NULL;
 
     while (*str) {
 	if (escape_flag) {
@@ -739,7 +739,7 @@ expect_strtok (char *s, const char *term)
 /*
  * If this is not in the termination string, continue.
  */
-	if (strchr (term, *str) == (char *) 0) {
+	if (strchr (term, *str) == NULL) {
 	    ++str;
 	    continue;
 	}
@@ -808,9 +808,9 @@ chat_expect(char *s)
  */
     for (;;) {
 	expect = expect_strtok (s, "-");
-	s      = (char *) 0;
+	s      = NULL;
 
-	if (expect == (char *) 0)
+	if (expect == NULL)
 	    return;
 
 	reply = expect_strtok (s, "-");
@@ -825,7 +825,7 @@ chat_expect(char *s)
  * If there is a sub-reply string then send it. Otherwise any condition
  * is terminal.
  */
-	if (reply == (char *) 0 || exit_code != 3)
+	if (reply == NULL || exit_code != 3)
 	    break;
 
 	chat_send (reply);

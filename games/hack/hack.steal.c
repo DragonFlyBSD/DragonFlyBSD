@@ -105,7 +105,7 @@ steal(struct monst *mtmp)
 			break;
 		case ARMOR_SYM:
 			if(multi < 0 || otmp == uarms){
-			  setworn((struct obj *) 0, otmp->owornmask & W_ARMOR);
+			  setworn(NULL, otmp->owornmask & W_ARMOR);
 			  break;
 			}
 		{ int curssv = otmp->cursed;
@@ -133,7 +133,7 @@ steal(struct monst *mtmp)
 		}
 	}
 	else if(otmp == uwep)
-		setuwep((struct obj *) 0);
+		setuwep(NULL);
 	if(otmp->olet == CHAIN_SYM) {
 		impossible("How come you are carrying that chain?");
 	}
@@ -141,9 +141,9 @@ steal(struct monst *mtmp)
 		Punished = 0;
 		freeobj(uchain);
 		free((char *) uchain);
-		uchain = (struct obj *) 0;
+		uchain = NULL;
 		uball->spe = 0;
-		uball = (struct obj *) 0;	/* superfluous */
+		uball = NULL;	/* superfluous */
 	}
 	freeinv(otmp);
 	pline("%s stole %s.", named ? "She" : Monnam(mtmp), doname(otmp));
@@ -166,7 +166,7 @@ stealamulet(struct monst *mtmp)
 	for(otmp = invent; otmp; otmp = otmp->nobj) {
 	    if(otmp->olet == AMULET_SYM) {
 		/* might be an imitation one */
-		if(otmp == uwep) setuwep((struct obj *) 0);
+		if(otmp == uwep) setuwep(NULL);
 		freeinv(otmp);
 		mpickobj(mtmp,otmp);
 		pline("%s stole %s!", Monnam(mtmp), doname(otmp));
@@ -192,7 +192,7 @@ relobj(struct monst *mtmp, int show)
 		if(show & cansee(mtmp->mx,mtmp->my))
 			atl(otmp->ox,otmp->oy,otmp->olet);
 	}
-	mtmp->minvent = (struct obj *) 0;
+	mtmp->minvent = NULL;
 	if(mtmp->mgold || mtmp->data->mlet == 'L') {
 		long tmp;
 

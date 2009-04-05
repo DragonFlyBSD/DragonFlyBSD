@@ -174,7 +174,7 @@ mkzoo(int type)
 		   (sy == sroom->hy && doors[sh].y == sy+1)) continue;
 		mon = makemon(
 		   (type == MORGUE) ? morguemon() :
-		   (type == BEEHIVE) ? PM_KILLER_BEE : (struct permonst *) 0,
+		   (type == BEEHIVE) ? PM_KILLER_BEE : NULL,
 		   sx, sy);
 		if(mon) mon->msleep = 1;
 		switch(type) {

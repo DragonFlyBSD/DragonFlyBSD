@@ -1028,7 +1028,7 @@ c_newer(OPTION *option, char ***argvp)
 	new = palloc(option);
 	/* compare against what */
 	if (option->flags & F_TIME2_T) {
-		new->t_data = get_date(fn_or_tspec, (struct timeb *) 0);
+		new->t_data = get_date(fn_or_tspec, NULL);
 		if (new->t_data == (time_t) -1)
 			errx(1, "Can't parse date/time: %s", fn_or_tspec);
 	} else {

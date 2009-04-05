@@ -49,7 +49,7 @@ lookup_hwa(char *hostname, int htype)
 			if (ether_hostton(hostname, &ea)) {
 				report(LOG_ERR, "no HW addr for host \"%s\"",
 					   hostname);
-				return (u_char *) 0;
+				return NULL;
 			}
 			return (u_char *) & ea;
 		}
@@ -60,7 +60,7 @@ lookup_hwa(char *hostname, int htype)
 	}							/* switch */
 
 	/* If the system can't do it, just return an error. */
-	return (u_char *) 0;
+	return NULL;
 }
 
 

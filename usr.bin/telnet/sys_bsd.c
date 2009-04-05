@@ -220,9 +220,9 @@ void
 TerminalFlushOutput(void)
 {
 #ifdef	TIOCFLUSH
-    (void) ioctl(fileno(stdout), TIOCFLUSH, (char *) 0);
+    (void) ioctl(fileno(stdout), TIOCFLUSH, NULL);
 #else
-    (void) ioctl(fileno(stdout), TCFLSH, (char *) 0);
+    (void) ioctl(fileno(stdout), TCFLSH, NULL);
 #endif
 }
 

@@ -111,7 +111,7 @@ pick_up(int row, int col, short *status)
 
 	if (levitate) {
 		message("you're floating in the air!", 0);
-		return((object *) 0);
+		return(NULL);
 	}
 	obj = object_at(&level_objects, row, col);
 	if (!obj) {
@@ -128,7 +128,7 @@ pick_up(int row, int col, short *status)
 		if (id_scrolls[SCARE_MONSTER].id_status == UNIDENTIFIED) {
 			id_scrolls[SCARE_MONSTER].id_status = IDENTIFIED;
 		}
-		return((object *) 0);
+		return(NULL);
 	}
 	if (obj->what_is == GOLD) {
 		rogue.gold += obj->quantity;
@@ -139,7 +139,7 @@ pick_up(int row, int col, short *status)
 	}
 	if (pack_count(obj) >= MAX_PACK_COUNT) {
 		message("pack too full", 1);
-		return((object *) 0);
+		return(NULL);
 	}
 	dungeon[row][col] &= ~(OBJECT);
 	take_from_pack(obj, &level_objects);
@@ -374,7 +374,7 @@ unwear(object *obj)
 	if (obj) {
 		obj->in_use_flags &= (~BEING_WORN);
 	}
-	rogue.armor = (object *) 0;
+	rogue.armor = NULL;
 }
 
 void
@@ -436,7 +436,7 @@ unwield(object *obj)
 	if (obj) {
 		obj->in_use_flags &= (~BEING_WIELDED);
 	}
-	rogue.weapon = (object *) 0;
+	rogue.weapon = NULL;
 }
 
 void

@@ -209,7 +209,7 @@ clnt_vc_create(int fd,			/* open file descriptor */
 			int i;
 
 			for (i = 0; i < dtbsize; i++)
-				cond_init(&vc_cv[i], 0, (void *) 0);
+				cond_init(&vc_cv[i], 0, NULL);
 		}
 	} else
 		assert(vc_cv != (cond_t *) NULL);

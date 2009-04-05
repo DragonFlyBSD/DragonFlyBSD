@@ -2355,7 +2355,7 @@ main(int argc, char **argv)
 	p++;
 	do {
 	    char c = *p++;
-	    char *arg = (char *) 0;
+	    char *arg = NULL;
 	    if (isdigit(*p)) {
 		arg = p;
 		p = "";

@@ -404,7 +404,7 @@ putf(char *cp, char *where)
 #else
 			slash = strrchr(line, '/');
 #endif
-			if (slash == (char *) 0)
+			if (slash == NULL)
 				putstr(line);
 			else
 				putstr(&slash[1]);

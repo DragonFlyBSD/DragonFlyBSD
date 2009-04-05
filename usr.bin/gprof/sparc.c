@@ -63,9 +63,9 @@ nltype	indirectchild = {
 	(int) 0 ,			/* internal number of cycle on */
 	(int) 0 ,			/* number of live parent arcs */
 	(struct nl *) &indirectchild ,	/* pointer to head of cycle */
-	(struct nl *) 0 ,		/* pointer to next member of cycle */
-	(arctype *) 0 ,			/* list of caller arcs */
-	(arctype *) 0 			/* list of callee arcs */
+	NULL ,				/* pointer to next member of cycle */
+	NULL ,				/* list of caller arcs */
+	NULL 				/* list of callee arcs */
 };
 
 findcall(nltype *parentp, unsigned long p_lowpc, unsigned long p_highpc)

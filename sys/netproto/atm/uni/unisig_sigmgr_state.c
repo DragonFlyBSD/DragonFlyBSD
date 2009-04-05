@@ -365,7 +365,7 @@ unisig_sigmgr_act03(struct unisig *usp, KBuffer *m)
 			uvp; uvp = vnext) {
 		vnext = Q_NEXT(uvp, struct unisig_vccb, uv_sigelem);
 		unisig_vc_state(usp, uvp, UNI_VC_SAAL_ESTAB,
-				(struct unisig_msg *) 0);
+				NULL);
 	}
 
 	return(0);
@@ -434,7 +434,7 @@ unisig_sigmgr_act05(struct unisig *usp, KBuffer *m)
 			uvp; uvp = vnext) {
 		vnext = Q_NEXT(uvp, struct unisig_vccb, uv_sigelem);
 		unisig_vc_state(usp, uvp, UNI_VC_SAAL_ESTAB,
-				(struct unisig_msg *) 0);
+				NULL);
 	}
 
 	return(0);
@@ -472,13 +472,13 @@ unisig_sigmgr_act06(struct unisig *usp, KBuffer *m)
 			uvp; uvp = vnext) {
 		vnext = Q_NEXT(uvp, struct unisig_vccb, uv_sigelem);
 		unisig_vc_state(usp, uvp, UNI_VC_SAAL_FAIL,
-				(struct unisig_msg *) 0);
+				NULL);
 	}
 
 	/*
 	 * Try to restart the SSCF session
 	 */
-	unisig_sigmgr_act04(usp, (KBuffer *) 0);
+	unisig_sigmgr_act04(usp, NULL);
 
 	/*
 	 * Go to INIT state

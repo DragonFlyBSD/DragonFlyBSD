@@ -111,7 +111,7 @@ LEXOPT		[aceknopr]
 	^"%x"{NAME}?	return XSCDECL;
 	^"%{".*{NL}	{
 			++linenum;
-			line_directive_out( (FILE *) 0, 1 );
+			line_directive_out( NULL, 1 );
 			indented_code = false;
 			BEGIN(CODEBLOCK);
 			}
@@ -122,7 +122,7 @@ LEXOPT		[aceknopr]
 			sectnum = 2;
 			bracelevel = 0;
 			mark_defs1();
-			line_directive_out( (FILE *) 0, 1 );
+			line_directive_out( NULL, 1 );
 			BEGIN(SECT2PROLOG);
 			return SECTEND;
 			}

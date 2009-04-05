@@ -157,7 +157,7 @@ win(void)
 	message("", 0);
 	id_all();
 	sell_pack();
-	put_scores((object *) 0, WIN);
+	put_scores(NULL, WIN);
 }
 
 void
@@ -200,7 +200,7 @@ quit(boolean from_intrpt)
 		clean_up(byebye_string);
 	}
 	check_message();
-	killed_by((object *) 0, QUIT);
+	killed_by(NULL, QUIT);
 }
 
 void

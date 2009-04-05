@@ -1097,7 +1097,7 @@ wlread(struct wl_softc *sc, u_short fd_p)
 	}
 	return 0;
     }
-    m->m_next = (struct mbuf *) 0;
+    m->m_next = NULL;
     m->m_pkthdr.rcvif = ifp;
     m->m_pkthdr.len = 0; /* don't know this yet */
     m->m_len = MHLEN;
@@ -1861,7 +1861,7 @@ wlxmt(struct wl_softc *sc, struct mbuf *m)
 		    continue;
 		}
 		/* next mbuf short -> coallesce as needed */
-		if ( (tm_p->m_next == (struct mbuf *) 0) ||
+		if ( (tm_p->m_next == NULL) ||
 #define HDW_THRESHOLD 55
 		     tm_p->m_len > HDW_THRESHOLD)
 		    /* ok */;

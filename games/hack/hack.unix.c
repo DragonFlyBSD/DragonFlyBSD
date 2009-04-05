@@ -387,7 +387,7 @@ readmail(void)
 	if(!(mr = getenv("MAILREADER")))
 		mr = DEF_MAILREADER;
 	if(child(1)){
-		execl(mr, mr, (char *) 0);
+		execl(mr, mr, NULL);
 		exit(1);
 	}
 #else /* DEF_MAILREADER */

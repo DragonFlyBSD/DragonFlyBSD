@@ -69,10 +69,10 @@ dodefault()
 	register r = wwnrow / 2 - 1;
 
 	if (openwin(1, r + 2, 0, wwnrow - r - 2, wwncol, default_nline,
-		(char *) 0, 1, 1, default_shellfile, default_shell) == 0)
+		NULL, 1, 1, default_shellfile, default_shell) == 0)
 		return;
 	if ((w = openwin(0, 1, 0, r, wwncol, default_nline,
-		(char *) 0, 1, 1, default_shellfile, default_shell)) == 0)
+		NULL, 1, 1, default_shellfile, default_shell)) == 0)
 		return;
 	wwprintf(w, "Escape character is %s.\r\n", unctrl(escapec));
 }

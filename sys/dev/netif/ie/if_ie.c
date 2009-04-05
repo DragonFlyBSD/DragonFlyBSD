@@ -2141,7 +2141,7 @@ ie_mc_reset(int unit)
 		/* XXX - this is broken... */
 		if (ie->mcast_count >= MAXMCAST) {
 			ie->arpcom.ac_if.if_flags |= IFF_ALLMULTI;
-			ieioctl(&ie->arpcom.ac_if, SIOCSIFFLAGS, (void *) 0,
+			ieioctl(&ie->arpcom.ac_if, SIOCSIFFLAGS, NULL,
 			        (struct ucred *)NULL);
 			goto setflag;
 		}

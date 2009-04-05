@@ -31,7 +31,7 @@ struct engr *ep = head_engr;
 			return(ep);
 		ep = ep->nxt_engr;
 	}
-	return((struct engr *) 0);
+	return(NULL);
 }
 
 bool
@@ -159,7 +159,7 @@ struct obj *otmp;
 			if(uwep && uwep->cursed) {
 			    /* Andreas Bormann */
 			    pline("Since your weapon is welded to your hand,");
-			    pline("you use the %s.", aobjnam(uwep, (char *) 0));
+			    pline("you use the %s.", aobjnam(uwep, NULL));
 			    otmp = uwep;
 			} else {
 			    if(!otmp)

@@ -183,7 +183,7 @@ clnt_dg_create(int fd,			/* open file descriptor */
 			int i;
 
 			for (i = 0; i < dtbsize; i++)
-				cond_init(&dg_cv[i], 0, (void *) 0);
+				cond_init(&dg_cv[i], 0, NULL);
 		}
 	}
 

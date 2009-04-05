@@ -193,7 +193,7 @@ doarcs(void)
 	 *	Sort the symbol table in reverse topological order
 	 */
     topsortnlp = (nltype **) calloc( nname , sizeof(nltype *) );
-    if ( topsortnlp == (nltype **) 0 ) {
+    if ( topsortnlp == NULL ) {
 	fprintf( stderr , "[doarcs] ran out of memory for topo sorting\n" );
     }
     for ( index = 0 ; index < nname ; index += 1 ) {
@@ -230,7 +230,7 @@ doarcs(void)
 	 *	and cycle headers.
 	 */
     timesortnlp = (nltype **) calloc( nname + ncycle , sizeof(nltype *) );
-    if ( timesortnlp == (nltype **) 0 ) {
+    if ( timesortnlp == NULL ) {
 	warnx("ran out of memory for sorting");
     }
     for ( index = 0 ; index < nname ; index++ ) {

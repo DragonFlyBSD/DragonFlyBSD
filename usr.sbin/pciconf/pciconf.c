@@ -510,7 +510,7 @@ readit(const char *name, const char *reg, int width)
 	rend = rstart = strtol(reg, &end, 0);
 	if (end && *end == ':') {
 		end++;
-		rend = strtol(end, (char **) 0, 0);
+		rend = strtol(end, NULL, 0);
 	}
 	sel = getsel(name);
 	for (i = 1, r = rstart; r <= rend; i++, r += width) {	

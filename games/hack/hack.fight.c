@@ -164,8 +164,8 @@ hmon(struct monst *mon, struct obj *obj, int thrown)
 		  pline("As you hit %s, the boomerang breaks into splinters.",
 				monnam(mon));
 			freeinv(obj);
-			setworn((struct obj *) 0, obj->owornmask);
-			obfree(obj, (struct obj *) 0);
+			setworn(NULL, obj->owornmask);
+			obfree(obj, NULL);
 			tmp++;
 		}
 	    }
@@ -179,8 +179,8 @@ hmon(struct monst *mon, struct obj *obj, int thrown)
 	pline("You succeed in destroying your camera. Congratulations!");
 			freeinv(obj);
 			if(obj->owornmask)
-				setworn((struct obj *) 0, obj->owornmask);
-			obfree(obj, (struct obj *) 0);
+				setworn(NULL, obj->owornmask);
+			obfree(obj, NULL);
 			return(TRUE);
 		case DEAD_COCKATRICE:
 			pline("You hit %s with the cockatrice corpse.",

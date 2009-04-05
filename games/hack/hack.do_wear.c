@@ -100,7 +100,7 @@ armoroff(struct obj *otmp)
 {
 int delay = -objects[otmp->otyp].oc_delay;
 	if(cursed(otmp)) return(0);
-	setworn((struct obj *) 0, otmp->owornmask & W_ARMOR);
+	setworn(NULL, otmp->owornmask & W_ARMOR);
 	if(delay) {
 		nomul(delay);
 		switch(otmp->otyp) {
@@ -170,7 +170,7 @@ doweararm(void)
 	if(err) return(0);
 	setworn(otmp, mask);
 	if(otmp == uwep)
-		setuwep((struct obj *) 0);
+		setuwep(NULL);
 	delay = -objects[otmp->otyp].oc_delay;
 	if(delay){
 		nomul(delay);
@@ -226,7 +226,7 @@ dowearring(void)
 	} while(!mask);
 	setworn(otmp, mask);
 	if(otmp == uwep)
-		setuwep((struct obj *) 0);
+		setuwep(NULL);
 	oldprop = u.uprops[PROP(otmp->otyp)].p_flgs;
 	u.uprops[PROP(otmp->otyp)].p_flgs |= mask;
 	switch(otmp->otyp){
@@ -256,7 +256,7 @@ ringoff(struct obj *obj)
 {
 long mask;
 	mask = obj->owornmask & W_RING;
-	setworn((struct obj *) 0, obj->owornmask);
+	setworn(NULL, obj->owornmask);
 	if(!(u.uprops[PROP(obj->otyp)].p_flgs & mask))
 		impossible("Strange... I didn't know you had that ring.");
 	u.uprops[PROP(obj->otyp)].p_flgs &= ~mask;
@@ -314,18 +314,18 @@ int xfl = 0;
 		pline("Your %s off your fingers.",
 			(uleft && uright) ? "rings slip" : "ring slips");
 		xfl++;
-		if((otmp = uleft) != Null(obj)){
+		if((otmp = uleft) != NULL){
 			ringoff(uleft);
 			dropx(otmp);
 		}
-		if((otmp = uright) != Null(obj)){
+		if((otmp = uright) != NULL){
 			ringoff(uright);
 			dropx(otmp);
 		}
 	}
-	if((otmp = uwep) != Null(obj)){
+	if((otmp = uwep) != NULL){
 		/* Note: at present also cursed weapons fall */
-		setuwep((struct obj *) 0);
+		setuwep(NULL);
 		dropx(otmp);
 		pline("Your weapon %sslips from your hands.",
 			xfl ? "also " : "");

@@ -36,7 +36,7 @@ static void print_Q(void);
 void
 callout_init(void)
 {
-    Q = (struct timeout_q *) 0;
+    Q = NULL;
 }
 
 void

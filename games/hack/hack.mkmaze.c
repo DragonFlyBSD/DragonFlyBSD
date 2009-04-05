@@ -75,14 +75,14 @@ makemaz(void)
 	makemon(PM_MINOTAUR, mm.x, mm.y);
 	for(x = rn1(5,7); x; x--) {
 		mm = mazexy();
-		makemon((struct permonst *) 0, mm.x, mm.y);
+		makemon(NULL, mm.x, mm.y);
 	}
 	for(x = rn1(6,7); x; x--) {
 		mm = mazexy();
 		mkgold(0L,mm.x,mm.y);
 	}
 	for(x = rn1(6,7); x; x--)
-		mktrap(0,1,(struct mkroom *) 0);
+		mktrap(0,1,NULL);
 	mm = mazexy();
 	levl[(xupstair = mm.x)][(yupstair = mm.y)].scrsym = '<';
 	levl[xupstair][yupstair].typ = STAIRS;

@@ -199,7 +199,7 @@ daytime_dg(int s, struct servtab *sep)		/* Return human-readable time of day */
 	struct sockaddr_storage ss;
 	socklen_t size;
 
-	now = time((time_t *) 0);
+	now = time(NULL);
 
 	size = sizeof(ss);
 	if (recvfrom(s, buffer, sizeof(buffer), 0,
@@ -220,7 +220,7 @@ daytime_stream(int s, struct servtab *sep __unused) /* Return human-readable tim
 	char buffer[256];
 	time_t now;
 
-	now = time((time_t *) 0);
+	now = time(NULL);
 
 	sprintf(buffer, "%.24s\r\n", ctime(&now));
 	send(s, buffer, strlen(buffer), MSG_EOF);

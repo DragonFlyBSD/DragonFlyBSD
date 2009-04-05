@@ -499,7 +499,7 @@ create_rmtcall_fd(struct netconfig *nconf)
 			nconf->nc_device, errno);
 		return (-1);
 	}
-	xprt = svc_tli_create(fd, 0, (struct t_bind *) 0, 0, 0);
+	xprt = svc_tli_create(fd, 0, NULL, 0, 0);
 	if (xprt == NULL) {
 		if (debugging)
 			fprintf(stderr,

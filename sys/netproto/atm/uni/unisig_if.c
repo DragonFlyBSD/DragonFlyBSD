@@ -557,8 +557,7 @@ unisig_accept(struct vccb *vcp, int *errp)
 	/*
 	 * Pass the acceptance to the VC state machine
 	 */
-	*errp = unisig_vc_state(usp, uvp, UNI_VC_ACCEPT_CALL,
-			(struct unisig_msg *) 0);
+	*errp = unisig_vc_state(usp, uvp, UNI_VC_ACCEPT_CALL, NULL);
 	if (*errp)
 		goto failed;
 
@@ -622,8 +621,7 @@ unisig_reject(struct vccb *vcp, int *errp)
 	/*
 	 * Call the VC state machine
 	 */
-	*errp = unisig_vc_state(usp, uvp, UNI_VC_REJECT_CALL,
-			(struct unisig_msg *) 0);
+	*errp = unisig_vc_state(usp, uvp, UNI_VC_REJECT_CALL, NULL);
 	if (*errp)
 		goto failed;
 

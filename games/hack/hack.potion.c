@@ -290,7 +290,7 @@ potionhit(struct monst *mon, struct obj *obj)
 	}
 	if(uclose && rn2(5))
 		potionbreathe(obj);
-	obfree(obj, Null(obj));
+	obfree(obj, NULL);
 }
 
 void

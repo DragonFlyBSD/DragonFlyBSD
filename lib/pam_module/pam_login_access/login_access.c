@@ -79,9 +79,9 @@ login_access(const char *user, const char *from)
 	    if (line[0] == 0)			/* skip blank lines */
 		continue;
 	    if (!(perm = strtok(line, fs))
-		|| !(users = strtok((char *) 0, fs))
-		|| !(froms = strtok((char *) 0, fs))
-		|| strtok((char *) 0, fs)) {
+		|| !(users = strtok(NULL, fs))
+		|| !(froms = strtok(NULL, fs))
+		|| strtok(NULL, fs)) {
 		syslog(LOG_ERR, "%s: line %d: bad field count", _PATH_LOGACCESS,
 		       lineno);
 		continue;
@@ -117,7 +117,7 @@ list_match(char *list, const char *item,
      * the match is affected by any exceptions.
      */
 
-    for (tok = strtok(list, sep); tok != 0; tok = strtok((char *) 0, sep)) {
+    for (tok = strtok(list, sep); tok != 0; tok = strtok(NULL, sep)) {
 	if (strcasecmp(tok, "EXCEPT") == 0)	/* EXCEPT: give up */
 	    break;
 	if ((match = (*match_fn)(tok, item)) != 0)	/* YES */
@@ -126,9 +126,9 @@ list_match(char *list, const char *item,
     /* Process exceptions to matches. */
 
     if (match != NO) {
-	while ((tok = strtok((char *) 0, sep)) && strcasecmp(tok, "EXCEPT"))
+	while ((tok = strtok(NULL, sep)) && strcasecmp(tok, "EXCEPT"))
 	     /* VOID */ ;
-	if (tok == 0 || list_match((char *) 0, item, match_fn) == NO)
+	if (tok == 0 || list_match(NULL, item, match_fn) == NO)
 	    return (match);
     }
     return (NO);
@@ -176,7 +176,7 @@ user_match(const char *tok, const char *string)
      */
 
     if (tok[0] == '@') {			/* netgroup */
-	return (netgroup_match(tok + 1, (char *) 0, string));
+	return (netgroup_match(tok + 1, NULL, string));
     } else if (string_match(tok, string)) {	/* ALL or exact match */
 	return (YES);
     } else if ((group = getgrnam(tok)) != NULL) {/* try group membership */
@@ -205,7 +205,7 @@ from_match(const char *tok, const char *string)
      */
 
     if (tok[0] == '@') {			/* netgroup */
-	return (netgroup_match(tok + 1, string, (char *) 0));
+	return (netgroup_match(tok + 1, string, NULL));
     } else if (string_match(tok, string)) {	/* ALL or exact match */
 	return (YES);
     } else if (tok[0] == '.') {			/* domain: match last fields */

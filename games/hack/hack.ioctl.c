@@ -43,7 +43,7 @@ dosuspend(void)
 {
 #ifdef SIGTSTP
 	if(signal(SIGTSTP, SIG_IGN) == SIG_DFL) {
-		settty((char *) 0);
+		settty(NULL);
 		signal(SIGTSTP, SIG_DFL);
 		kill(0, SIGTSTP);
 		gettty();

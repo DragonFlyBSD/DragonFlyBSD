@@ -368,7 +368,7 @@ main(int argc, char **argv)
 #ifdef TIOCNOTTY
 			n = open(_PATH_TTY, O_RDWR);
 			if (n >= 0) {
-				ioctl(n, TIOCNOTTY, (char *) 0);
+				ioctl(n, TIOCNOTTY, NULL);
 				(void) close(n);
 			}
 #endif	/* TIOCNOTTY */

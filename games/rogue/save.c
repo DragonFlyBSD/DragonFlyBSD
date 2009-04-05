@@ -55,7 +55,7 @@
 #include "rogue.h"
 
 short write_failed = 0;
-char *save_file = (char *) 0;
+char *save_file = NULL;
 static char save_name[80];
 
 extern short cur_level, max_level;
@@ -298,7 +298,7 @@ read_pack(object *pack, FILE *fp, boolean is_rogue)
 	for (;;) {
 		r_read(fp, (char *) &read_obj, sizeof(object));
 		if (read_obj.ichar == 0) {
-			pack->next_object = (object *) 0;
+			pack->next_object = NULL;
 			break;
 		}
 		new_obj = alloc_object();

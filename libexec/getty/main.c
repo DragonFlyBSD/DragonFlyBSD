@@ -357,7 +357,7 @@ main(int argc, char **argv)
 			limit.rlim_max = RLIM_INFINITY;
 			limit.rlim_cur = RLIM_INFINITY;
 			(void)setrlimit(RLIMIT_CPU, &limit);
-			execle(PP, "ppplogin", ttyn, (char *) 0, env);
+			execle(PP, "ppplogin", ttyn, NULL, env);
 			syslog(LOG_ERR, "%s: %m", PP);
 			exit(1);
 		} else if (rval || AL) {
@@ -396,7 +396,7 @@ main(int argc, char **argv)
 			limit.rlim_cur = RLIM_INFINITY;
 			(void)setrlimit(RLIMIT_CPU, &limit);
 			execle(LO, "login", AL ? "-fp" : "-p", name,
-			    (char *) 0, env);
+			    NULL, env);
 			syslog(LOG_ERR, "%s: %m", LO);
 			exit(1);
 		}
@@ -732,7 +732,7 @@ putf(const char *cp)
 
 		case 't':
 			slash = strrchr(ttyn, '/');
-			if (slash == (char *) 0)
+			if (slash == NULL)
 				puts(ttyn);
 			else
 				puts(&slash[1]);

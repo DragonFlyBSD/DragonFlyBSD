@@ -131,7 +131,7 @@ trap_player(short row, short col)
 		}
 		print_stats(STAT_HP | STAT_STRENGTH);
 		if (rogue.hp_current <= 0) {
-			killed_by((object *) 0, POISON_DART);
+			killed_by(NULL, POISON_DART);
 		}
 		break;
 	case SLEEPING_GAS_TRAP:
@@ -140,7 +140,7 @@ trap_player(short row, short col)
 		break;
 	case RUST_TRAP:
 		message(trap_strings[(t*2)+1], 1);
-		rust((object *) 0);
+		rust(NULL);
 		break;
 	}
 }

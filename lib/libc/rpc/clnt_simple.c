@@ -106,7 +106,7 @@ rpc_call(const char *host,			/* host name */
 	char  *out,				/* recv/send data */
 	const char *nettype)			/* nettype */
 {
-	struct rpc_call_private *rcp = (struct rpc_call_private *) 0;
+	struct rpc_call_private *rcp = NULL;
 	enum clnt_stat clnt_stat;
 	struct timeval timeout, tottimeout;
 	static thread_key_t rpc_call_key;

@@ -183,7 +183,7 @@ error(const char *s, ...)
 {
 	va_list ap;
 	if(settty_needed)
-		settty((char *) 0);
+		settty(NULL);
 	va_start(ap, s);
 	vprintf(s, ap);
 	va_end(ap);

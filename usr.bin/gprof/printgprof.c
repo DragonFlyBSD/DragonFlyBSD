@@ -52,7 +52,7 @@ printprof(void)
 	 *	Sort the symbol table in by time
 	 */
     sortednlp = (nltype **) calloc( nname , sizeof(nltype *) );
-    if ( sortednlp == (nltype **) 0 ) {
+    if ( sortednlp == NULL ) {
 	fprintf( stderr , "[printprof] ran out of memory for time sorting\n" );
     }
     for ( index = 0 ; index < nname ; index += 1 ) {
@@ -678,7 +678,7 @@ printindex(void)
 	 *	to create an index.
 	 */
     namesortnlp = (nltype **) calloc( nname + ncycle , sizeof(nltype *) );
-    if ( namesortnlp == (nltype **) 0 ) {
+    if ( namesortnlp == NULL ) {
 	warnx("ran out of memory for sorting");
     }
     for ( index = 0 , nnames = 0 ; index < nname ; index++ ) {

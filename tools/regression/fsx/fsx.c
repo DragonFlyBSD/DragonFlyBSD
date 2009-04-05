@@ -891,7 +891,7 @@ getnum(char *s, char **e)
 {
 	int ret = -1;
 
-	*e = (char *) 0;
+	*e = NULL;
 	ret = strtol(s, e, 0);
 	if (*e)
 		switch (**e) {

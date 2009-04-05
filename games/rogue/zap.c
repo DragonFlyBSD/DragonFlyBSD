@@ -384,7 +384,7 @@ bounce(short ball, short dir, short row, short col, short r)
 				damage -= get_armor_class(rogue.armor);
 			}
 			sprintf(buf, "the %s hits", s);
-			rogue_damage(damage, (object *) 0,
+			rogue_damage(damage, NULL,
 					((ball == FIRE) ? KFIRE : HYPOTHERMIA));
 			message(buf, 0);
 		}

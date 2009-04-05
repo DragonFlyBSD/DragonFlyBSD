@@ -1511,7 +1511,7 @@ spp_rcvd(struct socket *so, int flags)
 	if (nsp) {
 		cb = nstosppcb(nsp);
 		cb->s_flags |= SF_RVD;
-		spp_output(cb, (struct mbuf *) 0);
+		spp_output(cb, NULL);
 		cb->s_flags &= ~SF_RVD;
 		error = 0;
 	} else {
@@ -1792,7 +1792,7 @@ spp_fasttimo(void)
 			cb->s_flags &= ~SF_DELACK;
 			cb->s_flags |= SF_ACKNOW;
 			sppstat.spps_delack++;
-			spp_output(cb, (struct mbuf *) 0);
+			spp_output(cb, NULL);
 		}
 	    }
 	}
@@ -1904,7 +1904,7 @@ spp_timers(struct sppcb *cb, int timer)
 			win = 2;
 		cb->s_cwnd = CUNIT;
 		cb->s_ssthresh = win * CUNIT;
-		spp_output(cb, (struct mbuf *) 0);
+		spp_output(cb, NULL);
 		break;
 
 	/*
@@ -1914,7 +1914,7 @@ spp_timers(struct sppcb *cb, int timer)
 	case SPPT_PERSIST:
 		sppstat.spps_persisttimeo++;
 		spp_setpersist(cb);
-		spp_output(cb, (struct mbuf *) 0);
+		spp_output(cb, NULL);
 		break;
 
 	/*
@@ -1929,7 +1929,7 @@ spp_timers(struct sppcb *cb, int timer)
 		    	if (cb->s_idle >= SPPTV_MAXIDLE)
 				goto dropit;
 			sppstat.spps_keepprobe++;
-			spp_output(cb, (struct mbuf *) 0);
+			spp_output(cb, NULL);
 		} else
 			cb->s_idle = 0;
 		cb->s_timer[SPPT_KEEP] = SPPTV_KEEP;

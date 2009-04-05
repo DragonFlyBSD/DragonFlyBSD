@@ -495,8 +495,8 @@ fail:
 				if (doencrypt) {
 					wready = writeto;
 					if (select(nfd, &ready,
-					    &wready, (fd_set *) 0,
-					    (struct timeval *) 0) < 0)
+					    &wready, NULL,
+					    NULL) < 0)
 						break;
 				} else
 #endif
