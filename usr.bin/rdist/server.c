@@ -1360,7 +1360,7 @@ dospecial(char *cmd)
 		close(fd[1]);
 		setgid(groupid);
 		setuid(userid);
-		execl(_PATH_BSHELL, "sh", "-c", cmd, 0);
+		execl(_PATH_BSHELL, "sh", "-c", cmd, NULL);
 		_exit(127);
 	}
 	close(fd[1]);
