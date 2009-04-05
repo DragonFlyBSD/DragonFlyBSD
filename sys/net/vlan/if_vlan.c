@@ -93,6 +93,7 @@ struct vlan_entry {
 struct	ifvlan {
 	struct	arpcom ifv_ac;	/* make this an interface */
 	struct	ifnet *ifv_p;	/* parent inteface of this vlan */
+	int ifv_pflags;		/* special flags we have set on parent */
 	struct	ifv_linkmib {
 		int	ifvm_parent;
 		uint16_t ifvm_proto; /* encapsulation ethertype */
@@ -135,6 +136,10 @@ static void	vlan_start(struct ifnet *);
 static int	vlan_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	vlan_input(struct mbuf *);
 
+static int	vlan_setflags(struct ifvlan *, struct ifnet *, int);
+static int	vlan_setflag(struct ifvlan *, struct ifnet *, int, int,
+			     int (*)(struct ifnet *, int));
+static int	vlan_config_flags(struct ifvlan *ifv);
 static void	vlan_clrmulti(struct ifvlan *, struct ifnet *);
 static int	vlan_setmulti(struct ifvlan *, struct ifnet *);
 static int	vlan_config_multi(struct ifvlan *);
@@ -148,12 +153,75 @@ static void	vlan_unconfig_dispatch(struct netmsg *);
 static void	vlan_link_dispatch(struct netmsg *);
 static void	vlan_unlink_dispatch(struct netmsg *);
 static void	vlan_multi_dispatch(struct netmsg *);
+static void	vlan_flags_dispatch(struct netmsg *);
 static void	vlan_ifdetach_dispatch(struct netmsg *);
+
+/* Special flags we should propagate to parent */
+static struct {
+	int flag;
+	int (*func)(struct ifnet *, int);
+} vlan_pflags[] = {
+	{ IFF_PROMISC, ifpromisc },
+	{ IFF_ALLMULTI, if_allmulti },
+	{ 0, NULL }
+};
 
 static eventhandler_tag vlan_ifdetach_cookie;
 static struct if_clone vlan_cloner =
 	IF_CLONE_INITIALIZER("vlan", vlan_clone_create, vlan_clone_destroy,
 			     NVLAN, IF_MAXUNIT);
+
+/*
+ * Handle IFF_* flags that require certain changes on the parent:
+ * if "set" is true, update parent's flags respective to our if_flags;
+ * if "set" is false, forcedly clear the flags set on parent.
+ */
+static int
+vlan_setflags(struct ifvlan *ifv, struct ifnet *ifp_p, int set)
+{
+	int error, i;
+
+	ASSERT_NOT_SERIALIZED(ifv->ifv_if.if_serializer);
+
+	for (i = 0; vlan_pflags[i].func != NULL; i++) {
+		error = vlan_setflag(ifv, ifp_p, vlan_pflags[i].flag,
+				     set, vlan_pflags[i].func);
+		if (error)
+			return error;
+	}
+	return 0;
+}
+
+/* Handle a reference counted flag that should be set on the parent as well */
+static int
+vlan_setflag(struct ifvlan *ifv, struct ifnet *ifp_p, int flag, int set,
+	     int (*func)(struct ifnet *, int))
+{
+	struct ifnet *ifp = &ifv->ifv_if;
+	int error, ifv_flag;
+
+	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
+
+	ifv_flag = set ? (ifp->if_flags & flag) : 0;
+
+	/*
+	 * See if recorded parent's status is different from what
+	 * we want it to be.  If it is, flip it.  We record parent's
+	 * status in ifv_pflags so that we won't clear parent's flag
+	 * we haven't set.  In fact, we don't clear or set parent's
+	 * flags directly, but get or release references to them.
+	 * That's why we can be sure that recorded flags still are
+	 * in accord with actual parent's flags.
+	 */
+	if (ifv_flag != (ifv->ifv_pflags & flag)) {
+		error = func(ifp_p, ifv_flag);
+		if (error)
+			return error;
+		ifv->ifv_pflags &= ~flag;
+		ifv->ifv_pflags |= ifv_flag;
+	}
+	return 0;
+}
 
 /*
  * Program our multicast filter. What we're actually doing is
@@ -588,8 +656,13 @@ vlan_config_dispatch(struct netmsg *nmsg)
 	 * Copy only a selected subset of flags from the parent.
 	 * Other flags are none of our business.
 	 */
-	ifp->if_flags = (ifp_p->if_flags &
-	    (IFF_BROADCAST | IFF_MULTICAST | IFF_SIMPLEX | IFF_POINTOPOINT));
+#define VLAN_INHERIT_FLAGS	(IFF_BROADCAST | IFF_MULTICAST | \
+				 IFF_SIMPLEX | IFF_POINTOPOINT)
+
+	ifp->if_flags &= ~VLAN_INHERIT_FLAGS;
+	ifp->if_flags |= (ifp_p->if_flags & VLAN_INHERIT_FLAGS);
+
+#undef VLAN_INHERIT_FLAGS
 
 	/*
 	 * Set up our ``Ethernet address'' to reflect the underlying
@@ -613,6 +686,11 @@ vlan_config_dispatch(struct netmsg *nmsg)
 	 * joined on the vlan device.
 	 */
 	vlan_setmulti(ifv, ifp_p);
+
+	/*
+	 * Set flags on the parent, if necessary.
+	 */
+	vlan_setflags(ifv, ifp_p, 1);
 
 	/*
 	 * Connect to parent after everything have been set up,
@@ -740,6 +818,9 @@ vlan_unconfig_dispatch(struct netmsg *nmsg)
 		 * while we were alive from the parent's list.
 		 */
 		vlan_clrmulti(ifv, ifp_p);
+
+		/* Clear parent's flags which was set by us. */
+		vlan_setflags(ifv, ifp_p, 0);
 	}
 
 	lwkt_serialize_enter(ifp->if_serializer);
@@ -868,14 +949,12 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 			ifp->if_flags &= ~IFF_RUNNING;
 
 		/*
-		 * We don't support promiscuous mode
-		 * right now because it would require help from the
-		 * underlying drivers, which hasn't been implemented.
+		 * We should propagate selected flags to the parent,
+		 * e.g., promiscuous mode.
 		 */
-		if (ifr->ifr_flags & IFF_PROMISC) {
-			ifp->if_flags &= ~IFF_PROMISC;
-			error = EINVAL;
-		}
+		lwkt_serialize_exit(ifp->if_serializer);
+		error = vlan_config_flags(ifv);
+		lwkt_serialize_enter(ifp->if_serializer);
 		break;
 
 	case SIOCADDMULTI:
@@ -920,6 +999,39 @@ vlan_config_multi(struct ifvlan *ifv)
 	nmsg = &vmsg.nv_nmsg;
 
 	netmsg_init(nmsg, &curthread->td_msgport, 0, vlan_multi_dispatch);
+	vmsg.nv_ifv = ifv;
+
+	return lwkt_domsg(cpu_portfn(0), &nmsg->nm_lmsg, 0);
+}
+
+static void
+vlan_flags_dispatch(struct netmsg *nmsg)
+{
+	struct netmsg_vlan *vmsg = (struct netmsg_vlan *)nmsg;
+	struct ifvlan *ifv = vmsg->nv_ifv;
+	int error = 0;
+
+	/*
+	 * If we don't have a parent, just remember the flags for
+	 * when we do.
+	 */
+	if (ifv->ifv_p != NULL)
+		error = vlan_setflags(ifv, ifv->ifv_p, 1);
+	lwkt_replymsg(&nmsg->nm_lmsg, error);
+}
+
+static int
+vlan_config_flags(struct ifvlan *ifv)
+{
+	struct netmsg_vlan vmsg;
+	struct netmsg *nmsg;
+
+	ASSERT_NOT_SERIALIZED(ifv->ifv_if.if_serializer);
+
+	bzero(&vmsg, sizeof(vmsg));
+	nmsg = &vmsg.nv_nmsg;
+
+	netmsg_init(nmsg, &curthread->td_msgport, 0, vlan_flags_dispatch);
 	vmsg.nv_ifv = ifv;
 
 	return lwkt_domsg(cpu_portfn(0), &nmsg->nm_lmsg, 0);
