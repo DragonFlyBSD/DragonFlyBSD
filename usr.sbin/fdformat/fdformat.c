@@ -268,7 +268,7 @@ main(int argc, char **argv)
 			break;
 
 		case 'F':	/* fill byte, C-like notation allowed */
-			fill = (int)strtol(optarg, (char **)0, 0);
+			fill = (int)strtol(optarg, NULL, 0);
 			break;
 
 		case 't':	/* steps per track */

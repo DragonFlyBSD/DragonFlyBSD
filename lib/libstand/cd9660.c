@@ -448,7 +448,7 @@ buf_read_file(struct open_file *f, char **buf_p, size_t *size_p)
 	blkoff = fp->f_off % ISO_DEFAULT_BLOCK_SIZE;
 
 	if (blkno != fp->f_buf_blkno) {
-		if (fp->f_buf == (char *)0)
+		if (fp->f_buf == NULL)
 			fp->f_buf = malloc(ISO_DEFAULT_BLOCK_SIZE);
 
 		twiddle();

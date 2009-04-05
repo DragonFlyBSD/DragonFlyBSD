@@ -500,8 +500,8 @@ fail:
 						break;
 				} else
 #endif
-					if (select(nfd, &ready, (fd_set *)0,
-					  (fd_set *)0, (struct timeval *)0) < 0)
+					if (select(nfd, &ready, NULL,
+					  NULL, NULL) < 0)
 						break;
 				if (FD_ISSET(s, &ready)) {
 					int	ret;

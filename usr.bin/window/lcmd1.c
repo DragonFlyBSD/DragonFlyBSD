@@ -182,7 +182,7 @@ struct value *v, *a;
 	v->v_num = selwin ? selwin->ww_id + 1 : -1;
 	if (a->v_type == V_ERR)
 		return;
-	if ((w = vtowin(a, (struct ww *)0)) == 0)
+	if ((w = vtowin(a, NULL)) == 0)
 		return;
 	setselwin(w);
 }
@@ -334,10 +334,10 @@ struct value *a;
 	struct ww *w;
 
 	if (a->v_type == V_STR && str_match(a->v_str, "all", 3))
-		closewin((struct ww *)0);
+		closewin(NULL);
 	else
 		for (; a->v_type != V_ERR; a++)
-			if ((w = vtowin(a, (struct ww *)0)) != 0)
+			if ((w = vtowin(a, NULL)) != 0)
 				closewin(w);
 }
 

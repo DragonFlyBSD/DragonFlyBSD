@@ -1781,7 +1781,7 @@ void stlintr(void *arg)
 
 static void stlpciintr(void *arg)
 {
-	stlintr((void *)0);
+	stlintr(NULL);
 }
 
 #endif

@@ -179,7 +179,7 @@ nfsrv3_access(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	    (nfsd->nd_flag & ND_KERBAUTH), TRUE);
 	if (error) {
 		nfsm_reply(NFSX_UNSIGNED);
-		nfsm_srvpostop_attr(1, (struct vattr *)0);
+		nfsm_srvpostop_attr(1, NULL);
 		error = 0;
 		goto nfsmout;
 	}
@@ -627,7 +627,7 @@ nfsrv_readlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 #ifndef nolint
-	mp2 = (struct mbuf *)0;
+	mp2 = NULL;
 #endif
 	mp3 = NULL;
 	fhp = &nfh.fh_generic;
@@ -664,7 +664,7 @@ nfsrv_readlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		 &rdonly, (nfsd->nd_flag & ND_KERBAUTH), TRUE);
 	if (error) {
 		nfsm_reply(2 * NFSX_UNSIGNED);
-		nfsm_srvpostop_attr(1, (struct vattr *)0);
+		nfsm_srvpostop_attr(1, NULL);
 		error = 0;
 		goto nfsmout;
 	}
@@ -762,7 +762,7 @@ nfsrv_read(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	if (error) {
 		vp = NULL;
 		nfsm_reply(2 * NFSX_UNSIGNED);
-		nfsm_srvpostop_attr(1, (struct vattr *)0);
+		nfsm_srvpostop_attr(1, NULL);
 		error = 0;
 		goto nfsmout;
 	}
@@ -2072,7 +2072,7 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 #ifndef nolint
-	fvp = (struct vnode *)0;
+	fvp = NULL;
 #endif
 	ffhp = &fnfh.fh_generic;
 	tfhp = &tnfh.fh_generic;
@@ -2396,7 +2396,7 @@ nfsrv_symlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	u_int32_t *tl;
 	int32_t t1;
 	struct nfsv2_sattr *sp;
-	char *bpos, *pathcp = (char *)0, *cp2;
+	char *bpos, *pathcp = NULL, *cp2;
 	struct uio io;
 	struct iovec iv;
 	int error = 0, len, len2, dirfor_ret = 1, diraft_ret = 1;

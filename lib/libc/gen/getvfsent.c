@@ -31,7 +31,7 @@ initvfs(void)
 	size_t size = 0;
 	int rv;
 
-	rv = sysctl(mib, 2, (void *)0, &size, (void *)0, (size_t)0);
+	rv = sysctl(mib, 2, NULL, &size, NULL, (size_t)0);
 	if(rv < 0)
 		return 0;
 
@@ -41,7 +41,7 @@ initvfs(void)
 	if(!_vfslist)
 		return 0;
 
-	rv = sysctl(mib, 2, _vfslist, &size, (void *)0, (size_t)0);
+	rv = sysctl(mib, 2, _vfslist, &size, NULL, (size_t)0);
 	if(rv < 0) {
 		free(_vfslist);
 		_vfslist = 0;

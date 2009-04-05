@@ -960,7 +960,7 @@ ufs_dqflush(struct vnode *vp)
 			if (dq->dq_cnt)
 				panic("dqflush: stray dquot");
 			LIST_REMOVE(dq, dq_hash);
-			dq->dq_ump = (struct ufsmount *)0;
+			dq->dq_ump = NULL;
 		}
 	}
 }

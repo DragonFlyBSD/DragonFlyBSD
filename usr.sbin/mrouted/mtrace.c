@@ -743,7 +743,7 @@ inet_name(u_int32 addr)
 u_int32 
 host_addr(char *name)
 {
-    struct hostent *e = (struct hostent *)0;
+    struct hostent *e = NULL;
     u_int32  addr;
     int	i, dots = 3;
     char	buf[40];
@@ -1231,8 +1231,7 @@ send_recv(u_int32 dst, int type, int code, int tries, struct resp_buf *save,
 	    if (tv.tv_usec < 0) tv.tv_usec += 1000000L, --tv.tv_sec;
 	    if (tv.tv_sec < 0) tv.tv_sec = tv.tv_usec = 0;
 
-	    count = select(igmp_socket + 1, &fds, (fd_set *)0, (fd_set *)0,
-			   &tv);
+	    count = select(igmp_socket + 1, &fds, NULL, NULL, &tv);
 
 	    if (count < 0) {
 		if (errno != EINTR) warn("select");

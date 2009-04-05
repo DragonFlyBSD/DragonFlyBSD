@@ -78,7 +78,7 @@ int
 atmarp_cfg_netif(char *netif)
 {
 	int			rc;
-	Atmarp_intf		*aip = (Atmarp_intf *)0;
+	Atmarp_intf		*aip = NULL;
 
 	/*
 	 * Get an ATMARP interface block

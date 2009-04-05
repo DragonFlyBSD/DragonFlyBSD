@@ -42,12 +42,12 @@
 		sigset_t sigset;					\
 		sigemptyset(&sigset);					\
 		sigaddset(&sigset, SIGALRM);				\
-		sigprocmask(SIG_BLOCK, &sigset, (sigset_t *)0);		\
+		sigprocmask(SIG_BLOCK, &sigset, NULL);			\
 	} while (0)
 #define	unblockalarm() \
 	do {								\
 		sigset_t sigset;					\
 		sigemptyset(&sigset);					\
 		sigaddset(&sigset, SIGALRM);				\
-		sigprocmask(SIG_UNBLOCK, &sigset, (sigset_t *)0);	\
+		sigprocmask(SIG_UNBLOCK, &sigset, NULL);		\
 	} while (0)

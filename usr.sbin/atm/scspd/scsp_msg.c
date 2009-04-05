@@ -161,7 +161,7 @@ scsp_csus_ack(Scsp_dcs *dcsp, Scsp_msg *msg)
 		}
 	}
 
-	if (csusp->csu_csa_rec == (Scsp_csa *)0) {
+	if (csusp->csu_csa_rec == NULL) {
 		/*
 		 * All CSASs in the CSUS message have been
 		 * answered.  Stop the timer and free the
@@ -169,7 +169,7 @@ scsp_csus_ack(Scsp_dcs *dcsp, Scsp_msg *msg)
 		 */
 		HARP_CANCEL(&dcsp->sd_csus_rexmt_t);
 		scsp_free_msg(dcsp->sd_csus_rexmt_msg);
-		dcsp->sd_csus_rexmt_msg = (Scsp_msg *)0;
+		dcsp->sd_csus_rexmt_msg = NULL;
 
 		/*
 		 * If the CRL isn't empty, send another CSUS
@@ -238,13 +238,13 @@ scsp_send_ca(Scsp_dcs *dcsp)
 		cap->ca_m = 1;
 		cap->ca_i = 0;
 		scsp_ca_csas_setup(dcsp, cap);
-		cap->ca_o = dcsp->sd_ca_csas != (Scsp_cse *)0;
+		cap->ca_o = dcsp->sd_ca_csas != NULL;
 		break;
 	case SCSP_CAFSM_SLAVE:
 		cap->ca_m = 0;
 		cap->ca_i = 0;
 		scsp_ca_csas_setup(dcsp, cap);
-		cap->ca_o = dcsp->sd_ca_csas != (Scsp_cse *)0;
+		cap->ca_o = dcsp->sd_ca_csas != NULL;
 		break;
 	default:
 		scsp_log(LOG_ERR, "Invalid state in scsp_send_ca");
@@ -521,8 +521,7 @@ scsp_send_csu_reply(Scsp_dcs *dcsp, Scsp_csa *csap)
 		case SCSP_PROTO_ATMARP:
 			if (csap1->atmarp_data) {
 				UM_FREE(csap1->atmarp_data);
-				csap1->atmarp_data =
-						(Scsp_atmarp_csa *)0;
+				csap1->atmarp_data = NULL;
 			}
 			break;
 		}

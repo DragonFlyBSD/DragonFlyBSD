@@ -295,7 +295,7 @@ i4b_l1_mph_status_ind(int drv_unit, int status, int parm, struct i4b_l1mux_func 
 
 	if(status == STI_ATTACH)
 	{
-		if (l1mux_func_p == (struct i4b_l1mux_func *)0)
+		if (l1mux_func_p == NULL)
 			panic("i4b_l1_mph_status_ind: i4b_l1mux_func pointer is NULL\n");
 
 		if(numl1units < MAXL1UNITS)

@@ -388,7 +388,7 @@ main(int argc, char **argv)
 				exit(1);
 			}
 			signal(SIGINT, SIG_DFL);
-			for (i = 0; environ[i] != (char *)0; i++)
+			for (i = 0; environ[i] != NULL; i++)
 				env[i] = environ[i];
 			makeenv(&env[i]);
 

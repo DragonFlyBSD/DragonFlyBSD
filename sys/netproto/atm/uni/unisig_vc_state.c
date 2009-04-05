@@ -1274,8 +1274,7 @@ unisig_vc_act14(struct unisig *usp, struct unisig_vccb *uvp,
 		/*
 		 * Resend the RELEASE message
 		 */
-		rc = unisig_send_release(usp, uvp,
-				(struct unisig_msg *)0, T_ATM_ABSENT);
+		rc = unisig_send_release(usp, uvp, NULL, T_ATM_ABSENT);
 		if (rc)
 			return(rc);
 

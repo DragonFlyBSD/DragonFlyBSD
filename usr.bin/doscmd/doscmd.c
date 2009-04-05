@@ -67,7 +67,7 @@ int		booting = 0;
 int		raw_kbd = 0;
 int		timer_disable = 0;
 struct timeval	boot_time;
-unsigned long	*ivec = (unsigned long *)0;
+unsigned long	*ivec = NULL;
 
 #ifndef USE_VM86
 #define PRB_V86_FORMAT  0x4242

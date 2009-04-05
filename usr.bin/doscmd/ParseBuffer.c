@@ -71,7 +71,7 @@ ParseBuffer(char *obuf, char **av, int mac)
 
                         *a++ = buf;
 			if (a == e) {
-				a[-1] = (char *)0;
+				a[-1] = NULL;
 				return(mac - 1);
 			}
 
@@ -84,6 +84,6 @@ ParseBuffer(char *obuf, char **av, int mac)
                         buf = p;
                 }
         }
-        *a = (char *)0;
+        *a = NULL;
         return(a - av);
 }

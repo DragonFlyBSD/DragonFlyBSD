@@ -826,7 +826,7 @@ nfs_setattrrpc(struct vnode *vp, struct vattr *vap,
 		np->n_modestamp = 0;
 		nfsm_wcc_data(vp, wccflag);
 	} else
-		nfsm_loadattr(vp, (struct vattr *)0);
+		nfsm_loadattr(vp, NULL);
 	m_freem(mrep);
 nfsmout:
 	return (error);
@@ -1041,7 +1041,7 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 			nfsm_postop_attr(newvp, attrflag, NFS_LATTR_NOSHRINK);
 			nfsm_postop_attr(dvp, attrflag, NFS_LATTR_NOSHRINK);
 		} else
-			nfsm_loadattr(newvp, (struct vattr *)0);
+			nfsm_loadattr(newvp, NULL);
 		*vpp = newvp;
 		m_freem(mrep);
 		if (!lockparent) {
@@ -1088,7 +1088,7 @@ nfs_lookup(struct vop_old_lookup_args *ap)
 		nfsm_postop_attr(newvp, attrflag, NFS_LATTR_NOSHRINK);
 		nfsm_postop_attr(dvp, attrflag, NFS_LATTR_NOSHRINK);
 	} else
-		nfsm_loadattr(newvp, (struct vattr *)0);
+		nfsm_loadattr(newvp, NULL);
 #if 0
 	/* XXX MOVE TO nfs_nremove() */
 	if ((cnp->cn_flags & CNP_MAKEENTRY) &&
@@ -1240,7 +1240,7 @@ nfs_readrpc(struct vnode *vp, struct uio *uiop)
 			nfsm_dissect(tl, u_int32_t *, 2 * NFSX_UNSIGNED);
 			eof = fxdr_unsigned(int, *(tl + 1));
 		} else
-			nfsm_loadattr(vp, (struct vattr *)0);
+			nfsm_loadattr(vp, NULL);
 		nfsm_strsiz(retlen, nmp->nm_rsize);
 		nfsm_mtouio(uiop, retlen);
 		m_freem(mrep);
@@ -1357,7 +1357,7 @@ nfs_writerpc(struct vnode *vp, struct uio *uiop, int *iomode, int *must_commit)
 				}
 			}
 		} else {
-			nfsm_loadattr(vp, (struct vattr *)0);
+			nfsm_loadattr(vp, NULL);
 		}
 		m_freem(mrep);
 		if (error)
@@ -1386,8 +1386,8 @@ nfs_mknodrpc(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp,
 	u_int32_t *tl;
 	caddr_t cp;
 	int32_t t1, t2;
-	struct vnode *newvp = (struct vnode *)0;
-	struct nfsnode *np = (struct nfsnode *)0;
+	struct vnode *newvp = NULL;
+	struct nfsnode *np = NULL;
 	struct vattr vattr;
 	char *cp2;
 	caddr_t bpos, dpos;
@@ -1437,7 +1437,7 @@ nfs_mknodrpc(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp,
 		if (!gotvp) {
 			if (newvp) {
 				vput(newvp);
-				newvp = (struct vnode *)0;
+				newvp = NULL;
 			}
 			error = nfs_lookitup(dvp, cnp->cn_nameptr,
 			    cnp->cn_namelen, cnp->cn_cred, cnp->cn_td, &np);
@@ -1492,8 +1492,8 @@ nfs_create(struct vop_old_create_args *ap)
 	u_int32_t *tl;
 	caddr_t cp;
 	int32_t t1, t2;
-	struct nfsnode *np = (struct nfsnode *)0;
-	struct vnode *newvp = (struct vnode *)0;
+	struct nfsnode *np = NULL;
+	struct vnode *newvp = NULL;
 	caddr_t bpos, dpos, cp2;
 	int error = 0, wccflag = NFSV3_WCCRATTR, gotvp = 0, fmode = 0;
 	struct mbuf *mreq, *mrep, *md, *mb, *mb2;
@@ -1548,7 +1548,7 @@ again:
 		if (!gotvp) {
 			if (newvp) {
 				vput(newvp);
-				newvp = (struct vnode *)0;
+				newvp = NULL;
 			}
 			error = nfs_lookitup(dvp, cnp->cn_nameptr,
 			    cnp->cn_namelen, cnp->cn_cred, cnp->cn_td, &np);
@@ -1911,7 +1911,7 @@ nfs_symlink(struct vop_old_symlink_args *ap)
 	caddr_t bpos, dpos, cp2;
 	int slen, error = 0, wccflag = NFSV3_WCCRATTR, gotvp;
 	struct mbuf *mreq, *mrep, *md, *mb, *mb2;
-	struct vnode *newvp = (struct vnode *)0;
+	struct vnode *newvp = NULL;
 	int v3 = NFS_ISV3(dvp);
 
 	nfsstats.rpccnt[NFSPROC_SYMLINK]++;
@@ -2005,8 +2005,8 @@ nfs_mkdir(struct vop_old_mkdir_args *ap)
 	caddr_t cp;
 	int32_t t1, t2;
 	int len;
-	struct nfsnode *np = (struct nfsnode *)0;
-	struct vnode *newvp = (struct vnode *)0;
+	struct nfsnode *np = NULL;
+	struct vnode *newvp = NULL;
 	caddr_t bpos, dpos, cp2;
 	int error = 0, wccflag = NFSV3_WCCRATTR;
 	int gotvp = 0;
@@ -2051,7 +2051,7 @@ nfsmout:
 	if (error == EEXIST || (!error && !gotvp)) {
 		if (newvp) {
 			vrele(newvp);
-			newvp = (struct vnode *)0;
+			newvp = NULL;
 		}
 		error = nfs_lookitup(dvp, cnp->cn_nameptr, len, cnp->cn_cred,
 			cnp->cn_td, &np);
@@ -2557,7 +2557,7 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 				dpos = dpossav1;
 				mdsav2 = md;
 				md = mdsav1;
-				nfsm_loadattr(newvp, (struct vattr *)0);
+				nfsm_loadattr(newvp, NULL);
 				dpos = dpossav2;
 				md = mdsav2;
 				dp->nfs_type =
@@ -2678,7 +2678,7 @@ nfs_sillyrename(struct vnode *dvp, struct vnode *vp, struct componentname *cnp)
 
 	/* Try lookitups until we get one that isn't there */
 	while (nfs_lookitup(dvp, sp->s_name, sp->s_namlen, sp->s_cred,
-		cnp->cn_td, (struct nfsnode **)0) == 0) {
+		cnp->cn_td, NULL) == 0) {
 		sp->s_name[4]++;
 		if (sp->s_name[4] > 'z') {
 			error = EINVAL;
@@ -2714,7 +2714,7 @@ nfs_lookitup(struct vnode *dvp, const char *name, int len, struct ucred *cred,
 	u_int32_t *tl;
 	caddr_t cp;
 	int32_t t1, t2;
-	struct vnode *newvp = (struct vnode *)0;
+	struct vnode *newvp = NULL;
 	struct nfsnode *np, *dnp = VTONFS(dvp);
 	caddr_t bpos, dpos, cp2;
 	int error = 0, fhlen, attrflag;
@@ -2762,7 +2762,7 @@ nfs_lookitup(struct vnode *dvp, const char *name, int len, struct ucred *cred,
 				return (ENOENT);
 			}
 		} else
-			nfsm_loadattr(newvp, (struct vattr *)0);
+			nfsm_loadattr(newvp, NULL);
 	}
 	m_freem(mrep);
 nfsmout:
@@ -3004,7 +3004,7 @@ nfs_flush(struct vnode *vp, int waitfor, struct thread *td, int commit)
 				 * We have to be able to break out if this 
 				 * is an 'intr' mount.
 				 */
-				if (nfs_sigintr(nmp, (struct nfsreq *)0, td)) {
+				if (nfs_sigintr(nmp, NULL, td)) {
 					error = -EINTR;
 					break;
 				}

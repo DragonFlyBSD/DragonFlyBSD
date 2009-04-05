@@ -112,7 +112,7 @@ readboard(void)
 	if (lopen(scorefile)<0)
 	  { lprcat("Can't read scoreboard\n"); lflush(); return(-1); }
 	lrfill((char*)sco,sizeof(sco));		lrfill((char*)winr,sizeof(winr));
-	lrclose();  lcreat((char*)0);  return(0);
+	lrclose();  lcreat(NULL);  return(0);
 	}
 
 /*
@@ -127,7 +127,7 @@ writeboard(void)
 	if (lcreat(scorefile)<0)
 	  { lprcat("Can't write scoreboard\n"); lflush(); return(-1); }
 	lwrite((char*)sco,sizeof(sco));		lwrite((char*)winr,sizeof(winr));
-	lwclose();  lcreat((char*)0);  return(0);
+	lwclose();  lcreat(NULL);  return(0);
 	}
 
 /*
@@ -293,7 +293,7 @@ void
 showscores(void)
 	{
 	int i,j;
-	lflush();  lcreat((char*)0);  if (readboard()<0) return;
+	lflush();  lcreat(NULL);  if (readboard()<0) return;
 	i=winshou();	j=shou(0);
 	if (i+j == 0) lprcat(esb); else lprc('\n');
 	lflush();
@@ -308,7 +308,7 @@ void
 showallscores(void)
 	{
 	int i,j;
-	lflush();  lcreat((char*)0);  if (readboard()<0) return;
+	lflush();  lcreat(NULL);  if (readboard()<0) return;
 	c[WEAR] = c[WIELD] = c[SHIELD] = -1;  /* not wielding or wearing anything */
 	for (i=0; i<MAXPOTION; i++) potionname[i] = potionhide[i];
 	for (i=0; i<MAXSCROLL; i++) scrollname[i] = scrollhide[i];
@@ -522,7 +522,7 @@ invalid:
 			{
 			if (lcreat(logfile)<0) /* and can't create new log file */
 		    	{
-				lcreat((char*)0);
+				lcreat(NULL);
 				lprcat("\nCan't open record file:  I can't post your score.\n");
 				sncbr();  resetscroll();  lflush();  exit(1);
 				}
@@ -596,7 +596,7 @@ diedlog(void)
 	int n;
 	char *p;
 	struct stat stbuf;
-	lcreat((char*)0);
+	lcreat(NULL);
 	if (lopen(logfile)<0)
 		{
 		lprintf("Can't locate log file <%s>\n",logfile);
@@ -668,7 +668,7 @@ addone:
 	if (lappend(playerids) < 0) return(-1);	/* can't open file for append */
 	lprintf("%d\n%s",(long)++high,name);  /* new id # and name */
 	lwclose();
-	lcreat((char*)0);	/* re-open terminal channel */
+	lcreat(NULL);	/* re-open terminal channel */
 	return(high);
 	}
 #endif /* UIDSCORE */

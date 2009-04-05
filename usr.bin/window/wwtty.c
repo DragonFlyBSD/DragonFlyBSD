@@ -155,7 +155,7 @@ wwstoptty(d)
 	/* not guaranteed to work on the pty side */
 	if (tcflow(d, TCOOFF) < 0)
 #else
-	if (ioctl(d, TIOCSTOP, (char *)0) < 0)
+	if (ioctl(d, TIOCSTOP, NULL) < 0)
 #endif
 	{
 		wwerrno = WWE_SYS;
@@ -170,7 +170,7 @@ wwstarttty(d)
 	/* not guaranteed to work on the pty side */
 	if (tcflow(d, TCOON) < 0)
 #else
-	if (ioctl(d, TIOCSTART, (char *)0) < 0)
+	if (ioctl(d, TIOCSTART, NULL) < 0)
 #endif
 	{
 		wwerrno = WWE_SYS;

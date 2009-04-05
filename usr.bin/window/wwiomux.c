@@ -118,7 +118,7 @@ wwiomux()
 			tv.tv_usec = 10000;
 		}
 		wwnselect++;
-		n = select(n + 1, &imask, (fd_set *)0, (fd_set *)0, &tv);
+		n = select(n + 1, &imask, NULL, NULL, &tv);
 		wwsetjmp = 0;
 		noblock = 0;
 

@@ -225,7 +225,7 @@ trying(const struct addrinfo *ai)
 	char buf[NI_MAXHOST];
 
 	if (getnameinfo(ai->ai_addr, ai->ai_addrlen, buf, sizeof buf,
-			(char *)0, 0, NI_NUMERICHOST) != 0)
+			NULL, 0, NI_NUMERICHOST) != 0)
 		return;		/* XXX can't happen */
 
 	printf("Trying %s...\n", buf);

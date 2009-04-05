@@ -114,7 +114,7 @@ scsp_free_ca(Scsp_ca *cap)
 	/*
 	 * Return if there's nothing to free
 	 */
-	if (cap == (Scsp_ca *)0)
+	if (cap == NULL)
 		return;
 
 	/*
@@ -150,7 +150,7 @@ scsp_free_csu(Scsp_csu_msg *csup)
 	/*
 	 * Return if there's nothing to free
 	 */
-	if (csup == (Scsp_csu_msg *)0)
+	if (csup == NULL)
 		return;
 
 	/*
@@ -184,7 +184,7 @@ scsp_free_hello(Scsp_hello *hp)
 	/*
 	 * Return if there's nothing to free
 	 */
-	if (hp == (Scsp_hello *)0)
+	if (hp == NULL)
 		return;
 
 	/*
@@ -212,7 +212,7 @@ scsp_free_msg(Scsp_msg *msg)
 	/*
 	 * Return if there's nothing to free
 	 */
-	if (msg == (Scsp_msg *)0)
+	if (msg == NULL)
 		return;
 
 	/*
@@ -960,7 +960,7 @@ scsp_parse_msg(char *buff, int pdu_len)
 {
 	int			ext_off, len, plen;
 	struct scsp_nhdr	*shp;
-	Scsp_msg		*msg = (Scsp_msg *)0;
+	Scsp_msg		*msg = NULL;
 	Scsp_ext		**expp;
 
 	/*
@@ -1064,5 +1064,5 @@ scsp_parse_msg(char *buff, int pdu_len)
 ignore:
 	if (msg)
 		scsp_free_msg(msg);
-	return(Scsp_msg *)0;
+	return NULL;
 }

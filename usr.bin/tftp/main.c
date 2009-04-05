@@ -688,7 +688,7 @@ help(int argc, char **argv)
 		c = getcmd(arg);
 		if (c == (struct cmd *)-1)
 			printf("?Ambiguous help command %s\n", arg);
-		else if (c == (struct cmd *)0)
+		else if (c == NULL)
 			printf("?Invalid help command %s\n", arg);
 		else
 			printf("%s\n", c->help);

@@ -366,8 +366,7 @@ unisig_detach(struct atm_pif *pip)
 	 * Pass the detach event to the signalling manager
 	 * state machine
 	 */
-	err = unisig_sigmgr_state(usp, UNISIG_SIGMGR_DETACH,
-			(KBuffer *)0);
+	err = unisig_sigmgr_state(usp, UNISIG_SIGMGR_DETACH, NULL);
 
 	/*
 	 * Log the fact that we've detached

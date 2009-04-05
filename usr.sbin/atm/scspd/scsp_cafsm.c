@@ -207,8 +207,7 @@ scsp_ca_act_00(Scsp_dcs *dcsp, void *p)
 	/*
 	 * Notify the client I/F FSM
 	 */
-	rc = scsp_cfsm(dcsp, SCSP_CIFSM_CA_DOWN, (Scsp_msg *)0,
-			(Scsp_if_msg *)0);
+	rc = scsp_cfsm(dcsp, SCSP_CIFSM_CA_DOWN, NULL, NULL);
 
 	return(rc);
 }
@@ -255,7 +254,7 @@ scsp_ca_act_01(Scsp_dcs *dcsp, void *p)
 	/*
 	 * Select an initial sequence number
 	 */
-	dcsp->sd_ca_seq = (int)time((time_t *)0);
+	dcsp->sd_ca_seq = (int)time(NULL);
 
 	/*
 	 * Send a CA message
@@ -301,8 +300,7 @@ scsp_ca_act_02(Scsp_dcs *dcsp, void *p)
 	/*
 	 * Notify the client I/F FSM
 	 */
-	rc = scsp_cfsm(dcsp, SCSP_CIFSM_CA_DOWN, (Scsp_msg *)0,
-			(Scsp_if_msg *)0);
+	rc = scsp_cfsm(dcsp, SCSP_CIFSM_CA_DOWN, NULL, NULL);
 
 	return(rc);
 }
@@ -346,8 +344,7 @@ scsp_ca_act_03(Scsp_dcs *dcsp, void *p)
 		 * Set the new state
 		 */
 		dcsp->sd_ca_state = SCSP_CAFSM_SLAVE;
-		scsp_cfsm(dcsp, SCSP_CIFSM_CA_SUMM,
-				(Scsp_msg *)0, (Scsp_if_msg *)0);
+		scsp_cfsm(dcsp, SCSP_CIFSM_CA_SUMM, NULL, NULL);
 
 		/*
 		 * Save the master's sequence number
@@ -375,8 +372,7 @@ scsp_ca_act_03(Scsp_dcs *dcsp, void *p)
 		 * Set the new state
 		 */
 		dcsp->sd_ca_state = SCSP_CAFSM_MASTER;
-		rc = scsp_cfsm(dcsp, SCSP_CIFSM_CA_SUMM,
-				(Scsp_msg *)0, (Scsp_if_msg *)0);
+		rc = scsp_cfsm(dcsp, SCSP_CIFSM_CA_SUMM, NULL, NULL);
 
 		/*
 		 * Process the CA message
@@ -439,7 +435,7 @@ scsp_ca_act_04(Scsp_dcs *dcsp, void *p)
 		HARP_CANCEL(&dcsp->sd_ca_rexmt_t);
 		dcsp->sd_ca_state = SCSP_CAFSM_NEG;
 		scsp_dcs_cleanup(dcsp);
-		return(scsp_ca_act_01(dcsp, (Scsp_msg *)0));
+		return(scsp_ca_act_01(dcsp, NULL));
 	}
 
 	/*
@@ -475,7 +471,7 @@ scsp_ca_act_04(Scsp_dcs *dcsp, void *p)
 		 */
 		if (dcsp->sd_ca_rexmt_msg) {
 			scsp_free_msg(dcsp->sd_ca_rexmt_msg);
-			dcsp->sd_ca_rexmt_msg = (Scsp_msg *)0;
+			dcsp->sd_ca_rexmt_msg = NULL;
 		}
 
 		/*
@@ -487,17 +483,13 @@ scsp_ca_act_04(Scsp_dcs *dcsp, void *p)
 			 * Go to Aligned state
 			 */
 			dcsp->sd_ca_state = SCSP_CAFSM_ALIGNED;
-			rc = scsp_cfsm(dcsp, SCSP_CIFSM_CA_ALIGN,
-					(Scsp_msg *)0,
-					(Scsp_if_msg *)0);
+			rc = scsp_cfsm(dcsp, SCSP_CIFSM_CA_ALIGN, NULL, NULL);
 		} else {
 			/*
 			 * Go to Cache Update state
 			 */
 			dcsp->sd_ca_state = SCSP_CAFSM_UPDATE;
-			scsp_cfsm(dcsp, SCSP_CIFSM_CA_UPD,
-					(Scsp_msg *)0,
-					(Scsp_if_msg *)0);
+			scsp_cfsm(dcsp, SCSP_CIFSM_CA_UPD, NULL, NULL);
 			rc = scsp_send_csus(dcsp);
 		}
 	} else {
@@ -543,7 +535,7 @@ scsp_ca_act_05(Scsp_dcs *dcsp, void *p)
 		HARP_CANCEL(&dcsp->sd_ca_rexmt_t);
 		dcsp->sd_ca_state = SCSP_CAFSM_NEG;
 		scsp_dcs_cleanup(dcsp);
-		return(scsp_ca_act_01(dcsp, (Scsp_msg *)0));
+		return(scsp_ca_act_01(dcsp, NULL));
 	}
 
 	/*
@@ -566,7 +558,7 @@ scsp_ca_act_05(Scsp_dcs *dcsp, void *p)
 	 */
 	if (dcsp->sd_ca_rexmt_msg) {
 		scsp_free_msg(dcsp->sd_ca_rexmt_msg);
-		dcsp->sd_ca_rexmt_msg = (Scsp_msg *)0;
+		dcsp->sd_ca_rexmt_msg = NULL;
 	}
 
 	/*
@@ -600,9 +592,7 @@ scsp_ca_act_05(Scsp_dcs *dcsp, void *p)
 			 * Go to Aligned state
 			 */
 			dcsp->sd_ca_state = SCSP_CAFSM_ALIGNED;
-			rc = scsp_cfsm(dcsp, SCSP_CIFSM_CA_ALIGN,
-					(Scsp_msg *)0,
-					(Scsp_if_msg *)0);
+			rc = scsp_cfsm(dcsp, SCSP_CIFSM_CA_ALIGN, NULL, NULL);
 		} else {
 			/*
 			 * Go to Cache Update state
@@ -612,9 +602,7 @@ scsp_ca_act_05(Scsp_dcs *dcsp, void *p)
 			HARP_TIMER(&dcsp->sd_ca_rexmt_t,
 					dcsp->sd_ca_rexmt_int,
 					scsp_ca_retran_timeout);
-			scsp_cfsm(dcsp, SCSP_CIFSM_CA_UPD,
-					(Scsp_msg *)0,
-					(Scsp_if_msg *)0);
+			scsp_cfsm(dcsp, SCSP_CIFSM_CA_UPD, NULL, NULL);
 			rc = scsp_send_csus(dcsp);
 		}
 	}
@@ -684,14 +672,13 @@ scsp_ca_act_07(Scsp_dcs *dcsp, void *p)
 	if (dcsp->sd_ca_rexmt_msg) {
 		HARP_CANCEL(&dcsp->sd_ca_rexmt_t);
 		scsp_free_msg(dcsp->sd_ca_rexmt_msg);
-		dcsp->sd_ca_rexmt_msg = (Scsp_msg *)0;
+		dcsp->sd_ca_rexmt_msg = NULL;
 	}
 
 	/*
 	 * Pass the CSUS to the client interface FSM
 	 */
-	rc = scsp_cfsm(dcsp, SCSP_CIFSM_CSU_SOL, msg,
-			(Scsp_if_msg *)0);
+	rc = scsp_cfsm(dcsp, SCSP_CIFSM_CSU_SOL, msg, NULL);
 
 	return(rc);
 }
@@ -729,15 +716,13 @@ scsp_ca_act_08(Scsp_dcs *dcsp, void *p)
 	if (!dcsp->sd_csus_rexmt_msg && !dcsp->sd_crl &&
 			dcsp->sd_ca_state != SCSP_CAFSM_ALIGNED) {
 		dcsp->sd_ca_state = SCSP_CAFSM_ALIGNED;
-		rc = scsp_cfsm(dcsp, SCSP_CIFSM_CA_ALIGN,
-				(Scsp_msg *)0, (Scsp_if_msg *)0);
+		rc = scsp_cfsm(dcsp, SCSP_CIFSM_CA_ALIGN, NULL, NULL);
 	}
 
 	/*
 	 * Pass the CSU Req to the client interface FSM
 	 */
-	rc = scsp_cfsm(dcsp, SCSP_CIFSM_CSU_REQ, msg,
-			(Scsp_if_msg *)0);
+	rc = scsp_cfsm(dcsp, SCSP_CIFSM_CSU_REQ, msg, NULL);
 
 	/*
 	 * Move the CSA chain from the message to the list of
@@ -747,7 +732,7 @@ scsp_ca_act_08(Scsp_dcs *dcsp, void *p)
 			csap = csap->next) {
 		LINK2TAIL(csap, Scsp_csa, dcsp->sd_csu_ack_pend, next);
 	}
-	msg->sc_csu_msg->csu_csa_rec = (Scsp_csa *)0;
+	msg->sc_csu_msg->csu_csa_rec = NULL;
 
 	return(rc);
 }
@@ -775,7 +760,7 @@ scsp_ca_act_09(Scsp_dcs *dcsp, void *p)
 	 */
 	if (dcsp->sd_ca_rexmt_msg) {
 		scsp_free_msg(dcsp->sd_ca_rexmt_msg);
-		dcsp->sd_ca_rexmt_msg = (Scsp_msg *)0;
+		dcsp->sd_ca_rexmt_msg = NULL;
 	}
 
 	return(0);
@@ -1188,7 +1173,7 @@ scsp_ca_act_15(Scsp_dcs *dcsp, void *p)
 			msg->sc_ca->ca_seq != dcsp->sd_ca_seq) {
 		dcsp->sd_ca_state = SCSP_CAFSM_NEG;
 		scsp_dcs_cleanup(dcsp);
-		rc = scsp_ca_act_01(dcsp, (Scsp_msg *)0);
+		rc = scsp_ca_act_01(dcsp, NULL);
 	} else {
 		/*
 		 * Retransmit the saved CA message and reset the
@@ -1286,7 +1271,7 @@ scsp_ca_act_16(Scsp_dcs *dcsp, void *p)
 		 * ACK pending list is empty--send a CSU Reply
 		 */
 		csap = dcsp->sd_csu_ack;
-		dcsp->sd_csu_ack = (Scsp_csa *)0;
+		dcsp->sd_csu_ack = NULL;
 		rc = scsp_send_csu_reply(dcsp, csap);
 	}
 

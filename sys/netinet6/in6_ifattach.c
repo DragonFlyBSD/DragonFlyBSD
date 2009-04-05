@@ -816,7 +816,7 @@ in6_ifdetach(struct ifnet *ifp)
 				(struct sockaddr *)&ia->ia_addr,
 				(struct sockaddr *)&ia->ia_addr,
 				(struct sockaddr *)&ia->ia_prefixmask,
-				rtflags, (struct rtentry **)0);
+				rtflags, NULL);
 		}
 
 		/* remove from the linked list */

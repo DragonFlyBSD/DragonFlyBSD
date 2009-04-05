@@ -105,8 +105,7 @@ daydiff(char *hostname)
 		for (;;) {
 			FD_ZERO(&ready);
 			FD_SET(sock, &ready);
-			i = select(sock+1, &ready, (fd_set *)0,
-				   (fd_set *)0, &tout);
+			i = select(sock+1, &ready, NULL, NULL, &tout);
 			if (i < 0) {
 				if (errno == EINTR)
 					continue;
@@ -131,7 +130,7 @@ daydiff(char *hostname)
 			}
 			sec -= BU;
 
-			gettimeofday(&now, (struct timezone*)0);
+			gettimeofday(&now, NULL);
 			return (sec - now.tv_sec);
 		}
 	}
@@ -313,8 +312,7 @@ msite(int argc, char *argv[])
 		tout.tv_usec = 0;
 		FD_ZERO(&ready);
 		FD_SET(sock, &ready);
-		if (select(FD_SETSIZE, &ready, (fd_set *)0, (fd_set *)0,
-			   &tout)) {
+		if (select(FD_SETSIZE, &ready, NULL, NULL, &tout)) {
 			length = sizeof(from);
 			cc = recvfrom(sock, &msg, sizeof(struct tsp), 0,
 				      (struct sockaddr *)&from, &length);
@@ -468,7 +466,7 @@ tracing(int argc, char *argv[])
 	tout.tv_usec = 0;
 	FD_ZERO(&ready);
 	FD_SET(sock, &ready);
-	if (select(FD_SETSIZE, &ready, (fd_set *)0, (fd_set *)0, &tout)) {
+	if (select(FD_SETSIZE, &ready, NULL, NULL, &tout)) {
 		length = sizeof(from);
 		cc = recvfrom(sock, &msg, sizeof(struct tsp), 0,
 			      (struct sockaddr *)&from, &length);

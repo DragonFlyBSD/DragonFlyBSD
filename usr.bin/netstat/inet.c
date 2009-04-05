@@ -797,7 +797,7 @@ icmp_stats(u_long off __unused, char *name, int af __unused)
 #undef p2
 	mib[3] = ICMPCTL_MASKREPL;
 	len = sizeof i;
-	if (sysctl(mib, 4, &i, &len, (void *)0, 0) < 0)
+	if (sysctl(mib, 4, &i, &len, NULL, 0) < 0)
 		return;
 	printf("\tICMP address mask responses are %sabled\n", 
 	       i ? "en" : "dis");

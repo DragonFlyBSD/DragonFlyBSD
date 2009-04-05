@@ -103,15 +103,15 @@ open(const char *fname, int mode)
 
     f = &files[fd];
     f->f_flags = mode + 1;
-    f->f_dev = (struct devsw *)0;
-    f->f_ops = (struct fs_ops *)0;
+    f->f_dev = NULL;
+    f->f_ops = NULL;
     f->f_offset = 0;
     f->f_devdata = NULL;
     f->f_fsdata = NULL;
     file = NULL;
     error = devopen(f, fname, &file);
     if (error ||
-	(((f->f_flags & F_NODEV) == 0) && f->f_dev == (struct devsw *)0))
+	(((f->f_flags & F_NODEV) == 0) && f->f_dev == NULL))
 	goto err;
 
     /* see if we opened a raw device; otherwise, 'file' is the file name. */

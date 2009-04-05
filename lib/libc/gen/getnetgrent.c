@@ -130,7 +130,7 @@ static struct {
 	NULL,
 	NULL,
 };
-static FILE *netf = (FILE *)0;
+static FILE *netf = NULL;
 
 static int parse_netgrp(const char *);
 static struct linelist *read_for_group(const char *);
@@ -156,7 +156,7 @@ setnetgrent(const char *group)
 	if (group == NULL || !strlen(group))
 		return;
 
-	if (grouphead.gr == (struct netgrp *)0 ||
+	if (grouphead.gr == NULL ||
 		strcmp(group, grouphead.grname)) {
 		endnetgrent();
 #ifdef YP
@@ -246,10 +246,10 @@ endnetgrent(void)
 		free(olp->l_line);
 		free((char *)olp);
 	}
-	linehead = (struct linelist *)0;
+	linehead = NULL;
 	if (grouphead.grname) {
 		free(grouphead.grname);
-		grouphead.grname = (char *)0;
+		grouphead.grname = NULL;
 	}
 	gp = grouphead.gr;
 	while (gp) {
@@ -263,8 +263,8 @@ endnetgrent(void)
 			free(ogp->ng_str[NG_DOM]);
 		free((char *)ogp);
 	}
-	grouphead.gr = (struct netgrp *)0;
-	nextgrp = (struct netgrp *)0;
+	grouphead.gr = NULL;
+	nextgrp = NULL;
 #ifdef YP
 	_netgr_yp_enabled = 0;
 #endif
@@ -428,8 +428,8 @@ parse_netgrp(const char *group)
 			break;
 		lp = lp->l_next;
 	}
-	if (lp == (struct linelist *)0 &&
-	    (lp = read_for_group(group)) == (struct linelist *)0)
+	if (lp == NULL &&
+	    (lp = read_for_group(group)) == NULL)
 		return (1);
 	if (lp->l_parsed) {
 #ifdef DEBUG
@@ -539,7 +539,7 @@ read_for_group(const char *group)
 					strlen(group), &result, &resultlen)) {
 				free(result);
 				if (_use_only_yp)
-					return ((struct linelist *)0);
+					return (NULL);
 				else {
 					_netgr_yp_enabled = 0;
 					continue;

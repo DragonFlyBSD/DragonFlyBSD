@@ -914,7 +914,7 @@ wait_for_reply(int sock, struct msghdr *mhdr)
 	FD_SET(sock, fdsp);
 	wait.tv_sec = waittime; wait.tv_usec = 0;
 
-	if (select(sock+1, fdsp, (fd_set *)0, (fd_set *)0, &wait) > 0)
+	if (select(sock+1, fdsp, NULL, NULL, &wait) > 0)
 		cc = recvmsg(rcvsock, mhdr, 0);
 
 	free(fdsp);

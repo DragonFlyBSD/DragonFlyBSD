@@ -790,7 +790,7 @@ abortit:
 			error = vn_rdwr(UIO_READ, fvp, (caddr_t)&dirbuf,
 					sizeof (struct dirtemplate), (off_t)0,
 					UIO_SYSSPACE, IO_NODELOCKED,
-					tcnp->cn_cred, (int *)0);
+					tcnp->cn_cred, NULL);
 			if (error == 0) {
 				/* Like ext2 little-endian: */
 				namlen = dirbuf.dotdot_type;
@@ -806,7 +806,7 @@ abortit:
 						sizeof (struct dirtemplate),
 						(off_t)0, UIO_SYSSPACE,
 						IO_NODELOCKED|IO_SYNC,
-						tcnp->cn_cred, (int *)0);
+						tcnp->cn_cred, NULL);
 				}
 			}
 		}
@@ -975,7 +975,7 @@ ext2_mkdir(struct vop_old_mkdir_args *ap)
 	dirtemplate.dotdot_reclen = DIRBLKSIZ - 12;
 	error = vn_rdwr(UIO_WRITE, tvp, (caddr_t)&dirtemplate,
 			sizeof (dirtemplate), (off_t)0, UIO_SYSSPACE,
-			IO_NODELOCKED|IO_SYNC, cnp->cn_cred, (int *)0);
+			IO_NODELOCKED|IO_SYNC, cnp->cn_cred, NULL);
 	if (error) {
 		dp->i_nlink--;
 		dp->i_flag |= IN_CHANGE;
@@ -1110,7 +1110,7 @@ ext2_symlink(struct vop_old_symlink_args *ap)
 
 		error = vn_rdwr(UIO_WRITE, vp, ap->a_target, len, (off_t)0,
 				UIO_SYSSPACE, IO_NODELOCKED, 
-				ap->a_cnp->cn_cred, (int *)0);
+				ap->a_cnp->cn_cred, NULL);
 
 		if (error)
 			vput(vp);

@@ -141,7 +141,6 @@ typedef unsigned int DWordIO_t;
 
 #define NULLDEV -1		    /* identifies non-existant device */
 #define NULLCTL -1		    /* identifies non-existant controller */
-#define NULLCTLPTR (CONTROLLER_T *)0 /* identifies non-existant controller */
 #define NULLAIOP -1		    /* identifies non-existant AIOP */
 #define NULLCHAN -1		    /* identifies non-existant channel */
 
@@ -786,7 +785,7 @@ Comments: This function must be called once for every channel structure
 */
 #define sInitChanDefaults(ChP) \
 { \
-   (ChP)->CtlP = NULLCTLPTR; \
+   (ChP)->CtlP = NULL; \
    (ChP)->AiopNum = NULLAIOP; \
    (ChP)->ChanID = AIOPID_NULL; \
    (ChP)->ChanNum = NULLCHAN; \

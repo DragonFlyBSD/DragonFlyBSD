@@ -69,10 +69,10 @@
  */
 char		*prog;
 char		*scsp_config_file = SCSPD_CONFIG;
-FILE		*scsp_log_file = (FILE *)0;
+FILE		*scsp_log_file = NULL;
 int		scsp_log_syslog = 0;
-Scsp_server	*scsp_server_head = (Scsp_server *)0;
-Scsp_pending	*scsp_pending_head = (Scsp_pending *)0;
+Scsp_server	*scsp_server_head = NULL;
+Scsp_pending	*scsp_pending_head = NULL;
 int		scsp_max_socket = -1;
 int		scsp_debug_mode = 0;
 int		scsp_trace_mode = 0;
@@ -279,7 +279,7 @@ start_daemon(void)
 	}
 	fd = open(_PATH_TTY, O_RDWR);
 	if (fd >= 0) {
-		ioctl(fd, TIOCNOTTY, (char *)0);
+		ioctl(fd, TIOCNOTTY, NULL);
 		close(fd);
 	}
 
@@ -432,7 +432,7 @@ main(int argc, char **argv)
 		}
 		rc = select(scsp_max_socket + 1, &read_set,
 				&write_set, &except_set,
-				(struct timeval *)0);
+				NULL);
 		if (rc < 0) {
 			/*
 			 * Select error--check for possible signals
@@ -488,7 +488,7 @@ main(int argc, char **argv)
 				if ((dcsp = scsp_find_dcs(i)) != NULL) {
 					rc = scsp_hfsm(dcsp,
 						SCSP_HFSM_VC_ESTAB,
-						(Scsp_msg *)0);
+						NULL);
 				}
 			}
 		}
@@ -505,7 +505,7 @@ main(int argc, char **argv)
 				if (dcsp) {
 					rc = scsp_hfsm(dcsp,
 						SCSP_HFSM_VC_ESTAB,
-						(Scsp_msg *)0);
+						NULL);
 				}
 			}
 		}

@@ -87,7 +87,7 @@ invite_remote(void)
 	 * so we can use the interupt timer to resend the invitation
 	 */
 	end_msgs();
-	setitimer(ITIMER_REAL, &itimer, (struct itimerval *)0);
+	setitimer(ITIMER_REAL, &itimer, NULL);
 	message("Waiting for your party to respond");
 	signal(SIGALRM, re_invite);
 	(void) setjmp(invitebuf);

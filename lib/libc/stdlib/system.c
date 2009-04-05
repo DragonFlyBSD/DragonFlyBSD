@@ -81,7 +81,7 @@ __system(const char *command)
 	default:			/* parent */
 		savedpid = pid;
 		do {
-			pid = _wait4(savedpid, &pstat, 0, (struct rusage *)0);
+			pid = _wait4(savedpid, &pstat, 0, NULL);
 		} while (pid == -1 && errno == EINTR);
 		break;
 	}

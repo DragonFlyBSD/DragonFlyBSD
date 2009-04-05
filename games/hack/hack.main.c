@@ -292,7 +292,7 @@ not_recovered:
 			  (!(Fast & ~INTRINSIC) && (!Fast || rn2(3)))) {
 				movemon();
 				if(!rn2(70))
-				    makemon((struct permonst *)0, 0, 0);
+				    makemon(NULL, 0, 0);
 			}
 			if(Glib) glibr();
 			p_timeout();

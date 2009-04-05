@@ -271,8 +271,7 @@ sendbp(struct ship *from, struct ship *to, int sections, char isdefense)
 		Write(isdefense ? W_DBP : W_OBP, from,
 			n, turn, to->file->index, sections);
 		if (isdefense)
-			makesignal(from, "repelling boarders",
-				(struct ship *)0);
+			makesignal(from, "repelling boarders", NULL);
 		else
 			makesignal(from, "boarding the %s (%c%c)", to);
 	}

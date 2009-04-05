@@ -56,8 +56,6 @@ struct db_variable {
 #define DB_VAR_GET	0
 #define DB_VAR_SET	1
 
-#define	FCN_NULL	((db_varfcn_t *)0)
-
 #ifdef _KERNEL
 
 extern struct db_variable	db_regs[];	/* machine registers */

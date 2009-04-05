@@ -1369,7 +1369,7 @@ m_adj(struct mbuf *mp, int req_len)
 		count = 0;
 		for (;;) {
 			count += m->m_len;
-			if (m->m_next == (struct mbuf *)0)
+			if (m->m_next == NULL)
 				break;
 			m = m->m_next;
 		}

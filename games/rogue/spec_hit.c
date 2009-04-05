@@ -148,7 +148,7 @@ freeze(object *monster)
 			for (i = 0; i < 50; i++) {
 				mv_mons();
 			}
-			killed_by((object *)0, HYPOTHERMIA);
+			killed_by(NULL, HYPOTHERMIA);
 		}
 		message(you_can_move_again, 1);
 		monster->m_flags &= (~FREEZING_ROGUE);

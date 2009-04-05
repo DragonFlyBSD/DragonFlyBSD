@@ -212,7 +212,7 @@ repquota(struct fstab *fs, int type, char *qfpathname)
 		if (dqbuf.dqb_curinodes == 0 && dqbuf.dqb_curblocks == 0)
 			continue;
 		if ((fup = lookup(id, type)) == 0)
-			fup = addid(id, type, (char *)0);
+			fup = addid(id, type, NULL);
 		fup->fu_dqblk = dqbuf;
 	}
 	fclose(qf);
@@ -318,7 +318,7 @@ lookup(u_long id, int type)
 	for (fup = fuhead[type][id & (FUHASH-1)]; fup != 0; fup = fup->fu_next)
 		if (fup->fu_id == id)
 			return (fup);
-	return ((struct fileusage *)0);
+	return (NULL);
 }
 
 /*

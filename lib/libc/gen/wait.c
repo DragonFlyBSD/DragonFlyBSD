@@ -46,7 +46,7 @@
 pid_t
 __wait(int *istat)
 {
-	return (_wait4(WAIT_ANY, istat, 0, (struct rusage *)0));
+	return (_wait4(WAIT_ANY, istat, 0, NULL));
 }
 
 __weak_reference(__wait, wait);

@@ -1121,7 +1121,7 @@ device_script(char *program, int in, int out)
 	}
 	setuid(getuid());
 	setgid(getgid());
-	execl("/bin/sh", "sh", "-c", program, (char *)0);
+	execl("/bin/sh", "sh", "-c", program, NULL);
 	syslog(LOG_ERR, "could not exec /bin/sh: %m");
 	_exit(99);
 	/* NOTREACHED */

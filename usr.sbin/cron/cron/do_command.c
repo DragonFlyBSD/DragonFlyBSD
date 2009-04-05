@@ -310,7 +310,7 @@ child_process(entry *e, user *u)
 				_exit(OK_EXIT);
 			}
 # endif /*DEBUGGING*/
-			execle(shell, shell, "-c", e->cmd, (char *)0, e->envp);
+			execle(shell, shell, "-c", e->cmd, NULL, e->envp);
 			warn("execl: couldn't exec `%s'", shell);
 			_exit(ERROR_EXIT);
 		}

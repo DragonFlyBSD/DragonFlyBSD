@@ -385,7 +385,7 @@ getobj(const char *let, const char *word)
 			continue;
 		}
 		if(index(quitchars,ilet))
-			return((struct obj *)0);
+			return(NULL);
 		if(ilet == '-') {
 			return(allownone ? &zeroobj : (struct obj *) 0);
 		}

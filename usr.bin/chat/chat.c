@@ -132,7 +132,7 @@ int have_tty_parameters = 0;
 #define set_term_param(param) tcsetattr(0, TCSANOW, param)
 struct termios saved_tty_parameters;
 
-char *abort_string[MAX_ABORTS], *fail_reason = (char *)0,
+char *abort_string[MAX_ABORTS], *fail_reason = NULL,
 	fail_buffer[50];
 int n_aborts = 0, abort_next = 0, timeout_next = 0, echo_next = 0;
 int clear_abort_next = 0;
@@ -1177,7 +1177,7 @@ get_string(char *string)
     char *s = temp, *end = s + STR_LEN;
     char *logged = temp;
 
-    fail_reason = (char *)0;
+    fail_reason = NULL;
 
     if (strlen(string) > STR_LEN) {
 	chat_logf("expect string is too long");

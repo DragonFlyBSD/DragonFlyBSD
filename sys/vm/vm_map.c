@@ -3567,7 +3567,7 @@ DB_SHOW_COMMAND(map, vm_map_print)
 				db_indent += 2;
 				vm_map_print((db_expr_t)(intptr_t)
 					     entry->object.sub_map,
-					     full, 0, (char *)0);
+					     full, 0, NULL);
 				db_indent -= 2;
 			}
 		} else {
@@ -3587,7 +3587,7 @@ DB_SHOW_COMMAND(map, vm_map_print)
 				db_indent += 2;
 				vm_object_print((db_expr_t)(intptr_t)
 						entry->object.vm_object,
-						full, 0, (char *)0);
+						full, 0, NULL);
 				nlines += 4;
 				db_indent -= 2;
 			}

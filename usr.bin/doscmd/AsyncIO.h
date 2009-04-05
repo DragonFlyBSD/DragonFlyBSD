@@ -47,4 +47,4 @@ void	_RegisterIO(int, void (*)(int, int, void *, regcontext_t *),
 }
 #endif
 
-#define	_Un_RegisterIO(x) _RegisterIO((x), (void (*))0, (void *)0, (void (*))0)
+#define	_Un_RegisterIO(x) _RegisterIO((x), (void (*))0, NULL, (void (*))0)

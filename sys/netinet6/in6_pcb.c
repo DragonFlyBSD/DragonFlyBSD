@@ -384,7 +384,7 @@ in6_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	}
 	if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr)) {
 		if (inp->inp_lport == 0) {
-			error = in6_pcbbind(inp, (struct sockaddr *)0, td);
+			error = in6_pcbbind(inp, NULL, td);
 			if (error)
 				return (error);
 		}

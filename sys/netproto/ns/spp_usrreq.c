@@ -276,7 +276,7 @@ spp_input(struct mbuf *m, ...)
 		m_freem(m);
 	}
 	if (cb->s_force || (cb->s_flags & (SF_ACKNOW|SF_WIN|SF_RXT)))
-		spp_output(cb, (struct mbuf *)0);
+		spp_output(cb, NULL);
 	cb->s_flags &= ~(SF_WIN|SF_RXT);
 	return;
 
@@ -345,7 +345,7 @@ spp_reass(struct sppcb *cb, struct spidp *si, struct mbuf *si_m)
 				cb->s_snxt = si->si_ack;
 				cb->s_cwnd = CUNIT;
 				cb->s_force = 1 + SPPT_REXMT;
-				spp_output(cb, (struct mbuf *)0);
+				spp_output(cb, NULL);
 				cb->s_timer[SPPT_REXMT] = cb->s_rxtcur;
 				cb->s_rtt = 0;
 				if (cwnd >= 4 * CUNIT)
@@ -1106,7 +1106,7 @@ send:
 			spp_trace(SA_OUTPUT, cb->s_state, cb, si, 0);
 
 		if (so->so_options & SO_DONTROUTE)
-			error = ns_output(m, (struct route *)0, NS_ROUTETOIF);
+			error = ns_output(m, NULL, NS_ROUTETOIF);
 		else
 			error = ns_output(m, &cb->s_nspcb->nsp_route, 0);
 	}
@@ -1725,7 +1725,7 @@ spp_close(struct sppcb *cb)
 	soisdisconnected(so);
 	ns_pcbdetach(nsp);
 	sppstat.spps_closed++;
-	return ((struct sppcb *)0);
+	return (NULL);
 }
 /*
  *	Someday we may do level 3 handshaking

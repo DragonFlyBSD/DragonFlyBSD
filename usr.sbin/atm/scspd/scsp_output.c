@@ -692,7 +692,7 @@ hello_invalid:
 int
 scsp_format_msg(Scsp_dcs *dcsp, Scsp_msg *msg, char **bpp)
 {
-	char			*buff = (char *)0, *e_buff = (char *)0;
+	char			*buff = NULL, *e_buff = NULL;
 	int			buff_len, e_buff_len;
 	int			e_len, len, plen;
 	struct scsp_nhdr	*shp;
@@ -760,7 +760,7 @@ scsp_format_msg(Scsp_dcs *dcsp, Scsp_msg *msg, char **bpp)
 		 */
 		if (!e_len) {
 			UM_FREE(e_buff);
-			e_buff = (char *)0;
+			e_buff = NULL;
 		}
 	}
 	buff_len -= e_len;
@@ -819,7 +819,7 @@ ignore:
 		UM_FREE(buff);
 	if (e_buff)
 		UM_FREE(e_buff);
-	*bpp = (char *)0;
+	*bpp = NULL;
 	return(0);
 }
 
@@ -886,7 +886,7 @@ scsp_send_msg(Scsp_dcs *dcsp, Scsp_msg *msg)
 		/*
 		 * Inform the Hello FSM
 		 */
-		scsp_hfsm(dcsp, SCSP_HFSM_VC_CLOSED, (Scsp_msg *)0);
+		scsp_hfsm(dcsp, SCSP_HFSM_VC_CLOSED, NULL);
 
 		/*
 		 * Set the return code

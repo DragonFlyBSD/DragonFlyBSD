@@ -193,7 +193,7 @@ pclose(FILE *iop)
 	fclose(iop);
 
 	do {
-		pid = _wait4(cur->pid, &pstat, 0, (struct rusage *)0);
+		pid = _wait4(cur->pid, &pstat, 0, NULL);
 	} while (pid == -1 && errno == EINTR);
 
 	free(cur);

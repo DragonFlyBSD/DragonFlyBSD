@@ -328,10 +328,10 @@ static const struct limits limits[] = {
 	{ "locked memory",	"kbytes",	RLIMIT_MEMLOCK, 1024, 'l' },
 #endif
 #ifdef RLIMIT_NPROC
-	{ "max user processes",	(char *)0,	RLIMIT_NPROC,      1, 'u' },
+	{ "max user processes",	NULL,		RLIMIT_NPROC,      1, 'u' },
 #endif
 #ifdef RLIMIT_NOFILE
-	{ "open files",		(char *)0,	RLIMIT_NOFILE,     1, 'n' },
+	{ "open files",		NULL,		RLIMIT_NOFILE,     1, 'n' },
 #endif
 #ifdef RLIMIT_VMEM
 	{ "virtual mem size",	"kbytes",	RLIMIT_VMEM,	1024, 'v' },
@@ -343,9 +343,9 @@ static const struct limits limits[] = {
 	{ "sbsize",		"bytes",	RLIMIT_SBSIZE,	   1, 'b' },
 #endif
 #ifdef RLIMIT_POSIXLOCK
-	{ "posixlocks",		(char *)0,	RLIMIT_POSIXLOCK,  1, 'k' },
+	{ "posixlocks",		NULL,		RLIMIT_POSIXLOCK,  1, 'k' },
 #endif
-	{ (char *) 0,		(char *)0,	0,		   0, '\0' }
+	{ NULL,			NULL,		0,		   0, '\0' }
 };
 
 int

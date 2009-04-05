@@ -58,27 +58,27 @@ leave(int conditions)
 
 	if (done_curses) {
 		Signal("It looks like you've had it!",
-			(struct ship *)0);
+			NULL);
 		switch (conditions) {
 		case LEAVE_QUIT:
 			break;
 		case LEAVE_CAPTURED:
 			Signal("Your ship was captured.",
-				(struct ship *)0);
+				NULL);
 			break;
 		case LEAVE_HURRICAN:
 			Signal("Hurricane!  All ships destroyed.",
-				(struct ship *)0);
+				NULL);
 			break;
 		case LEAVE_DRIVER:
-			Signal("The driver died.", (struct ship *)0);
+			Signal("The driver died.", NULL);
 			break;
 		case LEAVE_SYNC:
-			Signal("Synchronization error.", (struct ship *)0);
+			Signal("Synchronization error.", NULL);
 			break;
 		default:
 			Signal("A funny thing happened (%d).",
-				(struct ship *)0, conditions);
+				NULL, conditions);
 		}
 	} else {
 		switch (conditions) {
@@ -103,7 +103,7 @@ leave(int conditions)
 		write_log(ms);
 		if (conditions != LEAVE_SYNC) {
 			makesignal(ms, "Captain %s relinquishing.",
-				(struct ship *)0, mf->captain);
+				NULL, mf->captain);
 			Write(W_END, ms, 0, 0, 0, 0);
 			Sync();
 		}
@@ -127,7 +127,7 @@ child(void)
 
 	signal(SIGCHLD, SIG_IGN);
 	do {
-		pid = wait3((int *)&status, WNOHANG, (struct rusage *)0);
+		pid = wait3((int *)&status, WNOHANG, NULL);
 		if (pid < 0 || (pid > 0 && !WIFSTOPPED(status)))
 			hasdriver = 0;
 	} while (pid > 0);

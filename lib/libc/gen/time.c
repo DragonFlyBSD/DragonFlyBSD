@@ -40,7 +40,7 @@ time(time_t *t)
 	struct timeval tt;
 	time_t retval;
 
-	if (gettimeofday(&tt, (struct timezone *)0) < 0)
+	if (gettimeofday(&tt, NULL) < 0)
 		retval = -1;
 	else
 		retval = tt.tv_sec;

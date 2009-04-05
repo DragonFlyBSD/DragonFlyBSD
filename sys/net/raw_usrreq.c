@@ -103,7 +103,7 @@ raw_input(struct mbuf *m0, const struct sockproto *proto,
 			n = m_copypacket(m, MB_DONTWAIT);
 			if (n != NULL) {
 				if (ssb_appendaddr(&last->so_rcv, src, n,
-						 (struct mbuf *)0) == 0) {
+						 NULL) == 0) {
 					/* should notify about lost packet */
 					m_freem(n);
 				} else {
@@ -114,7 +114,7 @@ raw_input(struct mbuf *m0, const struct sockproto *proto,
 		last = rp->rcb_socket;
 	}
 	if (last) {
-		if (ssb_appendaddr(&last->so_rcv, src, m, (struct mbuf *)0) == 0)
+		if (ssb_appendaddr(&last->so_rcv, src, m, NULL) == 0)
 			m_freem(m);
 		else
 			sorwakeup(last);

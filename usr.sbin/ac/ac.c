@@ -501,7 +501,7 @@ ac(FILE *fp)
 	}
 	fclose(fp);
 	if (!(Flags & AC_W))
-		usr.ut_time = time((time_t *)0);
+		usr.ut_time = time(NULL);
 	strcpy(usr.ut_line, "~");
 
 	if (Flags & AC_D) {
@@ -523,7 +523,7 @@ ac(FILE *fp)
 	head = log_out(head, &usr);
 
 	if (Flags & AC_D)
-		show_today(Users, head, time((time_t *)0));
+		show_today(Users, head, time(NULL));
 	else {
 		if (Flags & AC_P)
 			show_users(Users);

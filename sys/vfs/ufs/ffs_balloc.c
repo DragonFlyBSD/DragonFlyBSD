@@ -241,7 +241,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 	--num;
 	nb = ip->i_ib[indirs[0].in_off];
 	if (nb == 0) {
-		pref = ffs_blkpref(ip, lbn, 0, (ufs_daddr_t *)0);
+		pref = ffs_blkpref(ip, lbn, 0, NULL);
 		/*
 		 * If the filesystem has run out of space we can skip the
 		 * full fsync/undo of the main [fail] case since no undo
@@ -295,7 +295,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 			continue;
 		}
 		if (pref == 0)
-			pref = ffs_blkpref(ip, lbn, 0, (ufs_daddr_t *)0);
+			pref = ffs_blkpref(ip, lbn, 0, NULL);
 		if ((error =
 		    ffs_alloc(ip, lbn, pref, (int)fs->fs_bsize, cred, &newb)) != 0) {
 			brelse(bp);

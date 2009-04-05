@@ -103,7 +103,7 @@ table(int rig, int shot, int hittable,
 		rigg[3] -= rhits;
 	}
 	if (rig && !rigg[2] && (!rigg[3] || rigg[3] == -1))
-		makesignal(on, "dismasted!", (struct ship *)0);
+		makesignal(on, "dismasted!", NULL);
 	if (portside(from, on, 0)) {
 		guns = on->specs->gunR;
 		car = on->specs->carR;
@@ -180,7 +180,7 @@ table(int rig, int shot, int hittable,
 			message = "main topmast and mizzen mast shattered";
 			break;
 		}
-		makesignal(on, message, (struct ship *)0);
+		makesignal(on, message, NULL);
 	} else if (roll == 6) {
 		switch (Hhit) {
 		case 0:
@@ -206,7 +206,7 @@ table(int rig, int shot, int hittable,
 			message = "shot holes below the water line";
 			break;
 		}
-		makesignal(on, message, (struct ship *)0);
+		makesignal(on, message, NULL);
 	}
 	if (!hull)
 		strike(on, from);

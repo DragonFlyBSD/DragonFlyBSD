@@ -310,8 +310,8 @@ invalid:
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = 0;
 	sa.sa_handler = SIG_IGN;
-	sigaction(SIGTTIN, &sa, (struct sigaction *)0);
-	sigaction(SIGTTOU, &sa, (struct sigaction *)0);
+	sigaction(SIGTTIN, &sa, NULL);
+	sigaction(SIGTTOU, &sa, NULL);
 
 	/*
 	 * Paranoia.
@@ -762,8 +762,8 @@ runcom(void)
 		sigemptyset(&sa.sa_mask);
 		sa.sa_flags = 0;
 		sa.sa_handler = SIG_IGN;
-		sigaction(SIGTSTP, &sa, (struct sigaction *)0);
-		sigaction(SIGHUP, &sa, (struct sigaction *)0);
+		sigaction(SIGTSTP, &sa, NULL);
+		sigaction(SIGHUP, &sa, NULL);
 
 		setctty(_PATH_CONSOLE);
 
@@ -1456,7 +1456,7 @@ death(void)
 		clang = 0;
 		alarm(DEATH_WATCH);
 		do
-			if ((pid = waitpid(-1, (int *)0, 0)) != -1)
+			if ((pid = waitpid(-1, NULL, 0)) != -1)
 				collect_child(pid);
 		while (clang == 0 && errno != ECHILD);
 
@@ -1506,8 +1506,8 @@ runshutdown(void)
 		sigemptyset(&sa.sa_mask);
 		sa.sa_flags = 0;
 		sa.sa_handler = SIG_IGN;
-		sigaction(SIGTSTP, &sa, (struct sigaction *)0);
-		sigaction(SIGHUP, &sa, (struct sigaction *)0);
+		sigaction(SIGTSTP, &sa, NULL);
+		sigaction(SIGHUP, &sa, NULL);
 
 		if ((fd = open(_PATH_CONSOLE, O_RDWR)) == -1)
 		    warning("can't open %s: %m", _PATH_CONSOLE);

@@ -49,19 +49,19 @@ changesail(void)
 	if (mc->crew3 && rig) {
 		if (!full) {
 			if (sgetch("Increase to Full sails? ",
-				(struct ship *)0, 1) == 'y') {
+				NULL, 1) == 'y') {
 				changed = 1;
 				Write(W_FS, ms, 1, 0, 0, 0);
 			}
 		} else {
 			if (sgetch("Reduce to Battle sails? ",
-				(struct ship *)0, 1) == 'y') {
+				NULL, 1) == 'y') {
 				Write(W_FS, ms, 0, 0, 0, 0);
 				changed = 1;
 			}
 		}
 	} else if (!rig)
-		Signal("Sails rent to pieces", (struct ship *)0);
+		Signal("Sails rent to pieces", NULL);
 }
 
 void
@@ -119,7 +119,7 @@ eyeball(struct ship *ship)
 
 	if (ship->file->dir != 0) {
 		Signal("Sail ho! (range %d, %s)",
-			(struct ship *)0, range(ms, ship), saywhat(ship, 0));
+			NULL, range(ms, ship), saywhat(ship, 0));
 		i = portside(ms, ship, 1) - mf->dir;
 		if (i <= 0)
 			i += 8;

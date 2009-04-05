@@ -195,7 +195,7 @@ phase would ordinarily have included a call to
 .Fn write ,
 one substitutes:
 .Pp
-.Dl "sendto(sock, buf, len, MSG_EOF, (struct sockaddr *)0, 0)"
+.Dl "sendto(sock, buf, len, MSG_EOF, NULL, 0)"
 .Pp
 In this case, the reply is sent immediately, but as in the client
 case, the socket is no longer useful for anything and should be

@@ -1126,7 +1126,7 @@ sys_setlogin(struct setlogin_args *uap)
 	if ((error = priv_check_cred(p->p_ucred, PRIV_ROOT, PRISON_ROOT)))
 		return (error);
 	error = copyinstr((caddr_t) uap->namebuf, (caddr_t) logintmp,
-	    sizeof(logintmp), (size_t *)0);
+	    sizeof(logintmp), NULL);
 	if (error == ENAMETOOLONG)
 		error = EINVAL;
 	else if (!error)

@@ -51,10 +51,10 @@ repair(void)
 	? (ptr->x += count, count = 0) : (count -= m - ptr->x, ptr->x = m))
 
 	if (repaired || loaded || fired || changed || turned()) {
-		Signal("No hands free to repair", (struct ship *)0);
+		Signal("No hands free to repair", NULL);
 		return;
 	}
-	c = sgetch("Repair (hull, guns, rigging)? ", (struct ship *)0, 1);
+	c = sgetch("Repair (hull, guns, rigging)? ", NULL, 1);
 	switch (c) {
 		case 'h':
 			repairs = &mf->RH;
@@ -66,7 +66,7 @@ repair(void)
 			repairs = &mf->RR;
 			break;
 		default:
-			Signal("Avast heaving!", (struct ship *)0);
+			Signal("Avast heaving!", NULL);
 			return;
 	}
 	if (++*repairs >= 3) {
@@ -118,7 +118,7 @@ repair(void)
 			break;
 		}
 		if (count == 2) {
-			Signal("Repairs completed.", (struct ship *)0);
+			Signal("Repairs completed.", NULL);
 			*repairs = 2;
 		} else {
 			*repairs = 0;
@@ -151,14 +151,14 @@ loadplayer(void)
 	int loadL, loadR, ready, load;
 
 	if (!mc->crew3) {
-		Signal("Out of crew", (struct ship *)0);
+		Signal("Out of crew", NULL);
 		return;
 	}
 	loadL = mf->loadL;
 	loadR = mf->loadR;
 	if (!loadL && !loadR) {
 		c = sgetch("Load which broadside (left or right)? ",
-			(struct ship *)0, 1);
+			NULL, 1);
 		if (c == 'r')
 			loadL = 1;
 		else
@@ -166,7 +166,7 @@ loadplayer(void)
 	}
 	if ((!loadL && loadR) || (loadL && !loadR)) {
 		c = sgetch("Reload with (round, double, chain, grape)? ",
-			(struct ship *)0, 1);
+			NULL, 1);
 		switch (c) {
 		case 'r':
 			load = L_ROUND;
@@ -186,7 +186,7 @@ loadplayer(void)
 			break;
 		default:
 			Signal("Broadside not loaded.",
-				(struct ship *)0);
+				NULL);
 			return;
 		}
 		if (!loadR) {

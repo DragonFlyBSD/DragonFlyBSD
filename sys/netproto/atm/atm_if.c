@@ -1100,7 +1100,7 @@ atm_pifname(char *name)
 	 * Break down name
 	 */
 	if (atm_ifparse(name, n, sizeof(n), &unit))
-		return ((struct atm_pif *)0);
+		return (NULL);
 
 	/*
 	 * Look for the physical interface
@@ -1139,7 +1139,7 @@ atm_nifname(char *name)
 	 * Break down name
 	 */
 	if (atm_ifparse(name, n, sizeof(n), &unit))
-		return ((struct atm_nif *)0);
+		return (NULL);
 
 	/*
 	 * Search thru each physical interface

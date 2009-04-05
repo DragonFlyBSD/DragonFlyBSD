@@ -32,7 +32,7 @@ diag(void)
 	cursors();  lwclose();
 	if (lcreat(diagfile) < 0)	/*	open the diagnostic file	*/
 		{
-		lcreat((char*)0); lprcat("\ndiagnostic failure\n"); return(-1);
+		lcreat(NULL); lprcat("\ndiagnostic failure\n"); return(-1);
 		}
 
 	write(1,"\nDiagnosing . . .\n",18);
@@ -113,7 +113,7 @@ diag(void)
 	for (i=0; i<16; i++)  { lprintf("  %5d",(long)rndcount[i]); if (i==7) lprc('\n'); }
 
 	lprcat("\n\n");			lwclose();
-	lcreat((char*)0);		lprcat("Done Diagnosing . . .");
+	lcreat(NULL);		lprcat("Done Diagnosing . . .");
 	return(0);
 	}
 /*
@@ -166,7 +166,7 @@ savegame(char *fname)
 	ointerest();
 	if (lcreat(fname) < 0)
 		{
-		lcreat((char*)0); lprintf("\nCan't open file <%s> to save game\n",fname);
+		lcreat(NULL); lprintf("\nCan't open file <%s> to save game\n",fname);
 		nosignal=0;  return(-1);
 		}
 
@@ -198,7 +198,7 @@ savegame(char *fname)
 #ifndef VT100
 	setscroll();
 #endif /* VT100 */
-	lcreat((char*)0);  nosignal=0;
+	lcreat(NULL);  nosignal=0;
 	return(0);
 	}
 
@@ -211,7 +211,7 @@ restoregame(char *fname)
 	cursors(); lprcat("\nRestoring . . .");  lflush();
 	if (lopen(fname) <= 0)
 		{
-		lcreat((char*)0); lprintf("\nCan't open file <%s>to restore game\n",fname);
+		lcreat(NULL); lprintf("\nCan't open file <%s>to restore game\n",fname);
 		nap(2000); c[GOLD]=c[BANKACCOUNT]=0;  died(-265); return;
 		}
 
@@ -265,7 +265,7 @@ restoregame(char *fname)
 	if (strcmp(fname,ckpfile) == 0)
 		{
 		if (lappend(fname) < 0) fcheat();  else { lprc(' '); lwclose(); }
-		lcreat((char*)0);
+		lcreat(NULL);
 		}
 	else if (unlink(fname) < 0) fcheat(); /* can't unlink save file */
 /*	for the greedy cheater checker	*/

@@ -254,8 +254,8 @@ struct obj {				/* comment is monster meaning */
 
 typedef struct obj object;
 
-#define INIT_AW (object*)0,(object*)0
-#define INIT_RINGS (object*)0,(object*)0
+#define INIT_AW NULL,NULL
+#define INIT_RINGS NULL,NULL
 #define INIT_HP 12
 #define INIT_STR 16,16
 #define INIT_EXP 1,0

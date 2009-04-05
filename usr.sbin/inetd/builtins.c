@@ -741,7 +741,7 @@ getline(int fd, char *buf, int len)
 	sa.sa_flags = 0;
 	sigemptyset(&sa.sa_mask);
 	sa.sa_handler = SIG_DFL;
-	sigaction(SIGALRM, &sa, (struct sigaction *)0);
+	sigaction(SIGALRM, &sa, NULL);
 	do {
 		alarm(10);
 		n = read(fd, buf, len-count);

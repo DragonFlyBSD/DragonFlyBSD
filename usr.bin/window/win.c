@@ -92,7 +92,7 @@ char *shf, **sh;
 	 * addwin() puts w at the top, so we don't waste an
 	 * insert and delete operation.
 	 */
-	setselwin((struct ww *)0);
+	setselwin(NULL);
 	addwin(w, 0);
 	setselwin(w);
 	if (wwspawn(w, shf, sh) < 0) {

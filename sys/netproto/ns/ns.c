@@ -88,14 +88,14 @@ ns_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 	switch (cmd) {
 
 	case SIOCGIFADDR:
-		if (ia == (struct ns_ifaddr *)0)
+		if (ia == NULL)
 			return (EADDRNOTAVAIL);
 		*(struct sockaddr_ns *)&ifr->ifr_addr = ia->ia_addr;
 		return (0);
 
 
 	case SIOCGIFBRDADDR:
-		if (ia == (struct ns_ifaddr *)0)
+		if (ia == NULL)
 			return (EADDRNOTAVAIL);
 		if ((ifp->if_flags & IFF_BROADCAST) == 0)
 			return (EINVAL);
@@ -103,7 +103,7 @@ ns_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 		return (0);
 
 	case SIOCGIFDSTADDR:
-		if (ia == (struct ns_ifaddr *)0)
+		if (ia == NULL)
 			return (EADDRNOTAVAIL);
 		if ((ifp->if_flags & IFF_POINTOPOINT) == 0)
 			return (EINVAL);
@@ -132,7 +132,7 @@ ns_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 
 	case SIOCSIFADDR:
 	case SIOCSIFDSTADDR:
-		if (ia == (struct ns_ifaddr *)0) {
+		if (ia == NULL) {
 			oia = ifa_create(sizeof(*ia), M_WAITOK);
 			if ((ia = ns_ifaddr) != NULL) {
 				for ( ; ia->ia_next; ia = ia->ia_next)

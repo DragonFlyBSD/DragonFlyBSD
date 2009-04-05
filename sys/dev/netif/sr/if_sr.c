@@ -2459,7 +2459,7 @@ sr_modemck(void *arg)
 	for (card = 0; card < NSR; card++) {
 		hc = &sr_hardc[card];
 
-		if (hc->sc == (void *)0)
+		if (hc->sc == NULL)
 			continue;
 
 		Card[cards++] = hc;

@@ -395,9 +395,7 @@ unisig_sigmgr_act04(struct unisig *usp, KBuffer *m)
 	/*
 	 * Try to establish an SSCF session.
 	 */
-	err = atm_cm_saal_ctl(SSCF_UNI_ESTABLISH_REQ,
-			usp->us_conn,
-			(void *)0);
+	err = atm_cm_saal_ctl(SSCF_UNI_ESTABLISH_REQ, usp->us_conn, NULL);
 	if (err)
 		panic("unisig_sigmgr_act04: SSCF_UNI_ESTABLISH_REQ");
 
@@ -708,9 +706,7 @@ unisig_sigmgr_act13(struct unisig *usp, KBuffer *m)
 	/*
 	 * Establish the SSCF session
 	 */
-	err = atm_cm_saal_ctl(SSCF_UNI_ESTABLISH_REQ,
-			usp->us_conn,
-			(void *)0);
+	err = atm_cm_saal_ctl(SSCF_UNI_ESTABLISH_REQ, usp->us_conn, NULL);
 	if (err)
 		panic("unisig_sigmgr_act13: SSCF_UNI_ESTABLISH_REQ");
 
@@ -748,7 +744,7 @@ unisig_sigmgr_act14(struct unisig *usp, KBuffer *m)
 	/*
 	 * Locate the signalling channel's VCCB
 	 */
-	sig_vccb = (struct unisig_vccb *)0;
+	sig_vccb = NULL;
 	if (usp->us_conn && usp->us_conn->co_connvc)
 		sig_vccb = (struct unisig_vccb *)
 				usp->us_conn->co_connvc->cvc_vcc;

@@ -170,7 +170,7 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 	nb = ip->i_ib[indirs[0].in_off];
 	if (nb == 0) {
 #if 0
-		pref = ext2_blkpref(ip, lbn, 0, (daddr_t *)0, 0);
+		pref = ext2_blkpref(ip, lbn, 0, NULL, 0);
 #else
 		/* see the comment by ext2_blkpref. What we do here is
 		   to pretend that it'd be good for a block holding indirect
@@ -236,7 +236,7 @@ ext2_debug("ext2_balloc called (%d, %d, %d)\n",
 			pref = ext2_blkpref(ip, lbn, indirs[i].in_off, bap,
 						lblkno(fs, bp->b_loffset));
 #else
-			pref = ext2_blkpref(ip, lbn, 0, (daddr_t *)0, 0);
+			pref = ext2_blkpref(ip, lbn, 0, NULL, 0);
 #endif
 		if ((error =
 		    ext2_alloc(ip, lbn, pref, (int)fs->s_blocksize, cred, &newb)) != 0) {

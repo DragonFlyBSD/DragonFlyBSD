@@ -228,7 +228,7 @@ main(int argc, char *argv[])
 	/* rounds kernel variable time to multiple of 5 ms. */
 	ntime.tv_sec = 0;
 	ntime.tv_usec = -((ntime.tv_usec/1000) % 5) * 1000;
-	adjtime(&ntime, (struct timeval *)0);
+	adjtime(&ntime, NULL);
 
 	for (nt = nets; nt; nt = nt->next) {
 		nentp = getnetbyname(nt->name);
@@ -690,7 +690,7 @@ date(void)
 	struct	timeval tv;
 	time_t	tv_sec;
 
-	gettimeofday(&tv, (struct timezone *)0);
+	gettimeofday(&tv, NULL);
 	tv_sec = tv.tv_sec;
 	return (ctime(&tv_sec));
 }

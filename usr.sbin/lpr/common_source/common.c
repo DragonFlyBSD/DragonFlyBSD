@@ -212,11 +212,11 @@ delay(int millisec)
 	struct timeval tdelay;
 
 	if (millisec <= 0 || millisec > 10000)
-		fatal((struct printer *)0, /* fatal() knows how to deal */
+		fatal(NULL, /* fatal() knows how to deal */
 		    "unreasonable delay period (%d)", millisec);
 	tdelay.tv_sec = millisec / 1000;
 	tdelay.tv_usec = millisec * 1000 % 1000000;
-	select(0, (fd_set *)0, (fd_set *)0, (fd_set *)0, &tdelay);
+	select(0, NULL, NULL, NULL, &tdelay);
 }
 
 char *

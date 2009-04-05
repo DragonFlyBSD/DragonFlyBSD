@@ -303,7 +303,7 @@ cron_sync(void)
 {
  	struct tm *tm;
 
-	TargetTime = time((time_t*)0);
+	TargetTime = time(NULL);
 	tm = localtime(&TargetTime);
 	TargetTime += (60 - tm->tm_sec);
 }
@@ -319,7 +319,7 @@ cron_sleep(cron_db *db)
 	 */
 
 	for (;;) {
-		seconds_to_wait = (int) (TargetTime - time((time_t*)0));
+		seconds_to_wait = (int) (TargetTime - time(NULL));
 
 		/*
 		 * If the seconds_to_wait value is insane, jump the cron
@@ -381,7 +381,7 @@ sigchld_handler(int x)
 #ifdef POSIX
 		pid = waitpid(-1, &waiter, WNOHANG);
 #else
-		pid = wait3(&waiter, WNOHANG, (struct rusage *)0);
+		pid = wait3(&waiter, WNOHANG, NULL);
 #endif
 		switch (pid) {
 		case -1:
