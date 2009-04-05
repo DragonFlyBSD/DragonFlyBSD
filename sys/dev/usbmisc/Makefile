@@ -3,6 +3,6 @@
 
 SUBDIR= moscom uark ubsa ubt uchcom ucom ufm uftdi ugen ugensa uhid ukbd ulpt \
 	umass umct umodem ums uplcom uscanner uslcom uticom uvisor \
-	uvscom umct
+	uvscom
 
 .include <bsd.subdir.mk>
