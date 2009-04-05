@@ -1150,7 +1150,7 @@ ether_demux_oncpu(struct ifnet *ifp, struct mbuf *m)
 	 * happen when the interface is in promiscuous mode.
 	 */
 	if (((ifp->if_flags & (IFF_PROMISC | IFF_PPROMISC)) == IFF_PROMISC) &&
-	    (eh->ether_dhost[0] & 1) == 0 &&
+	    !ETHER_IS_MULTICAST(eh->ether_dhost) &&
 	    bcmp(eh->ether_dhost, IFP2AC(ifp)->ac_enaddr, ETHER_ADDR_LEN)) {
 		m_freem(m);
 		return;
