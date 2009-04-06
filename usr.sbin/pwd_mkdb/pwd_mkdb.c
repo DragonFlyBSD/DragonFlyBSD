@@ -161,7 +161,7 @@ main(int argc, char *argv[])
 	sigaddset(&set, SIGINT);
 	sigaddset(&set, SIGQUIT);
 	sigaddset(&set, SIGTERM);
-	sigprocmask(SIG_BLOCK, &set, (sigset_t *)NULL);
+	sigprocmask(SIG_BLOCK, &set, NULL);
 
 	/* We don't care what the user wants. */
 	umask(0);

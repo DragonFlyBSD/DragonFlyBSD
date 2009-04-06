@@ -650,7 +650,7 @@ esp_output(
 	struct enc_xform *espx;
 	struct auth_hash *esph;
 	int hlen, rlen, plen, padding, blks, alen, i, roff;
-	struct mbuf *mo = (struct mbuf *) NULL;
+	struct mbuf *mo = NULL;
 	struct tdb_crypto *tc;
 	struct secasvar *sav;
 	struct secasindex *saidx;

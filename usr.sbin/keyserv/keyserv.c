@@ -522,7 +522,7 @@ key_gen_1_svc_prog(void *v, struct svc_req *s)
 	static des_block keygen;
 	static des_block key;
 
-	gettimeofday(&time, (struct timezone *) NULL);
+	gettimeofday(&time, NULL);
 	keygen.key.high += (time.tv_sec ^ time.tv_usec);
 	keygen.key.low += (time.tv_sec ^ time.tv_usec);
 	ecb_crypt((char *)&masterkey, (char *)&keygen, sizeof (keygen),

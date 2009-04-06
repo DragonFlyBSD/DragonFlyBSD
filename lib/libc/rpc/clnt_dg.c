@@ -157,14 +157,14 @@ clnt_dg_create(int fd,			/* open file descriptor */
 	sigfillset(&newmask);
 	thr_sigsetmask(SIG_SETMASK, &newmask, &mask);
 	mutex_lock(&clnt_fd_lock);
-	if (dg_fd_locks == (int *) NULL) {
+	if (dg_fd_locks == NULL) {
 		int cv_allocsz;
 		size_t fd_allocsz;
 		int dtbsize = __rpc_dtbsize();
 
 		fd_allocsz = dtbsize * sizeof (int);
 		dg_fd_locks = (int *) mem_alloc(fd_allocsz);
-		if (dg_fd_locks == (int *) NULL) {
+		if (dg_fd_locks == NULL) {
 			mutex_unlock(&clnt_fd_lock);
 			thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
 			goto err1;
@@ -173,9 +173,9 @@ clnt_dg_create(int fd,			/* open file descriptor */
 
 		cv_allocsz = dtbsize * sizeof (cond_t);
 		dg_cv = (cond_t *) mem_alloc(cv_allocsz);
-		if (dg_cv == (cond_t *) NULL) {
+		if (dg_cv == NULL) {
 			mem_free(dg_fd_locks, fd_allocsz);
-			dg_fd_locks = (int *) NULL;
+			dg_fd_locks = NULL;
 			mutex_unlock(&clnt_fd_lock);
 			thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
 			goto err1;

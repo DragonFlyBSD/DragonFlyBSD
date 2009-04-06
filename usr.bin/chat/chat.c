@@ -511,7 +511,7 @@ void break_sequence(void)
 void terminate(int status)
 {
     echo_stderr(-1);
-    if (report_file != NULL && report_fp != (FILE *) NULL) {
+    if (report_file != NULL && report_fp != NULL) {
 /*
  * Allow the last of the report string to be gathered before we terminate.
  */
@@ -535,7 +535,7 @@ void terminate(int status)
 	if (verbose)
 	    fprintf (report_fp, "Closing \"%s\".\n", report_file);
 	fclose (report_fp);
-	report_fp = (FILE *) NULL;
+	report_fp = NULL;
     }
 
 #if defined(get_term_param)
@@ -1230,16 +1230,16 @@ get_string(char *string)
 
 	if (!report_gathering) {
 	    for (n = 0; n < n_reports; ++n) {
-		if ((report_string[n] != (char*) NULL) &&
+		if ((report_string[n] != NULL) &&
 		    s - temp >= (report_len = strlen(report_string[n])) &&
 		    strncmp(s - report_len, report_string[n], report_len) == 0) {
-		    time_t time_now   = time ((time_t*) NULL);
+		    time_t time_now   = time (NULL);
 		    struct tm* tm_now = localtime (&time_now);
 
 		    strftime (report_buffer, 20, "%b %d %H:%M:%S ", tm_now);
 		    strcat (report_buffer, report_string[n]);
 
-		    report_string[n] = (char *) NULL;
+		    report_string[n] = NULL;
 		    report_gathering = 1;
 		    break;
 		}

@@ -843,7 +843,7 @@ open_temp(HTAB *hashp)
 		unlink(namestr);
 		_fcntl(hashp->fp, F_SETFD, 1);
 	}
-	_sigprocmask(SIG_SETMASK, &oset, (sigset_t *)NULL);
+	_sigprocmask(SIG_SETMASK, &oset, NULL);
 	return (hashp->fp != -1 ? 0 : -1);
 }
 

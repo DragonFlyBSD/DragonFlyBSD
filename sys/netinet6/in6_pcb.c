@@ -128,7 +128,7 @@ int
 in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 {
 	struct socket *so = inp->inp_socket;
-	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)NULL;
+	struct sockaddr_in6 *sin6 = NULL;
 	struct sockaddr_in6 jsin6;
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 	struct proc *p = td->td_proc;

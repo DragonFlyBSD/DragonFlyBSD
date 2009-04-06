@@ -129,7 +129,7 @@ static cond_t   *vc_cv;
 	mutex_lock(&clnt_fd_lock);	\
 	vc_fd_locks[fd] = 0;		\
 	mutex_unlock(&clnt_fd_lock);	\
-	thr_sigsetmask(SIG_SETMASK, &(mask), (sigset_t *) NULL);	\
+	thr_sigsetmask(SIG_SETMASK, &(mask), NULL);	\
 	cond_signal(&vc_cv[fd]);	\
 }
 
@@ -173,7 +173,7 @@ clnt_vc_create(int fd,			/* open file descriptor */
 
 	cl = (CLIENT *)mem_alloc(sizeof (*cl));
 	ct = (struct ct_data *)mem_alloc(sizeof (*ct));
-	if ((cl == (CLIENT *)NULL) || (ct == (struct ct_data *)NULL)) {
+	if ((cl == NULL) || (ct == NULL)) {
 		syslog(LOG_ERR, clnt_vc_errstr, clnt_vc_str, __no_mem_str);
 		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
 		rpc_createerr.cf_error.re_errno = errno;
@@ -183,25 +183,25 @@ clnt_vc_create(int fd,			/* open file descriptor */
 	sigfillset(&newmask);
 	thr_sigsetmask(SIG_SETMASK, &newmask, &mask);
 	mutex_lock(&clnt_fd_lock);
-	if (vc_fd_locks == (int *) NULL) {
+	if (vc_fd_locks == NULL) {
 		int cv_allocsz, fd_allocsz;
 		int dtbsize = __rpc_dtbsize();
 
 		fd_allocsz = dtbsize * sizeof (int);
 		vc_fd_locks = (int *) mem_alloc(fd_allocsz);
-		if (vc_fd_locks == (int *) NULL) {
+		if (vc_fd_locks == NULL) {
 			mutex_unlock(&clnt_fd_lock);
 			thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
 			goto err;
 		} else
 			memset(vc_fd_locks, '\0', fd_allocsz);
 
-		assert(vc_cv == (cond_t *) NULL);
+		assert(vc_cv == NULL);
 		cv_allocsz = dtbsize * sizeof (cond_t);
 		vc_cv = (cond_t *) mem_alloc(cv_allocsz);
-		if (vc_cv == (cond_t *) NULL) {
+		if (vc_cv == NULL) {
 			mem_free(vc_fd_locks, fd_allocsz);
-			vc_fd_locks = (int *) NULL;
+			vc_fd_locks = NULL;
 			mutex_unlock(&clnt_fd_lock);
 			thr_sigsetmask(SIG_SETMASK, &(mask), NULL);
 			goto err;
@@ -212,7 +212,7 @@ clnt_vc_create(int fd,			/* open file descriptor */
 				cond_init(&vc_cv[i], 0, NULL);
 		}
 	} else
-		assert(vc_cv != (cond_t *) NULL);
+		assert(vc_cv != NULL);
 
 	/*
 	 * XXX - fvdl connecting while holding a mutex?
@@ -301,7 +301,7 @@ err:
 		if (cl)
 			mem_free(cl, sizeof (CLIENT));
 	}
-	return ((CLIENT *)NULL);
+	return (NULL);
 }
 
 static enum clnt_stat

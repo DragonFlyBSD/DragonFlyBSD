@@ -126,7 +126,7 @@ main(int argc, char *argv[])
 		strlcat(destdir, PREFIX, sizeof(destdir));
 	}
 
-	p = path((char *)NULL);
+	p = path(NULL);
 	if (stat(p, &buf)) {
 		if (mkdir(p, 0777))
 			err(2, "%s", p);

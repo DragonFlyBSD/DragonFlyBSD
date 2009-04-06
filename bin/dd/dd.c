@@ -189,7 +189,7 @@ setup(void)
 		ctab = casetab;
 	}
 
-	gettimeofday(&tv, (struct timezone *)NULL);
+	gettimeofday(&tv, NULL);
 	st.start = tv.tv_sec + tv.tv_usec * 1e-6; 
 }
 

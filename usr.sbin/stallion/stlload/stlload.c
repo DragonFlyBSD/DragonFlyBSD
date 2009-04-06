@@ -373,11 +373,11 @@ download(void)
 		return(-1);
 	}
 
-	strttime = time((time_t *) NULL);
+	strttime = time(NULL);
 	if (verbose)
 		printf("Waiting for slave alive marker, time=%x timeout=%d\n",
 			strttime, TIMEOUT);
-	while (time((time_t *) NULL) < (strttime + TIMEOUT)) {
+	while (time(NULL) < (strttime + TIMEOUT)) {
 		if (lseek(memfd, CDK_RDYADDR, SEEK_SET) != CDK_RDYADDR) {
 			warn("lseek(%x) failed on memory device", CDK_RDYADDR);
 			return(-1);
@@ -472,7 +472,7 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (memdevice == (char *) NULL) {
+	if (memdevice == NULL) {
 		if ((brdnr < 0) || (brdnr >= 8))
 			errx(1, "invalid board number %d specified", brdnr);
 		sprintf(devstr, defdevice, brdnr);

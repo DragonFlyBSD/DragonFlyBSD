@@ -830,7 +830,7 @@ sctp_t3rxt_timer(struct sctp_inpcb *inp,
 			 * from any net structures.
 			 */
 			if (sctp_set_primary_addr(stcb,
-						 (struct sockaddr *)NULL,
+						 NULL,
 						 alt) == 0) {
 				net->dest_state |= SCTP_ADDR_WAS_PRIMARY;
 				net->src_addr_selected = 0;

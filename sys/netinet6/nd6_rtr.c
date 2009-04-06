@@ -121,8 +121,8 @@ nd6_rs_input(struct mbuf *m, int off, int icmp6len)
 	char *lladdr = NULL;
 	int lladdrlen = 0;
 #if 0
-	struct sockaddr_dl *sdl = (struct sockaddr_dl *)NULL;
-	struct llinfo_nd6 *ln = (struct llinfo_nd6 *)NULL;
+	struct sockaddr_dl *sdl = NULL;
+	struct llinfo_nd6 *ln = NULL;
 	struct rtentry *rt = NULL;
 	int is_newentry;
 #endif

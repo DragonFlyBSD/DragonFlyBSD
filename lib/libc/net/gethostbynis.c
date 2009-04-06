@@ -73,7 +73,7 @@ _gethostbynis(const char *name, char *map, int af, struct hostent *he,
 		return (-1);
 	}
 
-	if (hed->yp_domain == (char *)NULL)
+	if (hed->yp_domain == NULL)
 		if (yp_get_default_domain (&hed->yp_domain)) {
 			RES_SET_H_ERRNO(statp, NETDB_INTERNAL);
 			return (-1);

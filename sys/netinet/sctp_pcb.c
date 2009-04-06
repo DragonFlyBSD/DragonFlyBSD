@@ -2994,11 +2994,11 @@ sctp_aloc_assoc(struct sctp_inpcb *inp, struct sockaddr *firstaddr,
 #endif
 
 		if ((err = sctp_inpcb_bind(inp->sctp_socket,
-		    (struct sockaddr *)NULL,
+		    NULL,
 #if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
-					   (struct thread *)NULL
+					   NULL
 #else
-					   (struct proc *)NULL
+					   NULL
 #endif
 			     ))){
 			/* bind error, probably perm */

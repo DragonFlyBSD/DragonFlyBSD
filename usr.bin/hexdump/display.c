@@ -253,17 +253,17 @@ get(void)
 		 * and no other files are available, zero-pad the rest of the
 		 * block and set the end flag.
 		 */
-		if (!length || (ateof && !next((char **)NULL))) {
+		if (!length || (ateof && !next(NULL))) {
 			if (odmode && address < skip)
 				errx(1, "cannot skip past end of input");
 			if (need == blocksize)
-				return((u_char *)NULL);
+				return(NULL);
 			if (vflag != ALL && 
 			    valid_save && 
 			    bcmp(curp, savp, nread) == 0) {
 				if (vflag != DUP)
 					(void)printf("*\n");
-				return((u_char *)NULL);
+				return(NULL);
 			}
 			bzero((char *)curp + nread, need);
 			eaddress = address + nread;

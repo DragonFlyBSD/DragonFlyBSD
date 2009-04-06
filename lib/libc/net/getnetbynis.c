@@ -67,7 +67,7 @@ _getnetbynis(const char *name, char *map, int af, struct netent *ne,
 		return (-1);
 	}
 
-	if (ned->yp_domain == (char *)NULL)
+	if (ned->yp_domain == NULL)
 		if (yp_get_default_domain (&ned->yp_domain))
 			return (-1);
 

@@ -1658,7 +1658,7 @@ setprocresources(const char *cname)
 {
 	login_cap_t *lc;
 	if ((lc = login_getclassbyname(cname, NULL)) != NULL) {
-		setusercontext(lc, (struct passwd*)NULL, 0, LOGIN_SETPRIORITY|LOGIN_SETRESOURCES);
+		setusercontext(lc, NULL, 0, LOGIN_SETPRIORITY|LOGIN_SETRESOURCES);
 		login_close(lc);
 	}
 }

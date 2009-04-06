@@ -105,9 +105,9 @@ main(int argc, char *argv[])
 			pw_error(tempname, 1, 1);
 		if (begin.st_mtime == end.st_mtime) {
 			warnx("no changes made");
-			pw_error((char *)NULL, 0, 0);
+			pw_error(NULL, 0, 0);
 		}
-		if (pw_mkdb((char *)NULL))
+		if (pw_mkdb(NULL))
 			break;
 		pw_prompt();
 	}

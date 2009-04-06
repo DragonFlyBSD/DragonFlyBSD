@@ -83,10 +83,10 @@ main(int argc, char **argv)
 		if (valid > 0 && alt_path != NULL) {
 			if (argv[optind + 1] == NULL)
 				execl(alt_path, "getconf", argv[optind],
-				      (char *)NULL);
+				      NULL);
 			else
 				execl(alt_path, "getconf", argv[optind],
-				      argv[optind + 1], (char *)NULL);
+				      argv[optind + 1], NULL);
 
 			err(EX_OSERR, "execl: %s", alt_path);
 		}

@@ -1177,8 +1177,7 @@ unisig_vc_act12(struct unisig *usp, struct unisig_vccb *uvp,
 	/*
 	 * Send the RELEASE message
 	 */
-	rc = unisig_vc_clear_call(usp, uvp, (struct unisig_msg *)NULL,
-			T_ATM_ABSENT);
+	rc = unisig_vc_clear_call(usp, uvp, NULL, T_ATM_ABSENT);
 
 	return(rc);
 }

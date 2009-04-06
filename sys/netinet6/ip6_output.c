@@ -1308,7 +1308,7 @@ ip6_getpmtu(struct route_in6 *ro_pmtu, struct route_in6 *ro,
 		    ((ro_pmtu->ro_rt->rt_flags & RTF_UP) == 0 ||
 		     !IN6_ARE_ADDR_EQUAL(&sa6_dst->sin6_addr, dst))) {
 			RTFREE(ro_pmtu->ro_rt);
-			ro_pmtu->ro_rt = (struct rtentry *)NULL;
+			ro_pmtu->ro_rt = NULL;
 		}
 		if (ro_pmtu->ro_rt == NULL) {
 			bzero(sa6_dst, sizeof(*sa6_dst));

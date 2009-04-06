@@ -242,7 +242,7 @@ main(int argc, char *argv[])
 		dup2(i, 2);
 		i = open(_PATH_TTY, 2);
 		if (i >= 0) {
-			ioctl(i, TIOCNOTTY, (char *)NULL);
+			ioctl(i, TIOCNOTTY, NULL);
 			close(i);
 		}
 		openlog("rpc.ypxfrd", LOG_PID, LOG_DAEMON);
@@ -279,7 +279,7 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (transp == (SVCXPRT *)NULL) {
+	if (transp == NULL) {
 		_msgout("could not create a handle");
 		exit(1);
 	}

@@ -1198,13 +1198,13 @@ ntoskrnl_free_ansi_string(ndis_ansi_string *astr)
 static int
 atoi(const char *str)
 {
-	return (int)strtol(str, (char **)NULL, 10);
+	return (int)strtol(str, NULL, 10);
 }
 
 static long
 atol(const char *str)
 {
-	return strtol(str, (char **)NULL, 10);
+	return strtol(str, NULL, 10);
 }
 
 static int

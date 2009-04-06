@@ -488,7 +488,7 @@ l_perror(const char *s)
 		break;
 
 	default:
-		warn((char *)NULL);
+		warn(NULL);
 		break;
 	}
 }

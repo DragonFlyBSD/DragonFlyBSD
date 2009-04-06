@@ -43,7 +43,7 @@ job_add(entry *e, user *u)
 	/* build a job queue element */
 	if ((j = (job*)malloc(sizeof(job))) == NULL)
 		return;
-	j->next = (job*) NULL;
+	j->next = NULL;
 	j->e = e;
 	j->u = u;
 

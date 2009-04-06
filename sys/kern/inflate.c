@@ -463,7 +463,7 @@ huft_build(struct inflate *glbl, unsigned *b, unsigned n, unsigned s,
 		p++;		/* assume all entries <= BMAX */
 	} while (--i);
 	if (c[0] == n) {	/* null input--all zero length codes */
-		*t = (struct huft *) NULL;
+		*t = NULL;
 		*m = 0;
 		return 0;
 	}
@@ -510,8 +510,8 @@ huft_build(struct inflate *glbl, unsigned *b, unsigned n, unsigned s,
 	p = v;			/* grab values in bit order */
 	h = -1;			/* no tables yet--level -1 */
 	w = l[-1] = 0;		/* no bits decoded yet */
-	u[0] = (struct huft *) NULL;	/* just to keep compilers happy */
-	q = (struct huft *) NULL;	/* ditto */
+	u[0] = NULL;		/* just to keep compilers happy */
+	q = NULL;		/* ditto */
 	z = 0;			/* ditto */
 
 	/* go through the bit lengths (k already is bits in shortest code) */
@@ -558,7 +558,7 @@ huft_build(struct inflate *glbl, unsigned *b, unsigned n, unsigned s,
 				glbl->gz_hufts += z + 1;	/* track memory usage */
 				*t = q + 1;	/* link to list for
 						 * huft_free() */
-				*(t = &(q->v.t)) = (struct huft *) NULL;
+				*(t = &(q->v.t)) = NULL;
 				u[h] = ++q;	/* table starts after link */
 
 				/* connect to last table, if there is one */
@@ -627,7 +627,7 @@ huft_free(struct inflate *glbl, struct huft *t)
 
 	/* Go through linked list, freeing from the malloced (t[-1]) address. */
 	p = t;
-	while (p != (struct huft *) NULL) {
+	while (p != NULL) {
 		q = (--p)->v.t;
 		kfree(p, M_GZIP);
 		p = q;
@@ -784,7 +784,7 @@ static int
 inflate_fixed(struct inflate *glbl)
 {
 	/* if first time, set up tables for fixed blocks */
-	if (glbl->gz_fixed_tl == (struct huft *) NULL) {
+	if (glbl->gz_fixed_tl == NULL) {
 		int             i;	/* temporary variable */
 		static unsigned l[288];	/* length list for huft_build */
 
@@ -801,7 +801,7 @@ inflate_fixed(struct inflate *glbl)
 		glbl->gz_fixed_bl = 7;
 		if ((i = huft_build(glbl, l, 288, 257, cplens, cplext,
 			    &glbl->gz_fixed_tl, &glbl->gz_fixed_bl)) != 0) {
-			glbl->gz_fixed_tl = (struct huft *) NULL;
+			glbl->gz_fixed_tl = NULL;
 			return i;
 		}
 		/* distance table */
@@ -812,7 +812,7 @@ inflate_fixed(struct inflate *glbl)
 		if ((i = huft_build(glbl, l, 30, 0, cpdist, cpdext,
 			     &glbl->gz_fixed_td, &glbl->gz_fixed_bd)) > 1) {
 			huft_free(glbl, glbl->gz_fixed_tl);
-			glbl->gz_fixed_tl = (struct huft *) NULL;
+			glbl->gz_fixed_tl = NULL;
 			return i;
 		}
 	}
@@ -1012,7 +1012,7 @@ xinflate(struct inflate *glbl)
 	int             r;	/* result code */
 	unsigned        h;	/* maximum struct huft's malloc'ed */
 
-	glbl->gz_fixed_tl = (struct huft *) NULL;
+	glbl->gz_fixed_tl = NULL;
 
 	/* initialize window, bit buffer */
 	glbl->gz_wp = 0;
@@ -1055,13 +1055,13 @@ inflate(struct inflate *glbl)
 #endif
 	i = xinflate(glbl);
 
-	if (glbl->gz_fixed_td != (struct huft *) NULL) {
+	if (glbl->gz_fixed_td != NULL) {
 		huft_free(glbl, glbl->gz_fixed_td);
-		glbl->gz_fixed_td = (struct huft *) NULL;
+		glbl->gz_fixed_td = NULL;
 	}
-	if (glbl->gz_fixed_tl != (struct huft *) NULL) {
+	if (glbl->gz_fixed_tl != NULL) {
 		huft_free(glbl, glbl->gz_fixed_tl);
-		glbl->gz_fixed_tl = (struct huft *) NULL;
+		glbl->gz_fixed_tl = NULL;
 	}
 #ifdef _KERNEL
 	if (p == glbl->gz_slide) {

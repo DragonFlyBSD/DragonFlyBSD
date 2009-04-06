@@ -353,7 +353,7 @@ main(int argc, char **argv)
 			dolog(LL_ERR, "ERROR, can't open acctfile %s for writing, terminating!", acctfile);
 			exit(1);
 		}
-		setvbuf(acctfp, (char *)NULL, _IONBF, 0);
+		setvbuf(acctfp, NULL, _IONBF, 0);
 	}
 
 	/* initialize alias processing */
@@ -799,7 +799,7 @@ reopenfiles(int dummy)
 			dolog(LL_ERR, "ERROR, can't open acctfile %s for writing, terminating!", acctfile);
 			error_exit(1, "ERROR, can't open acctfile %s for writing, terminating!", acctfile);
 		}
-		setvbuf(acctfp, (char *)NULL, _IONBF, 0);
+		setvbuf(acctfp, NULL, _IONBF, 0);
 	}
 
 	if(uselogfile)
@@ -831,7 +831,7 @@ reopenfiles(int dummy)
 
 		/* set unbuffered operation */
 
-		setvbuf(logfp, (char *)NULL, _IONBF, 0);
+		setvbuf(logfp, NULL, _IONBF, 0);
 	}
 }
 

@@ -351,7 +351,7 @@ store_netname(uid_t uid, key_netstarg *netstore)
 	if (netstore->st_netname)
 		new->keynetdata.st_netname = strdup(netstore->st_netname);
 	else
-		new->keynetdata.st_netname = (char *)NULL;
+		new->keynetdata.st_netname = NULL;
 	new->sc_flag = KEY_NAME;
 	return (1);
 

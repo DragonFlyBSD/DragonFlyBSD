@@ -179,7 +179,7 @@ check_cache(const char *host, const char *netid)
 			return (cptr);
 		}
 	}
-	return ((struct address_cache *) NULL);
+	return (NULL);
 }
 
 static void
@@ -1040,7 +1040,7 @@ rpcb_getaddr(rpcprog_t program, rpcvers_t version,
 
 	if ((na = __rpcb_findaddr_timed(program, version,
 	    (struct netconfig *) nconf, (char *) host,
-	    (CLIENT **) NULL, (struct timeval *) NULL)) == NULL)
+	    NULL, NULL)) == NULL)
 		return (FALSE);
 
 	if (na->len > address->maxlen) {
@@ -1219,7 +1219,7 @@ rpcb_gettime(const char *host, time_t *timep)
 			break;
 	}
 	__rpc_endconf(handle);
-	if (client == (CLIENT *) NULL) {
+	if (client == NULL) {
 		return (FALSE);
 	}
 

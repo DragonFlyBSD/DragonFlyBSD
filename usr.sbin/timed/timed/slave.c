@@ -684,6 +684,5 @@ answerdelay(void)
 	timeout.tv_sec = 0;
 	timeout.tv_usec = delay1;
 
-	select(0, (fd_set *)NULL, (fd_set *)NULL, (fd_set *)NULL,
-		&timeout);
+	select(0, NULL, NULL, NULL, &timeout);
 }

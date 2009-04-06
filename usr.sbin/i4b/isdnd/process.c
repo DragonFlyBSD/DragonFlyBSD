@@ -192,7 +192,7 @@ daemonize(void)
 
 		/* curses output && fork NEEDS controlling tty */
 		
-		if((ioctl(STDIN_FILENO, TIOCSCTTY, (char *)NULL)) < 0)
+		if((ioctl(STDIN_FILENO, TIOCSCTTY, NULL)) < 0)
 		{
 			dolog(LL_ERR, "ERROR, cannot setup tty as controlling terminal: %s", strerror(errno));
 			exit(1);

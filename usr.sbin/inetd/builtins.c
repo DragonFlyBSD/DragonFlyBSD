@@ -680,7 +680,7 @@ machtime(void)
 {
 	struct timeval tv;
 
-	if (gettimeofday(&tv, (struct timezone *)NULL) < 0) {
+	if (gettimeofday(&tv, NULL) < 0) {
 		if (debug)
 			warnx("unable to get time of day");
 		return (0L);

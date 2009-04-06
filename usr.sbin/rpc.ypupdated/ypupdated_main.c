@@ -263,7 +263,7 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (transp == (SVCXPRT *)NULL) {
+	if (transp == NULL) {
 		_msgout("could not create a handle");
 		exit(1);
 	}

@@ -133,7 +133,7 @@ void
 expandhere(union node *arg, int fd)
 {
 	herefd = fd;
-	expandarg(arg, (struct arglist *)NULL, 0);
+	expandarg(arg, NULL, 0);
 	xwrite(fd, stackblock(), expdest - stackblock());
 }
 
@@ -473,7 +473,7 @@ expbackq(union node *cmd, int quoted, int flag)
 	if (in.buf)
 		ckfree(in.buf);
 	if (in.jp)
-		exitstatus = waitforjob(in.jp, (int *)NULL);
+		exitstatus = waitforjob(in.jp, NULL);
 	if (quoted == 0)
 		recordregion(startloc, dest - stackblock(), 0);
 	TRACE(("evalbackq: size=%d: \"%.*s\"\n",
@@ -520,7 +520,7 @@ subevalvar(char *p, char *str, int strloc, int subtype, int startloc,
 	case VSQUESTION:
 		if (*p != CTLENDVAR) {
 			outfmt(&errout, "%s\n", startp);
-			error((char *)NULL);
+			error(NULL);
 		}
 		error("%.*s: parameter %snot set", (int)(p - str - 1),
 		      str, (varflags & VSNUL) ? "null or "

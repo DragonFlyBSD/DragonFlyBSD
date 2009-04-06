@@ -66,7 +66,7 @@ representation.
 .Pp
 It is equivalent to:
 .Pp
-.Dl "strtol(nptr, (char **)NULL, 10);"
+.Dl "strtol(nptr, NULL, 10);"
 .Pp
 The
 .Fn atoll
@@ -79,7 +79,7 @@ representation.
 .Pp
 It is equivalent to:
 .Pp
-.Dl "strtoll(nptr, (char **)NULL, 10);"
+.Dl "strtoll(nptr, NULL, 10);"
 .Sh ERRORS
 The functions
 .Fn atol

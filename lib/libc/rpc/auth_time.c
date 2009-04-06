@@ -404,7 +404,7 @@ __rpc_get_time_offset(struct timeval *td,	/* Time difference			*/
 				FD_ZERO(&readfds);
 				FD_SET(s, &readfds);
 				res = _select(_rpc_dtablesize(), &readfds,
-				     (fd_set *)NULL, (fd_set *)NULL, &timeout);
+				     NULL, NULL, &timeout);
 			} while (res < 0 && errno == EINTR);
 			if (res <= 0)
 				goto error;

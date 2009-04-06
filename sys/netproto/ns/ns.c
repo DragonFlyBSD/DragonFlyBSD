@@ -172,7 +172,7 @@ ns_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 			lwkt_serialize_enter(ifp->if_serializer);
 			error = ifp->if_ioctl(ifp, SIOCSIFDSTADDR, 
 							(caddr_t)ia,
-							(struct ucred *)NULL);
+							NULL);
 			lwkt_serialize_exit(ifp->if_serializer);
 			if (error)
 				return (error);
@@ -236,7 +236,7 @@ ns_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 		if (ifp->if_ioctl == 0)
 			return (EOPNOTSUPP);
 		lwkt_serialize_enter(ifp->if_serializer);
-		error = ifp->if_ioctl(ifp, cmd, data, (struct ucred *)NULL);
+		error = ifp->if_ioctl(ifp, cmd, data, NULL);
 		lwkt_serialize_exit(ifp->if_serializer);
 		return (error);
 	}
@@ -291,7 +291,7 @@ ns_ifinit(struct ifnet *ifp, struct ns_ifaddr *ia, struct sockaddr_ns *sns, int 
 		if (ifp->if_ioctl &&
 		     (error = ifp->if_ioctl(ifp, SIOCSIFADDR, 
 						(caddr_t)ia,
-						(struct ucred *)NULL))) {
+						NULL))) {
 			ia->ia_addr = oldaddr;
 			lwkt_serialize_exit(ifp->if_serializer);
 			crit_exit();
@@ -306,7 +306,7 @@ ns_ifinit(struct ifnet *ifp, struct ns_ifaddr *ia, struct sockaddr_ns *sns, int 
 		if (ifp->if_ioctl &&
 		     (error = ifp->if_ioctl(ifp, SIOCSIFADDR, 
 						(caddr_t)ia,
-						(struct ucred *)NULL))) {
+						NULL))) {
 			ia->ia_addr = oldaddr;
 			lwkt_serialize_exit(ifp->if_serializer);
 			crit_exit();

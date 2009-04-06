@@ -848,7 +848,7 @@ xxreadtoken(void)
 		}
 	}
 breakloop:
-	return readtoken1(c, BASESYNTAX, (char *)NULL, 0);
+	return readtoken1(c, BASESYNTAX, NULL, 0);
 #undef RETURN
 }
 
@@ -1525,7 +1525,7 @@ synerror(const char *msg)
 	if (commandname)
 		outfmt(&errout, "%s: %d: ", commandname, startlinno);
 	outfmt(&errout, "Syntax error: %s\n", msg);
-	error((char *)NULL);
+	error(NULL);
 }
 
 STATIC void

@@ -961,8 +961,7 @@ unisig_ioctl(int code, caddr_t data, caddr_t arg1)
 		/*
 		 * Pass event to signalling manager state machine
 		 */
-		err = unisig_sigmgr_state(usp, UNISIG_SIGMGR_ADDR_SET,
-				(KBuffer *) NULL);
+		err = unisig_sigmgr_state(usp, UNISIG_SIGMGR_ADDR_SET, NULL);
 
 		/*
 		 * Clean up if there was an error

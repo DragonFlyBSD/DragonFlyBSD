@@ -126,7 +126,7 @@ we_askshell(const char *words, wordexp_t *we, int flags)
 			_close(devnull);
 		}
 		execl(_PATH_BSHELL, "sh", flags & WRDE_UNDEF ? "-u" : "+u",
-		    "-c", cmd, (char *)NULL);
+		    "-c", cmd, NULL);
 		_exit(1);
 	}
 

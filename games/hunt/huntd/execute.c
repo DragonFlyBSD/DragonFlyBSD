@@ -614,8 +614,7 @@ pickup(PLAYER *pp, int y, int x, int prob, int obj)
 	/* Does it explode? */
 	if (rand_num(100) < prob)
 		/* Ooooh, unlucky: (Boom) */
-		add_shot(obj, y, x, LEFTS, req, (PLAYER *) NULL,
-			TRUE, pp->p_face);
+		add_shot(obj, y, x, LEFTS, req, NULL, TRUE, pp->p_face);
 	else {
 		/* Safely picked it up. Add to player's ammo: */
 		pp->p_ammo += req;

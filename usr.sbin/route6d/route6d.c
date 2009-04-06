@@ -578,7 +578,7 @@ init(void)
 	struct	addrinfo hints, *res;
 	char	port[10];
 
-	ifc = (struct ifc *)NULL;
+	ifc = NULL;
 	nifc = 0;
 	nindex2ifc = 0;	/*initial guess*/
 	index2ifc = NULL;
@@ -3321,7 +3321,7 @@ ifc_find(char *name)
 		if (strcmp(name, ifcp->ifc_name) == 0)
 			return ifcp;
 	}
-	return (struct ifc *)NULL;
+	return NULL;
 }
 
 struct iff *

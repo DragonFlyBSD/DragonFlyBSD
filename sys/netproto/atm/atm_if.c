@@ -192,7 +192,7 @@ atm_physif_deregister(Cmn_unit *cup)
 		atm_free(cvp);
 		cvp = cvp->cv_next;
 	}
-	cup->cu_vcc = (Cmn_vcc *)NULL;
+	cup->cu_vcc = NULL;
 
 	crit_exit();
 
@@ -231,7 +231,7 @@ atm_physif_freenifs(struct atm_pif *pip)
 		atm_free ((caddr_t)nip);
 		nip = nipp;
 	}
-	pip->pif_nif = (struct atm_nif *)NULL;
+	pip->pif_nif = NULL;
 
 	crit_exit();
 
@@ -874,7 +874,7 @@ atm_netif_rtdel(struct radix_node *rn, void *arg)
 
 		err = rtrequest(RTM_DELETE, rt_key(rt), rt->rt_gateway,
 				rt_mask(rt), rt->rt_flags,
-				(struct rtentry **) NULL);
+				NULL);
 		if (err) {
 			log(LOG_WARNING, "atm_netif_rtdel: error %d\n", err);
 		}

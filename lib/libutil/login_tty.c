@@ -43,7 +43,7 @@ int
 login_tty(int fd)
 {
 	(void) setsid();
-	if (ioctl(fd, TIOCSCTTY, (char *)NULL) == -1)
+	if (ioctl(fd, TIOCSCTTY, NULL) == -1)
 		return (-1);
 	(void) dup2(fd, 0);
 	(void) dup2(fd, 1);

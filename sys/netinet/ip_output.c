@@ -327,7 +327,7 @@ reroute:
 	     dst->sin_family != AF_INET ||
 	     dst->sin_addr.s_addr != pkt_dst.s_addr)) {
 		rtfree(ro->ro_rt);
-		ro->ro_rt = (struct rtentry *)NULL;
+		ro->ro_rt = NULL;
 	}
 	if (ro->ro_rt == NULL) {
 		bzero(dst, sizeof *dst);
@@ -1186,7 +1186,7 @@ smart_frag_failure:
 			goto done;
 		}
 		m->m_pkthdr.len = mhlen + len;
-		m->m_pkthdr.rcvif = (struct ifnet *)NULL;
+		m->m_pkthdr.rcvif = NULL;
 		m->m_pkthdr.csum_flags = m0->m_pkthdr.csum_flags;
 		mhip->ip_off = htons(mhip->ip_off);
 		mhip->ip_sum = 0;
@@ -1274,7 +1274,7 @@ ip_insertoptions(struct mbuf *m, struct mbuf *opt, int *phlen)
 			*phlen = 0;
 			return (m);
 		}
-		n->m_pkthdr.rcvif = (struct ifnet *)NULL;
+		n->m_pkthdr.rcvif = NULL;
 		n->m_pkthdr.len = m->m_pkthdr.len + optlen;
 		m->m_len -= sizeof(struct ip);
 		m->m_data += sizeof(struct ip);

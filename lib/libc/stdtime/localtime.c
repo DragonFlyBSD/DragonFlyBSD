@@ -1130,7 +1130,7 @@ tzsetwall_basic(int rdlocked)
 	_RWLOCK_WRLOCK(&lcl_rwlock);
 	lcl_is_set = -1;
 
-	if (tzload((char *) NULL, lclptr, TRUE) != 0)
+	if (tzload(NULL, lclptr, TRUE) != 0)
 		gmtload(lclptr);
 	settzname();
 	_RWLOCK_UNLOCK(&lcl_rwlock);

@@ -444,7 +444,7 @@ Spawn(const char *prog __unused, const char *acname, const char *provider,
 
       setsid();
       syslog(LOG_INFO, "Executing: %s", exec);
-      execlp(_PATH_BSHELL, _PATH_BSHELL, "-c", exec, (char *)NULL);
+      execlp(_PATH_BSHELL, _PATH_BSHELL, "-c", exec, NULL);
       syslog(LOG_ERR, "execlp failed: %m");
       _exit(EX_OSFILE);
 

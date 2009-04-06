@@ -64,7 +64,7 @@ _des_crypt_call(char *buf, int len, struct desparams *dparms)
 		return(DESERR_HWERROR);
 	}
 	clnt = clnt_tp_create(NULL, CRYPT_PROG, CRYPT_VERS, nconf);
-	if (clnt == (CLIENT *) NULL) {
+	if (clnt == NULL) {
 		endnetconfig(localhandle);
 		return(DESERR_HWERROR);
 	}
@@ -78,7 +78,7 @@ _des_crypt_call(char *buf, int len, struct desparams *dparms)
 	bcopy(dparms->des_key, des_crypt_1_arg.des_key, 8);
 
 	result_1 = des_crypt_1(&des_crypt_1_arg, clnt);
-	if (result_1 == (desresp *) NULL) {
+	if (result_1 == NULL) {
 		clnt_destroy(clnt);
 		return(DESERR_HWERROR);
 	}

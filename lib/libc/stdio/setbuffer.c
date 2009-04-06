@@ -54,5 +54,5 @@ int
 setlinebuf(FILE *fp)
 {
 
-	return (setvbuf(fp, (char *)NULL, _IOLBF, (size_t)0));
+	return (setvbuf(fp, NULL, _IOLBF, (size_t)0));
 }

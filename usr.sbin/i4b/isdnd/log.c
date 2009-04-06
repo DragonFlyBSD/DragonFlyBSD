@@ -83,7 +83,7 @@ init_log(void)
 	
 		/* set unbuffered operation */
 	
-		setvbuf(logfp, (char *)NULL, _IONBF, 0);
+		setvbuf(logfp, NULL, _IONBF, 0);
 	}
 	else
 	{

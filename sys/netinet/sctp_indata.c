@@ -2469,7 +2469,7 @@ sctp_service_queues(struct sctp_tcb *stcb, struct sctp_association *asoc, int ho
 			break;
 		}
 		/* If deliver_data says no we must stop */
-		if (sctp_deliver_data(stcb, asoc, (struct sctp_tmit_chunk *)NULL, hold_locks) == 0)
+		if (sctp_deliver_data(stcb, asoc, NULL, hold_locks) == 0)
 			break;
 		cntDel++;
 		chk = TAILQ_FIRST(&asoc->delivery_queue);
@@ -3973,7 +3973,7 @@ sctp_handle_sack(struct sctp_sack_chunk *ch, struct sctp_tcb *stcb,
 						SCTP_RECEIVED_SACK, (void *)net);
 				/* now was it the primary? if so restore */
 				if (net->dest_state & SCTP_ADDR_WAS_PRIMARY) {
-					sctp_set_primary_addr(stcb, (struct sockaddr *)NULL, net);
+					sctp_set_primary_addr(stcb, NULL, net);
 				}
 			}
 		}

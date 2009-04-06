@@ -1590,8 +1590,7 @@ in6_ifinit(struct ifnet *ifp, struct in6_ifaddr *ia, struct sockaddr_in6 *sin6,
 	ia->ia_addr = *sin6;
 
 	if (ifacount <= 1 && ifp->if_ioctl &&
-	    (error = ifp->if_ioctl(ifp, SIOCSIFADDR, (caddr_t)ia,
-	    			      (struct ucred *)NULL))) {
+	    (error = ifp->if_ioctl(ifp, SIOCSIFADDR, (caddr_t)ia, NULL))) {
 		lwkt_serialize_exit(ifp->if_serializer);
 		return (error);
 	}

@@ -179,7 +179,7 @@ save1(char *str, int mark, const char *cmd, struct ignoretab *ignore)
 	else
 		disp = "[New file]";
 	if ((obuf = Fopen(file, "a")) == NULL) {
-		warn((char *)NULL);
+		warn(NULL);
 		return (1);
 	}
 	for (ip = msgvec; *ip && ip-msgvec < msgCount; ip++) {

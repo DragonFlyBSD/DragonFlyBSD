@@ -213,7 +213,7 @@ struct fstab *
 getfsent(void)
 {
 	if ((!_fs_fp && !setfsent()) || !fstabscan())
-		return((struct fstab *)NULL);
+		return(NULL);
 	return(&_fs_fstab);
 }
 
@@ -224,7 +224,7 @@ getfsspec(const char *name)
 		while (fstabscan())
 			if (!strcmp(_fs_fstab.fs_spec, name))
 				return(&_fs_fstab);
-	return((struct fstab *)NULL);
+	return(NULL);
 }
 
 struct fstab *
@@ -234,7 +234,7 @@ getfsfile(const char *name)
 		while (fstabscan())
 			if (!strcmp(_fs_fstab.fs_file, name))
 				return(&_fs_fstab);
-	return((struct fstab *)NULL);
+	return(NULL);
 }
 
 int

@@ -137,7 +137,7 @@ k_init_dvmrp(void)
 {
 #ifdef OLD_KERNEL
     if (setsockopt(igmp_socket, IPPROTO_IP, MRT_INIT,
-		   (char *)NULL, 0) < 0)
+		   NULL, 0) < 0)
 #else
     int v=1;
 
@@ -151,7 +151,7 @@ void
 k_stop_dvmrp(void)
 {
     if (setsockopt(igmp_socket, IPPROTO_IP, MRT_DONE,
-		   (char *)NULL, 0) < 0)
+		   NULL, 0) < 0)
 	dolog(LOG_WARNING, errno, "can't disable Multicast routing in kernel");
 }
 

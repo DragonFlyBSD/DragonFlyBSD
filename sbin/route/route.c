@@ -150,7 +150,7 @@ main(int argc, char **argv)
 	int ch;
 
 	if (argc < 2)
-		usage((char *)NULL);
+		usage(NULL);
 
 	while ((ch = getopt(argc, argv, "c:wnqdtv")) != -1)
 		switch(ch) {
@@ -177,7 +177,7 @@ main(int argc, char **argv)
 			break;
 		case '?':
 		default:
-			usage((char *)NULL);
+			usage(NULL);
 		}
 	argc -= optind;
 	argv += optind;
@@ -705,33 +705,33 @@ newroute(int argc, char **argv)
 				break;
 			case K_IFA:
 				if (--argc == 0)
-					usage((char *)NULL);
+					usage(NULL);
 				getaddr(RTA_IFA, *++argv, 0);
 				break;
 			case K_IFP:
 				if (--argc == 0)
-					usage((char *)NULL);
+					usage(NULL);
 				getaddr(RTA_IFP, *++argv, 0);
 				break;
 			case K_GENMASK:
 				if (--argc == 0)
-					usage((char *)NULL);
+					usage(NULL);
 				getaddr(RTA_GENMASK, *++argv, 0);
 				break;
 			case K_GATEWAY:
 				if (--argc == 0)
-					usage((char *)NULL);
+					usage(NULL);
 				getaddr(RTA_GATEWAY, *++argv, 0);
 				break;
 			case K_DST:
 				if (--argc == 0)
-					usage((char *)NULL);
+					usage(NULL);
 				ishost = getaddr(RTA_DST, *++argv, &hp);
 				dest = *argv;
 				break;
 			case K_NETMASK:
 				if (--argc == 0)
-					usage((char *)NULL);
+					usage(NULL);
 				getaddr(RTA_NETMASK, *++argv, 0);
 				/* FALLTHROUGH */
 			case K_NET:
@@ -739,7 +739,7 @@ newroute(int argc, char **argv)
 				break;
 			case K_PREFIXLEN:
 				if (--argc == 0)
-					usage((char *)NULL);
+					usage(NULL);
 				if (prefixlen(*++argv) == -1) {
 					forcenet = 0;
 					ishost = 1;
@@ -793,7 +793,7 @@ newroute(int argc, char **argv)
 				af = AF_MPLS;
 				aflen = sizeof(struct sockaddr_mpls);
 				if (--argc == 0)
-					usage((char *)NULL);
+					usage(NULL);
 				switch(pushcount + swapcount){
 					case 1:
 						getaddr(RTA_MPLS1, *++argv, 0);
@@ -815,7 +815,7 @@ newroute(int argc, char **argv)
 			case K_RTT:
 			case K_RTTVAR:
 				if (--argc == 0)
-					usage((char *)NULL);
+					usage(NULL);
 				set_metric(*++argv, key);
 				break;
 			default:

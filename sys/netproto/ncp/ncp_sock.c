@@ -379,7 +379,7 @@ ncp_sock_disconnect(struct ncp_conn *conn) {
 #ifdef NCPBURST
 	if (conn->bc_so) {
 		so = conn->bc_so;
-		conn->bc_so = (struct socket *)NULL;
+		conn->bc_so = NULL;
 		soshutdown(so, SHUT_RDWR);
 		soclose(so, FNONBLOCK);
 	}

@@ -48,5 +48,5 @@ getwd(char *buf)
 	if ( (p = getcwd(buf, MAXPATHLEN)) )
 		return(p);
 	strcpy(buf, strerror(errno));
-	return((char *)NULL);
+	return(NULL);
 }

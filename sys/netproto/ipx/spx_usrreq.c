@@ -340,7 +340,7 @@ spx_input(struct mbuf *m, struct ipxpcb *ipxp)
 		m_freem(m);
 	}
 	if (cb->s_force || (cb->s_flags & (SF_ACKNOW|SF_WIN|SF_RXT)))
-		spx_output(cb, (struct mbuf *)NULL);
+		spx_output(cb, NULL);
 	cb->s_flags &= ~(SF_WIN|SF_RXT);
 	return;
 
@@ -409,7 +409,7 @@ spx_reass(struct spxpcb *cb, struct spx *si, struct mbuf *si_m)
 				cb->s_snxt = si->si_ack;
 				cb->s_cwnd = CUNIT;
 				cb->s_force = 1 + SPXT_REXMT;
-				spx_output(cb, (struct mbuf *)NULL);
+				spx_output(cb, NULL);
 				cb->s_timer[SPXT_REXMT] = cb->s_rxtcur;
 				cb->s_rtt = 0;
 				if (cwnd >= 4 * CUNIT)
@@ -1127,7 +1127,7 @@ send:
 			spx_trace(SA_OUTPUT, cb->s_state, cb, si, 0);
 
 		if (so->so_options & SO_DONTROUTE)
-			error = ipx_outputfl(m, (struct route *)NULL, IPX_ROUTETOIF);
+			error = ipx_outputfl(m, NULL, IPX_ROUTETOIF);
 		else
 			error = ipx_outputfl(m, &cb->s_ipxpcb->ipxp_route, 0);
 	}
@@ -1418,7 +1418,7 @@ spx_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 
 	crit_enter();
 	if (ipxp->ipxp_lport == 0) {
-		error = ipx_pcbbind(ipxp, (struct sockaddr *)NULL, td);
+		error = ipx_pcbbind(ipxp, NULL, td);
 		if (error)
 			goto spx_connect_end;
 	}
@@ -1441,7 +1441,7 @@ spx_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	 * cb->s_dport.
 	 */
 	ipxp->ipxp_fport = 0;
-	error = spx_output(cb, (struct mbuf *)NULL);
+	error = spx_output(cb, NULL);
 spx_connect_end:
 	crit_exit();
 	return (error);
@@ -1499,7 +1499,7 @@ spx_listen(struct socket *so, struct thread *td)
 	cb = ipxtospxpcb(ipxp);
 
 	if (ipxp->ipxp_lport == 0)
-		error = ipx_pcbbind(ipxp, (struct sockaddr *)NULL, td);
+		error = ipx_pcbbind(ipxp, NULL, td);
 	if (error == 0)
 		cb->s_state = TCPS_LISTEN;
 	return (error);
@@ -1520,7 +1520,7 @@ spx_rcvd(struct socket *so, int flags)
 
 	crit_enter();
 	cb->s_flags |= SF_RVD;
-	spx_output(cb, (struct mbuf *)NULL);
+	spx_output(cb, NULL);
 	cb->s_flags &= ~SF_RVD;
 	crit_exit();
 	return (0);
@@ -1600,7 +1600,7 @@ spx_shutdown(struct socket *so)
 	socantsendmore(so);
 	cb = spx_usrclosed(cb);
 	if (cb != NULL)
-		error = spx_output(cb, (struct mbuf *)NULL);
+		error = spx_output(cb, NULL);
 	crit_exit();
 	return (error);
 }
@@ -1677,7 +1677,7 @@ spx_close(struct spxpcb *cb)
 	soisdisconnected(so);
 	ipx_pcbdetach(ipxp);
 	spxstat.spxs_closed++;
-	return ((struct spxpcb *)NULL);
+	return (NULL);
 }
 
 /*
@@ -1739,7 +1739,7 @@ spx_fasttimo(void)
 			cb->s_flags &= ~SF_DELACK;
 			cb->s_flags |= SF_ACKNOW;
 			spxstat.spxs_delack++;
-			spx_output(cb, (struct mbuf *)NULL);
+			spx_output(cb, NULL);
 		}
 	    }
 	}
@@ -1852,7 +1852,7 @@ spx_timers(struct spxpcb *cb, int timer)
 			win = 2;
 		cb->s_cwnd = CUNIT;
 		cb->s_ssthresh = win * CUNIT;
-		spx_output(cb, (struct mbuf *)NULL);
+		spx_output(cb, NULL);
 		break;
 
 	/*
@@ -1862,7 +1862,7 @@ spx_timers(struct spxpcb *cb, int timer)
 	case SPXT_PERSIST:
 		spxstat.spxs_persisttimeo++;
 		spx_setpersist(cb);
-		spx_output(cb, (struct mbuf *)NULL);
+		spx_output(cb, NULL);
 		break;
 
 	/*
@@ -1877,7 +1877,7 @@ spx_timers(struct spxpcb *cb, int timer)
 		    	if (cb->s_idle >= SPXTV_MAXIDLE)
 				goto dropit;
 			spxstat.spxs_keepprobe++;
-			spx_output(cb, (struct mbuf *)NULL);
+			spx_output(cb, NULL);
 		} else
 			cb->s_idle = 0;
 		cb->s_timer[SPXT_KEEP] = SPXTV_KEEP;

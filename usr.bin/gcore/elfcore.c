@@ -108,9 +108,7 @@ elf_coredump(int fd, pid_t pid)
 	 * size is calculated.
 	 */
 	hdrsize = 0;
-	elf_puthdr(map, NULL, &hdrsize,
-	    (const prstatus_t *)NULL, (const prfpregset_t *)NULL,
-	    (const prpsinfo_t *)NULL, seginfo.count);
+	elf_puthdr(map, NULL, &hdrsize, NULL, NULL, NULL, seginfo.count);
 
 	/*
 	 * Allocate memory for building the header, fill it up,

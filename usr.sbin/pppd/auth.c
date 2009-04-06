@@ -173,7 +173,7 @@ link_terminated(int unit)
     if (logged_in)
 	plogout();
     phase = PHASE_DEAD;
-    etime = time((time_t *) NULL);
+    etime = time(NULL);
     minutes = (etime-stime)/60;
     syslog(LOG_NOTICE, "Connection terminated, connected for %d minutes\n",
 	minutes > 1 ? minutes : 1);
@@ -926,7 +926,7 @@ plogin(char *user, char *passwd, char **msg, int *msglen)
 	return (UPAP_AUTHNAK);
 
     if (pw->pw_expire) {
-	gettimeofday(&tp, (struct timezone *)NULL);
+	gettimeofday(&tp, NULL);
 	if (tp.tv_sec >= pw->pw_expire) {
 	    syslog(LOG_INFO, "pap user %s account expired", user);
 	    return (UPAP_AUTHNAK);

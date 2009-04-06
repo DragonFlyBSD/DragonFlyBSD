@@ -802,7 +802,7 @@ execute_command(char *cmd)
 		sigaction(SIGQUIT,  &quitact, NULL);
 		sigprocmask(SIG_SETMASK, &oldsigblock, NULL);
 
-		execl(_PATH_BSHELL, "sh", "-c", cmd, (char *)NULL);
+		execl(_PATH_BSHELL, "sh", "-c", cmd, NULL);
 
 		/* should only be reached in case of error */
 		exit(127);

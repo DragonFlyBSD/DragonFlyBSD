@@ -210,7 +210,7 @@ fgcmd(int argc __unused, char **argv)
 	restartjob(jp);
 	jp->foreground = 1;
 	INTOFF;
-	status = waitforjob(jp, (int *)NULL);
+	status = waitforjob(jp, NULL);
 	INTON;
 	return status;
 }
@@ -400,7 +400,7 @@ showjobs(int change, int mode)
 	struct job *jp;
 
 	TRACE(("showjobs(%d) called\n", change));
-	while (dowait(0, (struct job *)NULL) > 0);
+	while (dowait(0, NULL) > 0);
 	for (jobno = 1, jp = jobtab ; jobno <= njobs ; jobno++, jp++) {
 		if (! jp->used)
 			continue;
@@ -491,7 +491,7 @@ waitcmd(int argc, char **argv)
 					break;
 			}
 		}
-	} while (dowait(1, (struct job *)NULL) != -1);
+	} while (dowait(1, NULL) != -1);
 	in_waitcmd--;
 
 	return 0;
@@ -1031,7 +1031,7 @@ waitproc(int block, int *status)
 #endif
 	if (block == 0)
 		flags |= WNOHANG;
-	return wait3(status, flags, (struct rusage *)NULL);
+	return wait3(status, flags, NULL);
 }
 
 /*

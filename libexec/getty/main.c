@@ -236,13 +236,13 @@ main(int argc, char **argv)
 
 			if (!opentty(ttyn, O_RDWR|O_NONBLOCK))
 				exit(1);
-        		setdefttymode(tname);
-        		rfds = 1 << 0;	/* FD_SET */
-        		timeout.tv_sec = RT;
-        		timeout.tv_usec = 0;
-        		i = select(32, (fd_set*)&rfds, (fd_set*)NULL,
-        			       (fd_set*)NULL, RT ? &timeout : NULL);
-        		if (i < 0) {
+			setdefttymode(tname);
+			rfds = 1 << 0;	/* FD_SET */
+			timeout.tv_sec = RT;
+			timeout.tv_usec = 0;
+			i = select(32, (fd_set*)&rfds, NULL,
+				       NULL, RT ? &timeout : NULL);
+			if (i < 0) {
 				syslog(LOG_ERR, "select %s: %m", ttyn);
 			} else if (i == 0) {
 				syslog(LOG_NOTICE, "recycle tty %s", ttyn);

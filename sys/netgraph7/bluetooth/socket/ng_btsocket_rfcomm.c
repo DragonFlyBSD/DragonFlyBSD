@@ -1598,8 +1598,7 @@ ng_btsocket_rfcomm_session_receive(ng_btsocket_rfcomm_session_p s)
 		flags = MSG_DONTWAIT;
 
 		m = NULL;
-		error = soreceive(s->l2so, NULL, &uio, &m,
-		    (struct mbuf **) NULL, &flags);
+		error = soreceive(s->l2so, NULL, &uio, &m, NULL, &flags);
 		if (error != 0) {
 			if (error == EWOULDBLOCK)
 				return (0); /* XXX can happen? */

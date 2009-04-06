@@ -2307,7 +2307,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 						alt = sctp_find_alternate_net(stcb, net);
 						if (alt != net) {
 							if (sctp_set_primary_addr(stcb,
-									      (struct sockaddr *)NULL,
+									      NULL,
 										 alt) == 0) {
 								net->dest_state |= SCTP_ADDR_WAS_PRIMARY;
 								net->src_addr_selected = 0;
@@ -2338,7 +2338,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 				ro, o_flgs, inp->ip_inp.inp.inp_moptions
 #if defined(__OpenBSD__) || (defined(__FreeBSD__) && __FreeBSD_version >= 480000) \
     || defined(__DragonFly__)
-				, (struct inpcb *)NULL
+				, NULL
 #endif
 #if defined(__NetBSD__)
                                 ,(struct socket *)inp->sctp_socket
@@ -2494,7 +2494,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 						alt = sctp_find_alternate_net(stcb, net);
 						if (alt != net) {
 							if (sctp_set_primary_addr(stcb,
-									      (struct sockaddr *)NULL,
+									      NULL,
 										 alt) == 0) {
 								net->dest_state |= SCTP_ADDR_WAS_PRIMARY;
 								net->src_addr_selected = 0;

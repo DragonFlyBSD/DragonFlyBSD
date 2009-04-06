@@ -208,11 +208,11 @@ maketbl(void)
 	char **cols;
 
 	if ((t = tbl = calloc(entries, sizeof(TBL))) == NULL)
-		err(1, (char *)NULL);
+		err(1, NULL);
 	if ((cols = calloc((maxcols = DEFCOLS), sizeof(char *))) == NULL)
-		err(1, (char *)NULL);
+		err(1, NULL);
 	if ((lens = calloc(maxcols, sizeof(int))) == NULL)
-		err(1, (char *)NULL);
+		err(1, NULL);
 	for (cnt = 0, lp = list; cnt < entries; ++cnt, ++lp, ++t) {
 		for (coloff = 0, p = *lp; (cols[coloff] = strtok(p, separator));
 		    p = NULL)
@@ -227,9 +227,9 @@ maketbl(void)
 				maxcols += DEFCOLS;
 			}
 		if ((t->list = calloc(coloff, sizeof(char *))) == NULL)
-			err(1, (char *)NULL);
+			err(1, NULL);
 		if ((t->len = calloc(coloff, sizeof(int))) == NULL)
-			err(1, (char *)NULL);
+			err(1, NULL);
 		for (t->cols = coloff; --coloff >= 0;) {
 			t->list[coloff] = cols[coloff];
 			t->len[coloff] = strlen(cols[coloff]);
@@ -258,7 +258,7 @@ input(FILE *fp)
 	if (!list)
 		if ((list = calloc((maxentry = DEFNUM), sizeof(char *))) ==
 		    NULL)
-			err(1, (char *)NULL);
+			err(1, NULL);
 	while (fgets(buf, MAXLINELEN, fp)) {
 		for (p = buf; *p && isspace(*p); ++p);
 		if (!*p)

@@ -238,7 +238,7 @@ ipx_pcbconnect(struct ipxpcb *ipxp, struct sockaddr *nam, struct thread *td)
 	if (ipx_pcblookup(&sipx->sipx_addr, ipxp->ipxp_lport, 0))
 		return (EADDRINUSE);
 	if (ipxp->ipxp_lport == 0)
-		ipx_pcbbind(ipxp, (struct sockaddr *)NULL, td);
+		ipx_pcbbind(ipxp, NULL, td);
 
 	/* XXX just leave it zero if we can't find a route */
 

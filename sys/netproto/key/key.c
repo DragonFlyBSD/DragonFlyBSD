@@ -2621,7 +2621,7 @@ key_delsah(struct secashead *sah)
 
 	if (sah->sa_route.ro_rt) {
 		RTFREE(sah->sa_route.ro_rt);
-		sah->sa_route.ro_rt = (struct rtentry *)NULL;
+		sah->sa_route.ro_rt = NULL;
 	}
 
 	/* remove from tree of SA index */
@@ -7262,7 +7262,7 @@ key_sa_routechange(struct sockaddr *dst)
 		if (ro->ro_rt && dst->sa_len == ro->ro_dst.sa_len
 		 && bcmp(dst, &ro->ro_dst, dst->sa_len) == 0) {
 			RTFREE(ro->ro_rt);
-			ro->ro_rt = (struct rtentry *)NULL;
+			ro->ro_rt = NULL;
 		}
 	}
 

@@ -1024,7 +1024,7 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 #endif
 
 	if (inp->inp_lport == 0) {
-		error = in_pcbbind(inp, (struct sockaddr *)NULL, td);
+		error = in_pcbbind(inp, NULL, td);
 		if (error)
 			return (error);
 	}

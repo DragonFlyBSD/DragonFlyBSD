@@ -240,8 +240,7 @@ main(int argc, char *argv[])
 		}
 		FD_SET(ripsock, &fdvar);
 
-		if(select(nfds, &fdvar, (fd_set *)NULL, (fd_set *)NULL, 
-		   (struct timeval *)NULL) < 0) {
+		if(select(nfds, &fdvar, NULL, NULL, NULL) < 0) {
 			if(errno == EINTR)
 				continue;
 			perror("during select");

@@ -652,11 +652,11 @@ main(int argc, char **argv)
 		     */
 		    if (dofork) {
 			    if (sep->se_count++ == 0)
-				gettimeofday(&sep->se_time, (struct timezone *)NULL);
+				gettimeofday(&sep->se_time, NULL);
 			    else if (toomany > 0 && sep->se_count >= toomany) {
 				struct timeval now;
 
-				gettimeofday(&now, (struct timezone *)NULL);
+				gettimeofday(&now, NULL);
 				if (now.tv_sec - sep->se_time.tv_sec >
 				    CNT_INTVL) {
 					sep->se_time = now;

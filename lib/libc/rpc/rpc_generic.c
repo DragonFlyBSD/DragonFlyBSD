@@ -222,8 +222,8 @@ struct netconfig *
 __rpc_getconfip(const char *nettype)
 {
 	char *netid;
-	char *netid_tcp = (char *) NULL;
-	char *netid_udp = (char *) NULL;
+	char *netid_tcp = NULL;
+	char *netid_udp = NULL;
 	static char *netid_tcp_main;
 	static char *netid_udp_main;
 	struct netconfig *dummy;

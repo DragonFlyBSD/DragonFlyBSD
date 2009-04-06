@@ -123,7 +123,7 @@ clnt_create_vers_timed(const char *hostname, rpcprog_t prog,
 	to.tv_sec = 10;
 	to.tv_usec = 0;
 	rpc_stat = clnt_call(clnt, NULLPROC, (xdrproc_t)xdr_void,
-			(char *)NULL, (xdrproc_t)xdr_void, (char *)NULL, to);
+			NULL, (xdrproc_t)xdr_void, NULL, to);
 	if (rpc_stat == RPC_SUCCESS) {
 		*vers_out = vers_high;
 		return (clnt);
@@ -145,8 +145,8 @@ clnt_create_vers_timed(const char *hostname, rpcprog_t prog,
 		}
 		CLNT_CONTROL(clnt, CLSET_VERS, (char *)&vers_high);
 		rpc_stat = clnt_call(clnt, NULLPROC, (xdrproc_t)xdr_void,
-				(char *)NULL, (xdrproc_t)xdr_void,
-				(char *)NULL, to);
+				NULL, (xdrproc_t)xdr_void,
+				NULL, to);
 		if (rpc_stat == RPC_SUCCESS) {
 			*vers_out = vers_high;
 			return (clnt);

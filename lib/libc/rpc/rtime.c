@@ -105,7 +105,7 @@ rtime(struct sockaddr_in *addrp, struct timeval *timep, struct timeval *timeout)
 			FD_ZERO(&readfds);
 			FD_SET(s, &readfds);
 			res = _select(_rpc_dtablesize(), &readfds,
-				     (fd_set *)NULL, (fd_set *)NULL, timeout);
+				     NULL, NULL, timeout);
 		} while (res < 0 && errno == EINTR);
 		if (res <= 0) {
 			if (res == 0) {

@@ -147,12 +147,11 @@ rcmdsh(char **ahost, int rport, const char *locuser, const char *remuser,
 			else
 				rshprog = pw->pw_shell;
 			p = strrchr(rshprog, '/');
-			execlp(rshprog, p ? p + 1 : rshprog, "-c", cmd,
-			    (char *)NULL);
+			execlp(rshprog, p ? p + 1 : rshprog, "-c", cmd, NULL);
 		} else {
 			p = strrchr(rshprog, '/');
 			execlp(rshprog, p ? p + 1 : rshprog, *ahost, "-l",
-			    remuser, cmd, (char *)NULL);
+			    remuser, cmd, NULL);
 		}
 		fprintf(stderr, "rcmdsh: execlp %s failed: %s\n",
 		    rshprog, strerror(errno));

@@ -136,13 +136,13 @@ main(int argc, char **argv)
 			break;
 		case '?':
 		default:
-			usage((char *)NULL);
+			usage(NULL);
 		}
 	argc -= optind;
 	argv += optind;
 
 	if (argc < 1)
-		usage((char *)NULL);
+		usage(NULL);
 
 	if (killflg + doreboot + dohalt + dopower > 1)
 		usage("incompatible switches -h, -k, -p and -r");
@@ -354,21 +354,21 @@ die_you_gravy_sucking_pig_dog(void)
 	} else {
 		if (doreboot) {
 			execle(_PATH_REBOOT, "reboot", "-l", nosync, 
-				(char *)NULL, empty_environ);
+				NULL, empty_environ);
 			syslog(LOG_ERR, "shutdown: can't exec %s: %m.",
 				_PATH_REBOOT);
 			warn(_PATH_REBOOT);
 		}
 		else if (dohalt) {
 			execle(_PATH_HALT, "halt", "-l", nosync,
-				(char *)NULL, empty_environ);
+				NULL, empty_environ);
 			syslog(LOG_ERR, "shutdown: can't exec %s: %m.",
 				_PATH_HALT);
 			warn(_PATH_HALT);
 		}
 		else if (dopower) {
 			execle(_PATH_HALT, "halt", "-l", "-p", nosync,
-				(char *)NULL, empty_environ);
+				NULL, empty_environ);
 			syslog(LOG_ERR, "shutdown: can't exec %s: %m.",
 				_PATH_HALT);
 			warn(_PATH_HALT);

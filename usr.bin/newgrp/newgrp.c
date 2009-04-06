@@ -307,6 +307,6 @@ doshell(void)
 	shell = pwd->pw_shell;
 	if (*shell == '\0')
 		shell = _PATH_BSHELL;
-	execl(shell, basename(shell), (char *)NULL);
+	execl(shell, basename(shell), NULL);
 	err(1, "%s", shell);
 }

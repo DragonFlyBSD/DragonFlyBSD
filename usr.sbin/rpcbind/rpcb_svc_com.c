@@ -606,7 +606,7 @@ rpcbproc_callit_com(struct svc_req *rqstp, SVCXPRT *transp,
 	char *buf_alloc = NULL, *outbufp;
 	char *outbuf_alloc = NULL;
 	char buf[RPC_BUF_MAX], outbuf[RPC_BUF_MAX];
-	struct netbuf *na = (struct netbuf *) NULL;
+	struct netbuf *na = NULL;
 	struct rpc_msg call_msg;
 	int outlen;
 	u_int sendsz;

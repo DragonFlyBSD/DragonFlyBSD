@@ -117,7 +117,7 @@ event_cmd_exec_act(void *this)
 		goto out;
 	case 0:
 		/* child process */
-		execl(_PATH_BSHELL, "sh", "-c", p->line, (char *)NULL);
+		execl(_PATH_BSHELL, "sh", "-c", p->line, NULL);
 		_exit(127);
 	default:
 		/* parent process */

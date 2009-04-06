@@ -1835,7 +1835,7 @@ ntfs_runtocn(cn_t *cn,	struct ntfsmount *ntmp, u_int8_t *run, u_long len,
 void
 ntfs_toupper_init(void)
 {
-	ntfs_toupper_tab = (wchar *) NULL;
+	ntfs_toupper_tab = NULL;
 	lockinit(&ntfs_toupper_lock, "ntfs_toupper", 0, 0);
 	ntfs_toupper_usecount = 0;
 }

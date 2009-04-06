@@ -76,7 +76,7 @@ __system(const char *command)
 		_sigaction(SIGINT, &intact, NULL);
 		_sigaction(SIGQUIT,  &quitact, NULL);
 		_sigprocmask(SIG_SETMASK, &oldsigblock, NULL);
-		execl(_PATH_BSHELL, "sh", "-c", command, (char *)NULL);
+		execl(_PATH_BSHELL, "sh", "-c", command, NULL);
 		_exit(127);
 	default:			/* parent */
 		savedpid = pid;

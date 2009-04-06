@@ -421,7 +421,7 @@ create_service(struct netconfig *nconf)
 		transp = svc_tli_create(fd, nconf, NULL,
 		    RPC_MAXDATASIZE, RPC_MAXDATASIZE);
 
-		if (transp != (SVCXPRT *) NULL) {
+		if (transp != NULL) {
 			if (!svc_reg(transp, NLM_PROG, NLM_SM, nlm_prog_0,
 			    NULL))
 				syslog(LOG_ERR,
