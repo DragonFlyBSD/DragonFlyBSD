@@ -372,7 +372,9 @@ if_devstart(struct ifnet *ifp)
 	struct ifaltq *ifq = &ifp->if_snd;
 	int running = 0;
 
+#ifdef FIX_SERIALIZE_ASSERT
 	ASSERT_SERIALIZED(ifp->if_serializer);
+#endif
 
 	ALTQ_LOCK(ifq);
 	if (ifq->altq_started || !ifq_data_ready(ifq)) {
@@ -2121,7 +2123,9 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 	struct ifaltq *ifq = &ifp->if_snd;
 	int running = 0, error, start = 0;
 
+#ifdef FIX_SERIALIZE_ASSERT
 	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
+#endif
 
 	ALTQ_LOCK(ifq);
 	error = ifq_enqueue_locked(ifq, m, pa);

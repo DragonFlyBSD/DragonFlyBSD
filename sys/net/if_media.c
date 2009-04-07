@@ -188,7 +188,9 @@ ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
 	if (ifp == NULL || ifr == NULL || ifm == NULL)
 		return (EINVAL);
 
+#ifdef FIX_SERIALIZE_ASSERT
 	ASSERT_SERIALIZED(ifp->if_serializer);
+#endif
 
 	switch (cmd) {
 	/*
