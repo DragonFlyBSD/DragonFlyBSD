@@ -70,7 +70,7 @@
 #include <paths.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <strings.h>
+#include <string.h>
 #include <unistd.h>
 
 void search(u_long addr, void (*action)(struct sockaddr_dl *sdl,
