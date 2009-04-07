@@ -180,6 +180,7 @@
 #define EMX_RETA_RINGIDX_SHIFT		7
 
 #define EMX_NRX_RING			2
+#define EMX_NSERIALIZE			4
 
 typedef union e1000_rx_desc_extended	emx_rxdesc_t;
 
@@ -198,6 +199,8 @@ typedef union e1000_rx_desc_extended	emx_rxdesc_t;
 #define EMX_RXDMRQ_IPV6		5
 
 struct emx_rxdata {
+	struct lwkt_serialize	rx_serialize;
+
 	/*
 	 * Receive definitions
 	 *
@@ -266,6 +269,10 @@ struct emx_softc {
 	uint16_t		link_duplex;
 	uint32_t		smartspeed;
 	int			int_throttle_ceil;
+
+	struct lwkt_serialize	main_serialize;
+	struct lwkt_serialize	tx_serialize;
+	struct lwkt_serialize	*serializes[EMX_NSERIALIZE];
 
 	/*
 	 * Transmit definitions
@@ -362,6 +369,8 @@ struct emx_softc {
 	int			rss_debug;
 
 	struct e1000_hw_stats	stats;
+
+	struct lwkt_serialize	panic_serialize;
 };
 
 struct emx_txbuf {

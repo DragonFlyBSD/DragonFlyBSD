@@ -110,6 +110,9 @@
 #include <dev/netif/ig_hal/e1000_82571.h>
 #include <dev/netif/emx/if_emx.h>
 
+#define IFNET_SERIALIZE_RX0	(IFNET_SERIALIZE_RX_BASE + 0)
+#define IFNET_SERIALIZE_RX1	(IFNET_SERIALIZE_RX_BASE + 1)
+
 #ifdef EMX_RSS_DEBUG
 #define EMX_RSS_DPRINTF(sc, lvl, fmt, ...) \
 do { \
@@ -180,6 +183,9 @@ static void	emx_watchdog(struct ifnet *);
 static void	emx_media_status(struct ifnet *, struct ifmediareq *);
 static int	emx_media_change(struct ifnet *);
 static void	emx_timer(void *);
+static void	emx_serialize(struct ifnet *, enum ifnet_serialize);
+static void	emx_deserialize(struct ifnet *, enum ifnet_serialize);
+static int	emx_tryserialize(struct ifnet *, enum ifnet_serialize);
 
 static void	emx_intr(void *);
 static void	emx_rxeof(struct emx_softc *, int, int);
@@ -385,8 +391,23 @@ emx_attach(device_t dev)
 {
 	struct emx_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	int error = 0;
+	int error = 0, i;
 	uint16_t eeprom_data, device_id;
+
+	lwkt_serialize_init(&sc->main_serialize);
+	lwkt_serialize_init(&sc->tx_serialize);
+	for (i = 0; i < EMX_NRX_RING; ++i)
+		lwkt_serialize_init(&sc->rx_data[i].rx_serialize);
+
+	lwkt_serialize_init(&sc->panic_serialize);
+	lwkt_serialize_enter(&sc->panic_serialize);
+
+	i = 0;
+	sc->serializes[i++] = &sc->main_serialize;
+	sc->serializes[i++] = &sc->tx_serialize;
+	sc->serializes[i++] = &sc->rx_data[0].rx_serialize;
+	sc->serializes[i++] = &sc->rx_data[1].rx_serialize;
+	KKASSERT(i == EMX_NSERIALIZE);
 
 	callout_init(&sc->timer);
 
@@ -639,7 +660,7 @@ emx_attach(device_t dev)
 		sc->tx_int_nsegs = sc->oact_tx_desc;
 
 	error = bus_setup_intr(dev, sc->intr_res, INTR_MPSAFE, emx_intr, sc,
-			       &sc->intr_tag, ifp->if_serializer);
+			       &sc->intr_tag, &sc->main_serialize);
 	if (error) {
 		device_printf(dev, "Failed to register interrupt handler");
 		ether_ifdetach(&sc->arpcom.ac_if);
@@ -662,7 +683,7 @@ emx_detach(device_t dev)
 	if (device_is_attached(dev)) {
 		struct ifnet *ifp = &sc->arpcom.ac_if;
 
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 
 		emx_stop(sc);
 
@@ -682,7 +703,7 @@ emx_detach(device_t dev)
 
 		bus_teardown_intr(dev, sc->intr_res, sc->intr_tag);
 
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 
 		ether_ifdetach(ifp);
 	}
@@ -719,7 +740,7 @@ emx_suspend(device_t dev)
 	struct emx_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	emx_stop(sc);
 
@@ -735,7 +756,7 @@ emx_suspend(device_t dev)
 		emx_enable_wol(dev);
         }
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	return bus_generic_suspend(dev);
 }
@@ -746,13 +767,13 @@ emx_resume(device_t dev)
 	struct emx_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	emx_init(sc);
 	emx_get_mgmt(sc);
 	if_devstart(ifp);
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	return bus_generic_resume(dev);
 }
@@ -763,7 +784,7 @@ emx_start(struct ifnet *ifp)
 	struct emx_softc *sc = ifp->if_softc;
 	struct mbuf *m_head;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_SERIALIZED(&sc->tx_serialize);
 
 	if ((ifp->if_flags & (IFF_RUNNING | IFF_OACTIVE)) != IFF_RUNNING)
 		return;
@@ -811,8 +832,12 @@ emx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	uint16_t eeprom_data = 0;
 	int max_frame_size, mask, reinit;
 	int error = 0;
+#ifdef INVARIANTS
+	int i;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	for (i = 0; i < EMX_NSERIALIZE; ++i)
+		ASSERT_SERIALIZED(sc->serializes[i]);
+#endif
 
 	switch (command) {
 	case SIOCSIFMTU:
@@ -928,8 +953,12 @@ static void
 emx_watchdog(struct ifnet *ifp)
 {
 	struct emx_softc *sc = ifp->if_softc;
+#ifdef INVARIANTS
+	int i;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	for (i = 0; i < EMX_NSERIALIZE; ++i)
+		ASSERT_SERIALIZED(sc->serializes[i]);
+#endif
 
 	/*
 	 * The timer is set to 5 every time start queues a packet.
@@ -981,7 +1010,10 @@ emx_init(void *xsc)
 	uint32_t pba;
 	int i;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+#ifdef INVARIANTS
+	for (i = 0; i < EMX_NSERIALIZE; ++i)
+		ASSERT_SERIALIZED(sc->serializes[i]);
+#endif
 
 	emx_stop(sc);
 
@@ -1135,8 +1167,12 @@ emx_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 {
 	struct emx_softc *sc = ifp->if_softc;
 	uint32_t reg_icr;
+#ifdef INVARIANTS
+	int i;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	for (i = 0; i < EMX_NSERIALIZE; ++i)
+		ASSERT_SERIALIZED(sc->serializes[i]);
+#endif
 
 	switch (cmd) {
 	case POLL_REGISTER:
@@ -1181,7 +1217,7 @@ emx_intr(void *xsc)
 	uint32_t reg_icr;
 
 	logif(intr_beg);
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_SERIALIZED(&sc->main_serialize);
 
 	reg_icr = E1000_READ_REG(&sc->hw, E1000_ICR);
 
@@ -1206,18 +1242,31 @@ emx_intr(void *xsc)
 		    (E1000_ICR_RXT0 | E1000_ICR_RXDMT0 | E1000_ICR_RXO)) {
 			int i;
 
-			for (i = 0; i < sc->rx_ring_inuse; ++i)
+			for (i = 0; i < sc->rx_ring_inuse; ++i) {
+				lwkt_serialize_enter(
+				&sc->rx_data[i].rx_serialize);
 				emx_rxeof(sc, i, -1);
+				lwkt_serialize_exit(
+				&sc->rx_data[i].rx_serialize);
+			}
 		}
 		if (reg_icr & E1000_ICR_TXDW) {
+			lwkt_serialize_enter(&sc->tx_serialize);
 			emx_txeof(sc);
 			if (!ifq_is_empty(&ifp->if_snd))
 				if_devstart(ifp);
+			lwkt_serialize_exit(&sc->tx_serialize);
 		}
 	}
 
 	/* Link status change */
 	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
+		int i;
+
+		/* XXX */
+		for (i = 1; i < EMX_NSERIALIZE; ++i)
+			lwkt_serialize_enter(sc->serializes[i]);
+
 		callout_stop(&sc->timer);
 		sc->hw.mac.get_link_status = 1;
 		emx_update_link_status(sc);
@@ -1226,6 +1275,9 @@ emx_intr(void *xsc)
 		emx_tx_purge(sc);
 
 		callout_reset(&sc->timer, hz, emx_timer, sc);
+
+		for (i = EMX_NSERIALIZE - 1; i >= 1; --i)
+			lwkt_serialize_exit(sc->serializes[i]);
 	}
 
 	if (reg_icr & E1000_ICR_RXO)
@@ -1238,8 +1290,12 @@ static void
 emx_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	struct emx_softc *sc = ifp->if_softc;
+#ifdef INVARIANTS
+	int i;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	for (i = 0; i < EMX_NSERIALIZE; ++i)
+		ASSERT_SERIALIZED(sc->serializes[i]);
+#endif
 
 	emx_update_link_status(sc);
 
@@ -1279,8 +1335,12 @@ emx_media_change(struct ifnet *ifp)
 {
 	struct emx_softc *sc = ifp->if_softc;
 	struct ifmedia *ifm = &sc->media;
+#ifdef INVARIANTS
+	int i;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	for (i = 0; i < EMX_NSERIALIZE; ++i)
+		ASSERT_SERIALIZED(sc->serializes[i]);
+#endif
 
 	if (IFM_TYPE(ifm->ifm_media) != IFM_ETHER)
 		return (EINVAL);
@@ -1538,7 +1598,7 @@ emx_timer(void *xsc)
 	struct emx_softc *sc = xsc;
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	emx_update_link_status(sc);
 	emx_update_stats(sc);
@@ -1554,7 +1614,7 @@ emx_timer(void *xsc)
 
 	callout_reset(&sc->timer, hz, emx_timer, sc);
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 }
 
 static void
@@ -1644,9 +1704,12 @@ static void
 emx_stop(struct emx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
+#ifdef INVARIANTS
 	int i;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	for (i = 0; i < EMX_NSERIALIZE; ++i)
+		ASSERT_SERIALIZED(sc->serializes[i]);
+#endif
 
 	emx_disable_intr(sc);
 
@@ -1770,10 +1833,13 @@ emx_setup_ifp(struct emx_softc *sc)
 	ifp->if_poll = emx_poll;
 #endif
 	ifp->if_watchdog = emx_watchdog;
+	ifp->if_serialize = emx_serialize;
+	ifp->if_deserialize = emx_deserialize;
+	ifp->if_tryserialize = emx_tryserialize;
 	ifq_set_maxlen(&ifp->if_snd, sc->num_tx_desc - 1);
 	ifq_set_ready(&ifp->if_snd);
 
-	ether_ifattach(ifp, sc->hw.mac.addr, NULL);
+	ether_ifattach(ifp, sc->hw.mac.addr, &sc->panic_serialize);
 
 	ifp->if_capabilities = IFCAP_HWCSUM |
 			       IFCAP_VLAN_HWTAGGING |
@@ -2942,7 +3008,7 @@ discard:
 static void
 emx_enable_intr(struct emx_softc *sc)
 {
-	lwkt_serialize_handler_enable(sc->arpcom.ac_if.if_serializer);
+	lwkt_serialize_handler_enable(&sc->main_serialize);
 	E1000_WRITE_REG(&sc->hw, E1000_IMS, IMS_ENABLE_MASK);
 }
 
@@ -2950,7 +3016,7 @@ static void
 emx_disable_intr(struct emx_softc *sc)
 {
 	E1000_WRITE_REG(&sc->hw, E1000_IMC, 0xffffffff);
-	lwkt_serialize_handler_disable(sc->arpcom.ac_if.if_serializer);
+	lwkt_serialize_handler_disable(&sc->main_serialize);
 }
 
 /*
@@ -3323,7 +3389,7 @@ emx_sysctl_debug_info(SYSCTL_HANDLER_ARGS)
 	sc = (struct emx_softc *)arg1;
 	ifp = &sc->arpcom.ac_if;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	if (result == 1)
 		emx_print_debug_info(sc);
@@ -3336,7 +3402,7 @@ emx_sysctl_debug_info(SYSCTL_HANDLER_ARGS)
 	if (result == 2)
 		emx_print_nvm_info(sc);
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	return (error);
 }
@@ -3355,9 +3421,9 @@ emx_sysctl_stats(SYSCTL_HANDLER_ARGS)
 		struct emx_softc *sc = (struct emx_softc *)arg1;
 		struct ifnet *ifp = &sc->arpcom.ac_if;
 
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_all(ifp);
 		emx_print_hw_stats(sc);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_all(ifp);
 	}
 	return (error);
 }
@@ -3397,6 +3463,7 @@ emx_add_sysctl(struct emx_softc *sc)
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 		       OID_AUTO, "txd", CTLFLAG_RD, &sc->num_tx_desc, 0, NULL);
 
+#ifdef notyet
 #ifdef PROFILE_SERIALIZER
 	SYSCTL_ADD_UINT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 			OID_AUTO, "serializer_sleep", CTLFLAG_RW,
@@ -3410,6 +3477,7 @@ emx_add_sysctl(struct emx_softc *sc)
 	SYSCTL_ADD_UINT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 			OID_AUTO, "serializer_try", CTLFLAG_RW,
 			&ifp->if_serializer->try_cnt, 0, NULL);
+#endif
 #endif
 
 	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
@@ -3465,7 +3533,7 @@ emx_sysctl_int_throttle(SYSCTL_HANDLER_ARGS)
 			return EINVAL;
 	}
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	if (throttle)
 		sc->int_throttle_ceil = 1000000000 / 256 / throttle;
@@ -3475,7 +3543,7 @@ emx_sysctl_int_throttle(SYSCTL_HANDLER_ARGS)
 	if (ifp->if_flags & IFF_RUNNING)
 		E1000_WRITE_REG(&sc->hw, E1000_ITR, throttle);
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	if (bootverbose) {
 		if_printf(ifp, "Interrupt moderation set to %d/sec\n",
@@ -3498,7 +3566,7 @@ emx_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS)
 	if (segs <= 0)
 		return EINVAL;
 
-	lwkt_serialize_enter(ifp->if_serializer);
+	ifnet_serialize_all(ifp);
 
 	/*
 	 * Don't allow int_tx_nsegs to become:
@@ -3516,7 +3584,7 @@ emx_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS)
 		sc->tx_int_nsegs = segs;
 	}
 
-	lwkt_serialize_exit(ifp->if_serializer);
+	ifnet_deserialize_all(ifp);
 
 	return error;
 }
@@ -3577,4 +3645,93 @@ emx_dma_free(struct emx_softc *sc)
 	/* Free top level busdma tag */
 	if (sc->parent_dtag != NULL)
 		bus_dma_tag_destroy(sc->parent_dtag);
+}
+
+static void
+emx_serialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct emx_softc *sc = ifp->if_softc;
+	int i;
+
+	switch (slz) {
+	case IFNET_SERIALIZE_ALL:
+		for (i = 0; i < EMX_NSERIALIZE; ++i)
+			lwkt_serialize_enter(sc->serializes[i]);
+		break;
+
+	case IFNET_SERIALIZE_TX:
+		lwkt_serialize_enter(&sc->tx_serialize);
+		break;
+
+	case IFNET_SERIALIZE_RX0:
+		lwkt_serialize_enter(&sc->rx_data[0].rx_serialize);
+		break;
+
+	case IFNET_SERIALIZE_RX1:
+		lwkt_serialize_enter(&sc->rx_data[1].rx_serialize);
+		break;
+
+	default:
+		panic("%s unsupported serialize type\n", ifp->if_xname);
+	}
+}
+
+static void
+emx_deserialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct emx_softc *sc = ifp->if_softc;
+	int i;
+
+	switch (slz) {
+	case IFNET_SERIALIZE_ALL:
+		for (i = EMX_NSERIALIZE - 1; i >= 0; --i)
+			lwkt_serialize_exit(sc->serializes[i]);
+		break;
+
+	case IFNET_SERIALIZE_TX:
+		lwkt_serialize_exit(&sc->tx_serialize);
+		break;
+
+	case IFNET_SERIALIZE_RX0:
+		lwkt_serialize_exit(&sc->rx_data[0].rx_serialize);
+		break;
+
+	case IFNET_SERIALIZE_RX1:
+		lwkt_serialize_exit(&sc->rx_data[1].rx_serialize);
+		break;
+
+	default:
+		panic("%s unsupported serialize type\n", ifp->if_xname);
+	}
+}
+
+static int
+emx_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
+{
+	struct emx_softc *sc = ifp->if_softc;
+	int i;
+
+	switch (slz) {
+	case IFNET_SERIALIZE_ALL:
+		for (i = 0; i < EMX_NSERIALIZE; ++i) {
+			if (!lwkt_serialize_try(sc->serializes[i])) {
+				while (--i >= 0)
+					lwkt_serialize_exit(sc->serializes[i]);
+				return 0;
+			}
+		}
+		return 1;
+
+	case IFNET_SERIALIZE_TX:
+		return lwkt_serialize_try(&sc->tx_serialize);
+
+	case IFNET_SERIALIZE_RX0:
+		return lwkt_serialize_try(&sc->rx_data[0].rx_serialize);
+
+	case IFNET_SERIALIZE_RX1:
+		return lwkt_serialize_try(&sc->rx_data[1].rx_serialize);
+
+	default:
+		panic("%s unsupported serialize type\n", ifp->if_xname);
+	}
 }
