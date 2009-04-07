@@ -38,7 +38,7 @@
 #include <err.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <strings.h>
+#include <string.h>
 #include <stdlib.h>
 #include <sysexits.h>
 

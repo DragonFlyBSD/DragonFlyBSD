@@ -39,7 +39,7 @@
 #include <sys/time.h>
 #include <errno.h>
 #include <stdio.h>
-#include <strings.h>
+#include <string.h>
 
 #include <netncp/ncp_lib.h>
 
