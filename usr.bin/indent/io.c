@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * @(#)io.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/indent/io.c,v 1.5.2.3 2001/12/06 19:28:47 schweikh Exp $
+ * $FreeBSD: src/usr.bin/indent/io.c,v 1.15 2005/11/13 20:37:25 dwmalone Exp $
  * $DragonFly: src/usr.bin/indent/io.c,v 1.3 2005/04/10 20:55:38 drhodus Exp $
  */
 
@@ -122,9 +122,9 @@ dump_line(void)
 		    s++;
 		if (s < e_lab)
 		    fprintf(output, s[0]=='/' && s[1]=='*' ? "\t%.*s" : "\t/* %.*s */",
-			    e_lab - s, s);
+			    (int)(e_lab - s), s);
 	    }
-	    else fprintf(output, "%.*s", e_lab - s_lab, s_lab);
+	    else fprintf(output, "%.*s", (int)(e_lab - s_lab), s_lab);
 	    cur_col = count_spaces(cur_col, s_lab);
 	}
 	else
@@ -290,7 +290,8 @@ compute_code_target(void)
 
     if (ps.paren_level)
 	if (!lineup_to_parens)
-	    target_col += continuation_indent * ps.paren_level;
+	    target_col += continuation_indent
+		* (2 * continuation_indent == ps.ind_size ? 1 : ps.paren_level);
 	else {
 	    int w;
 	    int t = paren_target;
@@ -354,8 +355,8 @@ fill_buffer(void)
 	    int size = (in_buffer_limit - in_buffer) * 2 + 10;
 	    int offset = p - in_buffer;
 	    in_buffer = realloc(in_buffer, size);
-	    if (in_buffer == 0)
-		err(1, "input line too long");
+	    if (in_buffer == NULL)
+		errx(1, "input line too long");
 	    p = in_buffer + offset;
 	    in_buffer_limit = in_buffer + size - 2;
 	}
@@ -466,10 +467,12 @@ pad_output(int current, int target)
 	if (current >= target)
 	    return (current);	/* line is already long enough */
 	curr = current;
+        if (use_tabs) {
 	while ((tcur = ((curr - 1) & tabmask) + tabsize + 1) <= target) {
 	    putc('\t', output);
 	    curr = tcur;
 	}
+        }
 	while (curr++ < target)
 	    putc(' ', output);	/* pad with final blanks */
     }
@@ -532,10 +535,8 @@ count_spaces(int current, char *buffer)
     return (cur);
 }
 
-int	found_err;
-
 void
-diag4(int level, char *msg, int a, int b)
+diag4(int level, const char *msg, int a, int b)
 {
     if (level)
 	found_err = 1;
@@ -552,7 +553,7 @@ diag4(int level, char *msg, int a, int b)
 }
 
 void
-diag3(int level, char *msg, int a)
+diag3(int level, const char *msg, int a)
 {
     if (level)
 	found_err = 1;
@@ -569,7 +570,7 @@ diag3(int level, char *msg, int a)
 }
 
 void
-diag2(int level, char *msg)
+diag2(int level, const char *msg)
 {
     if (level)
 	found_err = 1;
@@ -623,9 +624,9 @@ chfont(struct fstate *of, struct fstate *nf, char *s)
 }
 
 void
-parsefont(struct fstate *f, char *s0)
+parsefont(struct fstate *f, const char *s0)
 {
-    char *s = s0;
+    const char *s = s0;
     int         sizedelta = 0;
 
     bzero(f, sizeof *f);

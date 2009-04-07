@@ -411,7 +411,7 @@ main(int argc, char **argv)
 				errx(1, "Must be superuser to flood ping");
 			}
 			options |= F_FLOOD;
-			setbuf(stdout, (char *)NULL);
+			setbuf(stdout, NULL);
 			break;
 		case 'g':
 			gateway = optarg;

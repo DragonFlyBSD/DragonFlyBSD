@@ -13,23 +13,19 @@ NOASM=
 
 #WARNS=6
 
-#
-# If there is a machine dependent makefile, use it:
-#
-.if exists(${.CURDIR}/../libc/${MACHINE_ARCH}/Makefile.inc)
 .include "${.CURDIR}/../libc/${MACHINE_ARCH}/Makefile.inc"
-.endif
 
 .include "${.CURDIR}/../libc/citrus/Makefile.inc"
 .include "${.CURDIR}/../libc/db/Makefile.inc"
 .include "${.CURDIR}/../libc/compat-43/Makefile.inc"
+.include "${.CURDIR}/../libc/gdtoa/Makefile.inc"
 .include "${.CURDIR}/../libc/gen/Makefile.inc"
 .include "${.CURDIR}/../libc/gmon/Makefile.inc"
 .include "${.CURDIR}/../libc/iconv/Makefile.inc"
 .include "${.CURDIR}/../libc/locale/Makefile.inc"
 .include "${.CURDIR}/../libc/net/Makefile.inc"
 .include "${.CURDIR}/../libc/nls/Makefile.inc"
-.if !defined(NO_QUAD)
+.if ${MACHINE_ARCH} != "amd64"
 .include "${.CURDIR}/../libc/quad/Makefile.inc"
 .endif
 .include "${.CURDIR}/../libc/regex/Makefile.inc"
@@ -67,3 +63,6 @@ SRCS+=	${_src}
 .endif
 .endfor
 .endif
+
+# Disable warnings in contributed sources.
+CWARNFLAGS:=	${.IMPSRC:Ngdtoa_*.c:C/^.+$/${CWARNFLAGS}/}

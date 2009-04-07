@@ -13,10 +13,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -34,10 +30,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)abs.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/stdlib/abs.3,v 1.7.2.3 2001/12/14 18:33:58 ru Exp $
+.\" $FreeBSD: src/lib/libc/stdlib/abs.3,v 1.13 2007/01/09 00:28:09 imp Exp $
 .\" $DragonFly: src/lib/libc/stdlib/abs.3,v 1.4 2007/12/02 03:29:47 swildner Exp $
 .\"
-.Dd June 4, 1993
+.Dd November 14, 2001
 .Dt ABS 3
 .Os
 .Sh NAME
@@ -55,7 +51,7 @@ The
 function
 computes
 the absolute value of the integer
-.Ar j .
+.Fa j .
 .Sh IMPLEMENTATION NOTES
 The
 .Fn abs
@@ -80,6 +76,6 @@ the absolute value.
 The
 .Fn abs
 function conforms to
-.St -isoC .
+.St -isoC-99 .
 .Sh BUGS
 The absolute value of the most negative integer remains negative.

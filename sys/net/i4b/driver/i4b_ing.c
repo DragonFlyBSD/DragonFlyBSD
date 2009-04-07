@@ -32,7 +32,7 @@
  *
  *	last edit-date: [Tue Jan  1 10:43:58 2002]
  *
- *---------------------------------------------------------------------------*/ 
+ *---------------------------------------------------------------------------*/
 
 #include "use_i4bing.h"
 
@@ -84,7 +84,7 @@ struct ing_softc {
 	struct ifqueue  sc_fastq;	/* interactive traffic		*/
 	int		sc_dialresp;	/* dialresponse			*/
 	int		sc_lastdialresp;/* last dialresponse		*/
-	
+
 #if I4BINGACCT
 	struct callout	sc_timeout;
 	int		sc_iinb;	/* isdn driver # of inbytes	*/
@@ -94,18 +94,18 @@ struct ing_softc {
 	int		sc_linb;	/* last # of bytes rx'd		*/
 	int		sc_loutb;	/* last # of bytes tx'd 	*/
 	int		sc_fn;		/* flag, first null acct	*/
-#endif	
+#endif
 
 	int		sc_inpkt;	/* incoming packets		*/
-	int		sc_outpkt;	/* outgoing packets		*/	
+	int		sc_outpkt;	/* outgoing packets		*/
 
 	struct ifqueue  xmitq_hipri;    /* hi-priority transmit queue */
 	struct ifqueue  xmitq;	  /* transmit queue */
-		
+
 	node_p		node;		/* back pointer to node */
 	char		nodename[NG_NODESIZ]; /* store our node name */
 	hook_p  	debughook;
-	hook_p  	hook;	
+	hook_p  	hook;
 
 	u_int   	packets_in;	/* packets in from downstream */
 	u_int   	packets_out;	/* packets out towards downstream */
@@ -237,19 +237,19 @@ i4bingattach(void *dummy)
 	int ret;
 
 	kprintf("i4bing: %d i4b NetGraph ISDN B-channel device(s) attached\n", NI4BING);
-	
+
 	for(i=0; i < NI4BING; sc++, i++)
 	{
 		sc->sc_unit = i;
-		
+
 		ing_init_linktab(i);
 
 		NDBGL4(L4_DIALST, "setting dial state to ST_IDLE");
 
 		sc->sc_state = ST_IDLE;
-		
+
 		sc->sc_fastq.ifq_maxlen = I4BINGMAXQLEN;
-		
+
 #if I4BINGACCT
 		callout_init(&sc->sc_timeout);
 		sc->sc_iinb = 0;
@@ -262,13 +262,13 @@ i4bingattach(void *dummy)
 #endif
 
 		sc->sc_inpkt = 0;
-		sc->sc_outpkt = 0;		
+		sc->sc_outpkt = 0;
 
 		sc->sc_updown = SOFT_ENA;	/* soft enabled */
 
 		sc->sc_dialresp = DSTAT_NONE;	/* no response */
 		sc->sc_lastdialresp = DSTAT_NONE;
-		
+
 		/* setup a netgraph node */
 
 		if ((ret = ng_make_node_common(&typestruct, &sc->node)))
@@ -280,7 +280,7 @@ i4bingattach(void *dummy)
 
 		sc->xmitq.ifq_maxlen = IFQ_MAXLEN;
 		sc->xmitq_hipri.ifq_maxlen = IFQ_MAXLEN;
-				
+
 		/* name the netgraph node */
 
 		ksprintf(sc->nodename, "%s%d", NG_ING_NODE_TYPE, sc->sc_unit);
@@ -303,15 +303,15 @@ ing_timeout(struct ing_softc *sc)
 	bchan_statistics_t bs;
 	int unit = sc->sc_unit;
 
-	/* get # of bytes in and out from the HSCX driver */ 
-	
+	/* get # of bytes in and out from the HSCX driver */
+
 	(*isdn_linktab[unit]->bch_stat)
 		(isdn_linktab[unit]->unit, isdn_linktab[unit]->channel, &bs);
 
 	sc->sc_ioutb += bs.outbytes;
 	sc->sc_iinb += bs.inbytes;
-	
-	if((sc->sc_iinb != sc->sc_linb) || (sc->sc_ioutb != sc->sc_loutb) || sc->sc_fn) 
+
+	if((sc->sc_iinb != sc->sc_linb) || (sc->sc_ioutb != sc->sc_loutb) || sc->sc_fn)
 	{
 		int ri = (sc->sc_iinb - sc->sc_linb)/I4BINGACCTINTVL;
 		int ro = (sc->sc_ioutb - sc->sc_loutb)/I4BINGACCTINTVL;
@@ -320,7 +320,7 @@ ing_timeout(struct ing_softc *sc)
 			sc->sc_fn = 0;
 		else
 			sc->sc_fn = 1;
-			
+
 		sc->sc_linb = sc->sc_iinb;
 		sc->sc_loutb = sc->sc_ioutb;
 
@@ -342,7 +342,7 @@ ingclearqueue(struct ifqueue *iq)
 {
 	int x;
 	struct mbuf *m;
-	
+
 	for(;;)
 	{
 		crit_enter();
@@ -354,7 +354,7 @@ ingclearqueue(struct ifqueue *iq)
 		else
 			break;
 	}
-}	
+}
 #endif
 
 /*===========================================================================*
@@ -376,8 +376,8 @@ ing_connect(int unit, void *cdp)
 	NDBGL4(L4_DIALST, "ing%d: setting dial state to ST_CONNECTED", unit);
 
 	sc->sc_dialresp = DSTAT_NONE;
-	sc->sc_lastdialresp = DSTAT_NONE;	
-	
+	sc->sc_lastdialresp = DSTAT_NONE;
+
 #if I4BINGACCT
 	sc->sc_iinb = 0;
 	sc->sc_ioutb = 0;
@@ -390,10 +390,10 @@ ing_connect(int unit, void *cdp)
 #endif
 
 	sc->sc_state = ST_CONNECTED;
-	
+
 	crit_exit();
 }
-	
+
 /*---------------------------------------------------------------------------*
  *	this routine is called from L4 handler at disconnect time
  *---------------------------------------------------------------------------*/
@@ -418,13 +418,13 @@ ing_disconnect(int unit, void *cdp)
 
 	i4b_l4_accounting(BDRV_ING, cd->driver_unit, ACCT_FINAL,
 		 sc->sc_ioutb, sc->sc_iinb, 0, 0, sc->sc_outb, sc->sc_inb);
-	
-	sc->sc_cdp = (call_desc_t *)0;	
+
+	sc->sc_cdp = NULL;
 
 	NDBGL4(L4_DIALST, "setting dial state to ST_IDLE");
 
 	sc->sc_dialresp = DSTAT_NONE;
-	sc->sc_lastdialresp = DSTAT_NONE;	
+	sc->sc_lastdialresp = DSTAT_NONE;
 
 	sc->sc_state = ST_IDLE;
 }
@@ -448,7 +448,7 @@ ing_dialresponse(int unit, int status, cause_t cause)
 /*		ingclearqueues(sc); */
 	}
 }
-	
+
 /*---------------------------------------------------------------------------*
  *	interface soft up/down
  *---------------------------------------------------------------------------*/
@@ -458,7 +458,7 @@ ing_updown(int unit, int updown)
 	struct ing_softc *sc = &ing_softc[unit];
 	sc->sc_updown = updown;
 }
-	
+
 /*---------------------------------------------------------------------------*
  *	this routine is called from the HSCX interrupt handler
  *	when a new frame (mbuf) has been received and was put on
@@ -470,7 +470,7 @@ ing_rx_data_rdy(int unit)
 {
 	struct ing_softc *sc = &ing_softc[unit];
 	struct mbuf *m;
-	
+
 	if((m = *isdn_linktab[unit]->rx_mbuf) == NULL)
 		return;
 
@@ -481,7 +481,7 @@ ing_rx_data_rdy(int unit)
 	m->m_pkthdr.rcvif = NULL;
 
 	sc->sc_inpkt++;
-	
+
 	ng_queue_data(sc->hook, m, NULL);
 }
 
@@ -499,7 +499,7 @@ ing_tx_queue_empty(int unit)
 
 	if(sc->sc_state != ST_CONNECTED)
 		return;
-		
+
 	for(;;)
 	{
 		IF_DEQUEUE(&sc->xmitq_hipri, m);
@@ -510,7 +510,7 @@ ing_tx_queue_empty(int unit)
 			if(m == NULL)
 				break;
 		}
-	
+
 #if I4BINGACCT
 		sc->sc_outb += m->m_pkthdr.len;
 #endif
@@ -574,7 +574,7 @@ ing_init_linktab(int unit)
 	ing_drvr_linktab[unit].line_connected = ing_connect;
 	ing_drvr_linktab[unit].line_disconnected = ing_disconnect;
 	ing_drvr_linktab[unit].dial_response = ing_dialresponse;
-	ing_drvr_linktab[unit].updown_ind = ing_updown;	
+	ing_drvr_linktab[unit].updown_ind = ing_updown;
 }
 
 /*===========================================================================*
@@ -649,7 +649,7 @@ ng_ing_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr,
 				char *p;
 				int pos = 0;
 
-				NG_MKRESPONSE(resp, msg, 
+				NG_MKRESPONSE(resp, msg,
 				    sizeof(struct ng_mesg) + NG_TEXTRESPONSE,
 				    M_INTWAIT | M_NULLOK);
 
@@ -679,7 +679,7 @@ ng_ing_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr,
 				pos = ksprintf(arg, "state = %s (%d)\n", p, sc->sc_state);
 #if I4BINGACCT
 				pos += ksprintf(arg + pos, "%d bytes in, %d bytes out\n", sc->sc_inb, sc->sc_outb);
-#endif			    
+#endif
 				pos += ksprintf(arg + pos, "%d pkts in, %d pkts out\n", sc->sc_inpkt, sc->sc_outpkt);
 
 				resp->header.arglen = pos + 1;
@@ -699,7 +699,7 @@ ng_ing_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr,
 			{
 				struct ngingstat *stats;
 
-				NG_MKRESPONSE(resp, msg, sizeof(*stats), 
+				NG_MKRESPONSE(resp, msg, sizeof(*stats),
 				    M_INTWAIT | M_NULLOK);
 
 				if (!resp)
@@ -754,13 +754,13 @@ ng_ing_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 {
 	struct ing_softc *sc = hook->node->private;
 	struct ifqueue  *xmitq_p;
-	
+
 	if(hook->private == NULL)
 	{
 		NG_FREE_DATA(m, meta);
 		return(ENETDOWN);
 	}
-	
+
 	if(sc->sc_state == ST_IDLE || sc->sc_state == ST_DIALING)
 	{
 		i4b_l4_dialout(BDRV_ING, sc->sc_unit);
@@ -768,7 +768,7 @@ ng_ing_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	}
 
 	sc->sc_outpkt++;
-	
+
        /*
 	* Now queue the data for when it can be sent
 	*/
@@ -839,7 +839,7 @@ static int
 ng_ing_disconnect(hook_p hook)
 {
 	struct ing_softc *sc = hook->node->private;
-	
+
 	if(hook->private == NULL) {
 		sc->debughook = NULL;
 	}

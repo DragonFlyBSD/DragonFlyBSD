@@ -172,7 +172,7 @@ static struct {
 	{ "server",		TOK_SERVER },
 	{ "ServerGroupID",	TOK_SRVGRP },
 	{ "syslog",		TOK_SYSLOG },
-	{ (char *)0,		0 },
+	{ NULL,			0 },
 };
 
 

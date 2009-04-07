@@ -105,7 +105,7 @@ useup(struct obj *obj)
 	} else {
 		setnotworn(obj);
 		freeinv(obj);
-		obfree(obj, (struct obj *) 0);
+		obfree(obj, NULL);
 	}
 }
 
@@ -129,7 +129,7 @@ delobj(struct obj *obj)
 {
 	freeobj(obj);
 	unpobj(obj);
-	obfree(obj, (struct obj *) 0);
+	obfree(obj, NULL);
 }
 
 /* unlink obj from chain starting with fobj */
@@ -250,7 +250,7 @@ o_on(unsigned int id, struct obj *objchn)
 		if(objchn->o_id == id) return(objchn);
 		objchn = objchn->nobj;
 	}
-	return((struct obj *) 0);
+	return(NULL);
 }
 
 struct trap *
@@ -293,7 +293,7 @@ mkgoldobj(long q)
 /*
  * getobj returns:
  *	struct obj *xxx:	object to do something with.
- *	(struct obj *) 0	error return: no object.
+ *	NULL			error return: no object.
  *	&zeroobj		explicitly no object (as in w-).
  */
 struct obj *
@@ -385,9 +385,9 @@ getobj(const char *let, const char *word)
 			continue;
 		}
 		if(index(quitchars,ilet))
-			return((struct obj *)0);
+			return(NULL);
 		if(ilet == '-') {
-			return(allownone ? &zeroobj : (struct obj *) 0);
+			return(allownone ? &zeroobj : NULL);
 		}
 		if(ilet == '$') {
 			if(!allowgold){
@@ -403,7 +403,7 @@ getobj(const char *let, const char *word)
 			if(!(ilet = morc)) continue;
 			/* he typed a letter (not a space) to more() */
 		} else if(ilet == '*') {
-			doinv((char *) 0);
+			doinv(NULL);
 			if(!(ilet = morc)) continue;
 			/* ... */
 		}
@@ -597,7 +597,7 @@ xprname(struct obj *obj, char let)
 int
 ddoinv(void)
 {
-	doinv((char *) 0);
+	doinv(NULL);
 	return(0);
 }
 
@@ -618,7 +618,7 @@ doinv(char *lets)
 		return;
 	}
 
-	cornline(0, (char *) 0);
+	cornline(0, NULL);
 	ilet = 'a';
 	for(otmp = invent; otmp; otmp = otmp->nobj) {
 	    if(flags.invlet_constant) ilet = otmp->invlet;
@@ -757,10 +757,10 @@ dolook(void)
 
     if(ct == 1 && !gold) {
 	pline("You %s here %s.", verb, doname(otmp0));
-	cornline(3, (char *) 0);
+	cornline(3, NULL);
     }
     if(ct > 1)
-	cornline(2, (char *) 0);
+	cornline(2, NULL);
     return(!!Blind);
 }
 

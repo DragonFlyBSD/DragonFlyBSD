@@ -1,5 +1,5 @@
 /*-
- * Copyright (c)1999 Citrus Project,
+ * Copyright (c) 2002 Tim J. Robbins
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,9 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * citrus Id: wcsrchr.c,v 1.2 2000/12/21 05:07:25 itojun Exp
- * $NetBSD: wcsrchr.c,v 1.1 2000/12/23 23:14:37 itojun Exp $
- * $FreeBSD: src/lib/libc/string/wcsrchr.c,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
+ * $FreeBSD: src/lib/libc/string/wcsrchr.c,v 1.7 2002/10/23 10:52:04 tjr Exp $
  * $DragonFly: src/lib/libc/string/wcsrchr.c,v 1.3 2005/04/28 13:25:12 joerg Exp $
  */
 
@@ -35,17 +33,16 @@
 wchar_t *
 wcsrchr(const wchar_t *s, wchar_t c)
 {
-	const wchar_t *p;
+	const wchar_t *last;
 
-	p = s;
-	while (*p)
-		p++;
-	while (s <= p) {
-		if (*p == c) {
-			/* LINTED interface specification */
-			return(__DECONST(wchar_t *, p));
-		}
-		p--;
+	last = NULL;
+	for (;;) {
+		if (*s == c)
+			last = s;
+		if (*s == L'\0')
+			break;
+		s++;
 	}
-	return NULL;
+
+	return (__DECONST(wchar_t *, last));
 }

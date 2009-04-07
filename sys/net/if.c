@@ -770,7 +770,7 @@ if_rtdel(struct radix_node *rn, void *arg)
 
 		err = rtrequest(RTM_DELETE, rt_key(rt), rt->rt_gateway,
 				rt_mask(rt), rt->rt_flags,
-				(struct rtentry **) NULL);
+				NULL);
 		if (err) {
 			log(LOG_WARNING, "if_rtdel: error %d\n", err);
 		}
@@ -1211,6 +1211,10 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		return (ENXIO);
 	switch (cmd) {
 
+	case SIOCGIFINDEX:
+		ifr->ifr_index = ifp->if_index;
+		break;
+
 	case SIOCGIFFLAGS:
 		ifr->ifr_flags = ifp->if_flags;
 		ifr->ifr_flagshigh = ifp->if_flags >> 16;
@@ -1582,7 +1586,7 @@ ifpromisc(struct ifnet *ifp, int pswitch)
 	ifr.ifr_flagshigh = ifp->if_flags >> 16;
 	lwkt_serialize_enter(ifp->if_serializer);
 	error = ifp->if_ioctl(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
-				 (struct ucred *)NULL);
+				 NULL);
 	lwkt_serialize_exit(ifp->if_serializer);
 	if (error == 0)
 		rt_ifmsg(ifp);
@@ -1700,7 +1704,7 @@ if_allmulti(struct ifnet *ifp, int onswitch)
 			ifr.ifr_flagshigh = ifp->if_flags >> 16;
 			lwkt_serialize_enter(ifp->if_serializer);
 			error = ifp->if_ioctl(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
-					      (struct ucred *)NULL);
+					      NULL);
 			lwkt_serialize_exit(ifp->if_serializer);
 		}
 	} else {
@@ -1713,7 +1717,7 @@ if_allmulti(struct ifnet *ifp, int onswitch)
 			ifr.ifr_flagshigh = ifp->if_flags >> 16;
 			lwkt_serialize_enter(ifp->if_serializer);
 			error = ifp->if_ioctl(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
-					      (struct ucred *)NULL);
+					      NULL);
 			lwkt_serialize_exit(ifp->if_serializer);
 		}
 	}
@@ -1814,7 +1818,7 @@ if_addmulti(
 	 */
 	crit_enter();
 	lwkt_serialize_enter(ifp->if_serializer);
-	ifp->if_ioctl(ifp, SIOCADDMULTI, 0, (struct ucred *)NULL);
+	ifp->if_ioctl(ifp, SIOCADDMULTI, 0, NULL);
 	lwkt_serialize_exit(ifp->if_serializer);
 	crit_exit();
 
@@ -1851,7 +1855,7 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 	 */
 	if (ifma->ifma_addr->sa_family == AF_LINK && sa == 0) {
 		lwkt_serialize_enter(ifp->if_serializer);
-		ifp->if_ioctl(ifp, SIOCDELMULTI, 0, (struct ucred *)NULL);
+		ifp->if_ioctl(ifp, SIOCDELMULTI, 0, NULL);
 		lwkt_serialize_exit(ifp->if_serializer);
 	}
 	crit_exit();
@@ -1885,7 +1889,7 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 	crit_enter();
 	lwkt_serialize_enter(ifp->if_serializer);
 	LIST_REMOVE(ifma, ifma_link);
-	ifp->if_ioctl(ifp, SIOCDELMULTI, 0, (struct ucred *)NULL);
+	ifp->if_ioctl(ifp, SIOCDELMULTI, 0, NULL);
 	lwkt_serialize_exit(ifp->if_serializer);
 	crit_exit();
 	kfree(ifma->ifma_addr, M_IFMADDR);
@@ -1935,12 +1939,12 @@ if_setlladdr(struct ifnet *ifp, const u_char *lladdr, int len)
 		ifr.ifr_flags = ifp->if_flags;
 		ifr.ifr_flagshigh = ifp->if_flags >> 16;
 		ifp->if_ioctl(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
-			      (struct ucred *)NULL);
+			      NULL);
 		ifp->if_flags |= IFF_UP;
 		ifr.ifr_flags = ifp->if_flags;
 		ifr.ifr_flagshigh = ifp->if_flags >> 16;
 		ifp->if_ioctl(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
-				 (struct ucred *)NULL);
+				 NULL);
 #ifdef INET
 		/*
 		 * Also send gratuitous ARPs to notify other nodes about

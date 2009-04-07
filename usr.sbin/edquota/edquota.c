@@ -329,7 +329,7 @@ getprivs(long id, int quotatype, char *fspath)
 	static int warned = 0;
 
 	setfsent();
-	quphead = (struct quotause *)0;
+	quphead = NULL;
 	qcmd = QCMD(Q_GETQUOTA, quotatype);
 	while ((fs = getfsent())) {
 		if (fspath && *fspath && strcmp(fspath, fs->fs_spec) &&
@@ -452,9 +452,9 @@ editit(char *tmpf)
 		sigsetmask(omask);
 		setgid(getgid());
 		setuid(getuid());
-		if ((ed = getenv("EDITOR")) == (char *)0)
+		if ((ed = getenv("EDITOR")) == NULL)
 			ed = _PATH_VI;
-		execlp(ed, ed, tmpf, (char *)0);
+		execlp(ed, ed, tmpf, NULL);
 		err(1, "%s", ed);
 	}
 	waitpid(pid, &status, 0);
@@ -524,7 +524,7 @@ readprivs(struct quotause *quplist, char *inname)
 			warnx("%s: bad format", line1);
 			return (0);
 		}
-		if ((cp = strtok((char *)0, "\n")) == NULL) {
+		if ((cp = strtok(NULL, "\n")) == NULL) {
 			warnx("%s: %s: bad format", fsp, &fsp[strlen(fsp) + 1]);
 			return (0);
 		}
@@ -657,7 +657,7 @@ readtimes(struct quotause *quplist, char *inname)
 			warnx("%s: bad format", line1);
 			return (0);
 		}
-		if ((cp = strtok((char *)0, "\n")) == NULL) {
+		if ((cp = strtok(NULL, "\n")) == NULL) {
 			warnx("%s: %s: bad format", fsp, &fsp[strlen(fsp) + 1]);
 			return (0);
 		}

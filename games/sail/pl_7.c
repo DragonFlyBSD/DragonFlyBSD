@@ -216,7 +216,7 @@ sgetstr(const char *pr, char *buf, int n)
 	int c;
 	char *p = buf;
 
-	prompt(pr, (struct ship *)0);
+	prompt(pr, NULL);
 	sc_buf = buf;
 	for (;;) {
 		*p = 0;

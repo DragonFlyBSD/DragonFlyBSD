@@ -768,7 +768,7 @@ sig_child(int sig)
 	int status;
 	pid_t pid;
 
-	pid = wait3(&status, WNOHANG, (struct rusage *)0);
+	pid = wait3(&status, WNOHANG, NULL);
 	if (pid && WEXITSTATUS(status))
 		syslog(LOG_WARNING, "child %d exit status 0x%x", pid, status);
 }
@@ -795,7 +795,7 @@ start_daemon(void)
 	sa.sa_handler = sig_child;
 	sa.sa_flags = SA_NOCLDWAIT;
 	sigemptyset(&sa.sa_mask);
-	sigaction(SIGCHLD, &sa, (struct sigaction *)0);
+	sigaction(SIGCHLD, &sa, NULL);
 #else
 	if (signal(SIGCHLD, sig_child) == SIG_ERR) {
 		exit_failure("signal CHLD: %s", strerror(errno));

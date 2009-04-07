@@ -165,7 +165,7 @@ ns_error(struct mbuf *om, int type, int param)
 		nip->idp_sum = ns_cksum(m, sizeof(*ep));
 	} else
 		nip->idp_sum = 0xffff;
-	ns_output(m, (struct route *)0, 0);
+	ns_output(m, NULL, 0);
 
 freeit:
 	m_freem(om);
@@ -314,6 +314,6 @@ ns_echo(struct mbuf *m)
 		idp->idp_sum = ns_cksum(m,
 		    (int)(((ntohs(idp->idp_len) - 1)|1)+1));
 	}
-	ns_output(m, (struct route *)0, NS_FORWARDING);
+	ns_output(m, NULL, NS_FORWARDING);
 	return(0);
 }

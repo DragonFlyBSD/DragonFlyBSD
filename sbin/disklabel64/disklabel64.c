@@ -516,7 +516,7 @@ l_perror(const char *s)
 		break;
 
 	default:
-		warn((char *)NULL);
+		warn(NULL);
 		break;
 	}
 }
@@ -822,9 +822,9 @@ editit(void)
 		sigsetmask(omask);
 		setgid(getgid());
 		setuid(getuid());
-		if ((ed = getenv("EDITOR")) == (char *)0)
+		if ((ed = getenv("EDITOR")) == NULL)
 			ed = DEFEDITOR;
-		execlp(ed, ed, tmpfil, (char *)0);
+		execlp(ed, ed, tmpfil, NULL);
 		err(1, "%s", ed);
 	}
 	while ((xpid = wait(&status)) >= 0)

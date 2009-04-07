@@ -121,7 +121,7 @@ write_most(const char *infile, int netflag, int nomain)
 		write_svc_aux(nomain);
 	}
 	/* write out dispatcher and stubs */
-	write_programs((char *)NULL);
+	write_programs(NULL);
 
 	if (nomain)
 		return;
@@ -265,7 +265,7 @@ write_rest(void)
 {
 	f_print(fout, "\n");
 	if (inetdflag) {
-		f_print(fout, "\tif (%s == (SVCXPRT *)NULL) {\n", TRANSP);
+		f_print(fout, "\tif (%s == NULL) {\n", TRANSP);
 		sprintf(_errbuf, "could not create a handle");
 		print_err_message("\t\t");
 		f_print(fout, "\t\texit(1);\n");
@@ -451,7 +451,7 @@ write_program(definition *def, const char *storage)
 			f_print(fout, "\tcase NULLPROC:\n");
 			f_print(fout,
 				"\t\tsvc_sendreply(%s,\n\t\t\t"
-				"(xdrproc_t) xdr_void, (char *)NULL);\n",
+				"(xdrproc_t) xdr_void, NULL);\n",
 				TRANSP);
 			print_return("\t\t");
 			f_print(fout, "\n");
@@ -898,7 +898,7 @@ write_rpc_svc_fg(const char *infile, const char *sp)
 		f_print(fout, "%si = open(\"/dev/tty\", 2);\n", sp);
 		f_print(fout, "%sif (i >= 0) {\n", sp);
 		f_print(fout,
-			"%s\tioctl(i, TIOCNOTTY, (char *)NULL);\n", sp);
+			"%s\tioctl(i, TIOCNOTTY, NULL);\n", sp);
 		f_print(fout, "%s\tclose(i);\n", sp);
 		f_print(fout, "%s}\n", sp);
 	}

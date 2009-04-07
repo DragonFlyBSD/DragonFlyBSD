@@ -158,7 +158,7 @@ ls_tty(ARCHD *arcn)
 	if (d_first < 0)
 		d_first = (*nl_langinfo(D_MD_ORDER) == 'd');
 
-	if ((arcn->sb.st_mtime + SIXMONTHS) <= time((time_t *)NULL))
+	if ((arcn->sb.st_mtime + SIXMONTHS) <= time(NULL))
 		timefrmt = d_first ? OLDFRMTD : OLDFRMTM;
 	else
 		timefrmt = d_first ? CURFRMTD : CURFRMTM;

@@ -27,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)linkaddr.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/net/linkaddr.c,v 1.4 2007/01/09 00:28:02 imp Exp $
  * $DragonFly: src/lib/libc/net/linkaddr.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
  */
 

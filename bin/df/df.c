@@ -128,13 +128,13 @@ main(int argc, char **argv)
 		case 'b':
 				/* FALLTHROUGH */
 		case 'P':
-			if (putenv("BLOCKSIZE=512") != 0)
-				warn("putenv: cannot set BLOCKSIZE=512");
+			if (setenv("BLOCKSIZE", "512", 1) != 0)
+				warn("setenv: cannot set BLOCKSIZE=512");
 			hflag = 0;
 			break;
 		case 'g':
-			if (putenv("BLOCKSIZE=1g") != 0)
-				warn("putenv: cannot set BLOCKSIZE=1g");
+			if (setenv("BLOCKSIZE", "1g", 1) != 0)
+				warn("setenv: cannot set BLOCKSIZE=1g");
 			hflag = 0;
 			break;
 		case 'H':
@@ -147,8 +147,8 @@ main(int argc, char **argv)
 			iflag = 1;
 			break;
 		case 'k':
-			if (putenv("BLOCKSIZE=1k") != 0)
-				warn("putenv: cannot set BLOCKSIZE=1k");
+			if (setenv("BLOCKSIZE", "1k", 1) != 0)
+				warn("setenv: cannot set BLOCKSIZE=1k");
 			hflag = 0;
 			break;
 		case 'l':
@@ -157,8 +157,8 @@ main(int argc, char **argv)
 			vfslist = makevfslist(makenetvfslist());
 			break;
 		case 'm':
-			if (putenv("BLOCKSIZE=1m") != 0)
-				warn("putenv: cannot set BLOCKSIZE=1m");
+			if (setenv("BLOCKSIZE", "1m", 1) != 0)
+				warn("setenv: cannot set BLOCKSIZE=1m");
 			hflag = 0;
 			break;
 		case 'n':

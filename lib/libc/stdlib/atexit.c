@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -33,28 +29,29 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdlib/atexit.c,v 1.3.6.1 2002/03/10 20:28:40 tegge Exp $
- * $DragonFly: src/lib/libc/stdlib/atexit.c,v 1.7 2006/08/03 16:40:46 swildner Exp $
- *
  * @(#)atexit.c	8.2 (Berkeley) 7/3/94
+ * $FreeBSD: src/lib/libc/stdlib/atexit.c,v 1.8 2007/01/09 00:28:09 imp Exp $
+ * $DragonFly: src/lib/libc/stdlib/atexit.c,v 1.7 2006/08/03 16:40:46 swildner Exp $
  */
 
+#include "namespace.h"
 #include <stddef.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <pthread.h>
 #include "atexit.h"
+#include "un-namespace.h"
 
 #include "libc_private.h"
-#include "spinlock.h"
 
-#define		ATEXIT_FN_EMPTY	0
-#define		ATEXIT_FN_STD	1
-#define		ATEXIT_FN_CXA	2
+#define	ATEXIT_FN_EMPTY	0
+#define	ATEXIT_FN_STD	1
+#define	ATEXIT_FN_CXA	2
 
-static spinlock_t thread_lock = _SPINLOCK_INITIALIZER;
+static pthread_mutex_t atexit_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-#define THREAD_LOCK()		if (__isthreaded) _SPINLOCK(&thread_lock);
-#define THREAD_UNLOCK()		if (__isthreaded) _SPINUNLOCK(&thread_lock);
+#define _MUTEX_LOCK(x)		if (__isthreaded) _pthread_mutex_lock(x)
+#define _MUTEX_UNLOCK(x)	if (__isthreaded) _pthread_mutex_unlock(x)
 
 struct atexit {
 	struct atexit *next;			/* next in list */
@@ -83,21 +80,21 @@ atexit_register(struct atexit_fn *fptr)
 	static struct atexit __atexit0;	/* one guaranteed table */
 	struct atexit *p;
 
-	THREAD_LOCK();
+	_MUTEX_LOCK(&atexit_mutex);
 	if ((p = __atexit) == NULL)
 		__atexit = p = &__atexit0;
 	else while (p->ind >= ATEXIT_SIZE) {
 		struct atexit *old__atexit;
 		old__atexit = __atexit;
-	        THREAD_UNLOCK();
+		_MUTEX_UNLOCK(&atexit_mutex);
 		if ((p = (struct atexit *)malloc(sizeof(*p))) == NULL)
 			return (-1);
-		THREAD_LOCK();
+		_MUTEX_LOCK(&atexit_mutex);
 		if (old__atexit != __atexit) {
 			/* Lost race, retry operation */
-			THREAD_UNLOCK();
+			_MUTEX_UNLOCK(&atexit_mutex);
 			free(p);
-			THREAD_LOCK();
+			_MUTEX_LOCK(&atexit_mutex);
 			p = __atexit;
 			continue;
 		}
@@ -106,7 +103,7 @@ atexit_register(struct atexit_fn *fptr)
 		__atexit = p;
 	}
 	p->fns[p->ind++] = *fptr;
-	THREAD_UNLOCK();
+	_MUTEX_UNLOCK(&atexit_mutex);
 	return (0);
 }
 
@@ -124,7 +121,7 @@ atexit(void (*func)(void))
 	fn.fn_arg = NULL;
 	fn.fn_dso = NULL;
 
- 	error = atexit_register(&fn);	
+	error = atexit_register(&fn);
 	return (error);
 }
 
@@ -143,7 +140,7 @@ __cxa_atexit(void (*func)(void *), void *arg, void *dso)
 	fn.fn_arg = arg;
 	fn.fn_dso = dso;
 
- 	error = atexit_register(&fn);	
+	error = atexit_register(&fn);
 	return (error);
 }
 
@@ -159,7 +156,7 @@ __cxa_finalize(void *dso)
 	struct atexit_fn fn;
 	int n;
 
-	THREAD_LOCK();
+	_MUTEX_LOCK(&atexit_mutex);
 	for (p = __atexit; p; p = p->next) {
 		for (n = p->ind; --n >= 0;) {
 			if (p->fns[n].fn_type == ATEXIT_FN_EMPTY)
@@ -172,15 +169,15 @@ __cxa_finalize(void *dso)
 			  has already been called.
 			*/
 			p->fns[n].fn_type = ATEXIT_FN_EMPTY;
-		        THREAD_UNLOCK();
-		
+			_MUTEX_UNLOCK(&atexit_mutex);
+
 			/* Call the function of correct type. */
 			if (fn.fn_type == ATEXIT_FN_CXA)
 				fn.fn_ptr.cxa_func(fn.fn_arg);
 			else if (fn.fn_type == ATEXIT_FN_STD)
 				fn.fn_ptr.std_func();
-			THREAD_LOCK();
+			_MUTEX_LOCK(&atexit_mutex);
 		}
 	}
-	THREAD_UNLOCK();
+	_MUTEX_UNLOCK(&atexit_mutex);
 }

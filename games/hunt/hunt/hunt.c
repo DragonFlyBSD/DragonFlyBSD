@@ -258,7 +258,7 @@ main(int ac, char **av)
 		if ((enter_status = quit(enter_status)) == Q_QUIT)
 			break;
 	}
-	leave(0, (char *) NULL);
+	leave(0, NULL);
 	/* NOTREACHED */
 	return(0);
 }
@@ -436,7 +436,7 @@ bad_ver(void)
 static void
 sigterm(int signo __unused)
 {
-	leave(0, (char *) NULL);
+	leave(0, NULL);
 }
 
 /*
@@ -480,7 +480,7 @@ intr(int dummy __unused)
 				(void) write(Socket, "q", 1);
 				(void) close(Socket);
 			}
-			leave(0, (char *) NULL);
+			leave(0, NULL);
 		}
 		else if (ch == 'n') {
 			(void) signal(SIGINT, intr);

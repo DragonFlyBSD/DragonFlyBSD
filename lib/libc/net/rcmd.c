@@ -26,10 +26,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/net/rcmd.c,v 1.23.2.7 2002/08/26 16:17:49 jdp Exp $
- * $DragonFly: src/lib/libc/net/rcmd.c,v 1.7 2005/11/13 02:04:47 swildner Exp $
- *
  * @(#)rcmd.c	8.3 (Berkeley) 3/26/94
+ * $FreeBSD: src/lib/libc/net/rcmd.c,v 1.42 2007/01/09 00:28:02 imp Exp $
+ * $DragonFly: src/lib/libc/net/rcmd.c,v 1.7 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include "namespace.h"
@@ -50,30 +49,23 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
-#ifdef YP
 #include <rpc/rpc.h>
+#ifdef YP
 #include <rpcsvc/yp_prot.h>
 #include <rpcsvc/ypclnt.h>
 #endif
 #include <arpa/nameser.h>
 #include "un-namespace.h"
 
-/* wrapper for KAME-special getnameinfo() */
-#ifndef NI_WITHSCOPEID
-#define NI_WITHSCOPEID	0
-#endif
-
-extern int innetgr ( const char *, const char *, const char *, const char * );
+extern int innetgr(const char *, const char *, const char *, const char *);
 
 #define max(a, b)	((a > b) ? a : b)
 
-int	__ivaliduser (FILE *, u_int32_t, const char *, const char *);
-int __ivaliduser_af (FILE *,const void *, const char *, const char *,
-	int, int);
-int __ivaliduser_sa (FILE *, const struct sockaddr *, socklen_t,
-	const char *,const char *);
-static int __icheckhost (const struct sockaddr *, socklen_t,
-	const char *);
+int __ivaliduser(FILE *, u_int32_t, const char *, const char *);
+int __ivaliduser_af(FILE *,const void *, const char *, const char *, int, int);
+int __ivaliduser_sa(FILE *, const struct sockaddr *, socklen_t, const char *,
+		    const char *);
+static int __icheckhost(const struct sockaddr *, socklen_t, const char *);
 
 char paddr[NI_MAXHOST];
 
@@ -135,8 +127,8 @@ rcmd_af(char **ahost, int rport, const char *locuser, const char *remuser,
 		return (-1);
 	}
 
-	if (res->ai_canonname
-	 && strlen(res->ai_canonname) + 1 < sizeof(canonnamebuf)) {
+	if (res->ai_canonname &&
+	    strlen(res->ai_canonname) + 1 < sizeof(canonnamebuf)) {
 		strncpy(canonnamebuf, res->ai_canonname, sizeof(canonnamebuf));
 		*ahost = canonnamebuf;
 	}
@@ -186,10 +178,8 @@ rcmd_af(char **ahost, int rport, const char *locuser, const char *remuser,
 		if (nres > 1) {
 			int oerrno = errno;
 
-			getnameinfo(ai->ai_addr, ai->ai_addrlen,
-				    paddr, sizeof(paddr),
-				    NULL, 0,
-				    NI_NUMERICHOST|NI_WITHSCOPEID);
+			getnameinfo(ai->ai_addr, ai->ai_addrlen, paddr,
+			    sizeof(paddr), NULL, 0, NI_NUMERICHOST);
 			fprintf(stderr, "connect to address %s: ", paddr);
 			errno = oerrno;
 			perror(0);
@@ -206,10 +196,8 @@ rcmd_af(char **ahost, int rport, const char *locuser, const char *remuser,
 			refused = 0;
 		}
 		if (nres > 1) {
-			getnameinfo(ai->ai_addr, ai->ai_addrlen,
-				    paddr, sizeof(paddr),
-				    NULL, 0,
-				    NI_NUMERICHOST|NI_WITHSCOPEID);
+			getnameinfo(ai->ai_addr, ai->ai_addrlen, paddr,
+			    sizeof(paddr), NULL, 0, NI_NUMERICHOST);
 			fprintf(stderr, "Trying %s...\n", paddr);
 		}
 	}
@@ -218,9 +206,8 @@ rcmd_af(char **ahost, int rport, const char *locuser, const char *remuser,
 		_write(s, "", 1);
 		lport = 0;
 	} else {
-		char num[8];
 		int s2 = rresvport_af(&lport, ai->ai_family), s3;
-		int len = ai->ai_addrlen;
+		socklen_t len = ai->ai_addrlen;
 		int nfds;
 
 		if (s2 < 0)
@@ -569,9 +556,6 @@ __ivaliduser_af(FILE *hostf, const void *raddr, const char *luser,
 	return __ivaliduser_sa(hostf, sa, sa->sa_len, luser, ruser);
 }
 
-/*
- * Returns 0 if ok, -1 if not ok.
- */
 int
 __ivaliduser_sa(FILE *hostf, const struct sockaddr *raddr, socklen_t salen,
 		const char *luser, const char *ruser)
@@ -691,9 +675,6 @@ __ivaliduser_sa(FILE *hostf, const struct sockaddr *raddr, socklen_t salen,
 
 /*
  * Returns "true" if match, 0 if no match.
- *
- * NI_WITHSCOPEID is useful for comparing sin6_scope_id portion
- * if af == AF_INET6.
  */
 static int
 __icheckhost(const struct sockaddr *raddr, socklen_t salen, const char *lhost)
@@ -719,7 +700,7 @@ __icheckhost(const struct sockaddr *raddr, socklen_t salen, const char *lhost)
 
 	h1[0] = '\0';
 	if (getnameinfo(raddr, salen, h1, sizeof(h1), NULL, 0,
-			NI_NUMERICHOST | NI_WITHSCOPEID) != 0)
+			NI_NUMERICHOST) != 0)
 		return (0);
 
 	/* Resolve laddr into sockaddr */
@@ -734,7 +715,7 @@ __icheckhost(const struct sockaddr *raddr, socklen_t salen, const char *lhost)
 	for (r = res; r ; r = r->ai_next) {
 		h2[0] = '\0';
 		if (getnameinfo(r->ai_addr, r->ai_addrlen, h2, sizeof(h2),
-				NULL, 0, NI_NUMERICHOST | NI_WITHSCOPEID) != 0)
+				NULL, 0, NI_NUMERICHOST) != 0)
 			continue;
 		if (strcmp(h1, h2) == 0) {
 			freeaddrinfo(res);

@@ -773,7 +773,7 @@ ping(struct _dom_binding *ypdb)
 
 	if ((client_handle = clntudp_bufcreate(&ypdb->dom_server_addr,
 		YPPROG, YPVERS, interval, &rpcsock, RPCSMALLMSGSIZE,
-		RPCSMALLMSGSIZE)) == (CLIENT *)NULL) {
+		RPCSMALLMSGSIZE)) == NULL) {
 		/* Can't get a handle: we're dead. */
 		ypdb->dom_alive = 0;
 		ypdb->dom_vers = -1;

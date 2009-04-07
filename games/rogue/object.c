@@ -55,8 +55,8 @@
 object level_objects;
 unsigned short dungeon[DROWS][DCOLS];
 short foods = 0;
-object *free_list = (object *) 0;
-char *fruit = (char *) 0;
+object *free_list = NULL;
+char *fruit = NULL;
 
 fighter rogue = {
 	INIT_AW,	/* armor, weapon */
@@ -249,7 +249,7 @@ place_at(object *obj, int row, int col)
 object *
 object_at(object *pack, short row, short col)
 {
-	object *obj = (object *) 0;
+	object *obj = NULL;
 
 	if (dungeon[row][col] & (MONSTER | OBJECT)) {
 		obj = pack->next_object;
@@ -722,7 +722,7 @@ c_object_for_wizard(void)
 	object *obj;
 	char buf[80];
 
-	if (pack_count((object *) 0) >= MAX_PACK_COUNT) {
+	if (pack_count(NULL) >= MAX_PACK_COUNT) {
 		message("pack full", 0);
 		return;
 	}

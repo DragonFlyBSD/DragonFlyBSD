@@ -317,7 +317,7 @@ the %s domain -- aborting", yppasswd_domain);
 	if (chmod(sockname, 0))
 		err(1, "chmod of %s failed", sockname);
 
-	if (transp == (SVCXPRT *)NULL) {
+	if (transp == NULL) {
 		yp_error("could not create a handle");
 		exit(1);
 	}

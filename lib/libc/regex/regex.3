@@ -13,10 +13,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -34,10 +30,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)regex.3	8.4 (Berkeley) 3/20/94
-.\" $FreeBSD: src/lib/libc/regex/regex.3,v 1.4.2.4 2001/12/14 18:33:56 ru Exp $
+.\" $FreeBSD: src/lib/libc/regex/regex.3,v 1.21 2007/01/09 00:28:04 imp Exp $
 .\" $DragonFly: src/lib/libc/regex/regex.3,v 1.5 2008/06/02 06:50:08 hasso Exp $
 .\"
-.Dd March 20, 1994
+.Dd August 17, 2005
 .Dt REGEX 3
 .Os
 .Sh NAME
@@ -51,16 +47,18 @@
 .Sh SYNOPSIS
 .In regex.h
 .Ft int
-.Fn regcomp "regex_t *preg" "const char *pattern" "int cflags"
+.Fo regcomp
+.Fa "regex_t * restrict preg" "const char * restrict pattern" "int cflags"
+.Fc
 .Ft int
 .Fo regexec
-.Fa "const regex_t *preg" "const char *string"
-.Fa "size_t nmatch" "regmatch_t pmatch[]" "int eflags"
+.Fa "const regex_t * restrict preg" "const char * restrict string"
+.Fa "size_t nmatch" "regmatch_t pmatch[restrict]" "int eflags"
 .Fc
 .Ft size_t
 .Fo regerror
-.Fa "int errcode" "const regex_t *preg"
-.Fa "char *errbuf" "size_t errbuf_size"
+.Fa "int errcode" "const regex_t * restrict preg"
+.Fa "char * restrict errbuf" "size_t errbuf_size"
 .Fc
 .Ft void
 .Fn regfree "regex_t *preg"
@@ -71,7 +69,9 @@ regular expressions
 .Pq Do RE Dc Ns s ;
 see
 .Xr re_format 7 .
-.Fn Regcomp
+The
+.Fn regcomp
+function
 compiles an RE written as a string into an internal form,
 .Fn regexec
 matches that internal form against a string and reports results,
@@ -95,7 +95,9 @@ a type
 and a number of constants with names starting with
 .Dq Dv REG_ .
 .Pp
-.Fn Regcomp
+The
+.Fn regcomp
+function
 compiles the regular expression contained in the
 .Fa pattern
 string,
@@ -105,7 +107,9 @@ and places the results in the
 .Ft regex_t
 structure pointed to by
 .Fa preg .
-.Fa Cflags
+The
+.Fa cflags
+argument
 is the bitwise OR of zero or more of the following flags:
 .Bl -tag -width REG_EXTENDED
 .It Dv REG_EXTENDED
@@ -203,7 +207,9 @@ fails, it returns a non-zero error code;
 see
 .Sx DIAGNOSTICS .
 .Pp
-.Fn Regexec
+The
+.Fn regexec
+function
 matches the compiled RE pointed to by
 .Fa preg
 against the
@@ -389,7 +395,9 @@ the value of
 will not be changed by a successful
 .Fn regexec .
 .Pp
-.Fn Regerror
+The
+.Fn regerror
+function
 maps a non-zero
 .Fa errcode
 from either
@@ -412,17 +420,20 @@ it should have been the result from the most recent
 .Fn regcomp
 using that
 .Ft regex_t .
-.No ( Fn Regerror
+The
+.Fn ( regerror
 may be able to supply a more detailed message using information
 from the
 .Ft regex_t . )
-.Fn Regerror
+The
+.Fn regerror
+function
 places the NUL-terminated message into the buffer pointed to by
 .Fa errbuf ,
 limiting the length (including the NUL) to at most
 .Fa errbuf_size
 bytes.
-If the whole message won't fit,
+If the whole message will not fit,
 as much of it as will fit before the terminating NUL is supplied.
 In any case,
 the returned value is the size of buffer needed to hold the whole
@@ -473,7 +484,9 @@ and should be used with
 caution in software intended to be portable to other systems.
 Be warned also that they are considered experimental and changes are possible.
 .Pp
-.Fn Regfree
+The
+.Fn regfree
+function
 frees any dynamically-allocated storage associated with the compiled RE
 pointed to by
 .Fa preg .
@@ -548,7 +561,7 @@ or
 .Ql |\&
 cannot appear first or last in a (sub)expression or after another
 .Ql |\& ,
-i.e. an operand of
+i.e., an operand of
 .Ql |\&
 cannot be an empty subexpression.
 An empty parenthesized subexpression,
@@ -581,7 +594,9 @@ include the following:
 .Pp
 .Bl -tag -width REG_ECOLLATE -compact
 .It Dv REG_NOMATCH
+The
 .Fn regexec
+function
 failed to match
 .It Dv REG_BADPAT
 invalid regular expression
@@ -623,9 +638,11 @@ operand invalid
 .It Dv REG_EMPTY
 empty (sub)expression
 .It Dv REG_ASSERT
-can't happen - you found a bug
+cannot happen - you found a bug
 .It Dv REG_INVARG
-invalid argument, e.g. negative-length string
+invalid argument, e.g.\& negative-length string
+.It Dv REG_ILLSEQ
+illegal byte sequence (bad multibyte character)
 .El
 .Sh SEE ALSO
 .Xr grep 1 ,
@@ -648,14 +665,20 @@ Please report problems.
 The back-reference code is subtle and doubts linger about its correctness
 in complex cases.
 .Pp
-.Fn Regexec
+The
+.Fn regexec
+function
 performance is poor.
 This will improve with later releases.
-.Fa Nmatch
+The
+.Fa nmatch
+argument
 exceeding 0 is expensive;
 .Fa nmatch
 exceeding 1 is worse.
-.Fn Regexec
+The
+.Fn regexec
+function
 is largely insensitive to RE complexity
 .Em except
 that back
@@ -664,7 +687,9 @@ RE length does matter; in particular, there is a strong speed bonus
 for keeping RE length under about 30 characters,
 with most special characters counting roughly double.
 .Pp
-.Fn Regcomp
+The
+.Fn regcomp
+function
 implements bounded repetitions by macro expansion,
 which is costly in time and space if counts are large
 or bounded repetitions are nested.
@@ -687,7 +712,7 @@ are legal REs because
 is
 a special character only in the presence of a previous unmatched
 .Ql (\& .
-This can't be fixed until the spec is fixed.
+This cannot be fixed until the spec is fixed.
 .Pp
 The standard's definition of back references is vague.
 For example, does
@@ -699,3 +724,5 @@ behavior in such cases should not be relied on.
 .Pp
 The implementation of word-boundary matching is a bit of a kludge,
 and bugs may lurk in combinations of word-boundary matching and anchoring.
+.Pp
+Word-boundary matching does not work properly in multibyte locales.

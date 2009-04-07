@@ -707,7 +707,7 @@ doinitialize(struct psm_softc *sc, mousemode_t *mode)
     sc->mode.packetsize = vendortype[i].packetsize;
 
     /* set mouse parameters */
-    if (mode != (mousemode_t *)NULL) {
+    if (mode != NULL) {
 	if (mode->rate > 0)
             mode->rate = set_mouse_sampling_rate(kbdc, mode->rate);
 	if (mode->resolution >= 0)

@@ -415,7 +415,7 @@ struct cmsgcred {
 	(((caddr_t)(cmsg) + _ALIGN((cmsg)->cmsg_len) + \
 	  _ALIGN(sizeof(struct cmsghdr)) > \
 	    (caddr_t)(mhdr)->msg_control + (mhdr)->msg_controllen) ? \
-	    (struct cmsghdr *)NULL : \
+	    NULL : \
 	    (struct cmsghdr *)((caddr_t)(cmsg) + _ALIGN((cmsg)->cmsg_len)))
 
 /*
@@ -425,7 +425,7 @@ struct cmsgcred {
 #define	CMSG_FIRSTHDR(mhdr) \
 	((mhdr)->msg_controllen >= sizeof(struct cmsghdr) ? \
 	 (struct cmsghdr *)(mhdr)->msg_control : \
-	 (struct cmsghdr *)NULL)
+	 NULL)
 
 /* RFC 2292 additions */
 	

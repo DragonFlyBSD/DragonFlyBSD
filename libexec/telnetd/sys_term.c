@@ -273,11 +273,11 @@ spcset(int func, cc_t *valp, cc_t **valpp)
 	case SLC_AYT:
 	case SLC_EOR:
 		*valp = (cc_t)0;
-		*valpp = (cc_t *)0;
+		*valpp = NULL;
 		return(SLC_DEFAULT);
 	default:
 		*valp = (cc_t)0;
-		*valpp = (cc_t *)0;
+		*valpp = NULL;
 		return(SLC_NOSUPPORT);
 	}
 }
@@ -288,7 +288,7 @@ spcset(int func, cc_t *valp, cc_t **valpp)
 #define	setval(a, b)	*valp = termbuf.c_cc[a]; \
 			*valpp = &termbuf.c_cc[a]; \
 			return(b);
-#define	defval(a) *valp = ((cc_t)a); *valpp = (cc_t *)0; return(SLC_DEFAULT);
+#define	defval(a) *valp = ((cc_t)a); *valpp = NULL; return(SLC_DEFAULT);
 
 int
 spcset(int func, cc_t *valp, cc_t **valpp)
@@ -868,7 +868,7 @@ getptyslave(void)
 # ifdef	TIOCNOTTY
 	t = open(_PATH_TTY, O_RDWR);
 	if (t >= 0) {
-		(void) ioctl(t, TIOCNOTTY, (char *)0);
+		(void) ioctl(t, TIOCNOTTY, NULL);
 		(void) close(t);
 	}
 # endif
@@ -1094,7 +1094,7 @@ addarg(char **argv, const char *val)
 		if (argv == NULL)
 			return(NULL);
 		*argv++ = (char *)10;
-		*argv = (char *)0;
+		*argv = NULL;
 	}
 	for (cpp = argv; *cpp; cpp++)
 		;

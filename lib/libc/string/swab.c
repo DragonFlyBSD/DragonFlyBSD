@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,28 +30,27 @@
  * SUCH DAMAGE.
  *
  * @(#)swab.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/string/swab.c,v 1.1.1.1.14.1 2001/07/09 23:30:07 obrien Exp $
+ * $FreeBSD: src/lib/libc/string/swab.c,v 1.7 2007/01/09 00:28:12 imp Exp $
  * $DragonFly: src/lib/libc/string/swab.c,v 1.4 2005/09/18 16:32:34 asmodai Exp $
  */
 
-#include <string.h>
+#include <unistd.h>
 
 void
-swab(const void *from, void *to, size_t len)
+swab(const void * __restrict from, void * __restrict to, ssize_t len)
 {
 	unsigned long temp;
 	int n;
 	char *fp, *tp;
 
-	n = (len >> 1) + 1;
+	n = len >> 1;
 	fp = (char *)from;
 	tp = (char *)to;
 #define	STEP	temp = *fp++,*tp++ = *fp++,*tp++ = temp
 	/* round to multiple of 8 */
-	while ((--n) & 07)
+	for (; n & 0x7; --n)
 		STEP;
-	n >>= 3;
-	while (--n >= 0) {
+	for (n >>= 3; n > 0; --n) {
 		STEP; STEP; STEP; STEP;
 		STEP; STEP; STEP; STEP;
 	}

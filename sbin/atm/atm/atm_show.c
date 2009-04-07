@@ -398,7 +398,7 @@ void
 show_ip_vcc(int argc, char **argv, __unused const struct cmd *cmdp)
 {
 	int			buf_len, ip_info_len, rc;
-	char			*if_name = (char *)0;
+	char			*if_name = NULL;
 	struct atminfreq	air;
 	struct air_ip_vcc_rsp	*ip_info, *ip_info_base;
 	struct sockaddr_in	*sin;

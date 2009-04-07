@@ -284,7 +284,7 @@ authdes_marshal(AUTH *auth, XDR *xdrs)
 	 * Figure out the "time", accounting for any time difference
 	 * with the server if necessary.
 	 */
-	gettimeofday(&ad->ad_timestamp, (struct timezone *)NULL);
+	gettimeofday(&ad->ad_timestamp, NULL);
 	ad->ad_timestamp.tv_sec += ad->ad_timediff.tv_sec;
 	ad->ad_timestamp.tv_usec += ad->ad_timediff.tv_usec;
 	while (ad->ad_timestamp.tv_usec >= USEC_PER_SEC) {

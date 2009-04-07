@@ -36,12 +36,6 @@
 
 #include <sys/cdefs.h>
 
-#if defined(__DragonFly__)
-#define	RET_SETGRENT	int
-#else
-#define	RET_SETGRENT	void
-#endif
-
 enum updtype
 {
         UPD_DELETE = -1,
@@ -70,7 +64,7 @@ struct pwf
 	struct passwd	* (*_getpwuid)(uid_t uid);
 	struct passwd	* (*_getpwnam)(const char * nam);
 	int             (*_pwdb)(char *arg, ...);
-	RET_SETGRENT	  (*_setgrent)(void);
+	void		  (*_setgrent)(void);
 	void		  (*_endgrent)(void);
 	struct group  * (*_getgrent)(void);
 	struct group  * (*_getgrgid)(gid_t gid);
@@ -147,7 +141,7 @@ struct group * vgetgrgid(gid_t gid);
 struct group * vgetgrnam(const char * nam);
 struct group * vgetgrent(void);
 int	       vgrdb(char *arg, ...);
-RET_SETGRENT   vsetgrent(void);
+void           vsetgrent(void);
 void           vendgrent(void);
 
 void copymkdir(char const * dir, char const * skel, mode_t mode, uid_t uid, gid_t gid);

@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -33,10 +29,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/gen/getcap.c,v 1.11.2.2 2001/01/15 06:48:09 gad Exp $
- * $DragonFly: src/lib/libc/gen/getcap.c,v 1.7 2005/11/19 22:32:53 swildner Exp $
- *
  * @(#)getcap.c	8.3 (Berkeley) 3/25/94
+ * $FreeBSD: src/lib/libc/gen/getcap.c,v 1.20 2007/01/09 00:27:53 imp Exp $
+ * $DragonFly: src/lib/libc/gen/getcap.c,v 1.7 2005/11/19 22:32:53 swildner Exp $
  */
 
 #include "namespace.h"
@@ -68,9 +63,9 @@ static size_t	 topreclen;	/* toprec length */
 static char	*toprec;	/* Additional record specified by cgetset() */
 static int	 gottoprec;	/* Flag indicating retrieval of toprecord */
 
-static int	cdbget (DB *, char **, char *);
-static int 	getent (char **, u_int *, char **, int, char *, int, char *);
-static int	nfcmp (char *, char *);
+static int	cdbget(DB *, char **, const char *);
+static int	getent(char **, u_int *, char **, int, const char *, int, char *);
+static int	nfcmp(char *, char *);
 
 /*
  * Cgetset() allows the addition of a user specified buffer to be added
@@ -78,7 +73,7 @@ static int	nfcmp (char *, char *);
  * virtual database. 0 is returned on success, -1 on failure.
  */
 int
-cgetset(char *ent)
+cgetset(const char *ent)
 {
 	if (ent == NULL) {
 		if (toprec)
@@ -110,9 +105,10 @@ cgetset(char *ent)
  * return NULL.
  */
 char *
-cgetcap(char *buf, char *cap, int type)
+cgetcap(char *buf, const char *cap, int type)
 {
-	char *bp, *cp;
+	char *bp;
+	const char *cp;
 
 	bp = buf;
 	for (;;) {
@@ -160,7 +156,7 @@ cgetcap(char *buf, char *cap, int type)
  * reference loop is detected.
  */
 int
-cgetent(char **buf, char **db_array, char *name)
+cgetent(char **buf, char **db_array, const char *name)
 {
 	u_int dummy;
 
@@ -186,8 +182,8 @@ cgetent(char **buf, char **db_array, char *name)
  *	  MAX_RECURSION.
  */
 static int
-getent(char **cap, u_int *len, char **db_array, int fd, char *name, int depth,
-       char *nfield)
+getent(char **cap, u_int *len, char **db_array, int fd, const char *name,
+       int depth, char *nfield)
 {
 	DB *capdbp;
 	char *r_end, *rp, **db_p;
@@ -534,19 +530,25 @@ tc_exp:	{
 }
 
 static int
-cdbget(DB *capdbp, char **bp, char *name)
+cdbget(DB *capdbp, char **bp, const char *name)
 {
 	DBT key, data;
+	char *namebuf;
 
-	key.data = name;
-	key.size = strlen(name);
+	namebuf = strdup(name);
+	if (namebuf == NULL)
+		return (-2);
+	key.data = namebuf;
+	key.size = strlen(namebuf);
 
 	for (;;) {
 		/* Get the reference. */
 		switch(capdbp->get(capdbp, &key, &data, 0)) {
 		case -1:
+			free(namebuf);
 			return (-2);
 		case 1:
+			free(namebuf);
 			return (-1);
 		}
 
@@ -559,6 +561,7 @@ cdbget(DB *capdbp, char **bp, char *name)
 	}
 
 	*bp = (char *)data.data + 1;
+	free(namebuf);
 	return (((char *)(data.data))[0] == TCERR ? 1 : 0);
 }
 
@@ -567,9 +570,12 @@ cdbget(DB *capdbp, char **bp, char *name)
  * record buf, -1 if not.
  */
 int
-cgetmatch(char *buf, char *name)
+cgetmatch(const char *buf, const char *name)
 {
-	char *np, *bp;
+	const char *np, *bp;
+
+	if (name == NULL || *name == '\0')
+		return -1;
 
 	/*
 	 * Start search at beginning of record.
@@ -777,7 +783,7 @@ cgetnext(char **bp, char **db_array)
  * allocation failure).
  */
 int
-cgetstr(char *buf, char *cap, char **str)
+cgetstr(char *buf, const char *cap, char **str)
 {
 	u_int m_room;
 	char *bp, *mp;
@@ -904,7 +910,7 @@ cgetstr(char *buf, char *cap, char **str)
  * error was encountered (storage allocation failure).
  */
 int
-cgetustr(char *buf, char *cap, char **str)
+cgetustr(char *buf, const char *cap, char **str)
 {
 	u_int m_room;
 	char *bp, *mp;
@@ -972,7 +978,7 @@ cgetustr(char *buf, char *cap, char **str)
  * numeric capability couldn't be found.
  */
 int
-cgetnum(char *buf, char *cap, long *num)
+cgetnum(char *buf, const char *cap, long *num)
 {
 	long n;
 	int base, digit;

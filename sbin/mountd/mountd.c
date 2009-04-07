@@ -309,9 +309,9 @@ main(int argc, char **argv)
 		};
 	argc -= optind;
 	argv += optind;
-	grphead = (struct grouplist *)NULL;
-	exphead = (struct exportlist *)NULL;
-	mlhead = (struct mountlist *)NULL;
+	grphead = NULL;
+	exphead = NULL;
+	mlhead = NULL;
 	if (argc == 1) {
 		strncpy(exname, *argv, MAXPATHLEN-1);
 		exname[MAXPATHLEN-1] = '\0';
@@ -787,7 +787,7 @@ xdr_explist(XDR *xdrsp, caddr_t cp)
 		if (put_exlist(ep->ex_dirl, xdrsp, ep->ex_defdir, &putdef))
 			goto errout;
 		if (ep->ex_defdir && putdef == 0 &&
-			put_exlist(ep->ex_defdir, xdrsp, (struct dirlist *)NULL,
+			put_exlist(ep->ex_defdir, xdrsp, NULL,
 			&putdef))
 			goto errout;
 		ep = ep->ex_next;
@@ -848,7 +848,7 @@ put_exlist(struct dirlist *dp, XDR *xdrsp, struct dirlist *adp, int *putdefp)
 						return (1);
 				}
 				hp = hp->ht_next;
-				if (gotalldir && hp == (struct hostlist *)NULL) {
+				if (gotalldir && hp == NULL) {
 					hp = adp->dp_hosts;
 					gotalldir = 0;
 				}
@@ -893,7 +893,7 @@ get_exportlist(void)
 		ep = ep->ex_next;
 		free_exp(ep2);
 	}
-	exphead = (struct exportlist *)NULL;
+	exphead = NULL;
 
 	grp = grphead;
 	while (grp) {
@@ -901,7 +901,7 @@ get_exportlist(void)
 		grp = grp->gr_next;
 		free_grp(tgrp);
 	}
-	grphead = (struct grouplist *)NULL;
+	grphead = NULL;
 
 	/*
 	 * And delete exports that are in the kernel for all local
@@ -947,7 +947,7 @@ get_exportlist(void)
 		syslog(LOG_ERR, "can't open %s", exname);
 		exit(2);
 	}
-	dirhead = (struct dirlist *)NULL;
+	dirhead = NULL;
 	while (get_line()) {
 		if (debug)
 			warnx("got line %s", line);
@@ -964,7 +964,7 @@ get_exportlist(void)
 		exflags = MNT_EXPORTED;
 		got_nondir = 0;
 		opt_flags = 0;
-		ep = (struct exportlist *)NULL;
+		ep = NULL;
 
 		/*
 		 * Create new exports list entry
@@ -977,7 +977,7 @@ get_exportlist(void)
 			    goto nextline;
 			}
 			if (*cp == '-') {
-			    if (ep == (struct exportlist *)NULL) {
+			    if (ep == NULL) {
 				getexp_err(ep, tgrp);
 				goto nextline;
 			    }
@@ -1011,7 +1011,7 @@ get_exportlist(void)
 				     * in the list.
 				     */
 				    ep = ex_search(&fsb.f_fsid);
-				    if (ep == (struct exportlist *)NULL) {
+				    if (ep == NULL) {
 					ep = get_exp();
 					ep->ex_fs = fsb.f_fsid;
 					ep->ex_fsdir = (char *)
@@ -1045,7 +1045,7 @@ get_exportlist(void)
 			    savedc = *endcp;
 			    *endcp = '\0';
 			    got_nondir = 1;
-			    if (ep == (struct exportlist *)NULL) {
+			    if (ep == NULL) {
 				getexp_err(ep, tgrp);
 				goto nextline;
 			    }
@@ -1136,11 +1136,11 @@ get_exportlist(void)
 			grp->gr_next = grphead;
 			grphead = tgrp;
 		} else {
-			hang_dirp(dirhead, (struct grouplist *)NULL, ep,
+			hang_dirp(dirhead, NULL, ep,
 				opt_flags);
 			free_grp(grp);
 		}
-		dirhead = (struct dirlist *)NULL;
+		dirhead = NULL;
 		if ((ep->ex_flag & EX_LINKED) == 0) {
 			ep2 = exphead;
 			epp = &exphead;
@@ -1160,7 +1160,7 @@ get_exportlist(void)
 nextline:
 		if (dirhead) {
 			free_dir(dirhead);
-			dirhead = (struct dirlist *)NULL;
+			dirhead = NULL;
 		}
 	}
 	fclose(exp_file);
@@ -1175,7 +1175,7 @@ get_exp(void)
 	struct exportlist *ep;
 
 	ep = (struct exportlist *)malloc(sizeof (struct exportlist));
-	if (ep == (struct exportlist *)NULL)
+	if (ep == NULL)
 		out_of_mem();
 	memset(ep, 0, sizeof(struct exportlist));
 	return (ep);
@@ -1190,7 +1190,7 @@ get_grp(void)
 	struct grouplist *gp;
 
 	gp = (struct grouplist *)malloc(sizeof (struct grouplist));
-	if (gp == (struct grouplist *)NULL)
+	if (gp == NULL)
 		out_of_mem();
 	memset(gp, 0, sizeof(struct grouplist));
 	return (gp);
@@ -1242,12 +1242,12 @@ add_expdir(struct dirlist **dpp, char *cp, int len)
 	struct dirlist *dp;
 
 	dp = (struct dirlist *)malloc(sizeof (struct dirlist) + len);
-	if (dp == (struct dirlist *)NULL)
+	if (dp == NULL)
 		out_of_mem();
 	dp->dp_left = *dpp;
-	dp->dp_right = (struct dirlist *)NULL;
+	dp->dp_right = NULL;
 	dp->dp_flag = 0;
-	dp->dp_hosts = (struct hostlist *)NULL;
+	dp->dp_hosts = NULL;
 	strcpy(dp->dp_dirp, cp);
 	*dpp = dp;
 	return (dp->dp_dirp);
@@ -1269,7 +1269,7 @@ hang_dirp(struct dirlist *dp, struct grouplist *grp, struct exportlist *ep,
 			free((caddr_t)dp);
 		else
 			ep->ex_defdir = dp;
-		if (grp == (struct grouplist *)NULL) {
+		if (grp == NULL) {
 			ep->ex_defdir->dp_flag |= DP_DEFSET;
 			if (flags & OP_KERB)
 				ep->ex_defdir->dp_flag |= DP_KERB;
@@ -1320,7 +1320,7 @@ add_dlist(struct dirlist **dpp, struct dirlist *newdp, struct grouplist *grp,
 			free((caddr_t)newdp);
 	} else {
 		dp = newdp;
-		dp->dp_left = (struct dirlist *)NULL;
+		dp->dp_left = NULL;
 		*dpp = dp;
 	}
 	if (grp) {
@@ -1695,9 +1695,9 @@ get_ht(void)
 	struct hostlist *hp;
 
 	hp = (struct hostlist *)malloc(sizeof (struct hostlist));
-	if (hp == (struct hostlist *)NULL)
+	if (hp == NULL)
 		out_of_mem();
-	hp->ht_next = (struct hostlist *)NULL;
+	hp->ht_next = NULL;
 	hp->ht_flag = 0;
 	return (hp);
 }
@@ -2153,13 +2153,13 @@ get_mountlist(void)
 		if (host == NULL || dirp == NULL)
 			continue;
 		mlp = (struct mountlist *)malloc(sizeof (*mlp));
-		if (mlp == (struct mountlist *)NULL)
+		if (mlp == NULL)
 			out_of_mem();
 		strncpy(mlp->ml_host, host, RPCMNT_NAMELEN);
 		mlp->ml_host[RPCMNT_NAMELEN] = '\0';
 		strncpy(mlp->ml_dirp, dirp, RPCMNT_PATHLEN);
 		mlp->ml_dirp[RPCMNT_PATHLEN] = '\0';
-		mlp->ml_next = (struct mountlist *)NULL;
+		mlp->ml_next = NULL;
 		*mlpp = mlp;
 		mlpp = &mlp->ml_next;
 	}
@@ -2217,13 +2217,13 @@ add_mlist(char *hostp, char *dirp)
 		mlp = mlp->ml_next;
 	}
 	mlp = (struct mountlist *)malloc(sizeof (*mlp));
-	if (mlp == (struct mountlist *)NULL)
+	if (mlp == NULL)
 		out_of_mem();
 	strncpy(mlp->ml_host, hostp, RPCMNT_NAMELEN);
 	mlp->ml_host[RPCMNT_NAMELEN] = '\0';
 	strncpy(mlp->ml_dirp, dirp, RPCMNT_PATHLEN);
 	mlp->ml_dirp[RPCMNT_PATHLEN] = '\0';
-	mlp->ml_next = (struct mountlist *)NULL;
+	mlp->ml_next = NULL;
 	*mlpp = mlp;
 	if ((mlfile = fopen(_PATH_RMOUNTLIST, "a")) == NULL) {
 		syslog(LOG_ERR, "can't update %s", _PATH_RMOUNTLIST);
@@ -2268,7 +2268,7 @@ int
 check_options(struct dirlist *dp)
 {
 
-	if (dp == (struct dirlist *)NULL)
+	if (dp == NULL)
 	    return (1);
 	if ((opt_flags & (OP_MAPROOT | OP_MAPALL)) == (OP_MAPROOT | OP_MAPALL) ||
 	    (opt_flags & (OP_MAPROOT | OP_KERB)) == (OP_MAPROOT | OP_KERB) ||

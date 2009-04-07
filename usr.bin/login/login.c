@@ -649,7 +649,7 @@ main(int argc, char **argv)
 		err(1, "asprintf()");
 	}
 
-	execlp(shell, arg0, (char *)0);
+	execlp(shell, arg0, NULL);
 	err(1, "%s", shell);
 
 	/*

@@ -48,7 +48,7 @@ FILE *fd;
     free(VGLTextFont);
   }
 
-  if ((VGLTextFont=(VGLText*)malloc(sizeof(VGLText))) == (VGLText*)0)
+  if ((VGLTextFont=(VGLText*)malloc(sizeof(VGLText))) == NULL)
 	return 1;
 
   if (filename==NULL) {
@@ -57,7 +57,7 @@ FILE *fd;
     VGLTextFont->BitmapArray = VGLFont;
   }
   else {
-    if ((fd=fopen(filename, "r"))==(FILE*)0)
+    if ((fd=fopen(filename, "r"))==NULL)
       return 1;
     fread(&VGLTextFont->Width, 1 , 1, fd);
     fread(&VGLTextFont->Height, 1 , 1, fd);

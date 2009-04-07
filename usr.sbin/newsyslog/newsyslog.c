@@ -889,7 +889,8 @@ get_worklist(char **files)
 static void
 expand_globs(struct conf_entry **work_p, struct conf_entry **glob_p)
 {
-	int gmatch, gres, i;
+	int gmatch, gres;
+	size_t i;
 	char *mfname;
 	struct conf_entry *dupent, *ent, *firstmatch, *globent;
 	struct conf_entry *lastmatch;
@@ -1637,7 +1638,7 @@ do_zipwork(struct zipwork_entry *zwork)
 	}
 	if (!pidzip) {
 		/* The child process executes the compression command */
-		execl(pgm_path, pgm_path, "-f", zwork->zw_fname, (char *)0);
+		execl(pgm_path, pgm_path, "-f", zwork->zw_fname, NULL);
 		err(1, "execl(`%s -f %s')", pgm_path, zwork->zw_fname);
 	}
 

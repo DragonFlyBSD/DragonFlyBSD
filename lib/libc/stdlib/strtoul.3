@@ -13,10 +13,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -34,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)strtoul.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/stdlib/strtoul.3,v 1.22 2006/05/20 21:11:35 maxim Exp $
+.\" $FreeBSD: src/lib/libc/stdlib/strtoul.3,v 1.23 2007/01/09 00:28:10 imp Exp $
 .\" $DragonFly: src/lib/libc/stdlib/strtoul.3,v 1.4 2006/11/02 19:48:55 swildner Exp $
 .\"
 .Dd November 2, 2006
@@ -43,6 +39,7 @@
 .Sh NAME
 .Nm strtoul ,
 .Nm strtoull ,
+.Nm strtoumax ,
 .Nm strtouq
 .Nd "convert a string to an"
 .Vt "unsigned long" , "unsigned long long" , uintmax_t ,
@@ -55,12 +52,12 @@ integer
 .In stdlib.h
 .In limits.h
 .Ft "unsigned long"
-.Fn strtoul "const char *nptr" "char **endptr" "int base"
+.Fn strtoul "const char * restrict nptr" "char ** restrict endptr" "int base"
 .Ft "unsigned long long"
-.Fn strtoull "const char *nptr" "char **endptr" "int base"
+.Fn strtoull "const char * restrict nptr" "char ** restrict endptr" "int base"
 .In inttypes.h
 .Ft uintmax_t
-.Fn strtoumax "const char *nptr" "char **endptr" "int base"
+.Fn strtoumax "const char * restrict nptr" "char ** restrict endptr" "int base"
 .In sys/types.h
 .In stdlib.h
 .In limits.h

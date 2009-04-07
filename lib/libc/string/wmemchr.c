@@ -25,7 +25,7 @@
  *
  * citrus Id: wmemchr.c,v 1.2 2000/12/20 14:08:31 itojun Exp
  * $NetBSD: wmemchr.c,v 1.1 2000/12/23 23:14:37 itojun Exp $
- * $FreeBSD: src/lib/libc/string/wmemchr.c,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
+ * $FreeBSD: src/lib/libc/string/wmemchr.c,v 1.6 2002/09/21 00:29:23 tjr Exp $
  * $DragonFly: src/lib/libc/string/wmemchr.c,v 1.3 2005/04/28 13:25:12 joerg Exp $
  */
 
@@ -44,5 +44,5 @@ wmemchr(const wchar_t *s, wchar_t c, size_t n)
 		}
 		s++;
 	}
-	return NULL;
+	return (NULL);
 }

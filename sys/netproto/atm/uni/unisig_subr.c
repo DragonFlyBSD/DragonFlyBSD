@@ -280,8 +280,7 @@ unisig_open_vcc(struct unisig *usp, Atm_connvc *cvp)
 	 * Call the VC state machine if this is an SVC
 	 */
 	if (!pvc) {
-		err = unisig_vc_state(usp, uvp, UNI_VC_SETUP_CALL,
-				(struct unisig_msg *) 0);
+		err = unisig_vc_state(usp, uvp, UNI_VC_SETUP_CALL, NULL);
 		if (err) {
 			/*
 			 * On error, delete the VCCB
@@ -349,8 +348,7 @@ unisig_close_vcc(struct unisig *usp, struct unisig_vccb *uvp)
 		 * Call the VC state machine
 		 */
 		uvp->uv_ustate = VCCU_CLOSED;
-		err = unisig_vc_state(usp, uvp, UNI_VC_RELEASE_CALL,
-				(struct unisig_msg *) 0);
+		err = unisig_vc_state(usp, uvp, UNI_VC_RELEASE_CALL, NULL);
 	}
 
 	/*

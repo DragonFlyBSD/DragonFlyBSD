@@ -748,7 +748,7 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 	}
 
 	if (inp->inp_lport == 0) {	/* unbound socket */
-		error = in_pcbbind(inp, (struct sockaddr *)NULL, td);
+		error = in_pcbbind(inp, NULL, td);
 		if (error)
 			goto release;
 		in_pcbinswildcardhash(inp);

@@ -1091,7 +1091,7 @@ void
 ether_demux_oncpu(struct ifnet *ifp, struct mbuf *m)
 {
 	struct ether_header *eh;
-	int isr, redispatch;
+	int isr, redispatch, discard = 0;
 	u_short ether_type;
 	struct ip_fw *rule = NULL;
 #ifdef NETATALK
@@ -1144,20 +1144,20 @@ ether_demux_oncpu(struct ifnet *ifp, struct mbuf *m)
 #endif
 
 	/*
-	 * Discard packet if upper layers shouldn't see it because
-	 * it was unicast to a different Ethernet address.  If the
-	 * driver is working properly, then this situation can only
-	 * happen when the interface is in promiscuous mode.
+	 * We got a packet which was unicast to a different Ethernet
+	 * address.  If the driver is working properly, then this
+	 * situation can only happen when the interface is in
+	 * promiscuous mode.  We defer the packet discarding until the
+	 * vlan processing is done, so that vlan/bridge or vlan/netgraph
+	 * could work.
 	 */
 	if (((ifp->if_flags & (IFF_PROMISC | IFF_PPROMISC)) == IFF_PROMISC) &&
-	    (eh->ether_dhost[0] & 1) == 0 &&
-	    bcmp(eh->ether_dhost, IFP2AC(ifp)->ac_enaddr, ETHER_ADDR_LEN)) {
-		m_freem(m);
-		return;
-	}
+	    !ETHER_IS_MULTICAST(eh->ether_dhost) &&
+	    bcmp(eh->ether_dhost, IFP2AC(ifp)->ac_enaddr, ETHER_ADDR_LEN))
+		discard = 1;
 
 post_stats:
-	if (IPFW_LOADED && ether_ipfw != 0) {
+	if (IPFW_LOADED && ether_ipfw != 0 && !discard) {
 		struct ether_header save_eh = *eh;
 
 		/* XXX old crufty stuff, needs to be removed */
@@ -1187,6 +1187,16 @@ post_stats:
 			m->m_pkthdr.rcvif->if_noproto++;
 			m_freem(m);
 		}
+		return;
+	}
+
+	/*
+	 * If we have been asked to discard this packet
+	 * (e.g. not for us), drop it before entering
+	 * the upper layer.
+	 */
+	if (discard) {
+		m_freem(m);
 		return;
 	}
 
@@ -1385,8 +1395,6 @@ ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
 		if(m->m_flags & M_ETHER_BRIDGED) {
 			m->m_flags &= ~M_ETHER_BRIDGED;
 		} else {
-			/* clear M_PROMISC, in case the packets comes from a vlan */
-			/* m->m_flags &= ~M_PROMISC; */
 			m = bridge_input_p(ifp, m);
 			if (m == NULL)
 				return;

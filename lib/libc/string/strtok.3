@@ -22,12 +22,6 @@
 .\"    disclaimer in the documentation and/or other materials provided
 .\"    with the distribution.
 .\"
-.\" 3. All advertising materials mentioning features or use of this
-.\"    software must display the following acknowledgement:
-.\"
-.\"	This product includes software developed by Softweyr LLC, the
-.\"      University of California, Berkeley, and its contributors.
-.\"
 .\" 4. Neither the name of Softweyr LLC, the University nor the names
 .\"    of its contributors may be used to endorse or promote products
 .\"    derived from this software without specific prior written
@@ -48,7 +42,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)strtok.3	8.2 (Berkeley) 2/3/94
-.\" $FreeBSD: src/lib/libc/string/strtok.3,v 1.10.2.8 2001/12/14 18:33:59 ru Exp $
+.\" $FreeBSD: src/lib/libc/string/strtok.3,v 1.26 2007/12/12 18:33:06 wes Exp $
 .\" $DragonFly: src/lib/libc/string/strtok.3,v 1.4 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd November 27, 1998
@@ -100,7 +94,9 @@ function is a reentrant version of
 The context pointer
 .Fa last
 must be provided on each call.
+The
 .Fn strtok_r
+function
 may also be used to nest two parsing loops within one another, as
 long as separate context pointers are used.
 .Pp
@@ -147,7 +143,8 @@ for (word = strtok_r(test, sep, &brkt);
 .Xr strrchr 3 ,
 .Xr strsep 3 ,
 .Xr strspn 3 ,
-.Xr strstr 3
+.Xr strstr 3 ,
+.Xr wcstok 3
 .Sh STANDARDS
 The
 .Fn strtok

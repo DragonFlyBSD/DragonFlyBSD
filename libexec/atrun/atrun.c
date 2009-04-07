@@ -332,7 +332,7 @@ run_file(const char *filename, uid_t uid, gid_t gid)
 	if (chdir(pentry->pw_dir))
 		chdir("/");
 
-	if(execle("/bin/sh","sh",(char *) NULL, nenvp) != 0)
+	if(execle("/bin/sh","sh",NULL, nenvp) != 0)
 	    perr("exec failed for /bin/sh");
 
 	PRIV_END
@@ -341,7 +341,7 @@ run_file(const char *filename, uid_t uid, gid_t gid)
      */
     close(fd_in);
     close(fd_out);
-    waitpid(pid, (int *) NULL, 0);
+    waitpid(pid, NULL, 0);
 
     /* Send mail.  Unlink the output file first, so it is deleted after
      * the run.
@@ -380,7 +380,7 @@ run_file(const char *filename, uid_t uid, gid_t gid)
 
 	execl(_PATH_SENDMAIL, "sendmail", "-F", "Atrun Service",
 			"-odi", "-oem",
-			mailname, (char *) NULL);
+			mailname, NULL);
 	    perr("exec failed for mail command");
 
 	PRIV_END

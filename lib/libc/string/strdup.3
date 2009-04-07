@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -30,14 +26,15 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)strdup.3	8.1 (Berkeley) 6/9/93
-.\" $FreeBSD: src/lib/libc/string/strdup.3,v 1.7.2.2 2001/12/14 18:33:59 ru Exp $
+.\" $FreeBSD: src/lib/libc/string/strdup.3,v 1.13 2008/12/09 09:24:25 maxim Exp $
 .\" $DragonFly: src/lib/libc/string/strdup.3,v 1.5 2004/12/26 12:37:08 swildner Exp $
 .\"
-.Dd June 9, 1993
+.Dd December 5, 2008
 .Dt STRDUP 3
 .Os
 .Sh NAME
-.Nm strdup
+.Nm strdup ,
+.Nm strndup
 .Nd save a copy of a string
 .Sh LIBRARY
 .Lb libc
@@ -45,6 +42,8 @@
 .In string.h
 .Ft char *
 .Fn strdup "const char *str"
+.Ft char *
+.Fn strndup "const char *str" "size_t len"
 .Sh DESCRIPTION
 The
 .Fn strdup
@@ -57,7 +56,20 @@ The pointer may subsequently be used as an
 argument to the function
 .Xr free 3 .
 .Pp
-If insufficient memory is available, NULL is returned.
+If insufficient memory is available, NULL is returned and
+.Va errno
+is set to
+.Er ENOMEM .
+.Pp
+The
+.Fn strndup
+function copies at most
+.Fa len
+characters from the string
+.Fa str
+always
+.Dv NUL
+terminating the copied string.
 .Sh ERRORS
 The
 .Nm
@@ -79,3 +91,7 @@ The
 .Fn strdup
 function first appeared in
 .Bx 4.4 .
+The
+.Fn strndup
+function was added in
+.Fx 8.0 .

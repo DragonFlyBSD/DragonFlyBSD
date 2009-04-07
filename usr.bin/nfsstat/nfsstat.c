@@ -174,7 +174,7 @@ readstats(struct nfsstats *stp)
 		name[0] = CTL_VFS;
 		name[1] = vfc.vfc_typenum;
 		name[2] = NFS_NFSSTATS;
-		if (sysctl(name, 3, stp, &buflen, (void *)0, (size_t)0) < 0) {
+		if (sysctl(name, 3, stp, &buflen, NULL, (size_t)0) < 0) {
 			err(1, "sysctl");
 		}
 	}

@@ -262,7 +262,7 @@ typedef void if_init_f_t (void *);
 #define	if_lastchange	if_data.ifi_lastchange
 #define if_recvquota	if_data.ifi_recvquota
 #define	if_xmitquota	if_data.ifi_xmitquota
-#define if_rawoutput(if, m, sa) if_output(if, m, sa, (struct rtentry *)0)
+#define if_rawoutput(if, m, sa) if_output(if, m, sa, NULL)
 
 /* for compatibility with other BSDs */
 #define	if_list		if_link

@@ -61,7 +61,7 @@
 .Fn getgrgid_r "gid_t gid" "struct group *grp" "char *buffer" "size_t bufsize" "struct group **result"
 .Ft int
 .Fn setgroupent "int stayopen"
-.Ft int
+.Ft void
 .Fn setgrent void
 .Ft void
 .Fn endgrent void
@@ -189,11 +189,9 @@ is set to
 .Dv NULL
 and the return value is 0, no matching entry exists.)
 .Pp
-The functions
+The
 .Fn setgroupent
-and
-.Fn setgrent
-return the value 1 if successful, otherwise the value
+function returns the value 1 if successful, otherwise the value
 0 is returned.
 The
 .Fn endgrent
@@ -224,12 +222,6 @@ and
 .Fn endgrent
 functions conform to
 .St -p1003.1-96 .
-The
-.Fn setgrent
-function differs from that standard in that its return type is
-.Vt int
-rather than
-.Vt void .
 .Sh HISTORY
 The functions
 .Fn endgrent ,

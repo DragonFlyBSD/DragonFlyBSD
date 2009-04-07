@@ -120,7 +120,7 @@ __pmap_getport(struct sockaddr_in *address, u_long program, u_long version,
 
 	client = clntudp_bufcreate(address, PMAPPROG,
 	    PMAPVERS, timeout, &sock, RPCSMALLMSGSIZE, RPCSMALLMSGSIZE);
-	if (client != (CLIENT *)NULL) {
+	if (client != NULL) {
 		parms.pm_prog = program;
 		parms.pm_vers = version;
 		parms.pm_prot = protocol;

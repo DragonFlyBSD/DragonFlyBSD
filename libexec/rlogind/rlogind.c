@@ -293,10 +293,10 @@ doit(int f, union sockunion *fromp)
 		}
 		if (authenticated) {
 			execl(_PATH_LOGIN, "login", "-p",
-			    "-h", hostname, "-f", lusername, (char *)NULL);
+			    "-h", hostname, "-f", lusername, NULL);
 		} else
 			execl(_PATH_LOGIN, "login", "-p",
-			    "-h", hostname, lusername, (char *)NULL);
+			    "-h", hostname, lusername, NULL);
 		fatal(STDERR_FILENO, _PATH_LOGIN, 1);
 		/*NOTREACHED*/
 	}
@@ -374,7 +374,7 @@ protocol(int f, int p)
 		FD_ZERO(&ebits);
 		FD_ZERO(&ibits);
 		FD_ZERO(&obits);
-		omask = (fd_set *)NULL;
+		omask = NULL;
 		if (fcc) {
 			FD_SET(p, &obits);
 			omask = &obits;

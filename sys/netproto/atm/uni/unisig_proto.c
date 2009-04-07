@@ -74,7 +74,7 @@ unisig_timer(struct atm_time *tip)
 	 */
 	unisig_sigmgr_state(usp,
 			UNISIG_SIGMGR_TIMEOUT,
-			(KBuffer *) 0);
+			NULL);
 }
 
 
@@ -117,13 +117,13 @@ unisig_vctimer(struct atm_time *tip)
 		 * If we're aborting, this is an ABORT call
 		 */
 		unisig_vc_state(usp, uvp, UNI_VC_ABORT_CALL,
-				(struct unisig_msg *) 0);
+				NULL);
 	} else {
 		/*
 		 * If we're not aborting, it's a timeout
 		 */
 		unisig_vc_state(usp, uvp, UNI_VC_TIMEOUT,
-				(struct unisig_msg *) 0);
+				NULL);
 	}
 }
 
@@ -160,25 +160,25 @@ unisig_saal_ctl(int cmd, void *tok, void *a1)
 	case SSCF_UNI_ESTABLISH_IND:
 		unisig_sigmgr_state(usp,
 				UNISIG_SIGMGR_SSCF_EST_IND,
-				(KBuffer *) 0);
+				NULL);
 		break;
 
 	case SSCF_UNI_ESTABLISH_CNF:
 		unisig_sigmgr_state(usp,
 				UNISIG_SIGMGR_SSCF_EST_CNF,
-				(KBuffer *) 0);
+				NULL);
 		break;
 
 	case SSCF_UNI_RELEASE_IND:
 		unisig_sigmgr_state(usp,
 				UNISIG_SIGMGR_SSCF_RLS_IND,
-				(KBuffer *) 0);
+				NULL);
 		break;
 
 	case SSCF_UNI_RELEASE_CNF:
 		unisig_sigmgr_state(usp,
 				UNISIG_SIGMGR_SSCF_RLS_CNF,
-				(KBuffer *) 0);
+				NULL);
 		break;
 
 	default:
@@ -301,5 +301,5 @@ unisig_cleared(void *tok, struct t_atm_cause *cp)
 	 */
 	unisig_sigmgr_state(usp,
 			UNISIG_SIGMGR_CALL_CLEARED,
-			(KBuffer *) 0);
+			NULL);
 }

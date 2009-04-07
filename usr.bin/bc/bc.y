@@ -1137,7 +1137,7 @@ main(int argc, char *argv[])
 			dup(p[0]);
 			close(p[0]);
 			close(p[1]);
-			execl(_PATH_DC, "dc", "-x", (char *)NULL);
+			execl(_PATH_DC, "dc", "-x", NULL);
 			err(1, "cannot find dc");
 		}
 	}

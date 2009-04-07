@@ -126,7 +126,7 @@ static void
 handle_sigchld(int sig, int code, struct sigcontext *scp)
 {
   int pid, status;
-  pid = wait4(-1, &status, WNOHANG, (struct rusage*)0);
+  pid = wait4(-1, &status, WNOHANG, NULL);
   if (!pid) syslog(LOG_ERR, "Phantom SIGCHLD??");
   else if (status == 0)
   {

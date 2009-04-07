@@ -1970,7 +1970,7 @@ dladdr(const void *addr, Dl_info *info)
     }
     info->dli_fname = obj->path;
     info->dli_fbase = obj->mapbase;
-    info->dli_saddr = (void *)0;
+    info->dli_saddr = NULL;
     info->dli_sname = NULL;
 
     /*

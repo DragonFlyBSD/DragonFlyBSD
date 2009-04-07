@@ -12,10 +12,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -33,14 +29,18 @@
  * SUCH DAMAGE.
  *
  * @(#)getopt.c	8.3 (Berkeley) 4/27/95
- * $FreeBSD: src/lib/libc/stdlib/getopt.c,v 1.2.2.2 2001/08/26 03:36:04 jkoshy Exp $
+ * $FreeBSD: src/lib/libc/stdlib/getopt.c,v 1.8 2007/01/09 00:28:10 imp Exp $
  * $DragonFly: src/lib/libc/stdlib/getopt.c,v 1.7 2005/11/20 12:37:48 swildner Exp $
  */
 
+#include "namespace.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "un-namespace.h"
+
+#include "libc_private.h"
 
 int	opterr = 1,		/* if error message should be printed */
 	optind = 1,		/* index into parent argv vector */
@@ -102,7 +102,7 @@ getopt(int nargc, char * const nargv[], const char *ostr)
 			++optind;
 		if (opterr && *ostr != ':')
 			fprintf(stderr,
-			    "%s: illegal option -- %c\n", getprogname(),
+			    "%s: illegal option -- %c\n", _getprogname(),
 			    optopt);
 		return (BADCH);
 	}
@@ -128,7 +128,7 @@ getopt(int nargc, char * const nargv[], const char *ostr)
 			if (opterr)
 				fprintf(stderr,
 				    "%s: option requires an argument -- %c\n",
-				    getprogname(), optopt);
+				    _getprogname(), optopt);
 			return (BADCH);
 		}
 		place = EMSG;

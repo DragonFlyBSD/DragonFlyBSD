@@ -358,7 +358,7 @@ tcp_timer_keep_handler(struct tcpcb *tp)
 		t_template = tcp_maketemplate(tp);
 		if (t_template) {
 			tcp_respond(tp, t_template->tt_ipgen,
-				    &t_template->tt_t, (struct mbuf *)NULL,
+				    &t_template->tt_t, NULL,
 				    tp->rcv_nxt, tp->snd_una - 1, 0);
 			tcp_freetemplate(t_template);
 		}

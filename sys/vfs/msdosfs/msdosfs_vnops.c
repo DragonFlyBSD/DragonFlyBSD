@@ -1246,7 +1246,7 @@ abortit:
 		bcopy(toname, ip->de_Name, 11);	/* update denode */
 		dp->de_fndoffset = to_diroffset;
 		dp->de_fndcnt = to_count;
-		error = createde(ip, dp, (struct denode **)0, tcnp);
+		error = createde(ip, dp, NULL, tcnp);
 		if (error) {
 			bcopy(oldname, ip->de_Name, 11);
 			goto done;

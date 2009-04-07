@@ -281,6 +281,28 @@ localevar(const char *s)
 }
 
 /*
+ * Sets/unsets an environment variable from a pointer that may actually be a
+ * pointer into environ where the string should not be manipulated.
+ */
+static void
+change_env(char *s, int set)
+{
+	char *eqp;
+	char *ss;
+
+	ss = savestr(s);
+	if ((eqp = strchr(ss, '=')) != NULL)
+		*eqp = '\0';
+	if (set && eqp != NULL) {
+		if (setenv(ss, eqp + 1, 1) != 0)
+			error("setenv: cannot set %s=%s", ss, eqp + 1);
+	} else
+		unsetenv(ss);
+	ckfree(ss);
+}
+
+
+/*
  * Same as setvar except that the variable and value are passed in
  * the first argument as name=value.  Since the first argument will
  * be actually stored in the table, it should not be a string that
@@ -321,8 +343,7 @@ setvareq(char *s, int flags)
 			if (vp == &vmpath || (vp == &vmail && ! mpathset()))
 				chkmail(1);
 			if ((vp->flags & VEXPORT) && localevar(s)) {
-				if (putenv(s) != 0)
-					error("putenv: cannot set %s", s);
+				change_env(s, 1);
 				setlocale(LC_ALL, "");
 			}
 			INTON;
@@ -338,8 +359,7 @@ setvareq(char *s, int flags)
 	INTOFF;
 	*vpp = vp;
 	if ((vp->flags & VEXPORT) && localevar(s)) {
-		if (putenv(s) != 0)
-			error("putenv: cannot set %s", s);
+		change_env(s, 1);
 		setlocale(LC_ALL, "");
 	}
 	INTON;
@@ -600,8 +620,7 @@ exportcmd(int argc, char **argv)
 
 						vp->flags |= flag;
 						if ((vp->flags & VEXPORT) && localevar(vp->text)) {
-							if (putenv(vp->text) != 0)
-								error("putenv: cannot set %s", vp->text);
+							change_env(vp->text, 1);
 							setlocale(LC_ALL, "");
 						}
 						goto found;
@@ -793,7 +812,7 @@ unsetvar(const char *s)
 			if (*(strchr(vp->text, '=') + 1) != '\0')
 				setvar(s, nullstr, 0);
 			if ((vp->flags & VEXPORT) && localevar(vp->text)) {
-				unsetenv(s);
+				change_env(__DECONST(char *, s), 0);
 				setlocale(LC_ALL, "");
 			}
 			vp->flags &= ~VEXPORT;

@@ -91,7 +91,7 @@ static char *event_text[N_EVENTS] = {
 static void
 F_ill(cfg_entry_t *cep)
 {
-	DBGL(DL_STATE, (log(LL_DBG, "F_ill: Illegal State reached !!!")));
+	DBGL(DL_STATE, (dolog(LL_DBG, "F_ill: Illegal State reached !!!")));
 }
 
 /*---------------------------------------------------------------------------*
@@ -108,7 +108,7 @@ F_NcNa(cfg_entry_t *cep)
 static void
 F_MCI(cfg_entry_t *cep)
 {
-	DBGL(DL_STATE, (log(LL_DBG, "F_MCI: tx SETUP_RESP_ACCEPT")));
+	DBGL(DL_STATE, (dolog(LL_DBG, "F_MCI: tx SETUP_RESP_ACCEPT")));
 	sendm_connect_resp(cep, cep->cdid, SETUP_RESP_ACCEPT, 0);
 	start_timer(cep, TIMEOUT_CONNECT_ACTIVE);
 }
@@ -119,7 +119,7 @@ F_MCI(cfg_entry_t *cep)
 static void
 F_MCAI(cfg_entry_t *cep)
 {
-	DBGL(DL_STATE, (log(LL_DBG, "F_MCAI: Connection active!")));
+	DBGL(DL_STATE, (dolog(LL_DBG, "F_MCAI: Connection active!")));
 
 	stop_timer(cep);
 
@@ -136,7 +136,7 @@ F_MCAI(cfg_entry_t *cep)
 static void
 F_TIMO(cfg_entry_t *cep)
 {
-	DBGL(DL_STATE, (log(LL_DBG, "F_TIMO: Timeout occurred!")));
+	DBGL(DL_STATE, (dolog(LL_DBG, "F_TIMO: Timeout occurred!")));
 	sendm_disconnect_req(cep, (CAUSET_I4B << 8) | CAUSE_I4B_NORMAL);
 	cep->cdid = CDID_UNUSED;	
 }
@@ -147,7 +147,7 @@ F_TIMO(cfg_entry_t *cep)
 static void
 F_IDIS(cfg_entry_t *cep)
 {
-	DBGL(DL_STATE, (log(LL_DBG, "F_IDIS: disconnect indication")));
+	DBGL(DL_STATE, (dolog(LL_DBG, "F_IDIS: disconnect indication")));
 	cep->cdid = CDID_UNUSED;
 }
 
@@ -157,7 +157,7 @@ F_IDIS(cfg_entry_t *cep)
 static void
 F_DRQ(cfg_entry_t *cep)
 {
-	DBGL(DL_STATE, (log(LL_DBG, "F_DRQ: local disconnect request")));
+	DBGL(DL_STATE, (dolog(LL_DBG, "F_DRQ: local disconnect request")));
 	sendm_disconnect_req(cep, (CAUSET_I4B << 8) | CAUSE_I4B_NORMAL);
 }
 
@@ -167,7 +167,7 @@ F_DRQ(cfg_entry_t *cep)
 static void
 F_MDI(cfg_entry_t *cep)
 {
-	DBGL(DL_STATE, (log(LL_DBG, "F_MDI: disconnect indication, local disconnected")));
+	DBGL(DL_STATE, (dolog(LL_DBG, "F_MDI: disconnect indication, local disconnected")));
 	cep->cdid = CDID_UNUSED;
 }
 
@@ -177,7 +177,7 @@ F_MDI(cfg_entry_t *cep)
 static void
 F_DIAL(cfg_entry_t *cep)
 {
-	DBGL(DL_STATE, (log(LL_DBG, "F_DIAL: local dial out request")));
+	DBGL(DL_STATE, (dolog(LL_DBG, "F_DIAL: local dial out request")));
 
         if(cep->dialrandincr)
                 cep->randomtime = (random() & RANDOM_MASK) + cep->recoverytime;
@@ -195,7 +195,7 @@ F_DIAL(cfg_entry_t *cep)
 static void
 F_DOK(cfg_entry_t *cep)
 {
-	DBGL(DL_STATE, (log(LL_DBG, "F_DOK: dial out ok")));
+	DBGL(DL_STATE, (dolog(LL_DBG, "F_DOK: dial out ok")));
 	select_this_dialno(cep);
 }
 
@@ -215,7 +215,7 @@ F_DFL(cfg_entry_t *cep)
 		{
 			/* inside normal retry cycle */
 		
-			DBGL(DL_STATE, (log(LL_DBG, "F_DFL: dial fail, dial retry")));
+			DBGL(DL_STATE, (dolog(LL_DBG, "F_DFL: dial fail, dial retry")));
 			select_next_dialno(cep);
 			cep->cdid = CDID_RESERVED;
 			cep->state = ST_DIALRTMRCHD;
@@ -226,7 +226,7 @@ F_DFL(cfg_entry_t *cep)
 		
 		if(!cep->usedown)
 		{
-			DBGL(DL_STATE, (log(LL_DBG, "F_DFL: dial retry fail, dial retries exhausted")));
+			DBGL(DL_STATE, (dolog(LL_DBG, "F_DFL: dial retry fail, dial retries exhausted")));
 			dialresponse(cep, DSTAT_TFAIL);
 			cep->cdid = CDID_UNUSED;
 			cep->dial_count = 0;
@@ -241,7 +241,7 @@ F_DFL(cfg_entry_t *cep)
 		if(cep->down_retry_count > cep->downtries)
 		{
 			/* set interface down */
-			DBGL(DL_STATE, (log(LL_DBG, "F_DFL: dial retry cycle fail, setting interface down!")));
+			DBGL(DL_STATE, (dolog(LL_DBG, "F_DFL: dial retry cycle fail, setting interface down!")));
 			dialresponse(cep, DSTAT_PFAIL);
 			if_down(cep);					
 			cep->state = ST_DOWN;
@@ -249,7 +249,7 @@ F_DFL(cfg_entry_t *cep)
 		else
 		{
 			/* enter new dial retry cycle */
-			DBGL(DL_STATE, (log(LL_DBG, "F_DFL: dial retry cycle fail, enter new retry cycle!")));
+			DBGL(DL_STATE, (dolog(LL_DBG, "F_DFL: dial retry cycle fail, enter new retry cycle!")));
 			select_next_dialno(cep);
 			cep->state = ST_DIALRTMRCHD;
 		}
@@ -259,7 +259,7 @@ F_DFL(cfg_entry_t *cep)
 	}
 	else	/* cdp->dialouttype == DIALOUT_CALLEDBACK */
 	{
-		DBGL(DL_STATE, (log(LL_DBG, "F_DFL: calledback dial done, wait for incoming call")));
+		DBGL(DL_STATE, (dolog(LL_DBG, "F_DFL: calledback dial done, wait for incoming call")));
 		cep->cdid = CDID_RESERVED;
 		cep->state = ST_PCB_WAITCALL;
 	}
@@ -271,7 +271,7 @@ F_DFL(cfg_entry_t *cep)
 static void
 F_ACBW(cfg_entry_t *cep)
 {
-	DBGL(DL_STATE, (log(LL_DBG, "F_ACBW: local callback, wait callback recovery time")));
+	DBGL(DL_STATE, (dolog(LL_DBG, "F_ACBW: local callback, wait callback recovery time")));
 
         if(cep->dialrandincr)
                 cep->randomtime = (random() & RANDOM_MASK) + cep->recoverytime;
@@ -293,7 +293,7 @@ F_ACBR(cfg_entry_t *cep)
 	{
 		/* inside normal retry cycle */
 	
-		DBGL(DL_STATE, (log(LL_DBG, "F_ACBR: dial fail, dial retry")));
+		DBGL(DL_STATE, (dolog(LL_DBG, "F_ACBR: dial fail, dial retry")));
 		select_next_dialno(cep);
 		cep->cdid = CDID_RESERVED;
 		cep->state = ST_ACB_DIALFAIL;
@@ -304,7 +304,7 @@ F_ACBR(cfg_entry_t *cep)
 	
 	if(!cep->usedown)
 	{
-		DBGL(DL_STATE, (log(LL_DBG, "F_ACBR: dial retry fail, dial retries exhausted")));
+		DBGL(DL_STATE, (dolog(LL_DBG, "F_ACBR: dial retry fail, dial retries exhausted")));
 		dialresponse(cep, DSTAT_TFAIL);
 		cep->cdid = CDID_UNUSED;
 		cep->dial_count = 0;
@@ -319,7 +319,7 @@ F_ACBR(cfg_entry_t *cep)
 	if(cep->down_retry_count > cep->downtries)
 	{
 		/* set interface down */
-		DBGL(DL_STATE, (log(LL_DBG, "F_ACBR: dial retry cycle fail, setting interface down!")));
+		DBGL(DL_STATE, (dolog(LL_DBG, "F_ACBR: dial retry cycle fail, setting interface down!")));
 		dialresponse(cep, DSTAT_PFAIL);
 		if_down(cep);
 		cep->state = ST_DOWN;
@@ -327,7 +327,7 @@ F_ACBR(cfg_entry_t *cep)
 	else
 	{
 		/* enter new dial retry cycle */
-		DBGL(DL_STATE, (log(LL_DBG, "F_ACBR: dial retry cycle fail, enter new retry cycle!")));
+		DBGL(DL_STATE, (dolog(LL_DBG, "F_ACBR: dial retry cycle fail, enter new retry cycle!")));
 		select_next_dialno(cep);
 		cep->state = ST_ACB_DIALFAIL;
 	}
@@ -342,7 +342,7 @@ F_ACBR(cfg_entry_t *cep)
 static void
 F_ALRT(cfg_entry_t *cep)
 {
-	DBGL(DL_STATE, (log(LL_DBG, "F_ALRT: local send alert request")));
+	DBGL(DL_STATE, (dolog(LL_DBG, "F_ALRT: local send alert request")));
 
 	cep->alert_time = cep->alert;
 	
@@ -386,7 +386,7 @@ next_state(cfg_entry_t *cep, int event)
 
 	if(event > N_EVENTS)
 	{
-		log(LL_ERR, "next_state: event > N_EVENTS");
+		dolog(LL_ERR, "next_state: event > N_EVENTS");
 		error_exit(1, "next_state: event > N_EVENTS");
 	}
 
@@ -394,7 +394,7 @@ next_state(cfg_entry_t *cep, int event)
 
 	if(currstate > N_STATES)
 	{
-		log(LL_ERR, "next_state: currstate > N_STATES");
+		dolog(LL_ERR, "next_state: currstate > N_STATES");
 		error_exit(1, "next_state: currstate > N_STATES");
 	}
 
@@ -402,13 +402,13 @@ next_state(cfg_entry_t *cep, int event)
 
 	if(newstate > N_STATES)
 	{
-		log(LL_ERR, "next_state: newstate > N_STATES");
+		dolog(LL_ERR, "next_state: newstate > N_STATES");
 		error_exit(1, "next_state: newstate > N_STATES");
 	}
 
 	if(newstate != ST_SUSE)
 	{
-		DBGL(DL_STATE, (log(LL_DBG, "FSM event [%s]: [%s => %s]", event_text[event],
+		DBGL(DL_STATE, (dolog(LL_DBG, "FSM event [%s]: [%s => %s]", event_text[event],
 				state_text[currstate],
 				state_text[newstate])));
 	}
@@ -417,7 +417,7 @@ next_state(cfg_entry_t *cep, int event)
 
 	if(newstate == ST_ILL)
 	{
-		log(LL_ERR, "FSM ILLEGAL STATE, event=%s: oldstate=%s => newstate=%s]",
+		dolog(LL_ERR, "FSM ILLEGAL STATE, event=%s: oldstate=%s => newstate=%s]",
 				event_text[event],
                                 state_text[currstate],
                                 state_text[newstate]);
@@ -425,7 +425,7 @@ next_state(cfg_entry_t *cep, int event)
 
 	if(newstate == ST_SUSE)
 	{
-		DBGL(DL_STATE, (log(LL_DBG, "FSM (SUSE) event [%s]: [%s => %s]", event_text[event],
+		DBGL(DL_STATE, (dolog(LL_DBG, "FSM (SUSE) event [%s]: [%s => %s]", event_text[event],
 				state_text[currstate],
 				state_text[cep->state])));
 	}

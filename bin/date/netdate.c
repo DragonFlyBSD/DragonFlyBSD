@@ -137,7 +137,7 @@ loop:
 
 	FD_ZERO(&ready);
 	FD_SET(s, &ready);
-	found = select(FD_SETSIZE, &ready, (fd_set *)0, (fd_set *)0, &tout);
+	found = select(FD_SETSIZE, &ready, NULL, NULL, &tout);
 
 	length = sizeof(errn);
 	if (!getsockopt(s,

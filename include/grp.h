@@ -36,16 +36,22 @@
  * SUCH DAMAGE.
  *
  *	@(#)grp.h	8.2 (Berkeley) 1/21/94
- * $FreeBSD: src/include/grp.h,v 1.18 2003/04/17 14:15:25 nectar Exp $
+ * $FreeBSD: src/include/grp.h,v 1.19 2009/03/14 19:05:18 das Exp $
  * $DragonFly: src/include/grp.h,v 1.5 2008/04/19 10:08:05 swildner Exp $
  */
 
 #ifndef _GRP_H_
 #define	_GRP_H_
 
+#include <sys/cdefs.h>
 #include <sys/types.h>
 
 #define	_PATH_GROUP		"/etc/group"
+
+#ifndef _GID_T_DECLARED
+typedef	__uint32_t	gid_t;
+#define	_GID_T_DECLARED
+#endif
 
 #ifndef _SIZE_T_DECLARED
 typedef __size_t	size_t;
@@ -59,8 +65,6 @@ struct group {
 	char	**gr_mem;		/* group members */
 };
 
-#include <sys/cdefs.h>
-
 __BEGIN_DECLS
 #if __BSD_VISIBLE || __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE
 void		 endgrent(void);
@@ -71,19 +75,17 @@ struct group	*getgrnam(const char *);
 #if __BSD_VISIBLE
 const char	*group_from_gid(gid_t, int);
 #endif
+#if __BSD_VISIBLE || __XSI_VISIBLE
+void		 setgrent(void);
+#endif
 #if __BSD_VISIBLE || __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE
-/* XXX IEEE Std 1003.1, 2003 specifies `void setgrent(void)' */
-int		 setgrent(void);
-#if 0
 int		 getgrgid_r(gid_t, struct group *, char *, size_t,
 		    struct group **);
 int		 getgrnam_r(const char *, struct group *, char *, size_t,
 		    struct group **);
 #endif
-#endif
-
 #if __BSD_VISIBLE
-/* int		 getgrent_r(struct group *, char *, size_t, struct group **); */
+int		 getgrent_r(struct group *, char *, size_t, struct group **);
 int		 setgroupent(int);
 #endif
 __END_DECLS

@@ -171,7 +171,7 @@ to_integer(struct val *vp)
 
 	/* vp->type == numeric_string, make it numeric */
 	errno = 0;
-	i  = strtoll(vp->u.s, (char**)NULL, 10);
+	i  = strtoll(vp->u.s, NULL, 10);
 	if (errno != 0) {
 		errx (2, "overflow");
 	}

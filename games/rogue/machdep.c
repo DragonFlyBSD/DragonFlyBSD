@@ -389,7 +389,7 @@ md_gln(void)
 	if ((s = getlogin()))
 		return s;
 	if (!(p = getpwuid(getuid())))
-		return((char *)NULL);
+		return(NULL);
 	return(p->pw_name);
 }
 
@@ -541,7 +541,7 @@ md_shell(const char *shell)
 	if (!fork()) {
 		/* revoke */
 		setgid(getgid());
-		execl(shell, shell, (char *) NULL);
+		execl(shell, shell, NULL);
 	}
 	wait((int *)w);
 }

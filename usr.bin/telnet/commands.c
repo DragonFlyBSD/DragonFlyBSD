@@ -1314,14 +1314,14 @@ shell(int argc, char *argv[] __unused)
 	    else
 		shellname++;
 	    if (argc > 1)
-		execl(shellp, shellname, "-c", &saveline[1], (char *)0);
+		execl(shellp, shellname, "-c", &saveline[1], NULL);
 	    else
-		execl(shellp, shellname, (char *)0);
+		execl(shellp, shellname, NULL);
 	    perror("Execl");
 	    _exit(1);
 	}
     default:
-	    (void)wait((int *)0);	/* Wait for the shell to complete */
+	    (void)wait(NULL);	/* Wait for the shell to complete */
 
 	    if (TerminalWindowSize(&newrows, &newcols) && connected &&
 		(err_ || ((oldrows != newrows) || (oldcols != newcols)))) {
@@ -2411,7 +2411,7 @@ help(int argc, char *argv[])
 		c = getcmd(arg);
 		if (Ambiguous((void *)c))
 			printf("?Ambiguous help command %s\n", arg);
-		else if (c == (Command *)0)
+		else if (c == NULL)
 			printf("?Invalid help command %s\n", arg);
 		else
 			printf("%s\n", c->help);

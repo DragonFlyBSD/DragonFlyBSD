@@ -260,6 +260,7 @@ float	tanhf(float);
 float	expf(float);
 float	expm1f(float);
 float	frexpf(float, int *);
+long double	frexpl(long double, int *);
 int	ilogbf(float);
 float	ldexpf(float, int);
 float	logf(float);

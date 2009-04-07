@@ -62,7 +62,7 @@ addlist(struct stringlist *listp, char *funcname)
     struct stringlist	*slp;
 
     slp = (struct stringlist *) malloc( sizeof(struct stringlist));
-    if ( slp == (struct stringlist *) 0 ) {
+    if ( slp == NULL ) {
 	warnx("ran out room for printlist");
 	done();
     }

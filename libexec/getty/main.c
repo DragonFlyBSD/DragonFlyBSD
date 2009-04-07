@@ -236,13 +236,13 @@ main(int argc, char **argv)
 
 			if (!opentty(ttyn, O_RDWR|O_NONBLOCK))
 				exit(1);
-        		setdefttymode(tname);
-        		rfds = 1 << 0;	/* FD_SET */
-        		timeout.tv_sec = RT;
-        		timeout.tv_usec = 0;
-        		i = select(32, (fd_set*)&rfds, (fd_set*)NULL,
-        			       (fd_set*)NULL, RT ? &timeout : NULL);
-        		if (i < 0) {
+			setdefttymode(tname);
+			rfds = 1 << 0;	/* FD_SET */
+			timeout.tv_sec = RT;
+			timeout.tv_usec = 0;
+			i = select(32, (fd_set*)&rfds, NULL,
+				       NULL, RT ? &timeout : NULL);
+			if (i < 0) {
 				syslog(LOG_ERR, "select %s: %m", ttyn);
 			} else if (i == 0) {
 				syslog(LOG_NOTICE, "recycle tty %s", ttyn);
@@ -357,7 +357,7 @@ main(int argc, char **argv)
 			limit.rlim_max = RLIM_INFINITY;
 			limit.rlim_cur = RLIM_INFINITY;
 			(void)setrlimit(RLIMIT_CPU, &limit);
-			execle(PP, "ppplogin", ttyn, (char *) 0, env);
+			execle(PP, "ppplogin", ttyn, NULL, env);
 			syslog(LOG_ERR, "%s: %m", PP);
 			exit(1);
 		} else if (rval || AL) {
@@ -388,7 +388,7 @@ main(int argc, char **argv)
 				exit(1);
 			}
 			signal(SIGINT, SIG_DFL);
-			for (i = 0; environ[i] != (char *)0; i++)
+			for (i = 0; environ[i] != NULL; i++)
 				env[i] = environ[i];
 			makeenv(&env[i]);
 
@@ -396,7 +396,7 @@ main(int argc, char **argv)
 			limit.rlim_cur = RLIM_INFINITY;
 			(void)setrlimit(RLIMIT_CPU, &limit);
 			execle(LO, "login", AL ? "-fp" : "-p", name,
-			    (char *) 0, env);
+			    NULL, env);
 			syslog(LOG_ERR, "%s: %m", LO);
 			exit(1);
 		}
@@ -732,7 +732,7 @@ putf(const char *cp)
 
 		case 't':
 			slash = strrchr(ttyn, '/');
-			if (slash == (char *) 0)
+			if (slash == NULL)
 				puts(ttyn);
 			else
 				puts(&slash[1]);

@@ -95,9 +95,9 @@ struct u_rman {
  * address space).  That is also why the indices are defined to have type
  * `unsigned long' -- that being the largest integral type in Standard C.
  */
-CIRCLEQ_HEAD(resource_head, resource);
+TAILQ_HEAD(resource_head, resource);
 struct	resource {
-	CIRCLEQ_ENTRY(resource)	r_link;
+	TAILQ_ENTRY(resource)	r_link;
 	LIST_ENTRY(resource)	r_sharelink;
 	LIST_HEAD(, resource) 	*r_sharehead;
 	u_long	r_start;	/* index of the first entry in this resource */

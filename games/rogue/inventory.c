@@ -675,7 +675,7 @@ get_id_table(const object *obj)
 	case ARMOR:
 		return(id_armors);
 	}
-	return((struct id *) 0);
+	return(NULL);
 }
 
 void

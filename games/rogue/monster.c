@@ -142,7 +142,7 @@ put_mons(void)
 	n = get_rand(4, 6);
 
 	for (i = 0; i < n; i++) {
-		monster = gr_monster((object *) 0, 0);
+		monster = gr_monster(NULL, 0);
 		if ((monster->m_flags & WANDERS) && coin_toss()) {
 			wake_up(monster);
 		}
@@ -260,7 +260,7 @@ party_monsters(int rn, int n)
 			}
 		}
 		if (found) {
-			monster = gr_monster((object *) 0, 0);
+			monster = gr_monster(NULL, 0);
 			if (!(monster->m_flags & IMITATES)) {
 				monster->m_flags |= WAKENS;
 			}
@@ -621,7 +621,7 @@ wanderer(void)
 	boolean found = 0;
 
 	for (i = 0; ((i < 15) && (!found)); i++) {
-		monster = gr_monster((object *) 0, 0);
+		monster = gr_monster(NULL, 0);
 		if (!(monster->m_flags & (WAKENS | WANDERS))) {
 			free_object(monster);
 		} else {
@@ -691,7 +691,7 @@ create_monster(void)
 		}
 	}
 	if (found) {
-		monster = gr_monster((object *) 0, 0);
+		monster = gr_monster(NULL, 0);
 		put_m_at(row, col, monster);
 		mvaddch(row, col, gmc(monster));
 		if (monster->m_flags & (WANDERS | WAKENS)) {

@@ -1,17 +1,23 @@
-/* $FreeBSD: src/lib/libc/gen/arc4random.c,v 1.4 2000/01/27 23:06:13 jasone Exp $ */
-/* $DragonFly: src/lib/libc/gen/arc4random.c,v 1.7 2005/11/13 00:07:42 swildner Exp $ */
-
 /*
- * Arc4 random number generator for OpenBSD.
- * Copyright 1996 David Mazieres <dm@lcs.mit.edu>.
+ * Copyright (c) 1996, David Mazieres <dm@uun.org>
+ * Copyright (c) 2008, Damien Miller <djm@openbsd.org>
  *
- * Modification and redistribution in source and binary forms is
- * permitted provided that due credit is given to the author and the
- * OpenBSD project (for instance by leaving this copyright notice
- * intact).
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
 /*
+ * Arc4 random number generator for OpenBSD.
+ *
  * This code is derived from section 17.1 of Applied Cryptography,
  * second edition, which describes a stream cipher allegedly
  * compatible with RSA Labs "RC4" cipher (the actual description of
@@ -24,14 +30,20 @@
  * for encryption, but will generate good random numbers.
  *
  * RC4 is a registered trademark of RSA Laboratories.
+ *
+ * $FreeBSD: src/lib/libc/gen/arc4random.c,v 1.25 2008/09/09 09:46:36 ache Exp $
+ * $DragonFly: src/lib/libc/gen/arc4random.c,v 1.7 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include "namespace.h"
+#include <sys/types.h>
+#include <sys/time.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/time.h>
+#include <pthread.h>
+
+#include "libc_private.h"
 #include "un-namespace.h"
 
 struct arc4_stream {
@@ -40,59 +52,82 @@ struct arc4_stream {
 	u_int8_t s[256];
 };
 
-static int rs_initialized;
+static pthread_mutex_t	arc4random_mtx = PTHREAD_MUTEX_INITIALIZER;
+
+#define	RANDOMDEV	"/dev/random"
+#define KEYSIZE		128
+#define	THREAD_LOCK()						\
+	do {							\
+		if (__isthreaded)				\
+			_pthread_mutex_lock(&arc4random_mtx);	\
+	} while (0)
+
+#define	THREAD_UNLOCK()						\
+	do {							\
+		if (__isthreaded)				\
+			_pthread_mutex_unlock(&arc4random_mtx);	\
+	} while (0)
+
 static struct arc4_stream rs;
+static int rs_initialized;
+static int rs_stired;
+static int arc4_count;
 
-static u_int8_t	arc4_getbyte(struct arc4_stream *);
+static u_int8_t arc4_getbyte(void);
+static void arc4_stir(void);
 
-static void
-arc4_init(struct arc4_stream *as)
+static inline void
+arc4_init(void)
 {
 	int     n;
 
 	for (n = 0; n < 256; n++)
-		as->s[n] = n;
-	as->i = 0;
-	as->j = 0;
+		rs.s[n] = n;
+	rs.i = 0;
+	rs.j = 0;
 }
 
-static void
-arc4_addrandom(struct arc4_stream *as, u_char *dat, size_t datlen)
+static inline void
+arc4_addrandom(u_char *dat, size_t datlen)
 {
 	size_t n;
 	u_int8_t si;
 
-	as->i--;
+	rs.i--;
 	for (n = 0; n < 256; n++) {
-		as->i = (as->i + 1);
-		si = as->s[as->i];
-		as->j = (as->j + si + dat[n % datlen]);
-		as->s[as->i] = as->s[as->j];
-		as->s[as->j] = si;
+		rs.i = (rs.i + 1);
+		si = rs.s[rs.i];
+		rs.j = (rs.j + si + dat[n % datlen]);
+		rs.s[rs.i] = rs.s[rs.j];
+		rs.s[rs.j] = si;
 	}
+	rs.j = rs.i;
 }
 
 static void
-arc4_stir(struct arc4_stream *as)
+arc4_stir(void)
 {
-	int     fd, n;
+	int done, fd, n;
 	struct {
-		struct timeval tv;
-		pid_t pid;
-		u_int8_t rnd[128 - sizeof(struct timeval) - sizeof(pid_t)];
-	}       rdat;
+		struct timeval	tv;
+		pid_t 		pid;
+		u_int8_t 	rnd[KEYSIZE];
+	} rdat;
 
-	gettimeofday(&rdat.tv, NULL);
-	rdat.pid = getpid();
-	fd = _open("/dev/urandom", O_RDONLY, 0);
+	fd = _open(RANDOMDEV, O_RDONLY, 0);
+	done = 0;
 	if (fd >= 0) {
-		_read(fd, rdat.rnd, sizeof(rdat.rnd));
+		if (_read(fd, &rdat, KEYSIZE) == KEYSIZE)
+			done = 1;
 		_close(fd);
 	}
-	/* fd < 0?  Ah, what the heck. We'll just take whatever was on the
-	 * stack... */
+	if (!done) {
+		gettimeofday(&rdat.tv, NULL);
+		rdat.pid = getpid();
+		/* We'll just take whatever was on the stack too... */
+	}
 
-	arc4_addrandom(as, (void *) &rdat, sizeof(rdat));
+	arc4_addrandom((u_char *)&rdat, KEYSIZE);
 
 	/*
 	 * Throw away the first N bytes of output, as suggested in the
@@ -102,58 +137,149 @@ arc4_stir(struct arc4_stream *as)
 	 * by Ilya Mironov.
 	 */
 	for (n = 0; n < 1024; n++)
-		arc4_getbyte(as);
+		arc4_getbyte();
+	arc4_count = 1600000;
 }
 
 static u_int8_t
-arc4_getbyte(struct arc4_stream *as)
+arc4_getbyte(void)
 {
 	u_int8_t si, sj;
 
-	as->i = (as->i + 1);
-	si = as->s[as->i];
-	as->j = (as->j + si);
-	sj = as->s[as->j];
-	as->s[as->i] = sj;
-	as->s[as->j] = si;
-	return (as->s[(si + sj) & 0xff]);
+	rs.i = (rs.i + 1);
+	si = rs.s[rs.i];
+	rs.j = (rs.j + si);
+	sj = rs.s[rs.j];
+	rs.s[rs.i] = sj;
+	rs.s[rs.j] = si;
+
+	return (rs.s[(si + sj) & 0xff]);
 }
 
 static u_int32_t
-arc4_getword(struct arc4_stream *as)
+arc4_getword(void)
 {
 	u_int32_t val;
-	val = arc4_getbyte(as) << 24;
-	val |= arc4_getbyte(as) << 16;
-	val |= arc4_getbyte(as) << 8;
-	val |= arc4_getbyte(as);
-	return val;
+
+	val = arc4_getbyte() << 24;
+	val |= arc4_getbyte() << 16;
+	val |= arc4_getbyte() << 8;
+	val |= arc4_getbyte();
+
+	return (val);
+}
+
+static void
+arc4_check_init(void)
+{
+	if (!rs_initialized) {
+		arc4_init();
+		rs_initialized = 1;
+	}
+}
+
+static inline void
+arc4_check_stir(void)
+{
+	if (!rs_stired || arc4_count <= 0) {
+		arc4_stir();
+		rs_stired = 1;
+	}
 }
 
 void
 arc4random_stir(void)
 {
-	if (!rs_initialized) {
-		arc4_init(&rs);
-		rs_initialized = 1;
-	}
-	arc4_stir(&rs);
+	THREAD_LOCK();
+	arc4_check_init();
+	arc4_stir();
+	rs_stired = 1;
+	THREAD_UNLOCK();
 }
 
 void
 arc4random_addrandom(uint8_t *dat, size_t datlen)
 {
-	if (!rs_initialized)
-		arc4random_stir();
-	arc4_addrandom(&rs, dat, datlen);
+	THREAD_LOCK();
+	arc4_check_init();
+	arc4_check_stir();
+	arc4_addrandom(dat, datlen);
+	THREAD_UNLOCK();
 }
 
 u_int32_t
 arc4random(void)
 {
-	if (!rs_initialized)
-		arc4random_stir();
-	return arc4_getword(&rs);
+	u_int32_t rnd;
+
+	THREAD_LOCK();
+	arc4_check_init();
+	arc4_check_stir();
+	rnd = arc4_getword();
+	arc4_count -= 4;
+	THREAD_UNLOCK();
+
+	return (rnd);
+}
+
+void
+arc4random_buf(void *_buf, size_t n)
+{
+	u_char *buf = (u_char *)_buf;
+
+	THREAD_LOCK();
+	arc4_check_init();
+	while (n--) {
+		arc4_check_stir();
+		buf[n] = arc4_getbyte();
+		arc4_count--;
+	}
+	THREAD_UNLOCK();
+}
+
+/*
+ * Calculate a uniformly distributed random number less than upper_bound
+ * avoiding "modulo bias".
+ *
+ * Uniformity is achieved by generating new random numbers until the one
+ * returned is outside the range [0, 2**32 % upper_bound).  This
+ * guarantees the selected random number will be inside
+ * [2**32 % upper_bound, 2**32) which maps back to [0, upper_bound)
+ * after reduction modulo upper_bound.
+ */
+u_int32_t
+arc4random_uniform(u_int32_t upper_bound)
+{
+	u_int32_t r, min;
+
+	if (upper_bound < 2)
+		return (0);
+
+#if (ULONG_MAX > 0xffffffffUL)
+	min = 0x100000000UL % upper_bound;
+#else
+	/* Calculate (2**32 % upper_bound) avoiding 64-bit math */
+	if (upper_bound > 0x80000000)
+		min = 1 + ~upper_bound;		/* 2**32 - upper_bound */
+	else {
+		/* (2**32 - (x * 2)) % x == 2**32 % x when x <= 2**31 */
+		min = ((0xffffffff - (upper_bound * 2)) + 1) % upper_bound;
+	}
+#endif
+
+	/*
+	 * This could theoretically loop forever but each retry has
+	 * p > 0.5 (worst case, usually far better) of selecting a
+	 * number inside the range we need, so it should rarely need
+	 * to re-roll.
+	 */
+	for (;;) {
+		r = arc4random();
+		if (r >= min)
+			break;
+	}
+
+	return (r % upper_bound);
 }
 
 #if 0

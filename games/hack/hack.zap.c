@@ -166,7 +166,7 @@ dozap(void)
 			{ int cnt = 1;
 			if(!rn2(23)) cnt += rn2(7) + 1;
 			while(cnt--)
-			    makemon((struct permonst *) 0, u.ux, u.uy);
+			    makemon(NULL, u.ux, u.uy);
 			}
 			break;
 		case WAN_WISHING:

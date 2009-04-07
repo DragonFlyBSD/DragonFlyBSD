@@ -233,7 +233,7 @@ sonewconn(struct socket *head, int connstatus)
 	struct pru_attach_info ai;
 
 	if (head->so_qlen > 3 * head->so_qlimit / 2)
-		return ((struct socket *)0);
+		return (NULL);
 	so = soalloc(1);
 	if (so == NULL)
 		return (NULL);
@@ -254,7 +254,7 @@ sonewconn(struct socket *head, int connstatus)
 	    /* Directly call function since we're already at protocol level. */
 	    (*so->so_proto->pr_usrreqs->pru_attach)(so, 0, &ai)) {
 		sodealloc(so);
-		return ((struct socket *)0);
+		return (NULL);
 	}
 
 	if (connstatus) {

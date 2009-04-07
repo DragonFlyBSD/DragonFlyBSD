@@ -105,7 +105,7 @@ c_window()
 		wwputc('\n', cmdwin);
 	wwcurtowin(cmdwin);
 	(void) openwin(id, row, col, xrow-row+1, xcol-col+1, default_nline,
-		(char *) 0, 1, 1, default_shellfile, default_shell);
+		NULL, 1, 1, default_shellfile, default_shell);
 }
 
 getpos(row, col, minrow, mincol, maxrow, maxcol)

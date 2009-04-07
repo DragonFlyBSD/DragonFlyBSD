@@ -305,7 +305,7 @@ open_input(const char *infile, const char *define)
 		addarg(define);
 		if (infile)
 			addarg(infile);
-		addarg((char *)NULL);
+		addarg(NULL);
 		close(1);
 		dup2(pd[1], 1);
 		close(pd[0]);

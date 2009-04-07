@@ -893,7 +893,7 @@ asn_get_header ( u_char **bufp )
 	 * Allocate memory to hold the SNMP header
 	 */
 	if ( ( h = (Snmp_Header *)UM_ALLOC(sizeof(Snmp_Header)) ) == NULL )
-		return ( (Snmp_Header *)NULL );
+		return ( NULL );
 
 	/*
 	 * Ensure that we wipe the slate clean
@@ -904,7 +904,7 @@ asn_get_header ( u_char **bufp )
 	 * PDU has to start as SEQUENCE OF
 	 */
 	if ( *bp++ != ASN_SEQUENCE ) /* Class == Universial, f == 1, tag == SEQUENCE */
-		return ( (Snmp_Header *)NULL );
+		return ( NULL );
 
 	/*
 	 * Get the length of remaining PDU data
@@ -915,7 +915,7 @@ asn_get_header ( u_char **bufp )
 	 * We expect to find an integer encoding Version-1
 	 */
 	if ( *bp++ != ASN_INTEGER ) {
-		return ( (Snmp_Header *)NULL );
+		return ( NULL );
 	}
 	h->version = asn_get_int ( &bp, NULL );
 
@@ -923,7 +923,7 @@ asn_get_header ( u_char **bufp )
 	 * After the version, we need the community name
 	 */
 	if ( *bp++ != ASN_OCTET ) {
-		return ( (Snmp_Header *)NULL );
+		return ( NULL );
 	}
 	asn_get_octet ( &bp, h->community, NULL );
 
@@ -942,28 +942,28 @@ asn_get_header ( u_char **bufp )
 		/* Request ID */
 		if ( *bp++ != ASN_INTEGER ) {
 			UM_FREE ( h );
-			return ( (Snmp_Header *)NULL );
+			return ( NULL );
 		}
 		h->reqid = asn_get_int ( &bp, NULL );
 
 		/* Error Status */
 		if ( *bp++ != ASN_INTEGER ) {
 			UM_FREE ( h );
-			return ( (Snmp_Header *)NULL );
+			return ( NULL );
 		}
 		h->error = asn_get_int ( &bp, NULL );
 
 		/* Error Index */
 		if ( *bp++ != ASN_INTEGER ) {
 			UM_FREE ( h );
-			return ( (Snmp_Header *)NULL );
+			return ( NULL );
 		}
 		h->erridx = asn_get_int ( &bp, NULL );
 
 		/* Sequence of... */
 		if ( *bp++ != ASN_SEQUENCE ) {
 			UM_FREE ( h );
-			return ( (Snmp_Header *)NULL );
+			return ( NULL );
 		}
 		h->varlen = ( asn_get_pdu_len ( &bp, &len ) - 1 );
 		h->varlen += ( len - 1 );
@@ -1956,7 +1956,7 @@ static void
 Increment_DL ( __unused int sig )
 {
 	Debug_Level++;
-	if ( Debug_Level && Log == (FILE *)NULL ) {
+	if ( Debug_Level && Log == NULL ) {
 	    if ( foregnd ) {
 		Log = stderr;
 	    } else {

@@ -755,7 +755,7 @@ wait_for_reply(int sock, struct sockaddr_in *from, struct timeval *sent)
 	if (wait.tv_sec < 0)
 		wait.tv_sec = wait.tv_usec = 0;
 
-	if (select(sock+1, fdsp, (fd_set *)0, (fd_set *)0, &wait) > 0)
+	if (select(sock+1, fdsp, NULL, NULL, &wait) > 0)
 		cc = recvfrom(s, (char *)packet, sizeof(packet), 0,
 		    (struct sockaddr *)from, &fromlen);
 

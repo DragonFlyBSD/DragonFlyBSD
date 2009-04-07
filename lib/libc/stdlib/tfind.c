@@ -9,18 +9,15 @@
  * Totally public domain.
  *
  * $NetBSD: tfind.c,v 1.2 1999/09/16 11:45:37 lukem Exp $
- * $FreeBSD: src/lib/libc/stdlib/tfind.c,v 1.1.2.1 2000/08/17 07:38:39 jhb Exp $
- * $DragonFly: src/lib/libc/stdlib/tfind.c,v 1.5 2005/11/24 17:18:30 swildner Exp $
+ * $FreeBSD: src/lib/libc/stdlib/tfind.c,v 1.5 2003/01/05 02:43:18 tjr Exp $
+ * $DragonFly: src/lib/libc/stdlib/tsearch.c,v 1.6 2005/11/24 17:18:30 swildner Exp $
  */
 
-#include <sys/cdefs.h>
-
-#include <assert.h>
 #define _SEARCH_PRIVATE
 #include <stdlib.h>
 #include <search.h>
 
-/* 
+/*
  * find a node, or return 0
  *
  * Parameters:
@@ -28,7 +25,7 @@
  *	vrootp:	address of the tree root
  */
 void *
-tfind(const void *vkey, void **vrootp,
+tfind(const void *vkey, void * const *vrootp,
       int (*compar)(const void *, const void *))
 {
 	node_t **rootp = (node_t **)vrootp;

@@ -235,7 +235,7 @@ scsp_dup_cse(Scsp_cse *csep)
 	 * Copy data to the duplicate
 	 */
 	UM_COPY(csep, dupp, sizeof(Scsp_cse));
-	dupp->sc_next = (Scsp_cse *)0;
+	dupp->sc_next = NULL;
 
 	return(dupp);
 }
@@ -270,7 +270,7 @@ scsp_dup_csa(Scsp_csa *csap)
 	 * Copy data to the duplicate
 	 */
 	UM_COPY(csap, dupp, sizeof(Scsp_csa));
-	dupp->next = (Scsp_csa *)0;
+	dupp->next = NULL;
 
 	/*
 	 * Copy protocol-specific data, if it's present
@@ -403,7 +403,7 @@ scsp_dcs_cleanup(Scsp_dcs *dcsp)
 	 */
 	if (dcsp->sd_ca_rexmt_msg) {
 		scsp_free_msg(dcsp->sd_ca_rexmt_msg);
-		dcsp->sd_ca_rexmt_msg = (Scsp_msg *)0;
+		dcsp->sd_ca_rexmt_msg = NULL;
 	}
 	HARP_CANCEL(&dcsp->sd_ca_rexmt_t);
 
@@ -413,7 +413,7 @@ scsp_dcs_cleanup(Scsp_dcs *dcsp)
 	 */
 	if (dcsp->sd_csus_rexmt_msg) {
 		scsp_free_msg(dcsp->sd_csus_rexmt_msg);
-		dcsp->sd_csus_rexmt_msg = (Scsp_msg *)0;
+		dcsp->sd_csus_rexmt_msg = NULL;
 	}
 	HARP_CANCEL(&dcsp->sd_csus_rexmt_t);
 
@@ -669,9 +669,9 @@ scsp_get_server_info(Scsp_server *ssp)
 {
 	int			i, len, mtu, rc, sel;
 	struct atminfreq	air;
-	struct air_netif_rsp	*netif_rsp = (struct air_netif_rsp *)0;
-	struct air_int_rsp	*intf_rsp = (struct air_int_rsp *)0;
-	struct air_cfg_rsp	*cfg_rsp = (struct air_cfg_rsp *)0;
+	struct air_netif_rsp	*netif_rsp = NULL;
+	struct air_int_rsp	*intf_rsp = NULL;
+	struct air_cfg_rsp	*cfg_rsp = NULL;
 	struct sockaddr_in	*ip_addr;
 	Atm_addr_nsap		*anp;
 

@@ -758,7 +758,7 @@ telnet(int f, int p, char *host)
 		int t;
 		t = open(_PATH_TTY, O_RDWR);
 		if (t >= 0) {
-			(void) ioctl(t, TIOCNOTTY, (char *)0);
+			(void) ioctl(t, TIOCNOTTY, NULL);
 			(void) close(t);
 		}
 	}
@@ -839,8 +839,7 @@ telnet(int f, int p, char *host)
 		if (!SYNCHing) {
 			FD_SET(f, &xbits);
 		}
-		if ((c = select(nfd, &ibits, &obits, &xbits,
-						(struct timeval *)0)) < 1) {
+		if ((c = select(nfd, &ibits, &obits, &xbits, NULL)) < 1) {
 			if (c == -1) {
 				if (errno == EINTR) {
 					continue;

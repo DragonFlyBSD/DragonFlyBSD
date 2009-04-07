@@ -113,7 +113,7 @@ main(int argc, char **argv)
 	inbuffer = malloc((5*MAXIBUF)>>2);	/* output buffer */
 	if ((lpbuf==0) || (inbuffer==0)) died(-285); /* malloc() failure */
 
-	lcreat((char*)0);	newgame();		/*	set the initial clock  */ hard= -1;
+	lcreat(NULL);	newgame();		/*	set the initial clock  */ hard= -1;
 
 #ifdef VT100
 /*

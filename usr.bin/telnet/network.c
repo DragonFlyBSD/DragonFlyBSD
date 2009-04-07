@@ -86,7 +86,7 @@ stilloob(void)
     do {
 	FD_ZERO(&excepts);
 	FD_SET(net, &excepts);
-	value = select(net+1, (fd_set *)0, (fd_set *)0, &excepts, &timeout);
+	value = select(net+1, NULL, NULL, &excepts, &timeout);
     } while ((value == -1) && (errno == EINTR));
 
     if (value < 0) {

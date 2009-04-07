@@ -101,10 +101,10 @@ main(int argc, char **argv)
 	if (ofn) {
 	        if ((out = fopen(ofn, aflag ? "a" : "w")) == NULL)
 		        err(1, "%s", ofn);
-		setvbuf(out, (char *)NULL, _IONBF, (size_t)0);
+		setvbuf(out, NULL, _IONBF, (size_t)0);
 	}
 
-	if (gettimeofday(&before, (struct timezone *)NULL) == -1)
+	if (gettimeofday(&before, NULL) == -1)
 		err(1, "gettimeofday failed");
 	switch (pid = fork()) {
 	case -1:			/* error */
@@ -122,7 +122,7 @@ main(int argc, char **argv)
 		err(1, "signal failed");
 	while (wait4(pid, &status, 0, &ru) != pid)		/* XXX use waitpid */
 		;
-	if (gettimeofday(&after, (struct timezone *)NULL) == -1)
+	if (gettimeofday(&after, NULL) == -1)
 		err(1, "gettimeofday failed");
 	if (!WIFEXITED(status))
 		warnx("command terminated abnormally");

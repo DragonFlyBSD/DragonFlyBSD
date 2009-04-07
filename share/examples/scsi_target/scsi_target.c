@@ -141,7 +141,7 @@ main(int argc, char *argv[])
 				errx(1, "Unreasonable sector size: %s", optarg);
 			break;
 		case 's':
-			user_size = strtoll(optarg, (char **)NULL, /*base*/10);
+			user_size = strtoll(optarg, NULL, /*base*/10);
 			if (user_size < 0)
 				errx(1, "Unreasonable volume size: %s", optarg);
 			break;

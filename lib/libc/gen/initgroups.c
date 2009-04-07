@@ -37,12 +37,10 @@
 
 #include <sys/param.h>
 
-#include <stdio.h>
-#include <err.h>
 #include <unistd.h>
 
 int
-initgroups(const char *uname, int agroup)
+initgroups(const char *uname, gid_t agroup)
 {
 	int ngroups;
 	/*

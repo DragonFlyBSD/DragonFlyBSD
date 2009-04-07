@@ -457,7 +457,7 @@ svcunix_create(int sock, u_int sendsize, u_int recvsize, char *path)
 	SVCXPRT *xprt;
 	int addrlen;
 
-	xprt = (SVCXPRT *)NULL;
+	xprt = NULL;
 	localhandle = setnetconfig();
 	while ((nconf = getnetconfig(localhandle)) != NULL) {
 		if (nconf->nc_protofmly != NULL &&

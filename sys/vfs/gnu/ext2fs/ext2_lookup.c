@@ -1015,7 +1015,7 @@ ext2_checkpath(struct inode *source, struct inode *target, struct ucred *cred)
 		}
 		error = vn_rdwr(UIO_READ, vp, (caddr_t)&dirbuf,
 				sizeof (struct dirtemplate), (off_t)0,
-				UIO_SYSSPACE, IO_NODELOCKED, cred, (int *)0);
+				UIO_SYSSPACE, IO_NODELOCKED, cred, NULL);
 		if (error != 0)
 			break;
 		namlen = dirbuf.dotdot_type;	/* like ufs little-endian */

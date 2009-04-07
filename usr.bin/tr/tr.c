@@ -109,7 +109,7 @@ main(int argc, char **argv)
 			sflag = 1;
 			break;
 		case 'u':
-			setbuf(stdout, (char *)NULL);
+			setbuf(stdout, NULL);
 			break;
 		case '?':
 		default:

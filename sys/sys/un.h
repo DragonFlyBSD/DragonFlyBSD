@@ -42,6 +42,10 @@
 #include <sys/types.h>
 #endif
 
+#ifndef _SYS_FILE_H_
+#include <sys/file.h>
+#endif
+
 /*
  * Definitions for UNIX IPC domain.
  */

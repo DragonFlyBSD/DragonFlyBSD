@@ -307,10 +307,10 @@ getkeyserv_handle(int vers)
 		}
 		kcp = (struct key_call_private *)thr_getspecific(key_call_key);
 	}
-	if (kcp == (struct key_call_private *)NULL) {
+	if (kcp == NULL) {
 		kcp = (struct key_call_private *)malloc(sizeof (*kcp));
-		if (kcp == (struct key_call_private *)NULL) {
-			return ((CLIENT *) NULL);
+		if (kcp == NULL) {
+			return (NULL);
 		}
 		if (main_thread)
 			key_call_private_main = kcp;
@@ -335,7 +335,7 @@ getkeyserv_handle(int vers)
 			if (kcp->client->cl_auth == NULL) {
 				clnt_destroy(kcp->client);
 				kcp->client = NULL;
-				return ((CLIENT *) NULL);
+				return (NULL);
 			}
 		}
 		/* Change the version number to the new one */
@@ -343,13 +343,13 @@ getkeyserv_handle(int vers)
 		return (kcp->client);
 	}
 	if (!(localhandle = setnetconfig())) {
-		return ((CLIENT *) NULL);
+		return (NULL);
 	}
 	tpconf = NULL;
 	if (uname(&u) == -1)
 	{
 		endnetconfig(localhandle);
-		return ((CLIENT *) NULL);
+		return (NULL);
 	}
 	while ((nconf = getnetconfig(localhandle)) != NULL) {
 		if (strcmp(nconf->nc_protofmly, NC_LOOPBACK) == 0) {
@@ -367,14 +367,14 @@ getkeyserv_handle(int vers)
 			}
 		}
 	}
-	if ((kcp->client == (CLIENT *) NULL) && (tpconf))
+	if ((kcp->client == NULL) && (tpconf))
 		/* Now, try the CLTS or COTS loopback transport */
 		kcp->client = clnt_tp_create(u.nodename,
 			KEY_PROG, vers, tpconf);
 	endnetconfig(localhandle);
 
-	if (kcp->client == (CLIENT *) NULL) {
-		return ((CLIENT *) NULL);
+	if (kcp->client == NULL) {
+		return (NULL);
 	}
 	kcp->uid = geteuid();
 	kcp->pid = getpid();
@@ -382,7 +382,7 @@ getkeyserv_handle(int vers)
 	if (kcp->client->cl_auth == NULL) {
 		clnt_destroy(kcp->client);
 		kcp->client = NULL;
-		return ((CLIENT *) NULL);
+		return (NULL);
 	}
 
 	wait_time.tv_sec = TOTAL_TIMEOUT/TOTAL_TRIES;

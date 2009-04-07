@@ -178,7 +178,7 @@ int	 inlist(struct namelist *, char *);
 void	 insert(char *,
 	    struct namelist *, struct namelist *, struct subcmd *);
 void	 install(char *, char *, int, int);
-void	 log(FILE *, const char *, ...);
+void	 dolog(FILE *, const char *, ...);
 struct namelist *
 	 lookup(char *, int, struct namelist *);
 void	 lostconn(int);

@@ -171,7 +171,7 @@ newgame(void)
 	long *p,*pe;
 	for (p=c,pe=c+100; p<pe; *p++ =0);
 	time(&initialtime);             srandomdev();
-	lcreat((char*)0);	/* open buffering for output to terminal */
+	lcreat(NULL);	/* open buffering for output to terminal */
 	}
 
 /*
@@ -437,7 +437,7 @@ lgetl(void)
  *	lcreat(filename)			Create a new file for write
  *		char *filename;
  *
- *	lcreat((char*)0); means to the terminal
+ *	lcreat(NULL); means to the terminal
  *	Returns -1 if error, otherwise the file descriptor opened.
  */
 int

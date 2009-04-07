@@ -15,7 +15,7 @@ sort_1(ssp)
 {
     static struct sortstrings ss_res;
 
-    if (ss_res.ss.ss_val != (str *)NULL)
+    if (ss_res.ss.ss_val != NULL)
         free(ss_res.ss.ss_val);
 
     qsort(ssp->ss.ss_val, ssp->ss.ss_len, sizeof (char *), comparestrings);

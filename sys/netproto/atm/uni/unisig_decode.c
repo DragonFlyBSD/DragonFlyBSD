@@ -859,8 +859,7 @@ usf_dec_msg(struct usfmt *usf, struct unisig_msg *msg)
 				 * Disallowed IE present
 				 */
 				ie = msg->msg_ie_vec[i];
-				msg->msg_ie_vec[i] =
-						(struct ie_generic *) 0;
+				msg->msg_ie_vec[i] = NULL;
 				MSG_IE_ADD(msg, ie, UNI_MSG_IE_ERR);
 				while (ie) {
 					ie->ie_err_cause =

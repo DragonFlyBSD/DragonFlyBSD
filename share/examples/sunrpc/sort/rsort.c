@@ -22,7 +22,7 @@ main(argc, argv)
 	machinename = argv[1];
 	args.ss.ss_len = argc - 2;     /* substract off progname, machinename */
 	args.ss.ss_val = &argv[2];
-	res.ss.ss_val = (char **)NULL;
+	res.ss.ss_val = NULL;
 
 	if ((i = callrpc(machinename, SORTPROG, SORTVERS, SORT,
 	    xdr_sortstrings, &args, xdr_sortstrings, &res)))

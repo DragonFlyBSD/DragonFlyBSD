@@ -116,11 +116,11 @@ int to_stderr     = 0;
 int Verbose       = 0;
 int quiet         = 0;
 int exit_code     = 0;
-FILE* report_fp   = (FILE *) 0;
-char *report_file = (char *) 0;
-char *chat_file   = (char *) 0;
-char *phone_num   = (char *) 0;
-char *phone_num2  = (char *) 0;
+FILE* report_fp   = NULL;
+char *report_file = NULL;
+char *chat_file   = NULL;
+char *phone_num   = NULL;
+char *phone_num2  = NULL;
 int timeout       = DEFAULT_CHAT_TIMEOUT;
 
 static char blank[] = "";
@@ -132,7 +132,7 @@ int have_tty_parameters = 0;
 #define set_term_param(param) tcsetattr(0, TCSANOW, param)
 struct termios saved_tty_parameters;
 
-char *abort_string[MAX_ABORTS], *fail_reason = (char *)0,
+char *abort_string[MAX_ABORTS], *fail_reason = NULL,
 	fail_buffer[50];
 int n_aborts = 0, abort_next = 0, timeout_next = 0, echo_next = 0;
 int clear_abort_next = 0;
@@ -511,7 +511,7 @@ void break_sequence(void)
 void terminate(int status)
 {
     echo_stderr(-1);
-    if (report_file != (char *) 0 && report_fp != (FILE *) NULL) {
+    if (report_file != NULL && report_fp != NULL) {
 /*
  * Allow the last of the report string to be gathered before we terminate.
  */
@@ -535,7 +535,7 @@ void terminate(int status)
 	if (verbose)
 	    fprintf (report_fp, "Closing \"%s\".\n", report_file);
 	fclose (report_fp);
-	report_fp = (FILE *) NULL;
+	report_fp = NULL;
     }
 
 #if defined(get_term_param)
@@ -721,7 +721,7 @@ expect_strtok (char *s, const char *term)
     if (*str)
 	result = str;
     else
-	result = (char *) 0;
+	result = NULL;
 
     while (*str) {
 	if (escape_flag) {
@@ -739,7 +739,7 @@ expect_strtok (char *s, const char *term)
 /*
  * If this is not in the termination string, continue.
  */
-	if (strchr (term, *str) == (char *) 0) {
+	if (strchr (term, *str) == NULL) {
 	    ++str;
 	    continue;
 	}
@@ -808,9 +808,9 @@ chat_expect(char *s)
  */
     for (;;) {
 	expect = expect_strtok (s, "-");
-	s      = (char *) 0;
+	s      = NULL;
 
-	if (expect == (char *) 0)
+	if (expect == NULL)
 	    return;
 
 	reply = expect_strtok (s, "-");
@@ -825,7 +825,7 @@ chat_expect(char *s)
  * If there is a sub-reply string then send it. Otherwise any condition
  * is terminal.
  */
-	if (reply == (char *) 0 || exit_code != 3)
+	if (reply == NULL || exit_code != 3)
 	    break;
 
 	chat_send (reply);
@@ -1177,7 +1177,7 @@ get_string(char *string)
     char *s = temp, *end = s + STR_LEN;
     char *logged = temp;
 
-    fail_reason = (char *)0;
+    fail_reason = NULL;
 
     if (strlen(string) > STR_LEN) {
 	chat_logf("expect string is too long");
@@ -1230,16 +1230,16 @@ get_string(char *string)
 
 	if (!report_gathering) {
 	    for (n = 0; n < n_reports; ++n) {
-		if ((report_string[n] != (char*) NULL) &&
+		if ((report_string[n] != NULL) &&
 		    s - temp >= (report_len = strlen(report_string[n])) &&
 		    strncmp(s - report_len, report_string[n], report_len) == 0) {
-		    time_t time_now   = time ((time_t*) NULL);
+		    time_t time_now   = time (NULL);
 		    struct tm* tm_now = localtime (&time_now);
 
 		    strftime (report_buffer, 20, "%b %d %H:%M:%S ", tm_now);
 		    strcat (report_buffer, report_string[n]);
 
-		    report_string[n] = (char *) NULL;
+		    report_string[n] = NULL;
 		    report_gathering = 1;
 		    break;
 		}

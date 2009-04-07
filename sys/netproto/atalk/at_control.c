@@ -140,7 +140,7 @@ at_control(struct socket *so, u_long cmd, caddr_t data,
 	 * If we failed to find an existing at_ifaddr entry, then we 
 	 * allocate a fresh one. 
 	 */
-	if ( aa == (struct at_ifaddr *) 0 ) {
+	if ( aa == NULL ) {
 	    aa0 = ifa_create(sizeof(struct at_ifaddr), M_WAITOK);
 	    callout_init(&aa0->aa_ch);
 	    if (( aa = at_ifaddr ) != NULL ) {
@@ -226,7 +226,7 @@ at_control(struct socket *so, u_long cmd, caddr_t data,
 	    }
 	}
 
-	if ( aa == (struct at_ifaddr *) 0 )
+	if ( aa == NULL )
 	    return( EADDRNOTAVAIL );
 	break;
     }

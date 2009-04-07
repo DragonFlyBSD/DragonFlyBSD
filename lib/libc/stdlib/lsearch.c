@@ -6,10 +6,10 @@
  * As long as the above copyright statement and this notice remain
  * unchanged, you can do what ever you want with this file. 
  *
+ * $FreeBSD: src/lib/libc/stdlib/lsearch.c,v 1.1 2002/10/16 14:29:22 robert Exp $
  * $DragonFly: src/lib/libc/stdlib/lsearch.c,v 1.1 2008/05/19 10:06:34 corecode Exp $
  */
 #include <sys/types.h>
-#include <sys/cdefs.h>
 
 #define	_SEARCH_PRIVATE
 #include <search.h>

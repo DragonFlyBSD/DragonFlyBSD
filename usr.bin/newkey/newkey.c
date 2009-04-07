@@ -116,15 +116,15 @@ main(int argc, char **argv)
 		pw = getpwnam(argv[2]);
 		if (pw == NULL)
 			errx(1, "unknown user: %s", argv[2]);
-		(void)user2netname(name, (int)pw->pw_uid, (char *)NULL);
+		(void)user2netname(name, (int)pw->pw_uid, NULL);
 	} else {
 #ifdef undef
 		h = gethostbyname(argv[2]);
 		if (h == NULL)
 			errx(1, "unknown host: %s", argv[1]);
-		(void)host2netname(name, h->h_name, (char *)NULL);
+		(void)host2netname(name, h->h_name, NULL);
 #else
-		(void)host2netname(name, argv[2], (char *)NULL);
+		(void)host2netname(name, argv[2], NULL);
 #endif
 	}
 

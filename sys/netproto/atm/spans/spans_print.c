@@ -207,7 +207,7 @@ spans_msgtype_str(spans_msgtype *objp, char *dest, int len)
 		{ SPANS_VCIR_IND,	"SPANS_VCIR_IND" },
 		{ SPANS_QUERY_REQ,	"SPANS_QUERY_REQ" },
 		{ SPANS_QUERY_RSP,	"SPANS_QUERY_RSP" },
-		{ 0,			(char *) 0 }
+		{ 0,			NULL }
 	};
 
 	/*

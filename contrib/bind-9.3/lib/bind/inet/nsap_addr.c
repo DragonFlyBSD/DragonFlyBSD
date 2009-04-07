@@ -31,7 +31,7 @@ static const char rcsid[] = "$Id: nsap_addr.c,v 1.2.206.2 2005/07/28 07:43:18 ma
 
 #include <ctype.h>
 #include <resolv.h>
-#include <resolv_mt.h>
+#include "resolv_mt.h"
 
 #include "port_after.h"
 

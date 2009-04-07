@@ -116,7 +116,7 @@ process_request(mp, rp)
 
 	case LEAVE_INVITE:
 		ptr = find_request(mp);
-		if (ptr != (CTL_MSG *)0) {
+		if (ptr != NULL) {
 			rp->id_num = htonl(ptr->id_num);
 			rp->answer = SUCCESS;
 		} else
@@ -125,7 +125,7 @@ process_request(mp, rp)
 
 	case LOOK_UP:
 		ptr = find_match(mp);
-		if (ptr != (CTL_MSG *)0) {
+		if (ptr != NULL) {
 			rp->id_num = htonl(ptr->id_num);
 			rp->addr = ptr->addr;
 			rp->addr.sa_family = htons(ptr->addr.sa_family);
@@ -164,12 +164,12 @@ do_announce(mp, rp)
 #define	satosin(sa)	((struct sockaddr_in *)(sa))
 	hp = gethostbyaddr(&satosin(&mp->ctl_addr)->sin_addr,
 		sizeof (struct in_addr), AF_INET);
-	if (hp == (struct hostent *)0) {
+	if (hp == NULL) {
 		rp->answer = MACHINE_UNKNOWN;
 		return;
 	}
 	ptr = find_request(mp);
-	if (ptr == (CTL_MSG *) 0) {
+	if (ptr == NULL) {
 		insert_table(mp, rp);
 		rp->answer = announce(mp, hp->h_name);
 		return;

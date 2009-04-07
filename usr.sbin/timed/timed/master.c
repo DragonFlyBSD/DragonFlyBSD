@@ -286,7 +286,7 @@ loop:
 			 * do not want to call synch() while waiting
 			 * to be killed!
 			 */
-			gettimeofday(&ntime, (struct timezone *)0);
+			gettimeofday(&ntime, NULL);
 			pollingtime = ntime.tv_sec + SAMPLEINTVL;
 			break;
 

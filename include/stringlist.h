@@ -29,11 +29,12 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: stringlist.h,v 1.2 1997/01/17 06:11:36 lukem Exp $
+ * $FreeBSD: src/include/stringlist.h,v 1.3 2003/01/19 01:16:00 obrien Exp $
  * $DragonFly: src/include/stringlist.h,v 1.2 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef _STRINGLIST_H
-#define _STRINGLIST_H 
+#define _STRINGLIST_H
 #include <sys/cdefs.h>
 #include <sys/types.h>
 
@@ -47,10 +48,10 @@ typedef struct _stringlist {
 } StringList;
 
 __BEGIN_DECLS
-StringList *sl_init	(void);
-void	 sl_add		(StringList *, char *);
-void	 sl_free	(StringList *, int);
-char	*sl_find	(StringList *, char *);
+int		 sl_add(StringList *, char *);
+char		*sl_find(StringList *, char *);
+void		 sl_free(StringList *, int);
+StringList	*sl_init(void);
 __END_DECLS
 
 #endif /* _STRINGLIST_H */

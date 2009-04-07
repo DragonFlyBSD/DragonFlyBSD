@@ -613,7 +613,7 @@ restart:
 				   top == NULL ? M_PKTHDR : 0, &mlen);
 			if (top == NULL) {
 				m->m_pkthdr.len = 0;
-				m->m_pkthdr.rcvif = (struct ifnet *)0;
+				m->m_pkthdr.rcvif = NULL;
 			}
 			len = min(min(mlen, resid), space);
 			if (resid < MINCLSIZE) {

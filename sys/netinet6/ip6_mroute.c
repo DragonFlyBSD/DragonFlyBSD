@@ -863,7 +863,7 @@ socket_send(struct socket *s, struct mbuf *mm, struct sockaddr_in6 *src)
 	if (s) {
 		if (ssb_appendaddr(&s->so_rcv,
 				 (struct sockaddr *)src,
-				 mm, (struct mbuf *)0) != 0) {
+				 mm, NULL) != 0) {
 			sorwakeup(s);
 			return 0;
 		}

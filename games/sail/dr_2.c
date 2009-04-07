@@ -98,13 +98,13 @@ checkup(void)
 			foreachship(sq)
 				cleansnag(sp, sq, 1);
 		if (sink != 1) {
-			makesignal(sp, "exploding!", (struct ship *)0);
+			makesignal(sp, "exploding!", NULL);
 			foreachship(sq) {
 				if (sp != sq && sq->file->dir && range(sp, sq) < 4)
 					table(RIGGING, L_EXPLODE, sp->specs->guns/13, sq, sp, 6);
 			}
 		} else
-			makesignal(sp, "sinking!", (struct ship *)0);
+			makesignal(sp, "sinking!", NULL);
 	}
 }
 

@@ -46,7 +46,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <strings.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/syslog.h>
@@ -157,7 +157,7 @@ portal_tcplisten(struct portal_cred *pcr, char *key, char **v, int kso,
                sain.sin_addr.s_addr = INADDR_ANY;
                if (bind(so, (struct sockaddr *) &sain, sizeof(sain)) == 0) {
                        listen(so, 1);
-                       if ((sock = accept(so, (struct sockaddr *)0, (int *)0)) == -1) {
+                       if ((sock = accept(so, NULL, NULL)) == -1) {
                                syslog(LOG_ERR, "accept: %m");
                                close(so);
                                return (errno);
@@ -184,7 +184,7 @@ portal_tcplisten(struct portal_cred *pcr, char *key, char **v, int kso,
                sain.sin_addr = *ipp[0];
                if (bind(so, (struct sockaddr *) &sain, sizeof(sain)) == 0) {
                        listen(so, 1);
-                       if ((sock = accept(so, (struct sockaddr *)0, (int *)0)) == -1) {
+                       if ((sock = accept(so, NULL, NULL)) == -1) {
                                syslog(LOG_ERR, "accept: %m");
                                close(so);
                                return (errno);

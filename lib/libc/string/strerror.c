@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -30,29 +26,36 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/string/strerror.c,v 1.2.14.3 2003/01/17 13:39:32 mike Exp $
+ * @(#)strerror.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/string/strerror.c,v 1.16 2007/01/09 00:28:12 imp Exp $
  * $DragonFly: src/lib/libc/string/strerror.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
  */
 
-#include <errno.h>
-#include <stdio.h>
-#include <string.h>
+#if defined(NLS)
+#include <nl_types.h>
+#endif
 
-#define	UPREFIX		"Unknown error: "
+#include <limits.h>
+#include <errno.h>
+#include <string.h>
+#include <stdio.h>
+
+#define	UPREFIX		"Unknown error"
 
 /*
  * Define a buffer size big enough to describe a 64-bit signed integer
  * converted to ASCII decimal (19 bytes), with an optional leading sign
- * (1 byte); finally, we get the prefix and a trailing NUL from UPREFIX.
+ * (1 byte); finally, we get the prefix, delimiter (": ") and a trailing
+ * NUL from UPREFIX.
  */
-#define	EBUFSIZE	(20 + sizeof(UPREFIX))
+#define	EBUFSIZE	(20 + 2 + sizeof(UPREFIX))
 
 /*
  * Doing this by hand instead of linking with stdio(3) avoids bloat for
  * statically linked binaries.
  */
 static void
-errstr(int num, char *buf, size_t len)
+errstr(int num, char *uprefix, char *buf, size_t len)
 {
 	char *t;
 	unsigned int uerr;
@@ -66,31 +69,56 @@ errstr(int num, char *buf, size_t len)
 	} while (uerr /= 10);
 	if (num < 0)
 		*--t = '-';
-	strlcpy(buf, UPREFIX, len);
+	*--t = ' ';
+	*--t = ':';
+	strlcpy(buf, uprefix, len);
 	strlcat(buf, t, len);
 }
 
 int
 strerror_r(int errnum, char *strerrbuf, size_t buflen)
 {
+	int retval = 0;
+#if defined(NLS)
+	int saved_errno = errno;
+	nl_catd catd;
+	catd = catopen("libc", NL_CAT_LOCALE);
+#endif
 
 	if (errnum < 1 || errnum >= sys_nerr) {
-		errstr(errnum, strerrbuf, buflen);
-		return (EINVAL);
+		errstr(errnum,
+#if defined(NLS)
+			catgets(catd, 1, 0xffff, UPREFIX),
+#else
+			UPREFIX,
+#endif
+			strerrbuf, buflen);
+		retval = EINVAL;
+	} else {
+		if (strlcpy(strerrbuf,
+#if defined(NLS)
+			catgets(catd, 1, errnum, sys_errlist[errnum]),
+#else
+			sys_errlist[errnum],
+#endif
+			buflen) >= buflen)
+		retval = ERANGE;
 	}
-	if (strlcpy(strerrbuf, sys_errlist[errnum], buflen) >= buflen)
-		return (ERANGE);
-	return (0);
+
+#if defined(NLS)
+	catclose(catd);
+	errno = saved_errno;
+#endif
+
+	return (retval);
 }
 
 char *
 strerror(int num)
 {
-	static char ebuf[EBUFSIZE];
+	static char ebuf[NL_TEXTMAX];
 
-	if (num > 0 && num < sys_nerr)
-		return ((char *)sys_errlist[num]);
+	if (strerror_r(num, ebuf, sizeof(ebuf)) != 0)
 	errno = EINVAL;
-	errstr(num, ebuf, sizeof(ebuf));
 	return (ebuf);
 }

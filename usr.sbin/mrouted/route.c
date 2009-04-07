@@ -355,7 +355,7 @@ create_route(u_int32 origin, u_int32 mask)
 
     if ((r = (struct rtentry *) malloc(sizeof(struct rtentry) +
 				       (numvifs * sizeof(u_int32)))) == NULL) {
-	log(LOG_ERR, 0, "ran out of memory");	/* fatal */
+	dolog(LOG_ERR, 0, "ran out of memory");	/* fatal */
     }
     r->rt_origin     = origin;
     r->rt_originmask = mask;
@@ -423,7 +423,7 @@ update_route(u_int32 origin, u_int32 mask, u_int metric, u_int32 src,
      * all unreachable/poisoned metrics into a single value.
      */
     if (src != 0 && (metric < 1 || metric >= 2*UNREACHABLE)) {
-	log(LOG_WARNING, 0,
+	dolog(LOG_WARNING, 0,
 	    "%s reports out-of-range metric %u for origin %s",
 	    inet_fmt(src, s1), metric, inet_fmts(origin, mask, s2));
 	return;
@@ -444,14 +444,14 @@ update_route(u_int32 origin, u_int32 mask, u_int metric, u_int32 src,
 	    return;
 	}
 	if (src != 0 && !inet_valid_subnet(origin, mask)) {
-	    log(LOG_WARNING, 0,
+	    dolog(LOG_WARNING, 0,
 		"%s reports an invalid origin (%s) and/or mask (%08x)",
 		inet_fmt(src, s1), inet_fmt(origin, s2), ntohl(mask));
 	    return;
 	}
 
 	IF_DEBUG(DEBUG_RTDETAIL)
-	log(LOG_DEBUG, 0, "%s advertises new route %s",
+	dolog(LOG_DEBUG, 0, "%s advertises new route %s",
 		inet_fmt(src, s1), inet_fmts(origin, mask, s2));
 
 	/*
@@ -479,7 +479,7 @@ update_route(u_int32 origin, u_int32 mask, u_int metric, u_int32 src,
 	    return;
 
 	IF_DEBUG(DEBUG_RTDETAIL)
-	log(LOG_DEBUG, 0, "%s advertises %s with adj_metric %d (ours was %d)",
+	dolog(LOG_DEBUG, 0, "%s advertises %s with adj_metric %d (ours was %d)",
 		inet_fmt(src, s1), inet_fmts(origin, mask, s2),
 		adj_metric, r->rt_metric);
 
@@ -517,7 +517,7 @@ update_route(u_int32 origin, u_int32 mask, u_int metric, u_int32 src,
 	r->rt_timer = 0;
 
 	IF_DEBUG(DEBUG_RTDETAIL)
-	log(LOG_DEBUG, 0, "%s (current parent) advertises %s with adj_metric %d (ours was %d)",
+	dolog(LOG_DEBUG, 0, "%s (current parent) advertises %s with adj_metric %d (ours was %d)",
 		inet_fmt(src, s1), inet_fmts(origin, mask, s2),
 		adj_metric, r->rt_metric);
 
@@ -561,7 +561,7 @@ update_route(u_int32 origin, u_int32 mask, u_int metric, u_int32 src,
 	r->rt_parent = vifi;
 
 	IF_DEBUG(DEBUG_RTDETAIL)
-	log(LOG_DEBUG, 0, "%s (new parent) on vif %d advertises %s with adj_metric %d (old parent was %s on vif %d, metric %d)",
+	dolog(LOG_DEBUG, 0, "%s (new parent) on vif %d advertises %s with adj_metric %d (old parent was %s on vif %d, metric %d)",
 		inet_fmt(src, s1), vifi, inet_fmts(origin, mask, s2),
 		adj_metric, inet_fmt(old_gateway, s3), old_parent,
 		r->rt_metric);
@@ -592,7 +592,7 @@ update_route(u_int32 origin, u_int32 mask, u_int metric, u_int32 src,
 	     * to transit onto this vif.  Simply ignore the update.
 	     */
 	    IF_DEBUG(DEBUG_RTDETAIL)
-	    log(LOG_DEBUG, 0, "%s on vif %d advertises %s with metric %d (ignored due to NOTRANSIT)",
+	    dolog(LOG_DEBUG, 0, "%s on vif %d advertises %s with metric %d (ignored due to NOTRANSIT)",
 		inet_fmt(src, s1), vifi, inet_fmts(origin, mask, s2),
 		metric);
 	} else if (VIFM_ISSET(vifi, r->rt_children)) {
@@ -617,7 +617,7 @@ update_route(u_int32 origin, u_int32 mask, u_int metric, u_int32 src,
 		NBRM_CLRMASK(r->rt_subordinates, uvifs[vifi].uv_nbrmap);
 		update_table_entry(r, r->rt_gateway);
 		IF_DEBUG(DEBUG_RTDETAIL)
-		log(LOG_DEBUG, 0, "%s on vif %d becomes dominant for %s with metric %d",
+		dolog(LOG_DEBUG, 0, "%s on vif %d becomes dominant for %s with metric %d",
 		    inet_fmt(src, s1), vifi, inet_fmts(origin, mask, s2),
 		    metric);
 	    }
@@ -628,14 +628,14 @@ update_route(u_int32 origin, u_int32 mask, u_int metric, u_int32 src,
 		 */
 		if (!NBRM_ISSET(n->al_index, r->rt_subordinates)) {
 		    IF_DEBUG(DEBUG_RTDETAIL)
-		    log(LOG_DEBUG, 0, "%s on vif %d becomes subordinate for %s with poison-reverse metric %d",
+		    dolog(LOG_DEBUG, 0, "%s on vif %d becomes subordinate for %s with poison-reverse metric %d",
 			inet_fmt(src, s1), vifi, inet_fmts(origin, mask, s2),
 			metric - UNREACHABLE);
 		    NBRM_SET(n->al_index, r->rt_subordinates);
 		    update_table_entry(r, r->rt_gateway);
 		} else {
 		    IF_DEBUG(DEBUG_RTDETAIL)
-		    log(LOG_DEBUG, 0, "%s on vif %d confirms subordinateness for %s with poison-reverse metric %d",
+		    dolog(LOG_DEBUG, 0, "%s on vif %d confirms subordinateness for %s with poison-reverse metric %d",
 			inet_fmt(src, s1), vifi, inet_fmts(origin, mask, s2),
 			metric - UNREACHABLE);
 		}
@@ -648,7 +648,7 @@ update_route(u_int32 origin, u_int32 mask, u_int metric, u_int32 src,
 		 * router.
 		 */
 		IF_DEBUG(DEBUG_RTDETAIL)
-		log(LOG_DEBUG, 0, "%s on vif %d is no longer a subordinate for %s with metric %d",
+		dolog(LOG_DEBUG, 0, "%s on vif %d is no longer a subordinate for %s with metric %d",
 		    inet_fmt(src, s1), vifi, inet_fmts(origin, mask, s2),
 		    metric);
 		NBRM_CLR(n->al_index, r->rt_subordinates);
@@ -666,7 +666,7 @@ update_route(u_int32 origin, u_int32 mask, u_int metric, u_int32 src,
 	     * as our own child.
 	     */
 	    IF_DEBUG(DEBUG_RTDETAIL)
-	    log(LOG_DEBUG, 0, "%s (current dominant) on vif %d is no longer dominant for %s with metric %d",
+	    dolog(LOG_DEBUG, 0, "%s (current dominant) on vif %d is no longer dominant for %s with metric %d",
 		inet_fmt(src, s1), vifi, inet_fmts(origin, mask, s2),
 		metric);
 	    VIFM_SET(vifi, r->rt_children);
@@ -682,7 +682,7 @@ update_route(u_int32 origin, u_int32 mask, u_int metric, u_int32 src,
 	    update_table_entry(r, r->rt_gateway);
 	} else {
 	    IF_DEBUG(DEBUG_RTDETAIL)
-	    log(LOG_DEBUG, 0, "%s on vif %d advertises %s with metric %d (ignored)",
+	    dolog(LOG_DEBUG, 0, "%s on vif %d advertises %s with metric %d (ignored)",
 		inet_fmt(src, s1), vifi, inet_fmts(origin, mask, s2),
 		metric);
 	}
@@ -737,7 +737,7 @@ age_routes(void)
 	     */
 	    if (!NBRM_SAME(r->rt_subordinates, r->rt_subordadv)) {
 		IF_DEBUG(DEBUG_ROUTE)
-		log(LOG_DEBUG, 0, "rt %s sub 0x%08x%08x subadv 0x%08x%08x metric %d",
+		dolog(LOG_DEBUG, 0, "rt %s sub 0x%08x%08x subadv 0x%08x%08x metric %d",
 			RT_FMT(r, s1),
 			r->rt_subordinates.hi, r->rt_subordinates.lo,
 			r->rt_subordadv.hi, r->rt_subordadv.lo, r->rt_metric);
@@ -820,13 +820,13 @@ accept_probe(u_int32 src, u_int32 dst, char *p, int datalen, u_int32 level)
 	}
 
 	if (match->al_ctime + match->al_timer <= now) {
-	    log(LOG_WARNING, 0,
+	    dolog(LOG_WARNING, 0,
 		"ignoring probe from non-neighbor %s, check for misconfigured tunnel or routing on %s",
 		inet_fmt(src, s1), s1);
 	    match->al_timer *= 2;
 	} else
 	    IF_DEBUG(DEBUG_PEER)
-	    log(LOG_DEBUG, 0,
+	    dolog(LOG_DEBUG, 0,
 		"ignoring probe from non-neighbor %s (%d seconds until next warning)", inet_fmt(src, s1), match->al_ctime + match->al_timer - now);
 	return;
     }
@@ -910,12 +910,12 @@ queue_blaster_report(vifi_t vifi, u_int32 src, u_int32 dst, char *p,
 
 	v->uv_blasterlen *= 2;
 	IF_DEBUG(DEBUG_IF)
-	log(LOG_DEBUG, 0, "increasing blasterbuf to %d bytes",
+	dolog(LOG_DEBUG, 0, "increasing blasterbuf to %d bytes",
 			v->uv_blasterlen);
 	v->uv_blasterbuf = realloc(v->uv_blasterbuf,
 					v->uv_blasterlen);
 	if (v->uv_blasterbuf == NULL) {
-	    log(LOG_WARNING, ENOMEM, "turning off blaster on vif %d", vifi);
+	    dolog(LOG_WARNING, ENOMEM, "turning off blaster on vif %d", vifi);
 	    v->uv_blasterlen = 0;
 	    v->uv_blasterend = v->uv_blastercur = NULL;
 	    v->uv_flags &= ~VIFF_BLASTER;
@@ -936,7 +936,7 @@ queue_blaster_report(vifi_t vifi, u_int32 src, u_int32 dst, char *p,
 	int *i = (int *)malloc(sizeof(int *));
 
 	if (i == NULL)
-		log(LOG_ERR, 0, "out of memory");
+		dolog(LOG_ERR, 0, "out of memory");
 
 	*i = vifi;
 
@@ -959,7 +959,7 @@ process_blaster_report(void *vifip)
     int i;
 
     IF_DEBUG(DEBUG_ROUTE)
-    log(LOG_DEBUG, 0, "processing vif %d blasted routes", vifi);
+    dolog(LOG_DEBUG, 0, "processing vif %d blasted routes", vifi);
     v = &uvifs[vifi];
     for (i = 0; i < 5; i++) {
 	if (v->uv_blastercur >= v->uv_blasterend)
@@ -976,10 +976,10 @@ process_blaster_report(void *vifip)
 	v->uv_blastertimer = 0;
 	free(vifip);
 	IF_DEBUG(DEBUG_ROUTE)
-	log(LOG_DEBUG, 0, "finish processing vif %d blaster", vifi);
+	dolog(LOG_DEBUG, 0, "finish processing vif %d blaster", vifi);
     } else {
 	IF_DEBUG(DEBUG_ROUTE)
-	log(LOG_DEBUG, 0, "more blasted routes to come on vif %d", vifi);
+	dolog(LOG_DEBUG, 0, "more blasted routes to come on vif %d", vifi);
 	v->uv_blastertimer = timer_setTimer(1,
 					    process_blaster_report, vifip);
     }
@@ -1004,7 +1004,7 @@ accept_report(u_int32 src, u_int32 dst, char *p, int datalen, u_int32 level)
     struct listaddr *nbr;
 
     if ((vifi = find_vif(src, dst)) == NO_VIF) {
-	log(LOG_INFO, 0,
+	dolog(LOG_INFO, 0,
     	    "ignoring route report from non-neighbor %s", inet_fmt(src, s1));
 	return;
     }
@@ -1021,7 +1021,7 @@ accept_report(u_int32 src, u_int32 dst, char *p, int datalen, u_int32 level)
 	return;
 
     if (datalen > 2*4096) {
-	log(LOG_INFO, 0,
+	dolog(LOG_INFO, 0,
     	    "ignoring oversize (%d bytes) route report from %s",
 	    datalen, inet_fmt(src, s1));
 	return;
@@ -1030,7 +1030,7 @@ accept_report(u_int32 src, u_int32 dst, char *p, int datalen, u_int32 level)
     while (datalen > 0) {	/* Loop through per-mask lists. */
 
 	if (datalen < 3) {
-	    log(LOG_WARNING, 0,
+	    dolog(LOG_WARNING, 0,
 		"received truncated route report from %s", 
 		inet_fmt(src, s1));
 	    return;
@@ -1040,7 +1040,7 @@ accept_report(u_int32 src, u_int32 dst, char *p, int datalen, u_int32 level)
 	if ((((u_char *)&mask)[2] = *p++) != 0) width = 3;
 	if ((((u_char *)&mask)[3] = *p++) != 0) width = 4;
 	if (!inet_valid_mask(ntohl(mask))) {
-	    log(LOG_WARNING, 0,
+	    dolog(LOG_WARNING, 0,
 		"%s reports bogus netmask 0x%08x (%s)",
 		inet_fmt(src, s1), ntohl(mask), inet_fmt(mask, s2));
 	    return;
@@ -1049,7 +1049,7 @@ accept_report(u_int32 src, u_int32 dst, char *p, int datalen, u_int32 level)
 
 	do {			/* Loop through (origin, metric) pairs */
 	    if (datalen < width + 1) {
-		log(LOG_WARNING, 0,
+		dolog(LOG_WARNING, 0,
 		    "received truncated route report from %s", 
 		    inet_fmt(src, s1));
 		return;
@@ -1075,12 +1075,12 @@ accept_report(u_int32 src, u_int32 dst, char *p, int datalen, u_int32 level)
 	rt[nrt-1].mask = 0;
 
     IF_DEBUG(DEBUG_ROUTE)
-    log(LOG_DEBUG, 0, "Updating %d routes from %s to %s", nrt,
+    dolog(LOG_DEBUG, 0, "Updating %d routes from %s to %s", nrt,
 		inet_fmt(src, s1), inet_fmt(dst, s2));
     for (i = 0; i < nrt; ++i) {
 	if (i != 0 && rt[i].origin == rt[i-1].origin &&
 		      rt[i].mask == rt[i-1].mask) {
-	    log(LOG_WARNING, 0, "%s reports duplicate route for %s",
+	    dolog(LOG_WARNING, 0, "%s reports duplicate route for %s",
 		inet_fmt(src, s1), inet_fmts(rt[i].origin, rt[i].mask, s2));
 	    continue;
 	}
@@ -1106,7 +1106,7 @@ accept_report(u_int32 src, u_int32 dst, char *p, int datalen, u_int32 level)
 	    if ((uvifs[vifi].uv_filter->vf_type == VFT_ACCEPT && match == 0) ||
 		(uvifs[vifi].uv_filter->vf_type == VFT_DENY && match == 1)) {
 		    IF_DEBUG(DEBUG_ROUTE)
-		    log(LOG_DEBUG, 0, "%s skipped on vif %d because it %s %s",
+		    dolog(LOG_DEBUG, 0, "%s skipped on vif %d because it %s %s",
 			inet_fmts(rt[i].origin, rt[i].mask, s1),
 			vifi,
 			match ? "matches" : "doesn't match",
@@ -1253,7 +1253,7 @@ report_chunk(int which_routes, struct rtentry *start_rt, vifi_t vifi,
 	    if ((v->uv_filter->vf_type == VFT_ACCEPT && match == 0) ||
 		(v->uv_filter->vf_type == VFT_DENY && match == 1)) {
 		    IF_DEBUG(DEBUG_ROUTE)
-		    log(LOG_DEBUG, 0, "%s not reported on vif %d because it %s %s",
+		    dolog(LOG_DEBUG, 0, "%s not reported on vif %d because it %s %s",
 			RT_FMT(r, s1), vifi,
 			match ? "matches" : "doesn't match",
 			match ? inet_fmts(vfe->vfe_addr, vfe->vfe_mask, s2) :
@@ -1346,7 +1346,7 @@ report_next_chunk(void)
 
     n = min;
     IF_DEBUG(DEBUG_ROUTE)
-    log(LOG_INFO, 0, "update %d starting at %d of %d",
+    dolog(LOG_INFO, 0, "update %d starting at %d of %d",
 	n, (nroutes - start_rt), nroutes);
 
     start_rt = (start_rt + n) % nroutes;

@@ -125,10 +125,10 @@ write_sample_client(const char *program_name, version_list *vp)
 	f_print(fout, "\n#ifndef\tDEBUG\n");
 	f_print(fout, "\tclnt = clnt_create(host, %s, %s, \"%s\");\n",
 		program_name, vp->vers_name, tirpcflag? "netpath" : "udp");
-	f_print(fout, "\tif (clnt == (CLIENT *) NULL) {\n");
+	f_print(fout, "\tif (clnt == NULL) {\n");
 	f_print(fout, "\t\tclnt_pcreateerror(host);\n");
 	f_print(fout, "\t\texit(1);\n\t}\n");
-	f_print(fout, "#endif\t/* DEBUG */\n\n");
+	f_print(fout, "#endif\t/* !DEBUG */\n\n");
 
 	/* generate calls to procedures */
 	i = 0;
@@ -167,20 +167,17 @@ write_sample_client(const char *program_name, version_list *vp)
 				
 			f_print(fout, "clnt);\n");
 		}
-		if (mtflag) {
+		if (mtflag)
 			f_print(fout, "\tif (retval_%d != RPC_SUCCESS) {\n", i);
-		} else {
-			f_print(fout, "\tif (result_%d == (", i);
-			ptype(proc->res_prefix, proc->res_type, 1);
-			f_print(fout, "*) NULL) {\n");
-		}
+		else
+			f_print(fout, "\tif (result_%d == NULL) {\n", i);
 		f_print(fout, "\t\tclnt_perror(clnt, \"call failed\");\n");
 		f_print(fout, "\t}\n");
 	}
 
 	f_print(fout, "#ifndef\tDEBUG\n");
 	f_print(fout, "\tclnt_destroy(clnt);\n");
-	f_print(fout, "#endif\t	/* DEBUG */\n");
+	f_print(fout, "#endif\t	/* !DEBUG */\n");
 	f_print(fout, "}\n");
 }
 

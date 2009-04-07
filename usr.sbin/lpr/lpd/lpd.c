@@ -245,7 +245,7 @@ main(int argc, char **argv)
 		if (pid < 0) {
 			err(EX_OSERR, "cannot fork");
 		} else if (pid == 0) {	/* child */
-			execl(_PATH_CHKPRINTCAP, _PATH_CHKPRINTCAP, (char *)0);
+			execl(_PATH_CHKPRINTCAP, _PATH_CHKPRINTCAP, NULL);
 			err(EX_OSERR, "cannot execute %s", _PATH_CHKPRINTCAP);
 		}
 		if (waitpid(pid, &status, 0) < 0) {
@@ -328,7 +328,7 @@ main(int argc, char **argv)
 		exit(1);
 	}
 	umask(0);
-	sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
+	sigprocmask(SIG_SETMASK, &omask, NULL);
 	FD_ZERO(&defreadfds);
 	FD_SET(funix, &defreadfds);
 	listen(funix, 5);

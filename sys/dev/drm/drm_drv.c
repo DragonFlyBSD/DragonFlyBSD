@@ -397,7 +397,7 @@ static int drm_lastclose(struct drm_device *dev)
 		dev->sg = NULL;
 	}
 
-	TAILQ_FOREACH_SAFE(map, &dev->maplist, link, mapsave) {
+	TAILQ_FOREACH_MUTABLE(map, &dev->maplist, link, mapsave) {
 		if (!(map->flags & _DRM_DRIVER))
 			drm_rmmap(dev, map);
 	}

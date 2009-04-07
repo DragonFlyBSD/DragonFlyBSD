@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1982, 1986, 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -31,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)syslog.h	8.1 (Berkeley) 6/2/93
- * $FreeBSD: src/sys/sys/syslog.h,v 1.19.2.2 2001/05/29 13:15:08 dwmalone Exp $
+ * $FreeBSD: src/sys/sys/syslog.h,v 1.27 2009/03/14 19:07:25 das Exp $
  * $DragonFly: src/sys/sys/syslog.h,v 1.5 2006/12/23 00:27:03 swildner Exp $
  */
 
@@ -39,6 +35,7 @@
 #define _SYS_SYSLOG_H_
 
 #define	_PATH_LOG	"/var/run/log"
+#define	_PATH_LOG_PRIV	"/var/run/logpriv"
 #define	_PATH_OLDLOG	"/dev/log"	/* backward compatibility */
 
 /*
@@ -187,22 +184,19 @@ CODE facilitynames[] = {
  * places (<machine/varargs.h> and <machine/stdarg.h>), so if we include one
  * of them here we may collide with the utility's includes.  It's unreasonable
  * for utilities to have to include one of them to include syslog.h, so we get
- * __va_list from <machine/stdarg.h> and use it.
+ * __va_list from <sys/types.h> and use it.
  */
 #include <sys/cdefs.h>
-#ifndef _MACHINE_STDINT_H_
-#include <machine/stdint.h>
-#endif
-#ifndef _MACHINE_STDARG_H_
-#include <machine/stdarg.h>
-#endif
+#include <sys/types.h>
 
 __BEGIN_DECLS
-void	closelog (void);
-void	openlog (const char *, int, int);
-int	setlogmask (int);
-void	syslog (int, const char *, ...) __printflike(2, 3);
-void	vsyslog (int, const char *, __va_list) __printflike(2, 0);
+void	closelog(void);
+void	openlog(const char *, int, int);
+int	setlogmask(int);
+void	syslog(int, const char *, ...) __printflike(2, 3);
+#if __BSD_VISIBLE
+void	vsyslog(int, const char *, __va_list) __printflike(2, 0);
+#endif
 __END_DECLS
 
 #endif /* !_KERNEL */

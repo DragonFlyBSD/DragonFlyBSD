@@ -192,7 +192,7 @@ struct mbuf *nfsm_rpchead (struct ucred *cr, int nmflag, int procid,
 				nfsm_adv(NFSX_V3FATTR); \
 		} \
 		if (f) \
-			nfsm_loadattr((v), (struct vattr *)0); \
+			nfsm_loadattr((v), NULL); \
 	} while (0)
 
 #define nfsm_getfh(f, s, v3) \
@@ -227,7 +227,7 @@ struct mbuf *nfsm_rpchead (struct ucred *cr, int nmflag, int procid,
 		nfsm_dissect(tl, u_int32_t *, NFSX_UNSIGNED); \
 		if (((f) = fxdr_unsigned(int, *tl)) != 0) { \
 			if ((t1 = nfs_loadattrcache(&ttvp, &md, &dpos, \
-				(struct vattr *)0, lflags)) != 0) { \
+				NULL, lflags)) != 0) { \
 				error = t1; \
 				(f) = 0; \
 				m_freem(mrep); \

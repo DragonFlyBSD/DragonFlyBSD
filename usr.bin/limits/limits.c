@@ -434,8 +434,10 @@ main(int argc, char *argv[])
 
 	/* set leading environment variables, like eval(1) */
 	while (*argv && (p = strchr(*argv, '='))) {
-	    if (setenv(*argv++, ++p, 1) == -1)
-		err(1, "setenv: cannot set %s=%s", *argv, p);
+	    *p = '\0';
+	    if (setenv(*argv++, p + 1, 1) == -1)
+		err(1, "setenv: cannot set %s=%s", *argv, p + 1);
+	    *p = '=';
 	}
 
 	/* Set limits */

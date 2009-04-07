@@ -62,7 +62,7 @@ register struct ww *wp;
 #ifndef TIOCSCTTY
 	if ((i = open("/dev/tty", 0)) < 0)
 		goto bad;
-	if (ioctl(i, TIOCNOTTY, (char *)0) < 0)
+	if (ioctl(i, TIOCNOTTY, NULL) < 0)
 		goto bad;
 	(void) close(i);
 #endif

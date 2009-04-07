@@ -1074,7 +1074,7 @@ deflate(z_streamp strm, int flush)
 		   but not a zero length. */
 		_tr_stored_type_only(s);
             } else { /* FULL_FLUSH or SYNC_FLUSH */
-                _tr_stored_block(s, (char*)0, 0L, 0);
+                _tr_stored_block(s, NULL, 0L, 0);
                 /* For a full flush, this empty block will be recognized
                  * as a special marker by inflate_sync().
                  */
@@ -1950,7 +1950,7 @@ local static_tree_desc  static_d_desc =
 {static_dtree, extra_dbits, 0,          D_CODES, MAX_BITS};
 
 local static_tree_desc  static_bl_desc =
-{(ct_data *)0, extra_blbits, 0,      BL_CODES, MAX_BL_BITS};
+{NULL, extra_blbits, 0,      BL_CODES, MAX_BL_BITS};
 
 /* ===========================================================================
  * Local (static) routines in this file.
@@ -2737,7 +2737,7 @@ _tr_flush_block(deflate_state *s, charf *buf, ulg stored_len, int eof)
 	if (static_lenb <= opt_lenb) opt_lenb = static_lenb;
 
     } else {
-        Assert(buf != (char*)0, "lost buf");
+        Assert(buf != NULL, "lost buf");
 	opt_lenb = static_lenb = stored_len + 5; /* force a stored block */
     }
 
@@ -2752,7 +2752,7 @@ _tr_flush_block(deflate_state *s, charf *buf, ulg stored_len, int eof)
     if (stored_len <= opt_lenb && eof && s->compressed_len==0L && seekable()) {
 #  endif
         /* Since LIT_BUFSIZE <= 2*WSIZE, the input data must be there: */
-        if (buf == (charf*)0) error ("block vanished");
+        if (buf == NULL) error ("block vanished");
 
         copy_block(s, buf, (unsigned)stored_len, 0); /* without header */
         s->compressed_len = stored_len << 3;
@@ -2761,9 +2761,9 @@ _tr_flush_block(deflate_state *s, charf *buf, ulg stored_len, int eof)
 #endif /* STORED_FILE_OK */
 
 #ifdef FORCE_STORED
-    if (buf != (char*)0) { /* force stored block */
+    if (buf != NULL) { /* force stored block */
 #else
-    if (stored_len+4 <= opt_lenb && buf != (char*)0) {
+    if (stored_len+4 <= opt_lenb && buf != NULL) {
                        /* 4: two words for the lengths */
 #endif
         /* The test buf != NULL is only necessary if LIT_BUFSIZE > WSIZE.

@@ -138,8 +138,7 @@ ypupdated_svc_run(void)
 #else
 		readfds = svc_fds;
 #endif /* def FD_SETSIZE */
-		switch (select(fd_setsize, &readfds, NULL, NULL,
-			       (struct timeval *)0)) {
+		switch (select(fd_setsize, &readfds, NULL, NULL, NULL)) {
 		case -1:
 			if (errno == EINTR) {
 				continue;
@@ -264,7 +263,7 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (transp == (SVCXPRT *)NULL) {
+	if (transp == NULL) {
 		_msgout("could not create a handle");
 		exit(1);
 	}

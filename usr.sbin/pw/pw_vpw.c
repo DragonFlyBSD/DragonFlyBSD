@@ -188,13 +188,10 @@ vendgrent(void)
 	}
 }
 
-RET_SETGRENT
+void
 vsetgrent(void)
 {
 	vendgrent();
-#if defined(__DragonFly__)
-	return 0;
-#endif
 }
 
 static struct group *

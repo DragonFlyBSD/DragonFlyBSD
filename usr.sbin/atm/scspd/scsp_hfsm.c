@@ -235,7 +235,7 @@ scsp_hello_act_02(Scsp_dcs *dcsp, Scsp_msg *msg)
 	/*
 	 * Tell the CA FSM that the conection to the DCS is lost
 	 */
-	rc = scsp_cafsm(dcsp, SCSP_CAFSM_HELLO_DOWN, (void *)0);
+	rc = scsp_cafsm(dcsp, SCSP_CAFSM_HELLO_DOWN, NULL);
 
 	/*
 	 * Go to Down state
@@ -350,7 +350,7 @@ scsp_hello_act_04(Scsp_dcs *dcsp, Scsp_msg *msg)
 	/*
 	 * Notify the CA FSM
 	 */
-	rc = scsp_cafsm(dcsp, SCSP_CAFSM_HELLO_DOWN, (void *)0);
+	rc = scsp_cafsm(dcsp, SCSP_CAFSM_HELLO_DOWN, NULL);
 
 	return(rc);
 }
@@ -381,7 +381,7 @@ scsp_hello_act_05(Scsp_dcs *dcsp, Scsp_msg *msg)
 	 * Null message pointer means message decode failed, so
 	 * message must have been invalid.  Go to Waiting state.
 	 */
-	if (msg == (Scsp_msg *)0) {
+	if (msg == NULL) {
 		dcsp->sd_hello_state = SCSP_HFSM_WAITING;
 		HARP_CANCEL(&dcsp->sd_hello_rcv_t);
 		return(0);
@@ -432,7 +432,7 @@ scsp_hello_act_05(Scsp_dcs *dcsp, Scsp_msg *msg)
 			dcsp->sd_hello_state = SCSP_HFSM_BI_DIR;
 			rc = scsp_cafsm(dcsp,
 					SCSP_CAFSM_HELLO_UP,
-					(void *)0);
+					NULL);
 			return(rc);
 		}
 	}
@@ -472,10 +472,10 @@ scsp_hello_act_06(Scsp_dcs *dcsp, Scsp_msg *msg)
 	 * Null message pointer means message decode failed, so
 	 * message must have been invalid.  Go to Waiting state.
 	 */
-	if (msg == (Scsp_msg *)0) {
+	if (msg == NULL) {
 		HARP_CANCEL(&dcsp->sd_hello_rcv_t);
 		dcsp->sd_hello_state = SCSP_HFSM_WAITING;
-		rc = scsp_cafsm(dcsp, SCSP_CAFSM_HELLO_DOWN, (void *)0);
+		rc = scsp_cafsm(dcsp, SCSP_CAFSM_HELLO_DOWN, NULL);
 		return(rc);
 	}
 
@@ -517,7 +517,7 @@ scsp_hello_act_06(Scsp_dcs *dcsp, Scsp_msg *msg)
 			dcsp->sd_hello_state = SCSP_HFSM_WAITING;
 			rc = scsp_cafsm(dcsp,
 					SCSP_CAFSM_HELLO_DOWN,
-					(void *)0);
+					NULL);
 			return(rc);
 		}
 

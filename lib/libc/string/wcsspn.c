@@ -26,11 +26,10 @@
  *	citrus Id: wcsspn.c,v 1.1 1999/12/29 21:47:45 tshiozak Exp
  *
  * $NetBSD: wcsspn.c,v 1.1 2000/12/23 23:14:37 itojun Exp $
- * $FreeBSD: src/lib/libc/string/wcsspn.c,v 1.3.2.2 2001/11/27 13:39:22 des Exp $
+ * $FreeBSD: src/lib/libc/string/wcsspn.c,v 1.7 2002/09/21 00:29:23 tjr Exp $
  * $DragonFly: src/lib/libc/string/wcsspn.c,v 1.3 2005/09/18 16:32:34 asmodai Exp $
  */
 
-#include <assert.h>
 #include <wchar.h>
 
 size_t

@@ -90,7 +90,7 @@ over:
 				goto over;
 			}
 			if (strcmp(buf, _PATH_DEVNULL) != 0)
-				setbuf(outf, (char *)NULL);
+				setbuf(outf, NULL);
 		}
 #endif
 	}

@@ -33,11 +33,11 @@
  * SUCH DAMAGE.
  *
  * @(#)pr_comment.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/indent/pr_comment.c,v 1.1.1.1.14.3 2001/12/06 19:28:47 schweikh Exp $
+ * $FreeBSD: src/usr.bin/indent/pr_comment.c,v 1.8 2003/06/15 09:28:17 charnier Exp $
  * $DragonFly: src/usr.bin/indent/pr_comment.c,v 1.3 2005/04/10 20:55:38 drhodus Exp $
  */
-#if 0
-#endif
+
+#include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "indent_globs.h"

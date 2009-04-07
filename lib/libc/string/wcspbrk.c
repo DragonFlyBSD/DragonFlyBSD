@@ -25,7 +25,7 @@
  *
  * citrus Id: wcspbrk.c,v 1.2 2000/12/21 05:07:25 itojun Exp
  * $NetBSD: wcspbrk.c,v 1.1 2000/12/23 23:14:37 itojun Exp $
- * $FreeBSD: src/lib/libc/string/wcspbrk.c,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
+ * $FreeBSD: src/lib/libc/string/wcspbrk.c,v 1.6 2002/09/21 00:29:23 tjr Exp $
  * $DragonFly: src/lib/libc/string/wcspbrk.c,v 1.3 2005/04/28 13:25:12 joerg Exp $
  */
 

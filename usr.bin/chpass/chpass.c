@@ -163,14 +163,14 @@ main(int argc, char **argv)
 		/* protect p_shell -- it thinks NULL is /bin/sh */
 		if (!arg[0])
 			usage();
-		if (p_shell(arg, pw, (ENTRY *)NULL) == -1)
+		if (p_shell(arg, pw, NULL) == -1)
 			exit(1);
 	}
 
 	if (op == NEWEXP) {
 		if (uid)	/* only root can change expire */
 			baduser();
-		if (p_expire(arg, pw, (ENTRY *)NULL) == -1)
+		if (p_expire(arg, pw, NULL) == -1)
 			exit(1);
 	}
 

@@ -27,16 +27,18 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/yp/yplib.c,v 1.34.2.2 2002/02/15 00:46:53 des Exp $
+ * $FreeBSD: src/lib/libc/yp/yplib.c,v 1.51 2007/07/24 13:06:08 simon Exp $
  * $DragonFly: src/lib/libc/yp/yplib.c,v 1.9 2006/08/03 16:40:46 swildner Exp $
  */
 
 #include "namespace.h"
+#include "reentrant.h"
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/file.h>
 #include <sys/uio.h>
+#include <arpa/inet.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -46,6 +48,7 @@
 #include <rpc/xdr.h>
 #include <rpcsvc/yp.h>
 #include "un-namespace.h"
+#include "libc_private.h"
 
 bool_t	xdr_ypresp_all_seq(XDR *, u_long *);
 int	_yp_check(char **);
@@ -99,7 +102,11 @@ void *ypresp_data;
 static void _yp_unbind(struct dom_binding *);
 struct dom_binding *_ypbindlist;
 static char _yp_domain[MAXHOSTNAMELEN];
-int _yplib_timeout = 10;
+int _yplib_timeout = 20;
+
+static mutex_t _ypmutex = MUTEX_INITIALIZER;
+#define YPLOCK()	mutex_lock(&_ypmutex);
+#define YPUNLOCK()	mutex_unlock(&_ypmutex);
 
 #ifdef YPMATCHCACHE
 static void
@@ -302,7 +309,7 @@ _yp_dobind(const char *dom, struct dom_binding **ypdb)
 	ssize_t r;
 	int retries = 0;
 	struct sockaddr_in check;
-	int checklen = sizeof(struct sockaddr_in);
+	socklen_t checklen = sizeof(struct sockaddr_in);
 
 	/* Not allowed; bad doggie. Bad. */
 	if (strchr(dom, '/') != NULL)
@@ -403,10 +410,12 @@ again:
 			bzero(&ysd->dom_server_addr, sizeof ysd->dom_server_addr);
 			ysd->dom_server_addr.sin_family = AF_INET;
 			ysd->dom_server_addr.sin_len = sizeof(struct sockaddr_in);
-			ysd->dom_server_addr.sin_addr.s_addr =
-			    *(u_long *)&ybr.ypbind_resp_u.ypbind_bindinfo.ypbind_binding_addr;
-			ysd->dom_server_addr.sin_port =
-			    *(u_short *)&ybr.ypbind_resp_u.ypbind_bindinfo.ypbind_binding_port;
+			bcopy(&ybr.ypbind_resp_u.ypbind_bindinfo.ypbind_binding_addr,
+			    &ysd->dom_server_addr.sin_addr.s_addr,
+			    sizeof(ysd->dom_server_addr.sin_addr.s_addr));
+			bcopy(&ybr.ypbind_resp_u.ypbind_bindinfo.ypbind_binding_port,
+			    &ysd->dom_server_addr.sin_port,
+			    sizeof(ysd->dom_server_addr.sin_port));
 
 			ysd->dom_server_port = ysd->dom_server_addr.sin_port;
 			_close(fd);
@@ -468,7 +477,7 @@ skipit:
 		tv.tv_sec = _yplib_timeout/2;
 		tv.tv_usec = 0;
 		r = clnt_call(client, YPBINDPROC_DOMAIN,
-		    (xdrproc_t)xdr_domainname, (char *)&dom,
+		    (xdrproc_t)xdr_domainname, &dom,
 		    (xdrproc_t)xdr_ypbind_resp, &ypbr, tv);
 		if (r != RPC_SUCCESS) {
 			clnt_destroy(client);
@@ -499,10 +508,12 @@ skipit:
 
 		bzero((char *)&ysd->dom_server_addr, sizeof ysd->dom_server_addr);
 		ysd->dom_server_addr.sin_family = AF_INET;
-		ysd->dom_server_addr.sin_port =
-			*(u_short *)&ypbr.ypbind_resp_u.ypbind_bindinfo.ypbind_binding_port;
-		ysd->dom_server_addr.sin_addr.s_addr =
-			*(u_long *)&ypbr.ypbind_resp_u.ypbind_bindinfo.ypbind_binding_addr;
+		bcopy(&ypbr.ypbind_resp_u.ypbind_bindinfo.ypbind_binding_port,
+		    &ysd->dom_server_addr.sin_port,
+		    sizeof(ysd->dom_server_addr.sin_port));
+		bcopy(&ypbr.ypbind_resp_u.ypbind_bindinfo.ypbind_binding_addr,
+		    &ysd->dom_server_addr.sin_addr.s_addr,
+		    sizeof(ysd->dom_server_addr.sin_addr.s_addr));
 
 		/*
 		 * We could do a reserved port check here too, but this
@@ -555,6 +566,14 @@ gotit:
 		_ypbindlist = ysd;
 	}
 
+	/*
+	 * Set low retry timeout to realistically handle UDP packet
+	 * loss for YP packet bursts.
+	 */
+	tv.tv_sec = 1;
+	tv.tv_usec = 0;
+	clnt_control(ysd->dom_client, CLSET_RETRY_TIMEOUT, (char*)&tv);
+
 	if (ypdb != NULL)
 		*ypdb = ysd;
 	return (0);
@@ -564,7 +583,7 @@ static void
 _yp_unbind(struct dom_binding *ypb)
 {
 	struct sockaddr_in check;
-	int checklen = sizeof(struct sockaddr_in);
+	socklen_t checklen = sizeof(struct sockaddr_in);
 
 	if (ypb->dom_client != NULL) {
 		/* Check the socket -- may have been hosed by the caller. */
@@ -590,14 +609,25 @@ _yp_unbind(struct dom_binding *ypb)
 #endif
 }
 
-int
-yp_bind(char *dom)
+static int
+yp_bind_locked(char *dom)
 {
 	return (_yp_dobind(dom, NULL));
 }
 
-void
-yp_unbind(char *dom)
+int
+yp_bind(char *dom)
+{
+	int r;
+
+	YPLOCK();
+	r = yp_bind_locked(dom);
+	YPUNLOCK();
+	return (r);
+}
+
+static void
+yp_unbind_locked(char *dom)
 {
 	struct dom_binding *ypb, *ypbp;
 
@@ -615,6 +645,14 @@ yp_unbind(char *dom)
 		ypbp = ypb;
 	}
 	return;
+}
+
+void
+yp_unbind(char *dom)
+{
+	YPLOCK();
+	yp_unbind_locked(dom);
+	YPUNLOCK();
 }
 
 int
@@ -637,8 +675,11 @@ yp_match(char *indomain, char *inmap, const char *inkey, int inkeylen,
 	    indomain == NULL || !strlen(indomain))
 		return (YPERR_BADARGS);
 
-	if (_yp_dobind(indomain, &ysd) != 0)
+	YPLOCK();
+	if (_yp_dobind(indomain, &ysd) != 0) {
+		YPUNLOCK();
 		return(YPERR_DOMAIN);
+	}
 
 	yprk.domain = indomain;
 	yprk.map = inmap;
@@ -655,13 +696,16 @@ yp_match(char *indomain, char *inmap, const char *inkey, int inkeylen,
 		*outval = (char *)malloc(*outvallen+1);
 		bcopy(yprv.val.valdat_val, *outval, *outvallen);
 		(*outval)[*outvallen] = '\0';
+		YPUNLOCK();
 		return (0);
 	}
 #endif
 
 again:
-	if (_yp_dobind(indomain, &ysd) != 0)
+	if (_yp_dobind(indomain, &ysd) != 0) {
+		YPUNLOCK();
 		return (YPERR_DOMAIN);
+	}
 
 	tv.tv_sec = _yplib_timeout;
 	tv.tv_usec = 0;
@@ -688,11 +732,12 @@ again:
 	}
 
 	xdr_free((xdrproc_t)xdr_ypresp_val, &yprv);
+	YPUNLOCK();
 	return (r);
 }
 
-int
-yp_get_default_domain(char **domp)
+static int
+yp_get_default_domain_locked(char **domp)
 {
 	*domp = NULL;
 	if (_yp_domain[0] == '\0')
@@ -700,6 +745,17 @@ yp_get_default_domain(char **domp)
 			return (YPERR_NODOM);
 	*domp = _yp_domain;
 	return (0);
+}
+
+int
+yp_get_default_domain(char **domp)
+{
+	int r;
+
+	YPLOCK();
+	r = yp_get_default_domain_locked(domp);
+	YPUNLOCK();
+	return (r);
 }
 
 int
@@ -721,9 +777,12 @@ yp_first(char *indomain, char *inmap, char **outkey, size_t *outkeylen,
 	*outkey = *outval = NULL;
 	*outkeylen = *outvallen = 0;
 
+	YPLOCK();
 again:
-	if (_yp_dobind(indomain, &ysd) != 0)
+	if (_yp_dobind(indomain, &ysd) != 0) {
+		YPUNLOCK();
 		return (YPERR_DOMAIN);
+	}
 
 	tv.tv_sec = _yplib_timeout;
 	tv.tv_usec = 0;
@@ -752,6 +811,7 @@ again:
 	}
 
 	xdr_free((xdrproc_t)xdr_ypresp_key_val, &yprkv);
+	YPUNLOCK();
 	return (r);
 }
 
@@ -775,9 +835,12 @@ yp_next(char *indomain, char *inmap, char *inkey, size_t inkeylen,
 	*outkey = *outval = NULL;
 	*outkeylen = *outvallen = 0;
 
+	YPLOCK();
 again:
-	if (_yp_dobind(indomain, &ysd) != 0)
+	if (_yp_dobind(indomain, &ysd) != 0) {
+		YPUNLOCK();
 		return (YPERR_DOMAIN);
+	}
 
 	tv.tv_sec = _yplib_timeout;
 	tv.tv_usec = 0;
@@ -808,6 +871,7 @@ again:
 	}
 
 	xdr_free((xdrproc_t)xdr_ypresp_key_val, &yprkv);
+	YPUNLOCK();
 	return (r);
 }
 
@@ -828,10 +892,13 @@ yp_all(char *indomain, char *inmap, struct ypall_callback *incallback)
 	    inmap == NULL || !strlen(inmap))
 		return (YPERR_BADARGS);
 
+	YPLOCK();
 again:
 
-	if (_yp_dobind(indomain, &ysd) != 0)
+	if (_yp_dobind(indomain, &ysd) != 0) {
+		YPUNLOCK();
 		return (YPERR_DOMAIN);
+	}
 
 	tv.tv_sec = _yplib_timeout;
 	tv.tv_usec = 0;
@@ -843,6 +910,7 @@ again:
 	clnt_sin.sin_port = 0;
 	clnt = clnttcp_create(&clnt_sin, YPPROG, YPVERS, &clnt_sock, 0, 0);
 	if (clnt == NULL) {
+		YPUNLOCK();
 		printf("clnttcp_create failed\n");
 		return (YPERR_PMAP);
 	}
@@ -864,6 +932,7 @@ again:
 	clnt_destroy(clnt);
 	savstat = status;
 	xdr_free((xdrproc_t)xdr_ypresp_all_seq, &status);	/* not really needed... */
+	YPUNLOCK();
 	if (savstat != YP_NOMORE)
 		return (ypprot_err(savstat));
 	return (0);
@@ -884,9 +953,12 @@ yp_order(char *indomain, char *inmap, int *outorder)
 	    inmap == NULL || !strlen(inmap))
 		return (YPERR_BADARGS);
 
+	YPLOCK();
 again:
-	if (_yp_dobind(indomain, &ysd) != 0)
+	if (_yp_dobind(indomain, &ysd) != 0) {
+		YPUNLOCK();
 		return (YPERR_DOMAIN);
+	}
 
 	tv.tv_sec = _yplib_timeout;
 	tv.tv_usec = 0;
@@ -905,6 +977,7 @@ again:
 	 * procedure.
 	 */
 	if (r == RPC_PROCUNAVAIL) {
+		YPUNLOCK();
 		return(YPERR_YPERR);
 	}
 
@@ -919,6 +992,7 @@ again:
 	}
 
 	xdr_free((xdrproc_t)xdr_ypresp_order, &ypro);
+	YPUNLOCK();
 	return (r);
 }
 
@@ -936,9 +1010,12 @@ yp_master(char *indomain, char *inmap, char **outname)
 	if (indomain == NULL || !strlen(indomain) ||
 	    inmap == NULL || !strlen(inmap))
 		return (YPERR_BADARGS);
+	YPLOCK();
 again:
-	if (_yp_dobind(indomain, &ysd) != 0)
+	if (_yp_dobind(indomain, &ysd) != 0) {
+		YPUNLOCK();
 		return (YPERR_DOMAIN);
+	}
 
 	tv.tv_sec = _yplib_timeout;
 	tv.tv_usec = 0;
@@ -962,6 +1039,7 @@ again:
 	}
 
 	xdr_free((xdrproc_t)xdr_ypresp_master, &yprm);
+	YPUNLOCK();
 	return (r);
 }
 
@@ -978,9 +1056,12 @@ yp_maplist(char *indomain, struct ypmaplist **outmaplist)
 	if (indomain == NULL || !strlen(indomain))
 		return (YPERR_BADARGS);
 
+	YPLOCK();
 again:
-	if (_yp_dobind(indomain, &ysd) != 0)
+	if (_yp_dobind(indomain, &ysd) != 0) {
+		YPUNLOCK();
 		return (YPERR_DOMAIN);
+	}
 
 	tv.tv_sec = _yplib_timeout;
 	tv.tv_usec = 0;
@@ -988,7 +1069,7 @@ again:
 	bzero((char *)&ypml, sizeof ypml);
 
 	r = clnt_call(ysd->dom_client, YPPROC_MAPLIST,
-	    (xdrproc_t)xdr_domainname, (char *)&indomain,
+	    (xdrproc_t)xdr_domainname, &indomain,
 	    (xdrproc_t)xdr_ypresp_maplist, &ypml, tv);
 	if (r != RPC_SUCCESS) {
 		clnt_perror(ysd->dom_client, "yp_maplist: clnt_call");
@@ -999,7 +1080,8 @@ again:
 		*outmaplist = ypml.maps;
 	}
 
-	/* NO: xdr_free(xdr_ypresp_maplist, &ypml);*/
+	/* NO: xdr_free((xdrproc_t)xdr_ypresp_maplist, &ypml);*/
+	YPUNLOCK();
 	return (r);
 }
 
@@ -1107,16 +1189,21 @@ _yp_check(char **dom)
 {
 	char *unused;
 
+	YPLOCK();
 	if (_yp_domain[0]=='\0')
-		if (yp_get_default_domain(&unused))
+		if (yp_get_default_domain_locked(&unused)) {
+			YPUNLOCK();
 			return (0);
+		}
 
 	if (dom)
 		*dom = _yp_domain;
 
-	if (yp_bind(_yp_domain) == 0) {
-		yp_unbind(_yp_domain);
+	if (yp_bind_locked(_yp_domain) == 0) {
+		yp_unbind_locked(_yp_domain);
+		YPUNLOCK();
 		return (1);
 	}
+	YPUNLOCK();
 	return (0);
 }

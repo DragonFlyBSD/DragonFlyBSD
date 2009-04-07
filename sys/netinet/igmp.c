@@ -117,7 +117,7 @@ igmp_init(void)
 	ra->ipopt_list[3] = 0x00;
 	router_alert->m_len = sizeof(ra->ipopt_dst) + ra->ipopt_list[1];
 
-	Head = (struct router_info *) 0;
+	Head = NULL;
 }
 
 static struct router_info *

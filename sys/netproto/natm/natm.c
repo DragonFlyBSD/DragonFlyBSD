@@ -263,7 +263,7 @@ natm_usr_disconnect(struct socket *so)
     api.rxhand = npcb;
     if (ifp->if_ioctl != NULL) {
 	lwkt_serialize_enter(ifp->if_serializer);
-	ifp->if_ioctl(ifp, SIOCATMDIS, (caddr_t) &api, (struct ucred *)NULL);
+	ifp->if_ioctl(ifp, SIOCATMDIS, (caddr_t) &api, NULL);
 	lwkt_serialize_exit(ifp->if_serializer);
     }
 
@@ -565,7 +565,7 @@ natm_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
       lwkt_serialize_enter(ifp->if_serializer);
       if (ifp->if_ioctl == NULL || 
 	  ifp->if_ioctl(ifp, SIOCATMENA, (caddr_t) &api,
-	  		(struct ucred *)NULL) != 0) {
+			NULL) != 0) {
 	lwkt_serialize_exit(ifp->if_serializer);
 	npcb_free(npcb, NPCB_REMOVE);
         error = EIO;
@@ -596,7 +596,7 @@ natm_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
       api.rxhand = npcb;
       lwkt_serialize_enter(ifp->if_serializer);
       if (ifp->if_ioctl != NULL)
-	  ifp->if_ioctl(ifp, SIOCATMDIS, (caddr_t) &api, (struct ucred *)NULL);
+	  ifp->if_ioctl(ifp, SIOCATMDIS, (caddr_t) &api, NULL);
       lwkt_serialize_exit(ifp->if_serializer);
 
       npcb_free(npcb, NPCB_REMOVE);
@@ -667,7 +667,7 @@ natm_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
         ario.rawvalue = *((int *)nam);
         lwkt_serialize_enter(npcb->npcb_ifp->if_serializer);
         error = npcb->npcb_ifp->if_ioctl(npcb->npcb_ifp, SIOCXRAWATM,
-        				 (caddr_t) &ario, (struct ucred *)NULL);
+					 (caddr_t) &ario, NULL);
         lwkt_serialize_exit(npcb->npcb_ifp->if_serializer);
 	if (!error) {
           if (ario.rawvalue) 
@@ -760,7 +760,7 @@ natm_init(void)
   LIST_INIT(&natm_pcbs);
 
   netisr_register(NETISR_NATM, cpu0_portfn, pktinfo_portfn_cpu0,
-  		  natmintr, NETISR_FLAG_NOTMPSAFE);
+		  natmintr, NETISR_FLAG_NOTMPSAFE);
 }
 
 /*

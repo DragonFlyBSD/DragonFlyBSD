@@ -135,7 +135,7 @@ main(int ac, char *av[])
 			break;
 		case '?':
 		default:
-			Usage((char *)NULL);
+			Usage(NULL);
 			break;
 		}
 	}

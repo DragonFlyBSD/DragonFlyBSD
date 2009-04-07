@@ -279,7 +279,7 @@ ddp_input(struct mbuf *m, struct ifnet *ifp, struct elaphdr *elh, int phase)
 	&& ( satosat(&forwro.ro_dst)->sat_addr.s_net != to.sat_addr.s_net
 	  || satosat(&forwro.ro_dst)->sat_addr.s_node != to.sat_addr.s_node )) {
 	    RTFREE( forwro.ro_rt );
-	    forwro.ro_rt = (struct rtentry *)0;
+	    forwro.ro_rt = NULL;
 	}
 
 	/*
@@ -287,8 +287,8 @@ ddp_input(struct mbuf *m, struct ifnet *ifp, struct elaphdr *elh, int phase)
 	 * Then get a new route.
 	 * XXX this could cause a 'route leak'. check this!
 	 */
-	if ( forwro.ro_rt == (struct rtentry *)0
-	|| forwro.ro_rt->rt_ifp == (struct ifnet *)0 ) {
+	if ( forwro.ro_rt == NULL
+	|| forwro.ro_rt->rt_ifp == NULL ) {
 	    forwro.ro_dst.sa_len = sizeof( struct sockaddr_at );
 	    forwro.ro_dst.sa_family = AF_APPLETALK;
 	    satosat(&forwro.ro_dst)->sat_addr.s_net = to.sat_addr.s_net;
@@ -369,7 +369,7 @@ ddp_input(struct mbuf *m, struct ifnet *ifp, struct elaphdr *elh, int phase)
      * If we found one, deliver th epacket to the socket
      */
     if (ssb_appendaddr( &ddp->ddp_socket->so_rcv, (struct sockaddr *)&from,
-	    m, (struct mbuf *)0 ) == 0 ) {
+	    m, NULL ) == 0 ) {
 	/* 
 	 * If the socket is full (or similar error) dump the packet.
 	 */

@@ -3639,7 +3639,7 @@ scsi_set_position(struct ccb_scsiio *csio, u_int32_t retries,
 	struct scsi_tape_locate *scmd;
 
 	cam_fill_csio(csio, retries, cbfcnp, CAM_DIR_NONE, tag_action,
-	    (u_int8_t *)NULL, 0, sense_len, sizeof(*scmd), timeout);
+	    NULL, 0, sense_len, sizeof(*scmd), timeout);
 	scmd = (struct scsi_tape_locate *)&csio->cdb_io.cdb_bytes;
 	bzero(scmd, sizeof(*scmd));
 	scmd->opcode = LOCATE;

@@ -261,7 +261,7 @@ acct_process(struct proc *p)
 	 */
 	return (vn_rdwr(UIO_WRITE, vp, (caddr_t)&acct, sizeof (acct),
 	    (off_t)0, UIO_SYSSPACE, IO_APPEND|IO_UNIT, p->p_ucred,
-	    (int *)0));
+	    NULL));
 }
 
 /*

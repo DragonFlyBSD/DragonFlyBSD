@@ -5762,7 +5762,7 @@ static void ncr_int_ma (ncb_p np, u_char dstat)
 		olen = tblp[0];
 		oadr = tblp[1];
 	} else {
-		tblp = (u_int32_t *) 0;
+		tblp = NULL;
 		olen = READSCRIPT_OFF(vdsp_base, vdsp_off) & 0xffffff;
 	};
 

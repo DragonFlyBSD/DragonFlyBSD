@@ -116,7 +116,7 @@ unixdomainpr(struct xunpcb *xunp, struct xsocket *so)
 	if (unp->unp_addr)
 		sa = &xunp->xu_addr;
 	else
-		sa = (struct sockaddr_un *)0;
+		sa = NULL;
 
 	if (first) {
 		printf("Active UNIX domain sockets\n");

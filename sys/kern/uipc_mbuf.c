@@ -527,7 +527,7 @@ struct objcache_malloc_args mclmeta_malloc_args =
 static void
 mbinit(void *dummy)
 {
-	int mb_limit, cl_limit, mbcl_limit;
+	int mb_limit, cl_limit;
 	int limit;
 	int i;
 
@@ -547,21 +547,19 @@ mbinit(void *dummy)
 	 * be used to adjust backing kmalloc pools' limit later.
 	 */
 
-	mb_limit = cl_limit = mbcl_limit = 0;
+	mb_limit = cl_limit = 0;
 
 	limit = nmbufs;
 	mbuf_cache = objcache_create("mbuf", &limit, 0,
 	    mbuf_ctor, NULL, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
-	if (limit > mb_limit)
-		mb_limit = limit;
+	mb_limit += limit;
 
 	limit = nmbufs;
 	mbufphdr_cache = objcache_create("mbuf pkt hdr", &limit, 64,
 	    mbufphdr_ctor, NULL, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
-	if (limit > mb_limit)
-		mb_limit = limit;
+	mb_limit += limit;
 
 	cl_limit = nmbclusters;
 	mclmeta_cache = objcache_create("cluster mbuf", &cl_limit, 0,
@@ -572,15 +570,13 @@ mbinit(void *dummy)
 	mbufcluster_cache = objcache_create("mbuf + cluster", &limit, 0,
 	    mbufcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
-	if (limit > mbcl_limit)
-		mbcl_limit = limit;
+	mb_limit += limit;
 
 	limit = nmbclusters;
 	mbufphdrcluster_cache = objcache_create("mbuf pkt hdr + cluster",
 	    &limit, 64, mbufphdrcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
-	if (limit > mbcl_limit)
-		mbcl_limit = limit;
+	mb_limit += limit;
 
 	/*
 	 * Adjust backing kmalloc pools' limit
@@ -593,8 +589,6 @@ mbinit(void *dummy)
 			    mclmeta_malloc_args.objsize * cl_limit);
 	kmalloc_raise_limit(M_MBUFCL, MCLBYTES * cl_limit);
 
-	mb_limit += mbcl_limit;
-	mb_limit += mb_limit / 4; /* save some space for non-pkthdr mbufs */
 	mb_limit += mb_limit / 8;
 	kmalloc_raise_limit(mbuf_malloc_args.mtype,
 			    mbuf_malloc_args.objsize * mb_limit);
@@ -1375,7 +1369,7 @@ m_adj(struct mbuf *mp, int req_len)
 		count = 0;
 		for (;;) {
 			count += m->m_len;
-			if (m->m_next == (struct mbuf *)0)
+			if (m->m_next == NULL)
 				break;
 			m = m->m_next;
 		}

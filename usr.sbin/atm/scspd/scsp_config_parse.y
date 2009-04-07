@@ -228,7 +228,7 @@ dcs_spec: /* Nothing */
 		/*
 		 * Set DCS address
 		 */
-		rc = set_dcs_addr($2, (char *)0);
+		rc = set_dcs_addr($2, NULL);
 		UM_FREE($2);
 		if (rc)
 			return(rc);

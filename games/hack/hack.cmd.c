@@ -81,7 +81,7 @@ struct func_tab cmdlist[]={
 struct ext_func_tab extcmdlist[] = {
 	{ "dip", dodip },
 	{ "pray", dopray },
-	{ (char *) 0, donull }
+	{ NULL, donull }
 };
 
 extern char quitchars[];

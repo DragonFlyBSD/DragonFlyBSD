@@ -56,7 +56,7 @@ getif(int s, struct in_addr *addrp)
 
 	/* If no address was supplied, just return NULL. */
 	if (!addrp)
-		return (struct ifreq *) 0;
+		return NULL;
 
 	/* Get the interface config if not done already. */
 	if (ifconf.ifc_len == 0) {
@@ -80,11 +80,11 @@ getif(int s, struct in_addr *addrp)
 #endif	/* SVR4 */
 		if ((m < 0) || (ifconf.ifc_len <= 0)) {
 			report(LOG_ERR, "ioctl SIOCGIFCONF");
-			return (struct ifreq *) 0;
+			return NULL;
 		}
 	}
 	maxmatch = 7;				/* this many bits or less... */
-	ifrmax = (struct ifreq *) 0;/* ... is not a valid match  */
+	ifrmax = NULL;				/* ... is not a valid match  */
 	p = (char *) ifreq;
 	len = ifconf.ifc_len;
 	while (len > 0) {

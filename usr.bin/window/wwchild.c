@@ -40,6 +40,7 @@
 
 #include "ww.h"
 #include <errno.h>
+#include <stddef.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -54,7 +55,7 @@ wwchild()
 
 	olderrno = errno;
 	while ((pid =
-	    wait3((int *)&w, WNOHANG|WUNTRACED, (struct rusage *)0)) > 0) {
+	    wait3((int *)&w, WNOHANG|WUNTRACED, NULL)) > 0) {
 		for (wp = wwindex; wp < &wwindex[NWW]; wp++) {
 			if (*wp && (*wp)->ww_state == WWS_HASPROC
 			    && (*wp)->ww_pid == pid) {

@@ -190,7 +190,7 @@ unisig_send_msg(struct unisig *usp, struct unisig_msg *msg)
 	/*
 	 * Convert message to network order
 	 */
-	err = usf_init(&usf, usp, (KBuffer *) 0, USF_ENCODE,
+	err = usf_init(&usf, usp, NULL, USF_ENCODE,
 			usp->us_headout);
 	if (err)
 		return(err);
@@ -843,7 +843,7 @@ unisig_rcv_msg(struct unisig *usp, KBuffer *m)
 		/*
 		 * Send STATUS message indicating the error
 		 */
-		err = unisig_send_status(usp, (struct unisig_vccb *) 0,
+		err = unisig_send_status(usp, NULL,
 				msg, UNI_IE_CAUS_CREF);
 		goto done;
 	}

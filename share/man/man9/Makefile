@@ -26,6 +26,7 @@ MAN=	accept_filter.9 \
 	bus_set_resource.9 \
 	BUS_SETUP_INTR.9 \
 	bus_space.9 \
+	byteorder.9 \
 	callout.9 \
 	cd.9 \
 	contigmalloc.9 \
@@ -292,6 +293,33 @@ MLINKS+=bus_space.9 bus_space_barrier.9 \
 	bus_space.9 bus_space_write_stream_1.9 \
 	bus_space.9 bus_space_write_stream_2.9 \
 	bus_space.9 bus_space_write_stream_4.9
+MLINKS+=byteorder.9 be16dec.9 \
+	byteorder.9 be16enc.9 \
+	byteorder.9 be16toh.9 \
+	byteorder.9 be32dec.9 \
+	byteorder.9 be32enc.9 \
+	byteorder.9 be32toh.9 \
+	byteorder.9 be64dec.9 \
+	byteorder.9 be64enc.9 \
+	byteorder.9 be64toh.9 \
+	byteorder.9 bswap16.9 \
+	byteorder.9 bswap32.9 \
+	byteorder.9 bswap64.9 \
+	byteorder.9 htobe16.9 \
+	byteorder.9 htobe32.9 \
+	byteorder.9 htobe64.9 \
+	byteorder.9 htole16.9 \
+	byteorder.9 htole32.9 \
+	byteorder.9 htole64.9 \
+	byteorder.9 le16dec.9 \
+	byteorder.9 le16enc.9 \
+	byteorder.9 le16toh.9 \
+	byteorder.9 le32dec.9 \
+	byteorder.9 le32enc.9 \
+	byteorder.9 le32toh.9 \
+	byteorder.9 le64dec.9 \
+	byteorder.9 le64enc.9 \
+	byteorder.9 le64toh.9
 MLINKS+=callout.9 callout_active.9 \
 	callout.9 callout_deactivate.9 \
 	callout.9 callout_init.9 \

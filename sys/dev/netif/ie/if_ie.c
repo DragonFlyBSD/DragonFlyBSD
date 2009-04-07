@@ -1723,7 +1723,7 @@ iereset(int unit)
 	}
 	kprintf("ie%d: reset\n", unit);
 	ie_softc[unit].arpcom.ac_if.if_flags &= ~IFF_UP;
-	ieioctl(&ie_softc[unit].arpcom.ac_if, SIOCSIFFLAGS, 0, (struct ucred *)NULL);
+	ieioctl(&ie_softc[unit].arpcom.ac_if, SIOCSIFFLAGS, 0, NULL);
 
 	/*
 	 * Stop i82586 dead in its tracks.
@@ -1741,7 +1741,7 @@ iereset(int unit)
 #endif
 
 	ie_softc[unit].arpcom.ac_if.if_flags |= IFF_UP;
-	ieioctl(&ie_softc[unit].arpcom.ac_if, SIOCSIFFLAGS, 0, (struct ucred *)NULL);
+	ieioctl(&ie_softc[unit].arpcom.ac_if, SIOCSIFFLAGS, 0, NULL);
 }
 
 /*
@@ -2141,8 +2141,8 @@ ie_mc_reset(int unit)
 		/* XXX - this is broken... */
 		if (ie->mcast_count >= MAXMCAST) {
 			ie->arpcom.ac_if.if_flags |= IFF_ALLMULTI;
-			ieioctl(&ie->arpcom.ac_if, SIOCSIFFLAGS, (void *) 0,
-			        (struct ucred *)NULL);
+			ieioctl(&ie->arpcom.ac_if, SIOCSIFFLAGS, NULL,
+			        NULL);
 			goto setflag;
 		}
 		bcopy(LLADDR((struct sockaddr_dl *) ifma->ifma_addr),

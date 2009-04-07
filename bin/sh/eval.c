@@ -266,7 +266,7 @@ evaltree(union node *n, int flags)
 		do_etest = !(flags & EV_TESTED);
 		break;
 	case NCMD:
-		evalcommand(n, flags, (struct backcmd *)NULL);
+		evalcommand(n, flags, NULL);
 		do_etest = !(flags & EV_TESTED);
 		break;
 	default:
@@ -406,7 +406,7 @@ evalsubshell(union node *n, int flags)
 	}
 	if (! backgnd) {
 		INTOFF;
-		exitstatus = waitforjob(jp, (int *)NULL);
+		exitstatus = waitforjob(jp, NULL);
 		INTON;
 	}
 }
@@ -505,7 +505,7 @@ evalpipe(union node *n)
 	INTON;
 	if (n->npipe.backgnd == 0) {
 		INTOFF;
-		exitstatus = waitforjob(jp, (int *)NULL);
+		exitstatus = waitforjob(jp, NULL);
 		TRACE(("evalpipe:  job done exit status %d\n", exitstatus));
 		INTON;
 	}

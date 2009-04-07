@@ -319,7 +319,7 @@ getsigaction(int signo, sig_t *sigact)
 {
 	struct sigaction sa;
 
-	if (sigaction(signo, (struct sigaction *)0, &sa) == -1)
+	if (sigaction(signo, NULL, &sa) == -1)
 		return 0;
 	*sigact = (sig_t) sa.sa_handler;
 	return 1;

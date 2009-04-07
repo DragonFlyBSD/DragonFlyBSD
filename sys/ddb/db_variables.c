@@ -47,10 +47,10 @@ static int	db_set_variable (db_expr_t value);
 #endif
 
 static struct db_variable db_vars[] = {
-	{ "radix",	&db_radix, FCN_NULL },
-	{ "maxoff",	&db_maxoff, FCN_NULL },
-	{ "maxwidth",	&db_max_width, FCN_NULL },
-	{ "tabstops",	&db_tab_stop_width, FCN_NULL },
+	{ "radix",	&db_radix, NULL },
+	{ "maxoff",	&db_maxoff, NULL },
+	{ "maxwidth",	&db_max_width, NULL },
+	{ "tabstops",	&db_tab_stop_width, NULL },
 };
 static struct db_variable *db_evars = 
 		db_vars + sizeof(db_vars)/sizeof(db_vars[0]);
@@ -113,7 +113,7 @@ db_read_variable(struct db_variable *vp, db_expr_t *valuep)
 {
 	db_varfcn_t	*func = vp->fcn;
 
-	if (func == FCN_NULL)
+	if (func == NULL)
 	    *valuep = *(vp->valuep);
 	else
 	    (*func)(vp, valuep, DB_VAR_GET);
@@ -124,7 +124,7 @@ db_write_variable(struct db_variable *vp, db_expr_t *valuep)
 {
 	db_varfcn_t	*func = vp->fcn;
 
-	if (func == FCN_NULL)
+	if (func == NULL)
 	    *(vp->valuep) = *valuep;
 	else
 	    (*func)(vp, valuep, DB_VAR_SET);

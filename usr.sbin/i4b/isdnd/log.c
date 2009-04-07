@@ -83,7 +83,7 @@ init_log(void)
 	
 		/* set unbuffered operation */
 	
-		setvbuf(logfp, (char *)NULL, _IONBF, 0);
+		setvbuf(logfp, NULL, _IONBF, 0);
 	}
 	else
 	{
@@ -110,7 +110,7 @@ init_log(void)
 
 		if((p = malloc(strlen(buf) + 1)) == NULL)
 		{
-			log(LL_DBG, "init_log: malloc failed: %s", strerror(errno));
+			dolog(LL_DBG, "init_log: malloc failed: %s", strerror(errno));
 			do_exit(1);
 		}
 
@@ -141,7 +141,7 @@ finish_log(void)
  *	place entry into logfile
  *---------------------------------------------------------------------------*/
 void
-log(int what, const char *fmt, ...)
+dolog(int what, const char *fmt, ...)
 {
 	char buffer[LOGBUFLEN];
 	char *dp;

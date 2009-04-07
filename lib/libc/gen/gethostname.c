@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -31,23 +27,27 @@
  * SUCH DAMAGE.
  *
  * @(#)gethostname.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/gen/gethostname.c,v 1.8 2007/01/09 00:27:54 imp Exp $
  * $DragonFly: src/lib/libc/gen/gethostname.c,v 1.4 2005/11/19 22:32:53 swildner Exp $
  */
 
 #include <sys/param.h>
 #include <sys/sysctl.h>
+
+#include <errno.h>
 #include <unistd.h>
 
 int
-gethostname(char *name, int namelen)
+gethostname(char *name, size_t namelen)
 {
 	int mib[2];
-	size_t size;
 
 	mib[0] = CTL_KERN;
 	mib[1] = KERN_HOSTNAME;
-	size = namelen;
-	if (sysctl(mib, 2, name, &size, NULL, 0) == -1)
+	if (sysctl(mib, 2, name, &namelen, NULL, 0) == -1) {
+		if (errno == ENOMEM)
+			errno = ENAMETOOLONG;
 		return (-1);
+	}
 	return (0);
 }

@@ -682,7 +682,7 @@ cd9660_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 #else
 	    0,
 #endif
-	    (struct iso_directory_record *)0));
+	    NULL));
 }
 
 int

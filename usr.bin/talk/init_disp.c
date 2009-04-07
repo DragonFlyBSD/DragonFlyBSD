@@ -76,9 +76,9 @@ init_display(void)
 
 	if (initscr() == NULL)
 		errx(1, "Terminal type unset or lacking necessary features.");
-	(void) sigaction(SIGTSTP, (struct sigaction *)0, &sa);
+	(void) sigaction(SIGTSTP, NULL, &sa);
 	sigaddset(&sa.sa_mask, SIGALRM);
-	(void) sigaction(SIGTSTP, &sa, (struct sigaction *)0);
+	(void) sigaction(SIGTSTP, &sa, NULL);
 	curses_initialized = 1;
 	clear();
 	refresh();

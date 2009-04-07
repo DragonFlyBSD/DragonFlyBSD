@@ -27,7 +27,7 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
  * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/net/rcmdsh.c,v 1.3.2.2 2002/04/22 17:38:53 ume Exp $
+ * $FreeBSD: src/lib/libc/net/rcmdsh.c,v 1.5 2003/02/27 13:40:00 nectar Exp $
  * $DragonFly: src/lib/libc/net/rcmdsh.c,v 1.4 2005/11/13 02:04:47 swildner Exp $
  */
 
@@ -39,6 +39,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
+#include <arpa/inet.h>
 
 #include <errno.h>
 #include <netdb.h>
@@ -85,7 +86,7 @@ rcmdsh(char **ahost, int rport, const char *locuser, const char *remuser,
 		hints.ai_flags = AI_CANONNAME;
 		hints.ai_family = PF_UNSPEC;
 		hints.ai_socktype = SOCK_STREAM;
-		snprintf(num, sizeof(num), "%d", ntohs(rport));
+		snprintf(num, sizeof(num), "%u", (unsigned int)ntohs(rport));
 		error = getaddrinfo(*ahost, num, &hints, &res);
 		if (error) {
 			fprintf(stderr, "rcmdsh: getaddrinfo: %s\n",
@@ -146,12 +147,11 @@ rcmdsh(char **ahost, int rport, const char *locuser, const char *remuser,
 			else
 				rshprog = pw->pw_shell;
 			p = strrchr(rshprog, '/');
-			execlp(rshprog, p ? p + 1 : rshprog, "-c", cmd,
-			    (char *)NULL);
+			execlp(rshprog, p ? p + 1 : rshprog, "-c", cmd, NULL);
 		} else {
 			p = strrchr(rshprog, '/');
 			execlp(rshprog, p ? p + 1 : rshprog, *ahost, "-l",
-			    remuser, cmd, (char *)NULL);
+			    remuser, cmd, NULL);
 		}
 		fprintf(stderr, "rcmdsh: execlp %s failed: %s\n",
 		    rshprog, strerror(errno));

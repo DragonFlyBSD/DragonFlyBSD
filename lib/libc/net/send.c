@@ -26,10 +26,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/net/send.c,v 1.1.1.1.14.1 2001/03/05 10:47:11 obrien Exp $
- * $DragonFly: src/lib/libc/net/send.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
- *
  * @(#)send.c	8.2 (Berkeley) 2/21/94
+ * $FreeBSD: src/lib/libc/net/send.c,v 1.4 2007/01/09 00:28:02 imp Exp $
+ * $DragonFly: src/lib/libc/net/send.c,v 1.5 2005/11/13 02:04:47 swildner Exp $
  */
 
 #include "namespace.h"

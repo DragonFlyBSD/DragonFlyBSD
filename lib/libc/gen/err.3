@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -30,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	From: @(#)err.3	8.1 (Berkeley) 6/9/93
-.\" $FreeBSD: src/lib/libc/gen/err.3,v 1.11.2.6 2001/12/14 18:33:51 ru Exp $
+.\" $FreeBSD: src/lib/libc/gen/err.3,v 1.24 2008/10/31 15:14:40 rwatson Exp $
 .\" $DragonFly: src/lib/libc/gen/err.3,v 1.4 2008/10/06 21:21:30 swildner Exp $
 .\"
 .Dd March 6, 1999
@@ -99,7 +95,7 @@ and a space are output.
 If the
 .Fa fmt
 argument is not NULL, the
-.Xr printf 3
+.Xr printf 3 Ns
 -like formatted error message is output.
 The output is terminated by a newline character.
 .Pp
@@ -115,7 +111,7 @@ and
 .Fn vwarnc
 functions append an error message obtained from
 .Xr strerror 3
-based on a code or the global variable
+based on a supplied error code value or the global variable
 .Va errno ,
 preceded by another colon and space unless the
 .Fa fmt
@@ -159,6 +155,10 @@ and
 .Fn verrx
 functions do not return, but exit with the value of the argument
 .Fa eval .
+It is recommended that the standard values defined in
+.Xr sysexits 3
+be used for the value of
+.Fa eval .
 The
 .Fn err_set_exit
 function can be used to specify a function which is called before
@@ -181,15 +181,16 @@ Display the current
 information string and exit:
 .Bd -literal -offset indent
 if ((p = malloc(size)) == NULL)
-	err(1, NULL);
+	err(EX_OSERR, NULL);
 if ((fd = open(file_name, O_RDONLY, 0)) == -1)
-	err(1, "%s", file_name);
+	err(EX_NOINPUT, "%s", file_name);
 .Ed
 .Pp
 Display an error message and exit:
 .Bd -literal -offset indent
 if (tm.tm_hour < START_TIME)
-	errx(1, "too early, wait until %s", start_time_string);
+	errx(EX_DATAERR, "too early, wait until %s",
+	    start_time_string);
 .Ed
 .Pp
 Warn of an error:
@@ -198,7 +199,7 @@ if ((fd = open(raw_device, O_RDONLY, 0)) == -1)
 	warnx("%s: %s: trying the block device",
 	    raw_device, strerror(errno));
 if ((fd = open(block_device, O_RDONLY, 0)) == -1)
-	err(1, "%s", block_device);
+	err(EX_OSFILE, "%s", block_device);
 .Ed
 .Pp
 Warn of an error without using the global variable
@@ -212,7 +213,8 @@ if (error != 0)
 .Xr exit 3 ,
 .Xr fmtmsg 3 ,
 .Xr printf 3 ,
-.Xr strerror 3
+.Xr strerror 3 ,
+.Xr sysexits 3
 .Sh HISTORY
 The
 .Fn err

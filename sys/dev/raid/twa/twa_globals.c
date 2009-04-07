@@ -107,7 +107,7 @@ struct twa_message	twa_aen_table[] = {
 	{0x00FD, "Handler lockup"},
 	{0x00FE, "Retrying PCI transfer"},
 	{0x00FF, "AEN queue is full"},
-	{0xFFFFFFFF, (char *)NULL}
+	{0xFFFFFFFF, NULL}
 };
 
 /* AEN severity table. */
@@ -117,7 +117,7 @@ char	*twa_aen_severity_table[] = {
 	"WARNING",
 	"INFO",
 	"DEBUG",
-	(char *)NULL
+	NULL
 };
 
 /* Error messages. */
@@ -234,7 +234,7 @@ struct twa_message	twa_error_table[] = {
 	{0x025B, "Invalid LBA offset specified in CreateUnit descriptor"},
 	{0x025C, "Invalid stripelet size specified in CreateUnit descriptor"},
 	{0x0260, "SMART attribute exceeded threshold"},
-	{0xFFFFFFFF, (char *)NULL}
+	{0xFFFFFFFF, NULL}
 };
     
 #ifdef TWA_DEBUG

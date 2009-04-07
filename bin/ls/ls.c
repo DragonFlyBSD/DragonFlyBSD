@@ -83,7 +83,7 @@
 	} while(0)
 
 static void	 display(const FTSENT *, FTSENT *);
-static int	 mastercmp(const FTSENT **, const FTSENT **);
+static int	 mastercmp(const FTSENT * const *, const FTSENT * const *);
 static void	 traverse(int, char **, int);
 
 static void (*printfcn)(const DISPLAY *);
@@ -786,7 +786,7 @@ display(const FTSENT *p, FTSENT *list)
  * All other levels use the sort function.  Error entries remain unsorted.
  */
 static int
-mastercmp(const FTSENT **a, const FTSENT **b)
+mastercmp(const FTSENT * const *a, const FTSENT * const *b)
 {
 	int a_info, b_info;
 

@@ -272,8 +272,7 @@ ipx_ifinit(struct ifnet *ifp, struct ipx_ifaddr *ia,
 	 */
 	lwkt_serialize_enter(ifp->if_serializer);
 	if (ifp->if_ioctl != NULL &&
-	    (error = ifp->if_ioctl(ifp, SIOCSIFADDR, (void *)ia,
-	   			      (struct ucred *)NULL))) {
+	    (error = ifp->if_ioctl(ifp, SIOCSIFADDR, (void *)ia, NULL))) {
 		ia->ia_addr = oldaddr;
 		lwkt_serialize_exit(ifp->if_serializer);
 		return (error);

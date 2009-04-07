@@ -1496,7 +1496,7 @@ db_show_locked_vnodes(struct mount *mp, void *data __unused)
 
 	TAILQ_FOREACH(vp, &mp->mnt_nvnodelist, v_nmntvnodes) {
 		if (vn_islocked(vp))
-			vprint((char *)0, vp);
+			vprint(NULL, vp);
 	}
 	return(0);
 }
@@ -1833,7 +1833,7 @@ vfs_setpublicfs(struct mount *mp, struct netexport *nep,
 		MALLOC(nfs_pub.np_index, char *, namelen, M_TEMP,
 		    M_WAITOK);
 		error = copyinstr(argp->ex_indexfile, nfs_pub.np_index,
-		    namelen, (size_t *)0);
+		    namelen, NULL);
 		if (!error) {
 			/*
 			 * Check for illegal filenames.

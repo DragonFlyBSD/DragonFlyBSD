@@ -797,7 +797,7 @@ p_rtentry(struct rtentry *rt)
 			time_t expire_time;
 
 			if ((expire_time =
-			    rt->rt_rmx.rmx_expire - time((time_t *)0)) > 0)
+			    rt->rt_rmx.rmx_expire - time(NULL)) > 0)
 				printf(" %*d", wid_expire, (int)expire_time);
 		} else {
 			printf("%*s ", wid_expire, "");

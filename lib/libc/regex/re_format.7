@@ -34,7 +34,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)re_format.7	8.3 (Berkeley) 3/20/94
-.\" $FreeBSD: src/lib/libc/regex/re_format.7,v 1.4.2.5 2002/01/22 12:40:10 ru Exp $
+.\" $FreeBSD: src/lib/libc/regex/re_format.7,v 1.12 2008/09/05 17:41:20 keramida Exp $
 .\" $DragonFly: src/lib/libc/regex/re_format.7,v 1.3 2008/05/02 02:05:04 swildner Exp $
 .\"
 .Dd March 20, 1994
@@ -233,7 +233,7 @@ sequence of characters of that collating element.
 The sequence is a single element of the bracket expression's list.
 A bracket expression containing a multi-character collating element
 can thus match more than one character,
-e.g. if the collating sequence includes a
+e.g.\& if the collating sequence includes a
 .Ql ch
 collating element,
 then the RE
@@ -287,6 +287,14 @@ These stand for the character classes defined in
 .Xr ctype 3 .
 A locale may provide others.
 A character class may not be used as an endpoint of a range.
+.Pp
+A bracketed expression like
+.Ql [[:class:]]
+can be used to match a single character that belongs to a character
+class.
+The reverse, matching any character that does not belong to a specific
+class, the negation operator of bracket expressions may be used:
+.Ql [^[:class:]] .
 .Pp
 There are two special cases\(dd of bracket expressions:
 the bracket expressions

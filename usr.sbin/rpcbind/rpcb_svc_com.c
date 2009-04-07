@@ -499,7 +499,7 @@ create_rmtcall_fd(struct netconfig *nconf)
 			nconf->nc_device, errno);
 		return (-1);
 	}
-	xprt = svc_tli_create(fd, 0, (struct t_bind *) 0, 0, 0);
+	xprt = svc_tli_create(fd, 0, NULL, 0, 0);
 	if (xprt == NULL) {
 		if (debugging)
 			fprintf(stderr,
@@ -606,7 +606,7 @@ rpcbproc_callit_com(struct svc_req *rqstp, SVCXPRT *transp,
 	char *buf_alloc = NULL, *outbufp;
 	char *outbuf_alloc = NULL;
 	char buf[RPC_BUF_MAX], outbuf[RPC_BUF_MAX];
-	struct netbuf *na = (struct netbuf *) NULL;
+	struct netbuf *na = NULL;
 	struct rpc_msg call_msg;
 	int outlen;
 	u_int sendsz;

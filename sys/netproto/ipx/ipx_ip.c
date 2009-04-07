@@ -275,7 +275,7 @@ ipxipoutput_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	/*
 	 * Output final datagram.
 	 */
-	error =  (ip_output(m, (struct mbuf *)NULL, ro, SO_BROADCAST, NULL, NULL));
+	error =  (ip_output(m, NULL, ro, SO_BROADCAST, NULL, NULL));
 	if (error) {
 		ifn->ifen_ifnet.if_oerrors++;
 		ifn->ifen_ifnet.if_ierrors = error;

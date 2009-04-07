@@ -69,23 +69,23 @@ struct option {
 } options[NOPTS] = {
 	{
 		"Flush typeahead during battle (\"flush\"): ",
-		1, (char **) 0, &flush
+		1, NULL, &flush
 	},
 	{
 		"Show position only at end of run (\"jump\"): ",
-		1, (char **) 0, &jump
+		1, NULL, &jump
 	},
 	{
 		"Follow turnings in passageways (\"passgo\"): ",
-		1, (char **) 0, &passgo
+		1, NULL, &passgo
 	},
 	{
 		"Don't print skull when killed (\"noskull\" or \"notombstone\"): ",
-		1, (char **) 0, &no_skull
+		1, NULL, &no_skull
 	},
 	{
 		"Ask player before saying 'Okay, bye-bye!' (\"askquit\"): ",
-		1, (char **) 0, &ask_quit
+		1, NULL, &ask_quit
 	},
 	{
 		"Name (\"name\"): ",

@@ -65,7 +65,7 @@ main(int argc, char **argv)
 	while ((ch = getopt(argc, argv, "d:h")) != -1)
 		switch (ch) {
 		case 'd':
-			if ((delay = (unsigned int)strtoul(optarg, (char **)NULL, 10)) < 1
+			if ((delay = (unsigned int)strtoul(optarg, NULL, 10)) < 1
 			    || delay > 1000)
 				errx(1, "invalid delay (1-1000)");
 			delay *= 1000;  /* ms -> us */

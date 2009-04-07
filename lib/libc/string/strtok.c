@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1998 Softweyr LLC.  All rights reserved.
  *
  * strtok_r, from Berkeley strtok
@@ -10,20 +10,11 @@
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- *
  * 1. Redistributions of source code must retain the above copyright
  *    notices, this list of conditions and the following disclaimer.
- * 
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notices, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *
- *	This product includes software developed by Softweyr LLC, the
- *      University of California, Berkeley, and its contributors.
- *
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -40,127 +31,105 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/string/strtok.c,v 1.2.6.1 2001/07/09 23:30:07 obrien Exp $
+ * @(#)strtok.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/string/strtok.c,v 1.10 2007/12/12 18:33:06 wes Exp $
  * $DragonFly: src/lib/libc/string/strtok.c,v 1.3 2005/04/28 13:25:12 joerg Exp $
  */
 
 #include <stddef.h>
+#ifdef DEBUG_STRTOK
+#include <stdio.h>
+#endif
 #include <string.h>
 
+char	*__strtok_r(char *, const char *, char **);
+
+__weak_reference(__strtok_r, strtok_r);
+
 char *
-strtok_r(char *s, const char *delim, char **last)
+__strtok_r(char *s, const char *delim, char **last)
 {
-    const char *spanp;
-    int c, sc;
-    char *tok;
+	const char *spanp;
+	int c, sc;
+	char *tok;
 
-    if (s == NULL && (s = *last) == NULL)
-    {
-	return NULL;
-    }
+	if (s == NULL && (s = *last) == NULL)
+		return (NULL);
 
-    /*
-     * Skip (span) leading delimiters (s += strspn(s, delim), sort of).
-     */
+	/*
+	 * Skip (span) leading delimiters (s += strspn(s, delim), sort of).
+	 */
 cont:
-    c = *s++;
-    for (spanp = delim; (sc = *spanp++) != 0; )
-    {
-	if (c == sc)
-	{
-	    goto cont;
-	}
-    }
-
-    if (c == 0)		/* no non-delimiter characters */
-    {
-	*last = NULL;
-	return NULL;
-    }
-    tok = s - 1;
-
-    /*
-     * Scan token (scan for delimiters: s += strcspn(s, delim), sort of).
-     * Note that delim must have one NUL; we stop if we see that, too.
-     */
-    for (;;)
-    {
 	c = *s++;
-	spanp = delim;
-	do
-	{
-	    if ((sc = *spanp++) == c)
-	    {
-		if (c == 0)
-		{
-		    s = NULL;
-		}
-		else
-		{
-		    char *w = s - 1;
-		    *w = '\0';
-		}
-		*last = s;
-		return tok;
-	    }
+	for (spanp = delim; (sc = *spanp++) != 0;) {
+		if (c == sc)
+			goto cont;
 	}
-	while (sc != 0);
-    }
-    /* NOTREACHED */
-}
 
+	if (c == 0) {		/* no non-delimiter characters */
+		*last = NULL;
+		return (NULL);
+	}
+	tok = s - 1;
+
+	/*
+	 * Scan token (scan for delimiters: s += strcspn(s, delim), sort of).
+	 * Note that delim must have one NUL; we stop if we see that, too.
+	 */
+	for (;;) {
+		c = *s++;
+		spanp = delim;
+		do {
+			if ((sc = *spanp++) == c) {
+				if (c == 0)
+					s = NULL;
+				else
+					s[-1] = '\0';
+				*last = s;
+				return (tok);
+			}
+		} while (sc != 0);
+	}
+	/* NOTREACHED */
+}
 
 char *
 strtok(char *s, const char *delim)
 {
-    static char *last;
+	static char *last;
 
-    return strtok_r(s, delim, &last);
+	return (__strtok_r(s, delim, &last));
 }
 
-
-#if defined(DEBUG_STRTOK)
-
+#ifdef DEBUG_STRTOK
 /*
  * Test the tokenizer.
  */
 int
-main()
+main(void)
 {
-    char test[80], blah[80];
-    char *sep = "\\/:;=-";
-    char *word, *phrase, *brkt, *brkb;
+	char blah[80], test[80];
+	char *brkb, *brkt, *phrase, *sep, *word;
 
-    printf("String tokenizer test:\n");
+	sep = "\\/:;=-";
+	phrase = "foo";
 
-    strcpy(test, "This;is.a:test:of=the/string\\tokenizer-function.");
+	printf("String tokenizer test:\n");
+	strcpy(test, "This;is.a:test:of=the/string\\tokenizer-function.");
+	for (word = strtok(test, sep); word; word = strtok(NULL, sep))
+		printf("Next word is \"%s\".\n", word);
+	strcpy(test, "This;is.a:test:of=the/string\\tokenizer-function.");
 
-    for (word = strtok(test, sep);
-	 word;
-	 word = strtok(NULL, sep))
-    {
-	printf("Next word is \"%s\".\n", word);
-    }
+	for (word = strtok_r(test, sep, &brkt); word;
+	    word = strtok_r(NULL, sep, &brkt)) {
+		strcpy(blah, "blah:blat:blab:blag");
 
-    phrase = "foo";
-
-    strcpy(test, "This;is.a:test:of=the/string\\tokenizer-function.");
-
-    for (word = strtok_r(test, sep, &brkt);
-	 word;
-	 word = strtok_r(NULL, sep, &brkt))
-    {
-	strcpy(blah, "blah:blat:blab:blag");
-
-	for (phrase = strtok_r(blah, sep, &brkb);
-	     phrase;
-	     phrase = strtok_r(NULL, sep, &brkb))
-	{
-	    printf("So far we're at %s:%s\n", word, phrase);
+		for (phrase = strtok_r(blah, sep, &brkb); phrase;
+		    phrase = strtok_r(NULL, sep, &brkb))
+			printf("So far we're at %s:%s\n", word, phrase);
 	}
-    }
 
-    return 0;
+	return (0);
 }
 
 #endif /* DEBUG_STRTOK */

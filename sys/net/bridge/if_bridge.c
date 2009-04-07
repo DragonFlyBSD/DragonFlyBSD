@@ -679,7 +679,6 @@ bridge_clone_create(struct if_clone *ifc, int unit)
 	ifp->if_init = bridge_init;
 	ifp->if_type = IFT_BRIDGE;
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
-	ifp->if_snd.ifq_maxlen = ifqmaxlen;
 	ifq_set_ready(&ifp->if_snd);
 	ifp->if_hdrlen = ETHER_HDR_LEN;
 

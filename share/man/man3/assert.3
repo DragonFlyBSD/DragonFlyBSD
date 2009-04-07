@@ -30,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)assert.3	8.1 (Berkeley) 6/9/93
-.\" $FreeBSD: src/share/man/man3/assert.3,v 1.7.2.3 2001/12/17 11:30:11 ru Exp $
+.\" $FreeBSD: src/share/man/man3/assert.3,v 1.15 2002/12/04 18:57:46 ru Exp $
 .\" $DragonFly: src/share/man/man3/assert.3,v 1.2 2003/06/17 04:36:58 dillon Exp $
 .\"
 .Dd January 26, 1999
@@ -51,7 +51,7 @@ and if it is false,
 the calling process is terminated.
 A
 diagnostic message is written to
-.Em stderr
+.Dv stderr
 and the function
 .Xr abort 3
 is called, effectively terminating the program.
@@ -73,18 +73,21 @@ as a macro
 .Xr cc 1
 option
 .Fl D Ns Dv NDEBUG ) .
-.Sh DIAGNOSTICS
-The following diagnostic message is written to
-.Em stderr
-if
-.Ar expression
-is false:
-.Bd -literal -offset indent
-"assertion \e"%s\e" failed: file \e"%s\e", line %d\en", \e
-		    "expression", __FILE__, __LINE__);
-.Ed
+.Sh EXAMPLES
+The assertion:
+.Pp
+.Dl "assert(1 == 0);"
+.Pp
+generates a diagnostic message similar to the following:
+.Pp
+.Dl "Assertion failed: (1 == 0), function main, file assertion.c, line 100."
 .Sh SEE ALSO
 .Xr abort 3
+.Sh STANDARDS
+The
+.Fn assert
+macro conforms to
+.St -isoC-99 .
 .Sh HISTORY
 An
 .Nm

@@ -416,7 +416,7 @@ check_hunger(boolean msg_only)
 		return(fainted);
 	}
 	if (rogue.moves_left <= STARVE) {
-		killed_by((object *) 0, STARVATION);
+		killed_by(NULL, STARVATION);
 	}
 
 	switch(e_rings) {

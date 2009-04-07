@@ -451,7 +451,7 @@ init_transport(struct netconfig *nconf)
 
 		my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf, &taddr,
 		    RPC_MAXDATASIZE, RPC_MAXDATASIZE);
-		if (my_xprt == (SVCXPRT *)NULL) {
+		if (my_xprt == NULL) {
 		    syslog(LOG_ERR, "%s: could not create service",
 			nconf->nc_netid);
 		    goto error;
@@ -499,7 +499,7 @@ init_transport(struct netconfig *nconf)
 
 	    my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf, &taddr,
 		RPC_MAXDATASIZE, RPC_MAXDATASIZE);
-	    if (my_xprt == (SVCXPRT *)NULL) {
+	    if (my_xprt == NULL) {
 		syslog(LOG_ERR, "%s: could not create service",
 		    nconf->nc_netid);
 		goto error;

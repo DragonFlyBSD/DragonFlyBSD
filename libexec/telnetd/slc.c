@@ -41,7 +41,7 @@
 /*
  * local variables
  */
-static unsigned char	*def_slcbuf = (unsigned char *)0;
+static unsigned char	*def_slcbuf = NULL;
 static int		def_slclen = 0;
 static int		slcchange;	/* change to slc is requested */
 static unsigned char	*slcptr;	/* pointer into slc buffer */
@@ -447,10 +447,10 @@ do_opt_slc(unsigned char *ptr, int len)
 		 * save this slc buffer if it is the first, otherwise dump
 		 * it.
 		 */
-		if (def_slcbuf == (unsigned char *)0) {
+		if (def_slcbuf == NULL) {
 			def_slclen = len;
 			def_slcbuf = (unsigned char *)malloc((unsigned)len);
-			if (def_slcbuf == (unsigned char *)0)
+			if (def_slcbuf == NULL)
 				return;  /* too bad */
 			memmove(def_slcbuf, ptr, len);
 		}
@@ -471,7 +471,7 @@ deferslc(void)
 		do_opt_slc(def_slcbuf, def_slclen);
 		(void) end_slc(0);
 		free(def_slcbuf);
-		def_slcbuf = (unsigned char *)0;
+		def_slcbuf = NULL;
 		def_slclen = 0;
 	}
 

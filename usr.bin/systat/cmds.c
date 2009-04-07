@@ -150,7 +150,7 @@ lookup(const char *name)
 
 	longest = 0;
 	nmatches = 0;
-	found = (struct cmdtab *) 0;
+	found = NULL;
 	for (ct = cmdtab; (p = ct->c_name); ct++) {
 		for (q = name; *q == *p++; q++)
 			if (*q == 0)		/* exact match? */

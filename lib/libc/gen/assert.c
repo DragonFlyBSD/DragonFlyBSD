@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -31,6 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)assert.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/gen/assert.c,v 1.8 2007/01/09 00:27:53 imp Exp $
  * $DragonFly: src/lib/libc/gen/assert.c,v 1.5 2005/04/26 10:41:57 joerg Exp $
  */
 
@@ -40,10 +37,17 @@
 #include <stdlib.h>
 
 void
-__assert(const char *file, int line, const char *failedexpr)
+__assert(const char *func, const char *file, int line, const char *failedexpr)
 {
-	fprintf(stderr, "assertion \"%s\" failed: file \"%s\", line %d\n",
-		failedexpr, file, line);
+	if (func == NULL) {
+		fprintf(stderr,
+		     "Assertion failed: (%s), file %s, line %d.\n", failedexpr,
+		     file, line);
+	} else {
+		fprintf(stderr,
+		     "Assertion failed: (%s), function %s, file %s, line %d.\n",
+		     failedexpr, func, file, line);
+	}
 	abort();
 	/* NOTREACHED */
 }

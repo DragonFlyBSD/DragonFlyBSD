@@ -510,7 +510,7 @@ exwrite(char *name, FILE *fp, int f)
 		return (-1);
 	}
 	if ((of = Fopen(name, "w")) == NULL) {
-		warn((char *)NULL);
+		warn(NULL);
 		return (-1);
 	}
 	lc = 0;

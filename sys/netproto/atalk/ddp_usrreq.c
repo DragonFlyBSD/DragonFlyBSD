@@ -360,15 +360,15 @@ at_pcbconnect(struct ddpcb *ddp, struct sockaddr *addr, struct thread *td)
 		satosat( &ro->ro_dst )->sat_addr.s_node !=
 		sat->sat_addr.s_node )) {
 	    RTFREE( ro->ro_rt );
-	    ro->ro_rt = (struct rtentry *)0;
+	    ro->ro_rt = NULL;
 	}
     }
 
     /*
      * If we've got no route for this interface, try to find one.
      */
-    if ( ro->ro_rt == (struct rtentry *)0 ||
-	 ro->ro_rt->rt_ifp == (struct ifnet *)0 ) {
+    if ( ro->ro_rt == NULL ||
+	 ro->ro_rt->rt_ifp == NULL ) {
 	ro->ro_dst.sa_len = sizeof( struct sockaddr_at );
 	ro->ro_dst.sa_family = AF_APPLETALK;
 	if ( hintnet ) {
@@ -397,7 +397,7 @@ at_pcbconnect(struct ddpcb *ddp, struct sockaddr *addr, struct thread *td)
 
     ddp->ddp_fsat = *sat;
     if ( ddp->ddp_lsat.sat_port == ATADDR_ANYPORT ) {
-	return(at_pcbsetaddr(ddp, (struct sockaddr *)0, td));
+	return(at_pcbsetaddr(ddp, NULL, td));
     }
     return( 0 );
 }

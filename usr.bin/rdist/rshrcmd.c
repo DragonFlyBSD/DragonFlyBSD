@@ -88,11 +88,11 @@ rshrcmd(char **ahost, u_short port, char *luser, char *ruser, char *cmd, int *fd
 		if (strcmp(*ahost, "localhost") == 0 &&
 		    strcmp(luser, ruser) == 0) {
 			execlp(_PATH_BSHELL, xbasename(_PATH_BSHELL), "-c",
-			       cmd, (char *) NULL);
+			       cmd, NULL);
 			error("execlp %s failed: %s.", _PATH_BSHELL, strerror(errno));
 		} else {
 			execlp(path_rsh, xbasename(path_rsh), 
-			       *ahost, "-l", ruser, cmd, (char *) NULL);
+			       *ahost, "-l", ruser, cmd, NULL);
 			error("execlp %s failed: %s.", path_rsh,
 				strerror(errno));
 		}

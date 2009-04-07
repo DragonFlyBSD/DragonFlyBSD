@@ -104,7 +104,7 @@ scsp_config(char *cfn)
 	/*
 	 * Initialize current interface pointer
 	 */
-	current_server = (Scsp_server *)0;
+	current_server = NULL;
 
 	/*
 	 * Clear marks on any existing servers
@@ -244,7 +244,7 @@ finish_dcs(void)
 		rc++;
 	}
 
-	current_dcs = (Scsp_dcs *)0;
+	current_dcs = NULL;
 	return(rc);
 }
 
@@ -1066,7 +1066,7 @@ finish_server(void)
 	/*
 	 * Make sure the interface has been configured
 	 */
-	if (ssp->ss_intf == (char *)0) {
+	if (ssp->ss_intf == NULL) {
 		parse_error("netif missing from server specification");
 		rc++;
 	}
@@ -1090,7 +1090,7 @@ finish_server(void)
 	/*
 	 * Make sure at least one DCS is configured
 	 */
-	if (ssp->ss_dcs == (Scsp_dcs *)0) {
+	if (ssp->ss_dcs == NULL) {
 		parse_error("no DCS configured for server");
 		rc++;
 	}
@@ -1098,7 +1098,7 @@ finish_server(void)
 	/*
 	 * Mark the end of the server
 	 */
-	current_server = (Scsp_server *)0;
+	current_server = NULL;
 
 	return(rc);
 }

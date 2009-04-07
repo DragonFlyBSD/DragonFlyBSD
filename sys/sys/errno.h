@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1982, 1986, 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  * (c) UNIX System Laboratories, Inc.
@@ -15,10 +15,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -36,7 +32,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)errno.h	8.5 (Berkeley) 1/21/94
- * $FreeBSD: src/sys/sys/errno.h,v 1.14.2.2 2002/01/22 10:46:56 keramida Exp $
+ * $FreeBSD: src/sys/sys/errno.h,v 1.28 2005/04/02 12:33:28 das Exp $
  * $DragonFly: src/sys/sys/errno.h,v 1.10 2006/12/05 23:14:55 dillon Exp $
  */
 
@@ -89,7 +85,7 @@ static __inline int *__error(void)
 #define	EFBIG		27		/* File too large */
 #define	ENOSPC		28		/* No space left on device */
 #define	ESPIPE		29		/* Illegal seek */
-#define	EROFS		30		/* Read-only file system */
+#define	EROFS		30		/* Read-only filesystem */
 #define	EMLINK		31		/* Too many links */
 #define	EPIPE		32		/* Broken pipe */
 
@@ -172,21 +168,26 @@ static __inline int *__error(void)
 #define	EOVERFLOW	84		/* Value too large to be stored in data type */
 #define	ECANCELED	85		/* Operation canceled */
 #define	EILSEQ		86		/* Illegal byte sequence */
-#define ENOATTR		87		/* (from FreeBSD-5.x) */
-#define EDOOFUS		88		/* (from FreeBSD-5.x) */
-#define EUNUSED89	89
-#define EUNUSED90	90
-#define EUNUSED91	91
-#define EUNUSED92	92
-#define EUNUSED93	93
-#define EUNUSED94	94
-#define EUNUSED95	95
-#define EUNUSED96	96
-#define EUNUSED97	97
-#define EUNUSED98	98
-#define EASYNC		99
-#define	ELAST		99		/* Must be equal largest errno */
+#define	ENOATTR		87		/* Attribute not found */
+#define	EDOOFUS		88		/* Programming error */
+#endif /* _POSIX_SOURCE */
 
+#define	EBADMSG		89		/* Bad message */
+#define	EMULTIHOP	90		/* Multihop attempted */
+#define	ENOLINK		91		/* Link has been severed */
+#define	EPROTO		92		/* Protocol error */
+
+#ifndef _POSIX_SOURCE
+#define	EUNUSED93	93
+#define	EUNUSED94	94
+#define	EUNUSED95	95
+#define	EUNUSED96	96
+#define	EUNUSED97	97
+#define	EUNUSED98	98
+
+#define	EASYNC		99		/* XXX */
+
+#define	ELAST		99		/* Must be equal largest errno */
 #endif /* _POSIX_SOURCE */
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)

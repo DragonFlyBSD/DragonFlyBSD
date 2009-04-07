@@ -267,7 +267,7 @@ _svcauth_des(struct svc_req *rqst, struct rpc_msg *msg)
 			debug("timestamp before last seen");
 			return (AUTH_REJECTEDVERF);	/* replay */
 		}
-		gettimeofday(&current, (struct timezone *)NULL);
+		gettimeofday(&current, NULL);
 		current.tv_sec -= window;	/* allow for expiration */
 		if (!BEFORE(&current, &timestamp)) {
 			debug("timestamp expired");

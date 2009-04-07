@@ -62,7 +62,7 @@
 #include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <strings.h>
+#include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
 
@@ -118,11 +118,11 @@ struct mntopt mopts[] = {
 
 struct nfs_args nfsdefargs = {
 	NFS_ARGSVERSION,
-	(struct sockaddr *)0,
+	NULL,
 	sizeof (struct sockaddr_in),
 	SOCK_DGRAM,
 	0,
-	(u_char *)0,
+	NULL,
 	0,
 	NFSMNT_RESVPORT,
 	NFS_WSIZE,
@@ -134,7 +134,7 @@ struct nfs_args nfsdefargs = {
 	NFS_DEFRAHEAD,
 	0,
 	NFS_DEADTHRESH,
-	(char *)0,
+	NULL,
 	/* args version 4 */
 	NFS_MINATTRTIMO,
 	NFS_MAXATTRTIMO,
@@ -538,7 +538,7 @@ main(int argc, char **argv)
 			 */
 			if (kret == KSUCCESS &&
 			    ktick.kt.length <= (RPCAUTH_MAXSIZ-3*NFSX_UNSIGNED)
-			    && gettimeofday(&ktv, (struct timezone *)0) == 0) {
+			    && gettimeofday(&ktv, NULL) == 0) {
 			    ncd.ncd_authtype = RPCAUTH_KERB4;
 			    ncd.ncd_authstr = (u_char *)&ktick;
 			    ncd.ncd_authlen = nfsm_rndup(ktick.kt.length) +

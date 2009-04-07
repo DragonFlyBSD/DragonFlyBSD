@@ -191,9 +191,8 @@ mpool_get(MPOOL *mp, pgno_t pgno, u_int flags __unused)
 	++mp->pageread;
 #endif
 	off = mp->pagesize * pgno;
-	if (lseek(mp->fd, off, SEEK_SET) != off)
-		return (NULL);
-	if ((nr = _read(mp->fd, bp->page, mp->pagesize)) != mp->pagesize) {
+	nr = pread(mp->fd, bp->page, mp->pagesize, off);
+	if (nr != mp->pagesize) {
 		if (nr >= 0)
 			errno = EFTYPE;
 		return (NULL);
@@ -357,9 +356,7 @@ mpool_write(MPOOL *mp, BKT *bp)
 		(mp->pgout)(mp->pgcookie, bp->pgno, bp->page);
 
 	off = mp->pagesize * bp->pgno;
-	if (lseek(mp->fd, off, SEEK_SET) != off)
-		return (RET_ERROR);
-	if (_write(mp->fd, bp->page, mp->pagesize) != mp->pagesize)
+	if (pwrite(mp->fd, bp->page, mp->pagesize, off) != mp->pagesize)
 		return (RET_ERROR);
 
 	bp->flags &= ~MPOOL_DIRTY;
@@ -402,9 +399,9 @@ mpool_stat(MPOOL *mp)
 	int cnt;
 	char *sep;
 
-	fprintf(stderr, "%lu pages in the file\n", mp->npages);
+	fprintf(stderr, "%u pages in the file\n", mp->npages);
 	fprintf(stderr,
-	    "page size %lu, cacheing %lu pages of %lu page max cache\n",
+	    "page size %lu, caching %u pages of %u page max cache\n",
 	    mp->pagesize, mp->curcache, mp->maxcache);
 	fprintf(stderr, "%lu page puts, %lu page gets, %lu page new\n",
 	    mp->pageput, mp->pageget, mp->pagenew);

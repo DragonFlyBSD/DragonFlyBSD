@@ -196,7 +196,7 @@ found:
 			return (pr);
 
 		if (type == SOCK_RAW && pr->pr_type == SOCK_RAW &&
-		    pr->pr_protocol == 0 && maybe == (struct protosw *)NULL)
+		    pr->pr_protocol == 0 && maybe == NULL)
 			maybe = pr;
 	}
 	return (maybe);

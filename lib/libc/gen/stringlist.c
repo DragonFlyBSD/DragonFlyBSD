@@ -1,5 +1,3 @@
-/*	$NetBSD: stringlist.c,v 1.2 1997/01/17 07:26:20 lukem Exp $	*/
-
 /*
  * Copyright (c) 1994 Christos Zoulas
  * All rights reserved.
@@ -12,9 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by Christos Zoulas.
  * 4. The name of the author may not be used to endorse or promote products
  *    derived from this software without specific prior written permission.
  *
@@ -31,14 +26,17 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: stringlist.c,v 1.2 1997/01/17 07:26:20 lukem Exp $
+ * $FreeBSD: src/lib/libc/gen/stringlist.c,v 1.8 2007/01/09 00:27:55 imp Exp $
  * $DragonFly: src/lib/libc/gen/stringlist.c,v 1.3 2005/11/13 00:07:42 swildner Exp $
  */
 
+#include "namespace.h"
 #include <stdio.h>
 #include <string.h>
 #include <err.h>
 #include <stdlib.h>
 #include <stringlist.h>
+#include "un-namespace.h"
 
 #define _SL_CHUNKSIZE	20
 
@@ -48,15 +46,17 @@
 StringList *
 sl_init(void)
 {
-	StringList *sl = malloc(sizeof(StringList));
+	StringList *sl;
+
+	sl = malloc(sizeof(StringList));
 	if (sl == NULL)
-		err(1, "stringlist: %m");
+		_err(1, "stringlist: %m");
 
 	sl->sl_cur = 0;
 	sl->sl_max = _SL_CHUNKSIZE;
 	sl->sl_str = malloc(sl->sl_max * sizeof(char *));
 	if (sl->sl_str == NULL)
-		err(1, "stringlist: %m");
+		_err(1, "stringlist: %m");
 	return sl;
 }
 
@@ -64,16 +64,17 @@ sl_init(void)
 /*
  * sl_add(): Add an item to the string list
  */
-void
+int
 sl_add(StringList *sl, char *name)
 {
 	if (sl->sl_cur == sl->sl_max - 1) {
 		sl->sl_max += _SL_CHUNKSIZE;
 		sl->sl_str = reallocf(sl->sl_str, sl->sl_max * sizeof(char *));
 		if (sl->sl_str == NULL)
-			err(1, "stringlist: %m");
+			return (-1);
 	}
 	sl->sl_str[sl->sl_cur++] = name;
+	return (0);
 }
 
 

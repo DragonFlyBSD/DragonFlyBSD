@@ -268,7 +268,7 @@ if_clone_lookup(const char *name, int *unitp)
 	}
 
 	/* No match. */
-	return ((struct if_clone *)NULL);
+	return (NULL);
 
  found_name:
 	if (*cp == '\0') {

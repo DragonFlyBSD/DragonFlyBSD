@@ -364,10 +364,10 @@ gettoken(void)
 						base = shell;
 					else
 						base++;
-					execl(shell, base, (char *) NULL);
+					execl(shell, base, NULL);
 				}
 				else
-					execl(_PATH_BSHELL, "sh", (char *) NULL);
+					execl(_PATH_BSHELL, "sh", NULL);
 
 				exit(0);	/* oops */
 			}

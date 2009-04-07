@@ -137,7 +137,7 @@ inrange(struct monst *mtmp)
 		    case 0:
 			/* create a nasty monster from a deep level */
 			/* (for the moment, 'nasty' is not implemented) */
-			makemon((struct permonst *)0, u.ux, u.uy);
+			makemon(NULL, u.ux, u.uy);
 			break;
 		    case 1:
 			pline("\"Destroy the thief, my pets!\"");

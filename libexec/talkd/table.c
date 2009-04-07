@@ -55,8 +55,6 @@
 
 #define MAX_ID 16000	/* << 2^15 so I don't have sign troubles */
 
-#define NIL ((TABLE_ENTRY *)0)
-
 extern	int debug;
 struct	timeval tp;
 struct	timezone txp;
@@ -70,7 +68,7 @@ struct table_entry {
 	TABLE_ENTRY *last;
 };
 
-TABLE_ENTRY *table = NIL;
+TABLE_ENTRY *table = NULL;
 
 void delete (TABLE_ENTRY *);
 CTL_MSG *find_request();
@@ -93,7 +91,7 @@ find_match(request)
 	current_time = tp.tv_sec;
 	if (debug)
 		print_request("find_match", request);
-	for (ptr = table; ptr != NIL; ptr = ptr->next) {
+	for (ptr = table; ptr != NULL; ptr = ptr->next) {
 		if ((ptr->time - current_time) > MAX_LIFE) {
 			/* the entry is too old */
 			if (debug)
@@ -109,7 +107,7 @@ find_match(request)
 		     ptr->request.type == LEAVE_INVITE)
 			return (&ptr->request);
 	}
-	return ((CTL_MSG *)0);
+	return (NULL);
 }
 
 /*
@@ -131,7 +129,7 @@ find_request(request)
 	 */
 	if (debug)
 		print_request("find_request", request);
-	for (ptr = table; ptr != NIL; ptr = ptr->next) {
+	for (ptr = table; ptr != NULL; ptr = ptr->next) {
 		if ((ptr->time - current_time) > MAX_LIFE) {
 			/* the entry is too old */
 			if (debug)
@@ -151,7 +149,7 @@ find_request(request)
 			return (&ptr->request);
 		}
 	}
-	return ((CTL_MSG *)0);
+	return (NULL);
 }
 
 void
@@ -168,16 +166,16 @@ insert_table(request, response)
 	response->id_num = htonl(request->id_num);
 	/* insert a new entry into the top of the list */
 	ptr = (TABLE_ENTRY *)malloc(sizeof(TABLE_ENTRY));
-	if (ptr == NIL) {
+	if (ptr == NULL) {
 		syslog(LOG_ERR, "insert_table: Out of memory");
 		_exit(1);
 	}
 	ptr->time = current_time;
 	ptr->request = *request;
 	ptr->next = table;
-	if (ptr->next != NIL)
+	if (ptr->next != NULL)
 		ptr->next->last = ptr;
-	ptr->last = NIL;
+	ptr->last = NULL;
 	table = ptr;
 }
 
@@ -208,13 +206,13 @@ delete_invite(id_num)
 	ptr = table;
 	if (debug)
 		syslog(LOG_DEBUG, "delete_invite(%d)", id_num);
-	for (ptr = table; ptr != NIL; ptr = ptr->next) {
+	for (ptr = table; ptr != NULL; ptr = ptr->next) {
 		if (ptr->request.id_num == id_num)
 			break;
 		if (debug)
 			print_request("", &ptr->request);
 	}
-	if (ptr != NIL) {
+	if (ptr != NULL) {
 		delete(ptr);
 		return (SUCCESS);
 	}
@@ -233,9 +231,9 @@ delete(ptr)
 		print_request("delete", &ptr->request);
 	if (table == ptr)
 		table = ptr->next;
-	else if (ptr->last != NIL)
+	else if (ptr->last != NULL)
 		ptr->last->next = ptr->next;
-	if (ptr->next != NIL)
+	if (ptr->next != NULL)
 		ptr->next->last = ptr->last;
 	free((char *)ptr);
 }

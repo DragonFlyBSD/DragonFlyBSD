@@ -412,7 +412,7 @@ pppwrite(struct tty *tp, struct uio *uio, int flag)
     m0->m_len -= PPP_HDRLEN;
 
     /* call the upper layer to "transmit" it... */
-    error = pppoutput(&sc->sc_if, m0, &dst, (struct rtentry *)0);
+    error = pppoutput(&sc->sc_if, m0, &dst, NULL);
     crit_exit();
     return (error);
 }

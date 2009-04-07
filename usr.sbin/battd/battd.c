@@ -61,6 +61,9 @@
 #define ERR_OUT		1  /* Values for error writing. */
 #define SYSLOG_OUT	0
 #define DEFAULT_ALERT	10 /* Default alert is 10%. */
+#define EXEC_ALL	0
+#define EXEC_ONCE	1
+#define EXEC_DONE	2
 
 struct battd_conf {
 	int	alert_per;	/* Percentage to alert user on */
@@ -80,17 +83,17 @@ static int	check_time(int);
 static int	get_apm_info(struct apm_info *, int, const char *, int);
 static void	execute_cmd(const char *, int *);
 static void	write_emerg(const char *, int *);
-static void	usage(void); __dead2
+static void	usage(void) __dead2;
 
 static void
 usage(void)
 {
 #ifdef DEBUG
 	fprintf(stderr, "usage: battd [-dEhT] [-c seconds] [-e command] [-f device]\n"
-			"	      [-p percentage] [-s status] [-t minutes]\n");
+			"             [-p percent] [-s status] [-t minutes]\n");
 #else
 	fprintf(stderr, "usage: battd [-EhT] [-c seconds] [-e command] [-f device]\n"
-			"	      [-p percentage] [-s status] [-t minutes]\n");
+			"             [-p percent] [-s status] [-t minutes]\n");
 #endif
 	exit(EXIT_FAILURE);
 }
@@ -107,7 +110,7 @@ check_percent(int apm_per)
 static int
 check_time(int apm_time)
 {
-	if (apm_time == -1)
+	if (apm_time <= -1)
 		return(1);
 
 	return(0);
@@ -146,7 +149,7 @@ execute_cmd(const char *exec_cmd, int *exec_cont)
 	pid_t pid;
 	int status;
 		
-	if (exec_cmd != NULL) {
+	if (*exec_cont != EXEC_DONE) {
 		if ((pid = fork()) == -1) {
 			/* Here fork failed */
 #ifdef DEBUG
@@ -169,8 +172,8 @@ execute_cmd(const char *exec_cmd, int *exec_cont)
 #endif
 					syslog(LOG_ERR, "child exited with code %d", status);
 			}
-			if (*exec_cont)
-				exec_cmd = NULL;
+			if (*exec_cont == EXEC_ONCE)
+				*exec_cont = EXEC_DONE;
 		}
 	}
 }
@@ -190,23 +193,23 @@ write_emerg(const char *eme_msg, int *warn_cont)
 static int
 getnum(const char *str)
 {
-        long val;
-        char *ep;
+	long val;
+	char *ep;
 
 	errno = 0;
-        val = strtol(str, &ep, 10);
-        if (errno)
-                err(1, "strtol failed: %s", str);
+	val = strtol(str, &ep, 10);
+	if (errno)
+		err(1, "strtol failed: %s", str);
 
-        if (str == ep || *ep != '\0')
-                errx(1, "invalid value: %s", str);
+	if (str == ep || *ep != '\0')
+		errx(1, "invalid value: %s", str);
 
 	if (val > INT_MAX || val < INT_MIN) {
 		errno = ERANGE;
 		errc(1, errno, "getnum failed:");
 	}
 
-        return((int)val);
+	return((int)val);
 }
 
 int
@@ -232,10 +235,11 @@ main(int argc, char **argv)
 
 	check_sec = 30;
 
-	exec_cont = per_warn_cont = stat_warn_cont = 0;
+	exec_cont = EXEC_ALL;
+	per_warn_cont = stat_warn_cont = 0;
 	time_warn_cont = time_def_alert = def_warn_cont = 0;
 
-	opts->alert_per = 0;
+	opts->alert_per = DEFAULT_ALERT;
 	opts->alert_time = 0;
 	opts->alert_status = -1;
 	opts->exec_cmd = NULL;
@@ -247,7 +251,7 @@ main(int argc, char **argv)
 			/* Parse the check battery interval. */
 			check_sec = getnum(optarg);
 			if (check_sec <= 0)
-				errx(1, "the interval for checking battery"
+				errx(1, "the interval for checking battery "
 					"status must be greater than 0.");
 			break;
 #ifdef DEBUG
@@ -262,7 +266,7 @@ main(int argc, char **argv)
 			break;
 		case 'E':
 			/* Only execute once when any condition has been met. */
-			exec_cont = 1;
+			exec_cont = EXEC_ONCE;
 			break;
 		case 'f':
 			/* Don't use /dev/apm use optarg. */
@@ -276,11 +280,12 @@ main(int argc, char **argv)
 			/*
 			 * Parse percentage to alert on and enable
 			 * battd to monitor the battery percentage.
+			 * A value of 0 disables battery percentage monitoring.
 			 */
 			opts->alert_per = getnum(optarg);
-			if (opts->alert_per <= 0 || opts->alert_per > 100)
+			if (opts->alert_per < 0 || opts->alert_per > 99)
 				errx(1,	"Battery percentage to alert on must be "
-					"greater than 0 and less than 100.");
+					"between 0 and 99.");
 			break;
 		case 's':
 			/*
@@ -330,13 +335,13 @@ main(int argc, char **argv)
 	/* Start test */
 	get_apm_info(&ai, fp_device, opts->apm_dev, ERR_OUT);
 
-	if (opts->alert_per >= 0)
+	if (opts->alert_per > 0)
 		if (check_percent(ai.ai_batt_life))
 			errx(1, "invalid/unknown percentage(%d) returned from %s",
 				ai.ai_batt_life, opts->apm_dev);
 
 	if (opts->alert_time || time_def_alert)
-		if (check_time(ai.ai_batt_time))
+		if (check_time(ai.ai_batt_time) && ai.ai_batt_time != -1)
 			errx(1, "invalid/unknown time(%d) returned from %s",
 				ai.ai_batt_time, opts->apm_dev);
 
@@ -390,7 +395,7 @@ main(int argc, char **argv)
 			 * 1. Check battery percentage if enabled.
 			 * 2. Check battery time remaining if enabled.
 			 * 3. Check battery status if enabled.
-			 * 4. Deal with default alerts.
+			 * 4. Deal with time default alert.
 			 */ 
 
 			/* 1. Check battery percentage if enabled */
@@ -447,7 +452,7 @@ main(int argc, char **argv)
 					h /= 60;
 					snprintf(tmp_time, sizeof(tmp_time), "%d:%d:%d\n", h, m, s);
 					tmp = (ai.ai_batt_time == opts->alert_time);
-					snprintf(msg, sizeof(msg), "battery has %s %d(%s) minutes"
+					snprintf(msg, sizeof(msg), "battery has %s %d(%s) minutes "
 						"remaining\n", tmp ? "reached" : "fallen below",
 						ai.ai_batt_time / SECONDS, tmp_time);
 					execute_cmd(opts->exec_cmd, &exec_cont);
@@ -484,26 +489,29 @@ main(int argc, char **argv)
 				}
 			}
 
-			/* 4. Deal with default alerts. */ 
+			/* 4. Deal with time default alert. */
 			if (time_def_alert) {
 				if (check_time(ai.ai_batt_time)) {
-						if (ai.ai_batt_time <= DEFAULT_ALERT * SECONDS) {
-							snprintf(msg, sizeof(msg), "WARNING! battery only"
-								 "has roughly %d minutes remaining!\n",
-								ai.ai_batt_time / SECONDS);
-							write_emerg(msg, NULL);
-						}
+#ifdef DEBUG
+					if (f_debug) {
+						printf("Invalid time value (%d) received from %s.\n",
+							ai.ai_batt_time, opts->apm_dev);
+					} else {
+#endif
+						syslog(LOG_ERR, "Invalid time value received from %s.",
+							opts->apm_dev);
+#ifdef DEBUG
+					}
+#endif
+					continue;
 				}
-			}
 
-			if (ai.ai_batt_life <= DEFAULT_ALERT) {
-				tmp = (ai.ai_batt_life == DEFAULT_ALERT);
-				snprintf(msg, sizeof(msg), "WARNING! battery has %s %d%%\n",
-					tmp ? "reached" : "fallen below",
-					DEFAULT_ALERT);
-				if (!def_warn_cont)
-					execute_cmd(opts->exec_cmd, &exec_cont);
-				write_emerg(msg, &def_warn_cont);
+				if (ai.ai_batt_time <= DEFAULT_ALERT * SECONDS) {
+					snprintf(msg, sizeof(msg), "WARNING! battery has "
+						"only roughly %d minutes remaining!\n",
+						ai.ai_batt_time / SECONDS);
+					write_emerg(msg, &def_warn_cont);
+				}
 			}
 
 		}

@@ -50,7 +50,7 @@
 struct sem;
 typedef struct sem *sem_t;
 
-#define SEM_FAILED	((sem_t *)0)
+#define SEM_FAILED	(NULL)
 #define SEM_VALUE_MAX	UINT_MAX
 
 #ifndef _KERNEL

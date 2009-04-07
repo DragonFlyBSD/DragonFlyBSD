@@ -89,9 +89,9 @@ getnetname(char *name)
 
 	uid = geteuid();
 	if (uid == 0) {
-		return (host2netname(name, (char *) NULL, (char *) NULL));
+		return (host2netname(name, NULL, NULL));
 	} else {
-		return (user2netname(name, uid, (char *) NULL));
+		return (user2netname(name, uid, NULL));
 	}
 }
 

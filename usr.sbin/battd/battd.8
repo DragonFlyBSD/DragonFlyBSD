@@ -31,7 +31,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $DragonFly: src/usr.sbin/battd/battd.8,v 1.13 2008/02/22 04:30:34 swildner Exp $
-.Dd May 29, 2005
+.Dd April 6, 2009
 .Dt BATTD 8
 .Os
 .Sh NAME
@@ -43,7 +43,7 @@
 .Op Fl c Ar seconds
 .Op Fl e Ar command
 .Op Fl f Ar device
-.Op Fl p Ar percentage
+.Op Fl p Ar percent
 .Op Fl s Ar status
 .Op Fl t Ar minutes
 .Sh DESCRIPTION
@@ -51,13 +51,15 @@ The
 .Nm
 daemon monitors the status of the battery or batteries present in the system.
 The daemon will alert all users on the system and may execute a supplied
-command once a particular criterion has been met. The criteria are based
+command once a particular criterion has been met.
+The criteria are based
 on the percentage remaining, the time remaining and the status of the battery.
 .Pp
 The options are as follows:
 .Bl -tag -width indent
 .It Fl c Ar seconds
-Interval in seconds for checking the battery status. Default is
+Interval in seconds for checking the battery status.
+Default is
 .Ar 30
 seconds.
 .It Fl d
@@ -72,44 +74,58 @@ once condition has been met.
 .It Fl E
 Execute command only once after a condition has been met.
 .It Fl f Ar device
-Specifies a different device path to be used. Default is
+Specifies a different device path to be used.
+Default is
 .Pa /dev/apm .
 .It Fl h
 Print
 .Nm
 command line usage and exit.
 .It Fl p Ar percent
-Alert the user when the remaining battery life has reached approximately
+Alert users when the remaining battery life has reached approximately
 .Ar percent .
+Default is
+.Ar 10 .
+A value of
+.Ar 0
+turns this alert off.
 .It Fl s Ar status
-Alert the user when the remaining battery has reached a given status. The status specified can either be
-.Ar high
-,
+Alert users when the remaining battery has reached a given status.
+The status specified can either be
+.Ar high ,
 .Ar low
 or
 .Ar critical .
 .It Fl t Ar minutes
-Alert the user when the remaining battery time has reached approximately
+Alert users when the remaining battery time has reached approximately
 .Ar minutes .
 .It Fl T
-Use as default along with percentage default alert. This will alert you once
-the system has roughly 10 minutes remaining.
+Alert users when the system has approximately 10 minutes remaining battery time,
+but don't execute command
+.Pq Fl e
+on this alert.
 .El
-.Pp
-By default,
-.Nm
-will alert users once the battery or batteries have roughly 10% of power remaining.
 .Sh EXAMPLES
-.Bl -tag -width indent
-.It Li "battd -p 50 -s low"
-Alert users when the battery percentage has reached 50% and once again when the status
-reaches low.
-.It Li "battd -t 15"
-Alert users when the battery has 15 minutes worth of power remaining.
-.It Li "battd -p 30 -e program -c 10"
-Alert users when the battery percentage has reached 30% and execute the command 'program'.
-Increase the interval between checking the battery to 10 seconds.
-.El
+.Dl "battd -p 50 -s low"
+Alert users when the battery percentage has reached 50% and
+once again when the status reaches
+.Ar low .
+.Pp
+.Dl "battd -t 15 -c 10"
+Alert users when the battery has 15 minutes worth of power remaining
+and once again when battery percentage has reached 10%.
+Decrease the interval between checking the battery to 10 seconds.
+.Pp
+.Dl "battd -Tt4 -p0 -Ee \*q/sbin/shutdown -p +2 Battery_Low\*q"
+Alert users when the battery has 10 minutes worth power remaining and
+alert again when 4 minutes is remaining and then execute the given
+.Xr shutdown 8
+command once.
+(User will have to
+.Xr kill 1
+the
+.Xr shutdown 8
+process, if AC power is connected to system and shutdown isn't wanted.)
 .Sh SEE ALSO
 .Xr viapm 4 ,
 .Xr apm 8 ,

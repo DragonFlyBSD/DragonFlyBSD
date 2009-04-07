@@ -51,7 +51,7 @@ pl_main(void)
 		exit(1);
 	}
 	initialize();
-	Signal("Aye aye, Sir", (struct ship *)0);
+	Signal("Aye aye, Sir", NULL);
 	play();
 	return 0;			/* for lint,  play() never returns */
 }

@@ -313,7 +313,7 @@ div_packet(struct mbuf *m, int incoming, int port)
 	}
 	if (sa) {
 		if (ssb_appendaddr(&sa->so_rcv, (struct sockaddr *)&divsrc, m,
-				 (struct mbuf *)NULL) == 0)
+				 NULL) == 0)
 			m_freem(m);
 		else
 			sorwakeup(sa);

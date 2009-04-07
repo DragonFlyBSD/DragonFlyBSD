@@ -173,7 +173,7 @@ link_terminated(int unit)
     if (logged_in)
 	plogout();
     phase = PHASE_DEAD;
-    etime = time((time_t *) NULL);
+    etime = time(NULL);
     minutes = (etime-stime)/60;
     syslog(LOG_NOTICE, "Connection terminated, connected for %d minutes\n",
 	minutes > 1 ? minutes : 1);
@@ -634,7 +634,7 @@ check_passwd(int unit, char *auser, int userlen, char *apasswd, int passwdlen,
     len = MIN(userlen, sizeof(user) - 1);
     BCOPY(auser, user, len);
     user[len] = '\0';
-    *msg = (char *) 0;
+    *msg = NULL;
 
     /*
      * Open the file of pap secrets and scan for a suitable secret
@@ -675,7 +675,7 @@ check_passwd(int unit, char *auser, int userlen, char *apasswd, int passwdlen,
     }
 
     if (ret == UPAP_AUTHNAK) {
-        if (*msg == (char *) 0)
+        if (*msg == NULL)
 	    *msg = "Login incorrect";
 	*msglen = strlen(*msg);
 	/*
@@ -695,7 +695,7 @@ check_passwd(int unit, char *auser, int userlen, char *apasswd, int passwdlen,
 
     } else {
 	attempts = 0;			/* Reset count */
-	if (*msg == (char *) 0)
+	if (*msg == NULL)
 	    *msg = "Login ok";
 	*msglen = strlen(*msg);
 	set_allowed_addrs(unit, addrs);
@@ -926,7 +926,7 @@ plogin(char *user, char *passwd, char **msg, int *msglen)
 	return (UPAP_AUTHNAK);
 
     if (pw->pw_expire) {
-	gettimeofday(&tp, (struct timezone *)NULL);
+	gettimeofday(&tp, NULL);
 	if (tp.tv_sec >= pw->pw_expire) {
 	    syslog(LOG_INFO, "pap user %s account expired", user);
 	    return (UPAP_AUTHNAK);
@@ -1303,7 +1303,7 @@ ip_addr_check(u_int32_t addr, struct wordlist *addrs)
 	if (ptr_mask != NULL) {
 	    int bit_count;
 
-	    bit_count = (int) strtol (ptr_mask+1, (char **) 0, 10);
+	    bit_count = (int) strtol (ptr_mask+1, NULL, 10);
 	    if (bit_count <= 0 || bit_count > 32) {
 		syslog (LOG_WARNING,
 			"invalid address length %s in auth. address list",

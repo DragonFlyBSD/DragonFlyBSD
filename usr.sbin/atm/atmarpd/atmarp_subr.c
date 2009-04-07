@@ -213,10 +213,10 @@ int
 atmarp_if_ready(Atmarp_intf *aip)
 {
 	int			i, len, mtu, rc, sel;
-	Atmarp			*aap = (Atmarp *)0;
+	Atmarp			*aap = NULL;
 	struct atminfreq	air;
-	struct air_netif_rsp	*netif_rsp = (struct air_netif_rsp *)0;
-	struct air_int_rsp	*intf_rsp = (struct air_int_rsp *)0;
+	struct air_netif_rsp	*netif_rsp = NULL;
+	struct air_int_rsp	*intf_rsp = NULL;
 	struct sockaddr_in	*ip_addr;
 	struct sockaddr_in	subnet_mask;
 	Atm_addr_nsap		*anp;
@@ -438,10 +438,10 @@ atmarp_copy_cache_entry(struct air_arp_rsp *cp)
 	 * Sanity checks
 	 */
 	if (!cp)
-		return((Atmarp *)0);
+		return(NULL);
 	aip = atmarp_find_intf_name(cp->aap_intf);
 	if (!aip)
-		return((Atmarp *)0);
+		return(NULL);
 
 	/*
 	 * Get a new cache entry
@@ -449,7 +449,7 @@ atmarp_copy_cache_entry(struct air_arp_rsp *cp)
 	aap = (Atmarp *)UM_ALLOC(sizeof(Atmarp));
 	if (!aap) {
 		errno = ENOMEM;
-		return((Atmarp *)0);
+		return(NULL);
 	}
 	UM_ZERO(aap, sizeof(Atmarp));
 	aap->aa_intf = aip;
@@ -912,7 +912,7 @@ atmarp_sigint(int sig)
 	 * Open the output file
 	 */
 	df = fopen(fname, "w");
-	if (df == (FILE *)0)
+	if (df == NULL)
 		return;
 
 	/*

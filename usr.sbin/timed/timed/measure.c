@@ -170,9 +170,8 @@ measure(u_long maxmsec,			/* wait this many msec at most */
 				tout.tv_sec = 0;
 
 			FD_SET(sock_raw, &ready);
-			count = select(sock_raw+1, &ready, (fd_set *)0,
-				       (fd_set *)0, &tout);
-			gettimeofday(&tcur, (struct timezone *)0);
+			count = select(sock_raw+1, &ready, NULL, NULL, &tout);
+			gettimeofday(&tcur, NULL);
 			if (count <= 0)
 				break;
 

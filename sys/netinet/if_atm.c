@@ -174,8 +174,8 @@ failed:
 			rt->rt_flags &= ~RTF_LLINFO;
 		}
 #endif
-		rtrequest(RTM_DELETE, rt_key(rt), (struct sockaddr *) NULL,
-		    rt_mask(rt), 0, (struct rtentry **) NULL);
+		rtrequest(RTM_DELETE, rt_key(rt), NULL,
+		    rt_mask(rt), 0, NULL);
 		break;
 
 	case RTM_DELETE:
@@ -199,7 +199,7 @@ failed:
 		api.rxhand = NULL;
 		lwkt_serialize_enter(rt->rt_ifp->if_serializer);
 		rt->rt_ifp->if_ioctl(rt->rt_ifp, SIOCATMDIS, (caddr_t)&api,
-				     (struct ucred *)NULL);
+				     NULL);
 		lwkt_serialize_exit(rt->rt_ifp->if_serializer);
 		break;
 	}

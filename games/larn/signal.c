@@ -55,7 +55,7 @@ static void
 tstop(void) /* control Y	*/
 	{
 	if (nosignal)   return;  /* nothing if inhibited */
-	lcreat((char*)0);  clearvt100();	lflush();	  signal(SIGTSTP,SIG_DFL);
+	lcreat(NULL);  clearvt100();	lflush();	  signal(SIGTSTP,SIG_DFL);
 #ifdef SIGVTALRM
 	/* looks like BSD4.2 or higher - must clr mask for signal to take effect*/
 	sigsetmask(sigblock(0)& ~BIT(SIGTSTP));

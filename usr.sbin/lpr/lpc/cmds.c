@@ -370,13 +370,13 @@ upstat(struct printer *pp, const char *msg, int notifyuser)
 		return;
 	}
 	ftruncate(fd, 0);
-	if (msg == (char *)NULL)
+	if (msg == NULL)
 		write(fd, "\n", 1);
 	else
 		write(fd, msg, strlen(msg));
 	close(fd);
 	if (notifyuser) {
-		if ((msg == (char *)NULL) || (strcmp(msg, "\n") == 0))
+		if ((msg == NULL) || (strcmp(msg, "\n") == 0))
 			printf("\tstatus message is now set to nothing.\n");
 		else
 			printf("\tstatus message is now: %s", msg);

@@ -284,7 +284,7 @@ nsipoutput_serialized(struct ifnet_en *ifn, struct mbuf *m,
 	/*
 	 * Output final datagram.
 	 */
-	error =  (ip_output(m, (struct mbuf *)0, ro, SO_BROADCAST, NULL));
+	error =  (ip_output(m, NULL, ro, SO_BROADCAST, NULL));
 	if (error) {
 		ifn->ifen_ifnet.if_oerrors++;
 		ifn->ifen_ifnet.if_ierrors = error;
@@ -383,10 +383,10 @@ nsip_route(struct mbuf *m)
 	 */
 	ifr.ifr_name[4] = '0' + nsipif_units - 1;
 	ifr.ifr_dstaddr = * (struct sockaddr *) ns_dst;
-	ns_control((struct socket *)0, (int)SIOCSIFDSTADDR, (caddr_t)&ifr,
+	ns_control(NULL, (int)SIOCSIFDSTADDR, (caddr_t)&ifr,
 			(struct ifnet *)ifn, NULL);
 	satons_addr(ifr.ifr_addr).x_host = ns_thishost;
-	return (ns_control((struct socket *)0, (int)SIOCSIFADDR, (caddr_t)&ifr,
+	return (ns_control(NULL, (int)SIOCSIFADDR, (caddr_t)&ifr,
 			(struct ifnet *)ifn, NULL));
 }
 

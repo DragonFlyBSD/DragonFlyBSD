@@ -509,7 +509,7 @@ literal:
 				u_quad_t res;
 
 				*p = 0;
-				res = (*ccfn)(buf, (char **)NULL, base);
+				res = (*ccfn)(buf, NULL, base);
 				if (flags & POINTER)
 					*__va_arg(ap, void **) =
 						(void *)(uintptr_t)res;

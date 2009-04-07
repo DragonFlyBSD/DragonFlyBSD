@@ -472,7 +472,7 @@ in_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
 	if (inp->inp_laddr.s_addr == INADDR_ANY) {
 		struct route *ro;
 
-		ia = (struct in_ifaddr *)NULL;
+		ia = NULL;
 		/*
 		 * If route is known or can be allocated now,
 		 * our src addr is taken from the i/f, else punt.
@@ -487,11 +487,11 @@ in_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
 				      sin->sin_addr.s_addr ||
 		     inp->inp_socket->so_options & SO_DONTROUTE)) {
 			RTFREE(ro->ro_rt);
-			ro->ro_rt = (struct rtentry *)NULL;
+			ro->ro_rt = NULL;
 		}
 		if (!(inp->inp_socket->so_options & SO_DONTROUTE) && /*XXX*/
-		    (ro->ro_rt == (struct rtentry *)NULL ||
-		    ro->ro_rt->rt_ifp == (struct ifnet *)NULL)) {
+		    (ro->ro_rt == NULL ||
+		    ro->ro_rt->rt_ifp == NULL)) {
 			/* No route yet, so try to acquire one */
 			bzero(&ro->ro_dst, sizeof(struct sockaddr_in));
 			ro->ro_dst.sa_family = AF_INET;
@@ -621,7 +621,7 @@ in_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	}
 	if (inp->inp_laddr.s_addr == INADDR_ANY) {
 		if (inp->inp_lport == 0) {
-			error = in_pcbbind(inp, (struct sockaddr *)NULL, td);
+			error = in_pcbbind(inp, NULL, td);
 			if (error)
 				return (error);
 		}

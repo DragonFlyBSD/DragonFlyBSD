@@ -416,7 +416,7 @@ getinoinfo(ufs1_ino_t inumber)
 		return (inp);
 	}
 	errx(EEXIT, "cannot find inode %d", inumber);
-	return ((struct inoinfo *)0);
+	return (NULL);
 }
 
 /*

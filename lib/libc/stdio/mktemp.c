@@ -73,13 +73,13 @@ mkstemp(char *path)
 char *
 mkdtemp(char *path)
 {
-	return (_gettemp(path, (int *)NULL, 1, 0) ? path : (char *)NULL);
+	return (_gettemp(path, NULL, 1, 0) ? path : NULL);
 }
 
 char *
 _mktemp(char *path)
 {
-	return (_gettemp(path, (int *)NULL, 0, 0) ? path : (char *)NULL);
+	return (_gettemp(path, NULL, 0, 0) ? path : NULL);
 }
 
 __warn_references(mktemp,

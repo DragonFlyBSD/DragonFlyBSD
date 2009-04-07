@@ -724,7 +724,7 @@ again:
 		/* Land: */
 		if (pp->p_face != BOOT && pp->p_face != BOOT_PAIR) {
 			/* Land a player - they stustain a fall: */
-			checkdam(pp, (PLAYER *) NULL, (IDENT *) NULL,
+			checkdam(pp, NULL, NULL,
 				rand_num(pp->p_damage / conf_fall_frac), FALL);
 			pp->p_face = rand_dir();
 			showstat(pp);
@@ -826,7 +826,7 @@ chkshot(BULLET *bp, BULLET *next)
 					y, x, LEFTS,
 					(Maze[y][x] == GMINE) ?
 					GRENREQ : BULREQ,
-					(PLAYER *) NULL, TRUE, SPACE);
+					NULL, TRUE, SPACE);
 				Maze[y][x] = SPACE;
 				break;
 			}

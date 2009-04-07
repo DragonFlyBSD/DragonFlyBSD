@@ -26,25 +26,20 @@
  *	citrus Id: wcscpy.c,v 1.2 2000/12/21 04:51:09 itojun Exp
  *
  * $NetBSD: wcscpy.c,v 1.1 2000/12/23 23:14:36 itojun Exp $
- * $FreeBSD: src/lib/libc/string/wcscpy.c,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
+ * $FreeBSD: src/lib/libc/string/wcscpy.c,v 1.8 2002/09/26 09:23:07 tjr Exp $
  * $DragonFly: src/lib/libc/string/wcscpy.c,v 1.3 2005/09/18 16:32:34 asmodai Exp $
  */
 
-#include <assert.h>
 #include <wchar.h>
 
 wchar_t *
-wcscpy(wchar_t *s1, const wchar_t *s2)
+wcscpy(wchar_t * __restrict s1, const wchar_t * __restrict s2)
 {
-	wchar_t *p;
-	const wchar_t *q;
+	wchar_t *cp;
 
-	*s1 = '\0';
-	p = s1;
-	q = s2;
-	while (*q)
-		*p++ = *q++;
-	*p = '\0';
+	cp = s1;
+	while ((*cp++ = *s2++) != L'\0')
+		;
 
-	return s1;
+	return (s1);
 }

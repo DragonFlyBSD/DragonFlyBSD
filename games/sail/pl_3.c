@@ -95,7 +95,7 @@ acceptcombat(void)
 			closest, r ? "right" : "left");
 		if (load > L_CHAIN && target < 6) {
 			switch (sgetch("Aim for hull or rigging? ",
-				(struct ship *)0, 1)) {
+				NULL, 1)) {
 			case 'r':
 				shootat = RIGGING;
 				break;
@@ -105,13 +105,13 @@ acceptcombat(void)
 			default:
 				shootat = -1;
 				Signal("'Avast there! Hold your fire.'",
-					(struct ship *)0);
+					NULL);
 			}
 		} else {
-			if (sgetch("Fire? ", (struct ship *)0, 1) == 'n') {
+			if (sgetch("Fire? ", NULL, 1) == 'n') {
 				shootat = -1;
 				Signal("Belay that! Hold your fire.",
-					(struct ship *)0);
+					NULL);
 			} else
 				shootat = RIGGING;
 		}
@@ -193,9 +193,9 @@ acceptcombat(void)
 			table(shootat, load, hit, closest, ms, roll);
 		}
 		Signal("Damage inflicted on the %s:",
-			(struct ship *)0, closest->shipname);
+			NULL, closest->shipname);
 		Signal("\t%d HULL, %d GUNS, %d CREW, %d RIGGING",
-			(struct ship *)0, hhits, ghits, chits, rhits);
+			NULL, hhits, ghits, chits, rhits);
 		if (!r) {
 			mf->loadL = L_EMPTY;
 			mf->readyL = R_EMPTY;
@@ -206,7 +206,7 @@ acceptcombat(void)
 		continue;
 	cant:
 		Signal("Unable to fire %s broadside",
-			(struct ship *)0, r ? "right" : "left");
+			NULL, r ? "right" : "left");
 	}
 	blockalarm();
 	draw_stat();
@@ -231,10 +231,10 @@ grapungrap(void)
 			    || ms->nationality == capship(sp)->nationality) {
 				Write(W_GRAP, ms, sp->file->index, 0, 0, 0);
 				Write(W_GRAP, sp, player, 0, 0, 0);
-				Signal("Attempt succeeds!", (struct ship *)0);
+				Signal("Attempt succeeds!", NULL);
 				makesignal(ms, "grappled with %s (%c%c)", sp);
 			} else
-				Signal("Attempt fails.", (struct ship *)0);
+				Signal("Attempt fails.", NULL);
 			break;
 		case 'u':
 			for (i = grappled2(ms, sp); --i >= 0;) {
@@ -243,13 +243,13 @@ grapungrap(void)
 				    || die() < 3) {
 					cleangrapple(ms, sp, 0);
 					Signal("Attempt succeeds!",
-						(struct ship *)0);
+						NULL);
 					makesignal(ms,
 						"ungrappling with %s (%c%c)",
 						sp);
 				} else
 					Signal("Attempt fails.",
-						(struct ship *)0);
+						NULL);
 			}
 			break;
 		}
@@ -270,10 +270,10 @@ unfoulplayer(void)
 		for (i = fouled2(ms, to); --i >= 0;) {
 			if (die() <= 2) {
 				cleanfoul(ms, to, 0);
-				Signal("Attempt succeeds!", (struct ship *)0);
+				Signal("Attempt succeeds!", NULL);
 				makesignal(ms, "Unfouling %s (%c%c)", to);
 			} else
-				Signal("Attempt fails.", (struct ship *)0);
+				Signal("Attempt fails.", NULL);
 		}
 	}
 }

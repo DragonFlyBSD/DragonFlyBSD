@@ -316,7 +316,7 @@ page_file(const char *fnam, bool silent)
 		if(dup(fd)) {
 			if(!silent) printf("Cannot open %s as stdin.\n", fnam);
 		} else {
-			execl(catmore, "page", (char *) 0);
+			execl(catmore, "page", NULL);
 			if(!silent) printf("Cannot exec %s.\n", catmore);
 		}
 		exit(1);
@@ -327,7 +327,7 @@ page_file(const char *fnam, bool silent)
       {
 	FILE *f;			/* free after Robert Viduya */
 
-	if ((f = fopen (fnam, "r")) == (FILE *) 0) {
+	if ((f = fopen (fnam, "r")) == NULL) {
 		if(!silent) {
 			home(); perror (fnam); flags.toplin = 1;
 			pline ("Cannot open %s.", fnam);
@@ -349,9 +349,9 @@ dosh(void)
 char *str;
 	if(child(0)) {
 		if((str = getenv("SHELL")))
-			execl(str, str, (char *) 0);
+			execl(str, str, NULL);
 		else
-			execl("/bin/sh", "sh", (char *) 0);
+			execl("/bin/sh", "sh", NULL);
 		pline("sh: cannot execute.");
 		exit(1);
 	}
@@ -386,7 +386,7 @@ child(bool wt)
 
 	f = fork();
 	if(f == 0){		/* child */
-		settty((char *) 0);		/* also calls end_screen() */
+		settty(NULL);		/* also calls end_screen() */
 		/* revoke */
 		setgid(getgid());
 #ifdef CHDIR

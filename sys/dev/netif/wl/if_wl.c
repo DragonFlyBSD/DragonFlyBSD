@@ -1097,7 +1097,7 @@ wlread(struct wl_softc *sc, u_short fd_p)
 	}
 	return 0;
     }
-    m->m_next = (struct mbuf *) 0;
+    m->m_next = NULL;
     m->m_pkthdr.rcvif = ifp;
     m->m_pkthdr.len = 0; /* don't know this yet */
     m->m_len = MHLEN;
@@ -1139,7 +1139,7 @@ wlread(struct wl_softc *sc, u_short fd_p)
 	if (!(bytes_in_mbuf -= bytes)) {
 	    MGET(tm->m_next, MB_DONTWAIT, MT_DATA);
 	    tm = tm->m_next;
-	    if (tm == (struct mbuf *)0) {
+	    if (tm == NULL) {
 		m_freem(m);
 		if_printf(ifp, "read(): No mbuf nth\n");
 		if (wlhwrst(sc) != TRUE) {
@@ -1843,7 +1843,7 @@ wlxmt(struct wl_softc *sc, struct mbuf *m)
 	    outw(PIOR0(base), tbd_p);  /* address of act_count */
 	    outw(PIOP0(base), inw(PIOP0(base)) + count);
 	    xmtdata_p += len;
-	    if ((tm_p = tm_p->m_next) == (struct mbuf *)0)
+	    if ((tm_p = tm_p->m_next) == NULL)
 		break;
 	    if (count & 1) {
 		/* go to the next descriptor */
@@ -1861,7 +1861,7 @@ wlxmt(struct wl_softc *sc, struct mbuf *m)
 		    continue;
 		}
 		/* next mbuf short -> coallesce as needed */
-		if ( (tm_p->m_next == (struct mbuf *) 0) ||
+		if ( (tm_p->m_next == NULL) ||
 #define HDW_THRESHOLD 55
 		     tm_p->m_len > HDW_THRESHOLD)
 		    /* ok */;
@@ -1870,7 +1870,7 @@ wlxmt(struct wl_softc *sc, struct mbuf *m)
 		    continue;
 		}
 	    }
-	} else if ((tm_p = tm_p->m_next) == (struct mbuf *)0)
+	} else if ((tm_p = tm_p->m_next) == NULL)
 	    break;
 	count = tm_p->m_len;
 	mb_p = mtod(tm_p, u_char *);
@@ -2327,8 +2327,8 @@ wlhdwsleaze(u_short *countp, u_char **mb_pp, struct mbuf **tm_pp)
 	count += tm_p->m_len;
 	if (tm_p->m_len & 1)
 	    break;
-    } while ((tm_p = tm_p->m_next) != (struct mbuf *)0);
-    if ( (tm_p == (struct mbuf *)0) ||
+    } while ((tm_p = tm_p->m_next) != NULL);
+    if ( (tm_p == NULL) ||
 	 count > HDW_THRESHOLD) {
 	*countp = (*tm_pp)->m_len;
 	*mb_pp = mtod((*tm_pp), u_char *);
@@ -2346,7 +2346,7 @@ wlhdwsleaze(u_short *countp, u_char **mb_pp, struct mbuf **tm_pp)
 	if (count > HDW_THRESHOLD)
 			break;
 	cp += len;
-	if (tm_p->m_next == (struct mbuf *)0)
+	if (tm_p->m_next == NULL)
 	    break;
 	tm_p = tm_p->m_next;
     }
@@ -2368,7 +2368,7 @@ wlsftwsleaze(u_short *countp, u_char **mb_pp, struct mbuf **tm_pp)
 	bcopy(mtod(tm_p, u_char *), cp, len = tm_p->m_len);
 	count += len;
 	cp += len;
-	if (tm_p->m_next == (struct mbuf *)0)
+	if (tm_p->m_next == NULL)
 	    break;
 	tm_p = tm_p->m_next;
     }

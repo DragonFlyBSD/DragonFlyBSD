@@ -407,7 +407,7 @@ tcp6_usr_listen(struct socket *so, struct thread *td)
 			inp->inp_vflag |= INP_IPV4;
 		else
 			inp->inp_vflag &= ~INP_IPV4;
-		error = in6_pcbbind(inp, (struct sockaddr *)0, td);
+		error = in6_pcbbind(inp, NULL, td);
 	}
 	if (error == 0)
 		tp->t_state = TCPS_LISTEN;
@@ -1024,7 +1024,7 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 #endif
 
 	if (inp->inp_lport == 0) {
-		error = in_pcbbind(inp, (struct sockaddr *)NULL, td);
+		error = in_pcbbind(inp, NULL, td);
 		if (error)
 			return (error);
 	}
@@ -1084,7 +1084,7 @@ tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	int error;
 
 	if (inp->inp_lport == 0) {
-		error = in6_pcbbind(inp, (struct sockaddr *)0, td);
+		error = in6_pcbbind(inp, NULL, td);
 		if (error)
 			return error;
 	}

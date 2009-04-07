@@ -80,7 +80,7 @@ atmarp_scsp_cache(Atmarp_intf *aip, Scsp_if_msg *msg)
 {
 	int		i, len, rc = 0;
 	Atmarp		*aap;
-	Scsp_if_msg	*smp = (Scsp_if_msg *)0;
+	Scsp_if_msg	*smp = NULL;
 	Scsp_atmarp_msg	*sap;
 
 	/*
@@ -160,7 +160,7 @@ atmarp_scsp_solicit(Atmarp_intf *aip, Scsp_if_msg *smp)
 {
 	int		i, rc = 0;
 	Atmarp		*aap;
-	Scsp_if_msg	*rsp = (Scsp_if_msg *)0;
+	Scsp_if_msg	*rsp = NULL;
 
 	/*
 	 * Search the interface's ATMARP cache for an entry with
@@ -245,7 +245,7 @@ atmarp_scsp_update(Atmarp *aap, int state)
 {
 	int		rc = 0;
 	Atmarp_intf	*aip = aap->aa_intf;
-	Scsp_if_msg	*smp = (Scsp_if_msg *)0;
+	Scsp_if_msg	*smp = NULL;
 
 	/*
 	 * Make sure the connection to SCSP is active
@@ -441,7 +441,7 @@ int
 atmarp_scsp_read(Atmarp_intf *aip)
 {
 	int		len, rc = 0;
-	char		*buff = (char *)0;
+	char		*buff = NULL;
 	Scsp_if_msg	*smp;
 	Scsp_if_msg_hdr	msg_hdr;
 
@@ -763,7 +763,7 @@ atmarp_scsp_disconnect(Atmarp_intf *aip)
 		for (aap = aip->ai_arptbl[i]; aap; aap = aap->aa_next) {
 			UM_FREE(aap);
 		}
-		aip->ai_arptbl[i] = (Atmarp *)0;
+		aip->ai_arptbl[i] = NULL;
 	}
 
 	return(0);

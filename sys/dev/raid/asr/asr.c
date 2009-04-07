@@ -853,7 +853,7 @@ ASR_queue_c (
         union asr_ccb       * ccb;
         OUT int               status;
 
-        if ((ccb = asr_alloc_ccb (sc)) == (union asr_ccb *)NULL) {
+        if ((ccb = asr_alloc_ccb (sc)) == NULL) {
                 return (CAM_REQUEUE_REQ);
         }
 
@@ -939,7 +939,7 @@ ASR_failActiveCommands (
          *      xpt_async (AC_BUS_RESET, sc->ha_path[bus], NULL);
          *  }
          */
-        while ((ccb = LIST_FIRST(&(sc->ha_ccb))) != (struct ccb_hdr *)NULL) {
+        while ((ccb = LIST_FIRST(&(sc->ha_ccb))) != NULL) {
                 ASR_ccbRemove (sc, (union asr_ccb *)ccb);
 
                 ccb->status &= ~CAM_STATUS_MASK;
@@ -992,8 +992,8 @@ STATIC INLINE int
 ASR_getBlinkLedCode (
         IN Asr_softc_t * sc)
 {
-        if ((sc != (Asr_softc_t *)NULL)
-         && (sc->ha_blinkLED != (u_int8_t *)NULL)
+        if ((sc != NULL)
+         && (sc->ha_blinkLED != NULL)
          && (sc->ha_blinkLED[1] == 0xBC)) {
                 return (sc->ha_blinkLED[0]);
         }
@@ -1029,13 +1029,13 @@ ASR_getTidAddress(
          *      sc must be valid before it gets here, so that check could be
          * dropped if speed a critical issue.
          */
-        if ((sc == (Asr_softc_t *)NULL)
+        if ((sc == NULL)
          || (bus > MAX_CHANNEL)
          || (target > sc->ha_MaxId)
          || (lun > sc->ha_MaxLun)) {
                 debug_asr_printf("(%lx,%d,%d,%d) target out of range\n",
                   (u_long)sc, bus, target, lun);
-                return ((tid_t *)NULL);
+                return (NULL);
         }
         /*
          *      See if there is an associated bus list.
@@ -1046,7 +1046,7 @@ ASR_getTidAddress(
          */
 #       define BUS_CHUNK 8
         new_size = ((target + BUS_CHUNK - 1) & ~(BUS_CHUNK - 1));
-        if ((bus_ptr = sc->ha_targets[bus]) == (target2lun_t *)NULL) {
+        if ((bus_ptr = sc->ha_targets[bus]) == NULL) {
                 /*
                  *      Allocate a new structure?
                  *              Since one element in structure, the +1
@@ -1056,9 +1056,9 @@ ASR_getTidAddress(
                  || ((sc->ha_targets[bus] = bus_ptr = (target2lun_t *)kmalloc (
                     sizeof(*bus_ptr) + (sizeof(bus_ptr->LUN) * new_size),
                     M_TEMP, M_WAITOK))
-                   == (target2lun_t *)NULL)) {
+                   == NULL)) {
                         debug_asr_printf("failed to allocate bus list\n");
-                        return ((tid_t *)NULL);
+                        return (NULL);
                 }
                 bzero (bus_ptr, sizeof(*bus_ptr)
                   + (sizeof(bus_ptr->LUN) * new_size));
@@ -1075,9 +1075,9 @@ ASR_getTidAddress(
                  || ((new_bus_ptr = (target2lun_t *)kmalloc (
                     sizeof(*bus_ptr) + (sizeof(bus_ptr->LUN) * new_size),
                     M_TEMP, M_WAITOK))
-                   == (target2lun_t *)NULL)) {
+                   == NULL)) {
                         debug_asr_printf("failed to reallocate bus list\n");
-                        return ((tid_t *)NULL);
+                        return (NULL);
                 }
                 /*
                  *      Zero and copy the whole thing, safer, simpler coding
@@ -1103,7 +1103,7 @@ ASR_getTidAddress(
         if ((new_size = lun) != 0) {
                 new_size = ((lun + TARGET_CHUNK - 1) & ~(TARGET_CHUNK - 1));
         }
-        if ((target_ptr = bus_ptr->LUN[target]) == (lun2tid_t *)NULL) {
+        if ((target_ptr = bus_ptr->LUN[target]) == NULL) {
                 /*
                  *      Allocate a new structure?
                  *              Since one element in structure, the +1
@@ -1113,9 +1113,9 @@ ASR_getTidAddress(
                  || ((bus_ptr->LUN[target] = target_ptr = (lun2tid_t *)kmalloc (
                     sizeof(*target_ptr) + (sizeof(target_ptr->TID) * new_size),
                     M_TEMP, M_WAITOK))
-                   == (lun2tid_t *)NULL)) {
+                   == NULL)) {
                         debug_asr_printf("failed to allocate target list\n");
-                        return ((tid_t *)NULL);
+                        return (NULL);
                 }
                 bzero (target_ptr, sizeof(*target_ptr)
                   + (sizeof(target_ptr->TID) * new_size));
@@ -1132,9 +1132,9 @@ ASR_getTidAddress(
                  || ((new_target_ptr = (lun2tid_t *)kmalloc (
                     sizeof(*target_ptr) + (sizeof(target_ptr->TID) * new_size),
                     M_TEMP, M_WAITOK))
-                   == (lun2tid_t *)NULL)) {
+                   == NULL)) {
                         debug_asr_printf("failed to reallocate target list\n");
-                        return ((tid_t *)NULL);
+                        return (NULL);
                 }
                 /*
                  *      Zero and copy the whole thing, safer, simpler coding
@@ -1175,7 +1175,7 @@ ASR_getTid (
 
 	crit_enter();
         if (((tid_ptr = ASR_getTidAddress (sc, bus, target, lun, FALSE))
-          == (tid_t *)NULL)
+          == NULL)
         /* (tid_t)0 or (tid_t)-1 indicate no TID */
          || (*tid_ptr == (tid_t)0)) {
 		crit_exit();
@@ -1209,7 +1209,7 @@ ASR_setTid (
                 }
 		crit_enter();
                 if ((tid_ptr = ASR_getTidAddress (sc, bus, target, lun, TRUE))
-                 == (tid_t *)NULL) {
+                 == NULL) {
 			crit_exit();
                         return ((tid_t)-1);
                 }
@@ -2262,8 +2262,8 @@ ASR_sync (
          * as the OS normally would flush all outstanding commands before
          * issuing a shutdown or an adapter reset).
          */
-        if ((sc != (Asr_softc_t *)NULL)
-         && (LIST_FIRST(&(sc->ha_ccb)) != (struct ccb_hdr *)NULL)
+        if ((sc != NULL)
+         && (LIST_FIRST(&(sc->ha_ccb)) != NULL)
          && ((TID = ASR_getTid (sc, bus, target, lun)) != (tid_t)-1)
          && (TID != (tid_t)0)) {
                 defAlignLong(PRIVATE_SCSI_SCB_EXECUTE_MESSAGE,Message);
@@ -2400,7 +2400,7 @@ asr_pci_map_mem (
         p &= ~15;
         sc->ha_mem_res = bus_alloc_resource(tag, SYS_RES_MEMORY, &rid,
           p, p + l, l, RF_ACTIVE);
-        if (sc->ha_mem_res == (struct resource *)NULL) {
+        if (sc->ha_mem_res == NULL) {
                 return (0);
         }
         sc->ha_Base = (void *)rman_get_start(sc->ha_mem_res);
@@ -2423,7 +2423,7 @@ asr_pci_map_mem (
                 p &= ~15;
                 sc->ha_mes_res = bus_alloc_resource(tag, SYS_RES_MEMORY, &rid,
                   p, p + l, l, RF_ACTIVE);
-                if (sc->ha_mes_res == (struct resource *)NULL) {
+                if (sc->ha_mes_res == NULL) {
                         return (0);
                 }
                 if ((void *)rman_get_start(sc->ha_mes_res) == NULL) {
@@ -2450,7 +2450,7 @@ asr_pci_map_int (
 
         sc->ha_irq_res = bus_alloc_resource(tag, SYS_RES_IRQ, &rid,
           0, ~0, 1, RF_ACTIVE | RF_SHAREABLE);
-        if (sc->ha_irq_res == (struct resource *)NULL) {
+        if (sc->ha_irq_res == NULL) {
                 return (0);
         }
 	error = bus_setup_intr(tag, sc->ha_irq_res, 0,
@@ -2474,7 +2474,7 @@ asr_attach (ATTACH_ARGS)
         ATTACH_SET();
 
         sc = kmalloc(sizeof(*sc), M_DEVBUF, M_INTWAIT | M_ZERO);
-        if (Asr_softc == (Asr_softc_t *)NULL) {
+        if (Asr_softc == NULL) {
                 /*
                  *      Fixup the OS revision as saved in the dptsig for the
                  *      engine (dptioctl.h) to pick up.
@@ -2727,7 +2727,7 @@ asr_attach (ATTACH_ARGS)
                 int             bus;
                 union asr_ccb * ccb;
 
-                if ((ccb = asr_alloc_ccb (sc)) == (union asr_ccb *)NULL) {
+                if ((ccb = asr_alloc_ccb (sc)) == NULL) {
                         kprintf ("asr%d: CAM could not be notified of asynchronous callback parameters\n", unit);
                         ATTACH_RETURN(ENOMEM);
                 }
@@ -3087,7 +3087,7 @@ asr_intr (
                  * and a generic handler for immunity against odd error
                  * returns from the adapter.
                  */
-                if (ccb == (union asr_ccb *)NULL) {
+                if (ccb == NULL) {
                         /*
                          * Return Reply so that it can be used for the
                          * next command
@@ -3238,7 +3238,7 @@ asr_open(struct dev_open_args *ap)
 	cdev_t dev = ap->a_head.a_dev;
         OUT int error;
 
-        if (ASR_get_sc (dev) == (Asr_softc_t *)NULL) {
+        if (ASR_get_sc (dev) == NULL) {
                 return (ENODEV);
         }
 	crit_enter();
@@ -3571,7 +3571,7 @@ ASR_queue_i(
                 }
                 if (error) {
                         while ((elm = SLIST_FIRST(&sgList))
-                          != (struct ioctlSgList_S *)NULL) {
+                          != NULL) {
                                 SLIST_REMOVE_HEAD(&sgList, link);
                                 kfree (elm, M_TEMP);
                         }
@@ -3585,10 +3585,10 @@ ASR_queue_i(
         debug_usr_cmd_dump_message(Message_Ptr);
 
         /* Send the command */
-        if ((ccb = asr_alloc_ccb (sc)) == (union asr_ccb *)NULL) {
+        if ((ccb = asr_alloc_ccb (sc)) == NULL) {
                 /* Free up in-kernel buffers */
                 while ((elm = SLIST_FIRST(&sgList))
-                  != (struct ioctlSgList_S *)NULL) {
+                  != NULL) {
                         SLIST_REMOVE_HEAD(&sgList, link);
                         kfree (elm, M_TEMP);
                 }
@@ -3625,7 +3625,7 @@ ASR_queue_i(
 			crit_exit();
                         /* Free up in-kernel buffers */
                         while ((elm = SLIST_FIRST(&sgList))
-                          != (struct ioctlSgList_S *)NULL) {
+                          != NULL) {
                                 SLIST_REMOVE_HEAD(&sgList, link);
                                 kfree (elm, M_TEMP);
                         }
@@ -3667,7 +3667,7 @@ ASR_queue_i(
         }
 
         /* Free up in-kernel buffers */
-        while ((elm = SLIST_FIRST(&sgList)) != (struct ioctlSgList_S *)NULL) {
+        while ((elm = SLIST_FIRST(&sgList)) != NULL) {
                 /* Copy out as necessary */
                 if ((error == 0)
                 /* DIR bit considered `valid', error due to ignorance works */
@@ -3715,7 +3715,7 @@ asr_ioctl(struct dev_ioctl_args *ap)
         OUT int       error = 0;
         Asr_softc_t * sc = ASR_get_sc (dev);
 
-        if (sc != (Asr_softc_t *)NULL)
+        if (sc != NULL)
         switch(ap->a_cmd) {
 
         case DPT_SIGNATURE:

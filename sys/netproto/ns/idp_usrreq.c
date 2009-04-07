@@ -110,7 +110,7 @@ idp_input(struct mbuf *m, ...)
 		m->m_data += sizeof (struct idp);
 	}
 	if (ssb_appendaddr(&nsp->nsp_socket->so_rcv, (struct sockaddr *)&idp_ns,
-	    m, (struct mbuf *)0) == 0)
+	    m, NULL) == 0)
 		goto bad;
 	sorwakeup(nsp->nsp_socket);
 	return;
@@ -223,7 +223,7 @@ idp_output(struct mbuf *m0, struct socket *so, ...)
 	 * Output datagram.
 	 */
 	if (so->so_options & SO_DONTROUTE)
-		return (ns_output(m, (struct route *)0,
+		return (ns_output(m, NULL,
 		    (so->so_options & SO_BROADCAST) | NS_ROUTETOIF));
 	/*
 	 * Use cached route for previous datagram if
@@ -262,7 +262,7 @@ idp_output(struct mbuf *m0, struct socket *so, ...)
 		} else {
 		re_route:
 			RTFREE(ro->ro_rt);
-			ro->ro_rt = (struct rtentry *)0;
+			ro->ro_rt = NULL;
 		}
 	}
 	nsp->nsp_lastdst = idp->idp_dna;

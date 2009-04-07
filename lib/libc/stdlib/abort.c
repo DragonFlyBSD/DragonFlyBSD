@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -30,23 +26,20 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdlib/abort.c,v 1.5.6.2 2002/10/15 19:46:46 fjoe Exp $
- * $DragonFly: src/lib/libc/stdlib/abort.c,v 1.4 2005/11/20 12:37:48 swildner Exp $
- *
  * @(#)abort.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/stdlib/abort.c,v 1.11 2007/01/09 00:28:09 imp Exp $
+ * $DragonFly: src/lib/libc/stdlib/abort.c,v 1.4 2005/11/20 12:37:48 swildner Exp $
  */
 
+#include "namespace.h"
 #include <signal.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <unistd.h>
 #include <pthread.h>
+#include "un-namespace.h"
 
-void (*__cleanup)();
-
-extern int	__sys_sigprocmask(int, const sigset_t *, sigset_t *);
-extern int	__sys_sigaction(int, const struct sigaction *,
-		    struct sigaction *);
+#include "libc_private.h"
 
 void
 abort(void)
@@ -54,31 +47,31 @@ abort(void)
 	struct sigaction act;
 
 	/*
-	 * POSIX requires we flush stdio buffers on abort
+	 * POSIX requires we flush stdio buffers on abort.
+	 * XXX ISO C requires that abort() be async-signal-safe.
 	 */
 	if (__cleanup)
 		(*__cleanup)();
 
 	sigfillset(&act.sa_mask);
 	/*
-	 * don't block SIGABRT to give any handler a chance; we ignore
-	 * any errors -- X311J doesn't allow abort to return anyway.
+	 * Don't block SIGABRT to give any handler a chance; we ignore
+	 * any errors -- ISO C doesn't allow abort to return anyway.
 	 */
 	sigdelset(&act.sa_mask, SIGABRT);
-	__sys_sigprocmask(SIG_SETMASK, &act.sa_mask, NULL);
-	kill(getpid(), SIGABRT);
+	_sigprocmask(SIG_SETMASK, &act.sa_mask, NULL);
+	raise(SIGABRT);
 
 	/*
-	 * if SIGABRT ignored, or caught and the handler returns, do
+	 * If SIGABRT was ignored, or caught and the handler returns, do
 	 * it again, only harder.
 	 */
 	act.sa_handler = SIG_DFL;
 	act.sa_flags = 0;
 	sigfillset(&act.sa_mask);
-	__sys_sigaction(SIGABRT, &act, NULL);
+	_sigaction(SIGABRT, &act, NULL);
 	sigdelset(&act.sa_mask, SIGABRT);
-	__sys_sigprocmask(SIG_SETMASK, &act.sa_mask, NULL);
-	kill(getpid(), SIGABRT);
+	_sigprocmask(SIG_SETMASK, &act.sa_mask, NULL);
+	raise(SIGABRT);
 	exit(1);
 }
-

@@ -167,8 +167,7 @@ rmtgetconn(void)
 	msg("%s", "");
 #ifdef KERBEROS
 	if (dokerberos)
-		rmtape = krcmd(&rmtpeer, sp->s_port, tuser, rmt, &errfd,
-			       (char *)0);
+		rmtape = krcmd(&rmtpeer, sp->s_port, tuser, rmt, &errfd, NULL);
 	else
 #endif
 		rmtape = rcmd(&rmtpeer, (u_short)sp->s_port, pwd->pw_name,

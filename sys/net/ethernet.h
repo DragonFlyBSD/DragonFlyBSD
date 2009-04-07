@@ -407,9 +407,11 @@ void	altq_etherclassify(struct ifaltq *, struct mbuf *, struct altq_pktattr *);
  */
 __BEGIN_DECLS
 struct	ether_addr *ether_aton (const char *);
+struct ether_addr	*ether_aton_r(const char *, struct ether_addr *);
 int	ether_hostton (const char *, struct ether_addr *);
 int	ether_line (const char *, struct ether_addr *, char *);
 char	*ether_ntoa (const struct ether_addr *);
+char	*ether_ntoa_r(const struct ether_addr *, char *);
 int	ether_ntohost (char *, const struct ether_addr *);
 __END_DECLS
 
