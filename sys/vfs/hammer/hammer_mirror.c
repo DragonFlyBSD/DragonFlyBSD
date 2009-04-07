@@ -178,7 +178,7 @@ retry:
 		 * elements modified outside the user-requested TID range.
 		 *
 		 * However, such elements must be returned so the writer
-		 * can compare them against the target to detemrine what
+		 * can compare them against the target to determine what
 		 * needs to be deleted on the target, particular for
 		 * no-history mirrors.
 		 */
@@ -666,6 +666,13 @@ hammer_ioc_mirror_write_pass(hammer_cursor_t cursor,
  *
  * The caller has indexed the cursor and set up key_end.  We iterate
  * through to key_end.
+ *
+ * There is an edge case where the master has deleted a record whos
+ * create_tid exactly matches our end_tid.  We cannot delete this
+ * record on the slave yet because we cannot assign delete_tid == create_tid.
+ * The deletion should be picked up on the next sequence since in order
+ * to have been deleted on the master a transaction must have occured with
+ * a TID greater then the create_tid of the record.
  */
 static
 int
@@ -680,7 +687,8 @@ hammer_mirror_delete_to(hammer_cursor_t cursor,
 		elm = &cursor->node->ondisk->elms[cursor->index].leaf;
 		KKASSERT(elm->base.btype == HAMMER_BTREE_TYPE_RECORD);
 		cursor->flags |= HAMMER_CURSOR_ATEDISK;
-		if (elm->base.delete_tid == 0) {
+		if (elm->base.delete_tid == 0 &&
+		    elm->base.create_tid != mirror->tid_end) {
 			error = hammer_delete_at_cursor(cursor,
 							HAMMER_DELETE_ADJUST,
 							mirror->tid_end,
