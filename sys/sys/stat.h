@@ -211,6 +211,10 @@ int	chmod (const char *, mode_t);
 int	fstat (int, struct stat *);
 int	mkdir (const char *, mode_t);
 int	mkfifo (const char *, mode_t);
+#if !defined(_MKNOD_DECLARED) && __XSI_VISIBLE
+int	mknod(const char *, mode_t, dev_t);
+#define	_MKNOD_DECLARED
+#endif
 int	stat (const char *, struct stat *);
 mode_t	umask (mode_t);
 
