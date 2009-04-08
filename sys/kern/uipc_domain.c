@@ -78,18 +78,44 @@ static struct callout pfslowtimo_ch;
  * Note: you cant unload it again because a socket may be using it.
  * XXX can't fail at this time.
  */
+#define PRU_NOTSUPP(pu, label)		\
+	if (pu->pru_ ## label == NULL)	\
+		pu->pru_ ## label = pru_ ## label ## _notsupp;
+#define PRU_NULL(pu, label)		\
+	if (pu->pru_ ## label == NULL)	\
+		pu->pru_ ## label = pru_ ## label ## _null;
+
 static void
 net_init_domain(struct domain *dp)
 {
 	struct protosw *pr;
+	struct pr_usrreqs *pu;
 
 	crit_enter();
 	if (dp->dom_init)
 		(*dp->dom_init)();
 	for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++) {
-		if (pr->pr_usrreqs == NULL)
+		pu = pr->pr_usrreqs;
+		if (pu == NULL)
 			panic("domaininit: %ssw[%d] has no usrreqs!",
 			      dp->dom_name, pr - dp->dom_protosw);
+		PRU_NOTSUPP(pu, accept);
+		PRU_NOTSUPP(pu, bind);
+		PRU_NOTSUPP(pu, connect);
+		PRU_NOTSUPP(pu, connect2);
+		PRU_NOTSUPP(pu, control);
+		PRU_NOTSUPP(pu, disconnect);
+		PRU_NOTSUPP(pu, listen);
+		PRU_NOTSUPP(pu, peeraddr);
+		PRU_NOTSUPP(pu, rcvd);
+		PRU_NOTSUPP(pu, rcvoob);
+		PRU_NULL(pu, sense);
+		PRU_NOTSUPP(pu, shutdown);
+		PRU_NOTSUPP(pu, sockaddr);
+		PRU_NOTSUPP(pu, sosend);
+		PRU_NOTSUPP(pu, soreceive);
+		PRU_NOTSUPP(pu, ctloutput);
+
 		if (pr->pr_init)
 			(*pr->pr_init)();
 	}
@@ -169,7 +195,7 @@ found:
 			return (pr);
 
 		if (type == SOCK_RAW && pr->pr_type == SOCK_RAW &&
-		    pr->pr_protocol == 0 && maybe == (struct protosw *)NULL)
+		    pr->pr_protocol == 0 && maybe == NULL)
 			maybe = pr;
 	}
 	return (maybe);

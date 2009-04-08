@@ -2,7 +2,7 @@
 # $DragonFly: src/sys/Makefile,v 1.16 2007/12/30 20:02:56 hasso Exp $
 
 # This is the old aout only boot loader.
-.if	exists(${.CURDIR}/boot) && ${MACHINE_ARCH} == "i386" && ${OBJFORMAT} == "elf"
+.if	exists(${.CURDIR}/boot)
 SUBDIR=	boot
 .endif
 

@@ -52,7 +52,7 @@ siginterrupt(int sig, int flag)
 	struct sigaction sa;
 	int ret;
 
-	if ((ret = _sigaction(sig, (struct sigaction *)0, &sa)) < 0)
+	if ((ret = _sigaction(sig, NULL, &sa)) < 0)
 		return (ret);
 	if (flag) {
 		sigaddset(&_sigintr, sig);
@@ -61,5 +61,5 @@ siginterrupt(int sig, int flag)
 		sigdelset(&_sigintr, sig);
 		sa.sa_flags |= SA_RESTART;
 	}
-	return (_sigaction(sig, &sa, (struct sigaction *)0));
+	return (_sigaction(sig, &sa, NULL));
 }

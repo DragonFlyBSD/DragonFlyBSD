@@ -95,7 +95,7 @@ makelevel(void)
 		   while a monster was on the stairs. Conclusion:
 		   we have to check for monsters on the stairs anyway. */
 		if(!rn2(3))
-			makemon((struct permonst *) 0, somex(), somey());
+			makemon(NULL, somex(), somey());
 
 		/* put traps and mimics inside */
 		goldseen = FALSE;

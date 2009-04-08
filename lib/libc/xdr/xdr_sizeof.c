@@ -5,27 +5,28 @@
  * may copy or modify Sun RPC without charge, but are not authorized
  * to license or distribute it to anyone else except as part of a product or
  * program developed by the user.
- * 
+ *
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
  * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
- * 
+ *
  * Sun RPC is provided with no support and without any obligation on the
  * part of Sun Microsystems, Inc. to assist in its use, correction,
  * modification or enhancement.
- * 
+ *
  * SUN MICROSYSTEMS, INC. SHALL HAVE NO LIABILITY WITH RESPECT TO THE
  * INFRINGEMENT OF COPYRIGHTS, TRADE SECRETS OR ANY PATENTS BY SUN RPC
  * OR ANY PART THEREOF.
- * 
+ *
  * In no event will Sun Microsystems, Inc. be liable for any lost revenue
  * or profits or other special, indirect and consequential damages, even if
  * Sun has been advised of the possibility of such damages.
- * 
+ *
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  *
+ * $FreeBSD: src/lib/libc/xdr/xdr_sizeof.c,v 1.5 2003/03/07 13:19:40 nectar Exp $
  * $DragonFly: src/lib/libc/xdr/xdr_sizeof.c,v 1.2 2005/12/05 00:47:57 swildner Exp $
  */
 
@@ -38,10 +39,12 @@
  * when serialized using XDR.
  */
 
+#include "namespace.h"
 #include <rpc/types.h>
 #include <rpc/xdr.h>
 #include <sys/types.h>
 #include <stdlib.h>
+#include "un-namespace.h"
 
 /* ARGSUSED */
 static bool_t
@@ -74,7 +77,7 @@ x_setpostn(XDR *xdrs __unused, u_int pos __unused)
 }
 
 static int32_t *
-x_inline(XDR *xdrs, long len)
+x_inline(XDR *xdrs, u_int len)
 {
 	if (len == 0) {
 		return (NULL);
@@ -82,7 +85,7 @@ x_inline(XDR *xdrs, long len)
 	if (xdrs->x_op != XDR_ENCODE) {
 		return (NULL);
 	}
-	if (len < (long) xdrs->x_base) {
+	if (len < (u_int)xdrs->x_base) {
 		/* x_private was already allocated */
 		xdrs->x_handy += len;
 		return ((int32_t *) xdrs->x_private);

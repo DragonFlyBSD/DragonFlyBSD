@@ -19,12 +19,4 @@ extern int vflag; /* verbose flag */
 extern unsigned char *packetp;
 extern unsigned char *snapend;
 
-#ifdef	__STDC__
-#define P(args) args
-#else
-#define P(args) ()
-#endif
-
-extern char *ipaddr_string P((struct in_addr *));
-
-#undef P
+extern char *ipaddr_string(struct in_addr *);

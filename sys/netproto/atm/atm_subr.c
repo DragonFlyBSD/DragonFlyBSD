@@ -71,7 +71,7 @@ static struct callout atm_timexp_ch;
  */
 static void	atm_compact (struct atm_time *);
 static KTimeout_ret	atm_timexp (void *);
-static void	atm_intr(struct netmsg *);
+static void	atm_intr(anynetmsg_t);
 
 /*
  * Local variables
@@ -112,8 +112,8 @@ atm_initialize(void)
 	atm_init = 1;
 
 	atm_intrq.ifq_maxlen = ATM_INTRQ_MAX;
-	netisr_register(NETISR_ATM, cpu0_portfn, atm_intr,
-			NETISR_FLAG_NOTMPSAFE);
+	netisr_register(NETISR_ATM, cpu0_portfn, pktinfo_portfn_cpu0,
+			atm_intr, NETISR_FLAG_NOTMPSAFE);
 
 	/*
 	 * Initialize subsystems
@@ -849,9 +849,9 @@ atm_stack_drain(void)
  *
  */
 static void
-atm_intr(struct netmsg *msg)
+atm_intr(anynetmsg_t msg)
 {
-	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
+	struct mbuf *m = ((struct netmsg_isr_packet *)msg)->nm_packet;
 	caddr_t		cp;
 	atm_intr_func_t	func;
 	void		*token;

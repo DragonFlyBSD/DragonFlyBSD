@@ -19,6 +19,8 @@
         ..
         pci
         ..
+        ppbus
+        ..
         isa
         ..
     ..
@@ -30,12 +32,16 @@
         misc
             lpt
             ..
+            ppi
+            ..
         ..
         netif
             wi
             ..
         ..
         raid
+            ciss
+            ..
         ..
         video
             bktr

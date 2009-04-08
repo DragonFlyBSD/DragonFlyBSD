@@ -212,7 +212,7 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 	struct sockaddr_in *sin;
 	struct thread *td = &thread0; /* only used for socreate and sobind */
 
-	nmp->nm_so = (struct socket *)0;
+	nmp->nm_so = NULL;
 	saddr = nmp->nm_nam;
 	error = socreate(saddr->sa_family, &nmp->nm_so, nmp->nm_sotype,
 		nmp->nm_soproto, td);
@@ -421,7 +421,7 @@ nfs_disconnect(struct nfsmount *nmp)
 
 	if (nmp->nm_so) {
 		so = nmp->nm_so;
-		nmp->nm_so = (struct socket *)0;
+		nmp->nm_so = NULL;
 		soshutdown(so, SHUT_RDWR);
 		soclose(so, FNONBLOCK);
 	}
@@ -475,7 +475,7 @@ nfs_send(struct socket *so, struct sockaddr *nam, struct mbuf *top,
 	} else
 		soflags = so->so_proto->pr_flags;
 	if ((soflags & PR_CONNREQUIRED) || (so->so_state & SS_ISCONNECTED))
-		sendnam = (struct sockaddr *)0;
+		sendnam = NULL;
 	else
 		sendnam = nam;
 	if (so->so_type == SOCK_SEQPACKET)
@@ -979,7 +979,7 @@ nfs_request(struct vnode *vp, struct mbuf *mrest, int procnum,
 	 * Get the RPC header with authorization.
 	 */
 kerbauth:
-	verf_str = auth_str = (char *)0;
+	verf_str = auth_str = NULL;
 	if (nmp->nm_flag & NFSMNT_KERB) {
 		verf_str = nickv;
 		verf_len = sizeof (nickv);
@@ -1139,7 +1139,7 @@ tryagain:
 		else if ((nmp->nm_flag & NFSMNT_KERB) && *tl++ == rpc_autherr) {
 			if (!failed_auth) {
 				failed_auth++;
-				mheadend->m_next = (struct mbuf *)0;
+				mheadend->m_next = NULL;
 				m_freem(mrep);
 				m_freem(rep->r_mreq);
 				goto kerbauth;
@@ -2247,12 +2247,12 @@ nfsrv_getstream(struct nfssvc_sock *slp, int waitflag, int *countp)
 	    recm = NULL;
 	    if (slp->ns_cc == slp->ns_reclen) {
 		recm = slp->ns_raw;
-		slp->ns_raw = slp->ns_rawend = (struct mbuf *)0;
+		slp->ns_raw = slp->ns_rawend = NULL;
 		slp->ns_cc = slp->ns_reclen = 0;
 	    } else if (slp->ns_cc > slp->ns_reclen) {
 		len = 0;
 		m = slp->ns_raw;
-		om = (struct mbuf *)0;
+		om = NULL;
 
 		while (len < slp->ns_reclen) {
 			if ((len + m->m_len) > slp->ns_reclen) {
@@ -2275,7 +2275,7 @@ nfsrv_getstream(struct nfssvc_sock *slp, int waitflag, int *countp)
 				len += m->m_len;
 				m = m->m_next;
 				recm = slp->ns_raw;
-				om->m_next = (struct mbuf *)0;
+				om->m_next = NULL;
 			} else {
 				om = m;
 				len += m->m_len;
@@ -2304,13 +2304,13 @@ nfsrv_getstream(struct nfssvc_sock *slp, int waitflag, int *countp)
 		    m_freem(slp->ns_frag);
 		} else {
 		    nfs_realign(&slp->ns_frag, 10 * NFSX_UNSIGNED);
-		    rec->nr_address = (struct sockaddr *)0;
+		    rec->nr_address = NULL;
 		    rec->nr_packet = slp->ns_frag;
 		    STAILQ_INSERT_TAIL(&slp->ns_rec, rec, nr_link);
 		    ++slp->ns_numrec;
 		    ++*countp;
 		}
-		slp->ns_frag = (struct mbuf *)0;
+		slp->ns_frag = NULL;
 	    }
 	}
 }

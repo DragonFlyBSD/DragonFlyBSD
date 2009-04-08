@@ -59,6 +59,7 @@
 #include <sys/buf.h>
 #include <sys/stat.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/mount.h>
 #include <sys/time.h>
 #include <sys/vnode.h>
@@ -789,7 +790,7 @@ abortit:
 			error = vn_rdwr(UIO_READ, fvp, (caddr_t)&dirbuf,
 					sizeof (struct dirtemplate), (off_t)0,
 					UIO_SYSSPACE, IO_NODELOCKED,
-					tcnp->cn_cred, (int *)0);
+					tcnp->cn_cred, NULL);
 			if (error == 0) {
 				/* Like ext2 little-endian: */
 				namlen = dirbuf.dotdot_type;
@@ -805,7 +806,7 @@ abortit:
 						sizeof (struct dirtemplate),
 						(off_t)0, UIO_SYSSPACE,
 						IO_NODELOCKED|IO_SYNC,
-						tcnp->cn_cred, (int *)0);
+						tcnp->cn_cred, NULL);
 				}
 			}
 		}
@@ -974,7 +975,7 @@ ext2_mkdir(struct vop_old_mkdir_args *ap)
 	dirtemplate.dotdot_reclen = DIRBLKSIZ - 12;
 	error = vn_rdwr(UIO_WRITE, tvp, (caddr_t)&dirtemplate,
 			sizeof (dirtemplate), (off_t)0, UIO_SYSSPACE,
-			IO_NODELOCKED|IO_SYNC, cnp->cn_cred, (int *)0);
+			IO_NODELOCKED|IO_SYNC, cnp->cn_cred, NULL);
 	if (error) {
 		dp->i_nlink--;
 		dp->i_flag |= IN_CHANGE;
@@ -1109,7 +1110,7 @@ ext2_symlink(struct vop_old_symlink_args *ap)
 
 		error = vn_rdwr(UIO_WRITE, vp, ap->a_target, len, (off_t)0,
 				UIO_SYSSPACE, IO_NODELOCKED, 
-				ap->a_cnp->cn_cred, (int *)0);
+				ap->a_cnp->cn_cred, NULL);
 
 		if (error)
 			vput(vp);
@@ -1202,7 +1203,7 @@ ext2_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 	tvp->v_type = IFTOVT(mode);	/* Rest init'd in getnewvnode(). */
 	ip->i_nlink = 1;
 	if ((ip->i_mode & ISGID) && !groupmember(ip->i_gid, cnp->cn_cred) &&
-	    suser_cred(cnp->cn_cred, PRISON_ROOT))
+	    priv_check_cred(cnp->cn_cred, PRIV_ROOT, PRISON_ROOT))
 		ip->i_mode &= ~ISGID;
 
 	if (cnp->cn_flags & CNP_ISWHITEOUT)
@@ -1379,6 +1380,8 @@ ext2_access(struct vop_access_args *ap)
 
 	/* Otherwise, check the owner. */
 	if (cred->cr_uid == ip->i_uid) {
+		if (mode & VOWN)
+			return (0);
 		if (mode & VEXEC)
 			mask |= S_IXUSR;
 		if (mode & VREAD)
@@ -1479,7 +1482,7 @@ ext2_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != ip->i_uid &&
-		    (error = suser_cred(cred, PRISON_ROOT)))
+		    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)))
 			return (error);
 		/*
 		 * Note that a root chflags becomes a user chflags when
@@ -1541,7 +1544,7 @@ ext2_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != ip->i_uid &&
-		    (error = suser_cred(cred, PRISON_ROOT)) &&
+		    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
 		    (error = VOP_ACCESS(vp, VWRITE, cred))))
 			return (error);
@@ -1583,7 +1586,7 @@ ext2_chmod(struct vnode *vp, int mode, struct ucred *cred)
 	int error;
 
 	if (cred->cr_uid != ip->i_uid) {
-	    error = suser_cred(cred, PRISON_ROOT);
+	    error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT);
 	    if (error)
 		return (error);
 	}
@@ -1627,7 +1630,7 @@ ext2_chown(struct vnode *vp, uid_t uid, gid_t gid, struct ucred *cred)
 	if ((cred->cr_uid != ip->i_uid || uid != ip->i_uid ||
 	    (gid != ip->i_gid && !(cred->cr_gid == gid ||
 	    groupmember((gid_t)gid, cred)))) &&
-	    (error = suser_cred(cred, PRISON_ROOT)))
+	    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)))
 		return (error);
 	ogid = ip->i_gid;
 	ouid = ip->i_uid;

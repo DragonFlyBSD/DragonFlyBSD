@@ -719,14 +719,12 @@ EmptyTerminal(void)
 
     if (TTYBYTES() == 0) {
 	FD_SET(tout, &o);
-	(void) select(tout+1, (fd_set *) 0, &o, (fd_set *) 0,
-			(struct timeval *) 0);	/* wait for TTLOWAT */
+	(void) select(tout+1, NULL, &o, NULL, NULL);	/* wait for TTLOWAT */
     } else {
 	while (TTYBYTES()) {
 	    (void) ttyflush(0);
 	    FD_SET(tout, &o);
-	    (void) select(tout+1, (fd_set *) 0, &o, (fd_set *) 0,
-				(struct timeval *) 0);	/* wait for TTLOWAT */
+	    (void) select(tout+1, NULL, &o, NULL, NULL); /* wait for TTLOWAT */
 	}
     }
 }

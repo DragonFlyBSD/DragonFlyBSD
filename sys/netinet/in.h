@@ -182,6 +182,9 @@
 /* last return value of *_input(), meaning "all job for this pkt is done".  */
 #define	IPPROTO_DONE		257
 
+/* Used by RSS: the layer3 protocol is unknown */
+#define IPPROTO_UNKNOWN		258
+
 /*
  * Local port number conventions:
  *

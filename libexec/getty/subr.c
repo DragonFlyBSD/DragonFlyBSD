@@ -734,7 +734,7 @@ makeenv(char *env[])
 		if (*p)
 			*ep++ = p;
 	}
-	*ep = (char *)0;
+	*ep = NULL;
 }
 
 /*
@@ -806,15 +806,13 @@ autobaud(void)
 	rfds = 1 << 0;
 	timeout.tv_sec = 5;
 	timeout.tv_usec = 0;
-	if (select(32, (fd_set *)&rfds, (fd_set *)NULL,
-	    (fd_set *)NULL, &timeout) <= 0)
+	if (select(32, (fd_set *)&rfds, NULL, NULL, &timeout) <= 0)
 		return (type);
 	if (read(STDIN_FILENO, &c, sizeof(char)) != sizeof(char))
 		return (type);
 	timeout.tv_sec = 0;
 	timeout.tv_usec = 20;
-	(void) select(32, (fd_set *)NULL, (fd_set *)NULL,
-	    (fd_set *)NULL, &timeout);
+	(void) select(32, NULL, NULL, NULL, &timeout);
 	(void)tcflush(0, TCIOFLUSH);
 	switch (c & 0377) {
 

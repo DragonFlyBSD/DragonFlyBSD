@@ -5,35 +5,35 @@
  * may copy or modify Sun RPC without charge, but are not authorized
  * to license or distribute it to anyone else except as part of a product or
  * program developed by the user.
- * 
+ *
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
  * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
- * 
+ *
  * Sun RPC is provided with no support and without any obligation on the
  * part of Sun Microsystems, Inc. to assist in its use, correction,
  * modification or enhancement.
- * 
+ *
  * SUN MICROSYSTEMS, INC. SHALL HAVE NO LIABILITY WITH RESPECT TO THE
  * INFRINGEMENT OF COPYRIGHTS, TRADE SECRETS OR ANY PATENTS BY SUN RPC
  * OR ANY PART THEREOF.
- * 
+ *
  * In no event will Sun Microsystems, Inc. be liable for any lost revenue
  * or profits or other special, indirect and consequential damages, even if
  * Sun has been advised of the possibility of such damages.
- * 
+ *
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  *
  * @(#)xcrypt.c	2.2 88/08/10 4.0 RPCSRC
- * $FreeBSD: src/lib/librpcsvc/xcrypt.c,v 1.2 1999/08/28 00:05:24 peter Exp $
+ * $FreeBSD: src/lib/librpcsvc/xcrypt.c,v 1.6 2008/02/04 07:56:36 matteo Exp $
  * $DragonFly: src/lib/librpcsvc/xcrypt.c,v 1.4 2007/11/25 14:33:02 swildner Exp $
  */
 /*
  * Hex encryption/decryption and utility routines
  *
- * Copyright (C) 1986, Sun Microsystems, Inc. 
+ * Copyright (C) 1986, Sun Microsystems, Inc.
  */
 
 #include <stdio.h>
@@ -42,11 +42,15 @@
 #include <sys/cdefs.h>
 #include <rpc/des_crypt.h>
 
-static char hex[];	/* forward */
-static char hexval ( char );
-static void bin2hex ( int, unsigned char *, char * );
-static void hex2bin ( int, char *, char * );
-void passwd2des ( char *, char * );
+static char hex[16] = {
+	'0', '1', '2', '3', '4', '5', '6', '7',
+	'8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
+};
+
+static void	bin2hex(int, unsigned char *, char *);
+static void	hex2bin(int, char *, char *);
+static char	hexval(char);
+void		passwd2des(char *, char *);
 
 /*
  * Encrypt a secret key given passwd
@@ -63,14 +67,15 @@ xencrypt(char *secret, char *passwd)
 	int len;
 
 	len = strlen(secret) / 2;
-	buf = malloc((unsigned)len);
+	if ((buf = malloc((unsigned)len)) == NULL)
+		return(0);
 
 	hex2bin(len, secret, buf);
 	passwd2des(passwd, key);
 	bzero(ivec, 8);
 
 	err = cbc_crypt(key, buf, len, DES_ENCRYPT | DES_HW, ivec);
-	if (DES_FAILED(err)) {	
+	if (DES_FAILED(err)) {
 		free(buf);
 		return (0);
 	}
@@ -94,10 +99,11 @@ xdecrypt(char *secret, char *passwd)
 	int len;
 
 	len = strlen(secret) / 2;
-	buf = malloc((unsigned)len);
+	if ((buf = malloc((unsigned)len)) == NULL)
+		return(0);
 
 	hex2bin(len, secret, buf);
-	passwd2des(passwd, key);	
+	passwd2des(passwd, key);
 	bzero(ivec, 8);
 
 	err = cbc_crypt(key, buf, len, DES_DECRYPT | DES_HW, ivec);
@@ -157,11 +163,6 @@ bin2hex(int len, unsigned char *binnum, char *hexnum)
 	}
 	hexnum[len*2] = 0;
 }
-
-static char hex[16] = {
-	'0', '1', '2', '3', '4', '5', '6', '7',
-	'8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
-};
 
 static char
 hexval(char c)

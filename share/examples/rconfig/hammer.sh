@@ -53,6 +53,7 @@ set echo
 #
 #	Use PFSs for backup domain separation
 #
+dd if=/dev/zero of=/dev/${disk} bs=32k count=16
 fdisk -IB ${disk}
 disklabel -r -w ${disk}s1 auto
 disklabel -B ${disk}s1
@@ -60,10 +61,8 @@ disklabel ${disk}s1 > /tmp/label
 cat >> /tmp/label << EOF
   a: 256m 32 4.2BSD
   b: 2g * swap
-  d: 123456 * HAMMER
+  d: * * HAMMER
 EOF
-disklabel -R ${disk}s1 /tmp/label
-disklabel ${disk}s1 | sed -e 's/123456/*/g' > /tmp/label
 disklabel -R ${disk}s1 /tmp/label
 
 newfs /dev/${disk}s1a
@@ -118,6 +117,8 @@ chflags nohistory /mnt/usr/obj
 # Install the system from the live CD
 #
 cpdup -o / /mnt
+cpdup -o /boot /mnt/boot
+cpdup -o /usr /mnt/usr
 cpdup -o /var /mnt/var
 cpdup -o /dev /mnt/dev
 cpdup -i0 /etc.hdd /mnt/etc
@@ -150,6 +151,13 @@ proc			/proc		procfs	rw		0	0
 #crater:/ftp		/ftp		nfs	ro,intr,bg	0	0
 #crater:/sources/HEAD	/usr/src	nfs	ro,intr,bg	0	0
 #pkgbox:/archive	/archive	nfs	ro,intr,bg	0	0
+EOF
+
+# Since /boot is a separate partition we need to adjust kern.bootfile
+# to make savecore work properly upon boot.
+#
+cat >> /mnt/etc/sysctl.conf << EOF
+kern.bootfile=/boot/kernel
 EOF
 
 # Because root is not on the boot partition we have to tell the loader

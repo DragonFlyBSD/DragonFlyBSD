@@ -104,7 +104,7 @@ struct protosw {
 					/* slow timeout (500ms) */
 	void	(*pr_drain) (void);
 					/* flush any excess space possible */
-	const struct	pr_usrreqs *pr_usrreqs;	/* supersedes pr_usrreq() */
+	struct	pr_usrreqs *pr_usrreqs;	/* supersedes pr_usrreq() */
 };
 
 #endif
@@ -311,14 +311,32 @@ typedef int (*pru_soreceive_fn_t) (struct socket *so, struct sockaddr **paddr,
 typedef	void (*pru_ctlinput_fn_t) (int cmd, struct sockaddr *arg, void *extra);
 
 int	pru_accept_notsupp (struct socket *so, struct sockaddr **nam);
+int	pru_bind_notsupp (struct socket *so, struct sockaddr *nam,
+				struct thread *td);
 int	pru_connect_notsupp (struct socket *so, struct sockaddr *nam,
 				struct thread *td);
 int	pru_connect2_notsupp (struct socket *so1, struct socket *so2);
 int	pru_control_notsupp (struct socket *so, u_long cmd, caddr_t data,
 				struct ifnet *ifp, struct thread *td);
+int	pru_disconnect_notsupp (struct socket *so);
 int	pru_listen_notsupp (struct socket *so, struct thread *td);
+int	pru_peeraddr_notsupp (struct socket *so, struct sockaddr **nam);
 int	pru_rcvd_notsupp (struct socket *so, int flags);
 int	pru_rcvoob_notsupp (struct socket *so, struct mbuf *m, int flags);
+int	pru_shutdown_notsupp(struct socket *so);
+int	pru_sockaddr_notsupp(struct socket *so, struct sockaddr **nam);
+int	pru_sosend_notsupp(struct socket *so, struct sockaddr *addr,
+				struct uio *uio, struct mbuf *top,
+				struct mbuf *control, int flags,
+				struct thread *td);
+int	pru_soreceive_notsupp(struct socket *so,
+				struct sockaddr **paddr,
+				struct uio *uio,
+				struct sockbuf *sio,
+				struct mbuf **controlp, int *flagsp);
+int	pru_sopoll_notsupp(struct socket *so, int events,
+				struct ucred *cred, struct thread *td);
+int	pru_ctloutput_notsupp(struct socket *so, struct sockopt *sopt);
 int	pru_sense_null (struct socket *so, struct stat *sb);
 
 struct lwkt_port *cpu0_soport(struct socket *, struct sockaddr *,

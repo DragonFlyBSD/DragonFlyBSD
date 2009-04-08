@@ -416,6 +416,7 @@ cd9660_open(const char *path, struct open_file *f)
 	return 0;
 
 out:
+	f->f_fsdata = NULL;
 	if (fp)
 		free(fp);
 	free(buf);
@@ -428,8 +429,9 @@ cd9660_close(struct open_file *f)
 {
 	struct file *fp = (struct file *)f->f_fsdata;
 
-	f->f_fsdata = 0;
-	free(fp);
+	f->f_fsdata = NULL;
+	if (fp)
+		free(fp);
 
 	return 0;
 }
@@ -446,7 +448,7 @@ buf_read_file(struct open_file *f, char **buf_p, size_t *size_p)
 	blkoff = fp->f_off % ISO_DEFAULT_BLOCK_SIZE;
 
 	if (blkno != fp->f_buf_blkno) {
-		if (fp->f_buf == (char *)0)
+		if (fp->f_buf == NULL)
 			fp->f_buf = malloc(ISO_DEFAULT_BLOCK_SIZE);
 
 		twiddle();

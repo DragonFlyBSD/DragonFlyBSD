@@ -30,10 +30,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)ftpcmd.y	8.3 (Berkeley) 4/6/94
- *
  * @(#)ftpcmd.y	8.3 (Berkeley) 4/6/94
- * $FreeBSD: src/libexec/ftpd/ftpcmd.y,v 1.16.2.19 2003/02/11 14:28:28 yar Exp $
+ * $FreeBSD: src/libexec/ftpd/ftpcmd.y,v 1.67 2008/12/23 01:23:09 cperciva Exp $
  * $DragonFly: src/libexec/ftpd/ftpcmd.y,v 1.4 2004/06/19 20:36:04 joerg Exp $
  */
 
@@ -60,6 +58,7 @@
 #include <netdb.h>
 #include <pwd.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -85,12 +84,11 @@ extern	int timeout;
 extern	int maxtimeout;
 extern  int pdata;
 extern	char *hostname;
-extern	char remotehost[];
 extern	char proctitle[];
 extern	int usedefault;
-extern  int transflag;
 extern  char tmpline[];
 extern	int readonly;
+extern	int assumeutf8;
 extern	int noepsv;
 extern	int noretr;
 extern	int noguestretr;
@@ -103,7 +101,7 @@ static	int cmd_form;
 static	int cmd_bytesz;
 static	int state;
 char	cbuf[512];
-char	*fromname = (char *) 0;
+char	*fromname = NULL;
 
 extern int epsvall;
 
@@ -131,7 +129,7 @@ extern int epsvall;
 	ABOR	DELE	CWD	LIST	NLST	SITE
 	STAT	HELP	NOOP	MKD	RMD	PWD
 	CDUP	STOU	SMNT	SYST	SIZE	MDTM
-	LPRT	LPSV	EPRT	EPSV
+	LPRT	LPSV	EPRT	EPSV	FEAT
 
 	UMASK	IDLE	CHMOD	MDFIVE
 
@@ -156,8 +154,8 @@ cmd_list
 		{
 			if (fromname)
 				free(fromname);
-			fromname = (char *) 0;
-			restart_point = (off_t) 0;
+			fromname = NULL;
+			restart_point = 0;
 		}
 	| cmd_list rcmd
 	;
@@ -180,7 +178,7 @@ cmd
 	| PORT check_login SP host_port CRLF
 		{
 			if (epsvall) {
-				reply(501, "no PORT allowed after EPSV ALL");
+				reply(501, "No PORT allowed after EPSV ALL.");
 				goto port_done;
 			}
 			if (!$2)
@@ -203,7 +201,7 @@ cmd
 	| LPRT check_login SP host_long_port CRLF
 		{
 			if (epsvall) {
-				reply(501, "no LPRT allowed after EPSV ALL");
+				reply(501, "No LPRT allowed after EPSV ALL.");
 				goto lprt_done;
 			}
 			if (!$2)
@@ -233,7 +231,7 @@ cmd
 			int i;
 
 			if (epsvall) {
-				reply(501, "no EPRT allowed after EPSV ALL");
+				reply(501, "No EPRT allowed after EPSV ALL.");
 				goto eprt_done;
 			}
 			if (!$2)
@@ -326,14 +324,14 @@ cmd
 	| PASV check_login CRLF
 		{
 			if (epsvall)
-				reply(501, "no PASV allowed after EPSV ALL");
+				reply(501, "No PASV allowed after EPSV ALL.");
 			else if ($2)
 				passive();
 		}
 	| LPSV check_login CRLF
 		{
 			if (epsvall)
-				reply(501, "no LPSV allowed after EPSV ALL");
+				reply(501, "No LPSV allowed after EPSV ALL.");
 			else if ($2)
 				long_passive("LPSV", PF_UNSPEC);
 		}
@@ -360,8 +358,7 @@ cmd
 	| EPSV check_login_epsv SP ALL CRLF
 		{
 			if ($2) {
-				reply(200,
-				      "EPSV ALL command successful.");
+				reply(200, "EPSV ALL command successful.");
 				epsvall++;
 			}
 		}
@@ -394,16 +391,16 @@ cmd
 					break;
 
 				case TYPE_L:
-#if NBBY == 8
+#if CHAR_BIT == 8
 					if (cmd_bytesz == 8) {
 						reply(200,
 						    "Type set to L (byte size 8).");
 						type = cmd_type;
 					} else
 						reply(504, "Byte size must be 8.");
-#else /* NBBY == 8 */
-					UNIMPLEMENTED for NBBY != 8
-#endif /* NBBY == 8 */
+#else /* CHAR_BIT == 8 */
+					UNIMPLEMENTED for CHAR_BIT != 8
+#endif /* CHAR_BIT == 8 */
 				}
 			}
 		}
@@ -413,7 +410,7 @@ cmd
 				switch ($4) {
 
 				case STRU_F:
-					reply(200, "STRU F ok.");
+					reply(200, "STRU F accepted.");
 					break;
 
 				default:
@@ -427,7 +424,7 @@ cmd
 				switch ($4) {
 
 				case MODE_S:
-					reply(200, "MODE S ok.");
+					reply(200, "MODE S accepted.");
 					break;
 	
 				default:
@@ -450,9 +447,9 @@ cmd
 	| RETR check_login SP pathname CRLF
 		{
 			if (noretr || (guest && noguestretr))
-				reply(500, "RETR command is disabled");
+				reply(500, "RETR command disabled.");
 			else if ($2 && $4 != NULL)
-				retrieve((char *) 0, $4);
+				retrieve(NULL, $4);
 
 			if ($4 != NULL)
 				free($4);
@@ -519,7 +516,7 @@ cmd
 				if (fromname) {
 					renamecmd(fromname, $4);
 					free(fromname);
-					fromname = (char *) 0;
+					fromname = NULL;
 				} else {
 					reply(503, "Bad sequence of commands.");
 				}
@@ -547,7 +544,7 @@ cmd
 		}
 	| HELP CRLF
 		{
-			help(cmdtab, (char *) 0);
+			help(cmdtab, NULL);
 		}
 	| HELP SP STRING CRLF
 		{
@@ -560,7 +557,7 @@ cmd
 				if (*cp)
 					help(sitetab, cp);
 				else
-					help(sitetab, (char *) 0);
+					help(sitetab, NULL);
 			} else
 				help(cmdtab, $3);
 			free($3);
@@ -595,7 +592,7 @@ cmd
 		}
 	| SITE SP HELP CRLF
 		{
-			help(sitetab, (char *) 0);
+			help(sitetab, NULL);
 		}
 	| SITE SP HELP SP STRING CRLF
 		{
@@ -622,8 +619,8 @@ cmd
 
 			if ($4) {
 				oldmask = umask(0);
-				(void) umask(oldmask);
-				reply(200, "Current UMASK is %03o", oldmask);
+				umask(oldmask);
+				reply(200, "Current UMASK is %03o.", oldmask);
 			}
 		}
 	| SITE SP UMASK check_login SP octal_number CRLF
@@ -632,11 +629,11 @@ cmd
 
 			if ($4) {
 				if (($6 == -1) || ($6 > 0777)) {
-					reply(501, "Bad UMASK value");
+					reply(501, "Bad UMASK value.");
 				} else {
 					oldmask = umask($6);
 					reply(200,
-					    "UMASK set to %03o (was %03o)",
+					    "UMASK set to %03o (was %03o).",
 					    $6, oldmask);
 				}
 			}
@@ -645,7 +642,7 @@ cmd
 		{
 			if ($4 && ($8 != NULL)) {
 				if (($6 == -1 ) || ($6 > 0777))
-					reply(501, "Bad mode value");
+					reply(501, "Bad mode value.");
 				else if (chmod($8, $6) < 0)
 					perror_reply(550, $8);
 				else
@@ -658,7 +655,7 @@ cmd
 		{
 			if ($3)
 				reply(200,
-			    	    "Current IDLE time limit is %d seconds; max %d",
+				    "Current IDLE time limit is %d seconds; max %d.",
 				    timeout, maxtimeout);
 		}
 	| SITE SP check_login IDLE SP NUMBER CRLF
@@ -666,13 +663,13 @@ cmd
 			if ($3) {
 				if ($6.i < 30 || $6.i > maxtimeout) {
 					reply(501,
-					    "Maximum IDLE time must be between 30 and %d seconds",
+					    "Maximum IDLE time must be between 30 and %d seconds.",
 					    maxtimeout);
 				} else {
 					timeout = $6.i;
-					(void) alarm((unsigned) timeout);
+					alarm(timeout);
 					reply(200,
-					    "Maximum IDLE time set to %d seconds",
+					    "Maximum IDLE time set to %d seconds.",
 					    timeout);
 				}
 			}
@@ -684,19 +681,38 @@ cmd
 			if ($4 != NULL)
 				free($4);
 		}
+	| FEAT CRLF
+		{
+			lreply(211, "Extensions supported:");
+#if 0
+			/* XXX these two keywords are non-standard */
+			printf(" EPRT\r\n");
+			if (!noepsv)
+				printf(" EPSV\r\n");
+#endif
+			printf(" MDTM\r\n");
+			printf(" REST STREAM\r\n");
+			printf(" SIZE\r\n");
+			if (assumeutf8) {
+				/* TVFS requires UTF8, see RFC 3659 */
+				printf(" TVFS\r\n");
+				printf(" UTF8\r\n");
+			}
+			reply(211, "End.");
+		}
 	| SYST check_login CRLF
 		{
-			if ($2)
-#ifdef unix
+			if ($2) {
+				if (hostinfo)
 #ifdef BSD
-			reply(215, "UNIX Type: L%d Version: BSD-%d",
-				NBBY, BSD);
+					reply(215, "UNIX Type: L%d Version: BSD-%d",
+					      CHAR_BIT, BSD);
 #else /* BSD */
-			reply(215, "UNIX Type: L%d", NBBY);
+					reply(215, "UNIX Type: L%d", CHAR_BIT);
 #endif /* BSD */
-#else /* unix */
-			reply(215, "UNKNOWN Type: L%d", NBBY);
-#endif /* unix */
+				else
+					reply(215, "UNKNOWN Type: L%d", CHAR_BIT);
+			}
 		}
 
 		/*
@@ -728,8 +744,7 @@ cmd
 			if ($2 && $4 != NULL) {
 				struct stat stbuf;
 				if (stat($4, &stbuf) < 0)
-					reply(550, "%s: %s",
-					    $4, strerror(errno));
+					perror_reply(550, $4);
 				else if (!S_ISREG(stbuf.st_mode)) {
 					reply(550, "%s: not a plain file.", $4);
 				} else {
@@ -764,11 +779,11 @@ cmd
 rcmd
 	: RNFR check_login_ro SP pathname CRLF
 		{
-			restart_point = (off_t) 0;
+			restart_point = 0;
 			if ($2 && $4) {
 				if (fromname)
 					free(fromname);
-				fromname = (char *) 0;
+				fromname = NULL;
 				if (renamefrom($4))
 					fromname = $4;
 				else
@@ -782,10 +797,10 @@ rcmd
 			if ($2) {
 				if (fromname)
 					free(fromname);
-				fromname = (char *) 0;
+				fromname = NULL;
 				restart_point = $4.o;
-				reply(350, "Restarting at %llu. %s",
-				    restart_point,
+				reply(350, "Restarting at %jd. %s",
+				    (intmax_t)restart_point,
 				    "Send STORE or RETRIEVE to initiate transfer.");
 			}
 		}
@@ -914,7 +929,7 @@ type_code
 	| L
 		{
 			cmd_type = TYPE_L;
-			cmd_bytesz = NBBY;
+			cmd_bytesz = CHAR_BIT;
 		}
 	| L SP byte_size
 		{
@@ -962,43 +977,24 @@ mode_code
 pathname
 	: pathstring
 		{
-			/*
-			 * Problem: this production is used for all pathname
-			 * processing, but only gives a 550 error reply.
-			 * This is a valid reply in some cases but not in others.
-			 */
 			if (logged_in && $1) {
-				glob_t gl;
-				char *p, **pp;
-				int flags =
-				 GLOB_BRACE|GLOB_NOCHECK|GLOB_QUOTE|GLOB_TILDE;
-				int n;
+				char *p;
 
-				memset(&gl, 0, sizeof(gl));
-				flags |= GLOB_LIMIT;
-				gl.gl_matchc = MAXGLOBARGS;
-				if (glob($1, flags, NULL, &gl) ||
-				    gl.gl_pathc == 0) {
-					reply(550, "wildcard expansion error");
+				/*
+				 * Expand ~user manually since glob(3)
+				 * will return the unexpanded pathname
+				 * if the corresponding file/directory
+				 * doesn't exist yet.  Using sole glob(3)
+				 * would break natural commands like
+				 * MKD ~user/newdir
+				 * or
+				 * RNTO ~/newfile
+				 */
+				if ((p = exptilde($1)) != NULL) {
+					$$ = expglob(p);
+					free(p);
+				} else
 					$$ = NULL;
-				} else {
-					n = 0;
-					for (pp = gl.gl_pathv; *pp; pp++)
-						if (strcspn(*pp, "\r\n") ==
-						    strlen(*pp)) {
-							p = *pp;
-							n++;
-						}
-					if (n == 0)
-						$$ = strdup($1);
-					else if (n == 1)
-						$$ = strdup(p);
-					else {
-						reply(550, "ambiguous");
-						$$ = NULL;
-					}
-				}
-				globfree(&gl);
 				free($1);
 			} else
 				$$ = $1;
@@ -1047,7 +1043,7 @@ check_login_epsv
 	: /* empty */
 		{
 		if (noepsv) {
-			reply(500, "EPSV command disabled");
+			reply(500, "EPSV command disabled.");
 			$$ = 0;
 		}
 		else
@@ -1129,6 +1125,7 @@ struct tab cmdtab[] = {		/* In order defined in RFC 765 */
 	{ "NLST", NLST, OSTR, 1,	"[ <sp> path-name ]" },
 	{ "SITE", SITE, SITECMD, 1,	"site-cmd [ <sp> arguments ]" },
 	{ "SYST", SYST, ARGS, 1,	"(get type of operating system)" },
+	{ "FEAT", FEAT, ARGS, 1,	"(get extended features)" },
 	{ "STAT", STAT, OSTR, 1,	"[ <sp> path-name ]" },
 	{ "HELP", HELP, OSTR, 1,	"[ <sp> <string> ]" },
 	{ "NOOP", NOOP, ARGS, 1,	"" },
@@ -1155,21 +1152,25 @@ struct tab sitetab[] = {
 	{ NULL,   0,    0,    0,	0 }
 };
 
-static char	*copy (char *);
-static void	 help (struct tab *, char *);
+static char	*copy(char *);
+static char	*expglob(char *);
+static char	*exptilde(char *);
+static void	 help(struct tab *, char *);
 static struct tab *
-		 lookup (struct tab *, char *);
-static int	 port_check (const char *);
-static int	 port_check_v6 (const char *);
-static void	 sizecmd (char *);
-static void	 toolong (int);
-static void	 v4map_data_dest (void);
-static int	 yylex (void);
+		 lookup(struct tab *, char *);
+static int	 port_check(const char *);
+#ifdef INET6
+static int	 port_check_v6(const char *);
+#endif
+static void	 sizecmd(char *);
+static void	 toolong(int);
+#ifdef INET6
+static void	 v4map_data_dest(void);
+#endif
+static int	 yylex(void);
 
 static struct tab *
-lookup(p, cmd)
-	struct tab *p;
-	char *cmd;
+lookup(struct tab *p, char *cmd)
 {
 
 	for (; p->name != NULL; p++)
@@ -1183,14 +1184,12 @@ lookup(p, cmd)
 /*
  * getline - a hacked up version of fgets to ignore TELNET escape codes.
  */
-char *
-getline(s, n, iop)
-	char *s;
-	int n;
-	FILE *iop;
+int
+getline(char *s, int n, FILE *iop)
 {
 	int c;
-	register char *cs;
+	char *cs;
+	sigset_t sset, osset;
 
 	cs = s;
 /* tmpline may contain saved command from urgent mode interruption */
@@ -1201,50 +1200,69 @@ getline(s, n, iop)
 			if (ftpdebug)
 				syslog(LOG_DEBUG, "command: %s", s);
 			tmpline[0] = '\0';
-			return(s);
+			return(0);
 		}
 		if (c == 0)
 			tmpline[0] = '\0';
 	}
+	/* SIGURG would interrupt stdio if not blocked during the read loop */
+	sigemptyset(&sset);
+	sigaddset(&sset, SIGURG);
+	sigprocmask(SIG_BLOCK, &sset, &osset);
 	while ((c = getc(iop)) != EOF) {
 		c &= 0377;
 		if (c == IAC) {
-		    if ((c = getc(iop)) != EOF) {
+			if ((c = getc(iop)) == EOF)
+				goto got_eof;
 			c &= 0377;
 			switch (c) {
 			case WILL:
 			case WONT:
-				c = getc(iop);
+				if ((c = getc(iop)) == EOF)
+					goto got_eof;
 				printf("%c%c%c", IAC, DONT, 0377&c);
-				(void) fflush(stdout);
+				fflush(stdout);
 				continue;
 			case DO:
 			case DONT:
-				c = getc(iop);
+				if ((c = getc(iop)) == EOF)
+					goto got_eof;
 				printf("%c%c%c", IAC, WONT, 0377&c);
-				(void) fflush(stdout);
+				fflush(stdout);
 				continue;
 			case IAC:
 				break;
 			default:
 				continue;	/* ignore command */
 			}
-		    }
 		}
 		*cs++ = c;
-		if (--n <= 0 || c == '\n')
+		if (--n <= 0) {
+			/*
+			 * If command doesn't fit into buffer, discard the
+			 * rest of the command and indicate truncation.
+			 * This prevents the command to be split up into
+			 * multiple commands.
+			 */
+			while (c != '\n' && (c = getc(iop)) != EOF)
+				;
+			return (-2);
+		}
+		if (c == '\n')
 			break;
 	}
+got_eof:
+	sigprocmask(SIG_SETMASK, &osset, NULL);
 	if (c == EOF && cs == s)
-		return (NULL);
+		return (-1);
 	*cs++ = '\0';
 	if (ftpdebug) {
 		if (!guest && strncasecmp("pass ", s, 5) == 0) {
 			/* Don't syslog passwords */
 			syslog(LOG_DEBUG, "command: %.5s ???", s);
 		} else {
-			register char *cp;
-			register int len;
+			char *cp;
+			int len;
 
 			/* Don't syslog trailing CR-LF */
 			len = strlen(s);
@@ -1256,12 +1274,11 @@ getline(s, n, iop)
 			syslog(LOG_DEBUG, "command: %.*s", len, s);
 		}
 	}
-	return (s);
+	return (0);
 }
 
 static void
-toolong(signo)
-	int signo;
+toolong(int signo)
 {
 
 	reply(421,
@@ -1273,7 +1290,7 @@ toolong(signo)
 }
 
 static int
-yylex()
+yylex(void)
 {
 	static int cpos;
 	char *cp, *cp2;
@@ -1285,13 +1302,18 @@ yylex()
 		switch (state) {
 
 		case CMD:
-			(void) signal(SIGALRM, toolong);
-			(void) alarm((unsigned) timeout);
-			if (getline(cbuf, sizeof(cbuf)-1, stdin) == NULL) {
+			signal(SIGALRM, toolong);
+			alarm(timeout);
+			n = getline(cbuf, sizeof(cbuf)-1, stdin);
+			if (n == -1) {
 				reply(221, "You could at least say goodbye.");
 				dologout(0);
+			} else if (n == -2) {
+				reply(500, "Command too long.");
+				alarm(0);
+				continue;
 			}
-			(void) alarm(0);
+			alarm(0);
 #ifdef SETPROCTITLE
 			if (strncasecmp(cbuf, "PASS", 4) != 0)
 				setproctitle("%s: %s", proctitle, cbuf);
@@ -1410,7 +1432,7 @@ yylex()
 				c = cbuf[cpos];
 				cbuf[cpos] = '\0';
 				yylval.u.i = atoi(cp);
-				yylval.u.o = strtoull(cp, (char **)NULL, 10);
+				yylval.u.o = strtoull(cp, NULL, 10);
 				cbuf[cpos] = c;
 				return (NUMBER);
 			}
@@ -1491,8 +1513,7 @@ yylex()
 }
 
 void
-upper(s)
-	char *s;
+upper(char *s)
 {
 	while (*s != '\0') {
 		if (islower(*s))
@@ -1502,22 +1523,19 @@ upper(s)
 }
 
 static char *
-copy(s)
-	char *s;
+copy(char *s)
 {
 	char *p;
 
-	p = malloc((unsigned) strlen(s) + 1);
+	p = malloc(strlen(s) + 1);
 	if (p == NULL)
 		fatalerror("Ran out of memory.");
-	(void) strcpy(p, s);
+	strcpy(p, s);
 	return (p);
 }
 
 static void
-help(ctab, s)
-	struct tab *ctab;
-	char *s;
+help(struct tab *ctab, char *s)
 {
 	struct tab *c;
 	int width, NCMDS;
@@ -1562,7 +1580,7 @@ help(ctab, s)
 			}
 			printf("\r\n");
 		}
-		(void) fflush(stdout);
+		fflush(stdout);
 		if (hostinfo)
 			reply(214, "Direct comments to ftp-bugs@%s.", hostname);
 		else
@@ -1571,7 +1589,7 @@ help(ctab, s)
 	}
 	upper(s);
 	c = lookup(ctab, s);
-	if (c == (struct tab *)0) {
+	if (c == NULL) {
 		reply(502, "Unknown command %s.", s);
 		return;
 	}
@@ -1583,8 +1601,7 @@ help(ctab, s)
 }
 
 static void
-sizecmd(filename)
-	char *filename;
+sizecmd(char *filename)
 {
 	switch (type) {
 	case TYPE_L:
@@ -1595,7 +1612,7 @@ sizecmd(filename)
 		else if (!S_ISREG(stbuf.st_mode))
 			reply(550, "%s: not a plain file.", filename);
 		else
-			reply(213, "%qu", stbuf.st_size);
+			reply(213, "%jd", (intmax_t)stbuf.st_size);
 		break; }
 	case TYPE_A: {
 		FILE *fin;
@@ -1609,15 +1626,15 @@ sizecmd(filename)
 		}
 		if (fstat(fileno(fin), &stbuf) < 0) {
 			perror_reply(550, filename);
-			(void) fclose(fin);
+			fclose(fin);
 			return;
 		} else if (!S_ISREG(stbuf.st_mode)) {
 			reply(550, "%s: not a plain file.", filename);
-			(void) fclose(fin);
+			fclose(fin);
 			return;
 		} else if (stbuf.st_size > MAXASIZE) {
 			reply(550, "%s: too large for type A SIZE.", filename);
-			(void) fclose(fin);
+			fclose(fin);
 			return;
 		}
 
@@ -1627,9 +1644,9 @@ sizecmd(filename)
 				count++;
 			count++;
 		}
-		(void) fclose(fin);
+		fclose(fin);
 
-		reply(213, "%qd", count);
+		reply(213, "%jd", (intmax_t)count);
 		break; }
 	default:
 		reply(504, "SIZE not implemented for type %s.",
@@ -1639,8 +1656,7 @@ sizecmd(filename)
 
 /* Return 1, if port check is done. Return 0, if not yet. */
 static int
-port_check(pcmd)
-	const char *pcmd;
+port_check(const char *pcmd)
 {
 	if (his_addr.su_family == AF_INET) {
 		if (data_dest.su_family != AF_INET) {
@@ -1658,7 +1674,7 @@ port_check(pcmd)
 		} else {
 			usedefault = 0;
 			if (pdata >= 0) {
-				(void) close(pdata);
+				close(pdata);
 				pdata = -1;
 			}
 			reply(200, "%s command successful.", pcmd);
@@ -1669,7 +1685,7 @@ port_check(pcmd)
 }
 
 static int
-check_login1()
+check_login1(void)
 {
 	if (logged_in)
 		return 1;
@@ -1679,11 +1695,92 @@ check_login1()
 	}
 }
 
+/*
+ * Replace leading "~user" in a pathname by the user's login directory.
+ * Returned string will be in a freshly malloced buffer unless it's NULL.
+ */
+static char *
+exptilde(char *s)
+{
+	char *p, *q;
+	char *path, *user;
+	struct passwd *ppw;
+
+	if ((p = strdup(s)) == NULL)
+		return (NULL);
+	if (*p != '~')
+		return (p);
+
+	user = p + 1;	/* skip tilde */
+	if ((path = strchr(p, '/')) != NULL)
+		*(path++) = '\0'; /* separate ~user from the rest of path */
+	if (*user == '\0') /* no user specified, use the current user */
+		user = pw->pw_name;
+	/* read passwd even for the current user since we may be chrooted */
+	if ((ppw = getpwnam(user)) != NULL) {
+		/* user found, substitute login directory for ~user */
+		if (path)
+			asprintf(&q, "%s/%s", ppw->pw_dir, path);
+		else
+			q = strdup(ppw->pw_dir);
+		free(p);
+		p = q;
+	} else {
+		/* user not found, undo the damage */
+		if (path)
+			path[-1] = '/';
+	}
+	return (p);
+}
+
+/*
+ * Expand glob(3) patterns possibly present in a pathname.
+ * Avoid expanding to a pathname including '\r' or '\n' in order to
+ * not disrupt the FTP protocol.
+ * The expansion found must be unique.
+ * Return the result as a malloced string, or NULL if an error occured.
+ *
+ * Problem: this production is used for all pathname
+ * processing, but only gives a 550 error reply.
+ * This is a valid reply in some cases but not in others.
+ */
+static char *
+expglob(char *s)
+{
+	char *p, **pp, *rval;
+	int flags = GLOB_BRACE | GLOB_NOCHECK;
+	int n;
+	glob_t gl;
+
+	memset(&gl, 0, sizeof(gl));
+	flags |= GLOB_LIMIT;
+	gl.gl_matchc = MAXGLOBARGS;
+	if (glob(s, flags, NULL, &gl) == 0 && gl.gl_pathc != 0) {
+		for (pp = gl.gl_pathv, p = NULL, n = 0; *pp; pp++)
+			if (*(*pp + strcspn(*pp, "\r\n")) == '\0') {
+				p = *pp;
+				n++;
+			}
+		if (n == 0)
+			rval = strdup(s);
+		else if (n == 1)
+			rval = strdup(p);
+		else {
+			reply(550, "Wildcard is ambiguous.");
+			rval = NULL;
+		}
+	} else {
+		reply(550, "Wildcard expansion error.");
+		rval = NULL;
+	}
+	globfree(&gl);
+	return (rval);
+}
+
 #ifdef INET6
 /* Return 1, if port check is done. Return 0, if not yet. */
 static int
-port_check_v6(pcmd)
-	const char *pcmd;
+port_check_v6(const char *pcmd)
 {
 	if (his_addr.su_family == AF_INET6) {
 		if (IN6_IS_ADDR_V4MAPPED(&his_addr.su_sin6.sin6_addr))
@@ -1704,7 +1801,7 @@ port_check_v6(pcmd)
 		} else {
 			usedefault = 0;
 			if (pdata >= 0) {
-				(void) close(pdata);
+				close(pdata);
 				pdata = -1;
 			}
 			reply(200, "%s command successful.", pcmd);
@@ -1715,7 +1812,7 @@ port_check_v6(pcmd)
 }
 
 static void
-v4map_data_dest()
+v4map_data_dest(void)
 {
 	struct in_addr savedaddr;
 	int savedport;

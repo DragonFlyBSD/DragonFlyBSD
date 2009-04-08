@@ -57,6 +57,7 @@
 #include <sys/malloc.h>
 #include <sys/memrange.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/random.h>
 #include <sys/signalvar.h>
 #include <sys/signal2.h>
@@ -114,7 +115,7 @@ mmopen(struct dev_open_args *ap)
 		error = 0;
 		break;
 	case 14:
-		error = suser_cred(ap->a_cred, 0);
+		error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
 		if (error != 0)
 			break;
 		if (securelevel > 0 || kernel_mem_readonly) {
@@ -297,7 +298,7 @@ mmrw(cdev_t dev, struct uio *uio, int flags)
 		}
 		if (error)
 			break;
-		iov->iov_base += c;
+		iov->iov_base = (char *)iov->iov_base + c;
 		iov->iov_len -= c;
 		uio->uio_offset += c;
 		uio->uio_resid -= c;
@@ -491,7 +492,7 @@ random_ioctl(cdev_t dev, u_long cmd, caddr_t data, int flags, struct ucred *cred
 		break;
 	case MEM_SETIRQ:
 		intr = *(int16_t *)data;
-		if ((error = suser_cred(cred, 0)) != 0)
+		if ((error = priv_check_cred(cred, PRIV_ROOT, 0)) != 0)
 			break;
 		if (intr < 0 || intr >= MAX_INTS)
 			return (EINVAL);
@@ -499,7 +500,7 @@ random_ioctl(cdev_t dev, u_long cmd, caddr_t data, int flags, struct ucred *cred
 		break;
 	case MEM_CLEARIRQ:
 		intr = *(int16_t *)data;
-		if ((error = suser_cred(cred, 0)) != 0)
+		if ((error = priv_check_cred(cred, PRIV_ROOT, 0)) != 0)
 			break;
 		if (intr < 0 || intr >= MAX_INTS)
 			return (EINVAL);
@@ -510,7 +511,7 @@ random_ioctl(cdev_t dev, u_long cmd, caddr_t data, int flags, struct ucred *cred
 		break;
 	case MEM_FINDIRQ:
 		intr = *(int16_t *)data;
-		if ((error = suser_cred(cred, 0)) != 0)
+		if ((error = priv_check_cred(cred, PRIV_ROOT, 0)) != 0)
 			break;
 		if (intr < 0 || intr >= MAX_INTS)
 			return (EINVAL);

@@ -54,6 +54,7 @@
 #include <sys/vnode.h>
 #include <sys/file.h>		/* XXX */
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/jail.h>
 
 /*
@@ -109,6 +110,8 @@ vop_helper_access(struct vop_access_args *ap, uid_t ino_uid, gid_t ino_gid,
 
 	/* Otherwise, check the owner. */
 	if (cred->cr_uid == ino_uid) {
+		if (mode & VOWN)
+			return (0);
 		if (mode & VEXEC)
 			mask |= S_IXUSR;
 		if (mode & VREAD)
@@ -150,7 +153,7 @@ vop_helper_setattr_flags(u_int32_t *ino_flags, u_int32_t vaflags,
 	 * If uid doesn't match only the super-user can change the flags
 	 */
 	if (cred->cr_uid != uid &&
-	    (error = suser_cred(cred, PRISON_ROOT))) {
+	    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT))) {
 		return(error);
 	}
 	if (cred->cr_uid == 0 &&
@@ -197,7 +200,7 @@ vop_helper_chmod(struct vnode *vp, mode_t new_mode, struct ucred *cred,
 	int error;
 
 	if (cred->cr_uid != cur_uid) {
-		error = suser_cred(cred, PRISON_ROOT);
+		error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT);
 		if (error)
 			return (error);
 	}
@@ -237,7 +240,7 @@ vop_helper_chown(struct vnode *vp, uid_t new_uid, gid_t new_gid,
 	if ((cred->cr_uid != *cur_uidp || new_uid != *cur_uidp ||
 	    (new_gid != *cur_gidp && !(cred->cr_gid == new_gid ||
 	    groupmember(new_gid, cred)))) &&
-	    (error = suser_cred(cred, PRISON_ROOT))) {
+	    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT))) {
 		return (error);
 	}
 	ogid = *cur_gidp;

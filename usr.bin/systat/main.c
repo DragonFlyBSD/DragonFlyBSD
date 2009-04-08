@@ -91,7 +91,7 @@ main(int argc, char **argv)
 			p = lookup(&argv[0][1]);
 			if (p == (struct cmdtab *)-1)
 				errx(1, "%s: ambiguous request", &argv[0][1]);
-			if (p == (struct cmdtab *)0)
+			if (p == NULL)
 				errx(1, "%s: unknown request", &argv[0][1]);
 			curcmd = p;
 		} else {

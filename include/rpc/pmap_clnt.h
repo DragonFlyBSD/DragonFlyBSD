@@ -28,7 +28,8 @@
  *
  *	from: @(#)pmap_clnt.h 1.11 88/02/08 SMI
  *	from: @(#)pmap_clnt.h	2.1 88/07/29 4.0 RPCSRC
- * $FreeBSD: src/include/rpc/pmap_clnt.h,v 1.11 1999/08/27 23:45:04 peter Exp $
+ * $NetBSD: pmap_clnt.h,v 1.9 2000/06/02 22:57:55 fvdl Exp $
+ * $FreeBSD: src/include/rpc/pmap_clnt.h,v 1.14 2002/04/28 15:18:45 des Exp $
  * $DragonFly: src/include/rpc/pmap_clnt.h,v 1.7 2005/11/13 12:27:04 swildner Exp $
  */
 
@@ -62,8 +63,8 @@
  *		address if the responder to the broadcast.
  */
 
-#ifndef _RPC_PMAPCLNT_H
-#define _RPC_PMAPCLNT_H
+#ifndef _RPC_PMAP_CLNT_H_
+#define _RPC_PMAP_CLNT_H_
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
@@ -73,11 +74,10 @@ struct pmaplist	*pmap_getmaps(struct sockaddr_in *);
 enum clnt_stat	 pmap_rmtcall(struct sockaddr_in *, u_long, u_long, u_long,
 			      xdrproc_t, caddr_t, xdrproc_t, caddr_t,
 			      struct timeval, u_long *);
-enum clnt_stat	 clnt_broadcast(u_long, u_long, u_long, xdrproc_t, char *,
-				xdrproc_t, char *, bool_t (*) (caddr_t,
-				struct sockaddr_in *));
+enum clnt_stat	 clnt_broadcast(u_long, u_long, u_long, xdrproc_t, void *,
+				xdrproc_t, void *, resultproc_t);
 u_short		 pmap_getport(struct sockaddr_in *, u_long, u_long, u_int);
 void		 pmap_getport_timeout(struct timeval *, struct timeval *);
 __END_DECLS
 
-#endif /* !_RPC_PMAPCLNT_H */
+#endif /* !_RPC_PMAP_CLNT_H_ */

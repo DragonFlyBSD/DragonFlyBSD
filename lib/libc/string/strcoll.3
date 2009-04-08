@@ -13,10 +13,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -34,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)strcoll.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/string/strcoll.3,v 1.8.2.3 2001/12/14 18:33:59 ru Exp $
+.\" $FreeBSD: src/lib/libc/string/strcoll.3,v 1.14 2007/01/09 00:28:12 imp Exp $
 .\" $DragonFly: src/lib/libc/string/strcoll.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
 .\"
 .Dd June 4, 1993
@@ -57,17 +53,21 @@ lexicographically compares the null-terminated strings
 .Fa s1
 and
 .Fa s2
-according to the current locale collation if any, otherwise call
-.Fa strcmp ,
+according to the current locale collation
 and returns an integer greater than, equal to, or less than 0,
 according as
 .Fa s1
 is greater than, equal to, or less than
 .Fa s2 .
+If information about the current locale collation is not available,
+the value of
+.Fn strcmp s1 s2
+is returned.
 .Sh SEE ALSO
 .Xr setlocale 3 ,
 .Xr strcmp 3 ,
-.Xr strxfrm 3
+.Xr strxfrm 3 ,
+.Xr wcscoll 3
 .Sh STANDARDS
 The
 .Fn strcoll

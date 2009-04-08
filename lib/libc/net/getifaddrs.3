@@ -1,5 +1,3 @@
-.\"	$FreeBSD: src/lib/libc/net/getifaddrs.3,v 1.1.2.5 2001/12/14 18:33:55 ru Exp $
-.\"	$DragonFly: src/lib/libc/net/getifaddrs.3,v 1.5 2007/08/18 20:48:47 swildner Exp $
 .\"	$KAME: getifaddrs.3,v 1.4 2000/05/17 14:13:14 itojun Exp $
 .\"	BSDI	getifaddrs.3,v 2.5 2000/02/23 14:51:59 dab Exp
 .\"
@@ -23,6 +21,10 @@
 .\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD: src/lib/libc/net/getifaddrs.3,v 1.10 2005/02/09 18:03:13 ru Exp $
+.\" $DragonFly: src/lib/libc/net/getifaddrs.3,v 1.5 2007/08/18 20:48:47 swildner Exp $
+.\"
 .Dd October 12, 1995
 .Dt GETIFADDRS 3
 .Os
@@ -113,7 +115,8 @@ if one exists, otherwise it is NULL.
 .Pp
 The
 .Li ifa_data
-field references address family specific data.  For
+field references address family specific data.
+For
 .Dv AF_LINK
 addresses it contains a pointer to the
 .Fa struct if_data

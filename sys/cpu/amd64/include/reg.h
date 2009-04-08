@@ -42,22 +42,25 @@
  * Register set accessible via /proc/$pid/regs and PT_{SET,GET}REGS.
  */
 struct reg {
-	register_t	r_r15;
-	register_t	r_r14;
-	register_t	r_r13;
-	register_t	r_r12;
-	register_t	r_r11;
-	register_t	r_r10;
-	register_t	r_r9;
-	register_t	r_r8;
 	register_t	r_rdi;
 	register_t	r_rsi;
-	register_t	r_rbp;
-	register_t	r_rbx;
 	register_t	r_rdx;
 	register_t	r_rcx;
+	register_t	r_r8;
+	register_t	r_r9;
 	register_t	r_rax;
+	register_t	r_rbx;
+	register_t	r_rbp;
+	register_t	r_r10;
+	register_t	r_r11;
+	register_t	r_r12;
+	register_t	r_r13;
+	register_t	r_r14;
+	register_t	r_r15;
+	register_t	r_xflags;
 	register_t	r_trapno;
+	register_t	r_addr;
+	register_t	r_flags;
 	register_t	r_err;
 	register_t	r_rip;
 	register_t	r_cs;

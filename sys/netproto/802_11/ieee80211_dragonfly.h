@@ -86,6 +86,7 @@ int	ieee80211_node_dectestref(struct ieee80211_node *ni);
 #define	ieee80211_node_refcnt(_ni)	(_ni)->ni_refcnt
 
 struct mbuf *ieee80211_getmgtframe(uint8_t **frm, int headroom, u_int pktlen);
+
 /* M_PROTO1 unused */
 #define	M_PWR_SAV	M_PROTO4		/* bypass PS handling */
 #define	M_MORE_DATA	M_PROTO5		/* more data frames to follow */
@@ -98,6 +99,8 @@ struct mbuf *ieee80211_getmgtframe(uint8_t **frm, int headroom, u_int pktlen);
 #define	M_WME_AC_MASK	(M_PROTO2|M_PROTO3)
 /* XXX 5 is wrong if M_PROTO* are redefined */
 #define	M_WME_AC_SHIFT	5
+
+#define M_IEEE80211	(M_PROTO2|M_PROTO3|M_PROTO4|M_PROTO5)
 
 #define	M_WME_SETAC(m, ac) \
 	((m)->m_flags = ((m)->m_flags &~ M_WME_AC_MASK) | \

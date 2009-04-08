@@ -50,6 +50,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
 #include <sys/in_cksum.h>
@@ -117,7 +118,6 @@ static int	ip_setmoptions
 int	ip_optcopy(struct ip *, struct ip *);
 
 extern	int route_assert_owner_access;
-extern	void db_print_backtrace(void);
 
 extern	struct protosw inetsw[];
 
@@ -227,7 +227,7 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 				kprintf("ip_output: "
 					"rt rt_cpuid %d accessed on cpu %d\n",
 					ro->ro_rt->rt_cpuid, mycpuid);
-				db_print_backtrace();
+				print_backtrace();
 			}
 		}
 
@@ -327,7 +327,7 @@ reroute:
 	     dst->sin_family != AF_INET ||
 	     dst->sin_addr.s_addr != pkt_dst.s_addr)) {
 		rtfree(ro->ro_rt);
-		ro->ro_rt = (struct rtentry *)NULL;
+		ro->ro_rt = NULL;
 	}
 	if (ro->ro_rt == NULL) {
 		bzero(dst, sizeof *dst);
@@ -1186,7 +1186,7 @@ smart_frag_failure:
 			goto done;
 		}
 		m->m_pkthdr.len = mhlen + len;
-		m->m_pkthdr.rcvif = (struct ifnet *)NULL;
+		m->m_pkthdr.rcvif = NULL;
 		m->m_pkthdr.csum_flags = m0->m_pkthdr.csum_flags;
 		mhip->ip_off = htons(mhip->ip_off);
 		mhip->ip_sum = 0;
@@ -1274,7 +1274,7 @@ ip_insertoptions(struct mbuf *m, struct mbuf *opt, int *phlen)
 			*phlen = 0;
 			return (m);
 		}
-		n->m_pkthdr.rcvif = (struct ifnet *)NULL;
+		n->m_pkthdr.rcvif = NULL;
 		n->m_pkthdr.len = m->m_pkthdr.len + optlen;
 		m->m_len -= sizeof(struct ip);
 		m->m_data += sizeof(struct ip);
@@ -1401,7 +1401,7 @@ ip_ctloutput(struct socket *so, struct sockopt *sopt)
 				inp->inp_ip_ttl = optval;
 				break;
 			case IP_MINTTL:
-				if (optval > 0 && optval <= MAXTTL)
+				if (optval >= 0 && optval <= MAXTTL)
 					inp->inp_ip_minttl = optval;
 				else
 					error = EINVAL;
@@ -1489,7 +1489,7 @@ ip_ctloutput(struct socket *so, struct sockopt *sopt)
 				break;
 			soopt_to_mbuf(sopt, m);
 			priv = (sopt->sopt_td != NULL &&
-				suser(sopt->sopt_td) != 0) ? 0 : 1;
+				priv_check(sopt->sopt_td, PRIV_ROOT) != 0) ? 0 : 1;
 			req = mtod(m, caddr_t);
 			len = m->m_len;
 			optname = sopt->sopt_name;

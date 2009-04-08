@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/ypserv/yp_access.c,v 1.17.2.1 2002/02/15 00:47:00 des Exp $
+ * $FreeBSD: src/usr.sbin/ypserv/yp_access.c,v 1.23 2006/05/31 22:31:08 cperciva Exp $
  * $DragonFly: src/usr.sbin/ypserv/yp_access.c,v 1.5 2006/06/13 12:38:37 corecode Exp $
  */
 
@@ -57,33 +57,34 @@
 extern int debug;
 
 			/* NIS v1 */
-char *yp_procs[] = {	"ypoldproc_null",
-			"ypoldproc_domain",
-			"ypoldproc_domain_nonack",
-			"ypoldproc_match",
-			"ypoldproc_first",
-			"ypoldproc_next",
-			"ypoldproc_poll",
-			"ypoldproc_push",
-			"ypoldproc_get",
-			"badproc1", /* placeholder */
-			"badproc2", /* placeholder */
-			"badproc3", /* placeholder */
+const char *yp_procs[] = {
+	"ypoldproc_null",
+	"ypoldproc_domain",
+	"ypoldproc_domain_nonack",
+	"ypoldproc_match",
+	"ypoldproc_first",
+	"ypoldproc_next",
+	"ypoldproc_poll",
+	"ypoldproc_push",
+	"ypoldproc_get",
+	"badproc1", /* placeholder */
+	"badproc2", /* placeholder */
+	"badproc3", /* placeholder */
 
-			/* NIS v2 */
-			"ypproc_null",
-			"ypproc_domain",
-			"ypproc_domain_nonack",
-			"ypproc_match",
-			"ypproc_first",
-			"ypproc_next",
-			"ypproc_xfr",
-			"ypproc_clear",
-			"ypproc_all",
-			"ypproc_master",
-			"ypproc_order",
-			"ypproc_maplist"
-		   };
+	/* NIS v2 */
+	"ypproc_null",
+	"ypproc_domain",
+	"ypproc_domain_nonack",
+	"ypproc_match",
+	"ypproc_first",
+	"ypproc_next",
+	"ypproc_xfr",
+	"ypproc_clear",
+	"ypproc_all",
+	"ypproc_master",
+	"ypproc_order",
+	"ypproc_maplist"
+};
 
 struct securenet {
 	struct in_addr net;
@@ -216,12 +217,13 @@ yp_access(const char *map, const struct svc_req *rqstp)
 #endif
 	static unsigned long oldaddr = 0;
 	struct securenet *tmp;
-	char *yp_procedure = NULL;
+	const char *yp_procedure = NULL;
 	char procbuf[50];
 
 	if (rqstp->rq_prog != YPPASSWDPROG && rqstp->rq_prog != YPPROG) {
-		snprintf(procbuf, sizeof(procbuf), "#%lu/#%lu", rqstp->rq_prog,
-								rqstp->rq_proc);
+		snprintf(procbuf, sizeof(procbuf), "#%lu/#%lu",
+		    (unsigned long)rqstp->rq_prog,
+		    (unsigned long)rqstp->rq_proc);
 		yp_procedure = (char *)&procbuf;
 	} else {
 		yp_procedure = rqstp->rq_prog == YPPASSWDPROG ?

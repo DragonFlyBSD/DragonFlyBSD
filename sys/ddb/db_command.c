@@ -238,7 +238,7 @@ db_command(struct command **last_cmdp, struct command *cmd_table,
 	    modif[0] = '\0';
 	}
 	else if (t == tEXCL) {
-	    db_fncall((db_expr_t)0, (boolean_t)0, (db_expr_t)0, (char *)0);
+	    db_fncall((db_expr_t)0, (boolean_t)0, (db_expr_t)0, NULL);
 	    return;
 	}
 	else if (t != tIDENT) {
@@ -373,7 +373,7 @@ static struct command db_show_all_cmds[] = {
 	{ "threads",	db_show_all_threads,	0,	0 },
 #endif
 	{ "procs",	db_ps,			0,	0 },
-	{ (char *)0 }
+	{ NULL }
 };
 
 static struct command db_show_cmds[] = {
@@ -386,7 +386,7 @@ static struct command db_show_cmds[] = {
 #if 0
 	{ "port",	ipc_port_print,		0,	0 },
 #endif
-	{ (char *)0, }
+	{ NULL, }
 };
 
 static struct command db_command_table[] = {
@@ -419,7 +419,7 @@ static struct command db_command_table[] = {
 	{ "ps",		db_ps,			0,	0 },
 	{ "gdb",	db_gdb,			0,	0 },
 	{ "reset",	db_reset,		0,	0 },
-	{ (char *)0, }
+	{ NULL, }
 };
 
 static struct command	*db_last_command = 0;

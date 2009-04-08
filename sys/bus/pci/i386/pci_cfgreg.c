@@ -422,7 +422,7 @@ pci_cfgintr_linked(struct PIR_entry *pe, int pin)
 		for (j = 0, pi = &oe->pe_intpin[0]; j < 4; j++, pi++) {
 
 			/* don't look at the entry we're trying to match */
-			if ((pe == oe) && (i == (pin - 1)))
+			if ((pe == oe) && (j == (pin - 1)))
 				continue;
 			/* compare link bytes */
 			if (pi->link != pe->pe_intpin[pin - 1].link)
@@ -440,7 +440,7 @@ pci_cfgintr_linked(struct PIR_entry *pe, int pin)
 			 * table entry
 			 */
 			irq = pci_cfgintr_search(pe, oe->pe_bus, oe->pe_device,
-						 j, pin);
+						 j + 1, pin);
 			if (irq != PCI_INVALID_IRQ)
 				return (irq);
 		}

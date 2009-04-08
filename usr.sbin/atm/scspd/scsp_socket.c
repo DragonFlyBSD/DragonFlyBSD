@@ -591,7 +591,7 @@ scsp_dcs_accept(Scsp_server *ssp)
 	sd = accept(ssp->ss_dcs_lsock,
 			(struct sockaddr *)&dcs_sockaddr, &len);
 	if (sd < 0) {
-		return((Scsp_dcs *)0);
+		return(NULL);
 	}
 	if (sd > scsp_max_socket) {
 		scsp_max_socket = sd;
@@ -685,7 +685,7 @@ dcs_accept_fail:
 	 * An error has occured--clean up and return
 	 */
 	close(sd);
-	return((Scsp_dcs *)0);
+	return(NULL);
 }
 
 
@@ -704,7 +704,7 @@ int
 scsp_dcs_read(Scsp_dcs *dcsp)
 {
 	int			len, rc;
-	char			*buff = (char *)0;
+	char			*buff = NULL;
 	Scsp_server		*ssp = dcsp->sd_server;
 	Scsp_msg		*msg;
 
@@ -777,8 +777,7 @@ dcs_read_fail:
 		 * VCC has been closed--pass the event to
 		 * the Hello FSM
 		 */
-		rc = scsp_hfsm(dcsp, SCSP_HFSM_VC_CLOSED,
-				(Scsp_msg *)0);
+		rc = scsp_hfsm(dcsp, SCSP_HFSM_VC_CLOSED, NULL);
 	}
 	if (errno == ECONNREFUSED) {
 		/*
@@ -950,7 +949,7 @@ Scsp_if_msg *
 scsp_if_sock_read(int sd)
 {
 	int		len;
-	char		*buff = (char *)0;
+	char		*buff = NULL;
 	Scsp_if_msg	*msg;
 	Scsp_if_msg_hdr	msg_hdr;
 
@@ -996,7 +995,7 @@ scsp_if_sock_read(int sd)
 socket_read_fail:
 	if (buff)
 		UM_FREE(buff);
-	return((Scsp_if_msg *)0);
+	return(NULL);
 }
 
 
@@ -1115,8 +1114,7 @@ scsp_server_read(Scsp_server *ssp)
 		 * entry from its cache
 		 */
 		dcsp = (Scsp_dcs *)msg->si_tok;
-		rc = scsp_cfsm(dcsp, SCSP_CIFSM_SOL_RSP, (Scsp_msg *)0,
-				msg);
+		rc = scsp_cfsm(dcsp, SCSP_CIFSM_SOL_RSP, NULL, msg);
 		break;
 	case SCSP_UPDATE_REQ:
 		/*
@@ -1127,7 +1125,7 @@ scsp_server_read(Scsp_server *ssp)
 			for (dcsp = ssp->ss_dcs; dcsp;
 					dcsp = dcsp->sd_next) {
 				rc = scsp_cfsm(dcsp, SCSP_CIFSM_UPD_REQ,
-						(Scsp_msg *)0, msg);
+						NULL, msg);
 			}
 		}
 		break;
@@ -1137,8 +1135,7 @@ scsp_server_read(Scsp_server *ssp)
 		 * DCS associated with the request
 		 */
 		dcsp = (Scsp_dcs *)msg->si_tok;
-		rc = scsp_cfsm(dcsp, SCSP_CIFSM_UPD_RSP,
-				(Scsp_msg *)0, msg);
+		rc = scsp_cfsm(dcsp, SCSP_CIFSM_UPD_RSP, NULL, msg);
 		break;
 	default:
 		scsp_log(LOG_ERR, "invalid message type %d from server",

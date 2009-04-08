@@ -64,6 +64,7 @@
 #include <sys/kernel.h>
 #include <sys/conf.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
 #include <sys/fcntl.h>
@@ -193,7 +194,7 @@ ngt_open(cdev_t dev, struct tty *tp)
 	int error;
 
 	/* Super-user only */
-	if ((error = suser(td)))
+	if ((error = priv_check(td, PRIV_ROOT)))
 		return (error);
 	crit_enter();
 

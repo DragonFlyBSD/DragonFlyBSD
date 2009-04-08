@@ -29,21 +29,18 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/rpc/crypt_client.c,v 1.4 1999/08/28 00:00:37 peter Exp $
+ * $FreeBSD: src/lib/libc/rpc/crypt_client.c,v 1.9 2003/02/16 17:29:10 nectar Exp $
  * $DragonFly: src/lib/libc/rpc/crypt_client.c,v 1.3 2005/11/13 12:27:04 swildner Exp $
- *
- * $FreeBSD: src/lib/libc/rpc/crypt_client.c,v 1.4 1999/08/28 00:00:37 peter Exp $
  */
 
+#include "namespace.h"
+#include <err.h>
 #include <sys/types.h>
 #include <rpc/des_crypt.h>
 #include <rpc/des.h>
 #include <string.h>
 #include <rpcsvc/crypt.h>
-
-#ifndef KEYSERVSOCK
-#define KEYSERVSOCK "/var/run/keyservsock"
-#endif
+#include "un-namespace.h"
 
 int
 _des_crypt_call(char *buf, int len, struct desparams *dparms)
@@ -51,12 +48,27 @@ _des_crypt_call(char *buf, int len, struct desparams *dparms)
 	CLIENT *clnt;
 	desresp  *result_1;
 	desargs  des_crypt_1_arg;
-	int	stat;
+	struct netconfig *nconf;
+	void *localhandle;
+	int stat;
 
-	clnt = clnt_create(KEYSERVSOCK, CRYPT_PROG, CRYPT_VERS, "unix");
-	if (clnt == (CLIENT *) NULL) {
+	nconf = NULL;
+	localhandle = setnetconfig();
+	while ((nconf = getnetconfig(localhandle)) != NULL) {
+		if (nconf->nc_protofmly != NULL &&
+		     strcmp(nconf->nc_protofmly, NC_LOOPBACK) == 0)
+			break;
+	}
+	if (nconf == NULL) {
+		warnx("getnetconfig: %s", nc_sperror());
 		return(DESERR_HWERROR);
 	}
+	clnt = clnt_tp_create(NULL, CRYPT_PROG, CRYPT_VERS, nconf);
+	if (clnt == NULL) {
+		endnetconfig(localhandle);
+		return(DESERR_HWERROR);
+	}
+	endnetconfig(localhandle);
 
 	des_crypt_1_arg.desbuf.desbuf_len = len;
 	des_crypt_1_arg.desbuf.desbuf_val = buf;
@@ -66,7 +78,7 @@ _des_crypt_call(char *buf, int len, struct desparams *dparms)
 	bcopy(dparms->des_key, des_crypt_1_arg.des_key, 8);
 
 	result_1 = des_crypt_1(&des_crypt_1_arg, clnt);
-	if (result_1 == (desresp *) NULL) {
+	if (result_1 == NULL) {
 		clnt_destroy(clnt);
 		return(DESERR_HWERROR);
 	}
@@ -79,7 +91,7 @@ _des_crypt_call(char *buf, int len, struct desparams *dparms)
 		bcopy(result_1->des_ivec, dparms->des_ivec, 8);
 	}
 
-	clnt_freeres(clnt, xdr_desresp, (char *)result_1);
+	clnt_freeres(clnt, (xdrproc_t)xdr_desresp, result_1);
 	clnt_destroy(clnt);
 
 	return(stat);

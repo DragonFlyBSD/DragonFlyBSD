@@ -4,6 +4,7 @@
 
 MAN=	aac.4 \
 	acpi.4 \
+	acpi_asus.4 \
 	acpi_thermal.4 \
 	acpi_thinkpad.4 \
 	acpi_toshiba.4 \
@@ -11,11 +12,13 @@ MAN=	aac.4 \
 	acx.4 \
 	adv.4 \
 	adw.4 \
+	age.4 \
 	agp.4 \
 	aha.4 \
 	ahb.4 \
 	ahc.4 \
 	ahd.4 \
+	ale.4 \
 	altq.4 \
 	amd.4 \
 	amr.4 \
@@ -353,6 +356,7 @@ MLINKS+=snd_sbc.4 snd_sb16.4 \
 	snd_sbc.4 snd_sb8.4
 MLINKS+=splash.4 screensaver.4
 MLINKS+=syscons.4 sc.4
+MLINKS+=vga.4 vesa.4
 MLINKS+=vpo.4 imm.4
 MLINKS+=wlan_ratectl.4 wlan_ratectl_amrr.4 \
 	wlan_ratectl.4 wlan_ratectl_onoe.4 \

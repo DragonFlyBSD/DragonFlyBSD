@@ -51,6 +51,6 @@ c_colon()
 	wwputc('\n', cmdwin);
 	wwcurtowin(cmdwin);
 	setterse(oldterse);
-	if (dolongcmd(buf, (struct value *)0, 0) < 0)
+	if (dolongcmd(buf, NULL, 0) < 0)
 		error("Out of memory.");
 }

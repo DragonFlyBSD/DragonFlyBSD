@@ -97,6 +97,17 @@ tcgetpgrp(int fd)
 	return ((pid_t)s);
 }
 
+pid_t
+tcgetsid(int fd)
+{
+	int s;
+
+	if (_ioctl(fd, TIOCGSID, &s) < 0)
+		return ((pid_t)-1);
+
+	return ((pid_t)s);
+}
+
 speed_t
 cfgetospeed(const struct termios *t)
 {

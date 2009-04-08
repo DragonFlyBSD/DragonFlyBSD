@@ -74,6 +74,7 @@ union usched_data {
 #define USCHED_SET_CPU		1
 #define USCHED_ADD_CPU		2
 #define USCHED_DEL_CPU		3
+#define USCHED_GET_CPU		4
 
 /*
  * Kernel variables and procedures, or user system calls.

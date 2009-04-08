@@ -103,18 +103,19 @@ open(const char *fname, int mode)
 
     f = &files[fd];
     f->f_flags = mode + 1;
-    f->f_dev = (struct devsw *)0;
-    f->f_ops = (struct fs_ops *)0;
+    f->f_dev = NULL;
+    f->f_ops = NULL;
     f->f_offset = 0;
     f->f_devdata = NULL;
-    file = (char *)0;
+    f->f_fsdata = NULL;
+    file = NULL;
     error = devopen(f, fname, &file);
     if (error ||
-	(((f->f_flags & F_NODEV) == 0) && f->f_dev == (struct devsw *)0))
+	(((f->f_flags & F_NODEV) == 0) && f->f_dev == NULL))
 	goto err;
 
     /* see if we opened a raw device; otherwise, 'file' is the file name. */
-    if (file == (char *)0 || *file == '\0') {
+    if (file == NULL || *file == '\0') {
 	f->f_flags |= F_RAW;
 	return (fd);
     }
@@ -122,10 +123,8 @@ open(const char *fname, int mode)
     /* pass file name to the different filesystem open routines */
     besterror = ENOENT;
     for (i = 0; file_system[i] != NULL; i++) {
-
 	error = ((*file_system[i]).fo_open)(file, f);
 	if (error == 0) {
-	    
 	    f->f_ops = file_system[i];
 	    o_rainit(f);
 	    return (fd);

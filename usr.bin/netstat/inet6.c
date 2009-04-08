@@ -353,7 +353,7 @@ ip6_stats(u_long off __unused, char *name, int af __unused)
 
 	len = sizeof ip6stat;
 	memset(&ip6stat, 0, len);
-	if (sysctl(mib, 4, &ip6stat, &len, (void *)0, 0) < 0)
+	if (sysctl(mib, 4, &ip6stat, &len, NULL, 0) < 0)
 		return;
 	printf("%s:\n", name);
 
@@ -826,7 +826,7 @@ icmp6_stats(u_long off __unused, char *name, int af __unused)
 
 	len = sizeof icmp6stat;
 	memset(&icmp6stat, 0, len);
-	if (sysctl(mib, 4, &icmp6stat, &len, (void *)0, 0) < 0)
+	if (sysctl(mib, 4, &icmp6stat, &len, NULL, 0) < 0)
 		return;
 	printf("%s:\n", name);
 

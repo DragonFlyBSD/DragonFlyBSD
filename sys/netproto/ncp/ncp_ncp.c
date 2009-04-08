@@ -41,6 +41,7 @@
 #include <sys/errno.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/poll.h>
 #include <sys/signalvar.h>
 #include <sys/signal2.h>

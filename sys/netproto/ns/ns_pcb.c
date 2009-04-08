@@ -164,14 +164,14 @@ ns_pcbconnect(struct nspcb *nsp, struct sockaddr *nam)
 	flush:
 			if (ro->ro_rt)
 				RTFREE(ro->ro_rt);
-			ro->ro_rt = (struct rtentry *)0;
+			ro->ro_rt = NULL;
 			nsp->nsp_laddr.x_net = ns_zeronet;
 		}
 	}/* else cached route is ok; do nothing */
 	nsp->nsp_lastdst = sns->sns_addr;
 	if ((nsp->nsp_socket->so_options & SO_DONTROUTE) == 0 && /*XXX*/
-	    (ro->ro_rt == (struct rtentry *)0 ||
-	     ro->ro_rt->rt_ifp == (struct ifnet *)0)) {
+	    (ro->ro_rt == NULL ||
+	     ro->ro_rt->rt_ifp == NULL)) {
 		    /* No route yet, so try to acquire one */
 		    ro->ro_dst.sa_family = AF_NS;
 		    ro->ro_dst.sa_len = sizeof(ro->ro_dst);
@@ -185,7 +185,7 @@ ns_pcbconnect(struct nspcb *nsp, struct sockaddr *nam)
 		 * our src addr is taken from the i/f, else punt.
 		 */
 
-		ia = (struct ns_ifaddr *)0;
+		ia = NULL;
 		/*
 		 * If we found a route, use the address
 		 * corresponding to the outgoing interface

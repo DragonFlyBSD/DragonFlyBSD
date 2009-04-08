@@ -46,6 +46,7 @@
 #include <sys/sysent.h>
 #include <sys/sysunion.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/time.h>
 #include <sys/vnode.h>
 #include <sys/sysctl.h>
@@ -166,7 +167,7 @@ sys_clock_settime(struct clock_settime_args *uap)
 	struct timespec ats;
 	int error;
 
-	if ((error = suser(td)) != 0)
+	if ((error = priv_check(td, PRIV_ROOT)) != 0)
 		return (error);
 	switch(uap->clock_id) {
 	case CLOCK_REALTIME:
@@ -345,7 +346,7 @@ sys_settimeofday(struct settimeofday_args *uap)
 	struct timezone atz;
 	int error;
 
-	if ((error = suser(td)))
+	if ((error = priv_check(td, PRIV_ROOT)))
 		return (error);
 	/* Verify all parameters before changing time. */
 	if (uap->tv) {
@@ -457,7 +458,7 @@ sys_adjtime(struct adjtime_args *uap)
 	int64_t ndelta, odelta;
 	int error;
 
-	if ((error = suser(td)))
+	if ((error = priv_check(td, PRIV_ROOT)))
 		return (error);
 	if ((error =
 	    copyin((caddr_t)uap->delta, (caddr_t)&atv, sizeof(struct timeval))))
@@ -489,7 +490,7 @@ sysctl_adjtime(SYSCTL_HANDLER_ARGS)
 	int error;
 
 	if (req->newptr != NULL) {
-		if (suser(curthread))
+		if (priv_check(curthread, PRIV_ROOT))
 			return (EPERM);
 		error = SYSCTL_IN(req, &delta, sizeof(delta));
 		if (error)
@@ -513,7 +514,7 @@ sysctl_delta(SYSCTL_HANDLER_ARGS)
 	int error;
 
 	if (req->newptr != NULL) {
-		if (suser(curthread))
+		if (priv_check(curthread, PRIV_ROOT))
 			return (EPERM);
 		error = SYSCTL_IN(req, &delta, sizeof(delta));
 		if (error)
@@ -538,7 +539,7 @@ sysctl_adjfreq(SYSCTL_HANDLER_ARGS)
 	int error;
 
 	if (req->newptr != NULL) {
-		if (suser(curthread))
+		if (priv_check(curthread, PRIV_ROOT))
 			return (EPERM);
 		error = SYSCTL_IN(req, &freqdelta, sizeof(freqdelta));
 		if (error)

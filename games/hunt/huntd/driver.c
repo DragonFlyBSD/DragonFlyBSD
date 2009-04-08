@@ -1,31 +1,31 @@
 /*
  * Copyright (c) 1983-2003, Regents of the University of California.
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, with or without 
- * modification, are permitted provided that the following conditions are 
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
  * met:
- * 
- * + Redistributions of source code must retain the above copyright 
+ *
+ * + Redistributions of source code must retain the above copyright
  *   notice, this list of conditions and the following disclaimer.
- * + Redistributions in binary form must reproduce the above copyright 
- *   notice, this list of conditions and the following disclaimer in the 
+ * + Redistributions in binary form must reproduce the above copyright
+ *   notice, this list of conditions and the following disclaimer in the
  *   documentation and/or other materials provided with the distribution.
- * + Neither the name of the University of California, San Francisco nor 
- *   the names of its contributors may be used to endorse or promote 
- *   products derived from this software without specific prior written 
+ * + Neither the name of the University of California, San Francisco nor
+ *   the names of its contributors may be used to endorse or promote
+ *   products derived from this software without specific prior written
  *   permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS 
- * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED 
- * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
- * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY 
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $OpenBSD: driver.c,v 1.17 2007/04/02 14:55:16 jmc Exp $
@@ -143,7 +143,7 @@ again:
 			read_fds = Fds_mask;
 			errno = 0;
 			timerclear(&timeout);
-			nready = select(Num_fds, &read_fds, NULL, NULL, 
+			nready = select(Num_fds, &read_fds, NULL, NULL,
 			    &timeout);
 			if (nready < 0 && errno != EINTR) {
 				logit(LOG_ERR, "select");
@@ -155,7 +155,7 @@ again:
 			/*
 			 * Nothing was ready. We do some work now
 			 * to see if the simulation has any pending work
-			 * to do, and decide if we need to block 
+			 * to do, and decide if we need to block
 			 * indefinitely or just timeout.
 			 */
 			do {
@@ -173,10 +173,10 @@ again:
 				 * just block waiting for external activity
 				 */
 					to = NULL;
-				
+
 				read_fds = Fds_mask;
 				errno = 0;
-				nready = select(Num_fds, &read_fds, NULL, NULL, 
+				nready = select(Num_fds, &read_fds, NULL, NULL,
 				    to);
 				if (nready < 0 && errno != EINTR) {
 					logit(LOG_ERR, "select");
@@ -198,7 +198,7 @@ again:
 			fd = sp->fd;
 			if (FD_ISSET(fd, &Have_inp) && answer_next(sp)) {
 				/*
-				 * Remove from the spawn list. (fd remains in 
+				 * Remove from the spawn list. (fd remains in
 				 * read set).
 				 */
 				*sp->prevnext = sp->next;
@@ -213,7 +213,7 @@ again:
 				if (first && should_announce)
 					announce_game();
 				first = FALSE;
-			} 
+			}
 			sp = spnext;
 		}
 
@@ -442,7 +442,7 @@ init(void)
 		Server_socket = socket(AF_INET, SOCK_DGRAM, 0);
 
 		/* Permit multiple huntd's on the same port. */
-		if (setsockopt(Server_socket, SOL_SOCKET, SO_REUSEPORT, &true, 
+		if (setsockopt(Server_socket, SOL_SOCKET, SO_REUSEPORT, &true,
 		    sizeof true) < 0)
 			logit(LOG_ERR, "setsockopt SO_REUSEADDR");
 
@@ -601,7 +601,7 @@ checkdam(PLAYER *victim, PLAYER *attacker, IDENT *credit, int damage,
 		}
 
 		/* Set the death message: */
-		(void) snprintf(victim->p_death, sizeof victim->p_death, 
+		(void) snprintf(victim->p_death, sizeof victim->p_death,
 			"| %s by %s |", cp, blame);
 
 		/* No further score crediting needed. */
@@ -609,14 +609,14 @@ checkdam(PLAYER *victim, PLAYER *attacker, IDENT *credit, int damage,
 	}
 
 	/* Set the death message: */
-	(void) snprintf(victim->p_death, sizeof victim->p_death, 
+	(void) snprintf(victim->p_death, sizeof victim->p_death,
 		"| %s by %s |", cp, credit->i_name);
 
 	if (victim == attacker) {
 		/* No use killing yourself. */
 		credit->i_kills--;
 		credit->i_bkills++;
-	} 
+	}
 	else if (victim->p_ident->i_team == ' '
 	    || victim->p_ident->i_team != credit->i_team) {
 		/* A cross-team kill: */
@@ -647,7 +647,7 @@ checkdam(PLAYER *victim, PLAYER *attacker, IDENT *credit, int damage,
 			attacker->p_damage = 0;
 
 		/* Tell the attacker his new strength: */
-		outyx(attacker, STAT_DAM_ROW, STAT_VALUE_COL, "%2d/%2d", 
+		outyx(attacker, STAT_DAM_ROW, STAT_VALUE_COL, "%2d/%2d",
 			attacker->p_damage, attacker->p_damcap);
 
 		/* Tell the attacker his new 'kill count': */
@@ -758,12 +758,12 @@ zap(PLAYER *pp, FLAG was_player)
 			char buf[BUFSIZ];
 
 			/* Detonate: */
-			(void) add_shot(expl_type, pp->p_y, pp->p_x, 
-			    pp->p_face, expl_charge, (PLAYER *) NULL, 
+			(void) add_shot(expl_type, pp->p_y, pp->p_x,
+			    pp->p_face, expl_charge, NULL,
 			    TRUE, SPACE);
 
 			/* Explain what the explosion is about. */
-			snprintf(buf, sizeof buf, "%s detonated.", 
+			snprintf(buf, sizeof buf, "%s detonated.",
 				pp->p_ident->i_name);
 			message(ALL_PLAYERS, buf);
 
@@ -804,7 +804,7 @@ zap(PLAYER *pp, FLAG was_player)
 		volcano += pp->p_ammo - expl_charge;
 
 		/* Volcano eruption: */
-		if (conf_volcano && rand_num(100) < volcano / 
+		if (conf_volcano && rand_num(100) < volcano /
 		    conf_volcano_max) {
 			/* Erupt near the middle of the map */
 			do {
@@ -814,7 +814,7 @@ zap(PLAYER *pp, FLAG was_player)
 
 			/* Convert volcano charge into lava: */
 			(void) add_shot(LAVA, y, x, LEFTS, volcano,
-				(PLAYER *) NULL, TRUE, SPACE);
+				NULL, TRUE, SPACE);
 			volcano = 0;
 
 			/* Tell eveyone what's happening */
@@ -833,7 +833,7 @@ zap(PLAYER *pp, FLAG was_player)
 			add_shot(DSHOT, y, x, rand_dir(),
 				shot_req[conf_mindshot +
 				rand_num(MAXBOMB - conf_mindshot)],
-				(PLAYER *) NULL, FALSE, SPACE);
+				NULL, FALSE, SPACE);
 		}
 
 		/* Tell the zapped player's client to shut down. */
@@ -845,8 +845,8 @@ zap(PLAYER *pp, FLAG was_player)
 		if (pp != End_player) {
 			/* Move the last player into the gap: */
 			memcpy(pp, End_player, sizeof *pp);
-			outyx(ALL_PLAYERS, 
-				STAT_PLAY_ROW + 1 + (pp - Player), 
+			outyx(ALL_PLAYERS,
+				STAT_PLAY_ROW + 1 + (pp - Player),
 				STAT_NAME_COL,
 				"%5.2f%c%-10.10s %c",
 				pp->p_ident->i_score, stat_char(pp),
@@ -868,7 +868,7 @@ zap(PLAYER *pp, FLAG was_player)
 		End_monitor--;
 		if (pp != End_monitor) {
 			memcpy(pp, End_monitor, sizeof *pp);
-			outyx(ALL_PLAYERS, 
+			outyx(ALL_PLAYERS,
 				STAT_MON_ROW + 1 + (pp - Player), STAT_NAME_COL,
 				"%5.5s %-10.10s %c", " ",
 				pp->p_ident->i_name, pp->p_ident->i_team);

@@ -65,8 +65,10 @@ main(int argc, char **argv)
 			usage();
 		}
 	for (argv += optind; *argv && (p = strchr(*argv, '=')); ++argv) {
-		if (setenv(*argv, ++p, 1) == -1)
-			err(1, "setenv: cannot set %s=%s", *argv, p);
+		*p = '\0';
+		if (setenv(*argv, p + 1, 1) == -1)
+			err(1, "setenv: cannot set %s=%s", *argv, p + 1);
+		*p = '=';
 	}
 
 	if (*argv) {

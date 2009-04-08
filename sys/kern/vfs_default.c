@@ -88,13 +88,13 @@ struct vop_ops default_vnode_vops = {
 	.vop_poll		= vop_nopoll,
 	.vop_readlink		= (void *)vop_einval,
 	.vop_reallocblks	= (void *)vop_eopnotsupp,
-	.vop_revoke		= vop_stdrevoke,
 	.vop_strategy		= vop_nostrategy,
 	.vop_getacl		= (void *)vop_eopnotsupp,
 	.vop_setacl		= (void *)vop_eopnotsupp,
 	.vop_aclcheck		= (void *)vop_eopnotsupp,
 	.vop_getextattr		= (void *)vop_eopnotsupp,
 	.vop_setextattr		= (void *)vop_eopnotsupp,
+	.vop_markatime		= vop_stdmarkatime,
 	.vop_nresolve		= vop_compat_nresolve,
 	.vop_nlookupdotdot	= vop_compat_nlookupdotdot,
 	.vop_ncreate		= vop_compat_ncreate,
@@ -133,6 +133,12 @@ int
 vop_einval(struct vop_generic_args *ap)
 {
 	return (EINVAL);
+}
+
+int
+vop_stdmarkatime(struct vop_markatime_args *ap)
+{
+	return (EOPNOTSUPP);
 }
 
 int

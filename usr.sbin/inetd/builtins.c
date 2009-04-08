@@ -199,7 +199,7 @@ daytime_dg(int s, struct servtab *sep)		/* Return human-readable time of day */
 	struct sockaddr_storage ss;
 	socklen_t size;
 
-	now = time((time_t *) 0);
+	now = time(NULL);
 
 	size = sizeof(ss);
 	if (recvfrom(s, buffer, sizeof(buffer), 0,
@@ -220,7 +220,7 @@ daytime_stream(int s, struct servtab *sep __unused) /* Return human-readable tim
 	char buffer[256];
 	time_t now;
 
-	now = time((time_t *) 0);
+	now = time(NULL);
 
 	sprintf(buffer, "%.24s\r\n", ctime(&now));
 	send(s, buffer, strlen(buffer), MSG_EOF);
@@ -680,7 +680,7 @@ machtime(void)
 {
 	struct timeval tv;
 
-	if (gettimeofday(&tv, (struct timezone *)NULL) < 0) {
+	if (gettimeofday(&tv, NULL) < 0) {
 		if (debug)
 			warnx("unable to get time of day");
 		return (0L);
@@ -741,7 +741,7 @@ getline(int fd, char *buf, int len)
 	sa.sa_flags = 0;
 	sigemptyset(&sa.sa_mask);
 	sa.sa_handler = SIG_DFL;
-	sigaction(SIGALRM, &sa, (struct sigaction *)0);
+	sigaction(SIGALRM, &sa, NULL);
 	do {
 		alarm(10);
 		n = read(fd, buf, len-count);

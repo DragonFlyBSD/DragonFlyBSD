@@ -37,6 +37,7 @@
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
 #include <netinet/udp.h>
+#include <netinet/ip.h>
 
 #include <net.h>
 #include <netif.h>
@@ -597,9 +598,11 @@ ssize_t
 readudp(struct iodesc *h, void *pkt, size_t len, time_t timeout)
 {
 	t_PXENV_UDP_READ *udpread_p = (t_PXENV_UDP_READ *)scratch_buffer;
-	struct udphdr *uh = NULL;
+	struct udphdr *uh;
+	struct ip *ip;
 	
 	uh = (struct udphdr *) pkt - 1;
+	ip = (struct ip *)uh - 1;
 	bzero(udpread_p, sizeof(*udpread_p));
 	
 	udpread_p->dest_ip        = h->myip.s_addr;
@@ -622,5 +625,6 @@ readudp(struct iodesc *h, void *pkt, size_t len, time_t timeout)
 	}
 	bcopy(data_buffer, pkt, udpread_p->buffer_size);
 	uh->uh_sport = udpread_p->s_port;
+	ip->ip_src.s_addr = udpread_p->src_ip;
 	return udpread_p->buffer_size;
 }

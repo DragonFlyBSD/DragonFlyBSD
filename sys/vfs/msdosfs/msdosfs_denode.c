@@ -72,6 +72,20 @@ static void msdosfs_hashrem (struct denode *dep);
 
 static MALLOC_DEFINE(M_MSDOSFSNODE, "MSDOSFS node", "MSDOSFS vnode private part");
 
+/*
+ * Hash table caching denode instances.
+ *
+ * denodes are keyed by the disk location (cluster num, entry offset) of the
+ * directory entry of the file they represent.
+ *
+ * denodes representing deleted but still opened files are left in this cache
+ * until reclaimed.  Deleted directory entries can be reused when files are
+ * renamed or new files created.  As a consequence, several denodes associated
+ * with the same entry may coexist in this cache as long as a single one of
+ * them map to an existing file (de_refcnt > 0).
+ *
+ * R/w access to this cache is protected by dehash_token.
+ */
 static struct denode **dehashtbl;
 static u_long dehash;			/* size of hash table - 1 */
 #define	DEHASH(dev, dcl, doff)	(dehashtbl[(minor(dev) + (dcl) + (doff) / 	\
@@ -134,7 +148,7 @@ loop:
 		if (dirclust != dep->de_dirclust
 		    || diroff != dep->de_diroffset
 		    || dev != dep->de_dev
-		    || dep->de_refcnt == 0) {
+		    || dep->de_refcnt <= 0) {
 			continue;
 		}
 		vp = DETOV(dep);
@@ -149,7 +163,7 @@ loop:
 			if (dirclust == dep->de_dirclust
 			    && diroff == dep->de_diroffset
 			    && dev == dep->de_dev
-			    && dep->de_refcnt != 0) {
+			    && dep->de_refcnt > 0) {
 				break;
 			}
 		}
@@ -164,6 +178,10 @@ loop:
 	return (NULL);
 }
 
+/*
+ * Try to insert specified denode into the hash table.  Return 0 on success
+ * and EBUSY if there is already a denode with the same key.
+ */
 static
 int
 msdosfs_hashins(struct denode *dep)
@@ -176,12 +194,10 @@ msdosfs_hashins(struct denode *dep)
 	while ((deq = *depp) != NULL) {
 		if (deq->de_dev == dep->de_dev &&
 		    deq->de_dirclust == dep->de_dirclust &&
-		    deq->de_diroffset == dep->de_diroffset) {
+		    deq->de_diroffset == dep->de_diroffset &&
+		    deq->de_refcnt > 0) {
 			lwkt_reltoken(&ilock);
-			if (dep->de_refcnt)
-				return(EBUSY);
-			else
-				return(EINVAL);
+			return(EBUSY);
 		}
 		depp = &deq->de_next;
 	}
@@ -289,7 +305,8 @@ again:
 	 * might cause a bogus v_data pointer to get dereferenced
 	 * elsewhere if MALLOC should block.
 	 */
-	MALLOC(ldep, struct denode *, sizeof(struct denode), M_MSDOSFSNODE, M_WAITOK);
+	MALLOC(ldep, struct denode *, sizeof(struct denode), M_MSDOSFSNODE,
+	    M_WAITOK | M_ZERO);
 
 	/*
 	 * Directory entry was not in cache, have to create a vnode and
@@ -304,7 +321,6 @@ again:
 		return error;
 	}
 
-	bzero((caddr_t)ldep, sizeof *ldep);
 	ldep->de_vnode = nvp;
 	ldep->de_flag = 0;
 	ldep->de_devvp = 0;
@@ -327,6 +343,7 @@ again:
 		nvp->v_type = VBAD;
 		vx_put(nvp);
 		kfree(ldep, M_MSDOSFSNODE);
+		*depp = NULL;
 		return (EINVAL);
 	}
 	nvp->v_data = ldep;

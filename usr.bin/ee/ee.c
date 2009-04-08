@@ -3145,7 +3145,7 @@ sh_command(char *string)	/* execute shell command			*/
 			}
 			do
 			{
-				return_val = wait((int *) 0);
+				return_val = wait(NULL);
 			}
 			while ((return_val != parent) && (return_val != -1));
 /*

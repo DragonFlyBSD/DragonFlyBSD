@@ -398,7 +398,7 @@ isonetprint(struct iso_addr *iso, char *sufx, u_short sufxlen, int islocal)
 
 	line =  isonetname(iso);
 	cp = strchr(line, '\0');
-	ihe = (struct iso_hostent *)0;
+	ihe = NULL;
 
 	if( islocal )
 		islocal = 20;

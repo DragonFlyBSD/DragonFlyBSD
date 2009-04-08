@@ -26,12 +26,11 @@
  *
  * $OpenBSD: strlcpy.c,v 1.4 1999/05/01 18:56:41 millert Exp $
  * $NetBSD: wcslcpy.c,v 1.1 2000/12/23 23:14:36 itojun Exp $
- * $FreeBSD: src/lib/libc/string/wcslcpy.c,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
+ * $FreeBSD: src/lib/libc/string/wcslcpy.c,v 1.6 2002/09/21 00:29:23 tjr Exp $
  * $DragonFly: src/lib/libc/string/wcslcpy.c,v 1.3 2005/09/18 16:32:34 asmodai Exp $
  */
 
 #include <sys/types.h>
-#include <assert.h>
 #include <wchar.h>
 
 /*

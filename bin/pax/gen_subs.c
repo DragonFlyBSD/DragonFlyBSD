@@ -126,7 +126,7 @@ ls_list(ARCHD *arcn, time_t now, FILE *fp)
 		fprintf(fp, "%4lu,%4lu ", (unsigned long)MAJOR(sbp->st_rdev),
 		    (unsigned long)MINOR(sbp->st_rdev));
 	else {
-		fprintf(fp, "%9qu ", sbp->st_size);
+		fprintf(fp, "%9jd ", (intmax_t)sbp->st_size);
 	}
 
 	/*
@@ -158,7 +158,7 @@ ls_tty(ARCHD *arcn)
 	if (d_first < 0)
 		d_first = (*nl_langinfo(D_MD_ORDER) == 'd');
 
-	if ((arcn->sb.st_mtime + SIXMONTHS) <= time((time_t *)NULL))
+	if ((arcn->sb.st_mtime + SIXMONTHS) <= time(NULL))
 		timefrmt = d_first ? OLDFRMTD : OLDFRMTM;
 	else
 		timefrmt = d_first ? CURFRMTD : CURFRMTM;

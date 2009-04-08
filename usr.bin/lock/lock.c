@@ -130,7 +130,7 @@ main(int argc, char **argv)
 	gethostname(hostname, sizeof(hostname));
 	if (!(ttynam = ttyname(0)))
 		errx(1, "not a terminal?");
-	if (gettimeofday(&timval, (struct timezone *)NULL))
+	if (gettimeofday(&timval, NULL))
 		err(1, "gettimeofday");
 	nexttime = timval.tv_sec + (sectimeout * 60);
 	timval_sec = timval.tv_sec;
@@ -245,7 +245,7 @@ hi(int signo __unused)
 {
 	struct timeval timval;
 
-	if (!gettimeofday(&timval, (struct timezone *)NULL)) {
+	if (!gettimeofday(&timval, NULL)) {
 		printf("lock: type in the unlock key. ");
 		if (no_timeout) {
 			putchar('\n');

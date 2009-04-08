@@ -234,6 +234,8 @@ res_nopt(res_state statp,
 
 	ns_put16(T_OPT, cp);	/* TYPE */
 	cp += INT16SZ;
+	if (anslen > 0xffff)
+		anslen = 0xffff;		/* limit to 16bit value */
 	ns_put16(anslen & 0xffff, cp);	/* CLASS = UDP payload size */
 	cp += INT16SZ;
 	*cp++ = NOERROR;	/* extended RCODE */

@@ -50,6 +50,7 @@
  */
 extern char *arcname;
 extern const char *gzip_program;
+extern int force_one_volume;
 int ar_open (char *);
 void ar_close (void);
 void ar_drain (void);

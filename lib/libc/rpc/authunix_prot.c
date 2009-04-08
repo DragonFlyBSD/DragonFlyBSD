@@ -28,7 +28,8 @@
  *
  * @(#)authunix_prot.c 1.15 87/08/11 Copyr 1984 Sun Micro
  * @(#)authunix_prot.c	2.1 88/07/29 4.0 RPCSRC
- * $FreeBSD: src/lib/libc/rpc/authunix_prot.c,v 1.6 1999/08/28 00:00:33 peter Exp $
+ * $NetBSD: authunix_prot.c,v 1.12 2000/01/22 22:19:17 mycroft Exp $
+ * $FreeBSD: src/lib/libc/rpc/authunix_prot.c,v 1.10 2007/11/20 01:51:20 jb Exp $
  * $DragonFly: src/lib/libc/rpc/authunix_prot.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
@@ -39,11 +40,14 @@
  * Copyright (C) 1984, Sun Microsystems, Inc.
  */
 
+#include "namespace.h"
+#include <assert.h>
 
 #include <rpc/types.h>
 #include <rpc/xdr.h>
 #include <rpc/auth.h>
 #include <rpc/auth_unix.h>
+#include "un-namespace.h"
 
 /*
  * XDR for unix authentication parameters.
@@ -51,15 +55,20 @@
 bool_t
 xdr_authunix_parms(XDR *xdrs, struct authunix_parms *p)
 {
+	int **paup_gids;
+
+	assert(xdrs != NULL);
+	assert(p != NULL);
+
+	paup_gids = &p->aup_gids;
 
 	if (xdr_u_long(xdrs, &(p->aup_time))
 	    && xdr_string(xdrs, &(p->aup_machname), MAX_MACHINE_NAME)
 	    && xdr_int(xdrs, &(p->aup_uid))
 	    && xdr_int(xdrs, &(p->aup_gid))
-	    && xdr_array(xdrs, (caddr_t *)&(p->aup_gids),
-		    &(p->aup_len), NGRPS, sizeof(int), xdr_int) ) {
+	    && xdr_array(xdrs, (char **) paup_gids,
+		    &(p->aup_len), NGRPS, sizeof(int), (xdrproc_t)xdr_int) ) {
 		return (TRUE);
 	}
 	return (FALSE);
 }
-

@@ -24,6 +24,7 @@
 
 #include <sys/param.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/systm.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
@@ -138,7 +139,7 @@ tunopen(struct dev_open_args *ap)
 	struct tun_softc *tp;
 	int	error;
 
-	if ((error = suser_cred(ap->a_cred, 0)) != 0)
+	if ((error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) != 0)
 		return (error);
 
 	tp = dev->si_drv1;

@@ -93,7 +93,7 @@ sig_child(int sig)
 	int status;
 	pid_t pid;
 
-	pid = wait3(&status, WNOHANG, (struct rusage *)0);
+	pid = wait3(&status, WNOHANG, NULL);
 	if (pid && WEXITSTATUS(status))
 		syslog(LOG_WARNING, "child %d exit status 0x%x", pid, status);
 	exit_success("terminate connection due to child termination");

@@ -33,7 +33,7 @@
  *
  * @(#) Copyright (c) 1988 Regents of the University of California. All rights reserved.
  * @(#)wall.c	5.14 (Berkeley) 3/2/91
- * $FreeBSD: src/usr.bin/rwall/rwall.c,v 1.8.2.1 2001/02/18 02:27:54 kris Exp $
+ * $FreeBSD: src/usr.bin/rwall/rwall.c,v 1.14 2005/05/21 09:55:08 ru Exp $
  * $DragonFly: src/usr.bin/rwall/rwall.c,v 1.7 2005/07/30 16:44:12 liamfoy Exp $
  */
 
@@ -45,7 +45,6 @@
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 
 #include <err.h>
 #include <paths.h>
@@ -58,7 +57,6 @@
 #include <rpc/rpc.h>
 #include <rpcsvc/rwall.h>
 
-static size_t	mbufsize;
 static char	*mbuf;
 
 static void	makemsg(const char *);
@@ -107,8 +105,8 @@ main(int argc, char **argv)
 
 	tv.tv_sec = 15;		/* XXX ?? */
 	tv.tv_usec = 0;
-	if (clnt_call(cl, WALLPROC_WALL, (xdrproc_t)xdr_wrapstring, &mbuf, xdr_void,
-		      &res, tv) != RPC_SUCCESS) {
+	if (clnt_call(cl, WALLPROC_WALL, (xdrproc_t)xdr_wrapstring, &mbuf,
+	    (xdrproc_t)xdr_void, &res, tv) != RPC_SUCCESS) {
 		/*
 		 * An error occurred while calling the server.
 		 * Print error message and die.
@@ -117,13 +115,13 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
-	exit(0);
+	return(0);
 }
 
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: rwall hostname [file]\n");
+	fprintf(stderr, "usage: rwall host [file]\n");
 	exit(1);
 }
 
@@ -136,6 +134,7 @@ makemsg(const char *fname)
 	time_t now;
 	FILE *fp;
 	int fd;
+	size_t mbufsize;
 	char hostname[MAXHOSTNAMELEN], lbuf[256], tmpname[MAXPATHLEN];
 	const char *whom, *tty;
 
@@ -163,7 +162,7 @@ makemsg(const char *fname)
 	fprintf(fp, "Remote Broadcast Message from %s@%s\n", whom, hostname);
 	tty = ttyname(STDERR_FILENO);
 	if (tty == NULL)
-		tty = "no tty";
+		tty = "notty";
 	fprintf(fp, "        (%s) at %d:%02d ...\n", tty,
 		lt->tm_hour, lt->tm_min);
 
@@ -180,7 +179,7 @@ makemsg(const char *fname)
 	mbufsize = (size_t)sbuf.st_size;
 	if ((mbuf = malloc(mbufsize)) == NULL)
 		err(1, "malloc failed");
-	if (fread(mbuf, sizeof(*mbuf), mbufsize, fp) != mbufsize)
+	if (fread(mbuf, sizeof(*mbuf), mbufsize, fp) != (u_int)mbufsize)
 		err(1, "can't read temporary file");
 	if (close(fd))
 		warn("close failed");

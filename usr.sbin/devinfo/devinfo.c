@@ -227,7 +227,7 @@ main(int argc, char *argv[])
 		devinfo_foreach_rman(print_rman, NULL);
 	} else {
 		/* print device hierarchy */
-		devinfo_foreach_device_child(root, print_device, (void *)0);
+		devinfo_foreach_device_child(root, print_device, NULL);
 	}
 	return(0);
 }

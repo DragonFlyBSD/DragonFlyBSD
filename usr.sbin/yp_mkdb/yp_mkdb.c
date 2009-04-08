@@ -49,7 +49,7 @@
 #include "yp_extern.h"
 #include "ypxfr_extern.h"
 
-char *yp_dir = "";	/* No particular default needed. */
+const char *yp_dir = "";	/* No particular default needed. */
 int _rpcpmstart = 0;
 int debug = 1;
 
@@ -331,8 +331,8 @@ doclear:
 		char *out = NULL;
 		int stat;
 		if ((stat = callrpc("localhost",YPPROG,YPVERS,YPPROC_CLEAR,
-			xdr_void, (void *)&in,
-			xdr_void, (void *)out)) != RPC_SUCCESS) {
+			(xdrproc_t)xdr_void, (void *)&in,
+			(xdrproc_t)xdr_void, (void *)out)) != RPC_SUCCESS) {
 			warnx("failed to send 'clear' to local ypserv: %s",
 				clnt_sperrno((enum clnt_stat) stat));
 		}

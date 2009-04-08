@@ -63,7 +63,10 @@ of the version of the file requested, rather than dumping the contents
 of the file.
 .It Fl a
 Iterate through the file's entire history generating undo files, diffs,
-output, etc.  Execute the generation operation for each version.
+output, etc.  Note that due to the way file creation is laid down a
+file may appear to be zero-filled just after creation before the data
+is actually synced.  There will be a later version with the synced
+data.  This is a known bug.
 .It Fl u
 Output to a file with name synthesized from the input filename postfixed with ".undo".
 If not specified output is either to stdout or, if a single file argument
@@ -96,14 +99,15 @@ is specified.
 .Pp
 A second
 .Fl t
-specification may be given when the
+specification may be given to provide two end-points for a diff, and
+will imply
 .Fl d
-or
-.Fl D
-option is used, to provide two end-points for the diff.  The file as-of
-the second
-.Fl t
-is used instead of the current version of the file.
+unless overridden.
+.Pp
+Transaction ids always start with "0x".
+A simple index may be
+specified instead of a transaction id where 0 indicates the latest version
+and increasing values indicate older versions.
 .El
 .Sh EXAMPLES
 .Li "undo -d mytextfile"

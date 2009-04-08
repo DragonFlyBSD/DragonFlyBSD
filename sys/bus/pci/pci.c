@@ -619,7 +619,7 @@ pci_read_capabilities(device_t pcib, pcicfgregs *cfg)
 		int ptr = nextptr;
 
 		/* Process this entry */
-		switch (REG(ptr, 1)) {
+		switch (REG(ptr + PCICAP_ID, 1)) {
 		case PCIY_PMG:		/* PCI power management */
 			pci_read_cap_pmgt(pcib, ptr, cfg);
 			break;
@@ -629,12 +629,15 @@ pci_read_capabilities(device_t pcib, pcicfgregs *cfg)
 		case PCIY_EXPRESS:	/* PCI Express */
 			pci_read_cap_expr(pcib, ptr, cfg);
 			break;
+		case PCIY_VPD:		/* Vital Product Data */
+			cfg->vpdcap_ptr = ptr;
+			break;
 		default:
 			break;
 		}
 
 		/* Find the next entry */
-		nextptr = REG(ptr + 1, 1);
+		nextptr = REG(ptr + PCICAP_NEXTPTR, 1);
 	}
 
 #undef REG
@@ -1966,6 +1969,9 @@ pci_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
 	case PCI_IVAR_PCIECAP_PTR:
 		*result = cfg->expr.expr_ptr;
 		break;
+	case PCI_IVAR_VPDCAP_PTR:
+		*result = cfg->vpdcap_ptr;
+		break;
 	default:
 		return ENOENT;
 	}
@@ -2119,7 +2125,7 @@ pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 	if (device_get_parent(child) == dev) {
 		switch (type) {
 		case SYS_RES_IRQ:
-#ifdef __i386__
+#if defined(__i386__) || defined(__amd64__)
 		/*
 		 * If device doesn't have an interrupt routed, and is
 		 * deserving of an interrupt, try to assign it one.

@@ -221,7 +221,7 @@ spans_open_vcc(struct spans *spp, Atm_connvc *cvp)
 			 */
 			DEQUEUE(svp, struct spans_vccb, sv_sigelem,
 					spp->sp_vccq);
-			cvp->cvc_vcc = (struct vccb *)0;
+			cvp->cvc_vcc = NULL;
 			atm_free((caddr_t)svp);
 			return(err);
 		} else {

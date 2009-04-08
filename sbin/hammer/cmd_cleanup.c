@@ -92,31 +92,32 @@ void
 hammer_cmd_cleanup(char **av, int ac)
 {
 	FILE *fp;
-	char *ptr;
-	char *path;
+	char *fs, *ptr, *path;
 	char buf[256];
 
 	tzset();
 	if (ac == 0) {
-		fp = popen("df -t hammer,null", "r");
+		fp = popen("/sbin/mount -t hammer,null", "r");
 		if (fp == NULL)
-			errx(1, "hammer cleanup: 'df' failed");
+			errx(1, "hammer cleanup: 'mount' failed");
 		while (fgets(buf, sizeof(buf), fp) != NULL) {
-			ptr = strtok(buf, WS);
-			if (ptr && strcmp(ptr, "Filesystem") == 0)
+			fs = strtok(buf, WS);
+			if (fs == NULL)
 				continue;
-			if (ptr)
-				ptr = strtok(NULL, WS);
-			if (ptr)
-				ptr = strtok(NULL, WS);
-			if (ptr)
-				ptr = strtok(NULL, WS);
-			if (ptr)
-				ptr = strtok(NULL, WS);
-			if (ptr) {
-				path = strtok(NULL, WS);
-				if (path)
-					do_cleanup(path);
+			ptr = strtok(NULL, WS);
+			if (ptr == NULL)
+				continue;
+			path = strtok(NULL, WS);
+			if (path == NULL)
+				continue;
+			ptr = strtok(NULL, WS);
+			if (ptr == NULL)
+				continue;
+			if ((strncmp(ptr, "(hammer,", 8) == 0) ||
+			    ((strncmp(ptr, "(null,", 6) == 0) &&
+			     (strstr(fs, "/@@0x") != NULL ||
+			      strstr(fs, "/@@-1") != NULL))) {
+				do_cleanup(path);
 			}
 		}
 		fclose(fp);
@@ -622,20 +623,46 @@ cleanup_reblock(const char *path, const char *snapshots_path,
 		printf(".");
 		fflush(stdout);
 	}
+
+	/*
+	 * When reblocking the B-Tree always reblock everything in normal
+	 * mode.
+	 */
 	runcmd(NULL,
-	       "hammer -c %s/.reblock-1.cycle -t %d reblock-btree %s 95",
+	       "hammer -c %s/.reblock-1.cycle -t %d reblock-btree %s",
 	       snapshots_path, arg2, path);
 	if (VerboseOpt == 0) {
 		printf(".");
 		fflush(stdout);
 	}
+
+	/*
+	 * When reblocking the inodes always reblock everything in normal
+	 * mode.
+	 */
 	runcmd(NULL,
-	       "hammer -c %s/.reblock-2.cycle -t %d reblock-inodes %s 95",
+	       "hammer -c %s/.reblock-2.cycle -t %d reblock-inodes %s",
 	       snapshots_path, arg2, path);
 	if (VerboseOpt == 0) {
 		printf(".");
 		fflush(stdout);
 	}
+
+	/*
+	 * When reblocking the directories always reblock everything in normal
+	 * mode.
+	 */
+	runcmd(NULL,
+	       "hammer -c %s/.reblock-4.cycle -t %d reblock-dirs %s",
+	       snapshots_path, arg2, path);
+	if (VerboseOpt == 0) {
+		printf(".");
+		fflush(stdout);
+	}
+
+	/*
+	 * Do not reblock all the data in normal mode.
+	 */
 	runcmd(NULL,
 	       "hammer -c %s/.reblock-3.cycle -t %d reblock-data %s 95",
 	       snapshots_path, arg2, path);
@@ -661,6 +688,13 @@ cleanup_recopy(const char *path, const char *snapshots_path,
 	}
 	runcmd(NULL,
 	       "hammer -c %s/.recopy-2.cycle -t %d reblock-inodes %s",
+	       snapshots_path, arg2, path);
+	if (VerboseOpt == 0) {
+		printf(".");
+		fflush(stdout);
+	}
+	runcmd(NULL,
+	       "hammer -c %s/.recopy-4.cycle -t %d reblock-dirs %s",
 	       snapshots_path, arg2, path);
 	if (VerboseOpt == 0) {
 		printf(".");
@@ -716,6 +750,7 @@ runcmd(int *resp, const char *ctl, ...)
 	/*
 	 * Run the command.
 	 */
+	RunningIoctl = 1;
 	if ((pid = fork()) == 0) {
 		if (VerboseOpt < 2) {
 			int fd = open("/dev/null", O_RDWR);
@@ -728,10 +763,14 @@ runcmd(int *resp, const char *ctl, ...)
 		res = 127;
 	} else {
 		int status;
+
 		while (waitpid(pid, &status, 0) != pid)
 			;
 		res = WEXITSTATUS(status);
 	}
+	RunningIoctl = 0;
+	if (DidInterrupt)
+		_exit(1);
 
 	free(cmd);
 	free(av);

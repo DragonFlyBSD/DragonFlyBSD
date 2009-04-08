@@ -338,18 +338,20 @@ ktrace_clear_callback(struct proc *p, void *data)
 {
 	struct ktrace_clear_info *info = data;
 
-	if (info->rootclear) {
-		if (p->p_tracenode == info->tracenode) {
-			ktrdestroy(&p->p_tracenode);
-			p->p_traceflag = 0;
-		}
-	} else {
-		if (p->p_tracenode->kn_vp == info->tracenode->kn_vp) {
-			if (ktrcanset(curproc, p)) {
+	if (p->p_tracenode) {
+		if (info->rootclear) {
+			if (p->p_tracenode == info->tracenode) {
 				ktrdestroy(&p->p_tracenode);
 				p->p_traceflag = 0;
-			} else {
-				info->error = EPERM;
+			}
+		} else {
+			if (p->p_tracenode->kn_vp == info->tracenode->kn_vp) {
+				if (ktrcanset(curproc, p)) {
+					ktrdestroy(&p->p_tracenode);
+					p->p_traceflag = 0;
+				} else {
+					info->error = EPERM;
+				}
 			}
 		}
 	}

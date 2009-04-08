@@ -35,6 +35,7 @@
 #include <sys/reboot.h>
 #include <sys/cons.h>
 #include <sys/vkernel.h>
+#include <sys/thread.h>
 
 #include <machine/cpu.h>
 #include <machine/smp.h>
@@ -43,6 +44,8 @@
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
+
+#include <sys/thread2.h>
 
 #include <ddb/ddb.h>
 
@@ -132,6 +135,7 @@ kdb_trap(int type, int code, struct i386_saved_state *regs)
 	    ddb_regs.tf_ss = rss();
 	}
 
+	crit_enter();
 #ifdef SMP
 	db_printf("\nCPU%d stopping CPUs: 0x%08x\n", 
 	    mycpu->gd_cpuid, mycpu->gd_other_cpus);
@@ -170,6 +174,7 @@ kdb_trap(int type, int code, struct i386_saved_state *regs)
 
 	db_printf(" restarted\n");
 #endif /* SMP */
+	crit_exit();
 
 	regs->tf_eip    = ddb_regs.tf_eip;
 	regs->tf_eflags = ddb_regs.tf_eflags;

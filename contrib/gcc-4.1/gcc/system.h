@@ -646,7 +646,7 @@ extern void fancy_abort (const char *, int, const char *) ATTRIBUTE_NORETURN;
 #undef strdup
  #pragma GCC poison calloc strdup
 
-#if !defined(FLEX_SCANNER) && !defined(YYBISON)
+#if !defined(FLEX_SCANNER) && !defined(YYBISON) && !defined(YYBYACC)
 #undef malloc
 #undef realloc
  #pragma GCC poison malloc realloc

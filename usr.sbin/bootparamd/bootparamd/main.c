@@ -8,7 +8,7 @@ use and modify. Please send modifications and/or suggestions + bug fixes to
 */
 
 /*
- * $FreeBSD: src/usr.sbin/bootparamd/bootparamd/main.c,v 1.9 1999/08/28 01:15:39 peter Exp $
+ * $FreeBSD: src/usr.sbin/bootparamd/bootparamd/main.c,v 1.14 2008/08/02 00:10:02 cognet Exp $
  * $DragonFly: src/usr.sbin/bootparamd/bootparamd/main.c,v 1.6 2008/09/19 18:48:33 swildner Exp $
  */
 #include <ctype.h>
@@ -31,7 +31,7 @@ use and modify. Please send modifications and/or suggestions + bug fixes to
 
 int debug = 0;
 int dolog = 0;
-unsigned long route_addr = -1;
+in_addr_t route_addr = -1;
 struct sockaddr_in my_addr;
 char *bootpfile = "/etc/bootparams";
 
@@ -44,7 +44,7 @@ main(int argc, char **argv)
 	SVCXPRT *transp;
 	struct hostent *he;
 	struct stat buf;
-	char c;
+	int c;
 
 	while ((c = getopt(argc, argv,"dsr:f:")) != -1)
 	  switch (c) {
@@ -52,7 +52,7 @@ main(int argc, char **argv)
 	    debug = 1;
 	    break;
 	  case 'r':
-	      if ( isdigit( *optarg)) {
+	      if (isdigit((unsigned char)*optarg)) {
 		route_addr = inet_addr(optarg);
 		break;
 	      } else {

@@ -87,6 +87,10 @@
 #define PCIM_MFDEV	0x80
 #define PCIR_BIST	0x0f
 
+/* Capability Register Offsets */
+#define PCICAP_ID	0x0
+#define PCICAP_NEXTPTR	0x1
+
 /* Capability Identification Numbers */
 #define PCIY_PMG        0x01    /* PCI Power Management */
 #define PCIY_AGP        0x02    /* AGP */
@@ -378,6 +382,10 @@
 #define PCIM_BMCSR_BPCE			0x80
 
 #define PCIR_POWER_DATA		0x7
+
+/* VPD capability registers */
+#define PCIR_VPD_ADDR		0x2
+#define PCIR_VPD_DATA		0x4
 
 /* PCI Message Signalled Interrupts (MSI) */
 #define PCIR_MSI_CTRL           0x2

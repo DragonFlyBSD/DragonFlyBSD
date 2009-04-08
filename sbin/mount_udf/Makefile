@@ -3,7 +3,6 @@
 PROG=	mount_udf
 SRCS=	mount_udf.c getmntopts.c
 MAN=	mount_udf.8
-WARNS?=	2
 
 MOUNT=	${.CURDIR}/../mount
 CFLAGS+= -I${MOUNT}

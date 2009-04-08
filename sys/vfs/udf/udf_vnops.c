@@ -143,8 +143,6 @@ udf_hashins(struct udf_node *node)
 
 	lwkt_gettoken(&hashlock, &udfmp->hash_token);
 	lh = &udfmp->hashtbl[node->hash_id % udfmp->hashsz];
-	if (lh == NULL)
-		LIST_INIT(lh);
 	LIST_INSERT_HEAD(lh, node, le);
 	lwkt_reltoken(&hashlock);
 
@@ -242,6 +240,8 @@ udf_access(struct vop_access_args *a)
 
 	/* Otherwise, check the owner. */
 	if (cred->cr_uid == node->fentry->uid) {
+		if (a_mode & VOWN)
+			return (0);
 		if (a_mode & VEXEC)
 			mask |= S_IXUSR;
 		if (a_mode & VREAD)

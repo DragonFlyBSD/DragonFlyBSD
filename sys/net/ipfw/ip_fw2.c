@@ -2482,20 +2482,7 @@ ipfw_dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 	pkt->pipe_nr = pipe_nr;
 
 	pkt->cpuid = mycpuid;
-	if (curthread->td_flags & TDF_NETWORK) {
-		pkt->msgport = &curthread->td_msgport;
-	} else {
-		/*
-		 * This could happen:
-		 * - If a gratuitous arp request sent by us is going to
-		 *   be added to dummynet(4) pipe/queue.
-		 * - Other conditions ...
-		 *
-		 * We can't use current thread's msgport (since its
-		 * behaviour is unknown), so netisrX's msgport is used.
-		 */
-		pkt->msgport = cpu_portfn(pkt->cpuid);
-	}
+	pkt->msgport = curnetport;
 
 	id = &fwa->f_id;
 	fid = &pkt->id;
@@ -4444,7 +4431,8 @@ ipfw_init_dispatch(anynetmsg_t msg)
 
 	callout_init_mp(&ipfw_timeout_h);
 	netmsg_init(&ipfw_timeout_netmsg, &netisr_adone_rport,
-		    MSGF_MPSAFE | MSGF_DROPABLE, ipfw_tick_dispatch);
+		    MSGF_MPSAFE | MSGF_DROPABLE | MSGF_PRIORITY,
+		    ipfw_tick_dispatch);
 	lockinit(&dyn_lock, "ipfw_dyn", 0, 0);
 
 	ip_fw_loaded = 1;

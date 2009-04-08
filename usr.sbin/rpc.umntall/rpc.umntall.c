@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/rpc.umntall/rpc.umntall.c,v 1.3.2.1 2001/12/13 01:27:20 iedowse Exp $
+ * $FreeBSD: src/usr.sbin/rpc.umntall/rpc.umntall.c,v 1.13 2005/05/27 00:05:16 mux Exp $
  * $DragonFly: src/usr.sbin/rpc.umntall/rpc.umntall.c,v 1.7 2008/11/12 21:44:59 swildner Exp $
  */
 
@@ -52,7 +52,6 @@ static int do_umount (char *, char *);
 static int do_umntall (char *);
 static int is_mounted (char *, char *);
 static void usage (void);
-static struct hostent *gethostbyname_quick(const char *name);
 
 int	xdr_dir (XDR *, char *);
 
@@ -66,7 +65,7 @@ main(int argc, char **argv) {
 	expire = 0;
 	host = path = NULL;
 	success = keep = verbose = 0;
-	while ((ch = getopt(argc, argv, "h:kp:vfe:")) != -1)
+	while ((ch = getopt(argc, argv, "h:kp:ve:")) != -1)
 		switch (ch) {
 		case 'h':
 			host = optarg;
@@ -82,9 +81,6 @@ main(int argc, char **argv) {
 			break;
 		case 'v':
 			verbose = 1;
-			break;
-		case 'f':
-			fastopt = 1;
 			break;
 		case '?':
 			usage();
@@ -176,36 +172,21 @@ main(int argc, char **argv) {
 int
 do_umntall(char *hostname) {
 	enum clnt_stat clnt_stat;
-	struct hostent *hp;
-	struct sockaddr_in saddr;
-	struct timeval pertry, try;
-	int so;
+	struct timeval try;
 	CLIENT *clp;
 
-	if ((hp = gethostbyname_quick(hostname)) == NULL) {
-		warnx("gethostbyname(%s) failed", hostname);
-		return (0);
-	}
-	memset(&saddr, 0, sizeof(saddr));
-	saddr.sin_family = AF_INET;
-	saddr.sin_port = 0;
-	memmove(&saddr.sin_addr, hp->h_addr, MIN(hp->h_length,
-	    (int)sizeof(saddr.sin_addr)));
-	pertry.tv_sec = 3;
-	pertry.tv_usec = 0;
-	if (fastopt)
-	    pmap_getport_timeout(NULL, &pertry);
-	so = RPC_ANYSOCK;
-	clp = clntudp_create(&saddr, RPCPROG_MNT, RPCMNT_VER1, pertry, &so);
+	try.tv_sec = 3;
+	try.tv_usec = 0;
+	clp = clnt_create_timed(hostname, RPCPROG_MNT, RPCMNT_VER1, "udp",
+	    &try);
 	if (clp == NULL) {
 		warnx("%s: %s", hostname, clnt_spcreateerror("RPCPROG_MNT"));
 		return (0);
 	}
 	clp->cl_auth = authunix_create_default();
-	try.tv_sec = 3;
-	try.tv_usec = 0;
-	clnt_stat = clnt_call(clp, RPCMNT_UMNTALL, xdr_void, (caddr_t)0,
-	    xdr_void, (caddr_t)0, try);
+	clnt_stat = clnt_call(clp, RPCMNT_UMNTALL,
+	    (xdrproc_t)xdr_void, (caddr_t)0,
+	    (xdrproc_t)xdr_void, (caddr_t)0, try);
 	if (clnt_stat != RPC_SUCCESS)
 		warnx("%s: %s", hostname, clnt_sperror(clp, "RPCMNT_UMNTALL"));
 	auth_destroy(clp->cl_auth);
@@ -219,36 +200,20 @@ do_umntall(char *hostname) {
 int
 do_umount(char *hostname, char *dirp) {
 	enum clnt_stat clnt_stat;
-	struct hostent *hp;
-	struct sockaddr_in saddr;
-	struct timeval pertry, try;
+	struct timeval try;
 	CLIENT *clp;
-	int so;
 
-	if ((hp = gethostbyname_quick(hostname)) == NULL) {
-		warnx("gethostbyname(%s) failed", hostname);
-		return (0);
-	}
-	memset(&saddr, 0, sizeof(saddr));
-	saddr.sin_family = AF_INET;
-	saddr.sin_port = 0;
-	memmove(&saddr.sin_addr, hp->h_addr, MIN(hp->h_length,
-		(int)sizeof(saddr.sin_addr)));
-	pertry.tv_sec = 3;
-	pertry.tv_usec = 0;
-	if (fastopt)
-	    pmap_getport_timeout(NULL, &pertry);
-	so = RPC_ANYSOCK;
-	clp = clntudp_create(&saddr, RPCPROG_MNT, RPCMNT_VER1, pertry, &so);
+	try.tv_sec = 3;
+	try.tv_usec = 0;
+	clp = clnt_create_timed(hostname, RPCPROG_MNT, RPCMNT_VER1, "udp",
+	    &try);
 	if (clp  == NULL) {
 		warnx("%s: %s", hostname, clnt_spcreateerror("RPCPROG_MNT"));
 		return (0);
 	}
-	clp->cl_auth = authunix_create_default();
-	try.tv_sec = 3;
-	try.tv_usec = 0;
-	clnt_stat = clnt_call(clp, RPCMNT_UMOUNT, xdr_dir, dirp,
-	    xdr_void, (caddr_t)0, try);
+	clp->cl_auth = authsys_create_default();
+	clnt_stat = clnt_call(clp, RPCMNT_UMOUNT, (xdrproc_t)xdr_dir, dirp,
+	    (xdrproc_t)xdr_void, (caddr_t)0, try);
 	if (clnt_stat != RPC_SUCCESS)
 		warnx("%s: %s", hostname, clnt_sperror(clp, "RPCMNT_UMOUNT"));
 	auth_destroy(clp->cl_auth);
@@ -284,32 +249,6 @@ is_mounted(char *hostname, char *dirp) {
 	}
 	free(mntbuf);
 	return (0);
-}
-
-/*
- * rpc.umntall is often called at boot.  If the network or target host has
- * issues we want to limit resolver stalls so rpc.umntall doesn't stall
- * the boot sequence forever.
- */
-struct hostent *
-gethostbyname_quick(const char *name)
-{
-    struct hostent *he;
-    int save_retrans;
-    int save_retry;
-
-    save_retrans = _res.retrans;
-    save_retry = _res.retry;
-    if (fastopt) {
-	_res.retrans = 1;
-	_res.retry = 2;
-    }
-    he = gethostbyname(name);
-    if (fastopt) {
-	_res.retrans = save_retrans;
-	_res.retry = save_retry;
-    }
-    return(he);
 }
 
 /*

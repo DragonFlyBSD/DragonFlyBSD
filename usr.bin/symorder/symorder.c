@@ -189,7 +189,7 @@ main(int argc, char **argv)
 	i = n / sizeof(struct nlist);
 	if (!clean) {
 		newtab = (struct nlist *)malloc(n);
-		if (newtab == (struct nlist *)NULL)
+		if (newtab == NULL)
 			err(ERREXIT, NULL);
 		memset(newtab, 0, n);
 

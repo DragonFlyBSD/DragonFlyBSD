@@ -58,6 +58,10 @@ MAN=	acct.5 \
 	uuids.5 \
 	varsym.conf.5
 
+.if defined(WANT_HESIOD)
+MAN+=	hesiod.conf.5
+.endif
+
 MLINKS=	dir.5 dirent.5
 MLINKS+=ffs.5 UFS.5
 MLINKS+=fs.5 inode.5

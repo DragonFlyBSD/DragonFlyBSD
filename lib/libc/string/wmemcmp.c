@@ -25,11 +25,10 @@
  *
  * citrus Id: wmemcmp.c,v 1.2 2000/12/20 14:08:31 itojun Exp
  * $NetBSD: wmemcmp.c,v 1.1 2000/12/23 23:14:37 itojun Exp $
- * $FreeBSD: src/lib/libc/string/wmemcmp.c,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
+ * $FreeBSD: src/lib/libc/string/wmemcmp.c,v 1.6 2002/09/21 00:29:23 tjr Exp $
  * $DragonFly: src/lib/libc/string/wmemcmp.c,v 1.3 2005/09/18 16:32:34 asmodai Exp $
  */
 
-#include <assert.h>
 #include <wchar.h>
 
 int
@@ -40,10 +39,10 @@ wmemcmp(const wchar_t *s1, const wchar_t *s2, size_t n)
 	for (i = 0; i < n; i++) {
 		if (*s1 != *s2) {
 			/* wchar might be unsigned */
-			return *s1 > *s2 ? 1 : -1; 
+			return (*s1 > *s2 ? 1 : -1);
 		}
 		s1++;
 		s2++;
 	}
-	return 0;
+	return (0);
 }

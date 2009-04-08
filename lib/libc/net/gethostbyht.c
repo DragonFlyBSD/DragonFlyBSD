@@ -10,7 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
+ * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -47,7 +47,7 @@
  * --Copyright--
  *
  * @(#)gethostnamadr.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/net/gethostbyht.c,v 1.12 1999/08/28 00:00:05 peter Exp $
+ * $FreeBSD: src/lib/libc/net/gethostbyht.c,v 1.27 2007/01/09 00:28:02 imp Exp $
  * $DragonFly: src/lib/libc/net/gethostbyht.c,v 1.6 2005/11/13 02:04:47 swildner Exp $
  */
 
@@ -59,68 +59,64 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
+#include <stdarg.h>
+#include <nsswitch.h>
 #include <arpa/nameser.h>	/* XXX */
 #include <resolv.h>		/* XXX */
-
-#define	MAXALIASES	35
-
-static struct hostent host;
-static char *host_aliases[MAXALIASES];
-static char hostbuf[BUFSIZ+1];
-static FILE *hostf = NULL;
-static u_int32_t host_addr[4];	/* IPv4 or IPv6 */
-static char *h_addr_ptrs[2];
-static int stayopen = 0;
+#include "netdb_private.h"
 
 void
-_sethosthtent(int f)
+_sethosthtent(int f, struct hostent_data *hed)
 {
-	if (!hostf)
-		hostf = fopen(_PATH_HOSTS, "r" );
+	if (!hed->hostf)
+		hed->hostf = fopen(_PATH_HOSTS, "r");
 	else
-		rewind(hostf);
-	stayopen = f;
+		rewind(hed->hostf);
+	hed->stayopen = f;
 }
 
 void
-_endhosthtent(void)
+_endhosthtent(struct hostent_data *hed)
 {
-	if (hostf && !stayopen) {
-		fclose(hostf);
-		hostf = NULL;
+	if (hed->hostf && !hed->stayopen) {
+		fclose(hed->hostf);
+		hed->hostf = NULL;
 	}
 }
 
-struct hostent *
-gethostent(void)
+static int
+gethostent_p(struct hostent *he, struct hostent_data *hed, int mapped,
+	     res_state statp)
 {
-	char *p;
+	char *p, *bp, *ep;
 	char *cp, **q;
 	int af, len;
+	char hostbuf[BUFSIZ + 1];
 
-	if (!hostf && !(hostf = fopen(_PATH_HOSTS, "r" ))) {
-		h_errno = NETDB_INTERNAL;
-		return (NULL);
+	if (!hed->hostf && !(hed->hostf = fopen(_PATH_HOSTS, "r"))) {
+		RES_SET_H_ERRNO(statp, NETDB_INTERNAL);
+		return (-1);
 	}
  again:
-	if (!(p = fgets(hostbuf, sizeof hostbuf, hostf))) {
-		h_errno = HOST_NOT_FOUND;
-		return (NULL);
+	if (!(p = fgets(hostbuf, sizeof hostbuf, hed->hostf))) {
+		RES_SET_H_ERRNO(statp, HOST_NOT_FOUND);
+		return (-1);
 	}
 	if (*p == '#')
 		goto again;
-	if (!(cp = strpbrk(p, "#\n")))
-		goto again;
-	*cp = '\0';
+	cp = strpbrk(p, "#\n");
+	if (cp != NULL)
+		*cp = '\0';
 	if (!(cp = strpbrk(p, " \t")))
 		goto again;
 	*cp++ = '\0';
-	if (inet_pton(AF_INET6, p, host_addr) > 0) {
+	if (inet_pton(AF_INET6, p, hed->host_addr) > 0) {
 		af = AF_INET6;
 		len = IN6ADDRSZ;
-	} else if (inet_pton(AF_INET, p, host_addr) > 0) {
-		if (_res.options & RES_USE_INET6) {
-			_map_v4v6_address((char*)host_addr, (char*)host_addr);
+	} else if (inet_pton(AF_INET, p, hed->host_addr) > 0) {
+		if (mapped) {
+			_map_v4v6_address((char *)hed->host_addr,
+			    (char *)hed->host_addr);
 			af = AF_INET6;
 			len = IN6ADDRSZ;
 		} else {
@@ -130,62 +126,204 @@ gethostent(void)
 	} else {
 		goto again;
 	}
-	h_addr_ptrs[0] = (char *)host_addr;
-	h_addr_ptrs[1] = NULL;
-	host.h_addr_list = h_addr_ptrs;
-	host.h_length = len;
-	host.h_addrtype = af;
+	hed->h_addr_ptrs[0] = (char *)hed->host_addr;
+	hed->h_addr_ptrs[1] = NULL;
+	he->h_addr_list = hed->h_addr_ptrs;
+	he->h_length = len;
+	he->h_addrtype = af;
 	while (*cp == ' ' || *cp == '\t')
 		cp++;
-	host.h_name = cp;
-	q = host.h_aliases = host_aliases;
-	if ((cp = strpbrk(cp, " \t")) != NULL)
-		*cp++ = '\0';
+	bp = hed->hostbuf;
+	ep = hed->hostbuf + sizeof hed->hostbuf;
+	he->h_name = bp;
+	q = he->h_aliases = hed->host_aliases;
+	if ((p = strpbrk(cp, " \t")) != NULL)
+		*p++ = '\0';
+	len = strlen(cp) + 1;
+	if (ep - bp < len) {
+		RES_SET_H_ERRNO(statp, NO_RECOVERY);
+		return (-1);
+	}
+	strlcpy(bp, cp, ep - bp);
+	bp += len;
+	cp = p;
 	while (cp && *cp) {
 		if (*cp == ' ' || *cp == '\t') {
 			cp++;
 			continue;
 		}
-		if (q < &host_aliases[MAXALIASES - 1])
-			*q++ = cp;
-		if ((cp = strpbrk(cp, " \t")) != NULL)
-			*cp++ = '\0';
+		if (q >= &hed->host_aliases[_MAXALIASES - 1])
+			break;
+		if ((p = strpbrk(cp, " \t")) != NULL)
+			*p++ = '\0';
+		len = strlen(cp) + 1;
+		if (ep - bp < len)
+			break;
+		strlcpy(bp, cp, ep - bp);
+		*q++ = bp;
+		bp += len;
+		cp = p;
 	}
 	*q = NULL;
-	h_errno = NETDB_SUCCESS;
-	return (&host);
+	RES_SET_H_ERRNO(statp, NETDB_SUCCESS);
+	return (0);
+}
+
+int
+gethostent_r(struct hostent *hptr, char *buffer, size_t buflen,
+	     struct hostent **result, int *h_errnop)
+{
+	struct hostent_data *hed;
+	struct hostent he;
+	res_state statp;
+
+	statp = __res_state();
+	if ((statp->options & RES_INIT) == 0 && res_ninit(statp) == -1) {
+		RES_SET_H_ERRNO(statp, NETDB_INTERNAL);
+		*h_errnop = statp->res_h_errno;
+		return (-1);
+	}
+	if ((hed = __hostent_data_init()) == NULL) {
+		RES_SET_H_ERRNO(statp, NETDB_INTERNAL);
+		*h_errnop = statp->res_h_errno;
+		return (-1);
+	}
+	if (gethostent_p(&he, hed, statp->options & RES_USE_INET6, statp) != 0)
+		return (-1);
+	if (__copy_hostent(&he, hptr, buffer, buflen) != 0)
+		return (-1);
+	*result = hptr;
+	return (0);
 }
 
 struct hostent *
-_gethostbyhtname(const char *name, int af)
+gethostent(void)
 {
-	struct hostent *p;
+	struct hostdata *hd;
+	struct hostent *rval;
+	int ret_h_errno;
+
+	if ((hd = __hostdata_init()) == NULL)
+		return (NULL);
+	if (gethostent_r(&hd->host, hd->data, sizeof(hd->data), &rval,
+	    &ret_h_errno) != 0)
+		return (NULL);
+	return (rval);
+}
+
+int
+_ht_gethostbyname(void *rval, void *cb_data, va_list ap)
+{
+	const char *name;
+	int af;
+	char *buffer;
+	size_t buflen;
+	int *errnop, *h_errnop;
+	struct hostent *hptr, he;
+	struct hostent_data *hed;
 	char **cp;
-	
-	sethostent(0);
-	while ((p = gethostent()) != NULL) {
-		if (p->h_addrtype != af)
+	res_state statp;
+	int error;
+
+	name = va_arg(ap, const char *);
+	af = va_arg(ap, int);
+	hptr = va_arg(ap, struct hostent *);
+	buffer = va_arg(ap, char *);
+	buflen = va_arg(ap, size_t);
+	errnop = va_arg(ap, int *);
+	h_errnop = va_arg(ap, int *);
+
+	*((struct hostent **)rval) = NULL;
+
+	statp = __res_state();
+	if ((hed = __hostent_data_init()) == NULL) {
+		RES_SET_H_ERRNO(statp, NETDB_INTERNAL);
+		*h_errnop = statp->res_h_errno;
+		return (NS_NOTFOUND);
+	}
+
+	_sethosthtent(0, hed);
+	while ((error = gethostent_p(&he, hed, 0, statp)) == 0) {
+		if (he.h_addrtype != af)
 			continue;
-		if (strcasecmp(p->h_name, name) == 0)
+		if (he.h_addrtype == AF_INET &&
+		    statp->options & RES_USE_INET6) {
+			_map_v4v6_address(he.h_addr, he.h_addr);
+			he.h_length = IN6ADDRSZ;
+			he.h_addrtype = AF_INET6;
+		}
+		if (strcasecmp(he.h_name, name) == 0)
 			break;
-		for (cp = p->h_aliases; *cp != 0; cp++)
+		for (cp = he.h_aliases; *cp != 0; cp++)
 			if (strcasecmp(*cp, name) == 0)
 				goto found;
 	}
 found:
-	endhostent();
-	return (p);
+	_endhosthtent(hed);
+
+	if (error != 0) {
+		*h_errnop = statp->res_h_errno;
+		return (NS_NOTFOUND);
+	}
+	if (__copy_hostent(&he, hptr, buffer, buflen) != 0) {
+		*h_errnop = statp->res_h_errno;
+		return (NS_NOTFOUND);
+	}
+	*((struct hostent **)rval) = hptr;
+	return (NS_SUCCESS);
 }
 
-struct hostent *
-_gethostbyhtaddr(const char *addr, int len, int af)
+int
+_ht_gethostbyaddr(void *rval, void *cb_data, va_list ap)
 {
-	struct hostent *p;
+	const void *addr;
+	socklen_t len;
+	int af;
+	char *buffer;
+	size_t buflen;
+	int *errnop, *h_errnop;
+	struct hostent *hptr, he;
+	struct hostent_data *hed;
+	res_state statp;
+	int error;
 
-	sethostent(0);
-	while ((p = gethostent()) != NULL)
-		if (p->h_addrtype == af && !bcmp(p->h_addr, addr, len))
+	addr = va_arg(ap, const void *);
+	len = va_arg(ap, socklen_t);
+	af = va_arg(ap, int);
+	hptr = va_arg(ap, struct hostent *);
+	buffer = va_arg(ap, char *);
+	buflen = va_arg(ap, size_t);
+	errnop = va_arg(ap, int *);
+	h_errnop = va_arg(ap, int *);
+
+	*((struct hostent **)rval) = NULL;
+
+	statp = __res_state();
+	if ((hed = __hostent_data_init()) == NULL) {
+		RES_SET_H_ERRNO(statp, NETDB_INTERNAL);
+		*h_errnop = statp->res_h_errno;
+		return (NS_NOTFOUND);
+	}
+
+	_sethosthtent(0, hed);
+	while ((error = gethostent_p(&he, hed, 0, statp)) == 0)
+		if (he.h_addrtype == af && !bcmp(he.h_addr, addr, len)) {
+			if (he.h_addrtype == AF_INET &&
+			    statp->options & RES_USE_INET6) {
+				_map_v4v6_address(he.h_addr, he.h_addr);
+				he.h_length = IN6ADDRSZ;
+				he.h_addrtype = AF_INET6;
+			}
 			break;
-	endhostent();
-	return (p);
+		}
+	_endhosthtent(hed);
+
+	if (error != 0)
+		return (NS_NOTFOUND);
+	if (__copy_hostent(&he, hptr, buffer, buflen) != 0) {
+		*h_errnop = statp->res_h_errno;
+		return (NS_NOTFOUND);
+	}
+	*((struct hostent **)rval) = hptr;
+	return (NS_SUCCESS);
 }

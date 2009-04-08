@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * @(#)realpath.c	8.1 (Berkeley) 2/16/94
- * $FreeBSD: src/lib/libc/stdlib/realpath.c,v 1.9.2.2 2003/06/02 13:31:16 fjoe Exp $
+ * $FreeBSD: src/lib/libc/stdlib/realpath.c,v 1.20 2003/05/28 08:23:01 fjoe Exp $
  * $DragonFly: src/lib/libc/stdlib/realpath.c,v 1.4 2005/04/28 13:47:15 joerg Exp $
  */
 

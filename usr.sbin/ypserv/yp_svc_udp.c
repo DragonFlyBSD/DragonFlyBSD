@@ -29,28 +29,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/ypserv/yp_svc_udp.c,v 1.5 1999/08/28 01:21:14 peter Exp $
+ * $FreeBSD: src/usr.sbin/ypserv/yp_svc_udp.c,v 1.8 2003/05/03 21:06:42 obrien Exp $
  * $DragonFly: src/usr.sbin/ypserv/yp_svc_udp.c,v 1.3 2004/03/31 23:20:22 cpressey Exp $
  */
 
 #include <rpc/rpc.h>
+#include <rpc/svc_dg.h>
 #include "yp_extern.h"
 
-/*
- * XXX Must not diverge from what's in src/lib/libc/rpc/svc_udp.c
- */
-
-/*
- * kept in xprt->xp_p2
- */
-struct svcudp_data {
-	u_int   su_iosz;	/* byte size of send.recv buffer */
-	u_long	su_xid;		/* transaction id */
-	XDR	su_xdrs;	/* XDR handle */
-	char	su_verfbody[MAX_AUTH_BYTES];	/* verifier body */
-	char * 	su_cache;	/* cached data, NULL if no cache */
-};
-#define	su_data(xprt)	((struct svcudp_data *)(xprt->xp_p2))
+#define su_data(xprt)	((struct svc_dg_data *)(xprt->xp_p2))
 
 /*
  * We need to be able to manually set the transaction ID in the
@@ -61,7 +48,7 @@ struct svcudp_data {
 unsigned long
 svcudp_get_xid(SVCXPRT *xprt)
 {
-	struct svcudp_data *su;
+	struct svc_dg_data *su;
 
 	if (xprt == NULL)
 		return(0);
@@ -72,7 +59,7 @@ svcudp_get_xid(SVCXPRT *xprt)
 unsigned long
 svcudp_set_xid(SVCXPRT *xprt, unsigned long xid)
 {
-	struct svcudp_data *su;
+	struct svc_dg_data *su;
 	unsigned long old_xid;
 
 	if (xprt == NULL)

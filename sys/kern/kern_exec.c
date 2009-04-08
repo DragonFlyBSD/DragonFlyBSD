@@ -42,6 +42,7 @@
 #include <sys/wait.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/ktrace.h>
 #include <sys/signalvar.h>
 #include <sys/pioctl.h>
@@ -398,7 +399,7 @@ interpret:
 		 * we do not regain any tracing during a possible block.
 		 */
 		setsugid();
-		if (p->p_tracenode && suser(td) != 0) {
+		if (p->p_tracenode && priv_check(td, PRIV_ROOT) != 0) {
 			ktrdestroy(&p->p_tracenode);
 			p->p_traceflag = 0;
 		}
@@ -467,6 +468,9 @@ interpret:
 	/* Set values passed into the program in registers. */
 	exec_setregs(imgp->entry_addr, (u_long)(uintptr_t)stack_base,
 	    imgp->ps_strings);
+
+	/* Set the access time on the vnode */
+	vn_mark_atime(imgp->vp, td);
 
 	/* Free any previous argument cache */
 	if (p->p_args && --p->p_args->ar_ref == 0)

@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -31,52 +27,90 @@
  * SUCH DAMAGE.
  *
  * @(#)confstr.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/gen/confstr.c,v 1.10 2007/01/09 00:27:53 imp Exp $
  * $DragonFly: src/lib/libc/gen/confstr.c,v 1.5 2006/12/06 16:33:29 tgen Exp $
  */
 
 #include <sys/param.h>
-#include <sys/sysctl.h>
 
 #include <errno.h>
+#include <limits.h>
 #include <paths.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
+#include <unistd.h>
+
 
 size_t
 confstr(int name, char *buf, size_t len)
 {
-	size_t tlen;
-	int mib[2], sverrno;
-	char *p;
+	const char *p;
+	const char UPE[] = "unsupported programming environment";
 
 	switch (name) {
 	case _CS_PATH:
-		mib[0] = CTL_USER;
-		mib[1] = USER_CS_PATH;
-		if (sysctl(mib, 2, NULL, &tlen, NULL, 0) == -1)
-			/*
-			 * SUSv3 requires errors to return 0.
-			 */
-			return (0);
-		if (len != 0 && buf != NULL) {
-			if ((p = malloc(tlen)) == NULL)
-				return (0);	/* SUSv3 */
-			if (sysctl(mib, 2, p, &tlen, NULL, 0) == -1) {
-				sverrno = errno;
-				free(p);
-				errno = sverrno;
-				return (0);	/* SUSv3 */
-			}
-			/*
-			 * POSIX 1003.2 requires partial return of
-			 * the string -- that should be *real* useful.
-			 */
-			strncpy(buf, p, len - 1);
-			buf[len - 1] = '\0';
-			free(p);
-		}
-		return (tlen + 1);
+		p = _PATH_STDPATH;
+		goto docopy;
+
+		/*
+		 * POSIX/SUS ``Programming Environments'' stuff
+		 *
+		 * We don't support more than one programming environment
+		 * on any platform (yet), so we just return the empty
+		 * string for the environment we are compiled for,
+		 * and the string "unsupported programming environment"
+		 * for anything else.  (The Standard says that if these
+		 * values are used on a system which does not support
+		 * this environment -- determined via sysconf() -- then
+		 * the value we return is unspecified.  So, we return
+		 * something which will cause obvious breakage.)
+		 */
+	case _CS_POSIX_V6_ILP32_OFF32_CFLAGS:
+	case _CS_POSIX_V6_ILP32_OFF32_LDFLAGS:
+	case _CS_POSIX_V6_ILP32_OFF32_LIBS:
+	case _CS_POSIX_V6_LPBIG_OFFBIG_CFLAGS:
+	case _CS_POSIX_V6_LPBIG_OFFBIG_LDFLAGS:
+	case _CS_POSIX_V6_LPBIG_OFFBIG_LIBS:
+		/*
+		 * These two environments are never supported.
+		 */
+		p = UPE;
+		goto docopy;
+
+	case _CS_POSIX_V6_ILP32_OFFBIG_CFLAGS:
+	case _CS_POSIX_V6_ILP32_OFFBIG_LDFLAGS:
+	case _CS_POSIX_V6_ILP32_OFFBIG_LIBS:
+		if (sizeof(long) * CHAR_BIT == 32 &&
+		    sizeof(off_t) > sizeof(long))
+			p = "";
+		else
+			p = UPE;
+		goto docopy;
+
+	case _CS_POSIX_V6_LP64_OFF64_CFLAGS:
+	case _CS_POSIX_V6_LP64_OFF64_LDFLAGS:
+	case _CS_POSIX_V6_LP64_OFF64_LIBS:
+		if (sizeof(long) * CHAR_BIT >= 64 &&
+		    sizeof(void *) * CHAR_BIT >= 64 &&
+		    sizeof(int) * CHAR_BIT >= 32 &&
+		    sizeof(off_t) >= sizeof(long))
+			p = "";
+		else
+			p = UPE;
+		goto docopy;
+
+	case _CS_POSIX_V6_WIDTH_RESTRICTED_ENVS:
+		/* XXX - should have more complete coverage */
+		if (sizeof(long) * CHAR_BIT >= 64)
+			p = "_POSIX_V6_LP64_OFF64";
+		else
+			p = "_POSIX_V6_ILP32_OFFBIG";
+		goto docopy;
+
+docopy:
+		if (len != 0 && buf != NULL)
+			strlcpy(buf, p, len);
+		return (strlen(p) + 1);
+
 	default:
 		errno = EINVAL;
 		return (0);

@@ -78,6 +78,7 @@
 #include <sys/ioctl_compat.h>
 #endif
 #include <sys/proc.h>
+#include <sys/priv.h>
 #define	TTYDEFCHARS
 #include <sys/tty.h>
 #include <sys/clist.h>
@@ -340,9 +341,9 @@ retry:
 			vclrflags(vp, VCTTYISOPEN);
 			VOP_CLOSE(vp, FREAD|FWRITE);
 		}
-		if (dorevoke)
-			VOP_REVOKE(vp, REVOKEALL);
 		vn_unlock(vp);
+		if (dorevoke)
+			vrevoke(vp, proc0.p_ucred);
 		vdrop(vp);
 	} else {
 		sp->s_ttyvp = NULL;
@@ -902,7 +903,7 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 			    ISSET(constty->t_state, TS_CONNECTED))
 				return (EBUSY);
 #ifndef	UCONSOLE
-			if ((error = suser(td)) != 0)
+			if ((error = priv_check(td, PRIV_ROOT)) != 0)
 				return (error);
 #endif
 			constty = tp;
@@ -930,6 +931,11 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		if (!isctty(p, tp))
 			return (ENOTTY);
 		*(int *)data = tp->t_pgrp ? tp->t_pgrp->pg_id : NO_PID;
+		break;
+	case TIOCGSID:                  /* get sid of tty */
+		if (!isctty(p, tp))
+			return (ENOTTY);
+		*(int *)data = tp->t_session->s_sid;
 		break;
 #ifdef TIOCHPCL
 	case TIOCHPCL:			/* hang up on last close */
@@ -1074,9 +1080,9 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		crit_exit();
 		break;
 	case TIOCSTI:			/* simulate terminal input */
-		if ((flag & FREAD) == 0 && suser(td))
+		if ((flag & FREAD) == 0 && priv_check(td, PRIV_ROOT))
 			return (EPERM);
-		if (!isctty(p, tp) && suser(td))
+		if (!isctty(p, tp) && priv_check(td, PRIV_ROOT))
 			return (EACCES);
 		crit_enter();
 		(*linesw[tp->t_line].l_rint)(*(u_char *)data, tp);
@@ -1124,7 +1130,7 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 		}
 		break;
 	case TIOCSDRAINWAIT:
-		error = suser(td);
+		error = priv_check(td, PRIV_ROOT);
 		if (error)
 			return (error);
 		tp->t_timeout = *(int *)data * hz;

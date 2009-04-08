@@ -73,14 +73,14 @@ struct netgrp {
 #define NG_USER		1	/* User name */
 #define NG_DOM		2	/* and Domain name */
 
-static struct linelist	*linehead = (struct linelist *)0;
-static struct netgrp	*nextgrp = (struct netgrp *)0;
+static struct linelist	*linehead = NULL;
+static struct netgrp	*nextgrp = NULL;
 static struct {
 	struct netgrp	*gr;
 	char		*grname;
 } grouphead = {
-	(struct netgrp *)0,
-	(char *)0,
+	NULL,
+	NULL,
 };
 static int parse_netgrp(char *);
 static struct linelist *read_for_group(char *);
@@ -100,7 +100,7 @@ __setnetgrent(char *group)
 	if (group == NULL || !strlen(group))
 		return;
 
-	if (grouphead.gr == (struct netgrp *)0 ||
+	if (grouphead.gr == NULL ||
 		strcmp(group, grouphead.grname)) {
 		__endnetgrent();
 		if (parse_netgrp(group))
@@ -147,10 +147,10 @@ __endnetgrent(void)
 		free(olp->l_line);
 		free((char *)olp);
 	}
-	linehead = (struct linelist *)0;
+	linehead = NULL;
 	if (grouphead.grname) {
 		free(grouphead.grname);
-		grouphead.grname = (char *)0;
+		grouphead.grname = NULL;
 	}
 	gp = grouphead.gr;
 	while (gp) {
@@ -164,7 +164,7 @@ __endnetgrent(void)
 			free(ogp->ng_str[NG_DOM]);
 		free((char *)ogp);
 	}
-	grouphead.gr = (struct netgrp *)0;
+	grouphead.gr = NULL;
 }
 
 /*
@@ -190,8 +190,8 @@ parse_netgrp(char *group)
 			break;
 		lp = lp->l_next;
 	}
-	if (lp == (struct linelist *)0 &&
-	    (lp = read_for_group(group)) == (struct linelist *)0)
+	if (lp == NULL &&
+	    (lp = read_for_group(group)) == NULL)
 		return (1);
 	if (lp->l_parsed) {
 #ifdef DEBUG
@@ -357,5 +357,5 @@ read_for_group(char *group)
 #endif
 			return (lp);
 	}
-	return ((struct linelist *)0);
+	return (NULL);
 }

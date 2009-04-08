@@ -82,7 +82,7 @@ main(int argc, char **argv)
 		debug = fopen(*argv, "w");
 		if (debug == 0)
 			exit(1);
-		setbuf(debug, (char *)0);
+		setbuf(debug, NULL);
 	}
 top:
 	errno = 0;

@@ -32,8 +32,6 @@
  * $DragonFly: src/sys/kern/kern_spinlock.c,v 1.16 2008/09/11 01:11:42 y0netan1 Exp $
  */
 
-#include "opt_ddb.h"
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/types.h>
@@ -42,7 +40,7 @@
 #ifdef INVARIANTS
 #include <sys/proc.h>
 #endif
-#include <ddb/ddb.h>
+#include <sys/priv.h>
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
 #include <machine/specialreg.h>
@@ -306,16 +304,16 @@ exponential_backoff(struct exponential_backoff *bo)
 		kprintf("spin_lock: %p, indefinite wait!\n", bo->mtx);
 		if (panicstr)
 			return (TRUE);
-#if defined(INVARIANTS) && defined(DDB)
+#if defined(INVARIANTS)
 		if (spin_lock_test_mode) {
-			db_print_backtrace();
+			print_backtrace();
 			return (TRUE);
 		}
 #endif
 		++bo->nsec;
-#if defined(INVARIANTS) && defined(DDB)
+#if defined(INVARIANTS)
 		if (bo->nsec == 11)
-			db_print_backtrace();
+			print_backtrace();
 #endif
 		if (bo->nsec == 60)
 			panic("spin_lock: %p, indefinite wait!\n", bo->mtx);
@@ -347,7 +345,7 @@ sysctl_spin_lock_test(SYSCTL_HANDLER_ARGS)
 	int value = 0;
 	int i;
 
-	if ((error = suser(curthread)) != 0)
+	if ((error = priv_check(curthread, PRIV_ROOT)) != 0)
 		return (error);
 	if ((error = SYSCTL_IN(req, &value, sizeof(value))) != 0)
 		return (error);

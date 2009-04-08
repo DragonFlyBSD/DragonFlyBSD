@@ -46,7 +46,7 @@
 #include <rpcsvc/ypclnt.h>
 
 struct ypalias {
-	char *alias, *name;
+	const char *alias, *name;
 } ypaliases[] = {
 	{ "passwd", "passwd.byname" },
 	{ "master.passwd", "master.passwd.byname" },
@@ -70,9 +70,9 @@ usage(void)
 	exit(1);
 }
 
-int
-printit(int instatus, char *inkey, int inkeylen, char *inval, int invallen,
-        char *indata)
+static int
+printit(unsigned long instatus, char *inkey, int inkeylen, char *inval, int invallen,
+        void *indata __unused)
 {
 	if (instatus != YP_TRUE)
 		return (instatus);
@@ -89,7 +89,8 @@ main(int argc, char  **argv)
 	struct ypall_callback ypcb;
 	char *inmap;
 	int notrans;
-	int c, r, i;
+	int c, r;
+	u_int i;
 
 	notrans = key = 0;
 
@@ -123,7 +124,7 @@ main(int argc, char  **argv)
 	inmap = argv[optind];
 	for (i = 0; (!notrans) && i<sizeof ypaliases/sizeof ypaliases[0]; i++)
 		if (strcmp(inmap, ypaliases[i].alias) == 0)
-			inmap = ypaliases[i].name;
+			inmap = __DECONST(char *, ypaliases[i].name);
 	ypcb.foreach = printit;
 	ypcb.data = NULL;
 

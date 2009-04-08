@@ -145,6 +145,8 @@ nwfs_access(struct vop_access_args *ap)
 		mode >>= 3;
 		if (!groupmember(nmp->m.gid, cred))
 			mode >>= 3;
+	} else if (mode & VOWN) {
+		return (0);
 	}
 	error = (((vp->v_type == VREG) ? nmp->m.file_mode : nmp->m.dir_mode) & mode) == mode ? 0 : EACCES;
 	return error;
@@ -398,7 +400,7 @@ nwfs_create(struct vop_old_create_args *ap)
 	struct vattr *vap = ap->a_vap;
 	struct vnode **vpp=ap->a_vpp;
 	struct componentname *cnp = ap->a_cnp;
-	struct vnode *vp = (struct vnode *)0;
+	struct vnode *vp = NULL;
 	int error = 0, fmode;
 	struct vattr vattr;
 	struct nwnode *np;
@@ -593,7 +595,7 @@ nwfs_mkdir(struct vop_old_mkdir_args *ap)
 	int len=cnp->cn_namelen;
 	struct ncp_open_info no;
 	struct nwnode *np;
-	struct vnode *newvp = (struct vnode *)0;
+	struct vnode *newvp = NULL;
 	ncpfid fid;
 	int error = 0;
 	struct vattr vattr;

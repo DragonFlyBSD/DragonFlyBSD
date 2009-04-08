@@ -193,8 +193,7 @@ again:
 		}
 
 		FD_SET(sock, &ready);
-		if (!select(sock+1, &ready, (fd_set *)0, (fd_set *)0,
-			   &rwait)) {
+		if (!select(sock+1, &ready, NULL, NULL, &rwait)) {
 			if (rwait.tv_sec == 0 && rwait.tv_usec == 0)
 				return(0);
 			continue;
@@ -217,7 +216,7 @@ again:
 			      inet_ntoa(from.sin_addr));
 			continue;
 		}
-		gettimeofday(&from_when, (struct timezone *)0);
+		gettimeofday(&from_when, NULL);
 		bytehostorder(&msgin);
 
 		if (msgin.tsp_vers > TSPVERSION) {

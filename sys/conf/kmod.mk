@@ -12,7 +12,8 @@
 #
 # KMOD          The name of the kernel module to build.
 #
-# KMODDIR	Base path for kernel modules (see kld(4)). [/modules]
+# KMODDIR	Base path for kernel modules (see kld(4)).
+#		[${DESTKERNDIR}/${DESTMODULESNAME}]
 #
 # KMODOWN	KLD owner. [${BINOWN}]
 #
@@ -33,7 +34,9 @@
 #
 # KMODDEPS	List of modules which this one is dependant on
 #
-# DESTDIR	Change the tree where the module gets installed. [not set]
+# DESTKERNDIR	Change the tree where the kernel and the modules get
+#		installed. [/boot]  ${DESTDIR} changes the root of the tree
+#		pointed to by ${DESTKERNDIR}.
 #
 # MFILES	Optionally a list of interfaces used by the module.
 #		This file contains a default list of interfaces.
@@ -61,6 +64,11 @@
 OBJCOPY?=	objcopy
 KMODLOAD?=	/sbin/kldload
 KMODUNLOAD?=	/sbin/kldunload
+
+KMODDIR?=	${DESTKERNDIR}/${DESTMODULESNAME}
+KMODOWN?=	${BINOWN}
+KMODGRP?=	${BINGRP}
+KMODMODE?=	${BINMODE}
 
 .include <bsd.init.mk>
 
@@ -125,6 +133,9 @@ CFLAGS+=	-include ${BUILDING_WITH_KERNEL}/opt_global.h
 .endif
 
 CFLAGS+=	${DEBUG_FLAGS}
+.if ${MACHINE_ARCH} == amd64
+CFLAGS+=	-fno-omit-frame-pointer
+.endif
 
 .include <bsd.patch.mk>
 

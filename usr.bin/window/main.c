@@ -116,7 +116,7 @@ char **argv;
 	default_shell[1] = 0;
 	default_nline = NLINE;
 	default_smooth = 1;
-	(void) gettimeofday(&starttime, (struct timezone *)0);
+	(void) gettimeofday(&starttime, NULL);
 	(void) setlocale(LC_CTYPE, "");
 	if (wwinit() < 0) {
 		(void) fprintf(stderr, "%s.\n", wwerror());
@@ -178,7 +178,7 @@ char **argv;
 	setterse(tflag);
 	setcmd(1);
 	if (cmd != 0)
-		(void) dolongcmd(cmd, (struct value *)0, 0);
+		(void) dolongcmd(cmd, NULL, 0);
 	if (!fflag)
 		if (dflag || doconfig() < 0)
 			dodefault();

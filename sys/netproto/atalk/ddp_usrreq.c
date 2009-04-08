@@ -8,6 +8,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
@@ -248,7 +249,7 @@ at_pcbsetaddr(struct ddpcb *ddp, struct sockaddr *addr, struct thread *td)
 		return( EINVAL );
 	    }
 	    if ( sat->sat_port < ATPORT_RESERVED &&
-		 suser(td) ) {
+		 priv_check(td, PRIV_ROOT) ) {
 		return( EACCES );
 	    }
 	}
@@ -359,15 +360,15 @@ at_pcbconnect(struct ddpcb *ddp, struct sockaddr *addr, struct thread *td)
 		satosat( &ro->ro_dst )->sat_addr.s_node !=
 		sat->sat_addr.s_node )) {
 	    RTFREE( ro->ro_rt );
-	    ro->ro_rt = (struct rtentry *)0;
+	    ro->ro_rt = NULL;
 	}
     }
 
     /*
      * If we've got no route for this interface, try to find one.
      */
-    if ( ro->ro_rt == (struct rtentry *)0 ||
-	 ro->ro_rt->rt_ifp == (struct ifnet *)0 ) {
+    if ( ro->ro_rt == NULL ||
+	 ro->ro_rt->rt_ifp == NULL ) {
 	ro->ro_dst.sa_len = sizeof( struct sockaddr_at );
 	ro->ro_dst.sa_family = AF_APPLETALK;
 	if ( hintnet ) {
@@ -396,7 +397,7 @@ at_pcbconnect(struct ddpcb *ddp, struct sockaddr *addr, struct thread *td)
 
     ddp->ddp_fsat = *sat;
     if ( ddp->ddp_lsat.sat_port == ATADDR_ANYPORT ) {
-	return(at_pcbsetaddr(ddp, (struct sockaddr *)0, td));
+	return(at_pcbsetaddr(ddp, NULL, td));
     }
     return( 0 );
 }
@@ -540,12 +541,12 @@ at_setsockaddr(struct socket *so, struct sockaddr **nam)
 void 
 ddp_init(void)
 {
-	netisr_register(NETISR_ATALK1, cpu0_portfn, at1intr,
-			NETISR_FLAG_NOTMPSAFE);
-	netisr_register(NETISR_ATALK2, cpu0_portfn, at2intr,
-			NETISR_FLAG_NOTMPSAFE);
-	netisr_register(NETISR_AARP, cpu0_portfn, aarpintr,
-			NETISR_FLAG_NOTMPSAFE);
+	netisr_register(NETISR_ATALK1, cpu0_portfn, pktinfo_portfn_cpu0,
+			at1intr, NETISR_FLAG_NOTMPSAFE);
+	netisr_register(NETISR_ATALK2, cpu0_portfn, pktinfo_portfn_cpu0,
+			at2intr, NETISR_FLAG_NOTMPSAFE);
+	netisr_register(NETISR_AARP, cpu0_portfn, pktinfo_portfn_cpu0,
+			aarpintr, NETISR_FLAG_NOTMPSAFE);
 }
 
 #if 0

@@ -387,7 +387,7 @@ vinumopen(struct dev_open_args *ap)
 	}
 
     case VINUM_SUPERDEV_TYPE:
-	error = suser_cred(ap->a_cred, 0);		    /* are we root? */
+	error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);  /* are we root? */
 	if (error == 0) {				    /* yes, can do */
 	    if (devminor == VINUM_DAEMON_DEV)		    /* daemon device */
 		vinum_conf.flags |= VF_DAEMONOPEN;	    /* we're open */

@@ -171,9 +171,6 @@ static void	stge_miibus_statchg(device_t);
 static int	stge_mediachange(struct ifnet *);
 static void	stge_mediastatus(struct ifnet *, struct ifmediareq *);
 
-static void	stge_dmamap_cb(void *, bus_dma_segment_t *, int, int);
-static void	stge_mbuf_dmamap_cb(void *, bus_dma_segment_t *, int,
-				    bus_size_t, int);
 static int	stge_dma_alloc(struct stge_softc *);
 static void	stge_dma_free(struct stge_softc *);
 static void	stge_dma_wait(struct stge_softc *);
@@ -677,7 +674,8 @@ stge_attach(device_t dev)
 	    "rxint_dmawait", CTLTYPE_INT|CTLFLAG_RW, &sc->sc_rxint_dmawait, 0,
 	    sysctl_hw_stge_rxint_dmawait, "I", "stge rx interrupt dmawait");
 
-	if ((error = stge_dma_alloc(sc) != 0))
+	error = stge_dma_alloc(sc);
+	if (error != 0)
 		goto fail;
 
 	/*
@@ -854,54 +852,9 @@ stge_detach(device_t dev)
 	return (0);
 }
 
-struct stge_dmamap_arg {
-	bus_addr_t	stge_busaddr;
-};
-
-static void
-stge_dmamap_cb(void *arg, bus_dma_segment_t *segs, int nseg, int error)
-{
-	struct stge_dmamap_arg *ctx;
-
-	if (error != 0)
-		return;
-
-	KASSERT(nseg == 1, ("too many segments %d\n", nseg));
-
-	ctx = (struct stge_dmamap_arg *)arg;
-	ctx->stge_busaddr = segs[0].ds_addr;
-}
-
-struct stge_mbuf_dmamap_arg {
-	int			nsegs;
-	bus_dma_segment_t	*segs;
-};
-
-static void
-stge_mbuf_dmamap_cb(void *xarg, bus_dma_segment_t *segs, int nsegs,
-		    bus_size_t mapsz __unused, int error)
-{
-	struct stge_mbuf_dmamap_arg *arg = xarg;
-	int i;
-
-	if (error) {
-		arg->nsegs = 0;
-		return;
-	}
-
-	KASSERT(nsegs <= arg->nsegs,
-		("too many segments(%d), should be <= %d\n",
-		 nsegs, arg->nsegs));
-
-	arg->nsegs = nsegs;
-	for (i = 0; i < nsegs; ++i)
-		arg->segs[i] = segs[i];
-}
-
 static int
 stge_dma_alloc(struct stge_softc *sc)
 {
-	struct stge_dmamap_arg ctx;
 	struct stge_txdesc *txd;
 	struct stge_rxdesc *rxd;
 	int error, i;
@@ -919,40 +872,35 @@ stge_dma_alloc(struct stge_softc *sc)
 		    &sc->sc_cdata.stge_parent_tag);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "failed to create parent DMA tag\n");
-		goto fail;
-	}
-	/* create tag for Tx ring. */
-	error = bus_dma_tag_create(sc->sc_cdata.stge_parent_tag,/* parent */
-		    STGE_RING_ALIGN, 0,		/* algnmnt, boundary */
-		    BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
-		    BUS_SPACE_MAXADDR,		/* highaddr */
-		    NULL, NULL,			/* filter, filterarg */
-		    STGE_TX_RING_SZ,		/* maxsize */
-		    1,				/* nsegments */
-		    STGE_TX_RING_SZ,		/* maxsegsize */
-		    0,				/* flags */
-		    &sc->sc_cdata.stge_tx_ring_tag);
-	if (error != 0) {
-		device_printf(sc->sc_dev,
-		    "failed to allocate Tx ring DMA tag\n");
-		goto fail;
+		return error;
 	}
 
-	/* create tag for Rx ring. */
-	error = bus_dma_tag_create(sc->sc_cdata.stge_parent_tag,/* parent */
-		    STGE_RING_ALIGN, 0,		/* algnmnt, boundary */
-		    BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
-		    BUS_SPACE_MAXADDR,		/* highaddr */
-		    NULL, NULL,			/* filter, filterarg */
-		    STGE_RX_RING_SZ,		/* maxsize */
-		    1,				/* nsegments */
-		    STGE_RX_RING_SZ,		/* maxsegsize */
-		    0,				/* flags */
-		    &sc->sc_cdata.stge_rx_ring_tag);
-	if (error != 0) {
+	/* allocate Tx ring. */
+	sc->sc_rdata.stge_tx_ring =
+		bus_dmamem_coherent_any(sc->sc_cdata.stge_parent_tag,
+			STGE_RING_ALIGN, STGE_TX_RING_SZ,
+			BUS_DMA_WAITOK | BUS_DMA_ZERO,
+			&sc->sc_cdata.stge_tx_ring_tag,
+			&sc->sc_cdata.stge_tx_ring_map,
+			&sc->sc_rdata.stge_tx_ring_paddr);
+	if (sc->sc_rdata.stge_tx_ring == NULL) {
 		device_printf(sc->sc_dev,
-		    "failed to allocate Rx ring DMA tag\n");
-		goto fail;
+		    "failed to allocate Tx ring\n");
+		return ENOMEM;
+	}
+
+	/* allocate Rx ring. */
+	sc->sc_rdata.stge_rx_ring =
+		bus_dmamem_coherent_any(sc->sc_cdata.stge_parent_tag,
+			STGE_RING_ALIGN, STGE_RX_RING_SZ,
+			BUS_DMA_WAITOK | BUS_DMA_ZERO,
+			&sc->sc_cdata.stge_rx_ring_tag,
+			&sc->sc_cdata.stge_rx_ring_map,
+			&sc->sc_rdata.stge_rx_ring_paddr);
+	if (sc->sc_rdata.stge_rx_ring == NULL) {
+		device_printf(sc->sc_dev,
+		    "failed to allocate Rx ring\n");
+		return ENOMEM;
 	}
 
 	/* create tag for Tx buffers. */
@@ -961,14 +909,36 @@ stge_dma_alloc(struct stge_softc *sc)
 		    BUS_SPACE_MAXADDR,		/* lowaddr */
 		    BUS_SPACE_MAXADDR,		/* highaddr */
 		    NULL, NULL,			/* filter, filterarg */
-		    MCLBYTES * STGE_MAXTXSEGS,	/* maxsize */
+		    STGE_JUMBO_FRAMELEN,	/* maxsize */
 		    STGE_MAXTXSEGS,		/* nsegments */
-		    MCLBYTES,			/* maxsegsize */
-		    0,				/* flags */
+		    STGE_MAXSGSIZE,		/* maxsegsize */
+		    BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,/* flags */
 		    &sc->sc_cdata.stge_tx_tag);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "failed to allocate Tx DMA tag\n");
-		goto fail;
+		return error;
+	}
+
+	/* create DMA maps for Tx buffers. */
+	for (i = 0; i < STGE_TX_RING_CNT; i++) {
+		txd = &sc->sc_cdata.stge_txdesc[i];
+		error = bus_dmamap_create(sc->sc_cdata.stge_tx_tag,
+				BUS_DMA_WAITOK, &txd->tx_dmamap);
+		if (error != 0) {
+			int j;
+
+			for (j = 0; j < i; ++j) {
+				txd = &sc->sc_cdata.stge_txdesc[j];
+				bus_dmamap_destroy(sc->sc_cdata.stge_tx_tag,
+					txd->tx_dmamap);
+			}
+			bus_dma_tag_destroy(sc->sc_cdata.stge_tx_tag);
+			sc->sc_cdata.stge_tx_tag = NULL;
+
+			device_printf(sc->sc_dev,
+			    "failed to create Tx dmamap\n");
+			return error;
+		}
 	}
 
 	/* create tag for Rx buffers. */
@@ -980,89 +950,45 @@ stge_dma_alloc(struct stge_softc *sc)
 		    MCLBYTES,			/* maxsize */
 		    1,				/* nsegments */
 		    MCLBYTES,			/* maxsegsize */
-		    0,				/* flags */
+		    BUS_DMA_ALLOCNOW | BUS_DMA_WAITOK,/* flags */
 		    &sc->sc_cdata.stge_rx_tag);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "failed to allocate Rx DMA tag\n");
-		goto fail;
+		return error;
 	}
 
-	/* allocate DMA'able memory and load the DMA map for Tx ring. */
-	error = bus_dmamem_alloc(sc->sc_cdata.stge_tx_ring_tag,
-	    (void **)&sc->sc_rdata.stge_tx_ring, BUS_DMA_NOWAIT | BUS_DMA_ZERO,
-	    &sc->sc_cdata.stge_tx_ring_map);
-	if (error != 0) {
-		device_printf(sc->sc_dev,
-		    "failed to allocate DMA'able memory for Tx ring\n");
-		goto fail;
-	}
-
-	ctx.stge_busaddr = 0;
-	error = bus_dmamap_load(sc->sc_cdata.stge_tx_ring_tag,
-	    sc->sc_cdata.stge_tx_ring_map, sc->sc_rdata.stge_tx_ring,
-	    STGE_TX_RING_SZ, stge_dmamap_cb, &ctx, BUS_DMA_NOWAIT);
-	if (error != 0 || ctx.stge_busaddr == 0) {
-		device_printf(sc->sc_dev,
-		    "failed to load DMA'able memory for Tx ring\n");
-		goto fail;
-	}
-	sc->sc_rdata.stge_tx_ring_paddr = ctx.stge_busaddr;
-
-	/* allocate DMA'able memory and load the DMA map for Rx ring. */
-	error = bus_dmamem_alloc(sc->sc_cdata.stge_rx_ring_tag,
-	    (void **)&sc->sc_rdata.stge_rx_ring, BUS_DMA_NOWAIT | BUS_DMA_ZERO,
-	    &sc->sc_cdata.stge_rx_ring_map);
-	if (error != 0) {
-		device_printf(sc->sc_dev,
-		    "failed to allocate DMA'able memory for Rx ring\n");
-		goto fail;
-	}
-
-	ctx.stge_busaddr = 0;
-	error = bus_dmamap_load(sc->sc_cdata.stge_rx_ring_tag,
-	    sc->sc_cdata.stge_rx_ring_map, sc->sc_rdata.stge_rx_ring,
-	    STGE_RX_RING_SZ, stge_dmamap_cb, &ctx, BUS_DMA_NOWAIT);
-	if (error != 0 || ctx.stge_busaddr == 0) {
-		device_printf(sc->sc_dev,
-		    "failed to load DMA'able memory for Rx ring\n");
-		goto fail;
-	}
-	sc->sc_rdata.stge_rx_ring_paddr = ctx.stge_busaddr;
-
-	/* create DMA maps for Tx buffers. */
-	for (i = 0; i < STGE_TX_RING_CNT; i++) {
-		txd = &sc->sc_cdata.stge_txdesc[i];
-		txd->tx_m = NULL;
-		txd->tx_dmamap = 0;
-		error = bus_dmamap_create(sc->sc_cdata.stge_tx_tag, 0,
-		    &txd->tx_dmamap);
-		if (error != 0) {
-			device_printf(sc->sc_dev,
-			    "failed to create Tx dmamap\n");
-			goto fail;
-		}
-	}
 	/* create DMA maps for Rx buffers. */
-	if ((error = bus_dmamap_create(sc->sc_cdata.stge_rx_tag, 0,
-	    &sc->sc_cdata.stge_rx_sparemap)) != 0) {
+	error = bus_dmamap_create(sc->sc_cdata.stge_rx_tag, BUS_DMA_WAITOK,
+			&sc->sc_cdata.stge_rx_sparemap);
+	if (error != 0) {
 		device_printf(sc->sc_dev, "failed to create spare Rx dmamap\n");
-		goto fail;
+		bus_dma_tag_destroy(sc->sc_cdata.stge_rx_tag);
+		sc->sc_cdata.stge_rx_tag = NULL;
+		return error;
 	}
 	for (i = 0; i < STGE_RX_RING_CNT; i++) {
 		rxd = &sc->sc_cdata.stge_rxdesc[i];
-		rxd->rx_m = NULL;
-		rxd->rx_dmamap = 0;
-		error = bus_dmamap_create(sc->sc_cdata.stge_rx_tag, 0,
-		    &rxd->rx_dmamap);
+		error = bus_dmamap_create(sc->sc_cdata.stge_rx_tag,
+				BUS_DMA_WAITOK, &rxd->rx_dmamap);
 		if (error != 0) {
+			int j;
+
+			for (j = 0; j < i; ++j) {
+				rxd = &sc->sc_cdata.stge_rxdesc[j];
+				bus_dmamap_destroy(sc->sc_cdata.stge_rx_tag,
+					rxd->rx_dmamap);
+			}
+			bus_dmamap_destroy(sc->sc_cdata.stge_rx_tag,
+				sc->sc_cdata.stge_rx_sparemap);
+			bus_dma_tag_destroy(sc->sc_cdata.stge_rx_tag);
+			sc->sc_cdata.stge_rx_tag = NULL;
+
 			device_printf(sc->sc_dev,
 			    "failed to create Rx dmamap\n");
-			goto fail;
+			return error;
 		}
 	}
-
-fail:
-	return (error);
+	return 0;
 }
 
 static void
@@ -1074,70 +1000,49 @@ stge_dma_free(struct stge_softc *sc)
 
 	/* Tx ring */
 	if (sc->sc_cdata.stge_tx_ring_tag) {
-		if (sc->sc_cdata.stge_tx_ring_map)
-			bus_dmamap_unload(sc->sc_cdata.stge_tx_ring_tag,
-			    sc->sc_cdata.stge_tx_ring_map);
-		if (sc->sc_cdata.stge_tx_ring_map &&
-		    sc->sc_rdata.stge_tx_ring)
-			bus_dmamem_free(sc->sc_cdata.stge_tx_ring_tag,
-			    sc->sc_rdata.stge_tx_ring,
-			    sc->sc_cdata.stge_tx_ring_map);
-		sc->sc_rdata.stge_tx_ring = NULL;
-		sc->sc_cdata.stge_tx_ring_map = 0;
+		bus_dmamap_unload(sc->sc_cdata.stge_tx_ring_tag,
+		    sc->sc_cdata.stge_tx_ring_map);
+		bus_dmamem_free(sc->sc_cdata.stge_tx_ring_tag,
+		    sc->sc_rdata.stge_tx_ring,
+		    sc->sc_cdata.stge_tx_ring_map);
 		bus_dma_tag_destroy(sc->sc_cdata.stge_tx_ring_tag);
-		sc->sc_cdata.stge_tx_ring_tag = NULL;
 	}
+
 	/* Rx ring */
 	if (sc->sc_cdata.stge_rx_ring_tag) {
-		if (sc->sc_cdata.stge_rx_ring_map)
-			bus_dmamap_unload(sc->sc_cdata.stge_rx_ring_tag,
-			    sc->sc_cdata.stge_rx_ring_map);
-		if (sc->sc_cdata.stge_rx_ring_map &&
-		    sc->sc_rdata.stge_rx_ring)
-			bus_dmamem_free(sc->sc_cdata.stge_rx_ring_tag,
-			    sc->sc_rdata.stge_rx_ring,
-			    sc->sc_cdata.stge_rx_ring_map);
-		sc->sc_rdata.stge_rx_ring = NULL;
-		sc->sc_cdata.stge_rx_ring_map = 0;
+		bus_dmamap_unload(sc->sc_cdata.stge_rx_ring_tag,
+		    sc->sc_cdata.stge_rx_ring_map);
+		bus_dmamem_free(sc->sc_cdata.stge_rx_ring_tag,
+		    sc->sc_rdata.stge_rx_ring,
+		    sc->sc_cdata.stge_rx_ring_map);
 		bus_dma_tag_destroy(sc->sc_cdata.stge_rx_ring_tag);
-		sc->sc_cdata.stge_rx_ring_tag = NULL;
 	}
+
 	/* Tx buffers */
 	if (sc->sc_cdata.stge_tx_tag) {
 		for (i = 0; i < STGE_TX_RING_CNT; i++) {
 			txd = &sc->sc_cdata.stge_txdesc[i];
-			if (txd->tx_dmamap) {
-				bus_dmamap_destroy(sc->sc_cdata.stge_tx_tag,
-				    txd->tx_dmamap);
-				txd->tx_dmamap = 0;
-			}
+			bus_dmamap_destroy(sc->sc_cdata.stge_tx_tag,
+			    txd->tx_dmamap);
 		}
 		bus_dma_tag_destroy(sc->sc_cdata.stge_tx_tag);
-		sc->sc_cdata.stge_tx_tag = NULL;
 	}
+
 	/* Rx buffers */
 	if (sc->sc_cdata.stge_rx_tag) {
 		for (i = 0; i < STGE_RX_RING_CNT; i++) {
 			rxd = &sc->sc_cdata.stge_rxdesc[i];
-			if (rxd->rx_dmamap) {
-				bus_dmamap_destroy(sc->sc_cdata.stge_rx_tag,
-				    rxd->rx_dmamap);
-				rxd->rx_dmamap = 0;
-			}
-		}
-		if (sc->sc_cdata.stge_rx_sparemap) {
 			bus_dmamap_destroy(sc->sc_cdata.stge_rx_tag,
-			    sc->sc_cdata.stge_rx_sparemap);
-			sc->sc_cdata.stge_rx_sparemap = 0;
+			    rxd->rx_dmamap);
 		}
+		bus_dmamap_destroy(sc->sc_cdata.stge_rx_tag,
+		    sc->sc_cdata.stge_rx_sparemap);
 		bus_dma_tag_destroy(sc->sc_cdata.stge_rx_tag);
-		sc->sc_cdata.stge_rx_tag = NULL;
 	}
 
-	if (sc->sc_cdata.stge_parent_tag) {
+	/* Top level tag */
+	if (sc->sc_cdata.stge_parent_tag)
 		bus_dma_tag_destroy(sc->sc_cdata.stge_parent_tag);
-		sc->sc_cdata.stge_parent_tag = NULL;
-	}
 }
 
 /*
@@ -1206,46 +1111,26 @@ stge_encap(struct stge_softc *sc, struct mbuf **m_head)
 	struct stge_txdesc *txd;
 	struct stge_tfd *tfd;
 	struct mbuf *m;
-	struct stge_mbuf_dmamap_arg arg;
 	bus_dma_segment_t txsegs[STGE_MAXTXSEGS];
-	int error, i, si;
+	int error, i, si, nsegs;
 	uint64_t csum_flags, tfc;
 
-	if ((txd = STAILQ_FIRST(&sc->sc_cdata.stge_txfreeq)) == NULL)
-		return (ENOBUFS);
+	txd = STAILQ_FIRST(&sc->sc_cdata.stge_txfreeq);
+	KKASSERT(txd != NULL);
 
-	arg.nsegs = STGE_MAXTXSEGS;
-	arg.segs = txsegs;
-	error =  bus_dmamap_load_mbuf(sc->sc_cdata.stge_tx_tag,
-				      txd->tx_dmamap, *m_head,
-				      stge_mbuf_dmamap_cb, &arg,
-				      BUS_DMA_NOWAIT);
-	if (error == EFBIG) {
-		m = m_defrag(*m_head, MB_DONTWAIT);
-		if (m == NULL) {
-			m_freem(*m_head);
-			*m_head = NULL;
-			return (ENOMEM);
-		}
-		*m_head = m;
-		error =  bus_dmamap_load_mbuf(sc->sc_cdata.stge_tx_tag,
-					      txd->tx_dmamap, *m_head,
-					      stge_mbuf_dmamap_cb, &arg,
-					      BUS_DMA_NOWAIT);
-		if (error != 0) {
-			m_freem(*m_head);
-			*m_head = NULL;
-			return (error);
-		}
-	} else if (error != 0)
-		return (error);
-	if (arg.nsegs == 0) {
+	error =  bus_dmamap_load_mbuf_defrag(sc->sc_cdata.stge_tx_tag,
+			txd->tx_dmamap, m_head,
+			txsegs, STGE_MAXTXSEGS, &nsegs, BUS_DMA_NOWAIT);
+	if (error) {
 		m_freem(*m_head);
 		*m_head = NULL;
-		return (EIO);
+		return (error);
 	}
+	bus_dmamap_sync(sc->sc_cdata.stge_tx_tag, txd->tx_dmamap,
+	    BUS_DMASYNC_PREWRITE);
 
 	m = *m_head;
+
 	csum_flags = 0;
 	if ((m->m_pkthdr.csum_flags & STGE_CSUM_FEATURES) != 0) {
 		if (m->m_pkthdr.csum_flags & CSUM_IP)
@@ -1258,7 +1143,7 @@ stge_encap(struct stge_softc *sc, struct mbuf **m_head)
 
 	si = sc->sc_cdata.stge_tx_prod;
 	tfd = &sc->sc_rdata.stge_tx_ring[si];
-	for (i = 0; i < arg.nsegs; i++) {
+	for (i = 0; i < nsegs; i++) {
 		tfd->tfd_frags[i].frag_word0 =
 		    htole64(FRAG_ADDR(txsegs[i].ds_addr) |
 		    FRAG_LEN(txsegs[i].ds_len));
@@ -1266,7 +1151,7 @@ stge_encap(struct stge_softc *sc, struct mbuf **m_head)
 	sc->sc_cdata.stge_tx_cnt++;
 
 	tfc = TFD_FrameId(si) | TFD_WordAlign(TFD_WordAlign_disable) |
-	    TFD_FragCount(arg.nsegs) | csum_flags;
+	    TFD_FragCount(nsegs) | csum_flags;
 	if (sc->sc_cdata.stge_tx_cnt >= STGE_TX_HIWAT)
 		tfc |= TFD_TxDMAIndicate;
 
@@ -1282,12 +1167,6 @@ stge_encap(struct stge_softc *sc, struct mbuf **m_head)
 	STAILQ_REMOVE_HEAD(&sc->sc_cdata.stge_txfreeq, tx_q);
 	STAILQ_INSERT_TAIL(&sc->sc_cdata.stge_txbusyq, txd, tx_q);
 	txd->tx_m = m;
-
-	/* Sync descriptors. */
-	bus_dmamap_sync(sc->sc_cdata.stge_tx_tag, txd->tx_dmamap,
-	    BUS_DMASYNC_PREWRITE);
-	bus_dmamap_sync(sc->sc_cdata.stge_tx_ring_tag,
-	    sc->sc_cdata.stge_tx_ring_map, BUS_DMASYNC_PREWRITE);
 
 	return (0);
 }
@@ -1312,7 +1191,8 @@ stge_start(struct ifnet *ifp)
 	    IFF_RUNNING)
 		return;
 
-	for (enq = 0; !ifq_is_empty(&ifp->if_snd); ) {
+	enq = 0;
+	while (!ifq_is_empty(&ifp->if_snd)) {
 		if (sc->sc_cdata.stge_tx_cnt >= STGE_TX_HIWAT) {
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
@@ -1321,20 +1201,22 @@ stge_start(struct ifnet *ifp)
 		m_head = ifq_dequeue(&ifp->if_snd, NULL);
 		if (m_head == NULL)
 			break;
+
 		/*
 		 * Pack the data into the transmit ring. If we
 		 * don't have room, set the OACTIVE flag and wait
 		 * for the NIC to drain the ring.
 		 */
 		if (stge_encap(sc, &m_head)) {
-			if (m_head != NULL) {
-				m_freem(m_head);
+			if (sc->sc_cdata.stge_tx_cnt == 0) {
+				continue;
+			} else {
 				ifp->if_flags |= IFF_OACTIVE;
+				break;
 			}
-			break;
 		}
+		enq = 1;
 
-		enq++;
 		/*
 		 * If there's a BPF listener, bounce a copy of this frame
 		 * to him.
@@ -1342,7 +1224,7 @@ stge_start(struct ifnet *ifp)
 		ETHER_BPF_MTAP(ifp, m_head);
 	}
 
-	if (enq > 0) {
+	if (enq) {
 		/* Transmit */
 		CSR_WRITE_4(sc, STGE_DMACtrl, DMAC_TxDMAPollNow);
 
@@ -1591,8 +1473,6 @@ stge_txeof(struct stge_softc *sc)
 	txd = STAILQ_FIRST(&sc->sc_cdata.stge_txbusyq);
 	if (txd == NULL)
 		return;
-	bus_dmamap_sync(sc->sc_cdata.stge_tx_ring_tag,
-	    sc->sc_cdata.stge_tx_ring_map, BUS_DMASYNC_POSTREAD);
 
 	/*
 	 * Go through our Tx list and free mbufs for those
@@ -1606,10 +1486,7 @@ stge_txeof(struct stge_softc *sc)
 		if ((control & TFD_TFDDone) == 0)
 			break;
 		sc->sc_cdata.stge_tx_cnt--;
-		ifp->if_flags &= ~IFF_OACTIVE;
 
-		bus_dmamap_sync(sc->sc_cdata.stge_tx_tag, txd->tx_dmamap,
-		    BUS_DMASYNC_POSTWRITE);
 		bus_dmamap_unload(sc->sc_cdata.stge_tx_tag, txd->tx_dmamap);
 
 		/* Output counter is updated with statistics register */
@@ -1620,12 +1497,11 @@ stge_txeof(struct stge_softc *sc)
 		txd = STAILQ_FIRST(&sc->sc_cdata.stge_txbusyq);
 	}
 	sc->sc_cdata.stge_tx_cons = cons;
+
+	if (sc->sc_cdata.stge_tx_cnt < STGE_TX_HIWAT)
+		ifp->if_flags &= ~IFF_OACTIVE;
 	if (sc->sc_cdata.stge_tx_cnt == 0)
 		ifp->if_timer = 0;
-
-        bus_dmamap_sync(sc->sc_cdata.stge_tx_ring_tag,
-	    sc->sc_cdata.stge_tx_ring_map,
-	    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 }
 
 static __inline void
@@ -1690,9 +1566,6 @@ stge_rxeof(struct stge_softc *sc, int count)
 	uint64_t status64;
 	uint32_t status;
 	int cons, prog;
-
-	bus_dmamap_sync(sc->sc_cdata.stge_rx_ring_tag,
-	    sc->sc_cdata.stge_rx_ring_map, BUS_DMASYNC_POSTREAD);
 
 	prog = 0;
 	for (cons = sc->sc_cdata.stge_rx_cons; prog < STGE_RX_RING_CNT;
@@ -1813,9 +1686,6 @@ stge_rxeof(struct stge_softc *sc, int count)
 	if (prog > 0) {
 		/* Update the consumer index. */
 		sc->sc_cdata.stge_rx_cons = cons;
-		bus_dmamap_sync(sc->sc_cdata.stge_rx_ring_tag,
-		    sc->sc_cdata.stge_rx_ring_map,
-		    BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
 	}
 }
 
@@ -2264,8 +2134,6 @@ stge_stop(struct stge_softc *sc)
 	for (i = 0; i < STGE_RX_RING_CNT; i++) {
 		rxd = &sc->sc_cdata.stge_rxdesc[i];
 		if (rxd->rx_m != NULL) {
-			bus_dmamap_sync(sc->sc_cdata.stge_rx_tag,
-			    rxd->rx_dmamap, BUS_DMASYNC_POSTREAD);
 			bus_dmamap_unload(sc->sc_cdata.stge_rx_tag,
 			    rxd->rx_dmamap);
 			m_freem(rxd->rx_m);
@@ -2275,8 +2143,6 @@ stge_stop(struct stge_softc *sc)
 	for (i = 0; i < STGE_TX_RING_CNT; i++) {
 		txd = &sc->sc_cdata.stge_txdesc[i];
 		if (txd->tx_m != NULL) {
-			bus_dmamap_sync(sc->sc_cdata.stge_tx_tag,
-			    txd->tx_dmamap, BUS_DMASYNC_POSTWRITE);
 			bus_dmamap_unload(sc->sc_cdata.stge_tx_tag,
 			    txd->tx_dmamap);
 			m_freem(txd->tx_m);
@@ -2404,9 +2270,6 @@ stge_init_tx_ring(struct stge_softc *sc)
 		txd = &sc->sc_cdata.stge_txdesc[i];
 		STAILQ_INSERT_TAIL(&sc->sc_cdata.stge_txfreeq, txd, tx_q);
 	}
-
-	bus_dmamap_sync(sc->sc_cdata.stge_tx_ring_tag,
-	    sc->sc_cdata.stge_tx_ring_map, BUS_DMASYNC_PREWRITE);
 }
 
 static int
@@ -2431,10 +2294,6 @@ stge_init_rx_ring(struct stge_softc *sc)
 		rd->stge_rx_ring[i].rfd_next = htole64(addr);
 		rd->stge_rx_ring[i].rfd_status = 0;
 	}
-
-	bus_dmamap_sync(sc->sc_cdata.stge_rx_ring_tag,
-	    sc->sc_cdata.stge_rx_ring_map, BUS_DMASYNC_PREWRITE);
-
 	return (0);
 }
 
@@ -2449,14 +2308,15 @@ stge_newbuf(struct stge_softc *sc, int idx, int waitok)
 	struct stge_rxdesc *rxd;
 	struct stge_rfd *rfd;
 	struct mbuf *m;
-	struct stge_mbuf_dmamap_arg arg;
-	bus_dma_segment_t segs[1];
+	bus_dma_segment_t seg;
 	bus_dmamap_t map;
+	int error, nseg;
 
 	m = m_getcl(waitok ? MB_WAIT : MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL)
-		return (ENOBUFS);
+		return ENOBUFS;
 	m->m_len = m->m_pkthdr.len = MCLBYTES;
+
 	/*
 	 * The hardware requires 4bytes aligned DMA address when JUMBO
 	 * frame is used.
@@ -2464,13 +2324,12 @@ stge_newbuf(struct stge_softc *sc, int idx, int waitok)
 	if (sc->sc_if_framesize <= (MCLBYTES - ETHER_ALIGN))
 		m_adj(m, ETHER_ALIGN);
 
-	arg.segs = segs;
-	arg.nsegs = 1;
-	if (bus_dmamap_load_mbuf(sc->sc_cdata.stge_rx_tag,
-	    sc->sc_cdata.stge_rx_sparemap, m, stge_mbuf_dmamap_cb, &arg,
-	    waitok ? BUS_DMA_WAITOK : BUS_DMA_NOWAIT) != 0) {
+	error = bus_dmamap_load_mbuf_segment(sc->sc_cdata.stge_rx_tag,
+			sc->sc_cdata.stge_rx_sparemap, m,
+			&seg, 1, &nseg, BUS_DMA_NOWAIT);
+	if (error) {
 		m_freem(m);
-		return (ENOBUFS);
+		return error;
 	}
 
 	rxd = &sc->sc_cdata.stge_rxdesc[idx];
@@ -2479,19 +2338,19 @@ stge_newbuf(struct stge_softc *sc, int idx, int waitok)
 		    BUS_DMASYNC_POSTREAD);
 		bus_dmamap_unload(sc->sc_cdata.stge_rx_tag, rxd->rx_dmamap);
 	}
+
 	map = rxd->rx_dmamap;
 	rxd->rx_dmamap = sc->sc_cdata.stge_rx_sparemap;
 	sc->sc_cdata.stge_rx_sparemap = map;
-	bus_dmamap_sync(sc->sc_cdata.stge_rx_tag, rxd->rx_dmamap,
-	    BUS_DMASYNC_PREREAD);
+
 	rxd->rx_m = m;
 
 	rfd = &sc->sc_rdata.stge_rx_ring[idx];
 	rfd->rfd_frag.frag_word0 =
-	    htole64(FRAG_ADDR(segs[0].ds_addr) | FRAG_LEN(segs[0].ds_len));
+	    htole64(FRAG_ADDR(seg.ds_addr) | FRAG_LEN(seg.ds_len));
 	rfd->rfd_status = 0;
 
-	return (0);
+	return 0;
 }
 
 /*

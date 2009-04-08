@@ -54,7 +54,7 @@
 #include "rogue.h"
 
 char login_name[MAX_OPT_LEN];
-char *nick_name = (char *) 0;
+char *nick_name = NULL;
 char *rest_file = 0;
 boolean cant_int = 0;
 boolean did_int = 0;
@@ -110,7 +110,7 @@ init(int argc, char *argv[])
 	md_heed_signals();
 
 	if (score_only) {
-		put_scores((object *) 0, 0);
+		put_scores(NULL, 0);
 	}
 	seed = md_gseed();
 	srrandom(seed);
@@ -122,8 +122,8 @@ init(int argc, char *argv[])
 	get_wand_and_ring_materials();
 	make_scroll_titles();
 
-	level_objects.next_object = (object *) 0;
-	level_monsters.next_monster = (object *) 0;
+	level_objects.next_object = NULL;
+	level_monsters.next_monster = NULL;
 	player_init();
 	ring_stats(0);
 	return(0);
@@ -134,7 +134,7 @@ player_init(void)
 {
 	object *obj;
 
-	rogue.pack.next_object = (object *) 0;
+	rogue.pack.next_object = NULL;
 
 	obj = alloc_object();
 	get_food(obj, 1);

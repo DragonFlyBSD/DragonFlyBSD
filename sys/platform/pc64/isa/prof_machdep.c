@@ -46,7 +46,7 @@
 
 #include <machine/asmacros.h>
 
-#include <bus/isa/i386/isa.h>
+#include <bus/isa/isa.h>
 #include <machine_base/isa/timerreg.h>
 
 #ifdef GUPROF

@@ -549,7 +549,7 @@ null_update(void *ctx, u_int8_t *buf, u_int16_t len)
 static void
 null_final(u_int8_t *buf, void *ctx)
 {
-	if (buf != (u_int8_t *) 0)
+	if (buf != NULL)
 		bzero(buf, 12);
 }
 

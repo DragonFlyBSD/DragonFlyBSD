@@ -415,7 +415,7 @@ tamedog(struct monst *mtmp, struct obj *obj)
 			pline("%s devours the %s.", Monnam(mtmp),
 				objects[obj->otyp].oc_name);
 		}
-		obfree(obj, (struct obj *) 0);
+		obfree(obj, NULL);
 	}
 	mtmp2 = newmonst(sizeof(struct edog) + mtmp->mnamelth);
 	*mtmp2 = *mtmp;

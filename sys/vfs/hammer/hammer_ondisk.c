@@ -60,6 +60,10 @@ hammer_vol_rb_compare(hammer_volume_t vol1, hammer_volume_t vol2)
 	return(0);
 }
 
+/*
+ * hammer_buffer structures are indexed via their zoneX_offset, not
+ * their zone2_offset.
+ */
 static int
 hammer_buf_rb_compare(hammer_buffer_t buf1, hammer_buffer_t buf2)
 {
@@ -503,8 +507,14 @@ hammer_mountcheck_volumes(struct hammer_mount *hmp)
  *				BUFFERS					*
  ************************************************************************
  *
- * Manage buffers.  Currently all blockmap-backed zones are translated
- * to zone-2 buffer offsets.
+ * Manage buffers.  Currently all blockmap-backed zones are direct-mapped
+ * to zone-2 buffer offsets, without a translation stage.  However, the
+ * hammer_buffer structure is indexed by its zoneX_offset, not its
+ * zone2_offset.
+ *
+ * The proper zone must be maintained throughout the code-base all the way
+ * through to the big-block allocator, or routines like hammer_del_buffers()
+ * will not be able to locate all potentially conflicting buffers.
  */
 hammer_buffer_t
 hammer_get_buffer(hammer_mount_t hmp, hammer_off_t buf_offset,
@@ -629,8 +639,10 @@ again:
 	 * Insert the buffer into the RB tree and handle late collisions.
 	 */
 	if (RB_INSERT(hammer_buf_rb_tree, &hmp->rb_bufs_root, buffer)) {
-		hammer_unref(&buffer->io.lock);
+		hammer_unref(&buffer->io.lock);	/* safety */
 		--hammer_count_buffers;
+		hammer_rel_volume(volume, 0);
+		buffer->io.volume = NULL;	/* safety */
 		kfree(buffer, hmp->m_misc);
 		goto again;
 	}
@@ -701,25 +713,35 @@ hammer_sync_buffers(hammer_mount_t hmp, hammer_off_t base_offset, int bytes)
  *
  * The buffers may be referenced by the caller itself.  Setting reclaim
  * will cause the buffer to be destroyed when it's ref count reaches zero.
+ *
+ * Return 0 on success, EAGAIN if some buffers could not be destroyed due
+ * to additional references held by other threads, or some other (typically
+ * fatal) error.
  */
-void
+int
 hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
-		   hammer_off_t zone2_offset, int bytes)
+		   hammer_off_t zone2_offset, int bytes,
+		   int report_conflicts)
 {
 	hammer_buffer_t buffer;
 	hammer_volume_t volume;
 	int vol_no;
 	int error;
+	int ret_error;
 
 	vol_no = HAMMER_VOL_DECODE(zone2_offset);
-	volume = hammer_get_volume(hmp, vol_no, &error);
-	KKASSERT(error == 0);
+	volume = hammer_get_volume(hmp, vol_no, &ret_error);
+	KKASSERT(ret_error == 0);
 
 	while (bytes > 0) {
 		buffer = RB_LOOKUP(hammer_buf_rb_tree, &hmp->rb_bufs_root,
 				   base_offset);
 		if (buffer) {
 			error = hammer_ref_buffer(buffer);
+			if (error == 0 && buffer->io.lock.refs != 1) {
+				error = EAGAIN;
+				hammer_rel_buffer(buffer, 0);
+			}
 			if (error == 0) {
 				KKASSERT(buffer->zone2_offset == zone2_offset);
 				hammer_io_clear_modify(&buffer->io, 1);
@@ -729,13 +751,19 @@ hammer_del_buffers(hammer_mount_t hmp, hammer_off_t base_offset,
 				hammer_rel_buffer(buffer, 0);
 			}
 		} else {
-			hammer_io_inval(volume, zone2_offset);
+			error = hammer_io_inval(volume, zone2_offset);
+		}
+		if (error) {
+			ret_error = error;
+			if (report_conflicts || (hammer_debug_general & 0x8000))
+				kprintf("hammer_del_buffers: unable to invalidate %016llx buffer=%p rep=%d\n", base_offset, buffer, report_conflicts);
 		}
 		base_offset += HAMMER_BUFSIZE;
 		zone2_offset += HAMMER_BUFSIZE;
 		bytes -= HAMMER_BUFSIZE;
 	}
 	hammer_rel_volume(volume, 0);
+	return (ret_error);
 }
 
 static int
@@ -920,6 +948,9 @@ hammer_rel_buffer(hammer_buffer_t buffer, int flush)
  *
  * Any prior buffer in *bufferp will be released and replaced by the
  * requested buffer.
+ *
+ * NOTE: The buffer is indexed via its zoneX_offset but we allow the
+ * passed cached *bufferp to match against either zoneX or zone2.
  */
 static __inline
 void *
@@ -1048,9 +1079,10 @@ hammer_bnew_ext(hammer_mount_t hmp, hammer_off_t buf_offset, int bytes,
  * additional references, if necessary.
  */
 hammer_node_t
-hammer_get_node(hammer_mount_t hmp, hammer_off_t node_offset,
+hammer_get_node(hammer_transaction_t trans, hammer_off_t node_offset,
 		int isnew, int *errorp)
 {
+	hammer_mount_t hmp = trans->hmp;
 	hammer_node_t node;
 
 	KKASSERT((node_offset & HAMMER_OFF_ZONE_MASK) == HAMMER_ZONE_BTREE);
@@ -1074,10 +1106,12 @@ again:
 		}
 	}
 	hammer_ref(&node->lock);
-	if (node->ondisk)
+	if (node->ondisk) {
 		*errorp = 0;
-	else
+	} else {
 		*errorp = hammer_load_node(node, isnew);
+		trans->flags |= HAMMER_TRANSF_DIDIO;
+	}
 	if (*errorp) {
 		hammer_rel_node(node);
 		node = NULL;
@@ -1364,7 +1398,7 @@ hammer_alloc_btree(hammer_transaction_t trans, int *errorp)
 					    sizeof(struct hammer_node_ondisk),
 					    errorp);
 	if (*errorp == 0) {
-		node = hammer_get_node(trans->hmp, node_offset, 1, errorp);
+		node = hammer_get_node(trans, node_offset, 1, errorp);
 		hammer_modify_node_noundo(trans, node);
 		bzero(node->ondisk, sizeof(*node->ondisk));
 		hammer_modify_node_done(node);

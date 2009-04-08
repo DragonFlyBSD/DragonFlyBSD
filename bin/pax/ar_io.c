@@ -80,6 +80,7 @@ static int can_unlnk = 0;		/* do we unlink null archives?  */
 char *arcname;		  	/* printable name of archive */
 const char *gzip_program;		/* name of gzip program */
 static pid_t zpid = -1;			/* pid of child process */
+int force_one_volume;			/* 1 if we ignore volume changes */
 
 static int get_phys (void);
 extern sigset_t s_mask;
@@ -383,19 +384,20 @@ ar_close(void)
 	 * could have written anything yet.
 	 */
 	if (frmt == NULL) {
-		fprintf(listf, "%s: unknown format, %qu bytes skipped.\n",
-		    argv0, rdcnt);
+		fprintf(listf, "%s: unknown format, %jd bytes skipped.\n",
+		    argv0, (intmax_t)rdcnt);
 		fflush(listf);
 		flcnt = 0;
 		return;
 	}
 
 	if (strcmp(NM_CPIO, argv0) == 0)
-		fprintf(listf, "%qu blocks\n", (rdcnt ? rdcnt : wrcnt) / 5120);
+		fprintf(listf, "%jdu blocks\n", (intmax_t)((rdcnt ? rdcnt : wrcnt) / 5120));
 	else if (strcmp(NM_TAR, argv0) != 0)
 		fprintf(listf,
-		    "%s: %s vol %d, %lu files, %qu bytes read, %qu bytes written.\n",
-		    argv0, frmt->name, arvol-1, flcnt, rdcnt, wrcnt);
+		    "%s: %s vol %d, %lu files, %jd bytes read, %jd bytes written.\n",
+		    argv0, frmt->name, arvol-1, flcnt,
+		    (intmax_t)rdcnt, (intmax_t)wrcnt);
 	fflush(listf);
 	flcnt = 0;
 }
@@ -1110,7 +1112,7 @@ ar_next(void)
 	if (sigprocmask(SIG_SETMASK, &o_mask, NULL) < 0)
 		syswarn(0, errno, "Unable to restore signal mask");
 
-	if (done || !wr_trail || strcmp(NM_TAR, argv0) == 0)
+	if (done || !wr_trail || force_one_volume || strcmp(NM_TAR, argv0) == 0)
 		return(-1);
 
 	tty_prnt("\nATTENTION! %s archive volume change required.\n", argv0);
@@ -1270,8 +1272,7 @@ ar_start_gzip(int fd, const char *gzip_program, int wr)
 		}
 		close(fds[0]);
 		close(fds[1]);
-		if (execlp(gzip_program, gzip_program, gzip_flags,
-		    (char *)NULL) < 0)
+		if (execlp(gzip_program, gzip_program, gzip_flags, NULL) < 0)
 			err(1, "could not exec");
 		/* NOTREACHED */
 	}

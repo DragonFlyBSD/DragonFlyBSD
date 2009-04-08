@@ -13,6 +13,6 @@ CFLAGS+=		-ffreestanding -mpreferred-stack-boundary=2
 .if defined(REALLY_AMD64) && !defined(__been_to_Makefile_inc)
 __been_to_Makefile_inc=	1
 CFLAGS+=		-m32
-LDFLAGS+=		-m elf_i386_fbsd
+LDFLAGS+=		-m elf_i386
 AFLAGS+=		--32
 .endif

@@ -62,9 +62,12 @@
  * 200000 - 2.0 branch
  * 200100 - base development version after 2.0 branch
  * 200101 - lchflags syscall
+ * 200200 - 2.2 branch
+ * 200201 - base development version after 2.2 branch
+ * 200202 - major changes to libc
  */
 #undef __DragonFly_version
-#define __DragonFly_version 200101	/* Master, propagated to newvers */
+#define __DragonFly_version 200202	/* Master, propagated to newvers */
 
 #ifdef __FreeBSD__
 /* 

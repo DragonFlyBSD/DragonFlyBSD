@@ -99,7 +99,7 @@ struct pfsnode {
        ((p1)->p_ucred->cr_ruid == (p2)->p_ucred->cr_ruid) && \
        ((p1)->p_ucred->cr_svuid == (p2)->p_ucred->cr_ruid) && \
        ((p2)->p_flag & (P_SUGID|P_INEXEC)) == 0) || \
-      (suser_cred((p1)->p_ucred, PRISON_ROOT) == 0))
+      (priv_check_cred((p1)->p_ucred, PRIV_ROOT, PRISON_ROOT) == 0))
 
 /*
  * Convert between pfsnode vnode

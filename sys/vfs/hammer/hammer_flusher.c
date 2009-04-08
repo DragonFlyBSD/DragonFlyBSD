@@ -137,6 +137,15 @@ hammer_flusher_wait(hammer_mount_t hmp, int seq)
 }
 
 void
+hammer_flusher_wait_next(hammer_mount_t hmp)
+{
+	int seq;
+
+	seq = hammer_flusher_async_one(hmp);
+	hammer_flusher_wait(hmp, seq);
+}
+
+void
 hammer_flusher_create(hammer_mount_t hmp)
 {
 	hammer_flusher_info_t info;
@@ -186,7 +195,6 @@ hammer_flusher_destroy(hammer_mount_t hmp)
 		wakeup(&info->runstate);
 		while (info->td)
 			tsleep(&info->td, 0, "hmrwwc", 0);
-		TAILQ_REMOVE(&hmp->flusher.ready_list, info, entry);
 		kfree(info, hmp->m_misc);
 	}
 }

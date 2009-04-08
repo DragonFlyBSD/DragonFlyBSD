@@ -13,6 +13,7 @@ NOPROFILE=	YES
 NOPIC=		YES
 INCS=		stand.h
 MAN=		libstand.3
+WARNS?=		2
 
 # Mostly OK, some of the libc imports are a bit noisy
 CFLAGS+=	-ffreestanding -std=c99
@@ -35,7 +36,7 @@ SRCS+=	strcasecmp.c
 
 # string functions from libc
 .PATH:	${.CURDIR}/../libc/string
-.if ${MACHINE_ARCH} == "i386"
+.if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "amd64"
 SRCS+=	bcmp.c bcopy.c bzero.c ffs.c index.c memccpy.c memchr.c memcmp.c \
         memcpy.c memmove.c memset.c qdivrem.c rindex.c strcat.c strchr.c \
         strcmp.c strcpy.c strcspn.c strlen.c strncat.c strncmp.c strncpy.c \
@@ -46,13 +47,14 @@ SRCS+=	bcmp.c bcopy.c bzero.c ffs.c index.c memccpy.c memchr.c memcmp.c \
 SRCS+=  ucmpdi2.c
 .endif
 
-.if ${MACHINE_ARCH} == "i386"
 # _setjmp/_longjmp
-.PATH:	${.CURDIR}/${MACHINE_ARCH}
-SRCS+=	_setjmp.S
+.if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "amd64"
+.PATH:	${.CURDIR}/i386
+.else
+.endif
 # really only required for i386
 CFLAGS+=-I${.CURDIR}/../libc/${MACHINE_ARCH}
-.endif
+SRCS+=	_setjmp.S
 
 # decompression functionality from libbz2
 BZ2DIR=	${.CURDIR}/../../contrib/bzip2-1.0
@@ -89,3 +91,19 @@ SRCS+=	splitfs.c
 SRCS+=	hammerread.c
 
 .include <bsd.lib.mk>
+
+.if ${MACHINE_ARCH} == "amd64"
+CFLAGS+= -I${.OBJDIR}
+
+beforedepend ${OBJS}: machine cpu
+
+machine::
+	mkdir -p machine
+	${LN} -fs ${.CURDIR}/../../sys/cpu/i386/include/* machine
+	${LN} -fs ${.CURDIR}/../../sys/platform/pc32/include/* machine
+
+cpu::
+	${LN} -hfs ${.CURDIR}/../../sys/cpu/i386/include cpu
+
+CLEANDIRS+=	machine cpu
+.endif

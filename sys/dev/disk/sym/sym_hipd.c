@@ -4521,7 +4521,7 @@ static void sym_int_ma (hcb_p np)
 		olen = scr_to_cpu(tblp[0]);
 		oadr = scr_to_cpu(tblp[1]);
 	} else {
-		tblp = (u32 *) 0;
+		tblp = NULL;
 		olen = scr_to_cpu(vdsp[0]) & 0xffffff;
 	};
 

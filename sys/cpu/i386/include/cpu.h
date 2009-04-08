@@ -58,7 +58,6 @@
  * definitions of cpu-dependent requirements
  * referenced in generic code
  */
-#undef	COPY_SIGCODE		/* don't copy sigcode above user stack in exec */
 
 #define	cpu_exec(p)	/* nothing */
 #define cpu_swapin(p)	/* nothing */

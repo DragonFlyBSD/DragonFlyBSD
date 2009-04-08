@@ -424,7 +424,7 @@ acpi_cmbat_init_battery(void *arg)
      * embedded controller isn't always ready just after boot, we may have
      * to wait a while.
      */
-    for (retry = 0; retry < ACPI_CMBAT_RETRY_MAX; retry++, AcpiOsSleep(10000)) {
+    for (retry = 0; retry < ACPI_CMBAT_RETRY_MAX; retry++, AcpiOsSleep(10)) {
 	/* batteries on DOCK can be ejected w/ DOCK during retrying */
 	if (!device_is_attached(dev))
 	    return;

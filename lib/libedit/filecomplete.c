@@ -326,7 +326,7 @@ completion_matches(const char *text, char *(*genfunc)(const char *, int))
 	match_list[0] = retstr;
 
 	/* add NULL as last pointer to the array */
-	match_list[matches + 1] = (char *) NULL;
+	match_list[matches + 1] = NULL;
 
 	return (match_list);
 }

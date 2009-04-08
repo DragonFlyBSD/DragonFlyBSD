@@ -310,7 +310,7 @@ showquotas(int type, u_long id, const char *name)
 		    qup->dqblk.dqb_bsoftlimit == 0 &&
 		    qup->dqblk.dqb_bhardlimit == 0)
 			continue;
-		msgi = (char *)0;
+		msgi = NULL;
 		if (qup->dqblk.dqb_ihardlimit &&
 		    qup->dqblk.dqb_curinodes >= qup->dqblk.dqb_ihardlimit)
 			msgi = "File limit reached on";
@@ -321,7 +321,7 @@ showquotas(int type, u_long id, const char *name)
 			else
 				msgi = "Over file quota on";
 		}
-		msgb = (char *)0;
+		msgb = NULL;
 		if (qup->dqblk.dqb_bhardlimit &&
 		    qup->dqblk.dqb_curblocks >= qup->dqblk.dqb_bhardlimit)
 			msgb = "Block limit reached on";
@@ -333,12 +333,12 @@ showquotas(int type, u_long id, const char *name)
 				msgb = "Over block quota on";
 		}
 		if (qflag) {
-			if ((msgi != (char *)0 || msgb != (char *)0) &&
+			if ((msgi != NULL || msgb != NULL) &&
 			    lines++ == 0)
 				heading(type, id, name, "");
-			if (msgi != (char *)0)
+			if (msgi != NULL)
 				printf("\t%s %s\n", msgi, qup->fsname);
-			if (msgb != (char *)0)
+			if (msgb != NULL)
 				printf("\t%s %s\n", msgb, qup->fsname);
 			continue;
 		}
@@ -356,19 +356,19 @@ showquotas(int type, u_long id, const char *name)
 				, nam
 				, (u_long) (dbtob(qup->dqblk.dqb_curblocks)
 					    / 1024)
-				, (msgb == (char *)0) ? ' ' : '*'
+				, (msgb == NULL) ? ' ' : '*'
 				, (u_long) (dbtob(qup->dqblk.dqb_bsoftlimit)
 					    / 1024)
 				, (u_long) (dbtob(qup->dqblk.dqb_bhardlimit)
 					    / 1024)
-				, (msgb == (char *)0) ? ""
+				, (msgb == NULL) ? ""
 				    :timeprt(qup->dqblk.dqb_btime));
 			printf("%8lu%c%7lu%8lu%8s\n"
 				, (u_long)qup->dqblk.dqb_curinodes
-				, (msgi == (char *)0) ? ' ' : '*'
+				, (msgi == NULL) ? ' ' : '*'
 				, (u_long)qup->dqblk.dqb_isoftlimit
 				, (u_long)qup->dqblk.dqb_ihardlimit
-				, (msgi == (char *)0) ? ""
+				, (msgi == NULL) ? ""
 				    : timeprt(qup->dqblk.dqb_itime)
 			);
 			continue;
@@ -441,7 +441,7 @@ getprivs(long id, int quotatype)
 	struct statfs *fst;
 	int nfst, i;
 
-	qup = quphead = (struct quotause *)0;
+	qup = quphead = NULL;
 
 	nfst = getmntinfo(&fst, MNT_NOWAIT);
 	if (nfst == 0)

@@ -49,6 +49,7 @@
 #include <sys/malloc.h>
 #include <sys/tty.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
 #include <sys/uio.h>
@@ -307,18 +308,18 @@ static char	*stli_brdnames[] = {
 	"Brumby",
 	"Brumby",
 	"ONboard-EI",
-	(char *) NULL,
+	NULL,
 	"ONboard",
 	"ONboard-MC",
 	"ONboard-MC",
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
 	"EasyIO",
 	"EC8/32-AT",
 	"EC8/32-MC",
@@ -667,7 +668,7 @@ static int stli_findfreeunit(void)
 	int	i;
 
 	for (i = 0; (i < STL_MAXBRDS); i++)
-		if (stli_brds[i] == (stlibrd_t *) NULL)
+		if (stli_brds[i] == NULL)
 			break;
 	return((i >= STL_MAXBRDS) ? -1 : i);
 }
@@ -801,7 +802,7 @@ static int stliprobe(struct isa_device *idp)
  *	Go ahead and try probing for the shared memory region now.
  *	This way we will really know if the board is here...
  */
-	if ((brdp = stli_brdalloc()) == (stlibrd_t *) NULL)
+	if ((brdp = stli_brdalloc()) == NULL)
 		return(0);
 
 	brdp->brdnr = stli_findfreeunit();
@@ -820,7 +821,7 @@ static int stliprobe(struct isa_device *idp)
 	stli_stliprobed[idp->id_unit] = brdp->brdnr;
 	stli_brdinit(brdp);
 	if ((brdp->state & BST_FOUND) == 0) {
-		stli_brds[brdp->brdnr] = (stlibrd_t *) NULL;
+		stli_brds[brdp->brdnr] = NULL;
 		return(0);
 	}
 	stli_nrbrds++;
@@ -845,7 +846,7 @@ static int stliattach(struct isa_device *idp)
 
 	brdnr = stli_stliprobed[idp->id_unit];
 	brdp = stli_brds[brdnr];
-	if (brdp == (stlibrd_t *) NULL)
+	if (brdp == NULL)
 		return(0);
 	if (brdp->state & BST_FOUND)
 		stli_brdattach(brdp);
@@ -874,7 +875,7 @@ STATIC int stliopen(struct dev_open_args *ap)
 		return(0);
 
 	portp = stli_dev2port(dev);
-	if (portp == (stliport_t *) NULL)
+	if (portp == NULL)
 		return(ENXIO);
 	if (minor(dev) & STL_CTRLDEV)
 		return(0);
@@ -942,7 +943,7 @@ stliopen_restart:
 			}
 		}
 		if ((tp->t_state & TS_XCLUDE) &&
-		    suser_cred(ap->a_cred, 0)) {
+		    priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
 			error = EBUSY;
 			goto stliopen_end;
 		}
@@ -1003,7 +1004,7 @@ STATIC int stliclose(struct dev_close_args *ap)
 		return(0);
 
 	portp = stli_dev2port(dev);
-	if (portp == (stliport_t *) NULL)
+	if (portp == NULL)
 		return(ENXIO);
 	tp = &portp->tty;
 
@@ -1033,7 +1034,7 @@ STATIC int stliread(struct dev_read_args *ap)
 		return(ENODEV);
 
 	portp = stli_dev2port(dev);
-	if (portp == (stliport_t *) NULL)
+	if (portp == NULL)
 		return(ENODEV);
 	return ttyread(ap);
 }
@@ -1082,7 +1083,7 @@ STATIC int stliwrite(struct dev_write_args *ap)
 	if (minor(dev) & STL_CTRLDEV)
 		return(ENODEV);
 	portp = stli_dev2port(dev);
-	if (portp == (stliport_t *) NULL)
+	if (portp == NULL)
 		return(ENODEV);
 	return ttywrite(ap);
 }
@@ -1110,9 +1111,9 @@ STATIC int stliioctl(struct dev_ioctl_args *ap)
 		return(stli_memioctl(dev, cmd, data, ap->a_fflag));
 
 	portp = stli_dev2port(dev);
-	if (portp == (stliport_t *) NULL)
+	if (portp == NULL)
 		return(ENODEV);
-	if ((brdp = stli_brds[portp->brdnr]) == (stlibrd_t *) NULL)
+	if ((brdp = stli_brds[portp->brdnr]) == NULL)
 		return(ENODEV);
 	tp = &portp->tty;
 	error = 0;
@@ -1132,7 +1133,7 @@ STATIC int stliioctl(struct dev_ioctl_args *ap)
 
 		switch (cmd) {
 		case TIOCSETA:
-			if ((error = suser_cred(ap->a_cred, 0)) == 0)
+			if ((error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) == 0)
 				*localtios = *((struct termios *) data);
 			break;
 		case TIOCGETA:
@@ -1269,7 +1270,7 @@ STATIC int stliioctl(struct dev_ioctl_args *ap)
 		*((int *) data) = (portp->sigs | TIOCM_LE);
 		break;
 	case TIOCMSDTRWAIT:
-		if ((error = suser_cred(ap->a_cred, 0)) == 0)
+		if ((error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) == 0)
 			portp->dtrwait = *((int *) data) * hz / 100;
 		break;
 	case TIOCMGDTRWAIT:
@@ -1307,10 +1308,10 @@ STATIC stliport_t *stli_dev2port(cdev_t dev)
 	stlibrd_t	*brdp;
 
 	brdp = stli_brds[MKDEV2BRD(dev)];
-	if (brdp == (stlibrd_t *) NULL)
-		return((stliport_t *) NULL);
+	if (brdp == NULL)
+		return(NULL);
 	if ((brdp->state & BST_STARTED) == 0)
-		return((stliport_t *) NULL);
+		return(NULL);
 	return(brdp->ports[MKDEV2PORT(dev)]);
 }
 
@@ -1335,7 +1336,7 @@ static int stli_initopen(stliport_t *portp)
 	kprintf("stli_initopen(portp=%x)\n", (int) portp);
 #endif
 
-	if ((brdp = stli_brds[portp->brdnr]) == (stlibrd_t *) NULL)
+	if ((brdp = stli_brds[portp->brdnr]) == NULL)
 		return(ENXIO);
 	if (portp->state & ST_INITIALIZED)
 		return(0);
@@ -1389,7 +1390,7 @@ static int stli_shutdownclose(stliport_t *portp)
 		(void *) portp, portp->brdnr, portp->panelnr, portp->portnr);
 #endif
 
-	if ((brdp = stli_brds[portp->brdnr]) == (stlibrd_t *) NULL)
+	if ((brdp = stli_brds[portp->brdnr]) == NULL)
 		return(ENXIO);
 
 	tp = &portp->tty;
@@ -1686,7 +1687,7 @@ static void stli_start(struct tty *tp)
  */
 	if (tp->t_outq.c_cc != 0) {
 		brdp = stli_brds[portp->brdnr];
-		if (brdp == (stlibrd_t *) NULL) {
+		if (brdp == NULL) {
 			crit_exit();
 			return;
 		}
@@ -1760,7 +1761,7 @@ static int stli_param(struct tty *tp, struct termios *tiosp)
 	int		rc;
 
 	portp = (stliport_t *) tp;
-	if ((brdp = stli_brds[portp->brdnr]) == (stlibrd_t *) NULL)
+	if ((brdp = stli_brds[portp->brdnr]) == NULL)
 		return(ENXIO);
 
 	crit_enter();
@@ -1790,12 +1791,12 @@ static void stli_flush(stliport_t *portp, int flag)
 	kprintf("stli_flush(portp=%x,flag=%x)\n", (int) portp, flag);
 #endif
 
-	if (portp == (stliport_t *) NULL)
+	if (portp == NULL)
 		return;
 	if ((portp->brdnr < 0) || (portp->brdnr >= stli_nrbrds))
 		return;
 	brdp = stli_brds[portp->brdnr];
-	if (brdp == (stlibrd_t *) NULL)
+	if (brdp == NULL)
 		return;
 
 	crit_enter();
@@ -1979,7 +1980,7 @@ static void stli_rxprocess(stlibrd_t *brdp, stliport_t *portp)
 				tail -= size;
 		}
 		rp->tail = tail;
-		stli_rxtmpport = (stliport_t *) NULL;
+		stli_rxtmpport = NULL;
 		stli_rxtmplen = 0;
 	}
 
@@ -2267,7 +2268,7 @@ static void stli_poll(void *arg)
  */
 	for (brdnr = 0; (brdnr < stli_nrbrds); brdnr++) {
 		brdp = stli_brds[brdnr];
-		if (brdp == (stlibrd_t *) NULL)
+		if (brdp == NULL)
 			continue;
 		if ((brdp->state & BST_STARTED) == 0)
 			continue;
@@ -3293,7 +3294,7 @@ static int stli_startbrd(stlibrd_t *brdp)
 		if (memp->dtype != TYP_ASYNC)
 			break;
 		portp = brdp->ports[portnr];
-		if (portp == (stliport_t *) NULL)
+		if (portp == NULL)
 			break;
 		portp->devnr = i;
 		portp->addr = memp->offset;
@@ -3312,12 +3313,12 @@ static int stli_startbrd(stlibrd_t *brdp)
  */
 	for (i = 1, portnr = 0; (i < nrdevs); i++, portnr++) {
 		portp = brdp->ports[portnr];
-		if (portp == (stliport_t *) NULL)
+		if (portp == NULL)
 			break;
 		if (portp->addr == 0)
 			break;
 		ap = (volatile cdkasy_t *) EBRDGETMEMPTR(brdp, portp->addr);
-		if (ap != (volatile cdkasy_t *) NULL) {
+		if (ap != NULL) {
 			portp->rxsize = ap->rxq.size;
 			portp->txsize = ap->txq.size;
 			portp->rxoffset = ap->rxq.offset;
@@ -3438,7 +3439,7 @@ static int stli_getbrdstats(caddr_t data)
 	if (stli_brdstats.brd >= STL_MAXBRDS)
 		return(ENODEV);
 	brdp = stli_brds[stli_brdstats.brd];
-	if (brdp == (stlibrd_t *) NULL)
+	if (brdp == NULL)
 		return(ENODEV);
 
 	bzero(&stli_brdstats, sizeof(combrd_t));
@@ -3472,14 +3473,14 @@ static stliport_t *stli_getport(int brdnr, int panelnr, int portnr)
 	int		i;
 
 	if ((brdnr < 0) || (brdnr >= STL_MAXBRDS))
-		return((stliport_t *) NULL);
+		return(NULL);
 	brdp = stli_brds[brdnr];
-	if (brdp == (stlibrd_t *) NULL)
-		return((stliport_t *) NULL);
+	if (brdp == NULL)
+		return(NULL);
 	for (i = 0; (i < panelnr); i++)
 		portnr += brdp->panels[i];
 	if ((portnr < 0) || (portnr >= brdp->nrports))
-		return((stliport_t *) NULL);
+		return(NULL);
 	return(brdp->ports[portnr]);
 }
 
@@ -3496,16 +3497,16 @@ static int stli_getportstats(stliport_t *portp, caddr_t data)
 	stlibrd_t	*brdp;
 	int		rc;
 
-	if (portp == (stliport_t *) NULL) {
+	if (portp == NULL) {
 		stli_comstats = *((comstats_t *) data);
 		portp = stli_getport(stli_comstats.brd, stli_comstats.panel,
 			stli_comstats.port);
-		if (portp == (stliport_t *) NULL)
+		if (portp == NULL)
 			return(ENODEV);
 	}
 
 	brdp = stli_brds[portp->brdnr];
-	if (brdp == (stlibrd_t *) NULL)
+	if (brdp == NULL)
 		return(ENODEV);
 
 	if (brdp->state & BST_STARTED) {
@@ -3562,16 +3563,16 @@ static int stli_clrportstats(stliport_t *portp, caddr_t data)
 	stlibrd_t	*brdp;
 	int		rc;
 
-	if (portp == (stliport_t *) NULL) {
+	if (portp == NULL) {
 		stli_comstats = *((comstats_t *) data);
 		portp = stli_getport(stli_comstats.brd, stli_comstats.panel,
 			stli_comstats.port);
-		if (portp == (stliport_t *) NULL)
+		if (portp == NULL)
 			return(ENODEV);
 	}
 
 	brdp = stli_brds[portp->brdnr];
-	if (brdp == (stlibrd_t *) NULL)
+	if (brdp == NULL)
 		return(ENODEV);
 
 	if ((rc = stli_cmdwait(brdp, portp, A_CLEARSTATS, 0, 0, 0)) < 0)
@@ -3608,7 +3609,7 @@ STATIC int stli_memrw(cdev_t dev, struct uio *uiop, int flag)
 
 	brdnr = minor(dev) & 0x7;
 	brdp = stli_brds[brdnr];
-	if (brdp == (stlibrd_t *) NULL)
+	if (brdp == NULL)
 		return(ENODEV);
 	if (brdp->state == 0)
 		return(ENODEV);
@@ -3658,10 +3659,10 @@ static int stli_memioctl(cdev_t dev, unsigned long cmd, caddr_t data, int flag)
  */
 	switch (cmd) {
 	case COM_GETPORTSTATS:
-		return(stli_getportstats((stliport_t *) NULL, data));
+		return(stli_getportstats(NULL, data));
 		break;
 	case COM_CLRPORTSTATS:
-		return(stli_clrportstats((stliport_t *) NULL, data));
+		return(stli_clrportstats(NULL, data));
 		break;
 	case COM_GETBRDSTATS:
 		return(stli_getbrdstats(data));
@@ -3675,7 +3676,7 @@ static int stli_memioctl(cdev_t dev, unsigned long cmd, caddr_t data, int flag)
  */
 	brdnr = minor(dev) & 0x7;
 	brdp = stli_brds[brdnr];
-	if (brdp == (stlibrd_t *) NULL)
+	if (brdp == NULL)
 		return(ENODEV);
 	if (brdp->state == 0)
 		return(ENODEV);
@@ -3701,10 +3702,10 @@ static int stli_memioctl(cdev_t dev, unsigned long cmd, caddr_t data, int flag)
 		}
 		break;
 	case COM_GETPORTSTATS:
-		rc = stli_getportstats((stliport_t *) NULL, data);
+		rc = stli_getportstats(NULL, data);
 		break;
 	case COM_CLRPORTSTATS:
-		rc = stli_clrportstats((stliport_t *) NULL, data);
+		rc = stli_clrportstats(NULL, data);
 		break;
 	case COM_GETBRDSTATS:
 		rc = stli_getbrdstats(data);

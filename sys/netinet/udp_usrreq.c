@@ -79,6 +79,7 @@
 #include <sys/domain.h>
 #include <sys/objcache.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -122,7 +123,7 @@
 int	udp_mpsafe_proto = 0;
 TUNABLE_INT("net.inet.udp.mpsafe_proto", &udp_mpsafe_proto);
 
-int	udp_mpsafe_thread = 0;
+int	udp_mpsafe_thread = NETMSG_SERVICE_ADAPTIVE;
 TUNABLE_INT("net.inet.udp.mpsafe_thread", &udp_mpsafe_thread);
 SYSCTL_INT(_net_inet_udp, OID_AUTO, mpsafe_thread, CTLFLAG_RW,
 	   &udp_mpsafe_thread, 0,
@@ -622,9 +623,9 @@ struct netmsg_udp_notify {
 };
 
 static void
-udp_notifyall_oncpu(struct netmsg *netmsg)
+udp_notifyall_oncpu(anynetmsg_t msg)
 {
-	struct netmsg_udp_notify *nmsg = (struct netmsg_udp_notify *)netmsg;
+	struct netmsg_udp_notify *nmsg = (struct netmsg_udp_notify *)msg;
 	int nextcpu;
 
 	in_pcbnotifyall(&udbinfo.pcblisthead, nmsg->nm_faddr, nmsg->nm_arg,
@@ -632,9 +633,9 @@ udp_notifyall_oncpu(struct netmsg *netmsg)
 
 	nextcpu = mycpuid + 1;
 	if (nextcpu < ncpus2)
-		lwkt_forwardmsg(udp_cport(nextcpu), &netmsg->nm_lmsg);
+		lwkt_forwardmsg(udp_cport(nextcpu), &msg->lmsg);
 	else
-		lwkt_replymsg(&netmsg->nm_lmsg, 0);
+		lwkt_replymsg(&msg->lmsg, 0);
 }
 
 static void
@@ -715,7 +716,7 @@ udp_getcred(SYSCTL_HANDLER_ARGS)
 	struct inpcb *inp;
 	int error;
 
-	error = suser(req->td);
+	error = priv_check(req->td, PRIV_ROOT);
 	if (error)
 		return (error);
 	error = SYSCTL_IN(req, addrs, sizeof addrs);
@@ -752,7 +753,7 @@ udp_output(struct inpcb *inp, struct mbuf *m, struct sockaddr *dstaddr,
 	}
 
 	if (inp->inp_lport == 0) {	/* unbound socket */
-		error = in_pcbbind(inp, (struct sockaddr *)NULL, td);
+		error = in_pcbbind(inp, NULL, td);
 		if (error)
 			goto release;
 		in_pcbinswildcardhash(inp);

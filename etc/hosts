@@ -1,4 +1,4 @@
-# $FreeBSD: src/etc/hosts,v 1.11.2.4 2003/02/06 20:36:58 dbaker Exp $
+# $FreeBSD: src/etc/hosts,v 1.16 2003/01/28 21:29:23 dbaker Exp $
 # $DragonFly: src/etc/hosts,v 1.2 2003/06/17 04:24:45 dillon Exp $
 #
 # Host Database
@@ -8,7 +8,7 @@
 # machine.
 #
 # In the presence of the domain name service or NIS, this file may
-# not be consulted at all; see /etc/host.conf for the resolution order.
+# not be consulted at all; see /etc/nsswitch.conf for the resolution order.
 #
 #
 ::1			localhost localhost.my.domain

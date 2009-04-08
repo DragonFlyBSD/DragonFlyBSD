@@ -50,6 +50,7 @@
 #include <sys/errno.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/sockio.h>
 #include <sys/time.h>
 #include <sys/kernel.h>
@@ -59,6 +60,7 @@
 #include <sys/resourcevar.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/socketvar2.h>
 #include <sys/syslog.h>
 #include <sys/eventhandler.h>
 #include <sys/thread2.h>

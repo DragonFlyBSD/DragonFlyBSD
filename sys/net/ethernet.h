@@ -356,6 +356,11 @@ extern const uint8_t	etherbroadcastaddr[ETHER_ADDR_LEN];
 
 #ifdef _KERNEL
 
+#define M_ETHER_BRIDGED		M_PROTO1
+#define M_ETHER_VLANCHECKED	M_PROTO2
+
+#define M_ETHER_FLAGS		(M_ETHER_BRIDGED | M_ETHER_VLANCHECKED)
+
 struct ifnet;
 struct mbuf;
 struct mbuf_chain;
@@ -402,9 +407,11 @@ void	altq_etherclassify(struct ifaltq *, struct mbuf *, struct altq_pktattr *);
  */
 __BEGIN_DECLS
 struct	ether_addr *ether_aton (const char *);
+struct ether_addr	*ether_aton_r(const char *, struct ether_addr *);
 int	ether_hostton (const char *, struct ether_addr *);
 int	ether_line (const char *, struct ether_addr *, char *);
 char	*ether_ntoa (const struct ether_addr *);
+char	*ether_ntoa_r(const struct ether_addr *, char *);
 int	ether_ntohost (char *, const struct ether_addr *);
 __END_DECLS
 

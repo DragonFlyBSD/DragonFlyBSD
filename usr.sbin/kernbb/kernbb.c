@@ -34,8 +34,8 @@ struct bb {
 };
 
 struct nlist namelist[] = {
-	{ "bbhead" },
-	{ NULL }
+	{ .n_name = "bbhead" },
+	{ .n_name = NULL }
 };
 
 u_long	lineno[MAXBB];
@@ -51,10 +51,11 @@ kvm_t	*kv;
 int
 main(int argc __unused, char **argv __unused)
 {
-	int i,j;
+	u_int i,j;
 	u_long l1,l2,l4;
 	struct bb bb;
 	char buf[128];
+	char dash[] = "-";
 
 	kv = kvm_open(NULL,NULL,NULL,O_RDWR,"dnc");
 	if (!kv) 
@@ -104,7 +105,7 @@ main(int argc __unused, char **argv __unused)
 					}
 			}
 			if (!pn[i])
-				pn[i] = "-";
+				pn[i] = dash;
 			if (!fn[i] && file[i]) {
 				kvm_read(kv,file[i], buf, sizeof buf);
 				buf[sizeof buf -1] = 0;
@@ -116,7 +117,7 @@ main(int argc __unused, char **argv __unused)
 					}
 			}
 			if (!fn[i])
-				fn[i] = "-";
+				fn[i] = dash;
 			l4 = 0;
 			if (i+1 < bb.ncounts)
 				l4 = addr[i+1] - addr[i];

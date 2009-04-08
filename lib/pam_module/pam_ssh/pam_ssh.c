@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/modules/pam_ssh/pam_ssh.c,v 1.40 2004/02/10 10:13:21 des Exp $
+ * $FreeBSD: src/lib/libpam/modules/pam_ssh/pam_ssh.c,v 1.45 2007/12/21 12:00:15 des Exp $
  * $DragonFly: src/lib/pam_module/pam_ssh/pam_ssh.c,v 1.2 2006/09/29 06:35:03 corecode Exp $
  */
 
@@ -58,6 +58,7 @@
 
 #include "buffer.h"
 #include "key.h"
+#include "buffer.h"
 #include "authfd.h"
 #include "authfile.h"
 
@@ -135,9 +136,12 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags __unused,
     int argc __unused, const char *argv[] __unused)
 {
 	const char **kfn, *passphrase, *user;
+	const void *item;
 	struct passwd *pwd;
 	struct pam_ssh_key *psk;
-	int nkeys, pam_err, pass;
+	int nkeys, nullok, pam_err, pass;
+
+	nullok = (openpam_get_option(pamh, "nullok") != NULL);
 
 	/* PEM is not loaded by default */
 	OpenSSL_add_all_algorithms();
@@ -152,24 +156,25 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags __unused,
 	if (pwd->pw_dir == NULL)
 		return (PAM_AUTH_ERR);
 
+	nkeys = 0;
+	pass = (pam_get_item(pamh, PAM_AUTHTOK, &item) == PAM_SUCCESS &&
+	    item != NULL);
+ load_keys:
+	/* get passphrase */
+	pam_err = pam_get_authtok(pamh, PAM_AUTHTOK,
+	    &passphrase, pam_ssh_prompt);
+	if (pam_err != PAM_SUCCESS)
+		return (pam_err);
+
+	if (*passphrase == '\0' && !nullok)
+		goto skip_keys;
+
 	/* switch to user credentials */
 	pam_err = openpam_borrow_cred(pamh, pwd);
 	if (pam_err != PAM_SUCCESS)
 		return (pam_err);
 
-	pass = (pam_get_item(pamh, PAM_AUTHTOK,
-	    (const void **)&passphrase) == PAM_SUCCESS);
- load_keys:
-	/* get passphrase */
-	pam_err = pam_get_authtok(pamh, PAM_AUTHTOK,
-	    &passphrase, pam_ssh_prompt);
-	if (pam_err != PAM_SUCCESS) {
-		openpam_restore_cred(pamh);
-		return (pam_err);
-	}
-
 	/* try to load keys from all keyfiles we know of */
-	nkeys = 0;
 	for (kfn = pam_ssh_keyfiles; *kfn != NULL; ++kfn) {
 		psk = pam_ssh_load_key(pwd->pw_dir, *kfn, passphrase);
 		if (psk != NULL) {
@@ -178,6 +183,10 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags __unused,
 		}
 	}
 
+	/* switch back to arbitrator credentials */
+	openpam_restore_cred(pamh);
+
+ skip_keys:
 	/*
 	 * If we tried an old token and didn't get anything, and
 	 * try_first_pass was specified, try again after prompting the
@@ -189,9 +198,6 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags __unused,
 		pass = 0;
 		goto load_keys;
 	}
-
-	/* switch back to arbitrator credentials before returning */
-	openpam_restore_cred(pamh);
 
 	/* no keys? */
 	if (nkeys == 0)
@@ -256,10 +262,8 @@ pam_ssh_start_agent(pam_handle_t *pamh)
 	FILE *f;
 
 	/* get a pipe which we will use to read the agent's output */
-	if (pipe(agent_pipe) == -1) {
-		openpam_restore_cred(pamh);
+	if (pipe(agent_pipe) == -1)
 		return (PAM_SYSTEM_ERR);
-	}
 
 	/* start the agent */
 	openpam_log(PAM_LOG_DEBUG, "starting an ssh agent");

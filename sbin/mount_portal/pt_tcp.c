@@ -139,7 +139,7 @@ portal_tcp(struct portal_cred *pcr, char *key, char **v, int kso, int *fdp)
 		int so;
 
 		if (priv)
-			so = rresvport((int *) 0);
+			so = rresvport(NULL);
 		else
 			so = socket(AF_INET, SOCK_STREAM, 0);
 		if (so < 0) {

@@ -5,56 +5,47 @@
  * may copy or modify Sun RPC without charge, but are not authorized
  * to license or distribute it to anyone else except as part of a product or
  * program developed by the user.
- * 
+ *
  * SUN RPC IS PROVIDED AS IS WITH NO WARRANTIES OF ANY KIND INCLUDING THE
  * WARRANTIES OF DESIGN, MERCHANTIBILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE, OR ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.
- * 
+ *
  * Sun RPC is provided with no support and without any obligation on the
  * part of Sun Microsystems, Inc. to assist in its use, correction,
  * modification or enhancement.
- * 
+ *
  * SUN MICROSYSTEMS, INC. SHALL HAVE NO LIABILITY WITH RESPECT TO THE
  * INFRINGEMENT OF COPYRIGHTS, TRADE SECRETS OR ANY PATENTS BY SUN RPC
  * OR ANY PART THEREOF.
- * 
+ *
  * In no event will Sun Microsystems, Inc. be liable for any lost revenue
  * or profits or other special, indirect and consequential damages, even if
  * Sun has been advised of the possibility of such damages.
- * 
+ *
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  *
- * @(#)svc_auth.c 1.26 89/02/07 Copyr 1984 Sun Micro
- * $FreeBSD: src/lib/libc/rpc/svc_auth.c,v 1.7 1999/12/29 05:04:16 peter Exp $
+ * @(#)svc_auth.c	1.16	94/04/24 SMI; 1.26 89/02/07 Copyr 1984 Sun Micro
+ * $NetBSD: svc_auth.c,v 1.12 2000/07/06 03:10:35 christos Exp $
+ * $FreeBSD: src/lib/libc/rpc/svc_auth.c,v 1.13 2006/02/27 22:10:59 deischen Exp $
  * $DragonFly: src/lib/libc/rpc/svc_auth.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 /*
- * Copyright (c) 1986-1991 by Sun Microsystems Inc. 
+ * Copyright (c) 1986-1991 by Sun Microsystems Inc.
  */
-
-#ident	"@(#)svc_auth.c	1.16	94/04/24 SMI"
 
 /*
  * svc_auth.c, Server-side rpc authenticator interface.
- *
  */
 
-#ifdef _KERNEL
-#include <sys/param.h>
-#include <rpc/types.h>
-#include <rpc/xdr.h>
-#include <rpc/auth.h>
-#include <rpc/clnt.h>
-#include <rpc/rpc_msg.h>
-#include <rpc/svc.h>
-#include <rpc/svc_auth.h>
-#else
-#include <stdlib.h>
-#include <rpc/rpc.h>
-#endif
+#include "namespace.h"
+#include "reentrant.h"
 #include <sys/types.h>
+#include <rpc/rpc.h>
+#include <stdlib.h>
+#include "un-namespace.h"
+#include "mt_misc.h"
 
 /*
  * svcauthsw is the bdevsw of server side authentication.
@@ -71,15 +62,10 @@
  *
  */
 
-enum auth_stat _svcauth_null();	/* no authentication */
-enum auth_stat _svcauth_unix();		/* (system) unix style (uid, gids) */
-enum auth_stat _svcauth_short();	/* short hand unix style */
-enum auth_stat _svcauth_des();		/* des style */
-
 /* declarations to allow servers to specify new authentication flavors */
 struct authsvc {
 	int	flavor;
-	enum	auth_stat (*handler)();
+	enum	auth_stat (*handler)(struct svc_req *, struct rpc_msg *);
 	struct	authsvc	  *next;
 };
 static struct authsvc *Auths = NULL;
@@ -107,6 +93,9 @@ _authenticate(struct svc_req *rqst, struct rpc_msg *msg)
 {
 	int cred_flavor;
 	struct authsvc *asp;
+	enum auth_stat dummy;
+
+/* VARIABLES PROTECTED BY authsvc_lock: asp, Auths */
 
 	rqst->rq_cred = msg->rm_call.cb_cred;
 	rqst->rq_xprt->xp_verf.oa_flavor = _null_auth.oa_flavor;
@@ -114,34 +103,35 @@ _authenticate(struct svc_req *rqst, struct rpc_msg *msg)
 	cred_flavor = rqst->rq_cred.oa_flavor;
 	switch (cred_flavor) {
 	case AUTH_NULL:
-		return(_svcauth_null(rqst, msg));
-	case AUTH_UNIX:
-		return(_svcauth_unix(rqst, msg));
+		dummy = _svcauth_null(rqst, msg);
+		return (dummy);
+	case AUTH_SYS:
+		dummy = _svcauth_unix(rqst, msg);
+		return (dummy);
 	case AUTH_SHORT:
-		return(_svcauth_short(rqst, msg));
-	/*
-	 * We leave AUTH_DES turned off by default because svcauth_des()
-	 * needs getpublickey(), which is in librpcsvc, not libc. If we
- 	 * included AUTH_DES as a built-in flavor, programs that don't
-	 * have -lrpcsvc in their Makefiles wouldn't link correctly, even
-	 * though they don't use AUTH_DES. And I'm too lazy to go through
-	 * the tree looking for all of them.
-	 */
+		dummy = _svcauth_short(rqst, msg);
+		return (dummy);
 #ifdef DES_BUILTIN
 	case AUTH_DES:
-		return(_svcauth_des(rqst, msg));
+		dummy = _svcauth_des(rqst, msg);
+		return (dummy);
 #endif
+	default:
+		break;
 	}
 
 	/* flavor doesn't match any of the builtin types, so try new ones */
+	mutex_lock(&authsvc_lock);
 	for (asp = Auths; asp; asp = asp->next) {
 		if (asp->flavor == cred_flavor) {
 			enum auth_stat as;
 
 			as = (*asp->handler)(rqst, msg);
+			mutex_unlock(&authsvc_lock);
 			return (as);
 		}
 	}
+	mutex_unlock(&authsvc_lock);
 
 	return (AUTH_REJECTEDCRED);
 }
@@ -168,13 +158,14 @@ _svcauth_null(struct svc_req *rqst, struct rpc_msg *msg)
  */
 
 int
-svc_auth_reg(int cred_flavor, enum auth_stat (*handler)())
+svc_auth_reg(int cred_flavor,
+	     enum auth_stat (*handler)(struct svc_req *, struct rpc_msg *))
 {
 	struct authsvc *asp;
 
 	switch (cred_flavor) {
 	    case AUTH_NULL:
-	    case AUTH_UNIX:
+	    case AUTH_SYS:
 	    case AUTH_SHORT:
 #ifdef DES_BUILTIN
 	    case AUTH_DES:
@@ -183,22 +174,26 @@ svc_auth_reg(int cred_flavor, enum auth_stat (*handler)())
 		return (1);
 
 	    default:
+		mutex_lock(&authsvc_lock);
 		for (asp = Auths; asp; asp = asp->next) {
 			if (asp->flavor == cred_flavor) {
 				/* already registered */
+				mutex_unlock(&authsvc_lock);
 				return (1);
 			}
 		}
 
 		/* this is a new one, so go ahead and register it */
-		asp = (struct authsvc *)mem_alloc(sizeof (*asp));
+		asp = mem_alloc(sizeof (*asp));
 		if (asp == NULL) {
+			mutex_unlock(&authsvc_lock);
 			return (-1);
 		}
 		asp->flavor = cred_flavor;
 		asp->handler = handler;
 		asp->next = Auths;
 		Auths = asp;
+		mutex_unlock(&authsvc_lock);
 		break;
 	}
 	return (0);

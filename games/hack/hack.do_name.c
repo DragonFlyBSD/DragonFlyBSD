@@ -121,7 +121,7 @@ char buf[BUFSZ];
 	otmp2->onamelth = lth;
 	strcpy(ONAME(otmp2), buf);
 
-	setworn((struct obj *) 0, obj->owornmask);
+	setworn(NULL, obj->owornmask);
 	setworn(otmp2, otmp2->owornmask);
 
 	/* do freeinv(obj); etc. by hand in order to preserve

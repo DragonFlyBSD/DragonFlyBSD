@@ -101,6 +101,7 @@ boolean_t	db_map_current (struct vm_map *);
 boolean_t	db_map_equal (struct vm_map *, struct vm_map *);
 void		db_print_loc_and_inst (db_addr_t loc, db_regs_t *regs);
 void		db_printf (const char *fmt, ...) __printflike(1, 2);
+void		db_vprintf (const char *fmt, __va_list va);
 void		db_read_bytes (vm_offset_t addr, size_t size, char *data);
 				/* machine-dependent */
 int		db_readline (char *lstart, int lsize);
@@ -142,11 +143,6 @@ db_cmdfcn_t	db_show_one_thread;
 db_cmdfcn_t	ipc_port_print;
 db_cmdfcn_t	vm_page_print;
 #endif
-
-/*
- * Print backtrace. (Machine-Dependant)
- */
-void		db_print_backtrace(void);
 
 /*
  * Command table.

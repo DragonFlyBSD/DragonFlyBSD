@@ -261,7 +261,7 @@ ata_raid_flush(struct ar_softc *rdp, struct bio *bp)
     int disk, error;
 
     error = 0;
-    bp->bio_driver_info = (void *)0;
+    bp->bio_driver_info = NULL;
 
     for (disk = 0; disk < rdp->total_disks; disk++) {
 	if ((dev = rdp->disks[disk].dev) != NULL)

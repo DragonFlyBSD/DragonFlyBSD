@@ -33,7 +33,6 @@
  * 
  * $DragonFly: src/sys/vm/vm_vmspace.c,v 1.14 2007/08/15 03:15:07 dillon Exp $
  */
-#include "opt_ddb.h"
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -49,7 +48,6 @@
 
 #include <vm/vm_extern.h>
 #include <vm/pmap.h>
-#include <ddb/ddb.h>
 
 #include <machine/vmparam.h>
 
@@ -481,9 +479,7 @@ vkernel_lwp_exit(struct lwp *lp)
 		if ((ve = vklp->ve) != NULL) {
 			kprintf("Warning, pid %d killed with "
 				"active VC!\n", lp->lwp_proc->p_pid);
-#ifdef DDB
-			db_print_backtrace();
-#endif
+			print_backtrace();
 			pmap_setlwpvm(lp, lp->lwp_proc->p_vmspace);
 			vklp->ve = NULL;
 			KKASSERT(ve->refs > 0);

@@ -132,7 +132,7 @@ eni_do_service(Eni_unit *eup)
 		 */
 		evp = (Eni_vcc *) atm_dev_vcc_find ( (Cmn_unit *)eup,
 		    0, vcc, VCC_IN );
-		if ( evp == (Eni_vcc *)NULL )
+		if ( evp == NULL )
 			goto next_vcc;		/* VCI no longer active */
 		rdptr = evp->ev_rxpos;
 		/*
@@ -323,7 +323,7 @@ eni_do_service(Eni_unit *eup)
 		    /*
 		     * Do we have a valid buffer?
 		     */
-		    if ( m != (KBuffer *)NULL )
+		    if ( m != NULL )
 		    {
 			int	len;
 			u_long	*up;

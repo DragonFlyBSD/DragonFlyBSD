@@ -390,6 +390,31 @@ state_configure_menu(struct i_fn_args *a)
 	}
 
 	a->cfg_root = "mnt";
+
+	if (during_install == 0) {
+		switch (dfui_be_present_dialog(a->c, _("Select file system"),
+		    _("HAMMER|UFS|Return to Welcome Menu"),
+		    _("Please select the file system installed on the disk.\n\n")))
+		{
+		case 1:
+			/* HAMMER */
+			use_hammer = 1;
+			break;
+		case 2:
+			/* UFS */
+			use_hammer = 0;
+			break;
+		case 3:
+			state = state_welcome;
+			return;
+			/* NOTREACHED */
+			break;
+		default:
+			abort_backend();
+			break;
+		}
+	}
+
 	if (!mount_target_system(a)) {
 		inform(a->c, _("Target system could not be mounted."));
 		state = state_welcome;
@@ -682,9 +707,9 @@ state_diagnostics_menu(struct i_fn_args *a)
 		    "a", "pnpinfo",
 		    _("Display Plug'n'Play ISA devices"),
 		    _("Display Plug'n'Play ISA devices (pnpinfo)"), "",
-		    "a", "atacontrol",
+		    "a", "natacontrol",
 		    _("Display ATA devices"),
-		    _("Display ATA devices (atactl)"), "",
+		    _("Display ATA devices (natacontrol)"), "",
 		    NULL
 		);
 
@@ -716,8 +741,8 @@ state_diagnostics_menu(struct i_fn_args *a)
 			fn_show_pciconf(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "pnpinfo") == 0) {
 			fn_show_pnpinfo(a);
-		} else if (strcmp(dfui_response_get_action_id(r), "atacontrol") == 0) {
-			fn_show_atacontrol(a);
+		} else if (strcmp(dfui_response_get_action_id(r), "natacontrol") == 0) {
+			fn_show_natacontrol(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "memtest") == 0) {
 			fn_memtest(a);
 		} else if (strcmp(dfui_response_get_action_id(r), "memtest86") == 0) {
@@ -979,6 +1004,37 @@ state_select_disk(struct i_fn_args *a)
 	}
 }
 
+void
+state_ask_fs(struct i_fn_args *a)
+{
+	use_hammer = 0;
+
+	switch (dfui_be_present_dialog(a->c, _("Select file system"),
+	    _("Use HAMMER|Use UFS|Return to Select Disk"),
+	    _("Please select the file system you want to use with %s.\n\n"
+	      "HAMMER is the new %s file system.  UFS is the traditional BSD file system."),
+	    OPERATING_SYSTEM_NAME,
+	    OPERATING_SYSTEM_NAME))
+	{
+	case 1:
+		/* HAMMER */
+		use_hammer = 1;
+		break;
+	case 2:
+		/* UFS */
+		break;
+	case 3:
+		state = state_select_disk;
+		return;
+		/* NOTREACHED */
+		break;
+	default:
+		abort_backend();
+		break;
+	}
+	state = state_create_subpartitions;
+}
+
 /*
  * state_format_disk: ask the user if they wish to format the disk they
  * selected.
@@ -1018,7 +1074,7 @@ state_format_disk(struct i_fn_args *a)
 
 		fn_format_disk(a);
 		if (a->result)
-			state = state_create_subpartitions;
+			state = state_ask_fs;
 		else
 			state = state_format_disk;
 		break;
@@ -1113,7 +1169,7 @@ state_select_slice(struct i_fn_args *a)
 			} else {
 				inform(a->c, _("Primary partition #%d was formatted."),
 				    slice_get_number(storage_get_selected_slice(a->s)));
-				state = state_create_subpartitions;
+				state = state_ask_fs;
 			}
 		} else {
 			inform(a->c, _("Action cancelled - no primary partitions were formatted."));
@@ -1248,6 +1304,7 @@ void
 state_finish_install(struct i_fn_args *a)
 {
 	char msg_buf[1][1024];
+	during_install = 1;
 
 	snprintf(msg_buf[0], sizeof(msg_buf[0]),
 	    "%s is Installed!",
@@ -1420,7 +1477,7 @@ state_setup_remote_installation_server(struct i_fn_args *a)
 			if (commands_execute(a, cmds)) {
 				inform(a->c, _("NetBoot installation services are now started."));
 			} else {
-				inform(a->c, _("A failure occured while provisioning the NetBoot environment.  Please check the logs."));
+				inform(a->c, _("A failure occurred while provisioning the NetBoot environment.  Please check the logs."));
 			}
 
 			commands_free(cmds);

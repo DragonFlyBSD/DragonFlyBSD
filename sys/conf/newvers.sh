@@ -35,39 +35,9 @@
 # $FreeBSD: src/sys/conf/newvers.sh,v 1.44.2.30 2003/04/04 07:02:46 murray Exp $
 # $DragonFly: src/sys/conf/newvers.sh,v 1.23 2008/07/14 04:01:44 dillon Exp $
 
-tag="\$Name:  $"
-
-# Extract the tag name, if any.
+# Set the branch
 #
-BRANCH=$(echo $tag | awk '{ print $2; }')
-
-# Remove any DragonFly_ prefix or _Slip suffix.  Release branches are 
-# typically extracted using a slip tag rather than the branch tag in order
-# to guarentee that the subversion file is synchronized with the files being
-# extracted.
-#
-BRANCH=${BRANCH#DragonFly_}
-BRANCH=${BRANCH%_Slip}
-
-# This case occurs if we have checked out without a tag (i.e. HEAD), either
-# implicitly or explicitly.
-#
-if [ "X${BRANCH}" = "X$" ]; then
-    BRANCH="DEVELOPMENT_2_1"
-fi
-if [ "X${BRANCH}" = "XHEAD" ]; then
-    BRANCH="DEVELOPMENT_2_1"
-fi
-if [ "X${BRANCH}" = "XPreview" ]; then
-    BRANCH="PREVIEW_2_1"
-    SHORTTAG="DEVELOPMENT_2_1"
-fi
-
-# This case occurs if the $Name:  $ field has not been expanded.
-#
-if [ "X${BRANCH}" = "X" ]; then
-    BRANCH="UNKNOWN"
-fi
+BRANCH="DEVELOPMENT_2_3"
 
 TYPE="DragonFly"
 

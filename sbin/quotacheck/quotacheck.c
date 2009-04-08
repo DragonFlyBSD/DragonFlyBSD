@@ -267,7 +267,7 @@ chkquota(char *fsname, char *mntpt, struct quotaname *qnp)
 				continue;
 			if (qnp->flags & HASGRP) {
 				fup = addid((u_long)dp->di_gid, GRPQUOTA,
-				    (char *)0);
+				    NULL);
 				fup->fu_curinodes++;
 				if (mode == IFREG || mode == IFDIR ||
 				    mode == IFLNK)
@@ -275,7 +275,7 @@ chkquota(char *fsname, char *mntpt, struct quotaname *qnp)
 			}
 			if (qnp->flags & HASUSR) {
 				fup = addid((u_long)dp->di_uid, USRQUOTA,
-				    (char *)0);
+				    NULL);
 				fup->fu_curinodes++;
 				if (mode == IFREG || mode == IFDIR ||
 				    mode == IFLNK)

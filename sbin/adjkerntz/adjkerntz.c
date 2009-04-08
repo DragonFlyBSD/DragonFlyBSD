@@ -306,7 +306,7 @@ recalculate:
 			 * restoring disrtcset, since we don't clean up
 			 * anything.
 			 */
-			if (gettimeofday(&tv, (struct timezone *)NULL)) {
+			if (gettimeofday(&tv, NULL)) {
 				syslog(LOG_ERR, "gettimeofday: %m");
 				return 1;
 			}

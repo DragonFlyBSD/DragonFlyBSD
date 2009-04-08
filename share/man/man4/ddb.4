@@ -59,7 +59,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/ddb.4,v 1.7.2.6 2001/08/17 13:08:37 ru Exp $
 .\" $DragonFly: src/share/man/man4/ddb.4,v 1.3 2006/05/11 08:23:19 swildner Exp $
-.Dd May 11, 2006
+.Dd March 28, 2009
 .Dt DDB 4
 .Os
 .Sh NAME
@@ -430,6 +430,14 @@ If the
 .Li f
 option is specified the
 complete object is printed.
+.It Cm show ktr Ns Op Cm /v
+Prints the contents of
+.Xr ktr 4
+buffer.
+If the
+.Li v
+modifier is specified, timestamp, filename and line number are displayed
+with each log entry.
 .It Cm "show watches"
 Displays all watchpoints.
 .It Xo
@@ -550,7 +558,8 @@ indirection.  It may be followed by a
 and modifiers as described above.
 .El
 .Sh SEE ALSO
-.Xr gdb 1
+.Xr gdb 1 ,
+.Xr ktr 4
 .Sh HISTORY
 The
 .Nm

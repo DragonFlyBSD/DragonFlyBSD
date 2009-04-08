@@ -3,6 +3,7 @@
 
 PROG=	mknetid
 SRCS=	mknetid.c hash.c parse_group.c
+WARNS?=	6
 
 MAN=	netid.5 mknetid.8
 

@@ -40,6 +40,7 @@
 #define __FLOW_H_
 
 #define	DISK_MIN	340
+#define	HAMMER_MIN	50000
 #define INSTALL_USR_LOCAL
 #define INSTALL_USR_X11R6
 
@@ -51,7 +52,8 @@
 #define	MTPT_HOME	5
 
 struct i_fn_args;
-
+int use_hammer;
+int during_install;
 /*** PROTOTYPES ***/
 
 /* Menus */
@@ -73,6 +75,7 @@ void 		 state_diskutil_menu(struct i_fn_args *);
 void		 state_begin_install(struct i_fn_args *);
 void		 state_begin_upgrade(struct i_fn_args *);
 void		 state_select_disk(struct i_fn_args *);
+void		 state_ask_fs(struct i_fn_args *);
 void		 state_format_disk(struct i_fn_args *);
 void		 state_select_slice(struct i_fn_args *);
 void		 state_create_subpartitions(struct i_fn_args *);

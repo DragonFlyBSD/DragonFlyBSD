@@ -2292,7 +2292,7 @@ icmp6_redirect_input(struct mbuf *m, int off)
 		bcopy(&reddst6, &sdst.sin6_addr, sizeof(struct in6_addr));
 		bcopy(&src6, &ssrc.sin6_addr, sizeof(struct in6_addr));
 		rtredirect((struct sockaddr *)&sdst, (struct sockaddr *)&sgw,
-			   (struct sockaddr *)NULL, RTF_GATEWAY | RTF_HOST,
+			   NULL, RTF_GATEWAY | RTF_HOST,
 			   (struct sockaddr *)&ssrc);
 	}
 	/* finally update cached route in each socket via kpfctlinput */
@@ -2401,9 +2401,9 @@ icmp6_redirect_output(struct mbuf *m0, struct rtentry *rt)
 		sin6 = (struct sockaddr_in6 *)rt->rt_gateway;
 		router_ll6 = &sin6->sin6_addr;
 		if (!IN6_IS_ADDR_LINKLOCAL(router_ll6))
-			router_ll6 = (struct in6_addr *)NULL;
+			router_ll6 = NULL;
 	} else
-		router_ll6 = (struct in6_addr *)NULL;
+		router_ll6 = NULL;
 
 	/* ip6 */
 	ip6 = mtod(m, struct ip6_hdr *);

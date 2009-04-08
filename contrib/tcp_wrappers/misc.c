@@ -36,7 +36,7 @@ FILE   *fp;
     int     got;
     char   *start = ptr;
 
-    while (fgets(ptr, len, fp)) {
+    while (len > 1 && fgets(ptr, len, fp)) {
 	got = strlen(ptr);
 	if (got >= 1 && ptr[got - 1] == '\n') {
 	    tcpd_context.line++;

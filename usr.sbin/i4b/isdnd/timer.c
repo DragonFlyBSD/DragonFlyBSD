@@ -47,9 +47,9 @@ static void recover_illegal(cfg_entry_t *cep);
 static void
 recover_illegal(cfg_entry_t *cep)
 {
-	log(LL_ERR, "recover_illegal: ERROR, entry %s attempting disconnect!", cep->name);
+	dolog(LL_ERR, "recover_illegal: ERROR, entry %s attempting disconnect!", cep->name);
 	sendm_disconnect_req(cep, (CAUSET_I4B << 8) | CAUSE_I4B_NORMAL);
-	log(LL_ERR, "recover_illegal: ERROR, entry %s - reset state/cdid!", cep->name);
+	dolog(LL_ERR, "recover_illegal: ERROR, entry %s - reset state/cdid!", cep->name);
 	cep->state = ST_IDLE;
 	cep->cdid = CDID_UNUSED;
 }
@@ -69,7 +69,7 @@ start_timer(cfg_entry_t *cep, int seconds)
 void
 stop_timer(cfg_entry_t *cep)
 {
-	cep->timerval = cep->timerremain = 0;	
+	cep->timerval = cep->timerremain = 0;
 }
 
 /*---------------------------------------------------------------------------*
@@ -81,21 +81,21 @@ hr_callgate(void)
 	static int tv_first = 1;
 	static struct timeval tv_last;
 	struct timeval tv_now;
-	
+
 	/* there must be 1 sec minimum between calls to this section */
-	
+
 	if(tv_first)
 	{
 		gettimeofday(&tv_last, NULL);
 		tv_first = 0;
 	}
-	
+
 	gettimeofday(&tv_now, NULL);
-	
+
 	if((tv_now.tv_sec - tv_last.tv_sec) < 1)
 	{
-	
-		DBGL(DL_TIME, (log(LL_DBG, "time < 1 - last %ld:%ld now %ld:%ld",
+
+		DBGL(DL_TIME, (dolog(LL_DBG, "time < 1 - last %ld:%ld now %ld:%ld",
 				tv_last.tv_sec, tv_last.tv_usec,
 				tv_now.tv_sec, tv_now.tv_usec)));
 		return(1);
@@ -104,21 +104,21 @@ hr_callgate(void)
 	{
 		if(((1000000 - tv_last.tv_usec) + tv_now.tv_usec) < 900000)
 		{
-			DBGL(DL_TIME, (log(LL_DBG, "time < 900000us - last %ld:%ld now %ld:%ld",
+			DBGL(DL_TIME, (dolog(LL_DBG, "time < 900000us - last %ld:%ld now %ld:%ld",
 					tv_last.tv_sec, tv_last.tv_usec,
 					tv_now.tv_sec, tv_now.tv_usec)));
 			return(1);
 		}
 	}
-	
-	DBGL(DL_TIME, (log(LL_DBG, "time OK! - last %ld:%ld now %ld:%ld",
+
+	DBGL(DL_TIME, (dolog(LL_DBG, "time OK! - last %ld:%ld now %ld:%ld",
 			tv_last.tv_sec, tv_last.tv_usec,
 			tv_now.tv_sec, tv_now.tv_usec)));
-	
+
 	gettimeofday(&tv_last, NULL);
-	
+
 	return(0);
-}	 
+}
 
 /*---------------------------------------------------------------------------*
  *	timeout, recovery and retry handling
@@ -129,23 +129,23 @@ handle_recovery(void)
 	cfg_entry_t *cep = NULL;
 	int i;
 	time_t now;
-	
+
 	if(hr_callgate())	/* last call to handle_recovery < 1 sec ? */
 		return;		/* yes, exit */
-	
+
 	now = time(NULL);	/* get current time */
-	
+
 	/* walk thru all entries, look for work to do */
-	
+
 	for(i=0; i < nentries; i++)
 	{
 		cep = &cfg_entry_tab[i];	/* ptr to config entry */
-	
+
 		if(cep->budget_callbackperiod && cep->budget_callbackncalls)
 		{
 			if(cep->budget_callbackperiod_time <= now)
 			{
-				DBGL(DL_BDGT, (log(LL_DBG, "%s: new cback-budget-period (%d s, %d left)",
+				DBGL(DL_BDGT, (dolog(LL_DBG, "%s: new cback-budget-period (%d s, %d left)",
 					cep->name, cep->budget_callbackperiod, cep->budget_callbackncalls_cnt)));
 				cep->budget_callbackperiod_time = now + cep->budget_callbackperiod;
 				cep->budget_callbackncalls_cnt = cep->budget_callbackncalls;
@@ -156,7 +156,7 @@ handle_recovery(void)
 		{
 			if(cep->budget_calloutperiod_time <= now)
 			{
-				DBGL(DL_BDGT, (log(LL_DBG, "%s: new cout-budget-period (%d s, %d left)",
+				DBGL(DL_BDGT, (dolog(LL_DBG, "%s: new cout-budget-period (%d s, %d left)",
 					cep->name, cep->budget_calloutperiod, cep->budget_calloutncalls_cnt)));
 				cep->budget_calloutperiod_time = now + cep->budget_calloutperiod;
 				cep->budget_calloutncalls_cnt = cep->budget_calloutncalls;
@@ -168,17 +168,17 @@ handle_recovery(void)
 			case CDID_UNUSED:		/* entry unused */
 				continue;
 				break;
-	
+
 			case CDID_RESERVED:		/* entry reserved */
 				handle_reserved(cep, now);
 				break;
-	
+
 			default:			/* entry in use */
 				handle_active(cep, now);
 				break;
 		}
 	}
-}		
+}
 
 /*---------------------------------------------------------------------------*
  *	timeout, recovery and retry handling for active entry
@@ -191,12 +191,12 @@ handle_active(cfg_entry_t *cep, time_t now)
 		case ST_ACCEPTED:
 			if(cep->timerval && (--(cep->timerremain)) <= 0)
 			{
-				DBGL(DL_RCVRY, (log(LL_DBG, "handle_active: entry %s, TIMEOUT !!!", cep->name)));
+				DBGL(DL_RCVRY, (dolog(LL_DBG, "handle_active: entry %s, TIMEOUT !!!", cep->name)));
 				cep->timerval = cep->timerremain = 0;
 				next_state(cep, EV_TIMO);
 			}
 			break;
-			
+
 		case ST_ALERT:
 			if(cep->alert_time > 0)
 			{
@@ -204,24 +204,24 @@ handle_active(cfg_entry_t *cep, time_t now)
 			}
 			else
 			{
-				log(LL_CHD, "%05d %s answering: incoming call from %s to %s",
-					cep->cdid, cep->name, 
+				dolog(LL_CHD, "%05d %s answering: incoming call from %s to %s",
+					cep->cdid, cep->name,
 					cep->real_phone_incoming,
 					cep->local_phone_incoming);
 				next_state(cep, EV_MCI);
 			}
 			break;
-				
+
 		case ST_ILL:
 			recover_illegal(cep);
 			break;
-			
+
 		default:
 			/* check hangup flag: if active, close connection */
 
 			if(cep->hangup)
 			{
-				DBGL(DL_RCVRY, (log(LL_DBG, "handle_active: entry %s, hangup request!", cep->name)));
+				DBGL(DL_RCVRY, (dolog(LL_DBG, "handle_active: entry %s, hangup request!", cep->name)));
 				cep->hangup = 0;
 				next_state(cep, EV_DRQ);
 			}
@@ -233,7 +233,7 @@ handle_active(cfg_entry_t *cep, time_t now)
 				int connecttime = (int)difftime(now, cep->connect_time);
 				if(connecttime > cep->maxconnecttime)
 				{
-					DBGL(DL_RCVRY, (log(LL_DBG, 
+					DBGL(DL_RCVRY, (dolog(LL_DBG,
 						"handle_active: entry %s, maxconnecttime %d reached!",
 						cep->name, cep->maxconnecttime)));
 					next_state(cep, EV_DRQ);
@@ -253,13 +253,13 @@ handle_active(cfg_entry_t *cep, time_t now)
 				   (connecttime % 60))
 				{
 					int newrate = get_current_rate(cep, 0);
-	
+
 					if(newrate != cep->unitlength)
 					{
-						DBGL(DL_MSG, (log(LL_DBG, "handle_active: rates unit length updated %d -> %d", cep->unitlength, newrate)));
-			
+						DBGL(DL_MSG, (dolog(LL_DBG, "handle_active: rates unit length updated %d -> %d", cep->unitlength, newrate)));
+
 						cep->unitlength = newrate;
-	
+
 						unitlen_chkupd(cep);
 					}
 				}
@@ -275,25 +275,25 @@ static void
 handle_reserved(cfg_entry_t *cep, time_t now)
 {
 	time_t waittime;
-	
+
 	switch(cep->state)
-	{	
+	{
 		case ST_DIALRTMRCHD:	/* wait for dial retry time reached */
-	
+
 			if(cep->dialrandincr)
 				waittime = cep->randomtime;
 			else
                 		waittime = cep->recoverytime;
-	
-	                		
+
+
 			if(now > (cep->last_dial_time + waittime))
 			{
-				DBGL(DL_RCVRY, (log(LL_DBG, "handle_reserved: entry %s, dial retry request!", cep->name)));
+				DBGL(DL_RCVRY, (dolog(LL_DBG, "handle_reserved: entry %s, dial retry request!", cep->name)));
 				cep->state = ST_DIALRETRY;
-	
+
 				if((cep->cdid = get_cdid()) == 0)
 				{
-					log(LL_ERR, "handle_reserved: dialretry get_cdid() returned 0!");
+					dolog(LL_ERR, "handle_reserved: dialretry get_cdid() returned 0!");
 					cep->state = ST_IDLE;
 					cep->cdid = CDID_UNUSED;
 					return;
@@ -305,25 +305,25 @@ handle_reserved(cfg_entry_t *cep, time_t now)
 				}
 				else
 				{
-					log(LL_ERR, "handle_reserved: dialretry setup_dialout returned ERROR!");
+					dolog(LL_ERR, "handle_reserved: dialretry setup_dialout returned ERROR!");
 					cep->state = ST_IDLE;
 					cep->cdid = CDID_UNUSED;
 					return;
-				}					
+				}
 			}
 			break;
-			
-		
+
+
 		case ST_ACB_WAITDIAL: 	/* active callback wait for time between disconnect and dial */
-	
+
 			if(now > (cep->last_release_time + cep->callbackwait))
 			{
-				DBGL(DL_RCVRY, (log(LL_DBG, "handle_reserved: entry %s, callback dial!", cep->name)));
+				DBGL(DL_RCVRY, (dolog(LL_DBG, "handle_reserved: entry %s, callback dial!", cep->name)));
 				cep->state = ST_ACB_DIAL;
-	
+
 				if((cep->cdid = get_cdid()) == 0)
 				{
-					log(LL_ERR, "handle_reserved: callback get_cdid() returned 0!");
+					dolog(LL_ERR, "handle_reserved: callback get_cdid() returned 0!");
 					cep->state = ST_IDLE;
 					cep->cdid = CDID_UNUSED;
 					return;
@@ -337,29 +337,29 @@ handle_reserved(cfg_entry_t *cep, time_t now)
 				}
 				else
 				{
-					log(LL_ERR, "handle_reserved: callback setup_dialout returned ERROR!");
+					dolog(LL_ERR, "handle_reserved: callback setup_dialout returned ERROR!");
 					cep->state = ST_IDLE;
 					cep->cdid = CDID_UNUSED;
 					return;
-				}					
+				}
 			}
 			break;
-	
+
 		case ST_ACB_DIALFAIL:	/* callback to remote failed */
-	
+
 			if(cep->dialrandincr)
 				waittime = cep->randomtime + cep->recoverytime;
 			else
                 		waittime = cep->recoverytime;
-	
+
 			if(now > (cep->last_release_time + waittime))
 			{
-				DBGL(DL_RCVRY, (log(LL_DBG, "handle_reserved: entry %s, callback dial retry request!", cep->name)));
+				DBGL(DL_RCVRY, (dolog(LL_DBG, "handle_reserved: entry %s, callback dial retry request!", cep->name)));
 				cep->state = ST_ACB_DIAL;
-	
+
 				if((cep->cdid = get_cdid()) == 0)
 				{
-					log(LL_ERR, "handle_reserved: callback dialretry get_cdid() returned 0!");
+					dolog(LL_ERR, "handle_reserved: callback dialretry get_cdid() returned 0!");
 					cep->state = ST_IDLE;
 					cep->cdid = CDID_UNUSED;
 					return;
@@ -371,31 +371,31 @@ handle_reserved(cfg_entry_t *cep, time_t now)
 				}
 				else
 				{
-					log(LL_ERR, "handle_reserved: callback dialretry setup_dialout returned ERROR!");
+					dolog(LL_ERR, "handle_reserved: callback dialretry setup_dialout returned ERROR!");
 					cep->state = ST_IDLE;
 					cep->cdid = CDID_UNUSED;
 					return;
-				}					
+				}
 			}
 			break;
-	
+
 		case ST_PCB_WAITCALL:	/* wait for remote calling back */
 
 			if(now > (cep->last_release_time + cep->calledbackwait))
 			{
 				cep->dial_count++;
-	
+
 				if(cep->dial_count < cep->dialretries)
 				{
 					/* inside normal retry cycle */
-	
-					DBGL(DL_RCVRY, (log(LL_DBG, "handle_reserved: entry %s, retry calledback dial #%d!",
+
+					DBGL(DL_RCVRY, (dolog(LL_DBG, "handle_reserved: entry %s, retry calledback dial #%d!",
 						cep->name, cep->dial_count)));
 					cep->state = ST_PCB_DIAL;
-	
+
 					if((cep->cdid = get_cdid()) == 0)
 					{
-						log(LL_ERR, "handle_reserved: calledback get_cdid() returned 0!");
+						dolog(LL_ERR, "handle_reserved: calledback get_cdid() returned 0!");
 						cep->state = ST_IDLE;
 						cep->cdid = CDID_UNUSED;
 						return;
@@ -408,17 +408,17 @@ handle_reserved(cfg_entry_t *cep, time_t now)
 					}
 					else
 					{
-						log(LL_ERR, "handle_reserved: calledback setup_dialout returned ERROR!");
+						dolog(LL_ERR, "handle_reserved: calledback setup_dialout returned ERROR!");
 						cep->state = ST_IDLE;
 						cep->cdid = CDID_UNUSED;
 						return;
-					}					
+					}
 				}
 				else
 				{
 					/* retries exhausted */
-	
-					DBGL(DL_RCVRY, (log(LL_DBG, "handle_reserved: calledback dial retries exhausted")));
+
+					DBGL(DL_RCVRY, (dolog(LL_DBG, "handle_reserved: calledback dial retries exhausted")));
 					dialresponse(cep, DSTAT_TFAIL);
 					cep->cdid = CDID_UNUSED;
 					cep->dial_count = 0;
@@ -426,20 +426,20 @@ handle_reserved(cfg_entry_t *cep, time_t now)
 				}
 			}
 			break;
-			
+
 		case ST_DOWN:	/* interface was taken down */
 
 			if(now > (cep->went_down_time + cep->downtime))
 			{
-				DBGL(DL_RCVRY, (log(LL_DBG, "handle_reserved: taking %s%d up", bdrivername(cep->usrdevicename), cep->usrdeviceunit)));
+				DBGL(DL_RCVRY, (dolog(LL_DBG, "handle_reserved: taking %s%d up", bdrivername(cep->usrdevicename), cep->usrdeviceunit)));
 				if_up(cep);
 				cep->state = ST_IDLE;
 				cep->cdid = CDID_UNUSED;
 			}
 			break;
-			
+
 		case ST_ILL:	/* illegal state reached, recover ! */
-		
+
 			recover_illegal(cep);
 			break;
 	}

@@ -1,15 +1,22 @@
 #	@(#)Makefile	5.11 (Berkeley) 9/6/90
-# $FreeBSD: src/lib/libc/xdr/Makefile.inc,v 1.10.2.1 2001/04/25 10:04:19 ru Exp $
+# $FreeBSD: src/lib/libc/xdr/Makefile.inc,v 1.15 2006/03/13 01:15:01 deischen Exp $
 # $DragonFly: src/lib/libc/xdr/Makefile.inc,v 1.2 2003/06/17 04:26:47 dillon Exp $
 
 .PATH: ${.CURDIR}/../libc/xdr ${.CURDIR}/.
 SRCS+=	xdr.c xdr_array.c xdr_float.c xdr_mem.c \
-	xdr_rec.c xdr_reference.c xdr_stdio.c xdr_sizeof.c
+	xdr_rec.c xdr_reference.c xdr_stdio.c
 
 .if ${LIB} == "c"
 MAN+=	xdr.3
 
-MLINKS+=	xdr.3 xdr_array.3 \
+MLINKS+=	rpc_xdr.3 xdr_accepted_reply.3 \
+		rpc_xdr.3 xdr_authsys_parms.3 \
+		rpc_xdr.3 xdr_callhdr.3 \
+		rpc_xdr.3 xdr_callmsg.3 \
+		rpc_xdr.3 xdr_opaque_auth.3 \
+		rpc_xdr.3 xdr_rejected_reply.3 \
+		rpc_xdr.3 xdr_replymsg.3 \
+		xdr.3 xdr_array.3 \
 		xdr.3 xdr_bool.3 \
 		xdr.3 xdr_bytes.3 \
 		xdr.3 xdr_char.3 \

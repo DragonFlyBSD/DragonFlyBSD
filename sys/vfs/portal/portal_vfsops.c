@@ -184,7 +184,7 @@ portal_unmount(struct mount *mp, int mntflags)
 	 * Discard reference to underlying file.  Must call closef because
 	 * this may be the last reference.
 	 */
-	closef(VFSTOPORTAL(mp)->pm_server, (struct thread *) 0);
+	closef(VFSTOPORTAL(mp)->pm_server, NULL);
 	/*
 	 * Finally, throw away the portalmount structure
 	 */

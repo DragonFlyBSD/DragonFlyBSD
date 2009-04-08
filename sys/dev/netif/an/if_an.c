@@ -94,6 +94,7 @@
 #include <sys/mbuf.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/ucred.h>
 #include <sys/socket.h>
 #ifdef ANCACHE
@@ -1843,7 +1844,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 			break;
 #ifdef ANCACHE
 		if (sc->areq.an_type == AN_RID_ZERO_CACHE) {
-			error = suser_cred(cr, NULL_CRED_OKAY);
+			error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
 			if (error)
 				break;
 			sc->an_sigitems = sc->an_nextitem = 0;
@@ -1867,7 +1868,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		error = copyout(&sc->areq, ifr->ifr_data, sizeof(sc->areq));
 		break;
 	case SIOCSAIRONET:
-		if ((error = suser_cred(cr, NULL_CRED_OKAY)))
+		if ((error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY)))
 			break;
 		error = copyin(ifr->ifr_data, &sc->areq, sizeof(sc->areq));
 		if (error != 0)
@@ -1875,7 +1876,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		an_setdef(sc, &sc->areq);
 		break;
 	case SIOCGPRIVATE_0:              /* used by Cisco client utility */
-		if ((error = suser_cred(cr, NULL_CRED_OKAY)))
+		if ((error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY)))
 			break;
 		copyin(ifr->ifr_data, &l_ioctl, sizeof(l_ioctl));
 		mode = l_ioctl.command;
@@ -1895,7 +1896,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 
 		break;
 	case SIOCGPRIVATE_1:              /* used by Cisco client utility */
-		if ((error = suser_cred(cr, NULL_CRED_OKAY)))
+		if ((error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY)))
 			break;
 		copyin(ifr->ifr_data, &l_ioctl, sizeof(l_ioctl));
 		l_ioctl.command = 0;
@@ -2145,7 +2146,7 @@ an_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		}
 		break;
 	case SIOCS80211:
-		if ((error = suser_cred(cr, NULL_CRED_OKAY)))
+		if ((error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY)))
 			break;
 		sc->areq.an_len = sizeof(sc->areq);
 		/*

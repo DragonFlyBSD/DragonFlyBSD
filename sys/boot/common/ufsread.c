@@ -25,9 +25,19 @@
  * $DragonFly: src/sys/boot/common/ufsread.c,v 1.5 2008/09/13 11:46:28 corecode Exp $
  */
 
+#ifdef BOOT2
+#include "boot2.h"
+#else
+#include <sys/param.h>
+#endif
+#include <sys/dtype.h>
+#include <sys/dirent.h>
+#include <machine/bootinfo.h>
+#include <machine/elf.h>
 #include <vfs/ufs/dir.h>
 #include "dinode.h"
 #include "fs.h"
+
 #ifdef __i386__
 /* XXX: Revert to old (broken for over 1.5Tb filesystems) version of cgbase
    (see sys/ufs/ffs/fs.h rev 1.39) so that i386 boot loader (boot2) can
@@ -55,19 +65,27 @@
 #define FS_TO_VBO(fs, fsb, off) ((off) & VBLKMASK)
 
 /* Buffers that must not span a 64k boundary. */
-struct dmadat {
+struct ufs_dmadat {
+	struct boot2_dmadat boot2;
 	char blkbuf[VBLKSIZE];	/* filesystem blocks */
 	char indbuf[VBLKSIZE];	/* indir blocks */
 	char sbbuf[SBLOCKSIZE];	/* superblock */
-	char secbuf[DEV_BSIZE];	/* for MBR/disklabel */
 };
-static struct dmadat *dmadat;
 
-static ino_t lookup(const char *);
-static ssize_t fsread(ino_t, void *, size_t);
+#define fsdmadat	((struct ufs_dmadat *)boot2_dmadat)
+
+static boot2_ino_t boot2_ufs_lookup(const char *);
+static ssize_t boot2_ufs_read(boot2_ino_t, void *, size_t);
+static int boot2_ufs_init(void);
+
+const struct boot2_fsapi boot2_ufs_api = {
+	.fsinit = boot2_ufs_init,
+	.fslookup = boot2_ufs_lookup,
+	.fsread = boot2_ufs_read
+};
 
 static __inline__ int
-fsfind(const char *name, ino_t * ino)
+fsfind(const char *name, ufs_ino_t *ino)
 {
 	char buf[DEV_BSIZE];
 	struct direct *d;
@@ -75,7 +93,7 @@ fsfind(const char *name, ino_t * ino)
 	ssize_t n;
 
 	fs_off = 0;
-	while ((n = fsread(*ino, buf, DEV_BSIZE)) > 0)
+	while ((n = boot2_ufs_read(*ino, buf, DEV_BSIZE)) > 0)
 		for (s = buf; s < buf + DEV_BSIZE;) {
 			d = (void *)s;
 			if (ls)
@@ -91,12 +109,12 @@ fsfind(const char *name, ino_t * ino)
 	return 0;
 }
 
-static ino_t
-lookup(const char *path)
+static boot2_ino_t
+boot2_ufs_lookup(const char *path)
 {
 	char name[MAXNAMLEN + 1];
 	const char *s;
-	ino_t ino;
+	ufs_ino_t ino;
 	ssize_t n;
 	int dt;
 
@@ -139,8 +157,45 @@ static int sblock_try[] = SBLOCKSEARCH;
 #define DIP(field) fs->fs_magic == FS_UFS1_MAGIC ? dp1.field : dp2.field
 #endif
 
+static ufs_ino_t inomap;
+static ufs2_daddr_t blkmap, indmap;
+
+static int
+boot2_ufs_init(void)
+{
+	struct fs *fs;
+	size_t n;
+
+	fs = (struct fs *)fsdmadat->sbbuf;
+
+	for (n = 0; sblock_try[n] != -1; n++) {
+		if (dskread(fs, sblock_try[n] / DEV_BSIZE,
+			    SBLOCKSIZE / DEV_BSIZE)) {
+			return -1;
+		}
+		if ((
+#if defined(UFS1_ONLY)
+		     fs->fs_magic == FS_UFS1_MAGIC
+#elif defined(UFS2_ONLY)
+		    (fs->fs_magic == FS_UFS2_MAGIC &&
+		    fs->fs_sblockloc == sblock_try[n])
+#else
+		     fs->fs_magic == FS_UFS1_MAGIC ||
+		    (fs->fs_magic == FS_UFS2_MAGIC &&
+		    fs->fs_sblockloc == sblock_try[n])
+#endif
+		    ) &&
+		    fs->fs_bsize <= MAXBSIZE &&
+		    fs->fs_bsize >= sizeof(struct fs))
+			break;
+	}
+	if (sblock_try[n] == -1)
+		return -1;
+	return 0;
+}
+
 static ssize_t
-fsread(ino_t inode, void *buf, size_t nbyte)
+boot2_ufs_read(boot2_ino_t boot2_inode, void *buf, size_t nbyte)
 {
 #ifndef UFS2_ONLY
 	static struct ufs1_dinode dp1;
@@ -148,7 +203,7 @@ fsread(ino_t inode, void *buf, size_t nbyte)
 #ifndef UFS1_ONLY
 	static struct ufs2_dinode dp2;
 #endif
-	static ino_t inomap;
+	ufs_ino_t ufs_inode = (ufs_ino_t)boot2_inode;
 	char *blkbuf;
 	void *indbuf;
 	struct fs *fs;
@@ -156,48 +211,19 @@ fsread(ino_t inode, void *buf, size_t nbyte)
 	size_t n, nb, size, off, vboff;
 	ufs_lbn_t lbn;
 	ufs2_daddr_t addr, vbaddr;
-	static ufs2_daddr_t blkmap, indmap;
 	u_int u;
 
+	blkbuf = fsdmadat->blkbuf;
+	indbuf = fsdmadat->indbuf;
+	fs = (struct fs *)fsdmadat->sbbuf;
 
-	blkbuf = dmadat->blkbuf;
-	indbuf = dmadat->indbuf;
-	fs = (struct fs *)dmadat->sbbuf;
-	if (!dsk_meta) {
-		inomap = 0;
-		for (n = 0; sblock_try[n] != -1; n++) {
-			if (dskread(fs, sblock_try[n] / DEV_BSIZE,
-			    SBLOCKSIZE / DEV_BSIZE))
-				return -1;
-			if ((
-#if defined(UFS1_ONLY)
-			     fs->fs_magic == FS_UFS1_MAGIC
-#elif defined(UFS2_ONLY)
-			    (fs->fs_magic == FS_UFS2_MAGIC &&
-			    fs->fs_sblockloc == sblock_try[n])
-#else
-			     fs->fs_magic == FS_UFS1_MAGIC ||
-			    (fs->fs_magic == FS_UFS2_MAGIC &&
-			    fs->fs_sblockloc == sblock_try[n])
-#endif
-			    ) &&
-			    fs->fs_bsize <= MAXBSIZE &&
-			    fs->fs_bsize >= sizeof(struct fs))
-				break;
-		}
-		if (sblock_try[n] == -1) {
-			printf("Not ufs\n");
-			return -1;
-		}
-		dsk_meta++;
-	}
-	if (!inode)
+	if (!ufs_inode)
 		return 0;
-	if (inomap != inode) {
+	if (inomap != ufs_inode) {
 		n = IPERVBLK(fs);
-		if (dskread(blkbuf, INO_TO_VBA(fs, n, inode), DBPERVBLK))
+		if (dskread(blkbuf, INO_TO_VBA(fs, n, ufs_inode), DBPERVBLK))
 			return -1;
-		n = INO_TO_VBO(n, inode);
+		n = INO_TO_VBO(n, ufs_inode);
 #if defined(UFS1_ONLY)
 		dp1 = ((struct ufs1_dinode *)blkbuf)[n];
 #elif defined(UFS2_ONLY)
@@ -208,7 +234,7 @@ fsread(ino_t inode, void *buf, size_t nbyte)
 		else
 			dp2 = ((struct ufs2_dinode *)blkbuf)[n];
 #endif
-		inomap = inode;
+		inomap = ufs_inode;
 		fs_off = 0;
 		blkmap = indmap = 0;
 	}

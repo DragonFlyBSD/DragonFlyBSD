@@ -53,28 +53,28 @@ file
 The available ioctl's are:
 .Pp
 .Bl -tag -width Ds -compact -offset indent
-.It Ar I4B_CDID_REQ
+.It Dv I4B_CDID_REQ
 Request a unique Call Description IDentifier (cdid) which identifies
 uniquely a single interaction of the local D channel with the exchange.
-.It Ar I4B_CONNECT_REQ
+.It Dv I4B_CONNECT_REQ
 Actively request a call setup to a remote ISDN subscriber.
-.It Ar I4B_CONNECT_RESP
+.It Dv I4B_CONNECT_RESP
 Respond to an incoming call, either accept, reject or ignore it.
-.It Ar I4B_DISCONNECT_REQ
+.It Dv I4B_DISCONNECT_REQ
 Actively terminate a connection.
-.It Ar I4B_CTRL_INFO_REQ
+.It Dv I4B_CTRL_INFO_REQ
 Request information about an installed ISDN controller card.
-.It Ar I4B_DIALOUT_RESP
+.It Dv I4B_DIALOUT_RESP
 Give information about call setup to driver who requested dialing out.
-.It Ar I4B_TIMEOUT_UPD
+.It Dv I4B_TIMEOUT_UPD
 Update the kernels timeout value(s) in case of dynamically calculated
 shorthold mode timing changes.
-.It Ar I4B_UPDOWN_IND
+.It Dv I4B_UPDOWN_IND
 Inform the kernel userland drivers about interface soft up/down status
 changes.
-.It Ar I4B_CTRL_DOWNLOAD
+.It Dv I4B_CTRL_DOWNLOAD
 Download firmware to active card(s).
-.It Ar I4B_ACTIVE_DIAGNOSTIC
+.It Dv I4B_ACTIVE_DIAGNOSTIC
 Return diagnostic information from active cards.
 .El
 .Pp

@@ -343,14 +343,14 @@ db_check_interrupt(void)
 		return;
 
 	    case CTRL('c'):
-		db_error((char *)0);
+		db_error(NULL);
 		/*NOTREACHED*/
 
 	    case CTRL('s'):
 		do {
 		    c = cnmaygetc();
 		    if (c == CTRL('c'))
-			db_error((char *)0);
+			db_error(NULL);
 		} while (c != CTRL('q'));
 		break;
 

@@ -803,13 +803,15 @@ naccess_va(struct vattr *va, int vmode, struct ucred *cred)
     /*
      * Check owner perms, group perms, and world perms
      */
-    vmode &= S_IRWXU;
     if (cred->cr_uid == va->va_uid) {
-	if ((vmode & va->va_mode) != vmode)
-	    return(EACCES);
+	if ((vmode & VOWN) == 0) {
+	    vmode &= S_IRWXU;
+	    if ((vmode & va->va_mode) != vmode)
+		return(EACCES);
+	}
 	return(0);
     }
-
+    vmode &= S_IRWXU;
     vmode >>= 3;
     for (i = 0; i < cred->cr_ngroups; ++i) {
 	if (va->va_gid == cred->cr_groups[i]) {

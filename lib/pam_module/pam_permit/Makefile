@@ -2,7 +2,6 @@
 
 LIB=	pam_permit
 SRCS=	pam_permit.c
-WARNS?=	6
 MAN=	pam_permit.8
 
 .include <bsd.lib.mk>

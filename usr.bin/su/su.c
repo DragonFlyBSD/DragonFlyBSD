@@ -1,4 +1,34 @@
 /*
+ * Copyright (c) 2002, 2005 Networks Associates Technologies, Inc.
+ * All rights reserved.
+ *
+ * Portions of this software were developed for the FreeBSD Project by
+ * ThinkSec AS and NAI Labs, the Security Research Division of Network
+ * Associates, Inc.  under DARPA/SPAWAR contract N66001-01-C-8035
+ * ("CBOSS"), as part of the DARPA CHATS research program.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+/*-
  * Copyright (c) 1988, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -30,112 +60,118 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)su.c	8.3 (Berkeley) 4/2/94
- * $FreeBSD: src/usr.bin/su/su.c,v 1.34.2.4 2002/06/16 21:04:15 nectar Exp $
+ * $FreeBSD: src/usr.bin/su/su.c,v 1.88 2008/06/04 19:16:54 dwmalone Exp $
  * $DragonFly: src/usr.bin/su/su.c,v 1.9 2006/01/12 13:43:11 corecode Exp $
  */
 
-#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <sys/wait.h>
+
+#ifdef USE_BSM_AUDIT
+#include <bsm/libbsm.h>
+#include <bsm/audit_uevents.h>
+#endif
 
 #include <err.h>
 #include <errno.h>
 #include <grp.h>
+#include <login_cap.h>
 #include <paths.h>
 #include <pwd.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
-#include <libutil.h>
+#include <stdarg.h>
 
-#ifdef LOGIN_CAP
-#include <login_cap.h>
-#endif
+#include <security/pam_appl.h>
+#include <security/openpam.h>
 
-#ifdef	SKEY
-#include <skey.h>
-#endif
+#define PAM_END() do {							\
+	int local_ret;							\
+	if (pamh != NULL) {						\
+		local_ret = pam_setcred(pamh, PAM_DELETE_CRED);		\
+		if (local_ret != PAM_SUCCESS)				\
+			syslog(LOG_ERR, "pam_setcred: %s",		\
+				pam_strerror(pamh, local_ret));		\
+		if (asthem) {						\
+			local_ret = pam_close_session(pamh, 0);		\
+			if (local_ret != PAM_SUCCESS)			\
+				syslog(LOG_ERR, "pam_close_session: %s",\
+					pam_strerror(pamh, local_ret));	\
+		}							\
+		local_ret = pam_end(pamh, local_ret);			\
+		if (local_ret != PAM_SUCCESS)				\
+			syslog(LOG_ERR, "pam_end: %s",			\
+				pam_strerror(pamh, local_ret));		\
+	}								\
+} while (0)
 
-#ifdef KERBEROS5
-#include <krb5.h>
 
-static long get_su_principal(krb5_context context, const char *target_user,
-    const char *current_user, char **su_principal_name,
-    krb5_principal *su_principal);
-static long kerberos5(krb5_context context, const char *current_user,
-    const char *target_user, krb5_principal su_principal,
-    const char *pass);
+#define PAM_SET_ITEM(what, item) do {					\
+	int local_ret;							\
+	local_ret = pam_set_item(pamh, what, item);			\
+	if (local_ret != PAM_SUCCESS) {					\
+		syslog(LOG_ERR, "pam_set_item(" #what "): %s",		\
+			pam_strerror(pamh, local_ret));			\
+		errx(1, "pam_set_item(" #what "): %s",			\
+			pam_strerror(pamh, local_ret));			\
+		/* NOTREACHED */					\
+	}								\
+} while (0)
 
-int use_kerberos5 = 1;
-#endif
+enum tristate { UNSET, YES, NO };
 
-#ifdef LOGIN_CAP
-#define LOGIN_CAP_ARG(x) x
-#else
-#define LOGIN_CAP_ARG(x)
-#endif
-#if defined(KERBEROS5)
-#define KERBEROS_ARG(x) x
-#else
-#define KERBEROS_ARG(x)
-#endif
-#define COMMON_ARG(x) x
-#define ARGSTR	"-" COMMON_ARG("flm") LOGIN_CAP_ARG("c:") KERBEROS_ARG("K")
+static pam_handle_t *pamh = NULL;
+static char	**environ_pam;
 
-char   *ontty(void);
-int	chshell(char *);
-static void usage(void);
+static char	*ontty(void);
+static int	chshell(const char *);
+static void	usage(void) __dead2;
+static void	export_pam_environment(void);
+static int	ok_to_export(const char *);
 
-extern char **environ;
+extern char	**environ;
 
 int
 main(int argc, char **argv)
 {
-	struct passwd *pwd;
-#ifdef WHEELSU
-	char *targetpass;
-	int iswheelsu;
-#endif /* WHEELSU */
-	const char *p, *user, *shell = NULL;
-	const char **nargv, **np;
-	char **g, **cleanenv, *username, *entered_pass;
-	struct group *gr;
-	uid_t ruid;
-	gid_t gid;
-	int asme, ch, asthem, fastlogin, prio, i;
-	enum { UNSET, YES, NO } iscsh = UNSET;
-#ifdef LOGIN_CAP
-	login_cap_t *lc;
-	char *class=NULL;
-	int setwhat;
+	static char	*cleanenv;
+	struct passwd	*pwd;
+	struct pam_conv	conv = { openpam_ttyconv, NULL };
+	enum tristate	iscsh;
+	login_cap_t	*lc;
+	union {
+		const char	**a;
+		char		* const *b;
+	}		np;
+	uid_t		ruid;
+	pid_t		child_pid, child_pgrp, pid;
+	int		asme, ch, asthem, fastlogin, prio, i, retcode,
+			statusp;
+	u_int		setwhat;
+	char		*username, *class, shellbuf[MAXPATHLEN];
+	const char	*p = p, *user, *shell, *mytty, **nargv;
+	const void	*v;
+	struct sigaction sa, sa_int, sa_quit, sa_pipe;
+	int temp, fds[2];
+#ifdef USE_BSM_AUDIT
+	const char	*aerr;
+	au_id_t		 auid;
 #endif
-#if defined(KERBEROS5)
-	char *k;
-#endif
-#ifdef KERBEROS5
-	char *su_principal_name, *ccname;
-	krb5_context context;
-	krb5_principal su_principal;
-#endif
-	char shellbuf[MAXPATHLEN];
 
-#ifdef WHEELSU
-	iswheelsu =
-#endif /* WHEELSU */
-	asme = asthem = fastlogin = 0;
+	shell = class = cleanenv = NULL;
+	asme = asthem = fastlogin = statusp = 0;
 	user = "root";
-	while((ch = getopt(argc, argv, ARGSTR)) != -1) 
-		switch((char)ch) {
-#if defined(KERBEROS5)
-		case 'K':
-			use_kerberos5 = 0;
-			break;
-#endif
+	iscsh = UNSET;
+
+	while ((ch = getopt(argc, argv, "-flmc:")) != -1)
+		switch ((char)ch) {
 		case 'f':
 			fastlogin = 1;
 			break;
@@ -148,14 +184,13 @@ main(int argc, char **argv)
 			asme = 1;
 			asthem = 0;
 			break;
-#ifdef LOGIN_CAP
 		case 'c':
 			class = optarg;
 			break;
-#endif
 		case '?':
 		default:
 			usage();
+		/* NOTREACHED */
 		}
 
 	if (optind < argc && strcmp(argv[optind], "-") == 0) {
@@ -167,183 +202,184 @@ main(int argc, char **argv)
 	if (optind < argc)
 		user = argv[optind++];
 
-	if (strlen(user) > MAXLOGNAME - 1) {
-		fprintf(stderr, "su: username too long.\n");
-		exit(1);
-	}
-		
 	if (user == NULL)
 		usage();
+	/* NOTREACHED */
 
-	if ((nargv = malloc (sizeof (char *) * (argc + 4))) == NULL) {
-	    errx(1, "malloc failure");
+	/*
+	 * Try to provide more helpful debugging output if su(1) is running
+	 * non-setuid, or was run from a file system not mounted setuid.
+	 */
+	if (geteuid() != 0)
+		errx(1, "not running setuid");
+
+#ifdef USE_BSM_AUDIT
+	if (getauid(&auid) < 0 && errno != ENOSYS) {
+		syslog(LOG_AUTH | LOG_ERR, "getauid: %s", strerror(errno));
+		errx(1, "Permission denied");
 	}
+#endif
+	if (strlen(user) > MAXLOGNAME - 1) {
+#ifdef USE_BSM_AUDIT
+		if (audit_submit(AUE_su, auid,
+		    1, EPERM, "username too long: '%s'", user))
+			errx(1, "Permission denied");
+#endif
+		errx(1, "username too long");
+	}
+
+	nargv = malloc(sizeof(char *) * (size_t)(argc + 4));
+	if (nargv == NULL)
+		errx(1, "malloc failure");
 
 	nargv[argc + 3] = NULL;
 	for (i = argc; i >= optind; i--)
-	    nargv[i + 3] = argv[i];
-	np = &nargv[i + 3];
+		nargv[i + 3] = argv[i];
+	np.a = &nargv[i + 3];
 
 	argv += optind;
 
-#if defined(KERBEROS5)
-	k = auth_getval("auth_list");
-	if (k && !strstr(k, "kerberos")) {
-	    use_kerberos5 = 0;
-	}
-	su_principal_name = NULL;
-	su_principal = NULL;
-	if (krb5_init_context(&context) != 0)
-		use_kerberos5 = 0;
-#endif
 	errno = 0;
 	prio = getpriority(PRIO_PROCESS, 0);
 	if (errno)
 		prio = 0;
-	setpriority(PRIO_PROCESS, 0, -2);
-	openlog("su", LOG_CONS, 0);
 
-	/* get current login name and shell */
+	setpriority(PRIO_PROCESS, 0, -2);
+	openlog("su", LOG_CONS, LOG_AUTH);
+
+	/* get current login name, real uid and shell */
 	ruid = getuid();
 	username = getlogin();
-	if (username == NULL || (pwd = getpwnam(username)) == NULL ||
-	    pwd->pw_uid != ruid)
+	pwd = getpwnam(username);
+	if (username == NULL || pwd == NULL || pwd->pw_uid != ruid)
 		pwd = getpwuid(ruid);
-	if (pwd == NULL)
+	if (pwd == NULL) {
+#ifdef USE_BSM_AUDIT
+		if (audit_submit(AUE_su, auid, 1, EPERM,
+		    "unable to determine invoking subject: '%s'", username))
+			errx(1, "Permission denied");
+#endif
 		errx(1, "who are you?");
+	}
+
 	username = strdup(pwd->pw_name);
-	gid = pwd->pw_gid;
 	if (username == NULL)
-		err(1, NULL);
+		err(1, "strdup failure");
+
 	if (asme) {
 		if (pwd->pw_shell != NULL && *pwd->pw_shell != '\0') {
-			/* copy: pwd memory is recycled */
-			shell = strncpy(shellbuf,  pwd->pw_shell, sizeof shellbuf);
-			shellbuf[sizeof shellbuf - 1] = '\0';
-		} else {
+			/* must copy - pwd memory is recycled */
+			shell = strncpy(shellbuf, pwd->pw_shell,
+			    sizeof(shellbuf));
+			shellbuf[sizeof(shellbuf) - 1] = '\0';
+		}
+		else {
 			shell = _PATH_BSHELL;
 			iscsh = NO;
 		}
 	}
 
-	/* get target login information, default to root */
-	if ((pwd = getpwnam(user)) == NULL) {
+	/* Do the whole PAM startup thing */
+	retcode = pam_start("su", user, &conv, &pamh);
+	if (retcode != PAM_SUCCESS) {
+		syslog(LOG_ERR, "pam_start: %s", pam_strerror(pamh, retcode));
+		errx(1, "pam_start: %s", pam_strerror(pamh, retcode));
+	}
+
+	PAM_SET_ITEM(PAM_RUSER, username);
+
+	mytty = ttyname(STDERR_FILENO);
+	if (!mytty)
+		mytty = "tty";
+	PAM_SET_ITEM(PAM_TTY, mytty);
+
+	retcode = pam_authenticate(pamh, 0);
+	if (retcode != PAM_SUCCESS) {
+#ifdef USE_BSM_AUDIT
+		if (audit_submit(AUE_su, auid, 1, EPERM, "bad su %s to %s on %s",
+		    username, user, mytty))
+			errx(1, "Permission denied");
+#endif
+		syslog(LOG_AUTH|LOG_WARNING, "BAD SU %s to %s on %s",
+		    username, user, mytty);
+		errx(1, "Sorry");
+	}
+#ifdef USE_BSM_AUDIT
+	if (audit_submit(AUE_su, auid, 0, 0, "successful authentication"))
+		errx(1, "Permission denied");
+#endif
+	retcode = pam_get_item(pamh, PAM_USER, &v);
+	if (retcode == PAM_SUCCESS)
+		user = v;
+	else
+		syslog(LOG_ERR, "pam_get_item(PAM_USER): %s",
+		    pam_strerror(pamh, retcode));
+	pwd = getpwnam(user);
+	if (pwd == NULL) {
+#ifdef USE_BSM_AUDIT
+		if (audit_submit(AUE_su, auid, 1, EPERM,
+		    "unknown subject: %s", user))
+			errx(1, "Permission denied");
+#endif
 		errx(1, "unknown login: %s", user);
 	}
-#ifdef LOGIN_CAP
-	if (class==NULL) {
+
+	retcode = pam_acct_mgmt(pamh, 0);
+	if (retcode == PAM_NEW_AUTHTOK_REQD) {
+		retcode = pam_chauthtok(pamh,
+			PAM_CHANGE_EXPIRED_AUTHTOK);
+		if (retcode != PAM_SUCCESS) {
+#ifdef USE_BSM_AUDIT
+			aerr = pam_strerror(pamh, retcode);
+			if (aerr == NULL)
+				aerr = "Unknown PAM error";
+			if (audit_submit(AUE_su, auid, 1, EPERM,
+			    "pam_chauthtok: %s", aerr))
+				errx(1, "Permission denied");
+#endif
+			syslog(LOG_ERR, "pam_chauthtok: %s",
+			    pam_strerror(pamh, retcode));
+			errx(1, "Sorry");
+		}
+	}
+	if (retcode != PAM_SUCCESS) {
+#ifdef USE_BSM_AUDIT
+		if (audit_submit(AUE_su, auid, 1, EPERM, "pam_acct_mgmt: %s",
+		    pam_strerror(pamh, retcode)))
+			errx(1, "Permission denied");
+#endif
+		syslog(LOG_ERR, "pam_acct_mgmt: %s",
+			pam_strerror(pamh, retcode));
+		errx(1, "Sorry");
+	}
+
+	/* get target login information */
+	if (class == NULL)
 		lc = login_getpwclass(pwd);
-	} else {
-		if (ruid)
+	else {
+		if (ruid != 0) {
+#ifdef USE_BSM_AUDIT
+			if (audit_submit(AUE_su, auid, 1, EPERM,
+			    "only root may use -c"))
+				errx(1, "Permission denied");
+#endif
 			errx(1, "only root may use -c");
+		}
 		lc = login_getclass(class);
 		if (lc == NULL)
 			errx(1, "unknown class: %s", class);
 	}
-#endif
 
-#ifdef WHEELSU
-	targetpass = strdup(pwd->pw_passwd);
-#endif /* WHEELSU */
-
-	if (ruid) {
-#ifdef KERBEROS5
-		if (use_kerberos5) {
-			if (get_su_principal(context, user, username,
-			    &su_principal_name, &su_principal) != 0 ||
-			    !krb5_kuserok(context, su_principal, user)) {
-				warnx("kerberos5: not in %s's ACL.", user);
-				use_kerberos5 = 0;
-			}
-		}
-#endif
-		/*
-		 * Only allow those with pw_gid==0 or those listed in
-		 * group zero to su to root.  If group zero entry is
-		 * missing or empty, then allow anyone to su to root.
-		 * iswheelsu will only be set if the user is EXPLICITLY
-		 * listed in group zero.
-		 */
-		if (pwd->pw_uid == 0 && (gr = getgrgid((gid_t)0)) &&
-		    gr->gr_mem && *(gr->gr_mem)) {
-			for (g = gr->gr_mem;; ++g) {
-				if (!*g) {
-					if (gid == 0)
-						break;
-					else
-						errx(1,
-			     "you are not in the correct group (%s) to su %s.",
-						    gr->gr_name,
-						    user);
-				}
-				if (strcmp(username, *g) == 0) {
-#ifdef WHEELSU
-					iswheelsu = 1;
-#endif /* WHEELSU */
-					break;
-				}
-			}
-		}
-		/* if target requires a password, verify it */
-		if (*pwd->pw_passwd) {
-#ifdef	SKEY
-#ifdef WHEELSU
-			if (iswheelsu) {
-				pwd = getpwnam(username);
-			}
-#endif /* WHEELSU */
-			entered_pass = skey_getpass("Password:", pwd, 1);
-			if (!(!strcmp(pwd->pw_passwd, skey_crypt(entered_pass,
-			    pwd->pw_passwd, pwd, 1))
-#ifdef WHEELSU
-			      || (iswheelsu && !strcmp(targetpass,
-				  crypt(entered_pass, targetpass)))
-#endif /* WHEELSU */
-			      )) {
-#else
-			entered_pass = getpass("Password:");
-			if (strcmp(pwd->pw_passwd, crypt(entered_pass,
-			    pwd->pw_passwd))) {
-#endif
-#ifdef KERBEROS5
-				if (use_kerberos5 && kerberos5(context,
-				    username, user, su_principal,
-				    entered_pass) == 0)
-					goto authok;
-#endif
-				fprintf(stderr, "Sorry\n");
-				syslog(LOG_AUTH|LOG_WARNING,
-				    "BAD SU %s to %s%s", username, user,
-				    ontty());
-				exit(1);
-			}
-#if defined(KERBEROS5)
-		authok:
-			;
-#endif
-#ifdef WHEELSU
-			if (iswheelsu) {
-				pwd = getpwnam(user);
-			}
-#endif /* WHEELSU */
-		}
-		if (pwd->pw_expire && time(NULL) >= pwd->pw_expire) {
-			fprintf(stderr, "Sorry - account expired\n");
-			syslog(LOG_AUTH|LOG_WARNING,
-				"BAD SU %s to %s%s", username,
-				user, ontty());
-			exit(1);
-		}
-	}
-
+	/* if asme and non-standard target shell, must be root */
 	if (asme) {
-		/* if asme and non-standard target shell, must be root */
-		if (!chshell(pwd->pw_shell) && ruid)
-			errx(1, "permission denied (shell).");
-	} else if (pwd->pw_shell && *pwd->pw_shell) {
+		if (ruid != 0 && !chshell(pwd->pw_shell))
+			errx(1, "permission denied (shell)");
+	}
+	else if (pwd->pw_shell && *pwd->pw_shell) {
 		shell = pwd->pw_shell;
 		iscsh = UNSET;
-	} else {
+	}
+	else {
 		shell = _PATH_BSHELL;
 		iscsh = NO;
 	}
@@ -355,122 +391,252 @@ main(int argc, char **argv)
 			++p;
 		else
 			p = shell;
-		if ((iscsh = strcmp(p, "csh") ? NO : YES) == NO)
-		    iscsh = strcmp(p, "tcsh") ? NO : YES;
+		iscsh = strcmp(p, "csh") ? (strcmp(p, "tcsh") ? NO : YES) : YES;
 	}
-
 	setpriority(PRIO_PROCESS, 0, prio);
 
-#ifdef LOGIN_CAP
-	/* Set everything now except the environment & umask */
-	setwhat = LOGIN_SETUSER|LOGIN_SETGROUP|LOGIN_SETRESOURCES|LOGIN_SETPRIORITY;
 	/*
-	 * Don't touch resource/priority settings if -m has been
-	 * used or -l and -c hasn't, and we're not su'ing to root.
+	 * PAM modules might add supplementary groups in pam_setcred(), so
+	 * initialize them first.
 	 */
-        if ((asme || (!asthem && class == NULL)) && pwd->pw_uid)
-		setwhat &= ~(LOGIN_SETPRIORITY|LOGIN_SETRESOURCES);
-	if (setusercontext(lc, pwd, pwd->pw_uid, setwhat) < 0)
+	if (setusercontext(lc, pwd, pwd->pw_uid, LOGIN_SETGROUP) < 0)
 		err(1, "setusercontext");
-#else
-	/* set permissions */
-	if (setgid(pwd->pw_gid) < 0)
-		err(1, "setgid");
-	if (initgroups(user, pwd->pw_gid))
-		errx(1, "initgroups failed");
-	if (setuid(pwd->pw_uid) < 0)
-		err(1, "setuid");
-#endif
 
-	if (!asme) {
-		if (asthem) {
-			p = getenv("TERM");
-#ifdef KERBEROS5
-			ccname = getenv("KRB5CCNAME");
-#endif
-			if ((cleanenv = calloc(20, sizeof(char*))) == NULL)
-				errx(1, "calloc");
-			cleanenv[0] = NULL;
-			environ = cleanenv;
-#ifdef LOGIN_CAP
-			/* set the su'd user's environment & umask */
-			setusercontext(lc, pwd, pwd->pw_uid, LOGIN_SETPATH|LOGIN_SETUMASK|LOGIN_SETENV);
-#else
-			if (setenv("PATH", _PATH_DEFPATH, 1) == -1)
-				err(1, "setenv: cannot set PATH=%s", _PATH_DEFPATH);
-#endif
-			if (p) {
-				if (setenv("TERM", p, 1) == -1)
-					err(1, "setenv: cannot set TERM=%s", p);
-			}
-#ifdef KERBEROS5
-			if (ccname) {
-				if (setenv("KRB5CCNAME", ccname, 1) == -1)
-					err(1, "setenv: cannot set KRB5CCNAME=%s", ccname);
-			}
-#endif
-			if (chdir(pwd->pw_dir) < 0)
-				errx(1, "no directory");
-		}
-		if (asthem || pwd->pw_uid) {
-			if (setenv("USER", pwd->pw_name, 1) == -1)
-				err(1, "setenv: cannot set USER=%s", pwd->pw_name);
-		}
-		if (setenv("HOME", pwd->pw_dir, 1) == -1)
-			err(1, "setenv: cannot set HOME=%s", pwd->pw_dir);
-		if (setenv("SHELL", shell, 1) == -1)
-			err(1, "setenv: cannot set SHELL=%s", shell);
+	retcode = pam_setcred(pamh, PAM_ESTABLISH_CRED);
+	if (retcode != PAM_SUCCESS) {
+		syslog(LOG_ERR, "pam_setcred: %s",
+		    pam_strerror(pamh, retcode));
+		errx(1, "failed to establish credentials.");
 	}
-	if (iscsh == YES) {
-		if (fastlogin)
-			*np-- = "-f";
-		if (asme)
-			*np-- = "-m";
+	if (asthem) {
+		retcode = pam_open_session(pamh, 0);
+		if (retcode != PAM_SUCCESS) {
+			syslog(LOG_ERR, "pam_open_session: %s",
+			    pam_strerror(pamh, retcode));
+			errx(1, "failed to open session.");
+		}
 	}
 
-	/* csh strips the first character... */
-	*np = asthem ? "-su" : iscsh == YES ? "_su" : "su";
+	/*
+	 * We must fork() before setuid() because we need to call
+	 * pam_setcred(pamh, PAM_DELETE_CRED) as root.
+	 */
+	sa.sa_flags = SA_RESTART;
+	sa.sa_handler = SIG_IGN;
+	sigemptyset(&sa.sa_mask);
+	sigaction(SIGINT, &sa, &sa_int);
+	sigaction(SIGQUIT, &sa, &sa_quit);
+	sigaction(SIGPIPE, &sa, &sa_pipe);
+	sa.sa_handler = SIG_DFL;
+	sigaction(SIGTSTP, &sa, NULL);
+	statusp = 1;
+	if (pipe(fds) == -1) {
+		PAM_END();
+		err(1, "pipe");
+	}
+	child_pid = fork();
+	switch (child_pid) {
+	default:
+		sa.sa_handler = SIG_IGN;
+		sigaction(SIGTTOU, &sa, NULL);
+		close(fds[0]);
+		setpgid(child_pid, child_pid);
+		if (tcgetpgrp(STDERR_FILENO) == getpgrp())
+			tcsetpgrp(STDERR_FILENO, child_pid);
+		close(fds[1]);
+		sigaction(SIGPIPE, &sa_pipe, NULL);
+		while ((pid = waitpid(child_pid, &statusp, WUNTRACED)) != -1) {
+			if (WIFSTOPPED(statusp)) {
+				child_pgrp = getpgid(child_pid);
+				if (tcgetpgrp(STDERR_FILENO) == child_pgrp)
+					tcsetpgrp(STDERR_FILENO, getpgrp());
+				kill(getpid(), SIGSTOP);
+				if (tcgetpgrp(STDERR_FILENO) == getpgrp()) {
+					child_pgrp = getpgid(child_pid);
+					tcsetpgrp(STDERR_FILENO, child_pgrp);
+				}
+				kill(child_pid, SIGCONT);
+				statusp = 1;
+				continue;
+			}
+			break;
+		}
+		tcsetpgrp(STDERR_FILENO, getpgrp());
+		if (pid == -1)
+			err(1, "waitpid");
+		PAM_END();
+		exit(WEXITSTATUS(statusp));
+	case -1:
+		PAM_END();
+		err(1, "fork");
+	case 0:
+		close(fds[1]);
+		read(fds[0], &temp, 1);
+		close(fds[0]);
+		sigaction(SIGPIPE, &sa_pipe, NULL);
+		sigaction(SIGINT, &sa_int, NULL);
+		sigaction(SIGQUIT, &sa_quit, NULL);
 
-	if (ruid != 0)
-		syslog(LOG_NOTICE|LOG_AUTH, "%s to %s%s",
-		    username, user, ontty());
-
-#ifdef LOGIN_CAP
-	login_close(lc);
+		/*
+		 * Set all user context except for: Environmental variables
+		 * Umask Login records (wtmp, etc) Path
+		 * XXX Missing LOGIN_SETMAC
+		 */
+		setwhat = LOGIN_SETALL & ~(LOGIN_SETENV | LOGIN_SETUMASK |
+			   LOGIN_SETLOGIN | LOGIN_SETPATH | LOGIN_SETGROUP);
+#if 0
+		/*
+		 * If -s is present, also set the MAC label.
+		 */
+		if (setmaclabel)
+			setwhat |= LOGIN_SETMAC;
 #endif
+		/*
+		 * Don't touch resource/priority settings if -m has been used
+		 * or -l and -c hasn't, and we're not su'ing to root.
+		 */
+		if ((asme || (!asthem && class == NULL)) && pwd->pw_uid)
+			setwhat &= ~(LOGIN_SETPRIORITY | LOGIN_SETRESOURCES);
+		if (setusercontext(lc, pwd, pwd->pw_uid, setwhat) < 0)
+			err(1, "setusercontext");
 
-	execv(shell, __DECONST(char * const *, np));
-	err(1, "%s", shell);
+		if (!asme) {
+			if (asthem) {
+				p = getenv("TERM");
+				environ = &cleanenv;
+			}
+
+			if (asthem || pwd->pw_uid) {
+				if (setenv("USER", pwd->pw_name, 1) == -1) {
+					err(1, "setenv: cannot set USER=%s",
+					    pwd->pw_name);
+				}
+			}
+			if (setenv("HOME", pwd->pw_dir, 1) == -1) {
+				err(1, "setenv: cannot set HOME=%s",
+				    pwd->pw_dir);
+			}
+			if (setenv("SHELL", shell, 1) == -1)
+				err(1, "setenv: cannot set SHELL=%s", shell);
+
+			if (asthem) {
+				/*
+				 * Add any environmental variables that the
+				 * PAM modules may have set.
+				 */
+				environ_pam = pam_getenvlist(pamh);
+				if (environ_pam)
+					export_pam_environment();
+
+				/* set the su'd user's environment & umask */
+				setusercontext(lc, pwd, pwd->pw_uid,
+					LOGIN_SETPATH | LOGIN_SETUMASK |
+					LOGIN_SETENV);
+				if (p) {
+					if (setenv("TERM", p, 1) == -1) {
+						err(1,
+						    "setenv: cannot set TERM=%s",
+						    p);
+					}
+				}
+
+				p = pam_getenv(pamh, "HOME");
+				if (chdir(p ? p : pwd->pw_dir) < 0)
+					errx(1, "no directory");
+			}
+		}
+		login_close(lc);
+
+		if (iscsh == YES) {
+			if (fastlogin)
+				*np.a-- = "-f";
+			if (asme)
+				*np.a-- = "-m";
+		}
+		/* csh strips the first character... */
+		*np.a = asthem ? "-su" : iscsh == YES ? "_su" : "su";
+
+		if (ruid != 0)
+			syslog(LOG_NOTICE, "%s to %s%s", username, user,
+			    ontty());
+
+		execv(shell, np.b);
+		err(1, "%s", shell);
+	}
+}
+
+static void
+export_pam_environment(void)
+{
+	char	**pp;
+	char	*p;
+
+	for (pp = environ_pam; *pp != NULL; pp++) {
+		if (ok_to_export(*pp)) {
+			p = strchr(*pp, '=');
+			*p = '\0';
+			if (setenv(*pp, p + 1, 1) == -1)
+				err(1, "setenv: cannot set %s=%s", *pp, p + 1);
+		}
+		free(*pp);
+	}
+}
+
+/*
+ * Sanity checks on PAM environmental variables:
+ * - Make sure there is an '=' in the string.
+ * - Make sure the string doesn't run on too long.
+ * - Do not export certain variables.  This list was taken from the
+ *   Solaris pam_putenv(3) man page.
+ * Note that if the user is chrooted, PAM may have a better idea than we
+ * do of where her home directory is.
+ */
+static int
+ok_to_export(const char *s)
+{
+	static const char *noexport[] = {
+		"SHELL", /* "HOME", */ "LOGNAME", "MAIL", "CDPATH",
+		"IFS", "PATH", NULL
+	};
+	const char **pp;
+	size_t n;
+
+	if (strlen(s) > 1024 || strchr(s, '=') == NULL)
+		return 0;
+	if (strncmp(s, "LD_", 3) == 0)
+		return 0;
+	for (pp = noexport; *pp != NULL; pp++) {
+		n = strlen(*pp);
+		if (s[n] == '=' && strncmp(s, *pp, n) == 0)
+			return 0;
+	}
+	return 1;
 }
 
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: su [-] [-%s] %s[login [args]]\n",
-	    KERBEROS_ARG("K") COMMON_ARG("flm"),
-#ifdef LOGIN_CAP
-	    "[-c class] "
-#else
-	    ""
-#endif
-	    );
+
+	fprintf(stderr, "usage: su [-] [-flm] [-c class] [login [args]]\n");
 	exit(1);
+	/* NOTREACHED */
 }
 
-int
-chshell(char *sh)
+static int
+chshell(const char *sh)
 {
-	int  r = 0;
+	int r;
 	char *cp;
 
+	r = 0;
 	setusershell();
-	while (!r && (cp = getusershell()) != NULL)
-		r = strcmp(cp, sh) == 0;
+	while ((cp = getusershell()) != NULL && !r)
+	    r = (strcmp(cp, sh) == 0);
 	endusershell();
 	return r;
 }
 
-char *
+static char *
 ontty(void)
 {
 	char *p;
@@ -480,156 +646,5 @@ ontty(void)
 	p = ttyname(STDERR_FILENO);
 	if (p)
 		snprintf(buf, sizeof(buf), " on %s", p);
-	return (buf);
+	return buf;
 }
-
-#ifdef KERBEROS5
-const char superuser[] = "root";
-
-/* Authenticate using Kerberos 5.
- *   context           -- An initialized krb5_context.
- *   current_user      -- The current username.
- *   target_user       -- The target account name.
- *   su_principal      -- The target krb5_principal.
- *   pass              -- The user's password.
- * Note that a valid keytab in the default location with a host entry
- * must be available.
- * Returns 0 if authentication was successful, or a com_err error code if
- * it was not.
- */
-static long
-kerberos5(krb5_context context, const char *current_user,
-    const char *target_user, krb5_principal su_principal,
-    const char *pass)
-{
-	krb5_creds	 creds;
-	krb5_get_init_creds_opt gic_opt;
-	krb5_verify_init_creds_opt vic_opt;
-	long		 rv;
-
-	krb5_get_init_creds_opt_init(&gic_opt);
-	krb5_verify_init_creds_opt_init(&vic_opt);
-	rv = krb5_get_init_creds_password(context, &creds, su_principal,
-	    pass, NULL, NULL, 0, NULL, &gic_opt);
-	if (rv != 0) {
-		syslog(LOG_NOTICE|LOG_AUTH, "BAD Kerberos5 SU: %s to %s%s: %s",
-		    current_user, target_user, ontty(),
-		    krb5_get_err_text(context, rv));
-		return (rv);
-	}
-	krb5_verify_init_creds_opt_set_ap_req_nofail(&vic_opt, 1);
-	rv = krb5_verify_init_creds(context, &creds, NULL, NULL, NULL,
-	    &vic_opt);
-	krb5_free_cred_contents(context, &creds);
-	if (rv != 0) {
-		syslog(LOG_NOTICE|LOG_AUTH, "BAD Kerberos5 SU: %s to %s%s: %s",
-		    current_user, target_user, ontty(),
-		    krb5_get_err_text(context, rv));
-		return (rv);
-	}
-	return (0);
-}
-
-/* Determine the target principal given the current user and the target user.
- *   context           -- An initialized krb5_context.
- *   target_user       -- The target username.
- *   current_user      -- The current username.
- *   su_principal_name -- (out) The target principal name.
- *   su_principal      -- (out) The target krb5_principal.
- *
- * When target_user is `root', the su_principal will be a `root
- * instance', e.g. `luser/root@REA.LM'.  Otherwise, the su_principal
- * will simply be the current user's default principal name.  Note that
- * in any case, if KRB5CCNAME is set and a credentials cache exists, the
- * principal name found there will be the `starting point', rather than
- * the current_user parameter.
- *
- * Returns 0 for success, or a com_err error code on failure.
- */
-static long
-get_su_principal(krb5_context context, const char *target_user,
-    const char *current_user, char **su_principal_name,
-    krb5_principal *su_principal)
-{
-	krb5_principal	 default_principal;
-	krb5_ccache	 ccache;
-	char		*principal_name, *ccname, *p;
-	long		 rv;
-	uid_t		 euid, ruid;
-
-	*su_principal = NULL;
-	default_principal = NULL;
-	/* Lower privs while messing about with the credentials
-	 * cache.
-	 */
-	ruid = getuid();
-	euid = geteuid();
-	rv = seteuid(getuid());
-	if (rv != 0)
-		return (errno);
-	p = getenv("KRB5CCNAME");
-	if (p != NULL)
-		ccname = strdup(p);
-	else {
-		asprintf(&ccname, "%s%lu", KRB5_DEFAULT_CCROOT,
-		    (unsigned long)ruid);
-	}
-	if (ccname == NULL)
-		return (errno);
-	rv = krb5_cc_resolve(context, ccname, &ccache);
-	free(ccname);
-	if (rv == 0) {
-		rv = krb5_cc_get_principal(context, ccache,
-		    &default_principal);
-		krb5_cc_close(context, ccache);
-		if (rv != 0)
-			default_principal = NULL; /* just to be safe */
-	}
-	rv = seteuid(euid);
-	if (rv != 0)
-		return (errno);
-	if (default_principal == NULL) {
-		rv = krb5_make_principal(context, &default_principal, NULL,
-		    current_user, NULL);
-		if (rv != 0) {
-			warnx("Could not determine default principal name.");
-			return (rv);
-		}
-	}
-	/* Now that we have some principal, if the target account is
-	 * `root', then transform it into a `root' instance, e.g.
-	 * `user@REA.LM' -> `user/root@REA.LM'.
-	 */
-	rv = krb5_unparse_name(context, default_principal, &principal_name);
-	krb5_free_principal(context, default_principal);
-	if (rv != 0) {
-		warnx("krb5_unparse_name: %s", krb5_get_err_text(context, rv));
-		return (rv);
-	}
-	if (strcmp(target_user, superuser) == 0) {
-		p = strrchr(principal_name, '@');
-		if (p == NULL) {
-			warnx("malformed principal name `%s'", principal_name);
-			free(principal_name);
-			return (rv);
-		}
-		*p++ = '\0';
-		asprintf(su_principal_name, "%s/%s@%s", principal_name,
-		    superuser, p);
-		free(principal_name);
-	} else 
-		*su_principal_name = principal_name;
-	if (*su_principal_name == NULL)
-		return errno;
-	rv = krb5_parse_name(context, *su_principal_name, &default_principal);
-	if (rv != 0) {
-		warnx("krb5_parse_name `%s': %s", *su_principal_name,
-		    krb5_get_err_text(context, rv));
-		free(*su_principal_name);
-		return (rv);
-	}
-	*su_principal = default_principal;
-	return 0;
-}
-
-#endif

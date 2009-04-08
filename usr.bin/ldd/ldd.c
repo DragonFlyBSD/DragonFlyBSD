@@ -213,7 +213,7 @@ main(int argc, char **argv)
 			break;
 		case 0:
 			if (is_shlib == 0) {
-				execl(*argv, *argv, (char *)NULL);
+				execl(*argv, *argv, NULL);
 				warn("%s", *argv);
 			} else {
 				dlopen(*argv, RTLD_TRACE);

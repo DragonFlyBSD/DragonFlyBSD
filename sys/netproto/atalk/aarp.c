@@ -246,7 +246,7 @@ aarpresolve(struct arpcom *ac, struct mbuf *m, struct sockaddr_at *destsat,
 void
 aarpintr(struct netmsg *msg)
 {
-    struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;   
+    struct mbuf *m = ((struct netmsg_isr_packet *)msg)->nm_packet;   
     struct arphdr	*ar;
     struct arpcom	*ac;
 

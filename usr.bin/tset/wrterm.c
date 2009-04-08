@@ -59,11 +59,11 @@ wrtermcap(char *bp)
 	*t++ = '\0';
 
 	/* Output terminal names that don't have whitespace. */
-	sep = "";
+	sep = strdup("");
 	while ((p = strsep(&bp, "|")) != NULL)
 		if (*p != '\0' && strpbrk(p, " \t") == NULL) {
 			(void)printf("%s%s", sep, p);
-			sep = "|";
+			sep = strdup("|");
 		}
 	(void)putchar(':');
 

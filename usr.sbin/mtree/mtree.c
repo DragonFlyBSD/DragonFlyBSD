@@ -46,8 +46,6 @@
 #include "mtree.h"
 #include "extern.h"
 
-extern long int crc_total;
-
 int ftsoptions = FTS_PHYSICAL;
 int cflag, dflag, eflag, iflag, nflag, qflag, rflag, sflag, uflag, Uflag;
 u_int keys;

@@ -116,7 +116,6 @@ static int unary(int mayeval);
 static int factor(int mayeval);
 static int constant(int mayeval);
 static int num(int mayeval);
-static int geteqrel(int mayeval);
 static int skipws(void);
 static void experr(const char *);
 
@@ -558,7 +557,7 @@ constant(int mayeval)
  * num : digit | num digit
  */
 static int
-num(int mayeval)
+num(int mayeval __unused)
 {
 	int rval, c, base;
 	int ndig;

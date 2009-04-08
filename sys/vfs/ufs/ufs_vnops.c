@@ -51,6 +51,7 @@
 #include <sys/stat.h>
 #include <sys/buf.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/namei.h>
 #include <sys/mount.h>
 #include <sys/unistd.h>
@@ -88,6 +89,7 @@ static int ufs_create (struct vop_old_create_args *);
 static int ufs_getattr (struct vop_getattr_args *);
 static int ufs_link (struct vop_old_link_args *);
 static int ufs_makeinode (int mode, struct vnode *, struct vnode **, struct componentname *);
+static int ufs_markatime (struct vop_markatime_args *);
 static int ufs_missingop (struct vop_generic_args *ap);
 static int ufs_mkdir (struct vop_old_mkdir_args *);
 static int ufs_mknod (struct vop_old_mknod_args *);
@@ -359,6 +361,8 @@ ufs_access(struct vop_access_args *ap)
 
 	/* Otherwise, check the owner. */
 	if (cred->cr_uid == ip->i_uid) {
+		if (mode & VOWN)
+			return (0);
 		if (mode & VEXEC)
 			mask |= S_IXUSR;
 		if (mode & VREAD)
@@ -443,6 +447,22 @@ ufs_getattr(struct vop_getattr_args *ap)
 	return (0);
 }
 
+static
+int
+ufs_markatime(struct vop_markatime_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+	struct inode *ip = VTOI(vp);
+
+	if (vp->v_mount->mnt_flag & MNT_RDONLY)
+		return (EROFS);
+	if (vp->v_mount->mnt_flag & MNT_NOATIME)
+		return (0);
+	ip->i_flag |= IN_ACCESS;
+	VN_KNOTE(vp, NOTE_ATTRIB);
+	return (0);
+}
+
 /*
  * Set attribute vnode op. called from several syscalls
  *
@@ -472,7 +492,7 @@ ufs_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != ip->i_uid &&
-		    (error = suser_cred(cred, PRISON_ROOT)))
+		    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)))
 			return (error);
 		/*
 		 * Note that a root chflags becomes a user chflags when
@@ -534,7 +554,7 @@ ufs_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != ip->i_uid &&
-		    (error = suser_cred(cred, PRISON_ROOT)) &&
+		    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
 		    (error = VOP_ACCESS(vp, VWRITE, cred))))
 			return (error);
@@ -576,7 +596,7 @@ ufs_chmod(struct vnode *vp, int mode, struct ucred *cred)
 	int error;
 
 	if (cred->cr_uid != ip->i_uid) {
-	    error = suser_cred(cred, PRISON_ROOT);
+	    error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT);
 	    if (error)
 		return (error);
 	}
@@ -620,7 +640,7 @@ ufs_chown(struct vnode *vp, uid_t uid, gid_t gid, struct ucred *cred)
 	if ((cred->cr_uid != ip->i_uid || uid != ip->i_uid ||
 	    (gid != ip->i_gid && !(cred->cr_gid == gid ||
 	    groupmember((gid_t)gid, cred)))) &&
-	    (error = suser_cred(cred, PRISON_ROOT)))
+	    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)))
 		return (error);
 	ogid = ip->i_gid;
 	ouid = ip->i_uid;
@@ -2189,7 +2209,7 @@ ufs_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 	if (DOINGSOFTDEP(tvp))
 		softdep_change_linkcnt(ip);
 	if ((ip->i_mode & ISGID) && !groupmember(ip->i_gid, cnp->cn_cred) &&
-	    suser_cred(cnp->cn_cred, 0)) {
+	    priv_check_cred(cnp->cn_cred, PRIV_ROOT, 0)) {
 		ip->i_mode &= ~ISGID;
 	}
 
@@ -2367,6 +2387,7 @@ static struct vop_ops ufs_vnode_vops = {
 	.vop_old_rename =	ufs_rename,
 	.vop_old_rmdir =	ufs_rmdir,
 	.vop_setattr =		ufs_setattr,
+	.vop_markatime =	ufs_markatime,
 	.vop_strategy =		ufs_strategy,
 	.vop_old_symlink =	ufs_symlink,
 	.vop_old_whiteout =	ufs_whiteout
@@ -2383,6 +2404,7 @@ static struct vop_ops ufs_spec_vops = {
 	.vop_read =		ufsspec_read,
 	.vop_reclaim =		ufs_reclaim,
 	.vop_setattr =		ufs_setattr,
+	.vop_markatime =	ufs_markatime,
 	.vop_write =		ufsspec_write
 };
 
@@ -2398,6 +2420,7 @@ static struct vop_ops ufs_fifo_vops = {
 	.vop_read =		ufsfifo_read,
 	.vop_reclaim =		ufs_reclaim,
 	.vop_setattr =		ufs_setattr,
+	.vop_markatime =	ufs_markatime,
 	.vop_write =		ufsfifo_write
 };
 

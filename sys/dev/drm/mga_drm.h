@@ -30,8 +30,6 @@
  *
  * Rewritten by:
  *    Gareth Hughes <gareth@valinux.com>
- *
- * $DragonFly: src/sys/dev/drm/mga_drm.h,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
 #ifndef __MGA_DRM_H__

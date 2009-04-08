@@ -306,12 +306,12 @@ invalid:
 	delset(&mask, SIGABRT, SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGSYS,
 		SIGXCPU, SIGXFSZ, SIGHUP, SIGINT, SIGTERM, SIGTSTP, SIGALRM, 
 		SIGUSR1, SIGUSR2, 0);
-	sigprocmask(SIG_SETMASK, &mask, (sigset_t *) 0);
+	sigprocmask(SIG_SETMASK, &mask, NULL);
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = 0;
 	sa.sa_handler = SIG_IGN;
-	sigaction(SIGTTIN, &sa, (struct sigaction *)0);
-	sigaction(SIGTTOU, &sa, (struct sigaction *)0);
+	sigaction(SIGTTIN, &sa, NULL);
+	sigaction(SIGTTOU, &sa, NULL);
 
 	/*
 	 * Paranoia.
@@ -351,7 +351,7 @@ handle(sig_t handler, ...)
 		sa.sa_mask = mask_everything;
 		/* XXX SA_RESTART? */
 		sa.sa_flags = sig == SIGCHLD ? SA_NOCLDSTOP : 0;
-		sigaction(sig, &sa, (struct sigaction *) 0);
+		sigaction(sig, &sa, NULL);
 	}
 	va_end(ap);
 }
@@ -485,9 +485,8 @@ get_chroot(void)
 	const int ichlen = strlen(ichname);
 	int real_oid[CTL_MAXNAME];
 	char sbuf[1024];
-	size_t oidlen;
+	size_t oidlen, slen;
 	char *res;
-	int slen;
 	int i;
 
 	oidlen = __arysize(real_oid);
@@ -684,7 +683,7 @@ single_user(void)
 		 * and those are reset to SIG_DFL on exec.
 		 */
 		sigemptyset(&mask);
-		sigprocmask(SIG_SETMASK, &mask, (sigset_t *) 0);
+		sigprocmask(SIG_SETMASK, &mask, NULL);
 
 		/*
 		 * Fire off a shell.
@@ -705,7 +704,7 @@ single_user(void)
 		 * We are seriously hosed.  Do our best.
 		 */
 		emergency("can't fork single-user shell, trying again");
-		while (waitpid(-1, (int *) 0, WNOHANG) > 0)
+		while (waitpid(-1, NULL, WNOHANG) > 0)
 			continue;
 		return (state_func_t) single_user;
 	}
@@ -763,8 +762,8 @@ runcom(void)
 		sigemptyset(&sa.sa_mask);
 		sa.sa_flags = 0;
 		sa.sa_handler = SIG_IGN;
-		sigaction(SIGTSTP, &sa, (struct sigaction *)0);
-		sigaction(SIGHUP, &sa, (struct sigaction *)0);
+		sigaction(SIGTSTP, &sa, NULL);
+		sigaction(SIGHUP, &sa, NULL);
 
 		setctty(_PATH_CONSOLE);
 
@@ -773,7 +772,7 @@ runcom(void)
 		argv[2] = runcom_mode == AUTOBOOT ? "autoboot" : 0;
 		argv[3] = 0;
 
-		sigprocmask(SIG_SETMASK, &sa.sa_mask, (sigset_t *) 0);
+		sigprocmask(SIG_SETMASK, &sa.sa_mask, NULL);
 
 #ifdef LOGIN_CAP
 		setprocresources(RESOURCE_RC);
@@ -786,7 +785,7 @@ runcom(void)
 	if (pid == -1) {
 		emergency("can't fork for %s on %s: %m",
 			_PATH_BSHELL, _PATH_RUNCOM);
-		while (waitpid(-1, (int *) 0, WNOHANG) > 0)
+		while (waitpid(-1, NULL, WNOHANG) > 0)
 			continue;
 		sleep(STALL_TIMEOUT);
 		return (state_func_t) single_user;
@@ -924,7 +923,7 @@ construct_argv(char *command)
 		free(argv);
 		return (NULL);
 	}
-	while ((argv[argc++] = strk((char *) 0)) != NULL)
+	while ((argv[argc++] = strk(NULL)) != NULL)
 		continue;
 	return argv;
 }
@@ -1110,7 +1109,7 @@ start_window_system(session_t *sp)
 		return;
 
 	sigemptyset(&mask);
-	sigprocmask(SIG_SETMASK, &mask, (sigset_t *) 0);
+	sigprocmask(SIG_SETMASK, &mask, NULL);
 
 	if (setsid() < 0)
 		emergency("setsid failed (window) %m");
@@ -1141,7 +1140,7 @@ start_getty(session_t *sp)
 {
 	pid_t pid;
 	sigset_t mask;
-	time_t current_time = time((time_t *) 0);
+	time_t current_time = time(NULL);
 	int too_quick = 0;
 	char term[64], *env[2];
 
@@ -1177,7 +1176,7 @@ start_getty(session_t *sp)
 	}
 
 	sigemptyset(&mask);
-	sigprocmask(SIG_SETMASK, &mask, (sigset_t *) 0);
+	sigprocmask(SIG_SETMASK, &mask, NULL);
 
 #ifdef LOGIN_CAP
 	setprocresources(RESOURCE_GETTY);
@@ -1234,7 +1233,7 @@ collect_child(pid_t pid)
 	}
 
 	sp->se_process = pid;
-	sp->se_started = time((time_t *) 0);
+	sp->se_started = time(NULL);
 	add_session(sp);
 }
 
@@ -1296,12 +1295,12 @@ multi_user(void)
 			break;
 		}
 		sp->se_process = pid;
-		sp->se_started = time((time_t *) 0);
+		sp->se_started = time(NULL);
 		add_session(sp);
 	}
 
 	while (!requested_transition)
-		if ((pid = waitpid(-1, (int *) 0, 0)) != -1)
+		if ((pid = waitpid(-1, NULL, 0)) != -1)
 			collect_child(pid);
 
 	return (state_func_t) requested_transition;
@@ -1457,7 +1456,7 @@ death(void)
 		clang = 0;
 		alarm(DEATH_WATCH);
 		do
-			if ((pid = waitpid(-1, (int *)0, 0)) != -1)
+			if ((pid = waitpid(-1, NULL, 0)) != -1)
 				collect_child(pid);
 		while (clang == 0 && errno != ECHILD);
 
@@ -1507,8 +1506,8 @@ runshutdown(void)
 		sigemptyset(&sa.sa_mask);
 		sa.sa_flags = 0;
 		sa.sa_handler = SIG_IGN;
-		sigaction(SIGTSTP, &sa, (struct sigaction *)0);
-		sigaction(SIGHUP, &sa, (struct sigaction *)0);
+		sigaction(SIGTSTP, &sa, NULL);
+		sigaction(SIGHUP, &sa, NULL);
 
 		if ((fd = open(_PATH_CONSOLE, O_RDWR)) == -1)
 		    warning("can't open %s: %m", _PATH_CONSOLE);
@@ -1531,7 +1530,7 @@ runshutdown(void)
 			argv[2] = "single";
 		argv[3] = 0;
 
-		sigprocmask(SIG_SETMASK, &sa.sa_mask, (sigset_t *) 0);
+		sigprocmask(SIG_SETMASK, &sa.sa_mask, NULL);
 
 #ifdef LOGIN_CAP
 		setprocresources(RESOURCE_RC);
@@ -1544,7 +1543,7 @@ runshutdown(void)
 	if (pid == -1) {
 		emergency("can't fork for %s on %s: %m",
 			_PATH_BSHELL, _PATH_RUNDOWN);
-		while (waitpid(-1, (int *) 0, WNOHANG) > 0)
+		while (waitpid(-1, NULL, WNOHANG) > 0)
 			continue;
 		sleep(STALL_TIMEOUT);
 		return -1;
@@ -1659,7 +1658,7 @@ setprocresources(const char *cname)
 {
 	login_cap_t *lc;
 	if ((lc = login_getclassbyname(cname, NULL)) != NULL) {
-		setusercontext(lc, (struct passwd*)NULL, 0, LOGIN_SETPRIORITY|LOGIN_SETRESOURCES);
+		setusercontext(lc, NULL, 0, LOGIN_SETPRIORITY|LOGIN_SETRESOURCES);
 		login_close(lc);
 	}
 }

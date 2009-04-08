@@ -93,7 +93,6 @@ int hammer_count_io_running_write;
 int hammer_count_io_locked;
 int hammer_limit_dirtybufspace;		/* per-mount */
 int hammer_limit_recs;			/* as a whole XXX */
-int hammer_limit_iqueued;		/* per-mount */
 int hammer_autoflush = 2000;		/* auto flush */
 int hammer_bio_count;
 int hammer_verify_zone;
@@ -128,8 +127,6 @@ SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_dirtybufspace, CTLFLAG_RW,
 	   &hammer_limit_dirtybufspace, 0, "");
 SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_recs, CTLFLAG_RW,
 	   &hammer_limit_recs, 0, "");
-SYSCTL_INT(_vfs_hammer, OID_AUTO, limit_iqueued, CTLFLAG_RW,
-	   &hammer_limit_iqueued, 0, "");
 
 SYSCTL_INT(_vfs_hammer, OID_AUTO, count_fsyncs, CTLFLAG_RD,
 	   &hammer_count_fsyncs, 0, "");
@@ -272,8 +269,6 @@ hammer_vfs_init(struct vfsconf *conf)
 		if (hammer_limit_dirtybufspace < 100)
 			hammer_limit_dirtybufspace = 100;
 	}
-	if (hammer_limit_iqueued == 0)
-		hammer_limit_iqueued = desiredvnodes / 5;
 	return(0);
 }
 
@@ -679,6 +674,7 @@ hammer_free_hmp(struct mount *mp)
 	struct hammer_mount *hmp = (void *)mp->mnt_data;
 	hammer_flush_group_t flg;
 	int count;
+	int dummy;
 
 	/*
 	 * Flush anything dirty.  This won't even run if the
@@ -693,7 +689,7 @@ hammer_free_hmp(struct mount *mp)
 				kprintf("HAMMER: umount flushing.");
 			else
 				kprintf(".");
-			tsleep(hmp, 0, "hmrufl", hz);
+			tsleep(&dummy, 0, "hmrufl", hz);
 		}
 		if (count == 30) {
 			kprintf("giving up\n");

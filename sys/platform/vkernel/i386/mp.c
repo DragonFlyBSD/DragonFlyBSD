@@ -240,7 +240,8 @@ stop_cpus(u_int map)
 	while (map) {
 		int n = bsfl(map);
 		map &= ~(1 << n);
-		if (pthread_kill(ap_tids[n], SIGSTOP) != 0)
+		stopped_cpus |= 1 << n;
+		if (pthread_kill(ap_tids[n], SIGXCPU) != 0)
 			panic("stop_cpus: pthread_kill failed");
 	}
 	crit_exit();
@@ -260,7 +261,8 @@ restart_cpus(u_int map)
 	while (map) {
 		int n = bsfl(map);
 		map &= ~(1 << n);
-		if (pthread_kill(ap_tids[n], SIGCONT) != 0)
+		stopped_cpus &= ~(1 << n);
+		if (pthread_kill(ap_tids[n], SIGXCPU) != 0)
 			panic("restart_cpus: pthread_kill failed");
 	}
 	crit_exit();

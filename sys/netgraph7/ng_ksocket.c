@@ -1100,7 +1100,7 @@ ng_ksocket_incoming2(node_p node, hook_p hook, void *arg1, int arg2)
 
 		/* Try to get next packet from socket */
 		if ((error = soreceive(so, (so->so_state & SS_ISCONNECTED) ?
-		    NULL : &sa, &auio, &m, (struct mbuf **)0, &flags)) != 0)
+		    NULL : &sa, &auio, &m, NULL, &flags)) != 0)
 			break;
 
 		/* See if we got anything */

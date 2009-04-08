@@ -2164,7 +2164,7 @@ struct msk_stat_desc {
 #define MSK_JUMBO_RX_RING_CNT	MSK_RX_RING_CNT
 #define	MSK_STAT_RING_CNT	((1 + 3) * (MSK_TX_RING_CNT + MSK_RX_RING_CNT))
 #define MSK_MAXTXSEGS		32
-#define	MSK_TSO_MAXSGSIZE	4096
+#define	MSK_MAXSGSIZE		4096
 #define	MSK_TSO_MAXSIZE		(65535 + sizeof(struct ether_vlan_header))
 #define	MSK_MAXRXSEGS		32
 
@@ -2342,6 +2342,9 @@ struct msk_softc {
 	 */
 	int			msk_process_limit;
 	int			msk_intr_rate;
+	int			msk_defrag_avoided;
+	int			msk_leading_copied;
+	int			msk_trailing_copied;
 };
 
 #define	MSK_USECS(sc, us)	((sc)->msk_clock * (us))
@@ -2378,7 +2381,7 @@ struct msk_if_softc {
 #define	MSK_PHY_POWERUP		1
 #define	MSK_PHY_POWERDOWN	0
 
-struct msk_dmamap_arg {
-	int	nseg;
-	bus_dma_segment_t *segs;
-};
+#define MSK_SPARE_TX_DESC_CNT	5
+#define MSK_IS_OACTIVE(sc_if) \
+	((sc_if)->msk_cdata.msk_tx_cnt + \
+	 MSK_RESERVED_TX_DESC_CNT + MSK_SPARE_TX_DESC_CNT > MSK_TX_RING_CNT)

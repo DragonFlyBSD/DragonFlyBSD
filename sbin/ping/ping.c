@@ -289,7 +289,7 @@ main(int argc, char **argv)
 				err(EX_NOPERM, "-f flag");
 			}
 			options |= F_FLOOD;
-			setbuf(stdout, (char *)NULL);
+			setbuf(stdout, NULL);
 			break;
 		case 'G': /* Maximum packet size for ping sweep */
 			ultmp = strtoul(optarg, &ep, 0);

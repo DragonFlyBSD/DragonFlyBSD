@@ -255,7 +255,7 @@ recheck:
 	 * Post any pending signals.  If running a virtual kernel be sure
 	 * to restore the virtual kernel's vmspace before posting the signal.
 	 */
-	if ((sig = CURSIG(lp)) != 0) {
+	if ((sig = CURSIG_TRACE(lp)) != 0) {
 		get_mplock();
 		postsig(sig);
 		rel_mplock();
@@ -296,54 +296,48 @@ userexit(struct lwp *lp)
 	struct thread *td = lp->lwp_thread;
 	globaldata_t gd = td->td_gd;
 
-#if 0
 	/*
-	 * If a user reschedule is requested force a new process to be
-	 * chosen by releasing the current process.  Our process will only
-	 * be chosen again if it has a considerably better priority.
+	 * Handle stop requests at kernel priority.  Any requests queued
+	 * after this loop will generate another AST.
 	 */
-	if (user_resched_wanted())
-		lp->lwp_proc->p_usched->release_curproc(lp);
-#endif
-
-	/*
-	 * Handle a LWKT reschedule request first.  Since our passive release
-	 * is still in place we do not have to do anything special.
-	 */
-	while (lwkt_resched_wanted()) {
-		lwkt_switch();
-
-		/*
-		 * The thread that preempted us may have stopped our process.
-		 */
-		while (lp->lwp_proc->p_stat == SSTOP) {
-			get_mplock();
-			tstop();
-			rel_mplock();
-		}
+	while (lp->lwp_proc->p_stat == SSTOP) {
+		get_mplock();
+		tstop();
+		rel_mplock();
 	}
-
-	/*
-	 * Acquire the current process designation for this user scheduler
-	 * on this cpu.  This will also handle any user-reschedule requests.
-	 */
-	lp->lwp_proc->p_usched->acquire_curproc(lp);
-	/* We may have switched cpus on acquisition */
-	gd = td->td_gd;
 
 	/*
 	 * Reduce our priority in preparation for a return to userland.  If
 	 * our passive release function was still in place, our priority was
 	 * never raised and does not need to be reduced.
-	 *
-	 * Note that at this point there may be other LWKT thread at
-	 * TDPRI_KERN_USER (aka higher then our currenet priority).  We
-	 * do NOT want to run these threads yet.
 	 */
 	if (td->td_release == NULL)
 		lwkt_setpri_self(TDPRI_USER_NORM);
 	td->td_release = NULL;
+
+	/*
+	 * Become the current user scheduled process if we aren't already,
+	 * and deal with reschedule requests and other factors.
+	 */
+	lp->lwp_proc->p_usched->acquire_curproc(lp);
+	/* WARNING: we may have migrated cpu's */
+	/* gd = td->td_gd; */
 }
+
+#if !defined(KTR_KERNENTRY)
+#define	KTR_KERNENTRY	KTR_ALL
+#endif
+KTR_INFO_MASTER(kernentry);
+KTR_INFO(KTR_KERNENTRY, kernentry, trap, 0, "STR",
+	 sizeof(long) + sizeof(long) + sizeof(long) + sizeof(vm_offset_t));
+KTR_INFO(KTR_KERNENTRY, kernentry, trap_ret, 0, "STR",
+	 sizeof(long) + sizeof(long));
+KTR_INFO(KTR_KERNENTRY, kernentry, syscall, 0, "STR",
+	 sizeof(long) + sizeof(long) + sizeof(long));
+KTR_INFO(KTR_KERNENTRY, kernentry, syscall_ret, 0, "STR",
+	 sizeof(long) + sizeof(long) + sizeof(long));
+KTR_INFO(KTR_KERNENTRY, kernentry, fork_ret, 0, "STR",
+	 sizeof(long) + sizeof(long));
 
 /*
  * Exception, fault, and trap interface to the kernel.
@@ -510,9 +504,8 @@ trap(struct trapframe *frame)
 		case T_PAGEFLT:		/* page fault */
 			MAKEMPSAFE(have_mplock);
 			i = trap_pfault(frame, TRUE);
-			kprintf("TRAP_PFAULT %d\n", i);
 			if (frame->tf_rip == 0)
-				Debugger("debug");
+				kprintf("T_PAGEFLT: Warning %rip == 0!\n");
 			if (i == -1)
 				goto out;
 			if (i == 0)
@@ -635,6 +628,10 @@ trap(struct trapframe *frame)
 				if (td->td_pcb->pcb_onfault) {
 					frame->tf_rip = (register_t)
 						td->td_pcb->pcb_onfault;
+					goto out2;
+				}
+				if (frame->tf_rip == (long)doreti_iret) {
+					frame->tf_rip = (long)doreti_iret_fault;
 					goto out2;
 				}
 			}
@@ -900,6 +897,9 @@ nogo:
 	 * NOTE: on amd64 we have a tf_addr field in the trapframe, no
 	 * kludge is needed to pass the fault address to signal handlers.
 	 */
+	kprintf("seg-fault accessing address %p ip=%p\n",
+		va, frame->tf_rip);
+	/* Debugger("seg-fault"); */
 
 	return((rv == KERN_PROTECTION_FAILURE) ? SIGBUS : SIGSEGV);
 }
@@ -1121,7 +1121,7 @@ syscall2(struct trapframe *frame)
 
 	/*
 	 * On amd64 we get up to six arguments in registers. The rest are
-	 * on the stack. The first six members of 'struct trampframe' happen
+	 * on the stack. The first six members of 'struct trapframe' happen
 	 * to be the registers used to pass arguments, in exactly the right
 	 * order.
 	 */
@@ -1192,7 +1192,7 @@ out:
 	/*
 	 * MP SAFE (we may or may not have the MP lock at this point)
 	 */
-	kprintf("SYSMSG %d ", error);
+	//kprintf("SYSMSG %d ", error);
 	switch (error) {
 	case 0:
 		/*

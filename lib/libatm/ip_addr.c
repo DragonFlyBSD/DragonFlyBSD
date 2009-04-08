@@ -88,7 +88,7 @@ get_ip_addr(char *p)
 		 * IP address is in dotted decimal format
 		 */
 		if ((sin.sin_addr.s_addr = inet_addr(p)) == -1) {
-			return((struct sockaddr_in *)0);
+			return(NULL);
 		}
 	} else {
 		/*
@@ -97,7 +97,7 @@ get_ip_addr(char *p)
 		ip_host = gethostbyname(p);
 		if (!ip_host ||
 				ip_host->h_addrtype != AF_INET) {
-			return((struct sockaddr_in *)0);
+			return(NULL);
 		}
 		sin.sin_addr.s_addr = *(u_long *)ip_host->h_addr_list[0];
 	}

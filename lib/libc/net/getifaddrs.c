@@ -1,4 +1,4 @@
-/*	$FreeBSD: src/lib/libc/net/getifaddrs.c,v 1.1.2.4 2002/08/01 19:31:06 ume Exp $	*/
+/*	$FreeBSD: src/lib/libc/net/getifaddrs.c,v 1.6 2002/07/25 08:08:30 ume Exp $	*/
 /*	$DragonFly: src/lib/libc/net/getifaddrs.c,v 1.5 2005/01/31 22:29:33 dillon Exp $	*/
 /*	$KAME: getifaddrs.c,v 1.9 2001/08/20 02:31:20 itojun Exp $	*/
 

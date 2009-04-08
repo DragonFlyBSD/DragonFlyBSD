@@ -9,6 +9,7 @@ all: ${KERNEL}.stripped
 
 _MACHINE_FWD=	${.OBJDIR}
 .include "$S/conf/kern.fwd.mk"
+.include "$S/conf/kern.paths.mk"
 
 depend kernel-depend modules-depend: ${FORWARD_HEADERS_COOKIE}
 
@@ -69,7 +70,8 @@ assym.s: $S/kern/genassym.sh genassym.o
 	sh $S/kern/genassym.sh genassym.o > ${.TARGET}
 
 genassym.o: $S/platform/$P/$M/genassym.c ${FORWARD_HEADERS_COOKIE}
-	${CC} -c ${CFLAGS:N-fno-common} $S/platform/$P/$M/genassym.c
+	${CC} -c ${CFLAGS:N-fno-common:N-mcmodel=small} \
+	$S/platform/$P/$M/genassym.c
 
 ${SYSTEM_OBJS} genassym.o vers.o: opt_global.h
 
@@ -111,43 +113,36 @@ kernel-install: kernel-installable
 		echo "You must build a kernel first." ; \
 		exit 1 ; \
 	fi
-.  if exists(${DESTDIR}/boot/${DESTKERNNAME})
+.  if exists(${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME})
 .ifndef NOFSCHG
-	-chflags noschg ${DESTDIR}/boot/${DESTKERNNAME}
+	-chflags noschg ${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME}
 .endif
 .    ifdef NO_KERNEL_OLD_STRIP
-	cp -p ${DESTDIR}/boot/${DESTKERNNAME} ${DESTDIR}/boot/${DESTKERNNAME}.old
+	cp -p ${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME} ${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME}.old
 .    else
-	${OBJCOPY} --strip-debug ${DESTDIR}/boot/${DESTKERNNAME} ${DESTDIR}/boot/${DESTKERNNAME}.old
+	${OBJCOPY} --strip-debug ${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME} ${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME}.old
 .    endif
 .  endif
+	mkdir -p ${DESTDIR}${DESTKERNDIR}
 .ifdef NOFSCHG
 	${INSTALL} -m 555 -o root -g wheel \
-		${SELECTEDKERNEL} ${DESTDIR}/boot/${DESTKERNNAME}
+		${SELECTEDKERNEL} ${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME}
 .else
 	${INSTALL} -m 555 -o root -g wheel -fschg \
-		${SELECTEDKERNEL} ${DESTDIR}/boot/${DESTKERNNAME}
+		${SELECTEDKERNEL} ${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME}
 .endif
 
 kernel-reinstall: kernel-installable
+	mkdir -p ${DESTDIR}${DESTKERNDIR}
 .ifdef NOFSCHG
 	${INSTALL} -m 555 -o root -g wheel \
-		${SELECTEDKERNEL} ${DESTDIR}/boot/${DESTKERNNAME}
+		${SELECTEDKERNEL} ${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME}
 .else
 	${INSTALL} -m 555 -o root -g wheel -fschg \
-		${SELECTEDKERNEL} ${DESTDIR}/boot/${DESTKERNNAME}
+		${SELECTEDKERNEL} ${DESTDIR}${DESTKERNDIR}/${DESTKERNNAME}
 .endif
 
-# Require DESTDIR to be manually specified when installing a
-# virtual kernel.
-#
 kernel-installable:
-.if ${P} == vkernel
-.if !defined(DESTDIR)
-	@echo "When installing a virtual kernel, DESTDIR must be manually specified"
-	@exit 1
-.endif
-.endif
 	@if [ -f ${DESTDIR}/${DESTKERNNAME} ]; then \
 		echo "You need to make buildworld, installworld, and upgrade"; \
 		echo "before you can install a new kernel, because the"; \
@@ -199,27 +194,28 @@ modules-tags:
 modules-install:
 .if !defined(NO_MODULES_OLD)
 .  ifdef NO_KERNEL_OLD_STRIP
-	set -- ${DESTDIR}/boot/modules/*; \
+	set -- ${DESTDIR}${DESTKERNDIR}/${DESTMODULESNAME}/*; \
 	if [ -f "$$1" ]; then \
-		mkdir -p ${DESTDIR}/boot/modules.old; \
+		mkdir -p ${DESTDIR}${DESTKERNDIR}/${DESTMODULESNAME}.old; \
 		for file; do \
-		cp -p $$file ${DESTDIR}/boot/modules.old; \
+		cp -p $$file ${DESTDIR}${DESTKERNDIR}/${DESTMODULESNAME}.old; \
 		done; \
 	fi
 .  else
-	set -- ${DESTDIR}/boot/modules/*; \
+	set -- ${DESTDIR}${DESTKERNDIR}/${DESTMODULESNAME}/*; \
 	if [ -f "$$1" ]; then \
-		mkdir -p ${DESTDIR}/boot/modules.old; \
+		mkdir -p ${DESTDIR}${DESTKERNDIR}/${DESTMODULESNAME}.old; \
 		for file; do \
-		${OBJCOPY} --strip-debug $$file ${DESTDIR}/boot/modules.old/$${file##*/}; \
+		${OBJCOPY} --strip-debug $$file ${DESTDIR}${DESTKERNDIR}/${DESTMODULESNAME}.old/$${file##*/}; \
 		done; \
 	fi
 .  endif
 .endif
-	mkdir -p ${DESTDIR}/boot/modules # Ensure that the modules directory exists!
+	mkdir -p ${DESTDIR}${DESTKERNDIR}/${DESTMODULESNAME} # Ensure that the modules directory exists!
 	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules install
 
 modules-reinstall:
+	mkdir -p ${DESTDIR}/${DESTKERNDIR}/${DESTMODULESNAME} # Ensure that the modules directory exists!
 	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules install
 
 config.o:

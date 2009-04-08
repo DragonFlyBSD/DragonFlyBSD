@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/ypserv/yp_main.c,v 1.21.2.3 2002/02/15 00:47:00 des Exp $
+ * $FreeBSD: src/usr.sbin/ypserv/yp_main.c,v 1.29 2008/02/03 17:39:37 matteo Exp $
  * $DragonFly: src/usr.sbin/ypserv/yp_main.c,v 1.5 2005/11/24 22:23:02 swildner Exp $
  */
 
@@ -79,10 +79,20 @@ extern void ypprog_2(struct svc_req *, SVCXPRT *);
 extern int _rpc_dtablesize(void);
 extern int _rpcsvcstate;	 /* Set when a request is serviced */
 char *progname = "ypserv";
-char *yp_dir = _PATH_YP;
+const char *yp_dir = _PATH_YP;
 /*int debug = 0;*/
 int do_dns = 0;
 int resfd;
+
+struct socktype {
+	const char *st_name;
+	int	   st_type;
+};
+static struct socktype stlist[] = {
+	{ "tcp", SOCK_STREAM },
+	{ "udp", SOCK_DGRAM },
+	{ NULL, 0 }
+};
 
 static void
 _msgout(char *msg)
@@ -106,7 +116,6 @@ yp_svc_run(void)
 #else
 	int readfds;
 #endif /* def FD_SETSIZE */
-	extern int forked;
 	int fd_setsize = _rpc_dtablesize();
 	struct timeval timeout;
 
@@ -188,7 +197,7 @@ reaper(int sig)
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: ypserv [-h] [-d] [-n] [-p path]\n");
+	fprintf(stderr, "usage: ypserv [-h] [-d] [-n] [-p path] [-P port]\n");
 	exit(1);
 }
 
@@ -229,10 +238,13 @@ main(int argc, char **argv)
 	int sock;
 	int proto = 0;
 	struct sockaddr_in saddr;
-	int asize = sizeof(saddr);
+	socklen_t asize = sizeof (saddr);
 	int ch;
+	in_port_t yp_port = 0;
+	char *errstr;
+	struct socktype *st;
 
-	while ((ch = getopt(argc, argv, "hdnp:")) != -1) {
+	while ((ch = getopt(argc, argv, "hdnp:P:")) != -1) {
 		switch (ch) {
 		case 'd':
 			debug = ypdb_debug = 1;
@@ -242,6 +254,14 @@ main(int argc, char **argv)
 			break;
 		case 'p':
 			yp_dir = optarg;
+			break;
+		case 'P':
+			yp_port = (in_port_t)strtonum(optarg, 1, 65535,
+			    (const char **)&errstr);
+			if (yp_port == 0 && errstr != NULL) {
+				_msgout("invalid port number provided");
+				exit(1);
+			}
 			break;
 		case 'h':
 		default:
@@ -276,6 +296,39 @@ main(int argc, char **argv)
 		sock = RPC_ANYSOCK;
 		pmap_unset(YPPROG, YPVERS);
 		pmap_unset(YPPROG, 1);
+	}
+
+	/*
+	 * Initialize TCP/UDP sockets.
+	 */
+	memset((char *)&saddr, 0, sizeof(saddr));
+	saddr.sin_family = AF_INET;
+	saddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	saddr.sin_port = htons(yp_port);
+	for (st = stlist; st->st_name != NULL; st++) {
+		/* Do not bind the socket if the user didn't specify a port */
+		if (yp_port == 0)
+			break;
+
+		sock = socket(AF_INET, st->st_type, 0);
+		if (sock == -1) {
+			if ((asprintf(&errstr, "cannot create a %s socket",
+			    st->st_name)) == -1)
+				err(1, "unexpected failure in asprintf()");
+			_msgout(errstr);
+			free((void *)errstr);
+			exit(1);
+		}
+		if (bind(sock, (struct sockaddr *) &saddr, sizeof(saddr))
+		    == -1) {
+			if ((asprintf(&errstr, "cannot bind %s socket",
+			    st->st_name)) == -1)
+				err(1, "unexpected failure in asprintf()");
+			_msgout(errstr);
+			free((void *)errstr);
+			exit(1);
+		}
+		errstr = NULL;
 	}
 
 	if ((_rpcfdtype == 0) || (_rpcfdtype == SOCK_DGRAM)) {
@@ -314,7 +367,7 @@ main(int argc, char **argv)
 		}
 	}
 
-	if (transp == (SVCXPRT *)NULL) {
+	if (transp == NULL) {
 		_msgout("could not create a handle");
 		exit(1);
 	}

@@ -86,6 +86,7 @@
 #endif
 #include <sys/objcache.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/protosw.h>
@@ -160,7 +161,7 @@ struct tcpcbackqhead tcpcbackq[MAXCPU];
 int tcp_mpsafe_proto = 1;
 TUNABLE_INT("net.inet.tcp.mpsafe_proto", &tcp_mpsafe_proto);
 
-static int tcp_mpsafe_thread = 2;
+static int tcp_mpsafe_thread = NETMSG_SERVICE_MPSAFE;
 TUNABLE_INT("net.inet.tcp.mpsafe_thread", &tcp_mpsafe_thread);
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, mpsafe_thread, CTLFLAG_RW,
 	   &tcp_mpsafe_thread, 0,
@@ -635,7 +636,7 @@ tcp_respond(struct tcpcb *tp, void *ipgen, struct tcphdr *th, struct mbuf *m,
 	}
 	m->m_len = tlen;
 	m->m_pkthdr.len = tlen;
-	m->m_pkthdr.rcvif = (struct ifnet *) NULL;
+	m->m_pkthdr.rcvif = NULL;
 	nth->th_seq = htonl(seq);
 	nth->th_ack = htonl(ack);
 	nth->th_x2 = 0;
@@ -672,6 +673,7 @@ tcp_respond(struct tcpcb *tp, void *ipgen, struct tcphdr *th, struct mbuf *m,
 			ro6->ro_rt = NULL;
 		}
 	} else {
+		ipflags |= IP_DEBUGROUTE;
 		ip_output(m, NULL, ro, ipflags, NULL, tp ? tp->t_inpcb : NULL);
 		if ((ro == &sro) && (ro->ro_rt != NULL)) {
 			RTFREE(ro->ro_rt);
@@ -1263,7 +1265,7 @@ tcp_getcred(SYSCTL_HANDLER_ARGS)
 	int cpu;
 	int error;
 
-	error = suser(req->td);
+	error = priv_check(req->td, PRIV_ROOT);
 	if (error != 0)
 		return (error);
 	error = SYSCTL_IN(req, addrs, sizeof addrs);
@@ -1296,7 +1298,7 @@ tcp6_getcred(SYSCTL_HANDLER_ARGS)
 	int error;
 	boolean_t mapped = FALSE;
 
-	error = suser(req->td);
+	error = priv_check(req->td, PRIV_ROOT);
 	if (error != 0)
 		return (error);
 	error = SYSCTL_IN(req, addrs, sizeof addrs);

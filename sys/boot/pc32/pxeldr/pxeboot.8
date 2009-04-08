@@ -69,8 +69,9 @@ default-lease-time 120;
 max-lease-time 120;
 
 subnet 10.0.0.0 netmask 255.255.255.0 {
-       filename "pxeboot";
+       filename "boot/pxeboot";
        range 10.0.0.10 10.0.0.254;
+       option root-path "10.0.0.1:/netbootroot";
 }
 
 .Ed
@@ -86,6 +87,29 @@ Note that
 expects to fetch
 .Pa /boot/loader.rc
 from the specified server before loading any other files.
+.Pp
+.Nm
+uses
+.Pa /boot/kernel.BOOTP ,
+.Pa /boot/loader-bootp.conf ,
+and
+.Pa nextboot-bootp.conf
+instead of
+.Pa /boot/kernel ,
+.Pa /boot/loader.conf ,
+and
+.Pa nexboot.conf .
+Note that the TFTP version
+.Xr pxeboot_tftp 8
+uses the standard boot loader files.
+The NFS version uses different files to allow BOOTP boots via NFS to
+be overloaded onto the same directory structure as a normal boot,
+though many other changes would have to be made to actually make
+that work.
+However, this is more for historical reasons.
+Current day PXE boot code can handle complex root-path specifications
+allowing the root image to be contained in a sub-directory of the NFS
+export.
 .Pp
 In all other respects,
 .Nm

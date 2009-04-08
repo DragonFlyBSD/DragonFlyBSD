@@ -24,7 +24,7 @@
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
 .\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.61 2008/10/20 07:35:08 swildner Exp $
-.Dd October 3, 2008
+.Dd December 30, 2008
 .Dt RC.CONF 5
 .Os
 .Sh NAME
@@ -1363,6 +1363,14 @@ If set to
 and also an NFS server, run
 .Xr rpc.lockd 8
 at boot time.
+.It Va rpc_lockd_flags
+.Pq Vt str
+If
+.Va rpc_lockd_enable
+is set to
+.Dq Li YES ,
+these are the flags to pass to
+.Xr rpc.lockd 8 .
 .It Va rpc_statd_enable
 .Pq Vt bool
 If set to
@@ -1370,11 +1378,19 @@ If set to
 and also an NFS server, run
 .Xr rpc.statd 8
 at boot time.
+.It Va rpc_statd_flags
+.Pq Vt str
+If
+.Va rpc_statd_enable
+is set to
+.Dq Li YES ,
+these are the flags to pass to
+.Xr rpc.statd 8 .
 .It Va rpcbind_program
 .Pq Vt str
 Path to program for rpcbind daemon
 (default
-.Pa /usr/sbin/portmap ) .
+.Pa /usr/sbin/rpcbind ) .
 .It Va rpcbind_enable
 .Pq Vt bool
 If set to
@@ -2285,6 +2301,13 @@ is set to
 these are the flags to pass to the
 .Xr lpd 8
 daemon.
+.It Va nscd_enable
+.Pq Vt bool
+If set to
+.Dq Li YES ,
+run the
+.Xr nscd 8
+daemon at system boot time.
 .It Va mixer_enable
 .Pq Vt bool
 If set to
@@ -2873,7 +2896,6 @@ has not completed within the specified time (in seconds).
 .Xr pcnfsd 8 ,
 .Xr pfctl 8 ,
 .Xr pflogd 8 ,
-.Xr portmap 8 ,
 .Xr quotacheck 8 ,
 .Xr quotaon 8 ,
 .Xr rc 8 ,
@@ -2882,6 +2904,7 @@ has not completed within the specified time (in seconds).
 .Xr rndcontrol 8 ,
 .Xr route 8 ,
 .Xr routed 8 ,
+.Xr rpcbind 8 ,
 .Xr rpc.lockd 8 ,
 .Xr rpc.statd 8 ,
 .Xr rtadvd 8 ,

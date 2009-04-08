@@ -613,9 +613,11 @@ struct ip6_mtuinfo {
 #define IPV6CTL_AUTO_LINKLOCAL	35	/* automatic link-local addr assign */
 #define IPV6CTL_RIP6STATS	36	/* raw_ip6 stats */
 
+#define IPV6CTL_ADDRCTLPOLICY	38	/* get/set address selection policy */
+
 /* New entries should be added here from current IPV6CTL_MAXID value. */
 /* to define items, should talk with KAME guys first, for *BSD compatibility */
-#define IPV6CTL_MAXID		37
+#define IPV6CTL_MAXID		42
 
 #endif /* !_XOPEN_SOURCE */
 
@@ -646,6 +648,7 @@ void	in6_sin6_2_sin (struct sockaddr_in *sin, struct sockaddr_in6 *sin6);
 void	in6_sin_2_v4mapsin6(struct sockaddr_in *sin, struct sockaddr_in6 *sin6);
 void	in6_sin6_2_sin_in_sock (struct sockaddr *nam);
 void	in6_sin_2_v4mapsin6_in_sock (struct sockaddr **nam);
+void	addrsel_policy_init (void);
 
 #define	satosin6(sa)	((struct sockaddr_in6 *)(sa))
 #define	sin6tosa(sin6)	((struct sockaddr *)(sin6))

@@ -56,6 +56,7 @@ int no_update_opt = 0;		/* do not make any actual updates */
 int min_sleep_opt = 5;		/* 5 seconds minimum poll interval */
 int nom_sleep_opt = 300;	/* 5 minutes nominal poll interval */
 int max_sleep_opt = 1800;	/* 30 minutes maximum poll interval */
+int family = PF_UNSPEC;		/* Address family */
 double insane_deviation = 0.5;	/* 0.5 seconds of deviation == insane */
 const char *config_opt;		/* config file */
 const char *pid_opt = "/var/run/dntpd.pid";
@@ -78,8 +79,14 @@ main(int ac, char **av)
     /*
      * Process Options
      */
-    while ((ch = getopt(ac, av, "df:i:l:np:qstFL:QST:")) != -1) {
+    while ((ch = getopt(ac, av, "46df:i:l:np:qstFL:QST:")) != -1) {
 	switch(ch) {
+	case '4':
+	    family = PF_INET;
+	    break;
+	case '6':
+	    family = PF_INET6;
+	    break;
 	case 'd':
 	    debug_opt = 1;
 	    daemon_opt = 0;
@@ -294,7 +301,8 @@ dotest(const char *target)
     struct server_info info;
 
     bzero(&info, sizeof(info));
-    info.fd = udp_socket(target, 123, &info.sam);
+    info.sam = (struct sockaddr *)&info.sam_st;
+    info.fd = udp_socket(target, 123, info.sam, LOG_DNS_ERROR);
     if (info.fd < 0) {
 	logerrstr("unable to create UDP socket for %s", target);
 	return;
@@ -312,11 +320,30 @@ dotest(const char *target)
     /* not reached */
 }
 
+static char *
+myaddr2ascii(struct sockaddr *sa)
+{
+	static char str[INET6_ADDRSTRLEN];
+	struct sockaddr_in *soin;
+	struct sockaddr_in6 *sin6;
+
+	switch (sa->sa_family) {
+	case AF_INET:
+		soin = (struct sockaddr_in *) sa;
+		inet_ntop(AF_INET, &soin->sin_addr, str, sizeof(str));
+		break;
+	case AF_INET6:
+		sin6 = (struct sockaddr_in6 *) sa;
+		inet_ntop(AF_INET6, &sin6->sin6_addr, str, sizeof(str));
+		break;
+	}
+	return (str);
+}
+
 static void
 add_server(const char *target)
 {
     server_info_t info;
-    const char *ipstr;
 
     if (nservers == maxservers) {
 	maxservers += 16;
@@ -326,15 +353,14 @@ add_server(const char *target)
     info = malloc(sizeof(struct server_info));
     servers[nservers] = info;
     bzero(info, sizeof(struct server_info));
-    info->fd = udp_socket(target, 123, &info->sam);
+    info->sam = (struct sockaddr *)&info->sam_st;
     info->target = strdup(target);
-    if (info->fd >= 0) {
-	ipstr = addr2ascii(AF_INET, &info->sam.sin_addr,
-			   sizeof(info->sam.sin_addr), NULL);
-	info->ipstr = strdup(ipstr);
-    } else {
-	client_setserverstate(info, -1, "DNS or IP lookup failure");
-    }
+    /*
+     * Postpone socket opening and server name resolution until we are in main
+     * loop to avoid hang during init if network down.
+     */
+    info->fd = -1;
+    info->server_state = -1;
     ++nservers;
 }
 
@@ -354,17 +380,25 @@ void
 reconnect_server(server_info_t info)
 {
     const char *ipstr;
+    dns_error_policy_t policy;
 
-    if (info->fd >= 0)
+    /* 
+     * Ignore DNS errors if never connected before to handle the case where
+     * we're started before network up.
+     */
+    policy = IGNORE_DNS_ERROR;
+    if (info->fd >= 0) {
 	close(info->fd);
+	policy = LOG_DNS_ERROR;
+    }
     if (info->ipstr) {
 	free(info->ipstr);
 	info->ipstr = NULL;
     }
-    info->fd = udp_socket(info->target, 123, &info->sam);
+    info->sam = (struct sockaddr *)&info->sam_st;
+    info->fd = udp_socket(info->target, 123, info->sam, policy);
     if (info->fd >= 0) {
-	ipstr = addr2ascii(AF_INET, &info->sam.sin_addr,
-			   sizeof(info->sam.sin_addr), NULL);
+	ipstr = myaddr2ascii(info->sam);
 	info->ipstr = strdup(ipstr);
     }
 }

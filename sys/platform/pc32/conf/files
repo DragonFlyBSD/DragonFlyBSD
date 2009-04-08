@@ -35,6 +35,9 @@ ukbdmap.h			optional	ukbd_dflt_keymap	\
 	no-obj no-implicit-rule before-depend				\
 	clean		"ukbdmap.h"
 #
+emulation/dragonfly12/dfbsd12_getdirentries.c	nonoptional compat_df12
+emulation/dragonfly12/dfbsd12_stat.c	nonoptional compat_df12
+#
 hal.o				optional	ath_hal			\
 	dependency	"$S/contrib/dev/ath/public/i386-elf.hal.o.uu"	\
 	compile-with	"uudecode < $S/contrib/dev/ath/public/i386-elf.hal.o.uu" \
@@ -117,7 +120,6 @@ dev/raid/pst/pst-raid.c			optional	pst
 dev/misc/puc/puc.c			optional	puc
 dev/misc/puc/pucdata.c			optional	puc
 dev/netif/sbni/if_sbni.c		optional	sbni
-dev/netif/sr/if_sr_isa.c		optional	sr isa
 dev/misc/syscons/schistory.c		optional	sc
 dev/misc/syscons/scmouse.c		optional	sc
 dev/misc/syscons/scterm.c		optional	sc
@@ -202,7 +204,6 @@ platform/pc32/i386/vm86.c		standard
 platform/pc32/i386/vm_machdep.c		standard
 platform/pc32/isa/asc.c			optional	asc
 platform/pc32/isa/clock.c		standard
-dev/serial/cronyx/cronyx.c		optional	cx
 dev/video/ctx/ctx.c			optional	ctx
 dev/serial/cy/cy.c			optional	cy
 dev/netif/elink_layer/elink.c		optional	ep
@@ -211,7 +212,6 @@ dev/disk/fd/fd.c			optional	fd
 dev/disk/fd/fd_pccard.c			optional	fd pccard
 dev/misc/gpib/gpib.c			optional	gp
 dev/video/gsc/gsc.c			optional	gsc
-dev/netif/cx/if_cx.c			optional	cx
 dev/netif/el/if_el.c			optional	el
 dev/netif/le/if_le.c			optional	le
 dev/netif/rdp/if_rdp.c			optional	rdp

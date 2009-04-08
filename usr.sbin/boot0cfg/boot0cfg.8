@@ -25,7 +25,7 @@
 .\" $FreeBSD: src/usr.sbin/boot0cfg/boot0cfg.8,v 1.5.2.6 2003/03/12 22:08:13 trhodes Exp $
 .\" $DragonFly: src/usr.sbin/boot0cfg/boot0cfg.8,v 1.4 2008/03/24 23:04:19 swildner Exp $
 .\"
-.Dd March 23, 2008
+.Dd January 16, 2009
 .Dt BOOT0CFG 8
 .Os
 .Sh NAME
@@ -108,12 +108,12 @@ specified (with
 prepended as necessary):
 .Bl -tag -width indent
 .It packet
-Use the disk packet (BIOS INT 0x13 extensions) interface,
+Try to use the disk packet (BIOS INT 0x13 extensions) interface,
 as opposed to the legacy (CHS) interface, when doing disk I/O.
-This allows booting above cylinder 1023, but requires specific
-BIOS support.
+It might be necessary to avoid packet mode for very old systems,
+which have broken packet mode support.
 The default is
-.Sq nopacket .
+.Sq packet .
 .It setdrv
 Forces the drive containing the disk to be referenced using drive
 number definable by means of the -d option.

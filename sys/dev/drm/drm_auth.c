@@ -26,7 +26,6 @@
  *    Rickard E. (Rik) Faith <faith@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  *
- * $DragonFly: src/sys/dev/drm/drm_auth.c,v 1.2 2008/06/10 06:35:59 hasso Exp $
  */
 
 /** @file drm_auth.c
@@ -34,7 +33,7 @@
  * scheme between the master and clients.
  */
 
-#include "drmP.h"
+#include "dev/drm/drmP.h"
 
 static int drm_hash_magic(drm_magic_t magic)
 {
@@ -44,7 +43,7 @@ static int drm_hash_magic(drm_magic_t magic)
 /**
  * Returns the file private associated with the given magic number.
  */
-static drm_file_t *drm_find_file(drm_device_t *dev, drm_magic_t magic)
+static struct drm_file *drm_find_file(struct drm_device *dev, drm_magic_t magic)
 {
 	drm_magic_entry_t *pt;
 	int hash = drm_hash_magic(magic);
@@ -64,7 +63,8 @@ static drm_file_t *drm_find_file(drm_device_t *dev, drm_magic_t magic)
  * Inserts the given magic number into the hash table of used magic number
  * lists.
  */
-static int drm_add_magic(drm_device_t *dev, drm_file_t *priv, drm_magic_t magic)
+static int drm_add_magic(struct drm_device *dev, struct drm_file *priv,
+			 drm_magic_t magic)
 {
 	int		  hash;
 	drm_magic_entry_t *entry;
@@ -74,8 +74,9 @@ static int drm_add_magic(drm_device_t *dev, drm_file_t *priv, drm_magic_t magic)
 	DRM_SPINLOCK_ASSERT(&dev->dev_lock);
 
 	hash = drm_hash_magic(magic);
-	entry = malloc(sizeof(*entry), M_DRM, M_ZERO | M_NOWAIT);
-	if (!entry) return ENOMEM;
+	entry = malloc(sizeof(*entry), DRM_MEM_MAGIC, M_ZERO | M_NOWAIT);
+	if (!entry)
+		return ENOMEM;
 	entry->magic = magic;
 	entry->priv  = priv;
 	entry->next  = NULL;
@@ -95,7 +96,7 @@ static int drm_add_magic(drm_device_t *dev, drm_file_t *priv, drm_magic_t magic)
  * Removes the given magic number from the hash table of used magic number
  * lists.
  */
-static int drm_remove_magic(drm_device_t *dev, drm_magic_t magic)
+static int drm_remove_magic(struct drm_device *dev, drm_magic_t magic)
 {
 	drm_magic_entry_t *prev = NULL;
 	drm_magic_entry_t *pt;
@@ -117,11 +118,11 @@ static int drm_remove_magic(drm_device_t *dev, drm_magic_t magic)
 			if (prev) {
 				prev->next = pt->next;
 			}
+			free(pt, DRM_MEM_MAGIC);
 			return 0;
 		}
 	}
 
-	free(pt, M_DRM);
 	return EINVAL;
 }
 
@@ -133,12 +134,12 @@ static int drm_remove_magic(drm_device_t *dev, drm_magic_t magic)
  * connection that the magic is passed over) to determine if the magic number
  * should be authenticated.
  */
-int drm_getmagic(drm_device_t *dev, void *data, struct drm_file *file_priv)
+int drm_getmagic(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
 	static drm_magic_t sequence = 0;
-	drm_auth_t *auth = data;
+	struct drm_auth *auth = data;
 
-				/* Find unique magic */
+	/* Find unique magic */
 	if (file_priv->magic) {
 		auth->magic = file_priv->magic;
 	} else {
@@ -164,10 +165,11 @@ int drm_getmagic(drm_device_t *dev, void *data, struct drm_file *file_priv)
 /**
  * Marks the client associated with the given magic number as authenticated.
  */
-int drm_authmagic(drm_device_t *dev, void *data, struct drm_file *file_priv)
+int drm_authmagic(struct drm_device *dev, void *data,
+		  struct drm_file *file_priv)
 {
-	drm_auth_t *auth = data;
-	drm_file_t *priv;
+	struct drm_auth *auth = data;
+	struct drm_file *priv;
 
 	DRM_DEBUG("%u\n", auth->magic);
 

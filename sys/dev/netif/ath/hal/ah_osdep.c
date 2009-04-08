@@ -46,6 +46,7 @@
 #include <sys/bus.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 
 #include <machine/stdarg.h>
 
@@ -203,7 +204,7 @@ ath_hal_setlogging(int enable)
 	int error;
 
 	if (enable) {
-		error = suser(curthread);
+		error = priv_check(curthread, PRIV_ROOT);
 		if (error == 0) {
 			error = alq_open(&ath_hal_alq, ath_hal_logfile,
 				curthread->td_ucred, ALQ_DEFAULT_CMODE,

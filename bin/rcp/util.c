@@ -114,7 +114,7 @@ susystem(char *s, int userid)
 
 	case 0:
 		setuid(userid);
-		execl(_PATH_BSHELL, "sh", "-c", s, (char *)NULL);
+		execl(_PATH_BSHELL, "sh", "-c", s, NULL);
 		_exit(127);
 	}
 	istat = signal(SIGINT, SIG_IGN);

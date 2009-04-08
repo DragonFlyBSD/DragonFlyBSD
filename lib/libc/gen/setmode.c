@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)setmode.c	8.2 (Berkeley) 3/25/94
- * $FreeBSD: src/lib/libc/gen/setmode.c,v 1.5.2.1 2001/03/05 09:34:10 obrien Exp $
+ * $FreeBSD: src/lib/libc/gen/setmode.c,v 1.11 2007/01/09 00:27:55 imp Exp $
  * $DragonFly: src/lib/libc/gen/setmode.c,v 1.7 2005/11/19 22:32:53 swildner Exp $
  */
 
@@ -68,10 +64,10 @@ typedef struct bitcmd {
 #define	CMD2_OBITS	0x08
 #define	CMD2_UBITS	0x10
 
-static BITCMD	*addcmd (BITCMD *, int, int, int, u_int);
-static void	 compress_mode (BITCMD *);
+static BITCMD	*addcmd(BITCMD *, int, int, int, u_int);
+static void	 compress_mode(BITCMD *);
 #ifdef SETMODE_DEBUG
-static void	 dumpmode (BITCMD *);
+static void	 dumpmode(BITCMD *);
 #endif
 
 /*
@@ -83,10 +79,10 @@ static void	 dumpmode (BITCMD *);
 mode_t
 getmode(const void *bbox, mode_t omode)
 {
-	BITCMD *set;
+	const BITCMD *set;
 	mode_t clrval, newmode, value;
 
-	set = (BITCMD *)bbox;
+	set = (const BITCMD *)bbox;
 	newmode = omode;
 	for (value = 0;; set++)
 		switch(set->cmd) {
@@ -150,11 +146,15 @@ common:			if (set->cmd2 & CMD2_CLR) {
 
 #define	ADDCMD(a, b, c, d)						\
 	if (set >= endset) {						\
-		BITCMD *newset;				\
+		BITCMD *newset;						\
 		setlen += SET_LEN_INCR;					\
 		newset = realloc(saveset, sizeof(BITCMD) * setlen);	\
-		if (!saveset)						\
+		if (!newset) {						\
+			if (saveset)					\
+				free(saveset);				\
+			saveset = NULL;					\
 			return (NULL);					\
+		}							\
 		set = newset + (set - saveset);				\
 		saveset = newset;					\
 		endset = newset + (setlen - 2);				\
@@ -167,11 +167,12 @@ void *
 setmode(const char *p)
 {
 	int perm, who;
-	char op;
+	char op, *ep;
 	BITCMD *set, *saveset, *endset;
 	sigset_t sigset, sigoset;
 	mode_t mask;
 	int equalopdone=0, permXbits, setlen;
+	long perml;
 
 	if (!*p)
 		return (NULL);
@@ -183,10 +184,10 @@ setmode(const char *p)
 	 * as best we can.
 	 */
 	sigfillset(&sigset);
-        _sigprocmask(SIG_BLOCK, &sigset, &sigoset);
+	_sigprocmask(SIG_BLOCK, &sigset, &sigoset);
 	umask(mask = umask(0));
 	mask = ~mask;
-        _sigprocmask(SIG_SETMASK, &sigoset, NULL);
+	_sigprocmask(SIG_SETMASK, &sigoset, NULL);
 
 	setlen = SET_LEN + 2;
 
@@ -200,17 +201,14 @@ setmode(const char *p)
 	 * or illegal bits.
 	 */
 	if (isdigit((unsigned char)*p)) {
-		perm = (mode_t)strtol(p, NULL, 8);
-		if (perm & ~(STANDARD_BITS|S_ISTXT)) {
+		perml = strtol(p, &ep, 8);
+		if (*ep || perml < 0 || perml & ~(STANDARD_BITS|S_ISTXT)) {
 			free(saveset);
 			return (NULL);
 		}
-		while (*++p)
-			if (*p < '0' || *p > '7') {
-				free(saveset);
-				return (NULL);
-			}
+		perm = (mode_t)perml;
 		ADDCMD('=', (STANDARD_BITS|S_ISTXT), perm, mask);
+		set->cmd = 0;
 		return (saveset);
 	}
 
@@ -358,7 +356,7 @@ addcmd(BITCMD *set, int op, int who, int oparg, u_int mask)
 			set->cmd2 = ((who & S_IRUSR) ? CMD2_UBITS : 0) |
 				    ((who & S_IRGRP) ? CMD2_GBITS : 0) |
 				    ((who & S_IROTH) ? CMD2_OBITS : 0);
-			set->bits = ~0;
+			set->bits = (mode_t)~0;
 		} else {
 			set->cmd2 = CMD2_UBITS | CMD2_GBITS | CMD2_OBITS;
 			set->bits = mask;

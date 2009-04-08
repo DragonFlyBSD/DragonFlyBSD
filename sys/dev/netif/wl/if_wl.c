@@ -200,6 +200,7 @@ WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <sys/socket.h>
 #include <sys/syslog.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/serialize.h>
 #include <sys/sysctl.h>
 #include <sys/bus.h>
@@ -1096,7 +1097,7 @@ wlread(struct wl_softc *sc, u_short fd_p)
 	}
 	return 0;
     }
-    m->m_next = (struct mbuf *) 0;
+    m->m_next = NULL;
     m->m_pkthdr.rcvif = ifp;
     m->m_pkthdr.len = 0; /* don't know this yet */
     m->m_len = MHLEN;
@@ -1138,7 +1139,7 @@ wlread(struct wl_softc *sc, u_short fd_p)
 	if (!(bytes_in_mbuf -= bytes)) {
 	    MGET(tm->m_next, MB_DONTWAIT, MT_DATA);
 	    tm = tm->m_next;
-	    if (tm == (struct mbuf *)0) {
+	    if (tm == NULL) {
 		m_freem(m);
 		if_printf(ifp, "read(): No mbuf nth\n");
 		if (wlhwrst(sc) != TRUE) {
@@ -1341,7 +1342,7 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 	/* pointer to buffer in user space */
 	up = (void *)ifr->ifr_data;
 	/* work out if they're root */
-	isroot = (suser(td) == 0);
+	isroot = (priv_check(td, PRIV_ROOT) == 0);
 	
 	for (i = 0; i < 0x40; i++) {
 	    /* don't hand the DES key out to non-root users */
@@ -1356,7 +1357,7 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 	/* copy the PSA in from the caller; we only copy _some_ values */
     case SIOCSWLPSA:
 	/* root only */
-	if ((error = suser(td)))
+	if ((error = priv_check(td, PRIV_ROOT)))
 	    break;
 	error = EINVAL;	/* assume the worst */
 	/* pointer to buffer in user space containing data */
@@ -1410,7 +1411,7 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 	 */
     case SIOCSWLCNWID:
 	/* root only */
-	if ((error = suser(td)))
+	if ((error = priv_check(td, PRIV_ROOT)))
 	    break;
 	if (!(ifp->if_flags & IFF_UP)) {
 	    error = EIO;	/* only allowed while up */
@@ -1428,7 +1429,7 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 	/* copy the EEPROM in 2.4 Gz WaveMODEM  out to the caller */
     case SIOCGWLEEPROM:
 	/* root only */
-	if ((error = suser(td)))
+	if ((error = priv_check(td, PRIV_ROOT)))
 	    break;
 	/* pointer to buffer in user space */
 	up = (void *)ifr->ifr_data;
@@ -1451,7 +1452,7 @@ wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 	/* zero (Delete) the wl cache */
     case SIOCDWLCACHE:
 	/* root only */
-	if ((error = suser(td)))
+	if ((error = priv_check(td, PRIV_ROOT)))
 	    break;
 	wl_cache_zero(sc);
 	break;
@@ -1842,7 +1843,7 @@ wlxmt(struct wl_softc *sc, struct mbuf *m)
 	    outw(PIOR0(base), tbd_p);  /* address of act_count */
 	    outw(PIOP0(base), inw(PIOP0(base)) + count);
 	    xmtdata_p += len;
-	    if ((tm_p = tm_p->m_next) == (struct mbuf *)0)
+	    if ((tm_p = tm_p->m_next) == NULL)
 		break;
 	    if (count & 1) {
 		/* go to the next descriptor */
@@ -1860,7 +1861,7 @@ wlxmt(struct wl_softc *sc, struct mbuf *m)
 		    continue;
 		}
 		/* next mbuf short -> coallesce as needed */
-		if ( (tm_p->m_next == (struct mbuf *) 0) ||
+		if ( (tm_p->m_next == NULL) ||
 #define HDW_THRESHOLD 55
 		     tm_p->m_len > HDW_THRESHOLD)
 		    /* ok */;
@@ -1869,7 +1870,7 @@ wlxmt(struct wl_softc *sc, struct mbuf *m)
 		    continue;
 		}
 	    }
-	} else if ((tm_p = tm_p->m_next) == (struct mbuf *)0)
+	} else if ((tm_p = tm_p->m_next) == NULL)
 	    break;
 	count = tm_p->m_len;
 	mb_p = mtod(tm_p, u_char *);
@@ -2326,8 +2327,8 @@ wlhdwsleaze(u_short *countp, u_char **mb_pp, struct mbuf **tm_pp)
 	count += tm_p->m_len;
 	if (tm_p->m_len & 1)
 	    break;
-    } while ((tm_p = tm_p->m_next) != (struct mbuf *)0);
-    if ( (tm_p == (struct mbuf *)0) ||
+    } while ((tm_p = tm_p->m_next) != NULL);
+    if ( (tm_p == NULL) ||
 	 count > HDW_THRESHOLD) {
 	*countp = (*tm_pp)->m_len;
 	*mb_pp = mtod((*tm_pp), u_char *);
@@ -2345,7 +2346,7 @@ wlhdwsleaze(u_short *countp, u_char **mb_pp, struct mbuf **tm_pp)
 	if (count > HDW_THRESHOLD)
 			break;
 	cp += len;
-	if (tm_p->m_next == (struct mbuf *)0)
+	if (tm_p->m_next == NULL)
 	    break;
 	tm_p = tm_p->m_next;
     }
@@ -2367,7 +2368,7 @@ wlsftwsleaze(u_short *countp, u_char **mb_pp, struct mbuf **tm_pp)
 	bcopy(mtod(tm_p, u_char *), cp, len = tm_p->m_len);
 	count += len;
 	cp += len;
-	if (tm_p->m_next == (struct mbuf *)0)
+	if (tm_p->m_next == NULL)
 	    break;
 	tm_p = tm_p->m_next;
     }

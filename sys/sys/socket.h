@@ -38,6 +38,8 @@
 #ifndef _SYS_SOCKET_H_
 #define	_SYS_SOCKET_H_
 
+#include <sys/_iovec.h>
+
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
@@ -414,7 +416,7 @@ struct cmsgcred {
 	(((caddr_t)(cmsg) + _ALIGN((cmsg)->cmsg_len) + \
 	  _ALIGN(sizeof(struct cmsghdr)) > \
 	    (caddr_t)(mhdr)->msg_control + (mhdr)->msg_controllen) ? \
-	    (struct cmsghdr *)NULL : \
+	    NULL : \
 	    (struct cmsghdr *)((caddr_t)(cmsg) + _ALIGN((cmsg)->cmsg_len)))
 
 /*
@@ -424,7 +426,7 @@ struct cmsgcred {
 #define	CMSG_FIRSTHDR(mhdr) \
 	((mhdr)->msg_controllen >= sizeof(struct cmsghdr) ? \
 	 (struct cmsghdr *)(mhdr)->msg_control : \
-	 (struct cmsghdr *)NULL)
+	 NULL)
 
 /* RFC 2292 additions */
 	

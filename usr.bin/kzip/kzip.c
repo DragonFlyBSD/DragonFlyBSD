@@ -132,7 +132,7 @@ main(int argc, char **argv)
 		close(pipe1[0]); close(pipe1[1]);
 		close(pipe2[0]); close(pipe2[1]);
 		close(fdi); close(fdo);
-		execlp("gzip", "gzip", "-9", "-n", 0);
+		execlp("gzip", "gzip", "-9", "-n", NULL);
 		exit (0);
 	}
 
@@ -204,7 +204,7 @@ main(int argc, char **argv)
 			"/usr/lib/aout/kzhead.o",
 			obj,
 			"/usr/lib/aout/kztail.o",
-			0);
+			NULL);
 		exit(2);
 	}
 

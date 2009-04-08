@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1989 Regents of the University of California.
  * All rights reserved.
  *
@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -31,15 +27,21 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)float.h	7.1 (Berkeley) 5/8/90
- * $FreeBSD: src/sys/amd64/include/float.h,v 1.10 2003/02/08 20:37:54 mike Exp $
+ * $FreeBSD: src/sys/amd64/include/float.h,v 1.16 2008/01/17 13:12:46 bde Exp $
  * $DragonFly: src/sys/cpu/amd64/include/float.h,v 1.2 2008/04/09 06:44:37 hasso Exp $
  */
 
 #ifndef _CPU_FLOAT_H_
 #define _CPU_FLOAT_H_
 
+#include <sys/cdefs.h>
+
+__BEGIN_DECLS
+extern int	__flt_rounds(void);
+__END_DECLS
+
 #define FLT_RADIX	2		/* b */
-#define FLT_ROUNDS	1		/* FP addition rounds to nearest */
+#define	FLT_ROUNDS	__flt_rounds()
 #if __ISO_C_VISIBLE >= 1999
 #define	FLT_EVAL_METHOD	0		/* no promotions */
 #define	DECIMAL_DIG	21		/* max precision in decimal digits */
@@ -64,7 +66,6 @@
 #define DBL_MAX_EXP	1024
 #define DBL_MAX		1.7976931348623157E+308
 #define DBL_MAX_10_EXP	308
-
 
 #define LDBL_MANT_DIG	64
 #define LDBL_EPSILON	1.0842021724855044340E-19L

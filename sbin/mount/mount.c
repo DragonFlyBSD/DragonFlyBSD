@@ -72,6 +72,7 @@ static char  *update_options(char *, char *, int);
 static int    mountfs(const char *, const char *, const char *,
 		      int, const char *, const char *);
 static void   remopt(char *, const char *);
+static void   printdefvals(const struct statfs *);
 static void   prmount(struct statfs *);
 static void   putfsent(const struct statfs *);
 static void   usage(void);
@@ -670,9 +671,28 @@ usage(void)
 	exit(1);
 }
 
+/*
+ * Prints the default values for dump frequency and pass number of fsck.
+ * This happens when mount(8) is called with -p and there is no fstab file
+ * or there is but the values aren't specified.
+ */
+static void
+printdefvals(const struct statfs *ent)
+{
+        if (strcmp(ent->f_fstypename, "ufs") == 0) {
+                if (strcmp(ent->f_mntonname, "/") == 0)
+                        printf("\t1 1\n");
+                else
+                        printf("\t2 2\n");
+        } else {
+                printf("\t0 0\n");
+	}
+}
+
 static void
 putfsent(const struct statfs *ent)
 {
+	struct stat sb;
 	struct fstab *fst;
 	char *opts;
   
@@ -681,17 +701,21 @@ putfsent(const struct statfs *ent)
 	    ent->f_fstypename, opts);
 	free(opts);
 
-	if ((fst = getfsspec(ent->f_mntfromname)))
-		printf("\t%u %u\n", fst->fs_freq, fst->fs_passno);
-	else if ((fst = getfsfile(ent->f_mntonname)))
-		printf("\t%u %u\n", fst->fs_freq, fst->fs_passno);
-	else if (strcmp(ent->f_fstypename, "ufs") == 0) {
-		if (strcmp(ent->f_mntonname, "/") == 0)
-			printf("\t1 1\n");
+	/*
+	 * If fstab file is missing don't call getfsspec() or getfsfile()
+	 * at all, because the same warning will be printed twice for every
+	 * mounted filesystem.
+	 */
+	if (stat(_PATH_FSTAB, &sb) != -1) {
+		if ((fst = getfsspec(ent->f_mntfromname)))
+			printf("\t%u %u\n", fst->fs_freq, fst->fs_passno);
+		else if ((fst = getfsfile(ent->f_mntonname)))
+			printf("\t%u %u\n", fst->fs_freq, fst->fs_passno);
 		else
-			printf("\t2 2\n");
-	} else
-		printf("\t0 0\n");
+			printdefvals(ent);
+	} else {
+		printdefvals(ent);
+	}
 }
 
 

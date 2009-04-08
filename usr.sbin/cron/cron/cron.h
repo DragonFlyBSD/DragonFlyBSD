@@ -91,7 +91,6 @@
 #define	DBIT		0x0080	/* bit twiddling shown (long) */
 
 #define	CRON_TAB(u)	"%s/%s", SPOOL_DIR, u
-#define	PPC_NULL	((char **)NULL)
 
 #ifndef MAXHOSTNAMELEN
 #define MAXHOSTNAMELEN 256

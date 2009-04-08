@@ -73,9 +73,13 @@ extern int min_sleep_opt;
 extern int nom_sleep_opt;
 extern int max_sleep_opt;
 extern int log_stderr;
+extern int family;
 extern double insane_deviation;
 
-int udp_socket(const char *target, int port, struct sockaddr_in *sam);
+typedef enum { LOG_DNS_ERROR, IGNORE_DNS_ERROR } dns_error_policy_t;
+
+int udp_socket(const char *target, int port, struct sockaddr *sam,
+	       dns_error_policy_t dns_error_policy);
 int udp_ntptimereq(int fd, struct timeval *rtvp, 
 		   struct timeval *ltvp, struct timeval *lbtvp);
 void reconnect_server(server_info_t info);

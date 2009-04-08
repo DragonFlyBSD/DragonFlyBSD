@@ -136,7 +136,7 @@ in_ice_box(struct obj *obj)
 			pline("Your weapon is welded to your hand!");
 			return(0);
 		}
-		setuwep((struct obj *) 0);
+		setuwep(NULL);
 	}
 	current_ice_box->owt += obj->owt;
 	freeinv(obj);
@@ -182,7 +182,7 @@ struct obj *otmp;
 	else {
 	    pline("Do you want to take something out of the ice-box? [yn] ");
 	    if(readchar() == 'y')
-		if(askchain(fcobj, (char *) 0, 0, out_ice_box, ck_ice_box, 0))
+		if(askchain(fcobj, NULL, 0, out_ice_box, ck_ice_box, 0))
 		    return;
 		pline("That was all. Do you wish to put something in? [yn] ");
 		if(readchar() != 'y') return;
@@ -196,7 +196,7 @@ struct obj *otmp;
 static struct monst *
 bchit(int ddx, int ddy, int range, char sym)
 {
-	struct monst *mtmp = (struct monst *) 0;
+	struct monst *mtmp = NULL;
 	int bchx = u.ux, bchy = u.uy;
 
 	if(sym) Tmp_at(-1, sym);	/* open call */
@@ -412,7 +412,7 @@ use_pick_axe(struct obj *obj)
 		     && !sobj_at(ENORMOUS_ROCK, rx, ry)) {
 			/* ACCESSIBLE or POOL */
 			pline("You swing your %s through thin air.",
-				aobjnam(obj, (char *) 0));
+				aobjnam(obj, NULL));
 		} else {
 			if(dig_pos.x != rx || dig_pos.y != ry
 			    || dig_level != dlevel || dig_down) {

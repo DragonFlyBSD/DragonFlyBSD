@@ -1,5 +1,5 @@
 .\"-
-.\" Copyright (c) 2007-08 The DragonFly Project.  All rights reserved.
+.\" Copyright (c) 2007-09 The DragonFly Project.  All rights reserved.
 .\"
 .\" This code is derived from software contributed to The DragonFly Project
 .\" by Matthias Schmidt <matthias@dragonflybsd.org>, University of Marburg.
@@ -32,7 +32,7 @@
 .\"
 .\" $DragonFly: src/usr.bin/pkg_search/pkg_search.1,v 1.11 2008/09/04 10:33:50 matthias Exp $
 .\"
-.Dd August 29, 2008
+.Dd February 8, 2009
 .Dt PKG_SEARCH 1
 .Os
 .Sh NAME
@@ -45,6 +45,8 @@
 .Nm
 .Fl s
 .Ar package
+.Nm
+.Fl d
 .Sh DESCRIPTION
 .Nm
 queries the
@@ -62,6 +64,11 @@ This file contains information about each package in a binary repository.
 .Pp
 The options are as follows:
 .Bl -tag -width indent
+.It Fl d
+Download the
+.Xr pkg_summary 5
+file.
+It gets overwritten if it is already installed.
 .It Fl k
 Also query the Info and WWW field.
 .It Fl s

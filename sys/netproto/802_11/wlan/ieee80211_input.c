@@ -748,6 +748,7 @@ ieee80211_deliver_data(struct ieee80211com *ic,
 				goto out;	/* XXX goto err? */
 		}
 #endif
+		m->m_flags &= ~M_IEEE80211;
 		ifp->if_input(ifp, m);
 	}
 	return;

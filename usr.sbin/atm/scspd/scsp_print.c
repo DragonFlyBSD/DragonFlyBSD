@@ -92,7 +92,7 @@ static Type_name if_msg_types[] = {
 	{ "Cache Update Indication",	SCSP_UPDATE_IND },
 	{ "Cache Update Request",	SCSP_UPDATE_REQ },
 	{ "Cache Update Response",	SCSP_UPDATE_RSP },
-	{ (char *)0,	0 }
+	{ NULL,				0 }
 };
 
 static Type_name msg_types[] = {
@@ -101,7 +101,7 @@ static Type_name msg_types[] = {
 	{ "CSU Reply",		SCSP_CSU_REPLY_MSG },
 	{ "CSU Solicit",	SCSP_CSUS_MSG },
 	{ "Hello",		SCSP_HELLO_MSG },
-	{ (char *)0,		0 }
+	{ NULL,			0 }
 };
 
 static Type_name proto_types[] = {
@@ -110,14 +110,14 @@ static Type_name proto_types[] = {
 	{ "MARS",	SCSP_PROTO_MARS },
 	{ "DHCP",	SCSP_PROTO_DHCP },
 	{ "LNNI",	SCSP_PROTO_LNNI },
-	{ (char *)0,	0 }
+	{ NULL,		0 }
 };
 
 static Type_name ext_types[] = {
 	{ "End of Extensions",	SCSP_EXT_END },
 	{ "Authentication",	SCSP_EXT_AUTH },
 	{ "Vendor Private",	SCSP_EXT_VENDOR },
-	{ (char *)0,		0 }
+	{ NULL,			0 }
 };
 
 static Type_name hfsm_state_names[] = {
@@ -125,7 +125,7 @@ static Type_name hfsm_state_names[] = {
 	{ "Waiting",		SCSP_HFSM_WAITING },
 	{ "Unidirectional",	SCSP_HFSM_UNI_DIR },
 	{ "Bidirectional",	SCSP_HFSM_BI_DIR },
-	{ (char *)0,		0 }
+	{ NULL,			0 }
 };
 
 static Type_name hfsm_event_names[] = {
@@ -134,7 +134,7 @@ static Type_name hfsm_event_names[] = {
 	{ "Hello timer",	SCSP_HFSM_HELLO_T },
 	{ "Receive timer",	SCSP_HFSM_RCV_T },
 	{ "Msg received",	SCSP_HFSM_RCVD },
-	{ (char *)0,		0 }
+	{ NULL,			0 }
 };
 
 static Type_name cafsm_state_names[] = {
@@ -144,7 +144,7 @@ static Type_name cafsm_state_names[] = {
 	{ "Slave",			SCSP_CAFSM_SLAVE },
 	{ "Update cache",		SCSP_CAFSM_UPDATE },
 	{ "Aligned",			SCSP_CAFSM_ALIGNED },
-	{ (char *)0,			0 }
+	{ NULL,				0 }
 };
 
 static Type_name cafsm_event_names[] = {
@@ -159,7 +159,7 @@ static Type_name cafsm_event_names[] = {
 	{ "CSU timer",			SCSP_CAFSM_CSU_T },
 	{ "Cache Update",		SCSP_CAFSM_CACHE_UPD },
 	{ "Cache Response",		SCSP_CAFSM_CACHE_RSP },
-	{ (char *)0,			0 }
+	{ NULL,				0 }
 };
 
 static Type_name cifsm_state_names[] = {
@@ -167,7 +167,7 @@ static Type_name cifsm_state_names[] = {
 	{ "Summarize",	SCSP_CIFSM_SUM },
 	{ "Update",	SCSP_CIFSM_UPD },
 	{ "Aligned",	SCSP_CIFSM_ALIGN },
-	{ (char *)0,			0 }
+	{ NULL,		0 }
 };
 
 static Type_name cifsm_event_names[] = {
@@ -181,14 +181,14 @@ static Type_name cifsm_event_names[] = {
 	{ "CSU Request",	SCSP_CIFSM_CSU_REQ },
 	{ "CSU Reply",		SCSP_CIFSM_CSU_REPLY },
 	{ "CSU Solicit",	SCSP_CIFSM_CSU_SOL },
-	{ (char *)0,			0 }
+	{ NULL,			0 }
 };
 
 static Type_name atmarp_state_names[] = {
 	{ "New",	SCSP_ASTATE_NEW },
 	{ "Updated",	SCSP_ASTATE_UPD },
 	{ "Deleted",	SCSP_ASTATE_DEL },
-	{ (char *)0,	0 }
+	{ NULL,		0 }
 };
 
 
@@ -267,7 +267,7 @@ scsp_type_name(u_char type, Type_name *tbl)
 	/*
 	 * Search the table
 	 */
-	for (i = 0; tbl[i].name != (char *)0 && tbl[i].type != type;
+	for (i = 0; tbl[i].name != NULL && tbl[i].type != type;
 			i++)
 		;
 
@@ -1095,7 +1095,7 @@ print_scsp_dcs(FILE *fp, Scsp_dcs *dcsp)
 	fprintf(fp, "%sCA Retransmit Msg:    %p\n", indent,
 			dcsp->sd_ca_rexmt_msg);
 	fprintf(fp, "%sCSASs to send:        ", indent);
-	if (dcsp->sd_ca_csas == (Scsp_cse *)0) {
+	if (dcsp->sd_ca_csas == NULL) {
 		fprintf(fp, "Empty\n");
 	} else {
 		fprintf(fp, "%p\n", dcsp->sd_ca_csas);
@@ -1103,7 +1103,7 @@ print_scsp_dcs(FILE *fp, Scsp_dcs *dcsp)
 	fprintf(fp, "%sCSUS Rexmit Int:      %d\n", indent,
 			dcsp->sd_csus_rexmt_int);
 	fprintf(fp, "%sCache Request List:   ", indent);
-	if (dcsp->sd_crl == (Scsp_csa *)0) {
+	if (dcsp->sd_crl == NULL) {
 		fprintf(fp, "Empty\n");
 	} else {
 		fprintf(fp, "%p\n", dcsp->sd_crl);
@@ -1208,7 +1208,7 @@ print_scsp_dump(void)
 	 * Open the output file
 	 */
 	df = fopen(fname, "w");
-	if (df == (FILE *)0)
+	if (df == NULL)
 		return;
 
 	/*

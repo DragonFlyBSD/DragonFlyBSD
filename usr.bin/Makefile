@@ -80,9 +80,6 @@ SUBDIR=	alias \
 	jot \
 	kdump \
 	kenv \
-	key \
-	keyinfo \
-	keyinit \
 	keylogin \
 	keylogout \
 	killall \
@@ -239,6 +236,10 @@ SUBDIR+=dig \
 	dnssec-keygen \
 	dnssec-signzone \
 	host
+.endif
+
+.if defined(WANT_HESIOD)
+SUBDIR+=hesinfo
 .endif
 
 .if !defined(NO_OPENSSL)

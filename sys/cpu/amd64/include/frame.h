@@ -58,9 +58,7 @@
  */
 
 struct trapframe {
-	/* fs XXX */
-	/* es XXX */
-	/* ds XXX */
+	/* note: tf_rdi matches mc_rdi in mcontext */
 	register_t	tf_rdi;
 	register_t	tf_rsi;
 	register_t	tf_rdx;
@@ -76,6 +74,7 @@ struct trapframe {
 	register_t	tf_r13;
 	register_t	tf_r14;
 	register_t	tf_r15;
+	register_t	tf_xflags;
 	register_t	tf_trapno;
 	register_t	tf_addr;
 	register_t	tf_flags;

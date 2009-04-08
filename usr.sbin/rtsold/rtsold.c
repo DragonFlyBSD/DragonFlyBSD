@@ -781,6 +781,6 @@ autoifprobe(void)
 	if (target)
 		return argv;
 	else
-		return (char **)NULL;
+		return NULL;
 #endif
 }

@@ -304,7 +304,7 @@ DoTimeout()
 	RMPCONN *rtmp;
 	struct timeval now;
 
-	(void) gettimeofday(&now, (struct timezone *)0);
+	(void) gettimeofday(&now, NULL);
 
 	/*
 	 *  For each active connection, if RMP_TIMEOUT seconds have passed

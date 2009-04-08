@@ -321,8 +321,7 @@ fifo_write(struct vop_write_args *ap)
 	else
 		flags = 0;
 	vn_unlock(ap->a_vp);
-	error = sosend(wso, (struct sockaddr *)0, ap->a_uio, 0,
-		       (struct mbuf *)0, flags, td);
+	error = sosend(wso, NULL, ap->a_uio, 0, NULL, flags, td);
 	vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY);
 	return (error);
 }

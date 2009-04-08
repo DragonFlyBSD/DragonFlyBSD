@@ -1,14 +1,21 @@
 #
+# $FreeBSD: src/etc/pam.d/login,v 1.17 2007/06/10 18:57:20 yar Exp $
 # $DragonFly: src/etc/pam.d/login,v 1.1 2005/07/22 18:20:43 joerg Exp $
 #
 # PAM configuration for the "login" service
 #
 
-account		required	pam_unix.so
-session		required	pam_permit.so
-password	required	pam_permit.so
-auth		sufficient	pam_opie.so			no_fake_prompts
-#auth		requisite	pam_opieaccess.so
-auth		requisite	pam_cleartext_pass_ok.so
-#auth		sufficient	pam_krb5.so			try_first_pass
-auth		required	pam_unix.so			try_first_pass
+# auth
+auth		sufficient	pam_self.so		no_warn
+auth		include		system
+
+# account
+account		requisite	pam_securetty.so
+account		required	pam_nologin.so
+account		include		system
+
+# session
+session		include		system
+
+# password
+password	include		system

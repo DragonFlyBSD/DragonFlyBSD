@@ -46,10 +46,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+struct group *_getgrent(void);
+int _setgrent(void);
+void _endgrent(void);
 FILE *_gr_fp;
+
 static struct group _gr_group;
 static int _gr_stayopen;
-static int grscan(), start_gr();
+static int grscan(int, gid_t, char *), start_gr(void);
 
 #define	MAXGRP		200
 static char *members[MAXGRP];
@@ -57,7 +61,7 @@ static char *members[MAXGRP];
 static char line[MAXLINELENGTH];
 
 struct group *
-_getgrent()
+_getgrent(void)
 {
 	if (!_gr_fp && !start_gr()) {
 		return NULL;
@@ -70,14 +74,13 @@ _getgrent()
 }
 
 static int
-start_gr()
+start_gr(void)
 {
 	return 1;
 }
 
-int
-_setgroupent(stayopen)
-	int stayopen;
+static int
+_setgroupent(int stayopen)
 {
 	if (!start_gr())
 		return(0);
@@ -86,13 +89,13 @@ _setgroupent(stayopen)
 }
 
 int
-_setgrent()
+_setgrent(void)
 {
 	return(_setgroupent(0));
 }
 
 void
-_endgrent()
+_endgrent(void)
 {
 	if (_gr_fp) {
 		(void)fclose(_gr_fp);
@@ -101,11 +104,9 @@ _endgrent()
 }
 
 static int
-grscan(search, gid, name)
-	register int search, gid;
-	register char *name;
+grscan(int search, gid_t gid, char *name)
 {
-	register char *cp, **m;
+	char *cp, **m;
 	char *bp;
 	for (;;) {
 		if (!fgets(line, sizeof(line), _gr_fp))

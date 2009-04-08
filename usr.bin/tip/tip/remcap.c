@@ -94,7 +94,7 @@ tgetent(bp, name)
 	int rc1, rc2;
 
 	remotefile = cp = getenv(V_TERMCAP);
-	if (cp == (char *)0 || strcmp(cp, _PATH_REMOTE) == 0) {
+	if (cp == NULL || strcmp(cp, _PATH_REMOTE) == 0) {
 		remotefile = cp = _PATH_REMOTE;
 		return (getent(bp, name, cp));
 	} else {
@@ -140,7 +140,7 @@ getent(bp, name, cp)
 	if (cp && *cp) {
 		if (*cp!='/') {
 			cp2 = getenv(V_TERM);
-			if (cp2 == (char *)0 || strcmp(name,cp2) == 0) {
+			if (cp2 == NULL || strcmp(name,cp2) == 0) {
 				strcpy(bp,cp);
 				return (tnchktc());
 			} else

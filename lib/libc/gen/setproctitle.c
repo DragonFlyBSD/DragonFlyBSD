@@ -14,10 +14,11 @@
  * 3. Absolutely no warranty of function or purpose is made by the author
  *    Peter Wemm.
  *
- * $FreeBSD: src/lib/libc/gen/setproctitle.c,v 1.12.2.2 2000/12/10 20:27:08 jdp Exp $
+ * $FreeBSD: src/lib/libc/gen/setproctitle.c,v 1.18 2003/07/01 09:45:35 alfred Exp $
  * $DragonFly: src/lib/libc/gen/setproctitle.c,v 1.5 2005/11/13 00:07:42 swildner Exp $
  */
 
+#include "namespace.h"
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/exec.h>
@@ -31,6 +32,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "un-namespace.h"
+
+#include "libc_private.h"
 
 /*
  * Older FreeBSD 2.0, 2.1 and 2.2 had different ps_strings structures and
@@ -58,11 +62,11 @@ void
 setproctitle(const char *fmt, ...)
 {
 	static struct ps_strings *ps_strings;
-	static char buf[SPT_BUFSIZE];
-	static char obuf[SPT_BUFSIZE];
+	static char *buf = NULL;
+	static char *obuf = NULL;
 	static char **oargv, *kbuf;
 	static int oargc = -1;
-	static char *nargv[2] = { buf, NULL };
+	static char *nargv[2] = { NULL, NULL };
 	char **nargvp;
 	int nargc;
 	int i;
@@ -71,10 +75,24 @@ setproctitle(const char *fmt, ...)
 	unsigned long ul_ps_strings;
 	int oid[4];
 
+	if (buf == NULL) {
+		buf = malloc(SPT_BUFSIZE);
+		if (buf == NULL)
+			return;
+		nargv[0] = buf;
+	}
+
+	if (obuf == NULL ) {
+		obuf = malloc(SPT_BUFSIZE);
+		if (obuf == NULL)
+			return;
+		*obuf = '\0';
+	}
+
 	va_start(ap, fmt);
 
 	if (fmt) {
-		buf[sizeof(buf) - 1] = '\0';
+		buf[SPT_BUFSIZE - 1] = '\0';
 
 		if (fmt[0] == '-') {
 			/* skip program name prefix */
@@ -82,12 +100,12 @@ setproctitle(const char *fmt, ...)
 			len = 0;
 		} else {
 			/* print program name heading for grep */
-			snprintf(buf, sizeof(buf), "%s: ", getprogname());
+			snprintf(buf, SPT_BUFSIZE, "%s: ", _getprogname());
 			len = strlen(buf);
 		}
 
 		/* print the argument string */
-		vsnprintf(buf + len, sizeof(buf) - len, fmt, ap);
+		vsnprintf(buf + len, SPT_BUFSIZE - len, fmt, ap);
 
 		nargvp = nargv;
 		nargc = 1;
@@ -110,7 +128,6 @@ setproctitle(const char *fmt, ...)
 	oid[3] = getpid();
 	sysctl(oid, 4, 0, 0, kbuf, strlen(kbuf) + 1);
 
-#ifdef __i386__
 	if (ps_strings == NULL) {
 		len = sizeof(ul_ps_strings);
 		if (sysctlbyname("kern.ps_strings", &ul_ps_strings, &len, NULL,
@@ -137,12 +154,12 @@ setproctitle(const char *fmt, ...)
 					oargc = i;
 					break;
 				}
-				snprintf(obuf + len, sizeof(obuf) - len, "%s%s",
+				snprintf(obuf + len, SPT_BUFSIZE - len, "%s%s",
 				    len ? " " : "", oargv[i]);
 				if (len)
 					len++;
 				len += strlen(oargv[i]);
-				if (len >= sizeof(obuf))
+				if (len >= SPT_BUFSIZE)
 					break;
 			}
 		}
@@ -152,9 +169,8 @@ setproctitle(const char *fmt, ...)
 		/* style #2 - we can only restore our first arg :-( */
 		if (*obuf == '\0')
 			strncpy(obuf, OLD_PS_STRINGS->old_ps_argvstr,
-			    sizeof(obuf) - 1);
+			    SPT_BUFSIZE - 1);
 		OLD_PS_STRINGS->old_ps_nargvstr = 1;
 		OLD_PS_STRINGS->old_ps_argvstr = nargvp[0];
 	}
-#endif
 }

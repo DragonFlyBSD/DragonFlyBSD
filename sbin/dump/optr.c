@@ -289,7 +289,7 @@ struct	pfstab {
 static	SLIST_HEAD(, pfstab) table;
 
 void
-getfstab(void)
+dump_getfstab(void)
 {
 	struct fstab *fs;
 	struct pfstab *pf;
@@ -364,7 +364,7 @@ lastdump(int arg)
 	struct tm *tlast;
 
 	time(&tnow);
-	getfstab();		/* /etc/fstab input */
+	dump_getfstab();	/* /etc/fstab input */
 	initdumptimes();	/* /etc/dumpdates input */
 	qsort(ddatev, nddates, sizeof(struct dumpdates *), datesort);
 

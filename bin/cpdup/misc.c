@@ -180,7 +180,7 @@ fatal(const char *ctl, ...)
 #endif
 	     "    -x          use .cpignore as exclusion file\n"
 	     "    -X file     specify exclusion file\n"
-	     " Version 1.11 by Matt Dillon and Dima Ruban\n"
+	     " Version 1.14 by Matt Dillon and Dima Ruban\n"
 	);
 	exit(0);
     } else {

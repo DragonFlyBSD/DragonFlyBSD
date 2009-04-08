@@ -1,4 +1,4 @@
-%/*
+%/*-
 % *
 % * ===================================
 % * HARP  |  Host ATM Research Platform
@@ -23,7 +23,7 @@
 % * Copies of this Software may be made, however, the above copyright
 % * notice must be reproduced on all copies.
 % *
-% *	@(#) $FreeBSD: src/sys/netatm/spans/spans_xdr.x,v 1.3 1999/11/18 08:18:13 peter Exp $
+% *	@(#) $FreeBSD: src/sys/netatm/spans/spans_xdr.x,v 1.5 2005/01/07 01:45:38 imp Exp $
 % *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_xdr.x,v 1.2 2003/06/17 04:28:49 dillon Exp $
 % *
 % */
@@ -48,7 +48,7 @@
 %#ifndef _SPANS_SPANS_XDR_H
 %#define _SPANS_SPANS_XDR_H
 %
-%#include <rpc/types.h>
+%#include <netproto/atm/spans/spans_kxdr.h>
 %
 #endif
 
@@ -62,7 +62,7 @@
 % */
 %
 %#ifndef lint
-%static const char RCSid[] = "@(#) $FreeBSD: src/sys/netatm/spans/spans_xdr.x,v 1.3 1999/11/18 08:18:13 peter Exp $";
+%static const char RCSid[] = "@(#) $FreeBSD: src/sys/netatm/spans/spans_xdr.x,v 1.5 2005/01/07 01:45:38 imp Exp $";
 %#endif
 %
 #endif

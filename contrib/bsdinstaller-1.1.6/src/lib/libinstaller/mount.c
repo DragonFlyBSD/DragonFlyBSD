@@ -1,5 +1,5 @@
 /*
- * Copyright (c)2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2004-09 The DragonFly Project.  All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -52,44 +52,25 @@
 #include "commands.h"
 #include "functions.h"
 
-static void	unmount_all_under_r(struct i_fn_args *, struct commands *,
-				    const char *, struct statfs *, int);
-
-static void
-unmount_all_under_r(struct i_fn_args *a, struct commands *cmds,
-		    const char *mtpt, struct statfs *mt_array, int count)
+static int
+compare(const void *a, const void *b)
 {
-	struct statfs *mt_ptr;
-	int k = count;
-	int unmount_me = 0;
+	const struct statfs *sa = a;
+	const struct statfs *sb = b;
 
-	for (mt_ptr = mt_array; k > 0; mt_ptr++, k--) {
-		if (strcmp(mt_ptr->f_mntonname, mtpt) == 0)
-			unmount_me = 1;
-
-		if (strncmp(mt_ptr->f_mntonname, mtpt, strlen(mtpt)) == 0 &&
-		    strlen(mtpt) < strlen(mt_ptr->f_mntonname)) {
-			unmount_all_under_r(a, cmds,
-			    mt_ptr->f_mntonname, mt_array, count);
-		}
-	}
-
-	if (unmount_me) {
-		command_add(cmds, "%s%s %s",
-		    a->os_root, cmd_name(a, "UMOUNT"), mtpt);
-	}
+	return -strcmp(sa->f_mntonname,
+	    sb->f_mntonname);
 }
 
 /*
- * Unmount all mountpoints under a given mountpoint.  Recursively unmounts
- * dependent mountpoints, so that unmount_all'ing /mnt will first unmount
- * /mnt/usr/local, then /mnt/usr, then /mnt itself.
+ * Unmount all mountpoints under a given mountpoint in order (e.g. /var/tmp is
+ * unmounted before /var).
  */
 void
 unmount_all_under(struct i_fn_args *a, struct commands *cmds, const char *fmt, ...)
 {
 	struct statfs *mt_array;
-	int count;
+	int count, i;
 	char *mtpt;
 	va_list args;
 
@@ -98,7 +79,19 @@ unmount_all_under(struct i_fn_args *a, struct commands *cmds, const char *fmt, .
 	va_end(args);
 
 	count = getmntinfo(&mt_array, MNT_WAIT);
-	unmount_all_under_r(a, cmds, mtpt, mt_array, count);
+
+	/* Order mount points in reverse lexicographically order. */
+	qsort((void*)mt_array, count, sizeof(struct statfs), compare);
+
+	for (i = 0; i < count; i++) {
+		if (strncmp(mtpt, mt_array[i].f_mntonname, strlen(mtpt)) != 0)
+			continue;
+		if (strlen(mtpt) > strlen(mt_array[i].f_mntonname))
+			continue;
+
+		command_add(cmds, "%s%s %s",
+		    a->os_root, cmd_name(a, "UMOUNT"), mt_array[i].f_mntonname);
+	}
 
 	free(mtpt);
 }

@@ -62,6 +62,7 @@
 #include <sys/linker.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/buf.h>
 #include <sys/reboot.h>
 #include <sys/mbuf.h>
@@ -298,7 +299,8 @@ cpu_startup(void *dummy)
 #ifdef PERFMON
 	perfmon_init();
 #endif
-	kprintf("real memory  = %llu (%lluK bytes)\n", ptoa(Maxmem), ptoa(Maxmem) / 1024);
+	kprintf("real memory  = %llu (%lluK bytes)\n",
+		(long long)ptoa(Maxmem), (long long)ptoa(Maxmem) / 1024);
 	/*
 	 * Display any holes after the first chunk of extended memory.
 	 */
@@ -310,8 +312,10 @@ cpu_startup(void *dummy)
 			vm_paddr_t size1 = phys_avail[indx + 1] - phys_avail[indx];
 
 			kprintf("0x%08llx - 0x%08llx, %llu bytes (%llu pages)\n",
-			    phys_avail[indx], phys_avail[indx + 1] - 1, size1,
-			    size1 / PAGE_SIZE);
+			    (long long)phys_avail[indx],
+			    (long long)phys_avail[indx + 1] - 1,
+			    (long long)size1,
+			    (long long)(size1 / PAGE_SIZE));
 		}
 	}
 
@@ -414,8 +418,9 @@ again:
 	cninit();		/* the preferred console may have changed */
 #endif
 
-	kprintf("avail memory = %u (%uK bytes)\n", ptoa(vmstats.v_free_count),
-	    ptoa(vmstats.v_free_count) / 1024);
+	kprintf("avail memory = %lu (%luK bytes)\n",
+		ptoa(vmstats.v_free_count),
+		ptoa(vmstats.v_free_count) / 1024);
 
 	/*
 	 * Set up buffers, so they can be used to read disk labels.
@@ -453,39 +458,38 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	struct sigacts *psp = p->p_sigacts;
 	struct sigframe sf, *sfp;
 	int oonstack;
+	char *sp;
 
 	regs = lp->lwp_md.md_regs;
 	oonstack = (lp->lwp_sigstk.ss_flags & SS_ONSTACK) ? 1 : 0;
 
-	/* save user context */
+	/* Save user context */
 	bzero(&sf, sizeof(struct sigframe));
 	sf.sf_uc.uc_sigmask = *mask;
 	sf.sf_uc.uc_stack = lp->lwp_sigstk;
 	sf.sf_uc.uc_mcontext.mc_onstack = oonstack;
-#if JG
-	bcopy(regs, &sf.sf_uc.uc_mcontext.mc_gs, sizeof(struct trapframe));
-#endif
+	KKASSERT(__offsetof(struct trapframe, tf_rdi) == 0);
+	bcopy(regs, &sf.sf_uc.uc_mcontext.mc_rdi, sizeof(struct trapframe));
 
-	/* make the size of the saved context visible to userland */
+	/* Make the size of the saved context visible to userland */
 	sf.sf_uc.uc_mcontext.mc_len = sizeof(sf.sf_uc.uc_mcontext);
 
-	/* save mailbox pending state for syscall interlock semantics */
-#if JG
+	/* Save mailbox pending state for syscall interlock semantics */
 	if (p->p_flag & P_MAILBOX)
 		sf.sf_uc.uc_mcontext.mc_xflags |= PGEX_MAILBOX;
-#endif
 
 	/* Allocate and validate space for the signal handler context. */
         if ((lp->lwp_flag & LWP_ALTSTACK) != 0 && !oonstack &&
 	    SIGISMEMBER(psp->ps_sigonstack, sig)) {
-		sfp = (struct sigframe *)(lp->lwp_sigstk.ss_sp +
-		    lp->lwp_sigstk.ss_size - sizeof(struct sigframe));
+		sp = (char *)(lp->lwp_sigstk.ss_sp + lp->lwp_sigstk.ss_size -
+			      sizeof(struct sigframe));
 		lp->lwp_sigstk.ss_flags |= SS_ONSTACK;
 	} else {
-#if JG
-		sfp = (struct sigframe *)regs->tf_esp - 1;
-#endif
+		sp = (char *)regs->tf_rsp - sizeof(struct sigframe);
 	}
+
+	/* Align to 16 bytes */
+	sfp = (struct sigframe *)((intptr_t)sp & ~0xFUL);
 
 	/* Translate the signal is appropriate */
 	if (p->p_sysent->sv_sigtbl) {
@@ -493,23 +497,36 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 			sig = p->p_sysent->sv_sigtbl[_SIG_IDX(sig)];
 	}
 
-	/* Build the argument list for the signal handler. */
-	sf.sf_signum = sig;
-	sf.sf_ucontext = (register_t)&sfp->sf_uc;
+	/*
+	 * Build the argument list for the signal handler.
+	 *
+	 * Arguments are in registers (%rdi, %rsi, %rdx, %rcx)
+	 */
+	regs->tf_rdi = sig;				/* argument 1 */
+	regs->tf_rdx = (register_t)&sfp->sf_uc;		/* argument 3 */
+
 	if (SIGISMEMBER(psp->ps_siginfo, sig)) {
-		/* Signal handler installed with SA_SIGINFO. */
-		sf.sf_siginfo = (register_t)&sfp->sf_si;
+		/*
+		 * Signal handler installed with SA_SIGINFO.
+		 *
+		 * action(signo, siginfo, ucontext)
+		 */
+		regs->tf_rsi = (register_t)&sfp->sf_si;	/* argument 2 */
+		regs->tf_rcx = (register_t)regs->tf_err; /* argument 4 */
 		sf.sf_ahu.sf_action = (__siginfohandler_t *)catcher;
 
 		/* fill siginfo structure */
 		sf.sf_si.si_signo = sig;
 		sf.sf_si.si_code = code;
-		sf.sf_si.si_addr = (void*)regs->tf_err;
-	}
-	else {
-		/* Old FreeBSD-style arguments. */
-		sf.sf_siginfo = code;
-		sf.sf_addr = regs->tf_err;
+		sf.sf_si.si_addr = (void *)regs->tf_err;
+	} else {
+		/*
+		 * Old FreeBSD-style arguments.
+		 *
+		 * handler (signo, code, [uc], addr)
+		 */
+		regs->tf_rsi = (register_t)code;	/* argument 2 */
+		regs->tf_rcx = (register_t)regs->tf_err; /* argument 4 */
 		sf.sf_ahu.sf_handler = catcher;
 	}
 
@@ -547,9 +564,7 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 	/*
 	 * Save the FPU state and reinit the FP unit
 	 */
-#if JG
 	npxpush(&sf.sf_uc.uc_mcontext);
-#endif
 
 	/*
 	 * Copy the sigframe out to the user's stack.
@@ -562,39 +577,21 @@ sendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 		sigexit(lp, SIGILL);
 	}
 
-#if JG
-	regs->tf_esp = (int)sfp;
-	regs->tf_eip = PS_STRINGS - *(p->p_sysent->sv_szsigcode);
-#endif
+	regs->tf_rsp = (register_t)sfp;
+	regs->tf_rip = PS_STRINGS - *(p->p_sysent->sv_szsigcode);
 
 	/*
 	 * i386 abi specifies that the direction flag must be cleared
 	 * on function entry
 	 */
-#if JG
-	regs->tf_eflags &= ~(PSL_T|PSL_D);
-#endif
-
-	regs->tf_cs = _ucodesel;
-#if JG
-	regs->tf_ds = _udatasel;
-	regs->tf_es = _udatasel;
-#endif
+	regs->tf_rflags &= ~(PSL_T|PSL_D);
 
 	/*
-	 * Allow the signal handler to inherit %fs in addition to %gs as
-	 * the userland program might be using both.
-	 *
-	 * However, if a T_PROTFLT occured the segment registers could be
-	 * totally broken.  They must be reset in order to be able to
-	 * return to userland.
+	 * 64 bit mode has a code and stack selector but
+	 * no data or extra selector.  %fs and %gs are not
+	 * stored in-context.
 	 */
-	if (regs->tf_trapno == T_PROTFLT) {
-#if JG
-		regs->tf_fs = _udatasel;
-		regs->tf_gs = _udatasel;
-#endif
-	}
+	regs->tf_cs = _ucodesel;
 	regs->tf_ss = _udatasel;
 }
 
@@ -611,19 +608,11 @@ cpu_sanitize_frame(struct trapframe *frame)
 {
 	kprintf0("cpu_sanitize_frame\n");
 	frame->tf_cs = _ucodesel;
-#if JG
-	frame->tf_ds = _udatasel;
-	frame->tf_es = _udatasel;	/* XXX allow userland this one too? */
-#endif
-#if 0
-	frame->tf_fs = _udatasel;
-	frame->tf_gs = _udatasel;
-#endif
 	frame->tf_ss = _udatasel;
-#if JG
-	frame->tf_eflags &= (PSL_RF | PSL_USERCHANGE);
-	frame->tf_eflags |= PSL_RESERVED_DEFAULT | PSL_I;
-#endif
+	/* XXX VM (8086) mode not supported? */
+	frame->tf_rflags &= (PSL_RF | PSL_USERCHANGE | PSL_VM_UNSUPP);
+	frame->tf_rflags |= PSL_RESERVED_DEFAULT | PSL_I;
+
 	return(0);
 }
 
@@ -659,8 +648,8 @@ sys_sigreturn(struct sigreturn_args *uap)
 	struct trapframe *regs;
 	ucontext_t uc;
 	ucontext_t *ucp;
+	register_t rflags;
 	int cs;
-	int eflags;
 	int error;
 
 	/*
@@ -672,9 +661,10 @@ sys_sigreturn(struct sigreturn_args *uap)
 	if (error)
 		return (error);
 	ucp = &uc;
-#if JG
-	eflags = ucp->uc_mcontext.mc_eflags;
-#endif
+	rflags = ucp->uc_mcontext.mc_rflags;
+
+	/* VM (8086) mode not supported */
+	rflags &= ~PSL_VM_UNSUPP;
 
 #if JG
 	if (eflags & PSL_VM) {
@@ -696,32 +686,26 @@ sys_sigreturn(struct sigreturn_args *uap)
 			trapsignal(lp, SIGBUS, 0);
 
 		if (vm86->vm86_has_vme) {
-#if JG
 			eflags = (tf->tf_eflags & ~VME_USERCHANGE) |
 			    (eflags & VME_USERCHANGE) | PSL_VM;
-#endif
 		} else {
-#if JG
 			vm86->vm86_eflags = eflags;	/* save VIF, VIP */
 			eflags = (tf->tf_eflags & ~VM_USERCHANGE) |
 			    (eflags & VM_USERCHANGE) | PSL_VM;
-#endif
 		}
-#if JG
 		bcopy(&ucp->uc_mcontext.mc_gs, tf, sizeof(struct trapframe));
 		tf->tf_eflags = eflags;
-#endif
 		tf->tf_vm86_ds = tf->tf_ds;
 		tf->tf_vm86_es = tf->tf_es;
 		tf->tf_vm86_fs = tf->tf_fs;
 		tf->tf_vm86_gs = tf->tf_gs;
 		tf->tf_ds = _udatasel;
 		tf->tf_es = _udatasel;
-#if 0
 		tf->tf_fs = _udatasel;
 		tf->tf_gs = _udatasel;
+	} else
 #endif
-	} else {
+	{
 		/*
 		 * Don't allow users to change privileged or reserved flags.
 		 */
@@ -735,12 +719,10 @@ sys_sigreturn(struct sigreturn_args *uap)
 		 * Corruption of the PSL_RF bit at worst causes one more or
 		 * one less debugger trap, so allowing it is fairly harmless.
 		 */
-#if JG
-		if (!EFL_SECURE(eflags & ~PSL_RF, regs->tf_eflags & ~PSL_RF)) {
-			kprintf("sigreturn: eflags = 0x%x\n", eflags);
+		if (!EFL_SECURE(rflags & ~PSL_RF, regs->tf_rflags & ~PSL_RF)) {
+			kprintf("sigreturn: rflags = 0x%lx\n", (long)rflags);
 	    		return(EINVAL);
 		}
-#endif
 
 		/*
 		 * Don't allow users to load a valid privileged %cs.  Let the
@@ -753,27 +735,20 @@ sys_sigreturn(struct sigreturn_args *uap)
 			trapsignal(lp, SIGBUS, T_PROTFLT);
 			return(EINVAL);
 		}
-#if JG
-		bcopy(&ucp->uc_mcontext.mc_gs, regs, sizeof(struct trapframe));
-#endif
+		bcopy(&ucp->uc_mcontext.mc_rdi, regs, sizeof(struct trapframe));
 	}
-#endif
 
 	/*
 	 * Restore the FPU state from the frame
 	 */
-#if JG
 	npxpop(&ucp->uc_mcontext);
-#endif
 
 	/*
 	 * Merge saved signal mailbox pending flag to maintain interlock
 	 * semantics against system calls.
 	 */
-#if JG
 	if (ucp->uc_mcontext.mc_xflags & PGEX_MAILBOX)
 		p->p_flag |= P_MAILBOX;
-#endif
 
 	if (ucp->uc_mcontext.mc_onstack & 1)
 		lp->lwp_sigstk.ss_flags |= SS_ONSTACK;
@@ -786,14 +761,14 @@ sys_sigreturn(struct sigreturn_args *uap)
 }
 
 /*
- * Stack frame on entry to function.  %eax will contain the function vector,
- * %ecx will contain the function data.  flags, ecx, and eax will have 
+ * Stack frame on entry to function.  %rax will contain the function vector,
+ * %rcx will contain the function data.  flags, rcx, and rax will have
  * already been pushed on the stack.
  */
 struct upc_frame {
-	register_t	eax;
-	register_t	ecx;
-	register_t	edx;
+	register_t	rax;
+	register_t	rcx;
+	register_t	rdx;
 	register_t	flags;
 	register_t	oldip;
 };
@@ -862,23 +837,21 @@ sendupcall(struct vmupcall *vu, int morepending)
 	 * Construct a stack frame and issue the upcall
 	 */
 	regs = lp->lwp_md.md_regs;
-#if JG
-	upc_frame.eax = regs->tf_eax;
-	upc_frame.ecx = regs->tf_ecx;
-	upc_frame.edx = regs->tf_edx;
-	upc_frame.flags = regs->tf_eflags;
-	upc_frame.oldip = regs->tf_eip;
-	if (copyout(&upc_frame, (void *)(regs->tf_esp - sizeof(upc_frame)),
+	upc_frame.rax = regs->tf_rax;
+	upc_frame.rcx = regs->tf_rcx;
+	upc_frame.rdx = regs->tf_rdx;
+	upc_frame.flags = regs->tf_rflags;
+	upc_frame.oldip = regs->tf_rip;
+	if (copyout(&upc_frame, (void *)(regs->tf_rsp - sizeof(upc_frame)),
 	    sizeof(upc_frame)) != 0) {
 		kprintf("bad stack on upcall\n");
 	} else {
-		regs->tf_eax = (register_t)vu->vu_func;
-		regs->tf_ecx = (register_t)vu->vu_data;
-		regs->tf_edx = (register_t)lp->lwp_upcall;
-		regs->tf_eip = (register_t)vu->vu_ctx;
-		regs->tf_esp -= sizeof(upc_frame);
+		regs->tf_rax = (register_t)vu->vu_func;
+		regs->tf_rcx = (register_t)vu->vu_data;
+		regs->tf_rdx = (register_t)lp->lwp_upcall;
+		regs->tf_rip = (register_t)vu->vu_ctx;
+		regs->tf_rsp -= sizeof(upc_frame);
 	}
-#endif
 }
 
 /*
@@ -915,27 +888,23 @@ fetchupcall(struct vmupcall *vu, int morepending, void *rsp)
 		crit_count += TDPRI_CRIT;
 		if (error == 0)
 			error = copyout(&crit_count, (char *)upcall.upc_uthread + upcall.upc_critoff, sizeof(int));
-#if JG
-		regs->tf_eax = (register_t)vu->vu_func;
-		regs->tf_ecx = (register_t)vu->vu_data;
-		regs->tf_edx = (register_t)lp->lwp_upcall;
-		regs->tf_eip = (register_t)vu->vu_ctx;
-		regs->tf_esp = (register_t)rsp;
-#endif
+		regs->tf_rax = (register_t)vu->vu_func;
+		regs->tf_rcx = (register_t)vu->vu_data;
+		regs->tf_rdx = (register_t)lp->lwp_upcall;
+		regs->tf_rip = (register_t)vu->vu_ctx;
+		regs->tf_rsp = (register_t)rsp;
 	    } else {
 		/*
 		 * This returns us to the originally interrupted code.
 		 */
 		error = copyin(rsp, &upc_frame, sizeof(upc_frame));
-#if JG
-		regs->tf_eax = upc_frame.eax;
-		regs->tf_ecx = upc_frame.ecx;
-		regs->tf_edx = upc_frame.edx;
-		regs->tf_eflags = (regs->tf_eflags & ~PSL_USERCHANGE) |
+		regs->tf_rax = upc_frame.rax;
+		regs->tf_rcx = upc_frame.rcx;
+		regs->tf_rdx = upc_frame.rdx;
+		regs->tf_rflags = (regs->tf_rflags & ~PSL_USERCHANGE) |
 				(upc_frame.flags & PSL_USERCHANGE);
-		regs->tf_eip = upc_frame.oldip;
-		regs->tf_esp = (register_t)((char *)rsp + sizeof(upc_frame));
-#endif
+		regs->tf_rip = upc_frame.oldip;
+		regs->tf_rsp = (register_t)((char *)rsp + sizeof(upc_frame));
 	    }
 	}
 	if (error == 0)
@@ -1101,7 +1070,7 @@ exec_setregs(u_long entry, u_long stack, u_long ps_strings)
 		pcb->pcb_dr2 = 0;
 		pcb->pcb_dr3 = 0;
 		pcb->pcb_dr6 = 0;
-		pcb->pcb_dr7 = 0;
+		pcb->pcb_dr7 = 0; /* JG set bit 10? */
 		if (pcb == td->td_pcb) {
 			/*
 			 * Clear the debug registers on the running
@@ -1120,22 +1089,27 @@ exec_setregs(u_long entry, u_long stack, u_long ps_strings)
 	 * traps to the emulator (if it is done at all) mainly because
 	 * emulators don't provide an entry point for initialization.
 	 */
-#if JG
 	pcb->pcb_flags &= ~FP_SOFTFP;
-#endif
 
 	/*
-	 * note: do not set CR0_TS here.  npxinit() must do it after clearing
-	 * gd_npxthread.  Otherwise a preemptive interrupt thread may panic
-	 * in npxdna().
+	 * NOTE: do not set CR0_TS here.  npxinit() must do it after clearing
+	 *	 gd_npxthread.  Otherwise a preemptive interrupt thread
+	 *	 may panic in npxdna().
 	 */
 	crit_enter();
 	load_cr0(rcr0() | CR0_MP);
 
-	wrmsr(MSR_FSBASE, 0);
-	wrmsr(MSR_KGSBASE, 0);	/* User value while we're in the kernel */
-	pcb->pcb_fsbase = 0;
+	/*
+	 * NOTE: The MSR values must be correct so we can return to
+	 * 	 userland.  gd_user_fs/gs must be correct so the switch
+	 *	 code knows what the current MSR values are.
+	 */
+	pcb->pcb_fsbase = 0;	/* Values loaded from PCB on switch */
 	pcb->pcb_gsbase = 0;
+	mdcpu->gd_user_fs = 0;	/* Cache of current MSR values */
+	mdcpu->gd_user_gs = 0;
+	wrmsr(MSR_FSBASE, 0);	/* Set MSR values for return to userland */
+	wrmsr(MSR_KGSBASE, 0);
 
 #if NNPX > 0
 	/* Initialize the npx (if any) for the current process. */
@@ -1699,7 +1673,10 @@ u_int64_t
 hammer_time(u_int64_t modulep, u_int64_t physfree)
 {
 	caddr_t kmdp;
-	int gsel_tss, metadata_missing, off, x;
+	int gsel_tss, x;
+#if JG
+	int metadata_missing, off;
+#endif
 	struct mdglobaldata *gd;
 	u_int64_t msr;
 	char *env;
@@ -1849,8 +1826,9 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	initializecpu();	/* Initialize CPU registers */
 
 	/* make an initial tss so cpu can get interrupt stack on syscall! */
-	gd->gd_common_tss.tss_rsp0 = thread0.td_kstack + \
-	    KSTACK_PAGES * PAGE_SIZE - sizeof(struct pcb);
+	gd->gd_common_tss.tss_rsp0 =
+		(register_t)(thread0.td_kstack +
+			     KSTACK_PAGES * PAGE_SIZE - sizeof(struct pcb));
 	/* Ensure the stack is aligned to 16 bytes */
 	gd->gd_common_tss.tss_rsp0 &= ~0xFul;
 	gd->gd_rsp0 = gd->gd_common_tss.tss_rsp0;
@@ -1997,18 +1975,14 @@ f00f_hack(void *unused)
 int
 ptrace_set_pc(struct lwp *lp, unsigned long addr)
 {
-#if JG
-	lp->lwp_md.md_regs->tf_eip = addr;
-#endif
+	lp->lwp_md.md_regs->tf_rip = addr;
 	return (0);
 }
 
 int
 ptrace_single_step(struct lwp *lp)
 {
-#if JG
-	lp->lwp_md.md_regs->tf_eflags |= PSL_T;
-#endif
+	lp->lwp_md.md_regs->tf_rflags |= PSL_T;
 	return (0);
 }
 
@@ -2019,26 +1993,8 @@ fill_regs(struct lwp *lp, struct reg *regs)
 	struct trapframe *tp;
 
 	tp = lp->lwp_md.md_regs;
-#if JG
-	regs->r_gs = tp->tf_gs;
-	regs->r_fs = tp->tf_fs;
-	regs->r_es = tp->tf_es;
-	regs->r_ds = tp->tf_ds;
-	regs->r_edi = tp->tf_edi;
-	regs->r_esi = tp->tf_esi;
-	regs->r_ebp = tp->tf_ebp;
-	regs->r_ebx = tp->tf_ebx;
-	regs->r_edx = tp->tf_edx;
-	regs->r_ecx = tp->tf_ecx;
-	regs->r_eax = tp->tf_eax;
-	regs->r_eip = tp->tf_eip;
-#endif
-	regs->r_cs = tp->tf_cs;
-#if JG
-	regs->r_eflags = tp->tf_eflags;
-	regs->r_esp = tp->tf_esp;
-#endif
-	regs->r_ss = tp->tf_ss;
+	bcopy(&tp->tf_rdi, &regs->r_rdi, sizeof(*regs));
+
 	pcb = lp->lwp_thread->td_pcb;
 	return (0);
 }
@@ -2050,29 +2006,10 @@ set_regs(struct lwp *lp, struct reg *regs)
 	struct trapframe *tp;
 
 	tp = lp->lwp_md.md_regs;
-#if JG
-	if (!EFL_SECURE(regs->r_eflags, tp->tf_eflags) ||
+	if (!EFL_SECURE(regs->r_rflags, tp->tf_rflags) ||
 	    !CS_SECURE(regs->r_cs))
 		return (EINVAL);
-	tp->tf_gs = regs->r_gs;
-	tp->tf_fs = regs->r_fs;
-	tp->tf_es = regs->r_es;
-	tp->tf_ds = regs->r_ds;
-	tp->tf_edi = regs->r_edi;
-	tp->tf_esi = regs->r_esi;
-	tp->tf_ebp = regs->r_ebp;
-	tp->tf_ebx = regs->r_ebx;
-	tp->tf_edx = regs->r_edx;
-	tp->tf_ecx = regs->r_ecx;
-	tp->tf_eax = regs->r_eax;
-	tp->tf_eip = regs->r_eip;
-#endif
-	tp->tf_cs = regs->r_cs;
-#if JG
-	tp->tf_eflags = regs->r_eflags;
-	tp->tf_esp = regs->r_esp;
-#endif
-	tp->tf_ss = regs->r_ss;
+	bcopy(&regs->r_rdi, &tp->tf_rdi, sizeof(*regs));
 	pcb = lp->lwp_thread->td_pcb;
 	return (0);
 }
@@ -2159,30 +2096,26 @@ int
 fill_dbregs(struct lwp *lp, struct dbreg *dbregs)
 {
         if (lp == NULL) {
-#if JG
-                dbregs->dr0 = rdr0();
-                dbregs->dr1 = rdr1();
-                dbregs->dr2 = rdr2();
-                dbregs->dr3 = rdr3();
-                dbregs->dr4 = rdr4();
-                dbregs->dr5 = rdr5();
-                dbregs->dr6 = rdr6();
-                dbregs->dr7 = rdr7();
-#endif
+                dbregs->dr[0] = rdr0();
+                dbregs->dr[1] = rdr1();
+                dbregs->dr[2] = rdr2();
+                dbregs->dr[3] = rdr3();
+                dbregs->dr[4] = rdr4();
+                dbregs->dr[5] = rdr5();
+                dbregs->dr[6] = rdr6();
+                dbregs->dr[7] = rdr7();
         } else {
 		struct pcb *pcb;
 
                 pcb = lp->lwp_thread->td_pcb;
-#if JG
-                dbregs->dr0 = pcb->pcb_dr0;
-                dbregs->dr1 = pcb->pcb_dr1;
-                dbregs->dr2 = pcb->pcb_dr2;
-                dbregs->dr3 = pcb->pcb_dr3;
-                dbregs->dr4 = 0;
-                dbregs->dr5 = 0;
-                dbregs->dr6 = pcb->pcb_dr6;
-                dbregs->dr7 = pcb->pcb_dr7;
-#endif
+                dbregs->dr[0] = pcb->pcb_dr0;
+                dbregs->dr[1] = pcb->pcb_dr1;
+                dbregs->dr[2] = pcb->pcb_dr2;
+                dbregs->dr[3] = pcb->pcb_dr3;
+                dbregs->dr[4] = 0;
+                dbregs->dr[5] = 0;
+                dbregs->dr[6] = pcb->pcb_dr6;
+                dbregs->dr[7] = pcb->pcb_dr7;
         }
 	return (0);
 }
@@ -2191,21 +2124,19 @@ int
 set_dbregs(struct lwp *lp, struct dbreg *dbregs)
 {
 	if (lp == NULL) {
-#if JG
-		load_dr0(dbregs->dr0);
-		load_dr1(dbregs->dr1);
-		load_dr2(dbregs->dr2);
-		load_dr3(dbregs->dr3);
-		load_dr4(dbregs->dr4);
-		load_dr5(dbregs->dr5);
-		load_dr6(dbregs->dr6);
-		load_dr7(dbregs->dr7);
-#endif
+		load_dr0(dbregs->dr[0]);
+		load_dr1(dbregs->dr[1]);
+		load_dr2(dbregs->dr[2]);
+		load_dr3(dbregs->dr[3]);
+		load_dr4(dbregs->dr[4]);
+		load_dr5(dbregs->dr[5]);
+		load_dr6(dbregs->dr[6]);
+		load_dr7(dbregs->dr[7]);
 	} else {
 		struct pcb *pcb;
 		struct ucred *ucred;
 		int i;
-		uint32_t mask1, mask2;
+		uint64_t mask1, mask2;
 
 		/*
 		 * Don't let an illegal value for dr7 get set.	Specifically,
@@ -2213,12 +2144,20 @@ set_dbregs(struct lwp *lp, struct dbreg *dbregs)
 		 * result in undefined behaviour and can lead to an unexpected
 		 * TRCTRAP.
 		 */
-		for (i = 0, mask1 = 0x3<<16, mask2 = 0x2<<16; i < 8; 
-		     i++, mask1 <<= 2, mask2 <<= 2)
-#if JG
-			if ((dbregs->dr7 & mask1) == mask2)
+		/* JG this loop looks unreadable */
+		/* Check 4 2-bit fields for invalid patterns.
+		 * These fields are R/Wi, for i = 0..3
+		 */
+		/* Is 10 in LENi allowed when running in compatibility mode? */
+		/* Pattern 10 in R/Wi might be used to indicate
+		 * breakpoint on I/O. Further analysis should be
+		 * carried to decide if it is safe and useful to
+		 * provide access to that capability
+		 */
+		for (i = 0, mask1 = 0x3<<16, mask2 = 0x2<<16; i < 4; 
+		     i++, mask1 <<= 4, mask2 <<= 4)
+			if ((dbregs->dr[7] & mask1) == mask2)
 				return (EINVAL);
-#endif
 		
 		pcb = lp->lwp_thread->td_pcb;
 		ucred = lp->lwp_proc->p_ucred;
@@ -2238,42 +2177,38 @@ set_dbregs(struct lwp *lp, struct dbreg *dbregs)
 		 * from within kernel mode?
 		 */
 
-		if (suser_cred(ucred, 0) != 0) {
-#if JG
-			if (dbregs->dr7 & 0x3) {
+		if (priv_check_cred(ucred, PRIV_ROOT, 0) != 0) {
+			if (dbregs->dr[7] & 0x3) {
 				/* dr0 is enabled */
-				if (dbregs->dr0 >= VM_MAX_USER_ADDRESS)
+				if (dbregs->dr[0] >= VM_MAX_USER_ADDRESS)
 					return (EINVAL);
 			}
 
-			if (dbregs->dr7 & (0x3<<2)) {
+			if (dbregs->dr[7] & (0x3<<2)) {
 				/* dr1 is enabled */
-				if (dbregs->dr1 >= VM_MAX_USER_ADDRESS)
+				if (dbregs->dr[1] >= VM_MAX_USER_ADDRESS)
 					return (EINVAL);
 			}
 
-			if (dbregs->dr7 & (0x3<<4)) {
+			if (dbregs->dr[7] & (0x3<<4)) {
 				/* dr2 is enabled */
-				if (dbregs->dr2 >= VM_MAX_USER_ADDRESS)
+				if (dbregs->dr[2] >= VM_MAX_USER_ADDRESS)
 					return (EINVAL);
 			}
 
-			if (dbregs->dr7 & (0x3<<6)) {
+			if (dbregs->dr[7] & (0x3<<6)) {
 				/* dr3 is enabled */
-				if (dbregs->dr3 >= VM_MAX_USER_ADDRESS)
+				if (dbregs->dr[3] >= VM_MAX_USER_ADDRESS)
 					return (EINVAL);
 			}
-#endif
 		}
 
-#if JG
-		pcb->pcb_dr0 = dbregs->dr0;
-		pcb->pcb_dr1 = dbregs->dr1;
-		pcb->pcb_dr2 = dbregs->dr2;
-		pcb->pcb_dr3 = dbregs->dr3;
-		pcb->pcb_dr6 = dbregs->dr6;
-		pcb->pcb_dr7 = dbregs->dr7;
-#endif
+		pcb->pcb_dr0 = dbregs->dr[0];
+		pcb->pcb_dr1 = dbregs->dr[1];
+		pcb->pcb_dr2 = dbregs->dr[2];
+		pcb->pcb_dr3 = dbregs->dr[3];
+		pcb->pcb_dr6 = dbregs->dr[6];
+		pcb->pcb_dr7 = dbregs->dr[7];
 
 		pcb->pcb_flags |= PCB_DBREGS;
 	}
@@ -2288,14 +2223,14 @@ set_dbregs(struct lwp *lp, struct dbreg *dbregs)
 int
 user_dbreg_trap(void)
 {
-        u_int32_t dr7, dr6; /* debug registers dr6 and dr7 */
-        u_int32_t bp;       /* breakpoint bits extracted from dr6 */
+        u_int64_t dr7, dr6; /* debug registers dr6 and dr7 */
+        u_int64_t bp;       /* breakpoint bits extracted from dr6 */
         int nbp;            /* number of breakpoints that triggered */
         caddr_t addr[4];    /* breakpoint addresses */
         int i;
         
         dr7 = rdr7();
-        if ((dr7 & 0x000000ff) == 0) {
+        if ((dr7 & 0xff) == 0) {
                 /*
                  * all GE and LE bits in the dr7 register are zero,
                  * thus the trap couldn't have been caused by the
@@ -2306,9 +2241,9 @@ user_dbreg_trap(void)
 
         nbp = 0;
         dr6 = rdr6();
-        bp = dr6 & 0x0000000f;
+        bp = dr6 & 0xf;
 
-        if (!bp) {
+        if (bp == 0) {
                 /*
                  * None of the breakpoint bits are set meaning this
                  * trap was not caused by any of the debug registers

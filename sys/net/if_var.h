@@ -82,7 +82,6 @@ struct	rtentry;
 struct	rt_addrinfo;
 struct	socket;
 struct	ether_header;
-struct	carp_if;
 struct	ucred;
 struct	lwkt_serialize;
 struct	ifaddr_container;
@@ -90,6 +89,7 @@ struct	ifaddr;
 struct	lwkt_port;
 struct	lwkt_msg;
 struct	netmsg;
+struct	pktinfo;
 
 #include <sys/queue.h>		/* get TAILQ macros */
 
@@ -187,7 +187,7 @@ struct ifnet {
 	void	*if_vlantrunks;		/* vlan trunks */
 	struct	ifaddrhead *if_addrheads; /* array[NCPU] of TAILQs of addresses per if */
 	int	if_pcount;		/* number of promiscuous listeners */
-	struct	carp_if *if_carp;	/* carp interface structure */
+	void	*if_carp;		/* carp interfaces */
 	struct	bpf_if *if_bpf;		/* packet filter structure */
 	u_short	if_index;		/* numeric abbreviation for this if  */
 	short	if_timer;		/* time 'til if_watchdog called */
@@ -262,7 +262,7 @@ typedef void if_init_f_t (void *);
 #define	if_lastchange	if_data.ifi_lastchange
 #define if_recvquota	if_data.ifi_recvquota
 #define	if_xmitquota	if_data.ifi_xmitquota
-#define if_rawoutput(if, m, sa) if_output(if, m, sa, (struct rtentry *)0)
+#define if_rawoutput(if, m, sa) if_output(if, m, sa, NULL)
 
 /* for compatibility with other BSDs */
 #define	if_list		if_link
@@ -381,7 +381,8 @@ struct ifaddr_container {
 	struct ifaddr		*ifa;
 	TAILQ_ENTRY(ifaddr_container)	ifa_link;   /* queue macro glue */
 	u_int			ifa_refcnt; /* references to this structure */
-	uint32_t		ifa_listmask;	/* IFA_LIST_ */
+	uint16_t		ifa_listmask;	/* IFA_LIST_ */
+	uint16_t		ifa_prflags;	/* protocol specific flags */
 
 	/*
 	 * Protocol specific states
@@ -391,9 +392,14 @@ struct ifaddr_container {
 	} ifa_proto_u;
 };
 
-#define IFA_LIST_IFADDRHEAD	0x1	/* on ifnet.if_addrheads[cpuid] */
-#define IFA_LIST_IN_IFADDRHEAD	0x2	/* on in_ifaddrheads[cpuid] */
-#define IFA_LIST_IN_IFADDRHASH	0x4	/* on in_ifaddrhashtbls[cpuid] */
+#define IFA_LIST_IFADDRHEAD	0x01	/* on ifnet.if_addrheads[cpuid] */
+#define IFA_LIST_IN_IFADDRHEAD	0x02	/* on in_ifaddrheads[cpuid] */
+#define IFA_LIST_IN_IFADDRHASH	0x04	/* on in_ifaddrhashtbls[cpuid] */
+
+#define IFA_PRF_FLAG0		0x01
+#define IFA_PRF_FLAG1		0x02
+#define IFA_PRF_FLAG2		0x04
+#define IFA_PRF_FLAG3		0x08
 
 /*
  * The ifaddr structure contains information about one address
@@ -457,8 +463,16 @@ struct ifmultiaddr {
 };
 
 #ifdef _KERNEL
+
+enum ifaddr_event {
+	IFADDR_EVENT_ADD,
+	IFADDR_EVENT_DELETE,
+	IFADDR_EVENT_CHANGE
+};
+
 /* interface address change event */
-typedef void (*ifaddr_event_handler_t)(void *, struct ifnet *);
+typedef void (*ifaddr_event_handler_t)(void *, struct ifnet *,
+	enum ifaddr_event, struct ifaddr *);
 EVENTHANDLER_DECLARE(ifaddr_event, ifaddr_event_handler_t);
 /* new interface attach event */
 typedef void (*ifnet_attach_event_handler_t)(void *, struct ifnet *);
@@ -554,7 +568,8 @@ void	ether_ifdetach(struct ifnet *);
 void	ether_demux_oncpu(struct ifnet *, struct mbuf *);
 void	ether_input_oncpu(struct ifnet *, struct mbuf *);
 void	ether_reinput_oncpu(struct ifnet *, struct mbuf *, int);
-void	ether_input_chain(struct ifnet *, struct mbuf *, struct mbuf_chain *);
+void	ether_input_chain(struct ifnet *, struct mbuf *,
+			  const struct pktinfo *, struct mbuf_chain *);
 void	ether_input_chain_init(struct mbuf_chain *);
 void	ether_input_dispatch(struct mbuf_chain *);
 int	ether_output_frame(struct ifnet *, struct mbuf *);

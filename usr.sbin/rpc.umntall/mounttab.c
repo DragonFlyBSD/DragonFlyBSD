@@ -123,7 +123,7 @@ read_mtab(void) {
 		mtabp->mtab_host[RPCMNT_NAMELEN - 1] = '\0';
 		memmove(mtabp->mtab_dirp, dirp, RPCMNT_PATHLEN);
 		mtabp->mtab_dirp[RPCMNT_PATHLEN - 1] = '\0';
-		mtabp->mtab_next = (struct mtablist *)NULL;
+		mtabp->mtab_next = NULL;
 		*mtabpp = mtabp;
 		mtabpp = &mtabp->mtab_next;
 	}

@@ -29,20 +29,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/rpc.yppasswdd/yppasswdd_extern.h,v 1.9.2.1 2002/02/15 00:46:57 des Exp $
+ * $FreeBSD: src/usr.sbin/rpc.yppasswdd/yppasswdd_extern.h,v 1.14 2002/07/11 21:28:16 alfred Exp $
  * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_extern.h,v 1.4 2004/05/20 19:24:43 cpressey Exp $
  */
 
-#include <sys/types.h>
-#include <limits.h>
-#include <db.h>
-#include <paths.h>
-#include <rpc/rpc.h>
-#include <pwd.h>
-#include <err.h>
-#include <rpcsvc/yp.h>
-#include "yp_extern.h"
-#include "ypxfr_extern.h"
+#ifndef _YPPASSWDD_EXTERN_H
+#define _YPPASSWDD_EXTERN_H
 
 #ifndef YPLIBDIR
 #define YPLIBDIR "/usr/libexec/"
@@ -55,22 +47,16 @@
 #define MAP_UPDATE "yppwupdate"
 #define MAP_UPDATE_PATH YPLIBDIR "yppwupdate"
 
-extern char	*yp_dir;
+extern const char *yp_dir;
 extern char	*progname;
 extern void	do_master(void);
 extern void	yppasswdprog_1(struct svc_req *, SVCXPRT *);
-extern void     master_yppasswdprog_1(struct svc_req *, SVCXPRT *);
+extern void	master_yppasswdprog_1(struct svc_req *, SVCXPRT *);
 extern void	reaper(int);
 extern void	install_reaper(int);
-extern int	pw_copy(int, int, struct passwd *);
-extern int	pw_lock(void);
-extern int	pw_mkdb(char *);
-extern int	pw_tmp(void);
-extern void	pw_init(void);
 extern char	*ok_shell(char *);
 extern char	*passfile;
 extern char	*passfile_default;
-extern char	*tempname;
 extern char	*yppasswd_domain;
 extern int	no_chsh;
 extern int	no_chfn;
@@ -80,3 +66,5 @@ extern int	resvport;
 extern int	inplace;
 extern int	verbose;
 extern int	_rpc_dtablesize(void);
+
+#endif

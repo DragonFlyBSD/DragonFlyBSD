@@ -59,7 +59,7 @@ The arguments are:
 the vnode being locked or unlocked
 .It Fa flags
 One of the lock request types:
-.Bl -column LK_EXCLUPGRADE -offset indent
+.Bl -column ".Dv LK_EXCLUPGRADE" -offset indent
 .It Dv LK_SHARED Ta "Shared lock"
 .It Dv LK_EXCLUSIVE Ta "Exclusive lock"
 .It Dv LK_UPGRADE Ta "Shared-to-exclusive upgrade"
@@ -71,7 +71,7 @@ One of the lock request types:
 The lock type may be
 .Em or Ns 'ed
 with these lock flags:
-.Bl -column LK_CANRECURSE -offset indent
+.Bl -column ".Dv LK_CANRECURSE" -offset indent
 .It Dv LK_NOWAIT Ta "Do not sleep to wait for lock"
 .It Dv LK_SLEEPFAIL Ta "Sleep, then return failure"
 .It Dv LK_CANRECURSE Ta "Allow recursive exclusive lock"
@@ -80,7 +80,7 @@ with these lock flags:
 The lock type may be
 .Em or Ns 'ed
 with these control flags:
-.Bl -column LK_RETRY -offset indent
+.Bl -column ".Dv LK_RETRY" -offset indent
 .It Dv LK_RETRY Ta "Retry until locked"
 .It Dv LK_NOOBJ Ta "Don't create object"
 .El

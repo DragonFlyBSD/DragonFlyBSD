@@ -53,7 +53,6 @@ static	Char		*operate	(int, Char *, Char *);
 static	void	 	 putn1		(unsigned);
 static	struct varent	*madrof		(Char *, struct varent *);
 static	void		 unsetv1	(struct varent *);
-static	void		 exportpath	(Char **);
 static	void		 balance	(struct varent *, int, int);
 
 /*
@@ -874,7 +873,7 @@ shift(Char **v, struct command *c)
     update_vars(name);
 }
 
-static void
+void
 exportpath(Char **val)
 {
     struct Strbuf buf = Strbuf_INIT;

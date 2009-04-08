@@ -749,7 +749,7 @@ send:
 			m->m_data += max_linkhdr;
 		m->m_len = hdrlen;
 	}
-	m->m_pkthdr.rcvif = (struct ifnet *)0;
+	m->m_pkthdr.rcvif = NULL;
 	if (isipv6) {
 		ip6 = mtod(m, struct ip6_hdr *);
 		th = (struct tcphdr *)(ip6 + 1);
@@ -982,7 +982,8 @@ send:
 			ip->ip_off |= IP_DF;
 
 		error = ip_output(m, inp->inp_options, &inp->inp_route,
-				  (so->so_options & SO_DONTROUTE), NULL, inp);
+				  (so->so_options & SO_DONTROUTE) |
+				  IP_DEBUGROUTE, NULL, inp);
 	}
 	if (error) {
 

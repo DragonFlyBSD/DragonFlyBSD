@@ -94,15 +94,19 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 	reblock.free_level = HAMMER_LARGEBLOCK_SIZE - reblock.free_level;
 	if (reblock.free_level < 0)
 		reblock.free_level = 0;
-	printf("reblock free level %d\n", reblock.free_level);
+	printf("reblock start %016llx:%04x free level %d\n",
+		reblock.key_beg.obj_id,
+		reblock.key_beg.localization,
+		reblock.free_level);
 
 	fd = open(filesystem, O_RDONLY);
 	if (fd < 0)
 		err(1, "Unable to open %s", filesystem);
+	RunningIoctl = 1;
 	if (ioctl(fd, HAMMERIOC_REBLOCK, &reblock) < 0) {
 		printf("Reblock %s failed: %s\n", filesystem, strerror(errno));
 	} else if (reblock.head.flags & HAMMER_IOC_HEAD_INTR) {
-		printf("Reblock %s interrupted by timer at %016llx %04x\n",
+		printf("Reblock %s interrupted by timer at %016llx:%04x\n",
 			filesystem,
 			reblock.key_cur.obj_id,
 			reblock.key_cur.localization);
@@ -114,6 +118,7 @@ hammer_cmd_reblock(char **av, int ac, int flags)
 			hammer_reset_cycle();
 		printf("Reblock %s succeeded\n", filesystem);
 	}
+	RunningIoctl = 0;
 	close(fd);
 	printf("Reblocked:\n"
 	       "    %lld/%lld btree nodes\n"

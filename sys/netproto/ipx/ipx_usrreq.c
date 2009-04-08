@@ -44,6 +44,7 @@
 #include <sys/kernel.h>
 #include <sys/mbuf.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -175,8 +176,9 @@ ipx_input(struct mbuf *m, struct ipxpcb *ipxp)
 		m->m_pkthdr.len -= sizeof(struct ipx);
 		m->m_data += sizeof(struct ipx);
 	}
-	if (ssb_append_addr(&ipxp->ipxp_socket->so_rcv, (struct sockaddr *)&ipx_ipx,
-	    m, (struct mbuf *)NULL) == 0)
+	if (ssb_append_addr(&ipxp->ipxp_socket->so_rcv,
+			    (struct sockaddr *)&ipx_ipx,
+			    m, NULL) == 0)
 		goto bad;
 	sorwakeup(ipxp->ipxp_socket);
 	return;
@@ -289,7 +291,7 @@ ipx_output(struct ipxpcb *ipxp, struct mbuf *m0)
 	 */
 	so = ipxp->ipxp_socket;
 	if (so->so_options & SO_DONTROUTE)
-		return (ipx_outputfl(m, (struct route *)NULL,
+		return (ipx_outputfl(m, NULL,
 		    (so->so_options & SO_BROADCAST) | IPX_ROUTETOIF));
 	/*
 	 * Use cached route for previous datagram if
@@ -597,7 +599,7 @@ ripx_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	int error = 0;
 	struct ipxpcb *ipxp;
 
-	if ((error = suser_cred(ai->p_ucred, NULL_CRED_OKAY)) != 0)
+	if ((error = priv_check_cred(ai->p_ucred, PRIV_ROOT, NULL_CRED_OKAY)) != 0)
 		return (error);
 	crit_enter();
 	error = ipx_pcballoc(so, &ipxrawpcb);

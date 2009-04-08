@@ -106,7 +106,8 @@ atm_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
 		 */
 
 		if ((rt->rt_flags & RTF_HOST) == 0) {
-			rt_setgate(rt,rt_key(rt),(struct sockaddr *)&null_sdl);
+			rt_setgate(rt,rt_key(rt),(struct sockaddr *)&null_sdl,
+				   RTL_DONTREPORT);
 			gate = rt->rt_gateway;
 			SDL(gate)->sdl_type = rt->rt_ifp->if_type;
 			SDL(gate)->sdl_index = rt->rt_ifp->if_index;
@@ -173,8 +174,8 @@ failed:
 			rt->rt_flags &= ~RTF_LLINFO;
 		}
 #endif
-		rtrequest(RTM_DELETE, rt_key(rt), (struct sockaddr *) NULL,
-		    rt_mask(rt), 0, (struct rtentry **) NULL);
+		rtrequest(RTM_DELETE, rt_key(rt), NULL,
+		    rt_mask(rt), 0, NULL);
 		break;
 
 	case RTM_DELETE:
@@ -198,7 +199,7 @@ failed:
 		api.rxhand = NULL;
 		lwkt_serialize_enter(rt->rt_ifp->if_serializer);
 		rt->rt_ifp->if_ioctl(rt->rt_ifp, SIOCATMDIS, (caddr_t)&api,
-				     (struct ucred *)NULL);
+				     NULL);
 		lwkt_serialize_exit(rt->rt_ifp->if_serializer);
 		break;
 	}

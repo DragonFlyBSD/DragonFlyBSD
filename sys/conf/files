@@ -192,6 +192,7 @@ dev/netif/ath/ath/if_ath.c		optional ath \
 	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath"
 dev/netif/ath/ath/if_ath_pci.c		optional ath pci \
 	compile-with "${NORMAL_C} -I$S/dev/netif/ath/ath"
+dev/netif/ale/if_ale.c			optional ale
 dev/netif/bce/if_bce.c			optional bce
 dev/netif/bfe/if_bfe.c			optional bfe
 dev/netif/bge/if_bge.c			optional bge
@@ -219,7 +220,21 @@ dev/netif/ep/if_ep_isa.c	optional ep isa
 dev/netif/ep/if_ep_eisa.c	optional ep eisa
 dev/netif/ep/if_ep_pccard.c	optional ep pccard
 dev/netif/em/if_em.c		optional em
-dev/netif/em/if_em_hw.c		optional em
+dev/netif/emx/if_emx.c		optional emx
+dev/netif/ig_hal/e1000_80003es2lan.c	optional ig_hal
+dev/netif/ig_hal/e1000_82540.c	optional ig_hal
+dev/netif/ig_hal/e1000_82541.c	optional ig_hal
+dev/netif/ig_hal/e1000_82542.c	optional ig_hal
+dev/netif/ig_hal/e1000_82543.c	optional ig_hal
+dev/netif/ig_hal/e1000_82571.c	optional ig_hal
+dev/netif/ig_hal/e1000_82575.c	optional ig_hal
+dev/netif/ig_hal/e1000_api.c	optional ig_hal
+dev/netif/ig_hal/e1000_ich8lan.c	optional ig_hal
+dev/netif/ig_hal/e1000_mac.c	optional ig_hal
+dev/netif/ig_hal/e1000_manage.c	optional ig_hal
+dev/netif/ig_hal/e1000_nvm.c	optional ig_hal
+dev/netif/ig_hal/e1000_osdep.c	optional ig_hal
+dev/netif/ig_hal/e1000_phy.c	optional ig_hal
 dev/atm/en/midway.c		optional en
 dev/netif/et/if_et.c		optional et
 dev/netif/ex/if_ex.c		optional ex
@@ -319,6 +334,7 @@ dev/netif/mii_layer/rgephy.c	optional miibus
 dev/netif/mii_layer/ip1000phy.c	optional miibus
 dev/netif/mii_layer/truephy.c	optional miibus
 dev/netif/mii_layer/jmphy.c	optional miibus
+dev/netif/mii_layer/atphy.c	optional miibus
 dev/netif/mii_layer/miibus_if.m		optional miibus
 dev/raid/mlx/mlx_disk.c		optional mlx
 dev/raid/mlx/mlx_pci.c		optional mlx
@@ -593,6 +609,7 @@ kern/kern_xxx.c		standard
 kern/md5c.c		standard
 kern/subr_autoconf.c	standard
 kern/subr_bus.c		standard
+kern/subr_busdma.c	standard
 kern/subr_devstat.c	standard
 kern/subr_disk.c	standard
 kern/subr_disklabel32.c	standard
@@ -817,13 +834,13 @@ netproto/atm/spans/spans_util.c	optional atm_spans atm_core
 spans_xdr.h			optional atm_spans atm_core	\
         before-depend						\
         dependency      "$S/netproto/atm/spans/spans_xdr.x"		\
-        compile-with    "rpcgen -h -C $S/netproto/atm/spans/spans_xdr.x > spans_xdr.h" \
+        compile-with    "rpcgen -h -C $S/netproto/atm/spans/spans_xdr.x | grep -v rpc/rpc.h > spans_xdr.h" \
         clean           "spans_xdr.h"				\
         no-obj no-implicit-rule
 spans_xdr.c			optional atm_spans atm_core	\
         before-depend						\
         dependency      "$S/netproto/atm/spans/spans_xdr.x"		\
-        compile-with    "rpcgen -c -C $S/netproto/atm/spans/spans_xdr.x > spans_xdr.c" \
+        compile-with    "rpcgen -c -C $S/netproto/atm/spans/spans_xdr.x | grep -v rpc/rpc.h > spans_xdr.c" \
         clean           "spans_xdr.c"				\
         no-obj no-implicit-rule local
 spans_xdr.o			optional atm_spans atm_core	\
@@ -1003,6 +1020,8 @@ net/ppp_layer/slcompress.c		optional netgraph_vjc
 net/bpf_filter.c			optional netgraph_bpf
 crypto/rc4/rc4.c			optional netgraph_mppc_encryption
 crypto/sha1.c				optional netgraph_mppc_encryption
+
+net/toeplitz.c			standard
 
 net/accf_data/accf_data.c		optional accept_filter_data
 net/accf_http/accf_http.c		optional accept_filter_http
@@ -1272,6 +1291,7 @@ vfs/hammer/hammer_ondisk.c	optional hammer
 vfs/hammer/hammer_pfs.c		optional hammer
 vfs/hammer/hammer_prune.c	optional hammer
 vfs/hammer/hammer_reblock.c	optional hammer
+vfs/hammer/hammer_rebalance.c	optional hammer
 vfs/hammer/hammer_recover.c	optional hammer
 vfs/hammer/hammer_signal.c	optional hammer
 vfs/hammer/hammer_subs.c	optional hammer
@@ -1501,6 +1521,7 @@ dev/drm/i915_dma.c			optional i915drm drm
 dev/drm/i915_drv.c			optional i915drm drm
 dev/drm/i915_irq.c			optional i915drm drm
 dev/drm/i915_mem.c			optional i915drm drm
+dev/drm/i915_suspend.c			optional i915drm drm
 dev/drm/mach64_dma.c			optional mach64drm drm
 dev/drm/mach64_drv.c			optional mach64drm drm
 dev/drm/mach64_irq.c			optional mach64drm drm
@@ -1515,6 +1536,7 @@ dev/drm/r128_drv.c			optional r128drm drm
 dev/drm/r128_state.c			optional r128drm drm
 dev/drm/r128_irq.c			optional r128drm drm
 dev/drm/r300_cmdbuf.c			optional radeondrm drm
+dev/drm/r600_cp.c			optional radeondrm drm
 dev/drm/radeon_cp.c			optional radeondrm drm
 dev/drm/radeon_drv.c			optional radeondrm drm
 dev/drm/radeon_state.c			optional radeondrm drm
@@ -1538,8 +1560,6 @@ emulation/43bsd/43bsd_exit.c		optional compat_43
 emulation/43bsd/43bsd_resource.c	optional compat_43
 emulation/43bsd/43bsd_hostinfo.c	optional compat_43
 emulation/43bsd/43bsd_vm.c		optional compat_43
-emulation/dragonfly12/dfbsd12_getdirentries.c	nonoptional compat_df12
-emulation/dragonfly12/dfbsd12_stat.c	nonoptional compat_df12
 
 # OS ACPI MI code
 ${OSACPI_MI_DIR}/acpi.c			optional acpi
@@ -1574,6 +1594,7 @@ ${OSACPI_MI_DIR}/Osd/OsdStream.c	optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdSynch.c		optional acpi
 ${OSACPI_MI_DIR}/Osd/OsdTable.c		optional acpi
 
+${OSACPI_MI_DIR}/acpi_asus/acpi_asus.c		optional acpi_asus acpi
 ${OSACPI_MI_DIR}/acpi_toshiba/acpi_toshiba.c	optional acpi_toshiba acpi
 ${OSACPI_MI_DIR}/acpi_thinkpad/acpi_thinkpad.c	optional acpi_thinkpad acpi
 ${OSACPI_MI_DIR}/acpi_video/acpi_video.c	optional acpi_video acpi

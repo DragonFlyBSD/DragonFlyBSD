@@ -236,7 +236,7 @@ main(int argc, char *argv[])
 			exit(1);
 		}
 	        
-		if((setvbuf(BP, (char *)NULL, _IONBF, 0)) != 0)
+		if((setvbuf(BP, NULL, _IONBF, 0)) != 0)
 		{
 			char buffer[80];
 
@@ -301,7 +301,7 @@ main(int argc, char *argv[])
 			exit(1);
 		}
 	        
-		if((setvbuf(Fout, (char *)NULL, _IONBF, 0)) != 0)
+		if((setvbuf(Fout, NULL, _IONBF, 0)) != 0)
 		{
 			char buffer[80];
 
@@ -311,7 +311,7 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if((setvbuf(stdout, (char *)NULL, _IOLBF, 0)) != 0)
+	if((setvbuf(stdout, NULL, _IOLBF, 0)) != 0)
 	{
 		char buffer[80];
 
@@ -661,7 +661,7 @@ reopenfiles(int dummy)
 			exit(1);
 		}
 
-		if((setvbuf(Fout, (char *)NULL, _IONBF, 0)) != 0)
+		if((setvbuf(Fout, NULL, _IONBF, 0)) != 0)
 		{
 			char buffer[80];
 
@@ -685,7 +685,7 @@ reopenfiles(int dummy)
 			exit(1);
 		}
 
-		if((setvbuf(BP, (char *)NULL, _IONBF, 0)) != 0)
+		if((setvbuf(BP, NULL, _IONBF, 0)) != 0)
 		{
 			char buffer[80];
 

@@ -265,7 +265,7 @@ setup(void)
 		done(1);
 	}
 	map = calloc((unsigned)1, (unsigned)howmany(maxino, NBBY));
-	if (map == (char *)NULL)
+	if (map == NULL)
 		panic("no memory for file dump list\n");
 	dumpmap = map;
 	curfile.action = USING;

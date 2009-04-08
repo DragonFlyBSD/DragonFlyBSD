@@ -326,7 +326,7 @@ writefile(time_t runtimer, char queue)
 	    mailname = pass_entry->pw_name;
     }
 
-    if (atinput != (char *) NULL)
+    if (atinput != NULL)
     {
 	fpin = freopen(atinput, "r", stdin);
 	if (fpin == NULL)

@@ -563,7 +563,7 @@ saveuser(KINFO *ki)
 		ki->ki_args = NULL;
 	}
 	if (needenv) {
-		ki->ki_env = getfmt(kvm_getenvv, ki, (char *)NULL, 0);
+		ki->ki_env = getfmt(kvm_getenvv, ki, NULL, 0);
 	} else {
 		ki->ki_env = NULL;
 	}

@@ -97,11 +97,11 @@ void acu_nap (unsigned int how_long)
         setvec(vec, acunap_napx);
         ringring = 0;
         (void) sigvec(SIGALRM, &vec, &ovec);
-        (void) setitimer(ITIMER_REAL, itp, (struct itimerval *)0);
+        (void) setitimer(ITIMER_REAL, itp, NULL);
         while (!ringring)
 					sigpause(omask &~ mask(SIGALRM));
-        (void) sigvec(SIGALRM, &ovec, (struct sigvec *)0);
-        (void) setitimer(ITIMER_REAL, &oitv, (struct itimerval *)0);
+        (void) sigvec(SIGALRM, &ovec, NULL);
+        (void) setitimer(ITIMER_REAL, &oitv, NULL);
 				(void) sigsetmask(omask);
 }
 

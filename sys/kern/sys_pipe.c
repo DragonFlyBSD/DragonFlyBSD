@@ -703,7 +703,7 @@ pipe_build_write_buffer(struct pipe *wpipe, struct uio *uio)
 	 */
 	size = wpipe->pipe_map.xio_bytes;
 	uio->uio_iov->iov_len -= size;
-	uio->uio_iov->iov_base += size;
+	uio->uio_iov->iov_base = (char *)uio->uio_iov->iov_base + size;
 	if (uio->uio_iov->iov_len == 0)
 		uio->uio_iov++;
 	uio->uio_resid -= size;

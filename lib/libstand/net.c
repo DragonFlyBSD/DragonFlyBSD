@@ -259,7 +259,7 @@ ip_convertaddr(char *p)
 #define IP_ANYADDR	0
 	n_long addr = 0, n;
 
-	if (p == (char *)0 || *p == '\0')
+	if (p == NULL || *p == '\0')
 		return IP_ANYADDR;
 	p = number(p, &n);
 	addr |= (n << 24) & 0xff000000;

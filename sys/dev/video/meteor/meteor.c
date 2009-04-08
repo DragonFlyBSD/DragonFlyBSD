@@ -524,7 +524,7 @@ met_probe (pcici_t tag, pcidi_t type)
 	case SAA7116_PHILIPS_ID:	/* meteor */
 		return("Philips SAA 7116");
 	};
-	return ((char *)0);
+	return (NULL);
 }
 
 	/* interrupt handling routine 
@@ -1177,7 +1177,7 @@ meteor_open(struct dev_open_args *ap)
 	mtr->frames_captured = 0;
 	mtr->even_fields_captured = 0;
 	mtr->odd_fields_captured = 0;
-	mtr->proc = (struct proc *)0;
+	mtr->proc = NULL;
 	set_fps(mtr, 30);
 #ifdef METEOR_TEST_VIDEO
 	mtr->video.addr = 0;
@@ -1216,7 +1216,7 @@ meteor_close(struct dev_close_args *ap)
 	 */
 	mtr->base->cap_cntl = 0x8ff0;
 	mtr->flags &= ~(METEOR_CAP_MASK|METEOR_WANT_MASK);
-	mtr->proc = (struct proc *)0;
+	mtr->proc = NULL;
 
 #ifdef METEOR_DEALLOC_PAGES
 	if (mtr->bigbuf != NULL) {
@@ -1388,7 +1388,7 @@ meteor_ioctl(struct dev_ioctl_args *ap)
 		if (mtr->signal) {
 		  mtr->proc = curproc;	/* might be NULL */
 		} else {
-		  mtr->proc = (struct proc *)0;
+		  mtr->proc = NULL;
 		}
 		break;
 	case METEORGSIGNAL:

@@ -957,8 +957,6 @@ tstop(void)
 	struct lwp *lp = curthread->td_lwp;
 	struct proc *p = lp->lwp_proc;
 
-	lp->lwp_flag |= LWP_BREAKTSLEEP;
-	lp->lwp_stat = LSSTOP;
 	crit_enter();
 	/*
 	 * If LWP_WSTOP is set, we were sleeping
@@ -972,6 +970,7 @@ tstop(void)
 		 */
 		p->p_nstopped++;
 		lp->lwp_flag |= LWP_WSTOP;
+		wakeup(&p->p_nstopped);
 		if (p->p_nstopped == p->p_nthreads) {
 			p->p_flag &= ~P_WAITED;
 			wakeup(p->p_pptr);
@@ -979,7 +978,11 @@ tstop(void)
 				ksignal(p->p_pptr, SIGCHLD);
 		}
 	}
-	tsleep(lp->lwp_proc, 0, "stop", 0);
+	while (p->p_stat == SSTOP) {
+		lp->lwp_flag |= LWP_BREAKTSLEEP;
+		lp->lwp_stat = LSSTOP;
+		tsleep(p, 0, "stop", 0);
+	}
 	p->p_nstopped--;
 	lp->lwp_flag &= ~LWP_WSTOP;
 	crit_exit();

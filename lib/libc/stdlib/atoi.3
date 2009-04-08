@@ -13,10 +13,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -34,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)atoi.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/stdlib/atoi.3,v 1.3.2.3 2001/12/14 18:33:58 ru Exp $
+.\" $FreeBSD: src/lib/libc/stdlib/atoi.3,v 1.14 2007/10/19 06:23:39 davidxu Exp $
 .\" $DragonFly: src/lib/libc/stdlib/atoi.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
 .\"
 .Dd June 4, 1993
@@ -55,15 +51,27 @@ string to integer
 The
 .Fn atoi
 function converts the initial portion of the string pointed to by
-.Em nptr
+.Fa nptr
 to
-.Em integer
+.Vt int
 representation.
 .Pp
 It is equivalent to:
 .Bd -literal -offset indent
-(int)strtol(nptr, (char **)NULL, 10);
+(int)strtol(nptr, NULL, 10);
 .Ed
+.Pp
+The
+.Fn atoi
+function has been deprecated by
+.Fn strtol
+and should not be used in new code.
+.Sh ERRORS
+The function
+.Fn atoi
+need not affect the value of
+.Va errno
+on an error.
 .Sh SEE ALSO
 .Xr atof 3 ,
 .Xr atol 3 ,
@@ -74,4 +82,7 @@ It is equivalent to:
 The
 .Fn atoi
 function conforms to
-.St -isoC .
+.St -p1003.1-90 ,
+.St -isoC ,
+and
+.St -isoC-99 .

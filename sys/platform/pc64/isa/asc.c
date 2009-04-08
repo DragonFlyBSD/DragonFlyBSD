@@ -54,8 +54,8 @@
 
 #include <machine/asc_ioctl.h>
 
-#include <bus/isa/i386/isa.h>
-#include <bus/isa/i386/isa_device.h>
+#include <bus/isa/isa.h>
+#include <bus/isa/isa_device.h>
 #include "ascreg.h"
 
 /***

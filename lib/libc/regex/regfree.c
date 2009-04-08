@@ -14,10 +14,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -35,11 +31,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)regfree.c	8.3 (Berkeley) 3/20/94
- *
- * $FreeBSD: src/lib/libc/regex/regfree.c,v 1.1.1.1.14.1 2000/07/31 06:30:37 dcs Exp $
+ * $FreeBSD: src/lib/libc/regex/regfree.c,v 1.8 2007/06/11 03:05:54 delphij Exp $
  * $DragonFly: src/lib/libc/regex/regfree.c,v 1.3 2004/02/06 22:36:50 joerg Exp $
- *
- * @(#)regfree.c	8.3 (Berkeley) 3/20/94
  */
 
 #include <sys/types.h>
@@ -47,6 +40,8 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <regex.h>
+#include <wchar.h>
+#include <wctype.h>
 
 #include "utils.h"
 #include "regex2.h"
@@ -59,6 +54,7 @@ void
 regfree(regex_t *preg)
 {
 	struct re_guts *g;
+	int i;
 
 	if (preg->re_magic != MAGIC1)	/* oops */
 		return;			/* nice to complain, but hard */
@@ -71,10 +67,14 @@ regfree(regex_t *preg)
 
 	if (g->strip != NULL)
 		free((char *)g->strip);
-	if (g->sets != NULL)
+	if (g->sets != NULL) {
+		for (i = 0; i < g->ncsets; i++) {
+			free(g->sets[i].ranges);
+			free(g->sets[i].wides);
+			free(g->sets[i].types);
+		}
 		free((char *)g->sets);
-	if (g->setbits != NULL)
-		free((char *)g->setbits);
+	}
 	if (g->must != NULL)
 		free(g->must);
 	if (g->charjump != NULL)

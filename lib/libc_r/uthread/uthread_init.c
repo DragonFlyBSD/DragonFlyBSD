@@ -150,7 +150,7 @@ _thread_init(void)
 			PANIC("Can't open console");
 		if (setlogin("root") == -1)
 			PANIC("Can't set login to root");
-		if (__sys_ioctl(fd, TIOCSCTTY, (char *) NULL) == -1)
+		if (__sys_ioctl(fd, TIOCSCTTY, NULL) == -1)
 			PANIC("Can't set controlling terminal");
 		if (__sys_dup2(fd, 0) == -1 ||
 		    __sys_dup2(fd, 1) == -1 ||

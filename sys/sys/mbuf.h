@@ -132,7 +132,7 @@ struct pkthdr {
 	uint32_t altq_state_hash;	/* identifies 'connections' */
 
 	uint16_t ether_vlantag;		/* ethernet 802.1p+q vlan tag */
-	uint16_t pad;			/* explicit padding */
+	uint16_t hash;			/* packet hash */
 };
 
 /*
@@ -206,11 +206,13 @@ struct mbuf {
 #define M_NOTIFICATION	0x00010000	/* notification event */
 #define M_VLANTAG	0x00020000	/* ether_vlantag is valid */
 #define M_MPLSLABELED	0x00040000	/* packet is mpls labeled */
+#define M_LENCHECKED	0x00080000	/* packet proto lengths are checked */
+#define M_HASH		0x00100000/* hash field in pkthdr is valid */
 
 /*
  * Additional mbuf flags
  */
-#define M_SOCKBUF	0x00080000	/* in sockbuf (for debugging) */
+#define M_SOCKBUF	0x00200000	/* in sockbuf (for debugging) */
 
 /*
  * PRUS_* flags are now mbuf flags.  These flags are stored in the first
@@ -226,9 +228,10 @@ struct mbuf {
 /*
  * Flags copied when copying m_pkthdr.
  */
-#define	M_COPYFLAGS	(M_PKTHDR|M_EOR|M_PROTO1|M_PROTO1|M_PROTO2|M_PROTO3 | \
-			    M_PROTO4|M_PROTO5|M_BCAST|M_MCAST|M_FRAG | \
-			    M_FIRSTFRAG|M_LASTFRAG|M_VLANTAG|M_MPLSLABELED)
+#define	M_COPYFLAGS	(M_PKTHDR|M_EOR|M_PROTO1|M_PROTO2|M_PROTO3 | \
+			 M_PROTO4|M_PROTO5|M_BCAST|M_MCAST|M_FRAG | \
+			 M_FIRSTFRAG|M_LASTFRAG|M_VLANTAG|M_MPLSLABELED | \
+			 M_LENCHECKED|M_HASH)
 
 /*
  * Flags indicating hw checksum support and sw checksum requirements.

@@ -110,7 +110,7 @@ get_ifmib_general(int row, struct ifmibdata *ifmd)
 
 	len = sizeof(*ifmd);
 
-	return sysctl(name, 6, ifmd, &len, (void *)0, 0);
+	return sysctl(name, 6, ifmd, &len, NULL, 0);
 }
 .Ed
 .Pp

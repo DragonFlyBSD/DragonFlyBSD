@@ -42,6 +42,7 @@
 #include <sys/systm.h>
 #include <sys/tty.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/conf.h>
 #include <sys/dkstat.h>
 #include <sys/fcntl.h>
@@ -752,7 +753,7 @@ again:
 			}
 		}
 		if (tp->t_state & TS_XCLUDE &&
-		    suser_cred(ap->a_cred, 0)) {
+		    priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
 			error = EBUSY;
 			goto out;
 		}
@@ -1100,7 +1101,7 @@ rcioctl(struct dev_ioctl_args *ap)
 		break;
 
 	    case TIOCMSDTRWAIT:
-		error = suser_cred(ap->a_cred, 0);
+		error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
 		if (error != 0) {
 			crit_exit();
 			return (error);

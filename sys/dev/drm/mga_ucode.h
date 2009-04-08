@@ -24,8 +24,6 @@
  *
  * Kernel-based WARP engine management:
  *    Gareth Hughes <gareth@valinux.com>
- *
- * $DragonFly: src/sys/dev/drm/mga_ucode.h,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
 /*

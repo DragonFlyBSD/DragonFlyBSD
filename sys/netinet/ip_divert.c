@@ -53,9 +53,11 @@
 #include <sys/socket.h>
 #include <sys/protosw.h>
 #include <sys/socketvar.h>
+#include <sys/socketvar2.h>
 #include <sys/sysctl.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/thread2.h>
 #include <sys/in_cksum.h>
 #include <sys/lock.h>
@@ -330,17 +332,17 @@ div_packet(struct mbuf *m, int incoming, int port)
 
 #ifdef SMP
 static void
-div_packet_handler(struct netmsg *nmsg)
+div_packet_handler(anynetmsg_t nmsg)
 {
-	struct netmsg_packet *nmp;
+	struct netmsg_isr_packet *nmp;
 	struct lwkt_msg *msg;
 	struct mbuf *m;
 	int port, incoming = 0;
 
-	nmp = (struct netmsg_packet *)nmsg;
+	nmp = (struct netmsg_isr_packet *)nmsg;
 	m = nmp->nm_packet;
 
-	msg = &nmsg->nm_lmsg;
+	msg = &nmsg->lmsg;
 	port = msg->u.ms_result32 & 0xffff;
 	if (msg->u.ms_result32 & DIV_INPUT)
 		incoming = 1;
@@ -372,7 +374,7 @@ divert_packet(struct mbuf *m, int incoming)
 
 #ifdef SMP
 	if (mycpuid != 0) {
-		struct netmsg_packet *nmp;
+		struct netmsg_isr_packet *nmp;
 		struct lwkt_msg *msg;
 
 		nmp = &m->m_hdr.mh_netmsg;
@@ -469,7 +471,7 @@ div_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	inp  = so->so_pcb;
 	if (inp)
 		panic("div_attach");
-	if ((error = suser_cred(ai->p_ucred, NULL_CRED_OKAY)) != 0)
+	if ((error = priv_check_cred(ai->p_ucred, PRIV_ROOT, NULL_CRED_OKAY)) != 0)
 		return error;
 
 	error = soreserve(so, div_sendspace, div_recvspace, ai->sb_rlimit);

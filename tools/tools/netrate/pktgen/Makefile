@@ -4,9 +4,11 @@ KMOD=	pktgen
 SRCS=	pktgen.c
 
 CFLAGS+= -g
-# CFLAGS+= -DINVARIANTS 
+CFLAGS+= -DINVARIANTS 
 
 # For SMP kernel
-# CFLAGS+= -DSMP
+.ifdef SMP
+CFLAGS+= -DSMP
+.endif
 
 .include <bsd.kmod.mk>

@@ -72,7 +72,7 @@ static void acquire_line(void);		/* get tty device as controlling terminal */
 static void usage(void);
 
 int	fd = -1;
-char	*dev = (char *)0;	/* path name of the tty (e.g. /dev/tty01) */
+char	*dev = NULL;	/* path name of the tty (e.g. /dev/tty01) */
 char    *dvname;                /* basename of dev */
 int     locked = 0;             /* uucp lock active */
 int	flow_control = 0;	/* non-zero to enable hardware flow control. */
@@ -174,7 +174,7 @@ main(int argc, char **argv)
 	    warnx("too many args, first='%s'", argv[optind]);
 	if (optind > (argc - 1))
 	    warnx("not enough args");
-	if (dev == (char *)0) {
+	if (dev == NULL) {
 		usage();
 		exit_handler(2);
 	}

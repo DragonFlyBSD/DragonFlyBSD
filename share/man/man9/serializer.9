@@ -44,7 +44,6 @@
 .Nm lwkt_serialize_handler_disable ,
 .Nm lwkt_serialize_handler_call ,
 .Nm lwkt_serialize_handler_try ,
-.Nm IS_SERIALIZED
 .Nm ASSERT_SERIALIZED
 .Nm ASSERT_NOT_SERIALIZED
 .Nd generic low level serializer
@@ -78,7 +77,6 @@
 .Fa "void *arg"
 .Fa "void *frame"
 .Fc
-.Fn IS_SERIALIZED "s"
 .Fn ASSERT_SERIALIZED "s"
 .Fn ASSERT_NOT_SERIALIZED "s"
 .Sh DESCRIPTION
@@ -149,11 +147,6 @@ is a non-blocking version of
 .Fn lwkt_serialize_handler_call .
 .Pp
 The
-.Fn IS_SERIALIZED
-macro tests if the serializer
-.Fa s
-is being held.
-Similarly, the
 .Fn ASSERT_SERIALIZED
 and
 .Fn ASSERT_NOT_SERIALIZED

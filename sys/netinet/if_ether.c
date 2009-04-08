@@ -148,7 +148,7 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, useloopback, CTLFLAG_RW,
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, proxyall, CTLFLAG_RW,
 	   &arp_proxyall, 0, "");
 
-static int	arp_mpsafe = 0;
+static int	arp_mpsafe = 1;
 TUNABLE_INT("net.link.ether.inet.arp_mpsafe", &arp_mpsafe);
 
 static void	arp_rtrequest(int, struct rtentry *, struct rt_addrinfo *);
@@ -160,7 +160,7 @@ static void	arpintr(anynetmsg_t);
 static void	arptfree(struct llinfo_arp *);
 static void	arptimer(void *);
 static struct llinfo_arp *
-		arplookup(in_addr_t, boolean_t, boolean_t);
+		arplookup(in_addr_t, boolean_t, boolean_t, boolean_t);
 #ifdef INET
 static void	in_arpinput(struct mbuf *);
 #endif
@@ -220,7 +220,8 @@ arp_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
 			 * Case 1: This route should come from a route to iface.
 			 */
 			rt_setgate(rt, rt_key(rt),
-				   (struct sockaddr *)&null_sdl);
+				   (struct sockaddr *)&null_sdl,
+				   RTL_DONTREPORT);
 			gate = rt->rt_gateway;
 			SDL(gate)->sdl_type = rt->rt_ifp->if_type;
 			SDL(gate)->sdl_index = rt->rt_ifp->if_index;
@@ -471,7 +472,8 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 		la = rt->rt_llinfo;
 	}
 	if (la == NULL) {
-		la = arplookup(SIN(dst)->sin_addr.s_addr, TRUE, FALSE);
+		la = arplookup(SIN(dst)->sin_addr.s_addr,
+			       TRUE, RTL_REPORTMSG, FALSE);
 		if (la != NULL)
 			rt = la->la_rt;
 	}
@@ -507,12 +509,12 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 		return 1;
 	}
 	/*
-	 * If ARP is disabled on this interface, stop.
+	 * If ARP is disabled or static on this interface, stop.
 	 * XXX
 	 * Probably should not allocate empty llinfo struct if we are
 	 * not going to be sending out an arp request.
 	 */
-	if (ifp->if_flags & IFF_NOARP) {
+	if (ifp->if_flags & (IFF_NOARP | IFF_STATICARP)) {
 		m_freem(m);
 		return (0);
 	}
@@ -524,10 +526,7 @@ arpresolve(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 	if (la->la_hold != NULL)
 		m_freem(la->la_hold);
 	la->la_hold = m;
-	if (curthread->td_flags & TDF_NETWORK)
-		la->la_msgport = &curthread->td_msgport;
-	else
-		la->la_msgport = cpu_portfn(mycpuid);
+	la->la_msgport = curnetport;
 	if (rt->rt_expire || ((rt->rt_flags & RTF_STATIC) && !sdl->sdl_alen)) {
 		rt->rt_flags &= ~RTF_REJECT;
 		if (la->la_asked == 0 || rt->rt_expire != time_second) {
@@ -634,7 +633,7 @@ arp_hold_output(anynetmsg_t msg)
 
 static void
 arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
-		 boolean_t dologging)
+		 boolean_t generate_report, boolean_t dologging)
 {
 	struct arphdr *ah = mtod(m, struct arphdr *);
 	struct ifnet *ifp = m->m_pkthdr.rcvif;
@@ -642,7 +641,7 @@ arp_update_oncpu(struct mbuf *m, in_addr_t saddr, boolean_t create,
 	struct sockaddr_dl *sdl;
 	struct rtentry *rt;
 
-	la = arplookup(saddr, create, FALSE);
+	la = arplookup(saddr, create, generate_report, FALSE);
 	if (la && (rt = la->la_rt) && (sdl = SDL(rt->rt_gateway))) {
 		struct in_addr isaddr = { saddr };
 
@@ -772,13 +771,13 @@ in_arpinput(struct mbuf *m)
 	struct rtentry *rt;
 	struct ifaddr_container *ifac;
 	struct in_ifaddr_container *iac;
-	struct in_ifaddr *ia;
+	struct in_ifaddr *ia = NULL;
 	struct sockaddr sa;
 	struct in_addr isaddr, itaddr, myaddr;
 #ifdef SMP
 	struct netmsg_arp_update msg;
 #endif
-	u_int8_t *enaddr = NULL;
+	uint8_t *enaddr = NULL;
 	int op;
 	int req_len;
 
@@ -792,6 +791,21 @@ in_arpinput(struct mbuf *m)
 	op = ntohs(ah->ar_op);
 	memcpy(&isaddr, ar_spa(ah), sizeof isaddr);
 	memcpy(&itaddr, ar_tpa(ah), sizeof itaddr);
+
+	myaddr.s_addr = INADDR_ANY;
+#ifdef CARP
+	if (ifp->if_carp != NULL) {
+		get_mplock();
+		if (ifp->if_carp != NULL &&
+		    carp_iamatch(ifp->if_carp, &itaddr, &isaddr, &enaddr)) {
+			rel_mplock();
+			myaddr = itaddr;
+			goto match;
+		}
+		rel_mplock();
+	}
+#endif
+
 	/*
 	 * Check both target and sender IP addresses:
 	 *
@@ -808,31 +822,16 @@ in_arpinput(struct mbuf *m)
 		/* Skip all ia's which don't match */
 		if (itaddr.s_addr != ia->ia_addr.sin_addr.s_addr)
 			continue;
-
+#ifdef CARP
+		if (ia->ia_ifp->if_type == IFT_CARP)
+			continue;
+#endif
 		if (ia->ia_ifp == ifp)
 			goto match;
 
 		if (ifp->if_bridge && ia->ia_ifp && 
 		    ifp->if_bridge == ia->ia_ifp->if_bridge)
 			goto match;
-		
-#ifdef CARP
-		/*
-		 * If the interface does not match, but the recieving interface
-		 * is part of carp, we call carp_iamatch to see if this is a
-		 * request for the virtual host ip.
-		 * XXX: This is really ugly!
-		 */
-		if (ifp->if_carp != NULL) {
-			get_mplock();
-			if (ifp->if_carp != NULL &&
-			    carp_iamatch(ifp->if_carp, ia, &isaddr, &enaddr)) {
-				rel_mplock();
-				goto match;
-			}
-			rel_mplock();
-		}
-#endif
 	}
 	LIST_FOREACH(iac, INADDR_HASH(isaddr.s_addr), ia_hash) {
 		ia = iac->ia;
@@ -840,7 +839,10 @@ in_arpinput(struct mbuf *m)
 		/* Skip all ia's which don't match */
 		if (isaddr.s_addr != ia->ia_addr.sin_addr.s_addr)
 			continue;
-
+#ifdef CARP
+		if (ia->ia_ifp->if_type == IFT_CARP)
+			continue;
+#endif
 		if (ia->ia_ifp == ifp)
 			goto match;
 
@@ -869,8 +871,9 @@ in_arpinput(struct mbuf *m)
 
 match:
 	if (!enaddr)
-		enaddr = (u_int8_t *)IF_LLADDR(ifp);
-	myaddr = ia->ia_addr.sin_addr;
+		enaddr = (uint8_t *)IF_LLADDR(ifp);
+	if (myaddr.s_addr == INADDR_ANY)
+		myaddr = ia->ia_addr.sin_addr;
 	if (!bcmp(ar_sha(ah), enaddr, ifp->if_addrlen)) {
 		m_freem(m);	/* it's from me, ignore it. */
 		return;
@@ -890,6 +893,8 @@ match:
 		itaddr = myaddr;
 		goto reply;
 	}
+	if (ifp->if_flags & IFF_STATICARP)
+		goto reply;
 #ifdef SMP
 	netmsg_init(&msg.netmsg, &curthread->td_msgport, 0, 
 		    arp_update_msghandler);
@@ -899,7 +904,7 @@ match:
 	lwkt_domsg(rtable_portfn(0), &msg.netmsg.nm_lmsg, 0);
 #else
 	arp_update_oncpu(m, isaddr.s_addr, (itaddr.s_addr == myaddr.s_addr),
-			 TRUE);
+			 RTL_REPORTMSG, TRUE);
 #endif
 reply:
 	if (op != ARPOP_REQUEST) {
@@ -913,7 +918,7 @@ reply:
 	} else {
 		struct llinfo_arp *la;
 
-		la = arplookup(itaddr.s_addr, FALSE, SIN_PROXY);
+		la = arplookup(itaddr.s_addr, FALSE, RTL_DONTREPORT, SIN_PROXY);
 		if (la == NULL) {
 			struct sockaddr_in sin;
 
@@ -987,7 +992,13 @@ arp_update_msghandler(anynetmsg_t msg)
 	struct netmsg_arp_update *nm = (struct netmsg_arp_update *)msg;
 	int nextcpu;
 
-	arp_update_oncpu(nm->m, nm->saddr, nm->create, mycpuid == 0);
+	/*
+	 * This message handler will be called on all of the CPUs,
+	 * however, we only need to generate rtmsg on CPU0.
+	 */
+	arp_update_oncpu(nm->m, nm->saddr, nm->create,
+			 mycpuid == 0 ? RTL_REPORTMSG : RTL_DONTREPORT,
+			 mycpuid == 0);
 
 	nextcpu = mycpuid + 1;
 	if (nextcpu < ncpus) {
@@ -1033,7 +1044,8 @@ arptfree(struct llinfo_arp *la)
  * Lookup or enter a new address in arptab.
  */
 static struct llinfo_arp *
-arplookup(in_addr_t addr, boolean_t create, boolean_t proxy)
+arplookup(in_addr_t addr, boolean_t create, boolean_t generate_report,
+	  boolean_t proxy)
 {
 	struct rtentry *rt;
 	struct sockaddr_inarp sin = { sizeof sin, AF_INET };
@@ -1041,10 +1053,12 @@ arplookup(in_addr_t addr, boolean_t create, boolean_t proxy)
 
 	sin.sin_addr.s_addr = addr;
 	sin.sin_other = proxy ? SIN_PROXY : 0;
-	if (create)
-		rt = rtlookup((struct sockaddr *)&sin);
-	else
+	if (create) {
+		rt = _rtlookup((struct sockaddr *)&sin,
+			       generate_report, RTL_DOCLONE);
+	} else {
 		rt = rtpurelookup((struct sockaddr *)&sin);
+	}
 	if (rt == NULL)
 		return (NULL);
 	rt->rt_refcnt--;
@@ -1083,14 +1097,10 @@ arp_ifinit(struct ifnet *ifp, struct ifaddr *ifa)
 }
 
 void
-arp_ifinit2(struct ifnet *ifp, struct ifaddr *ifa, u_char *enaddr)
+arp_iainit(struct ifnet *ifp, const struct in_addr *addr, const u_char *enaddr)
 {
-	if (IA_SIN(ifa)->sin_addr.s_addr != INADDR_ANY) {
-		arprequest_async(ifp, &IA_SIN(ifa)->sin_addr,
-				 &IA_SIN(ifa)->sin_addr, enaddr);
-	}
-	ifa->ifa_rtrequest = arp_rtrequest;
-	ifa->ifa_flags |= RTF_CLONING;
+	if (addr->s_addr != INADDR_ANY)
+		arprequest_async(ifp, addr, addr, enaddr);
 }
 
 static void
@@ -1108,7 +1118,8 @@ arp_init(void)
 	} else {
 		flags = NETISR_FLAG_NOTMPSAFE;
 	}
-	netisr_register(NETISR_ARP, cpu0_portfn, arpintr, flags);
+	netisr_register(NETISR_ARP, cpu0_portfn, pktinfo_portfn_cpu0,
+			arpintr, flags);
 }
 
 SYSINIT(arp, SI_SUB_PROTO_DOMAIN, SI_ORDER_ANY, arp_init, 0);

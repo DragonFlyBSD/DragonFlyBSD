@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -30,11 +26,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/gen/exec.c,v 1.15 2000/01/27 23:06:14 jasone Exp $
- * $DragonFly: src/lib/libc/gen/exec.c,v 1.7 2005/11/13 00:07:42 swildner Exp $
- *
  * @(#)exec.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/gen/exec.c,v 1.15 2000/01/27 23:06:14 jasone Exp $
+ * $FreeBSD: src/lib/libc/gen/exec.c,v 1.25 2008/06/23 05:22:06 ed Exp $
+ * $DragonFly: src/lib/libc/gen/exec.c,v 1.7 2005/11/13 00:07:42 swildner Exp $
  */
 
 #include "namespace.h"
@@ -47,9 +41,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <paths.h>
-#include "un-namespace.h"
 
 #include <stdarg.h>
+#include "un-namespace.h"
+#include "libc_private.h"
 
 extern char **environ;
 
@@ -144,11 +139,18 @@ execv(const char *name, char * const *argv)
 int
 execvp(const char *name, char * const *argv)
 {
+	return (_execvpe(name, argv, environ));
+}
+
+static int
+execvPe(const char *name, const char *path, char * const *argv,
+	char * const *envp)
+{
 	const char **memp;
 	int cnt;
 	size_t lp, ln;
 	int eacces, save_errno;
-	const char *bp, *p, *path;
+	const char *bp, *p;
 	char *cur, buf[MAXPATHLEN];
 	struct stat sb;
 
@@ -158,7 +160,6 @@ execvp(const char *name, char * const *argv)
 	if (index(name, '/')) {
 		bp = name;
 		cur = NULL;
-		path = NULL;
 		goto retry;
 	}
 	bp = buf;
@@ -169,22 +170,18 @@ execvp(const char *name, char * const *argv)
 		return (-1);
 	}
 
-	/* Get the path we're searching. */
-	if (!(path = getenv("PATH")))
-		path = _PATH_DEFPATH;
 	cur = alloca(strlen(path) + 1);
 	if (cur == NULL) {
 		errno = ENOMEM;
 		return (-1);
 	}
 	strcpy(cur, path);
-	path = cur;
-	while ( (p = strsep(&cur, ":")) ) {
+	while ((p = strsep(&cur, ":")) != NULL) {
 		/*
 		 * It's a SHELL path -- double, leading and trailing colons
 		 * mean the current directory.
 		 */
-		if (!*p) {
+		if (*p == '\0') {
 			p = ".";
 			lp = 1;
 		} else
@@ -197,7 +194,7 @@ execvp(const char *name, char * const *argv)
 		 * the user may execute the wrong program.
 		 */
 		if (lp + ln + 2 > sizeof(buf)) {
-			_write(STDERR_FILENO, "execvp: ", 8);
+			_write(STDERR_FILENO, "execvP: ", 8);
 			_write(STDERR_FILENO, p, lp);
 			_write(STDERR_FILENO, ": path too long\n", 16);
 			continue;
@@ -206,9 +203,9 @@ execvp(const char *name, char * const *argv)
 		buf[lp] = '/';
 		bcopy(name, buf + lp + 1, ln);
 		buf[lp + ln + 1] = '\0';
-
-retry:		_execve(bp, argv, environ);
-		switch(errno) {
+retry:
+		_execve(bp, argv, environ);
+		switch (errno) {
 		case E2BIG:
 			goto done;
 		case ELOOP:
@@ -262,4 +259,22 @@ retry:		_execve(bp, argv, environ);
 		errno = ENOENT;
 done:
 	return (-1);
+}
+
+int
+execvP(const char *name, const char *path, char * const argv[])
+{
+	return execvPe(name, path, argv, environ);
+}
+
+int
+_execvpe(const char *name, char * const argv[], char * const envp[])
+{
+	const char *path;
+
+	/* Get the path we're searching. */
+	if ((path = getenv("PATH")) == NULL)
+		path = _PATH_DEFPATH;
+
+	return (execvPe(name, path, argv, envp));
 }

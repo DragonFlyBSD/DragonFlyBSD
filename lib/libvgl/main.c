@@ -278,7 +278,7 @@ VGLInit(int mode)
     VGLEnd();
     return -9;
   }
-  VGLTextSetFontFile((byte*)0);
+  VGLTextSetFontFile(NULL);
   VGLClear(VGLDisplay, 0);
   return 0;
 }

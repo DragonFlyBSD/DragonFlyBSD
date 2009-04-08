@@ -30,9 +30,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)comsat.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/libexec/comsat/comsat.c,v 1.13.2.1 2002/08/09 02:56:30 johan Exp $
+ * $FreeBSD: src/libexec/comsat/comsat.c,v 1.17 2005/02/14 17:42:56 stefanf Exp $
  * $DragonFly: src/libexec/comsat/comsat.c,v 1.6 2005/05/03 17:39:03 liamfoy Exp $
  */
 
@@ -149,8 +148,8 @@ onalrm(int signo __unused)
 				exit(1);
 			}
 		}
-		lseek(uf, (off_t)0, L_SET);
-		nutmp = read(uf, utmp, (int)statbf.st_size)/sizeof(struct utmp);
+		lseek(uf, (off_t)0, SEEK_SET);
+		nutmp = read(uf, utmp, (size_t)statbf.st_size)/sizeof(struct utmp);
 	}
 }
 
@@ -168,7 +167,7 @@ mailfor(char *name)
 	if (!(cp = strchr(name, '@')))
 		return;
 	*cp = '\0';
-	offset = atoi(cp + 1);
+	offset = strtoll(cp + 1, NULL, 10);
 	if (!(cp = strchr(cp + 1, ':')))
 		file = name;
 	else
@@ -259,7 +258,7 @@ jkfprintf(FILE *tp, const char *user, const char *file, off_t offset)
 	if ((fi = fopen(file, "r")) == NULL)
 		return;
 
-	fseek(fi, offset, L_SET);
+	fseeko(fi, offset, SEEK_SET);
 	/*
 	 * Print the first 7 lines or 560 characters of the new mail
 	 * (whichever comes first).  Skip header crap other than

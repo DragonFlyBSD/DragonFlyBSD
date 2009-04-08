@@ -96,7 +96,7 @@ stilloob(int s)
 	FD_ZERO(&excepts);
 	FD_SET(s, &excepts);
 	memset((char *)&timeout, 0, sizeof timeout);
-	value = select(s+1, (fd_set *)0, (fd_set *)0, &excepts, &timeout);
+	value = select(s+1, NULL, NULL, &excepts, &timeout);
     } while ((value == -1) && (errno == EINTR));
 
     if (value < 0) {
@@ -404,7 +404,7 @@ putf(char *cp, char *where)
 #else
 			slash = strrchr(line, '/');
 #endif
-			if (slash == (char *) 0)
+			if (slash == NULL)
 				putstr(line);
 			else
 				putstr(&slash[1]);

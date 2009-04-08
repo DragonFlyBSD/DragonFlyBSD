@@ -35,7 +35,9 @@
 #include "use_splash.h"
 #include "opt_syscons.h"
 #include "opt_ddb.h"
+#ifdef __i386__
 #include "use_apm.h"
+#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -43,6 +45,7 @@
 #include <sys/reboot.h>
 #include <sys/conf.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/signalvar.h>
 #include <sys/sysctl.h>
 #include <sys/tty.h>
@@ -55,7 +58,9 @@
 #include <machine/console.h>
 #include <machine/psl.h>
 #include <machine/pc/display.h>
+#ifdef __i386__
 #include <machine/apm_bios.h>
+#endif
 #include <machine/frame.h>
 
 #include <dev/misc/kbd/kbdreg.h>
@@ -492,7 +497,7 @@ scopen(struct dev_open_args *ap)
 	(*linesw[tp->t_line].l_modem)(tp, 1);
     }
     else
-	if (tp->t_state & TS_XCLUDE && suser_cred(ap->a_cred, 0))
+	if (tp->t_state & TS_XCLUDE && priv_check_cred(ap->a_cred, PRIV_ROOT, 0))
 	    return(EBUSY);
 
     error = (*linesw[tp->t_line].l_open)(dev, tp);
@@ -982,8 +987,8 @@ scioctl(struct dev_ioctl_args *ap)
 	scp = SC_STAT(SC_DEV(sc, i));
 	if (scp == scp->sc->cur_scp)
 	    return 0;
-	while ((error=tsleep((caddr_t)&scp->smode, PCATCH,
-			     "waitvt", 0)) == ERESTART) ;
+	error = tsleep((caddr_t)&scp->smode, PCATCH, "waitvt", 0);
+	/* May return ERESTART */
 	return error;
 
     case VT_GETACTIVE:		/* get active vty # */
@@ -1002,16 +1007,24 @@ scioctl(struct dev_ioctl_args *ap)
 	return 0;
 
     case KDENABIO:      	/* allow io operations */
-	error = suser_cred(ap->a_cred, 0);
+	error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
 	if (error != 0)
 	    return error;
 	if (securelevel > 0)
 	    return EPERM;
+#if defined(__i386__)
 	curthread->td_lwp->lwp_md.md_regs->tf_eflags |= PSL_IOPL;
+#elif defined(__amd64__)
+	curthread->td_lwp->lwp_md.md_regs->tf_rflags |= PSL_IOPL;
+#endif
 	return 0;
 
     case KDDISABIO:     	/* disallow io operations (default) */
+#if defined(__i386__)
 	curthread->td_lwp->lwp_md.md_regs->tf_eflags &= ~PSL_IOPL;
+#elif defined(__amd64__)
+	curthread->td_lwp->lwp_md.md_regs->tf_rflags &= ~PSL_IOPL;
+#endif
 	return 0;
 
     case KDSKBSTATE:    	/* set keyboard state (locks) */
@@ -2008,8 +2021,9 @@ wait_scrn_saver_stop(sc_softc_t *sc)
 	    break;
 	}
 	error = tsleep((caddr_t)&scrn_blanked, PCATCH, "scrsav", 0);
-	if ((error != 0) && (error != ERESTART))
-	    break;
+	/* May return ERESTART */
+	if (error)
+		break;
     }
     run_scrn_saver = FALSE;
     return error;

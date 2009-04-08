@@ -40,10 +40,10 @@
 #include "hammer.h"
 
 static int hammer_res_rb_compare(hammer_reserve_t res1, hammer_reserve_t res2);
-static void hammer_reserve_setdelay(hammer_mount_t hmp,
-				    hammer_off_t base_offset,
+static void hammer_reserve_setdelay_offset(hammer_mount_t hmp,
+				    hammer_off_t base_offset, int zone,
 				    struct hammer_blockmap_layer2 *layer2);
-
+static void hammer_reserve_setdelay(hammer_mount_t hmp, hammer_reserve_t resv);
 
 /*
  * Reserved big-blocks red-black tree support
@@ -155,7 +155,10 @@ again:
 	 * Check CRC.
 	 */
 	if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE)) {
-		Debugger("CRC FAILED: LAYER1");
+		hammer_lock_ex(&hmp->blkmap_lock);
+		if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE))
+			panic("CRC FAILED: LAYER1");
+		hammer_unlock(&hmp->blkmap_lock);
 	}
 
 	/*
@@ -182,10 +185,14 @@ again:
 	}
 
 	/*
-	 * Check CRC.
+	 * Check CRC.  This can race another thread holding the lock
+	 * and in the middle of modifying layer2.
 	 */
 	if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {
-		Debugger("CRC FAILED: LAYER2");
+		hammer_lock_ex(&hmp->blkmap_lock);
+		if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE))
+			panic("CRC FAILED: LAYER2");
+		hammer_unlock(&hmp->blkmap_lock);
 	}
 
 	/*
@@ -237,6 +244,7 @@ again:
 			next_offset += resv->append_off - offset;
 			goto again;
 		}
+		++resv->refs;
 	}
 
 	/*
@@ -278,10 +286,17 @@ again:
 	hammer_modify_buffer_done(buffer2);
 	KKASSERT(layer2->bytes_free >= 0);
 
+	/*
+	 * We hold the blockmap lock and should be the only ones
+	 * capable of modifying resv->append_off.  Track the allocation
+	 * as appropriate.
+	 */
+	KKASSERT(bytes != 0);
 	if (resv) {
 		KKASSERT(resv->append_off <= offset);
 		resv->append_off = offset + bytes;
 		resv->flags &= ~HAMMER_RESF_LAYER2FREE;
+		hammer_blockmap_reserve_complete(hmp, resv);
 	}
 
 	/*
@@ -413,7 +428,10 @@ again:
 	 * Check CRC.
 	 */
 	if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE)) {
-		Debugger("CRC FAILED: LAYER1");
+		hammer_lock_ex(&hmp->blkmap_lock);
+		if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE))
+			panic("CRC FAILED: LAYER1");
+		hammer_unlock(&hmp->blkmap_lock);
 	}
 
 	/*
@@ -443,7 +461,10 @@ again:
 	 * aren't when reserving space).
 	 */
 	if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {
-		Debugger("CRC FAILED: LAYER2");
+		hammer_lock_ex(&hmp->blkmap_lock);
+		if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE))
+			panic("CRC FAILED: LAYER2");
+		hammer_unlock(&hmp->blkmap_lock);
 	}
 
 	/*
@@ -567,6 +588,7 @@ void
 hammer_blockmap_reserve_complete(hammer_mount_t hmp, hammer_reserve_t resv)
 {
 	hammer_off_t base_offset;
+	int error;
 
 	KKASSERT(resv->refs > 0);
 	KKASSERT((resv->zone_offset & HAMMER_OFF_ZONE_MASK) ==
@@ -576,14 +598,20 @@ hammer_blockmap_reserve_complete(hammer_mount_t hmp, hammer_reserve_t resv)
 	 * Setting append_off to the max prevents any new allocations
 	 * from occuring while we are trying to dispose of the reservation,
 	 * allowing us to safely delete any related HAMMER buffers.
+	 *
+	 * If we are unable to clean out all related HAMMER buffers we
+	 * requeue the delay.
 	 */
 	if (resv->refs == 1 && (resv->flags & HAMMER_RESF_LAYER2FREE)) {
 		resv->append_off = HAMMER_LARGEBLOCK_SIZE;
-		resv->flags &= ~HAMMER_RESF_LAYER2FREE;
-		base_offset = resv->zone_offset & ~HAMMER_ZONE_RAW_BUFFER;
-		base_offset = HAMMER_ZONE_ENCODE(base_offset, resv->zone);
-		hammer_del_buffers(hmp, base_offset, resv->zone_offset,
-				   HAMMER_LARGEBLOCK_SIZE);
+		base_offset = resv->zone_offset & ~HAMMER_OFF_ZONE_MASK;
+		base_offset = HAMMER_ZONE_ENCODE(resv->zone, base_offset);
+		error = hammer_del_buffers(hmp, base_offset,
+					   resv->zone_offset,
+					   HAMMER_LARGEBLOCK_SIZE,
+					   0);
+		if (error)
+			hammer_reserve_setdelay(hmp, resv);
 	}
 	if (--resv->refs == 0) {
 		KKASSERT((resv->flags & HAMMER_RESF_ONDELAY) == 0);
@@ -598,26 +626,33 @@ hammer_blockmap_reserve_complete(hammer_mount_t hmp, hammer_reserve_t resv)
  * the related flushes have completely cycled, otherwise crash recovery
  * could resurrect a data block that was already reused and overwritten.
  *
- * Return 0 if the layer2 entry is still completely free after the
- * reservation has been allocated.
+ * The caller might reset the underlying layer2 entry's append_off to 0, so
+ * our covering append_off must be set to max to prevent any reallocation
+ * until after the flush delays complete, not to mention proper invalidation
+ * of any underlying cached blocks.
  */
 static void
-hammer_reserve_setdelay(hammer_mount_t hmp, hammer_off_t base_offset,
-			struct hammer_blockmap_layer2 *layer2)
+hammer_reserve_setdelay_offset(hammer_mount_t hmp, hammer_off_t base_offset,
+			int zone, struct hammer_blockmap_layer2 *layer2)
 {
 	hammer_reserve_t resv;
 
 	/*
 	 * Allocate the reservation if necessary.
+	 *
+	 * NOTE: need lock in future around resv lookup/allocation and
+	 * the setdelay call, currently refs is not bumped until the call.
 	 */
 again:
 	resv = RB_LOOKUP(hammer_res_rb_tree, &hmp->rb_resv_root, base_offset);
 	if (resv == NULL) {
 		resv = kmalloc(sizeof(*resv), hmp->m_misc,
 			       M_WAITOK | M_ZERO | M_USE_RESERVE);
+		resv->zone = zone;
 		resv->zone_offset = base_offset;
 		resv->refs = 0;
-		/* XXX inherent lock until refs bumped later on */
+		resv->append_off = HAMMER_LARGEBLOCK_SIZE;
+
 		if (layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE)
 			resv->flags |= HAMMER_RESF_LAYER2FREE;
 		if (RB_INSERT(hammer_res_rb_tree, &hmp->rb_resv_root, resv)) {
@@ -625,12 +660,20 @@ again:
 			goto again;
 		}
 		++hammer_count_reservations;
+	} else {
+		if (layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE)
+			resv->flags |= HAMMER_RESF_LAYER2FREE;
 	}
+	hammer_reserve_setdelay(hmp, resv);
+}
 
-	/*
-	 * Enter the reservation on the on-delay list, or move it if it
-	 * is already on the list.
-	 */
+/*
+ * Enter the reservation on the on-delay list, or move it if it
+ * is already on the list.
+ */
+static void
+hammer_reserve_setdelay(hammer_mount_t hmp, hammer_reserve_t resv)
+{
 	if (resv->flags & HAMMER_RESF_ONDELAY) {
 		TAILQ_REMOVE(&hmp->delay_list, resv, delay_entry);
 		resv->flush_group = hmp->flusher.next + 1;
@@ -711,7 +754,10 @@ hammer_blockmap_free(hammer_transaction_t trans,
 	KKASSERT(layer1->phys_offset &&
 		 layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
 	if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE)) {
-		Debugger("CRC FAILED: LAYER1");
+		hammer_lock_ex(&hmp->blkmap_lock);
+		if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE))
+			panic("CRC FAILED: LAYER1");
+		hammer_unlock(&hmp->blkmap_lock);
 	}
 
 	/*
@@ -723,7 +769,10 @@ hammer_blockmap_free(hammer_transaction_t trans,
 	if (error)
 		goto failed;
 	if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {
-		Debugger("CRC FAILED: LAYER2");
+		hammer_lock_ex(&hmp->blkmap_lock);
+		if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE))
+			panic("CRC FAILED: LAYER2");
+		hammer_unlock(&hmp->blkmap_lock);
 	}
 
 	hammer_lock_ex(&hmp->blkmap_lock);
@@ -757,7 +806,7 @@ hammer_blockmap_free(hammer_transaction_t trans,
 	if (layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE) {
 		base_off = (zone_offset & (~HAMMER_LARGEBLOCK_MASK64 & ~HAMMER_OFF_ZONE_MASK)) | HAMMER_ZONE_RAW_BUFFER;
 
-		hammer_reserve_setdelay(hmp, base_off, layer2);
+		hammer_reserve_setdelay_offset(hmp, base_off, zone, layer2);
 		if (layer2->bytes_free == HAMMER_LARGEBLOCK_SIZE) {
 			layer2->zone = 0;
 			layer2->append_off = 0;
@@ -843,7 +892,10 @@ hammer_blockmap_finalize(hammer_transaction_t trans,
 	KKASSERT(layer1->phys_offset &&
 		 layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
 	if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE)) {
-		Debugger("CRC FAILED: LAYER1");
+		hammer_lock_ex(&hmp->blkmap_lock);
+		if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE))
+			panic("CRC FAILED: LAYER1");
+		hammer_unlock(&hmp->blkmap_lock);
 	}
 
 	/*
@@ -855,7 +907,10 @@ hammer_blockmap_finalize(hammer_transaction_t trans,
 	if (error)
 		goto failed;
 	if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {
-		Debugger("CRC FAILED: LAYER2");
+		hammer_lock_ex(&hmp->blkmap_lock);
+		if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE))
+			panic("CRC FAILED: LAYER2");
+		hammer_unlock(&hmp->blkmap_lock);
 	}
 
 	hammer_lock_ex(&hmp->blkmap_lock);
@@ -888,6 +943,7 @@ hammer_blockmap_finalize(hammer_transaction_t trans,
 	if (layer2->zone != zone)
 		kprintf("layer2 zone mismatch %d %d\n", layer2->zone, zone);
 	KKASSERT(layer2->zone == zone);
+	KKASSERT(bytes != 0);
 	layer2->bytes_free -= bytes;
 	if (resv)
 		resv->flags &= ~HAMMER_RESF_LAYER2FREE;
@@ -953,7 +1009,10 @@ hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t zone_offset,
 	}
 	KKASSERT(layer1->phys_offset);
 	if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE)) {
-		Debugger("CRC FAILED: LAYER1");
+		hammer_lock_ex(&hmp->blkmap_lock);
+		if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE))
+			panic("CRC FAILED: LAYER1");
+		hammer_unlock(&hmp->blkmap_lock);
 	}
 
 	/*
@@ -969,7 +1028,10 @@ hammer_blockmap_getfree(hammer_mount_t hmp, hammer_off_t zone_offset,
 		goto failed;
 	}
 	if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {
-		Debugger("CRC FAILED: LAYER2");
+		hammer_lock_ex(&hmp->blkmap_lock);
+		if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE))
+			panic("CRC FAILED: LAYER2");
+		hammer_unlock(&hmp->blkmap_lock);
 	}
 	KKASSERT(layer2->zone == zone);
 
@@ -1047,7 +1109,10 @@ hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t zone_offset,
 		goto failed;
 	KKASSERT(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
 	if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE)) {
-		Debugger("CRC FAILED: LAYER1");
+		hammer_lock_ex(&hmp->blkmap_lock);
+		if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE))
+			panic("CRC FAILED: LAYER1");
+		hammer_unlock(&hmp->blkmap_lock);
 	}
 
 	/*
@@ -1070,7 +1135,10 @@ hammer_blockmap_lookup(hammer_mount_t hmp, hammer_off_t zone_offset,
 			layer2->zone, zone);
 	}
 	if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE)) {
-		Debugger("CRC FAILED: LAYER2");
+		hammer_lock_ex(&hmp->blkmap_lock);
+		if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE))
+			panic("CRC FAILED: LAYER2");
+		hammer_unlock(&hmp->blkmap_lock);
 	}
 
 failed:

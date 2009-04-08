@@ -2,7 +2,6 @@
 
 LIB=	pam_tacplus
 SRCS=	pam_tacplus.c
-WARNS?=	6
 MAN=	pam_tacplus.8
 
 DPADD=	${LIBTACPLUS}

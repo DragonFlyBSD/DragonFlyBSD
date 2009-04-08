@@ -64,19 +64,12 @@
 #define	INDENTNAMELEN	15
 #define	MAXLINELEN	80
 
-extern long int crc_total;
-extern int ftsoptions;
-extern int dflag, iflag, nflag, sflag;
-extern u_int keys;
-extern char fullpath[MAXPATHLEN];
-extern int lineno;
-
 static gid_t gid;
 static uid_t uid;
 static mode_t mode;
 static u_long flags = 0xffffffff;
 
-static int	dsort(const FTSENT **, const FTSENT **);
+static int	dsort(const FTSENT * const *, const FTSENT * const *);
 static void	output(int, int *, const char *, ...);
 static int	statd(FTS *, FTSENT *, uid_t *, gid_t *, mode_t *,
 			   u_long *);
@@ -87,17 +80,17 @@ cwalk(void)
 {
 	FTS *t;
 	FTSENT *p;
-	time_t clock;
-	char *argv[2], host[MAXHOSTNAMELEN];
+	time_t clk;
+	char *argv[2], host[MAXHOSTNAMELEN], dot[] = ".";
 	int indent = 0;
 
-	time(&clock);
+	time(&clk);
 	gethostname(host, sizeof(host));
 	printf(
 	    "#\t   user: %s\n#\tmachine: %s\n#\t   tree: %s\n#\t   date: %s",
-	    getlogin(), host, fullpath, ctime(&clock));
+	    getlogin(), host, fullpath, ctime(&clk));
 
-	argv[0] = ".";
+	argv[0] = dot;
 	argv[1] = NULL;
 	if ((t = fts_open(argv, ftsoptions, dsort)) == NULL)
 		err(1, "line %d: fts_open", lineno);
@@ -385,7 +378,7 @@ statd(FTS *t, FTSENT *parent, uid_t *puid, gid_t *pgid, mode_t *pmode,
 }
 
 static int
-dsort(const FTSENT **a, const FTSENT **b)
+dsort(const FTSENT * const *a, const FTSENT * const *b)
 {
 
 	if (S_ISDIR((*a)->fts_statp->st_mode)) {

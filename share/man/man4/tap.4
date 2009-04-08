@@ -101,7 +101,7 @@ The following
 calls are supported
 (defined in
 .In net/tap/if_tap.h ) :
-.Bl -tag -width VMIO_SIOCSETMACADDR
+.Bl -tag -width ".Dv VMIO_SIOCSETMACADDR"
 .It Dv TAPSDEBUG
 The argument should be a pointer to an
 .Va int ;
@@ -229,7 +229,7 @@ control device is closed. Everything else is the same.
 In addition to the above mentioned,
 .Xr ioctl 2
 calls, there is one additional one for the VMware port.
-.Bl -tag -width VMIO_SIOCSETMACADDR
+.Bl -tag -width ".Dv VMIO_SIOCSETMACADDR"
 .It Dv VMIO_SIOCSIFFLAGS
 VMware
 .Dv SIOCSIFFLAGS .

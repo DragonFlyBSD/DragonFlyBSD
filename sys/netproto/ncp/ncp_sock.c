@@ -366,20 +366,20 @@ ncp_sock_disconnect(struct ncp_conn *conn) {
 	conn->flags &= ~(NCPFL_SOCONN | NCPFL_ATTACHED | NCPFL_LOGGED);
 	if (conn->ncp_so) {
 		so = conn->ncp_so;
-		conn->ncp_so = (struct socket *)0;
+		conn->ncp_so = NULL;
 		soshutdown(so, SHUT_RDWR);
 		soclose(so, FNONBLOCK);
 	}
 	if (conn->wdg_so) {
 		so = conn->wdg_so;
-		conn->wdg_so = (struct socket *)0;
+		conn->wdg_so = NULL;
 		soshutdown(so, SHUT_RDWR);
 		soclose(so, FNONBLOCK);
 	}
 #ifdef NCPBURST
 	if (conn->bc_so) {
 		so = conn->bc_so;
-		conn->bc_so = (struct socket *)NULL;
+		conn->bc_so = NULL;
 		soshutdown(so, SHUT_RDWR);
 		soclose(so, FNONBLOCK);
 	}

@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -31,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * @(#)syslog.c	8.5 (Berkeley) 4/29/95
- * $FreeBSD: src/lib/libc/gen/syslog.c,v 1.21.2.3 2002/11/18 11:49:55 ru Exp $
+ * $FreeBSD: src/lib/libc/gen/syslog.c,v 1.39 2007/01/09 00:27:55 imp Exp $
  * $DragonFly: src/lib/libc/gen/syslog.c,v 1.9 2005/11/19 22:32:53 swildner Exp $
  */
 
@@ -46,25 +42,45 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <paths.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include "un-namespace.h"
 
 #include <stdarg.h>
+#include "un-namespace.h"
+
+#include "libc_private.h"
 
 static int	LogFile = -1;		/* fd for log */
-static int	connected;		/* have done connect */
+static int	status;			/* connection status */
 static int	opened;			/* have done openlog() */
 static int	LogStat = 0;		/* status bits, set by openlog() */
 static const char *LogTag = NULL;	/* string to tag the entry with */
 static int	LogFacility = LOG_USER;	/* default facility code */
 static int	LogMask = 0xff;		/* mask of priorities to be logged */
+static pthread_mutex_t	syslog_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static void	disconnectlog (void); /* disconnect from syslogd */
-static void	connectlog (void);	/* (re)connect to syslogd */
+#define	THREAD_LOCK()							\
+	do { 								\
+		if (__isthreaded) _pthread_mutex_lock(&syslog_mutex);	\
+	} while(0)
+#define	THREAD_UNLOCK()							\
+	do {								\
+		if (__isthreaded) _pthread_mutex_unlock(&syslog_mutex);	\
+	} while(0)
+
+static void	disconnectlog(void); /* disconnect from syslogd */
+static void	connectlog(void);	/* (re)connect to syslogd */
+static void	openlog_unlocked(const char *, int, int);
+
+enum {
+	NOCONN = 0,
+	CONNDEF,
+	CONNPRIV,
+};
 
 /*
  * Format of the magic cookie passed through the stdio hook
@@ -94,7 +110,7 @@ writehook(void *cookie, const char *buf, int len)
 		h->base += len;
 		h->left -= len;
 	}
-	return 0;
+	return len;
 }
 
 /*
@@ -118,7 +134,7 @@ vsyslog(int pri, const char *fmt, va_list ap)
 	char ch, *p;
 	time_t now;
 	int fd, saved_errno;
-	char *stdp, tbuf[2048], fmt_cpy[1024], timbuf[26];
+	char *stdp, tbuf[2048], fmt_cpy[1024], timbuf[26], errstr[64];
 	FILE *fp, *fmt_fp;
 	struct bufcookie tbuf_cookie;
 	struct bufcookie fmt_cookie;
@@ -133,11 +149,15 @@ vsyslog(int pri, const char *fmt, va_list ap)
 		pri &= LOG_PRIMASK|LOG_FACMASK;
 	}
 
-	/* Check priority against setlogmask values. */
-	if (!(LOG_MASK(LOG_PRI(pri)) & LogMask))
-		return;
-
 	saved_errno = errno;
+
+	THREAD_LOCK();
+
+	/* Check priority against setlogmask values. */
+	if (!(LOG_MASK(LOG_PRI(pri)) & LogMask)) {
+		THREAD_UNLOCK();
+		return;
+	}
 
 	/* Set default facility if none specified. */
 	if ((pri & LOG_FACMASK) == 0)
@@ -147,8 +167,10 @@ vsyslog(int pri, const char *fmt, va_list ap)
 	tbuf_cookie.base = tbuf;
 	tbuf_cookie.left = sizeof(tbuf);
 	fp = fwopen(&tbuf_cookie, writehook);
-	if (fp == NULL)
+	if (fp == NULL) {
+		THREAD_UNLOCK();
 		return;
+	}
 
 	/* Build the message. */
 	time(&now);
@@ -160,7 +182,7 @@ vsyslog(int pri, const char *fmt, va_list ap)
 		stdp = tbuf + (sizeof(tbuf) - tbuf_cookie.left);
 	}
 	if (LogTag == NULL)
-		LogTag = getprogname();
+		LogTag = _getprogname();
 	if (LogTag != NULL)
 		fprintf(fp, "%s", LogTag);
 	if (LogStat & LOG_PID)
@@ -178,16 +200,28 @@ vsyslog(int pri, const char *fmt, va_list ap)
 		fmt_fp = fwopen(&fmt_cookie, writehook);
 		if (fmt_fp == NULL) {
 			fclose(fp);
+			THREAD_UNLOCK();
 			return;
 		}
 
-		/* Substitute error message for %m. */
-		for ( ; (ch = *fmt); ++fmt)
+		/*
+		 * Substitute error message for %m.  Be careful not to
+		 * molest an escaped percent "%%m".  We want to pass it
+		 * on untouched as the format is later parsed by vfprintf.
+		 */
+		for ( ; (ch = *fmt); ++fmt) {
 			if (ch == '%' && fmt[1] == 'm') {
 				++fmt;
-				fputs(strerror(saved_errno), fmt_fp);
-			} else
+				strerror_r(saved_errno, errstr, sizeof(errstr));
+				fputs(errstr, fmt_fp);
+			} else if (ch == '%' && fmt[1] == '%') {
+				++fmt;
 				fputc(ch, fmt_fp);
+				fputc(ch, fmt_fp);
+			} else {
+				fputc(ch, fmt_fp);
+			}
+		}
 
 		/* Null terminate if room */
 		fputc(0, fmt_fp);
@@ -204,6 +238,10 @@ vsyslog(int pri, const char *fmt, va_list ap)
 
 	cnt = sizeof(tbuf) - tbuf_cookie.left;
 
+	/* Remove a trailing newline */
+	if (tbuf[cnt - 1] == '\n')
+		cnt--;
+
 	/* Output to stderr if requested. */
 	if (LogStat & LOG_PERROR) {
 		struct iovec iov[2];
@@ -219,19 +257,42 @@ vsyslog(int pri, const char *fmt, va_list ap)
 
 	/* Get connected, output the message to the local logger. */
 	if (!opened)
-		openlog(LogTag, LogStat | LOG_NDELAY, 0);
+		openlog_unlocked(LogTag, LogStat | LOG_NDELAY, 0);
 	connectlog();
-	if (send(LogFile, tbuf, cnt, 0) >= 0)
-		return;
 
 	/*
-	 * If the send() failed, the odds are syslogd was restarted.
-	 * Make one (only) attempt to reconnect to /dev/log.
+	 * If the send() failed, there are two likely scenarios:
+	 *  1) syslogd was restarted
+	 *  2) /var/run/log is out of socket buffer space, which
+	 *     in most cases means local DoS.
+	 * We attempt to reconnect to /var/run/log to take care of
+	 * case #1 and keep send()ing data to cover case #2
+	 * to give syslogd a chance to empty its socket buffer.
+	 *
+	 * If we are working with a priveleged socket, then take
+	 * only one attempt, because we don't want to freeze a
+	 * critical application like su(1) or sshd(8).
+	 *
 	 */
-	disconnectlog();
-	connectlog();
-	if (send(LogFile, tbuf, cnt, 0) >= 0)
+
+	if (send(LogFile, tbuf, cnt, 0) < 0) {
+		if (errno != ENOBUFS) {
+			disconnectlog();
+			connectlog();
+		}
+		do {
+			_usleep(1);
+			if (send(LogFile, tbuf, cnt, 0) >= 0) {
+				THREAD_UNLOCK();
+				return;
+			}
+			if (status == CONNPRIV)
+				break;
+		} while (errno == ENOBUFS);
+	} else {
+		THREAD_UNLOCK();
 		return;
+	}
 
 	/*
 	 * Output the message to the console; try not to block
@@ -252,7 +313,11 @@ vsyslog(int pri, const char *fmt, va_list ap)
 		_writev(fd, iov, 2);
 		_close(fd);
 	}
+
+	THREAD_UNLOCK();
 }
+
+/* Should be called with mutex acquired */
 static void
 disconnectlog(void)
 {
@@ -265,9 +330,10 @@ disconnectlog(void)
 		_close(LogFile);
 		LogFile = -1;
 	}
-	connected = 0;			/* retry connect */
+	status = NOCONN;			/* retry connect */
 }
 
+/* Should be called with mutex acquired */
 static void
 connectlog(void)
 {
@@ -278,35 +344,49 @@ connectlog(void)
 			return;
 		_fcntl(LogFile, F_SETFD, 1);
 	}
-	if (LogFile != -1 && !connected) {
+	if (LogFile != -1 && status == NOCONN) {
 		SyslogAddr.sun_len = sizeof(SyslogAddr);
 		SyslogAddr.sun_family = AF_UNIX;
-		strncpy(SyslogAddr.sun_path, _PATH_LOG,
-		    sizeof SyslogAddr.sun_path);
-		connected = _connect(LogFile, (struct sockaddr *)&SyslogAddr,
-			sizeof(SyslogAddr)) != -1;
 
-		if (!connected) {
+		/*
+		 * First try priveleged socket. If no success,
+		 * then try default socket.
+		 */
+		strncpy(SyslogAddr.sun_path, _PATH_LOG_PRIV,
+		    sizeof SyslogAddr.sun_path);
+		if (_connect(LogFile, (struct sockaddr *)&SyslogAddr,
+		    sizeof(SyslogAddr)) != -1)
+			status = CONNPRIV;
+
+		if (status == NOCONN) {
+			strncpy(SyslogAddr.sun_path, _PATH_LOG,
+			    sizeof SyslogAddr.sun_path);
+			if (_connect(LogFile, (struct sockaddr *)&SyslogAddr,
+			    sizeof(SyslogAddr)) != -1)
+				status = CONNDEF;
+		}
+
+		if (status == NOCONN) {
 			/*
 			 * Try the old "/dev/log" path, for backward
 			 * compatibility.
 			 */
 			strncpy(SyslogAddr.sun_path, _PATH_OLDLOG,
 			    sizeof SyslogAddr.sun_path);
-			connected = _connect(LogFile,
-				(struct sockaddr *)&SyslogAddr,
-				sizeof(SyslogAddr)) != -1;
+			if (_connect(LogFile, (struct sockaddr *)&SyslogAddr,
+			    sizeof(SyslogAddr)) != -1)
+				status = CONNDEF;
 		}
 
-		if (!connected) {
+		if (status == NOCONN) {
 			_close(LogFile);
 			LogFile = -1;
 		}
 	}
 }
 
-void
-openlog(const char *ident, int logstat, int logfac)
+static void
+openlog_unlocked(const char *ident, int logstat, int logfac)
 {
 	if (ident != NULL)
 		LogTag = ident;
@@ -321,12 +401,23 @@ openlog(const char *ident, int logstat, int logfac)
 }
 
 void
+openlog(const char *ident, int logstat, int logfac)
+{
+	THREAD_LOCK();
+	openlog_unlocked(ident, logstat, logfac);
+	THREAD_UNLOCK();
+}
+
+
+void
 closelog(void)
 {
+	THREAD_LOCK();
 	_close(LogFile);
 	LogFile = -1;
 	LogTag = NULL;
-	connected = 0;
+	status = NOCONN;
+	THREAD_UNLOCK();
 }
 
 /* setlogmask -- set the log mask level */
@@ -335,8 +426,10 @@ setlogmask(int pmask)
 {
 	int omask;
 
+	THREAD_LOCK();
 	omask = LogMask;
 	if (pmask != 0)
 		LogMask = pmask;
+	THREAD_UNLOCK();
 	return (omask);
 }

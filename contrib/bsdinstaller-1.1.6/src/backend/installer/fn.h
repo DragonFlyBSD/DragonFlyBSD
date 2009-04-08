@@ -77,7 +77,7 @@ void		 fn_assign_ip(struct i_fn_args *);
 void		 fn_show_dmesg(struct i_fn_args *);
 void		 fn_show_pciconf(struct i_fn_args *);
 void		 fn_show_pnpinfo(struct i_fn_args *);
-void		 fn_show_atacontrol(struct i_fn_args *);
+void		 fn_show_natacontrol(struct i_fn_args *);
 void		 fn_memtest(struct i_fn_args *);
 
 void		 view_memtest_log(struct i_fn_args *);
@@ -98,9 +98,10 @@ void		 fn_create_cdboot_floppy(struct i_fn_args *);
 void		 fn_create_memtest86_floppy(struct i_fn_args *);
 
 int		 format_slice(struct i_fn_args *);
-int		 autopacket(struct disk *);
 
 void		 fn_create_subpartitions(struct i_fn_args *);
+void		 fn_create_subpartitions_ufs(struct i_fn_args *);
+void		 fn_create_subpartitions_hammer(struct i_fn_args *);
 void		 fn_install_os(struct i_fn_args *);
 
 /* Global variables */

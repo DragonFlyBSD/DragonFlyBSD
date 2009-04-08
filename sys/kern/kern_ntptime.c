@@ -39,6 +39,7 @@
 #include <sys/sysproto.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/time.h>
 #include <sys/timex.h>
 #include <sys/timepps.h>
@@ -289,7 +290,7 @@ sys_ntp_adjtime(struct ntp_adjtime_args *uap)
 	 */
 	modes = ntv.modes;
 	if (modes)
-		error = suser(td);
+		error = priv_check(td, PRIV_ROOT);
 	if (error)
 		return (error);
 	crit_enter();

@@ -58,6 +58,7 @@
 #include <netinet/in.h>
 #include <netinet/in_var.h>
 #include <netinet/ip_var.h>
+#include <netinet/ip_flow.h>
 
 #define RTPRF_EXPIRING	RTF_PROTO3	/* set on routes we manage */
 
@@ -138,16 +139,15 @@ in_addroute(char *key, char *mask, struct radix_node_head *head,
 	}
 
 	/*
-	 * If the new route created successfully, and we are forwarding,
-	 * and there is a cached route, free it.  Otherwise, we may end
-	 * up using the wrong route.
+	 * If the new route has been created successfully, and it is
+	 * not a multicast/broadcast or cloned route, then we will
+	 * have to flush the ipflow.  Otherwise, we may end up using
+	 * the wrong route.
 	 */
-	if (ret != NULL && ipforwarding &&
-	    ipforward_rt[mycpuid].ro_rt != NULL) {
-		RTFREE(ipforward_rt[mycpuid].ro_rt);
-		ipforward_rt[mycpuid].ro_rt = NULL;
-	}
-
+	if (ret != NULL &&
+	    (rt->rt_flags &
+	     (RTF_MULTICAST | RTF_BROADCAST | RTF_WASCLONED)) == 0)
+		ipflow_flush_oncpu();
 	return ret;
 }
 

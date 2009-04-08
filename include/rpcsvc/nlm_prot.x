@@ -1,7 +1,8 @@
 %/*
 % * @(#)nlm_prot.x 1.8 87/09/21 Copyr 1987 Sun Micro
 % * @(#)nlm_prot.x	2.1 88/08/01 4.0 RPCSRC
-% * $FreeBSD: src/include/rpcsvc/nlm_prot.x,v 1.8.2.1 2001/08/01 06:39:36 alfred Exp $
+% * $NetBSD: nlm_prot.x,v 1.6 2000/06/07 14:30:15 bouyer Exp $
+% * $FreeBSD: src/include/rpcsvc/nlm_prot.x,v 1.9 2001/03/19 12:49:48 alfred Exp $
 % * $DragonFly: src/include/rpcsvc/nlm_prot.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
 % */
 
@@ -15,7 +16,6 @@
 #ifdef RPC_HDR
 %#define LM_MAXSTRLEN	1024
 %#define MAXNAMELEN	LM_MAXSTRLEN+1
-%#include <sys/types.h>
 #endif
 
 /*
@@ -33,8 +33,8 @@ struct nlm_holder {
 	bool exclusive;
 	int svid;
 	netobj oh;
-	u_int32_t l_offset;
-	u_int32_t l_len;
+	unsigned l_offset;
+	unsigned l_len;
 };
 
 union nlm_testrply switch (nlm_stats stat) {
@@ -62,9 +62,9 @@ struct nlm_lock {
 	string caller_name<LM_MAXSTRLEN>;
 	netobj fh;		/* identify a file */
 	netobj oh;		/* identify owner of a lock */
-	int32_t svid;		/* generated from pid for svid */
-	u_int32_t l_offset;
-	u_int32_t l_len;
+	int svid;		/* generated from pid for svid */
+	unsigned l_offset;
+	unsigned l_len;
 };
 
 struct nlm_lockargs {
@@ -73,24 +73,24 @@ struct nlm_lockargs {
 	bool exclusive;
 	struct nlm_lock alock;
 	bool reclaim;		/* used for recovering locks */
-	int32_t state;		/* specify local status monitor state */
+	int state;		/* specify local status monitor state */
 };
 
 struct nlm_cancargs {
-	netobj cookie;		
+	netobj cookie;
 	bool block;
 	bool exclusive;
 	struct nlm_lock alock;
 };
 
 struct nlm_testargs {
-	netobj cookie;		
+	netobj cookie;
 	bool exclusive;
 	struct nlm_lock alock;
 };
 
 struct nlm_unlockargs {
-	netobj cookie;		
+	netobj cookie;
 	struct nlm_lock alock;
 };
 
@@ -132,49 +132,64 @@ struct	nlm_shareargs {
 struct	nlm_shareres {
 	netobj	cookie;
 	nlm_stats	stat;
-	int32_t	sequence;
+	int	sequence;
 };
 
 struct	nlm_notify {
 	string name<MAXNAMELEN>;
-	int32_t state;
+	long state;
 };
 
+#ifdef RPC_HDR
+%/* definitions for NLM version 4 */
+#endif
 enum nlm4_stats {
-	nlm4_granted = 0,
-	nlm4_denied = 1,
-	nlm4_denied_nolocks = 2,
-	nlm4_blocked = 3,
-	nlm4_denied_grace_period = 4,
-	nlm4_deadlck = 5,
-	nlm4_rofs = 6,
-	nlm4_stale_fh = 7,
-	nlm4_fbig = 8,
-	nlm4_failed = 9
-};
-
-struct nlm4_holder {
-	bool	exclusive;
-	int32_t	svid;
-	netobj	oh;
-	u_int64_t	l_offset;
-	u_int64_t	l_len;
+	nlm4_granted			= 0,
+	nlm4_denied			= 1,
+	nlm4_denied_nolock		= 2,
+	nlm4_blocked			= 3,
+	nlm4_denied_grace_period	= 4,
+	nlm4_deadlck			= 5,
+	nlm4_rofs			= 6,
+	nlm4_stale_fh			= 7,
+	nlm4_fbig			= 8,
+	nlm4_failed			= 9
 };
 
 struct nlm4_stat {
 	nlm4_stats stat;
 };
 
+struct nlm4_holder {
+	bool exclusive;
+	u_int32_t svid;
+	netobj oh;
+	u_int64_t l_offset;
+	u_int64_t l_len;
+};
+
+struct nlm4_lock {
+	string caller_name<MAXNAMELEN>;
+	netobj fh;
+	netobj oh;
+	u_int32_t svid;
+	u_int64_t l_offset;
+	u_int64_t l_len;
+};
+
+struct nlm4_share {
+	string caller_name<MAXNAMELEN>;
+	netobj fh;
+	netobj oh;
+	fsh_mode mode;
+	fsh_access access;
+};
+
 union nlm4_testrply switch (nlm4_stats stat) {
-	case nlm4_denied:
+	case nlm_denied:
 		struct nlm4_holder holder;
 	default:
 		void;
-};
-
-struct nlm4_res {
-	netobj cookie;
-	nlm4_stat stat;
 };
 
 struct nlm4_testres {
@@ -182,14 +197,15 @@ struct nlm4_testres {
 	nlm4_testrply stat;
 };
 
+struct nlm4_testargs {
+	netobj cookie;
+	bool exclusive;
+	struct nlm4_lock alock;
+};
 
-struct nlm4_lock {
-	string caller_name<LM_MAXSTRLEN>;
-	netobj fh;		/* identify a file */
-	netobj oh;		/* identify owner of a lock */
-	int32_t svid;		/* generated from pid for svid */
-	int64_t l_offset;
-	int64_t l_len;
+struct nlm4_res {
+	netobj cookie;
+	nlm4_stat stat;
 };
 
 struct nlm4_lockargs {
@@ -198,34 +214,19 @@ struct nlm4_lockargs {
 	bool exclusive;
 	struct nlm4_lock alock;
 	bool reclaim;		/* used for recovering locks */
-	int32_t state;		/* specify local status monitor state */
+	int state;		/* specify local status monitor state */
 };
 
-
 struct nlm4_cancargs {
-	netobj cookie;		
+	netobj cookie;
 	bool block;
 	bool exclusive;
 	struct nlm4_lock alock;
 };
 
-struct nlm4_testargs {
-	netobj cookie;		
-	bool exclusive;
-	struct nlm4_lock alock;
-};
-
 struct nlm4_unlockargs {
-	netobj cookie;		
+	netobj cookie;
 	struct nlm4_lock alock;
-};
-
-struct	nlm4_share {
-	string caller_name<LM_MAXSTRLEN>;
-	netobj	fh;
-	netobj	oh;
-	fsh_mode	mode;
-	fsh_access	access;
 };
 
 struct	nlm4_shareargs {
@@ -237,12 +238,18 @@ struct	nlm4_shareargs {
 struct	nlm4_shareres {
 	netobj	cookie;
 	nlm4_stats	stat;
-	int32_t	sequence;
+	int	sequence;
 };
 
-struct	nlm4_notify {
-	string name<MAXNAMELEN>;
-	int32_t state;
+/*
+ * argument for the procedure called by rpc.statd when a monitored host
+ * status change.
+ * XXX assumes LM_MAXSTRLEN == SM_MAXSTRLEN
+ */
+struct nlm_sm_status {
+	string mon_name<LM_MAXSTRLEN>; /* name of host */
+	int state;			/* new state */
+	opaque priv[16];		/* private data */
 };
 
 /*
@@ -250,6 +257,10 @@ struct	nlm4_notify {
  */
 
 program NLM_PROG {
+	version NLM_SM {
+		void NLM_SM_NOTIFY(struct nlm_sm_status) = 1;
+	} = 0;
+
 	version NLM_VERS {
 
 		nlm_testres	NLM_TEST(struct nlm_testargs) =	1;
@@ -285,39 +296,25 @@ program NLM_PROG {
 		void		NLM_FREE_ALL(nlm_notify) = 23;
 	} = 3;
 
-	version NLM4_VERS {
-		void		NLMPROC4_NULL(void) = 0;
-		
-		nlm4_testres NLMPROC4_TEST(struct nlm4_testargs) = 1;
-
-		nlm4_res	NLMPROC4_LOCK(struct nlm4_lockargs) = 2;
-
-		nlm4_res	NLMPROC4_CANCEL(struct nlm4_cancargs) = 3;
-		nlm4_res	NLMPROC4_UNLOCK(struct nlm4_unlockargs) = 4;
-
-		/*
-		 * remote lock manager call-back to grant lock
-		 */
-		nlm4_res		NLMPROC4_GRANTED(struct nlm4_testargs)= 5;
-		/*
-		 * message passing style of requesting lock
-		 */
-		void		NLMPROC4_TEST_MSG(struct nlm4_testargs) = 6;
-		void		NLMPROC4_LOCK_MSG(struct nlm4_lockargs) = 7;
-		void		NLMPROC4_CANCEL_MSG(struct nlm4_cancargs) =8;
-		void		NLMPROC4_UNLOCK_MSG(struct nlm4_unlockargs) = 9;
-		void		NLMPROC4_GRANTED_MSG(struct nlm4_testargs) = 10;
-		void		NLMPROC4_TEST_RES(nlm4_testres) = 11;
-		void		NLMPROC4_LOCK_RES(nlm4_res) = 12;
-		void		NLMPROC4_CANCEL_RES(nlm4_res) = 13;
-		void		NLMPROC4_UNLOCK_RES(nlm4_res) = 14;
-		void		NLMPROC4_GRANTED_RES(nlm4_res) = 15;
-		
-		nlm4_shareres	NLMPROC4_SHARE(nlm4_shareargs) = 20;
-		nlm4_shareres	NLMPROC4_UNSHARE(nlm4_shareargs) = 21;
-		nlm4_res	NLMPROC4_NM_LOCK(nlm4_lockargs) = 22;
-		void		NLMPROC4_FREE_ALL(nlm4_notify) = 23;
+	version NLM_VERS4 {
+		nlm4_testres NLM4_TEST(nlm4_testargs) = 1;
+		nlm4_res NLM4_LOCK(nlm4_lockargs) = 2;
+		nlm4_res NLM4_CANCEL(nlm4_cancargs) = 3;
+		nlm4_res NLM4_UNLOCK(nlm4_unlockargs) = 4;
+		nlm4_res NLM4_GRANTED(nlm4_testargs) = 5;
+		void NLM4_TEST_MSG(nlm4_testargs) = 6;
+		void NLM4_LOCK_MSG(nlm4_lockargs) = 7;
+		void NLM4_CANCEL_MSG(nlm4_cancargs) = 8;
+		void NLM4_UNLOCK_MSG(nlm4_unlockargs) = 9;
+		void NLM4_GRANTED_MSG(nlm4_testargs) = 10;
+		void NLM4_TEST_RES(nlm4_testres) = 11;
+		void NLM4_LOCK_RES(nlm4_res) = 12;
+		void NLM4_CANCEL_RES(nlm4_res) = 13;
+		void NLM4_UNLOCK_RES(nlm4_res) = 14;
+		void NLM4_GRANTED_RES(nlm4_res) = 15;
+		nlm4_shareres NLM4_SHARE(nlm4_shareargs) = 20;
+		nlm4_shareres NLM4_UNSHARE(nlm4_shareargs) = 21;
+		nlm4_res NLM4_NM_LOCK(nlm4_lockargs) = 22;
+		void NLM4_FREE_ALL(nlm_notify) = 23;
 	} = 4;
-
 } = 100021;
-

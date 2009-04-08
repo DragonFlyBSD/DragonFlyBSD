@@ -857,6 +857,7 @@ get_date(char *p, struct timeb *now)
     time_t		tod;
     time_t nowtime;
 
+    bzero(&gmt, sizeof(struct tm));
     yyInput = p;
     if (now == NULL) {
 	struct tm *gmt_ptr;
@@ -955,7 +956,7 @@ main(int ac, char *av[])
     (void)printf("Enter date, or blank line to exit.\n\t> ");
     (void)fflush(stdout);
     while (gets(buff) && buff[0]) {
-	d = get_date(buff, (struct timeb *)NULL);
+	d = get_date(buff, NULL);
 	if (d == -1)
 	    (void)printf("Bad format - couldn't convert.\n");
 	else

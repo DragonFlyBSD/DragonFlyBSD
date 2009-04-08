@@ -58,6 +58,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/thread2.h>
@@ -875,7 +876,7 @@ sctp_endpoint_probe(struct sockaddr *nam, struct sctppcbhead *head,
 		}
 #ifdef SCTP_DEBUG
 		if (sctp_debug_on & SCTP_DEBUG_PCB1) {
-			kprintf("Ok, found maching local port\n");
+			kprintf("Ok, found matching local port\n");
 		}
 #endif
 		LIST_FOREACH(laddr, &inp->sctp_addr_list, sctp_nxt_addr) {
@@ -1933,7 +1934,7 @@ sctp_inpcb_bind(struct socket *so, struct sockaddr *addr, struct proc *p)
 #elif defined(__NetBSD__) || defined(__APPLE__)
 			    suser(p->p_ucred, &p->p_acflag)
 #elif defined(__DragonFly__)
-			    suser(p)
+			    priv_check(p, PRIV_ROOT)
 #else
 			    suser(p, 0)
 #endif
@@ -2993,11 +2994,11 @@ sctp_aloc_assoc(struct sctp_inpcb *inp, struct sockaddr *firstaddr,
 #endif
 
 		if ((err = sctp_inpcb_bind(inp->sctp_socket,
-		    (struct sockaddr *)NULL,
+		    NULL,
 #if (defined(__FreeBSD__) && __FreeBSD_version >= 500000) || defined(__DragonFly__)
-					   (struct thread *)NULL
+					   NULL
 #else
-					   (struct proc *)NULL
+					   NULL
 #endif
 			     ))){
 			/* bind error, probably perm */

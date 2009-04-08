@@ -366,8 +366,7 @@ unisig_detach(struct atm_pif *pip)
 	 * Pass the detach event to the signalling manager
 	 * state machine
 	 */
-	err = unisig_sigmgr_state(usp, UNISIG_SIGMGR_DETACH,
-			(KBuffer *)0);
+	err = unisig_sigmgr_state(usp, UNISIG_SIGMGR_DETACH, NULL);
 
 	/*
 	 * Log the fact that we've detached
@@ -558,8 +557,7 @@ unisig_accept(struct vccb *vcp, int *errp)
 	/*
 	 * Pass the acceptance to the VC state machine
 	 */
-	*errp = unisig_vc_state(usp, uvp, UNI_VC_ACCEPT_CALL,
-			(struct unisig_msg *) 0);
+	*errp = unisig_vc_state(usp, uvp, UNI_VC_ACCEPT_CALL, NULL);
 	if (*errp)
 		goto failed;
 
@@ -623,8 +621,7 @@ unisig_reject(struct vccb *vcp, int *errp)
 	/*
 	 * Call the VC state machine
 	 */
-	*errp = unisig_vc_state(usp, uvp, UNI_VC_REJECT_CALL,
-			(struct unisig_msg *) 0);
+	*errp = unisig_vc_state(usp, uvp, UNI_VC_REJECT_CALL, NULL);
 	if (*errp)
 		goto failed;
 
@@ -964,8 +961,7 @@ unisig_ioctl(int code, caddr_t data, caddr_t arg1)
 		/*
 		 * Pass event to signalling manager state machine
 		 */
-		err = unisig_sigmgr_state(usp, UNISIG_SIGMGR_ADDR_SET,
-				(KBuffer *) NULL);
+		err = unisig_sigmgr_state(usp, UNISIG_SIGMGR_ADDR_SET, NULL);
 
 		/*
 		 * Clean up if there was an error

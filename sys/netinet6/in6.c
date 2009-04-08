@@ -77,6 +77,7 @@
 #include <sys/sockio.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/time.h>
 #include <sys/kernel.h>
 #include <sys/syslog.h>
@@ -385,13 +386,21 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 	int error;
 
 	privileged = 0;
-	if (suser(td) == 0)
+	if (priv_check(td, PRIV_ROOT) == 0)
 		privileged++;
 
 	switch (cmd) {
 	case SIOCGETSGCNT_IN6:
 	case SIOCGETMIFCNT_IN6:
 		return (mrt6_ioctl(cmd, data));
+	}
+
+	switch(cmd) {
+	case SIOCAADDRCTL_POLICY:
+	case SIOCDADDRCTL_POLICY:
+		if (!privileged)
+			return (EPERM);
+		return (in6_src_ioctl(cmd, data));
 	}
 
 	if (ifp == NULL)
@@ -611,8 +620,13 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 
 	case SIOCAIFADDR_IN6:
 	{
-		int i, error = 0;
+		int i, error = 0, iaIsNew;
 		struct nd_prefix pr0, *pr;
+
+		if (ia != NULL)
+			iaIsNew = 0;
+		else
+			iaIsNew = 1;
 
 		/*
 		 * first, make or update the interface address structure,
@@ -708,8 +722,11 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 			 */
 			pfxlist_onlink_check();
 		}
-		if (error == 0 && ia)
-			EVENTHANDLER_INVOKE(ifaddr_event, ifp);
+		if (error == 0 && ia) {
+			EVENTHANDLER_INVOKE(ifaddr_event, ifp,
+			iaIsNew ? IFADDR_EVENT_ADD : IFADDR_EVENT_CHANGE,
+			&ia->ia_ifa);
+		}
 		break;
 	}
 
@@ -755,9 +772,10 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 			pr->ndpr_expire = 1; /* XXX: just for expiration */
 		}
 
-	  purgeaddr:
+purgeaddr:
+		EVENTHANDLER_INVOKE(ifaddr_event, ifp, IFADDR_EVENT_DELETE,
+				    &ia->ia_ifa);
 		in6_purgeaddr(&ia->ia_ifa);
-		EVENTHANDLER_INVOKE(ifaddr_event, ifp);
 		break;
 	}
 
@@ -1572,8 +1590,7 @@ in6_ifinit(struct ifnet *ifp, struct in6_ifaddr *ia, struct sockaddr_in6 *sin6,
 	ia->ia_addr = *sin6;
 
 	if (ifacount <= 1 && ifp->if_ioctl &&
-	    (error = ifp->if_ioctl(ifp, SIOCSIFADDR, (caddr_t)ia,
-	    			      (struct ucred *)NULL))) {
+	    (error = ifp->if_ioctl(ifp, SIOCSIFADDR, (caddr_t)ia, NULL))) {
 		lwkt_serialize_exit(ifp->if_serializer);
 		return (error);
 	}

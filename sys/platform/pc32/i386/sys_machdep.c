@@ -42,6 +42,7 @@
 #include <sys/malloc.h>
 #include <sys/thread.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/thread.h>
 #include <sys/memrange.h>
 
@@ -173,7 +174,7 @@ ki386_set_ioperm(struct lwp *lp, char *args)
 	if ((error = copyin(args, &ua, sizeof(struct i386_ioperm_args))) != 0)
 		return (error);
 
-	if ((error = suser_cred(lp->lwp_proc->p_ucred, 0)) != 0)
+	if ((error = priv_check_cred(lp->lwp_proc->p_ucred, PRIV_ROOT, 0)) != 0)
 		return (error);
 	if (securelevel > 0)
 		return (EPERM);

@@ -138,14 +138,14 @@ typedef struct q_elem Qelem_t;
  */
 #define LINK2TAIL(u,t,h,l)					\
 {								\
-	(u)->l = (t *)NULL;					\
+	(u)->l = NULL;						\
 	/* Check for empty chain */				\
-	if ((h) == (t *)NULL) {					\
+	if ((h) == NULL) {					\
 		(h) = (u);					\
 	} else {						\
 		t	*tp;					\
 		/* Loop until we find the end of chain */	\
-		for (tp = (h); tp->l != (t *)NULL; tp = tp->l)	\
+		for (tp = (h); tp->l != NULL; tp = tp->l)	\
 			;					\
 		tp->l = (u);					\
 	}							\
@@ -166,7 +166,7 @@ typedef struct q_elem Qelem_t;
 	} else {						\
 		t	*tp;					\
 		/* Loop until we find the control block */	\
-		for (tp = (h); tp != (t *)NULL; tp = tp->l) {	\
+		for (tp = (h); tp != NULL; tp = tp->l) {	\
 			if (tp->l == (u))			\
 				break;				\
 		}						\
@@ -175,7 +175,7 @@ typedef struct q_elem Qelem_t;
 			tp->l = (u)->l;				\
 		}						\
 	}							\
-	(u)->l = (t *)NULL;					\
+	(u)->l = NULL;						\
 }
 
 /*
@@ -196,7 +196,7 @@ typedef struct q_elem Qelem_t;
 	} else {						\
 		t	*tp;					\
 		/* Loop until we find the control block */	\
-		for (tp = (h); tp != (t *)NULL; tp = tp->l) {	\
+		for (tp = (h); tp != NULL; tp = tp->l) {	\
 			if (tp->l == (u))			\
 				break;				\
 		}						\
@@ -208,7 +208,7 @@ typedef struct q_elem Qelem_t;
 			/* It wasn't on the chain */		\
 			(f) = 0;				\
 	}							\
-	(u)->l = (t *)NULL;					\
+	(u)->l = NULL;						\
 }
 
 #endif	/* _NETATM_QUEUE_H */

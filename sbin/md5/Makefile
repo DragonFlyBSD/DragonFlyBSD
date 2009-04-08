@@ -12,8 +12,6 @@ MLINKS=	md5.1 rmd160.1 \
 	md5.1 sha1.1 \
 	md5.1 sha256.1
 
-WARNS?=		0
-
 DPADD=	${LIBMD}
 LDADD=	-lmd
 

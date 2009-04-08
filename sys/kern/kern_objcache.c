@@ -432,14 +432,15 @@ retry:
 			if (oc->ctor(obj, oc->privdata, ocflags))
 				return (obj);
 			oc->free(obj, oc->allocator_args);
+			obj = NULL;
+		}
+		if (obj == NULL) {
 			spin_lock_wr(&depot->spin);
 			++depot->unallocated_objects;
 			spin_unlock_wr(&depot->spin);
 			if (depot->waiting)
 				wakeup(depot);
-			obj = NULL;
-		}
-		if (obj == NULL) {
+
 			crit_enter();
 			/*
 			 * makes debugging easier when gets_cumulative does

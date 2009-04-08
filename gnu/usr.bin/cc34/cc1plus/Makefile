@@ -9,7 +9,8 @@ GCC_LANG_DIR=	gcc/cp
 PATCHES!=	echo ${.CURDIR}/patches/*.patch
 CONTRIBDIR=	${GCCDIR}/gcc/cp
 
-CFLAGS+=	-DTARGET_MACHINE=\"${target}\" -DHOST_MACHINE=\"${target}\"
+CFLAGS+=	-DTARGET_MACHINE=\"${target_machine}\"
+CFLAGS+=	-DHOST_MACHINE=\"${target_machine}\"
 
 PROG=	cc1plus
 NOMAN=	1

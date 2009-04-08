@@ -226,8 +226,8 @@ main(int argc, char **argv)
 			fileflag = 1;
 			break;
 		case 'k':
-			if (putenv("BLOCKSIZE=1K") == -1)
-				warn("putenv: cannot set BLOCKSIZE=1K");
+			if (setenv("BLOCKSIZE", "1K", 1) == -1)
+				warn("setenv: cannot set BLOCKSIZE=1K");
 			break;
 		case 'M':
 			memf = optarg;

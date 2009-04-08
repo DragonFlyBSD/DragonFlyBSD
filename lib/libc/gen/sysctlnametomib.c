@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/gen/sysctlnametomib.c,v 1.1.2.1 2001/03/05 08:13:28 obrien Exp $
+ * $FreeBSD: src/lib/libc/gen/sysctlnametomib.c,v 1.4 2003/01/04 00:11:11 tjr Exp $
  * $DragonFly: src/lib/libc/gen/sysctlnametomib.c,v 1.3 2005/11/19 22:32:53 swildner Exp $
  */
 
@@ -49,9 +49,7 @@ sysctlnametomib(const char *name, int *mibp, size_t *sizep)
 	oid[1] = 3;
 
 	*sizep *= sizeof (int);
-	error = sysctl(oid, 2, mibp, sizep, name, strlen(name));
+	error = sysctl(oid, 2, mibp, sizep, (void *)name, strlen(name));
 	*sizep /= sizeof (int);
-	if (error < 0) 
-		return (error);
-	return (0);
+	return (error);
 }

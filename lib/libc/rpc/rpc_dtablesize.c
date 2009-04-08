@@ -28,12 +28,16 @@
  *
  * @(#)rpc_dtablesize.c 1.2 87/08/11 Copyr 1987 Sun Micro
  * @(#)rpc_dtablesize.c	2.1 88/07/29 4.0 RPCSRC
- * $FreeBSD: src/lib/libc/rpc/rpc_dtablesize.c,v 1.10 1999/08/28 00:00:45 peter Exp $
+ * $NetBSD: rpc_dtablesize.c,v 1.14 1998/11/15 17:32:43 christos Exp $
+ * $FreeBSD: src/lib/libc/rpc/rpc_dtablesize.c,v 1.15 2004/10/16 06:11:35 obrien Exp $
  * $DragonFly: src/lib/libc/rpc/rpc_dtablesize.c,v 1.3 2005/01/31 22:29:38 dillon Exp $
  */
 
-#include <sys/types.h>
+#include "namespace.h"
 #include <unistd.h>
+#include "un-namespace.h"
+
+int _rpc_dtablesize(void);	/* XXX */
 
 /*
  * Cache the result of getdtablesize(), so we don't have to do an

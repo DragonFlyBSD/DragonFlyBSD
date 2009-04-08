@@ -15,14 +15,22 @@ INCS=	a.out.h ar.h assert.h bitstring.h complex.h cpio.h ctype.h db.h \
 	fts.h ftw.h getopt.h glob.h grp.h histedit.h \
 	iconv.h ieeefp.h ifaddrs.h iso646.h inttypes.h \
 	langinfo.h libgen.h limits.h link.h locale.h malloc.h math.h memory.h \
-	mpool.h monetary.h ndbm.h netdb.h nl_types.h nlist.h objformat.h \
+	mpool.h monetary.h ndbm.h netconfig.h \
+	netdb.h nl_types.h nlist.h nss.h nsswitch.h objformat.h \
 	paths.h pthread.h pthread_np.h pwd.h \
-	ranlib.h readpassphrase.h regex.h regexp.h resolv.h re_comp.h rmd160.h \
+	ranlib.h readpassphrase.h regex.h regexp.h \
+	res_update.h resolv.h re_comp.h rmd160.h \
 	search.h setjmp.h sgtty.h \
-	signal.h stab.h stdarg.h stdbool.h stddef.h stdint.h stdio.h stdlib.h \
+	signal.h spawn.h stab.h stdarg.h stdbool.h \
+	stddef.h stdint.h stdio.h stdlib.h \
 	string.h stringlist.h strings.h struct.h sysexits.h tar.h time.h \
+	timeconv.h \
 	timers.h ttyent.h unistd.h ulimit.h utime.h utmp.h uuid.h vis.h \
 	wchar.h wctype.h wordexp.h
+
+.if defined(WANT_HESIOD)
+INCS+=	hesiod.h
+.endif
 
 MHDRS=	float.h floatingpoint.h varargs.h
 
@@ -58,14 +66,17 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	netgraph/mppc netgraph/one2many netgraph/ppp \
 	netgraph/pppoe netgraph/pptpgre netgraph/rfc1490 netgraph/socket \
 	netgraph/tee netgraph/tty netgraph/vjc \
-	bus/cam bus/usb bus/pccard bus/pci bus/isa \
+	bus/cam bus/usb bus/pccard bus/pci bus/isa bus/ppbus \
 	netproto/atalk netproto/atm netproto/ipsec netproto/ipx \
 	netproto/key netproto/natm netproto/ncp netproto/ns netproto/smb \
 	netproto/atm/ipatm netproto/atm/sigpvc netproto/atm/spans \
 	netproto/atm/uni netproto/802_11 netproto/mpls
 
 LSUBDIRS3= vfs/isofs/cd9660 net/i4b/include \
-	dev/misc/lpt dev/misc/ppi dev/netif/wi dev/video/bktr dev/video/meteor
+	dev/misc/lpt dev/misc/ppi \
+	dev/netif/wi \
+	dev/raid/ciss \
+	dev/video/bktr dev/video/meteor
 
 # For SHARED=symlinks, bus/cam and netproto/atm are symlinks, so cam/scsi
 # and netproto/atm/* are taken care of

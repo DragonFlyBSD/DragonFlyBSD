@@ -159,8 +159,11 @@ SYSCTL_INT(_debug_ktr, OID_AUTO, testspincnt, CTLFLAG_RW, &ktr_testspincnt, 0, "
  * early boot (note however that we still use a critical section, XXX).
  */
 static struct	ktr_entry ktr_buf0[KTR_ENTRIES];
-struct		ktr_entry *ktr_buf[MAXCPU] = { &ktr_buf0[0] };
-int		ktr_idx[MAXCPU];
+
+__cachealign struct ktr_cpu ktr_cpu[MAXCPU] = {
+	{ .core.ktr_buf = &ktr_buf0[0] }
+};
+
 #ifdef SMP
 static int	ktr_sync_state = 0;
 static int	ktr_sync_count;
@@ -181,11 +184,13 @@ extern int64_t tsc_offsets[];
 static void
 ktr_sysinit(void *dummy)
 {
+	struct ktr_cpu_core *kcpu;
 	int i;
 
 	for(i = 1; i < ncpus; ++i) {
-		ktr_buf[i] = kmalloc(KTR_ENTRIES * sizeof(struct ktr_entry),
-				    M_KTR, M_WAITOK | M_ZERO);
+		kcpu = &ktr_cpu[i].core;
+		kcpu->ktr_buf = kmalloc(KTR_ENTRIES * sizeof(struct ktr_entry),
+					M_KTR, M_WAITOK | M_ZERO);
 	}
 	callout_init(&ktr_resync_callout);
 	callout_reset(&ktr_resync_callout, hz / 10, ktr_resync_callback, NULL);
@@ -431,21 +436,23 @@ ktr_resync_callback(void *dummy __unused)
 /*
  * KTR_WRITE_ENTRY - Primary entry point for kernel trace logging
  */
+
 static __inline
 void
-ktr_write_entry(struct ktr_info *info, const char *file, int line,
-		const void *ptr)
+ktr_write_entry(struct ktr_info *info, const char *file, int line, __va_list va)
 {
+	struct ktr_cpu_core *kcpu;
 	struct ktr_entry *entry;
 	int cpu;
 
 	cpu = mycpu->gd_cpuid;
-	if (!ktr_buf[cpu])
+	kcpu = &ktr_cpu[cpu].core;
+	if (kcpu->ktr_buf == NULL)
 		return;
 
 	crit_enter();
-	entry = ktr_buf[cpu] + (ktr_idx[cpu] & KTR_ENTRIES_MASK);
-	++ktr_idx[cpu];
+	entry = kcpu->ktr_buf + (kcpu->ktr_idx & KTR_ENTRIES_MASK);
+	++kcpu->ktr_idx;
 #ifdef _RDTSC_SUPPORTED_
 	if (cpu_feature & CPUID_TSC) {
 #ifdef SMP
@@ -463,9 +470,9 @@ ktr_write_entry(struct ktr_info *info, const char *file, int line,
 	entry->ktr_line = line;
 	crit_exit();
 	if (info->kf_data_size > KTR_BUFSIZE)
-		bcopyi(ptr, entry->ktr_data, KTR_BUFSIZE);
+		bcopy(va, entry->ktr_data, KTR_BUFSIZE);
 	else if (info->kf_data_size)
-		bcopyi(ptr, entry->ktr_data, info->kf_data_size);
+		bcopy(va, entry->ktr_data, info->kf_data_size);
 	if (ktr_stacktrace)
 		cpu_ktr_caller(entry);
 #ifdef KTR_VERBOSE
@@ -476,7 +483,7 @@ ktr_write_entry(struct ktr_info *info, const char *file, int line,
 		if (ktr_verbose > 1) {
 			kprintf("%s.%d\t", entry->ktr_file, entry->ktr_line);
 		}
-		kvprintf(info->kf_format, ptr);
+		kvprintf(info->kf_format, va);
 		kprintf("\n");
 	}
 #endif
@@ -494,14 +501,6 @@ ktr_log(struct ktr_info *info, const char *file, int line, ...)
 	}
 }
 
-void
-ktr_log_ptr(struct ktr_info *info, const char *file, int line, const void *ptr)
-{
-	if (panicstr == NULL) {
-		ktr_write_entry(info, file, line, ptr);
-	}
-}
-
 #ifdef DDB
 
 #define	NUM_LINES_PER_PAGE	19
@@ -516,6 +515,7 @@ static	int db_mach_vtrace(int cpu, struct ktr_entry *kp, int idx);
 
 DB_SHOW_COMMAND(ktr, db_ktr_all)
 {
+	struct ktr_cpu_core *kcpu;
 	int a_flag = 0;
 	int c;
 	int nl = 0;
@@ -524,8 +524,9 @@ DB_SHOW_COMMAND(ktr, db_ktr_all)
 	int printcpu = -1;
 
 	for(i = 0; i < ncpus; i++) {
+		kcpu = &ktr_cpu[i].core;
 		tstate[i].first = -1;
-		tstate[i].cur = ktr_idx[i] & KTR_ENTRIES_MASK;
+		tstate[i].cur = (kcpu->ktr_idx - 1) & KTR_ENTRIES_MASK;
 	}
 	db_ktr_verbose = 0;
 	while ((c = *(modif++)) != '\0') {
@@ -572,7 +573,8 @@ DB_SHOW_COMMAND(ktr, db_ktr_all)
 		 * Find the lowest timestamp
 		 */
 		for (i = 0, counter = 0; i < ncpus; i++) {
-			if (ktr_buf[i] == NULL)
+			kcpu = &ktr_cpu[i].core;
+			if (kcpu->ktr_buf == NULL)
 				continue;
 			if (printcpu != -1 && printcpu != i)
 				continue;
@@ -584,14 +586,18 @@ DB_SHOW_COMMAND(ktr, db_ktr_all)
 				}
 				continue;
 			}
-			if (ktr_buf[i][tstate[i].cur].ktr_timestamp > highest_ts) {
-				highest_ts = ktr_buf[i][tstate[i].cur].ktr_timestamp;
+			if (kcpu->ktr_buf[tstate[i].cur].ktr_timestamp > highest_ts) {
+				highest_ts = kcpu->ktr_buf[tstate[i].cur].ktr_timestamp;
 				highest_cpu = i;
 			}
 		}
+		if (highest_cpu < 0) {
+			db_printf("no KTR data available\n");
+			break;
+		}
 		i = highest_cpu;
-		KKASSERT(i != -1);
-		kp = &ktr_buf[i][tstate[i].cur];
+		kcpu = &ktr_cpu[i].core;
+		kp = &kcpu->ktr_buf[tstate[i].cur];
 		if (tstate[i].first == -1)
 			tstate[i].first = tstate[i].cur;
 		if (--tstate[i].cur < 0)
@@ -601,7 +607,7 @@ DB_SHOW_COMMAND(ktr, db_ktr_all)
 			tstate[i].cur = -1;
 			continue;
 		}
-		if (ktr_buf[i][tstate[i].cur].ktr_info == NULL)
+		if (kcpu->ktr_buf[tstate[i].cur].ktr_info == NULL)
 			tstate[i].cur = -1;
 		if (db_more(&nl) == -1)
 			break;
@@ -625,14 +631,8 @@ db_mach_vtrace(int cpu, struct ktr_entry *kp, int idx)
 	}
 	db_printf("%s\t", kp->ktr_info->kf_name);
 	db_printf("from(%p,%p) ", kp->ktr_caller1, kp->ktr_caller2);
-	if (kp->ktr_info->kf_format) {
-		int32_t *args = kp->ktr_data;
-		db_printf(kp->ktr_info->kf_format,
-			  args[0], args[1], args[2], args[3],
-			  args[4], args[5], args[6], args[7],
-			  args[8], args[9], args[10], args[11]);
-	    
-	}
+	if (kp->ktr_info->kf_format)
+		db_vprintf(kp->ktr_info->kf_format, (__va_list)kp->ktr_data);
 	db_printf("\n");
 
 	return(1);

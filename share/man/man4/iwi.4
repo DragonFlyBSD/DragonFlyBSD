@@ -30,7 +30,7 @@
 .\"
 .\" $DragonFly: src/share/man/man4/iwi.4,v 1.14 2008/07/26 16:25:40 swildner Exp $
 .\"
-.Dd July 26, 2008
+.Dd March 3, 2008
 .Os
 .Dt IWI 4
 .Sh NAME
@@ -51,13 +51,23 @@ By default, the
 driver configures the adapter for BSS operation (aka infrastructure mode).
 This mode requires the use of an access point.
 .Pp
-In addition IBSS operation (aka adhoc mode) is also supported. This mode requires
-special ibss firmware. See
-.Xr iwicontrol 8
-for more details on how to load firmware.
+In addition IBSS operation (aka adhoc mode) is also supported.
+This mode requires special ibss firmware.
 .Pp
 For more (general) information on configuring this device, see
 .Xr ifconfig 8 .
+.Sh FILES
+The firmware for the adapter is not shipped with
+.Dx
+and must be obtained separately.
+An archive with firmware files that are known to work can be found at:
+.Bd -literal -offset indent
+http://ipw2200.sourceforge.net/firmware.php?fid=7
+.Ed
+.Pp
+The firmware files have to reside in
+.Pa /etc/firmware/iwi/2200/3.0
+and will be loaded when the interface is brought up.
 .Sh EXAMPLES
 Refer to the
 .Sx EXAMPLES
@@ -81,7 +91,6 @@ The driver will reset the hardware. This should not happen.
 .Xr wi 4 ,
 .Xr wlan 4 ,
 .Xr ifconfig 8 ,
-.Xr iwicontrol 8 ,
 .Xr wpa_supplicant 8
 .Sh AUTHORS
 .An -nosplit

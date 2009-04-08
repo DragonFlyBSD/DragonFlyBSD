@@ -93,17 +93,17 @@ int global = 0;
 int listopt = 0;
 u_long setopt = 0;
 u_long resetopt = 0;
-char *configfile;
+const char *configfile;
 
 int config(struct vndisk *);
-void getoptions(struct vndisk *, char *);
+void getoptions(struct vndisk *, const char *);
 int getinfo(const char *vname);
-char *rawdevice(char *);
+char *rawdevice(const char *);
 void readconfig(int);
 static void usage(void);
 static int64_t getsize(const char *arg);
 static void do_autolabel(const char *dev, const char *label);
-int what_opt(char *, u_long *);
+int what_opt(const char *, u_long *);
 
 int
 main(int argc, char *argv[])
@@ -210,6 +210,7 @@ main(int argc, char *argv[])
 		if (kldload("vn") < 0 || modfind("vn") < 0)
 			warnx( "cannot find or load \"vn\" kernel module");
 
+	rv = 0;
 	if (listopt) {
 		if(argc > optind)
 			while(argc > optind) 
@@ -244,7 +245,7 @@ main(int argc, char *argv[])
 }
 
 int
-what_opt(char *str, u_long *p)
+what_opt(const char *str, u_long *p)
 {
 	if (!strcmp(str,"reserve")) { *p |= VN_RESERVE; return 0; }
 	if (!strcmp(str,"labels")) { *p |= VN_LABELS; return 0; }
@@ -270,18 +271,17 @@ what_opt(char *str, u_long *p)
 int
 getinfo( const char *vname )
 {
-	int i, vd, printlim = 0;
-	char vnpath[PATH_MAX], *tmp;
+	int i = 0, vd, printlim = 0;
+	char vnpath[PATH_MAX];
+	const char *tmp;
 
 	struct vn_user vnu;
 	struct stat sb;
 
 	if (vname == NULL) {
-		i = 0;
 		printlim = 1024;
-	}
-	else {
-		tmp = (char *) vname;
+	} else {
+		tmp = vname;
 		while (*tmp != 0) {
 			if(isdigit(*tmp)){
 				i = atoi(tmp);
@@ -290,38 +290,42 @@ getinfo( const char *vname )
 			}
 			tmp++;
 		}
-		if (tmp == NULL) {
-			printf("unknown vn device: %s", vname);
-			return 1;
-		}
+		if (*tmp == '\0')
+			errx(1, "unknown vn device: %s", vname);
 	}
 
 	snprintf(vnpath, sizeof(vnpath), "/dev/vn%d", i);
 
-	vd = open((char *)vnpath, O_RDONLY);
-	if (vd < 0) {
+	vd = open(vnpath, O_RDONLY);
+	if (vd < 0)
 		err(1, "open: %s", vnpath);
-		return 1;
-	}
 
-	for (i; i<printlim; i++) {
+	for (; i<printlim; i++) {
 
-		bzero((void *) &vnpath, sizeof(vnpath));
-		bzero((void *) &sb, sizeof(struct stat));
-		bzero((void *) &vnu, sizeof(struct vn_user));
+		bzero(&vnpath, sizeof(vnpath));
+		bzero(&sb, sizeof(struct stat));
+		bzero(&vnu, sizeof(struct vn_user));
 
 		vnu.vnu_unit = i;
 
 		snprintf(vnpath, sizeof(vnpath), "/dev/vn%d", vnu.vnu_unit);
 
-		if(stat(vnpath, &sb) < 0)
+		if(stat(vnpath, &sb) < 0) {
 			break;
+		}
 		else {
         		if (ioctl(vd, VNIOCGET, &vnu) == -1) {
 				if (errno != ENXIO) {
-					err(1, "ioctl: %s", vname);
-                        		close(vd);
-                        		return 1;
+					if (*vnu.vnu_file == '\0') {
+						fprintf(stdout,
+						    "vn%d: ioctl: can't access regular file\n",
+						    vnu.vnu_unit);
+						continue;
+					}
+					else {
+						close(vd);
+						err(1, "ioctl: %s", vname);
+					}
 				}
         		}
 
@@ -331,14 +335,14 @@ getinfo( const char *vname )
 				fprintf(stdout, "not in use\n");
 			else if ((strcmp(vnu.vnu_file, _VN_USER_SWAP)) == 0)
 				fprintf(stdout,
-					"consuming %d VM pages\n",
+					"consuming %lld VM pages\n",
 					vnu.vnu_size);
 			else
 				fprintf(stdout, 
-					"covering %s on %s, inode %d\n", 
+					"covering %s on %s, inode %ju\n",
 					vnu.vnu_file,
 					devname(vnu.vnu_dev, S_IFBLK), 
-					vnu.vnu_ino);
+					(uintmax_t)vnu.vnu_ino);
 		}
 	}
 	close(vd);
@@ -411,6 +415,9 @@ config(struct vndisk *vnp)
 			printf("Unable to open file %s\n", file);
 			return(0);
 		}
+	} else if (file == NULL && vnp->size == 0 && (flags & VN_CONFIG)) {
+		warnx("specify regular filename or swap size");
+		return (0);
 	}
 
 	rdev = rawdevice(dev);
@@ -468,7 +475,7 @@ config(struct vndisk *vnp)
 			status--;
 			warn("VNIO[GU]SET");
 		} else if (verbose)
-			printf("%s: flags now=%08x\n",dev,l);
+			printf("%s: flags now=%08lx\n",dev,l);
 	}
 	/*
 	 * Reset specified options
@@ -483,7 +490,7 @@ config(struct vndisk *vnp)
 			status--;
 			warn("VNIO[GU]CLEAR");
 		} else if (verbose)
-			printf("%s: flags now=%08x\n",dev,l);
+			printf("%s: flags now=%08lx\n",dev,l);
 	}
 	/*
 	 * Configure the device
@@ -651,10 +658,10 @@ readconfig(int flags)
 }
 
 void
-getoptions(struct vndisk *vnp, char *fstr)
+getoptions(struct vndisk *vnp, const char *fstr)
 {
 	int flags = 0;
-	char *oarg = NULL;
+	const char *oarg = NULL;
 
 	if (strcmp(fstr, "swap") == 0)
 		flags |= VN_SWAP;
@@ -678,7 +685,7 @@ getoptions(struct vndisk *vnp, char *fstr)
 }
 
 char *
-rawdevice(char *dev)
+rawdevice(const char *dev)
 {
 	char *rawbuf, *dp, *ep;
 	struct stat sb;
@@ -719,7 +726,7 @@ getsize(const char *arg)
 	switch(tolower(*ptr)) {
 	case 't':
 		/*
-		 * GULP!  Terrabytes.  It's actually possible to create 
+		 * GULP!  Terabytes.  It's actually possible to create
 		 * a 7.9 TB VN device, though newfs can't handle any single
 		 * filesystem larger then 1 TB.
 		 */
@@ -750,7 +757,7 @@ getsize(const char *arg)
  */
 
 static void
-do_autolabel(const char *dev, const char *label)
+do_autolabel(const char *dev __unused, const char *label __unused)
 {
 	/* XXX not yet implemented */
 	fprintf(stderr, "autolabel not yet implemented, sorry\n");

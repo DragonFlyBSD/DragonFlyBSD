@@ -41,6 +41,7 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/thread2.h>
@@ -97,7 +98,7 @@ ipx_pcbbind(struct ipxpcb *ipxp, struct sockaddr *nam, struct thread *td)
 		int error;
 
 		if (aport < IPXPORT_RESERVED &&
-		    td != NULL && (error = suser(td)) != 0)
+		    td != NULL && (error = priv_check(td, PRIV_ROOT)) != 0)
 			return (error);
 		if (ipx_pcblookup(&zeroipx_addr, lport, 0))
 			return (EADDRINUSE);
@@ -237,7 +238,7 @@ ipx_pcbconnect(struct ipxpcb *ipxp, struct sockaddr *nam, struct thread *td)
 	if (ipx_pcblookup(&sipx->sipx_addr, ipxp->ipxp_lport, 0))
 		return (EADDRINUSE);
 	if (ipxp->ipxp_lport == 0)
-		ipx_pcbbind(ipxp, (struct sockaddr *)NULL, td);
+		ipx_pcbbind(ipxp, NULL, td);
 
 	/* XXX just leave it zero if we can't find a route */
 

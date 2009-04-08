@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -30,10 +26,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)syslogd.8	8.1 (Berkeley) 6/6/93
-.\" $FreeBSD: src/usr.sbin/syslogd/syslogd.8,v 1.51 2004/07/02 23:12:57 ru Exp $
+.\" $FreeBSD: src/usr.sbin/syslogd/syslogd.8,v 1.64 2008/12/07 18:45:30 trhodes Exp $
 .\" $DragonFly: src/usr.sbin/syslogd/syslogd.8,v 1.5 2006/05/26 19:39:41 swildner Exp $
 .\"
-.Dd November 24, 2001
+.Dd May 13, 2008
 .Dt SYSLOGD 8
 .Os
 .Sh NAME
@@ -41,11 +37,11 @@
 .Nd log systems messages
 .Sh SYNOPSIS
 .Nm
-.Op Fl 46Acdknosuv
+.Op Fl 468ACcdknosuv
 .Op Fl a Ar allowed_peer
 .Op Fl b Ar bind_address
 .Op Fl f Ar config_file
-.Op Fl l Ar path
+.Op Fl l Oo Ar mode : Oc Ns Ar path
 .Op Fl m Ar mark_interval
 .Op Fl P Ar pid_file
 .Op Fl p Ar log_socket
@@ -65,6 +61,23 @@ to use IPv4 addresses only.
 Force
 .Nm
 to use IPv6 addresses only.
+.It Fl 8
+Tells
+.Nm
+not to interfere with 8-bit data.  Normally
+.Nm
+will replace C1 control characters
+.Pq ISO 8859 and Unicode characters
+with their
+.Dq M- Ns Em x
+equivalent.
+Note, this option does not change the way
+.Nm
+alters control characters
+.Pq see Xr iscntrl 3 .
+They will always be replaced with their
+.Dq ^ Ns Em x
+equivalent.
 .It Fl A
 Ordinarily,
 .Nm
@@ -83,8 +96,9 @@ Multiple
 .Fl a
 options may be specified.
 .Pp
-.Ar Allowed_peer
-can be any of the following:
+The
+.Ar allowed_peer
+option may be any of the following:
 .Bl -tag -width "ipaddr/masklen[:service]XX"
 .It Xo
 .Sm off
@@ -162,6 +176,9 @@ option is also specified.
 Specify one specific IP address or hostname to bind to.
 If a hostname is specified,
 the IPv4 or IPv6 address which corresponds to it is used.
+.It Fl C
+Create log files that do not exist (permission is set to
+.Li 0600 ) .
 .It Fl c
 Disable the compression of repeated instances of the same line
 into a single line of the form
@@ -207,20 +224,31 @@ the default is
 Specify an alternative file in which to store the process ID.
 The default is
 .Pa /var/run/syslog.pid .
+.It Fl S
+Specify the pathname of an alternate log socket for privileged
+applications to be used instead; the default is
+.Pa /var/run/logpriv .
 .It Fl l
 Specify a location where
 .Nm
 should place an additional log socket.
-Up to 19 additional logging sockets can be specified.
 The primary use for this is to place additional log sockets in
 .Pa /var/run/log
 of various chroot filespaces.
+File permissions for socket can be specified in octal representation
+before socket name, delimited with a colon.
+Path to socket location must be absolute.
 .It Fl s
 Operate in secure mode.
 Do not log messages from remote machines.
 If
 specified twice, no network socket will be opened at all, which also
 disables logging to remote machines.
+.It Fl T
+Always use the local time and date for messages received from the network,
+instead of the timestamp field supplied in the message by the remote host.
+This is useful if some of the originating hosts can't keep time properly
+or are unable to generate a correct timestamp.
 .It Fl u
 Unique priority logging.
 Only log messages at the specified priority.
@@ -250,8 +278,10 @@ The
 .Nm
 utility reads messages from the
 .Ux
-domain socket
-.Pa /var/run/log ,
+domain sockets
+.Pa /var/run/log
+and
+.Pa /var/run/logpriv ,
 from an Internet domain socket specified in
 .Pa /etc/services ,
 and from the special device
@@ -280,9 +310,18 @@ include file
 .Pp
 For security reasons,
 .Nm
-will not append to log files that do not exist;
+will not append to log files that do not exist (unless
+.Fl C
+option is specified);
 therefore, they must be created manually before running
 .Nm .
+.Pp
+The date and time are taken from the received message.
+If the format of the timestamp field is incorrect,
+time obtained from the local host is used instead.
+This can be overriden by the
+.Fl T
+flag.
 .Sh FILES
 .Bl -tag -width /var/run/syslog.pid -compact
 .It Pa /etc/syslog.conf
@@ -293,6 +332,9 @@ default process ID file
 name of the
 .Ux
 domain datagram log socket
+.It Pa /var/run/logpriv
+.Ux
+socket for privileged applications
 .It Pa /dev/klog
 kernel log device
 .El
@@ -300,7 +342,8 @@ kernel log device
 .Xr logger 1 ,
 .Xr syslog 3 ,
 .Xr services 5 ,
-.Xr syslog.conf 5
+.Xr syslog.conf 5 ,
+.Xr newsyslog 8
 .Sh HISTORY
 The
 .Nm
@@ -330,7 +373,7 @@ option is therefore highly recommended.
 .Pp
 The
 .Fl a
-matching algorithm doesn't pretend to be very efficient; use of numeric
+matching algorithm does not pretend to be very efficient; use of numeric
 IP addresses is faster than domain name comparison.
 Since the allowed
 peer list is being walked linearly, peer groups where frequent messages

@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -30,10 +26,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)pwd_mkdb.8	8.1 (Berkeley) 6/6/93
-.\" $FreeBSD: src/usr.sbin/pwd_mkdb/pwd_mkdb.8,v 1.15.2.4 2003/03/11 22:31:31 trhodes Exp $
+.\" $FreeBSD: src/usr.sbin/pwd_mkdb/pwd_mkdb.8,v 1.26 2005/02/28 21:05:30 ru Exp $
 .\" $DragonFly: src/usr.sbin/pwd_mkdb/pwd_mkdb.8,v 1.3 2006/02/17 19:40:22 swildner Exp $
 .\"
-.Dd June 6, 1993
+.Dd February 28, 2005
 .Dt PWD_MKDB 8
 .Os
 .Sh NAME
@@ -41,9 +37,7 @@
 .Nd "generate the password databases"
 .Sh SYNOPSIS
 .Nm
-.Op Fl C
-.Op Fl N
-.Op Fl p
+.Op Fl BCiLNp
 .Op Fl d Ar directory
 .Op Fl s Ar cachesize
 .Op Fl u Ar username
@@ -68,34 +62,53 @@ different from the historic Version 7 style format.
 .Pp
 The options are as follows:
 .Bl -tag -width flag
+.It Fl B
+Store data in big-endian format.
 .It Fl C
 Check if the password file is in the correct format.
 Do not
 change, add, or remove any files.
+.It Fl L
+Store data in little-endian format.
 .It Fl N
 Tell
 .Nm
-to exit with an error if it cannot obtain a lock on the file.  By default,
-we block waiting for a lock on the source file.  The lock is held through
+to exit with an error if it cannot obtain a lock on the file.
+By default,
+we block waiting for a lock on the source file.
+The lock is held through
 the rebuilding of the database.
 .It Fl p
 Create a Version 7 style password file and install it into
 .Pa /etc/passwd .
+.It Fl i
+Ignore locking failure of the
+.Pa master.passwd
+file.
+This option is intended to be used to build password files in
+the release process over NFS where no contention can happen.
+A non-default directory must also be specified with the
+.Fl d
+option for locking to be ignored.
+Other use of this option is strongly discouraged.
 .It Fl d Ar directory
 Store databases into specified destination directory instead of
 .Pa /etc .
 .It Fl u Ar username
-Only update the record for the specified user.  Utilities that
+Only update the record for the specified user.
+Utilities that
 operate on a single user can use this option to avoid the
 overhead of rebuilding the entire database.
 .It Fl s Ar cachesize
 Specify in megabytes the size of the memory cache used by the
-hashing library.  On systems with a large user base, a small cache
+hashing library.
+On systems with a large user base, a small cache
 size can lead to prohibitively long database file rebuild times.
 As a rough guide, the memory usage of
 .Nm
 in megabytes will be a little bit more than twice the figure
-specified here.  The default is 2 megabytes.
+specified here.
+The default is 2 megabytes.
 .El
 .Pp
 The two databases differ in that the secure version contains the user's

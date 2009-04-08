@@ -53,6 +53,7 @@
 #include <sys/domain.h>
 #include <sys/eventhandler.h>
 #include <sys/fcntl.h>
+#include <sys/file.h>
 #include <sys/kernel.h>
 #include <sys/kthread.h>
 #include <sys/malloc.h>
@@ -304,9 +305,18 @@ vinvalbuf(struct vnode *vp, int flags, int slpflag, int slptimeo)
 			if ((error = VOP_FSYNC(vp, MNT_WAIT)) != 0)
 				return (error);
 			crit_enter();
-			if (vp->v_track_write.bk_active > 0 ||
-			    !RB_EMPTY(&vp->v_rbdirty_tree))
+
+			/*
+			 * Dirty bufs may be left or generated via races
+			 * in circumstances where vinvalbuf() is called on
+			 * a vnode not undergoing reclamation.   Only
+			 * panic if we are trying to reclaim the vnode.
+			 */
+			if ((vp->v_flag & VRECLAIMED) &&
+			    (vp->v_track_write.bk_active > 0 ||
+			    !RB_EMPTY(&vp->v_rbdirty_tree))) {
 				panic("vinvalbuf: dirty bufs");
+			}
 		}
 		crit_exit();
   	}
@@ -1191,26 +1201,15 @@ vclean_vxlocked(struct vnode *vp, int flags)
  * Eliminate all activity associated with the requested vnode
  * and with all vnodes aliased to the requested vnode.
  *
- * The vnode must be referenced and vx_lock()'d
- *
- * revoke { struct vnode *a_vp, int a_flags }
+ * The vnode must be referenced but should not be locked.
  */
 int
-vop_stdrevoke(struct vop_revoke_args *ap)
+vrevoke(struct vnode *vp, struct ucred *cred)
 {
-	struct vnode *vp, *vq;
+	struct vnode *vq;
 	lwkt_tokref ilock;
 	cdev_t dev;
-
-	KASSERT((ap->a_flags & REVOKEALL) != 0, ("vop_revoke"));
-
-	vp = ap->a_vp;
-
-	/*
-	 * If the vnode is already dead don't try to revoke it
-	 */
-	if (vp->v_flag & VRECLAIMED)
-		return (0);
+	int error;
 
 	/*
 	 * If the vnode has a device association, scrap all vnodes associated
@@ -1220,8 +1219,10 @@ vop_stdrevoke(struct vop_revoke_args *ap)
 	 * The passed vp will probably show up in the list, do not VX lock
 	 * it twice!
 	 */
-	if (vp->v_type != VCHR)
-		return(0);
+	if (vp->v_type != VCHR) {
+		error = fdrevoke(vp, DTYPE_VNODE, cred);
+		return (error);
+	}
 	if ((dev = vp->v_rdev) == NULL) {
 		if ((dev = get_dev(vp->v_umajor, vp->v_uminor)) == NULL)
 			return(0);
@@ -1229,12 +1230,10 @@ vop_stdrevoke(struct vop_revoke_args *ap)
 	reference_dev(dev);
 	lwkt_gettoken(&ilock, &spechash_token);
 	while ((vq = SLIST_FIRST(&dev->si_hlist)) != NULL) {
-		if (vp != vq)
-			vx_get(vq);
-		if (vq == SLIST_FIRST(&dev->si_hlist))
-			vgone_vxlocked(vq);
-		if (vp != vq)
-			vx_put(vq);
+		vref(vq);
+		fdrevoke(vq, DTYPE_VNODE, cred);
+		v_release_rdev(vq);
+		vrele(vq);
 	}
 	lwkt_reltoken(&ilock);
 	release_dev(dev);
@@ -1334,6 +1333,9 @@ vgone_vxlocked(struct vnode *vp)
 
 /*
  * Lookup a vnode by device number.
+ *
+ * Returns non-zero and *vpp set to a vref'd vnode on success.
+ * Returns zero on failure.
  */
 int
 vfinddev(cdev_t dev, enum vtype type, struct vnode **vpp)
@@ -1345,6 +1347,7 @@ vfinddev(cdev_t dev, enum vtype type, struct vnode **vpp)
 	SLIST_FOREACH(vp, &dev->si_hlist, v_cdevnext) {
 		if (type == vp->v_type) {
 			*vpp = vp;
+			vref(vp);
 			lwkt_reltoken(&ilock);
 			return (1);
 		}
@@ -1493,7 +1496,7 @@ db_show_locked_vnodes(struct mount *mp, void *data __unused)
 
 	TAILQ_FOREACH(vp, &mp->mnt_nvnodelist, v_nmntvnodes) {
 		if (vn_islocked(vp))
-			vprint((char *)0, vp);
+			vprint(NULL, vp);
 	}
 	return(0);
 }
@@ -1830,7 +1833,7 @@ vfs_setpublicfs(struct mount *mp, struct netexport *nep,
 		MALLOC(nfs_pub.np_index, char *, namelen, M_TEMP,
 		    M_WAITOK);
 		error = copyinstr(argp->ex_indexfile, nfs_pub.np_index,
-		    namelen, (size_t *)0);
+		    namelen, NULL);
 		if (!error) {
 			/*
 			 * Check for illegal filenames.
@@ -2134,3 +2137,13 @@ vop_write_dirent(int *error, struct uio *uio, ino_t d_ino, uint8_t d_type,
 	return(0);
 }
 
+void
+vn_mark_atime(struct vnode *vp, struct thread *td)
+{
+	struct proc *p = td->td_proc;
+	struct ucred *cred = p ? p->p_ucred : proc0.p_ucred;
+
+	if ((vp->v_mount->mnt_flag & (MNT_NOATIME | MNT_RDONLY)) == 0) {
+		VOP_MARKATIME(vp, cred);
+	}
+}

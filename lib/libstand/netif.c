@@ -278,7 +278,7 @@ netif_open(void *machdep_hint)
 	
 	/* find a free socket */
 	for (fd = 0, s = sockets; fd < SOPEN_MAX; fd++, s++)
-		if (s->io_netif == (struct netif *)0)
+		if (s->io_netif == NULL)
 			goto fnd;
 	errno = EMFILE;
 	return (-1);
@@ -308,7 +308,7 @@ netif_close(int sock)
 		return(-1);
 	}
 	netif_detach(sockets[sock].io_netif);
-	sockets[sock].io_netif = (struct netif *)0;
+	sockets[sock].io_netif = NULL;
 
 	return(0);
 }

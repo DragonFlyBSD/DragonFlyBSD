@@ -205,10 +205,10 @@
 /*
  * Mach derived conversion macros
  */
-#define	round_page(x)	((((unsigned long)(x)) + PAGE_MASK) & ~(PAGE_MASK))
-#define	trunc_page(x)	((unsigned long)(x) & ~(PAGE_MASK))
-#define trunc_2mpage(x)	((unsigned long)(x) & ~PDRMASK)
-#define round_2mpage(x)	((((unsigned long)(x)) + PDRMASK) & ~PDRMASK)
+#define	round_page(x)	((((unsigned long)(x)) + PAGE_MASK) & ~(unsigned long)(PAGE_MASK))
+#define	trunc_page(x)	((unsigned long)(x) & ~(unsigned long)(PAGE_MASK))
+#define trunc_2mpage(x)	((unsigned long)(x) & ~(unsigned long)PDRMASK)
+#define round_2mpage(x)	((((unsigned long)(x)) + PDRMASK) & ~(unsigned long)PDRMASK)
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #define	atop(x)		((vm_pindex_t)((x) >> PAGE_SHIFT))

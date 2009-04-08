@@ -49,6 +49,7 @@
 #include <sys/malloc.h>
 #include <sys/mount.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/buf.h>
 #include <sys/mbuf.h>
 #include <sys/resourcevar.h>
@@ -152,7 +153,7 @@ sys_nfssvc(struct nfssvc_args *uap)
 	/*
 	 * Must be super user
 	 */
-	error = suser(td);
+	error = priv_check(td, PRIV_ROOT);
 	if(error)
 		return (error);
 	KKASSERT(td->td_proc);	/* for ucred and p_fd */
@@ -204,7 +205,7 @@ sys_nfssvc(struct nfssvc_args *uap)
 		 * Get the client address for connected sockets.
 		 */
 		if (nfsdarg.name == NULL || nfsdarg.namelen == 0)
-			nam = (struct sockaddr *)0;
+			nam = NULL;
 		else {
 			error = getsockaddr(&nam, nfsdarg.name,
 					    nfsdarg.namelen);
@@ -249,12 +250,12 @@ sys_nfssvc(struct nfssvc_args *uap)
 				   kmalloc(sizeof (struct nfsuid), M_NFSUID,
 					M_WAITOK);
 			    } else
-				nuidp = (struct nfsuid *)0;
+				nuidp = NULL;
 			    if ((slp->ns_flag & SLP_VALID) == 0) {
 				if (nuidp)
 				    kfree((caddr_t)nuidp, M_NFSUID);
 			    } else {
-				if (nuidp == (struct nfsuid *)0) {
+				if (nuidp == NULL) {
 				    nuidp = TAILQ_FIRST(&slp->ns_uidlruhead);
 				    LIST_REMOVE(nuidp, nu_hash);
 				    TAILQ_REMOVE(&slp->ns_uidlruhead, nuidp,
@@ -327,7 +328,7 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 
 	so = (struct socket *)fp->f_data;
 #if 0
-	tslp = (struct nfssvc_sock *)0;
+	tslp = NULL;
 	/*
 	 * Add it to the list, as required.
 	 */
@@ -440,7 +441,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 	cacherep = RC_DOIT;
 	writes_todo = 0;
 #endif
-	if (nfsd == (struct nfsd *)0) {
+	if (nfsd == NULL) {
 		nsd->nsd_nfsd = nfsd = (struct nfsd *)
 			kmalloc(sizeof (struct nfsd), M_NFSD, M_WAITOK|M_ZERO);
 		crit_enter();
@@ -478,7 +479,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 				if (slp == 0)
 					nfsd_head_flag &= ~NFSD_CHECKSLP;
 			}
-			if ((slp = nfsd->nfsd_slp) == (struct nfssvc_sock *)0)
+			if ((slp = nfsd->nfsd_slp) == NULL)
 				continue;
 			if (slp->ns_flag & SLP_VALID) {
 				if (slp->ns_flag & SLP_DISCONN)
@@ -510,7 +511,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 				kfree((caddr_t)nd, M_NFSRVDESC);
 				nd = NULL;
 			}
-			nfsd->nfsd_slp = (struct nfssvc_sock *)0;
+			nfsd->nfsd_slp = NULL;
 			nfsd->nfsd_flag &= ~NFSD_REQINPROG;
 			nfsrv_slpderef(slp);
 			continue;
@@ -602,7 +603,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			}
 			nfsstats.srvrpccnt[nd->nd_procnum]++;
 			nfsrv_updatecache(nd, TRUE, mreq);
-			nd->nd_mrep = (struct mbuf *)0;
+			nd->nd_mrep = NULL;
 		    case RC_REPLY:
 			m = mreq;
 			siz = 0;
@@ -616,7 +617,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			}
 			m = mreq;
 			m->m_pkthdr.len = siz;
-			m->m_pkthdr.rcvif = (struct ifnet *)0;
+			m->m_pkthdr.rcvif = NULL;
 			/*
 			 * For stream protocols, prepend a Sun RPC
 			 * Record Mark.
@@ -690,7 +691,7 @@ done:
 	TAILQ_REMOVE(&nfsd_head, nfsd, nfsd_chain);
 	crit_exit();
 	kfree((caddr_t)nfsd, M_NFSD);
-	nsd->nsd_nfsd = (struct nfsd *)0;
+	nsd->nsd_nfsd = NULL;
 	if (--nfs_numnfsd == 0)
 		nfsrv_init(TRUE);	/* Reinitialize everything */
 	return (error);
@@ -715,7 +716,7 @@ nfsrv_zapsock(struct nfssvc_sock *slp)
 	slp->ns_flag &= ~SLP_ALLFLAGS;
 	fp = slp->ns_fp;
 	if (fp) {
-		slp->ns_fp = (struct file *)0;
+		slp->ns_fp = NULL;
 		so = slp->ns_so;
 		so->so_rcv.ssb_flags &= ~SSB_UPCALL;
 		so->so_upcall = NULL;

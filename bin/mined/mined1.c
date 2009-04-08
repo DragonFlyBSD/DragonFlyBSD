@@ -480,11 +480,11 @@ VI(int u __unused)
   char new_file[LINE_LEN];	/* Buffer to hold new file name */
 
   if (modified == TRUE && ask_save() == ERRORS)
-  	return;
+	return;
   
 /* Get new file name */
   if (get_file("Visit file:", new_file) == ERRORS)
-  	return;
+	return;
 
 /* Free old linked list, initialize global variables and load new file */
   initialize();
@@ -514,17 +514,17 @@ WT(void)
 
 /* Check if file_name is valid and if file can be written */
   if (file_name[0] == '\0' || writable == FALSE) {
-  	if (get_file("Enter file name:", file) != FINE)
-  		return ERRORS;
-  	copy_string(file_name, file);		/* Save file name */
+	if (get_file("Enter file name:", file) != FINE)
+		return ERRORS;
+	copy_string(file_name, file);		/* Save file name */
   }
   if ((fd = creat(file_name, 0644)) < 0) {	/* Empty file */
-  	error("Cannot create ", file_name);
-  	writable = FALSE;
-  	return ERRORS;
+	error("Cannot create ", file_name);
+	writable = FALSE;
+	return ERRORS;
   }
   else
-  	writable = TRUE;
+	writable = TRUE;
 
   clear_buffer();
 
@@ -534,20 +534,20 @@ WT(void)
 		if (line->next == tail && line->text[0] == '\n')
 			continue;
 	}
-  	if (writeline(fd, line->text) == ERRORS) {
-  		count = -1L;
-  		break;
-  	}
-  	count += (long) length_of(line->text);
+	if (writeline(fd, line->text) == ERRORS) {
+		count = -1L;
+		break;
+	}
+	count += (long) length_of(line->text);
   }
 
   if (count > 0L && flush_buffer(fd) == ERRORS)
-  	count = -1L;
+	count = -1L;
 
   close(fd);
 
   if (count == -1L)
-  	return ERRORS;
+	return ERRORS;
 
   modified = FALSE;
   rpipe = FALSE;		/* File name is now assigned */
@@ -579,36 +579,36 @@ SH(int u __unused)
   if ((shell = getenv("SHELL")) == NIL_PTR) shell = "/bin/sh";
 
   switch (pid = fork()) {
-  	case -1:			/* Error */
-  		error("Cannot fork.", NIL_PTR);
-  		return;
-  	case 0:				/* This is the child */
-  		set_cursor(0, ymax);
-  		putchar('\n');
-  		flush();
-  		raw_mode(OFF);
+	case -1:			/* Error */
+		error("Cannot fork.", NIL_PTR);
+		return;
+	case 0:				/* This is the child */
+		set_cursor(0, ymax);
+		putchar('\n');
+		flush();
+		raw_mode(OFF);
 		if (rpipe) {			/* Fix stdin */
 			close (0);
 			if (open("/dev/tty", 0) < 0)
 				exit (126);
 		}
-  		execl(shell, shell, (char *) 0);
-  		exit(127);			/* Exit with 127 */
-  	default :				/* This is the parent */
-  		signal(SIGINT, SIG_IGN);
-  		signal(SIGQUIT, SIG_IGN);
-  		do {
-  			w = wait(&status);
-  		} while (w != -1 && w != pid);
+		execl(shell, shell, NULL);
+		exit(127);			/* Exit with 127 */
+	default :				/* This is the parent */
+		signal(SIGINT, SIG_IGN);
+		signal(SIGQUIT, SIG_IGN);
+		do {
+			w = wait(&status);
+		} while (w != -1 && w != pid);
   }
 
   raw_mode(ON);
   RD(0);
 
   if ((status >> 8) == 127)		/* Child died with 127 */
-  	error("Cannot exec ", shell);
+	error("Cannot exec ", shell);
   else if ((status >> 8) == 126)
-  	error("Cannot open /dev/tty as fd #0", NIL_PTR);
+	error("Cannot open /dev/tty as fd #0", NIL_PTR);
 }
 
 /*
@@ -620,11 +620,11 @@ LINE *
 proceed(LINE *line, int count)
 {
   if (count < 0)
-  	while (count++ < 0 && line != header)
-  		line = line->prev;
+	while (count++ < 0 && line != header)
+		line = line->prev;
   else
-  	while (count-- > 0 && line != tail)
-  		line = line->next;
+	while (count-- > 0 && line != tail)
+		line = line->next;
   return line;
 }
 
@@ -656,19 +656,19 @@ bottom_line(FLAG revfl, const char *s1, const char *s2, char *inbuf,
   set_cursor(0, ymax);
   if (revfl == ON) {		/* Print rev. start sequence */
 #ifdef UNIX
-  	tputs(SO, 0, _putchar);
+	tputs(SO, 0, _putchar);
 #else
-  	string_print(rev_video);
+	string_print(rev_video);
 #endif /* UNIX */
-  	stat_visible = TRUE;
+	stat_visible = TRUE;
   }
   else				/* Used as clear_status() */
-  	stat_visible = FALSE;
+	stat_visible = FALSE;
 
   string_print(buf);
-  
+
   if (inbuf != NIL_PTR)
-  	ret = input(inbuf, statfl);
+	ret = input(inbuf, statfl);
 
   /* Print normal video */
 #ifdef UNIX
@@ -679,12 +679,12 @@ bottom_line(FLAG revfl, const char *s1, const char *s2, char *inbuf,
   string_print(blank_line);	/* Clear the rest of the line */
 #endif /* UNIX */
   if (inbuf != NIL_PTR)
-  	set_cursor(0, ymax);
+	set_cursor(0, ymax);
   else
-  	set_cursor(x, y);	/* Set cursor back to old position */
+	set_cursor(x, y);	/* Set cursor back to old position */
   flush();			/* Perform the actual write */
   if (ret != FINE)
-  	clear_status();
+	clear_status();
   return ret;
 }
 
@@ -700,19 +700,19 @@ count_chars(LINE *line)
 
 /* Find begin of line on screen */
   while (cnt < 0) {
-  	if (is_tab(*textp++))
-  		cnt = tab(cnt);
-  	else
-  		cnt++;
+	if (is_tab(*textp++))
+		cnt = tab(cnt);
+	else
+		cnt++;
   }
 
 /* Count number of chars left */
   cnt = 0;
   while (*textp != '\n') {
-  	if (is_tab(*textp++))
-  		 cnt = tab(cnt);
-  	else
-  		cnt++;
+	if (is_tab(*textp++))
+		 cnt = tab(cnt);
+	else
+		cnt++;
   }
   return cnt;
 }
@@ -737,60 +737,60 @@ move(int new_x, char *new_address, int new_y)
 
 /* Check for illegal values */
   if (new_y < 0 || new_y > last_y)
-  	return;
+	return;
 
 /* Adjust y-coordinate and cur_line */
   if (new_y < y)
-  	while (y != new_y) {
+	while (y != new_y) {
 		if(line->shift_count>0) {
 			line->shift_count=0;
 			move_to(0,y);
 			string_print(blank_line);
 			line_print(line);
 		}
-  		y--;
-  		line = line->prev;
-  	}
+		y--;
+		line = line->prev;
+	}
   else
-  	while (y != new_y) {
+	while (y != new_y) {
 		if(line->shift_count>0) {
 			line->shift_count=0;
 			move_to(0,y);
 			string_print(blank_line);
 			line_print(line);
 		}
-  		y++;
-  		line = line->next;
-  	}
+		y++;
+		line = line->next;
+	}
 
 /* Set or unset relative x-coordinate */
   if (new_address == NIL_PTR) {
-  	new_address = find_address(line, (new_x == x) ? rel_x : new_x , &tx);
+	new_address = find_address(line, (new_x == x) ? rel_x : new_x , &tx);
 	if (new_x != x)
 		rel_x = tx;
-  	new_x = tx;
+	new_x = tx;
   }
   else {
-  	rel_x = new_x = find_x(line, new_address);
+	rel_x = new_x = find_x(line, new_address);
   }
 
 /* Adjust shift_count if new_x lower than 0 or higher than XBREAK */
   if (new_x < 0 || new_x >= XBREAK) {
-  	if (new_x > XBREAK || (new_x == XBREAK && *new_address != '\n'))
-  		shift = (new_x - XBREAK) / SHIFT_SIZE + 1;
-  	else {
-  		shift = new_x / SHIFT_SIZE;
+	if (new_x > XBREAK || (new_x == XBREAK && *new_address != '\n'))
+		shift = (new_x - XBREAK) / SHIFT_SIZE + 1;
+	else {
+		shift = new_x / SHIFT_SIZE;
 		if (new_x % SHIFT_SIZE)
 			shift--;
-  	}
+	}
 
-  	if (shift != 0) {
-  		line->shift_count += shift;
-  		new_x = find_x(line, new_address);
-  		set_cursor(0, y);
-  		line_print(line);
-  		rel_x = new_x;
-  	}
+	if (shift != 0) {
+		line->shift_count += shift;
+		new_x = find_x(line, new_address);
+		set_cursor(0, y);
+		line_print(line);
+		rel_x = new_x;
+	}
   }
 
 /* Assign and position cursor */
@@ -811,10 +811,10 @@ find_x(LINE *line, char *address)
   int nx = get_shift(line->shift_count) * -SHIFT_SIZE;
 
   while (textp != address && *textp != '\0') {
-  	if (is_tab(*textp++)) 	/* Expand tabs */
-  		nx = tab(nx);
-  	else
-  		nx++;
+	if (is_tab(*textp++))	/* Expand tabs */
+		nx = tab(nx);
+	else
+		nx++;
   }
   return nx;
 }
@@ -830,17 +830,17 @@ find_address(LINE *line, int x_coord, int *old_x)
   int tx = get_shift(line->shift_count) * -SHIFT_SIZE;
 
   while (tx < x_coord && *textp != '\n') {
-  	if (is_tab(*textp)) {
-  		if (*old_x - x_coord == 1 && tab(tx) > x_coord)
-  			break;		/* Moving left over tab */
-  		else
-  			tx = tab(tx);
-  	}
-  	else
-  		tx++;
-  	textp++;
+	if (is_tab(*textp)) {
+		if (*old_x - x_coord == 1 && tab(tx) > x_coord)
+			break;		/* Moving left over tab */
+		else
+			tx = tab(tx);
+	}
+	else
+		tx++;
+	textp++;
   }
-  
+
   *old_x = tx;
   return textp;
 }
@@ -855,8 +855,8 @@ length_of(char *string)
   int count = 0;
 
   if (string != NIL_PTR) {
-  	while (*string++ != '\0')
-  		count++;
+	while (*string++ != '\0')
+		count++;
   }
   return count;
 }
@@ -869,7 +869,7 @@ void
 copy_string(char *to, const char *from)
 {
   while ((*to++ = *from++) != 0)
-  	;
+	;
 }
 
 /*
@@ -887,7 +887,7 @@ reset(LINE *head_line, int screen_y)
 /* Search for bot_line (might be last line in file) */
   for (last_y = 0; last_y < nlines - 1 && last_y < screenmax
 						&& line->next != tail; last_y++)
-  	line = line->next;
+	line = line->next;
 
   bot_line = line;
   y = (screen_y > last_y) ? last_y : screen_y;
@@ -935,7 +935,7 @@ getchar(void)
   char c;
 
   if (read(input_fd, &c, 1) != 1 && quit == FALSE)
-  	panic("Can't read one char from fd #0");
+	panic("Can't read one char from fd #0");
 
   return c & 0377;
 #endif /* UNIX */
@@ -954,15 +954,15 @@ display(int x_coord, int y_coord, LINE *line, int count)
 
 /* Find new startline if count is negative */
   if (count < 0) {
-  	line = proceed(line, count);
-  	count = -count;
+	line = proceed(line, count);
+	count = -count;
   }
 
 /* Print the lines */
   while (line != tail && count-- >= 0) {
 	line->shift_count=0;
-  	line_print(line);
-  	line = line->next;
+	line_print(line);
+	line = line->next;
   }
 
 /* Print the blank lines (if any) */
@@ -979,14 +979,14 @@ display(int x_coord, int y_coord, LINE *line, int count)
 }
 
 /*
- * Write_char does a buffered output. 
+ * Write_char does a buffered output.
  */
 int
 write_char(int fd, char c)
 {
   screen [out_count++] = c;
   if (out_count == SCREEN_SIZE)		/* Flush on SCREEN_SIZE chars */
-  	return flush_buffer(fd);
+	return flush_buffer(fd);
   return FINE;
 }
 
@@ -997,8 +997,8 @@ int
 writeline(int fd, const char *text)
 {
   while(*text)
-  	 if (write_char(fd, *text++) == ERRORS)
-  		return ERRORS;
+	 if (write_char(fd, *text++) == ERRORS)
+		return ERRORS;
   return FINE;
 }
 
@@ -1022,29 +1022,29 @@ put_line(LINE *line, int offset, FLAG clear_line)
 
 /* Skip all chars as indicated by the offset and the shift_count field */
   while (count < offset) {
-  	if (is_tab(*textp++))
-  		count = tab(count);
-  	else
-  		count++;
+	if (is_tab(*textp++))
+		count = tab(count);
+	else
+		count++;
   }
 
   while (*textp != '\n' && count < XBREAK) {
-  	if (is_tab(*textp)) {		/* Expand tabs to spaces */
-  		tab_count = tab(count);
-  		while (count < XBREAK && count < tab_count) {
-  			count++;
-  			putchar(' ');
-  		}
-  		textp++;
-  	}
-  	else {
+	if (is_tab(*textp)) {		/* Expand tabs to spaces */
+		tab_count = tab(count);
+		while (count < XBREAK && count < tab_count) {
+			count++;
+			putchar(' ');
+		}
+		textp++;
+	}
+	else {
 		if (*textp >= '\01' && *textp <= '\037') {
 #ifdef UNIX
 			tputs(SO, 0, _putchar);
 #else
 			string_print (rev_video);
 #endif /* UNIX */
-  			putchar(*textp++ + '\100');
+			putchar(*textp++ + '\100');
 #ifdef UNIX
 			tputs(SE, 0, _putchar);
 #else
@@ -1052,23 +1052,23 @@ put_line(LINE *line, int offset, FLAG clear_line)
 #endif /* UNIX */
 		}
 		else
-  			putchar(*textp++);
-  		count++;
-  	}
+			putchar(*textp++);
+		count++;
+	}
   }
 
 /* If line is longer than XBREAK chars, print the shift_mark */
   if (count == XBREAK && *textp != '\n')
-  	putchar(textp[1]=='\n' ? *textp : SHIFT_MARK);
+	putchar(textp[1]=='\n' ? *textp : SHIFT_MARK);
 
 /* Clear the rest of the line is clear_line is TRUE */
   if (clear_line == TRUE) {
 #ifdef	UNIX
-  	tputs(CE, 0, _putchar);
+	tputs(CE, 0, _putchar);
 #else
 	string_print(blank_line);
 #endif /* UNIX */
-  	putchar('\n');
+	putchar('\n');
   }
 }
 
@@ -1079,17 +1079,17 @@ int
 flush_buffer(int fd)
 {
   if (out_count <= 0)		/* There is nothing to flush */
-  	return FINE;
+	return FINE;
 #ifdef UNIX
   if (fd == STD_OUT) {
-  	printf("%.*s", out_count, screen);
-  	_flush();
+	printf("%.*s", out_count, screen);
+	_flush();
   }
   else
 #endif /* UNIX */
   if (write(fd, screen, out_count) != out_count) {
-  	bad_write(fd);
-  	return ERRORS;
+	bad_write(fd);
+	return ERRORS;
   }
   clear_buffer();		/* Empty buffer */
   return FINE;
@@ -1102,12 +1102,12 @@ void
 bad_write(int fd)
 {
   if (fd == STD_OUT)		/* Cannot write to terminal? */
-  	exit(1);
-  
+	exit(1);
+
   clear_buffer();
   build_string(text_buffer, "Command aborted: %s (File incomplete)",
-  		            (errno == ENOSPC || errno == -ENOSPC) ?
-  			    "No space on device" : "Write error");
+		            (errno == ENOSPC || errno == -ENOSPC) ?
+			    "No space on device" : "Write error");
   error(text_buffer, NIL_PTR);
 }
 
@@ -1133,8 +1133,8 @@ abort_mined(void)
 /* Ask for confirmation */
   status_line("Really abort? ", NIL_PTR);
   if (getchar() != 'y') {
-  	clear_status();
-  	return;
+	clear_status();
+	return;
   }
 
 /* Reset terminal */
@@ -1162,8 +1162,8 @@ raw_mode(FLAG state)
   static struct termios new_tty;
 
   if (state == OFF) {
-  	tcsetattr(input_fd, TCSANOW, &old_tty);
-  	return;
+	tcsetattr(input_fd, TCSANOW, &old_tty);
+	return;
   }
 
 /* Save old tty settings */
@@ -1200,9 +1200,9 @@ panic(const char *message)
   write(STD_OUT, text_buffer, length_of(text_buffer));
 
   if (loading == FALSE)
-  	XT(0);			/* Check if file can be saved */
+	XT(0);			/* Check if file can be saved */
   else
-  	unlink(yank_file);
+	unlink(yank_file);
   raw_mode(OFF);
 
 #ifdef UNIX
@@ -1292,7 +1292,7 @@ const char	*normal_video = "\033[m";	/* String for leaving reverse video */
 const char	*blank_line = "\033[K";		/* Clear line to end */
 #endif /* UNIX */
 
-/* 
+/*
  * Yank variables.
  */
 FLAG yank_status = NOT_VALID;		/* Status of yank_file */
@@ -1310,9 +1310,9 @@ initialize(void)
 
 /* Delete the whole list */
   for (line = header->next; line != tail; line = next_line) {
-  	next_line = line->next;
-  	free_space(line->text);
-  	free_space((char*)line);
+	next_line = line->next;
+	free_space(line->text);
+	free_space((char*)line);
   }
 
 /* header and tail should point to itself */
@@ -1331,15 +1331,15 @@ basename(char *path)
   char *last = NIL_PTR;
 
   while (*ptr != '\0') {
-  	if (*ptr == '/')
-  		last = ptr;
-  	ptr++;
+	if (*ptr == '/')
+		last = ptr;
+	ptr++;
   }
   if (last == NIL_PTR)
-  	return path;
+	return path;
   if (*(last + 1) == '\0') {	/* E.g. /usr/tmp/pipo/ */
-  	*last = '\0';
-  	return basename(path);/* Try again */
+	*last = '\0';
+	return basename(path);/* Try again */
   }
   return last + 1;
 }
@@ -1363,7 +1363,7 @@ load_file(const char *file)
   writable = TRUE;		/* Benefit of the doubt */
   if (file == NIL_PTR) {
 	if (rpipe == FALSE)
-  		status_line("No file.", NIL_PTR);
+		status_line("No file.", NIL_PTR);
 	else {
 		fd = 0;
 		file = "standard input";
@@ -1371,33 +1371,33 @@ load_file(const char *file)
 	file_name[0] = '\0';
   }
   else {
-  	copy_string(file_name, file);	/* Save file name */
-  	if (access(file, 0) < 0)	/* Cannot access file. */
-  		status_line("New file ", file);
-  	else if ((fd = open(file, 0)) < 0)
-  		status_line("Cannot open ", file);
-  	else if (access(file, 2) != 0)	/* Set write flag */
-  		writable = FALSE;
+	copy_string(file_name, file);	/* Save file name */
+	if (access(file, 0) < 0)	/* Cannot access file. */
+		status_line("New file ", file);
+	else if ((fd = open(file, 0)) < 0)
+		status_line("Cannot open ", file);
+	else if (access(file, 2) != 0)	/* Set write flag */
+		writable = FALSE;
   }
 
 /* Read file */
   loading = TRUE;				/* Loading file, so set flag */
 
   if (fd >= 0) {
-  	status_line("Reading ", file);
-  	while ((len = get_line(fd, text_buffer)) != ERRORS) {
-  		line = line_insert(line, text_buffer, len);
-  		nr_of_chars += (long) len;
-  	}
-  	if (nlines == 0)		/* The file was empty! */
-  		line = line_insert(line, "\n", 1);
-  	clear_buffer();		/* Clear output buffer */
-  	cur_line = header->next;
-  	fstatus("Read", nr_of_chars);
-  	close(fd);		/* Close file */
+	status_line("Reading ", file);
+	while ((len = get_line(fd, text_buffer)) != ERRORS) {
+		line = line_insert(line, text_buffer, len);
+		nr_of_chars += (long) len;
+	}
+	if (nlines == 0)		/* The file was empty! */
+		line = line_insert(line, "\n", 1);
+	clear_buffer();		/* Clear output buffer */
+	cur_line = header->next;
+	fstatus("Read", nr_of_chars);
+	close(fd);		/* Close file */
   }
   else					/* Just install a "\n" */
-  	line_insert(line, "\n", 1);
+	line_insert(line, "\n", 1);
 
   reset(header->next, 0);		/* Initialize pointers */
 
@@ -1423,27 +1423,27 @@ get_line(int fd, char *buffer)
   char *begin = buffer;
 
   do {
-  	if (cur_pos == last) {
-  		if ((read_chars = read(fd, screen, SCREEN_SIZE)) <= 0)
-  			break;
-  		last = &screen[read_chars];
-  		cur_pos = screen;
-  	}
+	if (cur_pos == last) {
+		if ((read_chars = read(fd, screen, SCREEN_SIZE)) <= 0)
+			break;
+		last = &screen[read_chars];
+		cur_pos = screen;
+	}
 	if (*cur_pos == '\0')
 		*cur_pos = ' ';
   } while ((*buffer++ = *cur_pos++) != '\n');
 
   current = cur_pos;
   if (read_chars <= 0) {
-  	if (buffer == begin)
-  		return ERRORS;
-  	if (*(buffer - 1) != '\n') {
-  		if (loading == TRUE) /* Add '\n' to last line of file */
-  			*buffer++ = '\n';
-  		else {
-  			*buffer = '\0';
-  			return NO_LINE;
-  		}
+	if (buffer == begin)
+		return ERRORS;
+	if (*(buffer - 1) != '\n') {
+		if (loading == TRUE) /* Add '\n' to last line of file */
+			*buffer++ = '\n';
+		else {
+			*buffer = '\0';
+			return NO_LINE;
+		}
 	}
   }
 
@@ -1467,7 +1467,7 @@ install_line(const char *buffer, int length)
   return new_line;
 }
 
-int 
+int
 main(int argc, char *argv[])
 {
 /* mined is the Minix editor. */
@@ -1505,25 +1505,25 @@ main(int argc, char *argv[])
 
 /* Load the file (if any) */
   if (argc < 2)
-  	load_file(NIL_PTR);
+	load_file(NIL_PTR);
   else {
-  	get_file(NIL_PTR, argv[1]);	/* Truncate filename */
-  	load_file(argv[1]);
+	get_file(NIL_PTR, argv[1]);	/* Truncate filename */
+	load_file(argv[1]);
   }
 
  /* Main loop of the editor. */
   for (;;) {
-  	index = getchar();
-  	if (stat_visible == TRUE)
-  		clear_status();
-  	if (quit == TRUE)
-  		abort_mined();
-  	else {			/* Call the function for this key */
-  		(*key_map[index])(index);
-  		flush();       /* Flush output (if any) */
-  		if (quit == TRUE)
-  			quit = FALSE;
-  	}
+	index = getchar();
+	if (stat_visible == TRUE)
+		clear_status();
+	if (quit == TRUE)
+		abort_mined();
+	else {			/* Call the function for this key */
+		(*key_map[index])(index);
+		flush();       /* Flush output (if any) */
+		if (quit == TRUE)
+			quit = FALSE;
+	}
   }
   /* NOTREACHED */
 }
@@ -1574,7 +1574,7 @@ void
 XT(int u __unused)
 {
   if (modified == TRUE && ask_save() == ERRORS)
-  	return;
+	return;
 
   raw_mode(OFF);
   set_cursor(0, ymax);
@@ -1617,8 +1617,8 @@ static void
 	/* F6 = ESC [ 6 ~ */
 	/* F7 = ESC [ 17 ~ */
 	/* F8 = ESC [ 18 ~ */
-	case '1': 
-	 	  switch (ch) {
+	case '1':
+		  switch (ch) {
 		  case '~': return(SF);
 		  case '7': getchar(); return(MA);
 		  case '8': getchar(); return(CTL);
@@ -1696,7 +1696,7 @@ static void
 }
 
 /*
- * ESC() wants a count and a command after that. It repeats the 
+ * ESC() wants a count and a command after that. It repeats the
  * command count times. If a ^\ is given during repeating, stop looping and
  * return to main loop.
  */
@@ -1709,9 +1709,9 @@ ESC(int u __unused)
 
   index = getchar();
   while (index >= '0' && index <= '9' && quit == FALSE) {
-  	count *= 10;
-  	count += index - '0';
-  	index = getchar();
+	count *= 10;
+	count += index - '0';
+	index = getchar();
   }
   if (count == 0) {
 	count = 1;
@@ -1723,19 +1723,19 @@ ESC(int u __unused)
   }
 
   if (func == I) {	/* Function assigned? */
-  	clear_status();
-  	return;
+	clear_status();
+	return;
   }
 
   while (count-- > 0 && quit == FALSE) {
-  	if (stat_visible == TRUE)
-  		clear_status();
-  	(*func)(index);
-  	flush();
+	if (stat_visible == TRUE)
+		clear_status();
+	(*func)(index);
+	flush();
   }
 
   if (quit == TRUE)		/* Abort has been given */
-  	error("Aborted", NIL_PTR);
+	error("Aborted", NIL_PTR);
 }
 
 /*
@@ -1750,17 +1750,17 @@ ask_save(void)
 					     " has been modified. Save? (y/n)");
 
   while((c = getchar()) != 'y' && c != 'n' && quit == FALSE) {
-  	ring_bell();
-  	flush();
+	ring_bell();
+	flush();
   }
 
   clear_status();
 
   if (c == 'y')
-  	return WT();
+	return WT();
 
   if (c == 'n')
-  	return FINE;
+	return FINE;
 
   quit = FALSE;	/* Abort character has been given */
   return ERRORS;
@@ -1776,13 +1776,13 @@ line_number(void)
   int count = 1;
 
   while (line != cur_line) {
-  	count++;
-  	line = line->next;
+	count++;
+	line = line->next;
   }
-  
+
   return count;
 }
-  
+
 /*
  * Display a line telling how many chars and lines the file contains. Also tell
  * whether the file is readonly and/or modified.
@@ -1799,26 +1799,26 @@ file_status(const char *message, long count, char *file, int lines,
   char yank_msg[LINE_LEN];/* Buffer for msg of yank_file */
 
   if (count < 0)		/* Not valid. Count chars in file */
-  	for (line = header->next; line != tail; line = line->next)
-  		count += length_of(line->text);
+	for (line = header->next; line != tail; line = line->next)
+		count += length_of(line->text);
 
   if (yank_status != NOT_VALID)	/* Append buffer info */
-  	build_string(yank_msg, " Buffer: %D char%s.", chars_saved,
+	build_string(yank_msg, " Buffer: %D char%s.", chars_saved,
 						(chars_saved == 1L) ? "" : "s");
   else
-  	yank_msg[0] = '\0';
+	yank_msg[0] = '\0';
 
   build_string(msg, "%s %s%s%s %d line%s %D char%s.%s Line %d", message,
-  		    (rpipe == TRUE && *message != '[') ? "standard input" : basename(file),
-  		    (changed == TRUE) ? "*" : "",
-  		    (writefl == FALSE) ? " (Readonly)" : "",
-  		    lines, (lines == 1) ? "" : "s", 
+		    (rpipe == TRUE && *message != '[') ? "standard input" : basename(file),
+		    (changed == TRUE) ? "*" : "",
+		    (writefl == FALSE) ? " (Readonly)" : "",
+		    lines, (lines == 1) ? "" : "s",
 		    count, (count == 1L) ? "" : "s",
 		    yank_msg, line_number());
 
   if (length_of(msg) + 1 > LINE_LEN - 4) {
-  	msg[LINE_LEN - 4] = SHIFT_MARK;	/* Overflow on status line */
-  	msg[LINE_LEN - 3] = '\0';
+	msg[LINE_LEN - 4] = SHIFT_MARK;	/* Overflow on status line */
+	msg[LINE_LEN - 3] = '\0';
   }
   status_line(msg, NIL_PTR);		/* Print the information */
 }
@@ -1836,27 +1836,27 @@ build_string(char *buf, const char *fmt, ...)
   va_start(argptr, fmt);
 
   while (*fmt) {
-  	if (*fmt == '%') {
-  		fmt++;
-  		switch (*fmt++) {
-  		case 's' :
-  			scanp = va_arg(argptr, char *);
-  			break;
-  		case 'd' :
-  			scanp = num_out((long) va_arg(argptr, int));
-  			break;
-  		case 'D' :
-  			scanp = num_out((long) va_arg(argptr, long));
-  			break;
-  		default :
-  			scanp = "";
-  		}
-  		while ((*buf++ = *scanp++) != 0)
-  			;
-  		buf--;
-  	}
-  	else
-  		*buf++ = *fmt++;
+	if (*fmt == '%') {
+		fmt++;
+		switch (*fmt++) {
+		case 's' :
+			scanp = va_arg(argptr, char *);
+			break;
+		case 'd' :
+			scanp = num_out((long) va_arg(argptr, int));
+			break;
+		case 'D' :
+			scanp = num_out((long) va_arg(argptr, long));
+			break;
+		default :
+			scanp = "";
+		}
+		while ((*buf++ = *scanp++) != 0)
+			;
+		buf--;
+	}
+	else
+		*buf++ = *fmt++;
   }
   va_end(argptr);
   *buf = '\0';
@@ -1876,18 +1876,18 @@ num_out(long number)
   int i;
 
   for (i = 0; i < 10; i++) {
-  	digit = number / pow;		/* Get next digit */
-  	if (digit == 0L && digit_seen == FALSE && i != 9)
-  		num_buf[i] = ' ';
-  	else {
-  		num_buf[i] = '0' + (char) digit;
-  		number -= digit * pow;	/* Erase digit */
-  		digit_seen = TRUE;
-  	}
-  	pow /= 10L;			/* Get next digit */
+	digit = number / pow;		/* Get next digit */
+	if (digit == 0L && digit_seen == FALSE && i != 9)
+		num_buf[i] = ' ';
+	else {
+		num_buf[i] = '0' + (char) digit;
+		number -= digit * pow;	/* Erase digit */
+		digit_seen = TRUE;
+	}
+	pow /= 10L;			/* Get next digit */
   }
   for (i = 0; num_buf[i] == ' '; i++)	/* Skip leading spaces */
-  	;
+	;
   return (&num_buf[i]);
 }
 
@@ -1906,20 +1906,20 @@ get_number(const char *message, int *result)
 
   index = getchar();
   if (quit == FALSE && (index < '0' || index > '9')) {
-  	error("Bad count", NIL_PTR);
-  	return ERRORS;
+	error("Bad count", NIL_PTR);
+	return ERRORS;
   }
 
 /* Convert input to a decimal number */
   while (index >= '0' && index <= '9' && quit == FALSE) {
-  	count *= 10;
-  	count += index - '0';
-  	index = getchar();
+	count *= 10;
+	count += index - '0';
+	index = getchar();
   }
 
   if (quit == TRUE) {
-  	clear_status();
-  	return ERRORS;
+	clear_status();
+	return ERRORS;
   }
 
   *result = count;
@@ -1940,54 +1940,54 @@ input(char *inbuf, FLAG clearfl)
 
   *ptr = '\0';
   while (quit == FALSE) {
-  	flush();
-  	switch (c = getchar()) {
-  		case '\b' :		/* Erase previous char */
-  			if (ptr > inbuf) {
-  				ptr--;
+	flush();
+	switch (c = getchar()) {
+		case '\b' :		/* Erase previous char */
+			if (ptr > inbuf) {
+				ptr--;
 #ifdef UNIX
-  				tputs(SE, 0, _putchar);
+				tputs(SE, 0, _putchar);
 #else
-  				string_print(normal_video);
+				string_print(normal_video);
 #endif /* UNIX */
-  				if (is_tab(*ptr))
-  					string_print(" \b\b\b  \b\b");
-  				else
-  					string_print(" \b\b \b");
+				if (is_tab(*ptr))
+					string_print(" \b\b\b  \b\b");
+				else
+					string_print(" \b\b \b");
 #ifdef UNIX
-  				tputs(SO, 0, _putchar);
+				tputs(SO, 0, _putchar);
 #else
-  				string_print(rev_video);
+				string_print(rev_video);
 #endif /* UNIX */
-  				string_print(" \b");
-  				*ptr = '\0';
-  			}
-  			else
-  				ring_bell();
-  			break;
-  		case '\n' :		/* End of input */
-  			/* If inbuf is empty clear status_line */
-  			return (ptr == inbuf && clearfl == TRUE) ? NO_INPUT :FINE;
-  		default :		/* Only read ASCII chars */
-  			if ((c >= ' ' && c <= '~') || c == '\t') {
-  				*ptr++ = c;
-  				*ptr = '\0';
-  				if (c == '\t')
-  					string_print("^I");
-  				else
-  					putchar(c);
-  				string_print(" \b");
-  			}
-  			else
-  				ring_bell();
-  	}
+				string_print(" \b");
+				*ptr = '\0';
+			}
+			else
+				ring_bell();
+			break;
+		case '\n' :		/* End of input */
+			/* If inbuf is empty clear status_line */
+			return (ptr == inbuf && clearfl == TRUE) ? NO_INPUT :FINE;
+		default :		/* Only read ASCII chars */
+			if ((c >= ' ' && c <= '~') || c == '\t') {
+				*ptr++ = c;
+				*ptr = '\0';
+				if (c == '\t')
+					string_print("^I");
+				else
+					putchar(c);
+				string_print(" \b");
+			}
+			else
+				ring_bell();
+	}
   }
   quit = FALSE;
   return ERRORS;
 }
 
 /*
- * Get_file() reads a filename from the terminal. Filenames longer than 
+ * Get_file() reads a filename from the terminal. Filenames longer than
  * FILE_LENGHT chars are truncated.
  */
 int
@@ -1997,8 +1997,8 @@ get_file(const char *message, char *file)
   int ret = FINE;
 
   if (message == NIL_PTR || (ret = get_string(message, file, TRUE)) == FINE) {
-  	if (length_of((ptr = basename(file))) > NAME_MAX)
-  		ptr[NAME_MAX] = '\0';
+	if (length_of((ptr = basename(file))) > NAME_MAX)
+		ptr[NAME_MAX] = '\0';
   }
   return ret;
 }
@@ -2040,8 +2040,8 @@ get_term(void)
   char entry[1024];
 
   if (tgetent(entry, getenv("TERM")) <= 0) {
-  	printf("Unknown terminal.\n");
-  	exit(1);
+	printf("Unknown terminal.\n");
+	exit(1);
   }
 
   AL = tgetstr("al", &loc);
@@ -2055,8 +2055,8 @@ get_term(void)
   screenmax = ymax - 1;
 
   if (!CE || !SO || !SE || !CL || !AL || !CM) {
-  	printf("Sorry, no mined on this type of terminal\n");
-  	exit(1);
+	printf("Sorry, no mined on this type of terminal\n");
+	exit(1);
   }
 }
 #endif /* UNIX */

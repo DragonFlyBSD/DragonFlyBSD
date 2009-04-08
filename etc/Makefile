@@ -28,10 +28,10 @@ BIN1=	amd.map auth.conf \
 	crontab csh.cshrc csh.login csh.logout \
 	devd.conf devices.conf dhclient.conf dm.conf dntpd.conf \
 	ftpusers group \
-	hosts hosts.allow host.conf hosts.equiv hosts.lpd \
+	hosts hosts.allow hosts.equiv hosts.lpd \
 	inetd.conf login.access login.conf \
-	motd modems networks newsyslog.conf \
-	pf.conf phones printcap profile \
+	motd modems netconfig networks newsyslog.conf \
+	nscd.conf pf.conf phones printcap profile \
 	remote sensorsd.conf \
 	shells sysctl.conf syslog.conf usbd.conf \
 	etc.${MACHINE_ARCH}/ttys
@@ -55,8 +55,6 @@ DIRS+=	secure/usr.bin/openssl
 BIN2=	pccard_ether rc.firewall rc.suspend rc.resume
 
 DEFAULTS= rc.conf make.conf periodic.conf uuids
-PAMD_CONF=	README convert.sh ftpd gdm imap login other pop3 sshd \
-	telnetd xdm xserver
 
 MTREE=	BSD.include.dist BSD.local.dist BSD.root.dist BSD.usr.dist \
 	BSD.var.dist
@@ -175,13 +173,13 @@ upgrade_etc:	preupgrade remove-obsolete-files
 	    ${MTREE} ${DESTDIR}/etc/mtree
 	cd ${UPGRADE_SRCDIR}/bluetooth; ${MAKE} install
 	cd ${UPGRADE_SRCDIR}/dma; ${MAKE} install
+	cd ${UPGRADE_SRCDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 Makefile.usr ${DESTDIR}/usr/Makefile
 .if !exists(${DESTDIR}/etc/pam.d)
 	mkdir -p ${DESTDIR}/etc/pam.d
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${UPGRADE_SRCDIR}/pam.d/README ${DESTDIR}/etc/pam.d
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${UPGRADE_SRCDIR}/pam.d/convert.sh ${DESTDIR}/etc/pam.d
+	cd ${UPGRADE_SRCDIR}/pam.d; ${MAKE} install
 	sh ${DESTDIR}/etc/pam.d/convert.sh ${DESTDIR}/etc/pam.d ${DESTDIR}/etc/pam.conf
 .else
-.for pamconf in README convert.sh
+.for pamconf in README convert.sh atrun cron passwd rsh su system
 .if !exists(${DESTDIR}/etc/pam.d/${pamconf})
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${UPGRADE_SRCDIR}/pam.d/${pamconf} ${DESTDIR}/etc/pam.d
 .endif
@@ -231,9 +229,6 @@ upgrade_etc:	preupgrade remove-obsolete-files
 .endif
 	ldconfig -R
 .if !defined(BINARY_UPGRADE) # binary upgrade just copies these nodes
-.if !defined(NOMAN)
-	cd ${UPGRADE_SRCDIR}/../share/man; ${MAKE} makedb
-.endif
 .if !defined(NO_MAKEDEV)
 	cd ${UPGRADE_SRCDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
 	    MAKEDEV.local MAKEDEV ${DESTDIR}/dev
@@ -242,6 +237,16 @@ upgrade_etc:	preupgrade remove-obsolete-files
 .endif
 .endif
 .endif
+
+# The existence of cleartext_pass_ok means pam config files are out of date.
+	@set - `fgrep cleartext_pass_ok ${DESTDIR}/etc/pam.d/*`; \
+	if [ $$# -gt 0 ] ; \
+	then \
+		echo "It appears your PAM configuration files need to be updated"; \
+		echo "This can be done by manually editing the files or:"; \
+		echo "	cd ${UPGRADE_SRCDIR}/pam.d"; \
+		echo "	make install"; \
+	fi
 
 distribution:
 	cd ${.CURDIR}; \
@@ -257,8 +262,7 @@ distribution:
 	    pwd_mkdb -p -d ${DESTDIR}/etc ${DESTDIR}/etc/master.passwd
 	cd ${.CURDIR}/defaults; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
 	    ${DEFAULTS} ${DESTDIR}/etc/defaults
-	cd ${.CURDIR}/pam.d; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
-	    ${PAMD_CONF} ${DESTDIR}/etc/pam.d
+	cd ${.CURDIR}/pam.d; ${MAKE} install
 	cd ${.CURDIR}/bluetooth; ${MAKE} install
 	cd ${.CURDIR}/dma; ${MAKE} install
 	cd ${.CURDIR}/periodic; ${MAKE} install

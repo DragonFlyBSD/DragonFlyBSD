@@ -285,7 +285,7 @@ static char *malloc_func;
 
 /* Macro for mmap */
 #define MMAP(size) \
-	mmap((void *)0, (size), PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, \
+	mmap(NULL, (size), PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, \
 	    -1, (off_t)0)
 
 /*
@@ -446,8 +446,6 @@ malloc_dump(int fd)
     _write(fd, buf, strlen(buf));
 }
 #endif /* MALLOC_STATS */
-
-extern char	*__progname;
 
 static void
 wrterror(char *p)

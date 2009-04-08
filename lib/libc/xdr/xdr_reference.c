@@ -28,7 +28,8 @@
  *
  * @(#)xdr_reference.c 1.11 87/08/11 SMI
  * @(#)xdr_reference.c	2.1 88/07/29 4.0 RPCSRC
- * $FreeBSD: src/lib/libc/xdr/xdr_reference.c,v 1.8 1999/08/28 00:02:56 peter Exp $
+ * $NetBSD: xdr_reference.c,v 1.13 2000/01/22 22:19:18 mycroft Exp $
+ * $FreeBSD: src/lib/libc/xdr/xdr_reference.c,v 1.12 2004/10/16 06:32:43 obrien Exp $
  * $DragonFly: src/lib/libc/xdr/xdr_reference.c,v 1.4 2005/12/05 00:47:57 swildner Exp $
  */
 
@@ -41,13 +42,15 @@
  * "pointers".  See xdr.h for more info on the interface to xdr.
  */
 
+#include "namespace.h"
+#include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include <rpc/types.h>
 #include <rpc/xdr.h>
-
-#define LASTUNSIGNED ((u_int) 0-1)
+#include "libc_private.h"
 
 /*
  * XDR an indirect pointer
@@ -77,17 +80,17 @@ xdr_reference(XDR *xdrs, caddr_t *pp, u_int size, xdrproc_t proc)
 		case XDR_DECODE:
 			*pp = loc = (caddr_t) mem_alloc(size);
 			if (loc == NULL) {
-				fprintf(stderr,
-				    "xdr_reference: out of memory\n");
+				warnx("xdr_reference: out of memory");
 				return (FALSE);
 			}
-			memset(loc, 0, (int)size);
+			memset(loc, 0, size);
 			break;
+
 		case XDR_ENCODE:
 			break;
-	}
+		}
 
-	stat = (*proc)(xdrs, loc, LASTUNSIGNED);
+	stat = (*proc)(xdrs, loc);
 
 	if (xdrs->x_op == XDR_FREE) {
 		mem_free(loc, size);

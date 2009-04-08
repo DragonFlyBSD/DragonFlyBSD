@@ -122,7 +122,7 @@ scsp_hello_timeout(Harp_timer *stp)
 	/*
 	 * Call the Hello FSM
 	 */
-	scsp_hfsm(dcsp, SCSP_HFSM_HELLO_T, (Scsp_msg *)0);
+	scsp_hfsm(dcsp, SCSP_HFSM_HELLO_T, NULL);
 
 	return;
 }
@@ -156,7 +156,7 @@ scsp_hello_rcv_timeout(Harp_timer *stp)
 	/*
 	 * Call the Hello FSM
 	 */
-	scsp_hfsm(dcsp, SCSP_HFSM_RCV_T, (void *)0);
+	scsp_hfsm(dcsp, SCSP_HFSM_RCV_T, NULL);
 
 	return;
 }
@@ -186,7 +186,7 @@ scsp_ca_retran_timeout(Harp_timer *stp)
 	/*
 	 * Call the CA FSM
 	 */
-	scsp_cafsm(dcsp, SCSP_CAFSM_CA_T, (void *)0);
+	scsp_cafsm(dcsp, SCSP_CAFSM_CA_T, NULL);
 
 	return;
 }
@@ -216,7 +216,7 @@ scsp_csus_retran_timeout(Harp_timer *stp)
 	/*
 	 * Call the CA FSM
 	 */
-	scsp_cafsm(dcsp, SCSP_CAFSM_CSUS_T, (void *)0);
+	scsp_cafsm(dcsp, SCSP_CAFSM_CSUS_T, NULL);
 
 	return;
 }

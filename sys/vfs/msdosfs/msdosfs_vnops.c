@@ -56,6 +56,7 @@
 #include <sys/stat.h>
 #include <sys/buf.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/namei.h>
 #include <sys/mount.h>
 #include <sys/unistd.h>
@@ -279,6 +280,8 @@ msdosfs_access(struct vop_access_args *ap)
 
 	/* Otherwise, check the owner. */
 	if (cred->cr_uid == pmp->pm_uid) {
+		if (mode & VOWN)
+			return (0);
 		if (mode & VEXEC)
 			mask |= S_IXUSR;
 		if (mode & VREAD)
@@ -415,7 +418,7 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != pmp->pm_uid &&
-		    (error = suser_cred(cred, PRISON_ROOT)))
+		    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)))
 			return (error);
 		/*
 		 * We are very inconsistent about handling unsupported
@@ -456,7 +459,7 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 			gid = pmp->pm_gid;
 		if ((cred->cr_uid != pmp->pm_uid || uid != pmp->pm_uid ||
 		    (gid != pmp->pm_gid && !groupmember(gid, cred))) &&
-		    (error = suser_cred(cred, PRISON_ROOT)))
+		    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)))
 			return error;
 		if (uid != pmp->pm_uid || gid != pmp->pm_gid)
 			return EINVAL;
@@ -488,7 +491,7 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != pmp->pm_uid &&
-		    (error = suser_cred(cred, PRISON_ROOT)) &&
+		    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
 		    (error = VOP_ACCESS(ap->a_vp, VWRITE, cred))))
 			return (error);
@@ -517,7 +520,7 @@ msdosfs_setattr(struct vop_setattr_args *ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != pmp->pm_uid &&
-		    (error = suser_cred(cred, PRISON_ROOT)))
+		    (error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)))
 			return (error);
 		if (vp->v_type != VDIR) {
 			/* We ignore the read and execute bits. */
@@ -987,13 +990,9 @@ msdosfs_rename(struct vop_old_rename_args *ap)
 	int error;
 	u_long cn;
 	daddr_t bn;
-	struct denode *fddep;	/* from file's parent directory	 */
 	struct msdosfsmount *pmp;
 	struct direntry *dotdotp;
 	struct buf *bp;
-
-	fddep = VTODE(ap->a_fdvp);
-	pmp = fddep->de_pmp;
 
 	pmp = VFSTOMSDOSFS(fdvp->v_mount);
 
@@ -1247,7 +1246,7 @@ abortit:
 		bcopy(toname, ip->de_Name, 11);	/* update denode */
 		dp->de_fndoffset = to_diroffset;
 		dp->de_fndcnt = to_count;
-		error = createde(ip, dp, (struct denode **)0, tcnp);
+		error = createde(ip, dp, NULL, tcnp);
 		if (error) {
 			bcopy(oldname, ip->de_Name, 11);
 			goto done;

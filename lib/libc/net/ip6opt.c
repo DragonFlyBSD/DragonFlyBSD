@@ -1,3 +1,5 @@
+/*	$KAME: ip6opt.c,v 1.13 2003/06/06 10:08:20 suz Exp $	*/
+
 /*
  * Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
  * All rights reserved.
@@ -26,7 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/net/ip6opt.c,v 1.1 1999/12/16 18:32:01 shin Exp $
+ * $FreeBSD: src/lib/libc/net/ip6opt.c,v 1.8 2005/07/19 18:13:58 ume Exp $
  * $DragonFly: src/lib/libc/net/ip6opt.c,v 1.6 2007/05/29 10:58:11 hasso Exp $
  */
 
@@ -120,6 +122,7 @@ inet6_option_append(struct cmsghdr *cmsg, const u_int8_t *typep, int multx,
 	padlen = (((off % multx) + (multx - 1)) & ~(multx - 1)) -
 		(off % multx);
 	padlen += plusy;
+	padlen %= multx;	/* keep the pad as short as possible */
 	/* insert padding */
 	inet6_insert_padopt(bp, padlen);
 	cmsg->cmsg_len += padlen;
@@ -189,6 +192,7 @@ inet6_option_alloc(struct cmsghdr *cmsg, int datalen, int multx, int plusy)
 	padlen = (((off % multx) + (multx - 1)) & ~(multx - 1)) -
 		(off % multx);
 	padlen += plusy;
+	padlen %= multx;	/* keep the pad as short as possible */
 	/* insert padding */
 	inet6_insert_padopt(bp, padlen);
 	cmsg->cmsg_len += padlen;
@@ -296,7 +300,7 @@ inet6_option_find(const struct cmsghdr *cmsg, u_int8_t **tptrp, int type)
 	ip6e = (struct ip6_ext *)CMSG_DATA(cmsg);
 	hdrlen = (ip6e->ip6e_len + 1) << 3;
 	if (cmsg->cmsg_len < CMSG_SPACE(hdrlen))
-		return(-1);	
+		return(-1);
 
 	/*
 	 * If the caller does not specify the starting point,
@@ -354,16 +358,16 @@ static void
 inet6_insert_padopt(u_char *p, int len)
 {
 	switch(len) {
-	 case 0:
-		 return;
-	 case 1:
-		 p[0] = IP6OPT_PAD1;
-		 return;
-	 default:
-		 p[0] = IP6OPT_PADN;
-		 p[1] = len - 2; 
-		 memset(&p[2], 0, len - 2);
-		 return;
+	case 0:
+		return;
+	case 1:
+		p[0] = IP6OPT_PAD1;
+		return;
+	default:
+		p[0] = IP6OPT_PADN;
+		p[1] = len - 2;
+		memset(&p[2], 0, len - 2);
+		return;
 	}
 }
 
@@ -378,15 +382,15 @@ inet6_opt_init(void *extbuf, socklen_t extlen)
 	struct ip6_ext *ext = (struct ip6_ext *)extbuf;
 
 	if (extlen < 0 || (extlen % 8))
-		return (-1);
+		return(-1);
 
 	if (ext) {
 		if (extlen == 0)
-			return (-1);
+			return(-1);
 		ext->ip6e_len = (extlen >> 3) - 1;
 	}
 
-	return (2);		/* sizeof the next and the length fields */
+	return(2);		/* sizeof the next and the length fields */
 }
 
 int
@@ -399,28 +403,24 @@ inet6_opt_append(void *extbuf, socklen_t extlen, int offset, u_int8_t type,
 	 * The option type must have a value from 2 to 255, inclusive.
 	 * (0 and 1 are reserved for the Pad1 and PadN options, respectively.)
 	 */
-#if 0 /* always false */
-	if (type < 2 || type > 255)
-#else
 	if (type < 2)
-#endif
-		return (-1);
+		return(-1);
 
 	/*
 	 * The option data length must have a value between 0 and 255,
 	 * inclusive, and is the length of the option data that follows.
 	 */
 	if (len < 0 || len > 255)
-		return (-1);
+		return(-1);
 
 	/*
 	 * The align parameter must have a value of 1, 2, 4, or 8.
 	 * The align value can not exceed the value of len.
 	 */
 	if (align != 1 && align != 2 && align != 4 && align != 8)
-		return (-1);
+		return(-1);
 	if (align > len)
-		return (-1);
+		return(-1);
 
 	/* Calculate the padding length. */
 	currentlen += 2 + len;	/* 2 means "type + len" */
@@ -431,7 +431,7 @@ inet6_opt_append(void *extbuf, socklen_t extlen, int offset, u_int8_t type,
 	currentlen += padlen;
 	if (extlen &&		/* XXX: right? */
 	    currentlen > extlen)
-		return (-1);
+		return(-1);
 
 	if (extbuf) {
 		u_int8_t *optp = (u_int8_t *)extbuf + offset;
@@ -454,7 +454,7 @@ inet6_opt_append(void *extbuf, socklen_t extlen, int offset, u_int8_t type,
 		*databufp = optp;
 	}
 
-	return (currentlen);
+	return(currentlen);
 }
 
 int
@@ -467,7 +467,7 @@ inet6_opt_finish(void *extbuf, socklen_t extlen, int offset)
 		int padlen = updatelen - offset;
 
 		if (updatelen > extlen)
-			return (-1);
+			return(-1);
 
 		padp = (u_int8_t *)extbuf + offset;
 		if (padlen == 1)
@@ -479,7 +479,7 @@ inet6_opt_finish(void *extbuf, socklen_t extlen, int offset)
 		}
 	}
 
-	return (updatelen);
+	return(updatelen);
 }
 
 int
@@ -487,7 +487,7 @@ inet6_opt_set_val(void *databuf, int offset, void *val, socklen_t vallen)
 {
 
 	memcpy((u_int8_t *)databuf + offset, val, vallen);
-	return (offset + vallen);
+	return(offset + vallen);
 }
 
 int
@@ -499,7 +499,7 @@ inet6_opt_next(void *extbuf, socklen_t extlen, int offset, u_int8_t *typep,
 
 	/* Validate extlen. XXX: is the variable really necessary?? */
 	if (extlen == 0 || (extlen % 8))
-		return (-1);
+		return(-1);
 	lim = (u_int8_t *)extbuf + extlen;
 
 	/*
@@ -514,7 +514,7 @@ inet6_opt_next(void *extbuf, socklen_t extlen, int offset, u_int8_t *typep,
 
 	/* Find the next option skipping any padding options. */
 	while (optp < lim) {
-		switch(*optp) {
+		switch (*optp) {
 		case IP6OPT_PAD1:
 			optp++;
 			break;
@@ -529,13 +529,13 @@ inet6_opt_next(void *extbuf, socklen_t extlen, int offset, u_int8_t *typep,
 			*typep = *optp;
 			*lenp = optlen - 2;
 			*databufp = optp + 2;
-			return (optp + optlen - (u_int8_t *)extbuf);
+			return(optp + optlen - (u_int8_t *)extbuf);
 		}
 	}
 
   optend:
 	*databufp = NULL; /* for safety */
-	return (-1);
+	return(-1);
 }
 
 int
@@ -547,7 +547,7 @@ inet6_opt_find(void *extbuf, socklen_t extlen, int offset, u_int8_t type,
 
 	/* Validate extlen. XXX: is the variable really necessary?? */
 	if (extlen == 0 || (extlen % 8))
-		return (-1);
+		return(-1);
 	lim = (u_int8_t *)extbuf + extlen;
 
 	/*
@@ -568,7 +568,7 @@ inet6_opt_find(void *extbuf, socklen_t extlen, int offset, u_int8_t type,
 		if (*optp == type) { /* found */
 			*lenp = optlen - 2;
 			*databufp = optp + 2;
-			return (optp + optlen - (u_int8_t *)extbuf);
+			return(optp + optlen - (u_int8_t *)extbuf);
 		}
 
 		optp += optlen;
@@ -576,7 +576,7 @@ inet6_opt_find(void *extbuf, socklen_t extlen, int offset, u_int8_t type,
 
   optend:
 	*databufp = NULL; /* for safety */
-	return (-1);
+	return(-1);
 }
 
 int
@@ -586,5 +586,5 @@ inet6_opt_get_val(void *databuf, int offset, void *val, socklen_t vallen)
 	/* we can't assume alignment here */
 	memcpy(val, (u_int8_t *)databuf + offset, vallen);
 
-	return (offset + vallen);
+	return(offset + vallen);
 }

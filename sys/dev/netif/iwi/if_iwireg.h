@@ -132,6 +132,20 @@
 #define IWI_RATE_OFDM48	1
 #define IWI_RATE_OFDM54	3
 
+/*
+ * New version firmware images contain boot, ucode and firmware
+ * all in one chunk. The header at the beginning gives the version
+ * and the size of each (sub)image, in le32 format.
+ */
+struct iwi_firmware_hdr {
+	uint16_t	reserved;
+	uint8_t		vermaj;	/* major version */
+	uint8_t		vermin;	/* minor version */
+	uint32_t	bsize;	/* size of boot image */
+	uint32_t	usize;	/* size of ucode image */
+	uint32_t	fsize;	/* size of firmware image */
+} __packed;
+
 struct iwi_hdr {
 	uint8_t	type;
 #define IWI_HDR_TYPE_DATA	0

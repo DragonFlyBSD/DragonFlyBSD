@@ -268,7 +268,7 @@ recheck:
 	/*
 	 * Post any pending signals
 	 */
-	if ((sig = CURSIG(lp)) != 0) {
+	if ((sig = CURSIG_TRACE(lp)) != 0) {
 		get_mplock();
 		postsig(sig);
 		rel_mplock();
@@ -307,7 +307,7 @@ static __inline void
 userexit(struct lwp *lp)
 {
 	struct thread *td = lp->lwp_thread;
-	globaldata_t gd = td->td_gd;
+	/* globaldata_t gd = td->td_gd; */
 
 	/*
 	 * Handle stop requests at kernel priority.  Any requests queued

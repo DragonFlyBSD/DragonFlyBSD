@@ -2,7 +2,6 @@
 
 KMOD=	ubt
 SRCS=	ubt.c opt_usb.h bus_if.h device_if.h
-CFALGS+ = -I${WRKSRC}
 NOMAN=
 KMODDEPS = netbt
 

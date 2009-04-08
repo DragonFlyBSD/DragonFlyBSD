@@ -53,7 +53,7 @@ outrumor(void)
 int rn,i;
 FILE *rumf;
 	if(n_rumors <= n_used_rumors ||
-	  (rumf = fopen(RUMORFILE, "r")) == (FILE *) 0) return;
+	  (rumf = fopen(RUMORFILE, "r")) == NULL) return;
 	if(n_used_rumors < 0) init_rumors(rumf);
 	if(!n_rumors) goto none;
 	rn = rn2(n_rumors - n_used_rumors);

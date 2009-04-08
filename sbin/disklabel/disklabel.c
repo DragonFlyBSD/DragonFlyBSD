@@ -488,7 +488,7 @@ l_perror(const char *s)
 		break;
 
 	default:
-		warn((char *)NULL);
+		warn(NULL);
 		break;
 	}
 }
@@ -815,9 +815,9 @@ editit(void)
 		sigsetmask(omask);
 		setgid(getgid());
 		setuid(getuid());
-		if ((ed = getenv("EDITOR")) == (char *)0)
+		if ((ed = getenv("EDITOR")) == NULL)
 			ed = DEFEDITOR;
-		execlp(ed, ed, tmpfil, (char *)0);
+		execlp(ed, ed, tmpfil, NULL);
 		err(1, "%s", ed);
 	}
 	while ((xpid = wait(&status)) >= 0)
@@ -1217,7 +1217,8 @@ checklabel(struct disklabel32 *lp)
 	struct partition32 *pp;
 	int i, errors = 0;
 	char part;
-	u_long total_size, total_percent, current_offset;
+	u_long base_offset, needed, total_size, total_percent, current_offset;
+	long free_space;
 	int seen_default_offset;
 	int hog_part;
 	int j;
@@ -1328,9 +1329,25 @@ checklabel(struct disklabel32 *lp)
 			}
 		}
 	}
+
+	/* Find out the total free space, excluding the boot block area. */
+	base_offset = BBSIZE / lp->d_secsize;
+	free_space = 0;
+	for (i = 0; i < lp->d_npartitions; i++) {
+		pp = &lp->d_partitions[i];
+		if (!part_set[i] || i == RAW_PART ||
+		    part_size_type[i] == '%' || part_size_type[i] == '*')
+			continue;
+		if (pp->p_offset > base_offset)
+			free_space += pp->p_offset - base_offset;
+		if (pp->p_offset + pp->p_size > base_offset)
+			base_offset = pp->p_offset + pp->p_size;
+	}
+	if (base_offset < lp->d_secperunit)
+		free_space += lp->d_secperunit - base_offset;
+
 	/* handle % partitions - note %'s don't need to add up to 100! */
 	if (total_percent != 0) {
-		long free_space = lp->d_secperunit - total_size;
 		if (total_percent > 100) {
 			fprintf(stderr,"total percentage %lu is greater than 100\n",
 			    total_percent);
@@ -1359,12 +1376,52 @@ checklabel(struct disklabel32 *lp)
 	}
 	/* give anything remaining to the hog partition */
 	if (hog_part != -1) {
-		lp->d_partitions[hog_part].p_size = lp->d_secperunit - total_size;
-		total_size = lp->d_secperunit;
+		/*
+		 * Find the range of offsets usable by '*' partitions around
+		 * the hog partition and how much space they need.
+		 */
+		needed = 0;
+		base_offset = BBSIZE / lp->d_secsize;
+		for (i = hog_part - 1; i >= 0; i--) {
+			pp = &lp->d_partitions[i];
+			if (!part_set[i] || i == RAW_PART)
+				continue;
+			if (part_offset_type[i] == '*') {
+				needed += pp->p_size;
+				continue;
+			}
+			base_offset = pp->p_offset + pp->p_size;
+			break;
+		}
+		current_offset = lp->d_secperunit;
+		for (i = lp->d_npartitions - 1; i > hog_part; i--) {
+			pp = &lp->d_partitions[i];
+			if (!part_set[i] || i == RAW_PART)
+				continue;
+			if (part_offset_type[i] == '*') {
+				needed += pp->p_size;
+				continue;
+			}
+			current_offset = pp->p_offset;
+		}
+
+		if (current_offset - base_offset <= needed) {
+			fprintf(stderr, "Cannot find space for partition %c\n",
+			    hog_part + 'a');
+			fprintf(stderr,
+			    "Need more than %lu sectors between %lu and %lu\n",
+			    needed, base_offset, current_offset);
+			errors++;
+			lp->d_partitions[hog_part].p_size = 0;
+		} else {
+			lp->d_partitions[hog_part].p_size = current_offset -
+			    base_offset - needed;
+			total_size += lp->d_partitions[hog_part].p_size;
+		}
 	}
 
 	/* Now set the offsets for each partition */
-	current_offset = 0; /* in sectors */
+	current_offset = BBSIZE / lp->d_secsize; /* in sectors */
 	seen_default_offset = 0;
 	for (i = 0; i < lp->d_npartitions; i++) {
 		part = 'a' + i;
@@ -1662,7 +1719,7 @@ fixlabel(int f, struct disklabel32 *lp, int writeadj)
 	u_int64_t offset;
 	int part;
 	int rev;
-	int rev_len = sizeof(rev);
+	size_t rev_len = sizeof(rev);
 
 	if (sysctlbyname("kern.osrevision", &rev, &rev_len, NULL, 0) < 0) {
 		errx(1, "Cannot use raw mode on non-DragonFly systems\n");

@@ -2,7 +2,6 @@
 
 LIB=	pam_krb5
 SRCS=	pam_krb5.c
-WARNS?=	6
 MAN=	pam_krb5.8
 
 DPADD=	${LIBKRB5} ${LIBGSSAPI} ${LIBASN1} ${LIBCRYPTO} ${LIBCRYPT} \

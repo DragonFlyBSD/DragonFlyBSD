@@ -95,7 +95,7 @@ print_btree_node(hammer_off_t node_offset, int depth, int spike,
 		badc = 'B';
 
 	if (spike == 0) {
-		printf("%c   NODE %016llx cnt=%d p=%016llx "
+		printf("%c   NODE %016llx cnt=%02d p=%016llx "
 		       "type=%c depth=%d",
 		       badc,
 		       node_offset, node->count, node->parent,
@@ -185,7 +185,10 @@ print_btree_elm(hammer_btree_elm_t elm, int i, u_int8_t type,
 	case HAMMER_BTREE_TYPE_LEAF:
 		switch(elm->base.btype) {
 		case HAMMER_BTREE_TYPE_RECORD:
-			printf("\n%s\t         ", check_data_crc(elm));
+			if (QuietOpt < 3)
+				printf("\n%s\t         ", check_data_crc(elm));
+			else
+				printf("\n\t         ");
 			printf("dataoff=%016llx/%d",
 				elm->leaf.data_offset, elm->leaf.data_len);
 			if (QuietOpt < 3) {

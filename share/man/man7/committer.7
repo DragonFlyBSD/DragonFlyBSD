@@ -32,20 +32,32 @@
 .\" 
 .\" $DragonFly: src/share/man/man7/committer.7,v 1.11 2008/05/02 02:05:06 swildner Exp $
 .\" 
-.Dd December 3, 2008
+.Dd March 26, 2009
 .Dt COMMITTER 7
 .Os
 .Sh NAME
 .Nm committer
-.Nd rules for DragonFly committers
-.Sh GIT REPOSITORY ON YOUR LOCAL MACHINE
+.Nd instructions and rules for DragonFly committers
+.Sh SETTING UP GIT
 See
 .Xr development 7
-how to obtain a fresh copy of the
+on how to pull a fresh copy of the
 .Dx
-git repository on your machine.
-Note that all developers have to pull/push through
+.Xr git 1
+repository.
+.Pp
+Committers have to push to
+.Pa crater.dragonflybsd.org
+via
 .Xr ssh 1 .
+If the system is set up to pull from a
+.Dx
+mirror, a remote entry will have to be set up:
+.Bd -literal -offset indent
+git remote add crater \\
+	ssh://crater.dragonflybsd.org/repository/git/dragonfly.git
+.Ed
+.Pp
 Your
 .Pa ~/.gitconfig
 should contain at least:
@@ -74,7 +86,7 @@ key to give you access.
 .Pp
 Your
 .Pa crater
-account is set up for git repository only.
+account is set up for repository access only.
 It can only operate as a git slave and cannot be logged into.
 That is,
 .Pa crater.dragonflybsd.org
@@ -133,27 +145,32 @@ git push crater
 .Sh COMMITTING REAL WORK
 Make modifications as needed.
 For example, edit files.
-If adding new files make git aware of them like this.
 Files and directories can just be added locally.
-These operations do not actually affect the master repository.
-Instead they are stored in your local copy of the repository and then
-synchronized to the repository when you
+They are stored in your local copy of the repository and then
+synchronized with
+.Pa crater Ap s
+repository when you
 .Nm git Cm push .
+When adding new files make git aware of them like this:
 .Bd -literal -offset indent
 git add filename
 git commit filename
 .Ed
 .Pp
-To actually push your changes to the the repository on
+To actually push your changes to the repository on
 .Pa crater ,
 use:
 .Bd -literal -offset indent
 git push crater
 .Ed
 .Pp
-See
-.Xr development 7
-how to commit to a specific branch (to merge bug fixes, for example).
+To merge bug fixes to other branches (MFC), use
+.Nm git Cm cherry-pick :
+.Bd -literal -offset indent
+git checkout -b rel2_2 crater/DragonFly_RELEASE_2_2
+git cherry-pick <commit>
+git push crater rel2_2:DragonFly_RELEASE_2_2
+.Ed
 .Pp
 Do not set the default remote tag to
 .Pa origin .
@@ -168,10 +185,17 @@ As many
 tools display the first line of a commit message as a summary,
 structure your commit messages like this, if possible:
 .Bd -literal -offset indent
-One line summary of your change.
+One line summary of your change (less than 50 characters).
 
 Maybe more text here describing your changes in detail (including
-issue tracker id's etc).
+issue tracker IDs etc).
+.Ed
+.Pp
+To customize the commit template for
+.Dx ,
+use:
+.Bd -literal -offset indent
+git config --add commit.template /usr/src/tools/gittemplate
 .Ed
 .Sh DISCUSSING COMMITTABLE WORK BEFOREHAND
 Discussion prior to committing usually occurs on the
@@ -180,7 +204,7 @@ Discussion prior to committing usually occurs on the
 or
 .Pa bugs@
 mailing lists and depends on the work involved.
-Simple and obvious work such as documentation edits or additions,
+Simple and obvious work such as documentation edits or additions
 doesn't really need a heads up.
 .Pp
 Simple and obvious bug fixes don't need a heads up either, other than to

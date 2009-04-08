@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -33,14 +29,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/gen/popen.c,v 1.14 2000/01/27 23:06:19 jasone Exp $
- * $DragonFly: src/lib/libc/gen/popen.c,v 1.6 2005/11/13 00:07:42 swildner Exp $
- *
  * @(#)popen.c	8.3 (Berkeley) 5/3/95
+ * $FreeBSD: src/lib/libc/gen/popen.c,v 1.20 2008/07/29 16:29:59 ed Exp $
+ * $DragonFly: src/lib/libc/gen/popen.3,v 1.4 2006/04/08 08:17:06 swildner Exp $
  */
 
 #include "namespace.h"
 #include <sys/param.h>
+#include <sys/queue.h>
 #include <sys/wait.h>
 
 #include <signal.h>
@@ -50,15 +46,22 @@
 #include <stdlib.h>
 #include <string.h>
 #include <paths.h>
+#include <pthread.h>
 #include "un-namespace.h"
+#include "libc_private.h"
 
 extern char **environ;
 
-static struct pid {
-	struct pid *next;
+struct pid {
+	SLIST_ENTRY(pid) next;
 	FILE *fp;
 	pid_t pid;
-} *pidlist;
+};
+static SLIST_HEAD(, pid) pidlist = SLIST_HEAD_INITIALIZER(pidlist);
+static pthread_mutex_t pidlist_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+#define	THREAD_LOCK()	if (__isthreaded) _pthread_mutex_lock(&pidlist_mutex)
+#define	THREAD_UNLOCK()	if (__isthreaded) _pthread_mutex_unlock(&pidlist_mutex)
 
 FILE *
 popen(const char *command, const char *type)
@@ -95,8 +98,10 @@ popen(const char *command, const char *type)
 	argv[2] = command;
 	argv[3] = NULL;
 
-	switch (pid = fork()) {
+	THREAD_LOCK();
+	switch (pid = vfork()) {
 	case -1:			/* Error. */
+		THREAD_UNLOCK();
 		_close(pdes[0]);
 		_close(pdes[1]);
 		free(cur);
@@ -127,13 +132,13 @@ popen(const char *command, const char *type)
 			}
 			_close(pdes[1]);
 		}
-		for (p = pidlist; p; p = p->next) {
+		SLIST_FOREACH(p, &pidlist, next)
 			_close(fileno(p->fp));
-		}
 		_execve(_PATH_BSHELL, __DECONST(char * const *, argv), environ);
 		_exit(127);
 		/* NOTREACHED */
 	}
+	THREAD_UNLOCK();
 
 	/* Parent; assume fdopen can't fail. */
 	if (*type == 'r') {
@@ -146,9 +151,10 @@ popen(const char *command, const char *type)
 
 	/* Link into list of file descriptors. */
 	cur->fp = iop;
-	cur->pid =  pid;
-	cur->next = pidlist;
-	pidlist = cur;
+	cur->pid = pid;
+	THREAD_LOCK();
+	SLIST_INSERT_HEAD(&pidlist, cur, next);
+	THREAD_UNLOCK();
 
 	return (iop);
 }
@@ -161,28 +167,35 @@ popen(const char *command, const char *type)
 int
 pclose(FILE *iop)
 {
-	struct pid *cur, *last;
+	struct pid *cur, *last = NULL;
 	int pstat;
 	pid_t pid;
 
-	/* Find the appropriate file pointer. */
-	for (last = NULL, cur = pidlist; cur; last = cur, cur = cur->next)
+	/*
+	 * Find the appropriate file pointer and remove it from the list.
+	 */
+	THREAD_LOCK();
+	SLIST_FOREACH(cur, &pidlist, next) {
 		if (cur->fp == iop)
 			break;
-	if (cur == NULL)
+		last = cur;
+	}
+	if (cur == NULL) {
+		THREAD_UNLOCK();
 		return (-1);
+	}
+	if (last == NULL)
+		SLIST_REMOVE_HEAD(&pidlist, next);
+	else
+		SLIST_REMOVE_NEXT(&pidlist, last, next);
+	THREAD_UNLOCK();
 
 	fclose(iop);
 
 	do {
-		pid = _wait4(cur->pid, &pstat, 0, (struct rusage *)0);
+		pid = _wait4(cur->pid, &pstat, 0, NULL);
 	} while (pid == -1 && errno == EINTR);
 
-	/* Remove the entry from the linked list. */
-	if (last == NULL)
-		pidlist = cur->next;
-	else
-		last->next = cur->next;
 	free(cur);
 
 	return (pid == -1 ? -1 : pstat);

@@ -285,7 +285,7 @@ fork1(struct lwp *lp1, int flags, struct proc **procp)
 	pgrp = NULL;
 	if ((flags & RFPGLOCK) && (pgrp = p1->p_pgrp) != NULL) {
 		lockmgr(&pgrp->pg_lock, LK_SHARED);
-		if (CURSIGNB(lp1)) {
+		if (CURSIG_NOBLOCK(lp1)) {
 			error = ERESTART;
 			goto done;
 		}

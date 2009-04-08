@@ -541,6 +541,61 @@ slices_free(struct slice *head)
 	}
 }
 
+struct subpartition *
+subpartition_new_hammer(struct slice *s, const char *mountpoint, long capacity)
+{
+	struct subpartition *sp;
+
+	AURA_MALLOC(sp, subpartition);
+
+	sp->parent = s;
+
+	struct subpartition *last = s->subpartition_tail;
+	if (last == NULL) {
+		sp->letter = 'a';
+	} else if (last->letter == 'b') {
+		sp->letter = 'd';
+	} else {
+		sp->letter = (char)(last->letter + 1);
+	}
+
+	sp->mountpoint = aura_strdup(mountpoint);
+	sp->capacity = capacity;
+	sp->type = FS_HAMMER;
+
+	/*
+	 * We need this here, because a UFS /boot needs valid values
+	 */
+	if (sp->capacity < 1024)
+		sp->fsize = 1024;
+	else
+		sp->fsize = 2048;
+
+	if (sp->capacity < 1024)
+		sp->bsize = 8192;
+	else
+		sp->bsize = 16384;
+
+	sp->is_swap = 0;
+	sp->pfs = 0;
+	if (strcasecmp(mountpoint, "swap") == 0)
+		sp->is_swap = 1;
+	if (strcmp(mountpoint, "/") != 0 && strcmp(mountpoint, "/boot") != 0 &&
+	    strcmp(mountpoint, "swap") != 0)
+		sp->pfs = 1;
+
+	sp->next = NULL;
+	if (s->subpartition_head == NULL)
+		s->subpartition_head = sp;
+	else
+		s->subpartition_tail->next = sp;
+
+	sp->prev = s->subpartition_tail;
+	s->subpartition_tail = sp;
+
+	return(sp);
+}
+
 /*
  * NOTE: arguments to this function are not checked for sanity.
  *
@@ -551,30 +606,16 @@ struct subpartition *
 subpartition_new(struct slice *s, const char *mountpoint, long capacity,
 		 int softupdates, long fsize, long bsize, int mfsbacked)
 {
-	struct subpartition *sp;
+	struct subpartition *sp, *sptmp;
+	int letter='d';
 
 	AURA_MALLOC(sp, subpartition);
 
 	sp->parent = s;
 
-	if (mfsbacked) {
-		sp->letter = '@';
-	} else {
-		struct subpartition *last = s->subpartition_tail;
-		while (last != NULL && last->mfsbacked) {
-			last = last->prev;
-		}
-		if (last == NULL) {
-			sp->letter = 'a';
-		} else if (last->letter == 'b') {
-			sp->letter = 'd';
-		} else {
-			sp->letter = (char)(last->letter + 1);
-		}
-	}
-
 	sp->mountpoint = aura_strdup(mountpoint);
 	sp->capacity = capacity;
+	sp->type = FS_UFS;
 
 	if (fsize == -1) {
 		if (sp->capacity < 1024)
@@ -609,14 +650,42 @@ subpartition_new(struct slice *s, const char *mountpoint, long capacity,
 	if (strcasecmp(mountpoint, "swap") == 0)
 		sp->is_swap = 1;
 
-	sp->next = NULL;
-	if (s->subpartition_head == NULL)
+	if (s->subpartition_head == NULL) {
 		s->subpartition_head = sp;
-	else
-		s->subpartition_tail->next = sp;
+		s->subpartition_tail = sp;
+	} else {
+		for (sptmp = s->subpartition_head; sptmp != NULL;
+		     sptmp = sptmp->next) {
+			if (strcmp(sptmp->mountpoint, sp->mountpoint) > 0)
+				break;
+		}
+		if (sptmp != NULL) {
+			if (s->subpartition_head == sptmp)
+				s->subpartition_head = sp;
+			else
+				sptmp->prev->next = sp;
+			sp->next = sptmp;
+			sp->prev = sptmp->prev;
+			sptmp->prev = sp;
+		} else {
+			sp->prev = s->subpartition_tail;
+			s->subpartition_tail->next = sp;
+			s->subpartition_tail = sp;
+		}
+	}
 
-	sp->prev = s->subpartition_tail;
-	s->subpartition_tail = sp;
+	for (sptmp = s->subpartition_head; sptmp != NULL;
+	     sptmp = sptmp->next) {
+		if (sptmp->mfsbacked)
+			sptmp->letter = '@';
+		else if (strcmp(sptmp->mountpoint, "/") == 0 ||
+			 strcmp(sptmp->mountpoint, "/dummy") == 0)
+			sptmp->letter = 'a';
+		else if (strcasecmp(sptmp->mountpoint, "swap") == 0)
+			sptmp->letter = 'b';
+		else
+			sptmp->letter = letter++;
+	}
 
 	return(sp);
 }
@@ -699,6 +768,12 @@ struct subpartition *
 subpartition_next(const struct subpartition *sp)
 {
 	return(sp->next);
+}
+
+int
+subpartition_get_pfs(const struct subpartition *sp)
+{
+	return(sp->pfs);
 }
 
 /*

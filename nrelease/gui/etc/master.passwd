@@ -1,6 +1,6 @@
 # $DragonFly: src/nrelease/gui/etc/master.passwd,v 1.1 2008/09/01 21:20:30 swildner Exp $
 #
-root::0:0::0:0:Charlie &:/root:/usr/pkg/bin/zsh
+root::0:0::0:0:Charlie &:/root:/bin/csh
 toor:*:0:0::0:0:Bourne-again Superuser:/root:
 installer::0:0::0:0:Bourne-again Superuser:/root:/usr/local/bin/installer
 daemon:*:1:1::0:0:Owner of many system processes:/root:/sbin/nologin

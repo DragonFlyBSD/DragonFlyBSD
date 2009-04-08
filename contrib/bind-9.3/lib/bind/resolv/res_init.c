@@ -75,6 +75,9 @@ static const char rcsid[] = "$Id: res_init.c,v 1.9.2.5.4.6 2006/08/30 23:23:01 m
 
 #include "port_before.h"
 
+#ifdef _LIBC
+#include "namespace.h"
+#endif
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/socket.h>
@@ -90,7 +93,9 @@ static const char rcsid[] = "$Id: res_init.c,v 1.9.2.5.4.6 2006/08/30 23:23:01 m
 #include <string.h>
 #include <unistd.h>
 #include <netdb.h>
-
+#ifdef _LIBC
+#include "un-namespace.h"
+#endif
 #include "port_after.h"
 
 /* ensure that sockaddr_in6 and IN6ADDR_ANY_INIT are declared / defined */
@@ -246,7 +251,7 @@ __res_vinit(res_state statp, int preinit) {
 #endif	/* SOLARIS2 */
 
 	/* Allow user to override the local domain definition */
-	if ((cp = getenv("LOCALDOMAIN")) != NULL) {
+	if (issetugid() == 0 && (cp = getenv("LOCALDOMAIN")) != NULL) {
 		(void)strncpy(statp->defdname, cp, sizeof(statp->defdname) - 1);
 		statp->defdname[sizeof(statp->defdname) - 1] = '\0';
 		haveenv++;
@@ -383,6 +388,10 @@ __res_vinit(res_state statp, int preinit) {
 #ifdef RESOLVSORT
 		if (MATCH(buf, "sortlist")) {
 		    struct in_addr a;
+		    struct in6_addr a6;
+		    int m, i;
+		    u_char *u;
+		    struct __res_state_ext *ext = statp->_u._ext.ext;
 
 		    cp = buf + sizeof("sortlist") - 1;
 		    while (nsort < MAXRESOLVSORT) {
@@ -417,6 +426,57 @@ __res_vinit(res_state statp, int preinit) {
 				statp->sort_list[nsort].mask = 
 				    net_mask(statp->sort_list[nsort].addr);
 			    }
+			    ext->sort_list[nsort].af = AF_INET;
+			    ext->sort_list[nsort].addr.ina =
+				statp->sort_list[nsort].addr;
+			    ext->sort_list[nsort].mask.ina.s_addr =
+				statp->sort_list[nsort].mask;
+			    nsort++;
+			}
+			else if (inet_pton(AF_INET6, net, &a6) == 1) {
+
+			    ext->sort_list[nsort].af = AF_INET6;
+			    ext->sort_list[nsort].addr.in6a = a6;
+			    u = (u_char *)&ext->sort_list[nsort].mask.in6a;
+			    *cp++ = n;
+			    net = cp;
+			    while (*cp && *cp != ';' &&
+				    isascii(*cp) && !isspace(*cp))
+				cp++;
+			    m = n;
+			    n = *cp;
+			    *cp = 0;
+			    switch (m) {
+			    case '/':
+				m = atoi(net);
+				break;
+			    case '&':
+				if (inet_pton(AF_INET6, net, u) == 1) {
+				    m = -1;
+				    break;
+				}
+				/*FALLTHROUGH*/
+			    default:
+				m = sizeof(struct in6_addr) * CHAR_BIT;
+				break;
+			    }
+			    if (m >= 0) {
+				for (i = 0; i < sizeof(struct in6_addr); i++) {
+				    if (m <= 0) {
+					*u = 0;
+				    } else {
+					m -= CHAR_BIT;
+					*u = (u_char)~0;
+					if (m < 0)
+					    *u <<= -m;
+				    }
+				    u++;
+				}
+			    }
+			    statp->sort_list[nsort].addr.s_addr =
+				(u_int32_t)0xffffffff;
+			    statp->sort_list[nsort].mask =
+				(u_int32_t)0xffffffff;
 			    nsort++;
 			}
 			*cp = n;
@@ -479,7 +539,9 @@ __res_vinit(res_state statp, int preinit) {
 #endif
 	}
 
-	if ((cp = getenv("RES_OPTIONS")) != NULL)
+	if (issetugid())
+		statp->options |= RES_NOALIASES;
+	else if ((cp = getenv("RES_OPTIONS")) != NULL)
 		res_setoptions(statp, cp, "env");
 	statp->options |= RES_INIT;
 	return (0);
@@ -499,7 +561,9 @@ res_setoptions(res_state statp, const char *options, const char *source)
 {
 	const char *cp = options;
 	int i;
+#ifndef _LIBC
 	struct __res_state_ext *ext = statp->_u._ext.ext;
+#endif
 
 #ifdef DEBUG
 	if (statp->options & RES_DEBUG)
@@ -573,6 +637,10 @@ res_setoptions(res_state statp, const char *options, const char *source)
 			statp->options |= RES_NOTLDQUERY;
 		} else if (!strncmp(cp, "inet6", sizeof("inet6") - 1)) {
 			statp->options |= RES_USE_INET6;
+		} else if (!strncmp(cp, "insecure1", sizeof("insecure1") - 1)) {
+		       statp->options |= RES_INSECURE1;
+		} else if (!strncmp(cp, "insecure2", sizeof("insecure2") - 1)) {
+		       statp->options |= RES_INSECURE2;
 		} else if (!strncmp(cp, "rotate", sizeof("rotate") - 1)) {
 			statp->options |= RES_ROTATE;
 		} else if (!strncmp(cp, "no-check-names",
@@ -584,6 +652,7 @@ res_setoptions(res_state statp, const char *options, const char *source)
 			statp->options |= RES_USE_EDNS0;
 		}
 #endif
+#ifndef _LIBC
 		else if (!strncmp(cp, "dname", sizeof("dname") - 1)) {
 			statp->options |= RES_USE_DNAME;
 		}
@@ -613,10 +682,13 @@ res_setoptions(res_state statp, const char *options, const char *source)
 					 ~RES_NO_NIBBLE2;
 			}
 		}
+#endif
 		else {
 			/* XXX - print a warning here? */
 		}
+#ifndef _LIBC
    skip:
+#endif
 		/* skip to next run of spaces */
 		while (*cp && *cp != ' ' && *cp != '\t')
 			cp++;
@@ -659,13 +731,21 @@ res_nclose(res_state statp) {
 	int ns;
 
 	if (statp->_vcsock >= 0) { 
+#ifndef _LIBC
 		(void) close(statp->_vcsock);
+#else
+		_close(statp->_vcsock);
+#endif
 		statp->_vcsock = -1;
 		statp->_flags &= ~(RES_F_VC | RES_F_CONN);
 	}
 	for (ns = 0; ns < statp->_u._ext.nscount; ns++) {
 		if (statp->_u._ext.nssocks[ns] != -1) {
+#ifndef _LIBC
 			(void) close(statp->_u._ext.nssocks[ns]);
+#else
+			_close(statp->_u._ext.nssocks[ns]);
+#endif
 			statp->_u._ext.nssocks[ns] = -1;
 		}
 	}
@@ -680,6 +760,7 @@ res_ndestroy(res_state statp) {
 	statp->_u._ext.ext = NULL;
 }
 
+#ifndef _LIBC
 const char *
 res_get_nibblesuffix(res_state statp) {
 	if (statp->_u._ext.ext)
@@ -693,6 +774,7 @@ res_get_nibblesuffix2(res_state statp) {
 		return (statp->_u._ext.ext->nsuffix2);
 	return ("ip6.int");
 }
+#endif
 
 void
 res_setservers(res_state statp, const union res_sockaddr_union *set, int cnt) {

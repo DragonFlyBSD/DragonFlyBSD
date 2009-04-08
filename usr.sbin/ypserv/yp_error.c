@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/ypserv/yp_error.c,v 1.7 1999/08/28 01:21:12 peter Exp $
+ * $FreeBSD: src/usr.sbin/ypserv/yp_error.c,v 1.10 2003/05/03 21:06:42 obrien Exp $
  * $DragonFly: src/usr.sbin/ypserv/yp_error.c,v 1.4 2004/03/31 23:20:22 cpressey Exp $
  */
 
@@ -38,19 +38,20 @@
  * stolen from /usr/libexec/mail.local via ypserv
  */
 
-#include <stdio.h>
 #include <sys/types.h>
+#include <stdio.h>
+#include <stdarg.h>
 #include <syslog.h>
+#include "yp_extern.h"
 
 int debug;
 extern int _rpcpmstart;
 
 extern char *progname;
 
-#include <stdarg.h>
+static void __verr(const char *fmt, va_list ap) __printflike(1, 0);
 
-static
-void
+static void
 __verr(const char *fmt, va_list ap)
 {
 	if (debug && !_rpcpmstart) {

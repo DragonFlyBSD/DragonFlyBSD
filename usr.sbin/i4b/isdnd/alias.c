@@ -65,7 +65,7 @@ init_alias(char *filename)
 	
 	if((fp = fopen(filename, "r")) == NULL)
 	{
-		log(LL_ERR, "init_alias: error opening aliasfile %s: %s!", filename, strerror(errno));
+		dolog(LL_ERR, "init_alias: error opening aliasfile %s: %s!", filename, strerror(errno));
 		exit(1);
 	}
 
@@ -99,19 +99,19 @@ init_alias(char *filename)
 		{
 			if((newa = (struct alias *) malloc(sizeof(struct alias))) == NULL)
 			{
-				log(LL_ERR, "init_alias: malloc failed for struct alias!\n");
+				dolog(LL_ERR, "init_alias: malloc failed for struct alias!\n");
 				exit(1);
 			}
 
 			if((newa->number = (char *) malloc(strlen(number)+1)) == NULL)
 			{
-				log(LL_ERR, "init_alias: malloc failed for number alias!\n");
+				dolog(LL_ERR, "init_alias: malloc failed for number alias!\n");
 				exit(1);
 			}
 
 			if((newa->name = (char *) malloc(strlen(name)+1)) == NULL)
 			{
-				log(LL_ERR, "init_alias: malloc failed for name alias!\n");
+				dolog(LL_ERR, "init_alias: malloc failed for name alias!\n");
 				exit(1);
 			}
 

@@ -318,8 +318,7 @@ portal_open(struct vop_open_args *ap)
 	auio.uio_offset = 0;
 	auio.uio_resid = aiov[0].iov_len + aiov[1].iov_len;
 
-	error = sosend(so, (struct sockaddr *) 0, &auio,
-			(struct mbuf *) 0, (struct mbuf *) 0, 0, td);
+	error = sosend(so, NULL, &auio, NULL, NULL, 0, td);
 	if (error)
 		goto bad;
 

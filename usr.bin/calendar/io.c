@@ -374,7 +374,7 @@ opencal(void)
 		}
 		execl(_PATH_CPP, "cpp", "-P",
 		    "-traditional", "-nostdinc",	/* GCC specific opts */
-		    "-I.", "-I", _PATH_INCLUDE, (char *)NULL);
+		    "-I.", "-I", _PATH_INCLUDE, NULL);
 		warn(_PATH_CPP);
 		_exit(EXIT_FAILURE);
 	}
@@ -436,7 +436,7 @@ closecal(FILE *fp)
 			_exit(EXIT_FAILURE);
 		}
 		execl(_PATH_SENDMAIL, "sendmail", "-i", "-t", "-F",
-		    "\"Reminder Service\"", (char *)NULL);
+		    "\"Reminder Service\"", NULL);
 		warn(_PATH_SENDMAIL);
 		_exit(EXIT_FAILURE);
 	}

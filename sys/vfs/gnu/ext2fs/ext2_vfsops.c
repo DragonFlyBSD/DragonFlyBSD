@@ -47,6 +47,7 @@
 #include <sys/systm.h>
 #include <sys/nlookup.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/kernel.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
@@ -169,7 +170,7 @@ ext2_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
 			break;
 		/* fall through */
 	default:
-		if ((error = suser_cred(cred, PRISON_ROOT)) != 0)
+		if ((error = priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT)) != 0)
 			return (error);
 	}
 

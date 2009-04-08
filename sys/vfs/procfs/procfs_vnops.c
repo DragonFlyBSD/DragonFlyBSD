@@ -51,6 +51,7 @@
 #include <sys/lock.h>
 #include <sys/fcntl.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/signalvar.h>
 #include <sys/vnode.h>
 #include <sys/uio.h>
@@ -290,7 +291,7 @@ procfs_ioctl(struct vop_ioctl_args *ap)
 	   */
 #define NFLAGS	(PF_ISUGID)
 	  flags = (unsigned char)*(unsigned int*)ap->a_data;
-	  if (flags & NFLAGS && (error = suser_cred(ap->a_cred, 0)))
+	  if (flags & NFLAGS && (error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)))
 	    return error;
 	  procp->p_pfsflags = flags;
 	  break;

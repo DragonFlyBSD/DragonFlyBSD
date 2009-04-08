@@ -297,12 +297,7 @@
 #define NS_FILTADDR_FMEM_HI	0x000003FE
 
 /*
- * DMA descriptor structures. The first part of the descriptor
- * is the hardware descriptor format, which is just three longwords.
- * After this, we include some additional structure members for
- * use by the driver. Note that for this structure will be a different
- * size on the alpha, but that's okay as long as it's a multiple of 4
- * bytes in size.
+ * DMA descriptor structures.
  */
 struct sis_desc {
 	/* SiS hardware descriptor section */
@@ -312,11 +307,9 @@ struct sis_desc {
 #define sis_txstat		sis_cmdsts
 #define sis_ctl			sis_cmdsts
 	uint32_t		sis_ptr;
-	/* Driver software section */
-	struct mbuf		*sis_mbuf;
-	struct sis_desc		*sis_nextdesc;
-	bus_dmamap_t		sis_map;
 };
+
+#define SIS_RING_ALIGN		4
 
 #define SIS_CMDSTS_BUFLEN	0x00000FFF
 #define SIS_CMDSTS_PKT_OK	0x08000000
@@ -358,27 +351,44 @@ struct sis_desc {
 #define SIS_RX_LIST_CNT		64
 #define SIS_TX_LIST_CNT		128
 
-#define SIS_RX_LIST_SZ		SIS_RX_LIST_CNT * sizeof(struct sis_desc)
-#define SIS_TX_LIST_SZ		SIS_TX_LIST_CNT * sizeof(struct sis_desc)
+#define SIS_RX_LIST_SZ		(SIS_RX_LIST_CNT * sizeof(struct sis_desc))
+#define SIS_TX_LIST_SZ		(SIS_TX_LIST_CNT * sizeof(struct sis_desc))
 
 struct sis_list_data {
-	struct sis_desc		*sis_rx_list;
-	struct sis_desc		*sis_tx_list;
 	bus_dma_tag_t		sis_rx_tag;
 	bus_dmamap_t		sis_rx_dmamap;
+	struct sis_desc		*sis_rx_list;
+	bus_addr_t		sis_rx_paddr;
+
 	bus_dma_tag_t		sis_tx_tag;
 	bus_dmamap_t		sis_tx_dmamap;
+	struct sis_desc		*sis_tx_list;
+	bus_addr_t		sis_tx_paddr;
 };
 
-struct sis_ring_data {
+struct sis_rx_data {
+	struct mbuf		*sis_mbuf;
+	bus_dmamap_t		sis_map;
+	bus_addr_t		sis_paddr;
+};
+
+struct sis_tx_data {
+	struct mbuf		*sis_mbuf;
+	bus_dmamap_t		sis_map;
+};
+
+struct sis_chain_data {
+	bus_dma_tag_t		sis_rxbuf_tag;
+	bus_dmamap_t		sis_rx_tmpmap;
+	struct sis_rx_data	sis_rx_data[SIS_RX_LIST_CNT];
 	int			sis_rx_prod;
+
+	bus_dma_tag_t		sis_txbuf_tag;
+	struct sis_tx_data	sis_tx_data[SIS_TX_LIST_CNT];
 	int			sis_tx_prod;
 	int			sis_tx_cons;
 	int			sis_tx_cnt;
-	uint32_t		sis_rx_paddr;
-	uint32_t		sis_tx_paddr;
 };
-
 
 /*
  * SiS 900 PCI revision codes.
@@ -432,13 +442,19 @@ struct sis_softc {
 	uint8_t			sis_link;
 	struct sis_list_data	sis_ldata;
 	bus_dma_tag_t		sis_parent_tag;
-	bus_dma_tag_t		sis_tag;
-	struct sis_ring_data	sis_cdata;
+	struct sis_chain_data	sis_cdata;
 	struct callout		sis_timer;
 #ifdef DEVICE_POLLING
 	int			rxcycles;
 #endif
 };
+
+#define SIS_RXBUF_ALIGN		4
+#define SIS_NSEGS		32	/* XXX limitted by TX desc cnt */
+#define SIS_NSEGS_RESERVED	1
+
+#define SIS_IS_OACTIVE(sc)	\
+	((sc)->sis_cdata.sis_tx_cnt + SIS_NSEGS_RESERVED >= SIS_TX_LIST_CNT)
 
 /*
  * register space access macros

@@ -24,61 +24,75 @@
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- * $DragonFly: src/sys/dev/drm/sis_drv.c,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
-#include "drmP.h"
-#include "sis_drm.h"
-#include "sis_drv.h"
-#include "drm_pciids.h"
+#include "dev/drm/drmP.h"
+#include "dev/drm/sis_drm.h"
+#include "dev/drm/sis_drv.h"
+#include "dev/drm/drm_pciids.h"
 
 /* drv_PCI_IDs comes from drm_pciids.h, generated from drm_pciids.txt. */
 static drm_pci_id_list_t sis_pciidlist[] = {
 	sis_PCI_IDS
 };
 
-static void sis_configure(drm_device_t *dev)
+static void sis_configure(struct drm_device *dev)
 {
-	dev->driver.buf_priv_size	= 1; /* No dev_priv */
-	dev->driver.context_ctor	= sis_init_context;
-	dev->driver.context_dtor	= sis_final_context;
+	dev->driver->driver_features =
+	    DRIVER_USE_AGP | DRIVER_USE_MTRR;
 
-	dev->driver.ioctls		= sis_ioctls;
-	dev->driver.max_ioctl		= sis_max_ioctl;
+	dev->driver->buf_priv_size	= 1; /* No dev_priv */
+	dev->driver->context_ctor	= sis_init_context;
+	dev->driver->context_dtor	= sis_final_context;
 
-	dev->driver.name		= DRIVER_NAME;
-	dev->driver.desc		= DRIVER_DESC;
-	dev->driver.date		= DRIVER_DATE;
-	dev->driver.major		= DRIVER_MAJOR;
-	dev->driver.minor		= DRIVER_MINOR;
-	dev->driver.patchlevel		= DRIVER_PATCHLEVEL;
+	dev->driver->ioctls		= sis_ioctls;
+	dev->driver->max_ioctl		= sis_max_ioctl;
 
-	dev->driver.use_agp		= 1;
-	dev->driver.use_mtrr		= 1;
-}
-
-#if defined(__FreeBSD__) || defined(__DragonFly__)
-static int
-sis_probe(device_t dev)
-{
-	return drm_probe(dev, sis_pciidlist);
+	dev->driver->name		= DRIVER_NAME;
+	dev->driver->desc		= DRIVER_DESC;
+	dev->driver->date		= DRIVER_DATE;
+	dev->driver->major		= DRIVER_MAJOR;
+	dev->driver->minor		= DRIVER_MINOR;
+	dev->driver->patchlevel		= DRIVER_PATCHLEVEL;
 }
 
 static int
-sis_attach(device_t nbdev)
+sis_probe(device_t kdev)
 {
-	drm_device_t *dev = device_get_softc(nbdev);
+	return drm_probe(kdev, sis_pciidlist);
+}
 
-	bzero(dev, sizeof(drm_device_t));
+static int
+sis_attach(device_t kdev)
+{
+	struct drm_device *dev = device_get_softc(kdev);
+
+	dev->driver = malloc(sizeof(struct drm_driver_info), DRM_MEM_DRIVER,
+	    M_WAITOK | M_ZERO);
+
 	sis_configure(dev);
-	return drm_attach(nbdev, sis_pciidlist);
+
+	return drm_attach(kdev, sis_pciidlist);
+}
+
+static int
+sis_detach(device_t kdev)
+{
+	struct drm_device *dev = device_get_softc(kdev);
+	int ret;
+
+	ret = drm_detach(kdev);
+
+	free(dev->driver, DRM_MEM_DRIVER);
+
+	return ret;
 }
 
 static device_method_t sis_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		sis_probe),
 	DEVMETHOD(device_attach,	sis_attach),
-	DEVMETHOD(device_detach,	drm_detach),
+	DEVMETHOD(device_detach,	sis_detach),
 
 	{ 0, 0 }
 };
@@ -86,7 +100,7 @@ static device_method_t sis_methods[] = {
 static driver_t sis_driver = {
 	"drm",
 	sis_methods,
-	sizeof(drm_device_t)
+	sizeof(struct drm_device)
 };
 
 extern devclass_t drm_devclass;
@@ -96,12 +110,3 @@ DRIVER_MODULE(sisdrm, vgapci, sis_driver, drm_devclass, 0, 0);
 DRIVER_MODULE(sisdrm, pci, sis_driver, drm_devclass, 0, 0);
 #endif
 MODULE_DEPEND(sisdrm, drm, 1, 1, 1);
-
-#elif defined(__NetBSD__) || defined(__OpenBSD__)
-#ifdef _LKM
-CFDRIVER_DECL(sis, DV_TTY, NULL);
-#else
-CFATTACH_DECL(sis, sizeof(drm_device_t), drm_probe, drm_attach, drm_detach,
-    drm_activate);
-#endif
-#endif

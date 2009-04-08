@@ -298,7 +298,7 @@ do_single(int argc, char **argv, int action)
 			    i == 0 ? '(' : ' ', cp2,
 			    i == ccio.ccio_ndisks - 1 ? ')' : ',');
 		}
-		printf(", %llu blocks ", ccio.ccio_size);
+		printf(", %ju blocks ", (uintmax_t)ccio.ccio_size);
 		if (ccio.ccio_ileave != 0)
 			printf("interleaved at %d blocks\n", ccio.ccio_ileave);
 		else
@@ -473,7 +473,7 @@ dump_ccd(int argc, char **argv)
 	char errbuf[_POSIX2_LINE_MAX], *ccd, *cp;
 	struct ccd_softc *cs, *kcs;
 	ssize_t readsize;
-	int i, error, numccd, numconfiged = 0;
+	int i = 0, error, numccd, numconfiged = 0;
 	kvm_t *kd;
 
 	bzero(errbuf, sizeof(errbuf));
@@ -682,11 +682,11 @@ static void
 usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n",
-		"usage: ccdconfig [-cv] ccd ileave [flags] dev [...]",
+		"usage: ccdconfig [-cv] ccd ileave [flags] dev ...",
 		"       ccdconfig -C [-v] [-f config_file]",
-		"       ccdconfig -u [-v] ccd [...]",
+		"       ccdconfig -u [-v] ccd ...",
 		"       ccdconfig -U [-v] [-f config_file]",
-		"       ccdconfig -g [-M core] [-N system] [ccd [...]]");
+		"       ccdconfig -g [-M core] [-N system] [ccd ...]");
 	exit(1);
 }
 

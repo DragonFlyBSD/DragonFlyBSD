@@ -61,7 +61,7 @@ main(int ac, char *av[])
 
 	if (strcmp(av[0], "a.out") == 0) {
 		outf = fopen("q", "w");
-		setbuf(outf, (char *)NULL);
+		setbuf(outf, NULL);
 		Debug = TRUE;
 	}
 	restore = FALSE;

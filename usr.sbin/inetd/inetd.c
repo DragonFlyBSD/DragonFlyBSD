@@ -120,6 +120,7 @@
 #include <err.h>
 #include <fcntl.h>
 #include <grp.h>
+#include <limits.h>
 #include <netdb.h>
 #include <pwd.h>
 #include <signal.h>
@@ -538,8 +539,7 @@ main(int argc, char **argv)
 	    }
 #endif
 	    readable = allsock;
-	    if ((n = select(maxsock + 1, &readable, (fd_set *)0,
-		(fd_set *)0, (struct timeval *)0)) <= 0) {
+	    if ((n = select(maxsock + 1, &readable, NULL, NULL, NULL)) <= 0) {
 		    if (n < 0 && errno != EINTR) {
 			syslog(LOG_WARNING, "select: %m");
 			sleep(1);
@@ -585,8 +585,7 @@ main(int argc, char **argv)
 			    i = 1;
 			    if (ioctl(sep->se_fd, FIONBIO, &i) < 0)
 				    syslog(LOG_ERR, "ioctl (FIONBIO, 1): %m");
-			    ctrl = accept(sep->se_fd, (struct sockaddr *)0,
-				(socklen_t *)0);
+			    ctrl = accept(sep->se_fd, NULL, NULL);
 			    if (debug)
 				    warnx("accept, ctrl %d", ctrl);
 			    if (ctrl < 0) {
@@ -653,11 +652,11 @@ main(int argc, char **argv)
 		     */
 		    if (dofork) {
 			    if (sep->se_count++ == 0)
-				gettimeofday(&sep->se_time, (struct timezone *)NULL);
+				gettimeofday(&sep->se_time, NULL);
 			    else if (toomany > 0 && sep->se_count >= toomany) {
 				struct timeval now;
 
-				gettimeofday(&now, (struct timezone *)NULL);
+				gettimeofday(&now, NULL);
 				if (now.tv_sec - sep->se_time.tv_sec >
 				    CNT_INTVL) {
 					sep->se_time = now;
@@ -698,9 +697,9 @@ main(int argc, char **argv)
 		    sigsetmask(0L);
 		    if (pid == 0) {
 			    if (dofork) {
-				sigaction(SIGALRM, &saalrm, (struct sigaction *)0);
-				sigaction(SIGCHLD, &sachld, (struct sigaction *)0);
-				sigaction(SIGHUP, &sahup, (struct sigaction *)0);
+				sigaction(SIGALRM, &saalrm, NULL);
+				sigaction(SIGCHLD, &sachld, NULL);
+				sigaction(SIGHUP, &sahup, NULL);
 				/* SIGPIPE reset before exec */
 			    }
 			    /*
@@ -835,8 +834,7 @@ main(int argc, char **argv)
 					}
 				}
 #endif
-				sigaction(SIGPIPE, &sapipe,
-				    (struct sigaction *)0);
+				sigaction(SIGPIPE, &sapipe, NULL);
 				execv(sep->se_server, sep->se_argv);
 				syslog(LOG_ERR,
 				    "cannot execute %s: %m", sep->se_server);
@@ -907,7 +905,7 @@ reapchild(void)
 	struct servtab *sep;
 
 	for (;;) {
-		pid = wait3(&status, WNOHANG, (struct rusage *)0);
+		pid = wait3(&status, WNOHANG, NULL);
 		if (pid <= 0)
 			break;
 		if (debug)
@@ -1435,7 +1433,7 @@ enter(struct servtab *cp)
 	long omask;
 
 	sep = (struct servtab *)malloc(sizeof (*sep));
-	if (sep == (struct servtab *)0) {
+	if (sep == NULL) {
 		syslog(LOG_ERR, "malloc: %m");
 		exit(EX_OSERR);
 	}
@@ -1582,7 +1580,7 @@ more:
 		break;
 	}
 	if (cp == NULL)
-		return ((struct servtab *)0);
+		return (NULL);
 	/*
 	 * clear the static buffer, since some fields (se_ctrladdr,
 	 * for example) don't get initialized here.
@@ -1978,8 +1976,8 @@ again:
 		if (c == ' ' || c == '\t')
 			if ((cp = nextline(fconfig)))
 				goto again;
-		*cpp = (char *)0;
-		return ((char *)0);
+		*cpp = NULL;
+		return (NULL);
 	}
 	if (*cp == '"' || *cp == '\'')
 		quote = *cp++;
@@ -2002,7 +2000,7 @@ nextline(FILE *fd)
 	char *cp;
 
 	if (fgets(line, sizeof (line), fd) == NULL)
-		return ((char *)0);
+		return (NULL);
 	cp = strchr(line, '\n');
 	if (cp)
 		*cp = '\0';

@@ -186,7 +186,7 @@ done:
 			nextihead = ihead->nextp;
 			if ((opts & IGNLNKS) || ihead->count == 0)
 				continue;
-			log(lfp, "%s: Warning: missing links\n",
+			dolog(lfp, "%s: Warning: missing links\n",
 				ihead->pathname);
 			free(ihead);
 		}
@@ -352,7 +352,7 @@ lostconn(int signo)
 {
 	if (iamremote)
 		cleanup(0);
-	log(lfp, "rdist: lost connection\n");
+	dolog(lfp, "rdist: lost connection\n");
 	longjmp(env, 1);
 }
 
@@ -492,7 +492,7 @@ cmptime(char *name)
 	}
 
 	if (stb.st_mtime > lastmod)
-		log(tfp, "new: %s\n", name);
+		dolog(tfp, "new: %s\n", name);
 }
 
 static void

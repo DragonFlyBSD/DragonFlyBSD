@@ -36,6 +36,7 @@
 #include <sys/signalvar.h>
 #include <sys/protosw.h>
 #include <sys/socketvar.h>
+#include <sys/socketvar2.h>
 #include <sys/sysctl.h>
 #include <sys/vnode.h>
 #include <sys/conf.h>

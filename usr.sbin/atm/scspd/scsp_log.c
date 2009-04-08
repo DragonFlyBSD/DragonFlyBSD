@@ -69,7 +69,7 @@
 /*
  * Global variables
  */
-FILE	*scsp_trace_file = (FILE *)0;
+FILE	*scsp_trace_file = NULL;
 
 
 /*
@@ -146,7 +146,7 @@ scsp_open_trace(void)
 	 * isn't open and won't try to write to it.
 	 */
 	scsp_trace_file = fopen(fname, "w");
-	if (scsp_trace_file == (FILE *)0) {
+	if (scsp_trace_file == NULL) {
 		scsp_log(LOG_ERR, "Can't open trace file");
 	}
 }

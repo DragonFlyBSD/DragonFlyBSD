@@ -57,8 +57,6 @@ extern size_t tls_static_space;
 extern int tls_dtv_generation;
 extern int tls_max_index;
 
-extern Elf_Addr _GLOBAL_OFFSET_TABLE_[];
-
 struct stat;
 struct Struct_Obj_Entry;
 
@@ -112,8 +110,8 @@ typedef struct Struct_Obj_Entry {
      * These two items have to be set right for compatibility with the
      * original ElfKit crt1.o.
      */
-    Elf_Word magic;		/* Magic number (sanity check) */
-    Elf_Word version;		/* Version number of struct format */
+    Elf_Size magic;		/* Magic number (sanity check) */
+    Elf_Size version;		/* Version number of struct format */
 
     struct Struct_Obj_Entry *next;
     char *path;			/* Pathname of underlying file (%) */
@@ -155,9 +153,9 @@ typedef struct Struct_Obj_Entry {
     const char *strtab;		/* String table */
     unsigned long strsize;	/* Size in bytes of string table */
 
-    const Elf_Addr *buckets;	/* Hash table buckets array */
+    const Elf_Hashelt *buckets;	/* Hash table buckets array */
     unsigned long nbuckets;	/* Number of buckets */
-    const Elf_Addr *chains;	/* Hash table chain array */
+    const Elf_Hashelt *chains;	/* Hash table chain array */
     unsigned long nchains;	/* Number of chains */
 
     const char *rpath;		/* Search path specified in object */
@@ -181,6 +179,7 @@ typedef struct Struct_Obj_Entry {
     Objlist dagmembers;		/* DAG has these members (%) */
     dev_t dev;			/* Object's filesystem's device */
     ino_t ino;			/* Object's inode number */
+    void *priv;			/* Platform-dependant */
 } Obj_Entry;
 
 #define RTLD_MAGIC	0xd550b87a
@@ -206,6 +205,8 @@ void		 dump_relocations(Obj_Entry *);
 void		 dump_obj_relocations(Obj_Entry *);
 void		 dump_Elf_Rel(Obj_Entry *, const Elf_Rel *, u_long);
 void		 dump_Elf_Rela(Obj_Entry *, const Elf_Rela *, u_long);
+
+extern Elf_Addr _GLOBAL_OFFSET_TABLE_[];
 
 /*
  * Function declarations.

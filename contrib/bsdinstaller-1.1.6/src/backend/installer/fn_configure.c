@@ -72,6 +72,7 @@
 #include "libinstaller/uiutil.h"
 
 #include "fn.h"
+#include "flow.h"
 #include "pathnames.h"
 
 static const char	*yes_to_y(const char *);
@@ -973,6 +974,7 @@ fn_assign_ip(struct i_fn_args *a)
 		command_add(cmds, "%s%s %s",
 		    a->os_root, cmd_name(a, "DHCLIENT"),
 		    interface);
+		asprintf(&string, "ifconfig_%s", interface);
 		if (commands_execute(a, cmds)) {
 			/* XXX sleep(3); */
 			show_ifconfig(a->c, interface);
@@ -994,7 +996,6 @@ fn_assign_ip(struct i_fn_args *a)
 			}
 		}
 		commands_free(cmds);
-		asprintf(&string, "ifconfig_%s", interface);
 		config_var_set(rc_conf, string, "DHCP");
 		free(string);
 		break;
@@ -1285,11 +1286,19 @@ mount_target_system(struct i_fn_args *a)
 	/*
 	 * Mount the target's / and read its /etc/fstab.
 	 */
-	command_add(cmds, "%s%s %sdev/%s %s%s",
-	    a->os_root, cmd_name(a, "MOUNT"),
-	    a->os_root,
-	    subpartition_get_device_name(a_subpart),
-	    a->os_root, a->cfg_root);
+	if (use_hammer == 0) {
+		command_add(cmds, "%s%s %sdev/%s %s%s",
+		    a->os_root, cmd_name(a, "MOUNT"),
+		    a->os_root,
+		    subpartition_get_device_name(a_subpart),
+		    a->os_root, a->cfg_root);
+	} else {
+		command_add(cmds, "%s%s %sdev/%s %s%s",
+		    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
+		    a->os_root,
+		    subpartition_get_device_name(a_subpart),
+		    a->os_root, a->cfg_root);
+	}
 	if (!commands_execute(a, cmds)) {
 		commands_free(cmds);
 		return(0);
@@ -1352,10 +1361,11 @@ mount_target_system(struct i_fn_args *a)
 
 				/*
 				 * Don't mount it if device doesn't start
-				 * with /dev/ and it isn't 'swap'.
+				 * with /dev/ or /pfs and it isn't 'swap'.
 				 */
-				if (strstr(device, "/dev/") == NULL &&
-				    strcmp(device, "swap") != 0)
+				if (strstr(device, "/dev/") != NULL &&
+				     strstr(device, "/pfs/") != NULL &&
+				     strcmp(device, "swap") != 0)
 					continue;
 
 				/*
@@ -1369,13 +1379,32 @@ mount_target_system(struct i_fn_args *a)
 					    cvtoptions, a->os_root, a->cfg_root, mtpt);
 					free(cvtoptions);
 				} else {
-					command_add_ensure_dev(a, cmds, device);
-					command_add(cmds,
-					    "%s%s -o %s %s%s %s%s%s",
-					    a->os_root, cmd_name(a, "MOUNT"),
-					    options,	/* XXX */
-					    a->os_root, device, a->os_root,
-					    a->cfg_root, mtpt);
+					if (use_hammer == 0 ||
+					    (use_hammer == 1 && strcmp(mtpt, "/boot/") == 0)) {
+						command_add_ensure_dev(a, cmds, device);
+						command_add(cmds,
+						    "%s%s -o %s %s%s %s%s%s",
+						    a->os_root, cmd_name(a, "MOUNT"),
+						    options,	/* XXX */
+						    a->os_root, device, a->os_root,
+						    a->cfg_root, mtpt);
+					} else {
+						if (strcmp(fstype, "null") == 0) {
+							command_add_ensure_dev(a, cmds, device);
+							command_add(cmds,
+							    "%s%s %s%s%s %s%s%s",
+							    a->os_root, cmd_name(a, "MOUNT_NULL"),
+							    a->os_root, a->cfg_root, device, a->os_root,
+							    a->cfg_root, mtpt);
+						} else {
+							command_add_ensure_dev(a, cmds, device);
+							command_add(cmds,
+							    "%s%s %s%s %s%s%s",
+							    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
+							    a->os_root, device, a->os_root,
+							    a->cfg_root, mtpt);
+						}
+					}
 				}
 			}
 		}

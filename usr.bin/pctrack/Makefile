@@ -4,6 +4,5 @@ PROG=	pctrack
 DPADD=	${LIBKVM}
 LDADD=	-lkvm
 MAN=	pctrack.8
-WARNS?=	1
 
 .include <bsd.prog.mk>

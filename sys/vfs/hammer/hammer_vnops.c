@@ -73,6 +73,7 @@ static int hammer_vop_readlink(struct vop_readlink_args *);
 static int hammer_vop_nremove(struct vop_nremove_args *);
 static int hammer_vop_nrename(struct vop_nrename_args *);
 static int hammer_vop_nrmdir(struct vop_nrmdir_args *);
+static int hammer_vop_markatime(struct vop_markatime_args *);
 static int hammer_vop_setattr(struct vop_setattr_args *);
 static int hammer_vop_strategy(struct vop_strategy_args *);
 static int hammer_vop_bmap(struct vop_bmap_args *ap);
@@ -118,6 +119,7 @@ struct vop_ops hammer_vnode_vops = {
 	.vop_nremove =		hammer_vop_nremove,
 	.vop_nrename =		hammer_vop_nrename,
 	.vop_nrmdir =		hammer_vop_nrmdir,
+	.vop_markatime = 	hammer_vop_markatime,
 	.vop_setattr =		hammer_vop_setattr,
 	.vop_bmap =		hammer_vop_bmap,
 	.vop_strategy =		hammer_vop_strategy,
@@ -135,6 +137,7 @@ struct vop_ops hammer_spec_vops = {
 	.vop_write =		hammer_vop_specwrite,
 	.vop_access =		hammer_vop_access,
 	.vop_close =		hammer_vop_specclose,
+	.vop_markatime = 	hammer_vop_markatime,
 	.vop_getattr =		hammer_vop_getattr,
 	.vop_inactive =		hammer_vop_inactive,
 	.vop_reclaim =		hammer_vop_reclaim,
@@ -148,6 +151,7 @@ struct vop_ops hammer_fifo_vops = {
 	.vop_write =		hammer_vop_fifowrite,
 	.vop_access =		hammer_vop_access,
 	.vop_close =		hammer_vop_fifoclose,
+	.vop_markatime = 	hammer_vop_markatime,
 	.vop_getattr =		hammer_vop_getattr,
 	.vop_inactive =		hammer_vop_inactive,
 	.vop_reclaim =		hammer_vop_reclaim,
@@ -712,13 +716,17 @@ hammer_vop_getattr(struct vop_getattr_args *ap)
 	/*
 	 * Special case for @@PFS softlinks.  The actual size of the
 	 * expanded softlink is "@@0x%016llx:%05d" == 26 bytes.
+	 * or for MAX_TID is    "@@-1:%05d" == 10 bytes.
 	 */
 	if (ip->ino_data.obj_type == HAMMER_OBJTYPE_SOFTLINK &&
 	    ip->ino_data.size == 10 &&
 	    ip->obj_asof == HAMMER_MAX_TID &&
 	    ip->obj_localization == 0 &&
 	    strncmp(ip->ino_data.ext.symlink, "@@PFS", 5) == 0) {
-		    vap->va_size = 26;
+		    if (ip->pfsm->pfsd.mirror_flags & HAMMER_PFSD_SLAVE)
+			    vap->va_size = 26;
+		    else
+			    vap->va_size = 10;
 	}
 
 	/*
@@ -848,10 +856,16 @@ hammer_vop_nresolve(struct vop_nresolve_args *ap)
 	}
 
 	/*
-	 * If there is no path component the time extension is relative to
-	 * dip.
+	 * If there is no path component the time extension is relative to dip.
+	 * e.g. "fubar/@@<snapshot>"
+	 *
+	 * "." is handled by the kernel, but ".@@<snapshot>" is not.
+	 * e.g. "fubar/.@@<snapshot>"
+	 *
+	 * ".." is handled by the kernel.  We do not currently handle
+	 * "..@<snapshot>".
 	 */
-	if (nlen == 0) {
+	if (nlen == 0 || (nlen == 1 && ncp->nc_name[0] == '.')) {
 		ip = hammer_get_inode(&trans, dip, dip->obj_id,
 				      asof, dip->obj_localization,
 				      flags, &error);
@@ -1437,15 +1451,22 @@ hammer_vop_readlink(struct vop_readlink_args *ap)
 			if (error == 0) {
 				if (pfsm->pfsd.mirror_flags &
 				    HAMMER_PFSD_SLAVE) {
+					/* vap->va_size == 26 */
 					ksnprintf(buf, sizeof(buf),
 						  "@@0x%016llx:%05d",
 						  pfsm->pfsd.sync_end_tid,
 						  localization >> 16);
 				} else {
+					/* vap->va_size == 10 */
+					ksnprintf(buf, sizeof(buf),
+						  "@@-1:%05d",
+						  localization >> 16);
+#if 0
 					ksnprintf(buf, sizeof(buf),
 						  "@@0x%016llx:%05d",
 						  HAMMER_MAX_TID,
 						  localization >> 16);
+#endif
 				}
 				ptr = buf;
 				bytes = strlen(buf);
@@ -1700,6 +1721,33 @@ hammer_vop_nrmdir(struct vop_nrmdir_args *ap)
 	if (error == 0)
 		hammer_knote(ap->a_dvp, NOTE_WRITE | NOTE_LINK);
 	return (error);
+}
+
+/*
+ * hammer_vop_markatime { vp, cred }
+ */
+static
+int
+hammer_vop_markatime(struct vop_markatime_args *ap)
+{
+	struct hammer_transaction trans;
+	struct hammer_inode *ip;
+
+	ip = VTOI(ap->a_vp);
+	if (ap->a_vp->v_mount->mnt_flag & MNT_RDONLY)
+		return (EROFS);
+	if (ip->flags & HAMMER_INODE_RO)
+		return (EROFS);
+	if (ip->hmp->mp->mnt_flag & MNT_NOATIME)
+		return (0);
+	hammer_start_transaction(&trans, ip->hmp);
+	++hammer_stats_file_iopsw;
+
+	ip->ino_data.atime = trans.time;
+	hammer_modify_inode(ip, HAMMER_INODE_ATIME);
+	hammer_done_transaction(&trans);
+	hammer_knote(ap->a_vp, NOTE_ATTRIB);
+	return (0);
 }
 
 /*
@@ -2785,13 +2833,25 @@ retry:
 		 * If we are trying to remove a directory the directory must
 		 * be empty.
 		 *
-		 * WARNING: hammer_ip_check_directory_empty() may have to
-		 * terminate the cursor to avoid a deadlock.  It is ok to
-		 * call hammer_done_cursor() twice.
+		 * The check directory code can loop and deadlock/retry.  Our
+		 * own cursor's node locks must be released to avoid a 3-way
+		 * deadlock with the flusher if the check directory code
+		 * blocks.
+		 *
+		 * If any changes whatsoever have been made to the cursor
+		 * set EDEADLK and retry.
 		 */
 		if (error == 0 && ip->ino_data.obj_type ==
 				  HAMMER_OBJTYPE_DIRECTORY) {
+			hammer_unlock_cursor(&cursor);
 			error = hammer_ip_check_directory_empty(trans, ip);
+			hammer_lock_cursor(&cursor);
+			if (cursor.flags & HAMMER_CURSOR_RETEST) {
+				kprintf("HAMMER: Warning: avoided deadlock "
+					"on rmdir '%s'\n",
+					ncp->nc_name);
+				error = EDEADLK;
+			}
 		}
 
 		/*

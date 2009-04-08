@@ -23,15 +23,21 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: /repoman/r/ncvs/src/lib/libc/gen/_pthread_stubs.c,v 1.1 2001/01/24 12:59:20 deischen Exp $
+ * $FreeBSD: src/lib/libc/gen/_pthread_stubs.c,v 1.5 2001/06/11 23:18:22 iedowse Exp $
  * $DragonFly: src/lib/libc/gen/_pthread_stubs.c,v 1.4 2005/05/09 12:43:40 davidxu Exp $
  */
 
+#include <signal.h>
 #include <pthread.h>
+#include <pthread_np.h>
 
+int	_pthread_cond_init_stub(pthread_cond_t *, const pthread_condattr_t *);
+int	_pthread_cond_signal_stub(pthread_cond_t *);
+int	_pthread_cond_wait_stub(pthread_cond_t *, pthread_mutex_t *);
 void	*_pthread_getspecific_stub(pthread_key_t);
 int	_pthread_key_create_stub(pthread_key_t *, void (*)(void *));
 int	_pthread_key_delete_stub(pthread_key_t);
+int	_pthread_main_np_stub(void);
 int	_pthread_mutex_destroy_stub(pthread_mutex_t *);
 int	_pthread_mutex_init_stub(pthread_mutex_t *,
 				 const pthread_mutexattr_t *);
@@ -42,7 +48,16 @@ int	_pthread_mutexattr_init_stub(pthread_mutexattr_t *);
 int	_pthread_mutexattr_destroy_stub(pthread_mutexattr_t *);
 int	_pthread_mutexattr_settype_stub(pthread_mutexattr_t *, int);
 int	_pthread_once_stub(pthread_once_t *, void (*)(void));
+int	_pthread_rwlock_init_stub(pthread_rwlock_t *,
+				  const pthread_rwlockattr_t *);
+int	_pthread_rwlock_destroy_stub(pthread_rwlock_t *);
+int	_pthread_rwlock_rdlock_stub(pthread_rwlock_t *);
+int	_pthread_rwlock_tryrdlock_stub(pthread_rwlock_t *);
+int	_pthread_rwlock_trywrlock_stub(pthread_rwlock_t *);
+int	_pthread_rwlock_unlock_stub(pthread_rwlock_t *);
+int	_pthread_rwlock_wrlock_stub(pthread_rwlock_t *);
 int	_pthread_setspecific_stub(pthread_key_t, const void *);
+int	_pthread_sigmask_stub(int, const sigset_t *, sigset_t *);
 
 /* define a null pthread structure just to satisfy _pthread_self */
 struct pthread {
@@ -59,20 +74,51 @@ static struct pthread main_thread;
  * between application locks and libc locks (threads holding the
  * latter can't be allowed to exit/terminate).
  */
-__weak_reference(_pthread_getspecific_stub,_pthread_getspecific);
-__weak_reference(_pthread_key_create_stub,_pthread_key_create);
-__weak_reference(_pthread_key_delete_stub,_pthread_key_delete);
-__weak_reference(_pthread_mutex_destroy_stub,_pthread_mutex_destroy);
-__weak_reference(_pthread_mutex_init_stub,_pthread_mutex_init);
-__weak_reference(_pthread_mutex_lock_stub,_pthread_mutex_lock);
-__weak_reference(_pthread_mutex_trylock_stub,_pthread_mutex_trylock);
-__weak_reference(_pthread_mutex_unlock_stub,_pthread_mutex_unlock);
-__weak_reference(_pthread_mutexattr_init_stub,_pthread_mutexattr_init);
-__weak_reference(_pthread_mutexattr_destroy_stub,_pthread_mutexattr_destroy);
-__weak_reference(_pthread_mutexattr_settype_stub,_pthread_mutexattr_settype);
-__weak_reference(_pthread_once_stub,_pthread_once);
-__weak_reference(_pthread_setspecific_stub,_pthread_setspecific);
-__weak_reference(_pthread_self_stub,_pthread_self);
+__weak_reference(_pthread_cond_init_stub,	_pthread_cond_init);
+__weak_reference(_pthread_cond_signal_stub,	_pthread_cond_signal);
+__weak_reference(_pthread_cond_wait_stub,	_pthread_cond_wait);
+__weak_reference(_pthread_getspecific_stub,	_pthread_getspecific);
+__weak_reference(_pthread_key_create_stub,	_pthread_key_create);
+__weak_reference(_pthread_key_delete_stub,	_pthread_key_delete);
+__weak_reference(_pthread_main_np_stub,		_pthread_main_np);
+__weak_reference(_pthread_mutex_destroy_stub,	_pthread_mutex_destroy);
+__weak_reference(_pthread_mutex_init_stub,	_pthread_mutex_init);
+__weak_reference(_pthread_mutex_lock_stub,	_pthread_mutex_lock);
+__weak_reference(_pthread_mutex_trylock_stub,	_pthread_mutex_trylock);
+__weak_reference(_pthread_mutex_unlock_stub,	_pthread_mutex_unlock);
+__weak_reference(_pthread_mutexattr_init_stub,	_pthread_mutexattr_init);
+__weak_reference(_pthread_mutexattr_destroy_stub, _pthread_mutexattr_destroy);
+__weak_reference(_pthread_mutexattr_settype_stub, _pthread_mutexattr_settype);
+__weak_reference(_pthread_once_stub,		_pthread_once);
+__weak_reference(_pthread_self_stub,		_pthread_self);
+__weak_reference(_pthread_rwlock_init_stub,	_pthread_rwlock_init);
+__weak_reference(_pthread_rwlock_rdlock_stub,	_pthread_rwlock_rdlock);
+__weak_reference(_pthread_rwlock_tryrdlock_stub, _pthread_rwlock_tryrdlock);
+__weak_reference(_pthread_rwlock_trywrlock_stub, _pthread_rwlock_trywrlock);
+__weak_reference(_pthread_rwlock_unlock_stub,	_pthread_rwlock_unlock);
+__weak_reference(_pthread_rwlock_wrlock_stub,	_pthread_rwlock_wrlock);
+__weak_reference(_pthread_setspecific_stub,	_pthread_setspecific);
+__weak_reference(_pthread_sigmask_stub,		_pthread_sigmask);
+
+int
+_pthread_cond_init_stub(pthread_cond_t *cond __unused,
+			const pthread_condattr_t *cond_attr __unused)
+{
+	return (0);
+}
+
+int
+_pthread_cond_signal_stub(pthread_cond_t *cond __unused)
+{
+	return (0);
+}
+
+int
+_pthread_cond_wait_stub(pthread_cond_t *cond __unused,
+			pthread_mutex_t *mutex __unused)
+{
+	return (0);
+}
 
 void *
 _pthread_getspecific_stub(pthread_key_t key __unused)
@@ -91,6 +137,12 @@ int
 _pthread_key_delete_stub(pthread_key_t key __unused)
 {
 	return (0);
+}
+
+int
+_pthread_main_np_stub(void)
+{
+	return (-1);
 }
 
 int
@@ -150,7 +202,50 @@ _pthread_once_stub(pthread_once_t *once_control __unused,
 	return (0);
 }
 
-struct pthread *
+int
+_pthread_rwlock_init_stub(pthread_rwlock_t *rwlock __unused,
+			  const pthread_rwlockattr_t *attr __unused)
+{
+	return (0);
+}
+
+int
+_pthread_rwlock_destroy_stub(pthread_rwlock_t *rwlock __unused)
+{
+	return (0);
+}
+
+int
+_pthread_rwlock_rdlock_stub(pthread_rwlock_t *rwlock __unused)
+{
+	return (0);
+}
+
+int
+_pthread_rwlock_tryrdlock_stub(pthread_rwlock_t *rwlock __unused)
+{
+	return (0);
+}
+
+int
+_pthread_rwlock_trywrlock_stub(pthread_rwlock_t *rwlock __unused)
+{
+	return (0);
+}
+
+int
+_pthread_rwlock_unlock_stub(pthread_rwlock_t *rwlock __unused)
+{
+	return (0);
+}
+
+int
+_pthread_rwlock_wrlock_stub(pthread_rwlock_t *rwlock __unused)
+{
+	return (0);
+}
+
+pthread_t
 _pthread_self_stub(void)
 {
 	return (&main_thread);
@@ -162,3 +257,9 @@ _pthread_setspecific_stub(pthread_key_t key __unused,
 	return (0);
 }
 
+int
+_pthread_sigmask_stub(int how __unused, const sigset_t *set __unused,
+		      sigset_t *oset __unused)
+{
+	return (0);
+}

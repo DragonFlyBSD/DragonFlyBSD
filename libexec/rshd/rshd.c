@@ -495,13 +495,13 @@ fail:
 				if (doencrypt) {
 					wready = writeto;
 					if (select(nfd, &ready,
-					    &wready, (fd_set *) 0,
-					    (struct timeval *) 0) < 0)
+					    &wready, NULL,
+					    NULL) < 0)
 						break;
 				} else
 #endif
-					if (select(nfd, &ready, (fd_set *)0,
-					  (fd_set *)0, (struct timeval *)0) < 0)
+					if (select(nfd, &ready, NULL,
+					  NULL, NULL) < 0)
 						break;
 				if (FD_ISSET(s, &ready)) {
 					int	ret;
@@ -612,7 +612,7 @@ fail:
 		    syslog(LOG_INFO|LOG_AUTH, "%s@%s as %s: cmd='%.80s'",
 			remuser, fromhost, locuser, cmdbuf);
 	}
-	execl(pwd->pw_shell, cp, "-c", cmdbuf, (char *)NULL);
+	execl(pwd->pw_shell, cp, "-c", cmdbuf, NULL);
 	perror(pwd->pw_shell);
 	exit(1);
 }

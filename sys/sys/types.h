@@ -86,15 +86,14 @@ typedef	__uint32_t	u_daddr_t;	/* unsigned disk address */
 typedef	__uint32_t	fixpt_t;	/* fixed point number */
 typedef __uint64_t	fsblkcnt_t;	/* filesystem block count */
 typedef __uint64_t	fsfilcnt_t;	/* filesystem file count */
+#ifndef _GID_T_DECLARED
 typedef	__uint32_t	gid_t;		/* group id */
+#define	_GID_T_DECLARED
+#endif
 typedef __int64_t	id_t;		/* general id, can hold gid/pid/uid_t */
 typedef	__uint32_t	in_addr_t;	/* base type for internet address */
 typedef	__uint16_t	in_port_t;
-#ifdef __BOOT2_HACK
-typedef	__uint32_t	ino_t;		/* inode number */
-#else
 typedef	__uint64_t	ino_t;		/* inode number */
-#endif
 typedef	long		key_t;		/* IPC key (for Sys V IPC) */
 typedef	__uint16_t	mode_t;		/* permissions */
 typedef	__uint32_t	nlink_t;	/* link count */
@@ -103,7 +102,10 @@ typedef	__pid_t		pid_t;		/* process id */
 typedef	__pid_t		lwpid_t;	/* light weight process id */
 typedef	quad_t		rlim_t;		/* resource limit */
 typedef	__int32_t	segsz_t;	/* segment size */
+#ifndef _UID_T_DECLARED
 typedef	__uint32_t	uid_t;		/* user id */
+#define	_UID_T_DECLARED
+#endif
 typedef	long		suseconds_t;	/* microseconds (signed) */
 typedef	__uint32_t	useconds_t;	/* microseconds (unsigned) */
 

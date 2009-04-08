@@ -143,6 +143,9 @@ xread.1:					// Starting
 // Setup the segment registers to flat addressing (segment 0) and setup the
 // stack to end just below the start of our code.
 // 
+// XXX note - our origin (start) points to the MEM_BIOS_LADDR.  We run
+// from there but boot2 later on calls xread at BOOT1_ORIGIN.
+//
 main:		cld				// String ops inc
 		xor %cx,%cx			// Zero
 		mov %cx,%es			// Address
@@ -160,16 +163,18 @@ main:		cld				// String ops inc
 		movsw				//  code
 //
 // If we are on a hard drive, then load the MBR and look for the first
-// FreeBSD slice.  We use the fake partition entry below that points to
-// the MBR when we call nread.  The first pass looks for the first active
-// FreeBSD slice.  The second pass looks for the first non-active FreeBSD
-// slice if the first one fails.
+// FreeBSD slice.
+//
+// Note, we can't use the fake partition entry (part4), as it may contain
+// garbage if this is a normal boot1 on a slice, verses a dangerously
+// dedicated disk.  Hardwire sector 0 to acquire the MBR
 // 
-		mov $part4,%si			// Partition
+		xor %ax,%ax
+		xor %cx,%cx
 		cmpb $0x80,%dl			// Hard drive?
 		jb main.4			// No
 		movb $0x1,%dh			// Block count
-		callw nread			// Read MBR
+		callw nread_alt			// Read MBR
 		mov $0x1,%cx	 		// Two passes
 main.1: 	mov $BOOT2_LOAD_BUF+PRT_OFF,%si	// Partition table
 		movb $0x1,%dh			// Partition
@@ -197,7 +202,11 @@ main.4: 	xor %dx,%dx			// Partition:drive
 //
 // Ok, we have a slice and drive in %dx now, so use that to locate and load
 // boot2.  %si references the start of the slice we are looking for, so go
-// ahead and load up the first 16 sectors (boot1 + boot2) from that.  
+// ahead and load up the first N sectors (boot1 + boot2) from that.
+//
+// N is 16 for boot1 in a disklabel32 and up to 32 in a disklabel64.  The
+// disklabel64 can hold up to 64 sectors but MEM_BTX_USR+BOOT2_VORIGIN
+// will overflow the segment if we use more then 32 sectors.
 //
 // When we read it in, we conveniently use BOOT2_LOAD_BUF (0x8c00) as our
 // transfer buffer.  Thus, boot1 ends up at 0x8c00, and boot2 starts at
@@ -217,6 +226,10 @@ main.4: 	xor %dx,%dx			// Partition:drive
 //
 main.5: 	pushw %dx			// Save args
 		movb $NSECT,%dh			// Sector count
+#ifdef DISKLABEL64
+						// In disklabel64 boot2 starts
+		addl $7,0x8(%si)		// offset 0x1000.
+#endif
 		callw nread			// Read disk
 		mov $MEM_BTX_ORG,%bx		// Base of BTX header
 		mov 0xa(%bx),%si		// Get BTX text length (btx.S)
@@ -269,9 +282,11 @@ seta20.2:	inb $0x64,%al			// Get status
 // 
 // Trampoline used to call read from within boot1.
 // 
-nread:		mov $BOOT2_LOAD_BUF,%bx		// Transfer buffer
+nread:
 		mov 0x8(%si),%ax		// Get
 		mov 0xa(%si),%cx		//  LBA
+nread_alt:
+		mov $BOOT2_LOAD_BUF,%bx		// Transfer buffer
 		push %cs			// Read from
 		callw xread.1	 		//  disk
 		jnc return			// If success, return
@@ -426,6 +441,10 @@ flags:		.byte FLAGS			// Flags
 		.org PRT_OFF,0x90
 
 // Partition table
+//
+// THIS MAY NOT BE WRITTEN OUT TO THE BOOT1 AREA OF THE DISKLABEL.  This
+// section is only written out when the disklabel is placed on the raw
+// disk instead of in a slice, when creating a dangerously dedicated disk.
 
 		.fill 0x30,0x1,0x0
 part4:		.byte 0x80, 0x00, 0x01, 0x00

@@ -5,7 +5,9 @@ INTERNALLIB=
 INSTALL_PIC_ARCHIVE=
 NOPROFILE=
 CFLAGS+=-I${.CURDIR}/../libc/include
+CFLAGS+=-I${.CURDIR}/../libc/rpc
 CFLAGS+=-I${.CURDIR}/../../include -D__thread=
+CFLAGS+=${AINC}
 
 AINC=	-I${.OBJDIR} -I${.CURDIR}/../libc/${MACHINE_ARCH}
 PRECIOUSLIB=	yes

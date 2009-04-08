@@ -136,7 +136,7 @@ doread(void)
 			free((char *) uchain);
 			uball->spe = 0;
 			uball->owornmask &= ~W_BALL;
-			uchain = uball = (struct obj *) 0;
+			uchain = uball = NULL;
 		}
 		break;
 	    }
@@ -147,7 +147,7 @@ doread(void)
 		if(confused) cnt += 12;
 		while(cnt--)
 		    makemon(confused ? PM_ACID_BLOB :
-			(struct permonst *) 0, u.ux, u.uy);
+			NULL, u.ux, u.uy);
 		break;
 	    }
 	case SCR_ENCHANT_WEAPON:
@@ -175,7 +175,7 @@ doread(void)
 
 		for(i = -bd; i <= bd; i++) for(j = -bd; j <= bd; j++)
 		if((mtmp = m_at(u.ux+i, u.uy+j)))
-			tamedog(mtmp, (struct obj *) 0);
+			tamedog(mtmp, NULL);
 		break;
 	    }
 	case SCR_GENOCIDE:

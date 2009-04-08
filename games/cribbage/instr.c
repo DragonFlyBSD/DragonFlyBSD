@@ -70,7 +70,7 @@ instructions(void)
 		if ((pager = rindex(path, '/')) != NULL)
 			++pager;
 		pager = path;
-		execlp(path, pager, _PATH_INSTR, (char *) NULL);
+		execlp(path, pager, _PATH_INSTR, NULL);
 		fprintf(stderr, "cribbage: %s.\n", strerror(errno));
 		_exit(1);
 	default:

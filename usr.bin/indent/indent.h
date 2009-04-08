@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/indent/indent.h,v 1.1.2.1 2001/12/06 19:28:47 schweikh Exp $
+ * $FreeBSD: src/usr.bin/indent/indent.h,v 1.2 2002/03/30 17:10:20 dwmalone Exp $
  * $DragonFly: src/usr.bin/indent/indent.h,v 1.2 2003/06/17 04:29:27 dillon Exp $
  */
 
@@ -32,13 +32,13 @@ int	compute_code_target(void);
 int	compute_label_target(void);
 int	count_spaces(int, char *);
 int	lexi(void);
-void	diag2(int, char *);
-void	diag3(int, char *, int);
-void	diag4(int, char *, int, int);
+void	diag2(int, const char *);
+void	diag3(int, const char *, int);
+void	diag4(int, const char *, int, int);
 void	dump_line(void);
 void	fill_buffer(void);
 void	parse(int);
-void	parsefont(struct fstate *, char *);
+void	parsefont(struct fstate *, const char *);
 void	pr_comment(void);
 void	set_defaults(void);
 void	set_option(char *);

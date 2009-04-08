@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/ypserv/yp_dblookup.c,v 1.17.2.1 2002/02/15 00:47:00 des Exp $
+ * $FreeBSD: src/usr.sbin/ypserv/yp_dblookup.c,v 1.25 2003/05/03 21:06:42 obrien Exp $
  * $DragonFly: src/usr.sbin/ypserv/yp_dblookup.c,v 1.4 2004/12/18 22:48:15 swildner Exp $
  */
 
@@ -77,11 +77,11 @@ struct dbent {
 	int flags;
 };
 
-static CIRCLEQ_HEAD(circlehead, circleq_entry) qhead;
+static TAILQ_HEAD(circlehead, circleq_entry) qhead;
 
 struct circleq_entry {
 	struct dbent *dbptr;
-	CIRCLEQ_ENTRY(circleq_entry) links;
+	TAILQ_ENTRY(circleq_entry) links;
 };
 
 /*
@@ -90,7 +90,7 @@ struct circleq_entry {
 void
 yp_init_dbs(void)
 {
-	CIRCLEQ_INIT(&qhead);
+	TAILQ_INIT(&qhead);
 }
 
 /*
@@ -164,8 +164,8 @@ yp_flush(void)
 {
 	struct circleq_entry *qptr;
 
-	qptr = qhead.cqh_last;
-	CIRCLEQ_REMOVE(&qhead, qptr, links);
+	qptr = TAILQ_LAST(&qhead, circlehead);
+	TAILQ_REMOVE(&qhead, qptr, links);
 	yp_free_qent(qptr);
 	numdbs--;
 }
@@ -178,9 +178,9 @@ yp_flush_all(void)
 {
 	struct circleq_entry *qptr;
 
-	while (qhead.cqh_first != (void *)&qhead) {
-		qptr = qhead.cqh_first; /* save this */
-		CIRCLEQ_REMOVE(&qhead, qhead.cqh_first, links);
+	while (!TAILQ_EMPTY(&qhead)) {
+		qptr = TAILQ_FIRST(&qhead); /* save this */
+		TAILQ_REMOVE(&qhead, qptr, links);
 		yp_free_qent(qptr);
 	}
 	numdbs = 0;
@@ -225,8 +225,7 @@ yp_testflag(char *map, char *domain, int flag)
 	strcat(buf, "/");
 	strcat(buf, map);
 
-	for (qptr = qhead.cqh_first; qptr != (void *)&qhead;
-						qptr = qptr->links.cqe_next) {
+	TAILQ_FOREACH(qptr, &qhead, links) {
 		if (!strcmp(qptr->dbptr->name, buf)) {
 			if (qptr->dbptr->flags & flag)
 				return(1);
@@ -238,7 +237,7 @@ yp_testflag(char *map, char *domain, int flag)
 	if (yp_open_db_cache(domain, map, NULL, 0) == NULL)
 		return(0);
 
-	if (qhead.cqh_first->dbptr->flags & flag)
+	if (TAILQ_FIRST(&qhead)->dbptr->flags & flag)
 		return(1);
 
 	return(0);
@@ -277,7 +276,7 @@ yp_cache_db(DB *dbp, char *name, int size)
 
 	qptr->dbptr->flags = yp_setflags(dbp);
 
-	CIRCLEQ_INSERT_HEAD(&qhead, qptr, links);
+	TAILQ_INSERT_HEAD(&qhead, qptr, links);
 	numdbs++;
 
 	return(0);
@@ -314,8 +313,7 @@ yp_find_db(const char *name, const char *key, const int size)
 {
 	struct circleq_entry *qptr;
 
-	for (qptr = qhead.cqh_first; qptr != (void *)&qhead;
-						qptr = qptr->links.cqe_next) {
+	TAILQ_FOREACH(qptr, &qhead, links) {
 		if (!strcmp(qptr->dbptr->name, name)) {
 			if (size) {
 				if (size != qptr->dbptr->size ||
@@ -325,9 +323,9 @@ yp_find_db(const char *name, const char *key, const int size)
 				if (qptr->dbptr->size)
 					continue;
 			}
-			if (qptr != qhead.cqh_first) {
-				CIRCLEQ_REMOVE(&qhead, qptr, links);
-				CIRCLEQ_INSERT_HEAD(&qhead, qptr, links);
+			if (qptr != TAILQ_FIRST(&qhead)) {
+				TAILQ_REMOVE(&qhead, qptr, links);
+				TAILQ_INSERT_HEAD(&qhead, qptr, links);
 			}
 			return(qptr->dbptr->dbp);
 		}
@@ -357,11 +355,11 @@ yp_open_db_cache(const char *domain, const char *map, const char *key,
 	strcat(buf, "/");
 	strcat(buf, map);
 
-	if ((dbp = yp_find_db((char *)&buf, key, size)) != NULL) {
+	if ((dbp = yp_find_db(buf, key, size)) != NULL) {
 		return(dbp);
 	} else {
 		if ((dbp = yp_open_db(domain, map)) != NULL) {
-			if (yp_cache_db(dbp, (char *)&buf, size)) {
+			if (yp_cache_db(dbp, buf, size)) {
 				dbp->close(dbp);
 				yp_errno = YP_YPERR;
 				return(NULL);
@@ -461,7 +459,7 @@ yp_get_record(const char *domain, const char *map, const DBT *key,
 
 	if (ypdb_debug)
 		yp_error("looking up key [%.*s]",
-			  key->size, key->data);
+		    (int)key->size, (char *)key->data);
 
 	/*
 	 * Avoid passing back magic "YP_*" entries unless
@@ -479,7 +477,7 @@ yp_get_record(const char *domain, const char *map, const DBT *key,
 
 	if ((rval = (dbp->get)(dbp, key, data, 0)) != 0) {
 #ifdef DB_CACHE
-		qhead.cqh_first->dbptr->size = 0;
+		TAILQ_FIRST(&qhead)->dbptr->size = 0;
 #else
 		dbp->close(dbp);
 #endif
@@ -491,16 +489,17 @@ yp_get_record(const char *domain, const char *map, const DBT *key,
 
 	if (ypdb_debug)
 		yp_error("result of lookup: key: [%.*s] data: [%.*s]",
-			 key->size, key->data, data->size, data->data);
+		    (int)key->size, (char *)key->data,
+		    (int)data->size, (char *)data->data);
 
 #ifdef DB_CACHE
-	if (qhead.cqh_first->dbptr->size) {
-		qhead.cqh_first->dbptr->key = "";
-		qhead.cqh_first->dbptr->size = 0;
+	if (TAILQ_FIRST(&qhead)->dbptr->size) {
+		TAILQ_FIRST(&qhead)->dbptr->key = "";
+		TAILQ_FIRST(&qhead)->dbptr->size = 0;
 	}
 #else
-	bcopy((char *)data->data, (char *)&buf, data->size);
-	data->data = (void *)&buf;
+	bcopy(data->data, &buf, data->size);
+	data->data = &buf;
 	dbp->close(dbp);
 #endif
 
@@ -520,7 +519,7 @@ yp_first_record(const DB *dbp, DBT *key, DBT *data, int allow)
 
 	if ((rval = (dbp->seq)(dbp,key,data,R_FIRST)) != 0) {
 #ifdef DB_CACHE
-		qhead.cqh_first->dbptr->size = 0;
+		TAILQ_FIRST(&qhead)->dbptr->size = 0;
 #endif
 		if (rval == 1)
 			return(YP_NOKEY);
@@ -532,7 +531,7 @@ yp_first_record(const DB *dbp, DBT *key, DBT *data, int allow)
 	while (!strncmp(key->data, "YP_", 3) && !allow) {
 		if ((rval = (dbp->seq)(dbp,key,data,R_NEXT)) != 0) {
 #ifdef DB_CACHE
-			qhead.cqh_first->dbptr->size = 0;
+			TAILQ_FIRST(&qhead)->dbptr->size = 0;
 #endif
 			if (rval == 1)
 				return(YP_NOKEY);
@@ -543,16 +542,17 @@ yp_first_record(const DB *dbp, DBT *key, DBT *data, int allow)
 
 	if (ypdb_debug)
 		yp_error("result of lookup: key: [%.*s] data: [%.*s]",
-			 key->size, key->data, data->size, data->data);
+		    (int)key->size, (char *)key->data,
+		    (int)data->size, (char *)data->data);
 
 #ifdef DB_CACHE
-	if (qhead.cqh_first->dbptr->size) {
-		qhead.cqh_first->dbptr->key = key->data;
-		qhead.cqh_first->dbptr->size = key->size;
+	if (TAILQ_FIRST(&qhead)->dbptr->size) {
+		TAILQ_FIRST(&qhead)->dbptr->key = key->data;
+		TAILQ_FIRST(&qhead)->dbptr->size = key->size;
 	}
 #else
-	bcopy((char *)data->data, (char *)&buf, data->size);
-	data->data = (void *)&buf;
+	bcopy(data->data, &buf, data->size);
+	data->data = &buf;
 #endif
 
 	return(YP_TRUE);
@@ -575,8 +575,8 @@ yp_next_record(const DB *dbp, DBT *key, DBT *data, int all, int allow)
 			return(YP_NOMORE);
 		else {
 #ifdef DB_CACHE
-			qhead.cqh_first->dbptr->key = key->data;
-			qhead.cqh_first->dbptr->size = key->size;
+			TAILQ_FIRST(&qhead)->dbptr->key = key->data;
+			TAILQ_FIRST(&qhead)->dbptr->size = key->size;
 #endif
 			return(rval);
 		}
@@ -584,19 +584,19 @@ yp_next_record(const DB *dbp, DBT *key, DBT *data, int all, int allow)
 
 	if (ypdb_debug)
 		yp_error("retrieving next key, previous was: [%.*s]",
-			  key->size, key->data);
+		    (int)key->size, (char *)key->data);
 
 	if (!all) {
 #ifdef DB_CACHE
-		if (qhead.cqh_first->dbptr->key == NULL) {
+		if (TAILQ_FIRST(&qhead)->dbptr->key == NULL) {
 #endif
 			(dbp->seq)(dbp,&lkey,&ldata,R_FIRST);
 			while (key->size != lkey.size ||
-			    strncmp((char *)key->data, lkey.data,
+			    strncmp(key->data, lkey.data,
 			    (int)key->size))
 				if ((dbp->seq)(dbp,&lkey,&ldata,R_NEXT)) {
 #ifdef DB_CACHE
-					qhead.cqh_first->dbptr->size = 0;
+					TAILQ_FIRST(&qhead)->dbptr->size = 0;
 #endif
 					return(YP_NOKEY);
 				}
@@ -608,7 +608,7 @@ yp_next_record(const DB *dbp, DBT *key, DBT *data, int all, int allow)
 
 	if ((dbp->seq)(dbp,key,data,R_NEXT)) {
 #ifdef DB_CACHE
-		qhead.cqh_first->dbptr->size = 0;
+		TAILQ_FIRST(&qhead)->dbptr->size = 0;
 #endif
 		return(YP_NOMORE);
 	}
@@ -617,26 +617,27 @@ yp_next_record(const DB *dbp, DBT *key, DBT *data, int all, int allow)
 	while (!strncmp(key->data, "YP_", 3) && !allow)
 		if ((dbp->seq)(dbp,key,data,R_NEXT)) {
 #ifdef DB_CACHE
-		qhead.cqh_first->dbptr->size = 0;
+		TAILQ_FIRST(&qhead)->dbptr->size = 0;
 #endif
 			return(YP_NOMORE);
 		}
 
 	if (ypdb_debug)
 		yp_error("result of lookup: key: [%.*s] data: [%.*s]",
-			 key->size, key->data, data->size, data->data);
+		    (int)key->size, (char *)key->data,
+		    (int)data->size, (char *)data->data);
 
 #ifdef DB_CACHE
-	if (qhead.cqh_first->dbptr->size) {
-		qhead.cqh_first->dbptr->key = key->data;
-		qhead.cqh_first->dbptr->size = key->size;
+	if (TAILQ_FIRST(&qhead)->dbptr->size) {
+		TAILQ_FIRST(&qhead)->dbptr->key = key->data;
+		TAILQ_FIRST(&qhead)->dbptr->size = key->size;
 	}
 #else
-	bcopy((char *)key->data, (char *)&keybuf, key->size);
-	lkey.data = (void *)&keybuf;
+	bcopy(key->data, &keybuf, key->size);
+	lkey.data = &keybuf;
 	lkey.size = key->size;
-	bcopy((char *)data->data, (char *)&datbuf, data->size);
-	data->data = (void *)&datbuf;
+	bcopy(data->data, &datbuf, data->size);
+	data->data = &datbuf;
 #endif
 
 	return(YP_TRUE);

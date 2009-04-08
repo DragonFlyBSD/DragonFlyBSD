@@ -556,7 +556,7 @@ smb_nbst_disconnect(struct smb_vc *vcp, struct thread *td)
 		return ENOTCONN;
 	if ((so = nbp->nbp_tso) != NULL) {
 		nbp->nbp_flags &= ~NBF_CONNECTED;
-		nbp->nbp_tso = (struct socket *)NULL;
+		nbp->nbp_tso = NULL;
 		soshutdown(so, SHUT_RDWR);
 		soclose(so, FNONBLOCK);
 	}

@@ -29,7 +29,7 @@ options 	NFS			#Network Filesystem
 options 	NFS_ROOT		#NFS usable as root device, NFS required
 options 	MSDOSFS			#MSDOS Filesystem
 options 	CD9660			#ISO 9660 Filesystem
-##options 	PROCFS			#Process filesystem
+options 	PROCFS			#Process filesystem
 #JG do we need it? does it work (on amd64)?
 options 	COMPAT_43		#Compatible with BSD 4.3 [KEEP THIS!]
 ##options		COMPAT_DF12		#Compatible with DragonFly 1.2 and earlier
@@ -39,7 +39,7 @@ options		DEVICE_POLLING		# Support mixed interrupt-polling
 ##options 	UCONSOLE		#Allow users to grab the console
 ##options 	USERCONFIG		#boot -c editor
 ##options 	VISUAL_USERCONFIG	#visual boot -c editor
-##options 	KTRACE			#ktrace(1) support
+options 	KTRACE			#ktrace(1) support
 options 	SYSVSHM			#SYSV-style shared memory
 options 	SYSVMSG			#SYSV-style message queues
 options 	SYSVSEM			#SYSV-style semaphores
@@ -204,9 +204,12 @@ device		sio3	at isa? disable port IO_COM4 irq 9
 
 # PCI Ethernet NICs.
 device		de		# DEC/Intel DC21x4x (``Tulip'')
-device		em		# Intel PRO/1000 adapter Gigabit Ethernet Card (``Wiseman'')
 device		txp		# 3Com 3cR990 (``Typhoon'')
 device		vx		# 3Com 3c590, 3c595 (``Vortex'')
+
+device		em		# Intel PRO/1000 adapter Gigabit Ethernet Card (``Wiseman'')
+				# Requires ig_hal
+device		ig_hal		# Intel PRO/1000 hardware abstraction layer
 
 # PCI Ethernet NICs that use the common MII bus controller code.
 # NOTE: Be sure to keep the 'device miibus' line in order to use these NICs!

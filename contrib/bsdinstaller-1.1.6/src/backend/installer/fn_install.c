@@ -66,6 +66,61 @@
 #include "pathnames.h"
 #include "fn.h"
 
+static const char *pfs_mountpt[8] = {"/var", "/tmp", "/usr", "/home",
+	"/usr/obj", "/var/crash", "/var/tmp", NULL};
+
+static const int pfs_nohistory[8] = {0, 1, 0, 0, 1, 1, 1};
+
+static void
+handle_pfs(struct i_fn_args *a, struct commands *cmds)
+{
+	int j;
+
+	/*
+	 * Create PFS root directory.
+	 */
+	command_add(cmds, "%s%s -p %smnt/pfs",
+	    a->os_root, cmd_name(a, "MKDIR"),
+	    a->os_root);
+
+	for (j = 0; pfs_mountpt[j] != NULL; j++) {
+		/*
+		 * We have a PFS for a subdirectory, e.g. /var/crash, so we
+		 * need to create /pfs/var.crash
+		 */
+		if (rindex(pfs_mountpt[j]+1, '/') != NULL) {
+			command_add(cmds, "%s%s pfs-master %smnt/pfs%s.%s",
+			    a->os_root, cmd_name(a, "HAMMER"),
+			    a->os_root, dirname(pfs_mountpt[j]),
+			    basename(pfs_mountpt[j]));
+			command_add(cmds, "%s%s -p %smnt%s",
+			    a->os_root, cmd_name(a, "MKDIR"),
+			    a->os_root, pfs_mountpt[j]);
+			command_add(cmds, "%s%s %smnt/pfs%s.%s %smnt%s",
+			    a->os_root, cmd_name(a, "MOUNT_NULL"),
+			    a->os_root, dirname(pfs_mountpt[j]),
+			    basename(pfs_mountpt[j]),
+			    a->os_root, pfs_mountpt[j]);
+			if (pfs_nohistory[j] == 1)
+				command_add(cmds, "%s%s nohistory %smnt%s",
+				    a->os_root, cmd_name(a, "CHFLAGS"),
+				    a->os_root, pfs_mountpt[j]);
+		}
+		else {
+			command_add(cmds, "%s%s pfs-master %smnt/pfs%s",
+			    a->os_root, cmd_name(a, "HAMMER"),
+			    a->os_root, pfs_mountpt[j]);
+			command_add(cmds, "%s%s -p %smnt%s",
+			    a->os_root, cmd_name(a, "MKDIR"),
+			    a->os_root, pfs_mountpt[j]);
+			command_add(cmds, "%s%s %smnt/pfs%s %smnt%s",
+			    a->os_root, cmd_name(a, "MOUNT_NULL"),
+			    a->os_root, pfs_mountpt[j],
+			    a->os_root, pfs_mountpt[j]);
+		}
+	}
+}
+
 /*
  * fn_install_os: actually put DragonFly on a disk.
  */
@@ -75,7 +130,7 @@ fn_install_os(struct i_fn_args *a)
 	struct subpartition *sp;
 	struct commands *cmds;
 	struct command *cmd;
-	int i, seen_it, prefix;
+	int i, seen_it, prefix, j;
 	FILE *sources_conf;
 	char line[256];
 	char cp_src[64][256];
@@ -91,34 +146,30 @@ fn_install_os(struct i_fn_args *a)
         if (!is_file("%s%s", a->os_root, SOURCES_CONF_FILE)) {
 		i_log(a, "Using internal copy sources table.");
 		strcpy(cp_src[0],"/COPYRIGHT");
-		strcpy(cp_src[1],"/var");
-		strcpy(cp_src[2],"/bin");
-		strcpy(cp_src[3],"/boot");
-		strcpy(cp_src[4],"/cdrom");
-		strcpy(cp_src[5],"/dev");
-		strcpy(cp_src[6],"/etc");
-		strcpy(cp_src[7],"/libexec");
-		strcpy(cp_src[8],"/lib");
-		strcpy(cp_src[9],"/kernel");
-		strcpy(cp_src[10],"/modules");
-		strcpy(cp_src[11],"/root");
-		strcpy(cp_src[12],"/sbin");
-		strcpy(cp_src[13],"/sys");
-		strcpy(cp_src[14],"/tmp");
-		strcpy(cp_src[15],"/usr/bin");
-		strcpy(cp_src[16],"/usr/games");
-		strcpy(cp_src[17],"/usr/include");
-		strcpy(cp_src[18],"/usr/lib");
-		strcpy(cp_src[19],"/usr/local");
-		strcpy(cp_src[20],"/usr/local/OpenOffice.org1.1.3");
-		strcpy(cp_src[21],"/usr/X11R6");
-		strcpy(cp_src[22],"/usr/libdata");
-		strcpy(cp_src[23],"/usr/libexec");
-		strcpy(cp_src[24],"/usr/obj");
-		strcpy(cp_src[25],"/usr/sbin");
-		strcpy(cp_src[26],"/usr/share");
-		strcpy(cp_src[27],"/usr/src");
-		strcpy(cp_src[28],"");
+		strcpy(cp_src[1],"/bin");
+		strcpy(cp_src[2],"/boot");
+		strcpy(cp_src[3],"/cdrom");
+		strcpy(cp_src[4],"/dev");
+		strcpy(cp_src[5],"/etc");
+		strcpy(cp_src[6],"/root");
+		strcpy(cp_src[7],"/sbin");
+		strcpy(cp_src[8],"/sys");
+		strcpy(cp_src[9],"/tmp");
+		strcpy(cp_src[10],"/usr/Makefile");
+		strcpy(cp_src[11],"/usr/bin");
+		strcpy(cp_src[12],"/usr/games");
+		strcpy(cp_src[13],"/usr/include");
+		strcpy(cp_src[14],"/usr/lib");
+		strcpy(cp_src[15],"/usr/libdata");
+		strcpy(cp_src[16],"/usr/libexec");
+		strcpy(cp_src[17],"/usr/local");
+		strcpy(cp_src[18],"/usr/obj");
+		strcpy(cp_src[19],"/usr/pkg");
+		strcpy(cp_src[20],"/usr/sbin");
+		strcpy(cp_src[21],"/usr/share");
+		strcpy(cp_src[22],"/usr/src");
+		strcpy(cp_src[23],"/var");
+		strcpy(cp_src[24],"");
 	} else {
 		snprintf(file_path, 256, "%s%s", a->os_root, SOURCES_CONF_FILE);
                 sources_conf = fopen(file_path, "r");
@@ -158,6 +209,30 @@ fn_install_os(struct i_fn_args *a)
 	 */
 	unmount_all_under(a, cmds, "%smnt", a->os_root);
 
+	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
+	     sp != NULL; sp = subpartition_next(sp)) {
+		if (strcmp(subpartition_get_mountpoint(sp), "/") == 0) {
+			command_add(cmds, "%s%s -p %smnt%s",
+			    a->os_root, cmd_name(a, "MKDIR"),
+			    a->os_root, subpartition_get_mountpoint(sp));
+			if (use_hammer == 1) {
+				command_add(cmds, "%s%s %sdev/%s %smnt%s",
+				    a->os_root, cmd_name(a, "MOUNT_HAMMER"),
+				    a->os_root,
+				    subpartition_get_device_name(sp),
+				    a->os_root,
+				    subpartition_get_mountpoint(sp));
+			} else {
+				command_add(cmds, "%s%s %sdev/%s %smnt%s",
+				    a->os_root, cmd_name(a, "MOUNT"),
+				    a->os_root,
+				    subpartition_get_device_name(sp),
+				    a->os_root,
+				    subpartition_get_mountpoint(sp));
+			}
+		}
+	}
+
 	/*
 	 * Create mount points and mount subpartitions on them.
 	 */
@@ -185,11 +260,6 @@ fn_install_os(struct i_fn_args *a)
 			continue;
 		}
 	
-		if (strcmp(subpartition_get_mountpoint(sp), "/") != 0) {
-			command_add(cmds, "%s%s -p %smnt%s",
-			    a->os_root, cmd_name(a, "MKDIR"),
-			    a->os_root, subpartition_get_mountpoint(sp));
-		}
 
 		/*
 		 * Don't mount it if it's MFS-backed.
@@ -198,14 +268,28 @@ fn_install_os(struct i_fn_args *a)
 		if (subpartition_is_mfsbacked(sp)) {
 			continue;
 		}
-
-		command_add(cmds, "%s%s %sdev/%s %smnt%s",
-		    a->os_root, cmd_name(a, "MOUNT"),
-		    a->os_root,
-		    subpartition_get_device_name(sp),
-		    a->os_root,
-		    subpartition_get_mountpoint(sp));
+		if (use_hammer == 0) {
+			/* / is already mounted */
+			if (strcmp(subpartition_get_mountpoint(sp), "/") != 0) {
+				command_add(cmds, "%s%s -p %smnt%s",
+				    a->os_root, cmd_name(a, "MKDIR"),
+				    a->os_root,
+				    subpartition_get_mountpoint(sp));
+				command_add(cmds, "%s%s %sdev/%s %smnt%s",
+				    a->os_root, cmd_name(a, "MOUNT"),
+				    a->os_root,
+				    subpartition_get_device_name(sp),
+				    a->os_root,
+				    subpartition_get_mountpoint(sp));
+			}
+		}
 	}
+
+	/*
+	 * Take care of HAMMER PFS.
+	 */
+	if (use_hammer == 1)
+		handle_pfs(a, cmds);
 
 	/*
 	 * Actually copy files now.
@@ -330,7 +414,7 @@ fn_install_os(struct i_fn_args *a)
 	 */
 
 	/*
-	 * If the user has both /var and /tmp subparitions,
+	 * If the user has both /var and /tmp subpartitions,
 	 * symlink /var/tmp to /tmp.
 	 */
 	if (subpartition_find(storage_get_selected_slice(a->s), "/tmp") != NULL &&
@@ -434,7 +518,7 @@ fn_install_os(struct i_fn_args *a)
 		    a->os_root, dest);
 		command_set_log_mode(cmd, COMMAND_LOG_QUIET);
 	}
-	
+
 	/*
 	 * Rebuild the user database, to get rid of any extra users
 	 * from the LiveCD that aren't supposed to be installed
@@ -458,30 +542,67 @@ fn_install_os(struct i_fn_args *a)
 
 	for (sp = slice_subpartition_first(storage_get_selected_slice(a->s));
 	     sp != NULL; sp = subpartition_next(sp)) {
-		if (strcmp(subpartition_get_mountpoint(sp), "/") == 0) {
-			command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t1\t1' >>%smnt/etc/fstab",
-			    a->os_root, cmd_name(a, "ECHO"),
-			    subpartition_get_device_name(sp),
-			    subpartition_get_mountpoint(sp),
-			    a->os_root);
-		} else if (strcmp(subpartition_get_mountpoint(sp), "swap") == 0) {
+		if (strcmp(subpartition_get_mountpoint(sp), "swap") == 0) {
 			command_add(cmds, "%s%s '/dev/%s\t\tnone\t\tswap\tsw\t\t0\t0' >>%smnt/etc/fstab",
 			    a->os_root, cmd_name(a, "ECHO"),
 			    subpartition_get_device_name(sp),
 			    a->os_root);
-		} else if (subpartition_is_mfsbacked(sp)) {
-                        mfsbacked_size = slice_get_capacity(storage_get_selected_slice(a->s)) * 2048;
-                        command_add(cmds, "%s%s 'swap\t\t%s\t\t\tmfs\trw,-s%ld\t\t1\t1' >>%smnt/etc/fstab",
-                                a->os_root, cmd_name(a, "ECHO"),
-                                subpartition_get_mountpoint(sp),
-                                mfsbacked_size,
-                                a->os_root);
+		} else if (use_hammer == 0) {
+			if (strcmp(subpartition_get_mountpoint(sp), "/") == 0) {
+				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t1\t1' >>%smnt/etc/fstab",
+				    a->os_root, cmd_name(a, "ECHO"),
+				    subpartition_get_device_name(sp),
+				    subpartition_get_mountpoint(sp),
+				    a->os_root);
+			} else if (subpartition_is_mfsbacked(sp)) {
+				mfsbacked_size = slice_get_capacity(storage_get_selected_slice(a->s)) * 2048;
+				command_add(cmds, "%s%s 'swap\t\t%s\t\t\tmfs\trw,-s%ld\t\t1\t1' >>%smnt/etc/fstab",
+					a->os_root, cmd_name(a, "ECHO"),
+					subpartition_get_mountpoint(sp),
+					mfsbacked_size,
+					a->os_root);
+			} else {
+				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t2\t2' >>%smnt/etc/fstab",
+				    a->os_root, cmd_name(a, "ECHO"),
+				    subpartition_get_device_name(sp),
+				    subpartition_get_mountpoint(sp),
+				    a->os_root);
+			}
 		} else {
-			command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t2\t2' >>%smnt/etc/fstab",
-			    a->os_root, cmd_name(a, "ECHO"),
-			    subpartition_get_device_name(sp),
-			    subpartition_get_mountpoint(sp),
-			    a->os_root);
+			if (strcmp(subpartition_get_mountpoint(sp), "/") == 0) {
+				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\thammer\trw\t\t1\t1' >>%smnt/etc/fstab",
+				    a->os_root, cmd_name(a, "ECHO"),
+				    subpartition_get_device_name(sp),
+				    subpartition_get_mountpoint(sp),
+				    a->os_root);
+			} else if (strcmp(subpartition_get_mountpoint(sp), "/boot") == 0) {
+				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t1\t1' >>%smnt/etc/fstab",
+				    a->os_root, cmd_name(a, "ECHO"),
+				    subpartition_get_device_name(sp),
+				    subpartition_get_mountpoint(sp),
+				    a->os_root);
+			}
+		}
+	}
+
+	/*
+	 * Take care of HAMMER PFS null mounts.
+	 */
+	if (use_hammer == 1) {
+		for (j = 0; pfs_mountpt[j] != NULL; j++) {
+			if (rindex(pfs_mountpt[j]+1, '/') != NULL)
+				command_add(cmds, "%s%s '/pfs%s.%s\t%s\t\tnull\trw\t\t0\t0' >>%smnt/etc/fstab",
+				    a->os_root, cmd_name(a, "ECHO"),
+				    dirname(pfs_mountpt[j]),
+				    basename(pfs_mountpt[j]),
+				    pfs_mountpt[j],
+				    a->os_root);
+			else
+				command_add(cmds, "%s%s '/pfs%s\t\t%s\t\tnull\trw\t\t0\t0' >>%smnt/etc/fstab",
+				    a->os_root, cmd_name(a, "ECHO"),
+				    pfs_mountpt[j],
+				    pfs_mountpt[j],
+				    a->os_root);
 		}
 	}
 
@@ -491,12 +612,20 @@ fn_install_os(struct i_fn_args *a)
 	    a->os_root);
 
 	/* Backup the disklabel and the log. */
+	if (use_hammer == 0) {
+		command_add(cmds, "%s%s %s > %smnt/etc/disklabel.%s",
+		    a->os_root, cmd_name(a, "DISKLABEL"),
+		    slice_get_device_name(storage_get_selected_slice(a->s)),
+		    a->os_root,
+		    slice_get_device_name(storage_get_selected_slice(a->s)));
+	} else {
+		command_add(cmds, "%s%s %s > %smnt/etc/disklabel.%s",
+		    a->os_root, cmd_name(a, "DISKLABEL64"),
+		    slice_get_device_name(storage_get_selected_slice(a->s)),
+		    a->os_root,
+		    slice_get_device_name(storage_get_selected_slice(a->s)));
+	}
 
-	command_add(cmds, "%s%s %s > %smnt/etc/disklabel.%s",
-	    a->os_root, cmd_name(a, "DISKLABEL"),
-	    slice_get_device_name(storage_get_selected_slice(a->s)),
-	    a->os_root,
-	    slice_get_device_name(storage_get_selected_slice(a->s)));
 	command_add(cmds, "%s%s %sinstall.log %smnt/var/log/install.log",
 	    a->os_root, cmd_name(a, "CP"),
 	    a->tmp, a->os_root);
@@ -534,9 +663,15 @@ fn_install_os(struct i_fn_args *a)
 	 * make sure once and for all that the disklabel is bootable.
 	 */
 	if (a->result) {
-		command_add(cmds, "%s%s -B %s",
-		    a->os_root, cmd_name(a, "DISKLABEL"),
-		    slice_get_device_name(storage_get_selected_slice(a->s)));
+		if (use_hammer == 0) {
+			command_add(cmds, "%s%s -B %s",
+			    a->os_root, cmd_name(a, "DISKLABEL"),
+			    slice_get_device_name(storage_get_selected_slice(a->s)));
+		} else {
+			command_add(cmds, "%s%s -B %s",
+			    a->os_root, cmd_name(a, "DISKLABEL64"),
+			    slice_get_device_name(storage_get_selected_slice(a->s)));
+		}
 	}
 
 	if (!commands_execute(a, cmds))

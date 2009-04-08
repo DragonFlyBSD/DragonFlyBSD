@@ -43,6 +43,7 @@
 #include <sys/imgact_aout.h>
 #include <sys/mman.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/resourcevar.h>
 #include <sys/sysent.h>
 #include <sys/systm.h>
@@ -132,7 +133,7 @@ sysctl_vm_resident(SYSCTL_HANDLER_ARGS)
 
 	/* only super-user should call this sysctl */
 	td = req->td;
-	if ((suser(td)) != 0)
+	if ((priv_check(td, PRIV_ROOT)) != 0)
 		return EPERM;
 
 	error = count = 0;
@@ -197,7 +198,7 @@ sys_exec_sys_register(struct exec_sys_register_args *uap)
     int error;
 
     p = curproc;
-    if ((error = suser_cred(p->p_ucred, 0)) != 0)
+    if ((error = priv_check_cred(p->p_ucred, PRIV_ROOT, 0)) != 0)
 	return(error);
     if ((vp = p->p_textvp) == NULL)
 	return(ENOENT);
@@ -211,6 +212,7 @@ sys_exec_sys_register(struct exec_sys_register_args *uap)
     vmres->vr_id = ++exec_res_id;
     vmres->vr_entry_addr = (intptr_t)uap->entry;
     vmres->vr_vmspace = vmspace_fork(p->p_vmspace); /* XXX order */
+    pmap_pinit2(vmspace_pmap(vmres->vr_vmspace));
 
     lockmgr(&exec_list_lock, LK_EXCLUSIVE);
     TAILQ_INSERT_TAIL(&exec_res_list, vmres, vr_link);
@@ -236,7 +238,7 @@ sys_exec_sys_unregister(struct exec_sys_unregister_args *uap)
     int count;
 
     p = curproc;
-    if ((error = suser_cred(p->p_ucred, 0)) != 0)
+    if ((error = priv_check_cred(p->p_ucred, PRIV_ROOT, 0)) != 0)
 	return(error);
 
     /*

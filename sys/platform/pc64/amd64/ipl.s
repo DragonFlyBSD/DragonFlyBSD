@@ -214,7 +214,7 @@ doreti_iret:
 	ALIGN_TEXT
 	.globl	doreti_iret_fault
 doreti_iret_fault:
-	PUSH_FRAME
+	PUSH_FRAME_NOSWAP
 	testq	$PSL_I,TF_RFLAGS(%rsp)
 	jz	2f
 	sti
@@ -505,6 +505,7 @@ splz_ipiq:
 	pushq	%rax ;			/* phys int frame / cs */	\
 	pushq	3*8(%rsp) ;		/* original caller eip */	\
 	subq	$TF_RIP,%rsp ;		/* trap frame */		\
+	movq	$0,TF_XFLAGS(%rsp) ;	/* extras */			\
 	movq	$0,TF_TRAPNO(%rsp) ;	/* extras */			\
 	movq	$0,TF_ADDR(%rsp) ;	/* extras */			\
 	movq	$0,TF_FLAGS(%rsp) ;	/* extras */			\

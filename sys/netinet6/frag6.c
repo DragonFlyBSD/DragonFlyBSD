@@ -162,7 +162,7 @@ frag6_input(struct mbuf **mp, int *offp, int proto)
 	    (!(ro.ro_rt->rt_flags & RTF_UP) ||
 	     !IN6_ARE_ADDR_EQUAL(&dst->sin6_addr, &ip6->ip6_dst))) {
 		rtfree(ro.ro_rt);
-		ro.ro_rt = (struct rtentry *)NULL;
+		ro.ro_rt = NULL;
 	}
 	if (ro.ro_rt == NULL) {
 		bzero(dst, sizeof(*dst));

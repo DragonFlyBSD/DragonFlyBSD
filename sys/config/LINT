@@ -522,7 +522,7 @@ device		mn	# Munich32x/Falc54 Nx64kbit/sec cards.
 #  Ethernets; it is MANDATORY when a Ethernet device driver is
 #  configured.
 #  The `sppp' pseudo-device serves a similar role for certain types
-#  of synchronous PPP links (like `cx', `ar').
+#  of synchronous PPP links (like `ar').
 #  The `sl' pseudo-device implements the Serial Line IP (SLIP) service.
 #  The `ppp' pseudo-device implements the Point-to-Point Protocol.
 #  The `bpf' pseudo-device enables the Berkeley Packet Filter.  Be
@@ -1363,11 +1363,10 @@ device		puc
 options 	PUC_FASTINTR
 
 #
-# Network interfaces: `cx', `ed', `el', `ep', `ie', `is', `le', `lnc'
+# Network interfaces: `ed', `el', `ep', `ie', `is', `le', `lnc'
 #
 # ar: Arnet SYNC/570i hdlc sync 2/4 port V.35/X.21 serial driver (requires sppp)
 # cs: IBM Etherjet and other Crystal Semi CS89x0-based adapters
-# cx: Cronyx/Sigma multiport sync/async (with Cisco or PPP framing)
 # ed: Western Digital and SMC 80xx; Novell NE1000 and NE2000; 3Com 3C503
 # el: 3Com 3C501 (slow!)
 # ep: 3Com 3C509
@@ -1391,7 +1390,6 @@ options 	PUC_FASTINTR
 #
 device ar0 at isa? port 0x300 irq 10 iomem 0xd0000
 device cs0 at isa? port 0x300
-device cx0 at isa? port 0x240 irq 15 drq 7
 device ed0 at isa? port 0x280 irq 5 iomem 0xd8000
 device el0 at isa? port 0x300 irq 9
 device ep
@@ -1404,7 +1402,7 @@ device lnc0 at isa? port 0x280 irq 10 drq 0
 device rdp0 at isa? port 0x378 irq 7 flags 2
 device sbni0 at isa? port 0x210 irq 5 flags 0xefdead
 device sln
-device sr0 at isa? port 0x300 irq 5 iomem 0xd0000
+device sr
 device sn0 at isa? port 0x300 irq 10
 
 # Wlan support is mandatory for some wireless LAN devices.
@@ -1943,6 +1941,7 @@ device		trm		# Tekram DC395U/UW/F and DC315U
 device		miibus
 
 # PCI Ethernet NICs that use the common MII bus controller code.
+device		ale		# Atheros AR8121/AR8113/AR8114
 device		bce		# Broadcom NetXtreme II Gigabit Ethernet
 device		bfe		# Broadcom BCM440x 10/100 Ethernet
 device		dc		# DEC/Intel 21143 and various workalikes
@@ -1969,7 +1968,11 @@ device		vx		# 3Com 3c590, 3c595 (``Vortex'')
 
 # Gigabit Ethernet NICs.
 device		bge		# Broadcom BCM570x (``Tigon III'')
-device		em		# Intel Pro/1000 (82542,82543,82544,82540)
+device		em		# Intel Pro/1000 (8254x,8257x)
+				# Requires ig_hal
+device		emx		# Intel Pro/1000 (8257{1,2,3,4})
+				# Requires ig_hal
+device		ig_hal		# Intel Pro/1000 hardware abstraction layer
 device		et		# Agere ET1310 10/100/1000 Ethernet
 device		lge		# Level 1 LXT1001 (``Mercury'')
 device		nfe		# nVidia nForce2/3 MCP04/51/55 CK804
@@ -2502,10 +2505,8 @@ device		ciss
 
 #
 # Intel Integrated RAID controllers.
-# This driver was developed and is maintained by Intel.  Contacts
-# at Intel for this driver are
-# "Kannanthanam, Boji T" <boji.t.kannanthanam@intel.com> and
-# "Leubner, Achim" <achim.leubner@intel.com>.
+# This driver is supported and maintained by
+# "Leubner, Achim" <Achim_Leubner@adaptec.com>.
 #
 device          iir
 
@@ -2644,6 +2645,10 @@ options		UBSEC_DEBUG	# enable debugging support: hw.ubsec.debug
 options		UBSEC_RNDTEST	# enable rndtest support
 
 device		acpi		# basic ACPI support
+device		acpi_asus	# Asus laptop support
+device		acpi_thinkpad	# ThinkPad support
+device		acpi_toshiba	# Toshiba laptop support
+device		acpi_video	# ACPI video extensions
 device		pmtimer		# adjust the system clock after resume
 
 # DRM options:
@@ -2711,6 +2716,8 @@ options 	DEBUG_INTERRUPTS
 #options 	DISABLE_PSE
 options		BCE_DEBUG
 options		BCE_NVRAM_WRITE_SUPPORT
+options		EMX_RSS_DEBUG
+options		JME_RSS_DEBUG
 #options	ED_NO_MIIBUS
 options 	ENABLE_ALART
 options 	FB_DEBUG=2
@@ -2753,6 +2760,7 @@ options	KTR
 #options KTR_HAMMER
 #options KTR_IF_BGE
 #options KTR_IF_EM
+#options KTR_IF_EMX
 #options KTR_IF_START
 #options KTR_IFQ
 #options KTR_IPIQ
@@ -2796,3 +2804,7 @@ options		SCTP_MAP_LOGGING
 
 # Serializer profiling
 options		PROFILE_SERIALIZER
+
+# Receive Side Scaling
+options		RSS
+options		RSS_DEBUG

@@ -67,13 +67,14 @@ static int no_op (void);
 static void printflg (unsigned int);
 static int c_frmt (const void *, const void *);
 static off_t str_offt (char *);
-static char *getline (FILE *fp);
+static char *getline (FILE *);
 static void pax_options (int, char **);
 static void pax_usage (void);
 static void tar_options (int, char **);
 static void tar_usage (void);
 static void cpio_options (int, char **);
 static void cpio_usage (void);
+static int mkpath(char *);
 
 /* errors from getline */
 #define GETLINE_FILE_CORRUPT 1
@@ -187,7 +188,7 @@ pax_options(int argc, char **argv)
 	/*
 	 * process option flags
 	 */
-	while ((c=getopt(argc,argv,"ab:cdf:iklno:p:rs:tuvwx:zB:DE:G:HLPT:U:XYZ"))
+	while ((c=getopt(argc,argv,"ab:cdf:iklno:p:rs:tuvwx:zB:DE:G:HLOPT:U:XYZ"))
 	    != -1) {
 		switch (c) {
 		case 'a':
@@ -440,6 +441,12 @@ pax_options(int argc, char **argv)
 			Lflag = 1;
 			flg |= CLF;
 			break;
+		case 'O':
+			/*
+			 * Force one volume.  Non standard option.
+			 */
+			force_one_volume = 1;
+			break;
 		case 'P':
 			/*
 			 * do NOT follow symlinks (default)
@@ -551,6 +558,8 @@ pax_options(int argc, char **argv)
 		}
 		--argc;
 		dirptr = argv[argc];
+		if (mkpath(dirptr) < 0)
+			exit(1);
 		/* FALL THROUGH */
 	case ARCHIVE:
 	case APPND:
@@ -965,7 +974,7 @@ tar_options(int argc, char **argv)
 	}
 }
 
-int
+static int
 mkpath(char *path)
 {
 	struct stat sb;

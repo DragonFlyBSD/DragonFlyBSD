@@ -390,7 +390,7 @@ struct ata_request {
     struct spinlock             done;           /* request done sema */
     int                         retries;        /* retry count */
     int                         timeout;        /* timeout for this cmd */
-    int				sortq_lost;	/* waiting too long in queue */
+    int				unused01;
     struct callout              callout;        /* callout management */
     struct task                 task;           /* task management */
     struct bio                  *bio;           /* bio for this request */
@@ -524,8 +524,9 @@ struct ata_channel {
 
     struct spinlock             queue_mtx;      /* queue lock */
     TAILQ_HEAD(, ata_request)   ata_queue;      /* head of ATA queue */
-    struct ata_request          *freezepoint;   /* composite freezepoint */
+    struct ata_request          *freezepoint;   /* freeze point for sortq */
     struct ata_request          *running;       /* currently running request */
+    int				sortq_lost;	/* limit sort reordering */
 };
 
 /* disk bay/enclosure related */

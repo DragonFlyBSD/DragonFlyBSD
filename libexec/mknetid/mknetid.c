@@ -60,13 +60,13 @@
 #define OPSYS "unix"
 
 /* Default location of group file. */
-char *groupfile = _PATH_GROUP;
+const char *groupfile = _PATH_GROUP;
 /* Default location of master.passwd file. */
-char *passfile = _PATH_PASSWD;
+const char *passfile = _PATH_PASSWD;
 /* Default location of hosts file. */
-char *hostsfile = _PATH_HOSTS;
+const char *hostsfile = _PATH_HOSTS;
 /* Default location of netid file */
-char *netidfile = "/etc/netid";
+const char *netidfile = "/etc/netid";
 
 /*
  * Stored hash table of 'reverse' group member database
@@ -85,7 +85,7 @@ extern int _setgrent ( void );
 extern void _endgrent ( void );
 
 static void
-usage()
+usage(void)
 {
 	fprintf (stderr, "%s\n%s\n",
 	"usage: mknetid [-q] [-g group_file] [-p passwd_file] [-h hosts_file]",
@@ -96,9 +96,7 @@ usage()
 extern FILE *_gr_fp;
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	FILE *gfp, *pfp, *hfp, *nfp;
 	char readbuf[LINSIZ];

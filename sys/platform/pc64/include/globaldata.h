@@ -112,9 +112,10 @@ struct mdglobaldata {
  * i386/i386/mp_machdep.c and locore.s.
  */
 struct privatespace {
+	/* JG TODO: fix comments describing layout */
 	/* page 0 - data page */
 	struct mdglobaldata mdglobaldata;
-	char		__filler0[PAGE_SIZE - sizeof(struct mdglobaldata)];
+	char		__filler0[MDGLOBALDATA_PAD];
 
 	/* page 1..4 - CPAGE1,CPAGE2,CPAGE3,PPAGE1 */
 	char		CPAGE1[PAGE_SIZE];		/* SMPpt[1] */

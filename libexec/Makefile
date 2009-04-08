@@ -17,7 +17,6 @@ SUBDIR=	atrun \
 	pppoed \
 	rbootd \
 	revnetgroup \
-	rexecd \
 	rlogind \
 	rpc.rquotad \
 	rpc.rstatd \

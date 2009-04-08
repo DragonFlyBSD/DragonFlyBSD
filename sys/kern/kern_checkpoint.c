@@ -73,7 +73,6 @@
 #include <sys/mount.h>
 #include <sys/ckpt.h>
 
-
 static int elf_loadphdrs(struct file *fp,  Elf_Phdr *phdr, int numsegs);
 static int elf_getnotes(struct lwp *lp, struct file *fp, size_t notesz);
 static int elf_demarshalnotes(void *src, prpsinfo_t *psinfo,
@@ -363,16 +362,16 @@ elf_demarshalnotes(void *src, prpsinfo_t *psinfo, prstatus_t *status,
 	int off = 0;
 
 	TRACE_ENTER;
+	error = elf_getnote(src, &off, "FreeBSD", NT_PRPSINFO,
+			   (void **)&psinfo, sizeof(prpsinfo_t));
+	if (error)
+		goto done;
 	error = elf_getnote(src, &off, "FreeBSD", NT_PRSTATUS, 
 			   (void **)&status, sizeof(prstatus_t));
 	if (error)
 		goto done;
 	error = elf_getnote(src, &off, "FreeBSD", NT_FPREGSET, 
 			   (void **)&fpregset, sizeof(prfpregset_t));
-	if (error)
-		goto done;
-	error = elf_getnote(src, &off, "FreeBSD", NT_PRPSINFO, 
-			   (void **)&psinfo, sizeof(prpsinfo_t));
 	if (error)
 		goto done;
 
@@ -694,7 +693,11 @@ ckpt_freeze_proc(struct lwp *lp, struct file *fp)
         PRINTF(("calling generic_elf_coredump\n"));
 	limit = p->p_rlimit[RLIMIT_CORE].rlim_cur;
 	if (limit) {
+		proc_stop(p);
+		while (p->p_nstopped < p->p_nthreads - 1)
+			tsleep(&p->p_nstopped, 0, "freeze", 1);
 		error = generic_elf_coredump(lp, SIGCKPT, fp, limit);
+		proc_unstop(p);
 	} else {
 		error = ERANGE;
 	}

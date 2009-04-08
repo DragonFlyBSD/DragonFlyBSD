@@ -722,7 +722,7 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 	}
 	mb->m_next = mrest;
 	mreq->m_pkthdr.len = authsiz + 10 * NFSX_UNSIGNED + mrest_len;
-	mreq->m_pkthdr.rcvif = (struct ifnet *)0;
+	mreq->m_pkthdr.rcvif = NULL;
 	*mbp = mb;
 	return (mreq);
 }
@@ -782,7 +782,7 @@ nfsm_mbuftouio(struct mbuf **mrep, struct uio *uiop, int siz, caddr_t *dpos)
 			uiop->uio_iovcnt--;
 			uiop->uio_iov++;
 		} else {
-			uiop->uio_iov->iov_base += uiosiz;
+			uiop->uio_iov->iov_base = (char *)uiop->uio_iov->iov_base + uiosiz;
 			uiop->uio_iov->iov_len -= uiosiz;
 		}
 		siz -= uiosiz;
@@ -859,7 +859,7 @@ nfsm_uiotombuf(struct uio *uiop, struct mbuf **mq, int siz, caddr_t *bpos)
 			uiop->uio_offset += xfer;
 			uiop->uio_resid -= xfer;
 		}
-		uiop->uio_iov->iov_base += uiosiz;
+		uiop->uio_iov->iov_base = (char *)uiop->uio_iov->iov_base + uiosiz;
 		uiop->uio_iov->iov_len -= uiosiz;
 		siz -= uiosiz;
 	}
@@ -1058,7 +1058,7 @@ nfs_init(struct vfsconf *vfsp)
 	/* Ensure async daemons disabled */
 	for (i = 0; i < NFS_MAXASYNCDAEMON; i++) {
 		nfs_iodwant[i] = NULL;
-		nfs_iodmount[i] = (struct nfsmount *)0;
+		nfs_iodmount[i] = NULL;
 	}
 	nfs_nhinit();			/* Init the nfsnode table */
 #ifndef NFS_NOSERVER
@@ -1662,7 +1662,7 @@ nfsm_adj(struct mbuf *mp, int len, int nul)
 	m = mp;
 	for (;;) {
 		count += m->m_len;
-		if (m->m_next == (struct mbuf *)0)
+		if (m->m_next == NULL)
 			break;
 		m = m->m_next;
 	}
@@ -1949,14 +1949,14 @@ nfs_getcookie(struct nfsnode *np, off_t off, int add)
 			dp->ndm_eocookie = 0;
 			LIST_INSERT_HEAD(&np->n_cookies, dp, ndm_list);
 		} else
-			return ((nfsuint64 *)0);
+			return (NULL);
 	}
 	while (pos >= NFSNUMCOOKIES) {
 		pos -= NFSNUMCOOKIES;
 		if (dp->ndm_list.le_next) {
 			if (!add && dp->ndm_eocookie < NFSNUMCOOKIES &&
 				pos >= dp->ndm_eocookie)
-				return ((nfsuint64 *)0);
+				return (NULL);
 			dp = dp->ndm_list.le_next;
 		} else if (add) {
 			MALLOC(dp2, struct nfsdmap *, sizeof (struct nfsdmap),
@@ -1965,13 +1965,13 @@ nfs_getcookie(struct nfsnode *np, off_t off, int add)
 			LIST_INSERT_AFTER(dp, dp2, ndm_list);
 			dp = dp2;
 		} else
-			return ((nfsuint64 *)0);
+			return (NULL);
 	}
 	if (pos >= dp->ndm_eocookie) {
 		if (add)
 			dp->ndm_eocookie = pos + 1;
 		else
-			return ((nfsuint64 *)0);
+			return (NULL);
 	}
 	return (&dp->ndm_cookies[pos]);
 }

@@ -30,9 +30,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fingerd.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/libexec/fingerd/fingerd.c,v 1.16.2.3 2002/04/03 09:05:23 mike Exp $
+ * $FreeBSD: src/libexec/fingerd/fingerd.c,v 1.26 2008/08/04 01:25:48 cperciva Exp $
  * $DragonFly: src/libexec/fingerd/fingerd.c,v 1.3 2003/11/14 03:54:29 dillon Exp $
  */
 
@@ -50,36 +49,36 @@
 #include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <strings.h>
+#include <string.h>
 #include "pathnames.h"
 
-void logerr (const char *, ...);
+void logerr(const char *, ...) __printflike(1, 2) __dead2;
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
-	register FILE *fp;
-	register int ch;
-	register char *lp;
+	FILE *fp;
+	int ch;
+	char *lp;
 	struct sockaddr_storage ss;
-	int p[2], logging, secure, sval;
+	socklen_t sval;
+	int p[2], logging, pflag, secure;
 #define	ENTRIES	50
 	char **ap, *av[ENTRIES + 1], **comp, line[1024], *prog;
 	char rhost[MAXHOSTNAMELEN];
 
 	prog = _PATH_FINGER;
-	logging = secure = 0;
+	logging = pflag = secure = 0;
 	openlog("fingerd", LOG_PID | LOG_CONS, LOG_DAEMON);
 	opterr = 0;
-	while ((ch = getopt(argc, argv, "slp:")) != -1)
+	while ((ch = getopt(argc, argv, "lp:s")) != -1)
 		switch (ch) {
 		case 'l':
 			logging = 1;
 			break;
 		case 'p':
 			prog = optarg;
+			pflag = 1;
 			break;
 		case 's':
 			secure = 1;
@@ -103,6 +102,17 @@ main(argc, argv)
 	if (!fgets(line, sizeof(line), stdin))
 		exit(1);
 
+	if (logging || pflag) {
+		sval = sizeof(ss);
+		if (getpeername(0, (struct sockaddr *)&ss, &sval) < 0)
+			logerr("getpeername: %s", strerror(errno));
+		realhostname_sa(rhost, sizeof rhost - 1,
+				(struct sockaddr *)&ss, sval);
+		rhost[sizeof(rhost) - 1] = '\0';
+		if (pflag)
+			setenv("FINGERD_REMOTE_HOST", rhost, 1);
+	}
+
 	if (logging) {
 		char *t;
 		char *end;
@@ -120,12 +130,6 @@ main(argc, argv)
 		for (end = t; *end; end++)
 			if (*end == '\n' || *end == '\r')
 				*end = ' ';
-		sval = sizeof(ss);
-		if (getpeername(0, (struct sockaddr *)&ss, &sval) < 0)
-			logerr("getpeername: %s", strerror(errno));
-		realhostname_sa(rhost, sizeof rhost - 1,
-				(struct sockaddr *)&ss, sval);
-		rhost[sizeof(rhost) - 1] = '\0';
 		syslog(LOG_NOTICE, "query from %s: `%s'", rhost, t);
 	}
 
@@ -157,7 +161,7 @@ main(argc, argv)
 		lp = NULL;
 	}
 
-	if (lp = strrchr(prog, '/'))
+	if ((lp = strrchr(prog, '/')) != NULL)
 		*comp = ++lp;
 	else
 		*comp = prog;
@@ -166,18 +170,23 @@ main(argc, argv)
 
 	switch(vfork()) {
 	case 0:
-		(void)close(p[0]);
-		if (p[1] != 1) {
-			(void)dup2(p[1], 1);
-			(void)close(p[1]);
+		close(p[0]);
+		if (p[1] != STDOUT_FILENO) {
+			dup2(p[1], STDOUT_FILENO);
+			close(p[1]);
 		}
+		dup2(STDOUT_FILENO, STDERR_FILENO);
+
 		execv(prog, comp);
-		logerr("execv: %s: %s", prog, strerror(errno));
+		write(STDERR_FILENO, prog, strlen(prog));
+#define MSG ": cannot execute\n"
+		write(STDERR_FILENO, MSG, strlen(MSG));
+#undef MSG
 		_exit(1);
 	case -1:
 		logerr("fork: %s", strerror(errno));
 	}
-	(void)close(p[1]);
+	close(p[1]);
 	if (!(fp = fdopen(p[0], "r")))
 		logerr("fdopen: %s", strerror(errno));
 	while ((ch = getc(fp)) != EOF) {
@@ -188,28 +197,14 @@ main(argc, argv)
 	exit(0);
 }
 
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 void
-#if __STDC__
 logerr(const char *fmt, ...)
-#else
-logerr(fmt, va_alist)
-	char *fmt;
-        va_dcl
-#endif
 {
 	va_list ap;
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
-	(void)vsyslog(LOG_ERR, fmt, ap);
+	vsyslog(LOG_ERR, fmt, ap);
 	va_end(ap);
 	exit(1);
 	/* NOTREACHED */

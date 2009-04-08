@@ -55,7 +55,7 @@
  *	sc->sc_inb		# of incoming bytes after decompression
  *	sc->sc_outb		# of outgoing bytes before compression
  *
- *---------------------------------------------------------------------------*/ 
+ *---------------------------------------------------------------------------*/
 
 #include "use_i4bipr.h"
 
@@ -88,7 +88,7 @@
 #include <netinet/ip.h>
 
 #ifdef IPR_VJ
-#include <net/slcompress.h>       
+#include <net/slcompress.h>
 #define IPR_COMPRESS IFF_LINK0  /* compress TCP traffic */
 #define IPR_AUTOCOMP IFF_LINK1  /* auto-enable TCP compression */
 
@@ -100,7 +100,7 @@
  * CAUTION: i have re-defined IPR_VJ_USEBUFFER because it makes problems
  *          with 2 i4b's back to back running cvs over ssh, cvs simply
  *          aborts because it gets bad data. Everything else (telnet/ftp?etc)
- *          functions fine. 
+ *          functions fine.
  *---------------------------------------------------------------------------*/
 #define IPR_VJ_USEBUFFER	/* define to use an allocated separate buffer*/
 				/* undef to uncompress in the mbuf itself    */
@@ -149,7 +149,7 @@ struct ipr_softc {
 	struct ifqueue  sc_fastq;	/* interactive traffic		*/
 	int		sc_dialresp;	/* dialresponse			*/
 	int		sc_lastdialresp;/* last dialresponse		*/
-	
+
 #if I4BIPRACCT
 	int		sc_iinb;	/* isdn driver # of inbytes	*/
 	int		sc_ioutb;	/* isdn driver # of outbytes	*/
@@ -158,7 +158,7 @@ struct ipr_softc {
 	int		sc_linb;	/* last # of bytes rx'd		*/
 	int		sc_loutb;	/* last # of bytes tx'd 	*/
 	int		sc_fn;		/* flag, first null acct	*/
-#endif	
+#endif
 
 	struct callout	sc_timeout;
 
@@ -217,7 +217,7 @@ i4biprattach(void *dummy)
 #else
 	kprintf("i4bipr: %d IP over raw HDLC ISDN device(s) attached\n", NI4BIPR);
 #endif
-	
+
 	for(i=0; i < NI4BIPR; sc++, i++)
 	{
 		ipr_init_linktab(i);
@@ -225,7 +225,7 @@ i4biprattach(void *dummy)
 		NDBGL4(L4_DIALST, "setting dial state to ST_IDLE");
 
 		sc->sc_state = ST_IDLE;
-		
+
 		if_initname(&(sc->sc_if), "ipr", i);
 
 #ifdef	IPR_VJ
@@ -257,8 +257,8 @@ i4biprattach(void *dummy)
 		sc->sc_if.if_noproto = 0;
 
 #if I4BIPRACCT
-		sc->sc_if.if_timer = 0;	
-		sc->sc_if.if_watchdog = iprwatchdog;	
+		sc->sc_if.if_timer = 0;
+		sc->sc_if.if_watchdog = iprwatchdog;
 		sc->sc_iinb = 0;
 		sc->sc_ioutb = 0;
 		sc->sc_inb = 0;
@@ -282,7 +282,7 @@ i4biprattach(void *dummy)
 		sc->sc_updown = SOFT_ENA;	/* soft enabled */
 		sc->sc_dialresp = DSTAT_NONE;	/* no response */
 		sc->sc_lastdialresp = DSTAT_NONE;
-		
+
 		if_attach(&sc->sc_if, NULL);
 		bpfattach(&sc->sc_if, DLT_NULL, sizeof(u_int));
 	}
@@ -298,14 +298,14 @@ i4biproutput_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	struct ipr_softc *sc;
 	int unit;
 	struct ip *ip;
-	
+
 	crit_enter();
 
 	sc = ifp->if_softc;
 	unit = sc->sc_unit;
 
 	/* check for IP */
-	
+
 	if(dst->sa_family != AF_INET)
 	{
 		kprintf(IPR_FMT "af%d not supported\n", IPR_ARG(sc), dst->sa_family);
@@ -317,7 +317,7 @@ i4biproutput_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	}
 
 	/* check interface state = UP */
-	
+
 	if(!(ifp->if_flags & IFF_UP))
 	{
 		NDBGL4(L4_IPRDBG, "ipr%d: interface is DOWN!", unit);
@@ -328,7 +328,7 @@ i4biproutput_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	}
 
 	/* dial if necessary */
-	
+
 	if(sc->sc_state == ST_IDLE || sc->sc_state == ST_DIALING)
 	{
 
@@ -352,7 +352,7 @@ i4biproutput_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 				sc->sc_dialresp = DSTAT_NONE;
 				crit_exit();
 				sc->sc_if.if_oerrors++;
-				return(EHOSTUNREACH);				
+				return(EHOSTUNREACH);
 				break;
 
 			case DSTAT_INONLY:	/* no dialout allowed*/
@@ -362,7 +362,7 @@ i4biproutput_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 				sc->sc_dialresp = DSTAT_NONE;
 				crit_exit();
 				sc->sc_if.if_oerrors++;
-				return(EHOSTUNREACH);				
+				return(EHOSTUNREACH);
 				break;
 		}
 #endif
@@ -382,7 +382,7 @@ i4biproutput_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 #endif
 
 	/* update access time */
-	
+
 	microtime(&sc->sc_if.if_lastchange);
 
 	/*
@@ -392,9 +392,9 @@ i4biproutput_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	 */
 
 	ip = mtod(m, struct ip *);		/* get ptr to ip header */
-	 
+
 	/* check for space in choosen send queue */
-	
+
 	if (netisr_queue(NETISR_IP, m))
 	{
 		NDBGL4(L4_IPRDBG, "ipr%d: send queue full!", unit);
@@ -402,9 +402,9 @@ i4biproutput_serialized(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		sc->sc_if.if_oerrors++;
 		return(ENOBUFS);
 	}
-	
+
 	NDBGL4(L4_IPRDBG, "ipr%d: add packet to send queue!", unit);
-	
+
 	ipr_tx_queue_empty(unit);
 
 	crit_exit();
@@ -438,7 +438,7 @@ i4biprioctl(struct ifnet *ifp, IOCTL_CMD_T cmd, caddr_t data, struct ucred *cr)
 	int error = 0;
 
 	crit_enter();
-	
+
 	switch (cmd)
 	{
 		case SIOCAIFADDR:	/* add interface address */
@@ -472,7 +472,7 @@ i4biprioctl(struct ifnet *ifp, IOCTL_CMD_T cmd, caddr_t data, struct ucred *cr)
 			{
 				/* enable debug messages */
 			}
-			
+
 			microtime(&sc->sc_if.if_lastchange);
 			break;
 
@@ -490,7 +490,7 @@ i4biprioctl(struct ifnet *ifp, IOCTL_CMD_T cmd, caddr_t data, struct ucred *cr)
 
 #if 0
 	/* not needed for FreeBSD, done in sl_compress_init() (-hm) */
-	
+
 			/* need to add an ioctl:	set VJ max slot ID
 			 * #define IPRIOCSMAXCID	_IOW('I', XXX, int)
 			 */
@@ -499,7 +499,7 @@ i4biprioctl(struct ifnet *ifp, IOCTL_CMD_T cmd, caddr_t data, struct ucred *cr)
 			{
 			struct thread *td = curthread;	/* XXX */
 
-			if ((error = suser(td)) != 0)
+			if ((error = priv_check(td, PRIV_ROOT)) != 0)
 				return (error);
 		        sl_compress_setup(sc->sc_compr, *(int *)data);
 			}
@@ -546,7 +546,7 @@ iprclearqueues(struct ipr_softc *sc)
 			break;
 	}
 }
-        
+
 #if I4BIPRACCT
 /*---------------------------------------------------------------------------*
  *	watchdog routine
@@ -557,16 +557,16 @@ iprwatchdog(struct ifnet *ifp)
 	struct ipr_softc *sc = ifp->if_softc;
 	int unit = sc->sc_unit;
 	bchan_statistics_t bs;
-	
-	/* get # of bytes in and out from the HSCX driver */ 
-	
+
+	/* get # of bytes in and out from the HSCX driver */
+
 	(*isdn_linktab[unit]->bch_stat)
 		(isdn_linktab[unit]->unit, isdn_linktab[unit]->channel, &bs);
 
 	sc->sc_ioutb += bs.outbytes;
 	sc->sc_iinb += bs.inbytes;
-	
-	if((sc->sc_iinb != sc->sc_linb) || (sc->sc_ioutb != sc->sc_loutb) || sc->sc_fn) 
+
+	if((sc->sc_iinb != sc->sc_linb) || (sc->sc_ioutb != sc->sc_loutb) || sc->sc_fn)
 	{
 		int ri = (sc->sc_iinb - sc->sc_linb)/I4BIPRACCTINTVL;
 		int ro = (sc->sc_ioutb - sc->sc_loutb)/I4BIPRACCTINTVL;
@@ -575,14 +575,14 @@ iprwatchdog(struct ifnet *ifp)
 			sc->sc_fn = 0;
 		else
 			sc->sc_fn = 1;
-			
+
 		sc->sc_linb = sc->sc_iinb;
 		sc->sc_loutb = sc->sc_ioutb;
 
 		i4b_l4_accounting(BDRV_IPR, unit, ACCT_DURING,
 			 sc->sc_ioutb, sc->sc_iinb, ro, ri, sc->sc_outb, sc->sc_inb);
  	}
-	sc->sc_if.if_timer = I4BIPRACCTINTVL; 	
+	sc->sc_if.if_timer = I4BIPRACCTINTVL;
 }
 #endif /* I4BIPRACCT */
 
@@ -597,7 +597,7 @@ static void
 i4bipr_connect_startio(struct ipr_softc *sc)
 {
 	crit_enter();
-	
+
 	if(sc->sc_state == ST_CONNECTED_W)
 	{
 		sc->sc_state = ST_CONNECTED_A;
@@ -606,7 +606,7 @@ i4bipr_connect_startio(struct ipr_softc *sc)
 
 	crit_exit();
 }
- 
+
 /*---------------------------------------------------------------------------*
  *	this routine is called from L4 handler at connect time
  *---------------------------------------------------------------------------*/
@@ -625,8 +625,8 @@ ipr_connect(int unit, void *cdp)
 	sc->sc_state = ST_CONNECTED_W;
 
 	sc->sc_dialresp = DSTAT_NONE;
-	sc->sc_lastdialresp = DSTAT_NONE;	
-	
+	sc->sc_lastdialresp = DSTAT_NONE;
+
 #if I4BIPRACCT
 	sc->sc_iinb = 0;
 	sc->sc_ioutb = 0;
@@ -677,7 +677,7 @@ ipr_connect(int unit, void *cdp)
 	/* we don't need any negotiation - pass event back right now */
 	i4b_l4_negcomplete(sc->sc_cdp);
 }
-	
+
 /*---------------------------------------------------------------------------*
  *	this routine is called from L4 handler at disconnect time
  *---------------------------------------------------------------------------*/
@@ -706,13 +706,13 @@ ipr_disconnect(int unit, void *cdp)
 
 	i4b_l4_accounting(BDRV_IPR, cd->driver_unit, ACCT_FINAL,
 		 sc->sc_ioutb, sc->sc_iinb, 0, 0, sc->sc_outb, sc->sc_inb);
-	
-	sc->sc_cdp = (call_desc_t *)0;	
+
+	sc->sc_cdp = NULL;
 
 	NDBGL4(L4_DIALST, "setting dial state to ST_IDLE");
 
 	sc->sc_dialresp = DSTAT_NONE;
-	sc->sc_lastdialresp = DSTAT_NONE;	
+	sc->sc_lastdialresp = DSTAT_NONE;
 
 	sc->sc_if.if_flags &= ~IFF_RUNNING;
 	sc->sc_state = ST_IDLE;
@@ -737,7 +737,7 @@ ipr_dialresponse(int unit, int status, cause_t cause)
 		iprclearqueues(sc);
 	}
 }
-	
+
 /*---------------------------------------------------------------------------*
  *	interface soft up/down
  *---------------------------------------------------------------------------*/
@@ -747,7 +747,7 @@ ipr_updown(int unit, int updown)
 	struct ipr_softc *sc = &ipr_softc[unit];
 	sc->sc_updown = updown;
 }
-	
+
 /*---------------------------------------------------------------------------*
  *	this routine is called from the HSCX interrupt handler
  *	when a new frame (mbuf) has been received and was put on
@@ -762,11 +762,11 @@ ipr_rx_data_rdy(int unit)
 #ifdef IPR_VJ
 #ifdef IPR_VJ_USEBUFFER
 	u_char *cp = sc->sc_cbuf;
-#endif	
+#endif
 	int len, c;
 #endif
 	static const uint32_t af = AF_INET;
-	
+
 	if((m = *isdn_linktab[unit]->rx_mbuf) == NULL)
 		return;
 
@@ -789,7 +789,7 @@ ipr_rx_data_rdy(int unit)
 	{
 		unsigned char *mp = m->m_data;
 		int i;
-		
+
 		sc->sc_first_pkt = 0;
 
 		for(i = 0; i < m->m_len; i++, mp++)
@@ -798,13 +798,13 @@ ipr_rx_data_rdy(int unit)
 			    ((*mp & 0x0f) >= 0x05) )
 			{
 				m->m_data = mp;
-				m->m_pkthdr.len -= i;				
+				m->m_pkthdr.len -= i;
 				break;
 			}
 		}
 	}
 #endif
-		
+
 	sc->sc_if.if_ipackets++;
 	sc->sc_if.if_ibytes += m->m_pkthdr.len;
 
@@ -818,7 +818,7 @@ ipr_rx_data_rdy(int unit)
 #ifdef IPR_VJ_USEBUFFER
 /* XXX */	m_copydata(m, 0, len, cp);
 #endif
-		
+
 		if(c & 0x80)
 		{
 			c = TYPE_COMPRESSED_TCP;
@@ -828,8 +828,8 @@ ipr_rx_data_rdy(int unit)
 #ifdef IPR_VJ_USEBUFFER
 			*cp &= 0x4f;		/* XXX */
 #else
-			*(mtod(m, u_char *)) &= 0x4f; 			
-#endif			
+			*(mtod(m, u_char *)) &= 0x4f;
+#endif
 		}
 
 		/*
@@ -846,7 +846,7 @@ ipr_rx_data_rdy(int unit)
 #else
 			len = sl_uncompress_tcp((u_char **)&m->m_data, len,
 					(u_int)c, &sc->sc_compr);
-#endif			
+#endif
 
 			if(len <= 0)
 			{
@@ -914,7 +914,7 @@ error:
 	if (netisr_queue(NETISR_IP, m)) {
 		NDBGL4(L4_IPRDBG, "ipr%d: ipintrq full!", unit);
 		sc->sc_if.if_ierrors++;
-		sc->sc_if.if_iqdrops++;		
+		sc->sc_if.if_iqdrops++;
 	}
 }
 
@@ -929,14 +929,14 @@ ipr_tx_queue_empty(int unit)
 	static const uint32_t af = AF_INET;
 	struct ipr_softc *sc = &ipr_softc[unit];
 	struct mbuf *m;
-#ifdef	IPR_VJ	
-	struct ip *ip;	
+#ifdef	IPR_VJ
+	struct ip *ip;
 #endif
 	int x = 0;
 
 	if(sc->sc_state != ST_CONNECTED_A)
 		return;
-		
+
 	for(;;)
 	{
                 IF_DEQUEUE(&sc->sc_fastq, m);
@@ -955,12 +955,12 @@ ipr_tx_queue_empty(int unit)
 
 		if (sc->sc_if.if_bpf)
 			bpf_ptap(sc->sc_if.if_bpf, m, &af, sizeof(af));
-	
+
 #if I4BIPRACCT
 		sc->sc_outb += m->m_pkthdr.len;	/* size before compression */
 #endif
 
-#ifdef	IPR_VJ	
+#ifdef	IPR_VJ
 		if((ip = mtod(m, struct ip *))->ip_p == IPPROTO_TCP)
 		{
 			if(sc->sc_if.if_flags & IPR_COMPRESS)
@@ -1034,7 +1034,7 @@ ipr_init_linktab(int unit)
 	ipr_drvr_linktab[unit].line_connected = ipr_connect;
 	ipr_drvr_linktab[unit].line_disconnected = ipr_disconnect;
 	ipr_drvr_linktab[unit].dial_response = ipr_dialresponse;
-	ipr_drvr_linktab[unit].updown_ind = ipr_updown;	
+	ipr_drvr_linktab[unit].updown_ind = ipr_updown;
 }
 
 /*===========================================================================*/

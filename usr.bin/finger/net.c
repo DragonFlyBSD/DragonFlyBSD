@@ -53,10 +53,6 @@
 #include <utmp.h>
 #include "finger.h"
 
-extern int lflag;		/* XXX finger.h? */
-extern int Tflag;		/* XXX finger.h? */
-extern sa_family_t family;
-
 static void cleanup(int sig);
 static int do_protocol(const char *name, const struct addrinfo *ai);
 static void trying(const struct addrinfo *ai);
@@ -229,7 +225,7 @@ trying(const struct addrinfo *ai)
 	char buf[NI_MAXHOST];
 
 	if (getnameinfo(ai->ai_addr, ai->ai_addrlen, buf, sizeof buf,
-			(char *)0, 0, NI_NUMERICHOST) != 0)
+			NULL, 0, NI_NUMERICHOST) != 0)
 		return;		/* XXX can't happen */
 
 	printf("Trying %s...\n", buf);

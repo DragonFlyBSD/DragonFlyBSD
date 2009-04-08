@@ -42,6 +42,7 @@
 #include "opt_mpls.h"
 #include "opt_netgraph.h"
 #include "opt_carp.h"
+#include "opt_rss.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -72,7 +73,7 @@
 
 #if defined(INET) || defined(INET6)
 #include <netinet/in.h>
-#include <netinet/in_var.h>
+#include <netinet/ip_var.h>
 #include <netinet/if_ether.h>
 #include <netinet/ip_flow.h>
 #include <net/ipfw/ip_fw.h>
@@ -158,6 +159,13 @@ static int ether_ipfw;
 static u_int ether_restore_hdr;
 static u_int ether_prepend_hdr;
 
+#ifdef RSS_DEBUG
+static u_int ether_pktinfo_try;
+static u_int ether_pktinfo_hit;
+static u_int ether_rss_nopi;
+static u_int ether_rss_nohash;
+#endif
+
 SYSCTL_DECL(_net_link);
 SYSCTL_NODE(_net_link, IFT_ETHER, ether, CTLFLAG_RW, 0, "Ethernet");
 SYSCTL_INT(_net_link_ether, OID_AUTO, ipfw, CTLFLAG_RW,
@@ -167,6 +175,18 @@ SYSCTL_UINT(_net_link_ether, OID_AUTO, restore_hdr, CTLFLAG_RW,
 SYSCTL_UINT(_net_link_ether, OID_AUTO, prepend_hdr, CTLFLAG_RW,
 	    &ether_prepend_hdr, 0,
 	    "# of ether header restoration which prepends mbuf");
+#ifdef RSS_DEBUG
+SYSCTL_UINT(_net_link_ether, OID_AUTO, rss_nopi, CTLFLAG_RW,
+	    &ether_rss_nopi, 0, "# of packets do not have pktinfo");
+SYSCTL_UINT(_net_link_ether, OID_AUTO, rss_nohash, CTLFLAG_RW,
+	    &ether_rss_nohash, 0, "# of packets do not have hash");
+SYSCTL_UINT(_net_link_ether, OID_AUTO, pktinfo_try, CTLFLAG_RW,
+	    &ether_pktinfo_try, 0,
+	    "# of tries to find packets' msgport using pktinfo");
+SYSCTL_UINT(_net_link_ether, OID_AUTO, pktinfo_hit, CTLFLAG_RW,
+	    &ether_pktinfo_hit, 0,
+	    "# of packets whose msgport are found using pktinfo");
+#endif
 
 #define ETHER_KTR_STR		"ifp=%p"
 #define ETHER_KTR_ARG_SIZE	(sizeof(void *))
@@ -601,7 +621,7 @@ ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst, struct ip_fw **rule,
 static void
 ether_input(struct ifnet *ifp, struct mbuf *m)
 {
-	ether_input_chain(ifp, m, NULL);
+	ether_input_chain(ifp, m, NULL, NULL);
 }
 
 /*
@@ -1071,7 +1091,7 @@ void
 ether_demux_oncpu(struct ifnet *ifp, struct mbuf *m)
 {
 	struct ether_header *eh;
-	int isr, redispatch;
+	int isr, redispatch, discard = 0;
 	u_short ether_type;
 	struct ip_fw *rule = NULL;
 #ifdef NETATALK
@@ -1124,20 +1144,20 @@ ether_demux_oncpu(struct ifnet *ifp, struct mbuf *m)
 #endif
 
 	/*
-	 * Discard packet if upper layers shouldn't see it because
-	 * it was unicast to a different Ethernet address.  If the
-	 * driver is working properly, then this situation can only
-	 * happen when the interface is in promiscuous mode.
+	 * We got a packet which was unicast to a different Ethernet
+	 * address.  If the driver is working properly, then this
+	 * situation can only happen when the interface is in
+	 * promiscuous mode.  We defer the packet discarding until the
+	 * vlan processing is done, so that vlan/bridge or vlan/netgraph
+	 * could work.
 	 */
 	if (((ifp->if_flags & (IFF_PROMISC | IFF_PPROMISC)) == IFF_PROMISC) &&
-	    (eh->ether_dhost[0] & 1) == 0 &&
-	    bcmp(eh->ether_dhost, IFP2AC(ifp)->ac_enaddr, ETHER_ADDR_LEN)) {
-		m_freem(m);
-		return;
-	}
+	    !ETHER_IS_MULTICAST(eh->ether_dhost) &&
+	    bcmp(eh->ether_dhost, IFP2AC(ifp)->ac_enaddr, ETHER_ADDR_LEN))
+		discard = 1;
 
 post_stats:
-	if (IPFW_LOADED && ether_ipfw != 0) {
+	if (IPFW_LOADED && ether_ipfw != 0 && !discard) {
 		struct ether_header save_eh = *eh;
 
 		/* XXX old crufty stuff, needs to be removed */
@@ -1170,12 +1190,39 @@ post_stats:
 		return;
 	}
 
+	/*
+	 * If we have been asked to discard this packet
+	 * (e.g. not for us), drop it before entering
+	 * the upper layer.
+	 */
+	if (discard) {
+		m_freem(m);
+		return;
+	}
+
+	/*
+	 * Clear protocol specific flags,
+	 * before entering the upper layer.
+	 */
+	m->m_flags &= ~M_ETHER_FLAGS;
+
+	/* Strip ethernet header. */
 	m_adj(m, sizeof(struct ether_header));
+
+	/*
+	 * By default, we don't need to do the redispatch; for the
+	 * most common packet types, e.g. IPv4, ether_input_chain()
+	 * has already picked up the correct target network msgport.
+	 */
 	redispatch = 0;
 
 	switch (ether_type) {
 #ifdef INET
 	case ETHERTYPE_IP:
+		if ((m->m_flags & M_LENCHECKED) == 0) {
+			if (!ip_lengthcheck(&m))
+				return;
+		}
 		if (ipflow_fastforward(m))
 			return;
 		isr = NETISR_IP;
@@ -1345,11 +1392,9 @@ ether_input_oncpu(struct ifnet *ifp, struct mbuf *m)
 		KASSERT(bridge_input_p != NULL,
 			("%s: if_bridge not loaded!", __func__));
 
-		if(m->m_flags & M_PROTO1) {
-			m->m_flags &= ~M_PROTO1;
+		if(m->m_flags & M_ETHER_BRIDGED) {
+			m->m_flags &= ~M_ETHER_BRIDGED;
 		} else {
-			/* clear M_PROMISC, in case the packets comes from a vlan */
-			/* m->m_flags &= ~M_PROMISC; */
 			m = bridge_input_p(ifp, m);
 			if (m == NULL)
 				return;
@@ -1411,16 +1456,76 @@ ether_reinput_oncpu(struct ifnet *ifp, struct mbuf *m, int run_bpf)
 	ether_input_oncpu(ifp, m);
 }
 
+static __inline boolean_t
+ether_vlancheck(struct mbuf **m0)
+{
+	struct mbuf *m = *m0;
+	struct ether_header *eh;
+	uint16_t ether_type;
+
+	eh = mtod(m, struct ether_header *);
+	ether_type = ntohs(eh->ether_type);
+
+	if (ether_type == ETHERTYPE_VLAN && (m->m_flags & M_VLANTAG) == 0) {
+		/*
+		 * Extract vlan tag if hardware does not do it for us
+		 */
+		vlan_ether_decap(&m);
+		if (m == NULL)
+			goto failed;
+
+		eh = mtod(m, struct ether_header *);
+		ether_type = ntohs(eh->ether_type);
+	}
+
+	if (ether_type == ETHERTYPE_VLAN && (m->m_flags & M_VLANTAG)) {
+		/*
+		 * To prevent possible dangerous recursion,
+		 * we don't do vlan-in-vlan
+		 */
+		m->m_pkthdr.rcvif->if_noproto++;
+		goto failed;
+	}
+	KKASSERT(ether_type != ETHERTYPE_VLAN);
+
+	m->m_flags |= M_ETHER_VLANCHECKED;
+	*m0 = m;
+	return TRUE;
+failed:
+	if (m != NULL)
+		m_freem(m);
+	*m0 = NULL;
+	return FALSE;
+}
+
 static void
 ether_input_handler(anynetmsg_t msg)
 {
 	struct netmsg_isr_packet *nmp = &msg->isr_packet;
+	struct ether_header *eh;
 	struct ifnet *ifp;
 	struct mbuf *m;
 
 	m = nmp->nm_packet;
 	M_ASSERTPKTHDR(m);
 	ifp = m->m_pkthdr.rcvif;
+
+	eh = mtod(m, struct ether_header *);
+	if (ETHER_IS_MULTICAST(eh->ether_dhost)) {
+		if (bcmp(ifp->if_broadcastaddr, eh->ether_dhost,
+			 ifp->if_addrlen) == 0)
+			m->m_flags |= M_BCAST;
+		else
+			m->m_flags |= M_MCAST;
+		ifp->if_imcasts++;
+	}
+
+	if ((m->m_flags & M_ETHER_VLANCHECKED) == 0) {
+		if (!ether_vlancheck(&m)) {
+			KKASSERT(m == NULL);
+			return;
+		}
+	}
 
 	ether_input_oncpu(ifp, m);
 }
@@ -1452,6 +1557,36 @@ ether_mport(int num, struct mbuf **m)
 }
 
 /*
+ * Send the packet to the target msgport or
+ * queue it into 'chain'.
+ */
+static void
+ether_dispatch(int isr, struct lwkt_port *port, struct mbuf *m,
+	       struct mbuf_chain *chain)
+{
+	ether_init_netpacket(isr, m);
+
+	if (chain != NULL) {
+		struct mbuf_chain *c;
+		int cpuid;
+
+		m->m_pkthdr.header = port; /* XXX */
+		cpuid = port->mpu_td->td_gd->gd_cpuid;
+
+		c = &chain[cpuid];
+		if (c->mc_head == NULL) {
+			c->mc_head = c->mc_tail = m;
+		} else {
+			c->mc_tail->m_nextpkt = m;
+			c->mc_tail = m;
+		}
+		m->m_nextpkt = NULL;
+	} else {
+		lwkt_sendmsg(port, &m->m_hdr.mh_netmsg.nm_netmsg.nm_lmsg);
+	}
+}
+
+/*
  * Process a received Ethernet packet.
  *
  * The ethernet header is assumed to be in the mbuf so the caller
@@ -1473,7 +1608,8 @@ ether_mport(int num, struct mbuf **m)
  *   queued on 'chain' to their target msgport.
  */
 void
-ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
+ether_input_chain(struct ifnet *ifp, struct mbuf *m, const struct pktinfo *pi,
+		  struct mbuf_chain *chain)
 {
 	struct ether_header *eh, *save_eh, save_eh0;
 	struct lwkt_port *port;
@@ -1494,26 +1630,20 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 		m_freem(m);
 		return;
 	}
-	eh = mtod(m, struct ether_header *);
 
 	m->m_pkthdr.rcvif = ifp;
 
 	logether(chain_beg, ifp);
-
-	if (ETHER_IS_MULTICAST(eh->ether_dhost)) {
-		if (bcmp(ifp->if_broadcastaddr, eh->ether_dhost,
-			 ifp->if_addrlen) == 0)
-			m->m_flags |= M_BCAST;
-		else
-			m->m_flags |= M_MCAST;
-		ifp->if_imcasts++;
-	}
 
 	ETHER_BPF_MTAP(ifp, m);
 
 	ifp->if_ibytes += m->m_pkthdr.len;
 
 	if (ifp->if_flags & IFF_MONITOR) {
+		eh = mtod(m, struct ether_header *);
+		if (ETHER_IS_MULTICAST(eh->ether_dhost))
+			ifp->if_imcasts++;
+
 		/*
 		 * Interface marked for monitoring; discard packet.
 		 */
@@ -1523,28 +1653,52 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 		return;
 	}
 
-	if (ntohs(eh->ether_type) == ETHERTYPE_VLAN &&
-	    (m->m_flags & M_VLANTAG) == 0) {
-		/*
-		 * Extract vlan tag if hardware does not do it for us
-		 */
-		vlan_ether_decap(&m);
-		if (m == NULL)
-			return;
-		eh = mtod(m, struct ether_header *);
-	}
-	ether_type = ntohs(eh->ether_type);
+	if (pi != NULL && (m->m_flags & M_HASH)) {
+#ifdef RSS_DEBUG
+		ether_pktinfo_try++;
+#endif
+		/* Try finding the port using the packet info */
+		port = netisr_find_pktinfo_port(pi, m);
+		if (port != NULL) {
+#ifdef RSS_DEBUG
+			ether_pktinfo_hit++;
+#endif
+			ether_dispatch(pi->pi_netisr, port, m, chain);
 
-	if ((m->m_flags & M_VLANTAG) && ether_type == ETHERTYPE_VLAN) {
+			logether(chain_end, ifp);
+			return;
+		}
+
 		/*
-		 * To prevent possible dangerous recursion,
-		 * we don't do vlan-in-vlan
+		 * The packet info does not contain enough
+		 * information, we will have to check the
+		 * packet content.
 		 */
-		ifp->if_noproto++;
-		m_freem(m);
+	}
+#ifdef RSS_DEBUG
+	else if (ifp->if_capenable & IFCAP_RSS) {
+		if (pi == NULL)
+			ether_rss_nopi++;
+		else
+			ether_rss_nohash++;
+	}
+#endif
+
+	/*
+	 * Packet hash will be recalculated by software,
+	 * so clear the M_HASH flag set by the driver;
+	 * the hash value calculated by the hardware may
+	 * not be exactly what we want.
+	 */
+	m->m_flags &= ~M_HASH;
+
+	if (!ether_vlancheck(&m)) {
+		KKASSERT(m == NULL);
+		logether(chain_end, ifp);
 		return;
 	}
-	KKASSERT(ether_type != ETHERTYPE_VLAN);
+	eh = mtod(m, struct ether_header *);
+	ether_type = ntohs(eh->ether_type);
 
 	/*
 	 * Map ether type to netisr id.
@@ -1630,6 +1784,7 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 	port = ether_mport(isr, &m);
 	if (port == NULL) {
 		KKASSERT(m == NULL);
+		logether(chain_end, ifp);
 		return;
 	}
 
@@ -1638,39 +1793,17 @@ ether_input_chain(struct ifnet *ifp, struct mbuf *m, struct mbuf_chain *chain)
 	 */
 	if (save_eh != NULL) {
 		ether_restore_header(&m, eh, save_eh);
-		if (m == NULL)
+		if (m == NULL) {
+			logether(chain_end, ifp);
 			return;
+		}
 	} else {
 		m->m_data -= ETHER_HDR_LEN;
 		m->m_len += ETHER_HDR_LEN;
 		m->m_pkthdr.len += ETHER_HDR_LEN;
 	}
 
-	/*
-	 * Initialize mbuf's netmsg packet _after_ possible
-	 * ether header restoration, else the initialized
-	 * netmsg packet may be lost during ether header
-	 * restoration.
-	 */
-	ether_init_netpacket(isr, m);
+	ether_dispatch(isr, port, m, chain);
 
-	if (chain != NULL) {
-		struct mbuf_chain *c;
-		int cpuid;
-
-		m->m_pkthdr.header = port; /* XXX */
-		cpuid = port->mpu_td->td_gd->gd_cpuid;
-
-		c = &chain[cpuid];
-		if (c->mc_head == NULL) {
-			c->mc_head = c->mc_tail = m;
-		} else {
-			c->mc_tail->m_nextpkt = m;
-			c->mc_tail = m;
-		}
-		m->m_nextpkt = NULL;
-	} else {
-		lwkt_sendmsg(port, &m->m_hdr.mh_netmsg.nm_netmsg.nm_lmsg);
-	}
 	logether(chain_end, ifp);
 }

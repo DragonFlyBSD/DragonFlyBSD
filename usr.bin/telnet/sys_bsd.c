@@ -220,9 +220,9 @@ void
 TerminalFlushOutput(void)
 {
 #ifdef	TIOCFLUSH
-    (void) ioctl(fileno(stdout), TIOCFLUSH, (char *) 0);
+    (void) ioctl(fileno(stdout), TIOCFLUSH, NULL);
 #else
-    (void) ioctl(fileno(stdout), TCFLSH, (char *) 0);
+    (void) ioctl(fileno(stdout), TCFLSH, NULL);
 #endif
 }
 
@@ -306,7 +306,7 @@ tcval(int func)
     case SLC_BRK:
     case SLC_EOR:
     default:
-	return((cc_t *)0);
+	return(NULL);
     }
 }
 
@@ -963,7 +963,7 @@ process_rings(int netin, int netout, int netex, int ttyin, int ttyout, int poll)
     if (netex)
 	FD_SET(net, xbitsp);
     if ((c = select(maxfd + 1, ibitsp, obitsp, xbitsp,
-	     (poll == 0)? (struct timeval *)0 : &TimeValue)) < 0) {
+	     (poll == 0)? NULL : &TimeValue)) < 0) {
 	if (c == -1) {
 		    /*
 		     * we can get EINTR if we are in line mode,

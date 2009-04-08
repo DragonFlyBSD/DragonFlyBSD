@@ -1,5 +1,3 @@
-#pragma ident	"@(#)auth_time.c	1.4	92/11/10 SMI"
-
 /*
  *	auth_time.c
  *
@@ -26,12 +24,11 @@
  *	and returned. The SIGALRM processing is modified only if
  *	needed to deal with TCP connections.
  *
- * NOTE: This code has had the crap beaten out it in order to convert
- *       it from TI-RPC back to TD-RPC for use on FreeBSD.
- *
- * $FreeBSD: src/lib/libc/rpc/auth_time.c,v 1.4 2000/01/27 23:06:35 jasone Exp $
+ * @(#)auth_time.c	1.4	92/11/10 SMI
+ * $FreeBSD: src/lib/libc/rpc/auth_time.c,v 1.12 2007/09/20 22:35:24 matteo Exp $
  * $DragonFly: src/lib/libc/rpc/auth_time.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
+
 #include "namespace.h"
 #include <stdio.h>
 #include <syslog.h>
@@ -46,19 +43,12 @@
 #include <arpa/inet.h>
 #include <rpc/rpc.h>
 #include <rpc/rpc_com.h>
+#include <rpc/rpcb_prot.h>
 #undef NIS
 #include <rpcsvc/nis.h>
 #include "un-namespace.h"
 
-/*
- * FreeBSD currently uses RPC 4.0, which uses portmap rather than
- * rpcbind. Consequently, we need to fake up these values here.
- * Luckily, the RPCB_GETTIME procedure uses only base XDR data types
- * so we don't need anything besides these magic numbers.
- */
-#define RPCBPROG (u_long)100000
-#define RPCBVERS (u_long)3
-#define RPCBPROC_GETTIME (u_long)6
+extern int	_rpc_dtablesize(void);
 
 #ifdef TESTING
 #define	msg(x)	printf("ERROR: %s\n", x)
@@ -157,6 +147,7 @@ get_server(struct sockaddr_in *sin,
 	struct hostent		*he;
 	struct hostent		dummy;
 	char			*ptr[2];
+	endpoint		*ep;
 
 	if (host == NULL && sin == NULL)
 		return (NULL);
@@ -176,26 +167,34 @@ get_server(struct sockaddr_in *sin,
 	 * This is lame. We go around once for TCP, then again
 	 * for UDP.
 	 */
-	for (i = 0; (he->h_addr_list[i] != NULL) && (num_ep < maxep);
-						i++, num_ep++) {
+	for (i = 0, ep = eps; (he->h_addr_list[i] != NULL) && (num_ep < maxep);
+	    i++, ep++, num_ep++) {
 		struct in_addr *a;
 
 		a = (struct in_addr *)he->h_addr_list[i];
 		snprintf(hname, sizeof(hname), "%s.0.111", inet_ntoa(*a));
-		eps[num_ep].uaddr = strdup(hname);
-		eps[num_ep].family = strdup("inet");
-		eps[num_ep].proto =  strdup("tcp");
+		ep->uaddr = strdup(hname);
+		ep->family = strdup("inet");
+		ep->proto =  strdup("tcp");
+		if (ep->uaddr == NULL || ep->family == NULL || ep->proto == NULL) {
+			free_eps(eps, num_ep + 1);
+			return (NULL);
+		}
 	}
 
 	for (i = 0; (he->h_addr_list[i] != NULL) && (num_ep < maxep);
-						i++, num_ep++) {
+	    i++, ep++, num_ep++) {
 		struct in_addr *a;
 
 		a = (struct in_addr *)he->h_addr_list[i];
 		snprintf(hname, sizeof(hname), "%s.0.111", inet_ntoa(*a));
-		eps[num_ep].uaddr = strdup(hname);
-		eps[num_ep].family = strdup("inet");
-		eps[num_ep].proto =  strdup("udp");
+		ep->uaddr = strdup(hname);
+		ep->family = strdup("inet");
+		ep->proto =  strdup("udp");
+		if (ep->uaddr == NULL || ep->family == NULL || ep->proto == NULL) {
+			free_eps(eps, num_ep + 1);
+			return (NULL);
+		}
 	}
 
 	srv->name = (nis_name) host;
@@ -253,7 +252,8 @@ __rpc_get_time_offset(struct timeval *td,	/* Time difference			*/
 	nis_server		tsrv;
 	void			(*oldsig)() = NULL; /* old alarm handler */
 	struct sockaddr_in	sin;
-	int			s = RPC_ANYSOCK, len;
+	socklen_t		len;
+	int			s = RPC_ANYSOCK;
 	int			type = 0;
 
 	td->tv_sec = 0;
@@ -345,8 +345,8 @@ __rpc_get_time_offset(struct timeval *td,	/* Time difference			*/
 	tv.tv_sec = 5;
 	tv.tv_usec = 0;
 	time_valid = 0;
-	status = clnt_call(clnt, RPCBPROC_GETTIME, xdr_void, NULL,
-					xdr_u_long, (char *)&thetime, tv);
+	status = clnt_call(clnt, RPCBPROC_GETTIME, (xdrproc_t)xdr_void, NULL,
+					(xdrproc_t)xdr_u_long, &thetime, tv);
 	/*
 	 * The only error we check for is anything but success. In
 	 * fact we could have seen PROGMISMATCH if talking to a 4.1
@@ -404,7 +404,7 @@ __rpc_get_time_offset(struct timeval *td,	/* Time difference			*/
 				FD_ZERO(&readfds);
 				FD_SET(s, &readfds);
 				res = _select(_rpc_dtablesize(), &readfds,
-				     (fd_set *)NULL, (fd_set *)NULL, &timeout);
+				     NULL, NULL, &timeout);
 			} while (res < 0 && errno == EINTR);
 			if (res <= 0)
 				goto error;

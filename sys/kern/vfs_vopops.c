@@ -97,7 +97,6 @@ VNODEOP_DESC_INIT(write);
 VNODEOP_DESC_INIT(ioctl);
 VNODEOP_DESC_INIT(poll);
 VNODEOP_DESC_INIT(kqfilter);
-VNODEOP_DESC_INIT(revoke);
 VNODEOP_DESC_INIT(mmap);
 VNODEOP_DESC_INIT(fsync);
 VNODEOP_DESC_INIT(old_remove);
@@ -127,6 +126,7 @@ VNODEOP_DESC_INIT(aclcheck);
 VNODEOP_DESC_INIT(getextattr);
 VNODEOP_DESC_INIT(setextattr);
 VNODEOP_DESC_INIT(mountctl);
+VNODEOP_DESC_INIT(markatime);
 
 VNODEOP_DESC_INIT(nresolve);
 VNODEOP_DESC_INIT(nlookupdotdot);
@@ -401,21 +401,6 @@ vop_kqfilter(struct vop_ops *ops, struct vnode *vp, struct knote *kn)
 	ap.a_kn = kn;
 
 	DO_OPS(ops, error, &ap, vop_kqfilter);
-	return(error);
-}
-
-int
-vop_revoke(struct vop_ops *ops, struct vnode *vp, int flags)
-{
-	struct vop_revoke_args ap;
-	int error;
-
-	ap.a_head.a_desc = &vop_revoke_desc;
-	ap.a_head.a_ops = ops;
-	ap.a_vp = vp;
-	ap.a_flags = flags;
-
-	DO_OPS(ops, error, &ap, vop_revoke);
 	return(error);
 }
 
@@ -902,7 +887,7 @@ vop_setextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 
 int
 vop_mountctl(struct vop_ops *ops, int op, struct file *fp, 
-	    const void *ctl, int ctllen, void *buf, int buflen, int *res)
+	const void *ctl, int ctllen, void *buf, int buflen, int *res)
 {
 	struct vop_mountctl_args ap;
 	int error;
@@ -918,6 +903,21 @@ vop_mountctl(struct vop_ops *ops, int op, struct file *fp,
 	ap.a_res = res;
 
 	DO_OPS(ops, error, &ap, vop_mountctl);
+	return(error);
+}
+
+int
+vop_markatime(struct vop_ops *ops, struct vnode *vp, struct ucred *cred)
+{
+	struct vop_markatime_args ap;
+	int error;
+
+	ap.a_head.a_desc = &vop_markatime_desc;
+	ap.a_head.a_ops = ops;
+	ap.a_vp = vp;
+	ap.a_cred = cred;
+
+	DO_OPS(ops, error, &ap, vop_markatime);
 	return(error);
 }
 
@@ -1399,15 +1399,6 @@ vop_kqfilter_ap(struct vop_kqfilter_args *ap)
 }
 
 int
-vop_revoke_ap(struct vop_revoke_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_revoke);
-	return(error);
-}
-
-int
 vop_mmap_ap(struct vop_mmap_args *ap)
 {
 	int error;
@@ -1602,6 +1593,15 @@ vop_mountctl_ap(struct vop_mountctl_args *ap)
 	int error;
 
 	DO_OPS(ap->a_head.a_ops, error, ap, vop_mountctl);
+	return(error);
+}
+
+int
+vop_markatime_ap(struct vop_markatime_args *ap)
+{
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_markatime);
 	return(error);
 }
 

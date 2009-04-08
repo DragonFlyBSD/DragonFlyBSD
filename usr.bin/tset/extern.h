@@ -41,10 +41,10 @@ extern struct termios mode, oldmode;
 extern int Columns, isreset, Lines;
 extern int erasech, intrchar, killch;
 
-void	 add_mapping(char *, char *);
+void	 add_mapping(const char *, char *);
 void	 cat(char *);
-char	*get_termcap_entry(char *, char **);
-char	*mapped(char *);
+const char *get_termcap_entry(char *, char **);
+const char *mapped(const char *);
 int      outc(int);
 void	 reset_mode(void);
 void	 set_control_chars(void);

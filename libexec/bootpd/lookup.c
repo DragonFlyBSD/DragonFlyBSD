@@ -35,9 +35,7 @@ extern int ether_hostton();
  * Return NULL if addr not found.
  */
 u_char *
-lookup_hwa(hostname, htype)
-	char *hostname;
-	int htype;
+lookup_hwa(char *hostname, int htype)
 {
 	switch (htype) {
 
@@ -51,7 +49,7 @@ lookup_hwa(hostname, htype)
 			if (ether_hostton(hostname, &ea)) {
 				report(LOG_ERR, "no HW addr for host \"%s\"",
 					   hostname);
-				return (u_char *) 0;
+				return NULL;
 			}
 			return (u_char *) & ea;
 		}
@@ -62,7 +60,7 @@ lookup_hwa(hostname, htype)
 	}							/* switch */
 
 	/* If the system can't do it, just return an error. */
-	return (u_char *) 0;
+	return NULL;
 }
 
 
@@ -71,9 +69,7 @@ lookup_hwa(hostname, htype)
  * Return non-zero on failure.
  */
 int
-lookup_ipa(hostname, result)
-	char *hostname;
-	u_int32 *result;
+lookup_ipa(char *hostname, u_int32 *result)
 {
 	struct hostent *hp;
 	hp = gethostbyname(hostname);
@@ -86,16 +82,14 @@ lookup_ipa(hostname, result)
 
 /*
  * Lookup a netmask
- * Return non-zero on failure.
+ * addr and result are both in network order. Return non-zero on failure.
  *
  * XXX - This is OK as a default, but to really make this automatic,
  * we would need to get the subnet mask from the ether interface.
  * If this is wrong, specify the correct value in the bootptab.
  */
 int
-lookup_netmask(addr, result)
-	u_int32 addr;				/* both in network order */
-	u_int32 *result;
+lookup_netmask(u_int32 addr, u_int32 *result)
 {
 	int32 m, a;
 

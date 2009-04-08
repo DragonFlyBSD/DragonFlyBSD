@@ -14,10 +14,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -35,8 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)regex2.h	8.4 (Berkeley) 3/20/94
- *
- * $FreeBSD: src/lib/libc/regex/regex2.h,v 1.3.6.1 2000/07/31 06:30:37 dcs Exp $
+ * $FreeBSD: src/lib/libc/regex/regex2.h,v 1.11 2007/01/09 00:28:04 imp Exp $
  * $DragonFly: src/lib/libc/regex/regex2.h,v 1.2 2003/06/17 04:26:44 dillon Exp $
  */
 
@@ -89,7 +84,7 @@ typedef long sopno;
 /* operators			   meaning	operand			*/
 /*						(back, fwd are offsets)	*/
 #define	OEND	(1L<<OPSHIFT)	/* endmarker	-			*/
-#define	OCHAR	(2L<<OPSHIFT)	/* character	unsigned char		*/
+#define	OCHAR	(2L<<OPSHIFT)	/* character	wide character		*/
 #define	OBOL	(3L<<OPSHIFT)	/* left anchor	-			*/
 #define	OEOL	(4L<<OPSHIFT)	/* right anchor	-			*/
 #define	OANY	(5L<<OPSHIFT)	/* .		-			*/
@@ -110,34 +105,59 @@ typedef long sopno;
 #define	OEOW	(20L<<OPSHIFT)	/* end word	-			*/
 
 /*
- * Structure for [] character-set representation.  Character sets are
- * done as bit vectors, grouped 8 to a byte vector for compactness.
- * The individual set therefore has both a pointer to the byte vector
- * and a mask to pick out the relevant bit of each byte.  A hash code
- * simplifies testing whether two sets could be identical.
- *
- * This will get trickier for multicharacter collating elements.  As
- * preliminary hooks for dealing with such things, we also carry along
- * a string of multi-character elements, and decide the size of the
- * vectors at run time.
+ * Structures for [] character-set representation.
  */
 typedef struct {
-	uch *ptr;		/* -> uch [csetsize] */
-	uch mask;		/* bit within array */
-	short hash;             /* hash code */
-	size_t smultis;
-	char *multis;		/* -> char[smulti]  ab\0cd\0ef\0\0 */
+	wint_t		min;
+	wint_t		max;
+} crange;
+typedef struct {
+	unsigned char	bmp[NC / 8];
+	wctype_t	*types;
+	int		ntypes;
+	wint_t		*wides;
+	int		nwides;
+	crange		*ranges;
+	int		nranges;
+	int		invert;
+	int		icase;
 } cset;
-/* note that CHadd and CHsub are unsafe, and CHIN doesn't yield 0/1 */
-#define CHadd(cs, c)    ((cs)->ptr[(uch)(c)] |= (cs)->mask, (cs)->hash += (uch)(c))
-#define CHsub(cs, c)    ((cs)->ptr[(uch)(c)] &= ~(cs)->mask, (cs)->hash -= (uch)(c))
-#define	CHIN(cs, c)	((cs)->ptr[(uch)(c)] & (cs)->mask)
-#define	MCadd(p, cs, cp)	mcadd(p, cs, cp)	/* regcomp() internal fns */
-#define	MCsub(p, cs, cp)	mcsub(p, cs, cp)
-#define	MCin(p, cs, cp)	mcin(p, cs, cp)
 
-/* stuff for character categories */
-typedef unsigned char cat_t;
+static int
+CHIN1(cset *cs, wint_t ch)
+{
+	int i;
+
+	assert(ch >= 0);
+	if (ch < NC)
+		return (((cs->bmp[ch >> 3] & (1 << (ch & 7))) != 0) ^
+		    cs->invert);
+	for (i = 0; i < cs->nwides; i++)
+		if (ch == cs->wides[i])
+			return (!cs->invert);
+	for (i = 0; i < cs->nranges; i++)
+		if (cs->ranges[i].min <= ch && ch <= cs->ranges[i].max)
+			return (!cs->invert);
+	for (i = 0; i < cs->ntypes; i++)
+		if (iswctype(ch, cs->types[i]))
+			return (!cs->invert);
+	return (cs->invert);
+}
+
+static __inline int
+CHIN(cset *cs, wint_t ch)
+{
+
+	assert(ch >= 0);
+	if (ch < NC)
+		return (((cs->bmp[ch >> 3] & (1 << (ch & 7))) != 0) ^
+		    cs->invert);
+	else if (cs->icase)
+		return (CHIN1(cs, ch) || CHIN1(cs, towlower(ch)) ||
+		    CHIN1(cs, towupper(ch)));
+	else
+		return (CHIN1(cs, ch));
+}
 
 /*
  * main compiled-expression structure
@@ -146,10 +166,8 @@ struct re_guts {
 	int magic;
 #		define	MAGIC2	((('R'^0200)<<8)|'E')
 	sop *strip;		/* malloced area for strip */
-	int csetsize;		/* number of bits in a cset vector */
 	int ncsets;		/* number of csets in use */
 	cset *sets;		/* -> cset [ncsets] */
-	uch *setbits;		/* -> uch[csetsize][ncsets/CHAR_BIT] */
 	int cflags;		/* copy of regcomp() cflags argument */
 	sopno nstates;		/* = number of sops */
 	sopno firststate;	/* the initial OEND (normally 0) */
@@ -160,8 +178,6 @@ struct re_guts {
 #		define	BAD	04	/* something wrong */
 	int nbol;		/* number of ^ used */
 	int neol;		/* number of $ used */
-	int ncategories;	/* how many character categories */
-	cat_t *categories;	/* ->catspace[-CHAR_MIN] */
 	char *must;		/* match must contain this string */
 	int moffset;		/* latest point at which must may be located */
 	int *charjump;		/* Boyer-Moore char jump table */
@@ -170,10 +186,8 @@ struct re_guts {
 	size_t nsub;		/* copy of re_nsub */
 	int backrefs;		/* does it use back references? */
 	sopno nplus;		/* how deep does it nest +s? */
-	/* catspace must be last */
-	cat_t catspace[1];	/* actually [NC] */
 };
 
 /* misc utilities */
-#define	OUT	(CHAR_MAX+1)	/* a non-character value */
-#define ISWORD(c)       (isalnum((uch)(c)) || (c) == '_')
+#define	OUT	(CHAR_MIN - 1)	/* a non-character value */
+#define ISWORD(c)       (iswalnum((uch)(c)) || (c) == '_')

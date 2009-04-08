@@ -28,7 +28,8 @@
  *
  *	from: @(#)pmap_prot.h 1.14 88/02/08 SMI
  *	from: @(#)pmap_prot.h	2.1 88/07/29 4.0 RPCSRC
- * $FreeBSD: src/include/rpc/pmap_prot.h,v 1.10 1999/08/27 23:45:04 peter Exp $
+ * $NetBSD: pmap_prot.h,v 1.8 2000/06/02 22:57:55 fvdl Exp $
+ * $FreeBSD: src/include/rpc/pmap_prot.h,v 1.12 2002/03/23 17:24:55 imp Exp $
  * $DragonFly: src/include/rpc/pmap_prot.h,v 1.3 2003/11/14 01:01:50 dillon Exp $
  */
 
@@ -69,8 +70,8 @@
  * The service supports remote procedure calls on udp/ip or tcp/ip socket 111.
  */
 
-#ifndef _RPC_PMAPPROT_H
-#define _RPC_PMAPPROT_H
+#ifndef _RPC_PMAP_PROT_H_
+#define _RPC_PMAP_PROT_H_
 #include <sys/cdefs.h>
 
 #define PMAPPORT		((u_short)111)
@@ -98,8 +99,9 @@ struct pmaplist {
 };
 
 __BEGIN_DECLS
-extern bool_t xdr_pmap		(XDR *, struct pmap *);
-extern bool_t xdr_pmaplist	(XDR *, struct pmaplist **);
+extern bool_t	xdr_pmap(XDR *, struct pmap *);
+extern bool_t	xdr_pmaplist(XDR *, struct pmaplist **);
+extern bool_t	xdr_pmaplist_ptr(XDR *, struct pmaplist *);
 __END_DECLS
 
-#endif /* !_RPC_PMAPPROT_H */
+#endif /* !_RPC_PMAP_PROT_H_ */

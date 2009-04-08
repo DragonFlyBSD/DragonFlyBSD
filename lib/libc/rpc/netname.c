@@ -27,7 +27,7 @@
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  *
- * $FreeBSD: src/lib/libc/rpc/netname.c,v 1.2.6.1 2000/08/23 00:05:29 jhb Exp $
+ * $FreeBSD: src/lib/libc/rpc/netname.c,v 1.8 2004/10/16 06:11:35 obrien Exp $
  * $DragonFly: src/lib/libc/rpc/netname.c,v 1.3 2005/11/13 12:27:04 swildner Exp $
  *
  * @(#)netname.c 1.8 91/03/11 Copyr 1986 Sun Micro
@@ -41,6 +41,7 @@
  * the sun NIS domain architecture.
  */
 
+#include "namespace.h"
 #include <sys/param.h>
 #include <rpc/rpc.h>
 #include <rpc/rpc_com.h>
@@ -54,6 +55,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "un-namespace.h"
 
 #ifndef MAXHOSTNAMELEN
 #define MAXHOSTNAMELEN 256
@@ -87,9 +89,9 @@ getnetname(char *name)
 
 	uid = geteuid();
 	if (uid == 0) {
-		return (host2netname(name, (char *) NULL, (char *) NULL));
+		return (host2netname(name, NULL, NULL));
 	} else {
-		return (user2netname(name, uid, (char *) NULL));
+		return (user2netname(name, uid, NULL));
 	}
 }
 
@@ -98,12 +100,12 @@ getnetname(char *name)
  * Convert unix cred to network-name
  */
 int
-user2netname(char *netname, uid_t uid, char *domain)
+user2netname(char *netname, const uid_t uid, const char *domain)
 {
 	char *dfltdom;
 
 	if (domain == NULL) {
-		if (_rpc_get_default_domain(&dfltdom) != 0) {
+		if (__rpc_get_default_domain(&dfltdom) != 0) {
 			return (0);
 		}
 		domain = dfltdom;
@@ -120,13 +122,13 @@ user2netname(char *netname, uid_t uid, char *domain)
  * Convert host to network-name
  */
 int
-host2netname(char *netname, char *host, char *domain)
+host2netname(char *netname, const char *host, const char *domain)
 {
 	char *dfltdom;
 	char hostname[MAXHOSTNAMELEN+1];
 
 	if (domain == NULL) {
-		if (_rpc_get_default_domain(&dfltdom) != 0) {
+		if (__rpc_get_default_domain(&dfltdom) != 0) {
 			return (0);
 		}
 		domain = dfltdom;

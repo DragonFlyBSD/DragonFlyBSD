@@ -94,30 +94,30 @@ db_varfcn_t db_dr7;
  * Machine register set.
  */
 struct db_variable db_regs[] = {
-	{ "cs",		&ddb_regs.tf_cs,     FCN_NULL },
-/*	{ "ds",		&ddb_regs.tf_ds,     FCN_NULL },
-	{ "es",		&ddb_regs.tf_es,     FCN_NULL },
-	{ "fs",		&ddb_regs.tf_fs,     FCN_NULL },
-	{ "gs",		&ddb_regs.tf_gs,     FCN_NULL }, */
-	{ "ss",		&ddb_regs.tf_ss,     FCN_NULL },
-	{ "rax",	&ddb_regs.tf_rax,    FCN_NULL },
-	{ "rcx",	&ddb_regs.tf_rcx,    FCN_NULL },
-	{ "rdx",	&ddb_regs.tf_rdx,    FCN_NULL },
-	{ "rbx",	&ddb_regs.tf_rbx,    FCN_NULL },
-	{ "rsp",	&ddb_regs.tf_rsp,    FCN_NULL },
-	{ "rbp",	&ddb_regs.tf_rbp,    FCN_NULL },
-	{ "rsi",	&ddb_regs.tf_rsi,    FCN_NULL },
-	{ "rdi",	&ddb_regs.tf_rdi,    FCN_NULL },
-	{ "rip",	&ddb_regs.tf_rip,    FCN_NULL },
-	{ "rfl",	&ddb_regs.tf_rflags, FCN_NULL },
-	{ "r8",		&ddb_regs.tf_r8,     FCN_NULL },
-	{ "r9",		&ddb_regs.tf_r9,     FCN_NULL },
-	{ "r10",	&ddb_regs.tf_r10,    FCN_NULL },
-	{ "r11",	&ddb_regs.tf_r11,    FCN_NULL },
-	{ "r12",	&ddb_regs.tf_r12,    FCN_NULL },
-	{ "r13",	&ddb_regs.tf_r13,    FCN_NULL },
-	{ "r14",	&ddb_regs.tf_r14,    FCN_NULL },
-	{ "r15",	&ddb_regs.tf_r15,    FCN_NULL },
+	{ "cs",		&ddb_regs.tf_cs,     NULL },
+/*	{ "ds",		&ddb_regs.tf_ds,     NULL },
+	{ "es",		&ddb_regs.tf_es,     NULL },
+	{ "fs",		&ddb_regs.tf_fs,     NULL },
+	{ "gs",		&ddb_regs.tf_gs,     NULL }, */
+	{ "ss",		&ddb_regs.tf_ss,     NULL },
+	{ "rax",	&ddb_regs.tf_rax,    NULL },
+	{ "rcx",	&ddb_regs.tf_rcx,    NULL },
+	{ "rdx",	&ddb_regs.tf_rdx,    NULL },
+	{ "rbx",	&ddb_regs.tf_rbx,    NULL },
+	{ "rsp",	&ddb_regs.tf_rsp,    NULL },
+	{ "rbp",	&ddb_regs.tf_rbp,    NULL },
+	{ "rsi",	&ddb_regs.tf_rsi,    NULL },
+	{ "rdi",	&ddb_regs.tf_rdi,    NULL },
+	{ "rip",	&ddb_regs.tf_rip,    NULL },
+	{ "rfl",	&ddb_regs.tf_rflags, NULL },
+	{ "r8",		&ddb_regs.tf_r8,     NULL },
+	{ "r9",		&ddb_regs.tf_r9,     NULL },
+	{ "r10",	&ddb_regs.tf_r10,    NULL },
+	{ "r11",	&ddb_regs.tf_r11,    NULL },
+	{ "r12",	&ddb_regs.tf_r12,    NULL },
+	{ "r13",	&ddb_regs.tf_r13,    NULL },
+	{ "r14",	&ddb_regs.tf_r14,    NULL },
+	{ "r15",	&ddb_regs.tf_r15,    NULL },
 	{ "dr0",	NULL,		     db_dr0 },
 	{ "dr1",	NULL,		     db_dr1 },
 	{ "dr2",	NULL,		     db_dr2 },
@@ -440,7 +440,7 @@ db_stack_trace_cmd(db_expr_t addr, boolean_t have_addr, db_expr_t count,
 }
 
 void
-db_print_backtrace(void)
+print_backtrace(void)
 {
 	register_t  rbp;
 

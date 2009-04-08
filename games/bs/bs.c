@@ -400,7 +400,7 @@ initgame(void)
 	placeship(COMPUTER, ss, FALSE);
     }
 
-    ss = (ship_t *)NULL;
+    ss = NULL;
     do {
 	char c, docked[SHIPTYPES + 2], *cp = docked;
 
@@ -446,7 +446,7 @@ initgame(void)
 	    prompt(1, "Random-placing your %s", ss->name);
 	    randomplace(PLAYER, ss);
 	    placeship(PLAYER, ss, TRUE);
-	    error((char *)NULL);
+	    error(NULL);
 	    ss->placed = TRUE;
 	}
 	else if (c == 'R')
@@ -459,7 +459,7 @@ initgame(void)
 		    placeship(PLAYER, ss, TRUE);
 		    ss->placed = TRUE;
 		}
-	    error((char *)NULL);
+	    error(NULL);
 	}
 	else if (strchr("hjkl8462", c))
 	{
@@ -477,7 +477,7 @@ initgame(void)
 	    if (checkplace(PLAYER, ss, TRUE))
 	    {
 		placeship(PLAYER, ss, TRUE);
-		error((char *)NULL);
+		error(NULL);
 		ss->placed = TRUE;
 	    }
 	}
@@ -699,12 +699,12 @@ hitship(int x, int y)
     getyx(stdscr, oldy, oldx);
     sb = (turn) ? plyship : cpuship;
     if(!(sym = board[OTHER][x][y]))
-	return((ship_t *)NULL);
+	return(NULL);
     for(ss = sb; ss < sb + SHIPTYPES; ++ss)
 	if(ss->symbol == sym)
 	{
 	    if (++ss->hits < ss->length) {	/* still afloat? */
-			return((ship_t *)NULL);
+			return(NULL);
 	    } else { /* sunk */
 		int i, j;
 
@@ -755,7 +755,7 @@ hitship(int x, int y)
 	    }
 	}
     move(oldy, oldx);
-    return((ship_t *)NULL);
+    return(NULL);
 }
 
 static int

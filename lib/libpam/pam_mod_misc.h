@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libpam/libpam/security/pam_mod_misc.h,v 1.12 2003/05/31 16:56:35 des Exp $
+ * $FreeBSD: src/lib/libpam/libpam/security/pam_mod_misc.h,v 1.13 2006/07/17 11:48:52 stefanf Exp $
  * $DragonFly: src/lib/libpam/pam_mod_misc.h,v 1.1 2005/07/13 12:34:21 joerg Exp $
  */
 
@@ -52,6 +52,6 @@ __END_DECLS
 	return (arg)
 
 #define PAM_VERBOSE_ERROR(...) \
-	_pam_verbose_error(pamh, flags, __FILE__, __FUNCTION__, __VA_ARGS__)
+	_pam_verbose_error(pamh, flags, __FILE__, __func__, __VA_ARGS__)
 
 #endif

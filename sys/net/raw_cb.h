@@ -79,8 +79,9 @@ void	 raw_ctlinput (int, struct sockaddr *, void *);
 void	 raw_detach (struct rawcb *);
 void	 raw_disconnect (struct rawcb *);
 void	 raw_init (void);
-void	 raw_input (struct mbuf *, struct sockproto *,
-		    const struct sockaddr *, const struct sockaddr *);
+void	 raw_input (struct mbuf *, const struct sockproto *,
+		    const struct sockaddr *, const struct sockaddr *,
+		    const struct rawcb *);
 
 extern	struct pr_usrreqs raw_usrreqs;
 #endif

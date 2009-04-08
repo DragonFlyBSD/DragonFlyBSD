@@ -91,8 +91,8 @@ usb_register_netisr(void)
 {
 	if (netisr_inited == 0) {
 		netisr_inited = 1;
-		netisr_register(NETISR_USB, cpu0_portfn, usbintr,
-				NETISR_FLAG_NOTMPSAFE);
+		netisr_register(NETISR_USB, cpu0_portfn, pktinfo_portfn_notsupp,
+				usbintr, NETISR_FLAG_NOTMPSAFE);
 	}
 }
 

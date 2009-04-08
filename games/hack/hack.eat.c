@@ -142,7 +142,7 @@ gotit:
 				goto no_opener;
 			}
 			pline("Using your %s you try to open the tin.",
-				aobjnam(uwep, (char *) 0));
+				aobjnam(uwep, NULL));
 		} else {
 		no_opener:
 			pline("It is not so easy to open this tin.");

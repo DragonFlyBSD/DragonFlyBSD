@@ -47,11 +47,11 @@ static const char sccsid[] = "@(#)inet_netof.c	8.1 (Berkeley) 6/4/93";
  * Return the network number from an internet
  * address; handles class a/b/c network #'s.
  */
-u_long
+in_addr_t
 inet_netof(in)
 	struct in_addr in;
 {
-	register u_long i = ntohl(in.s_addr);
+	in_addr_t i = ntohl(in.s_addr);
 
 	if (IN_CLASSA(i))
 		return (((i)&IN_CLASSA_NET) >> IN_CLASSA_NSHIFT);
@@ -60,3 +60,12 @@ inet_netof(in)
 	else
 		return (((i)&IN_CLASSC_NET) >> IN_CLASSC_NSHIFT);
 }
+
+#ifdef _LIBC
+/*
+ * Weak aliases for applications that use certain private entry points,
+ * and fail to include <arpa/inet.h>.
+ */
+#undef inet_netof
+__weak_reference(__inet_netof, inet_netof);
+#endif

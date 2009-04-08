@@ -111,6 +111,7 @@ typedef struct pcicfg {
     struct pcicfg_pmgt pmgt;	/* power management capability */
     struct pcicfg_expr expr;	/* PCI Express capability */
     u_int8_t	pcixcap_ptr;	/* PCI-X capability PTR */
+    u_int8_t	vpdcap_ptr;	/* Vital Product Data capability */
 } pcicfgregs;
 
 /* additional type 1 device config header information (PCI to PCI bridge) */
@@ -213,7 +214,8 @@ enum pci_device_ivars {
 	PCI_IVAR_SUBORDINATEBUS,
 	PCI_IVAR_ETHADDR,
 	PCI_IVAR_PCIXCAP_PTR,
-	PCI_IVAR_PCIECAP_PTR
+	PCI_IVAR_PCIECAP_PTR,
+	PCI_IVAR_VPDCAP_PTR
 };
 
 /*
@@ -257,6 +259,7 @@ PCI_ACCESSOR(subordinatebus,	SUBORDINATEBUS,	u_int8_t)
 PCI_ACCESSOR(ether,		ETHADDR,	uint8_t *)
 PCI_ACCESSOR(pcixcap_ptr,	PCIXCAP_PTR,	uint8_t)
 PCI_ACCESSOR(pciecap_ptr,	PCIECAP_PTR,	uint8_t)
+PCI_ACCESSOR(vpdcap_ptr,	VPDCAP_PTR,	uint8_t)
 
 #undef PCI_ACCESSOR
 

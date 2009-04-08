@@ -573,7 +573,7 @@ reflect:
 		icmpsrc.sin_addr = icp->icmp_ip.ip_dst;
 		rtredirect((struct sockaddr *)&icmpsrc,
 		  (struct sockaddr *)&icmpdst,
-		  (struct sockaddr *)0, RTF_GATEWAY | RTF_HOST,
+		  NULL, RTF_GATEWAY | RTF_HOST,
 		  (struct sockaddr *)&icmpgw);
 		kpfctlinput(PRC_REDIRECT_HOST, (struct sockaddr *)&icmpsrc);
 #ifdef IPSEC
@@ -772,7 +772,7 @@ icmp_send(struct mbuf *m, struct mbuf *opts, struct route *rt)
 	icp->icmp_cksum = in_cksum(m, ip->ip_len - hlen);
 	m->m_data -= hlen;
 	m->m_len += hlen;
-	m->m_pkthdr.rcvif = (struct ifnet *)0;
+	m->m_pkthdr.rcvif = NULL;
 #ifdef ICMPPRINTFS
 	if (icmpprintfs) {
 		char buf[sizeof "aaa.bbb.ccc.ddd"];

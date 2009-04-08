@@ -4,6 +4,7 @@
 LIB=	devstat
 SRCS=	devstat.c
 INCS=	devstat.h
+WARNS?=	6
 
 MAN=	devstat.3
 

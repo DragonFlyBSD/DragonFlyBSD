@@ -510,7 +510,7 @@ readit(const char *name, const char *reg, int width)
 	rend = rstart = strtol(reg, &end, 0);
 	if (end && *end == ':') {
 		end++;
-		rend = strtol(end, (char **) 0, 0);
+		rend = strtol(end, NULL, 0);
 	}
 	sel = getsel(name);
 	for (i = 1, r = rstart; r <= rend; i++, r += width) {	
@@ -529,9 +529,9 @@ writeit(const char *name, const char *reg, const char *data, int width)
 	struct pci_io pi;
 
 	pi.pi_sel = getsel(name);
-	pi.pi_reg = strtoul(reg, (char **)0, 0); /* XXX error check */
+	pi.pi_reg = strtoul(reg, NULL, 0); /* XXX error check */
 	pi.pi_width = width;
-	pi.pi_data = strtoul(data, (char **)0, 0); /* XXX error check */
+	pi.pi_data = strtoul(data, NULL, 0); /* XXX error check */
 
 	fd = open(_PATH_DEVPCI, O_RDWR, 0);
 	if (fd < 0)

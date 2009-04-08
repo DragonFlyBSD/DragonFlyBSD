@@ -340,8 +340,8 @@ struct {								\
 	RB_COLOR(red, field) = RB_RED;					\
 } while (/*CONSTCOND*/ 0)
 
-#ifndef RB_AUGMENT
-#define RB_AUGMENT(x)
+#ifdef RB_AUGMENT
+#error "RB_AUGMENT not supported by DragonFly"
 #endif
 
 #define RB_ROTATE_LEFT(head, elm, tmp, field) do {			\
@@ -349,7 +349,6 @@ struct {								\
 	if ((RB_RIGHT(elm, field) = RB_LEFT(tmp, field)) != NULL) {	\
 		RB_PARENT(RB_LEFT(tmp, field), field) = (elm);		\
 	}								\
-	RB_AUGMENT(elm);						\
 	if ((RB_PARENT(tmp, field) = RB_PARENT(elm, field)) != NULL) {	\
 		if ((elm) == RB_LEFT(RB_PARENT(elm, field), field))	\
 			RB_LEFT(RB_PARENT(elm, field), field) = (tmp);	\
@@ -359,9 +358,6 @@ struct {								\
 		(head)->rbh_root = (tmp);				\
 	RB_LEFT(tmp, field) = (elm);					\
 	RB_PARENT(elm, field) = (tmp);					\
-	RB_AUGMENT(tmp);						\
-	if ((RB_PARENT(tmp, field)))					\
-		RB_AUGMENT(RB_PARENT(tmp, field));			\
 } while (/*CONSTCOND*/ 0)
 
 #define RB_ROTATE_RIGHT(head, elm, tmp, field) do {			\
@@ -369,7 +365,6 @@ struct {								\
 	if ((RB_LEFT(elm, field) = RB_RIGHT(tmp, field)) != NULL) {	\
 		RB_PARENT(RB_RIGHT(tmp, field), field) = (elm);		\
 	}								\
-	RB_AUGMENT(elm);						\
 	if ((RB_PARENT(tmp, field) = RB_PARENT(elm, field)) != NULL) {	\
 		if ((elm) == RB_LEFT(RB_PARENT(elm, field), field))	\
 			RB_LEFT(RB_PARENT(elm, field), field) = (tmp);	\
@@ -379,9 +374,6 @@ struct {								\
 		(head)->rbh_root = (tmp);				\
 	RB_RIGHT(tmp, field) = (elm);					\
 	RB_PARENT(elm, field) = (tmp);					\
-	RB_AUGMENT(tmp);						\
-	if ((RB_PARENT(tmp, field)))					\
-		RB_AUGMENT(RB_PARENT(tmp, field));			\
 } while (/*CONSTCOND*/ 0)
 
 /* Generates prototypes and inline functions */
@@ -591,7 +583,6 @@ name##_RB_REMOVE(struct name *head, struct type *elm)			\
 				RB_LEFT(parent, field) = child;		\
 			else						\
 				RB_RIGHT(parent, field) = child;	\
-			RB_AUGMENT(parent);				\
 		} else							\
 			RB_ROOT(head) = child;				\
 		if (RB_PARENT(elm, field) == old)			\
@@ -602,18 +593,11 @@ name##_RB_REMOVE(struct name *head, struct type *elm)			\
 				RB_LEFT(RB_PARENT(old, field), field) = elm;\
 			else						\
 				RB_RIGHT(RB_PARENT(old, field), field) = elm;\
-			RB_AUGMENT(RB_PARENT(old, field));		\
 		} else							\
 			RB_ROOT(head) = elm;				\
 		RB_PARENT(RB_LEFT(old, field), field) = elm;		\
 		if (RB_RIGHT(old, field))				\
 			RB_PARENT(RB_RIGHT(old, field), field) = elm;	\
-		if (parent) {						\
-			left = parent;					\
-			do {						\
-				RB_AUGMENT(left);			\
-			} while ((left = RB_PARENT(left, field)) != NULL); \
-		}							\
 		goto color;						\
 	}								\
 	parent = RB_PARENT(elm, field);					\
@@ -625,7 +609,6 @@ name##_RB_REMOVE(struct name *head, struct type *elm)			\
 			RB_LEFT(parent, field) = child;			\
 		else							\
 			RB_RIGHT(parent, field) = child;		\
-		RB_AUGMENT(parent);					\
 	} else								\
 		RB_ROOT(head) = child;					\
 color:									\
@@ -658,7 +641,6 @@ name##_RB_INSERT(struct name *head, struct type *elm)			\
 			RB_LEFT(parent, field) = elm;			\
 		else							\
 			RB_RIGHT(parent, field) = elm;			\
-		RB_AUGMENT(parent);					\
 	} else								\
 		RB_ROOT(head) = elm;					\
 	name##_RB_INSERT_COLOR(head, elm);				\
@@ -690,7 +672,7 @@ name##_RB_FIND(struct name *head, struct type *elm)			\
  * deleted while the scan is in progress.				\
  */									\
 static int								\
-name##_SCANCMP_ALL(struct type *type, void *data)			\
+name##_SCANCMP_ALL(struct type *type __unused, void *data __unused)	\
 {									\
 	return(0);							\
 }									\

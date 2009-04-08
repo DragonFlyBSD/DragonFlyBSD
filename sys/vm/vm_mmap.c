@@ -53,6 +53,7 @@
 #include <sys/filedesc.h>
 #include <sys/kern_syscall.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/resource.h>
 #include <sys/resourcevar.h>
 #include <sys/vnode.h>
@@ -332,7 +333,7 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 			if (securelevel >= 1)
 				disablexworkaround = 1;
 			else
-				disablexworkaround = suser(td);
+				disablexworkaround = priv_check(td, PRIV_ROOT);
 			if (vp->v_type == VCHR && disablexworkaround &&
 			    (flags & (MAP_PRIVATE|MAP_COPY))) {
 				error = EINVAL;
@@ -909,7 +910,7 @@ sys_mlock(struct mlock_args *uap)
 	    p->p_rlimit[RLIMIT_MEMLOCK].rlim_cur)
 		return (ENOMEM);
 #else
-	error = suser_cred(p->p_ucred, 0);
+	error = priv_check_cred(p->p_ucred, PRIV_ROOT, 0);
 	if (error)
 		return (error);
 #endif
@@ -961,7 +962,7 @@ sys_munlock(struct munlock_args *uap)
 		return (EINVAL);
 
 #ifndef pmap_wired_count
-	error = suser(td);
+	error = priv_check(td, PRIV_ROOT);
 	if (error)
 		return (error);
 #endif
@@ -983,7 +984,8 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 {
 	boolean_t fitit;
 	vm_object_t object;
-	struct vnode *vp = NULL;
+	struct vnode *vp;
+	struct thread *td = curthread;
 	struct proc *p;
 	objtype_t type;
 	int rv = KERN_SUCCESS;
@@ -1032,26 +1034,21 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		/*
 		 * Unnamed anonymous regions always start at 0.
 		 */
-		if (handle == 0)
+		if (handle == NULL)
 			foff = 0;
+		vp = NULL;
 	} else {
-		vp = (struct vnode *) handle;
+		vp = (struct vnode *)handle;
 		if (vp->v_type == VCHR) {
 			type = OBJT_DEVICE;
 			handle = (void *)(intptr_t)vp->v_rdev;
 		} else {
-			struct vattr vat, tsvat;
+			struct vattr vat;
 			int error;
 
 			error = VOP_GETATTR(vp, &vat);
 			if (error)
 				return (error);
-
-			/* Update access time */
-			VATTR_NULL(&tsvat);
-			vfs_timestamp(&tsvat.va_atime);
-			VOP_SETATTR(vp, &tsvat, curproc != NULL ? curproc->p_ucred : NULL);
-
 			objsize = vat.va_size;
 			type = OBJT_VNODE;
 			/*
@@ -1135,6 +1132,12 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 			goto out;
 		}
 	}
+
+	/*
+	 * Set the access time on the vnode
+	 */
+	if (vp != NULL)
+		vn_mark_atime(vp, td);
 out:
 	switch (rv) {
 	case KERN_SUCCESS:

@@ -131,14 +131,14 @@ main(int argc, char **argv)
 				cflag = 1;
 				break;
 			case 'h':
-				if (putenv("BLOCKSIZE=512") == -1)
-					warn("putenv: cannot set BLOCKSIZE=512");
+				if (setenv("BLOCKSIZE", "512", 1) == -1)
+					warn("setenv: cannot set BLOCKSIZE=512");
 				hflag = 1;
 				break;
 			case 'k':
 				hflag = 0;
-				if (putenv("BLOCKSIZE=1024") == -1)
-					warn("putenv: cannot set BLOCKSIZE=1024");
+				if (setenv("BLOCKSIZE", "1024", 1) == -1)
+					warn("setenv: cannot set BLOCKSIZE=1024");
 				break;
 			case 'r':		 /* Compatibility. */
 				break;

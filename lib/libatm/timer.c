@@ -204,7 +204,7 @@ init_timer(void)
 	timeval.it_interval.tv_usec = 0;
 
 	if (setitimer(ITIMER_REAL, &timeval,
-			(struct itimerval *)0) == -1) {
+			NULL) == -1) {
 		rc = errno;
 		(void)signal(SIGALRM, SIG_DFL);
 	}

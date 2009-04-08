@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/include/rpcsvc/ypclnt.h,v 1.11.2.1 2002/02/15 00:46:53 des Exp $
+ * $FreeBSD: src/include/rpcsvc/ypclnt.h,v 1.16 2003/10/26 16:35:11 peter Exp $
  * $DragonFly: src/include/rpcsvc/ypclnt.h,v 1.7 2005/04/27 12:26:59 joerg Exp $
  */
 
@@ -67,13 +67,15 @@ struct ypall_callback {
 };
 
 struct dom_binding;
+struct ypmaplist;
+struct ypall_callback;
 
 __BEGIN_DECLS
 int	 yp_bind(char *);
 int	 _yp_dobind(const char *, struct dom_binding **);
 void	 yp_unbind(char *);
 int	 yp_get_default_domain(char **);
-int	 yp_match(const char *, const char *, const char *, int, char **, int *);
+int	 yp_match(char *, char *, const char *, int, char **, int *);
 int	 yp_first(char *, char *, char **, size_t *, char **, size_t *);
 int	 yp_next(char *, char *, char *, size_t, char **, size_t *,
 		 char **, size_t *);

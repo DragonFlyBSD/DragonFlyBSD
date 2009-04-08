@@ -8,8 +8,8 @@
 # from CFLAGS below.  To remove these strings from just the system call
 # stubs, remove just -DSYSLIBC_RCS from CFLAGS.
 LIB=c
-SHLIB_MAJOR= 6
-CFLAGS+=-DLIBC_RCS -DSYSLIBC_RCS -I${.CURDIR}/include
+SHLIB_MAJOR= 7
+CFLAGS+=-DLIBC_RCS -DSYSLIBC_RCS -I${.CURDIR}/include ${AINC}
 AINC=	-I${.OBJDIR} -I${.CURDIR}/${MACHINE_ARCH}
 CLEANFILES+=tags
 PRECIOUSLIB=	yes

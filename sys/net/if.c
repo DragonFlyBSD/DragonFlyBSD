@@ -45,6 +45,7 @@
 #include <sys/mbuf.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -769,7 +770,7 @@ if_rtdel(struct radix_node *rn, void *arg)
 
 		err = rtrequest(RTM_DELETE, rt_key(rt), rt->rt_gateway,
 				rt_mask(rt), rt->rt_flags,
-				(struct rtentry **) NULL);
+				NULL);
 		if (err) {
 			log(LOG_WARNING, "if_rtdel: error %d\n", err);
 		}
@@ -1195,7 +1196,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	switch (cmd) {
 	case SIOCIFCREATE:
 	case SIOCIFDESTROY:
-		if ((error = suser_cred(cred, 0)) != 0)
+		if ((error = priv_check_cred(cred, PRIV_ROOT, 0)) != 0)
 			return (error);
 		return ((cmd == SIOCIFCREATE) ?
 			if_clone_create(ifr->ifr_name, sizeof(ifr->ifr_name)) :
@@ -1209,6 +1210,10 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	if (ifp == 0)
 		return (ENXIO);
 	switch (cmd) {
+
+	case SIOCGIFINDEX:
+		ifr->ifr_index = ifp->if_index;
+		break;
 
 	case SIOCGIFFLAGS:
 		ifr->ifr_flags = ifp->if_flags;
@@ -1248,7 +1253,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		break;
 
 	case SIOCSIFFLAGS:
-		error = suser_cred(cred, 0);
+		error = priv_check_cred(cred, PRIV_ROOT, 0);
 		if (error)
 			return (error);
 		new_flags = (ifr->ifr_flags & 0xffff) |
@@ -1294,7 +1299,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		break;
 
 	case SIOCSIFCAP:
-		error = suser_cred(cred, 0);
+		error = priv_check_cred(cred, PRIV_ROOT, 0);
 		if (error)
 			return (error);
 		if (ifr->ifr_reqcap & ~ifp->if_capabilities)
@@ -1305,7 +1310,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		break;
 
 	case SIOCSIFNAME:
-		error = suser_cred(cred, 0);
+		error = priv_check_cred(cred, PRIV_ROOT, 0);
 		if (error != 0)
 			return (error);
 		error = copyinstr(ifr->ifr_data, new_name, IFNAMSIZ, NULL);
@@ -1351,7 +1356,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		break;
 
 	case SIOCSIFMETRIC:
-		error = suser_cred(cred, 0);
+		error = priv_check_cred(cred, PRIV_ROOT, 0);
 		if (error)
 			return (error);
 		ifp->if_metric = ifr->ifr_metric;
@@ -1359,7 +1364,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		break;
 
 	case SIOCSIFPHYS:
-		error = suser_cred(cred, 0);
+		error = priv_check_cred(cred, PRIV_ROOT, 0);
 		if (error)
 			return error;
 		if (!ifp->if_ioctl)
@@ -1375,7 +1380,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	{
 		u_long oldmtu = ifp->if_mtu;
 
-		error = suser_cred(cred, 0);
+		error = priv_check_cred(cred, PRIV_ROOT, 0);
 		if (error)
 			return (error);
 		if (ifp->if_ioctl == NULL)
@@ -1402,7 +1407,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 
 	case SIOCADDMULTI:
 	case SIOCDELMULTI:
-		error = suser_cred(cred, 0);
+		error = priv_check_cred(cred, PRIV_ROOT, 0);
 		if (error)
 			return (error);
 
@@ -1432,7 +1437,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 	case SIOCSLIFPHYADDR:
         case SIOCSIFMEDIA:
 	case SIOCSIFGENERIC:
-		error = suser_cred(cred, 0);
+		error = priv_check_cred(cred, PRIV_ROOT, 0);
 		if (error)
 			return (error);
 		if (ifp->if_ioctl == 0)
@@ -1461,7 +1466,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 		return (error);
 
 	case SIOCSIFLLADDR:
-		error = suser_cred(cred, 0);
+		error = priv_check_cred(cred, PRIV_ROOT, 0);
 		if (error)
 			return (error);
 		return if_setlladdr(ifp,
@@ -1581,7 +1586,7 @@ ifpromisc(struct ifnet *ifp, int pswitch)
 	ifr.ifr_flagshigh = ifp->if_flags >> 16;
 	lwkt_serialize_enter(ifp->if_serializer);
 	error = ifp->if_ioctl(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
-				 (struct ucred *)NULL);
+				 NULL);
 	lwkt_serialize_exit(ifp->if_serializer);
 	if (error == 0)
 		rt_ifmsg(ifp);
@@ -1699,7 +1704,7 @@ if_allmulti(struct ifnet *ifp, int onswitch)
 			ifr.ifr_flagshigh = ifp->if_flags >> 16;
 			lwkt_serialize_enter(ifp->if_serializer);
 			error = ifp->if_ioctl(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
-					      (struct ucred *)NULL);
+					      NULL);
 			lwkt_serialize_exit(ifp->if_serializer);
 		}
 	} else {
@@ -1712,7 +1717,7 @@ if_allmulti(struct ifnet *ifp, int onswitch)
 			ifr.ifr_flagshigh = ifp->if_flags >> 16;
 			lwkt_serialize_enter(ifp->if_serializer);
 			error = ifp->if_ioctl(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
-					      (struct ucred *)NULL);
+					      NULL);
 			lwkt_serialize_exit(ifp->if_serializer);
 		}
 	}
@@ -1813,7 +1818,7 @@ if_addmulti(
 	 */
 	crit_enter();
 	lwkt_serialize_enter(ifp->if_serializer);
-	ifp->if_ioctl(ifp, SIOCADDMULTI, 0, (struct ucred *)NULL);
+	ifp->if_ioctl(ifp, SIOCADDMULTI, 0, NULL);
 	lwkt_serialize_exit(ifp->if_serializer);
 	crit_exit();
 
@@ -1850,7 +1855,7 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 	 */
 	if (ifma->ifma_addr->sa_family == AF_LINK && sa == 0) {
 		lwkt_serialize_enter(ifp->if_serializer);
-		ifp->if_ioctl(ifp, SIOCDELMULTI, 0, (struct ucred *)NULL);
+		ifp->if_ioctl(ifp, SIOCDELMULTI, 0, NULL);
 		lwkt_serialize_exit(ifp->if_serializer);
 	}
 	crit_exit();
@@ -1884,7 +1889,7 @@ if_delmulti(struct ifnet *ifp, struct sockaddr *sa)
 	crit_enter();
 	lwkt_serialize_enter(ifp->if_serializer);
 	LIST_REMOVE(ifma, ifma_link);
-	ifp->if_ioctl(ifp, SIOCDELMULTI, 0, (struct ucred *)NULL);
+	ifp->if_ioctl(ifp, SIOCDELMULTI, 0, NULL);
 	lwkt_serialize_exit(ifp->if_serializer);
 	crit_exit();
 	kfree(ifma->ifma_addr, M_IFMADDR);
@@ -1934,12 +1939,12 @@ if_setlladdr(struct ifnet *ifp, const u_char *lladdr, int len)
 		ifr.ifr_flags = ifp->if_flags;
 		ifr.ifr_flagshigh = ifp->if_flags >> 16;
 		ifp->if_ioctl(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
-			      (struct ucred *)NULL);
+			      NULL);
 		ifp->if_flags |= IFF_UP;
 		ifr.ifr_flags = ifp->if_flags;
 		ifr.ifr_flagshigh = ifp->if_flags >> 16;
 		ifp->if_ioctl(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
-				 (struct ucred *)NULL);
+				 NULL);
 #ifdef INET
 		/*
 		 * Also send gratuitous ARPs to notify other nodes about

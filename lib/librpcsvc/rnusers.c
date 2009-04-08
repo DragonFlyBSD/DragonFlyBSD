@@ -28,6 +28,7 @@
  * Mountain View, California  94043
  *
  * @(#)rnusers.c	1.2 91/03/11 TIRPC 1.0; from 1.7 89/03/24 SMI
+ * $FreeBSD: src/lib/librpcsvc/rnusers.c,v 1.3 2003/10/26 03:43:35 peter Exp $
  * $DragonFly: src/lib/librpcsvc/rnusers.c,v 1.4 2007/11/25 14:33:02 swildner Exp $
  */
 
@@ -46,8 +47,8 @@ int
 rusers(char *host, utmpidlearr *up)
 {
 	return (callrpc(host, RUSERSPROG, RUSERSVERS_IDLE, RUSERSPROC_NAMES,
-			xdr_void, (char *) NULL,
-			xdr_utmpidlearr, (char *) up));
+			(xdrproc_t)xdr_void, NULL,
+			(xdrproc_t)xdr_utmpidlearr, (char *) up));
 }
 
 int
@@ -56,8 +57,8 @@ rnusers(char *host)
 	int nusers;
 
 	if (callrpc(host, RUSERSPROG, RUSERSVERS_ORIG, RUSERSPROC_NUM,
-			xdr_void, (char *) NULL,
-			xdr_u_long, (char *) &nusers) != 0)
+			(xdrproc_t)xdr_void, NULL,
+			(xdrproc_t)xdr_u_long, (char *) &nusers) != 0)
 		return (-1);
 	else
 		return (nusers);

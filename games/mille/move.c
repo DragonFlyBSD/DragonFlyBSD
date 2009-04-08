@@ -464,7 +464,7 @@ getmove(void)
 				leaveok(Board, TRUE);
 				if ((outf = fopen(buf, "w")) == NULL)
 					perror(buf);
-				setbuf(outf, (char *)NULL);
+				setbuf(outf, NULL);
 			}
 			Debug = !Debug;
 			break;

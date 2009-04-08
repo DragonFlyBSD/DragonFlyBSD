@@ -10,6 +10,7 @@ GENSRCS=yp.h yp_clnt.c ypxfr_clnt.c
 
 .PATH: ${.CURDIR}/../../usr.sbin/ypserv
 
+WARNS?=	3
 MAN=	ypxfr.8
 
 CFLAGS+= -I.

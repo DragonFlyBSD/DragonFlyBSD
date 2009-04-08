@@ -323,7 +323,7 @@ alter(char *name)
 
 	if (stat(name, &sb))
 		return;
-	gettimeofday(&tv[0], (struct timezone *)NULL);
+	gettimeofday(&tv[0], NULL);
 	tv[0].tv_sec++;
 	TIMESPEC_TO_TIMEVAL(&tv[1], &sb.st_mtimespec);
 	utimes(name, tv);

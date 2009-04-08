@@ -144,9 +144,9 @@ printlong(const DISPLAY *dp)
 			continue;
 		sp = p->fts_statp;
 		if (f_inode)
-			printf("%*llu ", dp->s_inode, (unsigned long long)sp->st_ino);
+			printf("%*ju ", dp->s_inode, (uintmax_t)sp->st_ino);
 		if (f_size)
-			printf("%*lld ",
+			printf("%*jd ",
 			    dp->s_block, howmany(sp->st_blocks, blocksize));
 		strmode(sp->st_mode, buf);
 		np = p->fts_pointer;
@@ -161,8 +161,8 @@ printlong(const DISPLAY *dp)
 			printf("%3d, 0x%08x ",
 			       major(sp->st_rdev), (u_int)minor(sp->st_rdev));
 		else if (dp->bcfile)
-			printf("%*s%*lld ",
-			    8 - dp->s_size, "", dp->s_size, sp->st_size);
+			printf("%*s%*jd ",
+			    8 - dp->s_size, "", dp->s_size, (intmax_t)sp->st_size);
 		else
 			printsize(dp->s_size, sp->st_size);
 		if (f_accesstime)
@@ -324,11 +324,11 @@ printaname(const FTSENT *p, u_long inodefield, u_long sizefield)
 	sp = p->fts_statp;
 	chcnt = 0;
 	if (f_inode) {
-		chcnt += printf("%*llu ", (int)inodefield,
-				(unsigned long long)sp->st_ino);
+		chcnt += printf("%*ju ", (int)inodefield,
+				(uintmax_t)sp->st_ino);
 	}
 	if (f_size)
-		chcnt += printf("%*lld ",
+		chcnt += printf("%*jd ",
 		    (int)sizefield, howmany(sp->st_blocks, blocksize));
 #ifdef COLORLS
 	if (f_color)
@@ -585,5 +585,5 @@ printsize(size_t width, off_t bytes)
 				HN_AUTOSCALE, HN_B | HN_NOSPACE | HN_DECIMAL);
 		printf("%5s ", buf);
 	} else
-		printf("%*lld ", width, bytes);
+		printf("%*jd ", (int)width, (uintmax_t)bytes);
 }

@@ -39,6 +39,7 @@
  */
 
 #include <sys/param.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <ctype.h>
 #include <db.h>
@@ -306,7 +307,6 @@ prphone(char *num)
 static void
 find_idle_and_ttywrite(WHERE *w)
 {
-	extern time_t now;
 	struct stat sb;
 	time_t touched;
 

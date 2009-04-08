@@ -66,6 +66,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/nlookup.h>
 #include <sys/namei.h>
 #include <sys/unistd.h>
@@ -178,7 +179,7 @@ nfsrv3_access(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	    (nfsd->nd_flag & ND_KERBAUTH), TRUE);
 	if (error) {
 		nfsm_reply(NFSX_UNSIGNED);
-		nfsm_srvpostop_attr(1, (struct vattr *)0);
+		nfsm_srvpostop_attr(1, NULL);
 		error = 0;
 		goto nfsmout;
 	}
@@ -626,7 +627,7 @@ nfsrv_readlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 #ifndef nolint
-	mp2 = (struct mbuf *)0;
+	mp2 = NULL;
 #endif
 	mp3 = NULL;
 	fhp = &nfh.fh_generic;
@@ -663,7 +664,7 @@ nfsrv_readlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		 &rdonly, (nfsd->nd_flag & ND_KERBAUTH), TRUE);
 	if (error) {
 		nfsm_reply(2 * NFSX_UNSIGNED);
-		nfsm_srvpostop_attr(1, (struct vattr *)0);
+		nfsm_srvpostop_attr(1, NULL);
 		error = 0;
 		goto nfsmout;
 	}
@@ -761,7 +762,7 @@ nfsrv_read(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	if (error) {
 		vp = NULL;
 		nfsm_reply(2 * NFSX_UNSIGNED);
-		nfsm_srvpostop_attr(1, (struct vattr *)0);
+		nfsm_srvpostop_attr(1, NULL);
 		error = 0;
 		goto nfsmout;
 	}
@@ -1692,7 +1693,7 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			if (vap->va_type == VCHR && rdev == 0xffffffff)
 				vap->va_type = VFIFO;
                         if (vap->va_type != VFIFO &&
-                            (error = suser_cred(cred, 0))) {
+                            (error = priv_check_cred(cred, PRIV_ROOT, 0))) {
 				goto nfsmreply0;
                         }
 			vap->va_rmajor = umajor(rdev);
@@ -1891,7 +1892,7 @@ nfsrv_mknod(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		vrele(dvp);
 		dvp = NULL;
 	} else {
-		if (vtyp != VFIFO && (error = suser_cred(cred, 0)))
+		if (vtyp != VFIFO && (error = priv_check_cred(cred, PRIV_ROOT, 0)))
 			goto out;
 
 		vn_unlock(dvp);
@@ -2071,7 +2072,7 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
 #ifndef nolint
-	fvp = (struct vnode *)0;
+	fvp = NULL;
 #endif
 	ffhp = &fnfh.fh_generic;
 	tfhp = &tnfh.fh_generic;
@@ -2395,7 +2396,7 @@ nfsrv_symlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	u_int32_t *tl;
 	int32_t t1;
 	struct nfsv2_sattr *sp;
-	char *bpos, *pathcp = (char *)0, *cp2;
+	char *bpos, *pathcp = NULL, *cp2;
 	struct uio io;
 	struct iovec iv;
 	int error = 0, len, len2, dirfor_ret = 1, diraft_ret = 1;

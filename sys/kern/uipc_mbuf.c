@@ -69,7 +69,6 @@
  */
 
 #include "opt_param.h"
-#include "opt_ddb.h"
 #include "opt_mbuf_stress_test.h"
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -540,7 +539,7 @@ struct objcache_malloc_args mclmeta_malloc_args =
 static void
 mbinit(void *dummy __unused)
 {
-	int mb_limit, cl_limit, mbcl_limit;
+	int mb_limit, cl_limit;
 	int limit;
 	int i;
 
@@ -564,21 +563,19 @@ mbinit(void *dummy __unused)
 	 * be used to adjust backing kmalloc pools' limit later.
 	 */
 
-	mb_limit = cl_limit = mbcl_limit = 0;
+	mb_limit = cl_limit = 0;
 
 	limit = nmbufs;
 	mbuf_cache = objcache_create("mbuf", &limit, 0,
 	    mbuf_ctor, NULL, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
-	if (limit > mb_limit)
-		mb_limit = limit;
+	mb_limit += limit;
 
 	limit = nmbufs;
 	mbufphdr_cache = objcache_create("mbuf pkt hdr", &limit, 64,
 	    mbufphdr_ctor, NULL, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
-	if (limit > mb_limit)
-		mb_limit = limit;
+	mb_limit += limit;
 
 	cl_limit = nmbclusters;
 	mclmeta_cache = objcache_create("cluster mbuf", &cl_limit, 0,
@@ -589,15 +586,13 @@ mbinit(void *dummy __unused)
 	mbufcluster_cache = objcache_create("mbuf + cluster", &limit, 0,
 	    mbufcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
-	if (limit > mbcl_limit)
-		mbcl_limit = limit;
+	mb_limit += limit;
 
 	limit = nmbclusters;
 	mbufphdrcluster_cache = objcache_create("mbuf pkt hdr + cluster",
 	    &limit, 64, mbufphdrcluster_ctor, mbufcluster_dtor, NULL,
 	    objcache_malloc_alloc, objcache_malloc_free, &mbuf_malloc_args);
-	if (limit > mbcl_limit)
-		mbcl_limit = limit;
+	mb_limit += limit;
 
 	/*
 	 * Adjust backing kmalloc pools' limit
@@ -610,8 +605,6 @@ mbinit(void *dummy __unused)
 			    mclmeta_malloc_args.objsize * cl_limit);
 	kmalloc_raise_limit(M_MBUFCL, MCLBYTES * cl_limit);
 
-	mb_limit += mbcl_limit;
-	mb_limit += mb_limit / 4; /* save some space for non-pkthdr mbufs */
 	mb_limit += mb_limit / 8;
 	kmalloc_raise_limit(mbuf_malloc_args.mtype,
 			    mbuf_malloc_args.objsize * mb_limit);
@@ -910,8 +903,6 @@ m_mclfree(void *arg)
 		objcache_put(mclmeta_cache, mcl);
 }
 
-extern void db_print_backtrace(void);
-
 /*
  * Free a single mbuf and any associated external storage.  The successor,
  * if any, is returned.
@@ -943,14 +934,12 @@ m_free(struct mbuf *m)
 	KKASSERT(m->m_nextpkt == NULL);
 #else
 	if (m->m_nextpkt != NULL) {
-#ifdef DDB
 		static int afewtimes = 10;
 
 		if (afewtimes-- > 0) {
 			kprintf("mfree: m->m_nextpkt != NULL\n");
-			db_print_backtrace();
+			print_backtrace();
 		}
-#endif
 		m->m_nextpkt = NULL;
 	}
 #endif
@@ -1402,7 +1391,7 @@ m_adj(struct mbuf *mp, int req_len)
 		count = 0;
 		for (;;) {
 			count += m->m_len;
-			if (m->m_next == (struct mbuf *)0)
+			if (m->m_next == NULL)
 				break;
 			m = m->m_next;
 		}

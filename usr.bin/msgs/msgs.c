@@ -628,7 +628,7 @@ prmesg(int length)
 		if (!outf)
 			outf = stdout;
 		else
-			setbuf(outf, (char *)NULL);
+			setbuf(outf, NULL);
 	}
 	else
 		outf = stdout;

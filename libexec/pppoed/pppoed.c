@@ -260,7 +260,7 @@ Spawn(const char *prog __unused, const char *acname, const char *provider,
   struct ng_mesg *rep = (struct ng_mesg *)msgbuf;
   struct ngpppoe_sts *sts = (struct ngpppoe_sts *)(msgbuf + sizeof *rep);
   struct ngpppoe_init_data *data;
-  char env[sizeof(HISMACADDR)+18], unknown[14], sessionid[5], *path;
+  char env[18], unknown[14], sessionid[5], *path;
   unsigned char *macaddr;
   const char *msg;
   int ret, slen;
@@ -354,16 +354,16 @@ Spawn(const char *prog __unused, const char *acname, const char *provider,
       /* Put the peer's MAC address in the environment */
       if (sz >= sizeof(struct ether_header)) {
         macaddr = ((struct ether_header *)request)->ether_shost;
-        snprintf(env, sizeof(env), "%s=%x:%x:%x:%x:%x:%x", HISMACADDR,
+        snprintf(env, sizeof(env), "%x:%x:%x:%x:%x:%x",
                  macaddr[0], macaddr[1], macaddr[2], macaddr[3], macaddr[4],
                  macaddr[5]);
-        if (putenv(env) != 0)
-          syslog(LOG_INFO, "putenv: cannot set %s: %m", env);
+        if (setenv(HISMACADDR, env, 1) != 0)
+          syslog(LOG_INFO, "setenv: cannot set %s: %m", HISMACADDR);
       }
 
       /* And send our request data to the waiting node */
       if (debug)
-        syslog(LOG_INFO, "Sending original request to %s (%d bytes)", path, sz);
+        syslog(LOG_INFO, "Sending original request to %s (%zu bytes)", path, sz);
       if (NgSendData(ds, ngc.ourhook, request, sz) == -1) {
         syslog(LOG_ERR, "Cannot send original request to %s: %m", path);
         _exit(EX_OSERR);
@@ -444,7 +444,7 @@ Spawn(const char *prog __unused, const char *acname, const char *provider,
 
       setsid();
       syslog(LOG_INFO, "Executing: %s", exec);
-      execlp(_PATH_BSHELL, _PATH_BSHELL, "-c", exec, (char *)NULL);
+      execlp(_PATH_BSHELL, _PATH_BSHELL, "-c", exec, NULL);
       syslog(LOG_ERR, "execlp failed: %m");
       _exit(EX_OSFILE);
 
@@ -572,8 +572,8 @@ main(int argc, char *argv[])
     }
     exec = (char *)alloca(sizeof DEFAULT_EXEC_PREFIX + strlen(label));
     if (exec == NULL) {
-      fprintf(stderr, "%s: Cannot allocate %d bytes\n", prog,
-              (int)(sizeof DEFAULT_EXEC_PREFIX) + strlen(label));
+      fprintf(stderr, "%s: Cannot allocate %zu bytes\n", prog,
+              sizeof DEFAULT_EXEC_PREFIX + strlen(label));
       return EX_OSERR;
     }
     strcpy(exec, DEFAULT_EXEC_PREFIX);

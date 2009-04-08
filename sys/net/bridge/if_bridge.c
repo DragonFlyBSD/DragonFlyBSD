@@ -233,6 +233,7 @@
 #include <sys/sysctl.h>
 #include <sys/module.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/lock.h>
 #include <sys/thread.h>
 #include <sys/thread2.h>
@@ -678,7 +679,6 @@ bridge_clone_create(struct if_clone *ifc, int unit)
 	ifp->if_init = bridge_init;
 	ifp->if_type = IFT_BRIDGE;
 	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
-	ifp->if_snd.ifq_maxlen = ifqmaxlen;
 	ifq_set_ready(&ifp->if_snd);
 	ifp->if_hdrlen = ETHER_HDR_LEN;
 
@@ -805,7 +805,7 @@ bridge_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		}
 
 		if (bc->bc_flags & BC_F_SUSER) {
-			error = suser_cred(cr, NULL_CRED_OKAY);
+			error = priv_check_cred(cr, PRIV_ROOT, NULL_CRED_OKAY);
 			if (error)
 				break;
 		}
@@ -1345,7 +1345,7 @@ bridge_ioctl_gifs(struct bridge_softc *sc, void *arg)
 	len = min(bifc->ifbic_len, sizeof(*breq) * count);
 	KKASSERT(len >= sizeof(*breq));
 
-	breq = kmalloc(len, M_TEMP, M_INTWAIT | M_NULLOK | M_ZERO);
+	breq = kmalloc(len, M_TEMP, M_WAITOK | M_NULLOK | M_ZERO);
 	if (breq == NULL) {
 		bifc->ifbic_len = 0;
 		return ENOMEM;
@@ -1413,7 +1413,7 @@ bridge_ioctl_rts(struct bridge_softc *sc, void *arg)
 	len = min(bac->ifbac_len, sizeof(*bareq) * count);
 	KKASSERT(len >= sizeof(*bareq));
 
-	bareq = kmalloc(len, M_TEMP, M_INTWAIT | M_NULLOK | M_ZERO);
+	bareq = kmalloc(len, M_TEMP, M_WAITOK | M_NULLOK | M_ZERO);
 	if (bareq == NULL) {
 		bac->ifbac_len = 0;
 		return ENOMEM;
@@ -1819,7 +1819,6 @@ void
 bridge_enqueue(struct ifnet *dst_ifp, struct mbuf *m)
 {
 	struct netmsg_isr_packet *nmp;
-	lwkt_port_t port;
 
 	nmp = &m->m_hdr.mh_netmsg;
 	netmsg_init(&nmp->nm_netmsg, &netisr_apanic_rport, 0,
@@ -1827,11 +1826,7 @@ bridge_enqueue(struct ifnet *dst_ifp, struct mbuf *m)
 	nmp->nm_packet = m;
 	nmp->nm_netmsg.nm_lmsg.u.ms_resultp = dst_ifp;
 
-	if (curthread->td_flags & TDF_NETWORK)
-		port = &curthread->td_msgport;
-	else
-		port = cpu_portfn(mycpuid);
-	lwkt_sendmsg(port, &nmp->nm_netmsg.nm_lmsg);
+	lwkt_sendmsg(curnetport, &nmp->nm_netmsg.nm_lmsg);
 }
 
 /*
@@ -2183,8 +2178,6 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 
 	eh = mtod(m, struct ether_header *);
 
-	m->m_flags &= ~M_PROTO1; /* XXX Hack - loop prevention */
-
 	if (memcmp(eh->ether_dhost, IF_LLADDR(bifp), ETHER_ADDR_LEN) == 0) {
 		/*
 		 * If the packet is for us, set the packets source as the
@@ -2295,7 +2288,7 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 		    ETHER_ADDR_LEN) == 0) {
 			if (bif->bif_ifp != ifp) {
 				/* XXX loop prevention */
-				m->m_flags |= M_PROTO1;
+				m->m_flags |= M_ETHER_BRIDGED;
 				new_ifp = bif->bif_ifp;
 			}
 			if (bif->bif_flags & IFBIF_LEARNING) {

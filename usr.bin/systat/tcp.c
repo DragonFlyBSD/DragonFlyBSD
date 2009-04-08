@@ -251,30 +251,57 @@ showtcp(void)
 #undef R
 }
 
-int
-inittcp(void)
+#define CPU_STATS_FUNC(proto,type)                            \
+static void                                                   \
+proto ##_stats_agg(type *ary, type *ttl, int cpucnt)          \
+{                                                             \
+    int i, off, siz;                                          \
+    siz = sizeof(type);                                       \
+                                                              \
+    if (!ary && !ttl)                                         \
+        return;                                               \
+                                                              \
+    bzero(ttl, siz);                                          \
+    if (cpucnt == 1) {                                        \
+        *ttl = ary[0];                                        \
+    } else {                                                  \
+        for (i = 0; i < cpucnt; ++i) {                        \
+            for (off = 0; off < siz; off += sizeof(u_long)) { \
+                *(u_long *)((char *)(*(&ttl)) + off) +=       \
+                *(u_long *)((char *)&ary[i] + off);           \
+            }                                                 \
+        }                                                     \
+    }                                                         \
+}
+CPU_STATS_FUNC(tcp, struct tcp_stats);
+
+static int
+fetch_tcpstats(struct tcp_stats *st)
 {
+	struct tcp_stats stattmp[SMP_MAXCPU];
 	size_t len;
-	int name[4];
+	int name[4], cpucnt;
 
 	name[0] = CTL_NET;
 	name[1] = PF_INET;
 	name[2] = IPPROTO_TCP;
 	name[3] = TCPCTL_STATS;
 
-	len = 0;
-	if (sysctl(name, 4, 0, &len, 0, 0) < 0) {
-		error("sysctl getting tcp_stats size failed");
-		return 0;
-	}
-	if (len > sizeof curstat) {
-		error("tcp_stats structure has grown--recompile systat!");
-		return 0;
-	}
-	if (sysctl(name, 4, &initstat, &len, 0, 0) < 0) {
+	len = sizeof(struct tcp_stats) * SMP_MAXCPU;
+	if (sysctl(name, 4, stattmp, &len, NULL, 0) < 0) {
 		error("sysctl getting tcp_stats failed");
-		return 0;
+		return -1;
 	}
+	cpucnt = len / sizeof(struct tcp_stats);
+	tcp_stats_agg(stattmp, st, cpucnt);
+
+	return 0;
+}
+
+int
+inittcp(void)
+{
+	fetch_tcpstats(&initstat);
 	oldstat = initstat;
 	return 1;
 }
@@ -282,35 +309,13 @@ inittcp(void)
 void
 resettcp(void)
 {
-	size_t len;
-	int name[4];
-
-	name[0] = CTL_NET;
-	name[1] = PF_INET;
-	name[2] = IPPROTO_TCP;
-	name[3] = TCPCTL_STATS;
-
-	len = sizeof initstat;
-	if (sysctl(name, 4, &initstat, &len, 0, 0) < 0) {
-		error("sysctl getting tcp_stats failed");
-	}
+	fetch_tcpstats(&initstat);
 	oldstat = initstat;
 }
 
 void
 fetchtcp(void)
 {
-	int name[4];
-	size_t len;
-
 	oldstat = curstat;
-	name[0] = CTL_NET;
-	name[1] = PF_INET;
-	name[2] = IPPROTO_TCP;
-	name[3] = TCPCTL_STATS;
-	len = sizeof curstat;
-
-	if (sysctl(name, 4, &curstat, &len, 0, 0) < 0)
-		return;
+	fetch_tcpstats(&curstat);
 }
-

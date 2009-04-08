@@ -57,7 +57,7 @@ icatalloc(char *const old, const char *new)
 char *
 icpyalloc(const char *string)
 {
-	return icatalloc((char *) NULL, string);
+	return icatalloc(NULL, string);
 }
 
 void

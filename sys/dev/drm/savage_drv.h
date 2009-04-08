@@ -1,5 +1,5 @@
 /* savage_drv.h -- Private header for the savage driver */
-/*
+/*-
  * Copyright 2004  Felix Kuehling
  * All Rights Reserved.
  *
@@ -21,8 +21,6 @@
  * ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
- * $DragonFly: src/sys/dev/drm/savage_drv.h,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
 #ifndef __SAVAGE_DRV_H__

@@ -26,6 +26,7 @@
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  *
+ * $FreeBSD: src/include/rpcsvc/nislib.h,v 1.4 2002/03/23 17:24:55 imp Exp $
  * $DragonFly: src/include/rpcsvc/nislib.h,v 1.2 2004/02/25 15:12:54 joerg Exp $
  */
 
@@ -35,8 +36,7 @@
 
 /*
  * This file contains the interfaces that are visible in the SunOS 5.x
- * implementation of NIS Plus. When using C++ the defined __cplusplus and
- * __STDC__ should both be true.
+ * implementation of NIS Plus.
  */
 
 #ifndef	_RPCSVC_NISLIB_H

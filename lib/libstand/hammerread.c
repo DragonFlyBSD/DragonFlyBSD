@@ -45,10 +45,13 @@
 #define	LIBSTAND	1
 #endif
 
+#ifdef BOOT2
+#include "boot2.h"
+#else
 #include <sys/param.h>
-
 #include <stddef.h>
 #include <stdint.h>
+#endif
 
 #ifdef TESTING
 #include <sys/fcntl.h>
@@ -96,7 +99,7 @@ struct hfs {
 static void *
 hread(struct hfs *hfs, hammer_off_t off)
 {
-	hammer_off_t boff = off & ~HAMMER_BUFMASK;
+	hammer_off_t boff = off & ~HAMMER_BUFMASK64;
 
 	boff &= HAMMER_OFF_LONG_MASK;
 
@@ -136,12 +139,12 @@ hread(struct hfs *hfs, hammer_off_t off)
 
 #else	/* BOOT2 */
 
-struct dmadat {
-	char		secbuf[DEV_BSIZE];
+struct hammer_dmadat {
+	struct boot2_dmadat boot2;
 	char		buf[HAMMER_BUFSIZE];
 };
 
-static struct dmadat *dmadat;
+#define fsdmadat	((struct hammer_dmadat *)boot2_dmadat)
 
 struct hfs {
 	hammer_off_t	root;
@@ -151,9 +154,9 @@ struct hfs {
 static void *
 hread(struct hfs *hfs, hammer_off_t off)
 {
-	char *buf = dmadat->buf;
+	char *buf = fsdmadat->buf;
 
-	hammer_off_t boff = off & ~HAMMER_BUFMASK;
+	hammer_off_t boff = off & ~HAMMER_BUFMASK64;
 	boff &= HAMMER_OFF_LONG_MASK;
 	if (HAMMER_ZONE_DECODE(off) != HAMMER_ZONE_RAW_VOLUME_INDEX)
 		boff += hfs->buf_beg;
@@ -409,6 +412,8 @@ hfind(struct hfs *hfs, hammer_base_elm_t key, hammer_base_elm_t end)
 #if DEBUG > 1
 	printf("searching for ");
 	hprintb(key);
+	printf(" end ");
+	hprintb(end);
 	printf("\n");
 #endif
 
@@ -419,23 +424,32 @@ hfind(struct hfs *hfs, hammer_base_elm_t key, hammer_base_elm_t end)
 	hammer_off_t nodeoff = hfs->root;
 	hammer_node_ondisk_t node;
 	hammer_btree_elm_t e = NULL;
+	int internal;
 
 loop:
 	node = hread(hfs, nodeoff);
 	if (node == NULL)
 		return (NULL);
+	internal = node->type == HAMMER_BTREE_TYPE_INTERNAL;
 
-#if 0
+#if DEBUG > 3
 	for (int i = 0; i < node->count; i++) {
 		printf("E: ");
 		hprintb(&node->elms[i].base);
+		printf("\n");
+	}
+	if (internal) {
+		printf("B: ");
+		hprintb(&node->elms[node->count].base);
 		printf("\n");
 	}
 #endif
 
 	n = hammer_btree_search_node(&search, node);
 
-	for (; n < node->count; n++) {
+	// In internal nodes, we cover the right boundary as well.
+	// If we hit it, we'll backtrack.
+	for (; n < node->count + internal; n++) {
 		e = &node->elms[n];
 		r = hammer_btree_cmp(&search, &e->base);
 
@@ -445,7 +459,7 @@ loop:
 
 	// unless we stopped right on the left side, we need to back off a bit
 	if (n > 0)
-		e = &node->elms[n - 1];
+		e = &node->elms[--n];
 
 #if DEBUG > 2
 	printf("  found: ");
@@ -453,7 +467,11 @@ loop:
 	printf("\n");
 #endif
 
-	if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
+	if (internal) {
+		// If we hit the right boundary, backtrack to
+		// the next higher level.
+		if (n == node->count)
+			goto backtrack;
 		nodeoff = e->internal.subtree_offset;
 		backtrack = (e+1)->base;
 		goto loop;
@@ -476,6 +494,7 @@ loop:
 	// element in this node, we repeat the search with
 	// a key beyond the right boundary
 	if (n == node->count) {
+backtrack:
 		search = backtrack;
 		nodeoff = hfs->root;
 
@@ -512,6 +531,10 @@ static int
 hreaddir(struct hfs *hfs, ino_t ino, int64_t *off, struct dirent *de)
 {
 	struct hammer_base_elm key, end;
+
+#if DEBUG > 2
+	printf("%s(%llx, %lld)\n", __FUNCTION__, (long long)ino, *off);
+#endif
 
 	bzero(&key, sizeof(key));
 	key.obj_id = ino;
@@ -550,6 +573,10 @@ hresolve(struct hfs *hfs, ino_t dirino, const char *name)
 {
 	struct hammer_base_elm key, end;
 	size_t namel = strlen(name);
+
+#if DEBUG > 2
+	printf("%s(%llx, %s)\n", __FUNCTION__, (long long)dirino, name);
+#endif
 
 	bzero(&key, sizeof(key));
 	key.obj_id = dirino;
@@ -591,6 +618,10 @@ hresolve(struct hfs *hfs, ino_t dirino, const char *name)
 static ino_t
 hlookup(struct hfs *hfs, const char *path)
 {
+#if DEBUG > 2
+	printf("%s(%s)\n", __FUNCTION__, path);
+#endif
+
 #ifdef BOOT2
 	ls = 0;
 #endif
@@ -599,6 +630,8 @@ hlookup(struct hfs *hfs, const char *path)
 		char name[MAXPATHLEN + 1];
 		while (*path == '/')
 			path++;
+		if (*path == 0)
+			break;
 		for (char *n = name; *path != 0 && *path != '/'; path++, n++) {
 			n[0] = *path;
 			n[1] = 0;
@@ -622,6 +655,10 @@ static int
 hstat(struct hfs *hfs, ino_t ino, struct stat* st)
 {
 	struct hammer_base_elm key;
+
+#if DEBUG > 2
+	printf("%s(%llx)\n", __FUNCTION__, (long long)ino);
+#endif
 
 	bzero(&key, sizeof(key));
 	key.obj_id = ino;
@@ -693,10 +730,16 @@ hreadf(struct hfs *hfs, ino_t ino, int64_t off, int64_t len, char *buf)
 				roff += HAMMER_BUFSIZE;
 			}
 
-			// cut to HAMMER_BUFSIZE
-			if ((roff & ~HAMMER_BUFMASK) != ((roff + dlen - 1) & ~HAMMER_BUFMASK))
+			/*
+			 * boff - relative offset in disk buffer (not aligned)
+			 * roff - base offset of disk buffer     (not aligned)
+			 * dlen - amount of data we think we can copy
+			 *
+			 * hread only reads 16K aligned buffers, check for
+			 * a length overflow and truncate dlen appropriately.
+			 */
+			if ((roff & ~HAMMER_BUFMASK64) != ((roff + boff + dlen - 1) & ~HAMMER_BUFMASK64))
 				dlen = HAMMER_BUFSIZE - ((boff + roff) & HAMMER_BUFMASK);
-
 			char *data = hread(hfs, roff);
 			if (data == NULL)
 				return (-1);
@@ -715,44 +758,48 @@ hreadf(struct hfs *hfs, ino_t ino, int64_t off, int64_t len, char *buf)
 struct hfs hfs;
 
 static int
-hammerinit(void)
+boot2_hammer_init(void)
 {
-	if (dsk_meta)
-		return (0);
+	hammer_volume_ondisk_t volhead;
 
-	hammer_volume_ondisk_t volhead = hread(&hfs, HAMMER_ZONE_ENCODE(1, 0));
+	volhead = hread(&hfs, HAMMER_ZONE_ENCODE(1, 0));
 	if (volhead == NULL)
 		return (-1);
 	if (volhead->vol_signature != HAMMER_FSBUF_VOLUME)
 		return (-1);
 	hfs.root = volhead->vol0_btree_root;
 	hfs.buf_beg = volhead->vol_buf_beg;
-	dsk_meta++;
 	return (0);
 }
 
-static ino_t
-lookup(const char *path)
+static boot2_ino_t
+boot2_hammer_lookup(const char *path)
 {
-	hammerinit();
-
 	ino_t ino = hlookup(&hfs, path);
 
 	if (ino == -1)
 		ino = 0;
+
+	fs_off = 0;
+
 	return (ino);
 }
 
 static ssize_t
-fsread(ino_t ino, void *buf, size_t len)
+boot2_hammer_read(boot2_ino_t ino, void *buf, size_t len)
 {
-	hammerinit();
-
 	ssize_t rlen = hreadf(&hfs, ino, fs_off, len, buf);
 	if (rlen != -1)
 		fs_off += rlen;
 	return (rlen);
 }
+
+const struct boot2_fsapi boot2_hammer_api = {
+	.fsinit = boot2_hammer_init,
+	.fslookup = boot2_hammer_lookup,
+	.fsread = boot2_hammer_read
+};
+
 #endif
 
 #ifndef BOOT2
@@ -775,20 +822,22 @@ hinit(struct hfs *hfs)
 	hfs->lru = 0;
 
 	hammer_volume_ondisk_t volhead = hread(hfs, HAMMER_ZONE_ENCODE(1, 0));
-	if (volhead == NULL)
-		return (-1);
 
 #ifdef TESTING
-	printf("signature: %svalid\n",
-	       volhead->vol_signature != HAMMER_FSBUF_VOLUME ?
-			"in" :
-			"");
-	printf("name: %s\n", volhead->vol_name);
+	if (volhead) {
+		printf("signature: %svalid\n",
+		       volhead->vol_signature != HAMMER_FSBUF_VOLUME ?
+				"in" :
+				"");
+		printf("name: %s\n", volhead->vol_name);
+	}
 #endif
 
-	if (volhead->vol_signature != HAMMER_FSBUF_VOLUME) {
-		for (int i = 0; i < NUMCACHE; i++)
+	if (volhead == NULL || volhead->vol_signature != HAMMER_FSBUF_VOLUME) {
+		for (int i = 0; i < NUMCACHE; i++) {
 			free(hfs->cache[i].data);
+			hfs->cache[i].data = NULL;
+		}
 		errno = ENODEV;
 		return (-1);
 	}
@@ -805,8 +854,12 @@ hclose(struct hfs *hfs)
 #if DEBUG
 	printf("hclose\n");
 #endif
-	for (int i = 0; i < NUMCACHE; i++)
-		free(hfs->cache[i].data);
+	for (int i = 0; i < NUMCACHE; i++) {
+		if (hfs->cache[i].data) {
+			free(hfs->cache[i].data);
+			hfs->cache[i].data = NULL;
+		}
+	}
 }
 #endif
 
@@ -821,14 +874,15 @@ static int
 hammer_open(const char *path, struct open_file *f)
 {
 	struct hfile *hf = malloc(sizeof(*hf));
-	bzero(hf, sizeof(*hf));
 
+	bzero(hf, sizeof(*hf));
 	f->f_fsdata = hf;
 	hf->hfs.f = f;
 	f->f_offset = 0;
 
 	int rv = hinit(&hf->hfs);
 	if (rv) {
+		f->f_fsdata = NULL;
 		free(hf);
 		return (rv);
 	}
@@ -856,6 +910,7 @@ fail:
 #if DEBUG
 	printf("hammer_open fail\n");
 #endif
+	f->f_fsdata = NULL;
 	hclose(&hf->hfs);
 	free(hf);
 	return (ENOENT);
@@ -866,9 +921,11 @@ hammer_close(struct open_file *f)
 {
 	struct hfile *hf = f->f_fsdata;
 
-	hclose(&hf->hfs);
 	f->f_fsdata = NULL;
-	free(hf);
+	if (hf) {
+	    hclose(&hf->hfs);
+	    free(hf);
+	}
 	return (0);
 }
 

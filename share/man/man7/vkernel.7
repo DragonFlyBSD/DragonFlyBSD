@@ -31,7 +31,7 @@
 .\"
 .\" $DragonFly: src/share/man/man7/vkernel.7,v 1.43 2008/09/02 22:41:19 thomas Exp $
 .\"
-.Dd September 3, 2008
+.Dd March 27, 2009
 .Dt VKERNEL 7
 .Os
 .Sh NAME
@@ -75,7 +75,8 @@ option defining
 .Li vcd0 ,
 the second one
 .Li vcd1 ,
-and so on.  The first
+and so on.
+The first
 .Fl r
 or
 .Fl c
@@ -196,7 +197,8 @@ option defining
 .Li vkd0 ,
 the second one
 .Li vkd1 ,
-and so on.  The first
+and so on.
+The first
 .Fl r
 or
 .Fl c
@@ -300,10 +302,12 @@ ln -s /home/var.vkernel /var/vkernel
 .Ed
 .Pp
 Next, a filesystem image to be used by the virtual kernel has to be
-created and populated (assuming world has been built previously):
+created and populated (assuming world has been built previously).
+If the image is created on a UFS filesystem you might want to pre-zero it.
+On a HAMMER filesystem you should just truncate-extend to the image size
+as HAMMER does not re-use data blocks already present in the file.
 .Bd -literal
-dd if=/dev/zero of=/var/vkernel/rootimg.01 bs=1m count=2048
-vnconfig -c -s labels vn0 /var/vkernel/rootimg.01
+vnconfig -c -s labels -S 2g -T vn0 /var/vkernel/rootimg.01
 disklabel -r -w vn0s0 auto
 disklabel -e vn0s0	# add `a' partition with fstype `4.2BSD'
 newfs /dev/vn0s0a
@@ -324,6 +328,12 @@ entry with the following line and turn off all other gettys.
 .Bd -literal
 console	"/usr/libexec/getty Pc"		cons25	on  secure
 .Ed
+.Pp
+Replace
+.Li \&Pc
+with
+.Li al.Pc
+if you would like to automatically log in as root.
 .Pp
 Then, unmount the disk.
 .Bd -literal
@@ -407,6 +417,7 @@ sendmail_enable="NO"
 blanktime="NO"
 .Ed
 .Sh SEE ALSO
+.Xr vknet 1 ,
 .Xr bridge 4 ,
 .Xr tap 4 ,
 .Xr vn 4 ,
@@ -415,7 +426,6 @@ blanktime="NO"
 .Xr disklabel 8 ,
 .Xr ifconfig 8 ,
 .Xr vknetd 8 ,
-.Xr vknet 1 ,
 .Xr vnconfig 8
 .Rs
 .%A Aggelos Economopoulos

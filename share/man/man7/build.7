@@ -25,7 +25,7 @@
 .\" $FreeBSD: src/share/man/man7/build.7,v 1.19.2.1 2002/03/18 08:33:02 murray Exp $
 .\" $DragonFly: src/share/man/man7/build.7,v 1.18 2008/11/14 15:04:42 swildner Exp $
 .\"
-.Dd December 1, 2008
+.Dd March 27, 2009
 .Dt BUILD 7
 .Os
 .Sh NAME
@@ -42,6 +42,12 @@ sources, which is loosely defined as the things required to rebuild
 the system to a useful state.
 It also contains the source for the system documentation, including
 manual pages.
+Refer to
+.Xr development 7
+for more information on how to obtain the
+.Dx
+sources.
+.Pp
 Third party applications have to be built using the
 .Xr pkgsrc 7
 system.
@@ -128,22 +134,29 @@ Build user commands, no libraries or include files.
 Install user commands, no libraries or include files.
 .El
 .Sh ENVIRONMENT
-.Bl -tag -width ".Ev TARGET_ARCH"
-.It Ev TARGET_ARCH
-The target machine processor architecture.
-This is analogous to the
+.Bl -tag -width ".Ev MAKEOBJDIRPREFIX"
+.It Ev TARGET_ARCH , TARGET_PLATFORM
+The target machine processor architecture and hardware platform.
+These have to be set for cross-building.
+.Ev TARGET_ARCH
+is analogous to the
 .Dq Nm uname Fl p
 output.
-.\"Set this to cross-build for a different architecture.
-.It Ev TARGET
-The target hardware platform.
-This is analogous to the
-.Dq Nm uname Fl m
-output.
-.\"This is necessary to cross-build some target architectures.
-.\".It Ev NO_WERROR
-.\"If defined, warnings will not cause the build to halt, even if the
-.\"makefile says otherwise.
+To build for the 32 bit
+.Tn Intel
+architecture known as IA-32, x86 or x86-32, use:
+.Bd -literal -offset indent
+TARGET_ARCH=i386
+TARGET_PLATFORM=pc32
+.Ed
+.Pp
+For the 64 bit
+.Tn AMD
+architecture known as AMD64, x86-64 or Intel 64, use:
+.Bd -literal -offset indent
+TARGET_ARCH=amd64
+TARGET_PLATFORM=pc64
+.Ed
 .It Ev DESTDIR
 An existing directory to be the root of
 the hierarchy where the resulting binaries will be
@@ -164,6 +177,37 @@ be built (the default is
 .It Ev KERNCONFDIR
 The directory where the kernel configuration files are kept (the default is
 .Pa /usr/src/sys/config ) .
+.It Ev DESTLABEL
+Common suffix added to kernel and modules directory names, prefixed by
+a single dot.  For example,
+.Bd -literal -offset indent
+make DESTLABEL=test installkernel
+.Ed
+.Pp
+installs them as
+.Pa /boot/kernel.test
+and
+.Pa /boot/modules.test ,
+respectively.
+.It Ev DESTKERNDIR
+Where to install the kernel and the modules (the default is
+.Pa /boot ) ,
+in the directory hierarchy specified by the environment variable
+.Ev DESTDIR .
+.It Ev DESTKERNNAME
+The name of the installed kernel file (the default is
+.Pa kernel ) ,
+under the directory specified by
+.Ev DESTKERNDIR .
+This overrides the effect of
+.Ev DESTLABEL .
+.It Ev DESTMODULESNAME
+The name of the directory to install the kernel modules (the default is
+.Pa modules ) ,
+under the directory specified by
+.Ev DESTKERNDIR .
+This overrides the effect of
+.Ev DESTLABEL .
 .El
 .Sh FILES
 .Bl -tag -width ".Pa /usr/src/share/doc/Makefile" -compact

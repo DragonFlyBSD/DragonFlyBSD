@@ -87,7 +87,7 @@ startdaemon(const struct printer *pp)
 	 * Avoid overruns without putting artificial limitations on 
 	 * the length.
 	 */
-	if (writel(s, "\1", pp->printer, "\n", (char *)0) <= 0) {
+	if (writel(s, "\1", pp->printer, "\n", NULL) <= 0) {
 		warn("write");
 		close(s);
 		return(0);

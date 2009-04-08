@@ -74,6 +74,7 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/protosw.h>
@@ -349,21 +350,29 @@ rts_input_handler(anynetmsg_t msg)
 	struct netmsg_isr_packet *pmsg;
 	struct mbuf *m;
 	sa_family_t family;
+	struct rawcb *skip;
 
 	pmsg = &msg->isr_packet;
-	m = pmsg->nm_packet;
 	family = pmsg->nm_netmsg.nm_lmsg.u.ms_result;
 	route_proto.sp_family = PF_ROUTE;
 	route_proto.sp_protocol = family;
 
-	raw_input(m, &route_proto, &route_src, &route_dst);
+	m = pmsg->nm_packet;
+	M_ASSERTPKTHDR(m);
+
+	skip = m->m_pkthdr.header;
+	m->m_pkthdr.header = NULL;
+
+	raw_input(m, &route_proto, &route_src, &route_dst, skip);
 }
 
 static void
-rts_input(struct mbuf *m, sa_family_t family)
+rts_input_skip(struct mbuf *m, sa_family_t family, struct rawcb *skip)
 {
 	struct netmsg_isr_packet *pmsg;
 	lwkt_port_t port;
+
+	M_ASSERTPKTHDR(m);
 
 	port = cpu0_soport(NULL, NULL, NULL, 0);
 	pmsg = &m->m_hdr.mh_netmsg;
@@ -371,7 +380,14 @@ rts_input(struct mbuf *m, sa_family_t family)
 		    0, rts_input_handler);
 	pmsg->nm_packet = m;
 	pmsg->nm_netmsg.nm_lmsg.u.ms_result = family;
+	m->m_pkthdr.header = skip; /* XXX steal field in pkthdr */
 	lwkt_sendmsg(port, &pmsg->nm_netmsg.nm_lmsg);
+}
+
+static __inline void
+rts_input(struct mbuf *m, sa_family_t family)
+{
+	rts_input_skip(m, family, NULL);
 }
 
 static void *
@@ -414,7 +430,9 @@ fillrtmsg(struct rt_msghdr **prtm, struct rtentry *rt,
 		} else {
 			rtinfo->rti_ifpaddr = NULL;
 			rtinfo->rti_ifaaddr = NULL;
-	    }
+		}
+	} else if (rt->rt_ifp != NULL) {
+		rtm->rtm_index = rt->rt_ifp->if_index;
 	}
 
 	msglen = rt_msgsize(rtm->rtm_type, rtinfo);
@@ -437,23 +455,25 @@ static void route_output_add_callback(int, int, struct rt_addrinfo *,
 					struct rtentry *, void *);
 static void route_output_delete_callback(int, int, struct rt_addrinfo *,
 					struct rtentry *, void *);
-static void route_output_change_callback(int, int, struct rt_addrinfo *,
-					struct rtentry *, void *);
-static void route_output_lock_callback(int, int, struct rt_addrinfo *, 
-					struct rtentry *, void *);
+static int route_output_get_callback(int, struct rt_addrinfo *,
+				     struct rtentry *, void *, int);
+static int route_output_change_callback(int, struct rt_addrinfo *,
+					struct rtentry *, void *, int);
+static int route_output_lock_callback(int, struct rt_addrinfo *,
+				      struct rtentry *, void *, int);
 
 /*ARGSUSED*/
 static int
 route_output(struct mbuf *m, struct socket *so, ...)
 {
 	struct rt_msghdr *rtm = NULL;
-	struct rtentry *rt;
-	struct radix_node_head *rnh;
 	struct rawcb *rp = NULL;
 	struct pr_output_info *oi;
 	struct rt_addrinfo rtinfo;
 	int len, error = 0;
 	__va_list ap;
+
+	M_ASSERTPKTHDR(m);
 
 	__va_start(ap, so);
 	oi = __va_arg(ap, struct pr_output_info *);
@@ -465,8 +485,6 @@ route_output(struct mbuf *m, struct socket *so, ...)
 	    (m->m_len < sizeof(long) &&
 	     (m = m_pullup(m, sizeof(long))) == NULL))
 		return (ENOBUFS);
-	if (!(m->m_flags & M_PKTHDR))
-		panic("route_output");
 	len = m->m_pkthdr.len;
 	if (len < sizeof(struct rt_msghdr) ||
 	    len != mtod(m, struct rt_msghdr *)->rtm_msglen) {
@@ -496,24 +514,17 @@ route_output(struct mbuf *m, struct socket *so, ...)
 		gotoerr(EINVAL);
 
 	if (rtinfo.rti_genmask != NULL) {
-		struct radix_node *n;
-
-#define	clen(s)	(*(u_char *)(s))
-		n = rn_addmask((char *)rtinfo.rti_genmask, TRUE, 1);
-		if (n != NULL &&
-		    rtinfo.rti_genmask->sa_len >= clen(n->rn_key) &&
-		    bcmp((char *)rtinfo.rti_genmask + 1,
-		         (char *)n->rn_key + 1, clen(n->rn_key) - 1) == 0)
-			rtinfo.rti_genmask = (struct sockaddr *)n->rn_key;
-		else
-			gotoerr(ENOBUFS);
+		error = rtmask_add_global(rtinfo.rti_genmask);
+		if (error)
+			goto flush;
 	}
 
 	/*
 	 * Verify that the caller has the appropriate privilege; RTM_GET
 	 * is the only operation the non-superuser is allowed.
 	 */
-	if (rtm->rtm_type != RTM_GET && suser_cred(so->so_cred, 0) != 0)
+	if (rtm->rtm_type != RTM_GET &&
+	    priv_check_cred(so->so_cred, PRIV_ROOT, 0) != 0)
 		gotoerr(EPERM);
 
 	switch (rtm->rtm_type) {
@@ -533,30 +544,22 @@ route_output(struct mbuf *m, struct socket *so, ...)
 					  route_output_delete_callback, &rtm);
 		break;
 	case RTM_GET:
-		rnh = rt_tables[mycpuid][rtinfo.rti_dst->sa_family];
-		if (rnh == NULL) {
-			error = EAFNOSUPPORT;
-			break;
-		}
-		rt = (struct rtentry *)
-		    rnh->rnh_lookup((char *)rtinfo.rti_dst,
-		    		    (char *)rtinfo.rti_netmask, rnh);
-		if (rt == NULL) {
-			error = ESRCH;
-			break;
-		}
-		rt->rt_refcnt++;
-		if (fillrtmsg(&rtm, rt, &rtinfo) != 0)
-			gotoerr(ENOBUFS);
-		--rt->rt_refcnt;
+		/*
+		 * note: &rtm passed as argument so 'rtm' can be replaced.
+		 */
+		error = rtsearch_global(RTM_GET, &rtinfo,
+					route_output_get_callback, &rtm,
+					RTS_NOEXACTMATCH);
 		break;
 	case RTM_CHANGE:
-		error = rtrequest1_global(RTM_GET, &rtinfo,
-					  route_output_change_callback, rtm);
+		error = rtsearch_global(RTM_CHANGE, &rtinfo,
+					route_output_change_callback, rtm,
+					RTS_EXACTMATCH);
 		break;
 	case RTM_LOCK:
-		error = rtrequest1_global(RTM_GET, &rtinfo,
-					  route_output_lock_callback, rtm);
+		error = rtsearch_global(RTM_LOCK, &rtinfo,
+					route_output_lock_callback, rtm,
+					RTS_EXACTMATCH);
 		break;
 	default:
 		error = EOPNOTSUPP;
@@ -593,12 +596,8 @@ flush:
 			m_adj(m, rtm->rtm_msglen - m->m_pkthdr.len);
 		kfree(rtm, M_RTABLE);
 	}
-	if (rp != NULL)
-		rp->rcb_proto.sp_family = 0; /* Avoid us */
 	if (m != NULL)
-		rts_input(m, familyof(rtinfo.rti_dst));
-	if (rp != NULL)
-		rp->rcb_proto.sp_family = PF_ROUTE;
+		rts_input_skip(m, familyof(rtinfo.rti_dst), rp);
 	return (error);
 }
 
@@ -614,7 +613,20 @@ route_output_add_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
 		rt->rt_rmx.rmx_locks &= ~(rtm->rtm_inits);
 		rt->rt_rmx.rmx_locks |=
 		    (rtm->rtm_inits & rtm->rtm_rmx.rmx_locks);
-		rt->rt_genmask = rtinfo->rti_genmask;
+		if (rtinfo->rti_genmask != NULL) {
+			rt->rt_genmask = rtmask_purelookup(rtinfo->rti_genmask);
+			if (rt->rt_genmask == NULL) {
+				/*
+				 * This should not happen, since we
+				 * have already installed genmask
+				 * on each CPU before we reach here.
+				 */
+				panic("genmask is gone!?");
+			}
+		} else {
+			rt->rt_genmask = NULL;
+		}
+		rtm->rtm_index = rt->rt_ifp->if_index;
 	}
 }
 
@@ -634,15 +646,31 @@ route_output_delete_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
 	}
 }
 
-static void
-route_output_change_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
-			  struct rtentry *rt, void *arg)
+static int
+route_output_get_callback(int cmd, struct rt_addrinfo *rtinfo,
+			  struct rtentry *rt, void *arg, int found_cnt)
+{
+	struct rt_msghdr **rtm = arg;
+	int error, found = 0;
+
+	if (((rtinfo->rti_flags ^ rt->rt_flags) & RTF_HOST) == 0)
+		found = 1;
+
+	error = fillrtmsg(rtm, rt, rtinfo);
+	if (!error && found) {
+		/* Got the exact match, we could return now! */
+		error = EJUSTRETURN;
+	}
+	return error;
+}
+
+static int
+route_output_change_callback(int cmd, struct rt_addrinfo *rtinfo,
+			     struct rtentry *rt, void *arg, int found_cnt)
 {
 	struct rt_msghdr *rtm = arg;
 	struct ifaddr *ifa;
-
-	if (error)
-		goto done;
+	int error = 0;
 
 	/*
 	 * new gateway could require new ifaddr, ifp;
@@ -650,15 +678,20 @@ route_output_change_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
 	 * by ll sockaddr when protocol address is ambiguous
 	 */
 	if (((rt->rt_flags & RTF_GATEWAY) && rtinfo->rti_gateway != NULL) ||
-	    rtinfo->rti_ifpaddr != NULL || (rtinfo->rti_ifaaddr != NULL &&
-	    sa_equal(rtinfo->rti_ifaaddr, rt->rt_ifa->ifa_addr))
-	) {
+	    rtinfo->rti_ifpaddr != NULL ||
+	    (rtinfo->rti_ifaaddr != NULL &&
+	     !sa_equal(rtinfo->rti_ifaaddr, rt->rt_ifa->ifa_addr))) {
 		error = rt_getifa(rtinfo);
 		if (error != 0)
 			goto done;
 	}
 	if (rtinfo->rti_gateway != NULL) {
-		error = rt_setgate(rt, rt_key(rt), rtinfo->rti_gateway);
+		/*
+		 * We only need to generate rtmsg upon the
+		 * first route to be changed.
+		 */
+		error = rt_setgate(rt, rt_key(rt), rtinfo->rti_gateway,
+			found_cnt == 1 ? RTL_REPORTMSG : RTL_DONTREPORT);
 		if (error != 0)
 			goto done;
 	}
@@ -676,23 +709,34 @@ route_output_change_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
 	}
 	rt_setmetrics(rtm->rtm_inits, &rtm->rtm_rmx, &rt->rt_rmx);
 	if (rt->rt_ifa && rt->rt_ifa->ifa_rtrequest)
-	       rt->rt_ifa->ifa_rtrequest(RTM_ADD, rt, rtinfo);
-	if (rtinfo->rti_genmask != NULL)
-		rt->rt_genmask = rtinfo->rti_genmask;
+		rt->rt_ifa->ifa_rtrequest(RTM_ADD, rt, rtinfo);
+	if (rtinfo->rti_genmask != NULL) {
+		rt->rt_genmask = rtmask_purelookup(rtinfo->rti_genmask);
+		if (rt->rt_genmask == NULL) {
+			/*
+			 * This should not happen, since we
+			 * have already installed genmask
+			 * on each CPU before we reach here.
+			 */
+			panic("genmask is gone!?\n");
+		}
+	}
+	rtm->rtm_index = rt->rt_ifp->if_index;
 done:
-	/* XXX no way to return error */
-	;
+	return error;
 }
 
-static void
-route_output_lock_callback(int cmd, int error, struct rt_addrinfo *rtinfo,
-			   struct rtentry *rt, void *arg)
+static int
+route_output_lock_callback(int cmd, struct rt_addrinfo *rtinfo,
+			   struct rtentry *rt, void *arg,
+			   int found_cnt __unused)
 {
 	struct rt_msghdr *rtm = arg;
 
 	rt->rt_rmx.rmx_locks &= ~(rtm->rtm_inits);
 	rt->rt_rmx.rmx_locks |=
 		(rtm->rtm_inits & rtm->rtm_rmx.rmx_locks);
+	return 0;
 }
 
 static void

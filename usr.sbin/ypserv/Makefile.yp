@@ -1,7 +1,7 @@
 #
 # Makefile for the NIS databases
 #
-# $FreeBSD: src/usr.sbin/ypserv/Makefile.yp,v 1.28.2.3 2001/05/18 18:28:02 gshapiro Exp $
+# $FreeBSD: src/usr.sbin/ypserv/Makefile.yp,v 1.38 2006/06/08 09:12:07 maxim Exp $
 # $DragonFly: src/usr.sbin/ypserv/Makefile.yp,v 1.3 2004/01/08 18:39:19 asmodai Exp $
 #
 # This Makefile should only be run on the NIS master server of a domain.
@@ -50,8 +50,6 @@ AWK = /usr/bin/awk
 RM  = @/bin/rm -f
 MV  = @/bin/mv -f
 RMV  = /bin/mv -f
-RCAT = /bin/cat
-CAT = @$(RCAT)
 
 MKDB = /usr/sbin/yp_mkdb
 DBLOAD = $(MKDB) -m `hostname`
@@ -101,10 +99,12 @@ YPMAPDIR = $(YPDIR)/$(DOMAIN)
 ETHERS    = $(YPSRCDIR)/ethers	   # ethernet addresses (for rarpd)
 BOOTPARAMS= $(YPSRCDIR)/bootparams # for booting Sun boxes (bootparamd)
 HOSTS     = $(YPSRCDIR)/hosts
+IPNODES   = $(YPDIR)/ipnodes
 NETWORKS  = $(YPSRCDIR)/networks
 PROTOCOLS = $(YPSRCDIR)/protocols
 RPC 	  = $(YPSRCDIR)/rpc
 SERVICES  = $(YPSRCDIR)/services
+SHELLS    = $(YPSRCDIR)/shells
 GROUP     = $(YPSRCDIR)/group
 ALIASES   = $(YPSRCDIR)/mail/aliases
 NETGROUP  = $(YPDIR)/netgroup
@@ -117,12 +117,12 @@ MASTER	  = $(MASTER_PASSWD)
 YPSERVERS = $(YPDIR)/ypservers	# List of all NIS servers for a domain
 PUBLICKEY = $(YPSRCDIR)/publickey
 NETID     = $(YPSRCDIR)/netid
-AMDHOST   = $(YPSRCDIR)/amd.host
+AMDHOST   = $(YPSRCDIR)/amd.map
 
 # List of maps that are always built.
 # If you want to omit some of them, feel free to comment
 # them out from this list.
-TARGETS= servers hosts networks protocols rpc services group
+TARGETS= servers hosts networks protocols rpc services shells group
 #TARGETS+= aliases
 
 # Sanity checks: filter out targets we can't build
@@ -161,9 +161,15 @@ PUBLICKEY= /dev/null
 .endif
 
 .if exists($(AMDHOST))
-TARGETS+= amd.host
+TARGETS+= amd.map
 .else
 AMDHOST= /dev/null
+.endif
+
+.if exists($(IPNODES))
+TARGETS+= ipnodes
+.else
+IPNODES= /dev/null
 .endif
 
 target: 
@@ -176,6 +182,7 @@ all: $(TARGETS)
 ethers:	   ethers.byname ethers.byaddr
 bootparam: bootparams
 hosts:	   hosts.byname hosts.byaddr
+ipnodes:   ipnodes.byname ipnodes.byaddr
 networks:  networks.byaddr networks.byname
 protocols: protocols.bynumber protocols.byname
 rpc:	   rpc.byname rpc.bynumber
@@ -233,23 +240,21 @@ mail.aliases: $(ALIASES)
 
 ypservers: $(YPSERVERS)
 	@echo "Updating $@..."
-	$(CAT) $(YPSERVERS) | \
-	$(AWK) '{ if ($$1 != "" && $$1 !~ "^#.*") print $$0"\t"$$0 }' $^ \
+	@$(AWK) '{ if ($$1 != "" && $$1 !~ "^#.*") print $$0"\t"$$0 }' \
+		$(YPSERVERS) \
 		| $(DBLOAD) -i $(YPSERVERS) -o $(YPMAPDIR)/$@ - $(TMP); \
 		$(RMV) $(TMP) $@
 	@$(DBLOAD) -c
 	@if [ ! $(NOPUSH) ]; then $(YPPUSH) -d $(DOMAIN) $@; fi
 	@if [ ! $(NOPUSH) ]; then echo "Pushed $@ map." ; fi
 
-
 ethers.byname: $(ETHERS)
 	@echo "Updating $@..."
 .if ${ETHERS} == "/dev/null"
 	@echo "Ethers source file not found -- skipping"
 .else
-	$(CAT) $(ETHERS) | \
-	$(AWK) '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
-		print $$2"\t"$$0 }' $^ | $(DBLOAD) -i $(ETHERS) \
+	@$(AWK) '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
+		print $$2"\t"$$0 }' $(ETHERS) | $(DBLOAD) -i $(ETHERS) \
 		-o $(YPMAPDIR)/$@ - $(TMP); $(RMV) $(TMP) $@
 	@$(DBLOAD) -c
 	@if [ ! $(NOPUSH) ]; then $(YPPUSH) -d $(DOMAIN) $@; fi
@@ -261,9 +266,8 @@ ethers.byaddr: $(ETHERS)
 .if ${ETHERS} == "/dev/null"
 	@echo "Ethers source file not found -- skipping"
 .else
-	$(CAT) $(ETHERS) | \
-	$(AWK) '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
-		print $$1"\t"$$0 }' $^ | $(DBLOAD) -i $(ETHERS) \
+	@$(AWK) '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
+		print $$1"\t"$$0 }' $(ETHERS) | $(DBLOAD) -i $(ETHERS) \
 		-o $(YPMAPDIR)/$@ - $(TMP); $(RMV) $(TMP) $@
 	@$(DBLOAD) -c
 	@if [ ! $(NOPUSH) ]; then $(YPPUSH) -d $(DOMAIN) $@; fi
@@ -276,9 +280,8 @@ bootparams: $(BOOTPARAMS)
 .if ${BOOTPARAMS} == "/dev/null"
 	@echo "Bootparams source file not found -- skipping"
 .else
-	$(CAT) $(BOOTPARAMS) | \
-	$(AWK) '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
-		print $$0 }' $^ | $(DBLOAD) -i $(BOOTPARAMS) \
+	@$(AWK) '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
+		print $$0 }' $(BOOTPARAMS) | $(DBLOAD) -i $(BOOTPARAMS) \
 		-o $(YPMAPDIR)/$@ - $(TMP); $(RMV) $(TMP) $@
 	@$(DBLOAD) -c
 	@if [ ! $(NOPUSH) ]; then $(YPPUSH) -d $(DOMAIN) $@; fi
@@ -291,14 +294,12 @@ netgroup: $(NETGROUP) netgroup.byhost netgroup.byuser
 .if ${NETGROUP} == "/dev/null"
 	@echo "Netgroup source file not found -- skipping"
 .else
-	$(CAT) $(NETGROUP) | \
-	$(AWK) '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
-		print $$0 }' $^ | $(DBLOAD) -i $(NETGROUP) \
+	@$(AWK) '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
+		print $$0 }' $(NETGROUP) | $(DBLOAD) -i $(NETGROUP) \
 		-o $(YPMAPDIR)/$@ - $(TMP); $(RMV) $(TMP) $@
 	@$(DBLOAD) -c
 	@if [ ! $(NOPUSH) ]; then $(YPPUSH) -d $(DOMAIN) $@; fi
 	@if [ ! $(NOPUSH) ]; then echo "Pushed $@ map." ; fi
-	@$(MAKE) -f ../Makefile netid
 .endif
 
 
@@ -307,9 +308,9 @@ netgroup.byhost: $(NETGROUP)
 .if ${NETGROUP} == "/dev/null"
 	@echo "Netgroup source file not found -- skipping"
 .else
-	$(CAT) $(NETGROUP) | $(REVNETGROUP) -h -f $(NETGROUP) | \
+	@$(REVNETGROUP) -h -f $(NETGROUP) | \
 	$(AWK) '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
-		print $$0 }' $^ | $(DBLOAD) -i $(NETGROUP) \
+		print $$0 }' | $(DBLOAD) -i $(NETGROUP) \
 		-o $(YPMAPDIR)/$@ - $(TMP); $(RMV) $(TMP) $@
 	@$(DBLOAD) -c
 	@if [ ! $(NOPUSH) ]; then $(YPPUSH) -d $(DOMAIN) $@; fi
@@ -322,9 +323,9 @@ netgroup.byuser: $(NETGROUP)
 .if ${NETGROUP} == "/dev/null"
 	@echo "Netgroup source file not found -- skipping"
 .else
-	$(CAT) $(NETGROUP) | $(REVNETGROUP) -u -f $(NETGROUP) | \
+	@$(REVNETGROUP) -u -f $(NETGROUP) | \
 	$(AWK) '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
-		print $$0 }' $^ | $(DBLOAD) -i $(NETGROUP) \
+		print $$0 }' | $(DBLOAD) -i $(NETGROUP) \
 		-o $(YPMAPDIR)/$@ - $(TMP); $(RMV) $(TMP) $@
 	@$(DBLOAD) -c
 	@if [ ! $(NOPUSH) ]; then $(YPPUSH) -d $(DOMAIN) $@; fi
@@ -334,36 +335,60 @@ netgroup.byuser: $(NETGROUP)
 
 hosts.byname: $(HOSTS)
 	@echo "Updating $@..."
-	$(CAT) $(HOSTS) | \
-	$(AWK) '/^[0-9]/ { for (n=2; n<=NF && $$n !~ "^#.*"; n++) \
-		print $$n"\t"$$0 }' $^ | $(DBLOAD) ${B} -i $(HOSTS)  \
+	@$(AWK) '/^[0-9]/ { for (n=2; n<=NF && $$n !~ "^#.*"; n++) \
+		print $$n"\t"$$0 }' $(HOSTS) | $(DBLOAD) ${B} -i $(HOSTS)  \
 		-o $(YPMAPDIR)/$@ - $(TMP); $(RMV) $(TMP) $@
 	@$(DBLOAD) -c
 	@if [ ! $(NOPUSH) ]; then $(YPPUSH) -d $(DOMAIN) $@; fi
 	@if [ ! $(NOPUSH) ]; then echo "Pushed $@ map." ; fi
-	@$(MAKE) -f ../Makefile netid
 
 
 hosts.byaddr: $(HOSTS)
 	@echo "Updating $@..."
-	$(CAT) $(HOSTS) | \
-	$(AWK) '$$1 !~ "^#.*" { print $$1"\t"$$0 }' $^ \
+	@$(AWK) '$$1 !~ "^#.*" { print $$1"\t"$$0 }' $(HOSTS) \
 		| $(DBLOAD) ${B} -i $(HOSTS) -o $(YPMAPDIR)/$@ - $(TMP); \
 		$(RMV) $(TMP) $@
 	@$(DBLOAD) -c
 	@if [ ! $(NOPUSH) ]; then $(YPPUSH) -d $(DOMAIN) $@; fi
 	@if [ ! $(NOPUSH) ]; then echo "Pushed $@ map." ; fi
-	@$(MAKE) -f ../Makefile netid
+
+
+ipnodes.byname: $(IPNODES)
+	@echo "Updating $@..."
+.if ${IPNODES} == "/dev/null"
+	@echo "Ipnodes source file not found -- skipping"
+.else
+	@$(AWK) '/^[0-9a-fA-F:]/ { for (n=2; n<=NF && $$n !~ "^#.*"; n++) \
+		print $$n"\t"$$0 }' $(IPNODES) | $(DBLOAD) ${B} -i $(IPNODES)  \
+		-o $(YPMAPDIR)/$@ - $(TMP); $(RMV) $(TMP) $@
+	@$(DBLOAD) -c
+	@if [ ! $(NOPUSH) ]; then $(YPPUSH) -d $(DOMAIN) $@; fi
+	@if [ ! $(NOPUSH) ]; then echo "Pushed $@ map." ; fi
+.endif
+
+
+ipnodes.byaddr: $(IPNODES)
+	@echo "Updating $@..."
+.if ${IPNODES} == "/dev/null"
+	@echo "Ipnodes source file not found -- skipping"
+.else
+	@$(AWK) '$$1 !~ "^#.*" { print $$1"\t"$$0 }' $(IPNODES) \
+		| $(DBLOAD) ${B} -i $(IPNODES) -o $(YPMAPDIR)/$@ - $(TMP); \
+		$(RMV) $(TMP) $@
+	@$(DBLOAD) -c
+	@if [ ! $(NOPUSH) ]; then $(YPPUSH) -d $(DOMAIN) $@; fi
+	@if [ ! $(NOPUSH) ]; then echo "Pushed $@ map." ; fi
+.endif
 
 
 networks.byname: $(NETWORKS)
 	@echo "Updating $@..."
-	$(CAT) $(NETWORKS) | \
-	$(AWK) \
+	@$(AWK) \
 	   '$$1 !~ "^#.*"  { print $$1"\t"$$0; \
 			  for (n=3; n<=NF && $$n !~ "^#.*"; n++) \
 			      print $$n"\t"$$0 \
-		}' $^ | $(DBLOAD) -i $(NETWORKS) -o $(YPMAPDIR)/$@ - $(TMP); \
+		}' $(NETWORKS) \
+		| $(DBLOAD) -i $(NETWORKS) -o $(YPMAPDIR)/$@ - $(TMP); \
 		$(RMV) $(TMP) $@
 	@$(DBLOAD) -c
 	@if [ ! $(NOPUSH) ]; then $(YPPUSH) -d $(DOMAIN) $@; fi
@@ -372,8 +397,7 @@ networks.byname: $(NETWORKS)
 
 networks.byaddr: $(NETWORKS)
 	@echo "Updating $@..."
-	$(CAT) $(NETWORKS) | \
-	$(AWK) '$$1 !~ "^#.*" { print $$2"\t"$$0 }' $^ \
+	@$(AWK) '$$1 !~ "^#.*" { print $$2"\t"$$0 }' $(NETWORKS) \
 		| $(DBLOAD) -i $(NETWORKS) -o $(YPMAPDIR)/$@ - $(TMP); \
 		$(RMV) $(TMP) $@
 	@$(DBLOAD) -c
@@ -383,12 +407,11 @@ networks.byaddr: $(NETWORKS)
 
 protocols.byname: $(PROTOCOLS)
 	@echo "Updating $@..."
-	$(CAT) $(PROTOCOLS) | \
-	$(AWK) \
+	@$(AWK) \
 	   '$$1 !~ "^#.*"	{ print $$1"\t"$$0; \
 			  for (n=3; n<=NF && $$n !~ "^#.*"; n++) \
 			      print $$n"\t"$$0 \
-			}' $^ | $(DBLOAD) -i $(PROTOCOLS) \
+			}' $(PROTOCOLS) | $(DBLOAD) -i $(PROTOCOLS) \
 		-o $(YPMAPDIR)/$@ - $(TMP); $(RMV) $(TMP) $@
 	@$(DBLOAD) -c
 	@if [ ! $(NOPUSH) ]; then $(YPPUSH) -d $(DOMAIN) $@; fi
@@ -397,8 +420,7 @@ protocols.byname: $(PROTOCOLS)
 
 protocols.bynumber: $(PROTOCOLS)
 	@echo "Updating $@..."
-	$(CAT) $(PROTOCOLS) | \
-	$(AWK) '$$1 !~ "^#.*" { print $$2"\t"$$0 }' $^ \
+	@$(AWK) '$$1 !~ "^#.*" { print $$2"\t"$$0 }' $(PROTOCOLS) \
 		| $(DBLOAD) -i $(PROTOCOLS) -o $(YPMAPDIR)/$@ - $(TMP); \
 		$(RMV) $(TMP) $@
 	@$(DBLOAD) -c
@@ -408,12 +430,11 @@ protocols.bynumber: $(PROTOCOLS)
 
 rpc.byname: $(RPC)
 	@echo "Updating $@..."
-	$(CAT) $(RPC) | \
-	$(AWK) \
+	@$(AWK) \
 	   '$$1 !~ "^#.*"  { print $$1"\t"$$0; \
 			  for (n=3; n<=NF && $$n !~ "^#.*"; n++) \
 			      print $$n"\t"$$0 \
-		}' $^ | $(DBLOAD) -i $(RPC) -o $(YPMAPDIR)/$@ - $(TMP); \
+		}' $(RPC) | $(DBLOAD) -i $(RPC) -o $(YPMAPDIR)/$@ - $(TMP); \
 		$(RMV) $(TMP) $@
 	@$(DBLOAD) -c
 	@if [ ! $(NOPUSH) ]; then $(YPPUSH) -d $(DOMAIN) $@; fi
@@ -422,8 +443,7 @@ rpc.byname: $(RPC)
 
 rpc.bynumber: $(RPC)
 	@echo "Updating $@..."
-	$(CAT) $(RPC) | \
-	$(AWK) '$$1 !~ "^#.*" { print $$2"\t"$$0 }' $^ \
+	@$(AWK) '$$1 !~ "^#.*" { print $$2"\t"$$0 }' $(RPC) \
 		| $(DBLOAD)  -i $(RPC) -o $(YPMAPDIR)/$@ - $(TMP); \
 		$(RMV) $(TMP) $@
 	@$(DBLOAD) -c
@@ -433,28 +453,36 @@ rpc.bynumber: $(RPC)
 
 services.byname: $(SERVICES)
 	@echo "Updating $@..."
-	$(CAT) $(SERVICES) | \
-	$(AWK) \
+	@$(AWK) \
 	   '$$1 !~ "^#.*"  { for (n=1; n<=NF && $$n !~ "^#.*"; n++) { \
 				if (split($$2, t, "/")) { \
 					printf("%s/%s", $$n, t[2]) }; \
 					print "\t"$$0;	\
 					if (n == 1) n = 2; \
 			   } ; print $$2"\t"$$0 ; \
-		}' $^ | $(DBLOAD) -i $(SERVICES) -o $(YPMAPDIR)/$@ - $(TMP); \
+		}' $(SERVICES) \
+		| $(DBLOAD) -i $(SERVICES) -o $(YPMAPDIR)/$@ - $(TMP); \
 		$(RMV) $(TMP) $@
 	@$(DBLOAD) -c
 	@if [ ! $(NOPUSH) ]; then $(YPPUSH) -d $(DOMAIN) $@; fi
 	@if [ ! $(NOPUSH) ]; then echo "Pushed $@ map." ; fi
 
+shells: $(SHELLS)
+	@echo "Updating $@..."
+	@$(AWK) '{ if ($$1 != "" && $$1 !~ "^#.*") print $$0"\t"$$0 }' \
+		$(SHELLS) \
+		| $(DBLOAD) -i $(SHELLS) -o $(YPMAPDIR)/$@ - $(TMP); \
+	 $(RMV) $(TMP) $@
+	@$(DBLOAD) -c
+	@if [ ! $(NOPUSH) ]; then $(YPPUSH) -d $(DOMAIN) $@; fi
+	@if [ ! $(NOPUSH) ]; then echo "Pushed $@ map." ; fi
 
 publickey.byname: $(PUBLICKEY)
 	@echo "Updating $@..."
 .if ${PUBLICKEY} == "/dev/null"
 	@echo "Publickey source file not found -- skipping"
 .else
-	$(CAT) $(PUBLICKEY) | \
-	$(AWK) '$$1 !~ "^#.*" { print $$1"\t"$$2 }' $^ \
+	@$(AWK) '$$1 !~ "^#.*" { print $$1"\t"$$2 }' $(PUBLICKEY) \
 		| $(DBLOAD)  -i $(PUBLICKEY) -o $(YPMAPDIR)/$@ - $(TMP); \
 		$(RMV) $(TMP) $@
 	@$(DBLOAD) -c
@@ -466,21 +494,19 @@ publickey.byname: $(PUBLICKEY)
 $(PASSWD): $(MASTER)
 	@echo "Creating new $@ file from $(MASTER)..."
 	@if [ ! $(UNSECURE) ]; then \
-	$(RCAT) $(MASTER) | \
 	$(AWK) -F: '{if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
-		print $$1":*:"$$3":"$$4":"$$8":"$$9":"$$10}' $^ \
+		print $$1":*:"$$3":"$$4":"$$8":"$$9":"$$10}' $(MASTER) \
 		> $(PASSWD) ; \
-	else $(RCAT) $(MASTER) | \
+	else \
 	$(AWK) -F: '{if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
-		print $$1":"$$2":"$$3":"$$4":"$$8":"$$9":"$$10}' $^ \
+		print $$1":"$$2":"$$3":"$$4":"$$8":"$$9":"$$10}' $(MASTER) \
 		> $(PASSWD) ; fi
 
 
 passwd.byname: $(PASSWD)
 	@echo "Updating $@..."
-	$(CAT) $(PASSWD) | \
-	$(AWK) -F: '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
-		print $$1"\t"$$0 }' $^ \
+	@$(AWK) -F: '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
+		print $$1"\t"$$0 }' $(PASSWD) \
 		| $(DBLOAD) -f -i $(PASSWD) -o $(YPMAPDIR)/$@ - $(TMP); \
 		$(RMV) $(TMP) $@
 	@$(DBLOAD) -c
@@ -490,22 +516,19 @@ passwd.byname: $(PASSWD)
 
 passwd.byuid: $(PASSWD)
 	@echo "Updating $@..."
-	$(CAT) $(PASSWD) | \
-	$(AWK) -F: '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
-		print $$3"\t"$$0 }' $^ \
+	@$(AWK) -F: '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
+		print $$3"\t"$$0 }' $(PASSWD) \
 		| $(DBLOAD) -f -i $(PASSWD) -o $(YPMAPDIR)/$@ - $(TMP); \
 		$(RMV) $(TMP) $@
 	@$(DBLOAD) -c
 	@if [ ! $(NOPUSH) ]; then $(YPPUSH) -d $(DOMAIN) $@; fi
 	@if [ ! $(NOPUSH) ]; then echo "Pushed $@ map." ; fi
-	@$(MAKE) -f ../Makefile netid
 
 
 group.byname: $(GROUP)
 	@echo "Updating $@..."
-	$(CAT) $(GROUP) | \
-	$(AWK) -F: '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
-		print $$1"\t"$$0 }' $^ \
+	@$(AWK) -F: '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
+		print $$1"\t"$$0 }' $(GROUP) \
 		| $(DBLOAD) -f -i $(GROUP) -o $(YPMAPDIR)/$@ - $(TMP); \
 		$(RMV) $(TMP) $@
 	@$(DBLOAD) -c
@@ -515,18 +538,16 @@ group.byname: $(GROUP)
 
 group.bygid: $(GROUP)
 	@echo "Updating $@..."
-	$(CAT) $(GROUP) | \
-	$(AWK) -F: '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
-		print $$3"\t"$$0 }' $^ \
+	@$(AWK) -F: '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
+		print $$3"\t"$$0 }' $(GROUP) \
 		| $(DBLOAD) -f -i $(GROUP) -o $(YPMAPDIR)/$@ - $(TMP); \
 		$(RMV) $(TMP) $@
 	@$(DBLOAD) -c
 	@if [ ! $(NOPUSH) ]; then $(YPPUSH) -d $(DOMAIN) $@; fi
 	@if [ ! $(NOPUSH) ]; then echo "Pushed $@ map." ; fi
-	@$(MAKE) -f ../Makefile netid
 
 
-netid.byname: $(GROUP) $(PASSWD)
+netid.byname: $(GROUP) $(PASSWD) $(HOSTS)
 	@echo "Updating $@..."
 	@$(MKNETID) -q -p $(PASSWD) -g $(GROUP) -h $(HOSTS) -n $(NETID) \
 		-d $(DOMAIN) | $(DBLOAD) -o $(YPMAPDIR)/$@ - $(TMP); \
@@ -541,9 +562,8 @@ master.passwd.byname: $(MASTER)
 .if ${MASTER} == "/dev/null"
 	@echo "Master.passwd source file not found -- skipping"
 .else
-	$(CAT) $(MASTER) | \
-	$(AWK) -F: '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
-		print $$1"\t"$$0 }' $^ \
+	@$(AWK) -F: '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
+		print $$1"\t"$$0 }' $(MASTER) \
 		| $(DBLOAD) ${S} -f -i $(MASTER) -o $(YPMAPDIR)/$@ - $(TMP); \
 		$(RMV) $(TMP) $@
 	@$(DBLOAD) -c
@@ -557,9 +577,8 @@ master.passwd.byuid: $(MASTER)
 .if ${MASTER} == "/dev/null"
 	@echo "Master.passwd source file not found -- skipping"
 .else
-	$(CAT) $(MASTER) | \
-	$(AWK) -F: '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
-		print $$3"\t"$$0 }' $^ \
+	@$(AWK) -F: '{ if ($$1 != "" && $$1 !~ "^#.*" && $$1 != "+") \
+		print $$3"\t"$$0 }' $(MASTER) \
 		| $(DBLOAD) ${S} -f -i $(MASTER) -o $(YPMAPDIR)/$@ - $(TMP); \
 		$(RMV) $(TMP) $@
 	@$(DBLOAD) -c
@@ -568,10 +587,9 @@ master.passwd.byuid: $(MASTER)
 .endif
 
 
-amd.host: $(AMDHOST)
+amd.map: $(AMDHOST)
 	@echo "Updating $@..."
-	$(CAT) $(AMDHOST) | \
-	$(AWK) '$$1 !~ "^#.*"  { \
+	@$(AWK) '$$1 !~ "^#.*"  { \
 	  for (i = 1; i <= NF; i++) \
 	  if (i == NF) { \
 	    if (substr($$i, length($$i), 1) == "\\") \
@@ -581,7 +599,7 @@ amd.host: $(AMDHOST)
 	  } \
 	  else \
 	    printf("%s ", $$i); \
-	}' | \
+	}' $(AMDHOST) | \
 	$(DBLOAD) -i $(AMDHOST) -o $(YPMAPDIR)/$@ - $(TMP); \
 		$(RMV) $(TMP) $@
 	@$(DBLOAD) -c

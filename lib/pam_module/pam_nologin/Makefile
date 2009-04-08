@@ -27,7 +27,6 @@
 
 LIB=	pam_nologin
 SRCS=	pam_nologin.c
-WARNS?= 6
 MAN=	pam_nologin.8
 
 DPADD=	${LIBUTIL}

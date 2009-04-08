@@ -127,7 +127,7 @@ env_setenv(const char *name, int flags, const void *value,
     if (flags & EV_VOLATILE) {
 	ev->ev_value = strdup(value);
     } else {
-	ev->ev_value = value;
+	ev->ev_value = (char *)value;
     }
 
     /* Keep the flag components that are relevant */
@@ -208,7 +208,7 @@ env_discard(struct env_var *ev)
 }
 
 int
-env_noset(struct env_var *ev, int flags, void *value)
+env_noset(struct env_var *ev, int flags, const void *value)
 {
     return(EPERM);
 }

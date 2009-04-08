@@ -67,8 +67,8 @@ struct nfs_diskless nfs_diskless = {
  	},
 	{ 0x10, 0x2, { 0x0, 0x0, 0x83, 0x68, 0x30, 0x12, } },
 	{
-	  (struct sockaddr *)0, SOCK_DGRAM, 0, (nfsv2fh_t *)0,
-	  0, 8192, 8192, 10, 100, (char *)0,
+	  NULL, SOCK_DGRAM, 0, NULL,
+	  0, 8192, 8192, 10, 100, NULL,
 	},
 	{
 		0xf,
@@ -107,8 +107,8 @@ struct nfs_diskless nfs_diskless = {
 	{ 0x10, 0x2, { 0x8, 0x1, 0x83, 0x68, 0x30, 0x5, } },
 	"happy",
 	{
-	  (struct sockaddr *)0, SOCK_DGRAM, 0, (nfsv2fh_t *)0,
-	  0, 8192, 8192, 10, 100, (char *)0,
+	  NULL, SOCK_DGRAM, 0, NULL,
+	  0, 8192, 8192, 10, 100, NULL,
 	},
 	{
 		0x0,

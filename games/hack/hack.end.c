@@ -132,7 +132,7 @@ done(const char *st1)
 			outrip();
 	}
 	if(*st1 == 'c') killer = st1;		/* after outrip() */
-	settty((char *) 0);	/* does a clear_screen() */
+	settty(NULL);				/* does a clear_screen() */
 	if(!done_stopprint)
 		printf("Goodbye %s %s...\n\n", pl_character, plname);
 	{ long int tmp;

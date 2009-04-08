@@ -40,6 +40,7 @@
 
 static void hammer_parsedevs(const char *blkdevs);
 static void sigalrm(int signo);
+static void sigintr(int signo);
 static void usage(int exit_code);
 
 int RecurseOpt;
@@ -49,6 +50,8 @@ int NoSyncOpt;
 int TwoWayPipeOpt;
 int TimeoutOpt;
 int DelayOpt = 5;
+int RunningIoctl;
+int DidInterrupt;
 u_int64_t BandwidthOpt;
 const char *CyclePath;
 const char *LinkPath;
@@ -80,6 +83,9 @@ main(int ac, char **av)
 			case 'k':
 			case 'K':
 				BandwidthOpt *= 1024;
+				break;
+			case '\0':
+				/* bytes per second if no suffix */
 				break;
 			default:
 				usage(1);
@@ -134,6 +140,7 @@ main(int ac, char **av)
 	}
 
 	signal(SIGALRM, sigalrm);
+	signal(SIGINT, sigintr);
 
 	if (strcmp(av[0], "synctid") == 0) {
 		hammer_cmd_synctid(av + 1, ac - 1);
@@ -261,6 +268,11 @@ main(int ac, char **av)
 		hammer_cmd_history(av[0] + 7, av + 1, ac - 1);
 		exit(0);
 	}
+	if (strcmp(av[0], "rebalance") == 0) {
+		signal(SIGINT, sigalrm);
+		hammer_cmd_rebalance(av + 1, ac - 1);
+		exit(0);
+	}
 	if (strncmp(av[0], "reblock", 7) == 0) {
 		signal(SIGINT, sigalrm);
 		if (strcmp(av[0], "reblock") == 0)
@@ -357,6 +369,16 @@ sigalrm(int signo __unused)
 
 static
 void
+sigintr(int signo __unused)
+{
+	if (RunningIoctl == 0)
+		_exit(1);
+	DidInterrupt = 1;
+	/* do nothing (interrupts HAMMER ioctl) */
+}
+
+static
+void
 usage(int exit_code)
 {
 	fprintf(stderr, 
@@ -364,10 +386,11 @@ usage(int exit_code)
 		"hammer [-2qrv] [-b bandwidth] [-c cyclefile] [-f blkdev[:blkdev]*]\n"
 		"       [-i delay ] [-t seconds] command [argument ...]\n"
 		"hammer synctid <filesystem> [quick]\n"
+		"hammer -f blkdev[:blkdev]* blockmap\n"
 		"hammer bstats [interval]\n"
 		"hammer iostats [interval]\n"
 		"hammer history[@offset[,len]] <file> ...\n"
-		"hammer -f blkdev[:blkdev]* [-r] show [offset]\n"
+		"hammer -f blkdev[:blkdev]* [-r] [-vvv] show [offset]\n"
 #if 0
 		"hammer -f blkdev[:blkdev]* blockmap\n"
 #endif
@@ -377,6 +400,7 @@ usage(int exit_code)
 		"hammer snapshot [<filesystem>] <snapshot-dir>\n"
 		"hammer prune <softlink-dir>\n"
 		"hammer prune-everything <filesystem>\n"
+		"hammer rebalance <filesystem> [saturation_percentage]\n"
 		"hammer reblock[-btree/inodes/dirs/data] "
 			"<filesystem> [fill_percentage]\n"
 		"hammer pfs-status <dirpath> ...\n"

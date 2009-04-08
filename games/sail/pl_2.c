@@ -43,7 +43,7 @@ play(void)
 	struct ship *sp;
 
 	for (;;) {
-		switch (sgetch("~\b", (struct ship *)0, 0)) {
+		switch (sgetch("~\b", NULL, 0)) {
 		case 'm':
 			acceptmove();
 			break;
@@ -57,7 +57,7 @@ play(void)
 			unfoulplayer();
 			break;
 		case 'v':
-			Signal("%s", (struct ship *)0, version);
+			Signal("%s", NULL, version);
 			break;
 		case 'b':
 			acceptboard();
@@ -75,7 +75,7 @@ play(void)
 			repair();
 			break;
 		case 'B':
-			Signal("'Hands to stations!'", (struct ship *)0);
+			Signal("'Hands to stations!'", NULL);
 			unboard(ms, ms, 1);	/* cancel DBP's */
 			unboard(ms, ms, 0);	/* cancel offense */
 			break;
@@ -91,10 +91,10 @@ play(void)
 			mf->loadR = L_EMPTY;
 			mf->readyL = R_EMPTY;
 			mf->readyR = R_EMPTY;
-			Signal("Broadsides unloaded", (struct ship *)0);
+			Signal("Broadsides unloaded", NULL);
 			break;
 		case 'q':
-			Signal("Type 'Q' to quit", (struct ship *)0);
+			Signal("Type 'Q' to quit", NULL);
 			break;
 		case 'Q':
 			leave(LEAVE_QUIT);
@@ -106,7 +106,7 @@ play(void)
 			break;
 		case 'i':
 			if ((sp = closestenemy(ms, 0, 1)) == 0)
-				Signal("No more ships left.", (struct ship *)0);
+				Signal("No more ships left.", NULL);
 			else
 				eyeball(sp);
 			break;

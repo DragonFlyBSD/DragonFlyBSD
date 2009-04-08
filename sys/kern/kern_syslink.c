@@ -47,6 +47,7 @@
 #include <sys/alist.h>
 #include <sys/file.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/lock.h>
 #include <sys/uio.h>
 #include <sys/objcache.h>
@@ -262,7 +263,7 @@ sys_syslink(struct syslink_args *uap)
 	 */
 	if (syslink_enabled == 0)
 		return (EAUTH);
-	error = suser(curthread);
+	error = priv_check(curthread, PRIV_ROOT);
 	if (error)
 		return (error);
 

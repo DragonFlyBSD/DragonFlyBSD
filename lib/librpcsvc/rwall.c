@@ -28,6 +28,7 @@
  * Mountain View, California  94043
  *
  * @(#)rwall.c	1.2 91/03/11 TIRPC 1.0; from  1.3 89/03/24 SMI
+ * $FreeBSD: src/lib/librpcsvc/rwall.c,v 1.3 2003/10/26 03:43:35 peter Exp $
  * $DragonFly: src/lib/librpcsvc/rwall.c,v 1.3 2007/11/25 14:33:02 swildner Exp $
  */
 
@@ -45,6 +46,6 @@ int
 rwall(char *host, char *msg)
 {
 	return (callrpc(host, WALLPROG, WALLVERS, WALLPROC_WALL,
-			xdr_wrapstring, (char *) &msg,
-			xdr_void, (char *) NULL));
+			(xdrproc_t)xdr_wrapstring, (char *) &msg,
+			(xdrproc_t)xdr_void, NULL));
 }

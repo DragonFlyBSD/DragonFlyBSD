@@ -109,8 +109,6 @@
 #include <machine/pmap.h>
 #include <machine/pmap_inval.h>
 
-#include <ddb/ddb.h>
-
 #define PMAP_KEEP_PDIRS
 #ifndef PMAP_SHPGPERPROC
 #define PMAP_SHPGPERPROC 200
@@ -2081,15 +2079,11 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 #endif
 	if (va < UPT_MAX_ADDRESS && pmap == &kernel_pmap) {
 		kprintf("Warning: pmap_enter called on UVA with kernel_pmap\n");
-#ifdef DDB
-		db_print_backtrace();
-#endif
+		print_backtrace();
 	}
 	if (va >= UPT_MAX_ADDRESS && pmap != &kernel_pmap) {
 		kprintf("Warning: pmap_enter called on KVA without kernel_pmap\n");
-#ifdef DDB
-		db_print_backtrace();
-#endif
+		print_backtrace();
 	}
 
 	/*
@@ -2244,15 +2238,11 @@ pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m)
 
 	if (va < UPT_MAX_ADDRESS && pmap == &kernel_pmap) {
 		kprintf("Warning: pmap_enter_quick called on UVA with kernel_pmap\n");
-#ifdef DDB
-		db_print_backtrace();
-#endif
+		print_backtrace();
 	}
 	if (va >= UPT_MAX_ADDRESS && pmap != &kernel_pmap) {
 		kprintf("Warning: pmap_enter_quick called on KVA without kernel_pmap\n");
-#ifdef DDB
-		db_print_backtrace();
-#endif
+		print_backtrace();
 	}
 
 	KKASSERT(va < UPT_MIN_ADDRESS);	/* assert used on user pmaps only */

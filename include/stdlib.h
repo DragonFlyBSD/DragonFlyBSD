@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)stdlib.h	8.5 (Berkeley) 5/19/95
- * $FreeBSD: src/include/stdlib.h,v 1.16.2.5 2002/12/13 01:34:00 tjr Exp $
+ * $FreeBSD: src/include/stdlib.h,v 1.67 2008/07/22 11:40:42 ache Exp $
  * $DragonFly: src/include/stdlib.h,v 1.22 2008/06/05 17:53:10 swildner Exp $
  */
 
@@ -39,42 +39,30 @@
 #define	_STDLIB_H_
 
 #include <sys/cdefs.h>
+#include <sys/_null.h>
 #include <sys/types.h>
 
-#ifndef _SYS_STDINT_H_
-#include <sys/stdint.h>
-#endif
-
-#ifndef __cplusplus
-#ifndef _WCHAR_T_DECLARED
-#define _WCHAR_T_DECLARED
-typedef __wchar_t	wchar_t;
-#endif
-#endif
-
 #ifndef _SIZE_T_DECLARED
-#define _SIZE_T_DECLARED
-typedef __size_t	size_t;
+typedef	__size_t	size_t;
+#define	_SIZE_T_DECLARED
+#endif
+
+#ifndef	__cplusplus
+#ifndef _WCHAR_T_DECLARED
+typedef	__wchar_t	wchar_t;
+#define	_WCHAR_T_DECLARED
+#endif
 #endif
 
 typedef struct {
-	int quot;		/* quotient */
-	int rem;		/* remainder */
+	int	quot;		/* quotient */
+	int	rem;		/* remainder */
 } div_t;
 
 typedef struct {
-	long quot;		/* quotient */
-	long rem;		/* remainder */
+	long	quot;
+	long	rem;
 } ldiv_t;
-
-#if __ISO_C_VISIBLE >= 1999
-typedef struct {
-        long long quot;
-        long long rem;
-} lldiv_t;
-#endif
-
-#include <sys/_null.h>
 
 #define	EXIT_FAILURE	1
 #define	EXIT_SUCCESS	0
@@ -85,8 +73,8 @@ extern int __mb_cur_max;
 #define	MB_CUR_MAX	__mb_cur_max
 
 __BEGIN_DECLS
-void	 _Exit(int) __dead2;
 void	 abort(void) __dead2;
+/* void	 abort2(const char *, int, void **) __dead2; */
 int	 abs(int) __pure2;
 int	 atexit(void (*)(void));
 double	 atof(const char *);
@@ -101,102 +89,191 @@ void	 free(void *);
 char	*getenv(const char *);
 long	 labs(long) __pure2;
 ldiv_t	 ldiv(long, long) __pure2;
-#if __ISO_C_VISIBLE >= 1999
-lldiv_t	 lldiv(long long, long long) __pure2;
-#endif
 void	*malloc(size_t);
-void	 qsort(void *, size_t, size_t, int(*)(const void *, const void *));
+int	 mblen(const char *, size_t);
+size_t	 mbstowcs(wchar_t * __restrict , const char * __restrict, size_t);
+int	 mbtowc(wchar_t * __restrict, const char * __restrict, size_t);
+void	 qsort(void *, size_t, size_t, int (*)(const void *, const void *));
 int	 rand(void);
 void	*realloc(void *, size_t);
 void	 srand(unsigned);
-double	 strtod(const char *, char **);
-#ifdef __LONG_LONG_SUPPORTED
-long long int	atoll(const char *);
-long long	llabs(long long) __pure2;
-long long	strtoll(const char *, char **, int);
-unsigned long long strtoull(const char *, char **, int);
+double	 strtod(const char * __restrict, char ** __restrict);
+float	 strtof(const char * __restrict, char ** __restrict);
+#if !defined(_KERNEL_VIRTUAL)
+long	 strtol(const char * __restrict, char ** __restrict, int);
+#endif
+long double
+	 strtold(const char * __restrict, char ** __restrict);
+#if !defined(_KERNEL_VIRTUAL)
+unsigned long
+	 strtoul(const char * __restrict, char ** __restrict, int);
 #endif
 int	 system(const char *);
+int	 wctomb(char *, wchar_t);
+size_t	 wcstombs(char * __restrict, const wchar_t * __restrict, size_t);
 
-#if !defined(_KERNEL_VIRTUAL)
-long	 strtol(const char *, char **, int);
-unsigned long	strtoul(const char *, char **, int);
+/*
+ * Functions added in C99 which we make conditionally available in the
+ * BSD^C89 namespace if the compiler supports `long long'.
+ * The #if test is more complicated than it ought to be because
+ * __BSD_VISIBLE implies __ISO_C_VISIBLE == 1999 *even if* `long long'
+ * is not supported in the compilation environment (which therefore means
+ * that it can't really be ISO C99).
+ *
+ * (The only other extension made by C99 in this header is _Exit().)
+ */
+#if __ISO_C_VISIBLE >= 1999
+#ifdef __LONG_LONG_SUPPORTED
+/* LONGLONG */
+typedef struct {
+	long long quot;
+	long long rem;
+} lldiv_t;
+
+/* LONGLONG */
+long long
+	 atoll(const char *);
+/* LONGLONG */
+long long
+	 llabs(long long) __pure2;
+/* LONGLONG */
+lldiv_t	 lldiv(long long, long long) __pure2;
+/* LONGLONG */
+long long
+	 strtoll(const char * __restrict, char ** __restrict, int);
+/* LONGLONG */
+unsigned long long
+	 strtoull(const char * __restrict, char ** __restrict, int);
+#endif /* __LONG_LONG_SUPPORTED */
+
+void	 _Exit(int) __dead2;
+#endif /* __ISO_C_VISIBLE >= 1999 */
+
+/*
+ * Extensions made by POSIX relative to C.  We don't know yet which edition
+ * of POSIX made these extensions, so assume they've always been there until
+ * research can be done.
+ */
+#if __POSIX_VISIBLE /* >= ??? */
+/*int	 posix_memalign(void **, size_t, size_t); (ADV) */
+int	 rand_r(unsigned *);			/* (TSF) */
+int	 setenv(const char *, const char *, int);
+int	 unsetenv(const char *);
 #endif
 
-int	 mblen(const char *, size_t);
-size_t	 mbstowcs(wchar_t *, const char *, size_t);
-int	 wctomb(char *, wchar_t);
-int	 mbtowc(wchar_t *, const char *, size_t);
-size_t	 wcstombs(char *, const wchar_t *, size_t);
-
-#if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
-int	 putenv(const char *);
-int	 setenv(const char *, const char *, int);
-
+/*
+ * The only changes to the XSI namespace in revision 6 were the deletion
+ * of the ttyslot() and valloc() functions, which we never declared
+ * in this header.  For revision 7, ecvt(), fcvt(), and gcvt(), which
+ * we also do not have, and mktemp(), are to be deleted.
+ */
+#if __XSI_VISIBLE
+/* XXX XSI requires pollution from <sys/wait.h> here.  We'd rather not. */
+long	 a64l(const char *);
 double	 drand48(void);
+/* char	*ecvt(double, int, int * __restrict, int * __restrict); */
 double	 erand48(unsigned short[3]);
+/* char	*fcvt(double, int, int * __restrict, int * __restrict); */
+/* char	*gcvt(double, int, int * __restrict, int * __restrict); */
+int	 getsubopt(char **, char *const *, char **);
+int	 grantpt(int);
+char	*initstate(unsigned long /* XSI requires u_int */, char *, long);
 long	 jrand48(unsigned short[3]);
+char	*l64a(long);
 void	 lcong48(unsigned short[7]);
 long	 lrand48(void);
+int	 mkstemp(char *);
 long	 mrand48(void);
 long	 nrand48(unsigned short[3]);
-unsigned short *seed48(unsigned short[3]);
+/* int	 posix_openpt(int); */
+/* char	*ptsname(int); */
+int	 putenv(char *);
+long	 random(void);
+char	*realpath(const char *, char resolved_path[]);
+unsigned short
+	*seed48(unsigned short[3]);
+int	 setkey(const char *);
+char	*setstate(/* const */ char *);
 void	 srand48(long);
+void	 srandom(unsigned long);
+/* int	 unlockpt(int); */
+#endif /* __XSI_VISIBLE */
 
-void	*alloca(size_t);		/* built-in for gcc */
-					/* getcap(3) functions */
-__uint32_t arc4random(void);
+#if __BSD_VISIBLE
+/* extern const char *_malloc_options;
+extern void (*_malloc_message)(const char *, const char *, const char *,
+	    const char *); */
+
+/*
+ * The alloca() function can't be implemented in C, and on some
+ * platforms it can't be implemented at all as a callable function.
+ * The GNU C compiler provides a built-in alloca() which we can use;
+ * in all other cases, provide a prototype, mainly to pacify various
+ * incarnations of lint.  On platforms where alloca() is not in libc,
+ * programs which use it will fail to link when compiled with non-GNU
+ * compilers.
+ */
+#if __GNUC__ >= 2 || defined(__INTEL_COMPILER)
+#undef  alloca	/* some GNU bits try to get cute and define this on their own */
+#define alloca(sz) __builtin_alloca(sz)
+#elif defined(lint)
+void	*alloca(size_t);
+#endif
+
+__uint32_t
+	 arc4random(void);
 void	 arc4random_addrandom(__uint8_t *, size_t);
+void	 arc4random_buf(void *, size_t);
 void	 arc4random_stir(void);
+__uint32_t
+	 arc4random_uniform(__uint32_t);
 char	*getbsize(int *, long *);
-char	*cgetcap(char *, char *, int);
+					/* getcap(3) functions */
+char	*cgetcap(char *, const char *, int);
 int	 cgetclose(void);
-int	 cgetent(char **, char **, char *);
+int	 cgetent(char **, char **, const char *);
 int	 cgetfirst(char **, char **);
-int	 cgetmatch(char *, char *);
+int	 cgetmatch(const char *, const char *);
 int	 cgetnext(char **, char **);
-int	 cgetnum(char *, char *, long *);
-int	 cgetset(char *);
-int	 cgetstr(char *, char *, char **);
-int	 cgetustr(char *, char *, char **);
+int	 cgetnum(char *, const char *, long *);
+int	 cgetset(const char *);
+int	 cgetstr(char *, const char *, char **);
+int	 cgetustr(char *, const char *, char **);
 
 int	 daemon(int, int);
 char	*devname(dev_t, mode_t);
 char	*devname_r(dev_t, mode_t, char *, size_t);
 int	 getloadavg(double [], int);
-const char *getprogname(void);
+__const char *
+	 getprogname(void);
 
-char	*group_from_gid(gid_t, int);
 int	 heapsort(void *, size_t, size_t, int (*)(const void *, const void *));
-char	*initstate(unsigned long, char *, long);
+int	 l64a_r(long, char *, int);
 int	 mergesort(void *, size_t, size_t, int (*)(const void *, const void *));
+void	 qsort_r(void *, size_t, size_t, void *,
+		 int (*)(void *, const void *, const void *));
 int	 radixsort(const unsigned char **, int, const unsigned char *,
 		   unsigned int);
+void    *reallocf(void *, size_t);
+int	 rpmatch(const char *);
+void	 setprogname(const char *);
 int	 sradixsort(const unsigned char **, int, const unsigned char *,
 		    unsigned int);
-int	 rand_r(unsigned *);
-long	 random(void);
-void    *reallocf(void *, size_t);
-char	*realpath(const char *, char []);
-void	 setprogname(const char *);
-char	*setstate(char *);
-void	 srandom(unsigned long);
+void	 sranddev(void);
 void	 srandomdev(void);
-char	*user_from_uid(uid_t, int);
-
-#if !defined(__STRICT_ANSI__) && !defined(_KERNEL_VIRTUAL)
-__int64_t	strtoq(const char *, char **, int);
-__uint64_t	strtouq(const char *, char **, int);
-#endif
-
-#ifndef __STRICT_ANSI__
-#ifdef __LONG_LONG_SUPPORTED
 long long
-	 strtonum(const char *, long long, long long, const char **);
+	strtonum(const char *, long long, long long, const char **);
+
+/* Deprecated interfaces. */
+#if !defined(_KERNEL_VIRTUAL)
+__int64_t
+	 strtoq(const char *, char **, int);
+__uint64_t
+	 strtouq(const char *, char **, int);
 #endif
-#endif
-void	 unsetenv(const char *);
-#endif /* !_ANSI_SOURCE && !_POSIX_SOURCE */
+
+extern char *suboptarg;			/* getsubopt(3) external variable */
+#endif /* __BSD_VISIBLE */
 __END_DECLS
 
 #endif /* !_STDLIB_H_ */

@@ -21,9 +21,9 @@ makemon(struct permonst *ptr, int x, int y)
 	int tmp, ct;
 	boolean anything = (!ptr);
 
-	if(x != 0 || y != 0) if(m_at(x,y)) return((struct monst *) 0);
+	if(x != 0 || y != 0) if(m_at(x,y)) return(NULL);
 	if(ptr){
-		if(index(fut_geno, ptr->mlet)) return((struct monst *) 0);
+		if(index(fut_geno, ptr->mlet)) return(NULL);
 	} else {
 		ct = CMNUM - strlen(fut_geno);
 		if(index(fut_geno, 'm')) ct++;  /* make only 1 minotaur */

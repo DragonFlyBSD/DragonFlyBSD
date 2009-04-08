@@ -88,8 +88,7 @@ main(int argc, char **argv)
 	mib[0] = CTL_KERN;
 	mib[1] = KERN_DUMPDEV;
 
-	rv = sysctl(mib, 2, (void *)0, (size_t *)0, &stab.st_rdev,
-		    sizeof stab.st_rdev);
+	rv = sysctl(mib, 2, NULL, NULL, &stab.st_rdev, sizeof stab.st_rdev);
 	if (rv) {
 		err(EX_OSERR, "sysctl: kern.dumpdev");
 	}

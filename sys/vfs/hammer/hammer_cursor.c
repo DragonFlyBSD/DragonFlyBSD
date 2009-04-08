@@ -94,8 +94,7 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 		volume = hammer_get_root_volume(trans->hmp, &error);
 		if (error)
 			break;
-		node = hammer_get_node(trans->hmp,
-				       volume->ondisk->vol0_btree_root,
+		node = hammer_get_node(trans, volume->ondisk->vol0_btree_root,
 				       0, &error);
 		hammer_rel_volume(volume, 0);
 		if (error)
@@ -313,7 +312,8 @@ hammer_load_cursor_parent(hammer_cursor_t cursor, int try_exclusive)
 
 	if (cursor->node->ondisk->parent) {
 		node = cursor->node;
-		parent = hammer_btree_get_parent(node, &parent_index,
+		parent = hammer_btree_get_parent(cursor->trans, node,
+						 &parent_index,
 						 &error, try_exclusive);
 		if (error == 0) {
 			elm = &parent->ondisk->elms[parent_index];
@@ -453,7 +453,7 @@ hammer_cursor_down(hammer_cursor_t cursor)
 		KKASSERT(elm->internal.subtree_offset != 0);
 		cursor->left_bound = &elm[0].internal.base;
 		cursor->right_bound = &elm[1].internal.base;
-		node = hammer_get_node(cursor->trans->hmp,
+		node = hammer_get_node(cursor->trans,
 				       elm->internal.subtree_offset, 0, &error);
 		if (error == 0) {
 			KASSERT(elm->base.btype == node->ondisk->type, ("BTYPE MISMATCH %c %c NODE %p\n", elm->base.btype, node->ondisk->type, node));
@@ -487,13 +487,13 @@ hammer_cursor_down(hammer_cursor_t cursor)
  * operations.
  */
 void
-hammer_unlock_cursor(hammer_cursor_t cursor, int also_ip)
+hammer_unlock_cursor(hammer_cursor_t cursor)
 {
 	hammer_node_t node;
-	hammer_inode_t ip;
 
 	KKASSERT((cursor->flags & HAMMER_CURSOR_TRACKED) == 0);
 	KKASSERT(cursor->node);
+
 	/*
 	 * Release the cursor's locks and track B-Tree operations on node.
 	 * While being tracked our cursor can be modified by other threads
@@ -508,9 +508,6 @@ hammer_unlock_cursor(hammer_cursor_t cursor, int also_ip)
 	cursor->flags |= HAMMER_CURSOR_TRACKED;
 	TAILQ_INSERT_TAIL(&node->cursor_list, cursor, deadlk_entry);
 	hammer_unlock(&node->lock);
-
-	if (also_ip && (ip = cursor->ip) != NULL)
-		hammer_unlock(&ip->lock);
 }
 
 /*
@@ -522,23 +519,12 @@ hammer_unlock_cursor(hammer_cursor_t cursor, int also_ip)
  * the element after it.
  */
 int
-hammer_lock_cursor(hammer_cursor_t cursor, int also_ip)
+hammer_lock_cursor(hammer_cursor_t cursor)
 {
-	hammer_inode_t ip;
 	hammer_node_t node;
 	int error;
 
 	KKASSERT(cursor->flags & HAMMER_CURSOR_TRACKED);
-
-	/*
-	 * Relock the inode
-	 */
-	if (also_ip && (ip = cursor->ip) != NULL) {
-		if (cursor->trans->type == HAMMER_TRANS_FLS)
-			hammer_lock_ex(&ip->lock);
-		else
-			hammer_lock_sh(&ip->lock);
-	}
 
 	/*
 	 * Relock the node
@@ -589,7 +575,7 @@ hammer_recover_cursor(hammer_cursor_t cursor)
 {
 	int error;
 
-	hammer_unlock_cursor(cursor, 0);
+	hammer_unlock_cursor(cursor);
 	KKASSERT(cursor->trans->sync_lock_refs > 0);
 
 	/*
@@ -606,7 +592,7 @@ hammer_recover_cursor(hammer_cursor_t cursor)
 		hammer_rel_mem_record(cursor->deadlk_rec);
 		cursor->deadlk_rec = NULL;
 	}
-	error = hammer_lock_cursor(cursor, 0);
+	error = hammer_lock_cursor(cursor);
 	return(error);
 }
 
@@ -672,7 +658,7 @@ hammer_pop_cursor(hammer_cursor_t ocursor, hammer_cursor_t ncursor)
 	hammer_done_cursor(ncursor);
 	kfree(ncursor, hmp->m_misc);
 	KKASSERT(ocursor->ip == ip);
-	hammer_lock_cursor(ocursor, 0);
+	hammer_lock_cursor(ocursor);
 }
 
 /*
@@ -736,6 +722,62 @@ again:
 		hammer_ref_node(nnode);
 		hammer_rel_node(onode);
 		goto again;
+	}
+}
+
+/*
+ * An element was moved from one node to another or within a node.  The
+ * index may also represent the end of the node (index == numelements).
+ *
+ * This is used by the rebalancing code.  This is not an insertion or
+ * deletion and any additional elements, including the degenerate case at
+ * the end of the node, will be dealt with by additional distinct calls.
+ */
+void
+hammer_cursor_moved_element(hammer_node_t onode, hammer_node_t nnode,
+			    int oindex, int nindex)
+{
+	hammer_cursor_t cursor;
+
+again:
+	TAILQ_FOREACH(cursor, &onode->cursor_list, deadlk_entry) {
+		KKASSERT(cursor->node == onode);
+		if (cursor->index != oindex)
+			continue;
+		TAILQ_REMOVE(&onode->cursor_list, cursor, deadlk_entry);
+		TAILQ_INSERT_TAIL(&nnode->cursor_list, cursor, deadlk_entry);
+		cursor->node = nnode;
+		cursor->index = nindex;
+		hammer_ref_node(nnode);
+		hammer_rel_node(onode);
+		goto again;
+	}
+}
+
+/*
+ * The B-Tree element pointing to the specified node was moved from (oparent)
+ * to (nparent, nindex).  We must locate any tracked cursors pointing at
+ * node and adjust their parent accordingly.
+ *
+ * This is used by the rebalancing code when packing elements causes an
+ * element to shift from one node to another.
+ */
+void
+hammer_cursor_parent_changed(hammer_node_t node, hammer_node_t oparent,
+			     hammer_node_t nparent, int nindex)
+{
+	hammer_cursor_t cursor;
+
+again:
+	TAILQ_FOREACH(cursor, &node->cursor_list, deadlk_entry) {
+		KKASSERT(cursor->node == node);
+		if (cursor->parent == oparent) {
+			cursor->parent = nparent;
+			cursor->parent_index = nindex;
+			hammer_ref_node(nparent);
+			hammer_rel_node(oparent);
+			goto again;
+		}
 	}
 }
 

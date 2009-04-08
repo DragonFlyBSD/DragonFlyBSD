@@ -144,7 +144,8 @@ double difftime (time_t, time_t);
 struct tm *gmtime (const time_t *);
 struct tm *localtime (const time_t *);
 time_t mktime (struct tm *);
-size_t strftime (char *, size_t, const char *, const struct tm *);
+size_t strftime (char * __restrict, size_t, const char * __restrict,
+		 const struct tm * __restrict);
 time_t time (time_t *);
 
 #if __POSIX_VISIBLE
@@ -167,11 +168,13 @@ int nanosleep (const struct timespec *, struct timespec *);
 #endif /* __POSIX_VISIBLE >= 199309 */
 
 #if __XSI_VISIBLE
-char *strptime (const char *, const char *, struct tm *);
+extern int daylight;
+extern long timezone;
+char *strptime (const char * __restrict, const char * __restrict,
+		struct tm * __restrict);
 #endif
 
 #if __BSD_VISIBLE
-char *timezone (int, int);
 void tzsetwall (void);
 time_t timelocal (struct tm * const);
 time_t timegm (struct tm * const);

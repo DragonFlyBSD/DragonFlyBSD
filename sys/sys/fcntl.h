@@ -111,6 +111,10 @@
 #define O_FBUFFERED	0x02000000	/* force buffered I/O */
 #define O_MAPONREAD	0x04000000	/* memory map read buffer */
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#define FREVOKED	0x10000000	/* revoked by fdrevoke() */
+#endif
+
 #define O_FMASK		(O_FBLOCKING|O_FNONBLOCKING|O_FAPPEND|O_FOFFSET|\
 			 O_FSYNCWRITE|O_FASYNCWRITE|O_FUNBUFFERED|O_FBUFFERED|\
 			 O_MAPONREAD)

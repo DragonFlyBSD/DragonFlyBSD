@@ -227,7 +227,7 @@ extern char *		sys_errlist[];
 
 /* main.c */
 extern char *		scaletime(u_long);
-extern void		log(int, int, char *, ...) __printflike(3, 4);
+extern void		dolog(int, int, char *, ...) __printflike(3, 4);
 extern int		register_input_handler(int, ihfunc_t);
 
 /* igmp.c */

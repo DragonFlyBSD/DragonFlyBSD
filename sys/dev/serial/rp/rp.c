@@ -43,6 +43,7 @@
 #include <sys/malloc.h>
 #include <sys/tty.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/dkstat.h>
 #include <sys/conf.h>
 #include <sys/kernel.h>
@@ -986,7 +987,7 @@ open_top:
 				goto open_top;
 			}
 		}
-		if(tp->t_state & TS_XCLUDE && suser_cred(ap->a_cred, 0) != 0) {
+		if(tp->t_state & TS_XCLUDE && priv_check_cred(ap->a_cred, PRIV_ROOT, 0) != 0) {
 			crit_exit();
 			error = EBUSY;
 			goto out2;
@@ -1236,7 +1237,7 @@ rpioctl(struct dev_ioctl_args *ap)
 		}
 		switch (cmd) {
 		case TIOCSETA:
-			error = suser_cred(ap->a_cred, 0);
+			error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
 			if(error != 0)
 				return(error);
 			*ct = *(struct termios *)data;
@@ -1382,7 +1383,7 @@ rpioctl(struct dev_ioctl_args *ap)
 		*(int *)data = result;
 		break;
 	case TIOCMSDTRWAIT:
-		error = suser_cred(ap->a_cred, 0);
+		error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0);
 		if(error != 0) {
 			crit_exit();
 			return(error);

@@ -8,6 +8,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/sockio.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
@@ -102,7 +103,7 @@ at_control(struct socket *so, u_long cmd, caddr_t data,
 	/* 
 	 * If we are not superuser, then we don't get to do these ops.
 	 */
-	if (suser(td))
+	if (priv_check(td, PRIV_ROOT))
 	    return(EPERM);
 
 	sat = satosat( &ifr->ifr_addr );
@@ -139,7 +140,7 @@ at_control(struct socket *so, u_long cmd, caddr_t data,
 	 * If we failed to find an existing at_ifaddr entry, then we 
 	 * allocate a fresh one. 
 	 */
-	if ( aa == (struct at_ifaddr *) 0 ) {
+	if ( aa == NULL ) {
 	    aa0 = ifa_create(sizeof(struct at_ifaddr), M_WAITOK);
 	    callout_init(&aa0->aa_ch);
 	    if (( aa = at_ifaddr ) != NULL ) {
@@ -225,7 +226,7 @@ at_control(struct socket *so, u_long cmd, caddr_t data,
 	    }
 	}
 
-	if ( aa == (struct at_ifaddr *) 0 )
+	if ( aa == NULL )
 	    return( EADDRNOTAVAIL );
 	break;
     }

@@ -103,39 +103,43 @@ static int len;
 int
 mydev_open(struct dev_open_args *args)
 {
-    printf("mydev_open: dev_t=%d, flags=%x, type=%x\n",
-	   dev2udev(args->a_head.a_dev), args->a_oflags, args->a_devtype);
-    memset(&buf, '\0', 513);
-    len = 0;
-    return (0);
+	kprintf("mydev_open: dev_t=%d, flags=%x, type=%x\n",
+	    dev2udev(args->a_head.a_dev), args->a_oflags, args->a_devtype);
+	memset(&buf, '\0', 513);
+	len = 0;
+
+	return (0);
 }
 
 int
 mydev_close(struct dev_close_args *args)
 {
-  printf("mydev_close: dev_t=%d, flags=%x, type=%x\n",
-	 dev2udev(args->a_head.a_dev), args->a_fflag, args->a_devtype);
-  return (0);
+	kprintf("mydev_close: dev_t=%d, flags=%x, type=%x\n",
+	    dev2udev(args->a_head.a_dev), args->a_fflag, args->a_devtype);
+
+	return (0);
 }
 
 int
 mydev_ioctl(struct dev_ioctl_args *args)
 {
-    int error = 0;
+	int error = 0;
 
-    printf("mydev_ioctl: dev_t=%d, cmd=%lx, arg=%p, mode=%x\n",
-	   dev2udev(args->a_head.a_dev), args->a_cmd, args->a_data, args->a_fflag);
+	kprintf("mydev_ioctl: dev_t=%d, cmd=%lx, arg=%p, mode=%x\n",
+	    dev2udev(args->a_head.a_dev), args->a_cmd, args->a_data,
+	    args->a_fflag);
 
-    switch(args->a_cmd) {
-    case CDEV_IOCTL1:
-	printf("you called mydev_ioctl CDEV_IOCTL1\n");
-	break;
-    default:
-	printf("No such ioctl for me!\n");
-	error = EINVAL;
-	break;
-    }
-    return error;
+	switch(args->a_cmd) {
+	case CDEV_IOCTL1:
+		kprintf("you called mydev_ioctl CDEV_IOCTL1\n");
+		break;
+	default:
+		kprintf("No such ioctl for me!\n");
+		error = EINVAL;
+		break;
+	}
+
+	return (error);
 }
 
 /*
@@ -145,16 +149,17 @@ mydev_ioctl(struct dev_ioctl_args *args)
 int
 mydev_write(struct dev_write_args *args)
 {
-    int err = 0;
+	int err = 0;
 
-    printf("mydev_write: dev_t=%d, uio=%p, ioflag=%d\n",
-	dev2udev(args->a_head.a_dev), args->a_uio, args->a_ioflag);
+	kprintf("mydev_write: dev_t=%d, uio=%p, ioflag=%d\n",
+	    dev2udev(args->a_head.a_dev), args->a_uio, args->a_ioflag);
 
-    err = copyinstr(args->a_uio->uio_iov->iov_base, &buf, 512, &len);
-    if (err != 0) {
-	printf("Write to \"cdev\" failed.\n");
-    }
-    return(err);
+	err = copyinstr(args->a_uio->uio_iov->iov_base, &buf, 512, &len);
+	if (err != 0) {
+		kprintf("Write to \"cdev\" failed.\n");
+	}
+
+    return (err);
 }
 
 /*
@@ -165,15 +170,18 @@ mydev_write(struct dev_write_args *args)
 int
 mydev_read(struct dev_read_args *args)
 {
-    int err = 0;
+	int err = 0;
 
-    printf("mydev_read: dev_t=%d, uio=%p, ioflag=%d\n",
-	dev2udev(args->a_head.a_dev), args->a_uio, args->a_ioflag);
+	kprintf("mydev_read: dev_t=%d, uio=%p, ioflag=%d\n",
+	    dev2udev(args->a_head.a_dev), args->a_uio, args->a_ioflag);
 
-    if (len <= 0) {
-	err = -1; 
-    } else {	/* copy buf to userland */
-	copystr(&buf, args->a_uio->uio_iov->iov_base, 513, &len);
-    }
-    return(err);
+	if (len <= 0) {
+		err = -1;
+	}
+	else {
+		/* copy buf to userland */
+		copystr(&buf, args->a_uio->uio_iov->iov_base, 513, &len);
+	}
+
+	return (err);
 }

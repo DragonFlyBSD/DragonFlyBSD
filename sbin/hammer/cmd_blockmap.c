@@ -66,6 +66,7 @@ dump_blockmap(const char *label, int zone)
 	hammer_off_t layer2_offset;
 	hammer_off_t scan1;
 	hammer_off_t scan2;
+	int xerr;
 
 	assert(RootVolNo >= 0);
 	root_volume = get_volume(RootVolNo);
@@ -84,10 +85,15 @@ dump_blockmap(const char *label, int zone)
 		layer1_offset = rootmap->phys_offset +
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(scan1);
 		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
-		if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL)
+		xerr = ' ';
+		if (layer1->layer1_crc != crc32(layer1, HAMMER_LAYER1_CRCSIZE))
+			xerr = 'B';
+		if (xerr == ' ' &&
+		    layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
 			continue;
-		printf(" layer1 %016llx @%016llx blocks-free %lld\n",
-			scan1, layer1->phys_offset, layer1->blocks_free);
+		}
+		printf("%c layer1 %016llx @%016llx blocks-free %lld\n",
+			xerr, scan1, layer1->phys_offset, layer1->blocks_free);
 		if (layer1->phys_offset == HAMMER_BLOCKMAP_FREE)
 			continue;
 		for (scan2 = scan1; 
@@ -100,7 +106,11 @@ dump_blockmap(const char *label, int zone)
 			layer2_offset = layer1->phys_offset +
 					HAMMER_BLOCKMAP_LAYER2_OFFSET(scan2);
 			layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
-			printf("        %016llx zone=%d app=%-7d free=%-7d\n",
+			xerr = ' ';
+			if (layer2->entry_crc != crc32(layer2, HAMMER_LAYER2_CRCSIZE))
+				xerr = 'B';
+			printf("%c       %016llx zone=%d app=%-7d free=%-7d\n",
+				xerr,
 				scan2,
 				layer2->zone,
 				layer2->append_off,

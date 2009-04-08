@@ -1,14 +1,19 @@
 /*
- * $FreeBSD: src/lib/libc/gen/getprogname.c,v 1.1.2.1 2001/06/14 00:06:12 dd Exp $
+ * $FreeBSD: src/lib/libc/gen/getprogname.c,v 1.4 2002/03/29 22:43:41 markm Exp $
  * $DragonFly: src/lib/libc/gen/getprogname.c,v 1.3 2005/03/09 18:52:21 joerg Exp $
  */
 
+#include "namespace.h"
 #include <stdlib.h>
+#include "un-namespace.h"
 
-extern const char *__progname;
+#include "libc_private.h"
+
+__weak_reference(_getprogname, getprogname);
 
 const char *
-getprogname(void)
+_getprogname(void)
 {
+
 	return (__progname);
 }

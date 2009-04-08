@@ -39,6 +39,7 @@
 #include <sys/systm.h>
 #include <sys/mbuf.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -68,8 +69,9 @@ raw_init(void)
  * Most other raw protocol interface functions are also serialized XXX.
  */
 void
-raw_input(struct mbuf *m0, struct sockproto *proto, const struct sockaddr *src,
-	  const struct sockaddr *dst)
+raw_input(struct mbuf *m0, const struct sockproto *proto,
+	  const struct sockaddr *src, const struct sockaddr *dst,
+	  const struct rawcb *skip)
 {
 	struct rawcb *rp;
 	struct mbuf *m = m0;
@@ -77,6 +79,8 @@ raw_input(struct mbuf *m0, struct sockproto *proto, const struct sockaddr *src,
 
 	last = NULL;
 	LIST_FOREACH(rp, &rawcb_list, list) {
+		if (rp == skip)
+			continue;
 		if (rp->rcb_proto.sp_family != proto->sp_family)
 			continue;
 		if (rp->rcb_proto.sp_protocol  &&
@@ -102,7 +106,6 @@ raw_input(struct mbuf *m0, struct sockproto *proto, const struct sockaddr *src,
 				if (ssb_space(&last->so_rcv) <= 0 ||
 				    ssb_append_addr(&last->so_rcv, src,
 						    n, NULL) == 0) {
-
 					/* should notify about lost packet */
 					m_freem(n);
 				} else {
@@ -155,7 +158,7 @@ raw_uattach(struct socket *so, int proto, struct pru_attach_info *ai)
 
 	if (rp == NULL)
 		return EINVAL;
-	if ((error = suser_cred(ai->p_ucred, NULL_CRED_OKAY)) != 0)
+	if ((error = priv_check_cred(ai->p_ucred, PRIV_ROOT, NULL_CRED_OKAY)) != 0)
 		return error;
 	return raw_attach(so, proto, ai->sb_rlimit);
 }

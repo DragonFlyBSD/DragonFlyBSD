@@ -333,6 +333,8 @@ If no format strings are specified, the default display is equivalent
 to specifying the
 .Fl x
 option.
+.Sh EXIT STATUS
+.Ex -std hexdump hd
 .Sh EXAMPLES
 Display the input in perusal format:
 .Bd -literal -offset indent
@@ -346,7 +348,5 @@ Implement the \-x option:
 "%07.7_Ax\en"
 "%07.7_ax  " 8/2 "%04x " "\en"
 .Ed
-.Sh DIAGNOSTICS
-.Ex -std hexdump hd
 .Sh SEE ALSO
 .Xr gdb 1

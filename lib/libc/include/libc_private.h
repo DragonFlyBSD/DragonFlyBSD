@@ -81,4 +81,18 @@ void *__get_errno_GOT_ptr(void);
 struct statfs;
 struct statvfs;
 
+/*
+ * This is a pointer in the C run-time startup code. It is used
+ * by getprogname() and setprogname().
+ */
+extern const char *__progname;
+
+/*
+ * Function to clean up streams, called from abort() and exit().
+ */
+extern void (*__cleanup)(void);
+
+/* execve() with PATH processing to implement posix_spawnp() */
+int _execvpe(const char *, char * const *, char * const *);
+
 #endif /* _LIBC_PRIVATE_H_ */

@@ -11,10 +11,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -32,43 +28,58 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)index.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/string/index.3,v 1.3.2.3 2001/12/14 18:33:59 ru Exp $
+.\" $FreeBSD: src/lib/libc/string/index.3,v 1.12 2007/01/09 00:28:12 imp Exp $
 .\" $DragonFly: src/lib/libc/string/index.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
 .\"
 .Dd June 4, 1993
 .Dt INDEX 3
 .Os
 .Sh NAME
-.Nm index
+.Nm index ,
+.Nm rindex
 .Nd locate character in string
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
-.In string.h
-.Ft char *
+.In strings.h
+.Ft "char *"
 .Fn index "const char *s" "int c"
+.Ft "char *"
+.Fn rindex "const char *s" "int c"
 .Sh DESCRIPTION
 The
 .Fn index
 function
-locates the first character matching
+locates the first occurrence of
 .Fa c
 (converted to a
-.Em char )
-in the null-terminated string
+.Vt char )
+in the string pointed to by
 .Fa s .
-.Sh RETURN VALUES
-A pointer to the character is returned if it is found; otherwise
-.Dv NULL
-is returned.
-If
+The terminating null character is considered part of the string;
+therefore if
 .Fa c
-is '\e0',
+is
+.Ql \e0 ,
+the functions locate the terminating
+.Ql \e0 .
+.Pp
+The
+.Fn rindex
+function is identical to
+.Fn index ,
+except it locates the last occurrence of
+.Fa c .
+.Sh RETURN VALUES
+The functions
 .Fn index
-locates the terminating '\e0'.
+and
+.Fn rindex
+return a pointer to the located character, or
+.Dv NULL
+if the character does not appear in the string.
 .Sh SEE ALSO
 .Xr memchr 3 ,
-.Xr rindex 3 ,
 .Xr strchr 3 ,
 .Xr strcspn 3 ,
 .Xr strpbrk 3 ,
@@ -78,7 +89,16 @@ locates the terminating '\e0'.
 .Xr strstr 3 ,
 .Xr strtok 3
 .Sh HISTORY
-A
+The
 .Fn index
-function appeared in
+and
+.Fn rindex
+functions appeared in
 .At v6 .
+Their prototypes existed previously in
+.In string.h
+before they were moved to
+.In strings.h
+for
+.St -p1003.1-2001
+compliance.

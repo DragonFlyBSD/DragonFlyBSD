@@ -498,7 +498,7 @@ sctp_handle_heartbeat_ack(struct sctp_heartbeat_chunk *cp,
 
 		/* now was it the primary? if so restore */
 		if (r_net->dest_state & SCTP_ADDR_WAS_PRIMARY) {
-			sctp_set_primary_addr(stcb, (struct sockaddr *)NULL, r_net);
+			sctp_set_primary_addr(stcb, NULL, r_net);
 		}
 	}
 	/* Now lets do a RTO with this */
@@ -1527,7 +1527,7 @@ sctp_process_cookie_new(struct mbuf *m, int iphlen, int offset,
 		}
 #endif /* SCTP_DEBUG */
 		op_err = sctp_generate_invmanparam(SCTP_CAUSE_OUT_OF_RESC);
-		sctp_abort_association(inp, (struct sctp_tcb *)NULL, m, iphlen,
+		sctp_abort_association(inp, NULL, m, iphlen,
 		    sh, op_err);
 		return (NULL);
 	}
@@ -1549,7 +1549,7 @@ sctp_process_cookie_new(struct mbuf *m, int iphlen, int offset,
 		 * was in flight. Only recourse is to abort the association.
 		 */
 		op_err = sctp_generate_invmanparam(SCTP_CAUSE_OUT_OF_RESC);
-		sctp_abort_association(inp, (struct sctp_tcb *)NULL, m, iphlen,
+		sctp_abort_association(inp, NULL, m, iphlen,
 		    sh, op_err);
 		return (NULL);
 	}
@@ -2083,7 +2083,7 @@ sctp_handle_cookie_echo(struct mbuf *m, int iphlen, int offset,
 	if (netl) {
 		if (netl->dest_state &  SCTP_ADDR_UNCONFIRMED) {
 			netl->dest_state &= ~SCTP_ADDR_UNCONFIRMED;
-			sctp_set_primary_addr((*stcb), (struct sockaddr *)NULL,
+			sctp_set_primary_addr((*stcb), NULL,
 					      netl);
 			sctp_ulp_notify(SCTP_NOTIFY_INTERFACE_CONFIRMED,
 					(*stcb), 0, (void *)netl);

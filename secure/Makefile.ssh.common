@@ -2,7 +2,7 @@
 
 SSHDIR=		${.CURDIR}/../../../crypto/openssh-5
 
-CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${SSHDIR}
+CFLAGS+=	-I${.CURDIR}/../../lib/libssh -I${SSHDIR} -include ssh_namespace.h
 
 NOLINT=	true
 

@@ -736,9 +736,9 @@ literal:
 
 				*p = 0;
 				if ((flags & UNSIGNED) == 0)
-				    res = strtoimax(buf, (char **)NULL, base);
+				    res = strtoimax(buf, NULL, base);
 				else
-				    res = strtoumax(buf, (char **)NULL, base);
+				    res = strtoumax(buf, NULL, base);
 				if (flags & POINTER)
 					*va_arg(ap, void **) =
 							(void *)(uintptr_t)res;

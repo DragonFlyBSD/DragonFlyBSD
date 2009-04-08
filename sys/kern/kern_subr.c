@@ -123,7 +123,7 @@ uiomove(caddr_t cp, int n, struct uio *uio)
 		case UIO_NOCOPY:
 			break;
 		}
-		iov->iov_base += cnt;
+		iov->iov_base = (char *)iov->iov_base + cnt;
 		iov->iov_len -= cnt;
 		uio->uio_resid -= cnt;
 		uio->uio_offset += cnt;
@@ -206,7 +206,7 @@ uiomoveco(caddr_t cp, int n, struct uio *uio, struct vm_object *obj)
 		case UIO_NOCOPY:
 			break;
 		}
-		iov->iov_base += cnt;
+		iov->iov_base = (char *)iov->iov_base + cnt;
 		iov->iov_len -= cnt;
 		uio->uio_resid -= cnt;
 		uio->uio_offset += cnt;
@@ -223,6 +223,7 @@ int
 ureadc(int c, struct uio *uio)
 {
 	struct iovec *iov;
+	char *iov_base;
 
 again:
 	if (uio->uio_iovcnt == 0 || uio->uio_resid == 0)
@@ -241,13 +242,15 @@ again:
 		break;
 
 	case UIO_SYSSPACE:
-		*iov->iov_base = c;
+		iov_base = iov->iov_base;
+		*iov_base = c;
+		iov->iov_base = iov_base;
 		break;
 
 	case UIO_NOCOPY:
 		break;
 	}
-	iov->iov_base++;
+	iov->iov_base = (char *)iov->iov_base + 1;
 	iov->iov_len--;
 	uio->uio_resid--;
 	uio->uio_offset++;

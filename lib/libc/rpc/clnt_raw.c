@@ -28,7 +28,8 @@
  *
  * @(#)clnt_raw.c 1.22 87/08/11 Copyr 1984 Sun Micro
  * @(#)clnt_raw.c	2.2 88/08/01 4.0 RPCSRC
- * $FreeBSD: src/lib/libc/rpc/clnt_raw.c,v 1.10 1999/08/28 00:00:36 peter Exp $
+ * $NetBSD: clnt_raw.c,v 1.20 2000/12/10 04:12:03 christos Exp $
+ * $FreeBSD: src/lib/libc/rpc/clnt_raw.c,v 1.20 2006/02/27 22:10:58 deischen Exp $
  * $DragonFly: src/lib/libc/rpc/clnt_raw.c,v 1.4 2005/11/13 12:27:04 swildner Exp $
  */
 
@@ -40,12 +41,20 @@
  * Memory based rpc for simple testing and timing.
  * Interface to create an rpc client and server in the same process.
  * This lets us similate rpc and get round trip overhead, without
- * any interference from the kernal.
+ * any interference from the kernel.
  */
 
-#include <rpc/rpc.h>
-#include <stdlib.h>
+#include "namespace.h"
+#include "reentrant.h"
+#include <assert.h>
+#include <err.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+#include <rpc/rpc.h>
+#include <rpc/raw.h>
+#include "un-namespace.h"
+#include "mt_misc.h"
 
 #define MCALL_MSG_SIZE 24
 
@@ -55,44 +64,45 @@
 static struct clntraw_private {
 	CLIENT	client_object;
 	XDR	xdr_stream;
-	char	_raw_buf[UDPMSGSIZE];
-	char	mashl_callmsg[MCALL_MSG_SIZE];
+	char	*_raw_buf;
+	union {
+	    struct rpc_msg	mashl_rpcmsg;
+	    char 		mashl_callmsg[MCALL_MSG_SIZE];
+	} u;
 	u_int	mcnt;
 } *clntraw_private;
 
-static enum clnt_stat	clntraw_call();
-static void		clntraw_abort();
-static void		clntraw_geterr();
-static bool_t		clntraw_freeres();
-static bool_t		clntraw_control();
-static void		clntraw_destroy();
-
-static struct clnt_ops client_ops = {
-	clntraw_call,
-	clntraw_abort,
-	clntraw_geterr,
-	clntraw_freeres,
-	clntraw_destroy,
-	clntraw_control
-};
-
-void	svc_getreq();
+static void		 clnt_raw_abort(CLIENT *);
+static enum clnt_stat	 clnt_raw_call(CLIENT *, rpcproc_t, xdrproc_t, void *,
+				       xdrproc_t, void *, struct timeval);
+static bool_t		 clnt_raw_control(CLIENT *, u_int, void *);
+static void		 clnt_raw_destroy(CLIENT *);
+static bool_t		 clnt_raw_freeres(CLIENT *, xdrproc_t, void *);
+static void		 clnt_raw_geterr(CLIENT *, struct rpc_err *);
+static struct clnt_ops	*clnt_raw_ops(void);
 
 /*
  * Create a client handle for memory based rpc.
  */
 CLIENT *
-clntraw_create(u_long prog, u_long vers)
+clnt_raw_create(rpcprog_t prog, rpcvers_t vers)
 {
 	struct clntraw_private *clp = clntraw_private;
 	struct rpc_msg call_msg;
 	XDR *xdrs = &clp->xdr_stream;
 	CLIENT	*client = &clp->client_object;
 
-	if (clp == 0) {
+	mutex_lock(&clntraw_lock);
+	if (clp == NULL) {
 		clp = (struct clntraw_private *)calloc(1, sizeof (*clp));
-		if (clp == 0)
-			return (0);
+		if (clp == NULL) {
+			mutex_unlock(&clntraw_lock);
+			return NULL;
+		}
+		if (__rpc_rawcombuf == NULL)
+			__rpc_rawcombuf =
+			    (char *)calloc(UDPMSGSIZE, sizeof (char));
+		clp->_raw_buf = __rpc_rawcombuf;
 		clntraw_private = clp;
 	}
 	/*
@@ -100,12 +110,12 @@ clntraw_create(u_long prog, u_long vers)
 	 */
 	call_msg.rm_direction = CALL;
 	call_msg.rm_call.cb_rpcvers = RPC_MSG_VERSION;
-	call_msg.rm_call.cb_prog = prog;
-	call_msg.rm_call.cb_vers = vers;
-	xdrmem_create(xdrs, clp->mashl_callmsg, MCALL_MSG_SIZE, XDR_ENCODE);
-	if (! xdr_callhdr(xdrs, &call_msg)) {
-		perror("clnt_raw.c - Fatal header serialization error.");
-	}
+	/* XXX: prog and vers have been long historically :-( */
+	call_msg.rm_call.cb_prog = (u_int32_t)prog;
+	call_msg.rm_call.cb_vers = (u_int32_t)vers;
+	xdrmem_create(xdrs, clp->u.mashl_callmsg, MCALL_MSG_SIZE, XDR_ENCODE);
+	if (! xdr_callhdr(xdrs, &call_msg))
+		warnx("clntraw_create - Fatal header serialization error.");
 	clp->mcnt = XDR_GETPOS(xdrs);
 	XDR_DESTROY(xdrs);
 
@@ -117,14 +127,16 @@ clntraw_create(u_long prog, u_long vers)
 	/*
 	 * create client handle
 	 */
-	client->cl_ops = &client_ops;
+	client->cl_ops = clnt_raw_ops();
 	client->cl_auth = authnone_create();
+	mutex_unlock(&clntraw_lock);
 	return (client);
 }
 
+/* ARGSUSED */
 static enum clnt_stat
-clntraw_call(CLIENT *h, u_long proc, xdrproc_t xargs, caddr_t argsp,
-	     xdrproc_t xresults, caddr_t resultsp, struct timeval timeout)
+clnt_raw_call(CLIENT *h, rpcproc_t proc, xdrproc_t xargs, void *argsp,
+	      xdrproc_t xresults, void *resultsp, struct timeval timeout)
 {
 	struct clntraw_private *clp = clntraw_private;
 	XDR *xdrs = &clp->xdr_stream;
@@ -132,17 +144,24 @@ clntraw_call(CLIENT *h, u_long proc, xdrproc_t xargs, caddr_t argsp,
 	enum clnt_stat status;
 	struct rpc_err error;
 
-	if (clp == 0)
+	assert(h != NULL);
+
+	mutex_lock(&clntraw_lock);
+	if (clp == NULL) {
+		mutex_unlock(&clntraw_lock);
 		return (RPC_FAILED);
+	}
+	mutex_unlock(&clntraw_lock);
+
 call_again:
 	/*
 	 * send request
 	 */
 	xdrs->x_op = XDR_ENCODE;
 	XDR_SETPOS(xdrs, 0);
-	((struct rpc_msg *)clp->mashl_callmsg)->rm_xid ++ ;
-	if ((! XDR_PUTBYTES(xdrs, clp->mashl_callmsg, clp->mcnt)) ||
-	    (! XDR_PUTLONG(xdrs, (long *)&proc)) ||
+	clp->u.mashl_rpcmsg.rm_xid ++ ;
+	if ((! XDR_PUTBYTES(xdrs, clp->u.mashl_callmsg, clp->mcnt)) ||
+	    (! XDR_PUTINT32(xdrs, &proc)) ||
 	    (! AUTH_MARSHALL(h->cl_auth, xdrs)) ||
 	    (! (*xargs)(xdrs, argsp))) {
 		return (RPC_CANTENCODEARGS);
@@ -153,7 +172,7 @@ call_again:
 	 * We have to call server input routine here because this is
 	 * all going on in one process. Yuk.
 	 */
-	svc_getreq(1);
+	svc_getreq_common(FD_SETSIZE);
 
 	/*
 	 * get results
@@ -163,8 +182,23 @@ call_again:
 	msg.acpted_rply.ar_verf = _null_auth;
 	msg.acpted_rply.ar_results.where = resultsp;
 	msg.acpted_rply.ar_results.proc = xresults;
-	if (! xdr_replymsg(xdrs, &msg))
+	if (! xdr_replymsg(xdrs, &msg)) {
+		/*
+		 * It's possible for xdr_replymsg() to fail partway
+		 * through its attempt to decode the result from the
+		 * server. If this happens, it will leave the reply
+		 * structure partially populated with dynamically
+		 * allocated memory. (This can happen if someone uses
+		 * clntudp_bufcreate() to create a CLIENT handle and
+		 * specifies a receive buffer size that is too small.)
+		 * This memory must be free()ed to avoid a leak.
+		 */
+		int op = xdrs->x_op;
+		xdrs->x_op = XDR_FREE;
+		xdr_replymsg(xdrs, &msg);
+		xdrs->x_op = op;
 		return (RPC_CANTDECODERES);
+	}
 	_seterr_reply(&msg, &error);
 	status = error.re_status;
 
@@ -174,7 +208,7 @@ call_again:
 		}
 	}  /* end successful completion */
 	else {
-		if (AUTH_REFRESH(h->cl_auth))
+		if (AUTH_REFRESH(h->cl_auth, &msg))
 			goto call_again;
 	}  /* end of unsuccessful completion */
 
@@ -191,40 +225,67 @@ call_again:
 	return (status);
 }
 
+/*ARGSUSED*/
 static void
-clntraw_geterr(void)
+clnt_raw_geterr(CLIENT *cl, struct rpc_err *err)
 {
 }
 
 
+/* ARGSUSED */
 static bool_t
-clntraw_freeres(CLIENT *cl, xdrproc_t xdr_res, caddr_t res_ptr)
+clnt_raw_freeres(CLIENT *cl, xdrproc_t xdr_res, void *res_ptr)
 {
 	struct clntraw_private *clp = clntraw_private;
 	XDR *xdrs = &clp->xdr_stream;
 	bool_t rval;
 
-	if (clp == 0)
-	{
+	mutex_lock(&clntraw_lock);
+	if (clp == NULL) {
 		rval = (bool_t) RPC_FAILED;
+		mutex_unlock(&clntraw_lock);
 		return (rval);
 	}
+	mutex_unlock(&clntraw_lock);
 	xdrs->x_op = XDR_FREE;
 	return ((*xdr_res)(xdrs, res_ptr));
 }
 
+/*ARGSUSED*/
 static void
-clntraw_abort(void)
+clnt_raw_abort(CLIENT *cl)
 {
 }
 
+/*ARGSUSED*/
 static bool_t
-clntraw_control(void)
+clnt_raw_control(CLIENT *cl, u_int ui, void *str)
 {
 	return (FALSE);
 }
 
+/*ARGSUSED*/
 static void
-clntraw_destroy(void)
+clnt_raw_destroy(CLIENT *cl)
 {
+}
+
+static struct clnt_ops *
+clnt_raw_ops(void)
+{
+	static struct clnt_ops ops;
+
+	/* VARIABLES PROTECTED BY ops_lock: ops */
+
+	mutex_lock(&ops_lock);
+	if (ops.cl_call == NULL) {
+		ops.cl_call = clnt_raw_call;
+		ops.cl_abort = clnt_raw_abort;
+		ops.cl_geterr = clnt_raw_geterr;
+		ops.cl_freeres = clnt_raw_freeres;
+		ops.cl_destroy = clnt_raw_destroy;
+		ops.cl_control = clnt_raw_control;
+	}
+	mutex_unlock(&ops_lock);
+	return (&ops);
 }

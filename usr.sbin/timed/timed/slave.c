@@ -100,7 +100,7 @@ slave(void)
 
 loop:
 	get_goodgroup(0);
-	gettimeofday(&ntime, (struct timezone *)0);
+	gettimeofday(&ntime, NULL);
 	if (ntime.tv_sec > electiontime) {
 		if (trace)
 			fprintf(fd, "election timer expired\n");
@@ -684,6 +684,5 @@ answerdelay(void)
 	timeout.tv_sec = 0;
 	timeout.tv_usec = delay1;
 
-	select(0, (fd_set *)NULL, (fd_set *)NULL, (fd_set *)NULL,
-		&timeout);
+	select(0, NULL, NULL, NULL, &timeout);
 }

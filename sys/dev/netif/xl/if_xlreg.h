@@ -589,8 +589,10 @@ struct xl_softc {
 	struct resource		*xl_res;
 	device_t		xl_miibus;
 	struct xl_type		*xl_info;	/* 3Com adapter info */
-	bus_dma_tag_t		xl_mtag;
-	bus_dmamap_t		xl_tmpmap;      /* spare DMA map */
+	bus_dma_tag_t		xl_parent_tag;
+	bus_dma_tag_t		xl_tx_mtag;
+	bus_dma_tag_t		xl_rx_mtag;
+	bus_dmamap_t		xl_tmpmap;      /* spare RX DMA map */
 	u_int8_t		xl_type;
 	u_int32_t		xl_xcvr;
 	u_int16_t		xl_media;
@@ -727,5 +729,7 @@ struct xl_stats {
 #define XL_PME_STATUS		0x8000
 
 #ifndef IFM_10_FL
-#define IFM_10_FL	13		/* 10baseFL - Fiber */
+#define IFM_10_FL		13		/* 10baseFL - Fiber */
 #endif
+
+#define XL_LIST_ALIGN		8

@@ -215,8 +215,8 @@ rd_ln_nm(ARCHD *arcn)
 	 */
 	if ((arcn->sb.st_size == 0) ||
 	    (arcn->sb.st_size >= sizeof(arcn->ln_name))) {
-		paxwarn(1, "Cpio link name length is invalid: %qu",
-		    arcn->sb.st_size);
+		paxwarn(1, "Cpio link name length is invalid: %jd",
+		    (intmax_t)arcn->sb.st_size);
 		return(-1);
 	}
 

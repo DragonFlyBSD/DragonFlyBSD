@@ -178,11 +178,11 @@ struct inpcb;
 struct route;
 struct sockopt;
 struct lwkt_port;
+struct pktinfo;
 
 extern u_short	ip_id;				/* ip packet ctr, for ids */
 extern int	ip_defttl;			/* default IP ttl */
 extern int	ipforwarding;			/* ip forwarding */
-extern struct route ipforward_rt[];		/* ip forwarding cached route */
 extern u_char	ip_protox[];
 extern struct socket *ip_rsvpd;		/* reservation protocol daemon */
 extern struct socket *ip_mrouter;	/* multicast routing daemon */
@@ -205,6 +205,8 @@ struct lwkt_port *
 	 ip_mport_in(struct mbuf **);
 struct lwkt_port *
 	 ip_mport(struct mbuf **, int);
+struct lwkt_port *
+	 ip_mport_pktinfo(const struct pktinfo *, struct mbuf *);
 boolean_t
 	 ip_lengthcheck(struct mbuf **);
 int	 ip_output(struct mbuf *,

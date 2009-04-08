@@ -83,7 +83,7 @@
 	} while(0)
 
 static void	 display(const FTSENT *, FTSENT *);
-static int	 mastercmp(const FTSENT **, const FTSENT **);
+static int	 mastercmp(const FTSENT * const *, const FTSENT * const *);
 static void	 traverse(int, char **, int);
 
 static void (*printfcn)(const DISPLAY *);
@@ -581,7 +581,7 @@ display(const FTSENT *p, FTSENT *list)
 			strcpy(initmax2, "0");
 
 		ninitmax = sscanf(jinitmax,
-		    " %llu : %lli : %u : %i : %i : %i : %llu : %lu ",
+		    " %ju : %jd : %u : %i : %i : %i : %jd : %lu ",
 		    &maxinode, &maxblock, &maxnlink, &maxuser,
 		    &maxgroup, &maxflags, &maxsize, &maxlen);
 		f_notabs = 1;
@@ -735,7 +735,7 @@ display(const FTSENT *p, FTSENT *list)
 				if (f_fsmid) {
 					np->fsmid = np->data + ulen + glen + flen + 3;
 					snprintf(np->fsmid, fsmidlen + 1,  
-						 "%016llx", fsmid);
+						 "%016jx", (intmax_t)fsmid);
 				}
 #endif
 				cur->fts_pointer = np;
@@ -759,15 +759,15 @@ display(const FTSENT *p, FTSENT *list)
 	if (needstats) {
 		d.bcfile = bcfile;
 		d.btotal = btotal;
-		snprintf(buf, sizeof(buf), "%lli", maxblock);
+		snprintf(buf, sizeof(buf), "%ji", (intmax_t)maxblock);
 		d.s_block = strlen(buf);
 		d.s_flags = maxflags;
 		d.s_group = maxgroup;
-		snprintf(buf, sizeof(buf), "%llu", maxinode);
+		snprintf(buf, sizeof(buf), "%ju", (uintmax_t)maxinode);
 		d.s_inode = strlen(buf);
 		snprintf(buf, sizeof(buf), "%u", maxnlink);
 		d.s_nlink = strlen(buf);
-		snprintf(buf, sizeof(buf), "%llu", maxsize);
+		snprintf(buf, sizeof(buf), "%jd", (intmax_t)maxsize);
 		d.s_size = strlen(buf);
 		d.s_user = maxuser;
 	}
@@ -786,7 +786,7 @@ display(const FTSENT *p, FTSENT *list)
  * All other levels use the sort function.  Error entries remain unsorted.
  */
 static int
-mastercmp(const FTSENT **a, const FTSENT **b)
+mastercmp(const FTSENT * const *a, const FTSENT * const *b)
 {
 	int a_info, b_info;
 

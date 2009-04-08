@@ -42,6 +42,10 @@
 #include <sys/types.h>
 #endif
 
+#ifndef _SYS_FILE_H_
+#include <sys/file.h>
+#endif
+
 /*
  * Definitions for UNIX IPC domain.
  */
@@ -65,6 +69,7 @@ int	uipc_ctloutput (struct socket *so, struct sockopt *sopt);
 int	unp_connect2 (struct socket *so, struct socket *so2);
 void	unp_dispose (struct mbuf *m);
 int	unp_internalize (struct mbuf *rights);
+void	unp_revoke_gc (struct file *fx);
 int	unp_externalize (struct mbuf *rights);
 void	unp_init (void);
 extern	struct pr_usrreqs uipc_usrreqs;

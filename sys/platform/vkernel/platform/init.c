@@ -144,7 +144,9 @@ main(int ac, char **av)
 	int bootOnDisk = -1;	/* set below to vcd (0) or vkd (1) */
 	int c;
 	int i;
+	int j;
 	int n;
+	int isq;
 	int real_vkernel_enable;
 	int supports_sse;
 	size_t vsize;
@@ -179,17 +181,27 @@ main(int ac, char **av)
 		case 'e':
 			/*
 			 * name=value:name=value:name=value...
+			 * name="value"...
+			 *
+			 * Allow values to be quoted but note that shells
+			 * may remove the quotes, so using this feature
+			 * to embed colons may require a backslash.
 			 */
 			n = strlen(optarg);
+			isq = 0;
 			kern_envp = malloc(n + 2);
-			for (i = 0; i < n; ++i) {
-				if (optarg[i] == ':')
-					kern_envp[i] = 0;
+			for (i = j = 0; i < n; ++i) {
+				if (optarg[i] == '"')
+					isq ^= 1;
+				else if (optarg[i] == '\'')
+					isq ^= 2;
+				else if (isq == 0 && optarg[i] == ':')
+					kern_envp[j++] = 0;
 				else
-					kern_envp[i] = optarg[i];
+					kern_envp[j++] = optarg[i];
 			}
-			kern_envp[i++] = 0;
-			kern_envp[i++] = 0;
+			kern_envp[j++] = 0;
+			kern_envp[j++] = 0;
 			break;
 		case 's':
 			boothowto |= RB_SINGLE;

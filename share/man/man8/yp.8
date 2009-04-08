@@ -26,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     from: @(#)yp.8	1.0 (deraadt) 4/26/93
-.\" $FreeBSD: src/share/man/man8/yp.8,v 1.30.2.2 2002/09/30 08:19:41 max Exp $
+.\" $FreeBSD: src/share/man/man8/yp.8,v 1.36 2005/01/21 08:36:40 ru Exp $
 .\" $DragonFly: src/share/man/man8/yp.8,v 1.5 2006/02/17 19:37:10 swildner Exp $
 .\"
 .Dd April 5, 1993
@@ -58,16 +58,8 @@ daemon makes direct
 library calls since there are no
 functions in the standard C library for reading bootparams.
 .Tn NIS
-support for the hosts, services and rpc databases is enabled by
-uncommenting the
-.Dq Li nis
-line in
-.Pa /etc/host.conf .
-.Tn NIS
-support for the remaining services is
-activated by adding a special
-.Ql +
-entry to the appropriate file.
+support is enabled in
+.Xr nsswitch.conf 5 .
 .Pp
 The
 .Nm YP
@@ -214,8 +206,9 @@ to a particular
 server using the
 .Xr ypbind 8
 daemon.
-.Xr Ypbind 8
-checks the system's default domain (as set by the
+The
+.Xr ypbind 8
+utility checks the system's default domain (as set by the
 .Xr domainname 1
 command) and begins broadcasting
 .Tn RPC
@@ -236,8 +229,9 @@ From that point
 on, the client system will direct all of its
 .Tn NIS
 requests to that server.
-.Xr Ypbind 8
-will occasionally
+The
+.Xr ypbind 8
+utility will occasionally
 .Dq ping
 the server to make sure it is still up
 and running.
@@ -253,8 +247,9 @@ master and slave servers handle all
 requests with the
 .Xr ypserv 8
 daemon.
-.Xr Ypserv 8
-is responsible for receiving incoming requests from
+The
+.Xr ypserv 8
+utility is responsible for receiving incoming requests from
 .Tn NIS
 clients,
 translating the requested domain and map name to a path to the
@@ -294,7 +289,7 @@ retrieve the entire contents of a map
 .Pp
 There are a few other requests which
 .Xr ypserv 8
-is capable of handling (i.e. acknowledge whether or not you can handle
+is capable of handling (i.e., acknowledge whether or not you can handle
 a particular domain
 .Pq Dv YPPROC_DOMAIN ,
 or acknowledge only if you can handle the domain and be silent otherwise
@@ -375,7 +370,7 @@ placing a slave server on the local network.
 The
 .Dx
 .Xr ypserv 8
-is specially designed to provided enhanced security
+is specially designed to provide enhanced security
 .Po
 compared to other
 .Tn NIS
@@ -429,7 +424,7 @@ wrapper support enabled, the administrator can configure
 to respond only to selected client machines.
 .Pp
 While these enhancements provide better security than stock
-.Tn NIS Ns ,
+.Tn NIS ,
 they are by no means 100% effective.
 It is still possible for
 someone with access to your network to spoof the server into disclosing

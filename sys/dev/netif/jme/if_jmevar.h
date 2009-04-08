@@ -60,11 +60,17 @@
  */
 #define	JME_TX_RING_ALIGN	16
 #define	JME_RX_RING_ALIGN	16
-#define	JME_TSO_MAXSEGSIZE	4096
+#define	JME_MAXSEGSIZE		4096
 #define	JME_TSO_MAXSIZE		(65535 + sizeof(struct ether_vlan_header))
 #define	JME_MAXTXSEGS		32
 #define	JME_RX_BUF_ALIGN	sizeof(uint64_t)
 #define	JME_SSB_ALIGN		16
+
+#if (BUS_SPACE_MAXADDR != BUS_SPACE_MAXADDR_32BIT)
+#define JME_RING_BOUNDARY	0x100000000ULL
+#else
+#define JME_RING_BOUNDARY	0
+#endif
 
 #define	JME_ADDR_LO(x)		((uint64_t) (x) & 0xFFFFFFFF)
 #define	JME_ADDR_HI(x)		((uint64_t) (x) >> 32)
@@ -178,11 +184,6 @@ struct jme_chain_data {
     (sizeof(struct jme_desc) * (sc)->jme_rx_desc_cnt)
 #define	JME_SSB_SIZE		sizeof(struct jme_ssb)
 
-struct jme_dmamap_ctx {
-	int			nsegs;
-	bus_dma_segment_t	*segs;
-};
-
 /*
  * Software state per device.
  */
@@ -214,7 +215,6 @@ struct jme_softc {
 #define	JME_CAP_PMCAP		0x0004
 #define	JME_CAP_FASTETH		0x0008
 #define	JME_CAP_JUMBO		0x0010
-#define JME_CAP_RSS		0x0020
 
 	uint32_t		jme_workaround;
 #define JME_WA_EXTFIFO		0x0001
@@ -225,7 +225,6 @@ struct jme_softc {
 #define	JME_FLAG_MSIX		0x0002
 #define	JME_FLAG_DETACH		0x0004
 #define	JME_FLAG_LINK		0x0008
-#define JME_FLAG_RSS		0x0010
 
 	struct callout		jme_tick_ch;
 	struct jme_chain_data	jme_cdata;

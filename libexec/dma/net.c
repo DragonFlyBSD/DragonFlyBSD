@@ -285,20 +285,8 @@ open_connection(struct qitem *it, const char *host)
 	return (fd);
 }
 
-static void
-copy_qitem(struct qitem *target, struct qitem *it) {
-	target->sender = it->sender;
-	target->addr = it->addr;
-	target->pipeuser = it->pipeuser;
-	target->queuefn = it->queuefn;
-	target->queueid = it->queueid;
-	target->queuef = it->queuef;
-	target->hdrlen = it->hdrlen;
-	target->local = 0;
-}
-
 int
-deliver_remote(struct qitem *it, const char **errmsg, struct queue **queue)
+deliver_remote(struct qitem *it, const char **errmsg)
 {
 	struct authuser *a;
 	char *host, line[1000];
@@ -315,14 +303,14 @@ deliver_remote(struct qitem *it, const char **errmsg, struct queue **queue)
 
 	/* Smarthost support? */
 	if (config->smarthost != NULL && strlen(config->smarthost) > 0) {
-		syslog(LOG_INFO, "%s: using smarthost (%s)",
-		       it->queueid, config->smarthost);
+		syslog(LOG_INFO, "%s: using smarthost (%s:%i)",
+		       it->queueid, config->smarthost, config->port);
 		host = config->smarthost;
 	}
 
 	fd = open_connection(it, host);
 	if (fd < 0)
-		return(1);
+		return (1);
 
 	/* Check first reply from remote host */
 	config->features |= NOSSL;
@@ -389,7 +377,7 @@ deliver_remote(struct qitem *it, const char **errmsg, struct queue **queue)
 		if (error < 0) {
 			syslog(LOG_ERR, "%s: remote delivery failed:"
 					" SMTP login failed: %m", it->queueid);
-			return(-1);
+			return (-1);
 		}
 		/* SMTP login is not available, so try without */
 		else if (error > 0)
@@ -401,75 +389,15 @@ deliver_remote(struct qitem *it, const char **errmsg, struct queue **queue)
 	if (read_remote(fd, 0, NULL) != 2) {
 		syslog(LOG_ERR, "%s: remote delivery deferred:"
 		       " MAIL FROM failed: %m", it->queueid);
-		return(1);
+		return (1);
 	}
 
-	if (queue == NULL) {
-	/* without given queue send only to one receipient */
-		send_remote_command(fd, "RCPT TO:<%s>", it->addr);
-		if (read_remote(fd, 0, NULL) != 2) {
-			syslog(LOG_ERR, "%s: remote delivery deferred:"
-					" RCPT TO failed: %m", it->queueid);
-			return(1);
-		}
-	} else {
-	/* Iterate over all recepients and open only one connection */
-/*
- * we need 3 queues:
- * 	-delivered addresses
- *	-temporary errors
- *	-permanent errors
- * these 3 queues are given in **queues (+the first queue with all the qitems to send)
- *
- */
-
-		struct qitem *tit;
-		int rcpt_success = 0;
-		struct stat st;
-		LIST_FOREACH(tit, &queue[0]->queue, next) {
-			struct qitem *qit;
-			qit = calloc(1, sizeof(struct qitem));
-			copy_qitem(qit, tit);
-
-			if (stat(tit->queuefn, &st) != 0) {
-				syslog(LOG_ERR, "%s: lost queue file `%s'",
-						tit->queueid, tit->queuefn);
-				/* drop qitem and mark it as successfully sent */
-				LIST_INSERT_HEAD(&queue[1]->queue, qit, next);
-				continue;
-			}
-
-			send_remote_command(fd, "RCPT TO:<%s>", tit->addr);
-			switch (read_remote(fd, 0, NULL)) {
-			case 2: /* everythings fine, receipient accepted */
-				/* add item to temporary queue, these items will be deleted in deliver_smarthost */
-				rcpt_success = 1;
-				LIST_INSERT_HEAD(&queue[1]->queue, qit, next);
-				syslog(LOG_INFO, "%s: mail from=<%s> to=<%s>",
-						tit->queueid, tit->sender, tit->addr);
-				break;
-			case 4: /* temporary error, try again later */
-				/* add item to a temporary queue, these items will be tried again */
-				LIST_INSERT_HEAD(&queue[2]->queue, qit, next);
-				syslog(LOG_INFO, "%s: mail from=<%s> to=<%s>",
-						tit->queueid, tit->sender, tit->addr);
-				syslog(LOG_ERR, "%s: remote delivery deferred:"
-						" RCPT TO failed: %m", tit->queueid);
-				break;
-			case 5: /* permanent error, bounce */
-				/* add item to a queue, which will be returned to deliver_smarthost */
-				LIST_INSERT_HEAD(&queue[3]->queue, qit, next);
-				syslog(LOG_INFO, "%s: mail from=<%s> to=<%s>",
-						tit->queueid, tit->sender, tit->addr);
-				syslog(LOG_ERR, "%s: remote delivery failed:"
-						" RCPT TO failed: %m", tit->queueid);
-				break;
-			}
-		}
-		/* if there was no successful RCPT TO, return _WITHOUT_ error */
-		if (!rcpt_success)
-			goto out;
-	} 
+	send_remote_command(fd, "RCPT TO:<%s>", it->addr);
+	if (read_remote(fd, 0, NULL) != 2) {
+		syslog(LOG_ERR, "%s: remote delivery deferred:"
+				" RCPT TO failed: %m", it->queueid);
+		return (1);
+	}
 
 	send_remote_command(fd, "DATA");
 	if (read_remote(fd, 0, NULL) != 3) {

@@ -47,7 +47,7 @@ char	*dosmem;
 /* locals */
 static int	dosmem_size;
 
-static char	*next_p = (char *)0;
+static char	*next_p = NULL;
 static char	*end_p  = (char *)0xB0000L;
 
 static char *

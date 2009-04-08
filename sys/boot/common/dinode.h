@@ -71,6 +71,7 @@ typedef	int32_t	ufs1_daddr_t;
 typedef	int64_t	ufs2_daddr_t;
 typedef int64_t ufs_lbn_t;
 typedef int64_t ufs_time_t;
+typedef uint32_t ufs_ino_t;
 
 /* File permissions. */
 #define	IEXEC		0000100		/* Executable. */

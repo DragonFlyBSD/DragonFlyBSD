@@ -49,7 +49,7 @@
 #define RE_RING_ALIGN		256
 #define RE_IFQ_MAXLEN		512
 #define RE_MAXSEGS		16
-#define RE_TXDESC_SPARE		4
+#define RE_TXDESC_SPARE		5
 #define RE_JBUF_COUNT(sc)	(((sc)->re_rx_desc_cnt * 3) / 2)
 
 #define RE_RXDESC_INC(sc, x)	(x = (x + 1) % (sc)->re_rx_desc_cnt)
@@ -71,8 +71,8 @@
 #define RE_FRAMELEN_9K		RE_FRAMELEN(RE_MTU_9K)
 #define RE_FRAMELEN_MAX		RE_FRAMELEN_9K
 
-#define RE_BUF_ALIGN		8
-#define RE_JBUF_SIZE		roundup2(RE_FRAMELEN_MAX, RE_BUF_ALIGN)
+#define RE_RXBUF_ALIGN		8
+#define RE_JBUF_SIZE		roundup2(RE_FRAMELEN_MAX, RE_RXBUF_ALIGN)
 
 #define	RE_TIMEOUT		1000
 
@@ -106,11 +106,6 @@ struct re_hwrev {
 #define RE_MACVER_2A		0x2a
 #define RE_MACVER_2B		0x2b
 
-struct re_dmaload_arg {
-	int			re_nsegs;
-	bus_dma_segment_t	*re_segs;
-};
-
 struct re_softc;
 struct re_jbuf {
 	struct re_softc 	*re_sc;
@@ -132,7 +127,8 @@ struct re_list_data {
 	bus_dmamap_t		*re_tx_dmamap;
 	bus_dmamap_t		*re_rx_dmamap;
 	bus_dmamap_t		re_rx_spare;
-	bus_dma_tag_t		re_mtag;	/* mbuf mapping tag */
+	bus_dma_tag_t		re_rx_mtag;	/* RX mbuf mapping tag */
+	bus_dma_tag_t		re_tx_mtag;	/* TX mbuf mapping tag */
 	bus_dma_tag_t		re_stag;	/* stats mapping tag */
 	bus_dmamap_t		re_smap;	/* stats map */
 	struct re_stats		*re_stats;

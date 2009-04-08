@@ -1,65 +1,60 @@
-/**************************************************************************
+/*
+ * Copyright (c) 2001-2008, Intel Corporation
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *  1. Redistributions of source code must retain the above copyright notice,
+ *     this list of conditions and the following disclaimer.
+ *
+ *  2. Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
+ *     documentation and/or other materials provided with the distribution.
+ *
+ *  3. Neither the name of the Intel Corporation nor the names of its
+ *     contributors may be used to endorse or promote products derived from
+ *     this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 
-Copyright (c) 2001-2006, Intel Corporation
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
- 1. Redistributions of source code must retain the above copyright notice,
-    this list of conditions and the following disclaimer.
-
- 2. Redistributions in binary form must reproduce the above copyright
-    notice, this list of conditions and the following disclaimer in the
-    documentation and/or other materials provided with the distribution.
-
- 3. Neither the name of the Intel Corporation nor the names of its
-    contributors may be used to endorse or promote products derived from
-    this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-POSSIBILITY OF SUCH DAMAGE.
-
-***************************************************************************/
-
-/*$FreeBSD: src/sys/dev/em/if_em.h,v 1.1.2.13 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.20 2008/07/22 12:08:41 sephe Exp $*/
-
-#ifndef _EM_H_DEFINED_
-#define _EM_H_DEFINED_
+#ifndef _IF_EM_H_
+#define _IF_EM_H_
 
 /* Tunables */
 
 /*
  * EM_TXD: Maximum number of Transmit Descriptors
- * Valid Range: 80-256 for 82542 and 82543-based adapters
- *              80-4096 for others
+ * Valid Range: 256 for 82542 and 82543-based adapters
+ *              256-4096 for others
  * Default Value: 256
  *   This value is the number of transmit descriptors allocated by the driver.
  *   Increasing this value allows the driver to queue more transmits. Each
  *   descriptor is 16 bytes.
  *   Since TDLEN should be multiple of 128bytes, the number of transmit
  *   desscriptors should meet the following condition.
- *      (num_tx_desc * sizeof(struct em_tx_desc)) % 128 == 0
+ *      (num_tx_desc * sizeof(struct e1000_tx_desc)) % 128 == 0
  */
-#define EM_MIN_TXD		80
-#define EM_MAX_TXD_82543	256
-#define EM_MAX_TXD		4096
-#define EM_DEFAULT_TXD		EM_MAX_TXD_82543
+#define EM_MIN_TXD			256
+#define EM_MAX_TXD_82543		EM_MIN_TXD
+#define EM_MAX_TXD			4096
+#define EM_DEFAULT_TXD			EM_MIN_TXD
 
 /*
  * EM_RXD - Maximum number of receive Descriptors
- * Valid Range: 80-256 for 82542 and 82543-based adapters
- *              80-4096 for others
+ * Valid Range: 256 for 82542 and 82543-based adapters
+ *              256-4096 for others
  * Default Value: 256
  *   This value is the number of receive descriptors allocated by the driver.
  *   Increasing this value allows the driver to buffer more incoming packets.
@@ -67,12 +62,12 @@ POSSIBILITY OF SUCH DAMAGE.
  *   descriptor. The maximum MTU size is 16110.
  *   Since TDLEN should be multiple of 128bytes, the number of transmit
  *   desscriptors should meet the following condition.
- *      (num_tx_desc * sizeof(struct em_tx_desc)) % 128 == 0
+ *      (num_tx_desc * sizeof(struct e1000_tx_desc)) % 128 == 0
  */
-#define EM_MIN_RXD		80
-#define EM_MAX_RXD_82543	256
-#define EM_MAX_RXD		4096
-#define EM_DEFAULT_RXD		EM_MAX_RXD_82543
+#define EM_MIN_RXD			256
+#define EM_MAX_RXD_82543		EM_MIN_RXD
+#define EM_MAX_RXD			4096
+#define EM_DEFAULT_RXD			EM_MIN_RXD
 
 /*
  * EM_TIDV - Transmit Interrupt Delay Value
@@ -83,8 +78,13 @@ POSSIBILITY OF SUCH DAMAGE.
  *   efficiency if properly tuned for specific network traffic. If the
  *   system is reporting dropped transmits, this value may be set too high
  *   causing the driver to run out of available transmit descriptors.
+ *
+ * NOTE:
+ * It is not used.  In DragonFly the TX interrupt moderation is done by
+ * conditionally setting RS bit in TX descriptors.  See the description
+ * in struct adapter.
  */
-#define EM_TIDV                         64
+#define EM_TIDV				64
 
 /*
  * EM_TADV - Transmit Absolute Interrupt Delay Value
@@ -97,65 +97,54 @@ POSSIBILITY OF SUCH DAMAGE.
  *   packet is sent on the wire within the set amount of time.  Proper tuning,
  *   along with EM_TIDV, may improve traffic throughput in specific
  *   network conditions.
+ *
+ * NOTE:
+ * It is not used.  In DragonFly the TX interrupt moderation is done by
+ * conditionally setting RS bit in TX descriptors.  See the description
+ * in struct adapter.
  */
-#define EM_TADV                         64
+#define EM_TADV				64
 
 /*
- * EM_RDTR - Receive Interrupt Delay Timer (Packet Timer)
- * Valid Range: 0-65535 (0=off)
- * Default Value: 0
- *   This value delays the generation of receive interrupts in units of 1.024
- *   microseconds.  Receive interrupt reduction can improve CPU efficiency if
- *   properly tuned for specific network traffic. Increasing this value adds
- *   extra latency to frame reception and can end up decreasing the throughput
- *   of TCP traffic. If the system is reporting dropped receives, this value
- *   may be set too high, causing the driver to run out of available receive
- *   descriptors.
+ * Receive Interrupt Delay Timer (Packet Timer)
  *
- *   CAUTION: When setting EM_RDTR to a value other than 0, adapters
- *            may hang (stop transmitting) under certain network conditions.
- *            If this occurs a WATCHDOG message is logged in the system
- *            event log. In addition, the controller is automatically reset,
- *            restoring the network connection. To eliminate the potential
- *            for the hang ensure that EM_RDTR is set to 0.
+ * NOTE:
+ * RDTR and RADV are deprecated; use ITR instead.  They are only used to
+ * workaround hardware bug on certain 82573 based NICs.
  */
-#define EM_RDTR                         0
+#define EM_RDTR_82573			32
 
 /*
  * Receive Interrupt Absolute Delay Timer (Not valid for 82542/82543/82544)
- * Valid Range: 0-65535 (0=off)
- * Default Value: 64
- *   This value, in units of 1.024 microseconds, limits the delay in which a
- *   receive interrupt is generated. Useful only if EM_RDTR is non-zero,
- *   this value ensures that an interrupt is generated after the initial
- *   packet is received within the set amount of time.  Proper tuning,
- *   along with EM_RDTR, may improve traffic throughput in specific network
- *   conditions.
+ *
+ * NOTE:
+ * RDTR and RADV are deprecated; use ITR instead.  They are only used to
+ * workaround hardware bug on certain 82573 based NICs.
  */
-#define EM_RADV                         64
-
-/*
- * Inform the stack about transmit checksum offload capabilities.
- */
-#define EM_CHECKSUM_FEATURES            (CSUM_TCP | CSUM_UDP)
+#define EM_RADV_82573			64
 
 /*
  * This parameter controls the duration of transmit watchdog timer.
  */
-#define EM_TX_TIMEOUT                   5    /* set to 5 seconds */
+#define EM_TX_TIMEOUT			5
 
-/*
- * This parameter controls when the driver calls the routine to reclaim
- * transmit descriptors.
- */
-#define EM_TX_CLEANUP_THRESHOLD		(adapter->num_tx_desc / 8)
+/* One for TX csum offloading desc, the other is reserved */
+#define EM_TX_RESERVED			2
+
+/* Large enough for 16K jumbo frame */
+#define EM_TX_SPARE			8
+
+#define EM_TX_OACTIVE_MAX		64
+
+/* Interrupt throttle rate */
+#define EM_DEFAULT_ITR			10000
 
 /*
  * This parameter controls whether or not autonegotation is enabled.
  *              0 - Disable autonegotiation
  *              1 - Enable  autonegotiation
  */
-#define DO_AUTO_NEG                     1
+#define DO_AUTO_NEG			1
 
 /*
  * This parameter control whether or not the driver will wait for
@@ -163,38 +152,39 @@ POSSIBILITY OF SUCH DAMAGE.
  *              1 - Wait for autonegotiation to complete
  *              0 - Don't wait for autonegotiation to complete
  */
-#define WAIT_FOR_AUTO_NEG_DEFAULT       0
-
-/*
- * EM_MASTER_SLAVE is only defined to enable a workaround for a known
- * compatibility issue with 82541/82547 devices and some switches.
- * See the "Known Limitations" section of the README file for a complete
- * description and a list of affected switches.
- *     
- *              0 = Hardware default
- *              1 = Master mode
- *              2 = Slave mode
- *              3 = Auto master/slave
- */
-/* #define EM_MASTER_SLAVE	2 */
+#define WAIT_FOR_AUTO_NEG_DEFAULT	0
 
 /* Tunables -- End */
 
-#define AUTONEG_ADV_DEFAULT             (ADVERTISE_10_HALF | ADVERTISE_10_FULL | \
-                                         ADVERTISE_100_HALF | ADVERTISE_100_FULL | \
-                                         ADVERTISE_1000_FULL)
+#define AUTONEG_ADV_DEFAULT		(ADVERTISE_10_HALF | \
+					 ADVERTISE_10_FULL | \
+					 ADVERTISE_100_HALF | \
+					 ADVERTISE_100_FULL | \
+					 ADVERTISE_1000_FULL)
 
-#define EM_VENDOR_ID                    0x8086
-#define EM_FLASH                        0x0014 /* Flash memory on ICH8 */
+#define AUTO_ALL_MODES			0
 
-#define EM_JUMBO_PBA                    0x00000028
-#define EM_DEFAULT_PBA                  0x00000030
-#define EM_SMARTSPEED_DOWNSHIFT         3
-#define EM_SMARTSPEED_MAX               15
+/* PHY master/slave setting */
+#define EM_MASTER_SLAVE			e1000_ms_hw_default
 
-#define MAX_NUM_MULTICAST_ADDRESSES     128
-#define PCI_ANY_ID                      (~0U)
+/*
+ * Micellaneous constants
+ */
+#define EM_VENDOR_ID			0x8086
 
+#define EM_BAR_MEM			PCIR_BAR(0)
+#define EM_BAR_FLASH			PCIR_BAR(1)
+
+#define EM_JUMBO_PBA			0x00000028
+#define EM_DEFAULT_PBA			0x00000030
+#define EM_SMARTSPEED_DOWNSHIFT		3
+#define EM_SMARTSPEED_MAX		15
+#define EM_MAX_INTR			10
+
+#define MAX_NUM_MULTICAST_ADDRESSES	128
+#define PCI_ANY_ID			(~0U)
+#define EM_FC_PAUSE_TIME		1000
+#define EM_EEPROM_APME			0x400;
 
 /*
  * TDBA/RDBA should be aligned on 16 byte boundary. But TDLEN/RDLEN should be
@@ -203,7 +193,7 @@ POSSIBILITY OF SUCH DAMAGE.
  */
 #define EM_DBA_ALIGN			128
 
-#define SPEED_MODE_BIT			(1 << 21)	/* On PCI-E MACs only */
+#define SPEED_MODE_BIT			(1 << 21) /* On PCI-E MACs only */
 
 /* PCI Config defines */
 #define EM_BAR_TYPE(v)			((v) & EM_BAR_TYPE_MASK)
@@ -215,64 +205,32 @@ POSSIBILITY OF SUCH DAMAGE.
 #define EM_BAR_MEM_TYPE_32BIT		0x00000000
 #define EM_BAR_MEM_TYPE_64BIT		0x00000004
 
+#define EM_MAX_SCATTER			64
+#define EM_TSO_SIZE			(65535 + \
+					 sizeof(struct ether_vlan_header))
+#define EM_MAX_SEGSIZE			4096
+#define EM_MSIX_MASK			0x01F00000 /* For 82574 use */
+#define ETH_ZLEN			60
+
+#define EM_CSUM_FEATURES		(CSUM_IP | CSUM_TCP | CSUM_UDP)
+#define EM_IPVHL_SIZE			1 /* sizeof(ip.ip_vhl) */
+#define EM_TXCSUM_MINHL			(ETHER_HDR_LEN + EVL_ENCAPLEN + \
+					 EM_IPVHL_SIZE)
+
 /*
- * Community introduced backward
- * compatibility issue.
+ * 82574 has a nonstandard address for EIAC
+ * and since its only used in MSIX, and in
+ * the em driver only 82574 uses MSIX we can
+ * solve it just using this define.
  */
-#if !defined(PCIR_CIS)
-#define PCIR_CIS	PCIR_CARDBUSCIS
-#endif
+#define EM_EIAC				0x000DC
 
-/* Defines for printing debug information */
-#define DEBUG_INIT  0
-#define DEBUG_IOCTL 0
-#define DEBUG_HW    0
-
-#define INIT_DEBUGOUT(S)            if (DEBUG_INIT)  kprintf(S "\n")
-#define INIT_DEBUGOUT1(S, A)        if (DEBUG_INIT)  kprintf(S "\n", A)
-#define INIT_DEBUGOUT2(S, A, B)     if (DEBUG_INIT)  kprintf(S "\n", A, B)
-#define IOCTL_DEBUGOUT(S)           if (DEBUG_IOCTL) kprintf(S "\n")
-#define IOCTL_DEBUGOUT1(S, A)       if (DEBUG_IOCTL) kprintf(S "\n", A)
-#define IOCTL_DEBUGOUT2(S, A, B)    if (DEBUG_IOCTL) kprintf(S "\n", A, B)
-#define HW_DEBUGOUT(S)              if (DEBUG_HW) kprintf(S "\n")
-#define HW_DEBUGOUT1(S, A)          if (DEBUG_HW) kprintf(S "\n", A)
-#define HW_DEBUGOUT2(S, A, B)       if (DEBUG_HW) kprintf(S "\n", A, B)
-
-
-/* Supported RX Buffer Sizes */
-#define EM_RXBUFFER_2048        2048
-#define EM_RXBUFFER_4096        4096
-#define EM_RXBUFFER_8192        8192
-#define EM_RXBUFFER_16384      16384
-
-#define	EM_MAX_SCATTER		64
-
-/* ******************************************************************************
- * vendor_info_array
- *
- * This array contains the list of Subvendor/Subdevice IDs on which the driver
- * should load.
- *
- * ******************************************************************************/
-typedef struct _em_vendor_info_t {
-	unsigned int vendor_id;
-	unsigned int device_id;
-	unsigned int subvendor_id;
-	unsigned int subdevice_id;
-	unsigned int index;
-} em_vendor_info_t;
-
-
-struct em_buffer {
-	int			next_eop;	/* Index of the desc to watch */
-	struct mbuf		*m_head;
-	bus_dmamap_t		map;		/* bus_dma map for packet */
-};
-
-struct em_q {
-	int			nsegs;		/* # of segments/descriptors */
-	bus_dma_segment_t	segs[EM_MAX_SCATTER];
-};
+/* Used in for 82547 10Mb Half workaround */
+#define EM_PBA_BYTES_SHIFT		0xA
+#define EM_TX_HEAD_ADDR_SHIFT		7
+#define EM_PBA_TX_MASK			0xFFFF0000
+#define EM_FIFO_HDR			0x10
+#define EM_82547_PKT_THRESH		0x3e0
 
 /*
  * Bus dma allocation structure used by
@@ -280,70 +238,51 @@ struct em_q {
  */
 struct em_dma_alloc {
 	bus_addr_t		dma_paddr;
-	caddr_t			dma_vaddr;
+	void			*dma_vaddr;
 	bus_dma_tag_t		dma_tag;
 	bus_dmamap_t		dma_map;
-	bus_dma_segment_t	dma_seg;
-	int			dma_nseg;
 };
-
-typedef enum _XSUM_CONTEXT_T {
-	OFFLOAD_NONE,
-	OFFLOAD_TCP_IP,
-	OFFLOAD_UDP_IP
-} XSUM_CONTEXT_T;
-
-struct adapter;
-struct em_int_delay_info {
-	struct adapter *adapter;	/* Back-pointer to the adapter struct */
-	int offset;			/* Register offset to read/write */
-	int value;			/* Current value in usecs */
-};
-
-/* For 82544 PCIX  Workaround */
-typedef struct _ADDRESS_LENGTH_PAIR
-{
-	uint64_t   address;
-	uint32_t   length;
-} ADDRESS_LENGTH_PAIR, *PADDRESS_LENGTH_PAIR;
-
-typedef struct _DESCRIPTOR_PAIR
-{
-	ADDRESS_LENGTH_PAIR descriptor[4];
-	uint32_t   elements;
-} DESC_ARRAY, *PDESC_ARRAY;
 
 /* Our adapter structure */
 struct adapter {
-	struct arpcom   interface_data;
-	struct em_hw	hw;
+	struct arpcom		arpcom;
+	struct e1000_hw		hw;
 
-	/* Operating-system-specific structures */
-	struct em_osdep osdep;
-	struct device	*dev;
-	struct resource	*res_memory;
-	struct resource	*flash_mem;
-	struct resource	*res_ioport;
-	struct resource	*res_interrupt;
-	void		*int_handler_tag;
-	struct ifmedia	media;
-	struct callout	timer;
-	struct callout	tx_fifo_timer;
-	int		if_flags;
-	int		io_rid;
+	/* DragonFly operating-system-specific structures. */
+	struct e1000_osdep	osdep;
+	device_t		dev;
+
+	bus_dma_tag_t		parent_dtag;
+
+	struct resource		*memory;
+	int			memory_rid;
+	struct resource		*flash;
+	int			flash_rid;
+
+	struct resource		*ioport;
+	int			io_rid;
+
+	struct resource		*intr_res;
+	void			*intr_tag;
+	int			intr_rid;
+
+	struct ifmedia		media;
+	struct callout		timer;
+	struct callout		tx_fifo_timer;
+	int			if_flags;
+	int			max_frame_size;
+	int			min_frame_size;
+
+	/* Management and WOL features */
+	int			wol;
+	int			has_manage;
 
 	/* Info about the board itself */
-	uint32_t	part_num;
-	uint8_t		link_active;
-	uint16_t	link_speed;
-	uint16_t	link_duplex;
-	uint32_t	smartspeed;
-	struct em_int_delay_info tx_int_delay;
-	struct em_int_delay_info tx_abs_int_delay;
-	struct em_int_delay_info rx_int_delay;
-	struct em_int_delay_info rx_abs_int_delay;
-
-	XSUM_CONTEXT_T  active_checksum_context;
+	uint8_t			link_active;
+	uint16_t		link_speed;
+	uint16_t		link_duplex;
+	uint32_t		smartspeed;
+	int			int_throttle_ceil;
 
 	/*
 	 * Transmit definitions
@@ -355,16 +294,62 @@ struct adapter {
 	 * The number of remaining tx_desc is num_tx_desc_avail.
 	 */
 	struct em_dma_alloc	txdma;		/* bus_dma glue for tx desc */
-	struct em_tx_desc	*tx_desc_base;
+	struct e1000_tx_desc	*tx_desc_base;
+	struct em_buffer	*tx_buffer_area;
 	uint32_t		next_avail_tx_desc;
 	uint32_t		next_tx_to_clean;
-	volatile uint16_t	num_tx_desc_avail;
-	uint16_t		num_tx_desc;
-	uint32_t		txd_cmd;
-	struct em_buffer	*tx_buffer_area;
+	int			num_tx_desc_avail;
+	int			num_tx_desc;
 	bus_dma_tag_t		txtag;		/* dma tag for tx */
+	int			spare_tx_desc;
+	int			oact_tx_desc;
 
-	/* 
+	/* Saved csum offloading context information */
+	int			csum_flags;
+	int			csum_ehlen;
+	int			csum_iphlen;
+	uint32_t		csum_txd_upper;
+	uint32_t		csum_txd_lower;
+
+	/*
+	 * Variables used to reduce TX interrupt rate and
+	 * number of device's TX ring write requests.
+	 *
+	 * tx_nsegs:
+	 * Number of TX descriptors setup so far.
+	 *
+	 * tx_int_nsegs:
+	 * Once tx_nsegs > tx_int_nsegs, RS bit will be set
+	 * in the last TX descriptor of the packet, and
+	 * tx_nsegs will be reset to 0.  So TX interrupt and
+	 * TX ring write request should be generated roughly
+	 * every tx_int_nsegs TX descriptors.
+	 *
+	 * tx_dd[]:
+	 * Index of the TX descriptors which have RS bit set,
+	 * i.e. DD bit will be set on this TX descriptor after
+	 * the data of the TX descriptor are transfered to
+	 * hardware's internal packet buffer.  Only the TX
+	 * descriptors listed in tx_dd[] will be checked upon
+	 * TX interrupt.  This array is used as circular ring.
+	 *
+	 * tx_dd_tail, tx_dd_head:
+	 * Tail and head index of valid elements in tx_dd[].
+	 * tx_dd_tail == tx_dd_head means there is no valid
+	 * elements in tx_dd[].  tx_dd_tail points to the position
+	 * which is one beyond the last valid element in tx_dd[].
+	 * tx_dd_head points to the first valid element in
+	 * tx_dd[].
+	 */
+	int			tx_int_nsegs;
+	int			tx_nsegs;
+	int			tx_dd_tail;
+	int			tx_dd_head;
+#define EM_TXDD_MAX	64
+#define EM_TXDD_SAFE	48 /* must be less than EM_TXDD_MAX */
+	int			tx_dd[EM_TXDD_MAX];
+
+	/*
 	 * Receive definitions
 	 *
 	 * we have an array of num_rx_desc rx_desc (handled by the
@@ -373,12 +358,13 @@ struct adapter {
 	 * The next pair to check on receive is at offset next_rx_desc_to_check
 	 */
 	struct em_dma_alloc	rxdma;		/* bus_dma glue for rx desc */
-	struct em_rx_desc	*rx_desc_base;
+	struct e1000_rx_desc	*rx_desc_base;
 	uint32_t		next_rx_desc_to_check;
-	uint16_t		num_rx_desc;
 	uint32_t		rx_buffer_len;
+	int			num_rx_desc;
 	struct em_buffer	*rx_buffer_area;
 	bus_dma_tag_t		rxtag;
+	bus_dmamap_t		rx_sparemap;
 
 	/*
 	 * First/last mbuf pointers, for
@@ -387,40 +373,75 @@ struct adapter {
 	struct mbuf		*fmp;
 	struct mbuf		*lmp;
 
+	/* Misc stats maintained by the driver */
+	unsigned long		dropped_pkts;
+	unsigned long		mbuf_alloc_failed;
+	unsigned long		mbuf_cluster_failed;
+	unsigned long		no_tx_desc_avail1;
+	unsigned long		no_tx_desc_avail2;
+	unsigned long		no_tx_map_avail;
+	unsigned long		no_tx_dma_setup;
+	unsigned long		watchdog_events;
+	unsigned long		rx_overruns;
+	unsigned long		rx_irq;
+	unsigned long		tx_irq;
+	unsigned long		link_irq;
+	unsigned long		tx_csum_try_pullup;
+	unsigned long		tx_csum_pullup1;
+	unsigned long		tx_csum_pullup1_failed;
+	unsigned long		tx_csum_pullup2;
+	unsigned long		tx_csum_pullup2_failed;
+	unsigned long		tx_csum_drop1;
+	unsigned long		tx_csum_drop2;
+
+	/* sysctl tree glue */
 	struct sysctl_ctx_list	sysctl_ctx;
 	struct sysctl_oid	*sysctl_tree;
 
-	/* Misc stats maintained by the driver */
-	unsigned long	dropped_pkts;
-	unsigned long	mbuf_alloc_failed;
-	unsigned long	mbuf_cluster_failed;
-	unsigned long	no_tx_desc_avail1;
-	unsigned long	no_tx_desc_avail2;
-	unsigned long	no_tx_map_avail;
-	unsigned long	no_tx_dma_setup;
-	unsigned long	rx_overruns;
-	unsigned long	watchdog_timeouts;
+	/* 82547 workaround */
+	uint32_t		tx_fifo_size;
+	uint32_t		tx_fifo_head;
+	uint32_t		tx_fifo_head_addr;
+	uint64_t		tx_fifo_reset_cnt;
+	uint64_t		tx_fifo_wrk_cnt;
+	uint32_t		tx_head_addr;
 
-	/* Used in for 82547 10Mb Half workaround */
-	uint32_t	tx_fifo_size;
-	uint32_t	tx_fifo_head;
-	uint32_t	tx_fifo_head_addr;
-	uint64_t	tx_fifo_reset_cnt;
-	uint64_t	tx_fifo_wrk_cnt;
-	uint32_t	tx_head_addr;
+        /* For 82544 PCIX Workaround */
+	boolean_t		pcix_82544;
 
-#define EM_PBA_BYTES_SHIFT	0xA
-#define EM_TX_HEAD_ADDR_SHIFT	7
-#define EM_PBA_TX_MASK		0xFFFF0000
-#define EM_FIFO_HDR		0x10
-
-#define EM_82547_PKT_THRESH	0x3e0
- 
- 	/* For 82544 PCIX Workaround */
- 	boolean_t	pcix_82544;
- 	boolean_t	in_detach;
-
-	struct em_hw_stats stats;
+	struct e1000_hw_stats	stats;
 };
 
-#endif	/* !_EM_H_DEFINED_ */
+struct em_vendor_info {
+	uint16_t	vendor_id;
+	uint16_t	device_id;
+	int		ret;
+	const char	*desc;
+};
+
+struct em_buffer {
+	struct mbuf	*m_head;
+	bus_dmamap_t	map;		/* bus_dma map for packet */
+};
+
+/* For 82544 PCIX  Workaround */
+typedef struct _ADDRESS_LENGTH_PAIR {
+	uint64_t	address;
+	uint32_t	length;
+} ADDRESS_LENGTH_PAIR, *PADDRESS_LENGTH_PAIR;
+
+typedef struct _DESCRIPTOR_PAIR {
+	ADDRESS_LENGTH_PAIR descriptor[4];
+	uint32_t	elements;
+} DESC_ARRAY, *PDESC_ARRAY;
+
+#define EM_IS_OACTIVE(adapter) \
+	((adapter)->num_tx_desc_avail <= (adapter)->oact_tx_desc)
+
+#define EM_INC_TXDD_IDX(idx) \
+do { \
+	if (++(idx) == EM_TXDD_MAX) \
+		(idx) = 0; \
+} while (0)
+
+#endif /* _IF_EM_H_ */

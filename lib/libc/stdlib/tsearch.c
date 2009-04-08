@@ -9,23 +9,22 @@
  * Totally public domain.
  *
  * $NetBSD: tsearch.c,v 1.3 1999/09/16 11:45:37 lukem Exp $
- * $FreeBSD: src/lib/libc/stdlib/tsearch.c,v 1.1.2.1 2000/08/17 07:38:39 jhb Exp $
+ * $FreeBSD: src/lib/libc/stdlib/tsearch.c,v 1.4 2003/01/05 02:43:18 tjr Exp $
  * $DragonFly: src/lib/libc/stdlib/tsearch.c,v 1.6 2005/11/24 17:18:30 swildner Exp $
  */
 
-#include <sys/cdefs.h>
-
-#include <assert.h>
 #define _SEARCH_PRIVATE
 #include <search.h>
 #include <stdlib.h>
 
-/* find or insert datum into search tree
+/*
+ * find or insert datum into search tree
  *
  * Parameters:
  *	vkey:	key to be located
  *	vrootp:	address of tree root
  */
+
 void *
 tsearch(const void *vkey, void **vrootp,
 	int (*compar)(const void *, const void *))

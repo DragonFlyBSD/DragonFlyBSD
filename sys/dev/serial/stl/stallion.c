@@ -50,6 +50,7 @@
 #include <sys/malloc.h>
 #include <sys/tty.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
 #include <sys/thread2.h>
@@ -305,32 +306,32 @@ static stlbrd_t		*stl_brds[STL_MAXBRDS];
  *	referencing boards when printing trace and stuff.
  */
 static char	*stl_brdnames[] = {
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
 	"EasyIO",
 	"EC8/32-AT",
 	"EC8/32-MC",
-	(char *) NULL,
-	(char *) NULL,
-	(char *) NULL,
+	NULL,
+	NULL,
+	NULL,
 	"EC8/32-PCI",
 	"EC8/64-PCI",
 	"EasyIO-PCI",
@@ -823,7 +824,7 @@ static int stl_findfreeunit(void)
 	int	i;
 
 	for (i = 0; (i < STL_MAXBRDS); i++)
-		if (stl_brds[i] == (stlbrd_t *) NULL)
+		if (stl_brds[i] == NULL)
 			break;
 	return((i >= STL_MAXBRDS) ? -1 : i);
 }
@@ -990,11 +991,11 @@ static const char *stlpciprobe(pcici_t tag, pcidi_t type)
         }
 
         if (brdtype == 0)
-                return((char *) NULL);
+                return(NULL);
 
         class = pci_conf_read(tag, PCI_CLASS_REG);
         if ((class & PCI_CLASS_MASK) == PCI_CLASS_MASS_STORAGE)
-                return((char *) NULL);
+                return(NULL);
 
         return(stl_brdnames[brdtype]);
 }
@@ -1158,7 +1159,7 @@ STATIC int stlopen(struct dev_open_args *ap)
 		return(0);
 
 	portp = stl_dev2port(dev);
-	if (portp == (stlport_t *) NULL)
+	if (portp == NULL)
 		return(ENXIO);
         if (minor(dev) & STL_CTRLDEV)
                 return(0);
@@ -1214,7 +1215,7 @@ stlopen_restart:
 				goto stlopen_restart;
 			}
 		}
-		if ((tp->t_state & TS_XCLUDE) && suser_cred(ap->a_cred, 0)) {
+		if ((tp->t_state & TS_XCLUDE) && priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) {
 			error = EBUSY;
 			goto stlopen_end;
 		}
@@ -1275,7 +1276,7 @@ STATIC int stlclose(struct dev_close_args *ap)
                 return(0);
 
 	portp = stl_dev2port(dev);
-	if (portp == (stlport_t *) NULL)
+	if (portp == NULL)
 		return(ENXIO);
 	tp = &portp->tty;
 
@@ -1336,7 +1337,7 @@ STATIC int stlioctl(struct dev_ioctl_args *ap)
 		return(stl_memioctl(dev, cmd, data, ap->a_fflag));
 
 	portp = stl_dev2port(dev);
-	if (portp == (stlport_t *) NULL)
+	if (portp == NULL)
 		return(ENODEV);
 	tp = &portp->tty;
 	error = 0;
@@ -1356,7 +1357,7 @@ STATIC int stlioctl(struct dev_ioctl_args *ap)
 
 		switch (cmd) {
 		case TIOCSETA:
-			if ((error = suser_cred(ap->a_cred, 0)) == 0)
+			if ((error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) == 0)
 				*localtios = *((struct termios *) data);
 			break;
 		case TIOCGETA:
@@ -1475,7 +1476,7 @@ STATIC int stlioctl(struct dev_ioctl_args *ap)
 		*((int *) data) = (stl_getsignals(portp) | TIOCM_LE);
 		break;
 	case TIOCMSDTRWAIT:
-		if ((error = suser_cred(ap->a_cred, 0)) == 0)
+		if ((error = priv_check_cred(ap->a_cred, PRIV_ROOT, 0)) == 0)
 			portp->dtrwait = *((int *) data) * hz / 100;
 		break;
 	case TIOCMGDTRWAIT:
@@ -1505,8 +1506,8 @@ STATIC stlport_t *stl_dev2port(cdev_t dev)
 	stlbrd_t	*brdp;
 
 	brdp = stl_brds[MKDEV2BRD(dev)];
-	if (brdp == (stlbrd_t *) NULL)
-		return((stlport_t *) NULL);
+	if (brdp == NULL)
+		return(NULL);
 	return(brdp->ports[MKDEV2PORT(dev)]);
 }
 
@@ -1708,7 +1709,7 @@ static void stl_flush(stlport_t *portp, int flag)
 	kprintf("stl_flush(portp=%x,flag=%x)\n", (int) portp, flag);
 #endif
 
-	if (portp == (stlport_t *) NULL)
+	if (portp == NULL)
 		return;
 
 	crit_enter();
@@ -1766,7 +1767,7 @@ void stlintr(void *arg)
 #endif
 
         for (i = 0; (i < stl_nrbrds); i++) {
-                if ((brdp = stl_brds[i]) == (stlbrd_t *) NULL)
+                if ((brdp = stl_brds[i]) == NULL)
                         continue;
                 if (brdp->state == 0)
                         continue;
@@ -1780,7 +1781,7 @@ void stlintr(void *arg)
 
 static void stlpciintr(void *arg)
 {
-	stlintr((void *)0);
+	stlintr(NULL);
 }
 
 #endif
@@ -1960,10 +1961,10 @@ static void stl_poll(void *arg)
 
 	crit_enter();
 	for (brdnr = 0; (brdnr < stl_nrbrds); brdnr++) {
-		if ((brdp = stl_brds[brdnr]) == (stlbrd_t *) NULL)
+		if ((brdp = stl_brds[brdnr]) == NULL)
 			continue;
 		for (portnr = 0; (portnr < brdp->nrports); portnr++) {
-			if ((portp = brdp->ports[portnr]) == (stlport_t *) NULL)
+			if ((portp = brdp->ports[portnr]) == NULL)
 				continue;
 			if ((portp->state & ASY_ACTIVE) == 0)
 				continue;
@@ -2105,7 +2106,7 @@ static int stl_param(struct tty *tp, struct termios *tiosp)
         stlport_t       *portp;
 
         portp = (stlport_t *) tp;
-        if (portp == (stlport_t *) NULL)
+        if (portp == NULL)
                 return(ENODEV);
 
         return(stl_setport(portp, tiosp));
@@ -2547,7 +2548,7 @@ static int stl_brdinit(stlbrd_t *brdp)
 
 	for (i = 0, k = 0; (i < STL_MAXPANELS); i++) {
 		panelp = brdp->panels[i];
-		if (panelp != (stlpanel_t *) NULL) {
+		if (panelp != NULL) {
 			stl_initports(brdp, panelp);
 			for (j = 0; (j < panelp->nrports); j++)
 				brdp->ports[k++] = panelp->ports[j];
@@ -2576,7 +2577,7 @@ static int stl_getbrdstats(caddr_t data)
 	if (stl_brdstats.brd >= STL_MAXBRDS)
 		return(-ENODEV);
 	brdp = stl_brds[stl_brdstats.brd];
-	if (brdp == (stlbrd_t *) NULL)
+	if (brdp == NULL)
 		return(-ENODEV);
 
 	bzero(&stl_brdstats, sizeof(combrd_t));
@@ -2612,17 +2613,17 @@ static stlport_t *stl_getport(int brdnr, int panelnr, int portnr)
 	stlpanel_t	*panelp;
 
 	if ((brdnr < 0) || (brdnr >= STL_MAXBRDS))
-		return((stlport_t *) NULL);
+		return(NULL);
 	brdp = stl_brds[brdnr];
-	if (brdp == (stlbrd_t *) NULL)
-		return((stlport_t *) NULL);
+	if (brdp == NULL)
+		return(NULL);
 	if ((panelnr < 0) || (panelnr >= brdp->nrpanels))
-		return((stlport_t *) NULL);
+		return(NULL);
 	panelp = brdp->panels[panelnr];
-	if (panelp == (stlpanel_t *) NULL)
-		return((stlport_t *) NULL);
+	if (panelp == NULL)
+		return(NULL);
 	if ((portnr < 0) || (portnr >= panelp->nrports))
-		return((stlport_t *) NULL);
+		return(NULL);
 	return(panelp->ports[portnr]);
 }
 
@@ -2638,11 +2639,11 @@ static int stl_getportstats(stlport_t *portp, caddr_t data)
 {
 	unsigned char	*head, *tail;
 
-	if (portp == (stlport_t *) NULL) {
+	if (portp == NULL) {
 		stl_comstats = *((comstats_t *) data);
 		portp = stl_getport(stl_comstats.brd, stl_comstats.panel,
 			stl_comstats.port);
-		if (portp == (stlport_t *) NULL)
+		if (portp == NULL)
 			return(-ENODEV);
 	}
 
@@ -2679,11 +2680,11 @@ static int stl_getportstats(stlport_t *portp, caddr_t data)
 
 static int stl_clrportstats(stlport_t *portp, caddr_t data)
 {
-	if (portp == (stlport_t *) NULL) {
+	if (portp == NULL) {
 		stl_comstats = *((comstats_t *) data);
 		portp = stl_getport(stl_comstats.brd, stl_comstats.panel,
 			stl_comstats.port);
-		if (portp == (stlport_t *) NULL)
+		if (portp == NULL)
 			return(ENODEV);
 	}
 
@@ -2714,10 +2715,10 @@ static int stl_memioctl(cdev_t dev, unsigned long cmd, caddr_t data, int flag)
 
         switch (cmd) {
         case COM_GETPORTSTATS:
-                rc = stl_getportstats((stlport_t *) NULL, data);
+                rc = stl_getportstats(NULL, data);
                 break;
         case COM_CLRPORTSTATS:
-                rc = stl_clrportstats((stlport_t *) NULL, data);
+                rc = stl_clrportstats(NULL, data);
                 break;
         case COM_GETBRDSTATS:
                 rc = stl_getbrdstats(data);
@@ -2776,7 +2777,7 @@ static void stl_cd1400flush(stlport_t *portp, int flag)
         kprintf("stl_cd1400flush(portp=%x,flag=%x)\n", (int) portp, flag);
 #endif
 
-        if (portp == (stlport_t *) NULL)
+        if (portp == NULL)
                 return;
 
         crit_enter();
@@ -3428,7 +3429,7 @@ static int stl_cd1400datastate(stlport_t *portp)
         kprintf("stl_cd1400datastate(portp=%x)\n", (int) portp);
 #endif
 
-        if (portp == (stlport_t *) NULL)
+        if (portp == NULL)
                 return(0);
 
         return((portp->state & ASY_TXBUSY) ? 1 : 0);
@@ -3659,8 +3660,8 @@ static void stl_cd1400portinit(stlbrd_t *brdp, stlpanel_t *panelp, stlport_t *po
                 (int) brdp, (int) panelp, (int) portp);
 #endif
 
-        if ((brdp == (stlbrd_t *) NULL) || (panelp == (stlpanel_t *) NULL) ||
-            (portp == (stlport_t *) NULL))
+        if ((brdp == NULL) || (panelp == NULL) ||
+            (portp == NULL))
                 return;
 
         portp->ioaddr = panelp->iobase + (((brdp->brdtype == BRD_ECHPCI) ||
@@ -3850,8 +3851,8 @@ static void stl_sc26198portinit(stlbrd_t *brdp, stlpanel_t *panelp, stlport_t *p
                 (int) brdp, (int) panelp, (int) portp);
 #endif
 
-        if ((brdp == (stlbrd_t *) NULL) || (panelp == (stlpanel_t *) NULL) ||
-            (portp == (stlport_t *) NULL))
+        if ((brdp == NULL) || (panelp == NULL) ||
+            (portp == NULL))
                 return;
 
         portp->ioaddr = panelp->iobase + ((portp->portnr < 8) ? 0 : 4);
@@ -4247,7 +4248,7 @@ static void stl_sc26198sendflow(stlport_t *portp, int hw, int sw)
                 (int) portp, hw, sw);
 #endif
 
-        if (portp == (stlport_t *) NULL)
+        if (portp == NULL)
                 return;
 
         crit_enter();
@@ -4307,7 +4308,7 @@ static int stl_sc26198datastate(stlport_t *portp)
         kprintf("stl_sc26198datastate(portp=%x)\n", (int) portp);
 #endif
 
-        if (portp == (stlport_t *) NULL)
+        if (portp == NULL)
                 return(0);
         if (portp->state & ASY_TXBUSY) 
                 return(1);
@@ -4330,7 +4331,7 @@ static void stl_sc26198flush(stlport_t *portp, int flag)
         kprintf("stl_sc26198flush(portp=%x,flag=%x)\n", (int) portp, flag);
 #endif
 
-        if (portp == (stlport_t *) NULL)
+        if (portp == NULL)
                 return;
 
         crit_enter();
@@ -4382,7 +4383,7 @@ static void stl_sc26198wait(stlport_t *portp)
         kprintf("stl_sc26198wait(portp=%x)\n", (int) portp);
 #endif
 
-        if (portp == (stlport_t *) NULL)
+        if (portp == NULL)
                 return;
 
         for (i = 0; (i < 20); i++)

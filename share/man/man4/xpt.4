@@ -58,7 +58,7 @@ per CAM transport layer instance.  Since there is currently only one CAM
 transport layer, there will only be one instance of this driver.
 .Sh IOCTLS
 .Bl -tag -width 01234567890123
-.It CAMIOCOMMAND
+.It Dv CAMIOCOMMAND
 This ioctl takes certain kinds of CAM CCBs and passes them through to the
 CAM transport layer for action.  Only the following CCB types are
 supported:
@@ -79,7 +79,7 @@ send them through a generic passthrough device rather than a passthrough
 device tied to a particular underlying
 .Tn SCSI
 device.
-.It CAMGETPASSTHRU
+.It Dv CAMGETPASSTHRU
 This ioctl takes an XPT_GDEVLIST CCB, and returns the passthrough device
 corresponding to the device in question.
 .El

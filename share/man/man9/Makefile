@@ -26,6 +26,7 @@ MAN=	accept_filter.9 \
 	bus_set_resource.9 \
 	BUS_SETUP_INTR.9 \
 	bus_space.9 \
+	byteorder.9 \
 	callout.9 \
 	cd.9 \
 	contigmalloc.9 \
@@ -88,6 +89,7 @@ MAN=	accept_filter.9 \
 	ifnet.9 \
 	inittodr.9 \
 	intro.9 \
+	ioctl.9 \
 	KASSERT.9 \
 	kenv.9 \
 	kernacc.9 \
@@ -107,11 +109,13 @@ MAN=	accept_filter.9 \
 	MODULE_DEPEND.9 \
 	MODULE_VERSION.9 \
 	nlookup.9 \
+	objcache.9 \
 	panic.9 \
 	pci.9 \
 	pfil.9 \
 	physio.9 \
 	posix4.9 \
+	priv.9 \
 	resettodr.9 \
 	rman.9 \
 	rtalloc.9 \
@@ -133,6 +137,7 @@ MAN=	accept_filter.9 \
 	tvtohz.9 \
 	uio.9 \
 	usbdi.9 \
+	vcount.9 \
 	vflush.9 \
 	VFS.9 \
 	VFS_CHECKEXP.9 \
@@ -288,6 +293,33 @@ MLINKS+=bus_space.9 bus_space_barrier.9 \
 	bus_space.9 bus_space_write_stream_1.9 \
 	bus_space.9 bus_space_write_stream_2.9 \
 	bus_space.9 bus_space_write_stream_4.9
+MLINKS+=byteorder.9 be16dec.9 \
+	byteorder.9 be16enc.9 \
+	byteorder.9 be16toh.9 \
+	byteorder.9 be32dec.9 \
+	byteorder.9 be32enc.9 \
+	byteorder.9 be32toh.9 \
+	byteorder.9 be64dec.9 \
+	byteorder.9 be64enc.9 \
+	byteorder.9 be64toh.9 \
+	byteorder.9 bswap16.9 \
+	byteorder.9 bswap32.9 \
+	byteorder.9 bswap64.9 \
+	byteorder.9 htobe16.9 \
+	byteorder.9 htobe32.9 \
+	byteorder.9 htobe64.9 \
+	byteorder.9 htole16.9 \
+	byteorder.9 htole32.9 \
+	byteorder.9 htole64.9 \
+	byteorder.9 le16dec.9 \
+	byteorder.9 le16enc.9 \
+	byteorder.9 le16toh.9 \
+	byteorder.9 le32dec.9 \
+	byteorder.9 le32enc.9 \
+	byteorder.9 le32toh.9 \
+	byteorder.9 le64dec.9 \
+	byteorder.9 le64enc.9 \
+	byteorder.9 le64toh.9
 MLINKS+=callout.9 callout_active.9 \
 	callout.9 callout_deactivate.9 \
 	callout.9 callout_init.9 \
@@ -340,6 +372,10 @@ MLINKS+=firmware.9 firmware_image_load.9 \
 	firmware.9 firmware_image_unload.9
 MLINKS+=hash.9 hashinit.9 \
 	hash.9 phashinit.9
+MLINKS+=ioctl.9 _IOR.9 \
+	ioctl.9 _IOW.9 \
+	ioctl.9 _IOWR.9 \
+	ioctl.9 _IO.9
 MLINKS+=ieee80211.9 ieee80211_chan2ieee.9 \
 	ieee80211.9 ieee80211_chan2mode.9 \
 	ieee80211.9 ieee80211_ieee2mhz.9 \
@@ -422,15 +458,29 @@ MLINKS+=ksignal.9 gsignal.9 \
 	ksignal.9 pgsignal.9
 MLINKS+=ktr.9 KTR_INFO.9 \
 	ktr.9 KTR_INFO_MASTER.9 \
-	ktr.9 KTR_LOG.9 \
-	ktr.9 KTR_LOG_PTR.9
+	ktr.9 KTR_LOG.9
 MLINKS+=lock.9 lockcount.9 \
 	lock.9 lockcountnb.9 \
 	lock.9 lockinit.9 \
 	lock.9 lockmgr.9 \
 	lock.9 lockmgr_printinfo.9 \
 	lock.9 lockstatus.9
-MLINKS+=make_dev.9 destroy_dev.9
+MLINKS+=make_dev.9 compile_dev_ops.9 \
+	make_dev.9 destroy_all_devs.9 \
+	make_dev.9 destroy_dev.9 \
+	make_dev.9 dev_ops.9 \
+	make_dev.9 dev_ops_add.9 \
+	make_dev.9 dev_ops_add_override.9 \
+	make_dev.9 dev_ops_intercept.9 \
+	make_dev.9 dev_ops_release.9 \
+	make_dev.9 dev_ops_remove.9 \
+	make_dev.9 dev_ops_restore.9 \
+	make_dev.9 dev_ops_scan.9 \
+	make_dev.9 get_dev.9 \
+	make_dev.9 make_adhoc_dev.9 \
+	make_dev.9 make_sub_dev.9 \
+	make_dev.9 reference_dev.9 \
+	make_dev.9 release_dev.9
 MLINKS+=MD5.9 MD5Init.9 \
 	MD5.9 MD5Transform.9
 MLINKS+=microtime.9 getmicrotime.9 \
@@ -450,6 +500,18 @@ MLINKS+=nlookup.9 naccess.9 \
 	nlookup.9 nlookup_simple.9 \
 	nlookup.9 nlookup_zero.9 \
 	nlookup.9 nreadsymlink.9
+MLINKS+=objcache.9 objcache_create.9 \
+	objcache.9 objcache_create_mbacked.9 \
+	objcache.9 objcache_create_simple.9 \
+	objcache.9 objcache_destroy.9 \
+	objcache.9 objcache_dtor.9 \
+	objcache.9 objcache_get.9 \
+	objcache.9 objcache_malloc_alloc.9 \
+	objcache.9 objcache_malloc_free.9 \
+	objcache.9 objcache_nop_alloc.9 \
+	objcache.9 objcache_nop_free.9 \
+	objcache.9 objcache_put.9 \
+	objcache.9 objcache_reclaimlist.9
 MLINKS+=pci.9 pci_disable_busmaster.9 \
 	pci.9 pci_disable_io.9 \
 	pci.9 pci_enable_busmaster.9 \
@@ -470,6 +532,8 @@ MLINKS+=pfil.9 pfil_add_hook.9 \
 MLINKS+=physio.9 physread.9 \
 	physio.9 physwrite.9
 MLINKS+=posix4.9 p1003_1b.9
+MLINKS+=priv.9 priv_check.9 \
+	priv.9 priv_check_cred.9
 MLINKS+=rman.9 rman_activate_resource.9 \
 	rman.9 rman_await_resource.9 \
 	rman.9 rman_deactivate_resource.9 \
@@ -654,6 +718,8 @@ MLINKS+=usbdi.9 usbd_abort_default_pipe.9 \
 	usbdi.9 usbd_sync_transfer.9 \
 	usbdi.9 usbd_transfer.9 \
 	usbdi.9 usb_find_desc.9
+MLINKS+=vcount.9 count_dev.9 \
+	vcount.9 count_udev.9
 MLINKS+=vhold.9 vdrop.9
 MLINKS+=VOP_ATTRIB.9 VOP_GETATTR.9 \
 	VOP_ATTRIB.9 VOP_SETATTR.9

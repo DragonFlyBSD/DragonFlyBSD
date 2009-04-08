@@ -2,7 +2,6 @@
 
 LIB=	pam_deny
 SRCS=	pam_deny.c
-WARNS?=	6
 MAN=	pam_deny.8
 
 .include <bsd.lib.mk>

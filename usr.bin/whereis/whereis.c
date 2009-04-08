@@ -611,8 +611,7 @@ main(int argc, char **argv)
 						     cp2, buf);
 					}
 					free(cp2);
-					if (regexec(&re2, buf, 0,
-						    (regmatch_t *)NULL, 0)
+					if (regexec(&re2, buf, 0, NULL, 0)
 					    == 0) {
 						unusual = unusual & 
 						          ~NO_SRC_FOUND;

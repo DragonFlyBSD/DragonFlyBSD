@@ -13,11 +13,11 @@
 #   existing ones according to criteria indicated in the standard. It
 #   maintains an accurate list of information associated with registered
 #   language codes, processes updates of registered language codes, and
-#   distributes them on a regular basis to subscribers and other parties. 
+#   distributes them on a regular basis to subscribers and other parties.
 #
 #   This is the official site of the ISO 639-2 Registration Authority and thus
 #   is the only one authorized by ISO. If you have questions concerning ISO
-#   639-2 please contact us at: 
+#   639-2 please contact us at:
 #
 #     Library of Congress
 #     Network Development and MARC Standards Office
@@ -39,7 +39,7 @@ ab	abk	abk	Abkhazian
 	ach	ach	Acoli
 	ada	ada	Adangme
 	ady	ady	Adyghe
-	afa	afa	Afro-Asiatic (Other)
+	afa	afa	Afro-Asiatic languages
 	afh	afh	Afrihili
 af	afr	afr	Afrikaans
 	ain	ain	Ainu
@@ -59,7 +59,7 @@ an	arg	arg	Aragonese
 hy	arm	hye	Armenian
 	arn	arn	Mapudungun
 	arp	arp	Arapaho
-	art	art	Artificial (Other)
+	art	art	Artificial languages
 	arw	arw	Arawak
 as	asm	asm	Assamese
 	ast	ast	Asturian
@@ -78,12 +78,12 @@ bm	bam	bam	Bambara
 	ban	ban	Balinese
 eu	baq	eus	Basque
 	bas	bas	Basa
-	bat	bat	Baltic (Other)
+	bat	bat	Baltic languages
 	bej	bej	Beja
 be	bel	bel	Belarusian
 	bem	bem	Bemba
 bn	ben	ben	Bengali
-	ber	ber	Berber (Other)
+	ber	ber	Berber languages
 	bho	bho	Bhojpuri
 bh	bih	bih	Bihari
 	bik	bik	Bikol
@@ -101,12 +101,12 @@ bg	bul	bul	Bulgarian
 my	bur	mya	Burmese
 	byn	byn	Blin
 	cad	cad	Caddo
-	cai	cai	Central American Indian (Other)
+	cai	cai	Central American Indian languages
 	car	car	Galibi Carib
 ca	cat	cat	Catalan
-	cau	cau	Caucasian (Other)
+	cau	cau	Caucasian languages
 	ceb	ceb	Cebuano
-	cel	cel	Celtic (Other)
+	cel	cel	Celtic languages
 ch	cha	cha	Chamorro
 	chb	chb	Chibcha
 ce	che	che	Chechen
@@ -125,14 +125,14 @@ cv	chv	chv	Chuvash
 	cop	cop	Coptic
 kw	cor	cor	Cornish
 co	cos	cos	Corsican
-	cpe	cpe	Creoles and pidgins, English based (Other)
-	cpf	cpf	Creoles and pidgins, French-based (Other)
-	cpp	cpp	Creoles and pidgins, Portuguese-based (Other)
+	cpe	cpe	Creoles and pidgins, English based
+	cpf	cpf	Creoles and pidgins, French-based
+	cpp	cpp	Creoles and pidgins, Portuguese-based
 cr	cre	cre	Cree
 	crh	crh	Crimean Tatar
-	crp	crp	Creoles and pidgins (Other)
+	crp	crp	Creoles and pidgins
 	csb	csb	Kashubian
-	cus	cus	Cushitic (Other)
+	cus	cus	Cushitic languages
 cs	cze	ces	Czech
 	dak	dak	Dakota
 da	dan	dan	Danish
@@ -144,7 +144,7 @@ da	dan	dan	Danish
 	din	din	Dinka
 dv	div	div	Divehi
 	doi	doi	Dogri
-	dra	dra	Dravidian (Other)
+	dra	dra	Dravidian languages
 	dsb	dsb	Lower Sorbian
 	dua	dua	Duala
 	dum	dum	Dutch, Middle (ca.1050-1350)
@@ -167,7 +167,7 @@ fo	fao	fao	Faroese
 fj	fij	fij	Fijian
 	fil	fil	Filipino
 fi	fin	fin	Finnish
-	fiu	fiu	Finno-Ugrian (Other)
+	fiu	fiu	Finno-Ugrian languages
 	fon	fon	Fon
 fr	fre	fra	French
 	frm	frm	French, Middle (ca.1400-1600)
@@ -180,7 +180,7 @@ ff	ful	ful	Fulah
 	gaa	gaa	Ga
 	gay	gay	Gayo
 	gba	gba	Gbaya
-	gem	gem	Germanic (Other)
+	gem	gem	Germanic languages
 ka	geo	kat	Georgian
 de	ger	deu	German
 	gez	gez	Geez
@@ -227,12 +227,12 @@ iu	iku	iku	Inuktitut
 ie	ile	ile	Interlingue
 	ilo	ilo	Iloko
 ia	ina	ina	Interlingua (International Auxiliary Language Association)
-	inc	inc	Indic (Other)
+	inc	inc	Indic languages
 id	ind	ind	Indonesian
-	ine	ine	Indo-European (Other)
+	ine	ine	Indo-European languages
 	inh	inh	Ingush
 ik	ipk	ipk	Inupiaq
-	ira	ira	Iranian (Other)
+	ira	ira	Iranian languages
 	iro	iro	Iroquoian languages
 it	ita	ita	Italian
 jv	jav	jav	Javanese
@@ -253,7 +253,7 @@ kr	kau	kau	Kanuri
 kk	kaz	kaz	Kazakh
 	kbd	kbd	Kabardian
 	kha	kha	Khasi
-	khi	khi	Khoisan (Other)
+	khi	khi	Khoisan languages
 km	khm	khm	Central Khmer
 	kho	kho	Khotanese
 ki	kik	kik	Kikuyu
@@ -303,7 +303,7 @@ mh	mah	mah	Marshallese
 ml	mal	mal	Malayalam
 	man	man	Mandingo
 mi	mao	mri	Maori
-	map	map	Austronesian (Other)
+	map	map	Austronesian languages
 mr	mar	mar	Marathi
 	mas	mas	Masai
 ms	may	msa	Malay
@@ -314,7 +314,7 @@ ms	may	msa	Malay
 	mic	mic	Mi'kmaq
 	min	min	Minangkabau
 	mis	mis	Uncoded languages
-	mkh	mkh	Mon-Khmer (Other)
+	mkh	mkh	Mon-Khmer languages
 mg	mlg	mlg	Malagasy
 mt	mlt	mlt	Maltese
 	mnc	mnc	Manchu
@@ -331,7 +331,7 @@ mn	mon	mon	Mongolian
 	myn	myn	Mayan languages
 	myv	myv	Erzya
 	nah	nah	Nahuatl languages
-	nai	nai	North American Indian
+	nai	nai	North American Indian languages
 	nap	nap	Neapolitan
 na	nau	nau	Nauru
 nv	nav	nav	Navajo
@@ -342,7 +342,7 @@ ng	ndo	ndo	Ndonga
 ne	nep	nep	Nepali
 	new	new	Nepal Bhasa
 	nia	nia	Nias
-	nic	nic	Niger-Kordofanian (Other)
+	nic	nic	Niger-Kordofanian languages
 	niu	niu	Niuean
 nn	nno	nno	Norwegian Nynorsk
 nb	nob	nob	Bokmål, Norwegian
@@ -366,7 +366,7 @@ om	orm	orm	Oromo
 os	oss	oss	Ossetian
 	ota	ota	Turkish, Ottoman (1500-1928)
 	oto	oto	Otomian languages
-	paa	paa	Papuan (Other)
+	paa	paa	Papuan languages
 	pag	pag	Pangasinan
 	pal	pal	Pahlavi
 	pam	pam	Pampanga
@@ -375,7 +375,7 @@ pa	pan	pan	Panjabi
 	pau	pau	Palauan
 	peo	peo	Persian, Old (ca.600-400 B.C.)
 fa	per	fas	Persian
-	phi	phi	Philippine (Other)
+	phi	phi	Philippine languages
 	phn	phn	Phoenician
 pi	pli	pli	Pali
 pl	pol	pol	Polish
@@ -389,7 +389,7 @@ qu	que	que	Quechua
 	raj	raj	Rajasthani
 	rap	rap	Rapanui
 	rar	rar	Rarotongan
-	roa	roa	Romance (Other)
+	roa	roa	Romance languages
 rm	roh	roh	Romansh
 	rom	rom	Romany
 ro	rum	ron	Romanian
@@ -408,20 +408,20 @@ sa	san	san	Sanskrit
 	scn	scn	Sicilian
 	sco	sco	Scots
 	sel	sel	Selkup
-	sem	sem	Semitic (Other)
+	sem	sem	Semitic languages
 	sga	sga	Irish, Old (to 900)
 	sgn	sgn	Sign Languages
 	shn	shn	Shan
 	sid	sid	Sidamo
 si	sin	sin	Sinhala
 	sio	sio	Siouan languages
-	sit	sit	Sino-Tibetan (Other)
-	sla	sla	Slavic (Other)
+	sit	sit	Sino-Tibetan languages
+	sla	sla	Slavic languages
 sk	slo	slk	Slovak
 sl	slv	slv	Slovenian
 	sma	sma	Southern Sami
 se	sme	sme	Northern Sami
-	smi	smi	Sami languages (Other)
+	smi	smi	Sami languages
 	smj	smj	Lule Sami
 	smn	smn	Inari Sami
 sm	smo	smo	Samoan
@@ -438,7 +438,7 @@ sc	srd	srd	Sardinian
 	srn	srn	Sranan Tongo
 sr	srp	srp	Serbian
 	srr	srr	Serer
-	ssa	ssa	Nilo-Saharan (Other)
+	ssa	ssa	Nilo-Saharan languages
 ss	ssw	ssw	Swati
 	suk	suk	Sukuma
 su	sun	sun	Sundanese
@@ -449,7 +449,7 @@ sv	swe	swe	Swedish
 	syc	syc	Classical Syriac
 	syr	syr	Syriac
 ty	tah	tah	Tahitian
-	tai	tai	Tai (Other)
+	tai	tai	Tai languages
 ta	tam	tam	Tamil
 tt	tat	tat	Tatar
 te	tel	tel	Telugu
@@ -477,7 +477,7 @@ tk	tuk	tuk	Turkmen
 	tum	tum	Tumbuka
 	tup	tup	Tupi languages
 tr	tur	tur	Turkish
-	tut	tut	Altaic (Other)
+	tut	tut	Altaic languages
 	tvl	tvl	Tuvalu
 tw	twi	twi	Twi
 	tyv	tyv	Tuvinian

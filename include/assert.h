@@ -36,8 +36,11 @@
  * SUCH DAMAGE.
  *
  *	@(#)assert.h	8.2 (Berkeley) 1/21/94
+ * $FreeBSD: src/include/assert.h,v 1.6 2007/12/01 19:28:13 phk Exp $
  * $DragonFly: src/include/assert.h,v 1.4 2005/04/26 10:41:57 joerg Exp $
  */
+
+#include <sys/cdefs.h>
 
 /*
  * Unlike other ANSI header files, <assert.h> may usefully be included
@@ -52,19 +55,23 @@
 #define	_assert(e)	((void)0)
 #else
 #define	_assert(e)	assert(e)
-#define	assert(e)	((e) ? (void)0 : __assert(__FILE__, __LINE__, #e))
-#endif
+
+#define	assert(e)	((e) ? (void)0 : __assert(__func__, __FILE__, \
+			    __LINE__, #e))
+#endif /* NDEBUG */
 
 #undef _DIAGASSERT
 #ifdef _DIAGNOSTIC
-#define	_DIAGASSERT(e)	((e) ? (void)0 : __diagassert(__FILE__, __LINE__, __func__, #e))
+#define	_DIAGASSERT(e)	((e) ? (void)0 : __diagassert(__FILE__, __LINE__, \
+			    __func__, #e))
 #else
 #define	_DIAGASSERT(e)	((void)0)
 #endif
 
-#include <sys/cdefs.h>
-
+#ifndef _ASSERT_H_
+#define _ASSERT_H_
 __BEGIN_DECLS
-void	__assert(const char *, int, const char *);
+void	__assert(const char *, const char *, int, const char *);
 void	__diagassert(const char *, int, const char *, const char *);
 __END_DECLS
+#endif /* !_ASSERT_H_ */

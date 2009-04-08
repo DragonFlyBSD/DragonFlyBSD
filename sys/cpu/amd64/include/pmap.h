@@ -94,4 +94,18 @@
 #define PGEX_RSV	0x08	/* reserved PTE field is non-zero */
 #define PGEX_I		0x10	/* during an instruction fetch */
 
+/*
+ * Virtual kernel bits, managed by software.  Stored in tf_xflags.
+ *
+ * PGEX_FPFAULT - Force the FP unit to generate a T_DNA fault if an
+ *		  emulated user process tried to use it.  This bit is
+ *		  only used by vmspace_ctl().
+ *
+ * PGEX_MAILBOX - Set in xflags by signal code to indicate that a mailbox
+ *		  signal was pending.  Remerged on signal return.  This
+ *		  bit is only used in a signal vector frame.
+ */
+#define PGEX_MAILBOX	0x40
+#define PGEX_FPFAULT	0x80
+
 #endif /* !_CPU_PMAP_H_ */

@@ -283,7 +283,7 @@ force_target:
 			}
 			break;
 		case 0:
-			execl(*argv, *argv, (char *)NULL);
+			execl(*argv, *argv, NULL);
 			warn("%s", *argv);
 			_exit(1);
 		}

@@ -119,7 +119,7 @@ struct value *a;
 		return;
 	}
 
-	(void) gettimeofday(&timeval, (struct timezone *)0);
+	(void) gettimeofday(&timeval, NULL);
 	timeval.tv_sec -= starttime.tv_sec;
 	if ((timeval.tv_usec -= starttime.tv_usec) < 0) {
 		timeval.tv_sec--;
@@ -339,7 +339,7 @@ l_alias(v, a)
 				for (p = vp->v_str; *q++ = *p++;)
 					;
 			q[-1] = 0;
-			if ((ap = alias_set(a[0].v_str, (char *)0)) == 0) {
+			if ((ap = alias_set(a[0].v_str, NULL)) == 0) {
 				p_memerror();
 				str_free(str);
 				return;

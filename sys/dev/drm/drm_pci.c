@@ -19,8 +19,6 @@
  * AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
  * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
- * $DragonFly: src/sys/dev/drm/drm_pci.c,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
 /**
@@ -30,13 +28,12 @@
  * \author Eric Anholt <anholt@FreeBSD.org>
  */
 
-#include "drmP.h"
+#include "dev/drm/drmP.h"
 
 /**********************************************************************/
 /** \name PCI memory */
 /*@{*/
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 static void
 drm_pci_busdma_callback(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
 {
@@ -48,14 +45,14 @@ drm_pci_busdma_callback(void *arg, bus_dma_segment_t *segs, int nsegs, int error
 	KASSERT(nsegs == 1, ("drm_pci_busdma_callback: bad dma segment count"));
 	dmah->busaddr = segs[0].ds_addr;
 }
-#endif
 
 /**
  * \brief Allocate a physically contiguous DMA-accessible consistent 
  * memory block.
  */
 drm_dma_handle_t *
-drm_pci_alloc(drm_device_t *dev, size_t size, size_t align, dma_addr_t maxaddr)
+drm_pci_alloc(struct drm_device *dev, size_t size,
+	      size_t align, dma_addr_t maxaddr)
 {
 	drm_dma_handle_t *dmah;
 	int ret;
@@ -67,59 +64,48 @@ drm_pci_alloc(drm_device_t *dev, size_t size, size_t align, dma_addr_t maxaddr)
 		return NULL;
 	}
 
-	dmah = malloc(sizeof(drm_dma_handle_t), M_DRM, M_ZERO | M_NOWAIT);
+	dmah = malloc(sizeof(drm_dma_handle_t), DRM_MEM_DMA, M_ZERO | M_NOWAIT);
 	if (dmah == NULL)
 		return NULL;
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
+#if 0 /* HT XXX XXX XXX */
+	/* Make sure we aren't holding locks here */
+	mtx_assert(&dev->dev_lock, MA_NOTOWNED);
+	if (mtx_owned(&dev->dev_lock))
+	    DRM_ERROR("called while holding dev_lock\n");
+	mtx_assert(&dev->dma_lock, MA_NOTOWNED);
+	if (mtx_owned(&dev->dma_lock))
+	    DRM_ERROR("called while holding dma_lock\n");
+#endif
+
 	ret = bus_dma_tag_create(NULL, align, 0, /* tag, align, boundary */
 	    maxaddr, BUS_SPACE_MAXADDR, /* lowaddr, highaddr */
 	    NULL, NULL, /* filtfunc, filtfuncargs */
 	    size, 1, size, /* maxsize, nsegs, maxsegsize */
-	    BUS_DMA_ALLOCNOW, /* flags */
-#ifdef __FreeBSD__
-	    NULL, NULL, /* lockfunc, lockfuncargs */
-#endif
+	    0, /* flags */
 	    &dmah->tag);
 	if (ret != 0) {
-		free(dmah, M_DRM);
+		free(dmah, DRM_MEM_DMA);
 		return NULL;
 	}
 
-	ret = bus_dmamem_alloc(dmah->tag, &dmah->vaddr, BUS_DMA_NOWAIT,
-	    &dmah->map);
+	/* XXX BUS_DMA_NOCACHE */
+	ret = bus_dmamem_alloc(dmah->tag, &dmah->vaddr,
+	    BUS_DMA_WAITOK | BUS_DMA_ZERO, &dmah->map);
 	if (ret != 0) {
 		bus_dma_tag_destroy(dmah->tag);
-		free(dmah, M_DRM);
+		free(dmah, DRM_MEM_DMA);
 		return NULL;
 	}
 
 	ret = bus_dmamap_load(dmah->tag, dmah->map, dmah->vaddr, size,
-	    drm_pci_busdma_callback, dmah, 0);
+	    drm_pci_busdma_callback, dmah, BUS_DMA_NOWAIT);
 	if (ret != 0) {
 		bus_dmamem_free(dmah->tag, dmah->vaddr, dmah->map);
 		bus_dma_tag_destroy(dmah->tag);
-		free(dmah, M_DRM);
+		free(dmah, DRM_MEM_DMA);
 		return NULL;
 	}
-#elif defined(__NetBSD__)
-	ret = bus_dmamem_alloc(dev->dma_tag, size, align, PAGE_SIZE,
-	    &dmah->seg, 1, &nsegs, BUS_DMA_NOWAIT);
-	if ((ret != 0) || (nsegs != 1)) {
-		free(dmah, M_DRM);
-		return NULL;
-	}
-
-	ret = bus_dmamem_map(dev->dma_tag, &dmah->seg, 1, size, &dmah->addr,
-	    BUS_DMA_NOWAIT);
-	if (ret != 0) {
-		bus_dmamem_free(dev->dma_tag, &dmah->seg, 1);
-		free(dmah, M_DRM);
-		return NULL;
-	}
-
-	dmah->dmaaddr = h->seg.ds_addr;
-#endif
 
 	return dmah;
 }
@@ -128,19 +114,15 @@ drm_pci_alloc(drm_device_t *dev, size_t size, size_t align, dma_addr_t maxaddr)
  * \brief Free a DMA-accessible consistent memory block.
  */
 void
-drm_pci_free(drm_device_t *dev, drm_dma_handle_t *dmah)
+drm_pci_free(struct drm_device *dev, drm_dma_handle_t *dmah)
 {
 	if (dmah == NULL)
 		return;
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 	bus_dmamem_free(dmah->tag, dmah->vaddr, dmah->map);
 	bus_dma_tag_destroy(dmah->tag);
-#elif defined(__NetBSD__)
-	bus_dmamem_free(dev->dma_tag, &dmah->seg, 1);
-#endif
 
-	free(dmah, M_DRM);
+	free(dmah, DRM_MEM_DMA);
 }
 
 /*@}*/

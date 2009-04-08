@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1989 Regents of the University of California.
  * All rights reserved.
  *
@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -31,15 +27,21 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)float.h	7.1 (Berkeley) 5/8/90
- * $FreeBSD: src/sys/i386/include/float.h,v 1.8 1999/08/28 00:44:11 peter Exp $
+ * $FreeBSD: src/sys/i386/include/float.h,v 1.17 2008/03/05 11:17:20 bde Exp $
  * $DragonFly: src/sys/cpu/i386/include/float.h,v 1.6 2008/04/09 06:44:37 hasso Exp $
  */
 
 #ifndef _CPU_FLOAT_H_
 #define _CPU_FLOAT_H_
 
+#include <sys/cdefs.h>
+
+__BEGIN_DECLS
+extern int	__flt_rounds(void);
+__END_DECLS
+
 #define FLT_RADIX	2		/* b */
-#define FLT_ROUNDS	1		/* FP addition rounds to nearest */
+#define	FLT_ROUNDS	__flt_rounds()
 #if __ISO_C_VISIBLE >= 1999
 #define FLT_EVAL_METHOD	(-1)		/* i387 semantics are...interesting */
 #define DECIMAL_DIG	21		/* max precision in decimal digits */
@@ -65,15 +67,15 @@
 #define DBL_MAX		1.7976931348623157E+308
 #define DBL_MAX_10_EXP	308
 
-#define LDBL_MANT_DIG	DBL_MANT_DIG
-#define LDBL_EPSILON	DBL_EPSILON
-#define LDBL_DIG	DBL_DIG
-#define LDBL_MIN_EXP	DBL_MIN_EXP
-#define LDBL_MIN	DBL_MIN
-#define LDBL_MIN_10_EXP	DBL_MIN_10_EXP
-#define LDBL_MAX_EXP	DBL_MAX_EXP
-#define LDBL_MAX	DBL_MAX
-#define LDBL_MAX_10_EXP	DBL_MAX_10_EXP
+#define	LDBL_MANT_DIG	64
+#define	LDBL_EPSILON	1.0842021724855044340E-19L
+#define	LDBL_DIG	18
+#define	LDBL_MIN_EXP	(-16381)
+#define	LDBL_MIN	3.3621031431120935063E-4932L
+#define	LDBL_MIN_10_EXP	(-4931)
+#define	LDBL_MAX_EXP	16384
+#define	LDBL_MAX	1.1897314953572317650E+4932L
+#define	LDBL_MAX_10_EXP	4932
 
 #define	__GDTOA_IEEE_8087	1
 #define	__GDTOA_F_QNAN		0xffc00000

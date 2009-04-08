@@ -34,6 +34,7 @@
  */
 
 #include "opt_inet.h"
+#include "opt_rss.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -46,6 +47,9 @@
 
 #include <net/if.h>
 #include <net/netisr.h>
+#ifdef RSS
+#include <net/toeplitz2.h>
+#endif
 
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
@@ -65,6 +69,8 @@ extern int udp_mpsafe_thread;
 static struct thread tcp_thread[MAXCPU];
 static struct thread udp_thread[MAXCPU];
 
+#ifndef RSS
+
 static __inline int
 INP_MPORT_HASH(in_addr_t faddr, in_addr_t laddr,
 	       in_port_t fport, in_port_t lport)
@@ -79,6 +85,31 @@ INP_MPORT_HASH(in_addr_t faddr, in_addr_t laddr,
 		ncpus2_mask);
 #else
 	return ((faddr ^ fport ^ laddr ^ lport) & ncpus2_mask);
+#endif
+}
+
+#endif	/* !RSS */
+
+static __inline int
+INP_MPORT_HASH_UDP(in_addr_t faddr, in_addr_t laddr,
+		   in_port_t fport, in_port_t lport)
+{
+#ifndef RSS
+	return INP_MPORT_HASH(faddr, laddr, fport, lport);
+#else
+	return toeplitz_hash(toeplitz_rawhash_addr(faddr, laddr));
+#endif
+}
+
+static __inline int
+INP_MPORT_HASH_TCP(in_addr_t faddr, in_addr_t laddr,
+		   in_port_t fport, in_port_t lport)
+{
+#ifndef RSS
+	return INP_MPORT_HASH(faddr, laddr, fport, lport);
+#else
+	return toeplitz_hash(
+	       toeplitz_rawhash_addrport(faddr, laddr, fport, lport));
 #endif
 }
 
@@ -224,6 +255,7 @@ ipcheckonly:
 		break;
 	}
 
+	m->m_flags |= M_LENCHECKED;
 	*mp = m;
 	return TRUE;
 
@@ -262,35 +294,46 @@ ip_mport(struct mbuf **mptr, int dir)
 	/*
 	 * XXX generic packet handling defrag on CPU 0 for now.
 	 */
-	if (ntohs(ip->ip_off) & (IP_MF | IP_OFFMASK))
-		return (&netisr_cpu[0].td_msgport);
+	if (ntohs(ip->ip_off) & (IP_MF | IP_OFFMASK)) {
+		cpu = 0;
+		port = &netisr_cpu[cpu].td_msgport;
+		goto back;
+	}
 
 	switch (ip->ip_p) {
 	case IPPROTO_TCP:
 		th = (struct tcphdr *)((caddr_t)ip + iphlen);
 		thoff = th->th_off << 2;
-		cpu = INP_MPORT_HASH(ip->ip_src.s_addr, ip->ip_dst.s_addr,
+		cpu = INP_MPORT_HASH_TCP(ip->ip_src.s_addr, ip->ip_dst.s_addr,
 		    th->th_sport, th->th_dport);
 		port = &tcp_thread[cpu].td_msgport;
 		break;
+
 	case IPPROTO_UDP:
 		uh = (struct udphdr *)((caddr_t)ip + iphlen);
 
+#ifndef RSS
 		if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr)) ||
 		    (dir == IP_MPORT_IN &&
 		     in_broadcast(ip->ip_dst, m->m_pkthdr.rcvif))) {
 			cpu = 0;
-		} else {
-			cpu = INP_MPORT_HASH(ip->ip_src.s_addr,
+		} else
+#endif
+		{
+			cpu = INP_MPORT_HASH_UDP(ip->ip_src.s_addr,
 			    ip->ip_dst.s_addr, uh->uh_sport, uh->uh_dport);
 		}
 		port = &udp_thread[cpu].td_msgport;
 		break;
+
 	default:
-		port = &netisr_cpu[0].td_msgport;
+		cpu = 0;
+		port = &netisr_cpu[cpu].td_msgport;
 		break;
 	}
-
+back:
+	m->m_flags |= M_HASH;
+	m->m_pkthdr.hash = cpu;
 	return (port);
 }
 
@@ -298,6 +341,47 @@ lwkt_port_t
 ip_mport_in(struct mbuf **mptr)
 {
 	return ip_mport(mptr, IP_MPORT_IN);
+}
+
+/*
+ * Map a packet to a protocol processing thread and return the thread's port.
+ * Unlike ip_mport(), the packet content is not accessed.  The packet info
+ * (pi) and the hash of the packet (m_pkthdr.hash) is used instead.  NULL is
+ * returned if the packet info does not contain enough information.
+ *
+ * Caller has already made sure that m_pkthdr.hash is valid, i.e. m_flags
+ * has M_HASH set.
+ */
+lwkt_port_t
+ip_mport_pktinfo(const struct pktinfo *pi, struct mbuf *m)
+{
+	lwkt_port_t port;
+
+	KASSERT(m->m_pkthdr.hash < ncpus2,
+		("invalid packet hash %#x\n", m->m_pkthdr.hash));
+
+	/*
+	 * XXX generic packet handling defrag on CPU 0 for now.
+	 */
+	if (pi->pi_flags & PKTINFO_FLAG_FRAG) {
+		m->m_pkthdr.hash = 0;
+		return &netisr_cpu[0].td_msgport;
+	}
+
+	switch (pi->pi_l3proto) {
+	case IPPROTO_TCP:
+		port = &tcp_thread[m->m_pkthdr.hash].td_msgport;
+		break;
+
+	case IPPROTO_UDP:
+		port = &udp_thread[m->m_pkthdr.hash].td_msgport;
+		break;
+
+	default:
+		port = NULL;
+		break;
+	}
+	return port;
 }
 
 /*
@@ -328,7 +412,7 @@ tcp_soport(struct socket *so, struct sockaddr *nam __unused,
 	 * Rely on type-stable memory and check in protocol handler
 	 * to fix race condition here w/ deallocation of inp.  XXX JH
 	 */
-	return (&tcp_thread[INP_MPORT_HASH(inp->inp_faddr.s_addr,
+	return (&tcp_thread[INP_MPORT_HASH_TCP(inp->inp_faddr.s_addr,
 	    inp->inp_laddr.s_addr, inp->inp_fport, inp->inp_lport)].td_msgport);
 }
 
@@ -398,15 +482,17 @@ udp_soport(struct socket *so, struct sockaddr *nam __unused,
 
 	inp = so->so_pcb;
 
+#ifndef RSS
 	if (IN_MULTICAST(ntohl(inp->inp_laddr.s_addr)))
 		return (&udp_thread[0].td_msgport);
+#endif
 
 	/*
 	 * Rely on type-stable memory and check in protocol handler
 	 * to fix race condition here w/ deallocation of inp.  XXX JH
 	 */
 
-	return (&udp_thread[INP_MPORT_HASH(inp->inp_faddr.s_addr,
+	return (&udp_thread[INP_MPORT_HASH_UDP(inp->inp_faddr.s_addr,
 	    inp->inp_laddr.s_addr, inp->inp_fport, inp->inp_lport)].td_msgport);
 }
 
@@ -441,8 +527,8 @@ udp_ctlport(int cmd, struct sockaddr *sa, void *vip)
 	} else {
 		uh = (struct udphdr *)((caddr_t)ip + (ip->ip_hl << 2));
 
-		cpu = INP_MPORT_HASH(faddr.s_addr, ip->ip_src.s_addr,
-				     uh->uh_dport, uh->uh_sport);
+		cpu = INP_MPORT_HASH_UDP(faddr.s_addr, ip->ip_src.s_addr,
+					 uh->uh_dport, uh->uh_sport);
 	}
 	return (&udp_thread[cpu].td_msgport);
 }
@@ -453,16 +539,18 @@ udp_ctlport(int cmd, struct sockaddr *sa, void *vip)
 int
 tcp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 {
-	return (INP_MPORT_HASH(faddr, laddr, fport, lport));
+	return (INP_MPORT_HASH_TCP(faddr, laddr, fport, lport));
 }
 
 int
 udp_addrcpu(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
 {
+#ifndef RSS
 	if (IN_MULTICAST(ntohl(laddr)))
 		return (0);
 	else
-		return (INP_MPORT_HASH(faddr, laddr, fport, lport));
+#endif
+		return (INP_MPORT_HASH_UDP(faddr, laddr, fport, lport));
 }
 
 /*

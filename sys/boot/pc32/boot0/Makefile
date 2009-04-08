@@ -7,13 +7,16 @@ STRIP=
 BINDIR?=	/boot
 BINMODE=	444
 
+NXCFLAGS=
+NXLDFLAGS=
+
 .PATH: ${.CURDIR}/..
 
 # The default set of flags compiled into boot0.  This enables update (writing
 # the modified boot0 back to disk after running so that the selection made is
 # saved), packet mode (detect and use the BIOS EDD extensions if we try to
 # boot past the 1024 cylinder limit), and booting from all valid slices.
-BOOT_BOOT0_FLAGS?=	0xf
+BOOT_BOOT0_FLAGS?=	0x8f
 
 # The number of timer ticks to wait for a keypress before assuming the default
 # selection.  Since there are 18.2 ticks per second, the default value of
@@ -62,7 +65,7 @@ ${PROG}: boot0.o bootasmdef.nx
 	objcopy -S -O binary boot0.out ${.TARGET}
 
 boot0.o: boot0.S
-	${CC} -c ${CFLAGS} ${AFLAGS} ${.IMPSRC} -o ${.TARGET}
+	${CC} -c ${CFLAGS} ${.IMPSRC} -o ${.TARGET}
 
 CLEANFILES+= boot0.out boot0.o bootasmdef.nx
 

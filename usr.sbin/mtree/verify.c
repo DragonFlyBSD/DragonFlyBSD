@@ -47,12 +47,6 @@
 #include "mtree.h"
 #include "extern.h"
 
-extern long int crc_total;
-extern int ftsoptions;
-extern int dflag, eflag, qflag, rflag, sflag, uflag;
-extern char fullpath[MAXPATHLEN];
-extern int lineno;
-
 static NODE *root;
 static char path[MAXPATHLEN];
 
@@ -77,9 +71,9 @@ vwalk(void)
 	FTSENT *p;
 	NODE *ep, *level;
 	int specdepth, rval;
-	char *argv[2];
+	char *argv[2], dot[] = ".";
 
-	argv[0] = ".";
+	argv[0] = dot;
 	argv[1] = NULL;
 	if ((t = fts_open(argv, ftsoptions, NULL)) == NULL)
 		err(1, "line %d: fts_open", lineno);
@@ -119,7 +113,7 @@ vwalk(void)
 			    !strcmp(ep->name, p->fts_name)) {
 				ep->flags |= F_VISIT;
 				if ((ep->flags & F_NOCHANGE) == 0 &&
-				    compare(ep->name, ep, p))
+				    compare(ep, p))
 					rval = MISMATCHEXIT;
 				if (ep->flags & F_IGN)
 					fts_set(t, p, FTS_SKIP);

@@ -20,6 +20,7 @@ MAN=	ascii.7 \
 	release.7 \
 	script.7 \
 	security.7 \
+	stdint.7 \
 	tuning.7 \
 	vkernel.7
 

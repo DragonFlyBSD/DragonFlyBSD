@@ -207,9 +207,17 @@ hammer_cmd_pseudofs_create(char **av, int ac, int is_slave)
 		exit(1);
 	}
 
+	/*
+	 * Figure out the directory prefix, taking care of degenerate
+	 * cases.
+	 */
 	dirpath = strdup(path);
 	if (strrchr(dirpath, '/') != NULL) {
 		*strrchr(dirpath, '/') = 0;
+		if (dirpath[0] == 0) {
+			free(dirpath);
+			dirpath = strdup("/");
+		}
 	} else {
 		free(dirpath);
 		dirpath = strdup(".");

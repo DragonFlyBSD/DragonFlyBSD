@@ -315,8 +315,9 @@ struct vnode {
  * Modes.  Note that these V-modes must match file S_I*USR, SUID, SGID,
  * and SVTX flag bits.
  *
- * VCREATE, VDELETE, and VEXCL may only be used in naccess() calls.
+ * VOWN, VCREATE, VDELETE, and VEXCL may only be used in naccess() calls.
  */
+#define VOWN	0100000		/* succeed if file owner or (other flags) */
 #define VDELETE	040000		/* delete if the file/dir exists */
 #define VCREATE	020000		/* create if the file/dir does not exist */
 #define VEXCL	010000		/* error if the file/dir already exists */
@@ -358,7 +359,6 @@ extern	int		vttoif_tab[];
 #define	WRITECLOSE	0x0004		/* vflush: only close writable files */
 #define	DOCLOSE		0x0008		/* vclean: close active files */
 #define	V_SAVE		0x0001		/* vinvalbuf: sync file first */
-#define	REVOKEALL	0x0001		/* vop_revoke: revoke all aliases */
 
 #ifdef DIAGNOSTIC
 #define	VATTR_NULL(vap)	vattr_null(vap)
@@ -479,6 +479,7 @@ void	vclean_vxlocked (struct vnode *vp, int flags);
 void	vclean_unlocked (struct vnode *vp);
 void	vgone_vxlocked (struct vnode *vp);
 void	vupdatefsmid (struct vnode *vp);
+int	vrevoke (struct vnode *vp, struct ucred *cred);
 int	vinvalbuf (struct vnode *vp, int save, int slpflag, int slptimeo);
 int	vtruncbuf (struct vnode *vp, off_t length, int blksize);
 int	vfsync(struct vnode *vp, int waitfor, int passes,
@@ -517,16 +518,17 @@ int	vn_rdwr_inchunks (enum uio_rw rw, struct vnode *vp, caddr_t base,
 int	vn_stat (struct vnode *vp, struct stat *sb, struct ucred *cred);
 cdev_t	vn_todev (struct vnode *vp);
 void	vfs_timestamp (struct timespec *);
+void	vn_mark_atime(struct vnode *vp, struct thread *td);
 int	vn_writechk (struct vnode *vp, struct nchandle *nch);
 int	ncp_writechk(struct nchandle *nch);
 int	vop_stdopen (struct vop_open_args *ap);
 int	vop_stdclose (struct vop_close_args *ap);
 int	vop_stdgetpages(struct vop_getpages_args *ap);
 int	vop_stdputpages(struct vop_putpages_args *ap);
+int	vop_stdmarkatime(struct vop_markatime_args *ap);
 int	vop_nopoll (struct vop_poll_args *ap);
 int	vop_stdpathconf (struct vop_pathconf_args *ap);
 int	vop_stdpoll (struct vop_poll_args *ap);
-int	vop_stdrevoke (struct vop_revoke_args *ap);
 int	vop_eopnotsupp (struct vop_generic_args *ap);
 int	vop_ebadf (struct vop_generic_args *ap);
 int	vop_einval (struct vop_generic_args *ap);

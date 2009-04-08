@@ -337,7 +337,7 @@ trewind(void)
 		}
 		close(slaves[f].fd);
 	}
-	while (wait((int *)NULL) >= 0)	/* wait for any signals from slaves */
+	while (wait(NULL) >= 0)	/* wait for any signals from slaves */
 		/* void */;
 
 	if (pipeout)

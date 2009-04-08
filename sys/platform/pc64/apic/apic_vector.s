@@ -42,7 +42,7 @@
 #include <machine/trap.h>
 
 #include <machine_base/icu/icu.h>
-#include <bus/isa/i386/isa.h>
+#include <bus/isa/isa.h>
 
 #include "assym.s"
 

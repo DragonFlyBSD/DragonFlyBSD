@@ -344,8 +344,8 @@ sm_notify_1_svc(stat_chge *arg, struct svc_req *req)
     }
     else
     {
-      if (clnt_call(cli, lp->notifyProc, xdr_sm_status, &tx_arg, xdr_void, &dummy,
-        timeout) != RPC_SUCCESS)
+      if (clnt_call(cli, lp->notifyProc, (xdrproc_t)xdr_sm_status, &tx_arg,
+	  (xdrproc_t)xdr_void, &dummy, timeout) != RPC_SUCCESS)
       {
         syslog(LOG_ERR, "Failed to call rpc.statd client at host %s",
 	  lp->notifyHost);

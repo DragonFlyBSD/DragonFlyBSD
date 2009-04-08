@@ -594,6 +594,7 @@ KTR_GIANT_CONTENTION		opt_ktr.h
 KTR_SPIN_CONTENTION		opt_ktr.h
 KTR_IF_BGE			opt_ktr.h
 KTR_IF_EM			opt_ktr.h
+KTR_IF_EMX			opt_ktr.h
 KTR_KERNENTRY			opt_ktr.h
 KTR_TESTLOG			opt_ktr.h
 KTR_SERIALIZER			opt_ktr.h
@@ -615,6 +616,12 @@ BCE_NVRAM_WRITE_SUPPORT	opt_bce.h
 
 # ed driver
 ED_NO_MIIBUS		opt_ed.h
+
+# emx driver
+EMX_RSS_DEBUG		opt_emx.h
+
+# jme driver
+JME_RSS_DEBUG		opt_jme.h
 
 # wi driver
 WI_SYMBOL_FIRMWARE	opt_wi.h
@@ -646,3 +653,7 @@ SYSLINK			opt_syslink.h
 
 # serializer profiling support
 PROFILE_SERIALIZER	opt_serializer.h
+
+# Receive Side Scaling
+RSS			opt_rss.h
+RSS_DEBUG		opt_rss.h

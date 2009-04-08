@@ -44,7 +44,7 @@
 #include <unistd.h>
 
 static struct {
-	char *name;
+	const char *name;
 	u_long flag;
 	int invert;
 } mapping[] = {
@@ -87,9 +87,10 @@ char *
 fflagstostr(u_long flags)
 {
 	char *string;
-	char *sp, *dp;
+	const char *sp;
+	char *dp;
 	u_long setflags;
-	int i;
+	u_int i;
 
 	if ((string = (char *)malloc(nmappings * (longestflaglen + 1))) == NULL)
 		return (NULL);
@@ -119,7 +120,7 @@ int
 strtofflags(char **stringp, u_long *setp, u_long *clrp)
 {
 	char *string, *p;
-	int i;
+	u_int i;
 
 	if (setp)
 		*setp = 0;

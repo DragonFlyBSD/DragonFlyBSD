@@ -39,7 +39,7 @@ static const char rcsid[] = "$Id: res_findzonecut.c,v 1.2.2.3.4.4 2005/10/11 00:
 #include <stdlib.h>
 #include <string.h>
 
-#include <isc/list.h>
+#include "isc/list.h"
 
 #include "port_after.h"
 
@@ -149,6 +149,7 @@ static void	res_dprintf(const char *, ...) ISC_FORMAT_PRINTF(1, 2);
  *	keep going.  for the NS and A queries this means we just give up.
  */
 
+#ifndef _LIBC
 int
 res_findzonecut(res_state statp, const char *dname, ns_class class, int opts,
 		char *zname, size_t zsize, struct in_addr *addrs, int naddrs)
@@ -173,6 +174,7 @@ res_findzonecut(res_state statp, const char *dname, ns_class class, int opts,
 	free(u);
 	return (result);
 }
+#endif
 
 int
 res_findzonecut2(res_state statp, const char *dname, ns_class class, int opts,

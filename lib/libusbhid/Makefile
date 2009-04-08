@@ -4,6 +4,7 @@
 
 LIB=	usbhid
 MAN=	usbhid.3
+WARNS?=	6
 
 SHLIB_MAJOR= 2
 

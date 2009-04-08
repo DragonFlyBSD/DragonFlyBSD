@@ -6,12 +6,10 @@
 # built are visible:
 #
 # libcom_err must be built before libkrb and libpam.
-# libcrypt must be built before libkrb, libpam and libskey.
-# libmd must be built before libatm, libopie, libradius, libskey, and
-# libtacplus.
+# libcrypt must be built before libkrb and libpam.
+# libmd must be built before libatm, libopie, libradius, and libtacplus.
 # libncurses must be built before libdialog, libedit and libreadline.
 # libradius must be built before libpam.
-# libskey must be built before libpam.
 # libtacplus must be built before libpam.
 # libutil must be built before libpam.
 # libsbuf must be built before libcam.
@@ -21,14 +19,14 @@
 # Otherwise, the SUBDIR list should be in alphabetical order.
 
 SUBDIR=	libarchive libbluetooth libcom_err libcrypt libm libmd \
-	libncurses libradius libskey libtacplus libutil libsbuf \
+	libncurses libradius libtacplus libutil libsbuf \
 	libalias libatm ${_libbind} ${_libbind9} libbz2 libc ${_libc_r} \
 	libcalendar libcam libcompat libdevinfo libdevstat libedit libevent libfetch \
 	libftpio libipsec libipx libisc libkcore libkinfo libkvm libmagic \
 	${_libmilter} ${_libncp} libnetgraph libopie libpam \
 	libpcap libposix1e libsdp libthread_xu libpthread librpcsvc ${_libsm} \
 	${_libsmb} ${_libsmdb} ${_libsmutil} libstand libtelnet libusbhid \
-	${_libvgl} libwrap libxpg4 liby libz i18n_module pam_module \
+	${_libvgl} libwrap libxpg4 liby libypclnt libz i18n_module pam_module \
 	libc_rtld libsctp
 
 .if exists(${.CURDIR}/compat/${MACHINE_ARCH}/Makefile)

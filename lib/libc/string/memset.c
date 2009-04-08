@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,19 +30,20 @@
  * SUCH DAMAGE.
  *
  * @(#)memset.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/string/memset.c,v 1.4.2.1 2001/07/09 23:30:03 obrien Exp $
+ * $FreeBSD: src/lib/libc/string/memset.c,v 1.9 2007/01/09 00:28:12 imp Exp $
  * $DragonFly: src/lib/libc/string/memset.c,v 1.4 2005/09/18 16:32:34 asmodai Exp $
  */
 
 #include <sys/types.h>
 
 #include <limits.h>
-#include <string.h>
 
 #define	wsize	sizeof(u_int)
 #define	wmask	(wsize - 1)
 
 #ifdef BZERO
+#include <strings.h>
+
 #define	RETURN	return
 #define	VAL	0
 #define	WIDEVAL	0
@@ -54,6 +51,8 @@
 void
 bzero(void *dst0, size_t length)
 #else
+#include <string.h>
+
 #define	RETURN	return (dst0)
 #define	VAL	c0
 #define	WIDEVAL	c

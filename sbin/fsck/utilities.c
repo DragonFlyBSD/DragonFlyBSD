@@ -137,7 +137,7 @@ bufinit(void)
 	long bufcnt, i;
 	char *bufp;
 
-	pbp = pdirbp = (struct bufarea *)0;
+	pbp = pdirbp = NULL;
 	bufp = malloc((unsigned int)sblock.fs_bsize);
 	if (bufp == 0)
 		errx(EEXIT, "cannot allocate buffer pool");
@@ -273,7 +273,7 @@ ckfini(int markclean)
 	}
 	if (bufhead.b_size != cnt)
 		errx(EEXIT, "panic: lost %d buffers", bufhead.b_size - cnt);
-	pbp = pdirbp = (struct bufarea *)0;
+	pbp = pdirbp = NULL;
 	if (sblock.fs_clean != markclean) {
 		sblock.fs_clean = markclean;
 		sbdirty();

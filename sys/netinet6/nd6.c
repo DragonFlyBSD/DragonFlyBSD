@@ -996,8 +996,7 @@ nd6_free(struct rtentry *rt)
 	 * caches, and disable the route entry not to be used in already
 	 * cached routes.
 	 */
-	rtrequest(RTM_DELETE, rt_key(rt), (struct sockaddr *)0,
-		  rt_mask(rt), 0, (struct rtentry **)0);
+	rtrequest(RTM_DELETE, rt_key(rt), NULL, rt_mask(rt), 0, NULL);
 
 	return (next);
 }
@@ -1113,7 +1112,8 @@ nd6_rtrequest(int req, struct rtentry *rt,
 			 * treated as on-link.
 			 */
 			rt_setgate(rt, rt_key(rt),
-				   (struct sockaddr *)&null_sdl);
+				   (struct sockaddr *)&null_sdl,
+				   RTL_DONTREPORT);
 			gate = rt->rt_gateway;
 			SDL(gate)->sdl_type = ifp->if_type;
 			SDL(gate)->sdl_index = ifp->if_index;

@@ -96,6 +96,7 @@
 #include <sys/kern_syscall.h>
 #include <sys/kcore.h>
 #include <sys/kinfo.h>
+#include <sys/un.h>
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
@@ -596,7 +597,7 @@ retry:
 	 * close() were performed on it).
 	 */
 	if (delfp) {
-		(void)closef(delfp, td);
+		closef(delfp, p);
 		if (holdleaders) {
 			spin_lock_wr(&fdp->fd_spin);
 			fdp->fd_holdleaderscount--;
@@ -830,7 +831,7 @@ kern_close(int fd)
 			knote_fdclose(p, fd);
 		rel_mplock();
 	}
-	error = closef(fp, td);
+	error = closef(fp, p);
 	if (holdleaders) {
 		spin_lock_wr(&fdp->fd_spin);
 		fdp->fd_holdleaderscount--;
@@ -1177,6 +1178,158 @@ fdavail(struct proc *p, int n)
 	}
 	spin_unlock_rd(&fdp->fd_spin);
 	return (0);
+}
+
+/*
+ * Revoke open descriptors referencing (f_data, f_type)
+ *
+ * Any revoke executed within a prison is only able to
+ * revoke descriptors for processes within that prison.
+ *
+ * Returns 0 on success or an error code.
+ */
+struct fdrevoke_info {
+	void *data;
+	short type;
+	short unused;
+	int count;
+	int intransit;
+	struct ucred *cred;
+	struct file *nfp;
+};
+
+static int fdrevoke_check_callback(struct file *fp, void *vinfo);
+static int fdrevoke_proc_callback(struct proc *p, void *vinfo);
+
+int
+fdrevoke(void *f_data, short f_type, struct ucred *cred)
+{
+	struct fdrevoke_info info;
+	int error;
+
+	bzero(&info, sizeof(info));
+	info.data = f_data;
+	info.type = f_type;
+	info.cred = cred;
+	error = falloc(NULL, &info.nfp, NULL);
+	if (error)
+		return (error);
+
+	/*
+	 * Scan the file pointer table once.  dups do not dup file pointers,
+	 * only descriptors, so there is no leak.  Set FREVOKED on the fps
+	 * being revoked.
+	 */
+	allfiles_scan_exclusive(fdrevoke_check_callback, &info);
+
+	/*
+	 * If any fps were marked track down the related descriptors
+	 * and close them.  Any dup()s at this point will notice
+	 * the FREVOKED already set in the fp and do the right thing.
+	 *
+	 * Any fps with non-zero msgcounts (aka sent over a unix-domain
+	 * socket) bumped the intransit counter and will require a
+	 * scan.  Races against fps leaving the socket are closed by
+	 * the socket code checking for FREVOKED.
+	 */
+	if (info.count)
+		allproc_scan(fdrevoke_proc_callback, &info);
+	if (info.intransit)
+		unp_revoke_gc(info.nfp);
+	fdrop(info.nfp);
+	return(0);
+}
+
+/*
+ * Locate matching file pointers directly.
+ */
+static int
+fdrevoke_check_callback(struct file *fp, void *vinfo)
+{
+	struct fdrevoke_info *info = vinfo;
+
+	/*
+	 * File pointers already flagged for revokation are skipped.
+	 */
+	if (fp->f_flag & FREVOKED)
+		return(0);
+
+	/*
+	 * If revoking from a prison file pointers created outside of
+	 * that prison, or file pointers without creds, cannot be revoked.
+	 */
+	if (info->cred->cr_prison &&
+	    (fp->f_cred == NULL ||
+	     info->cred->cr_prison != fp->f_cred->cr_prison)) {
+		return(0);
+	}
+
+	/*
+	 * If the file pointer matches then mark it for revocation.  The
+	 * flag is currently only used by unp_revoke_gc().
+	 *
+	 * info->count is a heuristic and can race in a SMP environment.
+	 */
+	if (info->data == fp->f_data && info->type == fp->f_type) {
+		atomic_set_int(&fp->f_flag, FREVOKED);
+		info->count += fp->f_count;
+		if (fp->f_msgcount)
+			++info->intransit;
+	}
+	return(0);
+}
+
+/*
+ * Locate matching file pointers via process descriptor tables.
+ */
+static int
+fdrevoke_proc_callback(struct proc *p, void *vinfo)
+{
+	struct fdrevoke_info *info = vinfo;
+	struct filedesc *fdp;
+	struct file *fp;
+	int n;
+
+	if (p->p_stat == SIDL || p->p_stat == SZOMB)
+		return(0);
+	if (info->cred->cr_prison &&
+	    info->cred->cr_prison != p->p_ucred->cr_prison) {
+		return(0);
+	}
+
+	/*
+	 * If the controlling terminal of the process matches the
+	 * vnode being revoked we clear the controlling terminal.
+	 *
+	 * The normal spec_close() may not catch this because it
+	 * uses curproc instead of p.
+	 */
+	if (p->p_session && info->type == DTYPE_VNODE &&
+	    info->data == p->p_session->s_ttyvp) {
+		p->p_session->s_ttyvp = NULL;
+		vrele(info->data);
+	}
+
+	/*
+	 * Locate and close any matching file descriptors.
+	 */
+	if ((fdp = p->p_fd) == NULL)
+		return(0);
+	spin_lock_wr(&fdp->fd_spin);
+	for (n = 0; n < fdp->fd_nfiles; ++n) {
+		if ((fp = fdp->fd_files[n].fp) == NULL)
+			continue;
+		if (fp->f_flag & FREVOKED) {
+			fhold(info->nfp);
+			fdp->fd_files[n].fp = info->nfp;
+			spin_unlock_wr(&fdp->fd_spin);
+			closef(fp, p);
+			spin_lock_wr(&fdp->fd_spin);
+			--info->count;
+		}
+	}
+	spin_unlock_wr(&fdp->fd_spin);
+	return(0);
 }
 
 /*
@@ -1630,8 +1783,6 @@ again:
 void
 fdfree(struct proc *p)
 {
-	/* Take any thread of p */
-	struct thread *td = FIRST_LWP_IN_PROC(p)->lwp_thread;
 	struct filedesc *fdp = p->p_fd;
 	struct fdnode *fdnode;
 	int i;
@@ -1731,7 +1882,7 @@ fdfree(struct proc *p)
 	 */
 	for (i = 0; i <= fdp->fd_lastfile; ++i) {
 		if (fdp->fd_files[i].fp)
-			closef(fdp->fd_files[i].fp, td);
+			closef(fdp->fd_files[i].fp, p);
 	}
 	if (fdp->fd_files != fdp->fd_builtin_files)
 		kfree(fdp->fd_files, M_FILEDESC);
@@ -1879,8 +2030,6 @@ is_unsafe(struct file *fp)
 void
 setugidsafety(struct proc *p)
 {
-	/* Take any thread of p */
-	struct thread *td = FIRST_LWP_IN_PROC(p)->lwp_thread;
 	struct filedesc *fdp = p->p_fd;
 	int i;
 
@@ -1905,7 +2054,7 @@ setugidsafety(struct proc *p)
 			 * a race while close blocks.
 			 */
 			if ((fp = funsetfd_locked(fdp, i)) != NULL)
-				closef(fp, td);
+				closef(fp, p);
 		}
 	}
 }
@@ -1918,8 +2067,6 @@ setugidsafety(struct proc *p)
 void
 fdcloseexec(struct proc *p)
 {
-	/* Take any thread of p */
-	struct thread *td = FIRST_LWP_IN_PROC(p)->lwp_thread;
 	struct filedesc *fdp = p->p_fd;
 	int i;
 
@@ -1943,7 +2090,7 @@ fdcloseexec(struct proc *p)
 			 * a race while close blocks.
 			 */
 			if ((fp = funsetfd_locked(fdp, i)) != NULL)
-				closef(fp, td);
+				closef(fp, p);
 		}
 	}
 }
@@ -1966,12 +2113,12 @@ fdcheckstd(struct proc *p)
 	register_t retval;
 	int i, error, flags, devnull;
 
-       fdp = p->p_fd;
-       if (fdp == NULL)
-               return (0);
-       devnull = -1;
-       error = 0;
-       for (i = 0; i < 3; i++) {
+	fdp = p->p_fd;
+	if (fdp == NULL)
+		return (0);
+	devnull = -1;
+	error = 0;
+	for (i = 0; i < 3; i++) {
 		if (fdp->fd_files[i].fp != NULL)
 			continue;
 		if (devnull < 0) {
@@ -1997,8 +2144,8 @@ fdcheckstd(struct proc *p)
 			if (error != 0)
 				break;
 		}
-       }
-       return (error);
+	}
+	return (error);
 }
 
 /*
@@ -2010,21 +2157,15 @@ fdcheckstd(struct proc *p)
  * MPALMOSTSAFE - acquires mplock for VOP operations
  */
 int
-closef(struct file *fp, struct thread *td)
+closef(struct file *fp, struct proc *p)
 {
 	struct vnode *vp;
 	struct flock lf;
 	struct filedesc_to_leader *fdtol;
-	struct proc *p;
 
 	if (fp == NULL)
 		return (0);
-	if (td == NULL) {
-		td = curthread;
-		p = NULL;		/* allow no proc association */
-	} else {
-		p = td->td_proc;	/* can also be NULL */
-	}
+
 	/*
 	 * POSIX record locking dictates that any close releases ALL
 	 * locks owned by this process.  This is handled by setting
@@ -2087,9 +2228,8 @@ closef(struct file *fp, struct thread *td)
  * caller of fhold() already has a reference to the file pointer in some
  * manner or other). 
  *
- * This is a rare case where callers are allowed to hold spinlocks, so
- * we can't ourselves.  Since we are not obtaining the fp spinlock,
- * we have to use an atomic lock to interlock against fdrop().
+ * f_count is not spin-locked.  Instead, atomic ops are used for
+ * incrementing, decrementing, and handling the 1->0 transition.
  */
 void
 fhold(struct file *fp)
@@ -2098,8 +2238,7 @@ fhold(struct file *fp)
 }
 
 /*
- * A spinlock is required to handle 1->0 transitions on f_count.  We have
- * to use atomic_sub_int so as not to race the atomic_add_int in fhold().
+ * fdrop() - drop a reference to a descriptor
  *
  * MPALMOSTSAFE - acquires mplock for final close sequence
  */
@@ -2110,13 +2249,13 @@ fdrop(struct file *fp)
 	struct vnode *vp;
 	int error;
 
-	spin_lock_wr(&fp->f_spin);
-	atomic_subtract_int(&fp->f_count, 1);
-	if (fp->f_count > 0) {
-		spin_unlock_wr(&fp->f_spin);
+	/*
+	 * A combined fetch and subtract is needed to properly detect
+	 * 1->0 transitions, otherwise two cpus dropping from a ref
+	 * count of 2 might both try to run the 1->0 code.
+	 */
+	if (atomic_fetchadd_int(&fp->f_count, -1) > 1)
 		return (0);
-	}
-	spin_unlock_wr(&fp->f_spin);
 
 	get_mplock();
 
@@ -2234,9 +2373,23 @@ dupfdopen(struct proc *p, int dfd, int sfd, int mode, int error)
 	struct filedesc *fdp = p->p_fd;
 	struct file *wfp;
 	struct file *xfp;
+	int werror;
 
 	if ((wfp = holdfp(fdp, sfd, -1)) == NULL)
 		return (EBADF);
+
+	/*
+	 * Close a revoke/dup race.  Duping a descriptor marked as revoked
+	 * will dup a dummy descriptor instead of the real one.
+	 */
+	if (wfp->f_flag & FREVOKED) {
+		kprintf("Warning: attempt to dup() a revoked descriptor\n");
+		fdrop(wfp);
+		wfp = NULL;
+		werror = falloc(NULL, &wfp, NULL);
+		if (werror)
+			return (werror);
+	}
 
 	/*
 	 * There are two cases of interest here.
@@ -2254,8 +2407,10 @@ dupfdopen(struct proc *p, int dfd, int sfd, int mode, int error)
 		 * Check that the mode the file is being opened for is a
 		 * subset of the mode of the existing descriptor.
 		 */
-		if (((mode & (FREAD|FWRITE)) | wfp->f_flag) != wfp->f_flag)
-			return (EACCES);
+		if (((mode & (FREAD|FWRITE)) | wfp->f_flag) != wfp->f_flag) {
+			error = EACCES;
+			break;
+		}
 		fdp->fd_files[dfd].fileflags = fdp->fd_files[sfd].fileflags;
 		fsetfd(p, wfp, dfd);
 		error = 0;
@@ -2268,7 +2423,6 @@ dupfdopen(struct proc *p, int dfd, int sfd, int mode, int error)
 		fsetfd(p, wfp, dfd);
 		if ((xfp = funsetfd_locked(fdp, sfd)) != NULL)
 			fdrop(xfp);
-		KKASSERT(xfp == wfp);	/* XXX MP RACE */
 		error = 0;
 		break;
 	default:
@@ -2308,14 +2462,9 @@ filedesc_to_leader_alloc(struct filedesc_to_leader *old,
 
 /*
  * Scan all file pointers in the system.  The callback is made with
- * both the master list spinlock held and the fp spinlock held,
- * both exclusively.
+ * the master list spinlock held exclusively.
  *
  * MPSAFE
- *
- * WARNING: both the filehead spinlock and the file pointer spinlock are
- * held exclusively when the callback is made.  The file pointer is not
- * referenced.
  */
 void
 allfiles_scan_exclusive(int (*callback)(struct file *, void *), void *data)
@@ -2325,9 +2474,7 @@ allfiles_scan_exclusive(int (*callback)(struct file *, void *), void *data)
 
 	spin_lock_wr(&filehead_spin);
 	LIST_FOREACH(fp, &filehead, f_list) {
-		spin_lock_wr(&fp->f_spin);
 		res = callback(fp, data);
-		spin_unlock_wr(&fp->f_spin);
 		if (res < 0)
 			break;
 	}

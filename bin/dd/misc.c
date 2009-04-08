@@ -54,7 +54,7 @@ summary(void)
 	double secs;
 	char buf[100];
 
-	gettimeofday(&tv, (struct timezone *)NULL);
+	gettimeofday(&tv, NULL);
 	secs = tv.tv_sec + tv.tv_usec * 1e-6 - st.start;
 	if (secs < 1e-6)
 		secs = 1e-6;

@@ -137,7 +137,7 @@ ypxfrd_getmap_1_svc(ypxfr_mapname *argp, struct svc_req *rqstp)
 
 	/* Start sending the file. */
 
-	svc_sendreply(rqstp->rq_xprt, xdr_my_xfr, (char *)&result);
+	svc_sendreply(rqstp->rq_xprt, (xdrproc_t)xdr_my_xfr, &result);
 
 	close(fp);
 

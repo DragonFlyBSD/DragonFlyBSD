@@ -586,7 +586,7 @@ sctp6_ctlinput(int cmd, struct sockaddr *pktdst, void *d)
 	if (d != NULL) {
 		ip6cp = (struct ip6ctlparam *)d;
 	} else {
-		ip6cp = (struct ip6ctlparam *)NULL;
+		ip6cp = NULL;
 	}
 
 	if (ip6cp) {

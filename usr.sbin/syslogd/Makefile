@@ -1,18 +1,18 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
-# $FreeBSD: src/usr.sbin/syslogd/Makefile,v 1.12 2004/02/05 22:44:25 ru Exp $
+# $FreeBSD: src/usr.sbin/syslogd/Makefile,v 1.14 2008/12/17 16:51:40 obrien Exp $
 # $DragonFly: src/usr.sbin/syslogd/Makefile,v 1.3 2004/08/09 20:11:19 dillon Exp $
-#
 
-.PATH: ${.CURDIR}/../../usr.bin/wall
+.PATH: ${.CURDIR}/../../usr.bin/wall ${.CURDIR}/../nscd
 
 PROG=	syslogd
 MAN=	syslog.conf.5 syslogd.8
-SRCS=	syslogd.c ttymsg.c
+SRCS=	pidfile.c syslogd.c ttymsg.c
 
 DPADD=	${LIBUTIL}
 LDADD=	-lutil
 
-WARNS?=	1
-CFLAGS+=-DINET6 -I${.CURDIR}/../../usr.bin/wall
+WARNS?=	2
+CFLAGS+= -DINET6
+CFLAGS+= -I${.CURDIR}/../../usr.bin/wall
 
 .include <bsd.prog.mk>

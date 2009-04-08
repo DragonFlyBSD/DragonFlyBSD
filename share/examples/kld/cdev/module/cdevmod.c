@@ -81,9 +81,9 @@
 
 static struct dev_ops my_devops = {
 	.head = {
-		.name = "cdev",	/* Device name */
+		.name = "cdev",	        /* device name */
 		.maj = CDEV_MAJOR,	/* major device number */
-		.flags = D_TTY	/* flags */
+		.flags = D_TTY	        /* flags */
 	},
 	.d_open = mydev_open,
 	.d_close = mydev_close,
@@ -92,12 +92,11 @@ static struct dev_ops my_devops = {
 	.d_ioctl = mydev_ioctl,
 };
 
-/* 
- * Used as the variable that is the reference to our device
- * in devfs... we must keep this variable sane until we 
- * call kldunload.
+/*
+ * Used as the variable that is the reference to our device in devfs...
+ * we must keep this variable sane until we call kldunload.
  */
-static dev_t sdev;
+static cdev_t sdev;
 
 /*
  * This function is called each time the module is loaded or unloaded.
@@ -109,41 +108,43 @@ static dev_t sdev;
  * is no real issue involved with stat; we will leave it lkm_nullcmd(),
  * since we don't have to do anything about it.
  */
-
 static int
 cdev_load(module_t mod, int cmd, void *arg)
 {
-    int  err = 0;
+	int err = 0;
 
-    switch (cmd) {
-    case MOD_LOAD:
+	switch (cmd) {
+	case MOD_LOAD:
+		/* Do any initialization that you should do with the kernel. */
 	
-	/* Do any initialization that you should do with the kernel */
-	
-	/* if we make it to here, print copyright on console*/
-	printf("\nSample Loaded kld character device driver\n");
-	printf("Copyright (c) 1998\n");
-	printf("Rajesh Vaidheeswarran\n");
-	printf("All rights reserved\n");
-	dev_ops_add(&my_devops,-1,0);
-	sdev = make_dev(&my_devops, 0, UID_ROOT, GID_WHEEL, 0600, "cdev");
-	sdev = reference_dev(sdev);
-	break;		/* Success*/
+		/* If we make it to here, print copyright on console. */
+		kprintf("\nSample Loaded kld character device driver\n");
+		kprintf("Copyright (c) 1998\n");
+		kprintf("Rajesh Vaidheeswarran\n");
+		kprintf("All rights reserved\n");
 
-    case MOD_UNLOAD:
-	printf("Unloaded kld character device driver\n");
-	dev_ops_remove(&my_devops, -1, 0);
-	destroy_dev(sdev);
-	break;		/* Success*/
+		dev_ops_add(&my_devops, -1, 0);
+		sdev = make_dev(&my_devops, 0, UID_ROOT, GID_WHEEL, 0600,
+		    "cdev");
 
-    default:	/* we only understand load/unload*/
-	err = EINVAL;
-	break;
-    }
+		/* We obtain a reference to sdev, so we can destroy it later. */
+		sdev = reference_dev(sdev);
+		break;		/* Success*/
 
-    return(err);
+	case MOD_UNLOAD:
+		kprintf("Unloaded kld character device driver\n");
+
+		dev_ops_remove(&my_devops, -1, 0);
+		destroy_dev(sdev);
+		break;		/* Success*/
+
+	default:	/* We only understand load/unload. */
+		err = EINVAL;
+		break;
+	}
+
+	return (err);
 }
 
-/* Now declare the module to the system */
-
+/* Now declare the module to the system. */
 DEV_MODULE(cdev, cdev_load, NULL);

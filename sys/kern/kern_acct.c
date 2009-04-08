@@ -45,6 +45,7 @@
 #include <sys/systm.h>
 #include <sys/sysproto.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
 #include <sys/fcntl.h>
@@ -126,8 +127,7 @@ sys_acct(struct acct_args *uap)
 	struct vnode *vp;
 	int error;
 
-	/* Make sure that the caller is root. */
-	error = suser(td);
+	error = priv_check(td, PRIV_ACCT);
 	if (error)
 		return (error);
 
@@ -261,7 +261,7 @@ acct_process(struct proc *p)
 	 */
 	return (vn_rdwr(UIO_WRITE, vp, (caddr_t)&acct, sizeof (acct),
 	    (off_t)0, UIO_SYSSPACE, IO_APPEND|IO_UNIT, p->p_ucred,
-	    (int *)0));
+	    NULL));
 }
 
 /*

@@ -84,6 +84,7 @@
 #include <sys/errno.h>
 #include <sys/time.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/jail.h>
 #include <sys/thread2.h>
 
@@ -126,7 +127,7 @@ int
 in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 {
 	struct socket *so = inp->inp_socket;
-	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)NULL;
+	struct sockaddr_in6 *sin6 = NULL;
 	struct sockaddr_in6 jsin6;
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 	struct proc *p = td->td_proc;
@@ -200,7 +201,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 			/* GROSS */
 			if (ntohs(lport) < IPV6PORT_RESERVED && cred &&
-			    suser_cred(cred, PRISON_ROOT))
+			    priv_check_cred(cred, PRIV_ROOT, PRISON_ROOT))
 				return (EACCES);
 			if (so->so_cred->cr_uid != 0 &&
 			    !IN6_IS_ADDR_MULTICAST(&sin6->sin6_addr)) {
@@ -382,7 +383,7 @@ in6_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	}
 	if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr)) {
 		if (inp->inp_lport == 0) {
-			error = in6_pcbbind(inp, (struct sockaddr *)0, td);
+			error = in6_pcbbind(inp, NULL, td);
 			if (error)
 				return (error);
 		}

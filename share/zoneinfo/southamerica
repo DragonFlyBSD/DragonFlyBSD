@@ -1,4 +1,4 @@
-# @(#)southamerica	8.33
+# @(#)southamerica	8.34
 # <pre>
 
 # This data is by no means authoritative; if you think you know better,
@@ -216,7 +216,7 @@ Rule	Arg	2000	only	-	Mar	3	0:00	0	-
 Rule	Arg	2007	only	-	Dec	30	0:00	1:00	S
 Rule	Arg	2008	max	-	Mar	Sun>=15	0:00	0	-
 Rule	Arg	2008	max	-	Oct	Sun>=15	0:00	1:00	S
- 
+
 # From Mariano Absatz (2004-05-21):
 # Today it was officially published that the Province of Mendoza is changing
 # its timezone this winter... starting tomorrow night....
@@ -306,9 +306,9 @@ Rule	Arg	2008	max	-	Oct	Sun>=15	0:00	1:00	S
 # confirms what Alex Krivenyshev has earlier sent to the tz
 # emailing list about that San Luis plans to return to standard
 # time much earlier than the rest of the country. It also
-# confirms that upon request the provinces San Juan and Mendoza 
-# refused to follow San Luis in this change. 
-# 
+# confirms that upon request the provinces San Juan and Mendoza
+# refused to follow San Luis in this change.
+#
 # The change is supposed to take place Monday the 21.st at 0:00
 # hours. As far as I understand it if this goes ahead, we need
 # a new timezone for San Luis (although there are also documented
@@ -350,6 +350,50 @@ Rule	Arg	2008	max	-	Oct	Sun>=15	0:00	1:00	S
 # was America/San_Luis, but we haven't verified this yet so for now we'll
 # keep America/Cordoba a single region rather than splitting it into the
 # other 5 subregions.
+
+# From Mariano Absatz (2009-03-13):
+# Yesterday (with our usual 2-day notice) the Province of San Luis
+# decided that next Sunday instead of "staying" @utc-03:00 they will go
+# to utc-04:00 until the second Saturday in October...
+#
+# The press release is at
+# <a href="http://www.sanluis.gov.ar/SL/Paginas/NoticiaDetalle.asp?TemaId=1&InfoPrensaId=3102">
+# http://www.sanluis.gov.ar/SL/Paginas/NoticiaDetalle.asp?TemaId=1&InfoPrensaId=3102
+# </a>
+# (I couldn't find the decree, but
+# <a href="http://www.sanluis.gov.ar">
+# www.sanluis.gov.ar
+# <a/>
+# is the official page for the Province Government).
+#
+# There's also a note in only one of the major national papers (La Nación) at
+# <a href="http://www.lanacion.com.ar/nota.asp?nota_id=1107912">
+# http://www.lanacion.com.ar/nota.asp?nota_id=1107912
+# </a>
+#
+# The press release says:
+#  (...) anunció que el próximo domingo a las 00:00 los puntanos deberán
+# atrasar una hora sus relojes.
+#
+# A partir de entonces, San Luis establecerá el huso horario propio de
+# la Provincia. De esta manera, durante el periodo del calendario anual
+# 2009, el cambio horario quedará comprendido entre las 00:00 del tercer
+# domingo de marzo y las 24:00 del segundo sábado de octubre.
+# Quick&dirty translation
+# (...) announced that next Sunday, at 00:00, Puntanos (the San Luis
+# inhabitants) will have to turn back one hour their clocks
+#
+# Since then, San Luis will establish its own Province timezone. Thus,
+# during 2009, this timezone change will run from 00:00 the third Sunday
+# in March until 24:00 of the second Saturday in October.
+
+# From Arthur David Olson (2009-03-16):
+# The unofficial claim at
+# <a href="http://www.timeanddate.com/news/time/san-luis-new-time-zone.html">
+# http://www.timeanddate.com/news/time/san-luis-new-time-zone.html
+# </a>
+# is that "The province will most likely follow the next daylight saving schedule,
+# which is planned for the second Sunday in October."
 
 #
 # Zone	NAME		GMTOFF	RULES	FORMAT	[UNTIL]
@@ -498,7 +542,8 @@ Zone America/Argentina/San_Luis -4:25:24 - LMT	1894 Oct 31
 			-3:00	-	ART	2004 May 31
 			-4:00	-	WART	2004 Jul 25
 			-3:00	Arg	AR%sT	2008 Jan 21
-			-3:00	-	ART
+			-3:00	-	ART	2009 Mar 15
+			-4:00	Arg	WAR%sT
 #
 # Santa Cruz (SC)
 Zone America/Argentina/Rio_Gallegos -4:36:52 - LMT 1894 Oct 31
@@ -1016,7 +1061,7 @@ Zone America/Rio_Branco	-4:31:12 -	LMT	1914
 # Due to drought, Chile extends Daylight Time in three weeks.  This
 # is one-time change (Saturday 3/29 at 24:00 for America/Santiago
 # and Saturday 3/29 at 22:00 for Pacific/Easter)
-# The Supreme Decree is located at 
+# The Supreme Decree is located at
 # <a href="http://www.shoa.cl/servicios/supremo316.pdf">
 # http://www.shoa.cl/servicios/supremo316.pdf
 # </a>
@@ -1027,7 +1072,7 @@ Zone America/Rio_Branco	-4:31:12 -	LMT	1914
 
 # From Jose Miguel Garrido (2008-03-05):
 # ...
-# You could see the announces of the change on 
+# You could see the announces of the change on
 # <a href="http://www.shoa.cl/noticias/2008/04hora/hora.htm">
 # http://www.shoa.cl/noticias/2008/04hora/hora.htm
 # </a>.

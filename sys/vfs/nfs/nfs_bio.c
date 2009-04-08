@@ -1103,7 +1103,7 @@ nfs_getcacheblk(struct vnode *vp, off_t loffset, int size, struct thread *td)
 	if (nmp->nm_flag & NFSMNT_INT) {
 		bp = getblk(vp, loffset, size, GETBLK_PCATCH, 0);
 		while (bp == NULL) {
-			if (nfs_sigintr(nmp, (struct nfsreq *)0, td))
+			if (nfs_sigintr(nmp, NULL, td))
 				return (NULL);
 			bp = getblk(vp, loffset, size, 0, 2 * hz);
 		}

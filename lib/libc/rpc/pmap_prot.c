@@ -28,7 +28,8 @@
  *
  * @(#)pmap_prot.c 1.17 87/08/11 Copyr 1984 Sun Micro
  * @(#)pmap_prot.c	2.1 88/07/29 4.0 RPCSRC
- * $FreeBSD: src/lib/libc/rpc/pmap_prot.c,v 1.6 1999/08/28 00:00:42 peter Exp $
+ * $NetBSD: pmap_prot.c,v 1.10 2000/01/22 22:19:18 mycroft Exp $
+ * $FreeBSD: src/lib/libc/rpc/pmap_prot.c,v 1.9 2004/10/16 06:11:35 obrien Exp $
  * $DragonFly: src/lib/libc/rpc/pmap_prot.c,v 1.3 2005/11/13 12:27:04 swildner Exp $
  */
 
@@ -39,14 +40,21 @@
  * Copyright (C) 1984, Sun Microsystems, Inc.
  */
 
+#include "namespace.h"
+#include <assert.h>
+
 #include <rpc/types.h>
 #include <rpc/xdr.h>
 #include <rpc/pmap_prot.h>
+#include "un-namespace.h"
 
 
 bool_t
 xdr_pmap(XDR *xdrs, struct pmap *regs)
 {
+
+	assert(xdrs != NULL);
+	assert(regs != NULL);
 
 	if (xdr_u_long(xdrs, &regs->pm_prog) &&
 		xdr_u_long(xdrs, &regs->pm_vers) &&

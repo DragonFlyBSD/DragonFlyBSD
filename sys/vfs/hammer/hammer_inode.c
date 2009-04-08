@@ -51,7 +51,7 @@ static int	hammer_setup_parent_inodes(hammer_inode_t ip,
 					hammer_flush_group_t flg);
 static int	hammer_setup_parent_inodes_helper(hammer_record_t record,
 					hammer_flush_group_t flg);
-static void	hammer_inode_wakereclaims(hammer_inode_t ip);
+static void	hammer_inode_wakereclaims(hammer_inode_t ip, int dowake);
 
 #ifdef DEBUG_TRUNCATE
 extern struct hammer_inode *HammerTruncIp;
@@ -262,7 +262,7 @@ hammer_get_vnode(struct hammer_inode *ip, struct vnode **vpp)
 			obj_type = ip->ino_data.obj_type;
 			vp->v_type = hammer_get_vnode_type(obj_type);
 
-			hammer_inode_wakereclaims(ip);
+			hammer_inode_wakereclaims(ip, 0);
 
 			switch(ip->ino_data.obj_type) {
 			case HAMMER_OBJTYPE_CDEV:
@@ -358,6 +358,13 @@ hammer_get_inode(hammer_transaction_t trans, hammer_inode_t dip,
 	/*
 	 * Determine if we already have an inode cached.  If we do then
 	 * we are golden.
+	 *
+	 * If we find an inode with no vnode we have to mark the
+	 * transaction such that hammer_inode_waitreclaims() is
+	 * called later on to avoid building up an infinite number
+	 * of inodes.  Otherwise we can continue to * add new inodes
+	 * faster then they can be disposed of, even with the tsleep
+	 * delay.
 	 */
 	iinfo.obj_id = obj_id;
 	iinfo.obj_asof = asof;
@@ -365,6 +372,10 @@ hammer_get_inode(hammer_transaction_t trans, hammer_inode_t dip,
 loop:
 	ip = hammer_ino_rb_tree_RB_LOOKUP_INFO(&hmp->rb_inos_root, &iinfo);
 	if (ip) {
+#if 0
+		if (ip->vp == NULL)
+			trans->flags |= HAMMER_TRANSF_NEWINODE;
+#endif
 		hammer_ref(&ip->lock);
 		*errorp = 0;
 		return(ip);
@@ -510,6 +521,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	ip = kmalloc(sizeof(*ip), hmp->m_inodes, M_WAITOK|M_ZERO);
 	++hammer_count_inodes;
 	++hmp->count_inodes;
+	trans->flags |= HAMMER_TRANSF_NEWINODE;
 
 	if (pfsm) {
 		KKASSERT(pfsm->localization != 0);
@@ -672,7 +684,7 @@ hammer_free_inode(hammer_inode_t ip)
 	KKASSERT(ip->lock.refs == 1);
 	hammer_uncache_node(&ip->cache[0]);
 	hammer_uncache_node(&ip->cache[1]);
-	hammer_inode_wakereclaims(ip);
+	hammer_inode_wakereclaims(ip, 1);
 	if (ip->objid_cache)
 		hammer_clear_objid(ip);
 	--hammer_count_inodes;
@@ -2037,6 +2049,14 @@ hammer_flush_inode_done(hammer_inode_t ip, int error)
 	hmp = ip->hmp;
 
 	/*
+	 * Auto-reflush if the backend could not completely flush
+	 * the inode.  This fixes a case where a deferred buffer flush
+	 * could cause fsync to return early.
+	 */
+	if (ip->sync_flags & HAMMER_INODE_MODMASK)
+		ip->flags |= HAMMER_INODE_REFLUSH;
+
+	/*
 	 * Merge left-over flags back into the frontend and fix the state.
 	 * Incomplete truncations are retained by the backend.
 	 */
@@ -2317,9 +2337,9 @@ done:
 	 * due to the exclusive sync lock the finalizer must get.
 	 */
         if (hammer_flusher_meta_limit(hmp)) {
-		hammer_unlock_cursor(cursor, 0);
+		hammer_unlock_cursor(cursor);
                 hammer_flusher_finalize(trans, 0);
-		hammer_lock_cursor(cursor, 0);
+		hammer_lock_cursor(cursor);
 	}
 
 	return(error);
@@ -2714,12 +2734,12 @@ hammer_test_inode(hammer_inode_t ip)
  * Clear the RECLAIM flag on an inode.  This occurs when the inode is
  * reassociated with a vp or just before it gets freed.
  *
- * Wakeup one thread blocked waiting on reclaims to complete.  Note that
- * the inode the thread is waiting on behalf of is a different inode then
- * the inode we are called with.  This is to create a pipeline.
+ * Pipeline wakeups to threads blocked due to an excessive number of
+ * detached inodes.  The reclaim count generates a bit of negative
+ * feedback.
  */
 static void
-hammer_inode_wakereclaims(hammer_inode_t ip)
+hammer_inode_wakereclaims(hammer_inode_t ip, int dowake)
 {
 	struct hammer_reclaim *reclaim;
 	hammer_mount_t hmp = ip->hmp;
@@ -2731,10 +2751,12 @@ hammer_inode_wakereclaims(hammer_inode_t ip)
 	--hmp->inode_reclaims;
 	ip->flags &= ~HAMMER_INODE_RECLAIM;
 
-	if ((reclaim = TAILQ_FIRST(&hmp->reclaim_list)) != NULL) {
-		TAILQ_REMOVE(&hmp->reclaim_list, reclaim, entry);
-		reclaim->okydoky = 1;
-		wakeup(reclaim);
+	if (hmp->inode_reclaims < HAMMER_RECLAIM_WAIT || dowake) {
+		reclaim = TAILQ_FIRST(&hmp->reclaim_list);
+		if (reclaim && reclaim->count > 0 && --reclaim->count == 0) {
+			TAILQ_REMOVE(&hmp->reclaim_list, reclaim, entry);
+			wakeup(reclaim);
+		}
 	}
 }
 
@@ -2752,21 +2774,55 @@ hammer_inode_waitreclaims(hammer_mount_t hmp)
 	struct hammer_reclaim reclaim;
 	int delay;
 
-	if (hmp->inode_reclaims > HAMMER_RECLAIM_WAIT) {
-		reclaim.okydoky = 0;
-		TAILQ_INSERT_TAIL(&hmp->reclaim_list,
-				  &reclaim, entry);
-	} else {
-		reclaim.okydoky = 1;
-	}
-
-	if (reclaim.okydoky == 0) {
-		delay = (hmp->inode_reclaims - HAMMER_RECLAIM_WAIT) * hz /
-			(HAMMER_RECLAIM_WAIT * 5);
-		if (delay >= 0)
-			tsleep(&reclaim, 0, "hmrrcm", delay + 1);
-		if (reclaim.okydoky == 0)
+	if (hmp->inode_reclaims < HAMMER_RECLAIM_WAIT)
+		return;
+	delay = (hmp->inode_reclaims - HAMMER_RECLAIM_WAIT) * hz /
+		(HAMMER_RECLAIM_WAIT * 3) + 1;
+	if (delay > 0) {
+		reclaim.count = 2;
+		TAILQ_INSERT_TAIL(&hmp->reclaim_list, &reclaim, entry);
+		tsleep(&reclaim, 0, "hmrrcm", delay);
+		if (reclaim.count > 0)
 			TAILQ_REMOVE(&hmp->reclaim_list, &reclaim, entry);
 	}
+}
+
+/*
+ * A larger then normal backlog of inodes is sitting in the flusher,
+ * enforce a general slowdown to let it catch up.  This routine is only
+ * called on completion of a non-flusher-related transaction which
+ * performed B-Tree node I/O.
+ *
+ * It is possible for the flusher to stall in a continuous load.
+ * blogbench -i1000 -o seems to do a good job generating this sort of load.
+ * If the flusher is unable to catch up the inode count can bloat until
+ * we run out of kvm.
+ *
+ * This is a bit of a hack.
+ */
+void
+hammer_inode_waithard(hammer_mount_t hmp)
+{
+	/*
+	 * Hysteresis.
+	 */
+	if (hmp->flags & HAMMER_MOUNT_FLUSH_RECOVERY) {
+		if (hmp->inode_reclaims < HAMMER_RECLAIM_WAIT / 2 &&
+		    hmp->count_iqueued < hmp->count_inodes / 20) {
+			hmp->flags &= ~HAMMER_MOUNT_FLUSH_RECOVERY;
+			return;
+		}
+	} else {
+		if (hmp->inode_reclaims < HAMMER_RECLAIM_WAIT ||
+		    hmp->count_iqueued < hmp->count_inodes / 10) {
+			return;
+		}
+		hmp->flags |= HAMMER_MOUNT_FLUSH_RECOVERY;
+	}
+
+	/*
+	 * Block for one flush cycle.
+	 */
+	hammer_flusher_wait_next(hmp);
 }
 

@@ -29,7 +29,7 @@ dowield(void)
 		if(uwep == 0){
 			pline("You are already empty handed.");
 		} else {
-			setuwep((struct obj *) 0);
+			setuwep(NULL);
 			res++;
 			pline("You are empty handed.");
 		}

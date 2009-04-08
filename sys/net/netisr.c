@@ -87,7 +87,7 @@ lwkt_port netisr_sync_port;
 
 static int (*netmsg_fwd_port_fn)(lwkt_port_t, lwkt_msg_t);
 
-static int netisr_mpsafe_thread = 0;
+static int netisr_mpsafe_thread = NETMSG_SERVICE_ADAPTIVE;
 TUNABLE_INT("net.netisr.mpsafe_thread", &netisr_mpsafe_thread);
 
 SYSCTL_NODE(_net, OID_AUTO, netisr, CTLFLAG_RW, 0, "netisr");
@@ -381,7 +381,8 @@ netisr_queue(int num, struct mbuf *m)
 }
 
 void
-netisr_register(int num, lwkt_portfn_t mportfn, netisr_fn_t handler,
+netisr_register(int num, pkt_portfn_t mportfn,
+		pktinfo_portfn_t mportfn_pktinfo, netisr_fn_t handler,
 		uint32_t flags)
 {
     struct netisr *ni;
@@ -391,6 +392,7 @@ netisr_register(int num, lwkt_portfn_t mportfn, netisr_fn_t handler,
     ni = &netisrs[num];
 
     ni->ni_mport = mportfn;
+    ni->ni_mport_pktinfo = mportfn_pktinfo;
     ni->ni_handler = handler;
     ni->ni_flags = flags;
     netmsg_init(&ni->ni_netmsg, &netisr_adone_rport, NETISR_TO_MSGF(ni), NULL);
@@ -412,13 +414,32 @@ netisr_unregister(int num)
 lwkt_port_t
 cpu0_portfn(struct mbuf **mptr)
 {
-    return (&netisr_cpu[0].td_msgport);
+    struct mbuf *m = *mptr;
+    int cpu = 0;
+
+    m->m_pkthdr.hash = cpu;
+    m->m_flags |= M_HASH;
+    return (&netisr_cpu[cpu].td_msgport);
 }
 
 lwkt_port_t
 cpu_portfn(int cpu)
 {
     return (&netisr_cpu[cpu].td_msgport);
+}
+
+/*
+ * If the current thread is a network protocol thread (TDF_NETWORK),
+ * then return the current thread's message port.
+ * XXX Else, return the current CPU's netisr message port.
+ */
+lwkt_port_t
+cur_netport(void)
+{
+    if (curthread->td_flags & TDF_NETWORK)
+	return &curthread->td_msgport;
+    else
+	return cpu_portfn(mycpuid);
 }
 
 /* ARGSUSED */
@@ -542,4 +563,37 @@ netisr_run(int num, struct mbuf *m)
     NETISR_GET_MPLOCK(ni);
     ni->ni_handler(pmsg);
     NETISR_REL_MPLOCK(ni);
+}
+
+lwkt_port_t
+pktinfo_portfn_cpu0(const struct pktinfo *dummy __unused,
+		    struct mbuf *m)
+{
+    m->m_pkthdr.hash = 0;
+    return &netisr_cpu[0].td_msgport;
+}
+
+lwkt_port_t
+pktinfo_portfn_notsupp(const struct pktinfo *dummy __unused,
+		       struct mbuf *m __unused)
+{
+    return NULL;
+}
+
+lwkt_port_t
+netisr_find_pktinfo_port(const struct pktinfo *pi, struct mbuf *m)
+{
+    struct netisr *ni;
+    int num = pi->pi_netisr;
+
+    KASSERT(m->m_flags & M_HASH, ("packet does not contain hash\n"));
+    KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
+    	    ("%s: bad isr %d", __func__, num));
+
+    ni = &netisrs[num];
+    if (ni->ni_mport_pktinfo == NULL) {
+	kprintf("%s: unregistered isr %d\n", __func__, num);
+	return NULL;
+    }
+    return ni->ni_mport_pktinfo(pi, m);
 }

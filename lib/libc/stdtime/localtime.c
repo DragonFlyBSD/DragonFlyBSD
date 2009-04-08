@@ -32,6 +32,21 @@
 #define	_MUTEX_LOCK(x)		if (__isthreaded) _pthread_mutex_lock(x)
 #define	_MUTEX_UNLOCK(x)	if (__isthreaded) _pthread_mutex_unlock(x)
 
+#define _RWLOCK_RDLOCK(x)						\
+		do {							\
+			if (__isthreaded) _pthread_rwlock_rdlock(x);	\
+		} while (0)
+
+#define _RWLOCK_WRLOCK(x)						\
+		do {							\
+			if (__isthreaded) _pthread_rwlock_wrlock(x);	\
+		} while (0)
+
+#define _RWLOCK_UNLOCK(x)						\
+		do {							\
+			if (__isthreaded) _pthread_rwlock_unlock(x);	\
+		} while (0)
+
 #ifndef TZ_ABBR_MAX_LEN
 #define TZ_ABBR_MAX_LEN	16
 #endif /* !defined TZ_ABBR_MAX_LEN */
@@ -45,18 +60,6 @@
 #define TZ_ABBR_ERR_CHAR	'_'
 #endif /* !defined TZ_ABBR_ERR_CHAR */
  
-/*
-** SunOS 4.1.1 headers lack O_BINARY.
-*/
-
-#ifdef O_BINARY
-#define OPEN_MODE	(O_RDONLY | O_BINARY)
-#endif /* defined O_BINARY */
-#ifndef O_BINARY
-#define OPEN_MODE	O_RDONLY
-#endif /* !defined O_BINARY */
-
-#ifndef WILDABBR
 /*
 ** Someone might make incorrect use of a time zone abbreviation:
 **	1.	They might reference tzname[0] before calling tzset (explicitly
@@ -77,11 +80,10 @@
 ** that tzname[0] has the "normal" length of three characters).
 */
 #define WILDABBR	"   "
-#endif /* !defined WILDABBR */
 
 static char		wildabbr[] = WILDABBR;
 
-static const char	gmt[] = "GMT";
+static const char	gmt[] = "UTC";
 
 /*
 ** The DST rules to use if TZ has no rules and we can't load TZDEFRULES.
@@ -194,17 +196,10 @@ static int		tzload(const char * name, struct state * sp,
 static int		tzparse(const char * name, struct state * sp,
 				int lastditch);
 
-#ifdef ALL_STATE
-static struct state *	lclptr;
-static struct state *	gmtptr;
-#endif /* defined ALL_STATE */
-
-#ifndef ALL_STATE
 static struct state	lclmem;
 static struct state	gmtmem;
 #define lclptr		(&lclmem)
 #define gmtptr		(&gmtmem)
-#endif /* State Farm */
 
 #ifndef TZ_STRLEN_MAX
 #define TZ_STRLEN_MAX 255
@@ -213,7 +208,7 @@ static struct state	gmtmem;
 static char		lcl_TZname[TZ_STRLEN_MAX + 1];
 static int		lcl_is_set;
 static int		gmt_is_set;
-static pthread_mutex_t	lcl_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_rwlock_t	lcl_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 static pthread_mutex_t	gmt_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 char *			tzname[2] = {
@@ -231,14 +226,8 @@ char *			tzname[2] = {
 
 static struct tm	tm;
 
-#ifdef USG_COMPAT
 time_t			timezone = 0;
 int			daylight = 0;
-#endif /* defined USG_COMPAT */
-
-#ifdef ALTZONE
-time_t			altzone = 0;
-#endif /* defined ALTZONE */
 
 static long
 detzcode(const char * const codep)
@@ -272,34 +261,18 @@ settzname(void)
 
 	tzname[0] = wildabbr;
 	tzname[1] = wildabbr;
-#ifdef USG_COMPAT
 	daylight = 0;
 	timezone = 0;
-#endif /* defined USG_COMPAT */
-#ifdef ALTZONE
-	altzone = 0;
-#endif /* defined ALTZONE */
-#ifdef ALL_STATE
-	if (sp == NULL) {
-		tzname[0] = tzname[1] = gmt;
-		return;
-	}
-#endif /* defined ALL_STATE */
+
 	for (i = 0; i < sp->typecnt; ++i) {
 		const struct ttinfo * const	ttisp = &sp->ttis[i];
 
 		tzname[ttisp->tt_isdst] =
 			&sp->chars[ttisp->tt_abbrind];
-#ifdef USG_COMPAT
 		if (ttisp->tt_isdst)
 			daylight = 1;
 		if (i == 0 || !ttisp->tt_isdst)
 			timezone = -(ttisp->tt_gmtoff);
-#endif /* defined USG_COMPAT */
-#ifdef ALTZONE
-		if (i == 0 || ttisp->tt_isdst)
-			altzone = -(ttisp->tt_gmtoff);
-#endif /* defined ALTZONE */
 	}
 	/*
 	** And to get the latest zone names into tzname. . .
@@ -395,7 +368,7 @@ tzload(const char *name, struct state * const sp, const int doextend)
 		}
 		if (doaccess && access(name, R_OK) != 0)
 			return -1;
-		if ((fid = _open(name, OPEN_MODE)) == -1)
+		if ((fid = _open(name, O_RDONLY)) == -1)
 			return -1;
 		if ((_fstat(fid, &stab) < 0) || !S_ISREG(stab.st_mode)) {
 			_close(fid);
@@ -1143,60 +1116,60 @@ gmtload(struct state * const sp)
 }
 
 static void
-tzsetwall_basic(void)
+tzsetwall_basic(int rdlocked)
 {
-	if (lcl_is_set < 0)
+	if (!rdlocked)
+		_RWLOCK_RDLOCK(&lcl_rwlock);
+	if (lcl_is_set < 0) {
+		if (!rdlocked)
+			_RWLOCK_UNLOCK(&lcl_rwlock);
 		return;
+	}
+	_RWLOCK_UNLOCK(&lcl_rwlock);
+
+	_RWLOCK_WRLOCK(&lcl_rwlock);
 	lcl_is_set = -1;
 
-#ifdef ALL_STATE
-	if (lclptr == NULL) {
-		lclptr = (struct state *) malloc(sizeof *lclptr);
-		if (lclptr == NULL) {
-			settzname();	/* all we can do */
-			return;
-		}
-	}
-#endif /* defined ALL_STATE */
-	if (tzload((char *) NULL, lclptr, TRUE) != 0)
+	if (tzload(NULL, lclptr, TRUE) != 0)
 		gmtload(lclptr);
 	settzname();
+	_RWLOCK_UNLOCK(&lcl_rwlock);
+
+	if (rdlocked)
+		_RWLOCK_RDLOCK(&lcl_rwlock);
 }
 
 void
 tzsetwall(void)
 {
-	_MUTEX_LOCK(&lcl_mutex);
-	tzsetwall_basic();
-	_MUTEX_UNLOCK(&lcl_mutex);
+	tzsetwall_basic(0);
 }
 
 static void
-tzset_basic(void)
+tzset_basic(int rdlocked)
 {
 	const char *	name;
 
 	name = getenv("TZ");
 	if (name == NULL) {
-		tzsetwall();
+		tzsetwall_basic(rdlocked);
 		return;
 	}
 
-	if (lcl_is_set > 0 && strcmp(lcl_TZname, name) == 0)
+	if (!rdlocked)
+		_RWLOCK_RDLOCK(&lcl_rwlock);
+	if (lcl_is_set > 0 && strcmp(lcl_TZname, name) == 0) {
+		if (!rdlocked)
+			_RWLOCK_UNLOCK(&lcl_rwlock);
 		return;
+	}
+	_RWLOCK_UNLOCK(&lcl_rwlock);
+
+	_RWLOCK_WRLOCK(&lcl_rwlock);
 	lcl_is_set = strlen(name) < sizeof lcl_TZname;
 	if (lcl_is_set)
 		strcpy(lcl_TZname, name);
 
-#ifdef ALL_STATE
-	if (lclptr == NULL) {
-		lclptr = (struct state *) malloc(sizeof *lclptr);
-		if (lclptr == NULL) {
-			settzname();	/* all we can do */
-			return;
-		}
-	}
-#endif /* defined ALL_STATE */
 	if (*name == '\0') {
 		/*
 		** User wants it fast rather than right.
@@ -1212,14 +1185,16 @@ tzset_basic(void)
 		if (name[0] == ':' || tzparse(name, lclptr, FALSE) != 0)
 			gmtload(lclptr);
 	settzname();
+	_RWLOCK_UNLOCK(&lcl_rwlock);
+
+	if (rdlocked)
+		_RWLOCK_RDLOCK(&lcl_rwlock);
 }
 
 void
 tzset(void)
 {
-	_MUTEX_LOCK(&lcl_mutex);
-	tzset_basic();
-	_MUTEX_UNLOCK(&lcl_mutex);
+	tzset_basic(0);
 }
 
 /*
@@ -1243,10 +1218,7 @@ localsub(const time_t * const timep, const long offset __unused,
 	const time_t		t = *timep;
 
 	sp = lclptr;
-#ifdef ALL_STATE
-	if (sp == NULL)
-		return gmtsub(timep, offset, tmp);
-#endif /* defined ALL_STATE */
+
 	if ((sp->goback && t < sp->ats[0]) ||
 		(sp->goahead && t > sp->ats[sp->timecnt - 1])) {
 			time_t		newt = t;
@@ -1325,10 +1297,10 @@ localsub(const time_t * const timep, const long offset __unused,
 struct tm *
 localtime_r(const time_t * const timep, struct tm *p_tm)
 {
-	_MUTEX_LOCK(&lcl_mutex);
-	tzset();
+	_RWLOCK_RDLOCK(&lcl_rwlock);
+	tzset_basic(1);
 	localsub(timep, 0L, p_tm);
-	_MUTEX_UNLOCK(&lcl_mutex);
+	_RWLOCK_UNLOCK(&lcl_rwlock);
 	return(p_tm);
 }
 
@@ -1340,14 +1312,16 @@ localtime(const time_t * const timep)
 	struct tm *p_tm;
 
 	if (__isthreaded != 0) {
-		_pthread_mutex_lock(&localtime_mutex);
 		if (localtime_key < 0) {
-			if (_pthread_key_create(&localtime_key, free) < 0) {
-				_pthread_mutex_unlock(&localtime_mutex);
-				return(NULL);
+			_pthread_mutex_lock(&localtime_mutex);
+			if (localtime_key < 0) {
+				if (_pthread_key_create(&localtime_key, free) < 0) {
+					_pthread_mutex_unlock(&localtime_mutex);
+					return(NULL);
+				}
 			}
+			_pthread_mutex_unlock(&localtime_mutex);
 		}
-		_pthread_mutex_unlock(&localtime_mutex);
 		p_tm = _pthread_getspecific(localtime_key);
 		if (p_tm == NULL) {
 			if ((p_tm = (struct tm *)malloc(sizeof(struct tm)))
@@ -1355,13 +1329,13 @@ localtime(const time_t * const timep)
 				return(NULL);
 			_pthread_setspecific(localtime_key, p_tm);
 		}
-		_pthread_mutex_lock(&lcl_mutex);
-		tzset();
+		_RWLOCK_RDLOCK(&lcl_rwlock);
+		tzset_basic(1);
 		localsub(timep, 0L, p_tm);
-		_pthread_mutex_unlock(&lcl_mutex);
+		_RWLOCK_UNLOCK(&lcl_rwlock);
 		return(p_tm);
 	} else {
-		tzset();
+		tzset_basic(0);
 		localsub(timep, 0L, &tm);
 		return(&tm);
 	}
@@ -1376,16 +1350,14 @@ gmtsub(const time_t * const timep, const long offset, struct tm * const tmp)
 {
 	struct tm *	result;
 
-	_MUTEX_LOCK(&gmt_mutex);
 	if (!gmt_is_set) {
-		gmt_is_set = TRUE;
-#ifdef ALL_STATE
-		gmtptr = (struct state *) malloc(sizeof *gmtptr);
-		if (gmtptr != NULL)
-#endif /* defined ALL_STATE */
+		_MUTEX_LOCK(&gmt_mutex);
+		if (!gmt_is_set) {
 			gmtload(gmtptr);
+			gmt_is_set = TRUE;
+		}
+		_MUTEX_UNLOCK(&gmt_mutex);
 	}
-	_MUTEX_UNLOCK(&gmt_mutex);
 	result = timesub(timep, offset, gmtptr, tmp);
 #ifdef TM_ZONE
 	/*
@@ -1395,16 +1367,8 @@ gmtsub(const time_t * const timep, const long offset, struct tm * const tmp)
 	*/
 	if (offset != 0)
 		tmp->TM_ZONE = wildabbr;
-	else {
-#ifdef ALL_STATE
-		if (gmtptr == NULL)
-			tmp->TM_ZONE = gmt;
-		else	tmp->TM_ZONE = gmtptr->chars;
-#endif /* defined ALL_STATE */
-#ifndef ALL_STATE
+	else
 		tmp->TM_ZONE = gmtptr->chars;
-#endif /* State Farm */
-	}
 #endif /* defined TM_ZONE */
 	return result;
 }
@@ -1417,14 +1381,16 @@ gmtime(const time_t * const timep)
 	struct tm *p_tm;
 
 	if (__isthreaded != 0) {
-		_pthread_mutex_lock(&gmtime_mutex);
 		if (gmtime_key < 0) {
-			if (_pthread_key_create(&gmtime_key, free) < 0) {
-				_pthread_mutex_unlock(&gmtime_mutex);
-				return(NULL);
+			_pthread_mutex_lock(&gmtime_mutex);
+			if (gmtime_key < 0) {
+				if (_pthread_key_create(&gmtime_key, free) < 0) {
+					_pthread_mutex_unlock(&gmtime_mutex);
+					return(NULL);
+				}
 			}
+			_pthread_mutex_unlock(&gmtime_mutex);
 		}
-		_pthread_mutex_unlock(&gmtime_mutex);
 		/*
 		 * Changed to follow POSIX.1 threads standard, which
 		 * is what BSD currently has.
@@ -1448,15 +1414,11 @@ gmtime_r(const time_t * timep, struct tm * tmp)
 	return gmtsub(timep, 0L, tmp);
 }
 
-#ifdef STD_INSPIRED
-
 struct tm *
 offtime(const time_t * const timep, const long offset)
 {
 	return gmtsub(timep, offset, &tm);
 }
-
-#endif /* defined STD_INSPIRED */
 
 /*
 ** Return the number of leap years through the end of the given year
@@ -1487,12 +1449,8 @@ timesub(const time_t * const timep, const long offset,
 
 	corr = 0;
 	hit = 0;
-#ifdef ALL_STATE
-	i = (sp == NULL) ? 0 : sp->leapcnt;
-#endif /* defined ALL_STATE */
-#ifndef ALL_STATE
 	i = sp->leapcnt;
-#endif /* State Farm */
+
 	while (--i >= 0) {
 		lp = &sp->lsis[i];
 		if (*timep >= lp->ls_trans) {
@@ -1841,10 +1799,7 @@ time2sub(struct tm * const tmp,
 		*/
 		sp = (const struct state *)
 			((funcp == localsub) ? lclptr : gmtptr);
-#ifdef ALL_STATE
-		if (sp == NULL)
-			return WRONG;
-#endif /* defined ALL_STATE */
+
 		for (i = sp->typecnt - 1; i >= 0; --i) {
 			if (sp->ttis[i].tt_isdst != yourtm.tm_isdst)
 				continue;
@@ -1912,7 +1867,7 @@ time1(struct tm * const tmp,
 	if (tmp->tm_isdst > 1)
 		tmp->tm_isdst = 1;
 	t = time2(tmp, funcp, offset, &okay);
-#ifdef PCTS
+
 	/*
 	** PCTS code courtesy Grant Sullivan.
 	*/
@@ -1920,11 +1875,7 @@ time1(struct tm * const tmp,
 		return t;
 	if (tmp->tm_isdst < 0)
 		tmp->tm_isdst = 0;	/* reset to std and try again */
-#endif /* defined PCTS */
-#ifndef PCTS
-	if (okay || tmp->tm_isdst < 0)
-		return t;
-#endif /* !defined PCTS */
+
 	/*
 	** We're supposed to assume that somebody took a time of one type
 	** and did some math on it that yielded a "struct tm" that's bad.
@@ -1932,10 +1883,7 @@ time1(struct tm * const tmp,
 	** type they need.
 	*/
 	sp = (const struct state *) ((funcp == localsub) ?  lclptr : gmtptr);
-#ifdef ALL_STATE
-	if (sp == NULL)
-		return WRONG;
-#endif /* defined ALL_STATE */
+
 	for (i = 0; i < sp->typecnt; ++i)
 		seen[i] = FALSE;
 	nseen = 0;
@@ -1970,14 +1918,12 @@ time_t
 mktime(struct tm * const tmp)
 {
 	time_t mktime_return_value;
-	_MUTEX_LOCK(&lcl_mutex);
-	tzset();
+	_RWLOCK_RDLOCK(&lcl_rwlock);
+	tzset_basic(1);
 	mktime_return_value = time1(tmp, localsub, 0L);
-	_MUTEX_UNLOCK(&lcl_mutex);
+	_RWLOCK_UNLOCK(&lcl_rwlock);
 	return(mktime_return_value);
 }
-
-#ifdef STD_INSPIRED
 
 time_t
 timelocal(struct tm * const tmp)
@@ -1999,8 +1945,6 @@ timeoff(struct tm * const tmp, const long offset)
 	tmp->tm_isdst = 0;
 	return time1(tmp, gmtsub, offset);
 }
-
-#endif /* defined STD_INSPIRED */
 
 #ifdef CMUCS
 
@@ -2024,8 +1968,6 @@ gtime(struct tm * const tmp)
 /*
 ** XXX--is the below the right way to conditionalize??
 */
-
-#ifdef STD_INSPIRED
 
 /*
 ** IEEE Std 1003.1-1988 (POSIX) legislates that 536457599
@@ -2091,5 +2033,3 @@ posix2time(time_t t)
 	}
 	return x;
 }
-
-#endif /* defined STD_INSPIRED */

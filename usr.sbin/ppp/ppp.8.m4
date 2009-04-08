@@ -4337,7 +4337,9 @@ is true for most
 NULL-modem cables), logs the fact and stops checking
 for carrier.
 .Pp
-As ptys don't support the TIOCMGET ioctl, the tty device will switch all
+As ptys don't support the
+.Dv TIOCMGET
+ioctl, the tty device will switch all
 carrier detection off when it detects that the device is a pty.
 .It ISDN (i4b) Devices
 Carrier is checked once per second for 6 seconds.
@@ -5773,7 +5775,7 @@ to get online information about what's available.
 The following URLs contain useful information:
 .Bl -bullet -compact
 .It
-.Pa http://wiki.dragonflybsd.org/index.cgi/userppp.html
+.Pa http://www.dragonflybsd.org/docs/handbook/handbook-userppp/
 .El
 .El
 .Sh FILES

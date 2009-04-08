@@ -692,7 +692,7 @@
 #define	PCCRX_COAL_TO_DEFAULT	100
 #define	PCCRX_COAL_TO_MAX	65535
 
-#define	PCCRX_COAL_PKT_MIN	1
+#define	PCCRX_COAL_PKT_MIN	0
 #define	PCCRX_COAL_PKT_DEFAULT	64
 #define	PCCRX_COAL_PKT_MAX	255
 
@@ -715,7 +715,7 @@
 #define	PCCTX_COAL_TO_DEFAULT	65535
 #define	PCCTX_COAL_TO_MAX	65535
 
-#define	PCCTX_COAL_PKT_MIN	1
+#define	PCCTX_COAL_PKT_MIN	0
 #define	PCCTX_COAL_PKT_DEFAULT	64
 #define	PCCTX_COAL_PKT_MAX	255
 
@@ -822,12 +822,18 @@
 /* RSS secret key. */
 #define	JME_RSSKEY_BASE		0x0C40
 #define RSSKEY_NREGS		10
-#define	RSSKEY_REG(x)		(JME_RSSKEY_BASE + (4 * (x)))
+#define RSSKEY_REGSIZE		4
+#define RSSKEY_REGVAL(k, x)	(k[(x) * RSSKEY_REGSIZE] << 24 | \
+				 k[(x) * RSSKEY_REGSIZE + 1] << 16 | \
+				 k[(x) * RSSKEY_REGSIZE + 2] << 8 | \
+				 k[(x) * RSSKEY_REGSIZE + 3])
+#define	RSSKEY_REG(x)		(JME_RSSKEY_BASE + (RSSKEY_REGSIZE * (x)))
 
 /* RSS indirection table entries. */
 #define	JME_RSSTBL_BASE		0x0C80
 #define RSSTBL_NREGS		32
-#define	RSSTBL_REG(x)		(JME_RSSTBL_BASE + (4 * (x)))
+#define RSSTBL_REGSIZE		4
+#define	RSSTBL_REG(x)		(JME_RSSTBL_BASE + (RSSTBL_REGSIZE * (x)))
 
 /* MSI-X table. */
 #define	JME_MSIX_BASE_ADDR	0x2000
@@ -987,6 +993,7 @@ struct jme_desc {
 #define	JME_RD_RSS_HASH_IPV4TCP	0x00000200
 #define	JME_RD_RSS_HASH_IPV6	0x00000400
 #define	JME_RD_RSS_HASH_IPV6TCP	0x00001000
+#define JME_RD_HASH_FN_MASK	0x0000000f
 #define	JME_RD_HASH_FN_NONE	0x00000000
 #define	JME_RD_HASH_FN_TOEPLITZ	0x00000001
 

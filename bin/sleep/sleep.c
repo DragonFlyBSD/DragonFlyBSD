@@ -113,7 +113,7 @@ main(int argc, char **argv)
 	}
 
 	if (!neg && (time_to_sleep.tv_sec > 0 || time_to_sleep.tv_nsec > 0))
-		nanosleep(&time_to_sleep, (struct timespec *)NULL);
+		nanosleep(&time_to_sleep, NULL);
 
 	exit(0);
 }

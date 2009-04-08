@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/ypserv/yp_extern.h,v 1.14.2.2 2002/02/15 00:47:00 des Exp $
+ * $FreeBSD: src/usr.sbin/ypserv/yp_extern.h,v 1.17 2005/05/02 09:34:07 ume Exp $
  * $DragonFly: src/usr.sbin/ypserv/yp_extern.h,v 1.2 2003/06/17 04:30:04 dillon Exp $
  */
 
@@ -68,7 +68,7 @@ extern int	do_dns;
 extern int	children;
 extern int	resfd;
 extern char 	*progname;
-extern char	*yp_dir;
+extern const char *yp_dir;
 extern pid_t	yp_pid;
 
 extern enum ypstat	yp_errno;
@@ -112,5 +112,5 @@ extern unsigned long	svcudp_get_xid(SVCXPRT *);
 extern int	yp_init_resolver(void);
 extern void	yp_run_dnsq(void);
 extern void	yp_prune_dnsq(void);
-extern ypstat	yp_async_lookup_name(struct svc_req *, char *);
-extern ypstat	yp_async_lookup_addr(struct svc_req *, char *);
+extern ypstat	yp_async_lookup_name(struct svc_req *, char *, int);
+extern ypstat	yp_async_lookup_addr(struct svc_req *, char *, int);

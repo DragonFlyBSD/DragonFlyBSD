@@ -56,6 +56,7 @@
 #include <sys/mbuf.h>
 #include <sys/domain.h>
 #include <sys/proc.h>
+#include <sys/priv.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -551,7 +552,7 @@ sctp_getcred(SYSCTL_HANDLER_ARGS)
 	int error;
 
 #if __FreeBSD_version >= 500000 || defined(__DragonFly__)
-	error = suser(req->td);
+	error = priv_check(req->td, PRIV_ROOT);
 #else
 	error = suser(req->p);
 #endif
@@ -3410,7 +3411,7 @@ sctp_optsset(struct socket *so,
 			lnet = stcb->asoc.primary_destination;
                         lnet->next_tsn_at_change = net->next_tsn_at_change = stcb->asoc.sending_seq;
 		        if (sctp_set_primary_addr(stcb,
-						  (struct sockaddr *)NULL,
+						  NULL,
 						  net) == 0) {
 			        if (net->dest_state & SCTP_ADDR_SWITCH_PRIMARY) {
    				        net->dest_state |= SCTP_ADDR_DOUBLE_SWITCH;
@@ -3703,11 +3704,11 @@ sctp_ctloutput(int op, struct socket *so, int level, int optname,
 	}
 	/* Ok if we reach here it is a SCTP option we hope */
 	if (op == PRCO_SETOPT) {
-		error = sctp_optsset(so, optname, mp, (struct proc *)NULL);
+		error = sctp_optsset(so, optname, mp, NULL);
 		if (*mp)
 			m_free(*mp);
 	} else if (op ==  PRCO_GETOPT) {
-		error = sctp_optsget(so, optname, mp, (struct proc *)NULL);
+		error = sctp_optsget(so, optname, mp, NULL);
 	} else {
 		error = EINVAL;
 	}

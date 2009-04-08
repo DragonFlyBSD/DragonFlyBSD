@@ -26,7 +26,6 @@
  * Authors:
  *    Sung-Ching Lin <sclin@sis.com.tw>
  *
- * $DragonFly: src/sys/dev/drm/sis_mm.c,v 1.1 2008/04/05 18:12:29 hasso Exp $
  */
 
 #if defined(__linux__) && defined(CONFIG_FB_SIS)
@@ -36,10 +35,10 @@
 #include <linux/sisfb.h>
 #endif
 #endif
-#include "drmP.h"
-#include "sis_drm.h"
-#include "sis_drv.h"
-#include "sis_ds.h"
+#include "dev/drm/drmP.h"
+#include "dev/drm/sis_drm.h"
+#include "dev/drm/sis_drv.h"
+#include "dev/drm/sis_ds.h"
 
 #define MAX_CONTEXT 100
 #define VIDEO_TYPE 0

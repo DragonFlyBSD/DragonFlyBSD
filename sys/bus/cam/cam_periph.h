@@ -132,6 +132,8 @@ struct cam_periph_map_info {
 	int		num_bufs_used;
 	struct buf	*bp[CAM_PERIPH_MAXMAPS];
 	caddr_t		saved_ptrs[CAM_PERIPH_MAXMAPS];
+	u_int32_t	dirs[CAM_PERIPH_MAXMAPS];
+	int		bounce[CAM_PERIPH_MAXMAPS];
 };
 
 cam_status cam_periph_alloc(periph_ctor_t *periph_ctor,

@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,11 +30,10 @@
  * SUCH DAMAGE.
  *
  * @(#)strncat.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/string/strncat.c,v 1.1.1.1.14.1 2001/07/09 23:30:07 obrien Exp $
+ * $FreeBSD: src/lib/libc/string/strncat.c,v 1.7 2007/01/09 00:28:12 imp Exp $
  * $DragonFly: src/lib/libc/string/strncat.c,v 1.4 2005/09/18 16:32:34 asmodai Exp $
  */
 
-#include <sys/cdefs.h>
 #include <string.h>
 
 /*
@@ -46,7 +41,7 @@
  * are written at dst (at most n+1 bytes being appended).  Return dst.
  */
 char *
-strncat(char *dst, const char *src, size_t n)
+strncat(char * __restrict dst, const char * __restrict src, size_t n)
 {
 	if (n != 0) {
 		char *d = dst;

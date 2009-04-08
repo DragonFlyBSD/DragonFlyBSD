@@ -312,9 +312,9 @@ checkfilesys(char *filesys, char *mntpt, long auxdata, int child)
 			printf("\n");
 		}
 	}
-	zlnhead = (struct zlncnt *)0;
-	duplist = (struct dups *)0;
-	muldup = (struct dups *)0;
+	zlnhead = NULL;
+	duplist = NULL;
+	muldup = NULL;
 	inocleanup();
 	if (fsmodified) {
 		sblock.fs_time = time(NULL);

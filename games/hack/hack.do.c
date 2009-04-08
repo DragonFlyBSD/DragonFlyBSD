@@ -45,7 +45,7 @@ drop(struct obj *obj)
 			pline("Your weapon is welded to your hand!");
 			return(0);
 		}
-		setuwep((struct obj *) 0);
+		setuwep(NULL);
 	}
 	pline("You dropped %s.", doname(obj));
 	dropx(obj);
@@ -279,7 +279,7 @@ dothrow(void)
 		if(obj->quan > 1)
 			setuwep(splitobj(obj, 1));
 		else
-			setuwep((struct obj *) 0);
+			setuwep(NULL);
 	}
 	else if(obj->quan > 1)
 		splitobj(obj, 1);
@@ -303,14 +303,14 @@ dothrow(void)
 	    pline("%s hits the floor.", Doname(obj));
 	    if(obj->otyp == EXPENSIVE_CAMERA) {
 		pline("It is shattered in a thousand pieces!");
-		obfree(obj, Null(obj));
+		obfree(obj, NULL);
 	    } else if(obj->otyp == EGG) {
 		pline("\"Splash!\"");
-		obfree(obj, Null(obj));
+		obfree(obj, NULL);
 	    } else if(obj->olet == POTION_SYM) {
 		pline("The flask breaks, and you smell a peculiar odor ...");
 		potionbreathe(obj);
-		obfree(obj, Null(obj));
+		obfree(obj, NULL);
 	    } else {
 		dropy(obj);
 	    }
@@ -357,7 +357,7 @@ dothrow(void)
 				/* weapons thrown disappear sometimes */
 				if(obj->otyp < BOOMERANG && rn2(3)) {
 					/* check bill; free */
-					obfree(obj, (struct obj *) 0);
+					obfree(obj, NULL);
 					return(1);
 				}
 			} else miss(objects[obj->otyp].oc_name, mon);

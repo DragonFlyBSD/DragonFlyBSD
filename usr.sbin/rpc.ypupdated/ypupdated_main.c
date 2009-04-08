@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/rpc.ypupdated/ypupdated_main.c,v 1.4.2.3 2002/02/15 00:46:58 des Exp $
+ * $FreeBSD: src/usr.sbin/rpc.ypupdated/ypupdated_main.c,v 1.10 2004/05/24 12:28:27 stefanf Exp $
  * $DragonFly: src/usr.sbin/rpc.ypupdated/ypupdated_main.c,v 1.5 2005/11/25 00:32:49 swildner Exp $
  */
 
@@ -37,6 +37,7 @@
 #include <stdio.h>
 #include <stdlib.h> /* getenv, exit */
 #include <rpc/pmap_clnt.h> /* for pmap_unset */
+#include <rpc/rpc_com.h>
 #include <string.h> /* strcmp */
 #include <signal.h>
 #ifdef __cplusplus
@@ -75,7 +76,7 @@ static int _rpcfdtype;
 extern int _rpcsvcstate;	 /* Set when a request is serviced */
 
 char *progname = "rpc.ypupdated";
-char *yp_dir = "/var/yp/";
+const char *yp_dir = "/var/yp/";
 
 static void
 _msgout(char *msg)
@@ -137,8 +138,7 @@ ypupdated_svc_run(void)
 #else
 		readfds = svc_fds;
 #endif /* def FD_SETSIZE */
-		switch (select(fd_setsize, &readfds, NULL, NULL,
-			       (struct timeval *)0)) {
+		switch (select(fd_setsize, &readfds, NULL, NULL, NULL)) {
 		case -1:
 			if (errno == EINTR) {
 				continue;
@@ -263,7 +263,7 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (transp == (SVCXPRT *)NULL) {
+	if (transp == NULL) {
 		_msgout("could not create a handle");
 		exit(1);
 	}

@@ -893,7 +893,7 @@ relink:
 			CountSourceReadBytes += l;
 			if (l && buf[l-1] == '\n')
 			    buf[--l] = 0;
-			if (buf[0] && buf[0] != '#')
+			if (buf[0])
 			    AddList(list, buf, 1);
 		    }
 		    fclose(fi);

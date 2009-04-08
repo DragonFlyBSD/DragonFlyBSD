@@ -24,7 +24,7 @@
 .\" $FreeBSD: src/usr.sbin/mptable/mptable.1,v 1.6.2.2 2000/12/08 15:28:29 ru Exp $
 .\" $DragonFly: src/usr.sbin/mptable/mptable.1,v 1.2 2003/06/17 04:29:57 dillon Exp $
 .\"
-.Dd April 28, 1997
+.Dd March 24, 2009
 .Dt MPTABLE 1
 .Os
 .Sh NAME
@@ -35,6 +35,7 @@
 .Op Fl dmesg
 .Op Fl verbose
 .Op Fl grope
+.Op Fl raw
 .Op Fl help
 .Sh DESCRIPTION
 The
@@ -53,6 +54,9 @@ The following options are available:
 Include a dmesg dump.
 .It Fl grope
 Look in areas it shouldn't NEED to, use ONLY as a last resort.
+.It Fl raw
+This will cause the raw MP table to be dumped to
+.Pa /tmp/mpdump .
 .It Fl help
 Print a usage message and exits.
 .It Fl verbose

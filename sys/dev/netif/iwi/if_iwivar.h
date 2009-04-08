@@ -33,11 +33,12 @@
  */
 
 struct iwi_firmware {
-	void	*boot;
+	struct fw_image *fw_image;
+	int8_t	*boot;
 	int	boot_size;
-	void	*ucode;
+	uint8_t	*ucode;
 	int	ucode_size;
-	void	*main;
+	uint8_t	*main;
 	int	main_size;
 };
 
@@ -131,7 +132,6 @@ struct iwi_softc {
 
 	struct iwi_firmware	fw;
 	uint32_t		flags;
-#define IWI_FLAG_FW_CACHED	0x01
 #define IWI_FLAG_FW_INITED	0x02
 #define IWI_FLAG_FW_WARNED	0x04
 #define IWI_FLAG_SCANNING	0x08
@@ -180,8 +180,7 @@ struct iwi_softc {
 	struct thread		*sc_fw_monitor;
 };
 
-#define SIOCSLOADFW	 _IOW('i', 137, struct ifreq)
-#define SIOCSKILLFW	 _IOW('i', 138, struct ifreq)
+#define IWI_FW_PATH	"iwi/2200/3.0/ipw2200-%s.fw"
 
 #define IWI_FW_INITIALIZED(sc)	(sc + 1)
 #define IWI_FW_CMD_ACKED(sc)	(sc + 2)

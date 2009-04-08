@@ -1,26 +1,13 @@
 #	@(#)Makefile	8.1 (Berkeley) 7/19/93
-# $FreeBSD: src/usr.bin/su/Makefile,v 1.29.2.2 2002/07/17 19:08:23 ru Exp $
+# $FreeBSD: src/usr.bin/su/Makefile,v 1.39 2004/02/02 18:01:19 ru Exp $
 # $DragonFly: src/usr.bin/su/Makefile,v 1.8 2007/10/01 08:12:43 swildner Exp $
 
 PROG=	su
 
-COPTS+=	-DLOGIN_CAP -DSKEY
-DPADD=	${LIBUTIL} ${LIBSKEY} ${LIBMD} ${LIBCRYPT}
-LDADD=	-lutil -lskey -lmd -lcrypt
+DPADD=	${LIBUTIL} ${LIBPAM}
+LDADD=	-lutil ${MINUSLPAM}
 
-.if defined(WHEELSU)
-COPTS+=	-DWHEELSU
-.endif
-
-.if defined(WANT_KERBEROS) && !defined(NO_CRYPT) && !defined(NO_OPENSSL)
-CFLAGS+=-DKERBEROS5
-DPADD+=	${LIBKRB5} ${LIBASN1} ${LIBCRYPTO} ${LIBCRYPT} ${LIBCOM_ERR} \
-	${LIBROKEN}
-LDADD+=	-lkrb5 -lasn1 -lcrypto -lcrypt -lcom_err \
-	-L${.OBJDIR}/../../../../kerberos5/lib/libroken -lroken
-DISTRIBUTION=	krb5
-.endif
-
+BINOWN=	root
 BINMODE=4555
 .if !defined(NOFSCHG)
 INSTALLFLAGS=-fschg

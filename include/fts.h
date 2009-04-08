@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)fts.h	8.3 (Berkeley) 8/14/94
- * $FreeBSD: src/include/fts.h,v 1.3.6.1 2001/08/02 22:34:17 assar Exp $
+ * $FreeBSD: src/include/fts.h,v 1.12 2008/01/26 17:09:40 yar Exp $
  * $DragonFly: src/include/fts.h,v 1.3 2003/11/14 01:01:43 dillon Exp $
  */
 
@@ -45,10 +45,10 @@ typedef struct {
 	dev_t fts_dev;			/* starting device # */
 	char *fts_path;			/* path for this descent */
 	int fts_rfd;			/* fd for root */
-	int fts_pathlen;		/* sizeof(path) */
-	int fts_nitems;			/* elements in the sort array */
+	size_t fts_pathlen;		/* sizeof(path) */
+	size_t fts_nitems;		/* elements in the sort array */
 	int (*fts_compar)		/* compare function */
-	    (const struct _ftsent **, const struct _ftsent **);
+	    (const struct _ftsent * const *, const struct _ftsent * const *);
 
 #define	FTS_COMFOLLOW	0x001		/* follow command line symlinks */
 #define	FTS_LOGICAL	0x002		/* logical walk */
@@ -63,20 +63,22 @@ typedef struct {
 #define	FTS_NAMEONLY	0x100		/* (private) child names only */
 #define	FTS_STOP	0x200		/* (private) unrecoverable error */
 	int fts_options;		/* fts_open options, global flags */
+	void *fts_clientptr;		/* thunk for sort function */
 } FTS;
 
 typedef struct _ftsent {
 	struct _ftsent *fts_cycle;	/* cycle node */
 	struct _ftsent *fts_parent;	/* parent directory */
 	struct _ftsent *fts_link;	/* next file in directory */
-	long fts_number;	        /* local numeric value */
-	void *fts_pointer;	        /* local address value */
+	long long fts_number;		/* local numeric value */
+#define	fts_bignum	fts_number	/* XXX non-std, should go away */
+	void *fts_pointer;		/* local address value */
 	char *fts_accpath;		/* access path */
 	char *fts_path;			/* root path */
 	int fts_errno;			/* errno for this node */
 	int fts_symfd;			/* fd for symlink */
-	u_short fts_pathlen;		/* strlen(fts_path) */
-	u_short fts_namelen;		/* strlen(fts_name) */
+	size_t fts_pathlen;		/* strlen(fts_path) */
+	size_t fts_namelen;		/* strlen(fts_name) */
 
 	ino_t fts_ino;			/* inode */
 	dev_t fts_dev;			/* device */
@@ -84,7 +86,7 @@ typedef struct _ftsent {
 
 #define	FTS_ROOTPARENTLEVEL	-1
 #define	FTS_ROOTLEVEL		 0
-	short fts_level;		/* depth (-1 to N) */
+	long fts_level;			/* depth (-1 to N) */
 
 #define	FTS_D		 1		/* preorder directory */
 #define	FTS_DC		 2		/* directory that causes cycles */
@@ -100,32 +102,38 @@ typedef struct _ftsent {
 #define	FTS_SL		12		/* symbolic link */
 #define	FTS_SLNONE	13		/* symbolic link without target */
 #define	FTS_W		14		/* whiteout object */
-	u_short fts_info;		/* user flags for FTSENT structure */
+	int fts_info;			/* user status for FTSENT structure */
 
 #define	FTS_DONTCHDIR	 0x01		/* don't chdir .. to the parent */
 #define	FTS_SYMFOLLOW	 0x02		/* followed a symlink to get here */
 #define	FTS_ISW		 0x04		/* this is a whiteout object */
-	u_short fts_flags;		/* private flags for FTSENT structure */
+	unsigned fts_flags;		/* private flags for FTSENT structure */
 
 #define	FTS_AGAIN	 1		/* read node again */
 #define	FTS_FOLLOW	 2		/* follow symbolic link */
 #define	FTS_NOINSTR	 3		/* no instructions */
 #define	FTS_SKIP	 4		/* discard node */
-	u_short fts_instr;		/* fts_set() instructions */
+	int fts_instr;			/* fts_set() instructions */
 
 	struct stat *fts_statp;		/* stat(2) information */
-	char fts_name[1];		/* file name */
+	char *fts_name;			/* file name */
+	FTS *fts_fts;			/* back pointer to main FTS */
 } FTSENT;
 
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-FTSENT	*fts_children (FTS *, int);
-int	 fts_close (FTS *);
-FTS	*fts_open (char * const *, int,
-	    int (*)(const FTSENT **, const FTSENT **));
-FTSENT	*fts_read (FTS *);
-int	 fts_set (FTS *, FTSENT *, int);
+FTSENT	*fts_children(FTS *, int);
+int	 fts_close(FTS *);
+void	*fts_get_clientptr(FTS *);
+#define	 fts_get_clientptr(fts)	((fts)->fts_clientptr)
+FTS	*fts_get_stream(FTSENT *);
+#define	 fts_get_stream(ftsent)	((ftsent)->fts_fts)
+FTS	*fts_open(char * const *, int,
+		  int (*)(const FTSENT * const *, const FTSENT * const *));
+FTSENT	*fts_read(FTS *);
+int	 fts_set(FTS *, FTSENT *, int);
+void	 fts_set_clientptr(FTS *, void *);
 __END_DECLS
 
 #endif /* !_FTS_H_ */

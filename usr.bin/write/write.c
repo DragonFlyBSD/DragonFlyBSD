@@ -260,7 +260,7 @@ do_write(const char *tty, const char *mytty, uid_t myuid, int *mymsgok)
 	/* print greeting */
 	if (gethostname(host, sizeof(host)) < 0)
 		strlcpy(host, "???", sizeof host);
-	now = time((time_t *)NULL);
+	now = time(NULL);
 	nows = ctime(&now);
 	nows[16] = '\0';
 	printf("\r\n\007\007\007Message from %s@%s on %s at %s (%s %s replies)...\r\n",

@@ -70,10 +70,10 @@
 char		*prog;
 int		atmarp_debug_mode = 0;
 int		atmarp_max_socket = 0;
-Atmarp_intf	*atmarp_intf_head = (Atmarp_intf *)0;
-Atmarp_slis	*atmarp_slis_head = (Atmarp_slis *)0;
-FILE		*atmarp_log_file = (FILE *)0;
-char		*atmarp_log_file_name = (char *)0;
+Atmarp_intf	*atmarp_intf_head = NULL;
+Atmarp_slis	*atmarp_slis_head = NULL;
+FILE		*atmarp_log_file = NULL;
+char		*atmarp_log_file_name = NULL;
 Harp_timer	cache_timer, perm_timer;
 
 
@@ -243,7 +243,7 @@ start_daemon(void)
 	}
 	fd = open(_PATH_TTY, O_RDWR);
 	if (fd >= 0) {
-		ioctl(fd, TIOCNOTTY, (char *)0);
+		ioctl(fd, TIOCNOTTY, NULL);
 		close(fd);
 	}
 
@@ -375,7 +375,7 @@ main(int argc, char **argv)
 		}
 		rc = select(atmarp_max_socket + 1,
 				&read_set, &write_set,
-				&except_set, (struct timeval *)0);
+				&except_set, NULL);
 		if (rc < 0) {
 			if (harp_timer_exec) {
 				timer_proc();

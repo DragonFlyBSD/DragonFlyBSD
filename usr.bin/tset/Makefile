@@ -3,7 +3,6 @@
 
 PROG=	tset
 SRCS=	map.c misc.c set.c term.c tset.c wrterm.c
-WARNS?=	1
 
 DPADD=	${LIBTERMCAP}
 LDADD=	-ltermcap

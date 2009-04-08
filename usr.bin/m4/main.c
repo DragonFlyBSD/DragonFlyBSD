@@ -578,7 +578,7 @@ initkwds(void)
 	char *k;
 
 	for (i = 0; i < MAXKEYS; i++) {
-		k = (char *)keywrds[i].knam;
+		k = __DECONST(char *, keywrds[i].knam);
 		if (m4prefix) {
 			if (asprintf(&k, "m4_%s", k) == -1)
 				err(1, "asprintf");

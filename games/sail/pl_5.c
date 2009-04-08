@@ -55,7 +55,7 @@ acceptmove(void)
 	char *p;
 
 	if (!mc->crew3 || snagged(ms) || !windspeed) {
-		Signal("Unable to move", (struct ship *)0);
+		Signal("Unable to move", NULL);
 		return;
 	}
 
@@ -76,7 +76,7 @@ acceptmove(void)
 				dir = 1;
 			if (last == 't') {
 				Signal("Ship can't turn that fast.",
-					(struct ship *)0);
+					NULL);
 				*p-- = '\0';
 			}
 			last = 't';
@@ -104,7 +104,7 @@ acceptmove(void)
 		case '5': case '6': case '7':
 			if (last == '0') {
 				Signal("Can't move that fast.",
-					(struct ship *)0);
+					NULL);
 				*p-- = '\0';
 			}
 			last = '0';
@@ -116,35 +116,35 @@ acceptmove(void)
 			break;
 		default:
 			if (!isspace(*p)) {
-				Signal("Input error.", (struct ship *)0);
+				Signal("Input error.", NULL);
 				*p-- = '\0';
 			}
 		}
 	if ((ta < 0 && moved) || (vma < 0 && moved)
 	    || (af && turnfirst(buf) && moved)) {
-		Signal("Movement error.", (struct ship *)0);
+		Signal("Movement error.", NULL);
 		if (ta < 0 && moved) {
 			if (mf->FS == 1) {
-				Write(W_FS, ms, 0, 0, 0, 0, 0);
+				Write(W_FS, ms, 0, 0, 0, 0);
 				Signal("No hands to set full sails.",
-					(struct ship *)0);
+					NULL);
 			}
 		} else if (ma >= 0)
 			buf[1] = '\0';
 	}
 	if (af && !moved) {
 		if (mf->FS == 1) {
-			Write(W_FS, ms, 0, 0, 0, 0, 0);
+			Write(W_FS, ms, 0, 0, 0, 0);
 			Signal("No hands to set full sails.",
-				(struct ship *)0);
+				NULL);
 		}
 	}
 	if (*buf)
 		strcpy(movebuf, buf);
 	else
 		strcpy(movebuf, "d");
-	Write(W_MOVE, ms, 1, (int)movebuf, 0, 0, 0);
-	Signal("Helm: %s.", (struct ship *)0, movebuf);
+	Writestr(W_MOVE, ms, movebuf);
+	Signal("Helm: %s.", NULL, movebuf);
 }
 
 void
@@ -192,7 +192,7 @@ acceptboard(void)
 	}
 	if (crew[2]) {
 		c = sgetch("How many sections to repel boarders? ",
-			(struct ship *)0, 1);
+			NULL, 1);
 		parties(crew, ms, 1, c);
 	}
 	blockalarm();
@@ -224,8 +224,8 @@ parties(int crew[3], struct ship *to, char isdefense, char buf)
 			}
 			if (buf > '0')
 				Signal("Sending all crew sections.",
-					(struct ship *)0);
-			Write(isdefense ? W_DBP : W_OBP, ms, 0,
+					NULL);
+			Write(isdefense ? W_DBP : W_OBP, ms,
 				j, turn, to->file->index, men);
 			if (isdefense) {
 				wmove(slot_w, 2, 0);
@@ -236,7 +236,7 @@ parties(int crew[3], struct ship *to, char isdefense, char buf)
 						wmove(slot_w, 2, 1 + k);
 				mvwaddstr(slot_w, 3, 0, "DBP");
 				makesignal(ms, "repelling boarders",
-					(struct ship *)0);
+					NULL);
 			} else {
 				wmove(slot_w, 0, 0);
 				for (k=0; k < NBP; k++)
@@ -251,6 +251,6 @@ parties(int crew[3], struct ship *to, char isdefense, char buf)
 			wrefresh(slot_w);
 			unblockalarm();
 		} else
-			Signal("Sending no crew sections.", (struct ship *)0);
+			Signal("Sending no crew sections.", NULL);
 	}
 }

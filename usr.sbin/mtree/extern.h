@@ -35,12 +35,21 @@
  * $DragonFly: src/usr.sbin/mtree/extern.h,v 1.3 2003/11/03 19:31:39 eirikn Exp $
  */
 
-int	 compare(char *, NODE *, FTSENT *);
+#ifdef MAXPATHLEN
+extern char fullpath[MAXPATHLEN];
+#endif
+extern int dflag, eflag, iflag, nflag, qflag, rflag, sflag, uflag;
+extern int ftsoptions;
+extern int lineno;
+extern long int crc_total;
+extern u_int keys;
+
+int	 compare(NODE *, FTSENT *);
 int	 crc(int, u_long *, u_long *);
 void	 cwalk(void);
 char	*flags_to_string(u_long);
 
-char	*inotype(u_int);
+const char *inotype(u_int);
 u_int	 parsekey(char *, int *);
 char	*rlink(char *);
 NODE	*spec(void);

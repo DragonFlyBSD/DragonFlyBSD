@@ -277,7 +277,7 @@ main(int argc, char *argv[])
 	detach();
     pid = getpid();
     p = getlogin();
-    stime = time((time_t *) NULL);
+    stime = time(NULL);
     if (p == NULL) {
 	pw = getpwuid(uid);
 	if (pw != NULL && pw->pw_name != NULL)
@@ -545,7 +545,7 @@ main(int argc, char *argv[])
 	 * incoming events (reply, timeout, etc.).
 	 */
 	syslog(LOG_NOTICE, "Connect: %s <--> %s", ifname, devnam);
-	stime = time((time_t *) NULL);
+	stime = time(NULL);
 	lcp_lowerup(0);
 	lcp_open(0);		/* Start protocol */
 	for (phase = PHASE_ESTABLISH; phase != PHASE_DEAD; ) {
@@ -704,7 +704,7 @@ get_input(void)
 	return;
 
     if (len == 0) {
-	etime = time((time_t *) NULL);
+	etime = time(NULL);
 	minutes = (etime-stime)/60;
 	syslog(LOG_NOTICE, "Modem hangup, connected for %d minutes", (minutes >1) ? minutes : 1);
 	hungup = 1;
@@ -1121,7 +1121,7 @@ device_script(char *program, int in, int out)
 	}
 	setuid(getuid());
 	setgid(getgid());
-	execl("/bin/sh", "sh", "-c", program, (char *)0);
+	execl("/bin/sh", "sh", "-c", program, NULL);
 	syslog(LOG_ERR, "could not exec /bin/sh: %m");
 	_exit(99);
 	/* NOTREACHED */

@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -30,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)daemon.3	8.1 (Berkeley) 6/9/93
-.\" $FreeBSD: src/lib/libc/gen/daemon.3,v 1.6.2.4 2001/12/14 18:33:50 ru Exp $
+.\" $FreeBSD: src/lib/libc/gen/daemon.3,v 1.15 2007/01/09 00:27:53 imp Exp $
 .\" $DragonFly: src/lib/libc/gen/daemon.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
 .\"
 .Dd June 9, 1993
@@ -55,28 +51,63 @@ Unless the argument
 .Fa nochdir
 is non-zero,
 .Fn daemon
-changes the current working directory to the root (``/'').
+changes the current working directory to the root
+.Pq Pa / .
 .Pp
 Unless the argument
 .Fa noclose
 is non-zero,
 .Fn daemon
-will redirect standard input, standard output and standard error
-to ``/dev/null''.
+will redirect standard input, standard output, and standard error to
+.Pa /dev/null .
+.Sh RETURN VALUES
+.Rv -std daemon
 .Sh ERRORS
-If an error occurs,
+The
 .Fn daemon
-returns -1 and sets the global variable
+function may fail and set
 .Va errno
-to any of the errors specified for the library functions
+for any of the errors specified for the library functions
 .Xr fork 2
 and
 .Xr setsid 2 .
 .Sh SEE ALSO
 .Xr fork 2 ,
-.Xr setsid 2
+.Xr setsid 2 ,
+.Xr sigaction 2
 .Sh HISTORY
 The
 .Fn daemon
 function first appeared in
 .Bx 4.4 .
+.Sh CAVEATS
+Unless the
+.Fa noclose
+argument is non-zero,
+.Fn daemon
+will close the first three file descriptors and redirect them to
+.Pa /dev/null .
+Normally, these correspond to standard input, standard output, and
+standard error.
+However, if any of those file descriptors refer to something else, they
+will still be closed, resulting in incorrect behavior of the calling program.
+This can happen if any of standard input, standard output, or standard
+error have been closed before the program was run.
+Programs using
+.Fn daemon
+should therefore either call
+.Fn daemon
+before opening any files or sockets, or verify that any file
+descriptors obtained have values greater than 2.
+.Pp
+The
+.Fn daemon
+function temporarily ignores
+.Dv SIGHUP
+while calling
+.Xr setsid 2
+to prevent a parent session group leader's calls to
+.Xr fork 2
+and then
+.Xr _exit 2
+from prematurely terminating the child process.

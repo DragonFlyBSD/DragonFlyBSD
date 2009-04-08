@@ -102,14 +102,14 @@ Write the message to log; if not specified, and the
 flag is not
 provided, standard input is logged.
 .El
+.Sh EXIT STATUS
+.Ex -std
 .Sh EXAMPLES
 .Bd -literal -offset indent -compact
 logger System rebooted
 
 logger \-p local0.notice \-t HOSTIDM \-f /dev/idmc
 .Ed
-.Sh DIAGNOSTICS
-.Ex -std
 .Sh SEE ALSO
 .Xr syslog 3 ,
 .Xr syslogd 8

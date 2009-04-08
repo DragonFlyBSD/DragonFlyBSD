@@ -103,7 +103,7 @@ table(int rig, int shot, int hittable,
 		rigg[3] -= rhits;
 	}
 	if (rig && !rigg[2] && (!rigg[3] || rigg[3] == -1))
-		makesignal(on, "dismasted!", (struct ship *)0);
+		makesignal(on, "dismasted!", NULL);
 	if (portside(from, on, 0)) {
 		guns = on->specs->gunR;
 		car = on->specs->carR;
@@ -128,17 +128,17 @@ table(int rig, int shot, int hittable,
 	hull -= ghits;
 	if (Ghit)
 		Write(portside(from, on, 0) ? W_GUNR : W_GUNL,
-			on, 0, guns, car, 0, 0);
+			on, guns, car, 0, 0);
 	hull -= hhits;
 	hull = hull < 0 ? 0 : hull;
 	if (on->file->captured != 0 && Chit)
-		Write(W_PCREW, on, 0, pc, 0, 0, 0);
+		Write(W_PCREW, on, pc, 0, 0, 0);
 	if (Hhit)
-		Write(W_HULL, on, 0, hull, 0, 0, 0);
+		Write(W_HULL, on, hull, 0, 0, 0);
 	if (Chit)
-		Write(W_CREW, on, 0, crew[0], crew[1], crew[2], 0);
+		Write(W_CREW, on, crew[0], crew[1], crew[2], 0);
 	if (Rhit)
-		Write(W_RIGG, on, 0, rigg[0], rigg[1], rigg[2], rigg[3]);
+		Write(W_RIGG, on, rigg[0], rigg[1], rigg[2], rigg[3]);
 	switch (shot) {
 	case L_ROUND:
 		message = "firing round shot on %s (%c%c)";
@@ -180,7 +180,7 @@ table(int rig, int shot, int hittable,
 			message = "main topmast and mizzen mast shattered";
 			break;
 		}
-		makesignal(on, message, (struct ship *)0);
+		makesignal(on, message, NULL);
 	} else if (roll == 6) {
 		switch (Hhit) {
 		case 0:
@@ -200,13 +200,13 @@ table(int rig, int shot, int hittable,
 			break;
 		case 5:
 			message = "rudder cables shot through";
-			Write(W_TA, on, 0, 0, 0, 0, 0);
+			Write(W_TA, on, 0, 0, 0, 0);
 			break;
 		case 6:
 			message = "shot holes below the water line";
 			break;
 		}
-		makesignal(on, message, (struct ship *)0);
+		makesignal(on, message, NULL);
 	}
 	if (!hull)
 		strike(on, from);
@@ -216,12 +216,12 @@ void
 Cleansnag(struct ship *from, struct ship *to, char all, char flag)
 {
 	if (flag & 1) {
-		Write(W_UNGRAP, from, 0, to->file->index, all, 0, 0);
-		Write(W_UNGRAP, to, 0, from->file->index, all, 0, 0);
+		Write(W_UNGRAP, from, to->file->index, all, 0, 0);
+		Write(W_UNGRAP, to, from->file->index, all, 0, 0);
 	}
 	if (flag & 2) {
-		Write(W_UNFOUL, from, 0, to->file->index, all, 0, 0);
-		Write(W_UNFOUL, to, 0, from->file->index, all, 0, 0);
+		Write(W_UNFOUL, from, to->file->index, all, 0, 0);
+		Write(W_UNFOUL, to, from->file->index, all, 0, 0);
 	}
 	if (!snagged2(from, to)) {
 		if (!snagged(from)) {
@@ -244,20 +244,20 @@ strike(struct ship *ship, struct ship *from)
 
 	if (ship->file->struck)
 		return;
-	Write(W_STRUCK, ship, 0, 1, 0, 0, 0);
+	Write(W_STRUCK, ship, 1, 0, 0, 0);
 	points = ship->specs->pts + from->file->points;
-	Write(W_POINTS, from, 0, points, 0, 0, 0);
+	Write(W_POINTS, from, points, 0, 0, 0);
 	unboard(ship, ship, 0);		/* all offense */
 	unboard(ship, ship, 1);		/* all defense */
 	switch (die()) {
 	case 3:
 	case 4:		/* ship may sink */
-		Write(W_SINK, ship, 0, 1, 0, 0, 0);
+		Write(W_SINK, ship, 1, 0, 0, 0);
 		break;
 	case 5:
 	case 6:		/* ship may explode */
-		Write(W_EXPLODE, ship, 0, 1, 0, 0, 0);
+		Write(W_EXPLODE, ship, 1, 0, 0, 0);
 		break;
 	}
-	Write(W_SIGNAL, ship, 1, (int) "striking her colours!", 0, 0, 0);
+	Writestr(W_SIGNAL, ship, "striking her colours!");
 }

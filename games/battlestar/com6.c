@@ -121,7 +121,7 @@ post(unsigned int ch)
 
 	s = sigblock(sigmask(SIGINT));
 
-	gettimeofday(&tv, (struct timezone *)0);	/* can't call time */
+	gettimeofday(&tv, NULL);	/* can't call time */
 	tvsec = (time_t) tv.tv_sec;
 	date = ctime(&tvsec);
 	date[24] = '\0';
