@@ -812,7 +812,7 @@ unsetvar(const char *s)
 			if (*(strchr(vp->text, '=') + 1) != '\0')
 				setvar(s, nullstr, 0);
 			if ((vp->flags & VEXPORT) && localevar(vp->text)) {
-				change_env(s, 0);
+				change_env(__DECONST(char *, s), 0);
 				setlocale(LC_ALL, "");
 			}
 			vp->flags &= ~VEXPORT;

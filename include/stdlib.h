@@ -161,6 +161,17 @@ int	 setenv(const char *, const char *, int);
 int	 unsetenv(const char *);
 #endif
 
+#if __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE
+#ifndef _MKDTEMP_DECLARED
+char	*mkdtemp(char *);
+#define	_MKDTEMP_DECLARED
+#endif
+#ifndef _MKSTEMP_DECLARED
+int	 mkstemp(char *);
+#define	_MKSTEMP_DECLARED
+#endif
+#endif /* __POSIX_VISIBLE >= 200809 || __XSI_VISIBLE */
+
 /*
  * The only changes to the XSI namespace in revision 6 were the deletion
  * of the ttyslot() and valloc() functions, which we never declared
@@ -182,7 +193,10 @@ long	 jrand48(unsigned short[3]);
 char	*l64a(long);
 void	 lcong48(unsigned short[7]);
 long	 lrand48(void);
-int	 mkstemp(char *);
+#if !defined(_MKTEMP_DECLARED) && (__BSD_VISIBLE || __XSI_VISIBLE <= 600)
+char	*mktemp(char *);
+#define	_MKTEMP_DECLARED
+#endif
 long	 mrand48(void);
 long	 nrand48(unsigned short[3]);
 /* int	 posix_openpt(int); */

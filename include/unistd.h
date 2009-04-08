@@ -513,8 +513,23 @@ int	 iruserok_sa(const void *, int, int, const char *, const char *);
 int	 issetugid(void);
 int	 lwp_create(struct lwp_params *);
 lwpid_t	 lwp_gettid(void);
+#ifndef _MKDTEMP_DECLARED
+char	*mkdtemp(char *);
+#define	_MKDTEMP_DECLARED
+#endif
+#ifndef	_MKNOD_DECLARED
+int	 mknod(const char *, mode_t, dev_t);
+#define	_MKNOD_DECLARED
+#endif
+#ifndef _MKSTEMP_DECLARED
+int	 mkstemp(char *);
+#define	_MKSTEMP_DECLARED
+#endif
 int	 mkstemps(char *, int);
+#ifndef _MKTEMP_DECLARED
 char	*mktemp(char *);
+#define	_MKTEMP_DECLARED
+#endif
 int	 nfssvc(int, void *);
 int	 profil(char *, size_t, vm_offset_t, int);
 int	 rcmd(char **, int, const char *, const char *, const char *, int *);

@@ -555,7 +555,8 @@ static void
 cbqrestart(struct ifaltq *ifq)
 {
 	cbq_state_t	*cbqp;
-	struct ifnet	*ifp;
+
+	ALTQ_ASSERT_LOCKED(ifq);
 
 	if (!ifq_is_enabled(ifq))
 		/* cbq must have been detached */
@@ -565,10 +566,19 @@ cbqrestart(struct ifaltq *ifq)
 		/* should not happen */
 		return;
 
-	ifp = ifq->altq_ifp;
-	if (ifp->if_start &&
-	    cbqp->cbq_qlen > 0 && (ifp->if_flags & IFF_OACTIVE) == 0)
-		(*ifp->if_start)(ifp);
+	if (cbqp->cbq_qlen > 0) {
+		struct ifnet *ifp = ifq->altq_ifp;
+
+		/* Release the altq lock to avoid deadlock */
+		ALTQ_UNLOCK(ifq);
+
+		lwkt_serialize_enter(ifp->if_serializer);
+		if (ifp->if_start && (ifp->if_flags & IFF_OACTIVE) == 0)
+			(*ifp->if_start)(ifp);
+		lwkt_serialize_exit(ifp->if_serializer);
+
+		ALTQ_LOCK(ifq);
+	}
 }
 
 static void

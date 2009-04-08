@@ -97,8 +97,14 @@ typedef	__uint64_t	ino_t;		/* inode number */
 typedef	long		key_t;		/* IPC key (for Sys V IPC) */
 typedef	__uint16_t	mode_t;		/* permissions */
 typedef	__uint32_t	nlink_t;	/* link count */
+#ifndef _OFF_T_DECLARED
 typedef	__off_t		off_t;		/* file offset */
+#define _OFF_T_DECLARED
+#endif
+#ifndef _PID_T_DECLARED
 typedef	__pid_t		pid_t;		/* process id */
+#define _PID_T_DECLARED
+#endif
 typedef	__pid_t		lwpid_t;	/* light weight process id */
 typedef	quad_t		rlim_t;		/* resource limit */
 typedef	__int32_t	segsz_t;	/* segment size */
