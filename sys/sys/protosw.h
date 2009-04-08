@@ -174,7 +174,7 @@ struct protosw {
 #define PRU_NREQ		26
 
 #ifdef PRUREQUESTS
-char *prurequests[] = {
+const char *prurequests[] = {
 	"ATTACH",	"DETACH",	"BIND",		"LISTEN",
 	"CONNECT",	"ACCEPT",	"DISCONNECT",	"SHUTDOWN",
 	"RCVD",		"SEND",		"ABORT",	"CONTROL",
@@ -370,7 +370,7 @@ struct lwkt_port *sync_soport(struct socket *, struct sockaddr *,
 	((cmd) >= PRC_REDIRECT_NET && (cmd) <= PRC_REDIRECT_TOSHOST)
 
 #ifdef PRCREQUESTS
-char	*prcrequests[] = {
+const char *prcrequests[] = {
 	"IFDOWN", "ROUTEDEAD", "IFUP", "DEC-BIT-QUENCH2",
 	"QUENCH", "MSGSIZE", "HOSTDEAD", "#7",
 	"NET-UNREACH", "HOST-UNREACH", "PROTO-UNREACH", "PORT-UNREACH",
@@ -399,7 +399,7 @@ char	*prcrequests[] = {
 #define	PRCO_NCMDS	2
 
 #ifdef PRCOREQUESTS
-char	*prcorequests[] = {
+const char *prcorequests[] = {
 	"GETOPT", "SETOPT",
 };
 #endif
