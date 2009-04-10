@@ -222,10 +222,14 @@ MLINKS+=bus_dma.9 busdma.9 \
 	bus_dma.9 bus_dmamap_destroy.9 \
 	bus_dma.9 bus_dmamap_load.9 \
 	bus_dma.9 bus_dmamap_load_mbuf.9 \
+	bus_dma.9 bus_dmamap_load_mbuf_defrag.9 \
+	bus_dma.9 bus_dmamap_load_mbuf_segment.9 \
 	bus_dma.9 bus_dmamap_load_uio.9 \
 	bus_dma.9 bus_dmamap_sync.9 \
 	bus_dma.9 bus_dmamap_unload.9 \
 	bus_dma.9 bus_dmamem_alloc.9 \
+	bus_dma.9 bus_dmamem_coherent.9 \
+	bus_dma.9 bus_dmamem_coherent_any.9 \
 	bus_dma.9 bus_dmamem_free.9 \
 	bus_dma.9 bus_dma_tag_create.9 \
 	bus_dma.9 bus_dma_tag_destroy.9
