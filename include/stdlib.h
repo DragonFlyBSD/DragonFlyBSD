@@ -187,7 +187,7 @@ double	 erand48(unsigned short[3]);
 /* char	*fcvt(double, int, int * __restrict, int * __restrict); */
 /* char	*gcvt(double, int, int * __restrict, int * __restrict); */
 int	 getsubopt(char **, char *const *, char **);
-int	 grantpt(int);
+/* int	 grantpt(int); */
 char	*initstate(unsigned long /* XSI requires u_int */, char *, long);
 long	 jrand48(unsigned short[3]);
 char	*l64a(long);
