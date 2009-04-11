@@ -68,6 +68,7 @@
 #ifdef NETGRAPH
 #include <sys/syslog.h>
 #else /* NETGRAPH */
+#include <net/if_arp.h>
 #include <net/sppp/if_sppp.h>
 
 #include <net/bpf.h>
