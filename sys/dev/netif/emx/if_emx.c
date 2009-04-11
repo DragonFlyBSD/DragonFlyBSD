@@ -110,9 +110,6 @@
 #include <dev/netif/ig_hal/e1000_82571.h>
 #include <dev/netif/emx/if_emx.h>
 
-#define IFNET_SERIALIZE_RX0	(IFNET_SERIALIZE_RX_BASE + 0)
-#define IFNET_SERIALIZE_RX1	(IFNET_SERIALIZE_RX_BASE + 1)
-
 #ifdef EMX_RSS_DEBUG
 #define EMX_RSS_DPRINTF(sc, lvl, fmt, ...) \
 do { \
@@ -3644,11 +3641,11 @@ emx_serialize(struct ifnet *ifp, enum ifnet_serialize slz)
 		lwkt_serialize_enter(&sc->tx_serialize);
 		break;
 
-	case IFNET_SERIALIZE_RX0:
+	case IFNET_SERIALIZE_RX(0):
 		lwkt_serialize_enter(&sc->rx_data[0].rx_serialize);
 		break;
 
-	case IFNET_SERIALIZE_RX1:
+	case IFNET_SERIALIZE_RX(1):
 		lwkt_serialize_enter(&sc->rx_data[1].rx_serialize);
 		break;
 
@@ -3673,11 +3670,11 @@ emx_deserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 		lwkt_serialize_exit(&sc->tx_serialize);
 		break;
 
-	case IFNET_SERIALIZE_RX0:
+	case IFNET_SERIALIZE_RX(0):
 		lwkt_serialize_exit(&sc->rx_data[0].rx_serialize);
 		break;
 
-	case IFNET_SERIALIZE_RX1:
+	case IFNET_SERIALIZE_RX(1):
 		lwkt_serialize_exit(&sc->rx_data[1].rx_serialize);
 		break;
 
@@ -3706,10 +3703,10 @@ emx_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 	case IFNET_SERIALIZE_TX:
 		return lwkt_serialize_try(&sc->tx_serialize);
 
-	case IFNET_SERIALIZE_RX0:
+	case IFNET_SERIALIZE_RX(0):
 		return lwkt_serialize_try(&sc->rx_data[0].rx_serialize);
 
-	case IFNET_SERIALIZE_RX1:
+	case IFNET_SERIALIZE_RX(1):
 		return lwkt_serialize_try(&sc->rx_data[1].rx_serialize);
 
 	default:
@@ -3744,14 +3741,14 @@ emx_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
 			ASSERT_NOT_SERIALIZED(&sc->tx_serialize);
 		break;
 
-	case IFNET_SERIALIZE_RX0:
+	case IFNET_SERIALIZE_RX(0):
 		if (serialized)
 			ASSERT_SERIALIZED(&sc->rx_data[0].rx_serialize);
 		else
 			ASSERT_NOT_SERIALIZED(&sc->rx_data[0].rx_serialize);
 		break;
 
-	case IFNET_SERIALIZE_RX1:
+	case IFNET_SERIALIZE_RX(1):
 		if (serialized)
 			ASSERT_SERIALIZED(&sc->rx_data[1].rx_serialize);
 		else

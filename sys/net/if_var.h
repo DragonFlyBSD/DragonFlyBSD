@@ -141,6 +141,7 @@ enum ifnet_serialize {
 	IFNET_SERIALIZE_RX_BASE = 0x20000000
 };
 #define IFNET_SERIALIZE_TX	IFNET_SERIALIZE_TX_BASE
+#define IFNET_SERIALIZE_RX(i)	(IFNET_SERIALIZE_RX_BASE + (i))
 
 /*
  * Structure defining a network interface.
