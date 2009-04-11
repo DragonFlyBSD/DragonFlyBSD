@@ -136,8 +136,9 @@ struct spppreq {
 
 #ifdef _KERNEL
 struct sppp {
-	/* NB: pp_if _must_ be first */
-	struct  ifnet pp_if;    /* network interface data */
+	/* NB: pp_arpcom _must_ be first */
+	struct  arpcom pp_arpcom;    /* network interface data */
+#define pp_if	pp_arpcom.ac_if
 	struct  ifqueue pp_fastq; /* fast output queue */
 	struct	ifqueue pp_cpq;	/* PPP control protocol queue */
 	struct  sppp *pp_next;  /* next interface in keepalive list */
