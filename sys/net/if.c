@@ -372,9 +372,7 @@ if_devstart(struct ifnet *ifp)
 	struct ifaltq *ifq = &ifp->if_snd;
 	int running = 0;
 
-#ifdef FIX_SERIALIZE_ASSERT
-	ASSERT_SERIALIZED(ifp->if_serializer);
-#endif
+	ASSERT_IFNET_SERIALIZED_TX(ifp);
 
 	ALTQ_LOCK(ifq);
 	if (ifq->altq_started || !ifq_data_ready(ifq)) {
@@ -430,6 +428,19 @@ if_default_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz __unused)
 	return lwkt_serialize_try(ifp->if_serializer);
 }
 
+#ifdef INVARIANTS
+static void
+if_default_serialize_assert(struct ifnet *ifp,
+			    enum ifnet_serialize slz __unused,
+			    boolean_t serialized)
+{
+	if (serialized)
+		ASSERT_SERIALIZED(ifp->if_serializer);
+	else
+		ASSERT_NOT_SERIALIZED(ifp->if_serializer);
+}
+#endif
+
 /*
  * Attach an interface to the list of "active" interfaces.
  *
@@ -462,15 +473,20 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 
 	if (ifp->if_serialize != NULL) {
 		KASSERT(ifp->if_deserialize != NULL &&
-			ifp->if_tryserialize != NULL,
+			ifp->if_tryserialize != NULL &&
+			ifp->if_serialize_assert != NULL,
 			("serialize functions are partially setup\n"));
 	} else {
 		KASSERT(ifp->if_deserialize == NULL &&
-			ifp->if_tryserialize == NULL,
+			ifp->if_tryserialize == NULL &&
+			ifp->if_serialize_assert == NULL,
 			("serialize functions are partially setup\n"));
 		ifp->if_serialize = if_default_serialize;
 		ifp->if_deserialize = if_default_deserialize;
 		ifp->if_tryserialize = if_default_tryserialize;
+#ifdef INVARIANTS
+		ifp->if_serialize_assert = if_default_serialize_assert;
+#endif
 	}
 
 	ifp->if_start_cpuid = if_start_cpuid;
@@ -2123,9 +2139,7 @@ ifq_dispatch(struct ifnet *ifp, struct mbuf *m, struct altq_pktattr *pa)
 	struct ifaltq *ifq = &ifp->if_snd;
 	int running = 0, error, start = 0;
 
-#ifdef FIX_SERIALIZE_ASSERT
-	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
-#endif
+	ASSERT_IFNET_NOT_SERIALIZED_TX(ifp);
 
 	ALTQ_LOCK(ifq);
 	error = ifq_enqueue_locked(ifq, m, pa);

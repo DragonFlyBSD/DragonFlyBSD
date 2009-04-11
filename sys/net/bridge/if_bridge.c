@@ -780,7 +780,7 @@ bridge_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	const struct bridge_control *bc;
 	int error = 0;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	switch (cmd) {
 	case SIOCADDMULTI:
@@ -978,7 +978,7 @@ bridge_delete_member(struct bridge_softc *sc, struct bridge_iflist *bif,
 	struct bridge_ifinfo *bif_info = bif->bif_info;
 	struct bridge_iflist_head saved_bifs;
 
-	ASSERT_SERIALIZED(bifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(bifp);
 	KKASSERT(bif_info != NULL);
 
 	ifs->if_bridge = NULL;
@@ -1136,7 +1136,7 @@ bridge_ioctl_add(struct bridge_softc *sc, void *arg)
 	int error = 0;
 
 	bifp = sc->sc_ifp;
-	ASSERT_SERIALIZED(bifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(bifp);
 
 	ifs = ifunit(req->ifbr_ifsname);
 	if (ifs == NULL)
@@ -1460,7 +1460,7 @@ bridge_ioctl_saddr(struct bridge_softc *sc, void *arg)
 	struct ifnet *ifp = sc->sc_ifp;
 	int error;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	bif = bridge_lookup_member(sc, req->ifba_ifsname);
 	if (bif == NULL)
@@ -1848,7 +1848,7 @@ bridge_output(struct ifnet *ifp, struct mbuf *m)
 	struct ether_header *eh;
 	struct ifnet *dst_if, *bifp;
 
-	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
 
 	/*
 	 * Make sure that we are still a member of a bridge interface.
@@ -1960,7 +1960,7 @@ bridge_start(struct ifnet *ifp)
 {
 	struct bridge_softc *sc = ifp->if_softc;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_TX(ifp);
 
 	ifp->if_flags |= IFF_OACTIVE;
 	for (;;) {
@@ -2010,7 +2010,7 @@ bridge_forward(struct bridge_softc *sc, struct mbuf *m)
 	src_if = m->m_pkthdr.rcvif;
 	ifp = sc->sc_ifp;
 
-	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
 
 	ifp->if_ipackets++;
 	ifp->if_ibytes += m->m_pkthdr.len;
@@ -2141,7 +2141,7 @@ bridge_input(struct ifnet *ifp, struct mbuf *m)
 	struct ether_header *eh;
 	struct mbuf *mc, *mc2;
 
-	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
 
 	/*
 	 * Make sure that we are still a member of a bridge interface.
@@ -2337,7 +2337,7 @@ bridge_start_bcast(struct bridge_softc *sc, struct mbuf *m)
 	int used = 0;
 
 	bifp = sc->sc_ifp;
-	ASSERT_SERIALIZED(bifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(bifp);
 
 	/*
 	 * Following loop is MPSAFE; nothing is blocking
@@ -2394,7 +2394,7 @@ bridge_broadcast(struct bridge_softc *sc, struct ifnet *src_if,
 	int used = 0;
 
 	bifp = sc->sc_ifp;
-	ASSERT_NOT_SERIALIZED(bifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(bifp);
 
 	if (inet_pfil_hook.ph_hashooks > 0
 #ifdef INET6
@@ -2514,7 +2514,7 @@ bridge_rtmsg_sync(struct bridge_softc *sc)
 {
 	struct netmsg nmsg;
 
-	ASSERT_NOT_SERIALIZED(sc->sc_ifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(sc->sc_ifp);
 
 	netmsg_init(&nmsg, &curthread->td_msgport, 0,
 		    bridge_rtmsg_sync_handler);
@@ -2663,7 +2663,7 @@ bridge_rtsaddr(struct bridge_softc *sc, const uint8_t *dst,
 {
 	struct netmsg_brsaddr brmsg;
 
-	ASSERT_NOT_SERIALIZED(sc->sc_ifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(sc->sc_ifp);
 
 	netmsg_init(&brmsg.br_nmsg, &curthread->td_msgport, 0,
 		    bridge_rtinstall_handler);
@@ -2710,7 +2710,7 @@ bridge_rtreap(struct bridge_softc *sc)
 {
 	struct netmsg nmsg;
 
-	ASSERT_NOT_SERIALIZED(sc->sc_ifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(sc->sc_ifp);
 
 	netmsg_init(&nmsg, &curthread->td_msgport, 0, bridge_rtreap_handler);
 	nmsg.nm_lmsg.u.ms_resultp = sc;
@@ -2744,7 +2744,7 @@ bridge_rttrim(struct bridge_softc *sc)
 	struct bridge_rtnode *brt;
 	int dead;
 
-	ASSERT_NOT_SERIALIZED(sc->sc_ifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(sc->sc_ifp);
 
 	/* Make sure we actually need to do this. */
 	if (sc->sc_brtcnt <= sc->sc_brtmax)
@@ -2866,7 +2866,7 @@ bridge_rtage_finddead(struct bridge_softc *sc)
 static void
 bridge_rtage(struct bridge_softc *sc)
 {
-	ASSERT_NOT_SERIALIZED(sc->sc_ifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(sc->sc_ifp);
 
 	if (bridge_rtage_finddead(sc))
 		bridge_rtreap(sc);
@@ -2911,7 +2911,7 @@ bridge_rtdaddr(struct bridge_softc *sc, const uint8_t *addr)
 {
 	struct bridge_rtnode *brt;
 
-	ASSERT_NOT_SERIALIZED(sc->sc_ifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(sc->sc_ifp);
 
 	if ((brt = bridge_rtnode_lookup(sc, addr)) == NULL)
 		return (ENOENT);
@@ -3687,7 +3687,7 @@ bridge_control(struct bridge_softc *sc, u_long cmd,
 	struct netmsg *nmsg;
 	int error;
 
-	ASSERT_SERIALIZED(bifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(bifp);
 
 	bzero(&bc_msg, sizeof(bc_msg));
 	nmsg = &bc_msg.bc_nmsg;
@@ -3729,7 +3729,7 @@ bridge_add_bif(struct bridge_softc *sc, struct bridge_ifinfo *bif_info,
 {
 	struct netmsg_braddbif amsg;
 
-	ASSERT_NOT_SERIALIZED(sc->sc_ifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(sc->sc_ifp);
 
 	netmsg_init(&amsg.br_nmsg, &curthread->td_msgport, 0,
 		    bridge_add_bif_handler);
@@ -3772,7 +3772,7 @@ bridge_del_bif(struct bridge_softc *sc, struct bridge_ifinfo *bif_info,
 {
 	struct netmsg_brdelbif dmsg;
 
-	ASSERT_NOT_SERIALIZED(sc->sc_ifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(sc->sc_ifp);
 
 	netmsg_init(&dmsg.br_nmsg, &curthread->td_msgport, 0,
 		    bridge_del_bif_handler);
@@ -3810,7 +3810,7 @@ bridge_set_bifflags(struct bridge_softc *sc, struct bridge_ifinfo *bif_info,
 {
 	struct netmsg_brsflags smsg;
 
-	ASSERT_NOT_SERIALIZED(sc->sc_ifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(sc->sc_ifp);
 
 	netmsg_init(&smsg.br_nmsg, &curthread->td_msgport, 0,
 		    bridge_set_bifflags_handler);

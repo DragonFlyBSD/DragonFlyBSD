@@ -245,6 +245,12 @@ struct ifnet {
 		(struct ifnet *, enum ifnet_serialize);
 	int	(*if_tryserialize)
 		(struct ifnet *, enum ifnet_serialize);
+#ifdef INVARIANTS
+	void	(*if_serialize_assert)
+		(struct ifnet *, enum ifnet_serialize, boolean_t);
+#else
+	void	(*if_serialize_unused)(void);
+#endif
 	struct	ifaltq if_snd;		/* output queue (includes altq) */
 	struct	ifprefixhead if_prefixhead; /* list of prefixes per if */
 	const uint8_t	*if_broadcastaddr;
@@ -336,6 +342,23 @@ typedef void if_init_f_t (void *);
 } while (0)
 
 #ifdef _KERNEL
+
+#ifdef INVARIANTS
+#define ASSERT_IFNET_SERIALIZED_ALL(ifp) \
+	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_ALL, TRUE)
+#define ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp) \
+	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_ALL, FALSE)
+
+#define ASSERT_IFNET_SERIALIZED_TX(ifp) \
+	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_TX, TRUE)
+#define ASSERT_IFNET_NOT_SERIALIZED_TX(ifp) \
+	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_TX, FALSE)
+#else
+#define ASSERT_IFNET_SERIALIZED_ALL(ifp)	((void)0)
+#define ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp)	((void)0)
+#define ASSERT_IFNET_SERIALIZED_TX(ifp)		((void)0)
+#define ASSERT_IFNET_NOT_SERIALIZED_TX(ifp)	((void)0)
+#endif
 
 static __inline void
 ifnet_serialize_all(struct ifnet *_ifp)

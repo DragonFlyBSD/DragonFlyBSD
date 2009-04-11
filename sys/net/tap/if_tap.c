@@ -382,7 +382,7 @@ tapifinit(void *xtp)
 
 	TAPDEBUG(ifp, "initializing, minor = %#x\n", minor(tp->tap_dev));
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	tapifstop(tp, 1);
 
@@ -915,7 +915,7 @@ tapifstop(struct tap_softc *tp, int clear_flags)
 {
 	struct ifnet *ifp = &tp->tap_if;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 	IF_DRAIN(&tp->tap_devq);
 	if (clear_flags)
 		ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);

@@ -181,7 +181,7 @@ vlan_setflags(struct ifvlan *ifv, struct ifnet *ifp_p, int set)
 {
 	int error, i;
 
-	ASSERT_NOT_SERIALIZED(ifv->ifv_if.if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(&ifv->ifv_if);
 
 	for (i = 0; vlan_pflags[i].func != NULL; i++) {
 		error = vlan_setflag(ifv, ifp_p, vlan_pflags[i].flag,
@@ -200,7 +200,7 @@ vlan_setflag(struct ifvlan *ifv, struct ifnet *ifp_p, int flag, int set,
 	struct ifnet *ifp = &ifv->ifv_if;
 	int error, ifv_flag;
 
-	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
 
 	ifv_flag = set ? (ifp->if_flags & flag) : 0;
 
@@ -239,7 +239,7 @@ vlan_setmulti(struct ifvlan *ifv, struct ifnet *ifp_p)
 	struct sockaddr_dl sdl;
 	struct ifnet *ifp = &ifv->ifv_if;
 
-	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
 
 	/*
 	 * First, remove any existing filter entries.
@@ -284,7 +284,7 @@ vlan_clrmulti(struct ifvlan *ifv, struct ifnet *ifp_p)
 	struct vlan_mc_entry *mc;
 	struct sockaddr_dl sdl;
 
-	ASSERT_NOT_SERIALIZED(ifv->ifv_if.if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(&ifv->ifv_if);
 
 	bzero(&sdl, sizeof(sdl));
 	sdl.sdl_len = sizeof(sdl);
@@ -368,7 +368,7 @@ vlan_ifdetach(void *arg __unused, struct ifnet *ifp)
 	struct netmsg_vlan vmsg;
 	struct netmsg *nmsg;
 
-	ASSERT_NOT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp);
 
 	bzero(&vmsg, sizeof(vmsg));
 	nmsg = &vmsg.nv_nmsg;
@@ -439,7 +439,7 @@ vlan_init(void *xsc)
 	struct ifvlan *ifv = xsc;
 	struct ifnet *ifp = &ifv->ifv_if;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	if (ifv->ifv_p != NULL)
 		ifp->if_flags |= IFF_RUNNING;
@@ -452,7 +452,7 @@ vlan_start(struct ifnet *ifp)
 	struct ifnet *ifp_p = ifv->ifv_p;
 	struct mbuf *m;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_TX(ifp);
 
 	if (ifp_p == NULL) {
 		ifq_purge(&ifp->if_snd);
@@ -587,7 +587,7 @@ vlan_link(struct ifvlan *ifv, struct ifnet *ifp_p)
 	struct netmsg *nmsg;
 
 	/* Assert in netisr0 */
-	ASSERT_NOT_SERIALIZED(ifv->ifv_if.if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(&ifv->ifv_if);
 
 	if (ifp_p->if_vlantrunks == NULL) {
 		struct vlan_trunk *vlantrunks;
@@ -708,7 +708,7 @@ vlan_config(struct ifvlan *ifv, const char *parent_name, uint16_t vlantag)
 	struct netmsg_vlan vmsg;
 	struct netmsg *nmsg;
 
-	ASSERT_NOT_SERIALIZED(ifv->ifv_if.if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(&ifv->ifv_if);
 
 	bzero(&vmsg, sizeof(vmsg));
 	nmsg = &vmsg.nv_nmsg;
@@ -748,7 +748,7 @@ vlan_unlink(struct ifvlan *ifv, struct ifnet *ifp_p)
 	struct netmsg *nmsg;
 
 	/* Assert in netisr0 */
-	ASSERT_NOT_SERIALIZED(ifv->ifv_if.if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(&ifv->ifv_if);
 
 	KASSERT(ifp_p->if_vlantrunks != NULL,
 		("vlan trunk has not been initialized yet\n"));
@@ -850,7 +850,7 @@ vlan_unconfig(struct ifvlan *ifv)
 	struct netmsg_vlan vmsg;
 	struct netmsg *nmsg;
 
-	ASSERT_NOT_SERIALIZED(ifv->ifv_if.if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(&ifv->ifv_if);
 
 	bzero(&vmsg, sizeof(vmsg));
 	nmsg = &vmsg.nv_nmsg;
@@ -870,7 +870,7 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	struct vlanreq vlr;
 	int error = 0;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	switch (cmd) {
 	case SIOCGIFMEDIA:
@@ -993,7 +993,7 @@ vlan_config_multi(struct ifvlan *ifv)
 	struct netmsg_vlan vmsg;
 	struct netmsg *nmsg;
 
-	ASSERT_NOT_SERIALIZED(ifv->ifv_if.if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(&ifv->ifv_if);
 
 	bzero(&vmsg, sizeof(vmsg));
 	nmsg = &vmsg.nv_nmsg;
@@ -1026,7 +1026,7 @@ vlan_config_flags(struct ifvlan *ifv)
 	struct netmsg_vlan vmsg;
 	struct netmsg *nmsg;
 
-	ASSERT_NOT_SERIALIZED(ifv->ifv_if.if_serializer);
+	ASSERT_IFNET_NOT_SERIALIZED_ALL(&ifv->ifv_if);
 
 	bzero(&vmsg, sizeof(vmsg));
 	nmsg = &vmsg.nv_nmsg;

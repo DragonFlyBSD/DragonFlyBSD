@@ -236,8 +236,6 @@ atm_input(struct ifnet *ifp, struct atm_pseudohdr *ah, struct mbuf *m,
 	u_int16_t etype = ETHERTYPE_IP; /* default */
 	int isr;
 
-	ASSERT_SERIALIZED(ifp->if_serializer);
-
 	if (!(ifp->if_flags & IFF_UP)) {
 		m_freem(m);
 		return;

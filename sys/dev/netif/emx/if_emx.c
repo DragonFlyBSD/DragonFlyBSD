@@ -186,6 +186,10 @@ static void	emx_timer(void *);
 static void	emx_serialize(struct ifnet *, enum ifnet_serialize);
 static void	emx_deserialize(struct ifnet *, enum ifnet_serialize);
 static int	emx_tryserialize(struct ifnet *, enum ifnet_serialize);
+#ifdef INVARIANTS
+static void	emx_serialize_assert(struct ifnet *, enum ifnet_serialize,
+		    boolean_t);
+#endif
 
 static void	emx_intr(void *);
 static void	emx_rxeof(struct emx_softc *, int, int);
@@ -832,12 +836,8 @@ emx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 	uint16_t eeprom_data = 0;
 	int max_frame_size, mask, reinit;
 	int error = 0;
-#ifdef INVARIANTS
-	int i;
 
-	for (i = 0; i < EMX_NSERIALIZE; ++i)
-		ASSERT_SERIALIZED(sc->serializes[i]);
-#endif
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	switch (command) {
 	case SIOCSIFMTU:
@@ -953,12 +953,8 @@ static void
 emx_watchdog(struct ifnet *ifp)
 {
 	struct emx_softc *sc = ifp->if_softc;
-#ifdef INVARIANTS
-	int i;
 
-	for (i = 0; i < EMX_NSERIALIZE; ++i)
-		ASSERT_SERIALIZED(sc->serializes[i]);
-#endif
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	/*
 	 * The timer is set to 5 every time start queues a packet.
@@ -1010,10 +1006,7 @@ emx_init(void *xsc)
 	uint32_t pba;
 	int i;
 
-#ifdef INVARIANTS
-	for (i = 0; i < EMX_NSERIALIZE; ++i)
-		ASSERT_SERIALIZED(sc->serializes[i]);
-#endif
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	emx_stop(sc);
 
@@ -1167,12 +1160,8 @@ emx_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 {
 	struct emx_softc *sc = ifp->if_softc;
 	uint32_t reg_icr;
-#ifdef INVARIANTS
-	int i;
 
-	for (i = 0; i < EMX_NSERIALIZE; ++i)
-		ASSERT_SERIALIZED(sc->serializes[i]);
-#endif
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	switch (cmd) {
 	case POLL_REGISTER:
@@ -1290,12 +1279,8 @@ static void
 emx_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
 	struct emx_softc *sc = ifp->if_softc;
-#ifdef INVARIANTS
-	int i;
 
-	for (i = 0; i < EMX_NSERIALIZE; ++i)
-		ASSERT_SERIALIZED(sc->serializes[i]);
-#endif
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	emx_update_link_status(sc);
 
@@ -1335,12 +1320,8 @@ emx_media_change(struct ifnet *ifp)
 {
 	struct emx_softc *sc = ifp->if_softc;
 	struct ifmedia *ifm = &sc->media;
-#ifdef INVARIANTS
-	int i;
 
-	for (i = 0; i < EMX_NSERIALIZE; ++i)
-		ASSERT_SERIALIZED(sc->serializes[i]);
-#endif
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	if (IFM_TYPE(ifm->ifm_media) != IFM_ETHER)
 		return (EINVAL);
@@ -1704,12 +1685,9 @@ static void
 emx_stop(struct emx_softc *sc)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-#ifdef INVARIANTS
 	int i;
 
-	for (i = 0; i < EMX_NSERIALIZE; ++i)
-		ASSERT_SERIALIZED(sc->serializes[i]);
-#endif
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
 	emx_disable_intr(sc);
 
@@ -1836,6 +1814,9 @@ emx_setup_ifp(struct emx_softc *sc)
 	ifp->if_serialize = emx_serialize;
 	ifp->if_deserialize = emx_deserialize;
 	ifp->if_tryserialize = emx_tryserialize;
+#ifdef INVARIANTS
+	ifp->if_serialize_assert = emx_serialize_assert;
+#endif
 	ifq_set_maxlen(&ifp->if_snd, sc->num_tx_desc - 1);
 	ifq_set_ready(&ifp->if_snd);
 
@@ -3735,3 +3716,51 @@ emx_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 		panic("%s unsupported serialize type\n", ifp->if_xname);
 	}
 }
+
+#ifdef INVARIANTS
+
+static void
+emx_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
+		     boolean_t serialized)
+{
+	struct emx_softc *sc = ifp->if_softc;
+	int i;
+
+	switch (slz) {
+	case IFNET_SERIALIZE_ALL:
+		if (serialized) {
+			for (i = 0; i < EMX_NSERIALIZE; ++i)
+				ASSERT_SERIALIZED(sc->serializes[i]);
+		} else {
+			for (i = 0; i < EMX_NSERIALIZE; ++i)
+				ASSERT_NOT_SERIALIZED(sc->serializes[i]);
+		}
+		break;
+
+	case IFNET_SERIALIZE_TX:
+		if (serialized)
+			ASSERT_SERIALIZED(&sc->tx_serialize);
+		else
+			ASSERT_NOT_SERIALIZED(&sc->tx_serialize);
+		break;
+
+	case IFNET_SERIALIZE_RX0:
+		if (serialized)
+			ASSERT_SERIALIZED(&sc->rx_data[0].rx_serialize);
+		else
+			ASSERT_NOT_SERIALIZED(&sc->rx_data[0].rx_serialize);
+		break;
+
+	case IFNET_SERIALIZE_RX1:
+		if (serialized)
+			ASSERT_SERIALIZED(&sc->rx_data[1].rx_serialize);
+		else
+			ASSERT_NOT_SERIALIZED(&sc->rx_data[1].rx_serialize);
+		break;
+
+	default:
+		panic("%s unsupported serialize type\n", ifp->if_xname);
+	}
+}
+
+#endif	/* INVARIANTS */

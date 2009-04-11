@@ -871,7 +871,7 @@ pppoutput_serialized(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	        error = 0;
 	    }
 	} else {
-	    ASSERT_SERIALIZED(sc->sc_if.if_serializer);
+	    ASSERT_IFNET_SERIALIZED_TX(&sc->sc_if);
 	    error = ifq_enqueue(&sc->sc_if.if_snd, m0, &pktattr);
 	}
 	if (error) {
@@ -1262,7 +1262,7 @@ ppp_inproc(struct ppp_softc *sc, struct mbuf *m)
     u_char *iphdr;
     u_int hlen;
 
-    ASSERT_SERIALIZED(ifp->if_serializer);
+    ASSERT_IFNET_SERIALIZED_ALL(ifp);
 
     sc->sc_stats.ppp_ipackets++;
 
