@@ -3629,12 +3629,10 @@ static void
 emx_serialize(struct ifnet *ifp, enum ifnet_serialize slz)
 {
 	struct emx_softc *sc = ifp->if_softc;
-	int i;
 
 	switch (slz) {
 	case IFNET_SERIALIZE_ALL:
-		for (i = 0; i < EMX_NSERIALIZE; ++i)
-			lwkt_serialize_enter(sc->serializes[i]);
+		lwkt_serialize_array_enter(sc->serializes, EMX_NSERIALIZE, 0);
 		break;
 
 	case IFNET_SERIALIZE_TX:
@@ -3658,12 +3656,10 @@ static void
 emx_deserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 {
 	struct emx_softc *sc = ifp->if_softc;
-	int i;
 
 	switch (slz) {
 	case IFNET_SERIALIZE_ALL:
-		for (i = EMX_NSERIALIZE - 1; i >= 0; --i)
-			lwkt_serialize_exit(sc->serializes[i]);
+		lwkt_serialize_array_exit(sc->serializes, EMX_NSERIALIZE, 0);
 		break;
 
 	case IFNET_SERIALIZE_TX:
@@ -3687,18 +3683,11 @@ static int
 emx_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 {
 	struct emx_softc *sc = ifp->if_softc;
-	int i;
 
 	switch (slz) {
 	case IFNET_SERIALIZE_ALL:
-		for (i = 0; i < EMX_NSERIALIZE; ++i) {
-			if (!lwkt_serialize_try(sc->serializes[i])) {
-				while (--i >= 0)
-					lwkt_serialize_exit(sc->serializes[i]);
-				return 0;
-			}
-		}
-		return 1;
+		return lwkt_serialize_array_try(sc->serializes,
+						EMX_NSERIALIZE, 0);
 
 	case IFNET_SERIALIZE_TX:
 		return lwkt_serialize_try(&sc->tx_serialize);
