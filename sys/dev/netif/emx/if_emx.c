@@ -234,6 +234,9 @@ static int	emx_sysctl_int_throttle(SYSCTL_HANDLER_ARGS);
 static int	emx_sysctl_int_tx_nsegs(SYSCTL_HANDLER_ARGS);
 static void	emx_add_sysctl(struct emx_softc *);
 
+static void	emx_serialize_skipmain(struct emx_softc *);
+static void	emx_deserialize_skipmain(struct emx_softc *);
+
 /* Management and WOL Support */
 static void	emx_get_mgmt(struct emx_softc *);
 static void	emx_rel_mgmt(struct emx_softc *);
@@ -1247,11 +1250,7 @@ emx_intr(void *xsc)
 
 	/* Link status change */
 	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
-		int i;
-
-		/* XXX */
-		for (i = 1; i < EMX_NSERIALIZE; ++i)
-			lwkt_serialize_enter(sc->serializes[i]);
+		emx_serialize_skipmain(sc);
 
 		callout_stop(&sc->timer);
 		sc->hw.mac.get_link_status = 1;
@@ -1262,8 +1261,7 @@ emx_intr(void *xsc)
 
 		callout_reset(&sc->timer, hz, emx_timer, sc);
 
-		for (i = EMX_NSERIALIZE - 1; i >= 1; --i)
-			lwkt_serialize_exit(sc->serializes[i]);
+		emx_deserialize_skipmain(sc);
 	}
 
 	if (reg_icr & E1000_ICR_RXO)
@@ -3701,6 +3699,18 @@ emx_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 	default:
 		panic("%s unsupported serialize type\n", ifp->if_xname);
 	}
+}
+
+static void
+emx_serialize_skipmain(struct emx_softc *sc)
+{
+	lwkt_serialize_array_enter(sc->serializes, EMX_NSERIALIZE, 1);
+}
+
+static void
+emx_deserialize_skipmain(struct emx_softc *sc)
+{
+	lwkt_serialize_array_exit(sc->serializes, EMX_NSERIALIZE, 1);
 }
 
 #ifdef INVARIANTS
