@@ -236,6 +236,7 @@ static void	emx_add_sysctl(struct emx_softc *);
 
 static void	emx_serialize_skipmain(struct emx_softc *);
 static void	emx_deserialize_skipmain(struct emx_softc *);
+static int	emx_tryserialize_skipmain(struct emx_softc *);
 
 /* Management and WOL Support */
 static void	emx_get_mgmt(struct emx_softc *);
@@ -1161,7 +1162,7 @@ emx_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	struct emx_softc *sc = ifp->if_softc;
 	uint32_t reg_icr;
 
-	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+	ASSERT_IFNET_SERIALIZED_MAIN(ifp);
 
 	switch (cmd) {
 	case POLL_REGISTER:
@@ -1175,22 +1176,34 @@ emx_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	case POLL_AND_CHECK_STATUS:
 		reg_icr = E1000_READ_REG(&sc->hw, E1000_ICR);
 		if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
-			callout_stop(&sc->timer);
-			sc->hw.mac.get_link_status = 1;
-			emx_update_link_status(sc);
-			callout_reset(&sc->timer, hz, emx_timer, sc);
+			if (emx_tryserialize_skipmain(sc)) {
+				callout_stop(&sc->timer);
+				sc->hw.mac.get_link_status = 1;
+				emx_update_link_status(sc);
+				callout_reset(&sc->timer, hz, emx_timer, sc);
+				emx_deserialize_skipmain(sc);
+			}
 		}
 		/* FALL THROUGH */
 	case POLL_ONLY:
 		if (ifp->if_flags & IFF_RUNNING) {
 			int i;
 
-			for (i = 0; i < sc->rx_ring_inuse; ++i)
-				emx_rxeof(sc, i, count);
+			for (i = 0; i < sc->rx_ring_inuse; ++i) {
+				if (lwkt_serialize_try(
+				    &sc->rx_data[i].rx_serialize)) {
+					emx_rxeof(sc, i, count);
+					lwkt_serialize_exit(
+					&sc->rx_data[i].rx_serialize);
+				}
+			}
 
-			emx_txeof(sc);
-			if (!ifq_is_empty(&ifp->if_snd))
-				if_devstart(ifp);
+			if (lwkt_serialize_try(&sc->tx_serialize)) {
+				emx_txeof(sc);
+				if (!ifq_is_empty(&ifp->if_snd))
+					if_devstart(ifp);
+				lwkt_serialize_exit(&sc->tx_serialize);
+			}
 		}
 		break;
 	}
@@ -3633,6 +3646,10 @@ emx_serialize(struct ifnet *ifp, enum ifnet_serialize slz)
 		lwkt_serialize_array_enter(sc->serializes, EMX_NSERIALIZE, 0);
 		break;
 
+	case IFNET_SERIALIZE_MAIN:
+		lwkt_serialize_enter(&sc->main_serialize);
+		break;
+
 	case IFNET_SERIALIZE_TX:
 		lwkt_serialize_enter(&sc->tx_serialize);
 		break;
@@ -3658,6 +3675,10 @@ emx_deserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 	switch (slz) {
 	case IFNET_SERIALIZE_ALL:
 		lwkt_serialize_array_exit(sc->serializes, EMX_NSERIALIZE, 0);
+		break;
+
+	case IFNET_SERIALIZE_MAIN:
+		lwkt_serialize_exit(&sc->main_serialize);
 		break;
 
 	case IFNET_SERIALIZE_TX:
@@ -3687,6 +3708,9 @@ emx_tryserialize(struct ifnet *ifp, enum ifnet_serialize slz)
 		return lwkt_serialize_array_try(sc->serializes,
 						EMX_NSERIALIZE, 0);
 
+	case IFNET_SERIALIZE_MAIN:
+		return lwkt_serialize_try(&sc->main_serialize);
+
 	case IFNET_SERIALIZE_TX:
 		return lwkt_serialize_try(&sc->tx_serialize);
 
@@ -3705,6 +3729,12 @@ static void
 emx_serialize_skipmain(struct emx_softc *sc)
 {
 	lwkt_serialize_array_enter(sc->serializes, EMX_NSERIALIZE, 1);
+}
+
+static int
+emx_tryserialize_skipmain(struct emx_softc *sc)
+{
+	return lwkt_serialize_array_try(sc->serializes, EMX_NSERIALIZE, 1);
 }
 
 static void
@@ -3731,6 +3761,13 @@ emx_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
 			for (i = 0; i < EMX_NSERIALIZE; ++i)
 				ASSERT_NOT_SERIALIZED(sc->serializes[i]);
 		}
+		break;
+
+	case IFNET_SERIALIZE_MAIN:
+		if (serialized)
+			ASSERT_SERIALIZED(&sc->main_serialize);
+		else
+			ASSERT_NOT_SERIALIZED(&sc->main_serialize);
 		break;
 
 	case IFNET_SERIALIZE_TX:

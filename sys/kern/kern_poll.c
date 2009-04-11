@@ -637,7 +637,7 @@ netisr_poll(struct netmsg *msg)
 	for (i = 0 ; i < pctx->poll_handlers ; i++) {
 		struct ifnet *ifp = pctx->pr[i].ifp;
 
-		if (!ifnet_tryserialize_all(ifp))
+		if (!ifnet_tryserialize_main(ifp))
 			continue;
 
 		if ((ifp->if_flags & (IFF_UP|IFF_RUNNING|IFF_POLLING))
@@ -649,7 +649,7 @@ netisr_poll(struct netmsg *msg)
 			logpoll(end, ifp);
 		}
 
-		ifnet_deserialize_all(ifp);
+		ifnet_deserialize_main(ifp);
 	}
 
 	schedpollmore(pctx);

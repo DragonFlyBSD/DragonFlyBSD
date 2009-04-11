@@ -137,6 +137,7 @@ enum poll_cmd { POLL_ONLY, POLL_AND_CHECK_STATUS, POLL_DEREGISTER,
 
 enum ifnet_serialize {
 	IFNET_SERIALIZE_ALL,
+	IFNET_SERIALIZE_MAIN,
 	IFNET_SERIALIZE_TX_BASE = 0x10000000,
 	IFNET_SERIALIZE_RX_BASE = 0x20000000
 };
@@ -353,11 +354,18 @@ typedef void if_init_f_t (void *);
 	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_TX, TRUE)
 #define ASSERT_IFNET_NOT_SERIALIZED_TX(ifp) \
 	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_TX, FALSE)
+
+#define ASSERT_IFNET_SERIALIZED_MAIN(ifp) \
+	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_MAIN, TRUE)
+#define ASSERT_IFNET_NOT_SERIALIZED_MAIN(ifp) \
+	(ifp)->if_serialize_assert((ifp), IFNET_SERIALIZE_MAIN, FALSE)
 #else
 #define ASSERT_IFNET_SERIALIZED_ALL(ifp)	((void)0)
 #define ASSERT_IFNET_NOT_SERIALIZED_ALL(ifp)	((void)0)
 #define ASSERT_IFNET_SERIALIZED_TX(ifp)		((void)0)
 #define ASSERT_IFNET_NOT_SERIALIZED_TX(ifp)	((void)0)
+#define ASSERT_IFNET_SERIALIZED_MAIN(ifp)	((void)0)
+#define ASSERT_IFNET_NOT_SERIALIZED_MAIN(ifp)	((void)0)
 #endif
 
 static __inline void
@@ -394,6 +402,24 @@ static __inline int
 ifnet_tryserialize_tx(struct ifnet *_ifp)
 {
 	return _ifp->if_tryserialize(_ifp, IFNET_SERIALIZE_TX);
+}
+
+static __inline void
+ifnet_serialize_main(struct ifnet *_ifp)
+{
+	_ifp->if_serialize(_ifp, IFNET_SERIALIZE_MAIN);
+}
+
+static __inline void
+ifnet_deserialize_main(struct ifnet *_ifp)
+{
+	_ifp->if_deserialize(_ifp, IFNET_SERIALIZE_MAIN);
+}
+
+static __inline int
+ifnet_tryserialize_main(struct ifnet *_ifp)
+{
+	return _ifp->if_tryserialize(_ifp, IFNET_SERIALIZE_MAIN);
 }
 
 /*
