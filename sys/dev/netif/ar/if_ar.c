@@ -67,6 +67,7 @@
 #include <sys/syslog.h>
 #include <dev/netif/ar/if_ar.h>
 #else /* NETGRAPH */
+#include <net/if_arp.h>
 #include <net/sppp/if_sppp.h>
 #include <net/bpf.h>
 #endif /* NETGRAPH */
