@@ -141,7 +141,6 @@ enum ifnet_serialize {
 	IFNET_SERIALIZE_RX_BASE = 0x20000000
 };
 #define IFNET_SERIALIZE_TX	IFNET_SERIALIZE_TX_BASE
-#define IFNET_SERIALIZE_RX	IFNET_SERIALIZE_RX_BASE
 
 /*
  * Structure defining a network interface.
@@ -181,8 +180,8 @@ enum ifnet_serialize {
  *
  * Caller of if_output must not serialize ifnet by calling ifnet serialize
  * functions; if_output will call the ifnet serialize functions based on
- * its own needs.  However, the device driver must call ifnet serialize
- * functions with IFNET_SERIALIZE_RX when it calls if_input.
+ * its own needs.  Caller of if_input does not necessarily hold the related
+ * serializer.
  *
  * If a device driver installs the same serializer for its interrupt
  * as for ifnet, then the driver only really needs to worry about further
@@ -394,24 +393,6 @@ static __inline int
 ifnet_tryserialize_tx(struct ifnet *_ifp)
 {
 	return _ifp->if_tryserialize(_ifp, IFNET_SERIALIZE_TX);
-}
-
-static __inline void
-ifnet_serialize_rx(struct ifnet *_ifp)
-{
-	_ifp->if_serialize(_ifp, IFNET_SERIALIZE_RX);
-}
-
-static __inline void
-ifnet_deserialize_rx(struct ifnet *_ifp)
-{
-	_ifp->if_deserialize(_ifp, IFNET_SERIALIZE_RX);
-}
-
-static __inline int
-ifnet_tryserialize_rx(struct ifnet *_ifp)
-{
-	return _ifp->if_tryserialize(_ifp, IFNET_SERIALIZE_RX);
 }
 
 /*

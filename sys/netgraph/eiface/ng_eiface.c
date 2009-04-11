@@ -501,11 +501,8 @@ ng_eiface_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	    return (EINVAL);
 	}
 
-	ifnet_serialize_rx(ifp);
-	if ( !(ifp->if_flags & IFF_UP) ) {
-		ifnet_deserialize_rx(ifp);
+	if ( !(ifp->if_flags & IFF_UP) )
 		return (ENETDOWN);
-	}
 
 	/* Note receiving interface */
 	m->m_pkthdr.rcvif = ifp;
@@ -516,7 +513,6 @@ ng_eiface_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	BPF_MTAP(ifp, m);
 
 	ifp->if_input(ifp, m);
-	ifnet_deserialize_rx(ifp);
 
 	/* Done */
 	return (error);
