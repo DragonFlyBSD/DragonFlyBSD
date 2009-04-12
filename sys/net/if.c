@@ -459,23 +459,21 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 
 	static int if_indexlim = 8;
 
-	/*
-	 * The serializer can be passed in from the device, allowing the
-	 * same serializer to be used for both the interrupt interlock and
-	 * the device queue.  If not specified, the netif structure will
-	 * use an embedded serializer.
-	 */
-	if (serializer == NULL) {
-		serializer = &ifp->if_default_serializer;
-		lwkt_serialize_init(serializer);
-	}
-	ifp->if_serializer = serializer;
-
 	if (ifp->if_serialize != NULL) {
 		KASSERT(ifp->if_deserialize != NULL &&
 			ifp->if_tryserialize != NULL &&
 			ifp->if_serialize_assert != NULL,
 			("serialize functions are partially setup\n"));
+
+		/*
+		 * If the device supplies serialize functions,
+		 * then clear if_serializer to catch any invalid
+		 * usage of this field.
+		 */
+		KASSERT(serializer == NULL,
+			("both serialize functions and default serializer "
+			 "are supplied\n"));
+		ifp->if_serializer = NULL;
 	} else {
 		KASSERT(ifp->if_deserialize == NULL &&
 			ifp->if_tryserialize == NULL &&
@@ -487,6 +485,19 @@ if_attach(struct ifnet *ifp, lwkt_serialize_t serializer)
 #ifdef INVARIANTS
 		ifp->if_serialize_assert = if_default_serialize_assert;
 #endif
+
+		/*
+		 * The serializer can be passed in from the device,
+		 * allowing the same serializer to be used for both
+		 * the interrupt interlock and the device queue.
+		 * If not specified, the netif structure will use an
+		 * embedded serializer.
+		 */
+		if (serializer == NULL) {
+			serializer = &ifp->if_default_serializer;
+			lwkt_serialize_init(serializer);
+		}
+		ifp->if_serializer = serializer;
 	}
 
 	ifp->if_start_cpuid = if_start_cpuid;

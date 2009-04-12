@@ -404,9 +404,6 @@ emx_attach(device_t dev)
 	for (i = 0; i < EMX_NRX_RING; ++i)
 		lwkt_serialize_init(&sc->rx_data[i].rx_serialize);
 
-	lwkt_serialize_init(&sc->panic_serialize);
-	lwkt_serialize_enter(&sc->panic_serialize);
-
 	i = 0;
 	sc->serializes[i++] = &sc->main_serialize;
 	sc->serializes[i++] = &sc->tx_serialize;
@@ -1828,7 +1825,7 @@ emx_setup_ifp(struct emx_softc *sc)
 	ifq_set_maxlen(&ifp->if_snd, sc->num_tx_desc - 1);
 	ifq_set_ready(&ifp->if_snd);
 
-	ether_ifattach(ifp, sc->hw.mac.addr, &sc->panic_serialize);
+	ether_ifattach(ifp, sc->hw.mac.addr, NULL);
 
 	ifp->if_capabilities = IFCAP_HWCSUM |
 			       IFCAP_VLAN_HWTAGGING |

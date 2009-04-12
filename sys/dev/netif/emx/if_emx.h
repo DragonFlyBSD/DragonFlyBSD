@@ -369,8 +369,6 @@ struct emx_softc {
 	int			rss_debug;
 
 	struct e1000_hw_stats	stats;
-
-	struct lwkt_serialize	panic_serialize;
 };
 
 struct emx_txbuf {
