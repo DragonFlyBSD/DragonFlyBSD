@@ -450,7 +450,7 @@ static struct pcisel
 getsel(const char *str)
 {
 	char *parse_buf, *ep;
-	struct pcisel sel;
+	struct pcisel sel = { .pc_func = 0};
 
 	parse_buf = strdup(str);
 	ep = parse_buf;
