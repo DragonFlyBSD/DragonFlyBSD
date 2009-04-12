@@ -80,6 +80,7 @@
 #include <sys/proc.h>
 #include <sys/rman.h>
 #include <sys/serialize.h>
+#include <sys/serialize2.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
