@@ -271,10 +271,7 @@ the behaviour will be unpredictable.
 .Sh LEASE DECLARATIONS
 The lease declaration:
 .Pp
-.Xo
-.Ic \	\& lease No { Ar lease-declaration
-.Oo Ar ... lease-declaration Oc }
-.Xc
+.D1 Ic lease No { Ar lease-declaration Oo Ar ... lease-declaration Oc }
 .Pp
 The DHCP client may decide after some period of time (see
 .Sx PROTOCOL TIMING )
@@ -389,12 +386,13 @@ predefined lease whose expiry time has passed will not be used by the
 DHCP client.
 .Pp
 Dates are specified as follows:
-.Pp
-.Ar \	\&<weekday>
+.Bd -ragged -offset indent
+.Ar <weekday>
 .Sm off
 .Ar <year> No / Ar <month> No / Ar <day>
 .Ar <hour> : <minute> : <second>
 .Sm on
+.Ed
 .Pp
 The weekday is present to make it easy for a human to tell when a
 lease expires \- it's specified as a number from zero to six, with zero
