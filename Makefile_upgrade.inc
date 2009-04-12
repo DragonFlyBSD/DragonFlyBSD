@@ -1100,3 +1100,5 @@ TO_REMOVE+=/usr/share/man/cat3/CIRCLEQ_PREV.3.gz
 TO_REMOVE+=/usr/share/man/man3/CIRCLEQ_PREV.3.gz
 TO_REMOVE+=/usr/share/man/cat3/CIRCLEQ_REMOVE.3.gz
 TO_REMOVE+=/usr/share/man/man3/CIRCLEQ_REMOVE.3.gz
+TO_REMOVE+=/usr/share/man/cat3/fts_getstream.3.gz
+TO_REMOVE+=/usr/share/man/man3/fts_getstream.3.gz
