@@ -428,9 +428,9 @@ pktgen_udp_thread1(void *arg)
 		bcopy(IF_LLADDR(ifp), eh->ether_shost, ETHER_ADDR_LEN);
 		eh->ether_type = htons(ETHERTYPE_IP);
 
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_tx(ifp);
 		error = ifq_handoff(ifp, m, NULL);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_tx(ifp);
 
 		loop++;
 		if (error) {
@@ -538,9 +538,9 @@ pktgen_udp_thread(void *arg)
 		bcopy(IF_LLADDR(ifp), eh->ether_shost, ETHER_ADDR_LEN);
 		eh->ether_type = htons(ETHERTYPE_IP);
 
-		lwkt_serialize_enter(ifp->if_serializer);
+		ifnet_serialize_tx(ifp);
 		error = ifq_handoff(ifp, m, NULL);
-		lwkt_serialize_exit(ifp->if_serializer);
+		ifnet_deserialize_tx(ifp);
 
 		loop++;
 		if (error) {
