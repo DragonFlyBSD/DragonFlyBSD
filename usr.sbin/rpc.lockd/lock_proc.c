@@ -60,7 +60,6 @@
 #define	getrpcaddr(rqstp)	(struct sockaddr *)(svc_getrpccaller((rqstp)->rq_xprt)->buf)
 
 static void	log_from_addr(const char *, struct svc_req *);
-static void	log_netobj(netobj *obj);
 static int	addrcmp(struct sockaddr *, struct sockaddr *);
 
 /* log_from_addr ----------------------------------------------------------- */
