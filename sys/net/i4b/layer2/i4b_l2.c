@@ -271,7 +271,6 @@ i4b_mph_status_ind(int unit, int status, int parm)
 
 			l2sc->ua_frame = NULL;
 			bzero(&l2sc->stat, sizeof(lapdstat_t));			
-			i4b_l2_unit_init(unit);
 			
 			/* initialize the callout handles for timeout routines */
 			callout_init(&l2sc->T200_timeout);
@@ -279,6 +278,7 @@ i4b_mph_status_ind(int unit, int status, int parm)
 			callout_init(&l2sc->T203_timeout);
 			callout_init(&l2sc->IFQU_timeout);
 
+			i4b_l2_unit_init(unit);
 			break;
 
 		case STI_L1STAT:	/* state of layer 1 */
