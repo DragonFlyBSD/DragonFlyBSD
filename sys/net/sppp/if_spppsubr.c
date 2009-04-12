@@ -473,6 +473,7 @@ sppp_modevent(module_t mod, int type, void *unused)
 {
 	switch (type) {
 	case MOD_LOAD:
+		callout_init(&keepalive_timeout);
 		break;
 	case MOD_UNLOAD:
 		return EACCES;
