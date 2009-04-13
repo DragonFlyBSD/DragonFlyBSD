@@ -185,5 +185,28 @@
 #define DLT_BLUETOOTH_HCI_H4_WITH_PHDR 201 /* Bluetooth HCI UART transport
 					    * layer (part H:4) plus
 					    * pseudo-header */
+#define DLT_AX25_KISS		202	/* AX.25 packet with a 1-byte KISS
+					 * header */
+#define DLT_LAPD		203	/* LAPD packets from an ISDN channel,
+					 * starting with the address field,
+					 * with no pseudo-header */
+#define DLT_PPP_WITH_DIR	204	/* PPP */
+#define DLT_C_HDLC_WITH_DIR	205	/* Cisco HDLC */
+#define DLT_FRELAY_WITH_DIR	206	/* Frame Relay */
+#define DLT_LAPB_WITH_DIR	207	/* LAPB */
+
+/* 208 unused */
+
+#define DLT_IPMB_LINUX		209	/* IPMB with a Linux-specific
+					 * pseudo-header */
+#define DLT_FLEXRAY		210	/* FlexRay automotive bus */
+#define DLT_MOST		211	/* Media Oriented Systems Transport
+					 * (MOST) bus */
+#define DLT_LIN			212	/* Local Interconnect Network
+					 * (LIN) bus */
+#define DLT_X2E_SERIAL		213	/* X2E-private */
+#define DLT_X2E_XORAYA		214	/* X2E-private */
+#define DLT_IEEE802_15_4_NONASK_PHY 215	/* IEEE 802.15.4, with the PHY-level
+					 * data for non-ASK PHYs */
 
 #endif	/* !_NET_DLT_H_ */
