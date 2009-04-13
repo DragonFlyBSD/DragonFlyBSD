@@ -142,11 +142,11 @@ static int	useloopback = 1; /* use loopback interface for local traffic */
 static int	arp_proxyall = 0;
 
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, maxtries, CTLFLAG_RW,
-	   &arp_maxtries, 0, "");
+	   &arp_maxtries, 0, "ARP resolution attempts before returning error");
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, useloopback, CTLFLAG_RW,
-	   &useloopback, 0, "");
+	   &useloopback, 0, "Use the loopback interface for local traffic");
 SYSCTL_INT(_net_link_ether_inet, OID_AUTO, proxyall, CTLFLAG_RW,
-	   &arp_proxyall, 0, "");
+	   &arp_proxyall, 0, "Enable proxy ARP for all suitable requests");
 
 static int	arp_mpsafe = 1;
 TUNABLE_INT("net.link.ether.inet.arp_mpsafe", &arp_mpsafe);
