@@ -42,7 +42,6 @@
 #include <sys/malloc.h>
 #include <sys/conf.h>
 #include <sys/poll.h>
-#include <sys/ioccom.h>
 
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>

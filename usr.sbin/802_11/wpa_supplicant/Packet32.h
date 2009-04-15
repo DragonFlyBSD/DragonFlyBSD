@@ -37,6 +37,7 @@
 #define _PACKET32_H_
 
 #include <sys/types.h>
+#include <sys/ioccom.h>
 #include <ntddndis.h>
 
 struct PACKET_OID_DATA {

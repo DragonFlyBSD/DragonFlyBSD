@@ -39,6 +39,7 @@
 #ifndef _NETATM_ATM_IOCTL_H
 #define _NETATM_ATM_IOCTL_H
 
+#include <sys/ioccom.h>
 
 /*
  * Structure for PF_ATM configure (AIOCCFG) socket ioctls

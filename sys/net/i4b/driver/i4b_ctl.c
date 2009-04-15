@@ -50,7 +50,6 @@
 #include <sys/systm.h>
 #include <sys/conf.h>
 #include <sys/device.h>
-#include <sys/ioccom.h>
 #include <sys/socket.h>
 #include <net/if.h>
 

@@ -37,6 +37,7 @@
 #define _NWFS_H_
 
 #include <netproto/ncp/ncp.h>
+#include <sys/ioccom.h>
 #include "nwfs_mount.h"
 
 #define NR_OPEN 0

@@ -55,7 +55,6 @@
 #include <netinet/in_var.h>
 
 #include <sys/stat.h>
-#include <sys/ioccom.h>
 #include <net/tap/if_tap.h>
 #include <errno.h>
 #include <stdio.h>

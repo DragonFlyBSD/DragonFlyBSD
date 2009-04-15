@@ -32,6 +32,8 @@
  * SBNI12 definitions
  */
 
+#include <sys/ioccom.h>
+
 /*
  * CONFIGURATION PARAMETER:
  *

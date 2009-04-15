@@ -40,6 +40,8 @@
 #ifndef	_COMSTATS_H_
 #define	_COMSTATS_H_
 
+#include <sys/ioccom.h>
+
 /*
  *	Serial port stats structure. The structure itself is UART
  *	independent, but some fields may be UART/driver specific (for

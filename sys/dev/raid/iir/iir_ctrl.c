@@ -51,7 +51,6 @@
 #include <sys/conf.h>
 #include <sys/stat.h>
 #include <sys/device.h>
-#include <sys/ioccom.h>
 #include <sys/thread2.h>
 
 #include <vm/vm.h>

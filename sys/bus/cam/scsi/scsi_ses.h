@@ -30,6 +30,8 @@
  *
  */
 
+#include <sys/ioccom.h>
+
 #define	SESIOC			('s' - 040)
 #define	SESIOC_GETNOBJ		_IO(SESIOC, 1)
 #define	SESIOC_GETOBJMAP	_IO(SESIOC, 2)

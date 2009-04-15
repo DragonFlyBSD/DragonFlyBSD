@@ -38,7 +38,6 @@
 #include <sys/conf.h>
 #include <sys/device.h>
 #include <sys/fcntl.h>
-#include <sys/ioccom.h>
 #include <sys/malloc.h>
 #include <sys/file.h>		/* Must come after sys/malloc.h */
 #include <sys/poll.h>

@@ -69,7 +69,6 @@
 #include <sys/socket.h>
 #include <sys/errno.h>
 
-#include <sys/ioccom.h>
 #include <sys/sockio.h>
 #ifdef IPR_VJ
 #include <sys/malloc.h>

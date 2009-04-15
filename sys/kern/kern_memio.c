@@ -52,7 +52,6 @@
 #include <sys/conf.h>
 #include <sys/fcntl.h>
 #include <sys/filio.h>
-#include <sys/ioccom.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/memrange.h>

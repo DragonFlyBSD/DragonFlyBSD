@@ -52,7 +52,6 @@
 #include <sys/malloc.h>
 #include <sys/module.h>
 #include <sys/bus.h>
-#include <sys/ioccom.h>
 #include <sys/fcntl.h>
 #include <sys/conf.h>
 #include <sys/tty.h>

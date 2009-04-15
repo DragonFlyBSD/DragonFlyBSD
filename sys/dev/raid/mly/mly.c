@@ -36,7 +36,6 @@
 #include <sys/conf.h>
 #include <sys/device.h>
 #include <sys/ctype.h>
-#include <sys/ioccom.h>
 #include <sys/stat.h>
 #include <sys/rman.h>
 #include <sys/thread2.h>

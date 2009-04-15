@@ -30,6 +30,8 @@
  * $DragonFly: src/sys/dev/serial/digi/digiio.h,v 1.1 2004/12/22 08:42:47 joerg Exp $
  */
 
+#include <sys/ioccom.h>
+
 /*
  * A very small subset of cards.
  */

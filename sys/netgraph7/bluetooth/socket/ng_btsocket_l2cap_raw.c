@@ -38,7 +38,6 @@
 #include <sys/domain.h>
 #include <sys/errno.h>
 #include <sys/filedesc.h>
-#include <sys/ioccom.h>
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/malloc.h>

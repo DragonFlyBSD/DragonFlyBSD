@@ -47,6 +47,9 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifndef _SYS_IOCCOM_H_
+#include <sys/ioccom.h>
+#endif
 
 /* ASCII string size limits */
 #define NG_TYPESIZ	32	/* max type name len (including null) */
@@ -259,8 +262,6 @@ struct typelist {
  * (e.g., a device that has a /dev entry and is also a netgraph node),
  * we define a generic ioctl for requesting the corresponding nodeinfo
  * structure and for assigning a name (if there isn't one already).
- *
- * For these to you need to also #include <sys/ioccom.h>.
  */
 
 #define NGIOCGINFO	_IOR('N', 40, struct nodeinfo)	/* get node info */

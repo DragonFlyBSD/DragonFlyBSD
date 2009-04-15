@@ -72,6 +72,9 @@
 #ifndef _SYS_TYPES_H_
 #include <sys/types.h>
 #endif
+#ifndef _SYS_IOCCOM_H_
+#include <sys/ioccom.h>
+#endif
 #ifndef _SYS_TIME_H_
 #include <sys/time.h>
 #endif

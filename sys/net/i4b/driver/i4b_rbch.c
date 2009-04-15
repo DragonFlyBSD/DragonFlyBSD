@@ -60,7 +60,6 @@
 #include "../include/i4b_l3l4.h"
 #include "../layer4/i4b_l4.h"
 
-#include <sys/ioccom.h>
 #include <sys/poll.h>
 #include <sys/filio.h>
 

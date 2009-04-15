@@ -39,6 +39,7 @@
 #define _NET_PFVAR_H_
 
 #include <sys/types.h>
+#include <sys/ioccom.h>
 #include <sys/queue.h>
 #include <sys/tree.h>
 

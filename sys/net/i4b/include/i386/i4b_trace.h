@@ -39,6 +39,8 @@
 #ifndef _I4B_TRACE_H_
 #define _I4B_TRACE_H_
 
+#include <sys/ioccom.h>
+
 /*---------------------------------------------------------------------------*
  *	structure of the header at the beginning of every trace mbuf
  *---------------------------------------------------------------------------*/

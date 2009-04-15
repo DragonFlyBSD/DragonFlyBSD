@@ -83,7 +83,6 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <sys/ioccom.h>
 #include <sys/conf.h>
 #include <sys/tty.h>
 #include <sys/file.h>

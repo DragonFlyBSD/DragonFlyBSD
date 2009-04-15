@@ -37,7 +37,6 @@
 #include <sys/kernel.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
-#include <sys/ioccom.h>
 #include <sys/globaldata.h>
 #include <sys/thread.h>
 

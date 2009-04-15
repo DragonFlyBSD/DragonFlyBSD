@@ -26,6 +26,7 @@
 /* XXX this used to be self-contained. */
 #include <net/ppp_layer/ppp_defs.h>
 #include <net/if.h>
+#include <sys/ioccom.h>
 
 /*
  * Packet sizes

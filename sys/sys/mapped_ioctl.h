@@ -42,6 +42,9 @@
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
+#ifndef _SYS_IOCCOM_H_
+#include <sys/ioccom.h>
+#endif
 
 struct file;
 struct thread;

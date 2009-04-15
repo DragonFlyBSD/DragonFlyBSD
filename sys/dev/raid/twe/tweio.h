@@ -30,6 +30,7 @@
  *	$DragonFly: src/sys/dev/raid/twe/tweio.h,v 1.4 2005/08/22 21:16:20 hmp Exp $
  */
 
+#include <sys/ioccom.h>
 
 /*
  * User-space command

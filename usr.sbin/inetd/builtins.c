@@ -29,7 +29,6 @@
  */
 
 #include <sys/filio.h>
-#include <sys/ioccom.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/socket.h>

@@ -27,6 +27,8 @@
 #ifndef _I4B_ISPPP_H_
 #define _I4B_ISPPP_H_
 
+#include <sys/ioccom.h>
+
 #define SPPP_VJ			/* use VJ compression */
 
 

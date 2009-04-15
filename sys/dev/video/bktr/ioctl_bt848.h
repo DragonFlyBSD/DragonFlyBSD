@@ -8,6 +8,8 @@
 #ifndef  _DEV_BKTR_IOCTL_BT848_H_
 #define  _DEV_BKTR_IOCTL_BT848_H_
 
+#include <sys/ioccom.h>
+
 /*
  * frequency sets
  */

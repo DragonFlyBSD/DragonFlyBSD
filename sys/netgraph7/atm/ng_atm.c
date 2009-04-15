@@ -44,7 +44,6 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/sbuf.h>
-#include <sys/ioccom.h>
 #include <sys/sysctl.h>
 
 #include <net/if.h>

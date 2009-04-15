@@ -39,7 +39,6 @@
 #include <sys/param.h>
 #include <sys/conf.h>
 #include <sys/device.h>
-#include <sys/ioccom.h>
 #include <sys/in_cksum.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>

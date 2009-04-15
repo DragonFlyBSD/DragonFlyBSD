@@ -47,7 +47,6 @@
 #include <sys/endian.h>
 #include <sys/errno.h>
 #include <sys/fcntl.h>
-#include <sys/ioccom.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/priv.h>
