@@ -40,7 +40,6 @@
 .ds doc-str-Lb-libalias         Packet Aliasing Library (libalias, \-lalias)
 .ds doc-str-Lb-libarchive       Streaming Archive Library (libarchive, \-larchive)
 .ds doc-str-Lb-libbluetooth     Bluetooth Host Lookup Library (libbluetooth, \-lbluetooth)
-.ds doc-str-Lb-libc_r           Reentrant C\~Library (libc_r, \-pthread)
 .ds doc-str-Lb-libcalendar      Calendar Arithmetic Library (libcalendar, \-lcalendar)
 .ds doc-str-Lb-libcam           Common Access Method User Library (libcam, \-lcam)
 .ds doc-str-Lb-libcaps          CAPS IPC Library (libcaps, \-lcaps)
