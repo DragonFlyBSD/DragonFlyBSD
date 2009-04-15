@@ -8,7 +8,9 @@ SONAME=		${SHLIB_NAME}.${SHLIB_MAJOR}
 SRCS=		dummy.c
 WARNS?=		6
 
-MAN+=	pthread_attr.3 \
+MAN+=
+	pthread.3 \
+	pthread_attr.3 \
 	pthread_attr_get_np.3 \
 	pthread_attr_setcreatesuspend_np.3 \
 	pthread_cancel.3 \
