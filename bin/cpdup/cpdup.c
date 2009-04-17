@@ -875,11 +875,23 @@ relink:
 			r = 1;
 			noLoop = 1;
 		    }
+
 		    /*
 		     * Matt: why don't you check error codes here?
+		     * (Because I'm an idiot... checks added!)
 		     */
-		    hc_lstat(&DstHost, dpath, &st2);
-		    hc_chown(&DstHost, dpath, st1.st_uid, st1.st_gid);
+		    if (hc_lstat(&DstHost, dpath, &st2) != 0) {
+			logerr("%s: lstat of newly made dir failed: %s\n",
+			    (dpath ? dpath : spath), strerror(errno));
+			r = 1;
+			noLoop = 1;
+		    }
+		    if (hc_chown(&DstHost, dpath, st1.st_uid, st1.st_gid) != 0){
+			logerr("%s: chown of newly made dir failed: %s\n",
+			    (dpath ? dpath : spath), strerror(errno));
+			r = 1;
+			noLoop = 1;
+		    }
 		    CountCopiedItems++;
 		} else {
 		    /*
