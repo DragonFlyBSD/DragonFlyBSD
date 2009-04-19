@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,21 +30,18 @@
  * SUCH DAMAGE.
  *
  * @(#)fileno.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/fileno.c,v 1.6 1999/08/28 00:01:01 peter Exp $
+ * $FreeBSD: src/lib/libc/stdio/fileno.c,v 1.13 2008/05/05 16:03:52 jhb Exp $
  * $DragonFly: src/lib/libc/stdio/fileno.c,v 1.6 2005/08/27 21:35:01 joerg Exp $
  */
 
 #include "namespace.h"
 #include <stdio.h>
 #include "un-namespace.h"
-
 #include "libc_private.h"
 
+#undef fileno
 #undef fileno_unlocked
 
-/*
- * A subroutine version of the macros fileno and fileno_unlocked.
- */
 int
 fileno(FILE *fp)
 {
@@ -64,5 +57,5 @@ fileno(FILE *fp)
 int
 fileno_unlocked(FILE *fp)
 {
-	return(__sfileno(fp));
+	return (__sfileno(fp));
 }

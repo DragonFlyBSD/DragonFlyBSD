@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,20 +30,20 @@
  * SUCH DAMAGE.
  *
  * @(#)wsetup.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/wsetup.c,v 1.6 1999/08/28 00:01:22 peter Exp $
+ * $FreeBSD: src/lib/libc/stdio/wsetup.c,v 1.11 2009/01/08 06:38:06 das Exp $
  * $DragonFly: src/lib/libc/stdio/wsetup.c,v 1.5 2005/07/23 20:23:06 joerg Exp $
  */
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-
 #include "local.h"
 #include "priv_stdio.h"
 
 /*
  * Various output routines call wsetup to be sure it is safe to write,
  * because either _flags does not include __SWR, or _buf is NULL.
- * _wsetup returns 0 if OK to write, nonzero otherwise.
+ * _wsetup returns 0 if OK to write; otherwise, it returns EOF and sets errno.
  */
 int
 __swsetup(FILE *fp)
@@ -60,8 +56,11 @@ __swsetup(FILE *fp)
 	 * If we are not writing, we had better be reading and writing.
 	 */
 	if ((fp->pub._flags & __SWR) == 0) {
-		if ((fp->pub._flags & __SRW) == 0)
+		if ((fp->pub._flags & __SRW) == 0) {
+			errno = EBADF;
+			fp->pub._flags |= __SERR;
 			return (EOF);
+		}
 		if (fp->pub._flags & __SRD) {
 			/* clobber any ungetc data */
 			if (HASUB(fp))

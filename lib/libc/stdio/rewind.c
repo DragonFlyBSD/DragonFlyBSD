@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)rewind.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/rewind.c,v 1.7.2.1 2001/03/05 11:27:49 obrien Exp $
+ * $FreeBSD: src/lib/libc/stdio/rewind.c,v 1.12 2007/01/09 00:28:07 imp Exp $
  * $DragonFly: src/lib/libc/stdio/rewind.c,v 1.4 2005/11/20 11:07:30 swildner Exp $
  */
 
@@ -48,9 +44,16 @@
 void
 rewind(FILE *fp)
 {
+	int serrno = errno;
+
+	/* make sure stdio is set up */
+	if (!__sdidinit)
+		__sinit();
+
 	FLOCKFILE(fp);
-	_fseeko(fp, 0L, SEEK_SET);
-	clearerr(fp);
+	if (_fseeko(fp, (off_t)0, SEEK_SET, 1) == 0) {
+		clearerr_unlocked(fp);
+		errno = serrno;
+	}
 	FUNLOCKFILE(fp);
-	errno = 0;	/* not required, but seems reasonable */
 }

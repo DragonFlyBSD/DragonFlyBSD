@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,26 +30,33 @@
  * SUCH DAMAGE.
  *
  * @(#)refill.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/refill.c,v 1.8.2.1 2001/03/05 11:27:49 obrien Exp $
+ * $FreeBSD: src/lib/libc/stdio/refill.c,v 1.20 2008/04/17 22:17:54 jhb Exp $
  * $DragonFly: src/lib/libc/stdio/refill.c,v 1.10 2005/11/20 11:07:30 swildner Exp $
  */
 
+#include "namespace.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "un-namespace.h"
 
+#include "libc_private.h"
 #include "local.h"
 #include "priv_stdio.h"
 
-static int lflush (FILE *);
+static int lflush(FILE *);
 
 static int
 lflush(FILE *fp)
 {
+	int	ret = 0;
 
-	if ((fp->pub._flags & (__SLBF|__SWR)) == (__SLBF|__SWR))
-		return (__sflush(fp));
-	return (0);
+	if ((fp->pub._flags & (__SLBF|__SWR)) == (__SLBF|__SWR)) {
+		FLOCKFILE(fp);
+		ret = __sflush(fp);
+		FUNLOCKFILE(fp);
+	}
+	return (ret);
 }
 
 /*
@@ -67,6 +70,8 @@ __srefill(FILE *fp)
 	/* make sure stdio is set up */
 	if (!__sdidinit)
 		__sinit();
+
+	ORIENT(fp, -1);
 
 	fp->pub._r = 0;		/* largely a convenience for callers */
 
@@ -114,10 +119,18 @@ __srefill(FILE *fp)
 	 * flush all line buffered output files, per the ANSI C
 	 * standard.
 	 */
-	if (fp->pub._flags & (__SLBF|__SNBF))
+	if (fp->pub._flags & (__SLBF|__SNBF)) {
+		/* Ignore this file in _fwalk to avoid potential deadlock. */
+		fp->pub._flags |= __SIGN;
 		_fwalk(lflush);
+		fp->pub._flags &= ~__SIGN;
+
+		/* Now flush this file without locking it. */
+		if ((fp->pub._flags & (__SLBF|__SWR)) == (__SLBF|__SWR))
+			__sflush(fp);
+	}
 	fp->pub._p = fp->_bf._base;
-	fp->pub._r = (*fp->_read)(fp->_cookie, (char *)fp->pub._p, fp->_bf._size);
+	fp->pub._r = _sread(fp, (char *)fp->pub._p, fp->_bf._size);
 	fp->pub._flags &= ~__SMOD;	/* buffer contents are again pristine */
 	if (fp->pub._r <= 0) {
 		if (fp->pub._r == 0)

@@ -1,4 +1,4 @@
-/* $NetBSD: fgetws.c,v 1.1 2003/03/07 07:11:37 tshiozak Exp $ */
+/* $NetBSD: fgetws.c,v 1.2 2006/07/03 17:06:36 tnozaki Exp $ */
 /* $DragonFly: src/lib/libc/stdio/fgetws.c,v 1.1 2005/07/25 00:37:41 joerg Exp $ */
 
 /*-
@@ -61,10 +61,10 @@ fgetws(wchar_t * __restrict ws, int n, FILE * __restrict fp)
 
 	wsp = ws;
 	while (n-- > 1) {
-		if ((wc = __fgetwc_unlock(fp)) == WEOF && errno == EILSEQ) {
+		wc = __fgetwc_unlock(fp);
+		if (__sferror(fp) != 0)
 			goto error;
-		}
-		if (wc == WEOF) {
+		if (__sfeof(fp) != 0) {
 			if (wsp == ws) {
 				/* EOF/error, no characters read yet. */
 				goto error;

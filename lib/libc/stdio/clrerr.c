@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)clrerr.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/clrerr.c,v 1.7 1999/08/28 00:00:55 peter Exp $
+ * $FreeBSD: src/lib/libc/stdio/clrerr.c,v 1.12 2008/05/05 16:03:52 jhb Exp $
  * $DragonFly: src/lib/libc/stdio/clrerr.c,v 1.4 2005/01/31 22:29:40 dillon Exp $
  */
 
@@ -42,7 +38,9 @@
 #include <stdio.h>
 #include "un-namespace.h"
 #include "libc_private.h"
-#undef	clearerr
+
+#undef clearerr
+#undef clearerr_unlocked
 
 void
 clearerr(FILE *fp)
@@ -50,4 +48,10 @@ clearerr(FILE *fp)
 	FLOCKFILE(fp);
 	__sclearerr(fp);
 	FUNLOCKFILE(fp);
+}
+
+void
+clearerr_unlocked(FILE *fp)
+{
+	__sclearerr(fp);
 }

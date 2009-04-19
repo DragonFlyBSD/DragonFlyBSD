@@ -65,14 +65,6 @@ extern int	__isthreaded;
 #define	FUNLOCKFILE(fp)		if (__isthreaded) _funlockfile(fp)
 
 /*
- * Internal _*() functions (XXX add all of them)
- */
-
-#ifdef _STDIO_H_
-int _fseeko(FILE *, __off_t, int);
-#endif
-
-/*
  * Initialise TLS static programs
  */
 int __get_errno_GS_offset(void);

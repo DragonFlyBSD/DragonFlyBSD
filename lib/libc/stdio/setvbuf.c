@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)setvbuf.c	8.2 (Berkeley) 11/16/93
- * $FreeBSD: src/lib/libc/stdio/setvbuf.c,v 1.7 1999/08/28 00:01:16 peter Exp $
+ * $FreeBSD: src/lib/libc/stdio/setvbuf.c,v 1.14 2007/01/09 00:28:07 imp Exp $
  * $DragonFly: src/lib/libc/stdio/setvbuf.c,v 1.7 2005/11/20 11:07:30 swildner Exp $
  */
 
@@ -42,7 +38,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "un-namespace.h"
-
 #include "local.h"
 #include "libc_private.h"
 #include "priv_stdio.h"
@@ -52,7 +47,7 @@
  * a buffer.
  */
 int
-setvbuf(FILE *fp, char *buf, int mode, size_t size)
+setvbuf(FILE * __restrict fp, char * __restrict buf, int mode, size_t size)
 {
 	int ret, flags;
 	size_t iosize;
@@ -82,7 +77,7 @@ setvbuf(FILE *fp, char *buf, int mode, size_t size)
 	flags = fp->pub._flags;
 	if (flags & __SMBF)
 		free((void *)fp->_bf._base);
-	flags &= ~(__SLBF | __SNBF | __SMBF | __SOPT | __SNPT | __SEOF);
+	flags &= ~(__SLBF | __SNBF | __SMBF | __SOPT | __SOFF | __SNPT | __SEOF);
 
 	/* If setting unbuffered mode, skip all the hard work. */
 	if (mode == _IONBF)

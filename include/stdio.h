@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)stdio.h	8.5 (Berkeley) 4/29/95
- * $FreeBSD: src/include/stdio.h,v 1.24.2.5 2002/11/09 08:07:20 imp Exp $
+ * $FreeBSD: src/include/stdio.h,v 1.78 2009/03/25 08:07:52 das Exp $
  * $DragonFly: src/include/stdio.h,v 1.14 2008/06/05 17:53:10 swildner Exp $
  */
 
@@ -42,21 +42,35 @@
 #define	_STDIO_H_
 
 #include <sys/cdefs.h>
-#ifndef _SYS_STDINT_H_
-#include <sys/stdint.h>
-#endif
-#ifndef _MACHINE_STDARG_H_
-#include <machine/stdarg.h>
-#endif
+#include <sys/_null.h>
+#include <sys/types.h>
+
+typedef	__off_t		fpos_t;
 
 #ifndef _SIZE_T_DECLARED
-#define _SIZE_T_DECLARED
-typedef __size_t	size_t;
+typedef	__size_t	size_t;
+#define	_SIZE_T_DECLARED
 #endif
 
-#include <sys/_null.h>
+#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200809
+#ifndef _OFF_T_DECLARED
+#define	_OFF_T_DECLARED
+typedef	__off_t		off_t;
+#endif
+#ifndef _SSIZE_T_DECLARED
+#define	_SSIZE_T_DECLARED
+typedef	__ssize_t	ssize_t;
+#endif
+#endif
 
-typedef	__off_t	fpos_t;
+#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200112 || __XSI_VISIBLE
+#ifndef _VA_LIST_DECLARED
+typedef	__va_list	va_list;
+#define	_VA_LIST_DECLARED
+#endif
+#endif
+
+#define	_FSTDIO			/* Define for new stdio with functions. */
 
 /*
  * stdio state variables.
@@ -81,7 +95,7 @@ typedef	__off_t	fpos_t;
 typedef struct __FILE FILE;
 
 struct __FILE_public {
-	unsigned char	*_p;	/* current position in (some) buffer */
+	unsigned char	*_p;		/* current position in (some) buffer */
 	int		_flags;		/* flags, below; this FILE is free if 0 */
 	int		_fileno;	/* fileno, if Unix descriptor, else -1 */
 	__ssize_t	_r;		/* read space left for getc() */
@@ -89,9 +103,14 @@ struct __FILE_public {
 	__ssize_t	_lbfsize;	/* 0 or -_bf._size, for inline putc */
 };
 
+#ifndef _STDSTREAM_DECLARED
 __BEGIN_DECLS
-extern FILE *__stdinp, *__stdoutp, *__stderrp;
+extern FILE *__stdinp;
+extern FILE *__stdoutp;
+extern FILE *__stderrp;
 __END_DECLS
+#define	_STDSTREAM_DECLARED
+#endif
 
 #define	__SLBF	0x0001		/* line buffered */
 #define	__SNBF	0x0002		/* unbuffered */
@@ -109,6 +128,7 @@ __END_DECLS
 #define	__SOFF	0x1000		/* set iff _offset is in fact correct */
 #define	__SMOD	0x2000		/* true => fgetln modified _p text */
 #define	__SALC	0x4000		/* allocate string space dynamically */
+#define	__SIGN	0x8000		/* ignore this file in _fwalk */
 
 /*
  * The following three definitions are for ANSI C, which took them
@@ -132,11 +152,13 @@ __END_DECLS
  * (which could fail).  Do not use this for anything.
  */
 				/* must be == _POSIX_STREAM_MAX <limits.h> */
+#ifndef FOPEN_MAX
 #define	FOPEN_MAX	20	/* must be <= OPEN_MAX <sys/syslimits.h> */
+#endif
 #define	FILENAME_MAX	1024	/* must be <= PATH_MAX <sys/syslimits.h> */
 
 /* System V/ANSI C; this is the wrong way to do this, do *not* use these. */
-#ifndef _ANSI_SOURCE
+#if __XSI_VISIBLE
 #define	P_tmpdir	"/tmp/"
 #endif
 #define	L_tmpnam	1024	/* XXX must be == PATH_MAX */
@@ -152,92 +174,206 @@ __END_DECLS
 #define	SEEK_END	2	/* set file offset to EOF plus offset */
 #endif
 
-#define	stdin	(__stdinp)
-#define	stdout	(__stdoutp)
-#define	stderr	(__stderrp)
+#define	stdin	__stdinp
+#define	stdout	__stdoutp
+#define	stderr	__stderrp
 
+__BEGIN_DECLS
 /*
  * Functions defined in ANSI C standard.
  */
-__BEGIN_DECLS
 void	 clearerr(FILE *);
 int	 fclose(FILE *);
 int	 feof(FILE *);
-int	 feof_unlocked(FILE *);
 int	 ferror(FILE *);
-int	 ferror_unlocked(FILE *);
 int	 fflush(FILE *);
 int	 fgetc(FILE *);
-int	 fgetpos(FILE *, fpos_t *);
-char	*fgets(char *, int, FILE *);
-FILE	*fopen(const char *, const char *);
-int	 fprintf(FILE *, const char *, ...);
+int	 fgetpos(FILE * __restrict, fpos_t * __restrict);
+char	*fgets(char * __restrict, int, FILE * __restrict);
+FILE	*fopen(const char * __restrict, const char * __restrict);
+int	 fprintf(FILE * __restrict, const char * __restrict, ...);
 int	 fputc(int, FILE *);
-int	 fputs(const char *, FILE *);
-size_t	 fread(void *, size_t, size_t, FILE *);
-FILE	*freopen(const char *, const char *, FILE *);
-int	 fscanf(FILE *, const char *, ...);
+int	 fputs(const char * __restrict, FILE * __restrict);
+size_t	 fread(void * __restrict, size_t, size_t, FILE * __restrict);
+FILE	*freopen(const char * __restrict, const char * __restrict,
+		 FILE * __restrict);
+int	 fscanf(FILE * __restrict, const char * __restrict, ...);
 int	 fseek(FILE *, long, int);
 int	 fsetpos(FILE *, const fpos_t *);
 long	 ftell(FILE *);
-size_t	 fwrite(const void *, size_t, size_t, FILE *);
+size_t	 fwrite(const void * __restrict, size_t, size_t, FILE * __restrict);
 int	 getc(FILE *);
-int	 getc_unlocked(FILE *);
 int	 getchar(void);
-int	 getchar_unlocked(void);
 char	*gets(char *);
-#if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
-extern __const int sys_nerr;		/* perror(3) external variables */
-extern __const char *__const sys_errlist[];
-#endif
 void	 perror(const char *);
-int	 printf(const char *, ...);
+int	 printf(const char * __restrict, ...);
 int	 putc(int, FILE *);
-int	 putc_unlocked(int, FILE *);
 int	 putchar(int);
-int	 putchar_unlocked(int);
 int	 puts(const char *);
 int	 remove(const char *);
 int	 rename(const char *, const char *);
 void	 rewind(FILE *);
-int	 scanf(const char *, ...);
-void	 setbuf(FILE *, char *);
-int	 setvbuf(FILE *, char *, int, size_t);
-int	 sprintf(char *, const char *, ...);
-int	 sscanf(const char *, const char *, ...);
+int	 scanf(const char * __restrict, ...);
+void	 setbuf(FILE * __restrict, char * __restrict);
+int	 setvbuf(FILE * __restrict, char * __restrict, int, size_t);
+int	 sprintf(char * __restrict, const char * __restrict, ...);
+int	 sscanf(const char * __restrict, const char * __restrict, ...);
 FILE	*tmpfile(void);
 char	*tmpnam(char *);
 int	 ungetc(int, FILE *);
-int	 vfprintf(FILE *, const char *, __va_list);
-int	 vprintf(const char *, __va_list);
-int	 vsprintf(char *, const char *, __va_list);
-__END_DECLS
+int	 vfprintf(FILE * __restrict, const char * __restrict, __va_list);
+int	 vprintf(const char * __restrict, __va_list);
+int	 vsprintf(char * __restrict, const char * __restrict, __va_list);
+
+#if __ISO_C_VISIBLE >= 1999
+int	 snprintf(char * __restrict, size_t, const char * __restrict, ...)
+	    __printflike(3, 4);
+int	 vfscanf(FILE * __restrict, const char * __restrict, __va_list)
+	    __scanflike(2, 0);
+int	 vscanf(const char * __restrict, __va_list) __scanflike(1, 0);
+int	 vsnprintf(char * __restrict, size_t, const char * __restrict,
+		   __va_list) __printflike(3, 0);
+int	 vsscanf(const char * __restrict, const char * __restrict, __va_list)
+	    __scanflike(2, 0);
+#endif
 
 /*
- * Functions defined in POSIX 1003.1.
+ * Functions defined in all versions of POSIX 1003.1.
  */
-#ifndef _ANSI_SOURCE
+#if __BSD_VISIBLE || __POSIX_VISIBLE <= 199506
 /* size for cuserid(3); UT_NAMESIZE + 1, see <utmp.h> */
-#define	L_cuserid	17
+#define	L_cuserid	17	/* legacy */
+#endif
 
+#if __POSIX_VISIBLE
 #define	L_ctermid	1024	/* size for ctermid(3); PATH_MAX */
 
-__BEGIN_DECLS
 char	*ctermid(char *);
 FILE	*fdopen(int, const char *);
 int	 fileno(FILE *);
-int	 fileno_unlocked(FILE *);
+#endif /* __POSIX_VISIBLE */
+
+#if __POSIX_VISIBLE >= 199209
+int	 pclose(FILE *);
+FILE	*popen(const char *, const char *);
+#endif
+
+#if __POSIX_VISIBLE >= 199506
 int	 ftrylockfile(FILE *);
 void	 flockfile(FILE *);
 void	 funlockfile(FILE *);
-__END_DECLS
-#endif /* not ANSI */
+
+/*
+ * These are normally used through macros as defined below, but POSIX
+ * requires functions as well.
+ */
+int	 getc_unlocked(FILE *);
+int	 getchar_unlocked(void);
+int	 putc_unlocked(int, FILE *);
+int	 putchar_unlocked(int);
+#endif
+#if __BSD_VISIBLE
+void	 clearerr_unlocked(FILE *);
+int	 feof_unlocked(FILE *);
+int	 ferror_unlocked(FILE *);
+int	 fileno_unlocked(FILE *);
+#endif
+
+#if __POSIX_VISIBLE >= 200112
+int	 fseeko(FILE *, __off_t, int);
+__off_t	 ftello(FILE *);
+#endif
+
+#if __BSD_VISIBLE || __XSI_VISIBLE > 0 && __XSI_VISIBLE < 600
+int	 getw(FILE *);
+int	 putw(int, FILE *);
+#endif /* BSD or X/Open before issue 6 */
+
+#if __XSI_VISIBLE
+char	*tempnam(const char *, const char *);
+#endif
+
+#if __BSD_VISIBLE || __POSIX_VISIBLE >= 200809
+ssize_t	 getdelim(char ** __restrict, size_t * __restrict, int,
+		  FILE * __restrict);
+/* int	 renameat(int, const char *, int, const char *); */
+int	 vdprintf(int, const char * __restrict, __va_list);
+
+/*
+ * Every programmer and his dog wrote functions called getline() and dprintf()
+ * before POSIX.1-2008 came along and decided to usurp the names, so we
+ * don't prototype them by default unless one of the following is true:
+ *   a) the app has requested them specifically by defining _WITH_GETLINE or
+ *      _WITH_DPRINTF, respectively
+ *   b) the app has requested a POSIX.1-2008 environment via _POSIX_C_SOURCE
+ *   c) the app defines a GNUism such as _BSD_SOURCE or _GNU_SOURCE
+ */
+#ifndef _WITH_GETLINE
+#if defined(_BSD_SOURCE) || defined(_GNU_SOURCE)
+#define	_WITH_GETLINE
+#elif defined(_POSIX_C_SOURCE)
+#if _POSIX_C_SOURCE >= 200809
+#define	_WITH_GETLINE
+#endif
+#endif
+#endif
+
+#ifdef _WITH_GETLINE
+ssize_t	 getline(char ** __restrict, size_t * __restrict, FILE * __restrict);
+#endif
+
+#ifndef _WITH_DPRINTF
+#if defined(_BSD_SOURCE) || defined(_GNU_SOURCE)
+#define	_WITH_DPRINTF
+#elif defined(_POSIX_C_SOURCE)
+#if _POSIX_C_SOURCE >= 200809
+#define	_WITH_DPRINTF
+#endif
+#endif
+#endif
+
+#ifdef _WITH_DPRINTF
+int	 dprintf(int, const char * __restrict, ...);
+#endif
+
+#endif /* __BSD_VISIBLE || __POSIX_VISIBLE >= 200809 */
+
+/*
+ * Routines that are purely local.
+ */
+#if __BSD_VISIBLE
+int	 asprintf(char **, const char *, ...) __printflike(2, 3);
+char	*ctermid_r(char *);
+void	 fcloseall(void);
+void	*fcookie(FILE *);
+char	*fgetln(FILE *, size_t *);
+const char *fmtcheck(const char *, const char *) __format_arg(2);
+__ssize_t __fpending(const FILE *);
+int	 fpurge(FILE *);
+void	 setbuffer(FILE *, char *, int);
+int	 setlinebuf(FILE *);
+int	 vasprintf(char **, const char *, __va_list) __printflike(2, 0);
+
+/*
+ * The system error table contains messages for the first sys_nerr
+ * positive errno values.  Use strerror() or strerror_r() from <string.h>
+ * instead.
+ */
+extern __const int sys_nerr;
+extern __const char *__const sys_errlist[];
+
+/*
+ * Stdio function-access interface.
+ */
+FILE	*funopen(const void *, int (*)(void *, char *, int),
+		 int (*)(void *, const char *, int),
+		 fpos_t (*)(void *, fpos_t, int), int (*)(void *));
+#define	fropen(cookie, fn) funopen(cookie, fn, 0, 0, 0)
+#define	fwopen(cookie, fn) funopen(cookie, 0, fn, 0, 0)
 
 /*
  * Portability hacks.  See <sys/types.h>.
  */
-#if !defined (_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
-__BEGIN_DECLS
 #ifndef _FTRUNCATE_DECLARED
 #define	_FTRUNCATE_DECLARED
 int	 ftruncate(int, __off_t);
@@ -254,76 +390,13 @@ void	*mmap(void *, size_t, int, int, int, __off_t);
 #define	_TRUNCATE_DECLARED
 int	 truncate(const char *, __off_t);
 #endif
-__END_DECLS
-#endif /* !_ANSI_SOURCE && !_POSIX_SOURCE */
-
-/*
- * Routines that are purely local.
- */
-#if !defined (_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
-__BEGIN_DECLS
-int	 asprintf(char **, const char *, ...) __printflike(2, 3);
-char	*ctermid_r(char *);
-void	*fcookie(FILE *);
-char	*fgetln(FILE *, size_t *);
-#if __GNUC__ == 2 && __GNUC_MINOR__ >= 7 || __GNUC__ >= 3
-#define	__ATTR_FORMAT_ARG	__attribute__((__format_arg__(2)))
-#else
-#define	__ATTR_FORMAT_ARG
-#endif
-const char *fmtcheck(const char *, const char *) __ATTR_FORMAT_ARG;
-__ssize_t __fpending(const FILE *);
-int	 fpurge(FILE *);
-int	 fseeko(FILE *, __off_t, int);
-__off_t	 ftello(FILE *);
-int	 getw(FILE *);
-int	 pclose(FILE *);
-FILE	*popen(const char *, const char *);
-int	 putw(int, FILE *);
-void	 setbuffer(FILE *, char *, int);
-int	 setlinebuf(FILE *);
-char	*tempnam(const char *, const char *);
-int	 snprintf(char *, size_t, const char *, ...) __printflike(3, 4);
-int	 vasprintf(char **, const char *, __va_list)
-	    __printflike(2, 0);
-int	 vsnprintf (char *, size_t, const char *, __va_list)
-	    __printflike(3, 0);
-int	 vscanf(const char *, __va_list) __scanflike(1, 0);
-int	 vsscanf(const char *, const char *, __va_list)
-	    __scanflike(2, 0);
-__END_DECLS
-
-/*
- * This is a #define because the function is used internally and
- * (unlike vfscanf) the name __vfscanf is guaranteed not to collide
- * with a user function when _ANSI_SOURCE or _POSIX_SOURCE is defined.
- */
-#define	 vfscanf	__vfscanf
-
-/*
- * Stdio function-access interface.
- */
-__BEGIN_DECLS
-FILE	*funopen(const void *,
-		 int (*)(void *, char *, int),
-		 int (*)(void *, const char *, int),
-		 fpos_t (*)(void *, fpos_t, int),
-		 int (*)(void *));
-__END_DECLS
-#define	fropen(cookie, fn) funopen(cookie, fn, 0, 0, 0)
-#define	fwopen(cookie, fn) funopen(cookie, 0, fn, 0, 0)
-#endif /* !_ANSI_SOURCE && !_POSIX_SOURCE */
+#endif /* __BSD_VISIBLE */
 
 /*
  * Functions internal to the implementation.
  */
-__BEGIN_DECLS
 int	__srget(FILE *);
-int	__vfscanf(FILE *, const char *, __va_list);
-int	__svfscanf(FILE *, const char *, __va_list);
 int	__swbuf(int, FILE *);
-size_t	__sreadahead(FILE *);
-__END_DECLS
 
 /*
  * The __sfoo functions are here so that we can
@@ -383,6 +456,23 @@ __sfileno(FILE *_fp)
 	return (_p->_fileno);
 }
 
+extern int __isthreaded;
+
+#define	feof(p)		(!__isthreaded ? __sfeof(p) : (feof)(p))
+#define	ferror(p)	(!__isthreaded ? __sferror(p) : (ferror)(p))
+#define	clearerr(p)	(!__isthreaded ? __sclearerr(p) : (clearerr)(p))
+
+#if __POSIX_VISIBLE
+#define	fileno(p)	(!__isthreaded ? __sfileno(p) : (fileno)(p))
+#endif
+
+#define	getc(fp)	(!__isthreaded ? __sgetc(fp) : (getc)(fp))
+#define	putc(x, fp)	(!__isthreaded ? __sputc(x, fp) : (putc)(x, fp))
+
+#define	getchar()	getc(stdin)
+#define	putchar(x)	putc(x, stdout)
+
+#if __BSD_VISIBLE
 /*
  * See ISO/IEC 9945-1 ANSI/IEEE Std 1003.1 Second Edition 1996-07-12
  * B.8.2.7 for the rationale behind the *_unlocked() macros.
@@ -390,15 +480,15 @@ __sfileno(FILE *_fp)
 #define	feof_unlocked(p)	__sfeof(p)
 #define	ferror_unlocked(p)	__sferror(p)
 #define	clearerr_unlocked(p)	__sclearerr(p)
-
-#ifndef _ANSI_SOURCE
 #define	fileno_unlocked(p)	__sfileno(p)
 #endif
-
-#define getc_unlocked(fp)	__sgetc(fp)
+#if __POSIX_VISIBLE >= 199506
+#define	getc_unlocked(fp)	__sgetc(fp)
 #define	putc_unlocked(x, fp)	__sputc(x, fp)
 
 #define	getchar_unlocked()	getc_unlocked(stdin)
 #define	putchar_unlocked(x)	putc_unlocked(x, stdout)
+#endif
 
+__END_DECLS
 #endif /* !_STDIO_H_ */

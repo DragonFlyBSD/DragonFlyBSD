@@ -10,10 +10,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -31,12 +27,12 @@
  * SUCH DAMAGE.
  *
  * @(#)mktemp.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/mktemp.c,v 1.19.2.3 2002/06/18 09:53:07 robert Exp $
+ * $FreeBSD: src/lib/libc/stdio/mktemp.c,v 1.31 2008/07/28 21:18:59 jhb Exp $
  * $DragonFly: src/lib/libc/stdio/mktemp.c,v 1.7 2005/11/20 11:07:30 swildner Exp $
  */
 
-/* #include "namespace.h" */
-#include <sys/types.h>
+#include "namespace.h"
+#include <sys/param.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -45,11 +41,11 @@
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
-/* #include "un-namespace.h" */
+#include "un-namespace.h"
 
-char *_mktemp (char *);
+char *_mktemp(char *);
 
-static int _gettemp (char *, int *, int, int);
+static int _gettemp(char *, int *, int, int);
 
 static const unsigned char padchar[] =
 "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -94,13 +90,14 @@ mktemp(char *path)
 static int
 _gettemp(char *path, int *doopen, int domkdir, int slen)
 {
-	char *start, *trv, *suffp;
+	char *start, *trv, *suffp, *carryp;
 	char *pad;
 	struct stat sbuf;
 	int rval;
-	uint32_t psrand;
+	uint32_t rand;
+	char carrybuf[MAXPATHLEN];
 
-	if (doopen != NULL && domkdir) {
+	if ((doopen != NULL && domkdir) || slen < 0) {
 		errno = EINVAL;
 		return (0);
 	}
@@ -110,17 +107,20 @@ _gettemp(char *path, int *doopen, int domkdir, int slen)
 	trv -= slen;
 	suffp = trv;
 	--trv;
-	if (trv < path) {
+	if (trv < path || NULL != strchr(suffp, '/')) {
 		errno = EINVAL;
 		return (0);
 	}
 
 	/* Fill space with random characters */
 	while (trv >= path && *trv == 'X') {
-		psrand = arc4random() % (sizeof(padchar) - 1);
-		*trv-- = padchar[psrand];
+		rand = arc4random_uniform(sizeof(padchar) - 1);
+		*trv-- = padchar[rand];
 	}
 	start = trv + 1;
+
+	/* save first combination of random characters */
+	memcpy(carrybuf, start, suffp - start);
 
 	/*
 	 * check the target directory.
@@ -158,14 +158,25 @@ _gettemp(char *path, int *doopen, int domkdir, int slen)
 			return (errno == ENOENT);
 
 		/* If we have a collision, cycle through the space of filenames */
-		for (trv = start;;) {
-			if (*trv == '\0' || trv == suffp)
-				return (0);
+		for (trv = start, carryp = carrybuf;;) {
+			/* have we tried all possible permutations? */
+			if (trv == suffp)
+				return (0); /* yes - exit with EEXIST */
 			pad = strchr(padchar, *trv);
-			if (pad == NULL || *++pad == '\0')
-				*trv++ = padchar[0];
-			else {
-				*trv++ = *pad;
+			if (pad == NULL) {
+				/* this should never happen */
+				errno = EIO;
+				return (0);
+			}
+			/* increment character */
+			*trv = (*++pad == '\0') ? padchar[0] : *pad;
+			/* carry to next position? */
+			if (*trv == *carryp) {
+				/* increment position and loop */
+				++trv;
+				++carryp;
+			} else {
+				/* try with new name */
 				break;
 			}
 		}

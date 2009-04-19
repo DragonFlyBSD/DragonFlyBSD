@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,11 +30,10 @@
  * SUCH DAMAGE.
  *
  * @(#)fvwrite.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/fvwrite.c,v 1.10 1999/08/28 00:01:06 peter Exp $
+ * $FreeBSD: src/lib/libc/stdio/fvwrite.c,v 1.18 2007/01/09 00:28:06 imp Exp $
  * $DragonFly: src/lib/libc/stdio/fvwrite.c,v 1.7 2005/07/23 20:23:06 joerg Exp $
  */
 
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -64,24 +59,22 @@ __sfvwrite(FILE *fp, struct __suio *uio)
 	if ((len = uio->uio_resid) == 0)
 		return (0);
 	/* make sure we can write */
-	if (cantwrite(fp)) {
-		errno = EBADF;
+	if (prepwrite(fp) != 0)
 		return (EOF);
-	}
 
-#define	MIN(a, b) ((a) < (b) ? (a) : (b))
-#define	COPY(n)	  (void)memcpy((void *)fp->pub._p, (void *)p, (size_t)(n))
+#define	MIN(a, b)	((a) < (b) ? (a) : (b))
+#define	COPY(n)		memcpy((void *)fp->pub._p, (void *)p, (size_t)(n))
 
 	iov = uio->uio_iov;
 	p = iov->iov_base;
 	len = iov->iov_len;
 	iov++;
-#define GETIOV(extra_work) \
-	while (len == 0) { \
-		extra_work; \
-		p = iov->iov_base; \
-		len = iov->iov_len; \
-		iov++; \
+#define	GETIOV(extra_work)		\
+	while (len == 0) {		\
+		extra_work;		\
+		p = iov->iov_base;	\
+		len = iov->iov_len;	\
+		iov++;			\
 	}
 	if (fp->pub._flags & __SNBF) {
 		/*
@@ -89,7 +82,7 @@ __sfvwrite(FILE *fp, struct __suio *uio)
 		 */
 		do {
 			GETIOV(;);
-			w = (*fp->_write)(fp->_cookie, p, MIN(len, BUFSIZ));
+			w = _swrite(fp, p, MIN(len, BUFSIZ));
 			if (w <= 0)
 				goto err;
 			p += w;
@@ -130,7 +123,7 @@ __sfvwrite(FILE *fp, struct __suio *uio)
 				if (len < w)
 					w = len;
 				if (w > 0) {
-					COPY(w);        /* copy MIN(fp->_w,len), */
+					COPY(w);	/* copy MIN(fp->pub._w, len), */
 					fp->pub._w -= w;
 					fp->pub._p += w;
 				}
@@ -138,13 +131,13 @@ __sfvwrite(FILE *fp, struct __suio *uio)
 			} else if (fp->pub._p > fp->_bf._base && len > w) {
 				/* fill and flush */
 				COPY(w);
-				/* fp->_w -= w; */ /* unneeded */
+				/* fp->pub._w -= w; */ /* unneeded */
 				fp->pub._p += w;
 				if (__fflush(fp))
 					goto err;
 			} else if (len >= (w = fp->_bf._size)) {
 				/* write directly */
-				w = (*fp->_write)(fp->_cookie, p, w);
+				w = _swrite(fp, p, w);
 				if (w <= 0)
 					goto err;
 			} else {
@@ -178,12 +171,12 @@ __sfvwrite(FILE *fp, struct __suio *uio)
 			w = fp->pub._w + fp->_bf._size;
 			if (fp->pub._p > fp->_bf._base && s > w) {
 				COPY(w);
-				/* fp->_w -= w; */
+				/* fp->pub._w -= w; */
 				fp->pub._p += w;
 				if (__fflush(fp))
 					goto err;
 			} else if (s >= (w = fp->_bf._size)) {
-				w = (*fp->_write)(fp->_cookie, p, w);
+				w = _swrite(fp, p, w);
 				if (w <= 0)
 				 	goto err;
 			} else {

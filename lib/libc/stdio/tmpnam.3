@@ -13,10 +13,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -34,10 +30,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)tmpnam.3	8.2 (Berkeley) 11/17/93
-.\" $FreeBSD: src/lib/libc/stdio/tmpnam.3,v 1.5.2.5 2001/12/14 18:33:57 ru Exp $
+.\" $FreeBSD: src/lib/libc/stdio/tmpnam.3,v 1.20 2007/03/16 21:46:24 maxim Exp $
 .\" $DragonFly: src/lib/libc/stdio/tmpnam.3,v 1.4 2008/09/24 19:48:40 swildner Exp $
 .\"
-.Dd November 17, 1993
+.Dd March 18, 2007
 .Dt TMPFILE 3
 .Os
 .Sh NAME
@@ -133,7 +129,9 @@ if
 .Pf non- Dv NULL ,
 is used to specify a file name prefix, which will be the
 first part of the created file name.
-.Fn Tempnam
+The
+.Fn tempnam
+function
 allocates memory in which to store the file name; the returned pointer
 may be used as a subsequent argument to
 .Xr free 3 .
@@ -149,12 +147,49 @@ on error.
 The
 .Fn tmpnam
 and
-.Fn tempnam
+.Fn tempfile
 functions
 return a pointer to a file name on success, and a
 .Dv NULL
 pointer
 on error.
+.Sh ENVIRONMENT
+.Bl -tag -width Ds
+.It Ev TMPDIR
+.Pf [ Fn tempnam
+only]
+If set,
+the directory in which the temporary file is stored.
+.Ev TMPDIR
+is ignored for processes
+for which
+.Xr issetugid 2
+is true.
+.El
+.Sh COMPATIBILITY
+These interfaces are provided from System V and
+.Tn ANSI
+compatibility only.
+.Pp
+Most historic implementations of these functions provide
+only a limited number of possible temporary file names
+(usually 26)
+before file names will start being recycled.
+System V implementations of these functions
+(and of
+.Xr mktemp 3 )
+use the
+.Xr access 2
+system call to determine whether or not the temporary file
+may be created.
+This has obvious ramifications for setuid or setgid programs,
+complicating the portable use of these interfaces in such programs.
+.Pp
+The
+.Fn tmpfile
+interface should not be used in software expected to be used on other systems
+if there is any possibility that the user does not wish the temporary file to
+be publicly readable and writable.
 .Sh ERRORS
 The
 .Fn tmpfile
@@ -183,6 +218,22 @@ for any of the errors specified for the library functions
 .Xr malloc 3
 or
 .Xr mktemp 3 .
+.Sh SECURITY CONSIDERATIONS
+The
+.Fn tmpnam
+and
+.Fn tempnam
+functions are susceptible to a race condition
+occurring between the selection of the file name
+and the creation of the file,
+which allows malicious users
+to potentially overwrite arbitrary files in the system,
+depending on the level of privilege of the running program.
+Additionally, there is no means by which
+file permissions may be specified.
+It is strongly suggested that
+.Xr mkstemp 3
+be used in place of these functions.
 .Sh SEE ALSO
 .Xr mkstemp 3 ,
 .Xr mktemp 3
@@ -194,37 +245,3 @@ and
 functions
 conform to
 .St -isoC .
-.Sh BUGS
-These interfaces are provided for System V and
-.Tn ANSI
-compatibility only.
-The
-.Xr mkstemp 3
-interface is strongly preferred.
-.Pp
-There are four important problems with these interfaces (as well as
-with the historic
-.Xr mktemp 3
-interface).
-First, there is an obvious race between file name selection and file
-creation and deletion.
-Second, most historic implementations provide only a limited number
-of possible temporary file names (usually 26) before file names will
-start being recycled.
-Third, the System V implementations of these functions (and of
-.Xr mktemp 3 )
-use the
-.Xr access 2
-function to determine whether or not the temporary file may be created.
-This has obvious ramifications for setuid or setgid programs, complicating
-the portable use of these interfaces in such programs.
-Finally, there is no specification of the permissions with which the
-temporary files are created.
-.Pp
-This implementation does not have these flaws, but portable software
-cannot depend on that.
-In particular, the
-.Fn tmpfile
-interface should not be used in software expected to be used on other systems
-if there is any possibility that the user does not wish the temporary file to
-be publicly readable and writable.

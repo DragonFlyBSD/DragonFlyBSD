@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,19 +30,18 @@
  * SUCH DAMAGE.
  *
  * @(#)vsnprintf.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/vsnprintf.c,v 1.12.2.1 2002/09/23 06:58:17 maxim Exp $
+ * $FreeBSD: src/lib/libc/stdio/vsnprintf.c,v 1.24 2008/04/17 22:17:54 jhb Exp $
  * $DragonFly: src/lib/libc/stdio/vsnprintf.c,v 1.9 2008/05/15 03:59:59 dillon Exp $
  */
 
 #include <limits.h>
 #include <stdio.h>
-#include <stdarg.h>
-
 #include "local.h"
 #include "priv_stdio.h"
 
 int
-vsnprintf(char *str, size_t n, const char *fmt, va_list ap)
+vsnprintf(char * __restrict str, size_t n, const char * __restrict fmt,
+	  __va_list ap)
 {
 	size_t on;
 	int ret;
@@ -63,16 +58,12 @@ vsnprintf(char *str, size_t n, const char *fmt, va_list ap)
 		if (on > 0)
 			*str = '\0';
 		str = dummy;
-                n = 1;
+		n = 1;
 	}
 	f.pub._fileno = -1;
 	f.pub._flags = __SWR | __SSTR;
 	f._bf._base = f.pub._p = (unsigned char *)str;
 	f._bf._size = f.pub._w = n;
-	f._up = NULL;
-	f.fl_mutex = PTHREAD_MUTEX_INITIALIZER;
-	f.fl_owner = NULL;
-	f.fl_count = 0;
 	memset(WCIO_GET(&f), 0, sizeof(struct wchar_io_data));
 	ret = __vfprintf(&f, fmt, ap);
 	if (on > 0)

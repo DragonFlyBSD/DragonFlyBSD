@@ -1,8 +1,5 @@
-/* $NetBSD: putwc.c,v 1.4 2005/06/12 05:21:27 lukem Exp $ */
-/* $DragonFly: src/lib/libc/stdio/putwc.c,v 1.1 2005/07/25 00:37:41 joerg Exp $ */
-
 /*-
- * Copyright (c)2001 Citrus Project,
+ * Copyright (c) 2002 Tim J. Robbins.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,20 +23,26 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Citrus$
+ * $FreeBSD: src/lib/libc/stdio/putwc.c,v 1.3 2004/05/25 10:42:52 tjr Exp $
+ * $DragonFly: src/lib/libc/stdio/putwc.c,v 1.1 2005/07/25 00:37:41 joerg Exp $
  */
 
+#include "namespace.h"
 #include <stdio.h>
 #include <wchar.h>
+#include "un-namespace.h"
+#include "libc_private.h"
+#include "local.h"
 
-/*
- * A subroutine version of the macro putwc.
- */
 #undef putwc
 
+/*
+ * Synonym for fputwc(). The only difference is that putwc(), if it is a
+ * macro, may evaluate `fp' more than once.
+ */
 wint_t
 putwc(wchar_t wc, FILE *fp)
 {
 
-	return fputwc(wc, fp);
+	return (fputwc(wc, fp));
 }

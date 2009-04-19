@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -33,10 +29,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdio/fopen.c,v 1.3.2.1 2001/03/05 10:53:51 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/fopen.c,v 1.6 2005/11/20 11:07:30 swildner Exp $
- *
  * @(#)fopen.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/stdio/fopen.c,v 1.14 2008/04/22 17:03:32 jhb Exp $
+ * $DragonFly: src/lib/libc/stdio/fopen.c,v 1.6 2005/11/20 11:07:30 swildner Exp $
  */
 
 #include "namespace.h"
@@ -51,7 +46,7 @@
 #include "priv_stdio.h"
 
 FILE *
-fopen(const char *file, const char *mode)
+fopen(const char * __restrict file, const char * __restrict mode)
 {
 	FILE *fp;
 	int f;
@@ -62,7 +57,7 @@ fopen(const char *file, const char *mode)
 	if ((fp = __sfp()) == NULL)
 		return (NULL);
 	if ((f = _open(file, oflags, DEFFILEMODE)) < 0) {
-		fp->pub._flags = 0;			/* release */
+		fp->pub._flags = 0;		/* release */
 		return (NULL);
 	}
 	fp->pub._fileno = f;
@@ -72,7 +67,6 @@ fopen(const char *file, const char *mode)
 	fp->_write = __swrite;
 	fp->_seek = __sseek;
 	fp->_close = __sclose;
-	/* fp->_lock = NULL; */
 	/*
 	 * When opening in append mode, even though we use O_APPEND,
 	 * we need to seek to the end so that ftell() gets the right
@@ -82,6 +76,6 @@ fopen(const char *file, const char *mode)
 	 * fseek and ftell.)
 	 */
 	if (oflags & O_APPEND)
-		__sseek((void *)fp, (fpos_t)0, SEEK_END);
+		_sseek(fp, (fpos_t)0, SEEK_END);
 	return (fp);
 }

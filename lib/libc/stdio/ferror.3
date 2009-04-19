@@ -13,10 +13,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -34,17 +30,21 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)ferror.3	8.2 (Berkeley) 4/19/94
-.\" $FreeBSD: src/lib/libc/stdio/ferror.3,v 1.3.2.4 2001/12/14 18:33:57 ru Exp $
+.\" $FreeBSD: src/lib/libc/stdio/ferror.3,v 1.13 2009/01/28 14:38:41 trhodes Exp $
 .\" $DragonFly: src/lib/libc/stdio/ferror.3,v 1.2 2003/06/17 04:26:45 dillon Exp $
 .\"
-.Dd April 19, 1994
+.Dd January 28, 2009
 .Dt FERROR 3
 .Os
 .Sh NAME
 .Nm clearerr ,
+.Nm clearerr_unlocked ,
 .Nm feof ,
+.Nm feof_unlocked ,
 .Nm ferror ,
-.Nm fileno
+.Nm ferror_unlocked ,
+.Nm fileno ,
+.Nm fileno_unlocked
 .Nd check and reset stream status
 .Sh LIBRARY
 .Lb libc
@@ -52,12 +52,20 @@
 .In stdio.h
 .Ft void
 .Fn clearerr "FILE *stream"
+.Ft void
+.Fn clearerr_unlocked "FILE *stream"
 .Ft int
 .Fn feof "FILE *stream"
 .Ft int
+.Fn feof_unlocked "FILE *stream"
+.Ft int
 .Fn ferror "FILE *stream"
 .Ft int
+.Fn ferror_unlocked "FILE *stream"
+.Ft int
 .Fn fileno "FILE *stream"
+.Ft int
+.Fn fileno_unlocked "FILE *stream"
 .Sh DESCRIPTION
 The function
 .Fn clearerr
@@ -70,23 +78,41 @@ The function
 tests the end-of-file indicator for the stream pointed to by
 .Fa stream ,
 returning non-zero if it is set.
-The end-of-file indicator can only be cleared by the function
-.Fn clearerr .
+The end-of-file indicator may be cleared by explicitly calling
+.Fn clearerr ,
+or as a side-effect of other operations, e.g.\&
+.Fn fseek .
 .Pp
 The function
 .Fn ferror
 tests the error indicator for the stream pointed to by
 .Fa stream ,
 returning non-zero if it is set.
-The error indicator can only be reset by the
-.Fn clearerr
-function.
 .Pp
 The function
 .Fn fileno
 examines the argument
 .Fa stream
 and returns its integer descriptor.
+.Pp
+The
+.Fn clearerr_unlocked ,
+.Fn feof_unlocked ,
+.Fn ferror_unlocked ,
+and
+.Fn fileno_unlocked
+functions are equivalent to
+.Fn clearerr ,
+.Fn feof ,
+.Fn ferror ,
+and
+.Fn fileno
+respectively, except that the caller is responsible for locking the stream
+with
+.Xr flockfile 3
+before calling them.
+These functions may be used to avoid the overhead of locking the stream
+and to prevent races when multiple threads are operating on the same stream.
 .Sh ERRORS
 These functions should not fail and do not set the external
 variable
@@ -94,6 +120,7 @@ variable
 .Sh SEE ALSO
 .Xr open 2 ,
 .Xr fdopen 3 ,
+.Xr flockfile 3 ,
 .Xr stdio 3
 .Sh STANDARDS
 The functions

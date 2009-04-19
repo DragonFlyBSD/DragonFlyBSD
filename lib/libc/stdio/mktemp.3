@@ -9,10 +9,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -30,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)mktemp.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/stdio/mktemp.3,v 1.11.2.6 2001/12/14 18:33:57 ru Exp $
+.\" $FreeBSD: src/lib/libc/stdio/mktemp.3,v 1.22 2007/01/09 00:28:07 imp Exp $
 .\" $DragonFly: src/lib/libc/stdio/mktemp.3,v 1.3 2006/02/17 19:35:06 swildner Exp $
 .\"
 .Dd February 11, 1998
@@ -95,13 +91,15 @@ function acts the same as
 except it permits a suffix to exist in the template.
 The template should be of the form
 .Pa /tmp/tmpXXXXXXsuffix .
+The
 .Fn mkstemps
+function
 is told the length of the suffix string.
 .Pp
 The
 .Fn mkdtemp
 function makes the same replacement to the template as in
-.Xr mktemp 3
+.Fn mktemp
 and creates the template directory, mode 0700.
 .Sh RETURN VALUES
 The
@@ -245,3 +243,10 @@ and the return status of the call should be tested for failure.
 This will ensure that the program does not continue blindly
 in the event that an attacker has already created the file
 with the intention of manipulating or reading its contents.
+.Pp
+The implementation of these functions calls
+.Xr arc4random 3 ,
+which is not reentrant.
+You must provide your own locking around this and other consumers of the
+.Xr arc4random 3
+API.
