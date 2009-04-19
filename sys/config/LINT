@@ -1997,6 +1997,9 @@ device		meteor
 device		bktr
 options 	BKTR_NEW_MSP34XX_DRIVER
 
+# WinTV PVR-250/350 driver
+device		cxm
+
 #
 # PCCARD/PCMCIA
 #
