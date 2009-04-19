@@ -5,7 +5,8 @@
 SRCS+=	collate.c collcmp.c
 SRCS+=	_def_messages.c _def_monetary.c _def_numeric.c _def_time.c
 SRCS+=	localeconv.c nl_langinfo.c setlocale.c __mb_cur_max.c
-SRCS+=	wcsftime.c wcstod.c wcstol.c wcstoll.c wcstoimax.c wcstoul.c
+SRCS+=	wcsftime.c wcstod.c wcstof.c wcstol.c wcstold.c
+SRCS+=	wcstoll.c wcstoimax.c wcstoul.c
 SRCS+=	wcstoull.c wcstoumax.c aliasname.c
 SRCS+=	___runetype_mb.c _wctrans.c iswctype.c multibyte_c90.c
 SRCS+=	multibyte_amd1.c rune.c runeglue.c runetable.c setrunelocale.c

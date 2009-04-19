@@ -1,5 +1,4 @@
-/* $NetBSD: wcstod.c,v 1.14 2008/04/25 16:43:00 christos Exp $ */
-/* $DragonFly: src/lib/libc/locale/wcstod.c,v 1.1 2005/03/16 06:54:41 joerg Exp $ */
+/* $NetBSD: wcstof.c,v 1.3 2008/04/25 16:43:00 christos Exp $ */
 
 /*-
  * Copyright (c)2006 Citrus Project,
@@ -35,8 +34,8 @@
 #include <wchar.h>
 #include <wctype.h>
 
-#define _FUNCNAME	wcstod
-#define _RETURN_TYPE	double
-#define _STRTOD_FUNC	strtod
+#define _FUNCNAME	wcstof
+#define _RETURN_TYPE	float
+#define _STRTOD_FUNC	strtof
 
 #include "_wcstod.h"

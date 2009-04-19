@@ -163,6 +163,9 @@ long 	wcstol(const wchar_t * __restrict, wchar_t ** __restrict, int);
 double	wcstod(const wchar_t * __restrict, wchar_t ** __restrict);
 
 #if __ISO_C_VISIBLE >= 1999 || __DF_VISIBLE
+float	wcstof(const wchar_t * __restrict, wchar_t ** __restrict);
+long double wcstold(const wchar_t * __restrict, wchar_t ** __restrict);
+
 /* LONGLONG */
 long long wcstoll(const wchar_t * __restrict, wchar_t ** __restrict, int);
 /* LONGLONG */
