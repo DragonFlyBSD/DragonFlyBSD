@@ -172,7 +172,7 @@ is built with the --enable-threads configure-time option.}		\
 #define	STANDARD_EXEC_PREFIX		PREFIX2"/libexec/gcc41/"
 #endif
 #ifndef STANDARD_STARTFILE_PREFIX
-#define	STANDARD_STARTFILE_PREFIX	PREFIX2"/lib/gcc41/"
+#define	STANDARD_STARTFILE_PREFIX	PREFIX2"/lib/"
 #endif
 #ifndef TOOLDIR_BASE_PREFIX
 #define TOOLDIR_BASE_PREFIX		PREFIX2"/libexec/gcc41"
