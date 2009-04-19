@@ -3,7 +3,5 @@
 GCCDIR=	${.CURDIR}/../../../../contrib/gcc-4.1
 CCDIR=	${.CURDIR}/../../../usr.bin/cc41
 
-CSUDIR=	${.CURDIR}/../../../../lib/csu/${MACHINE_ARCH}
-
 .include "../Makefile.inc"
 .include "../../csu/Makefile.csu"
