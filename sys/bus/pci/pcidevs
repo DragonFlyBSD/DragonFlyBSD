@@ -1588,6 +1588,7 @@ product IBM 133PCIX	0x01a7	133 PCI-X Bridge
 product IBM MPIC2	0xffff	MPIC-II
 
 /* Conexant (iCompression, GlobeSpan) products */
+product ICOMPRESSION ITVC16	0x0016	iTVC16 MPEG2 codec
 product ICOMPRESSION ITVC15	0x0803	iTVC15 MPEG2 codec
 
 /* IDT products */
