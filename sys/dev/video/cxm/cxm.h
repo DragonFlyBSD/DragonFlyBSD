@@ -40,8 +40,6 @@
 
 #include <bus/pci/pcidevs.h>
 
-#include "opt_cxm.h"
-
 #define bswap32(X) ntohl(X)
 
 #define NUM_ELEMENTS(array) (sizeof(array) / sizeof(*array))
