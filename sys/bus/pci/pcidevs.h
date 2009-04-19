@@ -1590,6 +1590,7 @@
 #define	PCI_PRODUCT_IBM_MPIC2	0xffff		/* MPIC-II */
 
 /* Conexant (iCompression, GlobeSpan) products */
+#define	PCI_PRODUCT_ICOMPRESSION_ITVC16	0x0016		/* iTVC16 MPEG2 codec */
 #define	PCI_PRODUCT_ICOMPRESSION_ITVC15	0x0803		/* iTVC15 MPEG2 codec */
 
 /* IDT products */

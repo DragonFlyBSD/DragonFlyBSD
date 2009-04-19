@@ -4590,6 +4590,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "MPIC-II",
 	},
 	{
+	    PCI_VENDOR_ICOMPRESSION, PCI_PRODUCT_ICOMPRESSION_ITVC16,
+	    0,
+	    "Conexant (iCompression)",
+	    "iTVC16 MPEG2 codec",
+	},
+	{
 	    PCI_VENDOR_ICOMPRESSION, PCI_PRODUCT_ICOMPRESSION_ITVC15,
 	    0,
 	    "Conexant (iCompression)",
