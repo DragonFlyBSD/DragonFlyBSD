@@ -65,7 +65,9 @@ static void	cxm_iic_child_detached(device_t dev, device_t child);
 
 static int	cxm_iic_callback(device_t, int, caddr_t *);
 static int	cxm_iic_reset(device_t, u_char, u_char, u_char *);
+#if 0
 static int	cxm_iic_getscl(device_t);
+#endif
 static int	cxm_iic_getsda(device_t);
 static void	cxm_iic_setscl(device_t, int);
 static void	cxm_iic_setsda(device_t, int);
@@ -298,6 +300,7 @@ cxm_iic_reset(device_t dev, u_char speed, u_char addr, u_char * oldaddr)
 }
 
 
+#if 0
 static int
 cxm_iic_getscl(device_t dev)
 {
@@ -309,6 +312,7 @@ cxm_iic_getscl(device_t dev)
 	/* Get sda */
 	return CSR_READ_1(sc, CXM_REG_I2C_GETSCL);
 }
+#endif
 
 
 static int
