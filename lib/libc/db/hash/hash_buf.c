@@ -56,6 +56,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef DEBUG
 #include <assert.h>
@@ -171,12 +172,12 @@ newbuf(HTAB *hashp, u_int32_t addr, BUFHEAD *prev_bp)
 	 */
 	if (hashp->nbufs || (bp->flags & BUF_PIN)) {
 		/* Allocate a new one */
-		if ((bp = (BUFHEAD *)malloc(sizeof(BUFHEAD))) == NULL)
+		if ((bp = (BUFHEAD *)calloc(1, sizeof(BUFHEAD))) == NULL)
 			return (NULL);
 #ifdef PURIFY
 		memset(bp, 0xff, sizeof(BUFHEAD));
 #endif
-		if ((bp->page = (char *)malloc(hashp->BSIZE)) == NULL) {
+		if ((bp->page = (char *)calloc(1, hashp->BSIZE)) == NULL) {
 			free(bp);
 			return (NULL);
 		}
@@ -321,8 +322,10 @@ __buf_free(HTAB *hashp, int do_free, int to_disk)
 		}
 		/* Check if we are freeing stuff */
 		if (do_free) {
-			if (bp->page)
+			if (bp->page) {
+				memset(bp->page, 0, hashp->BSIZE);
 				free(bp->page);
+			}
 			BUF_REMOVE(bp);
 			free(bp);
 			bp = LRU;
