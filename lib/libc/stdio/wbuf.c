@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,12 +30,11 @@
  * SUCH DAMAGE.
  *
  * @(#)wbuf.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/wbuf.c,v 1.6 1999/08/28 00:01:22 peter Exp $
+ * $FreeBSD: src/lib/libc/stdio/wbuf.c,v 1.12 2007/01/09 00:28:08 imp Exp $
  * $DragonFly: src/lib/libc/stdio/wbuf.c,v 1.6 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include <stdio.h>
-
 #include "local.h"
 #include "priv_stdio.h"
 
@@ -63,9 +58,11 @@ __swbuf(int c, FILE *fp)
 	 * calls might wrap _w from negative to positive.
 	 */
 	fp->pub._w = fp->pub._lbfsize;
-	if (cantwrite(fp))
+	if (prepwrite(fp) != 0)
 		return (EOF);
 	c = (unsigned char)c;
+
+	ORIENT(fp, -1);
 
 	/*
 	 * If it is completely full, flush it out.  Then, in any case,

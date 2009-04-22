@@ -10,10 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by John Birrell.
- * 4. Neither the name of the author nor the names of any co-contributors
+ * 3. Neither the name of the author nor the names of any co-contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -29,8 +26,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdio/_flock_stub.c,v 1.3 1999/08/28 00:00:55 peter Exp $
+ * $FreeBSD: src/lib/libc/stdio/_flock_stub.c,v 1.16 2008/04/17 22:17:53 jhb Exp $
  * $DragonFly: src/lib/libc/stdio/_flock_stub.c,v 1.10 2005/07/23 23:14:44 joerg Exp $
+ */
+
+/*
+ * POSIX stdio FILE locking functions. These assume that the locking
+ * is only required at FILE structure level, not at file descriptor
+ * level too.
  *
  */
 
@@ -42,61 +45,57 @@
 #include "local.h"
 #include "priv_stdio.h"
 
-void __flockfile(FILE *fp);
-void __flockfile_debug(FILE *fp, char *fname, int lineno);
-int  __ftrylockfile(FILE *fp);
-void __funlockfile(FILE *fp);
 
 /*
- * Externally visible weak symbols.
+ * Weak symbols for externally visible functions in this file:
  */
-__weak_reference(__flockfile, flockfile);
-__weak_reference(__flockfile, _flockfile);
-__weak_reference(__flockfile_debug, _flockfile_debug);
-__weak_reference(__ftrylockfile, ftrylockfile);
-__weak_reference(__ftrylockfile, _ftrylockfile);
-__weak_reference(__funlockfile, funlockfile);
-__weak_reference(__funlockfile, _funlockfile);
+__weak_reference(_flockfile, flockfile);
+__weak_reference(_flockfile_debug_stub, _flockfile_debug);
+__weak_reference(_ftrylockfile, ftrylockfile);
+__weak_reference(_funlockfile, funlockfile);
 
 void
-__flockfile(FILE *fp)
+_flockfile(FILE *fp)
 {
 	pthread_t curthread = _pthread_self();
 
-	if (fp->fl_owner == curthread)
-		fp->fl_count++;
+	if (fp->_fl_owner == curthread)
+		fp->_fl_count++;
 	else {
 		/*
 		 * Make sure this mutex is treated as a private
 		 * internal mutex:
 		 */
-		_pthread_mutex_lock(&fp->fl_mutex);
-		fp->fl_owner = curthread;
-		fp->fl_count = 1;
+		_pthread_mutex_lock(&fp->_fl_mutex);
+		fp->_fl_owner = curthread;
+		fp->_fl_count = 1;
 	}
 }
 
+/*
+ * This can be overriden by the threads library if it is linked in.
+ */
 void
-__flockfile_debug(FILE *fp, char *fname __unused, int lineno __unused)
+_flockfile_debug_stub(FILE *fp, char *fname __unused, int lineno __unused)
 {
 	_flockfile(fp);
 }
 
 int
-__ftrylockfile(FILE *fp)
+_ftrylockfile(FILE *fp)
 {
 	pthread_t curthread = _pthread_self();
 	int	ret = 0;
 
-	if (fp->fl_owner == curthread)
-		fp->fl_count++;
+	if (fp->_fl_owner == curthread)
+		fp->_fl_count++;
 	/*
 	 * Make sure this mutex is treated as a private
 	 * internal mutex:
 	 */
-	else if (_pthread_mutex_trylock(&fp->fl_mutex) == 0) {
-		fp->fl_owner = curthread;
-		fp->fl_count = 1;
+	else if (_pthread_mutex_trylock(&fp->_fl_mutex) == 0) {
+		fp->_fl_owner = curthread;
+		fp->_fl_count = 1;
 	}
 	else
 		ret = -1;
@@ -104,33 +103,33 @@ __ftrylockfile(FILE *fp)
 }
 
 void
-__funlockfile(FILE *fp)
+_funlockfile(FILE *fp)
 {
 	pthread_t	curthread = _pthread_self();
 
 	/*
 	 * Check if this file is owned by the current thread:
 	 */
-	if (fp->fl_owner == curthread) {
+	if (fp->_fl_owner == curthread) {
 		/*
 		 * Check if this thread has locked the FILE
 		 * more than once:
 		 */
-		if (fp->fl_count > 1)
+		if (fp->_fl_count > 1) {
 			/*
 			 * Decrement the count of the number of
 			 * times the running thread has locked this
 			 * file:
 			 */
-			fp->fl_count--;
-		else {
+			fp->_fl_count--;
+		} else {
 			/*
 			 * The running thread will release the
 			 * lock now:
 			 */
-			fp->fl_count = 0;
-			fp->fl_owner = NULL;
-			_pthread_mutex_unlock(&fp->fl_mutex);
+			fp->_fl_count = 0;
+			fp->_fl_owner = NULL;
+			_pthread_mutex_unlock(&fp->_fl_mutex);
 		}
 	}
 }

@@ -1,6 +1,3 @@
-/*	$NetBSD: swprintf.c,v 1.1 2005/05/14 23:51:02 christos Exp $	*/
-/*	$DragonFly: src/lib/libc/stdio/swprintf.c,v 1.1 2005/07/25 00:37:41 joerg Exp $ */
-
 /*-
  * Copyright (c) 2002 Tim J. Robbins
  * All rights reserved.
@@ -25,6 +22,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/lib/libc/stdio/swprintf.c,v 1.1 2002/09/21 13:00:30 tjr Exp $
+ * $DragonFly: src/lib/libc/stdio/swprintf.c,v 1.1 2005/07/25 00:37:41 joerg Exp $
  */
 
 #include <stdarg.h>

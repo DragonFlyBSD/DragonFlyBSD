@@ -112,6 +112,7 @@ char	*strncpy(char * __restrict, const char * __restrict, size_t);
 #endif
 #if __BSD_VISIBLE
 char	*strndup(const char *, size_t);
+size_t	 strnlen(const char *, size_t) __pure;
 char	*strnstr(const char *, const char *, size_t) __pure;
 #endif
 char	*strpbrk(const char *, const char *) __pure;

@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,21 +30,27 @@
  * SUCH DAMAGE.
  *
  * @(#)ferror.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/ferror.c,v 1.6 1999/08/28 00:00:57 peter Exp $
+ * $FreeBSD: src/lib/libc/stdio/ferror.c,v 1.12 2008/05/05 16:03:52 jhb Exp $
  * $DragonFly: src/lib/libc/stdio/ferror.c,v 1.4 2005/08/27 21:35:01 joerg Exp $
  */
 
+#include "namespace.h"
 #include <stdio.h>
+#include "un-namespace.h"
+#include "libc_private.h"
 
-/*
- * A subroutine version of the macros ferror and ferror_unlocked.
- */
+#undef ferror
 #undef ferror_unlocked
 
 int
 ferror(FILE *fp)
 {
-	return (__sferror(fp));
+	int	ret;
+
+	FLOCKFILE(fp);
+	ret = __sferror(fp);
+	FUNLOCKFILE(fp);
+	return (ret);
 }
 
 int

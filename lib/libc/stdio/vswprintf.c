@@ -1,5 +1,4 @@
-/*	$NetBSD: vswprintf.c,v 1.1 2005/05/14 23:51:02 christos Exp $	*/
-/*	$DragonFly: src/lib/libc/stdio/vswprintf.c,v 1.2 2006/03/02 18:05:30 joerg Exp $ */
+/*	$OpenBSD: vasprintf.c,v 1.4 1998/06/21 22:13:47 millert Exp $	*/
 
 /*
  * Copyright (c) 1997 Todd C. Miller <Todd.Miller@courtesan.com>
@@ -26,21 +25,21 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $FreeBSD: src/lib/libc/stdio/vswprintf.c,v 1.7 2008/04/17 22:17:54 jhb Exp $
+ * $DragonFly: src/lib/libc/stdio/vswprintf.c,v 1.2 2006/03/02 18:05:30 joerg Exp $
  */
 
 #include <errno.h>
 #include <stdio.h>
-#include <stdarg.h>
 #include <stdlib.h>
-#include <string.h>
 #include <wchar.h>
-
 #include "local.h"
 #include "priv_stdio.h"
 
 int
 vswprintf(wchar_t * __restrict s, size_t n, const wchar_t * __restrict fmt,
-    va_list ap)
+	  __va_list ap)
 {
 	static const mbstate_t initial;
 	mbstate_t mbs;
@@ -62,12 +61,8 @@ vswprintf(wchar_t * __restrict s, size_t n, const wchar_t * __restrict fmt,
 		return (-1);
 	}
 	f._bf._size = f.pub._w = 127;		/* Leave room for the NUL */
-	f._up = NULL;
-	f.fl_mutex = PTHREAD_MUTEX_INITIALIZER;
-	f.fl_owner = NULL;
-	f.fl_count = 0;
 	memset(WCIO_GET(&f), 0, sizeof(struct wchar_io_data));
-	ret = __vfwprintf_unlocked(&f, fmt, ap);
+	ret = __vfwprintf(&f, fmt, ap);
 	if (ret < 0) {
 		sverrno = errno;
 		free(f._bf._base);

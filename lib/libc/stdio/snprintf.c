@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)snprintf.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/snprintf.c,v 1.12 1999/08/28 00:01:16 peter Exp $
+ * $FreeBSD: src/lib/libc/stdio/snprintf.c,v 1.22 2008/04/17 22:17:54 jhb Exp $
  * $DragonFly: src/lib/libc/stdio/snprintf.c,v 1.7 2006/03/02 18:05:30 joerg Exp $
  */
 
@@ -46,7 +42,7 @@
 #include "priv_stdio.h"
 
 int
-snprintf(char *str, size_t n, char const *fmt, ...)
+snprintf(char * __restrict str, size_t n, const char * __restrict fmt, ...)
 {
 	size_t on;
 	int ret;
@@ -63,12 +59,8 @@ snprintf(char *str, size_t n, char const *fmt, ...)
 	f.pub._flags = __SWR | __SSTR;
 	f._bf._base = f.pub._p = (unsigned char *)str;
 	f._bf._size = f.pub._w = n;
-	f._up = NULL;
-	f.fl_mutex = PTHREAD_MUTEX_INITIALIZER;
-	f.fl_owner = NULL;
-	f.fl_count = 0;
 	memset(WCIO_GET(&f), 0, sizeof(struct wchar_io_data));
-	ret = __vfprintf(&f, fmt, ap);		/* Use unlocked __vfprintf */
+	ret = __vfprintf(&f, fmt, ap);
 	if (on > 0)
 		*f.pub._p = '\0';
 	va_end(ap);

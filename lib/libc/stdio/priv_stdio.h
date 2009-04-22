@@ -40,6 +40,12 @@
 
 #include "wcio.h"
 
+/*
+ * NB: to fit things in six character monocase externals, the stdio
+ * code uses the prefix `__s' for stdio objects, typically followed
+ * by a three-character attempt at a mnemonic.
+ */
+
 /* stdio buffers */
 struct __sbuf {
 	unsigned char *_base;
@@ -60,10 +66,10 @@ struct __FILE {
 
 	/* operations */
 	void	*_cookie;	/* cookie passed to io functions */
-	int	(*_close) (void *);
-	int	(*_read)  (void *, char *, int);
-	fpos_t	(*_seek)  (void *, fpos_t, int);
-	int	(*_write) (void *, const char *, int);
+	int	(*_close)(void *);
+	int	(*_read)(void *, char *, int);
+	fpos_t	(*_seek)(void *, fpos_t, int);
+	int	(*_write)(void *, const char *, int);
 
 	/* separate buffer for long sequences of ungetc() */
 	struct	__sbuf _ub;	/* ungetc buffer */
@@ -81,9 +87,9 @@ struct __FILE {
 	fpos_t	_offset;	/* current lseek offset (see WARNING) */
 
 	unsigned char	*_up;	/* saved _p when _p is doing ungetc data */
-	pthread_mutex_t	fl_mutex;	/* used for MT-safety */
-	pthread_t	fl_owner;	/* current owner */
-	int		fl_count;	/* recursive lock count */
+	pthread_mutex_t	_fl_mutex;	/* used for MT-safety */
+	pthread_t	_fl_owner;	/* current owner */
+	int		_fl_count;	/* recursive lock count */
 
 	struct wchar_io_data _wcio;
 };

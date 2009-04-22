@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)findfp.c	8.2 (Berkeley) 1/4/94
- * $FreeBSD: src/lib/libc/stdio/findfp.c,v 1.7.2.3 2001/08/17 02:56:31 peter Exp $
+ * $FreeBSD: src/lib/libc/stdio/findfp.c,v 1.33 2009/03/01 19:25:40 das Exp $
  * $DragonFly: src/lib/libc/stdio/findfp.c,v 1.11 2006/03/02 18:05:30 joerg Exp $
  */
 
@@ -47,7 +43,7 @@
 
 #include <spinlock.h>
 
-#include <libc_private.h>
+#include "libc_private.h"
 #include "local.h"
 #include "priv_stdio.h"
 
@@ -55,53 +51,45 @@ int	__sdidinit;
 
 #define	NDYNAMIC 10		/* add ten more whenever necessary */
 
-#define	std(flags, file) \
-	{{0,flags,file,0,0,0},{NULL, 0},__sF+file,__sclose,__sread,__sseek,__swrite, \
-	 {NULL,0}, 0, {0,0,0}, {0}, {NULL,0}, 0,0, NULL, PTHREAD_MUTEX_INITIALIZER, NULL, 0 }
-/*	 p flags file r w _bf  cookie      close    read    seek    write */
-/*	_ub */
-
+#define	std(flags, file) {		\
+	.pub._flags = (flags),		\
+	.pub._fileno = (file),		\
+	._cookie = __sF + (file),	\
+	._close = __sclose,		\
+	._read = __sread,		\
+	._seek = __sseek,		\
+	._write = __swrite,		\
+}
 				/* the usual - (stdin + stdout + stderr) */
 static FILE usual[FOPEN_MAX - 3];
 static struct glue uglue = { NULL, FOPEN_MAX - 3, usual };
 
-FILE __sF[3] = {
-	std(__SRD, STDIN_FILENO),		/* stdin */
-	std(__SWR, STDOUT_FILENO),		/* stdout */
-	std(__SWR|__SNBF, STDERR_FILENO)	/* stderr */
+static FILE __sF[3] = {
+	std(__SRD, STDIN_FILENO),
+	std(__SWR, STDOUT_FILENO),
+	std(__SWR|__SNBF, STDERR_FILENO)
 };
 
-/*
- * note: __sglue starts the walk chain for exit flushing and other things.
- */
-struct glue __sglue = { &uglue, 3, __sF };	/* GLOBAL, START OF LIST */
-static struct glue *lastglue = &uglue;
-
-/*
- * The following kludge is done to ensure enough binary compatibility
- * with future versions of libc.  Or rather it allows us to work with
- * libraries that have been built with a newer libc that defines these
- * symbols and expects libc to provide them.  We only have need to support
- * i386 and alpha because they are the only "old" systems we have deployed.
- */
 FILE *__stdinp = &__sF[0];
 FILE *__stdoutp = &__sF[1];
 FILE *__stderrp = &__sF[2];
 
-static struct glue *	moreglue (int);
+struct glue __sglue = { &uglue, 3, __sF };
+static struct glue *lastglue = &uglue;
+
+static struct glue *	moreglue(int);
 
 static spinlock_t thread_lock = _SPINLOCK_INITIALIZER;
 #define THREAD_LOCK()	if (__isthreaded) _SPINLOCK(&thread_lock)
 #define THREAD_UNLOCK()	if (__isthreaded) _SPINUNLOCK(&thread_lock)
 
 #if NOT_YET
-#define	SET_GLUE_PTR(ptr, val)	atomic_set_ptr(&(ptr), (uintptr_t)(val))
+#define	SET_GLUE_PTR(ptr, val)	atomic_set_rel_ptr(&(ptr), (uintptr_t)(val))
 #else
 #define	SET_GLUE_PTR(ptr, val)	ptr = val
 #endif
 
-static
-struct glue *
+static struct glue *
 moreglue(int n)
 {
 	struct glue *g;
@@ -115,10 +103,8 @@ moreglue(int n)
 	g->next = NULL;
 	g->niobs = n;
 	g->iobs = p;
-	while (--n >= 0) {
-		*p = empty;
-		p++;
-	}
+	while (--n >= 0)
+		*p++ = empty;
 	return (g);
 }
 
@@ -128,8 +114,8 @@ moreglue(int n)
 FILE *
 __sfp(void)
 {
-	FILE *fp;
-	int n;
+	FILE	*fp;
+	int	n;
 	struct glue *g;
 
 	if (!__sdidinit)
@@ -165,12 +151,8 @@ found:
 	fp->_ub._size = 0;
 	fp->_lb._base = NULL;	/* no line buffer */
 	fp->_lb._size = 0;
-	fp->_up = NULL;
-	fp->fl_mutex = PTHREAD_MUTEX_INITIALIZER;
-	fp->fl_owner = NULL;
-	fp->fl_count = 0;
+/*	fp->_lock = NULL; */	/* once set always set (reused) */
 	memset(WCIO_GET(fp), 0, sizeof(struct wchar_io_data));
-	/* fp->_lock = NULL; */
 	return (fp);
 }
 
@@ -178,8 +160,6 @@ found:
  * XXX.  Force immediate allocation of internal memory.  Not used by stdio,
  * but documented historically for certain applications.  Bad applications.
  */
-void	f_prealloc(void);
-
 __warn_references(f_prealloc, 
 	"warning: this program uses f_prealloc(), which is not recommended.");
 
@@ -225,11 +205,8 @@ _cleanup(void)
 void
 __sinit(void)
 {
-	THREAD_LOCK();
-	if (__sdidinit == 0) {
-		/* Make sure we clean up on exit. */
-		__cleanup = _cleanup;		/* conservative */
-		__sdidinit = 1;
-	}
-	THREAD_UNLOCK();
+
+	/* Make sure we clean up on exit. */
+	__cleanup = _cleanup;		/* conservative */
+	__sdidinit = 1;
 }

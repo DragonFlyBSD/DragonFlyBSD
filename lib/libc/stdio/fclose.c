@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)fclose.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/fclose.c,v 1.8 1999/11/21 22:34:57 dt Exp $
+ * $FreeBSD: src/lib/libc/stdio/fclose.c,v 1.12 2007/01/09 00:28:06 imp Exp $
  * $DragonFly: src/lib/libc/stdio/fclose.c,v 1.9 2005/07/23 20:23:05 joerg Exp $
  */
 
@@ -67,23 +63,9 @@ fclose(FILE *fp)
 		FREEUB(fp);
 	if (HASLB(fp))
 		FREELB(fp);
-	/*
-	 * XXX-HITEN the FUNLOCKFILE(fp) cannot be moved below because of
-	 * the way the funlockfile() implementation works; it surrounds
-	 * the code with a if (fp->_file >= 0)... terrible, just terrible.
-	 *
-	 * This mess will be cleaned up when I rewrite the file contention
-	 * locking code.
-	 */
-	FUNLOCKFILE(fp);
 	fp->pub._fileno = -1;
 	fp->pub._r = fp->pub._w = 0;	/* Mess up if reaccessed. */
-#if 0
-	if (fp->_lock != NULL) {
-		_pthread_mutex_destroy((pthread_mutex_t *)&fp->_lock);
-		fp->_lock = NULL;
-	}
-#endif
 	fp->pub._flags = 0;		/* Release this FILE for reuse. */
+	FUNLOCKFILE(fp);
 	return (r);
 }

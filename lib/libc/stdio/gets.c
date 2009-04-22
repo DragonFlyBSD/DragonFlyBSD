@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)gets.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/gets.c,v 1.9 2000/01/27 23:06:45 jasone Exp $
+ * $FreeBSD: src/lib/libc/stdio/gets.c,v 1.17 2007/01/09 00:28:06 imp Exp $
  * $DragonFly: src/lib/libc/stdio/gets.c,v 1.6 2005/11/20 11:07:30 swildner Exp $
  */
 
@@ -43,6 +39,9 @@
 #include <stdio.h>
 #include <sys/cdefs.h>
 #include "un-namespace.h"
+#include "libc_private.h"
+#include "local.h"
+#include "priv_stdio.h"
 
 __warn_references(gets, "warning: this program uses gets(), which is unsafe.");
 
@@ -55,18 +54,22 @@ gets(char *buf)
 	static char w[] =
 	    "warning: this program uses gets(), which is unsafe.\n";
 
+	FLOCKFILE(stdin);
+	ORIENT(stdin, -1);
 	if (!warned) {
 		_write(STDERR_FILENO, w, sizeof(w) - 1);
 		warned = 1;
 	}
-	for (s = buf; (c = getchar()) != '\n';)
+	for (s = buf; (c = __sgetc(stdin)) != '\n';)
 		if (c == EOF)
-			if (s == buf)
+			if (s == buf) {
+				FUNLOCKFILE(stdin);
 				return (NULL);
-			else
+			} else
 				break;
 		else
 			*s++ = c;
 	*s = 0;
+	FUNLOCKFILE(stdin);
 	return (buf);
 }

@@ -13,10 +13,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -34,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)putc.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/stdio/putc.3,v 1.5.2.3 2001/12/14 18:33:57 ru Exp $
+.\" $FreeBSD: src/lib/libc/stdio/putc.3,v 1.16 2007/01/09 00:28:07 imp Exp $
 .\" $DragonFly: src/lib/libc/stdio/putc.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
 .\"
 .Dd March 22, 2009
@@ -76,8 +72,14 @@ to the output stream pointed to by
 .Pp
 The
 .Fn putc
-function acts essentially identically to
-.Fn fputc .
+macro acts essentially identically to
+.Fn fputc ,
+but is a macro that expands in-line.
+It may evaluate
+.Fa stream
+more than once, so arguments given to
+.Fn putc
+should not be expressions with potential side effects.
 .Pp
 The
 .Fn putchar
@@ -85,13 +87,13 @@ function
 is identical to
 .Fn putc
 with an output stream of
-.Em stdout .
+.Dv stdout .
 .Pp
 The
 .Fn putw
 function
 writes the specified
-.Em int
+.Vt int
 to the named output
 .Fa stream .
 .Pp
@@ -106,7 +108,7 @@ and
 respectively,
 except that the caller is responsible for locking the stream
 with
-.Fn flockfile
+.Xr flockfile 3
 before calling them.
 These functions may be used to avoid the overhead of locking the stream
 for each character, and to avoid output being interspersed from multiple
@@ -136,6 +138,7 @@ or if an attempt is made to write a read-only stream.
 .Xr flockfile 3 ,
 .Xr fopen 3 ,
 .Xr getc 3 ,
+.Xr putwc 3 ,
 .Xr stdio 3
 .Sh STANDARDS
 The functions
@@ -151,13 +154,13 @@ and
 .Fn putchar_unlocked
 functions conform to
 .St -p1003.1-2001 .
-A
+A function
 .Fn putw
 function appeared in
 .At v6 .
 .Sh BUGS
 The size and byte order of an
-.Em int
+.Vt int
 varies from one machine to another, and
 .Fn putw
 is not recommended for portable applications.

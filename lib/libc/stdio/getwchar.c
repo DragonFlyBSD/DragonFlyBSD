@@ -1,8 +1,5 @@
-/* $NetBSD: getwchar.c,v 1.3 2005/06/12 05:21:27 lukem Exp $ */
-/* $DragonFly: src/lib/libc/stdio/getwchar.c,v 1.2 2005/11/20 11:07:30 swildner Exp $ */
-
 /*-
- * Copyright (c)2001 Citrus Project,
+ * Copyright (c) 2002 Tim J. Robbins.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,20 +23,25 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Citrus$
+ * $FreeBSD: src/lib/libc/stdio/getwchar.c,v 1.3 2004/05/25 10:42:52 tjr Exp $
+ * $DragonFly: src/lib/libc/stdio/getwchar.c,v 1.2 2005/11/20 11:07:30 swildner Exp $
  */
 
+#include "namespace.h"
 #include <stdio.h>
 #include <wchar.h>
+#include "un-namespace.h"
+#include "libc_private.h"
+#include "local.h"
 
-/*
- * A subroutine version of the macro getwchar.
- */
 #undef getwchar
 
+/*
+ * Synonym for fgetwc(stdin).
+ */
 wint_t
 getwchar(void)
 {
 
-	return fgetwc(stdin);
+	return (fgetwc(stdin));
 }

@@ -176,8 +176,10 @@
 
 #if __GNUC_PREREQ__(3, 1)
 #define __always_inline __attribute__((__always_inline__))
+#define	__noinline	__attribute__((__noinline__))
 #else
 #define __always_inline
+#define	__noinline
 #endif
 
 #if __GNUC_PREREQ__(3, 3)
@@ -261,6 +263,7 @@
 #define	__printflike(fmtarg, firstvararg)
 #define	__scanflike(fmtarg, firstvararg)
 #define	__printf0like(fmtarg, firstvararg)
+#define	__format_arg(fmtarg)
 #elif __GNUC_PREREQ__(3, 0)
 #define	__printflike(fmtarg, firstvararg) \
             __attribute__((__nonnull__(fmtarg), \
@@ -269,6 +272,8 @@
             __attribute__((__format__ (__printf__, fmtarg, firstvararg)))
 #define	__scanflike(fmtarg, firstvararg) \
 	    __attribute__((__format__ (__scanf__, fmtarg, firstvararg)))
+#define	__format_arg(fmtarg) \
+	    __attribute__((__format_arg__ (fmtarg)))
 
 #else
 #define	__printflike(fmtarg, firstvararg) \
@@ -277,6 +282,9 @@
 	    __attribute__((__format__ (__printf0__, fmtarg, firstvararg)))
 #define	__scanflike(fmtarg, firstvararg) \
 	    __attribute__((__format__ (__scanf__, fmtarg, firstvararg)))
+#define	__format_arg(fmtarg) \
+	    __attribute__((__format_arg__ (fmtarg)))
+
 #endif
 
 #if !__GNUC_PREREQ__(3, 0)

@@ -136,6 +136,7 @@ size_t	wcslen(const wchar_t *);
 wchar_t	*wcsncat(wchar_t * __restrict, const wchar_t * __restrict, size_t);
 int	wcsncmp(const wchar_t *, const wchar_t *, size_t);
 wchar_t	*wcsncpy(wchar_t * __restrict , const wchar_t * __restrict, size_t);
+size_t	 wcsnlen(const wchar_t *, size_t) __pure;
 wchar_t	*wcspbrk(const wchar_t *, const wchar_t *);
 wchar_t	*wcsrchr(const wchar_t *, wchar_t);
 size_t	wcsrtombs(char * __restrict, const wchar_t ** __restrict, size_t,
@@ -163,6 +164,9 @@ long 	wcstol(const wchar_t * __restrict, wchar_t ** __restrict, int);
 double	wcstod(const wchar_t * __restrict, wchar_t ** __restrict);
 
 #if __ISO_C_VISIBLE >= 1999 || __DF_VISIBLE
+float	wcstof(const wchar_t * __restrict, wchar_t ** __restrict);
+long double wcstold(const wchar_t * __restrict, wchar_t ** __restrict);
+
 /* LONGLONG */
 long long wcstoll(const wchar_t * __restrict, wchar_t ** __restrict, int);
 /* LONGLONG */

@@ -13,10 +13,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -34,7 +30,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)ungetc.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/stdio/ungetc.3,v 1.4.2.5 2001/12/14 18:33:57 ru Exp $
+.\" $FreeBSD: src/lib/libc/stdio/ungetc.3,v 1.14 2007/01/09 00:28:07 imp Exp $
 .\" $DragonFly: src/lib/libc/stdio/ungetc.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
 .\"
 .Dd June 4, 1993
@@ -74,6 +70,11 @@ an effectively infinite amount of pushback is allowed.
 .Pp
 If a character is successfully pushed-back,
 the end-of-file indicator for the stream is cleared.
+The file-position indicator is decremented
+by each successful call to
+.Fn ungetc ;
+if its value was 0 before a call, its value is unspecified after
+the call.
 .Sh RETURN VALUES
 The
 .Fn ungetc
@@ -89,7 +90,8 @@ the operation will fail and the stream will remain unchanged.
 .Sh SEE ALSO
 .Xr fseek 3 ,
 .Xr getc 3 ,
-.Xr setvbuf 3
+.Xr setvbuf 3 ,
+.Xr ungetwc 3
 .Sh STANDARDS
 The
 .Fn ungetc

@@ -1,6 +1,3 @@
-/*	$NetBSD: vfwscanf.c,v 1.2 2005/06/12 05:48:41 lukem Exp $	*/
-/*	$DragonFly: src/lib/libc/stdio/vfwscanf.c,v 1.1 2005/07/25 00:37:41 joerg Exp $ */
-
 /*-
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -16,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -35,17 +28,21 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)vfscanf.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/stdio/vfwscanf.c,v 1.17 2009/01/19 06:19:51 das Exp $
+ * $DragonFly: src/lib/libc/stdio/vfwscanf.c,v 1.1 2005/07/25 00:37:41 joerg Exp $
  */
 
 #include "namespace.h"
 #include <ctype.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdarg.h>
 #include <string.h>
-#include <limits.h>
 #include <wchar.h>
 #include <wctype.h>
 #include "un-namespace.h"
@@ -69,7 +66,7 @@
 #define	SUPPRESS	0x08	/* *: suppress assignment */
 #define	POINTER		0x10	/* p: void * (as hex) */
 #define	NOSKIP		0x20	/* [ or c: do not skip blanks */
-#define	LONGLONG	0x400	/* ll: quad_t (+ deprecated q: quad) */
+#define	LONGLONG	0x400	/* ll: long long (+ deprecated q: quad) */
 #define	INTMAXT		0x800	/* j: intmax_t */
 #define	PTRDIFFT	0x1000	/* t: ptrdiff_t */
 #define	SIZET		0x2000	/* z: size_t */
@@ -95,11 +92,15 @@
 #define	CT_INT		3	/* %[dioupxX] conversion */
 #define	CT_FLOAT	4	/* %[efgEFG] conversion */
 
+#ifndef NO_FLOATING_POINT
 static int parsefloat(FILE *, wchar_t *, wchar_t *);
+#endif
 
 #define	INCCL(_c)	\
-	(cclcompl ? (wmemchr(ccls, (_c), (size_t)(ccle - ccls)) == NULL) : \
-	(wmemchr(ccls, (_c), (size_t)(ccle - ccls)) != NULL))
+	(cclcompl ? (wmemchr(ccls, (_c), ccle - ccls) == NULL) : \
+	(wmemchr(ccls, (_c), ccle - ccls) != NULL))
+
+static const mbstate_t initial_mbs;
 
 /*
  * MT-safe version.
@@ -110,8 +111,8 @@ vfwscanf(FILE * __restrict fp, const wchar_t * __restrict fmt, va_list ap)
 	int ret;
 
 	FLOCKFILE(fp);
-	_SET_ORIENTATION(fp, 1);
-	ret = __vfwscanf_unlocked(fp, fmt, ap);
+	ORIENT(fp, 1);
+	ret = __vfwscanf(fp, fmt, ap);
 	FUNLOCKFILE(fp);
 	return (ret);
 }
@@ -120,7 +121,7 @@ vfwscanf(FILE * __restrict fp, const wchar_t * __restrict fmt, va_list ap)
  * Non-MT-safe version.
  */
 int
-__vfwscanf_unlocked(FILE * __restrict fp, const wchar_t * __restrict fmt, va_list ap)
+__vfwscanf(FILE * __restrict fp, const wchar_t * __restrict fmt, va_list ap)
 {
 	wint_t c;		/* character from format, or conversion */
 	size_t width;		/* field width, or 0 */
@@ -140,7 +141,6 @@ __vfwscanf_unlocked(FILE * __restrict fp, const wchar_t * __restrict fmt, va_lis
 	char *mbp;		/* multibyte string pointer for %c %s %[ */
 	size_t nconv;		/* number of bytes in mb. conversion */
 	char mbbuf[MB_LEN_MAX];	/* temporary mb. character buffer */
-	static const mbstate_t initial;
 	mbstate_t mbs;
 
 	/* `basefix' is used to avoid `if' tests in the integer scanner */
@@ -151,9 +151,6 @@ __vfwscanf_unlocked(FILE * __restrict fp, const wchar_t * __restrict fmt, va_lis
 	nconversions = 0;
 	nread = 0;
 	ccls = ccle = NULL;
-	base = 0;
-	cclcompl = 0;
-	mbp = NULL;
 	for (;;) {
 		c = *fmt++;
 		if (c == 0)
@@ -315,7 +312,7 @@ literal:
 			else if (flags & LONG)
 				*va_arg(ap, long *) = nread;
 			else if (flags & LONGLONG)
-				*va_arg(ap, quad_t *) = nread;
+				*va_arg(ap, long long *) = nread;
 			else if (flags & INTMAXT)
 				*va_arg(ap, intmax_t *) = nread;
 			else if (flags & SIZET)
@@ -376,7 +373,7 @@ literal:
 				if (!(flags & SUPPRESS))
 					mbp = va_arg(ap, char *);
 				n = 0;
-				mbs = initial;
+				mbs = initial_mbs;
 				while (width != 0 &&
 				    (wi = __fgetwc_unlock(fp)) != WEOF) {
 					if (width >= MB_CUR_MAX &&
@@ -441,7 +438,7 @@ literal:
 				if (!(flags & SUPPRESS))
 					mbp = va_arg(ap, char *);
 				n = 0;
-				mbs = initial;
+				mbs = initial_mbs;
 				while ((wi = __fgetwc_unlock(fp)) != WEOF &&
 				    width != 0 && INCCL(wi)) {
 					if (width >= MB_CUR_MAX &&
@@ -502,7 +499,7 @@ literal:
 			} else {
 				if (!(flags & SUPPRESS))
 					mbp = va_arg(ap, char *);
-				mbs = initial;
+				mbs = initial_mbs;
 				while ((wi = __fgetwc_unlock(fp)) != WEOF &&
 				    width != 0 &&
 				    !iswspace(wi)) {
@@ -664,21 +661,21 @@ literal:
 					*va_arg(ap, void **) =
 							(void *)(uintptr_t)res;
 				else if (flags & SHORTSHORT)
-					*va_arg(ap, char *) = (char)res;
+					*va_arg(ap, char *) = res;
 				else if (flags & SHORT)
-					*va_arg(ap, short *) = (short)res;
+					*va_arg(ap, short *) = res;
 				else if (flags & LONG)
-					*va_arg(ap, long *) = (long)res;
+					*va_arg(ap, long *) = res;
 				else if (flags & LONGLONG)
-					*va_arg(ap, quad_t *) = res;
+					*va_arg(ap, long long *) = res;
 				else if (flags & INTMAXT)
 					*va_arg(ap, intmax_t *) = res;
 				else if (flags & PTRDIFFT)
-					*va_arg(ap, ptrdiff_t *) = (ptrdiff_t)res;
+					*va_arg(ap, ptrdiff_t *) = res;
 				else if (flags & SIZET)
-					*va_arg(ap, size_t *) = (size_t)res;
+					*va_arg(ap, size_t *) = res;
 				else
-					*va_arg(ap, int *) = (int)res;
+					*va_arg(ap, int *) = res;
 				nassigned++;
 			}
 			nread += p - buf;
@@ -694,25 +691,16 @@ literal:
 			if ((width = parsefloat(fp, buf, buf + width)) == 0)
 				goto match_failure;
 			if ((flags & SUPPRESS) == 0) {
-#ifdef notyet
 				if (flags & LONGDBL) {
 					long double res = wcstold(buf, &p);
 					*va_arg(ap, long double *) = res;
-				} else
-#endif
-				if (flags & LONG) {
+				} else if (flags & LONG) {
 					double res = wcstod(buf, &p);
 					*va_arg(ap, double *) = res;
-#ifdef notyet
 				} else {
 					float res = wcstof(buf, &p);
 					*va_arg(ap, float *) = res;
-#endif
 				}
-#ifdef DEBUG
-				if (p - buf != width)
-					abort();
-#endif
 				nassigned++;
 			}
 			nread += width;
@@ -731,15 +719,22 @@ match_failure:
 static int
 parsefloat(FILE *fp, wchar_t *buf, wchar_t *end)
 {
+	mbstate_t mbs;
+	size_t nconv;
 	wchar_t *commit, *p;
 	int infnanpos = 0;
 	enum {
-		S_START, S_GOTSIGN, S_INF, S_NAN, S_MAYBEHEX,
+		S_START, S_GOTSIGN, S_INF, S_NAN, S_DONE, S_MAYBEHEX,
 		S_DIGITS, S_FRAC, S_EXP, S_EXPDIGITS
 	} state = S_START;
 	wchar_t c;
-	wchar_t decpt = (wchar_t)(unsigned char)*localeconv()->decimal_point;
-	int gotmantdig = 0, ishex = 0;
+	wchar_t decpt;
+	_Bool gotmantdig = 0, ishex = 0;
+
+	mbs = initial_mbs;
+	nconv = mbrtowc(&decpt, localeconv()->decimal_point, MB_CUR_MAX, &mbs);
+	if (nconv == (size_t)-1 || nconv == (size_t)-2)
+		decpt = '.';	/* failsafe */
 
 	/*
 	 * We set commit = p whenever the string we have read so far
@@ -793,8 +788,6 @@ reswitch:
 			break;
 		case S_NAN:
 			switch (infnanpos) {
-			case -1:	/* XXX kludge to deal with nan(...) */
-				goto parsedone;
 			case 0:
 				if (c != 'A' && c != 'a')
 					goto parsedone;
@@ -812,13 +805,15 @@ reswitch:
 			default:
 				if (c == ')') {
 					commit = p;
-					infnanpos = -2;
+					state = S_DONE;
 				} else if (!iswalnum(c) && c != '_')
 					goto parsedone;
 				break;
 			}
 			infnanpos++;
 			break;
+		case S_DONE:
+			goto parsedone;
 		case S_MAYBEHEX:
 			state = S_DIGITS;
 			if (c == 'X' || c == 'x') {

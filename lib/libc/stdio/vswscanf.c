@@ -1,6 +1,3 @@
-/*	$NetBSD: vswscanf.c,v 1.1 2005/05/14 23:51:02 christos Exp $	*/
-/*	$DragonFly: src/lib/libc/stdio/vswscanf.c,v 1.3 2006/03/02 18:05:30 joerg Exp $ */
-
 /*-
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -16,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -35,6 +28,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * @(#)vsscanf.c	8.1 (Berkeley) 6/4/93
+ * $FreeBSD: src/lib/libc/stdio/vswscanf.c,v 1.6 2009/01/15 18:53:52 rdivacky Exp $
+ * $DragonFly: src/lib/libc/stdio/vswscanf.c,v 1.3 2006/03/02 18:05:30 joerg Exp $
  */
 
 #include <limits.h>
@@ -43,14 +40,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
-
 #include "local.h"
 #include "priv_stdio.h"
 
 static int	eofread(void *, char *, int);
 
 static int
-/*ARGSUSED*/
 eofread(void *cookie __unused, char *buf __unused, int len __unused)
 {
 
@@ -59,7 +54,7 @@ eofread(void *cookie __unused, char *buf __unused, int len __unused)
 
 int
 vswscanf(const wchar_t * __restrict str, const wchar_t * __restrict fmt,
-    va_list ap)
+	 va_list ap)
 {
 	static const mbstate_t initial;
 	mbstate_t mbs;
@@ -67,6 +62,7 @@ vswscanf(const wchar_t * __restrict str, const wchar_t * __restrict fmt,
 	char *mbstr;
 	size_t mlen;
 	int r;
+	const wchar_t *strp;
 
 	/*
 	 * XXX Convert the wide character string to multibyte, which
@@ -75,8 +71,8 @@ vswscanf(const wchar_t * __restrict str, const wchar_t * __restrict fmt,
 	if ((mbstr = malloc(wcslen(str) * MB_CUR_MAX + 1)) == NULL)
 		return (EOF);
 	mbs = initial;
-	if ((mlen = wcsrtombs(mbstr, (const wchar_t ** __restrict)&str,
-	    SIZE_T_MAX, &mbs)) == (size_t)-1) {
+	strp = str;
+	if ((mlen = wcsrtombs(mbstr, &strp, SIZE_T_MAX, &mbs)) == (size_t)-1) {
 		free(mbstr);
 		return (EOF);
 	}
@@ -87,12 +83,8 @@ vswscanf(const wchar_t * __restrict str, const wchar_t * __restrict fmt,
 	f._read = eofread;
 	f._ub._base = NULL;
 	f._lb._base = NULL;
-	f._up = NULL;
-	f.fl_mutex = PTHREAD_MUTEX_INITIALIZER;
-	f.fl_owner = NULL;
-	f.fl_count = 0;
 	memset(WCIO_GET(&f), 0, sizeof(struct wchar_io_data));
-	r = __vfwscanf_unlocked(&f, fmt, ap);
+	r = __vfwscanf(&f, fmt, ap);
 	free(mbstr);
 
 	return (r);

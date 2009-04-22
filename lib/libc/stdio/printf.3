@@ -13,10 +13,6 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
 .\" 4. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
@@ -34,10 +30,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)printf.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/stdio/printf.3,v 1.59 2005/09/05 09:49:33 tjr Exp $
+.\" $FreeBSD: src/lib/libc/stdio/printf.3,v 1.63 2009/03/04 03:38:51 das Exp $
 .\" $DragonFly: src/lib/libc/stdio/printf.3,v 1.6 2006/08/26 10:27:55 swildner Exp $
 .\"
-.Dd August 26, 2006
+.Dd March 3, 2009
 .Dt PRINTF 3
 .Os
 .Sh NAME
@@ -46,37 +42,44 @@
 .Nm sprintf ,
 .Nm snprintf ,
 .Nm asprintf ,
+.Nm dprintf ,
 .Nm vprintf ,
 .Nm vfprintf ,
 .Nm vsprintf ,
 .Nm vsnprintf ,
-.Nm vasprintf
+.Nm vasprintf ,
+.Nm vdprintf
 .Nd formatted output conversion
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
+.Fd "#define _WITH_DPRINTF"
 .In stdio.h
 .Ft int
-.Fn printf "const char *format" ...
+.Fn printf "const char * restrict format" ...
 .Ft int
-.Fn fprintf "FILE *stream" "const char *format" ...
+.Fn fprintf "FILE * restrict stream" "const char * restrict format" ...
 .Ft int
-.Fn sprintf "char *str" "const char *format" ...
+.Fn sprintf "char * restrict str" "const char * restrict format" ...
 .Ft int
-.Fn snprintf "char *str" "size_t size" "const char *format" ...
+.Fn snprintf "char * restrict str" "size_t size" "const char * restrict format" ...
 .Ft int
 .Fn asprintf "char **ret" "const char *format" ...
+.Ft int
+.Fn dprintf "int" "const char * restrict format" ...
 .In stdarg.h
 .Ft int
-.Fn vprintf "const char *format" "va_list ap"
+.Fn vprintf "const char * restrict format" "va_list ap"
 .Ft int
-.Fn vfprintf "FILE *stream" "const char *format" "va_list ap"
+.Fn vfprintf "FILE * restrict stream" "const char * restrict format" "va_list ap"
 .Ft int
-.Fn vsprintf "char *str" "const char *format" "va_list ap"
+.Fn vsprintf "char * restrict str" "const char * restrict format" "va_list ap"
 .Ft int
-.Fn vsnprintf "char *str" "size_t size" "const char *format" "va_list ap"
+.Fn vsnprintf "char * restrict str" "size_t size" "const char * restrict format" "va_list ap"
 .Ft int
 .Fn vasprintf "char **ret" "const char *format" "va_list ap"
+.Ft int
+.Fn vdprintf "int fd" "const char * restrict format" "va_list ap"
 .Sh DESCRIPTION
 The
 .Fn printf
@@ -96,6 +99,10 @@ and
 .Fn vfprintf
 write output to the given output
 .Fa stream ;
+.Fn dprintf
+and
+.Fn vdprintf
+write output to the given file descriptor;
 .Fn sprintf ,
 .Fn snprintf ,
 .Fn vsprintf ,
@@ -220,8 +227,7 @@ conversions, this option has no effect.
 For
 .Cm o
 conversions, the precision of the number is increased to force the first
-character of the output string to a zero (except if a zero value is printed
-with an explicit precision of zero).
+character of the output string to a zero.
 For
 .Cm x
 and
@@ -234,7 +240,7 @@ for
 .Cm X
 conversions) prepended to it.
 For
-.Cm e , E , f , F , g ,
+.Cm a , A , e , E , f , F , g ,
 and
 .Cm G
 conversions, the result will always contain a decimal point, even if no
@@ -273,7 +279,7 @@ if both are given.
 .It So "\ " Sc (space)
 A blank should be left before a positive number
 produced by a signed conversion
-.Cm ( d , e , E , f , F , g , G ,
+.Cm ( a , A , d , e , E , f , F , g , G ,
 or
 .Cm i ) .
 .It Sq Cm +
@@ -282,6 +288,18 @@ number produced by a signed conversion.
 A
 .Cm +
 overrides a space if both are used.
+.It Sq Cm '
+Decimal conversions
+.Cm ( d , u ,
+or
+.Cm i )
+or the integral portion of a floating point conversion
+.Cm ( f
+or
+.Cm F )
+should be grouped and separated by thousands using
+the non-monetary separator returned by
+.Xr localeconv 3 .
 .El
 .It
 An optional decimal digit string specifying a minimum field width.
@@ -300,7 +318,7 @@ This gives the minimum number of digits to appear for
 and
 .Cm X
 conversions, the number of digits to appear after the decimal-point for
-.Cm e , E , f ,
+.Cm a , A , e , E , f ,
 and
 .Cm F
 conversions, the maximum number of significant digits for
@@ -356,12 +374,12 @@ equivalent in size to a
 .Vt size_t .
 .Pp
 The following length modifier is valid for the
-.Cm e , E , f , F , g ,
+.Cm a , A , e , E , f , F , g ,
 or
 .Cm G
 conversion:
 .Bl -column ".Sy Modifier" ".Cm a , A , e , E , f , F , g , G"
-.It Sy Modifier Ta Cm e , E , f , F , g , G
+.It Sy Modifier Ta Cm a , A , e , E , f , F , g , G
 .It Cm l No (ell) Ta Vt double
 (ignored, same behavior as without it)
 .It Cm L Ta Vt "long double"
@@ -461,7 +479,7 @@ The exponent always contains at least two digits; if the value is zero,
 the exponent is 00.
 .Pp
 For
-.Cm e , E , f , F , g ,
+.Cm a , A , e , E , f , F , g ,
 and
 .Cm G
 conversions, positive and negative infinity are represented as
@@ -513,6 +531,55 @@ is used if the exponent from its conversion is less than \-4 or greater than
 or equal to the precision.
 Trailing zeros are removed from the fractional part of the result; a
 decimal point appears only if it is followed by at least one digit.
+.It Cm aA
+The
+.Vt double
+argument is rounded and converted to hexadecimal notation in the style
+.Sm off
+.Oo \- Oc Li 0x Ar h Li \&. Ar hhhp Oo \\*[Pm] Oc Ar d ,
+.Sm on
+where the number of digits after the hexadecimal-point character
+is equal to the precision specification.
+If the precision is missing, it is taken as enough to represent
+the floating-point number exactly, and no rounding occurs.
+If the precision is zero, no hexadecimal-point character appears.
+The
+.Cm p
+is a literal character
+.Ql p ,
+and the exponent consists of a positive or negative sign
+followed by a decimal number representing an exponent of 2.
+The
+.Cm A
+conversion uses the prefix
+.Dq Li 0X
+(rather than
+.Dq Li 0x ) ,
+the letters
+.Dq Li ABCDEF
+(rather than
+.Dq Li abcdef )
+to represent the hex digits, and the letter
+.Ql P
+(rather than
+.Ql p )
+to separate the mantissa and exponent.
+.Pp
+Note that there may be multiple valid ways to represent floating-point
+numbers in this hexadecimal format.
+For example,
+.Li 0x1.92p+1 , 0x3.24p+0 , 0x6.48p-1 ,
+and
+.Li 0xc.9p-2
+are all equivalent.
+.Fx 8.0
+and later always prints finite non-zero numbers using
+.Ql 1
+as the digit before the hexadecimal point.
+Zeroes are always represented with a mantissa of 0 (preceded by a
+.Ql -
+if appropriate) and an exponent of
+.Li +0 .
 .It Cm C
 Treated as
 .Cm c
@@ -724,6 +791,57 @@ for later interpolation by
 Always use the proper secure idiom:
 .Pp
 .Dl "snprintf(buffer, sizeof(buffer), \*q%s\*q, string);"
+.Sh COMPATIBILITY
+Many application writers used the name
+.Va dprintf
+before the
+.Fn dprintf
+function was introduced in
+.St -p1003.1 ,
+so a prototype is not provided by default in order to avoid
+compatibility problems.
+Applications that wish to use the
+.Fn dprintf
+function described herein should either request a strict
+.St -p1003.1-2008
+environment by defining the macro
+.Dv _POSIX_C_SOURCE
+to the value 200809 or greater, or by defining the macro
+.Dv _WITH_DPRINTF ,
+prior to the inclusion of
+.In stdio.h .
+For compatibility with GNU libc, defining either
+.Dv _BSD_SOURCE
+or
+.Dv _GNU_SOURCE
+prior to the inclusion of
+.In stdio.h
+will also make
+.Fn dprintf
+available.
+.Pp
+The conversion formats
+.Cm \&%D , \&%O ,
+and
+.Cm %U
+are not standard and
+are provided only for backward compatibility.
+The effect of padding the
+.Cm %p
+format with zeros (either by the
+.Cm 0
+flag or by specifying a precision), and the benign effect (i.e., none)
+of the
+.Cm #
+flag on
+.Cm %n
+and
+.Cm %p
+conversions, as well as other
+nonsensical combinations such as
+.Cm %Ld ,
+are not standard; such combinations
+should be avoided.
 .Sh ERRORS
 In addition to the errors documented for the
 .Xr write 2
@@ -763,7 +881,13 @@ With the same reservation, the
 and
 .Fn vsnprintf
 functions conform to
-.St -isoC-99 .
+.St -isoC-99 ,
+while
+.Fn dprintf
+and
+.Fn vdprintf
+conform to
+.St -p1003.1-2008 .
 .Sh HISTORY
 The functions
 .Fn asprintf
@@ -781,30 +905,13 @@ from
 .An Todd C. Miller Aq Todd.Miller@courtesan.com
 for
 .Ox 2.3 .
+The
+.Fn dprintf
+and
+.Fn vdprintf
+functions were added in
+.Fx 8.0 .
 .Sh BUGS
-The conversion formats
-.Cm \&%D , \&%O ,
-and
-.Cm %U
-are not standard and
-are provided only for backward compatibility.
-The effect of padding the
-.Cm %p
-format with zeros (either by the
-.Cm 0
-flag or by specifying a precision), and the benign effect (i.e., none)
-of the
-.Cm #
-flag on
-.Cm %n
-and
-.Cm %p
-conversions, as well as other
-nonsensical combinations such as
-.Cm %Ld ,
-are not standard; such combinations
-should be avoided.
-.Pp
 The
 .Nm
 family of functions do not correctly handle multibyte characters in the

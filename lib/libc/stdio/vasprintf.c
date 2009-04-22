@@ -26,20 +26,18 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/stdio/vasprintf.c,v 1.11 1999/08/28 00:01:19 peter Exp $
+ * $FreeBSD: src/lib/libc/stdio/vasprintf.c,v 1.19 2008/04/17 22:17:54 jhb Exp $
  * $DragonFly: src/lib/libc/stdio/vasprintf.c,v 1.8 2006/03/02 18:05:30 joerg Exp $
  */
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 #include <errno.h>
-
 #include "local.h"
 #include "priv_stdio.h"
 
 int
-vasprintf(char **str, const char *fmt, va_list ap)
+vasprintf(char **str, const char *fmt, __va_list ap)
 {
 	int ret;
 	FILE f;
@@ -52,19 +50,16 @@ vasprintf(char **str, const char *fmt, va_list ap)
 		errno = ENOMEM;
 		return (-1);
 	}
-	f._bf._size = f.pub._w = 127;		/* Leave room for the NULL */
-	f._up = NULL;
-	f.fl_mutex = PTHREAD_MUTEX_INITIALIZER;
-	f.fl_owner = NULL;
-	f.fl_count = 0;
+	f._bf._size = f.pub._w = 127;		/* Leave room for the NUL */
 	memset(WCIO_GET(&f), 0, sizeof(struct wchar_io_data));
 	ret = __vfprintf(&f, fmt, ap);
-	*f.pub._p = '\0';
-	f._bf._base = reallocf(f._bf._base, f._bf._size + 1);
-	if (f._bf._base == NULL) {
+	if (ret < 0) {
+		free(f._bf._base);
+		*str = NULL;
 		errno = ENOMEM;
-		ret = -1;
+		return (-1);
 	}
+	*f.pub._p = '\0';
 	*str = (char *)f._bf._base;
 	return (ret);
 }

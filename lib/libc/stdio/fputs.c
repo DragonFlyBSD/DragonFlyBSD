@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,24 +30,23 @@
  * SUCH DAMAGE.
  *
  * @(#)fputs.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/fputs.c,v 1.7 1999/08/28 00:01:03 peter Exp $
+ * $FreeBSD: src/lib/libc/stdio/fputs.c,v 1.12 2007/01/09 00:28:06 imp Exp $
  * $DragonFly: src/lib/libc/stdio/fputs.c,v 1.5 2005/07/23 20:23:06 joerg Exp $
  */
 
 #include "namespace.h"
-#include <sys/types.h>
 #include <stdio.h>
 #include <string.h>
 #include "un-namespace.h"
-#include "priv_stdio.h"
-
 #include "libc_private.h"
+#include "local.h"
+#include "priv_stdio.h"
 
 /*
  * Write the given string to the given file.
  */
 int
-fputs(const char *s, FILE *fp)
+fputs(const char * __restrict s, FILE * __restrict fp)
 {
 	int retval;
 	struct __suio uio;
@@ -62,6 +57,7 @@ fputs(const char *s, FILE *fp)
 	uio.uio_iov = &iov;
 	uio.uio_iovcnt = 1;
 	FLOCKFILE(fp);
+	ORIENT(fp, -1);
 	retval = __sfvwrite(fp, &uio);
 	FUNLOCKFILE(fp);
 	return (retval);

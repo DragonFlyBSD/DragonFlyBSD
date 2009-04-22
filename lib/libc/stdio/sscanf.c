@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,18 +30,17 @@
  * SUCH DAMAGE.
  *
  * @(#)sscanf.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/stdio/sscanf.c,v 1.6 1999/08/28 00:01:17 peter Exp $
+ * $FreeBSD: src/lib/libc/stdio/sscanf.c,v 1.13 2008/04/17 22:17:54 jhb Exp $
  * $DragonFly: src/lib/libc/stdio/sscanf.c,v 1.9 2006/03/02 18:05:30 joerg Exp $
  */
 
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
-
 #include "local.h"
 #include "priv_stdio.h"
 
-static int eofread (void *, char *, int);
+static int eofread(void *, char *, int);
 
 /* ARGSUSED */
 static int
@@ -56,7 +51,7 @@ eofread(void *cookie __unused, char *buf __unused, int len __unused)
 }
 
 int
-sscanf(const char *str, char const *fmt, ...)
+sscanf(const char * __restrict str, const char * __restrict fmt, ...)
 {
 	int ret;
 	va_list ap;
@@ -69,10 +64,6 @@ sscanf(const char *str, char const *fmt, ...)
 	f._read = eofread;
 	f._ub._base = NULL;
 	f._lb._base = NULL;
-	f._up = NULL;
-	f.fl_mutex = PTHREAD_MUTEX_INITIALIZER;
-	f.fl_owner = NULL;
-	f.fl_count = 0;
 	memset(WCIO_GET(&f), 0, sizeof(struct wchar_io_data));
 	va_start(ap, fmt);
 	ret = __svfscanf(&f, fmt, ap);

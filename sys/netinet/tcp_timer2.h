@@ -40,6 +40,14 @@
 
 #ifdef _KERNEL
 
+#ifndef _SYS_PARAM_H_
+#include <sys/param.h>
+#endif
+
+#ifndef _SYS_SYSTM_H_
+#include <sys/systm.h>
+#endif
+
 #ifndef _SYS_THREAD2_H_
 #include <sys/thread2.h>
 #endif
@@ -59,6 +67,8 @@
 static __inline void
 tcp_callout_stop(struct tcpcb *_tp, struct tcp_callout *_tc)
 {
+	KKASSERT(_tp->tt_msg->tt_cpuid == mycpuid);
+
 	crit_enter();
 	callout_stop(&_tc->tc_callout);
 	_tp->tt_msg->tt_tasks &= ~_tc->tc_task;
@@ -70,6 +80,8 @@ static __inline void
 tcp_callout_reset(struct tcpcb *_tp, struct tcp_callout *_tc, int _to_ticks,
 		  void (*_func)(void *))
 {
+	KKASSERT(_tp->tt_msg->tt_cpuid == mycpuid);
+
 	crit_enter();
 	callout_reset(&_tc->tc_callout, _to_ticks, _func, _tp);
 	_tp->tt_msg->tt_tasks &= ~_tc->tc_task;
@@ -82,6 +94,8 @@ tcp_callout_active(struct tcpcb *_tp, struct tcp_callout *_tc)
 {
 	int _act;
 
+	KKASSERT(_tp->tt_msg->tt_cpuid == mycpuid);
+
 	crit_enter();
 	_act = callout_active(&_tc->tc_callout);
 	if (!_act) {
@@ -93,8 +107,10 @@ tcp_callout_active(struct tcpcb *_tp, struct tcp_callout *_tc)
 }
 
 static __inline int
-tcp_callout_pending(struct tcpcb *_tp __unused, struct tcp_callout *_tc)
+tcp_callout_pending(struct tcpcb *_tp, struct tcp_callout *_tc)
 {
+	KKASSERT(_tp->tt_msg->tt_cpuid == mycpuid);
+
 	return callout_pending(&_tc->tc_callout);
 }
 

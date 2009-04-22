@@ -1,4 +1,4 @@
-/* $NetBSD: fgetwc.c,v 1.4 2005/06/12 05:21:27 lukem Exp $ */
+/* $NetBSD: fgetwc.c,v 1.8 2007/04/01 18:35:53 tnozaki Exp $ */
 /* $DragonFly: src/lib/libc/stdio/fgetwc.c,v 1.1 2005/07/25 00:37:41 joerg Exp $ */
 
 /*-
@@ -44,45 +44,43 @@ wint_t
 __fgetwc_unlock(FILE *fp)
 {
 	struct wchar_io_data *wcio;
-	mbstate_t *st;
 	wchar_t wc;
-	size_t size;
+	size_t nr;
 
 	_DIAGASSERT(fp != NULL);
 
 	_SET_ORIENTATION(fp, 1);
 	wcio = WCIO_GET(fp);
-	if (wcio == 0) {
-		errno = ENOMEM;
-		return WEOF;
-	}
+	_DIAGASSERT(wcio != NULL);
 
 	/* if there're ungetwc'ed wchars, use them */
-	if (wcio->wcio_ungetwc_inbuf) {
-		wc = wcio->wcio_ungetwc_buf[--wcio->wcio_ungetwc_inbuf];
+	if (wcio->wcio_ungetwc_inbuf)
+		return(wcio->wcio_ungetwc_buf[--wcio->wcio_ungetwc_inbuf]);
 
-		return wc;
+	if (fp->pub._r <= 0) {
+restart:
+		if (__srefill(fp) != 0)
+			return WEOF;
 	}
-
-	st = &wcio->wcio_mbstate_in;
-
-	do {
-		char c;
-		int ch = __sgetc(fp);
-
-		if (ch == EOF) {
-			return WEOF;
+	nr = mbrtowc(&wc, (const char *)fp->pub._p,
+	    (size_t)fp->pub._r, &wcio->wcio_mbstate_in);
+	if (nr == (size_t)-1) {
+		fp->pub._flags |= __SERR;
+		return WEOF;
+	} else if (nr == (size_t)-2) {
+		fp->pub._p += fp->pub._r;
+		fp->pub._r = 0;
+		goto restart;
+	}
+	if (wc == L'\0') {
+		while (*fp->pub._p != '\0') {
+			++fp->pub._p;
+			--fp->pub._r;
 		}
-
-		c = ch;
-		size = mbrtowc(&wc, &c, 1, st);
-		if (size == (size_t)-1) {
-			errno = EILSEQ;
-			return WEOF;
-		}
-	} while (size == (size_t)-2);
-
-	_DIAGASSERT(size == 1);
+		nr = 1;
+	}
+	fp->pub._p += nr;
+	fp->pub._r -= nr;
 
 	return wc;
 }

@@ -1,4 +1,4 @@
-/*	$NetBSD: fgetwln.c,v 1.1 2005/05/14 23:51:02 christos Exp $	*/
+/*	$NetBSD: fgetwln.c,v 1.2 2009/01/31 06:08:28 lukem Exp $	*/
 /*	$DragonFly: src/lib/libc/stdio/fgetwln.c,v 1.1 2005/07/25 00:37:41 joerg Exp $ */
 
 /*-
@@ -48,7 +48,7 @@ fgetwln(FILE * __restrict fp, size_t *lenp)
 	len = 0;
 	while ((wc = __fgetwc_unlock(fp)) != WEOF) {
 #define	GROW	512
-		if (len * sizeof(wchar_t) >= fp->_lb._size &&
+		if (len * sizeof(wchar_t) >= (size_t)fp->_lb._size &&
 		    __slbexpand(fp, (len + GROW) * sizeof(wchar_t)))
 			goto error;
 		*((wchar_t *)(void *)fp->_lb._base + len++) = wc;
