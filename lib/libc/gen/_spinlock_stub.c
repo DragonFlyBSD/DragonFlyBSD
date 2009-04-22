@@ -41,6 +41,7 @@
 
 long	_atomic_lock_stub(volatile long *);
 void	_spinlock_stub(spinlock_t *);
+int	_spintrylock_stub(spinlock_t *);
 void	_spinunlock_stub(spinlock_t *);
 void	_spinlock_debug_stub(spinlock_t *, char *, int);
 
@@ -50,8 +51,9 @@ void	_spinlock_debug_stub(spinlock_t *, char *, int);
  */
 __weak_reference(_atomic_lock_stub,_atomic_lock);
 __weak_reference(_spinlock_stub,_spinlock);
-__weak_reference(_spinlock_debug_stub,_spinlock_debug);
+__weak_reference(_spintrylock_stub,_spintrylock);
 __weak_reference(_spinunlock_stub,_spinunlock);
+__weak_reference(_spinlock_debug_stub,_spinlock_debug);
 
 /*
  * This function is a stub for the _atomic_lock function in libpthread.
@@ -76,6 +78,16 @@ _spinlock_stub(spinlock_t *lck __unused)
 void
 _spinunlock_stub(spinlock_t *lck __unused)
 {
+}
+
+/*
+ * This function is a stub for the spintrylock function in libpthread.
+ * Return 0 on success, non-zero on failure.
+ */
+int
+_spintrylock_stub(spinlock_t *lck __unused)
+{
+	return(0);
 }
 
 /*

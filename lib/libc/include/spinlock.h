@@ -59,6 +59,7 @@ typedef struct {
 #else
 #define	_SPINLOCK(_lck)		_spinlock(_lck)
 #endif
+#define _SPINTRYLOCK(_lck)	_spintrylock(_lck)
 
 /*
  * Thread function prototype definitions:
@@ -66,6 +67,7 @@ typedef struct {
 __BEGIN_DECLS
 long	_atomic_lock (volatile long *);
 void	_spinlock (spinlock_t *);
+int	_spintrylock (spinlock_t *);
 void	_spinlock_debug (spinlock_t *, char *, int);
 void	_spinunlock (spinlock_t *);
 __END_DECLS

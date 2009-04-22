@@ -89,6 +89,26 @@ _spinlock(spinlock_t *lck)
 	THR_UMTX_LOCK(curthread, (volatile umtx_t *)&lck->access_lock);
 }
 
+/*
+ * Returns 0 on success, else EBUSY
+ */
+int
+_spintrylock(spinlock_t *lck)
+{
+	struct pthread *curthread;
+
+	if (!__isthreaded)
+		PANIC("Spinlock called when not threaded.");
+	if (!initialized)
+		PANIC("Spinlocks not initialized.");
+	if (lck->fname == NULL)
+		init_spinlock(lck);
+
+	curthread = tls_get_curthread();
+	return(THR_UMTX_TRYLOCK(curthread,
+				(volatile umtx_t *)&lck->access_lock));
+}
+
 void
 _spinlock_debug(spinlock_t *lck, char *fname __unused, int lineno __unused)
 {
