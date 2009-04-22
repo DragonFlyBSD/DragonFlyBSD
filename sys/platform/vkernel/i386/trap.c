@@ -1471,12 +1471,13 @@ go_user(struct intrframe *frame)
 		} else {
 			if (tf->tf_trapno) {
 				user_trap(tf);
-			} else if (mycpu->gd_reqflags & RQF_AST_MASK) {
-				tf->tf_trapno = T_ASTFLT;
-				user_trap(tf);
 			}
-			tf->tf_trapno = 0;
 		}
+		if (mycpu->gd_reqflags & RQF_AST_MASK) {
+			tf->tf_trapno = T_ASTFLT;
+			user_trap(tf);
+		}
+		tf->tf_trapno = 0;
 	}
 }
 

@@ -150,6 +150,9 @@ splz(void)
 
 /*
  * Allows an unprotected signal handler or mailbox to signal an interrupt
+ *
+ * For sched_ithd() to properly preempt via lwkt_schedule() we cannot
+ * enter a critical section here.  We use td_nest_count instead.
  */
 void
 signalintr(int intr)
@@ -157,14 +160,14 @@ signalintr(int intr)
 	struct mdglobaldata *gd = mdcpu;
 	thread_t td = gd->mi.gd_curthread;
 
-	if (td->td_pri >= TDPRI_CRIT) {
+	if (td->td_pri >= TDPRI_CRIT || td->td_nest_count) {
 		atomic_set_int_nonlocked(&gd->gd_fpending, 1 << intr);
 		atomic_set_int_nonlocked(&gd->mi.gd_reqflags, RQF_INTPEND);
 	} else {
-		crit_enter_quick(td);
+		++td->td_nest_count;
 		atomic_clear_int(&gd->gd_fpending, 1 << intr);
 		sched_ithd(intr);
-		crit_exit_quick(td);
+		--td->td_nest_count;
 	}
 }
 

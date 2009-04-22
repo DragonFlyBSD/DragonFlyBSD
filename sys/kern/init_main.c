@@ -171,7 +171,7 @@ mi_proc0init(struct globaldata *gd, struct user *proc0paddr)
 	thread0.td_flags |= TDF_RUNNING;
 	thread0.td_proc = &proc0;
 	thread0.td_lwp = &lwp0;
-	thread0.td_switch = cpu_heavy_switch;   /* YYY eventually LWKT */
+	thread0.td_switch = cpu_lwkt_switch;
 	lwkt_schedule_self(curthread);
 }
 
