@@ -1092,6 +1092,7 @@ netinet/sctputil.c		optional inet sctp
 netinet6/sctp6_usrreq.c		optional inet6 sctp
 net/ip6fw/ip6_fw.c		optional inet6 ipv6firewall
 netinet6/in6_ifattach.c		optional inet6
+netinet6/ip6_demux.c		optional inet6
 netinet6/ip6_input.c		optional inet6
 netinet6/ip6_mroute.c		optional inet6
 netinet6/ip6_output.c		optional inet6
