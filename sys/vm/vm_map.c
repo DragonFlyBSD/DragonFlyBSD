@@ -2993,16 +2993,23 @@ vmspace_fork(struct vmspace *vm1)
 
 int
 vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
-	      vm_prot_t prot, vm_prot_t max, int cow)
+	      boolean_t fitit, vm_prot_t prot, vm_prot_t max, int cow)
 {
-	vm_map_entry_t prev_entry;
-	vm_map_entry_t new_stack_entry;
-	vm_size_t      init_ssize;
-	int            rv;
+	vm_map_entry_t	prev_entry;
+	vm_map_entry_t	new_stack_entry;
+	vm_size_t	init_ssize;
+	int		rv;
 	int		count;
+	vm_offset_t	tmpaddr;
 
-	if (VM_MIN_USER_ADDRESS > 0 && addrbos < VM_MIN_USER_ADDRESS)
+	/*
+	 * XXX cleanup cruft
+	 */
+	if (VM_MIN_USER_ADDRESS > 0 &&
+	    fitit == FALSE &&
+	    addrbos < VM_MIN_USER_ADDRESS) {
 		return (KERN_NO_SPACE);
+	}
 
 	if (max_ssize < sgrowsiz)
 		init_ssize = max_ssize;
@@ -3012,6 +3019,18 @@ vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
 	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 	vm_map_lock(map);
 
+	/*
+	 * Find space for the mapping
+	 */
+	if (fitit) {
+		if (vm_map_findspace(map, addrbos, max_ssize, 1, &tmpaddr)) {
+			vm_map_unlock(map);
+			vm_map_entry_release(count);
+			return (KERN_NO_SPACE);
+		}
+		addrbos = tmpaddr;
+	}
+
 	/* If addr is already mapped, no go */
 	if (vm_map_lookup_entry(map, addrbos, &prev_entry)) {
 		vm_map_unlock(map);
@@ -3019,6 +3038,8 @@ vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
 		return (KERN_NO_SPACE);
 	}
 
+#if 0
+	/* XXX already handled by kern_mmap() */
 	/* If we would blow our VMEM resource limit, no go */
 	if (map->size + init_ssize >
 	    curproc->p_rlimit[RLIMIT_VMEM].rlim_cur) {
@@ -3026,8 +3047,10 @@ vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
 		vm_map_entry_release(count);
 		return (KERN_NO_SPACE);
 	}
+#endif
 
-	/* If we can't accomodate max_ssize in the current mapping,
+	/*
+	 * If we can't accomodate max_ssize in the current mapping,
 	 * no go.  However, we need to be aware that subsequent user
 	 * mappings might map into the space we have reserved for
 	 * stack, and currently this space is not protected.  
@@ -3042,7 +3065,8 @@ vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
 		return (KERN_NO_SPACE);
 	}
 
-	/* We initially map a stack of only init_ssize.  We will
+	/*
+	 * We initially map a stack of only init_ssize.  We will
 	 * grow as needed later.  Since this is to be a grow 
 	 * down stack, we map at the top of the range.
 	 *

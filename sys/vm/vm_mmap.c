@@ -984,6 +984,8 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 {
 	boolean_t fitit;
 	vm_object_t object;
+	vm_offset_t eaddr;
+	vm_size_t   esize;
 	struct vnode *vp;
 	struct thread *td = curthread;
 	struct proc *p;
@@ -999,10 +1001,16 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 
 	/*
 	 * XXX messy code, fixme
+	 *
+	 * NOTE: Overflow checks require discrete statements or GCC4
+	 * will optimize it out.
 	 */
 	if ((p = curproc) != NULL && map == &p->p_vmspace->vm_map) {
-		if (map->size + size > p->p_rlimit[RLIMIT_VMEM].rlim_cur)
+		esize = map->size + size;
+		if (esize < map->size ||
+		    esize > p->p_rlimit[RLIMIT_VMEM].rlim_cur) {
 			return(ENOMEM);
+		}
 	}
 
 	/*
@@ -1012,6 +1020,9 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	 * operations (such as in exec) and non-aligned offsets will
 	 * cause pmap inconsistencies...so we want to be sure to
 	 * disallow this in all cases.
+	 *
+	 * NOTE: Overflow checks require discrete statements or GCC4
+	 * will optimize it out.
 	 */
 	if (foff & PAGE_MASK)
 		return (EINVAL);
@@ -1021,6 +1032,9 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		*addr = round_page(*addr);
 	} else {
 		if (*addr != trunc_page(*addr))
+			return (EINVAL);
+		eaddr = *addr + size;
+		if (eaddr < *addr)
 			return (EINVAL);
 		fitit = FALSE;
 		vm_map_remove(map, *addr, *addr + size);
@@ -1103,7 +1117,8 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	 * page tables will default to storing the page table at offset 0.
 	 */
 	if (flags & MAP_STACK) {
-		rv = vm_map_stack (map, *addr, size, prot, maxprot, docow);
+		rv = vm_map_stack(map, *addr, size, fitit,
+				  prot, maxprot, docow);
 	} else if (flags & MAP_VPAGETABLE) {
 		rv = vm_map_find(map, object, foff, addr, size, fitit,
 				 VM_MAPTYPE_VPAGETABLE, prot, maxprot, docow);
