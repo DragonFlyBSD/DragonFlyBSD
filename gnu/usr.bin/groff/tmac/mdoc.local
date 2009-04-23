@@ -117,6 +117,10 @@
 .ds doc-operating-system-NetBSD-4.0   4.0
 .ds doc-operating-system-NetBSD-5.0   5.0
 .
+.\" Definitions not (yet) in doc-syms
+.ds doc-str-St--p1003.1-2008   \*[doc-Tn-font-size]\%IEEE\*[doc-str-St] Std 1003.1-2008
+.as doc-str-St--p1003.1-2008   " (\*[Lq]\)\*[Px]\*[doc-str-St].1\*[Rq])
+.
 .ec
 .
 .\" Locale support
