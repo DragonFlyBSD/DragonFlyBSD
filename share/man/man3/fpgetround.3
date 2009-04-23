@@ -33,7 +33,7 @@
 .\" $FreeBSD: src/share/man/man3/fpgetround.3,v 1.15 2005/07/15 17:35:25 hrs Exp $
 .\" $DragonFly: src/share/man/man3/fpgetround.3,v 1.4 2008/05/02 02:05:05 swildner Exp $
 .\"
-.Dd April 9, 2009
+.Dd April 23, 2009
 .Dt FPGETROUND 3
 .Os
 .Sh NAME
@@ -44,6 +44,7 @@
 .Nm fpgetmask ,
 .Nm fpsetmask ,
 .Nm fpgetsticky ,
+.Nm fpsetsticky ,
 .Nm fpresetsticky
 .Nd IEEE floating point interface
 .Sh LIBRARY
@@ -90,6 +91,8 @@ typedef enum {
 .Fn fpsetmask "fp_except_t mask"
 .Ft fp_except_t
 .Fn fpgetsticky void
+.Ft fp_except
+.Fn fpsetsticky "fp_except sticky"
 .Ft fp_except_t
 .Fn fpresetsticky "fp_except_t sticky"
 .Sh DESCRIPTION
@@ -143,6 +146,11 @@ The
 .Fn fpgetsticky
 function
 returns the current floating point sticky flags.
+.Pp
+The
+.Fn fpsetsticky
+sets the floating point sticky flags and returns
+the previous flags.
 .Pp
 The
 .Fn fpresetsticky

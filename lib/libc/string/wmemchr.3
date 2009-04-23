@@ -36,7 +36,7 @@
 .\" $FreeBSD: src/lib/libc/string/wmemchr.3,v 1.8 2007/01/09 00:28:12 imp Exp $
 .\" $DragonFly: src/lib/libc/string/wmemchr.3,v 1.2 2003/06/17 04:26:47 dillon Exp $
 .\"
-.Dd August 13, 2005
+.Dd April 23, 2009
 .Dt WMEMCHR 3
 .Os
 .Sh NAME
@@ -57,6 +57,7 @@
 .Nm wcsncat ,
 .Nm wcsncmp ,
 .Nm wcsncpy ,
+.Nm wcsnlen ,
 .Nm wcspbrk ,
 .Nm wcsrchr ,
 .Nm wcsspn ,
@@ -100,6 +101,8 @@
 .Fn wcsncmp "const wchar_t *s1" "const wchar_t * s2" "size_t n"
 .Ft wchar_t *
 .Fn wcsncpy "wchar_t * restrict s1" "const wchar_t * restrict s2" "size_t n"
+.Ft size_t
+.Fn wcsnlen "const wchar_t *s" "size_t maxlen"
 .Ft wchar_t *
 .Fn wcspbrk "const wchar_t *s1" "const wchar_t *s2"
 .Ft wchar_t *
@@ -120,6 +123,8 @@ counterpart, such as
 .Xr memcpy 3 ,
 .Xr memmove 3 ,
 .Xr memset 3 ,
+.Xr stpcpy 3 ,
+.Xr strcasecmp 3 ,
 .Xr strcat 3 ,
 .Xr strchr 3 ,
 .Xr strcmp 3 ,
@@ -132,6 +137,7 @@ counterpart, such as
 .Xr strncat 3 ,
 .Xr strncmp 3 ,
 .Xr strncpy 3 ,
+.Xr strnlen 3 ,
 .Xr strpbrk 3 ,
 .Xr strrchr 3 ,
 .Xr strspn 3 ,
@@ -141,7 +147,12 @@ These functions conform to
 .St -isoC-99 ,
 with the exception of
 .Fn wcsdup ,
-.Fn wcslcat ,
+and
+.Fn wcsnlen ,
+which conform to
+.St -p1003.1-2008 ;
+and
+.Fn wcslcat
 and
 .Fn wcslcpy ,
 which are extensions.
