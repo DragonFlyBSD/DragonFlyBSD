@@ -686,6 +686,8 @@ void	_thread_bp_death(void);
 int	_thr_getscheduler(lwpid_t, int *, struct sched_param *);
 int	_thr_setscheduler(lwpid_t, int, const struct sched_param *);
 int	_thr_set_sched_other_prio(struct pthread *, int);
+int 	_umtx_sleep_err(volatile const int *, int, int);
+int 	_umtx_wakeup_err(volatile const int *, int);
 
 /* #include <sys/aio.h> */
 #ifdef _SYS_AIO_H_
