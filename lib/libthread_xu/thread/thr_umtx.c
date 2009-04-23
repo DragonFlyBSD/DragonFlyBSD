@@ -41,16 +41,16 @@
 int
 __thr_umtx_lock(volatile umtx_t *mtx, int timo)
 {
-	int v, ret = 0;
+	int v, errval, ret = 0;
 
 	/* contested */
 	do {
 		v = *mtx;
 		if (v == 2 || atomic_cmpset_acq_int(mtx, 1, 2)) {
 			if (timo == 0)
-				umtx_sleep(mtx, 2, timo);
-			else if (umtx_sleep(mtx, 2, timo) < 0) {
-				if (errno == EAGAIN) {
+				_umtx_sleep_err(mtx, 2, timo);
+			else if ( (errval = _umtx_sleep_err(mtx, 2, timo)) != 0) {
+				if (errval == EAGAIN) {
 					if (atomic_cmpset_acq_int(mtx, 0, 2))
 						ret = 0;
 					else
@@ -74,7 +74,7 @@ __thr_umtx_unlock(volatile umtx_t *mtx)
 		if (atomic_cmpset_acq_int(mtx, v, v-1)) {
 			if (v != 1) {
 				*mtx = 0;
-				umtx_wakeup(mtx, 1);
+				_umtx_wakeup_err(mtx, 1);
 			}
 			break;
 		}
@@ -122,20 +122,20 @@ _thr_umtx_wait(volatile umtx_t *mtx, int exp, const struct timespec *timeout,
 	       int clockid)
 {
     struct timespec ts, ts2, ts3;
-    int timo, ret = 0;
+    int timo, errval, ret = 0;
 
     if (*mtx != exp)
 	return (0);
 
     if (timeout == NULL) {
-	while (umtx_sleep(mtx, exp, 10000000) < 0) {
-	    if (errno == EBUSY) 
+	while ( (errval = _umtx_sleep_err(mtx, exp, 10000000)) < 0) {
+	    if (errval == EBUSY)
 		break;
-	    if (errno == EINTR) {
+	    if (errval == EINTR) {
 		ret = EINTR;
 		break;
 	    }
-	    if (errno == ETIMEDOUT || errno == EWOULDBLOCK) {
+	    if (errval == ETIMEDOUT || errval == EWOULDBLOCK) {
 		if (*mtx != exp) {
 		    fprintf(stderr, "thr_umtx_wait: FAULT VALUE CHANGE %d -> %d oncond %p\n", exp, *mtx, mtx);
 		}
@@ -162,11 +162,11 @@ _thr_umtx_wait(volatile umtx_t *mtx, int exp, const struct timespec *timeout,
 	} else {
 	    timo = 1000000;
 	}
-	if (umtx_sleep(mtx, exp, timo) < 0) {
-	    if (errno == EBUSY) {
+	if ( (errval = _umtx_sleep_err(mtx, exp, timo)) < 0) {
+	    if (errval == EBUSY) {
 		ret = 0;
 		break;
-	    } else if (errno == EINTR) {
+	    } else if (errval == EINTR) {
 		ret = EINTR;
 		break;
 	    }
@@ -183,5 +183,5 @@ _thr_umtx_wait(volatile umtx_t *mtx, int exp, const struct timespec *timeout,
 
 void _thr_umtx_wake(volatile umtx_t *mtx, int count)
 {
-    umtx_wakeup(mtx, count);
+    _umtx_wakeup_err(mtx, count);
 }
