@@ -49,7 +49,7 @@ __thr_umtx_lock(volatile umtx_t *mtx, int timo)
 		if (v == 2 || atomic_cmpset_acq_int(mtx, 1, 2)) {
 			if (timo == 0)
 				_umtx_sleep_err(mtx, 2, timo);
-			else if ( (errval = _umtx_sleep_err(mtx, 2, timo)) != 0) {
+			else if ( (errval = _umtx_sleep_err(mtx, 2, timo)) > 0) {
 				if (errval == EAGAIN) {
 					if (atomic_cmpset_acq_int(mtx, 0, 2))
 						ret = 0;
@@ -128,7 +128,7 @@ _thr_umtx_wait(volatile umtx_t *mtx, int exp, const struct timespec *timeout,
 	return (0);
 
     if (timeout == NULL) {
-	while ( (errval = _umtx_sleep_err(mtx, exp, 10000000)) < 0) {
+	while ( (errval = _umtx_sleep_err(mtx, exp, 10000000)) > 0) {
 	    if (errval == EBUSY)
 		break;
 	    if (errval == EINTR) {
@@ -162,7 +162,7 @@ _thr_umtx_wait(volatile umtx_t *mtx, int exp, const struct timespec *timeout,
 	} else {
 	    timo = 1000000;
 	}
-	if ( (errval = _umtx_sleep_err(mtx, exp, timo)) < 0) {
+	if ( (errval = _umtx_sleep_err(mtx, exp, timo)) > 0) {
 	    if (errval == EBUSY) {
 		ret = 0;
 		break;
