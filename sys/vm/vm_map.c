@@ -3035,7 +3035,7 @@ vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
 	/*
 	 * Find space for the mapping
 	 */
-	if ((flags & MAP_FIXED) == 0) {
+	if ((flags & (MAP_FIXED | MAP_TRYFIXED)) == 0) {
 		if (vm_map_findspace(map, addrbos, max_ssize, 1,
 				     flags, &tmpaddr)) {
 			vm_map_unlock(map);
