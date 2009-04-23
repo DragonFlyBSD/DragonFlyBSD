@@ -258,9 +258,10 @@ init_main_thread(struct pthread *thread)
 	 * red zone to protect the thread stack that is just beyond.
 	 */
 	if (mmap(_usrstack - _thr_stack_initial -
-	    _thr_guard_default, _thr_guard_default, 0, MAP_ANON,
-	    -1, 0) == MAP_FAILED)
+		_thr_guard_default, _thr_guard_default,
+		0, MAP_ANON | MAP_FIXED, -1, 0) == MAP_FAILED) {
 		PANIC("Cannot allocate red zone for initial thread");
+	}
 
 	/*
 	 * Mark the stack as an application supplied stack so that it
