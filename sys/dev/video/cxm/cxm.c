@@ -668,6 +668,15 @@ cxm_download_firmware(struct cxm_softc *sc)
 	unsigned int i;
 	const uint32_t *fw;
 
+	/* Check if firmware is compiled in */
+	if (strncmp((const char *)cxm_enc_fw, "NOFW", 4) == 0) {
+		device_printf(sc->dev, "encoder firmware not compiled in\n");
+		return -1;
+	} else if (strncmp((const char *)cxm_dec_fw, "NOFW", 4) == 0) {
+		device_printf(sc->dev, "decoder firmware not compiled in\n");
+		return -1;
+	}
+
 	/* Download the encoder firmware */
 	fw = (const uint32_t *)cxm_enc_fw;
 	for (i = 0; i < CXM_FW_SIZE; i += sizeof(*fw))
