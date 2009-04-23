@@ -1128,7 +1128,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
     crit_enter();
     vm_map_lock(&kernel_map);
-    if (vm_map_findspace(&kernel_map, addr, size, align, &addr)) {
+    if (vm_map_findspace(&kernel_map, addr, size, align, 0, &addr)) {
 	vm_map_unlock(&kernel_map);
 	if ((flags & M_NULLOK) == 0)
 	    panic("kmem_slab_alloc(): kernel_map ran out of space!");

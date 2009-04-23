@@ -117,7 +117,9 @@ parameter is ignored.
 .It Dv MAP_FIXED
 Do not permit the system to select a different address than the one
 specified.
-If the specified address cannot be used,
+If the specified address contains other mappings those mappings will
+be replaced.
+If the specified address cannot otherwise be used,
 .Fn mmap
 will fail.
 If
@@ -125,7 +127,13 @@ If
 is specified,
 .Fa addr
 must be a multiple of the pagesize.
-Use of this option is discouraged.
+.It Dv MAP_TRYFIXED
+Try to do a fixed mapping but fail if another mapping already exists in
+the space instead of overwriting the mapping.
+.Pp
+When used with MAP_STACK this flag allows one MAP_STACK mapping to be
+made within another (typically the master user stack), as long as
+no pages have been faulted in the area requested.
 .It Dv MAP_HASSEMAPHORE
 Notify the kernel that the region may contain semaphores and that special
 handling may be necessary.
@@ -198,28 +206,15 @@ Modifications are private.
 .It Dv MAP_SHARED
 Modifications are shared.
 .It Dv MAP_STACK
-This option is only available if your system has been compiled with
-.Dv VM_STACK
-defined when compiling the kernel.
-This is the default for
-i386 only.
-Consider adding
-.Li -DVM_STACK
-to
-.Va COPTFLAGS
-in your
-.Pa /etc/make.conf
-to enable this option for other architectures.
-.Dv MAP_STACK
-implies
-.Dv MAP_ANON ,
-and
-.Fa offset
-of 0.
+Map the area as a stack.
+.Dv MAP_ANON
+is implied.
+.Fa Offset
+should be 0,
 .Fa fd
-must be -1 and
+must be -1, and
 .Fa prot
-must include at least
+should include at least
 .Dv PROT_READ
 and
 .Dv PROT_WRITE .
@@ -229,8 +224,29 @@ a memory region that grows to at most
 bytes in size, starting from the stack top and growing down.  The
 stack top is the starting address returned by the call, plus
 .Fa len
-bytes.  The bottom of the stack at maximum growth is the starting
+bytes.
+The bottom of the stack at maximum growth is the starting
 address returned by the call.
+.Pp
+The entire area is reserved from the point of view of other
+mmap() calls, even if not faulted in yet.
+.Pp
+WARNING.  We currently allow
+.Dv MAP_STACK
+mappings to provide a hint that points within an existing
+.Dv MAP_STACK
+mapping's space, and this will succeed as long as no page have been
+faulted in the area specified, but this behavior is no longer supported
+unless you also specify the
+.Dv MAP_TRYFIXED
+flag.
+.Pp
+Note that unless
+.Dv MAP_FIXED
+or
+.Dv MAP_TRYFIXED
+is used, you cannot count on the returned address matching the hint
+you have provided.
 .It Dv MAP_VPAGETABLE
 Memory accessed via this map is not linearly mapped and will be governed
 by a virtual page table.  The base address of the virtual page table may

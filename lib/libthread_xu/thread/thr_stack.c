@@ -220,7 +220,8 @@ _thr_stack_alloc(struct pthread_attr *attr)
 		 * anonymous mmap of the guard area.
 		 */
 		stackaddr = mmap(stackaddr, stacksize + guardsize,
-				 PROT_READ | PROT_WRITE, MAP_STACK, -1, 0);
+				 PROT_READ | PROT_WRITE,
+				 MAP_STACK | MAP_TRYFIXED, -1, 0);
 		if (stackaddr != MAP_FAILED && guardsize) {
 			if (mmap(stackaddr, guardsize, 0,
 				 MAP_ANON | MAP_FIXED, -1, 0) == MAP_FAILED) {

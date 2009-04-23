@@ -845,6 +845,8 @@ vm_map_insert(vm_map_t map, int *countp,
 		protoeflags |= MAP_ENTRY_NOSYNC;
 	if (cow & MAP_DISABLE_COREDUMP)
 		protoeflags |= MAP_ENTRY_NOCOREDUMP;
+	if (cow & MAP_IS_STACK)
+		protoeflags |= MAP_ENTRY_STACK;
 
 	if (object) {
 		/*
@@ -972,12 +974,8 @@ vm_map_insert(vm_map_t map, int *countp,
  * 'align' should be a power of 2 but is not required to be.
  */
 int
-vm_map_findspace(
-	vm_map_t map,
-	vm_offset_t start,
-	vm_size_t length,
-	vm_offset_t align,
-	vm_offset_t *addr)
+vm_map_findspace(vm_map_t map, vm_offset_t start, vm_size_t length,
+		 vm_offset_t align, int flags, vm_offset_t *addr)
 {
 	vm_map_entry_t entry, next;
 	vm_offset_t end;
@@ -1040,8 +1038,30 @@ retry:
 		if (end > map->max_offset || end < start)
 			return (1);
 		next = entry->next;
-		if (next == &map->header || next->start >= end)
+
+		/*
+		 * If the next entry's start address is beyond the desired
+		 * end address we may have found a good entry.
+		 *
+		 * If the next entry is a stack mapping we do not map into
+		 * the stack's reserved space.
+		 *
+		 * XXX continue to allow mapping into the stack's reserved
+		 * space if doing a MAP_STACK mapping inside a MAP_STACK
+		 * mapping, for backwards compatibility.  But the caller
+		 * really should use MAP_STACK | MAP_TRYFIXED if they
+		 * want to do that.
+		 */
+		if (next == &map->header)
 			break;
+		if (next->start >= end) {
+			if ((next->eflags & MAP_ENTRY_STACK) == 0)
+				break;
+			if (flags & MAP_STACK)
+				break;
+			if (next->start - next->aux.avail_ssize >= end)
+				break;
+		}
 	}
 	map->hint = entry;
 	if (map == &kernel_map) {
@@ -1067,7 +1087,7 @@ retry:
 int
 vm_map_find(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
 	    vm_offset_t *addr,	vm_size_t length,
-	    boolean_t find_space,
+	    boolean_t fitit,
 	    vm_maptype_t maptype,
 	    vm_prot_t prot, vm_prot_t max,
 	    int cow)
@@ -1080,8 +1100,8 @@ vm_map_find(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
 
 	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 	vm_map_lock(map);
-	if (find_space) {
-		if (vm_map_findspace(map, start, length, 1, addr)) {
+	if (fitit) {
+		if (vm_map_findspace(map, start, length, 1, 0, addr)) {
 			vm_map_unlock(map);
 			vm_map_entry_release(count);
 			return (KERN_NO_SPACE);
@@ -2993,7 +3013,7 @@ vmspace_fork(struct vmspace *vm1)
 
 int
 vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
-	      boolean_t fitit, vm_prot_t prot, vm_prot_t max, int cow)
+	      int flags, vm_prot_t prot, vm_prot_t max, int cow)
 {
 	vm_map_entry_t	prev_entry;
 	vm_map_entry_t	new_stack_entry;
@@ -3002,14 +3022,7 @@ vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
 	int		count;
 	vm_offset_t	tmpaddr;
 
-	/*
-	 * XXX cleanup cruft
-	 */
-	if (VM_MIN_USER_ADDRESS > 0 &&
-	    fitit == FALSE &&
-	    addrbos < VM_MIN_USER_ADDRESS) {
-		return (KERN_NO_SPACE);
-	}
+	cow |= MAP_IS_STACK;
 
 	if (max_ssize < sgrowsiz)
 		init_ssize = max_ssize;
@@ -3022,8 +3035,9 @@ vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
 	/*
 	 * Find space for the mapping
 	 */
-	if (fitit) {
-		if (vm_map_findspace(map, addrbos, max_ssize, 1, &tmpaddr)) {
+	if ((flags & MAP_FIXED) == 0) {
+		if (vm_map_findspace(map, addrbos, max_ssize, 1,
+				     flags, &tmpaddr)) {
 			vm_map_unlock(map);
 			vm_map_entry_release(count);
 			return (KERN_NO_SPACE);
@@ -3138,7 +3152,8 @@ Retry:
 	else
 		end = prev_entry->end;
 
-	/* This next test mimics the old grow function in vm_machdep.c.
+	/*
+	 * This next test mimics the old grow function in vm_machdep.c.
 	 * It really doesn't quite make sense, but we do it anyway
 	 * for compatibility.
 	 *
@@ -3158,7 +3173,8 @@ Retry:
 		goto done;
 	}
 
-	/* If there is no longer enough space between the entries
+	/*
+	 * If there is no longer enough space between the entries
 	 * nogo, and adjust the available space.  Note: this 
 	 * should only happen if the user has mapped into the
 	 * stack area after the stack was created, and is

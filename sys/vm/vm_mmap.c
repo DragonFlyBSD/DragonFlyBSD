@@ -214,7 +214,7 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 	 * Check for illegal addresses.  Watch out for address wrap... Note
 	 * that VM_*_ADDRESS are not constants due to casts (argh).
 	 */
-	if (flags & MAP_FIXED) {
+	if (flags & (MAP_FIXED | MAP_TRYFIXED)) {
 		/*
 		 * The specified address must have the same remainder
 		 * as the file offset taken modulo PAGE_SIZE, so it
@@ -230,14 +230,11 @@ kern_mmap(struct vmspace *vms, caddr_t uaddr, size_t ulen,
 			return (EINVAL);
 		if (addr + size < addr)
 			return (EINVAL);
-	} else if ((flags & MAP_TRYFIXED) == 0) {
+	} else {
 		/*
-		 * XXX for non-fixed mappings where no hint is provided or
-		 * the hint would fall in the potential heap space,
-		 * place it after the end of the largest possible heap.
-		 *
-		 * There should really be a pmap call to determine a reasonable
-		 * location.
+		 * Set a reasonable start point for the hint if it was
+		 * not specified or if it falls within the heap space.
+		 * Hinted mmap()s do not allocate out of the heap space.
 		 */
 		if (addr == 0 ||
 		    (addr >= round_page((vm_offset_t)vms->vm_taddr) &&
@@ -978,9 +975,7 @@ sys_munlock(struct munlock_args *uap)
  */
 int
 vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
-	vm_prot_t maxprot, int flags,
-	void *handle,
-	vm_ooffset_t foff)
+	vm_prot_t maxprot, int flags, void *handle, vm_ooffset_t foff)
 {
 	boolean_t fitit;
 	vm_object_t object;
@@ -1027,7 +1022,7 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 	if (foff & PAGE_MASK)
 		return (EINVAL);
 
-	if ((flags & MAP_FIXED) == 0) {
+	if ((flags & (MAP_FIXED | MAP_TRYFIXED)) == 0) {
 		fitit = TRUE;
 		*addr = round_page(*addr);
 	} else {
@@ -1037,7 +1032,8 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		if (eaddr < *addr)
 			return (EINVAL);
 		fitit = FALSE;
-		vm_map_remove(map, *addr, *addr + size);
+		if ((flags & MAP_TRYFIXED) == 0)
+			vm_map_remove(map, *addr, *addr + size);
 	}
 
 	/*
@@ -1108,16 +1104,22 @@ vm_mmap(vm_map_t map, vm_offset_t *addr, vm_size_t size, vm_prot_t prot,
 		maxprot |= VM_PROT_EXECUTE;
 #endif
 
+	/*
+	 * This may place the area in its own page directory if (size) is
+	 * large enough, otherwise it typically returns its argument.
+	 */
 	if (fitit) {
 		*addr = pmap_addr_hint(object, *addr, size);
 	}
 
 	/*
-	 * Stack mappings need special attention.  Mappings that use virtual
-	 * page tables will default to storing the page table at offset 0.
+	 * Stack mappings need special attention.
+	 *
+	 * Mappings that use virtual page tables will default to storing
+	 * the page table at offset 0.
 	 */
 	if (flags & MAP_STACK) {
-		rv = vm_map_stack(map, *addr, size, fitit,
+		rv = vm_map_stack(map, *addr, size, flags,
 				  prot, maxprot, docow);
 	} else if (flags & MAP_VPAGETABLE) {
 		rv = vm_map_find(map, object, foff, addr, size, fitit,

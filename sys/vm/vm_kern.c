@@ -169,7 +169,7 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 	 * offset within the kernel map.
 	 */
 	vm_map_lock(map);
-	if (vm_map_findspace(map, vm_map_min(map), size, 1, &addr)) {
+	if (vm_map_findspace(map, vm_map_min(map), size, 1, 0, &addr)) {
 		vm_map_unlock(map);
 		if (kmflags & KM_KRESERVE)
 			vm_map_entry_krelease(count);
@@ -307,8 +307,10 @@ kmem_alloc_wait(vm_map_t map, vm_size_t size)
 		 * to lock out sleepers/wakers.
 		 */
 		vm_map_lock(map);
-		if (vm_map_findspace(map, vm_map_min(map), size, 1, &addr) == 0)
+		if (vm_map_findspace(map, vm_map_min(map), size,
+				     1, 0, &addr) == 0) {
 			break;
+		}
 		/* no space now; see if we can ever get space */
 		if (vm_map_max(map) - vm_map_min(map) < size) {
 			vm_map_entry_release(count);
