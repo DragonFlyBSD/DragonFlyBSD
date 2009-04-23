@@ -54,6 +54,7 @@ MLINKS+=strerror.3 perror.3 \
 	strerror.3 sys_errlist.3 \
 	strerror.3 sys_nerr.3
 MLINKS+=strlcpy.3 strlcat.3
+MLINKS+=strlen.3 strnlen.3
 MLINKS+=strstr.3 strcasestr.3 \
 	strstr.3 strnstr.3
 MLINKS+=strtok.3 strtok_r.3
@@ -69,6 +70,7 @@ MLINKS+=wmemchr.3 wcscat.3 \
 	wmemchr.3 wcsncat.3 \
 	wmemchr.3 wcsncmp.3 \
 	wmemchr.3 wcsncpy.3 \
+	wmemchr.3 wcsnlen.3 \
 	wmemchr.3 wcspbrk.3 \
 	wmemchr.3 wcsrchr.3 \
 	wmemchr.3 wcsspn.3 \
