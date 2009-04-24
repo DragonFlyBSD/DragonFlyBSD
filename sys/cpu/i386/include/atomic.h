@@ -302,14 +302,14 @@ atomic_intr_cond_try(__atomic_intr_t *p)
 {
 	int ret;
 
-	__asm __volatile(MPLOCKED "incl %0; " \
-			 "1: ;" \
-			 "subl %%eax,%%eax; " \
-			 MPLOCKED "btsl $31,%0; jnc 2f; " \
-			 MPLOCKED "decl %0; " \
-			 "movl $1,%%eax;" \
-			 "2: ;" \
-			 : "+m" (*p), "=a"(ret) \
+	__asm __volatile(MPLOCKED "incl %0; "			\
+			 "1: ;"					\
+			 "subl %%eax,%%eax; "			\
+			 MPLOCKED "btsl $31,%0; jnc 2f; "	\
+			 MPLOCKED "decl %0; "			\
+			 "movl $1,%%eax;"			\
+			 "2: ;"
+			 : "+m" (*p), "=a"(ret)
 #ifdef __clang__
                          : : "ax", "cx", "dx");
 #else
