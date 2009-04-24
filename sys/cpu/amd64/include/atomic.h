@@ -303,7 +303,11 @@ atomic_intr_cond_try(atomic_intr_t *p)
 			 "movl $1,%%eax;" \
 			 "2: ;" \
 			 : "+m" (*p), "=a"(ret) \
+#ifdef __clang__
+                         : : "ax", "cx", "dx");
+#else
 			 : : "cx", "dx");
+#endif
 	return (ret);
 }
 
