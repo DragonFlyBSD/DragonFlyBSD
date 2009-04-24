@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2002, 2003 David Schultz <dschultz@uclink.Berkeley.EDU>
+ * Copyright (c) 2002, 2003 David Schultz <das@FreeBSD.ORG>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/libc/amd64/_fpmath.h,v 1.4 2004/01/18 07:57:01 das Exp $
+ * $FreeBSD: src/lib/libc/amd64/_fpmath.h,v 1.7 2008/01/17 16:39:06 bde Exp $
  * $DragonFly: src/lib/libc/amd64/_fpmath.h,v 1.1 2004/02/02 05:43:14 dillon Exp $
  */
 
@@ -37,9 +37,15 @@ union IEEEl2bits {
 		unsigned int	junkl	:16;
 		unsigned int	junkh	:32;
 	} bits;
+	struct {
+		unsigned long	man	:64;
+		unsigned int	expsign	:16;
+		unsigned long	junk	:48;
+	} xbits;
 };
 
-#define	mask_nbit_l(u)	((u).bits.manh &= 0x7fffffff)
+#define	LDBL_NBIT	0x80000000
+#define	mask_nbit_l(u)	((u).bits.manh &= ~LDBL_NBIT)
 
 #define	LDBL_MANH_SIZE	32
 #define	LDBL_MANL_SIZE	32
@@ -47,4 +53,4 @@ union IEEEl2bits {
 #define	LDBL_TO_ARRAY32(u, a) do {			\
 	(a)[0] = (uint32_t)(u).bits.manl;		\
 	(a)[1] = (uint32_t)(u).bits.manh;		\
-} while(0)
+} while (0)
