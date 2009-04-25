@@ -156,8 +156,7 @@ main(int argc, char *argv[])
 
 			memset(&sdl, 0, sizeof(sdl));
 			sdl.sdl_len = sizeof(sdl);
-			if (ascii2addr(AF_LINK, eaddr_str, &sdl) < 0)
-				errx(1, "-e: invalid ethernet address");
+			link_addr(eaddr_str, &sdl);
 			bcopy(LLADDR(&sdl), sa->sa_data, ETHER_ADDR_LEN);
 			arg_mask |= EADDR_MASK;
 			break;
