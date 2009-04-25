@@ -259,7 +259,7 @@ init_main_thread(struct pthread *thread)
 	 */
 	if (mmap(_usrstack - _thr_stack_initial -
 		_thr_guard_default, _thr_guard_default,
-		0, MAP_ANON | MAP_FIXED, -1, 0) == MAP_FAILED) {
+		0, MAP_ANON | MAP_TRYFIXED, -1, 0) == MAP_FAILED) {
 		PANIC("Cannot allocate red zone for initial thread");
 	}
 
