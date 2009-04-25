@@ -4,7 +4,7 @@
 PROG=	cpdup
 SRCS=	cpdup.c hcproto.c hclink.c misc.c fsmid.c
 
-.if !defined(NOPTHREADS)
+.if !defined(NOPTHREADS) && !defined(BOOTSTRAPPING)
 CFLAGS += -DUSE_PTHREADS=1 -pthread
 .endif
 
