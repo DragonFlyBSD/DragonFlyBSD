@@ -69,6 +69,31 @@ struct HCDesc HCDispatchTable[] = {
     { HC_UTIMES,	rc_utimes },
 };
 
+static int chown_warning;
+static int chflags_warning;
+
+/*
+ * If not running as root generate a silent warning and return no error.
+ *
+ * If running as root return an error.
+ */
+static int
+silentwarning(int *didwarn, const char *ctl, ...)
+{
+    va_list va;
+
+    if (RunningAsRoot)
+	return(-1);
+    if (*didwarn == 0) {
+	*didwarn = 1;
+	fprintf(stderr, "WARNING: Not running as root, ");
+	va_start(va, ctl);
+	vfprintf(stderr, ctl, va);
+	va_end(va);
+    }
+    return(0);
+}
+
 int
 hc_connect(struct HostConf *hc)
 {
@@ -988,15 +1013,22 @@ rc_rmdir(hctransaction_t trans __unused, struct HCHead *head)
 
 /*
  * CHOWN
+ *
+ * Almost silently ignore chowns that fail if we are not root.
  */
 int
 hc_chown(struct HostConf *hc, const char *path, uid_t owner, gid_t group)
 {
     hctransaction_t trans;
     struct HCHead *head;
+    int rc;
 
-    if (hc == NULL || hc->host == NULL)
-	return(chown(path, owner, group));
+    if (hc == NULL || hc->host == NULL) {
+	rc = chown(path, owner, group);
+	if (rc < 0)
+	    rc = silentwarning(&chown_warning, "file ownership may differ\n");
+	return(rc);
+    }
 
     trans = hcc_start_command(hc, HC_CHOWN);
     hcc_leaf_string(trans, LC_PATH1, path);
@@ -1016,6 +1048,7 @@ rc_chown(hctransaction_t trans __unused, struct HCHead *head)
     const char *path = NULL;
     uid_t uid = (uid_t)-1;
     gid_t gid = (gid_t)-1;
+    int rc;
 
     for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
 	switch(item->leafid) {
@@ -1032,7 +1065,10 @@ rc_chown(hctransaction_t trans __unused, struct HCHead *head)
     }
     if (path == NULL)
 	return(-1);
-    return(chown(path, uid, gid));
+    rc = chown(path, uid, gid);
+    if (rc < 0)
+	rc = silentwarning(&chown_warning, "file ownership may differ\n");
+    return(rc);
 }
 
 /*
@@ -1043,9 +1079,14 @@ hc_lchown(struct HostConf *hc, const char *path, uid_t owner, gid_t group)
 {
     hctransaction_t trans;
     struct HCHead *head;
+    int rc;
 
-    if (hc == NULL || hc->host == NULL)
-	return(lchown(path, owner, group));
+    if (hc == NULL || hc->host == NULL) {
+	rc = lchown(path, owner, group);
+	if (rc < 0)
+	    rc = silentwarning(&chown_warning, "file ownership may differ\n");
+	return(rc);
+    }
 
     trans = hcc_start_command(hc, HC_LCHOWN);
     hcc_leaf_string(trans, LC_PATH1, path);
@@ -1065,6 +1106,7 @@ rc_lchown(hctransaction_t trans __unused, struct HCHead *head)
     const char *path = NULL;
     uid_t uid = (uid_t)-1;
     gid_t gid = (gid_t)-1;
+    int rc;
 
     for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
 	switch(item->leafid) {
@@ -1081,7 +1123,10 @@ rc_lchown(hctransaction_t trans __unused, struct HCHead *head)
     }
     if (path == NULL)
 	return(-1);
-    return(lchown(path, uid, gid));
+    rc = lchown(path, uid, gid);
+    if (rc < 0)
+	rc = silentwarning(&chown_warning, "file ownership may differ\n");
+    return(rc);
 }
 
 /*
@@ -1230,9 +1275,20 @@ hc_chflags(struct HostConf *hc, const char *path, u_long flags)
 {
     hctransaction_t trans;
     struct HCHead *head;
+    int rc;
 
-    if (hc == NULL || hc->host == NULL)
-	return(chflags(path, flags));
+    if (hc == NULL || hc->host == NULL) {
+	rc = chflags(path, flags);
+	if (rc < 0) {
+	    if (RunningAsUser) {
+		flags &= UF_SETTABLE;
+		rc = chflags(path, flags);
+	    }
+	    if (rc < 0)
+		rc = silentwarning(&chflags_warning, "file flags may differ\n");
+	}
+	return (rc);
+    }
 
     trans = hcc_start_command(hc, HC_CHFLAGS);
     hcc_leaf_string(trans, LC_PATH1, path);
@@ -1250,6 +1306,7 @@ rc_chflags(hctransaction_t trans __unused, struct HCHead *head)
     struct HCLeaf *item;
     const char *path = NULL;
     u_long flags = 0;
+    int rc;
 
     for (item = hcc_firstitem(head); item; item = hcc_nextitem(head, item)) {
 	switch(item->leafid) {
@@ -1263,7 +1320,16 @@ rc_chflags(hctransaction_t trans __unused, struct HCHead *head)
     }
     if (path == NULL)
 	return(-2);
-    return(chflags(path, flags));
+    rc = chflags(path, flags);
+    if (rc < 0) {
+	if (RunningAsUser) {
+	    flags &= UF_SETTABLE;
+	    rc = chflags(path, flags);
+	}
+	if (rc < 0)
+	    rc = silentwarning(&chflags_warning, "file flags may differ\n");
+    }
+    return(rc);
 }
 
 #endif
