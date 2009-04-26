@@ -1338,7 +1338,7 @@ vga_save_font(video_adapter_t *adp, int page, int fontsize, u_char *data,
 {
 #ifndef VGA_NO_FONT_LOADING
     u_char buf[PARAM_BUFSIZE];
-    u_int32_t segment;
+    vm_offset_t segment;
     int c;
 #ifdef VGA_ALT_SEQACCESS
     u_char val = 0;
@@ -1411,7 +1411,7 @@ vga_load_font(video_adapter_t *adp, int page, int fontsize, u_char *data,
 {
 #ifndef VGA_NO_FONT_LOADING
     u_char buf[PARAM_BUFSIZE];
-    u_int32_t segment;
+    vm_offset_t segment;
     int c;
 #ifdef VGA_ALT_SEQACCESS
     u_char val = 0;
