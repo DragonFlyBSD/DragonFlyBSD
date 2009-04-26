@@ -713,17 +713,20 @@ static void
 stpoll_handler(struct netmsg *msg)
 {
 	struct stpoll_ctx *st_ctx = &stpoll_context;
+	struct thread *td = curthread;
 	int i, poll_hz;
 
-	KKASSERT(&curthread->td_msgport == ifnet_portfn(0));
+	KKASSERT(&td->td_msgport == ifnet_portfn(0));
+
+	crit_enter_quick(td);
 
 	/* Reply ASAP */
-	crit_enter();
 	lwkt_replymsg(&msg->nm_lmsg, 0);
-	crit_exit();
 
-	if (st_ctx->poll_handlers == 0)
+	if (st_ctx->poll_handlers == 0) {
+		crit_exit_quick(td);
 		return;
+	}
 
 #ifdef IFPOLL_MULTI_SYSTIMER
 	poll_hz = st_ctx->pollhz;
@@ -739,14 +742,13 @@ stpoll_handler(struct netmsg *msg)
 			continue;
 
 		if ((ifp->if_flags & (IFF_RUNNING | IFF_NPOLLING)) ==
-		    (IFF_RUNNING | IFF_NPOLLING)) {
-			crit_enter();
+		    (IFF_RUNNING | IFF_NPOLLING))
 			rec->status_func(ifp, poll_hz);
-			crit_exit();
-		}
 
 		lwkt_serialize_exit(rec->serializer);
 	}
+
+	crit_exit_quick(td);
 }
 
 /*
@@ -1042,18 +1044,21 @@ static void
 iopoll_handler(struct netmsg *msg)
 {
 	struct iopoll_ctx *io_ctx;
+	struct thread *td = curthread;
 	int i, cycles;
 
 	io_ctx = msg->nm_lmsg.u.ms_resultp;
-	KKASSERT(&curthread->td_msgport == ifnet_portfn(io_ctx->poll_cpuid));
+	KKASSERT(&td->td_msgport == ifnet_portfn(io_ctx->poll_cpuid));
+
+	crit_enter_quick(td);
 
 	/* Reply ASAP */
-	crit_enter();
 	lwkt_replymsg(&msg->nm_lmsg, 0);
-	crit_exit();
 
-	if (io_ctx->poll_handlers == 0)
+	if (io_ctx->poll_handlers == 0) {
+		crit_exit_quick(td);
 		return;
+	}
 
 	io_ctx->phase = 3;
 	if (io_ctx->residual_burst == 0) {
@@ -1073,14 +1078,13 @@ iopoll_handler(struct netmsg *msg)
 			continue;
 
 		if ((ifp->if_flags & (IFF_RUNNING | IFF_NPOLLING)) ==
-		    (IFF_RUNNING | IFF_NPOLLING)) {
-			crit_enter();
+		    (IFF_RUNNING | IFF_NPOLLING))
 			rec->poll_func(ifp, rec->arg, cycles);
-			crit_exit();
-		}
 
 		lwkt_serialize_exit(rec->serializer);
 	}
+
+	crit_exit_quick(td);
 
 	sched_iopollmore(io_ctx);
 	io_ctx->phase = 4;
