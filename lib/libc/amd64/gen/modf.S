@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -33,9 +29,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * from: @(#)modf.s	5.5 (Berkeley) 3/18/91
+ *	from: @(#)modf.s	5.5 (Berkeley) 3/18/91
  * $NetBSD: modf.S,v 1.5 1997/07/16 14:37:18 christos Exp $
- * $FreeBSD: src/lib/libc/amd64/gen/modf.S,v 1.2 2003/05/08 03:19:37 peter Exp $
+ * $FreeBSD: src/lib/libc/amd64/gen/modf.S,v 1.4 2008/11/02 01:10:54 peter Exp $
  * $DragonFly: src/lib/libc/amd64/gen/modf.S,v 1.1 2004/02/02 05:43:14 dillon Exp $
  */
 
@@ -89,3 +85,4 @@ ENTRY(modf)
 	movsd   -8(%rsp),%xmm0
 
 	ret
+END(modf)

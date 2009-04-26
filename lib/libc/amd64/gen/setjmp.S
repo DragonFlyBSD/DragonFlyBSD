@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)setjmp.s	5.1 (Berkeley) 4/23/90
- * $FreeBSD: src/lib/libc/amd64/gen/setjmp.S,v 1.26 2003/06/02 22:37:53 peter Exp $
+ * $FreeBSD: src/lib/libc/amd64/gen/setjmp.S,v 1.29 2008/11/02 01:10:54 peter Exp $
  * $DragonFly: src/lib/libc/amd64/gen/setjmp.S,v 1.1 2004/02/02 05:43:14 dillon Exp $
  */
 
@@ -71,8 +67,10 @@ ENTRY(setjmp)
 	movq	%r14,48(%rcx)		/* 6; r14 */
 	movq	%r15,56(%rcx)		/* 7; r15 */
 	fnstcw	64(%rcx)		/* 8; fpu cw */
+	stmxcsr	68(%rcx)		/*    and mxcsr */
 	xorq	%rax,%rax
 	ret
+END(setjmp)
 
 	.weak CNAME(longjmp)
 	.set CNAME(longjmp),CNAME(__longjmp)
@@ -87,6 +85,15 @@ ENTRY(__longjmp)
 	popq	%rsi
 	popq	%rdi			/* jmpbuf */
 	movq	%rdi,%rdx
+	/* Restore the mxcsr, but leave exception flags intact. */
+	stmxcsr	-4(%rsp)
+	movl	68(%rdx),%eax
+	andl	$0xffffffc0,%eax
+	movl	-4(%rsp),%edi
+	andl	$0x3f,%edi
+	xorl	%eax,%edi
+	movl	%edi,-4(%rsp)
+	ldmxcsr -4(%rsp)
 	movq	%rsi,%rax		/* retval */
 	movq	0(%rdx),%rcx
 	movq	8(%rdx),%rbx
@@ -96,10 +103,10 @@ ENTRY(__longjmp)
 	movq	40(%rdx),%r13
 	movq	48(%rdx),%r14
 	movq	56(%rdx),%r15
-	fninit
 	fldcw	64(%rdx)
 	testq	%rax,%rax
 	jnz	1f
 	incq	%rax
 1:	movq	%rcx,0(%rsp)
 	ret
+END(__longjmp)

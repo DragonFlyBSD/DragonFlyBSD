@@ -23,7 +23,7 @@
  * $DragonFly: src/lib/libc_r/arch/amd64/_atomic_lock.S,v 1.1 2006/07/27 00:43:35 corecode Exp $
  */
 
-#include "DEFS.h"
+#include <machine/asm.h>
 
 /*
  * Atomicly lock a location with an identifier provided the location

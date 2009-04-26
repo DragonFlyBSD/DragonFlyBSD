@@ -13,10 +13,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
  * 4. Neither the name of the University nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
@@ -34,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * @(#)ldexp.c	8.1 (Berkeley) 6/4/93
- * $FreeBSD: src/lib/libc/amd64/gen/ldexp.c,v 1.11 2003/06/10 21:17:55 obrien Exp $
+ * $FreeBSD: src/lib/libc/amd64/gen/ldexp.c,v 1.14 2007/01/09 00:38:24 imp Exp $
  * $DragonFly: src/lib/libc/amd64/gen/ldexp.c,v 1.1 2004/02/02 05:43:14 dillon Exp $
  */
 
@@ -47,11 +43,9 @@
 
 /*
  * We do the conversion in C to let gcc optimize it away, if possible.
- * The "fxch ; fstp" stuff is because value is still on the stack
- * (stupid 8087!).
  */
 double
-ldexp (double value, int exp)
+ldexp(double value, int exp)
 {
 	double temp, texp, temp2;
 	texp = exp;
@@ -60,7 +54,7 @@ ldexp (double value, int exp)
 		: "=u" (temp2), "=t" (temp)
 		: "0" (texp), "1" (value));
 #else
-error unknown asm
+#error unknown asm
 #endif
 	return (temp);
 }
