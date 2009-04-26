@@ -1088,10 +1088,17 @@ iopoll_handler(struct netmsg *msg)
 		lwkt_serialize_exit(rec->serializer);
 	}
 
+	/*
+	 * Do a quick exit/enter to catch any higher-priority
+	 * interrupt sources.
+	 */
 	crit_exit_quick(td);
+	crit_enter_quick(td);
 
 	sched_iopollmore(io_ctx);
 	io_ctx->phase = 4;
+
+	crit_exit_quick(td);
 }
 
 /*
@@ -1109,19 +1116,24 @@ iopoll_handler(struct netmsg *msg)
 static void
 iopollmore_handler(struct netmsg *msg)
 {
+	struct thread *td = curthread;
 	struct iopoll_ctx *io_ctx;
 	struct timeval t;
 	int kern_load, poll_hz;
 	uint32_t pending_polls;
 
 	io_ctx = msg->nm_lmsg.u.ms_resultp;
-	KKASSERT(&curthread->td_msgport == ifnet_portfn(io_ctx->poll_cpuid));
+	KKASSERT(&td->td_msgport == ifnet_portfn(io_ctx->poll_cpuid));
+
+	crit_enter_quick(td);
 
 	/* Replay ASAP */
 	lwkt_replymsg(&msg->nm_lmsg, 0);
 
-	if (io_ctx->poll_handlers == 0)
+	if (io_ctx->poll_handlers == 0) {
+		crit_exit_quick(td);
 		return;
+	}
 
 #ifdef IFPOLL_MULTI_SYSTIMER
 	poll_hz = io_ctx->pollhz;
@@ -1131,9 +1143,8 @@ iopollmore_handler(struct netmsg *msg)
 
 	io_ctx->phase = 5;
 	if (io_ctx->residual_burst > 0) {
-		crit_enter();
 		sched_iopoll(io_ctx);
-		crit_exit();
+		crit_exit_quick(td);
 		/* Will run immediately on return, followed by netisrs */
 		return;
 	}
@@ -1152,10 +1163,8 @@ iopollmore_handler(struct netmsg *msg)
 			io_ctx->poll_burst++;
 	}
 
-	crit_enter();
 	io_ctx->pending_polls--;
 	pending_polls = io_ctx->pending_polls;
-	crit_exit();
 
 	if (pending_polls == 0) {
 		/* We are done */
@@ -1169,11 +1178,11 @@ iopollmore_handler(struct netmsg *msg)
 		io_ctx->poll_burst -= (io_ctx->poll_burst / 8);
 		if (io_ctx->poll_burst < 1)
 			io_ctx->poll_burst = 1;
-		crit_enter();
 		sched_iopoll(io_ctx);
-		crit_exit();
 		io_ctx->phase = 6;
 	}
+
+	crit_exit_quick(td);
 }
 
 static void
