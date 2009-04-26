@@ -135,22 +135,22 @@ retry:
 		/*
 		 * Avoid a nasty race if we block while getting the lock.
 		 */
-		vhold(ttyvp);
+		vref(ttyvp);
 		error = vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY);
 		if (error) {
-			vdrop(ttyvp);
+			vrele(ttyvp);
 			goto retry;
 		}
 		if (ttyvp != cttyvp(p) || (ttyvp->v_flag & VCTTYISOPEN) == 0) {
 			kprintf("Warning: cttyclose: race avoided\n");
 			vn_unlock(ttyvp);
-			vdrop(ttyvp);
+			vrele(ttyvp);
 			goto retry;
 		}
 		vclrflags(ttyvp, VCTTYISOPEN);
 		error = VOP_CLOSE(ttyvp, FREAD|FWRITE);
 		vn_unlock(ttyvp);
-		vdrop(ttyvp);
+		vrele(ttyvp);
 	} else {
 		error = 0;
 	}
