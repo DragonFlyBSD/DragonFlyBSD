@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 1991 Regents of the University of California.
+ * Copyright (c) 2003 Peter Wemm.
  * Copyright (c) 2008 The DragonFly Project.
  * All rights reserved.
  *
@@ -62,37 +63,51 @@
 #endif
 
 /*
- * Pte related macros
+ * Pte related macros.  This is complicated by having to deal with
+ * the sign extension of the 48th bit.
  */
-#define VADDR(pdi, pti) ((vm_offset_t)(((pdi)<<PDRSHIFT)|((pti)<<PAGE_SHIFT)))
+#define KVADDR(l4, l3, l2, l1) ( \
+	((unsigned long)-1 << 47) | \
+	((unsigned long)(l4) << PML4SHIFT) | \
+	((unsigned long)(l3) << PDPSHIFT) | \
+	((unsigned long)(l2) << PDRSHIFT) | \
+	((unsigned long)(l1) << PAGE_SHIFT))
 
+#define UVADDR(l4, l3, l2, l1) ( \
+	((unsigned long)(l4) << PML4SHIFT) | \
+	((unsigned long)(l3) << PDPSHIFT) | \
+	((unsigned long)(l2) << PDRSHIFT) | \
+	((unsigned long)(l1) << PAGE_SHIFT))
+
+/* Initial number of kernel page tables. */
 #ifndef NKPT
-#define	NKPT		30	/* actual number of kernel page tables */
+#define	NKPT		32
 #endif
-#ifndef NKPDE
-#define NKPDE	(KVA_PAGES - 2)	/* addressable number of page tables/pde's */
-#endif
-#if NKPDE > KVA_PAGES - 2
-#error "Maximum NKPDE is KVA_PAGES - 2"
-#endif
+
+#define NKPML4E		1		/* number of kernel PML4 slots */
+#define NKPDPE		howmany(NKPT, NPDEPG)/* number of kernel PDP slots */
+
+#define	NUPML4E		(NPML4EPG/2)	/* number of userland PML4 pages */
+#define	NUPDPE		(NUPML4E*NPDPEPG)/* number of userland PDP pages */
+#define	NUPDE		(NUPDPE*NPDEPG)	/* number of userland PD entries */
+
+#define	NDMPML4E	1		/* number of dmap PML4 slots */
 
 /*
- * The *PTDI values control the layout of virtual memory
- *
- * XXX This works for now, but I am not real happy with it, I'll fix it
- * right after I fix locore.s and the magic 28K hole
- *
- * SMP_PRIVPAGES: The per-cpu address space is 0xff80000 -> 0xffbfffff
+ * The *PML4I values control the layout of virtual memory
  */
-#define	APTDPTDI	(NPDEPG-1)	/* alt ptd entry that points to APTD */
-#define MPPTDI		(APTDPTDI-1)	/* per cpu ptd entry */
-#define	KPTDI		(MPPTDI-NKPDE)	/* start of kernel virtual pde's */
-#define	PTDPTDI		(KPTDI-1)	/* ptd entry that points to ptd! */
-#define	UMAXPTDI	(PTDPTDI-1)	/* ptd entry for user space end */
-#define	UMAXPTEOFF	(NPTEPG)	/* pte entry for user space end */
+#define	PML4PML4I	(NPML4EPG/2)	/* Index of recursive pml4 mapping */
 
-#define LINKPML4I	0
-#define LINKPDPI	0
+#define	KPML4I		(NPML4EPG-1)	/* Top 512GB for KVM */
+#define	DMPML4I		(KPML4I-1)	/* Next 512GB down for direct map */
+
+#define	KPDPI		(NPDPEPG-2)	/* kernbase at -2GB */
+
+/* per-CPU data is at -2MB */
+/* XXX can the kernel decide to use this memory for something else? */
+#define	MPPML4I		KPML4I
+#define	MPPDPI		KPDPI
+#define	MPPTDI		(NPDEPG-1)
 
 /*
  * XXX doesn't really belong here I guess...
@@ -120,14 +135,18 @@
  * and directories.
  */
 #ifdef _KERNEL
-extern pt_entry_t PTmap[], APTmap[], Upte;
-extern pd_entry_t PTD[], APTD[], PTDpde, APTDpde, Upde;
+#define	addr_PTmap	(KVADDR(PML4PML4I, 0, 0, 0))
+#define	addr_PDmap	(KVADDR(PML4PML4I, PML4PML4I, 0, 0))
+#define	addr_PDPmap	(KVADDR(PML4PML4I, PML4PML4I, PML4PML4I, 0))
+#define	addr_PML4map	(KVADDR(PML4PML4I, PML4PML4I, PML4PML4I, PML4PML4I))
+#define	addr_PML4pml4e	(addr_PML4map + (PML4PML4I * sizeof(pml4_entry_t)))
+#define	PTmap		((pt_entry_t *)(addr_PTmap))
+#define	PDmap		((pd_entry_t *)(addr_PDmap))
+#define	PDPmap		((pd_entry_t *)(addr_PDPmap))
+#define	PML4map		((pd_entry_t *)(addr_PML4map))
+#define	PML4pml4e	((pd_entry_t *)(addr_PML4pml4e))
 
-extern uint64_t IdlePTD;	/* physical address of "Idle" state directory */
-
-extern uint64_t common_lvl4_phys; 
-extern uint64_t common_lvl3_phys; 
-extern pdp_entry_t *link_pdpe;
+extern u_int64_t KPML4phys;	/* physical address of kernel level 4 */
 #endif
 
 #ifdef _KERNEL
@@ -137,29 +156,10 @@ extern pdp_entry_t *link_pdpe;
  * Note: these work recursively, thus vtopte of a pte will give
  * the corresponding pde that in turn maps it.
  */
-#define	vtopte(va)	(PTmap + amd64_btop(va))
+pt_entry_t *vtopte(vm_offset_t);
 
 #define	avtopte(va)	(APTmap + amd64_btop(va))
 
-/*
- *	Routine:	pmap_kextract
- *	Function:
- *		Extract the physical page address associated
- *		kernel virtual address.
- */
-static __inline vm_paddr_t
-pmap_kextract(vm_offset_t va)
-{
-	vm_paddr_t pa;
-
-	if ((pa = (vm_offset_t) PTD[va >> PDRSHIFT]) & PG_PS) {
-		pa = (pa & ~(NBPDR - 1)) | (va & (NBPDR - 1));
-	} else {
-		pa = *(vm_offset_t *)vtopte(va);
-		pa = (pa & PG_FRAME) | (va & PAGE_MASK);
-	}
-	return pa;
-}
 
 /*
  * XXX
@@ -170,6 +170,15 @@ pmap_kextract(vm_offset_t va)
 #endif
 
 #define	pte_load_clear(pte)	atomic_readandclear_long(pte)
+
+static __inline void
+pte_store(pt_entry_t *ptep, pt_entry_t pte)
+{
+
+	*ptep = pte;
+}
+
+#define	pde_store(pdep, pde)	pte_store((pdep), (pde))
 
 /*
  * Pmap stuff
@@ -199,7 +208,7 @@ struct pmap_statistics {
 typedef struct pmap_statistics *pmap_statistics_t;
 
 struct pmap {
-	pd_entry_t		*pm_pdir;	/* KVA of page directory */
+	pml4_entry_t		*pm_pml4;	/* KVA of level 4 page table */
 	struct vm_page		*pm_pdirm;	/* VM page for pg directory */
 	struct vm_object	*pm_pteobj;	/* Container for pte's */
 	TAILQ_ENTRY(pmap)	pm_pmnode;	/* list of pmaps */
@@ -250,14 +259,17 @@ extern vm_offset_t clean_eva;
 extern vm_offset_t clean_sva;
 extern char *ptvmmap;		/* poor name! */
 
-void	pmap_bootstrap ( vm_paddr_t *, vm_paddr_t);
+void	pmap_bootstrap ( vm_paddr_t *);
 void	*pmap_mapdev (vm_paddr_t, vm_size_t);
 void	pmap_unmapdev (vm_offset_t, vm_size_t);
+#if JG
 pt_entry_t *pmap_pte (pmap_t, vm_offset_t) __pure2;
+#endif
 struct vm_page *pmap_use_pt (pmap_t, vm_offset_t);
 #ifdef SMP
 void	pmap_set_opt (void);
 #endif
+vm_paddr_t pmap_kextract(vm_offset_t);
 
 #endif /* _KERNEL */
 

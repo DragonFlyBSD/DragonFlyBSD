@@ -141,7 +141,7 @@ cpu_fork(struct lwp *lp1, struct lwp *lp2, int flags)
 	 * Set registers for trampoline to user mode.  Leave space for the
 	 * return address on stack.  These are the kernel mode register values.
 	 */
-	pcb2->pcb_cr3 = vtophys(vmspace_pmap(lp2->lwp_proc->p_vmspace)->pm_pdir);
+	pcb2->pcb_cr3 = vtophys(vmspace_pmap(lp2->lwp_proc->p_vmspace)->pm_pml4);
 	pcb2->pcb_cr3 |= PG_RW | PG_U | PG_V;
 	pcb2->pcb_rbx = (unsigned long)fork_return;	/* fork_trampoline argument */
 	pcb2->pcb_rbp = 0;
@@ -234,10 +234,11 @@ void
 cpu_lwp_exit(void)
 {
 	struct thread *td = curthread;
-	struct pcb *pcb = td->td_pcb;
+	struct pcb *pcb;
 #if NNPX > 0
 	npxexit();
 #endif	/* NNPX */
+	pcb = td->td_pcb;
 	KKASSERT(pcb->pcb_ext == NULL); /* Some i386 functionality was dropped */
         if (pcb->pcb_flags & PCB_DBREGS) {
                 /*

@@ -376,7 +376,7 @@ IDTVEC(nmi)
 	jnz	nmi_needswapgs		/* we came from userland */
 	movl	$MSR_GSBASE,%ecx
 	rdmsr
-	cmpl	$VM_MAXUSER_ADDRESS >> 32,%edx
+	cmpl	$VM_MAX_USER_ADDRESS >> 32,%edx
 	jae	nmi_calltrap		/* GS.base holds a kernel VA */
 nmi_needswapgs:
 	incl	%ebx

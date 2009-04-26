@@ -9,7 +9,7 @@
 # reserved for user applications.
 #
 CFLAGS+=	-mpreferred-stack-boundary=4
-CFLAGS+=	-mcmodel=small -mno-red-zone \
+CFLAGS+=	-mcmodel=kernel -mno-red-zone \
 		-mfpmath=387 -mno-sse -mno-sse2 -mno-sse3 -mno-mmx -mno-3dnow \
 		-msoft-float -fno-asynchronous-unwind-tables \
 		-fno-omit-frame-pointer

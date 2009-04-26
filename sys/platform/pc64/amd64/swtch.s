@@ -225,21 +225,13 @@ ENTRY(cpu_exit_switch)
 	/*
 	 * Get us out of the vmspace
 	 */
-#if JG
+	movq	KPML4phys,%rcx
 	movq	%cr3,%rax
 	cmpq	%rcx,%rax
 	je	1f
 	/* JG no increment of statistics counters? see cpu_heavy_restore */
 	movq	%rcx,%cr3
 1:
-#else
-	movq	IdlePTD, %rcx
-	orq	$(PG_RW|PG_V), %rcx
-	movq	link_pdpe,%r12
-	movq	%rcx, (%r12)
-	movq	%cr3, %rcx
-	movq	%rcx, %cr3
-#endif
 	movq	PCPU(curthread),%rbx
 
 	/*
@@ -317,8 +309,6 @@ ENTRY(cpu_heavy_restore)
 	 * YYY which naturally also means that the PM_ACTIVE bit had better
 	 * already have been set before we set it above, check? YYY
 	 */
-#if JG
-#error x
 	movq	%cr3,%rsi
 	movq	PCB_CR3(%rdx),%rcx
 	cmpq	%rsi,%rcx
@@ -329,15 +319,6 @@ ENTRY(cpu_heavy_restore)
 #endif
 	movq	%rcx,%cr3
 4:
-#else
-	movq	PCB_CR3(%rdx),%rcx
-	orq	$(PG_RW|PG_U|PG_V), %rcx
-	/*XXX*/
-	movq	link_pdpe,%r12
-	movq	%rcx, (%r12)
-	movq	%cr3, %rcx
-	movq	%rcx, %cr3
-#endif
 	/*
 	 * Clear TDF_RUNNING flag in old thread only after cleaning up
 	 * %cr3.  The target thread is already protected by being TDF_RUNQ
@@ -513,13 +494,6 @@ ENTRY(savectx)
 	movq	%rax,PCB_RIP(%rcx)
 
 	movq	%cr3,%rax
-#ifndef JG
-	movq	(%rax), %rax
-	movq	$0x000ffffffffff000, %rcx
-	andq	%rcx, %rax
-	movq	(%rax), %rax
-	andq	%rcx, %rax
-#endif
 	movq	%rax,PCB_CR3(%rcx)
 
 	movq	%rbx,PCB_RBX(%rcx)
@@ -590,15 +564,11 @@ ENTRY(savectx)
  */
 ENTRY(cpu_idle_restore)
 	/* cli */
-	movq	IdlePTD,%rcx
+	movq	KPML4phys,%rcx
 	/* JG xor? */
 	movl	$0,%ebp
 	/* JG push RBP? */
 	pushq	$0
-	orq	$(PG_RW|PG_V), %rcx
-	movq	link_pdpe,%r12
-	movq	%rcx, (%r12)
-	movq	%cr3, %rcx
 	movq	%rcx,%cr3
 	andl	$~TDF_RUNNING,TD_FLAGS(%rbx)
 	orl	$TDF_RUNNING,TD_FLAGS(%rax)
@@ -628,14 +598,10 @@ ENTRY(cpu_idle_restore)
  */
 ENTRY(cpu_kthread_restore)
 	sti
-	movq	IdlePTD,%rcx
+	movq	KPML4phys,%rcx
 	movq	TD_PCB(%rax),%rdx
 	/* JG "movq $0, %rbp"? "xorq %rbp, %rbp"? */
 	movl	$0,%ebp
-	orq	$(PG_RW|PG_V), %rcx
-	movq	link_pdpe,%r12
-	movq	%rcx, (%r12)
-	movq	%cr3, %rcx
 	movq	%rcx,%cr3
 	/* rax and rbx come from the switchout code */
 	andl	$~TDF_RUNNING,TD_FLAGS(%rbx)
@@ -718,22 +684,12 @@ ENTRY(cpu_lwkt_switch)
  *	deleted due to a process exiting.
  */
 ENTRY(cpu_lwkt_restore)
-#if JG
-	movq	common_lvl4_phys,%rcx	/* YYY borrow but beware desched/cpuchg/exit */
-#endif
-	movq	IdlePTD, %rcx
-	orq	$(PG_RW|PG_V), %rcx
-	movq	link_pdpe,%r12
-	movq	%rcx, (%r12)
-	movq	%cr3, %rcx
-	movq	%rcx, %cr3
-#if JG
+	movq	KPML4phys,%rcx	/* YYY borrow but beware desched/cpuchg/exit */
 	movq	%cr3,%rdx
 	cmpq	%rcx,%rdx
 	je	1f
 	movq	%rcx,%cr3
 1:
-#endif
 	andl	$~TDF_RUNNING,TD_FLAGS(%rbx)
 	orl	$TDF_RUNNING,TD_FLAGS(%rax)
 	popfq
