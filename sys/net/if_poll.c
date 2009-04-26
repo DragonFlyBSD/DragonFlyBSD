@@ -154,6 +154,7 @@ struct iopoll_ctx {
 	uint32_t		poll_burst;		/* state */
 	uint32_t		poll_burst_max;		/* tunable */
 	uint32_t		user_frac;		/* tunable */
+	uint32_t		kern_frac;		/* state */
 
 	struct sysctl_ctx_list	poll_sysctl_ctx;
 	struct sysctl_oid	*poll_sysctl_tree;
@@ -879,6 +880,7 @@ iopoll_reset_state(struct iopoll_ctx *io_ctx)
 	io_ctx->pending_polls = 0;
 	io_ctx->residual_burst = 0;
 	io_ctx->phase = 0;
+	io_ctx->kern_frac = 0;
 	bzero(&io_ctx->poll_start_t, sizeof(io_ctx->poll_start_t));
 	bzero(&io_ctx->prev_t, sizeof(io_ctx->prev_t));
 	crit_exit();
@@ -1154,6 +1156,8 @@ iopollmore_handler(struct netmsg *msg)
 	kern_load = (t.tv_usec - io_ctx->poll_start_t.tv_usec) +
 		    (t.tv_sec - io_ctx->poll_start_t.tv_sec) * 1000000; /* us */
 	kern_load = (kern_load * poll_hz) / 10000; /* 0..100 */
+	io_ctx->kern_frac = kern_load;
+
 	if (kern_load > (100 - io_ctx->user_frac)) {
 		/* Try decrease ticks */
 		if (io_ctx->poll_burst > 1)
@@ -1218,6 +1222,10 @@ iopoll_add_sysctl(struct sysctl_ctx_list *ctx, struct sysctl_oid_list *parent,
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "user_frac", CTLFLAG_RW,
 			&io_ctx->user_frac, 0,
 			"Desired user fraction of cpu time");
+
+	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "kern_frac", CTLFLAG_RD,
+			&io_ctx->kern_frac, 0,
+			"Kernel fraction of cpu time");
 
 	SYSCTL_ADD_UINT(ctx, parent, OID_AUTO, "short_ticks", CTLFLAG_RW,
 			&io_ctx->short_ticks, 0,
