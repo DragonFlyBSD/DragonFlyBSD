@@ -303,30 +303,26 @@ static int	sysctl_burstmax(SYSCTL_HANDLER_ARGS);
 static void	sysctl_eachburst_handler(struct netmsg *);
 static int	sysctl_eachburst(SYSCTL_HANDLER_ARGS);
 
-static void
+static __inline void
 ifpoll_sendmsg_oncpu(struct netmsg *msg)
 {
 	if (msg->nm_lmsg.ms_flags & MSGF_DONE)
 		ifnet_sendmsg(&msg->nm_lmsg, mycpuid);
 }
 
-static void
+static __inline void
 sched_stpoll(struct stpoll_ctx *st_ctx)
 {
-	crit_enter();
 	ifpoll_sendmsg_oncpu(&st_ctx->poll_netmsg);
-	crit_exit();
 }
 
-static void
+static __inline void
 sched_iopoll(struct iopoll_ctx *io_ctx)
 {
-	crit_enter();
 	ifpoll_sendmsg_oncpu(&io_ctx->poll_netmsg);
-	crit_exit();
 }
 
-static void
+static __inline void
 sched_iopollmore(struct iopoll_ctx *io_ctx)
 {
 	ifpoll_sendmsg_oncpu(&io_ctx->poll_more_netmsg);
@@ -761,7 +757,10 @@ stpoll_clock(struct stpoll_ctx *st_ctx)
 
 	if (st_ctx->poll_handlers == 0)
 		return;
+
+	crit_enter();
 	sched_stpoll(st_ctx);
+	crit_exit();
 }
 
 #ifdef IFPOLL_MULTI_SYSTIMER
@@ -1018,7 +1017,9 @@ iopoll_clock(struct iopoll_ctx *io_ctx)
 		if (io_ctx->phase != 0)
 			io_ctx->suspect++;
 		io_ctx->phase = 1;
+		crit_enter();
 		sched_iopoll(io_ctx);
+		crit_exit();
 		io_ctx->phase = 2;
 	}
 	if (io_ctx->pending_polls++ > 0)
@@ -1127,7 +1128,9 @@ iopollmore_handler(struct netmsg *msg)
 
 	io_ctx->phase = 5;
 	if (io_ctx->residual_burst > 0) {
+		crit_enter();
 		sched_iopoll(io_ctx);
+		crit_exit();
 		/* Will run immediately on return, followed by netisrs */
 		return;
 	}
@@ -1163,7 +1166,9 @@ iopollmore_handler(struct netmsg *msg)
 		io_ctx->poll_burst -= (io_ctx->poll_burst / 8);
 		if (io_ctx->poll_burst < 1)
 			io_ctx->poll_burst = 1;
+		crit_enter();
 		sched_iopoll(io_ctx);
+		crit_exit();
 		io_ctx->phase = 6;
 	}
 }
