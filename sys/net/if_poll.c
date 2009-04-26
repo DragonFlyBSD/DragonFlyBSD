@@ -753,14 +753,16 @@ stpoll_handler(struct netmsg *msg)
 static void
 stpoll_clock(struct stpoll_ctx *st_ctx)
 {
-	KKASSERT(mycpuid == 0);
+	globaldata_t gd = mycpu;
+
+	KKASSERT(gd->gd_cpuid == 0);
 
 	if (st_ctx->poll_handlers == 0)
 		return;
 
-	crit_enter();
+	crit_enter_gd(gd);
 	sched_stpoll(st_ctx);
-	crit_exit();
+	crit_exit_gd(gd);
 }
 
 #ifdef IFPOLL_MULTI_SYSTIMER
@@ -981,10 +983,11 @@ iopoll_ctx_create(int cpuid, int poll_type)
 static void
 iopoll_clock(struct iopoll_ctx *io_ctx)
 {
+	globaldata_t gd = mycpu;
 	struct timeval t;
 	int delta, poll_hz;
 
-	KKASSERT(mycpuid == io_ctx->poll_cpuid);
+	KKASSERT(gd->gd_cpuid == io_ctx->poll_cpuid);
 
 	if (io_ctx->poll_handlers == 0)
 		return;
@@ -1017,9 +1020,9 @@ iopoll_clock(struct iopoll_ctx *io_ctx)
 		if (io_ctx->phase != 0)
 			io_ctx->suspect++;
 		io_ctx->phase = 1;
-		crit_enter();
+		crit_enter_gd(gd);
 		sched_iopoll(io_ctx);
-		crit_exit();
+		crit_exit_gd(gd);
 		io_ctx->phase = 2;
 	}
 	if (io_ctx->pending_polls++ > 0)
