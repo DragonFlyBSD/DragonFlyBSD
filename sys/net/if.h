@@ -138,11 +138,13 @@ struct if_data {
 #define	IFF_PPROMISC	0x20000		/* user-requested promisc mode */
 #define	IFF_MONITOR	0x40000		/* user-requested monitor mode */
 #define IFF_STATICARP	0x80000		/* static ARP */
+#define IFF_NPOLLING	0x100000	/* ifpoll is used */
 
 /* flags set internally only: */
 #define	IFF_CANTCHANGE \
 	(IFF_BROADCAST|IFF_POINTOPOINT|IFF_RUNNING|IFF_OACTIVE|\
-	    IFF_SIMPLEX|IFF_MULTICAST|IFF_ALLMULTI|IFF_SMART|IFF_POLLING)
+	 IFF_SIMPLEX|IFF_MULTICAST|IFF_ALLMULTI|IFF_SMART|IFF_POLLING|\
+	 IFF_NPOLLING)
 
 /*
  * Some convenience macros used for setting ifi_baudrate.
