@@ -238,9 +238,6 @@ static void	emx_add_sysctl(struct emx_softc *);
 
 static void	emx_serialize_skipmain(struct emx_softc *);
 static void	emx_deserialize_skipmain(struct emx_softc *);
-#ifdef IFPOLL_ENABLE
-static int	emx_tryserialize_skipmain(struct emx_softc *);
-#endif
 
 /* Management and WOL Support */
 static void	emx_get_mgmt(struct emx_softc *);
@@ -3675,14 +3672,6 @@ emx_serialize_skipmain(struct emx_softc *sc)
 	lwkt_serialize_array_enter(sc->serializes, EMX_NSERIALIZE, 1);
 }
 
-#ifdef IFPOLL_ENABLE
-static int
-emx_tryserialize_skipmain(struct emx_softc *sc)
-{
-	return lwkt_serialize_array_try(sc->serializes, EMX_NSERIALIZE, 1);
-}
-#endif
-
 static void
 emx_deserialize_skipmain(struct emx_softc *sc)
 {
@@ -3756,13 +3745,14 @@ emx_qpoll_status(struct ifnet *ifp, int pollhz __unused)
 
 	reg_icr = E1000_READ_REG(&sc->hw, E1000_ICR);
 	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
-		if (emx_tryserialize_skipmain(sc)) {
-			callout_stop(&sc->timer);
-			sc->hw.mac.get_link_status = 1;
-			emx_update_link_status(sc);
-			callout_reset(&sc->timer, hz, emx_timer, sc);
-			emx_deserialize_skipmain(sc);
-		}
+		emx_serialize_skipmain(sc);
+
+		callout_stop(&sc->timer);
+		sc->hw.mac.get_link_status = 1;
+		emx_update_link_status(sc);
+		callout_reset(&sc->timer, hz, emx_timer, sc);
+
+		emx_deserialize_skipmain(sc);
 	}
 }
 
