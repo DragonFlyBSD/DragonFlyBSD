@@ -166,6 +166,11 @@ struct iopoll_ctx {
 	struct sysctl_oid	*poll_sysctl_tree;
 } __cachealign;
 
+struct iopoll_comm {
+	struct sysctl_ctx_list	sysctl_ctx;
+	struct sysctl_oid	*sysctl_tree;
+} __cachealign;
+
 struct stpoll_rec {
 	struct lwkt_serialize	*serializer;
 	struct ifnet		*ifp;
@@ -207,6 +212,7 @@ struct ifpoll_data {
 #endif
 
 static struct stpoll_ctx	stpoll_context;
+static struct iopoll_comm	*iopoll_common[IFPOLL_CTX_MAX];
 static struct iopoll_ctx	*rxpoll_context[IFPOLL_CTX_MAX];
 static struct iopoll_ctx	*txpoll_context[IFPOLL_CTX_MAX];
 
@@ -288,6 +294,7 @@ static int	sysctl_stpollhz(SYSCTL_HANDLER_ARGS);
  * RX/TX polling
  */
 static struct iopoll_ctx *iopoll_ctx_create(int, int);
+static struct iopoll_comm *iopoll_comm_create(int);
 static void	iopoll_init(int);
 static void	iopoll_handler(struct netmsg *);
 static void	iopollmore_handler(struct netmsg *);
@@ -918,16 +925,37 @@ iopoll_init(int cpuid)
 {
 	KKASSERT(cpuid < IFPOLL_CTX_MAX);
 
+	/* Create iopoll_comm context before TX/RX poll context */
+	iopoll_common[cpuid] = iopoll_comm_create(cpuid);
+
 	rxpoll_context[cpuid] = iopoll_ctx_create(cpuid, IFPOLL_RX);
 	txpoll_context[cpuid] = iopoll_ctx_create(cpuid, IFPOLL_TX);
+}
+
+static struct iopoll_comm *
+iopoll_comm_create(int cpuid)
+{
+	struct iopoll_comm *comm;
+	char cpuid_str[16];
+
+	comm = kmalloc(sizeof(*comm), M_DEVBUF, M_WAITOK | M_ZERO);
+
+	ksnprintf(cpuid_str, sizeof(cpuid_str), "%d", cpuid);
+
+	sysctl_ctx_init(&comm->sysctl_ctx);
+	comm->sysctl_tree = SYSCTL_ADD_NODE(&comm->sysctl_ctx,
+			    SYSCTL_STATIC_CHILDREN(_net_ifpoll),
+			    OID_AUTO, cpuid_str, CTLFLAG_RD, 0, "");
+
+	return comm;
 }
 
 static struct iopoll_ctx *
 iopoll_ctx_create(int cpuid, int poll_type)
 {
+	struct iopoll_comm *comm;
 	struct iopoll_ctx *io_ctx;
 	const char *poll_type_str;
-	char cpuid_str[16];
 
 	KKASSERT(poll_type == IFPOLL_RX || poll_type == IFPOLL_TX);
 
@@ -973,13 +1001,12 @@ iopoll_ctx_create(int cpuid, int poll_type)
 		poll_type_str = "rx";
 	else
 		poll_type_str = "tx";
-	ksnprintf(cpuid_str, sizeof(cpuid_str), "%s%d",
-		  poll_type_str, io_ctx->poll_cpuid);
 
+	comm = iopoll_common[cpuid];
 	sysctl_ctx_init(&io_ctx->poll_sysctl_ctx);
 	io_ctx->poll_sysctl_tree = SYSCTL_ADD_NODE(&io_ctx->poll_sysctl_ctx,
-				   SYSCTL_STATIC_CHILDREN(_net_ifpoll),
-				   OID_AUTO, cpuid_str, CTLFLAG_RD, 0, "");
+				   SYSCTL_CHILDREN(comm->sysctl_tree),
+				   OID_AUTO, poll_type_str, CTLFLAG_RD, 0, "");
 	iopoll_add_sysctl(&io_ctx->poll_sysctl_ctx,
 			  SYSCTL_CHILDREN(io_ctx->poll_sysctl_tree), io_ctx);
 
