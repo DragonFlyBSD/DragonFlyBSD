@@ -69,7 +69,7 @@
 
 /* Output debug messages like this: */
 #define stdout_debug(args...)	_thread_printf(STDOUT_FILENO, ##args)
-#define stderr_debug(args...)	_thread_printf(STDOUT_FILENO, ##args)
+#define stderr_debug(args...)	_thread_printf(STDERR_FILENO, ##args)
 
 #ifdef _PTHREADS_INVARIANTS
 #define THR_ASSERT(cond, msg) do {	\
