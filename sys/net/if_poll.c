@@ -84,7 +84,7 @@
  *
  * A second variable controls the sharing of CPU between polling/kernel
  * network processing, and other activities (typically userlevel tasks):
- * net.ifpoll.{rxX,txX}.user_frac (between 0 and 100, default 50) sets the
+ * net.ifpoll.X.{rx,tx}.user_frac (between 0 and 100, default 50) sets the
  * share of CPU allocated to user tasks.  CPU is allocated proportionally
  * to the shares, by dynamically adjusting the "count" (poll_burst).
  *
