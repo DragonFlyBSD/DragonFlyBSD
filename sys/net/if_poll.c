@@ -388,6 +388,7 @@ ifpoll_init_pcpu(int cpuid)
 
 #ifndef IFPOLL_MULTI_SYSTIMER
 
+#ifdef SMP
 static void
 ifpoll_ipi_handler(void *arg __unused, int poll)
 {
@@ -398,11 +399,14 @@ ifpoll_ipi_handler(void *arg __unused, int poll)
 	if (poll & IFPOLL_RX)
 		iopoll_clock(rxpoll_context[mycpuid]);
 }
+#endif	/* SMP */
 
 static void
 ifpoll_systimer(systimer_t info __unused, struct intrframe *frame __unused)
 {
+#ifdef SMP
 	uint32_t cpumask = 0;
+#endif
 
 	KKASSERT(mycpuid == 0);
 
@@ -414,19 +418,27 @@ ifpoll_systimer(systimer_t info __unused, struct intrframe *frame __unused)
 	if (ifpoll0.txfrac_count-- == 0) {
 		ifpoll0.txfrac_count = ifpoll_txfrac;
 
+#ifdef SMP
 		/* TODO: We may try to piggyback TX on RX */
 		cpumask = smp_active_mask & ifpoll0.tx_cpumask;
 		if (cpumask != 0) {
 			lwkt_send_ipiq2_mask(cpumask, ifpoll_ipi_handler,
 					     NULL, IFPOLL_TX);
 		}
+#else
+		iopoll_clock(txpoll_context[0]);
+#endif
 	}
 
+#ifdef SMP
 	cpumask = smp_active_mask & ifpoll0.rx_cpumask;
 	if (cpumask != 0) {
 		lwkt_send_ipiq2_mask(cpumask, ifpoll_ipi_handler,
 				     NULL, IFPOLL_RX);
 	}
+#else
+	iopoll_clock(rxpoll_context[0]);
+#endif
 }
 
 static void
