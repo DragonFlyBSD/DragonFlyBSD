@@ -44,8 +44,6 @@
  * disablement facility.
  */
 
-#include "opt_serializer.h"
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -125,10 +123,6 @@ lwkt_serialize_init(lwkt_serialize_t s)
 #ifdef INVARIANTS
     s->last_td = (void *)-4;
 #endif
-    s->sleep_cnt = 0;
-    s->tryfail_cnt = 0;
-    s->enter_cnt = 0;
-    s->try_cnt = 0;
 }
 
 #ifdef SMP
@@ -149,9 +143,6 @@ lwkt_serialize_adaptive_enter(lwkt_serialize_t s)
 #ifdef INVARIANTS
     s->last_td = curthread;
 #endif
-#ifdef PROFILE_SERIALIZER
-    s->enter_cnt++;
-#endif
 }
 #endif	/* SMP */
 
@@ -166,9 +157,6 @@ lwkt_serialize_enter(lwkt_serialize_t s)
 #ifdef INVARIANTS
     s->last_td = curthread;
 #endif
-#ifdef PROFILE_SERIALIZER
-    s->enter_cnt++;
-#endif
 }
 
 /*
@@ -181,9 +169,6 @@ lwkt_serialize_try(lwkt_serialize_t s)
 
     ASSERT_NOT_SERIALIZED(s);
 
-#ifdef PROFILE_SERIALIZER
-    s->try_cnt++;
-#endif
     logslz(try, s);
     if ((error = atomic_intr_cond_try(&s->interlock)) == 0) {
 #ifdef INVARIANTS
@@ -192,9 +177,6 @@ lwkt_serialize_try(lwkt_serialize_t s)
 	logslz(tryok, s);
 	return(1);
     }
-#ifdef PROFILE_SERIALIZER
-    s->tryfail_cnt++;
-#endif
     logslz(tryfail, s);
     return (0);
 }
@@ -242,9 +224,6 @@ lwkt_serialize_handler_call(lwkt_serialize_t s, void (*func)(void *, void *),
 #ifdef INVARIANTS
 	s->last_td = curthread;
 #endif
-#ifdef PROFILE_SERIALIZER
-	s->enter_cnt++;
-#endif
 	if (atomic_intr_handler_is_enabled(&s->interlock) == 0)
 	    func(arg, frame);
 
@@ -271,9 +250,6 @@ lwkt_serialize_handler_try(lwkt_serialize_t s, void (*func)(void *, void *),
      * enabled.
      */
     if (atomic_intr_handler_is_enabled(&s->interlock) == 0) {
-#ifdef PROFILE_SERIALIZER
-	s->try_cnt++;
-#endif
 	logslz(try, s);
 	if (atomic_intr_cond_try(&s->interlock) == 0) {
 #ifdef INVARIANTS
@@ -293,9 +269,6 @@ lwkt_serialize_handler_try(lwkt_serialize_t s, void (*func)(void *, void *),
 	    return(0);
 	}
     }
-#ifdef PROFILE_SERIALIZER
-    s->tryfail_cnt++;
-#endif
     logslz(tryfail, s);
     return(1);
 }
@@ -316,9 +289,6 @@ lwkt_serialize_sleep(void *info)
     crit_enter();
     tsleep_interlock(s);
     if (atomic_intr_cond_test(&s->interlock) != 0) {
-#ifdef PROFILE_SERIALIZER
-	s->sleep_cnt++;
-#endif
 	logslz(sleep_beg, s);
 	tsleep(s, 0, "slize", 0);
 	logslz(sleep_end, s);
@@ -369,9 +339,6 @@ lwkt_serialize_adaptive_sleep(void *arg)
     crit_enter();
     tsleep_interlock(s);
     if (atomic_intr_cond_test(&s->interlock) != 0) {
-#ifdef PROFILE_SERIALIZER
-	s->sleep_cnt++;
-#endif
 	logslz(sleep_beg, s);
 	tsleep(s, 0, "slize", 0);
 	logslz(sleep_end, s);

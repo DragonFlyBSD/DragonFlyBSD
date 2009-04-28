@@ -654,9 +654,6 @@ SCTP_MAP_LOGGING	opt_sctp.h
 #
 SYSLINK			opt_syslink.h
 
-# serializer profiling support
-PROFILE_SERIALIZER	opt_serializer.h
-
 # Receive Side Scaling
 RSS			opt_rss.h
 RSS_DEBUG		opt_rss.h

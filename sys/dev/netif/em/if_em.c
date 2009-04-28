@@ -95,7 +95,6 @@
  */
 
 #include "opt_polling.h"
-#include "opt_serializer.h"
 
 #include <sys/param.h>
 #include <sys/bus.h>
@@ -3873,10 +3872,6 @@ em_sysctl_stats(SYSCTL_HANDLER_ARGS)
 static void
 em_add_sysctl(struct adapter *adapter)
 {
-#ifdef PROFILE_SERIALIZER
-	struct ifnet *ifp = &adapter->arpcom.ac_if;
-#endif
-
 	sysctl_ctx_init(&adapter->sysctl_ctx);
 	adapter->sysctl_tree = SYSCTL_ADD_NODE(&adapter->sysctl_ctx,
 					SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
@@ -3904,24 +3899,6 @@ em_add_sysctl(struct adapter *adapter)
 		    OID_AUTO, "txd", CTLFLAG_RD,
 		    &adapter->num_tx_desc, 0, NULL);
 
-#ifdef PROFILE_SERIALIZER
-		SYSCTL_ADD_UINT(&adapter->sysctl_ctx,
-		    SYSCTL_CHILDREN(adapter->sysctl_tree),
-		    OID_AUTO, "serializer_sleep", CTLFLAG_RW,
-		    &ifp->if_serializer->sleep_cnt, 0, NULL);
-		SYSCTL_ADD_UINT(&adapter->sysctl_ctx,
-		    SYSCTL_CHILDREN(adapter->sysctl_tree),
-		    OID_AUTO, "serializer_tryfail", CTLFLAG_RW,
-		    &ifp->if_serializer->tryfail_cnt, 0, NULL);
-		SYSCTL_ADD_UINT(&adapter->sysctl_ctx,
-		    SYSCTL_CHILDREN(adapter->sysctl_tree),
-		    OID_AUTO, "serializer_enter", CTLFLAG_RW,
-		    &ifp->if_serializer->enter_cnt, 0, NULL);
-		SYSCTL_ADD_UINT(&adapter->sysctl_ctx,
-		    SYSCTL_CHILDREN(adapter->sysctl_tree),
-		    OID_AUTO, "serializer_try", CTLFLAG_RW,
-		    &ifp->if_serializer->try_cnt, 0, NULL);
-#endif
 		if (adapter->hw.mac.type >= e1000_82540) {
 			SYSCTL_ADD_PROC(&adapter->sysctl_ctx,
 			    SYSCTL_CHILDREN(adapter->sysctl_tree),

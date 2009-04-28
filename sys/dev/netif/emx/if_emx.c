@@ -65,7 +65,6 @@
  */
 
 #include "opt_ifpoll.h"
-#include "opt_serializer.h"
 #include "opt_rss.h"
 #include "opt_emx.h"
 
@@ -3361,9 +3360,6 @@ emx_sysctl_stats(SYSCTL_HANDLER_ARGS)
 static void
 emx_add_sysctl(struct emx_softc *sc)
 {
-#ifdef PROFILE_SERIALIZER
-	struct ifnet *ifp = &sc->arpcom.ac_if;
-#endif
 #ifdef EMX_RSS_DEBUG
 	char rx_pkt[32];
 	int i;
@@ -3392,23 +3388,6 @@ emx_add_sysctl(struct emx_softc *sc)
 		       &sc->rx_data[0].num_rx_desc, 0, NULL);
 	SYSCTL_ADD_INT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 		       OID_AUTO, "txd", CTLFLAG_RD, &sc->num_tx_desc, 0, NULL);
-
-#ifdef notyet
-#ifdef PROFILE_SERIALIZER
-	SYSCTL_ADD_UINT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
-			OID_AUTO, "serializer_sleep", CTLFLAG_RW,
-			&ifp->if_serializer->sleep_cnt, 0, NULL);
-	SYSCTL_ADD_UINT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
-			OID_AUTO, "serializer_tryfail", CTLFLAG_RW,
-			&ifp->if_serializer->tryfail_cnt, 0, NULL);
-	SYSCTL_ADD_UINT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
-			OID_AUTO, "serializer_enter", CTLFLAG_RW,
-			&ifp->if_serializer->enter_cnt, 0, NULL);
-	SYSCTL_ADD_UINT(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
-			OID_AUTO, "serializer_try", CTLFLAG_RW,
-			&ifp->if_serializer->try_cnt, 0, NULL);
-#endif
-#endif
 
 	SYSCTL_ADD_PROC(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
 			OID_AUTO, "int_throttle_ceil", CTLTYPE_INT|CTLFLAG_RW,
