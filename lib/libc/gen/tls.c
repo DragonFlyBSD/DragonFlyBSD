@@ -146,9 +146,9 @@ __libc_allocate_tls(void)
 	 * so we use sbrk() for main's TLS.
 	 */
 	if (initial_tcb == NULL)
-		tcb = sbrk(data_size + sizeof(*tcb) + 3 * sizeof(Elf_Addr));
+		tcb = sbrk(data_size + sizeof(*tcb) + 3 * sizeof(*dtv));
 	else
-		tcb = malloc(data_size + sizeof(*tcb));
+		tcb = malloc(data_size + sizeof(*tcb) + 3 * sizeof(*dtv));
 
 	tcb = (struct tls_tcb *)((char *)tcb + data_size);
 	dtv = (Elf_Addr *)(tcb + 1);
