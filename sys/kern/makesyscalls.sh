@@ -36,7 +36,7 @@ sysun="sysunion.switch.$$"
 
 trap "rm $sysdcl $syscompat $syscompatdf12 $syscompatdcl $syscompatdcldf12 $sysent $sysinc $sysarg $sysun" 0
 
-touch $sysdcl $syscompat $syscompatdf12 $syscompatdcl $syscompatdf12 $sysent $sysinc $sysarg $sysun
+touch $sysdcl $syscompat $syscompatdf12 $syscompatdcl $syscompatdcldf12 $sysent $sysinc $sysarg $sysun
 
 case $# in
     0)	echo "Usage: $0 input-file <config-file>" 1>&2
