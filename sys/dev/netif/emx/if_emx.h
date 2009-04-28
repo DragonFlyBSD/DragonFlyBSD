@@ -230,7 +230,7 @@ struct emx_rxdata {
 	bus_dma_tag_t		rx_desc_dtag;
 	bus_dmamap_t		rx_desc_dmap;
 	bus_addr_t		rx_desc_paddr;
-};
+} __cachealign;
 
 struct emx_softc {
 	struct arpcom		arpcom;
