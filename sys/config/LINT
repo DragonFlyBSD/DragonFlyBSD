@@ -709,6 +709,9 @@ device		hfa			#FORE PCA-200E ATM PCI
 # 
 options         DEVICE_POLLING
 
+# IFPOLL_ENABLE adds hardware queues' based polling
+options		IFPOLL_ENABLE
+
 
 #####################################################################
 # FILESYSTEM OPTIONS

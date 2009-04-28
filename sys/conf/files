@@ -733,6 +733,7 @@ net/bsd_comp.c			optional ppp_bsdcomp
 net/if.c			standard
 net/if_clone.c			standard
 net/if_atmsubr.c		optional atm
+net/if_poll.c			optional ifpoll_enable
 net/disc/if_disc.c		optional disc
 net/ef/if_ef.c			optional ef
 net/if_ethersubr.c		optional ether

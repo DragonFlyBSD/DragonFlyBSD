@@ -64,7 +64,7 @@
  * SUCH DAMAGE.
  */
 
-#include "opt_polling.h"
+#include "opt_ifpoll.h"
 #include "opt_serializer.h"
 #include "opt_rss.h"
 #include "opt_emx.h"
@@ -97,6 +97,7 @@
 #include <net/toeplitz2.h>
 #include <net/vlan/if_vlan_var.h>
 #include <net/vlan/if_vlan_ether.h>
+#include <net/if_poll.h>
 
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
@@ -174,8 +175,8 @@ static void	emx_init(void *);
 static void	emx_stop(struct emx_softc *);
 static int	emx_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
 static void	emx_start(struct ifnet *);
-#ifdef DEVICE_POLLING
-static void	emx_poll(struct ifnet *, enum poll_cmd, int);
+#ifdef IFPOLL_ENABLE
+static void	emx_qpoll(struct ifnet *, struct ifpoll_info *);
 #endif
 static void	emx_watchdog(struct ifnet *);
 static void	emx_media_status(struct ifnet *, struct ifmediareq *);
@@ -237,7 +238,6 @@ static void	emx_add_sysctl(struct emx_softc *);
 
 static void	emx_serialize_skipmain(struct emx_softc *);
 static void	emx_deserialize_skipmain(struct emx_softc *);
-static int	emx_tryserialize_skipmain(struct emx_softc *);
 
 /* Management and WOL Support */
 static void	emx_get_mgmt(struct emx_softc *);
@@ -902,8 +902,8 @@ emx_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		if (ifp->if_flags & IFF_RUNNING) {
 			emx_disable_intr(sc);
 			emx_set_multi(sc);
-#ifdef DEVICE_POLLING
-			if (!(ifp->if_flags & IFF_POLLING))
+#ifdef IFPOLL_ENABLE
+			if (!(ifp->if_flags & IFF_NPOLLING))
 #endif
 				emx_enable_intr(sc);
 		}
@@ -1137,77 +1137,20 @@ emx_init(void *xsc)
 		E1000_WRITE_REG(&sc->hw, E1000_IVAR, 0x800A0908);
 	}
 
-#ifdef DEVICE_POLLING
+#ifdef IFPOLL_ENABLE
 	/*
 	 * Only enable interrupts if we are not polling, make sure
 	 * they are off otherwise.
 	 */
-	if (ifp->if_flags & IFF_POLLING)
+	if (ifp->if_flags & IFF_NPOLLING)
 		emx_disable_intr(sc);
 	else
-#endif /* DEVICE_POLLING */
+#endif /* IFPOLL_ENABLE */
 		emx_enable_intr(sc);
 
 	/* Don't reset the phy next time init gets called */
 	sc->hw.phy.reset_disable = TRUE;
 }
-
-#ifdef DEVICE_POLLING
-
-static void
-emx_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
-{
-	struct emx_softc *sc = ifp->if_softc;
-	uint32_t reg_icr;
-
-	ASSERT_IFNET_SERIALIZED_MAIN(ifp);
-
-	switch (cmd) {
-	case POLL_REGISTER:
-		emx_disable_intr(sc);
-		break;
-
-	case POLL_DEREGISTER:
-		emx_enable_intr(sc);
-		break;
-
-	case POLL_AND_CHECK_STATUS:
-		reg_icr = E1000_READ_REG(&sc->hw, E1000_ICR);
-		if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
-			if (emx_tryserialize_skipmain(sc)) {
-				callout_stop(&sc->timer);
-				sc->hw.mac.get_link_status = 1;
-				emx_update_link_status(sc);
-				callout_reset(&sc->timer, hz, emx_timer, sc);
-				emx_deserialize_skipmain(sc);
-			}
-		}
-		/* FALL THROUGH */
-	case POLL_ONLY:
-		if (ifp->if_flags & IFF_RUNNING) {
-			int i;
-
-			for (i = 0; i < sc->rx_ring_inuse; ++i) {
-				if (lwkt_serialize_try(
-				    &sc->rx_data[i].rx_serialize)) {
-					emx_rxeof(sc, i, count);
-					lwkt_serialize_exit(
-					&sc->rx_data[i].rx_serialize);
-				}
-			}
-
-			if (lwkt_serialize_try(&sc->tx_serialize)) {
-				emx_txeof(sc);
-				if (!ifq_is_empty(&ifp->if_snd))
-					if_devstart(ifp);
-				lwkt_serialize_exit(&sc->tx_serialize);
-			}
-		}
-		break;
-	}
-}
-
-#endif /* DEVICE_POLLING */
 
 static void
 emx_intr(void *xsc)
@@ -1813,8 +1756,8 @@ emx_setup_ifp(struct emx_softc *sc)
 	ifp->if_init =  emx_init;
 	ifp->if_ioctl = emx_ioctl;
 	ifp->if_start = emx_start;
-#ifdef DEVICE_POLLING
-	ifp->if_poll = emx_poll;
+#ifdef IFPOLL_ENABLE
+	ifp->if_qpoll = emx_qpoll;
 #endif
 	ifp->if_watchdog = emx_watchdog;
 	ifp->if_serialize = emx_serialize;
@@ -3729,12 +3672,6 @@ emx_serialize_skipmain(struct emx_softc *sc)
 	lwkt_serialize_array_enter(sc->serializes, EMX_NSERIALIZE, 1);
 }
 
-static int
-emx_tryserialize_skipmain(struct emx_softc *sc)
-{
-	return lwkt_serialize_array_try(sc->serializes, EMX_NSERIALIZE, 1);
-}
-
 static void
 emx_deserialize_skipmain(struct emx_softc *sc)
 {
@@ -3795,3 +3732,82 @@ emx_serialize_assert(struct ifnet *ifp, enum ifnet_serialize slz,
 }
 
 #endif	/* INVARIANTS */
+
+#ifdef IFPOLL_ENABLE
+
+static void
+emx_qpoll_status(struct ifnet *ifp, int pollhz __unused)
+{
+	struct emx_softc *sc = ifp->if_softc;
+	uint32_t reg_icr;
+
+	ASSERT_SERIALIZED(&sc->main_serialize);
+
+	reg_icr = E1000_READ_REG(&sc->hw, E1000_ICR);
+	if (reg_icr & (E1000_ICR_RXSEQ | E1000_ICR_LSC)) {
+		emx_serialize_skipmain(sc);
+
+		callout_stop(&sc->timer);
+		sc->hw.mac.get_link_status = 1;
+		emx_update_link_status(sc);
+		callout_reset(&sc->timer, hz, emx_timer, sc);
+
+		emx_deserialize_skipmain(sc);
+	}
+}
+
+static void
+emx_qpoll_tx(struct ifnet *ifp, void *arg __unused, int cycle __unused)
+{
+	struct emx_softc *sc = ifp->if_softc;
+
+	ASSERT_SERIALIZED(&sc->tx_serialize);
+
+	emx_txeof(sc);
+	if (!ifq_is_empty(&ifp->if_snd))
+		if_devstart(ifp);
+}
+
+static void
+emx_qpoll_rx(struct ifnet *ifp, void *arg, int cycle)
+{
+	struct emx_softc *sc = ifp->if_softc;
+	struct emx_rxdata *rdata = arg;
+
+	ASSERT_SERIALIZED(&rdata->rx_serialize);
+
+	emx_rxeof(sc, rdata - sc->rx_data, cycle);
+}
+
+static void
+emx_qpoll(struct ifnet *ifp, struct ifpoll_info *info)
+{
+	struct emx_softc *sc = ifp->if_softc;
+
+	ASSERT_IFNET_SERIALIZED_ALL(ifp);
+
+	if (info) {
+		int i;
+
+		info->ifpi_status.status_func = emx_qpoll_status;
+		info->ifpi_status.serializer = &sc->main_serialize;
+
+		info->ifpi_tx[0].poll_func = emx_qpoll_tx;
+		info->ifpi_tx[0].arg = NULL;
+		info->ifpi_tx[0].serializer = &sc->tx_serialize;
+
+		for (i = 0; i < sc->rx_ring_cnt; ++i) {
+			info->ifpi_rx[i].poll_func = emx_qpoll_rx;
+			info->ifpi_rx[i].arg = &sc->rx_data[i];
+			info->ifpi_rx[i].serializer =
+				&sc->rx_data[i].rx_serialize;
+		}
+
+		if (ifp->if_flags & IFF_RUNNING)
+			emx_disable_intr(sc);
+	} else if (ifp->if_flags & IFF_RUNNING) {
+		emx_enable_intr(sc);
+	}
+}
+
+#endif	/* IFPOLL_ENABLE */
