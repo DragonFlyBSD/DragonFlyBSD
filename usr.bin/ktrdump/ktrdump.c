@@ -558,7 +558,6 @@ get_indices(struct ktr_entry **ktr_kbuf, int *ktr_idx)
 			}
 		}
 	} else {
-		printf("2\n");
 		if (kvm_read(kd, nl_version_ktr_cpu[0].n_value,
 			     ktr_cpus, sizeof(*ktr_cpus) * ncpus) == -1) {
 				errx(1, "%s", kvm_geterr(kd));
