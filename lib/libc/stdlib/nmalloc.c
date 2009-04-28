@@ -402,7 +402,12 @@ zoneindex(size_t *bytes, size_t *chunking)
 void *
 malloc(size_t size)
 {
-	return(_slaballoc(size, 0));
+	void *ptr;
+
+	ptr = _slaballoc(size, 0);
+	if (ptr == NULL)
+		errno = ENOMEM;
+	return(ptr);
 }
 
 /*
@@ -411,7 +416,12 @@ malloc(size_t size)
 void *
 calloc(size_t number, size_t size)
 {
-	return(_slaballoc(number * size, SAFLAG_ZERO));
+	void *ptr;
+
+	ptr = _slaballoc(number * size, SAFLAG_ZERO);
+	if (ptr == NULL)
+		errno = ENOMEM;
+	return(ptr);
 }
 
 /*
@@ -424,9 +434,90 @@ calloc(size_t number, size_t size)
 void *
 realloc(void *ptr, size_t size)
 {
-	return(_slabrealloc(ptr, size));
+	ptr = _slabrealloc(ptr, size);
+	if (ptr == NULL)
+		errno = ENOMEM;
+	return(ptr);
 }
 
+/*
+ * posix_memalign()
+ *
+ * Allocate (size) bytes with a alignment of (alignment), where (alignment)
+ * is a power of 2 >= sizeof(void *).
+ *
+ * The slab allocator will allocate on power-of-2 boundaries up to
+ * at least PAGE_SIZE.  We use the zoneindex mechanic to find a
+ * zone matching the requirements, and _vmem_alloc() otherwise.
+ */
+int
+posix_memalign(void **memptr, size_t alignment, size_t size)
+{
+	bigalloc_t *bigp;
+	bigalloc_t big;
+	int chunking;
+	int zi;
+
+	/*
+	 * OpenGroup spec issue 6 checks
+	 */
+	if ((alignment | (alignment - 1)) + 1 != (alignment << 1)) {
+		*memptr = NULL;
+		return(EINVAL);
+	}
+	if (alignment < sizeof(void *)) {
+		*memptr = NULL;
+		return(EINVAL);
+	}
+
+	/*
+	 * Locate a zone matching the requirements.
+	 */
+	if (size < alignment)
+		size = alignment;
+	while (size < PAGE_SIZE) {
+		zi = zoneindex(&size, &chunking);
+		if (chunking >= alignment) {
+			*memptr = _slaballoc(size, 0);
+			return(*memptr ? 0 : ENOMEM);
+		}
+		size <<= 1;
+	}
+
+	/*
+	 * If the slab allocator cannot handle it use vmem_alloc().
+	 *
+	 * Alignment must be adjusted up to at least PAGE_SIZE in this case.
+	 */
+	if (alignment < PAGE_SIZE)
+		alignment = PAGE_SIZE;
+	if (size < alignment)
+		size = alignment;
+	size = (size + PAGE_MASK) & ~(size_t)PAGE_MASK;
+	*memptr = _vmem_alloc(size, alignment, 0);
+	if (*memptr == NULL)
+		return(ENOMEM);
+
+	big = _slaballoc(sizeof(struct bigalloc), 0);
+	if (big == NULL) {
+		_vmem_free(*memptr, size);
+		*memptr = NULL;
+		return(ENOMEM);
+	}
+	bigp = bigalloc_lock(*memptr);
+	big->base = *memptr;
+	big->bytes = size;
+	big->unused01 = 0;
+	big->next = *bigp;
+	*bigp = big;
+	bigalloc_unlock(*memptr);
+
+	return(0);
+}
+
+/*
+ * free() (SLAB ALLOCATOR) - do the obvious
+ */
 void
 free(void *ptr)
 {
@@ -482,6 +573,10 @@ _slaballoc(size_t size, int flags)
 			return(NULL);
 
 		big = _slaballoc(sizeof(struct bigalloc), 0);
+		if (big == NULL) {
+			_vmem_free(chunk, size);
+			return(NULL);
+		}
 		bigp = bigalloc_lock(chunk);
 		big->base = chunk;
 		big->bytes = size;
@@ -955,6 +1050,8 @@ chunk_mark_free(slzone_t z, void *chunk)
  *	alignment.
  *
  *	Alignment must be a multiple of PAGE_SIZE.
+ *
+ *	Size must be >= alignment.
  */
 static void *
 _vmem_alloc(size_t size, size_t align, int flags)
@@ -968,22 +1065,28 @@ _vmem_alloc(size_t size, size_t align, int flags)
 	 */
 	addr = mmap(NULL, size, PROT_READ|PROT_WRITE,
 		    MAP_PRIVATE|MAP_ANON, -1, 0);
-	if (addr == MAP_FAILED) {
-		errno = ENOMEM;
+	if (addr == MAP_FAILED)
 		return(NULL);
-	}
 
 	/*
 	 * Check alignment.  The misaligned offset is also the excess
 	 * amount.  If misaligned unmap the excess so we have a chance of
 	 * mapping at the next alignment point and recursively try again.
+	 *
+	 * BBBBBBBBBBB BBBBBBBBBBB BBBBBBBBBBB	block alignment
+	 *   aaaaaaaaa aaaaaaaaaaa aa		mis-aligned allocation
+	 *   xxxxxxxxx				final excess calculation
+	 *   ^ returned address
 	 */
 	excess = (uintptr_t)addr & (align - 1);
+
 	if (excess) {
+		excess = align - excess;
 		save = addr;
-		munmap(save + align - excess, excess);
+
+		munmap(save + excess, size - excess);
 		addr = _vmem_alloc(size, align, flags);
-		munmap(save, align - excess);
+		munmap(save, excess);
 	}
 	return((void *)addr);
 }
