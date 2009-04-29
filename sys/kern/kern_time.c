@@ -50,6 +50,7 @@
 #include <sys/time.h>
 #include <sys/vnode.h>
 #include <sys/sysctl.h>
+#include <sys/kern_syscall.h>
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 #include <sys/msgport2.h>
@@ -67,10 +68,9 @@ struct timezone tz;
  * timers when they expire.
  */
 
-static int	nanosleep1 (struct timespec *rqt,
-		    struct timespec *rmt);
-static int	settime (struct timeval *);
-static void	timevalfix (struct timeval *);
+static int	nanosleep1(struct timespec *rqt, struct timespec *rmt);
+static int	settime(struct timeval *);
+static void	timevalfix(struct timeval *);
 
 static int     sleep_hard_us = 100;
 SYSCTL_INT(_kern, OID_AUTO, sleep_hard_us, CTLFLAG_RW, &sleep_hard_us, 0, "")
@@ -140,56 +140,77 @@ settime(struct timeval *tv)
 	return (0);
 }
 
+int
+kern_clock_gettime(clockid_t clock_id, struct timespec *ats)
+{
+	int error = 0;
+
+	switch(clock_id) {
+	case CLOCK_REALTIME:
+		nanotime(ats);
+		break;
+	case CLOCK_MONOTONIC:
+		nanouptime(ats);
+		break;
+	default:
+		error = EINVAL;
+		break;
+	}
+	return (error);
+}
+
 /* ARGSUSED */
 int
 sys_clock_gettime(struct clock_gettime_args *uap)
 {
 	struct timespec ats;
+	int error;
 
-	switch(uap->clock_id) {
-	case CLOCK_REALTIME:
-		nanotime(&ats);
-		return (copyout(&ats, uap->tp, sizeof(ats)));
-	case CLOCK_MONOTONIC:
-		nanouptime(&ats);
-		return (copyout(&ats, uap->tp, sizeof(ats)));
-	default:
+	error = kern_clock_gettime(uap->clock_id, &ats);
+	if (error == 0)
+		error = copyout(&ats, uap->tp, sizeof(ats));
+
+	return (error);
+}
+
+int
+kern_clock_settime(clockid_t clock_id, struct timespec *ats)
+{
+	struct thread *td = curthread;
+	struct timeval atv;
+	int error;
+
+	if ((error = priv_check(td, PRIV_ROOT)) != 0)
+		return (error);
+	if (clock_id != CLOCK_REALTIME)
 		return (EINVAL);
-	}
+	if (ats->tv_nsec < 0 || ats->tv_nsec >= 1000000000)
+		return (EINVAL);
+
+	TIMESPEC_TO_TIMEVAL(&atv, ats);
+	error = settime(&atv);
+	return (error);
 }
 
 /* ARGSUSED */
 int
 sys_clock_settime(struct clock_settime_args *uap)
 {
-	struct thread *td = curthread;
-	struct timeval atv;
 	struct timespec ats;
 	int error;
 
-	if ((error = priv_check(td, PRIV_ROOT)) != 0)
+	if ((error = copyin(uap->tp, &ats, sizeof(ats))) != 0)
 		return (error);
-	switch(uap->clock_id) {
-	case CLOCK_REALTIME:
-		if ((error = copyin(uap->tp, &ats, sizeof(ats))) != 0)
-			return (error);
-		if (ats.tv_nsec < 0 || ats.tv_nsec >= 1000000000)
-			return (EINVAL);
-		/* XXX Don't convert nsec->usec and back */
-		TIMESPEC_TO_TIMEVAL(&atv, &ats);
-		error = settime(&atv);
-		return (error);
-	default:
-		return (EINVAL);
-	}
+
+	return (kern_clock_settime(uap->clock_id, &ats));
 }
 
 int
-sys_clock_getres(struct clock_getres_args *uap)
+kern_clock_getres(clockid_t clock_id, struct timespec *ts)
 {
-	struct timespec ts;
+	int error;
 
-	switch(uap->clock_id) {
+	switch(clock_id) {
 	case CLOCK_REALTIME:
 	case CLOCK_MONOTONIC:
 		/*
@@ -198,12 +219,29 @@ sys_clock_getres(struct clock_getres_args *uap)
 		 * if rounding down would give 0.  Perfect rounding
 		 * is unimportant.
 		 */
-		ts.tv_sec = 0;
-		ts.tv_nsec = 1000000000 / sys_cputimer->freq + 1;
-		return(copyout(&ts, uap->tp, sizeof(ts)));
+		ts->tv_sec = 0;
+		ts->tv_nsec = 1000000000 / sys_cputimer->freq + 1;
+		error = 0;
+		break;
 	default:
-		return(EINVAL);
+		error = EINVAL;
+		break;
 	}
+
+	return(error);
+}
+
+int
+sys_clock_getres(struct clock_getres_args *uap)
+{
+	int error;
+	struct timespec ts;
+
+	error = kern_clock_getres(uap->clock_id, &ts);
+	if (error == 0)
+		error = copyout(&ts, uap->tp, sizeof(ts));
+
+	return (error);
 }
 
 /*
