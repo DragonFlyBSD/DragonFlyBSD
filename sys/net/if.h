@@ -335,8 +335,8 @@ struct if_laddrreq {
 
 #ifndef _KERNEL
 struct if_nameindex {
-	u_int	if_index;	/* 1, 2, ... */
-	const char *if_name;	/* null terminated name: "le0", ... */
+	u_int	 if_index;	/* 1, 2, ... */
+	char	*if_name;	/* null terminated name: "le0", ... */
 };
 
 __BEGIN_DECLS

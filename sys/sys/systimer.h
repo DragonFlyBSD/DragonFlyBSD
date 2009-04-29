@@ -115,10 +115,12 @@ extern struct cputimer *sys_cputimer;
 #define CPUTIMER_8254_SEL2	2
 #define CPUTIMER_ACPI		3
 #define CPUTIMER_VKERNEL	4
+#define CPUTIMER_HPET		5
 
 #define CPUTIMER_PRI_DUMMY	-10
 #define CPUTIMER_PRI_8254	0
 #define CPUTIMER_PRI_ACPI	10
+#define CPUTIMER_PRI_HPET	15
 #define CPUTIMER_PRI_VKERNEL	20
 
 /*
