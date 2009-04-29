@@ -89,6 +89,7 @@ hammer_ioc_mirror_read(hammer_transaction_t trans, hammer_inode_t ip,
 	int data_len;
 	int bytes;
 	int eatdisk;
+	int mrec_flags;
 	u_int32_t localization;
 	u_int32_t rec_crc;
 
@@ -106,6 +107,12 @@ hammer_ioc_mirror_read(hammer_transaction_t trans, hammer_inode_t ip,
 	mirror->key_cur.localization += localization;
 	bzero(&mrec, sizeof(mrec));
 	bzero(&cmirror, sizeof(cmirror));
+
+	/*
+	 * Make CRC errors non-fatal (at least on data), causing an EDOM
+	 * error instead of EIO.
+	 */
+	trans->flags |= HAMMER_TRANSF_CRCDOM;
 
 retry:
 	error = hammer_init_cursor(trans, &cursor, NULL, NULL);
@@ -224,13 +231,21 @@ retry:
 
 		/*
 		 * The core code exports the data to userland.
+		 *
+		 * CRC errors on data are reported but passed through,
+		 * but the data must be washed by the user program.
 		 */
+		mrec_flags = 0;
 		data_len = (elm->data_offset) ? elm->data_len : 0;
 		if (data_len) {
 			error = hammer_btree_extract(&cursor,
 						     HAMMER_CURSOR_GET_DATA);
-			if (error)
-				break;
+			if (error) {
+				if (error != EDOM)
+					break;
+				mrec_flags |= HAMMER_MRECF_CRC_ERROR |
+					      HAMMER_MRECF_DATA_CRC_BAD;
+			}
 		}
 
 		bytes = sizeof(mrec.rec) + data_len;
@@ -246,9 +261,10 @@ retry:
 		 * userland and delete_tid is cleared.
 		 */
 		mrec.head.signature = HAMMER_IOC_MIRROR_SIGNATURE;
-		mrec.head.type = HAMMER_MREC_TYPE_REC;
+		mrec.head.type = HAMMER_MREC_TYPE_REC | mrec_flags;
 		mrec.head.rec_size = bytes;
 		mrec.rec.leaf = *elm;
+
 		if (elm->base.delete_tid > mirror->tid_end)
 			mrec.rec.leaf.base.delete_tid = 0;
 		rec_crc = crc32(&mrec.head.rec_size,
@@ -401,7 +417,7 @@ hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
 			break;
 		}
 
-		switch(mrec.head.type) {
+		switch(mrec.head.type & HAMMER_MRECF_TYPE_MASK) {
 		case HAMMER_MREC_TYPE_SKIP:
 			if (mrec.head.rec_size != sizeof(mrec.skip))
 				error = EINVAL;
@@ -413,6 +429,13 @@ hammer_ioc_mirror_write(hammer_transaction_t trans, hammer_inode_t ip,
 				error = EINVAL;
 			if (error == 0)
 				error = hammer_ioc_mirror_write_rec(&cursor, &mrec.rec, mirror, localization, uptr + sizeof(mrec.rec));
+			break;
+		case HAMMER_MREC_TYPE_REC_BADCRC:
+			/*
+			 * Records with bad data payloads are ignored XXX.
+			 */
+			if (mrec.head.rec_size < sizeof(mrec.rec))
+				error = EINVAL;
 			break;
 		case HAMMER_MREC_TYPE_PASS:
 			if (mrec.head.rec_size != sizeof(mrec.rec))

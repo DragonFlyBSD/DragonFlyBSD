@@ -73,7 +73,7 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 	 * Step 1 - acquire a locked node from the cache if possible
 	 */
 	if (cache && cache->node) {
-		node = hammer_ref_node_safe(trans->hmp, cache, &error);
+		node = hammer_ref_node_safe(trans, cache, &error);
 		if (error == 0) {
 			hammer_lock_sh(&node->lock);
 			if (node->flags & HAMMER_NODE_DELETED) {

@@ -324,6 +324,13 @@ union hammer_ioc_mrecord_any {
 
 typedef union hammer_ioc_mrecord_any *hammer_ioc_mrecord_any_t;
 
+/*
+ * MREC types.  Flags are in the upper 16 bits but some are also included
+ * in the type mask to force them into any switch() on the type.
+ *
+ * NOTE: Any record whos data is CRC-errored will have HAMMER_MRECF_CRC set,
+ *	 and the bit is also part of the type mask.
+ */
 #define HAMMER_MREC_TYPE_RESERVED	0
 #define HAMMER_MREC_TYPE_REC		1	/* record w/ data */
 #define HAMMER_MREC_TYPE_PFSD		2	/* (userland only) */
@@ -333,6 +340,16 @@ typedef union hammer_ioc_mrecord_any *hammer_ioc_mrecord_any_t;
 #define HAMMER_MREC_TYPE_PASS		6	/* record for cmp only (pass) */
 #define HAMMER_MREC_TYPE_TERM		7	/* (userland only) */
 #define HAMMER_MREC_TYPE_IDLE		8	/* (userland only) */
+
+#define HAMMER_MREC_TYPE_REC_BADCRC	(HAMMER_MREC_TYPE_REC | \
+					 HAMMER_MRECF_CRC_ERROR)
+
+#define HAMMER_MRECF_TYPE_LOMASK	0x000000FF
+#define HAMMER_MRECF_TYPE_MASK		0x800000FF
+#define HAMMER_MRECF_CRC_ERROR		0x80000000
+
+#define HAMMER_MRECF_DATA_CRC_BAD	0x40000000
+#define HAMMER_MRECF_RECD_CRC_BAD	0x20000000
 
 #define HAMMER_MREC_CRCOFF	(offsetof(struct hammer_ioc_mrecord_head, rec_size))
 #define HAMMER_MREC_HEADSIZE	sizeof(struct hammer_ioc_mrecord_head)
