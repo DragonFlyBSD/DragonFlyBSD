@@ -623,7 +623,8 @@ earliest_ts(struct ktr_buffer *buf)
 	save = &buf->ents[earliest & fifo_mask];
 	for (scan = buf->end_idx - 1; scan != buf->beg_idx -1; --scan) {
 		i = scan & fifo_mask;
-		if (buf->ents[i].ktr_timestamp <= save->ktr_timestamp)
+		if (buf->ents[i].ktr_timestamp <= save->ktr_timestamp &&
+		    buf->ents[i].ktr_timestamp > 0)
 			earliest = scan;
 		/*
 		 * We may have gotten so far behind that beg_idx wrapped
