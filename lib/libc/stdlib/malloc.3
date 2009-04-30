@@ -37,7 +37,7 @@
 .\" $FreeBSD: src/lib/libc/stdlib/malloc.3,v 1.25.2.16 2003/01/06 17:10:45 trhodes Exp $
 .\" $DragonFly: src/lib/libc/stdlib/malloc.3,v 1.8 2008/05/02 02:05:04 swildner Exp $
 .\"
-.Dd August 27, 1996
+.Dd April 30, 2009
 .Dt MALLOC 3
 .Os
 .Sh NAME
@@ -61,8 +61,6 @@
 .Fn reallocf "void *ptr" "size_t size"
 .Ft void
 .Fn free "void *ptr"
-.Ft char *
-.Va malloc_options;
 .Sh DESCRIPTION
 The
 .Fn malloc
@@ -99,7 +97,7 @@ bytes in length.
 The result is identical to calling
 .Fn malloc
 with an argument of
-.Dq "number * size" ,
+.Dq Fa number * Fa size ,
 with the exception that the allocated memory is explicitly initialized
 to zero bytes.
 .Pp
@@ -151,128 +149,82 @@ If
 is
 .Dv NULL ,
 no action occurs.
-.Sh TUNING
-Once, when the first call is made to one of these memory allocation
-routines, various flags will be set or reset, which affect the
-workings of this allocation implementation.
+.Sh IMPLEMENTATION NOTES
+.Dx Ap s
+.Nm
+implementation is based on a port of the
+.Dx
+kernel slab allocator, appropriately modified for a user process
+environment.
 .Pp
-The ``name'' of the file referenced by the symbolic link named
-.Pa /etc/malloc.conf ,
-the value of the environment variable
-.Ev MALLOC_OPTIONS ,
-and the string pointed to by the global variable
-.Va malloc_options
-will be interpreted, in that order, character by character as flags.
+The slab allocator breaks memory allocations up to 8KB into 80 zones.
+Each zone represents a fixed allocation size in multiples of some
+core chunking.
+The chunking is a power-of-2 but the fixed allocation size is not.
+For example, a 1025-byte request is allocated out of the zone with a
+chunking of 128, thus in multiples of 1152 bytes.
+The minimum chunking, used for allocations in the 0-127 byte range,
+is 8 bytes (16 of the 80 zones).
+Beyond that the power-of-2 chunking is between 1/8 and 1/16 of the
+minimum allocation size for any given zone.
 .Pp
-Most flags are single letters,
-where uppercase indicates that the behavior is set, or on,
-and lowercase means that the behavior is not set, or off.
-.Bl -tag -width indent
-.It A
-All warnings (except for the warning about unknown
-flags being set) become fatal.
-The process will call
-.Xr abort 3
-in these cases.
-.It D
-.Fn malloc
-will dump statistics in a file called
-.Pa malloc.out
-at exit.
-This option requires the library to have been compiled with -DMALLOC_STATS in
-order to have any effect.
-.It F
-Unused pages on the freelist are read and write protected to
-cause a segmentation fault upon access.
-.It G
-Enable guard pages and chunk randomization.
-Each page size or larger allocation is followed by a guard page that will
-cause a segmentation fault upon any access.
-Smaller than page size chunks are returned in a random order.
-.It H
-Pass a hint to the kernel about pages unused by the allocation functions.
-This will help performance if the system is paging excessively.  This
-option is off by default.
-.It J
-Each byte of new memory allocated by
+As a special case any power-of-2-sized allocation within the zone
+limit (8K) will be aligned to the same power-of-2 rather than that
+zone's (smaller) chunking.
+This is not something you can depend upon for
 .Fn malloc ,
-.Fn realloc
-or
-.Fn reallocf
-as well as all memory returned by
-.Fn free ,
-.Fn realloc
-or
-.Fn reallocf
-will be initialized to 0xd0.
-This options also sets the
-.Dq R
-option.
-This is intended for debugging and will impact performance negatively.
-.It N
-Do not output warning messages when encountering possible corruption
-or bad pointers.
-.It P
-Pointer sized allocations are aligned to the end of a page to catch
-sizeof(ptr) errors where sizeof(*ptr) is meant.
-.It R
-Always reallocate when
-.Fn realloc
-is called, even if the initial allocation was big enough.
-This can substantially aid in compacting memory.
-.It U
-Generate
-.Dq utrace
-entries for
-.Xr ktrace 1 ,
-for all operations.
-Consult the source for details on this option.
-.It V
-Attempting to allocate zero bytes will return a
-.Dv NULL
-pointer instead of
-a valid pointer.
-(The default behavior is to make a minimal allocation and return a
-pointer to it.)
-This option is provided for System V compatibility.
-This option is incompatible with the
-.Dq X
-option.
-.It X
-Rather than return failure for any allocation function,
-display a diagnostic message on stderr and cause the program to drop
-core (using
-.Xr abort 3 ) .
-This option should be set at compile time by including the following in
-the source code:
-.Bd -literal -offset indent
-extern char *malloc_options;
-malloc_options = "X";
-.Ed
-.It Z
-This option implicitly sets the
-.Dq J
-and
-.Dq R
-options, and then zeros out the bytes that were requested.
-This is intended for debugging and will impact performance negatively.
-.It <
-Reduce the size of the cache by a factor of two.
-The default cache size is 16 pages.
-This option can be specified multiple times.
-.It >
-Double the size of the cache by a factor of two.
-The default cache size is 16 pages.
-This option can be specified multiple times.
-.El
+but it is used internally to optimize
+.Xr posix_memalign 3 .
 .Pp
-The
-.Dq J
-and
-.Dq Z
-options are intended for testing and debugging.
-An application which changes its behavior when these options are used
-is flawed.
+Each zone reserves memory in 64KB blocks.
+Actual memory use tends to be significantly less as only the pages
+actually needed are faulted in.
+Allocations larger than 8K are managed using
+.Xr mmap 2
+and tracked with a hash table.
+.Pp
+The zone mechanism results in well-fitted allocations with little
+waste in a long-running environment which makes a lot of allocations.
+Short-running environments which do not make many allocations will see
+a bit of extra bloat due to the large number of zones but it will
+be almost unnoticeable in the grand scheme of things.
+To reduce bloat further the normal randomized start offset implemented
+in the kernel version of the allocator to improve L1 cache fill is
+disabled in the libc version.
+.Pp
+The zone mechanism also has the nice side effect of greatly reducing
+fragmentation over the original
+.Nm .
+.Pp
+.Xr posix_memalign 3
+is directly supported by matching the requested alignment against a zone
+with a compatible chunking, and using the power-of-2 shortcut whenever
+possible.
+Alignments beyond those supported by the zone mechanism are still
+guaranteed using cute
+.Xr mmap 2
+tricks.
+Our
+.Xr posix_memalign 3
+is thus able to take advantage of the slab allocator to produce
+well-fitted results when the requests are reasonable.
+.Pp
+.Fn calloc
+is directly supported by keeping track of newly-allocated zones which
+will be demand-zero'd by the system.
+If the allocation is known to be zero'd we do not bother
+.Fn bzero Ns ing
+it.
+If it is a reused allocation we
+.Fn bzero .
+.Pp
+.Tn POSIX
+threading is supported by duplicating the primary structure.
+A thread entering
+.Fn malloc
+which is unable to immediately acquire a mutex on the last primary
+structure it used will switch to a different primary structure.
+At the moment this is more of a quick hack than a solution, but it works.
 .Sh RETURN VALUES
 The
 .Fn malloc
@@ -310,87 +262,6 @@ deallocates it in this case.
 The
 .Fn free
 function returns no value.
-.Sh ENVIRONMENT
-The following environment variables affect the execution of the allocation
-functions:
-.Bl -tag -width ".Ev MALLOC_OPTIONS"
-.It Ev MALLOC_OPTIONS
-If the environment variable
-.Ev MALLOC_OPTIONS
-is set, the characters it contains will be interpreted as flags to the
-allocation functions.
-.El
-.Sh EXAMPLES
-To set a systemwide reduction of cache size, and to dump core whenever
-a problem occurs:
-.Bd -literal -offset indent
-ln -s 'A<' /etc/malloc.conf
-.Ed
-.Pp
-To specify in the source that a program does no return value checking
-on calls to these functions:
-.Bd -literal -offset indent
-extern char *malloc_options;
-malloc_options = "X";
-.Ed
-.Sh DEBUGGING MALLOC PROBLEMS
-The major difference between this implementation and other allocation
-implementations is that the free pages are not accessed unless allocated,
-and are aggressively returned to the kernel for reuse.
-.Bd -ragged -offset indent
-Most allocation implementations will store a data structure containing a
-linked list in the free chunks of memory,
-used to tie all the free memory together.
-That can be suboptimal,
-as every time the free-list is traversed,
-the otherwise unused, and likely paged out,
-pages are faulted into primary memory.
-On systems which are paging,
-this can result in a factor of five increase in the number of page-faults
-done by a process.
-.Ed
-.Pp
-A side effect of this architecture is that many minor transgressions on
-the interface which would traditionally not be detected are in fact
-detected.  As a result, programs that have been running happily for
-years may suddenly start to complain loudly, when linked with this
-allocation implementation.
-.Pp
-The first and most important thing to do is to set the
-.Dq A
-option.
-This option forces a coredump (if possible) at the first sign of trouble,
-rather than the normal policy of trying to continue if at all possible.
-.Pp
-It is probably also a good idea to recompile the program with suitable
-options and symbols for debugger support.
-.Pp
-If the program starts to give unusual results, coredump or generally behave
-differently without emitting any of the messages listed in the next
-section, it is likely because it depends on the storage being filled with
-zero bytes.  Try running it with
-.Dq Z
-option set;
-if that improves the situation, this diagnosis has been confirmed.
-If the program still misbehaves,
-the likely problem is accessing memory outside the allocated area,
-more likely after than before the allocated area.
-.Pp
-Alternatively, if the symptoms are not easy to reproduce, setting the
-.Dq J
-option may help provoke the problem.
-.Pp
-In truly difficult cases, the
-.Dq U
-option, if supported by the kernel, can provide a detailed trace of
-all calls made to these functions.
-.Pp
-Unfortunately this implementation does not provide much detail about
-the problems it detects, the performance impact for storing such information
-would be prohibitive.
-There are a number of allocation implementations available on the 'Net
-which focus on detecting and pinpointing problems by trading performance
-for extra sanity checks and detailed diagnostics.
 .Sh DIAGNOSTIC MESSAGES
 If
 .Fn malloc ,
@@ -398,76 +269,15 @@ If
 .Fn realloc
 or
 .Fn free
-detect an error or warning condition,
-a message will be printed to file descriptor STDERR_FILENO.
-Errors will result in the process dumping core.
-If the
-.Dq A
-option is set, all warnings are treated as errors.
-.Pp
-The following is a brief description of possible error messages and
-their meanings:
-.Bl -diag
-.It "(ES): mumble mumble mumble"
-The allocation functions were compiled with
-.Dq EXTRA_SANITY
-defined, and an error was found during the additional error checking.
-Consult the source code for further information.
-.It "mmap(2) failed, check limits"
-This most likely means that the system is dangerously overloaded or that
-the process' limits are incorrectly specified.
-.It "freelist is destroyed"
-The internal free-list has been corrupted.
-.It "out of memory"
-The
-.Dq X
-option was specified and an allocation of memory failed.
-.El
-.Pp
-The following is a brief description of possible warning messages and
-their meanings:
-.Bl -diag
-.It "chunk/page is already free"
-The process attempted to
-.Fn free
-memory which had already been freed.
-.It "junk pointer, ..."
-A pointer specified to one of the allocation functions points outside the
-bounds of the memory of which they are aware.
-.It "malloc() has never been called"
-No memory has been allocated,
-yet something is being freed or
-realloc'ed.
-.It "modified (chunk-/page-) pointer"
-The pointer passed to
-.Fn free
-or
-.Fn realloc
-has been modified.
-.It "pointer to wrong page"
-The pointer that
-.Fn free ,
-.Fn realloc ,
-or
-.Fn reallocf
-is trying to free does not reference a possible page.
-.It "recursive call"
-A process has attempted to call an allocation function recursively.
-This is not permitted.  In particular, signal handlers should not
-attempt to allocate memory.
-.It "unknown char in MALLOC_OPTIONS"
-An unknown option was specified.
-Even with the
-.Dq A
-option set, this warning is still only a warning.
-.El
+detect an error, a message will be printed to file descriptor
+.Dv STDERR_FILENO
+and the process will dump core.
 .Sh SEE ALSO
 .Xr brk 2 ,
 .Xr mmap 2 ,
 .Xr alloca 3 ,
 .Xr getpagesize 3 ,
 .Xr memory 3
-.Pa /usr/share/doc/papers/malloc.ascii.gz
 .Sh STANDARDS
 The
 .Fn malloc ,
@@ -480,22 +290,20 @@ functions conform to
 .Sh HISTORY
 The present allocation implementation started out as a filesystem for a
 drum attached to a 20bit binary challenged computer which was built
-with discrete germanium transistors.  It has since graduated to
-handle primary storage rather than secondary.
-It first appeared in its new shape and ability in
-.Fx 2.2 .
+with discrete germanium transistors.
+It has since graduated to handle primary storage rather than secondary.
 .Pp
 The
 .Fn reallocf
 function first appeared in
 .Fx 3.0 .
-.Sh AUTHORS
-.An Poul-Henning Kamp Aq phk@FreeBSD.org
-.Sh BUGS
-The messages printed in case of problems provide no detail about the
-actual values.
 .Pp
-It can be argued that returning a
-.Dv NULL
-pointer when asked to
-allocate zero bytes is a silly response to a silly question.
+.Dx Ap s
+current
+.Nm
+implementation is a complete rewrite based on the kernel's slab allocator (see
+.Sx IMPLEMENTATION NOTES ) .
+It first appeared in
+.Dx 2.3 .
+.Sh AUTHORS
+.An Matt Dillon
