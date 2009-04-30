@@ -177,6 +177,9 @@ typedef struct slglobaldata {
  * The WEIRD_ADDR is used as known text to copy into free objects to
  * try to create deterministic failure cases if the data is accessed after
  * free.
+ *
+ * WARNING: A limited number of spinlocks are available, BIGXSIZE should
+ *	    not be larger then 64.
  */
 #define WEIRD_ADDR      0xdeadc0de
 #define MAX_COPY        sizeof(weirdary)
@@ -471,17 +474,50 @@ posix_memalign(void **memptr, size_t alignment, size_t size)
 	}
 
 	/*
-	 * Locate a zone matching the requirements.
+	 * Our zone mechanism guarantees same-sized alignment for any
+	 * power-of-2 allocation.  If size is a power-of-2 and reasonable
+	 * we can just call _slaballoc() and be done.  We round size up
+	 * to the nearest alignment boundary to improve our odds of
+	 * it becoming a power-of-2 if it wasn't before.
 	 */
-	if (size < alignment)
+	if (size <= alignment)
 		size = alignment;
-	while (size < PAGE_SIZE) {
+	else
+		size = (size + alignment - 1) & ~(size_t)(alignment - 1);
+	if (size < PAGE_SIZE && (size | (size - 1)) + 1 == (size << 1)) {
+		*memptr = _slaballoc(size, 0);
+		return(*memptr ? 0 : ENOMEM);
+	}
+
+	/*
+	 * Otherwise locate a zone with a chunking that matches
+	 * the requested alignment, within reason.   Consider two cases:
+	 *
+	 * (1) A 1K allocation on a 32-byte alignment.  The first zoneindex
+	 *     we find will be the best fit because the chunking will be
+	 *     greater or equal to the alignment.
+	 *
+	 * (2) A 513 allocation on a 256-byte alignment.  In this case
+	 *     the first zoneindex we find will be for 576 byte allocations
+	 *     with a chunking of 64, which is not sufficient.  To fix this
+	 *     we simply find the nearest power-of-2 >= size and use the
+	 *     same side-effect of _slaballoc() which guarantees
+	 *     same-alignment on a power-of-2 allocation.
+	 */
+	if (size < PAGE_SIZE) {
 		zi = zoneindex(&size, &chunking);
 		if (chunking >= alignment) {
 			*memptr = _slaballoc(size, 0);
 			return(*memptr ? 0 : ENOMEM);
 		}
-		size <<= 1;
+		if (size >= 1024)
+			alignment = 1024;
+		if (size >= 16384)
+			alignment = 16384;
+		while (alignment < size)
+			alignment <<= 1;
+		*memptr = _slaballoc(alignment, 0);
+		return(*memptr ? 0 : ENOMEM);
 	}
 
 	/*
