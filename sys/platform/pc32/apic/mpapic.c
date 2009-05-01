@@ -40,6 +40,8 @@
 #define ELCR0	0x4d0			/* eisa irq 0-7 */
 #define ELCR1	0x4d1			/* eisa irq 8-15 */
 
+static void	lapic_timer_calibrate(void);
+
 /*
  * pointers to pmapped apic hardware.
  */
@@ -50,7 +52,7 @@ volatile ioapic_t	**ioapic;
  * Enable APIC, configure interrupts.
  */
 void
-apic_initialize(void)
+apic_initialize(boolean_t bsp)
 {
 	u_int   temp;
 
@@ -135,8 +137,62 @@ apic_initialize(void)
 	lapic.eoi = 0;
 	lapic.eoi = 0;
 
+	if (bsp)
+		lapic_timer_calibrate();
+
 	if (bootverbose)
 		apic_dump("apic_initialize()");
+}
+
+
+static int		lapic_timer_divisor_idx = -1;
+static const uint32_t	lapic_timer_divisors[] = {
+	APIC_TDCR_2,	APIC_TDCR_4,	APIC_TDCR_8,	APIC_TDCR_16,
+	APIC_TDCR_32,	APIC_TDCR_64,	APIC_TDCR_128,	APIC_TDCR_1
+};
+#define APIC_TIMER_NDIVISORS \
+	(int)(sizeof(lapic_timer_divisors) / sizeof(lapic_timer_divisors[0]))
+
+static void
+lapic_timer_set_divisor(int divisor_idx)
+{
+	KKASSERT(divisor_idx >= 0 && divisor_idx < APIC_TIMER_NDIVISORS);
+	lapic.dcr_timer = lapic_timer_divisors[divisor_idx];
+}
+
+static void
+lapic_timer_oneshot(u_int count)
+{
+	uint32_t value;
+
+	value = lapic.lvt_timer;
+	value &= ~APIC_LVTT_PERIODIC;
+	lapic.lvt_timer = value;
+	lapic.icr_timer = count;
+}
+
+static void
+lapic_timer_calibrate(void)
+{
+	u_long value;
+
+	/* Try to calibrate the local APIC timer. */
+	for (lapic_timer_divisor_idx = 0;
+	     lapic_timer_divisor_idx < APIC_TIMER_NDIVISORS;
+	     lapic_timer_divisor_idx++) {
+		lapic_timer_set_divisor(lapic_timer_divisor_idx);
+		lapic_timer_oneshot(APIC_TIMER_MAX_COUNT);
+		DELAY(2000000);
+		value = APIC_TIMER_MAX_COUNT - lapic.ccr_timer;
+		if (value != APIC_TIMER_MAX_COUNT)
+			break;
+	}
+	if (lapic_timer_divisor_idx >= APIC_TIMER_NDIVISORS)
+		panic("lapic: no proper timer divisor?!\n");
+	value /= 2;
+
+	kprintf("lapic: divisor index %d, frequency %lu hz\n",
+		lapic_timer_divisor_idx, value);
 }
 
 

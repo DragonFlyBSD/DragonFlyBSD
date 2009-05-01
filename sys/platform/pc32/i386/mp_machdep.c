@@ -2043,8 +2043,8 @@ start_all_aps(u_int boot_addr)
 
 	POSTCODE(START_ALL_APS_POST);
 
-	/* initialize BSP's local APIC */
-	apic_initialize();
+	/* Initialize BSP's local APIC */
+	apic_initialize(TRUE);
 	bsp_apic_ready = 1;
 
 	/* install the AP 1st level boot code */
@@ -2487,8 +2487,8 @@ ap_init(void)
 		panic("cpuid mismatch! boom!!");
 	}
 
-	/* Init local apic for irq's */
-	apic_initialize();
+	/* Initialize AP's local APIC for irq's */
+	apic_initialize(FALSE);
 
 	/* Set memory range attributes for this CPU to match the BSP */
 	mem_range_AP_init();
