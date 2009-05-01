@@ -28,7 +28,7 @@
 .\" $FreeBSD: src/share/man/man7/clocks.7,v 1.9.2.5 2001/12/17 11:30:15 ru Exp $
 .\" $DragonFly: src/share/man/man7/clocks.7,v 1.3 2004/03/11 12:28:56 hmp Exp $
 .\" "
-.Dd April 1, 1996
+.Dd May 1, 2009
 .Os
 .Dt CLOCKS 7
 .Sh NAME
@@ -130,7 +130,9 @@ The TSC clock (64-bit register) on fifth-generation or later x86 systems.
 This is a real clock with a frequency that is equivalent to the number of
 cycles per second of the CPU(s).
 Its frequency can be found using the sysctl
-.Sy machdep.tsc_freq .
+.Sy hw.tsc_frequency
+and its presence via
+.Sy hw.tsc_present.
 It is used to interpolate between values of the scheduling clock.
 It is only available to applications in a purely machine-dependent manner.
 .El
