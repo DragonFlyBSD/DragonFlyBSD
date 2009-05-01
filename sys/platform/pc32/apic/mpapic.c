@@ -753,40 +753,25 @@ selected_apic_ipi(u_int target, int vector, int delivery_mode)
  *  - suggested by rgrimes@gndrsh.aac.dev.com
  */
 
-/** XXX FIXME: temp hack till we can determin bus clock */
-#ifndef BUS_CLOCK
-#define BUS_CLOCK	66000000
-#define bus_clock()	66000000
-#endif
-
-
 /*
  * Load a 'downcount time' in uSeconds.
  */
 void
-set_apic_timer(int value)
+set_apic_timer(int us)
 {
-	u_long  lvtt;
-	long    ticks_per_microsec;
+	u_int count;
 
 	/*
-	 * Calculate divisor and count from value:
-	 * 
-	 *  timeBase == CPU bus clock divisor == [1,2,4,8,16,32,64,128]
-	 *  value == time in uS
+	 * When we reach here, lapic timer's frequency
+	 * must have been calculated as well as the
+	 * divisor (lapic.dcr_timer is setup during the
+	 * divisor calculation).
 	 */
-	lapic.dcr_timer = APIC_TDCR_1;
-	ticks_per_microsec = bus_clock() / 1000000;
+	KKASSERT(lapic_timer_freq != 0 &&
+		 lapic_timer_divisor_idx >= 0);
 
-	/* configure timer as one-shot */
-	lvtt = lapic.lvt_timer;
-	lvtt &= ~(APIC_LVTT_VECTOR | APIC_LVTT_DS);
-	lvtt &= ~(APIC_LVTT_PERIODIC);
-	lvtt |= APIC_LVTT_MASKED;		/* no INT, one-shot */
-	lapic.lvt_timer = lvtt;
-
-	/* */
-	lapic.icr_timer = value * ticks_per_microsec;
+	count = ((us * (int64_t)lapic_timer_freq) + 999999) / 1000000;
+	lapic_timer_oneshot(count);
 }
 
 
