@@ -128,10 +128,10 @@ from_BCD (int n)
 static unsigned char
 cmos_inb(int portnum)
 {
-    unsigned char ret_val;
+    unsigned char ret_val = 0;
     int cmos_reg;
     struct timezone tz;
-    struct tm tm;
+    struct tm tm = { .tm_sec = 0 };
     time_t now;
 
     switch (portnum) {
@@ -183,7 +183,7 @@ cmos_outb(int portnum, unsigned char byte)
     int year;
     int time00;
     struct timezone tz;
-    struct tm tm;
+    struct tm tm = { .tm_sec = 0 };
     time_t now;
 
     switch (portnum) {

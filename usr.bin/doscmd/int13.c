@@ -190,7 +190,7 @@ int
 init_hdisk(int drive, int cyl, int head, int tracksize, char *file, char *fake_ptab)
 {
     struct diskinfo *di;
-    u_long table;
+    u_long table = 0;
 
     if (drive < 0) {
 	for (drive = 2; drive < 26; ++drive) {
@@ -355,7 +355,7 @@ int
 init_floppy(int drive, int type, char *file)
 {
     struct diskinfo *di = floppyinfo;
-    u_long table;
+    u_long table = 0;
     struct stat sb;
 
     while (di->type >= 0 && di->type != type && disize(di)/2 != type)
