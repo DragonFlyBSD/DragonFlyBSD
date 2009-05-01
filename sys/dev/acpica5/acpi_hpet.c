@@ -154,7 +154,7 @@ acpi_hpet_identify(driver_t *driver, device_t parent)
 	child = BUS_ADD_CHILD(parent, parent, 0, "acpi_hpet", 0);
 	if (child == NULL) {
 		device_printf(parent, "%s: can't add acpi_hpet0\n", __func__);
-		return (ENXIO);
+		return ENXIO;
 	}
 
 	/* Record a magic value so we can detect this device later. */
@@ -210,6 +210,8 @@ acpi_hpet_attach(device_t dev)
 		 * We only need to make sure that main counter
 		 * is accessable.
 		 */
+		device_printf(dev, "can't map %dB register space, try %dB\n",
+			      HPET_MEM_WIDTH, HPET_MEM_WIDTH_MIN);
 		rid = 0;
 		sc->mem_res = bus_alloc_resource(dev, SYS_RES_MEMORY, &rid,
 				acpi_hpet_res_start,
