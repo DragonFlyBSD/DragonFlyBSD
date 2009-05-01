@@ -759,40 +759,6 @@ selected_apic_ipi(u_int target, int vector, int delivery_mode)
 #define bus_clock()	66000000
 #endif
 
-#if defined(READY)
-int acquire_apic_timer (void);
-int release_apic_timer (void);
-
-/*
- * Acquire the APIC timer for exclusive use.
- */
-int
-acquire_apic_timer(void)
-{
-#if 1
-	return 0;
-#else
-	/** XXX FIXME: make this really do something */
-	panic("APIC timer in use when attempting to acquire");
-#endif
-}
-
-
-/*
- * Return the APIC timer.
- */
-int
-release_apic_timer(void)
-{
-#if 1
-	return 0;
-#else
-	/** XXX FIXME: make this really do something */
-	panic("APIC timer was already released");
-#endif
-}
-#endif	/* READY */
-
 
 /*
  * Load a 'downcount time' in uSeconds.
