@@ -145,6 +145,7 @@ apic_initialize(boolean_t bsp)
 }
 
 
+static sysclock_t	lapic_timer_freq;
 static int		lapic_timer_divisor_idx = -1;
 static const uint32_t	lapic_timer_divisors[] = {
 	APIC_TDCR_2,	APIC_TDCR_4,	APIC_TDCR_8,	APIC_TDCR_16,
@@ -174,7 +175,7 @@ lapic_timer_oneshot(u_int count)
 static void
 lapic_timer_calibrate(void)
 {
-	u_long value;
+	sysclock_t value;
 
 	/* Try to calibrate the local APIC timer. */
 	for (lapic_timer_divisor_idx = 0;
@@ -189,10 +190,10 @@ lapic_timer_calibrate(void)
 	}
 	if (lapic_timer_divisor_idx >= APIC_TIMER_NDIVISORS)
 		panic("lapic: no proper timer divisor?!\n");
-	value /= 2;
+	lapic_timer_freq = value / 2;
 
-	kprintf("lapic: divisor index %d, frequency %lu hz\n",
-		lapic_timer_divisor_idx, value);
+	kprintf("lapic: divisor index %d, frequency %u Hz\n",
+		lapic_timer_divisor_idx, lapic_timer_freq);
 }
 
 
