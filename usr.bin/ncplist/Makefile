@@ -2,7 +2,7 @@
 # $DragonFly: src/usr.bin/ncplist/Makefile,v 1.3 2007/08/27 16:50:56 pavalos Exp $
 
 PROG=	ncplist
-WARNS?=	0
+WARNS?=	1
 
 DPADD=	${LIBNCP} ${LIBIPX}
 LDADD=	-lncp -lipx
