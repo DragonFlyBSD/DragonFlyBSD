@@ -374,6 +374,11 @@ cputimer_intr_reload(sysclock_t reload)
 #endif
 }
 
+void
+cputimer_intr_enable(void)
+{
+}
+
 /*
  * DELAY(usec)	     - Spin for the specified number of microseconds.
  * DRIVERSLEEP(usec) - Spin for the specified number of microseconds,

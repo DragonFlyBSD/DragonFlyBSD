@@ -257,6 +257,8 @@ initclocks_pcpu(void)
 	    gd->gd_cpuclock_base = globaldata_find(0)->gd_cpuclock_base;
 	}
 
+	systimer_intr_enable();
+
 #ifdef DEVICE_POLLING
 	init_device_poll_pcpu(gd->gd_cpuid);
 #endif
