@@ -327,8 +327,8 @@ cputimer_intr_config(struct cputimer *timer)
  *
  * We may have to convert from the system timebase to the 8254 timebase.
  */
-void
-cputimer_intr_reload(sysclock_t reload)
+static void
+i8254_intr_reload(sysclock_t reload)
 {
     __uint16_t count;
 
@@ -359,6 +359,12 @@ cputimer_intr_reload(sysclock_t reload)
 	outb(TIMER_CNTR0, (__uint8_t)(reload >> 8));	/* msb */
     }
     clock_unlock();
+}
+
+void
+cputimer_intr_reload(sysclock_t reload)
+{
+	i8254_intr_reload(reload);
 }
 
 /*
@@ -1060,15 +1066,20 @@ cpu_initclocks(void *arg __unused)
 		sysclock_t base;
 		long lastcnt;
 
+		/*
+		 * Following code assumes the 8254 is the cpu timer,
+		 * so make sure it is.
+		 */
+		KKASSERT(sys_cputimer == &i8254_cputimer);
+
 		lastcnt = get_interrupt_counter(apic_8254_intr);
 
 		/*
-		 * XXX this assumes the 8254 is the cpu timer.  Force an
-		 * 8254 Timer0 interrupt and wait 1/100s for it to happen,
-		 * then see if we got it.
+		 * Force an 8254 Timer0 interrupt and wait 1/100s for
+		 * it to happen, then see if we got it.
 		 */
 		kprintf("APIC_IO: Testing 8254 interrupt delivery\n");
-		cputimer_intr_reload(2);	/* XXX assumes 8254 */
+		i8254_intr_reload(2);
 		base = sys_cputimer->count();
 		while (sys_cputimer->count() - base < sys_cputimer->freq / 100)
 			;	/* nothing */
