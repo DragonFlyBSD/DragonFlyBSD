@@ -156,7 +156,7 @@ int21_free(regcontext_t *REGS)
 {
     fsstat_t		fs;
     int			error;
-    int			drive;
+    int			drive = 0;
 
     /* work out drive */
     switch (R_AH) {
@@ -1128,8 +1128,8 @@ int21_open(regcontext_t *REGS)
     int		error;
     char	fname[PATH_MAX];
     struct stat	sb;
-    int		mode,action,status;
-    char	*pname;
+    int		mode = 0, action = 0, status;
+    char	*pname = NULL;
     int		drive;
     int		fd;
     
@@ -1743,7 +1743,7 @@ int21_find(regcontext_t *REGS)
 {
     find_block_t	*dta;
     dosdir_t		dosdir;
-    int			error;
+    int			error = 0;
     
     dta = (find_block_t *)VECPTR(disk_transfer_addr);
 	

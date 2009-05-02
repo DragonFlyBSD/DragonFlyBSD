@@ -70,6 +70,7 @@ typedef struct systimer {
 #define SYSTF_IPIRUNNING	0x0002
 #define SYSTF_NONQUEUED		0x0004
 
+void systimer_intr_enable(void);
 void systimer_intr(sysclock_t *, int, struct intrframe *);
 void systimer_add(systimer_t);
 void systimer_del(systimer_t);
@@ -115,10 +116,12 @@ extern struct cputimer *sys_cputimer;
 #define CPUTIMER_8254_SEL2	2
 #define CPUTIMER_ACPI		3
 #define CPUTIMER_VKERNEL	4
+#define CPUTIMER_HPET		5
 
 #define CPUTIMER_PRI_DUMMY	-10
 #define CPUTIMER_PRI_8254	0
 #define CPUTIMER_PRI_ACPI	10
+#define CPUTIMER_PRI_HPET	15
 #define CPUTIMER_PRI_VKERNEL	20
 
 /*
@@ -133,8 +136,9 @@ sysclock_t cputimer_default_fromus(int);
 void cputimer_default_construct(struct cputimer *, sysclock_t);
 void cputimer_default_destruct(struct cputimer *);
 
+void cputimer_intr_enable(void);
 void cputimer_intr_config(struct cputimer *);
-void cputimer_intr_reload(sysclock_t);
+extern void (*cputimer_intr_reload)(sysclock_t);
 
 #endif
 

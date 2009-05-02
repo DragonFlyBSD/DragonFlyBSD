@@ -842,7 +842,7 @@ rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
 #define	IFFBITS \
 "\020\1UP\2BROADCAST\3DEBUG\4LOOPBACK\5POINTOPOINT\6SMART\7RUNNING" \
 "\10NOARP\11PROMISC\12ALLMULTI\13OACTIVE\14SIMPLEX\15LINK0\16LINK1\17LINK2" \
-"\20MULTICAST\21POLLING\22PPROMISC\23MONITOR\24STATICARP"
+"\20MULTICAST\21POLLING\22PPROMISC\23MONITOR\24STATICARP\25NPOLLING"
 
 #define	IFCAPBITS \
 "\020\1RXCSUM\2TXCSUM\3NETCONS\4VLAN_MTU\5VLAN_HWTAGGING\6JUMBO_MTU\7RSS"
@@ -1076,6 +1076,8 @@ static struct cmd basic_cmds[] = {
 	DEF_CMD("-staticarp",	-IFF_STATICARP,	setifflags),
 	DEF_CMD("polling",	IFF_POLLING,	setifflags),
 	DEF_CMD("-polling",	-IFF_POLLING,	setifflags),
+	DEF_CMD("npolling",	IFF_NPOLLING,	setifflags),
+	DEF_CMD("-npolling",	-IFF_NPOLLING,	setifflags),
 	DEF_CMD("rxcsum",	IFCAP_RXCSUM,	setifcap),
 	DEF_CMD("-rxcsum",	-IFCAP_RXCSUM,	setifcap),
 	DEF_CMD("txcsum",	IFCAP_TXCSUM,	setifcap),

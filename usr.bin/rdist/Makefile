@@ -6,7 +6,7 @@ PROG=	rdist
 SRCS=	docmd.c expand.c gram.y lookup.c main.c rshrcmd.c server.c
 CFLAGS+=-I${.CURDIR}
 YFLAGS=
-WARNS?=	0
+WARNS?=	1
 
 # To use the old method, which requires setuid-root and all the baggage and
 # security holes that goes with it, uncomment:

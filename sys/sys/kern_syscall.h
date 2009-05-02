@@ -165,6 +165,13 @@ int kern_utimes(struct nlookupdata *nd, struct timeval *tptr);
 struct uuid *kern_uuidgen(struct uuid *store, size_t count);
 
 /*
+ * Prototypes for syscalls in kern/kern_time.c
+ */
+int kern_clock_gettime(clockid_t, struct timespec *);
+int kern_clock_settime(clockid_t, struct timespec *);
+int kern_clock_getres(clockid_t, struct timespec *);
+
+/*
  * Prototypes for syscalls in kern/vfs_cache.c
  */
 char *kern_getcwd(char *, size_t, int *);

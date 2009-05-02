@@ -198,7 +198,10 @@ acpi_timer_probe(device_t dev)
 	    acpi_cputimer.count = acpi_timer_get_timecount24;
 	}
     } else {
-	acpi_cputimer.name = "ACPI-safe";
+	if (acpi_counter_mask == 0xffffffff)
+		acpi_cputimer.name = "ACPI-safe";
+	else
+		acpi_cputimer.name = "ACPI-safe24";
 	acpi_cputimer.count = acpi_timer_get_timecount_safe;
     }
 

@@ -48,7 +48,7 @@ mouse_probe(void)
 void
 int33(regcontext_t *REGS)
 {
-    u_long vec;
+    u_long vec = 0;
     u_short mask;
     int i;
 

@@ -238,7 +238,7 @@ get_int_id(struct com_data_struct *cdsp)
 }
  
 static void
-com_async(int fd, int cond, void *arg, regcontext_t *REGS)
+com_async(int fd __unused, int cond, void *arg, regcontext_t *REGS __unused)
 {
  	struct com_data_struct *cdsp = (struct com_data_struct*) arg;
  
@@ -331,7 +331,7 @@ com_set_line(struct com_data_struct *cdsp, unsigned char port, unsigned char par
 {
     struct stat stat_buf;
     int mode = 0;		/* read | write */
-    int reg_num, ret_val, spd, speed;
+    int reg_num, ret_val, spd = 0, speed = 0;
     u_int8_t div_hi, div_lo;
     
     debug(D_PORT, "com_set_line: cdsp = %8p, port = 0x%04x,"
@@ -526,8 +526,8 @@ init_com(int port, char *path, int addr, unsigned char irq)
 unsigned char
 com_port_in(int port)
 {
-    struct com_data_struct *cdsp;
-    unsigned char rs;
+    struct com_data_struct *cdsp = NULL;
+    unsigned char rs = 0;
     unsigned char i;
     int r;
 
@@ -606,7 +606,7 @@ com_port_in(int port)
 void
 com_port_out(int port, unsigned char val)
 {
-    struct com_data_struct *cdsp;
+    struct com_data_struct *cdsp = NULL;
     int i;
 
     /* search for a valid COM ???or MOUSE??? port */

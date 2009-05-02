@@ -640,7 +640,7 @@ struct {
 };
 
 void
-debug_event(int fd, int cond, void *arg, regcontext_t *REGS)
+debug_event(int fd __unused, int cond, void *arg __unused, regcontext_t *REGS)
 {
     static char ibuf[1024];
     static int icnt = 0;
@@ -769,7 +769,7 @@ inb_port60(int port __unused)
 }       
 
 void
-kbd_event(int fd, int cond, void *arg, regcontext_t *REGS)
+kbd_event(int fd, int cond, void *arg __unused, regcontext_t *REGS __unused)
 {
     if (!(cond & AS_RD))
        return;
@@ -970,7 +970,8 @@ printf("FORCED REDRAW\n");
 }
 
 void
-video_async_event(int fd, int cond, void *arg, regcontext_t *REGS)
+video_async_event(int fd, int cond, void *arg __unused,
+    regcontext_t *REGS __unused)
 {
 #ifndef NO_X
     	int int9 = 0;
@@ -1674,7 +1675,7 @@ tty_read(REGISTERS, int flag)
 int
 tty_peek(REGISTERS, int flag)
 {
-	int c;
+	int c = 0;
 
     	if (c == nextchar)
 	    return(nextchar & 0xff);

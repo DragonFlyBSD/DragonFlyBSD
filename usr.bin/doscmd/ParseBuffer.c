@@ -41,7 +41,7 @@ int
 ParseBuffer(char *obuf, char **av, int mac)
 {
 	static char *_buf;
-	char *buf;
+	char *buf = NULL;
 	static int buflen = 0;
 	int len;
 

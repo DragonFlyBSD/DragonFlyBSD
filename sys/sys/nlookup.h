@@ -120,8 +120,7 @@ int nlookup_mp(struct mount *mp, struct nchandle *nch);
 int nlookup(struct nlookupdata *);
 int nreadsymlink(struct nlookupdata *nd, struct nchandle *nch, 
 				struct nlcomponent *nlc);
-int naccess(struct nchandle *nch, int vmode, struct ucred *cred);
-int naccess_va(struct vattr *va, int vmode, struct ucred *cred);
+int naccess(struct nchandle *nch, int vmode, struct ucred *cred, int *stickyp);
 
 #endif
 

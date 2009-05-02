@@ -135,6 +135,12 @@ systimer_intr(sysclock_t *timep, int dummy, struct intrframe *frame)
 }
 
 void
+systimer_intr_enable(void)
+{
+    cputimer_intr_enable();
+}
+
+void
 systimer_add(systimer_t info)
 {
     struct globaldata *gd = mycpu;

@@ -6,6 +6,6 @@ PROG=	locate.bigram
 NOMAN=	noman
 BINDIR=	${LIBEXECDIR}
 CFLAGS+= -I${.CURDIR}/../locate
-WARNS?=	0
 
+.include "../../Makefile.inc"
 .include <bsd.prog.mk>

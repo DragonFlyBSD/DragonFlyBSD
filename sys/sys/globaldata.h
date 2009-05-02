@@ -166,7 +166,8 @@ struct globaldata {
 	struct spinlock	*gd_spinlock_rd;	/* Shared spinlock held */
 	int		gd_spinlocks_wr;	/* Exclusive spinlocks held */
 	struct systimer	*gd_systimer_inprog;	/* in-progress systimer */
-	void		*gd_reserved[12];	/* future fields */
+	int		gd_timer_running;
+	void		*gd_reserved[11];	/* future fields */
 	/* extended by <machine/globaldata.h> */
 };
 
@@ -179,9 +180,11 @@ typedef struct globaldata *globaldata_t;
 #define RQB_AST_USER_RESCHED	4
 #define RQB_AST_LWKT_RESCHED	5
 #define RQB_AST_UPCALL		6
+#define RQB_TIMER		7
 
 #define RQF_IPIQ		(1 << RQB_IPIQ)
 #define RQF_INTPEND		(1 << RQB_INTPEND)
+#define RQF_TIMER		(1 << RQB_TIMER)
 #define RQF_AST_OWEUPC		(1 << RQB_AST_OWEUPC)
 #define RQF_AST_SIGNAL		(1 << RQB_AST_SIGNAL)
 #define RQF_AST_USER_RESCHED	(1 << RQB_AST_USER_RESCHED)
@@ -190,7 +193,7 @@ typedef struct globaldata *globaldata_t;
 #define RQF_AST_MASK		(RQF_AST_OWEUPC|RQF_AST_SIGNAL|\
 				RQF_AST_USER_RESCHED|RQF_AST_LWKT_RESCHED|\
 				RQF_AST_UPCALL)
-#define RQF_IDLECHECK_MASK	(RQF_IPIQ|RQF_INTPEND)
+#define RQF_IDLECHECK_MASK	(RQF_IPIQ|RQF_INTPEND|RQF_TIMER)
 
 #endif
 

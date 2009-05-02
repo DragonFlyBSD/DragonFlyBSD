@@ -703,7 +703,8 @@ failed:
  * cursor must be seeked to the directory entry record being deleted.
  *
  * The related inode should be share-locked by the caller.  The caller is
- * on the frontend.
+ * on the frontend.  It could also be NULL indicating that the directory
+ * entry being removed has no related inode.
  *
  * This function can return EDEADLK requiring the caller to terminate
  * the cursor, any locks, wait on the returned record, and retry.
@@ -749,9 +750,18 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 		record->type = HAMMER_MEM_RECORD_DEL;
 		record->leaf.base = cursor->leaf->base;
 
+		/*
+		 * ip may be NULL, indicating the deletion of a directory
+		 * entry which has no related inode.
+		 */
 		record->target_ip = ip;
-		record->flush_state = HAMMER_FST_SETUP;
-		TAILQ_INSERT_TAIL(&ip->target_list, record, target_entry);
+		if (ip) {
+			record->flush_state = HAMMER_FST_SETUP;
+			TAILQ_INSERT_TAIL(&ip->target_list, record,
+					  target_entry);
+		} else {
+			record->flush_state = HAMMER_FST_IDLE;
+		}
 
 		/*
 		 * The inode now has a dependancy and must be taken out of
@@ -762,7 +772,7 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 		 * reflush when the dependancies are disposed of if someone
 		 * is waiting on the inode.
 		 */
-		if (ip->flush_state == HAMMER_FST_IDLE) {
+		if (ip && ip->flush_state == HAMMER_FST_IDLE) {
 			hammer_ref(&ip->lock);
 			ip->flush_state = HAMMER_FST_SETUP;
 			if (ip->flags & HAMMER_INODE_FLUSHW)
@@ -786,15 +796,18 @@ hammer_ip_del_directory(struct hammer_transaction *trans,
 	 * on-media until we unmount.
 	 */
 	if (error == 0) {
-		--ip->ino_data.nlinks;
+		if (ip)
+			--ip->ino_data.nlinks;	/* do before we might block */
 		dip->ino_data.mtime = trans->time;
 		hammer_modify_inode(dip, HAMMER_INODE_MTIME);
-		hammer_modify_inode(ip, HAMMER_INODE_DDIRTY);
-		if (ip->ino_data.nlinks == 0 &&
-		    (ip->vp == NULL || (ip->vp->v_flag & VINACTIVE))) {
-			hammer_done_cursor(cursor);
-			hammer_inode_unloadable_check(ip, 1);
-			hammer_flush_inode(ip, 0);
+		if (ip) {
+			hammer_modify_inode(ip, HAMMER_INODE_DDIRTY);
+			if (ip->ino_data.nlinks == 0 &&
+			    (ip->vp == NULL || (ip->vp->v_flag & VINACTIVE))) {
+				hammer_done_cursor(cursor);
+				hammer_inode_unloadable_check(ip, 1);
+				hammer_flush_inode(ip, 0);
+			}
 		}
 
 	}

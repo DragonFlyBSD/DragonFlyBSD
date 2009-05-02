@@ -39,6 +39,7 @@
 #include "opt_inet6.h"
 #include "opt_inet.h"
 #include "opt_polling.h"
+#include "opt_ifpoll.h"
 
 #include <sys/param.h>
 #include <sys/malloc.h>
@@ -715,6 +716,10 @@ if_detach(struct ifnet *ifp)
 	if (ifp->if_flags & IFF_POLLING)
 		ether_poll_deregister(ifp);
 #endif
+#ifdef IFPOLL_ENABLE
+	if (ifp->if_flags & IFF_NPOLLING)
+		ifpoll_deregister(ifp);
+#endif
 	if_down(ifp);
 
 	if (ifq_is_enabled(&ifp->if_snd))
@@ -1339,6 +1344,14 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct ucred *cred)
 			} else {
 				ether_poll_deregister(ifp);
 			}
+		}
+#endif
+#ifdef IFPOLL_ENABLE
+		if ((new_flags ^ ifp->if_flags) & IFF_NPOLLING) {
+			if (new_flags & IFF_NPOLLING)
+				ifpoll_register(ifp);
+			else
+				ifpoll_deregister(ifp);
 		}
 #endif
 

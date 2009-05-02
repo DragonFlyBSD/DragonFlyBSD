@@ -365,6 +365,11 @@ hammer_get_inode(hammer_transaction_t trans, hammer_inode_t dip,
 	 * of inodes.  Otherwise we can continue to * add new inodes
 	 * faster then they can be disposed of, even with the tsleep
 	 * delay.
+	 *
+	 * If we find a dummy inode we return a failure so dounlink
+	 * (which does another lookup) doesn't try to mess with the
+	 * link count.  hammer_vop_nresolve() uses hammer_get_dummy_inode()
+	 * to ref dummy inodes.
 	 */
 	iinfo.obj_id = obj_id;
 	iinfo.obj_asof = asof;
@@ -372,10 +377,10 @@ hammer_get_inode(hammer_transaction_t trans, hammer_inode_t dip,
 loop:
 	ip = hammer_ino_rb_tree_RB_LOOKUP_INFO(&hmp->rb_inos_root, &iinfo);
 	if (ip) {
-#if 0
-		if (ip->vp == NULL)
-			trans->flags |= HAMMER_TRANSF_NEWINODE;
-#endif
+		if (ip->flags & HAMMER_INODE_DUMMY) {
+			*errorp = ENOENT;
+			return(NULL);
+		}
 		hammer_ref(&ip->lock);
 		*errorp = 0;
 		return(ip);
@@ -495,6 +500,114 @@ retry:
 		ip = NULL;
 	}
 	hammer_done_cursor(&cursor);
+	trans->flags |= HAMMER_TRANSF_NEWINODE;
+	return (ip);
+}
+
+/*
+ * Get a dummy inode to placemark a broken directory entry.
+ */
+struct hammer_inode *
+hammer_get_dummy_inode(hammer_transaction_t trans, hammer_inode_t dip,
+		 int64_t obj_id, hammer_tid_t asof, u_int32_t localization,
+		 int flags, int *errorp)
+{
+	hammer_mount_t hmp = trans->hmp;
+	struct hammer_inode_info iinfo;
+	struct hammer_inode *ip;
+
+	/*
+	 * Determine if we already have an inode cached.  If we do then
+	 * we are golden.
+	 *
+	 * If we find an inode with no vnode we have to mark the
+	 * transaction such that hammer_inode_waitreclaims() is
+	 * called later on to avoid building up an infinite number
+	 * of inodes.  Otherwise we can continue to * add new inodes
+	 * faster then they can be disposed of, even with the tsleep
+	 * delay.
+	 *
+	 * If we find a non-fake inode we return an error.  Only fake
+	 * inodes can be returned by this routine.
+	 */
+	iinfo.obj_id = obj_id;
+	iinfo.obj_asof = asof;
+	iinfo.obj_localization = localization;
+loop:
+	*errorp = 0;
+	ip = hammer_ino_rb_tree_RB_LOOKUP_INFO(&hmp->rb_inos_root, &iinfo);
+	if (ip) {
+		if ((ip->flags & HAMMER_INODE_DUMMY) == 0) {
+			*errorp = ENOENT;
+			return(NULL);
+		}
+		hammer_ref(&ip->lock);
+		return(ip);
+	}
+
+	/*
+	 * Allocate a new inode structure and deal with races later.
+	 */
+	ip = kmalloc(sizeof(*ip), hmp->m_inodes, M_WAITOK|M_ZERO);
+	++hammer_count_inodes;
+	++hmp->count_inodes;
+	ip->obj_id = obj_id;
+	ip->obj_asof = iinfo.obj_asof;
+	ip->obj_localization = localization;
+	ip->hmp = hmp;
+	ip->flags = flags | HAMMER_INODE_RO | HAMMER_INODE_DUMMY;
+	ip->cache[0].ip = ip;
+	ip->cache[1].ip = ip;
+	ip->sync_trunc_off = ip->trunc_off = ip->save_trunc_off =
+		0x7FFFFFFFFFFFFFFFLL;
+	RB_INIT(&ip->rec_tree);
+	TAILQ_INIT(&ip->target_list);
+	hammer_ref(&ip->lock);
+
+	/*
+	 * Populate the dummy inode.  Leave everything zero'd out.
+	 *
+	 * (ip->ino_leaf and ip->ino_data)
+	 *
+	 * Make the dummy inode a FIFO object which most copy programs
+	 * will properly ignore.
+	 */
+	ip->save_trunc_off = ip->ino_data.size;
+	ip->ino_data.obj_type = HAMMER_OBJTYPE_FIFO;
+
+	/*
+	 * Locate and assign the pseudofs management structure to
+	 * the inode.
+	 */
+	if (dip && dip->obj_localization == ip->obj_localization) {
+		ip->pfsm = dip->pfsm;
+		hammer_ref(&ip->pfsm->lock);
+	} else {
+		ip->pfsm = hammer_load_pseudofs(trans, ip->obj_localization,
+						errorp);
+		*errorp = 0;	/* ignore ENOENT */
+	}
+
+	/*
+	 * The inode is placed on the red-black tree and will be synced to
+	 * the media when flushed or by the filesystem sync.  If this races
+	 * another instantiation/lookup the insertion will fail.
+	 *
+	 * NOTE: Do not set HAMMER_INODE_ONDISK.  The inode is a fake.
+	 */
+	if (*errorp == 0) {
+		if (RB_INSERT(hammer_ino_rb_tree, &hmp->rb_inos_root, ip)) {
+			hammer_free_inode(ip);
+			goto loop;
+		}
+	} else {
+		if (ip->flags & HAMMER_INODE_RSV_INODES) {
+			ip->flags &= ~HAMMER_INODE_RSV_INODES; /* sanity */
+			--hmp->rsv_inodes;
+		}
+		hammer_free_inode(ip);
+		ip = NULL;
+	}
 	trans->flags |= HAMMER_TRANSF_NEWINODE;
 	return (ip);
 }
@@ -2508,7 +2621,7 @@ hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip)
 	 * out from under us.
 	 */
 	if (error == 0) {
-		tmp_node = hammer_ref_node_safe(ip->hmp, &ip->cache[0], &error);
+		tmp_node = hammer_ref_node_safe(trans, &ip->cache[0], &error);
 		if (tmp_node) {
 			hammer_cursor_downgrade(&cursor);
 			hammer_lock_sh(&tmp_node->lock);

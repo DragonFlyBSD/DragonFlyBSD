@@ -90,6 +90,7 @@ struct	lwkt_port;
 struct	lwkt_msg;
 struct	netmsg;
 struct	pktinfo;
+struct	ifpoll_info;
 
 #include <sys/queue.h>		/* get TAILQ macros */
 
@@ -250,7 +251,15 @@ struct ifnet {
 	void	(*if_serialize_assert)
 		(struct ifnet *, enum ifnet_serialize, boolean_t);
 #else
+	/* Place holders */
 	void	(*if_serialize_unused)(void);
+#endif
+#ifdef IFPOLL_ENABLE
+	void	(*if_qpoll)
+		(struct ifnet *, struct ifpoll_info *);
+#else
+	/* Place holders */
+	void	(*if_qpoll_unused)(void);
 #endif
 	struct	ifaltq if_snd;		/* output queue (includes altq) */
 	struct	ifprefixhead if_prefixhead; /* list of prefixes per if */
@@ -727,6 +736,12 @@ int	ether_poll_register(struct ifnet *);
 int	ether_poll_deregister(struct ifnet *);
 int	ether_pollcpu_register(struct ifnet *, int);
 #endif /* DEVICE_POLLING */
+
+#ifdef IFPOLL_ENABLE
+int	ifpoll_register(struct ifnet *);
+int	ifpoll_deregister(struct ifnet *);
+#endif	/* IFPOLL_ENABLE */
+
 #endif /* _KERNEL */
 
 #endif /* !_NET_IF_VAR_H_ */

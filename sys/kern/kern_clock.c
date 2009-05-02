@@ -75,6 +75,7 @@
 
 #include "opt_ntp.h"
 #include "opt_polling.h"
+#include "opt_ifpoll.h"
 #include "opt_pctrack.h"
 
 #include <sys/param.h>
@@ -106,6 +107,10 @@
 
 #ifdef DEVICE_POLLING
 extern void init_device_poll_pcpu(int);
+#endif
+
+#ifdef IFPOLL_ENABLE
+extern void ifpoll_init_pcpu(int);
 #endif
 
 #ifdef DEBUG_PCTRACK
@@ -252,8 +257,14 @@ initclocks_pcpu(void)
 	    gd->gd_cpuclock_base = globaldata_find(0)->gd_cpuclock_base;
 	}
 
+	systimer_intr_enable();
+
 #ifdef DEVICE_POLLING
 	init_device_poll_pcpu(gd->gd_cpuid);
+#endif
+
+#ifdef IFPOLL_ENABLE
+	ifpoll_init_pcpu(gd->gd_cpuid);
 #endif
 
 	/*

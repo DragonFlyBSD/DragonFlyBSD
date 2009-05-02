@@ -260,7 +260,7 @@ init_hard:
 		define_output_port_handler(p++, outb_port);
 	    }
     	} else if (!strcasecmp(av[0], "setver")) {
-	    int v;
+	    int v = 0;
 	    if (ac != 3 || !(v = strtol(av[2], 0, 0))) {
 		fprintf(stderr, "Usage: setver command version\n");
 		quit(1);

@@ -118,6 +118,7 @@ typedef struct hammer_transaction *hammer_transaction_t;
 
 #define HAMMER_TRANSF_NEWINODE	0x0001
 #define HAMMER_TRANSF_DIDIO	0x0002
+#define HAMMER_TRANSF_CRCDOM	0x0004	/* EDOM on CRC error, less critical */
 
 /*
  * HAMMER locks
@@ -337,6 +338,7 @@ typedef struct hammer_inode *hammer_inode_t;
 #define HAMMER_INODE_ATIME	0x00100000 /* in-memory atime modified */
 #define HAMMER_INODE_MTIME	0x00200000 /* in-memory mtime modified */
 #define HAMMER_INODE_WOULDBLOCK 0x00400000 /* re-issue to new flush group */
+#define HAMMER_INODE_DUMMY 	0x00800000 /* dummy inode covering bad file */
 
 #define HAMMER_INODE_MODMASK	(HAMMER_INODE_DDIRTY|			    \
 				 HAMMER_INODE_XDIRTY|HAMMER_INODE_BUFS|	    \
@@ -587,6 +589,9 @@ struct hammer_node {
 #define HAMMER_NODE_CRCGOOD	0x0004
 #define HAMMER_NODE_NEEDSCRC	0x0008
 #define HAMMER_NODE_NEEDSMIRROR	0x0010
+#define HAMMER_NODE_CRCBAD	0x0020
+
+#define HAMMER_NODE_CRCANY	(HAMMER_NODE_CRCGOOD | HAMMER_NODE_CRCBAD)
 
 typedef struct hammer_node	*hammer_node_t;
 
@@ -853,6 +858,10 @@ struct hammer_inode *hammer_get_inode(hammer_transaction_t trans,
 			hammer_inode_t dip, int64_t obj_id,
 			hammer_tid_t asof, u_int32_t localization,
 			int flags, int *errorp);
+struct hammer_inode *hammer_get_dummy_inode(hammer_transaction_t trans,
+			hammer_inode_t dip, int64_t obj_id,
+			hammer_tid_t asof, u_int32_t localization,
+			int flags, int *errorp);
 void	hammer_scan_inode_snapshots(hammer_mount_t hmp,
 			hammer_inode_info_t iinfo,
 			int (*callback)(hammer_inode_t ip, void *data),
@@ -1028,7 +1037,7 @@ int		hammer_vfs_export(struct mount *mp, int op,
 hammer_node_t	hammer_get_node(hammer_transaction_t trans,
 			hammer_off_t node_offset, int isnew, int *errorp);
 void		hammer_ref_node(hammer_node_t node);
-hammer_node_t	hammer_ref_node_safe(struct hammer_mount *hmp,
+hammer_node_t	hammer_ref_node_safe(hammer_transaction_t trans,
 			hammer_node_cache_t cache, int *errorp);
 void		hammer_rel_node(hammer_node_t node);
 void		hammer_delete_node(hammer_transaction_t trans,
@@ -1245,12 +1254,14 @@ hammer_lock_ex(struct hammer_lock *lock)
 static __inline void
 hammer_modify_node_noundo(hammer_transaction_t trans, hammer_node_t node)
 {
+	KKASSERT((node->flags & HAMMER_NODE_CRCBAD) == 0);
 	hammer_modify_buffer(trans, node->buffer, NULL, 0);
 }
 
 static __inline void
 hammer_modify_node_all(hammer_transaction_t trans, struct hammer_node *node)
 {
+	KKASSERT((node->flags & HAMMER_NODE_CRCBAD) == 0);
 	hammer_modify_buffer(trans, node->buffer,
 			     node->ondisk, sizeof(*node->ondisk));
 }
@@ -1264,6 +1275,7 @@ hammer_modify_node(hammer_transaction_t trans, hammer_node_t node,
 	KKASSERT((char *)base >= (char *)node->ondisk &&
 		 (char *)base + len <=
 		    (char *)node->ondisk + sizeof(*node->ondisk));
+	KKASSERT((node->flags & HAMMER_NODE_CRCBAD) == 0);
 	hammer_modify_buffer(trans, node->buffer, base, len);
 	crcptr = &node->ondisk->crc;
 	hammer_modify_buffer(trans, node->buffer, crcptr, sizeof(hammer_crc_t));

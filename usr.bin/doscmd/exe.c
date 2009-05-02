@@ -165,7 +165,7 @@ load_command(regcontext_t *REGS, int run, int fd, char *cmd_name,
     int biggest;
     int envseg;
     char *psp;
-    int text_size;
+    int text_size = 0;
     int i;
     int start_segment;
     int exe_file;
