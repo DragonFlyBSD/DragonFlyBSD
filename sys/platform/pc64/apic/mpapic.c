@@ -47,6 +47,8 @@
 
 volatile ioapic_t	**ioapic;
 
+void	lapic_timer_fixup(void);
+
 /*
  * Enable APIC, configure interrupts.
  */
@@ -140,6 +142,11 @@ apic_initialize(void)
 		apic_dump("apic_initialize()");
 }
 
+void
+lapic_timer_fixup(void)
+{
+	/* TODO */
+}
 
 /*
  * dump contents of local APIC registers

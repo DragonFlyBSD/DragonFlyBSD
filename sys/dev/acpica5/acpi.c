@@ -65,6 +65,10 @@ MALLOC_DEFINE(M_ACPIDEV, "acpidev", "ACPI devices");
 #define _COMPONENT	ACPI_BUS
 ACPI_MODULE_NAME("ACPI")
 
+#ifdef SMP
+extern void	lapic_timer_fixup(void);
+#endif
+
 static d_open_t		acpiopen;
 static d_close_t	acpiclose;
 static d_ioctl_t	acpiioctl;
@@ -694,6 +698,14 @@ acpi_attach(device_t dev)
 
  out:
     ACPI_UNLOCK;
+
+#ifdef SMP
+    /*
+     * See the comment near lapic_timer_fixup() in
+     * platform/pc32/apic/mpapic.c
+     */
+    lapic_timer_fixup();
+#endif
     return_VALUE (error);
 }
 

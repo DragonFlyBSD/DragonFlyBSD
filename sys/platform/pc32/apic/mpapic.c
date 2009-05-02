@@ -45,7 +45,9 @@
 static void	lapic_timer_calibrate(void);
 static void	lapic_timer_set_divisor(int);
 static void	lapic_timer_intr_reload(sysclock_t);
+static void	lapic_timer_fixup_handler(void *);
 
+void		lapic_timer_fixup(void);
 void		lapic_timer_process(void);
 void		lapic_timer_process_frame(struct intrframe *);
 void		lapic_timer_intr_test(void);
@@ -168,29 +170,6 @@ apic_initialize(boolean_t bsp)
 	lapic.eoi = 0;
 	lapic.eoi = 0;
 	lapic.eoi = 0;
-
-	if (strcmp(cpu_vendor, "AuthenticAMD") == 0) {
-		/*
-		 * Detect the presence of C1E capability mostly on latest
-		 * dual-cores (or future) k8 family.  This feature renders
-		 * the local APIC timer dead, so we disable it by reading
-		 * the Interrupt Pending Message register and clearing both
-		 * C1eOnCmpHalt (bit 28) and SmiOnCmpHalt (bit 27).
-		 * 
-		 * Reference:
-		 *   "BIOS and Kernel Developer's Guide for AMD NPT
-		 *    Family 0Fh Processors"
-		 *   #32559 revision 3.00
-		 */
-		if ((cpu_id & 0x00000f00) == 0x00000f00 &&
-		    (cpu_id & 0x0fff0000) >=  0x00040000) {
-			uint64_t msr;
-
-			msr = rdmsr(0xc0010055);
-			if (msr & 0x18000000)
-				wrmsr(0xc0010055, msr & ~0x18000000ULL);
-		}
-	}
 
 	if (bsp) {
 		lapic_timer_calibrate();
@@ -329,6 +308,62 @@ lapic_timer_oneshot_intr_enable(void)
 	timer = lapic.lvt_timer;
 	timer &= ~(APIC_LVTT_MASKED | APIC_LVTT_PERIODIC);
 	lapic.lvt_timer = timer;
+
+	lapic_timer_fixup_handler(NULL);
+}
+
+static void
+lapic_timer_fixup_handler(void *dummy __unused)
+{
+	if (strcmp(cpu_vendor, "AuthenticAMD") == 0) {
+		/*
+		 * Detect the presence of C1E capability mostly on latest
+		 * dual-cores (or future) k8 family.  This feature renders
+		 * the local APIC timer dead, so we disable it by reading
+		 * the Interrupt Pending Message register and clearing both
+		 * C1eOnCmpHalt (bit 28) and SmiOnCmpHalt (bit 27).
+		 * 
+		 * Reference:
+		 *   "BIOS and Kernel Developer's Guide for AMD NPT
+		 *    Family 0Fh Processors"
+		 *   #32559 revision 3.00
+		 */
+		if ((cpu_id & 0x00000f00) == 0x00000f00 &&
+		    (cpu_id & 0x0fff0000) >= 0x00040000) {
+			uint64_t msr;
+
+			msr = rdmsr(0xc0010055);
+			if (msr & 0x18000000) {
+				struct globaldata *gd = mycpu;
+
+				kprintf("cpu%d: AMD C1E detected\n",
+					gd->gd_cpuid);
+				wrmsr(0xc0010055, msr & ~0x18000000ULL);
+
+				/*
+				 * We are kinda stalled;
+				 * kick start again.
+				 */
+				gd->gd_timer_running = 1;
+				lapic_timer_oneshot_quick(2);
+			}
+		}
+	}
+}
+
+/*
+ * This function is called only by ACPI-CA code currently:
+ * - AMD C1E fixup.  AMD C1E only seems to happen after ACPI
+ *   module controls PM.  So once ACPI-CA is attached, we try
+ *   to apply the fixup to prevent LAPIC timer from hanging.
+ */
+void
+lapic_timer_fixup(void)
+{
+	if (lapic_timer_test || lapic_timer_enable) {
+		lwkt_send_ipiq_mask(smp_active_mask,
+				    lapic_timer_fixup_handler, NULL);
+	}
 }
 
 
