@@ -126,6 +126,11 @@ vkernel_timer_construct(struct cputimer *timer, sysclock_t oclock)
 	timer->base = oclock - vkernel_timer_get_timecount();
 }
 
+void
+cputimer_intr_enable(void)
+{
+}
+
 /*
  * Get the current counter, with 2's complement rollover.
  *
