@@ -28,6 +28,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/kernel.h>
 #include <machine/globaldata.h>
 #include <machine/smp.h>
 #include <machine/md_var.h>
@@ -45,6 +46,10 @@ static void	lapic_timer_calibrate(void);
 static void	lapic_timer_set_divisor(int);
 void		lapic_timer_process(void);
 void		lapic_timer_process_frame(struct intrframe *);
+void		lapic_timer_intr_reload(sysclock_t);
+
+int		lapic_timer_test;
+TUNABLE_INT("hw.lapic_timer_test", &lapic_timer_test);
 
 /*
  * pointers to pmapped apic hardware.
@@ -236,11 +241,49 @@ lapic_timer_calibrate(void)
 void
 lapic_timer_process(void)
 {
+	struct globaldata *gd = mycpu;
+
+	gd->gd_timer_running = 1;
+
+	if (lapic_timer_test)
+		kprintf("%d proc\n", gd->gd_cpuid);
 }
 
 void
 lapic_timer_process_frame(struct intrframe *frame)
 {
+	struct globaldata *gd = mycpu;
+
+	gd->gd_timer_running = 1;
+
+	if (lapic_timer_test)
+		kprintf("%d proc frame\n", gd->gd_cpuid);
+}
+
+void
+lapic_timer_intr_reload(sysclock_t reload)
+{
+	struct globaldata *gd = mycpu;
+
+	if (lapic_timer_test) {
+		if (gd->gd_timer_running == 2) {
+			return;
+		} else if (gd->gd_timer_running == 1) {
+			gd->gd_timer_running = 2;
+			KKASSERT(lapic_timer_freq != 0);
+			lapic_timer_oneshot(lapic_timer_freq);
+		} else if (gd->gd_timer_running == 0) {
+			uint32_t timer;
+
+			timer = lapic.lvt_timer;
+			timer &= ~APIC_LVTT_MASKED;
+			lapic.lvt_timer = timer;
+
+			gd->gd_timer_running = 2;
+			KKASSERT(lapic_timer_freq != 0);
+			lapic_timer_oneshot(lapic_timer_freq);
+		}
+	}
 }
 
 

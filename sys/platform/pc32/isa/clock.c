@@ -361,10 +361,17 @@ i8254_intr_reload(sysclock_t reload)
     clock_unlock();
 }
 
+#ifdef SMP
+extern void	lapic_timer_intr_reload(sysclock_t);
+#endif
+
 void
 cputimer_intr_reload(sysclock_t reload)
 {
 	i8254_intr_reload(reload);
+#ifdef SMP
+	lapic_timer_intr_reload(reload);
+#endif
 }
 
 /*

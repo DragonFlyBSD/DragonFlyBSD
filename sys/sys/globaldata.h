@@ -166,7 +166,8 @@ struct globaldata {
 	struct spinlock	*gd_spinlock_rd;	/* Shared spinlock held */
 	int		gd_spinlocks_wr;	/* Exclusive spinlocks held */
 	struct systimer	*gd_systimer_inprog;	/* in-progress systimer */
-	void		*gd_reserved[12];	/* future fields */
+	int		gd_timer_running;
+	void		*gd_reserved[11];	/* future fields */
 	/* extended by <machine/globaldata.h> */
 };
 
