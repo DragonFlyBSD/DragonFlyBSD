@@ -37,7 +37,7 @@
 .\" $FreeBSD: src/lib/libc/stdlib/malloc.3,v 1.25.2.16 2003/01/06 17:10:45 trhodes Exp $
 .\" $DragonFly: src/lib/libc/stdlib/malloc.3,v 1.8 2008/05/02 02:05:04 swildner Exp $
 .\"
-.Dd April 30, 2009
+.Dd May 2, 2009
 .Dt MALLOC 3
 .Os
 .Sh NAME
@@ -196,19 +196,6 @@ The zone mechanism also has the nice side effect of greatly reducing
 fragmentation over the original
 .Nm .
 .Pp
-.Xr posix_memalign 3
-is directly supported by matching the requested alignment against a zone
-with a compatible chunking, and using the power-of-2 shortcut whenever
-possible.
-Alignments beyond those supported by the zone mechanism are still
-guaranteed using cute
-.Xr mmap 2
-tricks.
-Our
-.Xr posix_memalign 3
-is thus able to take advantage of the slab allocator to produce
-well-fitted results when the requests are reasonable.
-.Pp
 .Fn calloc
 is directly supported by keeping track of newly-allocated zones which
 will be demand-zero'd by the system.
@@ -277,7 +264,8 @@ and the process will dump core.
 .Xr mmap 2 ,
 .Xr alloca 3 ,
 .Xr getpagesize 3 ,
-.Xr memory 3
+.Xr memory 3 ,
+.Xr posix_memalign
 .Sh STANDARDS
 The
 .Fn malloc ,
