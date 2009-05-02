@@ -232,14 +232,7 @@ disk_get_device_name(const struct disk *d)
 {
 	static char tmp_dev_name[256];
 
-	/*
-	 * for OpenBSD, this has a "c" suffixed to it.
-	 */
-#ifdef __OpenBSD__
-	snprintf(tmp_dev_name, 256, "%sc", d->device);
-#else
 	snprintf(tmp_dev_name, 256, "%s", d->device);
-#endif
 	return(tmp_dev_name);
 }
 
@@ -254,15 +247,7 @@ disk_get_raw_device_name(const struct disk *d)
 {
 	static char tmp_dev_name[256];
 
-	/*
-	 * for OpenBSD, this has an "r" prepended to it,
-	 * and a "c" suffixed to it.
-	 */
-#ifdef __OpenBSD__
-	snprintf(tmp_dev_name, 256, "r%sc", d->device);
-#else
 	snprintf(tmp_dev_name, 256, "%s", d->device);
-#endif
 	return(tmp_dev_name);
 }
 
@@ -440,16 +425,7 @@ slice_get_device_name(const struct slice *s)
 {
 	static char tmp_dev_name[256];
 
-	/*
-	 * XXX for OpenBSD, this appears to be meaningless?
-	 * i.e. the number of the current slice is hidden in-core
-	 * and not accessible (or needed) from userland.
-	 */
-#ifdef __OpenBSD__
-	snprintf(tmp_dev_name, 256, "%sc", s->parent->device);
-#else
 	snprintf(tmp_dev_name, 256, "%ss%d", s->parent->device, s->number);
-#endif
 	return(tmp_dev_name);
 }
 
@@ -464,15 +440,7 @@ slice_get_raw_device_name(const struct slice *s)
 {
 	static char tmp_dev_name[256];
 
-	/*
-	 * XXX for OpenBSD, this needs an "r" prepended to it.
-	 * XXX for OpenBSD, this appears to be meaningless?
-	 */
-#ifdef __OpenBSD__
-	snprintf(tmp_dev_name, 256, "r%sc", s->parent->device);
-#else
 	snprintf(tmp_dev_name, 256, "%ss%d", s->parent->device, s->number);
-#endif
 	return(tmp_dev_name);
 }
 
@@ -787,13 +755,8 @@ subpartition_get_device_name(const struct subpartition *sp)
 {
 	static char tmp_dev_name[256];
 
-#ifdef __OpenBSD__
-	snprintf(tmp_dev_name, 256, "%s%c", sp->parent->parent->device,
-	    sp->letter);
-#else
 	snprintf(tmp_dev_name, 256, "%ss%d%c", sp->parent->parent->device,
 	    sp->parent->number, sp->letter);
-#endif
 	return(tmp_dev_name);
 }
 
@@ -808,16 +771,8 @@ subpartition_get_raw_device_name(const struct subpartition *sp)
 {
 	static char tmp_dev_name[256];
 
-	/*
-	 * for OpenBSD, this has an "r" prepended to it.
-	 */
-#ifdef __OpenBSD__
-	snprintf(tmp_dev_name, 256, "r%s%c", sp->parent->parent->device,
-	    sp->letter);
-#else
 	snprintf(tmp_dev_name, 256, "r%ss%d%c", sp->parent->parent->device,
 	    sp->parent->number, sp->letter);
-#endif
 	return(tmp_dev_name);
 }
 
