@@ -452,7 +452,7 @@ save_subpartition_selections(struct dfui_response *r, struct i_fn_args *a)
 			    (strcmp(dfui_dataset_get_value(ds, "softupdates"), "Y") == 0);
 			fsize = atol(dfui_dataset_get_value(ds, "fsize"));
 			bsize = atol(dfui_dataset_get_value(ds, "bsize"));
-			mfsbacked = (strcmp(dfui_dataset_get_value(ds, "msfbacked"), "Y") == 0);
+			mfsbacked = (strcmp(dfui_dataset_get_value(ds, "mfsbacked"), "Y") == 0);
 		} else {
 			softupdates = (strcmp(mountpoint, "/") == 0 ? 0 : 1);
 			mfsbacked = 0;
