@@ -59,6 +59,20 @@ can be used as an argument in subsequent calls to
 .Xr reallocf 3 ,
 and
 .Xr free 3 .
+.Sh IMPLEMENTATION NOTES
+The
+.Fn posix_memalign
+function is directly supported by matching the requested alignment against a zone
+of the slab allocator with a compatible chunking, and using the power-of-2
+shortcut whenever possible.
+Alignments beyond those supported by the zone mechanism are still
+guaranteed using cute
+.Xr mmap 2
+tricks.
+Our
+.Fn posix_memalign
+is thus able to take advantage of the slab allocator to produce
+well-fitted results when the requests are reasonable.
 .Sh RETURN VALUES
 The
 .Fn posix_memalign
