@@ -42,12 +42,23 @@
 #define ELCR1	0x4d1			/* eisa irq 8-15 */
 
 static void	lapic_timer_calibrate(void);
+static void	lapic_timer_set_divisor(int);
 
 /*
  * pointers to pmapped apic hardware.
  */
 
 volatile ioapic_t	**ioapic;
+
+static sysclock_t	lapic_timer_freq;
+static int		lapic_timer_divisor_idx = -1;
+static const uint32_t	lapic_timer_divisors[] = {
+	APIC_TDCR_2,	APIC_TDCR_4,	APIC_TDCR_8,	APIC_TDCR_16,
+	APIC_TDCR_32,	APIC_TDCR_64,	APIC_TDCR_128,	APIC_TDCR_1
+};
+#define APIC_TIMER_NDIVISORS \
+	(int)(sizeof(lapic_timer_divisors) / sizeof(lapic_timer_divisors[0]))
+
 
 /*
  * Enable APIC, configure interrupts.
@@ -163,20 +174,13 @@ apic_initialize(boolean_t bsp)
 
 	if (bsp)
 		lapic_timer_calibrate();
+	else
+		lapic_timer_set_divisor(lapic_timer_divisor_idx);
 
 	if (bootverbose)
 		apic_dump("apic_initialize()");
 }
 
-
-static sysclock_t	lapic_timer_freq;
-static int		lapic_timer_divisor_idx = -1;
-static const uint32_t	lapic_timer_divisors[] = {
-	APIC_TDCR_2,	APIC_TDCR_4,	APIC_TDCR_8,	APIC_TDCR_16,
-	APIC_TDCR_32,	APIC_TDCR_64,	APIC_TDCR_128,	APIC_TDCR_1
-};
-#define APIC_TIMER_NDIVISORS \
-	(int)(sizeof(lapic_timer_divisors) / sizeof(lapic_timer_divisors[0]))
 
 static void
 lapic_timer_set_divisor(int divisor_idx)
