@@ -46,7 +46,8 @@ static void	lapic_timer_calibrate(void);
 static void	lapic_timer_set_divisor(int);
 void		lapic_timer_process(void);
 void		lapic_timer_process_frame(struct intrframe *);
-void		lapic_timer_intr_reload(sysclock_t);
+void		lapic_timer_intr_test(void);
+void		lapic_timer_oneshot_intr_enable(void);
 
 int		lapic_timer_test;
 TUNABLE_INT("hw.lapic_timer_test", &lapic_timer_test);
@@ -215,6 +216,12 @@ lapic_timer_oneshot(u_int count)
 }
 
 static void
+lapic_timer_oneshot_quick(u_int count)
+{
+	lapic.icr_timer = count;
+}
+
+static void
 lapic_timer_calibrate(void)
 {
 	sysclock_t value;
@@ -243,7 +250,7 @@ lapic_timer_process(void)
 {
 	struct globaldata *gd = mycpu;
 
-	gd->gd_timer_running = 1;
+	gd->gd_timer_running = 0;
 
 	if (lapic_timer_test)
 		kprintf("%d proc\n", gd->gd_cpuid);
@@ -254,36 +261,32 @@ lapic_timer_process_frame(struct intrframe *frame)
 {
 	struct globaldata *gd = mycpu;
 
-	gd->gd_timer_running = 1;
+	gd->gd_timer_running = 0;
 
 	if (lapic_timer_test)
 		kprintf("%d proc frame\n", gd->gd_cpuid);
 }
 
 void
-lapic_timer_intr_reload(sysclock_t reload)
+lapic_timer_intr_test(void)
 {
 	struct globaldata *gd = mycpu;
 
-	if (lapic_timer_test) {
-		if (gd->gd_timer_running == 2) {
-			return;
-		} else if (gd->gd_timer_running == 1) {
-			gd->gd_timer_running = 2;
-			KKASSERT(lapic_timer_freq != 0);
-			lapic_timer_oneshot(lapic_timer_freq);
-		} else if (gd->gd_timer_running == 0) {
-			uint32_t timer;
-
-			timer = lapic.lvt_timer;
-			timer &= ~APIC_LVTT_MASKED;
-			lapic.lvt_timer = timer;
-
-			gd->gd_timer_running = 2;
-			KKASSERT(lapic_timer_freq != 0);
-			lapic_timer_oneshot(lapic_timer_freq);
-		}
+	if (!gd->gd_timer_running) {
+		gd->gd_timer_running = 1;
+		KKASSERT(lapic_timer_freq != 0);
+		lapic_timer_oneshot_quick(lapic_timer_freq);
 	}
+}
+
+void
+lapic_timer_oneshot_intr_enable(void)
+{
+	uint32_t timer;
+
+	timer = lapic.lvt_timer;
+	timer &= ~(APIC_LVTT_MASKED | APIC_LVTT_PERIODIC);
+	lapic.lvt_timer = timer;
 }
 
 

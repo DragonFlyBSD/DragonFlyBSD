@@ -362,7 +362,9 @@ i8254_intr_reload(sysclock_t reload)
 }
 
 #ifdef SMP
-extern void	lapic_timer_intr_reload(sysclock_t);
+extern int	lapic_timer_test;
+extern void	lapic_timer_oneshot_intr_enable(void);
+extern void	lapic_timer_intr_test(void);
 #endif
 
 void
@@ -370,13 +372,18 @@ cputimer_intr_reload(sysclock_t reload)
 {
 	i8254_intr_reload(reload);
 #ifdef SMP
-	lapic_timer_intr_reload(reload);
+	if (__predict_false(lapic_timer_test))
+		lapic_timer_intr_test();
 #endif
 }
 
 void
 cputimer_intr_enable(void)
 {
+#ifdef SMP
+	if (lapic_timer_test)
+		lapic_timer_oneshot_intr_enable();
+#endif
 }
 
 /*
