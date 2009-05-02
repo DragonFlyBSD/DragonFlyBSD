@@ -125,6 +125,8 @@ doreti_next:
 #ifdef SMP
 	testl	$RQF_IPIQ,PCPU(reqflags)
 	jnz	doreti_ipiq
+	testl	$RQF_TIMER,PCPU(reqflags)
+	jnz	doreti_timer
 #endif
 	testl	PCPU(fpending),%ecx	/* check for an unmasked fast int */
 	jnz	doreti_fast
@@ -334,6 +336,18 @@ doreti_ipiq:
 	movl	%esi,%eax		/* restore cpl for loop */
 	jmp	doreti_next
 
+doreti_timer:
+	movl	%eax,%esi		/* save cpl (can't use stack) */
+	incl	PCPU(intr_nesting_level)
+	andl	$~RQF_TIMER,PCPU(reqflags)
+	subl	$8,%esp			/* add dummy vec and ppl */
+	pushl	%esp			/* pass frame by reference */
+	call	lapic_timer_process_frame
+	addl	$12,%esp
+	decl	PCPU(intr_nesting_level)
+	movl	%esi,%eax		/* restore cpl for loop */
+	jmp	doreti_next
+
 #endif
 
 	/*
@@ -360,6 +374,8 @@ splz_next:
 #ifdef SMP
 	testl	$RQF_IPIQ,PCPU(reqflags)
 	jnz	splz_ipiq
+	testl	$RQF_TIMER,PCPU(reqflags)
+	jnz	splz_timer
 #endif
 	testl	PCPU(fpending),%ecx	/* check for an unmasked fast int */
 	jnz	splz_fast
@@ -475,6 +491,13 @@ splz_ipiq:
 	andl	$~RQF_IPIQ,PCPU(reqflags)
 	pushl	%eax
 	call	lwkt_process_ipiq
+	popl	%eax
+	jmp	splz_next
+
+splz_timer:
+	andl	$~RQF_TIMER,PCPU(reqflags)
+	pushl	%eax
+	call	lapic_timer_process
 	popl	%eax
 	jmp	splz_next
 #endif

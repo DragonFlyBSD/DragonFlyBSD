@@ -43,6 +43,8 @@
 
 static void	lapic_timer_calibrate(void);
 static void	lapic_timer_set_divisor(int);
+void		lapic_timer_process(void);
+void		lapic_timer_process_frame(struct intrframe *);
 
 /*
  * pointers to pmapped apic hardware.
@@ -66,6 +68,7 @@ static const uint32_t	lapic_timer_divisors[] = {
 void
 apic_initialize(boolean_t bsp)
 {
+	uint32_t timer;
 	u_int   temp;
 
 	/*
@@ -99,11 +102,17 @@ apic_initialize(boolean_t bsp)
 
 	/*
 	 * Mask the apic error interrupt, apic performance counter
-	 * interrupt, and the apic timer interrupt.
+	 * interrupt.
 	 */
 	lapic.lvt_error = lapic.lvt_error | APIC_LVT_MASKED;
 	lapic.lvt_pcint = lapic.lvt_pcint | APIC_LVT_MASKED;
-	lapic.lvt_timer = lapic.lvt_timer | APIC_LVT_MASKED;
+
+	/* Set apic timer vector and mask the apic timer interrupt. */
+	timer = lapic.lvt_timer;
+	timer &= ~APIC_LVTT_VECTOR;
+	timer |= XTIMER_OFFSET;
+	timer |= APIC_LVTT_MASKED;
+	lapic.lvt_timer = timer;
 
 	/*
 	 * Set the Task Priority Register as needed.   At the moment allow
@@ -222,6 +231,16 @@ lapic_timer_calibrate(void)
 
 	kprintf("lapic: divisor index %d, frequency %u Hz\n",
 		lapic_timer_divisor_idx, lapic_timer_freq);
+}
+
+void
+lapic_timer_process(void)
+{
+}
+
+void
+lapic_timer_process_frame(struct intrframe *frame)
+{
 }
 
 

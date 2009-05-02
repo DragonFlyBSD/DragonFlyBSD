@@ -120,6 +120,9 @@
 /* IPIQ rendezvous */
 #define XIPIQ_OFFSET		(IDT_OFFSET + 115)
 
+/* TIMER rendezvous */
+#define XTIMER_OFFSET		(IDT_OFFSET + 116)
+
 /* IPI to signal CPUs to stop and wait for another CPU to restart them */
 #define XCPUSTOP_OFFSET		(IDT_OFFSET + 128)
 
@@ -147,6 +150,7 @@ inthand_t
 	Xforward_irq,	/* Forward irq to cpu holding ISR lock */
 	Xcpustop,	/* CPU stops & waits for another CPU to restart it */
 	Xspuriousint,	/* handle APIC "spurious INTs" */
+	Xtimer,		/* handle LAPIC timer INT */
 	Xipiq;		/* handle lwkt_send_ipiq() requests */
 #endif /* SMP */
 

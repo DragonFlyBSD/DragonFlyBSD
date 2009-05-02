@@ -561,6 +561,10 @@ mp_enable(u_int boot_addr)
 	/* install an inter-CPU IPI for IPIQ messaging */
 	setidt(XIPIQ_OFFSET, Xipiq,
 	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+
+	/* install a timer vector */
+	setidt(XTIMER_OFFSET, Xtimer,
+	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 	
 	/* install an inter-CPU IPI for CPU stop/restart */
 	setidt(XCPUSTOP_OFFSET, Xcpustop,
