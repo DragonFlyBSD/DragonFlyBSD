@@ -991,6 +991,8 @@ cpu_initclocks(void *arg __unused)
 	void *clkdesc;
 #endif /* APIC_IO */
 
+	callout_init(&sysbeepstop_ch);
+
 	if (statclock_disable) {
 		/*
 		 * The stat interrupt mask is different without the
@@ -1130,7 +1132,6 @@ cpu_initclocks(void *arg __unused)
 		       "routing 8254 via 8259 and IOAPIC #0 intpin 0\n");
 	}
 #endif
-	callout_init(&sysbeepstop_ch);
 }
 SYSINIT(clocks8254, SI_BOOT2_CLOCKREG, SI_ORDER_FIRST, cpu_initclocks, NULL)
 
