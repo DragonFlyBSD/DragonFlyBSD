@@ -124,6 +124,9 @@ enum tstate timer0_state;
 enum tstate timer1_state;
 enum tstate timer2_state;
 
+static void	i8254_intr_reload(sysclock_t);
+void		(*cputimer_intr_reload)(sysclock_t) = i8254_intr_reload;
+
 static	int	beeping = 0;
 static	const u_char daysinmonth[] = {31,28,31,30,31,30,31,31,30,31,30,31};
 static	u_char	rtc_statusa = RTCSA_DIVIDER | RTCSA_NOPROF;
@@ -362,27 +365,32 @@ i8254_intr_reload(sysclock_t reload)
 }
 
 #ifdef SMP
+
 extern int	lapic_timer_test;
+extern int	lapic_timer_enable;
 extern void	lapic_timer_oneshot_intr_enable(void);
 extern void	lapic_timer_intr_test(void);
-#endif
 
-void
-cputimer_intr_reload(sysclock_t reload)
+/* Piggyback lapic_timer test */
+static void
+i8254_intr_reload_test(sysclock_t reload)
 {
 	i8254_intr_reload(reload);
-#ifdef SMP
 	if (__predict_false(lapic_timer_test))
 		lapic_timer_intr_test();
-#endif
 }
+
+#endif	/* SMP */
 
 void
 cputimer_intr_enable(void)
 {
 #ifdef SMP
-	if (lapic_timer_test)
+	if (lapic_timer_test || lapic_timer_enable) {
 		lapic_timer_oneshot_intr_enable();
+		if (lapic_timer_test) /* XXX */
+			cputimer_intr_reload = i8254_intr_reload_test;
+	}
 #endif
 }
 
@@ -1011,6 +1019,11 @@ cpu_initclocks(void *arg __unused)
 #endif /* APIC_IO */
 
 	callout_init(&sysbeepstop_ch);
+
+#ifdef SMP
+	if (lapic_timer_enable)
+		return;
+#endif
 
 	if (statclock_disable) {
 		/*

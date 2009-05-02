@@ -70,6 +70,9 @@ static struct kqueue_info *kqueue_timer_info;
 static int cputimer_mib[16];
 static int cputimer_miblen;
 
+static void	vkernel_intr_reload(sysclock_t);
+void		(*cputimer_intr_reload)(sysclock_t) = vkernel_intr_reload;
+
 
 /*
  * SYSTIMER IMPLEMENTATION
@@ -157,8 +160,8 @@ cputimer_intr_config(struct cputimer *timer)
  * reload calculation can be negatively indexed, we need a minimal
  * check to ensure that a reasonable reload value is selected. 
  */
-void
-cputimer_intr_reload(sysclock_t reload)
+static void
+vkernel_intr_reload(sysclock_t reload)
 {
 	if (kqueue_timer_info) {
 		if ((int)reload < 1)

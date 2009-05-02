@@ -125,6 +125,10 @@ enum tstate timer0_state;
 enum tstate timer1_state;
 enum tstate timer2_state;
 
+
+static void	i8254_intr_reload(sysclock_t);
+void		(*cputimer_intr_reload)(sysclock_t) = i8254_intr_reload;
+
 static	int	beeping = 0;
 static	const u_char daysinmonth[] = {31,28,31,30,31,30,31,31,30,31,30,31};
 static	u_char	rtc_statusa = RTCSA_DIVIDER | RTCSA_NOPROF;
@@ -328,8 +332,8 @@ cputimer_intr_config(struct cputimer *timer)
  *
  * We may have to convert from the system timebase to the 8254 timebase.
  */
-void
-cputimer_intr_reload(sysclock_t reload)
+static void
+i8254_intr_reload(sysclock_t reload)
 {
     __uint16_t count;
 

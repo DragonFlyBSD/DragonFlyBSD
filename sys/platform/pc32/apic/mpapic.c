@@ -44,13 +44,18 @@
 
 static void	lapic_timer_calibrate(void);
 static void	lapic_timer_set_divisor(int);
+static void	lapic_timer_intr_reload(sysclock_t);
+
 void		lapic_timer_process(void);
 void		lapic_timer_process_frame(struct intrframe *);
 void		lapic_timer_intr_test(void);
 void		lapic_timer_oneshot_intr_enable(void);
 
 int		lapic_timer_test;
+int		lapic_timer_enable;
+
 TUNABLE_INT("hw.lapic_timer_test", &lapic_timer_test);
+TUNABLE_INT("hw.lapic_timer_enable", &lapic_timer_enable);
 
 /*
  * pointers to pmapped apic hardware.
@@ -187,10 +192,13 @@ apic_initialize(boolean_t bsp)
 		}
 	}
 
-	if (bsp)
+	if (bsp) {
 		lapic_timer_calibrate();
-	else
+		if (lapic_timer_enable)
+			cputimer_intr_reload = lapic_timer_intr_reload;
+	} else {
 		lapic_timer_set_divisor(lapic_timer_divisor_idx);
+	}
 
 	if (bootverbose)
 		apic_dump("apic_initialize()");
@@ -245,15 +253,29 @@ lapic_timer_calibrate(void)
 		lapic_timer_divisor_idx, lapic_timer_freq);
 }
 
+static void
+lapic_timer_process_oncpu(struct globaldata *gd, struct intrframe *frame)
+{
+	sysclock_t count;
+
+	gd->gd_timer_running = 0;
+
+	count = sys_cputimer->count();
+	if (TAILQ_FIRST(&gd->gd_systimerq) != NULL)
+		systimer_intr(&count, 0, frame);
+}
+
 void
 lapic_timer_process(void)
 {
 	struct globaldata *gd = mycpu;
 
-	gd->gd_timer_running = 0;
-
-	if (lapic_timer_test)
+	if (__predict_false(lapic_timer_test)) {
+		gd->gd_timer_running = 0;
 		kprintf("%d proc\n", gd->gd_cpuid);
+	} else {
+		lapic_timer_process_oncpu(gd, NULL);
+	}
 }
 
 void
@@ -261,10 +283,12 @@ lapic_timer_process_frame(struct intrframe *frame)
 {
 	struct globaldata *gd = mycpu;
 
-	gd->gd_timer_running = 0;
-
-	if (lapic_timer_test)
+	if (__predict_false(lapic_timer_test)) {
+		gd->gd_timer_running = 0;
 		kprintf("%d proc frame\n", gd->gd_cpuid);
+	} else {
+		lapic_timer_process_oncpu(gd, frame);
+	}
 }
 
 void
@@ -276,6 +300,24 @@ lapic_timer_intr_test(void)
 		gd->gd_timer_running = 1;
 		KKASSERT(lapic_timer_freq != 0);
 		lapic_timer_oneshot_quick(lapic_timer_freq);
+	}
+}
+
+static void
+lapic_timer_intr_reload(sysclock_t reload)
+{
+	struct globaldata *gd = mycpu;
+
+	reload = (int64_t)reload * lapic_timer_freq / sys_cputimer->freq;
+	if (reload < 2)
+		reload = 2;
+
+	if (gd->gd_timer_running) {
+		if (reload < lapic.ccr_timer)
+			lapic_timer_oneshot_quick(reload);
+	} else {
+		gd->gd_timer_running = 1;
+		lapic_timer_oneshot_quick(reload);
 	}
 }
 

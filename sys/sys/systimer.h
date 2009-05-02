@@ -138,7 +138,7 @@ void cputimer_default_destruct(struct cputimer *);
 
 void cputimer_intr_enable(void);
 void cputimer_intr_config(struct cputimer *);
-void cputimer_intr_reload(sysclock_t);
+extern void (*cputimer_intr_reload)(sysclock_t);
 
 #endif
 
