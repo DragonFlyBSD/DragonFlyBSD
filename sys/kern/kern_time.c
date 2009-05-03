@@ -351,8 +351,13 @@ sys_nanosleep(struct nanosleep_args *uap)
 	/*
 	 * copyout the residual if nanosleep was interrupted.
 	 */
-	if (error && uap->rmtp)
-		error = copyout(&rmt, uap->rmtp, sizeof(rmt));
+	if (error && uap->rmtp) {
+		int error2;
+
+		error2 = copyout(&rmt, uap->rmtp, sizeof(rmt));
+		if (error2)
+			error = error2;
+	}
 	return (error);
 }
 
