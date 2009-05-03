@@ -105,8 +105,7 @@ handle_pfs(struct i_fn_args *a, struct commands *cmds)
 				command_add(cmds, "%s%s nohistory %smnt%s",
 				    a->os_root, cmd_name(a, "CHFLAGS"),
 				    a->os_root, pfs_mountpt[j]);
-		}
-		else {
+		} else {
 			command_add(cmds, "%s%s pfs-master %smnt/pfs%s",
 			    a->os_root, cmd_name(a, "HAMMER"),
 			    a->os_root, pfs_mountpt[j]);
@@ -136,7 +135,6 @@ fn_install_os(struct i_fn_args *a)
 	char cp_src[64][256];
 	char file_path[256];
 	int lines = 0;
-	long mfsbacked_size;
 
 	/* 
 	 * If SOURCES_CONF_FILE exists, lets read in and 
@@ -260,14 +258,6 @@ fn_install_os(struct i_fn_args *a)
 			continue;
 		}
 	
-
-		/*
-		 * Don't mount it if it's MFS-backed.
-		 */
-
-		if (subpartition_is_mfsbacked(sp)) {
-			continue;
-		}
 		if (use_hammer == 0) {
 			/* / is already mounted */
 			if (strcmp(subpartition_get_mountpoint(sp), "/") != 0) {
@@ -275,6 +265,9 @@ fn_install_os(struct i_fn_args *a)
 				    a->os_root, cmd_name(a, "MKDIR"),
 				    a->os_root,
 				    subpartition_get_mountpoint(sp));
+				/* Don't mount it if it's MFS-backed. */
+				if (subpartition_is_mfsbacked(sp))
+					continue;
 				command_add(cmds, "%s%s %sdev/%s %smnt%s",
 				    a->os_root, cmd_name(a, "MOUNT"),
 				    a->os_root,
@@ -460,10 +453,8 @@ fn_install_os(struct i_fn_args *a)
 	/*
 	 * Clean up.  In case some file didn't make it, use rm -f
 	 */
-#ifdef __DragonFly__
 	command_add(cmds, "%s%s -f %smnt/boot/loader.conf",
 	    a->os_root, cmd_name(a, "RM"), a->os_root);
-#endif
 	command_add(cmds, "%s%s -f %smnt/tmp/install.log",
 	    a->os_root, cmd_name(a, "RM"), a->os_root);
 
@@ -555,11 +546,12 @@ fn_install_os(struct i_fn_args *a)
 				    subpartition_get_mountpoint(sp),
 				    a->os_root);
 			} else if (subpartition_is_mfsbacked(sp)) {
-				mfsbacked_size = slice_get_capacity(storage_get_selected_slice(a->s)) * 2048;
-				command_add(cmds, "%s%s 'swap\t\t%s\t\t\tmfs\trw,-s%ld\t\t1\t1' >>%smnt/etc/fstab",
+				command_add(cmds, "%s%s 'swap\t\t%s\t\t\tmfs\trw,-s%lu,-b%lu,-f%lu\t\t1\t1' >>%smnt/etc/fstab",
 					a->os_root, cmd_name(a, "ECHO"),
 					subpartition_get_mountpoint(sp),
-					mfsbacked_size,
+					subpartition_get_capacity(sp) * 2048,
+					subpartition_get_bsize(sp),
+					subpartition_get_fsize(sp),
 					a->os_root);
 			} else {
 				command_add(cmds, "%s%s '/dev/%s\t\t%s\t\tufs\trw\t\t2\t2' >>%smnt/etc/fstab",
