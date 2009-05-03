@@ -466,9 +466,10 @@ state_configure_menu(struct i_fn_args *a)
 		    "a", "set_scrnmap",
 		    _("Set screen map"),
 		    _("Set how characters are translated before console display"), "",
-
+		    /*
 		    "a", "install_pkgs", _("Install extra software packages"),
 		    _("Install third-party software packages from the LiveCD"), "",
+		    */
 		    "a", "remove_pkgs",	_("Remove software packages"),
 		    _("Remove third-party software packages from the installed system"), "",
 
