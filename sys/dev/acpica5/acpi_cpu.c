@@ -135,6 +135,9 @@ static struct sysctl_oid *cpu_sysctl_tree;
 static int		 cpu_cx_generic;
 static int		 cpu_cx_lowest;
 
+/* C3 state transition */
+static int		 cpu_c3_ncpus;
+
 static device_t		*cpu_devices;
 static int		 cpu_ndevices;
 static struct acpi_cpu_softc **cpu_softc;
@@ -966,6 +969,15 @@ acpi_cpu_idle(void)
      * if BM control is available, otherwise flush the CPU cache.
      */
     if (cx_next->type == ACPI_STATE_C3) {
+	if (atomic_fetchadd_int(&cpu_c3_ncpus, 1) == 0) {
+	    /*
+	     * When the first CPU enters C3 state, switch
+	     * to an one shot timer, which could handle
+	     * C3 state, i.e. the timer will not hang.
+	     */
+	    cputimer_intr_switch(CPUTIMER_INTRT_C3);
+	}
+
 	if ((cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0) {
 	    AcpiSetRegister(ACPI_BITREG_ARB_DISABLE, 1);
 	    AcpiSetRegister(ACPI_BITREG_BUS_MASTER_RLD, 1);
@@ -992,10 +1004,19 @@ acpi_cpu_idle(void)
     AcpiHwLowLevelRead(32, &end_time, &AcpiGbl_FADT.XPmTimerBlock);
 
     /* Enable bus master arbitration and disable bus master wakeup. */
-    if (cx_next->type == ACPI_STATE_C3 &&
-	(cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0) {
-	AcpiSetRegister(ACPI_BITREG_ARB_DISABLE, 0);
-	AcpiSetRegister(ACPI_BITREG_BUS_MASTER_RLD, 0);
+    if (cx_next->type == ACPI_STATE_C3) {
+	if ((cpu_quirks & CPU_QUIRK_NO_BM_CTRL) == 0) {
+	    AcpiSetRegister(ACPI_BITREG_ARB_DISABLE, 0);
+	    AcpiSetRegister(ACPI_BITREG_BUS_MASTER_RLD, 0);
+	}
+
+	if (atomic_fetchadd_int(&cpu_c3_ncpus, -1) == 1) {
+	    /*
+	     * All of the CPUs exit C3 state, use a better
+	     * one shot timer.
+	     */
+	    cputimer_intr_switch(CPUTIMER_INTRT_FAST);
+    	}
     }
     ACPI_ENABLE_IRQS();
 

@@ -324,29 +324,43 @@ acpi_hpet_disable(struct acpi_hpet_softc *sc)
 static int
 acpi_hpet_suspend(device_t dev)
 {
-	struct acpi_hpet_softc *sc;
-
 	/*
-	 * Disable the timer during suspend.  The timer will not lose
-	 * its state in S1 or S2, but we are required to disable
-	 * it.
+	 * According to IA-PC HPET specification rev 1.0a
+	 *
+	 * Page 10, 2.3.3:
+	 * "1. The Event Timer registers (including the main counter)
+	 *  are not expected to be preserved through an S3, S4, or S5
+	 *  state."
+	 *
+	 * Page 11, 2.3.3:
+	 * "3. The main counter is permitted, but not required, to run
+	 *  during S1 or S2 states. ..."
+	 *
+	 * These mean we are not allowed to enter any of Sx states,
+	 * if HPET is used as the sys_cputimer.
 	 */
-	sc = device_get_softc(dev);
-	acpi_hpet_disable(sc);
+	if (sys_cputimer != &acpi_hpet_timer) {
+		struct acpi_hpet_softc *sc;
 
-	return (0);
+		sc = device_get_softc(dev);
+		acpi_hpet_disable(sc);
+
+		return 0;
+	} else {
+		return EOPNOTSUPP;
+	}
 }
 
 static int
 acpi_hpet_resume(device_t dev)
 {
-	struct acpi_hpet_softc *sc;
+	if (sys_cputimer != &acpi_hpet_timer) {
+		struct acpi_hpet_softc *sc;
 
-	/* Re-enable the timer after a resume to keep the clock advancing. */
-	sc = device_get_softc(dev);
-	acpi_hpet_enable(sc);
-
-	return (0);
+		sc = device_get_softc(dev);
+		acpi_hpet_enable(sc);
+	}
+	return 0;
 }
  
 /* Print some basic latency/rate information to assist in debugging. */

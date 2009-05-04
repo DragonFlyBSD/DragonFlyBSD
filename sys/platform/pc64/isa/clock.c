@@ -371,6 +371,11 @@ cputimer_intr_enable(void)
 {
 }
 
+void
+cputimer_intr_switch(enum cputimer_intr_type type)
+{
+}
+
 /*
  * DELAY(usec)	     - Spin for the specified number of microseconds.
  * DRIVERSLEEP(usec) - Spin for the specified number of microseconds,

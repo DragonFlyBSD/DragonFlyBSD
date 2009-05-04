@@ -46,12 +46,14 @@ static void	lapic_timer_calibrate(void);
 static void	lapic_timer_set_divisor(int);
 static void	lapic_timer_intr_reload(sysclock_t);
 static void	lapic_timer_fixup_handler(void *);
+static void	lapic_timer_restart_handler(void *);
 
 void		lapic_timer_fixup(void);
 void		lapic_timer_process(void);
 void		lapic_timer_process_frame(struct intrframe *);
 void		lapic_timer_intr_test(void);
 void		lapic_timer_oneshot_intr_enable(void);
+void		lapic_timer_restart(void);
 
 int		lapic_timer_test;
 int		lapic_timer_enable;
@@ -313,8 +315,13 @@ lapic_timer_oneshot_intr_enable(void)
 }
 
 static void
-lapic_timer_fixup_handler(void *dummy __unused)
+lapic_timer_fixup_handler(void *arg)
 {
+	int *started = arg;
+
+	if (started != NULL)
+		*started = 0;
+
 	if (strcmp(cpu_vendor, "AuthenticAMD") == 0) {
 		/*
 		 * Detect the presence of C1E capability mostly on latest
@@ -346,8 +353,25 @@ lapic_timer_fixup_handler(void *dummy __unused)
 				 */
 				gd->gd_timer_running = 1;
 				lapic_timer_oneshot_quick(2);
+
+				if (started != NULL)
+					*started = 1;
 			}
 		}
+	}
+}
+
+static void
+lapic_timer_restart_handler(void *dummy __unused)
+{
+	int started;
+
+	lapic_timer_fixup_handler(&started);
+	if (!started) {
+		struct globaldata *gd = mycpu;
+
+		gd->gd_timer_running = 1;
+		lapic_timer_oneshot_quick(2);
 	}
 }
 
@@ -364,6 +388,14 @@ lapic_timer_fixup(void)
 		lwkt_send_ipiq_mask(smp_active_mask,
 				    lapic_timer_fixup_handler, NULL);
 	}
+}
+
+void
+lapic_timer_restart(void)
+{
+	KKASSERT(lapic_timer_enable);
+	cputimer_intr_reload = lapic_timer_intr_reload;
+	lwkt_send_ipiq_mask(smp_active_mask, lapic_timer_restart_handler, NULL);
 }
 
 
