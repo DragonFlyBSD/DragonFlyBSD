@@ -132,6 +132,22 @@ _kvm_malloc(kvm_t *kd, size_t n)
 	return (p);
 }
 
+static int
+is_proc_mem(const char *p)
+{
+	static char proc[] = "/proc/";
+	static char mem[] = "/mem";
+	if (strncmp(proc, p, sizeof(proc) - 1))
+		return 0;
+	p += sizeof(proc) - 1;
+	for (; p != '\0'; ++p)
+		if (!isdigit(*p))
+			break;
+	if (!isdigit(*(p - 1)))
+		return 0;
+	return !strncmp(p, mem, sizeof(mem) - 1);
+}
+
 static kvm_t *
 _kvm_open(kvm_t *kd, const char *uf, const char *mf, int flag, char *errout)
 {
@@ -145,6 +161,7 @@ _kvm_open(kvm_t *kd, const char *uf, const char *mf, int flag, char *errout)
 	kd->procend = NULL;
 	kd->argspc = 0;
 	kd->argv = 0;
+	kd->flags = 0;
 
 	if (uf == 0)
 		uf = getbootfile();
@@ -165,11 +182,6 @@ _kvm_open(kvm_t *kd, const char *uf, const char *mf, int flag, char *errout)
 	}
 	if (fstat(kd->pmfd, &st) < 0) {
 		_kvm_syserr(kd, kd->program, "%s", mf);
-		goto failed;
-	}
-	if (S_ISREG(st.st_mode) && st.st_size <= 0) {
-		errno = EINVAL;
-		_kvm_syserr(kd, kd->program, "empty file");
 		goto failed;
 	}
 	if (fcntl(kd->pmfd, F_SETFD, FD_CLOEXEC) < 0) {
@@ -195,11 +207,11 @@ _kvm_open(kvm_t *kd, const char *uf, const char *mf, int flag, char *errout)
 				goto failed;
 			}
 		}
+		kd->flags |= KVMF_HOST;
 	} else {
 		/*
-		 * This is a crash dump.
-		 * Initialize the virtual address translation machinery,
-		 * but first setup the namelist fd.
+		 * Crash dump or vkernel /proc/$pid/mem file:
+		 * can't use kldsym, we are going to need ->nlfd
 		 */
 		if ((kd->nlfd = open(uf, O_RDONLY, 0)) < 0) {
 			_kvm_syserr(kd, kd->program, "%s", uf);
@@ -209,8 +221,29 @@ _kvm_open(kvm_t *kd, const char *uf, const char *mf, int flag, char *errout)
 			_kvm_syserr(kd, kd->program, "%s", uf);
 			goto failed;
 		}
-		if (_kvm_initvtop(kd) < 0)
-			goto failed;
+		if(is_proc_mem(mf)) {
+			/*
+			 * It's /proc/$pid/mem, so we rely on the host
+			 * kernel to do address translation for us.
+			 */
+			kd->vmfd = kd->pmfd;
+			kd->pmfd = -1;
+			kd->flags |= KVMF_VKERN;
+		} else {
+			if (st.st_size <= 0) {
+				errno = EINVAL;
+				_kvm_syserr(kd, kd->program, "empty file");
+				goto failed;
+			}
+			
+			/*
+			 * This is a crash dump.
+			 * Initialize the virtual address translation machinery,
+			 * but first setup the namelist fd.
+			 */
+			if (_kvm_initvtop(kd) < 0)
+				goto failed;
+		}
 	}
 	return (kd);
 failed:
@@ -289,7 +322,7 @@ kvm_nlist(kvm_t *kd, struct nlist *nl)
 	 * If we can't use the kld symbol lookup, revert to the
 	 * slow library call.
 	 */
-	if (!ISALIVE(kd))
+	if (!kvm_ishost(kd))
 		return (__fdnlist(kd->nlfd, nl));
 
 	/*
@@ -331,7 +364,7 @@ kvm_read(kvm_t *kd, u_long kva, void *buf, size_t len)
 	int cc;
 	void *cp;
 
-	if (ISALIVE(kd)) {
+	if (kvm_notrans(kd)) {
 		/*
 		 * We're using /dev/kmem.  Just read straight from the
 		 * device and let the active kernel do the address translation.
@@ -413,7 +446,7 @@ kvm_readstr(kvm_t *kd, u_long kva, char *buf, size_t *lenp)
 		len = *lenp;
 	}
 
-	if (ISALIVE(kd)) {
+	if (kvm_notrans(kd)) {
 		/*
 		 * We're using /dev/kmem.  Just read straight from the
 		 * device and let the active kernel do the address translation.
@@ -497,7 +530,7 @@ kvm_write(kvm_t *kd, u_long kva, const void *buf, size_t len)
 {
 	int cc;
 
-	if (ISALIVE(kd)) {
+	if (kvm_notrans(kd)) {
 		/*
 		 * Just like kvm_read, only we write.
 		 */

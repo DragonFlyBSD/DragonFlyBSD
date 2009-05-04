@@ -468,7 +468,7 @@ kvm_getprocs(kvm_t *kd, int op, int arg, int *cnt)
 		 */
 		kd->procbase = 0;
 	}
-	if (ISALIVE(kd)) {
+	if (kvm_ishost(kd)) {
 		size = 0;
 		mib[0] = CTL_KERN;
 		mib[1] = KERN_PROC;
@@ -807,7 +807,7 @@ kvm_doargv(kvm_t *kd, const struct kinfo_proc *kp, int nchr,
 	/*
 	 * For live kernels, make sure this process didn't go away.
 	 */
-	if (ap != 0 && ISALIVE(kd) &&
+	if (ap != 0 && (kvm_ishost(kd) || kvm_isvkernel(kd)) &&
 	    !proc_verify(kd, kp))
 		ap = 0;
 	return (ap);
@@ -827,7 +827,7 @@ kvm_getargv(kvm_t *kd, const struct kinfo_proc *kp, int nchr)
 	static char **bufp;
 	static int argc;
 
-	if (!ISALIVE(kd)) {
+	if (!kvm_ishost(kd)) { /* XXX: vkernels */
 		_kvm_err(kd, kd->program,
 		    "cannot read user space from dead kernel");
 		return (0);
@@ -892,7 +892,7 @@ kvm_uread(kvm_t *kd, pid_t pid, u_long uva, char *buf, size_t len)
 	ssize_t amount;
 	int fd;
 
-	if (!ISALIVE(kd)) {
+	if (!kvm_ishost(kd)) { /* XXX: vkernels */
 		_kvm_err(kd, kd->program,
 		    "cannot read user space from dead kernel");
 		return (0);
