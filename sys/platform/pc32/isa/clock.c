@@ -135,6 +135,9 @@ static  int	rtc_loaded;
 
 static int i8254_cputimer_div;
 
+static int i8254_intr_disable = 0;
+TUNABLE_INT("hw.i8254.intr_disable", &i8254_intr_disable);
+
 static struct callout sysbeepstop_ch;
 
 static sysclock_t i8254_cputimer_count(void);
@@ -399,7 +402,8 @@ void
 cputimer_intr_switch(enum cputimer_intr_type type)
 {
 #ifdef SMP
-	if (lapic_timer_enable || lapic_timer_test) {
+	if (!i8254_intr_disable &&
+	    (lapic_timer_enable || lapic_timer_test)) {
 		switch (type) {
 		case CPUTIMER_INTRT_C3:
 			cputimer_intr_reload = i8254_intr_reload;
@@ -1066,6 +1070,11 @@ cpu_initclocks(void *arg __unused)
 #endif /* APIC_IO */
 
 	callout_init(&sysbeepstop_ch);
+
+#ifdef SMP
+	if (lapic_timer_enable && i8254_intr_disable)
+		return;
+#endif
 
 	if (statclock_disable) {
 		/*
