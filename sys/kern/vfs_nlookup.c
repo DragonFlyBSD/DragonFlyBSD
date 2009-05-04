@@ -279,10 +279,17 @@ nlookup_simple(const char *str, enum uio_seg seg,
  * execute (search) permission.  nlookup does not examine the access 
  * permissions on the returned element.
  *
- * If NLC_CREATE or NLC_DELETE is set the last directory must allow node
- * creation (VCREATE/VDELETE), and an error code of 0 will be returned for
- * a non-existant target.  Otherwise a non-existant target will cause
- * ENOENT to be returned.
+ * If NLC_CREATE is set the last directory must allow node creation,
+ * and an error code of 0 will be returned for a non-existant
+ * target (not ENOENT).
+ *
+ * If NLC_RENAME is set the last directory mut allow node deletion,
+ * plus the sticky check is made, and an error code of 0 will be returned
+ * for a non-existant target (not ENOENT).  NLC_RENAME is set used for
+ * the rename target.
+ *
+ * If NLC_DELETE is set the last directory mut allow node deletion,
+ * plus the sticky check is made.
  *
  * If NLC_REFDVP is set nd->nl_dvp will be set to the directory vnode
  * of the returned entry.  The vnode will be referenced, but not locked,
@@ -387,9 +394,6 @@ nlookup(struct nlookupdata *nd)
 	 * The namecache topology is not allowed to be disconnected, so 
 	 * encountering a NULL parent will generate EINVAL.  This typically
 	 * occurs when a directory is removed out from under a process.
-	 *
-	 * If NLC_DELETE is set neither '.' or '..' can be the last component
-	 * of a path.
 	 */
 	if (nlc.nlc_namelen == 1 && nlc.nlc_nameptr[0] == '.') {
 	    cache_get(&nd->nl_nch, &nch);
@@ -447,24 +451,30 @@ nlookup(struct nlookupdata *nd)
 
 	/*
 	 * Early completion.  ENOENT is not an error if this is the last
-	 * component and NLC_CREATE was requested.  Note that ncp->nc_error
-	 * is left as ENOENT in that case, which we check later on.
+	 * component and NLC_CREATE or NLC_RENAME (rename target) was
+	 * requested.  Note that ncp->nc_error is left as ENOENT in that
+	 * case, which we check later on.
+	 *
+	 * NOTE: For NLC_RENAME in the ENOENT case we do a VCREATE test,
+	 *       same as for NLC_CREATE.
 	 *
 	 * Also handle invalid '.' or '..' components terminating a path
-	 * during removal.  The standard requires this and pax pretty
-	 * stupidly depends on it.
+	 * for a create/rename/delete.  The standard requires this and pax
+	 * pretty stupidly depends on it.
 	 */
 	for (xptr = ptr; *xptr == '/'; ++xptr)
 		;
 	if (*xptr == 0) {
-	    if (error == ENOENT && (nd->nl_flags & NLC_CREATE)) {
+	    if (error == ENOENT && (nd->nl_flags & (NLC_CREATE | NLC_RENAME))) {
 		if (nd->nl_flags & NLC_NFS_RDONLY)
 			error = EROFS;
 		else
 			error = naccess(&nch, VCREATE, nd->nl_cred, NULL);
 	    }
-	    if (error == 0 && wasdotordotdot && (nd->nl_flags & NLC_DELETE))
+	    if (error == 0 && wasdotordotdot &&
+		(nd->nl_flags & (NLC_CREATE | NLC_RENAME | NLC_DELETE))) {
 		error = EINVAL;
+	    }
 	}
 
 	/*
@@ -589,10 +599,18 @@ nlookup(struct nlookupdata *nd)
 	/*
 	 * Successful lookup of last element.
 	 *
-	 * Check directory permissions if a deletion is specified.
+	 * Check directory permissions if a deletion or rename (target)
+	 * is specified.  This also handles the sticky test.
+	 *
+	 * We already checked permissions for creates in the early
+	 * termination code above.
 	 */
-	if (*ptr == 0 && (nd->nl_flags & NLC_DELETE)) {
-	    if ((error = naccess(&nch, VDELETE, nd->nl_cred, NULL)) != 0) {
+	if (*ptr == 0 && (nd->nl_flags & (NLC_DELETE | NLC_RENAME))) {
+	    if (nd->nl_flags & NLC_DELETE)
+		error = naccess(&nch, VDELETE, nd->nl_cred, NULL);
+	    else
+		error = naccess(&nch, VRENAME, nd->nl_cred, NULL);
+	    if (error) {
 		cache_put(&nch);
 		break;
 	    }
@@ -713,21 +731,20 @@ fail:
  * Generally check the V* access bits from sys/vnode.h.  All specified bits
  * must pass for this function to return 0.
  *
- * If VCREATE is specified and the target ncp represents a non-existant
- * file or dir, or if VDELETE is specified and the target exists, the parent
- * directory is checked for VWRITE.  If VEXCL is specified and the target
- * ncp represents a positive hit, an error is returned.
+ * The file does not have to exist when checking VCREATE or VRENAME access.
  *
- * If VCREATE is not specified and the target does not exist (negative hit),
- * ENOENT is returned.  Note that nlookup() does not (and should not) return
- * ENOENT for non-existant leafs.
+ * The file must not exist if VEXCL is specified.
  *
- * If VDELETE is specified we also do sticky-bit tests on the parent
- * directory.
+ * Directory permissions in general are tested for VCREATE if the file
+ * does not exist, VDELETE if the file does exist, and VRENAME whether
+ * the file exists or not.
+ *
+ * The directory sticky bit is tested for VDELETE and VRENAME.  NOTE: For
+ * VRENAME we only care if the target exists.
  *
  * The passed ncp may or may not be locked.  The caller should use a
- * locked ncp on leaf lookups, especially for VCREATE, VDELETE, and VEXCL
- * checks.
+ * locked ncp on leaf lookups, especially for VCREATE, VRENAME, VDELETE,
+ * and VEXCL checks.
  */
 int
 naccess(struct nchandle *nch, int vmode, struct ucred *cred, int *stickyp)
@@ -746,9 +763,14 @@ naccess(struct nchandle *nch, int vmode, struct ucred *cred, int *stickyp)
     error = nch->ncp->nc_error;
     sticky = 0;
 
-    if (vmode & (VDELETE|VCREATE|VEXCL)) {
+    /*
+     * Directory permissions and VEXCL checks.  Do a precursor conditional
+     * to reduce overhead since most access checks are for read-only.
+     */
+    if (vmode & (VDELETE|VRENAME|VCREATE|VEXCL)) {
 	if (((vmode & VCREATE) && nch->ncp->nc_vp == NULL) ||
-	    ((vmode & VDELETE) && nch->ncp->nc_vp != NULL)
+	    ((vmode & VDELETE) && nch->ncp->nc_vp != NULL) ||
+	    (vmode & VRENAME)
 	) {
 	    if ((par.ncp = nch->ncp->nc_parent) == NULL) {
 		if (error != EAGAIN)
@@ -757,7 +779,7 @@ naccess(struct nchandle *nch, int vmode, struct ucred *cred, int *stickyp)
 		par.mount = nch->mount;
 		cache_hold(&par);
 		error = naccess(&par, VWRITE, cred, &sticky);
-		if ((vmode & VDELETE) && sticky)
+		if ((vmode & (VDELETE | VRENAME)) && sticky)
 		    vmode |= VSVTX;
 		cache_drop(&par);
 	    }
@@ -768,7 +790,7 @@ naccess(struct nchandle *nch, int vmode, struct ucred *cred, int *stickyp)
     if (error == 0) {
 	error = cache_vget(nch, cred, LK_SHARED, &vp);
 	if (error == ENOENT) {
-	    if (vmode & VCREATE)
+	    if (vmode & (VCREATE | VRENAME))
 		error = 0;
 	} else if (error == 0) {
 	    /* XXX cache the va in the namecache or in the vnode */
@@ -812,8 +834,10 @@ naccess_va(struct vattr *va, int vmode, struct ucred *cred)
 
     /*
      * Test the immutable bit for files, directories, and softlinks.
+     *
+     * NOTE: Only called for VRENAME if the target exists.
      */
-    if (vmode & (VWRITE|VDELETE)) {
+    if (vmode & (VWRITE|VDELETE|VRENAME)) {
 	if (va->va_type == VDIR || va->va_type == VLNK || va->va_type == VREG) {
 	    if (va->va_flags & IMMUTABLE)
 		return (EPERM);
@@ -842,14 +866,15 @@ naccess_va(struct vattr *va, int vmode, struct ucred *cred)
     }
 
     /*
-     * If VSVTX is set only the owner may access the file.  This bit is
-     * typically set for VDELETE checks on files in sticky directories
-     * when the user does not own the directory.  Note that other V bits
-     * are not typically set (for deletions we usually just care about
-     * the directory permissions, not the file permissions).
+     * If VSVTX is set only the owner may create or delete the file.
+     * This bit is typically set for VDELETE checks from unlink or
+     * the source file in a rename, and for VCREATE checks from the
+     * target file in a rename.
      *
-     * The effect on VDELETE checks is thus to not allow the deletion
-     * of the file, and otherwise allow it.
+     * Note that other V bits are not typically set in the VSVTX case.
+     * For creations and deletions we usually just care about directory
+     * permissions, not file permissions.  So if this test passes the
+     * return value winds up being 0.
      */
     if (vmode & VSVTX)
 	return(EACCES);

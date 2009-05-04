@@ -1580,8 +1580,10 @@ nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nameiop,
 	}
 	if (rdonly)
 		flags |= NLC_NFS_RDONLY;
-	if (nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME)
+	if (nameiop == NAMEI_CREATE)
 		flags |= NLC_CREATE;
+	if (nameiop == NAMEI_RENAME)
+		flags |= NLC_RENAME;
 
 	/*
 	 * We need a starting ncp from the directory vnode dp.  dp must not
