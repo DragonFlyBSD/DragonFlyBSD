@@ -38,6 +38,8 @@
 #include <sysexits.h>
 #include <time.h>
 #include <unistd.h>
+#include <term.h>
+#undef lines			/* term.h defines this */
 
 /* Width of one month with backward compatibility */
 #define MONTH_WIDTH_B_J 27
@@ -46,7 +48,7 @@
 #define MONTH_WIDTH_J 24
 #define MONTH_WIDTH 18
 
-#define MAX_WIDTH 28
+#define MAX_WIDTH 64
 
 typedef struct date date;
 
@@ -155,6 +157,8 @@ char jdaystr[] = "       1   2   3   4   5   6   7   8   9"
 int     flag_weeks;		/* user wants number of week */
 int     nswitch;		/* user defined switch date */
 int	nswitchb;		/* switch date for backward compatibility */
+const char	*term_so, *term_se;
+int	today;
 
 char   *center(char *s, char *t, int w);
 void	mkmonth(int year, int month, int jd_flag, struct monthlines * monthl);
@@ -193,6 +197,26 @@ main(int argc, char *argv[])
 	int	flag_easter = 0;	/* use wants easter date */
 	char	*cp;			/* character pointer */
 	char    *locale;		/* locale to get country code */
+	char tbuf[1024], cbuf[512], *b;
+	time_t t;
+	struct tm *tm1;
+
+	term_se = term_so = NULL;
+	today = 0;
+	if (isatty(STDOUT_FILENO) && tgetent(tbuf, NULL) == 1) {
+		date	dt;		/* handy date */
+
+		b = cbuf;
+		term_so = tgetstr("so", &b);
+		term_se = tgetstr("se", &b);
+		t = time(NULL);
+		tm1 = localtime(&t);
+		dt.y = tm1->tm_year + 1900;
+		dt.m = tm1->tm_mon + 1;
+		dt.d = tm1->tm_mday;
+
+		today = sndaysb(&dt);
+	}
 
 	/*
 	 * Use locale to determine the country code,
@@ -324,12 +348,14 @@ main(int argc, char *argv[])
 
 	if (flag_easter)
 		printeaster(y, flag_julian_cal, flag_orthodox);
-	else if (argc == 1 || flag_hole_year)
+	else if (argc == 1 || flag_hole_year) {
+		/* disable the highlight for now */
+		today = 0;
 		if (flag_backward)
 			printyearb(y, flag_julian_day);
 		else
 			printyear(y, flag_julian_day);
-	else
+	} else
 		if (flag_backward)
 			printmonthb(y, m, flag_julian_day);
 		else
@@ -579,7 +605,7 @@ mkmonth(int y, int m, int jd_flag, struct monthlines *mlines)
 	int     dw;		/* width of numbers */
 	int     first;		/* first day of month */
 	int     firstm;		/* first day of first week of month */
-	int     i, j, k;	/* just indices */
+	int     i, j, k, l;	/* just indices */
 	int     last;		/* the first day of next month */
 	int     jan1 = 0;	/* the first day of this year */
 	char   *ds;		/* pointer to day strings (daystr or
@@ -626,17 +652,38 @@ mkmonth(int y, int m, int jd_flag, struct monthlines *mlines)
 	 * column is one day number. print column index: k.
 	 */
 	for (i = 0; i != 7; i++) {
-		for (j = firstm + i, k = 0; j < last; j += 7, k += dw)
+		l = 0;
+		for (j = firstm + i, k = 0; j < last; j += 7, k += dw) {
+			if (j == today && (term_so != NULL && term_se != NULL)) {
+				l = strlen(term_so);
+				if (jd_flag)
+					dt.d = j - jan1 + 1;
+				else
+					sdateb(j, &dt);
+				/* separator */
+				mlines->lines[i][k] = ' ';
+				/* the actual text */
+				memcpy(mlines->lines[i] + k + l,
+				    ds + dt.d * dw, dw);
+				/* highlight on */
+				memcpy(mlines->lines[i] + k + 1, term_so, l);
+				/* highlight off */
+				memcpy(mlines->lines[i] + k + l + dw, term_se,
+				    strlen(term_se));
+				l = strlen(term_se) + strlen(term_so);
+				continue;
+			}
 			if (j >= first) {
 				if (jd_flag)
 					dt.d = j - jan1 + 1;
 				else
 					sdate(j, &dt);
-				memcpy(mlines->lines[i] + k,
+				memcpy(mlines->lines[i] + k + l,
 				       ds + dt.d * dw, dw);
 			} else
-				memcpy(mlines->lines[i] + k, "    ", dw);
-		mlines->lines[i][k] = '\0';
+				memcpy(mlines->lines[i] + k + l, "    ", dw);
+		}
+		mlines->lines[i][k + l] = '\0';
 				
 	}
 
@@ -662,7 +709,7 @@ mkmonthb(int y, int m, int jd_flag, struct monthlines *mlines)
 	int     dw;		/* width of numbers */
 	int     first;		/* first day of month */
 	int     firsts;		/* sunday of first week of month */
-	int     i, j, k;	/* just indices */
+	int     i, j, k, l;	/* just indices */
 	int     jan1 = 0;	/* the first day of this year */
 	int     last;		/* the first day of next month */
 	char   *ds;		/* pointer to day strings (daystr or
@@ -722,21 +769,42 @@ mkmonthb(int y, int m, int jd_flag, struct monthlines *mlines)
 	 * column is one day number. print column index: k.
 	 */
 	for (i = 0; i != 6; i++) {
+		l = 0;
 		for (j = firsts + 7 * i, k = 0; j < last && k != dw * 7;
-		     j++, k += dw)
+		    j++, k += dw) { 
+			if (j == today && (term_so != NULL && term_se != NULL)) {
+				l = strlen(term_so);
+				if (jd_flag)
+					dt.d = j - jan1 + 1;
+				else
+					sdateb(j, &dt);
+				/* separator */
+				mlines->lines[i][k] = ' ';
+				/* the actual text */
+				memcpy(mlines->lines[i] + k + l,
+				    ds + dt.d * dw, dw);
+				/* highlight on */
+				memcpy(mlines->lines[i] + k + 1, term_so, l);
+				/* highlight off */
+				memcpy(mlines->lines[i] + k + l + dw, term_se,
+				    strlen(term_se));
+				l = strlen(term_se) + strlen(term_so);
+				continue;
+			}
 			if (j >= first) {
 				if (jd_flag)
 					dt.d = j - jan1 + 1;
 				else
 					sdateb(j, &dt);
-				memcpy(mlines->lines[i] + k,
+				memcpy(mlines->lines[i] + k + l,
 				       ds + dt.d * dw, dw);
 			} else
-				memcpy(mlines->lines[i] + k, "    ", dw);
+				memcpy(mlines->lines[i] + k + l, "    ", dw);
+		}
 		if (k == 0)
 			mlines->lines[i][1] = '\0';
 		else
-			mlines->lines[i][k] = '\0';
+			mlines->lines[i][k + l] = '\0';
 	}
 }
 
